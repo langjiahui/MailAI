@@ -34,7 +34,6 @@ _PROVIDERS = {
     "sina.com": MailServerProfile("新浪邮箱", "imap.sina.com", smtp_host="smtp.sina.com"),
     "sohu.com": MailServerProfile("搜狐邮箱", "imap.sohu.com", smtp_host="smtp.sohu.com"),
     "139.com": MailServerProfile("中国移动 139 邮箱", "imap.139.com", smtp_host="smtp.139.com"),
-    "baosight.com": MailServerProfile("宝信企业邮箱", "imap.baosight.com", smtp_host="smtp.baosight.com"),
 }
 
 

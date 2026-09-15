@@ -9,7 +9,19 @@ permissions:
   contents: write
 
 jobs:
+  metadata:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Verify release version and README
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          test "$(tr -d '\r\n' < VERSION)" = "$version"
+          grep -F "当前版本：**v${version}**" README.md
+
   windows-x64:
+    needs: metadata
     runs-on: windows-2022
     env:
       CI: "1"
@@ -40,6 +52,7 @@ jobs:
           if-no-files-found: error
 
   macos-arm64:
+    needs: metadata
     runs-on: macos-14
     env:
       CI: "1"

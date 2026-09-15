@@ -21,7 +21,7 @@ sys.modules[__name__].__class__ = _AccountConfiguration
 
 ensure_dirs()
 _PROCESS_ENV = dict(os.environ)
-# 安装包先加载企业统一的 Qwen 默认配置，再加载用户本地邮箱配置。
+# 安装包先加载通用默认配置，再加载用户本地邮箱配置。
 if FROZEN:
     load_dotenv(APP_DIR / "mailai.defaults.env", override=False)
 load_dotenv(CONFIG_PATH, override=True)
@@ -42,7 +42,7 @@ def _i(key: str, default: int) -> int:
 
 
 # ===== IMAP =====
-IMAP_HOST = os.getenv("IMAP_HOST", "imap.baosight.com")
+IMAP_HOST = os.getenv("IMAP_HOST", "")
 IMAP_PORT = _i("IMAP_PORT", 993)
 IMAP_USER = os.getenv("IMAP_USER", "")
 IMAP_PASSWORD = os.getenv("IMAP_PASSWORD", "")
@@ -65,11 +65,8 @@ SMTP_SENT_IMAP_HOST = os.getenv("SMTP_SENT_IMAP_HOST", "")
 SMTP_SENT_FOLDER = os.getenv("SMTP_SENT_FOLDER", "")
 SMTP_MAX_RECIPIENTS = _i("SMTP_MAX_RECIPIENTS", 100)
 
-COMPANY_DOMAIN = os.getenv("COMPANY_DOMAIN", "baosight.com").lower()
-BUILTIN_TRUSTED_DOMAINS = {
-    "gitlab.baocloud.cn",
-    "baosteel.com",
-}
+COMPANY_DOMAIN = os.getenv("COMPANY_DOMAIN", "").lower()
+BUILTIN_TRUSTED_DOMAINS = set()
 TRUSTED_DOMAINS = sorted(BUILTIN_TRUSTED_DOMAINS | {
     d.strip().lower()
     for d in os.getenv("TRUSTED_DOMAINS", "").split(",")

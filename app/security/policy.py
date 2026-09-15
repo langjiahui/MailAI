@@ -124,7 +124,7 @@ ALLOWLIST_BLOCKING_CODES = {
 
 CATEGORY_GUIDE = {
     "身份认证": {"title": "发件服务器是否可信", "description": "检查 SPF、DKIM、DMARC 等邮件身份认证结果。", "example": "适合识别伪造发件服务器"},
-    "发件身份": {"title": "发件人是否冒充他人", "description": "检查相似域名、显示名冒充、回复地址不一致和域名基础设施。", "example": "例如把 baosteel.com 伪装成 baostee1.com"},
+    "发件身份": {"title": "发件人是否冒充他人", "description": "检查相似域名、显示名冒充、回复地址不一致和域名基础设施。", "example": "例如把 example.com 伪装成 examp1e.com"},
     "链接链路": {"title": "邮件链接是否安全", "description": "检查短链接、跳转、黑名单、伪装链接和异常落地域。", "example": "适合经常收到外部链接的用户"},
     "附件载荷": {"title": "附件是否可能有危险", "description": "检查宏、可执行文件、双扩展名和附件类型伪装。", "example": "建议始终保持开启"},
     "社工话术": {"title": "是否催促或索要敏感信息", "description": "识别紧迫恐吓、索要密码、验证码和付款信息等话术。", "example": "严格模式会更早提醒"},

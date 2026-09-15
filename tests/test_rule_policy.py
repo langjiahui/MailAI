@@ -12,7 +12,10 @@ from app.security import chains, policy, rules, urls
 
 def main():
     old_db = config.DB_PATH
-    with tempfile.TemporaryDirectory() as td:
+    with tempfile.TemporaryDirectory() as td, \
+         patch.object(config, "COMPANY_DOMAIN", "company.example"), \
+         patch.object(config, "BUILTIN_TRUSTED_DOMAINS", {"gitlab.example.com", "files.example.com"}), \
+         patch.object(config, "TRUSTED_DOMAINS", ["gitlab.example.com", "files.example.com"]):
         config.DB_PATH = os.path.join(td, "rules.db")
         try:
             db.init_db()
@@ -65,20 +68,20 @@ def main():
             assert categories["行为画像"]["sensitivity"] == "relaxed"
             assert db.delete_security_allowlist(trusted["id"])
             assert policy.allowlist_match("notice@partner.example.com") is None
-            assert policy.allowlist_match("build@gitlab.baocloud.cn")["domain"] == "gitlab.baocloud.cn"
-            assert policy.allowlist_match("notice@sub.baosteel.com")["domain"] == "baosteel.com"
-            assert policy.is_trusted_domain("gitlab.baocloud.cn")
-            assert policy.is_trusted_domain("files.baosteel.com")
+            assert policy.allowlist_match("build@gitlab.example.com")["domain"] == "gitlab.example.com"
+            assert policy.allowlist_match("notice@sub.files.example.com")["domain"] == "files.example.com"
+            assert policy.is_trusted_domain("gitlab.example.com")
+            assert policy.is_trusted_domain("files.example.com")
             effective = {item["value"]: item for item in policy.list_allowlist_entries()}
-            assert effective["gitlab.baocloud.cn"]["source"] == "内置白名单"
-            assert effective["baosteel.com"]["readonly"] is True
+            assert effective["gitlab.example.com"]["source"] == "内置白名单"
+            assert effective["files.example.com"]["readonly"] is True
             assert effective[config.COMPANY_DOMAIN]["source"] == "企业域名"
-            scan = rules.scan({"from_addr": "notice@baosteel.com", "auth_raw": "", "urls": [],
+            scan = rules.scan({"from_addr": "notice@company.example", "auth_raw": "", "urls": [],
                                "attachments": [], "subject": "业务通知", "body_text": ""})
             assert not any(item["code"] == "AUTH_NONE" for item in scan["findings"])
-            assert urls.analyze_url("https://gitlab.baocloud.cn/group/project") == []
+            assert urls.analyze_url("https://gitlab.example.com/group/project") == []
             trusted_result = {"status": "ok", "chain": [{"url": "https://t.cn/a", "status": 200}],
-                              "final_url": "https://files.baosteel.com/a", "final_domain": "files.baosteel.com",
+                              "final_url": "https://files.example.com/a", "final_domain": "files.example.com",
                               "final_ip": "10.1.2.3"}
             with patch.object(chains, "follow_redirects", return_value=trusted_result):
                 chain_findings, result = chains.analyze_url_chain("https://t.cn/a")

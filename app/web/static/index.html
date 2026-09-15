@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="/static/style.css?v=sync-dock-46" />
   <link rel="stylesheet" href="/static/workspace.css?v=maintenance-59" />
   <link rel="stylesheet" href="/static/companion.css?v=mint-3" />
-  <link rel="stylesheet" href="/static/theme.css?v=theme-15" />
+  <link rel="stylesheet" href="/static/theme.css?v=theme-16" />
   <link rel="stylesheet" href="/static/attachment-preview.css?v=2">
   <link rel="stylesheet" href="/static/onboarding.css?v=1">
   <link rel="stylesheet" href="/static/select-ui.css?v=1">
@@ -233,7 +233,7 @@
           </div>
           <div class="app-update-actions">
             <button id="btn-check-update" type="button" class="action-btn action-primary">检查更新</button>
-            <a class="action-btn action-secondary" href="https://github.com/langjiahui/MailAI/releases/latest" target="_blank" rel="noopener noreferrer">查看发布页</a>
+            <a id="app-release-link" class="action-btn action-secondary" href="https://github.com/langjiahui/MailAI/releases/latest" target="_blank" rel="noopener noreferrer">查看发布页</a>
             <a class="action-btn action-secondary" href="https://github.com/langjiahui/MailAI" target="_blank" rel="noopener noreferrer">项目主页</a>
           </div>
         </div>
@@ -826,8 +826,8 @@
           <details class="onboarding-help"><summary>如何获取客户端授权码？</summary><p>在邮箱网页版的设置中查找“客户端 / IMAP / SMTP”，开启客户端服务并生成授权码。企业邮箱如无此入口，请向管理员获取连接方式。授权码与模型 API Key 不同。</p></details>
           <details class="onboarding-advanced">
             <summary>服务器高级设置</summary>
-            <div class="form-row host-row"><label>IMAP 服务器<input id="onboarding-host" value="imap.baosight.com" required></label><label>端口<input id="onboarding-port" type="number" value="993" required></label></div>
-            <div class="form-row host-row"><label>SMTP 服务器<input id="onboarding-smtp-host" value="smtp.baosight.com" required></label><label>端口<input id="onboarding-smtp-port" type="number" value="465" required></label></div>
+            <div class="form-row host-row"><label>IMAP 服务器<input id="onboarding-host" placeholder="例如 imap.example.com" required></label><label>端口<input id="onboarding-port" type="number" value="993" required></label></div>
+            <div class="form-row host-row"><label>SMTP 服务器<input id="onboarding-smtp-host" placeholder="例如 smtp.example.com" required></label><label>端口<input id="onboarding-smtp-port" type="number" value="465" required></label></div>
             <div class="form-row checks"><label class="check-row"><input id="onboarding-smtp-ssl" type="checkbox" checked>SMTP SSL</label><label class="check-row"><input id="onboarding-smtp-starttls" type="checkbox">SMTP STARTTLS</label></div>
             <label class="check-row"><input id="onboarding-verify-ssl" type="checkbox" checked>校验 SSL 证书</label>
           </details>
@@ -867,7 +867,7 @@
     </dialog>
   </div>
   <script src="/static/attachment-preview.js?v=1"></script>
-  <script src="/static/app.js?v=mail-theme-75"></script>
+  <script src="/static/app.js?v=mail-theme-76"></script>
   <script src="/static/mail-library.js?v=2"></script>
   <script src="/static/server-cleanup.js?v=2"></script>
   <script src="/static/workspace.js?v=mail-theme-59"></script>

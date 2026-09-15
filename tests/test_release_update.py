@@ -28,6 +28,7 @@ class Response(io.BytesIO):
 def manifest(version="1.1.0", digest="a" * 64):
     return {
         "version": version,
+        "release_url": "https://github.com/langjiahui/MailAI/releases/tag/v1.1.0",
         "notes": "Security and reliability fixes",
         "assets": {
             "windows-x64": {"url": "https://github.com/langjiahui/MailAI/releases/download/v1.1.0/MailAI-Windows-x64-Setup.exe", "sha256": digest},
@@ -40,6 +41,7 @@ def main():
     static_dir = Path(__file__).resolve().parents[1] / "app" / "web" / "static"
     update_ui = (static_dir / "index.html").read_text(encoding="utf-8")
     assert 'id="app-device-label"' in update_ui
+    assert 'id="app-release-link"' in update_ui
     assert "GitHub Releases" in update_ui
     assert "https://github.com/langjiahui/MailAI/releases/latest" in update_ui
     assert "https://github.com/langjiahui/MailAI" in update_ui
@@ -56,6 +58,7 @@ def main():
         result = release_update.evaluate_manifest(manifest(), device="windows-x64")
         assert result["available"] and result["installable"]
         assert result["latest_version"] == "1.1.0"
+        assert result["release_url"].endswith("/releases/tag/v1.1.0")
         assert not release_update.evaluate_manifest(manifest("1.0.0"), device="windows-x64")["available"]
         try:
             release_update.evaluate_manifest(manifest(digest="bad"), device="windows-x64")

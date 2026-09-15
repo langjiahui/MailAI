@@ -3900,8 +3900,10 @@ function renderAppVersion(result) {
   const label = document.getElementById('app-version-label');
   const status = document.getElementById('app-update-status');
   const device = document.getElementById('app-device-label');
+  const releaseLink = document.getElementById('app-release-link');
   if (label) label.textContent = `MailAI ${result.current_version || ''}`.trim();
   if (device) device.textContent = appDeviceName(result.device);
+  if (releaseLink && result.release_url) releaseLink.href = result.release_url;
   if (!status) return;
   if (result.development) status.textContent = '源码运行模式；安装包版本会自动检查更新。';
   else if (!result.supported) status.textContent = `当前设备 ${result.device || ''} 暂无对应安装包。`;
@@ -4921,16 +4923,12 @@ function renderUrlChains(chains) {
   // 节点流程图：短链 → 中间跳 → 最终落地。只有连接失败/阻断才标红；
   // 过去只要存在最终域名就标红，会把正常解析出的 IP 错画成风险 IP。
   const host = u => { try { return new URL(u).hostname; } catch { return u || '-'; } };
-  const trustedBusinessDomain = value => {
-    const domain = String(value || '').split(':')[0].toLowerCase().replace(/^\.+|\.+$/g, '');
-    return ['gitlab.baocloud.cn', 'baosteel.com'].some(item => domain === item || domain.endsWith('.' + item));
-  };
   return `
     <div class="reading-section">
       <div class="section-title">🔗 链接链路信息</div>
       ${chains.map(c => {
         const steps = (c.chain || []);
-        const trusted = c.trusted_final === true || trustedBusinessDomain(c.final_domain);
+        const trusted = c.trusted_final === true;
         const failed = c.status === 'error' || c.status === 'timeout' || steps.some(step => step.status === 0 || step.status >= 400);
         const nodes = steps.map((s, i) => {
           const isLast = i === steps.length - 1;
@@ -6908,9 +6906,9 @@ let assistantAlertTimer = null;
 const initialLoad = loadSystemConfig().then(async cfg => {
   if (!cfg.mail?.logged_in) {
     const overlay = document.getElementById('onboarding-overlay');
-    document.getElementById('onboarding-host').value = cfg.mail?.host || 'imap.baosight.com';
+    document.getElementById('onboarding-host').value = cfg.mail?.host || '';
     document.getElementById('onboarding-port').value = cfg.mail?.port || 993;
-    document.getElementById('onboarding-smtp-host').value = cfg.smtp?.host || 'smtp.baosight.com';
+    document.getElementById('onboarding-smtp-host').value = cfg.smtp?.host || '';
     document.getElementById('onboarding-smtp-port').value = cfg.smtp?.port || 465;
     const manageAccounts = document.getElementById('onboarding-manage-accounts');
     const savedCount = (cfg.accounts || []).length;

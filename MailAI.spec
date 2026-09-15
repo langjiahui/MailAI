@@ -53,7 +53,7 @@ app = BUNDLE(
     coll,
     name='MailAI.app',
     icon='build/mailai.icns',
-    bundle_identifier='com.baosight.mailai',
+    bundle_identifier='com.langjiahui.mailai',
     info_plist={
         'CFBundleDisplayName': 'MailAI',
         'CFBundleShortVersionString': release_version,

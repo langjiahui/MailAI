@@ -15,11 +15,11 @@ def gb2312_mail() -> bytes:
     body = ("大家好：\n1、IMC上线后，请尽快优化慢SQL和慢服务。\n"
             "共享文档：https://docs.qq.com/sheet/example\n谢谢！")
     message = MIMEText(body, "plain", "gb2312")
-    message["From"] = "huangxiaoyun@baosight.com"
-    message["To"] = "user@baosight.com"
+    message["From"] = "huangxiaoyun@example.com"
+    message["To"] = "user@example.com"
     message["Subject"] = "IMC系统统计慢SQL和慢服务"
     message["Date"] = "Sat, 28 Aug 2026 11:51:00 +0800"
-    message["Message-ID"] = "<encoding-test@baosight.com>"
+    message["Message-ID"] = "<encoding-test@example.com>"
     return message.as_bytes()
 
 

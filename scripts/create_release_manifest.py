@@ -40,6 +40,7 @@ def main():
         }
     manifest = {
         "version": version,
+        "release_url": f"https://github.com/{args.repository}/releases/tag/{tag}",
         "published_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "notes": args.notes,
         "assets": assets,

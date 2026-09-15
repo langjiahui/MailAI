@@ -18,12 +18,12 @@ def build_phishing() -> bytes:
     msg = MIMEMultipart()
     msg["From"] = "IT管理员 <it-support@baos1ght.com>"
     msg["Reply-To"] = "helpdesk@secure-verify.top"
-    msg["To"] = "langjiahui_b00708@baosight.com"
+    msg["To"] = "user@example.com"
     msg["Subject"] = "【紧急】您的邮箱密码将于今日过期，请立即验证"
     msg["Authentication-Results"] = "mx.example.com; spf=fail; dkim=fail; dmarc=fail header.from=baos1ght.com"
     msg["Message-ID"] = "<phish-001@test>"
     html = ('<html><body><p>尊敬的用户，您的邮箱密码已过期，账户将被冻结。</p>'
-            '<p>请点击 <a href="http://192.168.99.5/login">https://mail.baosight.com</a> '
+            '<p>请点击 <a href="http://192.168.99.5/login">https://mail.example.com</a> '
             '重新登录并输入密码。</p></body></html>')
     msg.attach(MIMEText(html, "html", "utf-8"))
     msg.attach(MIMEApplication(b"MZ fake", Name="密码重置工具.exe"))
@@ -32,10 +32,10 @@ def build_phishing() -> bytes:
 
 def build_clean() -> bytes:
     msg = MIMEMultipart()
-    msg["From"] = "张三 <zhangsan@baosight.com>"
-    msg["To"] = "langjiahui_b00708@baosight.com"
+    msg["From"] = "张三 <zhangsan@example.com>"
+    msg["To"] = "user@example.com"
     msg["Subject"] = "本周项目例会纪要"
-    msg["Authentication-Results"] = "mx.baosight.com; spf=pass; dkim=pass; dmarc=pass header.from=baosight.com"
+    msg["Authentication-Results"] = "mx.example.com; spf=pass; dkim=pass; dmarc=pass header.from=example.com"
     msg["Message-ID"] = "<clean-001@test>"
     msg.attach(MIMEText("大家好，本周例会纪要见附件，请各组在周五前反馈进度。我的手机号13812345678", "plain", "utf-8"))
     return msg.as_bytes()

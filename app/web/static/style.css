@@ -1,6 +1,7 @@
 :root {
   --bg: #f5f7fa;
   --surface: #ffffff;
+  --surface-soft: #f5f7f5;
   --sidebar: #fafbfc;
   --text: #1f2937;
   --muted: #6b7280;
@@ -2716,7 +2717,7 @@ body { font-size: 13px; background: var(--bg); }
 .app-update-card h4 { margin:5px 0; font-size:18px; }
 .app-update-card p { margin:0; color:var(--muted); }
 .app-update-meta { display:flex; flex-wrap:wrap; gap:10px; margin-top:15px; }
-.app-update-meta > span { display:grid; gap:3px; min-width:150px; padding:10px 12px; border:1px solid var(--border); border-radius:11px; background:var(--surface-soft,#f5f7f5); }
+.app-update-meta > span { display:grid; gap:3px; min-width:150px; padding:10px 12px; border:1px solid var(--border); border-radius:11px; background:var(--surface-soft); }
 .app-update-meta small { color:var(--muted); font-size:10px; }
 .app-update-meta strong { color:var(--text); font-size:12px; }
 .app-update-card .app-update-policy { max-width:680px; margin-top:13px; font-size:11px; line-height:1.65; }
@@ -2730,7 +2731,7 @@ body { font-size: 13px; background: var(--bg); }
 .update-dialog header h3 { margin:4px 0 0; }
 .update-dialog header small { color:var(--muted); }
 .update-dialog header > button { border:0; background:transparent; font-size:22px; color:var(--muted); cursor:pointer; }
-.update-dialog-notes { white-space:pre-wrap; margin:18px 0; padding:14px; border-radius:12px; background:var(--surface-soft, #f5f7f5); }
+.update-dialog-notes { white-space:pre-wrap; margin:18px 0; padding:14px; border-radius:12px; background:var(--surface-soft); }
 .update-dialog-warning { color:var(--warning, #9a5c13); font-size:13px; }
 .update-dialog footer { justify-content:flex-end; margin-top:20px; }
 .update-dialog footer button { min-height:40px; padding:0 16px; border-radius:10px; border:1px solid var(--border); cursor:pointer; }

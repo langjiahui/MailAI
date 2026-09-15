@@ -28,7 +28,7 @@ def configure_windows_app_identity() -> bool:
     try:
         import ctypes
 
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("com.baosight.mailai")
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("com.langjiahui.mailai")
         return True
     except Exception:
         log.exception("设置 Windows 应用身份失败")

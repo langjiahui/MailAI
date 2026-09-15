@@ -24,8 +24,8 @@ def main():
         for query in ('张展', 'zzs', 'zhangzhansheng', 'xmzb', 'xiangmuzhoubao'):
             assert [row['uid'] for row in db.search_emails([query])] == [1], query
 
-        db.save_contact('person@example.test', '张展生', '宝信软件')
-        for query in ('zzs', 'zhangzhansheng', 'bxrj', 'baoxinruanjian'):
+        db.save_contact('person@example.test', '张展生', '示例企业')
+        for query in ('zzs', 'zhangzhansheng', 'slqy', 'shiliqiye'):
             assert any(row['email'] == 'person@example.test' for row in db.search_contacts(query)), query
 
         registry = {'accounts': {'test': {

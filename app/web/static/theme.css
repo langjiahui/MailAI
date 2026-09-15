@@ -27,6 +27,7 @@ html[data-theme="dark"] {
   color-scheme:dark;
   --bg:#111916;
   --surface:rgba(28,40,35,.92);
+  --surface-soft:rgba(42,60,50,.82);
   --sidebar:rgba(23,34,30,.9);
   --panel:rgba(29,42,36,.9);
   --text:#e7f0eb;
@@ -1714,3 +1715,32 @@ html[data-theme="dark"] [data-system-panel="maintenance"] #btn-create-backup { b
 html[data-theme="dark"] .maintenance-badge,html[data-theme="dark"] .backup-record-copy em,html[data-theme="dark"] .maintenance-cleanup-steps li>span { background:rgba(64,135,94,.2)!important; color:#b0d8be!important; }
 html[data-theme="dark"] .maintenance-badge.caution,html[data-theme="dark"] .maintenance-cleanup-note { background:rgba(132,98,49,.15)!important; color:#d9bc91!important; }
 html[data-theme="dark"] [data-system-panel="maintenance"] :is(.maintenance-section-label,.diagnostic-results) { border-color:var(--dark-stroke)!important; }
+
+/* Version information must remain legible against the midnight glass surface. */
+html[data-theme="dark"] .app-update-card {
+  color:var(--dark-copy, #e5f1ea)!important;
+  border-color:var(--dark-stroke, rgba(204,235,216,.16))!important;
+  background:linear-gradient(145deg,rgba(34,59,47,.78),rgba(18,39,30,.84))!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.035)!important;
+}
+html[data-theme="dark"] .app-update-card :is(h4,#app-version-label) { color:#f0f8f3!important; }
+html[data-theme="dark"] .app-update-card :is(#app-update-status,.app-update-policy,.author-card-label) { color:#a9c0b3!important; }
+html[data-theme="dark"] .app-update-meta > span {
+  color:#e5f1ea!important;
+  border-color:rgba(189,226,205,.18)!important;
+  background:rgba(9,27,19,.5)!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.025)!important;
+}
+html[data-theme="dark"] .app-update-meta small { color:#94ad9f!important; }
+html[data-theme="dark"] .app-update-meta strong { color:#e3f0e8!important; }
+html[data-theme="dark"] .app-update-actions .action-secondary {
+  color:#dcece3!important;
+  border-color:rgba(184,224,202,.2)!important;
+  background:rgba(49,78,63,.72)!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.05)!important;
+}
+html[data-theme="dark"] .app-update-actions .action-secondary:hover {
+  color:#f5fff9!important;
+  border-color:rgba(126,218,168,.4)!important;
+  background:rgba(67,112,88,.78)!important;
+}

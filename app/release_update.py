@@ -124,6 +124,7 @@ def evaluate_manifest(manifest: dict, *, device: str | None = None) -> dict:
         "available": supported and latest_tuple > installed_tuple,
         "installable": bool(FROZEN and supported),
         "notes": str(manifest.get("notes") or "").strip()[:4000],
+        "release_url": _https_url(manifest.get("release_url"), "发布页地址") if manifest.get("release_url") else "",
         "published_at": str(manifest.get("published_at") or "").strip(),
         "asset": asset,
         "unsigned_warning": "当前版本未配置代码签名，安装时系统可能显示安全警告。",

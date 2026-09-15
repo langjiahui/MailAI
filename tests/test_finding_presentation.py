@@ -10,13 +10,13 @@ def test_present_findings_explains_common_technical_signals():
     findings = policy.present_findings([
         {"code": "AUTH_NONE", "detail": "无 Authentication-Results 认证信息", "weight": 5},
         {"code": "DISPLAY_SPOOF", "detail": "外部邮件显示名冒称内部身份: EPLAT系统管理员", "weight": 20},
-        {"code": "DNS_SPF", "detail": "发件域 baosteel.com 未配置 SPF", "weight": 5},
+        {"code": "DNS_SPF", "detail": "发件域 example.com 未配置 SPF", "weight": 5},
         {"code": "URL_ANOMALY", "detail": "该发件人历史很少发送 URL，本邮件包含 10 个链接", "weight": 10},
     ])
 
     assert all(item["technical_code"] != "AUTH_NONE" for item in findings)
     assert "EPLAT系统管理员" in findings[0]["explanation"]
-    assert "baosteel.com" in findings[1]["explanation"]
+    assert "example.com" in findings[1]["explanation"]
     assert "10 个链接" in findings[2]["explanation"]
 
 

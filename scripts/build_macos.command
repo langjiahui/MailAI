@@ -105,7 +105,7 @@ pkgbuild \
   --root "$PKG_ROOT" \
   --component-plist scripts/macos-components.plist \
   --install-location /Applications \
-  --identifier com.baosight.mailai.installer \
+  --identifier com.langjiahui.mailai.installer \
   --version "$MAILAI_RELEASE_VERSION" \
   --scripts "$PKG_SCRIPTS" \
   dist/MailAI-macOS-arm64.pkg >/dev/null
