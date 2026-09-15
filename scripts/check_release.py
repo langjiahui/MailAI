@@ -100,6 +100,7 @@ def main():
                  [node, '--check', str(ROOT / 'app/web/static/companion.js')],
                  [node, '--check', str(ROOT / 'app/web/static/companion-motion.js')],
                  [node, str(ROOT / 'tests/test_workspace_polish.cjs')],
+                 [node, str(ROOT / 'tests/test_rule_center_ui.cjs')],
                  [node, str(ROOT / 'tests/test_settings_preferences.cjs')],
                  [node, str(ROOT / 'tests/test_account_settings_ui.cjs')],
                  [node, str(ROOT / 'tests/test_settings_unified_ui.cjs')],

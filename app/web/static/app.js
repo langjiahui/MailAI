@@ -1985,7 +1985,7 @@ function setLoading(el, loading, text) {
 }
 
 function esc(s) {
-  return (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
 function mailDateGroup(value, now = new Date()) {
