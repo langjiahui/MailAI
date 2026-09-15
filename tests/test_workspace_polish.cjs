@@ -50,6 +50,17 @@ classes.delete('assistant-floating'); classes.delete('assistant-visible'); ctx.u
 assert.equal((html.match(/id="assistant-float"/g)||[]).length,1);
 assert.ok(html.indexOf('id="assistant-scope-picker"') > html.indexOf('id="assistant-messages"'));
 assert.match(app,/assistantPinnedScope = \[\.\.\.explicitIds\]/);
+const referenceSource = app.slice(app.indexOf('function assistantQuestionReferencesOpenEmail('), app.indexOf('\nasync function askAssistant('));
+const referenceCtx = {};
+vm.createContext(referenceCtx); vm.runInContext(referenceSource, referenceCtx);
+for (const question of ['这个邮件说了什么', '总结这封邮件', '当前邮件安全吗', '正在看的邮件有什么重点', '它说了什么']) {
+  assert.equal(referenceCtx.assistantQuestionReferencesOpenEmail(question), true, `Should bind the open email for: ${question}`);
+}
+for (const question of ['今天有什么邮件', '查找营销邮件', '这个邮箱有多少邮件']) {
+  assert.equal(referenceCtx.assistantQuestionReferencesOpenEmail(question), false, `Should retain mailbox search for: ${question}`);
+}
+assert.match(app,/assistantQuestionReferencesOpenEmail\(question\)[\s\S]*assistantPinnedScope = \[selectedEmailId\][\s\S]*value = 'selected'/,
+  'Deictic questions must pin the currently open email before the assistant request');
 assert.match(app,/assistantPinnedScope = null;\s*document.getElementById\('assistant-scope'\).value = 'account'/);
 assert.match(app,/aria-expanded="\$\{!collapsed\}"/);
 assert.match(app,/data-account-manage/);
