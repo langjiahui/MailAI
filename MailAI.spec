@@ -3,7 +3,7 @@
 import os
 
 
-release_version = os.environ.get('MAILAI_RELEASE_VERSION', '1.0.0')
+release_version = os.environ.get('MAILAI_RELEASE_VERSION', '1.0.2')
 build_version = os.environ.get('MAILAI_BUILD_VERSION', '1')
 
 

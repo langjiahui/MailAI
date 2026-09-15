@@ -44,6 +44,13 @@ ditto -c -k --sequesterRsrc --keepParent dist/MailAI.app dist/MailAI-macOS.zip
 
 # 标准安装器固定写入 /Applications，并主动刷新系统应用索引。
 PKG_SCRIPTS="$(mktemp -d)"
+PKG_ROOT="$(mktemp -d)"
+DMG_STAGE=""
+cleanup_pkg_temp() {
+  [[ -z "$DMG_STAGE" ]] || rm -rf "$DMG_STAGE"
+  rm -rf "$PKG_ROOT" "$PKG_SCRIPTS"
+}
+trap cleanup_pkg_temp EXIT
 cat > "$PKG_SCRIPTS/preinstall" <<'PREINSTALL'
 #!/bin/zsh
 # pkgbuild runs this script as root. Stop every running copy before Installer
@@ -93,8 +100,10 @@ fi
 exit 0
 POSTINSTALL
 chmod 755 "$PKG_SCRIPTS/preinstall" "$PKG_SCRIPTS/postinstall"
+ditto dist/MailAI.app "$PKG_ROOT/MailAI.app"
 pkgbuild \
-  --component dist/MailAI.app \
+  --root "$PKG_ROOT" \
+  --component-plist scripts/macos-components.plist \
   --install-location /Applications \
   --identifier com.baosight.mailai.installer \
   --version "$MAILAI_RELEASE_VERSION" \
@@ -102,7 +111,6 @@ pkgbuild \
   dist/MailAI-macOS-arm64.pkg >/dev/null
 
 DMG_STAGE="$(mktemp -d)"
-trap 'rm -rf "$DMG_STAGE" "$PKG_SCRIPTS"' EXIT
 ditto dist/MailAI-macOS-arm64.pkg "$DMG_STAGE/安装 MailAI.pkg"
 hdiutil create -quiet -volname MailAI -srcfolder "$DMG_STAGE" -ov -format UDZO dist/MailAI-macOS-arm64.dmg
 rm -rf "dist/MailAI" "dist/MailAI.app"

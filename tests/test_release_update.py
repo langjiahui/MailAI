@@ -42,6 +42,9 @@ def main():
     assert "GitHub Releases" in update_ui
     assert "https://github.com/langjiahui/MailAI/releases/latest" in update_ui
     assert "https://github.com/langjiahui/MailAI" in update_ui
+    mac_components = (Path(__file__).resolve().parents[1] / "scripts" / "macos-components.plist").read_text(encoding="utf-8")
+    assert "BundleIsVersionChecked" in mac_components and "<false/>" in mac_components
+    assert "BundleOverwriteAction" in mac_components and "upgrade" in mac_components
     assert release_update.device_key("Windows", "AMD64") == "windows-x64"
     assert release_update.device_key("Darwin", "arm64") == "macos-arm64"
     assert release_update.device_key("Darwin", "x86_64") == "darwin-x86_64"
