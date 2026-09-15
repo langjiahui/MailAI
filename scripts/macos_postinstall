@@ -49,4 +49,20 @@ fi
 /usr/bin/touch "$APP"
 [[ -x "$REGISTER" ]] && "$REGISTER" -f -trusted "$APP" >/dev/null 2>&1 || true
 /usr/bin/mdimport "$APP" >/dev/null 2>&1 || true
+
+# A package update closes the running app before replacing it. Best-effort
+# relaunch for the interactive console user; failure must never fail install.
+if [[ "$APPLICATIONS_DIR" == "/Applications" ]]; then
+  CONSOLE_USER="$(/usr/bin/stat -f '%Su' /dev/console 2>/dev/null || true)"
+  if [[ -n "$CONSOLE_USER" && "$CONSOLE_USER" != "root" && "$CONSOLE_USER" != "loginwindow" ]]; then
+    CONSOLE_UID="$(/usr/bin/id -u "$CONSOLE_USER" 2>/dev/null || true)"
+    if [[ -n "$CONSOLE_UID" ]]; then
+      (
+        /bin/sleep 1
+        /bin/launchctl asuser "$CONSOLE_UID" /usr/bin/sudo -u "$CONSOLE_USER" \
+          /usr/bin/open -a "$APP" >/dev/null 2>&1 || true
+      ) >/dev/null 2>&1 &
+    fi
+  fi
+fi
 exit 0

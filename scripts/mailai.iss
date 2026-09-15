@@ -1,5 +1,5 @@
 #ifndef MyAppVersion
-  #define MyAppVersion "1.0.5.0"
+  #define MyAppVersion "1.0.6.0"
 #endif
 
 [Setup]
@@ -61,7 +61,7 @@ Name: "{autodesktop}\MailAI"; Filename: "{app}\MailAI.exe"; Tasks: desktopicon
 Name: "{userstartup}\MailAI"; Filename: "{app}\MailAI.exe"; Tasks: startup
 
 [Run]
-Filename: "{app}\MailAI.exe"; Description: "启动 MailAI"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\MailAI.exe"; Description: "启动 MailAI"; Flags: nowait postinstall
 
 [Code]
 procedure InitializeWizard();

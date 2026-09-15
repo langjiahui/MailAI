@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MailAI · 社工钓鱼风险防控智能体</title>
+  <title>MailAI · 邮件安全与效率助手</title>
   <script>
     (() => {
       try {
@@ -228,6 +228,10 @@
             <div class="app-update-meta" aria-label="版本更新信息">
               <span><small>当前设备</small><strong id="app-device-label">正在识别…</strong></span>
               <span><small>更新来源</small><strong>GitHub Releases</strong></span>
+            </div>
+            <div id="app-release-summary" class="app-release-summary hidden">
+              <div><small>版本说明</small><strong id="app-release-summary-title">本版本更新</strong></div>
+              <p id="app-release-summary-notes"></p>
             </div>
             <p class="app-update-policy">应用会定期检查新版本；发现更新时先征得你的确认，再下载并启动对应设备的安装程序。</p>
           </div>
@@ -746,9 +750,14 @@
       <form method="dialog">
         <header><div><small>MailAI 应用更新</small><h3 id="update-dialog-title">发现新版本</h3></div><button value="cancel" aria-label="稍后更新">×</button></header>
         <p id="update-dialog-device"></p>
-        <div id="update-dialog-notes" class="update-dialog-notes"></div>
+        <section class="update-dialog-release"><small id="update-dialog-notes-title">版本发布说明</small><div id="update-dialog-notes" class="update-dialog-notes"></div></section>
+        <div id="update-download-progress" class="update-download-progress hidden" role="progressbar" aria-live="polite" aria-valuemin="0" aria-valuemax="100">
+          <div><strong id="update-progress-label">正在准备更新</strong><span id="update-progress-percent">0%</span></div>
+          <i class="update-progress-track"><b id="update-progress-fill"></b></i>
+          <small id="update-progress-detail">准备连接下载服务器…</small>
+        </div>
         <p id="update-dialog-warning" class="update-dialog-warning"></p>
-        <footer><button value="cancel">稍后</button><button id="btn-install-update" value="default" class="primary-action">下载并安装</button></footer>
+        <footer><button value="cancel">稍后</button><button id="btn-install-update" type="button" class="primary-action">下载并安装</button></footer>
       </form>
     </dialog>
 

@@ -2720,6 +2720,11 @@ body { font-size: 13px; background: var(--bg); }
 .app-update-meta > span { display:grid; gap:3px; min-width:150px; padding:10px 12px; border:1px solid var(--border); border-radius:11px; background:var(--surface-soft); }
 .app-update-meta small { color:var(--muted); font-size:10px; }
 .app-update-meta strong { color:var(--text); font-size:12px; }
+.app-release-summary { max-width:680px; margin-top:13px; padding:13px 15px; border:1px solid var(--border); border-radius:12px; background:linear-gradient(135deg,rgba(230,243,236,.8),rgba(247,250,248,.92)); }
+.app-release-summary > div { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px; }
+.app-release-summary small { color:var(--muted); font-size:10px; }
+.app-release-summary strong { color:var(--primary); font-size:11px; }
+.app-update-card .app-release-summary p { color:var(--text); font-size:11px; line-height:1.7; white-space:pre-wrap; }
 .app-update-card .app-update-policy { max-width:680px; margin-top:13px; font-size:11px; line-height:1.65; }
 .app-update-actions { display:grid; grid-template-columns:repeat(2,max-content); gap:9px; flex:none; }
 .app-update-actions #btn-check-update { grid-column:1 / -1; }
@@ -2731,7 +2736,24 @@ body { font-size: 13px; background: var(--bg); }
 .update-dialog header h3 { margin:4px 0 0; }
 .update-dialog header small { color:var(--muted); }
 .update-dialog header > button { border:0; background:transparent; font-size:22px; color:var(--muted); cursor:pointer; }
-.update-dialog-notes { white-space:pre-wrap; margin:18px 0; padding:14px; border-radius:12px; background:var(--surface-soft); }
+.update-dialog-release { margin:18px 0 14px; }
+.update-dialog-release > small { display:block; margin:0 0 7px; color:var(--primary); font-size:10px; font-weight:750; }
+.update-dialog-notes { max-height:180px; overflow:auto; white-space:pre-wrap; margin:0; padding:14px; border-radius:12px; background:var(--surface-soft); font-size:12px; line-height:1.65; }
+.update-download-progress { display:grid; gap:9px; margin:14px 0; padding:14px; border:1px solid rgba(58,130,97,.18); border-radius:13px; background:rgba(229,243,235,.62); }
+.update-download-progress > div { display:flex; align-items:center; justify-content:space-between; gap:14px; }
+.update-download-progress strong { font-size:12px; }
+.update-download-progress span { color:var(--primary); font-size:11px; font-weight:800; font-variant-numeric:tabular-nums; }
+.update-download-progress > small { color:var(--muted); font-size:10px; }
+.update-progress-track { position:relative; display:block; height:9px; overflow:hidden; border-radius:999px; background:rgba(64,104,84,.13); }
+.update-progress-track b { position:absolute; inset:0 auto 0 0; width:0; overflow:hidden; border-radius:inherit; background:linear-gradient(90deg,#347b5f,#55ad82,#347b5f); background-size:200% 100%; box-shadow:0 0 12px rgba(65,151,111,.32); transition:width .28s ease; animation:update-progress-flow 1.25s linear infinite; }
+.update-progress-track b::after { content:''; position:absolute; inset:0; background:linear-gradient(105deg,transparent 20%,rgba(255,255,255,.6) 48%,transparent 76%); transform:translateX(-100%); animation:update-progress-glint 1.35s ease-in-out infinite; }
+.update-download-progress.indeterminate .update-progress-track b { animation:update-progress-slide 1.15s ease-in-out infinite; }
+.update-download-progress.verifying .update-progress-track b,.update-download-progress.complete .update-progress-track b { width:100%!important; }
+.update-download-progress.complete { border-color:rgba(45,136,92,.28); background:rgba(220,242,229,.8); }
+@keyframes update-progress-flow { to { background-position:-200% 0; } }
+@keyframes update-progress-glint { to { transform:translateX(220%); } }
+@keyframes update-progress-slide { 0% { left:-38%; } 50% { left:52%; } 100% { left:102%; } }
+@media (prefers-reduced-motion:reduce) { .update-progress-track b,.update-progress-track b::after { animation:none!important; transition:none; } }
 .update-dialog-warning { color:var(--warning, #9a5c13); font-size:13px; }
 .update-dialog footer { justify-content:flex-end; margin-top:20px; }
 .update-dialog footer button { min-height:40px; padding:0 16px; border-radius:10px; border:1px solid var(--border); cursor:pointer; }

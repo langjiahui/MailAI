@@ -3891,6 +3891,7 @@ function selectSystemTab(name) {
 }
 
 let availableAppUpdate = null;
+let appUpdateInstalling = false;
 
 function appDeviceName(device) {
   return ({'windows-x64':'Windows x64', 'macos-arm64':'macOS · Apple 芯片'})[device] || device || '暂未识别';
@@ -3904,6 +3905,15 @@ function renderAppVersion(result) {
   if (label) label.textContent = `MailAI ${result.current_version || ''}`.trim();
   if (device) device.textContent = appDeviceName(result.device);
   if (releaseLink && result.release_url) releaseLink.href = result.release_url;
+  const releaseSummary = document.getElementById('app-release-summary');
+  const releaseTitle = document.getElementById('app-release-summary-title');
+  const releaseNotes = document.getElementById('app-release-summary-notes');
+  const notes = String(result.notes || '').trim();
+  if (releaseSummary) releaseSummary.classList.toggle('hidden', !notes);
+  if (releaseTitle && notes) releaseTitle.textContent = result.available
+    ? `新版本 ${result.latest_version} 更新内容`
+    : `MailAI ${result.current_version} 更新内容`;
+  if (releaseNotes) releaseNotes.textContent = notes;
   if (!status) return;
   if (result.development) status.textContent = '源码运行模式；安装包版本会自动检查更新。';
   else if (!result.supported) status.textContent = `当前设备 ${result.device || ''} 暂无对应安装包。`;
@@ -3916,13 +3926,71 @@ function showAppUpdate(result) {
   const dialog = document.getElementById('update-dialog');
   if (!dialog || dialog.open) return;
   document.getElementById('update-dialog-title').textContent = `${result.current_version} → ${result.latest_version}`;
-  document.getElementById('update-dialog-device').textContent = `已为这台设备匹配 ${result.device} 安装包。`;
-  document.getElementById('update-dialog-notes').textContent = result.notes || '请查看本版本发布说明。';
+  document.getElementById('update-dialog-device').textContent = `已为这台设备匹配 ${appDeviceName(result.device)} 安装包。`;
+  document.getElementById('update-dialog-notes-title').textContent = `${result.latest_version} 版本发布说明`;
+  document.getElementById('update-dialog-notes').textContent = result.notes || '本版本暂未提供发布说明。';
   document.getElementById('update-dialog-warning').textContent = result.unsigned_warning || '';
   const install = document.getElementById('btn-install-update');
   install.disabled = !result.installable;
   install.textContent = result.installable ? '下载并安装' : '当前运行方式无法自动安装';
+  appUpdateInstalling = false;
+  const progress = document.getElementById('update-download-progress');
+  progress?.classList.add('hidden');
+  progress?.classList.remove('indeterminate', 'verifying', 'complete');
   dialog.showModal();
+}
+
+function formatUpdateBytes(value) {
+  const size = Math.max(0, Number(value) || 0);
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 ** 2) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / 1024 ** 2).toFixed(1)} MB`;
+}
+
+function renderUpdateProgress(state) {
+  const box = document.getElementById('update-download-progress');
+  if (!box) return;
+  const phase = state.phase || 'queued';
+  const total = Math.max(0, Number(state.total) || 0);
+  const downloaded = Math.max(0, Number(state.downloaded) || 0);
+  const percent = total ? Math.min(100, Math.max(0, Number(state.percent) || Math.round(downloaded * 100 / total))) : 0;
+  const labels = {
+    queued:'正在准备更新', checking:'正在确认版本', downloading:'正在下载安装包',
+    verifying:'正在校验安装包', verified:'校验完成', launching:'正在启动安装程序',
+    launched:'安装程序已启动', failed:'更新未完成',
+  };
+  box.classList.remove('hidden');
+  box.classList.toggle('indeterminate', !total && state.running);
+  box.classList.toggle('verifying', phase === 'verifying' || phase === 'verified');
+  box.classList.toggle('complete', phase === 'launched');
+  box.setAttribute('aria-valuenow', String(percent));
+  document.getElementById('update-progress-label').textContent = labels[phase] || state.message || '正在更新';
+  document.getElementById('update-progress-percent').textContent = total ? `${percent}%` : '连接中';
+  document.getElementById('update-progress-fill').style.width = `${total ? percent : 36}%`;
+  let detail = state.message || '';
+  if (phase === 'downloading' && total) {
+    detail = `${formatUpdateBytes(downloaded)} / ${formatUpdateBytes(total)}`;
+    if (state.speed_bps) detail += ` · ${formatUpdateBytes(state.speed_bps)}/秒`;
+  } else if (phase === 'verifying') detail = '正在核对 SHA-256，确保安装包完整且未被篡改…';
+  else if (phase === 'launched') detail = '请按系统提示完成安装；完成后将尝试自动打开 MailAI。';
+  document.getElementById('update-progress-detail').textContent = detail;
+  const button = document.getElementById('btn-install-update');
+  if (button && appUpdateInstalling) button.textContent = phase === 'downloading' && total ? `下载中 ${percent}%` : (labels[phase] || '正在更新…');
+}
+
+function waitForUpdateProgress() {
+  return new Promise(resolve => setTimeout(resolve, 400));
+}
+
+async function monitorAppUpdateInstall() {
+  while (appUpdateInstalling) {
+    await waitForUpdateProgress();
+    const state = await api('/api/system/update/install/status');
+    renderUpdateProgress(state);
+    if (state.status === 'failed') throw new Error(state.error || '更新未完成');
+    if (state.status === 'completed') return state;
+  }
+  return null;
 }
 
 async function checkForAppUpdate(manual = false) {
@@ -3944,14 +4012,22 @@ async function checkForAppUpdate(manual = false) {
 async function installAppUpdate(event) {
   event.preventDefault();
   const button = document.getElementById('btn-install-update');
-  setLoading(button, true, '正在下载并校验…');
+  if (appUpdateInstalling) return;
+  appUpdateInstalling = true;
+  setLoading(button, true, '正在准备更新…');
   try {
-    const result = await api('/api/system/update/install', {method:'POST'});
-    document.getElementById('update-dialog').close();
-    toast(result.message || '安装器已启动，请按系统提示完成更新', 'success');
+    const started = await api('/api/system/update/install', {method:'POST'});
+    renderUpdateProgress(started);
+    const result = await monitorAppUpdateInstall();
+    if (result) {
+      await new Promise(resolve => setTimeout(resolve, 700));
+      document.getElementById('update-dialog').close();
+      toast(result.message || '安装器已启动；安装完成后将尝试自动打开 MailAI', 'success');
+    }
   } catch (error) {
     toast(error.message, 'error');
   } finally {
+    appUpdateInstalling = false;
     setLoading(button, false);
   }
 }
@@ -7167,10 +7243,8 @@ Promise.all([
 // 网络异常时也必须允许用户进入界面查看错误提示。
 setTimeout(hideAppPreloader, 6000);
 setTimeout(() => {
-  const key = 'mailai-update-last-check';
-  const last = Number(localStorage.getItem(key) || 0);
-  if (Date.now() - last < 24 * 60 * 60 * 1000) return;
-  localStorage.setItem(key, String(Date.now()));
+  // Check on every application start so Settings can show the installed
+  // version's release notes immediately after an upgrade.
   checkForAppUpdate(false);
 }, 1800);
 (async () => {

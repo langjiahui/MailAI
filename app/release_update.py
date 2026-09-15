@@ -30,6 +30,12 @@ DOWNLOAD_MAX_BYTES = 500 * 1024 * 1024
 _CACHE_SECONDS = 30 * 60
 _lock = threading.Lock()
 _cache: dict[str, object] = {"checked_at": 0.0, "result": None}
+_install_guard = threading.Lock()
+_install_state_lock = threading.Lock()
+_install_state: dict[str, object] = {
+    "status": "idle", "phase": "idle", "running": False, "downloaded": 0,
+    "total": 0, "percent": 0, "speed_bps": 0, "message": "尚未开始下载", "error": "",
+}
 
 
 def _ssl_context() -> ssl.SSLContext:
@@ -151,18 +157,23 @@ def check(*, force: bool = False) -> dict:
     return result
 
 
-def _download(asset: dict, target: Path) -> None:
+def _download(asset: dict, target: Path, progress=None) -> None:
     request = urllib.request.Request(
         asset["url"], headers={"Accept": "application/octet-stream", "User-Agent": f"MailAI/{current_version()}"}
     )
     digest = hashlib.sha256()
     total = 0
+    started_at = time.monotonic()
     temporary = target.with_suffix(target.suffix + ".part")
     try:
         with urllib.request.urlopen(request, context=_ssl_context(), timeout=30) as response, temporary.open("wb") as output:
             declared = int(response.headers.get("Content-Length") or 0)
             if declared > DOWNLOAD_MAX_BYTES:
                 raise ValueError("安装包超过允许大小")
+            expected = declared or int(asset.get("size") or 0)
+            if progress:
+                progress(phase="downloading", downloaded=0, total=expected, speed_bps=0,
+                         message="正在下载安装包")
             while True:
                 chunk = response.read(1024 * 1024)
                 if not chunk:
@@ -172,15 +183,28 @@ def _download(asset: dict, target: Path) -> None:
                     raise ValueError("安装包超过允许大小")
                 digest.update(chunk)
                 output.write(chunk)
+                if progress:
+                    elapsed = max(0.001, time.monotonic() - started_at)
+                    progress(phase="downloading", downloaded=total, total=expected,
+                             speed_bps=int(total / elapsed), message="正在下载安装包")
+        if progress:
+            progress(phase="verifying", downloaded=total, total=expected or total,
+                     speed_bps=0, message="下载完成，正在校验安装包")
         if digest.hexdigest() != asset["sha256"]:
             raise ValueError("安装包 SHA-256 校验失败，已停止更新")
         temporary.replace(target)
+        if progress:
+            progress(phase="verified", downloaded=total, total=expected or total,
+                     speed_bps=0, message="安装包校验通过")
     finally:
         if temporary.exists():
             temporary.unlink()
 
 
-def download_and_launch() -> dict:
+def download_and_launch(progress=None) -> dict:
+    if progress:
+        progress(phase="checking", downloaded=0, total=0, speed_bps=0,
+                 message="正在确认最新版本")
     result = check(force=True)
     if not result.get("available"):
         raise ValueError("当前已经是最新版本")
@@ -191,7 +215,10 @@ def download_and_launch() -> dict:
     update_dir = USER_DIR / "updates"
     update_dir.mkdir(parents=True, exist_ok=True)
     target = update_dir / f"MailAI-{result['latest_version']}-{result['device']}{suffix}"
-    _download(asset, target)
+    _download(asset, target, progress=progress)
+    if progress:
+        progress(phase="launching", downloaded=int(asset.get("size") or 0),
+                 total=int(asset.get("size") or 0), speed_bps=0, message="正在启动安装程序")
     if sys.platform == "win32":
         subprocess.Popen(
             [str(target), "/SILENT", "/NORESTART", "/CLOSEAPPLICATIONS"],
@@ -204,3 +231,50 @@ def download_and_launch() -> dict:
         raise ValueError("当前系统不支持启动安装器")
     log.info("已启动 MailAI %s 更新安装器", result["latest_version"])
     return {"ok": True, "version": result["latest_version"], "message": "安装器已启动"}
+
+
+def _set_install_state(**values) -> dict:
+    with _install_state_lock:
+        _install_state.update(values, updated_at=time.time())
+        total = max(0, int(_install_state.get("total") or 0))
+        downloaded = max(0, int(_install_state.get("downloaded") or 0))
+        _install_state["percent"] = min(100, round(downloaded * 100 / total)) if total else 0
+        return dict(_install_state)
+
+
+def install_status() -> dict:
+    with _install_state_lock:
+        return dict(_install_state)
+
+
+def start_install() -> dict:
+    """Start a single update download so the UI can poll live progress."""
+    if not _install_guard.acquire(blocking=False):
+        return {**install_status(), "ok": True, "already_running": True}
+    _set_install_state(
+        status="running", phase="queued", running=True, downloaded=0, total=0,
+        percent=0, speed_bps=0, message="正在准备更新", error="",
+    )
+
+    def report(**values):
+        _set_install_state(status="running", running=True, error="", **values)
+
+    def run():
+        try:
+            result = download_and_launch(progress=report)
+            _set_install_state(
+                status="completed", phase="launched", running=False, speed_bps=0,
+                message=result.get("message") or "安装器已启动", error="",
+                version=result.get("version") or "",
+            )
+        except Exception as exc:
+            log.exception("下载或启动更新失败")
+            _set_install_state(
+                status="failed", phase="failed", running=False, speed_bps=0,
+                message="更新未完成", error=str(exc)[:240],
+            )
+        finally:
+            _install_guard.release()
+
+    threading.Thread(target=run, name="mailai-app-update", daemon=True).start()
+    return {**install_status(), "ok": True}

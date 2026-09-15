@@ -6,6 +6,7 @@ import ssl
 import subprocess
 import sys
 import tempfile
+import time
 import plistlib
 from pathlib import Path
 from unittest.mock import patch
@@ -13,6 +14,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app import release_update
+from scripts.create_release_manifest import release_body, release_notes_from_readme
 
 
 class Response(io.BytesIO):
@@ -42,8 +44,13 @@ def manifest(version="1.1.0", digest="a" * 64):
 def main():
     static_dir = Path(__file__).resolve().parents[1] / "app" / "web" / "static"
     update_ui = (static_dir / "index.html").read_text(encoding="utf-8")
+    update_js = (static_dir / "app.js").read_text(encoding="utf-8")
     assert 'id="app-device-label"' in update_ui
     assert 'id="app-release-link"' in update_ui
+    assert 'id="app-release-summary-notes"' in update_ui
+    assert 'id="update-download-progress"' in update_ui
+    assert '/api/system/update/install/status' in update_js
+    assert 'formatUpdateBytes' in update_js and 'update-progress-fill' in update_js
     assert "GitHub Releases" in update_ui
     assert "https://github.com/langjiahui/MailAI/releases/latest" in update_ui
     assert "https://github.com/langjiahui/MailAI" in update_ui
@@ -52,7 +59,19 @@ def main():
     assert "BundleHasStrictIdentifier" in mac_components and "<false/>" in mac_components
     assert "BundleOverwriteAction" in mac_components and "upgrade" in mac_components
     postinstall = Path(__file__).resolve().parents[1] / "scripts" / "macos_postinstall"
-    assert "MailAI.localized/MailAI.app" in postinstall.read_text(encoding="utf-8")
+    postinstall_text = postinstall.read_text(encoding="utf-8")
+    assert "MailAI.localized/MailAI.app" in postinstall_text
+    assert 'launchctl asuser' in postinstall_text and '/usr/bin/open -a "$APP"' in postinstall_text
+    windows_installer = (Path(__file__).resolve().parents[1] / "scripts" / "mailai.iss").read_text(encoding="utf-8")
+    run_line = next(line for line in windows_installer.splitlines() if line.startswith('Filename: "{app}\\MailAI.exe"'))
+    assert "postinstall" in run_line and "skipifsilent" not in run_line
+    workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/release.yml").read_text(encoding="utf-8")
+    assert "--readme README.md" in workflow and "--notes-file release-notes.md" in workflow
+    assert "--generate-notes" not in workflow
+    readme = Path(__file__).resolve().parents[1] / "README.md"
+    notes = release_notes_from_readme(readme)
+    assert notes and notes != "请查看本版本发布说明。"
+    assert notes in release_body(release_update.current_version(), notes)
     if sys.platform == "darwin":
         with tempfile.TemporaryDirectory() as folder:
             applications = Path(folder)
@@ -94,8 +113,11 @@ def main():
         release_update.urllib.request, "urlopen", side_effect=lambda *_args, **_kwargs: Response(payload)
     ):
         target = Path(folder) / "MailAI.exe"
-        release_update._download(asset, target)
+        progress = []
+        release_update._download(asset, target, progress=lambda **state: progress.append(state))
         assert target.read_bytes() == payload
+        assert {item["phase"] for item in progress} >= {"downloading", "verifying", "verified"}
+        assert progress[-1]["downloaded"] == len(payload)
         asset["sha256"] = "0" * 64
         try:
             release_update._download(asset, target)
@@ -103,6 +125,19 @@ def main():
             assert "SHA-256" in str(exc)
         else:
             raise AssertionError("tampered installer accepted")
+    def fake_install(progress=None):
+        progress(phase="downloading", downloaded=5, total=10, speed_bps=5, message="downloading")
+        time.sleep(.03)
+        return {"ok": True, "version": "1.1.0", "message": "installer launched"}
+    with patch.object(release_update, "download_and_launch", side_effect=fake_install):
+        started = release_update.start_install()
+        assert started["ok"] and started["running"]
+        deadline = time.monotonic() + 2
+        while release_update.install_status()["running"] and time.monotonic() < deadline:
+            time.sleep(.01)
+        state = release_update.install_status()
+        assert state["status"] == "completed" and state["phase"] == "launched"
+        assert state["version"] == "1.1.0"
     print("PASS release update device selection, version gate and checksum")
 
 

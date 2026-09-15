@@ -1733,6 +1733,12 @@ html[data-theme="dark"] .app-update-meta > span {
 }
 html[data-theme="dark"] .app-update-meta small { color:#94ad9f!important; }
 html[data-theme="dark"] .app-update-meta strong { color:#e3f0e8!important; }
+html[data-theme="dark"] .app-release-summary { border-color:rgba(189,226,205,.16)!important; background:rgba(9,27,19,.42)!important; }
+html[data-theme="dark"] .app-release-summary :is(strong,p) { color:#dcece3!important; }
+html[data-theme="dark"] .app-release-summary small { color:#94ad9f!important; }
+html[data-theme="dark"] .update-download-progress { border-color:rgba(126,218,168,.2)!important; background:rgba(20,52,37,.72)!important; }
+html[data-theme="dark"] .update-download-progress > small { color:#a9c0b3!important; }
+html[data-theme="dark"] .update-progress-track { background:rgba(210,239,222,.12)!important; }
 html[data-theme="dark"] .app-update-actions .action-secondary {
   color:#dcece3!important;
   border-color:rgba(184,224,202,.2)!important;

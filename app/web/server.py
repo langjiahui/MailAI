@@ -411,10 +411,15 @@ def api_system_update(force: bool = False):
 @app.post("/api/system/update/install")
 def api_system_update_install():
     try:
-        return release_update.download_and_launch()
+        return release_update.start_install()
     except (OSError, ValueError) as exc:
         log.warning("启动更新失败: %s", str(exc)[:200])
         raise HTTPException(409, f"更新失败：{exc}")
+
+
+@app.get("/api/system/update/install/status")
+def api_system_update_install_status():
+    return release_update.install_status()
 
 
 @app.get("/api/system/mail/discover")
