@@ -2,6 +2,7 @@
 import hashlib
 import io
 import os
+import ssl
 import sys
 import tempfile
 from pathlib import Path
@@ -45,6 +46,9 @@ def main():
     mac_components = (Path(__file__).resolve().parents[1] / "scripts" / "macos-components.plist").read_text(encoding="utf-8")
     assert "BundleIsVersionChecked" in mac_components and "<false/>" in mac_components
     assert "BundleOverwriteAction" in mac_components and "upgrade" in mac_components
+    tls = release_update._ssl_context()
+    assert tls.verify_mode == ssl.CERT_REQUIRED and tls.check_hostname
+    assert tls.cert_store_stats()["x509_ca"] > 0
     assert release_update.device_key("Windows", "AMD64") == "windows-x64"
     assert release_update.device_key("Darwin", "arm64") == "macos-arm64"
     assert release_update.device_key("Darwin", "x86_64") == "darwin-x86_64"

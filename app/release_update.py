@@ -7,6 +7,7 @@ import logging
 import os
 import platform
 import re
+import ssl
 import subprocess
 import sys
 import threading
@@ -14,6 +15,8 @@ import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
+
+import certifi
 
 from .paths import APP_DIR, FROZEN, USER_DIR
 
@@ -27,6 +30,11 @@ DOWNLOAD_MAX_BYTES = 500 * 1024 * 1024
 _CACHE_SECONDS = 30 * 60
 _lock = threading.Lock()
 _cache: dict[str, object] = {"checked_at": 0.0, "result": None}
+
+
+def _ssl_context() -> ssl.SSLContext:
+    """Use the bundled CA store instead of relying on a host Python install."""
+    return ssl.create_default_context(cafile=certifi.where())
 
 
 def current_version() -> str:
@@ -74,7 +82,7 @@ def _read_json_url(url: str) -> dict:
         _https_url(url, "更新地址"),
         headers={"Accept": "application/json", "User-Agent": f"MailAI/{current_version()}"},
     )
-    with urllib.request.urlopen(request, timeout=12) as response:
+    with urllib.request.urlopen(request, context=_ssl_context(), timeout=12) as response:
         content_length = int(response.headers.get("Content-Length") or 0)
         if content_length > MANIFEST_MAX_BYTES:
             raise ValueError("更新清单过大")
@@ -150,7 +158,7 @@ def _download(asset: dict, target: Path) -> None:
     total = 0
     temporary = target.with_suffix(target.suffix + ".part")
     try:
-        with urllib.request.urlopen(request, timeout=30) as response, temporary.open("wb") as output:
+        with urllib.request.urlopen(request, context=_ssl_context(), timeout=30) as response, temporary.open("wb") as output:
             declared = int(response.headers.get("Content-Length") or 0)
             if declared > DOWNLOAD_MAX_BYTES:
                 raise ValueError("安装包超过允许大小")
