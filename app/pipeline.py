@@ -1166,16 +1166,26 @@ def confirm_email(email_id: int) -> dict | bool:
     return {"ok": True, "moved": False, "status": row["status"], "folder": row["folder"]}
 
 
-def record_feedback(email_id: int, feedback: str, note: str = "") -> dict | bool:
+def record_feedback(email_id: int, feedback: str, note: str = "", trust_sender: bool = False) -> dict | bool:
     """用户反馈误报(fp)或漏报(fn)。"""
     if feedback not in ("fp", "fn"):
         return False
+    if trust_sender and feedback != "fp":
+        raise ValueError("只有标记为正常时才能信任发件人")
     note = str(note or "").strip()[:500]
     row = db.get_email(email_id)
     if row and (row.get('is_local_archive') or row.get('cleanup_hold')):
         raise ValueError('仅本地保留或正在清理的邮件不能执行服务器操作')
     if not row:
         return False
+    trusted_address = policy.normalize_address(row.get("from_addr", "")) if trust_sender else ""
+    if trust_sender and not trusted_address:
+        raise ValueError("无法识别有效的发件邮箱地址，未添加白名单")
+    existing_address = next(
+        (item for item in db.list_security_allowlist()
+         if item.get("kind") == "address" and policy.normalize_address(item.get("value", "")) == trusted_address),
+        None,
+    ) if trusted_address else None
     old_status = row["status"]
     if feedback == "fn":
         new_status = "quarantine"
@@ -1193,6 +1203,7 @@ def record_feedback(email_id: int, feedback: str, note: str = "") -> dict | bool
         with MailClient() as mail:
             target_uid = mail.move(row["uid"], row["folder"], target_folder)
     # 服务端成功后一次性提交本地结果；失败时不伪造已恢复/已隔离状态。
+    allowlist_entry = None
     with db.conn() as c:
         c.execute(
             "UPDATE emails SET folder=?,uid=?,status=?,verdict=?,reviewed=1,"
@@ -1204,12 +1215,26 @@ def record_feedback(email_id: int, feedback: str, note: str = "") -> dict | bool
              int(row.get("score") or 0) if feedback == "fp" else max(int(row.get("score") or 0), 50),
              0 if feedback == "fp" else 1, email_id),
         )
+        if trusted_address:
+            allowlist_note = ((existing_address or {}).get("note") or "由误报反馈添加：发件人可信")
+            allowlist_entry = db.upsert_security_allowlist_address(
+                trusted_address, enabled=True, note=allowlist_note, connection=c,
+            )
     db.add_audit_log(
         email_id, action=f"feedback_{feedback}", old_status=old_status, new_status=new_status,
         actor="user", reason=note or "用户反馈",
-        meta={"feedback": feedback, "scope": "current_email_only"},
+        meta={"feedback": feedback, "scope": "current_email_only",
+              "trusted_sender": trusted_address or None},
     )
-    return {"ok": True, "calibrated": 0}
+    if allowlist_entry:
+        db.add_audit_log(
+            email_id, action="allowlist_change", actor="user",
+            reason=f"由误报反馈启用可信邮箱 {trusted_address}",
+            meta={"kind": "address", "value": trusted_address, "enabled": True,
+                  "source": "false_positive_feedback"},
+        )
+    return {"ok": True, "calibrated": 0, "trusted_sender": trusted_address or None,
+            "allowlist_entry": allowlist_entry}
 
 
 def today_digest() -> str:

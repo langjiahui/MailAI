@@ -1968,12 +1968,14 @@ def api_confirm(email_id: int):
 
 
 @app.post("/api/emails/{email_id}/feedback")
-def api_feedback(email_id: int, feedback: str, note: str = ""):
+def api_feedback(email_id: int, feedback: str, note: str = "", trusted_sender: bool = False):
     """用户反馈：fp=误报，fn=漏报。"""
     if feedback not in ("fp", "fn"):
         raise HTTPException(400, "feedback 只能是 fp 或 fn")
     try:
-        result = pipeline.record_feedback(email_id, feedback, note)
+        result = pipeline.record_feedback(email_id, feedback, note, trust_sender=trusted_sender)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
     except Exception as exc:
         log.exception("反馈处置失败 email_id=%s", email_id)
         raise HTTPException(502, "邮件处置未完成，本地反馈未更新。请同步邮件后重试。") from exc

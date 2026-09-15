@@ -1893,9 +1893,9 @@ def delete_security_allowlist(entry_id: int) -> bool:
         return cursor.rowcount > 0
 
 
-def upsert_security_allowlist_address(email: str, enabled: bool = True, note: str = ""):
+def upsert_security_allowlist_address(email: str, enabled: bool = True, note: str = "", connection=None):
     now = datetime.now().isoformat(timespec="seconds")
-    with conn() as c:
+    def write(c):
         c.execute(
             "INSERT INTO security_allowlist_addresses(email,enabled,note,created_at,updated_at) VALUES(?,?,?,?,?) "
             "ON CONFLICT(email) DO UPDATE SET enabled=excluded.enabled,note=excluded.note,updated_at=excluded.updated_at",
@@ -1903,6 +1903,10 @@ def upsert_security_allowlist_address(email: str, enabled: bool = True, note: st
         )
         row = c.execute("SELECT * FROM security_allowlist_addresses WHERE email=?", (email,)).fetchone()
         return dict(row) | {"kind": "address", "value": row["email"]}
+    if connection is not None:
+        return write(connection)
+    with conn() as c:
+        return write(c)
 
 
 def delete_security_allowlist_address(entry_id: int) -> bool:

@@ -5029,22 +5029,33 @@ const feedbackReasonOptions = {
   fp: ['发件人可信', '业务内容正常', '链接或附件已核实', '内部系统通知', '规则判断不准确', '其他'],
   fn: ['发件人身份可疑', '包含可疑链接', '附件存在风险', '索要敏感信息', '内容明显异常', '其他'],
 };
-let feedbackDraft = {id: null, kind: 'fp', reasons: new Set()};
+let feedbackDraft = {id: null, kind: 'fp', reasons: new Set(), storedAway: false};
+
+function renderFeedbackImpact() {
+  const {kind, reasons, storedAway} = feedbackDraft;
+  const trustedSender = kind === 'fp' && reasons.has('发件人可信');
+  document.getElementById('feedback-impact').innerHTML = kind === 'fp'
+    ? (trustedSender
+      ? `<b>处理当前邮件并信任发件人</b><span>${storedAway ? '邮件将恢复到收件箱' : '邮件将保留在当前文件夹'}；该邮箱地址会加入本机白名单，今后不再触发常规误报，但高危证据仍会报警。</span>`
+      : `<b>只处理当前邮件</b><span>${storedAway ? '邮件将标记为正常，并恢复到收件箱。' : '邮件将标记为正常，并保留在当前文件夹。'}</span>`)
+    : '<b>只处理当前邮件</b><span>邮件将标记为风险邮件，并移入隔离区。</span>';
+  document.getElementById('feedback-privacy').textContent = trustedSender
+    ? '该发件邮箱将加入本机白名单并写入审计记录，不会回复发件人；可在设置中随时停用或删除。'
+    : '反馈仅用于本机规则校准和审计记录，不会回复发件人。';
+}
 
 function feedbackEmail(id, kind) {
   const isFalsePositive = kind === 'fp';
   const email = selectedEmailDetail?.id === id ? selectedEmailDetail : allEmails.find(item => item.id === id);
   const isStoredAway = email && (email.status === 'quarantine' || email.status === 'spam');
-  feedbackDraft = {id, kind, reasons: new Set()};
+  feedbackDraft = {id, kind, reasons: new Set(), storedAway: Boolean(isStoredAway)};
   const modal = document.getElementById('feedback-modal');
   modal.classList.toggle('feedback-fp', isFalsePositive);
   modal.classList.toggle('feedback-fn', !isFalsePositive);
   modal.setAttribute('aria-hidden', 'false');
   document.getElementById('feedback-title').textContent = isFalsePositive ? '这是一封正常邮件' : '这是一封风险邮件';
   document.getElementById('feedback-subtitle').textContent = isFalsePositive ? '告诉我们本次判断为什么不准确' : '告诉我们遗漏了哪些风险信号';
-  document.getElementById('feedback-impact').innerHTML = isFalsePositive
-    ? `<b>只处理当前邮件</b><span>${isStoredAway ? '邮件将标记为正常，并恢复到收件箱。' : '邮件将标记为正常，并保留在当前文件夹。'}</span>`
-    : '<b>只处理当前邮件</b><span>邮件将标记为风险邮件，并移入隔离区。</span>';
+  renderFeedbackImpact();
   document.getElementById('feedback-reasons').innerHTML = feedbackReasonOptions[kind].map(reason => `<button type="button" data-feedback-reason="${esc(reason)}"><span>✓</span>${esc(reason)}</button>`).join('');
   const note = document.getElementById('feedback-note');
   note.value = '';
@@ -5061,7 +5072,7 @@ function closeFeedbackDialog() {
   modal.classList.add('hidden');
   modal.setAttribute('aria-hidden', 'true');
   document.body.classList.remove('modal-open', 'feedback-open');
-  feedbackDraft = {id: null, kind: 'fp', reasons: new Set()};
+  feedbackDraft = {id: null, kind: 'fp', reasons: new Set(), storedAway: false};
 }
 
 document.getElementById('feedback-reasons').addEventListener('click', event => {
@@ -5072,6 +5083,7 @@ document.getElementById('feedback-reasons').addEventListener('click', event => {
   else feedbackDraft.reasons.add(reason);
   button.classList.toggle('selected', feedbackDraft.reasons.has(reason));
   button.setAttribute('aria-pressed', String(feedbackDraft.reasons.has(reason)));
+  renderFeedbackImpact();
   if (reason === '其他' && feedbackDraft.reasons.has(reason)) document.getElementById('feedback-note').focus();
 });
 document.getElementById('feedback-note').addEventListener('input', event => {
@@ -5091,12 +5103,15 @@ document.getElementById('btn-submit-feedback').addEventListener('click', async (
   if (reasons.size) parts.push(`原因：${[...reasons].join('、')}`);
   if (detail) parts.push(`说明：${detail}`);
   const note = parts.join('；');
+  const trustedSender = kind === 'fp' && reasons.has('发件人可信');
   const button = document.getElementById('btn-submit-feedback');
   setLoading(button, true, '正在提交…');
   try {
-    const result = await api('/api/emails/' + id + '/feedback?feedback=' + kind + '&note=' + encodeURIComponent(note), { method: 'POST' });
+    const result = await api('/api/emails/' + id + '/feedback?feedback=' + kind + '&trusted_sender=' + trustedSender + '&note=' + encodeURIComponent(note), { method: 'POST' });
     closeFeedbackDialog();
-    toast(kind === 'fp' ? '已将当前邮件标记为正常' : '已将当前邮件标记为风险', 'success');
+    toast(result.trusted_sender
+      ? `已标记为正常，并将 ${result.trusted_sender} 加入发件人白名单`
+      : (kind === 'fp' ? '已将当前邮件标记为正常' : '已将当前邮件标记为风险'), 'success');
     resetReadingPane();
     await Promise.all([loadData(), loadMailboxFolders()]);
   } catch (e) {

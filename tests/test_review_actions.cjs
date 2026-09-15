@@ -18,7 +18,11 @@ assert.match(actions, /确认无风险[\s\S]*报告风险/,
   'Clean mail should offer mutually exclusive confirmation and missed-risk feedback');
 assert.match(actions, /保留隔离[\s\S]*标记为正常/,
   'Quarantined mail should distinguish retaining quarantine from correcting the verdict');
-assert.match(js, /<b>只处理当前邮件<\/b><span>\$\{isStoredAway \? '邮件将标记为正常，并恢复到收件箱。' : '邮件将标记为正常，并保留在当前文件夹。'\}/,
+assert.match(js, /<b>只处理当前邮件<\/b><span>\$\{storedAway \? '邮件将标记为正常，并恢复到收件箱。' : '邮件将标记为正常，并保留在当前文件夹。'\}/,
   'The correction dialog should describe the current folder outcome and single-message scope');
+assert.match(js, /trusted_sender=' \+ trustedSender/,
+  'Selecting a trusted sender reason should explicitly request an address allowlist entry');
+assert.match(js, /该邮箱地址会加入本机白名单，今后不再触发常规误报，但高危证据仍会报警/,
+  'The correction dialog should explain address scope and the high-risk safety fallback');
 
 console.log('Review actions match their visible labels and avoid contradictory choices');

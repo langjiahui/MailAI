@@ -7,6 +7,7 @@ from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app import config, db, pipeline
+from app.security import policy
 
 
 def main():
@@ -43,8 +44,13 @@ def main():
             assert db.get_email(email_id)['folder'] == config.QUARANTINE_FOLDER
             mail.move.side_effect = None
             mail.move.return_value = 105
-            result = pipeline.record_feedback(email_id, 'fp')
+            result = pipeline.record_feedback(email_id, 'fp', '原因：发件人可信', trust_sender=True)
             assert result and result['calibrated'] == 0
+            assert result['trusted_sender'] == 'sender@example.com'
+            assert result['allowlist_entry']['kind'] == 'address'
+            matched = policy.allowlist_match('Sender Name <SENDER@example.com>')
+            assert matched and matched['kind'] == 'address' and matched['value'] == 'sender@example.com'
+            assert policy.allowlist_match('other@example.com') is None
             row = db.get_email(email_id)
             assert (row['uid'], row['folder'], row['verdict'], row['status'], row['score']) == (105, config.INBOX_FOLDER, 'clean', 'inbox', 50)
             assert row['feedback'] == 'fp' and row['reviewed'] == 1
@@ -59,6 +65,12 @@ def main():
             assert pipeline.record_feedback(email_id, 'fp')
             mail.move.assert_not_called()
             assert db.get_email(email_id)['folder'] == 'Archive'
+            try:
+                pipeline.record_feedback(email_id, 'fn', trust_sender=True)
+            except ValueError as exc:
+                assert '标记为正常' in str(exc)
+            else:
+                raise AssertionError('Missed-risk feedback must never trust a sender')
     print('Single-email feedback, move safety, source linkage and archive tests passed')
 
 

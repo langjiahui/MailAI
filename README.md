@@ -4,9 +4,9 @@ MailAI 是一款**本地运行、AI 驱动**的企业邮箱社工钓鱼风险防
 
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 
-当前版本：**v1.0.4**
+当前版本：**v1.0.5**
 
-本次更新：修复旧 Bundle ID 升级时 macOS 将新版重定向到 `MailAI.localized`、导致仍启动旧版的问题；安装器会验证并把新版归位到标准应用目录，同时清理重复程序副本且保留全部用户数据。包含 v1.0.3 的 HTTPS 证书修复、企业信息通用化、暗色主题优化和发布页精确关联。
+本次更新：在“标记为正常”反馈中选择“发件人可信”后，会将该完整邮箱地址加入本机白名单。以后该地址不再触发常规误报告警，同时仍保留恶意附件、黑名单或仿冒链接、严重身份认证失败等高危检查；白名单可在设置中随时停用或删除。
 
 ## 下载 MailAI
 
