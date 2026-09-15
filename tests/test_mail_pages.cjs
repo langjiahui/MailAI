@@ -89,8 +89,10 @@ assert.match(source, /item\.readonly === true[\s\S]*allowlist-source[\s\S]*item\
   'Rule center must identify configured read-only trust entries and their source');
 assert.doesNotMatch(source, /chain-final \$\{c\.final_domain \? 'danger'/,
   'A resolved domain or IP must not be presented as dangerous by default');
-assert.match(source, /trustedBusinessDomain[\s\S]*可信域名[\s\S]*解析 IP/,
-  'Trusted business landing domains must present their resolved IP as neutral information');
+assert.match(source, /const trusted = c\.trusted_final === true;/,
+  'Configured trusted landing domains must use the backend trust decision');
+assert.doesNotMatch(source, /trustedBusinessDomain/,
+  'The client must not contain organization-specific trusted domains');
 assert.match(source, /api\(`\/api\/rules\/allowlist\/\$\{entry\.kind\}\/\$\{entry\.id\}`/, 'Allowlist entries must support typed deletion');
 assert.match(html, /id="rule-scenario-grid"/, 'Rule center must expose plain-language scenario controls');
 assert.match(source, /function renderRuleScenarios\(\)/, 'Plain-language security scenarios must be rendered');

@@ -64,7 +64,7 @@ for (const selector of [
   ,'.special-mail-body .rich-email-frame'
   ,'.special-mail-attachment-item'
 ]) assert.ok(themeCss.includes(selector), `Dark-theme surface is missing: ${selector}`);
-assert.match(html, /theme\.css\?v=theme-15/);
+assert.match(html, /theme\.css\?v=theme-16/);
 const nodes = Object.fromEntries(['notification-options','notification-save-status','notification-account','notification-retry-load','notification-preference'].map(id => [id,{classList:{add(){this.hidden=true;},remove(){this.hidden=false;}}}]));
 const ctx = {preferencesSaving:false,preferencesAccount:'',preferencesLoadRevision:0,account:{id:'a',user:'a@example.test'},
   document:{getElementById:id=>nodes[id]}, syncPreferenceChoices(){},
