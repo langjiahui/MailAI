@@ -88,17 +88,7 @@ if [[ -n "$(running_mailai)" ]]; then
 fi
 exit 0
 PREINSTALL
-cat > "$PKG_SCRIPTS/postinstall" <<'POSTINSTALL'
-#!/bin/zsh
-APP="/Applications/MailAI.app"
-REGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
-if [[ -d "$APP" ]]; then
-  /usr/bin/touch "$APP"
-  [[ -x "$REGISTER" ]] && "$REGISTER" -f -trusted "$APP" >/dev/null 2>&1 || true
-  /usr/bin/mdimport "$APP" >/dev/null 2>&1 || true
-fi
-exit 0
-POSTINSTALL
+cp scripts/macos_postinstall "$PKG_SCRIPTS/postinstall"
 chmod 755 "$PKG_SCRIPTS/preinstall" "$PKG_SCRIPTS/postinstall"
 ditto dist/MailAI.app "$PKG_ROOT/MailAI.app"
 pkgbuild \

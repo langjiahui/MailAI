@@ -1,0 +1,52 @@
+#!/bin/zsh
+set -e
+
+APPLICATIONS_DIR="${MAILAI_APPLICATIONS_DIR:-/Applications}"
+APP="$APPLICATIONS_DIR/MailAI.app"
+RELOCATED="$APPLICATIONS_DIR/MailAI.localized/MailAI.app"
+EXPECTED_ID="com.langjiahui.mailai"
+PLIST_BUDDY="/usr/libexec/PlistBuddy"
+REGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+
+plist_value() {
+  "$PLIST_BUDDY" -c "Print :$2" "$1/Contents/Info.plist" 2>/dev/null || true
+}
+
+is_mailai() {
+  [[ -d "$1" ]] && [[ "$(plist_value "$1" CFBundleDisplayName)" == "MailAI" ]] \
+    && [[ "$(plist_value "$1" CFBundleExecutable)" == "MailAI" ]]
+}
+
+if [[ -d "$RELOCATED" ]] && [[ "$(plist_value "$RELOCATED" CFBundleIdentifier)" == "$EXPECTED_ID" ]]; then
+  if [[ "$(plist_value "$APP" CFBundleIdentifier)" == "$EXPECTED_ID" ]]; then
+    # A correct primary copy already exists; remove only the verified duplicate.
+    /bin/rm -rf "$RELOCATED"
+  else
+    BACKUP="$APPLICATIONS_DIR/.MailAI.previous.$$"
+    if [[ -d "$APP" ]]; then
+      if ! is_mailai "$APP"; then
+        echo "安装位置存在无法确认身份的 MailAI.app，已停止归位。" >&2
+        exit 1
+      fi
+      /bin/mv "$APP" "$BACKUP"
+    fi
+    if /bin/mv "$RELOCATED" "$APP"; then
+      [[ ! -d "$BACKUP" ]] || /bin/rm -rf "$BACKUP"
+    else
+      [[ ! -d "$BACKUP" ]] || /bin/mv "$BACKUP" "$APP"
+      echo "新版 MailAI 归位失败，已恢复旧版。" >&2
+      exit 1
+    fi
+  fi
+fi
+
+if [[ "$(plist_value "$APP" CFBundleIdentifier)" != "$EXPECTED_ID" ]]; then
+  echo "未能在标准位置安装新版 MailAI。" >&2
+  exit 1
+fi
+
+/bin/rmdir "$APPLICATIONS_DIR/MailAI.localized" 2>/dev/null || true
+/usr/bin/touch "$APP"
+[[ -x "$REGISTER" ]] && "$REGISTER" -f -trusted "$APP" >/dev/null 2>&1 || true
+/usr/bin/mdimport "$APP" >/dev/null 2>&1 || true
+exit 0

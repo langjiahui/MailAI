@@ -3,8 +3,10 @@ import hashlib
 import io
 import os
 import ssl
+import subprocess
 import sys
 import tempfile
+import plistlib
 from pathlib import Path
 from unittest.mock import patch
 
@@ -47,7 +49,26 @@ def main():
     assert "https://github.com/langjiahui/MailAI" in update_ui
     mac_components = (Path(__file__).resolve().parents[1] / "scripts" / "macos-components.plist").read_text(encoding="utf-8")
     assert "BundleIsVersionChecked" in mac_components and "<false/>" in mac_components
+    assert "BundleHasStrictIdentifier" in mac_components and "<false/>" in mac_components
     assert "BundleOverwriteAction" in mac_components and "upgrade" in mac_components
+    postinstall = Path(__file__).resolve().parents[1] / "scripts" / "macos_postinstall"
+    assert "MailAI.localized/MailAI.app" in postinstall.read_text(encoding="utf-8")
+    if sys.platform == "darwin":
+        with tempfile.TemporaryDirectory() as folder:
+            applications = Path(folder)
+            old_app = applications / "MailAI.app"
+            new_app = applications / "MailAI.localized" / "MailAI.app"
+            for app, identifier, version in ((old_app, "com.legacy.mailai", "1.0.2"), (new_app, "com.langjiahui.mailai", "1.0.4")):
+                (app / "Contents" / "MacOS").mkdir(parents=True)
+                (app / "Contents" / "MacOS" / "MailAI").write_bytes(b"app")
+                with (app / "Contents" / "Info.plist").open("wb") as output:
+                    plistlib.dump({"CFBundleDisplayName": "MailAI", "CFBundleExecutable": "MailAI", "CFBundleIdentifier": identifier, "CFBundleShortVersionString": version}, output)
+            subprocess.run(["zsh", str(postinstall)], env={**os.environ, "MAILAI_APPLICATIONS_DIR": folder}, check=True)
+            with (old_app / "Contents" / "Info.plist").open("rb") as source:
+                installed = plistlib.load(source)
+            assert installed["CFBundleIdentifier"] == "com.langjiahui.mailai"
+            assert installed["CFBundleShortVersionString"] == "1.0.4"
+            assert not (applications / "MailAI.localized").exists()
     tls = release_update._ssl_context()
     assert tls.verify_mode == ssl.CERT_REQUIRED and tls.check_hostname
     assert tls.cert_store_stats()["x509_ca"] > 0
