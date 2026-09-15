@@ -220,9 +220,22 @@
           <article class="author-trust-card"><span class="author-card-label">03 · AI 处理</span><h4>模型服务由你配置</h4><p>AI 分析和小邮对话会将任务所需的邮件内容、对话及相关附件内容发送到配置的模型 API。自动分析也可能触发请求，并非只有点击小邮才发送。服务商的数据处理规则以其政策为准。</p></article>
         </div>
         <div class="author-boundary"><span class="author-note-icon" aria-hidden="true">i</span><div><h4>辅助判断，不替代你的确认</h4><p>AI 摘要和风险识别可能存在遗漏或误判。涉及付款、账号凭据或重要业务，请核对原文并通过可信渠道确认。自部署模型是否离线，取决于你的实际部署与网络配置。</p></div></div>
-        <div class="app-update-card">
-          <div><span class="author-card-label">应用版本</span><h4 id="app-version-label">MailAI</h4><p id="app-update-status">正在读取当前版本…</p></div>
-          <button id="btn-check-update" type="button" class="action-btn action-secondary">检查更新</button>
+        <div class="app-update-card" aria-labelledby="app-update-title">
+          <div class="app-update-summary">
+            <span class="author-card-label">版本与更新</span>
+            <h4 id="app-update-title"><span id="app-version-label">MailAI</span></h4>
+            <p id="app-update-status" aria-live="polite">正在读取当前版本…</p>
+            <div class="app-update-meta" aria-label="版本更新信息">
+              <span><small>当前设备</small><strong id="app-device-label">正在识别…</strong></span>
+              <span><small>更新来源</small><strong>GitHub Releases</strong></span>
+            </div>
+            <p class="app-update-policy">应用会定期检查新版本；发现更新时先征得你的确认，再下载并启动对应设备的安装程序。</p>
+          </div>
+          <div class="app-update-actions">
+            <button id="btn-check-update" type="button" class="action-btn action-primary">检查更新</button>
+            <a class="action-btn action-secondary" href="https://github.com/langjiahui/MailAI/releases/latest" target="_blank" rel="noopener noreferrer">查看发布页</a>
+            <a class="action-btn action-secondary" href="https://github.com/langjiahui/MailAI" target="_blank" rel="noopener noreferrer">项目主页</a>
+          </div>
         </div>
         <div class="author-actions"><button type="button" class="action-btn action-secondary" data-about-target="maintenance">查看数据与模型配置 <span aria-hidden="true">→</span></button><button type="button" class="action-btn action-secondary" data-about-target="guide">使用帮助</button></div>
       </section>

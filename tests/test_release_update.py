@@ -36,6 +36,12 @@ def manifest(version="1.1.0", digest="a" * 64):
 
 
 def main():
+    static_dir = Path(__file__).resolve().parents[1] / "app" / "web" / "static"
+    update_ui = (static_dir / "index.html").read_text(encoding="utf-8")
+    assert 'id="app-device-label"' in update_ui
+    assert "GitHub Releases" in update_ui
+    assert "https://github.com/langjiahui/MailAI/releases/latest" in update_ui
+    assert "https://github.com/langjiahui/MailAI" in update_ui
     assert release_update.device_key("Windows", "AMD64") == "windows-x64"
     assert release_update.device_key("Darwin", "arm64") == "macos-arm64"
     assert release_update.device_key("Darwin", "x86_64") == "darwin-x86_64"

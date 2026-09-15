@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
-raw = os.environ.get('MAILAI_RELEASE_VERSION', '1.0.0.0')
+raw = os.environ.get('MAILAI_RELEASE_VERSION', '1.0.1.0')
 parts = [min(65535, int(value)) for value in re.findall(r'\d+', raw)[:4]]
 parts.extend([0] * (4 - len(parts)))
 version = tuple(parts)

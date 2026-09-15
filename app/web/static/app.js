@@ -3892,10 +3892,16 @@ function selectSystemTab(name) {
 
 let availableAppUpdate = null;
 
+function appDeviceName(device) {
+  return ({'windows-x64':'Windows x64', 'macos-arm64':'macOS · Apple 芯片'})[device] || device || '暂未识别';
+}
+
 function renderAppVersion(result) {
   const label = document.getElementById('app-version-label');
   const status = document.getElementById('app-update-status');
+  const device = document.getElementById('app-device-label');
   if (label) label.textContent = `MailAI ${result.current_version || ''}`.trim();
+  if (device) device.textContent = appDeviceName(result.device);
   if (!status) return;
   if (result.development) status.textContent = '源码运行模式；安装包版本会自动检查更新。';
   else if (!result.supported) status.textContent = `当前设备 ${result.device || ''} 暂无对应安装包。`;
