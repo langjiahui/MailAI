@@ -2,7 +2,28 @@
 
 MailAI 是一款**本地运行、AI 驱动**的企业邮箱社工钓鱼风险防控智能体。它通过 IMAP 接入企业邮箱，在邮件落箱后自动完成**规则+上下文+行为+LLM 四层检测**，实现钓鱼/垃圾邮件识别、攻击链路溯源、发件人行为画像、多轮会话关联分析、自动隔离与审计反馈闭环，显著降低人工研判工作量，提升反诈防护能力。
 
-当前版本：`1.0.2`。安装包不会内置邮箱密码或模型 API Key，首次使用时由用户在本机配置。正式版本通过 GitHub Releases 发布；客户端会识别 Windows x64 或 Apple Silicon Mac，并在发现新版本时提示用户确认安装。
+[![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
+
+## 下载 MailAI
+
+| 系统 | 支持设备 | 最新安装包 |
+|---|---|---|
+| Windows | Windows 10/11 x64 | [下载 Windows 安装程序](https://github.com/langjiahui/MailAI/releases/latest/download/MailAI-Windows-x64-Setup.exe) |
+| macOS | Apple Silicon（M1/M2/M3/M4） | [下载 macOS 安装镜像](https://github.com/langjiahui/MailAI/releases/latest/download/MailAI-macOS-arm64.dmg) |
+
+也可以进入 [最新版本发布页](https://github.com/langjiahui/MailAI/releases/latest)，查看安装包、SHA-256 校验文件和版本说明。
+
+> **安装提示：**当前安装包尚未配置代码签名，Windows SmartScreen 或 macOS 可能显示安全警告。安装包不会内置邮箱密码或模型 API Key，首次使用时由用户在本机配置。
+
+## 版本更新
+
+支持自动更新的 MailAI 会定期读取 GitHub Releases，识别 Windows x64 或 Apple Silicon Mac，并匹配对应安装包。发现新版本后会先提示用户；只有用户确认，才会下载安装。安装包下载完成后还会进行 SHA-256 校验，校验失败将停止更新。
+
+手动检查入口：**设置 → 关于与隐私 → 版本与更新 → 检查更新**。
+
+更新只替换应用程序，邮件、账号配置、草稿和其他本地数据会继续保留。较早且不包含自动更新功能的版本，需要先从发布页手动安装一次最新版，无需提前卸载旧版。
+
+[查看全部历史版本](https://github.com/langjiahui/MailAI/releases)
 
 ---
 
