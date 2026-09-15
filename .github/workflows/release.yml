@@ -1,0 +1,97 @@
+name: Publish MailAI release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
+
+jobs:
+  windows-x64:
+    runs-on: windows-2022
+    env:
+      CI: "1"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+      - name: Build unsigned Windows installer
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME.TrimStart("v")
+          $version | Set-Content VERSION -NoNewline
+          $env:MAILAI_RELEASE_VERSION = $version
+          cmd /c scripts\build_windows.bat
+      - uses: actions/upload-artifact@v5
+        with:
+          name: release-windows-x64
+          path: |
+            dist/MailAI-Windows-x64-Setup.exe
+            dist/MailAI-Windows-x64-Setup.exe.sha256
+          if-no-files-found: error
+
+  macos-arm64:
+    runs-on: macos-14
+    env:
+      CI: "1"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Build unsigned Apple Silicon installer
+        shell: bash
+        run: |
+          export MAILAI_RELEASE_VERSION="${GITHUB_REF_NAME#v}"
+          export MAILAI_BUILD_VERSION="${GITHUB_RUN_NUMBER}"
+          printf '%s' "$MAILAI_RELEASE_VERSION" > VERSION
+          zsh scripts/build_macos.command
+      - name: Write macOS checksum
+        shell: bash
+        run: shasum -a 256 dist/MailAI-macOS-arm64.pkg > dist/MailAI-macOS-arm64.pkg.sha256
+      - uses: actions/upload-artifact@v5
+        with:
+          name: release-macos-arm64
+          path: |
+            dist/MailAI-macOS-arm64.pkg
+            dist/MailAI-macOS-arm64.pkg.sha256
+            dist/MailAI-macOS-arm64.dmg
+          if-no-files-found: error
+
+  publish:
+    needs: [windows-x64, macos-arm64]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: release-*
+          path: release-assets
+          merge-multiple: true
+      - name: Create device update manifest
+        run: |
+          python scripts/create_release_manifest.py \
+            --version "$GITHUB_REF_NAME" \
+            --repository "$GITHUB_REPOSITORY" \
+            --assets release-assets \
+            --output release-assets/latest.json
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" release-assets/* \
+            --title "MailAI ${GITHUB_REF_NAME#v}" \
+            --generate-notes \
+            --latest

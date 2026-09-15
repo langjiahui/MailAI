@@ -1,0 +1,27 @@
+/* Personal identity stays separate from the MailAI product logo. */
+.author-page { --author-ink:#244e3f; --author-muted:#52685d; --author-bg:#f3f8f5; --author-line:#d8e4dd; --author-note:#edf5f0; }
+.author-hero { display:flex; align-items:center; gap:24px; padding:24px 8px 30px; border-bottom:1px solid var(--author-line); }
+.author-avatar { flex:none; width:96px; height:96px; object-fit:cover; border-radius:23px; background:#f5f4ec; box-shadow:0 8px 24px rgba(36,78,63,.09); }
+.author-copy { min-width:0; }
+.author-eyebrow,.author-card-label { color:var(--author-muted); font-size:11px; font-weight:650; letter-spacing:.06em; }
+.author-copy h3 { margin:8px 0; color:var(--author-ink); font-size:30px; overflow-wrap:anywhere; }
+.author-copy p { margin:6px 0 0; color:var(--author-muted); line-height:1.7; }
+.author-copy .author-role { color:var(--author-ink); font-weight:600; }
+.author-section-heading { margin:30px 0 18px; }
+.author-section-heading h3 { color:var(--author-ink); margin:0 0 8px; font-size:18px; }
+.author-section-heading p,.author-trust-card p,.author-boundary p { color:var(--author-muted); line-height:1.85; margin:0; font-size:13px; }
+.author-trust-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); overflow:hidden; border-radius:18px; background:var(--author-bg); }
+.author-trust-card { min-width:0; padding:24px 26px; }
+.author-trust-card + .author-trust-card { border-left:1px solid var(--author-line); }
+.author-trust-card h4,.author-boundary h4 { color:var(--author-ink); margin:12px 0 10px; font-size:15px; }
+.author-boundary { display:flex; align-items:flex-start; gap:14px; padding:18px 20px; margin-top:16px; background:var(--author-note); border-radius:14px; }
+.author-note-icon { display:grid; flex:0 0 22px; width:22px; height:22px; place-items:center; border-radius:50%; color:var(--author-ink); background:rgba(36,78,63,.1); font-size:12px; font-family:Georgia,serif; font-weight:700; }
+.author-boundary h4 { margin-top:0; }
+.author-actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:22px; }
+.author-actions .action-btn { min-height:40px; color:var(--author-ink); background:var(--author-bg); border:1px solid var(--author-line); }
+.author-actions .action-btn:hover { border-color:var(--author-ink); }
+.author-actions .action-btn:focus-visible { outline:2px solid var(--author-ink); outline-offset:3px; }
+html[data-theme="dark"] .author-page { --author-ink:#b5dec8; --author-muted:#b4c6bb; --author-bg:#1c2b24; --author-line:#405a4c; --author-note:#20342a; }
+html[data-theme="dark"] .author-note-icon { background:rgba(181,222,200,.12); }
+@media(max-width:900px) { .author-trust-grid { grid-template-columns:1fr; } .author-trust-card + .author-trust-card { border-left:0; border-top:1px solid var(--author-line); } }
+@media(max-width:520px) { .author-hero { padding:22px; gap:18px; flex-wrap:wrap; } .author-avatar { width:88px; height:88px; border-radius:22px; } .author-copy h3 { font-size:26px; } }

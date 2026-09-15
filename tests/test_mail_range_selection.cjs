@@ -1,0 +1,14 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync(require('node:path').join(__dirname,'../app/web/static/app.js'),'utf8');
+const c={specialMailbox:'',unifiedMailbox:false,bulkOperationActive:false,selectedMailIds:new Set(),selectionAnchorId:null,renderedEmailIds:[10,20,30,40,50],syncBulkSelectionVisuals(){},selectEmail(id){c.opened=id;},item:{dataset:{id:'20'}}};vm.createContext(c);
+vm.runInContext(source.slice(source.indexOf('function clearMailSelection()'),source.indexOf('function selectAllVisibleMail()')),c);
+const start=source.indexOf("item.addEventListener('click', event => {");const end=source.indexOf("    item.addEventListener('contextmenu'",start);
+c.item.addEventListener=(_,handler)=>c.click=handler;vm.runInContext(source.slice(start,end),c);
+const click=(id,keys={})=>{c.item.dataset.id=String(id);c.click({preventDefault(){},...keys});};
+click(20);assert.equal(c.opened,20);click(50,{shiftKey:true});assert.deepEqual([...c.selectedMailIds],[20,30,40,50]);
+click(30,{shiftKey:true});assert.deepEqual([...c.selectedMailIds],[20,30]);
+click(50);click(20,{shiftKey:true});assert.deepEqual([...c.selectedMailIds],[20,30,40,50]);
+click(10,{ctrlKey:true});click(30,{ctrlKey:true,shiftKey:true});assert.equal(c.selectedMailIds.size,5);
+c.renderedEmailIds=[50,30,10];click(50);click(10,{shiftKey:true});assert.deepEqual([...c.selectedMailIds],[50,30,10]);
+c.selectionAnchorId=999;click(30,{shiftKey:true});assert.deepEqual([...c.selectedMailIds],[30]);assert.equal(c.selectionAnchorId,30);
+console.log('PASS initial click + Shift range, reversed range, repeat Shift, Ctrl additive, filtered/sorted order and missing anchor');

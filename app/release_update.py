@@ -1,0 +1,197 @@
+"""Cross-platform release discovery and user-confirmed installer launch."""
+from __future__ import annotations
+
+import hashlib
+import json
+import logging
+import os
+import platform
+import re
+import subprocess
+import sys
+import threading
+import time
+import urllib.parse
+import urllib.request
+from pathlib import Path
+
+from .paths import APP_DIR, FROZEN, USER_DIR
+
+log = logging.getLogger(__name__)
+
+DEFAULT_MANIFEST_URL = (
+    "https://github.com/langjiahui/MailAI/releases/latest/download/latest.json"
+)
+MANIFEST_MAX_BYTES = 1024 * 1024
+DOWNLOAD_MAX_BYTES = 500 * 1024 * 1024
+_CACHE_SECONDS = 30 * 60
+_lock = threading.Lock()
+_cache: dict[str, object] = {"checked_at": 0.0, "result": None}
+
+
+def current_version() -> str:
+    override = os.getenv("MAILAI_APP_VERSION", "").strip()
+    if override:
+        return override.lstrip("v")
+    for candidate in (APP_DIR / "VERSION", Path(__file__).resolve().parent.parent / "VERSION"):
+        try:
+            value = candidate.read_text(encoding="utf-8").strip().lstrip("v")
+            if value:
+                return value
+        except OSError:
+            pass
+    return "0.0.0"
+
+
+def _version_tuple(value: str) -> tuple[int, ...]:
+    match = re.fullmatch(r"v?(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:\.(\d+))?", str(value).strip())
+    if not match:
+        raise ValueError("版本号必须为数字点分格式，例如 1.2.0")
+    parts = tuple(int(item or 0) for item in match.groups())
+    return parts
+
+
+def device_key(system: str | None = None, machine: str | None = None) -> str:
+    system = (system or platform.system()).lower()
+    machine = (machine or platform.machine()).lower()
+    if system == "windows" and machine in {"amd64", "x86_64", "x64"}:
+        return "windows-x64"
+    if system == "darwin" and machine in {"arm64", "aarch64"}:
+        return "macos-arm64"
+    return f"{system or 'unknown'}-{machine or 'unknown'}"
+
+
+def _https_url(value: object, label: str) -> str:
+    url = str(value or "").strip()
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme != "https" or not parsed.netloc:
+        raise ValueError(f"{label}必须使用 HTTPS")
+    return url
+
+
+def _read_json_url(url: str) -> dict:
+    request = urllib.request.Request(
+        _https_url(url, "更新地址"),
+        headers={"Accept": "application/json", "User-Agent": f"MailAI/{current_version()}"},
+    )
+    with urllib.request.urlopen(request, timeout=12) as response:
+        content_length = int(response.headers.get("Content-Length") or 0)
+        if content_length > MANIFEST_MAX_BYTES:
+            raise ValueError("更新清单过大")
+        raw = response.read(MANIFEST_MAX_BYTES + 1)
+    if len(raw) > MANIFEST_MAX_BYTES:
+        raise ValueError("更新清单过大")
+    value = json.loads(raw.decode("utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError("更新清单格式错误")
+    return value
+
+
+def evaluate_manifest(manifest: dict, *, device: str | None = None) -> dict:
+    installed = current_version()
+    latest = str(manifest.get("version") or "").strip().lstrip("v")
+    installed_tuple = _version_tuple(installed)
+    latest_tuple = _version_tuple(latest)
+    device = device or device_key()
+    assets = manifest.get("assets")
+    if not isinstance(assets, dict):
+        raise ValueError("更新清单缺少安装包列表")
+    raw_asset = assets.get(device)
+    supported = isinstance(raw_asset, dict)
+    asset = None
+    if supported:
+        url = _https_url(raw_asset.get("url"), "安装包地址")
+        digest = str(raw_asset.get("sha256") or "").strip().lower()
+        if not re.fullmatch(r"[a-f0-9]{64}", digest):
+            raise ValueError("安装包缺少有效 SHA-256")
+        expected_suffix = ".exe" if device == "windows-x64" else ".pkg" if device == "macos-arm64" else ""
+        if expected_suffix and not urllib.parse.urlparse(url).path.lower().endswith(expected_suffix):
+            raise ValueError(f"{device} 安装包格式不正确")
+        asset = {"url": url, "sha256": digest, "size": int(raw_asset.get("size") or 0)}
+    return {
+        "current_version": installed,
+        "latest_version": latest,
+        "device": device,
+        "supported": supported,
+        "available": supported and latest_tuple > installed_tuple,
+        "installable": bool(FROZEN and supported),
+        "notes": str(manifest.get("notes") or "").strip()[:4000],
+        "published_at": str(manifest.get("published_at") or "").strip(),
+        "asset": asset,
+        "unsigned_warning": "当前版本未配置代码签名，安装时系统可能显示安全警告。",
+    }
+
+
+def check(*, force: bool = False) -> dict:
+    if not FROZEN and os.getenv("MAILAI_UPDATE_ALLOW_SOURCE", "").lower() not in {"1", "true", "yes"}:
+        return {
+            "current_version": current_version(), "latest_version": current_version(),
+            "device": device_key(), "supported": False, "available": False,
+            "installable": False, "development": True,
+            "message": "源码运行模式不执行在线更新",
+        }
+    now = time.time()
+    with _lock:
+        cached = _cache.get("result")
+        if not force and isinstance(cached, dict) and now - float(_cache.get("checked_at") or 0) < _CACHE_SECONDS:
+            return dict(cached)
+    manifest_url = os.getenv("MAILAI_UPDATE_MANIFEST_URL", DEFAULT_MANIFEST_URL).strip()
+    result = evaluate_manifest(_read_json_url(manifest_url))
+    with _lock:
+        _cache.update(checked_at=now, result=dict(result))
+    return result
+
+
+def _download(asset: dict, target: Path) -> None:
+    request = urllib.request.Request(
+        asset["url"], headers={"Accept": "application/octet-stream", "User-Agent": f"MailAI/{current_version()}"}
+    )
+    digest = hashlib.sha256()
+    total = 0
+    temporary = target.with_suffix(target.suffix + ".part")
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response, temporary.open("wb") as output:
+            declared = int(response.headers.get("Content-Length") or 0)
+            if declared > DOWNLOAD_MAX_BYTES:
+                raise ValueError("安装包超过允许大小")
+            while True:
+                chunk = response.read(1024 * 1024)
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > DOWNLOAD_MAX_BYTES:
+                    raise ValueError("安装包超过允许大小")
+                digest.update(chunk)
+                output.write(chunk)
+        if digest.hexdigest() != asset["sha256"]:
+            raise ValueError("安装包 SHA-256 校验失败，已停止更新")
+        temporary.replace(target)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+
+def download_and_launch() -> dict:
+    result = check(force=True)
+    if not result.get("available"):
+        raise ValueError("当前已经是最新版本")
+    if not result.get("installable"):
+        raise ValueError("当前运行方式不支持自动启动安装器")
+    asset = result["asset"]
+    suffix = ".exe" if result["device"] == "windows-x64" else ".pkg"
+    update_dir = USER_DIR / "updates"
+    update_dir.mkdir(parents=True, exist_ok=True)
+    target = update_dir / f"MailAI-{result['latest_version']}-{result['device']}{suffix}"
+    _download(asset, target)
+    if sys.platform == "win32":
+        subprocess.Popen(
+            [str(target), "/SILENT", "/NORESTART", "/CLOSEAPPLICATIONS"],
+            close_fds=True,
+            creationflags=getattr(subprocess, "DETACHED_PROCESS", 0),
+        )
+    elif sys.platform == "darwin":
+        subprocess.Popen(["open", str(target)], close_fds=True)
+    else:
+        raise ValueError("当前系统不支持启动安装器")
+    log.info("已启动 MailAI %s 更新安装器", result["latest_version"])
+    return {"ok": True, "version": result["latest_version"], "message": "安装器已启动"}

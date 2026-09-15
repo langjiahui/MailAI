@@ -1,0 +1,127 @@
+/* Consistent native selects: preserve keyboard/OS menus while styling the closed control. */
+:root {
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='m4.5 6.25 3.5 3.5 3.5-3.5' stroke='%23476659' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --select-focus: rgba(47, 125, 95, .17);
+}
+
+html body select:not(.hidden):not([multiple]) {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-inline-end: 32px;
+  background-image: var(--select-arrow) !important;
+  background-repeat: no-repeat !important;
+  background-position: right 10px center !important;
+  background-size: 14px 14px !important;
+  font-family: inherit;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease, color .16s ease;
+}
+
+html body select:not(.hidden):not([multiple]):hover:not(:disabled) {
+  border-color: rgba(47, 125, 95, .3) !important;
+  background-color: rgba(255, 255, 255, .88) !important;
+}
+
+html body select:not(.hidden):not([multiple]):focus,
+html body select:not(.hidden):not([multiple]):focus-visible {
+  border-color: #3b8064 !important;
+  outline: 0;
+  box-shadow: 0 0 0 3px var(--select-focus), inset 0 1px rgba(255, 255, 255, .72) !important;
+}
+
+html body select:not(.hidden):not([multiple]):disabled {
+  cursor: default;
+  opacity: .52;
+}
+
+html body select option { color: #29463a; background: #fff; }
+
+/* Contact groups sit beside 38px actions, so the selector should share their rhythm. */
+html body .contact-group-toolbar #contact-group-filter {
+  flex: 0 1 180px;
+  width: 180px;
+  max-width: 210px;
+  min-height: 38px;
+  padding: 0 36px 0 13px;
+  border: 1px solid rgba(51, 105, 84, .14);
+  border-radius: 11px;
+  color: #365d4d;
+  background-color: rgba(255, 255, 255, .76);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .86), 0 2px 7px rgba(43, 78, 64, .035);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+/* Sidebar filter selector: large enough to read, still visually subordinate. */
+html body .filter-select-row #filter-domain {
+  flex: 0 0 112px;
+  width: 112px;
+  min-height: 32px;
+  padding: 0 31px 0 10px !important;
+  border-color: rgba(53, 100, 83, .14) !important;
+  border-radius: 10px;
+  color: #3f6153;
+  background-color: rgba(255, 255, 255, .7) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, .82), 0 2px 6px rgba(43, 78, 64, .03);
+  font-size: 10px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+}
+
+html body .list-sort select {
+  min-height: 32px;
+  padding: 0 32px 0 11px;
+  border-radius: 10px;
+  color: #36594b;
+  font-weight: 650;
+}
+
+/* Dense editor dropdowns keep their compact footprint. */
+html body .compose-format-tools select:not(.hidden) {
+  padding-inline-end: 22px;
+  background-position: right 6px center !important;
+  background-size: 11px 11px !important;
+}
+
+@media (max-width: 620px) {
+  html body .contact-group-toolbar #contact-group-filter {
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: none;
+  }
+}
+
+html[data-theme="dark"] {
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='m4.5 6.25 3.5 3.5 3.5-3.5' stroke='%23b9dbc8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --select-focus: rgba(126, 211, 164, .2);
+}
+
+html[data-theme="dark"] body select:not(.hidden):not([multiple]) {
+  color-scheme: dark;
+}
+
+html[data-theme="dark"] body select:not(.hidden):not([multiple]):hover:not(:disabled) {
+  border-color: rgba(139, 211, 171, .34) !important;
+  background-color: rgba(42, 72, 57, .92) !important;
+}
+
+html[data-theme="dark"] body select:not(.hidden):not([multiple]):focus,
+html[data-theme="dark"] body select:not(.hidden):not([multiple]):focus-visible {
+  border-color: #78c69a !important;
+  box-shadow: 0 0 0 3px var(--select-focus), inset 0 1px rgba(255, 255, 255, .06) !important;
+}
+
+html[data-theme="dark"] body select option { color: #e9f5ed; background: #17291f; }
+
+html[data-theme="dark"] body .contact-group-toolbar #contact-group-filter,
+html[data-theme="dark"] body .filter-select-row #filter-domain {
+  color: #e2f1e8 !important;
+  border-color: rgba(185, 226, 204, .2) !important;
+  background-color: rgba(18, 39, 29, .84) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, .055), 0 3px 10px rgba(0, 0, 0, .09) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html body select:not(.hidden):not([multiple]) { transition: none; }
+}

@@ -1,0 +1,11 @@
+{
+  "clean_01_project_update.eml": "clean",
+  "clean_02_meeting_invite.eml": "clean",
+  "clean_03_system_notice.eml": "clean",
+  "phish_01_spoof_leader.eml": "phishing",
+  "phish_02_account_expired.eml": "phishing",
+  "phish_03_macro_attachment.eml": "phishing",
+  "phish_04_multi_turn.eml": "phishing",
+  "spam_01_marketing.eml": "spam",
+  "spam_02_training.eml": "spam"
+}

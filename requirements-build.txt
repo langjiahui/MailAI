@@ -1,0 +1,8 @@
+-r requirements.txt
+pyinstaller==6.22.2
+pywebview==6.2.1; sys_platform == "darwin"
+pyobjc-core==12.2.2; sys_platform == "darwin"
+pyobjc-framework-Cocoa==12.2.2; sys_platform == "darwin"
+pywebview==6.2.1; sys_platform == "win32"
+pystray>=0.19; sys_platform == "win32"
+Pillow>=10.0; sys_platform == "win32"

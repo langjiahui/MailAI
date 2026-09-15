@@ -1,0 +1,869 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MailAI · 社工钓鱼风险防控智能体</title>
+  <script>
+    (() => {
+      try {
+        const mode = localStorage.getItem('mailai.preferences.theme.v1') || 'system';
+        const dark = mode === 'dark' || (mode === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        document.documentElement.dataset.themeMode = mode;
+      } catch (_) {}
+    })();
+  </script>
+  <link rel="icon" type="image/png" href="/static/assets/mailai-mark.png" />
+  <link rel="stylesheet" href="/static/style.css?v=sync-dock-46" />
+  <link rel="stylesheet" href="/static/workspace.css?v=maintenance-59" />
+  <link rel="stylesheet" href="/static/companion.css?v=mint-3" />
+  <link rel="stylesheet" href="/static/theme.css?v=theme-15" />
+  <link rel="stylesheet" href="/static/attachment-preview.css?v=2">
+  <link rel="stylesheet" href="/static/onboarding.css?v=1">
+  <link rel="stylesheet" href="/static/select-ui.css?v=1">
+  <link rel="stylesheet" href="/static/author.css?v=1">
+</head>
+<body>
+  <div id="app-preloader" class="app-preloader" role="status" aria-live="polite">
+    <div class="preloader-content">
+      <div class="preloader-logo-wrap"><img class="preloader-logo" src="/static/assets/mailai-lockup.png" alt="MailAI 邮件安全与效率助手" /></div>
+      <span>正在整理你的邮件工作台</span>
+      <i class="preloader-line"><b></b></i>
+    </div>
+  </div>
+  <div id="app">
+    <header class="topbar">
+      <button id="btn-mobile-nav" class="mobile-nav-button" type="button" aria-label="打开邮箱文件夹" aria-expanded="false"><svg viewBox="0 0 20 20"><path d="M3.5 5.5h13M3.5 10h13M3.5 14.5h13"/></svg></button>
+      <div class="brand">
+        <span class="logo" aria-hidden="true">
+          <img src="/static/assets/mailai-mark.png" alt="" />
+        </span>
+        <span class="brand-copy"><strong>MailAI</strong><small>邮件安全与效率助手</small></span>
+      </div>
+      <div class="global-search">
+        <span class="search-icon" aria-hidden="true">⌕</span>
+        <input id="global-search" type="search" placeholder="搜索主题、发件人、正文或姓名拼音..." />
+      </div>
+      <div class="global-actions">
+        <button id="btn-compose" class="nav-action nav-compose" title="写新邮件"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l11-11a2.8 2.8 0 0 0-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4M4 20h16"/></svg><span>写邮件</span></button>
+
+        <div class="nav-cluster nav-work-cluster" aria-label="日常工作">
+          <button id="btn-contacts" class="nav-action nav-contacts" title="打开通讯录"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3.5" width="14" height="17" rx="3"/><path d="M5 8H3.5M5 12H3.5M5 16H3.5M9 9.2a2 2 0 1 0 4 0 2 2 0 0 0-4 0ZM8 16c.6-1.7 1.7-2.5 3-2.5s2.4.8 3 2.5"/></svg><span>联系人</span></button>
+          <button id="btn-attachments" class="nav-action nav-attachments" title="集中查找和下载附件"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 12.5 6.7-6.7a3.2 3.2 0 0 1 4.5 4.5l-8.8 8.8a5 5 0 0 1-7.1-7.1l8.2-8.2"/></svg><span>附件</span></button>
+          <button id="btn-todos" class="nav-action nav-todos" title="查看从邮件识别的待办"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="16" rx="3"/><path d="m8.5 12 2.2 2.2 4.8-5M9 4V2.8M15 4V2.8"/></svg><span>待办</span></button>
+        </div>
+
+        <div class="top-menu nav-security-menu">
+          <button id="btn-security-menu" class="nav-action nav-menu-trigger nav-security" type="button" aria-haspopup="true" aria-expanded="false"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 19 6v5.2c0 4.7-2.8 8-7 9.8-4.2-1.8-7-5.1-7-9.8V6l7-3Z"/><path d="m8.5 12 2.2 2.2 4.8-5"/></svg><span>安全</span></button>
+          <div class="top-menu-popover hidden" role="menu" aria-label="安全管理">
+            <div class="top-menu-heading"><strong>安全管理</strong><small>研判、规则与处置策略</small></div>
+            <div class="security-menu-grid">
+              <button id="btn-dashboard" class="top-menu-item nav-dashboard" role="menuitem" title="查看安全看板"><span class="top-menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 18V11M12 18V6M19 18v-4M3 20h18"/></svg></span><span class="top-menu-label">安全看板</span><small>趋势与处置成效</small></button>
+              <button id="btn-rules" class="top-menu-item nav-rules" role="menuitem" title="查看和配置风险识别规则"><span class="top-menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M5 12h14M5 18h14M9 4v4M15 10v4M10 16v4"/></svg></span><span class="top-menu-label">规则中心</span><small>规则与评分权重</small></button>
+            </div>
+            <label class="policy-control" data-mode="review">
+              <span><b>处置策略</b><small>高风险邮件的默认处理方式</small></span>
+              <span class="policy-select-wrap">
+                <i aria-hidden="true"></i>
+                <select id="action-mode" aria-label="高风险邮件处置策略">
+                  <option value="observe">仅观察</option>
+                  <option value="review">人工确认</option>
+                  <option value="auto">自动处置</option>
+                </select>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <button id="btn-poll" class="nav-action nav-sync" type="button" aria-label="同步邮件" title="立即从服务器拉取邮件"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7V3l-2.6 2.6A8 8 0 0 0 5 8M4 17v4l2.6-2.6A8 8 0 0 0 19 16"/></svg><span>同步</span></button>
+        <button id="btn-digest" class="nav-action nav-digest" title="查看或生成今日工作日报"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M8 3v4M16 3v4M4 10h16M8 14h3M8 17h6"/></svg><span>今日日报</span></button>
+
+        <button id="btn-preferences" class="nav-action nav-tools nav-tools-menu" type="button" aria-label="打开设置" title="设置、邮箱账号、数据维护与使用帮助"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h3M11 17h9M14 4v6M7 14v6"/></svg><span>设置</span></button>
+      </div>
+    </header>
+
+    <!-- 统计看板 -->
+    <div id="dashboard-view" class="dashboard-view hidden">
+      <div class="dashboard-header">
+        <div class="dashboard-heading"><span class="dashboard-title-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9h4v10M10 19V5h4v14M16 19v-7h4v7M3 19.5h18"/></svg></span><div><span class="eyebrow">安全运营</span><h2>先处理风险，再看趋势与成效</h2><p id="dashboard-updated">正在更新数据…</p></div></div>
+        <div class="dashboard-header-actions"><label>统计周期<select id="dashboard-days"><option value="7" selected>最近 7 天</option><option value="30">最近 30 天</option></select></label><button id="btn-refresh-dashboard" class="btn-ghost">刷新</button><button id="btn-close-dashboard" class="btn-ghost">返回邮件</button></div>
+      </div>
+      <div class="dashboard-command">
+        <section id="dashboard-priority" class="dashboard-priority calm">
+          <div class="dashboard-priority-copy"><span class="dashboard-status-dot"></span><div><span class="eyebrow">当前处置态势</span><h3 id="dashboard-status-title">正在判断…</h3><p id="dashboard-status-copy">汇总待确认风险和近期变化</p></div></div>
+          <div class="dashboard-priority-actions"><button id="btn-dashboard-review" type="button" class="primary-action"><span>处理待确认邮件</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11M11 6l4 4-4 4"/></svg></button><button id="btn-rollback-auto" class="btn-ghost" title="恢复最近由系统自动移动且尚未人工处理的邮件"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 6H3v-4M3.5 6A7 7 0 1 1 4 15"/></svg><span>撤回最近自动处置</span></button></div>
+        </section>
+        <div class="dashboard-snapshot" id="dashboard-grid">
+          <article class="dashboard-metric attention"><span>当前待确认</span><strong id="kpi-pending">0</strong><small id="kpi-pending-note">需要人工判断</small></article>
+          <article class="dashboard-metric risk"><span>本期风险邮件</span><strong id="kpi-risk-count">0</strong><small><b id="kpi-risk-rate">0%</b> 占全部来信</small></article>
+          <article class="dashboard-metric"><span>系统自动处置</span><strong id="kpi-auto-handled">0</strong><small id="kpi-policy-mode">当前策略：--</small></article>
+          <article class="dashboard-metric quality"><span>人工纠正</span><strong id="kpi-feedback">0</strong><small>误报与漏报反馈</small></article>
+        </div>
+      </div>
+      <div class="dashboard-workspace">
+        <section class="dashboard-panel dashboard-attention-panel"><div class="dashboard-panel-head"><div><span class="eyebrow">优先处理</span><h3>需要你判断的邮件</h3></div><span id="dashboard-attention-count"></span></div><div id="dashboard-attention-list" class="dashboard-attention-list"></div></section>
+        <section class="dashboard-panel dashboard-trend-panel">
+          <div class="dashboard-panel-head"><div><span class="eyebrow">风险走向</span><h3>风险是在上升还是下降</h3></div><span id="dashboard-trend-insight"></span></div>
+          <div class="chart-container" id="trend-chart"></div>
+        </section>
+        <section class="dashboard-panel dashboard-sender-panel">
+          <div class="dashboard-panel-head"><div><span class="eyebrow">风险来源</span><h3>近期高风险发件人</h3></div><span>点击可定位邮件</span></div>
+          <div class="chart-container" id="sender-chart"></div>
+        </section>
+        <section class="dashboard-panel dashboard-campaign-panel"><div class="dashboard-panel-head"><div><span class="eyebrow">关联研判</span><h3>可能来自同一批攻击的邮件</h3></div><span id="dashboard-campaign-count"></span></div><div id="dashboard-campaign-list" class="dashboard-campaign-list"></div></section>
+        <section class="dashboard-panel dashboard-outcome-panel"><div class="dashboard-panel-head"><div><span class="eyebrow">处置成效</span><h3>发现之后发生了什么</h3></div><span id="dashboard-efficiency"></span></div><div id="dashboard-outcome" class="dashboard-outcome"></div></section>
+      </div>
+      <section class="dashboard-quality-strip"><div><span class="eyebrow">评测与运行质量</span><h3>辅助判断，不抢占日常运营视线</h3></div><div id="dashboard-quality" class="dashboard-quality"></div></section>
+    </div>
+
+    <!-- 用户设置 -->
+    <div id="system-view" class="system-view hidden">
+      <div class="system-header">
+        <div><span class="eyebrow">MailAI</span><h2>设置</h2><p>管理显示偏好、邮箱账号和本地数据。</p></div>
+        <button id="btn-close-system" class="btn-ghost">返回邮件列表</button>
+      </div>
+      <nav id="system-tabs" class="system-tabs">
+        <button class="active" data-system-tab="preferences">常用设置</button>
+        <button data-system-tab="account">邮箱账号</button>
+        <button data-system-tab="maintenance">数据与维护</button>
+        <button data-system-tab="guide">使用帮助</button>
+        <button data-system-tab="about">关于与隐私</button>
+      </nav>
+
+      <section class="system-panel hidden" data-system-panel="preferences">
+        <div class="settings-page-intro preferences-intro"><div><h3>让工作台更合你的习惯</h3><p>调整阅读方式与提醒，修改后自动保存。</p></div><span>无需额外保存</span></div>
+        <div class="preference-grid">
+          <article class="preference-card device-preferences">
+            <div class="preference-card-head">
+              <span class="connection-icon"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="11" rx="2"/><path d="M7 17h6M10 14v3M7 3v11"/></svg></span>
+              <div><h3>显示与阅读</h3><p>只影响这台设备</p></div>
+            </div>
+            <fieldset class="theme-settings"><legend>界面主题</legend><p>可固定选择配色，或跟随系统的浅色与暗色设置。</p><div class="theme-options"><label><input type="radio" name="theme-mode-choice" value="light"><span class="theme-preview light" aria-hidden="true"><i></i><i></i><i></i></span><b>浅色</b><small>保持当前清新配色</small></label><label><input type="radio" name="theme-mode-choice" value="dark"><span class="theme-preview dark" aria-hidden="true"><i></i><i></i><i></i></span><b>暗色</b><small>降低夜间阅读亮度</small></label><label><input type="radio" name="theme-mode-choice" value="system"><span class="theme-preview system" aria-hidden="true"><i></i><i></i><i></i></span><b>跟随系统</b><small>随设备主题自动切换</small></label></div><select id="theme-mode" class="hidden" aria-label="界面主题"><option value="light">浅色</option><option value="dark">暗色</option><option value="system">跟随系统</option></select></fieldset>
+            <fieldset class="density-settings"><legend>邮件列表密度</legend><p>选择更宽松的阅读空间，或在一屏查看更多邮件。</p><div class="density-options"><label><input type="radio" name="workspace-density-choice" value="comfortable"><span class="density-preview comfortable" aria-hidden="true"><i></i><i></i><i></i></span><b>舒适</b><small>显示摘要，阅读更轻松</small></label><label><input type="radio" name="workspace-density-choice" value="compact"><span class="density-preview compact" aria-hidden="true"><i></i><i></i><i></i><i></i></span><b>紧凑</b><small>精简摘要，浏览更多邮件</small></label></div><select id="workspace-density" class="hidden" aria-label="列表密度"><option value="comfortable">舒适</option><option value="compact">紧凑</option></select></fieldset>
+            <label class="preference-row" for="show-server-folders">
+              <span><b>显示服务端文件夹</b><small>在左侧显示邮箱服务器的原始文件夹。</small></span>
+              <span class="switch"><input id="show-server-folders" type="checkbox" role="switch" aria-describedby="show-server-folders-note"><i></i></span>
+            </label>
+            <p id="show-server-folders-note" class="preference-note">默认关闭，不影响后台收信与同步。</p>
+            <label class="preference-row" for="companion-motion"><span><b>小邮的轻动效</b><small>眨眼、招手与工作表情，让邮件助手更有陪伴感。</small></span><span class="switch"><input id="companion-motion" type="checkbox" role="switch" checked><i></i></span></label>
+          </article>
+          <article class="preference-card notification-preferences">
+            <div class="preference-card-head"><span class="connection-icon"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8a5 5 0 0 1 10 0v4l2 2H3l2-2V8Zm3 9h4"/></svg></span><div><h3>邮件提醒</h3><p>每个邮箱可以单独设置</p></div></div>
+            <div class="notification-account-context"><span>当前邮箱</span><b id="notification-account">尚未连接邮箱</b></div>
+            <fieldset id="notification-options" disabled><legend>哪些邮件需要提醒你</legend><label class="notification-choice"><input type="radio" name="notification-mode" value="all"><span><b>全部新邮件</b><small>新邮件到达时提醒</small></span></label><label class="notification-choice"><input type="radio" name="notification-mode" value="important"><span><b>只提醒重点邮件</b><small>重要邮件、常用联系人和高风险邮件</small></span></label><label class="notification-choice"><input type="radio" name="notification-mode" value="high_risk"><span><b>仅高风险邮件</b><small>仅在发现高风险时提醒</small></span></label><label class="notification-choice"><input type="radio" name="notification-mode" value="off"><span><b>关闭提醒</b><small>继续正常收信，不弹出通知</small></span></label></fieldset>
+            <select id="notification-preference" class="hidden" aria-label="邮箱通知"><option value="all">全部新邮件</option><option value="important">重要邮件、常用联系人与高风险</option><option value="high_risk">仅高风险</option><option value="off">关闭</option></select>
+            <div class="preference-save-state"><span id="notification-save-status" role="status" aria-live="polite">正在读取设置…</span><button id="notification-retry-load" type="button" class="hidden">重试</button></div>
+            <p class="preference-note">仅对上方邮箱生效。单个会话可在邮件阅读区静音。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="system-panel hidden" data-system-panel="guide">
+        <div class="settings-page-intro"><div><h3>快速上手</h3><p>按照使用顺序了解 MailAI，只保留日常工作需要的内容。</p></div><div class="guide-intro-actions"><span>6 个使用主题</span></div></div>
+        <div class="guide-grid">
+          <article><b>01</b><span>连接</span><h4>添加邮箱</h4><p>在“邮箱账号”中使用客户端授权码添加邮箱，系统会自动识别收发服务器。</p></article>
+          <article><b>02</b><span>基线</span><h4>从“仅观察”开始</h4><p>首次同步建议不自动移动邮件，先观察身份、链接、附件、话术、行为与视觉证据是否符合预期。</p></article>
+          <article><b>03</b><span>同步</span><h4>补齐历史与文件夹</h4><p>“同步邮件”获取新增内容，“拉取全部”建立历史画像；同步任务可暂停并在下次继续。</p></article>
+          <article><b>04</b><span>验证</span><h4>反馈并调整策略</h4><p>标记误报、漏报和确认结果，再在规则中心调整启停、权重、复核阈值与隔离阈值。</p></article>
+          <article><b>05</b><span>协作</span><h4>使用效率工作台</h4><p>通过分类、摘要、待办、附件中心、日报、写信辅助和邮件助手处理日常工作。</p></article>
+          <article><b>06</b><span>维护</span><h4>诊断、备份与退出</h4><p>定期运行诊断并创建本地备份；退出账号时可明确选择保留或清空该账号邮件历史。</p></article>
+        </div>
+        <div class="guide-warning"><strong>推荐启用路径</strong><span>仅观察 → 人工确认 → 小范围自动处置。每次提升自动化等级前，先在安全看板检查误报、漏报、召回率与最近处置记录。</span></div>
+      </section>
+
+      <section class="system-panel hidden" data-system-panel="account">
+        <div class="settings-page-intro account-intro"><div><h3>邮箱账号</h3><p>集中维护邮箱连接；日常查看与收发请直接使用邮件列表左侧的账号。</p></div><span>设置仅影响这台设备</span></div>
+        <form id="mail-config-form" class="account-workspace">
+          <aside class="account-directory">
+            <div class="account-directory-head"><div><span>已连接账号</span><b id="account-count">0</b></div><small>选择账号查看连接状态和维护操作</small></div>
+            <div id="saved-accounts" class="saved-accounts hidden" aria-label="已连接邮箱"></div>
+            <button id="btn-add-mail" type="button" class="mail-add-entry"><span>＋</span><b>添加邮箱</b><small>使用客户端授权码连接</small></button>
+            <p class="account-isolation-note">每个账号的数据和原始邮件均独立保存在本机。</p>
+          </aside>
+          <section class="account-detail">
+            <div class="account-detail-top"><div><span class="account-detail-eyebrow">账号详情</span><h3>连接与授权</h3></div><span id="mail-status" class="connection-status">未登录</span></div>
+            <div id="account-empty-state" class="account-detail-empty">
+              <span class="connection-icon">@</span><div><b>尚未添加邮箱</b><small>添加后可在这里查看连接状态和更新授权信息。</small></div>
+            </div>
+            <div id="account-selection-actions" class="account-selection-actions hidden">
+              <div class="account-profile"><span id="selected-account-avatar" class="saved-account-avatar">@</span><div><span id="selected-account-role">已连接邮箱</span><b id="selected-account-name">请选择一个邮箱</b><small id="selected-account-help">选择后可更新登录信息</small></div></div>
+              <div class="account-facts"><div><span>连接状态</span><b id="selected-account-state">未连接</b></div><div><span>收件服务器</span><b id="selected-account-host">—</b></div><div><span>日常操作</span><b>在左侧邮件列表完成</b></div></div>
+              <div class="account-primary-actions"><button id="btn-manage-mail" type="button" class="action-btn action-primary">更新登录信息</button><span>更新授权不会切换当前收发账号</span></div>
+              <details class="account-danger-zone"><summary>移除此邮箱</summary><div><span><b>从 MailAI 移除账号</b><small>你可以选择保留或同时清理本地邮件记录。</small></span><button id="btn-delete-mail" type="button" class="action-btn action-danger">删除邮箱</button></div></details>
+            </div>
+            <section id="mail-add-panel" class="mail-add-panel hidden">
+              <div class="mail-add-panel-head"><div><span class="account-detail-eyebrow">连接设置</span><b id="mail-add-title">新增邮箱</b><small>使用客户端授权码，MailAI 会自动识别常见邮箱服务。</small></div><button id="btn-cancel-add-mail" type="button" aria-label="关闭邮箱设置">✕</button></div>
+              <label>邮箱账号<input id="mail-user" type="email" required autocomplete="username" placeholder="name@example.com"></label>
+              <label>密码或客户端授权码<input id="mail-password" type="password" required autocomplete="current-password" placeholder="请输入密码或客户端授权码"></label>
+              <div id="mail-provider-hint" class="provider-hint">输入邮箱地址后自动识别收发服务器</div>
+              <details class="mail-advanced"><summary>服务器高级设置</summary>
+                <div class="form-row host-row"><label>IMAP 服务器<input id="mail-host" required placeholder="imap.example.com"></label><label>端口<input id="mail-port" type="number" value="993" required></label></div>
+                <div class="form-row host-row"><label>SMTP 服务器<input id="mail-smtp-host" required placeholder="smtp.example.com"></label><label>端口<input id="mail-smtp-port" type="number" value="465" required></label></div>
+                <div class="form-row checks"><label class="check-row"><input id="mail-ssl" type="checkbox" checked>IMAP SSL</label><label class="check-row"><input id="mail-smtp-ssl" type="checkbox" checked>SMTP SSL</label><label class="check-row"><input id="mail-smtp-starttls" type="checkbox">SMTP STARTTLS</label><label class="check-row"><input id="mail-verify-ssl" type="checkbox" checked>校验证书</label></div>
+              </details>
+              <div class="connection-actions"><button id="btn-connect-mail" type="submit" class="action-btn action-primary"><svg viewBox="0 0 20 20"><path d="M10 3v14M3 10h14"/></svg><span>新增邮箱</span></button></div>
+            </section>
+          </section>
+        </form>
+      </section>
+
+      <section class="system-panel hidden author-page" data-system-panel="about" aria-labelledby="author-title">
+        <div class="author-hero">
+          <img class="author-avatar" src="/static/assets/langjiahui-avatar.png" alt="langjiahui 的绿色 LJH 交织字母头像" width="112" height="112" />
+          <div class="author-copy"><span class="author-eyebrow">关于作者</span><h3 id="author-title">langjiahui</h3><p class="author-role">MailAI 独立开发者</p><p>让邮件处理更从容，让 AI 的使用更透明。</p></div>
+        </div>
+        <div class="author-section-heading"><h3>关于你的数据</h3><p>本地保存，不代表所有处理都离线。这里说明数据保存在哪里，以及什么时候会联网。</p></div>
+        <div class="author-trust-grid">
+          <article class="author-trust-card"><span class="author-card-label">01 · 本机存储</span><h4>邮件数据保存在本机</h4><p>MailAI 的邮件数据库与下载的邮件原文保存在本机数据目录。邮箱服务器仍保留其自身数据；本地保存不等于磁盘加密，请妥善保护设备和备份。</p></article>
+          <article class="author-trust-card"><span class="author-card-label">02 · 邮箱连接</span><h4>收发与同步需要联网</h4><p>连接邮箱、同步和发送邮件会与配置的邮箱服务器通信。邮件中的远程图片或外部链接，也可能访问第三方网站。</p></article>
+          <article class="author-trust-card"><span class="author-card-label">03 · AI 处理</span><h4>模型服务由你配置</h4><p>AI 分析和小邮对话会将任务所需的邮件内容、对话及相关附件内容发送到配置的模型 API。自动分析也可能触发请求，并非只有点击小邮才发送。服务商的数据处理规则以其政策为准。</p></article>
+        </div>
+        <div class="author-boundary"><span class="author-note-icon" aria-hidden="true">i</span><div><h4>辅助判断，不替代你的确认</h4><p>AI 摘要和风险识别可能存在遗漏或误判。涉及付款、账号凭据或重要业务，请核对原文并通过可信渠道确认。自部署模型是否离线，取决于你的实际部署与网络配置。</p></div></div>
+        <div class="app-update-card">
+          <div><span class="author-card-label">应用版本</span><h4 id="app-version-label">MailAI</h4><p id="app-update-status">正在读取当前版本…</p></div>
+          <button id="btn-check-update" type="button" class="action-btn action-secondary">检查更新</button>
+        </div>
+        <div class="author-actions"><button type="button" class="action-btn action-secondary" data-about-target="maintenance">查看数据与模型配置 <span aria-hidden="true">→</span></button><button type="button" class="action-btn action-secondary" data-about-target="guide">使用帮助</button></div>
+      </section>
+
+      <section class="system-panel hidden" data-system-panel="maintenance">
+        <div class="settings-page-intro"><div><h3>数据与维护</h3><p>只有在排查问题、迁移设备或备份数据时才需要使用。</p></div><span>按需使用</span></div>
+        <div class="maintenance-grid">
+          <section class="diagnostic-card maintenance-diagnostics">
+            <div class="maintenance-card-head"><span class="connection-icon"><svg viewBox="0 0 20 20"><path d="M4 10h2l1.5-4 3 8 1.8-4H16M10 2.8a7.2 7.2 0 1 1 0 14.4 7.2 7.2 0 0 1 0-14.4Z"/></svg></span><div class="maintenance-card-copy"><h3>运行诊断</h3><p>检查本地数据与邮箱、AI 服务连接，不发送邮件。</p></div><div class="maintenance-head-actions"><button id="btn-enable-notifications" type="button" class="action-btn action-secondary">系统通知</button><button id="btn-run-diagnostics" type="button" class="action-btn action-secondary">开始检查</button></div></div>
+            <div id="diagnostic-results" class="diagnostic-results hidden"></div>
+          </section>
+          <section class="diagnostic-card backup-card">
+            <div class="maintenance-card-head"><span class="connection-icon"><svg viewBox="0 0 20 20"><path d="M4 4h12v4H4zM5 8v8h10V8M8 11h4"/></svg></span><div class="maintenance-card-copy"><h3>备份与换机</h3><p>本地备份用于当前设备回滚；迁移包用于换电脑或跨系统迁移。</p></div><span class="maintenance-badge">本机与迁移</span></div>
+            <div class="maintenance-card-actions"><button id="btn-create-backup" type="button" class="action-btn action-secondary">＋ 本机备份</button><button id="btn-export-portable" type="button" class="action-btn action-secondary">导出到新设备</button><button id="btn-import-portable" type="button" class="action-btn action-secondary">从旧设备导入</button><input id="portable-backup-file" type="file" accept=".mailai-backup,application/octet-stream" hidden><span>迁移包包含邮件内容，建议设置密码；不包含邮箱授权码和模型密钥</span></div>
+            <div class="maintenance-section-label"><span>备份记录</span><small>恢复前会自动保留安全副本</small></div>
+            <div id="backup-list" class="backup-list"></div>
+          </section>
+          <section class="diagnostic-card server-cleanup-card">
+            <div class="maintenance-card-head"><span class="connection-icon"><svg viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="6" rx="2"/><rect x="3" y="11" width="14" height="6" rx="2"/><path d="M6 6h.01M6 14h.01M11 6h3M11 14h3"/></svg></span><div class="maintenance-card-copy"><h3>清理服务器邮件</h3><p>释放邮箱服务器空间，保留本机的完整邮件。</p></div><span class="maintenance-badge caution">仅手动执行</span></div>
+            <ol class="maintenance-cleanup-steps"><li><span>1</span><div><b>选择范围，先看预览</b><small>按日期筛选，默认保留收藏和星标邮件</small></div></li><li><span>2</span><div><b>确认后，先备份再清理</b><small>核对邮件列表，输入邮箱地址确认操作</small></div></li><li><span>3</span><div><b>旧邮件仍可在本机查看</b><small>邮件和附件保留在原来的收件箱等文件夹中</small></div></li></ol>
+            <div class="maintenance-cleanup-note">清理后，网页版及其他设备可能无法再查看这些邮件。</div>
+            <div class="maintenance-card-actions"><button id="btn-server-cleanup" type="button" class="action-btn action-secondary">选择清理范围 <span aria-hidden="true">→</span></button><span>不会自动清理</span></div>
+            <div id="server-cleanup-history" aria-live="polite"></div>
+          </section>
+        </div>
+        <details class="admin-settings">
+          <summary><span><b>模型服务配置</b><small>接入自部署模型、DeepSeek、Kimi Code 或其他厂商</small></span><i>展开</i></summary>
+          <form id="model-config-form" class="connection-card">
+            <div class="connection-card-head"><div><span class="connection-icon">AI</span><h3>模型 API</h3></div><span id="model-status" class="connection-status">未检测</span></div>
+            <label>模型服务商<select id="model-provider"><option value="custom">自部署模型</option><option value="deepseek">DeepSeek</option><option value="kimi">Kimi（月之暗面）</option><option value="kimi_code">Kimi Code（编程订阅）</option><option value="other">其他厂商（通用 API）</option></select></label>
+            <p class="form-hint">每个服务商的配置分别保存在本机，选择已保存的服务商即可直接切换使用。首次配置请填写地址、模型名称和 API Key 并保存。其他厂商支持 OpenAI Chat Completions 兼容 API。</p>
+            <label>API 地址<input id="model-base-url" required placeholder="https://api.example.com/v1"></label><p class="form-hint">支持基础地址（如 /v1）或完整 /chat/completions 地址。模型 ID 须与服务商控制台一致。</p>
+            <div class="form-row"><label>文本模型<input id="model-name" required placeholder="填写服务商提供的模型 ID"></label><label>多模态模型<input id="multimodal-model" placeholder="留空则复用文本模型"></label></div>
+            <label class="check-row"><input id="model-multimodal-enabled" type="checkbox">启用图片识别（多模态模型须支持图片，使用相同 API 地址与 Key）</label>
+            <label>API Key<input id="model-api-key" type="password" autocomplete="new-password" placeholder="留空表示保持当前 Key"></label>
+            <label class="check-row"><input id="model-verify-ssl" type="checkbox" checked>校验 API 服务器 SSL 证书</label>
+            <p class="form-hint">测试连接会发送一条简短请求，可能产生少量 API 费用；测试成功后再保存即可生效。</p>
+            <details><summary>扩展请求参数</summary><label>JSON 对象<textarea id="model-extra-params" rows="3" spellcheck="false" placeholder='{}'></textarea></label><p class="form-hint">通常无需填写。可按厂商文档设置参数，例如 {"enable_thinking":false}；值为 null 可省略对应参数。切换厂商后会清空。</p></details>
+            <div class="connection-actions"><button type="submit" class="action-btn action-primary"><svg viewBox="0 0 20 20"><path d="M4 3.5h10l2 2v11H4zM7 3.5v5h6v-5M7 13h6"/></svg>保存配置</button><button id="btn-test-model" type="button" class="action-btn action-secondary"><svg viewBox="0 0 20 20"><path d="M7 13 4.5 10 7 7M13 7l2.5 3-2.5 3M11.5 4 8.5 16"/></svg>测试连接</button></div>
+          </form>
+        </details>
+      </section>
+    </div>
+
+    <!-- 规则展示与配置 -->
+    <div id="rules-view" class="rules-view hidden">
+      <div class="rules-header">
+        <div><span class="eyebrow">检测策略</span><h2>规则中心</h2><p>配置仅影响后续分析；历史邮件不会自动重算。</p></div>
+        <div class="rules-header-actions">
+          <button id="btn-reset-rules" class="btn-ghost">恢复默认</button>
+          <button id="btn-close-rules" class="btn-ghost">返回邮件列表</button>
+        </div>
+      </div>
+      <section class="allowlist-panel" aria-labelledby="allowlist-title">
+        <div class="allowlist-copy">
+          <span class="allowlist-icon">✓</span>
+          <div><h3 id="allowlist-title">可信发件人</h3><p>可以信任整个业务域名，也可以只信任一个具体邮箱。跳过容易误报的常规告警，但仍检查严重认证失败、恶意附件与黑名单链接。</p></div>
+        </div>
+        <form id="allowlist-form" class="allowlist-form">
+          <label><span>信任范围</span><select id="allowlist-kind"><option value="domain">整个域名（含子域名）</option><option value="address">仅此邮箱地址</option></select></label>
+          <label><span id="allowlist-value-label">域名</span><input id="allowlist-domain" type="text" inputmode="url" autocomplete="off" placeholder="例如 partner.example.com" required></label>
+          <label><span>备注（可选）</span><input id="allowlist-note" type="text" maxlength="200" placeholder="例如：长期合作供应商"></label>
+          <button type="submit" class="action-btn action-primary compact">＋ 加入白名单</button>
+        </form>
+        <div id="allowlist-list" class="allowlist-list" aria-live="polite"></div>
+      </section>
+      <section class="rule-scenario-panel" aria-labelledby="rule-scenario-title">
+        <div class="rule-scenario-head"><div><span class="eyebrow">常用设置</span><h3 id="rule-scenario-title">你希望系统重点检查什么？</h3><p>不需要理解技术编码。每类都可以开启或关闭，并调整提醒敏感度。</p></div><span class="scenario-safe-note">建议附件与链接保持开启</span></div>
+        <div id="rule-scenario-grid" class="rule-scenario-grid"></div>
+      </section>
+      <section class="threshold-panel">
+        <div class="threshold-copy"><h3>什么时候提醒或隔离？</h3><p>分数越低越敏感。建议普通用户保留默认值。</p></div>
+        <label><span>达到此分提醒我</span><input id="threshold-review" type="number" min="0" max="99"><small>分</small></label>
+        <label><span>达到此分建议隔离</span><input id="threshold-quarantine" type="number" min="1" max="100"><small>分</small></label>
+        <label><span>营销垃圾判定</span><input id="threshold-spam" type="number" min="0" max="100"><small>分</small></label>
+        <button id="btn-save-thresholds" class="action-btn action-primary compact"><svg viewBox="0 0 20 20"><path d="M4 3.5h10l2 2v11H4zM7 3.5v5h6v-5M7 13h6"/></svg>保存阈值</button>
+      </section>
+      <section class="advanced-rules-panel">
+        <button id="btn-toggle-advanced-rules" type="button" class="advanced-rules-toggle" aria-expanded="false"><span><b>高级规则明细</b><small>逐条查看技术规则、启停状态和风险分值</small></span><i>展开</i></button>
+        <div id="advanced-rules-content" class="hidden">
+          <div class="rules-toolbar">
+            <div id="rule-category-tabs" class="rule-category-tabs"></div>
+            <input id="rule-search" type="search" placeholder="搜索规则名称、编码或说明…">
+            <span id="rule-summary" class="rule-summary"></span>
+          </div>
+          <div id="rules-grid" class="rules-grid"></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="layout">
+      <button id="sidebar-backdrop" class="sidebar-backdrop" type="button" aria-label="关闭邮箱文件夹"></button>
+      <!-- 左侧边栏：文件夹、分类、筛选 -->
+      <aside class="sidebar">
+        <section class="nav-group mobile-workbench">
+          <div class="nav-title">工作台</div>
+          <nav>
+            <button type="button" class="nav-item" data-mobile-action="system"><span class="icon"><svg viewBox="0 0 20 20"><path d="M4 4h5v5H4zM11 4h5v5h-5zM4 11h5v5H4zM11 11h5v5h-5z"/></svg></span>设置</button>
+            <button type="button" class="nav-item" data-mobile-action="rules"><span class="icon"><svg viewBox="0 0 20 20"><path d="M5 4h10M5 10h10M5 16h10M8 2.8v2.4M12 8.8v2.4M9 14.8v2.4"/></svg></span>规则中心</button>
+            <button type="button" class="nav-item" data-mobile-action="dashboard"><span class="icon"><svg viewBox="0 0 20 20"><path d="M4 16V9h3v7M8.5 16V4h3v12M13 16v-5h3v5"/></svg></span>安全看板</button>
+            <button type="button" class="nav-item" data-mobile-action="contacts"><span class="icon"><svg viewBox="0 0 20 20"><rect x="5" y="3" width="11" height="14" rx="2"/><circle cx="10.5" cy="8" r="1.7"/><path d="M7.8 14c.5-1.7 1.4-2.5 2.7-2.5s2.2.8 2.7 2.5M5 7H3.5M5 12H3.5"/></svg></span>通讯录</button>
+            <button type="button" class="nav-item" data-mobile-action="attachments"><span class="icon"><svg viewBox="0 0 20 20"><path d="M7 10.5 12 5.5a2.4 2.4 0 0 1 3.4 3.4l-6.6 6.6a3.8 3.8 0 0 1-5.4-5.4l6-6"/></svg></span>附件中心</button>
+            <button type="button" class="nav-item" data-mobile-action="todos"><span class="icon"><svg viewBox="0 0 20 20"><path d="M5 3.5h10v13H5zM7.5 7h5M7.5 10h5M7.5 13h3"/></svg></span>待办中心</button>
+          </nav>
+        </section>
+        <section id="account-mailbox-group" class="nav-group account-mailbox-group hidden">
+          <div class="nav-title"><span>邮箱账号</span><button id="btn-sidebar-add-account" type="button" title="添加邮箱" aria-label="添加邮箱">＋</button></div>
+          <nav id="account-mailbox-nav"></nav>
+        </section>
+        <section id="mailbox-sync-tracker" class="mailbox-sync-tracker hidden" aria-live="polite"></section>
+        <section id="primary-folder-group" class="nav-group">
+          <div class="nav-title">邮箱文件夹</div>
+          <nav id="folder-nav">
+            <button type="button" class="nav-item active" data-filter="status" data-value="">
+              <span class="icon"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 6.5h13v9h-13zM6 4h8M3.5 11h3l1.4 2h4.2l1.4-2h3"/></svg></span> 全部邮件
+              <span class="count" id="count-all">0</span>
+            </button>
+            <button type="button" class="nav-item" data-filter="status" data-value="favorites"><span class="icon"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 2 2.4 5 5.6.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.6-.8Z"/></svg></span>我的收藏</button>
+            <button type="button" class="nav-item" data-filter="status" data-value="inbox">
+              <span class="icon"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 6.5h13v9h-13zM6 4h8M3.5 11h3l1.4 2h4.2l1.4-2h3M7.5 8.7l1.6 1.6 3.5-3.5"/></svg></span> 收件箱
+              <span class="count" id="count-inbox">0</span>
+            </button>
+            <button type="button" class="nav-item" data-filter="special" data-value="sent">
+              <span class="icon"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m3 9 14-6-5.2 14-2.4-5.8L3 9Zm6.4 2.2L17 3"/></svg></span> 已发送
+              <span class="count" id="count-sent">0</span>
+            </button>
+            <button type="button" class="nav-item" data-filter="special" data-value="drafts">
+              <span class="icon"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 3.5h8l4 4v9H4zM12 3.5v4h4M7 11h6M7 14h4"/></svg></span> 草稿箱
+              <span class="count" id="count-drafts">0</span>
+            </button>
+            <button type="button" class="nav-item" data-filter="status" data-value="trash"><span class="icon"><svg viewBox="0 0 20 20"><path d="M4 6h12M7 6V3h6v3M6 8l1 9h6l1-9"/></svg></span>已删除<span class="count" id="count-trash">0</span></button>
+            <button type="button" class="nav-item" data-filter="status" data-value="quarantine">
+              <span class="icon"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.8 16 5v4.5c0 4-2.5 6.7-6 8-3.5-1.3-6-4-6-8V5l6-2.2ZM10 6v4M10 13h.01"/></svg></span> 隔离区
+              <span class="count" id="count-quarantine">0</span>
+            </button>
+            <button type="button" class="nav-item" data-filter="status" data-value="spam">
+              <span class="icon"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 6h9l-.6 10h-7.8L5.5 6ZM4 6h12M8 3.5h4M8.2 8.5v5M11.8 8.5v5"/></svg></span> 垃圾邮件
+              <span class="count" id="count-spam">0</span>
+            </button>
+          </nav>
+        </section>
+
+        <section id="server-folder-group" class="nav-group server-folder-group hidden">
+          <div class="nav-title"><span>服务端文件夹</span><button id="btn-create-folder" type="button" title="新建文件夹">＋</button></div>
+          <nav id="server-folder-nav"><small>正在读取…</small></nav>
+        </section>
+
+        <section class="nav-group">
+          <div class="nav-title facet-nav-title"><span>风险等级</span><small class="facet-scope-label">收件箱内</small></div>
+          <nav id="risk-nav">
+            <button type="button" class="nav-item" data-filter="verdict" data-value="phishing">
+              <span class="dot danger"></span> 钓鱼邮件
+              <span class="count" id="count-phishing">0</span>
+            </button>
+            <button type="button" class="nav-item" data-filter="verdict" data-value="suspicious">
+              <span class="dot warn"></span> 可疑邮件
+              <span class="count" id="count-suspicious">0</span>
+            </button>
+            <button type="button" class="nav-item" data-filter="verdict" data-value="clean">
+              <span class="dot success"></span> 正常邮件
+              <span class="count" id="count-clean">0</span>
+            </button>
+            <button type="button" class="nav-item" data-filter="verdict" data-value="unreviewed">
+              <span class="dot muted"></span> 待分析
+              <span class="count" id="count-unreviewed">0</span>
+            </button>
+          </nav>
+        </section>
+
+        <section class="nav-group">
+          <div class="nav-title facet-nav-title"><span>AI 分类</span><small class="facet-scope-label">收件箱内</small></div>
+          <nav id="category-nav">
+            <!-- 动态渲染 -->
+          </nav>
+        </section>
+
+        <section class="nav-group mail-filter-group">
+          <div class="filter-heading"><div><b>筛选条件</b><small>组合条件会同时生效</small></div><span id="filter-active-count" class="hidden">0</span></div>
+          <div class="filter-form">
+            <fieldset class="filter-block"><legend><b>收件时间</b><small>按邮件实际收到的时间</small></legend><div id="filter-days" class="filter-segments" role="group" aria-label="收件时间"><button type="button" data-value="1">24h</button><button type="button" data-value="7">7 天</button><button type="button" data-value="30">30 天</button><button type="button" class="active" data-value="9999" aria-pressed="true">全部</button></div></fieldset>
+            <fieldset class="filter-block"><legend><b>重要程度</b><small>由 MailAI 判断处理紧急程度</small></legend><div id="filter-priority" class="filter-segments priority-segments" role="group" aria-label="重要程度"><button type="button" class="active" data-value="" aria-pressed="true">不限</button><button type="button" data-value="高">高</button><button type="button" data-value="中">中</button><button type="button" data-value="低">低</button></div></fieldset>
+            <label class="filter-select-row" for="filter-domain"><span><b>发件人域名</b><small>发件邮箱中 @ 后面的部分</small></span><select id="filter-domain"><option value="">不限域名</option></select></label>
+            <label class="filter-switch-row" for="filter-unread"><span><b>仅看未读</b><small>只显示尚未阅读的收件邮件</small></span><span class="switch"><input type="checkbox" id="filter-unread"><i></i></span></label>
+            <label class="filter-switch-row" for="filter-attachments"><span><b>包含附件</b><small>只显示带附件的邮件</small></span><span class="switch"><input type="checkbox" id="filter-attachments"><i></i></span></label>
+            <button id="btn-reset-filter" class="filter-clear-button" type="button" disabled><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 6h8.5l-2-2M13.5 6l-2 2M15 10a5.5 5.5 0 1 1-1.6-3.9"/></svg><span>全部清除</span></button>
+          </div>
+        </section>
+      </aside>
+
+      <div class="pane-resizer" data-resizer="sidebar" role="separator" aria-orientation="vertical" aria-label="调整文件夹栏宽度" tabindex="0"><i></i></div>
+
+      <!-- 中间邮件列表 -->
+      <div class="list-pane">
+        <div class="list-header">
+          <div class="list-title">
+            <span id="list-title">全部邮件</span>
+            <span class="list-count" id="list-count">0 封</span>
+          </div>
+          <div class="list-sort">
+            <select id="list-sort">
+              <option value="date-desc">按时间倒序</option>
+              <option value="date-asc">按时间正序</option>
+              <option value="score-desc">按风险分</option>
+            </select>
+          </div>
+        </div>
+        <div id="bulk-toolbar" class="bulk-toolbar hidden">
+          <span id="bulk-count" role="status" aria-live="polite">已选 0 封</span>
+          <div class="bulk-actions" role="group" aria-label="批量邮件操作">
+            <button type="button" data-bulk-action="read" title="标记为已读"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 5.5h13v9h-13zM4.5 7l5.5 4 5.5-4"/></svg><span>已读</span></button>
+            <button type="button" data-bulk-action="unread" title="标记为未读"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 5.5h13v9h-13zM4.5 7l5.5 4 5.5-4M14.5 3.5h2"/></svg><span>未读</span></button>
+            <button type="button" data-bulk-action="star" title="添加星标"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 3 2.1 4.2 4.7.7-3.4 3.3.8 4.7-4.2-2.2-4.2 2.2.8-4.7-3.4-3.3 4.7-.7z"/></svg><span>星标</span></button>
+            <button type="button" class="bulk-trash" data-bulk-action="trash" title="移入垃圾箱"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12M7 6V4h6v2M6 8l.7 8h6.6l.7-8M8.5 9.5v4M11.5 9.5v4"/></svg><span>垃圾箱</span></button>
+            <select id="bulk-folder" aria-label="移动所选邮件"><option value="">移动到…</option></select>
+          </div>
+          <button type="button" id="bulk-cancel" aria-label="取消选择" title="取消选择 (Esc)">完成</button>
+        </div>
+        <div class="email-list" id="email-list">
+          <!-- 动态渲染 -->
+        </div>
+        <div class="list-footer" id="list-footer">
+          <div class="fetch-actions">
+            <button id="btn-fetch-more"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v10m-4-4 4 4 4-4M4 17h12"/></svg><span>同步更早邮件</span></button>
+            <button id="btn-fetch-all"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 7h12v9H4zM6 4h8M10 8v5m-2-2 2 2 2-2"/></svg><span>同步全部历史</span></button>
+          </div>
+          <span class="fetch-hint" id="fetch-hint"></span>
+        </div>
+      </div>
+
+      <div class="pane-resizer" data-resizer="list" role="separator" aria-orientation="vertical" aria-label="调整邮件列表宽度" tabindex="0"><i></i></div>
+
+      <!-- 右侧阅读区 -->
+      <div class="reading-pane" id="reading-pane">
+        <div class="reading-empty" id="reading-empty">
+          <div class="empty-icon" aria-hidden="true"><svg viewBox="0 0 72 72"><rect x="12" y="18" width="48" height="36" rx="10"/><path d="m17 25 19 14 19-14"/><path d="m17 49 13-12M55 49 42 37"/></svg></div>
+          <div class="empty-text"><strong>选择一封邮件开始阅读</strong><small>摘要、安全结果与正文会在这里显示</small></div>
+        </div>
+        <div class="reading-content hidden" id="reading-content">
+          <!-- 动态渲染 -->
+        </div>
+      </div>
+    </div>
+
+    <!-- 通讯录：邮件历史自动学习，也支持用户收藏与维护 -->
+    <div id="contact-center" class="attachment-center hidden">
+      <div class="attachment-center-backdrop"></div>
+      <section class="attachment-center-card contact-center-card" role="dialog" aria-modal="true" aria-labelledby="contact-center-title">
+        <header>
+          <div><span id="contact-center-eyebrow" class="eyebrow">自动学习邮件往来</span><h2 id="contact-center-title">通讯录</h2><p id="contact-center-description">常用联系人会优先出现，也可以补充姓名和公司</p></div>
+          <button id="btn-close-contacts" class="btn-ghost" aria-label="关闭通讯录">✕</button>
+        </header>
+        <div class="contact-center-tools">
+          <label class="attachment-search-box"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5"/><path d="m12.2 12.2 4.3 4.3"/></svg><input id="contact-center-search" type="search" placeholder="搜索姓名、拼音、邮箱或公司"></label>
+          <div id="contact-center-filters" class="contact-center-filters"><button type="button" class="active" data-contact-filter="all">全部</button><button type="button" data-contact-filter="favorite">★ 常用</button></div>
+          <button id="btn-new-contact" type="button" class="contact-new-button">＋ 新建联系人</button>
+        </div>
+        <div id="contact-center-list" class="contact-center-list" aria-live="polite"></div>
+        <footer id="contact-picker-footer" class="contact-picker-footer hidden"><span id="contact-picker-count">尚未选择</span><div><button id="btn-cancel-contact-picker" type="button">取消</button><button id="btn-apply-contacts" type="button" class="primary-action">应用选择</button></div></footer>
+        <div id="contact-editor" class="contact-editor hidden">
+          <button type="button" class="contact-editor-backdrop" data-close-contact-editor aria-label="关闭编辑"></button>
+          <form id="contact-form" class="contact-editor-card">
+            <header><div><span class="eyebrow">个人通讯录</span><h3 id="contact-editor-title">新建联系人</h3></div><button type="button" data-close-contact-editor>✕</button></header>
+            <div class="contact-editor-fields"><label>姓名<input id="contact-name" maxlength="80" placeholder="例如：张敏"></label><label>邮箱<input id="contact-email" type="email" maxlength="180" required placeholder="name@example.com"></label><label>公司 / 部门<input id="contact-company" maxlength="120" placeholder="选填"></label><label>备注<textarea id="contact-note" rows="3" maxlength="300" placeholder="选填，例如：采购负责人"></textarea></label><label class="contact-favorite-check"><input id="contact-favorite" type="checkbox"> 设为常用联系人</label></div>
+            <footer><button type="button" data-close-contact-editor>取消</button><button type="submit" class="primary-action">保存联系人</button></footer>
+          </form>
+        </div>
+      </section>
+    </div>
+
+    <!-- 附件中心 -->
+    <div id="attachment-center" class="attachment-center hidden">
+      <div class="attachment-center-backdrop"></div>
+      <section class="attachment-center-card" role="dialog" aria-modal="true" aria-labelledby="attachment-center-title">
+        <header>
+          <div><span class="eyebrow">文件工作台</span><h2 id="attachment-center-title">附件中心</h2><p>集中查找邮件中的文档、表格、图片与压缩文件</p></div>
+          <button id="btn-close-attachments" class="btn-ghost" aria-label="关闭附件中心">✕</button>
+        </header>
+        <div class="attachment-center-tools">
+          <label class="attachment-search-box"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5"/><path d="m12.2 12.2 4.3 4.3"/></svg><input id="attachment-search" type="search" placeholder="搜索文件名、邮件主题或发件人"></label>
+          <span id="attachment-count"></span>
+        </div>
+        <div id="attachment-type-filters" class="attachment-type-filters" aria-label="按文件类型筛选">
+          <button type="button" class="active" data-attachment-type="all">全部</button>
+          <button type="button" data-attachment-type="pdf">PDF</button>
+          <button type="button" data-attachment-type="sheet">表格</button>
+          <button type="button" data-attachment-type="document">文档</button>
+          <button type="button" data-attachment-type="image">图片</button>
+          <button type="button" data-attachment-type="archive">压缩包</button>
+          <button type="button" data-attachment-type="other">其他</button>
+        </div>
+        <div id="attachment-grid" class="attachment-grid"></div>
+      </section>
+    </div>
+
+    <div id="todo-center" class="attachment-center hidden">
+      <div class="attachment-center-backdrop"></div>
+      <section class="attachment-center-card todo-center-card" role="dialog" aria-modal="true" aria-labelledby="todo-center-title">
+        <header><div><span class="eyebrow">从邮件中识别，可人工校正</span><h2 id="todo-center-title">待办中心</h2></div><button id="btn-close-todos" class="btn-ghost">✕</button></header>
+        <div class="todo-center-tools">
+          <label class="todo-show-done"><input id="todo-show-done" type="checkbox"> 显示已完成</label>
+          <div class="todo-batch-actions">
+            <label class="todo-select-all"><input id="todo-select-all" type="checkbox"> <span>全选</span></label>
+            <button id="todo-complete-selected" type="button" disabled>完成所选</button>
+            <button id="todo-complete-all" type="button">全部完成</button>
+            <span id="todo-count"></span>
+          </div>
+        </div>
+        <div id="todo-list" class="todo-center-list"></div>
+      </section>
+    </div>
+
+    <!-- 写邮件弹窗 -->
+    <div id="compose-modal" class="compose-modal hidden">
+      <div class="compose-backdrop"></div>
+      <section class="compose-card" role="dialog" aria-modal="true" aria-labelledby="compose-title">
+        <header><div><h2 id="compose-title">写邮件</h2></div><button id="btn-close-compose" class="btn-ghost" title="保存草稿并关闭" aria-label="保存草稿并关闭">✕</button></header>
+        <div class="compose-fields">
+          <label class="compose-from-picker"><span>发件账号</span><select id="compose-from" aria-label="选择发件账号"></select></label>
+          <div class="compose-recipient-field"><label><span>收件人</span><input id="compose-to" class="contact-input" type="text" autocomplete="off" placeholder="输入或从通讯录选择"></label><button type="button" class="recipient-book-button" data-contact-target="compose-to" title="从通讯录添加收件人" aria-label="从通讯录添加收件人"><svg viewBox="0 0 20 20"><rect x="4.5" y="2.8" width="11.5" height="14.5" rx="2"/><circle cx="10.2" cy="7.7" r="1.6"/><path d="M7.6 14c.5-1.6 1.4-2.4 2.6-2.4s2.1.8 2.6 2.4M4.5 7H3M4.5 12H3"/></svg></button></div>
+          <details class="compose-extra-recipients"><summary>抄送 / 密送</summary><div class="compose-recipient-field"><label><span>抄送</span><input id="compose-cc" class="contact-input" type="text" autocomplete="off" placeholder="可选"></label><button type="button" class="recipient-book-button" data-contact-target="compose-cc" title="从通讯录添加抄送人" aria-label="从通讯录添加抄送人"><svg viewBox="0 0 20 20"><rect x="4.5" y="2.8" width="11.5" height="14.5" rx="2"/><circle cx="10.2" cy="7.7" r="1.6"/><path d="M7.6 14c.5-1.6 1.4-2.4 2.6-2.4s2.1.8 2.6 2.4M4.5 7H3M4.5 12H3"/></svg></button></div>
+          <div class="compose-recipient-field"><label><span>密送</span><input id="compose-bcc" class="contact-input" type="text" autocomplete="off" placeholder="可选"></label><button type="button" class="recipient-book-button" data-contact-target="compose-bcc" title="从通讯录添加密送人" aria-label="从通讯录添加密送人"><svg viewBox="0 0 20 20"><rect x="4.5" y="2.8" width="11.5" height="14.5" rx="2"/><circle cx="10.2" cy="7.7" r="1.6"/><path d="M7.6 14c.5-1.6 1.4-2.4 2.6-2.4s2.1.8 2.6 2.4M4.5 7H3M4.5 12H3"/></svg></button></div>
+          </details><label><span>主题</span><input id="compose-subject" type="text" placeholder="邮件主题"></label>
+        </div>
+        <div id="contact-suggestions" class="contact-suggestions hidden" role="listbox"></div>
+        <div class="compose-toolbar" aria-label="正文格式">
+          <div class="compose-toolbar-actions">
+            <button type="button" id="btn-compose-preview" class="compose-tool-labeled" title="预览收件人看到的邮件"><svg viewBox="0 0 20 20"><path d="M2.8 10s2.6-4.4 7.2-4.4 7.2 4.4 7.2 4.4-2.6 4.4-7.2 4.4S2.8 10 2.8 10Z"/><circle cx="10" cy="10" r="2"/></svg><span>预览</span></button>
+            <button type="button" id="btn-add-attachment" class="compose-tool-labeled compose-attach-button"><svg viewBox="0 0 20 20"><path d="M7.2 10.7 12 5.9a2.5 2.5 0 0 1 3.5 3.5l-6.3 6.3a4 4 0 0 1-5.7-5.7l6-6"/></svg><span>附件</span></button>
+            <button type="button" id="btn-paste-attachment" class="compose-tool-labeled" title="粘贴从文件管理器复制的附件">粘贴附件</button>
+            <div class="compose-signature-tools"><select id="compose-signature-select" aria-label="选择邮件签名"><option value="">不使用签名</option></select><button type="button" id="btn-manage-signatures" title="管理签名">管理</button></div>
+            <div class="compose-ai-tools"><button type="button" id="btn-compose-ai" class="compose-ai-main" aria-expanded="false" aria-controls="compose-ai-panel"><span class="compose-assistant-face" aria-hidden="true"><span></span><i></i><i></i></span><span class="compose-ai-label">MailAI 帮写</span><small>同一个助手 · 写作模式</small></button></div>
+            <div class="compose-toolbar-status"><button type="button" id="draft-state" disabled aria-live="polite" title="草稿仅保存在本机，不会同步到邮箱服务器">草稿自动保存</button></div>
+          </div>
+          <div class="compose-format-tools">
+            <span class="compose-format-group compose-format-selects"><select id="compose-block-format" data-format-command="formatBlock" aria-label="段落样式"><option value="p">正文</option><option value="h2">大标题</option><option value="h3">小标题</option><option value="blockquote">引用</option></select><select id="compose-font-name" data-format-command="fontName" aria-label="字体"><option value="Arial">Arial</option><option value="Helvetica">Helvetica</option><option value="PingFang SC" selected>苹方</option><option value="Microsoft YaHei">微软雅黑</option><option value="Georgia">Georgia</option></select><select id="compose-font-size" data-format-command="fontSize" aria-label="字号"><option value="2">小</option><option value="3" selected>正文</option><option value="4">中</option><option value="5">大</option><option value="6">特大</option></select></span>
+            <span class="compose-format-group"><button type="button" data-command="undo" title="撤销" aria-label="撤销">↶</button><button type="button" data-command="redo" title="重做" aria-label="重做">↷</button></span>
+            <span class="compose-format-group"><button type="button" data-command="bold" title="加粗" aria-label="加粗"><b>B</b></button><button type="button" data-command="italic" title="斜体" aria-label="斜体"><i>I</i></button><button type="button" data-command="underline" title="下划线" aria-label="下划线"><u>U</u></button><button type="button" data-command="strikeThrough" title="删除线" aria-label="删除线"><s>S</s></button><label class="compose-color-tool" title="文字颜色"><span>A</span><input id="compose-text-color" type="color" value="#24372f" aria-label="文字颜色"></label><label class="compose-color-tool highlight" title="高亮颜色"><span>荧</span><input id="compose-highlight-color" type="color" value="#fff1a8" aria-label="高亮颜色"></label></span>
+            <span class="compose-format-group"><button type="button" data-command="justifyLeft" title="左对齐" aria-label="左对齐">≡</button><button type="button" data-command="justifyCenter" title="居中" aria-label="居中">≣</button><button type="button" data-command="justifyRight" title="右对齐" aria-label="右对齐">≡</button><button type="button" data-command="insertUnorderedList" title="项目列表">• 列表</button><button type="button" data-command="insertOrderedList" title="编号列表">1. 列表</button><button type="button" data-command="outdent" title="减少缩进">←</button><button type="button" data-command="indent" title="增加缩进">→</button></span>
+            <span class="compose-format-group compose-insert-group"><button type="button" data-command="createLink" title="插入链接">链接</button><button type="button" id="btn-insert-compose-image" title="插入正文图片">图片</button><button type="button" data-command="removeFormat" title="清除格式">清除</button></span>
+          </div>
+          <input id="compose-attachments-input" type="file" multiple hidden><input id="compose-image-input" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+        </div>
+        <div class="compose-attachment-hint">可拖入文件或粘贴剪贴板附件 · 单个 20MB / 合计 25MB · 点击附件预览</div>
+        <div id="compose-attachments" class="compose-attachments hidden" aria-live="polite"></div>
+        <div id="compose-preflight" class="compose-preflight hidden" aria-live="polite"></div>
+        <div id="compose-body" class="compose-editor">
+          <div id="compose-message" class="compose-message" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="输入邮件正文…"></div>
+          <section id="compose-signature" class="compose-signature hidden" contenteditable="false" aria-label="邮件签名"><div id="compose-signature-content"></div></section>
+          <section id="compose-quote" class="compose-quote hidden" contenteditable="false" aria-label="引用的原邮件">
+            <button id="compose-quote-toggle" class="compose-quote-toggle" type="button" aria-expanded="true"><span id="compose-quote-label">引用的原邮件</span><small>不会被 AI 改写</small><b aria-hidden="true">⌃</b></button>
+            <div id="compose-quote-content" class="compose-quote-content"></div>
+          </section>
+        </div>
+        <footer><button id="btn-discard-draft" class="btn-ghost" title="删除这封邮件的本地草稿">舍弃草稿</button><div><button id="btn-save-draft" class="btn-ghost" title="保存到本机草稿箱，稍后继续写">存草稿并关闭</button><button id="btn-send-mail" class="primary-action compose-send-button" disabled title="配置 SMTP 后启用">发送（待配置 SMTP）</button></div></footer>
+      </section>
+        <section id="compose-ai-panel" class="compose-ai-panel hidden" aria-label="AI 写作助手">
+          <div class="compose-ai-panel-head">
+            <div class="compose-ai-identity"><div class="assistant-mini compose-ai-avatar" aria-hidden="true"><span></span><i></i><i></i></div><div><span class="compose-ai-kicker">MailAI Copilot · 写作模式</span><b id="compose-ai-scene-title">告诉我这封邮件想达到什么目的</b><small id="compose-ai-status">与邮箱守护助手是同一个 AI；草稿只进入预览，不会直接覆盖正文。</small></div></div>
+            <button id="btn-close-compose-ai" type="button" aria-label="收起 AI 写作助手">✕</button>
+          </div>
+          <div class="compose-ai-scroll">
+            <label class="compose-ai-request" for="compose-ai-instruction"><span>这封邮件想达到什么目的？</span><textarea id="compose-ai-instruction" rows="2" maxlength="1000" placeholder="例如：邀请项目组参加周五评审，并提醒大家提前准备演示材料"></textarea></label>
+            <div class="compose-ai-context-block">
+              <div class="compose-ai-context-title"><b>参考内容</b><span id="compose-ai-basis">请至少填写一项内容</span></div>
+              <div class="compose-ai-context-options">
+                <label><input type="checkbox" value="subject" checked><span>邮件主题</span></label>
+                <label><input type="checkbox" value="recipients" checked><span>收件人</span></label>
+                <label><input type="checkbox" value="original" checked><span>原邮件</span></label>
+                <label><input type="checkbox" value="body" checked><span>已有正文</span></label>
+                <label><input type="checkbox" value="attachments" checked><span>附件名称</span></label>
+              </div>
+            </div>
+            <div class="compose-ai-controls">
+              <label><span>语气</span><select id="compose-ai-tone"><option>正式</option><option>简洁</option><option>友好</option><option>坚定</option></select></label>
+              <label><span>篇幅</span><select id="compose-ai-length"><option>简短</option><option selected>适中</option><option>详细</option></select></label>
+              <button id="btn-ai-generate" type="button" class="compose-ai-generate">生成草稿</button>
+              <div class="compose-ai-quick-actions" aria-label="AI 快速改写"><button type="button" data-ai-compose="polish">润色正文</button><button type="button" data-ai-compose="shorten">精简</button><button type="button" data-ai-compose="translate_en">译为英文</button></div>
+            </div>
+            <div id="compose-ai-preview" class="compose-ai-preview hidden" aria-live="polite">
+              <div class="compose-ai-preview-head"><div><b>AI 草稿预览</b><small id="compose-ai-preview-basis"></small></div><span>请核对事实、日期和收件人</span></div>
+              <div id="compose-ai-output" class="compose-ai-output"></div>
+              <div class="compose-ai-preview-actions"><button id="btn-ai-regenerate" type="button">重新生成</button><div><button id="btn-ai-append" type="button">追加到正文</button><button id="btn-ai-replace" type="button" class="compose-ai-apply">替换正文</button></div></div>
+            </div>
+            <p class="compose-ai-privacy">仅将你勾选的内容发送给已配置的 AI 模型；“附件名称”不代表读取附件正文。</p>
+          </div>
+        </section>
+      <div id="compose-preview-modal" class="compose-subdialog hidden"><button type="button" class="compose-subdialog-backdrop" data-close-compose-preview aria-label="关闭预览"></button><section role="dialog" aria-modal="true" aria-labelledby="compose-preview-title"><header><div><span class="eyebrow">发送效果</span><h3 id="compose-preview-title">邮件预览</h3></div><button type="button" data-close-compose-preview>✕</button></header><div class="compose-preview-meta"><p><span>收件人</span><b id="compose-preview-to"></b></p><p><span>主题</span><b id="compose-preview-subject"></b></p></div><iframe id="compose-preview-frame" sandbox="allow-same-origin" title="邮件正文预览"></iframe></section></div>
+      <div id="signature-manager" class="compose-subdialog hidden"><button type="button" class="compose-subdialog-backdrop" data-close-signatures aria-label="关闭签名管理"></button><section class="signature-manager-card" role="dialog" aria-modal="true" aria-labelledby="signature-manager-title"><header><div><span class="eyebrow">个性化发件</span><h3 id="signature-manager-title">签名管理</h3></div><button type="button" data-close-signatures>✕</button></header><div class="signature-manager-body"><aside><button type="button" id="btn-new-signature" class="signature-new">＋ 新建签名</button><div id="signature-list" class="signature-list"></div></aside><main><div class="signature-profile"><div class="signature-section-title"><div><b>发件人资料</b><small>用于签名展示和 AI 生成</small></div><select id="signature-ai-style"><option>专业简洁</option><option>温暖友好</option><option>科技创意</option><option>沉稳管理者</option></select></div><div class="signature-profile-grid"><label>姓名<input id="signature-profile-name" maxlength="80"></label><label>职位<input id="signature-profile-title" maxlength="100"></label><label>部门<input id="signature-profile-department" maxlength="100"></label><label>公司<input id="signature-profile-company" maxlength="120"></label><label>电话<input id="signature-profile-phone" maxlength="80"></label><label>邮箱<input id="signature-profile-email" maxlength="160"></label><label class="wide">网站<input id="signature-profile-website" maxlength="200" placeholder="www.example.com"></label></div><button type="button" id="btn-ai-generate-signature" class="signature-ai-button"><span>✦</span> AI 生成 3 套创意签名</button></div><div id="signature-ai-options" class="signature-ai-options hidden"></div><div class="signature-editor-section"><label>签名名称<input id="signature-name" maxlength="80" placeholder="例如：工作签名"></label><div class="signature-editor-head"><span>签名内容</span><small>可直接修改文字和格式</small></div><div id="signature-editor" class="signature-editor" contenteditable="true" role="textbox" aria-multiline="true"></div><label class="signature-default"><input id="signature-make-default" type="checkbox"> 设为默认签名</label></div></main></div><footer><button type="button" id="btn-delete-signature" class="signature-delete">删除签名</button><div><button type="button" data-close-signatures>取消</button><button type="button" id="btn-save-signature" class="primary-action">保存签名</button></div></footer></section></div>
+    </div>
+
+    <!-- 日报弹窗 -->
+    <div id="digest-modal" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="digest-title-group"><h2 id="digest-title"><span class="digest-title-icon"><svg viewBox="0 0 20 20"><path d="M5 3.5h10v13H5zM7.5 7h5M7.5 10h5M7.5 13h3"/></svg></span><span>今日日报</span></h2><small id="digest-account-label"></small></div>
+          <div class="digest-header-actions">
+            <select id="digest-history-select" class="digest-history-select">
+              <option value="">今日日报</option>
+            </select>
+            <button id="btn-regenerate-digest" class="icon-text-button" title="重新生成今日日报"><svg viewBox="0 0 20 20"><path d="M15.5 6V3.5M15.5 3.5H13M15.2 6A6.5 6.5 0 1 0 16 12"/></svg><span>刷新</span></button>
+            <button class="modal-close modern-close" aria-label="关闭"><svg viewBox="0 0 20 20"><path d="m6 6 8 8M14 6l-8 8"/></svg></button>
+          </div>
+        </div>
+        <div class="modal-body markdown-body" id="digest-body">
+          正在生成…
+        </div>
+      </div>
+    </div>
+
+    <!-- 误报 / 漏报反馈 -->
+    <div id="feedback-modal" class="modal feedback-modal hidden" aria-hidden="true">
+      <div class="modal-backdrop" data-close-feedback></div>
+      <section class="modal-content feedback-dialog" role="dialog" aria-modal="true" aria-labelledby="feedback-title">
+        <div class="modal-header feedback-header">
+          <div class="feedback-heading">
+            <span class="feedback-heading-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3.2 19 6v5.2c0 4.6-2.9 7.8-7 9.6-4.1-1.8-7-5-7-9.6V6l7-2.8Z"/><path d="m8.8 12 2 2 4.4-4.5"/></svg></span>
+            <div><span class="eyebrow">帮助 MailAI 改进判断</span><h2 id="feedback-title">标记为误报</h2><p id="feedback-subtitle"></p></div>
+          </div>
+          <button id="btn-close-feedback" class="modal-close modern-close" type="button" aria-label="关闭"><svg viewBox="0 0 20 20"><path d="m6 6 8 8M14 6l-8 8"/></svg></button>
+        </div>
+        <div class="modal-body feedback-modal-body">
+          <div id="feedback-impact" class="feedback-impact"></div>
+          <fieldset class="feedback-reason-fieldset">
+            <legend>主要原因 <small>可多选，也可以直接补充说明</small></legend>
+            <div id="feedback-reasons" class="feedback-reasons"></div>
+          </fieldset>
+          <label class="feedback-note-label" for="feedback-note"><span>补充说明 <small>选填</small></span><textarea id="feedback-note" rows="3" maxlength="500" placeholder="例如：该发件人为长期合作方，邮件内容与当前项目一致"></textarea><em><span id="feedback-note-count">0</span>/500</em></label>
+          <p class="feedback-privacy">反馈仅用于本机规则校准和审计记录，不会回复发件人。</p>
+        </div>
+        <footer class="feedback-actions">
+          <button id="btn-cancel-feedback" type="button" class="action-btn action-secondary">取消</button>
+          <button id="btn-submit-feedback" type="button" class="action-btn action-primary">确认标记</button>
+        </footer>
+      </section>
+    </div>
+
+    <!-- 退出邮箱确认 -->
+    <div id="logout-modal" class="modal hidden" aria-hidden="true">
+      <div class="modal-backdrop" data-close-logout></div>
+      <section class="modal-content logout-dialog" role="dialog" aria-modal="true" aria-labelledby="logout-title">
+        <div class="modal-header">
+          <div><h2 id="logout-title">删除邮箱</h2><p id="logout-account-label">删除后将移除本机保存的邮箱授权码</p></div>
+          <button id="btn-close-logout" class="modal-close modern-close" type="button" aria-label="关闭"><svg viewBox="0 0 20 20"><path d="m6 6 8 8M14 6l-8 8"/></svg></button>
+        </div>
+        <div class="modal-body logout-modal-body">
+          <p class="logout-prompt">请选择如何处理该邮箱保存在本机的邮件历史：</p>
+          <label class="logout-choice selected">
+            <input type="radio" name="logout-history" value="keep" checked>
+            <span><b>保留邮件历史</b><small>从账号列表移除邮箱和授权码；以后重新添加时可继续使用本地邮件。</small></span>
+          </label>
+          <label class="logout-choice danger">
+            <input type="radio" name="logout-history" value="clear">
+            <span><b>清空邮件历史</b><small>同时永久删除该账号的本地数据库和原始邮件，其他账号不受影响。</small></span>
+          </label>
+          <div id="logout-warning" class="logout-warning hidden">此操作无法撤销。服务器上的邮件不会被删除。</div>
+        </div>
+        <footer class="logout-actions">
+          <button id="btn-cancel-logout" type="button" class="action-btn action-secondary">取消</button>
+          <button id="btn-confirm-logout" type="button" class="action-btn action-danger">删除邮箱</button>
+        </footer>
+      </section>
+    </div>
+
+    <!-- 日报来源邮件抽屉 -->
+    <div id="digest-email-drawer" class="drawer hidden">
+      <div class="drawer-backdrop"></div>
+      <div class="drawer-panel">
+        <div class="drawer-header">
+          <h3><span class="digest-title-icon"><svg viewBox="0 0 20 20"><path d="M3.5 5.5h13v9h-13zM4 6l6 5 6-5"/></svg></span>来源邮件</h3>
+          <button class="drawer-close modern-close" aria-label="关闭"><svg viewBox="0 0 20 20"><path d="m6 6 8 8M14 6l-8 8"/></svg></button>
+        </div>
+        <div class="drawer-body" id="digest-email-body">
+          加载中…
+        </div>
+        <div class="drawer-footer">
+          <button id="btn-go-to-email" class="btn-success">在邮件列表中查看</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 当前联系人的往来邮件 -->
+    <div id="correspondence-drawer" class="drawer hidden" aria-hidden="true">
+      <div class="drawer-backdrop" data-close-correspondence></div>
+      <aside class="drawer-panel correspondence-panel" role="dialog" aria-modal="true" aria-labelledby="correspondence-title">
+        <header class="drawer-header correspondence-header">
+          <div class="correspondence-heading">
+            <span class="correspondence-heading-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M3.5 5.5h13v9h-13zM4 6l6 5 6-5"/><path d="M7 16.5h6"/></svg></span>
+            <div><span>联系人邮件</span><h3 id="correspondence-title">往来邮件</h3><p id="correspondence-subtitle">正在查找历史邮件…</p></div>
+          </div>
+          <button id="btn-close-correspondence" class="drawer-close modern-close" type="button" aria-label="关闭往来邮件"><svg viewBox="0 0 20 20"><path d="m6 6 8 8M14 6l-8 8"/></svg></button>
+        </header>
+        <div id="correspondence-body" class="drawer-body correspondence-body" aria-live="polite">
+          <div class="correspondence-loading"><span></span><b>正在查找往来邮件</b></div>
+        </div>
+        <div id="correspondence-processing" class="correspondence-processing hidden" role="status" aria-live="assertive">
+          <span class="correspondence-processing-spinner" aria-hidden="true"></span>
+          <strong>正在移入垃圾箱</strong>
+          <small id="correspondence-processing-detail">正在安全处理所选邮件，请稍候…</small>
+          <i aria-hidden="true"><span></span></i>
+        </div>
+      </aside>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+
+    <dialog id="update-dialog" class="update-dialog">
+      <form method="dialog">
+        <header><div><small>MailAI 应用更新</small><h3 id="update-dialog-title">发现新版本</h3></div><button value="cancel" aria-label="稍后更新">×</button></header>
+        <p id="update-dialog-device"></p>
+        <div id="update-dialog-notes" class="update-dialog-notes"></div>
+        <p id="update-dialog-warning" class="update-dialog-warning"></p>
+        <footer><button value="cancel">稍后</button><button id="btn-install-update" value="default" class="primary-action">下载并安装</button></footer>
+      </form>
+    </dialog>
+
+    <!-- MailAI 常驻邮件助手 -->
+    <div id="mail-assistant" class="mail-assistant state-calm">
+      <div id="assistant-nudge" class="assistant-nudge hidden"></div>
+      <button id="assistant-orb" class="assistant-orb" type="button" aria-label="打开小邮，MailAI 邮件助手" aria-describedby="companion-caption" aria-expanded="false" aria-controls="assistant-panel">
+        <span class="companion-art" aria-hidden="true"></span>
+        <span id="companion-caption" class="companion-caption">小邮在这里</span>
+        <span id="assistant-badge" class="assistant-badge hidden">0</span>
+      </button>
+      <aside id="assistant-panel" class="assistant-panel hidden" aria-label="MailAI 邮件助手">
+        <header class="assistant-head">
+          <div class="assistant-mini"><span></span><i></i><i></i></div>
+          <div class="assistant-title"><span class="eyebrow">MailAI</span><h2>小邮</h2></div>
+          <div class="assistant-head-actions">
+            <button id="assistant-new" class="btn-ghost" type="button" title="新对话" aria-label="新对话"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg></button>
+            <button id="assistant-history" class="btn-ghost" type="button" title="历史会话" aria-label="历史会话"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 6.3A7 7 0 1 1 3 10"/><path d="M3.2 3.8v3h3M10 6.2v4.1l2.7 1.7"/></svg></button>
+            <button id="assistant-float" class="btn-ghost" type="button" title="切换为浮动窗口" aria-label="切换为浮动窗口"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3.5" y="5.5" width="11" height="10" rx="2"/><path d="M7 5.5V4.8c0-1.1.9-2 2-2h5.2c1.1 0 2 .9 2 2V10c0 1.1-.9 2-2 2h-.7"/></svg></button>
+            <button id="assistant-close" class="btn-ghost" type="button" title="关闭" aria-label="关闭助手"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 5.5 9 9m0-9-9 9"/></svg></button>
+          </div>
+        </header>
+        <section id="assistant-history-panel" class="assistant-history-panel hidden"><div class="assistant-history-title"><b>历史会话</b><button id="assistant-history-back" type="button">返回</button></div><div id="assistant-history-list"></div></section>
+        <div id="assistant-alert-strip" class="assistant-alert-strip hidden"></div>
+        <nav class="secretary-tabs" aria-label="助手工作区"><button type="button" data-secretary-view="chat" aria-pressed="true">对话</button><button type="button" data-secretary-view="briefing" aria-pressed="false">工作简报</button></nav>
+        <section id="secretary-briefing" class="hidden" aria-label="工作简报">
+          <div class="secretary-focus" aria-label="简报视角"><button type="button" data-secretary-focus="execution" aria-pressed="true">执行视角</button><button type="button" data-secretary-focus="decision" aria-pressed="false">决策视角</button><button type="button" id="secretary-refresh" aria-label="刷新工作简报">刷新</button></div>
+          <div id="secretary-content" aria-live="polite"></div>
+        </section>
+        <div id="assistant-messages" class="assistant-messages"></div>
+        <template id="assistant-welcome-template">
+          <section class="assistant-welcome" aria-label="开始新对话">
+            <span class="assistant-welcome-eyebrow">和小邮一起，把工作理清楚</span>
+            <h3>今天想从哪里开始？</h3>
+            <p>查邮件、理待办，也可以带上图片或附件一起分析。</p>
+            <div id="assistant-quick" class="assistant-quick">
+              <button type="button" data-assistant-question="总结最近的重要邮件"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 7 8 6 8-6"/></svg><span>梳理重要邮件<small>抓重点，少翻找</small></span></button>
+              <button type="button" data-assistant-question="今天有什么要处理？"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="3"/><path d="M9 3h6M9 12l2 2 4-4"/></svg><span>看看今天待办<small>把下一步理清楚</small></span></button>
+              <button type="button" data-assistant-question="有哪些高风险邮件？"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z M12 8v5m0 3v.1"/></svg><span>核对风险提醒<small>了解需要留意的邮件</small></span></button>
+              <button type="button" data-assistant-question="你能做什么？"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z"/></svg><span>了解小邮<small>看看可以怎样配合你</small></span></button>
+            </div>
+          </section>
+        </template>
+        <div class="assistant-composer">
+        <div class="assistant-context-row">
+          <span class="assistant-context-label">参考</span>
+          <details id="assistant-scope-picker" class="assistant-scope-picker"><summary><svg class="scope-symbol" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="5.5"/><circle cx="10" cy="10" r="1.5"/></svg><span id="assistant-scope-label">当前邮箱</span><svg class="scope-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg></summary><div class="assistant-scope-options"><b>从哪里查找邮件</b><button type="button" data-assistant-scope="account">当前邮箱<small>此邮箱已同步的邮件</small></button><button type="button" data-assistant-scope="selected">正在阅读的邮件<small>仅分析打开的这一封</small></button><button type="button" data-assistant-scope="filtered">当前列表<small>列表中属于当前邮箱的邮件</small></button><small id="assistant-scope-note">每次最多分析 20 封，可缩小范围继续查看</small></div></details>
+          <button id="assistant-scope-clear" class="hidden" type="button" aria-label="清除邮件范围，恢复当前邮箱" title="恢复当前邮箱">×</button>
+          <select id="assistant-scope" class="hidden" aria-label="查询范围"><option value="account">当前邮箱</option><option value="selected">正在阅读的邮件</option><option value="filtered">当前列表中的本邮箱邮件</option></select>
+        </div>
+        <form id="assistant-form" class="assistant-form">
+          <textarea id="assistant-input" rows="1" maxlength="12000" aria-label="向小邮提问，最多 12000 字" placeholder="问问你的邮箱…" required></textarea>
+          <button id="assistant-send" type="submit" class="assistant-send-button" aria-label="发送问题" title="发送">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3 10 14M21 3l-7 18-4-7-7-4 18-7Z"/></svg>
+          </button>
+        </form>
+        </div>
+        <div class="assistant-run-actions"><button type="button" id="assistant-stop" class="hidden">停止生成</button><button type="button" id="assistant-retry" class="hidden">重试上个问题</button></div>
+        <small class="assistant-privacy">AI 建议仅供参考，重要事项请核实</small>
+        <div id="assistant-resize-handle" class="assistant-resize-handle" aria-hidden="true" title="拖动调整大小"></div>
+      </aside>
+    </div>
+
+    <!-- 邮箱连接与模型启用分别完成 -->
+    <div id="onboarding-overlay" class="onboarding-overlay hidden">
+      <section class="onboarding-card" aria-labelledby="onboarding-title">
+        <div class="onboarding-brand"><img src="/static/assets/mailai-mark.png" alt=""><span>MailAI</span></div>
+        <div class="onboarding-step">开始使用 · 连接邮箱</div>
+        <h2 id="onboarding-title">欢迎使用 MailAI</h2>
+        <p>让小邮帮你读邮件、理待办、留意风险来信。连接邮箱后即可使用邮件功能；小邮对话和 AI 分析需要另行配置模型服务，可稍后设置。</p>
+        <form id="onboarding-form">
+          <label>邮箱账号<input id="onboarding-user" type="email" autocomplete="username" required placeholder="name@example.com"></label>
+          <label>客户端授权密码<input id="onboarding-password" type="password" autocomplete="current-password" required placeholder="请输入邮箱授权码"></label>
+          <div id="onboarding-provider-hint" class="provider-hint">输入邮箱地址后自动识别收发服务器</div>
+          <details class="onboarding-help"><summary>如何获取客户端授权码？</summary><p>在邮箱网页版的设置中查找“客户端 / IMAP / SMTP”，开启客户端服务并生成授权码。企业邮箱如无此入口，请向管理员获取连接方式。授权码与模型 API Key 不同。</p></details>
+          <details class="onboarding-advanced">
+            <summary>服务器高级设置</summary>
+            <div class="form-row host-row"><label>IMAP 服务器<input id="onboarding-host" value="imap.baosight.com" required></label><label>端口<input id="onboarding-port" type="number" value="993" required></label></div>
+            <div class="form-row host-row"><label>SMTP 服务器<input id="onboarding-smtp-host" value="smtp.baosight.com" required></label><label>端口<input id="onboarding-smtp-port" type="number" value="465" required></label></div>
+            <div class="form-row checks"><label class="check-row"><input id="onboarding-smtp-ssl" type="checkbox" checked>SMTP SSL</label><label class="check-row"><input id="onboarding-smtp-starttls" type="checkbox">SMTP STARTTLS</label></div>
+            <label class="check-row"><input id="onboarding-verify-ssl" type="checkbox" checked>校验 SSL 证书</label>
+          </details>
+          <div id="onboarding-error" class="onboarding-error hidden"></div>
+          <button id="onboarding-submit" type="submit" class="onboarding-submit"><span>连接邮箱</span><svg viewBox="0 0 20 20"><path d="M4 10h11M11 6l4 4-4 4"/></svg></button>
+          <button id="onboarding-later" type="button" class="onboarding-manage">稍后连接，先看看</button>
+          <button id="onboarding-manage-accounts" type="button" class="onboarding-manage hidden">管理已保存账号</button>
+        </form>
+        <small>账号数据仅保存在当前电脑；不同邮箱使用独立本地数据空间。</small>
+      </section>
+    </div>
+
+    <!-- 后台同步进度卡：不阻挡用户使用邮箱 -->
+    <div id="fetch-overlay" class="fetch-overlay hidden">
+      <div class="fetch-progress-box">
+        <button id="btn-toggle-fetch" class="fetch-progress-toggle" type="button" aria-label="展开同步详情" aria-expanded="false" title="展开同步详情"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg></button>
+        <div class="fetch-spinner" id="fetch-spinner"></div>
+        <div class="fetch-title" id="fetch-title">正在拉取邮件</div>
+        <div class="fetch-message" id="fetch-message">请稍候...</div>
+        <div class="progress-bar" id="progress-bar">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <div class="fetch-count" id="fetch-count"></div>
+        <button id="btn-cancel-fetch" class="btn-cancel">暂停同步</button>
+      </div>
+    </div>
+    <dialog id="migration-password-dialog" class="migration-password-dialog">
+      <form method="dialog">
+        <header><div><small id="migration-password-eyebrow">安全迁移</small><h3 id="migration-password-title">设置迁移密码</h3></div><button value="cancel" aria-label="取消">×</button></header>
+        <p id="migration-password-help"></p>
+        <label>迁移密码<input id="migration-password" type="password" autocomplete="new-password" minlength="12"></label>
+        <label id="migration-password-confirm-row">再次输入<input id="migration-password-confirm" type="password" autocomplete="new-password" minlength="12"></label>
+        <label id="migration-no-password-row" class="check-row"><input id="migration-no-password" type="checkbox">我确认使用未加密迁移包</label>
+        <div id="migration-password-error" role="alert"></div>
+        <footer><button value="cancel">取消</button><button id="migration-password-submit" value="default">继续</button></footer>
+      </form>
+    </dialog>
+  </div>
+  <script src="/static/attachment-preview.js?v=1"></script>
+  <script src="/static/app.js?v=mail-theme-75"></script>
+  <script src="/static/mail-library.js?v=2"></script>
+  <script src="/static/server-cleanup.js?v=2"></script>
+  <script src="/static/workspace.js?v=mail-theme-59"></script>
+  <script src="/static/secretary.js?v=tasks-3"></script>
+  <script src="/static/task-planner.js?v=tasks-1"></script>
+  <script src="/static/assistant-images.js?v=longshot-4"></script>
+  <script src="/static/assistant-attachments.js?v=xiaoyou-3"></script>
+  <script src="/static/companion.js?v=mint-2"></script>
+  <script src="/static/companion-motion.js?v=mint-3"></script>
+  <script src="/static/onboarding.js?v=3"></script>
+</body>
+</html>

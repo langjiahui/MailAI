@@ -1,0 +1,19 @@
+imapclient>=3.0
+mail-parser>=3.15
+fastapi>=0.110
+uvicorn>=0.29
+apscheduler>=3.10,<4
+dnspython>=2.6
+python-dotenv>=1.0
+keyring>=25.0; sys_platform == "win32"
+certifi>=2025.0
+cryptography>=44,<47
+Pillow>=10.0
+pypdf>=6.17.0
+openpyxl>=3.1,<4
+xlrd>=2.0,<3
+mammoth>=1.8,<2
+bleach>=6,<7
+olefile>=0.47,<1
+pypdfium2>=4.30,<6
+pypinyin>=0.53,<1
