@@ -16,6 +16,6 @@ for (const feature of ['openContactCenter', 'appendRecipients', 'contactRecipien
 }
 if (!js.includes('`${safeName} <${email}>`')) throw new Error('selected contacts should retain their display names');
 if (!js.includes('/api/mail/contacts/correspondence?email=${encodeURIComponent(source.email)}')) throw new Error('contact history should query by exact contact email');
-if (!js.includes('closeContactCenter();\n  return loadCorrespondence')) throw new Error('contact center should close before its history drawer opens');
+if (!/closeContactCenter\(\);\r?\n\s*return loadCorrespondence/.test(js)) throw new Error('contact center should close before its history drawer opens');
 if (!css.includes('.contact-center-item') || !css.includes('.recipient-book-button') || !css.includes('.contact-correspondence-trigger:focus-visible')) throw new Error('missing contact styles');
 console.log('PASS contact center integration');

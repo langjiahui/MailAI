@@ -4,9 +4,9 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 
-当前版本：**v1.0.9**
+当前版本：**v1.0.10**
 
-本次更新：联系人中心的“往来次数”现在可以直接打开与该联系人的历史往来邮件，并复用邮件详情中的往来抽屉，支持当前邮箱隔离、失败重试和批量处理；同时优化安全策略下拉控件的显示，并补全 Windows BuildKit 所需的 README、发布清单、macOS 安装脚本及发布工作流文件，确保离线构建包具备完整发布校验能力。
+本次更新：联系人中心的“往来次数”现在可以直接打开与该联系人的历史往来邮件，并复用邮件详情中的往来抽屉，支持当前邮箱隔离、失败重试和批量处理；同时优化安全策略下拉控件的显示，修复 Windows 发布校验对 CRLF 换行格式的兼容问题，并补全 Windows BuildKit 所需的发布文件，确保离线构建包具备完整发布校验能力。
 
 ## 下载 MailAI
 
