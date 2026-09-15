@@ -18,7 +18,7 @@ assert.match(js, /async function deleteSelectedCorrespondence\(/, 'Selected corr
 assert.match(js, /function closeCorrespondence\(\) \{[\s\S]*if \(correspondenceBusy\)/, 'The drawer must not close during an in-flight deletion');
 assert.match(js, /确认将选中的 \$\{ids\.length\} 封/, 'Deleting correspondence mail must require explicit confirmation with a count');
 assert.match(js, /body:JSON\.stringify\(\{ids:batch, action:'trash'\}\)/, 'Correspondence deletion must use the server-resolved trash operation');
-assert.match(js, /correspondenceAccountId = selectedEmailAccountId \|\| activeMailAccount\(\)\?\.id/, 'The drawer must retain the source mailbox identity');
+assert.match(js, /correspondenceAccountId = source\.accountId \|\| activeMailAccount\(\)\?\.id/, 'The drawer must retain the source mailbox identity');
 assert.match(js, /const accountId = correspondenceAccountId \|\| selectedEmailAccountId/, 'Deletion must remain scoped to the mailbox used by the result drawer');
 assert.match(js, /start \+= 100/, 'Large selections should be processed in bounded batches');
 assert.match(js, /status:'trash'/, 'Successful rows should immediately become non-selectable trash entries');
@@ -31,5 +31,7 @@ assert.doesNotMatch(deleteFlow, /await loadData\(\)/, 'Mailbox refresh must not 
 assert.match(deleteFlow, /loadData\(\)\.catch/, 'Background refresh failures should be handled');
 assert.match(css, /@keyframes correspondence-progress/, 'The wait state should include visible indeterminate progress');
 assert.match(server, /@app\.get\("\/api\/emails\/\{email_id\}\/correspondence"\)/, 'The correspondence endpoint must exist');
+assert.match(server, /@app\.get\("\/api\/mail\/contacts\/correspondence"\)/, 'Contacts need a direct correspondence endpoint');
+assert.match(js, /function reloadCorrespondence\(\)/, 'Retry should preserve whether the drawer was opened from a message or contact');
 
 console.log('Correspondence drawer entry, states, direction and navigation are wired');

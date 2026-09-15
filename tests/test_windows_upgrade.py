@@ -8,6 +8,9 @@ from app import paths, credential_store
 def main():
  root=Path(__file__).resolve().parents[1]
  text=(root/'scripts/mailai.iss').read_text()
+ kit=(root/'scripts/create_windows_buildkit.py').read_text()
+ for dependency in ['"scripts/create_release_manifest.py"', '"scripts/macos-components.plist"', '"scripts/macos_postinstall"', '".github/workflows/release.yml"', '"README.md"']:
+  assert dependency in kit, f'Windows BuildKit must include release-gate dependency {dependency}'
  assert 'AppId={{7B538711-BF4A-49DE-9FB5-7C670120F2DE}' in text
  for option in ['UsePreviousAppDir=yes','UsePreviousTasks=yes','DisableDirPage=auto','PrivilegesRequired=lowest']:
   assert option in text

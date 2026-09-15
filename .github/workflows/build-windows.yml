@@ -6,7 +6,7 @@ on:
       version:
         description: Release version, for example 1.2.0
         required: true
-        default: 1.0.8
+        default: 1.0.9
 
 jobs:
   windows-x64:

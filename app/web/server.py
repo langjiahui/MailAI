@@ -2008,6 +2008,30 @@ def api_email_thread(email_id: int):
     return threads.build_thread_context(row)
 
 
+def _correspondence_payload(counterpart: str, limit: int = 50) -> dict:
+    """Build the shared correspondence response for message and contact entry points."""
+    own_address = str(config.IMAP_USER or "").strip().casefold()
+    items = db.list_correspondence_emails(counterpart, limit=max(1, min(limit, 100)))
+    return {
+        "counterpart": counterpart,
+        "count": len(items),
+        "emails": [{
+            "id": item.get("id"), "date": item.get("date"),
+            "from_addr": item.get("from_addr"), "from_name": item.get("from_name"),
+            "to_addr": item.get("to_addr"), "subject": item.get("subject"),
+            "snippet": item.get("snippet"), "verdict": item.get("verdict"),
+            "score": item.get("score"), "status": item.get("status"),
+            "direction": "sent" if str(item.get("from_addr") or "").strip().casefold() == own_address else "received",
+        } for item in items],
+    }
+
+
+@app.get("/api/mail/contacts/correspondence")
+def api_contact_correspondence(email: str, limit: int = 50):
+    """List locally stored mail exchanged with a contact in the current account."""
+    return _correspondence_payload(_valid_contact_email(email), limit)
+
+
 @app.get("/api/emails/{email_id}/correspondence")
 def api_email_correspondence(email_id: int, limit: int = 50):
     """List mail exchanged with the other party of the selected message."""
@@ -2026,19 +2050,7 @@ def api_email_correspondence(email_id: int, limit: int = 50):
         counterpart = next((item for item in recipients if item.casefold() != own_address), "")
     if not counterpart:
         return {"counterpart": "", "count": 0, "emails": []}
-    items = db.list_correspondence_emails(counterpart, limit=max(1, min(limit, 100)))
-    return {
-        "counterpart": counterpart,
-        "count": len(items),
-        "emails": [{
-            "id": item.get("id"), "date": item.get("date"),
-            "from_addr": item.get("from_addr"), "from_name": item.get("from_name"),
-            "to_addr": item.get("to_addr"), "subject": item.get("subject"),
-            "snippet": item.get("snippet"), "verdict": item.get("verdict"),
-            "score": item.get("score"), "status": item.get("status"),
-            "direction": "sent" if str(item.get("from_addr") or "").strip().casefold() == own_address else "received",
-        } for item in items],
-    }
+    return _correspondence_payload(counterpart, limit)
 
 
 @app.get("/api/emails/{email_id}/audit")

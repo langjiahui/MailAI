@@ -10,14 +10,17 @@ import zipfile
 ROOT = Path(__file__).resolve().parent.parent
 INCLUDE_DIRS = ("app",)
 INCLUDE_FILES = (
-    "run.py", "requirements.txt", "requirements-build.txt",
+    "run.py", "requirements.txt", "requirements-build.txt", "README.md",
     "scripts/BUILD_WINDOWS_EXE.bat", "scripts/check_release.py",
     "scripts/smoke_macos_app.py", "scripts/build_macos.command", "scripts/create_windows_buildkit.py",
+    "scripts/create_release_manifest.py",
+    "scripts/macos-components.plist", "scripts/macos_postinstall",
     "scripts/prepare_bundle_config.py",
     "scripts/prepare_app_icon.py", "scripts/verify_windows_artifact.py",
     "scripts/prepare_windows_version.py", "VERSION",
     "scripts/windows_runtime_hook.py", "scripts/find_inno_setup.py",
     "scripts/mailai.iss",
+    ".github/workflows/release.yml",
     "build/mailai.ico",
     "docs/WINDOWS_BUILD_KIT.md",
     "docs/开发者架构与运行机制.md",

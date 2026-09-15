@@ -294,7 +294,7 @@ function renderContactCenter() {
         ${picker ? `<button type="button" class="contact-pick-check" data-contact-pick="${esc(item.email)}" aria-label="${checked ? '取消选择' : '选择'} ${esc(item.email)}"><span>${checked ? '✓' : ''}</span></button>` : ''}
         <span class="contact-center-avatar">${esc(contactInitial(item))}</span>
         <div class="contact-center-main"><b>${esc(item.name || item.email)}</b><small>${item.name ? `${esc(item.email)}${item.company ? ` · ${esc(item.company)}` : ''}` : (item.company ? esc(item.company) : '从邮件往来自动识别')}</small>${item.note ? `<p>${esc(item.note)}</p>` : ''}</div>
-        <div class="contact-frequency"><b>${item.count || 0}</b><small>往来次数</small></div>
+        ${picker ? `<div class="contact-frequency"><b>${item.count || 0}</b><small>往来次数</small></div>` : `<button type="button" class="contact-frequency contact-correspondence-trigger" data-contact-correspondence="${esc(item.email)}" aria-label="查看与${esc(item.name || item.email)}的往来邮件"><b>${item.count || 0}</b><small>往来次数</small></button>`}
         <button type="button" class="contact-star ${item.favorite ? 'active' : ''}" data-contact-favorite="${esc(item.email)}" data-favorite="${item.favorite ? '1' : '0'}" aria-label="${item.favorite ? '取消常用' : '设为常用'}">★</button>
         <div class="contact-row-actions">${picker ? '' : `<button type="button" data-contact-compose="${esc(item.email)}">写邮件</button><button type="button" data-contact-edit="${esc(item.email)}">编辑</button>${selectedGroup && selectedGroup !== '__ungrouped__' ? `<button type="button" data-group-remove-member="${esc(item.email)}">移出分组</button>` : ''}<button type="button" class="danger" data-contact-delete="${esc(item.email)}">移除</button>`}</div>
       </article>`;
@@ -4788,6 +4788,7 @@ let correspondenceRevision = 0;
 let correspondenceData = null;
 let correspondenceCurrentId = null;
 let correspondenceAccountId = '';
+let correspondenceSource = null;
 let correspondenceSelectedIds = new Set();
 let correspondenceBusy = false;
 let correspondenceOperationCount = 0;
@@ -4802,6 +4803,7 @@ function closeCorrespondence() {
   correspondenceData = null;
   correspondenceCurrentId = null;
   correspondenceAccountId = '';
+  correspondenceSource = null;
   correspondenceSelectedIds.clear();
   const drawer = document.getElementById('correspondence-drawer');
   if (!drawer) return;
@@ -4885,13 +4887,14 @@ function renderCorrespondence(data, currentId) {
   </div>`;
 }
 
-async function openCorrespondence() {
-  const email = selectedEmailDetail;
-  if (!email?.id) return toast('请先选择一封邮件', 'warn');
+async function loadCorrespondence(source) {
+  if (!source) return;
+  correspondenceSource = source;
+  const currentId = source.kind === 'email' ? Number(source.id) : null;
   const revision = ++correspondenceRevision;
   correspondenceData = null;
-  correspondenceCurrentId = Number(email.id);
-  correspondenceAccountId = selectedEmailAccountId || activeMailAccount()?.id || '';
+  correspondenceCurrentId = currentId;
+  correspondenceAccountId = source.accountId || activeMailAccount()?.id || '';
   correspondenceSelectedIds.clear();
   const drawer = document.getElementById('correspondence-drawer');
   const body = document.getElementById('correspondence-body');
@@ -4899,21 +4902,42 @@ async function openCorrespondence() {
   drawer.classList.remove('hidden');
   drawer.setAttribute('aria-hidden', 'false');
   document.body.style.overflow = 'hidden';
-  subtitle.textContent = '正在识别联系人并查找历史邮件…';
+  subtitle.textContent = source.kind === 'contact' ? `正在查找与 ${source.email} 的历史邮件…` : '正在识别联系人并查找历史邮件…';
   body.innerHTML = '<div class="correspondence-loading"><span></span><b>正在查找往来邮件</b><small>范围为当前邮箱已同步的邮件</small></div>';
   try {
-    const data = await api(`/api/emails/${email.id}/correspondence?limit=50`, {accountId:correspondenceAccountId});
+    const path = source.kind === 'contact'
+      ? `/api/mail/contacts/correspondence?email=${encodeURIComponent(source.email)}&limit=50`
+      : `/api/emails/${source.id}/correspondence?limit=50`;
+    const data = await api(path, {accountId:correspondenceAccountId});
     if (revision !== correspondenceRevision) return;
     const visibleCount = (data.emails || []).filter(item => item.status !== 'trash').length;
-    subtitle.textContent = data.counterpart ? `${data.counterpart} · 当前显示 ${visibleCount} 封往来邮件` : '未识别到对方联系人';
+    const counterpart = source.name && source.name !== data.counterpart ? `${source.name} · ${data.counterpart}` : data.counterpart;
+    subtitle.textContent = counterpart ? `${counterpart} · 当前显示 ${visibleCount} 封往来邮件` : '未识别到对方联系人';
     correspondenceData = data;
-    body.innerHTML = renderCorrespondence(data, email.id);
+    body.innerHTML = renderCorrespondence(data, currentId);
     syncCorrespondenceSelection();
   } catch (err) {
     if (revision !== correspondenceRevision) return;
     subtitle.textContent = '历史邮件暂时无法加载';
     body.innerHTML = `<div class="correspondence-empty error"><h4>加载失败</h4><p>${esc(err.message)}</p><button type="button" data-retry-correspondence>重新加载</button></div>`;
   }
+}
+
+async function openCorrespondence() {
+  const email = selectedEmailDetail;
+  if (!email?.id) return toast('请先选择一封邮件', 'warn');
+  return loadCorrespondence({kind:'email', id:Number(email.id), accountId:selectedEmailAccountId || activeMailAccount()?.id || ''});
+}
+
+async function openContactCorrespondence(contact, accountId) {
+  const email = String(contact?.email || '').trim();
+  if (!email) return toast('联系人邮箱无效', 'warn');
+  closeContactCenter();
+  return loadCorrespondence({kind:'contact', email, name:String(contact?.name || '').trim(), accountId:accountId || activeMailAccount()?.id || ''});
+}
+
+function reloadCorrespondence() {
+  return correspondenceSource ? loadCorrespondence({...correspondenceSource}) : openCorrespondence();
 }
 
 async function deleteSelectedCorrespondence() {
@@ -5756,6 +5780,13 @@ document.getElementById('contact-center-list').addEventListener('click', async e
     } catch (error) { toast('更新常用联系人失败：' + error.message, 'error'); }
     return;
   }
+  const correspondence = event.target.closest('[data-contact-correspondence]');
+  if (correspondence) {
+    const email = correspondence.dataset.contactCorrespondence;
+    const contact = contactCenterItems.find(item => item.email === email) || contactPickerContacts.get(email);
+    await openContactCorrespondence(contact || {email}, accountId);
+    return;
+  }
   const compose = event.target.closest('[data-contact-compose]');
   if (compose) { const email = compose.dataset.contactCompose; const contact = contactPickerContacts.get(email); closeContactCenter(); openCompose({account_id:accountId, to_addr:contactRecipientValue(contact || email)}); return; }
   const edit = event.target.closest('[data-contact-edit]');
@@ -6479,7 +6510,7 @@ document.getElementById('btn-close-correspondence').addEventListener('click', cl
 document.querySelector('#correspondence-drawer .drawer-backdrop').addEventListener('click', closeCorrespondence);
 document.getElementById('correspondence-body').addEventListener('click', event => {
   const retry = event.target.closest('[data-retry-correspondence]');
-  if (retry) return openCorrespondence();
+  if (retry) return reloadCorrespondence();
   const selectAll = event.target.closest('[data-correspondence-select-all]');
   if (selectAll) {
     const available = correspondenceSelectableItems().map(item => Number(item.id));

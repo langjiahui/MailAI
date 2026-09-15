@@ -11,9 +11,11 @@ for (const id of ['btn-contacts', 'contact-center', 'contact-center-search', 'co
 for (const target of ['compose-to', 'compose-cc', 'compose-bcc']) {
   if (!html.includes(`data-contact-target="${target}"`)) throw new Error(`missing picker for ${target}`);
 }
-for (const feature of ['openContactCenter', 'appendRecipients', 'contactRecipientValue', '/api/mail/contacts/favorite', 'data-contact-compose']) {
+for (const feature of ['openContactCenter', 'appendRecipients', 'contactRecipientValue', '/api/mail/contacts/favorite', 'data-contact-compose', 'data-contact-correspondence', 'openContactCorrespondence']) {
   if (!js.includes(feature)) throw new Error(`missing contact behavior: ${feature}`);
 }
 if (!js.includes('`${safeName} <${email}>`')) throw new Error('selected contacts should retain their display names');
-if (!css.includes('.contact-center-item') || !css.includes('.recipient-book-button')) throw new Error('missing contact styles');
+if (!js.includes('/api/mail/contacts/correspondence?email=${encodeURIComponent(source.email)}')) throw new Error('contact history should query by exact contact email');
+if (!js.includes('closeContactCenter();\n  return loadCorrespondence')) throw new Error('contact center should close before its history drawer opens');
+if (!css.includes('.contact-center-item') || !css.includes('.recipient-book-button') || !css.includes('.contact-correspondence-trigger:focus-visible')) throw new Error('missing contact styles');
 console.log('PASS contact center integration');
