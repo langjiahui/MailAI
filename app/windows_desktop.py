@@ -107,14 +107,14 @@ class WindowsDesktopRuntime:
 
     def notify_poll_result(self, result: dict, force: bool = False):
         fetched = max(0, int((result or {}).get("fetched") or 0))
-        if result and result.get("ok") and fetched and self.window:
+        if result and result.get("ok") and (result.get('received') or fetched) and self.window:
             try:
                 payload = json.dumps({"fetched": fetched})
                 self.window.evaluate_js(f"window.mailaiMailboxUpdated?.({payload})")
             except Exception:
                 log.exception("通知 Windows 邮件列表自动刷新失败")
         content = notification_text(result)
-        if content is None or (not self.hidden and not force) or not self.tray:
+        if content is None or not self.tray:
             return
         title, body = content
         try:

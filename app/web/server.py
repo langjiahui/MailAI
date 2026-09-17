@@ -272,6 +272,7 @@ class AssistantRequest(BaseModel):
     conversation_id: int | None = None
     email_ids: list[int] | None = None
     scope_label: str = ''
+    alert_context: bool = False
     images: list[AssistantImage] = Field(default_factory=list, max_length=3)
     attachments: list[AssistantAttachmentRef] = Field(default_factory=list, max_length=3)
 
@@ -1403,6 +1404,7 @@ def api_assistant_ask(payload: AssistantRequest):
         if not conversation_id or not db.assistant_conversation_exists(conversation_id):
             conversation_id = db.create_assistant_conversation(payload.question.strip()[:36] or "新对话")
         db.add_assistant_message(conversation_id, "user", assistant_attachments.history_text(assistant_vision.history_text(payload.question, images),materials), images=images)
+        db.set_assistant_alert_context(conversation_id, payload.email_ids if payload.alert_context else [])
         result = mail_assistant.ask(payload.question, payload.history, payload.email_ids, **({'images': images} if images else {}), **({'materials':materials} if materials else {}))
         db.add_assistant_message(conversation_id, "assistant", result["answer"], result.get("sources") or [])
         return {**result, "conversation_id": conversation_id}
@@ -1422,6 +1424,7 @@ def api_assistant_ask_stream(payload: AssistantRequest):
     if not conversation_id or not db.assistant_conversation_exists(conversation_id):
         conversation_id = db.create_assistant_conversation(payload.question.strip()[:36] or "新对话")
     db.add_assistant_message(conversation_id, "user", assistant_attachments.history_text(assistant_vision.history_text(payload.question, images),materials), images=images)
+    db.set_assistant_alert_context(conversation_id, payload.email_ids if payload.alert_context else [])
 
     def generate():
         answer_parts, sources = [], []
@@ -1471,7 +1474,8 @@ def api_assistant_image(image_id: int, thumbnail: bool = False):
 def api_assistant_conversation(conversation_id: int):
     if not db.assistant_conversation_exists(conversation_id):
         raise HTTPException(404, "会话不存在")
-    return {"id": conversation_id, "messages": db.get_assistant_messages(conversation_id)}
+    messages = db.get_assistant_messages(conversation_id)
+    return {"id": conversation_id, "messages": messages, **db.assistant_alert_context(conversation_id, messages)}
 
 
 @app.get("/api/emails")
@@ -2113,13 +2117,13 @@ def api_todo_update(todo_id: int, payload: TodoUpdateRequest):
 
 @app.post("/api/poll")
 def api_poll():
-    def _run():
-        try:
-            pipeline.poll_once()
-        except Exception:
-            log.exception("手动拉取失败")
-    start_account_thread(_run, name="mailai-manual-poll")
-    return {"ok": True, "msg": "已开始拉取"}
+    from ..mailbox_jobs import poll_all
+    busy = pipeline.get_live_fetch_state()['running']
+    result = poll_all(force=True, account_id=getattr(config, 'ACCOUNT_ID', '') or None)
+    if not result.get('ok') and not busy:
+        raise HTTPException(400, result.get('msg') or '暂时无法同步邮箱')
+    busy = busy or result.get('queued', False)
+    return {"ok": True, "queued": busy, "msg": "当前同步仍在进行，已安排检查新邮件" if busy else "已开始拉取"}
 
 
 @app.post("/api/fetch_more")

@@ -121,6 +121,7 @@ const context = vm.createContext({
   mailLoadRevision: 0, currentServerFolder: '', currentFilter: {days: 9999},
   allEmails: [], allTodos: [], sentMessages: [], savedDrafts: [],
   updateSidebar() { renderCount++; }, updateDomainFilter() {}, applyFilters() {},
+  loadAssistantAlerts() {},
   toast() { throw new Error('Unexpected error toast'); },
   async api(url) {
     if (!url.startsWith('/api/emails?')) return [];

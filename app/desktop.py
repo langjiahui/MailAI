@@ -68,7 +68,7 @@ def register_installed_application() -> bool:
 
 def notification_text(result: dict) -> tuple[str, str] | None:
     """Build a concise notification for a completed background poll."""
-    if not result or not result.get("ok") or result.get("canceled"):
+    if not result or not result.get("ok") or result.get("canceled") or result.get('notifications_delivered'):
         return None
     fetched = max(0, int(result.get("fetched") or 0))
     if not fetched:
@@ -223,10 +223,10 @@ class DesktopRuntime:
 
     def notify_poll_result(self, result: dict, force: bool = False) -> None:
         fetched = max(0, int((result or {}).get("fetched") or 0))
-        if result and result.get("ok") and fetched:
-            self._signal_mailbox_changed(fetched)
+        if result and result.get("ok") and (result.get('received') or fetched):
+            self._signal_mailbox_changed(result.get('received') or fetched)
         content = notification_text(result)
-        if content is None or (not self.hidden and not force):
+        if content is None:
             return
         title, body = content
         self._deliver_notification(title, body)

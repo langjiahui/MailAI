@@ -13,14 +13,15 @@ log = logging.getLogger(__name__)
 
 class RawMessageBatch:
     """Sized UID plan, with at most one body download in flight."""
-    def __init__(self, client, folder, uids):
+    def __init__(self, client, folder, uids, *, tolerate_missing=False):
         self.client, self.folder, self.uids = client, folder, list(uids)
+        self.tolerate_missing = tolerate_missing
 
     def __len__(self):
         return len(self.uids)
 
     def newest_first(self):
-        return RawMessageBatch(self.client, self.folder, sorted(self.uids, reverse=True))
+        return RawMessageBatch(self.client, self.folder, sorted(self.uids, reverse=True), tolerate_missing=self.tolerate_missing)
 
     def __iter__(self):
         for uid in self.uids:
@@ -29,6 +30,16 @@ class RawMessageBatch:
             self.client.select_folder(self.folder, readonly=True)
             data = self.client.fetch([uid], ['BODY.PEEK[]'])
             raw = data.get(uid, {}).get(b'BODY[]')
+            if raw is None:
+                # A successful FETCH may omit a body temporarily. Only an
+                # explicitly vanished UID is safe to skip across the cursor.
+                data = self.client.fetch([uid], ['BODY.PEEK[]'])
+                raw = data.get(uid, {}).get(b'BODY[]')
+                if raw is None and uid in self.client.search(['UID', str(uid)]):
+                    if self.tolerate_missing:
+                        yield uid, None
+                        continue
+                    raise RuntimeError(f'邮件 {uid} 正文暂未返回，将在下次同步重试')
             if raw is not None:
                 yield uid, raw
 
@@ -507,7 +518,7 @@ class MailClient:
                 uids = uids[-limit:]
         if not uids:
             return []
-        return RawMessageBatch(self.client, config.INBOX_FOLDER, sorted(uids))
+        return RawMessageBatch(self.client, config.INBOX_FOLDER, sorted(uids), tolerate_missing=True)
 
     def fetch_older(self, before_uid: int, limit: int = 20):
         """拉取早于 before_uid 的邮件，按 UID 降序取 limit 封。"""

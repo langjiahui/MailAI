@@ -10,6 +10,8 @@ from .account_guard import account_work, guard
 _executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix='mailbox')
 _pending = {}
 _lock = threading.Lock()
+_next_poll_at = {}
+_poll_again = set()
 _outbox_started = False
 _outbox_thread = None
 _outbox_stop = threading.Event()
@@ -24,49 +26,87 @@ def _poll(values):
         db.init_db()
         from . import mail_assistant
         mail_assistant.alerts()  # Seed the notification baseline before importing.
-        before = db.mailbox_revision()['latest_id']
         result = pipeline.poll_once()
-        if result.get('ok'):
+        if result.get('ok') and not result.get('errors') and not result.get('canceled'):
             db.set_runtime_setting('last_sync_success', __import__('datetime').datetime.now().isoformat(timespec='seconds'))
-        prefs = mail_assistant.preferences()
-        favorites = {c['email'].lower() for c in db.search_contacts('', 300, True)} if prefs['notifications'] == 'important' else set()
-        muted = set(prefs.get('muted_threads', []))
-        fetched = quarantined = 0
-        if prefs['notifications'] != 'off':
-            for email in db.notification_candidates(before):
-                if email.get('thread_id') in muted:
-                    continue
-                high = mail_assistant.risk_alert_level(email) == 'high'
-                if prefs['notifications'] == 'high_risk' and not high:
-                    continue
-                if prefs['notifications'] == 'important' and not (high or email.get('priority') == '高' or (email.get('from_addr') or '').lower() in favorites):
-                    continue
-                fetched += 1
-                quarantined += email.get('status') == 'quarantine'
-        result['fetched'] = fetched
-        result['quarantined'] = quarantined
         result['account_user'] = config.IMAP_USER
         return result
 
 
-def poll_all():
+def poll_all(force=True, account_id=None):
+    import time
     accounts = system_settings._load_registry().get('accounts', {})
     if not accounts:
-        return pipeline.poll_once() if config.IMAP_PASSWORD else {'ok': False, 'msg': '邮箱尚未配置'}
+        if not config.IMAP_PASSWORD:
+            return {'ok': False, 'msg': '邮箱尚未配置'}
+        with _lock:
+            if not force and time.monotonic() < _next_poll_at.get('', 0):
+                return {'ok': True, 'fetched': 0, 'background': True}
+            _next_poll_at[''] = time.monotonic() + config.POLL_INTERVAL_SECONDS
+        try:
+            result = pipeline.poll_once()
+        except Exception:
+            with _lock:
+                _next_poll_at[''] = 0
+            raise
+        if not result.get('ok') or result.get('errors'):
+            with _lock:
+                _next_poll_at[''] = 0
+        return result
+    queued = False
     with _lock:
-        for account_id in list(_pending):
-            if _pending[account_id].done():
-                del _pending[account_id]
-        for account_id, account in accounts.items():
-            if not account.get('visible', True) or (account_id in _pending and not _pending[account_id].done()):
+        for finished_id in list(_pending):
+            if _pending[finished_id].done():
+                future = _pending.pop(finished_id)
+                try:
+                    result = future.result()
+                    healthy = result.get('ok') and not result.get('errors') and not result.get('canceled')
+                except Exception:
+                    healthy = False
+                if not healthy or finished_id in _poll_again:
+                    _poll_again.discard(finished_id)
+                    _next_poll_at[finished_id] = 0
+        for key, account in accounts.items():
+            if account_id is not None and key != account_id:
+                continue
+            if not account.get('visible', True):
+                continue
+            if key in _pending:
+                if force:
+                    _poll_again.add(key)
+                    queued = True
+                continue
+            if not force and time.monotonic() < _next_poll_at.get(key, 0):
                 continue
             try:
-                values = snapshot(account_id)
+                values = snapshot(key)
             except ValueError:
                 continue
-            _pending[account_id] = _executor.submit(_poll, values)
-            _pending[account_id].add_done_callback(_notify)
-    return {'ok': True, 'fetched': 0, 'background': True}
+            _next_poll_at[key] = time.monotonic() + config.POLL_INTERVAL_SECONDS
+            _pending[key] = _executor.submit(_poll, values)
+            _pending[key].add_done_callback(_notify)
+    return {'ok': True, 'fetched': 0, 'background': True, 'queued': queued}
+
+
+def notify_new_message(email_id):
+    """Deliver once per completed new message, including manual/history-priority polls."""
+    from . import mail_assistant
+    email = db.get_email(email_id)
+    if not email or not db.claim_mail_notification(email_id):
+        return
+    allowed = mail_assistant.notification_allowed(email)
+    result = dict(ok=True, received=1, fetched=int(allowed),
+                  quarantined=int(allowed and mail_assistant.needs_risk_attention(email)),
+                  account_user=config.IMAP_USER, account_id=getattr(config, 'ACCOUNT_ID', ''))
+    import sys
+    if getattr(sys, 'frozen', False):
+        if sys.platform == 'darwin':
+            from .desktop import notify_poll_result
+        elif sys.platform == 'win32':
+            from .windows_desktop import notify_poll_result
+        else:
+            return
+        notify_poll_result(result)
 
 
 def _check_outboxes(initialized, retries, now, send):
@@ -156,6 +196,8 @@ def stop_outbox(timeout=5):
 def _notify(future):
     try:
         result = future.result()
+        if result.get('notifications_delivered'):
+            return
         import sys
         if getattr(sys, 'frozen', False):
             if sys.platform == 'darwin':

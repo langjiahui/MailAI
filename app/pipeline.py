@@ -9,7 +9,7 @@ import time
 from datetime import datetime, timezone
 
 from . import config, db, parser, profiles, threads
-from .imap_client import MailClient, mailbox_role
+from .imap_client import MailClient, RawMessageBatch, mailbox_role
 from .account_guard import account_work
 from .llm import analyze as llm_analyze
 from .llm import client as llm_client
@@ -295,7 +295,11 @@ def _analyze_attachments(email: dict) -> tuple[list, list]:
 
 
 def process_message(mail: MailClient, uid: int, raw: bytes,
-                    history_rank: int | None = None) -> dict:
+                    history_rank: int | None = None, *, arrival_kind=None) -> dict:
+    arrival_kind = arrival_kind or ('new' if _account_fetch_states.get(config.DB_PATH, {}).get('operation') == 'poll' else 'history')
+    if arrival_kind == 'new' and 'assistant_attention_state' not in db.get_runtime_settings():
+        from . import mail_assistant
+        mail_assistant.alerts()
     email = parser.parse_message(uid, raw)
     allow_history_ai = _history_ai_allowed(email, history_rank)
     thread_history = db.list_thread_emails(email.get("thread_id"), limit=8) if email.get("thread_id") else []
@@ -384,7 +388,7 @@ def process_message(mail: MailClient, uid: int, raw: bytes,
 
     # 10) 入库
     record = {
-        'arrival_kind': 'new' if _account_fetch_states.get(config.DB_PATH, {}).get('operation') == 'poll' else 'history',
+        'arrival_kind': arrival_kind,
         "uid": uid,
         "folder": config.INBOX_FOLDER,
         "message_id": email["message_id"],
@@ -488,6 +492,12 @@ def process_message(mail: MailClient, uid: int, raw: bytes,
         )
 
     db.finish_email_processing(email_id)
+    if arrival_kind == 'new':
+        try:
+            from .mailbox_jobs import notify_new_message
+            notify_new_message(email_id)
+        except Exception:
+            log.exception('新邮件通知失败 email_id=%s', email_id)
 
     log.info("处理 uid=%s [%s|%s|score=%s] %s",
              uid, actual_status, verdict, scan["score"], email["subject"][:50])
@@ -505,12 +515,11 @@ def poll_once() -> dict:
         _reset_cancel()
         _reset_action_guard()
         _set_fetch_state(True, operation="poll", message="正在拉取新邮件...")
-        result = {"ok": True, "fetched": 0, "quarantined": 0, "errors": 0}
+        result = {"ok": True, "fetched": 0, "quarantined": 0, "errors": 0, "notifications_delivered": True}
         with MailClient() as mail:
             mail.ensure_quarantine_folder()
             mail.ensure_spam_folder()
             messages = mail.fetch_new(limit=config.INITIAL_FETCH_LIMIT)
-            result["fetched"] = len(messages)
             cursor_blocked = False
             _set_fetch_state(True, operation="poll", total=len(messages),
                              message=f"发现 {len(messages)} 封新邮件，正在处理...")
@@ -525,10 +534,13 @@ def poll_once() -> dict:
                         db.set_last_uid(config.INBOX_FOLDER, uid)
                     continue
                 try:
+                    if raw is None:
+                        raise RuntimeError(f'邮件 {uid} 正文暂未返回，将在下次同步重试')
                     _set_fetch_state(True, operation="poll", total=len(messages),
                                      processed=idx,
                                      message=f"正在处理第 {idx}/{len(messages)} 封...", persist=False)
                     r = process_message(mail, uid, raw)
+                    result['fetched'] += 1
                     if r["status"] == "quarantine":
                         result["quarantined"] += 1
                 except Exception:
@@ -550,6 +562,46 @@ def poll_once() -> dict:
         _poll_lock.release()
 
 
+class _InboxPriority:
+    """Cooperatively check arrivals while a history task owns the mailbox lock.
+
+    The history cursor is deliberately untouched: older failed UIDs must still
+    be retried. Each checkpoint is bounded so history continues to make progress.
+    """
+    def __init__(self, ceiling=None):
+        if ceiling is None:
+            with db.conn() as c:
+                ceiling = c.execute('SELECT COALESCE(MAX(uid),0) FROM emails WHERE folder=? AND is_local_archive=0',
+                                    (config.INBOX_FOLDER,)).fetchone()[0]
+        self.ceiling = int(ceiling)
+        self.checked_at = time.monotonic()
+
+    def check(self, mail):
+        now = time.monotonic()
+        if _is_canceled() or now - self.checked_at < 30:
+            return
+        self.checked_at = now
+        try:
+            mail.select_folder(config.INBOX_FOLDER, readonly=True)
+            uids = sorted(int(uid) for uid in mail.client.search(['UID', f'{self.ceiling + 1}:*'])
+                          if int(uid) > self.ceiling and not db.already_processed(config.INBOX_FOLDER, int(uid)))[:10]
+            blocked = False
+            for uid, raw in RawMessageBatch(mail.client, config.INBOX_FOLDER, uids, tolerate_missing=True):
+                if _is_canceled():
+                    return
+                try:
+                    if raw is None:
+                        raise RuntimeError(f'邮件 {uid} 正文暂未返回')
+                    process_message(mail, uid, raw, arrival_kind='new')
+                    if not blocked:
+                        self.ceiling = uid
+                except Exception:
+                    blocked = True
+                    log.exception('优先收信暂未完成 uid=%s，将重试并继续处理其他邮件', uid)
+        except Exception:
+            log.exception('历史同步期间检查新邮件失败，将继续重试')
+
+
 @account_work
 def fetch_all(batch: int = 50, continue_with_folders: bool = False) -> dict:
     """拉取收件箱全部未处理邮件（历史补全）。后台分批执行。"""
@@ -565,6 +617,7 @@ def fetch_all(batch: int = 50, continue_with_folders: bool = False) -> dict:
             mail.ensure_spam_folder()
             mail.select_folder(config.INBOX_FOLDER, readonly=True, reset_generation=True)
             server_uids = list(mail.client.search(["ALL"]))
+            priority = _InboxPriority(max(server_uids, default=0))
             all_uids = [u for u in server_uids if not db.already_processed(config.INBOX_FOLDER, u)]
             if not all_uids:
                 db.reconcile_folder(config.INBOX_FOLDER, server_uids)
@@ -588,6 +641,7 @@ def fetch_all(batch: int = 50, continue_with_folders: bool = False) -> dict:
                 mail.select_folder(config.INBOX_FOLDER, readonly=True)
                 sizes = mail.client.fetch(batch_uids, ["RFC822.SIZE"])
                 for uid in _ordered_history_uids(batch_uids):
+                    priority.check(mail)
                     if _is_canceled():
                         _set_fetch_state(False, operation="fetch_all", total=total,
                                          processed=processed, canceled=True,
@@ -618,8 +672,11 @@ def fetch_all(batch: int = 50, continue_with_folders: bool = False) -> dict:
                     except Exception:
                         log.exception("处理邮件失败 uid=%s", uid)
                         result["errors"] += 1
-        if not result["errors"]:
-            db.reconcile_folder(config.INBOX_FOLDER, server_uids)
+            priority.check(mail)
+            if not result["errors"]:
+                # Priority checks may have imported mail after the first scan.
+                mail.select_folder(config.INBOX_FOLDER, readonly=True)
+                db.reconcile_folder(config.INBOX_FOLDER, list(mail.client.search(['ALL'])))
         final_error = f"仍有 {result['errors']} 封处理失败，可点击继续同步重试" if result["errors"] else ""
         _set_fetch_state(bool(continue_with_folders),
                          operation="sync_folders" if continue_with_folders else "fetch_all", total=total,
@@ -815,7 +872,12 @@ def _sync_one_folder(mail: MailClient, mailbox: dict, limit: int = 0,
     role = mailbox_role(mailbox)
     imported, seen_uids = 0, []
     known_uids = db.folder_uids(folder)
+    priority = getattr(mail, '_mailai_inbox_priority', None)
+    if not isinstance(priority, _InboxPriority):
+        priority = mail._mailai_inbox_priority = _InboxPriority()
     for uid, raw, flags in mail.fetch_folder(folder, limit, known_uids):
+        if folder != config.INBOX_FOLDER:
+            priority.check(mail)
         if _is_canceled():
             break
         if raw is None:

@@ -389,10 +389,15 @@ def _run_migrations(c):
         "pending_error": "TEXT DEFAULT ''",
         "recipient_names": "TEXT DEFAULT '{}'",
         "processing_complete": "INTEGER DEFAULT 1",
+        "notification_sent": "INTEGER NOT NULL DEFAULT 0",
     }
     for col, dtype in new_email_cols.items():
         if col not in emails_cols:
             c.execute(f"ALTER TABLE emails ADD COLUMN {col} {dtype}")
+            if col == 'notification_sent':
+                c.execute('UPDATE emails SET notification_sent=1')
+    if 'alert_email_ids' not in _columns_of(c, 'assistant_conversations'):
+        c.execute("ALTER TABLE assistant_conversations ADD COLUMN alert_email_ids TEXT DEFAULT '[]'")
     if 'uid_validity' not in _columns_of(c, 'sync_state'):
         c.execute('ALTER TABLE sync_state ADD COLUMN uid_validity INTEGER DEFAULT 0')
     if "source_draft_email_id" not in _columns_of(c, "drafts"):
@@ -560,6 +565,15 @@ def finish_email_processing(email_id: int):
         c.execute("UPDATE emails SET processing_complete=1 WHERE id=?", (email_id,))
 
 
+def claim_mail_notification(email_id: int) -> bool:
+    with conn() as c:
+        return c.execute(
+            "UPDATE emails SET notification_sent=1 WHERE id=? AND notification_sent=0 "
+            "AND processing_complete=1 AND arrival_kind='new' AND remote_missing=0",
+            (email_id,),
+        ).rowcount == 1
+
+
 def get_ai_analysis_cache(cache_key: str) -> dict | None:
     """Return one reusable model result; corrupt cache entries fail closed."""
     with conn() as c:
@@ -630,7 +644,7 @@ def list_emails(status=None, verdict=None, days=7, limit=1000, folder=None, offs
                 metadata_only=False, list_view=False):
     # Historical mail may be imported today. Lists and reports must follow the
     # message's real received date, not the local indexing timestamp.
-    columns = ('id,thread_id,status,priority,from_addr,subject,date,verdict,score,feedback,reviewed,arrival_kind'
+    columns = ('id,thread_id,status,priority,from_addr,subject,date,verdict,score,feedback,reviewed,arrival_kind,created_at,pending_action,processing_complete'
                if metadata_only else EMAIL_LIST_COLUMNS if list_view else '*')
     visibility = "(pending_action IN ('trash','trash_copying','trash_copied','trash_locating') OR (remote_missing=0 AND status='trash'))" if status == 'trash' else 'remote_missing=0'
     sql = f"SELECT {columns} FROM emails WHERE {visibility} AND datetime(COALESCE(NULLIF(date,''),created_at)) >= datetime('now','localtime', ?)"
@@ -1215,6 +1229,29 @@ def create_assistant_conversation(title: str) -> int:
         cur = c.execute("INSERT INTO assistant_conversations(title,created_at,updated_at) VALUES(?,?,?)",
                         ((title or "新对话")[:60], now, now))
         return cur.lastrowid
+
+
+def set_assistant_alert_context(conversation_id: int, ids):
+    with conn() as c:
+        c.execute('UPDATE assistant_conversations SET alert_email_ids=? WHERE id=?',
+                  (json.dumps(list(dict.fromkeys(ids or []))[:20]), conversation_id))
+
+
+def assistant_alert_context(conversation_id: int, messages) -> dict:
+    from .mail_assistant import needs_risk_attention
+    with conn() as c:
+        row = c.execute('SELECT alert_email_ids FROM assistant_conversations WHERE id=?', (conversation_id,)).fetchone()
+    ids = json.loads(row['alert_email_ids'] or '[]') if row else []
+    # Recognize previously generated reminder analyses without touching user chats.
+    if not ids and messages and messages[0]['content'].startswith('请只分析这次提醒的新增邮件（共') \
+            and sum(m['role'] == 'user' for m in messages) == 1:
+        ids = list(dict.fromkeys(s['id'] for m in messages for s in m.get('sources', []) if s.get('id')))[:20]
+    pending = []
+    for email_id in ids:
+        email = get_email(email_id)
+        if email and needs_risk_attention(email):
+            pending.append(email_id)
+    return {'alert_email_ids': ids, 'pending_alert_ids': pending}
 
 
 def add_assistant_message(conversation_id: int, role: str, content: str, sources: list | None = None, images=None):

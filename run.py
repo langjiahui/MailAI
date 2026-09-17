@@ -27,9 +27,9 @@ from app.web.server import app as web_app
 log = logging.getLogger("run")
 
 
-def _poll_if_configured():
+def _poll_if_configured(force=True):
     from app.mailbox_jobs import poll_all
-    result = poll_all()
+    result = poll_all(force=force)
     if getattr(sys, "frozen", False) and sys.platform == "darwin":
         from app.desktop import notify_poll_result
         notify_poll_result(result)
@@ -49,7 +49,7 @@ def _start_scheduler():
     start_outbox()
     scheduler = BackgroundScheduler()
     scheduler.add_job(
-        _poll_if_configured, "interval", seconds=config.POLL_INTERVAL_SECONDS,
+        _poll_if_configured, "interval", seconds=min(30, config.POLL_INTERVAL_SECONDS), kwargs={'force': False},
         id="poll", max_instances=1, coalesce=True,
     )
     if config.IMAP_PASSWORD:

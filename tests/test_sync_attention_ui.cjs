@@ -4,14 +4,28 @@ const assert = require('node:assert/strict');
 const src = fs.readFileSync('app/web/static/app.js', 'utf8');
 function extract(start, end) { return src.slice(src.indexOf(start), src.indexOf(end, src.indexOf(start))); }
 const elements = new Map();
+function fakeElement() {
+  const classes = new Set();
+  return {children:[], get firstChild(){return this.children[0];},
+    appendChild(child){if(child.parent)child.parent.children.splice(child.parent.children.indexOf(child),1);this.children.push(child);child.parent=this;},
+    querySelector(){return null;},
+    classList:{add(value){classes.add(value);},remove(value){classes.delete(value);},toggle(value, hide){hide?classes.add(value):classes.delete(value);},contains(value){return classes.has(value);}},
+    textContent:'',innerHTML:''};
+}
 function element(id) {
-  if (!elements.has(id)) elements.set(id, {classList:{add(){},remove(){},toggle(){}}, textContent:'', innerHTML:''});
+  if (!elements.has(id)) elements.set(id, fakeElement());
   return elements.get(id);
 }
 const context = vm.createContext({Number, JSON, console, setTimeout:()=>0, clearTimeout(){},
-  document:{getElementById:element}, activeMailAccount:()=>({id:'a'}), toast(){},
+  document:{getElementById:element,createElement:fakeElement}, activeMailAccount:()=>({id:'a'}), toast(){},
   localStorage:{getItem(){return null;}}, esc:value=>String(value).replaceAll('<','&lt;'), _systemConfig:{accounts:[]},
   assistantAlerts:null, assistantController:null, assistantNoticeKey:'', assistantAlertTimer:0,
+  assistantAlertContextIds:[], assistantPinnedScope:null, assistantScopeKey:'',
+  resetAssistantConversation(options){
+    assert.equal(options.focus,false,'Automatic cleanup must not steal keyboard focus');
+    context.assistantController?.abort(); context.assistantController=null;
+    context.assistantAlertContextIds=[]; element('assistant-messages').children=[];
+  },
   setAssistantState:s=>context.petState=s});
 vm.runInContext(extract('let assistantAlertRevision = 0;', '\nfunction analyzeNewAssistantAlerts'), context);
 vm.runInContext(extract('async function markAssistantAlertsSeen()', '\nfunction closeAssistant'), context);
@@ -58,5 +72,34 @@ assert.match(src, /sidebar-account-identity[\s\S]{0,400}account\.user\.split\('@
   };
   await context.markAssistantAlertsSeen();
   assert.equal(context.petState,'calm');
+  context.api = async () => ({alert_level:'calm',new_risk_count:0,latest_mail_id:11,recent_mail_items:[{id:11}],pending_risk_ids:[]});
+  await context.loadAssistantAlerts();
+  assert.equal(element('assistant-nudge').textContent,'收到 1 封新邮件');
+  assert.equal(element('assistant-nudge').classList.contains('hidden'),false);
+  await context.loadAssistantAlerts();
+  assert.equal(element('assistant-nudge').classList.contains('hidden'),false,'A second refresh must not immediately hide the arrival hint');
+  let aborted=false;
+  context.assistantController={abort(){aborted=true;}};
+  context.assistantAlertContextIds=[8];
+  const analysis=fakeElement();analysis.textContent='previous risk analysis';
+  element('assistant-messages').appendChild(analysis);
+  context.reconcileAssistantRiskAnalysis([8]);
+  assert.equal(aborted,false,'Seen is not the same as handled');
+  context.reconcileAssistantRiskAnalysis([]);
+  assert.equal(aborted,true,'A late stream must not restore handled-risk advice');
+  const history=element('assistant-messages').firstChild;
+  assert.equal(history.children[0].textContent,'相关邮件已处理 · 查看历史分析');
+  assert.equal(history.children[1],analysis,'Keep the analysis available without leaving it expanded');
+  assert.equal(context.assistantPinnedScope,null);
+
+  const refresh = vm.createContext({document:{getElementById:()=>({})},Date,
+    mailboxRefreshInFlight:false,mailboxRevisionToken:'old',mailboxConfigCheckedAt:Date.now(),
+    api:async()=>({revision:'new'}),loadData:async()=>false});
+  vm.runInContext(extract('async function refreshMailboxIfChanged(', '\nfunction startMailboxAutoRefresh'),refresh);
+  await refresh.refreshMailboxIfChanged();
+  assert.equal(refresh.mailboxRevisionToken,'old','Failed list loading must be retried on the next heartbeat');
+  refresh.loadData=async()=>true;
+  await refresh.refreshMailboxIfChanged();
+  assert.equal(refresh.mailboxRevisionToken,'new');
   console.log('Sidebar labels, notification rendering, stale polls and acknowledgment passed');
 })().catch(e=>{console.error(e);process.exitCode=1;});

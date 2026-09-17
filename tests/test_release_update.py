@@ -47,6 +47,11 @@ def main():
     update_js = (static_dir / "app.js").read_text(encoding="utf-8")
     assert 'id="app-device-label"' in update_ui
     assert 'id="app-release-link"' in update_ui
+    assert 'id="btn-share-app"' in update_ui and 'id="share-app-dialog"' in update_ui
+    assert 'id="btn-copy-share-app"' in update_ui and 'id="btn-native-share-app"' in update_ui
+    assert "const MAILAI_SHARE_URL = 'https://github.com/langjiahui/MailAI/releases/latest'" in update_js
+    assert 'navigator.clipboard.writeText(MAILAI_SHARE_URL)' in update_js
+    assert 'navigator.share({title:' in update_js
     assert 'id="app-release-summary-notes"' in update_ui
     assert 'id="update-download-progress"' in update_ui
     assert '/api/system/update/install/status' in update_js

@@ -25,6 +25,7 @@ TESTS = (
     'test_live_diagnostics.py',
     'test_optimization_guards.py', 'test_interaction_fixes.py', 'test_pinyin_search.py',
     'test_resource_safety.py',
+    'test_mail_arrival_lifecycle.py',
     'test_maturity_hardening.py',
     'test_portable_backup.py',
     'test_release_hardening.py',

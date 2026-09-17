@@ -44,6 +44,7 @@ let composeAttachments = [];
 let composeAiSuggestion = '';
 let composePreflightPending = null;
 let assistantHistory = [];
+let assistantAlertContextIds = [];
 let assistantAlerts = null;
 let assistantConversationId = null;
 let assistantHistoryLoaded = false;
@@ -669,10 +670,10 @@ function closeAssistant() {
     panel.classList.remove('closing');
   }, 280);
 }
-function resetAssistantConversation() {
+function resetAssistantConversation({focus = true} = {}) {
   window.assistantAttachments?.clear(); assistantLastAttachments=[];
   window.assistantImages?.clear(); assistantLastImages = [];
-  window.showSecretaryChat?.();
+  if (focus) window.showSecretaryChat?.();
   assistantController?.abort(); assistantController = null; ++assistantRevision;
   assistantLastQuestion = ''; assistantLastScope = null;
   setAssistantState(assistantNotificationState(assistantAlerts));
@@ -680,9 +681,10 @@ function resetAssistantConversation() {
   document.getElementById('assistant-retry').classList.add('hidden');
   document.getElementById('assistant-send').disabled = false;
   assistantConversationId = null; assistantHistory = []; assistantHistoryLoaded = true;
+  assistantAlertContextIds = [];
   renderAssistantWelcome();
   document.getElementById('assistant-history-panel').classList.add('hidden');
-  document.getElementById('assistant-input').focus();
+  if (focus) document.getElementById('assistant-input').focus();
 }
 async function loadAssistantConversation(id) {
   assistantController?.abort(); assistantController = null;
@@ -704,6 +706,8 @@ async function loadAssistantConversation(id) {
     assistantHistory.push({role:message.role, content:message.content});
   });
   if (!data.messages?.length) resetAssistantConversation();
+  assistantAlertContextIds = data.alert_email_ids || [];
+  reconcileAssistantRiskAnalysis(data.pending_alert_ids);
   document.getElementById('assistant-history-panel').classList.add('hidden'); assistantHistoryLoaded = true;
 }
 async function restoreLatestAssistantConversation() {
@@ -731,7 +735,7 @@ function assistantQuestionReferencesOpenEmail(value) {
     || /(?:this|current|open)email/.test(question);
 }
 
-async function askAssistant(question, explicitIds = null, images = [], attachments = []) {
+async function askAssistant(question, explicitIds = null, images = [], attachments = [], alertContext = false) {
   if (!(_systemConfig?.model?.available && _systemConfig?.model?.verified)) { window.mailOnboarding?.openModel(); return; }
   if(attachments.length && !String(question || '').trim())question='请结合所选附件与邮件正文，总结重点和待确认事项。';
   if(images.length && !String(question || '').trim())question='请提炼这些图片的重点，区分明确事实、待确认信息和建议下一步。';
@@ -765,6 +769,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
   const scopeKey = JSON.stringify([account?.id, mode, emailIds]);
   if (assistantScopeKey && assistantScopeKey !== scopeKey) resetAssistantConversation();
   assistantScopeKey = scopeKey; assistantLastQuestion = question;
+  assistantAlertContextIds = alertContext ? [...(emailIds || [])] : [];
   assistantLastScope = emailIds;
   assistantLastImages = images;
   assistantLastAttachments=attachments;
@@ -797,7 +802,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
   try {
     const response = await fetch('/api/assistant/ask-stream', {method:'POST', signal:controller.signal,
       headers:{'Content-Type':'application/json', 'X-MailAI-Account':account?.id || ''},
-      body:JSON.stringify({question, history:assistantHistory.slice(0, -1).slice(-6), conversation_id:assistantConversationId, email_ids:emailIds, scope_label:scope, images, attachments})});
+      body:JSON.stringify({question, history:assistantHistory.slice(0, -1).slice(-6), conversation_id:assistantConversationId, email_ids:emailIds, scope_label:scope, images, attachments, alert_context:alertContext})});
     if (!response.ok || !response.body) {const detail=await response.json().catch(()=>({}));throw new Error(typeof detail.detail==='string'?detail.detail:`请求未完成（${response.status}），请检查图片格式、大小和模型连接`);}
     const reader = response.body.getReader(); const decoder = new TextDecoder();
     let pending = '';
@@ -861,6 +866,34 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
   }
 }
 let assistantAlertRevision = 0;
+const assistantMailNoticeCursor = new Map();
+let assistantNudgeTimer = null;
+function reconcileAssistantRiskAnalysis(pendingIds) {
+  if (!Array.isArray(pendingIds) || !assistantAlertContextIds.length) return;
+  const pending = new Set(pendingIds.map(Number));
+  if (assistantAlertContextIds.some(id => pending.has(Number(id)))) return;
+  const wrap = document.getElementById('assistant-messages');
+  const history = document.createElement('details');
+  history.className = 'assistant-resolved-analysis';
+  const title = document.createElement('summary');
+  title.textContent = '相关邮件已处理 · 查看历史分析';
+  history.appendChild(title);
+  while (wrap.firstChild) history.appendChild(wrap.firstChild);
+  resetAssistantConversation({focus:false});
+  assistantPinnedScope = null; assistantScopeKey = '';
+  document.getElementById('assistant-scope').value = 'account';
+  if (typeof updateAssistantScopeControl === 'function') updateAssistantScopeControl();
+  wrap.querySelector('.assistant-welcome')?.remove();
+  wrap.classList.remove('is-welcome');
+  wrap.appendChild(history);
+}
+
+function showAssistantNudge(text) {
+  clearTimeout(assistantNudgeTimer);
+  const nudge = document.getElementById('assistant-nudge');
+  nudge.textContent = text; nudge.classList.remove('hidden');
+  assistantNudgeTimer = setTimeout(() => nudge.classList.add('hidden'), 7000);
+}
 function assistantNotificationState(data) {
   return Number(data?.new_risk_count) > 0 && ['warn', 'danger'].includes(data?.alert_level) ? data.alert_level : 'calm';
 }
@@ -871,6 +904,10 @@ async function loadAssistantAlerts() {
     const data = await api('/api/assistant/alerts', {accountId});
     if (revision !== assistantAlertRevision || accountId !== activeMailAccount()?.id) return;
     assistantAlerts = data; if (!assistantController) setAssistantState(assistantNotificationState(data));
+    reconcileAssistantRiskAnalysis(data.pending_risk_ids);
+    const previousMail = assistantMailNoticeCursor.get(accountId);
+    const incoming = previousMail === undefined ? [] : (data.recent_mail_items || []).filter(item => Number(item.id) > previousMail);
+    assistantMailNoticeCursor.set(accountId, Math.max(previousMail || 0, Number(data.latest_mail_id || 0)));
     const count = data.new_risk_count || 0;
     const highCount = data.new_high_risk_count || 0;
     const suspiciousCount = data.new_suspicious_count || 0;
@@ -887,12 +924,16 @@ async function loadAssistantAlerts() {
       const key = JSON.stringify([accountId, data.new_items]);
       if (assistantNoticeKey !== key) {
         assistantNoticeKey = key;
-        const nudge = document.getElementById('assistant-nudge'); nudge.textContent = alertText; nudge.classList.remove('hidden'); setTimeout(() => nudge.classList.add('hidden'), 7000);
+        showAssistantNudge(alertText);
       }
     } else {
       strip.classList.add('hidden');
-      document.getElementById('assistant-nudge').classList.add('hidden');
+      if (assistantNoticeKey) {
+        clearTimeout(assistantNudgeTimer);
+        document.getElementById('assistant-nudge').classList.add('hidden');
+      }
       assistantNoticeKey = '';
+      if (incoming.length) showAssistantNudge(`收到 ${incoming.length} 封新邮件`);
     }
   } catch (_) {}
 }
@@ -914,7 +955,7 @@ function analyzeNewAssistantAlerts() {
     return `${index + 1}. 《${subject}》｜${sender}｜${received}｜${risk}${summary ? `｜${summary}` : ''}`;
   }).join('\n');
   resetAssistantConversation();
-  askAssistant(`请只分析这次提醒的新增邮件（共 ${items.length} 封）：\n${refs}\n请按上面的 1、2、3 等当次编号分别说明风险等级、触发原因和建议动作，不要带入其他历史邮件或待办。`, items.map(item => item.id));
+  askAssistant(`请只分析这次提醒的新增邮件（共 ${items.length} 封）：\n${refs}\n请按上面的 1、2、3 等当次编号分别说明风险等级、触发原因和建议动作，不要带入其他历史邮件或待办。`, items.map(item => item.id), [], [], true);
   markAssistantAlertsSeen();
 }
 async function goToAssistantEmail(emailId) {
@@ -2065,7 +2106,7 @@ function buildRiskGauge(score, risk) {
 }
 
 function needsRiskAttention(email = {}) {
-  if (email.feedback === 'fp' && email.reviewed) return false;
+  if (email.processing_complete === 0 || email.reviewed || email.remote_missing || email.status === 'trash' || String(email.pending_action || '').startsWith('trash')) return false;
   if (email.feedback === 'fn') return true;
   return ['phishing', 'suspicious'].includes(email.verdict) || Number(email.score || 0) >= 35;
 }
@@ -2117,8 +2158,11 @@ async function loadData({includeAncillary = true, silent = false} = {}) {
     updateSidebar();
     updateDomainFilter();
     applyFilters({silent});
+    loadAssistantAlerts();
+    return true;
   } catch (e) {
     if (isCurrent()) toast('加载数据失败：' + e.message, 'error');
+    return false;
   }
 }
 
@@ -3571,13 +3615,13 @@ async function refreshMailboxIfChanged(force = false) {
   try {
     const state = await api('/api/mailbox/revision');
     const changed = mailboxRevisionToken !== null && state.revision !== mailboxRevisionToken;
-    mailboxRevisionToken = state.revision;
     if (force || changed) {
       // 邮件变化只刷新本地轻量列表。文件夹读取会建立 IMAP 连接，待办、草稿与
       // 已发送也有各自的刷新入口，不能在每次 AI 分析写库后一起重载。
-      await loadData({includeAncillary:false, silent:true});
-      loadAssistantAlerts();
+      const loaded = await loadData({includeAncillary:false, silent:true});
+      if (loaded === false) return;
     }
+    mailboxRevisionToken = state.revision;
     // 账户任务状态变化不一定修改邮件，但无需每 15 秒读取完整系统配置。
     const now = Date.now();
     if (now - mailboxConfigCheckedAt >= 60000) {
@@ -3814,7 +3858,7 @@ async function activateMailAccount(accountId, {keepMailbox = false, quiet = fals
     document.getElementById('assistant-stop').classList.add('hidden');
     document.getElementById('assistant-retry').classList.add('hidden');
     document.getElementById('assistant-scope-note').textContent = account.user + ' · 全部已同步邮件';
-    assistantHistory = []; assistantConversationId = null; assistantHistoryLoaded = false;
+    assistantHistory = []; assistantConversationId = null; assistantHistoryLoaded = false; assistantAlertContextIds = [];
     assistantAlerts = null; assistantNoticeKey = ''; assistantScopeKey = '';
     ++assistantAlertRevision;
     setAssistantState('calm');
@@ -3911,6 +3955,39 @@ function selectSystemTab(name) {
 
 let availableAppUpdate = null;
 let appUpdateInstalling = false;
+const MAILAI_SHARE_URL = 'https://github.com/langjiahui/MailAI/releases/latest';
+
+function openAppShare() {
+  const dialog = document.getElementById('share-app-dialog');
+  document.getElementById('btn-native-share-app')?.classList.toggle('hidden', typeof navigator.share !== 'function');
+  if (dialog && !dialog.open) dialog.showModal();
+}
+
+async function copyAppShareUrl() {
+  const input = document.getElementById('share-app-url');
+  try {
+    if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(MAILAI_SHARE_URL);
+    else throw new Error('clipboard unavailable');
+    toast('下载页链接已复制，可以分享给朋友', 'success');
+    return;
+  } catch (_) {
+    // Older desktop webviews may not expose the async clipboard API.
+  }
+  input.focus();
+  input.select();
+  let copied = false;
+  try { copied = !!document.execCommand?.('copy'); } catch (_) {}
+  toast(copied ? '下载页链接已复制，可以分享给朋友' : '复制失败，已选中链接，请手动复制', copied ? 'success' : 'warn');
+}
+
+async function shareAppWithSystem() {
+  if (typeof navigator.share !== 'function') return;
+  try {
+    await navigator.share({title:'MailAI', text:'MailAI 邮件安全与效率助手', url:MAILAI_SHARE_URL});
+  } catch (error) {
+    if (error?.name !== 'AbortError') toast('系统分享未完成，请使用复制链接', 'warn');
+  }
+}
 
 function appDeviceName(device) {
   return ({'windows-x64':'Windows x64', 'macos-arm64':'macOS · Apple 芯片'})[device] || device || '暂未识别';
@@ -5435,7 +5512,8 @@ document.getElementById('btn-poll').addEventListener('click', async () => {
   const btn = document.getElementById('btn-poll');
   setLoading(btn, true, '拉取中…');
   try {
-    await api('/api/poll', { method: 'POST' });
+    const result = await api('/api/poll', { method: 'POST' });
+    if (result.queued) toast(result.msg);
     startFetchMonitor();
   } catch (e) {
     toast('拉取失败：' + e.message, 'error');
@@ -5901,6 +5979,9 @@ document.querySelectorAll('[data-about-target]').forEach(button => {
   });
 });
 document.getElementById('btn-check-update')?.addEventListener('click', () => checkForAppUpdate(true));
+document.getElementById('btn-share-app')?.addEventListener('click', openAppShare);
+document.getElementById('btn-copy-share-app')?.addEventListener('click', copyAppShareUrl);
+document.getElementById('btn-native-share-app')?.addEventListener('click', shareAppWithSystem);
 document.getElementById('btn-install-update')?.addEventListener('click', installAppUpdate);
 document.getElementById('show-server-folders').addEventListener('change', async event => {
   const visible = event.target.checked;

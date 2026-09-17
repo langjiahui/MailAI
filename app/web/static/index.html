@@ -239,6 +239,7 @@
             <button id="btn-check-update" type="button" class="action-btn action-primary">检查更新</button>
             <a id="app-release-link" class="action-btn action-secondary" href="https://github.com/langjiahui/MailAI/releases/latest" target="_blank" rel="noopener noreferrer">查看发布页</a>
             <a class="action-btn action-secondary" href="https://github.com/langjiahui/MailAI" target="_blank" rel="noopener noreferrer">项目主页</a>
+            <button id="btn-share-app" type="button" class="action-btn action-secondary">分享 MailAI</button>
           </div>
         </div>
         <div class="author-actions"><button type="button" class="action-btn action-secondary" data-about-target="maintenance">查看数据与模型配置 <span aria-hidden="true">→</span></button><button type="button" class="action-btn action-secondary" data-about-target="guide">使用帮助</button></div>
@@ -758,6 +759,16 @@
         </div>
         <p id="update-dialog-warning" class="update-dialog-warning"></p>
         <footer><button value="cancel">稍后</button><button id="btn-install-update" type="button" class="primary-action">下载并安装</button></footer>
+      </form>
+    </dialog>
+
+    <dialog id="share-app-dialog" class="share-app-dialog" aria-labelledby="share-app-title">
+      <form method="dialog">
+        <header><div><small>分享软件</small><h3 id="share-app-title">分享 MailAI</h3></div><button value="cancel" aria-label="关闭分享窗口">×</button></header>
+        <p>将最新版本下载页发给朋友。此链接不会包含你的邮箱、邮件或本机配置。</p>
+        <label for="share-app-url">最新版本下载页</label>
+        <input id="share-app-url" type="text" readonly value="https://github.com/langjiahui/MailAI/releases/latest">
+        <footer><button id="btn-copy-share-app" type="button" class="action-btn action-primary">复制链接</button><button id="btn-native-share-app" type="button" class="action-btn action-secondary hidden">系统分享</button></footer>
       </form>
     </dialog>
 

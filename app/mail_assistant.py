@@ -44,7 +44,8 @@ def _question_instruction(question: str) -> str:
 
 
 def needs_risk_attention(email: dict) -> bool:
-    if email.get("feedback") == "fp" and email.get("reviewed"):
+    if email.get('processing_complete', 1) == 0 or email.get('reviewed') or email.get('status') == 'trash' or email.get('remote_missing') \
+            or str(email.get('pending_action') or '').startswith('trash'):
         return False
     if email.get("feedback") == "fn":
         return True
@@ -293,16 +294,15 @@ def alerts() -> dict:
     unseen_risky = []
     prefs = preferences()
     muted = set(prefs.get('muted_threads', []))
+    favorites = {c['email'].lower() for c in db.search_contacts('', 300, True)} if prefs['notifications'] == 'important' else set()
     for e in risky:
         key = str(e['id'])
         level = 2 if risk_alert_level(e) == 'high' else 1
         previous = old.get(key)
-        recent = e.get('arrival_kind') != 'history' and str(e.get('date') or '')[:10] >= str(date.today() - timedelta(days=1))
+        recent = e.get('arrival_kind') != 'history' and str(e.get('created_at') or e.get('date') or '')[:10] >= str(date.today() - timedelta(days=1))
         unseen = bool(previous and not previous['seen']) or bool(initialized and ((previous and level > previous['level']) or (not previous and recent)))
         state[key] = {'level': level, 'seen': not unseen}
-        allowed = prefs['notifications'] != 'off' and (prefs['notifications'] != 'high_risk' or level == 2)
-        if prefs['notifications'] == 'important':
-            allowed = level == 2 or e.get('priority') == '高'
+        allowed = notification_allowed(e, prefs, favorites)
         if unseen and allowed and e.get('thread_id') not in muted:
             unseen_risky.append(e)
     if state != old or not initialized:
@@ -316,6 +316,13 @@ def alerts() -> dict:
     return {
         "level": "danger" if any((e.get("score") or 0) >= 70 for e in risky) else ("warn" if risky or overdue else "calm"),
         "risk_count": len(risky), "new_risk_count": len(unseen_risky),
+        "pending_risk_ids": [e['id'] for e in risky],
+        "latest_mail_id": max((e['id'] for e in emails if e.get('processing_complete', 1) != 0), default=0),
+        "recent_mail_items": [{"id": e['id']} for e in sorted(emails, key=lambda e: e['id'], reverse=True)
+                              if e.get('arrival_kind') == 'new' and e.get('processing_complete', 1) != 0
+                              and not e.get('reviewed') and e.get('status') != 'trash' and not e.get('pending_action')
+                              and str(e.get('created_at') or e.get('date') or '')[:10] >= str(date.today() - timedelta(days=1))
+                              and notification_allowed(e, prefs, favorites)][:20],
         "new_high_risk_count": len(unseen_high),
         "new_suspicious_count": len(unseen_suspicious),
         "alert_level": "danger" if unseen_high else ("warn" if unseen_suspicious else "calm"),
@@ -348,6 +355,23 @@ def preferences():
     defaults = {'notifications': 'all', 'muted_threads': []}
     defaults.update(json.loads(db.get_runtime_settings().get('user_preferences', '{}')))
     return defaults
+
+
+def notification_allowed(email: dict, prefs=None, favorites=None) -> bool:
+    prefs = prefs if prefs is not None else preferences()
+    if email.get('reviewed') or email.get('status') == 'trash' or email.get('remote_missing') \
+            or str(email.get('pending_action') or '').startswith('trash'):
+        return False
+    if prefs['notifications'] == 'off' or email.get('thread_id') in prefs.get('muted_threads', []):
+        return False
+    high = risk_alert_level(email) == 'high'
+    if prefs['notifications'] == 'high_risk':
+        return high
+    if prefs['notifications'] == 'important':
+        if favorites is None:
+            favorites = {c['email'].lower() for c in db.search_contacts('', 300, True)}
+        return high or email.get('priority') == '高' or str(email.get('from_addr') or '').lower() in favorites
+    return True
 
 
 def validated_citations(answer, sources):
