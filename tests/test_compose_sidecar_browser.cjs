@@ -12,6 +12,13 @@ const fs=require('fs'), path=require('path'), assert=require('node:assert/strict
   const html=fs.readFileSync(path.join(__dirname,'../app/web/static/index.html'),'utf8').replace(/<script[\s\S]*?<\/script>/g,'').replace(/href="\/static\//g,'href="/');
   await page.goto('http://mailai.test/'); await page.setContent(html);
   await page.evaluate(()=>{document.querySelector('#app-preloader').remove();document.querySelector('#compose-modal').classList.remove('hidden');document.body.classList.add('compose-open');});
+  await page.addScriptTag({path:path.join(__dirname,'../app/web/static/companion.js')});
+  assert.equal(await page.locator('#btn-compose-ai .mail-companion').count(),1);
+  await page.locator('#btn-compose-ai').hover();
+  assert.ok(await page.locator('#btn-compose-ai').evaluate(el=>el.style.getPropertyValue('--look-x')));
+  await page.emulateMedia({reducedMotion:'reduce'});
+  assert.equal(await page.locator('#btn-compose-ai .mail-companion').evaluate(el=>getComputedStyle(el).animationName),'none');
+  await page.emulateMedia({reducedMotion:'no-preference'});
   for(const width of [1920,1440,1280,1024,390]) {
    await page.setViewportSize({width,height:1000});
    await page.evaluate(()=>document.querySelector('#compose-ai-panel').classList.add('hidden'));

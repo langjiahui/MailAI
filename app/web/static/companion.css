@@ -1,4 +1,47 @@
 /* 小邮 · shared vector rig. Body choreography is owned by companion-motion.js. */
+.compose-card .compose-fields { position:relative; overflow:visible; }
+.compose-fields > label:last-of-type { padding-right:96px; }
+.compose-fields .compose-edge-tools { position:absolute; right:46px; bottom:-2px; z-index:2; padding:0; border:0; }
+.compose-edge-tools.compose-ai-tools .compose-ai-main.compose-perch,
+html[data-theme="dark"] .compose-edge-tools.compose-ai-tools .compose-ai-main.compose-perch {
+  display:block; width:76px; min-width:76px; height:58px; min-height:0; padding:0;
+  border:0; border-radius:12px 12px 0 0; background:transparent!important; box-shadow:none;
+}
+.compose-edge-tools .compose-ai-main.compose-perch .compose-perch-art { width:76px; height:58px; margin:0; border:0; }
+.compose-edge-tools .perch-paw { bottom:-2px; }
+.compose-edge-tools .compose-ai-main.compose-perch .compose-ai-label { display:block; position:absolute; right:84px; bottom:9px; width:max-content; padding:7px 10px; border-radius:10px 10px 2px 10px; background:#e0f0e7; color:#306d54; opacity:0; pointer-events:none; transition:opacity .15s; }
+.compose-edge-tools .compose-ai-main.compose-perch small { display:none; }
+.compose-edge-tools .compose-perch:hover .compose-ai-label,.compose-edge-tools .compose-perch:focus-visible .compose-ai-label { opacity:1; }
+html[data-theme="dark"] .compose-edge-tools .compose-ai-main.compose-perch .compose-ai-label { background:#30513f; color:#d8eee0!important; }
+@media(max-width:760px) { .compose-fields .compose-edge-tools { right:18px; } }
+.compose-ai-tools .compose-ai-main.compose-perch {
+  position:relative; display:grid; grid-template-columns:64px auto; grid-template-rows:auto auto;
+  min-width:170px; width:auto; min-height:54px; padding:7px 14px 7px 4px;
+  column-gap:9px; border:0; border-bottom:2px solid #71a68e; border-radius:15px;
+  background:linear-gradient(120deg,#e7f3ec,#f6faf7); color:#306d54; box-shadow:none;
+}
+.compose-ai-main.compose-perch .compose-perch-art {
+  position:relative; display:block; grid-row:1 / -1; width:64px; height:48px;
+  align-self:end; margin-top:-8px; border-bottom:2px solid #71a68e;
+}
+.compose-perch-art .mail-companion { overflow:hidden; transform-origin:50% 100%; animation:perch-peek 6s ease-in-out infinite; }
+.compose-perch-art .companion-bag,.compose-perch-art .companion-shadow,
+.compose-perch-art .companion-arm-left,.compose-perch-art .companion-wave { display:none; }
+.perch-paw { position:absolute; bottom:-4px; width:13px; height:9px; background:#b5ddc5; border:1.5px solid #649f80; border-radius:6px; box-shadow:0 2px 2px #254b3a18; }
+.perch-paw-left { left:10px; } .perch-paw-right { right:10px; }
+.compose-ai-tools .compose-perch:hover,.compose-ai-tools .compose-perch.active { background:#dcefe4; color:#245a43; border-color:#498468; box-shadow:0 4px 14px #254b3a16; }
+.compose-ai-tools .compose-perch:hover small,.compose-ai-tools .compose-perch.active small { color:#46765f; }
+.compose-perch:hover .mail-companion,.compose-perch:focus-visible .mail-companion { animation:none; transform:translateY(-2px) rotate(-4deg); }
+.compose-perch:active .mail-companion { transform:translateY(1px) scale(.96); }
+.compose-perch:focus-visible { outline:2px solid #438e6d; outline-offset:3px; }
+.compose-perch.active .companion-eyes { display:none; }
+.compose-perch.active .companion-happy-eyes { display:block; }
+@keyframes perch-peek { 0%,65%,100% { transform:translateY(0); } 72%,82% { transform:translateY(-2px) rotate(3deg); } 90% { transform:rotate(-2deg); } }
+html[data-theme="dark"] .compose-ai-tools .compose-ai-main.compose-perch { background:#243e32!important; color:#d8eee0!important; border-color:#689c80; }
+html[data-theme="dark"] .compose-ai-tools .compose-perch:hover { background:#30513f!important; }
+.companion-still .compose-perch .mail-companion,.companion-paused .compose-perch .mail-companion { animation:none; transform:none; }
+@media(prefers-reduced-motion:reduce) { .compose-perch .mail-companion { animation:none!important; transform:none!important; } }
+@media(max-width:760px) { .compose-ai-tools .compose-ai-main.compose-perch { min-width:68px; width:68px; grid-template-columns:1fr; padding:4px 2px; } }
 .mail-assistant { right:20px; bottom:16px; }
 .mail-assistant .assistant-orb,.mail-assistant .assistant-orb:hover { display:grid; place-items:center; width:72px; height:80px; padding:0; border:0; background:transparent; border-radius:22px; box-shadow:none; backdrop-filter:none; transform:none; cursor:pointer; }
 .mail-assistant .assistant-orb:focus-visible { outline:2px solid #418666; outline-offset:3px; }

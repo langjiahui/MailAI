@@ -17,7 +17,7 @@
   <link rel="icon" type="image/png" href="/static/assets/mailai-mark.png" />
   <link rel="stylesheet" href="/static/style.css?v=contact-mail-48" />
   <link rel="stylesheet" href="/static/workspace.css?v=maintenance-59" />
-  <link rel="stylesheet" href="/static/companion.css?v=mint-3" />
+  <link rel="stylesheet" href="/static/companion.css?v=mint-4" />
   <link rel="stylesheet" href="/static/theme.css?v=theme-16" />
   <link rel="stylesheet" href="/static/attachment-preview.css?v=2">
   <link rel="stylesheet" href="/static/onboarding.css?v=1">
@@ -563,6 +563,7 @@
           <details class="compose-extra-recipients"><summary>抄送 / 密送</summary><div class="compose-recipient-field"><label><span>抄送</span><input id="compose-cc" class="contact-input" type="text" autocomplete="off" placeholder="可选"></label><button type="button" class="recipient-book-button" data-contact-target="compose-cc" title="从通讯录添加抄送人" aria-label="从通讯录添加抄送人"><svg viewBox="0 0 20 20"><rect x="4.5" y="2.8" width="11.5" height="14.5" rx="2"/><circle cx="10.2" cy="7.7" r="1.6"/><path d="M7.6 14c.5-1.6 1.4-2.4 2.6-2.4s2.1.8 2.6 2.4M4.5 7H3M4.5 12H3"/></svg></button></div>
           <div class="compose-recipient-field"><label><span>密送</span><input id="compose-bcc" class="contact-input" type="text" autocomplete="off" placeholder="可选"></label><button type="button" class="recipient-book-button" data-contact-target="compose-bcc" title="从通讯录添加密送人" aria-label="从通讯录添加密送人"><svg viewBox="0 0 20 20"><rect x="4.5" y="2.8" width="11.5" height="14.5" rx="2"/><circle cx="10.2" cy="7.7" r="1.6"/><path d="M7.6 14c.5-1.6 1.4-2.4 2.6-2.4s2.1.8 2.6 2.4M4.5 7H3M4.5 12H3"/></svg></button></div>
           </details><label><span>主题</span><input id="compose-subject" type="text" placeholder="邮件主题"></label>
+          <div class="compose-ai-tools compose-edge-tools"><button type="button" id="btn-compose-ai" class="compose-ai-main compose-perch" aria-label="小邮帮写，展开或收起帮写窗口" aria-expanded="false" aria-controls="compose-ai-panel"><span class="compose-perch-art" aria-hidden="true"></span><span class="compose-ai-label">小邮帮写</span><small>点点我，一起写</small></button></div>
         </div>
         <div id="contact-suggestions" class="contact-suggestions hidden" role="listbox"></div>
         <div class="compose-toolbar" aria-label="正文格式">
@@ -571,7 +572,6 @@
             <button type="button" id="btn-add-attachment" class="compose-tool-labeled compose-attach-button"><svg viewBox="0 0 20 20"><path d="M7.2 10.7 12 5.9a2.5 2.5 0 0 1 3.5 3.5l-6.3 6.3a4 4 0 0 1-5.7-5.7l6-6"/></svg><span>附件</span></button>
             <button type="button" id="btn-paste-attachment" class="compose-tool-labeled" title="粘贴从文件管理器复制的附件">粘贴附件</button>
             <div class="compose-signature-tools"><select id="compose-signature-select" aria-label="选择邮件签名"><option value="">不使用签名</option></select><button type="button" id="btn-manage-signatures" title="管理签名">管理</button></div>
-            <div class="compose-ai-tools"><button type="button" id="btn-compose-ai" class="compose-ai-main" aria-expanded="false" aria-controls="compose-ai-panel"><span class="compose-assistant-face" aria-hidden="true"><span></span><i></i><i></i></span><span class="compose-ai-label">MailAI 帮写</span><small>同一个助手 · 写作模式</small></button></div>
             <div class="compose-toolbar-status"><button type="button" id="draft-state" disabled aria-live="polite" title="草稿仅保存在本机，不会同步到邮箱服务器">草稿自动保存</button></div>
           </div>
           <div class="compose-format-tools">
@@ -895,8 +895,8 @@
   <script src="/static/task-planner.js?v=tasks-1"></script>
   <script src="/static/assistant-images.js?v=longshot-4"></script>
   <script src="/static/assistant-attachments.js?v=xiaoyou-3"></script>
-  <script src="/static/companion.js?v=mint-2"></script>
-  <script src="/static/companion-motion.js?v=mint-3"></script>
+  <script src="/static/companion.js?v=mint-4"></script>
+  <script src="/static/companion-motion.js?v=mint-4"></script>
   <script src="/static/onboarding.js?v=3"></script>
 </body>
 </html>

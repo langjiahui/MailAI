@@ -43,7 +43,7 @@ assert.match(source, /if \(silent && signature === emailListRenderSignature\)/, 
 assert.match(source, /container\.scrollTop = scrollTop/, 'Silent refresh must preserve the mail-list scroll position');
 assert.match(styles, /\.email-list\.silent-refresh \.email-item\s*\{\s*animation:none/, 'Silent refresh must not replay mail entrance animations');
 assert.match(html, /id="compose-ai-panel"/, 'Compose must expose a dedicated AI writing sidecar');
-assert.match(html, /class="compose-assistant-face"/, 'Compose must reuse the global MailAI assistant identity');
+assert.match(html, /class="compose-perch-art"/, 'Compose must expose the shared Xiaoyou character mount');
 assert.match(html, /MailAI Copilot · 写作模式/, 'Compose must describe AI writing as a mode of the same assistant');
 assert.match(html, /class="compose-ai-scroll"/, 'AI sidecar must keep its header visible and use one content scroller');
 assert.match(html, /id="compose-ai-preview"/, 'AI output must be previewed before it can change the body');

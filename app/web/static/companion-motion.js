@@ -54,7 +54,7 @@
       [.87,{figure:pose(0,-.5,.5)}], [1,{}],
     ]},
   };
-  const rigs = [...document.querySelectorAll('.mail-companion')].map(svg => ({
+  const rigs = [...document.querySelectorAll('.mail-companion')].filter(svg => !svg.closest('.compose-perch')).map(svg => ({
     svg, parts:Object.fromEntries(names.map(name=>[name,svg.querySelector(`.companion-${name}`)])),
     animations:[],timer:0,mode:'',next:0,
   }));

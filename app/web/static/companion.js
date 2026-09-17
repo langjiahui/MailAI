@@ -47,6 +47,22 @@
     try { localStorage.setItem(key, toggle.checked ? 'on' : 'off'); } catch (_) {}
   });
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const perch = document.getElementById('btn-compose-ai');
+  const perchArt = perch?.querySelector('.compose-perch-art');
+  if (perchArt) {
+    // Crop the shared character at the waist; the paws sit over the window ledge.
+    perchArt.innerHTML = art.replace('viewBox="0 0 112 112"', 'viewBox="15 6 82 70"') + '<i class="perch-paw perch-paw-left"></i><i class="perch-paw perch-paw-right"></i>';
+    const resetLook = () => { perch.style.removeProperty('--look-x'); perch.style.removeProperty('--look-y'); };
+    document.querySelector('.compose-card').addEventListener('pointermove', event => {
+      if (!toggle.checked || reducedMotion.matches || event.pointerType === 'touch') return resetLook();
+      const bounds = perch.getBoundingClientRect();
+      perch.style.setProperty('--look-x', `${Math.max(-3, Math.min(3, (event.clientX - bounds.left - 35) / 55))}px`);
+      perch.style.setProperty('--look-y', `${Math.max(-2, Math.min(2, (event.clientY - bounds.top - 20) / 65))}px`);
+    });
+    document.querySelector('.compose-card').addEventListener('pointerleave', resetLook);
+    toggle.addEventListener('change', resetLook);
+    reducedMotion.addEventListener('change', resetLook);
+  }
   orb.addEventListener('pointermove', event => {
     if (!toggle.checked || reducedMotion.matches || event.pointerType === 'touch') return;
     const bounds = orb.getBoundingClientRect();
