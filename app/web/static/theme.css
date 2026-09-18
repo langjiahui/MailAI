@@ -808,6 +808,30 @@ html[data-theme="dark"] .compose-ai-context-options span,
 html[data-theme="dark"] :is(.compose-ai-quick-actions,.compose-ai-preview-actions) button { color:#c9dfd3!important; border-color:var(--dark-stroke)!important; background:rgba(42,71,56,.66)!important; }
 html[data-theme="dark"] .compose-ai-context-options input:checked+span { color:#d8ffea!important; border-color:rgba(121,220,165,.34)!important; background:rgba(49,130,90,.34)!important; }
 html[data-theme="dark"] .compose-ai-preview { border-color:rgba(119,206,158,.24)!important; background:linear-gradient(145deg,rgba(38,82,60,.48),rgba(15,36,27,.68))!important; }
+/* Sticky action bar under the AI draft preview: light gradient turned into the panel dark. */
+html[data-theme="dark"] .compose-ai-preview-actions { background:linear-gradient(to bottom,rgba(16,38,29,.74),rgba(13,32,24,.98) 30%)!important; }
+
+/* Preflight send-confirmation dialog: the whole island was light in dark mode. */
+html[data-theme="dark"] .preflight-dialog { border-color:var(--dark-stroke)!important; background:rgba(18,40,30,.98)!important; box-shadow:0 28px 76px rgba(0,0,0,.5)!important; }
+html[data-theme="dark"] .preflight-summary { border-color:var(--dark-stroke)!important; background:linear-gradient(180deg,rgba(24,52,39,.99),rgba(18,42,31,.97))!important; }
+html[data-theme="dark"] .preflight-heading small { color:#d8b96a!important; }
+html[data-theme="dark"] .preflight-heading strong { color:#f0faf4!important; }
+html[data-theme="dark"] .preflight-heading em { color:#9db2a7!important; }
+html[data-theme="dark"] .preflight-summary>button { color:#d5e9dd!important; border-color:var(--dark-stroke)!important; background:rgba(35,66,51,.72)!important; }
+html[data-theme="dark"] .preflight-item { border-color:var(--dark-stroke)!important; background:rgba(10,28,20,.62)!important; }
+html[data-theme="dark"] .preflight-item b { color:#e7f3eb!important; }
+html[data-theme="dark"] .preflight-item small { color:#9db2a7!important; }
+html[data-theme="dark"] .preflight-item em { color:#8fa89a!important; }
+html[data-theme="dark"] .preflight-item .preflight-icon { color:#e0bd6b!important; background:rgba(120,92,32,.3)!important; }
+html[data-theme="dark"] .preflight-item.danger { border-color:rgba(220,110,104,.28)!important; background:rgba(64,26,24,.55)!important; }
+html[data-theme="dark"] .preflight-item.danger .preflight-icon { color:#e88d86!important; background:rgba(140,54,50,.32)!important; }
+html[data-theme="dark"] .preflight-item.info .preflight-icon { color:#8fd7b6!important; background:rgba(45,116,90,.3)!important; }
+html[data-theme="dark"] .preflight-decision { border-color:var(--dark-stroke)!important; background:rgba(20,46,34,.99)!important; box-shadow:none!important; }
+html[data-theme="dark"] .preflight-decision label b { color:#e7f3eb!important; }
+html[data-theme="dark"] .preflight-decision label small { color:#9db2a7!important; }
+html[data-theme="dark"] .preflight-decision button { color:#c9dfd3!important; border-color:var(--dark-stroke)!important; background:rgba(42,71,56,.66)!important; }
+html[data-theme="dark"] .preflight-decision .preflight-confirm-send { color:#fff!important; border-color:transparent!important; background:linear-gradient(135deg,#3f9477,#2d745a)!important; }
+html[data-theme="dark"] .preflight-decision .preflight-confirm-send:disabled { color:#7d8f86!important; background:rgba(52,72,62,.6)!important; }
 
 /* Settings fields and account hierarchy. */
 html[data-theme="dark"] .notification-account-context { background:rgba(7,24,17,.56)!important; border:1px solid var(--dark-stroke)!important; }
