@@ -1,0 +1,25 @@
+MailAI
+Copyright 2026 langjiahui
+
+This product includes software developed by langjiahui
+(https://github.com/langjiahui/MailAI).
+
+Bundled assets
+==============
+
+The following image assets under app/web/static/assets/ are original
+works created for MailAI by the author and are distributed under the
+same Apache License, Version 2.0:
+
+  - mailai-icon-256.png
+  - mailai-lockup.png
+  - mailai-mark.png
+
+The file langjiahui-avatar.png is the author's personal avatar and is
+NOT covered by the Apache License. It may not be reused outside this
+project without permission.
+
+Third-party Python and JavaScript dependencies are installed at build
+time from their respective package registries and are governed by
+their own licenses; see requirements.txt and requirements-build.txt
+for the dependency list.

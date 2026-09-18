@@ -3,6 +3,7 @@
 MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它通过 IMAP 接入邮箱，在邮件落箱后自动完成**规则+上下文+行为+LLM 四层检测**，实现钓鱼/垃圾邮件识别、攻击链路溯源、发件人行为画像、多轮会话关联分析、自动隔离与审计反馈闭环，显著降低人工研判工作量，提升反诈防护能力。
 
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 当前版本：**v1.0.14**
 

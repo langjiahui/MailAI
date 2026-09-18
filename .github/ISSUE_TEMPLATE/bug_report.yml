@@ -1,0 +1,58 @@
+name: Bug 报告
+description: 报告 MailAI 的异常行为
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢报告问题！请**不要**在报告中粘贴真实邮件内容、邮箱密码或 API Key。
+        安全漏洞请勿在此提交，请走 [私有漏洞报告](https://github.com/langjiahui/MailAI/security/advisories/new)。
+  - type: input
+    id: version
+    attributes:
+      label: MailAI 版本
+      description: 设置 → 关于与隐私中查看，如 v1.0.14
+      placeholder: v1.0.14
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: 运行平台
+      options:
+        - Windows 安装版
+        - macOS 安装版（Apple Silicon）
+        - 源码运行（Windows）
+        - 源码运行（macOS）
+        - 源码运行（Linux）
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为
+      placeholder: 本来应该发生什么？
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+      placeholder: 实际发生了什么？如有报错请贴出（注意脱敏）
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. 打开……
+        2. 点击……
+        3. 出现……
+  - type: textarea
+    id: logs
+    attributes:
+      label: 相关日志（可选）
+      description: 运行日志片段，务必删除邮件正文、账号、密码等敏感信息
+      render: text
