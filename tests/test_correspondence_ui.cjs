@@ -5,7 +5,8 @@ const path = require('node:path');
 const js = fs.readFileSync(path.join(__dirname, '../app/web/static/app.js'), 'utf8');
 const html = fs.readFileSync(path.join(__dirname, '../app/web/static/index.html'), 'utf8');
 const css = fs.readFileSync(path.join(__dirname, '../app/web/static/workspace.css'), 'utf8');
-const server = fs.readFileSync(path.join(__dirname, '../app/web/server.py'), 'utf8');
+const server = fs.readFileSync(path.join(__dirname, '../app/web/routes/mail_actions.py'), 'utf8')
+  + fs.readFileSync(path.join(__dirname, '../app/web/routes/contacts.py'), 'utf8');
 
 assert.match(js, /aria-label="查看往来邮件"[^>]*data-tooltip="查看往来邮件"/, 'Reading actions should expose labelled correspondence');
 assert.match(js, /class="btn-ghost reading-icon-action btn-correspondence"[^>]*><svg[^>]*><path d="M4 7h15m-4-4 4 4-4 4M20 17H5m4-4-4 4 4 4"\/>/, 'Correspondence should use a distinct two-way exchange icon');
@@ -31,8 +32,8 @@ const deleteFlow = js.slice(js.indexOf('async function deleteSelectedCorresponde
 assert.doesNotMatch(deleteFlow, /await loadData\(\)/, 'Mailbox refresh must not extend the visible deletion wait state');
 assert.match(deleteFlow, /loadData\(\)\.catch/, 'Background refresh failures should be handled');
 assert.match(css, /@keyframes correspondence-progress/, 'The wait state should include visible indeterminate progress');
-assert.match(server, /@app\.get\("\/api\/emails\/\{email_id\}\/correspondence"\)/, 'The correspondence endpoint must exist');
-assert.match(server, /@app\.get\("\/api\/mail\/contacts\/correspondence"\)/, 'Contacts need a direct correspondence endpoint');
+assert.match(server, /@router\.get\("\/api\/emails\/\{email_id\}\/correspondence"\)/, 'The correspondence endpoint must exist');
+assert.match(server, /@router\.get\("\/api\/mail\/contacts\/correspondence"\)/, 'Contacts need a direct correspondence endpoint');
 assert.match(js, /function reloadCorrespondence\(\)/, 'Retry should preserve whether the drawer was opened from a message or contact');
 
 console.log('Correspondence drawer entry, states, direction and navigation are wired');
