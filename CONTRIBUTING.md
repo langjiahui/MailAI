@@ -29,6 +29,14 @@ python scripts/check_release.py
 
 这是项目的离线质量门禁（100+ 项检查），**PR 合并前必须通过**。门禁不需要真实邮箱、不需要模型 API Key，全部离线运行。
 
+**改了 `app/web/static/` 下的 JS 源码后必须重新打包**：
+
+```bash
+python scripts/build_frontend.py
+```
+
+它按 `frontend/sources.txt` 的顺序把脚本拼成 `app/web/static/bundle.js`，并按内容哈希更新 `index.html` 的缓存版本号；`bundle.js` 与 `index.html` 的改动要和源码一起提交（门禁会校验产物新鲜度）。
+
 单元测试：
 
 ```bash

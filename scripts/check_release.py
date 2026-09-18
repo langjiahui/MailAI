@@ -79,6 +79,8 @@ def main():
     if not node:
         raise SystemExit('Node.js is required for frontend release checks')
     commands = [[sys.executable, str(ROOT / 'tests' / name)] for name in TESTS]
+    commands.append([sys.executable, str(ROOT / 'scripts/build_frontend.py'), '--check'])
+    commands.append([node, '--check', str(ROOT / 'app/web/static/bundle.js')])
     if sys.platform == 'darwin':
         commands.append([sys.executable, str(ROOT / 'tests/test_mail_links_webkit.py')])
     commands += [[node, '--check', str(ROOT / 'app/web/static/server-cleanup.js')]]
