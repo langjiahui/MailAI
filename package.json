@@ -1,0 +1,8 @@
+{
+  "name": "mailai",
+  "private": true,
+  "description": "MailAI frontend tooling (browser release tests)",
+  "devDependencies": {
+    "playwright": "^1.55.0"
+  }
+}

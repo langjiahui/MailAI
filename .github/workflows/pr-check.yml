@@ -28,6 +28,39 @@ jobs:
       - name: Run offline release gate
         run: python scripts/check_release.py
 
+  browser-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Install Playwright package
+        run: npm ci
+
+      - name: Start isolated fixture server
+        run: |
+          python tests/workspace_preview.py &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:18795/api/health > /dev/null && exit 0
+            sleep 1
+          done
+          echo "fixture server did not start" >&2
+          exit 1
+
+      - name: Run prepublish browser checks
+        run: node tests/prepublish_browser.cjs
+
   secret-scan:
     runs-on: ubuntu-latest
     steps:

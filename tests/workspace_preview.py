@@ -8,7 +8,8 @@ def main():
     fixture = tempfile.TemporaryDirectory(prefix='mailai-workspace-ui-')
     os.environ.update(MAILAI_HOME=fixture.name, IMAP_USER='work@example.test', IMAP_PASSWORD='fixture',
                       IMAP_HOST='imap.example.test', SMTP_HOST='smtp.example.test', SMTP_USE_IMAP_CREDENTIALS='true',
-                      LLM_API_KEY='', AUTO_OPEN_BROWSER='false')
+                      LLM_API_KEY='fixture', LLM_BASE_URL='http://127.0.0.1:9', LLM_MODEL='fixture-model',
+                      AUTO_OPEN_BROWSER='false')
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     from app import config, db, system_settings, credential_store, pipeline, smtp_client
     from app.account_context import use
