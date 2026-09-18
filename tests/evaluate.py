@@ -7,6 +7,9 @@
 
 `--gate` 模式用于发布/PR 门禁：干净样本误报率 >= 2% 或钓鱼召回率 < 90%
 时以非零码退出。每次运行使用全新临时数据库，避免残留旧 schema。
+
+评估必须环境无关：MAILAI_HOME 指向空临时目录，避免拾取本机 .env
+（COMPANY_DOMAIN 等配置会显著改变判定结果），DNS 体检打桩为 unknown。
 """
 import argparse
 import json
@@ -15,6 +18,8 @@ import sys
 import tempfile
 import time
 from datetime import datetime
+
+os.environ["MAILAI_HOME"] = tempfile.mkdtemp(prefix="mailai-eval-home-")
 
 # 把项目根目录加入路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

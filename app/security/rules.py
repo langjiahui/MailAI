@@ -101,7 +101,9 @@ def scan(email: dict) -> dict:
                     break
 
     display = (email.get("from_name") or "").lower()
-    if not is_internal and (company.split(".")[0] in display or "管理员" in display or "it部" in display):
+    # 注意：未配置 COMPANY_DOMAIN 时 company 为空串，空串会"包含"于任意显示名，
+    # 必须显式排除，否则全新安装会把所有带显示名的外部邮件误判 +20。
+    if not is_internal and company and (company.split(".")[0] in display or "管理员" in display or "it部" in display):
         findings.append({
             "code": "DISPLAY_SPOOF",
             "detail": f"外部邮件显示名冒称内部身份: {email.get('from_name')}",

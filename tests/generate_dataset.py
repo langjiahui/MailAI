@@ -217,7 +217,7 @@ def main():
             from_addr="wang@example.com",
             from_name="王总",
             reply_to="wang@mail-temp-example.net",
-            body="小王，\n\n我在外地开会，急需垫付一笔差旅费，请尽快处理转账事宜，账号信息稍后发你。\n\n事情紧急，办妥回复。",
+            body="小王，\n\n我在外地开会，急需垫付一笔差旅费，请尽快处理转账事宜，银行卡号稍后发你。\n\n事情紧急，办妥回复。",
         ), "phishing"),
         save("phish_07_ip_url.eml", make_email(
             subject="邮箱存储空间不足",
