@@ -8,7 +8,9 @@ const click=(id,keys={})=>{c.item.dataset.id=String(id);c.click({preventDefault(
 click(20);assert.equal(c.opened,20);click(50,{shiftKey:true});assert.deepEqual([...c.selectedMailIds],[20,30,40,50]);
 click(30,{shiftKey:true});assert.deepEqual([...c.selectedMailIds],[20,30]);
 click(50);click(20,{shiftKey:true});assert.deepEqual([...c.selectedMailIds],[20,30,40,50]);
+assert.equal(c.bulkStackFocusId,20,'The last clicked message should lead a reversed selection stack');
 click(10,{ctrlKey:true});click(30,{ctrlKey:true,shiftKey:true});assert.equal(c.selectedMailIds.size,5);
 c.renderedEmailIds=[50,30,10];click(50);click(10,{shiftKey:true});assert.deepEqual([...c.selectedMailIds],[50,30,10]);
 c.selectionAnchorId=999;click(30,{shiftKey:true});assert.deepEqual([...c.selectedMailIds],[30]);assert.equal(c.selectionAnchorId,30);
+assert.doesNotMatch(source,/startReadingFlight/, 'Opening a single message should not play the paper-flight effect');
 console.log('PASS initial click + Shift range, reversed range, repeat Shift, Ctrl additive, filtered/sorted order and missing anchor');

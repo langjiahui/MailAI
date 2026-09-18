@@ -77,6 +77,9 @@ let renderedEmailIds = [];
 let mailRenderLimit = 240;
 let bulkVisualRevision = 0;
 let selectionAnchorId = null;
+let bulkStackFocusId = null;
+let bulkStackPreviewController = null;
+const bulkStackPreviewCache = new Map();
 let bulkOperationActive = false;
 let mailboxFolders = [];
 let attachmentItems = [];
@@ -2865,6 +2868,7 @@ function renderEmailList(emails, {silent = false} = {}) {
         if (!(event.metaKey || event.ctrlKey)) selectedMailIds.clear();
         selectedMailIds.add(id);
         selectionAnchorId = id;
+        bulkStackFocusId = id;
         syncBulkSelectionVisuals();
       }
       showMailContextMenu(event.clientX, event.clientY, id);
@@ -2883,7 +2887,7 @@ function renderEmailList(emails, {silent = false} = {}) {
         event.preventDefault();
         const rect = item.getBoundingClientRect();
         if (!selectedMailIds.has(id)) {
-          selectedMailIds.clear(); selectedMailIds.add(id); selectionAnchorId = id; syncBulkSelectionVisuals();
+          selectedMailIds.clear(); selectedMailIds.add(id); selectionAnchorId = id; bulkStackFocusId = id; syncBulkSelectionVisuals();
         }
         showMailContextMenu(rect.left + 24, rect.top + 24, id);
       }
@@ -2983,7 +2987,9 @@ async function selectSpecialMessage(id) {
   selectedEmailId = id;
   selectedEmailDetail = null;
   syncSelectedEmailVisual(id);
-  document.querySelector('.reading-pane').classList.add('show');
+  const readingPane = document.querySelector('.reading-pane');
+  readingPane.classList.add('show');
+  readingPane.scrollTop = 0;
   document.getElementById('reading-empty').classList.add('hidden');
   const pane = document.getElementById('reading-content');
   pane.classList.remove('hidden');
@@ -3094,6 +3100,7 @@ function clearMailSelection() {
   if (bulkOperationActive) return;
   selectedMailIds.clear();
   selectionAnchorId = null;
+  bulkStackFocusId = null;
   syncBulkSelectionVisuals();
 }
 
@@ -3102,6 +3109,7 @@ function toggleMailSelection(id) {
   if (selectedMailIds.has(id)) selectedMailIds.delete(id);
   else selectedMailIds.add(id);
   selectionAnchorId = id;
+  bulkStackFocusId = id;
   syncBulkSelectionVisuals();
 }
 
@@ -3115,6 +3123,7 @@ function selectMailRange(id, additive = false) {
   const [from, to] = start <= end ? [start, end] : [end, start];
   renderedEmailIds.slice(from, to + 1).forEach(mailId => selectedMailIds.add(mailId));
   if (selectionAnchorId === null) selectionAnchorId = id;
+  bulkStackFocusId = id;
   syncBulkSelectionVisuals();
 }
 
@@ -3123,6 +3132,7 @@ function selectAllVisibleMail() {
   if (bulkOperationActive || specialMailbox || !renderedEmailIds.length) return;
   renderedEmailIds.forEach(id => selectedMailIds.add(id));
   selectionAnchorId = renderedEmailIds[0];
+  bulkStackFocusId = renderedEmailIds[0];
   syncBulkSelectionVisuals();
 }
 
@@ -3223,6 +3233,71 @@ function updateBulkToolbar() {
   toolbar.classList.toggle('hidden', (!selectedMailIds.size && !bulkOperationActive) || !!specialMailbox);
   if (!bulkOperationActive) document.getElementById('bulk-count').textContent = `已选 ${selectedMailIds.size} 封`;
   document.querySelector('.list-pane')?.classList.toggle('selection-active', !!selectedMailIds.size && !specialMailbox);
+  syncReadingSelectionStack();
+}
+
+function syncReadingSelectionStack() {
+  const pane = document.getElementById('reading-pane');
+  if (!pane) return;
+  let stack = pane.querySelector('.reading-selection-stack');
+  const ids = specialMailbox || unifiedMailbox ? [] : [...selectedMailIds];
+  if (ids.length < 2) {
+    bulkStackPreviewController?.abort();
+    bulkStackPreviewController = null;
+    stack?.remove();
+    pane.classList.remove('bulk-stack-active');
+    return;
+  }
+  const focus = ids.includes(bulkStackFocusId) ? bulkStackFocusId : ids.at(-1);
+  const signature = `${ids.join(',')}|${focus}`;
+  if (stack?.dataset.selection === signature) return;
+  const previous = stack?.dataset.selection?.split('|')[0].split(',') || [];
+  const newest = String(focus);
+  const arriving = !previous.includes(newest);
+  const cards = [...ids.filter(id => id !== focus).slice(-3), focus].map((id, index, visible) => {
+    const row = allEmails.find(email => Number(email.id) === Number(id)) || {};
+    const sender = row.from_name || row.from_addr || row.sender || '发件人';
+    const subject = row.subject || '无主题';
+    const offset = visible.length - index - 1;
+    return `<div class="reading-selection-sheet${offset === 0 && arriving ? ' arriving' : ''}" data-depth="${offset}" aria-hidden="${offset ? 'true' : 'false'}">
+      ${offset === 0 ? `<div class="reading-selection-sheet-head"><span>${esc(String(sender).charAt(0))}</span><div><b>${esc(sender)}</b><small>${esc(row.from_addr || '')}</small></div><time>${esc(fmtDate(row.date || row.created_at || ''))}</time></div>
+      <div class="reading-selection-sheet-content"><h3>${esc(subject)}</h3><div class="reading-selection-sheet-preview" data-stack-body>${esc(row.body_text || row.summary || row.snippet || '正在读取邮件预览…')}</div></div>` : `<div class="reading-selection-sheet-edge"><b>${esc(sender)}</b><small>${esc(subject)}</small></div>`}
+    </div>`;
+  }).join('');
+  if (!stack) {
+    stack = document.createElement('div');
+    stack.className = 'reading-selection-stack';
+    stack.setAttribute('role', 'status');
+    pane.appendChild(stack);
+  }
+  stack.dataset.selection = signature;
+  stack.innerHTML = `<div class="reading-selection-stack-inner"><div class="reading-selection-stack-heading"><strong>已选择 ${ids.length} 封邮件</strong><span>预览最后选入的邮件</span></div><div class="reading-selection-deck">${cards}</div><p>可在左侧继续选择，或使用批量操作</p></div>`;
+  pane.classList.add('bulk-stack-active');
+  pane.scrollTop = 0;
+  loadReadingSelectionPreview(focus, stack);
+}
+
+async function loadReadingSelectionPreview(id, stack) {
+  bulkStackPreviewController?.abort();
+  const accountId = activeMailAccount()?.id || '';
+  const key = `${accountId}:${id}`;
+  const body = stack.querySelector('[data-stack-body]');
+  if (!body) return;
+  const cached = bulkStackPreviewCache.get(key);
+  if (cached) { body.textContent = cached; return; }
+  const controller = new AbortController();
+  bulkStackPreviewController = controller;
+  try {
+    const mail = await api(`/api/emails/${id}`, {accountId, signal:controller.signal});
+    if (controller.signal.aborted || !stack.isConnected || !selectedMailIds.has(id) || stack.querySelector('[data-stack-body]') !== body) return;
+    const preview = String(mail.body_text || mail.summary || mail.snippet || '').trim().slice(0, 4000);
+    if (preview) {
+      body.textContent = preview;
+      bulkStackPreviewCache.set(key, preview);
+      if (bulkStackPreviewCache.size > 24) bulkStackPreviewCache.delete(bulkStackPreviewCache.keys().next().value);
+    }
+  } catch (_) { /* The list summary remains visible when detail is unavailable. */ }
+  finally { if (bulkStackPreviewController === controller) bulkStackPreviewController = null; }
 }
 
 function setBulkOperationState(active, label = '', count = selectedMailIds.size) {
@@ -3399,7 +3474,9 @@ async function selectEmail(id, options = {}) {
   const clickedRow = allEmails.find(item => Number(item.id) === Number(id) &&
     (item._account_id ? item._account_id === requestAccountId : true));
   if (clickedRow && !clickedRow.is_read) queueEmailReadSync(id, requestAccountId);
-  document.querySelector('.reading-pane').classList.add('show');
+  const readingPane = document.querySelector('.reading-pane');
+  readingPane.classList.add('show');
+  readingPane.scrollTop = 0;
 
   document.getElementById('reading-empty').classList.add('hidden');
   document.getElementById('reading-content').classList.remove('hidden');
@@ -4695,23 +4772,33 @@ function renderReadingPane(e) {
   ` : '';
 
   // 操作按钮
-  let replyActions = '<button class="btn-ghost mobile-back" onclick="closeReadingPane()">← 返回列表</button>';
-  replyActions += '<button class="btn-ghost" onclick="composeFromEmail(\'reply\')">回复</button><button class="btn-ghost" onclick="composeFromEmail(\'reply_all\')">回复全部</button><button class="btn-ghost" onclick="composeFromEmail(\'forward\')">转发</button>';
-  replyActions += `<button class="btn-ghost btn-correspondence" onclick="openCorrespondence()" title="查看与当前联系人的收发记录"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 5.5h13v9h-13zM4 6l6 5 6-5"/></svg><span>往来邮件</span></button>`;
+  let replyActions = '<button type="button" class="btn-ghost mobile-back" onclick="closeReadingPane()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 5-7 7 7 7M3 12h18"/></svg><span>返回列表</span></button>';
+  replyActions += `<div class="reading-reply-group" role="toolbar" aria-label="邮件回复操作">
+    <button type="button" class="btn-ghost reading-icon-action" aria-label="回复" data-tooltip="回复" onclick="composeFromEmail('reply')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6-6 6 6 6M4 12h9c4 0 6.5 2 7 6"/></svg><span class="reading-action-label">回复</span></button>
+    <button type="button" class="btn-ghost reading-icon-action" aria-label="回复全部" data-tooltip="回复全部" onclick="composeFromEmail('reply_all')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6-6 6 6 6m5-12-6 6 6 6M9 12h5c3.5 0 6 2 6.5 6"/></svg><span class="reading-action-label">回复全部</span></button>
+    <button type="button" class="btn-ghost reading-icon-action" aria-label="转发" data-tooltip="转发" onclick="composeFromEmail('forward')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6 6 6-6 6m6-6h-9c-4 0-6.5 2-7 6"/></svg><span class="reading-action-label">转发</span></button>
+    <span class="reading-reply-divider" aria-hidden="true"></span>
+    <button type="button" class="btn-ghost reading-icon-action btn-correspondence" aria-label="查看往来邮件" data-tooltip="查看往来邮件" onclick="openCorrespondence()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h15m-4-4 4 4-4 4M20 17H5m4-4-4 4 4 4"/></svg><span class="reading-action-label">往来</span></button>
+  </div>`;
+  const actionIcon = path => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${path}"/></svg>`;
+  const restoreIcon = actionIcon('M4 11a8 8 0 1 1 2 7M4 5v6h6');
+  const checkIcon = actionIcon('M4 12l5 5L20 6');
+  const shieldIcon = actionIcon('M12 2 4 5v6c0 5 3.5 8.5 8 11 4.5-2.5 8-6 8-11V5zM9 12l2 2 4-4');
+  const flagIcon = actionIcon('M5 21V4m0 1c3-2 5 2 8 0s5-1 6 0v10c-3-1-4-2-7 0s-5-2-7 0');
   let decisionActions = '';
   if (e.status === 'quarantine' || e.status === 'spam') {
-    decisionActions += `<button class="btn-success" onclick="restoreEmail(${e.id})">↩ 恢复回收件箱</button>`;
-    if (!e.reviewed) decisionActions += `<button class="btn-danger" onclick="confirmEmail(${e.id}, '保留隔离', this)">✓ 保留隔离</button>`;
-    decisionActions += `<button class="btn-ghost" onclick="feedbackEmail(${e.id}, 'fp')">标记为正常</button>`;
+    decisionActions += `<button class="btn-success" onclick="restoreEmail(${e.id})">${restoreIcon}<span>恢复回收件箱</span></button>`;
+    if (!e.reviewed) decisionActions += `<button class="btn-danger" onclick="confirmEmail(${e.id}, '保留隔离', this)">${shieldIcon}<span>保留隔离</span></button>`;
+    decisionActions += `<button class="btn-ghost" onclick="feedbackEmail(${e.id}, 'fp')">${checkIcon}<span>标记为正常</span></button>`;
   } else if (needsRiskAttention(e) && (e.recommended_status === 'quarantine' || e.recommended_status === 'spam')) {
     const label = e.recommended_status === 'quarantine' ? '隔离' : '移入垃圾邮件';
-    decisionActions += `<button class="btn-danger" onclick="confirmEmail(${e.id}, '${label}', this)">执行${label}</button>`;
-    decisionActions += `<button class="btn-ghost" onclick="feedbackEmail(${e.id}, 'fp')">标记为正常</button>`;
+    decisionActions += `<button class="btn-danger" onclick="confirmEmail(${e.id}, '${label}', this)">${shieldIcon}<span>执行${label}</span></button>`;
+    decisionActions += `<button class="btn-ghost" onclick="feedbackEmail(${e.id}, 'fp')">${checkIcon}<span>标记为正常</span></button>`;
   } else if (e.verdict === 'phishing' || e.verdict === 'suspicious') {
-    decisionActions += `<button class="btn-ghost" onclick="feedbackEmail(${e.id}, 'fp')">标记为正常</button>`;
+    decisionActions += `<button class="btn-ghost" onclick="feedbackEmail(${e.id}, 'fp')">${checkIcon}<span>标记为正常</span></button>`;
   } else {
-    if (!e.reviewed) decisionActions += `<button class="btn-success" onclick="confirmEmail(${e.id}, '无风险', this)">✓ 确认无风险</button>`;
-    decisionActions += `<button class="btn-ghost" onclick="feedbackEmail(${e.id}, 'fn')">报告风险</button>`;
+    if (!e.reviewed) decisionActions += `<button class="btn-success" onclick="confirmEmail(${e.id}, '无风险', this)">${shieldIcon}<span>确认无风险</span></button>`;
+    decisionActions += `<button class="btn-ghost" onclick="feedbackEmail(${e.id}, 'fn')">${flagIcon}<span>报告风险</span></button>`;
   }
 
   document.getElementById('reading-content').innerHTML = `
@@ -4742,7 +4829,11 @@ function renderReadingPane(e) {
             ${e.priority ? `<span class="tag tag-priority-${e.priority}">${esc(e.priority)}优先级</span>` : ''}
           </div>
         </div>
-        <div class="reading-actions"><div class="reading-reply-actions">${replyActions}</div><div class="reading-decision-actions">${decisionActions}</div></div>
+        <div class="reading-actions">
+          <section class="reading-action-group reading-mail-group" aria-label="邮件操作"><span class="reading-action-group-title">邮件操作</span><div class="reading-mail-controls"><div class="reading-reply-actions">${replyActions}</div></div></section>
+          <section class="reading-action-group reading-ai-group" aria-label="AI 助手"><span class="reading-action-group-title">AI 助手</span></section>
+          <section class="reading-action-group reading-risk-group" aria-label="风险封控"><span class="reading-action-group-title">风险封控</span><div class="reading-decision-actions">${decisionActions}</div></section>
+        </div>
       </div>
     </div>
 
@@ -6076,17 +6167,59 @@ document.getElementById('btn-test-model').addEventListener('click', async () => 
   } catch (err) { status.textContent = '连接失败'; status.className = 'connection-status failed'; toast(err.message, 'error'); }
   finally { setLoading(button, false); }
 });
+function diagnosticAdvice(item) {
+  const mail = item.name === '邮箱收信' || item.name === 'SMTP 发信' || item.name === '系统凭据库';
+  if (mail) {
+    const smtp = item.name === 'SMTP 发信';
+    const advice = {
+      authentication: '请重新填写该邮箱的客户端授权码，并确认邮箱服务已允许客户端登录。',
+      credential_missing: '本机没有可用授权码，请重新填写客户端授权码。',
+      credential_session: '授权码只在本次运行有效；退出后需重新登录，可检查系统凭据库权限。',
+      certificate: '请核对服务器地址和证书。仅在可信内网使用自签名证书时考虑关闭证书校验。',
+      timeout: '请先检查网络或 VPN，再核对服务器地址与端口。',
+      dns: '请检查网络或 VPN 及服务器地址；若服务商更换了地址，请重新添加账号并暂时保留旧数据。',
+      refused: '服务器已找到但拒绝该端口，请核对端口及 SSL/STARTTLS 设置。',
+      configuration: '请补全服务器地址、端口和授权码。',
+      connection: '请核对服务器地址、端口和加密方式，并检查网络或 VPN。',
+    }[item.issue] || '请在邮箱账号中检查连接设置。';
+    return {advice, action:'打开邮箱设置', target:'account', field:
+      ['authentication','credential_missing','credential_session'].includes(item.issue) ? 'mail-password' :
+      smtp ? 'mail-smtp-host' : 'mail-port'};
+  }
+  if (item.name === 'AI 模型') return {advice:item.issue === 'authentication' ? '请检查模型 API Key 是否有效。' :
+    '请检查模型地址、API Key 和网络连接。', action:'打开模型设置', target:'maintenance', field:'model-base-url'};
+  return null;
+}
+
+document.getElementById('diagnostic-results').addEventListener('click', event => {
+  const action = event.target.closest('[data-diagnostic-target]');
+  if (!action) return;
+  selectSystemTab(action.dataset.diagnosticTarget);
+  if (action.dataset.diagnosticTarget === 'account') {
+    const current = (_systemConfig?.accounts || []).find(account => account.active);
+    if (current) { selectedManagedAccountId = current.id; renderAccountSelection(); openMailAddPanel(current); }
+    else openMailAddPanel();
+  }
+  const field = document.getElementById(action.dataset.diagnosticField);
+  field?.closest('details.admin-settings')?.setAttribute('open', '');
+  if (field && !field.readOnly) field.focus({preventScroll:true});
+  (field || document.querySelector(`[data-system-panel="${action.dataset.diagnosticTarget}"]`))?.scrollIntoView({block:'center', behavior:'smooth'});
+});
+
 document.getElementById('btn-run-diagnostics').addEventListener('click', async () => {
   const button = document.getElementById('btn-run-diagnostics');
   const results = document.getElementById('diagnostic-results');
   setLoading(button, true, '检查中…');
   try {
     const data = await api('/api/system/diagnostics');
-    results.innerHTML = data.checks.map(item => {
+    const activeAccount = (_systemConfig?.accounts || []).find(account => account.active);
+    results.innerHTML = `<p class="diagnostic-scope">${activeAccount ? `本次检查：${esc(activeAccount.user)}。` : '本次未检测到正在使用的邮箱。'}诊断会实测当前邮箱和已配置的模型服务。</p>` + data.checks.map(item => {
       const status = item.status || (item.ok ? 'pass' : 'fail');
       const icon = status === 'pass' ? '✓' : status === 'warning' ? 'i' : '!';
       const label = item.probe === 'live' ? '实测' : '本地';
-      return `<div class="diagnostic-item ${esc(status)}"><span>${icon}</span><b>${esc(item.name)}<em>${label}</em></b><small title="${esc(item.detail)}">${esc(item.detail)}</small></div>`;
+      const guidance = status === 'pass' ? null : diagnosticAdvice(item);
+      return `<div class="diagnostic-item ${esc(status)}"><span>${icon}</span><b>${esc(item.name)}<em>${label}</em></b><small title="${esc(item.detail)}">${esc(item.detail)}</small>${guidance ?
+        `<p class="diagnostic-advice">${esc(guidance.advice)}</p><button type="button" class="diagnostic-action" data-diagnostic-target="${guidance.target}" data-diagnostic-field="${guidance.field}">${guidance.action} →</button>` : ''}</div>`;
     }).join('');
     results.classList.remove('hidden');
     toast(data.ok ? '真实检查通过' : '检查发现连接或配置失败', data.ok ? 'success' : 'error');

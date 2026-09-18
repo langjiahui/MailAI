@@ -7,14 +7,24 @@ const css = fs.readFileSync(path.join(__dirname, '../app/web/static/workspace.cs
 
 assert.match(js, /class="reading-header-inner"[\s\S]*class="reading-heading-row"[\s\S]*class="reading-subject"[\s\S]*class="security-result-trigger[^"]*"/,
   'The subject and security result should form the first row of the mail header');
-assert.match(js, /class="reading-actions"><div class="reading-reply-actions">\$\{replyActions\}<\/div><div class="reading-decision-actions">\$\{decisionActions\}/,
-  'Reply actions and security decisions should be visually grouped');
+for (const group of ['reading-mail-group', 'reading-ai-group', 'reading-risk-group']) {
+  assert.match(js, new RegExp(`class="reading-action-group ${group}"`), `${group} should be visible in the reading toolbar`);
+}
+for (const label of ['回复', '回复全部', '转发', '查看往来邮件']) {
+  assert.match(js, new RegExp(`aria-label="${label}"[^>]*data-tooltip="${label}"`), `${label} should have an accessible name and hover hint`);
+}
+assert.match(css, /\.reading-icon-action:focus-visible::after/, 'Keyboard focus should reveal the action hint');
+assert.match(css, /@media\(hover:none\)[^\n]*\.reading-action-label\{display:inline/, 'Touch controls should show short labels without hover');
 assert.doesNotMatch(js, /let actionButtons =/,
   'The old undifferentiated action wall should not return');
 assert.match(css, /\.reading-header-inner\s*\{[^}]*max-width:1180px[^}]*padding:24px 30px 17px/,
   'The mail header should align to the reading content and stay compact');
-assert.match(css, /\.reading-header \.reading-actions\s*\{[^}]*justify-content:space-between[^}]*border:0[^}]*background:#f4f7f5/,
-  'Actions should sit in a quiet line-free toolbar below message identity');
+assert.match(css, /\.reading-header \.reading-actions\{container-type:inline-size;display:flex/,
+  'Actions should sit in one flat, responsive strip');
+assert.match(css, /\.reading-header \.reading-actions \.reading-ai-group,\.reading-header \.reading-actions \.reading-risk-group\{padding-left:10px;border-left:1px solid/,
+  'Functional groups should use only thin separators');
+assert.match(css, /@container \(max-width: 1080px\)[^\n]*reading-action-label[^\n]*display:none/,
+  'Constrained reading panes should show action icons without labels');
 assert.match(css, /\.reading-header\s*\{[^}]*border-bottom:0/,
   'The reading header should use spacing instead of another divider line');
 assert.match(css, /\.reading-main>\.reading-section\s*\{[^}]*border-color:transparent/,

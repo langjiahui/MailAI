@@ -1,7 +1,6 @@
-"""从本机 .env 生成安装包企业默认配置，不携带任何邮箱账号。"""
+"""生成不含本机账户、企业或模型配置的安装包默认设置。"""
 from pathlib import Path
 import argparse
-from dotenv import dotenv_values
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -35,8 +34,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     args = parser.parse_args()
     target = ROOT / 'mailai.defaults.env'
-    write_config(target, bundle_values(dotenv_values(ROOT / '.env')))
-    print(f'已生成默认配置：{target.name}（不含模型密钥和邮箱账号；首次使用仅观察）')
+    write_config(target, bundle_values({}))
+    print(f'已生成默认配置：{target.name}（不读取本机 .env；首次使用仅观察）')
 
 
 if __name__ == '__main__':

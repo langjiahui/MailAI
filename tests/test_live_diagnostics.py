@@ -64,6 +64,17 @@ def main():
                 timeout_result = system_settings.diagnostics()
             timeout_check = next(item for item in timeout_result["checks"] if item["name"] == "邮箱收信")
             assert timeout_check["status"] == "fail" and "超时" in timeout_check["detail"]
+            assert timeout_check["issue"] == "timeout"
+            with patch.object(system_settings, "_load_registry", return_value=registry), \
+                 patch.object(system_settings, "account_password", return_value="mail-secret"), \
+                 patch.object(system_settings, "test_mail_connection", side_effect=OSError("nodename nor servname provided")), \
+                 patch.object(system_settings.smtp_client, "test_connection", side_effect=RuntimeError("535 Authentication failed")), \
+                 patch.object(system_settings, "test_model", return_value={"ok": True}):
+                failure_result = system_settings.diagnostics()
+            failures = {item["name"]: item for item in failure_result["checks"]}
+            assert failures["邮箱收信"]["issue"] == "dns"
+            assert failures["SMTP 发信"]["issue"] == "authentication"
+            assert "mail-secret" not in str(failure_result)
         print("Live diagnostics detect model and mail failures without exposing secrets")
     finally:
         for name, value in old.items():

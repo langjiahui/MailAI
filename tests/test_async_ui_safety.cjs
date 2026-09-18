@@ -78,7 +78,7 @@ async function readingRace() {
   const context = vm.createContext({readingLoadRevision:0,readingLoadController:null,readSyncQueue:[],readSyncRunning:false,readSyncSequence:0,readSyncJobs:new Map(),
     selectedEmailId:null,selectedEmailAccountId:'',selectedEmailDetail:null,AbortController,setTimeout,clearTimeout,
     allEmails:[],searchResults:null,currentFilter:{unread:false},unifiedMailbox:false,CSS:{escape:String},activeMailAccount:()=>({id:active}),toast(){},
-    document:{getElementById:node,querySelector:node},syncSelectedEmailVisual(){},renderReadingPane(){},esc:String,
+    document:{getElementById:node,querySelector:node},syncSelectedEmailVisual(){},renderReadingPane(){},startReadingFlight(){},esc:String,
     api:async(url, options)=>{
       assert.equal(options.accountId,'a');
       if(options.method==='POST'){readPosts++;await waiting;return {ok:true};}
@@ -100,7 +100,7 @@ async function readingAbort() {
   const context = vm.createContext({readingLoadRevision:0,readingLoadController:null,readSyncQueue:[],readSyncRunning:false,
     readSyncSequence:0,readSyncJobs:new Map(),selectedEmailId:null,selectedEmailAccountId:'',selectedEmailDetail:null,
     AbortController,setTimeout,clearTimeout,allEmails:[],searchResults:null,currentFilter:{unread:false},unifiedMailbox:false,CSS:{escape:String},
-    activeMailAccount:()=>({id:'a'}),toast(){},esc:String,syncSelectedEmailVisual(){},renderReadingPane(){},
+    activeMailAccount:()=>({id:'a'}),toast(){},esc:String,syncSelectedEmailVisual(){},renderReadingPane(){},startReadingFlight(){},
     document:{getElementById:getNode,querySelector:()=>node()},
     api:(url, options)=>{
       if(url.endsWith('/1')) return new Promise((resolve,reject)=>options.signal.addEventListener('abort',()=>{
@@ -126,7 +126,7 @@ async function rapidReadingMarksEveryClick() {
     readSyncSequence:0,readSyncJobs:new Map(),selectedEmailId:null,selectedEmailAccountId:'',selectedEmailDetail:null,
     AbortController,setTimeout,clearTimeout,allEmails:rows,searchResults:null,currentFilter:{unread:false},unifiedMailbox:false,CSS:{escape:String},
     _systemConfig:{accounts:[{id:'a',active:true,unread:5}]},renderSidebarAccounts(){sidebarRenders++;},
-    activeMailAccount:()=>({id:'a'}),toast(){},esc:String,syncSelectedEmailVisual(){},renderReadingPane(){},
+    activeMailAccount:()=>({id:'a'}),toast(){},esc:String,syncSelectedEmailVisual(){},renderReadingPane(){},startReadingFlight(){},
     document:{getElementById:node,querySelector:()=>node()},
     api:(url, options)=>{
       if (options.method === 'POST') { posts.push(Number(url.match(/emails\/(\d+)/)[1])); return Promise.resolve({ok:true}); }

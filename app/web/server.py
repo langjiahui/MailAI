@@ -428,6 +428,24 @@ def api_mail_discover(email: str = ""):
     return mail_providers.discover(email)
 
 
+def _mail_connection_detail(exc: Exception) -> str:
+    root = exc.cause if isinstance(exc, system_settings.MailConnectionError) else exc
+    stage = "发件（SMTP）" if getattr(exc, "stage", "") == "smtp" else "收件（IMAP）"
+    name = type(root).__name__
+    message = str(root).lower()
+    if any(word in message for word in ("authentication", "login", "535", "password")):
+        return f"{stage}账号或授权码验证失败。请确认已开启客户端登录，并重新填写客户端授权码。"
+    if any(word in message for word in ("certificate", "ssl", "tls")):
+        return f"{stage}SSL 证书校验失败。请确认服务器地址正确；仅在可信内网使用自签名证书时关闭证书校验。"
+    if isinstance(root, TimeoutError) or any(word in message for word in ("timed out", "timeout")):
+        return f"{stage}连接超时。请检查网络、VPN 和服务器端口。"
+    if name == "gaierror" or any(word in message for word in ("nodename nor servname", "name or service not known")):
+        return f"{stage}服务器地址无法解析。请检查网络、VPN 和服务器地址。"
+    if name in ("ConnectionRefusedError", "ConnectionError", "OSError"):
+        return f"无法连接{stage}服务器。请检查服务器地址、端口、网络或 VPN。"
+    return f"{stage}验证失败。请展开高级设置检查服务器参数。"
+
+
 @app.post("/api/system/mail/login")
 def api_mail_login(payload: MailLoginRequest):
     if pipeline.is_fetch_running():
@@ -438,21 +456,7 @@ def api_mail_login(payload: MailLoginRequest):
         result = system_settings.login_mail(payload.model_dump())
     except Exception as exc:
         log.warning("邮箱登录失败: %s: %s", type(exc).__name__, str(exc)[:160])
-        root = exc.cause if isinstance(exc, system_settings.MailConnectionError) else exc
-        stage = "发件（SMTP）" if getattr(exc, "stage", "") == "smtp" else "收件（IMAP）"
-        name = type(root).__name__
-        message = str(root).lower()
-        if "authentication" in message or "login" in message or "535" in message:
-            detail = f"{stage}账号或授权码验证失败。请确认邮箱已开启 IMAP/SMTP，并使用客户端授权码而不是网页登录密码。"
-        elif "certificate" in message or "ssl" in message:
-            detail = f"{stage}SSL 证书校验失败。请确认服务器地址正确；仅在企业内网使用自签名证书时关闭证书校验。"
-        elif "timed out" in message or "timeout" in message:
-            detail = f"{stage}连接超时。请检查网络、VPN、防火墙及服务器端口。"
-        elif name in ("gaierror", "ConnectionRefusedError", "ConnectionError", "OSError"):
-            detail = f"无法连接{stage}服务器。请检查服务器地址、端口、网络或 VPN。"
-        else:
-            detail = f"{stage}验证失败。请展开高级设置检查服务器参数。"
-        raise HTTPException(400, detail)
+        raise HTTPException(400, _mail_connection_detail(exc))
     # 新账号首次登录后自动在后台完成全量初始化；旧账号只增量同步。
     def _initialize_mailbox():
         try:
@@ -518,9 +522,12 @@ def api_mail_account_update(payload: MailAccountUpdateRequest):
         raise HTTPException(404, "邮箱账号不存在")
     except ValueError as exc:
         raise HTTPException(400, str(exc))
+    except system_settings.MailConnectionError as exc:
+        log.warning("更新邮箱账号连接验证失败: %s (%s)", exc.stage, type(exc.cause).__name__)
+        raise HTTPException(400, _mail_connection_detail(exc))
     except Exception as exc:
         log.warning("更新邮箱账号失败: %s", type(exc).__name__)
-        raise HTTPException(400, "账号验证失败，请检查授权码和服务器设置")
+        raise HTTPException(400, "账号更新失败，请稍后重试")
     return {**result, "config": system_settings.public_config()}
 
 

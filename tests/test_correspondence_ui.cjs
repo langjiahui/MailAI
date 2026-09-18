@@ -7,7 +7,8 @@ const html = fs.readFileSync(path.join(__dirname, '../app/web/static/index.html'
 const css = fs.readFileSync(path.join(__dirname, '../app/web/static/workspace.css'), 'utf8');
 const server = fs.readFileSync(path.join(__dirname, '../app/web/server.py'), 'utf8');
 
-assert.match(js, /<span>往来邮件<\/span>/, 'Reading actions should expose correspondence');
+assert.match(js, /aria-label="查看往来邮件"[^>]*data-tooltip="查看往来邮件"/, 'Reading actions should expose labelled correspondence');
+assert.match(js, /class="btn-ghost reading-icon-action btn-correspondence"[^>]*><svg[^>]*><path d="M4 7h15m-4-4 4 4-4 4M20 17H5m4-4-4 4 4 4"\/>/, 'Correspondence should use a distinct two-way exchange icon');
 assert.match(js, /\/correspondence\?limit=50/, 'The drawer should use the scoped correspondence endpoint');
 assert.match(js, /item\.direction === 'sent' \? '发出' : '收到'/, 'Rows should distinguish sent and received mail');
 assert.match(js, /还没有往来邮件/, 'The drawer needs a useful empty state');

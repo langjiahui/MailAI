@@ -724,9 +724,10 @@ def test_model(values: dict | None = None) -> dict:
 def diagnostics() -> dict:
     """Run real local and remote probes without returning credentials or mail content."""
     checks = []
-    def add(name: str, status: str, detail: str, *, probe: str = "local"):
+    def add(name: str, status: str, detail: str, *, probe: str = "local",
+            issue: str = ""):
         checks.append({"name": name, "status": status, "ok": status == "pass",
-                       "detail": detail, "probe": probe})
+                       "detail": detail, "probe": probe, "issue": issue})
 
     try:
         with _sqlite_connection(config.DB_PATH) as connection:
@@ -751,19 +752,22 @@ def diagnostics() -> dict:
     in_vault = bool(password) and account.get("credential_storage") != "session"
     add("系统凭据库", "pass" if in_vault else "warning" if password else "fail",
         "授权码已持久保存在系统凭据库" if in_vault else
-        "授权码仅在本次运行中有效" if password else "没有可用授权码")
+        "授权码仅在本次运行中有效" if password else "没有可用授权码",
+        issue="credential_session" if password and not in_vault else "credential_missing" if not password else "")
 
-    def friendly_failure(kind: str, exc: Exception) -> str:
+    def friendly_failure(kind: str, exc: Exception) -> tuple[str, str]:
         message = str(exc).lower()
-        if isinstance(exc, TimeoutError):
-            return f"{kind}连接超时"
         if any(word in message for word in ("auth", "login", "credential", "password", "535", "401", "403")):
-            return f"{kind}认证失败，请更新授权码或 API Key"
+            return f"{kind}认证失败，请核对授权码或 API Key", "authentication"
         if any(word in message for word in ("certificate", "ssl", "tls")):
-            return f"{kind}证书校验失败"
-        if any(word in message for word in ("timeout", "timed out")):
-            return f"{kind}连接超时"
-        return f"{kind}连接失败，请检查地址、网络和服务状态"
+            return f"{kind}证书校验失败", "certificate"
+        if isinstance(exc, TimeoutError) or any(word in message for word in ("timeout", "timed out")):
+            return f"{kind}连接超时", "timeout"
+        if any(word in message for word in ("gaierror", "name or service not known", "nodename nor servname", "getaddrinfo")):
+            return f"{kind}服务器地址无法解析", "dns"
+        if "refused" in message:
+            return f"{kind}服务器拒绝连接", "refused"
+        return f"{kind}连接失败，请检查地址、网络和服务状态", "connection"
 
     probes = {}
     if config.IMAP_USER and password:
@@ -772,7 +776,7 @@ def diagnostics() -> dict:
                        "ssl": config.IMAP_SSL, "verify_ssl": config.IMAP_VERIFY_SSL}
         probes["邮箱收信"] = ("IMAP", lambda: test_mail_connection(mail_values))
     else:
-        add("邮箱收信", "fail", "尚未登录或授权码不可用", probe="live")
+        add("邮箱收信", "fail", "尚未登录或授权码不可用", probe="live", issue="credential_missing")
 
     smtp_password = password if config.SMTP_USE_IMAP_CREDENTIALS else config.SMTP_PASSWORD
     smtp_user = config.IMAP_USER if config.SMTP_USE_IMAP_CREDENTIALS else config.SMTP_USER
@@ -783,12 +787,12 @@ def diagnostics() -> dict:
                        "smtp_verify_ssl": config.SMTP_VERIFY_SSL}
         probes["SMTP 发信"] = ("SMTP", lambda: smtp_client.test_connection(smtp_values))
     else:
-        add("SMTP 发信", "fail", "尚未配置完整的 SMTP 地址和凭据", probe="live")
+        add("SMTP 发信", "fail", "尚未配置完整的 SMTP 地址和凭据", probe="live", issue="configuration")
 
     if llm_client.available():
         probes["AI 模型"] = ("模型", lambda: test_model({}))
     else:
-        add("AI 模型", "fail", "尚未配置 API Key", probe="live")
+        add("AI 模型", "fail", "尚未配置 API Key", probe="live", issue="configuration")
 
     live_results = {}
     started = time.monotonic()
@@ -800,19 +804,22 @@ def diagnostics() -> dict:
             try:
                 result = future.result()
                 if name == "邮箱收信":
-                    live_results[name] = ("pass", f"实测登录成功，可读取 {result.get('folders', 0)} 个文件夹")
+                    live_results[name] = ("pass", f"实测登录成功，可读取 {result.get('folders', 0)} 个文件夹", "")
                 elif name == "SMTP 发信":
-                    live_results[name] = ("pass", "实测认证成功（未发送邮件）")
+                    live_results[name] = ("pass", "实测认证成功（未发送邮件）", "")
                 elif result.get("ok"):
-                    live_results[name] = ("pass", f"实测请求成功 · {config.LLM_MODEL}")
+                    live_results[name] = ("pass", f"实测请求成功 · {config.LLM_MODEL}", "")
                 else:
-                    live_results[name] = ("fail", "实测失败：" + str(result.get("message") or "接口未返回有效结果"))
+                    detail = str(result.get("message") or "接口未返回有效结果")
+                    _, issue = friendly_failure(kind, RuntimeError(detail))
+                    live_results[name] = ("fail", "实测失败：" + detail, issue)
             except Exception as exc:
-                live_results[name] = ("fail", friendly_failure(kind, exc))
+                detail, issue = friendly_failure(kind, exc)
+                live_results[name] = ("fail", detail, issue)
     for name in ("邮箱收信", "SMTP 发信", "AI 模型"):
         if name in live_results:
-            status, detail = live_results[name]
-            add(name, status, detail, probe="live")
+            status, detail, issue = live_results[name]
+            add(name, status, detail, probe="live", issue=issue)
 
     job = db.get_sync_job()
     if job:

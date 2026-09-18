@@ -271,40 +271,46 @@ function syncPreferenceChoices() {
 }
 
 function addReadingActions() {
-  const host = document.querySelector('.reading-main');
+  const host = document.querySelector('.reading-header .reading-actions');
   if (!host || host.querySelector('.reading-work-actions')) return;
   const div = document.createElement('div'); div.className = 'reading-work-actions';
-  div.innerHTML = '<button data-reading-action="summary">总结这封邮件</button><button data-reading-action="todo">加入待办</button><button data-reading-action="remind">稍后提醒</button><button data-reading-action="mute">会话通知</button>';
-  div.insertAdjacentHTML('afterbegin', `<button data-reading-action="favorite" aria-pressed="${Boolean(selectedEmailDetail?.is_favorite)}">${selectedEmailDetail?.is_favorite ? '★ 已收藏' : '☆ 收藏邮件'}</button>`);
-  host.prepend(div);
-  div.onclick = async event => {
-    const action = event.target.dataset.readingAction;
+  const icon = paths => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${paths}"/></svg>`;
+  div.innerHTML = `<button type="button" data-reading-action="favorite" aria-pressed="${Boolean(selectedEmailDetail?.is_favorite)}">${icon('m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z')}<span data-action-label>${selectedEmailDetail?.is_favorite ? '已收藏' : '收藏'}</span></button>
+    <button type="button" data-reading-action="todo">${icon('M6 4h12v16H6zM9 12l2 2 4-4')}<span>加入待办</span></button>
+    <button type="button" data-reading-action="remind">${icon('M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 4v5l3 2')}<span>稍后提醒</span></button>`;
+  host.querySelector('.reading-mail-controls')?.appendChild(div);
+  host.querySelector('.reading-ai-group')?.insertAdjacentHTML('beforeend', `<button type="button" data-reading-action="summary">${icon('M4 6h16M4 11h12M4 16h8m5-2 1 2 2 1-2 1-1 2-1-2-2-1 2-1z')}<span>总结邮件</span></button>
+    <button type="button" data-reading-action="ask">${icon('M4 4h16v12H9l-5 4zM8 9h8m-8 3h5')}<span>问小邮</span></button>`);
+  host.querySelectorAll('button').forEach(button => {
+    const label = button.getAttribute('aria-label') || button.textContent.trim();
+    if (label) {
+      button.setAttribute('aria-label', label);
+      button.title = label;
+    }
+  });
+  host.onclick = async event => {
+    const actionButton = event.target.closest('button[data-reading-action]');
+    const action = actionButton?.dataset.readingAction;
     if (!action || !selectedEmailDetail) return;
     const row = selectedEmailDetail;
     const accountId = activeMailAccount()?.id;
     try {
       if (action === 'favorite') {
-        const button = event.target; button.disabled = true;
+        const button = actionButton; button.disabled = true;
         try {
           const result = await api(`/api/emails/${row.id}/favorite?value=${!row.is_favorite}`, {accountId,method:'POST'});
           row.is_favorite = result.is_favorite;
           for (const item of [...allEmails,...(searchResults || [])]) if (item.id === row.id && (!item.account_id || item.account_id === accountId)) item.is_favorite = result.is_favorite;
-          button.textContent = result.is_favorite ? '★ 已收藏' : '☆ 收藏邮件';
+          button.querySelector('[data-action-label]').textContent = result.is_favorite ? '已收藏' : '收藏';
           button.setAttribute('aria-pressed', String(result.is_favorite));
           applyFilters();
           toast(result.is_favorite ? '已加入我的收藏' : '已取消收藏', 'success');
         } finally { button.disabled = false; }
       } else if (action === 'summary') { document.getElementById('assistant-scope').value = 'selected'; openAssistant(); askAssistant('总结这封邮件的重点和需要我处理的事项', [row.id]); }
+      else if (action === 'ask') { document.getElementById('assistant-scope').value = 'selected'; openAssistant(); }
       else if (action === 'todo') { await window.openTaskPlanner({emailId:row.id,title:row.subject}); }
       else if (action === 'remind') {
         await window.openTaskPlanner({emailId:row.id,title:row.subject,remind:true});
-      } else if (action === 'mute') {
-        if (!row.thread_id) return toast('这封邮件尚无会话标识', 'warn');
-        const prefs = await api('/api/preferences', {accountId});
-        const muted = new Set(prefs.muted_threads); const wasMuted = muted.has(row.thread_id);
-        if (wasMuted) muted.delete(row.thread_id); else muted.add(row.thread_id);
-        await api('/api/preferences', {accountId, method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...prefs, muted_threads:[...muted]})});
-        toast(wasMuted ? '已恢复此会话通知' : '已静音此会话；仍可在风险列表查看');
       }
     } catch (error) { toast(error.message, 'error'); }
   };
