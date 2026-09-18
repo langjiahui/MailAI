@@ -5,9 +5,9 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v1.0.15**
+当前版本：**v1.1.0**
 
-本次更新：正式采用 Apache-2.0 开源许可证，补齐开源治理基础：新增贡献指南（CONTRIBUTING）、安全漏洞私密上报政策（SECURITY）、Issue 与 PR 模板；CI 新增 PR 质量门禁（离线发布检查 + 密钥泄漏扫描）；新增《现场验收手册》，覆盖 UIDVALIDITY 变化、断网恢复、发送中强杀、重复启动、覆盖升级五个真实环境用例；修复 Linux 环境下桌面组件测试对 pywebview 的依赖问题。
+本次更新：工程结构重构，对外行为零变化。数据层由单一 `db.py` 拆分为 `app/db/` 按域模块（同步、邮件、回收站、草稿、助手、联系人等），Web 层由单一 `server.py` 拆分为 FastAPI 按域路由（系统、安全、报表、同步、邮件读写、撰写、联系人、助手、待办）；前端静态脚本改为确定性单文件打包（`bundle.js` + 内容哈希缓存），发布门禁自动校验打包产物新鲜度；Python 测试统一可由 `pytest` 一条命令运行（与发布门禁共用同一份清单），浏览器自动化测试（Playwright + 系统 Chrome）纳入 PR 质量门禁。
 
 ## 下载 MailAI
 
