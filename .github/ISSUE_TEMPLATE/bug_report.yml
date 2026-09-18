@@ -12,8 +12,8 @@ body:
     id: version
     attributes:
       label: MailAI 版本
-      description: 设置 → 关于与隐私中查看，如 v1.1.0
-      placeholder: v1.1.0
+      description: 设置 → 关于与隐私中查看，如 v1.2.0
+      placeholder: v1.2.0
     validations:
       required: true
   - type: dropdown

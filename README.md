@@ -5,9 +5,9 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v1.1.0**
+当前版本：**v1.2.0**
 
-本次更新：工程结构重构，对外行为零变化。数据层由单一 `db.py` 拆分为 `app/db/` 按域模块（同步、邮件、回收站、草稿、助手、联系人等），Web 层由单一 `server.py` 拆分为 FastAPI 按域路由（系统、安全、报表、同步、邮件读写、撰写、联系人、助手、待办）；前端静态脚本改为确定性单文件打包（`bundle.js` + 内容哈希缓存），发布门禁自动校验打包产物新鲜度；Python 测试统一可由 `pytest` 一条命令运行（与发布门禁共用同一份清单），浏览器自动化测试（Playwright + 系统 Chrome）纳入 PR 质量门禁。
+本次更新：检测工程化与暗色主题修复。离线评估语料扩充至 34 个合成样本（干净/钓鱼/垃圾三类，覆盖显示名仿冒、Reply-To 不匹配、IP/短链/punycode 链接、双重扩展名与宏/可执行附件等典型手法），发布门禁新增准确率门槛（干净误报率 <2%、钓鱼召回率 ≥90%）；URL 攻击链跟踪改为独立子进程执行，慢响应/挂起的恶意链接不再拖垮主处理管道；新增 IOC 导出接口（从钓鱼判定聚合发件人、域名、IP、链接与附件哈希，支持 JSON/CSV）；新增反馈分析与语料脱敏导出工具；修复未配置公司域名时显示名仿冒规则对所有外部邮件误加分的问题；修复暗色主题下写作 Copilot 操作条与发送前安全确认弹窗的亮色残留。
 
 ## 下载 MailAI
 
