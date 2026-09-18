@@ -280,6 +280,7 @@ function addReadingActions() {
     <button type="button" data-reading-action="remind">${icon('M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 4v5l3 2')}<span>稍后提醒</span></button>`;
   host.querySelector('.reading-mail-controls')?.appendChild(div);
   host.querySelector('.reading-ai-group')?.insertAdjacentHTML('beforeend', `<button type="button" data-reading-action="summary">${icon('M4 6h16M4 11h12M4 16h8m5-2 1 2 2 1-2 1-1 2-1-2-2-1 2-1z')}<span>总结邮件</span></button>
+    <button type="button" data-reading-action="image">${icon('M3 5h18v14H3zM7 10h.01M5 17l5-5 3 3 2-2 4 4')}<span>识别邮件图片</span></button>
     <button type="button" data-reading-action="ask">${icon('M4 4h16v12H9l-5 4zM8 9h8m-8 3h5')}<span>问小邮</span></button>`);
   host.querySelectorAll('button').forEach(button => {
     const label = button.getAttribute('aria-label') || button.textContent.trim();
@@ -307,6 +308,7 @@ function addReadingActions() {
           toast(result.is_favorite ? '已加入我的收藏' : '已取消收藏', 'success');
         } finally { button.disabled = false; }
       } else if (action === 'summary') { document.getElementById('assistant-scope').value = 'selected'; openAssistant(); askAssistant('总结这封邮件的重点和需要我处理的事项', [row.id]); }
+      else if (action === 'image') { document.getElementById('assistant-scope').value = 'selected'; openAssistant(); askAssistant('请读取这封邮件内嵌图片中可辨识的文字、表格和关键信息；看不清的内容请明确说明。', [row.id]); }
       else if (action === 'ask') { document.getElementById('assistant-scope').value = 'selected'; openAssistant(); }
       else if (action === 'todo') { await window.openTaskPlanner({emailId:row.id,title:row.subject}); }
       else if (action === 'remind') {

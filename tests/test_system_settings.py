@@ -36,11 +36,14 @@ def main():
             with patch.object(system_settings.llm_client, "chat_completion",
                               return_value=model_response) as model_call:
                 assert system_settings.test_model(draft_model)["ok"] is True
-            kwargs = model_call.call_args.kwargs
+            text_call, vision_call = model_call.call_args_list
+            kwargs = text_call.kwargs
             assert kwargs["base_url"] == draft_model["base_url"]
             assert kwargs["model"] == draft_model["model"]
             assert kwargs["api_key"] == draft_model["api_key"]
             assert kwargs["verify_ssl"] is False
+            assert vision_call.kwargs["model"] == draft_model["multimodal_model"]
+            assert isinstance(vision_call.args[0][0]["content"], list)
             assert not os.path.exists(system_settings.ENV_PATH), "测试连接不应保存表单草稿"
 
             first = {"host": "imap.example.test", "port": 993, "user": "one@example.test",

@@ -158,4 +158,7 @@ def ask_stream(question, history, email_ids, images, materials=None):
     except ImageAnalysisError:
         raise
     except Exception as exc:
+        detail = str(exc).lower()
+        if any(word in detail for word in ('image', 'vision', 'multimodal', 'content type', 'http 400', 'http 404')):
+            raise ImageAnalysisError('当前配置的模型无法处理图片。请在设置的模型服务配置中关闭图片识别，或填写支持图片输入的多模态模型后点击“测试连接”。') from exc
         raise ImageAnalysisError('材料分析中断，请重试；也可减少附件或补充清晰的局部截图。') from exc

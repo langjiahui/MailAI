@@ -738,6 +738,58 @@ function assistantQuestionReferencesOpenEmail(value) {
     || /(?:this|current|open)email/.test(question);
 }
 
+function assistantQuestionReferencesEmailImage(value) {
+  const question = String(value || '').toLowerCase();
+  return /截图|截屏|图片|图中|图里|看图|读图|识图|图像|图表|表格|image|screenshot|table/.test(question);
+}
+
+function assistantImageDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('邮件内嵌图片读取失败'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+function assistantImageMetrics(dataUrl) {
+  return new Promise(resolve => {
+    const image = new Image();
+    image.onload = () => resolve({data_url:dataUrl, area:image.naturalWidth * image.naturalHeight});
+    image.onerror = () => resolve(null);
+    image.src = dataUrl;
+  });
+}
+
+async function currentEmailInlineImages(emailId, accountId) {
+  const email = selectedEmailDetail?.id === emailId ? selectedEmailDetail : null;
+  if (!email?.body_html) return [];
+  const documentBody = new DOMParser().parseFromString(email.body_html, 'text/html');
+  const localPrefix = `/api/emails/${encodeURIComponent(emailId)}/inline/`;
+  const sources = [...new Set([...documentBody.querySelectorAll('img[src]')].map(node => node.getAttribute('src') || '').filter(Boolean))];
+  const candidates = [];
+  for (const source of sources) {
+    if (/^data:image\/(png|jpeg|webp);base64,/i.test(source)) {
+      candidates.push(source);
+      continue;
+    }
+    let url;
+    try { url = new URL(source, location.origin); } catch (_) { continue; }
+    // Never retrieve remote image URLs from a mail body. Only MIME resources
+    // already stored with this exact email may be handed to the configured model.
+    if (url.origin !== location.origin || !url.pathname.startsWith(localPrefix)) continue;
+    try {
+      const response = await fetch(mailboxResourceUrl(url.pathname, accountId), {headers:accountId ? {'X-MailAI-Account':accountId} : {}});
+      const blob = await response.blob();
+      if (!response.ok || blob.size > 5 * 1024 * 1024 || !/^image\/(png|jpeg|webp)$/i.test(blob.type)) continue;
+      candidates.push(await assistantImageDataUrl(blob));
+    } catch (_) { /* A broken inline image should not block the email conversation. */ }
+  }
+  const measured = (await Promise.all(candidates.slice(0, 8).map(assistantImageMetrics))).filter(Boolean);
+  // Ignore tracking pixels and signature dots; retain the largest useful images.
+  return measured.filter(item => item.area >= 12_000).sort((left, right) => right.area - left.area).slice(0, 3).map(item => ({data_url:item.data_url}));
+}
+
 async function askAssistant(question, explicitIds = null, images = [], attachments = [], alertContext = false) {
   if (!(_systemConfig?.model?.available && _systemConfig?.model?.verified)) { window.mailOnboarding?.openModel(); return; }
   if(attachments.length && !String(question || '').trim())question='请结合所选附件与邮件正文，总结重点和待确认事项。';
@@ -768,7 +820,13 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
     emailIds = [...document.querySelectorAll('#email-list .email-item')].filter(node => !node.dataset.accountId || node.dataset.accountId === account?.id).map(node => Number(node.dataset.id));
   }
   if(images.length && !emailIds) emailIds=[];
-  const scope = `${account?.user || '当前邮箱'} · ${attachments.length ? attachments.length+' 个附件 · ' : ''}${images.length ? images.length+' 张图片 · ' : ''}${emailIds ? (emailIds.length ? '所选范围 ' + emailIds.length + ' 封' : '未附邮件') : '全部已同步邮件'}`;
+  let inlineImageCount = 0;
+  if (!images.length && emailIds?.length === 1 && assistantQuestionReferencesEmailImage(question)) {
+    const emailImages = await currentEmailInlineImages(emailIds[0], account?.id || '');
+    if (emailImages.length) { images = emailImages; inlineImageCount = images.length; }
+  }
+  const imageScope = inlineImageCount ? `邮件内嵌图片 ${inlineImageCount} 张 · ` : images.length ? `${images.length} 张图片 · ` : '';
+  const scope = `${account?.user || '当前邮箱'} · ${attachments.length ? attachments.length+' 个附件 · ' : ''}${imageScope}${emailIds ? (emailIds.length ? '所选范围 ' + emailIds.length + ' 封' : '未附邮件') : '全部已同步邮件'}`;
   const scopeKey = JSON.stringify([account?.id, mode, emailIds]);
   if (assistantScopeKey && assistantScopeKey !== scopeKey) resetAssistantConversation();
   assistantScopeKey = scopeKey; assistantLastQuestion = question;
@@ -781,13 +839,13 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
   if (typeof updateAssistantScopeControl === 'function') updateAssistantScopeControl();
   const revision = ++assistantRevision;
   const controller = new AbortController(); assistantController = controller;
-  const historyQuestion=question+(attachments.length?'\n（本次参考附件：'+attachments.map((r,i)=>`${i+1}. ${r.name}`).join('；')+'。历史不存附件正文，后续核对请重新选择。）':'');
+  const historyQuestion=question+(inlineImageCount?'\n（本次已传入当前邮件的内嵌图片 '+inlineImageCount+' 张，仅用于本次识图，后续核对请重新选择邮件图片。）':'')+(attachments.length?'\n（本次参考附件：'+attachments.map((r,i)=>`${i+1}. ${r.name}`).join('；')+'。历史不存附件正文，后续核对请重新选择。）':'');
   const userMessage=appendAssistantMessage('user', historyQuestion);
   if(images.length)window.assistantImages?.showSent(userMessage,images);
   assistantHistory.push({role:'user', content:historyQuestion});
   const thinking = appendAssistantMessage('assistant', '');
   const bubble = thinking.querySelector('.assistant-bubble');
-  bubble.innerHTML = '<span class="thinking-dots"><i></i><i></i><i></i></span> '+(attachments.length?'正在读取所选附件并结合邮件分析…':images.length?'正在查看图片并整理要点…':'正在查找邮件…');
+  bubble.innerHTML = '<span class="thinking-dots"><i></i><i></i><i></i></span> '+(attachments.length?'正在读取所选附件并结合邮件分析…':inlineImageCount?'正在读取邮件内嵌图片并整理要点…':images.length?'正在查看图片并整理要点…':'正在查找邮件…');
   document.getElementById('assistant-scope-note').textContent = scope;
   document.getElementById('assistant-stop').classList.remove('hidden');
   document.getElementById('assistant-retry').classList.add('hidden');
@@ -6161,9 +6219,10 @@ document.getElementById('btn-test-model').addEventListener('click', async () => 
   try {
     const payload = modelFormPayload();
     const result = await api('/api/system/model/test', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
-    status.textContent = result.ok ? '连接成功' : '连接失败';
-    status.className = `connection-status ${result.ok ? 'connected' : 'failed'}`;
-    toast(result.message || status.textContent, result.ok ? 'success' : 'error');
+    const visionUnavailable = result.multimodal && result.multimodal.checked && !result.multimodal.supported;
+    status.textContent = !result.ok ? '连接失败' : visionUnavailable ? '图片识别不可用' : '连接成功';
+    status.className = `connection-status ${!result.ok || visionUnavailable ? 'failed' : 'connected'}`;
+    toast(result.message || status.textContent, !result.ok || visionUnavailable ? 'error' : 'success');
   } catch (err) { status.textContent = '连接失败'; status.className = 'connection-status failed'; toast(err.message, 'error'); }
   finally { setLoading(button, false); }
 });

@@ -50,6 +50,11 @@ def main():
             assert 'temperature' not in body and 'legacy_param' not in body
             assert body['thinking'] == {'type': 'disabled'}
             assert req.get_header('Authorization') == 'Bearer new-test-key'
+        with patch.object(system_settings.llm_client, 'chat_completion', side_effect=[response, RuntimeError('模型或请求参数不兼容（HTTP 400）')]) as probe:
+            visual_check = system_settings.test_model(draft)
+            assert visual_check['ok'] and visual_check['multimodal']['checked']
+            assert not visual_check['multimodal']['supported']
+            assert probe.call_args_list[1].kwargs['model'] == draft['model']
         assert config.LLM_API_KEY == 'old-test-key'
         vault = {}
         def save_secret(key, value):

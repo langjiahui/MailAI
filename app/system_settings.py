@@ -701,11 +701,11 @@ def save_model(values: dict):
 
 
 def test_model(values: dict | None = None) -> dict:
-    """Test the draft without persisting it or reusing a key across endpoints."""
+    """Test text and, when requested, vision input without persisting the draft."""
     try:
         resolved = _model_values(values or {})
-        resolved.pop('multimodal_model')
-        resolved.pop('multimodal_enabled')
+        multimodal_enabled = resolved.pop('multimodal_enabled')
+        multimodal_model = resolved.pop('multimodal_model')
         result = llm_client.chat_completion(
             [{"role": "user", "content": "只回复 OK"}], temperature=0, max_tokens=1024, timeout=30,
             raise_errors=True, **resolved)
@@ -716,7 +716,36 @@ def test_model(values: dict | None = None) -> dict:
         if not isinstance(content, str) or not content.strip() or choice.get('finish_reason') == 'length':
             return {"ok": False, "message": "接口未返回完整文本，请检查模型名称、参数或推理长度限制"}
         _verified_model_fingerprints.add(_model_fingerprint(_model_values(values or {})))
-        return {"ok": True, "message": "连接成功：" + content[:80]}
+        if not multimodal_enabled:
+            return {"ok": True, "message": "文本连接成功：" + content[:80],
+                    "multimodal": {"checked": False, "supported": False}}
+
+        # A model-list endpoint rarely gives portable, trustworthy capability metadata.
+        # Probe the exact configured model with a 1×1 PNG instead. It is deliberately
+        # tiny, does not include user data, and works with OpenAI-compatible APIs.
+        vision_request = [{"role": "user", "content": [
+            {"type": "text", "text": "请确认你收到了一张测试图片，只回复 OK。"},
+            {"type": "image_url", "image_url": {"url": (
+                "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9J3i8AAAAASUVORK5CYII="
+            )}},
+        ]}]
+        try:
+            visual_result = llm_client.chat_completion(
+                vision_request, temperature=0, max_tokens=32, timeout=30,
+                raise_errors=True, **{**resolved, "model": multimodal_model})
+            visual_choices = visual_result.get('choices') if isinstance(visual_result, dict) else None
+            visual_choice = (visual_choices or [{}])[0] if isinstance(visual_choices, list) else {}
+            visual_content = (visual_choice.get('message') or {}).get('content') if isinstance(visual_choice, dict) else None
+            if not isinstance(visual_content, str) or not visual_content.strip() or visual_choice.get('finish_reason') == 'length':
+                raise RuntimeError('图片测试未返回完整结果')
+        except (ValueError, RuntimeError) as visual_exc:
+            return {"ok": True,
+                    "message": "文本连接成功，但图片识别不可用：" + str(visual_exc),
+                    "multimodal": {"checked": True, "supported": False,
+                                   "model": multimodal_model,
+                                   "message": "请关闭图片识别，或填写支持图片输入的多模态模型后重新测试。"}}
+        return {"ok": True, "message": "文本与图片识别连接均成功：" + content[:80],
+                "multimodal": {"checked": True, "supported": True, "model": multimodal_model}}
     except (ValueError, RuntimeError) as exc:
         return {"ok": False, "message": str(exc)}
 

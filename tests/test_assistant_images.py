@@ -110,6 +110,11 @@ def main():
             else:raise AssertionError('Model failure must not pretend image was analyzed')
     client_source=(Path(__file__).parent.parent/'app/web/static/assistant-images.js').read_text()
     assert 'function imageSize' in client_source and '64000000' in client_source and '将在发送时自动优化尺寸' in client_source
+    app_source=(Path(__file__).parent.parent/'app/web/static/app.js').read_text()
+    assert 'function currentEmailInlineImages' in app_source and 'assistantQuestionReferencesEmailImage' in app_source
+    assert 'url.origin !== location.origin' in app_source and 'blob.size > 5 * 1024 * 1024' in app_source
+    workspace_source=(Path(__file__).parent.parent/'app/web/static/workspace.js').read_text()
+    assert 'data-reading-action="image"' in workspace_source and '识别邮件图片' in workspace_source
     print('Assistant images: validation, bounded thumbnails, persistent original previews, account isolation, cleanup, both APIs and failure checks passed')
 
 
