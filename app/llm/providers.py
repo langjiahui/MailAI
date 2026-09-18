@@ -7,7 +7,12 @@ PRESETS = [
     dict(id='deepseek', name='DeepSeek', base_url='https://api.deepseek.com/v1', model='deepseek-v4-flash', multimodal_enabled=False),
     dict(id='kimi_code', name='Kimi Code（编程订阅）', base_url='https://api.kimi.com/coding/v1', model='kimi-for-coding', multimodal_enabled=False),
     dict(id='kimi', name='Kimi（月之暗面）', base_url='https://api.moonshot.cn/v1', model='kimi-k2.6', multimodal_enabled=True),
+    dict(id='ollama', name='Ollama（本地模型）', base_url='http://localhost:11434/v1', model='qwen2.5:7b-instruct', multimodal_enabled=False),
 ]
+
+# 不校验 API Key 的本地服务：保存配置时允许使用占位密钥
+KEYLESS_PROVIDERS = {'ollama'}
+KEYLESS_PLACEHOLDER = 'ollama'
 
 
 def completion_url(base_url):

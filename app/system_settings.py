@@ -21,7 +21,7 @@ from imapclient import IMAPClient
 from . import config, db, credential_store, smtp_client
 from .mail_providers import discover
 from .llm import client as llm_client
-from .llm.providers import PRESETS, completion_url, validate_extra
+from .llm.providers import KEYLESS_PLACEHOLDER, KEYLESS_PROVIDERS, PRESETS, completion_url, validate_extra
 
 ENV_PATH = config.CONFIG_PATH
 ACCOUNTS_DIR = os.path.join(config.DATA_DIR, "accounts")
@@ -656,6 +656,9 @@ def _model_values(values):
         raise ValueError("请选择支持的服务商或自定义兼容服务")
     changed = endpoint != completion_url(config.LLM_BASE_URL) or provider != config.LLM_PROVIDER
     api_key = (values.get("api_key") or "").strip()
+    if not api_key and provider in KEYLESS_PROVIDERS:
+        # Ollama 等本地服务不校验密钥，用占位值复用现有保存/验证链路
+        api_key = KEYLESS_PLACEHOLDER
     if not api_key:
         if changed:
             saved = _model_profiles().get(provider, {})
