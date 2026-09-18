@@ -67,7 +67,7 @@ for (const selector of [
 assert.match(html, /theme\.css\?v=[^"\s]+/);
 const nodes = Object.fromEntries(['notification-options','notification-save-status','notification-account','notification-retry-load','notification-preference'].map(id => [id,{classList:{add(){this.hidden=true;},remove(){this.hidden=false;}}}]));
 const ctx = {preferencesSaving:false,preferencesAccount:'',preferencesLoadRevision:0,account:{id:'a',user:'a@example.test'},
-  document:{getElementById:id=>nodes[id]}, syncPreferenceChoices(){},
+  document:{getElementById:id=>nodes[id]}, syncPreferenceChoices(){}, loadSemanticStatus(){},
   activeMailAccount(){return ctx.account;}, api:async(url,options)=>{assert.equal(options.accountId,'a');return {notifications:'high_risk'};}};
 vm.createContext(ctx);
 vm.runInContext(source.slice(source.indexOf('async function loadWorkspacePreferences()'),source.indexOf('function syncPreferenceChoices()')),ctx);

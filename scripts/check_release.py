@@ -74,6 +74,9 @@ TESTS = (
     'test_ioc_export.py',
     'test_feedback_analysis.py',
     'test_export_corpus.py',
+    'test_assistant_actions.py',
+    'test_ollama_preset.py',
+    'test_semantic_search.py',
     'test_server_cleanup.py',
 )
 
@@ -122,6 +125,7 @@ def main():
                  [node, str(ROOT / 'tests/test_reading_header_ui.cjs')],
                  [node, str(ROOT / 'tests/test_review_actions.cjs')],
                  [node, str(ROOT / 'tests/test_assistant_ui.cjs')],
+                 [node, str(ROOT / 'tests/test_assistant_actions.cjs')],
                  [node, str(ROOT / 'tests/test_assistant_markdown.cjs')],
                  [node, str(ROOT / 'tests/test_xiaoyou_brand.cjs')],
                  [node, str(ROOT / 'tests/test_summary_display.cjs')],

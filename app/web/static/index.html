@@ -156,6 +156,12 @@
             <div class="preference-save-state"><span id="notification-save-status" role="status" aria-live="polite">正在读取设置…</span><button id="notification-retry-load" type="button" class="hidden">重试</button></div>
             <p class="preference-note">仅对上方邮箱生效。单个会话可在邮件阅读区静音。</p>
           </article>
+          <article class="preference-card semantic-preferences">
+            <div class="preference-card-head"><span class="connection-icon"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3a7 7 0 1 0 7 7M10 7a3 3 0 1 0 3 3M13 13l4 4"/></svg></span><div><h3>语义检索（实验）</h3><p>用本地嵌入模型理解"意思相近"的邮件，增强小邮助手的找信能力</p></div></div>
+            <label class="notification-choice semantic-toggle"><input type="checkbox" id="semantic-enabled"><span><b>启用语义检索</b><small>首次重建索引需联网下载模型（约 100MB）；数据不出本机</small></span></label>
+            <div class="preference-save-state"><span id="semantic-status" role="status" aria-live="polite">未启用</span><button id="semantic-reindex" type="button" class="hidden">重建索引</button></div>
+            <p class="preference-note">需要安装可选依赖（requirements-semantic.txt）。未启用时助手使用关键词检索，不受影响。</p>
+          </article>
         </div>
       </section>
 
@@ -886,6 +892,6 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=f0a900c09013"></script>
+  <script src="/static/bundle.js?v=419ea9fd4180"></script>
 </body>
 </html>

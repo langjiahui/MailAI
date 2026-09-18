@@ -6,7 +6,7 @@ import time
 from functools import wraps
 from datetime import date, datetime, timedelta
 
-from . import config, db, parser
+from . import assistant_actions, config, db, parser
 from .llm import client
 
 STOP = {"的", "了", "吗", "呢", "和", "与", "我", "有", "是", "什么", "哪些", "一下", "邮件", "帮我", "最近"}
@@ -352,7 +352,7 @@ def mark_risk_alerts_seen(ids=None) -> str:
 
 
 def preferences():
-    defaults = {'notifications': 'all', 'muted_threads': []}
+    defaults = {'notifications': 'all', 'muted_threads': [], 'semantic_enabled': False}
     defaults.update(json.loads(db.get_runtime_settings().get('user_preferences', '{}')))
     return defaults
 
@@ -433,12 +433,26 @@ def _sources(question, email_ids):
         work_sources = secretary.question_sources(question)
         if work_sources is not None:
             return work_sources
-        return retrieve(question)
+        rows = retrieve(question)
+        # 可选语义检索：把向量相似但关键词未命中的邮件补充进上下文
+        from . import semantic
+        if semantic.enabled():
+            try:
+                seen = {r["id"] for r in rows}
+                for email_id in semantic.search(question, limit=8):
+                    if email_id not in seen:
+                        row = db.get_email(email_id)
+                        if row and not row.get("remote_missing"):
+                            rows.append(row)
+                            seen.add(email_id)
+            except Exception:
+                log.exception("语义检索失败，回退纯关键词结果")
+        return rows[:20]
     rows = [row for i in dict.fromkeys(email_ids) if (row := db.get_email(i)) and not row.get('remote_missing')]
     return rows[:20]
 
 
-def ask(question: str, history: list[dict] | None = None, email_ids=None, images=None, materials=None) -> dict:
+def _ask_impl(question: str, history: list[dict] | None = None, email_ids=None, images=None, materials=None) -> dict:
     if images or materials:
         from . import assistant_vision
         events = list(assistant_vision.ask_stream(question, history, email_ids, images or [], materials))
@@ -504,6 +518,16 @@ def ask(question: str, history: list[dict] | None = None, email_ids=None, images
     return {"answer": _fallback_answer(question, sources, model_configured=client.available()), "sources": citations}
 
 
+def ask(question: str, history: list[dict] | None = None, email_ids=None, images=None, materials=None) -> dict:
+    """同步问答。识别到可操作意图时附带建议操作卡片（action 字段）。"""
+    result = _ask_impl(question, history, email_ids, images, materials)
+    if not (images or materials):
+        proposal = assistant_actions.detect_proposal((question or "").strip(), email_ids)
+        if proposal:
+            result["action"] = proposal
+    return result
+
+
 def ask_stream(question: str, history: list[dict] | None = None, email_ids=None, images=None, materials=None):
     """产出 (event, payload)，优先使用模型原生流式响应。"""
     if images or materials:
@@ -513,6 +537,10 @@ def ask_stream(question: str, history: list[dict] | None = None, email_ids=None,
     question = (question or "").strip()
     if not question:
         raise ValueError("问题不能为空")
+    # 受控操作提议：流式场景作为独立事件先行下发，由前端渲染确认卡片
+    proposal = assistant_actions.detect_proposal(question, email_ids)
+    if proposal:
+        yield "action", proposal
     direct = _direct_answer(question)
     if direct:
         yield "sources", []

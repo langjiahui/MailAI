@@ -599,6 +599,38 @@ function assistantSourcesHtml(sources = [], accountId = '') {
       return `<div role="listitem"><button type="button" data-email-id="${Number(source.id)}" data-source-account="${esc(accountId)}" aria-label="查看参考邮件 ${index + 1}：${esc(title)}"><span class="source-index">${index + 1}</span><span class="source-copy"><span class="source-subject">${esc(title)}</span>${meta ? `<small>${esc(meta)}</small>` : ''}</span><span class="source-open" aria-hidden="true">↗</span></button></div>`;
     }).join('')}</div></details>`;
 }
+
+/* 助手受控操作确认卡片：助手只提议，用户确认后才提交执行。
+   执行结果走 /api/assistant/actions/execute（白名单 + 服务端校验 + 审计）。 */
+function renderAssistantActionCard(bubble, action, account) {
+  if (!bubble || !action || !action.type) return;
+  const card = document.createElement('div');
+  card.className = 'assistant-action-card';
+  card.innerHTML = `<div class="assistant-action-copy"><b>建议操作</b><span>${esc(action.summary || '')}</span></div>
+    <div class="assistant-action-buttons"><button type="button" data-action-confirm>确认执行</button><button type="button" data-action-dismiss>取消</button></div>`;
+  const finish = html => { card.innerHTML = `<p class="assistant-action-result">${html}</p>`; };
+  card.querySelector('[data-action-dismiss]').addEventListener('click', () => {
+    finish('已取消，未执行任何操作。');
+  });
+  card.querySelector('[data-action-confirm]').addEventListener('click', async event => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    try {
+      const response = await fetch('/api/assistant/actions/execute', {method:'POST',
+        headers:{'Content-Type':'application/json', 'X-MailAI-Account':account?.id || ''},
+        body:JSON.stringify({type:action.type, params:action.params || {}})});
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof result.detail === 'string' ? result.detail : `执行失败（${response.status}）`);
+      if (action.type === 'create_todo') finish(`已创建待办：${esc(result.title || '')}${result.deadline ? `（截止 ${esc(result.deadline)}）` : ''}`);
+      else if (action.type === 'mark_read') finish(`已将 ${Number(result.marked) || 0} 封邮件标记为已读。`);
+      else if (action.type === 'draft_reply') finish(`回复草稿已创建（收件人 ${esc(result.to_addr || '')}），可在草稿箱中继续编辑。`);
+      else finish('操作已完成。');
+    } catch (error) {
+      finish(esc(error.message || '操作执行失败，请稍后重试。'));
+    }
+  });
+  bubble.appendChild(card);
+}
 function assistantTableCells(value) {
   const source = String(value || '').trim();
   if (!source.includes('|')) return null;
@@ -1025,7 +1057,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
   document.getElementById('assistant-retry').classList.add('hidden');
   setAssistantState('thinking'); document.getElementById('assistant-send').disabled = true;
   document.getElementById('mail-assistant').dataset.answerComplete = 'false';
-  let answer = '', sources = [], completed = false;
+  let answer = '', sources = [], completed = false, pendingAction = null;
   let paintTimer = null;
   const streamDeadline = setTimeout(() => controller.abort(), 360000);
   const validAnswer = () => answer.replace(/\[email_id:(\d+)\]/g, (match, id) => sources.some(s => String(s.id) === id) ? match : '（来源未核实）');
@@ -1064,6 +1096,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
         }
       }
       else if (event.type === 'done') completed = true;
+      else if (event.type === 'action') pendingAction = event.action || null;
       else if (event.type === 'error') throw new Error(event.message || '分析中断');
     };
     while (true) {
@@ -1081,6 +1114,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
     document.getElementById('mail-assistant').dataset.answerComplete = 'true';
     paint();
     bubble.insertAdjacentHTML('beforeend', assistantSourcesHtml(sources, account?.id || ''));
+    if (pendingAction) renderAssistantActionCard(bubble, pendingAction, account);
     assistantHistory.push({role:'assistant', content:validAnswer()});
   } catch (error) {
     if (revision !== assistantRevision) return;
@@ -8288,7 +8322,40 @@ function updateFilterChips() {
   document.getElementById('filter-chips').innerHTML = Object.entries(labels).filter(([,value]) => value).map(([key,value]) => `<button type="button" data-remove-filter="${key}">${esc(value)} ×</button>`).join('');
 }
 
+async function loadSemanticStatus() {
+  const status = document.getElementById('semantic-status');
+  const reindex = document.getElementById('semantic-reindex');
+  const toggle = document.getElementById('semantic-enabled');
+  if (!status || !reindex || !toggle) return;
+  const accountId = activeMailAccount()?.id;
+  if (!accountId) {
+    status.textContent = '添加邮箱后即可启用';
+    toggle.checked = false;
+    reindex.classList.add('hidden');
+    return;
+  }
+  try {
+    const [prefs, stats] = await Promise.all([
+      api('/api/preferences', {accountId}),
+      api('/api/assistant/semantic', {accountId}),
+    ]);
+    toggle.checked = !!prefs.semantic_enabled;
+    if (!stats.deps_available) {
+      status.textContent = '未安装可选依赖（requirements-semantic.txt）';
+      reindex.classList.add('hidden');
+      return;
+    }
+    status.textContent = stats.indexed
+      ? `已索引 ${stats.indexed} 封邮件${stats.last_indexed_at ? ` · ${String(stats.last_indexed_at).slice(0, 16)}` : ''}`
+      : '尚未建立索引';
+    reindex.classList.toggle('hidden', !stats.enabled);
+  } catch (_) {
+    status.textContent = '暂时无法读取状态';
+  }
+}
+
 async function loadWorkspacePreferences() {
+  loadSemanticStatus();
   if (preferencesSaving) return;
   const accountId = activeMailAccount()?.id;
   const revision = ++preferencesLoadRevision;
@@ -8502,6 +8569,38 @@ function initializeWorkspace() {
   }
   syncPreferenceChoices();
   document.getElementById('notification-retry-load').onclick = loadWorkspacePreferences;
+  document.getElementById('semantic-enabled').onchange = async event => {
+    const accountId = activeMailAccount()?.id;
+    if (!accountId) { event.target.checked = false; return; }
+    const enabledValue = event.target.checked;
+    const status = document.getElementById('semantic-status');
+    status.textContent = '正在保存…';
+    try {
+      const prefs = await api('/api/preferences', {accountId});
+      await api('/api/preferences', {accountId, method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...prefs, semantic_enabled:enabledValue})});
+      toast(enabledValue ? '已启用语义检索' : '已关闭语义检索', 'success');
+      loadSemanticStatus();
+    } catch (error) {
+      event.target.checked = !enabledValue;
+      status.textContent = '保存失败，请重试';
+      toast(error.message, 'error');
+    }
+  };
+  document.getElementById('semantic-reindex').onclick = async event => {
+    const button = event.currentTarget;
+    const status = document.getElementById('semantic-status');
+    button.disabled = true;
+    status.textContent = '正在重建索引（首次需下载模型，请稍候）…';
+    try {
+      const result = await api('/api/assistant/semantic/reindex', {accountId:activeMailAccount()?.id, method:'POST'});
+      toast(`语义索引已重建：${result.indexed} 封邮件`, 'success');
+    } catch (error) {
+      toast(error.message, 'error');
+    } finally {
+      button.disabled = false;
+      loadSemanticStatus();
+    }
+  };
   document.getElementById('notification-preference').onchange = async event => {
     const accountId = activeMailAccount()?.id; const notification = event.target.value;
     if (!accountId || preferencesSaving || preferencesAccount !== accountId) return loadWorkspacePreferences();

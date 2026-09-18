@@ -5,7 +5,7 @@ import logging
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 
-from ... import config, db, mail_assistant
+from ... import assistant_actions, config, db, mail_assistant
 from ..helpers import prepare_assistant_images, prepare_assistant_materials
 from ..schemas import AssistantRequest
 
@@ -89,6 +89,8 @@ def api_assistant_ask_stream(payload: AssistantRequest):
                 if event == "sources":
                     sources = value
                     yield json.dumps({"type": "sources", "sources": value}, ensure_ascii=False) + "\n"
+                elif event == "action":
+                    yield json.dumps({"type": "action", "action": value}, ensure_ascii=False) + "\n"
                 elif event == "status":
                     yield json.dumps({"type": "status", **value}, ensure_ascii=False) + "\n"
                 else:
@@ -108,6 +110,43 @@ def api_assistant_ask_stream(payload: AssistantRequest):
             db.add_assistant_message(conversation_id, "assistant", answer, sources)
             yield json.dumps({"type": "error", "message": message}, ensure_ascii=False) + "\n"
     return StreamingResponse(generate(), media_type="application/x-ndjson")
+
+
+@router.post("/api/assistant/actions/execute")
+def api_assistant_action_execute(payload: dict):
+    """执行用户已确认的助手建议操作（白名单：create_todo/draft_reply/mark_read）。
+
+    助手本身从不执行操作——这里处理的是界面上用户点击"确认执行"后的提交，
+    审计日志以 actor="assistant_confirmed" 记录。
+    """
+    action_type = str(payload.get("type") or "")
+    params = payload.get("params") if isinstance(payload.get("params"), dict) else {}
+    try:
+        return assistant_actions.execute_action(action_type, params)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+    except Exception:
+        log.exception("助手受控操作执行失败")
+        raise HTTPException(500, "操作执行失败，请稍后重试")
+
+
+@router.get("/api/assistant/semantic")
+def api_assistant_semantic_status():
+    from ... import semantic
+    return semantic.index_stats()
+
+
+@router.post("/api/assistant/semantic/reindex")
+def api_assistant_semantic_reindex():
+    """重建语义索引。首次会联网下载嵌入模型（约 100MB），由用户显式触发。"""
+    from ... import semantic
+    if not semantic.deps_available():
+        raise HTTPException(400, "未安装语义检索依赖（fastembed），请安装 requirements-semantic.txt 后重启")
+    try:
+        return semantic.reindex()
+    except Exception as exc:
+        log.exception("语义索引重建失败")
+        raise HTTPException(500, f"索引重建失败: {exc}")
 
 
 @router.get("/api/assistant/conversations")
