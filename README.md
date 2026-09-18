@@ -5,9 +5,9 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v1.0.14**
+当前版本：**v1.0.15**
 
-本次更新：小邮现在可在用户明确提问图片内容时，安全读取当前邮件中已内嵌的本地图片（最多 3 张）；不会主动请求邮件中的远程图片。模型“测试连接”新增真实图片能力探测：先验证文本，再用不含业务数据的极小测试图验证所选多模态模型；若模型不支持图片，会明确提示关闭图片识别或更换视觉模型，避免分析时才报错。
+本次更新：正式采用 Apache-2.0 开源许可证，补齐开源治理基础：新增贡献指南（CONTRIBUTING）、安全漏洞私密上报政策（SECURITY）、Issue 与 PR 模板；CI 新增 PR 质量门禁（离线发布检查 + 密钥泄漏扫描）；新增《现场验收手册》，覆盖 UIDVALIDITY 变化、断网恢复、发送中强杀、重复启动、覆盖升级五个真实环境用例；修复 Linux 环境下桌面组件测试对 pywebview 的依赖问题。
 
 ## 下载 MailAI
 
