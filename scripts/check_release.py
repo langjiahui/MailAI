@@ -70,6 +70,10 @@ TESTS = (
     'test_signatures.py',
     'test_contacts.py', 'test_contact_identity.py', 'test_contact_name_ordering.py', 'test_sent_attachments.py', 'test_compose_file_tools.py', 'test_draft_completion_integrity.py',
     'test_mail_library.py',
+    'test_chain_worker.py',
+    'test_ioc_export.py',
+    'test_feedback_analysis.py',
+    'test_export_corpus.py',
     'test_server_cleanup.py',
 )
 
@@ -80,6 +84,7 @@ def main():
         raise SystemExit('Node.js is required for frontend release checks')
     commands = [[sys.executable, str(ROOT / 'tests' / name)] for name in TESTS]
     commands.append([sys.executable, str(ROOT / 'scripts/build_frontend.py'), '--check'])
+    commands.append([sys.executable, str(ROOT / 'tests/evaluate.py'), '--gate'])
     commands.append([node, '--check', str(ROOT / 'app/web/static/bundle.js')])
     if sys.platform == 'darwin':
         commands.append([sys.executable, str(ROOT / 'tests/test_mail_links_webkit.py')])

@@ -1,7 +1,12 @@
 """安全策略：规则配置、白名单、阈值、聚类战役与处置模式。"""
+import csv
+import io
+import json
 import logging
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import Response
 
 from ... import db, pipeline
 from ...security import policy
@@ -111,6 +116,111 @@ def api_reset_rules():
 @router.get("/api/security/campaigns")
 def api_security_campaigns(days: int = 30):
     return {"items": campaign_groups(days), "days": max(1, min(days, 90))}
+
+
+def _collect_ioc(days: int) -> dict:
+    """汇总近 N 天判定为钓鱼的邮件中提取的 IOC（失陷指标）。
+
+    只输出检测元数据（发件人/域名/IP/URL/附件哈希），不含邮件正文。
+    """
+    cutoff = (datetime.now() - timedelta(days=days)).isoformat(timespec="seconds")
+    with db.conn() as c:
+        senders = [dict(r) for r in c.execute(
+            "SELECT lower(from_addr) AS value, COUNT(*) AS count, MAX(date) AS last_seen "
+            "FROM emails WHERE verdict='phishing' AND COALESCE(date,'') >= ? "
+            "GROUP BY lower(from_addr) ORDER BY count DESC", (cutoff,)).fetchall()]
+        chains = [dict(r) for r in c.execute(
+            "SELECT u.original_url, u.final_url, u.final_domain, u.final_ip, "
+            "COUNT(*) AS count, MAX(u.created_at) AS last_seen "
+            "FROM url_chains u JOIN emails e ON e.id = u.email_id "
+            "WHERE e.verdict='phishing' AND u.created_at >= ? "
+            "GROUP BY u.original_url ORDER BY count DESC", (cutoff,)).fetchall()]
+        analyses = [r[0] for r in c.execute(
+            "SELECT attachment_analysis FROM emails "
+            "WHERE verdict='phishing' AND COALESCE(date,'') >= ?", (cutoff,)).fetchall()]
+
+    sender_domains = {}
+    for row in senders:
+        domain = (row["value"] or "").rsplit("@", 1)[-1]
+        if not domain:
+            continue
+        slot = sender_domains.setdefault(domain, {"value": domain, "count": 0, "last_seen": ""})
+        slot["count"] += row["count"]
+        slot["last_seen"] = max(slot["last_seen"], row["last_seen"] or "")
+
+    urls, domains, ips = [], {}, {}
+    for row in chains:
+        urls.append({
+            "value": row.get("final_url") or row.get("original_url") or "",
+            "original_url": row.get("original_url") or "",
+            "count": row["count"], "last_seen": row["last_seen"],
+        })
+        for bucket, key in ((domains, "final_domain"), (ips, "final_ip")):
+            value = (row.get(key) or "").strip()
+            if not value:
+                continue
+            slot = bucket.setdefault(value, {"value": value, "count": 0, "last_seen": ""})
+            slot["count"] += row["count"]
+            slot["last_seen"] = max(slot["last_seen"], row["last_seen"] or "")
+
+    hashes = {}
+    for raw in analyses:
+        try:
+            items = json.loads(raw or "[]")
+        except (TypeError, json.JSONDecodeError):
+            continue
+        for item in items if isinstance(items, list) else []:
+            digest = (item.get("sha256") or "").strip()
+            if not digest:
+                continue
+            slot = hashes.setdefault(digest, {
+                "value": digest, "count": 0, "last_seen": "", "names": []})
+            slot["count"] += 1
+            name = item.get("name") or ""
+            if name and name not in slot["names"]:
+                slot["names"].append(name)
+
+    return {
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "window_days": days,
+        "senders": senders,
+        "sender_domains": sorted(sender_domains.values(), key=lambda r: -r["count"]),
+        "urls": urls,
+        "domains": sorted(domains.values(), key=lambda r: -r["count"]),
+        "ips": sorted(ips.values(), key=lambda r: -r["count"]),
+        "attachment_sha256": sorted(hashes.values(), key=lambda r: -r["count"]),
+    }
+
+
+def _ioc_csv(data: dict) -> str:
+    """IOC 列表转 CSV（带 BOM 便于 Excel 打开）。"""
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["type", "value", "count", "last_seen", "extra"])
+    sections = (("sender", "senders"), ("sender_domain", "sender_domains"),
+                ("url", "urls"), ("domain", "domains"), ("ip", "ips"),
+                ("attachment_sha256", "attachment_sha256"))
+    for kind, key in sections:
+        for row in data[key]:
+            extra = ""
+            if kind == "url":
+                extra = row.get("original_url", "")
+            elif kind == "attachment_sha256":
+                extra = ";".join(row.get("names") or [])
+            writer.writerow([kind, row["value"], row["count"], row.get("last_seen", ""), extra])
+    return "﻿" + buf.getvalue()
+
+
+@router.get("/api/security/ioc")
+def api_ioc_export(format: str = "json", days: int = 90):
+    days = max(1, min(int(days or 90), 365))
+    data = _collect_ioc(days)
+    if format == "csv":
+        return Response(
+            content=_ioc_csv(data), media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=mailai-ioc.csv"},
+        )
+    return data
 
 
 @router.get("/api/action_policy")
