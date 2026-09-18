@@ -177,6 +177,7 @@ class AssistantRequest(BaseModel):
 class PreferencesRequest(BaseModel):
     notifications: str = 'all'
     muted_threads: list[str] = Field(default_factory=list)
+    semantic_enabled: bool = False
 
 
 class CleanupPreviewRequest(BaseModel):

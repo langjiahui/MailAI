@@ -237,7 +237,40 @@ function updateFilterChips() {
   document.getElementById('filter-chips').innerHTML = Object.entries(labels).filter(([,value]) => value).map(([key,value]) => `<button type="button" data-remove-filter="${key}">${esc(value)} ×</button>`).join('');
 }
 
+async function loadSemanticStatus() {
+  const status = document.getElementById('semantic-status');
+  const reindex = document.getElementById('semantic-reindex');
+  const toggle = document.getElementById('semantic-enabled');
+  if (!status || !reindex || !toggle) return;
+  const accountId = activeMailAccount()?.id;
+  if (!accountId) {
+    status.textContent = '添加邮箱后即可启用';
+    toggle.checked = false;
+    reindex.classList.add('hidden');
+    return;
+  }
+  try {
+    const [prefs, stats] = await Promise.all([
+      api('/api/preferences', {accountId}),
+      api('/api/assistant/semantic', {accountId}),
+    ]);
+    toggle.checked = !!prefs.semantic_enabled;
+    if (!stats.deps_available) {
+      status.textContent = '未安装可选依赖（requirements-semantic.txt）';
+      reindex.classList.add('hidden');
+      return;
+    }
+    status.textContent = stats.indexed
+      ? `已索引 ${stats.indexed} 封邮件${stats.last_indexed_at ? ` · ${String(stats.last_indexed_at).slice(0, 16)}` : ''}`
+      : '尚未建立索引';
+    reindex.classList.toggle('hidden', !stats.enabled);
+  } catch (_) {
+    status.textContent = '暂时无法读取状态';
+  }
+}
+
 async function loadWorkspacePreferences() {
+  loadSemanticStatus();
   if (preferencesSaving) return;
   const accountId = activeMailAccount()?.id;
   const revision = ++preferencesLoadRevision;
@@ -451,6 +484,38 @@ function initializeWorkspace() {
   }
   syncPreferenceChoices();
   document.getElementById('notification-retry-load').onclick = loadWorkspacePreferences;
+  document.getElementById('semantic-enabled').onchange = async event => {
+    const accountId = activeMailAccount()?.id;
+    if (!accountId) { event.target.checked = false; return; }
+    const enabledValue = event.target.checked;
+    const status = document.getElementById('semantic-status');
+    status.textContent = '正在保存…';
+    try {
+      const prefs = await api('/api/preferences', {accountId});
+      await api('/api/preferences', {accountId, method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...prefs, semantic_enabled:enabledValue})});
+      toast(enabledValue ? '已启用语义检索' : '已关闭语义检索', 'success');
+      loadSemanticStatus();
+    } catch (error) {
+      event.target.checked = !enabledValue;
+      status.textContent = '保存失败，请重试';
+      toast(error.message, 'error');
+    }
+  };
+  document.getElementById('semantic-reindex').onclick = async event => {
+    const button = event.currentTarget;
+    const status = document.getElementById('semantic-status');
+    button.disabled = true;
+    status.textContent = '正在重建索引（首次需下载模型，请稍候）…';
+    try {
+      const result = await api('/api/assistant/semantic/reindex', {accountId:activeMailAccount()?.id, method:'POST'});
+      toast(`语义索引已重建：${result.indexed} 封邮件`, 'success');
+    } catch (error) {
+      toast(error.message, 'error');
+    } finally {
+      button.disabled = false;
+      loadSemanticStatus();
+    }
+  };
   document.getElementById('notification-preference').onchange = async event => {
     const accountId = activeMailAccount()?.id; const notification = event.target.value;
     if (!accountId || preferencesSaving || preferencesAccount !== accountId) return loadWorkspacePreferences();
