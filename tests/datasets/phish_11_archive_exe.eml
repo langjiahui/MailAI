@@ -1,0 +1,31 @@
+Subject: 8 =?utf-8?b?5pyI5a+56LSm5Y2V?=
+From: =?utf-8?b?5b6A5p2l5Lya6K6h?= <account@partner-example.net>
+To: user@example.com
+Date: Mon, 07 Sep 2026 10:00:00 +0800
+Message-ID: <test-780822e1bb64@example.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="===============7380925102133160960=="
+
+--===============7380925102133160960==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+
+您好，
+
+附件为 8 月对账单压缩包，解压后打开查看即可。
+
+--===============7380925102133160960==
+Content-Type: application/zip
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+ filename*=utf-8''%E5%AF%B9%E8%B4%A6%E5%8D%95.zip
+MIME-Version: 1.0
+
+UEsDBBQAAAgAAMO5Ml2AnP2AwAAAAMAAAAANAAAA5a+56LSm5Y2VLmV4ZU1akJCQkJCQkJCQkJCQ
+kJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkFBFAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAFBLAQIUAxQAAAgAAMO5Ml2AnP2AwAAAAMAAAAANAAAAAAAAAAAAAACAAQAAAADlr7no
+tKbljZUuZXhlUEsFBgAAAAABAAEAOwAAAOsAAAAAAA==
+
+--===============7380925102133160960==--

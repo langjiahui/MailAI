@@ -1,0 +1,14 @@
+Subject: =?utf-8?b?5pys5pyI57uI56uv5a6J5YWo6KGl5LiB5o6o6YCB6K+05piO?=
+From: =?utf-8?b?5a6J5YWo6L+Q6JCl?= <secops@example.com>
+To: user@example.com
+Date: Mon, 07 Sep 2026 10:00:00 +0800
+Message-ID: <test-4c38008e0937@example.com>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+MIME-Version: 1.0
+
+各位同事，
+
+本周将分批推送终端安全补丁，安装后按需重启即可。
+
+补丁说明：https://kb.example.org/patch/2026-09

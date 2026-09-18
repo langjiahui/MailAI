@@ -1,0 +1,13 @@
+Subject: [CI] main =?utf-8?b?5YiG5pSv5p6E5bu65oiQ5Yqf?= #4521
+From: =?utf-8?b?5p6E5bu65py65Zmo5Lq6?= <ci@example.org>
+To: user@example.com
+Date: Mon, 07 Sep 2026 10:00:00 +0800
+Message-ID: <test-8dcc3df009d5@example.com>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+MIME-Version: 1.0
+
+构建 #4521 成功。
+
+提交: abc1234 fix: 修复列表分页
+产物: https://ci.example.org/builds/4521

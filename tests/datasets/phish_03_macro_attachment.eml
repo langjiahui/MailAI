@@ -1,14 +1,30 @@
 Subject: =?utf-8?b?5Y+R56Wo56Gu6K6k5Y2V?=
 From: =?utf-8?b?6LSi5Yqh5YWx5Lqr5Lit5b+D?= <invoice@examp1e.com>
 To: user@example.com
-Date: Wed, 26 Aug 2026 08:37:40 -0000
-Message-ID: <test-983923@example.com>
+Date: Mon, 07 Sep 2026 10:00:00 +0800
+Message-ID: <test-8caded5a8c7c@example.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="===============0804045420728594983=="
+
+--===============0804045420728594983==
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-MIME-Version: 1.0
 
 您好，
 
 附件为贵部门本月发票汇总，请打开后启用宏进行核对。
 
 如有疑问请联系财务部。
+
+--===============0804045420728594983==
+Content-Type: application/vnd.ms-word.document.macroEnabled.12
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+ filename*=utf-8''%E5%8F%91%E7%A5%A8%E6%B1%87%E6%80%BB.docm
+MIME-Version: 1.0
+
+0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAX1ZCQV9QUk9KRUNUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+
+--===============0804045420728594983==--

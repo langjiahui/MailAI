@@ -1,0 +1,29 @@
+Subject: =?utf-8?b?55S15a2Q5Zue5Y2V5p+l6K+i5bel5YW3?=
+From: =?utf-8?b?5a6i5oi35pyN5Yqh?= <service@bank-example.net>
+To: user@example.com
+Date: Mon, 07 Sep 2026 10:00:00 +0800
+Message-ID: <test-176b80b20653@example.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="===============6711279096605527524=="
+
+--===============6711279096605527524==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+
+您好，
+
+请下载附件中的回单查询工具，安装后即可查看电子回单。
+
+--===============6711279096605527524==
+Content-Type: application/octet-stream
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+ filename*=utf-8''%E5%9B%9E%E5%8D%95%E6%9F%A5%E8%AF%A2%E5%B7%A5%E5%85%B7.exe
+MIME-Version: 1.0
+
+TVqQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQ
+kJCQUEUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAA
+
+--===============6711279096605527524==--

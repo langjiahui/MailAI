@@ -1,0 +1,26 @@
+Subject: =?utf-8?b?6YKA6K+377ya5a2j5bqm5aSN55uY5Lya?=
+From: =?utf-8?b?5Lya6K6u5Yqp5omL?= <calendar@example.com>
+To: user@example.com
+Date: Mon, 07 Sep 2026 10:00:00 +0800
+Message-ID: <test-e35745271933@example.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="===============6121199775704243528=="
+
+--===============6121199775704243528==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+
+5oKo5pyJ5LiA5Liq5paw55qE5Lya6K6u6YKA6K+377ya5a2j5bqm5aSN55uY5Lya77yM5pe26Ze0
+IDkg5pyIIDI1IOaXpSAxNDowMC0xNTowMOOAggoK6K+m5oOF6KeB5pel5Y6G6ZmE5Lu244CCCg==
+
+--===============6121199775704243528==
+Content-Type: text/calendar
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="invite.ics"
+MIME-Version: 1.0
+
+QkVHSU46VkNBTEVOREFSDQpWRVJTSU9OOjIuMA0KQkVHSU46VkVWRU5UDQpTVU1NQVJZOk1vbnRo
+bHkgcmV2aWV3DQpEVFNUQVJUOjIwMjYwOTI1VDA2MDAwMFoNCkVORDpWRVZFTlQNCkVORDpWQ0FM
+RU5EQVINCg==
+
+--===============6121199775704243528==--
