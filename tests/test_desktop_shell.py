@@ -11,6 +11,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+# pywebview is only installed for packaged builds (macOS/Windows); CI on Linux
+# still exercises the dialog flows with mocked windows, so provide the constant.
+try:
+    import webview  # noqa: F401
+except ModuleNotFoundError:
+    sys.modules["webview"] = types.SimpleNamespace(
+        FileDialog=types.SimpleNamespace(SAVE=1, OPEN=2, FOLDER=3)
+    )
+
 from app.desktop import DesktopApi, DesktopRuntime, desktop_asset_path, notification_text, register_installed_application, reserve_loopback_socket
 from app import config, db
 
