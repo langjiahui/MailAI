@@ -14,7 +14,7 @@ from .account_guard import account_work
 from .llm import analyze as llm_analyze
 from .llm import client as llm_client
 from .llm import multimodal
-from .security import attachments, chains, rules, policy, thread_guard
+from .security import attachments, chains, chain_worker, rules, policy, thread_guard
 
 log = logging.getLogger(__name__)
 
@@ -268,20 +268,22 @@ def _rule_summary(scan: dict) -> str:
 
 
 def _analyze_url_chains(email: dict) -> tuple[list, list]:
-    """对可疑 URL 跟踪跳转链，返回 (findings, chain_results)。"""
+    """对可疑 URL 跟踪跳转链，返回 (findings, chain_results)。
+
+    跟踪在子进程中执行（chain_worker），目标 URL 由邮件内容控制，
+    防止慢响应/挂起拖垮主处理管道。
+    """
     findings = []
     chain_results = []
     if not email.get("urls"):
         return findings, chain_results
-    for url in email["urls"][:5]:
-        if not chains.is_suspicious_for_chain(url):
-            continue
-        try:
-            f, result = chains.analyze_url_chain(url, email.get("body_html", ""))
-            findings.extend(f)
-            chain_results.append(result)
-        except Exception:
-            log.exception("URL 链跟踪失败: %s", url)
+    urls = [u for u in email["urls"][:5] if chains.is_suspicious_for_chain(u)]
+    if not urls:
+        return findings, chain_results
+    for item in chain_worker.analyze_urls(urls, email.get("body_html", "")):
+        findings.extend(item.get("findings") or [])
+        if item.get("result"):
+            chain_results.append(item["result"])
     return findings, chain_results
 
 
