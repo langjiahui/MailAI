@@ -10,7 +10,7 @@ git clone https://github.com/langjiahui/MailAI.git
 cd MailAI
 python3 -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements.txt -r requirements-dev.txt
 
 # 2. 配置（不会进 git）
 cp .env.example .env             # 按需填写 IMAP / LLM 参数；也可以不填，纯离线开发
@@ -40,8 +40,10 @@ python scripts/build_frontend.py
 单元测试：
 
 ```bash
-python -m pytest tests/ -q       # 或 python -m pytest tests/test_xxx.py -q
+python -m pytest tests/ -q       # 跑完整离线套件；可用 -k 过滤，如 -k test_contacts
 ```
+
+pytest 通过 `tests/test_offline_suite.py` 以子进程方式逐个运行脚本式测试，清单与 `scripts/check_release.py` 共用同一份 `TESTS`——新增离线测试只需在门禁清单里登记一处。注意 pytest 只覆盖 Python 套件，前端 `.cjs`/打包检查仍以 `check_release.py` 为准。
 
 ## 分支与 PR 规范
 
@@ -67,8 +69,8 @@ app/
   pipeline.py        邮件处理主管道（同步 → 解析 → 检测 → 处置）
   security/          规则引擎、URL 链、附件分析、活动关联、策略
   llm/               模型客户端、提示词、多模态
-  db.py              SQLite 数据层（每个邮箱账号独立库）
-  web/               FastAPI 接口与前端静态资源
+  db/                SQLite 数据层（按域拆分模块，每个邮箱账号独立库）
+  web/               FastAPI 接口（routes/ 按域拆分）与前端静态资源
 tests/               Python 测试 + .cjs 浏览器测试
 scripts/             发布门禁、打包、构建脚本
 docs/                设计文档与审查报告
