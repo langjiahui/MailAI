@@ -808,6 +808,9 @@ html[data-theme="dark"] .todo-title-input { color:#f0faf4!important; }
 html[data-theme="dark"] .todo-source-meta { color:#9bb0a5!important; }
 html[data-theme="dark"] .todo-source { color:#9ed6ba!important; }
 html[data-theme="dark"] .todo-date input { color:#e9f5ee!important; border-color:var(--dark-stroke)!important; background:rgba(6,22,16,.68)!important; color-scheme:dark; }
+html[data-theme="dark"] .todo-status-action { color:#9ed6ba!important; border-color:var(--dark-stroke)!important; background:rgba(42,71,56,.66)!important; }
+html[data-theme="dark"] .todo-status-action:hover { color:#ffffff!important; border-color:#3b8066!important; background:#3b8066!important; }
+html[data-theme="dark"] .todo-center-item.done .todo-status-action { color:#7d948a!important; background:rgba(28,48,39,.5)!important; }
 
 /* Compose Copilot: remove the remaining light header, chips and preview island. */
 html[data-theme="dark"] .compose-ai-panel-head {

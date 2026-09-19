@@ -20,9 +20,9 @@ const element = id => {
   return elements.get(id);
 };
 Object.assign(ctx, {
-  bulkOperationActive:false, resetReadingPane(){}, clearMailSelection(){}, activateMailAccount:async()=>{},
+  bulkOperationActive:false, resetReadingPane(){}, clearMailSelection(){}, activateMailAccount:async()=>{ assert.ok(sidebarRenders>=1, 'sidebar should highlight the clicked account before the activation round-trip'); },
   activeMailAccount:()=>({id:'a'}), currentFilter:{days:9999,status:'',search:'',verdict:'',category:'',priority:'',domain:'',attachments:false},
-  specialMailbox:'',currentServerFolder:'',unifiedMailbox:false,searchResults:null,searchRevision:0,globalSearchTimer:null,
+  specialMailbox:'',currentServerFolder:'',unifiedMailbox:false,selectedMailboxAccountId:'',searchResults:null,searchRevision:0,globalSearchTimer:null,
   document:{getElementById:element}, clearTimeout(){}, setSegmentedFilter(){},
   loadData:async()=>{loadCount++}, loadMailboxFolders:async()=>{folderLoadCount++},
   api:async()=>{syncCount++}, updateActiveNav(){}, renderSidebarAccounts(){sidebarRenders++}, toast(){},

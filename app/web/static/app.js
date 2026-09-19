@@ -4123,8 +4123,20 @@ async function activateMailAccount(accountId, {keepMailbox = false, quiet = fals
 async function openAccountMailbox(accountId, mailbox) {
   if (bulkOperationActive) return toast('批量操作正在执行，请稍候', 'warn');
   resetReadingPane();
+  // 乐观高亮：先切选中态再等网络往返，消除"点了没反应"的迟滞；失败回滚
+  const previousSelection = selectedMailboxAccountId;
+  const previousUnified = unifiedMailbox;
   unifiedMailbox = false;
-  await activateMailAccount(accountId);
+  selectedMailboxAccountId = accountId;
+  updateActiveNav(); renderSidebarAccounts();
+  try {
+    await activateMailAccount(accountId);
+  } catch (err) {
+    selectedMailboxAccountId = previousSelection;
+    unifiedMailbox = previousUnified;
+    updateActiveNav(); renderSidebarAccounts();
+    throw err;
+  }
   if (activeMailAccount()?.id !== accountId) return;
   specialMailbox = ['sent', 'drafts'].includes(mailbox) ? mailbox : '';
   currentServerFolder = '';
@@ -4175,6 +4187,7 @@ async function openUnifiedInbox() {
   if (bulkOperationActive) return toast('批量操作正在执行，请稍候', 'warn');
   resetReadingPane(); clearMailSelection();
   unifiedMailbox = true; selectedMailboxAccountId = '';
+  updateActiveNav(); renderSidebarAccounts(); // 乐观高亮，不等加载完成
   specialMailbox = ''; currentServerFolder = '';
   currentFilter.status = ''; currentFilter.verdict = ''; currentFilter.category = '';
   await loadData();
@@ -6407,11 +6420,16 @@ document.getElementById('btn-enable-notifications').addEventListener('click', as
 });
 function renderBackupItem(item, index) {
   const date = new Date(item.created_at);
-  const label = Number.isNaN(date.getTime()) ? '本地备份' : new Intl.DateTimeFormat('zh-CN', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(date);
-  const download = `<button type="button" data-download-backup="${esc(item.filename)}" data-portable="${item.portable ? 'true' : 'false'}" aria-label="${item.portable ? '导出迁移包到指定位置' : `下载 ${esc(label)} 的备份`}">另存为</button>`;
-  const remove = `<button type="button" data-delete-backup="${esc(item.filename)}" data-portable="${item.portable ? 'true' : 'false'}" aria-label="删除 ${item.portable ? '迁移包' : '备份'}">删除</button>`;
-  const actions = item.portable ? `${download}${remove}` : `<button type="button" data-restore-backup="${esc(item.filename)}" aria-label="恢复 ${esc(label)} 的备份">恢复</button>${download}${remove}`;
-  return `<div class="backup-item"><div class="backup-record-copy"><b>${esc(label)}${item.portable ? '<em>迁移包</em>' : index === 0 ? '<em>最新</em>' : ''}</b><small title="${esc(item.filename)}">${esc(item.filename)}</small></div><small class="backup-record-size">${formatFileSize(item.size)}</small><div class="backup-record-actions">${actions}</div></div>`;
+  const locale = currentI18nLanguage() === 'en' ? 'en-US' : 'zh-CN';
+  const label = Number.isNaN(date.getTime()) ? (mailaiT('backup.localFallback') || '本地备份') : new Intl.DateTimeFormat(locale, {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(date);
+  const tSave = mailaiT('backup.saveAs') || '另存为';
+  const tDelete = mailaiT('backup.delete') || '删除';
+  const tRestore = mailaiT('backup.restore') || '恢复';
+  const tPortable = mailaiT('backup.portable') || '迁移包';
+  const download = `<button type="button" data-download-backup="${esc(item.filename)}" data-portable="${item.portable ? 'true' : 'false'}" aria-label="${item.portable ? (mailaiT('backup.ariaExport') || '导出迁移包到指定位置') : (mailaiT('backup.ariaDownload') || `下载 ${esc(label)} 的备份`)}">${tSave}</button>`;
+  const remove = `<button type="button" data-delete-backup="${esc(item.filename)}" data-portable="${item.portable ? 'true' : 'false'}" aria-label="${mailaiT('backup.ariaDelete') || '删除'} ${item.portable ? tPortable : (mailaiT('backup.ariaBackup') || '备份')}">${tDelete}</button>`;
+  const actions = item.portable ? `${download}${remove}` : `<button type="button" data-restore-backup="${esc(item.filename)}" aria-label="${mailaiT('backup.ariaRestore') || `恢复 ${esc(label)} 的备份`}">${tRestore}</button>${download}${remove}`;
+  return `<div class="backup-item"><div class="backup-record-copy"><b>${esc(label)}${item.portable ? `<em>${tPortable}</em>` : index === 0 ? `<em>${mailaiT('backup.latest') || '最新'}</em>` : ''}</b><small title="${esc(item.filename)}">${esc(item.filename)}</small></div><small class="backup-record-size">${formatFileSize(item.size)}</small><div class="backup-record-actions">${actions}</div></div>`;
 }
 async function loadBackups() {
   const accountId = activeMailAccount()?.id;
@@ -6420,10 +6438,10 @@ async function loadBackups() {
     const [localItems, portableItems] = await Promise.all([api('/api/system/backups', {accountId}), api('/api/system/portable-backups', {accountId})]);
     const items = [...portableItems, ...localItems].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
     if (accountId !== activeMailAccount()?.id) return;
-    host.innerHTML = items.length ? items.slice(0, 3).map(renderBackupItem).join('') + (items.length > 3 ? `<details class="older-backups"><summary>查看更早备份（${items.length - 3}）</summary>${items.slice(3).map((item,index)=>renderBackupItem(item,index+3)).join('')}</details>` : '') : '<div class="backup-empty"><b>还没有备份</b><small>创建第一份备份，为邮件留一份本地副本。</small></div>';
+    host.innerHTML = items.length ? items.slice(0, 3).map(renderBackupItem).join('') + (items.length > 3 ? `<details class="older-backups"><summary>${mailaiT('backup.showOlder') || '查看更早备份'} (${items.length - 3})</summary>${items.slice(3).map((item,index)=>renderBackupItem(item,index+3)).join('')}</details>` : '') : `<div class="backup-empty"><b>${mailaiT('backup.emptyTitle') || '还没有备份'}</b><small>${mailaiT('backup.emptyHint') || '创建第一份备份，为邮件留一份本地副本。'}</small></div>`;
     window.refreshCleanupHistory?.(accountId);
   } catch (_) {
-    if (accountId === activeMailAccount()?.id) host.innerHTML = '<div class="backup-empty"><b>暂时无法读取备份</b><small>请稍后重新打开此页。</small></div>';
+    if (accountId === activeMailAccount()?.id) host.innerHTML = `<div class="backup-empty"><b>${mailaiT('backup.loadFailTitle') || '暂时无法读取备份'}</b><small>${mailaiT('backup.loadFailHint') || '请稍后重新打开此页。'}</small></div>`;
   }
 }
 document.getElementById('btn-create-backup').addEventListener('click', async () => {
