@@ -5,7 +5,7 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v2.1.9**
+当前版本：**v2.1.10**
 
 本次更新：修复"运行诊断"因 20 秒通用超时误报"Fetch is aborted"的问题，诊断现有独立 120 秒超时，超时提示改为可读的"请求超时"；邮件列表底部的"同步更早邮件 / 同步全部历史"操作条大幅收窄降噪，暗色模式下不再以大面积渐变抢占视觉；关联研判卡片补齐暗色对比度——主题文字清晰可读、数字徽章不再刺眼，阅读区"同源攻击关联"面板同步完成暗色适配。
 
