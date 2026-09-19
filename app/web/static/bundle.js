@@ -5597,6 +5597,8 @@ function renderSidebarAccounts() {
   const host = document.getElementById('account-mailbox-nav');
   const multiple = accounts.length > 1;
   renderMailboxSyncTracker(accounts);
+  // 同步图标兼作状态灯：任一账号同步异常时在顶栏同步按钮上点红点
+  document.getElementById('btn-poll')?.classList.toggle('attention', accounts.some(account => account.sync_error || !account.credential_available || ['interrupted', 'canceled'].includes(account.sync_status)));
   group?.classList.toggle('hidden', !multiple);
   primary?.classList.toggle('hidden', multiple);
   if (!host || !multiple) return;
@@ -7344,6 +7346,26 @@ document.addEventListener('click', event => {
 document.addEventListener('keydown', event => {
   if (event.key === 'Escape') closeTopMenus();
 });
+
+// 顶栏工作区高亮：观察各中心/视图的显隐，点亮对应的导航按钮
+function syncTopbarActive() {
+  const open = id => { const el = document.getElementById(id); return !!el && !el.classList.contains('hidden'); };
+  const states = {
+    'btn-contacts': open('contact-center'),
+    'btn-attachments': open('attachment-center'),
+    'btn-todos': open('todo-center'),
+    'btn-digest': open('digest-modal'),
+    'btn-security-menu': open('dashboard-view') || open('rules-view'),
+    'btn-preferences': open('system-view'),
+  };
+  Object.entries(states).forEach(([id, on]) => document.getElementById(id)?.classList.toggle('active', on));
+}
+if (typeof MutationObserver !== 'undefined') {
+  const topbarObserver = new MutationObserver(syncTopbarActive);
+  ['contact-center', 'attachment-center', 'todo-center', 'digest-modal', 'dashboard-view', 'rules-view', 'system-view']
+    .forEach(id => { const el = document.getElementById(id); if (el) topbarObserver.observe(el, {attributes: true, attributeFilter: ['class']}); });
+  syncTopbarActive();
+}
 
 document.getElementById('btn-poll').addEventListener('click', async () => {
   const btn = document.getElementById('btn-poll');

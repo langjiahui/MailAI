@@ -3939,6 +3939,15 @@ body.pane-resizing iframe { pointer-events: none; }
   background: transparent;
   box-shadow: none;
 }
+/* 系统操作组（同步/日报/设置）：纯图标，名称由 title/aria 承担 */
+.nav-system-cluster .nav-action { padding: 0 8px; }
+.nav-system-cluster .nav-action span { display: none; }
+.nav-system-cluster .nav-action .nav-icon { width: 17px; height: 17px; }
+/* 当前打开的工作区在顶栏高亮 */
+.nav-cluster .nav-action.active { color: #2f775b; background: rgba(255,255,255,.92); box-shadow: 0 2px 7px rgba(45,80,66,.12); }
+/* 同步异常时，同步图标右上角红点 */
+.nav-action.attention { position: relative; }
+.nav-action.attention::after { content: ''; position: absolute; top: 6px; right: 6px; width: 6px; height: 6px; border-radius: 50%; background: #d95d57; box-shadow: 0 0 0 2px var(--surface); }
 .top-menu { position: relative; flex: 0 0 auto; }
 .nav-menu-trigger::after {
   content: '';

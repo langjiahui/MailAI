@@ -52,34 +52,34 @@
           <button id="btn-contacts" class="nav-action nav-contacts" title="打开通讯录"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3.5" width="14" height="17" rx="3"/><path d="M5 8H3.5M5 12H3.5M5 16H3.5M9 9.2a2 2 0 1 0 4 0 2 2 0 0 0-4 0ZM8 16c.6-1.7 1.7-2.5 3-2.5s2.4.8 3 2.5"/></svg><span data-i18n="nav.contacts">联系人</span></button>
           <button id="btn-attachments" class="nav-action nav-attachments" title="集中查找和下载附件"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 12.5 6.7-6.7a3.2 3.2 0 0 1 4.5 4.5l-8.8 8.8a5 5 0 0 1-7.1-7.1l8.2-8.2"/></svg><span data-i18n="nav.attachments">附件</span></button>
           <button id="btn-todos" class="nav-action nav-todos" title="查看从邮件识别的待办"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="16" rx="3"/><path d="m8.5 12 2.2 2.2 4.8-5M9 4V2.8M15 4V2.8"/></svg><span data-i18n="nav.todos">待办</span></button>
-        </div>
-
-        <div class="top-menu nav-security-menu">
-          <button id="btn-security-menu" class="nav-action nav-menu-trigger nav-security" type="button" aria-haspopup="true" aria-expanded="false"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 19 6v5.2c0 4.7-2.8 8-7 9.8-4.2-1.8-7-5.1-7-9.8V6l7-3Z"/><path d="m8.5 12 2.2 2.2 4.8-5"/></svg><span data-i18n="nav.security">安全</span></button>
-          <div class="top-menu-popover hidden" role="menu" aria-label="安全管理">
-            <div class="top-menu-heading"><strong data-i18n="security.heading">安全管理</strong><small data-i18n="security.headingHint">研判、规则与处置策略</small></div>
-            <div class="security-menu-grid">
-              <button id="btn-dashboard" class="top-menu-item nav-dashboard" role="menuitem" title="查看安全看板"><span class="top-menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 18V11M12 18V6M19 18v-4M3 20h18"/></svg></span><span class="top-menu-label" data-i18n="security.dashboard">安全看板</span><small data-i18n="security.dashboardHint">趋势与处置成效</small></button>
-              <button id="btn-rules" class="top-menu-item nav-rules" role="menuitem" title="查看和配置风险识别规则"><span class="top-menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M5 12h14M5 18h14M9 4v4M15 10v4M10 16v4"/></svg></span><span class="top-menu-label" data-i18n="security.rules">规则中心</span><small data-i18n="security.rulesHint">规则与评分权重</small></button>
+          <div class="top-menu nav-security-menu">
+            <button id="btn-security-menu" class="nav-action nav-menu-trigger nav-security" type="button" aria-haspopup="true" aria-expanded="false"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 19 6v5.2c0 4.7-2.8 8-7 9.8-4.2-1.8-7-5.1-7-9.8V6l7-3Z"/><path d="m8.5 12 2.2 2.2 4.8-5"/></svg><span data-i18n="nav.security">安全</span></button>
+            <div class="top-menu-popover hidden" role="menu" aria-label="安全管理">
+              <div class="top-menu-heading"><strong data-i18n="security.heading">安全管理</strong><small data-i18n="security.headingHint">研判、规则与处置策略</small></div>
+              <div class="security-menu-grid">
+                <button id="btn-dashboard" class="top-menu-item nav-dashboard" role="menuitem" title="查看安全看板"><span class="top-menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 18V11M12 18V6M19 18v-4M3 20h18"/></svg></span><span class="top-menu-label" data-i18n="security.dashboard">安全看板</span><small data-i18n="security.dashboardHint">趋势与处置成效</small></button>
+                <button id="btn-rules" class="top-menu-item nav-rules" role="menuitem" title="查看和配置风险识别规则"><span class="top-menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M5 12h14M5 18h14M9 4v4M15 10v4M10 16v4"/></svg></span><span class="top-menu-label" data-i18n="security.rules">规则中心</span><small data-i18n="security.rulesHint">规则与评分权重</small></button>
+              </div>
+              <label class="policy-control" data-mode="review">
+                <span><b data-i18n="security.policy">处置策略</b><small data-i18n="security.policyHint">高风险邮件的默认处理方式</small></span>
+                <span class="policy-select-wrap">
+                  <i aria-hidden="true"></i>
+                  <select id="action-mode" aria-label="高风险邮件处置策略">
+                    <option value="observe" data-i18n="policy.observe">仅观察</option>
+                    <option value="review" data-i18n="policy.review">人工确认</option>
+                    <option value="auto" data-i18n="policy.auto">自动处置</option>
+                  </select>
+                </span>
+              </label>
             </div>
-            <label class="policy-control" data-mode="review">
-              <span><b data-i18n="security.policy">处置策略</b><small data-i18n="security.policyHint">高风险邮件的默认处理方式</small></span>
-              <span class="policy-select-wrap">
-                <i aria-hidden="true"></i>
-                <select id="action-mode" aria-label="高风险邮件处置策略">
-                  <option value="observe" data-i18n="policy.observe">仅观察</option>
-                  <option value="review" data-i18n="policy.review">人工确认</option>
-                  <option value="auto" data-i18n="policy.auto">自动处置</option>
-                </select>
-              </span>
-            </label>
           </div>
         </div>
 
-        <button id="btn-poll" class="nav-action nav-sync" type="button" aria-label="同步邮件" title="立即从服务器拉取邮件"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7V3l-2.6 2.6A8 8 0 0 0 5 8M4 17v4l2.6-2.6A8 8 0 0 0 19 16"/></svg><span data-i18n="nav.sync">同步</span></button>
-        <button id="btn-digest" class="nav-action nav-digest" title="查看或生成今日工作日报"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M8 3v4M16 3v4M4 10h16M8 14h3M8 17h6"/></svg><span data-i18n="nav.digest">今日日报</span></button>
-
-        <button id="btn-preferences" class="nav-action nav-tools nav-tools-menu" type="button" aria-label="打开设置" title="设置、邮箱账号、数据维护与使用帮助"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h3M11 17h9M14 4v6M7 14v6"/></svg><span data-i18n="nav.settings">设置</span></button>
+        <div class="nav-cluster nav-system-cluster" aria-label="系统操作">
+          <button id="btn-poll" class="nav-action nav-sync" type="button" aria-label="同步邮件" title="立即从服务器拉取邮件"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7V3l-2.6 2.6A8 8 0 0 0 5 8M4 17v4l2.6-2.6A8 8 0 0 0 19 16"/></svg><span data-i18n="nav.sync">同步</span></button>
+          <button id="btn-digest" class="nav-action nav-digest" type="button" aria-label="今日日报" data-i18n-aria="nav.digest" title="查看或生成今日工作日报"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M8 3v4M16 3v4M4 10h16M8 14h3M8 17h6"/></svg><span data-i18n="nav.digest">今日日报</span></button>
+          <button id="btn-preferences" class="nav-action nav-tools nav-tools-menu" type="button" aria-label="打开设置" title="设置、邮箱账号、数据维护与使用帮助"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h3M11 17h9M14 4v6M7 14v6"/></svg><span data-i18n="nav.settings">设置</span></button>
+        </div>
       </div>
     </header>
 
@@ -895,6 +895,6 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=c0a9bc916fef"></script>
+  <script src="/static/bundle.js?v=258804c9edf5"></script>
 </body>
 </html>

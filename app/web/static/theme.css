@@ -884,6 +884,7 @@ html[data-theme="dark"] .account-facts>div { background:rgba(8,26,19,.48)!import
 
 /* Security popover and rules: eliminate white and disabled-grey islands. */
 html[data-theme="dark"] .nav-cluster { border-color:var(--dark-stroke)!important; background:rgba(39,66,52,.42)!important; box-shadow:inset 0 1px rgba(255,255,255,.05)!important; }
+html[data-theme="dark"] .nav-cluster .nav-action.active { color:#c9ecd9!important; background:rgba(92,151,119,.3)!important; box-shadow:none!important; }
 html[data-theme="dark"] .top-menu-panel { color:var(--dark-copy)!important; border-color:rgba(187,230,207,.2)!important; background:linear-gradient(145deg,rgba(37,67,52,.98),rgba(12,31,23,.98))!important; box-shadow:0 24px 64px rgba(0,0,0,.42),0 0 32px rgba(60,185,123,.07)!important; }
 html[data-theme="dark"] .top-menu-panel :is(h3,b) { color:#edf8f1!important; }
 html[data-theme="dark"] .top-menu-panel :is(p,small) { color:#9fb5aa!important; }
