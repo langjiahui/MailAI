@@ -13,6 +13,7 @@ from array import array as _farray
 import json
 import logging
 import math
+import sqlite3
 import threading
 from datetime import datetime
 
@@ -45,7 +46,8 @@ def enabled() -> bool:
         return False
     try:
         prefs = json.loads(db.get_runtime_settings().get("user_preferences", "{}"))
-    except (TypeError, json.JSONDecodeError):
+    except (TypeError, json.JSONDecodeError, sqlite3.Error):
+        # 极简库（单测）或迁移中的库可能还没有 runtime_settings 表，一律视为未启用。
         return False
     return bool(prefs.get("semantic_enabled"))
 

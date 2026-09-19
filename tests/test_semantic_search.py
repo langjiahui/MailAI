@@ -2,6 +2,7 @@
 import json
 import math
 import os
+import sqlite3
 import sys
 import tempfile
 from pathlib import Path
@@ -51,6 +52,14 @@ def main():
             assert not semantic.enabled()  # 偏好未开启
             db.set_runtime_setting("user_preferences", json.dumps({"semantic_enabled": True}))
             assert semantic.enabled()
+
+        # 回归：依赖可用但库还没有 runtime_settings 表（极简单测库/迁移中），
+        # enabled() 必须安全回落为关闭，而不是抛 OperationalError
+        # （CI 打包环境装了 fastembed 后 test_assistant_routing 曾因此失败）。
+        with patch.object(semantic, "deps_available", return_value=True), \
+                patch.object(db, "get_runtime_settings",
+                             side_effect=sqlite3.OperationalError("no such table: runtime_settings")):
+            assert not semantic.enabled()
 
         # 索引与搜索（注入伪嵌入器，不触碰模型与网络）
         id_contract = _insert_email(1, "采购合同交期确认", "请确认合同交付时间")
