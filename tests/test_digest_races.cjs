@@ -3,7 +3,7 @@ const source=fs.readFileSync(require('path').join(__dirname,'../app/web/static/a
 const nodes=new Map();
 const node=id=>{if(!nodes.has(id))nodes.set(id,{innerHTML:'',textContent:'',value:'',classList:{hidden:false,contains(){return this.hidden},add(){this.hidden=true}},appendChild(){}});return nodes.get(id)};
 const requests=[];
-const c=vm.createContext({console,Map,AbortController,localStorage:{getItem:()=>''},document:{getElementById:node},
+const c=vm.createContext({mailaiT: () => null,console,Map,AbortController,localStorage:{getItem:()=>''},document:{getElementById:node},
   activeMailAccount:()=>({id:'a'}),renderDigest:x=>x,esc:String,toast(){},setDigestTitle(){},setLoading(){},localDateKey:()=> '2026-09-10',
   api:(url,opts)=>new Promise((resolve,reject)=>requests.push({url,opts,resolve,reject}))});
 vm.runInContext(source.slice(source.indexOf('let _digestHistory ='),source.indexOf('// ===== 事件绑定 =====',source.indexOf('let _digestHistory ='))),c);

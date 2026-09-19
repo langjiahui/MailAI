@@ -805,6 +805,429 @@ const I18N_MESSAGES = {
     'fmt.highlightMark': 'A',
     'corr.trashing': 'Moving to Trash',
     'corr.trashingHint': 'Safely processing the selected mail, please wait…',
+
+    // 批五：邮件列表 / 阅读窗格 / 安全看板 / 规则中心等动态渲染区的遗漏
+    'list.dateUnknown': 'Unknown time',
+    'list.dateToday': 'Today',
+    'list.dateYesterday': 'Yesterday',
+    'list.dateShort': '{m}/{d}',
+    'list.dateFull': '{y}-{m}-{d}',
+    'list.showMore': 'Show more',
+    'list.showMoreCount': '{n} more',
+    'list.tagAttachment': 'Attachment',
+    'search.all': 'Search subject, sender, body or pinyin…',
+    'search.trash': 'Search subject, sender or snippet of deleted mail…',
+    'search.sent': 'Search sent mail…',
+    'search.drafts': 'Search drafts…',
+    'search.folder': 'Search this folder or sender pinyin…',
+    'risk.fp': 'Marked as false positive',
+    'risk.fn': 'Reported as missed',
+    'risk.spam': 'Spam',
+    'cat.work': 'Project work',
+    'cat.meeting': 'Meetings',
+    'cat.approval': 'Approvals',
+    'cat.system': 'System notice',
+    'cat.client': 'External client',
+    'cat.hr': 'HR & admin',
+    'cat.subscription': 'Subscription',
+    'cat.personal': 'Personal',
+    'cat.other': 'Other',
+    'prio.high': 'High priority',
+    'prio.medium': 'Medium priority',
+    'prio.low': 'Low priority',
+    'read.from': 'From: ',
+    'read.to': 'To: ',
+    'read.time': 'Time: ',
+    'read.fromShort': 'From',
+    'read.toShort': 'To',
+    'read.timeShort': 'Time',
+    'read.summaryTitle': 'AI Summary',
+    'read.summaryHint': 'Key points, shown in full',
+    'read.summaryHintDrawer': 'Quick grasp of the key points',
+    'read.noSummary': 'No summary yet',
+    'read.body': 'Mail body',
+    'read.fmtHtml': 'Original HTML layout',
+    'read.fmtHtmlImages': 'Original HTML layout · remote images shown',
+    'read.fmtPlain': 'Plain text mail',
+    'read.fmtPlainOpt': 'Plain text · reflowed layout',
+    'read.restoring': 'Restoring the mail layout…',
+    'read.security': 'Security analysis',
+    'read.ruleScore': 'Rule score {n}',
+    'read.securityResult': 'Security result',
+    'read.verdictEyebrow': 'Smart verdict',
+    'read.verdictTitle': 'Security result & evidence',
+    'read.verdictCurrent': 'Current verdict',
+    'read.findings': 'Findings',
+    'read.findingsScore': 'Total risk score {n}',
+    'read.alertTitle': 'High-risk mail — verify before acting',
+    'read.alertHint': 'Do not click links, reply with sensitive info or open suspicious attachments',
+    'read.alertAction': 'View security evidence',
+    'read.groupMail': 'Mail actions',
+    'read.groupAi': 'AI assistant',
+    'read.groupRisk': 'Risk control',
+    'read.attachCount': '{n} attachments',
+    'common.cancel': 'Cancel',
+    'common.expand': 'Expand',
+    'common.collapse': 'Collapse',
+    'filter.toggle': 'Filters',
+    'task.title': 'Tasks & Outbox',
+    'task.subtitle': 'Only shows items in progress or needing your attention',
+    'task.close': 'Close Tasks & Outbox',
+    'task.loading': 'Loading task status…',
+    'task.remindTitle': 'Remind later',
+    'task.remindTime': 'Reminder time',
+    'task.remindSave': 'Save reminder',
+    'task.badgeAttention': ' · {n} need attention',
+    'task.badgeActive': ' · {n} in progress',
+    'contact.title': 'Contacts',
+    'contact.eyebrow': 'Learns from your mail correspondence',
+    'contact.pickPrefix': 'Select ',
+    'contact.pickTo': 'recipients',
+    'contact.pickCc': 'CC recipients',
+    'contact.pickBcc': 'BCC recipients',
+    'contact.pickHint': 'Pick from frequent and past contacts',
+    'contact.currentAccount': 'Current mailbox',
+    'contact.desc': 'Frequent contacts first; you can add names and companies',
+    'contact.descPick': 'Toggle contacts then apply; unfinished typed input is kept',
+    'contact.exchanges': 'exchanges',
+    'contact.compose': 'Write mail',
+    'contact.edit': 'Edit',
+    'contact.removeFromGroup': 'Remove from group',
+    'contact.remove': 'Remove',
+    'contact.groupEmpty': 'No one in this group yet',
+    'contact.groupEmptyHint': 'Click "Add members" to pick from existing contacts',
+    'contact.addMembers': 'Add members',
+    'contact.noFavorites': 'No frequent contacts yet',
+    'contact.notFound': 'No contacts found',
+    'contact.noFavoritesHint': 'Star a contact to pin them here',
+    'contact.notFoundHint': 'Create one, or contacts appear automatically as you exchange mail',
+    'contact.allGroups': 'All groups',
+    'contact.ungrouped': 'Ungrouped',
+    'contact.groupLabel': 'Group',
+    'contact.groupPlaceholder': 'Pick or type a group name',
+    'contact.groupAria': 'Contact groups',
+    'contact.groupCreate': 'New group',
+    'contact.groupRename': 'Rename group',
+    'contact.groupDelete': 'Delete group',
+    'contact.selectAll': 'Select all listed',
+    'contact.groupName': 'Group name',
+    'contact.groupSave': 'Save group',
+    'att.typeAll': 'All',
+    'att.typeSheet': 'Spreadsheet',
+    'att.typeDoc': 'Document',
+    'att.typeImage': 'Image',
+    'att.typeArchive': 'Archive',
+    'att.typeOther': 'Other',
+    'att.typeFile': 'File',
+    'att.countLine': '{n} attachments · from {m} mails',
+    'att.previewTitle': 'Preview {name}',
+    'att.source': 'Source',
+    'att.noSubject': '(no subject)',
+    'att.unknownSender': 'Unknown sender',
+    'att.noMatch': 'No matching attachments',
+    'todo.openCount': '{n} open',
+    'todo.selectDoneTitle': 'Completed to-dos cannot be batch-selected',
+    'todo.selectTitle': 'Select this to-do',
+    'todo.titleAria': 'To-do title',
+    'todo.viewSource': 'View source mail',
+    'todo.sourceTimeTitle': 'Source mail time: {d}',
+    'todo.sourceTime': 'Mail time',
+    'todo.overdue': 'Overdue',
+    'todo.followUp': 'Follow-up date',
+    'todo.deadline': 'Deadline',
+    'todo.waitingPlan': 'Waiting · Schedule',
+    'todo.plan': 'Schedule / Remind',
+    'todo.restore': 'Reopen',
+    'todo.done': 'Done',
+    'todo.showMore': 'Show more to-dos',
+    'todo.showMoreCount': '{n} more',
+    'todo.empty': 'No to-dos yet',
+    'todo.completeSelectedN': 'Complete selected {n}',
+    'todo.completeSelected': 'Complete selected',
+    'dash.todayRisk': '{n} new risky mails today',
+    'dash.noTodayRisk': 'No new risk today',
+    'dash.modeObserve': 'Observe only',
+    'dash.modeReview': 'Manual review',
+    'dash.modeAuto': 'Auto-handling',
+    'dash.policyMode': 'Current policy: {mode}',
+    'dash.updatedLine': 'Updated {time} · {n} mails counted',
+    'dash.calmTitle': 'Running smoothly',
+    'dash.calmCopy': 'Nothing pending review — check trends and handling outcomes.',
+    'dash.pendingTitle': '{n} risky mails await review',
+    'dash.pendingCopy': 'Review high-score mail first; risk rate this period is {rate}%, {delta}.',
+    'dash.deltaUp': 'up {n} points from last period',
+    'dash.deltaFlat': 'no significant rise',
+    'dash.risingTitle': 'Risk rate is rising',
+    'dash.risingCopy': 'Up {n} points from last period; check recent high-risk sources.',
+    'dash.trendUp': '↑ Up {n} points',
+    'dash.trendDown': '↓ Down {n} points',
+    'dash.trendFlat': 'Roughly flat vs last period',
+    'dash.attentionCount': 'Top {n} shown',
+    'dash.queueEmpty': 'Review queue is clear',
+    'dash.queueEmptyHint': 'New risky mail will appear here automatically.',
+    'dash.viewEvidence': 'View evidence',
+    'dash.campaignCount': '{n} correlated campaigns',
+    'dash.noCampaign': 'No grouped attacks found',
+    'dash.noCampaignHint': 'Same links, attachments or phrasing are grouped automatically.',
+    'dash.campaignLinked': 'linked',
+    'dash.campaignMail': 'Correlated risky mail',
+    'dash.campaignSimilar': 'Similar content traits',
+    'dash.campaignMaxScore': 'max risk score {n}',
+    'dash.campaignView': 'View impact',
+    'dash.signalLink': 'Same link target',
+    'dash.signalSubject': 'Highly similar subjects',
+    'dash.signalBody': 'Similar body phrasing',
+    'dash.signalDomain': 'Same sender domain',
+    'dash.outcomeRisk': 'Flagged as risky',
+    'dash.outcomeAuto': 'Auto-handled',
+    'dash.outcomeResolved': 'Manually confirmed',
+    'dash.outcomePending': 'Still pending',
+    'dash.savedHours': 'About {n} hours saved',
+    'dash.savedWaiting': 'Waiting for handling data',
+    'dash.noEvaluation': 'No independent evaluation report yet; daily detection and handling stats still count.',
+    'dash.metricAccuracy': 'Accuracy',
+    'dash.metricRecall': 'Phishing recall',
+    'dash.metricAvgTime': 'Avg processing',
+    'dash.metricSamples': '{n} samples',
+    'dash.noData': 'No data yet',
+    'dash.senderLine': '{n} phishing · max {score}',
+    'dash.backTitle': 'Back to mail list',
+    'dash.openTitle': 'Open security dashboard',
+    'side.accountOptions': 'Mailbox options',
+    'side.renameAccount': 'Rename display name',
+    'side.manageAccount': 'Manage this mailbox',
+    'guide.replay': 'Replay the guide',
+    'rules.backMail': 'Back to mail',
+    'rules.allOn': 'All on',
+    'rules.partialOn': '{on}/{total} on',
+    'rules.allOff': 'Off',
+    'rules.toggleTitle': 'Toggle {name}',
+    'rules.sensitivity': 'Alert sensitivity',
+    'rules.sensRelaxed': 'Relaxed · fewer alerts',
+    'rules.sensBalanced': 'Balanced · recommended',
+    'rules.sensStrict': 'Strict · more alerts',
+    'rules.sensRelaxedShort': 'Relaxed',
+    'rules.sensBalancedShort': 'Balanced',
+    'rules.sensStrictShort': 'Strict',
+    'rules.savedToast': '{category} {state}, sensitivity {sens}',
+    'rules.stateOn': 'enabled',
+    'rules.stateOff': 'disabled',
+    'rules.tabAll': 'All',
+    'rules.customized': 'Customized',
+    'rules.helpAria': 'When does {name} trigger',
+    'rules.whenHit': 'When does it trigger?',
+    'rules.scoreImpact': 'Score impact',
+    'rules.scoreLine': 'Current +{w} {kind} (default +{dw})',
+    'rules.spamScore': 'spam score',
+    'rules.riskScore': 'risk score',
+    'rules.allowlist': 'Allowlist',
+    'rules.allowlist.blocking': 'Allowlisted mail is still checked by this rule',
+    'rules.allowlist.normal': 'Skipped when the sender matches the trusted allowlist',
+    'rules.techId': 'Technical ID',
+    'rules.toggleRule': 'Enable or disable this rule',
+    'rules.weight': 'Risk weight',
+    'rules.defaultWeight': 'Default {n}',
+    'rules.save': 'Save',
+    'rules.noMatch': 'No matching rules',
+    'rules.enabledCount': '{on}/{total} enabled',
+    'rules.collapse': 'Collapse',
+    'rules.expand': 'Expand',
+    'ruleCat.auth': 'Sender authentication',
+    'ruleCat.identity': 'Sender identity',
+    'ruleCat.links': 'Link chain',
+    'ruleCat.attachments': 'Attachment payload',
+    'ruleCat.social': 'Social engineering',
+    'ruleCat.behavior': 'Behavior profile',
+    'ruleCat.thread': 'Thread change',
+    'ruleCat.visual': 'Visual content',
+    'ruleCat.spam': 'Spam & marketing',
+    'ruleScenario.title.auth': 'Is the sending server trustworthy',
+    'ruleScenario.description.auth': 'Checks SPF, DKIM and DMARC authentication results.',
+    'ruleScenario.example.auth': 'Catches forged sending servers',
+    'ruleScenario.title.identity': 'Is the sender impersonating someone',
+    'ruleScenario.description.identity': 'Checks lookalike domains, display-name spoofing, reply-address mismatch and domain infrastructure.',
+    'ruleScenario.example.identity': 'e.g. example.com disguised as examp1e.com',
+    'ruleScenario.title.links': 'Are the links safe',
+    'ruleScenario.description.links': 'Checks short links, redirects, blocklists, disguised links and abnormal landing domains.',
+    'ruleScenario.example.links': 'For users who often receive external links',
+    'ruleScenario.title.attachments': 'Could attachments be dangerous',
+    'ruleScenario.description.attachments': 'Checks macros, executables, double extensions and type spoofing.',
+    'ruleScenario.example.attachments': 'Recommended to keep on',
+    'ruleScenario.title.social': 'Does it pressure you or ask for sensitive info',
+    'ruleScenario.description.social': 'Detects urgency, threats and requests for passwords, codes or payments.',
+    'ruleScenario.example.social': 'Strict mode alerts earlier',
+    'ruleScenario.title.behavior': 'Does it deviate from usual habits',
+    'ruleScenario.description.behavior': 'Checks first-time senders, unusual hours, new attachment types and language drift.',
+    'ruleScenario.example.behavior': 'Choose Relaxed with many new contacts',
+    'ruleScenario.title.thread': 'Did an ongoing thread suddenly change',
+    'ruleScenario.description.thread': 'Detects participants, links, attachments or sensitive intent appearing mid-thread.',
+    'ruleScenario.example.thread': 'Catches supplier account takeover and reply-chain hijack',
+    'ruleScenario.title.visual': 'Are images or QR codes suspicious',
+    'ruleScenario.description.visual': 'Analyzes QR codes and visual social-engineering content in images.',
+    'ruleScenario.example.visual': 'For mail with posters, screenshots or QR codes',
+    'ruleScenario.title.spam': 'Is it marketing or bulk mail',
+    'ruleScenario.description.spam': 'Detects unsubscribe headers, bulk flags and promotional wording; mainly affects spam scoring.',
+    'ruleScenario.example.spam': 'Does not directly mark mail as phishing',
+    'digest.dateTitle': '{d} Digest',
+    'digest.notGenerated': "Today's digest has not been generated yet.",
+    'digest.generateToday': "Generate today's digest",
+    'digest.generating': 'Generating…',
+    'digest.generatingBody': 'Generating the digest…',
+    'digest.done': 'Digest generated',
+    'digest.failed': 'Generation failed: ',
+    'digest.failedToast': 'Digest generation failed: ',
+    'acct.stateActive': 'Sending account',
+    'acct.stateReady': 'Connected',
+    'acct.stateReauth': 'Sign-in needed',
+    'acct.credOk': 'Password available',
+    'acct.credNeeded': 'Sign-in required',
+    'acct.notConnected': 'Not connected',
+    'acct.roleConnected': 'Connected mailbox',
+    'acct.helpSession': 'The password only works for this session; sign in again after quitting',
+    'acct.helpSaved': 'Connection info saved; you can update the password anytime',
+    'acct.helpMissing': 'No password on this device; please sign in again',
+    'acct.reloginBtn': 'Sign in again',
+    'acct.syncFailed': 'Last sync failed',
+    'acct.lastSync': 'Last sync: ',
+    'acct.noSync': 'No successful sync yet',
+    'acct.autoHost': 'Auto-detected',
+    'acct.addTitle': 'Add mailbox',
+    // 规则目录译文：键是后端规则编码（app/security/policy.py CATALOG）
+    'rule.name.SPF_FAIL': 'SPF check failed',
+    'rule.desc.SPF_FAIL': 'Sending server failed SPF authorization',
+    'rule.trigger.SPF_FAIL': 'Hits when the authentication result shows SPF fail or softfail. Softfail means the sending IP is not explicitly authorized by the domain.',
+    'rule.name.DKIM_FAIL': 'DKIM signature failed',
+    'rule.desc.DKIM_FAIL': 'Mail digital signature verification failed',
+    'rule.trigger.DKIM_FAIL': 'Hits when Authentication-Results records dkim=fail, meaning the signature check did not pass.',
+    'rule.name.DMARC_FAIL': 'DMARC check failed',
+    'rule.desc.DMARC_FAIL': 'Domain alignment policy check failed',
+    'rule.trigger.DMARC_FAIL': 'Hits when Authentication-Results records dmarc=fail, meaning the domain alignment check failed.',
+    'rule.name.REPLYTO_MISMATCH': 'Reply address mismatch',
+    'rule.desc.REPLYTO_MISMATCH': 'Reply-To domain differs from the From domain',
+    'rule.trigger.REPLYTO_MISMATCH': 'Hits when the Reply-To domain differs from the From domain, so replies go to another domain.',
+    'rule.name.DOMAIN_LOOKALIKE': 'Lookalike company domain',
+    'rule.desc.DOMAIN_LOOKALIKE': 'Sender domain is highly similar to a company domain',
+    'rule.trigger.DOMAIN_LOOKALIKE': "Hits when the sender's main domain closely resembles a company domain, e.g. digit 1 replacing letter l.",
+    'rule.name.SENDER_LOOKALIKE': 'Lookalike contact domain',
+    'rule.desc.SENDER_LOOKALIKE': "Sender domain resembles a frequent contact's domain",
+    'rule.trigger.SENDER_LOOKALIKE': "Hits when the sender's main domain closely resembles a frequent contact's domain but is not the same.",
+    'rule.name.DISPLAY_SPOOF': 'Display-name spoofing',
+    'rule.desc.DISPLAY_SPOOF': 'External sender impersonates an admin or company identity',
+    'rule.trigger.DISPLAY_SPOOF': "Hits when an external sender's display name contains company, admin or IT-department identity markers.",
+    'rule.name.DNS_MX': 'Domain has no MX',
+    'rule.desc.DNS_MX': 'Sender domain has no valid mail exchange record',
+    'rule.trigger.DNS_MX': 'Hits when DNS lookup of an external sender domain finds no MX record. Failed lookups do not trigger.',
+    'rule.name.DNS_SPF': 'Domain has no SPF',
+    'rule.desc.DNS_SPF': 'Sender domain has no SPF configured',
+    'rule.trigger.DNS_SPF': 'Hits when DNS lookup confirms no SPF TXT record for an external sender domain. Failed lookups do not trigger.',
+    'rule.name.URL_IP': 'Direct IP link',
+    'rule.desc.URL_IP': 'Link points directly at an IP address',
+    'rule.trigger.URL_IP': 'Hits when a link uses an IPv4 address as host. IPs resolved from normal domains do not trigger.',
+    'rule.name.URL_AT': '@ disguised link',
+    'rule.desc.URL_AT': 'URL uses @ to hide the real target',
+    'rule.trigger.URL_AT': "Hits when the link host part contains @; the browser's final target may differ from what is displayed.",
+    'rule.name.URL_PUNYCODE': 'Punycode domain',
+    'rule.desc.URL_PUNYCODE': 'Link uses internationalized domain encoding',
+    'rule.trigger.URL_PUNYCODE': 'Hits when the link hostname contains xn--, i.e. Punycode-encoded internationalized domain names.',
+    'rule.name.URL_SHORT': 'Shortened link',
+    'rule.desc.URL_SHORT': 'Short link hides the final destination',
+    'rule.trigger.URL_SHORT': 'Hits when a link uses a domain on the built-in shortener list; the original address does not reveal the final target.',
+    'rule.name.URL_TLD': 'Suspicious TLD',
+    'rule.desc.URL_TLD': 'Link uses a high-risk top-level domain',
+    'rule.trigger.URL_TLD': "Hits when the link's registered domain uses a high-risk TLD on the built-in list, e.g. .top, .xyz or .download.",
+    'rule.name.URL_ANCHOR': 'Link text/target mismatch',
+    'rule.desc.URL_ANCHOR': 'Displayed domain differs from the actual target',
+    'rule.trigger.URL_ANCHOR': 'Hits when the domain shown in the mail text differs from the href target domain.',
+    'rule.name.URL_BLOCKLIST': 'Link on blocklist',
+    'rule.desc.URL_BLOCKLIST': 'Link domain matches the local blocklist',
+    'rule.trigger.URL_BLOCKLIST': "Hits when the link's registered domain exactly matches the local malicious-domain blocklist.",
+    'rule.name.URL_LOOKALIKE': 'Link mimics company domain',
+    'rule.desc.URL_LOOKALIKE': 'Link domain is highly similar to a company domain',
+    'rule.trigger.URL_LOOKALIKE': "Hits when the link's registered domain closely resembles a company domain but is not that domain or its subdomain.",
+    'rule.name.URL_CHAIN_ERROR': 'Redirect chain error',
+    'rule.desc.URL_CHAIN_ERROR': 'Suspicious link cannot finish redirect resolution',
+    'rule.trigger.URL_CHAIN_ERROR': 'Hits when a short or IP link that needs checking cannot complete redirect resolution within the time limit.',
+    'rule.name.URL_REDIRECT_CHAIN': 'Multiple redirects',
+    'rule.desc.URL_REDIRECT_CHAIN': 'Link passes through several redirects',
+    'rule.trigger.URL_REDIRECT_CHAIN': 'Hits when a checked link goes through multiple HTTP redirects with intermediate nodes before the final address.',
+    'rule.name.URL_FINAL_LOOKALIKE': 'Landing domain spoof',
+    'rule.desc.URL_FINAL_LOOKALIKE': 'Final landing domain mimics a company domain',
+    'rule.trigger.URL_FINAL_LOOKALIKE': 'Hits when the final landing domain after redirects closely resembles a company domain but is not trusted.',
+    'rule.name.URL_FINAL_BLOCKLIST': 'Landing domain blocklisted',
+    'rule.desc.URL_FINAL_BLOCKLIST': 'Final landing domain matches the blocklist',
+    'rule.trigger.URL_FINAL_BLOCKLIST': 'Hits when the final landing domain after redirects matches the local malicious-domain blocklist.',
+    'rule.name.URL_SHORT_EXPANDED': 'Short link expanded',
+    'rule.desc.URL_SHORT_EXPANDED': 'Short link expands to a different domain',
+    'rule.trigger.URL_SHORT_EXPANDED': 'Hits when a short link expands to another untrusted domain, signalling the final target changed.',
+    'rule.name.ATT_DOUBLE': 'Double-extension attachment',
+    'rule.desc.ATT_DOUBLE': 'Attachment uses a double extension as disguise',
+    'rule.trigger.ATT_DOUBLE': 'Hits on names like report.pdf.exe that hide the real file type behind two extensions.',
+    'rule.name.ATT_DANGER': 'Dangerous attachment type',
+    'rule.desc.ATT_DANGER': 'Attachment extension is a high-risk type',
+    'rule.trigger.ATT_DANGER': 'Hits when the attachment extension is on the executable, script, installer, shortcut or macro-enabled Office list.',
+    'rule.name.ATT_DANGER_EXT': 'Executable or macro attachment',
+    'rule.desc.ATT_DANGER_EXT': 'Deep analysis found an executable or macro attachment',
+    'rule.trigger.ATT_DANGER_EXT': 'Hits when deep parsing confirms an executable or macro-bearing high-risk file type.',
+    'rule.name.ATT_MACRO': 'Attachment contains macros',
+    'rule.desc.ATT_MACRO': 'Office attachment contains macro code',
+    'rule.trigger.ATT_MACRO': 'Hits when a VBA macro project or macro-related files are detected inside an Office attachment package.',
+    'rule.name.ATT_TYPE_MISMATCH': 'Attachment type spoofing',
+    'rule.desc.ATT_TYPE_MISMATCH': 'Declared type differs from the real file type',
+    'rule.trigger.ATT_TYPE_MISMATCH': 'Hits when the declared MIME type, extension and the format identified from file headers disagree.',
+    'rule.name.ATT_ARCHIVE_EXE': 'Archive holds dangerous files',
+    'rule.desc.ATT_ARCHIVE_EXE': 'Archive contains executables or macro files',
+    'rule.trigger.ATT_ARCHIVE_EXE': 'Hits when a ZIP or similar archive contains executables, scripts, shortcuts or macro-bearing files.',
+    'rule.name.URGENCY': 'Urgency or intimidation',
+    'rule.desc.URGENCY': 'Body uses urgency, freezing or deadline wording',
+    'rule.trigger.URGENCY': 'Hits when the subject or body contains urging words like urgent, immediate action, account frozen or password expiring.',
+    'rule.name.CRED_BAIT': 'Credential baiting',
+    'rule.desc.CRED_BAIT': 'Lures passwords, codes or payment info',
+    'rule.trigger.CRED_BAIT': 'Hits when the body asks for passwords, verification codes or bank card info, or lures clicks to sign in again.',
+    'rule.name.FIRST_TIME_SENDER': 'First-time sender',
+    'rule.desc.FIRST_TIME_SENDER': 'No prior mail from this sender',
+    'rule.trigger.FIRST_TIME_SENDER': 'Hits when the local profile has no record of this sender; stops triggering once history is built.',
+    'rule.name.OFF_HOUR_SENDER': 'Unusual sending hours',
+    'rule.desc.OFF_HOUR_SENDER': "Send time deviates from this sender's history",
+    'rule.trigger.OFF_HOUR_SENDER': "Hits when the send time clearly deviates from the sender's historical pattern.",
+    'rule.name.NEW_ATTACHMENT_TYPE': 'New attachment type',
+    'rule.desc.NEW_ATTACHMENT_TYPE': 'Sender uses this attachment type for the first time',
+    'rule.trigger.NEW_ATTACHMENT_TYPE': 'Hits when the sender has sent attachments before but this extension type appears for the first time.',
+    'rule.name.FIRST_ATTACHMENT': 'First attachment',
+    'rule.desc.FIRST_ATTACHMENT': "This sender's first mail with an attachment",
+    'rule.trigger.FIRST_ATTACHMENT': "Hits when the sender's historical mail never had attachments and this one does.",
+    'rule.name.URL_ANOMALY': 'Unusual link behavior',
+    'rule.desc.URL_ANOMALY': "Sender's past mail rarely contains links",
+    'rule.trigger.URL_ANOMALY': "Hits when the sender's historical mail rarely had links and this one suddenly has one or more.",
+    'rule.name.LINGUISTIC_DRIFT': 'Language style drift',
+    'rule.desc.LINGUISTIC_DRIFT': "Language features deviate from the sender's history",
+    'rule.trigger.LINGUISTIC_DRIFT': "Hits when language, wording or text statistics clearly deviate from the sender's habits.",
+    'rule.name.THREAD_SENDER_SHIFT': 'Thread participant shift',
+    'rule.desc.THREAD_SENDER_SHIFT': 'A new sending domain suddenly appears in the thread',
+    'rule.trigger.THREAD_SENDER_SHIFT': 'Hits when a thread with stable historical participant domains suddenly comes from a new sending domain.',
+    'rule.name.THREAD_INTENT_SHIFT': 'Thread intent shift',
+    'rule.desc.THREAD_INTENT_SHIFT': 'Payment, account or credential requests suddenly appear',
+    'rule.trigger.THREAD_INTENT_SHIFT': 'Hits when routine threads first raise sensitive requests like payments, accounts, passwords or codes.',
+    'rule.name.THREAD_LINK_SHIFT': 'Thread link shift',
+    'rule.desc.THREAD_LINK_SHIFT': 'A new link target first appears in the thread',
+    'rule.trigger.THREAD_LINK_SHIFT': 'Hits when a thread that never had this link domain first asks you to visit a new link target.',
+    'rule.name.THREAD_ATTACHMENT_SHIFT': 'Thread attachment shift',
+    'rule.desc.THREAD_ATTACHMENT_SHIFT': 'An attachment first appears in the thread',
+    'rule.trigger.THREAD_ATTACHMENT_SHIFT': 'Hits when a thread that never had attachments first asks you to open or process one.',
+    'rule.name.VISION_SOCIAL_ENGINEERING': 'Visual social engineering',
+    'rule.desc.VISION_SOCIAL_ENGINEERING': 'Multimodal model spotted social-engineering imagery',
+    'rule.trigger.VISION_SOCIAL_ENGINEERING': 'Hits when multimodal analysis detects login lures, payment pressure or other social-engineering content in images.',
+    'rule.name.VISION_QR': 'QR code in image',
+    'rule.desc.VISION_QR': 'Image contains a suspicious QR code',
+    'rule.trigger.VISION_QR': 'Hits when an image in the mail contains a QR code; this only means it needs verification, not proof of malice.',
+    'rule.name.LIST_UNSUB': 'Bulk unsubscribe header',
+    'rule.desc.LIST_UNSUB': 'Mail carries a bulk unsubscribe marker',
+    'rule.trigger.LIST_UNSUB': 'Hits when headers contain List-Unsubscribe, usually meaning subscription or bulk marketing mail.',
+    'rule.name.PRECEDENCE': 'Bulk mail flag',
+    'rule.desc.PRECEDENCE': 'Header marked as bulk/list/junk',
+    'rule.trigger.PRECEDENCE': 'Hits when the Precedence header is marked bulk, list or junk.',
+    'rule.name.MARKETING': 'Marketing keywords',
+    'rule.desc.MARKETING': 'Body contains promotion, discount or unsubscribe wording',
+    'rule.trigger.MARKETING': 'Hits when the subject or body contains marketing keywords like promotion, coupon, discount, clearance or unsubscribe.',
   },
 };
 
@@ -1347,9 +1770,9 @@ function renderContactCenter() {
   const selectedGroup = document.getElementById('contact-group-filter')?.value || '';
   const visibleContacts = selectedGroup ? contactCenterItems.filter(item => selectedGroup === '__ungrouped__' ? !item.group_name : item.group_name === selectedGroup) : contactCenterItems;
   if (!visibleContacts.length && selectedGroup && selectedGroup !== '__ungrouped__') {
-    list.innerHTML = `<div class="contact-empty"><span>◎</span><b>当前分组暂无匹配人员</b><small>点击“添加人员”，从已有联系人中选择加入</small><button type="button" data-open-group-members>＋ 添加人员</button></div>`;
+    list.innerHTML = `<div class="contact-empty"><span>◎</span><b>${mailaiT('contact.groupEmpty') || '当前分组暂无匹配人员'}</b><small>${mailaiT('contact.groupEmptyHint') || '点击“添加人员”，从已有联系人中选择加入'}</small><button type="button" data-open-group-members>＋ ${mailaiT('contact.addMembers') || '添加人员'}</button></div>`;
   } else if (!visibleContacts.length) {
-    list.innerHTML = `<div class="contact-empty"><span>◎</span><b>${contactCenterFilter === 'favorite' ? '还没有常用联系人' : '没有找到联系人'}</b><small>${contactCenterFilter === 'favorite' ? '点击联系人右侧的星标，即可固定到常用' : '可以新建联系人，邮件往来后也会自动出现在这里'}</small></div>`;
+    list.innerHTML = `<div class="contact-empty"><span>◎</span><b>${contactCenterFilter === 'favorite' ? (mailaiT('contact.noFavorites') || '还没有常用联系人') : (mailaiT('contact.notFound') || '没有找到联系人')}</b><small>${contactCenterFilter === 'favorite' ? (mailaiT('contact.noFavoritesHint') || '点击联系人右侧的星标，即可固定到常用') : (mailaiT('contact.notFoundHint') || '可以新建联系人，邮件往来后也会自动出现在这里')}</small></div>`;
   } else {
     list.innerHTML = visibleContacts.map(item => {
       const checked = selectedContactEmails.has(item.email);
@@ -1357,9 +1780,9 @@ function renderContactCenter() {
         ${picker ? `<button type="button" class="contact-pick-check" data-contact-pick="${esc(item.email)}" aria-label="${checked ? '取消选择' : '选择'} ${esc(item.email)}"><span>${checked ? '✓' : ''}</span></button>` : ''}
         <span class="contact-center-avatar">${esc(contactInitial(item))}</span>
         <div class="contact-center-main"><b>${esc(item.name || item.email)}</b><small>${item.name ? `${esc(item.email)}${item.company ? ` · ${esc(item.company)}` : ''}` : (item.company ? esc(item.company) : '从邮件往来自动识别')}</small>${item.note ? `<p>${esc(item.note)}</p>` : ''}</div>
-        ${picker ? `<div class="contact-frequency"><b>${item.count || 0}</b><small>往来次数</small></div>` : `<button type="button" class="contact-frequency contact-correspondence-trigger" data-contact-correspondence="${esc(item.email)}" aria-label="查看与${esc(item.name || item.email)}的往来邮件"><b>${item.count || 0}</b><small>往来次数</small></button>`}
+        ${picker ? `<div class="contact-frequency"><b>${item.count || 0}</b><small>${mailaiT('contact.exchanges') || '往来次数'}</small></div>` : `<button type="button" class="contact-frequency contact-correspondence-trigger" data-contact-correspondence="${esc(item.email)}" aria-label="查看与${esc(item.name || item.email)}的往来邮件"><b>${item.count || 0}</b><small>${mailaiT('contact.exchanges') || '往来次数'}</small></button>`}
         <button type="button" class="contact-star ${item.favorite ? 'active' : ''}" data-contact-favorite="${esc(item.email)}" data-favorite="${item.favorite ? '1' : '0'}" aria-label="${item.favorite ? '取消常用' : '设为常用'}">★</button>
-        <div class="contact-row-actions">${picker ? '' : `<button type="button" data-contact-compose="${esc(item.email)}">写邮件</button><button type="button" data-contact-edit="${esc(item.email)}">编辑</button>${selectedGroup && selectedGroup !== '__ungrouped__' ? `<button type="button" data-group-remove-member="${esc(item.email)}">移出分组</button>` : ''}<button type="button" class="danger" data-contact-delete="${esc(item.email)}">移除</button>`}</div>
+        <div class="contact-row-actions">${picker ? '' : `<button type="button" data-contact-compose="${esc(item.email)}">${mailaiT('contact.compose') || '写邮件'}</button><button type="button" data-contact-edit="${esc(item.email)}">${mailaiT('contact.edit') || '编辑'}</button>${selectedGroup && selectedGroup !== '__ungrouped__' ? `<button type="button" data-group-remove-member="${esc(item.email)}">${mailaiT('contact.removeFromGroup') || '移出分组'}</button>` : ''}<button type="button" class="danger" data-contact-delete="${esc(item.email)}">${mailaiT('contact.remove') || '移除'}</button>`}</div>
       </article>`;
     }).join('');
   }
@@ -1415,7 +1838,7 @@ async function openContactCenter(target = '') {
   contactCenterSession = {accountId:contactCenterAccountId, draft:target ? draftSession : null};
   contactEditorSession = null;
   document.getElementById('contact-editor').classList.add('hidden');
-  if (document.getElementById('contact-group-filter')) document.getElementById('contact-group-filter').innerHTML = '<option value="">全部分组</option>';
+  if (document.getElementById('contact-group-filter')) document.getElementById('contact-group-filter').innerHTML = `<option value="">${mailaiT('contact.allGroups') || '全部分组'}</option>`;
   if (document.getElementById('contact-group-options')) document.getElementById('contact-group-options').innerHTML = '';
   window.updateContactGroupControls?.();
   contactPickerContacts = new Map();
@@ -1424,10 +1847,10 @@ async function openContactCenter(target = '') {
   selectedContactEmails = new Set(target ? recipientEmails(document.getElementById(target).value) : []);
   contactCenterFilter = 'all';
   if (document.getElementById('contact-group-filter')) document.getElementById('contact-group-filter').value = '';
-  document.getElementById('contact-center-title').textContent = target ? `选择${target === 'compose-to' ? '收件人' : target === 'compose-cc' ? '抄送人' : '密送人'}` : '通讯录';
-  document.getElementById('contact-center-eyebrow').textContent = target ? '从常用和历史往来中选择' : '自动学习邮件往来';
+  document.getElementById('contact-center-title').textContent = target ? (mailaiT('contact.pickPrefix') || '选择') + (target === 'compose-to' ? (mailaiT('contact.pickTo') || '收件人') : target === 'compose-cc' ? (mailaiT('contact.pickCc') || '抄送人') : (mailaiT('contact.pickBcc') || '密送人')) : (mailaiT('contact.title') || '通讯录');
+  document.getElementById('contact-center-eyebrow').textContent = target ? (mailaiT('contact.pickHint') || '从常用和历史往来中选择') : (mailaiT('contact.eyebrow') || '自动学习邮件往来');
   const owner = (_systemConfig?.accounts || []).find(account => account.id === contactCenterAccountId);
-  document.getElementById('contact-center-description').textContent = `${owner?.user || '当前邮箱'} · ` + (target ? '勾选或取消勾选后点击应用；未完成的手输内容会保留' : '常用联系人优先显示，可补充姓名和公司');
+  document.getElementById('contact-center-description').textContent = `${owner?.user || (mailaiT('contact.currentAccount') || '当前邮箱')} · ` + (target ? (mailaiT('contact.descPick') || '勾选或取消勾选后点击应用；未完成的手输内容会保留') : (mailaiT('contact.desc') || '常用联系人优先显示，可补充姓名和公司'));
   document.getElementById('contact-center-search').value = '';
   document.querySelectorAll('[data-contact-filter]').forEach(button => button.classList.toggle('active', button.dataset.contactFilter === contactCenterFilter));
   document.getElementById('contact-center').classList.remove('hidden');
@@ -3035,6 +3458,7 @@ function setDigestTitle(label) {
   document.getElementById('digest-title').innerHTML = `<span class="digest-title-icon"><svg viewBox="0 0 20 20"><path d="M5 3.5h10v13H5zM7.5 7h5M7.5 10h5M7.5 13h3"/></svg></span><span>${esc(label)}</span>`;
 }
 
+
 let _digestSelectedEmailId = null;
 
 async function openDigestEmailDrawer(emailId) {
@@ -3079,21 +3503,21 @@ function renderDigestEmailDetail(e) {
       <div class="reading-meta">
         <div class="meta-avatar">${(e.from_name || e.from_addr || '?').charAt(0).toUpperCase()}</div>
         <div class="meta-fields">
-          <div class="drawer-meta-row"><span class="meta-label">发件人</span>${renderSenderContact(e.from_name, e.from_addr)}</div>
-          <div class="drawer-meta-row meta-recipient-row"><span class="meta-label">收件人</span>${renderRecipients(e.to_addr, e.recipient_names)}</div>
-          <div class="drawer-meta-row"><span class="meta-label">时间</span><span>${fmtDate(e.date)}</span></div>
+          <div class="drawer-meta-row"><span class="meta-label">${mailaiT('read.fromShort') || '发件人'}</span>${renderSenderContact(e.from_name, e.from_addr)}</div>
+          <div class="drawer-meta-row meta-recipient-row"><span class="meta-label">${mailaiT('read.toShort') || '收件人'}</span>${renderRecipients(e.to_addr, e.recipient_names)}</div>
+          <div class="drawer-meta-row"><span class="meta-label">${mailaiT('read.timeShort') || '时间'}</span><span>${fmtDate(e.date)}</span></div>
         </div>
         <span class="drawer-risk tag tag-${risk.class}">${risk.text}<b>${e.score || 0}</b></span>
       </div>
     </div>
     <div class="drawer-email-body">
-      <div class="reading-section drawer-summary-section"><div class="section-title"><span>AI 摘要</span><small>快速了解邮件重点</small></div>
-        <div class="markdown-body summary-box">${mdToHtml(e.summary || e.snippet || '暂无摘要')}</div>
+      <div class="reading-section drawer-summary-section"><div class="section-title"><span>${mailaiT('read.summaryTitle') || 'AI 摘要'}</span><small>${mailaiT('read.summaryHintDrawer') || '快速了解邮件重点'}</small></div>
+        <div class="markdown-body summary-box">${mdToHtml(e.summary || e.snippet || (mailaiT('read.noSummary') || '暂无摘要'))}</div>
       </div>
-      <div class="reading-section drawer-body-section"><div class="section-title"><span>邮件正文</span><small>${e.has_rich_body ? (e.has_remote_images ? 'HTML 原始排版 · 外链图片已显示' : 'HTML 原始排版') : '纯文本邮件'}</small></div>
+      <div class="reading-section drawer-body-section"><div class="section-title"><span>${mailaiT('read.body') || '邮件正文'}</span><small>${e.has_rich_body ? (e.has_remote_images ? (mailaiT('read.fmtHtmlImages') || 'HTML 原始排版 · 外链图片已显示') : (mailaiT('read.fmtHtml') || 'HTML 原始排版')) : (mailaiT('read.fmtPlain') || '纯文本邮件')}</small></div>
         ${e.has_rich_body ? '<div id="digest-rich-email-body" class="email-body rich-email-body"><div class="reading-loading">正在还原邮件排版…</div></div>' : `<div class="markdown-body email-body plain-email-body">${mdToHtml(e.body_text || '')}</div>`}
       </div>
-      <div class="reading-section drawer-findings-section"><div class="section-title"><span>安全分析</span><small>规则分 ${e.score || 0}</small></div>
+      <div class="reading-section drawer-findings-section"><div class="section-title"><span>${mailaiT('read.security') || '安全分析'}</span><small>${(mailaiT('read.ruleScore') || '规则分 {n}').replace('{n}', e.score || 0)}</small></div>
         <ul class="findings">${findings}</ul>
       </div>
     </div>
@@ -3185,17 +3609,17 @@ function esc(s) {
 
 function mailDateGroup(value, now = new Date()) {
   const date = new Date(value);
-  if (!value || Number.isNaN(date.getTime())) return {key:'unknown', label:'未知时间'};
+  if (!value || Number.isNaN(date.getTime())) return {key:'unknown', label: mailaiT('list.dateUnknown') || '未知时间'};
   const keyOf = item => [item.getFullYear(), String(item.getMonth() + 1).padStart(2, '0'), String(item.getDate()).padStart(2, '0')].join('-');
   const key = keyOf(date);
   const today = keyOf(now);
   const yesterdayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
   const yesterday = keyOf(yesterdayDate);
-  if (key === today) return {key, label:'今天'};
-  if (key === yesterday) return {key, label:'昨天'};
+  if (key === today) return {key, label: mailaiT('list.dateToday') || '今天'};
+  if (key === yesterday) return {key, label: mailaiT('list.dateYesterday') || '昨天'};
   const label = date.getFullYear() === now.getFullYear()
-    ? `${date.getMonth() + 1}月${date.getDate()}日`
-    : `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+    ? (mailaiT('list.dateShort') || '{m}月{d}日').replace('{m}', date.getMonth() + 1).replace('{d}', date.getDate())
+    : (mailaiT('list.dateFull') || '{y}年{m}月{d}日').replace('{y}', date.getFullYear()).replace('{m}', date.getMonth() + 1).replace('{d}', date.getDate());
   return {key, label};
 }
 
@@ -3206,10 +3630,12 @@ function fmtDate(s) {
   const now = new Date();
   const isToday = d.toDateString() === now.toDateString();
   const isYesterday = new Date(now - 86400000).toDateString() === d.toDateString();
-  const time = d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-  if (isToday) return '今天 ' + time;
-  if (isYesterday) return '昨天 ' + time;
-  return d.toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const en = Boolean(mailaiT('list.dateToday'));
+  const locale = en ? 'en-US' : 'zh-CN';
+  const time = d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+  if (isToday) return (mailaiT('list.dateToday') || '今天') + ' ' + time;
+  if (isYesterday) return (mailaiT('list.dateYesterday') || '昨天') + ' ' + time;
+  return d.toLocaleString(locale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 function getDomain(addr) {
@@ -3219,12 +3645,12 @@ function getDomain(addr) {
 }
 
 function getRiskLabel(score, verdict, email = {}) {
-  if (email.feedback === 'fp' && email.reviewed) return {text:'已确认误报', class:'success', reviewed:true};
-  if (email.feedback === 'fn') return {text:'已举报漏报', class:'danger', reviewed:true};
-  if (verdict === 'unreviewed') return {text:'未分析', class:'muted'};
-  if (verdict === 'phishing' || score >= 70) return { text: '钓鱼', class: 'danger' };
-  if (verdict === 'suspicious' || score >= 35) return { text: '可疑', class: 'warn' };
-  return { text: '正常', class: 'success' };
+  if (email.feedback === 'fp' && email.reviewed) return {text: mailaiT('risk.fp') || '已确认误报', class:'success', reviewed:true};
+  if (email.feedback === 'fn') return {text: mailaiT('risk.fn') || '已举报漏报', class:'danger', reviewed:true};
+  if (verdict === 'unreviewed') return {text: mailaiT('risk.unreviewed') || '未分析', class:'muted'};
+  if (verdict === 'phishing' || score >= 70) return { text: mailaiT('risk.phishing') || '钓鱼', class: 'danger' };
+  if (verdict === 'suspicious' || score >= 35) return { text: mailaiT('risk.suspicious') || '可疑', class: 'warn' };
+  return { text: mailaiT('risk.clean') || '正常', class: 'success' };
 }
 
 // Keep sidebar risk groups identical to the badge shown on each mail card.
@@ -3574,22 +4000,24 @@ function renderDashboard(data) {
   animateValue(document.getElementById('kpi-auto-handled'), ops.auto_handled || 0);
   animateValue(document.getElementById('kpi-feedback'), ops.feedback_count || 0);
   document.getElementById('kpi-risk-rate').textContent = `${Number(ops.risk_rate || 0).toFixed(1)}%`;
-  document.getElementById('kpi-pending-note').textContent = ops.today_risk ? `今天新增 ${ops.today_risk} 封风险邮件` : '当前没有今日新增风险';
-  const modeLabels = {observe:'仅观察', review:'人工确认', auto:'自动处置'};
-  document.getElementById('kpi-policy-mode').textContent = `当前策略：${modeLabels[data.action_policy?.mode] || '--'}`;
-  document.getElementById('dashboard-updated').textContent = `更新于 ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} · 统计邮件 ${data.total || 0} 封`;
+  document.getElementById('kpi-pending-note').textContent = ops.today_risk ? (mailaiT('dash.todayRisk') || '今天新增 {n} 封风险邮件').replace('{n}', ops.today_risk) : (mailaiT('dash.noTodayRisk') || '当前没有今日新增风险');
+  const modeLabels = {observe: mailaiT('dash.modeObserve') || '仅观察', review: mailaiT('dash.modeReview') || '人工确认', auto: mailaiT('dash.modeAuto') || '自动处置'};
+  document.getElementById('kpi-policy-mode').textContent = (mailaiT('dash.policyMode') || '当前策略：{mode}').replace('{mode}', modeLabels[data.action_policy?.mode] || '--');
+  document.getElementById('dashboard-updated').textContent = (mailaiT('dash.updatedLine') || '更新于 {time} · 统计邮件 {n} 封').replace('{time}', new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})).replace('{n}', data.total || 0);
 
   const priority = document.getElementById('dashboard-priority');
   const delta = Number(ops.risk_rate_delta || 0);
-  let state = 'calm', title = '当前运行平稳', copy = '没有待确认风险，可以查看趋势和处置成效。';
+  let state = 'calm', title = mailaiT('dash.calmTitle') || '当前运行平稳', copy = mailaiT('dash.calmCopy') || '没有待确认风险，可以查看趋势和处置成效。';
   if (ops.pending_review > 0) {
     state = 'danger';
-    title = `有 ${ops.pending_review} 封风险邮件等待判断`;
-    copy = `优先核对高分邮件；本期风险占比 ${Number(ops.risk_rate || 0).toFixed(1)}%，${delta > 0 ? `较上一周期上升 ${delta.toFixed(1)} 个百分点` : '未出现明显上升'}。`;
+    title = (mailaiT('dash.pendingTitle') || '有 {n} 封风险邮件等待判断').replace('{n}', ops.pending_review);
+    copy = (mailaiT('dash.pendingCopy') || '优先核对高分邮件；本期风险占比 {rate}%，{delta}。')
+      .replace('{rate}', Number(ops.risk_rate || 0).toFixed(1))
+      .replace('{delta}', delta > 0 ? (mailaiT('dash.deltaUp') || '较上一周期上升 {n} 个百分点').replace('{n}', delta.toFixed(1)) : (mailaiT('dash.deltaFlat') || '未出现明显上升'));
   } else if (delta > 2) {
     state = 'warn';
-    title = '风险占比正在上升';
-    copy = `较上一周期上升 ${delta.toFixed(1)} 个百分点，建议检查近期高风险来源。`;
+    title = mailaiT('dash.risingTitle') || '风险占比正在上升';
+    copy = (mailaiT('dash.risingCopy') || '较上一周期上升 {n} 个百分点，建议检查近期高风险来源。').replace('{n}', delta.toFixed(1));
   }
   priority.className = `dashboard-priority ${state}`;
   document.getElementById('dashboard-status-title').textContent = title;
@@ -3602,7 +4030,7 @@ function renderDashboard(data) {
   renderDashboardOutcome(data, ops);
   renderTrendChart(data.trend || {});
   renderSenderChart(ops.risky_senders || []);
-  const trendInsight = delta > 2 ? `↑ 上升 ${delta.toFixed(1)} 个百分点` : delta < -2 ? `↓ 下降 ${Math.abs(delta).toFixed(1)} 个百分点` : '与上一周期基本持平';
+  const trendInsight = delta > 2 ? (mailaiT('dash.trendUp') || '↑ 上升 {n} 个百分点').replace('{n}', delta.toFixed(1)) : delta < -2 ? (mailaiT('dash.trendDown') || '↓ 下降 {n} 个百分点').replace('{n}', Math.abs(delta).toFixed(1)) : (mailaiT('dash.trendFlat') || '与上一周期基本持平');
   const trendNode = document.getElementById('dashboard-trend-insight');
   trendNode.textContent = trendInsight;
   trendNode.className = delta > 2 ? 'up' : delta < -2 ? 'down' : '';
@@ -3610,75 +4038,81 @@ function renderDashboard(data) {
 
 function renderDashboardAttention(items) {
   const host = document.getElementById('dashboard-attention-list');
-  document.getElementById('dashboard-attention-count').textContent = items.length ? `优先显示 ${items.length} 封` : '';
+  document.getElementById('dashboard-attention-count').textContent = items.length ? (mailaiT('dash.attentionCount') || '优先显示 {n} 封').replace('{n}', items.length) : '';
   if (!items.length) {
-    host.innerHTML = '<div class="dashboard-empty-state"><span>✓</span><div><b>待确认队列已清空</b><small>新的风险邮件会自动出现在这里。</small></div></div>';
+    host.innerHTML = `<div class="dashboard-empty-state"><span>✓</span><div><b>${mailaiT('dash.queueEmpty') || '待确认队列已清空'}</b><small>${mailaiT('dash.queueEmptyHint') || '新的风险邮件会自动出现在这里。'}</small></div></div>`;
     return;
   }
   host.innerHTML = items.map(item => `<button type="button" class="dashboard-attention-item ${item.verdict === 'phishing' ? 'danger' : 'warn'}" data-dashboard-email="${item.id}">
-    <span class="dashboard-attention-score"><b>${item.score || 0}</b><small>${item.verdict === 'phishing' ? '钓鱼' : '可疑'}</small></span>
-    <span class="dashboard-attention-main"><b>${esc(item.subject || '（无主题）')}</b><small>${esc(item.from_name || item.from_addr || '未知发件人')} · ${fmtDate(item.date || item.created_at)}</small></span>
-    <span class="dashboard-attention-action">查看证据 →</span>
+    <span class="dashboard-attention-score"><b>${item.score || 0}</b><small>${item.verdict === 'phishing' ? (mailaiT('risk.phishing') || '钓鱼') : (mailaiT('risk.suspicious') || '可疑')}</small></span>
+    <span class="dashboard-attention-main"><b>${esc(item.subject || (mailaiT('att.noSubject') || '（无主题）'))}</b><small>${esc(item.from_name || item.from_addr || (mailaiT('att.unknownSender') || '未知发件人'))} · ${fmtDate(item.date || item.created_at)}</small></span>
+    <span class="dashboard-attention-action">${mailaiT('dash.viewEvidence') || '查看证据'} →</span>
   </button>`).join('');
+}
+
+// 关联研判信号是后端固定中文短语（app/security/campaigns.py），英文界面映射译文
+function campaignSignalLabel(signal) {
+  const keys = {'相同链接目标':'dash.signalLink', '主题高度相似':'dash.signalSubject', '正文话术相似':'dash.signalBody', '相同发件域':'dash.signalDomain'};
+  return (keys[signal] && mailaiT(keys[signal])) || signal;
 }
 
 function renderDashboardCampaigns(items) {
   const host = document.getElementById('dashboard-campaign-list');
   if (!host) return;
-  document.getElementById('dashboard-campaign-count').textContent = items.length ? `${items.length} 组关联活动` : '';
+  document.getElementById('dashboard-campaign-count').textContent = items.length ? (mailaiT('dash.campaignCount') || '{n} 组关联活动').replace('{n}', items.length) : '';
   if (!items.length) {
-    host.innerHTML = '<div class="dashboard-empty-state compact"><span><svg viewBox="0 0 20 20"><path d="M5 6h5l2 2h3v6H5z"/><path d="M7 4h4l2 2"/></svg></span><div><b>暂未发现成组攻击</b><small>相同链接、附件或话术会自动归并。</small></div></div>';
+    host.innerHTML = `<div class="dashboard-empty-state compact"><span><svg viewBox="0 0 20 20"><path d="M5 6h5l2 2h3v6H5z"/><path d="M7 4h4l2 2"/></svg></span><div><b>${mailaiT('dash.noCampaign') || '暂未发现成组攻击'}</b><small>${mailaiT('dash.noCampaignHint') || '相同链接、附件或话术会自动归并。'}</small></div></div>`;
     return;
   }
   host.innerHTML = items.map(item => {
     const first = (item.samples || [])[0] || {};
     return `<button type="button" class="dashboard-campaign-item" data-dashboard-email="${first.id || ''}">
-      <span class="campaign-node"><b>${item.size}</b><small>封关联</small></span>
-      <span class="campaign-main"><b>${esc(first.subject || '关联风险邮件')}</b><small>${esc((item.signals || []).join(' · ') || '内容特征相似')} · 最高风险分 ${item.max_score || 0}</small></span>
-      <span class="campaign-action">查看影响面 →</span>
+      <span class="campaign-node"><b>${item.size}</b><small>${mailaiT('dash.campaignLinked') || '封关联'}</small></span>
+      <span class="campaign-main"><b>${esc(first.subject || (mailaiT('dash.campaignMail') || '关联风险邮件'))}</b><small>${esc((item.signals || []).map(campaignSignalLabel).join(' · ') || (mailaiT('dash.campaignSimilar') || '内容特征相似'))} · ${(mailaiT('dash.campaignMaxScore') || '最高风险分 {n}').replace('{n}', item.max_score || 0)}</small></span>
+      <span class="campaign-action">${mailaiT('dash.campaignView') || '查看影响面'} →</span>
     </button>`;
   }).join('');
 }
 
 function renderDashboardOutcome(data, ops) {
   const rows = [
-    ['识别为风险', Number(ops.risk_count || 0), 'risk'],
-    ['系统自动处置', Number(ops.auto_handled || 0), 'auto'],
-    ['人工已确认', Number(ops.resolved_risk || 0), 'resolved'],
-    ['本期仍待判断', Number(ops.pending_period || 0), 'pending'],
+    [mailaiT('dash.outcomeRisk') || '识别为风险', Number(ops.risk_count || 0), 'risk'],
+    [mailaiT('dash.outcomeAuto') || '系统自动处置', Number(ops.auto_handled || 0), 'auto'],
+    [mailaiT('dash.outcomeResolved') || '人工已确认', Number(ops.resolved_risk || 0), 'resolved'],
+    [mailaiT('dash.outcomePending') || '本期仍待判断', Number(ops.pending_period || 0), 'pending'],
   ];
   const max = Math.max(1, ...rows.map(row => row[1]));
   document.getElementById('dashboard-outcome').innerHTML = rows.map(([label, value, kind]) => `<div class="dashboard-outcome-row ${kind}"><span>${label}</span><div><i style="width:${Math.max(value ? 6 : 0, value / max * 100)}%"></i></div><b>${value}</b></div>`).join('');
-  document.getElementById('dashboard-efficiency').textContent = data.saved_hours ? `约节省 ${Number(data.saved_hours).toFixed(1)} 小时` : '等待形成处置数据';
+  document.getElementById('dashboard-efficiency').textContent = data.saved_hours ? (mailaiT('dash.savedHours') || '约节省 {n} 小时').replace('{n}', Number(data.saved_hours).toFixed(1)) : (mailaiT('dash.savedWaiting') || '等待形成处置数据');
 }
 
 function renderDashboardQuality(evaluation) {
   const host = document.getElementById('dashboard-quality');
   if (!evaluation) {
-    host.innerHTML = '<span class="dashboard-quality-empty">尚无独立评测报告；日常风险识别与处置数据仍正常统计。</span>';
+    host.innerHTML = `<span class="dashboard-quality-empty">${mailaiT('dash.noEvaluation') || '尚无独立评测报告；日常风险识别与处置数据仍正常统计。'}</span>`;
     return;
   }
   const metrics = [
-    ['准确率', `${((evaluation.accuracy || 0) * 100).toFixed(1)}%`],
-    ['钓鱼召回率', `${((evaluation.recall || 0) * 100).toFixed(1)}%`],
+    [mailaiT('dash.metricAccuracy') || '准确率', `${((evaluation.accuracy || 0) * 100).toFixed(1)}%`],
+    [mailaiT('dash.metricRecall') || '钓鱼召回率', `${((evaluation.recall || 0) * 100).toFixed(1)}%`],
     ['F1', `${((evaluation.f1 || 0) * 100).toFixed(1)}%`],
-    ['平均处理', `${Number(evaluation.avg_process_time_ms || 0).toFixed(1)} ms`],
+    [mailaiT('dash.metricAvgTime') || '平均处理', `${Number(evaluation.avg_process_time_ms || 0).toFixed(1)} ms`],
   ];
-  host.innerHTML = metrics.map(([label, value]) => `<span><small>${label}</small><b>${value}</b></span>`).join('') + `<em>样本 ${evaluation.total || 0} 条</em>`;
+  host.innerHTML = metrics.map(([label, value]) => `<span><small>${label}</small><b>${value}</b></span>`).join('') + `<em>${(mailaiT('dash.metricSamples') || '样本 {n} 条').replace('{n}', evaluation.total || 0)}</em>`;
 }
 
 function renderTrendChart(trend) {
   const container = document.getElementById('trend-chart');
   const dates = Object.keys(trend).sort();
   if (dates.length === 0) {
-    container.innerHTML = '<div class="chart-empty">暂无数据</div>';
+    container.innerHTML = `<div class="chart-empty">${mailaiT('dash.noData') || '暂无数据'}</div>`;
     return;
   }
   const series = [
-    { key: 'phishing', label: '钓鱼', color: '#ef4444' },
-    { key: 'suspicious', label: '可疑', color: '#f59e0b' },
-    { key: 'spam', label: '垃圾', color: '#94a3b8' },
-    { key: 'clean', label: '正常', color: '#10b981' },
+    { key: 'phishing', label: mailaiT('risk.phishing') || '钓鱼', color: '#ef4444' },
+    { key: 'suspicious', label: mailaiT('risk.suspicious') || '可疑', color: '#f59e0b' },
+    { key: 'spam', label: mailaiT('risk.spam') || '垃圾', color: '#94a3b8' },
+    { key: 'clean', label: mailaiT('risk.clean') || '正常', color: '#10b981' },
   ];
   const W = Math.max(460, dates.length * 64), H = 200, padL = 30, padB = 28, padT = 14, padR = 14;
   const plotW = W - padL - padR, plotH = H - padT - padB;
@@ -3743,7 +4177,7 @@ function renderTrendChart(trend) {
 function renderSenderChart(senders) {
   const container = document.getElementById('sender-chart');
   if (!senders.length) {
-    container.innerHTML = '<div class="chart-empty">暂无数据</div>';
+    container.innerHTML = `<div class="chart-empty">${mailaiT('dash.noData') || '暂无数据'}</div>`;
     return;
   }
   const maxCount = Math.max(1, ...senders.map(s => s.risk_count || 0));
@@ -3754,7 +4188,7 @@ function renderSenderChart(senders) {
     return `
     <button type="button" class="sender-row" data-dashboard-email="${s.email_id || ''}" style="animation-delay:${i * 0.08}s">
       <span class="sender-rank-no ${lv}">${i + 1}</span>
-      <span class="sender-addr" title="${esc(s.sender)}"><b>${esc(s.sender)}</b><small>${s.phishing_count || 0} 封钓鱼 · 最高 ${s.max_score || 0} 分</small></span>
+      <span class="sender-addr" title="${esc(s.sender)}"><b>${esc(s.sender)}</b><small>${(mailaiT('dash.senderLine') || '{n} 封钓鱼 · 最高 {score} 分').replace('{n}', s.phishing_count || 0).replace('{score}', s.max_score || 0)}</small></span>
       <div class="sender-bar-track">
         <div class="sender-bar ${lv}" style="width:${pct}%"></div>
       </div>
@@ -3776,23 +4210,23 @@ function showDashboard() {
   hideRulesView(false);
   document.querySelector('.layout').classList.add('hidden');
   document.getElementById('dashboard-view').classList.remove('hidden');
-  setTopMenuLabel('btn-dashboard', '返回邮件');
-  document.getElementById('btn-dashboard').title = '返回邮件列表';
+  setTopMenuLabel('btn-dashboard', mailaiT('dash.back') || '返回邮件');
+  document.getElementById('btn-dashboard').title = mailaiT('dash.backTitle') || '返回邮件列表';
   loadDashboard(_dashboardDays);
 }
 
 function hideDashboard() {
   document.getElementById('dashboard-view').classList.add('hidden');
   document.querySelector('.layout').classList.remove('hidden');
-  setTopMenuLabel('btn-dashboard', '安全看板');
-  document.getElementById('btn-dashboard').title = '查看安全看板';
+  setTopMenuLabel('btn-dashboard', mailaiT('security.dashboard') || '安全看板');
+  document.getElementById('btn-dashboard').title = mailaiT('dash.openTitle') || '查看安全看板';
 }
 
 // ===== 筛选与排序 =====
 function applyFilters({silent = false} = {}) {
   document.getElementById('list-footer').classList.toggle('hidden', Boolean(specialMailbox || currentFilter.search));
   for (const id of ['filter-priority','filter-domain']) document.getElementById(id).closest('label, fieldset')?.classList.toggle('hidden', Boolean(specialMailbox));
-  document.getElementById('global-search').placeholder = currentFilter.status === 'trash' ? '搜索已删除邮件的主题、发件人、摘要…' : specialMailbox === 'sent' ? '搜索当前已发送邮件…' : specialMailbox === 'drafts' ? '搜索当前草稿…' : currentServerFolder ? '搜索当前文件夹或姓名拼音…' : '搜索主题、发件人、正文或姓名拼音…';
+  document.getElementById('global-search').placeholder = currentFilter.status === 'trash' ? (mailaiT('search.trash') || '搜索已删除邮件的主题、发件人、摘要…') : specialMailbox === 'sent' ? (mailaiT('search.sent') || '搜索当前已发送邮件…') : specialMailbox === 'drafts' ? (mailaiT('search.drafts') || '搜索当前草稿…') : currentServerFolder ? (mailaiT('search.folder') || '搜索当前文件夹或姓名拼音…') : (mailaiT('search.all') || '搜索主题、发件人、正文或姓名拼音…');
   document.querySelector('#list-sort option[value="score-desc"]').disabled = Boolean(specialMailbox);
   if (specialMailbox && currentFilter.sort === 'score-desc') { currentFilter.sort = 'date-desc'; document.getElementById('list-sort').value = 'date-desc'; }
   document.getElementById('filter-unread').closest('label').classList.toggle('hidden', Boolean(specialMailbox));
@@ -3993,14 +4427,14 @@ function renderEmailList(emails, {silent = false} = {}) {
       <div class="email-group">
         <div class="group-header">
           <span class="group-title">${esc(group.label)}</span>
-          <span class="group-count">${items.length} 封</span>
+          <span class="group-count">${items.length}${mailaiT('list.countMail') || ' 封'}</span>
         </div>
         ${items.map((e, i) => renderEmailItem(e, i)).join('')}
       </div>
     `;
   }).join('') + (emails.length > visibleEmails.length ? `
     <button type="button" class="email-render-more" data-render-more-mail>
-      显示更多 <small>还有 ${emails.length - visibleEmails.length} 封</small>
+      ${mailaiT('list.showMore') || '显示更多'} <small>${(mailaiT('list.showMoreCount') || '还有 {n} 封').replace('{n}', emails.length - visibleEmails.length)}</small>
     </button>` : '');
 
   container.querySelectorAll('.email-item').forEach(item => {
@@ -4069,6 +4503,17 @@ function shouldShowMailDirection() {
   );
 }
 
+// 后端 LLM 分类结果以固定中文枚举入库（见 app/llm/prompts.py），
+// 英文界面在这里映射为译文；不在表内的自定义值原样展示。
+function mailCategoryLabel(c) {
+  const keys = {'项目工作':'cat.work','会议安排':'cat.meeting','审批流程':'cat.approval','系统通知':'cat.system','外部客户':'cat.client','人事行政':'cat.hr','订阅推送':'cat.subscription','个人':'cat.personal','其他':'cat.other'};
+  return (keys[c] && mailaiT(keys[c])) || c;
+}
+function mailPriorityLabel(p) {
+  const keys = {'高':'prio.high','中':'prio.medium','低':'prio.low'};
+  return (keys[p] && mailaiT(keys[p])) || `${p}优先级`;
+}
+
 function renderEmailItem(e, idx = 0) {
   const risk = getRiskLabel(e.score, e.verdict, e);
   const selected = selectedEmailId === e.id ? 'selected' : '';
@@ -4112,9 +4557,9 @@ function renderEmailItem(e, idx = 0) {
       <div class="email-preview">${esc(e.summary || e.snippet || '').slice(0, 120)}${(e.summary || e.snippet || '').length > 120 ? '…' : ''}</div>
       <div class="email-tags">
         ${unifiedMailbox && e._account_user ? `<span class="mail-account-tag" title="所属邮箱 ${esc(e._account_user)}">${esc(e._account_user)}</span>` : ''}
-        ${e.category ? `<span class="tag">${esc(e.category)}</span>` : ''}
-        ${e.priority ? `<span class="tag tag-priority-${e.priority}">${esc(e.priority)}优先级</span>` : ''}
-        ${hasAtt ? '<span class="tag tag-attachment">📎 附件</span>' : ''}
+        ${e.category ? `<span class="tag">${esc(mailCategoryLabel(e.category))}</span>` : ''}
+        ${e.priority ? `<span class="tag tag-priority-${e.priority}">${esc(mailPriorityLabel(e.priority))}</span>` : ''}
+        ${hasAtt ? `<span class="tag tag-attachment">📎 ${mailaiT('list.tagAttachment') || '附件'}</span>` : ''}
         ${e.status === 'quarantine' ? '<span class="tag tag-danger">已隔离</span>' : ''}
         ${e.status === 'spam' ? '<span class="tag tag-warn">垃圾邮件</span>' : ''}
         ${e.status === 'inbox' && needsRiskAttention(e) && e.recommended_status === 'quarantine' ? '<span class="tag tag-danger">待确认隔离</span>' : ''}
@@ -4125,8 +4570,7 @@ function renderEmailItem(e, idx = 0) {
 }
 
 // ===== 阅读区 =====
-async function selectSpecialMessage(id) {
-  const kind = specialMailbox;
+async function selectSpecialMessage(id) {  const kind = specialMailbox;
   let row = kind === 'drafts' ? savedDrafts.find(x => x.id === id) : sentMessages.find(x => x.id === id);
   if (!row) return;
   if (!row._remote) {
@@ -4731,17 +5175,29 @@ async function saveAllowlistEntry(value, enabled = true, note = '', kind = 'doma
   return result.entry;
 }
 
+// 规则名称/说明/命中条件来自后端中文目录（app/security/policy.py），
+// 英文界面按规则编码映射译文；未收录的新规则回退原文。
+const RULE_CATEGORY_KEYS = {'身份认证':'auth','发件身份':'identity','链接链路':'links','附件载荷':'attachments','社工话术':'social','行为画像':'behavior','会话变化':'thread','视觉内容':'visual','垃圾营销':'spam'};
+function ruleCategoryLabel(name) { const k = RULE_CATEGORY_KEYS[name]; return (k && mailaiT('ruleCat.' + k)) || name; }
+function ruleName(r) { return mailaiT('rule.name.' + r.code) || r.name; }
+function ruleDesc(r) { return mailaiT('rule.desc.' + r.code) || r.description; }
+function ruleTrigger(r) { return mailaiT('rule.trigger.' + r.code) || r.trigger || r.description; }
+function ruleScenarioField(item, field) {
+  const k = RULE_CATEGORY_KEYS[item.category];
+  return (k && mailaiT(`ruleScenario.${field}.${k}`)) || item[field];
+}
+
 function renderRuleScenarios() {
   const host = document.getElementById('rule-scenario-grid');
   if (!host) return;
   const icons = {'身份认证':'证','发件身份':'人','链接链路':'链','附件载荷':'附','社工话术':'话','行为画像':'习','视觉内容':'图','垃圾营销':'邮'};
   host.innerHTML = _ruleScenarioData.map(item => {
     const enabled = item.enabled_count > 0;
-    const state = item.enabled_count === item.total ? '全部开启' : (enabled ? `${item.enabled_count}/${item.total} 开启` : '已关闭');
+    const state = item.enabled_count === item.total ? (mailaiT('rules.allOn') || '全部开启') : (enabled ? (mailaiT('rules.partialOn') || '{on}/{total} 开启').replace('{on}', item.enabled_count).replace('{total}', item.total) : (mailaiT('rules.allOff') || '已关闭'));
     return `<article class="rule-scenario-card ${enabled ? '' : 'disabled'}" data-category="${esc(item.category)}">
-      <div class="scenario-card-head"><span>${icons[item.category] || '检'}</span><label class="switch" title="开启或关闭${esc(item.title)}"><input class="scenario-enabled" type="checkbox" ${enabled ? 'checked' : ''}><i></i></label></div>
-      <h4>${esc(item.title)}</h4><p>${esc(item.description)}</p><small>${esc(item.example)}</small>
-      <div class="scenario-control"><label>提醒敏感度<select class="scenario-sensitivity" ${enabled ? '' : 'disabled'}><option value="relaxed" ${item.sensitivity === 'relaxed' ? 'selected' : ''}>宽松 · 少提醒</option><option value="balanced" ${item.sensitivity === 'balanced' ? 'selected' : ''}>均衡 · 推荐</option><option value="strict" ${item.sensitivity === 'strict' ? 'selected' : ''}>严格 · 多提醒</option></select></label><em>${state}</em></div>
+      <div class="scenario-card-head"><span>${icons[item.category] || '检'}</span><label class="switch" title="${(mailaiT('rules.toggleTitle') || '开启或关闭{name}').replace('{name}', esc(ruleScenarioField(item, 'title')))}"><input class="scenario-enabled" type="checkbox" ${enabled ? 'checked' : ''}><i></i></label></div>
+      <h4>${esc(ruleScenarioField(item, 'title'))}</h4><p>${esc(ruleScenarioField(item, 'description'))}</p><small>${esc(ruleScenarioField(item, 'example'))}</small>
+      <div class="scenario-control"><label>${mailaiT('rules.sensitivity') || '提醒敏感度'}<select class="scenario-sensitivity" ${enabled ? '' : 'disabled'}><option value="relaxed" ${item.sensitivity === 'relaxed' ? 'selected' : ''}>${mailaiT('rules.sensRelaxed') || '宽松 · 少提醒'}</option><option value="balanced" ${item.sensitivity === 'balanced' ? 'selected' : ''}>${mailaiT('rules.sensBalanced') || '均衡 · 推荐'}</option><option value="strict" ${item.sensitivity === 'strict' ? 'selected' : ''}>${mailaiT('rules.sensStrict') || '严格 · 多提醒'}</option></select></label><em>${state}</em></div>
     </article>`;
   }).join('');
 }
@@ -4757,13 +5213,13 @@ async function saveRuleScenario(card) {
   });
   _ruleScenarioData = result.categories || _ruleScenarioData;
   renderRuleScenarios(); renderRules();
-  toast(`${category}已${enabled ? '开启' : '关闭'}，敏感度为${{relaxed:'宽松',balanced:'均衡',strict:'严格'}[sensitivity]}`, 'success');
+  toast((mailaiT('rules.savedToast') || '{category}已{state}，敏感度为{sens}').replace('{category}', ruleCategoryLabel(category)).replace('{state}', enabled ? (mailaiT('rules.stateOn') || '开启') : (mailaiT('rules.stateOff') || '关闭')).replace('{sens}', {relaxed: mailaiT('rules.sensRelaxedShort') || '宽松', balanced: mailaiT('rules.sensBalancedShort') || '均衡', strict: mailaiT('rules.sensStrictShort') || '严格'}[sensitivity]), 'success');
 }
 
 function renderRuleTabs() {
   const categories = ['全部', ...new Set(_rulesData.map(r => r.category))];
   document.getElementById('rule-category-tabs').innerHTML = categories.map(c =>
-    `<button class="rule-tab ${c === _ruleCategory ? 'active' : ''}" data-category="${esc(c)}">${esc(c)}</button>`
+    `<button class="rule-tab ${c === _ruleCategory ? 'active' : ''}" data-category="${esc(c)}">${esc(c === '全部' ? (mailaiT('rules.tabAll') || '全部') : ruleCategoryLabel(c))}</button>`
   ).join('');
 }
 
@@ -4774,36 +5230,36 @@ function renderRules() {
     (!query || `${r.name} ${r.code} ${r.description} ${r.trigger || ''}`.toLowerCase().includes(query))
   );
   const enabled = _rulesData.filter(r => r.enabled).length;
-  document.getElementById('rule-summary').textContent = `${enabled}/${_rulesData.length} 条已启用`;
+  document.getElementById('rule-summary').textContent = (mailaiT('rules.enabledCount') || '{on}/{total} 条已启用').replace('{on}', enabled).replace('{total}', _rulesData.length);
   document.getElementById('rules-grid').innerHTML = filtered.map(r => `
     <article class="rule-card ${r.enabled ? '' : 'disabled'}" data-code="${esc(r.code)}">
       <div class="rule-card-head">
-        <span class="rule-category">${esc(r.category)}</span>
-        ${r.customized ? '<span class="rule-customized">已自定义</span>' : ''}
-        <button type="button" class="rule-help" aria-label="查看${esc(r.name)}的命中说明" aria-describedby="rule-detail-${esc(r.code)}">?</button>
+        <span class="rule-category">${esc(ruleCategoryLabel(r.category))}</span>
+        ${r.customized ? `<span class="rule-customized">${mailaiT('rules.customized') || '已自定义'}</span>` : ''}
+        <button type="button" class="rule-help" aria-label="${(mailaiT('rules.helpAria') || '查看{name}的命中说明').replace('{name}', esc(ruleName(r)))}" aria-describedby="rule-detail-${esc(r.code)}">?</button>
         <div id="rule-detail-${esc(r.code)}" class="rule-detail-popover" role="tooltip">
-          <strong>什么时候会命中？</strong>
-          <p>${esc(r.trigger || r.description)}</p>
+          <strong>${mailaiT('rules.whenHit') || '什么时候会命中？'}</strong>
+          <p>${esc(ruleTrigger(r))}</p>
           <dl>
-            <div><dt>计分影响</dt><dd>当前 +${Number(r.weight || 0)} ${r.category === '垃圾营销' ? '垃圾营销分' : '风险分'}（默认 +${Number(r.default_weight || 0)}）</dd></div>
-            <div><dt>白名单</dt><dd>${esc(r.allowlist_behavior || '按系统白名单策略处理')}</dd></div>
-            <div><dt>技术标识</dt><dd><code>${esc(r.code)}</code></dd></div>
+            <div><dt>${mailaiT('rules.scoreImpact') || '计分影响'}</dt><dd>${(mailaiT('rules.scoreLine') || '当前 +{w} {kind}（默认 +{dw}）').replace('{w}', Number(r.weight || 0)).replace('{kind}', r.category === '垃圾营销' ? (mailaiT('rules.spamScore') || '垃圾营销分') : (mailaiT('rules.riskScore') || '风险分')).replace('{dw}', Number(r.default_weight || 0))}</dd></div>
+            <div><dt>${mailaiT('rules.allowlist') || '白名单'}</dt><dd>${esc(mailaiT('rules.allowlist.' + (r.allowlist_behavior === '白名单邮件仍会检查此项' ? 'blocking' : 'normal')) || r.allowlist_behavior || '按系统白名单策略处理')}</dd></div>
+            <div><dt>${mailaiT('rules.techId') || '技术标识'}</dt><dd><code>${esc(r.code)}</code></dd></div>
           </dl>
         </div>
-        <label class="switch" title="启用或停用该规则">
+        <label class="switch" title="${mailaiT('rules.toggleRule') || '启用或停用该规则'}">
           <input class="rule-enabled" type="checkbox" ${r.enabled ? 'checked' : ''}>
           <i></i>
         </label>
       </div>
-      <h3>${esc(r.name)}</h3>
+      <h3>${esc(ruleName(r))}</h3>
       <code>${esc(r.code)}</code>
-      <p>${esc(r.description)}</p>
+      <p>${esc(ruleDesc(r))}</p>
       <div class="rule-weight-row">
-        <label>风险权重 <input class="rule-weight" type="number" min="0" max="100" value="${r.weight}"></label>
-        <span>默认 ${r.default_weight}</span>
-        <button class="btn-save-rule">保存</button>
+        <label>${mailaiT('rules.weight') || '风险权重'} <input class="rule-weight" type="number" min="0" max="100" value="${r.weight}"></label>
+        <span>${(mailaiT('rules.defaultWeight') || '默认 {n}').replace('{n}', r.default_weight)}</span>
+        <button class="btn-save-rule">${mailaiT('rules.save') || '保存'}</button>
       </div>
-    </article>`).join('') || '<div class="rules-empty">没有匹配的规则</div>';
+    </article>`).join('') || `<div class="rules-empty">${mailaiT('rules.noMatch') || '没有匹配的规则'}</div>`;
 }
 
 async function saveRuleCard(card) {
@@ -4827,7 +5283,7 @@ function showRulesView() {
   hideDashboard();
   document.querySelector('.layout').classList.add('hidden');
   document.getElementById('rules-view').classList.remove('hidden');
-  setTopMenuLabel('btn-rules', '返回邮件');
+  setTopMenuLabel('btn-rules', mailaiT('rules.backMail') || '返回邮件');
   loadRules().catch(e => toast('加载规则失败：' + e.message, 'error'));
 }
 
@@ -4835,7 +5291,7 @@ function hideRulesView(showLayout = true) {
   const view = document.getElementById('rules-view');
   if (!view) return;
   view.classList.add('hidden');
-  setTopMenuLabel('btn-rules', '规则中心');
+  setTopMenuLabel('btn-rules', mailaiT('security.rules') || '规则中心');
   if (showLayout && document.getElementById('dashboard-view').classList.contains('hidden')) {
     document.querySelector('.layout').classList.remove('hidden');
   }
@@ -5050,7 +5506,7 @@ function renderSidebarAccounts() {
   if (!host || !multiple) return;
   const inboxTotal = accounts.reduce((sum, account) => sum + Number(account.inbox || 0), 0);
   host.innerHTML = `<button type="button" class="nav-item unified-inbox-button ${unifiedMailbox ? 'active' : ''}" data-account-action="unified">
-    <span class="icon"><svg viewBox="0 0 20 20"><path d="M3.5 6.5h13v9h-13zM6 4h8M3.5 11h3l1.4 2h4.2l1.4-2h3"/></svg></span><span>所有收件箱</span><span class="count">${inboxTotal}</span></button>` + accounts.map(account => {
+    <span class="icon"><svg viewBox="0 0 20 20"><path d="M3.5 6.5h13v9h-13zM6 4h8M3.5 11h3l1.4 2h4.2l1.4-2h3"/></svg></span><span>${mailaiT('list.allInboxes') || '所有收件箱'}</span><span class="count">${inboxTotal}</span></button>` + accounts.map(account => {
       const selectedAccount = selectedMailboxAccountId === account.id && !unifiedMailbox;
       const collapsed = localStorage.getItem('collapsed:' + account.id) === '1';
       const syncing = account.credential_available && account.sync_status === 'running';
@@ -5061,12 +5517,12 @@ function renderSidebarAccounts() {
         <div class="sidebar-account-heading">
         <button type="button" class="account-collapse" data-account-collapse="${esc(account.id)}" aria-label="${collapsed ? '展开' : '收起'} ${esc(account.user)}" aria-expanded="${!collapsed}"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 4 4 4-4 4"/></svg></button>
         <button type="button" class="sidebar-account-head" data-account-action="inbox" data-account-id="${esc(account.id)}" title="查看 ${esc(account.user)} 的收件箱">
-          <span class="sidebar-account-avatar">${esc(accountMark(account))}</span><span class="sidebar-account-identity"><b>${esc(localStorage.getItem('alias:' + account.id) || account.user.split('@')[0])}</b><small>${esc(account.user.split('@')[1] || '已连接')}</small></span>
+          <span class="sidebar-account-avatar">${esc(accountMark(account))}</span><span class="sidebar-account-identity"><b>${esc(localStorage.getItem('alias:' + account.id) || account.user.split('@')[0])}</b><small>${esc(account.user.split('@')[1] || (mailaiT('acct.stateReady') || '已连接'))}</small></span>
         </button>
         ${statusVisible ? `<span class="account-sync-state ${syncing ? 'running' : 'warning'}" title="${esc(syncDetail)}">${syncing ? '<i class="account-sync-spinner" aria-hidden="true"></i>' : ''}${esc(status)}</span>` : ''}
-        <details class="account-menu"><summary aria-label="管理 ${esc(account.user)}" title="邮箱选项">⋯</summary><div><button type="button" data-account-alias="${esc(account.id)}">修改显示名称</button><button type="button" data-account-manage="${esc(account.id)}">管理此邮箱</button></div></details>
+        <details class="account-menu"><summary aria-label="管理 ${esc(account.user)}" title="${mailaiT('side.accountOptions') || '邮箱选项'}">⋯</summary><div><button type="button" data-account-alias="${esc(account.id)}">${mailaiT('side.renameAccount') || '修改显示名称'}</button><button type="button" data-account-manage="${esc(account.id)}">${mailaiT('side.manageAccount') || '管理此邮箱'}</button></div></details>
         </div>
-        <div class="sidebar-account-folders">${[['favorites','我的收藏','m10 2 2.4 5 5.6.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.6-.8Z'],['inbox','收件箱','M3 4h14v12H3zM3 11h4l1 2h4l1-2h4'],['sent','已发送','m3 9 14-6-5 14-3-6-6-2Zm6 2 8-8'],['drafts','草稿箱','M5 2h7l4 4v12H5zM12 2v5h4M8 11h5M8 14h4'],['trash','已删除','M4 6h12M7 6V3h6v3M6 8l1 9h6l1-9']].map(([action,label,path]) => `<button type="button" class="${selectedAccount && (action === 'local_archive' ? currentFilter.status === 'local_archive' : action === 'favorites' ? currentFilter.status === 'favorites' : action === 'trash' ? currentFilter.status === 'trash' || Boolean(currentServerFolder && currentServerFolder === serverFolderForRole('trash')?.name) : action === 'inbox' ? currentFilter.status === 'inbox' && !specialMailbox && !currentServerFolder : specialMailbox === action) ? 'active' : ''}" data-account-action="${action}" data-account-id="${esc(account.id)}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="${path}"/></svg><span>${label}</span>${action === 'inbox' && Number(account.unread) ? `<em title="未读邮件">${Number(account.unread)}</em>` : ''}</button>`).join('')}</div>
+        <div class="sidebar-account-folders">${[['favorites', mailaiT('side.favorites') || '我的收藏','m10 2 2.4 5 5.6.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.6-.8Z'],['inbox', mailaiT('side.inbox') || '收件箱','M3 4h14v12H3zM3 11h4l1 2h4l1-2h4'],['sent', mailaiT('side.sent') || '已发送','m3 9 14-6-5 14-3-6-6-2Zm6 2 8-8'],['drafts', mailaiT('side.drafts') || '草稿箱','M5 2h7l4 4v12H5zM12 2v5h4M8 11h5M8 14h4'],['trash', mailaiT('side.trash') || '已删除','M4 6h12M7 6V3h6v3M6 8l1 9h6l1-9']].map(([action,label,path]) => `<button type="button" class="${selectedAccount && (action === 'local_archive' ? currentFilter.status === 'local_archive' : action === 'favorites' ? currentFilter.status === 'favorites' : action === 'trash' ? currentFilter.status === 'trash' || Boolean(currentServerFolder && currentServerFolder === serverFolderForRole('trash')?.name) : action === 'inbox' ? currentFilter.status === 'inbox' && !specialMailbox && !currentServerFolder : specialMailbox === action) ? 'active' : ''}" data-account-action="${action}" data-account-id="${esc(account.id)}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="${path}"/></svg><span>${label}</span>${action === 'inbox' && Number(account.unread) ? `<em title="未读邮件">${Number(account.unread)}</em>` : ''}</button>`).join('')}</div>
       </section>`;
     }).join('');
 }
@@ -5397,7 +5853,7 @@ async function loadSystemConfig() {
   document.getElementById('account-count').textContent = String(accounts.length);
   accountsHost.classList.toggle('hidden', accounts.length < 1);
   accountsHost.innerHTML = accounts.length ? `<div class="saved-account-list">${accounts.map(account => {
-    const state = account.active ? '当前发件账号' : account.credential_available ? '已连接' : '需重新登录';
+    const state = account.active ? (mailaiT('acct.stateActive') || '当前发件账号') : account.credential_available ? (mailaiT('acct.stateReady') || '已连接') : (mailaiT('acct.stateReauth') || '需重新登录');
     const stateClass = account.active ? 'current' : account.credential_available ? 'ready' : 'reauth';
     const selected = account.id === selectedManagedAccountId;
     return `<button type="button" class="saved-account ${account.active ? 'active' : ''} ${selected ? 'selected' : ''}" data-account-id="${esc(account.id)}" aria-pressed="${selected}" title="管理 ${esc(account.user)}">
@@ -5427,18 +5883,18 @@ function renderAccountSelection() {
     button.classList.toggle('selected', selected);
     button.setAttribute('aria-pressed', String(selected));
   });
-  status.textContent = account ? (account.credential_available ? '授权码可用' : '需要登录') : '未连接';
+  status.textContent = account ? (account.credential_available ? (mailaiT('acct.credOk') || '授权码可用') : (mailaiT('acct.credNeeded') || '需要登录')) : (mailaiT('acct.notConnected') || '未连接');
   status.className = `connection-status ${account?.credential_available ? 'connected' : account ? 'failed' : ''}`;
   if (!account) return;
   document.getElementById('selected-account-avatar').textContent = accountMark(account);
-  document.getElementById('selected-account-role').textContent = account.active ? '当前发件账号' : '已连接邮箱';
+  document.getElementById('selected-account-role').textContent = account.active ? (mailaiT('acct.stateActive') || '当前发件账号') : (mailaiT('acct.roleConnected') || '已连接邮箱');
   document.getElementById('selected-account-name').textContent = account.user;
   document.getElementById('selected-account-help').textContent = account.credential_available
-    ? (account.credential_storage === 'session' ? '授权码仅本次运行有效，退出软件后需要重新登录' : '连接信息已保存，可随时更新授权码')
-    : '本机没有可用授权码，请重新登录';
-  document.getElementById('btn-manage-mail').textContent = account.credential_available ? '更新登录信息' : '重新登录';
-  document.getElementById('selected-account-state').textContent = account.sync_error ? '最近同步失败' : account.last_sync ? '最近同步：' + fmtDate(account.last_sync) : '尚无成功同步记录';
-  document.getElementById('selected-account-host').textContent = account.host || '自动识别';
+    ? (account.credential_storage === 'session' ? (mailaiT('acct.helpSession') || '授权码仅本次运行有效，退出软件后需要重新登录') : (mailaiT('acct.helpSaved') || '连接信息已保存，可随时更新授权码'))
+    : (mailaiT('acct.helpMissing') || '本机没有可用授权码，请重新登录');
+  document.getElementById('btn-manage-mail').textContent = account.credential_available ? (mailaiT('acct.updateBtn') || '更新登录信息') : (mailaiT('acct.reloginBtn') || '重新登录');
+  document.getElementById('selected-account-state').textContent = account.sync_error ? (mailaiT('acct.syncFailed') || '最近同步失败') : account.last_sync ? (mailaiT('acct.lastSync') || '最近同步：') + fmtDate(account.last_sync) : (mailaiT('acct.noSync') || '尚无成功同步记录');
+  document.getElementById('selected-account-host').textContent = account.host || (mailaiT('acct.autoHost') || '自动识别');
 }
 
 function resetMailAddForm(account = null) {
@@ -5465,7 +5921,7 @@ function resetMailAddForm(account = null) {
 function openMailAddPanel(account = null) {
   resetMailAddForm(account);
   document.getElementById('mail-add-panel').dataset.accountId = account?.id || '';
-  document.getElementById('mail-add-title').textContent = account ? '更新登录信息' : '新增邮箱';
+  document.getElementById('mail-add-title').textContent = account ? (mailaiT('acct.updateBtn') || '更新登录信息') : (mailaiT('acct.addTitle') || '新增邮箱');
   document.getElementById('btn-connect-mail').querySelector('span').textContent = account ? '验证并保存' : '新增邮箱';
   document.getElementById('mail-add-panel').classList.remove('hidden');
   document.getElementById('btn-add-mail').classList.add('hidden');
@@ -5555,7 +6011,7 @@ function toggleRecipients(button) {
   const list = field.querySelector('.recipient-list');
   const expanded = button.getAttribute('aria-expanded') === 'true';
   button.setAttribute('aria-expanded', String(!expanded));
-  button.textContent = expanded ? '展开' : '收起';
+  button.textContent = expanded ? (mailaiT('common.expand') || '展开') : (mailaiT('common.collapse') || '收起');
   list.classList.toggle('hidden', expanded);
   field.classList.toggle('expanded', !expanded);
 }
@@ -5963,32 +6419,32 @@ function renderReadingPane(e) {
         ${risk.class === 'danger' && riskNeedsAttention ? `
           <button type="button" class="phishing-alert-banner" aria-live="assertive" onclick="toggleSecurityAnalysis(true)">
             <span class="phishing-alert-icon" aria-hidden="true">!</span>
-            <span class="phishing-alert-copy"><b>高风险邮件，请先核实再操作</b><small>不要直接点击链接、回复敏感信息或打开可疑附件</small></span>
-            <em>查看安全依据 <span aria-hidden="true">→</span></em>
+            <span class="phishing-alert-copy"><b>${mailaiT('read.alertTitle') || '高风险邮件，请先核实再操作'}</b><small>${mailaiT('read.alertHint') || '不要直接点击链接、回复敏感信息或打开可疑附件'}</small></span>
+            <em>${mailaiT('read.alertAction') || '查看安全依据'} <span aria-hidden="true">→</span></em>
           </button>` : ''}
         <div class="reading-heading-row">
           <h2 class="reading-subject">${esc(e.subject)}</h2>
           <button type="button" class="security-result-trigger security-${risk.class} ${riskNeedsAttention ? 'needs-attention' : ''} ${risk.class === 'danger' && riskNeedsAttention ? 'risk-attention-intro' : ''}" aria-expanded="false" onclick="toggleSecurityAnalysis()" title="打开智能研判明细">
             <span aria-hidden="true">${risk.class === 'danger' || risk.class === 'warn' ? '!' : risk.class === 'muted' ? '…' : '✓'}</span>
-            <small>安全结果</small><b>${esc(risk.text)}</b><em>${riskScore}</em>
+            <small>${mailaiT('read.securityResult') || '安全结果'}</small><b>${esc(risk.text)}</b><em>${riskScore}</em>
           </button>
         </div>
         <div class="reading-meta">
           <div class="meta-avatar">${(e.from_name || e.from_addr || '?').charAt(0).toUpperCase()}</div>
           <div class="meta-fields">
-            <div class="meta-sender-row"><span class="meta-label">发件人：</span>${renderSenderContact(e.from_name, e.from_addr)}</div>
-            <div class="meta-recipient-row"><span class="meta-label">收件人：</span>${renderRecipients(e.to_addr, e.recipient_names)}</div>
-            <div><span class="meta-label">时间：</span>${fmtDate(e.date)}</div>
+            <div class="meta-sender-row"><span class="meta-label">${mailaiT('read.from') || '发件人：'}</span>${renderSenderContact(e.from_name, e.from_addr)}</div>
+            <div class="meta-recipient-row"><span class="meta-label">${mailaiT('read.to') || '收件人：'}</span>${renderRecipients(e.to_addr, e.recipient_names)}</div>
+            <div><span class="meta-label">${mailaiT('read.time') || '时间：'}</span>${fmtDate(e.date)}</div>
           </div>
           <div class="meta-badges">
-            ${e.category ? `<span class="tag">${esc(e.category)}</span>` : ''}
-            ${e.priority ? `<span class="tag tag-priority-${e.priority}">${esc(e.priority)}优先级</span>` : ''}
+            ${e.category ? `<span class="tag">${esc(mailCategoryLabel(e.category))}</span>` : ''}
+            ${e.priority ? `<span class="tag tag-priority-${e.priority}">${esc(mailPriorityLabel(e.priority))}</span>` : ''}
           </div>
         </div>
         <div class="reading-actions">
-          <section class="reading-action-group reading-mail-group" aria-label="邮件操作"><span class="reading-action-group-title">邮件操作</span><div class="reading-mail-controls"><div class="reading-reply-actions">${replyActions}</div></div></section>
-          <section class="reading-action-group reading-ai-group" aria-label="AI 助手"><span class="reading-action-group-title">AI 助手</span></section>
-          <section class="reading-action-group reading-risk-group" aria-label="风险封控"><span class="reading-action-group-title">风险封控</span><div class="reading-decision-actions">${decisionActions}</div></section>
+          <section class="reading-action-group reading-mail-group" aria-label="邮件操作"><span class="reading-action-group-title">${mailaiT('read.groupMail') || '邮件操作'}</span><div class="reading-mail-controls"><div class="reading-reply-actions">${replyActions}</div></div></section>
+          <section class="reading-action-group reading-ai-group" aria-label="AI 助手"><span class="reading-action-group-title">${mailaiT('read.groupAi') || 'AI 助手'}</span></section>
+          <section class="reading-action-group reading-risk-group" aria-label="风险封控"><span class="reading-action-group-title">${mailaiT('read.groupRisk') || '风险封控'}</span><div class="reading-decision-actions">${decisionActions}</div></section>
         </div>
       </div>
     </div>
@@ -5996,17 +6452,17 @@ function renderReadingPane(e) {
     <button type="button" class="security-flyout-backdrop hidden" aria-label="关闭智能研判明细" onclick="toggleSecurityAnalysis(false)"></button>
     <aside id="security-analysis-panel" class="security-flyout hidden" aria-label="智能研判明细" tabindex="-1">
       <div class="security-flyout-head">
-        <div><span class="eyebrow">智能研判</span><h3>安全结果与证据</h3></div>
+        <div><span class="eyebrow">${mailaiT('read.verdictEyebrow') || '智能研判'}</span><h3>${mailaiT('read.verdictTitle') || '安全结果与证据'}</h3></div>
         <button type="button" aria-label="关闭智能研判明细" onclick="toggleSecurityAnalysis(false)">✕</button>
       </div>
       <div class="security-flyout-result security-${risk.class}">
         ${gauge}
-        <div><span>当前结论</span><h4>${esc(risk.text)}</h4><p>${esc(riskSummary)}</p></div>
+        <div><span>${mailaiT('read.verdictCurrent') || '当前结论'}</span><h4>${esc(risk.text)}</h4><p>${esc(riskSummary)}</p></div>
       </div>
       <div class="security-analysis-grid">
         ${evidenceDimensions}
         <div class="reading-section insight-section">
-          <div class="section-title"><span>具体发现</span><small>累计风险分 ${riskScore}</small></div>
+          <div class="section-title"><span>${mailaiT('read.findings') || '具体发现'}</span><small>${(mailaiT('read.findingsScore') || '累计风险分 {n}').replace('{n}', riskScore)}</small></div>
           <ul class="findings">${findings}</ul>
         </div>
         ${llmReasons}
@@ -6021,18 +6477,18 @@ function renderReadingPane(e) {
     <div class="reading-workspace">
       <main class="reading-main">
         <div class="reading-section summary-section primary-summary">
-          <div class="section-title"><span>AI 摘要</span><small>提炼重点，完整展示</small></div>
+          <div class="section-title"><span>${mailaiT('read.summaryTitle') || 'AI 摘要'}</span><small>${mailaiT('read.summaryHint') || '提炼重点，完整展示'}</small></div>
           <div class="summary-quick-meta">
-            ${e.category ? `<span>${esc(e.category)}</span>` : ''}
-            ${e.priority ? `<span>${esc(e.priority)}优先级</span>` : ''}
-            ${(e.attachments || []).length ? `<span>${e.attachments.length} 个附件</span>` : ''}
+            ${e.category ? `<span>${esc(mailCategoryLabel(e.category))}</span>` : ''}
+            ${e.priority ? `<span>${esc(mailPriorityLabel(e.priority))}</span>` : ''}
+            ${(e.attachments || []).length ? `<span>${(mailaiT('read.attachCount') || '{n} 个附件').replace('{n}', e.attachments.length)}</span>` : ''}
           </div>
-          <div id="primary-summary-content" class="markdown-body summary-box">${mdToHtml(e.summary || e.snippet || '暂无摘要')}</div>
+          <div id="primary-summary-content" class="markdown-body summary-box">${mdToHtml(e.summary || e.snippet || (mailaiT('read.noSummary') || '暂无摘要'))}</div>
         </div>
 
         <div class="reading-section body-section">
-          <div class="section-title"><span>邮件正文</span><div class="body-format-actions"><small>${e.has_rich_body ? (e.has_remote_images ? 'HTML 原始排版 · 外链图片已显示' : 'HTML 原始排版') : '纯文本邮件 · 优化排版'}</small></div></div>
-          ${e.has_rich_body ? '<div id="rich-email-body" class="email-body rich-email-body"><div class="reading-loading">正在还原邮件排版…</div></div>' : `<div class="markdown-body email-body plain-email-body">${mdToHtml(e.body_text || '')}</div>`}
+          <div class="section-title"><span>${mailaiT('read.body') || '邮件正文'}</span><div class="body-format-actions"><small>${e.has_rich_body ? (e.has_remote_images ? (mailaiT('read.fmtHtmlImages') || 'HTML 原始排版 · 外链图片已显示') : (mailaiT('read.fmtHtml') || 'HTML 原始排版')) : (mailaiT('read.fmtPlainOpt') || '纯文本邮件 · 优化排版')}</small></div></div>
+          ${e.has_rich_body ? `<div id="rich-email-body" class="email-body rich-email-body"><div class="reading-loading">${mailaiT('read.restoring') || '正在还原邮件排版…'}</div></div>` : `<div class="markdown-body email-body plain-email-body">${mdToHtml(e.body_text || '')}</div>`}
         </div>
 
         ${attachments}
@@ -6574,6 +7030,10 @@ async function toggleTodo(id, status) {
 }
 
 let _digestHistory = [];
+
+// "今日日报" 标题与 "YYYY-MM-DD 日报" 的本地化封装
+function digestTodayLabel() { return mailaiT('digest.title') || '今日日报'; }
+function digestDateLabel(date) { return (mailaiT('digest.dateTitle') || '{d} 日报').replace('{d}', date); }
 let _digestAccountId = '';
 let digestViewRevision = 0;
 let digestHistoryRevision = 0;
@@ -6632,11 +7092,11 @@ async function openDigestModal() {
 
 function showDigestGeneratePrompt() {
   nextDigestView();
-  setDigestTitle('今日日报');
+  setDigestTitle(digestTodayLabel());
   document.getElementById('digest-body').innerHTML = `
     <div class="digest-empty">
-      <p>今日日报尚未生成。</p>
-      <button id="btn-generate-today" class="action-btn action-primary"><svg viewBox="0 0 20 20"><path d="M15.5 6V3.5M15.5 3.5H13M15.2 6A6.5 6.5 0 1 0 16 12"/></svg>生成今日日报</button>
+      <p>${mailaiT('digest.notGenerated') || '今日日报尚未生成。'}</p>
+      <button id="btn-generate-today" class="action-btn action-primary"><svg viewBox="0 0 20 20"><path d="M15.5 6V3.5M15.5 3.5H13M15.2 6A6.5 6.5 0 1 0 16 12"/></svg>${mailaiT('digest.generateToday') || '生成今日日报'}</button>
     </div>
   `;
   document.getElementById('btn-generate-today').addEventListener('click', generateDigest);
@@ -6646,9 +7106,9 @@ async function generateDigest() {
   const revision = nextDigestView();
   const accountId = _digestAccountId || activeMailAccount()?.id || '';
   const btn = document.getElementById('btn-digest');
-  setLoading(btn, true, '生成中…');
-  document.getElementById('digest-body').innerHTML = '<p>正在生成日报…</p>';
-  setDigestTitle('今日日报');
+  setLoading(btn, true, mailaiT('digest.generating') || '生成中…');
+  document.getElementById('digest-body').innerHTML = `<p>${mailaiT('digest.generatingBody') || '正在生成日报…'}</p>`;
+  setDigestTitle(digestTodayLabel());
   document.getElementById('digest-history-select').value = '';
   try {
     let job = digestGenerationJobs.get(accountId);
@@ -6660,7 +7120,7 @@ async function generateDigest() {
     const data = await job;
     if (!digestViewCurrent(revision, accountId)) return;
     document.getElementById('digest-body').innerHTML = renderDigest(data.digest);
-    toast('日报生成完毕', 'success');
+    toast(mailaiT('digest.done') || '日报生成完毕', 'success');
     await loadDigestHistory(accountId);
     if (!digestViewCurrent(revision, accountId)) return;
     // 生成后把下拉框切到今天
@@ -6668,7 +7128,7 @@ async function generateDigest() {
     const todayDigest = _digestHistory.find(d => d.digest_date === today);
     if (todayDigest) {
       document.getElementById('digest-history-select').value = todayDigest.id;
-      setDigestTitle(today + ' 日报');
+      setDigestTitle(digestDateLabel(today));
     }
   } catch (e) {
     if (!digestViewCurrent(revision, accountId)) return;
@@ -6677,8 +7137,8 @@ async function generateDigest() {
       const parsed = JSON.parse(msg);
       if (parsed.detail) msg = parsed.detail;
     } catch {}
-    document.getElementById('digest-body').innerHTML = `<p class="reading-error">生成失败：${esc(msg)}</p>`;
-    toast('日报生成失败：' + msg, 'error');
+    document.getElementById('digest-body').innerHTML = `<p class="reading-error">${mailaiT('digest.failed') || '生成失败：'}${esc(msg)}</p>`;
+    toast((mailaiT('digest.failedToast') || '日报生成失败：') + msg, 'error');
   } finally {
     if (!digestGenerationJobs.size) setLoading(btn, false);
   }
@@ -6692,7 +7152,7 @@ async function loadDigestHistory(accountId = _digestAccountId || activeMailAccou
     _digestHistory = digests;
     const select = document.getElementById('digest-history-select');
     const current = select.value;
-    select.innerHTML = '<option value="">今日日报</option>';
+    select.innerHTML = `<option value="">${digestTodayLabel()}</option>`;
     digests.forEach(d => {
       const opt = document.createElement('option');
       opt.value = d.id;
@@ -6718,7 +7178,7 @@ async function loadDigestById(id, accountId = _digestAccountId || activeMailAcco
     const data = await api('/api/digests/' + id, {accountId, signal:controller.signal});
     if (!digestViewCurrent(revision, accountId)) return;
     document.getElementById('digest-body').innerHTML = renderDigest(data.content);
-    setDigestTitle(data.digest_date + ' 日报');
+    setDigestTitle(digestDateLabel(data.digest_date));
   } catch (e) {
     if (!digestViewCurrent(revision, accountId) || controller.signal.aborted) return;
     document.getElementById('digest-body').innerHTML = `<p class="reading-error">加载失败：${esc(e.message)}</p>`;
@@ -6866,9 +7326,9 @@ document.getElementById('btn-create-folder').addEventListener('click', async () 
 function attachmentTypeLabel(contentType = '', name = '') {
   const ext = (name.split('.').pop() || '').slice(0, 5).toUpperCase();
   if (ext && ext !== name.toUpperCase()) return ext;
-  if (contentType.includes('image')) return '图片';
+  if (contentType.includes('image')) return mailaiT('att.typeImage') || '图片';
   if (contentType.includes('pdf')) return 'PDF';
-  return '文件';
+  return mailaiT('att.typeFile') || '文件';
 }
 
 function attachmentType(item = {}) {
@@ -6883,7 +7343,8 @@ function attachmentType(item = {}) {
 }
 
 function attachmentTypeName(type) {
-  return ({pdf:'PDF', sheet:'表格', document:'文档', image:'图片', archive:'压缩包', other:'其他'})[type] || '文件';
+  const key = ({pdf:'att.typePdf', sheet:'att.typeSheet', document:'att.typeDoc', image:'att.typeImage', archive:'att.typeArchive', other:'att.typeOther'})[type];
+  return (key && mailaiT(key)) || ({pdf:'PDF', sheet:'表格', document:'文档', image:'图片', archive:'压缩包', other:'其他'})[type] || (mailaiT('att.typeFile') || '文件');
 }
 
 function updateAttachmentTypeFilters() {
@@ -6891,7 +7352,7 @@ function updateAttachmentTypeFilters() {
   attachmentItems.forEach(item => counts[attachmentType(item)]++);
   document.querySelectorAll('[data-attachment-type]').forEach(button => {
     const type = button.dataset.attachmentType;
-    const label = type === 'all' ? '全部' : attachmentTypeName(type);
+    const label = type === 'all' ? (mailaiT('att.typeAll') || '全部') : attachmentTypeName(type);
     button.innerHTML = `${label}<span>${counts[type] || 0}</span>`;
     button.classList.toggle('active', type === attachmentTypeFilter);
   });
@@ -6902,22 +7363,22 @@ function renderAttachmentCenter() {
   const rows = attachmentItems.filter(item => (attachmentTypeFilter === 'all' || attachmentType(item) === attachmentTypeFilter) &&
     (!query || [item.name, item.subject, item.from_addr].some(value => String(value || '').toLowerCase().includes(query))));
   const sourceCount = new Set(rows.map(item => item.email_id)).size;
-  document.getElementById('attachment-count').textContent = `${rows.length} 个附件 · 来自 ${sourceCount} 封邮件`;
+  document.getElementById('attachment-count').textContent = (mailaiT('att.countLine') || '{n} 个附件 · 来自 {m} 封邮件').replace('{n}', rows.length).replace('{m}', sourceCount);
   updateAttachmentTypeFilters();
   document.getElementById('attachment-grid').innerHTML = rows.length ? rows.map(item => `
-    <a class="attachment-card type-${attachmentType(item)}" href="${mailboxResourceUrl(`/api/emails/${item.email_id}/attachments/${item.index}`)}" download="${esc(item.name)}" title="预览 ${esc(item.name)}">
-      <span class="attachment-file-icon"><strong>${esc(attachmentTypeLabel(item.content_type, item.name))}</strong><small>${attachmentType(item) === 'pdf' ? '文档' : attachmentTypeName(attachmentType(item))}</small></span>
+    <a class="attachment-card type-${attachmentType(item)}" href="${mailboxResourceUrl(`/api/emails/${item.email_id}/attachments/${item.index}`)}" download="${esc(item.name)}" title="${(mailaiT('att.previewTitle') || '预览 {name}').replace('{name}', esc(item.name))}">
+      <span class="attachment-file-icon"><strong>${esc(attachmentTypeLabel(item.content_type, item.name))}</strong><small>${attachmentType(item) === 'pdf' ? attachmentTypeName('document') : attachmentTypeName(attachmentType(item))}</small></span>
       <span class="attachment-card-main">
         <b title="${esc(item.name)}">${esc(item.name)}</b>
         <span class="attachment-facts"><small>${formatFileSize(item.size || 0)}</small><small>${fmtDate(item.date)}</small></span>
-        <small class="attachment-source"><i>来源</i><span>${esc(item.subject || '（无主题）')}</span></small>
-        <small class="attachment-sender">${esc(item.from_addr || '未知发件人')}</small>
+        <small class="attachment-source"><i>${mailaiT('att.source') || '来源'}</i><span>${esc(item.subject || (mailaiT('att.noSubject') || '（无主题）'))}</span></small>
+        <small class="attachment-sender">${esc(item.from_addr || (mailaiT('att.unknownSender') || '未知发件人'))}</small>
       </span>
       <span class="attachment-card-side">
         ${['danger', 'warn'].includes(getRiskLabel(item.score, item.verdict, item).class) ? `<em class="attachment-risk">${getRiskLabel(item.score, item.verdict, item).text}</em>` : ''}
         <span class="attachment-download-action" aria-hidden="true"><svg class="attachment-download" viewBox="0 0 20 20"><path d="M10 3v9m-3-3 3 3 3-3M4 15h12"/></svg></span>
       </span>
-    </a>`).join('') : '<div class="attachment-empty">没有找到匹配的附件</div>';
+    </a>`).join('') : `<div class="attachment-empty">${mailaiT('att.noMatch') || '没有找到匹配的附件'}</div>`;
 }
 
 async function openAttachmentCenter() {
@@ -6982,23 +7443,23 @@ function renderTodoCenter() {
   selectedTodoIds = new Set([...selectedTodoIds].filter(id => visibleIds.has(id)));
   const now = localDateKey();
   const openCount = rows.filter(item => item.status !== 'done').length;
-  document.getElementById('todo-count').textContent = `${openCount} 项未完成`;
+  document.getElementById('todo-count').textContent = (mailaiT('todo.openCount') || '{n} 项未完成').replace('{n}', openCount);
   const visibleRows = rows.slice(0, todoRenderLimit);
   document.getElementById('todo-list').innerHTML = rows.length ? visibleRows.map(item => {
     const date = String(item.deadline || '').slice(0, 10);
     const sourceDate = item.email_date || item.email_indexed_at || item.created_at || '';
     const overdue = item.status !== 'done' && date && date < now;
     return `<article class="todo-center-item ${item.status === 'done' ? 'done' : ''} ${overdue ? 'overdue' : ''}" data-todo-id="${item.id}">
-      <label class="todo-select" title="${item.status === 'done' ? '已完成待办不可批量选择' : '选择此待办'}"><input type="checkbox" data-todo-select="${item.id}" ${selectedTodoIds.has(item.id) ? 'checked' : ''} ${item.status === 'done' ? 'disabled' : ''}><span></span></label>
-      <div class="todo-main"><input class="todo-title-input" value="${esc(item.title)}" aria-label="待办标题"><div class="todo-source-meta"><button type="button" class="todo-source" data-todo-email="${item.email_id}">${esc(item.email_subject || '查看来源邮件')}</button><time datetime="${esc(sourceDate)}" title="来源邮件时间：${esc(sourceDate)}">邮件时间 ${esc(fmtDate(sourceDate))}</time></div></div>
-      <label class="todo-date ${overdue ? 'overdue' : ''}"><span>${overdue ? '已过期' : item.stage === 'waiting' ? '跟进日期' : '截止日期'}</span><input type="date" value="${esc(date)}" aria-label="截止日期"></label>
-      <span class="todo-plan-actions"><button type="button" class="todo-status-action" data-todo-plan="${item.id}">${item.stage === 'waiting' ? '等待反馈 · 安排' : '安排 / 提醒'}</button>
-      <button type="button" class="todo-status-action" data-todo-toggle="${item.id}">${item.status === 'done' ? '恢复' : '<span>✓</span> 完成'}</button></span>
+      <label class="todo-select" title="${item.status === 'done' ? (mailaiT('todo.selectDoneTitle') || '已完成待办不可批量选择') : (mailaiT('todo.selectTitle') || '选择此待办')}"><input type="checkbox" data-todo-select="${item.id}" ${selectedTodoIds.has(item.id) ? 'checked' : ''} ${item.status === 'done' ? 'disabled' : ''}><span></span></label>
+      <div class="todo-main"><input class="todo-title-input" value="${esc(item.title)}" aria-label="${mailaiT('todo.titleAria') || '待办标题'}"><div class="todo-source-meta"><button type="button" class="todo-source" data-todo-email="${item.email_id}">${esc(item.email_subject || (mailaiT('todo.viewSource') || '查看来源邮件'))}</button><time datetime="${esc(sourceDate)}" title="${(mailaiT('todo.sourceTimeTitle') || '来源邮件时间：{d}').replace('{d}', esc(sourceDate))}">${mailaiT('todo.sourceTime') || '邮件时间'} ${esc(fmtDate(sourceDate))}</time></div></div>
+      <label class="todo-date ${overdue ? 'overdue' : ''}"><span>${overdue ? (mailaiT('todo.overdue') || '已过期') : item.stage === 'waiting' ? (mailaiT('todo.followUp') || '跟进日期') : (mailaiT('todo.deadline') || '截止日期')}</span><input type="date" value="${esc(date)}" aria-label="${mailaiT('todo.deadline') || '截止日期'}"></label>
+      <span class="todo-plan-actions"><button type="button" class="todo-status-action" data-todo-plan="${item.id}">${item.stage === 'waiting' ? (mailaiT('todo.waitingPlan') || '等待反馈 · 安排') : (mailaiT('todo.plan') || '安排 / 提醒')}</button>
+      <button type="button" class="todo-status-action" data-todo-toggle="${item.id}">${item.status === 'done' ? (mailaiT('todo.restore') || '恢复') : `<span>✓</span> ${mailaiT('todo.done') || '完成'}`}</button></span>
     </article>`;
   }).join('') + (rows.length > visibleRows.length ? `
     <button type="button" class="todo-render-more" data-todo-render-more>
-      显示更多待办 <small>还有 ${rows.length - visibleRows.length} 项</small>
-    </button>` : '') : '<div class="attachment-empty">暂无待办事项</div>';
+      ${mailaiT('todo.showMore') || '显示更多待办'} <small>${(mailaiT('todo.showMoreCount') || '还有 {n} 项').replace('{n}', rows.length - visibleRows.length)}</small>
+    </button>` : '') : `<div class="attachment-empty">${mailaiT('todo.empty') || '暂无待办事项'}</div>`;
   updateTodoBatchToolbar(rows);
 }
 
@@ -7013,7 +7474,7 @@ function updateTodoBatchToolbar(rows = allTodos.filter(item => document.getEleme
   selectAll.disabled = selectable.length === 0;
   const selectedButton = document.getElementById('todo-complete-selected');
   selectedButton.disabled = selectedOpen.length === 0;
-  selectedButton.textContent = selectedOpen.length ? `完成所选 ${selectedOpen.length}` : '完成所选';
+  selectedButton.textContent = selectedOpen.length ? (mailaiT('todo.completeSelectedN') || '完成所选 {n}').replace('{n}', selectedOpen.length) : (mailaiT('todo.completeSelected') || '完成所选');
   document.getElementById('todo-complete-all').disabled = selectable.length === 0;
 }
 
@@ -7325,9 +7786,11 @@ document.getElementById('btn-test-model').addEventListener('click', async () => 
   finally { setLoading(button, false); }
 });
 function diagnosticAdvice(item) {
-  const mail = item.name === '邮箱收信' || item.name === 'SMTP 发信' || item.name === '系统凭据库';
+  // 诊断条目名称随界面语言变化，匹配必须走后端下发的稳定 id
+  const id = item.id || '';
+  const mail = ['imap', 'smtp', 'vault'].includes(id) || (!id && (item.name === '邮箱收信' || item.name === 'SMTP 发信' || item.name === '系统凭据库'));
   if (mail) {
-    const smtp = item.name === 'SMTP 发信';
+    const smtp = id === 'smtp' || (!id && item.name === 'SMTP 发信');
     const advice = {
       authentication: mailaiT('diag.a.authentication') || '请重新填写该邮箱的客户端授权码，并确认邮箱服务已允许客户端登录。',
       credential_missing: mailaiT('diag.a.credentialMissing') || '本机没有可用授权码，请重新填写客户端授权码。',
@@ -7343,7 +7806,7 @@ function diagnosticAdvice(item) {
       ['authentication','credential_missing','credential_session'].includes(item.issue) ? 'mail-password' :
       smtp ? 'mail-smtp-host' : 'mail-port'};
   }
-  if (item.name === 'AI 模型') return {advice:item.issue === 'authentication' ? (mailaiT('diag.a.modelAuth') || '请检查模型 API Key 是否有效。') :
+  if (id === 'model' || (!id && item.name === 'AI 模型')) return {advice:item.issue === 'authentication' ? (mailaiT('diag.a.modelAuth') || '请检查模型 API Key 是否有效。') :
     (mailaiT('diag.a.modelGeneral') || '请检查模型地址、API Key 和网络连接。'), action:mailaiT('diag.openModel') || '打开模型设置', target:'maintenance', field:'model-base-url'};
   return null;
 }
@@ -7368,7 +7831,7 @@ document.getElementById('btn-run-diagnostics').addEventListener('click', async (
   const results = document.getElementById('diagnostic-results');
   setLoading(button, true, mailaiT('diag.checking') || '检查中…');
   try {
-    const data = await api('/api/system/diagnostics');
+    const data = await api(`/api/system/diagnostics?lang=${encodeURIComponent(currentI18nLanguage())}`);
     const activeAccount = (_systemConfig?.accounts || []).find(account => account.active);
     results.innerHTML = `<p class="diagnostic-scope">${activeAccount ? (mailaiT('diag.scope') || '本次检查：{user}。').replace('{user}', esc(activeAccount.user)) : (mailaiT('diag.scopeNone') || '本次未检测到正在使用的邮箱。')}${mailaiT('diag.scopeNote') || '诊断会实测当前邮箱和已配置的模型服务。'}</p>` + data.checks.map((item, index) => {
       const status = item.status || (item.ok ? 'pass' : 'fail');
@@ -7762,7 +8225,7 @@ document.getElementById('btn-toggle-advanced-rules').addEventListener('click', e
   const opening = content.classList.contains('hidden');
   content.classList.toggle('hidden', !opening);
   event.currentTarget.setAttribute('aria-expanded', String(opening));
-  event.currentTarget.querySelector('i').textContent = opening ? '收起' : '展开';
+  event.currentTarget.querySelector('i').textContent = opening ? (mailaiT('rules.collapse') || '收起') : (mailaiT('rules.expand') || '展开');
 });
 document.getElementById('btn-save-thresholds').addEventListener('click', async () => {
   const review = Number(document.getElementById('threshold-review').value);
@@ -8700,7 +9163,7 @@ async function refreshContactGroups() {
   contactGroups = groups;
   const filter = document.getElementById('contact-group-filter');
   const selected = filter.value;
-  filter.innerHTML = '<option value="">全部分组</option><option value="__ungrouped__">未分组</option>' + groups.map(g => `<option value="${esc(g.name)}">${esc(g.name)} (${g.count})</option>`).join('');
+  filter.innerHTML = `<option value="">${mailaiT('contact.allGroups') || '全部分组'}</option><option value="__ungrouped__">${mailaiT('contact.ungrouped') || '未分组'}</option>` + groups.map(g => `<option value="${esc(g.name)}">${esc(g.name)} (${g.count})</option>`).join('');
   filter.value = [...filter.options].some(o => o.value === selected) ? selected : '';
   document.getElementById('contact-group-options').innerHTML = groups.map(g => `<option value="${esc(g.name)}"></option>`).join('');
   updateContactGroupControls();
@@ -8711,20 +9174,20 @@ function updateContactGroupControls() {
   document.getElementById('group-select-all').classList.toggle('hidden', !contactPickerTarget);
 }
 function initializeContactGroups() {
-  document.getElementById('contact-company').parentElement.insertAdjacentHTML('afterend', '<label>分组<input id="contact-group-name" list="contact-group-options" maxlength="80" placeholder="选择或输入分组名称"><datalist id="contact-group-options"></datalist></label>');
-  document.querySelector('.contact-center-tools').insertAdjacentHTML('afterend', `<div class="contact-group-toolbar"><select id="contact-group-filter" aria-label="联系人分组"><option value="">全部分组</option></select><button id="group-create" type="button">新增分组</button><button id="group-add-members" type="button" disabled>添加人员</button><button id="group-rename" type="button" disabled>修改分组</button><button id="group-delete" type="button" disabled>删除分组</button><button id="group-select-all" type="button" class="hidden">全选当前列表</button></div>`);
+  document.getElementById('contact-company').parentElement.insertAdjacentHTML('afterend', `<label><span data-i18n="contact.groupLabel">分组</span><input id="contact-group-name" list="contact-group-options" maxlength="80" data-i18n-placeholder="contact.groupPlaceholder" placeholder="选择或输入分组名称"><datalist id="contact-group-options"></datalist></label>`);
+  document.querySelector('.contact-center-tools').insertAdjacentHTML('afterend', `<div class="contact-group-toolbar"><select id="contact-group-filter" aria-label="联系人分组" data-i18n-aria="contact.groupAria"><option value="">${mailaiT('contact.allGroups') || '全部分组'}</option></select><button id="group-create" type="button" data-i18n="contact.groupCreate">新增分组</button><button id="group-add-members" type="button" disabled data-i18n="contact.addMembers">添加人员</button><button id="group-rename" type="button" disabled data-i18n="contact.groupRename">修改分组</button><button id="group-delete" type="button" disabled data-i18n="contact.groupDelete">删除分组</button><button id="group-select-all" type="button" class="hidden" data-i18n="contact.selectAll">全选当前列表</button></div>`);
   document.getElementById('contact-group-filter').onchange = () => { loadContactCenter(); updateContactGroupControls(); };
   document.getElementById('group-select-all').onclick = () => {
     const group = document.getElementById('contact-group-filter').value;
     contactCenterItems.filter(item => !group || (group === '__ungrouped__' ? !item.group_name : item.group_name === group)).forEach(item => selectedContactEmails.add(item.email));
     renderContactCenter();
   };
-  document.body.insertAdjacentHTML('beforeend', `<dialog id="group-dialog" class="library-dialog"><form id="group-dialog-form"><h2 id="group-dialog-title">新增分组</h2><label>分组名称<input id="group-dialog-name" maxlength="80" required autocomplete="off"></label><p id="group-dialog-error" role="alert"></p><footer><button type="button" data-library-close="group-dialog">取消</button><button type="submit">保存分组</button></footer></form></dialog>`);
+  document.body.insertAdjacentHTML('beforeend', `<dialog id="group-dialog" class="library-dialog"><form id="group-dialog-form"><h2 id="group-dialog-title" data-i18n="contact.groupCreate">新增分组</h2><label><span data-i18n="contact.groupName">分组名称</span><input id="group-dialog-name" maxlength="80" required autocomplete="off"></label><p id="group-dialog-error" role="alert"></p><footer><button type="button" data-library-close="group-dialog" data-i18n="common.cancel">取消</button><button type="submit" data-i18n="contact.groupSave">保存分组</button></footer></form></dialog>`);
   const open = rename => {
     const dialog = document.getElementById('group-dialog');
     dialog.dataset.previous = rename ? document.getElementById('contact-group-filter').value : '';
     dialog.dataset.accountId = contactAccountId();
-    document.getElementById('group-dialog-title').textContent = rename ? '修改分组' : '新增分组';
+    document.getElementById('group-dialog-title').textContent = rename ? (mailaiT('contact.groupRename') || '修改分组') : (mailaiT('contact.groupCreate') || '新增分组');
     document.getElementById('group-dialog-name').value = dialog.dataset.previous;
     document.getElementById('group-dialog-error').textContent = '';
     dialog.showModal();
@@ -9214,7 +9677,7 @@ async function refreshTaskCenter({lightweight = false} = {}) {
         }; actions.append(button);
       }
     }
-    document.getElementById('btn-task-center').textContent = `任务与发件箱${attentionCount ? ` · ${attentionCount} 项需处理` : activeCount ? ` · ${activeCount} 项进行中` : ''}`;
+    document.getElementById('btn-task-center').textContent = `${mailaiT('task.title') || '任务与发件箱'}${attentionCount ? (mailaiT('task.badgeAttention') || ' · {n} 项需处理').replace('{n}', attentionCount) : activeCount ? (mailaiT('task.badgeActive') || ' · {n} 项进行中').replace('{n}', activeCount) : ''}`;
     for (const reminder of allReminders.filter(item => new Date(item.at).getTime() <= Date.now())) {
       const reminderAccount = reminder.account_id;
       const key = `reminder:${reminderAccount}:${reminder.todo_id || reminder.email_id}:${reminder.at}`;
@@ -9494,10 +9957,10 @@ function initializeWorkspace() {
   });
   document.body.insertAdjacentHTML('beforeend', `<div id="workspace-notice" class="workspace-notice hidden" role="status" aria-live="polite"></div>
     <div id="task-center-backdrop" class="task-center-backdrop hidden"></div>
-    <section id="task-center" class="task-center hidden" role="dialog" aria-modal="true" aria-labelledby="task-center-title"><header><div class="task-center-heading"><span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg></span><div><h2 id="task-center-title">任务与发件箱</h2><p>只展示进行中或需要你处理的事项</p></div></div><button type="button" id="close-task-center" aria-label="关闭任务与发件箱"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"/></svg></button></header><div id="task-center-list"><div class="task-loading"><i></i><span>正在读取任务状态…</span></div></div></section>
-    <dialog id="reminder-dialog"><form method="dialog"><h3>稍后提醒</h3><label>提醒时间 <input type="datetime-local" id="reminder-time" required></label><p><button value="cancel">取消</button><button type="button" id="save-reminder">保存提醒</button></p></form></dialog>`);
+    <section id="task-center" class="task-center hidden" role="dialog" aria-modal="true" aria-labelledby="task-center-title"><header><div class="task-center-heading"><span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg></span><div><h2 id="task-center-title" data-i18n="task.title">任务与发件箱</h2><p data-i18n="task.subtitle">只展示进行中或需要你处理的事项</p></div></div><button type="button" id="close-task-center" aria-label="关闭任务与发件箱" data-i18n-aria="task.close"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"/></svg></button></header><div id="task-center-list"><div class="task-loading"><i></i><span data-i18n="task.loading">正在读取任务状态…</span></div></div></section>
+    <dialog id="reminder-dialog"><form method="dialog"><h3 data-i18n="task.remindTitle">稍后提醒</h3><label><span data-i18n="task.remindTime">提醒时间</span> <input type="datetime-local" id="reminder-time" required></label><p><button value="cancel" data-i18n="common.cancel">取消</button><button type="button" id="save-reminder" data-i18n="task.remindSave">保存提醒</button></p></form></dialog>`);
   const listHeader = document.querySelector('.list-header');
-  listHeader.insertAdjacentHTML('afterend', '<div class="list-workspace-tools"><button id="btn-filter-panel" aria-expanded="false">筛选</button><button id="btn-task-center" aria-expanded="false" aria-controls="task-center">任务与发件箱</button><div id="filter-chips"></div></div>');
+  listHeader.insertAdjacentHTML('afterend', `<div class="list-workspace-tools"><button id="btn-filter-panel" aria-expanded="false" data-i18n="filter.toggle">筛选</button><button id="btn-task-center" aria-expanded="false" aria-controls="task-center" data-i18n="task.title">任务与发件箱</button><div id="filter-chips"></div></div>`);
   const filters = document.querySelector('.mail-filter-group');
   filters.id = 'workspace-filters'; filters.classList.add('hidden'); document.querySelector('.list-workspace-tools').after(filters);
   document.getElementById('btn-filter-panel').onclick = event => { const hidden = filters.classList.toggle('hidden'); event.currentTarget.setAttribute('aria-expanded', String(!hidden)); };
@@ -10376,7 +10839,7 @@ initializeWorkspace();
     show('尚未连接邮箱', '连接邮箱后开始同步邮件。小邮需要另外配置模型服务，你可以先在设置中了解功能。', '连接邮箱', () => { el('onboarding-overlay').classList.remove('hidden'); hideCard(); });
   };
   const replay = document.createElement('button'); replay.className = 'guide-replay-action'; replay.type = 'button';
-  replay.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 7.5A6 6 0 1 0 16 12M15.5 3.5v4h-4"/></svg><span>重新体验引导</span>';
+  replay.innerHTML = `<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 7.5A6 6 0 1 0 16 12M15.5 3.5v4h-4"/></svg><span>${mailaiT('guide.replay') || '重新体验引导'}</span>`;
   replay.onclick = () => { state.mailboxDone = state.aiDone = state.deferred = false; state.mailboxStep = 0; save(); if (!_systemConfig?.mail?.logged_in) return el('onboarding-overlay').classList.remove('hidden'); hideSystemView(); mailboxRunning = true; mailboxStep(); };
   document.querySelector('[data-system-panel="guide"] .guide-intro-actions').append(replay);
   window.mailOnboarding = {openModel, refreshAssistant, disconnected, connected, configChanged: () => setTimeout(refreshAssistant, 0), answered: () => {

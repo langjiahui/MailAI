@@ -753,21 +753,28 @@ def test_model(values: dict | None = None) -> dict:
         return {"ok": False, "message": str(exc)}
 
 
-def diagnostics() -> dict:
+def diagnostics(lang: str = "zh") -> dict:
     """Run real local and remote probes without returning credentials or mail content."""
+    # 诊断名称与说明是后端固有文案；前端按当前界面语言传 lang，英文界面不落中文。
+    en = lang == "en"
+    def t(zh: str, en_text: str) -> str:
+        return en_text if en else zh
+
     checks = []
     def add(name: str, status: str, detail: str, *, probe: str = "local",
-            issue: str = ""):
-        checks.append({"name": name, "status": status, "ok": status == "pass",
+            issue: str = "", check_id: str = ""):
+        # check_id 是不随语言变化的稳定标识，前端据此给出修复指引
+        checks.append({"id": check_id, "name": name, "status": status, "ok": status == "pass",
                        "detail": detail, "probe": probe, "issue": issue})
 
     try:
         with _sqlite_connection(config.DB_PATH) as connection:
             integrity = connection.execute("PRAGMA quick_check").fetchone()[0]
-        add("本地数据库", "pass" if integrity == "ok" else "fail",
-            "结构与索引校验通过" if integrity == "ok" else "数据库校验异常")
+        add(t("本地数据库", "Local database"), "pass" if integrity == "ok" else "fail",
+            t("结构与索引校验通过", "Structure and index check passed") if integrity == "ok"
+            else t("数据库校验异常", "Database integrity check failed"), check_id="db")
     except (OSError, sqlite3.Error):
-        add("本地数据库", "fail", "数据库无法打开或校验")
+        add(t("本地数据库", "Local database"), "fail", t("数据库无法打开或校验", "Database cannot be opened or verified"), check_id="db")
 
     registry = _load_registry()
     visible_accounts = [item for item in registry.get("accounts", {}).values()
@@ -777,38 +784,44 @@ def diagnostics() -> dict:
     account = registry.get("accounts", {}).get(account_id, {})
     isolated = bool(account and os.path.realpath(account.get("db_path") or "") == os.path.realpath(config.DB_PATH)
                     and len(db_paths) == len(set(db_paths)))
-    add("账号隔离", "pass" if isolated else "fail",
-        "当前邮箱使用独立数据库" if isolated else "账号数据库映射异常，请重新打开软件")
+    add(t("账号隔离", "Account isolation"), "pass" if isolated else "fail",
+        t("当前邮箱使用独立数据库", "This mailbox uses its own database") if isolated
+        else t("账号数据库映射异常，请重新打开软件", "Account database mapping is broken; restart the app"),
+        check_id="isolation")
 
     password = account_password(account_id) if account_id else ""
     in_vault = bool(password) and account.get("credential_storage") != "session"
-    add("系统凭据库", "pass" if in_vault else "warning" if password else "fail",
-        "授权码已持久保存在系统凭据库" if in_vault else
-        "授权码仅在本次运行中有效" if password else "没有可用授权码",
-        issue="credential_session" if password and not in_vault else "credential_missing" if not password else "")
+    add(t("系统凭据库", "System credential vault"), "pass" if in_vault else "warning" if password else "fail",
+        t("授权码已持久保存在系统凭据库", "Password is stored persistently in the system credential vault") if in_vault else
+        t("授权码仅在本次运行中有效", "Password is only valid for this session") if password
+        else t("没有可用授权码", "No password available"),
+        issue="credential_session" if password and not in_vault else "credential_missing" if not password else "",
+        check_id="vault")
 
     def friendly_failure(kind: str, exc: Exception) -> tuple[str, str]:
         message = str(exc).lower()
         if any(word in message for word in ("auth", "login", "credential", "password", "535", "401", "403")):
-            return f"{kind}认证失败，请核对授权码或 API Key", "authentication"
+            return t(f"{kind}认证失败，请核对授权码或 API Key",
+                     f"{kind} authentication failed; check the password or API key"), "authentication"
         if any(word in message for word in ("certificate", "ssl", "tls")):
-            return f"{kind}证书校验失败", "certificate"
+            return t(f"{kind}证书校验失败", f"{kind} certificate verification failed"), "certificate"
         if isinstance(exc, TimeoutError) or any(word in message for word in ("timeout", "timed out")):
-            return f"{kind}连接超时", "timeout"
+            return t(f"{kind}连接超时", f"{kind} connection timed out"), "timeout"
         if any(word in message for word in ("gaierror", "name or service not known", "nodename nor servname", "getaddrinfo")):
-            return f"{kind}服务器地址无法解析", "dns"
+            return t(f"{kind}服务器地址无法解析", f"{kind} server address cannot be resolved"), "dns"
         if "refused" in message:
-            return f"{kind}服务器拒绝连接", "refused"
-        return f"{kind}连接失败，请检查地址、网络和服务状态", "connection"
+            return t(f"{kind}服务器拒绝连接", f"{kind} server refused the connection"), "refused"
+        return t(f"{kind}连接失败，请检查地址、网络和服务状态",
+                 f"{kind} connection failed; check the address, network and service"), "connection"
 
     probes = {}
     if config.IMAP_USER and password:
         mail_values = {"host": config.IMAP_HOST, "port": config.IMAP_PORT,
                        "user": config.IMAP_USER, "password": password,
                        "ssl": config.IMAP_SSL, "verify_ssl": config.IMAP_VERIFY_SSL}
-        probes["邮箱收信"] = ("IMAP", lambda: test_mail_connection(mail_values))
+        probes[t("邮箱收信", "Mailbox receiving")] = ("IMAP", lambda: test_mail_connection(mail_values))
     else:
-        add("邮箱收信", "fail", "尚未登录或授权码不可用", probe="live", issue="credential_missing")
+        add(t("邮箱收信", "Mailbox receiving"), "fail", t("尚未登录或授权码不可用", "Not signed in or password unavailable"), probe="live", issue="credential_missing", check_id="imap")
 
     smtp_password = password if config.SMTP_USE_IMAP_CREDENTIALS else config.SMTP_PASSWORD
     smtp_user = config.IMAP_USER if config.SMTP_USE_IMAP_CREDENTIALS else config.SMTP_USER
@@ -817,14 +830,14 @@ def diagnostics() -> dict:
                        "smtp_user": smtp_user, "password": smtp_password,
                        "smtp_ssl": config.SMTP_SSL, "smtp_starttls": config.SMTP_STARTTLS,
                        "smtp_verify_ssl": config.SMTP_VERIFY_SSL}
-        probes["SMTP 发信"] = ("SMTP", lambda: smtp_client.test_connection(smtp_values))
+        probes[t("SMTP 发信", "SMTP sending")] = ("SMTP", lambda: smtp_client.test_connection(smtp_values))
     else:
-        add("SMTP 发信", "fail", "尚未配置完整的 SMTP 地址和凭据", probe="live", issue="configuration")
+        add(t("SMTP 发信", "SMTP sending"), "fail", t("尚未配置完整的 SMTP 地址和凭据", "SMTP address and credentials are not fully configured"), probe="live", issue="configuration", check_id="smtp")
 
     if llm_client.available():
-        probes["AI 模型"] = ("模型", lambda: test_model({}))
+        probes[t("AI 模型", "AI model")] = (t("模型", "Model"), lambda: test_model({}))
     else:
-        add("AI 模型", "fail", "尚未配置 API Key", probe="live", issue="configuration")
+        add(t("AI 模型", "AI model"), "fail", t("尚未配置 API Key", "No API key configured"), probe="live", issue="configuration", check_id="model")
 
     live_results = {}
     started = time.monotonic()
@@ -835,34 +848,40 @@ def diagnostics() -> dict:
             name, kind = futures[future]
             try:
                 result = future.result()
-                if name == "邮箱收信":
-                    live_results[name] = ("pass", f"实测登录成功，可读取 {result.get('folders', 0)} 个文件夹", "")
-                elif name == "SMTP 发信":
-                    live_results[name] = ("pass", "实测认证成功（未发送邮件）", "")
+                if name == t("邮箱收信", "Mailbox receiving"):
+                    live_results[name] = ("pass", t(f"实测登录成功，可读取 {result.get('folders', 0)} 个文件夹",
+                                                    f"Signed in successfully; {result.get('folders', 0)} folders readable"), "")
+                elif name == t("SMTP 发信", "SMTP sending"):
+                    live_results[name] = ("pass", t("实测认证成功（未发送邮件）", "Authentication succeeded (no mail sent)"), "")
                 elif result.get("ok"):
-                    live_results[name] = ("pass", f"实测请求成功 · {config.LLM_MODEL}", "")
+                    live_results[name] = ("pass", t(f"实测请求成功 · {config.LLM_MODEL}",
+                                                    f"Live request succeeded · {config.LLM_MODEL}"), "")
                 else:
-                    detail = str(result.get("message") or "接口未返回有效结果")
+                    detail = str(result.get("message") or t("接口未返回有效结果", "API returned no usable result"))
                     _, issue = friendly_failure(kind, RuntimeError(detail))
-                    live_results[name] = ("fail", "实测失败：" + detail, issue)
+                    live_results[name] = ("fail", t("实测失败：", "Live check failed: ") + detail, issue)
             except Exception as exc:
                 detail, issue = friendly_failure(kind, exc)
                 live_results[name] = ("fail", detail, issue)
-    for name in ("邮箱收信", "SMTP 发信", "AI 模型"):
+    live_ids = {t("邮箱收信", "Mailbox receiving"): "imap", t("SMTP 发信", "SMTP sending"): "smtp",
+                t("AI 模型", "AI model"): "model"}
+    for name in live_ids:
         if name in live_results:
             status, detail, issue = live_results[name]
-            add(name, status, detail, probe="live", issue=issue)
+            add(name, status, detail, probe="live", issue=issue, check_id=live_ids[name])
 
     job = db.get_sync_job()
     if job:
         job_status = job.get("status")
         status = "pass" if job_status == "completed" else "warning" if job_status in ("running", "pending") else "fail"
-        labels = {"completed": "已完成", "running": "进行中", "pending": "等待中",
-                  "failed": "失败", "canceled": "已暂停"}
-        add("历史邮件初始化", status,
-            f"{labels.get(job_status, job_status or '未知')} · {job.get('processed', 0)}/{job.get('total', 0)}")
+        labels = {"completed": t("已完成", "Completed"), "running": t("进行中", "Running"),
+                  "pending": t("等待中", "Pending"), "failed": t("失败", "Failed"),
+                  "canceled": t("已暂停", "Paused")}
+        add(t("历史邮件初始化", "Initial mail import"), status,
+            f"{labels.get(job_status, job_status or t('未知', 'Unknown'))} · {job.get('processed', 0)}/{job.get('total', 0)}",
+            check_id="init")
     else:
-        add("历史邮件初始化", "warning", "尚未启动")
+        add(t("历史邮件初始化", "Initial mail import"), "warning", t("尚未启动", "Not started"), check_id="init")
     return {"ok": not any(item["status"] == "fail" for item in checks), "checks": checks,
             "data_dir": os.path.basename(config.DATA_DIR),
             "duration_ms": round((time.monotonic() - started) * 1000),

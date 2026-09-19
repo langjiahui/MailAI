@@ -170,7 +170,7 @@
     show('尚未连接邮箱', '连接邮箱后开始同步邮件。小邮需要另外配置模型服务，你可以先在设置中了解功能。', '连接邮箱', () => { el('onboarding-overlay').classList.remove('hidden'); hideCard(); });
   };
   const replay = document.createElement('button'); replay.className = 'guide-replay-action'; replay.type = 'button';
-  replay.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 7.5A6 6 0 1 0 16 12M15.5 3.5v4h-4"/></svg><span>重新体验引导</span>';
+  replay.innerHTML = `<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 7.5A6 6 0 1 0 16 12M15.5 3.5v4h-4"/></svg><span>${mailaiT('guide.replay') || '重新体验引导'}</span>`;
   replay.onclick = () => { state.mailboxDone = state.aiDone = state.deferred = false; state.mailboxStep = 0; save(); if (!_systemConfig?.mail?.logged_in) return el('onboarding-overlay').classList.remove('hidden'); hideSystemView(); mailboxRunning = true; mailboxStep(); };
   document.querySelector('[data-system-panel="guide"] .guide-intro-actions').append(replay);
   window.mailOnboarding = {openModel, refreshAssistant, disconnected, connected, configChanged: () => setTimeout(refreshAssistant, 0), answered: () => {

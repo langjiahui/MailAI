@@ -7,7 +7,7 @@ const html = fs.readFileSync(path.join(__dirname, '../app/web/static/index.html'
 const styles = fs.readFileSync(path.join(__dirname, '../app/web/static/style.css'), 'utf8');
 const groupStart = source.indexOf('function mailDateGroup(');
 const groupEnd = source.indexOf('\nfunction fmtDate(', groupStart);
-const groupContext = vm.createContext({Date, Number, String});
+const groupContext = vm.createContext({Date, Number, String, mailaiT: () => null});
 vm.runInContext(source.slice(groupStart, groupEnd), groupContext);
 const referenceNow = new Date(2026, 8, 7, 12, 0, 0);
 assert.deepEqual(
@@ -68,7 +68,7 @@ assert.match(source, /data-mailai-signature/, 'Draft and send HTML must preserve
 assert.match(source, /contactInput\.value = \[prefix, contactRecipientValue\(item\)\]\.filter\(Boolean\)\.join\(', '\)/, 'Choosing a contact must retain its display name without leaving a trailing comma');
 const recipientStart = source.indexOf('function lastRecipientSeparatorIndex');
 const recipientEnd = source.indexOf('function hideContactSuggestions', recipientStart);
-const recipientContext = vm.createContext({String});
+const recipientContext = vm.createContext({String, mailaiT: () => null});
 vm.runInContext(source.slice(recipientStart, recipientEnd), recipientContext);
 assert.equal(recipientContext.normalizeRecipientText(' first@example.com， second@example.com； '), 'first@example.com, second@example.com');
 assert.equal(recipientContext.normalizeRecipientText('first@example.com, '), 'first@example.com');
@@ -117,7 +117,7 @@ let release;
 let delayed = false;
 let renderCount = 0;
 const context = vm.createContext({
-  Map, Promise, encodeURIComponent,
+  mailaiT: () => null, Map, Promise, encodeURIComponent,
   mailLoadRevision: 0, currentServerFolder: '', currentFilter: {days: 9999},
   allEmails: [], allTodos: [], sentMessages: [], savedDrafts: [],
   updateSidebar() { renderCount++; }, updateDomainFilter() {}, applyFilters() {},

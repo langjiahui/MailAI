@@ -330,8 +330,9 @@ def api_model_test(payload: ModelConfigRequest | None = None):
 
 
 @router.get("/api/system/diagnostics")
-def api_system_diagnostics():
-    return system_settings.diagnostics()
+def api_system_diagnostics(lang: str = "zh"):
+    # 界面语言来自前端偏好；只允许已知语言码，避免反射进文案
+    return system_settings.diagnostics(lang=lang if lang in ("zh", "en") else "zh")
 
 
 @router.get('/api/preferences')

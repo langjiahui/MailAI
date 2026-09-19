@@ -9,7 +9,7 @@ async function refreshContactGroups() {
   contactGroups = groups;
   const filter = document.getElementById('contact-group-filter');
   const selected = filter.value;
-  filter.innerHTML = '<option value="">全部分组</option><option value="__ungrouped__">未分组</option>' + groups.map(g => `<option value="${esc(g.name)}">${esc(g.name)} (${g.count})</option>`).join('');
+  filter.innerHTML = `<option value="">${mailaiT('contact.allGroups') || '全部分组'}</option><option value="__ungrouped__">${mailaiT('contact.ungrouped') || '未分组'}</option>` + groups.map(g => `<option value="${esc(g.name)}">${esc(g.name)} (${g.count})</option>`).join('');
   filter.value = [...filter.options].some(o => o.value === selected) ? selected : '';
   document.getElementById('contact-group-options').innerHTML = groups.map(g => `<option value="${esc(g.name)}"></option>`).join('');
   updateContactGroupControls();
@@ -20,20 +20,20 @@ function updateContactGroupControls() {
   document.getElementById('group-select-all').classList.toggle('hidden', !contactPickerTarget);
 }
 function initializeContactGroups() {
-  document.getElementById('contact-company').parentElement.insertAdjacentHTML('afterend', '<label>分组<input id="contact-group-name" list="contact-group-options" maxlength="80" placeholder="选择或输入分组名称"><datalist id="contact-group-options"></datalist></label>');
-  document.querySelector('.contact-center-tools').insertAdjacentHTML('afterend', `<div class="contact-group-toolbar"><select id="contact-group-filter" aria-label="联系人分组"><option value="">全部分组</option></select><button id="group-create" type="button">新增分组</button><button id="group-add-members" type="button" disabled>添加人员</button><button id="group-rename" type="button" disabled>修改分组</button><button id="group-delete" type="button" disabled>删除分组</button><button id="group-select-all" type="button" class="hidden">全选当前列表</button></div>`);
+  document.getElementById('contact-company').parentElement.insertAdjacentHTML('afterend', `<label><span data-i18n="contact.groupLabel">分组</span><input id="contact-group-name" list="contact-group-options" maxlength="80" data-i18n-placeholder="contact.groupPlaceholder" placeholder="选择或输入分组名称"><datalist id="contact-group-options"></datalist></label>`);
+  document.querySelector('.contact-center-tools').insertAdjacentHTML('afterend', `<div class="contact-group-toolbar"><select id="contact-group-filter" aria-label="联系人分组" data-i18n-aria="contact.groupAria"><option value="">${mailaiT('contact.allGroups') || '全部分组'}</option></select><button id="group-create" type="button" data-i18n="contact.groupCreate">新增分组</button><button id="group-add-members" type="button" disabled data-i18n="contact.addMembers">添加人员</button><button id="group-rename" type="button" disabled data-i18n="contact.groupRename">修改分组</button><button id="group-delete" type="button" disabled data-i18n="contact.groupDelete">删除分组</button><button id="group-select-all" type="button" class="hidden" data-i18n="contact.selectAll">全选当前列表</button></div>`);
   document.getElementById('contact-group-filter').onchange = () => { loadContactCenter(); updateContactGroupControls(); };
   document.getElementById('group-select-all').onclick = () => {
     const group = document.getElementById('contact-group-filter').value;
     contactCenterItems.filter(item => !group || (group === '__ungrouped__' ? !item.group_name : item.group_name === group)).forEach(item => selectedContactEmails.add(item.email));
     renderContactCenter();
   };
-  document.body.insertAdjacentHTML('beforeend', `<dialog id="group-dialog" class="library-dialog"><form id="group-dialog-form"><h2 id="group-dialog-title">新增分组</h2><label>分组名称<input id="group-dialog-name" maxlength="80" required autocomplete="off"></label><p id="group-dialog-error" role="alert"></p><footer><button type="button" data-library-close="group-dialog">取消</button><button type="submit">保存分组</button></footer></form></dialog>`);
+  document.body.insertAdjacentHTML('beforeend', `<dialog id="group-dialog" class="library-dialog"><form id="group-dialog-form"><h2 id="group-dialog-title" data-i18n="contact.groupCreate">新增分组</h2><label><span data-i18n="contact.groupName">分组名称</span><input id="group-dialog-name" maxlength="80" required autocomplete="off"></label><p id="group-dialog-error" role="alert"></p><footer><button type="button" data-library-close="group-dialog" data-i18n="common.cancel">取消</button><button type="submit" data-i18n="contact.groupSave">保存分组</button></footer></form></dialog>`);
   const open = rename => {
     const dialog = document.getElementById('group-dialog');
     dialog.dataset.previous = rename ? document.getElementById('contact-group-filter').value : '';
     dialog.dataset.accountId = contactAccountId();
-    document.getElementById('group-dialog-title').textContent = rename ? '修改分组' : '新增分组';
+    document.getElementById('group-dialog-title').textContent = rename ? (mailaiT('contact.groupRename') || '修改分组') : (mailaiT('contact.groupCreate') || '新增分组');
     document.getElementById('group-dialog-name').value = dialog.dataset.previous;
     document.getElementById('group-dialog-error').textContent = '';
     dialog.showModal();
