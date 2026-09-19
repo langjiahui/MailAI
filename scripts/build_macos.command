@@ -51,6 +51,7 @@ if [[ -n "${MAILAI_SIGN_IDENTITY:-}" ]]; then
 fi
 
 ditto -c -k --sequesterRsrc --keepParent dist/MailAI.app dist/MailAI-macOS.zip
+echo "打包 zip 完成"
 
 # 标准安装器固定写入 /Applications，并主动刷新系统应用索引。
 PKG_SCRIPTS="$(mktemp -d)"
@@ -101,6 +102,7 @@ PREINSTALL
 cp scripts/macos_postinstall "$PKG_SCRIPTS/postinstall"
 chmod 755 "$PKG_SCRIPTS/preinstall" "$PKG_SCRIPTS/postinstall"
 ditto dist/MailAI.app "$PKG_ROOT/MailAI.app"
+echo "拷贝 pkg root 完成"
 pkgbuild \
   --root "$PKG_ROOT" \
   --component-plist scripts/macos-components.plist \
@@ -108,7 +110,8 @@ pkgbuild \
   --identifier com.langjiahui.mailai.installer \
   --version "$MAILAI_RELEASE_VERSION" \
   --scripts "$PKG_SCRIPTS" \
-  dist/MailAI-macOS-arm64.pkg >/dev/null
+  dist/MailAI-macOS-arm64.pkg
+echo "pkgbuild 完成"
 
 if [[ -n "${MAILAI_INSTALLER_IDENTITY:-}" ]]; then
   echo "使用开发者证书为安装器签名：$MAILAI_INSTALLER_IDENTITY"
@@ -121,5 +124,6 @@ fi
 DMG_STAGE="$(mktemp -d)"
 ditto dist/MailAI-macOS-arm64.pkg "$DMG_STAGE/安装 MailAI.pkg"
 hdiutil create -quiet -volname MailAI -srcfolder "$DMG_STAGE" -ov -format UDZO dist/MailAI-macOS-arm64.dmg
+echo "dmg 完成"
 rm -rf "dist/MailAI" "dist/MailAI.app"
 echo "构建完成：dist/MailAI-macOS-arm64.dmg、dist/MailAI-macOS-arm64.pkg、dist/MailAI-macOS.zip"
