@@ -40,7 +40,8 @@ for _ in $(seq 1 45); do
   sleep 1
 done
 curl -fsS -o /dev/null "http://127.0.0.1:18931/static/i18n.js" || { echo "冒烟失败：Web 面板未应答"; tail -20 "$SMOKE_LOG"; exit 1; }
-curl -fsS -o /dev/null "http://127.0.0.1:18931/api/system/diagnostics" || { echo "冒烟失败：诊断接口未应答"; tail -20 "$SMOKE_LOG"; exit 1; }
+# 诊断等接口需要账号鉴权（401），冒烟只探测匿名可达的页面与静态资源。
+curl -fsS -o /dev/null "http://127.0.0.1:18931/" || { echo "冒烟失败：首页未应答"; tail -20 "$SMOKE_LOG"; exit 1; }
 kill "$SMOKE_PID" 2>/dev/null || true
 wait "$SMOKE_PID" 2>/dev/null || true
 echo "冒烟通过：onedir 可启动并应答"
