@@ -5,7 +5,7 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v2.0.1**
+当前版本：**v2.0.2**
 
 本次更新：智能助手进化与全平台覆盖。小邮助手新增受控操作（创建待办、起草回复、标记已读：白名单校验 + 确认卡片 + 审计留痕，助手不能绕过人工确认执行动作）；新增可选语义检索（本地 BGE-small-zh 嵌入模型，向量存于本机数据库，数据不出本机，未启用时自动回落关键词检索）；新增 Ollama 本地模型预设，免密钥接入本地开源模型；新增界面国际化框架与首个英文切片（顶栏、安全菜单、看板与常用设置，可在设置中一键切换）；便携迁移包支持按日期范围选择性导出（自动清理范围外邮件的待办、链接链等关联数据，迁移清单记录筛选条件）；新增 Linux x64 AppImage 安装包（发布流水线全量验证）；发布流水线支持可选代码签名（配置证书后自动签名 Windows 安装器与 macOS 应用及安装包，未配置时保持未签名发布，行为不变）；暗色主题补齐安全结果徽标与邮箱账号标签样式。
 

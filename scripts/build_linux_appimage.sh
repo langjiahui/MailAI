@@ -50,7 +50,8 @@ echo "冒烟通过：onedir 可启动并应答"
 APPDIR=dist/MailAI-AppDir
 mkdir -p "$APPDIR/usr/bin"
 cp -R dist/MailAI "$APPDIR/usr/bin/MailAI"
-cp build/mailai.iconset/icon_256x256.png "$APPDIR/mailai.png"
+# build/ 不入库，图标直接使用已提交的源资产（与 Windows/macOS 图标同源）。
+cp app/web/static/assets/mailai-icon-256.png "$APPDIR/mailai.png"
 cat > "$APPDIR/AppRun" <<'APPRUN'
 #!/usr/bin/env bash
 exec "$APPDIR/usr/bin/MailAI/MailAI" "$@"
