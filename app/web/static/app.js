@@ -2817,16 +2817,16 @@ function applyFilters({silent = false} = {}) {
 function updateListTitle(count) {
   let title = currentServerFolder && serverFolderForRole('spam')?.name === currentServerFolder
     ? '垃圾邮件' : currentServerFolder && serverFolderForRole('quarantine')?.name === currentServerFolder
-      ? '隔离区' : (currentServerFolder || '全部邮件');
-  if (currentServerFolder && currentServerFolder === serverFolderForRole('trash')?.name) title = '已删除';
-  if (unifiedMailbox) title = '所有收件箱';
-  else if (currentFilter.status === 'local_archive') title = '本地归档';
-  else if (currentFilter.status === 'favorites') title = '我的收藏';
-  else if (currentFilter.status === 'inbox') title = '收件箱';
-  else if (currentFilter.status === 'quarantine') title = '隔离区';
-  else if (currentFilter.status === 'spam') title = '垃圾邮件';
-  else if (currentFilter.status === 'trash') title = '已删除';
-  const riskTitle = {phishing:'钓鱼邮件', suspicious:'可疑邮件', clean:'正常邮件', unreviewed:'待分析'}[currentFilter.verdict];
+      ? (mailaiT('side.quarantine') || '隔离区') : (currentServerFolder || (mailaiT('side.all') || '全部邮件'));
+  if (currentServerFolder && currentServerFolder === serverFolderForRole('trash')?.name) title = mailaiT('side.trash') || '已删除';
+  if (unifiedMailbox) title = mailaiT('list.allInboxes') || '所有收件箱';
+  else if (currentFilter.status === 'local_archive') title = mailaiT('list.localArchive') || '本地归档';
+  else if (currentFilter.status === 'favorites') title = mailaiT('side.favorites') || '我的收藏';
+  else if (currentFilter.status === 'inbox') title = mailaiT('side.inbox') || '收件箱';
+  else if (currentFilter.status === 'quarantine') title = mailaiT('side.quarantine') || '隔离区';
+  else if (currentFilter.status === 'spam') title = mailaiT('side.spam') || '垃圾邮件';
+  else if (currentFilter.status === 'trash') title = mailaiT('side.trash') || '已删除';
+  const riskTitle = {phishing:mailaiT('risk.phishing') || '钓鱼邮件', suspicious:mailaiT('risk.suspicious') || '可疑邮件', clean:mailaiT('risk.clean') || '正常邮件', unreviewed:mailaiT('risk.unreviewed') || '待分析'}[currentFilter.verdict];
   if (riskTitle) title += ` · ${riskTitle}`;
   if (currentFilter.category) title += ` · ${currentFilter.category}`;
   document.getElementById('list-title').textContent = title;
@@ -2840,8 +2840,13 @@ function updateListTitle(count) {
   const hasFacet = Boolean(currentFilter.verdict || currentFilter.category || currentFilter.priority ||
     currentFilter.domain || currentFilter.attachments || currentFilter.unread || currentFilter.search || currentFilter.days !== 9999);
   const countNode = document.getElementById('list-count');
-  countNode.textContent = serverTotal > count && hasFacet ? `${count} 封（当前范围共 ${serverTotal} 封）` : count + ' 封';
-  countNode.title = serverTotal > count && hasFacet ? `当前筛选结果 ${count} 封；邮箱范围共 ${serverTotal} 封` : '';
+  const countUnit = mailaiT('list.countMail') || ' 封';
+  countNode.textContent = serverTotal > count && hasFacet
+    ? (mailaiT('list.countScoped') || '{count} 封（当前范围共 {total} 封）').replace('{count}', count).replace('{total}', serverTotal)
+    : count + countUnit;
+  countNode.title = serverTotal > count && hasFacet
+    ? (mailaiT('list.countScopedTitle') || '当前筛选结果 {count} 封；邮箱范围共 {total} 封').replace('{count}', count).replace('{total}', serverTotal)
+    : '';
 }
 
 function specialMailboxRows() {
@@ -2868,8 +2873,8 @@ function renderSpecialMailbox({silent = false} = {}) {
   if (currentFilter.attachments) rows = rows.filter(row => row.attachments?.length);
   rows.sort((a,b) => (currentFilter.sort === 'date-asc' ? 1 : -1) * (new Date(a.date || 0) - new Date(b.date || 0)));
   renderEmailList(rows, {silent});
-  document.getElementById('list-title').textContent = specialMailbox === 'drafts' ? '草稿箱' : '已发送';
-  document.getElementById('list-count').textContent = rows.length + (specialMailbox === 'drafts' ? ' 封草稿' : ' 封');
+  document.getElementById('list-title').textContent = specialMailbox === 'drafts' ? (mailaiT('side.drafts') || '草稿箱') : (mailaiT('side.sent') || '已发送');
+  document.getElementById('list-count').textContent = rows.length + (specialMailbox === 'drafts' ? (mailaiT('list.countDraft') || ' 封草稿') : (mailaiT('list.countMail') || ' 封'));
 }
 
 // ===== 渲染邮件列表 =====
@@ -4096,8 +4101,8 @@ async function openTrashMailbox({resetPane = true} = {}) {
   const accountId = activeMailAccount()?.id;
   updateActiveNav();
   renderSidebarAccounts();
-  document.getElementById('list-title').textContent = '已删除';
-  document.getElementById('email-list').innerHTML = '<div class="email-empty"><div class="empty-text">正在读取已删除邮件…</div></div>';
+  document.getElementById('list-title').textContent = mailaiT('side.trash') || '已删除';
+  document.getElementById('email-list').innerHTML = `<div class="email-empty"><div class="empty-text">${mailaiT('list.loadingTrash') || '正在读取已删除邮件…'}</div></div>`;
   const folder = serverFolderForRole('trash')?.name;
   if (folder) {
     try { await api(`/api/mail/folders/sync?folder=${encodeURIComponent(folder)}`, {method:'POST',accountId}); }
@@ -5780,8 +5785,8 @@ async function loadServerFolder(folder) {
   document.getElementById('global-search').value = '';
   document.querySelectorAll('[data-server-folder]').forEach(button => button.classList.toggle('active', button.dataset.serverFolder === folder));
   document.getElementById('list-title').textContent = serverFolderForRole('spam')?.name === folder
-    ? '垃圾邮件' : serverFolderForRole('quarantine')?.name === folder ? '隔离区' : folder;
-  document.getElementById('email-list').innerHTML = '<div class="email-empty"><div class="empty-text">正在同步服务端文件夹…</div></div>';
+    ? (mailaiT('side.spam') || '垃圾邮件') : serverFolderForRole('quarantine')?.name === folder ? (mailaiT('side.quarantine') || '隔离区') : folder;
+  document.getElementById('email-list').innerHTML = `<div class="email-empty"><div class="empty-text">${mailaiT('list.loadingFolder') || '正在同步服务端文件夹…'}</div></div>`;
   try {
     const result = await api(`/api/mail/folders/sync?folder=${encodeURIComponent(folder)}`, {method:'POST'});
     const rows = await loadMailPages(`/api/emails?days=9999&folder=${encodeURIComponent(folder)}`, isCurrent);
@@ -6416,6 +6421,13 @@ document.getElementById('btn-export-portable').addEventListener('click', async (
   } catch (err) { toast(err.message, 'error'); } finally { setLoading(button, false); }
 });
 document.getElementById('btn-import-portable').addEventListener('click', () => document.getElementById('portable-backup-file').click());
+
+// 语言切换：静态标记由 applyI18n 处理，这里重渲染 JS 动态区域
+document.addEventListener('mailai:language-changed', () => {
+  try { applyFilters(); } catch (_) {}
+  try { addReadingActions(true); } catch (_) {}
+  try { loadSemanticStatus(); } catch (_) {}
+});
 document.getElementById('portable-backup-file').addEventListener('change', async event => {
   const file = event.target.files?.[0]; event.target.value = ''; if (!file) return;
   const signature = new Uint8Array(await file.slice(0, 8).arrayBuffer());

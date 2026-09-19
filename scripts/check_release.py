@@ -129,6 +129,7 @@ def main():
                  [node, str(ROOT / 'tests/test_review_actions.cjs')],
                  [node, str(ROOT / 'tests/test_assistant_ui.cjs')],
                  [node, str(ROOT / 'tests/test_assistant_actions.cjs')],
+                 [node, str(ROOT / 'tests/test_semantic_toggle.cjs')],
                  [node, str(ROOT / 'tests/test_assistant_markdown.cjs')],
                  [node, str(ROOT / 'tests/test_xiaoyou_brand.cjs')],
                  [node, str(ROOT / 'tests/test_summary_display.cjs')],

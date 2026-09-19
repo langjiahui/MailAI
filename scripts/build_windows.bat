@@ -71,6 +71,8 @@ REM let the installer deploy it; --noupx also avoids executable packer traits.
   --hidden-import "webview.platforms.winforms" ^
   --hidden-import "webview.platforms.edgechromium" ^
   --hidden-import "pystray._win32" ^
+  --hidden-import "fastembed" ^
+  --hidden-import "onnxruntime" ^
   --add-data "%CD%\app\web\static;app\web\static" ^
   --add-data "%CD%\mailai.defaults.env;." ^
   --add-data "%CD%\VERSION;." ^

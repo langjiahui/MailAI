@@ -244,7 +244,7 @@ async function loadSemanticStatus() {
   if (!status || !reindex || !toggle) return;
   const accountId = activeMailAccount()?.id;
   if (!accountId) {
-    status.textContent = '添加邮箱后即可启用';
+    status.textContent = mailaiT('semantic.needAccount') || '添加邮箱后即可启用';
     toggle.checked = false;
     reindex.classList.add('hidden');
     return;
@@ -254,18 +254,25 @@ async function loadSemanticStatus() {
       api('/api/preferences', {accountId}),
       api('/api/assistant/semantic', {accountId}),
     ]);
-    toggle.checked = !!prefs.semantic_enabled;
     if (!stats.deps_available) {
-      status.textContent = '未安装可选依赖（requirements-semantic.txt）';
+      // 依赖缺失时禁止打开开关，避免"开了但静默空转"
+      toggle.checked = false;
+      toggle.disabled = true;
+      toggle.closest('label')?.setAttribute('title', mailaiT('semantic.noDeps') || '未安装可选依赖（requirements-semantic.txt）');
+      status.textContent = mailaiT('semantic.noDeps') || '未安装可选依赖（requirements-semantic.txt）';
       reindex.classList.add('hidden');
       return;
     }
+    toggle.disabled = false;
+    toggle.closest('label')?.removeAttribute('title');
+    toggle.checked = !!prefs.semantic_enabled;
     status.textContent = stats.indexed
-      ? `已索引 ${stats.indexed} 封邮件${stats.last_indexed_at ? ` · ${String(stats.last_indexed_at).slice(0, 16)}` : ''}`
-      : '尚未建立索引';
+      ? (mailaiT('semantic.indexed') || '已索引 {n} 封邮件').replace('{n}', stats.indexed) +
+        (stats.last_indexed_at ? ` · ${String(stats.last_indexed_at).slice(0, 16)}` : '')
+      : (mailaiT('semantic.notIndexed') || '尚未建立索引');
     reindex.classList.toggle('hidden', !stats.enabled);
   } catch (_) {
-    status.textContent = '暂时无法读取状态';
+    status.textContent = mailaiT('semantic.error') || '暂时无法读取状态';
   }
 }
 
@@ -303,18 +310,23 @@ function syncPreferenceChoices() {
   }
 }
 
-function addReadingActions() {
+function addReadingActions(force = false) {
   const host = document.querySelector('.reading-header .reading-actions');
-  if (!host || host.querySelector('.reading-work-actions')) return;
+  if (!host) return;
+  if (host.querySelector('.reading-work-actions')) {
+    if (!force) return;
+    host.querySelector('.reading-work-actions')?.remove();
+    host.querySelectorAll('[data-reading-action="summary"],[data-reading-action="image"],[data-reading-action="ask"]').forEach(node => node.remove());
+  }
   const div = document.createElement('div'); div.className = 'reading-work-actions';
   const icon = paths => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${paths}"/></svg>`;
-  div.innerHTML = `<button type="button" data-reading-action="favorite" aria-pressed="${Boolean(selectedEmailDetail?.is_favorite)}">${icon('m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z')}<span data-action-label>${selectedEmailDetail?.is_favorite ? '已收藏' : '收藏'}</span></button>
-    <button type="button" data-reading-action="todo">${icon('M6 4h12v16H6zM9 12l2 2 4-4')}<span>加入待办</span></button>
-    <button type="button" data-reading-action="remind">${icon('M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 4v5l3 2')}<span>稍后提醒</span></button>`;
+  div.innerHTML = `<button type="button" data-reading-action="favorite" aria-pressed="${Boolean(selectedEmailDetail?.is_favorite)}">${icon('m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z')}<span data-action-label>${selectedEmailDetail?.is_favorite ? (mailaiT('read.favorited') || '已收藏') : (mailaiT('read.favorite') || '收藏')}</span></button>
+    <button type="button" data-reading-action="todo">${icon('M6 4h12v16H6zM9 12l2 2 4-4')}<span>${mailaiT('read.todo') || '加入待办'}</span></button>
+    <button type="button" data-reading-action="remind">${icon('M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 4v5l3 2')}<span>${mailaiT('read.remind') || '稍后提醒'}</span></button>`;
   host.querySelector('.reading-mail-controls')?.appendChild(div);
-  host.querySelector('.reading-ai-group')?.insertAdjacentHTML('beforeend', `<button type="button" data-reading-action="summary">${icon('M4 6h16M4 11h12M4 16h8m5-2 1 2 2 1-2 1-1 2-1-2-2-1 2-1z')}<span>总结邮件</span></button>
-    <button type="button" data-reading-action="image">${icon('M3 5h18v14H3zM7 10h.01M5 17l5-5 3 3 2-2 4 4')}<span>识别邮件图片</span></button>
-    <button type="button" data-reading-action="ask">${icon('M4 4h16v12H9l-5 4zM8 9h8m-8 3h5')}<span>问小邮</span></button>`);
+  host.querySelector('.reading-ai-group')?.insertAdjacentHTML('beforeend', `<button type="button" data-reading-action="summary">${icon('M4 6h16M4 11h12M4 16h8m5-2 1 2 2 1-2 1-1 2-1-2-2-1 2-1z')}<span>${mailaiT('read.summary') || '总结邮件'}</span></button>
+    <button type="button" data-reading-action="image">${icon('M3 5h18v14H3zM7 10h.01M5 17l5-5 3 3 2-2 4 4')}<span>${mailaiT('read.image') || '识别邮件图片'}</span></button>
+    <button type="button" data-reading-action="ask">${icon('M4 4h16v12H9l-5 4zM8 9h8m-8 3h5')}<span>${mailaiT('read.ask') || '问小邮'}</span></button>`);
   host.querySelectorAll('button').forEach(button => {
     const label = button.getAttribute('aria-label') || button.textContent.trim();
     if (label) {
@@ -489,15 +501,15 @@ function initializeWorkspace() {
     if (!accountId) { event.target.checked = false; return; }
     const enabledValue = event.target.checked;
     const status = document.getElementById('semantic-status');
-    status.textContent = '正在保存…';
+    status.textContent = mailaiT('semantic.saving') || '正在保存…';
     try {
       const prefs = await api('/api/preferences', {accountId});
       await api('/api/preferences', {accountId, method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...prefs, semantic_enabled:enabledValue})});
-      toast(enabledValue ? '已启用语义检索' : '已关闭语义检索', 'success');
+      toast(enabledValue ? (mailaiT('semantic.enabledToast') || '已启用语义检索') : (mailaiT('semantic.disabledToast') || '已关闭语义检索'), 'success');
       loadSemanticStatus();
     } catch (error) {
       event.target.checked = !enabledValue;
-      status.textContent = '保存失败，请重试';
+      status.textContent = mailaiT('semantic.saveFailed') || '保存失败，请重试';
       toast(error.message, 'error');
     }
   };
@@ -505,10 +517,10 @@ function initializeWorkspace() {
     const button = event.currentTarget;
     const status = document.getElementById('semantic-status');
     button.disabled = true;
-    status.textContent = '正在重建索引（首次需下载模型，请稍候）…';
+    status.textContent = mailaiT('semantic.reindexing') || '正在重建索引（首次需下载模型，请稍候）…';
     try {
       const result = await api('/api/assistant/semantic/reindex', {accountId:activeMailAccount()?.id, method:'POST'});
-      toast(`语义索引已重建：${result.indexed} 封邮件`, 'success');
+      toast((mailaiT('semantic.reindexed') || '语义索引已重建：{n} 封邮件').replace('{n}', result.indexed), 'success');
     } catch (error) {
       toast(error.message, 'error');
     } finally {

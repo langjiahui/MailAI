@@ -30,6 +30,7 @@ const nodes = [
   fakeNode({ 'data-i18n': 'missing.key' }),
   fakeNode({ 'data-i18n-placeholder': 'search.placeholder' }),
   fakeNode({ 'data-i18n-aria': 'nav.settings' }),
+  fakeNode({ 'data-i18n-data-placeholder': 'compose.bodyPh', 'data-placeholder': '输入邮件正文…' }),
 ];
 const store = new Map();
 const events = [];
@@ -73,15 +74,20 @@ assert.equal(nodes[0].textContent, 'Compose');
 assert.equal(nodes[1].textContent, '原文', 'missing key must keep the Chinese source text');
 assert.equal(nodes[2].placeholder, 'Search subject, sender, body or pinyin...');
 assert.equal(nodes[3].attrs['aria-label'], 'Settings');
+assert.equal(nodes[4].attrs['data-placeholder'], 'Write your message…');
 assert.equal(documentFake.documentElement.lang, 'en');
 assert.equal(documentFake.title, I18N_MESSAGES.en['app.title']);
 assert.ok(events.some(e => e.type === 'mailai:language-changed' && e.detail.language === 'en'));
 
-// 未知语言被拒绝；切回中文不残留英文
+// 未知语言被拒绝；切回中文恢复原文，不残留英文
 setI18nLanguage('fr');
 assert.equal(currentI18nLanguage(), 'en');
 setI18nLanguage('zh-CN');
 assert.equal(documentFake.documentElement.lang, 'zh-CN');
 assert.equal(mailaiT('nav.compose'), null);
+assert.equal(nodes[0].textContent, '原文', 'switching back must restore the Chinese source text');
+assert.equal(nodes[2].placeholder, '');
+assert.equal(nodes[4].attrs['data-placeholder'], '输入邮件正文…');
+assert.notEqual(documentFake.title, I18N_MESSAGES.en['app.title']);
 
 console.log(`i18n framework, ${keys.size} translated hooks, fallback and persistence passed`);

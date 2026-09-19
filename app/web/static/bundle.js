@@ -89,6 +89,267 @@ const I18N_MESSAGES = {
     'kpi.auto': 'Auto-handled',
     'kpi.feedback': 'Manual corrections',
     'kpi.feedbackHint': 'False positive / missed reports',
+
+    // 批一：主干界面（侧栏 / 列表 / 阅读区 / 写信）
+    'app.tagline': 'Mail Security & Productivity Assistant',
+    'nav.openFolders': 'Open mail folders',
+    'side.workbench': 'Workbench',
+    'side.attachmentCenter': 'Attachment Center',
+    'side.todoCenter': 'To-do Center',
+    'side.accounts': 'Mail Accounts',
+    'side.addAccount': 'Add account',
+    'side.folders': 'Mail Folders',
+    'side.all': 'All Mail',
+    'side.favorites': 'Favorites',
+    'side.inbox': 'Inbox',
+    'side.sent': 'Sent',
+    'side.drafts': 'Drafts',
+    'side.trash': 'Trash',
+    'side.quarantine': 'Quarantine',
+    'side.spam': 'Spam',
+    'side.serverFolders': 'Server Folders',
+    'side.newFolder': 'New folder',
+    'side.loading': 'Loading…',
+    'side.risk': 'Risk Level',
+    'side.inInbox': 'In inbox',
+    'side.categories': 'AI Categories',
+    'side.closeFolders': 'Close folders',
+    'risk.phishing': 'Phishing',
+    'risk.suspicious': 'Suspicious',
+    'risk.clean': 'Clean',
+    'risk.unreviewed': 'Pending analysis',
+    'filter.title': 'Filters',
+    'filter.titleHint': 'All selected conditions apply together',
+    'filter.days': 'Received',
+    'filter.daysHint': 'By actual received time',
+    'filter.7d': '7 days',
+    'filter.30d': '30 days',
+    'filter.all': 'All',
+    'filter.priority': 'Priority',
+    'filter.priorityHint': 'Urgency judged by MailAI',
+    'filter.any': 'Any',
+    'filter.high': 'High',
+    'filter.medium': 'Medium',
+    'filter.low': 'Low',
+    'filter.domain': 'Sender Domain',
+    'filter.domainHint': 'The part after @ in the sender address',
+    'filter.anyDomain': 'Any domain',
+    'filter.unread': 'Unread only',
+    'filter.unreadHint': 'Only show unread incoming mail',
+    'filter.attachments': 'Has attachments',
+    'filter.attachmentsHint': 'Only show mail with attachments',
+    'filter.clear': 'Clear all',
+    'resize.sidebar': 'Resize folder pane',
+    'resize.list': 'Resize mail list',
+    'list.sortDesc': 'Newest first',
+    'list.sortAsc': 'Oldest first',
+    'list.sortScore': 'By risk score',
+    'list.fetchMore': 'Sync older mail',
+    'list.fetchAll': 'Sync all history',
+    'bulk.read': 'Read',
+    'bulk.readTitle': 'Mark as read',
+    'bulk.unread': 'Unread',
+    'bulk.unreadTitle': 'Mark as unread',
+    'bulk.star': 'Star',
+    'bulk.starTitle': 'Add star',
+    'bulk.trash': 'Trash',
+    'bulk.trashTitle': 'Move to Trash',
+    'bulk.move': 'Move to…',
+    'bulk.moveAria': 'Move selected mail',
+    'bulk.done': 'Done',
+    'bulk.cancel': 'Cancel selection',
+    'bulk.actionsAria': 'Bulk mail actions',
+    'read.emptyTitle': 'Select a mail to read',
+    'read.emptyHint': 'Summary, security result and body appear here',
+    'compose.title': 'Compose',
+    'compose.close': 'Save draft and close',
+    'compose.from': 'From',
+    'compose.fromAria': 'Select sender account',
+    'compose.to': 'To',
+    'compose.toPh': 'Type or pick from contacts',
+    'compose.toBook': 'Add recipient from contacts',
+    'compose.ccBcc': 'Cc / Bcc',
+    'compose.cc': 'Cc',
+    'compose.ccBook': 'Add Cc from contacts',
+    'compose.bcc': 'Bcc',
+    'compose.bccBook': 'Add Bcc from contacts',
+    'compose.optional': 'Optional',
+    'compose.subject': 'Subject',
+    'compose.subjectPh': 'Subject',
+    'compose.aiLabel': 'AI Compose',
+    'compose.aiHint': 'Tap to write together',
+    'compose.aiAria': 'AI compose: expand or collapse the writing panel',
+    'compose.format': 'Body format',
+    'compose.preview': 'Preview',
+    'compose.previewTitle': 'Preview what recipients see',
+    'compose.attach': 'Attachments',
+    'compose.paste': 'Paste',
+    'compose.pasteTitle': 'Paste attachments copied from the file manager',
+    'compose.noSignature': 'No signature',
+    'compose.signatureAria': 'Select mail signature',
+    'compose.manage': 'Manage',
+    'compose.manageTitle': 'Manage signatures',
+    'compose.autosave': 'Draft autosaved',
+    'compose.autosaveTitle': 'Drafts are stored locally only and never synced to the mail server',
+    'compose.attachHint': 'Drag files in or paste attachments · 20MB each / 25MB total · click to preview',
+    'compose.bodyPh': 'Write your message…',
+    'compose.signatureAria': 'Mail signature',
+    'compose.quoteAria': 'Quoted original mail',
+    'compose.quoteLabel': 'Quoted original mail',
+    'compose.quoteHint': 'Never rewritten by AI',
+    'compose.discard': 'Discard draft',
+    'compose.discardTitle': 'Delete this local draft',
+    'compose.saveDraft': 'Save draft & close',
+    'compose.saveDraftTitle': 'Save to the local Drafts box and continue later',
+    'compose.sendNoSmtp': 'Send (SMTP not configured)',
+    'compose.sendNoSmtpTitle': 'Available after SMTP is configured',
+    'fmt.p': 'Body',
+    'fmt.h2': 'Heading',
+    'fmt.h3': 'Subheading',
+    'fmt.quote': 'Quote',
+    'fmt.styleAria': 'Paragraph style',
+    'fmt.fontAria': 'Font',
+    'fmt.sizeAria': 'Font size',
+    'fmt.sizeS': 'Small',
+    'fmt.sizeNormal': 'Normal',
+    'fmt.sizeM': 'Medium',
+    'fmt.sizeL': 'Large',
+    'fmt.sizeXL': 'XL',
+    'fmt.undo': 'Undo',
+    'fmt.redo': 'Redo',
+    'fmt.bold': 'Bold',
+    'fmt.italic': 'Italic',
+    'fmt.underline': 'Underline',
+    'fmt.strike': 'Strikethrough',
+    'fmt.color': 'Text color',
+    'fmt.highlight': 'Highlight color',
+    'fmt.left': 'Align left',
+    'fmt.center': 'Align center',
+    'fmt.right': 'Align right',
+    'fmt.ul': 'Bullet list',
+    'fmt.ol': 'Numbered list',
+    'fmt.outdent': 'Decrease indent',
+    'fmt.indent': 'Increase indent',
+    'fmt.link': 'Insert link',
+    'fmt.linkText': 'Link',
+    'fmt.image': 'Insert inline image',
+    'fmt.imageText': 'Image',
+    'fmt.clear': 'Clear formatting',
+    'fmt.clearText': 'Clear',
+    'copilot.kicker': 'MailAI Copilot · Writing',
+    'copilot.panelAria': 'AI writing assistant',
+    'copilot.scene': 'Tell me what this mail should achieve',
+    'copilot.status': 'Same AI as the mailbox guardian; drafts go to preview only, never overwrite your text.',
+    'copilot.close': 'Collapse AI writing assistant',
+    'copilot.request': 'What should this mail achieve?',
+    'copilot.requestPh': "E.g.: invite the project team to Friday's review and remind everyone to prepare demo materials",
+    'copilot.context': 'Reference content',
+    'copilot.basis': 'Fill in at least one item',
+    'copilot.ctxSubject': 'Subject',
+    'copilot.ctxRecipients': 'Recipients',
+    'copilot.ctxOriginal': 'Original mail',
+    'copilot.ctxBody': 'Current body',
+    'copilot.ctxAttachments': 'Attachment names',
+    'copilot.tone': 'Tone',
+    'copilot.toneFormal': 'Formal',
+    'copilot.toneConcise': 'Concise',
+    'copilot.toneFriendly': 'Friendly',
+    'copilot.toneFirm': 'Firm',
+    'copilot.length': 'Length',
+    'copilot.lengthShort': 'Short',
+    'copilot.lengthMedium': 'Medium',
+    'copilot.lengthLong': 'Detailed',
+    'copilot.generate': 'Generate draft',
+    'copilot.quickAria': 'AI quick rewrite',
+    'copilot.polish': 'Polish',
+    'copilot.shorten': 'Shorten',
+    'copilot.translateEn': 'Translate to English',
+    'copilot.previewTitle': 'AI Draft Preview',
+    'copilot.previewCheck': 'Verify facts, dates and recipients',
+    'copilot.regenerate': 'Regenerate',
+    'copilot.append': 'Append to body',
+    'copilot.replace': 'Replace body',
+    'copilot.privacy': 'Only checked content is sent to your configured AI model; attachment names are shared, not their content.',
+    'preview.eyebrow': 'Sending Preview',
+    'preview.title': 'Mail Preview',
+    'preview.to': 'To',
+    'preview.subject': 'Subject',
+    'preview.close': 'Close preview',
+    'preview.frame': 'Mail body preview',
+    'sig.eyebrow': 'Personalized Sending',
+    'sig.title': 'Signatures',
+    'sig.close': 'Close signature manager',
+    'sig.new': 'New signature',
+    'sig.profile': 'Sender Profile',
+    'sig.profileHint': 'Used for signature display and AI generation',
+    'sig.styleProfessional': 'Professional',
+    'sig.styleWarm': 'Warm & friendly',
+    'sig.styleTech': 'Tech & creative',
+    'sig.styleExecutive': 'Executive',
+    'sig.name': 'Name',
+    'sig.jobTitle': 'Title',
+    'sig.department': 'Department',
+    'sig.company': 'Company',
+    'sig.phone': 'Phone',
+    'sig.email': 'Email',
+    'sig.website': 'Website',
+    'sig.aiGenerate': 'AI: generate 3 creative signatures',
+    'sig.sigName': 'Signature name',
+    'sig.sigNamePh': 'E.g.: Work signature',
+    'sig.content': 'Signature content',
+    'sig.contentHint': 'Edit text and formatting directly',
+    'sig.makeDefault': 'Set as default signature',
+    'sig.delete': 'Delete signature',
+    'sig.cancel': 'Cancel',
+    'sig.save': 'Save signature',
+    'fb.title': 'Help MailAI improve',
+    'fb.action': 'Mark as false positive',
+    'fb.close': 'Close',
+    'fb.reasons': 'Main reasons',
+    'fb.reasonsHint': 'Multi-select, or add a note below',
+    'fb.note': 'Additional note',
+    'fb.optional': 'Optional',
+    'fb.privacy': 'Feedback is only used for local rule calibration and audit logs, never uploaded.',
+    'fb.cancel': 'Cancel',
+    'fb.confirm': 'Confirm',
+    'sync.expand': 'Expand sync details',
+    'sync.pulling': 'Syncing mail',
+    'sync.wait': 'Please wait...',
+    'sync.pause': 'Pause sync',
+
+    // 动态文案（JS 用 mailaiT 取值，|| 回落中文）
+    'list.allInboxes': 'All inboxes',
+    'list.localArchive': 'Local archive',
+    'list.countMail': ' mails',
+    'list.countDraft': ' drafts',
+    'list.countScoped': '{count} mails (of {total} in scope)',
+    'list.countScopedTitle': '{count} mails match the filters; {total} in the mailbox scope',
+    'list.loadingTrash': 'Loading deleted mail…',
+    'list.loadingFolder': 'Syncing server folder…',
+    'read.favorite': 'Favorite',
+    'read.favorited': 'Favorited',
+    'read.todo': 'Add to to-dos',
+    'read.remind': 'Remind later',
+    'read.summary': 'Summarize',
+    'read.image': 'Analyze images',
+    'read.ask': 'Ask Xiaoyou',
+    'semantic.needAccount': 'Add a mailbox first',
+    'semantic.cardTitle': 'Semantic Search (Beta)',
+    'semantic.cardDesc': 'Understands mails with similar meaning via a local embedding model, improving the assistant\'s retrieval',
+    'semantic.enable': 'Enable semantic search',
+    'semantic.enableHint': 'First reindex downloads the model (~100MB); data never leaves this device',
+    'semantic.note': 'When disabled, the assistant uses keyword search. Source checkouts additionally need the optional dependency (requirements-semantic.txt).',
+    'semantic.reindexBtn': 'Rebuild index',
+    'semantic.noDeps': 'Optional component not installed (requirements-semantic.txt)',
+    'semantic.indexed': 'Indexed {n} mails',
+    'semantic.notIndexed': 'Not indexed yet',
+    'semantic.error': 'Unable to read status',
+    'semantic.saving': 'Saving…',
+    'semantic.enabledToast': 'Semantic search enabled',
+    'semantic.disabledToast': 'Semantic search disabled',
+    'semantic.saveFailed': 'Save failed, please retry',
+    'semantic.reindexing': 'Rebuilding index (first run downloads the model, please wait)…',
+    'semantic.reindexed': 'Index rebuilt: {n} mails',
   },
 };
 
@@ -106,26 +367,47 @@ function mailaiT(key) {
   return I18N_MESSAGES[lang]?.[key] ?? null;
 }
 
+// 首次套用前缓存节点的中文原文，切回中文（或键缺失）时恢复，绝不留残留英文。
+const i18nOriginals = new WeakMap();
+
+function i18nApply(node, slot, key, dict, read, write) {
+  if (!key) return;
+  let original = i18nOriginals.get(node);
+  if (!original) { original = {}; i18nOriginals.set(node, original); }
+  if (!(slot in original)) original[slot] = read();
+  const value = dict[key] ?? original[slot];
+  if (value !== undefined && value !== null) write(value);
+}
+
 function applyI18n(root) {
   const lang = currentI18nLanguage();
   const dict = I18N_MESSAGES[lang] || {};
   document.documentElement.lang = lang;
-  const title = dict['app.title'];
-  if (title) document.title = title;
+  if (applyI18n._originalTitle === undefined) applyI18n._originalTitle = document.title;
+  document.title = dict['app.title'] || applyI18n._originalTitle;
   const scope = root && root.querySelectorAll ? root : document;
   scope.querySelectorAll('[data-i18n]').forEach(node => {
-    const value = dict[node.dataset.i18n];
-    if (value) node.textContent = value;
+    i18nApply(node, 'text', node.dataset.i18n, dict,
+      () => node.textContent, value => { node.textContent = value; });
   });
-  for (const [attr, target] of [['data-i18n-placeholder', 'placeholder'], ['data-i18n-title', 'title'], ['data-i18n-aria', 'aria-label']]) {
-    scope.querySelectorAll(`[${attr}]`).forEach(node => {
-      const value = dict[node.getAttribute(attr)];
-      if (value) {
-        if (target === 'aria-label') node.setAttribute('aria-label', value);
-        else node[target] = value;
-      }
-    });
-  }
+  scope.querySelectorAll('[data-i18n-placeholder]').forEach(node => {
+    i18nApply(node, 'placeholder', node.getAttribute('data-i18n-placeholder'), dict,
+      () => node.placeholder, value => { node.placeholder = value; });
+  });
+  scope.querySelectorAll('[data-i18n-title]').forEach(node => {
+    i18nApply(node, 'title', node.getAttribute('data-i18n-title'), dict,
+      () => node.title, value => { node.title = value; });
+  });
+  scope.querySelectorAll('[data-i18n-aria]').forEach(node => {
+    i18nApply(node, 'aria', node.getAttribute('data-i18n-aria'), dict,
+      () => node.getAttribute('aria-label'), value => node.setAttribute('aria-label', value));
+  });
+  // 富文本编辑器用 data-placeholder 自定义属性（CSS attr() 读取），
+  // 不是原生 placeholder，需要单独映射。
+  scope.querySelectorAll('[data-i18n-data-placeholder]').forEach(node => {
+    i18nApply(node, 'dplaceholder', node.getAttribute('data-i18n-data-placeholder'), dict,
+      () => node.getAttribute('data-placeholder'), value => node.setAttribute('data-placeholder', value));
+  });
 }
 
 function setI18nLanguage(lang) {
@@ -3135,16 +3417,16 @@ function applyFilters({silent = false} = {}) {
 function updateListTitle(count) {
   let title = currentServerFolder && serverFolderForRole('spam')?.name === currentServerFolder
     ? '垃圾邮件' : currentServerFolder && serverFolderForRole('quarantine')?.name === currentServerFolder
-      ? '隔离区' : (currentServerFolder || '全部邮件');
-  if (currentServerFolder && currentServerFolder === serverFolderForRole('trash')?.name) title = '已删除';
-  if (unifiedMailbox) title = '所有收件箱';
-  else if (currentFilter.status === 'local_archive') title = '本地归档';
-  else if (currentFilter.status === 'favorites') title = '我的收藏';
-  else if (currentFilter.status === 'inbox') title = '收件箱';
-  else if (currentFilter.status === 'quarantine') title = '隔离区';
-  else if (currentFilter.status === 'spam') title = '垃圾邮件';
-  else if (currentFilter.status === 'trash') title = '已删除';
-  const riskTitle = {phishing:'钓鱼邮件', suspicious:'可疑邮件', clean:'正常邮件', unreviewed:'待分析'}[currentFilter.verdict];
+      ? (mailaiT('side.quarantine') || '隔离区') : (currentServerFolder || (mailaiT('side.all') || '全部邮件'));
+  if (currentServerFolder && currentServerFolder === serverFolderForRole('trash')?.name) title = mailaiT('side.trash') || '已删除';
+  if (unifiedMailbox) title = mailaiT('list.allInboxes') || '所有收件箱';
+  else if (currentFilter.status === 'local_archive') title = mailaiT('list.localArchive') || '本地归档';
+  else if (currentFilter.status === 'favorites') title = mailaiT('side.favorites') || '我的收藏';
+  else if (currentFilter.status === 'inbox') title = mailaiT('side.inbox') || '收件箱';
+  else if (currentFilter.status === 'quarantine') title = mailaiT('side.quarantine') || '隔离区';
+  else if (currentFilter.status === 'spam') title = mailaiT('side.spam') || '垃圾邮件';
+  else if (currentFilter.status === 'trash') title = mailaiT('side.trash') || '已删除';
+  const riskTitle = {phishing:mailaiT('risk.phishing') || '钓鱼邮件', suspicious:mailaiT('risk.suspicious') || '可疑邮件', clean:mailaiT('risk.clean') || '正常邮件', unreviewed:mailaiT('risk.unreviewed') || '待分析'}[currentFilter.verdict];
   if (riskTitle) title += ` · ${riskTitle}`;
   if (currentFilter.category) title += ` · ${currentFilter.category}`;
   document.getElementById('list-title').textContent = title;
@@ -3158,8 +3440,13 @@ function updateListTitle(count) {
   const hasFacet = Boolean(currentFilter.verdict || currentFilter.category || currentFilter.priority ||
     currentFilter.domain || currentFilter.attachments || currentFilter.unread || currentFilter.search || currentFilter.days !== 9999);
   const countNode = document.getElementById('list-count');
-  countNode.textContent = serverTotal > count && hasFacet ? `${count} 封（当前范围共 ${serverTotal} 封）` : count + ' 封';
-  countNode.title = serverTotal > count && hasFacet ? `当前筛选结果 ${count} 封；邮箱范围共 ${serverTotal} 封` : '';
+  const countUnit = mailaiT('list.countMail') || ' 封';
+  countNode.textContent = serverTotal > count && hasFacet
+    ? (mailaiT('list.countScoped') || '{count} 封（当前范围共 {total} 封）').replace('{count}', count).replace('{total}', serverTotal)
+    : count + countUnit;
+  countNode.title = serverTotal > count && hasFacet
+    ? (mailaiT('list.countScopedTitle') || '当前筛选结果 {count} 封；邮箱范围共 {total} 封').replace('{count}', count).replace('{total}', serverTotal)
+    : '';
 }
 
 function specialMailboxRows() {
@@ -3186,8 +3473,8 @@ function renderSpecialMailbox({silent = false} = {}) {
   if (currentFilter.attachments) rows = rows.filter(row => row.attachments?.length);
   rows.sort((a,b) => (currentFilter.sort === 'date-asc' ? 1 : -1) * (new Date(a.date || 0) - new Date(b.date || 0)));
   renderEmailList(rows, {silent});
-  document.getElementById('list-title').textContent = specialMailbox === 'drafts' ? '草稿箱' : '已发送';
-  document.getElementById('list-count').textContent = rows.length + (specialMailbox === 'drafts' ? ' 封草稿' : ' 封');
+  document.getElementById('list-title').textContent = specialMailbox === 'drafts' ? (mailaiT('side.drafts') || '草稿箱') : (mailaiT('side.sent') || '已发送');
+  document.getElementById('list-count').textContent = rows.length + (specialMailbox === 'drafts' ? (mailaiT('list.countDraft') || ' 封草稿') : (mailaiT('list.countMail') || ' 封'));
 }
 
 // ===== 渲染邮件列表 =====
@@ -4414,8 +4701,8 @@ async function openTrashMailbox({resetPane = true} = {}) {
   const accountId = activeMailAccount()?.id;
   updateActiveNav();
   renderSidebarAccounts();
-  document.getElementById('list-title').textContent = '已删除';
-  document.getElementById('email-list').innerHTML = '<div class="email-empty"><div class="empty-text">正在读取已删除邮件…</div></div>';
+  document.getElementById('list-title').textContent = mailaiT('side.trash') || '已删除';
+  document.getElementById('email-list').innerHTML = `<div class="email-empty"><div class="empty-text">${mailaiT('list.loadingTrash') || '正在读取已删除邮件…'}</div></div>`;
   const folder = serverFolderForRole('trash')?.name;
   if (folder) {
     try { await api(`/api/mail/folders/sync?folder=${encodeURIComponent(folder)}`, {method:'POST',accountId}); }
@@ -6098,8 +6385,8 @@ async function loadServerFolder(folder) {
   document.getElementById('global-search').value = '';
   document.querySelectorAll('[data-server-folder]').forEach(button => button.classList.toggle('active', button.dataset.serverFolder === folder));
   document.getElementById('list-title').textContent = serverFolderForRole('spam')?.name === folder
-    ? '垃圾邮件' : serverFolderForRole('quarantine')?.name === folder ? '隔离区' : folder;
-  document.getElementById('email-list').innerHTML = '<div class="email-empty"><div class="empty-text">正在同步服务端文件夹…</div></div>';
+    ? (mailaiT('side.spam') || '垃圾邮件') : serverFolderForRole('quarantine')?.name === folder ? (mailaiT('side.quarantine') || '隔离区') : folder;
+  document.getElementById('email-list').innerHTML = `<div class="email-empty"><div class="empty-text">${mailaiT('list.loadingFolder') || '正在同步服务端文件夹…'}</div></div>`;
   try {
     const result = await api(`/api/mail/folders/sync?folder=${encodeURIComponent(folder)}`, {method:'POST'});
     const rows = await loadMailPages(`/api/emails?days=9999&folder=${encodeURIComponent(folder)}`, isCurrent);
@@ -6734,6 +7021,13 @@ document.getElementById('btn-export-portable').addEventListener('click', async (
   } catch (err) { toast(err.message, 'error'); } finally { setLoading(button, false); }
 });
 document.getElementById('btn-import-portable').addEventListener('click', () => document.getElementById('portable-backup-file').click());
+
+// 语言切换：静态标记由 applyI18n 处理，这里重渲染 JS 动态区域
+document.addEventListener('mailai:language-changed', () => {
+  try { applyFilters(); } catch (_) {}
+  try { addReadingActions(true); } catch (_) {}
+  try { loadSemanticStatus(); } catch (_) {}
+});
 document.getElementById('portable-backup-file').addEventListener('change', async event => {
   const file = event.target.files?.[0]; event.target.value = ''; if (!file) return;
   const signature = new Uint8Array(await file.slice(0, 8).arrayBuffer());
@@ -8476,7 +8770,7 @@ async function loadSemanticStatus() {
   if (!status || !reindex || !toggle) return;
   const accountId = activeMailAccount()?.id;
   if (!accountId) {
-    status.textContent = '添加邮箱后即可启用';
+    status.textContent = mailaiT('semantic.needAccount') || '添加邮箱后即可启用';
     toggle.checked = false;
     reindex.classList.add('hidden');
     return;
@@ -8486,18 +8780,25 @@ async function loadSemanticStatus() {
       api('/api/preferences', {accountId}),
       api('/api/assistant/semantic', {accountId}),
     ]);
-    toggle.checked = !!prefs.semantic_enabled;
     if (!stats.deps_available) {
-      status.textContent = '未安装可选依赖（requirements-semantic.txt）';
+      // 依赖缺失时禁止打开开关，避免"开了但静默空转"
+      toggle.checked = false;
+      toggle.disabled = true;
+      toggle.closest('label')?.setAttribute('title', mailaiT('semantic.noDeps') || '未安装可选依赖（requirements-semantic.txt）');
+      status.textContent = mailaiT('semantic.noDeps') || '未安装可选依赖（requirements-semantic.txt）';
       reindex.classList.add('hidden');
       return;
     }
+    toggle.disabled = false;
+    toggle.closest('label')?.removeAttribute('title');
+    toggle.checked = !!prefs.semantic_enabled;
     status.textContent = stats.indexed
-      ? `已索引 ${stats.indexed} 封邮件${stats.last_indexed_at ? ` · ${String(stats.last_indexed_at).slice(0, 16)}` : ''}`
-      : '尚未建立索引';
+      ? (mailaiT('semantic.indexed') || '已索引 {n} 封邮件').replace('{n}', stats.indexed) +
+        (stats.last_indexed_at ? ` · ${String(stats.last_indexed_at).slice(0, 16)}` : '')
+      : (mailaiT('semantic.notIndexed') || '尚未建立索引');
     reindex.classList.toggle('hidden', !stats.enabled);
   } catch (_) {
-    status.textContent = '暂时无法读取状态';
+    status.textContent = mailaiT('semantic.error') || '暂时无法读取状态';
   }
 }
 
@@ -8535,18 +8836,23 @@ function syncPreferenceChoices() {
   }
 }
 
-function addReadingActions() {
+function addReadingActions(force = false) {
   const host = document.querySelector('.reading-header .reading-actions');
-  if (!host || host.querySelector('.reading-work-actions')) return;
+  if (!host) return;
+  if (host.querySelector('.reading-work-actions')) {
+    if (!force) return;
+    host.querySelector('.reading-work-actions')?.remove();
+    host.querySelectorAll('[data-reading-action="summary"],[data-reading-action="image"],[data-reading-action="ask"]').forEach(node => node.remove());
+  }
   const div = document.createElement('div'); div.className = 'reading-work-actions';
   const icon = paths => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${paths}"/></svg>`;
-  div.innerHTML = `<button type="button" data-reading-action="favorite" aria-pressed="${Boolean(selectedEmailDetail?.is_favorite)}">${icon('m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z')}<span data-action-label>${selectedEmailDetail?.is_favorite ? '已收藏' : '收藏'}</span></button>
-    <button type="button" data-reading-action="todo">${icon('M6 4h12v16H6zM9 12l2 2 4-4')}<span>加入待办</span></button>
-    <button type="button" data-reading-action="remind">${icon('M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 4v5l3 2')}<span>稍后提醒</span></button>`;
+  div.innerHTML = `<button type="button" data-reading-action="favorite" aria-pressed="${Boolean(selectedEmailDetail?.is_favorite)}">${icon('m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z')}<span data-action-label>${selectedEmailDetail?.is_favorite ? (mailaiT('read.favorited') || '已收藏') : (mailaiT('read.favorite') || '收藏')}</span></button>
+    <button type="button" data-reading-action="todo">${icon('M6 4h12v16H6zM9 12l2 2 4-4')}<span>${mailaiT('read.todo') || '加入待办'}</span></button>
+    <button type="button" data-reading-action="remind">${icon('M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 4v5l3 2')}<span>${mailaiT('read.remind') || '稍后提醒'}</span></button>`;
   host.querySelector('.reading-mail-controls')?.appendChild(div);
-  host.querySelector('.reading-ai-group')?.insertAdjacentHTML('beforeend', `<button type="button" data-reading-action="summary">${icon('M4 6h16M4 11h12M4 16h8m5-2 1 2 2 1-2 1-1 2-1-2-2-1 2-1z')}<span>总结邮件</span></button>
-    <button type="button" data-reading-action="image">${icon('M3 5h18v14H3zM7 10h.01M5 17l5-5 3 3 2-2 4 4')}<span>识别邮件图片</span></button>
-    <button type="button" data-reading-action="ask">${icon('M4 4h16v12H9l-5 4zM8 9h8m-8 3h5')}<span>问小邮</span></button>`);
+  host.querySelector('.reading-ai-group')?.insertAdjacentHTML('beforeend', `<button type="button" data-reading-action="summary">${icon('M4 6h16M4 11h12M4 16h8m5-2 1 2 2 1-2 1-1 2-1-2-2-1 2-1z')}<span>${mailaiT('read.summary') || '总结邮件'}</span></button>
+    <button type="button" data-reading-action="image">${icon('M3 5h18v14H3zM7 10h.01M5 17l5-5 3 3 2-2 4 4')}<span>${mailaiT('read.image') || '识别邮件图片'}</span></button>
+    <button type="button" data-reading-action="ask">${icon('M4 4h16v12H9l-5 4zM8 9h8m-8 3h5')}<span>${mailaiT('read.ask') || '问小邮'}</span></button>`);
   host.querySelectorAll('button').forEach(button => {
     const label = button.getAttribute('aria-label') || button.textContent.trim();
     if (label) {
@@ -8721,15 +9027,15 @@ function initializeWorkspace() {
     if (!accountId) { event.target.checked = false; return; }
     const enabledValue = event.target.checked;
     const status = document.getElementById('semantic-status');
-    status.textContent = '正在保存…';
+    status.textContent = mailaiT('semantic.saving') || '正在保存…';
     try {
       const prefs = await api('/api/preferences', {accountId});
       await api('/api/preferences', {accountId, method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...prefs, semantic_enabled:enabledValue})});
-      toast(enabledValue ? '已启用语义检索' : '已关闭语义检索', 'success');
+      toast(enabledValue ? (mailaiT('semantic.enabledToast') || '已启用语义检索') : (mailaiT('semantic.disabledToast') || '已关闭语义检索'), 'success');
       loadSemanticStatus();
     } catch (error) {
       event.target.checked = !enabledValue;
-      status.textContent = '保存失败，请重试';
+      status.textContent = mailaiT('semantic.saveFailed') || '保存失败，请重试';
       toast(error.message, 'error');
     }
   };
@@ -8737,10 +9043,10 @@ function initializeWorkspace() {
     const button = event.currentTarget;
     const status = document.getElementById('semantic-status');
     button.disabled = true;
-    status.textContent = '正在重建索引（首次需下载模型，请稍候）…';
+    status.textContent = mailaiT('semantic.reindexing') || '正在重建索引（首次需下载模型，请稍候）…';
     try {
       const result = await api('/api/assistant/semantic/reindex', {accountId:activeMailAccount()?.id, method:'POST'});
-      toast(`语义索引已重建：${result.indexed} 封邮件`, 'success');
+      toast((mailaiT('semantic.reindexed') || '语义索引已重建：{n} 封邮件').replace('{n}', result.indexed), 'success');
     } catch (error) {
       toast(error.message, 'error');
     } finally {
