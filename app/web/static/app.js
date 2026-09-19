@@ -6311,12 +6311,12 @@ document.getElementById('btn-run-diagnostics').addEventListener('click', async (
   try {
     const data = await api('/api/system/diagnostics');
     const activeAccount = (_systemConfig?.accounts || []).find(account => account.active);
-    results.innerHTML = `<p class="diagnostic-scope">${activeAccount ? (mailaiT('diag.scope') || '本次检查：{user}。').replace('{user}', esc(activeAccount.user)) : (mailaiT('diag.scopeNone') || '本次未检测到正在使用的邮箱。')}${mailaiT('diag.scopeNote') || '诊断会实测当前邮箱和已配置的模型服务。'}</p>` + data.checks.map(item => {
+    results.innerHTML = `<p class="diagnostic-scope">${activeAccount ? (mailaiT('diag.scope') || '本次检查：{user}。').replace('{user}', esc(activeAccount.user)) : (mailaiT('diag.scopeNone') || '本次未检测到正在使用的邮箱。')}${mailaiT('diag.scopeNote') || '诊断会实测当前邮箱和已配置的模型服务。'}</p>` + data.checks.map((item, index) => {
       const status = item.status || (item.ok ? 'pass' : 'fail');
       const icon = status === 'pass' ? '✓' : status === 'warning' ? 'i' : '!';
       const label = item.probe === 'live' ? (mailaiT('diag.live') || '实测') : (mailaiT('diag.local') || '本地');
       const guidance = status === 'pass' ? null : diagnosticAdvice(item);
-      return `<div class="diagnostic-item ${esc(status)}"><span>${icon}</span><b>${esc(item.name)}<em>${label}</em></b><small title="${esc(item.detail)}">${esc(item.detail)}</small>${guidance ?
+      return `<div class="diagnostic-item ${esc(status)}" style="animation-delay:${index*45}ms"><span>${icon}</span><b>${esc(item.name)}<em>${label}</em></b><small title="${esc(item.detail)}">${esc(item.detail)}</small>${guidance ?
         `<p class="diagnostic-advice">${esc(guidance.advice)}</p><button type="button" class="diagnostic-action" data-diagnostic-target="${guidance.target}" data-diagnostic-field="${guidance.field}">${guidance.action} →</button>` : ''}</div>`;
     }).join('');
     results.classList.remove('hidden');

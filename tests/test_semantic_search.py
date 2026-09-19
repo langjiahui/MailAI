@@ -76,6 +76,9 @@ def main():
             assert result["indexed"] == 2, result
             stats = semantic.index_stats()
             assert stats["indexed"] == 2 and stats["last_indexed_at"]
+            # 重建完成后进度快照应处于"已结束"状态，供前端停止轮询
+            prog = stats["progress"]
+            assert prog["running"] is False and prog["done"] == 2 and prog["total"] == 2 and not prog["error"], prog
 
             hits = semantic.search("合同什么时候交付？", limit=5, min_score=0.9)
             assert hits == [id_contract], hits

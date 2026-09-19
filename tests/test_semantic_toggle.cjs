@@ -5,7 +5,8 @@ const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const source = fs.readFileSync(path.join(__dirname, '../app/web/static/workspace.js'), 'utf8');
 
-const start = source.indexOf('async function loadSemanticStatus()');
+// 从进度助手开始截取：loadSemanticStatus 的成功路径会调用它们恢复轮询
+const start = source.indexOf('let semanticPollTimer');
 const end = source.indexOf('async function loadWorkspacePreferences()');
 assert.ok(start > 0 && end > start);
 

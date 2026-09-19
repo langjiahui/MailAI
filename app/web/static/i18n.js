@@ -344,6 +344,9 @@ const I18N_MESSAGES = {
     'semantic.saveFailed': 'Save failed, please retry',
     'semantic.reindexing': 'Rebuilding index (first run downloads the model, please wait)…',
     'semantic.reindexed': 'Index rebuilt: {n} mails',
+    'semantic.reindexingShort': 'Rebuilding…',
+    'semantic.downloading': 'Downloading model (~100MB, first time only)…',
+    'semantic.progress': 'Rebuilding index {done}/{total}…',
 
     // 批二：设置面板 / 安全看板区块 / 规则中心 / 对话框
     'dash.statusEyebrow': 'Current posture',

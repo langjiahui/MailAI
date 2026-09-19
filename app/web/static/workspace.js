@@ -237,6 +237,46 @@ function updateFilterChips() {
   document.getElementById('filter-chips').innerHTML = Object.entries(labels).filter(([,value]) => value).map(([key,value]) => `<button type="button" data-remove-filter="${key}">${esc(value)} ×</button>`).join('');
 }
 
+let semanticPollTimer = null;
+
+function renderSemanticProgress(stats) {
+  const wrap = document.getElementById('semantic-progress');
+  const status = document.getElementById('semantic-status');
+  if (!wrap || !status) return false;
+  const p = stats?.progress || {};
+  if (!p.running) { wrap.classList.add('hidden'); return false; }
+  wrap.classList.remove('hidden');
+  const fill = wrap.querySelector('i');
+  if (p.phase === 'index' && p.total) {
+    wrap.classList.add('determinate');
+    fill.style.width = `${Math.round(100 * p.done / p.total)}%`;
+    status.textContent = (mailaiT('semantic.progress') || '正在重建索引 {done}/{total}…').replace('{done}', p.done).replace('{total}', p.total);
+  } else {
+    // 首个批次返回前都在下载/加载模型，无法预估进度，用滚动条示意
+    wrap.classList.remove('determinate');
+    fill.style.width = '';
+    status.textContent = mailaiT('semantic.downloading') || '正在下载模型（约 100MB，仅首次）…';
+  }
+  return true;
+}
+
+function pollSemanticProgress() {
+  clearInterval(semanticPollTimer);
+  semanticPollTimer = setInterval(async () => {
+    const accountId = activeMailAccount()?.id;
+    if (!accountId) { clearInterval(semanticPollTimer); return; }
+    try {
+      if (!renderSemanticProgress(await api('/api/assistant/semantic', {accountId}))) clearInterval(semanticPollTimer);
+    } catch (_) { /* 状态轮询失败不影响重建本身 */ }
+  }, 800);
+}
+
+function stopSemanticProgress() {
+  clearInterval(semanticPollTimer);
+  semanticPollTimer = null;
+  document.getElementById('semantic-progress')?.classList.add('hidden');
+}
+
 async function loadSemanticStatus() {
   const status = document.getElementById('semantic-status');
   const reindex = document.getElementById('semantic-reindex');
@@ -271,6 +311,8 @@ async function loadSemanticStatus() {
         (stats.last_indexed_at ? ` · ${String(stats.last_indexed_at).slice(0, 16)}` : '')
       : (mailaiT('semantic.notIndexed') || '尚未建立索引');
     reindex.classList.toggle('hidden', !stats.enabled);
+    // 重建进行中（例如刚触发后切换了页签再回来）时恢复进度条与轮询
+    if (renderSemanticProgress(stats)) pollSemanticProgress();
   } catch (_) {
     status.textContent = mailaiT('semantic.error') || '暂时无法读取状态';
   }
@@ -516,15 +558,17 @@ function initializeWorkspace() {
   document.getElementById('semantic-reindex').onclick = async event => {
     const button = event.currentTarget;
     const status = document.getElementById('semantic-status');
-    button.disabled = true;
+    setLoading(button, true, mailaiT('semantic.reindexingShort') || '重建中…');
     status.textContent = mailaiT('semantic.reindexing') || '正在重建索引（首次需下载模型，请稍候）…';
+    pollSemanticProgress();
     try {
       const result = await api('/api/assistant/semantic/reindex', {accountId:activeMailAccount()?.id, method:'POST'});
       toast((mailaiT('semantic.reindexed') || '语义索引已重建：{n} 封邮件').replace('{n}', result.indexed), 'success');
     } catch (error) {
       toast(error.message, 'error');
     } finally {
-      button.disabled = false;
+      stopSemanticProgress();
+      setLoading(button, false);
       loadSemanticStatus();
     }
   };

@@ -30,6 +30,21 @@ _INDEX_LIMIT = 5000
 _model = None
 _model_lock = threading.Lock()
 
+# 重建索引进度（整体替换字典保证读取端拿到一致快照）。phase: model=下载模型, index=嵌入写入。
+_progress: dict = {"running": False, "phase": "", "done": 0, "total": 0, "error": ""}
+_progress_lock = threading.Lock()
+
+
+def _set_progress(**fields) -> None:
+    global _progress
+    with _progress_lock:
+        _progress = {**_progress, **fields}
+
+
+def progress() -> dict:
+    with _progress_lock:
+        return dict(_progress)
+
 
 def deps_available() -> bool:
     """fastembed 是否可导入（嵌入模型首次重建时才联网下载）。"""
@@ -108,19 +123,27 @@ def reindex(limit: int = _INDEX_LIMIT, batch_size: int = _BATCH) -> dict:
     docs = [(r["id"], _document_text(r)) for r in rows if not r.get("remote_missing")]
     docs = [(i, t) for i, t in docs if t]
     now = datetime.now().isoformat(timespec="seconds")
-    indexed = 0
-    for start in range(0, len(docs), batch_size):
-        batch = docs[start:start + batch_size]
-        vectors = embed_texts([text for _id, text in batch])
-        with db.conn() as c:
-            for (email_id, _text), vector in zip(batch, vectors):
-                c.execute(
-                    "INSERT INTO email_vectors(email_id, embedding, updated_at) VALUES(?,?,?) "
-                    "ON CONFLICT(email_id) DO UPDATE SET embedding=excluded.embedding, "
-                    "updated_at=excluded.updated_at",
-                    (email_id, _pack(vector), now),
-                )
-        indexed += len(batch)
+    total = len(docs)
+    _set_progress(running=True, phase="model", done=0, total=total, error="")
+    try:
+        indexed = 0
+        for start in range(0, total, batch_size):
+            batch = docs[start:start + batch_size]
+            vectors = embed_texts([text for _id, text in batch])
+            with db.conn() as c:
+                for (email_id, _text), vector in zip(batch, vectors):
+                    c.execute(
+                        "INSERT INTO email_vectors(email_id, embedding, updated_at) VALUES(?,?,?) "
+                        "ON CONFLICT(email_id) DO UPDATE SET embedding=excluded.embedding, "
+                        "updated_at=excluded.updated_at",
+                        (email_id, _pack(vector), now),
+                    )
+            indexed += len(batch)
+            _set_progress(phase="index", done=indexed)
+    except Exception as exc:
+        _set_progress(running=False, error=str(exc))
+        raise
+    _set_progress(running=False, phase="", done=total)
     log.info("语义索引重建完成: %d 封邮件", indexed)
     return {"indexed": indexed, "model": MODEL_NAME}
 
@@ -136,6 +159,7 @@ def index_stats() -> dict:
         "indexed": row["n"],
         "last_indexed_at": row["last"] or "",
         "model": MODEL_NAME,
+        "progress": progress(),
     }
 
 

@@ -123,6 +123,19 @@ body {
   cursor: not-allowed;
   transform: none;
 }
+/* loading 按钮统一带旋转指示，让"处理中"有明确的动态反馈 */
+button.loading::before {
+  content: "";
+  display: inline-block;
+  width: .85em;
+  height: .85em;
+  margin-right: .45em;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  vertical-align: -.1em;
+  animation: spin .7s linear infinite;
+}
 
 /* ===== 三栏布局 ===== */
 .layout {
