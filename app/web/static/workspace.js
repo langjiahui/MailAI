@@ -597,7 +597,10 @@ function initializeWorkspace() {
     }
   };
   document.getElementById('assistant-stop').onclick = () => assistantController?.abort();
-  document.getElementById('assistant-retry').onclick = () => askAssistant(assistantLastQuestion, assistantLastScope, assistantLastImages, assistantLastAttachments);
+  document.getElementById('assistant-retry').onclick = () => {
+    document.querySelector('#assistant-messages .assistant-message.bot:last-child')?.remove();
+    askAssistant(assistantLastQuestion, assistantLastScope, assistantLastImages, assistantLastAttachments, assistantLastAlertContext, {retry:true});
+  };
   document.body.classList.toggle('assistant-floating', localStorage.getItem('mailai-assistant-floating') === 'true');
   initializeAssistantPolish();
   document.getElementById('task-center-list').onclick = async event => {

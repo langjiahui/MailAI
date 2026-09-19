@@ -54,6 +54,7 @@ let assistantLastQuestion = '';
 let assistantLastScope = null;
 let assistantLastImages = [];
 let assistantLastAttachments = [];
+let assistantLastAlertContext = false;
 let assistantPinnedScope = null;
 let assistantNoticeKey = '';
 let assistantScopeKey = '';
@@ -82,6 +83,7 @@ let bulkStackPreviewController = null;
 const bulkStackPreviewCache = new Map();
 let bulkOperationActive = false;
 let mailboxFolders = [];
+let mailboxFoldersAccountId = '';
 let attachmentItems = [];
 let attachmentTypeFilter = 'all';
 let selectedManagedAccountId = '';
@@ -103,6 +105,8 @@ const readSyncJobs = new Map();
 let unifiedMailbox = false;
 let selectedMailboxAccountId = '';
 let selectedEmailAccountId = '';
+let mailboxNavigationRevision = 0;
+let mailboxActivationQueue = Promise.resolve();
 const SERVER_FOLDER_VISIBILITY_KEY = 'mailai.preferences.showServerFolders.v1';
 
 function serverFoldersVisible() {
@@ -575,6 +579,18 @@ function appendAssistantMessage(role, content, sources = []) {
   el.innerHTML = `<div class="assistant-bubble">${role === 'user' ? esc(content) : assistantAnswerHtml(content, sources, accountId)}${sourceHtml}</div>`;
   wrap.appendChild(el); wrap.scrollTop = wrap.scrollHeight; return el;
 }
+function assistantProgressHtml(title, detail = '') {
+  return `<div class="assistant-progress" role="status" aria-live="polite"><span class="thinking-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="assistant-progress-copy"><b>${esc(title)}</b>${detail ? `<small>${esc(detail)}</small>` : ''}</span></div>`;
+}
+function assistantStreamStatusCopy(event, emailIds) {
+  const english = typeof currentI18nLanguage === 'function' && currentI18nLanguage() === 'en';
+  if (event.state === 'searching' && emailIds?.length) {
+    return [mailaiT('asst.readingMail') || '正在读取所选邮件…',
+      (mailaiT('asst.readingMailDetail') || '共 {count} 封，正在准备上下文').replace('{count}', emailIds.length)];
+  }
+  return [english ? (event.message_en || event.message) : event.message,
+    english ? (event.detail_en || event.detail) : event.detail];
+}
 let assistantCloseTimer = null;
 let assistantOpenTimer = null;
 let assistantPollTimer = null;
@@ -710,7 +726,7 @@ function resetAssistantConversation({focus = true} = {}) {
   window.assistantImages?.clear(); assistantLastImages = [];
   if (focus) window.showSecretaryChat?.();
   assistantController?.abort(); assistantController = null; ++assistantRevision;
-  assistantLastQuestion = ''; assistantLastScope = null;
+  assistantLastQuestion = ''; assistantLastScope = null; assistantLastAlertContext = false;
   setAssistantState(assistantNotificationState(assistantAlerts));
   document.getElementById('assistant-stop').classList.add('hidden');
   document.getElementById('assistant-retry').classList.add('hidden');
@@ -723,7 +739,7 @@ function resetAssistantConversation({focus = true} = {}) {
 }
 async function loadAssistantConversation(id) {
   assistantController?.abort(); assistantController = null;
-  assistantLastQuestion = ''; assistantLastScope = null;
+  assistantLastQuestion = ''; assistantLastScope = null; assistantLastAlertContext = false;
   setAssistantState(assistantNotificationState(assistantAlerts));
   document.getElementById('assistant-send').disabled = false;
   document.getElementById('assistant-stop').classList.add('hidden');
@@ -822,7 +838,7 @@ async function currentEmailInlineImages(emailId, accountId) {
   return measured.filter(item => item.area >= 12_000).sort((left, right) => right.area - left.area).slice(0, 3).map(item => ({data_url:item.data_url}));
 }
 
-async function askAssistant(question, explicitIds = null, images = [], attachments = [], alertContext = false) {
+async function askAssistant(question, explicitIds = null, images = [], attachments = [], alertContext = false, options = {}) {
   if (!(_systemConfig?.model?.available && _systemConfig?.model?.verified)) { window.mailOnboarding?.openModel(); return; }
   if(attachments.length && !String(question || '').trim())question='请结合所选附件与邮件正文，总结重点和待确认事项。';
   if(images.length && !String(question || '').trim())question='请提炼这些图片的重点，区分明确事实、待确认信息和建议下一步。';
@@ -863,6 +879,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
   if (assistantScopeKey && assistantScopeKey !== scopeKey) resetAssistantConversation();
   assistantScopeKey = scopeKey; assistantLastQuestion = question;
   assistantAlertContextIds = alertContext ? [...(emailIds || [])] : [];
+  assistantLastAlertContext = alertContext;
   assistantLastScope = emailIds;
   assistantLastImages = images;
   assistantLastAttachments=attachments;
@@ -872,12 +889,23 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
   const revision = ++assistantRevision;
   const controller = new AbortController(); assistantController = controller;
   const historyQuestion=question+(inlineImageCount?'\n（本次已传入当前邮件的内嵌图片 '+inlineImageCount+' 张，仅用于本次识图，后续核对请重新选择邮件图片。）':'')+(attachments.length?'\n（本次参考附件：'+attachments.map((r,i)=>`${i+1}. ${r.name}`).join('；')+'。历史不存附件正文，后续核对请重新选择。）':'');
-  const userMessage=appendAssistantMessage('user', historyQuestion);
-  if(images.length)window.assistantImages?.showSent(userMessage,images);
-  assistantHistory.push({role:'user', content:historyQuestion});
+  const retrying = Boolean(options.retry);
+  const userMessage = retrying ? null : appendAssistantMessage('user', historyQuestion);
+  if(images.length && userMessage)window.assistantImages?.showSent(userMessage,images);
+  if (!retrying) assistantHistory.push({role:'user', content:historyQuestion});
   const thinking = appendAssistantMessage('assistant', '');
   const bubble = thinking.querySelector('.assistant-bubble');
-  bubble.innerHTML = '<span class="thinking-dots"><i></i><i></i><i></i></span> '+(attachments.length?'正在读取所选附件并结合邮件分析…':inlineImageCount?'正在读取邮件内嵌图片并整理要点…':images.length?'正在查看图片并整理要点…':'正在查找邮件…');
+  bubble.classList.add('assistant-progress-bubble');
+  const initialProgress = attachments.length
+    ? [mailaiT('asst.readingAttachments') || '正在读取所选附件…', (mailaiT('asst.readingAttachmentsDetail') || '{count} 个附件，完成后将结合邮件分析').replace('{count}', attachments.length)]
+    : inlineImageCount
+      ? [mailaiT('asst.readingInlineImages') || '正在读取邮件内嵌图片…', (mailaiT('asst.readingImagesDetail') || '{count} 张图片，正在准备分析内容').replace('{count}', inlineImageCount)]
+      : images.length
+        ? [mailaiT('asst.readingImages') || '正在读取图片…', (mailaiT('asst.readingImagesDetail') || '{count} 张图片，正在准备分析内容').replace('{count}', images.length)]
+        : emailIds?.length
+          ? [mailaiT('asst.readingMail') || '正在读取所选邮件…', (mailaiT('asst.readingMailDetail') || '共 {count} 封，正在准备上下文').replace('{count}', emailIds.length)]
+          : [mailaiT('asst.understanding') || '正在理解你的问题…', mailaiT('asst.understandingDetail') || '将在当前邮箱范围内查找所需信息'];
+  bubble.innerHTML = assistantProgressHtml(...initialProgress);
   document.getElementById('assistant-scope-note').textContent = scope;
   document.getElementById('assistant-stop').classList.remove('hidden');
   document.getElementById('assistant-retry').classList.add('hidden');
@@ -888,6 +916,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
   const streamDeadline = setTimeout(() => controller.abort(), 360000);
   const validAnswer = () => answer.replace(/\[email_id:(\d+)\]/g, (match, id) => sources.some(s => String(s.id) === id) ? match : '（来源未核实）');
   const paint = () => {
+    bubble.classList.remove('assistant-progress-bubble');
     bubble.innerHTML = assistantAnswerHtml(validAnswer(), sources, account?.id || '');
     const wrap = document.getElementById('assistant-messages');
     if (wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight < 160) wrap.scrollTop = wrap.scrollHeight;
@@ -905,20 +934,24 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
       if (event.type === 'meta') assistantConversationId = event.conversation_id;
       else if (event.type === 'sources') {
         sources = event.sources || [];
-        document.getElementById('assistant-scope-note').textContent = scope + ` · 本次分析 ${sources.length} 封（每次最多 20 封）`;
+        if (sources.length) document.getElementById('assistant-scope-note').textContent = (mailaiT('asst.runScope') || '{scope} · 本次分析 {count} 封（每次最多 20 封）').replace('{scope}', scope).replace('{count}', sources.length);
       } else if (event.type === 'delta') {
+        const firstDelta = !answer.trim();
         answer += event.content || '';
         if (answer.length > 100000) throw new Error('回复过长，请缩小范围后分批分析');
         // Rebuilding the entire Markdown/table DOM for every token can monopolize
         // the UI thread. Batch tokens, but always paint the final answer below.
-        if (!paintTimer) paintTimer = setTimeout(() => {
+        if (firstDelta) paint();
+        else if (!paintTimer) paintTimer = setTimeout(() => {
           paintTimer = null;
           if (revision === assistantRevision) paint();
         }, 120);
       }
       else if (event.type === 'status') {
         if (!answer.trim()) {
-          bubble.innerHTML = `<span class="thinking-dots"><i></i><i></i><i></i></span> ${esc(event.message || '正在分析…')}`;
+          const [statusTitle, statusDetail] = assistantStreamStatusCopy(event, emailIds);
+          bubble.classList.add('assistant-progress-bubble');
+          bubble.innerHTML = assistantProgressHtml(statusTitle || '正在分析…', statusDetail || '');
         }
       }
       else if (event.type === 'done') completed = true;
@@ -4084,7 +4117,7 @@ async function activateMailAccount(accountId, {keepMailbox = false, quiet = fals
   if (!account.active) {
     await api('/api/system/mail/preferred', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({account_id:accountId})});
     window.assistantAttachments?.clear(); assistantLastAttachments=[];
-    window.assistantImages?.clear(); assistantLastImages = []; assistantLastQuestion = ''; assistantLastScope = null;
+    window.assistantImages?.clear(); assistantLastImages = []; assistantLastQuestion = ''; assistantLastScope = null; assistantLastAlertContext = false;
     assistantController?.abort(); assistantController = null; ++assistantRevision;
     ++mailLoadRevision; ++readingLoadRevision; ++searchRevision;
     readingLoadController?.abort(); readingLoadController = null;
@@ -4122,37 +4155,54 @@ async function activateMailAccount(accountId, {keepMailbox = false, quiet = fals
 
 async function openAccountMailbox(accountId, mailbox) {
   if (bulkOperationActive) return toast('批量操作正在执行，请稍候', 'warn');
+  const navigationRevision = ++mailboxNavigationRevision;
   resetReadingPane();
-  // 乐观高亮：先切选中态再等网络往返，消除"点了没反应"的迟滞；失败回滚
-  const previousSelection = selectedMailboxAccountId;
-  const previousUnified = unifiedMailbox;
+  // 乐观高亮：账号和文件夹状态必须一起切换，不等账号激活或列表加载。
+  // 否则侧栏首次重绘仍会使用旧的 specialMailbox/currentFilter.status。
+  const previousMailboxState = {
+    selectedMailboxAccountId, unifiedMailbox, specialMailbox, currentServerFolder,
+    status: currentFilter.status,
+  };
   unifiedMailbox = false;
   selectedMailboxAccountId = accountId;
-  updateActiveNav(); renderSidebarAccounts();
-  try {
-    await activateMailAccount(accountId);
-  } catch (err) {
-    selectedMailboxAccountId = previousSelection;
-    unifiedMailbox = previousUnified;
-    updateActiveNav(); renderSidebarAccounts();
-    throw err;
-  }
-  if (activeMailAccount()?.id !== accountId) return;
   specialMailbox = ['sent', 'drafts'].includes(mailbox) ? mailbox : '';
   currentServerFolder = '';
   currentFilter.status = ['inbox','trash','favorites','local_archive'].includes(mailbox) ? mailbox : '';
+  updateActiveNav(); renderSidebarAccounts();
+  try {
+    const activation = mailboxActivationQueue.catch(() => {}).then(async () => {
+      if (navigationRevision !== mailboxNavigationRevision) return false;
+      // Keep the optimistic mailbox highlight owned by this navigation. A stale
+      // activation may still finish on the server, but must not repaint or toast
+      // over a newer click while the queue switches to the final account.
+      await activateMailAccount(accountId, {keepMailbox:true, quiet:true});
+      return navigationRevision === mailboxNavigationRevision;
+    });
+    mailboxActivationQueue = activation.then(() => {}, () => {});
+    if (!await activation) return;
+  } catch (err) {
+    if (navigationRevision !== mailboxNavigationRevision) return;
+    selectedMailboxAccountId = previousMailboxState.selectedMailboxAccountId;
+    unifiedMailbox = previousMailboxState.unifiedMailbox;
+    specialMailbox = previousMailboxState.specialMailbox;
+    currentServerFolder = previousMailboxState.currentServerFolder;
+    currentFilter.status = previousMailboxState.status;
+    updateActiveNav(); renderSidebarAccounts();
+    throw err;
+  }
+  if (navigationRevision !== mailboxNavigationRevision || activeMailAccount()?.id !== accountId) return;
   currentFilter.search = ''; searchResults = null; ++searchRevision; clearTimeout(globalSearchTimer);
   document.getElementById('global-search').value = '';
   currentFilter.verdict = ''; currentFilter.category = '';
   if (currentFilter.days !== 9999) { currentFilter.days = 9999; setSegmentedFilter('filter-days', '9999'); }
   if (mailbox === 'trash') {
     await loadMailboxFolders();
-    if (activeMailAccount()?.id !== accountId) return;
+    if (navigationRevision !== mailboxNavigationRevision || activeMailAccount()?.id !== accountId) return;
     await openTrashMailbox({resetPane:false});
     return;
   }
   await Promise.all([loadData(), loadMailboxFolders()]);
-  if (activeMailAccount()?.id !== accountId) return;
+  if (navigationRevision !== mailboxNavigationRevision || activeMailAccount()?.id !== accountId) return;
   updateActiveNav(); renderSidebarAccounts();
 }
 
@@ -4185,12 +4235,16 @@ async function openTrashMailbox({resetPane = true} = {}) {
 
 async function openUnifiedInbox() {
   if (bulkOperationActive) return toast('批量操作正在执行，请稍候', 'warn');
+  const navigationRevision = ++mailboxNavigationRevision;
   resetReadingPane(); clearMailSelection();
   unifiedMailbox = true; selectedMailboxAccountId = '';
   updateActiveNav(); renderSidebarAccounts(); // 乐观高亮，不等加载完成
   specialMailbox = ''; currentServerFolder = '';
   currentFilter.status = ''; currentFilter.verdict = ''; currentFilter.category = '';
+  currentFilter.search = ''; searchResults = null; ++searchRevision; clearTimeout(globalSearchTimer);
+  document.getElementById('global-search').value = '';
   await loadData();
+  if (navigationRevision !== mailboxNavigationRevision) return;
   updateActiveNav(); renderSidebarAccounts();
 }
 
@@ -5831,11 +5885,16 @@ document.addEventListener('keydown', event => {
 });
 
 async function loadMailboxFolders() {
+  const accountId = activeMailAccount()?.id || '';
+  if (mailboxFoldersAccountId !== accountId) {
+    mailboxFolders = [];
+    mailboxFoldersAccountId = accountId;
+  }
   try {
-    const accountId = activeMailAccount()?.id;
     const folders = await api('/api/mail/folders');
-    if (accountId !== activeMailAccount()?.id) return;
+    if (accountId !== activeMailAccount()?.id) return false;
     mailboxFolders = folders;
+    mailboxFoldersAccountId = accountId;
     const select = document.getElementById('bulk-folder');
     select.innerHTML = '<option value="">移动到…</option>' + mailboxFolders.filter(folder => folder.selectable !== false).map(folder => `<option value="${esc(folder.name)}">${esc(folder.name)}</option>`).join('');
     const protectedNames = new Set([mailboxFolders.find(folder => (folder.flags || []).some(flag => /inbox/i.test(flag)))?.name || 'INBOX']);
@@ -5843,7 +5902,17 @@ async function loadMailboxFolders() {
     host.innerHTML = mailboxFolders.filter(folder => folder.selectable !== false && !protectedNames.has(folder.name)).map(folder => `<button type="button" class="nav-item" data-server-folder="${esc(folder.name)}" title="共 ${Number(folder.messages || 0)} 封，未读 ${Number(folder.unseen || 0)} 封；点击同步">
       <span class="icon"><svg viewBox="0 0 20 20"><path d="M3.5 5.5h5l1.5 2h6.5v8h-13z"/></svg></span><span class="server-folder-name">${esc(folder.name)}</span><span class="count">${Number(folder.messages || 0)}</span></button>`).join('') || '<small>没有其他文件夹</small>';
     updateSidebar();
-  } catch (_) {}
+    return true;
+  } catch (error) {
+    if (accountId === activeMailAccount()?.id) {
+      mailboxFolders = [];
+      mailboxFoldersAccountId = accountId;
+      document.getElementById('bulk-folder').innerHTML = '<option value="">移动到…</option>';
+      document.getElementById('server-folder-nav').innerHTML = '<small>文件夹暂时无法读取</small>';
+      toast('服务器文件夹读取失败，将显示本地邮件记录：' + error.message, 'warn');
+    }
+    return false;
+  }
 }
 
 async function loadServerFolder(folder) {

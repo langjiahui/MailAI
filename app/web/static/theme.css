@@ -1104,6 +1104,7 @@ html[data-theme="dark"] .assistant-message.bot .assistant-bubble {
   background:linear-gradient(145deg,rgba(39,70,54,.78),rgba(15,36,27,.86))!important;
   box-shadow:0 12px 30px rgba(0,0,0,.2),inset 0 1px rgba(255,255,255,.045)!important;
 }
+html[data-theme="dark"] .assistant-progress-copy small { color:#9db8aa!important; }
 html[data-theme="dark"] .assistant-answer>p,
 html[data-theme="dark"] .assistant-answer li { color:#c9ddd1!important; }
 html[data-theme="dark"] .assistant-answer h3,

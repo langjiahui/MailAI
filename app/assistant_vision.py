@@ -98,11 +98,27 @@ def ask_stream(question, history, email_ids, images, materials=None):
     if not client.available():
         raise ImageAnalysisError('尚未配置可用模型，图片未发送。请先检查模型连接。')
     materials = materials or []
+    kinds = []
+    if images:
+        kinds.append(f'{len(images)} 张图片')
+    if materials:
+        kinds.append(f'{len(materials)} 个附件')
+    yield 'status', {'state': 'reading', 'message': '正在读取所选材料…',
+                     'detail': '、'.join(kinds) or '正在准备分析内容',
+                     'message_en': 'Reading the selected materials…',
+                     'detail_en': ', '.join(
+                         ([f'{len(images)} image(s)'] if images else []) +
+                         ([f'{len(materials)} attachment(s)'] if materials else [])
+                     ) or 'Preparing the content for analysis'}
     # Explicit reference inputs must never retrieve unrelated mail.
     sources = assistant._sources(question, email_ids or [])
     citations = [{'id': e['id'], 'subject': e.get('subject') or '（无主题）',
                   'from_addr': e.get('from_addr') or '', 'date': e.get('date') or ''} for e in sources]
     yield 'sources', citations
+    yield 'status', {'state': 'analyzing', 'message': '材料已读取，正在分析…',
+                     'detail': f'同时参考 {len(sources)} 封邮件' if sources else '正在识别重点并组织回答',
+                     'message_en': 'Materials loaded; analyzing…',
+                     'detail_en': f'Also referencing {len(sources)} mail(s)' if sources else 'Identifying key points and preparing an answer'}
     context = '\n\n'.join(
         f"[email_id:{e['id']}] 主题:{e.get('subject','')}\n{assistant.risk_context(e)}\n"
         f"摘要:{e.get('summary') or ''}\n正文:{(e.get('body_text') or '')[:max(1800, min(config.LLM_MAX_BODY_CHARS, 20000))]}" for e in sources)

@@ -728,6 +728,16 @@ const I18N_MESSAGES = {
     'asst.retry': 'Retry last question',
     'asst.privacy': 'AI suggestions are for reference; verify important matters',
     'asst.resizeTitle': 'Drag to resize',
+    'asst.understanding': 'Understanding your question…',
+    'asst.understandingDetail': 'Looking for the needed information in the current mailbox',
+    'asst.readingMail': 'Reading selected mail…',
+    'asst.readingMailDetail': 'Preparing context from {count} mail(s)',
+    'asst.readingImages': 'Reading images…',
+    'asst.readingImagesDetail': 'Preparing {count} image(s) for analysis',
+    'asst.readingInlineImages': 'Reading images in this mail…',
+    'asst.readingAttachments': 'Reading selected attachments…',
+    'asst.readingAttachmentsDetail': 'Reading {count} attachment(s), then combining them with the mail',
+    'asst.runScope': '{scope} · Analyzing {count} mail(s) in this run (up to 20)',
 
     // 批四：首次引导 / 诊断 / 服务器清理
     'ob.step': 'Get started · Connect a mailbox',

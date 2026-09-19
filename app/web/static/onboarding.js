@@ -10,7 +10,9 @@
 
   const card = document.createElement('aside');
   card.className = 'start-card hidden'; card.setAttribute('aria-label', '快速上手');
-  document.body.append(card);
+  // Keep the coach mark in the app stacking context so application dialogs
+  // (compose, settings, previews) always remain above it and receive clicks.
+  (document.getElementById('app') || document.body).append(card);
   const modal = document.createElement('div');
   modal.id = 'start-model'; modal.className = 'start-model hidden';
   modal.innerHTML = `<section class="start-model-panel" role="dialog" aria-modal="true" aria-labelledby="start-model-title"><span class="onboarding-step">设置小邮 · 可稍后完成</span><h2 id="start-model-title">为小邮连接 AI 模型</h2><p>邮箱和模型分别配置。启用后，小邮可以总结邮件、整理待办、辅助写信。</p><details><summary>没有 API Key？</summary><p>API Key 是模型服务的访问密钥，与邮箱授权码不同。请向企业管理员获取服务地址、模型名称和 API Key，或从所选模型服务商获取。</p></details><div id="start-model-form"></div><p>使用 AI 时，相关邮件内容会发送至配置的模型服务。验证连接会发送简短请求，可能产生服务费用。</p><p id="start-model-result" role="status" aria-live="polite"></p><div class="start-actions"><button id="start-enable" class="action-btn action-primary">验证并启用</button><button id="start-model-later" class="btn-ghost">稍后设置，进入邮箱</button></div></section>`;

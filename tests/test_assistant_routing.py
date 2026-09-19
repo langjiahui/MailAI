@@ -94,6 +94,15 @@ def main():
     assert budget['max_tokens'] == 4096 and budget['timeout'] == 90
     assert '先直接给出是否一致及差额' in str(budget['messages'])
     assert '明细合计与账单一致' in ''.join(value for event,value in answer_events if event == 'delta')
+    event_kinds = [event for event, _ in answer_events]
+    status_states = [value['state'] for event, value in answer_events if event == 'status']
+    assert 'searching' in status_states and 'analyzing' in status_states
+    analyzing_index = next(index for index, (event, value) in enumerate(answer_events)
+                           if event == 'status' and value['state'] == 'analyzing')
+    assert event_kinds.index('sources') < analyzing_index < event_kinds.index('delta')
+    analyzing = next(value for event, value in answer_events if event == 'status' and value['state'] == 'analyzing')
+    assert '已找到 1 封相关邮件' in analyzing['message'] and analyzing['detail']
+    assert analyzing['message_en'] and analyzing['detail_en']
     with patch.object(assistant, 'retrieve', return_value=[named]), \
          patch.object(assistant.client, 'available', return_value=True), \
          patch.object(assistant.client, 'chat_completion_stream', side_effect=lambda messages, **kwargs: (retry_messages.append(messages) or iter(['半句']))), \

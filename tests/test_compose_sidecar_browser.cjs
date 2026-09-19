@@ -32,6 +32,7 @@ const fs=require('fs'), path=require('path'), assert=require('node:assert/strict
    assert.equal(Math.round((await page.locator('#compose-body').boundingBox()).width),Math.round(editor.width));
    assert.ok(panel.x>=0&&panel.x+panel.width<=width+1);
    if(width>=1200){assert.ok(after.x<before.x);assert.ok(after.x>=0);assert.ok(after.x+after.width<=panel.x);}
+   if(width===1024){assert.ok(panel.x<=after.x&&panel.y<=after.y);assert.ok(panel.x+panel.width>=after.x+after.width&&panel.y+panel.height>=after.y+after.height);}
    if(width===1440)await page.screenshot({path:path.join(__dirname,'../build/compose-sidecar.png')});
   }
   console.log('PASS assistant outside compose, stable editor width, left shift, non-overlap and mobile bounds');

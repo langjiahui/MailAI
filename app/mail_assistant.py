@@ -543,6 +543,10 @@ def ask_stream(question: str, history: list[dict] | None = None, email_ids=None,
         yield "action", proposal
     direct = _direct_answer(question)
     if direct:
+        yield "status", {"state": "composing", "message": "正在整理回答…",
+                         "detail": "这个问题不需要检索邮件",
+                         "message_en": "Preparing the answer…",
+                         "detail_en": "This question does not require a mail search"}
         yield "sources", []
         # 分段输出，保持助手所有回答一致的流式交互体验。
         for chunk in re.findall(r".*?(?:\n\n|\n|$)", direct):
@@ -553,21 +557,38 @@ def ask_stream(question: str, history: list[dict] | None = None, email_ids=None,
     if todo_answer:
         source_ids = {int(value) for value in re.findall(r"\[email_id:(\d+)\]", todo_answer)}
         source_rows = [db.get_email(email_id) for email_id in source_ids]
+        valid_source_rows = [e for e in source_rows if e]
         yield "sources", [{"id": e["id"], "subject": e.get("subject") or "（无主题）",
                             "from_addr": e.get("from_addr") or "", "date": e.get("date") or "",
-                            "score": e.get("score") or 0} for e in source_rows if e]
+                            "score": e.get("score") or 0} for e in valid_source_rows]
+        yield "status", {"state": "analyzing", "message": "已找到待办线索，正在整理…",
+                         "detail": f"关联 {len(valid_source_rows)} 封邮件" if valid_source_rows else "正在生成清晰的处理建议",
+                         "message_en": "To-do clues found; organizing them…",
+                         "detail_en": f"Related to {len(valid_source_rows)} mail(s)" if valid_source_rows else "Preparing clear next-step suggestions"}
         for chunk in re.findall(r".*?(?:\n|$)", todo_answer):
             if chunk:
                 yield "delta", chunk
         return
+    yield "status", {"state": "searching", "message": "正在检索相关邮件…",
+                     "detail": "正在匹配主题、正文和发件人",
+                     "message_en": "Searching relevant mail…",
+                     "detail_en": "Matching subjects, bodies, and senders"}
     sources = _sources(question, email_ids)
     citations = [{"id": e["id"], "subject": e.get("subject") or "（无主题）",
                   "from_addr": e.get("from_addr") or "", "date": e.get("date") or "",
                   "score": e.get("score") or 0} for e in sources]
     yield "sources", citations
     if not sources:
+        yield "status", {"state": "composing", "message": "没有找到直接相关的邮件",
+                         "detail": "正在整理检索结果和下一步建议",
+                         "message_en": "No directly relevant mail found",
+                         "detail_en": "Summarizing the search and suggested next steps"}
         yield "delta", _empty_answer(question)
         return
+    yield "status", {"state": "analyzing", "message": f"已找到 {len(sources)} 封相关邮件",
+                     "detail": "正在分析内容并组织回答",
+                     "message_en": f"Found {len(sources)} relevant mail(s)",
+                     "detail_en": "Analyzing the content and preparing an answer"}
     context = []
     for e in sources:
         findings = e.get("findings") or []
@@ -621,12 +642,15 @@ def ask_stream(question: str, history: list[dict] | None = None, email_ids=None,
             buffered_chunks.clear()
             buffered_text = ""
             if stream_attempt == 0:
-                yield "status", {"state": "retrying", "message": "模型流式连接中断，正在重试…"}
+                yield "status", {"state": "retrying", "message": "模型流式连接中断，正在重试…",
+                                 "message_en": "The model stream was interrupted; retrying…"}
     if not emitted:
         # 网关不支持流式、连接中断或只返回空片段时，自动改走非流式请求；仍失败则给出本地检索结果。
         fallback_message = "模型未能完成回答，正在使用本地邮件记录整理结果…" if model_available \
             else "模型未配置，正在使用本地邮件记录整理结果…"
-        yield "status", {"state": "fallback", "message": fallback_message}
+        yield "status", {"state": "fallback", "message": fallback_message,
+                         "message_en": "The model did not finish; using local mail records…" if model_available
+                         else "No model is configured; using local mail records…"}
         fallback = ask(question, history, email_ids)
         fallback_text = fallback.get("answer") or _fallback_answer(question, sources)
         for chunk in _fallback_stream_chunks(fallback_text):

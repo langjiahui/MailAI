@@ -4810,17 +4810,22 @@ html.windows-performance .list-pane:has(.bulk-toolbar.busy) .email-item.bulk-sel
 }
 .compose-toolbar-actions > button,.compose-signature-tools,.compose-ai-tools { flex-shrink:0; }
 @media(min-width:1600px) {
-  .compose-modal:has(> .compose-ai-panel:not(.hidden)) > .compose-card { transform:translateX(-210px); }
+  .compose-modal:has(> .compose-ai-panel:not(.hidden)) > .compose-card { translate:-210px 0; }
+}
+@media(min-width:761px) and (max-width:1199px) {
+  /* A partial side overlay leaves the editor looking broken at tablet/laptop
+     widths. Use a deliberate focus layer until both panes fit side by side. */
+  .compose-modal > .compose-ai-panel { inset:24px; width:auto; height:auto; border-radius:22px; }
 }
 @media(max-width:760px) {
   .compose-modal > .compose-ai-panel { inset:8px; width:auto; height:auto; border-radius:18px; }
 }
-.compose-modal > .compose-card { transition:transform .28s cubic-bezier(.2,.8,.2,1); }
+.compose-modal > .compose-card { transition:translate .28s cubic-bezier(.2,.8,.2,1); }
 .compose-modal > .compose-ai-panel { animation:composeSidecarEnter .28s cubic-bezier(.2,.8,.2,1); }
 @keyframes composeSidecarEnter { from { opacity:0; transform:translateX(32px); } to { opacity:1; transform:translateX(0); } }
 @media(min-width:1200px) and (max-width:1599px) {
   .compose-modal > .compose-card { width:calc(100vw - 460px); }
-  .compose-modal:has(> .compose-ai-panel:not(.hidden)) > .compose-card { transform:translateX(-210px); }
+  .compose-modal:has(> .compose-ai-panel:not(.hidden)) > .compose-card { translate:-210px 0; }
 }
 @media(prefers-reduced-motion:reduce) {
   .compose-modal > .compose-card { transition:none; }
