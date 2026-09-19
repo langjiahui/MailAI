@@ -789,6 +789,13 @@ const I18N_MESSAGES = {
     'diag.a.fallback': 'Check the connection settings under Mail Accounts.',
     'diag.a.modelAuth': 'Check whether the model API key is valid.',
     'diag.a.modelGeneral': 'Check the model URL, API key and network connection.',
+
+    // 批四收尾：清扫遗漏的零散文案
+    'dash.updating': 'Updating data…',
+    'prefs.autoSave': 'Saves automatically',
+    'fmt.highlightMark': 'A',
+    'corr.trashing': 'Moving to Trash',
+    'corr.trashingHint': 'Safely processing the selected mail, please wait…',
   },
 };
 
