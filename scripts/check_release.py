@@ -77,6 +77,7 @@ TESTS = (
     'test_assistant_actions.py',
     'test_ollama_preset.py',
     'test_semantic_search.py',
+    'test_linux_appimage.py',
     'test_server_cleanup.py',
 )
 

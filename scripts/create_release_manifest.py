@@ -26,7 +26,7 @@ def release_notes_from_readme(path: Path) -> str:
 
 
 def release_body(version: str, notes: str) -> str:
-    return f"## MailAI {version} 更新内容\n\n{notes}\n\n安装包会根据 Windows x64 或 Apple Silicon macOS 自动匹配。\n"
+    return f"## MailAI {version} 更新内容\n\n{notes}\n\n安装包会根据 Windows x64、Apple Silicon macOS 或 Linux x64 自动匹配。\n"
 
 
 def main():
@@ -45,6 +45,7 @@ def main():
     names = {
         "windows-x64": "MailAI-Windows-x64-Setup.exe",
         "macos-arm64": "MailAI-macOS-arm64.pkg",
+        "linux-x64": "MailAI-Linux-x64.AppImage",
     }
     assets = {}
     for device, name in names.items():
