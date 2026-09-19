@@ -5,9 +5,9 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v1.2.0**
+当前版本：**v2.0.0**
 
-本次更新：检测工程化与暗色主题修复。离线评估语料扩充至 34 个合成样本（干净/钓鱼/垃圾三类，覆盖显示名仿冒、Reply-To 不匹配、IP/短链/punycode 链接、双重扩展名与宏/可执行附件等典型手法），发布门禁新增准确率门槛（干净误报率 <2%、钓鱼召回率 ≥90%）；URL 攻击链跟踪改为独立子进程执行，慢响应/挂起的恶意链接不再拖垮主处理管道；新增 IOC 导出接口（从钓鱼判定聚合发件人、域名、IP、链接与附件哈希，支持 JSON/CSV）；新增反馈分析与语料脱敏导出工具；修复未配置公司域名时显示名仿冒规则对所有外部邮件误加分的问题；修复暗色主题下写作 Copilot 操作条与发送前安全确认弹窗的亮色残留。
+本次更新：智能助手进化与全平台覆盖。小邮助手新增受控操作（创建待办、起草回复、标记已读：白名单校验 + 确认卡片 + 审计留痕，助手不能绕过人工确认执行动作）；新增可选语义检索（本地 BGE-small-zh 嵌入模型，向量存于本机数据库，数据不出本机，未启用时自动回落关键词检索）；新增 Ollama 本地模型预设，免密钥接入本地开源模型；新增界面国际化框架与首个英文切片（顶栏、安全菜单、看板与常用设置，可在设置中一键切换）；便携迁移包支持按日期范围选择性导出（自动清理范围外邮件的待办、链接链等关联数据，迁移清单记录筛选条件）；新增 Linux x64 AppImage 安装包（发布流水线全量验证）；发布流水线支持可选代码签名（配置证书后自动签名 Windows 安装器与 macOS 应用及安装包，未配置时保持未签名发布，行为不变）；暗色主题补齐安全结果徽标与邮箱账号标签样式。
 
 ## 下载 MailAI
 
@@ -15,6 +15,7 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 |---|---|---|
 | Windows | Windows 10/11 x64 | [下载 Windows 安装程序](https://github.com/langjiahui/MailAI/releases/latest/download/MailAI-Windows-x64-Setup.exe) |
 | macOS | Apple Silicon（M1/M2/M3/M4） | [下载 macOS 安装镜像](https://github.com/langjiahui/MailAI/releases/latest/download/MailAI-macOS-arm64.dmg) |
+| Linux | x64（AppImage，免安装） | [下载 Linux AppImage](https://github.com/langjiahui/MailAI/releases/latest/download/MailAI-Linux-x64.AppImage) |
 
 也可以进入 [最新版本发布页](https://github.com/langjiahui/MailAI/releases/latest)，查看安装包、SHA-256 校验文件和版本说明。
 
@@ -22,7 +23,7 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 
 ## 版本更新
 
-支持自动更新的 MailAI 会定期读取 GitHub Releases，识别 Windows x64 或 Apple Silicon Mac，并匹配对应安装包。发现新版本后会先提示用户；只有用户确认，才会下载安装。安装包下载完成后还会进行 SHA-256 校验，校验失败将停止更新。
+支持自动更新的 MailAI 会定期读取 GitHub Releases，识别 Windows x64、Apple Silicon Mac 或 Linux x64，并匹配对应安装包。发现新版本后会先提示用户；只有用户确认，才会下载安装。安装包下载完成后还会进行 SHA-256 校验，校验失败将停止更新。
 
 手动检查入口：**设置 → 关于与隐私 → 版本与更新 → 检查更新**。
 
