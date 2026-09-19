@@ -4345,9 +4345,12 @@ body.pane-resizing iframe { pointer-events: none; }
 .compose-tool-labeled { display:inline-flex; align-items:center; gap:6px; min-height:35px; padding:6px 11px!important; border-color:rgba(52,105,84,.1)!important; color:#425b51; background:rgba(255,255,255,.72)!important; box-shadow:0 3px 10px rgba(45,79,65,.035); }
 .compose-tool-labeled:hover { border-color:rgba(42,119,89,.2)!important; color:#286f54; background:#fff!important; }
 .compose-tool-labeled svg,.compose-attach-button svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
-.compose-signature-tools { display:flex; align-items:center; height:34px; overflow:hidden; border:1px solid rgba(55,110,89,.12); border-radius:9px; background:rgba(255,255,255,.56); }
-.compose-signature-tools select { max-width:145px; height:100%; padding:0 7px; border:0; outline:0; color:#435c52; background:transparent; font-size:11px; }
-.compose-signature-tools button { min-width:auto; height:100%; padding:0 8px; border:0; border-left:1px solid rgba(55,110,89,.1); border-radius:0; color:#37755d; background:transparent; font-size:10px; }
+.compose-signature-tools { display:flex; align-items:center; height:35px; overflow:hidden; border:1px solid rgba(52,105,84,.1); border-radius:9px; background:rgba(255,255,255,.72); box-shadow:0 3px 10px rgba(45,79,65,.035); transition:border-color .18s ease, background .18s ease; }
+.compose-signature-tools:hover { border-color:rgba(42,119,89,.2); background:#fff; }
+.compose-signature-tools select { max-width:170px; height:100%; padding:0 4px 0 11px; border:0; outline:0; color:#425b51; background:transparent; font-size:11.5px; cursor:pointer; }
+.compose-signature-tools button { min-width:auto; height:100%; padding:0 11px; border:0; border-left:1px solid rgba(55,110,89,.1); border-radius:0; color:#37755d; background:transparent; font-size:11.5px; transition:background .15s ease, color .15s ease; }
+.compose-signature-tools button:hover { background:rgba(42,119,89,.08); color:#286f54; }
+.compose-signature-tools button:active { background:rgba(42,119,89,.14); }
 .compose-toolbar-actions .compose-ai-tools { margin-left:2px; padding-left:0; border-left:0; }
 .compose-toolbar-actions .compose-ai-main { min-height:34px; }
 .compose-toolbar-actions .compose-toolbar-status { margin-left:auto; }
