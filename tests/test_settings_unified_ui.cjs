@@ -18,7 +18,7 @@ assert.match(html, /class="maintenance-grid"[\s\S]*id="btn-run-diagnostics"[\s\S
   'Maintenance actions should use the same balanced card grid');
 assert.match(css, /\[data-system-panel="guide"\] \.guide-grid article\s*\{[^}]*background:#fff/,
   'Help cards should match other Settings surfaces');
-assert.match(html, /class="guide-intro-actions"><span>6 个使用主题<\/span><\/div>/,
+assert.match(html, /class="guide-intro-actions"><span[^>]*>6 个使用主题<\/span><\/div>/,
   'Replay belongs to the guide heading action area instead of floating above the cards');
 assert.match(onboarding, /\.guide-intro-actions'\)\.append\(replay\)/,
   'Replay action should be mounted inside the guide heading');
