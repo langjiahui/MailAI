@@ -2509,13 +2509,13 @@ body { font-size: 13px; background: var(--bg); }
 .assistant-history-item small { color: #84918b; }
 .assistant-history-empty { padding: 40px 10px; color: #84918b; text-align: center; }
 
-/* Compact segmented fetch controls. */
-.list-footer { min-height: 58px; padding: 12px 10px 14px; align-items: flex-end; background: rgba(255,255,255,.1); }
-.fetch-actions { display: inline-flex; align-items: center; padding: 3px; border: 1px solid rgba(255,255,255,.62); border-radius: 12px; background: rgba(255,255,255,.3); box-shadow: 0 5px 14px rgba(45,67,58,.05), inset 0 1px white; }
-.list-footer .fetch-actions button { min-height: 29px; display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border: 0; border-radius: 9px; background: transparent; box-shadow: none; backdrop-filter: none; color: #5c6c65; font-size: 11px; font-weight: 600; }
-.list-footer .fetch-actions button + button { border-left: 1px solid rgba(92,112,103,.12); border-radius: 0 9px 9px 0; }
+/* Compact segmented fetch controls — 低调贴底，不抢列表视觉 */
+.list-footer { min-height: 38px; padding: 5px 10px 7px; align-items: center; background: transparent; }
+.fetch-actions { display: inline-flex; align-items: center; padding: 2px; border: 1px solid rgba(92,112,103,.14); border-radius: 10px; background: rgba(255,255,255,.28); box-shadow: none; }
+.list-footer .fetch-actions button { min-height: 24px; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border: 0; border-radius: 8px; background: transparent; box-shadow: none; backdrop-filter: none; color: #76867e; font-size: 10.5px; font-weight: 600; }
+.list-footer .fetch-actions button + button { border-left: 1px solid rgba(92,112,103,.12); border-radius: 0 8px 8px 0; }
 .list-footer .fetch-actions button:hover { transform: none; border-color: transparent; background: rgba(255,255,255,.58); box-shadow: none; color: #2f775b; }
-.fetch-actions svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.55; stroke-linecap: round; stroke-linejoin: round; }
+.fetch-actions svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.55; stroke-linecap: round; stroke-linejoin: round; }
 .fetch-hint:empty { display: none; }
 
 /* Pet expression v2: stable teal identity, no envelope-mouth metaphor. */

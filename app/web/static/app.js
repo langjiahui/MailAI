@@ -2117,7 +2117,10 @@ async function api(path, opts = {}) {
   const relayAbort = () => controller.abort();
   if (parentSignal?.aborted) controller.abort();
   else parentSignal?.addEventListener('abort', relayAbort, {once:true});
-  const timeout = (!opts.method || opts.method === 'GET') ? setTimeout(() => controller.abort(), 20000) : null;
+  // 慢检查（如运行诊断需要真实连接邮箱/模型）可通过 timeoutMs 放宽
+  const timeoutMs = opts.timeoutMs || 20000;
+  delete opts.timeoutMs;
+  const timeout = (!opts.method || opts.method === 'GET') ? setTimeout(() => controller.abort(), timeoutMs) : null;
   opts.signal = controller.signal;
   try {
   const res = await fetch(API + path, opts);
@@ -2130,6 +2133,12 @@ async function api(path, opts = {}) {
   const data = await res.json();
   if (data.undo_token && typeof offerUndo === 'function') offerUndo([data.undo_token], accountId);
   return data;
+  } catch (err) {
+    // 内部超时中断翻译成可读文案；外部调用方主动 abort 则原样抛出
+    if (controller.signal.aborted && !parentSignal?.aborted && (err?.name === 'AbortError' || /aborted/i.test(err?.message || ''))) {
+      throw new Error(mailaiT('common.timeout') || '请求超时，请稍后重试');
+    }
+    throw err;
   } finally {
     clearTimeout(timeout);
     parentSignal?.removeEventListener('abort', relayAbort);
@@ -6458,7 +6467,8 @@ document.getElementById('btn-run-diagnostics').addEventListener('click', async (
   const results = document.getElementById('diagnostic-results');
   setLoading(button, true, mailaiT('diag.checking') || '检查中…');
   try {
-    const data = await api(`/api/system/diagnostics?lang=${encodeURIComponent(currentI18nLanguage())}`);
+    // 诊断要实测 IMAP/SMTP/模型连接，可能远超通用 20s GET 超时
+    const data = await api(`/api/system/diagnostics?lang=${encodeURIComponent(currentI18nLanguage())}`, {timeoutMs: 120000});
     const activeAccount = (_systemConfig?.accounts || []).find(account => account.active);
     results.innerHTML = `<p class="diagnostic-scope">${activeAccount ? (mailaiT('diag.scope') || '本次检查：{user}。').replace('{user}', esc(activeAccount.user)) : (mailaiT('diag.scopeNone') || '本次未检测到正在使用的邮箱。')}${mailaiT('diag.scopeNote') || '诊断会实测当前邮箱和已配置的模型服务。'}</p>` + data.checks.map((item, index) => {
       const status = item.status || (item.ok ? 'pass' : 'fail');

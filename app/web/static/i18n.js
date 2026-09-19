@@ -887,6 +887,7 @@ const I18N_MESSAGES = {
     'read.groupRisk': 'Risk control',
     'read.attachCount': '{n} attachments',
     'common.cancel': 'Cancel',
+    'common.timeout': 'Request timed out, please try again',
     'common.expand': 'Expand',
     'common.collapse': 'Collapse',
     'filter.toggle': 'Filters',
