@@ -75,7 +75,7 @@ async function readingRace() {
   let active = 'a';
   const other = {id:1,is_read:0};
   let readPosts = 0;
-  const context = vm.createContext({readingLoadRevision:0,readingLoadController:null,readSyncQueue:[],readSyncRunning:false,readSyncSequence:0,readSyncJobs:new Map(),
+  const context = vm.createContext({skeletonRows:()=>'',readingLoadRevision:0,readingLoadController:null,readSyncQueue:[],readSyncRunning:false,readSyncSequence:0,readSyncJobs:new Map(),
     selectedEmailId:null,selectedEmailAccountId:'',selectedEmailDetail:null,AbortController,setTimeout,clearTimeout,
     allEmails:[],searchResults:null,currentFilter:{unread:false},unifiedMailbox:false,CSS:{escape:String},activeMailAccount:()=>({id:active}),toast(){},
     document:{getElementById:node,querySelector:node},syncSelectedEmailVisual(){},renderReadingPane(){},startReadingFlight(){},esc:String,
@@ -97,7 +97,7 @@ async function readingRace() {
 async function readingAbort() {
   const nodes = new Map();
   const getNode = id => { if(!nodes.has(id)) nodes.set(id,node()); return nodes.get(id); };
-  const context = vm.createContext({readingLoadRevision:0,readingLoadController:null,readSyncQueue:[],readSyncRunning:false,
+  const context = vm.createContext({skeletonRows:()=>'',readingLoadRevision:0,readingLoadController:null,readSyncQueue:[],readSyncRunning:false,
     readSyncSequence:0,readSyncJobs:new Map(),selectedEmailId:null,selectedEmailAccountId:'',selectedEmailDetail:null,
     AbortController,setTimeout,clearTimeout,allEmails:[],searchResults:null,currentFilter:{unread:false},unifiedMailbox:false,CSS:{escape:String},
     activeMailAccount:()=>({id:'a'}),toast(){},esc:String,syncSelectedEmailVisual(){},renderReadingPane(){},startReadingFlight(){},
@@ -122,7 +122,7 @@ async function rapidReadingMarksEveryClick() {
   const posts = [];
   let sidebarRenders = 0;
   const rows = [1, 2, 3, 4, 5].map(id => ({id, is_read:0}));
-  const context = vm.createContext({readingLoadRevision:0,readingLoadController:null,readSyncQueue:[],readSyncRunning:false,
+  const context = vm.createContext({skeletonRows:()=>'',readingLoadRevision:0,readingLoadController:null,readSyncQueue:[],readSyncRunning:false,
     readSyncSequence:0,readSyncJobs:new Map(),selectedEmailId:null,selectedEmailAccountId:'',selectedEmailDetail:null,
     AbortController,setTimeout,clearTimeout,allEmails:rows,searchResults:null,currentFilter:{unread:false},unifiedMailbox:false,CSS:{escape:String},
     _systemConfig:{accounts:[{id:'a',active:true,unread:5}]},renderSidebarAccounts(){sidebarRenders++;},

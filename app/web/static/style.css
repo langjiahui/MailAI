@@ -177,7 +177,7 @@ button.loading::before {
   color: var(--text);
   font-size: 12.5px;
   text-align: left;
-  transition: background 0.12s, color 0.12s;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s var(--ease-spring, cubic-bezier(.34,1.45,.5,1));
   position: relative;
 }
 .nav-item:hover { background: #eef1f5; }
@@ -244,7 +244,7 @@ button.loading::before {
   box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
 }
 .filter-form input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--primary); }
-.btn-ghost { background: transparent; color: var(--muted); padding: 6px 10px; }
+.btn-ghost { background: transparent; color: var(--muted); padding: 6px 10px; transition: background .18s ease, color .18s ease, transform .18s var(--ease-spring, cubic-bezier(.34,1.45,.5,1)); }
 .btn-ghost:hover { background: #eef1f5; color: var(--text); }
 
 /* ===== 中间列表 ===== */
@@ -305,7 +305,7 @@ button.loading::before {
   padding: 10px 14px 10px 16px;
   border-bottom: 1px solid var(--border);
   cursor: pointer;
-  transition: background 0.12s, box-shadow 0.12s;
+  transition: background 0.18s ease, box-shadow 0.18s ease, padding-left 0.18s var(--ease-out-soft, cubic-bezier(.2,.8,.2,1));
   animation: itemIn 0.35s ease both;
 }
 @keyframes itemIn {
@@ -320,11 +320,12 @@ button.loading::before {
   width: 3px;
   border-radius: 0 3px 3px 0;
   background: transparent;
-  transition: background 0.15s;
+  transition: background 0.18s ease, width 0.18s var(--ease-spring, cubic-bezier(.34,1.45,.5,1));
 }
 .email-item.risk-danger::before { background: var(--danger); }
 .email-item.risk-warn::before { background: var(--warn); }
-.email-item:hover { background: #f8fafc; }
+.email-item:hover { background: #f8fafc; padding-left: 19px; }
+.email-item:hover::before { width: 4px; }
 .email-item.selected {
   background: var(--primary-soft);
 }
@@ -1172,7 +1173,8 @@ body.feedback-open .mail-assistant { opacity:0; visibility:hidden; pointer-event
 .todo-date { display:grid; gap:6px; width:154px; min-width:0; color:var(--muted); font-size:11.5px; font-weight:650; }
 .todo-date input { display:block; width:100%; min-width:0; max-width:100%; box-sizing:border-box; min-height:38px; padding:8px 10px; border:1px solid rgba(47,101,84,.14); border-radius:10px; color:#41675a; background:rgba(245,250,248,.9); font-size:12.5px; }
 .todo-date.overdue,.todo-center-item.overdue .todo-title-input { color:#b65d48; }
-.todo-status-action { min-height:40px; padding:9px 13px; border:1px solid rgba(47,112,87,.18); border-radius:11px; color:#2e7158; background:rgba(234,245,239,.86); font-size:12.5px; font-weight:720; cursor:pointer; white-space:nowrap; }
+.todo-status-action { min-height:40px; padding:9px 13px; border:1px solid rgba(47,112,87,.18); border-radius:11px; color:#2e7158; background:rgba(234,245,239,.86); font-size:12.5px; font-weight:720; cursor:pointer; white-space:nowrap; transition:background .18s ease, color .18s ease, border-color .18s ease, transform .18s var(--ease-spring, cubic-bezier(.34,1.45,.5,1)); }
+.todo-status-action:active { transform: scale(.96); }
 .todo-status-action:hover { color:white; border-color:#3b8066; background:#3b8066; }
 .todo-status-action span { margin-right:2px; }
 .todo-center-item.done .todo-status-action { color:#667871; border-color:rgba(69,99,87,.12); background:rgba(244,247,245,.82); }
@@ -2330,7 +2332,7 @@ body { font-size: 13px; background: var(--bg); }
   letter-spacing: .01em;
   cursor: pointer;
   box-shadow: 0 7px 18px rgba(50,75,64,.08), inset 0 1px rgba(255,255,255,.75);
-  transition: transform .18s ease, box-shadow .2s ease, background .2s ease, color .2s ease;
+  transition: transform .22s var(--ease-spring, cubic-bezier(.34,1.45,.5,1)), box-shadow .2s ease, background .2s ease, color .2s ease;
 }
 .action-btn svg,
 .icon-text-button svg,
@@ -2341,7 +2343,7 @@ body { font-size: 13px; background: var(--bg); }
 .action-btn:hover,
 .icon-text-button:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(50,75,64,.12), inset 0 1px rgba(255,255,255,.82); }
 .action-btn:active,
-.icon-text-button:active { transform: translateY(0) scale(.98); }
+.icon-text-button:active { transform: translateY(0) scale(.955); }
 .action-primary { color: #fff; border-color: rgba(44,119,88,.42); background: linear-gradient(145deg,#438c70,#2f7058); box-shadow: 0 9px 22px rgba(43,113,84,.2), inset 0 1px rgba(255,255,255,.2); }
 .action-primary:hover { background: linear-gradient(145deg,#4b9679,#34765e); }
 .action-secondary,
@@ -4820,3 +4822,94 @@ html.windows-performance .list-pane:has(.bulk-toolbar.busy) .email-item.bulk-sel
   .compose-modal > .compose-card { transition:none; }
   .compose-modal > .compose-ai-panel { animation:none; }
 }
+
+/* ===== 动效层：统一节奏与高级微交互 =====
+ * 约定：只用 transform/opacity 进合成层；时长走三档 token；
+ * 全局 prefers-reduced-motion 熔断在 workspace.css，这里无需重复。 */
+:root {
+  --motion-fast: .12s;
+  --motion-med: .24s;
+  --motion-slow: .4s;
+  --ease-out-soft: cubic-bezier(.2, .8, .2, 1);
+  --ease-spring: cubic-bezier(.34, 1.45, .5, 1);
+}
+
+/* 通用按压回弹：覆盖导航、页签、工具条等高频触点 */
+:is(.nav-item, .top-menu-item, .rule-tab, .compose-tool-labeled, .contact-frequency,
+    .saved-account, .dashboard-attention-item, .dashboard-campaign-item, .sender-row,
+    .guide-replay-action, .attachment-card, .todo-center-item .todo-source):active {
+  transform: scale(.965);
+}
+
+/* 侧栏导航项选中条已有，补按压态过渡需要的 transform 通道 */
+.top-menu-item, .rule-tab, .compose-tool-labeled, .saved-account,
+.dashboard-attention-item, .dashboard-campaign-item, .sender-row,
+.attachment-card, .contact-frequency, .guide-replay-action {
+  transition-property: background, color, border-color, box-shadow, transform;
+  transition-duration: var(--motion-med);
+  transition-timing-function: var(--ease-out-soft);
+}
+
+/* 阅读区：打开邮件时头部与各内容块错峰浮现（节点随 innerHTML 重建自动重放） */
+@keyframes readPaneIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+#reading-content .reading-header,
+#reading-content .reading-main > .reading-section,
+#reading-content .drawer-email-body > .reading-section {
+  animation: readPaneIn var(--motion-slow) var(--ease-out-soft) both;
+}
+#reading-content .reading-main > .reading-section:nth-child(2),
+#reading-content .drawer-email-body > .reading-section:nth-child(2) { animation-delay: .06s; }
+#reading-content .reading-main > .reading-section:nth-child(3),
+#reading-content .drawer-email-body > .reading-section:nth-child(3) { animation-delay: .12s; }
+
+/* 弹窗：背景渐入 + 内容弹性落位（hidden 移除即触发；关闭瞬时，不拖尾） */
+@keyframes modalBackdropIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modalPopIn {
+  from { opacity: 0; transform: translateY(14px) scale(.965); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.modal:not(.hidden) .modal-backdrop,
+.compose-modal:not(.hidden) .compose-backdrop,
+.attachment-center:not(.hidden) .attachment-center-backdrop,
+.task-center-backdrop:not(.hidden) {
+  animation: modalBackdropIn var(--motion-med) ease-out both;
+}
+.modal:not(.hidden) .modal-content,
+.compose-modal:not(.hidden) > .compose-card,
+.attachment-center:not(.hidden) .attachment-center-card,
+dialog[open] {
+  animation: modalPopIn .3s var(--ease-spring) both;
+}
+
+/* 骨架屏：列表与阅读区加载时的扫光占位 */
+@keyframes skeletonSweep {
+  from { background-position: -200px 0; }
+  to { background-position: calc(100% + 200px) 0; }
+}
+.skeleton-row { padding: 12px 14px 12px 16px; border-bottom: 1px solid var(--border); }
+.skeleton-bar {
+  height: 10px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(120,140,132,.12) 25%, rgba(120,140,132,.24) 50%, rgba(120,140,132,.12) 75%);
+  background-size: 400px 100%;
+  animation: skeletonSweep 1.3s linear infinite;
+}
+.skeleton-bar + .skeleton-bar { margin-top: 8px; }
+.skeleton-bar.w60 { width: 60%; }
+.skeleton-bar.w85 { width: 85%; }
+.skeleton-bar.w40 { width: 40%; }
+
+/* 页签/视图切换：交叉淡入代替硬切 */
+@keyframes panelFadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+[data-system-panel]:not(.hidden),
+#dashboard-view:not(.hidden),
+#rules-view:not(.hidden) {
+  animation: panelFadeIn var(--motion-med) var(--ease-out-soft) both;
+}
+
+/* 安全结论徽章：打开邮件时弹入，强化"刚判完"的感知 */
+@keyframes badgePopIn { from { opacity: 0; transform: scale(.82); } to { opacity: 1; transform: scale(1); } }
+#reading-content .security-result-trigger { animation: badgePopIn .32s var(--ease-spring) both; }

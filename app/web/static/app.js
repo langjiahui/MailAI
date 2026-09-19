@@ -2141,6 +2141,30 @@ function mailDateGroup(value, now = new Date()) {
   return {key, label};
 }
 
+// 数字变化滚动过渡：只对模板里的数字做 tween，文字框架保持不变
+const _countFrom = new WeakMap();
+function animateCountText(el, target, render) {
+  if (!el) return;
+  const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+  const from = _countFrom.get(el) ?? 0;
+  _countFrom.set(el, target);
+  if (reduced || from === target) { el.textContent = render(target); return; }
+  const start = performance.now();
+  const tick = now => {
+    const t = Math.min(1, (now - start) / 380);
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = render(Math.round(from + (target - from) * eased));
+    if (t < 1 && _countFrom.get(el) === target) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+// 加载占位：列表与阅读区用扫光骨架代替干等文字
+function skeletonRows(n = 6) {
+  return Array.from({length: n}, () =>
+    '<div class="skeleton-row"><div class="skeleton-bar w60"></div><div class="skeleton-bar w85"></div><div class="skeleton-bar w40"></div></div>').join('');
+}
+
 function fmtDate(s) {
   if (!s) return '-';
   const d = new Date(s);
@@ -2236,6 +2260,9 @@ async function loadData({includeAncillary = true, silent = false} = {}) {
   const days = currentFilter.days;
   const unified = typeof unifiedMailbox !== 'undefined' && unifiedMailbox;
   const isCurrent = () => revision === mailLoadRevision && accountId === (typeof activeMailAccount === 'function' ? activeMailAccount()?.id : '') && folder === currentServerFolder && status === currentFilter.status && days === currentFilter.days && unified === (typeof unifiedMailbox !== 'undefined' && unifiedMailbox);
+  // 空列表加载时给骨架屏；已有内容时保留旧列表，避免刷新闪烁
+  const listNode = document.getElementById('email-list');
+  if (!silent && listNode && !listNode.querySelector('.email-item')) listNode.innerHTML = skeletonRows();
   try {
     const mailPath = unified
       ? `/api/system/mail/unified-inbox?days=${days}&limit=1000`
@@ -3598,7 +3625,7 @@ async function selectEmail(id, options = {}) {
 
   document.getElementById('reading-empty').classList.add('hidden');
   document.getElementById('reading-content').classList.remove('hidden');
-  document.getElementById('reading-content').innerHTML = `<div class="reading-loading">加载邮件详情…</div>`;
+  document.getElementById('reading-content').innerHTML = `<div class="reading-loading-skeleton" style="padding:22px">${skeletonRows(3)}</div>`;
 
   try {
     const e = await api('/api/emails/' + id, {accountId:requestAccountId, signal:controller.signal});
@@ -5881,7 +5908,7 @@ function renderAttachmentCenter() {
   const rows = attachmentItems.filter(item => (attachmentTypeFilter === 'all' || attachmentType(item) === attachmentTypeFilter) &&
     (!query || [item.name, item.subject, item.from_addr].some(value => String(value || '').toLowerCase().includes(query))));
   const sourceCount = new Set(rows.map(item => item.email_id)).size;
-  document.getElementById('attachment-count').textContent = (mailaiT('att.countLine') || '{n} 个附件 · 来自 {m} 封邮件').replace('{n}', rows.length).replace('{m}', sourceCount);
+  animateCountText(document.getElementById('attachment-count'), rows.length, n => (mailaiT('att.countLine') || '{n} 个附件 · 来自 {m} 封邮件').replace('{n}', n).replace('{m}', sourceCount));
   updateAttachmentTypeFilters();
   document.getElementById('attachment-grid').innerHTML = rows.length ? rows.map(item => `
     <a class="attachment-card type-${attachmentType(item)}" href="${mailboxResourceUrl(`/api/emails/${item.email_id}/attachments/${item.index}`)}" download="${esc(item.name)}" title="${(mailaiT('att.previewTitle') || '预览 {name}').replace('{name}', esc(item.name))}">
@@ -5961,7 +5988,7 @@ function renderTodoCenter() {
   selectedTodoIds = new Set([...selectedTodoIds].filter(id => visibleIds.has(id)));
   const now = localDateKey();
   const openCount = rows.filter(item => item.status !== 'done').length;
-  document.getElementById('todo-count').textContent = (mailaiT('todo.openCount') || '{n} 项未完成').replace('{n}', openCount);
+  animateCountText(document.getElementById('todo-count'), openCount, n => (mailaiT('todo.openCount') || '{n} 项未完成').replace('{n}', n));
   const visibleRows = rows.slice(0, todoRenderLimit);
   document.getElementById('todo-list').innerHTML = rows.length ? visibleRows.map(item => {
     const date = String(item.deadline || '').slice(0, 10);
