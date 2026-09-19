@@ -125,7 +125,16 @@ fi
 
 DMG_STAGE="$(mktemp -d)"
 ditto dist/MailAI-macOS-arm64.pkg "$DMG_STAGE/安装 MailAI.pkg"
-hdiutil create -quiet -volname MailAI -srcfolder "$DMG_STAGE" -ov -format UDZO dist/MailAI-macOS-arm64.dmg
+# hdiutil 在 CI 上偶发静默失败（-quiet 连错误信息一起吞掉），去掉 -quiet 并重试。
+dmg_done=""
+for attempt in 1 2 3; do
+  if hdiutil create -verbose -volname MailAI -srcfolder "$DMG_STAGE" -ov -format UDZO dist/MailAI-macOS-arm64.dmg; then
+    dmg_done=1; break
+  fi
+  echo "hdiutil 第 $attempt 次失败，3 秒后重试…" >&2
+  sleep 3
+done
+[[ -n "$dmg_done" ]] || { echo "hdiutil 重试 3 次仍失败" >&2; exit 1; }
 echo "dmg 完成"
 rm -rf "dist/MailAI" "dist/MailAI.app"
 echo "构建完成：dist/MailAI-macOS-arm64.dmg、dist/MailAI-macOS-arm64.pkg、dist/MailAI-macOS.zip"

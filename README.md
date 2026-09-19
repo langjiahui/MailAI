@@ -5,7 +5,7 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v2.1.3**
+当前版本：**v2.1.4**
 
 本次更新：全界面英文支持。英文界面从首批切片扩展为全局覆盖（约 680 处文案：侧栏、邮件列表、阅读区、写信与签名、设置全部页签、安全看板、规则中心、小邮助手与效率中心、首次引导、运行诊断、服务器清理及各类对话框），在 设置 → 常用设置 → 界面语言 一键切换，动态内容随切换即时重渲染；语义检索运行时（fastembed + onnxruntime）已内置进 Windows/macOS/Linux 安装包，打包版本无需再手动安装可选依赖即可启用语义检索，依赖缺失时开关自动禁用并提示原因。
 
