@@ -308,6 +308,21 @@ html[data-theme="dark"] :is(.dashboard-heading h2,.dashboard-priority h3,.dashbo
 html[data-theme="dark"] :is(.dashboard-heading p,.dashboard-priority p,.dashboard-metric>span,.dashboard-metric small,.dashboard-panel-head>span,.dashboard-attention-main small,.dashboard-sender-panel .sender-addr small,.settings-page-intro p,.settings-page-intro>span) { color:var(--dark-muted)!important; }
 html[data-theme="dark"] .dashboard-attention-item:hover,
 html[data-theme="dark"] .dashboard-campaign-item:hover { background:rgba(73,100,85,.72)!important; }
+/* 关联研判卡片：数字徽章、标题、信号行、操作链接的暗色对比 */
+html[data-theme="dark"] .campaign-node { color:#a9dbc4!important; background:rgba(46,98,78,.42)!important; }
+html[data-theme="dark"] .campaign-main b { color:var(--dark-ink)!important; }
+html[data-theme="dark"] .campaign-main small { color:var(--dark-muted)!important; }
+html[data-theme="dark"] .campaign-action { color:#8fd0b2!important; }
+/* 阅读区"同源攻击关联"卡片的暗色适配 */
+html[data-theme="dark"] .campaign-insight { border-color:var(--dark-line)!important; background:linear-gradient(145deg,rgba(24,46,36,.66),rgba(15,30,23,.6))!important; }
+html[data-theme="dark"] .campaign-explain { color:var(--dark-muted)!important; }
+html[data-theme="dark"] .campaign-impact span { background:rgba(9,26,19,.62)!important; }
+html[data-theme="dark"] .campaign-impact b { color:#a9dbc4!important; }
+html[data-theme="dark"] .campaign-impact small { color:var(--dark-muted)!important; }
+html[data-theme="dark"] .campaign-samples button { background:rgba(9,26,19,.5)!important; }
+html[data-theme="dark"] .campaign-samples button:hover { background:rgba(46,98,78,.42)!important; }
+html[data-theme="dark"] .campaign-samples span { color:var(--dark-ink)!important; }
+html[data-theme="dark"] .campaign-samples small { color:var(--dark-muted)!important; }
 html[data-theme="dark"] .dashboard-attention-score { background:rgba(148,75,70,.25)!important; color:#ffb4ac!important; }
 html[data-theme="dark"] .dashboard-attention-item.warn .dashboard-attention-score { background:rgba(156,109,39,.28)!important; color:#ffd18c!important; }
 html[data-theme="dark"] .dashboard-sender-panel .sender-row:hover { background:rgba(78,106,91,.34)!important; }
