@@ -1,5 +1,7 @@
 #!/bin/zsh
 set -e
+# 任何一步失败时打印行号与磁盘状态（CI 曾出现无输出的静默失败，难定位）。
+trap 'ec=$?; echo "构建失败：第 $LINENO 行退出码 $ec" >&2; df -h . >&2; ls -lh dist >&2 2>/dev/null; exit $ec' ERR
 cd "${0:A:h}/.."
 
 # 唯一版本号可防止 LaunchServices 把构建目录、挂载盘与正式安装目录里的
