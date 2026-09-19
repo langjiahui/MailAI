@@ -6270,22 +6270,22 @@ function diagnosticAdvice(item) {
   if (mail) {
     const smtp = item.name === 'SMTP 发信';
     const advice = {
-      authentication: '请重新填写该邮箱的客户端授权码，并确认邮箱服务已允许客户端登录。',
-      credential_missing: '本机没有可用授权码，请重新填写客户端授权码。',
-      credential_session: '授权码只在本次运行有效；退出后需重新登录，可检查系统凭据库权限。',
-      certificate: '请核对服务器地址和证书。仅在可信内网使用自签名证书时考虑关闭证书校验。',
-      timeout: '请先检查网络或 VPN，再核对服务器地址与端口。',
-      dns: '请检查网络或 VPN 及服务器地址；若服务商更换了地址，请重新添加账号并暂时保留旧数据。',
-      refused: '服务器已找到但拒绝该端口，请核对端口及 SSL/STARTTLS 设置。',
-      configuration: '请补全服务器地址、端口和授权码。',
-      connection: '请核对服务器地址、端口和加密方式，并检查网络或 VPN。',
-    }[item.issue] || '请在邮箱账号中检查连接设置。';
-    return {advice, action:'打开邮箱设置', target:'account', field:
+      authentication: mailaiT('diag.a.authentication') || '请重新填写该邮箱的客户端授权码，并确认邮箱服务已允许客户端登录。',
+      credential_missing: mailaiT('diag.a.credentialMissing') || '本机没有可用授权码，请重新填写客户端授权码。',
+      credential_session: mailaiT('diag.a.credentialSession') || '授权码只在本次运行有效；退出后需重新登录，可检查系统凭据库权限。',
+      certificate: mailaiT('diag.a.certificate') || '请核对服务器地址和证书。仅在可信内网使用自签名证书时考虑关闭证书校验。',
+      timeout: mailaiT('diag.a.timeout') || '请先检查网络或 VPN，再核对服务器地址与端口。',
+      dns: mailaiT('diag.a.dns') || '请检查网络或 VPN 及服务器地址；若服务商更换了地址，请重新添加账号并暂时保留旧数据。',
+      refused: mailaiT('diag.a.refused') || '服务器已找到但拒绝该端口，请核对端口及 SSL/STARTTLS 设置。',
+      configuration: mailaiT('diag.a.configuration') || '请补全服务器地址、端口和授权码。',
+      connection: mailaiT('diag.a.connection') || '请核对服务器地址、端口和加密方式，并检查网络或 VPN。',
+    }[item.issue] || (mailaiT('diag.a.fallback') || '请在邮箱账号中检查连接设置。');
+    return {advice, action:mailaiT('diag.openAccount') || '打开邮箱设置', target:'account', field:
       ['authentication','credential_missing','credential_session'].includes(item.issue) ? 'mail-password' :
       smtp ? 'mail-smtp-host' : 'mail-port'};
   }
-  if (item.name === 'AI 模型') return {advice:item.issue === 'authentication' ? '请检查模型 API Key 是否有效。' :
-    '请检查模型地址、API Key 和网络连接。', action:'打开模型设置', target:'maintenance', field:'model-base-url'};
+  if (item.name === 'AI 模型') return {advice:item.issue === 'authentication' ? (mailaiT('diag.a.modelAuth') || '请检查模型 API Key 是否有效。') :
+    (mailaiT('diag.a.modelGeneral') || '请检查模型地址、API Key 和网络连接。'), action:mailaiT('diag.openModel') || '打开模型设置', target:'maintenance', field:'model-base-url'};
   return null;
 }
 
@@ -6307,21 +6307,21 @@ document.getElementById('diagnostic-results').addEventListener('click', event =>
 document.getElementById('btn-run-diagnostics').addEventListener('click', async () => {
   const button = document.getElementById('btn-run-diagnostics');
   const results = document.getElementById('diagnostic-results');
-  setLoading(button, true, '检查中…');
+  setLoading(button, true, mailaiT('diag.checking') || '检查中…');
   try {
     const data = await api('/api/system/diagnostics');
     const activeAccount = (_systemConfig?.accounts || []).find(account => account.active);
-    results.innerHTML = `<p class="diagnostic-scope">${activeAccount ? `本次检查：${esc(activeAccount.user)}。` : '本次未检测到正在使用的邮箱。'}诊断会实测当前邮箱和已配置的模型服务。</p>` + data.checks.map(item => {
+    results.innerHTML = `<p class="diagnostic-scope">${activeAccount ? (mailaiT('diag.scope') || '本次检查：{user}。').replace('{user}', esc(activeAccount.user)) : (mailaiT('diag.scopeNone') || '本次未检测到正在使用的邮箱。')}${mailaiT('diag.scopeNote') || '诊断会实测当前邮箱和已配置的模型服务。'}</p>` + data.checks.map(item => {
       const status = item.status || (item.ok ? 'pass' : 'fail');
       const icon = status === 'pass' ? '✓' : status === 'warning' ? 'i' : '!';
-      const label = item.probe === 'live' ? '实测' : '本地';
+      const label = item.probe === 'live' ? (mailaiT('diag.live') || '实测') : (mailaiT('diag.local') || '本地');
       const guidance = status === 'pass' ? null : diagnosticAdvice(item);
       return `<div class="diagnostic-item ${esc(status)}"><span>${icon}</span><b>${esc(item.name)}<em>${label}</em></b><small title="${esc(item.detail)}">${esc(item.detail)}</small>${guidance ?
         `<p class="diagnostic-advice">${esc(guidance.advice)}</p><button type="button" class="diagnostic-action" data-diagnostic-target="${guidance.target}" data-diagnostic-field="${guidance.field}">${guidance.action} →</button>` : ''}</div>`;
     }).join('');
     results.classList.remove('hidden');
-    toast(data.ok ? '真实检查通过' : '检查发现连接或配置失败', data.ok ? 'success' : 'error');
-  } catch (err) { toast('诊断失败：' + err.message, 'error'); }
+    toast(data.ok ? (mailaiT('diag.pass') || '真实检查通过') : (mailaiT('diag.fail') || '检查发现连接或配置失败'), data.ok ? 'success' : 'error');
+  } catch (err) { toast((mailaiT('diag.failed') || '诊断失败：') + err.message, 'error'); }
   finally { setLoading(button, false); }
 });
 document.getElementById('btn-enable-notifications').addEventListener('click', async () => {

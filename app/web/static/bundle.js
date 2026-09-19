@@ -715,6 +715,86 @@ const I18N_MESSAGES = {
     'asst.retry': 'Retry last question',
     'asst.privacy': 'AI suggestions are for reference; verify important matters',
     'asst.resizeTitle': 'Drag to resize',
+
+    // 批四：首次引导 / 诊断 / 服务器清理
+    'ob.step': 'Get started · Connect a mailbox',
+    'ob.title': 'Welcome to MailAI',
+    'ob.intro': 'Let Xiaoyou read mail, organize to-dos and watch for risky senders. Connect a mailbox to use mail features; Xiaoyou chat and AI analysis need a model service, which you can set up later.',
+    'ob.emailLabel': 'Email address',
+    'ob.passwordLabel': 'Client authorization code',
+    'ob.passwordPh': 'Enter the mailbox authorization code',
+    'ob.providerHint': 'Servers are detected after you enter the address',
+    'ob.helpSummary': 'How to get a client authorization code?',
+    'ob.helpCopy': 'In the webmail settings, look for "Client / IMAP / SMTP", enable client access and generate a code. Enterprise mailboxes without this option: ask your administrator. This code is different from a model API key.',
+    'ob.advancedSummary': 'Advanced server settings',
+    'ob.imapLabel': 'IMAP server',
+    'ob.imapPh': 'e.g. imap.example.com',
+    'ob.smtpLabel': 'SMTP server',
+    'ob.smtpPh': 'e.g. smtp.example.com',
+    'ob.port': 'Port',
+    'ob.verifySsl': 'Verify SSL certificate',
+    'ob.submit': 'Connect mailbox',
+    'ob.later': 'Connect later, look around first',
+    'ob.manage': 'Manage saved accounts',
+    'ob.footNote': 'Account data is stored only on this computer; each mailbox uses a separate local data space.',
+    'cleanup.title': 'Clean up server mail',
+    'cleanup.intro': 'Only cleans mail that is fully synced locally. Unsynced mail is never touched; at most 50 mails / 100 MB per batch. Only mail dated before the cutoff day is selected.',
+    'cleanup.folderLabel': 'Server folder',
+    'cleanup.ageLabel': 'Cleanup range',
+    'cleanup.age30': 'Older than 30 days',
+    'cleanup.age60': 'Older than 60 days',
+    'cleanup.age90': 'Older than 90 days',
+    'cleanup.age180': 'Older than 180 days',
+    'cleanup.ageCustom': 'Custom cutoff date',
+    'cleanup.dateLabel': 'Cutoff date',
+    'cleanup.includeFavorites': 'Also include favorites and starred mail (kept by default)',
+    'cleanup.previewBtn': 'Preview mail to clean',
+    'cleanup.warning': 'This permanently deletes the server copies of the listed mail; webmail and other devices may lose access, and local backups cannot restore mail to the server. A backup is created automatically first; local mail and attachments stay in their original folders.',
+    'cleanup.ack': 'I have reviewed the list and understand this deletes from the server while local mail stays in place.',
+    'cleanup.confirmLabel': 'Type the current mailbox address to confirm',
+    'cleanup.confirmPh': 'Enter the email address',
+    'cleanup.execute': 'Back up and clean the server',
+    'cleanup.st.completed': 'Cleanup finished',
+    'cleanup.st.failed': 'Cleanup stopped',
+    'cleanup.st.attention': 'Server result needs review',
+    'cleanup.st.running': 'The last cleanup was not confirmed; check the server first. Nothing is retried automatically.',
+    'cleanup.resultSummary': 'Server confirmed {done} deleted, {kept} kept locally in place',
+    'cleanup.backupNote': 'Safety backup: ',
+    'cleanup.attentionNote': 'Local copies are kept. Due to a connection break or state change, unconfirmed mail is not deleted again automatically — please verify in webmail first.',
+    'cleanup.historyTitle': 'Recent cleanups ({n})',
+    'cleanup.currentAccount': 'Current mailbox: ',
+    'cleanup.checking': 'Verifying local copies against the server…',
+    'cleanup.previewSummary': '{count} mails to clean',
+    'cleanup.previewNote': 'Full local copies verified against the server. Preview is valid for 10 minutes. Actual space freed is reported by the server.',
+    'cleanup.skipped': 'Skipped {n}',
+    'cleanup.moreNote': 'More mail is not in this batch; only the list above is cleaned this time.',
+    'cleanup.nextPage': 'Next batch',
+    'cleanup.prevPage': 'Previous batch',
+    'cleanup.executing': 'Backing up and cleaning, do not quit…',
+    'cleanup.errorSuffix': '. If the request may have started, check recent cleanup records and verify the server instead of retrying blindly.',
+    'diag.checking': 'Checking…',
+    'diag.scope': 'Checking: {user}. ',
+    'diag.scopeNone': 'No active mailbox detected. ',
+    'diag.scopeNote': 'Diagnostics test the current mailbox and the configured model service.',
+    'diag.live': 'Live',
+    'diag.local': 'Local',
+    'diag.pass': 'All checks passed',
+    'diag.fail': 'Connection or configuration problems found',
+    'diag.failed': 'Diagnostics failed: ',
+    'diag.openAccount': 'Open mailbox settings',
+    'diag.openModel': 'Open model settings',
+    'diag.a.authentication': 'Re-enter the client authorization code for this mailbox and make sure client sign-in is enabled.',
+    'diag.a.credentialMissing': 'No usable authorization code on this device; enter the client authorization code again.',
+    'diag.a.credentialSession': 'The authorization code is valid for this run only; you must sign in again after quitting. Check system keychain permissions.',
+    'diag.a.certificate': 'Check the server address and certificate. Only consider disabling certificate verification for self-signed certificates on a trusted intranet.',
+    'diag.a.timeout': 'Check the network or VPN first, then the server address and port.',
+    'diag.a.dns': 'Check the network or VPN and the server address; if the provider changed it, re-add the account and keep the old data for now.',
+    'diag.a.refused': 'The server was found but refused the port; check the port and SSL/STARTTLS settings.',
+    'diag.a.configuration': 'Complete the server address, port and authorization code.',
+    'diag.a.connection': 'Check the server address, port and encryption, plus the network or VPN.',
+    'diag.a.fallback': 'Check the connection settings under Mail Accounts.',
+    'diag.a.modelAuth': 'Check whether the model API key is valid.',
+    'diag.a.modelGeneral': 'Check the model URL, API key and network connection.',
   },
 };
 
@@ -7239,22 +7319,22 @@ function diagnosticAdvice(item) {
   if (mail) {
     const smtp = item.name === 'SMTP 发信';
     const advice = {
-      authentication: '请重新填写该邮箱的客户端授权码，并确认邮箱服务已允许客户端登录。',
-      credential_missing: '本机没有可用授权码，请重新填写客户端授权码。',
-      credential_session: '授权码只在本次运行有效；退出后需重新登录，可检查系统凭据库权限。',
-      certificate: '请核对服务器地址和证书。仅在可信内网使用自签名证书时考虑关闭证书校验。',
-      timeout: '请先检查网络或 VPN，再核对服务器地址与端口。',
-      dns: '请检查网络或 VPN 及服务器地址；若服务商更换了地址，请重新添加账号并暂时保留旧数据。',
-      refused: '服务器已找到但拒绝该端口，请核对端口及 SSL/STARTTLS 设置。',
-      configuration: '请补全服务器地址、端口和授权码。',
-      connection: '请核对服务器地址、端口和加密方式，并检查网络或 VPN。',
-    }[item.issue] || '请在邮箱账号中检查连接设置。';
-    return {advice, action:'打开邮箱设置', target:'account', field:
+      authentication: mailaiT('diag.a.authentication') || '请重新填写该邮箱的客户端授权码，并确认邮箱服务已允许客户端登录。',
+      credential_missing: mailaiT('diag.a.credentialMissing') || '本机没有可用授权码，请重新填写客户端授权码。',
+      credential_session: mailaiT('diag.a.credentialSession') || '授权码只在本次运行有效；退出后需重新登录，可检查系统凭据库权限。',
+      certificate: mailaiT('diag.a.certificate') || '请核对服务器地址和证书。仅在可信内网使用自签名证书时考虑关闭证书校验。',
+      timeout: mailaiT('diag.a.timeout') || '请先检查网络或 VPN，再核对服务器地址与端口。',
+      dns: mailaiT('diag.a.dns') || '请检查网络或 VPN 及服务器地址；若服务商更换了地址，请重新添加账号并暂时保留旧数据。',
+      refused: mailaiT('diag.a.refused') || '服务器已找到但拒绝该端口，请核对端口及 SSL/STARTTLS 设置。',
+      configuration: mailaiT('diag.a.configuration') || '请补全服务器地址、端口和授权码。',
+      connection: mailaiT('diag.a.connection') || '请核对服务器地址、端口和加密方式，并检查网络或 VPN。',
+    }[item.issue] || (mailaiT('diag.a.fallback') || '请在邮箱账号中检查连接设置。');
+    return {advice, action:mailaiT('diag.openAccount') || '打开邮箱设置', target:'account', field:
       ['authentication','credential_missing','credential_session'].includes(item.issue) ? 'mail-password' :
       smtp ? 'mail-smtp-host' : 'mail-port'};
   }
-  if (item.name === 'AI 模型') return {advice:item.issue === 'authentication' ? '请检查模型 API Key 是否有效。' :
-    '请检查模型地址、API Key 和网络连接。', action:'打开模型设置', target:'maintenance', field:'model-base-url'};
+  if (item.name === 'AI 模型') return {advice:item.issue === 'authentication' ? (mailaiT('diag.a.modelAuth') || '请检查模型 API Key 是否有效。') :
+    (mailaiT('diag.a.modelGeneral') || '请检查模型地址、API Key 和网络连接。'), action:mailaiT('diag.openModel') || '打开模型设置', target:'maintenance', field:'model-base-url'};
   return null;
 }
 
@@ -7276,21 +7356,21 @@ document.getElementById('diagnostic-results').addEventListener('click', event =>
 document.getElementById('btn-run-diagnostics').addEventListener('click', async () => {
   const button = document.getElementById('btn-run-diagnostics');
   const results = document.getElementById('diagnostic-results');
-  setLoading(button, true, '检查中…');
+  setLoading(button, true, mailaiT('diag.checking') || '检查中…');
   try {
     const data = await api('/api/system/diagnostics');
     const activeAccount = (_systemConfig?.accounts || []).find(account => account.active);
-    results.innerHTML = `<p class="diagnostic-scope">${activeAccount ? `本次检查：${esc(activeAccount.user)}。` : '本次未检测到正在使用的邮箱。'}诊断会实测当前邮箱和已配置的模型服务。</p>` + data.checks.map(item => {
+    results.innerHTML = `<p class="diagnostic-scope">${activeAccount ? (mailaiT('diag.scope') || '本次检查：{user}。').replace('{user}', esc(activeAccount.user)) : (mailaiT('diag.scopeNone') || '本次未检测到正在使用的邮箱。')}${mailaiT('diag.scopeNote') || '诊断会实测当前邮箱和已配置的模型服务。'}</p>` + data.checks.map(item => {
       const status = item.status || (item.ok ? 'pass' : 'fail');
       const icon = status === 'pass' ? '✓' : status === 'warning' ? 'i' : '!';
-      const label = item.probe === 'live' ? '实测' : '本地';
+      const label = item.probe === 'live' ? (mailaiT('diag.live') || '实测') : (mailaiT('diag.local') || '本地');
       const guidance = status === 'pass' ? null : diagnosticAdvice(item);
       return `<div class="diagnostic-item ${esc(status)}"><span>${icon}</span><b>${esc(item.name)}<em>${label}</em></b><small title="${esc(item.detail)}">${esc(item.detail)}</small>${guidance ?
         `<p class="diagnostic-advice">${esc(guidance.advice)}</p><button type="button" class="diagnostic-action" data-diagnostic-target="${guidance.target}" data-diagnostic-field="${guidance.field}">${guidance.action} →</button>` : ''}</div>`;
     }).join('');
     results.classList.remove('hidden');
-    toast(data.ok ? '真实检查通过' : '检查发现连接或配置失败', data.ok ? 'success' : 'error');
-  } catch (err) { toast('诊断失败：' + err.message, 'error'); }
+    toast(data.ok ? (mailaiT('diag.pass') || '真实检查通过') : (mailaiT('diag.fail') || '检查发现连接或配置失败'), data.ok ? 'success' : 'error');
+  } catch (err) { toast((mailaiT('diag.failed') || '诊断失败：') + err.message, 'error'); }
   finally { setLoading(button, false); }
 });
 document.getElementById('btn-enable-notifications').addEventListener('click', async () => {
@@ -8791,11 +8871,16 @@ document.addEventListener('click', async event => {
 ;
 /* ---- server-cleanup.js ---- */
 /* Server deletion is intentionally manual, preview-bound and account-scoped. */
+/* 文案走 mailaiT（i18n.js 在 bundle 中最先加载），对话框静态文案用 data-i18n 钩子。 */
+function cleanupT(key, zh) {
+  const value = typeof mailaiT === 'function' ? mailaiT(key) : null;
+  return value || zh;
+}
 let cleanupPreview = null;
 let cleanupOffset = 0;
 let cleanupBusy = false;
 let cleanupRevision = 0;
-document.body.insertAdjacentHTML('beforeend', `<dialog id="server-cleanup-dialog" class="library-dialog cleanup-dialog" aria-labelledby="cleanup-title"><h2 id="cleanup-title">清理服务器邮件</h2><p id="cleanup-account"></p><p>仅清理本机已同步且原文完整的邮件。未同步邮件不会被清理；每批最多 50 封、100 MB。邮件日期早于截止日期才会入选，不含截止当天。</p><fieldset id="cleanup-options"><label>服务器文件夹<select id="cleanup-folder"></select></label><label>清理范围<select id="cleanup-age"><option value="30">30 天以前</option><option value="60">60 天以前</option><option value="90">90 天以前</option><option value="180">180 天以前</option><option value="custom">自定义截止日期</option></select></label><label>截止日期<input id="cleanup-date" type="date" required></label><label class="cleanup-check"><input id="cleanup-include-favorites" type="checkbox">也包含收藏和星标邮件（默认不清理）</label><button id="cleanup-preview" type="button">预览待清理邮件</button></fieldset><div id="cleanup-preview-results" aria-live="polite"></div><div id="cleanup-confirmation" class="hidden"><p class="cleanup-warning">执行后会永久删除所列邮件的服务器副本，网页版及其他设备可能无法再查看，无法通过本地备份恢复到服务器。执行前自动创建备份，本地邮件及附件保留在原来的收件箱等文件夹中。</p><label class="cleanup-check"><input id="cleanup-ack" type="checkbox">我已核对列表，理解这是服务器删除，本地邮件保持原位不变。</label><label>输入当前邮箱地址以确认<input id="cleanup-confirm-email" autocomplete="off" placeholder="输入邮箱地址"></label></div><p id="cleanup-error" role="alert"></p><div id="cleanup-result" aria-live="polite"></div><footer><button id="cleanup-close" type="button">关闭</button><button id="cleanup-execute" type="button" disabled>备份并清理服务器</button></footer></dialog>`);
+document.body.insertAdjacentHTML('beforeend', `<dialog id="server-cleanup-dialog" class="library-dialog cleanup-dialog" aria-labelledby="cleanup-title"><h2 id="cleanup-title" data-i18n="cleanup.title">清理服务器邮件</h2><p id="cleanup-account"></p><p data-i18n="cleanup.intro">仅清理本机已同步且原文完整的邮件。未同步邮件不会被清理；每批最多 50 封、100 MB。邮件日期早于截止日期才会入选，不含截止当天。</p><fieldset id="cleanup-options"><label><span data-i18n="cleanup.folderLabel">服务器文件夹</span><select id="cleanup-folder"></select></label><label><span data-i18n="cleanup.ageLabel">清理范围</span><select id="cleanup-age"><option value="30" data-i18n="cleanup.age30">30 天以前</option><option value="60" data-i18n="cleanup.age60">60 天以前</option><option value="90" data-i18n="cleanup.age90">90 天以前</option><option value="180" data-i18n="cleanup.age180">180 天以前</option><option value="custom" data-i18n="cleanup.ageCustom">自定义截止日期</option></select></label><label><span data-i18n="cleanup.dateLabel">截止日期</span><input id="cleanup-date" type="date" required></label><label class="cleanup-check"><input id="cleanup-include-favorites" type="checkbox"><span data-i18n="cleanup.includeFavorites">也包含收藏和星标邮件（默认不清理）</span></label><button id="cleanup-preview" type="button" data-i18n="cleanup.previewBtn">预览待清理邮件</button></fieldset><div id="cleanup-preview-results" aria-live="polite"></div><div id="cleanup-confirmation" class="hidden"><p class="cleanup-warning" data-i18n="cleanup.warning">执行后会永久删除所列邮件的服务器副本，网页版及其他设备可能无法再查看，无法通过本地备份恢复到服务器。执行前自动创建备份，本地邮件及附件保留在原来的收件箱等文件夹中。</p><label class="cleanup-check"><input id="cleanup-ack" type="checkbox"><span data-i18n="cleanup.ack">我已核对列表，理解这是服务器删除，本地邮件保持原位不变。</span></label><label><span data-i18n="cleanup.confirmLabel">输入当前邮箱地址以确认</span><input id="cleanup-confirm-email" autocomplete="off" placeholder="输入邮箱地址" data-i18n-placeholder="cleanup.confirmPh"></label></div><p id="cleanup-error" role="alert"></p><div id="cleanup-result" aria-live="polite"></div><footer><button id="cleanup-close" type="button" data-i18n="dlg.close">关闭</button><button id="cleanup-execute" type="button" disabled data-i18n="cleanup.execute">备份并清理服务器</button></footer></dialog>`);
 function cleanupDate(days) {
   const value = new Date(); value.setDate(value.getDate() - days);
   return `${value.getFullYear()}-${String(value.getMonth()+1).padStart(2,'0')}-${String(value.getDate()).padStart(2,'0')}`;
@@ -8821,20 +8906,25 @@ function setCleanupBusy(busy) {
   syncCleanupConfirmation();
 }
 function renderCleanupResult(result) {
-  const label = {completed:'清理完成',failed:'清理已停止',attention:'服务器结果需要核对',running:'上次清理尚未确认完成，请先核对服务器；不会自动重试'}[result.status] || result.status;
-  return `<p><b>${esc(label)}</b> · 服务器已确认删除 ${Number(result.completed || 0)} 封，本地原位保留 ${Number(result.preserved ?? result.archived ?? 0)} 封</p>${result.backup ? `<p>安全备份：${esc(result.backup)}</p>` : ''}${(result.errors || []).map(error => `<p>${esc(error)}</p>`).join('')}${result.status === 'attention' ? '<p>本地副本已保留。由于连接中断或状态变化，尚未确认的邮件不会自动重新删除，请先在网页版核对。</p>' : ''}`;
+  const label = {completed: cleanupT('cleanup.st.completed', '清理完成'),
+    failed: cleanupT('cleanup.st.failed', '清理已停止'),
+    attention: cleanupT('cleanup.st.attention', '服务器结果需要核对'),
+    running: cleanupT('cleanup.st.running', '上次清理尚未确认完成，请先核对服务器；不会自动重试')}[result.status] || result.status;
+  const summary = cleanupT('cleanup.resultSummary', '服务器已确认删除 {done} 封，本地原位保留 {kept} 封')
+    .replace('{done}', Number(result.completed || 0)).replace('{kept}', Number(result.preserved ?? result.archived ?? 0));
+  return `<p><b>${esc(label)}</b> · ${esc(summary)}</p>${result.backup ? `<p>${esc(cleanupT('cleanup.backupNote', '安全备份：'))}${esc(result.backup)}</p>` : ''}${(result.errors || []).map(error => `<p>${esc(error)}</p>`).join('')}${result.status === 'attention' ? `<p>${esc(cleanupT('cleanup.attentionNote', '本地副本已保留。由于连接中断或状态变化，尚未确认的邮件不会自动重新删除，请先在网页版核对。'))}</p>` : ''}`;
 }
 async function refreshCleanupHistory(accountId) {
   try {
     const rows = await api('/api/system/server-cleanup/history', {accountId});
     if (accountId !== activeMailAccount()?.id) return;
-    document.getElementById('server-cleanup-history').innerHTML = rows.length ? `<details><summary>最近清理记录（${rows.length}）</summary>${rows.map(row => `<div><small>${esc(row.created_at)} · ${esc(row.folder)}</small>${renderCleanupResult(row)}</div>`).join('')}</details>` : '';
+    document.getElementById('server-cleanup-history').innerHTML = rows.length ? `<details><summary>${esc(cleanupT('cleanup.historyTitle', '最近清理记录（{n}）').replace('{n}', rows.length))}</summary>${rows.map(row => `<div><small>${esc(row.created_at)} · ${esc(row.folder)}</small>${renderCleanupResult(row)}</div>`).join('')}</details>` : '';
   } catch (_) {}
 }
 document.getElementById('btn-server-cleanup').onclick = async () => {
   const dialog = document.getElementById('server-cleanup-dialog');
   dialog.dataset.accountId = activeMailAccount()?.id || '';
-  document.getElementById('cleanup-account').textContent = '当前邮箱：' + (activeMailAccount()?.user || '');
+  document.getElementById('cleanup-account').textContent = cleanupT('cleanup.currentAccount', '当前邮箱：') + (activeMailAccount()?.user || '');
   document.getElementById('cleanup-age').value = '30';
   document.getElementById('cleanup-date').value = cleanupDate(30);
   document.getElementById('cleanup-date').max = cleanupDate(1);
@@ -8860,14 +8950,14 @@ document.getElementById('server-cleanup-dialog').oncancel = event => { if (clean
 document.getElementById('cleanup-preview').onclick = async event => {
   invalidateCleanupPreview(false);
   const revision = cleanupRevision, dialog = document.getElementById('server-cleanup-dialog');
-  const button = event.currentTarget; setCleanupBusy(true); setLoading(button,true,'校验本地原文与服务器…');
+  const button = event.currentTarget; setCleanupBusy(true); setLoading(button,true,cleanupT('cleanup.checking', '校验本地原文与服务器…'));
   document.getElementById('cleanup-error').textContent = '';
   document.getElementById('cleanup-result').replaceChildren();
   try {
     const result = await api('/api/system/server-cleanup/preview', {accountId:dialog.dataset.accountId,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({offset:cleanupOffset,folder:document.getElementById('cleanup-folder').value,before_date:document.getElementById('cleanup-date').value,include_favorites:document.getElementById('cleanup-include-favorites').checked})});
     if (revision !== cleanupRevision) return;
     cleanupPreview = result;
-    document.getElementById('cleanup-preview-results').innerHTML = `<p><b>待清理 ${result.count} 封 · ${formatFileSize(result.bytes)}</b></p><p>已核对完整原文与服务器一致。预览 10 分钟内有效。实际释放容量由服务器统计为准。</p><div class="cleanup-mail-list">${result.items.map(item => `<div><b>${esc(item.subject)}</b><small>${esc(item.from_addr || '')} · ${esc(item.date || '')} · ${formatFileSize(item.size)}</small></div>`).join('')}</div>${result.skipped.length ? `<details><summary>跳过 ${result.skipped.length} 封</summary>${result.skipped.map(item=>`<p>${esc(item.subject)}：${esc(item.reason)}</p>`).join('')}</details>` : ''}${result.more ? '<p>还有邮件未列入本批，本次只清理上方列表。</p><button type="button" data-cleanup-page="next">查看下一批</button>' : ''}${result.offset ? '<button type="button" data-cleanup-page="previous">查看上一批</button>' : ''}`;
+    document.getElementById('cleanup-preview-results').innerHTML = `<p><b>${esc(cleanupT('cleanup.previewSummary', '待清理 {count} 封').replace('{count}', result.count))} · ${formatFileSize(result.bytes)}</b></p><p>${esc(cleanupT('cleanup.previewNote', '已核对完整原文与服务器一致。预览 10 分钟内有效。实际释放容量由服务器统计为准。'))}</p><div class="cleanup-mail-list">${result.items.map(item => `<div><b>${esc(item.subject)}</b><small>${esc(item.from_addr || '')} · ${esc(item.date || '')} · ${formatFileSize(item.size)}</small></div>`).join('')}</div>${result.skipped.length ? `<details><summary>${esc(cleanupT('cleanup.skipped', '跳过 {n} 封').replace('{n}', result.skipped.length))}</summary>${result.skipped.map(item=>`<p>${esc(item.subject)}：${esc(item.reason)}</p>`).join('')}</details>` : ''}${result.more ? `<p>${esc(cleanupT('cleanup.moreNote', '还有邮件未列入本批，本次只清理上方列表。'))}</p><button type="button" data-cleanup-page="next">${esc(cleanupT('cleanup.nextPage', '查看下一批'))}</button>` : ''}${result.offset ? `<button type="button" data-cleanup-page="previous">${esc(cleanupT('cleanup.prevPage', '查看上一批'))}</button>` : ''}`;
     document.getElementById('cleanup-confirmation').classList.toggle('hidden', !result.count);
   } catch (error) { document.getElementById('cleanup-error').textContent = error.message; }
   finally { setLoading(button,false); setCleanupBusy(false); }
@@ -8875,12 +8965,12 @@ document.getElementById('cleanup-preview').onclick = async event => {
 document.getElementById('cleanup-execute').onclick = async event => {
   if (event.currentTarget.disabled) return;
   const dialog = document.getElementById('server-cleanup-dialog'), token = cleanupPreview.token;
-  setCleanupBusy(true); const button = event.currentTarget; setLoading(button,true,'正在备份并清理，请勿退出…');
+  setCleanupBusy(true); const button = event.currentTarget; setLoading(button,true,cleanupT('cleanup.executing', '正在备份并清理，请勿退出…'));
   try {
     const result = await api('/api/system/server-cleanup/execute', {accountId:dialog.dataset.accountId,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,confirmation:document.getElementById('cleanup-confirm-email').value,acknowledge:document.getElementById('cleanup-ack').checked})});
     document.getElementById('cleanup-result').innerHTML = renderCleanupResult(result);
     await loadData(); await loadBackups(); await refreshCleanupHistory(dialog.dataset.accountId);
-  } catch (error) { document.getElementById('cleanup-error').textContent = error.message + '。若请求已开始，请查看最近清理记录并核对服务器，不要盲目重试。'; }
+  } catch (error) { document.getElementById('cleanup-error').textContent = error.message + cleanupT('cleanup.errorSuffix', '。若请求已开始，请查看最近清理记录并核对服务器，不要盲目重试。'); }
   finally { invalidateCleanupPreview(); setLoading(button,false); setCleanupBusy(false); }
 };
 
