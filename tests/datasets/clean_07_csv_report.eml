@@ -4,9 +4,9 @@ To: user@example.com
 Date: Mon, 07 Sep 2026 10:00:00 +0800
 Message-ID: <test-432247e2bc08@example.com>
 MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1898356478619783968=="
+Content-Type: multipart/mixed; boundary="===============1294536175901513118=="
 
---===============1898356478619783968==
+--===============1294536175901513118==
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
@@ -14,7 +14,7 @@ Content-Transfer-Encoding: 8bit
 
 附件为上周系统运行数据汇总（CSV 格式），供周报参考。
 
---===============1898356478619783968==
+--===============1294536175901513118==
 Content-Type: text/csv
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename="metrics-week38.csv"
@@ -22,4 +22,4 @@ MIME-Version: 1.0
 
 5pel5pyfLOWPr+eUqOeOhyzlkYrorabmlbAK5ZGo5LiALDk5Ljk4JSwyCg==
 
---===============1898356478619783968==--
+--===============1294536175901513118==--

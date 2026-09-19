@@ -92,6 +92,8 @@ def main():
     if sys.platform == 'darwin':
         commands.append([sys.executable, str(ROOT / 'tests/test_mail_links_webkit.py')])
     commands += [[node, '--check', str(ROOT / 'app/web/static/server-cleanup.js')]]
+    commands += [[node, '--check', str(ROOT / 'app/web/static/i18n.js')]]
+    commands += [[node, str(ROOT / 'tests/test_i18n.cjs')]]
     commands += [[node, '--check', str(ROOT / 'app/web/static/onboarding.js')]]
     commands += [[node, '--check', str(ROOT / 'app/web/static/mail-library.js')]]
     commands += [[node, '--check', str(ROOT / 'app/web/static/attachment-preview.js')]]

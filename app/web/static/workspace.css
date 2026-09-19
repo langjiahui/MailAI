@@ -297,6 +297,10 @@ body.assistant-docked .layout>.list-pane { width:355px; flex-basis:355px; }
 .preference-grid fieldset { min-width:0; margin:0; padding:0; border:0; }
 .preference-grid legend { font-size:12px; font-weight:600; color:#435d4d; margin:0; padding:0; }
 .preference-grid .density-settings { padding:22px 0; border-bottom:1px solid #edf1ed; }
+.preference-grid .language-settings { padding:22px 0; border-bottom:1px solid #edf1ed; }
+.language-settings legend { margin:0 0 7px; }
+.language-settings>p { color:#88988d; font-size:11px; line-height:1.6; margin:0 0 12px; }
+.language-settings select { padding:7px 10px; border:1px solid var(--border); border-radius:8px; background:var(--panel,#fff); color:var(--text); font-size:12px; }
 .density-settings legend { float:left; width:100%; margin:0 0 7px; }
 .density-settings>p { clear:both; color:#88988d; font-size:11px; line-height:1.6; margin:0 0 15px; }
 .density-options { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
@@ -763,6 +767,10 @@ html[data-theme="dark"] #cleanup-execute:not(:disabled) { background:#963f30; bo
 [data-system-panel="maintenance"] .maintenance-badge.caution { background:#faf3e9; color:#986e3d; }
 [data-system-panel="maintenance"] .maintenance-card-actions { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin:20px 0 18px; }
 .maintenance-card-actions>span { font-size:11px; color:var(--muted); }
+.portable-export-range { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:-6px 0 14px; }
+.portable-export-range label { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted); }
+.portable-export-range input { padding:5px 8px; border:1px solid var(--border); border-radius:7px; background:var(--panel,#fff); color:var(--text); font-size:11px; }
+.portable-export-range>span { font-size:10px; color:var(--muted); }
 [data-system-panel="maintenance"] .action-btn { min-height:36px; padding:8px 13px; border-radius:9px; box-shadow:none; font-size:12px; }
 [data-system-panel="maintenance"] #btn-create-backup { background:#35795d; border:1px solid #35795d; color:#fff; }
 .maintenance-section-label { display:flex; justify-content:space-between; gap:10px; padding-top:16px; border-top:1px solid var(--border); color:var(--text); font-size:11px; }

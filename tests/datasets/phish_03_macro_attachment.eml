@@ -4,9 +4,9 @@ To: user@example.com
 Date: Mon, 07 Sep 2026 10:00:00 +0800
 Message-ID: <test-8caded5a8c7c@example.com>
 MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0804045420728594983=="
+Content-Type: multipart/mixed; boundary="===============8254490799306788615=="
 
---===============0804045420728594983==
+--===============8254490799306788615==
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
@@ -16,7 +16,7 @@ Content-Transfer-Encoding: 8bit
 
 如有疑问请联系财务部。
 
---===============0804045420728594983==
+--===============8254490799306788615==
 Content-Type: application/vnd.ms-word.document.macroEnabled.12
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment;
@@ -27,4 +27,4 @@ MIME-Version: 1.0
 AAAAAAAAAAAAAAAAAAAAX1ZCQV9QUk9KRUNUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
 
---===============0804045420728594983==--
+--===============8254490799306788615==--

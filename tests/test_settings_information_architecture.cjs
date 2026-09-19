@@ -6,13 +6,13 @@ const html = fs.readFileSync(path.join(__dirname, '../app/web/static/index.html'
 const js = fs.readFileSync(path.join(__dirname, '../app/web/static/app.js'), 'utf8');
 const docs = fs.readFileSync(path.join(__dirname, '../docs/开发者架构与运行机制.md'), 'utf8');
 
-assert.match(html, /data-system-tab="preferences">常用设置/);
-assert.match(html, /data-system-tab="account">邮箱账号/);
-assert.match(html, /data-system-tab="maintenance">数据与维护/);
-assert.match(html, /data-system-tab="guide">使用帮助/);
+assert.match(html, /data-system-tab="preferences"[^>]*>常用设置/);
+assert.match(html, /data-system-tab="account"[^>]*>邮箱账号/);
+assert.match(html, /data-system-tab="maintenance"[^>]*>数据与维护/);
+assert.match(html, /data-system-tab="guide"[^>]*>使用帮助/);
 assert.doesNotMatch(html, /id="btn-help"|设置与帮助/,
   'Help should have one canonical entry inside Settings');
-assert.match(html, /id="btn-preferences"[^>]*class="nav-action[^>]*>[\s\S]*?<span>设置<\/span>/,
+assert.match(html, /id="btn-preferences"[^>]*class="nav-action[^>]*>[\s\S]*?<span[^>]*>设置<\/span>/,
   'The top-level Settings action should open Settings directly');
 assert.doesNotMatch(html, /data-system-(?:tab|panel)="(?:workflow|architecture)"/,
   'Developer architecture must not compete with user settings');

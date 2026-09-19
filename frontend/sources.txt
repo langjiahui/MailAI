@@ -2,6 +2,7 @@
 # 修改任意源文件后必须运行 python scripts/build_frontend.py 重新生成
 # app/web/static/bundle.js 与 index.html 中的缓存版本号；
 # scripts/check_release.py 会校验产物是最新的。
+i18n.js
 attachment-preview.js
 app.js
 mail-library.js

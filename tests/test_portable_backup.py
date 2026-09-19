@@ -100,6 +100,57 @@ class sqlite_connection:
     def __exit__(self, *_): self.connection.close()
 
 
+def test_selective_export_date_range():
+    """since/until filters keep only in-range emails and prune dependents."""
+    with tempfile.TemporaryDirectory() as root:
+        values = dict(DATA_DIR=root, DB_PATH=str(Path(root, "mail.db")), RAW_DIR=str(Path(root, "raw")),
+                      IMAP_USER="range@example.test", IMAP_HOST="imap.example.test")
+        with patch.multiple(config, **values):
+            db.init_db()
+            with db.conn() as connection:
+                connection.execute("INSERT INTO emails(uid,folder,subject,date,created_at) VALUES(1,'INBOX','old','2025-01-05T09:00:00','2025-01-05T09:00:00')")
+                connection.execute("INSERT INTO emails(uid,folder,subject,date,created_at) VALUES(2,'INBOX','keep','2026-03-10T09:00:00','2026-03-10T09:00:00')")
+                connection.execute("INSERT INTO emails(uid,folder,subject,date,created_at) VALUES(3,'INBOX','new','2026-09-01T09:00:00','2026-09-01T09:00:00')")
+                # Unparseable date falls back to created_at; missing both is kept.
+                connection.execute("INSERT INTO emails(uid,folder,subject,date,created_at) VALUES(4,'INBOX','nodate','','2026-03-11T09:00:00')")
+                connection.execute("INSERT INTO todos(email_id,title,status,created_at) VALUES(1,'old todo','open','2025-01-05T09:00:00')")
+                connection.execute("INSERT INTO todos(email_id,title,status,created_at) VALUES(2,'keep todo','open','2026-03-10T09:00:00')")
+                connection.execute("INSERT INTO url_chains(email_id,original_url,chain) VALUES(1,'https://a.example','[]')")
+                connection.execute("INSERT INTO briefing_dismissed(email_id) VALUES(1)")
+            db.add_audit_log(1, "quarantine", actor="user", reason="旧邮件隔离")
+            db.add_audit_log(2, "quarantine", actor="user", reason="保留邮件隔离")
+            result = portable_backup.create(password="", since="2026-01-01", until="2026-06-30")
+            package = portable_backup.stored_path(result["filename"])
+            preview = portable_backup.inspect(package)
+            assert preview["selection"]["excluded_emails"] == 2, preview["selection"]
+            assert preview["content"]["emails"] == 2
+            with zipfile.ZipFile(package) as archive:
+                snapshot = Path(root, "range.db"); snapshot.write_bytes(archive.read("mailai.db"))
+                with sqlite_connection(snapshot) as connection:
+                    subjects = {row[0] for row in connection.execute("SELECT subject FROM emails")}
+                    assert subjects == {"keep", "nodate"}, subjects
+                    todos = [row[0] for row in connection.execute("SELECT title FROM todos")]
+                    assert todos == ["keep todo"], todos
+                    assert connection.execute("SELECT COUNT(*) FROM url_chains").fetchone()[0] == 0
+                    assert connection.execute("SELECT COUNT(*) FROM briefing_dismissed").fetchone()[0] == 0
+                    audit = connection.execute("SELECT email_id FROM audit_logs ORDER BY email_id IS NULL").fetchall()
+                    # The pruned email's audit entry is retained but anonymized.
+                    assert any(row[0] is None for row in audit)
+            # Invalid input and inverted ranges are rejected.
+            for bad in (dict(since="not-a-date"), dict(until="2026/01/01"), dict(since="2026-06-01", until="2026-01-01")):
+                try:
+                    portable_backup.create(password="", **bad)
+                except ValueError:
+                    pass
+                else:
+                    raise AssertionError(f"Invalid range accepted: {bad}")
+            # The source database is never modified by an export.
+            with db.conn() as c:
+                assert c.execute("SELECT COUNT(*) FROM emails").fetchone()[0] == 4
+    print("✅ 便携迁移包按日期范围选择性导出通过")
+
+
 if __name__ == "__main__":
     test_portable_round_trip_and_integrity()
+    test_selective_export_date_range()
     print("✅ 便携迁移包往返、跨路径恢复与完整性校验通过")

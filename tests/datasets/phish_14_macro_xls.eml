@@ -4,9 +4,9 @@ To: user@example.com
 Date: Mon, 07 Sep 2026 10:00:00 +0800
 Message-ID: <test-13d882d9bfff@example.com>
 MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============3663127911553595470=="
+Content-Type: multipart/mixed; boundary="===============7028652074639515740=="
 
---===============3663127911553595470==
+--===============7028652074639515740==
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
@@ -14,7 +14,7 @@ Content-Transfer-Encoding: 8bit
 
 附件为本月订单确认表，请启用内容后填写回传。
 
---===============3663127911553595470==
+--===============7028652074639515740==
 Content-Type: application/vnd.ms-excel
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment;
@@ -25,4 +25,4 @@ MIME-Version: 1.0
 AAAAAAAAAAAAAAAAAAAAX1ZCQV9QUk9KRUNUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
 
---===============3663127911553595470==--
+--===============7028652074639515740==--

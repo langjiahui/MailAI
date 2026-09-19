@@ -4,9 +4,9 @@ To: user@example.com
 Date: Mon, 07 Sep 2026 10:00:00 +0800
 Message-ID: <test-49daf70bfc91@example.com>
 MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============5961222956997322571=="
+Content-Type: multipart/mixed; boundary="===============1010778597633706633=="
 
---===============5961222956997322571==
+--===============1010778597633706633==
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
@@ -14,7 +14,7 @@ Content-Transfer-Encoding: 8bit
 
 附件为 9 月发票明细，请查收核对。
 
---===============5961222956997322571==
+--===============1010778597633706633==
 Content-Type: application/octet-stream
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment;
@@ -26,4 +26,4 @@ kJCQUEUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAA
 
---===============5961222956997322571==--
+--===============1010778597633706633==--

@@ -196,6 +196,8 @@ class CleanupExecuteRequest(BaseModel):
 class PortableExportRequest(BaseModel):
     include_raw: bool = True
     password: str = Field(default="", max_length=1024)
+    since: str = Field(default="", max_length=40)
+    until: str = Field(default="", max_length=40)
 
 
 class PortableImportRequest(BaseModel):

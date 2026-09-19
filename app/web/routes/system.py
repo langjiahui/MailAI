@@ -187,7 +187,8 @@ def api_backups():
 def api_create_portable_backup(payload: PortableExportRequest):
     from ... import portable_backup
     try:
-        return portable_backup.create(include_raw=payload.include_raw, password=payload.password)
+        return portable_backup.create(include_raw=payload.include_raw, password=payload.password,
+                                      since=payload.since, until=payload.until)
     except (ValueError, RuntimeError, OSError, sqlite3.Error) as exc:
         raise HTTPException(400, str(exc))
 

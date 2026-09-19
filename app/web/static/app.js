@@ -6395,11 +6395,14 @@ function askMigrationPassword(mode) {
 }
 document.getElementById('btn-export-portable').addEventListener('click', async () => {
   const button = document.getElementById('btn-export-portable');
+  const since = document.getElementById('portable-export-since')?.value || '';
+  const until = document.getElementById('portable-export-until')?.value || '';
+  if (since && until && since > until) { toast('导出起始日期不能晚于截止日期', 'warn'); return; }
   const password = await askMigrationPassword('export');
   if (password === null) return;
   setLoading(button, true, '导出中…');
   try {
-    const result = await api('/api/system/portable-backups', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({include_raw:true,password})});
+    const result = await api('/api/system/portable-backups', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({include_raw:true,password,since,until})});
     if (window.pywebview?.api?.save_portable_backup) {
       const saved = await window.pywebview.api.save_portable_backup(result.filename);
       if (saved?.ok) toast(`迁移包已保存到 ${saved.path}`, 'success');

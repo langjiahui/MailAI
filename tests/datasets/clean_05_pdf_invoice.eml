@@ -4,9 +4,9 @@ To: user@example.com
 Date: Mon, 07 Sep 2026 10:00:00 +0800
 Message-ID: <test-816e8d8f29d4@example.com>
 MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============3319258129173121817=="
+Content-Type: multipart/mixed; boundary="===============2887861249789392982=="
 
---===============3319258129173121817==
+--===============2887861249789392982==
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: base64
 
@@ -14,7 +14,7 @@ Content-Transfer-Encoding: base64
 poLlr7nph5Hpop3mnInnlpHpl67mrKLov47lm57lpI3mnKzpgq7ku7bmsp/pgJrjgIIKCuiwouiw
 ouOAggo=
 
---===============3319258129173121817==
+--===============2887861249789392982==
 Content-Type: application/pdf
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename="invoice-202609.pdf"
@@ -22,4 +22,4 @@ MIME-Version: 1.0
 
 JVBERi0xLjQKMSAwIG9iajw8L1R5cGUvQ2F0YWxvZz4+ZW5kb2JqCnRyYWlsZXI8Pj4KJSVFT0Y=
 
---===============3319258129173121817==--
+--===============2887861249789392982==--

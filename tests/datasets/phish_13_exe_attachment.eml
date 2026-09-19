@@ -4,9 +4,9 @@ To: user@example.com
 Date: Mon, 07 Sep 2026 10:00:00 +0800
 Message-ID: <test-176b80b20653@example.com>
 MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============6711279096605527524=="
+Content-Type: multipart/mixed; boundary="===============2563662411089981350=="
 
---===============6711279096605527524==
+--===============2563662411089981350==
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
@@ -14,7 +14,7 @@ Content-Transfer-Encoding: 8bit
 
 请下载附件中的回单查询工具，安装后即可查看电子回单。
 
---===============6711279096605527524==
+--===============2563662411089981350==
 Content-Type: application/octet-stream
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment;
@@ -26,4 +26,4 @@ kJCQUEUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAA
 
---===============6711279096605527524==--
+--===============2563662411089981350==--

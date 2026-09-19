@@ -151,11 +151,63 @@ def _validate_archive(path: str) -> tuple[dict, dict[str, str]]:
         return manifest, checksums
 
 
-def create(*, include_raw: bool = True, password: str = "") -> dict:
+def _normalize_range_bound(value: str, *, end: bool) -> str | None:
+    """Normalize an optional date bound (YYYY-MM-DD or ISO datetime) for comparisons."""
+    value = (value or "").strip()
+    if not value:
+        return None
+    try:
+        if len(value) == 10:
+            parsed = datetime.strptime(value, "%Y-%m-%d")
+            return parsed.strftime("%Y-%m-%d") + ("T23:59:59" if end else "T00:00:00")
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return parsed.replace(tzinfo=None).isoformat(timespec="seconds")
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError("导出时间范围格式无效，请使用 YYYY-MM-DD") from exc
+
+
+def _select_by_date_range(connection, *, since: str | None, until: str | None) -> int:
+    """Delete out-of-range emails from the snapshot and prune dependent rows.
+
+    Emails whose effective timestamp cannot be parsed are kept: dropping mail
+    silently is worse than including a little extra.
+    """
+    if not since and not until:
+        return 0
+    stamp = "datetime(COALESCE(NULLIF(date,''),created_at))"
+    clauses, params = [], []
+    if since:
+        clauses.append(f"{stamp} < datetime(?)")
+        params.append(since)
+    if until:
+        clauses.append(f"{stamp} > datetime(?)")
+        params.append(until)
+    removed = connection.execute(
+        f"DELETE FROM emails WHERE {' OR '.join(clauses)}", params).rowcount
+    connection.execute("DELETE FROM todos WHERE email_id IS NOT NULL AND email_id NOT IN (SELECT id FROM emails)")
+    connection.execute("DELETE FROM url_chains WHERE email_id NOT IN (SELECT id FROM emails)")
+    connection.execute("DELETE FROM briefing_dismissed WHERE email_id NOT IN (SELECT id FROM emails)")
+    connection.execute(
+        "UPDATE audit_logs SET email_id=NULL WHERE email_id IS NOT NULL "
+        "AND email_id NOT IN (SELECT id FROM emails)")
+    connection.execute(
+        "UPDATE threads SET last_email_id=NULL WHERE last_email_id IS NOT NULL "
+        "AND last_email_id NOT IN (SELECT id FROM emails)")
+    connection.execute(
+        "UPDATE drafts SET reply_to_email_id=NULL WHERE reply_to_email_id IS NOT NULL "
+        "AND reply_to_email_id NOT IN (SELECT id FROM emails)")
+    return max(0, removed or 0)
+
+
+def create(*, include_raw: bool = True, password: str = "", since: str = "", until: str = "") -> dict:
     """Create a v3 package in the backup directory and return download metadata."""
     from . import system_settings
     if password and len(password) < 12:
         raise ValueError("迁移密码至少需要 12 位")
+    since_bound = _normalize_range_bound(since, end=False)
+    until_bound = _normalize_range_bound(until, end=True)
+    if since_bound and until_bound and since_bound > until_bound:
+        raise ValueError("导出时间范围起点不能晚于终点")
     backup_dir = os.path.join(config.DATA_DIR, "backups")
     os.makedirs(backup_dir, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
@@ -170,6 +222,7 @@ def create(*, include_raw: bool = True, password: str = "") -> dict:
             objects: dict[str, str] = {}
             missing_raw = 0
             with system_settings._sqlite_connection(snapshot_path) as connection:
+                excluded = _select_by_date_range(connection, since=since_bound, until=until_bound)
                 rows = connection.execute("SELECT id,raw_path FROM emails WHERE raw_path IS NOT NULL").fetchall()
                 for email_id, raw_path in rows:
                     if not include_raw:
@@ -196,6 +249,7 @@ def create(*, include_raw: bool = True, password: str = "") -> dict:
                 "account": {"email": config.IMAP_USER, "imap_host": config.IMAP_HOST},
                 "content": {"emails": int(counts[0] or 0), "raw_messages": int(counts[1] or 0),
                             "missing_raw_messages": missing_raw, "includes_raw_mail": include_raw},
+                "selection": {"since": since, "until": until, "excluded_emails": excluded},
                 "credentials_included": False, "encrypted": bool(password),
             }
             members = {"mailai.db": snapshot_path}
@@ -219,7 +273,8 @@ def create(*, include_raw: bool = True, password: str = "") -> dict:
         try: os.unlink(partial)
         except FileNotFoundError: pass
     size = os.path.getsize(target)
-    db.add_audit_log(None, "portable_backup", actor="user", reason=f"导出便携迁移包 {filename}", meta={"size": size, "encrypted": bool(password)})
+    db.add_audit_log(None, "portable_backup", actor="user", reason=f"导出便携迁移包 {filename}",
+                     meta={"size": size, "encrypted": bool(password), "since": since, "until": until})
     return {"ok": True, "filename": filename, "size": size, "created_at": created_at,
             "encrypted": bool(password), "download_url": "/api/system/portable-backups/download/" + filename}
 
