@@ -7,6 +7,10 @@ const source = fs.readFileSync(path.join(base,'workspace.js'),'utf8');
 const html = fs.readFileSync(path.join(base,'index.html'),'utf8');
 const themeCss = fs.readFileSync(path.join(base,'theme.css'),'utf8');
 assert.equal((html.match(/name="workspace-density-choice"/g)||[]).length,2);
+assert.equal((html.match(/name="font-size-choice"/g)||[]).length,4,'font size offers small/standard/large/xlarge');
+assert.match(html, /id="font-size"/);
+assert.match(source, /mailai-font-scale/, 'font scale persists on this device');
+assert.match(source, /document\.body\.style\.zoom/, 'font scale applies as proportional zoom so layout scales with text');
 assert.equal((html.match(/name="theme-mode-choice"/g)||[]).length,3);
 assert.equal((html.match(/name="notification-mode"/g)||[]).length,4);
 for (const id of ['theme-mode','workspace-density','notification-preference','notification-account','show-server-folders']) {

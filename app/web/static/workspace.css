@@ -307,15 +307,21 @@ body.assistant-docked .layout>.list-pane { width:355px; flex-basis:355px; }
 .language-settings legend { margin:0 0 7px; }
 .language-settings>p { color:#88988d; font-size:11px; line-height:1.6; margin:0 0 12px; }
 .language-settings select { padding:7px 10px; border:1px solid var(--border); border-radius:8px; background:var(--panel,#fff); color:var(--text); font-size:12px; }
-.density-settings legend { float:left; width:100%; margin:0 0 7px; }
-.density-settings>p { clear:both; color:#88988d; font-size:11px; line-height:1.6; margin:0 0 15px; }
+:is(.density-settings,.font-size-settings) legend { float:left; width:100%; margin:0 0 7px; }
+:is(.density-settings,.font-size-settings)>p { clear:both; color:#88988d; font-size:11px; line-height:1.6; margin:0 0 15px; }
 .density-options { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-.density-options label { position:relative; display:flex; flex-direction:column; align-items:flex-start; padding:13px; border:1px solid #e3eae5; border-radius:10px; cursor:pointer; background:#fafcfb; }
-.density-options label:has(input:checked) { border-color:#4b9270; background:#eff7f2; box-shadow:0 0 0 1px #4b927015; }
-.density-options label:has(input:focus-visible) { outline:2px solid #328365; outline-offset:3px; }
-.density-options input { position:absolute; top:14px; right:12px; width:14px; height:14px; margin:0; accent-color:#36845f; }
-.density-options b { font-size:12px; font-weight:600; color:#385846; margin:10px 0 4px; }
-.density-options small { font-size:10px; color:#819287; line-height:1.5; }
+.font-size-options { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+:is(.density-options,.font-size-options) label { position:relative; display:flex; flex-direction:column; align-items:flex-start; padding:13px; border:1px solid #e3eae5; border-radius:10px; cursor:pointer; background:#fafcfb; }
+:is(.density-options,.font-size-options) label:has(input:checked) { border-color:#4b9270; background:#eff7f2; box-shadow:0 0 0 1px #4b927015; }
+:is(.density-options,.font-size-options) label:has(input:focus-visible) { outline:2px solid #328365; outline-offset:3px; }
+:is(.density-options,.font-size-options) input { position:absolute; top:14px; right:12px; width:14px; height:14px; margin:0; accent-color:#36845f; }
+:is(.density-options,.font-size-options) b { font-size:12px; font-weight:600; color:#385846; margin:10px 0 4px; }
+:is(.density-options,.font-size-options) small { font-size:10px; color:#819287; line-height:1.5; }
+.font-size-preview { display:grid; place-items:center; align-self:stretch; min-height:38px; font-weight:700; color:#3f5c4e; }
+.font-size-preview[data-size="xs"] { font-size:12px; }
+.font-size-preview[data-size="m"] { font-size:15px; }
+.font-size-preview[data-size="l"] { font-size:18px; }
+.font-size-preview[data-size="xl"] { font-size:22px; }
 .density-preview { width:66px; height:40px; display:flex; flex-direction:column; gap:5px; }
 .density-preview i { display:block; height:8px; border-left:7px solid #a3bfae; background:linear-gradient(to right,#c6d9cd 64%,transparent 64%); border-radius:2px; }
 .density-preview.compact { gap:4px; }
@@ -347,7 +353,7 @@ body.assistant-docked .layout>.list-pane { width:355px; flex-basis:355px; }
 #notification-save-status { font-size:11px; color:#61866e; }
 #notification-retry-load { padding:3px 8px; border:1px solid #d7e5dc; border-radius:5px; background:white; color:#3c7656; font-size:11px; cursor:pointer; }
 @media(max-width:950px) { .preference-grid { grid-template-columns:minmax(0,1fr); gap:18px; } }
-@media(max-width:520px) { .preference-grid .preference-card { padding:18px; } .preferences-intro { margin-top:18px; } .preferences-intro>span { display:none; } .density-options { gap:8px; } .density-options label { padding:10px; } }
+@media(max-width:520px) { .preference-grid .preference-card { padding:18px; } .preferences-intro { margin-top:18px; } .preferences-intro>span { display:none; } .density-options { gap:8px; } .density-options label { padding:10px; } .font-size-options { grid-template-columns:1fr 1fr; gap:8px; } .font-size-options label { padding:10px; } }
 
 /* Account settings: selection on the left, maintenance on the right. */
 #system-view:has([data-system-panel="account"]:not(.hidden)) { background:#f3f7f4; }

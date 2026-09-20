@@ -91,11 +91,11 @@ html[data-theme="dark"] .email-item:not(.unread) .sender-name, html[data-theme="
 html[data-theme="dark"] .modal-backdrop { background:rgba(3,8,6,.68); }
 html[data-theme="dark"] input:not([type=checkbox]):not([type=radio]), html[data-theme="dark"] textarea, html[data-theme="dark"] select, html[data-theme="dark"] [contenteditable="true"] { color:var(--text) !important; background-color:rgba(19,30,25,.82) !important; border-color:rgba(186,219,200,.17) !important; }
 html[data-theme="dark"] .system-tabs { background:rgba(26,39,33,.94); border-color:var(--border); }
-html[data-theme="dark"] .system-tabs button.active, html[data-theme="dark"] .theme-options label:has(input:checked), html[data-theme="dark"] .density-options label:has(input:checked) { background:rgba(74,132,104,.27) !important; color:#dff5e7; border-color:rgba(109,190,148,.55) !important; }
-html[data-theme="dark"] .theme-settings, html[data-theme="dark"] .density-settings, html[data-theme="dark"] .preference-card-head { border-color:var(--border); }
-html[data-theme="dark"] .theme-settings>p, html[data-theme="dark"] .theme-options small, html[data-theme="dark"] .density-settings>p { color:var(--muted); }
-html[data-theme="dark"] .theme-options label, html[data-theme="dark"] .density-options label { background:rgba(29,44,37,.86); border-color:var(--border); }
-html[data-theme="dark"] .theme-options b, html[data-theme="dark"] .density-options b { color:var(--text); }
+html[data-theme="dark"] .system-tabs button.active, html[data-theme="dark"] .theme-options label:has(input:checked), html[data-theme="dark"] :is(.density-options,.font-size-options) label:has(input:checked) { background:rgba(74,132,104,.27) !important; color:#dff5e7; border-color:rgba(109,190,148,.55) !important; }
+html[data-theme="dark"] .theme-settings, html[data-theme="dark"] :is(.density-settings,.font-size-settings), html[data-theme="dark"] .preference-card-head { border-color:var(--border); }
+html[data-theme="dark"] .theme-settings>p, html[data-theme="dark"] .theme-options small, html[data-theme="dark"] :is(.density-settings,.font-size-settings)>p { color:var(--muted); }
+html[data-theme="dark"] .theme-options label, html[data-theme="dark"] :is(.density-options,.font-size-options) label { background:rgba(29,44,37,.86); border-color:var(--border); }
+html[data-theme="dark"] .theme-options b, html[data-theme="dark"] :is(.density-options,.font-size-options) b { color:var(--text); }
 html[data-theme="dark"] .theme-preview.light { opacity:.7; }
 html[data-theme="dark"] ::-webkit-scrollbar-thumb { background:#60776b; }
 
@@ -1611,7 +1611,7 @@ html[data-theme="dark"] .preference-grid .preference-card-head h3 {
 html[data-theme="dark"] .preference-grid legend {
   color: #c9ded1;
 }
-html[data-theme="dark"] .preference-grid :is(.preference-card-head p, .theme-settings > p, .density-settings > p, .preference-row small, .preference-note) {
+html[data-theme="dark"] .preference-grid :is(.preference-card-head p, .theme-settings > p, .density-settings > p, .font-size-settings > p, .preference-row small, .preference-note) {
   color: #a9c0b3;
 }
 html[data-theme="dark"] .preference-grid .preference-card-head .connection-icon {
@@ -1619,9 +1619,10 @@ html[data-theme="dark"] .preference-grid .preference-card-head .connection-icon 
   color: #94dfb6;
   box-shadow: inset 0 0 0 1px rgba(148,223,182,.18);
 }
-html[data-theme="dark"] .preference-grid :is(.preference-card-head, .density-settings, .theme-settings, .preference-save-state) {
+html[data-theme="dark"] .preference-grid :is(.preference-card-head, .density-settings, .font-size-settings, .theme-settings, .preference-save-state) {
   border-color: rgba(182,211,196,.18);
 }
+html[data-theme="dark"] .font-size-preview { color: #9cc3ae; }
 html[data-theme="dark"] #notification-save-status { color: #a1dcb8; }
 html[data-theme="dark"] #notification-retry-load {
   color: #d7eee0;

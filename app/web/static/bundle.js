@@ -69,6 +69,16 @@ const I18N_MESSAGES = {
     'density.comfortableHint': 'Shows previews, easier to read',
     'density.compact': 'Compact',
     'density.compactHint': 'Shorter previews, more mails',
+    'prefs.fontSize': 'Font Size',
+    'prefs.fontSizeHint': 'Scale text and controls together for different eyesight and viewing distance.',
+    'font.small': 'Small',
+    'font.smallHint': 'Fit more on each screen',
+    'font.standard': 'Standard',
+    'font.standardHint': 'Default size',
+    'font.large': 'Large',
+    'font.largeHint': 'Bigger text and controls',
+    'font.xlarge': 'Extra Large',
+    'font.xlargeHint': 'Easier at a distance or for low vision',
     'prefs.serverFolders': 'Show server folders',
     'prefs.serverFoldersHint': 'Show the raw IMAP folders in the sidebar.',
     'prefs.serverFoldersNote': 'Off by default; background sync is unaffected.',
@@ -10087,7 +10097,7 @@ async function loadWorkspacePreferences() {
 }
 
 function syncPreferenceChoices() {
-  for (const [name,id] of [['theme-mode-choice','theme-mode'],['workspace-density-choice','workspace-density'],['notification-mode','notification-preference']]) {
+  for (const [name,id] of [['theme-mode-choice','theme-mode'],['workspace-density-choice','workspace-density'],['font-size-choice','font-size'],['notification-mode','notification-preference']]) {
     document.querySelectorAll(`input[name="${name}"]`).forEach(input => { input.checked = input.value === document.getElementById(id).value; });
   }
 }
@@ -10263,6 +10273,15 @@ function initializeWorkspace() {
   const density = document.getElementById('workspace-density'); density.value = localStorage.getItem('mailai-density') || 'comfortable';
   document.body.dataset.density = density.value;
   density.onchange = () => { document.body.dataset.density = density.value; localStorage.setItem('mailai-density', density.value); syncPreferenceChoices(); };
+  // 界面字号：用 CSS zoom 整体等比缩放（布局随文字一起放大，样式不走样），仅保存本机
+  const fontSize = document.getElementById('font-size');
+  const applyFontScale = value => {
+    const scale = parseFloat(value);
+    document.body.style.zoom = Number.isFinite(scale) && scale > 0 ? String(scale) : '';
+  };
+  fontSize.value = localStorage.getItem('mailai-font-scale') || '1';
+  applyFontScale(fontSize.value);
+  fontSize.onchange = () => { applyFontScale(fontSize.value); localStorage.setItem('mailai-font-scale', fontSize.value); syncPreferenceChoices(); };
   const themeMode = document.getElementById('theme-mode');
   themeMode.value = savedThemeMode();
   themeMode.onchange = () => {
@@ -10271,7 +10290,7 @@ function initializeWorkspace() {
     applyTheme(mode);
     toast(mode === 'system' ? '已改为跟随系统主题' : `已切换为${mode === 'dark' ? '暗色' : '浅色'}主题`, 'success');
   };
-  for (const [name,id] of [['theme-mode-choice','theme-mode'],['workspace-density-choice','workspace-density'],['notification-mode','notification-preference']]) {
+  for (const [name,id] of [['theme-mode-choice','theme-mode'],['workspace-density-choice','workspace-density'],['font-size-choice','font-size'],['notification-mode','notification-preference']]) {
     document.querySelectorAll(`input[name="${name}"]`).forEach(input => input.onchange = () => {
       const control = document.getElementById(id); control.value = input.value; control.onchange({target:control});
     });
