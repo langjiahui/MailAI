@@ -7,40 +7,40 @@
 /* Keep the preview chrome in the active theme; original PDF/image pixels stay intact. */
 html[data-theme="dark"] .file-preview {
   color-scheme:dark;
-  background:#18251f;
-  color:#e7f0eb;
-  border-color:#354b40;
+  background:#141b17;
+  color:#e6eee9;
+  border-color:rgba(180,210,194,.14);
   box-shadow:0 28px 90px #0008;
 }
-html[data-theme="dark"] .file-preview::backdrop { background:#050d0ab3; }
-html[data-theme="dark"] .file-preview header { background:#203129; border-color:#354b40; }
+html[data-theme="dark"] .file-preview::backdrop { background:rgba(3,7,5,.8); backdrop-filter:blur(12px) saturate(80%); }
+html[data-theme="dark"] .file-preview header { background:#171e1a; border-color:rgba(180,210,194,.1); }
 html[data-theme="dark"] .file-preview h2 { color:#edf6f0; }
 html[data-theme="dark"] .file-preview small,
 html[data-theme="dark"] .file-preview-note { color:#b1c3b8; }
 html[data-theme="dark"] .file-preview :is(button,select),
 html[data-theme="dark"] .file-preview header>a {
   color:#dceee3!important;
-  background:#294336!important;
-  border:1px solid #4b6858!important;
+  background:#19211c!important;
+  border:1px solid rgba(180,210,194,.12)!important;
   box-shadow:none;
 }
 html[data-theme="dark"] .file-preview header>a { padding:8px 12px; border-radius:10px; }
 html[data-theme="dark"] .file-preview button:not(:disabled):hover,
-html[data-theme="dark"] .file-preview header>a:hover { background:#365744!important; border-color:#78ac91!important; }
-html[data-theme="dark"] .file-preview button:disabled { opacity:1; color:#829a8c!important; background:#1b2b22!important; border-color:#30463a!important; }
-html[data-theme="dark"] .file-preview :is(button,a,select):focus-visible { outline:2px solid #97d9b5; outline-offset:3px; }
+html[data-theme="dark"] .file-preview header>a:hover { background:#222d26!important; border-color:rgba(114,185,149,.32)!important; }
+html[data-theme="dark"] .file-preview button:disabled { opacity:1; color:#718078!important; background:#171e1a!important; border-color:rgba(180,210,194,.08)!important; }
+html[data-theme="dark"] .file-preview :is(button,a,select):focus-visible { outline:1px solid #72b995; outline-offset:2px; box-shadow:0 0 0 3px rgba(114,185,149,.12); }
 html[data-theme="dark"] .file-reader-tools { color:#c9ddd0; }
-html[data-theme="dark"] .file-reader-viewport { background:#0e1813; border:1px solid #30463a; }
+html[data-theme="dark"] .file-reader-viewport { background:#0d1210; border:1px solid rgba(180,210,194,.1); }
 html[data-theme="dark"] .file-preview pre,
-html[data-theme="dark"] article.file-reader-paper { background:#203129; color:#e0ebe4; box-shadow:0 4px 22px #0004; }
+html[data-theme="dark"] article.file-reader-paper { background:#181f1b; color:#dde7e1; box-shadow:0 4px 22px #0004; }
 html[data-theme="dark"] article.file-reader-paper :is(h1,h2,h3,h4,h5,h6,strong) { color:#f1f7f3; }
 html[data-theme="dark"] article.file-reader-paper :is(td,th) { border-color:#4a6053; }
-html[data-theme="dark"] article.file-reader-paper th { background:#2a4033; }
-html[data-theme="dark"] article.file-reader-paper blockquote { color:#bfd3c5; border-color:#74a68a; }
-html[data-theme="dark"] .file-sheet-scroll { color:#e0ebe4; background:#19291f; border-color:#40594a; }
-html[data-theme="dark"] .file-sheet-scroll :is(td,th) { border-color:#344c3e; }
-html[data-theme="dark"] .file-sheet-scroll th { color:#cadfd2; background:#294032; }
-html[data-theme="dark"] .file-sheet-scroll tbody tr:hover td { background:#263e30; }
-html[data-theme="dark"] .file-preview :is(main,.file-reader-viewport,.file-sheet-scroll) { scrollbar-color:#587362 #132019; }
-html[data-theme="dark"] .file-preview ::-webkit-scrollbar-thumb { background:#587362; border-radius:8px; }
-html[data-theme="dark"] .file-preview ::-webkit-scrollbar-track { background:#132019; }
+html[data-theme="dark"] article.file-reader-paper th { background:#202a24; }
+html[data-theme="dark"] article.file-reader-paper blockquote { color:#b8c8bf; border-color:#72b995; }
+html[data-theme="dark"] .file-sheet-scroll { color:#dde7e1; background:#181f1b; border-color:rgba(180,210,194,.12); }
+html[data-theme="dark"] .file-sheet-scroll :is(td,th) { border-color:rgba(180,210,194,.1); }
+html[data-theme="dark"] .file-sheet-scroll th { color:#cbd6d0; background:#202a24; }
+html[data-theme="dark"] .file-sheet-scroll tbody tr:hover td { background:#222d26; }
+html[data-theme="dark"] .file-preview :is(main,.file-reader-viewport,.file-sheet-scroll) { scrollbar-color:#35423b #141b17; }
+html[data-theme="dark"] .file-preview ::-webkit-scrollbar-thumb { background:#35423b; border-radius:8px; }
+html[data-theme="dark"] .file-preview ::-webkit-scrollbar-track { background:#141b17; }

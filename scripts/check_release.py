@@ -144,6 +144,8 @@ def main():
                  [node, str(ROOT / 'tests/test_risk_labels.cjs')],
                  [node, str(ROOT / 'tests/test_remote_images.cjs')],
                  [node, str(ROOT / 'tests/test_dark_theme_palette.cjs')],
+                 [node, str(ROOT / 'tests/test_dark_dialog_surfaces.cjs')],
+                 [node, str(ROOT / 'tests/test_ui_refinement.cjs')],
                  [node, str(ROOT / 'tests/test_model_privacy_ui.cjs')]]
     failures = []
     for command in commands:
