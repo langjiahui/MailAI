@@ -1,5 +1,5 @@
 /* User-selectable appearance. The default light palette remains untouched. */
-.theme-settings { padding:22px 0; border-bottom:1px solid #edf1ed; }
+.theme-settings { padding:2px 0 0; }
 .theme-settings legend { float:left; width:100%; margin:0 0 7px; }
 .theme-settings>p { clear:both; margin:0 0 15px; color:#88988d; font-size:11px; line-height:1.6; }
 .theme-options { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
@@ -227,6 +227,8 @@ html[data-theme="dark"] .compose-fields,
 html[data-theme="dark"] .compose-editor { color:var(--dark-ink)!important; }
 
 /* Daily digest and task centre had their own white cards. */
+html[data-theme="dark"] .icon-text-button { color:var(--dark-ink)!important; background:rgba(38,56,47,.72)!important; border-color:var(--dark-line)!important; box-shadow:none!important; }
+html[data-theme="dark"] .icon-text-button:hover { background:rgba(52,74,62,.85)!important; box-shadow:none!important; }
 html[data-theme="dark"] .digest-history-select,
 html[data-theme="dark"] .digest-empty,
 html[data-theme="dark"] .logout-choice,
@@ -299,7 +301,8 @@ html[data-theme="dark"] .compose-attachments,
 html[data-theme="dark"] .compose-preflight { color:var(--dark-ink)!important; background:var(--dark-raised-2)!important; border-color:var(--dark-line)!important; }
 html[data-theme="dark"] .compose-message { color:#eef6f1!important; }
 html[data-theme="dark"] .compose-quote,
-html[data-theme="dark"] .compose-signature { border-color:var(--dark-line)!important; background:rgba(30,45,38,.78)!important; color:var(--dark-muted)!important; }
+html[data-theme="dark"] .compose-signature { border-color:var(--dark-line)!important; background:transparent!important; color:var(--dark-muted)!important; }
+html[data-theme="dark"] .compose-signature::before { color:var(--dark-subtle)!important; }
 html[data-theme="dark"] .dashboard-view { background:linear-gradient(145deg,#122019,#17261f 54%,#14201c)!important; }
 html[data-theme="dark"] :is(.dashboard-priority,.dashboard-metric,.dashboard-panel,.dashboard-quality-strip,.dashboard-quality>span:not(.dashboard-quality-empty),.dashboard-attention-item,.dashboard-campaign-item,.chart-box,.kpi-card,.rule-card,.rules-card,.advanced-rules-panel,.connection-card,.diagnostic-card,.admin-settings,.admin-settings .connection-card) {
   color:var(--dark-ink)!important; background:var(--dark-raised-2)!important; border-color:var(--dark-line)!important; box-shadow:none!important;
@@ -445,6 +448,8 @@ html[data-theme="dark"] :is(.preference-card,.account-directory,.account-detail,
   box-shadow:inset 0 1px rgba(255,255,255,.035),0 12px 28px rgba(0,0,0,.08)!important;
 }
 html[data-theme="dark"] :is(.account-directory-head,.account-detail-top,.account-isolation-note,.mail-add-panel-head) { border-color:var(--dark-stroke)!important; }
+html[data-theme="dark"] .mail-add-panel-head button { color:var(--dark-copy-muted)!important; background:rgba(38,56,47,.72)!important; border-color:var(--dark-stroke)!important; }
+html[data-theme="dark"] .mail-add-panel-head button:hover { color:var(--dark-copy)!important; background:rgba(48,70,59,.85)!important; }
 html[data-theme="dark"] :is(.account-directory,.account-detail) :is(h3,b,span,label,strong) { color:var(--dark-copy)!important; }
 html[data-theme="dark"] :is(.account-directory,.account-detail) small,
 html[data-theme="dark"] :is(.account-directory,.account-detail) .account-detail-eyebrow { color:var(--dark-copy-muted)!important; }
@@ -481,7 +486,7 @@ html[data-theme="dark"] .compose-format-tools button {
 }
 html[data-theme="dark"] .compose-toolbar button:hover,
 html[data-theme="dark"] .compose-format-tools button:hover { background:rgba(85,140,110,.37)!important; }
-html[data-theme="dark"] .compose-signature { background:rgba(49,75,62,.35)!important; color:#bdd3c7!important; }
+html[data-theme="dark"] .compose-signature { background:transparent!important; color:#bdd3c7!important; }
 
 /* Floating surfaces get the same translucent treatment. */
 html[data-theme="dark"] :is(.modal-content,.drawer-panel,.task-center,.assistant-panel,.top-menu-panel,.security-menu-grid,.security-flyout) {
@@ -1152,7 +1157,7 @@ html[data-theme="dark"] .assistant-history-item.active {
   color:#f2fff7!important;
   border-color:rgba(139,231,181,.43)!important;
   background:linear-gradient(135deg,rgba(54,134,93,.57),rgba(29,82,58,.7))!important;
-  box-shadow:inset 3px 0 #82dda9,0 10px 25px rgba(0,0,0,.17),0 0 22px rgba(70,194,133,.08)!important;
+  box-shadow:inset 0 0 0 1px rgba(139,231,181,.18),0 10px 25px rgba(0,0,0,.17)!important;
 }
 html[data-theme="dark"] .assistant-history-empty { color:#9fb5a9!important; }
 
@@ -1364,7 +1369,7 @@ html[data-theme="dark"] #account-mailbox-nav .sidebar-account-folders button.act
   color:#effff6!important;
   border:1px solid rgba(128,218,168,.2)!important;
   background:linear-gradient(105deg,rgba(54,131,91,.31),rgba(30,74,53,.24))!important;
-  box-shadow:inset 3px 0 #75d69f,inset 0 1px rgba(255,255,255,.035),0 4px 12px rgba(0,0,0,.08)!important;
+  box-shadow:inset 0 0 0 1px rgba(128,218,168,.14),0 4px 12px rgba(0,0,0,.08)!important;
 }
 html[data-theme="dark"] #account-mailbox-nav .sidebar-account-folders em {
   min-width:18px;
@@ -1443,7 +1448,7 @@ html[data-theme="dark"] .email-item.bulk-selected :is(.email-snippet,.email-date
 html[data-theme="dark"] .email-item.selected.bulk-selected {
   border-color:rgba(133,226,174,.48)!important;
   background:linear-gradient(105deg,rgba(49,124,84,.57),rgba(27,72,50,.68))!important;
-  box-shadow:inset 3px 0 #7cdda5,inset 0 0 0 1px rgba(151,228,187,.06),0 8px 20px rgba(0,0,0,.13)!important;
+  box-shadow:inset 0 0 0 1px rgba(133,226,174,.2),0 8px 20px rgba(0,0,0,.13)!important;
 }
 html[data-theme="dark"] .bulk-toolbar.busy {
   background:linear-gradient(180deg,rgba(38,76,58,.99),rgba(21,51,38,.99))!important;
@@ -1609,7 +1614,7 @@ html[data-theme="dark"] .preference-grid .preference-card-head h3 {
   color: #edf7f1;
 }
 html[data-theme="dark"] .preference-grid legend {
-  color: #c9ded1;
+  color: var(--dark-ink);
 }
 html[data-theme="dark"] .preference-grid :is(.preference-card-head p, .theme-settings > p, .density-settings > p, .font-size-settings > p, .preference-row small, .preference-note) {
   color: #a9c0b3;
@@ -1971,15 +1976,15 @@ html[data-theme="dark"] :is(.btn-ghost,.action-secondary,.global-actions button,
   box-shadow:none!important;
 }
 html[data-theme="dark"] :is(.btn-primary,.action-primary,.primary,.nav-compose,.compose-send-button,.onboarding-submit,.assistant-send-button) {
-  color:#0b1711!important;
-  background:#72b995!important;
-  border-color:#72b995!important;
-  box-shadow:0 8px 22px rgba(38,101,72,.2),inset 0 1px rgba(255,255,255,.18)!important;
+  color:#eaf7f0!important;
+  background:linear-gradient(155deg,#3d8a69,#2b6a51)!important;
+  border-color:rgba(133,197,164,.38)!important;
+  box-shadow:0 8px 20px rgba(18,52,38,.4),inset 0 1px rgba(255,255,255,.14)!important;
 }
 html[data-theme="dark"] :is(.btn-primary,.action-primary,.primary,.nav-compose,.compose-send-button,.onboarding-submit,.assistant-send-button):hover {
-  color:#07110c!important;
-  background:#85c5a4!important;
-  border-color:#85c5a4!important;
+  color:#ffffff!important;
+  background:linear-gradient(155deg,#469c76,#317a5d)!important;
+  border-color:rgba(150,210,180,.5)!important;
   box-shadow:0 10px 26px rgba(38,101,72,.26)!important;
 }
 html[data-theme="dark"] .system-tabs { background:#111715!important; border-color:rgba(180,210,194,.1)!important; box-shadow:none!important; }
@@ -1990,8 +1995,8 @@ html[data-theme="dark"] :is(.theme-options label,.density-options label) { backg
 html[data-theme="dark"] :is(.theme-options label,.density-options label):has(input:checked) { color:#e6eee9!important; background:#1d2922!important; border-color:rgba(114,185,149,.48)!important; box-shadow:inset 0 0 0 1px rgba(114,185,149,.08)!important; }
 html[data-theme="dark"] .email-item { background:transparent!important; border-color:rgba(180,210,194,.065)!important; }
 html[data-theme="dark"] .email-item.unread { background:#171f1a!important; }
-html[data-theme="dark"] .email-item:hover { background:#1b2520!important; border-color:rgba(114,185,149,.18)!important; box-shadow:inset 2px 0 #72b995!important; transform:none; }
-html[data-theme="dark"] :is(.email-item.active,.email-item.selected) { background:#202d25!important; border-color:rgba(114,185,149,.34)!important; box-shadow:inset 2px 0 #72b995!important; }
+html[data-theme="dark"] .email-item:hover { background:#1b2520!important; border-color:rgba(114,185,149,.18)!important; transform:none; }
+html[data-theme="dark"] :is(.email-item.active,.email-item.selected) { background:#202d25!important; border-color:rgba(114,185,149,.34)!important; box-shadow:inset 0 0 0 1px rgba(114,185,149,.16)!important; }
 html[data-theme="dark"] :is(.nav-item:hover,.nav-item.active,.nav-action.active,.nav-action[aria-expanded="true"]) { color:#e6eee9!important; background:#202a24!important; border-color:rgba(114,185,149,.24)!important; box-shadow:none!important; }
 html[data-theme="dark"] .email-body,
 html[data-theme="dark"] #email-body.email-body,
@@ -2091,7 +2096,7 @@ html[data-theme="dark"] body :is(
   #task-planner #plan-save,
   #assistant-attachment-add,.migration-password-dialog footer button:last-child,
   .contact-editor-card .primary-action
-) { color:#0b1711!important; background:#72b995!important; border-color:#72b995!important; }
+) { color:#eaf7f0!important; background:linear-gradient(155deg,#3d8a69,#2b6a51)!important; border-color:rgba(133,197,164,.38)!important; box-shadow:0 8px 20px rgba(18,52,38,.4),inset 0 1px rgba(255,255,255,.14)!important; }
 
 html[data-theme="dark"] body :is(
   .library-dialog fieldset,.group-members-list,.cleanup-mail-list,
@@ -2164,13 +2169,13 @@ html[data-theme="dark"] body .preflight-summary { background:#171e1a!important; 
 html[data-theme="dark"] body .preflight-item { background:#181f1b!important; border-color:rgba(180,210,194,.1)!important; }
 html[data-theme="dark"] body .preflight-decision { background:#171e1a!important; border-color:rgba(180,210,194,.1)!important; }
 html[data-theme="dark"] body .preflight-decision button { color:#cbd6d0!important; background:#19211c!important; border-color:rgba(180,210,194,.12)!important; }
-html[data-theme="dark"] body .preflight-decision .preflight-confirm-send { color:#0b1711!important; background:#72b995!important; border-color:#72b995!important; }
+html[data-theme="dark"] body .preflight-decision .preflight-confirm-send { color:#eaf7f0!important; background:linear-gradient(155deg,#3d8a69,#2b6a51)!important; border-color:rgba(133,197,164,.38)!important; }
 
 html[data-theme="dark"] body #correspondence-drawer .correspondence-panel { background:#141b17!important; border-color:rgba(180,210,194,.14)!important; }
 html[data-theme="dark"] body #correspondence-drawer .correspondence-header { background:#171e1a!important; border-color:rgba(180,210,194,.1)!important; }
 html[data-theme="dark"] body #correspondence-drawer .correspondence-item { color:#dce6e0!important; background:#181f1b!important; border-color:rgba(180,210,194,.1)!important; }
 html[data-theme="dark"] body #correspondence-drawer .correspondence-item:hover { background:#202a24!important; border-color:rgba(114,185,149,.24)!important; }
-html[data-theme="dark"] body #correspondence-drawer .correspondence-item.selected { background:#203127!important; border-color:rgba(114,185,149,.4)!important; box-shadow:inset 2px 0 #72b995!important; }
+html[data-theme="dark"] body #correspondence-drawer .correspondence-item.selected { background:#203127!important; border-color:rgba(114,185,149,.4)!important; box-shadow:inset 0 0 0 1px rgba(114,185,149,.16)!important; }
 
 /* Product-wide refinement: quieter materials, clearer scanning rhythm and a
  * shared interaction contract across mailbox, reading, forms and overlays. */
@@ -2245,14 +2250,14 @@ button:disabled { cursor:not-allowed; filter:saturate(.72); opacity:.58; }
 .email-tags { margin-top:7px; gap:5px; }
 .email-item.selected,
 .email-item.quarantine.selected,
-.email-item.spam.selected { box-shadow:inset 3px 0 0 rgba(47,125,95,.66)!important; }
+.email-item.spam.selected { box-shadow:inset 0 0 0 1px rgba(47,125,95,.3)!important; }
 .group-header { min-height:34px; font-weight:680; }
 html[data-theme="dark"] .email-item { color:#dce6e0!important; }
 html[data-theme="dark"] .email-item:not(.unread) :is(.sender-name,.email-subject) { color:#bdc9c2!important; }
 html[data-theme="dark"] .email-preview { color:#98a89f!important; }
 html[data-theme="dark"] .email-item.selected,
 html[data-theme="dark"] .email-item.quarantine.selected,
-html[data-theme="dark"] .email-item.spam.selected { box-shadow:inset 3px 0 #72b995!important; }
+html[data-theme="dark"] .email-item.spam.selected { box-shadow:inset 0 0 0 1px rgba(114,185,149,.3)!important; }
 
 /* Reading view: prevent overlong lines and make document sections easier to scan. */
 .reading-header-inner,

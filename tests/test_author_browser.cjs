@@ -44,7 +44,7 @@ const root = path.resolve(__dirname, '../app/web/static');
         assert((Math.max(a,b)+.05)/(Math.min(a,b)+.05)>=4.5,`${theme} text contrast`);
       }
     }
-    await page.locator('[data-about-target="maintenance"]').click();
+    await page.locator('[data-system-tab="maintenance"]').click();
     assert(await page.locator('[data-system-panel="maintenance"]').isVisible());
     assert.equal(await page.evaluate(()=>window.backupLoads),1);
     await page.locator('[data-system-tab="about"]').click();
