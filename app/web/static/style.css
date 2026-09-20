@@ -1067,7 +1067,7 @@ body.feedback-open .mail-assistant { opacity:0; visibility:hidden; pointer-event
 .attachment-source { display:flex; align-items:center; gap:5px; min-width:0; margin-top:8px; color:#697b74; font-size:9.5px; }
 .attachment-source i { flex:0 0 auto; color:#3d7963; font-style:normal; font-weight:700; }
 .attachment-source span,.attachment-sender { display:block; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.attachment-sender { margin-top:4px; color:#8a9893; font-size:9px; }
+.attachment-sender { margin-top:4px; color:#687a72; font-size:9px; }
 .attachment-card-side { align-self:stretch; display:flex; flex-direction:column; align-items:flex-end; justify-content:space-between; gap:8px; }
 .attachment-risk { padding:4px 6px; border-radius:6px; color:#a34f43; background:#faebe8; font-size:9px; font-style:normal; white-space:nowrap; }
 .attachment-download-action { display:grid; place-items:center; width:32px; height:32px; border:1px solid rgba(48,112,87,.12); border-radius:10px; background:rgba(240,248,245,.9); transition:.18s ease; }
@@ -1565,7 +1565,7 @@ body.feedback-open .mail-assistant { opacity:0; visibility:hidden; pointer-event
 .thread-content { min-width:0; }
 .thread-item-head { display:flex; align-items:baseline; gap:8px; }
 .thread-item-head strong { min-width:0; flex:1; overflow:hidden; color:#30443b; font-size:11.5px; text-overflow:ellipsis; white-space:nowrap; }
-.thread-item-head time { flex:0 0 auto; color:#88958f; font-size:9.5px; white-space:nowrap; }
+.thread-item-head time { flex:0 0 auto; color:#687871; font-size:9.5px; white-space:nowrap; }
 .thread-sender { display:flex; min-width:0; gap:5px; margin-top:3px; overflow:hidden; color:#60736a; font-size:10.5px; white-space:nowrap; }
 .thread-sender span,.thread-sender small { overflow:hidden; text-overflow:ellipsis; }
 .thread-sender small { color:#95a09b; }
@@ -1713,7 +1713,7 @@ body.feedback-open .mail-assistant { opacity:0; visibility:hidden; pointer-event
   --surface: #ffffff;
   --sidebar: #f8f9f6;
   --text: #1d2822;
-  --muted: #758078;
+  --muted: #65736c;
   --border: #e2e7e1;
   --primary: #2f765d;
   --primary-deep: #255f4b;
@@ -2407,7 +2407,7 @@ body { font-size: 13px; background: var(--bg); }
 #digest-email-drawer .meta-avatar{width:46px;height:46px;border-radius:14px;font-size:18px}
 #digest-email-drawer .meta-fields{display:grid;gap:5px;font-size:12px;line-height:1.45}
 #digest-email-drawer .drawer-meta-row{display:flex;align-items:flex-start;gap:7px;min-width:0;color:#39473f}
-#digest-email-drawer .drawer-meta-row>.meta-label{width:42px;flex:0 0 42px;margin:0;color:#819087}
+#digest-email-drawer .drawer-meta-row>.meta-label{width:42px;flex:0 0 42px;margin:0;color:#66746d}
 #digest-email-drawer .drawer-address{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#64736b}
 #digest-email-drawer .recipient-field{flex:1;gap:5px}
 #digest-email-drawer .recipient-summary{max-width:280px;color:#39473f}
@@ -3091,7 +3091,7 @@ html[data-theme="dark"] .diagnostic-item .diagnostic-action{background:#294d39;c
   --sidebar: rgba(247, 250, 248, .46);
   --panel: rgba(255, 255, 255, .58);
   --text: #17221e;
-  --muted: #6f7c77;
+  --muted: #5d6b65;
   --border: rgba(255, 255, 255, .66);
   --primary: #356f5d;
   --primary-deep: #245544;
@@ -3312,7 +3312,7 @@ body::after { width: 720px; height: 720px; right: -330px; top: -390px; box-shado
 .email-item.spam { background: rgba(255,247,229,.36); }
 .email-item.quarantine.selected, .email-item.spam.selected { background: rgba(255,255,255,.7); }
 .sender-name { color: #26342e; }
-.email-preview, .email-date { color: #7b8782; }
+.email-preview, .email-date { color: #5c6963; }
 .list-footer { border-color: rgba(255,255,255,.48); background: rgba(255,255,255,.16); }
 
 /* Reading workspace */
@@ -4083,7 +4083,7 @@ body.pane-resizing iframe { pointer-events: none; }
 }
 .top-menu-popover .policy-control > span { display: flex; flex-direction: column; gap: 4px; }
 .top-menu-popover .policy-control b { color: #29463a; font-size: 11px; }
-.top-menu-popover .policy-control small { color: #88958f; font-size: 9px; font-weight: 500; }
+.top-menu-popover .policy-control small { color: #687871; font-size: 9px; font-weight: 500; }
 .policy-select-wrap {
   position: relative;
   display: flex!important;

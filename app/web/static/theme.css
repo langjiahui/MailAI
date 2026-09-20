@@ -2188,9 +2188,10 @@ html[data-theme="dark"] {
 }
 body {
   text-rendering:optimizeLegibility;
-  -webkit-font-smoothing:antialiased;
   font-variant-numeric:tabular-nums;
 }
+/* 仅暗色用 antialiased：浅底深字下它会削掉次像素渲染，整页文字显得发虚偏淡 */
+html[data-theme="dark"] body { -webkit-font-smoothing:antialiased; }
 html:not([data-theme="dark"]) body {
   background:
     radial-gradient(circle at 7% 8%,rgba(238,188,151,.3) 0,rgba(238,188,151,.08) 27%,transparent 47%),
