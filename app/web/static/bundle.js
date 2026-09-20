@@ -84,6 +84,8 @@ const I18N_MESSAGES = {
     'prefs.serverFoldersNote': 'Off by default; background sync is unaffected.',
     'prefs.language': 'Interface Language',
     'prefs.languageHint': 'Switch the interface language; only affects this device.',
+    'lang.zhHint': 'Simplified Chinese UI',
+    'lang.enHint': 'English UI',
     'prefs.notifications': 'Mail Notifications',
     'prefs.notificationsHint': 'Configurable per mailbox',
     'dash.eyebrow': 'Security Operations',
@@ -1349,6 +1351,7 @@ if (typeof document !== 'undefined') {
     const choice = document.getElementById('interface-language');
     if (choice) {
       choice.value = currentI18nLanguage();
+      document.querySelectorAll('input[name="interface-language-choice"]').forEach(input => { input.checked = input.value === choice.value; });
       choice.addEventListener('change', () => setI18nLanguage(choice.value));
     }
   });
@@ -10097,7 +10100,7 @@ async function loadWorkspacePreferences() {
 }
 
 function syncPreferenceChoices() {
-  for (const [name,id] of [['theme-mode-choice','theme-mode'],['workspace-density-choice','workspace-density'],['font-size-choice','font-size'],['notification-mode','notification-preference']]) {
+  for (const [name,id] of [['theme-mode-choice','theme-mode'],['workspace-density-choice','workspace-density'],['font-size-choice','font-size'],['notification-mode','notification-preference'],['interface-language-choice','interface-language']]) {
     document.querySelectorAll(`input[name="${name}"]`).forEach(input => { input.checked = input.value === document.getElementById(id).value; });
   }
 }
@@ -10293,9 +10296,10 @@ function initializeWorkspace() {
     applyTheme(mode);
     toast(mode === 'system' ? '已改为跟随系统主题' : `已切换为${mode === 'dark' ? '暗色' : '浅色'}主题`, 'success');
   };
-  for (const [name,id] of [['theme-mode-choice','theme-mode'],['workspace-density-choice','workspace-density'],['font-size-choice','font-size'],['notification-mode','notification-preference']]) {
+  for (const [name,id] of [['theme-mode-choice','theme-mode'],['workspace-density-choice','workspace-density'],['font-size-choice','font-size'],['notification-mode','notification-preference'],['interface-language-choice','interface-language']]) {
     document.querySelectorAll(`input[name="${name}"]`).forEach(input => input.onchange = () => {
-      const control = document.getElementById(id); control.value = input.value; control.onchange({target:control});
+      const control = document.getElementById(id); control.value = input.value;
+      if (typeof control.onchange === 'function') control.onchange({target:control}); else control.dispatchEvent(new Event('change'));
     });
   }
   syncPreferenceChoices();

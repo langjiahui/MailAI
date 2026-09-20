@@ -78,6 +78,8 @@ const I18N_MESSAGES = {
     'prefs.serverFoldersNote': 'Off by default; background sync is unaffected.',
     'prefs.language': 'Interface Language',
     'prefs.languageHint': 'Switch the interface language; only affects this device.',
+    'lang.zhHint': 'Simplified Chinese UI',
+    'lang.enHint': 'English UI',
     'prefs.notifications': 'Mail Notifications',
     'prefs.notificationsHint': 'Configurable per mailbox',
     'dash.eyebrow': 'Security Operations',
@@ -1343,6 +1345,7 @@ if (typeof document !== 'undefined') {
     const choice = document.getElementById('interface-language');
     if (choice) {
       choice.value = currentI18nLanguage();
+      document.querySelectorAll('input[name="interface-language-choice"]').forEach(input => { input.checked = input.value === choice.value; });
       choice.addEventListener('change', () => setI18nLanguage(choice.value));
     }
   });

@@ -347,7 +347,7 @@ async function loadWorkspacePreferences() {
 }
 
 function syncPreferenceChoices() {
-  for (const [name,id] of [['theme-mode-choice','theme-mode'],['workspace-density-choice','workspace-density'],['font-size-choice','font-size'],['notification-mode','notification-preference']]) {
+  for (const [name,id] of [['theme-mode-choice','theme-mode'],['workspace-density-choice','workspace-density'],['font-size-choice','font-size'],['notification-mode','notification-preference'],['interface-language-choice','interface-language']]) {
     document.querySelectorAll(`input[name="${name}"]`).forEach(input => { input.checked = input.value === document.getElementById(id).value; });
   }
 }
@@ -543,9 +543,10 @@ function initializeWorkspace() {
     applyTheme(mode);
     toast(mode === 'system' ? '已改为跟随系统主题' : `已切换为${mode === 'dark' ? '暗色' : '浅色'}主题`, 'success');
   };
-  for (const [name,id] of [['theme-mode-choice','theme-mode'],['workspace-density-choice','workspace-density'],['font-size-choice','font-size'],['notification-mode','notification-preference']]) {
+  for (const [name,id] of [['theme-mode-choice','theme-mode'],['workspace-density-choice','workspace-density'],['font-size-choice','font-size'],['notification-mode','notification-preference'],['interface-language-choice','interface-language']]) {
     document.querySelectorAll(`input[name="${name}"]`).forEach(input => input.onchange = () => {
-      const control = document.getElementById(id); control.value = input.value; control.onchange({target:control});
+      const control = document.getElementById(id); control.value = input.value;
+      if (typeof control.onchange === 'function') control.onchange({target:control}); else control.dispatchEvent(new Event('change'));
     });
   }
   syncPreferenceChoices();

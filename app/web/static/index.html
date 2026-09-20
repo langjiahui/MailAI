@@ -15,10 +15,10 @@
     })();
   </script>
   <link rel="icon" type="image/png" href="/static/assets/mailai-mark.png" />
-  <link rel="stylesheet" href="/static/style.css?v=dark-ui-1" />
-  <link rel="stylesheet" href="/static/workspace.css?v=settings-cols-1" />
+  <link rel="stylesheet" href="/static/style.css?v=dark-ui-2" />
+  <link rel="stylesheet" href="/static/workspace.css?v=dark-ui-2" />
   <link rel="stylesheet" href="/static/companion.css?v=mint-4" />
-  <link rel="stylesheet" href="/static/theme.css?v=dark-ui-1" />
+  <link rel="stylesheet" href="/static/theme.css?v=dark-ui-2" />
   <link rel="stylesheet" href="/static/attachment-preview.css?v=font-scale-1">
   <link rel="stylesheet" href="/static/onboarding.css?v=font-scale-1">
   <link rel="stylesheet" href="/static/select-ui.css?v=dark-graphite-1">
@@ -143,7 +143,7 @@
             <fieldset class="theme-settings"><legend data-i18n="prefs.theme">界面主题</legend><p data-i18n="prefs.themeHint">可固定选择配色，或跟随系统的浅色与暗色设置。</p><div class="theme-options"><label><input type="radio" name="theme-mode-choice" value="light"><span class="theme-preview light" aria-hidden="true"><i></i><i></i><i></i></span><b data-i18n="theme.light">浅色</b><small data-i18n="theme.lightHint">保持当前清新配色</small></label><label><input type="radio" name="theme-mode-choice" value="dark"><span class="theme-preview dark" aria-hidden="true"><i></i><i></i><i></i></span><b data-i18n="theme.dark">暗色</b><small data-i18n="theme.darkHint">降低夜间阅读亮度</small></label><label><input type="radio" name="theme-mode-choice" value="system"><span class="theme-preview system" aria-hidden="true"><i></i><i></i><i></i></span><b data-i18n="theme.system">跟随系统</b><small data-i18n="theme.systemHint">随设备主题自动切换</small></label></div><select id="theme-mode" class="hidden" aria-label="界面主题"><option value="light" data-i18n="theme.light">浅色</option><option value="dark" data-i18n="theme.dark">暗色</option><option value="system" data-i18n="theme.system">跟随系统</option></select></fieldset>
             <fieldset class="density-settings"><legend data-i18n="prefs.density">邮件列表密度</legend><p data-i18n="prefs.densityHint">选择更宽松的阅读空间，或在一屏查看更多邮件。</p><div class="density-options"><label><input type="radio" name="workspace-density-choice" value="comfortable"><span class="density-preview comfortable" aria-hidden="true"><i></i><i></i><i></i></span><b data-i18n="density.comfortable">舒适</b><small data-i18n="density.comfortableHint">显示摘要，阅读更轻松</small></label><label><input type="radio" name="workspace-density-choice" value="compact"><span class="density-preview compact" aria-hidden="true"><i></i><i></i><i></i><i></i></span><b data-i18n="density.compact">紧凑</b><small data-i18n="density.compactHint">精简摘要，浏览更多邮件</small></label></div><select id="workspace-density" class="hidden" aria-label="列表密度"><option value="comfortable" data-i18n="density.comfortable">舒适</option><option value="compact" data-i18n="density.compact">紧凑</option></select></fieldset>
             <fieldset class="font-size-settings"><legend data-i18n="prefs.fontSize">界面字号</legend><p data-i18n="prefs.fontSizeHint">整体放大或缩小文字与控件，适配不同视力与观看距离。</p><div class="font-size-options"><label><input type="radio" name="font-size-choice" value="0.92"><span class="font-size-preview" data-size="xs" aria-hidden="true">A</span><b data-i18n="font.small">偏小</b><small data-i18n="font.smallHint">一屏容纳更多内容</small></label><label><input type="radio" name="font-size-choice" value="1"><span class="font-size-preview" data-size="m" aria-hidden="true">A</span><b data-i18n="font.standard">标准</b><small data-i18n="font.standardHint">默认大小</small></label><label><input type="radio" name="font-size-choice" value="1.12"><span class="font-size-preview" data-size="l" aria-hidden="true">A</span><b data-i18n="font.large">大</b><small data-i18n="font.largeHint">文字与控件更大</small></label><label><input type="radio" name="font-size-choice" value="1.25"><span class="font-size-preview" data-size="xl" aria-hidden="true">A</span><b data-i18n="font.xlarge">特大</b><small data-i18n="font.xlargeHint">远距离或视力较弱时更易读</small></label></div><select id="font-size" class="hidden" aria-label="界面字号"><option value="0.92" data-i18n="font.small">偏小</option><option value="1" data-i18n="font.standard">标准</option><option value="1.12" data-i18n="font.large">大</option><option value="1.25" data-i18n="font.xlarge">特大</option></select></fieldset>
-            <fieldset class="language-settings"><legend data-i18n="prefs.language">界面语言</legend><p data-i18n="prefs.languageHint">切换界面语言，仅影响这台设备。</p><select id="interface-language" aria-label="界面语言"><option value="zh-CN">中文</option><option value="en">English</option></select></fieldset>
+            <fieldset class="language-settings"><legend data-i18n="prefs.language">界面语言</legend><p data-i18n="prefs.languageHint">切换界面语言，仅影响这台设备。</p><div class="language-options"><label><input type="radio" name="interface-language-choice" value="zh-CN"><b>中文</b><small data-i18n="lang.zhHint">简体中文界面</small></label><label><input type="radio" name="interface-language-choice" value="en"><b>English</b><small data-i18n="lang.enHint">英文界面</small></label></div><select id="interface-language" class="hidden" aria-label="界面语言"><option value="zh-CN">中文</option><option value="en">English</option></select></fieldset>
             <label class="preference-row" for="show-server-folders">
               <span><b data-i18n="prefs.serverFolders">显示服务端文件夹</b><small data-i18n="prefs.serverFoldersHint">在左侧显示邮箱服务器的原始文件夹。</small></span>
               <span class="switch"><input id="show-server-folders" type="checkbox" role="switch" aria-describedby="show-server-folders-note"><i></i></span>
@@ -904,6 +904,6 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=65b6bf2d1ec7"></script>
+  <script src="/static/bundle.js?v=216ad46697e1"></script>
 </body>
 </html>

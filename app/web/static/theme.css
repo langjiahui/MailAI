@@ -91,11 +91,11 @@ html[data-theme="dark"] .email-item:not(.unread) .sender-name, html[data-theme="
 html[data-theme="dark"] .modal-backdrop { background:rgba(3,8,6,.68); }
 html[data-theme="dark"] input:not([type=checkbox]):not([type=radio]), html[data-theme="dark"] textarea, html[data-theme="dark"] select, html[data-theme="dark"] [contenteditable="true"] { color:var(--text) !important; background-color:rgba(19,30,25,.82) !important; border-color:rgba(186,219,200,.17) !important; }
 html[data-theme="dark"] .system-tabs { background:rgba(26,39,33,.94); border-color:var(--border); }
-html[data-theme="dark"] .system-tabs button.active, html[data-theme="dark"] .theme-options label:has(input:checked), html[data-theme="dark"] :is(.density-options,.font-size-options) label:has(input:checked) { background:rgba(74,132,104,.27) !important; color:#dff5e7; border-color:rgba(109,190,148,.55) !important; }
+html[data-theme="dark"] .system-tabs button.active, html[data-theme="dark"] .theme-options label:has(input:checked), html[data-theme="dark"] :is(.density-options,.font-size-options,.language-options) label:has(input:checked) { background:rgba(74,132,104,.27) !important; color:#dff5e7; border-color:rgba(109,190,148,.55) !important; }
 html[data-theme="dark"] .theme-settings, html[data-theme="dark"] :is(.density-settings,.font-size-settings), html[data-theme="dark"] .preference-card-head { border-color:var(--border); }
-html[data-theme="dark"] .theme-settings>p, html[data-theme="dark"] .theme-options small, html[data-theme="dark"] :is(.density-settings,.font-size-settings)>p { color:var(--muted); }
-html[data-theme="dark"] .theme-options label, html[data-theme="dark"] :is(.density-options,.font-size-options) label { background:rgba(29,44,37,.86); border-color:var(--border); }
-html[data-theme="dark"] .theme-options b, html[data-theme="dark"] :is(.density-options,.font-size-options) b { color:var(--text); }
+html[data-theme="dark"] .theme-settings>p, html[data-theme="dark"] .theme-options small, html[data-theme="dark"] :is(.density-settings,.font-size-settings,.language-settings)>p { color:var(--muted); }
+html[data-theme="dark"] .theme-options label, html[data-theme="dark"] :is(.density-options,.font-size-options,.language-options) label { background:rgba(29,44,37,.86); border-color:var(--border); }
+html[data-theme="dark"] .theme-options b, html[data-theme="dark"] :is(.density-options,.font-size-options,.language-options) b { color:var(--text); }
 html[data-theme="dark"] .theme-preview.light { opacity:.7; }
 html[data-theme="dark"] ::-webkit-scrollbar-thumb { background:#60776b; }
 
@@ -612,14 +612,13 @@ html[data-theme="dark"] .email-item {
 html[data-theme="dark"] .email-item:hover {
   background:linear-gradient(105deg,rgba(66,111,87,.48),rgba(39,69,56,.5))!important;
   border-color:rgba(139,222,177,.25)!important;
-  box-shadow:inset 3px 0 #73d8a0,0 8px 20px rgba(0,0,0,.1)!important;
-  transform:translateX(1px);
+  box-shadow:0 8px 20px rgba(0,0,0,.1)!important;
 }
 html[data-theme="dark"] .email-item.active,
 html[data-theme="dark"] .email-item.selected {
   background:linear-gradient(105deg,rgba(55,130,92,.51),rgba(30,67,51,.68))!important;
   border-color:rgba(131,229,174,.44)!important;
-  box-shadow:inset 3px 0 #82e1a9,0 10px 25px rgba(0,0,0,.16),0 0 24px rgba(68,192,133,.08)!important;
+  box-shadow:0 10px 25px rgba(0,0,0,.16),0 0 24px rgba(68,192,133,.08)!important;
 }
 html[data-theme="dark"] :is(.risk-badge,.risk-score,.risk-pill,.mail-risk) {
   box-shadow:inset 0 1px rgba(255,255,255,.07),0 4px 12px rgba(0,0,0,.12)!important;
@@ -1172,13 +1171,13 @@ html[data-theme="dark"] .unified-inbox-button.active {
   color:#edfff5!important;
   border-color:rgba(130,222,171,.4)!important;
   background:linear-gradient(105deg,rgba(49,132,90,.56),rgba(29,83,58,.67))!important;
-  box-shadow:inset 3px 0 #83e0aa,0 9px 24px rgba(0,0,0,.15),0 0 20px rgba(73,196,134,.08)!important;
+  box-shadow:0 9px 24px rgba(0,0,0,.15),0 0 20px rgba(73,196,134,.08)!important;
 }
 html[data-theme="dark"] .unified-inbox-button.active .count { color:#c9f3da!important; background:rgba(8,30,21,.28)!important; }
 html[data-theme="dark"] .sidebar-account-folders button.active {
   color:#dff9e9!important;
   background:linear-gradient(105deg,rgba(52,129,90,.43),rgba(31,80,58,.52))!important;
-  box-shadow:inset 3px 0 #78d59f!important;
+  box-shadow:inset 0 0 0 1px rgba(114,185,149,.3)!important;
 }
 html[data-theme="dark"] .mail-filter-group {
   color:#d8e8df!important;
@@ -1215,7 +1214,7 @@ html[data-theme="dark"] .assistant-bubble .operation-note {
   color:#f3d4a2!important;
   border:1px solid rgba(224,172,92,.25)!important;
   background:linear-gradient(135deg,rgba(112,77,34,.38),rgba(76,52,25,.32))!important;
-  box-shadow:inset 3px 0 #d8a453!important;
+  box-shadow:inset 0 0 0 1px rgba(216,164,83,.32)!important;
 }
 
 /* Stored signatures often contain dark inline colors; remap only the compose preview. */
@@ -1560,7 +1559,7 @@ html[data-theme="dark"] #correspondence-drawer .correspondence-toolbar .correspo
 html[data-theme="dark"] #correspondence-drawer .correspondence-item { color:#d6e8dd!important; border-color:#355044!important; background:#20372b!important; }
 html[data-theme="dark"] #correspondence-drawer .correspondence-item:hover { border-color:#648b75!important; background:#294535!important; box-shadow:0 7px 20px rgba(0,0,0,.16)!important; }
 html[data-theme="dark"] #correspondence-drawer .correspondence-item.current { background:#284738!important; border-color:#567b65!important; }
-html[data-theme="dark"] #correspondence-drawer .correspondence-item.selected { background:#305540!important; border-color:#8ad3a9!important; box-shadow:inset 3px 0 #8ad3a9!important; }
+html[data-theme="dark"] #correspondence-drawer .correspondence-item.selected { background:#305540!important; border-color:#8ad3a9!important; box-shadow:inset 0 0 0 1px rgba(138,211,169,.3)!important; }
 html[data-theme="dark"] #correspondence-drawer .correspondence-item.in-trash { opacity:1; background:#1b2e24!important; }
 html[data-theme="dark"] #correspondence-drawer .correspondence-copy>small { color:#b8cfc1!important; }
 html[data-theme="dark"] #correspondence-drawer .correspondence-copy>p { color:#adc3b6!important; }
