@@ -295,6 +295,12 @@ body.assistant-docked .layout>.list-pane { width:355px; flex-basis:355px; }
 .preferences-intro p { margin:0; color:#7a8b80; font-size:12px; }
 .preferences-intro>span { color:#7f9386; font-size:11px; white-space:nowrap; }
 .preference-grid { grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:22px; align-items:start; }
+/* 显示卡片很长，默认排布会让左列过长而右列空着；宽屏下让它纵跨两行，右列依次放邮件提醒与语义检索 */
+@media(min-width:951px) {
+  .preference-grid .device-preferences { grid-row:1 / span 2; }
+  .preference-grid .notification-preferences { grid-column:2; grid-row:1; }
+  .preference-grid .semantic-preferences { grid-column:2; grid-row:2; }
+}
 .preference-grid .preference-card { padding:20px; border:1px solid #dfe8e1; border-radius:14px; background:#fff; box-shadow:0 3px 12px #263e3304; backdrop-filter:none; }
 .preference-grid .preference-card-head { padding-bottom:19px; border-color:#edf1ed; gap:11px; }
 .preference-card-head .connection-icon { width:35px; height:35px; border-radius:10px; background:#edf5ef; color:#488065; }
