@@ -5,9 +5,9 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v2.1.14**
+当前版本：**v2.1.15**
 
-本次更新：新增界面字号调节（小 / 标准 / 大 / 特大，整体等比缩放，布局随文字一起放大），并修复特大字号下写信、日报、通讯录等弹框超出屏幕、按钮点不到的问题；矮窗口下写信窗口的发送栏始终可见。
+本次更新：优化设置页布局——常用设置双列更均衡（语义检索移至右栏），页头更紧凑，「关于与隐私」的版本更新按钮整齐划一。
 
 ## 下载 MailAI
 
