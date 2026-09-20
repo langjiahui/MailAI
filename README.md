@@ -5,9 +5,9 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v2.1.12**
+当前版本：**v2.1.13**
 
-本次更新：日报生成改为流式输出——LLM 逐段产出即逐段上屏，不再盯着"正在生成"空等；只有完整生成后才覆盖保存当日日报，中途断开保留已生成内容且不落库。同时优化高刷新率屏幕下的滚动流畅度：邮件列表分组头、设置页标签栏等压在滚动区上方的粘性元素不再每帧重算大半径毛玻璃，滚动更顺滑。暗色主题切换为更有质感的石墨（graphite）配色层次；模型设置页新增数据去向提示——云端 API 明确提醒邮件隐私，本机/自部署模型给出相应的信任说明。
+本次更新：全面收敛浅色与暗色界面的视觉层级，补齐更新、分享、迁移、联系人、附件、待办、反馈、签名、发信预检和文件预览等弹框的石墨暗色样式；优化邮件列表的信息扫描节奏、阅读区行长、表单状态和危险操作语义。移动端统一 44px 触控区域并保持小邮发送按钮为正方形，同时增加高对比度与减少动态效果适配。
 
 ## 下载 MailAI
 
@@ -128,8 +128,11 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 - **解析层**：mailparser + 自定义提取，支持正文、URL、附件元数据、认证头、threading 头；
 - **存储层**：SQLite，本地文件 `data/mailai.db`，支持 Schema 迁移；
 - **后端**：FastAPI + Uvicorn，RESTful API；
-- **前端**：原生 HTML/CSS/JS 单页应用，无外部 CDN；
+- **前端**：原生 HTML/CSS/JS 单页应用，按工作区、写信、助手、附件预览、通讯录等能力拆分，无外部 CDN；
 - **LLM 适配**：基于 `urllib.request` 的 OpenAI 兼容客户端，支持自定义部署、DeepSeek、Kimi、通义千问等 OpenAI 兼容网关；
+- **桌面与发布**：PyInstaller 封装 Windows、macOS、Linux 桌面程序，GitHub Actions 按版本标签构建安装包、校验文件和自动更新清单；
+- **后台任务**：APScheduler 驱动定时同步，发件箱、垃圾箱、已读状态和链路分析任务独立排队并支持失败恢复；
+- **文档预览**：本机解析 PDF、Word、Excel、文本和图片，危险旧格式默认不直接打开；
 - **输入适配器**：预留 `app/adapters/` 接口，未来可接入企业微信、钉钉等 IM 渠道。
 
 ### 3.2 核心模块关系
@@ -137,27 +140,32 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 ```
 run.py
  └── app/
-      ├── config.py          # 配置加载（.env）
-      ├── db.py              # SQLite 数据层 + Schema 迁移
-      ├── parser.py          # 邮件解析、threading、敏感信息打码
-      ├── profiles.py        # 发件人行为画像与异常检测
-      ├── pipeline.py        # 主管道：检测 → 处置 → 审计
-      ├── imap_client.py     # IMAP 拉取与移动
-      ├── security/          # 规则引擎
-      │    ├── rules.py      # 主检测逻辑
-      │    ├── domutil.py    # 域名主域/相似度
-      │    ├── headers.py    # 认证头/DNS 体检
-      │    ├── urls.py       # URL 风险分析
-      │    ├── chains.py     # URL 跳转链跟踪
-      │    └── attachments.py# 附件静态分析
-      ├── llm/               # 大模型适配与分析
-      │    ├── client.py     # OpenAI 兼容客户端
-      │    ├── prompts.py    # 提示词
-      │    └── analyze.py    # 安全复核/摘要/待办
-      ├── threads.py         # 会话上下文管理
-      ├── adapters/          # 输入渠道抽象
-      └── web/               # FastAPI + 静态前端
+      ├── config.py             # 环境、路径和运行配置
+      ├── pipeline.py           # 邮件检测、处置与审计主管道
+      ├── mailbox_jobs.py       # 多账号同步、后台任务与恢复
+      ├── imap_client.py        # IMAP 拉取、文件夹与 UID 管理
+      ├── smtp_client.py        # SMTP 发送
+      ├── outbox.py             # 可恢复发件队列与结果核对
+      ├── parser.py             # MIME、threading 与正文解析
+      ├── db/                   # SQLite Schema 与领域数据访问
+      ├── security/             # 规则、证据、策略、攻击链与附件分析
+      ├── llm/                  # 模型厂商、客户端、多模态与提示词
+      ├── mail_assistant.py     # 小邮问答、摘要和邮件材料编排
+      ├── assistant_*.py        # 助手受控动作、附件与视觉输入
+      ├── draft_lifecycle.py    # 草稿一致性与恢复
+      ├── portable_backup.py    # 跨平台备份、校验与加密迁移
+      ├── release_update.py     # GitHub Release 更新检查与安装
+      ├── desktop.py            # macOS 桌面壳
+      ├── windows_desktop.py    # Windows 桌面壳
+      ├── adapters/             # 输入渠道抽象
+      └── web/
+           ├── server.py        # FastAPI 组装与兼容导出
+           ├── routes/          # 按系统、邮件、写信、助手等域拆分的 API
+           ├── schemas.py       # API 请求模型
+           └── static/          # 单页应用与前端功能模块
 ```
+
+运行时数据流为：桌面壳或浏览器访问本机 FastAPI → 路由调用邮件/助手/安全领域服务 → SQLite 保存状态与审计记录 → IMAP、SMTP 或用户配置的模型服务执行外部操作。邮箱账号切换由请求守卫隔离，前端不会直接读取本地数据库或邮箱凭据。
 
 ### 3.3 四层检测技术细节
 
@@ -343,23 +351,56 @@ py -m venv .venv
 ### 7.3 目录结构
 
 ```
-run.py                  入口
+run.py                         应用入口、调度器与本地 Web 服务
+VERSION                        唯一发布版本号
 app/
-  config.py             配置加载
-  db.py                 SQLite 存储与迁移
-  parser.py             邮件解析 + threading + 脱敏
-  profiles.py           发件人行为画像
-  pipeline.py           主管道与调度
-  imap_client.py        IMAP 拉取/移动
-  security/             规则引擎（认证/域名/URL/附件/话术/链/行为）
-  llm/                  LLM 适配层与分析
-  threads.py            会话上下文管理
-  adapters/             输入渠道抽象
-  web/                  FastAPI 接口 + 单页面板
+  db/                          SQLite Schema、迁移与领域仓储
+  security/                    认证、域名、URL、附件、策略和攻击链分析
+  llm/                         OpenAI 兼容模型、多模态和厂商预设
+  adapters/                    IMAP/未来消息渠道适配接口
+  web/
+    routes/                    FastAPI 领域路由
+    static/
+      index.html               页面结构
+      app.js                   邮箱与阅读区主交互
+      workspace.js             设置、任务和工作区行为
+      mail-library.js          联系人、分组与备份交互
+      attachment-preview.js    本地附件预览
+      assistant-*.js           小邮图片和材料附件能力
+      style.css                基础布局与组件
+      theme.css                浅色/暗色及可访问性收敛层
+      bundle.js                由 build_frontend.py 生成，请勿手改
+scripts/
+  build_frontend.py            合并并校验前端 bundle
+  check_release.py             离线发布门禁
+  build_macos.command          macOS arm64 构建
+  build_linux_appimage.sh      Linux x64 AppImage 构建
+  build_windows.bat            Windows x64 安装程序构建
 tests/
-  datasets/             合成测试样本
-  evaluate.py           离线评估脚本
+  datasets/                    合成安全邮件样本与标签
+  workspace_preview.py         隔离浏览器验收夹具
+  prepublish_browser.cjs       发布前真实浏览器主流程
+  test_*.py / test_*.cjs       后端、前端和跨平台回归
+.github/workflows/
+  pr-check.yml                 PR 离线门禁与浏览器检查
+  release.yml                  标签触发三平台构建与 GitHub Release
 ```
+
+### 7.4 开发与发布检查
+
+```powershell
+# 前端源码修改后重新生成 bundle
+py scripts\build_frontend.py
+
+# 完整离线发布门禁（不连接真实邮箱或模型）
+py scripts\check_release.py
+
+# 浏览器主流程；先在另一个终端启动隔离夹具
+py tests\workspace_preview.py
+node tests\prepublish_browser.cjs
+```
+
+正式版本以 `vX.Y.Z` Git 标签触发 `.github/workflows/release.yml`。工作流会核对 `VERSION` 与 README 版本号，分别构建 Windows x64、macOS arm64 和 Linux x64 安装包，生成 SHA-256 文件及 `latest.json` 更新清单，最后发布 GitHub Release。
 
 ---
 
