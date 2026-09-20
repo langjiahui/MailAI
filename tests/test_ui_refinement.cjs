@@ -18,6 +18,6 @@ assert.match(refined, /@media\(max-width:760px\)/);
 assert.match(refined, /button,[\s\S]*?min-height:44px!important/);
 assert.match(refined, /button \{ min-width:44px!important/);
 assert.match(refined, /@media\(prefers-reduced-motion:reduce\)/);
-assert.match(index, /theme\.css\?v=ui-refinement-1/);
+assert.match(index, /theme\.css\?v=[^"']+/);
 
 console.log('Product-wide hierarchy, controls, readability and accessibility refinements passed');

@@ -11,6 +11,14 @@ assert.equal((html.match(/name="font-size-choice"/g)||[]).length,4,'font size of
 assert.match(html, /id="font-size"/);
 assert.match(source, /mailai-font-scale/, 'font scale persists on this device');
 assert.match(source, /document\.body\.style\.zoom/, 'font scale applies as proportional zoom so layout scales with text');
+assert.match(source, /setProperty\('--fz'/, 'zoom factor must also feed the viewport-unit compensation variable');
+// 视口单位防回归：CSS zoom 不缩放 vw/vh，所有视口单位必须带 --fz 补偿，否则大字号下浮层会超出屏幕
+const fsExtra = require('node:fs');
+for (const cssFile of ['style.css','workspace.css','theme.css','onboarding.css','attachment-preview.css']) {
+  const text = fsExtra.readFileSync(path.join(base, cssFile), 'utf8');
+  const bare = [...text.matchAll(/(?<![\w.])(\d+(?:\.\d+)?)([dsli]?v[wh])(?!\s*\/\s*var\(--fz)/g)];
+  assert.equal(bare.length, 0, `${cssFile} has viewport units without --fz compensation: ${bare.slice(0,3).map(m=>m[0]).join(', ')}`);
+}
 assert.equal((html.match(/name="theme-mode-choice"/g)||[]).length,3);
 assert.equal((html.match(/name="notification-mode"/g)||[]).length,4);
 for (const id of ['theme-mode','workspace-density','notification-preference','notification-account','show-server-folders']) {

@@ -15,9 +15,9 @@ assert.match(premium, /--dark-highlight:#72b995/);
 assert.match(premium, /\.model-data-notice\.cloud[^}]+#342b1d/);
 assert.match(premium, /\.model-data-notice:is\(\.local,\.self-hosted\)[^}]+#183329/);
 assert.match(onboarding, /\.start-model-panel[^\n]+background:#141b17/);
-assert.match(html, /theme\.css\?v=ui-refinement-1/);
-assert.match(html, /attachment-preview\.css\?v=dark-dialog-audit-2/);
-assert.match(html, /onboarding\.css\?v=dark-graphite-1/);
+assert.match(html, /theme\.css\?v=font-scale-1/);
+assert.match(html, /attachment-preview\.css\?v=font-scale-1/);
+assert.match(html, /onboarding\.css\?v=font-scale-1/);
 assert.match(html, /select-ui\.css\?v=dark-graphite-1/);
 
 console.log('Premium graphite dark palette, semantic notices and cache versions passed');

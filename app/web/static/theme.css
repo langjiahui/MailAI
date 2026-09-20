@@ -2257,14 +2257,14 @@ html[data-theme="dark"] .email-item.spam.selected { box-shadow:inset 3px 0 #72b9
 /* Reading view: prevent overlong lines and make document sections easier to scan. */
 .reading-header-inner,
 .reading-workspace { width:min(100%,1120px); margin-inline:auto; }
-.reading-header-inner { padding-inline:clamp(20px,3vw,38px); }
-.reading-workspace { padding-inline:clamp(18px,2.4vw,30px); }
+.reading-header-inner { padding-inline:clamp(20px,calc(3vw / var(--fz,1)),38px); }
+.reading-workspace { padding-inline:clamp(18px,calc(2.4vw / var(--fz,1)),30px); }
 .reading-subject { max-width:32ch; line-height:1.25; text-wrap:balance; }
 .reading-main>.reading-section { padding:18px; border-radius:var(--ui-radius-card); }
 .section-title { min-height:24px; color:#5f7068; font-size:11.5px; font-weight:720; letter-spacing:.015em; }
 .summary-box { padding:16px 18px; font-size:13.5px; line-height:1.72; }
 .email-body { font-size:14px; line-height:1.85; }
-.email-body.plain-email-body { padding:24px clamp(22px,4vw,42px); }
+.email-body.plain-email-body { padding:24px clamp(22px,calc(4vw / var(--fz,1)),42px); }
 .email-body.plain-email-body>* { max-width:78ch; }
 html[data-theme="dark"] .section-title { color:#aebdb5!important; }
 html[data-theme="dark"] .summary-box { background:#19241e!important; }

@@ -523,11 +523,14 @@ function initializeWorkspace() {
   const density = document.getElementById('workspace-density'); density.value = localStorage.getItem('mailai-density') || 'comfortable';
   document.body.dataset.density = density.value;
   density.onchange = () => { document.body.dataset.density = density.value; localStorage.setItem('mailai-density', density.value); syncPreferenceChoices(); };
-  // 界面字号：用 CSS zoom 整体等比缩放（布局随文字一起放大，样式不走样），仅保存本机
+  // 界面字号：用 CSS zoom 整体等比缩放（布局随文字一起放大，样式不走样），仅保存本机。
+  // zoom 不缩放 vw/vh，浮层的视口单位统一写成 calc(Nvw / var(--fz,1))，这里同步 --fz 补偿
   const fontSize = document.getElementById('font-size');
   const applyFontScale = value => {
     const scale = parseFloat(value);
-    document.body.style.zoom = Number.isFinite(scale) && scale > 0 ? String(scale) : '';
+    const valid = Number.isFinite(scale) && scale > 0;
+    document.body.style.zoom = valid ? String(scale) : '';
+    document.documentElement.style.setProperty('--fz', valid ? String(scale) : '1');
   };
   fontSize.value = localStorage.getItem('mailai-font-scale') || '1';
   applyFontScale(fontSize.value);
