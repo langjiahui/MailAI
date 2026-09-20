@@ -1103,6 +1103,7 @@ const I18N_MESSAGES = {
     'digest.done': 'Digest generated',
     'digest.failed': 'Generation failed: ',
     'digest.failedToast': 'Digest generation failed: ',
+    'digest.tooLong': 'Digest content looks abnormal, please try again',
     'acct.stateActive': 'Sending account',
     'acct.stateReady': 'Connected',
     'acct.stateReauth': 'Sign-in needed',
@@ -7234,6 +7235,53 @@ function showDigestGeneratePrompt() {
   document.getElementById('btn-generate-today').addEventListener('click', generateDigest);
 }
 
+// 日报流式生成：NDJSON 逐段渲染，服务端在完整生成后才落库
+function streamDigestGeneration(accountId, onDelta) {
+  return (async () => {
+    const response = await fetch('/api/digest/stream', {headers: {'X-MailAI-Account': accountId || ''}});
+    if (!response.ok || !response.body) {
+      const detail = await response.json().catch(() => ({}));
+      throw new Error(typeof detail.detail === 'string' ? detail.detail : `请求未完成（${response.status}），请稍后重试`);
+    }
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let pending = '', text = '', digest = '', paintTimer = null;
+    const paint = () => { if (onDelta) onDelta(text); };
+    const fail = message => { const err = new Error(message || (mailaiT('digest.failedToast') || '日报生成失败')); err.partial = text; throw err; };
+    try {
+      while (true) {
+        const {value, done} = await reader.read();
+        pending += decoder.decode(value || new Uint8Array(), {stream: !done});
+        const lines = pending.split('\n'); pending = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const event = JSON.parse(line);
+          if (event.type === 'delta') {
+            const firstDelta = !text.trim();
+            text += event.content || '';
+            if (text.length > 200000) fail(mailaiT('digest.tooLong') || '日报内容异常，请重试');
+            // 每个 token 都重建 Markdown DOM 会占满 UI 线程：首个片段立刻上屏，其余按帧合并
+            if (firstDelta) paint();
+            else if (!paintTimer) paintTimer = setTimeout(() => { paintTimer = null; paint(); }, 120);
+          } else if (event.type === 'done') digest = event.digest || text;
+          else if (event.type === 'error') fail(event.message);
+        }
+        if (done) break;
+      }
+      if (pending.trim()) {
+        const event = JSON.parse(pending);
+        if (event.type === 'done') digest = event.digest || text;
+        else if (event.type === 'error') fail(event.message);
+      }
+    } finally {
+      clearTimeout(paintTimer);
+    }
+    paint();
+    if (!digest.trim()) fail(mailaiT('digest.failedToast') || '日报生成失败');
+    return {digest};
+  })();
+}
+
 async function generateDigest() {
   const revision = nextDigestView();
   const accountId = _digestAccountId || activeMailAccount()?.id || '';
@@ -7245,7 +7293,9 @@ async function generateDigest() {
   try {
     let job = digestGenerationJobs.get(accountId);
     if (!job) {
-      job = api('/api/digest', {accountId});
+      job = streamDigestGeneration(accountId, text => {
+        if (digestViewCurrent(revision, accountId)) document.getElementById('digest-body').innerHTML = renderDigest(text);
+      });
       digestGenerationJobs.set(accountId, job);
       job.finally(() => { if (digestGenerationJobs.get(accountId) === job) digestGenerationJobs.delete(accountId); }).catch(() => {});
     }
@@ -7269,7 +7319,12 @@ async function generateDigest() {
       const parsed = JSON.parse(msg);
       if (parsed.detail) msg = parsed.detail;
     } catch {}
-    document.getElementById('digest-body').innerHTML = `<p class="reading-error">${mailaiT('digest.failed') || '生成失败：'}${esc(msg)}</p>`;
+    // 流式生成中途失败时保留已生成的内容，只在下方提示中断原因
+    if (e.partial) {
+      document.getElementById('digest-body').innerHTML = renderDigest(e.partial) + `<p class="operation-note">${esc(msg)}</p>`;
+    } else {
+      document.getElementById('digest-body').innerHTML = `<p class="reading-error">${mailaiT('digest.failed') || '生成失败：'}${esc(msg)}</p>`;
+    }
     toast((mailaiT('digest.failedToast') || '日报生成失败：') + msg, 'error');
   } finally {
     if (!digestGenerationJobs.size) setLoading(btn, false);

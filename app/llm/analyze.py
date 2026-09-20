@@ -214,3 +214,42 @@ def daily_digest(items: list[dict]) -> str:
                 return content
         log.warning("LLM 日报生成失败，使用本地兜底")
     return _local_digest(items)
+
+
+def daily_digest_stream(items: list[dict]):
+    """流式版日报：逐段产出文本 delta。
+
+    LLM 不可用或流式请求在产出任何内容前失败时，一次性产出本地兜底日报；
+    若已产出部分内容后中断，则停止产出（调用方保留已有内容，不入库）。
+    """
+    if not items:
+        return
+    from datetime import date
+    today = date.today().isoformat()
+    if client.available():
+        messages = [
+            {"role": "system", "content": prompts.DIGEST_SYSTEM.format(today=today)},
+            {"role": "user", "content": prompts.digest_user_compact(items, today)},
+        ]
+        emitted = False
+        try:
+            for delta in client.chat_completion_stream(
+                messages,
+                temperature=0.3,
+                max_tokens=client.config.LLM_DIGEST_MAX_TOKENS,
+                timeout=client.config.LLM_DIGEST_TIMEOUT,
+            ):
+                if delta:
+                    emitted = True
+                    yield delta
+        except Exception:
+            if emitted:
+                log.exception("LLM 日报流式生成中断，保留已生成部分")
+                return
+            log.exception("LLM 日报流式生成失败，使用本地兜底")
+        if emitted:
+            return
+        log.warning("LLM 日报生成失败，使用本地兜底")
+    fallback = _local_digest(items)
+    if fallback:
+        yield fallback

@@ -55,6 +55,35 @@ def api_digest():
     return {"digest": text}
 
 
+@router.get("/api/digest/stream")
+def api_digest_stream():
+    """流式生成今日日报：NDJSON 逐段下发 delta，完整生成后才覆盖保存当日日报。"""
+    from fastapi.responses import StreamingResponse
+
+    def generate():
+        parts = []
+        try:
+            for delta in pipeline.today_digest_stream():
+                parts.append(delta)
+                yield json.dumps({"type": "delta", "content": delta}, ensure_ascii=False) + "\n"
+        except Exception:
+            log.exception("日报流式生成失败")
+            yield json.dumps({"type": "error", "message": "生成中断，已生成的内容保留，可点击刷新重试"}, ensure_ascii=False) + "\n"
+            return
+        text = "".join(parts).strip()
+        if not text:
+            yield json.dumps({"type": "error", "message": "LLM 未配置或今天没有可分析的邮件"}, ensure_ascii=False) + "\n"
+            return
+        # 完整生成后才落库：同一天多次生成保留最新一次（先删后插）
+        today = datetime.now().strftime("%Y-%m-%d")
+        with db.conn() as c:
+            c.execute("DELETE FROM digest_history WHERE digest_date=?", (today,))
+        db.save_digest(text, today)
+        yield json.dumps({"type": "done", "digest": text}, ensure_ascii=False) + "\n"
+
+    return StreamingResponse(generate(), media_type="application/x-ndjson")
+
+
 @router.get("/api/digests")
 def api_digests(limit: int = 30):
     return db.list_digests(limit)

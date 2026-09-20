@@ -1301,7 +1301,8 @@ def record_feedback(email_id: int, feedback: str, note: str = "", trust_sender: 
             "allowlist_entry": allowlist_entry}
 
 
-def today_digest() -> str:
+def _digest_items() -> list[dict]:
+    """汇总今天邮件与所有未完成待办，供日报生成（一次性/流式共用）。"""
     from datetime import date, datetime
     today = date.today()
 
@@ -1357,4 +1358,13 @@ def today_digest() -> str:
             "date": e.get("date"),
             "todos": todos_by_email.get(e["id"], []),
         })
-    return llm_analyze.daily_digest(items)
+    return items
+
+
+def today_digest() -> str:
+    return llm_analyze.daily_digest(_digest_items())
+
+
+def today_digest_stream():
+    """流式生成今日日报，逐段产出文本 delta。"""
+    yield from llm_analyze.daily_digest_stream(_digest_items())

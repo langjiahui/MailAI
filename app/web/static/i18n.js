@@ -1097,6 +1097,7 @@ const I18N_MESSAGES = {
     'digest.done': 'Digest generated',
     'digest.failed': 'Generation failed: ',
     'digest.failedToast': 'Digest generation failed: ',
+    'digest.tooLong': 'Digest content looks abnormal, please try again',
     'acct.stateActive': 'Sending account',
     'acct.stateReady': 'Connected',
     'acct.stateReauth': 'Sign-in needed',

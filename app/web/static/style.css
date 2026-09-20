@@ -3289,8 +3289,9 @@ body::after { width: 720px; height: 720px; right: -330px; top: -390px; box-shado
   padding: 7px 16px;
   border-top: 1px solid rgba(255,255,255,.38);
   border-bottom: 1px solid rgba(255,255,255,.38);
-  background: rgba(238,245,241,.58);
-  backdrop-filter: blur(22px);
+  background: rgba(238,245,241,.88);
+  /* 粘性分组头压在滚动列表上，模糊半径过大会让每一帧滚动都重算整片模糊，拉低高刷屏帧率 */
+  backdrop-filter: blur(8px);
 }
 .email-item {
   margin: 3px 0;
@@ -3415,9 +3416,10 @@ body::after { width: 720px; height: 720px; right: -330px; top: -390px; box-shado
 /* System center */
 .system-tabs {
   border-color: rgba(255,255,255,.72);
-  background: rgba(255,255,255,.4);
+  /* 粘性标签栏：底色更不透明、模糊更小，避免设置页滚动时逐帧重算大片模糊 */
+  background: rgba(255,255,255,.82);
   box-shadow: var(--glass-shadow-soft);
-  backdrop-filter: blur(24px) saturate(130%);
+  backdrop-filter: blur(10px);
 }
 .system-tabs button.active { background: rgba(255,255,255,.72); box-shadow: 0 7px 18px rgba(52,73,64,.08), inset 0 1px white; }
 .system-section-title > span,
