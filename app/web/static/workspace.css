@@ -288,19 +288,15 @@ body.assistant-docked .layout>.list-pane { width:355px; flex-basis:355px; }
 #system-view:has([data-system-panel="preferences"]:not(.hidden)) { background:#f3f7f4; }
 #system-view:has([data-system-panel="preferences"]:not(.hidden)) .system-header,
 #system-view:has([data-system-panel="preferences"]:not(.hidden)) .system-tabs,
-[data-system-panel="preferences"] { max-width:1120px; }
+[data-system-panel="preferences"] { max-width:1280px; }
 #system-view:has([data-system-panel="preferences"]:not(.hidden)) .system-tabs { background:#edf2ee; border:0; box-shadow:none; border-radius:10px; }
 .preferences-intro { display:flex; align-items:center; justify-content:space-between; gap:20px; margin:20px 0 18px; }
 .preferences-intro h3 { margin:0 0 7px; font-size:19px; font-weight:650; color:#294737; }
 .preferences-intro p { margin:0; color:#7a8b80; font-size:12px; }
 .preferences-intro>span { color:#7f9386; font-size:11px; white-space:nowrap; }
-.preference-grid { grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:22px; align-items:start; }
-/* 显示卡片很长，默认排布会让左列过长而右列空着；宽屏下让它纵跨两行，右列依次放邮件提醒与语义检索 */
-@media(min-width:951px) {
-  .preference-grid .device-preferences { grid-row:1 / span 2; }
-  .preference-grid .notification-preferences { grid-column:2; grid-row:1; }
-  .preference-grid .semantic-preferences { grid-column:2; grid-row:2; }
-}
+/* 左列「显示与阅读」明显更长；用显式双列，右列依次放邮件提醒与语义检索，避免网格跨行顶出大空隙 */
+.preference-grid { display:flex; gap:22px; align-items:flex-start; }
+.preference-col { flex:1 1 0; min-width:0; display:grid; gap:22px; align-content:start; }
 .preference-grid .preference-card { padding:20px; border:1px solid #dfe8e1; border-radius:14px; background:#fff; box-shadow:0 3px 12px #263e3304; backdrop-filter:none; }
 .preference-grid .preference-card-head { padding-bottom:19px; border-color:#edf1ed; gap:11px; }
 .preference-card-head .connection-icon { width:35px; height:35px; border-radius:10px; background:#edf5ef; color:#488065; }
@@ -358,14 +354,14 @@ body.assistant-docked .layout>.list-pane { width:355px; flex-basis:355px; }
 .semantic-progress.determinate>i { width:0; animation:none; transition:width .5s ease; }
 #notification-save-status { font-size:11px; color:#61866e; }
 #notification-retry-load { padding:3px 8px; border:1px solid #d7e5dc; border-radius:5px; background:white; color:#3c7656; font-size:11px; cursor:pointer; }
-@media(max-width:950px) { .preference-grid { grid-template-columns:minmax(0,1fr); gap:18px; } }
+@media(max-width:950px) { .preference-grid { flex-direction:column; gap:18px; } .preference-col { width:100%; gap:18px; } }
 @media(max-width:520px) { .preference-grid .preference-card { padding:18px; } .preferences-intro { margin-top:18px; } .preferences-intro>span { display:none; } .density-options { gap:8px; } .density-options label { padding:10px; } .font-size-options { grid-template-columns:1fr 1fr; gap:8px; } .font-size-options label { padding:10px; } }
 
 /* Account settings: selection on the left, maintenance on the right. */
 #system-view:has([data-system-panel="account"]:not(.hidden)) { background:#f3f7f4; }
 #system-view:has([data-system-panel="account"]:not(.hidden)) .system-header,
 #system-view:has([data-system-panel="account"]:not(.hidden)) .system-tabs,
-[data-system-panel="account"] { max-width:1120px; }
+[data-system-panel="account"] { max-width:1280px; }
 #system-view:has([data-system-panel="account"]:not(.hidden)) .system-tabs { background:#edf2ee; border:0; box-shadow:none; border-radius:10px; }
 .account-intro { display:flex; align-items:center; justify-content:space-between; gap:20px; margin:20px 0 18px; }
 .account-intro h3 { margin:0 0 7px; font-size:19px; font-weight:650; color:#294737; }
@@ -453,7 +449,7 @@ body.assistant-docked .layout>.list-pane { width:355px; flex-basis:355px; }
 
 /* One visual language across every Settings tab. */
 #system-view { background:#f3f7f4; }
-#system-view .system-header,#system-view .system-tabs,#system-view .system-panel { width:100%; max-width:1120px; }
+#system-view .system-header,#system-view .system-tabs,#system-view .system-panel { width:100%; max-width:1280px; }
 #system-view .system-header { padding:2px 0 6px; margin-bottom:10px; }
 #system-view .system-header .eyebrow { color:#6f8c7d; font-size:10px; letter-spacing:.08em; }
 #system-view .system-header h2 { color:#233c30; font-size:27px; font-weight:650; }

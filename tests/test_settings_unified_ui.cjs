@@ -10,7 +10,7 @@ for (const panel of ['preferences', 'account', 'maintenance', 'guide']) {
   const match = html.match(new RegExp(`data-system-panel="${panel}"[\\s\\S]*?<div class="([^"]*settings-page-intro[^"]*)"`));
   assert.ok(match, `${panel} should use the shared Settings page intro`);
 }
-assert.match(css, /#system-view \.system-header,#system-view \.system-tabs,#system-view \.system-panel\s*\{[^}]*max-width:1120px/,
+assert.match(css, /#system-view \.system-header,#system-view \.system-tabs,#system-view \.system-panel\s*\{[^}]*max-width:1280px/,
   'Every Settings tab should share one content width');
 assert.match(css, /#system-view \.system-tabs\s*\{[^}]*background:#edf2ee[^}]*box-shadow:none/,
   'Settings navigation should use one quiet tab treatment');

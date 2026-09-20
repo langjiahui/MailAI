@@ -134,6 +134,7 @@
       <section class="system-panel hidden" data-system-panel="preferences">
         <div class="settings-page-intro preferences-intro"><div><h3 data-i18n="prefs.intro">让工作台更合你的习惯</h3><p data-i18n="prefs.introHint">调整阅读方式与提醒，修改后自动保存。</p></div><span data-i18n="prefs.autoSave">无需额外保存</span></div>
         <div class="preference-grid">
+          <div class="preference-col">
           <article class="preference-card device-preferences">
             <div class="preference-card-head">
               <span class="connection-icon"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="11" rx="2"/><path d="M7 17h6M10 14v3M7 3v11"/></svg></span>
@@ -150,6 +151,8 @@
             <p id="show-server-folders-note" class="preference-note" data-i18n="prefs.serverFoldersNote">默认关闭，不影响后台收信与同步。</p>
             <label class="preference-row" for="companion-motion"><span><b data-i18n="prefs.companionMotion">小邮的轻动效</b><small data-i18n="prefs.companionMotionHint">眨眼、招手与工作表情，让邮件助手更有陪伴感。</small></span><span class="switch"><input id="companion-motion" type="checkbox" role="switch" checked><i></i></span></label>
           </article>
+          </div>
+          <div class="preference-col">
           <article class="preference-card notification-preferences">
             <div class="preference-card-head"><span class="connection-icon"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8a5 5 0 0 1 10 0v4l2 2H3l2-2V8Zm3 9h4"/></svg></span><div><h3 data-i18n="prefs.notifications">邮件提醒</h3><p data-i18n="prefs.notificationsHint">每个邮箱可以单独设置</p></div></div>
             <div class="notification-account-context"><span data-i18n="notify.currentAccount">当前邮箱</span><b id="notification-account" data-i18n="notify.noAccount">尚未连接邮箱</b></div>
@@ -165,6 +168,7 @@
             <div id="semantic-progress" class="semantic-progress hidden" role="progressbar" aria-hidden="true"><i></i></div>
             <p class="preference-note" data-i18n="semantic.note">未启用时助手使用关键词检索，不受影响。源码运行需另行安装可选依赖（requirements-semantic.txt）。</p>
           </article>
+          </div>
         </div>
       </section>
 
