@@ -454,7 +454,7 @@ body.assistant-docked .layout>.list-pane { width:355px; flex-basis:355px; }
 /* One visual language across every Settings tab. */
 #system-view { background:#f3f7f4; }
 #system-view .system-header,#system-view .system-tabs,#system-view .system-panel { width:100%; max-width:1120px; }
-#system-view .system-header { padding:2px 0 10px; }
+#system-view .system-header { padding:2px 0 6px; margin-bottom:10px; }
 #system-view .system-header .eyebrow { color:#6f8c7d; font-size:10px; letter-spacing:.08em; }
 #system-view .system-header h2 { color:#233c30; font-size:27px; font-weight:650; }
 #system-view .system-header p { color:#84958b; font-size:11px; }
@@ -463,7 +463,7 @@ body.assistant-docked .layout>.list-pane { width:355px; flex-basis:355px; }
 #system-view .system-tabs button { min-height:34px; padding:7px 13px; border-radius:7px; color:#74867b; font-size:11px; cursor:pointer; }
 #system-view .system-tabs button:hover { color:#3f6853; background:#f4f7f5; }
 #system-view .system-tabs button.active { color:#2f7054; background:#fff; box-shadow:0 2px 8px #263e3309; font-weight:650; }
-.settings-page-intro { display:flex; align-items:center; justify-content:space-between; gap:20px; margin:20px 0 18px; }
+.settings-page-intro { display:flex; align-items:center; justify-content:space-between; gap:20px; margin:16px 0 16px; }
 .settings-page-intro h3 { margin:0 0 7px; color:#294737; font-size:19px; font-weight:650; }
 .settings-page-intro p { margin:0; color:#7a8b80; font-size:12px; }
 .settings-page-intro>span { color:#7f9386; font-size:11px; white-space:nowrap; }

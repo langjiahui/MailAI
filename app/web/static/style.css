@@ -2748,8 +2748,10 @@ body { font-size: 13px; background: var(--bg); }
 .app-release-summary strong { color:var(--primary); font-size:11px; }
 .app-update-card .app-release-summary p { color:var(--text); font-size:11px; line-height:1.7; white-space:pre-wrap; }
 .app-update-card .app-update-policy { max-width:680px; margin-top:13px; font-size:11px; line-height:1.65; }
-.app-update-actions { display:grid; grid-template-columns:repeat(2,max-content); gap:9px; flex:none; }
+.app-update-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; flex:none; min-width:300px; }
 .app-update-actions #btn-check-update { grid-column:1 / -1; }
+.app-update-actions .action-btn { width:100%; justify-content:center; }
+.app-update-actions a { text-decoration:none; }
 .app-update-actions a { text-decoration:none; }
 .share-app-dialog { width:min(460px, calc(calc(100vw / var(--fz,1)) - 32px)); border:0; border-radius:20px; padding:0; color:var(--text); background:var(--surface); box-shadow:0 24px 80px rgba(20,35,29,.28); }
 .share-app-dialog::backdrop { background:rgba(18,29,25,.45); backdrop-filter:blur(4px); }
