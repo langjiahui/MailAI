@@ -25,10 +25,10 @@
 .start-model-panel :focus-visible,.start-card :focus-visible { outline:2px solid #64ad8a; outline-offset:3px; }
 .start-assistant { padding:22px; margin:12px; border:1px solid var(--border); border-radius:16px; color:var(--text); background:var(--glass); }
 .start-assistant p { color:var(--muted); line-height:1.7; }
-html[data-theme="dark"] .start-model-panel,html[data-theme="dark"] .start-card { background:#17261f; }
+html[data-theme="dark"] .start-model-panel,html[data-theme="dark"] .start-card { background:#141b17; border-color:rgba(180,210,194,.14); box-shadow:0 28px 72px rgba(0,0,0,.46); }
 html[data-theme="dark"] .onboarding-help { color:var(--text); }
-html[data-theme="dark"] .onboarding-overlay { background:rgba(7,19,14,.82); }
-html[data-theme="dark"] .onboarding-manage { color:var(--text); background:#263c31; border-color:var(--border); }
-html[data-theme="dark"] .onboarding-step { color:#8bcbad; }
-html[data-theme="dark"] .start-actions .btn-ghost { color:#e7f0eb !important; background:rgba(56,76,66,.58) !important; border-color:rgba(193,222,207,.3) !important; }
+html[data-theme="dark"] .onboarding-overlay { background:rgba(3,7,5,.78); }
+html[data-theme="dark"] .onboarding-manage { color:#d7e1db; background:#19211c; border-color:rgba(180,210,194,.12); }
+html[data-theme="dark"] .onboarding-step { color:#72b995; }
+html[data-theme="dark"] .start-actions .btn-ghost { color:#cbd6d0 !important; background:#19211c !important; border-color:rgba(180,210,194,.12) !important; }
 @media(max-width:600px) { .start-model-panel { padding:18px; } .start-card { left:12px; bottom:12px; max-width:calc(100vw - 24px); } }

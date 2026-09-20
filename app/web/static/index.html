@@ -18,10 +18,10 @@
   <link rel="stylesheet" href="/static/style.css?v=mailbox-navigation-sidecar-1" />
   <link rel="stylesheet" href="/static/workspace.css?v=assistant-progress-1" />
   <link rel="stylesheet" href="/static/companion.css?v=mint-4" />
-  <link rel="stylesheet" href="/static/theme.css?v=assistant-progress-1" />
+  <link rel="stylesheet" href="/static/theme.css?v=dark-graphite-1" />
   <link rel="stylesheet" href="/static/attachment-preview.css?v=2">
-  <link rel="stylesheet" href="/static/onboarding.css?v=1">
-  <link rel="stylesheet" href="/static/select-ui.css?v=1">
+  <link rel="stylesheet" href="/static/onboarding.css?v=dark-graphite-1">
+  <link rel="stylesheet" href="/static/select-ui.css?v=dark-graphite-1">
   <link rel="stylesheet" href="/static/author.css?v=1">
 </head>
 <body>
@@ -281,6 +281,10 @@
             <div class="connection-card-head"><div><span class="connection-icon">AI</span><h3 data-i18n="model.cardTitle">模型 API</h3></div><span id="model-status" class="connection-status" data-i18n="model.statusUnknown">未检测</span></div>
             <label><span data-i18n="model.provider">模型服务商</span><select id="model-provider"><option value="custom" data-i18n="model.providerCustom">自部署模型</option><option value="deepseek">DeepSeek</option><option value="kimi" data-i18n="model.providerKimi">Kimi（月之暗面）</option><option value="kimi_code" data-i18n="model.providerKimiCode">Kimi Code（编程订阅）</option><option value="other" data-i18n="model.providerOther">其他厂商（通用 API）</option></select></label>
             <p class="form-hint" data-i18n="model.hintSaved">每个服务商的配置分别保存在本机，选择已保存的服务商即可直接切换使用。首次配置请填写地址、模型名称和 API Key 并保存。其他厂商支持 OpenAI Chat Completions 兼容 API。</p>
+            <aside id="model-data-notice" class="model-data-notice cloud" role="status" aria-live="polite">
+              <span class="model-data-notice-icon" aria-hidden="true">!</span>
+              <span><strong id="model-data-notice-title">云端 API · 注意邮件隐私</strong><small id="model-data-notice-copy">使用 AI 时，完成任务所需的邮件正文、上下文及相关附件会发送给所选服务商。请确认其数据政策，敏感邮件建议改用本地模型。</small></span>
+            </aside>
             <label><span data-i18n="model.baseUrl">API 地址</span><input id="model-base-url" required placeholder="https://api.example.com/v1"></label><p class="form-hint" data-i18n="model.hintUrl">支持基础地址（如 /v1）或完整 /chat/completions 地址。模型 ID 须与服务商控制台一致。</p>
             <div class="form-row"><label><span data-i18n="model.textModel">文本模型</span><input id="model-name" required placeholder="填写服务商提供的模型 ID" data-i18n-placeholder="model.textModelPh"></label><label><span data-i18n="model.multimodalModel">多模态模型</span><input id="multimodal-model" placeholder="留空则复用文本模型" data-i18n-placeholder="model.multimodalModelPh"></label></div>
             <label class="check-row"><input id="model-multimodal-enabled" type="checkbox"><span data-i18n="model.multimodalEnable">启用图片识别（测试连接会实际验证模型能否接收图片；使用相同 API 地址与 Key）</span></label>
@@ -895,6 +899,6 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=b288f5be727f"></script>
+  <script src="/static/bundle.js?v=14b75254fa6d"></script>
 </body>
 </html>

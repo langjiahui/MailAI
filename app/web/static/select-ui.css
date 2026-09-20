@@ -94,7 +94,7 @@ html body .compose-format-tools select:not(.hidden) {
 
 html[data-theme="dark"] {
   --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='m4.5 6.25 3.5 3.5 3.5-3.5' stroke='%23b9dbc8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  --select-focus: rgba(126, 211, 164, .2);
+  --select-focus: rgba(114, 185, 149, .12);
 }
 
 html[data-theme="dark"] body select:not(.hidden):not([multiple]) {
@@ -102,24 +102,24 @@ html[data-theme="dark"] body select:not(.hidden):not([multiple]) {
 }
 
 html[data-theme="dark"] body select:not(.hidden):not([multiple]):hover:not(:disabled) {
-  border-color: rgba(139, 211, 171, .34) !important;
-  background-color: rgba(42, 72, 57, .92) !important;
+  border-color: rgba(114, 185, 149, .32) !important;
+  background-color: #222d26 !important;
 }
 
 html[data-theme="dark"] body select:not(.hidden):not([multiple]):focus,
 html[data-theme="dark"] body select:not(.hidden):not([multiple]):focus-visible {
-  border-color: #78c69a !important;
-  box-shadow: 0 0 0 3px var(--select-focus), inset 0 1px rgba(255, 255, 255, .06) !important;
+  border-color: #72b995 !important;
+  box-shadow: 0 0 0 3px var(--select-focus) !important;
 }
 
-html[data-theme="dark"] body select option { color: #e9f5ed; background: #17291f; }
+html[data-theme="dark"] body select option { color: #e6eee9; background: #141b17; }
 
 html[data-theme="dark"] body .contact-group-toolbar #contact-group-filter,
 html[data-theme="dark"] body .filter-select-row #filter-domain {
-  color: #e2f1e8 !important;
-  border-color: rgba(185, 226, 204, .2) !important;
-  background-color: rgba(18, 39, 29, .84) !important;
-  box-shadow: inset 0 1px rgba(255, 255, 255, .055), 0 3px 10px rgba(0, 0, 0, .09) !important;
+  color: #dce6e0 !important;
+  border-color: rgba(180, 210, 194, .14) !important;
+  background-color: #19231d !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .2) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -13,7 +13,7 @@ body:
     attributes:
       label: MailAI 版本
       description: 设置 → 关于与隐私中查看，如 v1.2.0
-      placeholder: v2.1.11
+      placeholder: v2.1.12
     validations:
       required: true
   - type: dropdown

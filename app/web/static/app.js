@@ -4458,6 +4458,7 @@ async function loadSystemConfig() {
   document.getElementById('model-api-key').value = '';
   document.getElementById('model-api-key').placeholder = model.api_key_masked ? `已配置 ${model.api_key_masked}，留空保持不变` : '请输入 API Key';
   document.getElementById('model-verify-ssl').checked = model.verify_ssl !== false;
+  renderModelDataNotice(model.provider || 'custom', model.base_url || '');
   const modelStatus = document.getElementById('model-status');
   modelStatus.textContent = model.verified ? '已验证' : model.available ? '已配置 · 待验证' : '未配置';
   modelStatus.className = `connection-status ${model.verified ? 'connected' : ''}`;
@@ -6415,8 +6416,47 @@ document.getElementById('show-server-folders').addEventListener('change', async 
   }
   toast(visible ? '已在左侧显示服务端文件夹' : '已隐藏左侧服务端文件夹', 'success');
 });
+const CLOUD_MODEL_PROVIDERS = new Set(['deepseek', 'kimi', 'kimi_code', 'other']);
+
+function isLocalModelUrl(value) {
+  try {
+    const hostname = new URL(value).hostname.toLowerCase();
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0' || hostname === '[::1]';
+  } catch (_) { return false; }
+}
+
+function modelDataNotice(provider, baseUrl) {
+  if (CLOUD_MODEL_PROVIDERS.has(provider)) return {
+    kind: 'cloud',
+    title: mailaiT('model.cloudNoticeTitle') || '云端 API · 注意邮件隐私',
+    copy: mailaiT('model.cloudNoticeCopy') || '使用 AI 时，完成任务所需的邮件正文、上下文及相关附件会发送给所选服务商。请确认其数据政策，敏感邮件建议改用本地模型。',
+  };
+  if (provider === 'ollama' || isLocalModelUrl(baseUrl)) return {
+    kind: 'local',
+    title: mailaiT('model.localNoticeTitle') || '本机模型 · 数据留在本机',
+    copy: mailaiT('model.localNoticeCopy') || '当前地址指向本机，AI 请求在本机处理，不会发送给云端模型服务商。仍请妥善保护本地服务访问权限与运行日志。',
+  };
+  return {
+    kind: 'self-hosted',
+    title: mailaiT('model.selfHostedNoticeTitle') || '自部署模型 · 自有环境更可信',
+    copy: mailaiT('model.selfHostedNoticeCopy') || '邮件数据仅发送到你配置的模型地址。请确认该地址由你或组织管理，并妥善控制服务日志与访问权限。',
+  };
+}
+
+function renderModelDataNotice(provider, baseUrl) {
+  const notice = document.getElementById('model-data-notice');
+  if (!notice) return;
+  const content = modelDataNotice(provider, baseUrl);
+  notice.className = `model-data-notice ${content.kind}`;
+  document.getElementById('model-data-notice-title').textContent = content.title;
+  document.getElementById('model-data-notice-copy').textContent = content.copy;
+  notice.querySelector('.model-data-notice-icon').textContent = content.kind === 'cloud' ? '!' : '✓';
+}
+
 document.getElementById('model-provider').addEventListener('change', async e => {
   const provider = e.target.value;
+  const selectedProfile = _systemConfig?.model?.profiles?.[provider];
+  renderModelDataNotice(provider, selectedProfile?.base_url || document.getElementById('model-base-url').value);
   if ((_systemConfig?.model?.saved_providers || []).includes(provider)) {
     if (!document.getElementById('start-model')?.classList.contains('hidden')) {
       const saved = _systemConfig?.model?.profiles?.[provider] || {};
@@ -6429,13 +6469,14 @@ document.getElementById('model-provider').addEventListener('change', async e => 
       document.getElementById('model-api-key').placeholder = '已安全保存此服务商的 API Key';
       document.getElementById('model-verify-ssl').checked = saved.verify_ssl !== false;
       document.getElementById('model-status').textContent = '待验证';
+      renderModelDataNotice(provider, saved.base_url || '');
       return;
     }
     e.target.disabled = true;
     try {
       await api('/api/system/model', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({provider})});
       await loadSystemConfig();
-      toast('已切换到本地保存的模型配置', 'success');
+      toast(CLOUD_MODEL_PROVIDERS.has(provider) ? '已切换到云端模型，请留意邮件隐私提示' : '已切换到自部署模型，请确认模型地址可信', CLOUD_MODEL_PROVIDERS.has(provider) ? 'warn' : 'success');
     } catch (error) {
       e.target.value = _systemConfig?.model?.provider || 'custom';
       toast('切换模型失败：' + error.message, 'error');
@@ -6456,6 +6497,13 @@ document.getElementById('model-provider').addEventListener('change', async e => 
   document.getElementById('model-verify-ssl').checked = true;
   document.getElementById('model-status').textContent = '待测试 / 未保存';
   document.getElementById('model-status').className = 'connection-status';
+  renderModelDataNotice(provider, document.getElementById('model-base-url').value);
+});
+document.getElementById('model-base-url').addEventListener('input', event => {
+  renderModelDataNotice(document.getElementById('model-provider').value, event.target.value.trim());
+});
+document.addEventListener('mailai:language-changed', () => {
+  renderModelDataNotice(document.getElementById('model-provider').value, document.getElementById('model-base-url').value);
 });
 function modelFormPayload() {
   let extra;

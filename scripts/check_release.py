@@ -142,7 +142,9 @@ def main():
                  [node, str(ROOT / 'tests/test_onboarding_state.cjs')],
                  [node, str(ROOT / 'tests/test_mail_range_selection.cjs')],
                  [node, str(ROOT / 'tests/test_risk_labels.cjs')],
-                 [node, str(ROOT / 'tests/test_remote_images.cjs')]]
+                 [node, str(ROOT / 'tests/test_remote_images.cjs')],
+                 [node, str(ROOT / 'tests/test_dark_theme_palette.cjs')],
+                 [node, str(ROOT / 'tests/test_model_privacy_ui.cjs')]]
     failures = []
     for command in commands:
         label = Path(command[-1]).name
