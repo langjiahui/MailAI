@@ -17,10 +17,10 @@
     })();
   </script>
   <link rel="icon" type="image/png" href="/static/assets/mailai-mark.png" />
-  <link rel="stylesheet" href="/static/style.css?v=history-controls-2" />
+  <link rel="stylesheet" href="/static/style.css?v=compact-navigation-4" />
   <link rel="stylesheet" href="/static/workspace.css?v=dark-ui-2" />
   <link rel="stylesheet" href="/static/companion.css?v=mint-4" />
-  <link rel="stylesheet" href="/static/theme.css?v=history-controls-2" />
+  <link rel="stylesheet" href="/static/theme.css?v=compact-navigation-4" />
   <link rel="stylesheet" href="/static/attachment-preview.css?v=font-scale-1">
   <link rel="stylesheet" href="/static/onboarding.css?v=font-scale-1">
   <link rel="stylesheet" href="/static/select-ui.css?v=dark-graphite-1">
@@ -503,15 +503,15 @@
           <!-- 动态渲染 -->
         </div>
         <div class="list-footer" id="list-footer">
+          <span class="fetch-hint" id="fetch-hint"></span>
           <div class="fetch-actions">
-            <button id="btn-fetch-more" type="button" aria-label="分批载入更早邮件，每次 20 封" title="分批载入更早邮件，每次 20 封" data-i18n-aria="list.fetchMoreHint" data-i18n-title="list.fetchMoreHint"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.5v9m-3.2-3.1L10 12.6l3.2-3.2M5 16h10"/></svg><span class="fetch-label-wide" data-i18n="list.fetchEarlier">载入更早邮件</span><span class="fetch-label-compact" data-i18n="list.fetchBatch">再载 20 封</span></button>
-            <button id="btn-fetch-all" type="button" aria-label="同步服务器上的全部历史邮件" title="同步服务器上的全部历史邮件" aria-haspopup="dialog" aria-expanded="false" aria-controls="fetch-all-confirm" data-i18n-aria="list.fetchAllHint" data-i18n-title="list.fetchAllHint"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 5.1a5 5 0 1 1-4.3 2.4M3.8 4.7v3.2H7M10 7.2v3l2.1 1.3"/></svg><span class="fetch-label-wide" data-i18n="list.fetchAll">同步全部历史</span><span class="fetch-label-compact" data-i18n="list.fetchAllShort">全部</span></button>
+            <button id="btn-fetch-more" type="button" aria-label="继续载入更早邮件，每次 20 封" title="继续载入更早邮件，每次 20 封" data-i18n-aria="list.fetchMoreHint" data-i18n-title="list.fetchMoreHint"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.5v9m-3.2-3.1L10 12.6l3.2-3.2M5 16h10"/></svg><span data-i18n="list.fetchEarlier">继续载入</span></button>
+            <button id="btn-fetch-all" type="button" aria-label="拉取服务器上的全部历史邮件" title="拉取服务器上的全部历史邮件" aria-haspopup="dialog" aria-expanded="false" aria-controls="fetch-all-confirm" data-i18n-aria="list.fetchAllHint" data-i18n-title="list.fetchAllHint"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 5.1a5 5 0 1 1-4.3 2.4M3.8 4.7v3.2H7M10 7.2v3l2.1 1.3"/></svg><span data-i18n="list.fetchAll">全部拉取</span></button>
             <div id="fetch-all-confirm" class="history-sync-confirm hidden" role="dialog" aria-modal="false" aria-labelledby="fetch-all-confirm-title">
               <div class="history-sync-confirm-copy"><span class="history-sync-confirm-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M10 5.1a5 5 0 1 1-4.3 2.4M3.8 4.7v3.2H7M10 7.2v3l2.1 1.3"/></svg></span><span><strong id="fetch-all-confirm-title" data-i18n="list.fetchAllConfirmTitle">同步全部历史邮件？</strong><small data-i18n="list.fetchAllConfirmCopy">持续向前同步到服务器最早的邮件。耗时更长，但可以随时中断。</small></span></div>
               <div class="history-sync-confirm-actions"><button type="button" data-close-history-sync data-i18n="common.cancel">取消</button><button type="button" id="btn-confirm-fetch-all" data-i18n="list.fetchAllStart">开始同步</button></div>
             </div>
           </div>
-          <span class="fetch-hint" id="fetch-hint"></span>
         </div>
       </div>
 
@@ -931,6 +931,6 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=4ecf9760121d"></script>
+  <script src="/static/bundle.js?v=980f70ab0c6f"></script>
 </body>
 </html>

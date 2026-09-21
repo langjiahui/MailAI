@@ -2931,7 +2931,7 @@ function updateListTitle(count) {
   const fetchHint = document.getElementById('fetch-hint');
   if (fetchHint) {
     fetchHint.textContent = serverTotal > count && !hasFacet
-      ? (mailaiT('list.loadedRange') || '已显示最近 {count} 封，共 {total} 封').replace('{count}', count).replace('{total}', serverTotal)
+      ? (mailaiT('list.loadedRange') || '已载入 {count} 封，共 {total} 封').replace('{count}', count).replace('{total}', serverTotal)
       : (!hasFacet && count ? (mailaiT('list.loadedCount') || '已载入 {count} 封').replace('{count}', count) : '');
   }
 }

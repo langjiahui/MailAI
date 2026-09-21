@@ -25,36 +25,31 @@ const fs = require('node:fs');
       const pane = document.querySelector('.list-pane').getBoundingClientRect();
       const fetchAll = document.getElementById('btn-fetch-all');
       const allBox = fetchAll.getBoundingClientRect();
+      const hint = document.getElementById('fetch-hint').getBoundingClientRect();
       return {
         footerHeight: footer.height,
         paneWidth: pane.width,
         actionsWidth: actions.width,
-        centerOffset: Math.abs((actions.left + actions.width / 2) - (footer.left + footer.width / 2)),
+        hintBeforeActions: hint.right <= actions.left,
         allWidth: allBox.width,
         moreName: document.getElementById('btn-fetch-more').getAttribute('aria-label'),
         allName: fetchAll.getAttribute('aria-label'),
       };
     });
-    assert.ok(historyControls.centerOffset <= 2, 'History controls should be centered in the list footer');
+    assert.ok(historyControls.hintBeforeActions, 'Loaded count should lead the quiet footer actions');
     assert.ok(historyControls.moreName && historyControls.allName, 'History actions need accessible names');
-    if (historyControls.paneWidth >= 390) {
-      assert.ok(historyControls.footerHeight >= 68 && historyControls.footerHeight <= 76, 'Wide history controls need a balanced two-row footer');
-      assert.ok(historyControls.actionsWidth <= 320, 'Wide history controls are too wide');
-      assert.ok(historyControls.allWidth >= 120, 'Wide secondary action should show its full label');
-      assert.match(await page.locator('#btn-fetch-more').innerText(), /载入更早邮件/);
-      assert.match(await page.locator('#btn-fetch-all').innerText(), /同步全部历史/);
-    } else {
-      assert.ok(historyControls.footerHeight <= 44, 'Compact history controls consume too much list height');
-      assert.ok(historyControls.actionsWidth <= 170, 'Compact history controls are too wide');
-      assert.ok(historyControls.allWidth <= 64, 'Compact secondary history action is too wide');
-      assert.match(await page.locator('#btn-fetch-more').innerText(), /20/);
-    }
+    assert.ok(historyControls.footerHeight <= 44, 'Quiet history controls consume too much list height');
+    assert.ok(historyControls.actionsWidth <= 160, 'Quiet history actions are too wide');
+    assert.ok(historyControls.allWidth <= 76, 'All-history action is too visually prominent');
+    assert.match(await page.locator('#fetch-hint').innerText(), /已载入/);
+    assert.match(await page.locator('#btn-fetch-more').innerText(), /继续载入/);
+    assert.match(await page.locator('#btn-fetch-all').innerText(), /全部拉取/);
     await page.locator('#btn-fetch-all').click();
     assert.equal(await page.locator('#fetch-all-confirm').isVisible(), true);
     assert.match(await page.locator('#fetch-all-confirm').innerText(), /最早的邮件/);
     await page.locator('[data-close-history-sync]').click();
     assert.equal(await page.locator('#fetch-all-confirm').isVisible(), false);
-    pass('历史同步入口紧凑、主次清晰且具备可访问名称');
+    pass('历史载入状态与轻量操作同排，主次清晰且具备可访问名称');
     await shot('home');
     await page.locator('#email-list .email-item').first().click();
     await page.locator('#reading-content .reading-section').first().waitFor();
@@ -174,7 +169,10 @@ const fs = require('node:fs');
           wrapped: getComputedStyle(document.querySelector('.topbar')).flexWrap,
         }));
         assert.ok(compactHeader.height <= 66, `Topbar is too tall at ${width}`);
-        assert.equal(compactHeader.searchDisplay, 'none', `Search should collapse at ${width}`);
+        assert.equal(compactHeader.searchDisplay, 'flex', `Search should remain available at ${width}`);
+        assert.equal(await page.locator('#btn-poll').isVisible(), false);
+        assert.equal(await page.locator('#btn-digest').isVisible(), false);
+        assert.equal(await page.locator('#btn-compose').isVisible(), true);
         assert.equal(compactHeader.wrapped, 'nowrap', `Topbar should not wrap at ${width}`);
       }
       await shot(`responsive-${width}`);

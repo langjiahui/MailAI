@@ -162,12 +162,12 @@ const I18N_MESSAGES = {
     'list.sortAsc': 'Oldest first',
     'list.sortScore': 'By risk score',
     'list.fetchMore': 'Sync older mail',
-    'list.fetchEarlier': 'Load earlier',
-    'list.fetchBatch': '20 more',
+    'list.fetchEarlier': 'Load more',
+    'list.fetchBatch': 'Load more',
     'list.fetchMoreHint': 'Load older mail in batches of 20',
-    'list.fetchAll': 'Sync all history',
-    'list.fetchAllShort': 'All',
-    'list.fetchAllHint': 'Sync all mail history available on the server',
+    'list.fetchAll': 'Fetch all',
+    'list.fetchAllShort': 'Fetch all',
+    'list.fetchAllHint': 'Fetch all mail history available on the server',
     'list.fetchAllConfirmTitle': 'Sync all mail history?',
     'list.fetchAllConfirmCopy': 'Keep syncing back to the earliest mail on the server. This takes longer, but you can stop it at any time.',
     'list.fetchAllStart': 'Start sync',
@@ -4475,7 +4475,7 @@ function updateListTitle(count) {
   const fetchHint = document.getElementById('fetch-hint');
   if (fetchHint) {
     fetchHint.textContent = serverTotal > count && !hasFacet
-      ? (mailaiT('list.loadedRange') || '已显示最近 {count} 封，共 {total} 封').replace('{count}', count).replace('{total}', serverTotal)
+      ? (mailaiT('list.loadedRange') || '已载入 {count} 封，共 {total} 封').replace('{count}', count).replace('{total}', serverTotal)
       : (!hasFacet && count ? (mailaiT('list.loadedCount') || '已载入 {count} 封').replace('{count}', count) : '');
   }
 }

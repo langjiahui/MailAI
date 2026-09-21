@@ -737,50 +737,29 @@ html[data-theme="dark"] .list-workspace-tools>button:hover {
 }
 html[data-theme="dark"] .list-workspace-tools { background:rgba(20,40,31,.26)!important; border-color:var(--dark-stroke)!important; }
 html[data-theme="dark"] .list-footer {
-  background:rgba(13,29,22,.55)!important;
+  background:rgba(15,27,22,.52)!important;
   border-color:var(--dark-stroke)!important;
   box-shadow:none!important;
 }
 html[data-theme="dark"] .list-footer .fetch-actions {
-  padding:2px!important;
-  border:1px solid rgba(204,237,216,.12)!important;
-  border-radius:10px!important;
-  background:rgba(49,78,64,.32)!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
   box-shadow:none!important;
 }
-html[data-theme="dark"] .list-footer .fetch-actions button,
+html[data-theme="dark"] body .list-footer .fetch-actions > button,
 html[data-theme="dark"] .list-footer button {
-  min-height:24px!important;
-  color:#9db8aa!important;
+  min-height:26px!important;
+  color:#91a79c!important;
   background:transparent!important;
   border-color:transparent!important;
   box-shadow:none!important;
 }
-html[data-theme="dark"] .list-footer .fetch-actions button + button { border-left-color:rgba(204,237,216,.16)!important; }
-html[data-theme="dark"] .list-footer .fetch-actions button:hover,
-html[data-theme="dark"] .list-footer button:hover { color:#f3fff8!important; background:rgba(92,151,119,.34)!important; }
-html[data-theme="dark"] .list-footer .fetch-actions {
-  padding:2px!important;
-  border-color:rgba(177,222,199,.14)!important;
-  border-radius:12px!important;
-  background:rgba(31,54,43,.72)!important;
-  box-shadow:0 8px 20px rgba(0,0,0,.16),inset 0 1px rgba(255,255,255,.045)!important;
-}
-html[data-theme="dark"] .list-footer .fetch-actions #btn-fetch-more {
-  min-height:28px!important;
-  color:#f4fff8!important;
-  background:linear-gradient(145deg,#438a6d,#306c53)!important;
-  box-shadow:0 4px 12px rgba(0,0,0,.18),inset 0 1px rgba(255,255,255,.12)!important;
-}
-html[data-theme="dark"] .list-footer .fetch-actions #btn-fetch-more:hover {
-  background:linear-gradient(145deg,#4e9878,#36775b)!important;
-}
-html[data-theme="dark"] .list-footer .fetch-actions #btn-fetch-all {
-  min-height:28px!important;
-  color:#a8c2b4!important;
-  background:transparent!important;
-  border-left:0!important;
-}
+html[data-theme="dark"] body .list-footer .fetch-actions > button:hover,
+html[data-theme="dark"] .list-footer button:hover { color:#d9eee3!important; background:rgba(92,151,119,.14)!important; }
+html[data-theme="dark"] .list-footer .fetch-actions > button + button::before { background:rgba(195,224,208,.14)!important; }
+html[data-theme="dark"] .list-footer .fetch-hint { color:#70837a!important; }
 html[data-theme="dark"] .history-sync-confirm {
   border-color:rgba(177,222,199,.22)!important;
   background:#18231d!important;
@@ -797,21 +776,6 @@ html[data-theme="dark"] .list-footer .fetch-actions .history-sync-confirm-action
 html[data-theme="dark"] .list-footer .fetch-actions .history-sync-confirm-actions #btn-confirm-fetch-all {
   color:#f4fff8!important;
   background:linear-gradient(145deg,#438a6d,#306c53)!important;
-}
-@container mail-list-pane (min-width:390px) {
-  html[data-theme="dark"] .list-footer .fetch-actions {
-    padding:0!important;
-    border:0!important;
-    background:transparent!important;
-    box-shadow:none!important;
-  }
-  html[data-theme="dark"] .list-footer .fetch-actions #btn-fetch-all {
-    color:#b6c9bf!important;
-    border:1px solid rgba(151,199,175,.18)!important;
-    background:rgba(34,52,43,.7)!important;
-    box-shadow:0 5px 14px rgba(0,0,0,.12),inset 0 1px rgba(255,255,255,.04)!important;
-  }
-  html[data-theme="dark"] .list-footer .fetch-hint { color:#71847a!important; }
 }
 @media(max-width:520px) { .theme-options { grid-template-columns:1fr; } }
 
@@ -1593,7 +1557,17 @@ html[data-theme="dark"] .special-mail-attachment-item small { color:#9eb4a8!impo
    much vertical space, especially with larger interface text. */
 @media (max-width:1024px) {
   .topbar { flex-wrap:nowrap!important; height:64px!important; min-height:64px; }
-  .topbar .global-search { display:none!important; order:initial; width:auto; margin:0; }
+  .topbar .global-search { display:flex!important; flex:1 1 0; min-width:0; order:initial; width:auto; margin:0; }
+  .topbar .global-search input { width:100%; min-width:0; max-width:none; }
+  .topbar .global-actions { flex:0 0 auto; }
+  .topbar .global-actions .nav-cluster { display:none!important; }
+  .topbar .global-actions #btn-compose { width:auto; padding:0 13px; font-size:12px; }
+  .topbar .global-actions #btn-compose::after { content:none; }
+}
+@media (max-width:620px) {
+  .topbar .brand-copy { display:none; }
+  .topbar .global-actions #btn-compose { width:38px; padding:0; }
+  .topbar .global-actions #btn-compose > span { display:none; }
 }
 body[data-density="compact"] .email-item .email-tags { display:flex!important; }
 body[data-density="compact"] .email-tags .tag:not(.tag-danger):not(.tag-warn) { display:none; }
