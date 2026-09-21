@@ -4,6 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MailAI · 邮件安全与效率助手</title>
+  <script src="/api/ui-preferences.js"></script>
+  <script src="/static/preferences.js"></script>
   <script>
     (() => {
       try {
@@ -26,10 +28,31 @@
 </head>
 <body>
   <div id="app-preloader" class="app-preloader" role="status" aria-live="polite">
+    <div class="preloader-workspace" aria-hidden="true">
+      <div class="preloader-frame" data-startup-pane="sidebar"></div>
+      <div class="preloader-frame" data-startup-pane="list-pane"></div>
+      <div class="preloader-frame" data-startup-pane="reading-pane"></div>
+    </div>
     <div class="preloader-content">
-      <div class="preloader-logo-wrap"><img class="preloader-logo" src="/static/assets/mailai-lockup.png" alt="MailAI 邮件安全与效率助手" /></div>
-      <span data-i18n="app.preloader">正在整理你的邮件工作台</span>
-      <i class="preloader-line"><b></b></i>
+      <div class="preloader-brand" aria-label="MailAI 邮件安全与效率助手">
+        <img src="/static/assets/mailai-mark.png" alt="" />
+        <span><strong>MailAI</strong><small data-i18n="app.tagline">邮件安全与效率助手</small></span>
+      </div>
+      <div class="preloader-status">
+        <span data-i18n="app.preloaderInit">正在初始化邮件工作台</span>
+        <small data-i18n="app.preloaderInitHint">小邮正在载入账户与邮件数据</small>
+      </div>
+      <div class="preloader-route" aria-hidden="true">
+        <svg class="preloader-route-line" viewBox="0 0 1000 80" preserveAspectRatio="none">
+          <path d="M0 26H260C310 26 310 70 350 70H650C690 70 690 26 740 26H1000"/>
+        </svg>
+        <i class="preloader-route-node preloader-route-node-one"></i>
+        <i class="preloader-route-node preloader-route-node-two"></i>
+        <span class="preloader-mail preloader-mail-one"><svg viewBox="0 0 28 22"><rect x="1" y="1" width="26" height="20" rx="5"/><path d="m3 5 11 8 11-8"/></svg></span>
+        <span class="preloader-mail preloader-mail-two"><svg viewBox="0 0 28 22"><rect x="3" y="1" width="20" height="20" rx="4"/><path d="M8 7h10M8 11h10M8 15h7"/></svg></span>
+        <span class="preloader-mail preloader-mail-three"><svg viewBox="0 0 28 22"><rect x="1" y="1" width="26" height="20" rx="5"/><path d="m3 5 11 8 11-8"/></svg></span>
+      </div>
+      <span class="preloader-companion companion-art" aria-hidden="true"></span>
     </div>
   </div>
   <div id="app">
@@ -904,6 +927,6 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=216ad46697e1"></script>
+  <script src="/static/bundle.js?v=94591b68cfa8"></script>
 </body>
 </html>

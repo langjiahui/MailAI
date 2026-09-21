@@ -5,16 +5,16 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v2.1.19**
+当前版本：**v2.1.20**
 
-本次更新：浅色主题下邮件列表 hover 清晰可见（浅薄荷底色+描边）；收件人展开后改为自适应多列网格，充分利用阅读区宽度，不再挤在左侧。
+本次更新：重做明暗双主题启动页，加入三栏工作台轮廓、圆滑邮件路径和小邮「跃出、挥手欢迎、侧身小跑、右下角落位」连续动画，Logo 自然衔接主页；修复退出重启后暗色主题等界面偏好丢失，14 类偏好独立持久化，不再受 WebView 私密模式或启动端口变化影响；补充启动动画与跨进程、跨端口偏好恢复测试，并包含 Kimi 视觉能力探测修复。
 
 ## 下载 MailAI
 
 | 系统 | 支持设备 | 最新安装包 |
 |---|---|---|
 | Windows | Windows 10/11 x64 | [下载 Windows 安装程序](https://github.com/langjiahui/MailAI/releases/latest/download/MailAI-Windows-x64-Setup.exe) |
-| macOS | Apple Silicon（M1/M2/M3/M4） | [下载 macOS 安装镜像](https://github.com/langjiahui/MailAI/releases/latest/download/MailAI-macOS-arm64.dmg) |
+| macOS | Apple Silicon（M1/M2/M3/M4） | [下载 PKG 安装程序](https://github.com/langjiahui/MailAI/releases/latest/download/MailAI-macOS-arm64.pkg) · [下载 DMG 镜像](https://github.com/langjiahui/MailAI/releases/latest/download/MailAI-macOS-arm64.dmg) |
 | Linux | x64（AppImage，免安装） | [下载 Linux AppImage](https://github.com/langjiahui/MailAI/releases/latest/download/MailAI-Linux-x64.AppImage) |
 
 也可以进入 [最新版本发布页](https://github.com/langjiahui/MailAI/releases/latest)，查看安装包、SHA-256 校验文件和版本说明。
@@ -30,6 +30,17 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 更新只替换应用程序，邮件、账号配置、草稿和其他本地数据会继续保留。较早且不包含自动更新功能的版本，需要先从发布页手动安装一次最新版，无需提前卸载旧版。
 
 [查看全部历史版本](https://github.com/langjiahui/MailAI/releases)
+
+### 界面偏好的本地保存
+
+主题（浅色/暗色/跟随系统）、语言、字号、界面密度、小邮动效、助手浮窗与布局、三栏宽度、服务器文件夹显示、当前浏览账号、邮箱别名与折叠状态、秘书视图和引导进度，保存在应用用户目录的 `ui-preferences.sqlite3`，不上传云端，也不包含密码或 API Key。
+
+- macOS：`~/Library/Application Support/MailAI/`
+- Windows：`%LOCALAPPDATA%/MailAI/`
+- Linux：`$XDG_DATA_HOME/MailAI/`（默认 `~/.local/share/MailAI/`）
+- 源码运行默认使用项目目录；设置 `MAILAI_HOME` 可指定隔离目录。
+
+升级时会迁移当前 WebView 仍可读取的旧偏好；旧版私密模式已经清除的设置无法恢复，需重新设置一次。通知与语义搜索配置仍使用原有数据库，邮箱和模型配置沿用配置文件及凭据库。
 
 > 发布约定：每个版本发布前必须同步更新 README 中的当前版本与更新内容；发布工作流会校验版本号，未更新时停止构建。
 

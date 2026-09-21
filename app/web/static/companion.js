@@ -1,5 +1,58 @@
 /* One vector character shared by the launcher, chat and writing assistant. */
 (() => {
+  // Borrow real pane geometry, never mailbox content. Saved pane widths,
+  // font zoom and narrow layouts therefore share exactly the same silhouette.
+  const startup = document.getElementById('app-preloader');
+  if (startup) {
+    const frames = [...startup.querySelectorAll('[data-startup-pane]')];
+    frames.forEach(frame => {
+      const count = frame.dataset.startupPane === 'reading-pane' ? 3 : 5;
+      for (let index = 0; index < count; index++) {
+        const row = document.createElement('span');
+        row.className = 'preloader-skeleton-row';
+        row.innerHTML = '<i></i><b></b><em></em>';
+        frame.appendChild(row);
+      }
+    });
+    const alignFrames = () => {
+      const zoom = Number(getComputedStyle(document.body).zoom) || 1;
+      const origin = startup.getBoundingClientRect();
+      frames.forEach(frame => {
+        const pane = document.querySelector(`.layout > .${frame.dataset.startupPane}`);
+        const rect = pane?.getBoundingClientRect();
+        frame.hidden = !rect || !rect.width || !rect.height || rect.right <= 0 || rect.left >= innerWidth;
+        if (frame.hidden) return;
+        Object.assign(frame.style, {
+          left:`${(rect.left-origin.left)/zoom}px`, top:`${(rect.top-origin.top)/zoom}px`,
+          width:`${rect.width/zoom}px`, height:`${rect.height/zoom}px`,
+          borderRadius:getComputedStyle(pane).borderRadius,
+        });
+      });
+    };
+    // Responsive panes can slide without changing their measured size. Track
+    // the short layout transition too, then stop sampling once it settles.
+    let frameRequest = 0, followUntil = 0;
+    const followLayout = () => {
+      alignFrames();
+      frameRequest = performance.now() < followUntil ? requestAnimationFrame(followLayout) : 0;
+    };
+    const scheduleAlignment = () => {
+      followUntil = performance.now() + 500;
+      if (!frameRequest) frameRequest = requestAnimationFrame(followLayout);
+    };
+    const geometry = new ResizeObserver(scheduleAlignment);
+    document.querySelectorAll('.layout,.layout > .sidebar,.layout > .list-pane,.layout > .reading-pane,.topbar').forEach(el => geometry.observe(el));
+    window.addEventListener('resize', scheduleAlignment);
+    const cleanup = new MutationObserver(() => {
+      if (startup.isConnected) return;
+      geometry.disconnect();
+      window.removeEventListener('resize', scheduleAlignment);
+      cancelAnimationFrame(frameRequest);
+      cleanup.disconnect();
+    });
+    cleanup.observe(startup.parentNode, {childList:true});
+    alignFrames();
+  }
   const art = `<svg class="mail-companion" viewBox="0 0 112 112" fill="none" aria-hidden="true">
     <ellipse class="companion-shadow" cx="56" cy="102" rx="27" ry="4" fill="#254B3A" opacity=".12"/>
     <g class="companion-figure">
@@ -33,6 +86,19 @@
   document.querySelectorAll('.companion-art, .assistant-mini').forEach(host => {
     host.classList.add('companion-avatar');
     host.innerHTML = art;
+    if (host.classList.contains('preloader-companion')) {
+      const torso = host.querySelector('.companion-torso');
+      const arm = host.querySelector('.companion-wave');
+      host.classList.add('introducing');
+      torso.appendChild(arm);
+      startup.dataset.introUntil = String(performance.now() + 1850);
+      // Let the greeting arm stay in front until the character turns to walk.
+      setTimeout(() => {
+        if (!host.isConnected) return;
+        host.classList.remove('introducing');
+        torso.insertBefore(arm, torso.firstChild);
+      }, 1500);
+    }
   });
   const root = document.getElementById('mail-assistant');
   const orb = document.getElementById('assistant-orb');

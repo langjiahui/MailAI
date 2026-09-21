@@ -48,6 +48,14 @@ jobs:
       - name: Install Playwright package
         run: npm ci
 
+      - name: Install browser runtime
+        run: npx playwright install --with-deps chromium
+
+      - name: Verify startup animation and preference persistence
+        run: |
+          node tests/test_preloader_browser.cjs
+          node tests/test_ui_preferences_restart.cjs "$(which python)"
+
       - name: Start isolated fixture server
         run: |
           python tests/workspace_preview.py &

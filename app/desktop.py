@@ -600,7 +600,9 @@ def run_macos_window(asgi_app, preferred_port: int = 0,
         def ready():
             runtime._call_after_safely("安装菜单栏控件", runtime.install_native_controls)
 
-        webview.start(ready, gui="cocoa", debug=False)
+        from .paths import USER_DIR
+        webview.start(ready, gui="cocoa", debug=False, private_mode=False,
+                      storage_path=str(USER_DIR / "webview"))
         if not runtime.quitting:
             log.warning("macOS WebView 事件循环在未收到退出指令时结束")
     finally:

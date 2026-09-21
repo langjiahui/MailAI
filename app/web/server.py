@@ -6,9 +6,10 @@
 """
 import logging
 import os
+import json
 
-from fastapi import FastAPI
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from .. import config, db, pipeline, system_settings
@@ -65,6 +66,23 @@ def api_health():
         "llm_model": config.LLM_MODEL,
         "poll_interval": config.POLL_INTERVAL_SECONDS,
     }
+
+
+@app.get("/api/ui-preferences.js")
+def ui_preferences_bootstrap():
+    from ..ui_preferences import load
+    return Response("window.mailaiPreferenceSeed=" + json.dumps(load(), ensure_ascii=True) + ";",
+                    media_type="application/javascript")
+
+
+@app.post("/api/ui-preferences")
+def save_ui_preference(payload: dict):
+    from ..ui_preferences import save
+    try:
+        save(payload.get("key"), payload.get("value"))
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return {"ok": True}
 
 
 from .routes import assistant, compose, contacts, mail_actions, mail_read, reports, security, sync, system, todos

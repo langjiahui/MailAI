@@ -16,7 +16,12 @@ const I18N_STORAGE_KEY = 'mailai-language';
 const I18N_MESSAGES = {
   en: {
     'app.title': 'MailAI · Mail Security & Productivity Assistant',
-    'app.preloader': 'Preparing your mail workspace',
+    'app.preloaderInit': 'Initializing your mail workspace',
+    'app.preloaderInitHint': 'XiaoYou is loading your accounts and mail data',
+    'app.preloaderLoading': 'Loading mailbox data',
+    'app.preloaderLoadingHint': 'XiaoYou is completing mail initialization',
+    'app.preloaderConnect': 'Preparing mailbox setup',
+    'app.preloaderConnectHint': 'Connect an account to start receiving mail',
     'search.placeholder': 'Search subject, sender, body or pinyin...',
     'nav.compose': 'Compose',
     'nav.contacts': 'Contacts',

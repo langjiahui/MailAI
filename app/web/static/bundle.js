@@ -22,7 +22,12 @@ const I18N_STORAGE_KEY = 'mailai-language';
 const I18N_MESSAGES = {
   en: {
     'app.title': 'MailAI · Mail Security & Productivity Assistant',
-    'app.preloader': 'Preparing your mail workspace',
+    'app.preloaderInit': 'Initializing your mail workspace',
+    'app.preloaderInitHint': 'XiaoYou is loading your accounts and mail data',
+    'app.preloaderLoading': 'Loading mailbox data',
+    'app.preloaderLoadingHint': 'XiaoYou is completing mail initialization',
+    'app.preloaderConnect': 'Preparing mailbox setup',
+    'app.preloaderConnectHint': 'Connect an account to start receiving mail',
     'search.placeholder': 'Search subject, sender, body or pinyin...',
     'nav.compose': 'Compose',
     'nav.contacts': 'Contacts',
@@ -9183,8 +9188,18 @@ document.getElementById('btn-rollback-auto').addEventListener('click', async () 
 });
 
 let assistantAlertTimer = null;
+function setAppPreloaderCopy(key, fallback, hintKey, hintFallback) {
+  const preloader = document.getElementById('app-preloader');
+  if (!preloader) return;
+  const title = preloader.querySelector('.preloader-status span');
+  const hint = preloader.querySelector('.preloader-status small');
+  if (title) { title.dataset.i18n = key; title.textContent = mailaiT(key) || fallback; }
+  if (hint) { hint.dataset.i18n = hintKey; hint.textContent = mailaiT(hintKey) || hintFallback; }
+}
 const initialLoad = loadSystemConfig().then(async cfg => {
   if (!cfg.mail?.logged_in) {
+    setAppPreloaderCopy('app.preloaderConnect', '正在准备邮箱连接',
+      'app.preloaderConnectHint', '连接邮箱后，小邮会开始接收邮件');
     const overlay = document.getElementById('onboarding-overlay');
     document.getElementById('onboarding-host').value = cfg.mail?.host || '';
     document.getElementById('onboarding-port').value = cfg.mail?.port || 993;
@@ -9198,6 +9213,8 @@ const initialLoad = loadSystemConfig().then(async cfg => {
     window.mailOnboarding?.disconnected(cfg);
     return;
   }
+  setAppPreloaderCopy('app.preloaderLoading', '正在载入邮箱数据',
+    'app.preloaderLoadingHint', '小邮正在完成邮件初始化');
   await Promise.all([loadData(), loadMailboxFolders(), loadActionPolicy(), loadAssistantAlerts(), loadSignatures()]);
   startMailboxAutoRefresh();
   window.mailOnboarding?.connected(false);
@@ -9349,9 +9366,92 @@ initMainScrollIndicators();
 
 function hideAppPreloader() {
   const preloader = document.getElementById('app-preloader');
-  if (!preloader || preloader.classList.contains('leaving')) return;
-  preloader.classList.add('leaving');
-  setTimeout(() => preloader.remove(), 460);
+  if (!preloader || preloader.dataset.handoff === 'running' || preloader.classList.contains('leaving')) return;
+  const source = preloader.querySelector('.preloader-companion');
+  const target = document.querySelector('#assistant-orb .companion-art');
+  const sourceBrand = preloader.querySelector('.preloader-brand');
+  const targetBrand = document.querySelector('.topbar .brand');
+  const onboarding = document.getElementById('onboarding-overlay');
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches || document.body.classList.contains('companion-still');
+  const introRemaining = Number(preloader.dataset.introUntil || 0) - performance.now();
+  if (!reducedMotion && introRemaining > 0) {
+    if (!preloader._introTimer) {
+      preloader._introTimer = setTimeout(() => {
+        preloader._introTimer = null;
+        hideAppPreloader();
+      }, introRemaining + 16);
+    }
+    return;
+  }
+  clearTimeout(preloader._introTimer);
+  const animations = [];
+  const duration = reducedMotion ? 180 : 1800;
+  preloader.style.setProperty('--handoff-duration', duration + 'ms');
+  preloader.dataset.handoff = 'running';
+  // Derive both destinations from the live workspace. The mascot travels by
+  // its grounded center point, so resizing it never introduces a visual jump.
+  if (!reducedMotion && source && target && onboarding?.classList.contains('hidden')) {
+    const from = source.getBoundingClientRect();
+    const to = target.getBoundingClientRect();
+    const zoom = Number(getComputedStyle(document.body).zoom) || 1;
+    Object.assign(source.style, {
+      left:`${from.left / zoom}px`, top:`${from.top / zoom}px`, bottom:'auto',
+      width:`${from.width / zoom}px`, height:`${from.height / zoom}px`, transform:'none',
+    });
+    const dx = (to.left + to.width / 2 - (from.left + from.width / 2)) / zoom;
+    const dy = (to.bottom - from.bottom) / zoom;
+    const scale = to.width / from.width;
+    animations.push(source.animate([
+      {offset:0,transform:'translate3d(0,0,0) scale(1)',opacity:1},
+      {offset:1,transform:`translate3d(${dx}px,${dy}px,0) scale(${scale})`,opacity:1},
+    ], {duration:duration-180,easing:'cubic-bezier(.42,0,.24,1)',fill:'both'}));
+    // Cross-fade only once both rigs occupy the same rectangle.
+    animations.push(source.animate([{opacity:1},{opacity:0}], {
+      delay:duration-180,duration:180,easing:'linear',fill:'forwards',
+    }));
+    setTimeout(() => {
+      const parts = [...source.querySelectorAll('.companion-torso,.companion-foot-left,.companion-foot-right,.companion-arm-left,.companion-wave,.companion-leaves,.companion-bag')];
+      const poses = parts.map(part => getComputedStyle(part).transform);
+      source.classList.add('arriving');
+      parts.forEach((part, index) => animations.push(part.animate([
+        {transform:poses[index]}, {transform:'none'},
+      ], {duration:300,easing:'ease-out',fill:'both'})));
+    }, duration - 330);
+    animations.push(target.animate([
+      {opacity:0}, {opacity:0,offset:.9}, {opacity:1},
+    ], {duration,easing:'linear',fill:'both'}));
+    source.getBoundingClientRect();
+    preloader.classList.add('handoff-active');
+  }
+  if (!reducedMotion && sourceBrand && targetBrand && onboarding?.classList.contains('hidden')) {
+    const zoom = Number(getComputedStyle(document.body).zoom) || 1;
+    // Match each element instead of scaling the whole lockup: the workspace
+    // has its own icon size, text baseline and responsive subtitle visibility.
+    for (const selector of ['img','strong','small']) {
+      const start = sourceBrand.querySelector(selector);
+      const end = targetBrand.querySelector(selector);
+      if (!start || !end) continue;
+      const from = start.getBoundingClientRect();
+      const to = end.getBoundingClientRect();
+      if (!from.width || !to.width) continue;
+      start.style.transformOrigin = '0 0';
+      animations.push(start.animate([
+        {transform:'translate3d(0,0,0) scale(1,1)'},
+        {transform:`translate3d(${(to.left-from.left)/zoom}px,${(to.top-from.top)/zoom}px,0) scale(${to.width/from.width},${to.height/from.height})`},
+      ], {duration:1100,easing:'cubic-bezier(.42,0,.22,1)',fill:'both'}));
+    }
+    animations.push(sourceBrand.animate([
+      {opacity:1},{opacity:1,offset:1100/duration},{opacity:0,offset:1300/duration},{opacity:0},
+    ], {duration,fill:'both'}));
+    animations.push(targetBrand.animate([
+      {opacity:0}, {opacity:0,offset:1100/duration}, {opacity:1,offset:1300/duration}, {opacity:1},
+    ], {duration,easing:'linear',fill:'both'}));
+  }
+  requestAnimationFrame(() => preloader.classList.add('leaving'));
+  setTimeout(() => {
+    preloader.remove();
+    animations.forEach(animation => animation.cancel());
+  }, duration + 40);
 }
 
 // ===== 三栏宽度拖拽与本地记忆 =====
@@ -9427,7 +9527,7 @@ initPaneResizers();
 
 Promise.all([
   initialLoad,
-  new Promise(resolve => setTimeout(resolve, 650)),
+  new Promise(resolve => setTimeout(resolve, 950)),
 ]).then(hideAppPreloader);
 // 网络异常时也必须允许用户进入界面查看错误提示。
 setTimeout(hideAppPreloader, 6000);
@@ -10750,6 +10850,59 @@ initializeWorkspace();
 /* ---- companion.js ---- */
 /* One vector character shared by the launcher, chat and writing assistant. */
 (() => {
+  // Borrow real pane geometry, never mailbox content. Saved pane widths,
+  // font zoom and narrow layouts therefore share exactly the same silhouette.
+  const startup = document.getElementById('app-preloader');
+  if (startup) {
+    const frames = [...startup.querySelectorAll('[data-startup-pane]')];
+    frames.forEach(frame => {
+      const count = frame.dataset.startupPane === 'reading-pane' ? 3 : 5;
+      for (let index = 0; index < count; index++) {
+        const row = document.createElement('span');
+        row.className = 'preloader-skeleton-row';
+        row.innerHTML = '<i></i><b></b><em></em>';
+        frame.appendChild(row);
+      }
+    });
+    const alignFrames = () => {
+      const zoom = Number(getComputedStyle(document.body).zoom) || 1;
+      const origin = startup.getBoundingClientRect();
+      frames.forEach(frame => {
+        const pane = document.querySelector(`.layout > .${frame.dataset.startupPane}`);
+        const rect = pane?.getBoundingClientRect();
+        frame.hidden = !rect || !rect.width || !rect.height || rect.right <= 0 || rect.left >= innerWidth;
+        if (frame.hidden) return;
+        Object.assign(frame.style, {
+          left:`${(rect.left-origin.left)/zoom}px`, top:`${(rect.top-origin.top)/zoom}px`,
+          width:`${rect.width/zoom}px`, height:`${rect.height/zoom}px`,
+          borderRadius:getComputedStyle(pane).borderRadius,
+        });
+      });
+    };
+    // Responsive panes can slide without changing their measured size. Track
+    // the short layout transition too, then stop sampling once it settles.
+    let frameRequest = 0, followUntil = 0;
+    const followLayout = () => {
+      alignFrames();
+      frameRequest = performance.now() < followUntil ? requestAnimationFrame(followLayout) : 0;
+    };
+    const scheduleAlignment = () => {
+      followUntil = performance.now() + 500;
+      if (!frameRequest) frameRequest = requestAnimationFrame(followLayout);
+    };
+    const geometry = new ResizeObserver(scheduleAlignment);
+    document.querySelectorAll('.layout,.layout > .sidebar,.layout > .list-pane,.layout > .reading-pane,.topbar').forEach(el => geometry.observe(el));
+    window.addEventListener('resize', scheduleAlignment);
+    const cleanup = new MutationObserver(() => {
+      if (startup.isConnected) return;
+      geometry.disconnect();
+      window.removeEventListener('resize', scheduleAlignment);
+      cancelAnimationFrame(frameRequest);
+      cleanup.disconnect();
+    });
+    cleanup.observe(startup.parentNode, {childList:true});
+    alignFrames();
+  }
   const art = `<svg class="mail-companion" viewBox="0 0 112 112" fill="none" aria-hidden="true">
     <ellipse class="companion-shadow" cx="56" cy="102" rx="27" ry="4" fill="#254B3A" opacity=".12"/>
     <g class="companion-figure">
@@ -10783,6 +10936,19 @@ initializeWorkspace();
   document.querySelectorAll('.companion-art, .assistant-mini').forEach(host => {
     host.classList.add('companion-avatar');
     host.innerHTML = art;
+    if (host.classList.contains('preloader-companion')) {
+      const torso = host.querySelector('.companion-torso');
+      const arm = host.querySelector('.companion-wave');
+      host.classList.add('introducing');
+      torso.appendChild(arm);
+      startup.dataset.introUntil = String(performance.now() + 1850);
+      // Let the greeting arm stay in front until the character turns to walk.
+      setTimeout(() => {
+        if (!host.isConnected) return;
+        host.classList.remove('introducing');
+        torso.insertBefore(arm, torso.firstChild);
+      }, 1500);
+    }
   });
   const root = document.getElementById('mail-assistant');
   const orb = document.getElementById('assistant-orb');
@@ -10903,7 +11069,9 @@ initializeWorkspace();
       [.87,{figure:pose(0,-.5,.5)}], [1,{}],
     ]},
   };
-  const rigs = [...document.querySelectorAll('.mail-companion')].filter(svg => !svg.closest('.compose-perch')).map(svg => ({
+  // The startup mascot has its own strictly horizontal hand-off. Excluding it
+  // here prevents the ambient character clips from adding vertical movement.
+  const rigs = [...document.querySelectorAll('.mail-companion')].filter(svg => !svg.closest('.compose-perch,.app-preloader')).map(svg => ({
     svg, parts:Object.fromEntries(names.map(name=>[name,svg.querySelector(`.companion-${name}`)])),
     animations:[],timer:0,mode:'',next:0,
   }));

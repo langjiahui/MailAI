@@ -104,6 +104,11 @@ class AccountGuardMiddleware:
         path = scope.get("path", "")
         if scope["type"] != "http" or not path.startswith("/api/"):
             return await self.app(scope, receive, send)
+        # Device UI preferences contain no mail data and must remain writable
+        # before login and while an account is switching. Origin checks still
+        # run in the outer LocalOriginMiddleware.
+        if path in {"/api/ui-preferences", "/api/ui-preferences.js"}:
+            return await self.app(scope, receive, send)
         public = path in {
             "/api/system/config", "/api/system/mail/discover",
             "/api/system/mail/login", "/api/system/mail/logout",

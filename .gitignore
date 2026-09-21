@@ -27,3 +27,5 @@ docs/*.docx
 scripts/fill_competition_form.py
 scripts/refresh_competition_form_from_reference.py
 node_modules
+ui-preferences.sqlite3*
+webview/

@@ -54,7 +54,9 @@
       [.87,{figure:pose(0,-.5,.5)}], [1,{}],
     ]},
   };
-  const rigs = [...document.querySelectorAll('.mail-companion')].filter(svg => !svg.closest('.compose-perch')).map(svg => ({
+  // The startup mascot has its own strictly horizontal hand-off. Excluding it
+  // here prevents the ambient character clips from adding vertical movement.
+  const rigs = [...document.querySelectorAll('.mail-companion')].filter(svg => !svg.closest('.compose-perch,.app-preloader')).map(svg => ({
     svg, parts:Object.fromEntries(names.map(name=>[name,svg.querySelector(`.companion-${name}`)])),
     animations:[],timer:0,mode:'',next:0,
   }));

@@ -191,7 +191,9 @@ def run_windows_window(asgi_app, preferred_port: int = 0,
 
         window.events.loaded += page_loaded
         log.info("启动阶段：启动 Windows 窗口事件循环")
-        webview.start(runtime.start_tray, debug=False)
+        from .paths import USER_DIR
+        webview.start(runtime.start_tray, debug=False, private_mode=False,
+                      storage_path=str(USER_DIR / "webview"))
     finally:
         if runtime.tray:
             runtime.tray.stop()
