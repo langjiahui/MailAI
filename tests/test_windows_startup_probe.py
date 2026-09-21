@@ -10,6 +10,15 @@ sys.path.insert(0, str(ROOT))
 
 
 def main():
+    from unittest.mock import Mock, patch
+    from scripts.verify_windows_artifact import stop_probe_process
+    process = Mock(pid=12345)
+    process.poll.return_value = None
+    with patch('scripts.verify_windows_artifact.subprocess.run') as run:
+        stop_probe_process(process)
+        run.assert_called_once_with(['taskkill', '/PID', '12345', '/T', '/F'],
+                                    check=False, capture_output=True, timeout=15)
+        process.wait.assert_called_once_with(timeout=8)
     if '--child' not in sys.argv:
         with tempfile.TemporaryDirectory() as home:
             env = dict(os.environ, MAILAI_HOME=home, IMAP_USER='', IMAP_PASSWORD='',

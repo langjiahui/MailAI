@@ -42,6 +42,20 @@ def verify_startup(base_url):
         raise RuntimeError("isolated startup did not report a logged-out mailbox")
 
 
+def stop_probe_process(process):
+    if process.poll() is not None:
+        return
+    # Terminating only MailAI leaves WebView2 descendants holding the isolated
+    # persistent profile open. Target only this probe's PID and its children.
+    subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                   check=False, capture_output=True, timeout=15)
+    try:
+        process.wait(timeout=8)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait(timeout=8)
+
+
 def main():
     if sys.platform != "win32":
         raise SystemExit("Windows artifact verification must run on Windows")
@@ -90,13 +104,7 @@ def main():
                     time.sleep(0.5)
             raise SystemExit(f"Timed out waiting for MailAI.exe: {last_error}")
         finally:
-            if process.poll() is None:
-                process.terminate()
-                try:
-                    process.wait(timeout=8)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                    process.wait(timeout=8)
+            stop_probe_process(process)
             # TemporaryDirectory removes the profile: preserve diagnostics first.
             import shutil
             report_dir = ROOT / "build" / "windows-startup-diagnostics" / time.strftime("%Y%m%d-%H%M%S")
