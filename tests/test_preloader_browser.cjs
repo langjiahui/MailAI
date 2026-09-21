@@ -44,6 +44,15 @@ const {chromium} = require('playwright');
     };
     await checkRouteCards();
     const checkFrames = async () => {
+      // Zoom and responsive layout updates cross rendering frames; wait for
+      // actual geometry instead of assuming a CI machine settles in 60 ms.
+      await page.waitForFunction(() => [...document.querySelectorAll('[data-startup-pane]')].every(frame => {
+        if (frame.hidden) return true;
+        const pane = document.querySelector(`.layout > .${frame.dataset.startupPane}`);
+        if (!pane) return true;
+        const a = frame.getBoundingClientRect(), b = pane.getBoundingClientRect();
+        return ['x','y','width','height'].every(key => Math.abs(a[key]-b[key]) < 2);
+      }), null, {timeout:3000});
       for (const name of ['sidebar', 'list-pane', 'reading-pane']) {
         const frame = await page.locator(`[data-startup-pane="${name}"]`).boundingBox();
         const pane = await page.locator(`.layout > .${name}`).boundingBox();
