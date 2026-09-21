@@ -9,8 +9,10 @@ const flow = source.slice(start, end);
 
 assert.match(flow, /dataset\.originalHtml = el\.innerHTML/,
   'Loading state must preserve the original icon markup');
-assert.match(flow, /find\(child => child\.tagName === 'SPAN'\)/,
-  'Buttons with an icon must update only their visible label');
+assert.match(flow, /filter\(child => child\.tagName === 'SPAN'\)/,
+  'Buttons with an icon must discover their text labels without replacing SVG markup');
+assert.match(flow, /find\(child => getComputedStyle\(child\)\.display !== 'none'\)/,
+  'Responsive buttons must update only the label visible at the current width');
 assert.match(flow, /el\.innerHTML = el\.dataset\.originalHtml/,
   'Finishing loading must restore the complete button markup');
 assert.doesNotMatch(flow, /dataset\.originalText/,

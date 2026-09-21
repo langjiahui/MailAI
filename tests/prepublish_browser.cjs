@@ -19,6 +19,42 @@ const fs = require('node:fs');
     await count(24);
     const config = await page.evaluate(() => api('/api/system/config'));
     assert.ok(config.accounts.every(a => a.user.endsWith('@example.test')), 'Only the isolated fixture may be tested');
+    const historyControls = await page.evaluate(() => {
+      const footer = document.getElementById('list-footer').getBoundingClientRect();
+      const actions = document.querySelector('.fetch-actions').getBoundingClientRect();
+      const pane = document.querySelector('.list-pane').getBoundingClientRect();
+      const fetchAll = document.getElementById('btn-fetch-all');
+      const allBox = fetchAll.getBoundingClientRect();
+      return {
+        footerHeight: footer.height,
+        paneWidth: pane.width,
+        actionsWidth: actions.width,
+        centerOffset: Math.abs((actions.left + actions.width / 2) - (footer.left + footer.width / 2)),
+        allWidth: allBox.width,
+        moreName: document.getElementById('btn-fetch-more').getAttribute('aria-label'),
+        allName: fetchAll.getAttribute('aria-label'),
+      };
+    });
+    assert.ok(historyControls.centerOffset <= 2, 'History controls should be centered in the list footer');
+    assert.ok(historyControls.moreName && historyControls.allName, 'History actions need accessible names');
+    if (historyControls.paneWidth >= 390) {
+      assert.ok(historyControls.footerHeight >= 68 && historyControls.footerHeight <= 76, 'Wide history controls need a balanced two-row footer');
+      assert.ok(historyControls.actionsWidth <= 320, 'Wide history controls are too wide');
+      assert.ok(historyControls.allWidth >= 120, 'Wide secondary action should show its full label');
+      assert.match(await page.locator('#btn-fetch-more').innerText(), /载入更早邮件/);
+      assert.match(await page.locator('#btn-fetch-all').innerText(), /同步全部历史/);
+    } else {
+      assert.ok(historyControls.footerHeight <= 44, 'Compact history controls consume too much list height');
+      assert.ok(historyControls.actionsWidth <= 170, 'Compact history controls are too wide');
+      assert.ok(historyControls.allWidth <= 64, 'Compact secondary history action is too wide');
+      assert.match(await page.locator('#btn-fetch-more').innerText(), /20/);
+    }
+    await page.locator('#btn-fetch-all').click();
+    assert.equal(await page.locator('#fetch-all-confirm').isVisible(), true);
+    assert.match(await page.locator('#fetch-all-confirm').innerText(), /最早的邮件/);
+    await page.locator('[data-close-history-sync]').click();
+    assert.equal(await page.locator('#fetch-all-confirm').isVisible(), false);
+    pass('历史同步入口紧凑、主次清晰且具备可访问名称');
     await shot('home');
     await page.locator('#email-list .email-item').first().click();
     await page.locator('#reading-content .reading-section').first().waitFor();
@@ -131,6 +167,16 @@ const fs = require('node:fs');
     for(const width of [1280,1024,760]) {
       await page.setViewportSize({width,height:900});await page.waitForTimeout(250);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth<=innerWidth+1),`Overflow at ${width}`);
+      if (width <= 1024) {
+        const compactHeader = await page.evaluate(() => ({
+          height: document.querySelector('.topbar').getBoundingClientRect().height,
+          searchDisplay: getComputedStyle(document.querySelector('.global-search')).display,
+          wrapped: getComputedStyle(document.querySelector('.topbar')).flexWrap,
+        }));
+        assert.ok(compactHeader.height <= 66, `Topbar is too tall at ${width}`);
+        assert.equal(compactHeader.searchDisplay, 'none', `Search should collapse at ${width}`);
+        assert.equal(compactHeader.wrapped, 'nowrap', `Topbar should not wrap at ${width}`);
+      }
       await shot(`responsive-${width}`);
     }
     pass('1280/1024/760 三档布局无页面横向溢出');

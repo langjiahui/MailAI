@@ -759,6 +759,60 @@ html[data-theme="dark"] .list-footer button {
 html[data-theme="dark"] .list-footer .fetch-actions button + button { border-left-color:rgba(204,237,216,.16)!important; }
 html[data-theme="dark"] .list-footer .fetch-actions button:hover,
 html[data-theme="dark"] .list-footer button:hover { color:#f3fff8!important; background:rgba(92,151,119,.34)!important; }
+html[data-theme="dark"] .list-footer .fetch-actions {
+  padding:2px!important;
+  border-color:rgba(177,222,199,.14)!important;
+  border-radius:12px!important;
+  background:rgba(31,54,43,.72)!important;
+  box-shadow:0 8px 20px rgba(0,0,0,.16),inset 0 1px rgba(255,255,255,.045)!important;
+}
+html[data-theme="dark"] .list-footer .fetch-actions #btn-fetch-more {
+  min-height:28px!important;
+  color:#f4fff8!important;
+  background:linear-gradient(145deg,#438a6d,#306c53)!important;
+  box-shadow:0 4px 12px rgba(0,0,0,.18),inset 0 1px rgba(255,255,255,.12)!important;
+}
+html[data-theme="dark"] .list-footer .fetch-actions #btn-fetch-more:hover {
+  background:linear-gradient(145deg,#4e9878,#36775b)!important;
+}
+html[data-theme="dark"] .list-footer .fetch-actions #btn-fetch-all {
+  min-height:28px!important;
+  color:#a8c2b4!important;
+  background:transparent!important;
+  border-left:0!important;
+}
+html[data-theme="dark"] .history-sync-confirm {
+  border-color:rgba(177,222,199,.22)!important;
+  background:#18231d!important;
+  box-shadow:0 20px 48px rgba(0,0,0,.58),0 3px 12px rgba(0,0,0,.3),inset 0 1px rgba(255,255,255,.06)!important;
+}
+html[data-theme="dark"] .history-sync-confirm::after {
+  border-color:rgba(177,222,199,.14)!important;
+  background:#18231d!important;
+}
+html[data-theme="dark"] .history-sync-confirm-copy strong { color:#edf8f1!important; }
+html[data-theme="dark"] .history-sync-confirm-copy small { color:#9fb1a7!important; }
+html[data-theme="dark"] .history-sync-confirm-icon { color:#9dd0b5!important; background:rgba(91,158,124,.16)!important; }
+html[data-theme="dark"] .list-footer .fetch-actions .history-sync-confirm-actions button { color:#adbbb3!important; background:transparent!important; }
+html[data-theme="dark"] .list-footer .fetch-actions .history-sync-confirm-actions #btn-confirm-fetch-all {
+  color:#f4fff8!important;
+  background:linear-gradient(145deg,#438a6d,#306c53)!important;
+}
+@container mail-list-pane (min-width:390px) {
+  html[data-theme="dark"] .list-footer .fetch-actions {
+    padding:0!important;
+    border:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+  html[data-theme="dark"] .list-footer .fetch-actions #btn-fetch-all {
+    color:#b6c9bf!important;
+    border:1px solid rgba(151,199,175,.18)!important;
+    background:rgba(34,52,43,.7)!important;
+    box-shadow:0 5px 14px rgba(0,0,0,.12),inset 0 1px rgba(255,255,255,.04)!important;
+  }
+  html[data-theme="dark"] .list-footer .fetch-hint { color:#71847a!important; }
+}
 @media(max-width:520px) { .theme-options { grid-template-columns:1fr; } }
 
 /* Complete dark-surface pass: workspace dialogs and nested controls. */
@@ -1534,11 +1588,12 @@ html[data-theme="dark"] .special-mail-attachment-item {
 html[data-theme="dark"] .special-mail-attachment-item:hover { color:#effff6!important; border-color:rgba(157,226,187,.3)!important; background:rgba(60,118,85,.58)!important; }
 html[data-theme="dark"] .special-mail-attachment-item small { color:#9eb4a8!important; }
 
-/* Keep essential controls available in desktop-sized narrow windows. */
+/* Narrow windows use the compact one-row navigation from style.css. Keeping
+   search on a forced second row made the header look broken and consumed too
+   much vertical space, especially with larger interface text. */
 @media (max-width:1024px) {
-  .topbar { flex-wrap:wrap!important; height:auto!important; min-height:72px; }
-  .topbar .global-search { display:flex!important; order:20; width:100%; flex:1 1 100%; margin:4px 0 8px; }
-  .topbar .global-search input { width:100%; }
+  .topbar { flex-wrap:nowrap!important; height:64px!important; min-height:64px; }
+  .topbar .global-search { display:none!important; order:initial; width:auto; margin:0; }
 }
 body[data-density="compact"] .email-item .email-tags { display:flex!important; }
 body[data-density="compact"] .email-tags .tag:not(.tag-danger):not(.tag-warn) { display:none; }

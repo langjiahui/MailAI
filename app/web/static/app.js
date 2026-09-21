@@ -2148,7 +2148,8 @@ async function api(path, opts = {}) {
 function setLoading(el, loading, text) {
   if (loading) {
     if (!el.classList.contains('loading')) el.dataset.originalHtml = el.innerHTML;
-    const label = [...el.children].reverse().find(child => child.tagName === 'SPAN');
+    const labels = [...el.children].filter(child => child.tagName === 'SPAN');
+    const label = labels.find(child => getComputedStyle(child).display !== 'none') || labels.at(-1);
     if (label) label.textContent = text || '处理中…';
     else el.textContent = text || '处理中…';
     el.disabled = true;
@@ -2927,6 +2928,12 @@ function updateListTitle(count) {
   countNode.title = serverTotal > count && hasFacet
     ? (mailaiT('list.countScopedTitle') || '当前筛选结果 {count} 封；邮箱范围共 {total} 封').replace('{count}', count).replace('{total}', serverTotal)
     : '';
+  const fetchHint = document.getElementById('fetch-hint');
+  if (fetchHint) {
+    fetchHint.textContent = serverTotal > count && !hasFacet
+      ? (mailaiT('list.loadedRange') || '已显示最近 {count} 封，共 {total} 封').replace('{count}', count).replace('{total}', serverTotal)
+      : (!hasFacet && count ? (mailaiT('list.loadedCount') || '已载入 {count} 封').replace('{count}', count) : '');
+  }
 }
 
 function specialMailboxRows() {
@@ -7045,10 +7052,32 @@ document.getElementById('btn-fetch-more').addEventListener('click', async () => 
   }
 });
 
-document.getElementById('btn-fetch-all').addEventListener('click', async () => {
+const fetchAllButton = document.getElementById('btn-fetch-all');
+const fetchAllConfirm = document.getElementById('fetch-all-confirm');
+const closeFetchAllConfirm = (restoreFocus = false) => {
+  fetchAllConfirm.classList.add('hidden');
+  fetchAllButton.setAttribute('aria-expanded', 'false');
+  if (restoreFocus) fetchAllButton.focus();
+};
+fetchAllButton.addEventListener('click', event => {
+  event.stopPropagation();
+  const opening = fetchAllConfirm.classList.contains('hidden');
+  if (!opening) return closeFetchAllConfirm(true);
+  fetchAllConfirm.classList.remove('hidden');
+  fetchAllButton.setAttribute('aria-expanded', 'true');
+  document.getElementById('btn-confirm-fetch-all').focus();
+});
+fetchAllConfirm.addEventListener('click', event => event.stopPropagation());
+fetchAllConfirm.querySelector('[data-close-history-sync]').addEventListener('click', () => closeFetchAllConfirm(true));
+document.addEventListener('click', () => closeFetchAllConfirm(false));
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && !fetchAllConfirm.classList.contains('hidden')) closeFetchAllConfirm(true);
+});
+
+document.getElementById('btn-confirm-fetch-all').addEventListener('click', async () => {
   const btn = document.getElementById('btn-fetch-all');
-  if (!confirm('确定要拉取收件箱全部历史邮件吗？\n邮件较多时会消耗一定时间和 LLM 额度。')) return;
-  setLoading(btn, true, '拉取中…');
+  closeFetchAllConfirm(false);
+  setLoading(btn, true, '同步中…');
   try {
     await api('/api/fetch_all', { method: 'POST' });
     startFetchMonitor();
