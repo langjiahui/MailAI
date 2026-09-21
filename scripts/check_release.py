@@ -24,6 +24,7 @@ TESTS = (
     'test_cc_reading.py',
     'test_trash_purge.py',
     'test_model_providers.py',
+    'test_model_usage.py',
     'test_live_diagnostics.py',
     'test_optimization_guards.py', 'test_interaction_fixes.py', 'test_pinyin_search.py',
     'test_resource_safety.py',

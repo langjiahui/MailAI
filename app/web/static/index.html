@@ -17,7 +17,7 @@
     })();
   </script>
   <link rel="icon" type="image/png" href="/static/assets/mailai-mark.png" />
-  <link rel="stylesheet" href="/static/style.css?v=startup-contour-11" />
+  <link rel="stylesheet" href="/static/style.css?v=model-usage-1" />
   <link rel="stylesheet" href="/static/workspace.css?v=trash-purge-1" />
   <link rel="stylesheet" href="/static/companion.css?v=mint-4" />
   <link rel="stylesheet" href="/static/theme.css?v=startup-contour-8" />
@@ -302,7 +302,7 @@
           </section>
         </div>
         <details class="admin-settings">
-          <summary><span><b data-i18n="model.summaryTitle">模型服务配置</b><small data-i18n="model.summaryHint">接入自部署模型、DeepSeek、Kimi Code 或其他厂商</small></span><i data-i18n="model.expand">展开</i></summary>
+          <summary><span><b data-i18n="model.summaryTitle">模型服务配置</b><small data-i18n="model.summaryHint">接入自部署模型、DeepSeek、Kimi Code 或其他厂商</small></span><button type="button" id="model-usage-open" aria-haspopup="dialog">累计使用 <b id="model-usage-total">—</b> Tokens ›</button><i data-i18n="model.expand">展开</i></summary>
           <form id="model-config-form" class="connection-card">
             <div class="connection-card-head"><div><span class="connection-icon">AI</span><h3 data-i18n="model.cardTitle">模型 API</h3></div><span id="model-status" class="connection-status" data-i18n="model.statusUnknown">未检测</span></div>
             <label><span data-i18n="model.provider">模型服务商</span><select id="model-provider"><option value="custom" data-i18n="model.providerCustom">自部署模型</option><option value="deepseek">DeepSeek</option><option value="kimi" data-i18n="model.providerKimi">Kimi（月之暗面）</option><option value="kimi_code" data-i18n="model.providerKimiCode">Kimi Code（编程订阅）</option><option value="other" data-i18n="model.providerOther">其他厂商（通用 API）</option></select></label>
@@ -931,6 +931,6 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=50097cb0d1d5"></script>
+  <script src="/static/bundle.js?v=7a3c1607ec5d"></script>
 </body>
 </html>

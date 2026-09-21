@@ -5,9 +5,9 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v2.2.6**
+当前版本：**v2.2.7**
 
-本次更新：已删除邮件清理的“仅本地完成”提示新增“已知晓”，确认后不再占用待处理提醒，按邮箱隔离并跨重启保存；保留防止已删除邮件重新同步回来的标记，不影响服务器待同步及原文文件清理任务，新出现的未确认结果仍会提醒。
+本次更新：新增本机 MailAI Token 用量统计，模型配置栏展示累计用量，点击可按时间、邮箱查看各 API／模型的输入、输出、总量与调用次数；数据本地保存，不读取订阅额度，未报告用量单独标注，历史用量不补算。补齐 Kimi Code 流式用量请求，接收正文结束后的用量事件，修复日报和小邮交互统计遗漏；邮件变化时同步刷新侧栏未读角标，减少等待。
 
 ## 下载 MailAI
 

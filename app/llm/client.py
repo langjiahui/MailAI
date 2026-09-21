@@ -11,6 +11,7 @@ from typing import Any
 
 from .. import config
 from .providers import completion_url, adapt_body
+from . import usage
 
 log = logging.getLogger(__name__)
 MAX_RESPONSE_BYTES = 4 * 1024 * 1024
@@ -94,10 +95,16 @@ def chat_completion(messages: list[dict[str, Any]], *, response_format: dict | N
         url, data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
         headers={"Authorization": f"Bearer {effective_api_key}",
                  "Content-Type": "application/json; charset=utf-8"}, method="POST")
+    usage_ctx = usage.context(provider or config.LLM_PROVIDER, url, body['model'])
+    result = None
     try:
         deadline = time.monotonic() + min(timeout or config.LLM_TIMEOUT, 300)
         with urllib.request.urlopen(req, context=_ssl_context(verify_ssl), timeout=min(timeout or config.LLM_TIMEOUT, 300)) as resp:
             raw = b''.join(_response_chunks(resp, deadline)).decode("utf-8")
+            try:
+                result = json.loads(raw)
+            except json.JSONDecodeError:
+                pass
     except urllib.error.HTTPError as e:
         log.warning("LLM HTTP %s", e.code)
         e.close()
@@ -117,6 +124,8 @@ def chat_completion(messages: list[dict[str, Any]], *, response_format: dict | N
         if raise_errors:
             raise RuntimeError("模型请求失败，请检查接口与响应格式") from None
         return None
+    finally:
+        usage.record(usage_ctx, result if isinstance(result, dict) else None)
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
@@ -139,7 +148,13 @@ def chat_completion_stream(messages: list[dict[str, Any]], *, temperature: float
     }
     if max_tokens:
         body["max_tokens"] = max_tokens
+    # Unknown gateways retain their existing request contract. They can opt in
+    # through extra_params; absent usage is explicitly recorded as unreported.
+    if config.LLM_PROVIDER in ('deepseek', 'kimi', 'kimi_code', 'ollama'):
+        body['stream_options'] = {'include_usage': True}
     body = adapt_body(body, config.LLM_PROVIDER, config.LLM_EXTRA_PARAMS)
+    usage_ctx = usage.context(config.LLM_PROVIDER, url, body['model'])
+    usage_response = None
     req = urllib.request.Request(
         url, data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
         headers={"Authorization": f"Bearer {config.LLM_API_KEY}",
@@ -161,6 +176,8 @@ def chat_completion_stream(messages: list[dict[str, Any]], *, temperature: float
                     break
                 try:
                     event = json.loads(payload)
+                    if event.get('usage'):
+                        usage_response = event
                     choice = event.get("choices", [{}])[0]
                     if choice.get('finish_reason') == 'length' and require_completion:
                         raise RuntimeError('模型输出达到长度上限，分析尚未完成')
@@ -181,8 +198,7 @@ def chat_completion_stream(messages: list[dict[str, Any]], *, temperature: float
                             raise RuntimeError('模型输出过长，请分批分析')
                         emitted = True
                         yield content
-                    if finished:
-                        break
+                    # Final usage can arrive after finish_reason, with choices=[].
                 except (json.JSONDecodeError, TypeError, IndexError):
                     continue
         if require_completion and emitted and not finished:
@@ -192,6 +208,8 @@ def chat_completion_stream(messages: list[dict[str, Any]], *, temperature: float
         if require_completion and emitted:
             raise RuntimeError('分析连接中断，请重试') from exc
         return
+    finally:
+        usage.record(usage_ctx, usage_response)
 
 def _extract_json(text: str) -> dict | None:
     text = text.strip()

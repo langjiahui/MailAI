@@ -3943,7 +3943,7 @@ async function refreshMailboxIfChanged(force = false) {
     mailboxRevisionToken = state.revision;
     // 账户任务状态变化不一定修改邮件，但无需每 15 秒读取完整系统配置。
     const now = Date.now();
-    if (now - mailboxConfigCheckedAt >= 60000) {
+    if (force || changed || now - mailboxConfigCheckedAt >= 60000) {
       mailboxConfigCheckedAt = now;
       const latest = await api('/api/system/config');
       const activeId = activeMailAccount()?.id;

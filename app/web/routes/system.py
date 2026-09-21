@@ -20,6 +20,14 @@ log = logging.getLogger(__name__)
 router = APIRouter()
 
 
+@router.get('/api/system/model-usage')
+def api_model_usage(period: str = 'all', account: str = ''):
+    from ...llm.usage import summary
+    if period not in ('all', 'today', 'month'):
+        raise HTTPException(400, '无效统计周期')
+    return summary(period, account)
+
+
 @router.get("/api/system/config")
 def api_system_config():
     return system_settings.public_config()

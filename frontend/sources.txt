@@ -15,3 +15,4 @@ assistant-attachments.js
 companion.js
 companion-motion.js
 onboarding.js
+model-usage.js

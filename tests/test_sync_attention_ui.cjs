@@ -99,7 +99,14 @@ assert.match(src, /sidebar-account-identity[\s\S]{0,400}account\.user\.split\('@
   await refresh.refreshMailboxIfChanged();
   assert.equal(refresh.mailboxRevisionToken,'old','Failed list loading must be retried on the next heartbeat');
   refresh.loadData=async()=>true;
+  let sidebarRenders=0;
+  refresh._systemConfig={accounts:[{id:'work',unread:0}]};
+  refresh.activeMailAccount=()=>({id:'work'});
+  refresh.renderSidebarAccounts=()=>sidebarRenders++;
+  refresh.api=async path=>path==='/api/system/config' ? {accounts:[{id:'work',unread:3}]} : {revision:'new'};
   await refresh.refreshMailboxIfChanged();
   assert.equal(refresh.mailboxRevisionToken,'new');
+  assert.equal(refresh._systemConfig.accounts[0].unread,3,'New mail refreshes badges without waiting one minute');
+  assert.equal(sidebarRenders,1);
   console.log('Sidebar labels, notification rendering, stale polls and acknowledgment passed');
 })().catch(e=>{console.error(e);process.exitCode=1;});
