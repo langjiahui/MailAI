@@ -128,16 +128,21 @@ const {chromium} = require('playwright');
       'the hand-off should include a walking foot cycle');
     assert(walkingParts.some(value => value.includes('companion-bag')),
       'the envelope bag should follow through during the walk');
-    await page.waitForTimeout(885);
+    // Inspect exact terminal keyframes while the overlay is still alive.
+    // A wall-clock sample 55 ms before removal races on shared CI runners.
+    await page.locator('.preloader-companion').evaluate(el => el.getAnimations().forEach(animation => animation.finish()));
     const after = await page.locator('.preloader-companion').boundingBox();
     assert(after.x > before.x + 300, 'XiaoYou should move horizontally toward the persistent launcher');
     assert(Math.abs(after.x - target.x) < 2 && Math.abs(after.y - target.y) < 2,
       'XiaoYou should finish at the persistent launcher’s exact rectangle');
     assert(Math.abs(after.width - target.width) < 2 && Math.abs(after.height - target.height) < 2,
       'XiaoYou should smoothly adopt the persistent launcher’s exact scale');
-    const brandOpacity = await page.locator('.topbar .brand').evaluate(el => Number(getComputedStyle(el).opacity));
+    const brandOpacity = await page.locator('.topbar .brand').evaluate(el => {
+      el.getAnimations().forEach(animation => animation.finish());
+      return Number(getComputedStyle(el).opacity);
+    });
     assert(brandOpacity > .95, 'the startup brand should cross-fade into the real topbar brand');
-    await page.waitForTimeout(150);
+    await preloader.waitFor({state:'detached'});
 
     // CSS zoom changes visual coordinates; verify the logo's actual pieces,
     // not just the opacity of its parent, before the cross-fade completes.
