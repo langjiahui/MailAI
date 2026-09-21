@@ -724,17 +724,20 @@ def test_model(values: dict | None = None) -> dict:
                     "multimodal": {"checked": False, "supported": False}}
 
         # A model-list endpoint rarely gives portable, trustworthy capability metadata.
-        # Probe the exact configured model with a 1×1 PNG instead. It is deliberately
-        # tiny, does not include user data, and works with OpenAI-compatible APIs.
+        # Probe the exact configured model with a tiny synthetic PNG instead. It is
+        # deliberately small, contains no user data, and works with OpenAI-compatible APIs.
+        # Note: some gateways (e.g. Kimi Code) reject 1×1 probe pixels as "unsupported
+        # image format", so the probe is a real 96×96 drawing; and reasoning models may
+        # spend a few hundred tokens before the visible reply, so max_tokens stays high.
         vision_request = [{"role": "user", "content": [
             {"type": "text", "text": "请确认你收到了一张测试图片，只回复 OK。"},
             {"type": "image_url", "image_url": {"url": (
-                "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9J3i8AAAAASUVORK5CYII="
+                "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAIAAABt+uBvAAABLklEQVR42u3b0Q0BQRQFUDtRhKYkavCpAiWowKcaJJrySaIABSCZnZ2RfTvnfgovnNxnkzWGx+u5kt9JCAABAgQIECBAgAQQoPpZ5zxpez7+7Q3dDicNsmKAAAkgQIAAAQIECBAgAQQIECBAgAABEkCAAAECBAgQIAEECBAgQIDiZ/B/MQ0CBGg183PSM8/9uv98cLO79P4l/dWlulRIoEyaKkypB53iVwVrUPGHnFKl1JVOwRyX+UUA1apPwbTUm87YmVYsOFCL+oyarEGAFgzUbr/y52sQIECAAAEC1CS17itPma9BgJYN1G7LMidrUHygFiXKnxmjQXWNRk2zYksBqlWisXPi/fRcfJOojDjeipV9zuICOt3RwRlF54NcxQABAgRIAAECBAhQtLwBOSlWOS7d9dMAAAAASUVORK5CYII="
             )}},
         ]}]
         try:
             visual_result = llm_client.chat_completion(
-                vision_request, temperature=0, max_tokens=32, timeout=30,
+                vision_request, temperature=0, max_tokens=512, timeout=30,
                 raise_errors=True, **{**resolved, "model": multimodal_model})
             visual_choices = visual_result.get('choices') if isinstance(visual_result, dict) else None
             visual_choice = (visual_choices or [{}])[0] if isinstance(visual_choices, list) else {}
