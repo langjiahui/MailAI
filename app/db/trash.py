@@ -74,6 +74,10 @@ def retry_trash_action(email_ids: list[int], error: str):
 def finish_trash_action(email_id: int, target: str, target_uid: int | None):
     """Commit the local result; unknown target UIDs are learned by the next folder sync."""
     with conn() as c:
+        c.execute('BEGIN IMMEDIATE')
+        active = c.execute("SELECT pending_action FROM emails WHERE id=?", (email_id,)).fetchone()
+        if not active or not str(active['pending_action'] or '').startswith('trash'):
+            return False  # Locally purged/restored while the IMAP request was running.
         if target_uid:
             canonical = c.execute(
                 "SELECT id FROM emails WHERE folder=? AND uid=? AND id<>?",
@@ -99,6 +103,7 @@ def finish_trash_action(email_id: int, target: str, target_uid: int | None):
                 "pending_target_uid=NULL,pending_due_at=NULL,pending_attempts=0,pending_error='' WHERE id=?",
                 (target, email_id),
             )
+        return True
 
 
 def cancel_pending_trash(email_id: int) -> bool:

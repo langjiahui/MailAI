@@ -966,3 +966,8 @@ html[data-theme="dark"] .reading-selection-sheet-head{border-color:#456951}html[
 .reading-header .reading-actions :is(.reading-icon-action,.reading-work-actions button,.reading-decision-actions button,.reading-ai-group>button):hover{background:#eaf4ed;border-color:#b9d7c4;color:#286447}
 .reading-header .reading-actions :is(.reading-icon-action,.reading-work-actions button,.reading-decision-actions button,.reading-ai-group>button):focus-visible{outline:2px solid #3d9670;outline-offset:2px}
 @container (max-width: 1080px){.reading-header .reading-actions :is(.reading-icon-action,.reading-work-actions button,.reading-decision-actions button,.reading-ai-group>button){width:36px;padding:0}.reading-header .reading-actions :is(.reading-action-label,.reading-work-actions button span,.reading-decision-actions button span,.reading-ai-group>button span){display:none}}
+/* Trash actions stay secondary; destructive intent is explicit on hover/focus. */
+#btn-empty-trash { color:var(--muted); white-space:nowrap; }
+#btn-empty-trash:hover, #btn-empty-trash:focus-visible,
+.bulk-actions [data-bulk-action="purge"] { color:#c45c56; }
+#btn-empty-trash:disabled { opacity:.5; cursor:wait; }

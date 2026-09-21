@@ -90,6 +90,19 @@ CREATE TABLE IF NOT EXISTS seen_sync_jobs (
     last_error TEXT DEFAULT '',
     updated_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS trash_tombstones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    account TEXT NOT NULL, host TEXT NOT NULL,
+    folder TEXT NOT NULL, uid INTEGER NOT NULL, uid_validity INTEGER NOT NULL DEFAULT 0,
+    raw_digest TEXT NOT NULL DEFAULT '', content_digest TEXT NOT NULL DEFAULT '', raw_path TEXT NOT NULL DEFAULT '',
+    state TEXT NOT NULL DEFAULT 'pending', attempts INTEGER NOT NULL DEFAULT 0,
+    due_at REAL NOT NULL DEFAULT 0, error TEXT NOT NULL DEFAULT '',
+    cleanup_error TEXT NOT NULL DEFAULT '', created_at REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_trash_tombstone_identity ON trash_tombstones(account,host,folder,uid,uid_validity);
+CREATE INDEX IF NOT EXISTS idx_trash_tombstone_digest ON trash_tombstones(account,host,raw_digest);
+CREATE INDEX IF NOT EXISTS idx_trash_tombstone_content ON trash_tombstones(account,host,content_digest);
+CREATE INDEX IF NOT EXISTS idx_trash_tombstone_due ON trash_tombstones(account,host,state,due_at,id);
 CREATE INDEX IF NOT EXISTS idx_seen_sync_jobs_due ON seen_sync_jobs(due_at);
 CREATE TABLE IF NOT EXISTS todos (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

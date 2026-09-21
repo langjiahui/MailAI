@@ -1,7 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
-const {chromium} = require('playwright');
+const {chromium, webkit} = require('playwright');
 
 (async () => {
   const root = path.join(__dirname, '../app/web/static');
@@ -12,7 +12,8 @@ const {chromium} = require('playwright');
   );
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8')
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, '');
-  const browser = await chromium.launch({...(process.env.CI ? {} : {channel:'chrome'}), headless: true});
+  const useWebKit = process.env.MAILAI_PRELOADER_WEBKIT === '1';
+  const browser = await (useWebKit ? webkit : chromium).launch({...(process.env.CI || useWebKit ? {} : {channel:'chrome'}), headless: true});
   try {
     const page = await browser.newPage({viewport: {width: 1440, height: 900}, recordVideo:{dir:path.resolve(__dirname,'../build/startup-video'),size:{width:1440,height:900}}});
     await page.route('http://mailai.test/**', route => {
@@ -34,6 +35,10 @@ const {chromium} = require('playwright');
       'the mail route must be a single continuous curve');
     assert.equal(await page.locator('.preloader-route-line path').evaluate(el => getComputedStyle(el).vectorEffect), 'non-scaling-stroke',
       'route stroke weight must survive responsive resizing');
+    assert.equal(await page.locator('.preloader-mail').count(), 2, 'only two quiet envelope markers remain');
+    assert.equal(await page.locator('.preloader-brand img').evaluate(el => parseFloat(getComputedStyle(el).width)), 38);
+    assert.equal(await page.locator('.preloader-route-line').evaluate(el => parseFloat(getComputedStyle(el).strokeWidth)), 1.1);
+    const initialRoute = await page.locator('#preloader-route-path').getAttribute('d');
     const checkRouteCards = async () => {
       const track = await page.locator('.preloader-route').boundingBox();
       for (const card of await page.locator('.preloader-mail').all()) {
@@ -114,10 +119,17 @@ const {chromium} = require('playwright');
     const before = await page.locator('.preloader-companion').boundingBox();
     const target = await page.locator('#assistant-orb .companion-art').boundingBox();
     await page.evaluate(() => hideAppPreloader());
-    await page.waitForTimeout(900);
+    await page.waitForTimeout(150);
+    assert(await preloader.evaluate(el => el.classList.contains('completion-confirmed')));
+    assert.match(await page.locator('.preloader-status span').textContent(), /工作台已就绪|Workspace ready/);
+    assert.equal(await page.locator('.preloader-brand .mailai-wordmark-ai').evaluate(el => getComputedStyle(el).display), 'inline');
+    await page.screenshot({path:path.resolve(__dirname,'../build/preloader-complete.png')});
+    await page.waitForTimeout(750);
     assert(await page.locator('.preloader-workspace').evaluate(el => Number(getComputedStyle(el).opacity) < .5),
       'workspace silhouettes should dissolve as the real panes emerge');
     const middle = await page.locator('.preloader-companion').boundingBox();
+    assert.notEqual(await page.locator('#preloader-route-path').getAttribute('d'), initialRoute,
+      'the contour must reshape into the reading pane rather than simply slide away');
     assert(middle.x > before.x && middle.x < target.x,
       'the hand-off should interpolate through an in-between position');
     assert(middle.width < before.width && middle.width > target.width,
@@ -164,6 +176,13 @@ const {chromium} = require('playwright');
       'fast initialization must not interrupt the birth or welcome');
     await page.waitForFunction(() => document.getElementById('app-preloader')?.dataset.handoff === 'running');
     await page.waitForTimeout(1150);
+    const contourAlignment = await page.evaluate(() => {
+      const path = document.getElementById('preloader-route-path');
+      const p = path.getPointAtLength(path.getTotalLength()/2);
+      const point = new DOMPoint(p.x,p.y).matrixTransform(path.getScreenCTM());
+      return Math.abs(point.y - (document.querySelector('.layout > .reading-pane').getBoundingClientRect().bottom - 1));
+    });
+    assert(contourAlignment < 2, 'zoomed route must land on the real reading pane bottom edge');
     for (const selector of ['img', 'strong', 'small']) {
       const from = await page.locator(`.preloader-brand ${selector}`).boundingBox();
       const to = await page.locator(`.topbar .brand ${selector}`).boundingBox();
@@ -179,6 +198,7 @@ const {chromium} = require('playwright');
     await page.addScriptTag({path: path.join(root, 'companion.js')});
     await page.emulateMedia({reducedMotion: 'reduce'});
     assert.equal(await page.locator('.preloader-mail-one').evaluate(el => getComputedStyle(el).animationName), 'none');
+    assert.equal(await page.locator('.preloader-route-sheen').evaluate(el => getComputedStyle(el).animationName), 'none');
     assert(!await page.locator('.preloader-companion').evaluate(el => el.getAnimations({subtree:true}).some(animation => {
       const target = animation.effect?.target;
       return target?.closest?.('.companion-figure');

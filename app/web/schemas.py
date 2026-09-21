@@ -40,6 +40,13 @@ class BulkMailRequest(BaseModel):
     target: str = ""
 
 
+class TrashPurgeRequest(BaseModel):
+    ids: list[int] = Field(default_factory=list, max_length=10000)
+    empty: bool = False
+    token: str = ""
+    confirmed: bool = False
+
+
 class AllowlistRequest(BaseModel):
     domain: str
     kind: str = "domain"

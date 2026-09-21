@@ -4954,7 +4954,7 @@ function showMailContextMenu(x, y, id) {
     <div class="mail-context-separator"></div>
     <button type="button" role="menuitem" data-context-action="folders">${mailContextIcon('<path d="M3.5 6h5l1.5 2h6.5v8h-13z"/>')}<span>移动到文件夹</span><b>›</b></button>
     <div class="mail-context-folders hidden">${folderOptions || '<small>暂无可用文件夹</small>'}</div>
-    ${!inTrash ? `<button type="button" class="danger" role="menuitem" data-context-action="trash">${mailContextIcon('<path d="M4 6h12M7 6V4h6v2M6 8l.7 8h6.6l.7-8M8.5 9.5v4M11.5 9.5v4"/>')}<span>移入已删除</span></button>` : '<div class="mail-context-summary"><small>已在回收站，可恢复；此处不执行永久删除</small></div>'}
+    ${!inTrash ? `<button type="button" class="danger" role="menuitem" data-context-action="trash">${mailContextIcon('<path d="M4 6h12M7 6V4h6v2M6 8l.7 8h6.6l.7-8M8.5 9.5v4M11.5 9.5v4"/>')}<span>移入已删除</span></button>` : '<button type="button" class="danger" role="menuitem" data-context-action="purge"><span>彻底删除…</span></button>'}
     <div class="mail-context-separator"></div>
     <button type="button" role="menuitem" data-context-action="select-all">${mailContextIcon('<path d="M4 4h12v12H4zM7 10l2 2 4-4"/>')}<span>全选当前列表</span><kbd>⌘A</kbd></button>
     ${count > 1 ? `<button type="button" role="menuitem" data-context-action="clear">${mailContextIcon('<path d="m6 6 8 8M14 6l-8 8"/>')}<span>取消选择</span><kbd>Esc</kbd></button>` : ''}`;
@@ -4969,6 +4969,9 @@ function showMailContextMenu(x, y, id) {
 
 function updateBulkToolbar() {
   const toolbar = document.getElementById('bulk-toolbar');
+  const trashView = currentFilter.status === 'trash' && !unifiedMailbox && !specialMailbox;
+  toolbar.querySelector('[data-bulk-action="purge"]')?.classList.toggle('hidden', !trashView);
+  document.getElementById('btn-empty-trash')?.classList.toggle('hidden', !trashView);
   toolbar.querySelector('[data-bulk-action="trash"]')?.classList.toggle('hidden', currentFilter.status === 'trash');
   toolbar.classList.toggle('hidden', (!selectedMailIds.size && !bulkOperationActive) || !!specialMailbox);
   if (!bulkOperationActive) document.getElementById('bulk-count').textContent = `已选 ${selectedMailIds.size} 封`;
@@ -5055,6 +5058,7 @@ function setBulkOperationState(active, label = '', count = selectedMailIds.size)
 }
 
 async function runBulkAction(action, target = '') {
+  if (action === 'purge') return purgeTrash(false);
   if (unifiedMailbox) return toast('请先选择具体邮箱，再批量处理邮件', 'warn');
   if (bulkOperationActive || !selectedMailIds.size) return;
   if (action === 'trash' && (currentFilter.status === 'trash' || [...selectedMailIds].some(id => allEmails.find(e => Number(e.id) === Number(id))?.status === 'trash'))) return toast('邮件已在已删除中，请使用恢复操作', 'warn');
@@ -5098,6 +5102,38 @@ async function runBulkAction(action, target = '') {
   } finally {
     setBulkOperationState(false);
   }
+}
+
+async function purgeTrash(empty) {
+  if (unifiedMailbox || specialMailbox || currentFilter.status !== 'trash' || bulkOperationActive) return;
+  const accountId = activeMailAccount()?.id;
+  const ids = [...selectedMailIds];
+  if (!empty && !ids.length) return;
+  const button = document.getElementById('btn-empty-trash');
+  button.disabled = true;
+  setBulkOperationState(true, '正在核对已删除邮件', ids.length);
+  try {
+    const request = (path, body) => api(`/api/trash/purge/${path}`, {
+      accountId, method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
+    });
+    const preview = await request('preview', {ids, empty});
+    if (!preview.count) return toast('没有可删除的本地邮件；受保护的邮件暂时保留', 'info');
+    if (activeMailAccount()?.id !== accountId) return;
+    const scope = empty ? '当前邮箱本地已删除邮件（包括未展示的本地记录，不受搜索条件限制；不包含仅存在于服务器的邮件）' : '选中的本地已删除邮件';
+    if (!window.confirm(`${empty ? '清空本地已删除' : '彻底删除所选邮件'}？\n\n邮箱：${preview.account}\n范围：${scope}\n数量：${preview.count} 封${preview.skipped ? `\n另有 ${preview.skipped} 封正在处理，暂时保留` : ''}\n\n本地邮件和原文将删除，无法撤销。服务器删除将在后台尽力同步；失败不影响本地使用，远端可能仍保留邮件。`)) return;
+    setBulkOperationState(true, '正在删除本地邮件', preview.count);
+    const result = await request('execute', {token:preview.token, confirmed:true});
+    toast(`本地已删除 ${result.completed} 封${result.pending ? '，服务器待同步' : ''}${result.blocked ? '；部分远端邮件仍可能保留' : ''}${result.cleanup_pending ? '；部分原文文件待清理' : ''}${result.errors.length ? '；' + result.errors.join('；') : ''}`, result.errors.length || result.cleanup_pending ? 'warn' : 'success');
+    if (typeof refreshTaskCenter === 'function') refreshTaskCenter({lightweight:true});
+    if (activeMailAccount()?.id === accountId) {
+      selectedMailIds.clear(); selectionAnchorId = null;
+      selectedEmailId = null; selectedEmailDetail = null;
+      document.getElementById('reading-content').classList.add('hidden');
+      document.getElementById('reading-empty').classList.remove('hidden');
+      await loadData();
+    }
+  } catch (error) { toast('彻底删除未完成：' + error.message, 'error'); }
+  finally { button.disabled = false; setBulkOperationState(false); }
 }
 
 function readSyncKey(id, accountId) {
@@ -5760,8 +5796,6 @@ async function openAccountMailbox(accountId, mailbox) {
   currentFilter.verdict = ''; currentFilter.category = '';
   if (currentFilter.days !== 9999) { currentFilter.days = 9999; setSegmentedFilter('filter-days', '9999'); }
   if (mailbox === 'trash') {
-    await loadMailboxFolders();
-    if (navigationRevision !== mailboxNavigationRevision || activeMailAccount()?.id !== accountId) return;
     await openTrashMailbox({resetPane:false});
     return;
   }
@@ -5785,16 +5819,32 @@ async function openTrashMailbox({resetPane = true} = {}) {
   document.getElementById('filter-attachments').checked = false;
   currentFilter.unread = false; document.getElementById('filter-unread').checked = false;
   const accountId = activeMailAccount()?.id;
+  const navigationRevision = mailboxNavigationRevision;
+  const isCurrent = () => navigationRevision === mailboxNavigationRevision &&
+    currentFilter.status === 'trash' && !unifiedMailbox && !specialMailbox &&
+    activeMailAccount()?.id === accountId;
   updateActiveNav();
   renderSidebarAccounts();
   document.getElementById('list-title').textContent = mailaiT('side.trash') || '已删除';
   document.getElementById('email-list').innerHTML = `<div class="email-empty"><div class="empty-text">${mailaiT('list.loadingTrash') || '正在读取已删除邮件…'}</div></div>`;
+  // Local browsing must not wait for IMAP LIST/STATUS or a slow remote sync.
+  await loadData();
+  if (!isCurrent()) return;
+  const foldersLoaded = await loadMailboxFolders({quiet:true});
+  if (!isCurrent()) return;
+  if (!foldersLoaded) {
+    toast('已显示本地已删除邮件；服务器暂时无法连接，可稍后刷新同步', 'warn');
+    return;
+  }
   const folder = serverFolderForRole('trash')?.name;
   if (folder) {
     try { await api(`/api/mail/folders/sync?folder=${encodeURIComponent(folder)}`, {method:'POST',accountId}); }
-    catch (err) { toast('服务器已删除邮件同步失败，将显示本地记录：' + err.message, 'warn'); }
+    catch (err) {
+      if (isCurrent()) toast('已显示本地已删除邮件；服务器同步暂未完成：' + err.message, 'warn');
+      return;
+    }
   }
-  if (currentFilter.status === 'trash' && activeMailAccount()?.id === accountId) await loadData();
+  if (folder && isCurrent()) await loadData();
 }
 
 async function openUnifiedInbox() {
@@ -7498,6 +7548,7 @@ document.getElementById('bulk-toolbar').addEventListener('click', event => {
   const action = event.target.closest('[data-bulk-action]')?.dataset.bulkAction;
   if (action) runBulkAction(action);
 });
+document.getElementById('btn-empty-trash').addEventListener('click', () => purgeTrash(true));
 document.getElementById('bulk-folder').addEventListener('change', event => {
   if (event.target.value) runBulkAction('move', event.target.value);
   event.target.value = '';
@@ -7527,14 +7578,14 @@ document.addEventListener('keydown', event => {
   }
 });
 
-async function loadMailboxFolders() {
+async function loadMailboxFolders({quiet = false} = {}) {
   const accountId = activeMailAccount()?.id || '';
   if (mailboxFoldersAccountId !== accountId) {
     mailboxFolders = [];
     mailboxFoldersAccountId = accountId;
   }
   try {
-    const folders = await api('/api/mail/folders');
+    const folders = await api('/api/mail/folders', {accountId});
     if (accountId !== activeMailAccount()?.id) return false;
     mailboxFolders = folders;
     mailboxFoldersAccountId = accountId;
@@ -7548,11 +7599,12 @@ async function loadMailboxFolders() {
     return true;
   } catch (error) {
     if (accountId === activeMailAccount()?.id) {
-      mailboxFolders = [];
-      mailboxFoldersAccountId = accountId;
-      document.getElementById('bulk-folder').innerHTML = '<option value="">移动到…</option>';
-      document.getElementById('server-folder-nav').innerHTML = '<small>文件夹暂时无法读取</small>';
-      toast('服务器文件夹读取失败，将显示本地邮件记录：' + error.message, 'warn');
+      // Retain this account's last successful folder snapshot during outages.
+      if (!mailboxFolders.length) {
+        document.getElementById('bulk-folder').innerHTML = '<option value="">移动到…</option>';
+        document.getElementById('server-folder-nav').innerHTML = '<small>文件夹暂时无法读取</small>';
+      }
+      if (!quiet) toast('服务器文件夹读取失败，将显示本地邮件记录：' + error.message, 'warn');
     }
     return false;
   }
@@ -9430,9 +9482,66 @@ function hideAppPreloader() {
   }
   clearTimeout(preloader._introTimer);
   const animations = [];
+  let routeFrame = 0;
   const duration = reducedMotion ? 180 : 1800;
   preloader.style.setProperty('--handoff-duration', duration + 'ms');
   preloader.dataset.handoff = 'running';
+  // Confirm that the workspace is ready, not that remote mail sync succeeded.
+  preloader.classList.add('completion-confirmed');
+  const readyLabel = preloader.querySelector('.preloader-status span');
+  const readyHint = preloader.querySelector('.preloader-status small');
+  if (readyLabel) {
+    readyLabel.removeAttribute('data-i18n');
+    readyLabel.textContent = document.documentElement.lang.startsWith('en') ? 'Workspace ready' : '工作台已就绪';
+  }
+  if (readyHint) {
+    readyHint.removeAttribute('data-i18n');
+    readyHint.textContent = document.documentElement.lang.startsWith('en') ? 'Welcome to MailAI' : '欢迎使用 MailAI';
+  }
+  // One continuous contour becomes the reading pane's lower edge. Interpolate
+  // SVG coordinates directly: CSS path interpolation is not uniform in WebKit.
+  const route = preloader.querySelector('.preloader-route');
+  const routeSvg = route?.querySelector('svg');
+  const routePath = route?.querySelector('path');
+  const readingPane = document.querySelector('.layout > .reading-pane');
+  if (!reducedMotion && routePath && routeSvg && readingPane && onboarding?.classList.contains('hidden')) {
+    const lane = routeSvg.getBoundingClientRect();
+    const pane = readingPane.getBoundingClientRect();
+    if (lane.width > 0 && pane.width > 0 && pane.height > 0) {
+      const zoom = Number(getComputedStyle(document.body).zoom) || 1;
+      const x = value => (value - lane.left) / lane.width * 1000;
+      const left = x(pane.left + 1), right = x(pane.right - 1);
+      const radius = Math.min(24 * zoom, pane.width / 4);
+      const r = radius / lane.width * 1000;
+      const targetD = `M${left} 38H${left}C${left} 52 ${left+r*.42} 62 ${left+r} 62H${right-r}C${right-r*.42} 62 ${right} 52 ${right} 38H${right}`;
+      const sourceD = routePath.getAttribute('d');
+      const numbers = /-?\d*\.?\d+/g;
+      const from = sourceD.match(numbers).map(Number);
+      const to = targetD.match(numbers).map(Number);
+      if (from.length === to.length) {
+        const started = performance.now();
+        const draw = now => {
+          const t = Math.min(1, (now-started)/1100);
+          const eased = t*t*(3-2*t);
+          let index = 0;
+          routePath.setAttribute('d', sourceD.replace(numbers, () => {
+            const i = index++;
+            return (from[i] + (to[i]-from[i])*eased).toFixed(3);
+          }));
+          if (t < 1 && preloader.isConnected) routeFrame = requestAnimationFrame(draw);
+        };
+        routeFrame = requestAnimationFrame(draw);
+        const dy = (pane.bottom - 1 - (lane.top + lane.height * 62/80)) / zoom;
+        animations.push(route.animate([
+          {transform:'translate3d(0,0,0)'},
+          {transform:`translate3d(0,${dy}px,0)`},
+        ], {duration:1100,easing:'cubic-bezier(.42,0,.22,1)',fill:'both'}));
+        animations.push(route.animate([
+          {opacity:1},{opacity:.72,offset:.5},{opacity:.36,offset:.8},{opacity:0},
+        ], {duration:1550,easing:'linear',fill:'both'}));
+      }
+    }
+  }
   // Derive both destinations from the live workspace. The mascot travels by
   // its grounded center point, so resizing it never introduces a visual jump.
   if (!reducedMotion && source && target && onboarding?.classList.contains('hidden')) {
@@ -9494,6 +9603,7 @@ function hideAppPreloader() {
   }
   requestAnimationFrame(() => preloader.classList.add('leaving'));
   setTimeout(() => {
+    cancelAnimationFrame(routeFrame);
     preloader.remove();
     animations.forEach(animation => animation.cancel());
   }, duration + 40);
@@ -10087,6 +10197,7 @@ async function refreshTaskCenter({lightweight = false} = {}) {
       [rows, sync, reminders, allReminders] = await Promise.all([api('/api/mail/outbox', {accountId}), api('/api/fetch_status', {accountId}), api('/api/reminders', {accountId}), api('/api/reminders/all', {accountId})]);
       taskCenterReminders = reminders;
     }
+    const purge = await api('/api/trash/purge/status', {accountId}).catch(() => ({}));
     rows.forEach(row => { try { row.error = row.error || JSON.parse(row.result || '{}').warning || ''; } catch (_) {} });
     if (accountId !== activeMailAccount()?.id) { host.dataset.live = '0'; return; }
     host.dataset.accountId = accountId || '';
@@ -10098,9 +10209,11 @@ async function refreshTaskCenter({lightweight = false} = {}) {
     const syncBlock = showSync ? `<section class="task-section"><h3>${sync.running ? '进行中的任务' : '需要处理'} <span>1</span></h3><article class="task-row ${sync.error || sync.resumable ? 'needs-attention' : ''}"><div class="task-row-main"><b>邮箱同步</b><span class="task-status ${sync.running ? 'running' : 'warning'}">${sync.running ? '进行中' : '需处理'}</span></div><small>${esc(sync.message || (sync.running ? '正在同步…' : '同步已中断'))}${sync.error ? `<br>${esc(sync.error)}` : ''}</small>${!sync.running ? `<div class="task-row-actions"><button class="primary" data-sync-retry="${syncRetryPath}">重新同步</button></div>` : ''}</article></section>` : '';
     const outboxBlock = visibleRows.length ? `<section class="task-section"><h3>发件箱 <span>${visibleRows.length}</span></h3>${visibleRows.map(row => `<article class="task-row ${['failed','unknown'].includes(row.status) ? 'needs-attention' : ''}" data-outbox-token="${esc(row.token)}"><div class="task-row-main"><b>${esc(row.subject || '无主题')}</b><span class="task-status status-${esc(row.status)}">${esc(labels[row.status] || row.status)}</span></div><small>${esc(row.to_addr || '')}${row.error ? ` · ${esc(row.error)}` : ''}${row.status === 'unknown' ? '<br>请核对服务器已发送邮件，避免重复发送。' : ''}</small><div class="task-row-actions">${row.status === 'queued' ? `<button data-cancel-queue="${esc(row.token)}">撤销发送</button>` : ''}${row.status === 'failed' && row.draft_id ? `<button class="primary" data-outbox-draft="${esc(row.draft_id)}">编辑草稿后重试</button>` : ''}</div></article>`).join('')}</section>` : '';
     const reminderBlock = reminders.length ? `<section class="task-section"><h3>稍后提醒 <span>${reminders.length}</span></h3>${reminders.map(item => `<article class="task-row"><div class="task-row-main"><b>${esc(item.subject)}</b><span class="task-status">${esc(fmtDate(item.at))}</span></div><small>到期后提醒你处理这封邮件</small><div class="task-row-actions"><button class="primary" data-reminder-open="${item.email_id}">查看邮件</button><button data-reminder-dismiss="${item.email_id}" data-task-reminder="${item.todo_id || ''}">关闭提醒</button></div></article>`).join('')}</section>` : '';
-    const content = syncBlock + outboxBlock + reminderBlock;
-    const attentionCount = visibleRows.filter(row => ['failed','unknown'].includes(row.status)).length + (showSync && !sync.running ? 1 : 0);
-    const activeCount = visibleRows.filter(row => ['queued','sending'].includes(row.status)).length + (sync.running ? 1 : 0);
+    const purgeAttention = Boolean(purge.blocked || purge.cleanup_pending);
+    const purgeBlock = purge.pending || purgeAttention ? `<section class="task-section"><h3>已删除邮件清理</h3><article class="task-row"><div class="task-row-main"><b>本地邮件已移除</b><span class="task-status">${purge.pending ? '远端待同步' : '仅本地完成'}</span></div><small>${purge.pending ? `${Number(purge.pending)} 封等待服务器删除，联网后自动退避重试。` : ''}${purge.blocked ? `${Number(purge.blocked)} 封无法安全确认远端删除，服务器可能仍保留；可在网页邮箱核对。` : ''}${purge.cleanup_pending ? `${Number(purge.cleanup_pending)} 个原文文件待清理，将在后台重试。` : ''}不影响本地邮件查看、搜索与写信。</small></article></section>` : '';
+    const content = syncBlock + purgeBlock + outboxBlock + reminderBlock;
+    const attentionCount = visibleRows.filter(row => ['failed','unknown'].includes(row.status)).length + (showSync && !sync.running ? 1 : 0) + (purgeAttention ? 1 : 0);
+    const activeCount = visibleRows.filter(row => ['queued','sending'].includes(row.status)).length + (sync.running ? 1 : 0) + (purge.pending ? 1 : 0);
     host.dataset.live = activeCount ? '1' : '0';
     host.innerHTML = `<div class="task-overview"><div><span>当前邮箱</span><b>${esc(activeMailAccount()?.user || '')}</b></div><div class="task-overview-counts">${attentionCount ? `<span class="attention">${attentionCount} 项需处理</span>` : ''}${activeCount ? `<span>${activeCount} 项进行中</span>` : ''}${reminders.length ? `<span>${reminders.length} 项提醒</span>` : ''}${!attentionCount && !activeCount && !reminders.length ? '<span class="healthy">状态正常</span>' : ''}</div></div>` + (content || `<div class="task-empty"><b>目前没有需要处理的任务</b><span>正常同步进度会显示在左侧邮箱区域；发送失败或待确认邮件会出现在这里。</span></div>`);
     for (const row of visibleRows.filter(row => row.status === 'unknown')) {

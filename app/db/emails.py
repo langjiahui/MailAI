@@ -32,6 +32,12 @@ def upsert_email(e: dict) -> int:
     updates = [k for k in fields if k in supplied and k not in ("uid", "folder", "created_at")]
     conflict = ("DO UPDATE SET " + ",".join(f"{k}=excluded.{k}" for k in updates)) if updates else "DO NOTHING"
     with conn() as c:
+        # Serialize the final import check with local purge commit. A sync that
+        # began before deletion must not resurrect the row after it completes.
+        from ..trash_purge import is_suppressed, content_digest
+        c.execute('BEGIN IMMEDIATE')
+        if is_suppressed(c, e['folder'], e['uid'], e.get('_purge_digest', ''), content_digest(e)):
+            return 0
         # Portable imports deliberately discard source-server UIDs.  On the
         # first target-server sync, bind an archived copy to its new UID by the
         # stable Message-ID before the normal upsert, preserving local links.
@@ -59,6 +65,9 @@ def upsert_email(e: dict) -> int:
 
 def already_processed(folder: str, uid: int) -> bool:
     with conn() as c:
+        from ..trash_purge import is_suppressed
+        if is_suppressed(c, folder, uid):
+            return True
         return c.execute(
             "SELECT 1 FROM emails WHERE folder=? AND uid=? AND processing_complete=1", (folder, uid)
         ).fetchone() is not None
@@ -90,7 +99,8 @@ def count_history_imported() -> int:
 def folder_uids(folder: str) -> set[int]:
     """Return locally known UIDs for incremental server-folder synchronization."""
     with conn() as c:
-        return {int(row["uid"]) for row in c.execute(
+        from ..trash_purge import suppressed_uids
+        return suppressed_uids(c, folder) | {int(row["uid"]) for row in c.execute(
             "SELECT uid FROM emails WHERE folder=? AND uid>0 AND is_local_archive=0", (folder,)
         ).fetchall()}
 

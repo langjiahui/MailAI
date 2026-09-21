@@ -298,6 +298,9 @@ def _analyze_attachments(email: dict) -> tuple[list, list]:
 
 def process_message(mail: MailClient, uid: int, raw: bytes,
                     history_rank: int | None = None, *, arrival_kind=None) -> dict:
+    from . import trash_purge
+    if trash_purge.suppressed(config.INBOX_FOLDER, uid, raw):
+        return {'status': 'purged', 'verdict': 'clean', 'id': 0}
     arrival_kind = arrival_kind or ('new' if _account_fetch_states.get(config.DB_PATH, {}).get('operation') == 'poll' else 'history')
     if arrival_kind == 'new' and 'assistant_attention_state' not in db.get_runtime_settings():
         from . import mail_assistant
@@ -432,7 +435,14 @@ def process_message(mail: MailClient, uid: int, raw: bytes,
         "raw_path": email["raw_path"],
         "processing_complete": 0,
     }
+    record['_purge_digest'] = trash_purge.digest(raw)
     email_id = db.upsert_email(record)
+    if not email_id:
+        try:
+            trash_purge.discard_raw(record['raw_path'], record['_purge_digest'])
+        except (OSError, ValueError):
+            log.warning('已删除邮件的同步原文等待本地清理')
+        return {'status': 'purged', 'verdict': 'clean', 'id': 0}
 
     # 11) 保存 URL 链详情到 url_chains 表
     for chain_result in url_chain_results:
@@ -696,6 +706,9 @@ def fetch_all(batch: int = 50, continue_with_folders: bool = False) -> dict:
 
 
 def _store_folder_message(folder: str, role: str, uid: int, raw: bytes, flags: list[str]) -> int:
+    from . import trash_purge
+    if trash_purge.suppressed(folder, uid, raw):
+        return 0
     existing = db.get_email_by_folder_uid(folder, uid)
     if existing:
         # 即使邮件已同步，也刷新附件元数据，让新版 MIME 规则能修正历史签名图片。
@@ -729,7 +742,14 @@ def _store_folder_message(folder: str, role: str, uid: int, raw: bytes, flags: l
         "action_mode": "observe", "action_taken": 0,
         "action_reason": "服务端文件夹只读同步，不执行安全移动", "raw_path": parsed.get("raw_path"),
     }
+    record['_purge_digest'] = trash_purge.digest(raw)
     email_id = db.upsert_email(record)
+    if not email_id:
+        try:
+            trash_purge.discard_raw(record['raw_path'], record['_purge_digest'])
+        except (OSError, ValueError):
+            log.warning('已删除邮件的同步原文等待本地清理')
+        return 0
     db.sync_mail_flags(email_id, is_read="\\Seen" in flags, is_starred="\\Flagged" in flags)
     return email_id
 

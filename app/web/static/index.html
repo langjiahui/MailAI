@@ -17,10 +17,10 @@
     })();
   </script>
   <link rel="icon" type="image/png" href="/static/assets/mailai-mark.png" />
-  <link rel="stylesheet" href="/static/style.css?v=metadata-time-10" />
-  <link rel="stylesheet" href="/static/workspace.css?v=dark-ui-2" />
+  <link rel="stylesheet" href="/static/style.css?v=startup-contour-11" />
+  <link rel="stylesheet" href="/static/workspace.css?v=trash-purge-1" />
   <link rel="stylesheet" href="/static/companion.css?v=mint-4" />
-  <link rel="stylesheet" href="/static/theme.css?v=recipient-inline-7" />
+  <link rel="stylesheet" href="/static/theme.css?v=startup-contour-8" />
   <link rel="stylesheet" href="/static/attachment-preview.css?v=font-scale-1">
   <link rel="stylesheet" href="/static/onboarding.css?v=font-scale-1">
   <link rel="stylesheet" href="/static/select-ui.css?v=dark-graphite-1">
@@ -36,7 +36,7 @@
     <div class="preloader-content">
       <div class="preloader-brand" aria-label="MailAI 邮件安全与效率助手">
         <img src="/static/assets/mailai-mark.png" alt="" />
-        <span><strong>MailAI</strong><small data-i18n="app.tagline">邮件安全与效率助手</small></span>
+        <span><strong class="mailai-wordmark">Mail<span class="mailai-wordmark-ai">AI</span></strong><small data-i18n="app.tagline">邮件安全与效率助手</small></span>
       </div>
       <div class="preloader-status">
         <span data-i18n="app.preloaderInit">正在初始化邮件工作台</span>
@@ -44,12 +44,10 @@
       </div>
       <div class="preloader-route" aria-hidden="true">
         <svg class="preloader-route-line" viewBox="0 0 1000 80" preserveAspectRatio="none">
-          <path d="M0 26H260C310 26 310 70 350 70H650C690 70 690 26 740 26H1000"/>
+          <path id="preloader-route-path" pathLength="1000" d="M0 42H220C300 42 310 62 370 62H630C690 62 700 42 780 42H1000"/>
+          <use class="preloader-route-sheen" href="#preloader-route-path"/>
         </svg>
-        <i class="preloader-route-node preloader-route-node-one"></i>
-        <i class="preloader-route-node preloader-route-node-two"></i>
         <span class="preloader-mail preloader-mail-one"><svg viewBox="0 0 28 22"><rect x="1" y="1" width="26" height="20" rx="5"/><path d="m3 5 11 8 11-8"/></svg></span>
-        <span class="preloader-mail preloader-mail-two"><svg viewBox="0 0 28 22"><rect x="3" y="1" width="20" height="20" rx="4"/><path d="M8 7h10M8 11h10M8 15h7"/></svg></span>
         <span class="preloader-mail preloader-mail-three"><svg viewBox="0 0 28 22"><rect x="1" y="1" width="26" height="20" rx="5"/><path d="m3 5 11 8 11-8"/></svg></span>
       </div>
       <span class="preloader-companion companion-art" aria-hidden="true"></span>
@@ -62,7 +60,7 @@
         <span class="logo" aria-hidden="true">
           <img src="/static/assets/mailai-mark.png" alt="" />
         </span>
-        <span class="brand-copy"><strong>MailAI</strong><small data-i18n="app.tagline">邮件安全与效率助手</small></span>
+        <span class="brand-copy"><strong class="mailai-wordmark">Mail<span class="mailai-wordmark-ai">AI</span></strong><small data-i18n="app.tagline">邮件安全与效率助手</small></span>
       </div>
       <div class="global-search">
         <span class="search-icon" aria-hidden="true">⌕</span>
@@ -495,6 +493,7 @@
             <button type="button" data-bulk-action="unread" title="标记为未读" data-i18n-title="bulk.unreadTitle"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 5.5h13v9h-13zM4.5 7l5.5 4 5.5-4M14.5 3.5h2"/></svg><span data-i18n="bulk.unread">未读</span></button>
             <button type="button" data-bulk-action="star" title="添加星标" data-i18n-title="bulk.starTitle"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 3 2.1 4.2 4.7.7-3.4 3.3.8 4.7-4.2-2.2-4.2 2.2.8-4.7-3.4-3.3 4.7-.7z"/></svg><span data-i18n="bulk.star">星标</span></button>
             <button type="button" class="bulk-trash" data-bulk-action="trash" title="移入垃圾箱" data-i18n-title="bulk.trashTitle"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12M7 6V4h6v2M6 8l.7 8h6.6l.7-8M8.5 9.5v4M11.5 9.5v4"/></svg><span data-i18n="bulk.trash">垃圾箱</span></button>
+            <button type="button" class="bulk-trash hidden" data-bulk-action="purge" title="彻底删除所选邮件（不可恢复）" aria-label="彻底删除所选邮件"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12M7 6V4h6v2M6 8l.7 8h6.6l.7-8M8 9l4 4m0-4-4 4"/></svg><span>彻底删除</span></button>
             <select id="bulk-folder" aria-label="移动所选邮件" data-i18n-aria="bulk.moveAria"><option value="" data-i18n="bulk.move">移动到…</option></select>
           </div>
           <button type="button" id="bulk-cancel" aria-label="取消选择" title="取消选择 (Esc)" data-i18n-aria="bulk.cancel" data-i18n-title="bulk.cancel" data-i18n="bulk.done">完成</button>
@@ -505,6 +504,7 @@
         <div class="list-footer" id="list-footer">
           <span class="fetch-hint" id="fetch-hint"></span>
           <div class="fetch-actions">
+            <button id="btn-empty-trash" type="button" class="hidden" title="清空当前邮箱本地已删除邮件，服务器删除将在后台尽力同步">清空已删除</button>
             <button id="btn-fetch-more" type="button" aria-label="继续载入更早邮件，每次 20 封" title="继续载入更早邮件，每次 20 封" data-i18n-aria="list.fetchMoreHint" data-i18n-title="list.fetchMoreHint"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.5v9m-3.2-3.1L10 12.6l3.2-3.2M5 16h10"/></svg><span data-i18n="list.fetchEarlier">继续载入</span></button>
             <button id="btn-fetch-all" type="button" aria-label="拉取服务器上的全部历史邮件" title="拉取服务器上的全部历史邮件" aria-haspopup="dialog" aria-expanded="false" aria-controls="fetch-all-confirm" data-i18n-aria="list.fetchAllHint" data-i18n-title="list.fetchAllHint"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 5.1a5 5 0 1 1-4.3 2.4M3.8 4.7v3.2H7M10 7.2v3l2.1 1.3"/></svg><span data-i18n="list.fetchAll">全部拉取</span></button>
             <div id="fetch-all-confirm" class="history-sync-confirm hidden" role="dialog" aria-modal="false" aria-labelledby="fetch-all-confirm-title">
@@ -931,6 +931,6 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=a2e9ce6ae262"></script>
+  <script src="/static/bundle.js?v=c6c1bc22b643"></script>
 </body>
 </html>

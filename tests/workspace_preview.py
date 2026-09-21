@@ -96,6 +96,8 @@ def main():
         server_cleanup.MailClient=CleanupMail
     server.MailClient = FakeMail
     pipeline.MailClient = FakeMail
+    from app import trash_purge
+    trash_purge.MailClient = FakeMail
     from app import mail_undo
     mail_undo.MailClient = FakeMail
     smtp_client.send = lambda payload: {'message_id':'fixture@example.test','recipients':1,'sent_folder':'Sent','warning':''}

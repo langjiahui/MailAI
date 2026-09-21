@@ -17,6 +17,17 @@ def _groups(rows, *fields):
     return result
 
 
+def _still_pending(rows):
+    # Purge deliberately does not wait for our network lock. Discard stale work
+    # before the next remote command; tombstones cover commands already in flight.
+    result = []
+    for row in rows:
+        current = db.get_email(row['id'])
+        if current and current.get('pending_action') == row.get('pending_action'):
+            result.append(current)
+    return result
+
+
 _locks = {}
 _locks_guard = threading.Lock()
 
@@ -91,6 +102,9 @@ def _process_due(limit: int = 200) -> dict:
             else:
                 to_copy.append(row)
         for (source_folder,), group in _groups(to_copy, 'folder').items():
+            group = _still_pending(group)
+            if not group:
+                continue
             ids = [row['id'] for row in group]
             source_uids = [int(row['uid']) for row in group]
             try:
@@ -112,13 +126,17 @@ def _process_due(limit: int = 200) -> dict:
         copied = [row for row in db.due_trash_actions(limit)
                   if row['pending_action'] == 'trash_copied']
         for (source_folder, trash_target), group in _groups(copied, 'folder', 'pending_target').items():
+            group = _still_pending(group)
+            if not group:
+                continue
             ids = [row['id'] for row in group]
             try:
                 if source_folder != trash_target:
                     mail.delete_many([int(row['uid']) for row in group], source_folder)
                 for row in group:
-                    db.finish_trash_action(row['id'], trash_target,
-                                           row.get('pending_target_uid'))
+                    if not db.finish_trash_action(row['id'], trash_target,
+                                                row.get('pending_target_uid')):
+                        continue
                     db.add_audit_log(
                         row['id'], 'background_trash', actor='user', reason=trash_target,
                         meta={'source_folder': source_folder, 'source_uid': row['uid'],

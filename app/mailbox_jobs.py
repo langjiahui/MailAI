@@ -127,6 +127,11 @@ def _check_outboxes(initialized, retries, now, send):
                 if initialized.get(account_id) != config.DB_PATH:
                     db.init_db()
                     initialized[account_id] = config.DB_PATH
+                from . import trash_purge
+                try:
+                    trash_purge.schedule()
+                except Exception:
+                    __import__('logging').getLogger(__name__).exception('远端删除调度暂不可用，不影响发件箱')
                 outbox.process(send)
                 from . import trash_queue
                 try:

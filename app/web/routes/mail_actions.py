@@ -8,10 +8,43 @@ from ... import config, db, pipeline, threads
 from ...imap_client import mailbox_role
 from ...reply_recipients import recipients as reply_recipients
 from ..helpers import correspondence_payload, current_server
-from ..schemas import BulkMailRequest
+from ..schemas import BulkMailRequest, TrashPurgeRequest
 
 log = logging.getLogger(__name__)
 router = APIRouter()
+
+
+@router.post('/api/trash/purge/preview')
+def api_trash_purge_preview(payload: TrashPurgeRequest):
+    from ...trash_purge import preview
+    try:
+        return preview(current_server().MailClient, payload.ids, payload.empty)
+    except ValueError as exc:
+        raise HTTPException(409, str(exc))
+    except Exception as exc:
+        raise HTTPException(502, f'无法核对垃圾箱：{exc}')
+
+
+@router.post('/api/trash/purge/execute')
+def api_trash_purge_execute(payload: TrashPurgeRequest):
+    from ...trash_purge import execute, schedule
+    try:
+        result = execute(current_server().MailClient, payload.token, payload.confirmed)
+        try:
+            schedule()
+        except Exception:
+            log.exception('本地删除已完成，后台任务等待定时重试')
+        return result
+    except ValueError as exc:
+        raise HTTPException(409, str(exc))
+    except Exception as exc:
+        raise HTTPException(500, f'本地删除未全部完成，请刷新核对：{exc}')
+
+
+@router.get('/api/trash/purge/status')
+def api_trash_purge_status():
+    from ...trash_purge import status
+    return status()
 
 
 @router.post("/api/emails/{email_id}/read")

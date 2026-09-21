@@ -1015,12 +1015,14 @@ html[data-theme="dark"] .preloader-workspace { color:rgba(144,207,172,.16); }
 html[data-theme="dark"] .preloader-frame { background:rgba(111,174,140,.025); }
 html[data-theme="dark"] .preloader-brand img { filter:brightness(1.2) saturate(.82); }
 html[data-theme="dark"] .preloader-brand strong { color:#f1faf5; }
+html[data-theme="dark"] .mailai-wordmark .mailai-wordmark-ai { color:#9dccb6; }
+html[data-theme="dark"] .preloader-status::before { border-color:#9dccb6; background-color:#d4eee0; }
 html[data-theme="dark"] .preloader-brand small { color:#8fa99b; }
 html[data-theme="dark"] .preloader-status span { color:#dceee4; }
 html[data-theme="dark"] .preloader-status small { color:#8fa99b; }
-html[data-theme="dark"] .preloader-route-line { stroke:rgba(116,206,158,.38); }
-html[data-theme="dark"] .preloader-route-node { border-color:#183a2b; background:#72b196; }
-html[data-theme="dark"] .preloader-mail { color:#8ed0aa; border-color:rgba(129,211,166,.18); background:rgba(24,52,40,.72); box-shadow:0 9px 24px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.05); }
+html[data-theme="dark"] .preloader-route-line { stroke:rgba(128,170,151,.3); }
+html[data-theme="dark"] .preloader-route-sheen { stroke:rgba(148,199,174,.52); }
+html[data-theme="dark"] .preloader-mail { color:#89b09a; border-color:rgba(154,192,171,.14); background:rgba(28,44,36,.8); box-shadow:0 3px 10px rgba(0,0,0,.12),inset 0 1px rgba(255,255,255,.04); }
 html[data-theme="dark"] .preloader-companion.companion-art { filter:drop-shadow(0 13px 21px rgba(0,0,0,.25)); }
 
 /* Remaining Rule Center controls: threshold bar and advanced-rule switcher. */

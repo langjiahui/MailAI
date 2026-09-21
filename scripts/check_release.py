@@ -22,6 +22,7 @@ for stream in (sys.stdout, sys.stderr):
         reconfigure(encoding="utf-8", errors="backslashreplace")
 TESTS = (
     'test_cc_reading.py',
+    'test_trash_purge.py',
     'test_model_providers.py',
     'test_live_diagnostics.py',
     'test_optimization_guards.py', 'test_interaction_fixes.py', 'test_pinyin_search.py',
