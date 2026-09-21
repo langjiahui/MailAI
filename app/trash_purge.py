@@ -193,7 +193,23 @@ def status():
             (config.IMAP_USER, config.IMAP_HOST))}
         files = c.execute("SELECT COUNT(*) FROM trash_tombstones WHERE account=? AND host=? AND raw_path<>''",
                           (config.IMAP_USER, config.IMAP_HOST)).fetchone()[0]
-    return dict(pending=counts.get('pending', 0), blocked=counts.get('blocked', 0), cleanup_pending=files)
+        notices = [r[0] for r in c.execute(
+            "SELECT id FROM trash_tombstones WHERE account=? AND host=? AND state='blocked' "
+            "AND id NOT IN (SELECT tombstone_id FROM trash_notice_ack) ORDER BY id",
+            (config.IMAP_USER, config.IMAP_HOST))]
+    return dict(pending=counts.get('pending', 0), blocked=counts.get('blocked', 0),
+                cleanup_pending=files, notice_ids=notices, unacknowledged=len(notices))
+
+
+def acknowledge(ids):
+    """Acknowledge only displayed results, never pending work or suppression markers."""
+    with db.conn() as c:
+        for item in set(ids):
+            c.execute(
+                "INSERT OR IGNORE INTO trash_notice_ack(tombstone_id,acknowledged_at) "
+                "SELECT id,? FROM trash_tombstones WHERE id=? AND account=? AND host=? AND state='blocked'",
+                (time.time(), item, config.IMAP_USER, config.IMAP_HOST))
+    return status()
 
 
 def process_due(factory=None, limit=20):

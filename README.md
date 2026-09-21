@@ -5,9 +5,9 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v2.2.5**
+当前版本：**v2.2.6**
 
-本次更新：新增已删除邮件的本地彻底删除与清空，服务器后台尽力同步，远端失败不阻塞本地删除，持久化删除标记防止邮件重新出现；修复删除同步失败的邮件无法本地清理的问题，已删除文件夹优先展示本地数据；优化加载页轮廓线条、Logo 与主页衔接，新增“工作台已就绪”完成动效，统一 MailAI 字标字体与明暗主题样式。
+本次更新：已删除邮件清理的“仅本地完成”提示新增“已知晓”，确认后不再占用待处理提醒，按邮箱隔离并跨重启保存；保留防止已删除邮件重新同步回来的标记，不影响服务器待同步及原文文件清理任务，新出现的未确认结果仍会提醒。
 
 ## 下载 MailAI
 

@@ -184,4 +184,23 @@ with tempfile.TemporaryDirectory() as root, patch.object(config, 'DB_PATH', str(
             release.set(); thread.join(5)
         assert not thread.is_alive() and not failures
 
-print('Local-first purge: offline operation, durable retries, identity protection, local-only snapshot, anti-resurrection, rollback and file recovery passed')
+    # Acknowledgement persists, is account-scoped, and never hides unseen results.
+    snapshot = purge.status()
+    assert snapshot['notice_ids']
+    with patch.object(config, 'IMAP_USER', 'other@example.test'):
+        purge.acknowledge(snapshot['notice_ids'])
+    assert purge.status()['notice_ids'] == snapshot['notice_ids']
+    newer = add(90)
+    Path(root, '90.eml').unlink()
+    remove([newer])
+    purge.acknowledge(snapshot['notice_ids'])
+    assert purge.status()['unacknowledged'] == 1
+    pending_before = purge.status()['pending']
+    purge.acknowledge(purge.status()['notice_ids'])
+    db.init_db()
+    assert purge.status()['unacknowledged'] == 0
+    assert purge.status()['pending'] == pending_before
+    assert purge.suppressed('Deleted Items',99,b'one')
+    assert db.upsert_email(dict(uid=999,folder='Deleted Items',subject='Mail 90')) == 0
+
+print('Local-first purge and persistent, account-scoped notice acknowledgement passed')

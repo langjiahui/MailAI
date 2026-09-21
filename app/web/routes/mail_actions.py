@@ -47,6 +47,12 @@ def api_trash_purge_status():
     return status()
 
 
+@router.post('/api/trash/purge/acknowledge')
+def api_trash_purge_acknowledge(payload: TrashPurgeRequest):
+    from ...trash_purge import acknowledge
+    return acknowledge(payload.ids)
+
+
 @router.post("/api/emails/{email_id}/read")
 def api_set_email_read(email_id: int, value: bool = True):
     row = db.get_email(email_id)

@@ -82,6 +82,16 @@ const {chromium} = require('playwright');
     await page.evaluate(() => refreshTaskCenter());
     await page.waitForFunction(() => document.getElementById('task-center-list').textContent.includes('仅本地完成'));
     assert.match(await page.locator('#task-center-list').textContent(), /服务器可能仍保留/);
+    await page.locator('#btn-task-center').click();
+    await page.locator('[data-purge-ack]').click();
+    await page.waitForFunction(() => !document.querySelector('[data-purge-ack]'));
+    const acknowledged = await page.evaluate(() => api('/api/trash/purge/status'));
+    assert.equal(acknowledged.unacknowledged, 0);
+    assert(acknowledged.blocked >= 1, 'Acknowledgement must preserve suppression markers');
+    await page.reload();
+    await page.waitForFunction(() => allEmails.length > 0);
+    await page.evaluate(() => refreshTaskCenter());
+    assert.equal(await page.locator('[data-purge-ack]').count(), 0);
     assert.deepEqual(errors, []);
     console.log('PASS trash actions, confirmations, local-only scope, real local deletion API and durable remote status');
   } finally { await browser.close(); }

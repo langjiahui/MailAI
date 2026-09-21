@@ -10209,8 +10209,8 @@ async function refreshTaskCenter({lightweight = false} = {}) {
     const syncBlock = showSync ? `<section class="task-section"><h3>${sync.running ? '进行中的任务' : '需要处理'} <span>1</span></h3><article class="task-row ${sync.error || sync.resumable ? 'needs-attention' : ''}"><div class="task-row-main"><b>邮箱同步</b><span class="task-status ${sync.running ? 'running' : 'warning'}">${sync.running ? '进行中' : '需处理'}</span></div><small>${esc(sync.message || (sync.running ? '正在同步…' : '同步已中断'))}${sync.error ? `<br>${esc(sync.error)}` : ''}</small>${!sync.running ? `<div class="task-row-actions"><button class="primary" data-sync-retry="${syncRetryPath}">重新同步</button></div>` : ''}</article></section>` : '';
     const outboxBlock = visibleRows.length ? `<section class="task-section"><h3>发件箱 <span>${visibleRows.length}</span></h3>${visibleRows.map(row => `<article class="task-row ${['failed','unknown'].includes(row.status) ? 'needs-attention' : ''}" data-outbox-token="${esc(row.token)}"><div class="task-row-main"><b>${esc(row.subject || '无主题')}</b><span class="task-status status-${esc(row.status)}">${esc(labels[row.status] || row.status)}</span></div><small>${esc(row.to_addr || '')}${row.error ? ` · ${esc(row.error)}` : ''}${row.status === 'unknown' ? '<br>请核对服务器已发送邮件，避免重复发送。' : ''}</small><div class="task-row-actions">${row.status === 'queued' ? `<button data-cancel-queue="${esc(row.token)}">撤销发送</button>` : ''}${row.status === 'failed' && row.draft_id ? `<button class="primary" data-outbox-draft="${esc(row.draft_id)}">编辑草稿后重试</button>` : ''}</div></article>`).join('')}</section>` : '';
     const reminderBlock = reminders.length ? `<section class="task-section"><h3>稍后提醒 <span>${reminders.length}</span></h3>${reminders.map(item => `<article class="task-row"><div class="task-row-main"><b>${esc(item.subject)}</b><span class="task-status">${esc(fmtDate(item.at))}</span></div><small>到期后提醒你处理这封邮件</small><div class="task-row-actions"><button class="primary" data-reminder-open="${item.email_id}">查看邮件</button><button data-reminder-dismiss="${item.email_id}" data-task-reminder="${item.todo_id || ''}">关闭提醒</button></div></article>`).join('')}</section>` : '';
-    const purgeAttention = Boolean(purge.blocked || purge.cleanup_pending);
-    const purgeBlock = purge.pending || purgeAttention ? `<section class="task-section"><h3>已删除邮件清理</h3><article class="task-row"><div class="task-row-main"><b>本地邮件已移除</b><span class="task-status">${purge.pending ? '远端待同步' : '仅本地完成'}</span></div><small>${purge.pending ? `${Number(purge.pending)} 封等待服务器删除，联网后自动退避重试。` : ''}${purge.blocked ? `${Number(purge.blocked)} 封无法安全确认远端删除，服务器可能仍保留；可在网页邮箱核对。` : ''}${purge.cleanup_pending ? `${Number(purge.cleanup_pending)} 个原文文件待清理，将在后台重试。` : ''}不影响本地邮件查看、搜索与写信。</small></article></section>` : '';
+    const purgeAttention = Boolean(purge.unacknowledged || purge.cleanup_pending);
+    const purgeBlock = purge.pending || purgeAttention ? `<section class="task-section"><h3>已删除邮件清理</h3><article class="task-row"><div class="task-row-main"><b>本地邮件已移除</b><span class="task-status">${purge.pending ? '远端待同步' : '仅本地完成'}</span></div><small>${purge.pending ? `${Number(purge.pending)} 封等待服务器删除，联网后自动退避重试。` : ''}${purge.unacknowledged ? `${Number(purge.unacknowledged)} 封无法安全确认远端删除，服务器可能仍保留；可在网页邮箱核对。` : ''}${purge.cleanup_pending ? `${Number(purge.cleanup_pending)} 个原文文件待清理，将在后台重试。` : ''}不影响本地邮件查看、搜索与写信。</small>${purge.unacknowledged ? `<div class="task-row-actions"><button data-purge-ack="${esc(JSON.stringify(purge.notice_ids || []))}">已知晓</button></div>` : ''} </article></section>` : '';
     const content = syncBlock + purgeBlock + outboxBlock + reminderBlock;
     const attentionCount = visibleRows.filter(row => ['failed','unknown'].includes(row.status)).length + (showSync && !sync.running ? 1 : 0) + (purgeAttention ? 1 : 0);
     const activeCount = visibleRows.filter(row => ['queued','sending'].includes(row.status)).length + (sync.running ? 1 : 0) + (purge.pending ? 1 : 0);
@@ -10631,6 +10631,14 @@ function initializeWorkspace() {
     const accountId = event.currentTarget.dataset.accountId;
     try {
       if (event.target.dataset.cancelQueue) await api(`/api/mail/outbox/${event.target.dataset.cancelQueue}/cancel`, {accountId, method:'POST'});
+      if (event.target.dataset.purgeAck) {
+        const button = event.target;
+        if (button.disabled) return;
+        button.disabled = true;
+        try {
+          await api('/api/trash/purge/acknowledge', {accountId, method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ids:JSON.parse(button.dataset.purgeAck)})});
+        } finally { button.disabled = false; }
+      }
       if (event.target.dataset.taskRefresh !== undefined) return refreshTaskCenter();
       if (event.target.dataset.syncRetry) {
         await api(event.target.dataset.syncRetry, {accountId, method:'POST'});

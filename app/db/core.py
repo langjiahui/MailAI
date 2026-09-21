@@ -103,6 +103,10 @@ CREATE INDEX IF NOT EXISTS idx_trash_tombstone_identity ON trash_tombstones(acco
 CREATE INDEX IF NOT EXISTS idx_trash_tombstone_digest ON trash_tombstones(account,host,raw_digest);
 CREATE INDEX IF NOT EXISTS idx_trash_tombstone_content ON trash_tombstones(account,host,content_digest);
 CREATE INDEX IF NOT EXISTS idx_trash_tombstone_due ON trash_tombstones(account,host,state,due_at,id);
+CREATE TABLE IF NOT EXISTS trash_notice_ack (
+    tombstone_id INTEGER PRIMARY KEY,
+    acknowledged_at REAL NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_seen_sync_jobs_due ON seen_sync_jobs(due_at);
 CREATE TABLE IF NOT EXISTS todos (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
