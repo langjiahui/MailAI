@@ -1119,6 +1119,8 @@ html[data-theme="dark"] .signature-manager-card>header>button {
 /* Expanded recipients remain part of the reading header instead of becoming a white document. */
 html[data-theme="dark"] .recipient-count { color:#bcd8c8!important; background:rgba(58,103,78,.32)!important; }
 html[data-theme="dark"] .recipient-toggle { color:#91ddb5!important; }
+html[data-theme="dark"] .reading-header .reading-header-inner .recipient-chip { background:transparent!important; border:0!important; box-shadow:none!important; }
+html[data-theme="dark"] .reading-header .reading-header-inner .recipient-chip:hover { background:rgba(92,151,119,.14)!important; }
 html[data-theme="dark"] .recipient-list,
 html[data-theme="dark"] #digest-email-drawer .recipient-list {
   border-color:rgba(184,225,203,.17)!important;

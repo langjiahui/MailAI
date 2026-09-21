@@ -897,6 +897,7 @@ const I18N_MESSAGES = {
     'read.from': 'From: ',
     'read.to': 'To: ',
     'read.cc': 'Cc: ',
+    'read.peopleCount': '{n} people',
     'read.time': 'Time: ',
     'read.fromShort': 'From',
     'read.toShort': 'To',
@@ -3600,8 +3601,7 @@ function renderDigestEmailDetail(e) {
         <div class="meta-avatar">${(e.from_name || e.from_addr || '?').charAt(0).toUpperCase()}</div>
         <div class="meta-fields">
           <div class="drawer-meta-row"><span class="meta-label">${mailaiT('read.fromShort') || '发件人'}</span>${renderSenderContact(e.from_name, e.from_addr)}</div>
-          <div class="drawer-meta-row meta-recipient-row"><span class="meta-label">${mailaiT('read.toShort') || '收件人'}</span>${renderRecipients(e.to_addr, e.recipient_names)}</div>
-          ${e.cc_addr ? `<div class="drawer-meta-row meta-recipient-row"><span class="meta-label">${mailaiT('read.cc') || '抄送：'}</span>${renderRecipients(e.cc_addr, e.recipient_names)}</div>` : ''}
+          ${renderMessageRecipients(e)}
           <div class="drawer-meta-row"><span class="meta-label">${mailaiT('read.timeShort') || '时间'}</span><span>${fmtDate(e.date)}</span></div>
         </div>
         <span class="drawer-risk tag tag-${risk.class}">${risk.text}<b>${e.score || 0}</b></span>
@@ -6145,7 +6145,15 @@ function hideSystemView(force = false) {
   }
 }
 
-function renderRecipients(raw, names = {}) {
+function renderMessageRecipients(e) {
+  const to = recipientEmails(e.to_addr);
+  const cc = recipientEmails(e.cc_addr);
+  const row = (label, addresses) => `<div class="meta-recipient-row"><span class="meta-label">${label}</span><span class="recipient-full-line">${renderRecipients(addresses.join(', '), e.recipient_names, true)}<span class="recipient-count">${(mailaiT('read.peopleCount') || '共 {n} 人').replace('{n}', addresses.length)}</span></span></div>`;
+  const preview = to.slice(0,2).map(address => esc(e.recipient_names?.[address.toLowerCase()] || address)).join('、');
+  return `<div class="message-recipients"><details><summary><span class="recipient-collapsed-copy"><span class="meta-label">${mailaiT('read.to') || '收件人：'}</span>${preview || '—'}${to.length > 2 ? ' …' : ''}</span><span class="recipient-expand-label">${mailaiT('common.expand') || '展开'}</span><span class="recipient-collapse-label">${mailaiT('common.collapse') || '收起'}</span></summary><div class="recipient-details">${row(mailaiT('read.to') || '收件人：', to)}${cc.length ? row(mailaiT('read.cc') || '抄送：', cc) : ''}</div></details></div>`;
+}
+
+function renderRecipients(raw, names = {}, full = false) {
   const recipients = recipientEmails(raw);
   if (!recipients.length) return '<span class="recipient-empty">-</span>';
   const button = address => {
@@ -6153,7 +6161,7 @@ function renderRecipients(raw, names = {}) {
     const label = name ? `${name}，${address}` : address;
     return `<button type="button" class="recipient-chip ${name ? 'has-name' : ''}" data-compose-recipient="${esc(address)}" title="给 ${esc(label)} 写邮件" aria-label="给 ${esc(label)} 写邮件"><span>${esc(name || address)}</span>${name ? `<small>${esc(address)}</small>` : ''}</button>`;
   };
-  if (recipients.length <= 3) return `<span class="recipient-simple recipient-compact-list">${recipients.map(button).join('')}</span>`;
+  if (full || recipients.length <= 3) return `<span class="recipient-simple recipient-compact-list">${recipients.map(button).join('')}</span>`;
 
   return `
     <span class="recipient-field">
@@ -6606,8 +6614,7 @@ function renderReadingPane(e) {
           <div class="meta-avatar">${(e.from_name || e.from_addr || '?').charAt(0).toUpperCase()}</div>
           <div class="meta-fields">
             <div class="meta-sender-row"><span class="meta-label">${mailaiT('read.from') || '发件人：'}</span>${renderSenderContact(e.from_name, e.from_addr)}</div>
-            <div class="meta-recipient-row"><span class="meta-label">${mailaiT('read.to') || '收件人：'}</span>${renderRecipients(e.to_addr, e.recipient_names)}</div>
-            ${e.cc_addr ? `<div class="meta-recipient-row"><span class="meta-label">${mailaiT('read.cc') || '抄送：'}</span>${renderRecipients(e.cc_addr, e.recipient_names)}</div>` : ''}
+            ${renderMessageRecipients(e)}
             <div><span class="meta-label">${mailaiT('read.time') || '时间：'}</span>${fmtDate(e.date)}</div>
           </div>
           <div class="meta-badges">

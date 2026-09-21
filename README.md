@@ -5,9 +5,9 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v2.2.2**
+当前版本：**v2.2.3**
 
-本次更新：优化收件人原位展开与自然换行，消除重复名单及空白行；补齐抄送人的解析、保存和独立展示，收件人与抄送分别统计人数和展开收起；已有邮件在打开时从本地原始邮件补齐抄送信息，无需重新同步。
+本次更新：人员信息左上对齐，收件人和抄送名单充分利用阅读区宽度、自然换行；统一展开与收起入口，收起仅显示收件人摘要，展开显示完整收件人、抄送及各自人数；补齐抄送解析和保存，已有邮件在打开时从本地原始邮件补齐抄送信息，无需重新同步。
 
 ## 下载 MailAI
 

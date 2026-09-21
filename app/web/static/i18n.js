@@ -891,6 +891,7 @@ const I18N_MESSAGES = {
     'read.from': 'From: ',
     'read.to': 'To: ',
     'read.cc': 'Cc: ',
+    'read.peopleCount': '{n} people',
     'read.time': 'Time: ',
     'read.fromShort': 'From',
     'read.toShort': 'To',
