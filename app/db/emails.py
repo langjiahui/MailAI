@@ -8,7 +8,7 @@ from .core import conn
 def upsert_email(e: dict) -> int:
     fields = (
         "uid", "folder", "message_id", "in_reply_to", "references_header", "thread_id",
-        "thread_summary", "sender_profile_id", "subject", "from_addr", "from_name", "to_addr", "recipient_names",
+        "thread_summary", "sender_profile_id", "subject", "from_addr", "from_name", "to_addr", "cc_addr", "recipient_names",
         "date", "snippet", "body_text", "body_html", "urls", "attachments", "attachment_analysis", "auth",
         "score", "verdict", "findings", "spam_score", "category", "priority", "summary",
         "llm_phishing", "llm_reasons", "status", "reviewed", "feedback", "feedback_note",

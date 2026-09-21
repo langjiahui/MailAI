@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 
 from ... import db, pipeline, profiles, system_settings, threads
-from ...parser import extract_attachment, extract_inline_resource, extract_rich_body
+from ...parser import extract_attachment, extract_inline_resource, extract_rich_body, cc_from_raw_path
 from ...security import campaigns, evidence, policy
 from ..helpers import (annotate_list_identities, campaign_groups,
                        resolved_contact_name)
@@ -69,7 +69,13 @@ def api_email_detail(email_id: int):
     row = db.get_email(email_id)
     if not row:
         raise HTTPException(404, "邮件不存在")
-    names = db.contact_display_names([row.get("from_addr"), row.get("to_addr")])
+    if row.get("cc_addr") is None:
+        recovered_cc = cc_from_raw_path(row.get("raw_path"))
+        if recovered_cc is not None:
+            with db.conn() as connection:
+                connection.execute('UPDATE emails SET cc_addr=? WHERE id=? AND cc_addr IS NULL', (recovered_cc, email_id))
+            row["cc_addr"] = recovered_cc
+    names = db.contact_display_names([row.get("from_addr"), row.get("to_addr"), row.get("cc_addr")])
     resolved_name, _source = resolved_contact_name(row.get("from_addr"), row.get("from_name"), names)
     if resolved_name:
         row["from_name"] = resolved_name

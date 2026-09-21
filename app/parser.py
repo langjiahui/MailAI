@@ -348,6 +348,27 @@ def recipient_names_from_raw_path(path: str) -> dict[str, str]:
         return {}
 
 
+def cc_from_raw_path(path: str) -> str | None:
+    """Recover Cc for older records from a bounded local header block."""
+    if not path:
+        return None
+    try:
+        with open(path, 'rb') as source:
+            lines, remaining = [], 1024 * 1024
+            while remaining:
+                line = source.readline(remaining)
+                if not line:
+                    break
+                lines.append(line)
+                remaining -= len(line)
+                if line in (b'\n', b'\r\n'):
+                    break
+        msg = BytesParser(policy=policy.default).parsebytes(b''.join(lines), headersonly=True)
+        return ', '.join(a for _, a in email.utils.getaddresses([_decode_hdr(v) for v in msg.get_all('Cc', [])]) if a)
+    except (OSError, ValueError):
+        return None
+
+
 def parse_message(uid: int, raw: bytes, save_raw: bool = True, folder: str = "INBOX") -> dict:
     mail = mailparser.parse_from_bytes(raw)
     msg = BytesParser(policy=policy.default).parsebytes(raw)
@@ -391,6 +412,7 @@ def parse_message(uid: int, raw: bytes, save_raw: bool = True, folder: str = "IN
         "from_addr": from_addr,
         "from_name": from_name,
         "to_addr": to_addr,
+        "cc_addr": ', '.join(a for _, a in email.utils.getaddresses([_decode_hdr(v) for v in msg.get_all('Cc', [])]) if a),
         "recipient_names": recipient_header_names(msg),
         "date": date_str,
         "snippet": re.sub(r"\s+", " ", body_text)[:200],

@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS emails (
     from_name TEXT,
     to_addr TEXT,
     recipient_names TEXT DEFAULT '{}',
+    cc_addr TEXT,
     date TEXT,
     snippet TEXT,
     body_text TEXT,
@@ -387,6 +388,7 @@ def _run_migrations(c):
         "pending_attempts": "INTEGER DEFAULT 0",
         "pending_error": "TEXT DEFAULT ''",
         "recipient_names": "TEXT DEFAULT '{}'",
+        "cc_addr": "TEXT",
         "processing_complete": "INTEGER DEFAULT 1",
         "notification_sent": "INTEGER NOT NULL DEFAULT 0",
     }

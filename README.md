@@ -5,9 +5,9 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v2.2.1**
+当前版本：**v2.2.2**
 
-本次更新：邮件列表底部改为轻量状态栏，显示已载入数量及“继续载入”“全部拉取”，保留全量拉取确认与加载反馈；窄窗口顶栏保留搜索和写邮件，搜索框自动利用可用空间；修复中等宽度下安全菜单箭头挤压，完善明暗主题与多窗口尺寸适配。
+本次更新：优化收件人原位展开与自然换行，消除重复名单及空白行；补齐抄送人的解析、保存和独立展示，收件人与抄送分别统计人数和展开收起；已有邮件在打开时从本地原始邮件补齐抄送信息，无需重新同步。
 
 ## 下载 MailAI
 

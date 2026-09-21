@@ -896,6 +896,7 @@ const I18N_MESSAGES = {
     'prio.low': 'Low priority',
     'read.from': 'From: ',
     'read.to': 'To: ',
+    'read.cc': 'Cc: ',
     'read.time': 'Time: ',
     'read.fromShort': 'From',
     'read.toShort': 'To',
@@ -3600,6 +3601,7 @@ function renderDigestEmailDetail(e) {
         <div class="meta-fields">
           <div class="drawer-meta-row"><span class="meta-label">${mailaiT('read.fromShort') || '发件人'}</span>${renderSenderContact(e.from_name, e.from_addr)}</div>
           <div class="drawer-meta-row meta-recipient-row"><span class="meta-label">${mailaiT('read.toShort') || '收件人'}</span>${renderRecipients(e.to_addr, e.recipient_names)}</div>
+          ${e.cc_addr ? `<div class="drawer-meta-row meta-recipient-row"><span class="meta-label">${mailaiT('read.cc') || '抄送：'}</span>${renderRecipients(e.cc_addr, e.recipient_names)}</div>` : ''}
           <div class="drawer-meta-row"><span class="meta-label">${mailaiT('read.timeShort') || '时间'}</span><span>${fmtDate(e.date)}</span></div>
         </div>
         <span class="drawer-risk tag tag-${risk.class}">${risk.text}<b>${e.score || 0}</b></span>
@@ -6153,13 +6155,11 @@ function renderRecipients(raw, names = {}) {
   };
   if (recipients.length <= 3) return `<span class="recipient-simple recipient-compact-list">${recipients.map(button).join('')}</span>`;
 
-  const preview = recipients.slice(0, 2).map(button).join('');
   return `
     <span class="recipient-field">
-      <span class="recipient-summary">${preview}</span>
-      <span class="recipient-count">等 ${recipients.length} 人</span>
-      <button type="button" class="recipient-toggle" aria-expanded="false" onclick="toggleRecipients(this)">展开</button>
-      <span class="recipient-list hidden">${recipients.map(button).join('')}</span>
+      <span class="recipient-inline-list">${recipients.map(button).join('')}</span>
+      <span class="recipient-controls"><span class="recipient-count">共 ${recipients.length} 人</span>
+      <button type="button" class="recipient-toggle" aria-expanded="false" onclick="toggleRecipients(this)">展开</button></span>
     </span>
   `;
 }
@@ -6183,11 +6183,9 @@ document.addEventListener('click', event => {
 
 function toggleRecipients(button) {
   const field = button.closest('.recipient-field');
-  const list = field.querySelector('.recipient-list');
   const expanded = button.getAttribute('aria-expanded') === 'true';
   button.setAttribute('aria-expanded', String(!expanded));
   button.textContent = expanded ? (mailaiT('common.expand') || '展开') : (mailaiT('common.collapse') || '收起');
-  list.classList.toggle('hidden', expanded);
   field.classList.toggle('expanded', !expanded);
 }
 
@@ -6609,6 +6607,7 @@ function renderReadingPane(e) {
           <div class="meta-fields">
             <div class="meta-sender-row"><span class="meta-label">${mailaiT('read.from') || '发件人：'}</span>${renderSenderContact(e.from_name, e.from_addr)}</div>
             <div class="meta-recipient-row"><span class="meta-label">${mailaiT('read.to') || '收件人：'}</span>${renderRecipients(e.to_addr, e.recipient_names)}</div>
+            ${e.cc_addr ? `<div class="meta-recipient-row"><span class="meta-label">${mailaiT('read.cc') || '抄送：'}</span>${renderRecipients(e.cc_addr, e.recipient_names)}</div>` : ''}
             <div><span class="meta-label">${mailaiT('read.time') || '时间：'}</span>${fmtDate(e.date)}</div>
           </div>
           <div class="meta-badges">

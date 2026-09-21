@@ -890,6 +890,7 @@ const I18N_MESSAGES = {
     'prio.low': 'Low priority',
     'read.from': 'From: ',
     'read.to': 'To: ',
+    'read.cc': 'Cc: ',
     'read.time': 'Time: ',
     'read.fromShort': 'From',
     'read.toShort': 'To',

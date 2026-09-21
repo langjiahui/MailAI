@@ -1882,7 +1882,7 @@ body { font-size: 13px; background: var(--bg); }
 .meta-avatar { width: 40px; height: 40px; border-radius: 11px; background: var(--primary); }
 .meta-fields { line-height: 1.65; }
 .meta-recipient-row { display: flex; align-items: flex-start; min-width: 0; }
-.meta-recipient-row > .meta-label { flex-shrink: 0; }
+.meta-recipient-row > .meta-label { flex-shrink: 0; min-width:4em; }
 .recipient-field { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 7px; min-width: 0; max-width: 100%; }
 .recipient-summary {
   display: inline-flex;
@@ -1969,7 +1969,17 @@ body { font-size: 13px; background: var(--bg); }
 .recipient-list .recipient-chip { justify-content: flex-start; min-width: 0; }
 .recipient-list .recipient-chip small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .recipient-field.expanded { width: 100%; }
-.recipient-field.expanded .recipient-summary { max-width: calc(100% - 110px); }
+.recipient-field { flex:1; width:100%; align-items:flex-start; }
+.recipient-inline-list { display:contents; }
+.recipient-field:not(.expanded) .recipient-inline-list > :nth-child(n+3) { display:none; }
+.recipient-inline-list .recipient-chip { max-width:100%; min-width:0; }
+.recipient-inline-list .recipient-chip > span { flex-shrink:0; }
+.recipient-inline-list .recipient-chip small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.recipient-inline-list .recipient-chip:not(.has-name) > span { flex-shrink:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.recipient-controls { display:inline-flex; align-items:center; gap:7px; flex:none; min-height:28px; }
+.recipient-field.expanded { max-height:200px; overflow-y:auto; scrollbar-width:thin; }
+.reading-header .reading-meta .meta-avatar { align-self:flex-start; margin-top:2px; }
+.reading-header .meta-fields { flex:1; min-width:0; }
 .reading-header .gauge-wrap { display: none; }
 
 .reading-workspace {
