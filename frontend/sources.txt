@@ -5,6 +5,7 @@
 i18n.js
 attachment-preview.js
 app.js
+conversation-progress.js
 mail-library.js
 server-cleanup.js
 workspace.js

@@ -26,7 +26,7 @@
     const currentTicket=++ticket;
     try {
       const rows=await api('/api/todos?include_done=true',{accountId});
-      if (currentTicket!==ticket || accountId!==activeMailAccount()?.id) return;
+      if (currentTicket!==ticket) return;
       let selected=rows.find(t=>t.id===Number(todoId));
       emailId=Number(emailId || selected?.email_id);
       const matches=rows.filter(t=>t.email_id===emailId);
@@ -35,16 +35,17 @@
       get('existing-label').hidden=!matches.length;
       get('existing').innerHTML=matches.map(t=>`<option value="${t.id}">${esc(t.title)}${t.status==='done'?'（已完成）':''}</option>`).join('');
       if (selected) get('existing').value=selected.id;
-      get('source').textContent=activeMailAccount()?.user + ' · ' + (selected?.email_subject || title || '已关联来源邮件');
+      get('source').textContent=((_systemConfig?.accounts || []).find(a=>a.id===accountId)?.user || '') + ' · ' + (selected?.email_subject || title || '已关联来源邮件');
       paint(selected);dialog.showModal();get('title').focus();
     } catch(e) {toast('无法打开任务：'+e.message,'warn');}
   };
   window.mailaiTasksChanged = (accountId=activeMailAccount()?.id) => window.dispatchEvent(new CustomEvent('mailai-tasks-changed',{detail:{accountId}}));
   window.addEventListener('mailai-tasks-changed',async event=>{
     const accountId=event.detail.accountId;
+    if(accountId===todoCenterAccountId && !document.getElementById('todo-center').classList.contains('hidden')) loadTodoCenter();
     if(accountId!==activeMailAccount()?.id)return;
     window.refreshSecretaryAccount?.();
-    try {const rows=await api('/api/todos?include_done=true',{accountId});if(accountId!==activeMailAccount()?.id)return;allTodos=rows;if(!document.getElementById('todo-center').classList.contains('hidden'))renderTodoCenter();}catch(_){}
+    try {const rows=await api('/api/todos?include_done=true',{accountId});if(accountId!==activeMailAccount()?.id)return;allTodos=rows;updateSidebar();}catch(_){}
   });
   dialog.querySelectorAll('[data-plan-close]').forEach(b=>b.onclick=()=>dialog.close());
   get('stage').onchange=()=>{get('date-label').textContent=get('stage').value==='waiting'?'跟进日期（可选）':'截止日期（可选）';};

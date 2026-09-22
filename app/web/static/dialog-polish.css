@@ -1,0 +1,110 @@
+/* Shared surfaces for writing, assistance and mailbox tools. */
+html[data-theme] body :is(.compose-card,.attachment-center-card,.contact-editor-card,.modal-content,.drawer-panel,#task-planner,#assistant-panel) {
+  background:var(--desk-surface)!important; color:var(--desk-ink)!important;
+  border:1px solid var(--desk-line)!important; border-radius:14px;
+  box-shadow:0 20px 64px #0003!important; backdrop-filter:none!important;
+}
+html[data-theme] body :is(.compose-card,.attachment-center-card,.contact-editor-card)>:is(header,footer),
+html[data-theme] body :is(.modal-header,.drawer-header,.assistant-head) {
+  background:var(--desk-surface)!important; border-color:var(--desk-line)!important; box-shadow:none!important;
+}
+html[data-theme] body :is(.compose-card,.attachment-center-card)>header { padding:20px 24px; }
+html[data-theme] body :is(.compose-card,.attachment-center-card,.modal-content,.drawer-panel) :is(h2,h3) { color:var(--desk-ink); letter-spacing:-.02em; }
+html[data-theme] body :is(.compose-card,.attachment-center-card)>header h2 { font-size:21px; margin:0; }
+html[data-theme] body :is(.compose-card,.attachment-center-card)>header :is(p,small,.eyebrow) { color:var(--desk-muted)!important; font-size:12px; line-height:1.6; }
+html[data-theme] body .compose-fields { background:var(--desk-surface)!important; padding:8px 24px 12px; border-color:var(--desk-line)!important; }
+html[data-theme] body .compose-fields label { border-color:var(--desk-line)!important; background:transparent!important; box-shadow:none!important; }
+html[data-theme] body .compose-fields label>span { color:var(--desk-muted)!important; font-size:12px; }
+html[data-theme] body .compose-fields :is(input,select) { background:transparent!important; color:var(--desk-ink)!important; box-shadow:none!important; font-size:14px; }
+html[data-theme] body :is(.compose-toolbar,.compose-format-tools,.compose-toolbar-actions,.compose-attachment-hint) { background:var(--desk-muted-surface)!important; border-color:var(--desk-line)!important; box-shadow:none!important; }
+html[data-theme] body .compose-toolbar :is(button,select),
+html[data-theme] body :is(.compose-card,.attachment-center-card) :is(header,footer) button:not(.primary-action),
+html[data-theme] body :is(.assistant-head-actions,.assistant-quick,.assistant-run-actions) button {
+  background:transparent!important; color:var(--desk-muted)!important; border-color:transparent!important;
+  box-shadow:none!important; border-radius:7px; transform:none;
+}
+html[data-theme] body .compose-toolbar :is(button,select):hover,
+html[data-theme] body :is(.compose-card,.attachment-center-card) :is(header,footer) button:not(.primary-action):hover,
+html[data-theme] body :is(.assistant-head-actions,.assistant-quick,.assistant-run-actions) button:hover { background:var(--desk-hover)!important; color:var(--desk-ink)!important; }
+html[data-theme] body .compose-toolbar button[aria-pressed="true"] { background:var(--desk-selected)!important; color:var(--desk-accent)!important; }
+html[data-theme] body .compose-attachment-hint { color:var(--desk-muted)!important; font-size:11px; padding:8px 24px; }
+html[data-theme] body .compose-editor { background:var(--desk-surface)!important; color:var(--desk-ink)!important; box-shadow:none!important; padding:24px; }
+.compose-message { font-size:15px; line-height:1.8; }
+html[data-theme] body .compose-card>footer { padding:14px 24px; border-top:1px solid var(--desk-line); gap:12px; }
+html[data-theme] body :is(#btn-send-mail,#assistant-send,.contact-editor-card .primary-action,.contact-picker-footer .primary-action) {
+  background:var(--desk-accent)!important; color:var(--desk-surface)!important; border-color:transparent!important;
+  box-shadow:none!important; border-radius:8px; font-weight:650;
+}
+html[data-theme] body #btn-send-mail { min-height:40px; padding-inline:22px; }
+html[data-theme] body #btn-discard-draft:hover { color:var(--ui-danger,#b95f57)!important; }
+html[data-theme] body :is(.attachment-center-tools,.todo-center-tools,.contact-center-tools,.attachment-type-filters) { background:transparent!important; border-color:var(--desk-line)!important; }
+html[data-theme] body :is(.attachment-search-box,.contact-search-box) { background:var(--desk-muted-surface)!important; border-color:var(--desk-line)!important; box-shadow:none!important; border-radius:8px; }
+html[data-theme] body .attachment-type-filters button { border-color:transparent!important; box-shadow:none!important; background:transparent!important; color:var(--desk-muted)!important; border-radius:7px; }
+html[data-theme] body .attachment-type-filters button.active { background:var(--desk-selected)!important; color:var(--desk-accent)!important; }
+html[data-theme] body #assistant-panel .assistant-head { border-bottom:1px solid var(--desk-line); }
+html[data-theme] body #assistant-panel :is(.assistant-context-row,.assistant-quick,.secretary-tabs) { background:transparent!important; border-color:var(--desk-line)!important; }
+html[data-theme] body #assistant-panel .assistant-bubble { background:var(--desk-muted-surface)!important; color:var(--desk-ink)!important; box-shadow:none!important; border-radius:10px; line-height:1.75; }
+html[data-theme] body #assistant-panel .assistant-message.user .assistant-bubble { background:var(--desk-selected)!important; color:var(--desk-ink)!important; }
+html[data-theme] body #assistant-panel .assistant-form { background:var(--desk-muted-surface)!important; border:1px solid var(--desk-line)!important; border-radius:10px; box-shadow:none!important; }
+html[data-theme] body #assistant-input { background:transparent!important; color:var(--desk-ink)!important; font-size:14px; line-height:1.6; }
+html[data-theme] body #assistant-input::placeholder { color:var(--desk-muted); }
+@media(max-width:760px) {
+  html[data-theme] body .compose-card { border-radius:10px; }
+  html[data-theme] body :is(.compose-card,.attachment-center-card)>header { padding:14px 16px; }
+  html[data-theme] body .compose-fields { padding:6px 16px 10px; }
+  html[data-theme] body .compose-editor { padding:18px 16px; }
+  html[data-theme] body .compose-card>footer { padding:12px; flex-wrap:wrap; }
+  .compose-card>footer>div { display:flex; flex-wrap:wrap; gap:8px; margin-left:auto; }
+  html[data-theme] body .compose-attachment-hint { padding-inline:16px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .compose-card,.attachment-center-card,#assistant-panel { animation:none!important; transition:none!important; }
+}
+html[data-theme] body .compose-card .compose-toolbar .compose-format-tools button { background:transparent!important; border-color:transparent!important; box-shadow:none!important; }
+html[data-theme] body .compose-card .compose-toolbar .compose-format-tools button:hover { background:var(--desk-hover)!important; }
+html[data-theme] body .compose-card .compose-toolbar .compose-format-tools button[aria-pressed="true"] { background:var(--desk-selected)!important; }
+/* Quiet focus remains visible without framing the whole document heavily. */
+html[data-theme] body #compose-message:focus-visible,
+html[data-theme] body #assistant-input:focus-visible {
+  outline:1px solid var(--desk-accent)!important; outline-offset:5px!important;
+  box-shadow:none!important; border-radius:3px;
+}
+html[data-theme] body .compose-toolbar .compose-format-group {
+  border:0; border-right:1px solid var(--desk-line); border-radius:0;
+  background:transparent!important; box-shadow:none!important; padding-inline:4px 8px;
+}
+html[data-theme] body .compose-toolbar .compose-format-group:last-child { border-right:0; }
+@media(prefers-contrast:more) {
+  html[data-theme] body #compose-message:focus-visible,html[data-theme] body #assistant-input:focus-visible { outline-width:2px!important; }
+}
+/* One composer shell: compact scope, unframed text area, one send/stop slot. */
+html[data-theme] body #assistant-panel .assistant-composer { margin:8px 14px; padding:10px 12px; border:1px solid var(--desk-line)!important; border-radius:16px; background:var(--desk-muted-surface)!important; box-shadow:none!important; }
+html[data-theme] body #assistant-panel .assistant-context-row { padding:0 2px 5px; margin:0; min-height:26px; gap:4px; border:0!important; }
+html[data-theme] body #assistant-panel .assistant-scope-picker { max-width:calc(100% - 30px); }
+html[data-theme] body #assistant-panel .assistant-scope-picker>summary { min-height:26px; padding:3px 6px; border:0!important; background:transparent!important; box-shadow:none!important; border-radius:6px; color:var(--desk-muted)!important; }
+#assistant-panel .scope-symbol { display:none; }
+html[data-theme] body #assistant-panel #assistant-form { margin:0; padding:0; gap:8px; align-items:flex-end; border:0!important; border-radius:0; background:transparent!important; box-shadow:none!important; }
+html[data-theme] body #assistant-panel #assistant-input { min-height:44px; padding:10px 2px; border:0!important; outline:none!important; box-shadow:none!important; }
+html[data-theme] body #assistant-panel .assistant-composer:focus-within { border-color:var(--desk-accent)!important; }
+html[data-theme] body #assistant-panel #assistant-stop { display:grid; place-items:center; flex:none; width:36px; height:36px; min-height:36px; padding:8px; margin-bottom:4px; border:0; border-radius:10px; background:var(--desk-accent); color:var(--desk-surface); cursor:pointer; }
+#assistant-stop svg { width:20px; height:20px; fill:currentColor; }
+html[data-theme] body #assistant-panel #assistant-stop.hidden { display:none; }
+#assistant-form:has(#assistant-stop:not(.hidden)) #assistant-send { display:none!important; }
+html[data-theme] body #assistant-panel #assistant-send { flex:none; width:36px; height:36px; min-height:36px; margin-bottom:4px; border-radius:10px; }
+.assistant-run-actions:not(:has(button:not(.hidden))) { display:none; }
+html[data-theme] body #assistant-panel .assistant-scope-options { background:var(--desk-surface)!important; border-color:var(--desk-line)!important; }
+html[data-theme] body #assistant-panel .assistant-scope-options button { color:var(--desk-ink)!important; background:transparent!important; }
+html[data-theme] body #assistant-panel .assistant-scope-options button:hover,
+html[data-theme] body #assistant-panel .assistant-scope-options button[aria-pressed="true"] { background:var(--desk-selected)!important; }
+html[data-theme] body #assistant-panel .assistant-scope-options :is(small,b) { color:var(--desk-muted)!important; }
+/* Group the compose controls with spacing instead of stacked rules. */
+html[data-theme] body .compose-card>header { border-bottom:0!important; padding-bottom:10px; }
+html[data-theme] body .compose-card .compose-fields { border:0!important; padding-bottom:8px; }
+html[data-theme] body .compose-card .compose-fields label { border:0!important; }
+html[data-theme] body .compose-card .compose-fields label:focus-within { background:var(--desk-muted-surface)!important; border-radius:6px; }
+html[data-theme] body .compose-card .compose-fields :is(input,select):focus { outline:none!important; }
+html[data-theme] body .compose-card .compose-toolbar { border:0!important; border-bottom:1px solid var(--desk-line)!important; }
+html[data-theme] body .compose-card :is(.compose-toolbar-actions,.compose-format-tools,.compose-attachment-hint) { border:0!important; }
+html[data-theme] body .compose-card .compose-format-group { border:0!important; padding-inline:4px 12px; }
+html[data-theme] body .compose-card .compose-attachment-hint { background:var(--desk-surface)!important; padding-block:8px 0; }
+html[data-theme] body .compose-card #compose-message:focus-visible { outline:none!important; }

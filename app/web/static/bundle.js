@@ -2409,7 +2409,8 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
   }
   if (!emailIds && mode === 'selected') {
     if (!selectedEmailId) return toast('请先选择一封邮件', 'warn');
-    emailIds = [selectedEmailId];
+    assistantPinnedScope = [selectedEmailId];
+    emailIds = [...assistantPinnedScope];
   } else if (!emailIds && mode === 'filtered') {
     emailIds = [...document.querySelectorAll('#email-list .email-item')].filter(node => !node.dataset.accountId || node.dataset.accountId === account?.id).map(node => Number(node.dataset.id));
   }
@@ -3442,7 +3443,10 @@ function startFetchMonitor() {
       updateFetchOverlay(st);
       if (!st.running) {
         stopFetchMonitor();
-        await loadData();
+        // Refresh both sources before repainting the local/server count pair.
+        await Promise.all([loadData(), loadMailboxFolders()]);
+        if (accountId !== activeMailAccount()?.id) return;
+        applyFilters({silent:true});
         if (st.canceled) {
           toast(st.message || '已中断拉取', 'warn');
         } else if (st.error) {
@@ -3654,6 +3658,8 @@ async function api(path, opts = {}) {
   const composePath = /^\/api\/mail\/(?:send|outbox|preflight|contacts|signatures|compose)/.test(path) || (path.startsWith('/api/drafts') && opts.method);
   const accountId = opts.accountId || (composePath && document.body.classList.contains('compose-open') ? composeAccountId : '') || activeMailAccount()?.id;
   opts = {...opts, headers:{...(opts.headers || {}), ...(accountId ? {'X-MailAI-Account':accountId} : {})}};
+  const undoCollector = opts.undoCollector;
+  delete opts.undoCollector;
   delete opts.accountId;
   // Read-only polling must finish even when the local service is unresponsive.
   // Do not time out mutations here: an accepted send/move must not be retried
@@ -3677,7 +3683,12 @@ async function api(path, opts = {}) {
     throw new Error(message || `HTTP ${res.status}`);
   }
   const data = await res.json();
-  if (data.undo_token && typeof offerUndo === 'function') offerUndo([data.undo_token], accountId);
+  if (data.undo_token && typeof offerUndo === 'function') {
+    const details = describeMailUndo(path, opts.body, data, accountId);
+    const item = {token:data.undo_token, at:Date.now()};
+    if (undoCollector) undoCollector.push({...item, details});
+    else offerUndo([item], accountId, details);
+  }
   return data;
   } catch (err) {
     // 内部超时中断翻译成可读文案；外部调用方主动 abort 则原样抛出
@@ -4710,10 +4721,10 @@ function renderEmailItem(e, idx = 0) {
 }
 
 // ===== 阅读区 =====
-async function selectSpecialMessage(id) {  const kind = specialMailbox;
-  let row = kind === 'drafts' ? savedDrafts.find(x => x.id === id) : sentMessages.find(x => x.id === id);
+async function selectSpecialMessage(id, suppliedRow = null) {  const kind = specialMailbox;
+  let row = suppliedRow || (kind === 'drafts' ? savedDrafts.find(x => x.id === id) : sentMessages.find(x => x.id === id));
   if (!row) return;
-  if (!row._remote) {
+  if (!row._remote && !suppliedRow) {
     try {
       row = await api(kind === 'drafts' ? `/api/drafts/${id}` : `/api/mail/sent/${id}`);
     } catch (error) {
@@ -5068,14 +5079,22 @@ async function runBulkAction(action, target = '') {
   const actionLabel = action === 'read' ? '正在标为已读' : action === 'unread' ? '正在标为未读' :
     action === 'star' ? '正在添加星标' : action === 'trash' ? '正在移入垃圾箱' : `正在移动到“${target}”`;
   setBulkOperationState(true, actionLabel, count);
+  const accountId = activeMailAccount()?.id;
+  const undoCollector = [];
+  let undoPublished = false;
+  const publishUndo = () => {
+    if (undoPublished || !undoCollector.length) return;
+    undoPublished = true;
+    offerUndo(undoCollector.map(({token, at}) => ({token, at})), accountId,
+      {...undoCollector[0].details, count:undoCollector.reduce((sum, item) => sum + item.details.count, 0)});
+  };
   try {
     const result = {completed:0, failed:[]};
-    const accountId = activeMailAccount()?.id;
     for (let start = 0; start < payload.ids.length; start += 100) {
       const batch = payload.ids.slice(start, start + 100);
       setBulkOperationState(true, `${actionLabel} · ${start}/${count}`, count);
       try {
-        const part = await api('/api/emails/bulk', {accountId, method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload, ids:batch})});
+        const part = await api('/api/emails/bulk', {accountId, undoCollector, method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload, ids:batch})});
         result.completed += part.completed; result.failed.push(...part.failed);
         if (action === 'read' || action === 'unread') {
           const failedIds = new Set((part.failed || []).map(item => Number(item.id)));
@@ -5085,6 +5104,7 @@ async function runBulkAction(action, target = '') {
         }
       } catch (error) { result.failed.push(...batch.map(id => ({id, error:error.message}))); }
     }
+    publishUndo();
     const completedText = action === 'trash'
       ? `已移入已删除 ${result.completed} 封，可在那里取消删除；稍后同步服务器`
       : action === 'read' || action === 'unread'
@@ -5100,6 +5120,7 @@ async function runBulkAction(action, target = '') {
   } catch (err) {
     toast('批量操作失败：' + err.message, 'error');
   } finally {
+    publishUndo();
     setBulkOperationState(false);
   }
 }
@@ -5671,6 +5692,7 @@ function renderMailboxSyncTracker(accounts = []) {
 }
 
 function renderSidebarAccounts() {
+  if (typeof updateWorkspaceToolScope === 'function') updateWorkspaceToolScope();
   const accounts = _systemConfig?.accounts || [];
   const group = document.getElementById('account-mailbox-group');
   const primary = document.getElementById('primary-folder-group');
@@ -6617,7 +6639,7 @@ function renderReadingPane(e) {
   // 操作按钮
   let replyActions = '<button type="button" class="btn-ghost mobile-back" onclick="closeReadingPane()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 5-7 7 7 7M3 12h18"/></svg><span>返回列表</span></button>';
   replyActions += `<div class="reading-reply-group" role="toolbar" aria-label="邮件回复操作">
-    <button type="button" class="btn-ghost reading-icon-action" aria-label="回复" data-tooltip="回复" onclick="composeFromEmail('reply')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6-6 6 6 6M4 12h9c4 0 6.5 2 7 6"/></svg><span class="reading-action-label">回复</span></button>
+    <button type="button" class="btn-ghost reading-icon-action reading-primary-action" aria-label="回复" data-tooltip="回复" onclick="composeFromEmail('reply')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6-6 6 6 6M4 12h9c4 0 6.5 2 7 6"/></svg><span class="reading-action-label">回复</span></button>
     <button type="button" class="btn-ghost reading-icon-action" aria-label="回复全部" data-tooltip="回复全部" onclick="composeFromEmail('reply_all')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6-6 6 6 6m5-12-6 6 6 6M9 12h5c3.5 0 6 2 6.5 6"/></svg><span class="reading-action-label">回复全部</span></button>
     <button type="button" class="btn-ghost reading-icon-action" aria-label="转发" data-tooltip="转发" onclick="composeFromEmail('forward')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6 6 6-6 6m6-6h-9c-4 0-6.5 2-7 6"/></svg><span class="reading-action-label">转发</span></button>
     <span class="reading-reply-divider" aria-hidden="true"></span>
@@ -6643,6 +6665,9 @@ function renderReadingPane(e) {
     if (!e.reviewed) decisionActions += `<button class="btn-success" onclick="confirmEmail(${e.id}, '无风险', this)">${shieldIcon}<span>确认无风险</span></button>`;
     decisionActions += `<button class="btn-ghost" onclick="feedbackEmail(${e.id}, 'fn')">${flagIcon}<span>报告风险</span></button>`;
   }
+
+  const decisionGroup = `<section class="reading-action-group reading-risk-group" aria-label="风险封控"><span class="reading-action-group-title">${mailaiT('read.groupRisk') || '风险封控'}</span><div class="reading-decision-actions">${decisionActions}</div></section>`;
+  const showRiskActions = riskNeedsAttention || ['quarantine', 'spam'].includes(e.status);
 
   document.getElementById('reading-content').innerHTML = `
     <div class="reading-header">
@@ -6675,7 +6700,8 @@ function renderReadingPane(e) {
         <div class="reading-actions">
           <section class="reading-action-group reading-mail-group" aria-label="邮件操作"><span class="reading-action-group-title">${mailaiT('read.groupMail') || '邮件操作'}</span><div class="reading-mail-controls"><div class="reading-reply-actions">${replyActions}</div></div></section>
           <section class="reading-action-group reading-ai-group" aria-label="AI 助手"><span class="reading-action-group-title">${mailaiT('read.groupAi') || 'AI 助手'}</span></section>
-          <section class="reading-action-group reading-risk-group" aria-label="风险封控"><span class="reading-action-group-title">${mailaiT('read.groupRisk') || '风险封控'}</span><div class="reading-decision-actions">${decisionActions}</div></section>
+          ${showRiskActions ? decisionGroup : ''}
+          <details class="reading-more-actions"><summary aria-label="更多邮件操作">更多 <span aria-hidden="true">⌄</span></summary><div class="reading-more-panel">${!['trash','spam','quarantine','draft'].includes(e.status) ? '<button type="button" onclick="openConversationProgress()"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 4h10v9H9l-4 3V4Z"/><path d="M8 7h4M8 10h4"/></svg><span>会话进展</span></button>' : ''}${showRiskActions ? '' : decisionGroup}</div></details>
         </div>
       </div>
     </div>
@@ -6707,6 +6733,7 @@ function renderReadingPane(e) {
 
     <div class="reading-workspace">
       <main class="reading-main">
+        ${renderConversationProgress(e)}
         <div class="reading-section summary-section primary-summary">
           <div class="section-title"><span>${mailaiT('read.summaryTitle') || 'AI 摘要'}</span><small>${mailaiT('read.summaryHint') || '提炼重点，完整展示'}</small></div>
           <div class="summary-quick-meta">
@@ -6731,6 +6758,7 @@ function renderReadingPane(e) {
   const securityFlyout = readingContent.querySelector('.security-flyout');
   if (securityBackdrop && securityFlyout) document.body.append(securityBackdrop, securityFlyout);
   mountRichEmailBody(e);
+  loadConversationProgress();
 }
 
 function removeSecurityFlyout() {
@@ -7680,15 +7708,28 @@ function updateAttachmentTypeFilters() {
   });
 }
 
+let attachmentCenterAccountId = '';
+let attachmentCenterRevision = 0;
+let attachmentCenterState = 'idle';
+let attachmentCenterError = '';
 function renderAttachmentCenter() {
+  if (attachmentCenterState === 'loading' || attachmentCenterState === 'error') {
+    updateAttachmentTypeFilters();
+    const failed = attachmentCenterState === 'error';
+    document.getElementById('attachment-count').textContent = failed ? '附件暂时无法读取' : '正在读取…';
+    document.getElementById('attachment-grid').innerHTML = failed
+      ? `<div class="attachment-empty" role="status">加载失败：${esc(attachmentCenterError)}<button type="button" class="attachment-retry" data-attachment-retry>重新加载</button></div>`
+      : '<div class="attachment-empty" role="status">正在整理附件…</div>';
+    return;
+  }
   const query = document.getElementById('attachment-search').value.trim().toLowerCase();
   const rows = attachmentItems.filter(item => (attachmentTypeFilter === 'all' || attachmentType(item) === attachmentTypeFilter) &&
     (!query || [item.name, item.subject, item.from_addr].some(value => String(value || '').toLowerCase().includes(query))));
   const sourceCount = new Set(rows.map(item => item.email_id)).size;
-  animateCountText(document.getElementById('attachment-count'), rows.length, n => (mailaiT('att.countLine') || '{n} 个附件 · 来自 {m} 封邮件').replace('{n}', n).replace('{m}', sourceCount));
+  document.getElementById('attachment-count').textContent = (mailaiT('att.countLine') || '{n} 个附件 · 来自 {m} 封邮件').replace('{n}', rows.length).replace('{m}', sourceCount);
   updateAttachmentTypeFilters();
   document.getElementById('attachment-grid').innerHTML = rows.length ? rows.map(item => `
-    <a class="attachment-card type-${attachmentType(item)}" href="${mailboxResourceUrl(`/api/emails/${item.email_id}/attachments/${item.index}`)}" download="${esc(item.name)}" title="${(mailaiT('att.previewTitle') || '预览 {name}').replace('{name}', esc(item.name))}">
+    <a class="attachment-card type-${attachmentType(item)}" href="${mailboxResourceUrl(`/api/emails/${item.email_id}/attachments/${item.index}`, attachmentCenterAccountId)}" download="${esc(item.name)}" title="${(mailaiT('att.previewTitle') || '预览 {name}').replace('{name}', esc(item.name))}">
       <span class="attachment-file-icon"><strong>${esc(attachmentTypeLabel(item.content_type, item.name))}</strong><small>${attachmentType(item) === 'pdf' ? attachmentTypeName('document') : attachmentTypeName(attachmentType(item))}</small></span>
       <span class="attachment-card-main">
         <b title="${esc(item.name)}">${esc(item.name)}</b>
@@ -7705,17 +7746,32 @@ function renderAttachmentCenter() {
 
 async function openAttachmentCenter() {
   closeAssistant();
+  attachmentCenterAccountId = activeMailAccount()?.id;
+  document.getElementById('attachment-account-label').textContent = activeMailAccount()?.user || '';
   const modal = document.getElementById('attachment-center');
   modal.classList.remove('hidden');
   document.body.classList.add('modal-open');
-  attachmentTypeFilter = 'all';
+  attachmentItems = []; attachmentTypeFilter = 'all';
   document.getElementById('attachment-search').value = '';
-  document.getElementById('attachment-grid').innerHTML = '<div class="attachment-empty">正在整理附件…</div>';
-  try { attachmentItems = await api('/api/attachments?limit=1000'); renderAttachmentCenter(); }
-  catch (err) { document.getElementById('attachment-grid').innerHTML = `<div class="attachment-empty">加载失败：${esc(err.message)}</div>`; }
+  await loadAttachmentCenter();
+}
+
+async function loadAttachmentCenter() {
+  const accountId = attachmentCenterAccountId, revision = ++attachmentCenterRevision;
+  attachmentCenterState = 'loading'; attachmentCenterError = '';
+  renderAttachmentCenter();
+  try {
+    const rows = await api('/api/attachments?limit=1000', {accountId});
+    if (revision !== attachmentCenterRevision) return;
+    attachmentItems = rows; attachmentCenterState = 'ready'; renderAttachmentCenter();
+  } catch (error) {
+    if (revision !== attachmentCenterRevision) return;
+    attachmentCenterState = 'error'; attachmentCenterError = error.message; renderAttachmentCenter();
+  }
 }
 
 function closeAttachmentCenter() {
+  ++attachmentCenterRevision;
   document.getElementById('attachment-center').classList.add('hidden');
   document.body.classList.remove('modal-open');
 }
@@ -7757,10 +7813,16 @@ async function downloadAttachmentInDesktop(event) {
 document.addEventListener('click', downloadAttachmentInDesktop, true);
 
 let todoRenderLimit = 160;
+let todoCenterRows = [];
+let todoCenterAccountId = '';
+let todoCenterRevision = 0;
+let todoCenterLoading = false;
+let todoBatchBusy = false;
 
 function renderTodoCenter() {
+  if (todoCenterLoading) return;
   const showDone = document.getElementById('todo-show-done').checked;
-  const rows = allTodos.filter(item => showDone || item.status !== 'done');
+  const rows = todoCenterRows.filter(item => showDone || item.status !== 'done');
   const visibleIds = new Set(rows.map(item => item.id));
   selectedTodoIds = new Set([...selectedTodoIds].filter(id => visibleIds.has(id)));
   const now = localDateKey();
@@ -7787,59 +7849,75 @@ function renderTodoCenter() {
 
 let selectedTodoIds = new Set();
 
-function updateTodoBatchToolbar(rows = allTodos.filter(item => document.getElementById('todo-show-done').checked || item.status !== 'done')) {
+function updateTodoBatchToolbar(rows = todoCenterRows.filter(item => document.getElementById('todo-show-done').checked || item.status !== 'done')) {
   const selectable = rows.filter(item => item.status !== 'done');
   const selectedOpen = selectable.filter(item => selectedTodoIds.has(item.id));
   const selectAll = document.getElementById('todo-select-all');
   selectAll.checked = selectable.length > 0 && selectedOpen.length === selectable.length;
   selectAll.indeterminate = selectedOpen.length > 0 && selectedOpen.length < selectable.length;
-  selectAll.disabled = selectable.length === 0;
+  selectAll.disabled = todoCenterLoading || todoBatchBusy || selectable.length === 0;
   const selectedButton = document.getElementById('todo-complete-selected');
-  selectedButton.disabled = selectedOpen.length === 0;
+  selectedButton.disabled = todoCenterLoading || todoBatchBusy || selectedOpen.length === 0;
   selectedButton.textContent = selectedOpen.length ? (mailaiT('todo.completeSelectedN') || '完成所选 {n}').replace('{n}', selectedOpen.length) : (mailaiT('todo.completeSelected') || '完成所选');
-  document.getElementById('todo-complete-all').disabled = selectable.length === 0;
+  document.getElementById('todo-complete-all').disabled = todoCenterLoading || todoBatchBusy || selectable.length === 0;
 }
 
 async function setTodoBatchStatus(ids, status = 'done') {
-  if (!ids.length) return;
+  if (!ids.length || todoCenterLoading || todoBatchBusy) return;
+  todoBatchBusy = true; updateTodoBatchToolbar();
+  const accountId = todoCenterAccountId, revision = todoCenterRevision;
+  const rows = todoCenterRows;
   let updated = 0;
   const changed = new Set();
   try {
     for (let start = 0; start < ids.length; start += 200) {
       const batch = ids.slice(start, start + 200);
       const result = await api('/api/todos/bulk/status', {
-        method: 'POST',
+        accountId, method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ids:batch, status}),
       });
       updated += Number(result.updated || 0);
       batch.forEach(id => changed.add(Number(id)));
-      allTodos.forEach(item => { if (changed.has(Number(item.id))) item.status = status; });
+      rows.forEach(item => { if (changed.has(Number(item.id))) item.status = status; });
       await new Promise(resolve => setTimeout(resolve, 0));
     }
   } finally {
-    changed.forEach(id => selectedTodoIds.delete(id));
-    renderTodoCenter();
+    todoBatchBusy = false; updateTodoBatchToolbar();
+    if (changed.size) window.mailaiTasksChanged?.(accountId);
+    if (revision === todoCenterRevision) { changed.forEach(id => selectedTodoIds.delete(id)); renderTodoCenter(); }
     updateSidebar();
   }
   toast(`已更新 ${updated} 项待办`, 'success');
-  window.mailaiTasksChanged?.();
 }
 
 async function openTodoCenter() {
   closeAssistant();
   document.getElementById('todo-center').classList.remove('hidden');
   document.body.classList.add('modal-open');
-  selectedTodoIds.clear();
-  todoRenderLimit = 160;
-  allTodos = await api('/api/todos?include_done=true'); renderTodoCenter();
+  todoCenterAccountId = activeMailAccount()?.id;
+  document.getElementById('todo-account-label').textContent = activeMailAccount()?.user || '';
+  todoCenterLoading = false;
+  selectedTodoIds.clear(); todoRenderLimit = 160; todoCenterRows = []; renderTodoCenter();
+  await loadTodoCenter();
 }
-function closeTodoCenter() { document.getElementById('todo-center').classList.add('hidden'); document.body.classList.remove('modal-open'); }
+async function loadTodoCenter() {
+  const accountId = todoCenterAccountId, revision = ++todoCenterRevision;
+  todoCenterLoading = true; updateTodoBatchToolbar([]);
+  document.getElementById('todo-list').innerHTML = '<div class="attachment-empty">正在读取待办…</div>';
+  try {
+    const rows = await api('/api/todos?include_done=true', {accountId});
+    if (revision !== todoCenterRevision) return;
+    todoCenterLoading = false; todoCenterRows = rows; renderTodoCenter();
+  } catch (error) { if (revision === todoCenterRevision) { todoCenterLoading = false; todoCenterRows = []; updateTodoBatchToolbar([]); document.getElementById('todo-list').innerHTML = `<div class="attachment-empty">加载失败：${esc(error.message)} <button data-todo-retry>重试</button></div>`; } }
+}
+function closeTodoCenter() { ++todoCenterRevision; todoCenterLoading = false; document.getElementById('todo-center').classList.add('hidden'); document.body.classList.remove('modal-open'); }
 async function saveTodoItem(article) {
+  const accountId = todoCenterAccountId;
   const id = Number(article.dataset.todoId);
   const title = article.querySelector('.todo-title-input').value.trim();
   const deadline = article.querySelector('input[type="date"]').value;
-  try { await api(`/api/todos/${id}`, {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,deadline})}); toast('待办已保存', 'success'); window.mailaiTasksChanged?.(); }
+  try { await api(`/api/todos/${id}`, {accountId,method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,deadline})}); toast('待办已保存', 'success'); window.mailaiTasksChanged?.(accountId); }
   catch (err) { toast('保存失败：' + err.message, 'error'); }
 }
 
@@ -7847,6 +7925,9 @@ document.getElementById('btn-attachments').addEventListener('click', openAttachm
 document.getElementById('btn-close-attachments').addEventListener('click', closeAttachmentCenter);
 document.querySelector('#attachment-center .attachment-center-backdrop').addEventListener('click', closeAttachmentCenter);
 document.getElementById('attachment-search').addEventListener('input', renderAttachmentCenter);
+document.getElementById('attachment-grid').addEventListener('click', event => {
+  if (event.target.closest('[data-attachment-retry]') && attachmentCenterState === 'error') loadAttachmentCenter();
+});
 document.getElementById('attachment-type-filters').addEventListener('click', event => {
   const button = event.target.closest('[data-attachment-type]');
   if (!button) return;
@@ -7943,7 +8024,7 @@ document.getElementById('todo-show-done').addEventListener('change', () => {
 });
 document.getElementById('todo-select-all').addEventListener('change', event => {
   const showDone = document.getElementById('todo-show-done').checked;
-  const selectable = allTodos.filter(item => item.status !== 'done' && (showDone || item.status !== 'done'));
+  const selectable = todoCenterRows.filter(item => item.status !== 'done' && (showDone || item.status !== 'done'));
   if (event.target.checked) selectable.forEach(item => selectedTodoIds.add(item.id));
   else selectable.forEach(item => selectedTodoIds.delete(item.id));
   document.querySelectorAll('#todo-list [data-todo-select]').forEach(input => {
@@ -7952,12 +8033,12 @@ document.getElementById('todo-select-all').addEventListener('change', event => {
   updateTodoBatchToolbar();
 });
 document.getElementById('todo-complete-selected').addEventListener('click', async () => {
-  const ids = allTodos.filter(item => item.status !== 'done' && selectedTodoIds.has(item.id)).map(item => item.id);
+  const ids = todoCenterRows.filter(item => item.status !== 'done' && selectedTodoIds.has(item.id)).map(item => item.id);
   try { await setTodoBatchStatus(ids); }
   catch (err) { toast('批量完成失败：' + err.message, 'error'); }
 });
 document.getElementById('todo-complete-all').addEventListener('click', async () => {
-  const ids = allTodos.filter(item => item.status !== 'done').map(item => item.id);
+  const ids = todoCenterRows.filter(item => item.status !== 'done').map(item => item.id);
   if (!ids.length || !window.confirm(`确认将全部 ${ids.length} 项未完成待办标记为完成？`)) return;
   try { await setTodoBatchStatus(ids); }
   catch (err) { toast('全部完成失败：' + err.message, 'error'); }
@@ -7973,12 +8054,19 @@ document.getElementById('todo-list').addEventListener('change', event => {
   const article = event.target.closest('[data-todo-id]'); if (article) saveTodoItem(article);
 });
 document.getElementById('todo-list').addEventListener('click', async event => {
+  if (event.target.closest('[data-todo-retry]')) return loadTodoCenter();
+  const accountId = todoCenterAccountId, revision = todoCenterRevision;
   const plan = event.target.closest('[data-todo-plan]');
-  if (plan) { await window.openTaskPlanner({todoId:Number(plan.dataset.todoPlan)}); return; }
+  if (plan) { await window.openTaskPlanner({todoId:Number(plan.dataset.todoPlan),accountId}); return; }
   const toggle = event.target.closest('[data-todo-toggle]');
   if (toggle) {
-    const item = allTodos.find(row => row.id === Number(toggle.dataset.todoToggle));
-    if (item) { await toggleTodo(item.id, item.status); renderTodoCenter(); }
+    const item = todoCenterRows.find(row => row.id === Number(toggle.dataset.todoToggle));
+    if (item && !toggle.disabled) {
+      toggle.disabled = true;
+      try { await api(`/api/todos/${item.id}/${item.status === 'done' ? 'reopen' : 'done'}`, {accountId,method:'POST'}); item.status = item.status === 'done' ? 'open' : 'done'; if (revision === todoCenterRevision) renderTodoCenter(); window.mailaiTasksChanged?.(accountId); }
+      catch (error) { toast('更新失败：' + error.message, 'error'); }
+      finally { toggle.disabled = false; }
+    }
     return;
   }
   if (event.target.closest('[data-todo-render-more]')) {
@@ -7987,7 +8075,7 @@ document.getElementById('todo-list').addEventListener('click', async event => {
     return;
   }
   const source = event.target.closest('[data-todo-email]');
-  if (source) { closeTodoCenter(); await revealEmailFromSource(Number(source.dataset.todoEmail)); }
+  if (source) { closeTodoCenter(); if (accountId !== activeMailAccount()?.id) await openAccountMailbox(accountId, 'inbox'); await revealEmailFromSource(Number(source.dataset.todoEmail)); }
 });
 document.getElementById('btn-preferences').addEventListener('click', () => showSystemView('preferences'));
 document.getElementById('btn-toggle-fetch').addEventListener('click', () => {
@@ -9701,6 +9789,92 @@ setTimeout(() => {
 })();
 
 ;
+/* ---- conversation-progress.js ---- */
+/* Evidence-only progress, scoped to the current reading view and mailbox. */
+function renderConversationProgress(email) {
+  if (['trash','spam','quarantine','draft'].includes(email.status)) return '';
+  return `<dialog id="conversation-progress-dialog" aria-label="会话进展"><header class="progress-dialog-header"><h2>会话进展</h2><button type="button" onclick="document.getElementById('conversation-progress-dialog').close()" aria-label="关闭会话进展">✕</button></header><section id="conversation-progress" class="conversation-progress" tabindex="-1" aria-label="会话进展" data-email-id="${Number(email.id)}" data-account-id="${esc(activeMailAccount()?.id || '')}"><div class="progress-loading" role="status">正在整理会话进展…</div></section></dialog>`;
+
+}
+
+let conversationProgressRevision = 0;
+function conversationProgressMarkup(data) {
+  const source = item => `<button type="button" data-progress-source="${item.source}" data-progress-id="${Number(item.id)}">${item.current ? '正在阅读' : item.source === 'sent' ? '查看发件记录' : '查看原邮件'}</button>`;
+  const latest = data.timeline[0];
+  const changes = data.changes?.items || [];
+  const risky = data.timeline.some(item => item.risky) || changes.some(item => item.risky);
+  return `<div class="progress-disclosure"><div class="progress-overview-row"><span class="progress-overview"><span>${Number(data.linked_count)} 封往来${changes.length ? ` · ${changes.length}${data.changes.limited ? '+' : ''} 项变化待核对` : ''}${data.truncated ? ' · 部分记录' : ''}</span></span></div>
+    <div class="progress-detail"><header><h3>往来与任务</h3><span>${esc(data.status)}</span></header>
+    <p class="progress-next">${esc(data.next_step)}</p>
+    ${latest && data.linked_count > 1 ? `<div class="progress-latest"><small>最新往来 · ${latest.direction === 'outgoing' ? '发出' : '收到'} · ${esc(fmtDate(latest.date) || '时间未知')}</small><p>${esc(latest.excerpt || latest.subject)}</p>${latest.risky ? '<strong class="progress-risk">此邮件存在风险，请先核实来源</strong>' : ''}${source(latest)}</div>` : ''}
+    ${data.changes?.items?.length ? `<section class="progress-changes" aria-label="变化线索"><h4>变化线索</h4><p class="progress-scope">仅识别原文明确的调整表述；不代表最终安排，不会自动修改待办或对外确认。</p>${data.changes.items.map(change => `<article><b>${esc(change.label)}</b><div class="progress-date-pair"><span>${change.kind === 'amount' ? '原金额' : '原日期'}：${esc(change.before || '原文未写明')}</span><span>${change.kind === 'amount' ? '提及的新金额' : '提及的新日期'}：${esc(change.after)}</span></div>${change.comparison ? `<p>${esc(change.comparison)}</p>` : ''}<blockquote>${esc(change.quote)}</blockquote><small>${esc(change.sender)} · ${esc(fmtDate(change.date))}</small>${change.risky ? '<strong class="progress-risk">来源需核实</strong>' : ''}${source(change)}</article>`).join('')}${data.changes.limited ? '<p>先展示 8 条线索，请结合完整往来核对。</p>' : ''}</section>` : ''}
+    <h4 class="progress-history-title">往来记录</h4>
+      <ol class="progress-timeline">${data.timeline.map(item => `<li><div><b>${item.direction === 'outgoing' ? '发出' : '收到'} · ${esc(item.sender)}</b><time>${esc(fmtDate(item.date) || '时间未知')}</time></div><p>${esc(item.subject)}</p><blockquote>${esc(item.excerpt || '暂无可展示的正文片段')}</blockquote>${item.risky ? '<small class="progress-risk">来源需核实</small>' : ''}${source(item)}</li>`).join('')}</ol>
+      <div class="progress-tasks"><h4>已保存的待办</h4>${data.tasks.length ? data.tasks.map(task => `<article><span><b>${esc(task.title)}</b><small>${task.user_edited ? '已由你保存' : '自动提取，待核对'} · ${task.status === 'done' ? '已完成' : task.stage === 'waiting' ? '等待反馈' : '待推进'}${task.deadline ? ' · ' + esc(task.deadline) : ''}</small></span><button type="button" data-progress-task="${Number(task.id)}">核对 / 更新</button></article>`).join('') : '<p>尚未保存待办；不能据此判断是否已处理。</p>'}
+      <button type="button" data-progress-plan>安排当前邮件</button></div>
+      <p class="progress-scope">${esc(data.basis)}<br>${esc(data.scope)}${data.truncated ? '<br>关联记录已达到本次展示上限，不能视为完整会话。' : ''}</p>
+    <footer><small>${esc(data.account_user)} · 本地整理</small><button type="button" data-progress-refresh>刷新进展</button></footer></div></div><div class="progress-notice">${risky ? '<span class="progress-risk">往来中有来源需核实，请核对原文。</span>' : esc(data.status)}</div>`;
+}
+
+async function loadConversationProgress(host = document.getElementById('conversation-progress')) {
+  if (!host) return;
+  const dialog = host.closest?.('dialog');
+  if (dialog && !dialog.open) return;
+  const revision = ++conversationProgressRevision;
+  const accountId = host.dataset.accountId, emailId = Number(host.dataset.emailId);
+  const current = () => host.isConnected && revision === conversationProgressRevision && accountId === activeMailAccount()?.id && selectedEmailDetail?.id === emailId;
+  try {
+    host.setAttribute('aria-busy', 'true');
+    const data = await api(`/api/emails/${emailId}/progress`, {accountId});
+    if (!current()) return;
+    host.innerHTML = conversationProgressMarkup(data);
+  } catch (error) {
+    if (current()) host.innerHTML = `<p role="status">会话进展暂时无法读取：${esc(error.message)}</p><button type="button" data-progress-refresh>重新加载</button>`;
+  } finally { if (current()) host.removeAttribute('aria-busy'); }
+}
+
+async function handleConversationProgressClick(event) {
+  const host = event.target.closest('#conversation-progress');
+  const button = event.target.closest('button');
+  if (!host || !button || button.disabled) return;
+  const accountId = host.dataset.accountId, emailId = Number(host.dataset.emailId);
+  if (accountId !== activeMailAccount()?.id || selectedEmailDetail?.id !== emailId) return;
+  if (button.hasAttribute('data-progress-refresh')) return loadConversationProgress(host);
+  if (!button.hasAttribute('data-progress-refresh')) host.closest?.('dialog')?.close();
+  button.disabled = true;
+  try {
+    if (button.hasAttribute('data-progress-plan') || button.dataset.progressTask) {
+      const todoId = Number(button.dataset.progressTask);
+      await window.openTaskPlanner(todoId ? {todoId, accountId} : {emailId, accountId});
+    } else if (button.dataset.progressSource === 'sent') {
+      const id = Number(button.dataset.progressId);
+      const row = await api(`/api/mail/sent/${id}`, {accountId});
+      if (!host.isConnected || accountId !== activeMailAccount()?.id) return;
+      await openAccountMailbox(accountId, 'sent');
+      if (accountId === activeMailAccount()?.id && specialMailbox === 'sent') await selectSpecialMessage(id, row);
+    } else if (button.dataset.progressSource === 'email') {
+      const id = Number(button.dataset.progressId);
+      if (id === emailId) document.querySelector('#reading-content .reading-header')?.scrollIntoView({block:'start'});
+      else await revealEmailFromSource(id);
+    }
+  } catch (error) { toast('操作未完成：' + error.message, 'warn'); }
+  finally { button.disabled = false; }
+}
+
+document.getElementById('reading-content').addEventListener('click', handleConversationProgressClick);
+window.addEventListener('mailai-tasks-changed', event => {
+  const host = document.getElementById('conversation-progress');
+  if (host?.dataset.accountId === event.detail.accountId) loadConversationProgress(host);
+});
+
+function openConversationProgress() {
+  const dialog = document.getElementById('conversation-progress-dialog');
+  if (!dialog) return;
+  if (!dialog.open) dialog.showModal();
+  loadConversationProgress();
+}
+
+;
 /* ---- mail-library.js ---- */
 /* Account-local collections, contact groups and selective backup recovery. */
 let contactGroups = [];
@@ -10007,7 +10181,7 @@ document.getElementById('cleanup-preview-results').addEventListener('click', eve
 ;
 /* ---- workspace.js ---- */
 /* Workspace interaction layer: preferences, task feedback and mail actions. */
-let undoTokens = [];
+let undoOperations = [];
 let operationRetry = null;
 let preferencesAccount = '';
 let preferencesLoadRevision = 0;
@@ -10016,6 +10190,18 @@ let taskPollActive = false;
 let taskCenterPollTimer = 0;
 let taskCenterReminders = [];
 let taskCenterLastFocus = null;
+let taskCenterAccountId = '';
+function taskCenterScope() {
+  return document.getElementById('task-center')?.classList.contains('hidden')
+    ? activeMailAccount()?.id : taskCenterAccountId || activeMailAccount()?.id;
+}
+function updateWorkspaceToolScope() {
+  const account = activeMailAccount();
+  for (const [id, name] of [['btn-contacts','联系人'],['btn-attachments','附件'],['btn-todos','待办'],['btn-digest','日报']]) {
+    const button = document.getElementById(id);
+    if (button) { button.title = `${name} · ${account?.user || '未选择邮箱'}`; button.setAttribute('aria-label', button.title); }
+  }
+}
 let latestUndoAction = null;
 let undoInProgress = false;
 const THEME_MODE_KEY = 'mailai.preferences.theme.v1';
@@ -10065,36 +10251,73 @@ function taskNotice(message, actionText = '', action = null, dismissAfter = 0) {
   if (dismissAfter > 0) host._dismissTimer = setTimeout(() => hideTaskNotice(host), dismissAfter);
 }
 
-function offerUndo(tokens, accountId) {
-  undoTokens.push(...tokens.map(token => ({token, accountId, at:Date.now()})));
-  undoTokens = undoTokens.filter(item => Date.now() - item.at < 120000);
-  const perform = async () => {
-    if (undoInProgress) return;
-    undoTokens = undoTokens.filter(item => Date.now() - item.at < 120000);
-    const pending = undoTokens.splice(0);
-    if (!pending.length) {
-      latestUndoAction = null;
-      taskNotice('撤销时间已超过 2 分钟', '', null, 3500);
-      return;
+function describeMailUndo(path, body, result, accountId) {
+  let payload = {};
+  try { payload = JSON.parse(body || '{}'); } catch (_) {}
+  const query = new URLSearchParams(path.split('?')[1] || '');
+  const action = payload.action || path.split('?')[0].split('/').at(-1);
+  const value = payload.value !== false && query.get('value') !== 'false';
+  const label = {read:value ? '标为已读' : '标为未读', star:value ? '添加星标' : '取消星标',
+    trash:'移入已删除', move:`移动到“${payload.target || result.folder || query.get('target') || '目标文件夹'}”`}[action] || '邮件操作';
+  const account = typeof _systemConfig !== 'undefined' ? _systemConfig?.accounts?.find(item => item.id === accountId) : null;
+  return {label, count:Math.max(0, (result.completed ?? 1) - (result.reconciled || 0)), accountLabel:account?.user || accountId || '当前邮箱'};
+}
+
+function refreshUndoAction() {
+  undoOperations = undoOperations.filter(operation => operation.items.some(item => Date.now() - item.at < 120000));
+  const latest = undoOperations.at(-1);
+  latestUndoAction = latest ? () => performMailUndo(latest) : null;
+}
+
+async function performMailUndo(operation) {
+  if (undoInProgress) return;
+  // A notice always refers to its own operation, even after another one arrives.
+  if (!undoOperations.includes(operation)) return;
+  const pending = operation.items.filter(item => Date.now() - item.at < 120000);
+  const expired = pending.length !== operation.items.length;
+  if (!pending.length) {
+    refreshUndoAction();
+    taskNotice('这次操作的撤销时间已超过 2 分钟', '', null, 3500);
+    return;
+  }
+  undoInProgress = true;
+  let failed = 0;
+  const retry = [];
+  try {
+    for (const item of [...pending].reverse()) {
+      try {
+        const result = await api(`/api/mail/undo/${item.token}`, {method:'POST', accountId:operation.accountId});
+        failed += result.failed.length;
+        if (result.retry_token) retry.unshift({token:result.retry_token, at:Date.now()});
+      } catch (_) { failed++; retry.unshift(item); }
     }
-    undoInProgress = true;
-    let failed = 0;
-    try {
-      for (const item of pending.reverse()) {
-        try {
-          const result = await api(`/api/mail/undo/${item.token}`, {method:'POST', accountId:item.accountId}); failed += result.failed.length;
-          if (result.retry_token) undoTokens.push({...item, token:result.retry_token, at:Date.now()});
-        } catch (_) { failed++; undoTokens.push(item); }
-      }
-      latestUndoAction = failed ? perform : null;
-      taskNotice(failed ? `部分操作未能撤销（${failed} 项），请核对邮件状态` : '已撤销', failed ? '重试撤销' : '', failed ? perform : null, failed ? 0 : 3500);
-      await loadData();
-    } finally {
-      undoInProgress = false;
+    const hasNewer = undoOperations.at(-1) !== operation;
+    operation.items = retry;
+    refreshUndoAction();
+    if (!hasNewer) {
+      const message = failed ? `${operation.description}：${failed} 项未能撤销，请核对邮件状态`
+        : expired ? `${operation.description}：已撤销有效部分，部分记录已过期` : `已撤销：${operation.description}`;
+      const next = undoOperations.at(-1);
+      const retryAction = retry.length ? () => performMailUndo(operation) : null;
+      taskNotice(message, retryAction ? '重试本次撤销' : next ? `撤销上一步：${next.description}` : '',
+        retryAction || latestUndoAction, failed || expired ? 0 : 6500);
     }
-  };
-  latestUndoAction = perform;
-  taskNotice('操作已完成，2 分钟内可撤销（⌘Z / Ctrl+Z）', '撤销', perform, 6500);
+    // Refresh failure must not requeue an already completed undo.
+    try { await loadData(); }
+    catch (_) { if (typeof toast === 'function') toast('撤销已处理，邮件列表暂时未刷新', 'warn'); }
+  } finally { undoInProgress = false; }
+}
+
+function offerUndo(tokens, accountId, details = {}) {
+  if (!tokens.length) return;
+  const description = `${details.accountLabel || accountId || '当前邮箱'} · ${details.label || '邮件操作'}${details.count ? ` ${details.count} 封` : ''}`;
+  const operation = {accountId, description, items:tokens.map(item => typeof item === 'string' ? {token:item, at:Date.now()} : item)};
+  undoOperations.push(operation);
+  refreshUndoAction();
+  if (!undoOperations.includes(operation)) return;
+  const remaining = Math.ceil(Math.min(...operation.items.map(item => item.at + 120000 - Date.now())) / 1000);
+  const expiry = remaining > 0 ? `约 ${remaining} 秒内可撤销` : '部分记录已过期，可撤销有效部分';
+  taskNotice(`${description}，${expiry}（⌘Z / Ctrl+Z）`, '撤销本次', () => performMailUndo(operation), 6500);
 }
 
 document.addEventListener('keydown', event => {
@@ -10139,6 +10362,10 @@ function showQueuedMail(result, accountId) {
 async function openTaskCenter() {
   window.closeAssistant?.();
   taskCenterLastFocus = document.activeElement;
+  taskCenterAccountId = activeMailAccount()?.id || '';
+  const selector = document.getElementById('task-center-account');
+  selector.innerHTML = (_systemConfig?.accounts || []).map(account => `<option value="${esc(account.id)}">${esc(account.user)}</option>`).join('');
+  selector.value = taskCenterAccountId;
   const panel = document.getElementById('task-center');
   const host = document.getElementById('task-center-list');
   if (host.dataset.accountId !== (activeMailAccount()?.id || '')) {
@@ -10185,21 +10412,23 @@ async function refreshTaskCenter({lightweight = false} = {}) {
     return;
   }
   taskPollActive = true;
-  const accountId = activeMailAccount()?.id;
+  const accountId = taskCenterScope();
   const host = document.getElementById('task-center-list');
   try {
-    let rows, sync, reminders, allReminders;
-    if (lightweight) {
-      [rows, sync] = await Promise.all([api('/api/mail/outbox', {accountId}), api('/api/fetch_status', {accountId})]);
-      reminders = taskCenterReminders;
-      allReminders = [];
-    } else {
-      [rows, sync, reminders, allReminders] = await Promise.all([api('/api/mail/outbox', {accountId}), api('/api/fetch_status', {accountId}), api('/api/reminders', {accountId}), api('/api/reminders/all', {accountId})]);
-      taskCenterReminders = reminders;
-    }
-    const purge = await api('/api/trash/purge/status', {accountId}).catch(() => ({}));
+    const useCachedReminders = lightweight && host.dataset.accountId === accountId && host.dataset.partial !== '1';
+    const requests = [
+      ['发件箱', () => api('/api/mail/outbox', {accountId}), []],
+      ['邮箱同步', () => api('/api/fetch_status', {accountId}), {}],
+      ['稍后提醒', () => useCachedReminders ? taskCenterReminders : api('/api/reminders', {accountId}), []],
+      ['到期提醒', () => useCachedReminders ? [] : api('/api/reminders/all', {accountId}), []],
+      ['已删除邮件清理', () => api('/api/trash/purge/status', {accountId}), {}],
+    ];
+    const results = await Promise.allSettled(requests.map(([, read]) => Promise.resolve().then(read)));
+    const errors = results.flatMap((result, index) => result.status === 'rejected' ? [requests[index][0]] : []);
+    const [rows, sync, reminders, allReminders, purge] = results.map((result, index) => result.status === 'fulfilled' ? result.value : requests[index][2]);
     rows.forEach(row => { try { row.error = row.error || JSON.parse(row.result || '{}').warning || ''; } catch (_) {} });
-    if (accountId !== activeMailAccount()?.id) { host.dataset.live = '0'; return; }
+    if (accountId !== taskCenterScope()) return;
+    taskCenterReminders = reminders;
     host.dataset.accountId = accountId || '';
     const labels = {queued:'等待发送', sending:'发送中', sent:'已发送', failed:'发送失败', unknown:'发送结果待确认', canceled:'已撤销'};
     const visibleRows = actionableOutboxRows(rows);
@@ -10211,11 +10440,13 @@ async function refreshTaskCenter({lightweight = false} = {}) {
     const reminderBlock = reminders.length ? `<section class="task-section"><h3>稍后提醒 <span>${reminders.length}</span></h3>${reminders.map(item => `<article class="task-row"><div class="task-row-main"><b>${esc(item.subject)}</b><span class="task-status">${esc(fmtDate(item.at))}</span></div><small>到期后提醒你处理这封邮件</small><div class="task-row-actions"><button class="primary" data-reminder-open="${item.email_id}">查看邮件</button><button data-reminder-dismiss="${item.email_id}" data-task-reminder="${item.todo_id || ''}">关闭提醒</button></div></article>`).join('')}</section>` : '';
     const purgeAttention = Boolean(purge.unacknowledged || purge.cleanup_pending);
     const purgeBlock = purge.pending || purgeAttention ? `<section class="task-section"><h3>已删除邮件清理</h3><article class="task-row"><div class="task-row-main"><b>本地邮件已移除</b><span class="task-status">${purge.pending ? '远端待同步' : '仅本地完成'}</span></div><small>${purge.pending ? `${Number(purge.pending)} 封等待服务器删除，联网后自动退避重试。` : ''}${purge.unacknowledged ? `${Number(purge.unacknowledged)} 封无法安全确认远端删除，服务器可能仍保留；可在网页邮箱核对。` : ''}${purge.cleanup_pending ? `${Number(purge.cleanup_pending)} 个原文文件待清理，将在后台重试。` : ''}不影响本地邮件查看、搜索与写信。</small>${purge.unacknowledged ? `<div class="task-row-actions"><button data-purge-ack="${esc(JSON.stringify(purge.notice_ids || []))}">已知晓</button></div>` : ''} </article></section>` : '';
-    const content = syncBlock + purgeBlock + outboxBlock + reminderBlock;
+    const unavailableBlock = errors.length ? `<div class="task-load-error task-partial-error" role="status"><b>部分状态暂时无法读取</b><span>${esc(errors.join('、'))}未能加载，请重试确认。已加载的事项仍可处理。</span><button data-task-refresh>重新加载</button></div>` : '';
+    const content = unavailableBlock + syncBlock + purgeBlock + outboxBlock + reminderBlock;
+    host.dataset.partial = errors.length ? '1' : '0';
     const attentionCount = visibleRows.filter(row => ['failed','unknown'].includes(row.status)).length + (showSync && !sync.running ? 1 : 0) + (purgeAttention ? 1 : 0);
     const activeCount = visibleRows.filter(row => ['queued','sending'].includes(row.status)).length + (sync.running ? 1 : 0) + (purge.pending ? 1 : 0);
     host.dataset.live = activeCount ? '1' : '0';
-    host.innerHTML = `<div class="task-overview"><div><span>当前邮箱</span><b>${esc(activeMailAccount()?.user || '')}</b></div><div class="task-overview-counts">${attentionCount ? `<span class="attention">${attentionCount} 项需处理</span>` : ''}${activeCount ? `<span>${activeCount} 项进行中</span>` : ''}${reminders.length ? `<span>${reminders.length} 项提醒</span>` : ''}${!attentionCount && !activeCount && !reminders.length ? '<span class="healthy">状态正常</span>' : ''}</div></div>` + (content || `<div class="task-empty"><b>目前没有需要处理的任务</b><span>正常同步进度会显示在左侧邮箱区域；发送失败或待确认邮件会出现在这里。</span></div>`);
+    host.innerHTML = `<div class="task-overview"><div><span>当前邮箱</span><b>${esc((_systemConfig?.accounts || []).find(account => account.id === accountId)?.user || '')}</b></div><div class="task-overview-counts">${attentionCount ? `<span class="attention">${attentionCount} 项需处理</span>` : ''}${activeCount ? `<span>${activeCount} 项进行中</span>` : ''}${reminders.length ? `<span>${reminders.length} 项提醒</span>` : ''}${errors.length ? '<span class="attention">状态未完整</span>' : ''}${!errors.length && !attentionCount && !activeCount && !reminders.length ? '<span class="healthy">状态正常</span>' : ''}</div></div>` + (content || `<div class="task-empty"><b>目前没有需要处理的任务</b><span>正常同步进度会显示在左侧邮箱区域；发送失败或待确认邮件会出现在这里。</span></div>`);
     for (const row of visibleRows.filter(row => row.status === 'unknown')) {
       const article = [...host.querySelectorAll('[data-outbox-token]')].find(item => item.dataset.outboxToken === row.token);
       if (!article) continue;
@@ -10230,7 +10461,7 @@ async function refreshTaskCenter({lightweight = false} = {}) {
         }; actions.append(button);
       }
     }
-    document.getElementById('btn-task-center').textContent = `${mailaiT('task.title') || '任务与发件箱'}${attentionCount ? (mailaiT('task.badgeAttention') || ' · {n} 项需处理').replace('{n}', attentionCount) : activeCount ? (mailaiT('task.badgeActive') || ' · {n} 项进行中').replace('{n}', activeCount) : ''}`;
+    document.getElementById('btn-task-center').textContent = `${mailaiT('task.title') || '任务与发件箱'}${attentionCount ? (mailaiT('task.badgeAttention') || ' · {n} 项需处理').replace('{n}', attentionCount) : activeCount ? (mailaiT('task.badgeActive') || ' · {n} 项进行中').replace('{n}', activeCount) : errors.length ? ' · 状态待确认' : ''}`;
     for (const reminder of allReminders.filter(item => new Date(item.at).getTime() <= Date.now())) {
       const reminderAccount = reminder.account_id;
       const key = `reminder:${reminderAccount}:${reminder.todo_id || reminder.email_id}:${reminder.at}`;
@@ -10239,7 +10470,7 @@ async function refreshTaskCenter({lightweight = false} = {}) {
         taskNotice(`到时间了：${reminder.subject} · ${reminder.account_user}`, '查看邮件', async () => { await openAccountMailbox(reminderAccount, 'inbox'); await revealEmailFromSource(reminder.email_id); });
       }
     }
-  } catch (error) { host.innerHTML = `<div class="task-load-error"><b>状态暂时无法更新</b><span>${esc(error.message)}</span><button data-task-refresh>重新加载</button></div>`; }
+  } catch (error) { if (accountId !== taskCenterScope()) return; host.dataset.live = '0'; host.innerHTML = `<div class="task-load-error"><b>状态暂时无法更新</b><span>${esc(error.message)}</span><button data-task-refresh>重新加载</button></div>`; }
   finally { taskPollActive = false; scheduleTaskCenterRefresh(host.dataset.live === '1'); }
 }
 
@@ -10363,12 +10594,28 @@ function syncPreferenceChoices() {
   }
 }
 
+function openAssistantForEmail(row) {
+  const ids = [Number(row.id)];
+  const scopeKey = JSON.stringify([activeMailAccount()?.id, 'selected', ids]);
+  // An explicit mail entry starts a new context; reopening the same one keeps
+  // its conversation. Invalidate any pending history restore before opening.
+  if (assistantScopeKey !== scopeKey) resetAssistantConversation({focus:false});
+  assistantHistoryLoaded = true;
+  assistantPinnedScope = ids;
+  assistantScopeKey = scopeKey;
+  document.getElementById('assistant-scope').value = 'selected';
+  updateAssistantScopeControl();
+  window.showSecretaryChat?.();
+  openAssistant();
+}
+
 function addReadingActions(force = false) {
   const host = document.querySelector('.reading-header .reading-actions');
   if (!host) return;
   if (host.querySelector('.reading-work-actions')) {
     if (!force) return;
     host.querySelector('.reading-work-actions')?.remove();
+    host.querySelector('[data-reading-action="remind"]')?.remove();
     host.querySelectorAll('[data-reading-action="summary"],[data-reading-action="image"],[data-reading-action="ask"]').forEach(node => node.remove());
   }
   const div = document.createElement('div'); div.className = 'reading-work-actions';
@@ -10380,6 +10627,18 @@ function addReadingActions(force = false) {
   host.querySelector('.reading-ai-group')?.insertAdjacentHTML('beforeend', `<button type="button" data-reading-action="summary">${icon('M4 6h16M4 11h12M4 16h8m5-2 1 2 2 1-2 1-1 2-1-2-2-1 2-1z')}<span>${mailaiT('read.summary') || '总结邮件'}</span></button>
     <button type="button" data-reading-action="image">${icon('M3 5h18v14H3zM7 10h.01M5 17l5-5 3 3 2-2 4 4')}<span>${mailaiT('read.image') || '识别邮件图片'}</span></button>
     <button type="button" data-reading-action="ask">${icon('M4 4h16v12H9l-5 4zM8 9h8m-8 3h5')}<span>${mailaiT('read.ask') || '问小邮'}</span></button>`);
+  const morePanel = host.querySelector('.reading-more-panel');
+  if (morePanel) {
+    // Keep rare actions discoverable without crowding the reading toolbar.
+    const secondary = document.createElement('div');
+    secondary.className = 'reading-secondary-actions';
+    for (const selector of ['.btn-correspondence', '[data-reading-action="remind"]', '[data-reading-action="image"]']) {
+      const button = host.querySelector(selector);
+      if (button) secondary.appendChild(button);
+    }
+    morePanel.querySelector('.reading-secondary-actions')?.remove();
+    morePanel.prepend(secondary);
+  }
   host.querySelectorAll('button').forEach(button => {
     const label = button.getAttribute('aria-label') || button.textContent.trim();
     if (label) {
@@ -10388,6 +10647,8 @@ function addReadingActions(force = false) {
     }
   });
   host.onclick = async event => {
+    const more = event.target.closest('.reading-more-actions');
+    if (more && event.target.closest('button:not(:disabled)')) more.open = false;
     const actionButton = event.target.closest('button[data-reading-action]');
     const action = actionButton?.dataset.readingAction;
     if (!action || !selectedEmailDetail) return;
@@ -10405,9 +10666,9 @@ function addReadingActions(force = false) {
           applyFilters();
           toast(result.is_favorite ? '已加入我的收藏' : '已取消收藏', 'success');
         } finally { button.disabled = false; }
-      } else if (action === 'summary') { document.getElementById('assistant-scope').value = 'selected'; openAssistant(); askAssistant('总结这封邮件的重点和需要我处理的事项', [row.id]); }
-      else if (action === 'image') { document.getElementById('assistant-scope').value = 'selected'; openAssistant(); askAssistant('请读取这封邮件内嵌图片中可辨识的文字、表格和关键信息；看不清的内容请明确说明。', [row.id]); }
-      else if (action === 'ask') { document.getElementById('assistant-scope').value = 'selected'; openAssistant(); }
+      } else if (action === 'summary') { openAssistantForEmail(row); askAssistant('总结这封邮件的重点和需要我处理的事项', [row.id]); }
+      else if (action === 'image') { openAssistantForEmail(row); askAssistant('请读取这封邮件内嵌图片中可辨识的文字、表格和关键信息；看不清的内容请明确说明。', [row.id]); }
+      else if (action === 'ask') { openAssistantForEmail(row); }
       else if (action === 'todo') { await window.openTaskPlanner({emailId:row.id,title:row.subject}); }
       else if (action === 'remind') {
         await window.openTaskPlanner({emailId:row.id,title:row.subject,remind:true});
@@ -10421,12 +10682,17 @@ function updateAssistantScopeControl() {
   const ids = assistantPinnedScope || (mode === 'selected' && selectedEmailId ? [selectedEmailId] : null);
   let label = mode === 'filtered' ? '当前列表 · 本邮箱' : mode === 'selected' ? '正在阅读的邮件' : '当前邮箱';
   if (ids?.length === 1) {
-    const row = selectedEmailDetail?.id === ids[0] ? selectedEmailDetail : allEmails.find(item => item.id === ids[0] && (!item.account_id || item.account_id === activeMailAccount()?.id));
+    const row = selectedEmailDetail?.id === ids[0] ? selectedEmailDetail : allEmails.find(item => {
+      const owner = item._account_id || item.account_id;
+      return item.id === ids[0] && (!owner || owner === activeMailAccount()?.id);
+    });
     label = row?.subject || '这封邮件';
   } else if (ids?.length) label = `${ids.length} 封指定邮件`;
   const node = document.getElementById('assistant-scope-label');
   node.textContent = label;
   node.title = `${activeMailAccount()?.user || '当前邮箱'} · ${label}`;
+  const note = document.getElementById('assistant-scope-note');
+  if (note) note.textContent = `${activeMailAccount()?.user || '当前邮箱'} · ${ids?.length ? `已固定 ${ids.length} 封邮件` : mode === 'filtered' ? '列表中属于本邮箱的邮件' : '全部已同步邮件'} · 每次最多分析 20 封`;
   document.querySelector('#assistant-scope-picker summary').setAttribute('aria-label', `参考范围：${label}，点击更改`);
   document.getElementById('assistant-scope-clear').classList.toggle('hidden', mode === 'account');
   document.querySelectorAll('[data-assistant-scope]').forEach(button => {
@@ -10435,6 +10701,7 @@ function updateAssistantScopeControl() {
   });
 }
 
+let assistantListScroll = null;
 function updateAssistantPlacement() {
   const visible = document.body.classList.contains('assistant-visible');
   const floating = document.body.classList.contains('assistant-floating');
@@ -10442,17 +10709,34 @@ function updateAssistantPlacement() {
   const layout = document.querySelector('.layout');
   const reading = !document.getElementById('reading-content').classList.contains('hidden');
   const workspaceVisible = layout.getClientRects().length > 0;
-  const home = visible && !floating && workspaceVisible && !reading && innerWidth > 1024;
-  const docked = visible && !floating && workspaceVisible && reading && innerWidth >= 1600;
-  for (const [name, enabled] of [['assistant-home',home],['assistant-docked',docked]]) {
+  const scale = Number.parseFloat(getComputedStyle(document.body).getPropertyValue('--fz')) || 1;
+  const width = innerWidth / scale;
+  const home = visible && !floating && workspaceVisible && !reading && width > 1024;
+  const docked = visible && !floating && workspaceVisible && reading && width >= 1600;
+  const split = visible && !floating && workspaceVisible && reading && width >= 1024 && width < 1600;
+  const compact = visible && !floating && workspaceVisible && reading && width < 1024;
+  const wasSplit = document.body.classList.contains('assistant-split');
+  const list = document.getElementById('email-list');
+  if (split && !wasSplit && list) assistantListScroll = {top:list.scrollTop, account:activeMailAccount()?.id};
+  const modeChanged = wasSplit !== split || document.body.classList.contains('assistant-docked') !== docked || document.body.classList.contains('assistant-compact') !== compact;
+  const readingTop = pane.scrollTop;
+  const readingNode = document.getElementById('reading-content').firstElementChild;
+  for (const [name, enabled] of [['assistant-home',home],['assistant-docked',docked],['assistant-split',split],['assistant-split-narrow',split && width < 1200],['assistant-compact',compact]]) {
     if (document.body.classList.contains(name) !== enabled) document.body.classList.toggle(name, enabled);
   }
-  if (docked) document.getElementById('assistant-panel').style.setProperty('--assistant-dock-top', `${layout.getBoundingClientRect().top}px`);
+  if (modeChanged && readingNode) requestAnimationFrame(() => { if (document.getElementById('reading-content').firstElementChild === readingNode) pane.scrollTop = readingTop; });
+  if (!split && wasSplit && list && assistantListScroll) {
+    const saved = assistantListScroll; assistantListScroll = null;
+    requestAnimationFrame(() => { if (!document.body.classList.contains('assistant-split') && saved.account === activeMailAccount()?.id) list.scrollTop = saved.top; });
+  }
+  const back = document.getElementById('assistant-reading-back');
+  if (back) { back.hidden = !(split || compact); back.textContent = split ? '返回邮件列表' : '返回邮件'; }
+  if (docked || split) document.getElementById('assistant-panel').style.setProperty('--assistant-dock-top', `${layout.getBoundingClientRect().top / scale}px`);
   if (home) {
     const rect = pane.getBoundingClientRect();
     const panel = document.getElementById('assistant-panel');
     for (const [key,value] of Object.entries({left:rect.left,top:rect.top,width:rect.width,height:rect.height})) {
-      panel.style.setProperty('--assistant-home-' + key, `${value}px`);
+      panel.style.setProperty('--assistant-home-' + key, `${value / scale}px`);
     }
   }
   const displayButton = document.getElementById('assistant-float');
@@ -10461,12 +10745,22 @@ function updateAssistantPlacement() {
   displayButton.setAttribute('aria-label', displayLabel);
 }
 
+function returnToMailFromAssistant() {
+  const returnToList = document.body.classList.contains('assistant-split');
+  closeAssistant();
+  requestAnimationFrame(() => {
+    const target = returnToList ? document.querySelector('#email-list .email-item.selected') : null;
+    (target || document.querySelector('.reading-pane'))?.focus({preventScroll:true});
+  });
+}
+
 function initializeAssistantPolish() {
+  document.getElementById('assistant-reading-back').onclick = returnToMailFromAssistant;
   const scope = document.getElementById('assistant-scope');
   scope.onchange = () => {
-    assistantPinnedScope = null; assistantScopeKey = '';
+    assistantPinnedScope = scope.value === 'selected' && selectedEmailId ? [selectedEmailId] : null;
+    assistantScopeKey = '';
     resetAssistantConversation(); updateAssistantScopeControl();
-    document.getElementById('assistant-scope-note').textContent = `${activeMailAccount()?.user || '当前邮箱'} · 每次最多分析 20 封；仅检索已同步邮件`;
   };
   document.querySelectorAll('[data-assistant-scope]').forEach(button => button.onclick = () => {
     scope.value = button.dataset.assistantScope; scope.onchange();
@@ -10510,13 +10804,21 @@ function initializeWorkspace() {
   });
   document.body.insertAdjacentHTML('beforeend', `<div id="workspace-notice" class="workspace-notice hidden" role="status" aria-live="polite"></div>
     <div id="task-center-backdrop" class="task-center-backdrop hidden"></div>
-    <section id="task-center" class="task-center hidden" role="dialog" aria-modal="true" aria-labelledby="task-center-title"><header><div class="task-center-heading"><span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg></span><div><h2 id="task-center-title" data-i18n="task.title">任务与发件箱</h2><p data-i18n="task.subtitle">只展示进行中或需要你处理的事项</p></div></div><button type="button" id="close-task-center" aria-label="关闭任务与发件箱" data-i18n-aria="task.close"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"/></svg></button></header><div id="task-center-list"><div class="task-loading"><i></i><span data-i18n="task.loading">正在读取任务状态…</span></div></div></section>
+    <section id="task-center" class="task-center hidden" role="dialog" aria-modal="true" aria-labelledby="task-center-title"><header><div class="task-center-heading"><span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg></span><div><h2 id="task-center-title" data-i18n="task.title">任务与发件箱</h2><p data-i18n="task.subtitle">只展示进行中或需要你处理的事项</p></div></div><button type="button" id="close-task-center" aria-label="关闭任务与发件箱" data-i18n-aria="task.close"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"/></svg></button></header><label class="task-account-picker">查看邮箱<select id="task-center-account" aria-label="任务与发件箱所属邮箱"></select></label><div id="task-center-list"><div class="task-loading"><i></i><span data-i18n="task.loading">正在读取任务状态…</span></div></div></section>
     <dialog id="reminder-dialog"><form method="dialog"><h3 data-i18n="task.remindTitle">稍后提醒</h3><label><span data-i18n="task.remindTime">提醒时间</span> <input type="datetime-local" id="reminder-time" required></label><p><button value="cancel" data-i18n="common.cancel">取消</button><button type="button" id="save-reminder" data-i18n="task.remindSave">保存提醒</button></p></form></dialog>`);
   const listHeader = document.querySelector('.list-header');
   listHeader.insertAdjacentHTML('afterend', `<div class="list-workspace-tools"><button id="btn-filter-panel" aria-expanded="false" data-i18n="filter.toggle">筛选</button><button id="btn-task-center" aria-expanded="false" aria-controls="task-center" data-i18n="task.title">任务与发件箱</button><div id="filter-chips"></div></div>`);
   const filters = document.querySelector('.mail-filter-group');
   filters.id = 'workspace-filters'; filters.classList.add('hidden'); document.querySelector('.list-workspace-tools').after(filters);
   document.getElementById('btn-filter-panel').onclick = event => { const hidden = filters.classList.toggle('hidden'); event.currentTarget.setAttribute('aria-expanded', String(!hidden)); };
+  updateWorkspaceToolScope();
+  document.getElementById('task-center-account').onchange = event => {
+    taskCenterAccountId = event.target.value;
+    const host = document.getElementById('task-center-list');
+    host.dataset.live = '0';
+    host.innerHTML = '<div class="task-loading"><i></i><span>正在读取任务状态…</span></div>';
+    refreshTaskCenter();
+  };
   document.getElementById('btn-task-center').onclick = openTaskCenter;
   document.getElementById('close-task-center').onclick = closeTaskCenter;
   document.getElementById('task-center-backdrop').onclick = closeTaskCenter;
@@ -10642,8 +10944,8 @@ function initializeWorkspace() {
       if (event.target.dataset.taskRefresh !== undefined) return refreshTaskCenter();
       if (event.target.dataset.syncRetry) {
         await api(event.target.dataset.syncRetry, {accountId, method:'POST'});
-        startFetchMonitor();
-        taskNotice('已重新开始邮箱同步');
+        if (accountId === activeMailAccount()?.id) startFetchMonitor();
+        taskNotice('已重新开始邮箱同步 · ' + ((_systemConfig?.accounts || []).find(account => account.id === accountId)?.user || ''));
       }
       if (event.target.dataset.outboxDraft) { const draft = await api(`/api/drafts/${event.target.dataset.outboxDraft}`, {accountId}); openCompose({...draft,account_id:accountId}); closeTaskCenter(); return; }
       if (event.target.dataset.reminderOpen) { await openAccountMailbox(accountId, 'inbox'); await revealEmailFromSource(Number(event.target.dataset.reminderOpen)); closeTaskCenter(); return; }
@@ -10663,7 +10965,7 @@ function initializeWorkspace() {
   new MutationObserver(addReadingActions).observe(document.getElementById('reading-content'), {childList:true});
   new MutationObserver(updateFilterChips).observe(document.getElementById('list-title'), {childList:true});
   document.addEventListener('keydown', event => {
-    if (event.key === 'Escape') { document.getElementById('task-center').classList.add('hidden'); }
+    if (event.key === 'Escape' && !document.getElementById('task-center').classList.contains('hidden')) closeTaskCenter();
     if (event.key === 'Tab') {
       if (document.querySelector('dialog[open]')) return; // Native modal dialogs own their focus trap.
       const dialog = [...document.querySelectorAll('[role="dialog"][aria-modal="true"]')].reverse().find(node => node.getClientRects().length);
@@ -10685,6 +10987,19 @@ function initializeWorkspace() {
 }
 
 initializeWorkspace();
+
+// Dismiss only this disclosure; Escape returns the keyboard to its trigger.
+document.addEventListener('keydown', event => {
+  const more = document.querySelector('.reading-more-actions[open]');
+  if (event.key === 'Escape' && more) {
+    more.open = false;
+    more.querySelector('summary')?.focus();
+  }
+});
+document.addEventListener('click', event => {
+  const more = document.querySelector('.reading-more-actions[open]');
+  if (more && !more.contains(event.target)) more.open = false;
+});
 
 ;
 /* ---- secretary.js ---- */
@@ -10739,7 +11054,7 @@ initializeWorkspace();
       <details class="secretary-group" ${['safety', 'history'].includes(group.key) ? '' : 'open'}><summary><span>${esc(group.title)}</span><em>${group.count}</em></summary>
       ${group.key === 'tasks' ? '<p class="secretary-empty">今天到期或提醒，以及近 7 天逾期的任务。未安排日期的任务保留在待办中。 <button type="button" data-secretary-todos>查看全部待办</button></p>' : group.key === 'history' ? '<p class="secretary-empty">逾期超过 7 天，暂不列为今日重点。任务没有删除，可改期后继续推进。 <button type="button" data-secretary-todos>管理全部待办</button></p>' : ''}
       ${group.items.length ? `<div class="secretary-group-intro"><small>${group.count > group.items.length ? `先展示 ${group.items.length} 项` : '每项均可回到原邮件核对'}</small><button type="button" data-secretary-group="${group.key}">${group.key === 'safety' ? '解释' : '整理'}这 ${group.items.length} 项</button></div>` : '<p class="secretary-empty">本次范围内没有符合条件的项目，并不代表没有其他工作。</p>'}
-      ${group.items.map((item, index) => `<article class="secretary-card" data-secretary-key="${group.key}:${index}"><small class="secretary-reason ${item.risky ? 'caution' : ''}">${esc(item.reason)}${item.risky && group.key !== 'safety' ? ' · 来源需核实' : ''}</small><h4>${esc(item.todo_id ? item.evidence : item.subject)}</h4><small>${esc(item.sender)} · ${esc(String(item.date).slice(0,10))}</small>${item.todo_id ? `<p>来源：${esc(item.subject)}${item.remind_at ? `<br>提醒：${esc(fmtDate(item.remind_at))}` : ''}</p>` : item.evidence ? `<p>${esc(item.evidence)}</p>` : ''}<div class="secretary-actions"><button type="button" data-secretary-action="ask">${item.risky ? '解释风险' : focus === 'decision' ? '梳理决策' : '拆解下一步'}</button><button type="button" data-secretary-action="open">原邮件</button>${actions(item)}</div></article>`).join('')}</details>`).join('') + `<p class="secretary-footnote">${esc(data.note)}<br>简报仅在本地整理。点击分析才调用模型；发送、审批和待办变更均需你操作。</p>`;
+      ${group.items.map((item, index) => `<article class="secretary-card" data-secretary-key="${group.key}:${index}"><small class="secretary-reason ${item.risky ? 'caution' : ''}">${esc(item.reason)}${item.risky && group.key !== 'safety' ? ' · 来源需核实' : ''}</small><h4>${esc(item.todo_id ? item.evidence : item.subject)}</h4><small>${esc(item.sender)} · ${esc(String(item.date).slice(0,10))}</small>${item.todo_id ? `<p>来源：${esc(item.subject)}${item.remind_at ? `<br>提醒：${esc(fmtDate(item.remind_at))}` : ''}</p>` : item.evidence ? `<p>${esc(item.evidence)}</p>` : ''}<div class="secretary-actions"><button type="button" data-secretary-action="ask">${item.risky ? '解释风险' : focus === 'decision' ? '梳理决策' : '拆解下一步'}</button><button type="button" data-secretary-action="open">原邮件</button><button type="button" data-secretary-action="progress">会话进展</button>${actions(item)}</div></article>`).join('')}</details>`).join('') + `<p class="secretary-footnote">${esc(data.note)}<br>简报仅在本地整理。点击分析才调用模型；发送、审批和待办变更均需你操作。</p>`;
   }
   function analyze(items, key) {
     if (!current() || !items.length) return;
@@ -10794,6 +11109,7 @@ initializeWorkspace();
         taskNotice('已忽略这条线索，原邮件不变','撤销',async()=>{await api(`/api/emails/${item.email_id}/briefing-dismiss`,{accountId:boundAccount,method:'DELETE'});if(boundAccount===activeMailAccount()?.id)load();});
       } else {
         await goToAssistantEmail(item.email_id);
+        if (action === 'progress' && boundAccount === activeMailAccount()?.id) { closeAssistant(); openConversationProgress(); }
         if (action === 'reply' && boundAccount === activeMailAccount()?.id && Number(selectedEmailDetail?.id) === item.email_id) await composeFromEmail('reply');
       }
     } catch (error) { toast('操作未完成：' + error.message, 'warn'); }
@@ -10831,7 +11147,7 @@ initializeWorkspace();
     const currentTicket=++ticket;
     try {
       const rows=await api('/api/todos?include_done=true',{accountId});
-      if (currentTicket!==ticket || accountId!==activeMailAccount()?.id) return;
+      if (currentTicket!==ticket) return;
       let selected=rows.find(t=>t.id===Number(todoId));
       emailId=Number(emailId || selected?.email_id);
       const matches=rows.filter(t=>t.email_id===emailId);
@@ -10840,16 +11156,17 @@ initializeWorkspace();
       get('existing-label').hidden=!matches.length;
       get('existing').innerHTML=matches.map(t=>`<option value="${t.id}">${esc(t.title)}${t.status==='done'?'（已完成）':''}</option>`).join('');
       if (selected) get('existing').value=selected.id;
-      get('source').textContent=activeMailAccount()?.user + ' · ' + (selected?.email_subject || title || '已关联来源邮件');
+      get('source').textContent=((_systemConfig?.accounts || []).find(a=>a.id===accountId)?.user || '') + ' · ' + (selected?.email_subject || title || '已关联来源邮件');
       paint(selected);dialog.showModal();get('title').focus();
     } catch(e) {toast('无法打开任务：'+e.message,'warn');}
   };
   window.mailaiTasksChanged = (accountId=activeMailAccount()?.id) => window.dispatchEvent(new CustomEvent('mailai-tasks-changed',{detail:{accountId}}));
   window.addEventListener('mailai-tasks-changed',async event=>{
     const accountId=event.detail.accountId;
+    if(accountId===todoCenterAccountId && !document.getElementById('todo-center').classList.contains('hidden')) loadTodoCenter();
     if(accountId!==activeMailAccount()?.id)return;
     window.refreshSecretaryAccount?.();
-    try {const rows=await api('/api/todos?include_done=true',{accountId});if(accountId!==activeMailAccount()?.id)return;allTodos=rows;if(!document.getElementById('todo-center').classList.contains('hidden'))renderTodoCenter();}catch(_){}
+    try {const rows=await api('/api/todos?include_done=true',{accountId});if(accountId!==activeMailAccount()?.id)return;allTodos=rows;updateSidebar();}catch(_){}
   });
   dialog.querySelectorAll('[data-plan-close]').forEach(b=>b.onclick=()=>dialog.close());
   get('stage').onchange=()=>{get('date-label').textContent=get('stage').value==='waiting'?'跟进日期（可选）':'截止日期（可选）';};

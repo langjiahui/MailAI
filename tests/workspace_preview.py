@@ -35,6 +35,12 @@ def main():
                     priority='高' if n%3==0 else '中',score=40 if n==1 else 0,verdict='suspicious' if n==1 else 'clean',
                     summary='请确认采购合同交期，并在周五前反馈项目排期。附件资料将由项目组另行提供。',
                     body_text='您好：\n\n请协助确认本次采购合同的交付时间。项目组计划本周完成评审，请反馈您的意见。\n\n谢谢！'))
+            if os.environ.get('MAILAI_PROGRESS_FIXTURE') == '1':
+                with db.conn() as connection:
+                    connection.execute("UPDATE emails SET message_id=?,thread_id=? WHERE id=1", ('<progress-root@example.test>', '<progress-root@example.test>'))
+                    connection.execute("UPDATE emails SET message_id=?,thread_id=?,in_reply_to=?,references_header=?,subject=?,body_text=? WHERE id=2", ('<progress-reply@example.test>', '<progress-root@example.test>', '<progress-root@example.test>', '<progress-root@example.test>', '回复：采购合同交期确认', '请确认能否调整为下周二交付。'))
+                progress_sent = db.create_sent_message(dict(from_addr=user, to_addr='colleague@example.test', subject='回复：采购合同交期确认', body_html='<p>已收到调整建议，我会核对排期后回复。</p>', reply_to_email_id=2, in_reply_to='<progress-reply@example.test>', references='<progress-root@example.test> <progress-reply@example.test>', mode='reply'))
+                db.finish_sent_message(progress_sent, ok=True, message_id='<progress-sent@example.test>')
             db.save_contact('colleague@example.test','项目同事','示例公司','采购负责人',True)
             db.add_todos(1,[{'title':'确认合同交期','deadline':datetime.now().date().isoformat()}])
             from email.message import EmailMessage
@@ -101,6 +107,20 @@ def main():
     from app import mail_undo
     mail_undo.MailClient = FakeMail
     smtp_client.send = lambda payload: {'message_id':'fixture@example.test','recipients':1,'sent_folder':'Sent','warning':''}
+    # Optional fault injection belongs only to this isolated preview server.
+    # The file lists failing API paths, one per line; clearing it restores service.
+    failure_file = os.environ.get('MAILAI_PREVIEW_FAILURES')
+    if failure_file:
+        from starlette.responses import JSONResponse
+        @server.app.middleware('http')
+        async def preview_failures(request, call_next):
+            try:
+                failed_paths = Path(failure_file).read_text().splitlines()
+            except FileNotFoundError:
+                failed_paths = []
+            if request.url.path in failed_paths:
+                return JSONResponse({'detail': '模拟连接中断，请重试'}, status_code=503)
+            return await call_next(request)
     server.app.router.on_startup.clear()
     from app.mailbox_jobs import start_outbox
     start_outbox()

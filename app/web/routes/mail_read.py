@@ -96,6 +96,15 @@ def api_email_detail(email_id: int):
     return row
 
 
+@router.get("/api/emails/{email_id}/progress")
+def api_conversation_progress(email_id: int):
+    from ...conversation_progress import build
+    try:
+        return build(email_id)
+    except ValueError as error:
+        raise HTTPException(404, str(error)) from error
+
+
 @router.get("/api/emails/{email_id}/inline/{inline_index}")
 def api_inline_resource(email_id: int, inline_index: int):
     row = db.get_email(email_id)

@@ -2283,6 +2283,22 @@ button:disabled { cursor:not-allowed; filter:saturate(.72); opacity:.58; }
 .email-subject { margin-top:1px; font-size:13px; line-height:1.4; letter-spacing:-.008em; }
 .email-preview { margin-top:3px; color:#6f7f77; font-size:11.5px; line-height:1.45; }
 .email-tags { margin-top:7px; gap:5px; }
+/* Compact rows give back the space used by the hidden summary. */
+body[data-density="compact"] .email-item { min-height:68px; }
+body[data-density="compact"] .email-tags { margin-top:4px; }
+body[data-density="compact"] .email-tags:not(:has(.mail-account-tag,.tag-danger,.tag-warn,.tag-attachment)) { display:none!important; }
+.mail-state-icons:empty { display:none; }
+@container mail-list-pane (max-width:430px) {
+  .email-row-top { gap:6px; }
+  .email-sender { flex:1 1 auto; gap:4px; }
+  .sender-name { min-width:0; }
+  /* The complete address remains available on the sender's tooltip. */
+  .sender-domain { display:none; }
+  .mail-direction { width:14px; height:16px; border:0; background:transparent; }
+  .mail-direction svg { width:12px; height:12px; }
+  .email-meta { gap:4px; }
+  .email-meta > .tag { max-width:76px; white-space:normal; }
+}
 .email-item.selected,
 .email-item.quarantine.selected,
 .email-item.spam.selected { box-shadow:inset 0 0 0 1px rgba(47,125,95,.3)!important; }
@@ -2340,3 +2356,7 @@ html[data-theme="dark"] :is(.modal-close,.drawer-close,.modern-close) {
 @media(prefers-reduced-motion:reduce) {
   .email-item { transition:none!important; }
 }
+
+html[data-theme="dark"] .task-center h2 { color:var(--text); }
+html[data-theme="dark"] .task-overview { border-color:var(--border); }
+html[data-theme="dark"] .task-overview-counts .healthy { background:rgba(87,161,116,.15); color:#a6cfb6; }

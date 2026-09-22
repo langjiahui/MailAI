@@ -863,7 +863,8 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
   }
   if (!emailIds && mode === 'selected') {
     if (!selectedEmailId) return toast('请先选择一封邮件', 'warn');
-    emailIds = [selectedEmailId];
+    assistantPinnedScope = [selectedEmailId];
+    emailIds = [...assistantPinnedScope];
   } else if (!emailIds && mode === 'filtered') {
     emailIds = [...document.querySelectorAll('#email-list .email-item')].filter(node => !node.dataset.accountId || node.dataset.accountId === account?.id).map(node => Number(node.dataset.id));
   }
@@ -1896,7 +1897,10 @@ function startFetchMonitor() {
       updateFetchOverlay(st);
       if (!st.running) {
         stopFetchMonitor();
-        await loadData();
+        // Refresh both sources before repainting the local/server count pair.
+        await Promise.all([loadData(), loadMailboxFolders()]);
+        if (accountId !== activeMailAccount()?.id) return;
+        applyFilters({silent:true});
         if (st.canceled) {
           toast(st.message || '已中断拉取', 'warn');
         } else if (st.error) {
@@ -2108,6 +2112,8 @@ async function api(path, opts = {}) {
   const composePath = /^\/api\/mail\/(?:send|outbox|preflight|contacts|signatures|compose)/.test(path) || (path.startsWith('/api/drafts') && opts.method);
   const accountId = opts.accountId || (composePath && document.body.classList.contains('compose-open') ? composeAccountId : '') || activeMailAccount()?.id;
   opts = {...opts, headers:{...(opts.headers || {}), ...(accountId ? {'X-MailAI-Account':accountId} : {})}};
+  const undoCollector = opts.undoCollector;
+  delete opts.undoCollector;
   delete opts.accountId;
   // Read-only polling must finish even when the local service is unresponsive.
   // Do not time out mutations here: an accepted send/move must not be retried
@@ -2131,7 +2137,12 @@ async function api(path, opts = {}) {
     throw new Error(message || `HTTP ${res.status}`);
   }
   const data = await res.json();
-  if (data.undo_token && typeof offerUndo === 'function') offerUndo([data.undo_token], accountId);
+  if (data.undo_token && typeof offerUndo === 'function') {
+    const details = describeMailUndo(path, opts.body, data, accountId);
+    const item = {token:data.undo_token, at:Date.now()};
+    if (undoCollector) undoCollector.push({...item, details});
+    else offerUndo([item], accountId, details);
+  }
   return data;
   } catch (err) {
     // 内部超时中断翻译成可读文案；外部调用方主动 abort 则原样抛出
@@ -3164,10 +3175,10 @@ function renderEmailItem(e, idx = 0) {
 }
 
 // ===== 阅读区 =====
-async function selectSpecialMessage(id) {  const kind = specialMailbox;
-  let row = kind === 'drafts' ? savedDrafts.find(x => x.id === id) : sentMessages.find(x => x.id === id);
+async function selectSpecialMessage(id, suppliedRow = null) {  const kind = specialMailbox;
+  let row = suppliedRow || (kind === 'drafts' ? savedDrafts.find(x => x.id === id) : sentMessages.find(x => x.id === id));
   if (!row) return;
-  if (!row._remote) {
+  if (!row._remote && !suppliedRow) {
     try {
       row = await api(kind === 'drafts' ? `/api/drafts/${id}` : `/api/mail/sent/${id}`);
     } catch (error) {
@@ -3522,14 +3533,22 @@ async function runBulkAction(action, target = '') {
   const actionLabel = action === 'read' ? '正在标为已读' : action === 'unread' ? '正在标为未读' :
     action === 'star' ? '正在添加星标' : action === 'trash' ? '正在移入垃圾箱' : `正在移动到“${target}”`;
   setBulkOperationState(true, actionLabel, count);
+  const accountId = activeMailAccount()?.id;
+  const undoCollector = [];
+  let undoPublished = false;
+  const publishUndo = () => {
+    if (undoPublished || !undoCollector.length) return;
+    undoPublished = true;
+    offerUndo(undoCollector.map(({token, at}) => ({token, at})), accountId,
+      {...undoCollector[0].details, count:undoCollector.reduce((sum, item) => sum + item.details.count, 0)});
+  };
   try {
     const result = {completed:0, failed:[]};
-    const accountId = activeMailAccount()?.id;
     for (let start = 0; start < payload.ids.length; start += 100) {
       const batch = payload.ids.slice(start, start + 100);
       setBulkOperationState(true, `${actionLabel} · ${start}/${count}`, count);
       try {
-        const part = await api('/api/emails/bulk', {accountId, method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload, ids:batch})});
+        const part = await api('/api/emails/bulk', {accountId, undoCollector, method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload, ids:batch})});
         result.completed += part.completed; result.failed.push(...part.failed);
         if (action === 'read' || action === 'unread') {
           const failedIds = new Set((part.failed || []).map(item => Number(item.id)));
@@ -3539,6 +3558,7 @@ async function runBulkAction(action, target = '') {
         }
       } catch (error) { result.failed.push(...batch.map(id => ({id, error:error.message}))); }
     }
+    publishUndo();
     const completedText = action === 'trash'
       ? `已移入已删除 ${result.completed} 封，可在那里取消删除；稍后同步服务器`
       : action === 'read' || action === 'unread'
@@ -3554,6 +3574,7 @@ async function runBulkAction(action, target = '') {
   } catch (err) {
     toast('批量操作失败：' + err.message, 'error');
   } finally {
+    publishUndo();
     setBulkOperationState(false);
   }
 }
@@ -4125,6 +4146,7 @@ function renderMailboxSyncTracker(accounts = []) {
 }
 
 function renderSidebarAccounts() {
+  if (typeof updateWorkspaceToolScope === 'function') updateWorkspaceToolScope();
   const accounts = _systemConfig?.accounts || [];
   const group = document.getElementById('account-mailbox-group');
   const primary = document.getElementById('primary-folder-group');
@@ -5071,7 +5093,7 @@ function renderReadingPane(e) {
   // 操作按钮
   let replyActions = '<button type="button" class="btn-ghost mobile-back" onclick="closeReadingPane()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 5-7 7 7 7M3 12h18"/></svg><span>返回列表</span></button>';
   replyActions += `<div class="reading-reply-group" role="toolbar" aria-label="邮件回复操作">
-    <button type="button" class="btn-ghost reading-icon-action" aria-label="回复" data-tooltip="回复" onclick="composeFromEmail('reply')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6-6 6 6 6M4 12h9c4 0 6.5 2 7 6"/></svg><span class="reading-action-label">回复</span></button>
+    <button type="button" class="btn-ghost reading-icon-action reading-primary-action" aria-label="回复" data-tooltip="回复" onclick="composeFromEmail('reply')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6-6 6 6 6M4 12h9c4 0 6.5 2 7 6"/></svg><span class="reading-action-label">回复</span></button>
     <button type="button" class="btn-ghost reading-icon-action" aria-label="回复全部" data-tooltip="回复全部" onclick="composeFromEmail('reply_all')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6-6 6 6 6m5-12-6 6 6 6M9 12h5c3.5 0 6 2 6.5 6"/></svg><span class="reading-action-label">回复全部</span></button>
     <button type="button" class="btn-ghost reading-icon-action" aria-label="转发" data-tooltip="转发" onclick="composeFromEmail('forward')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6 6 6-6 6m6-6h-9c-4 0-6.5 2-7 6"/></svg><span class="reading-action-label">转发</span></button>
     <span class="reading-reply-divider" aria-hidden="true"></span>
@@ -5097,6 +5119,9 @@ function renderReadingPane(e) {
     if (!e.reviewed) decisionActions += `<button class="btn-success" onclick="confirmEmail(${e.id}, '无风险', this)">${shieldIcon}<span>确认无风险</span></button>`;
     decisionActions += `<button class="btn-ghost" onclick="feedbackEmail(${e.id}, 'fn')">${flagIcon}<span>报告风险</span></button>`;
   }
+
+  const decisionGroup = `<section class="reading-action-group reading-risk-group" aria-label="风险封控"><span class="reading-action-group-title">${mailaiT('read.groupRisk') || '风险封控'}</span><div class="reading-decision-actions">${decisionActions}</div></section>`;
+  const showRiskActions = riskNeedsAttention || ['quarantine', 'spam'].includes(e.status);
 
   document.getElementById('reading-content').innerHTML = `
     <div class="reading-header">
@@ -5129,7 +5154,8 @@ function renderReadingPane(e) {
         <div class="reading-actions">
           <section class="reading-action-group reading-mail-group" aria-label="邮件操作"><span class="reading-action-group-title">${mailaiT('read.groupMail') || '邮件操作'}</span><div class="reading-mail-controls"><div class="reading-reply-actions">${replyActions}</div></div></section>
           <section class="reading-action-group reading-ai-group" aria-label="AI 助手"><span class="reading-action-group-title">${mailaiT('read.groupAi') || 'AI 助手'}</span></section>
-          <section class="reading-action-group reading-risk-group" aria-label="风险封控"><span class="reading-action-group-title">${mailaiT('read.groupRisk') || '风险封控'}</span><div class="reading-decision-actions">${decisionActions}</div></section>
+          ${showRiskActions ? decisionGroup : ''}
+          <details class="reading-more-actions"><summary aria-label="更多邮件操作">更多 <span aria-hidden="true">⌄</span></summary><div class="reading-more-panel">${!['trash','spam','quarantine','draft'].includes(e.status) ? '<button type="button" onclick="openConversationProgress()"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 4h10v9H9l-4 3V4Z"/><path d="M8 7h4M8 10h4"/></svg><span>会话进展</span></button>' : ''}${showRiskActions ? '' : decisionGroup}</div></details>
         </div>
       </div>
     </div>
@@ -5161,6 +5187,7 @@ function renderReadingPane(e) {
 
     <div class="reading-workspace">
       <main class="reading-main">
+        ${renderConversationProgress(e)}
         <div class="reading-section summary-section primary-summary">
           <div class="section-title"><span>${mailaiT('read.summaryTitle') || 'AI 摘要'}</span><small>${mailaiT('read.summaryHint') || '提炼重点，完整展示'}</small></div>
           <div class="summary-quick-meta">
@@ -5185,6 +5212,7 @@ function renderReadingPane(e) {
   const securityFlyout = readingContent.querySelector('.security-flyout');
   if (securityBackdrop && securityFlyout) document.body.append(securityBackdrop, securityFlyout);
   mountRichEmailBody(e);
+  loadConversationProgress();
 }
 
 function removeSecurityFlyout() {
@@ -6134,15 +6162,28 @@ function updateAttachmentTypeFilters() {
   });
 }
 
+let attachmentCenterAccountId = '';
+let attachmentCenterRevision = 0;
+let attachmentCenterState = 'idle';
+let attachmentCenterError = '';
 function renderAttachmentCenter() {
+  if (attachmentCenterState === 'loading' || attachmentCenterState === 'error') {
+    updateAttachmentTypeFilters();
+    const failed = attachmentCenterState === 'error';
+    document.getElementById('attachment-count').textContent = failed ? '附件暂时无法读取' : '正在读取…';
+    document.getElementById('attachment-grid').innerHTML = failed
+      ? `<div class="attachment-empty" role="status">加载失败：${esc(attachmentCenterError)}<button type="button" class="attachment-retry" data-attachment-retry>重新加载</button></div>`
+      : '<div class="attachment-empty" role="status">正在整理附件…</div>';
+    return;
+  }
   const query = document.getElementById('attachment-search').value.trim().toLowerCase();
   const rows = attachmentItems.filter(item => (attachmentTypeFilter === 'all' || attachmentType(item) === attachmentTypeFilter) &&
     (!query || [item.name, item.subject, item.from_addr].some(value => String(value || '').toLowerCase().includes(query))));
   const sourceCount = new Set(rows.map(item => item.email_id)).size;
-  animateCountText(document.getElementById('attachment-count'), rows.length, n => (mailaiT('att.countLine') || '{n} 个附件 · 来自 {m} 封邮件').replace('{n}', n).replace('{m}', sourceCount));
+  document.getElementById('attachment-count').textContent = (mailaiT('att.countLine') || '{n} 个附件 · 来自 {m} 封邮件').replace('{n}', rows.length).replace('{m}', sourceCount);
   updateAttachmentTypeFilters();
   document.getElementById('attachment-grid').innerHTML = rows.length ? rows.map(item => `
-    <a class="attachment-card type-${attachmentType(item)}" href="${mailboxResourceUrl(`/api/emails/${item.email_id}/attachments/${item.index}`)}" download="${esc(item.name)}" title="${(mailaiT('att.previewTitle') || '预览 {name}').replace('{name}', esc(item.name))}">
+    <a class="attachment-card type-${attachmentType(item)}" href="${mailboxResourceUrl(`/api/emails/${item.email_id}/attachments/${item.index}`, attachmentCenterAccountId)}" download="${esc(item.name)}" title="${(mailaiT('att.previewTitle') || '预览 {name}').replace('{name}', esc(item.name))}">
       <span class="attachment-file-icon"><strong>${esc(attachmentTypeLabel(item.content_type, item.name))}</strong><small>${attachmentType(item) === 'pdf' ? attachmentTypeName('document') : attachmentTypeName(attachmentType(item))}</small></span>
       <span class="attachment-card-main">
         <b title="${esc(item.name)}">${esc(item.name)}</b>
@@ -6159,17 +6200,32 @@ function renderAttachmentCenter() {
 
 async function openAttachmentCenter() {
   closeAssistant();
+  attachmentCenterAccountId = activeMailAccount()?.id;
+  document.getElementById('attachment-account-label').textContent = activeMailAccount()?.user || '';
   const modal = document.getElementById('attachment-center');
   modal.classList.remove('hidden');
   document.body.classList.add('modal-open');
-  attachmentTypeFilter = 'all';
+  attachmentItems = []; attachmentTypeFilter = 'all';
   document.getElementById('attachment-search').value = '';
-  document.getElementById('attachment-grid').innerHTML = '<div class="attachment-empty">正在整理附件…</div>';
-  try { attachmentItems = await api('/api/attachments?limit=1000'); renderAttachmentCenter(); }
-  catch (err) { document.getElementById('attachment-grid').innerHTML = `<div class="attachment-empty">加载失败：${esc(err.message)}</div>`; }
+  await loadAttachmentCenter();
+}
+
+async function loadAttachmentCenter() {
+  const accountId = attachmentCenterAccountId, revision = ++attachmentCenterRevision;
+  attachmentCenterState = 'loading'; attachmentCenterError = '';
+  renderAttachmentCenter();
+  try {
+    const rows = await api('/api/attachments?limit=1000', {accountId});
+    if (revision !== attachmentCenterRevision) return;
+    attachmentItems = rows; attachmentCenterState = 'ready'; renderAttachmentCenter();
+  } catch (error) {
+    if (revision !== attachmentCenterRevision) return;
+    attachmentCenterState = 'error'; attachmentCenterError = error.message; renderAttachmentCenter();
+  }
 }
 
 function closeAttachmentCenter() {
+  ++attachmentCenterRevision;
   document.getElementById('attachment-center').classList.add('hidden');
   document.body.classList.remove('modal-open');
 }
@@ -6211,10 +6267,16 @@ async function downloadAttachmentInDesktop(event) {
 document.addEventListener('click', downloadAttachmentInDesktop, true);
 
 let todoRenderLimit = 160;
+let todoCenterRows = [];
+let todoCenterAccountId = '';
+let todoCenterRevision = 0;
+let todoCenterLoading = false;
+let todoBatchBusy = false;
 
 function renderTodoCenter() {
+  if (todoCenterLoading) return;
   const showDone = document.getElementById('todo-show-done').checked;
-  const rows = allTodos.filter(item => showDone || item.status !== 'done');
+  const rows = todoCenterRows.filter(item => showDone || item.status !== 'done');
   const visibleIds = new Set(rows.map(item => item.id));
   selectedTodoIds = new Set([...selectedTodoIds].filter(id => visibleIds.has(id)));
   const now = localDateKey();
@@ -6241,59 +6303,75 @@ function renderTodoCenter() {
 
 let selectedTodoIds = new Set();
 
-function updateTodoBatchToolbar(rows = allTodos.filter(item => document.getElementById('todo-show-done').checked || item.status !== 'done')) {
+function updateTodoBatchToolbar(rows = todoCenterRows.filter(item => document.getElementById('todo-show-done').checked || item.status !== 'done')) {
   const selectable = rows.filter(item => item.status !== 'done');
   const selectedOpen = selectable.filter(item => selectedTodoIds.has(item.id));
   const selectAll = document.getElementById('todo-select-all');
   selectAll.checked = selectable.length > 0 && selectedOpen.length === selectable.length;
   selectAll.indeterminate = selectedOpen.length > 0 && selectedOpen.length < selectable.length;
-  selectAll.disabled = selectable.length === 0;
+  selectAll.disabled = todoCenterLoading || todoBatchBusy || selectable.length === 0;
   const selectedButton = document.getElementById('todo-complete-selected');
-  selectedButton.disabled = selectedOpen.length === 0;
+  selectedButton.disabled = todoCenterLoading || todoBatchBusy || selectedOpen.length === 0;
   selectedButton.textContent = selectedOpen.length ? (mailaiT('todo.completeSelectedN') || '完成所选 {n}').replace('{n}', selectedOpen.length) : (mailaiT('todo.completeSelected') || '完成所选');
-  document.getElementById('todo-complete-all').disabled = selectable.length === 0;
+  document.getElementById('todo-complete-all').disabled = todoCenterLoading || todoBatchBusy || selectable.length === 0;
 }
 
 async function setTodoBatchStatus(ids, status = 'done') {
-  if (!ids.length) return;
+  if (!ids.length || todoCenterLoading || todoBatchBusy) return;
+  todoBatchBusy = true; updateTodoBatchToolbar();
+  const accountId = todoCenterAccountId, revision = todoCenterRevision;
+  const rows = todoCenterRows;
   let updated = 0;
   const changed = new Set();
   try {
     for (let start = 0; start < ids.length; start += 200) {
       const batch = ids.slice(start, start + 200);
       const result = await api('/api/todos/bulk/status', {
-        method: 'POST',
+        accountId, method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ids:batch, status}),
       });
       updated += Number(result.updated || 0);
       batch.forEach(id => changed.add(Number(id)));
-      allTodos.forEach(item => { if (changed.has(Number(item.id))) item.status = status; });
+      rows.forEach(item => { if (changed.has(Number(item.id))) item.status = status; });
       await new Promise(resolve => setTimeout(resolve, 0));
     }
   } finally {
-    changed.forEach(id => selectedTodoIds.delete(id));
-    renderTodoCenter();
+    todoBatchBusy = false; updateTodoBatchToolbar();
+    if (changed.size) window.mailaiTasksChanged?.(accountId);
+    if (revision === todoCenterRevision) { changed.forEach(id => selectedTodoIds.delete(id)); renderTodoCenter(); }
     updateSidebar();
   }
   toast(`已更新 ${updated} 项待办`, 'success');
-  window.mailaiTasksChanged?.();
 }
 
 async function openTodoCenter() {
   closeAssistant();
   document.getElementById('todo-center').classList.remove('hidden');
   document.body.classList.add('modal-open');
-  selectedTodoIds.clear();
-  todoRenderLimit = 160;
-  allTodos = await api('/api/todos?include_done=true'); renderTodoCenter();
+  todoCenterAccountId = activeMailAccount()?.id;
+  document.getElementById('todo-account-label').textContent = activeMailAccount()?.user || '';
+  todoCenterLoading = false;
+  selectedTodoIds.clear(); todoRenderLimit = 160; todoCenterRows = []; renderTodoCenter();
+  await loadTodoCenter();
 }
-function closeTodoCenter() { document.getElementById('todo-center').classList.add('hidden'); document.body.classList.remove('modal-open'); }
+async function loadTodoCenter() {
+  const accountId = todoCenterAccountId, revision = ++todoCenterRevision;
+  todoCenterLoading = true; updateTodoBatchToolbar([]);
+  document.getElementById('todo-list').innerHTML = '<div class="attachment-empty">正在读取待办…</div>';
+  try {
+    const rows = await api('/api/todos?include_done=true', {accountId});
+    if (revision !== todoCenterRevision) return;
+    todoCenterLoading = false; todoCenterRows = rows; renderTodoCenter();
+  } catch (error) { if (revision === todoCenterRevision) { todoCenterLoading = false; todoCenterRows = []; updateTodoBatchToolbar([]); document.getElementById('todo-list').innerHTML = `<div class="attachment-empty">加载失败：${esc(error.message)} <button data-todo-retry>重试</button></div>`; } }
+}
+function closeTodoCenter() { ++todoCenterRevision; todoCenterLoading = false; document.getElementById('todo-center').classList.add('hidden'); document.body.classList.remove('modal-open'); }
 async function saveTodoItem(article) {
+  const accountId = todoCenterAccountId;
   const id = Number(article.dataset.todoId);
   const title = article.querySelector('.todo-title-input').value.trim();
   const deadline = article.querySelector('input[type="date"]').value;
-  try { await api(`/api/todos/${id}`, {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,deadline})}); toast('待办已保存', 'success'); window.mailaiTasksChanged?.(); }
+  try { await api(`/api/todos/${id}`, {accountId,method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,deadline})}); toast('待办已保存', 'success'); window.mailaiTasksChanged?.(accountId); }
   catch (err) { toast('保存失败：' + err.message, 'error'); }
 }
 
@@ -6301,6 +6379,9 @@ document.getElementById('btn-attachments').addEventListener('click', openAttachm
 document.getElementById('btn-close-attachments').addEventListener('click', closeAttachmentCenter);
 document.querySelector('#attachment-center .attachment-center-backdrop').addEventListener('click', closeAttachmentCenter);
 document.getElementById('attachment-search').addEventListener('input', renderAttachmentCenter);
+document.getElementById('attachment-grid').addEventListener('click', event => {
+  if (event.target.closest('[data-attachment-retry]') && attachmentCenterState === 'error') loadAttachmentCenter();
+});
 document.getElementById('attachment-type-filters').addEventListener('click', event => {
   const button = event.target.closest('[data-attachment-type]');
   if (!button) return;
@@ -6397,7 +6478,7 @@ document.getElementById('todo-show-done').addEventListener('change', () => {
 });
 document.getElementById('todo-select-all').addEventListener('change', event => {
   const showDone = document.getElementById('todo-show-done').checked;
-  const selectable = allTodos.filter(item => item.status !== 'done' && (showDone || item.status !== 'done'));
+  const selectable = todoCenterRows.filter(item => item.status !== 'done' && (showDone || item.status !== 'done'));
   if (event.target.checked) selectable.forEach(item => selectedTodoIds.add(item.id));
   else selectable.forEach(item => selectedTodoIds.delete(item.id));
   document.querySelectorAll('#todo-list [data-todo-select]').forEach(input => {
@@ -6406,12 +6487,12 @@ document.getElementById('todo-select-all').addEventListener('change', event => {
   updateTodoBatchToolbar();
 });
 document.getElementById('todo-complete-selected').addEventListener('click', async () => {
-  const ids = allTodos.filter(item => item.status !== 'done' && selectedTodoIds.has(item.id)).map(item => item.id);
+  const ids = todoCenterRows.filter(item => item.status !== 'done' && selectedTodoIds.has(item.id)).map(item => item.id);
   try { await setTodoBatchStatus(ids); }
   catch (err) { toast('批量完成失败：' + err.message, 'error'); }
 });
 document.getElementById('todo-complete-all').addEventListener('click', async () => {
-  const ids = allTodos.filter(item => item.status !== 'done').map(item => item.id);
+  const ids = todoCenterRows.filter(item => item.status !== 'done').map(item => item.id);
   if (!ids.length || !window.confirm(`确认将全部 ${ids.length} 项未完成待办标记为完成？`)) return;
   try { await setTodoBatchStatus(ids); }
   catch (err) { toast('全部完成失败：' + err.message, 'error'); }
@@ -6427,12 +6508,19 @@ document.getElementById('todo-list').addEventListener('change', event => {
   const article = event.target.closest('[data-todo-id]'); if (article) saveTodoItem(article);
 });
 document.getElementById('todo-list').addEventListener('click', async event => {
+  if (event.target.closest('[data-todo-retry]')) return loadTodoCenter();
+  const accountId = todoCenterAccountId, revision = todoCenterRevision;
   const plan = event.target.closest('[data-todo-plan]');
-  if (plan) { await window.openTaskPlanner({todoId:Number(plan.dataset.todoPlan)}); return; }
+  if (plan) { await window.openTaskPlanner({todoId:Number(plan.dataset.todoPlan),accountId}); return; }
   const toggle = event.target.closest('[data-todo-toggle]');
   if (toggle) {
-    const item = allTodos.find(row => row.id === Number(toggle.dataset.todoToggle));
-    if (item) { await toggleTodo(item.id, item.status); renderTodoCenter(); }
+    const item = todoCenterRows.find(row => row.id === Number(toggle.dataset.todoToggle));
+    if (item && !toggle.disabled) {
+      toggle.disabled = true;
+      try { await api(`/api/todos/${item.id}/${item.status === 'done' ? 'reopen' : 'done'}`, {accountId,method:'POST'}); item.status = item.status === 'done' ? 'open' : 'done'; if (revision === todoCenterRevision) renderTodoCenter(); window.mailaiTasksChanged?.(accountId); }
+      catch (error) { toast('更新失败：' + error.message, 'error'); }
+      finally { toggle.disabled = false; }
+    }
     return;
   }
   if (event.target.closest('[data-todo-render-more]')) {
@@ -6441,7 +6529,7 @@ document.getElementById('todo-list').addEventListener('click', async event => {
     return;
   }
   const source = event.target.closest('[data-todo-email]');
-  if (source) { closeTodoCenter(); await revealEmailFromSource(Number(source.dataset.todoEmail)); }
+  if (source) { closeTodoCenter(); if (accountId !== activeMailAccount()?.id) await openAccountMailbox(accountId, 'inbox'); await revealEmailFromSource(Number(source.dataset.todoEmail)); }
 });
 document.getElementById('btn-preferences').addEventListener('click', () => showSystemView('preferences'));
 document.getElementById('btn-toggle-fetch').addEventListener('click', () => {

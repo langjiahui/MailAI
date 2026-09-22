@@ -23,9 +23,11 @@ const nodes = {
   'assistant-scope-clear': {classList:{toggle(name, value) { this.hidden = value; }}},
   'reading-content': {classList:{contains:() => true}},
   'assistant-panel': {style:{setProperty(){}}},
+  'email-list': {scrollTop:250}, 'assistant-reading-back': {},
   'assistant-float': {setAttribute(name,value) { this[name] = value; }},
 };
 const ctx = {
+  getComputedStyle:()=>({getPropertyValue:()=> '1'}), requestAnimationFrame:fn=>fn(),
   document: {
     body:{classList:{contains:name => classes.has(name),toggle(name,value) { value ? classes.add(name) : classes.delete(name); }}},
     getElementById:id => nodes[id], querySelectorAll:() => [],
@@ -43,8 +45,11 @@ ctx.assistantPinnedScope=[7,8]; ctx.updateAssistantScopeControl(); assert.equal(
 ctx.assistantPinnedScope=null; nodes['assistant-scope'].value='filtered'; ctx.updateAssistantScopeControl();
 assert.equal(nodes['assistant-scope-label'].textContent,'当前列表 · 本邮箱');
 ctx.updateAssistantPlacement(); assert.ok(classes.has('assistant-home')); assert.ok(!classes.has('assistant-docked'));
-nodes['reading-content'].classList.contains=()=>false; ctx.updateAssistantPlacement(); assert.ok(!classes.has('assistant-home'));
-ctx.innerWidth=1800; ctx.updateAssistantPlacement(); assert.ok(classes.has('assistant-docked'));
+nodes['reading-content'].classList.contains=()=>false; ctx.updateAssistantPlacement(); assert.ok(!classes.has('assistant-home')); assert.ok(classes.has('assistant-split'));
+nodes['email-list'].scrollTop=0;
+ctx.innerWidth=1800; ctx.updateAssistantPlacement(); assert.ok(classes.has('assistant-docked')); assert.equal(nodes['email-list'].scrollTop,250);
+ctx.innerWidth=760; ctx.updateAssistantPlacement(); assert.ok(classes.has('assistant-compact')); assert.equal(nodes['assistant-reading-back'].textContent,'返回邮件');
+ctx.innerWidth=1800; ctx.getComputedStyle=()=>({getPropertyValue:()=> '1.5'}); ctx.updateAssistantPlacement(); assert.ok(classes.has('assistant-split'), 'Large fonts need the same readable split layout');
 classes.add('assistant-floating'); ctx.updateAssistantPlacement(); assert.ok(!classes.has('assistant-docked'));
 classes.delete('assistant-floating'); classes.delete('assistant-visible'); ctx.updateAssistantPlacement(); assert.ok(!classes.has('assistant-home'));
 assert.equal((html.match(/id="assistant-float"/g)||[]).length,1);
@@ -80,3 +85,11 @@ assert.match(workspace, /task-center-backdrop[\s\S]*event\.key === 'Escape'/,
 assert.match(css, /@media\(max-width:600px\)\{\.task-center\{inset:8px/,
   'Task drawer should remain usable on small screens');
 console.log('Workspace polish: scope labels, account isolation reset, responsive placement and navigation controls passed');
+
+const focused=[];
+const originalQuery=ctx.document.querySelector;
+ctx.document.querySelector=selector => selector==='#email-list .email-item.selected' ? {focus:options=>focused.push(['list',options.preventScroll])} : selector==='.reading-pane' ? {focus:options=>focused.push(['reading',options.preventScroll])} : originalQuery(selector);
+ctx.closeAssistant=()=>{classes.delete('assistant-visible');classes.delete('assistant-split');};
+classes.add('assistant-split');ctx.returnToMailFromAssistant();
+ctx.returnToMailFromAssistant();
+assert.deepEqual(focused,[['list',true],['reading',true]],'Returning from assistant restores keyboard focus without scrolling');

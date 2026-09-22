@@ -371,6 +371,9 @@ def _run_migrations(c):
     for column in ("in_reply_to", "references_header"):
         if column not in _columns_of(c, "drafts"):
             c.execute(f"ALTER TABLE drafts ADD COLUMN {column} TEXT DEFAULT ''")
+    for column, definition in {'reply_to_email_id': 'INTEGER', 'in_reply_to': "TEXT DEFAULT ''", 'references_header': "TEXT DEFAULT ''"}.items():
+        if column not in _columns_of(c, 'sent_messages'):
+            c.execute(f'ALTER TABLE sent_messages ADD COLUMN {column} {definition}')
     emails_cols = _columns_of(c, "emails")
     new_email_cols = {
         'arrival_kind': "TEXT DEFAULT ''",
@@ -423,6 +426,11 @@ def _run_migrations(c):
     for table in ("drafts", "sent_messages"):
         if "attachments_json" not in _columns_of(c, table):
             c.execute(f"ALTER TABLE {table} ADD COLUMN attachments_json TEXT DEFAULT '[]'")
+    for table in ('emails', 'sent_messages'):
+        for column in ('message_id', 'in_reply_to'):
+            c.execute(f'CREATE INDEX IF NOT EXISTS idx_{table}_progress_{column} ON {table}(lower({column}))')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_emails_progress_thread ON emails(lower(thread_id))')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_sent_progress_reply ON sent_messages(reply_to_email_id)')
     if 'group_name' not in _columns_of(c, 'contacts'):
         c.execute("ALTER TABLE contacts ADD COLUMN group_name TEXT DEFAULT ''")
     c.execute("CREATE TABLE IF NOT EXISTS server_cleanup_jobs(token TEXT PRIMARY KEY,payload TEXT NOT NULL,status TEXT NOT NULL,created_at TEXT NOT NULL,expires_at TEXT NOT NULL,result TEXT DEFAULT '{}')")

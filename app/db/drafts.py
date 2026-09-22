@@ -86,6 +86,9 @@ def create_sent_message(data: dict) -> int:
              data.get("body_html"), json.dumps(data.get("attachments") or [], ensure_ascii=False), "sending", now),
         )
         record_id = cur.lastrowid
+        if data.get('mode') != 'forward':
+            c.execute('UPDATE sent_messages SET reply_to_email_id=?,in_reply_to=?,references_header=? WHERE id=?',
+                      (data.get('reply_to_email_id'), data.get('in_reply_to') or '', data.get('references') or data.get('references_header') or '', record_id))
         from ..outbox import current_send_token
         if current_send_token.get():
             c.execute('UPDATE outbox SET result=? WHERE token=?', (json.dumps({'sent_record_id':record_id}), current_send_token.get()))
