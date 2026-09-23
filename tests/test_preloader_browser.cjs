@@ -176,13 +176,18 @@ const {chromium, webkit} = require('playwright');
       'fast initialization must not interrupt the birth or welcome');
     await page.waitForFunction(() => document.getElementById('app-preloader')?.dataset.handoff === 'running');
     await page.waitForTimeout(1150);
+    // A fixed wall-clock delay can sample the route before its final frame on
+    // loaded CI runners. Verify the destination with the actual animation done.
+    await page.locator('.preloader-route').evaluate(el =>
+      el.getAnimations().forEach(animation => animation.finish()));
     const contourAlignment = await page.evaluate(() => {
       const path = document.getElementById('preloader-route-path');
       const p = path.getPointAtLength(path.getTotalLength()/2);
       const point = new DOMPoint(p.x,p.y).matrixTransform(path.getScreenCTM());
       return Math.abs(point.y - (document.querySelector('.layout > .reading-pane').getBoundingClientRect().bottom - 1));
     });
-    assert(contourAlignment < 2, 'zoomed route must land on the real reading pane bottom edge');
+    assert(contourAlignment < 2,
+      `zoomed route must land on the real reading pane bottom edge (${contourAlignment.toFixed(2)}px)`);
     for (const selector of ['img', 'strong', 'small']) {
       const from = await page.locator(`.preloader-brand ${selector}`).boundingBox();
       const to = await page.locator(`.topbar .brand ${selector}`).boundingBox();
