@@ -5,9 +5,9 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v2.2.9**
+当前版本：**v2.2.10**
 
-本次更新：优化浅色与深色模式的背景层次和轻透材质，统一邮件阅读操作与顶部工具栏的按钮样式。阅读区随窗口和小邮面板宽度展开，减少关闭助手后的留白；“更多”菜单改为清晰的图标按钮，并保留原有操作。
+本次更新：精简发送前检查。普通外部邮件不再因收件人身份或 AI 根据附件文件名的推测弹出确认；钓鱼邮件回复、明确漏加附件和高风险附件仍会提醒核对，确认时无需重复勾选。邮件进入可撤销发送后，提示会自动收起，10 秒撤销时间保持不变。
 
 ## 下载 MailAI
 

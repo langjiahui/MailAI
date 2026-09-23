@@ -172,9 +172,9 @@ function showQueuedMail(result, accountId) {
   }
   refreshAfterQueuedSend(result.token, accountId);
   taskNotice('邮件已加入发件箱，发送前可撤销', '撤销发送', async () => {
-    try { await api(`/api/mail/outbox/${result.token}/cancel`, {method:'POST', accountId}); taskNotice('已撤销发送，内容保留在草稿箱'); }
+    try { await api(`/api/mail/outbox/${result.token}/cancel`, {method:'POST', accountId}); taskNotice('已撤销发送，内容保留在草稿箱', '', null, 3500); }
     catch (error) { taskNotice(error.message, '查看发件箱', openTaskCenter); }
-  });
+  }, 6500);
 }
 
 async function openTaskCenter() {

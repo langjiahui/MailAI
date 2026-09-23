@@ -128,16 +128,33 @@ const fs = require('node:fs');
     assert.equal((await page.evaluate(() => api('/api/mail/outbox'))).length,0,'Stale preflight queued mail');
     await page.unroute('**/api/mail/preflight',preflightRoute);
     pass('延迟安全检查不能覆盖修改后的收件人或自动发送');
-    // Actual local preflight + queue + cancellation, with fixture SMTP only.
+    // A genuinely dangerous finding still opens a single confirmation step.
     await page.locator('#compose-to').fill('colleague@example.test');
+    const dangerRoute = route => {
+      const data = route.request().postDataJSON();
+      return route.fulfill({contentType:'application/json',body:JSON.stringify({issues:[{level:'danger',code:'MISSING_ATTACHMENT',message:'正文提到了附件，但尚未添加附件',reason:'建议添加附件后再发送。',source:'本地检查'}],recipients:{to_addr:data.to_addr,cc_addr:'',bcc_addr:''}})});
+    };
+    await page.route('**/api/mail/preflight',dangerRoute);
     await page.locator('#btn-send-mail').click();
-    await page.locator('#compose-preflight-ack').waitFor();
-    assert.equal(await page.locator('[data-preflight-send]').isDisabled(),true);
-    await page.locator('#compose-preflight-ack').check();
-    await page.locator('[data-preflight-send]').click();
+    await page.locator('[data-preflight-send]').waitFor();
+    assert.equal(await page.locator('#compose-preflight-ack').count(),0);
+    await page.locator('[data-preflight-edit]').last().click();
+    await page.unroute('**/api/mail/preflight',dangerRoute);
+    // Routine external mail goes straight to the outbox and can be undone.
+    await page.locator('#btn-send-mail').click();
     await page.getByRole('button',{name:'撤销发送',exact:true}).click();
     await page.waitForFunction(async () => (await api('/api/mail/outbox')).some(row=>row.status==='canceled'));
     pass('发送前检查、保存入队与撤销发送闭环');
+
+    await page.locator('#btn-compose').click();
+    await page.locator('#compose-to').fill('colleague@example.test');
+    await page.locator('#compose-subject').fill('短暂发送提示');
+    await page.locator('#compose-message').fill('你好，这是一封测试邮件。');
+    await page.locator('#btn-send-mail').click();
+    await page.getByRole('button',{name:'撤销发送',exact:true}).waitFor();
+    await page.waitForFunction(() => document.getElementById('workspace-notice').classList.contains('hidden'), null, {timeout:8000});
+    assert.equal(await page.locator('#toast').evaluate(el => el.classList.contains('hidden')),true,'Queued send should not show a duplicate success toast');
+    pass('可撤销发送提示自动收起且没有重复提示');
 
     await page.locator('#assistant-orb').click();
     await page.locator('#assistant-input').fill(('请核对附件中的负责人、截止时间和差异。\n').repeat(16));

@@ -3391,20 +3391,21 @@ async function runMailPreflight(payload) {
       document.getElementById(`compose-${key.replace('_addr','').replace('_','-')}`).value = payload[key];
     });
   }
+  const blockingIssues = (result.issues || []).filter(item => item.level === 'danger');
   const host = document.getElementById('compose-preflight');
-  host.classList.toggle('hidden', !result.issues.length);
-  host.innerHTML = result.issues.length ? `<button type="button" class="preflight-backdrop" data-preflight-edit aria-label="返回修改邮件"></button><section class="preflight-dialog" role="dialog" aria-modal="true" aria-labelledby="preflight-dialog-title">
-  <header class="preflight-summary"><span class="preflight-heading"><small>发送前安全确认</small><strong id="preflight-dialog-title">${esc(result.summary || '发送前检查')}</strong><em>${result.ai_reviewed ? '已结合本地规则与 AI 语义审查' : '已完成本地安全检查'}</em></span><button type="button" data-preflight-edit aria-label="关闭安全确认">×</button></header>
-  <div class="preflight-list">` + result.issues.map(item => `<div class="preflight-item ${item.level}">
+  host.classList.toggle('hidden', !blockingIssues.length);
+  host.innerHTML = blockingIssues.length ? `<button type="button" class="preflight-backdrop" data-preflight-edit aria-label="返回修改邮件"></button><section class="preflight-dialog" role="dialog" aria-modal="true" aria-labelledby="preflight-dialog-title">
+  <header class="preflight-summary"><span class="preflight-heading"><small>发送前提醒</small><strong id="preflight-dialog-title">请核对这 ${blockingIssues.length} 项</strong><em>发现可能影响发送安全或完整性的问题</em></span><button type="button" data-preflight-edit aria-label="关闭发送提醒">×</button></header>
+  <div class="preflight-list">` + blockingIssues.map(item => `<div class="preflight-item ${item.level}">
     <span class="preflight-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M10 3.2l7 12.3H3z"/><path d="M10 7.2v4.2M10 14.1h.01"/></svg></span>
     <span><b>${esc(item.message)}</b>${item.reason ? `<small>${esc(item.reason)}</small>` : ''}</span><em>${esc(item.source || '发送检查')}</em>
   </div>`).join('') + `</div><footer class="preflight-decision">
-    <label><input id="compose-preflight-ack" type="checkbox"><span><b>我已逐项核对以上风险</b><small>确认收件人、正文、附件和原邮件均符合预期</small></span></label>
-    <div><button type="button" data-preflight-edit>返回修改</button><button type="button" class="preflight-confirm-send" data-preflight-send disabled>确认发送</button></div>
+    <span class="preflight-decision-note">核对后可以返回修改，或选择仍要发送</span>
+    <div><button type="button" data-preflight-edit>返回修改</button><button type="button" class="preflight-confirm-send" data-preflight-send>仍要发送</button></div>
   </footer></section>` : '';
-  if (result.issues.length) toggleComposeAiPanel(false);
-  composePreflightPending = result.issues.length ? {payload: {...payload}, fingerprint: composePreflightFingerprint(payload)} : null;
-  return result;
+  if (blockingIssues.length) toggleComposeAiPanel(false);
+  composePreflightPending = blockingIssues.length ? {payload: {...payload}, fingerprint: composePreflightFingerprint(payload)} : null;
+  return {...result, blockingIssues};
 }
 
 function composePreflightFingerprint(payload = draftPayload()) {
@@ -9259,7 +9260,6 @@ async function submitComposeMail(payload, preflightConfirmed = false) {
     session.canceled = true;
     if (session === draftSession) { currentDraftId = null; clearComposePreflight(); hideCompose(); }
     [sentMessages, savedDrafts] = await Promise.all([api('/api/mail/sent'), api('/api/drafts')]); updateSidebar();
-    toast('已加入发件箱，10 秒内可撤销发送', 'success');
     if (typeof showQueuedMail === 'function') showQueuedMail(result, accountId);
     sent = true;
   } catch (e) { toast(e.message, 'error'); }
@@ -9283,21 +9283,16 @@ document.getElementById('btn-send-mail').addEventListener('click', async () => {
     toast('检查期间邮件内容发生了变化，请再次点击发送', 'warn');
     return;
   }
-  if (preflight.issues.length) {
+  if (preflight.blockingIssues.length) {
     const riskPanel = document.getElementById('compose-preflight');
     riskPanel.setAttribute('tabindex', '-1');
     riskPanel.focus({preventScroll:true});
-    toast(`请先阅读并核对 ${preflight.issues.length} 项发送风险`, 'warn');
+    toast(`请核对 ${preflight.blockingIssues.length} 项发送提醒`, 'warn');
     return;
   }
   await submitComposeMail(payload, false);
 });
 
-document.getElementById('compose-preflight').addEventListener('change', event => {
-  if (event.target.id === 'compose-preflight-ack') {
-    event.currentTarget.querySelector('[data-preflight-send]').disabled = !event.target.checked;
-  }
-});
 document.getElementById('compose-preflight').addEventListener('click', async event => {
   if (event.target.closest('[data-preflight-edit]')) {
     clearComposePreflight();
@@ -9317,7 +9312,7 @@ document.getElementById('compose-preflight').addEventListener('click', async eve
   const sent = await submitComposeMail(payload, true);
   if (!sent && document.body.classList.contains('compose-open')) {
     confirm.disabled = false;
-    confirm.textContent = '确认发送';
+    confirm.textContent = '仍要发送';
   }
 });
 document.getElementById('btn-compose-ai').addEventListener('click', () => toggleComposeAiPanel());
@@ -10361,9 +10356,9 @@ function showQueuedMail(result, accountId) {
   }
   refreshAfterQueuedSend(result.token, accountId);
   taskNotice('邮件已加入发件箱，发送前可撤销', '撤销发送', async () => {
-    try { await api(`/api/mail/outbox/${result.token}/cancel`, {method:'POST', accountId}); taskNotice('已撤销发送，内容保留在草稿箱'); }
+    try { await api(`/api/mail/outbox/${result.token}/cancel`, {method:'POST', accountId}); taskNotice('已撤销发送，内容保留在草稿箱', '', null, 3500); }
     catch (error) { taskNotice(error.message, '查看发件箱', openTaskCenter); }
-  });
+  }, 6500);
 }
 
 async function openTaskCenter() {
