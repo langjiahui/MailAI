@@ -112,7 +112,9 @@ def api_mail_switch(payload: AccountSwitchRequest):
         log.warning("切换邮箱失败: %s", type(exc).__name__)
         raise HTTPException(400, str(exc) or "邮箱切换失败，请重新登录")
     from ...mailbox_jobs import poll_all
-    poll_all()
+    account = system_settings._load_registry().get('accounts', {}).get(payload.account_id, {})
+    if not account.get('auto_sync_paused', False):
+        poll_all(force=True, account_id=payload.account_id)
     return {**result, "config": system_settings.public_config()}
 
 

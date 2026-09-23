@@ -1456,10 +1456,11 @@ async function generateSignatures(button) {
 }
 
 function quoteOriginal(e, mode) {
+  const originalBody = e.quote_html || mdToHtml(e.body_text || '');
   if (mode === 'forward') {
-    return `<div style="font-size:13px;line-height:1.65"><b>---------- 转发邮件 ----------</b><br>发件人：${esc(e.from_addr || '')}<br>发送时间：${esc(fmtDate(e.date))}<br>收件人：${esc(e.to_addr || '')}<br>主题：${esc(e.subject || '')}</div><div style="margin-top:14px">${mdToHtml(e.body_text || '')}</div>`;
+    return `<div style="font-size:13px;line-height:1.65"><b>---------- 转发邮件 ----------</b><br>发件人：${esc(e.from_addr || '')}<br>发送时间：${esc(fmtDate(e.date))}<br>收件人：${esc(e.to_addr || '')}<br>主题：${esc(e.subject || '')}</div><div style="margin-top:14px">${originalBody}</div>`;
   }
-  return `<div style="font-size:13px;line-height:1.65">在 ${esc(fmtDate(e.date))}，${esc(e.from_addr || '')} 写道：</div><div style="margin-top:12px">${mdToHtml(e.body_text || '')}</div>`;
+  return `<div style="font-size:13px;line-height:1.65">在 ${esc(fmtDate(e.date))}，${esc(e.from_addr || '')} 写道：</div><div style="margin-top:12px">${originalBody}</div>`;
 }
 
 async function composeFromEmail(mode) {
@@ -1476,9 +1477,40 @@ async function composeFromEmail(mode) {
     try { recipients = await api(`/api/emails/${e.id}/reply-recipients?reply_all=${mode === 'reply_all'}`); }
     catch (err) { toast('无法准备回复：' + err.message, 'error'); return; }
   }
-  openCompose({mode, ...recipients, subject: mode === 'forward' ? forwardSubject : replySubject,
+  await openCompose({mode, ...recipients, subject: mode === 'forward' ? forwardSubject : replySubject,
     message_html: '', quote_html: quoteOriginal(e, mode), reply_to_email_id: e.id, in_reply_to: e.message_id || '',
     references: [e.references_header, e.message_id].filter(Boolean).join(' '), original_text: e.body_text || '', account_id:e._account_id || activeMailAccount()?.id});
+  if (mode === 'forward' && Array.isArray(e.attachments) && e.attachments.length) {
+    const forwardSession = draftSession;
+    forwardSession.attachmentReads = (forwardSession.attachmentReads || 0) + 1;
+    try {
+    const files = [];
+    let total = 0;
+    for (const [index, attachment] of e.attachments.entries()) {
+      const size = Number(attachment.size || 0);
+      if (size > 20 * 1024 * 1024 || total + size > 25 * 1024 * 1024) {
+        toast('原邮件附件超过发送大小限制，请手动选择需要转发的文件', 'warn');
+        return;
+      }
+      try {
+        const response = await fetch(mailboxResourceUrl(`/api/emails/${e.id}/attachments/${index}`, e._account_id || activeMailAccount()?.id));
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const blob = await response.blob();
+        total += blob.size;
+        if (blob.size > 20 * 1024 * 1024 || total > 25 * 1024 * 1024) {
+          toast('原邮件附件超过发送大小限制，请手动选择需要转发的文件', 'warn');
+          return;
+        }
+        files.push(new File([blob], attachment.name || `附件-${index + 1}`, {type:attachment.content_type || blob.type}));
+      } catch (error) {
+        toast('原附件读取失败，请检查后手动添加再发送：' + error.message, 'warn');
+        return;
+      }
+    }
+    if (forwardSession !== draftSession || forwardSession.canceled) return;
+    await addComposeAttachments(files);
+    } finally { forwardSession.attachmentReads -= 1; }
+  }
 }
 
 function hideCompose() {
@@ -4046,6 +4078,7 @@ function dismissMailboxSyncTracker(tracker, signature) {
 
 function accountSyncLabel(account) {
   if (!account.credential_available) return '需要重新登录';
+  if (account.auto_sync_paused && account.sync_status !== 'running') return '自动收信已暂停';
   if (account.sync_status === 'running') {
     if (Number(account.sync_quiet_seconds) >= 90) return '等待服务器响应…';
     if (account.sync_total > 0) {
@@ -4149,6 +4182,14 @@ function renderMailboxSyncTracker(accounts = []) {
 function renderSidebarAccounts() {
   if (typeof updateWorkspaceToolScope === 'function') updateWorkspaceToolScope();
   const accounts = _systemConfig?.accounts || [];
+  const pausedControl = document.getElementById('auto-sync-paused');
+  const currentPaused = !!accounts.find(account => account.id === activeMailAccount()?.id)?.auto_sync_paused;
+  if (pausedControl) pausedControl.checked = currentPaused;
+  const syncButton = document.getElementById('btn-poll');
+  if (syncButton) {
+    syncButton.title = currentPaused ? '自动收信已暂停；点击可手动同步' : '立即从服务器拉取邮件';
+    syncButton.setAttribute('aria-label', currentPaused ? '手动同步（自动收信已暂停）' : '同步邮件');
+  }
   const group = document.getElementById('account-mailbox-group');
   const primary = document.getElementById('primary-folder-group');
   const host = document.getElementById('account-mailbox-nav');
@@ -4166,7 +4207,7 @@ function renderSidebarAccounts() {
       const collapsed = localStorage.getItem('collapsed:' + account.id) === '1';
       const syncing = account.credential_available && account.sync_status === 'running';
       const status = accountSyncLabel(account);
-      const statusVisible = Boolean(status) && (syncing || account.sync_error || !account.credential_available || ['interrupted','canceled'].includes(account.sync_status));
+      const statusVisible = Boolean(status) && (syncing || account.auto_sync_paused || account.sync_error || !account.credential_available || ['interrupted','canceled'].includes(account.sync_status));
       const syncDetail = [account.sync_error || account.sync_message || account.user, syncing ? `已用时 ${account.sync_elapsed_seconds || 0} 秒；距上次进度更新 ${account.sync_quiet_seconds || 0} 秒` : '', account.sync_status === 'interrupted' ? '当前没有同步任务，点击顶部「同步」重新检查' : ''].filter(Boolean).join(' · ');
       return `<section class="sidebar-account ${selectedAccount ? 'active' : ''} ${collapsed ? 'collapsed' : ''}" data-sidebar-account="${esc(account.id)}">
         <div class="sidebar-account-heading">
@@ -6023,6 +6064,23 @@ document.getElementById('btn-poll').addEventListener('click', async () => {
   }
 });
 
+document.getElementById('auto-sync-paused').addEventListener('change', async event => {
+  const accountId = activeMailAccount()?.id;
+  const paused = event.target.checked;
+  if (!accountId) { event.target.checked = false; return toast('请先连接邮箱', 'warn'); }
+  event.target.disabled = true;
+  try {
+    await api(`/api/mail/auto-sync?paused=${paused}`, {method:'POST', accountId});
+    const account = (_systemConfig?.accounts || []).find(item => item.id === accountId);
+    if (account) account.auto_sync_paused = paused;
+    renderSidebarAccounts();
+    toast(paused ? '已暂停当前邮箱自动收信，仍可手动同步' : '已恢复当前邮箱自动收信', 'success');
+  } catch (error) {
+    event.target.checked = !paused;
+    toast('设置自动收信失败：' + error.message, 'error');
+  } finally { event.target.disabled = false; }
+});
+
 document.getElementById('btn-digest').addEventListener('click', openDigestModal);
 
 document.getElementById('btn-dashboard').addEventListener('click', () => {
@@ -6165,7 +6223,7 @@ function updateAttachmentTypeFilters() {
   document.querySelectorAll('[data-attachment-type]').forEach(button => {
     const type = button.dataset.attachmentType;
     const label = type === 'all' ? (mailaiT('att.typeAll') || '全部') : attachmentTypeName(type);
-    button.innerHTML = `${label}<span>${counts[type] || 0}</span>`;
+    button.innerHTML = type === attachmentTypeFilter ? `${label}<span>${counts[type] || 0}${attachmentCenterHasMore ? '+' : ''}</span>` : label;
     button.classList.toggle('active', type === attachmentTypeFilter);
   });
 }
@@ -6174,6 +6232,8 @@ let attachmentCenterAccountId = '';
 let attachmentCenterRevision = 0;
 let attachmentCenterState = 'idle';
 let attachmentCenterError = '';
+let attachmentCenterHasMore = false;
+let attachmentSearchTimer = 0;
 function renderAttachmentCenter() {
   if (attachmentCenterState === 'loading' || attachmentCenterState === 'error') {
     updateAttachmentTypeFilters();
@@ -6203,7 +6263,7 @@ function renderAttachmentCenter() {
         ${['danger', 'warn'].includes(getRiskLabel(item.score, item.verdict, item).class) ? `<em class="attachment-risk">${getRiskLabel(item.score, item.verdict, item).text}</em>` : ''}
         <span class="attachment-download-action" aria-hidden="true"><svg class="attachment-download" viewBox="0 0 20 20"><path d="M10 3v9m-3-3 3 3 3-3M4 15h12"/></svg></span>
       </span>
-    </a>`).join('') : `<div class="attachment-empty">${mailaiT('att.noMatch') || '没有找到匹配的附件'}</div>`;
+    </a>`).join('') + (attachmentCenterHasMore ? '<button type="button" class="attachment-retry" data-attachment-more>加载更多附件</button>' : '') : `<div class="attachment-empty">${mailaiT('att.noMatch') || '没有找到匹配的附件'}</div>`;
 }
 
 async function openAttachmentCenter() {
@@ -6214,18 +6274,21 @@ async function openAttachmentCenter() {
   modal.classList.remove('hidden');
   document.body.classList.add('modal-open');
   attachmentItems = []; attachmentTypeFilter = 'all';
+  attachmentCenterHasMore = false;
   document.getElementById('attachment-search').value = '';
   await loadAttachmentCenter();
 }
 
-async function loadAttachmentCenter() {
+async function loadAttachmentCenter(more = false) {
   const accountId = attachmentCenterAccountId, revision = ++attachmentCenterRevision;
-  attachmentCenterState = 'loading'; attachmentCenterError = '';
-  renderAttachmentCenter();
+  if (!more) { attachmentCenterState = 'loading'; attachmentCenterError = ''; renderAttachmentCenter(); }
   try {
-    const rows = await api('/api/attachments?limit=1000', {accountId});
+    const query = document.getElementById('attachment-search').value.trim();
+    const rows = await api(`/api/attachments?limit=300&offset=${more ? attachmentItems.length : 0}&q=${encodeURIComponent(query)}&kind=${attachmentTypeFilter}`, {accountId});
     if (revision !== attachmentCenterRevision) return;
-    attachmentItems = rows; attachmentCenterState = 'ready'; renderAttachmentCenter();
+    attachmentItems = more ? attachmentItems.concat(rows) : rows;
+    attachmentCenterHasMore = rows.length === 300;
+    attachmentCenterState = 'ready'; renderAttachmentCenter();
   } catch (error) {
     if (revision !== attachmentCenterRevision) return;
     attachmentCenterState = 'error'; attachmentCenterError = error.message; renderAttachmentCenter();
@@ -6386,7 +6449,13 @@ async function saveTodoItem(article) {
 document.getElementById('btn-attachments').addEventListener('click', openAttachmentCenter);
 document.getElementById('btn-close-attachments').addEventListener('click', closeAttachmentCenter);
 document.querySelector('#attachment-center .attachment-center-backdrop').addEventListener('click', closeAttachmentCenter);
-document.getElementById('attachment-search').addEventListener('input', renderAttachmentCenter);
+document.getElementById('attachment-search').addEventListener('input', () => {
+  clearTimeout(attachmentSearchTimer);
+  attachmentSearchTimer = setTimeout(() => loadAttachmentCenter(), 250);
+});
+document.getElementById('attachment-grid').addEventListener('click', event => {
+  if (event.target.closest('[data-attachment-more]')) loadAttachmentCenter(true);
+});
 document.getElementById('attachment-grid').addEventListener('click', event => {
   if (event.target.closest('[data-attachment-retry]') && attachmentCenterState === 'error') loadAttachmentCenter();
 });
@@ -6394,7 +6463,7 @@ document.getElementById('attachment-type-filters').addEventListener('click', eve
   const button = event.target.closest('[data-attachment-type]');
   if (!button) return;
   attachmentTypeFilter = button.dataset.attachmentType;
-  renderAttachmentCenter();
+  loadAttachmentCenter();
 });
 document.getElementById('btn-todos').addEventListener('click', openTodoCenter);
 document.getElementById('btn-contacts').addEventListener('click', () => openContactCenter());

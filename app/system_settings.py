@@ -258,7 +258,8 @@ def public_config() -> dict:
             {"id": account_id, "user": item.get("user", ""), "host": item.get("host", ""),
              "active": bool(account_password(account_id)) and account_id == registry.get("last_account"),
              "credential_available": bool(account_password(account_id)),
-             "credential_storage": item.get("credential_storage", "vault"), **local_counts(item)}
+             "credential_storage": item.get("credential_storage", "vault"),
+             "auto_sync_paused": bool(item.get("auto_sync_paused", False)), **local_counts(item)}
             for account_id, item in registry.get("accounts", {}).items()
             if item.get("visible", True)
         ],

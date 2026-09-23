@@ -41,6 +41,7 @@ TESTS = (
     'test_workspace_maturity.py',
     'test_action_policy.py', 'test_rule_policy.py', 'test_retired_security_signals.py', 'test_mail_providers.py',
     'test_mail_reliability.py', 'test_client_regressions.py', 'test_safe_move.py',
+    'test_attachment_center_history.py', 'test_quote_html.py', 'test_auto_sync_pause.py',
     'test_batch_move.py',
     'test_confirm_recovery.py',
     'test_feedback_moves.py', 'test_account_guard.py', 'test_reply_recipients.py',

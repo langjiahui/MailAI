@@ -23,6 +23,9 @@ def _poll(values):
     # Refresh after acquiring the lease: queued work must not reuse a removed
     # account or credentials changed while another account occupied the pool.
     with use(snapshot(values['ACCOUNT_ID'])):
+        account = system_settings._load_registry().get('accounts', {}).get(values['ACCOUNT_ID'], {})
+        if account.get('auto_sync_paused', False) and not values.get('manual_sync', False):
+            return {'ok': True, 'fetched': 0, 'canceled': True}
         db.init_db()
         from . import mail_assistant
         mail_assistant.alerts()  # Seed the notification baseline before importing.
@@ -71,6 +74,8 @@ def poll_all(force=True, account_id=None):
                 continue
             if not account.get('visible', True):
                 continue
+            if not force and account.get('auto_sync_paused', False):
+                continue
             if key in _pending:
                 if force:
                     _poll_again.add(key)
@@ -82,6 +87,7 @@ def poll_all(force=True, account_id=None):
                 values = snapshot(key)
             except ValueError:
                 continue
+            values['manual_sync'] = force
             _next_poll_at[key] = time.monotonic() + config.POLL_INTERVAL_SECONDS
             _pending[key] = _executor.submit(_poll, values)
             _pending[key].add_done_callback(_notify)

@@ -242,26 +242,49 @@ def list_correspondence_emails(address: str, limit: int = 50) -> list[dict]:
     return result
 
 
-def list_attachments(limit: int = 500) -> list[dict]:
+def list_attachments(limit: int = 500, offset: int = 0, query: str = "", kind: str = "all") -> list[dict]:
     """汇总本地邮件附件元数据，供附件中心检索与下载。"""
-    with conn() as c:
-        rows = _decode_rows(c.execute(
-            "SELECT id,subject,from_addr,date,attachments,score,verdict,feedback,reviewed FROM emails "
-            "WHERE remote_missing=0 AND attachments IS NOT NULL AND attachments NOT IN ('','[]') ORDER BY date DESC LIMIT 2000"
-        ).fetchall())
     result = []
-    for row in rows:
-        for index, item in enumerate(row.get("attachments") or []):
-            result.append({"email_id": row["id"], "index": index,
-                           "name": item.get("name") or "未命名附件",
-                           "content_type": item.get("content_type") or "application/octet-stream",
-                           "size": item.get("size") or 0, "subject": row.get("subject") or "",
-                           "from_addr": row.get("from_addr") or "", "date": row.get("date") or "",
-                           "score": row.get("score") or 0, "verdict": row.get("verdict") or "clean",
-                           "feedback": row.get("feedback"), "reviewed": row.get("reviewed")})
-            if len(result) >= limit:
-                return result
+    skipped = 0
+    needle = query.strip().casefold()
+    with conn() as c:
+        rows = c.execute(
+            "SELECT id,subject,from_addr,date,attachments,score,verdict,feedback,reviewed FROM emails "
+            "WHERE remote_missing=0 AND attachments IS NOT NULL AND attachments NOT IN ('','[]') ORDER BY date DESC,id DESC"
+        )
+        for raw in rows:
+            row = _decode_rows([raw])[0]
+            for index, item in enumerate(row.get("attachments") or []):
+                if kind != 'all' and _attachment_kind(item) != kind:
+                    continue
+                if needle and not any(needle in str(value or "").casefold() for value in
+                                      (item.get("name"), row.get("subject"), row.get("from_addr"))):
+                    continue
+                if skipped < offset:
+                    skipped += 1
+                    continue
+                result.append({"email_id": row["id"], "index": index,
+                               "name": item.get("name") or "未命名附件",
+                               "content_type": item.get("content_type") or "application/octet-stream",
+                               "size": item.get("size") or 0, "subject": row.get("subject") or "",
+                               "from_addr": row.get("from_addr") or "", "date": row.get("date") or "",
+                               "score": row.get("score") or 0, "verdict": row.get("verdict") or "clean",
+                               "feedback": row.get("feedback"), "reviewed": row.get("reviewed")})
+                if len(result) >= limit:
+                    return result
     return result
+
+
+def _attachment_kind(item: dict) -> str:
+    mime = str(item.get('content_type') or '').lower()
+    name = str(item.get('name') or '').lower()
+    ext = name.rsplit('.', 1)[-1] if '.' in name else ''
+    if 'pdf' in mime or ext == 'pdf': return 'pdf'
+    if 'spreadsheet' in mime or ext in ('xls', 'xlsx', 'csv', 'ods'): return 'sheet'
+    if 'word' in mime or ext in ('doc', 'docx', 'odt', 'rtf', 'txt'): return 'document'
+    if mime.startswith('image/') or ext in ('png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'): return 'image'
+    if 'zip' in mime or ext in ('zip', 'rar', '7z', 'gz', 'tar'): return 'archive'
+    return 'other'
 
 
 def list_inline_attachment_candidates() -> list[dict]:

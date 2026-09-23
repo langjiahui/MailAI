@@ -2,6 +2,7 @@
 import logging
 import os
 import re
+import bleach
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
@@ -14,6 +15,18 @@ from ..helpers import (annotate_list_identities, campaign_groups,
 
 log = logging.getLogger(__name__)
 router = APIRouter()
+
+_QUOTE_TAGS = ('p', 'div', 'span', 'br', 'b', 'strong', 'i', 'em', 'u', 's', 'ul',
+               'ol', 'li', 'blockquote', 'pre', 'code', 'table', 'thead', 'tbody',
+               'tr', 'td', 'th', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'a')
+
+
+def safe_quote_html(html: str) -> str:
+    """Keep basic mail formatting without importing active/remote content into compose."""
+    html = re.sub(r'<(script|style|iframe|object|svg)\b[^>]*>.*?</\1\s*>', '', html or '', flags=re.I | re.S)
+    return bleach.clean(html, tags=_QUOTE_TAGS,
+                        attributes={'a': ['href', 'title']},
+                        protocols=['http', 'https', 'mailto'], strip=True)
 
 
 @router.get("/api/emails")
@@ -60,8 +73,10 @@ def api_search_emails(q: str = "", limit: int = 1000, offset: int = 0, folder: s
 
 
 @router.get("/api/attachments")
-def api_attachments(limit: int = 500):
-    return db.list_attachments(max(1, min(limit, 1000)))
+def api_attachments(limit: int = 500, offset: int = 0, q: str = "", kind: str = "all"):
+    if kind not in ('all', 'pdf', 'sheet', 'document', 'image', 'archive', 'other'):
+        raise HTTPException(400, '无效附件类型')
+    return db.list_attachments(max(1, min(limit, 1000)), max(0, offset), q[:200], kind)
 
 
 @router.get("/api/emails/{email_id}")
@@ -91,6 +106,7 @@ def api_email_detail(email_id: int):
         row.get("verdict") in ("phishing", "suspicious") or int(row.get("score") or 0) >= 30
     ) else None
     row["body_html"] = row.get("body_html") or extract_rich_body(row.get("raw_path"), email_id)
+    row["quote_html"] = safe_quote_html(row["body_html"]) if row["body_html"] else ""
     row["has_rich_body"] = bool(row["body_html"])
     row["has_remote_images"] = bool(re.search(r'<img[^>]+src=["\']https?://', row["body_html"], re.I))
     return row

@@ -12,6 +12,25 @@ log = logging.getLogger(__name__)
 router = APIRouter()
 
 
+@router.post('/api/mail/auto-sync')
+def api_auto_sync(paused: bool):
+    """Persist the current account's background-poll preference."""
+    from ... import system_settings
+    account_id = getattr(config, 'ACCOUNT_ID', '')
+    registry = system_settings._load_registry()
+    account = registry.get('accounts', {}).get(account_id)
+    if account is None:
+        raise HTTPException(404, '邮箱账号不存在')
+    account['auto_sync_paused'] = paused
+    system_settings._save_registry(registry)
+    if paused:
+        pipeline.cancel_fetch()
+    else:
+        from ...mailbox_jobs import poll_all
+        poll_all(force=True, account_id=account_id)
+    return {'ok': True, 'paused': paused}
+
+
 @router.get("/api/mail/folders")
 def api_mail_folders():
     try:

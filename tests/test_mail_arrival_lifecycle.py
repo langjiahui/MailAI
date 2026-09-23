@@ -75,6 +75,17 @@ def main():
         mailbox_jobs.poll_all(force=False)
         assert jobs[-1][0] == 'b', 'Healthy accounts retain their configured interval'
 
+    paused_registry = {'accounts': {'a': {'visible': True, 'auto_sync_paused': True}}}
+    with patch.object(mailbox_jobs.system_settings, '_load_registry', return_value=paused_registry), \
+         patch.object(mailbox_jobs, 'snapshot', return_value={'ACCOUNT_ID': 'a'}), \
+         patch.object(mailbox_jobs, '_pending', {}), patch.object(mailbox_jobs, '_next_poll_at', {}), \
+         patch.object(mailbox_jobs._executor, 'submit', side_effect=submit):
+        previous = len(jobs)
+        mailbox_jobs.poll_all(force=False)
+        assert len(jobs) == previous, 'Paused account must not poll in the background'
+        mailbox_jobs.poll_all(force=True, account_id='a')
+        assert len(jobs) == previous + 1, 'Manual sync must remain available while paused'
+
     with tempfile.TemporaryDirectory() as folder, use(dict(ACCOUNT_ID='arrival-test',
             DB_PATH=str(Path(folder) / 'mail.db'), IMAP_USER='test@example.test')):
         db.init_db()
