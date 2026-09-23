@@ -9781,6 +9781,11 @@ setTimeout(() => {
   // version's release notes immediately after an upgrade.
   checkForAppUpdate(false);
 }, 1800);
+// Users who keep the app running for weeks would otherwise never hear about
+// new releases: re-check once a day. The backend's 30-minute cache keeps
+// this from ever hitting GitHub more than once per check, and a silent
+// (non-manual) check only surfaces a dialog when an update is available.
+setInterval(() => checkForAppUpdate(false), 24 * 60 * 60 * 1000);
 (async () => {
   try {
     const st = await api('/api/fetch_status');
