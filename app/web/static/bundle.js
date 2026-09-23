@@ -6701,7 +6701,14 @@ function renderReadingPane(e) {
           <section class="reading-action-group reading-mail-group" aria-label="邮件操作"><span class="reading-action-group-title">${mailaiT('read.groupMail') || '邮件操作'}</span><div class="reading-mail-controls"><div class="reading-reply-actions">${replyActions}</div></div></section>
           <section class="reading-action-group reading-ai-group" aria-label="AI 助手"><span class="reading-action-group-title">${mailaiT('read.groupAi') || 'AI 助手'}</span></section>
           ${showRiskActions ? decisionGroup : ''}
-          <details class="reading-more-actions"><summary aria-label="更多邮件操作">更多 <span aria-hidden="true">⌄</span></summary><div class="reading-more-panel">${!['trash','spam','quarantine','draft'].includes(e.status) ? '<button type="button" onclick="openConversationProgress()"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 4h10v9H9l-4 3V4Z"/><path d="M8 7h4M8 10h4"/></svg><span>会话进展</span></button>' : ''}${showRiskActions ? '' : decisionGroup}</div></details>
+          <details class="reading-more-actions">
+            <summary aria-label="更多邮件操作">
+              <svg class="reading-more-symbol" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14M8 3v4M13 8v4M7 13v4"/></svg>
+              <span>更多</span>
+              <svg class="reading-more-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 7.5 4.5 4.5 4.5-4.5"/></svg>
+            </summary>
+            <div class="reading-more-panel">${!['trash','spam','quarantine','draft'].includes(e.status) ? '<button type="button" onclick="openConversationProgress()"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 4h10v9H9l-4 3V4Z"/><path d="M8 7h4M8 10h4"/></svg><span>会话进展</span></button>' : ''}${showRiskActions ? '' : decisionGroup}</div>
+          </details>
         </div>
       </div>
     </div>
