@@ -279,6 +279,19 @@ html[data-theme="dark"] body .reading-header .reading-actions button.reading-pri
   html[data-theme] body .reading-header .reading-actions :is(.reading-icon-action,.reading-work-actions button,.reading-ai-group>button,.reading-more-actions>summary) { min-height:44px; }
 }
 html[data-theme] body .reading-header .reading-actions .reading-more-panel button { font-size:13px; font-weight:400; line-height:1.4; }
+/* Actions moved from the toolbar must take on the menu's flat row style. */
+html[data-theme] body .reading-header .reading-actions .reading-more-panel button.reading-icon-action,
+html[data-theme] body .reading-header .reading-actions .reading-more-panel button[data-reading-action] {
+  width:100%; height:auto; min-height:36px; padding:8px 10px;
+  justify-content:flex-start; border:0!important; border-radius:6px;
+  background:transparent!important; box-shadow:none!important;
+  color:var(--desk-ink)!important; font-size:13px; font-weight:400;
+}
+html[data-theme] body .reading-header .reading-actions .reading-more-panel button.reading-icon-action:hover,
+html[data-theme] body .reading-header .reading-actions .reading-more-panel button[data-reading-action]:hover {
+  background:var(--desk-hover)!important; border:0!important;
+  box-shadow:none!important; color:var(--desk-ink)!important;
+}
 #conversation-progress-dialog .progress-latest { border-left:0; background:var(--desk-muted-surface); padding:14px; border-radius:8px; }
 #conversation-progress-dialog .progress-detail>header { background:transparent; }
 #conversation-progress-dialog :is(.progress-changes article,.progress-tasks article) { background:var(--desk-muted-surface); border-radius:8px; padding:12px; }

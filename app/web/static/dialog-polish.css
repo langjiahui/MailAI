@@ -4,6 +4,8 @@ html[data-theme] body :is(.compose-card,.attachment-center-card,.contact-editor-
   border:1px solid var(--desk-line)!important; border-radius:14px;
   box-shadow:0 20px 64px #0003!important; backdrop-filter:none!important;
 }
+/* Keep the digest header inside the same rounded silhouette as its dialog. */
+html[data-theme] body #digest-modal .modal-content { overflow:hidden; }
 html[data-theme] body :is(.compose-card,.attachment-center-card,.contact-editor-card)>:is(header,footer),
 html[data-theme] body :is(.modal-header,.drawer-header,.assistant-head) {
   background:var(--desk-surface)!important; border-color:var(--desk-line)!important; box-shadow:none!important;
@@ -85,6 +87,8 @@ html[data-theme] body #assistant-panel .assistant-scope-picker>summary { min-hei
 #assistant-panel .scope-symbol { display:none; }
 html[data-theme] body #assistant-panel #assistant-form { margin:0; padding:0; gap:8px; align-items:flex-end; border:0!important; border-radius:0; background:transparent!important; box-shadow:none!important; }
 html[data-theme] body #assistant-panel #assistant-input { min-height:44px; padding:10px 2px; border:0!important; outline:none!important; box-shadow:none!important; }
+/* Centre the image glyph against the input's final text line. */
+html[data-theme] body #assistant-panel #assistant-add-image { align-self:flex-end; margin-bottom:6px; }
 html[data-theme] body #assistant-panel .assistant-composer:focus-within { border-color:var(--desk-accent)!important; }
 html[data-theme] body #assistant-panel #assistant-stop { display:grid; place-items:center; flex:none; width:36px; height:36px; min-height:36px; padding:8px; margin-bottom:4px; border:0; border-radius:10px; background:var(--desk-accent); color:var(--desk-surface); cursor:pointer; }
 #assistant-stop svg { width:20px; height:20px; fill:currentColor; }
@@ -108,3 +112,41 @@ html[data-theme] body .compose-card :is(.compose-toolbar-actions,.compose-format
 html[data-theme] body .compose-card .compose-format-group { border:0!important; padding-inline:4px 12px; }
 html[data-theme] body .compose-card .compose-attachment-hint { background:var(--desk-surface)!important; padding-block:8px 0; }
 html[data-theme] body .compose-card #compose-message:focus-visible { outline:none!important; }
+/* Keep formatting on one calm, horizontally scrollable line at every dialog width. */
+html[data-theme] body .compose-card .compose-format-tools {
+  flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden; gap:4px;
+  padding:8px 24px; scrollbar-width:thin; scrollbar-color:var(--desk-line) transparent;
+}
+html[data-theme] body .compose-card .compose-format-group {
+  min-height:34px; flex:none; gap:2px; padding:0 10px 0 0;
+  margin-right:6px; border:0!important; border-right:1px solid var(--desk-line)!important;
+  border-radius:0; background:transparent!important; box-shadow:none!important;
+}
+html[data-theme] body .compose-card .compose-format-group:last-child { border-right:0!important; }
+html[data-theme] body .compose-card .compose-format-tools :is(button,select) {
+  min-height:30px; border-radius:7px; font-size:12px;
+}
+html[data-theme] body .compose-card .compose-format-tools select {
+  height:30px; padding-inline:5px; outline:0!important; box-shadow:none!important;
+}
+html[data-theme] body .compose-card #compose-block-format { width:58px; }
+html[data-theme] body .compose-card #compose-font-name { width:62px; }
+html[data-theme] body .compose-card #compose-font-size { width:54px; }
+html[data-theme] body .compose-card .compose-format-selects { gap:0; padding-right:7px; margin-right:4px; }
+html[data-theme] body .compose-card .compose-format-tools select:focus-visible {
+  background:var(--desk-selected)!important; color:var(--desk-accent)!important;
+}
+html[data-theme] body .compose-card .compose-format-tools button:has(svg) {
+  display:inline-grid; place-items:center; width:32px; min-width:32px;
+  padding:0; color:var(--desk-ink)!important; line-height:1;
+}
+html[data-theme] body .compose-card .compose-format-tools button svg {
+  display:block; width:18px; height:18px; fill:none; stroke:currentColor;
+  stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;
+}
+html[data-theme] body .compose-card .compose-format-tools button:focus-visible {
+  outline:2px solid var(--desk-accent)!important; outline-offset:1px;
+}
+@media(max-width:760px) {
+  html[data-theme] body .compose-card .compose-format-tools { padding-inline:16px; }
+}

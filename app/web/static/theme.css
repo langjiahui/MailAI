@@ -711,11 +711,13 @@ html[data-theme="dark"] .mobile-nav-button {
 }
 html[data-theme="dark"] .mobile-nav-button:hover { color:#f4fff8!important; background:linear-gradient(145deg,rgba(91,145,116,.7),rgba(42,78,61,.86))!important; }
 html[data-theme="dark"] .logo {
-  background:linear-gradient(145deg,rgba(67,117,92,.62),rgba(25,47,38,.8))!important;
-  border-color:rgba(221,245,228,.25)!important;
-  box-shadow:inset 0 1px rgba(255,255,255,.12),0 8px 20px rgba(0,0,0,.18)!important;
+  background:linear-gradient(145deg,#172e24,#102219)!important;
+  border-color:rgba(173,220,190,.43)!important;
+  box-shadow:inset 0 1px rgba(234,255,241,.12),0 8px 20px rgba(0,0,0,.22)!important;
 }
+html[data-theme="dark"] .logo img { filter:brightness(2) saturate(.8); }
 html[data-theme="dark"] .brand-copy strong { color:#effaf3!important; }
+html[data-theme="dark"] .brand-copy .mailai-wordmark-ai { color:#9ad5b6!important; }
 html[data-theme="dark"] .list-header {
   background:linear-gradient(100deg,rgba(34,59,47,.68),rgba(20,40,31,.48))!important;
   border-color:var(--dark-stroke)!important;
