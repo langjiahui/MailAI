@@ -44,6 +44,7 @@ def main():
          patch('app.pipeline.db.already_processed', return_value=False), \
          patch('app.pipeline.db.count_history_imported', return_value=0), \
          patch('app.pipeline.db.reconcile_folder') as reconcile, \
+         patch('app.pipeline.db.set_runtime_setting'), \
          patch('app.pipeline.process_message', side_effect=moved):
         assert pipeline.fetch_all(batch=1)['fetched'] == 2
         reconcile.assert_called_once_with(config.INBOX_FOLDER, [1, 2])
