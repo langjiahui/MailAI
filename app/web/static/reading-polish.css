@@ -82,7 +82,59 @@ html[data-theme="dark"] body .global-actions .nav-work-cluster .nav-action[aria-
 @media(max-width:720px) {
   html[data-theme] body .global-actions #btn-compose { width:38px; padding:0!important; }
 }
-html[data-theme] body .global-search input { background:var(--desk-muted-surface)!important; border-color:var(--desk-line)!important; box-shadow:none!important; border-radius:8px; }
+/* Anchor search to the mail workspace instead of centering it in spare header space. */
+html[data-theme] body .topbar .global-search {
+  flex:0 1 500px;
+  max-width:500px;
+  min-width:220px;
+  margin-left:24px;
+  margin-right:auto;
+  justify-content:flex-start;
+}
+html[data-theme] body .global-search .search-icon {
+  left:15px;
+  width:18px;
+  height:18px;
+  color:var(--desk-muted);
+  transform:translateY(-50%);
+  pointer-events:none;
+}
+.global-search .search-icon svg {
+  display:block;
+  width:18px;
+  height:18px;
+  stroke:currentColor;
+  stroke-width:1.8;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+html[data-theme] body .global-search input {
+  width:100%;
+  max-width:none;
+  height:42px;
+  padding:0 16px 0 44px;
+  color:var(--desk-ink)!important;
+  background:var(--desk-muted-surface)!important;
+  border:1px solid var(--desk-line)!important;
+  border-radius:11px;
+  box-shadow:inset 0 1px 1px rgba(29,56,40,.025)!important;
+  font-size:13px;
+  transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease;
+}
+html[data-theme] body .global-search input:hover { border-color:color-mix(in srgb,var(--desk-accent) 28%,var(--desk-line))!important; }
+html[data-theme] body .global-search input:focus {
+  background:var(--desk-surface)!important;
+  border-color:color-mix(in srgb,var(--desk-accent) 55%,var(--desk-line))!important;
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--desk-accent) 11%,transparent)!important;
+}
+html[data-theme] body .global-search:focus-within .search-icon { color:var(--desk-accent); }
+html[data-theme] body .global-search input::placeholder { color:var(--desk-muted); opacity:.82; }
+@media(max-width:1440px) {
+  html[data-theme] body .topbar .global-search { margin-left:0; }
+}
+@media(max-width:1024px) {
+  html[data-theme] body .topbar .global-search { flex:1 1 0; max-width:500px; min-width:0; margin-right:auto; }
+}
 html[data-theme] body :is(.list-header,.group-header,.list-footer,.list-workspace-tools) { background:transparent!important; border-color:var(--desk-line)!important; }
 .group-header { font-size:11px; padding-block:10px; }
 html[data-theme] body #email-list .email-item {
@@ -323,3 +375,19 @@ html[data-theme] body .reading-pane .plain-email-body>* {
   html[data-theme] body .reading-header .reading-header-inner,
   html[data-theme] body .reading-workspace { padding-inline:18px; }
 }
+
+/* Separate the current-message delete action from informational actions. */
+html[data-theme] body .reading-header .reading-actions .reading-more-panel button[data-reading-action="delete-current"] {
+  margin-top:5px; border-radius:6px; color:#bf3b35!important;
+}
+html[data-theme="dark"] body .reading-header .reading-actions .reading-more-panel button[data-reading-action="delete-current"] { color:#ffaaa3!important; }
+
+html[data-theme] body .reading-header .reading-actions .reading-more-panel button[data-reading-action="delete-current"]:is(:hover,:focus-visible) {
+  background:rgba(191,59,53,.09)!important; color:#bf3b35!important;
+}
+html[data-theme="dark"] body .reading-header .reading-actions .reading-more-panel button[data-reading-action="delete-current"]:is(:hover,:focus-visible) {
+  background:rgba(255,138,128,.13)!important; color:#ffaaa3!important;
+}
+html[data-theme] body .special-mail-actions .special-delete { color:#bf3b35!important; }
+html[data-theme="dark"] body .special-mail-actions .special-delete { color:#ffaaa3!important; }
+html[data-theme] body .special-mail-actions .special-delete:hover { background:rgba(191,59,53,.09)!important; }

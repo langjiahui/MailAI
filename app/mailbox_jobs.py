@@ -30,6 +30,9 @@ def _poll(values):
         from . import mail_assistant
         mail_assistant.alerts()  # Seed the notification baseline before importing.
         result = pipeline.poll_once()
+        if result.get('fetched'):
+            from . import semantic
+            semantic.schedule_missing()
         if result.get('ok') and not result.get('errors') and not result.get('canceled'):
             db.set_runtime_setting('last_sync_success', __import__('datetime').datetime.now().isoformat(timespec='seconds'))
         result['account_user'] = config.IMAP_USER
@@ -48,6 +51,9 @@ def poll_all(force=True, account_id=None):
             _next_poll_at[''] = time.monotonic() + config.POLL_INTERVAL_SECONDS
         try:
             result = pipeline.poll_once()
+            if result.get('fetched'):
+                from . import semantic
+                semantic.schedule_missing()
         except Exception:
             with _lock:
                 _next_poll_at[''] = 0

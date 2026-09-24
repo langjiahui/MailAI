@@ -74,7 +74,7 @@ assert.match(workspace, /function actionableOutboxRows[\s\S]*seenDrafts[\s\S]*\[
   'Task center should hide successful and canceled outbox history');
 assert.match(workspace, /sync\.running \|\| sync\.error \|\| sync\.canceled \|\| sync\.resumable/,
   'Task center should only show active or actionable sync jobs');
-assert.match(workspace, /目前没有需要处理的任务[\s\S]*正常同步进度会显示在左侧邮箱区域/,
+assert.match(workspace, /目前没有待处理事项[\s\S]*发送中和异常邮件会显示在这里/,
   'Task center should explain its empty state');
 assert.match(workspace, /data-sync-retry[\s\S]*重新同步/,
   'Interrupted synchronization should offer a retry action');

@@ -1,6 +1,6 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const source=fs.readFileSync(require('node:path').join(__dirname,'../app/web/static/app.js'),'utf8');
-const c={specialMailbox:'',unifiedMailbox:false,bulkOperationActive:false,selectedMailIds:new Set(),selectionAnchorId:null,renderedEmailIds:[10,20,30,40,50],syncBulkSelectionVisuals(){},selectEmail(id){c.opened=id;},item:{dataset:{id:'20'}}};vm.createContext(c);
+const c={specialMailbox:'',unifiedMailbox:false,bulkOperationActive:false,selectedMailIds:new Set(),mailSelectionExplicit:false,selectionAnchorId:null,renderedEmailIds:[10,20,30,40,50],syncBulkSelectionVisuals(){},selectEmail(id){c.opened=id;},item:{dataset:{id:'20'}}};vm.createContext(c);
 vm.runInContext(source.slice(source.indexOf('function clearMailSelection()'),source.indexOf('function selectAllVisibleMail()')),c);
 const start=source.indexOf("item.addEventListener('click', event => {");const end=source.indexOf("    item.addEventListener('contextmenu'",start);
 c.item.addEventListener=(_,handler)=>c.click=handler;vm.runInContext(source.slice(start,end),c);

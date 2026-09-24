@@ -355,4 +355,7 @@ def api_save_preferences(payload: PreferencesRequest):
     if payload.notifications not in ('all', 'important', 'high_risk', 'off'):
         raise HTTPException(400, '通知选项无效')
     db.set_runtime_setting('user_preferences', json.dumps(payload.model_dump()))
+    if payload.semantic_enabled:
+        from ... import semantic
+        semantic.schedule_missing()
     return payload.model_dump()

@@ -10,6 +10,11 @@ const assert = require('node:assert/strict');
     await page.locator('.email-item').first().waitFor();
     await page.evaluate(() => openCompose());
     await page.evaluate(() => toggleComposeAiPanel(true));
+    const emptyContext = await page.locator('.compose-ai-context-options label.unavailable').evaluateAll(labels =>
+      labels.map(label => ({native: getComputedStyle(label.querySelector('input')).display,
+        marker: getComputedStyle(label.querySelector('span'), '::before').content})));
+    assert.ok(emptyContext.length > 0);
+    assert.ok(emptyContext.every(item => item.native === 'none' && item.marker === 'none'));
     const requests = [];
     await page.route('**/api/mail/compose/assist-stream', route => route.fulfill({status:404, body:'{}'}));
     await page.route('**/api/mail/compose/assist', route => {

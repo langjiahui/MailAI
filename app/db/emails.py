@@ -60,6 +60,10 @@ def upsert_email(e: dict) -> int:
             "SELECT id FROM emails WHERE folder=? AND uid=?",
             (e.get("folder", "INBOX"), e["uid"]),
         ).fetchone()
+        # Changed message text must be embedded again by the next background pass.
+        if row and supplied.intersection({"subject", "from_name", "from_addr", "to_addr", "summary", "snippet", "body_text"}):
+            if c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='email_vectors'").fetchone():
+                c.execute("DELETE FROM email_vectors WHERE email_id=?", (row["id"],))
         return row["id"]
 
 
@@ -205,7 +209,7 @@ def search_emails(terms: list[str], limit: int = 200, offset: int = 0,
     cleaned = [str(term).strip().lower()[:80] for term in terms if str(term).strip()][:12]
     if not cleaned:
         return list_emails(days=9999, limit=limit, offset=offset, list_view=list_view)
-    columns = EMAIL_LIST_COLUMNS if list_view else '*'
+    columns = EMAIL_LIST_COLUMNS + ',body_text' if list_view else '*'
     with conn() as c:
         from ..mail_search import predicate
         condition, args = predicate(c, cleaned)
@@ -214,7 +218,13 @@ def search_emails(terms: list[str], limit: int = 200, offset: int = 0,
             args.append(folder)
         sql = f"SELECT {columns} FROM emails WHERE remote_missing=0 AND {condition} ORDER BY date DESC,id DESC LIMIT ? OFFSET ?"
         args.extend([max(1, min(limit, 1000)), max(0, offset)])
-        return _decode_rows(c.execute(sql, args).fetchall())
+        rows = _decode_rows(c.execute(sql, args).fetchall())
+        from ..mail_search import match_preview
+        for row in rows:
+            row['search_match'] = match_preview(row, cleaned)
+            if list_view:
+                row.pop('body_text', None)
+        return rows
 
 
 def list_correspondence_emails(address: str, limit: int = 50) -> list[dict]:

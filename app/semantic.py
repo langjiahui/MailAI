@@ -2,7 +2,7 @@
 
 - 嵌入模型：BGE-small-zh-v1.5（fastembed/ONNX，首次重建索引时联网下载，约 100MB）；
 - 存储：账号库 email_vectors 表（float32 BLOB）。余弦相似度用纯 stdlib 扫描，
-  2 万封邮件约 1-2 秒 —— 对可选增强足够，且不为运行时引入 sqlite-vec 原生扩展，
+  索引最多保留最近 5000 封，且不为运行时引入 sqlite-vec 原生扩展，
   发布门禁与未安装依赖的用户完全不受影响；
 - 完全可选：未安装 fastembed，或用户未在偏好设置中启用时，
   助手检索保持现有关键词路径，本模块一律空转。
@@ -17,7 +17,7 @@ import sqlite3
 import threading
 from datetime import datetime
 
-from . import db
+from . import config, db
 
 log = logging.getLogger(__name__)
 
@@ -31,19 +31,23 @@ _model = None
 _model_lock = threading.Lock()
 
 # 重建索引进度（整体替换字典保证读取端拿到一致快照）。phase: model=下载模型, index=嵌入写入。
-_progress: dict = {"running": False, "phase": "", "done": 0, "total": 0, "error": ""}
+_progress_by_db: dict[str, dict] = {}
 _progress_lock = threading.Lock()
+_update_pending: set[str] = set()
+_update_lock = threading.Lock()
+_build_lock = threading.Lock()
 
 
 def _set_progress(**fields) -> None:
-    global _progress
     with _progress_lock:
-        _progress = {**_progress, **fields}
+        current = _progress_by_db.get(config.DB_PATH, {})
+        _progress_by_db[config.DB_PATH] = {**current, **fields}
 
 
 def progress() -> dict:
     with _progress_lock:
-        return dict(_progress)
+        return {"running": False, "phase": "", "done": 0, "total": 0, "error": "",
+                **_progress_by_db.get(config.DB_PATH, {})}
 
 
 def deps_available() -> bool:
@@ -73,7 +77,9 @@ def _embedder():
     with _model_lock:
         if _model is None:
             from fastembed import TextEmbedding
-            _model = TextEmbedding(MODEL_NAME)
+            # Bound ONNX worker threads so background indexing cannot monopolize
+            # a laptop while new mail is being synchronized or read.
+            _model = TextEmbedding(MODEL_NAME, threads=2)
         return _model
 
 
@@ -112,15 +118,26 @@ def _ensure_table():
 
 def _document_text(row: dict) -> str:
     parts = [row.get("subject") or "", row.get("from_name") or row.get("from_addr") or "",
-             row.get("summary") or row.get("snippet") or ""]
+             row.get("to_addr") or "", row.get("summary") or row.get("snippet") or "",
+             row.get("body_text") or ""]
     return "\n".join(p for p in parts if p).strip()
 
 
 def reindex(limit: int = _INDEX_LIMIT, batch_size: int = _BATCH) -> dict:
-    """重建语义索引：嵌入最近 N 封邮件的 主题/发件人/摘要。返回统计。"""
+    with _build_lock:
+        return _reindex(limit, batch_size)
+
+
+def _reindex(limit: int, batch_size: int) -> dict:
+    """重建最近 N 封邮件的主题、联系人、摘要和有限正文索引。"""
     _ensure_table()
-    rows = db.list_emails(days=9999, limit=limit, metadata_only=False) or []
-    docs = [(r["id"], _document_text(r)) for r in rows if not r.get("remote_missing")]
+    with db.conn() as c:
+        rows = c.execute(
+            "SELECT id,subject,from_name,from_addr,to_addr,summary,snippet,"
+            "substr(body_text,1,800) AS body_text FROM emails WHERE remote_missing=0 "
+            "ORDER BY date DESC,id DESC LIMIT ?", (max(1, min(limit, _INDEX_LIMIT)),),
+        ).fetchall()
+    docs = [(r["id"], _document_text(dict(r))) for r in rows]
     docs = [(i, t) for i, t in docs if t]
     now = datetime.now().isoformat(timespec="seconds")
     total = len(docs)
@@ -144,8 +161,88 @@ def reindex(limit: int = _INDEX_LIMIT, batch_size: int = _BATCH) -> dict:
         _set_progress(running=False, error=str(exc))
         raise
     _set_progress(running=False, phase="", done=total)
+    with db.conn() as c:
+        c.execute("DELETE FROM email_vectors WHERE email_id NOT IN "
+                  "(SELECT id FROM emails WHERE remote_missing=0 ORDER BY date DESC,id DESC LIMIT ?)",
+                  (max(1, min(limit, _INDEX_LIMIT)),))
     log.info("语义索引重建完成: %d 封邮件", indexed)
     return {"indexed": indexed, "model": MODEL_NAME}
+
+
+def index_missing(limit: int = _INDEX_LIMIT) -> int:
+    with _build_lock:
+        return _index_missing(limit)
+
+
+def _index_missing(limit: int) -> int:
+    """Index recent new/changed messages without repeating a full rebuild."""
+    if not enabled():
+        return 0
+    _ensure_table()
+    with db.conn() as c:
+        # Keep the brute-force cosine scan bounded even after months of syncing.
+        c.execute("DELETE FROM email_vectors WHERE email_id NOT IN "
+                  "(SELECT id FROM emails WHERE remote_missing=0 ORDER BY date DESC,id DESC LIMIT ?)",
+                  (limit,))
+        rows = c.execute(
+            "SELECT id,subject,from_name,from_addr,to_addr,summary,snippet,"
+            "substr(body_text,1,800) AS body_text FROM emails "
+            "WHERE remote_missing=0 AND id NOT IN (SELECT email_id FROM email_vectors) "
+            "AND id IN (SELECT id FROM emails WHERE remote_missing=0 "
+            "ORDER BY date DESC,id DESC LIMIT ?) ORDER BY date DESC,id DESC",
+            (limit,),
+        ).fetchall()
+    docs = [(r["id"], _document_text(dict(r))) for r in rows]
+    docs = [(email_id, text) for email_id, text in docs if text]
+    if not docs:
+        return 0
+    now = datetime.now().isoformat(timespec="seconds")
+    _set_progress(running=True, phase="model", done=0, total=len(docs), error="")
+    try:
+        for start in range(0, len(docs), _BATCH):
+            batch = docs[start:start + _BATCH]
+            vectors = embed_texts([value for _, value in batch])
+            with db.conn() as c:
+                c.executemany(
+                    "INSERT INTO email_vectors(email_id,embedding,updated_at) VALUES(?,?,?) "
+                    "ON CONFLICT(email_id) DO UPDATE SET embedding=excluded.embedding,updated_at=excluded.updated_at",
+                    [(email_id, _pack(vector), now) for (email_id, _), vector in zip(batch, vectors)],
+                )
+            _set_progress(phase="index", done=min(start + len(batch), len(docs)))
+    except Exception as exc:
+        _set_progress(running=False, error=str(exc))
+        raise
+    _set_progress(running=False, phase="", done=len(docs))
+    return len(docs)
+
+
+def schedule_missing() -> None:
+    """Catch up in the background after sync or when the user enables search."""
+    if not enabled():
+        return
+    from . import config
+    from .account_context import current, use
+    key = config.DB_PATH
+    values = current.get()
+    with _update_lock:
+        if key in _update_pending:
+            return
+        _update_pending.add(key)
+
+    def run():
+        try:
+            if values is None:
+                index_missing()
+            else:
+                with use(values):
+                    index_missing()
+        except Exception:
+            log.exception("增量更新语义索引失败")
+        finally:
+            with _update_lock:
+                _update_pending.discard(key)
+
+    threading.Thread(target=run, name="semantic-index", daemon=True).start()
 
 
 def index_stats() -> dict:
@@ -170,7 +267,8 @@ def search(question: str, limit: int = 8, min_score: float = _MIN_SCORE) -> list
         return []
     _ensure_table()
     with db.conn() as c:
-        rows = c.execute("SELECT email_id, embedding FROM email_vectors").fetchall()
+        rows = c.execute("SELECT v.email_id, v.embedding FROM email_vectors v "
+                         "JOIN emails e ON e.id=v.email_id WHERE e.remote_missing=0").fetchall()
     if not rows:
         return []
     query = _farray("f", embed_texts([question])[0])

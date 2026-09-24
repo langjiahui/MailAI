@@ -1,0 +1,43 @@
+/* Settings own one scrolling panel; header and tabs stay in place. */
+#system-view {
+  padding:clamp(16px,2vw,28px) clamp(16px,3vw,48px) 20px;
+  overflow:hidden;
+  container-type:inline-size;
+}
+#system-view > :is(.system-header,.system-tabs,.system-panel) {
+  /* Override older per-tab :has() width caps as well. */
+  width:100%; max-width:1520px!important; min-width:0;
+  margin-inline:auto;
+}
+#system-view > .system-panel {
+  overflow:auto; overscroll-behavior:contain;
+  scrollbar-gutter:stable; padding-inline:0 0;
+  scrollbar-width:thin; scrollbar-color:transparent transparent;
+}
+#system-view > .system-panel::-webkit-scrollbar { width:7px; height:7px; }
+#system-view > .system-panel::-webkit-scrollbar-track { background:transparent; }
+#system-view > .system-panel::-webkit-scrollbar-thumb { background:transparent; border-radius:8px; }
+#system-view > .system-panel.scrollbar-visible { scrollbar-color:#9bafa4 transparent; }
+#system-view > .system-panel.scrollbar-visible::-webkit-scrollbar-thumb { background:#9bafa4; }
+html[data-theme="dark"] #system-view > .system-panel.scrollbar-visible { scrollbar-color:#698578 transparent; }
+html[data-theme="dark"] #system-view > .system-panel.scrollbar-visible::-webkit-scrollbar-thumb { background:#698578; }
+#system-view .preference-grid { gap:20px; }
+#system-view .preference-col { gap:20px; }
+#system-view .system-tabs { display:flex; flex-wrap:wrap; gap:4px; }
+#system-view :is(.theme-options,.density-options,.font-size-options) {
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,125px),1fr));
+}
+#system-view :is(.preference-card,.preference-col) { min-width:0; }
+#system-view .settings-page-intro { flex-wrap:wrap; gap:8px; }
+@container (max-width:1000px) {
+  #system-view .preference-grid { flex-direction:column; }
+  #system-view .preference-col { width:100%; flex:auto; }
+}
+@container (max-width:600px) {
+  #system-view .system-header { flex-wrap:wrap; gap:12px; }
+  #system-view .preference-grid .preference-card { padding:16px; }
+  #system-view > .system-panel { padding-inline:0 6px; }
+}
+@media(forced-colors:active) {
+  #system-view > .system-panel { scrollbar-color:auto; }
+}

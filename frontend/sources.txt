@@ -17,3 +17,4 @@ companion.js
 companion-motion.js
 onboarding.js
 model-usage.js
+motion.js

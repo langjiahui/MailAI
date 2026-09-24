@@ -75,6 +75,7 @@ let contactPickerContacts = new Map();
 let contactEditorSession = null;
 let selectedContactEmails = new Set();
 let selectedMailIds = new Set();
+let mailSelectionExplicit = false;
 let renderedEmailIds = [];
 let mailRenderLimit = 240;
 let bulkVisualRevision = 0;
@@ -1117,6 +1118,7 @@ function syncSelectedEmailVisual(id, {emphasize = false, scroll = false, account
 }
 
 function resetReadingPane() {
+  mailSelectionExplicit = false;
   readingLoadRevision += 1;
   readingLoadController?.abort();
   readingLoadController = null;
@@ -1799,7 +1801,7 @@ async function saveCurrentDraft({force = false} = {}) {
       const result = await api('/api/drafts', {accountId, method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
       session.id = result.id;
       session.savedFingerprint = fingerprint;
-      if (session !== draftSession) return;
+      if (session !== draftSession || session.canceled) return;
       currentDraftId = result.id;
       ++draftListRevision;
       if (activeMailAccount()?.id === accountId) {
@@ -2024,6 +2026,19 @@ async function aiCompose(operation, button) {
   }
   const selected = new Set([...document.querySelectorAll('.compose-ai-context-options input:checked:not(:disabled)')].map(input => input.value));
   const values = composeAiAvailability();
+  const instructionInput = document.getElementById('compose-ai-instruction');
+  const hasReference = instructionInput.value.trim() || (quickRewrite && values.body) ||
+    ['subject','recipients','original','body'].some(key => selected.has(key) && values[key]) ||
+    (selected.has('attachments') && values.attachments.length);
+  if (!hasReference) {
+    document.getElementById('compose-ai-status').textContent = '请先填写写作要求、主题或正文。';
+    document.getElementById('compose-ai-output').textContent = '';
+    document.getElementById('compose-ai-preview-basis').textContent = '';
+    document.getElementById('compose-ai-preview').classList.add('hidden');
+    document.querySelector('.compose-ai-panel > .compose-ai-preview-actions').classList.add('hidden');
+    instructionInput.focus({preventScroll:true});
+    return toast('请先填写写作要求、主题或正文', 'warn');
+  }
   composeAiSuggestion = '';
   document.querySelectorAll('#btn-ai-replace-subject,#btn-ai-append,#btn-ai-replace').forEach(control => { control.disabled = true; });
   document.getElementById('btn-ai-replace-subject').classList.add('hidden');
@@ -2095,10 +2110,24 @@ async function aiCompose(operation, button) {
     toast('AI 草稿已生成，请预览后决定如何使用', 'success');
   } catch (err) {
     if (!current()) return;
-    document.getElementById('compose-ai-status').textContent = '这次没有生成成功，可以调整要求后重试。';
+    document.getElementById('compose-ai-output').textContent = '';
+    document.getElementById('compose-ai-preview-basis').textContent = '';
+    document.getElementById('compose-ai-preview').classList.add('hidden');
+    document.querySelector('.compose-ai-panel > .compose-ai-preview-actions').classList.add('hidden');
+    document.getElementById('compose-ai-status').textContent = `生成失败：${err.message || '请稍后重试'}`;
     toast('AI 写作失败：' + err.message, 'error');
   }
   finally { if (current()) { panel.classList.remove('is-thinking'); setLoading(button, false); document.getElementById('btn-ai-regenerate').disabled = false; } }
+}
+
+function highlightComposeAiTarget(element) {
+  if (!element?.animate || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  element.getAnimations().filter(animation => animation.id === 'ai-applied').forEach(animation => animation.cancel());
+  const animation = element.animate([
+    {backgroundColor:'rgba(67, 151, 116, .16)'},
+    {backgroundColor:getComputedStyle(element).backgroundColor}
+  ], {duration:450, easing:'ease-out'});
+  animation.id = 'ai-applied';
 }
 
 function applyComposeAiSuggestion(mode) {
@@ -2110,6 +2139,7 @@ function applyComposeAiSuggestion(mode) {
     clearComposePreflight(); queueDraftSave(); refreshComposeAiContext();
     toast('AI 主题已填入主题栏', 'success');
     document.getElementById('compose-subject').focus();
+    highlightComposeAiTarget(document.getElementById('compose-subject'));
     return;
   }
   const body = composeMessageElement();
@@ -2121,6 +2151,7 @@ function applyComposeAiSuggestion(mode) {
   const target = ['reply','reply_all'].includes(composeContext.mode) ? '回复' : (composeContext.mode === 'forward' ? '转发说明' : '正文');
   toast(mode === 'append' ? `AI 草稿已追加到${target}` : `AI 草稿已替换${target}，请核对后发送`, 'success');
   body.focus();
+  highlightComposeAiTarget(body);
 }
 
 async function runMailPreflight(payload) {
@@ -2631,6 +2662,7 @@ async function loadData({includeAncillary = true, silent = false} = {}) {
       : currentFilter.status === 'favorites' ? '/api/emails?days=9999&status=favorites'
       : currentFilter.status === 'trash' ? '/api/emails?days=9999&status=trash'
       : (folder ? `/api/emails?days=9999&folder=${encodeURIComponent(folder)}` : '/api/emails?days=' + days);
+    const draftsRevision = draftListRevision;
     const requests = [loadMailPages(mailPath, isCurrent)];
     if (includeAncillary) requests.push(api('/api/todos'), api('/api/mail/sent'), api('/api/drafts'));
     const [emails, todos, sent, drafts] = await Promise.all(requests);
@@ -2639,7 +2671,7 @@ async function loadData({includeAncillary = true, silent = false} = {}) {
     if (includeAncillary) {
       allTodos = todos;
       sentMessages = sent;
-      savedDrafts = drafts;
+      if (draftsRevision === draftListRevision) savedDrafts = drafts;
     }
     updateSidebar();
     updateDomainFilter();
@@ -3358,7 +3390,7 @@ function renderEmailList(emails, {silent = false} = {}) {
         else toggleMailSelection(id);
         return;
       }
-      if (selectedMailIds.size) clearMailSelection();
+      if (selectedMailIds.size || mailSelectionExplicit) clearMailSelection();
       if (!specialMailbox && !unifiedMailbox) selectionAnchorId = id;
       specialMailbox ? selectSpecialMessage(id) : unifiedMailbox ? selectUnifiedEmail(id, item.dataset.accountId) : selectEmail(id);
     });
@@ -3426,6 +3458,25 @@ function mailPriorityLabel(p) {
   return (keys[p] && mailaiT(keys[p])) || `${p}优先级`;
 }
 
+function renderSearchPreview(email) {
+  const match = currentFilter.search && email.search_match;
+  if (!match) return esc((email.summary || email.snippet || '').slice(0, 120));
+  const labels = {subject:'主题匹配',from_addr:'发件人匹配',from_name:'发件人匹配',summary:'摘要匹配',snippet:'内容匹配',body_text:'正文匹配',category:'分类匹配',semantic:'相关邮件'};
+  const text = String(match.text || '');
+  const terms = currentFilter.search.toLowerCase().split(/\s+/).filter(Boolean);
+  if (match.highlight) terms.push(String(match.highlight).toLowerCase());
+  // Escape each fragment before adding markup, including content from email HTML.
+  let output = '', position = 0;
+  const lower = text.toLowerCase();
+  while (position < text.length) {
+    const found = terms.map(term => ({term, index:lower.indexOf(term, position)})).filter(hit => hit.index >= 0).sort((a,b) => a.index-b.index || b.term.length-a.term.length)[0];
+    if (!found) { output += esc(text.slice(position)); break; }
+    output += esc(text.slice(position, found.index)) + '<mark>' + esc(text.slice(found.index, found.index + found.term.length)) + '</mark>';
+    position = found.index + found.term.length;
+  }
+  return `<span class="search-match-label">${labels[match.field] || '内容匹配'}${match.pinyin ? ' · 拼音' : ''}</span>${output}`;
+}
+
 function renderEmailItem(e, idx = 0) {
   const risk = getRiskLabel(e.score, e.verdict, e);
   const selected = selectedEmailId === e.id ? 'selected' : '';
@@ -3466,7 +3517,7 @@ function renderEmailItem(e, idx = 0) {
         </div>
       </div>
       <div class="email-subject">${esc(e.subject)}</div>
-      <div class="email-preview">${esc(e.summary || e.snippet || '').slice(0, 120)}${(e.summary || e.snippet || '').length > 120 ? '…' : ''}</div>
+      <div class="email-preview ${currentFilter.search && e.search_match ? 'search-match-preview' : ''}">${renderSearchPreview(e)}</div>
       <div class="email-tags">
         ${unifiedMailbox && e._account_user ? `<span class="mail-account-tag" title="所属邮箱 ${esc(e._account_user)}">${esc(e._account_user)}</span>` : ''}
         ${e.category ? `<span class="tag">${esc(mailCategoryLabel(e.category))}</span>` : ''}
@@ -3523,10 +3574,10 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
       : `<span class="special-mail-attachment-item"><span class="special-mail-attachment-name">${esc(item.filename || item.name || '未命名附件')}</span><small>${formatFileSize(item.size || 0)}</small></span>`).join('')}</div>
     </div>` : '';
   pane.innerHTML = `<div class="special-mail-detail">
-    <div class="special-mail-actions">${kind === 'drafts' ? '<button class="action-btn action-primary compact" id="btn-edit-special"><svg viewBox="0 0 20 20"><path d="m4 14.5-.5 2 2-.5L15 6.5 13.5 5 4 14.5ZM12 6.5l1.5 1.5"/></svg>继续编辑</button><button class="action-btn compact" id="btn-delete-special"><svg viewBox="0 0 20 20"><path d="M4 6h12M8 6V4h4v2m-6 0 1 10h6l1-10M9 9v4m2-4v4"/></svg>舍弃草稿</button>' : failed ? '<button class="action-btn action-primary compact" id="btn-edit-special"><svg viewBox="0 0 20 20"><path d="m4 14.5-.5 2 2-.5L15 6.5 13.5 5 4 14.5Z"/></svg>重新编辑</button>' : (row._remote || ['sent','accepted'].includes(row.status)) ? '<button class="action-btn action-primary compact" id="btn-edit-special">再次编辑</button>' : ''}</div>
     <span class="eyebrow">${originLabel}</span>
     <h1>${esc(row.subject || '（无主题）')}</h1>
     <div class="special-mail-meta"><b>${kind === 'drafts' ? '收件人' : '发送至'}：</b>${esc(recipients || '尚未填写')}<br><b>时间：</b>${esc(fmtDate(row.sent_at || row.updated_at || row.created_at))}</div>
+    <div class="special-mail-actions">${kind === 'drafts' ? '<button class="action-btn action-primary compact" id="btn-edit-special"><svg viewBox="0 0 20 20"><path d="m4 14.5-.5 2 2-.5L15 6.5 13.5 5 4 14.5ZM12 6.5l1.5 1.5"/></svg>继续编辑</button><button class="action-btn compact" id="btn-delete-special"><svg viewBox="0 0 20 20"><path d="M4 6h12M8 6V4h4v2m-6 0 1 10h6l1-10M9 9v4m2-4v4"/></svg>舍弃草稿</button>' : failed ? '<button class="action-btn action-primary compact" id="btn-edit-special"><svg viewBox="0 0 20 20"><path d="m4 14.5-.5 2 2-.5L15 6.5 13.5 5 4 14.5Z"/></svg>重新编辑</button>' : (row._remote || ['sent','accepted'].includes(row.status)) ? '<button class="action-btn action-primary compact" id="btn-edit-special">再次编辑</button>' : ''}</div>
     ${failed ? `<div class="special-mail-error"><b>失败原因：</b>${esc(row.error || '未知错误')}</div>` : ''}
     ${specialAttachments}
     <article class="special-mail-body" id="special-mail-body"></article>
@@ -3585,9 +3636,37 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
       toast(row._remote ? '服务器草稿已移入垃圾箱' : '草稿已舍弃', 'success');
     } catch (err) { toast('舍弃草稿失败：' + err.message, 'error'); }
   });
+  if (kind === 'sent' && (row._remote || ['sent','accepted'].includes(row.status))) {
+    const button = document.createElement('button');
+    button.type = 'button'; button.className = 'action-btn compact special-delete';
+    button.textContent = '删除邮件';
+    document.querySelector('.special-mail-actions').appendChild(button);
+    const accountId = activeMailAccount()?.id;
+    button.onclick = async () => {
+      if (button.disabled) return;
+      button.disabled = true;
+      try {
+        const result = await api('/api/mail/sent/' + row.id, {accountId, method:'DELETE'});
+        if (result.failed?.length) throw new Error(result.failed[0].error || '删除失败');
+        if (activeMailAccount()?.id === accountId) {
+          // Commit the successful deletion locally before any slower refresh.
+          // Invalidate reads already in flight so they cannot restore the old row.
+          ++mailLoadRevision;
+          sentMessages = sentMessages.filter(item => Number(item.id) !== Number(row.id));
+          if (button.isConnected && pane.contains(button)) resetReadingPane();
+          if (specialMailbox === 'sent') renderSpecialMailbox();
+          updateSidebar();
+          void loadData({silent:true});
+        }
+        toast('已发送邮件已移入已删除，稍后同步服务器', 'success');
+      } catch (error) { toast(error.message, 'error'); }
+      finally { button.disabled = false; }
+    };
+  }
 }
 
 function syncBulkSelectionVisuals() {
+  if (selectedMailIds.size) mailSelectionExplicit = true;
   const revision = ++bulkVisualRevision;
   const items = [...document.querySelectorAll('.email-item')];
   let cursor = 0;
@@ -3610,6 +3689,7 @@ function syncBulkSelectionVisuals() {
 
 function clearMailSelection() {
   if (bulkOperationActive) return;
+  mailSelectionExplicit = false;
   selectedMailIds.clear();
   selectionAnchorId = null;
   bulkStackFocusId = null;
@@ -3618,6 +3698,14 @@ function clearMailSelection() {
 
 function toggleMailSelection(id) {
   if (bulkOperationActive) return;
+  // A normal click is the initial selection. Seed it only once per selection
+  // session; an explicitly emptied selection must remain empty.
+  if (!mailSelectionExplicit && !selectedMailIds.size &&
+      renderedEmailIds.includes(Number(selectedEmailId)) &&
+      (!selectedEmailAccountId || selectedEmailAccountId === activeMailAccount()?.id)) {
+    selectedMailIds.add(Number(selectedEmailId));
+  }
+  mailSelectionExplicit = true;
   if (selectedMailIds.has(id)) selectedMailIds.delete(id);
   else selectedMailIds.add(id);
   selectionAnchorId = id;
@@ -3745,9 +3833,9 @@ function updateBulkToolbar() {
   toolbar.querySelector('[data-bulk-action="purge"]')?.classList.toggle('hidden', !trashView);
   document.getElementById('btn-empty-trash')?.classList.toggle('hidden', !trashView);
   toolbar.querySelector('[data-bulk-action="trash"]')?.classList.toggle('hidden', currentFilter.status === 'trash');
-  toolbar.classList.toggle('hidden', (!selectedMailIds.size && !bulkOperationActive) || !!specialMailbox);
+  toolbar.classList.toggle('hidden', (!selectedMailIds.size && !mailSelectionExplicit && !bulkOperationActive) || !!specialMailbox);
   if (!bulkOperationActive) document.getElementById('bulk-count').textContent = `已选 ${selectedMailIds.size} 封`;
-  document.querySelector('.list-pane')?.classList.toggle('selection-active', !!selectedMailIds.size && !specialMailbox);
+  document.querySelector('.list-pane')?.classList.toggle('selection-active', (!!selectedMailIds.size || mailSelectionExplicit) && !specialMailbox);
   syncReadingSelectionStack();
 }
 
@@ -3872,7 +3960,7 @@ async function runBulkAction(action, target = '') {
         ? `已标记 ${result.completed} 封邮件，服务器将在后台同步`
         : `已处理 ${result.completed} 封邮件`;
     toast(`${completedText}${result.failed.length ? `，失败 ${result.failed.length} 封` : ''}`, result.failed.length ? 'warn' : 'success');
-    selectedMailIds = new Set(result.failed.map(item => item.id)); selectionAnchorId = null; await loadData();
+    selectedMailIds = new Set(result.failed.map(item => item.id)); mailSelectionExplicit = !!selectedMailIds.size; selectionAnchorId = null; await loadData();
     if (result.failed.length && typeof showOperationFailures === 'function') showOperationFailures(result.failed, async () => {
       if (activeMailAccount()?.id !== accountId) await openAccountMailbox(accountId, 'inbox');
       selectedMailIds = new Set(result.failed.map(item => item.id));
@@ -3908,7 +3996,7 @@ async function purgeTrash(empty) {
     toast(`本地已删除 ${result.completed} 封${result.pending ? '，服务器待同步' : ''}${result.blocked ? '；部分远端邮件仍可能保留' : ''}${result.cleanup_pending ? '；部分原文文件待清理' : ''}${result.errors.length ? '；' + result.errors.join('；') : ''}`, result.errors.length || result.cleanup_pending ? 'warn' : 'success');
     if (typeof refreshTaskCenter === 'function') refreshTaskCenter({lightweight:true});
     if (activeMailAccount()?.id === accountId) {
-      selectedMailIds.clear(); selectionAnchorId = null;
+      selectedMailIds.clear(); mailSelectionExplicit = false; selectionAnchorId = null;
       selectedEmailId = null; selectedEmailDetail = null;
       document.getElementById('reading-content').classList.add('hidden');
       document.getElementById('reading-empty').classList.remove('hidden');
@@ -6401,7 +6489,7 @@ document.addEventListener('keydown', event => {
   }
   if (event.key === 'Escape') {
     hideMailContextMenu();
-    if (selectedMailIds.size && !editing && !overlayOpen) clearMailSelection();
+    if ((selectedMailIds.size || mailSelectionExplicit) && !editing && !overlayOpen) clearMailSelection();
   }
 });
 
@@ -6445,7 +6533,7 @@ async function loadServerFolder(folder) {
   currentFilter.status = ''; currentFilter.verdict = ''; currentFilter.category = ''; currentFilter.search = '';
   currentFilter.priority = ''; currentFilter.domain = ''; currentFilter.attachments = false;
   searchResults = null; ++searchRevision; clearTimeout(globalSearchTimer);
-  selectedMailIds.clear(); updateBulkToolbar();
+  selectedMailIds.clear(); mailSelectionExplicit = false; updateBulkToolbar();
   setSegmentedFilter('filter-priority', '');
   document.getElementById('filter-domain').value = '';
   document.getElementById('filter-attachments').checked = false;
@@ -7685,10 +7773,10 @@ document.getElementById('global-search').addEventListener('input', (e) => {
     if (!query || specialMailbox || currentFilter.status === 'trash') { applyFilters(); return; }
     try {
       const path = unifiedMailbox ? '/api/system/mail/unified-inbox?days=9999' : '/api/emails/search?days=9999';
-      const results = await loadMailPages(`${path}&q=${encodeURIComponent(query)}&limit=1000${currentServerFolder ? '&folder=' + encodeURIComponent(currentServerFolder) : ''}`, () => revision === searchRevision);
+      const results = await loadMailPages(`${path}&q=${encodeURIComponent(query)}&limit=1000${currentServerFolder ? '&folder=' + encodeURIComponent(currentServerFolder) : ''}${!unifiedMailbox && currentFilter.status ? '&status=' + encodeURIComponent(currentFilter.status) : ''}`, () => revision === searchRevision);
       if (revision !== searchRevision) return;
       searchResults = results;
-      selectedMailIds.clear(); updateBulkToolbar(); applyFilters();
+      selectedMailIds.clear(); mailSelectionExplicit = false; updateBulkToolbar(); applyFilters();
     } catch (err) { toast('搜索失败：' + err.message, 'error'); }
   }, 260);
 });
@@ -8073,9 +8161,12 @@ document.getElementById('btn-discard-draft').addEventListener('click', async () 
   const accountId = session.accountId || composeAccountId;
   session.canceled = true;
   clearDraftSaveTimers();
+  ++draftListRevision;
   try {
     await session.pending.catch(() => {});
     if (session.id) await api('/api/drafts/' + session.id, {accountId, method:'DELETE'});
+    ++draftListRevision;
+    if (activeMailAccount()?.id === accountId) savedDrafts = savedDrafts.filter(row => row.id !== session.id);
     if (session === draftSession) { currentDraftId = null; hideCompose(); }
     await refreshDraftList(accountId);
   } catch (e) { session.canceled = false; toast('舍弃草稿失败：' + e.message, 'error'); }

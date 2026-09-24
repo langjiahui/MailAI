@@ -137,6 +137,12 @@ def api_delete_draft(draft_id: int):
 @router.get("/api/mail/sent")
 def api_sent_messages(limit: int = 500):
     local = db.list_sent_messages(limit)
+    # Keep the local SMTP receipt, but hide it when its server copy was deleted.
+    with db.conn() as c:
+        removed = {str(r[0]).strip().casefold() for r in c.execute(
+            "SELECT message_id FROM emails WHERE message_id != '' AND "
+            "(status='trash' OR pending_action='trash')").fetchall()}
+    local = [item for item in local if str(item.get('message_id') or '').strip().casefold() not in removed]
     local_message_ids = {str(item.get("message_id") or "").strip().casefold()
                          for item in local if item.get("message_id")}
     remote = []
@@ -160,6 +166,30 @@ def api_sent_message(record_id: int):
     if not row:
         raise HTTPException(404, "发送记录不存在")
     return row
+
+
+@router.delete("/api/mail/sent/{record_id}")
+def api_delete_sent_message(record_id: int):
+    from .mail_actions import api_bulk_email_action
+    from ..schemas import BulkMailRequest
+    if record_id < 0:
+        row = db.get_email(-record_id)
+        if not row or row.get('status') != 'sent':
+            raise HTTPException(404, '已发送邮件不存在')
+        ids = [row['id']]
+    else:
+        record = db.get_sent_message(record_id)
+        if not record:
+            raise HTTPException(404, '发送记录不存在')
+        if record.get('status') not in ('sent', 'accepted'):
+            raise HTTPException(409, '请先在发件箱中核对发送结果')
+        with db.conn() as c:
+            ids = [r[0] for r in c.execute(
+                "SELECT id FROM emails WHERE status='sent' AND lower(trim(message_id))=?",
+                (str(record.get('message_id') or '').strip().casefold(),)).fetchall()] if record.get('message_id') else []
+        if not ids:
+            raise HTTPException(409, '这封邮件的服务器副本尚未同步，请刷新已发送文件夹后再删除')
+    return api_bulk_email_action(BulkMailRequest(ids=ids, action='trash'))
 
 
 @router.get("/api/mail/send-capability")

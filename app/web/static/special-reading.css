@@ -1,0 +1,40 @@
+/* Sent messages and drafts share the inbox's reading width and action rhythm. */
+html[data-theme] body .special-mail-detail {
+  width:100%; max-width:none; margin:0;
+  padding:22px clamp(18px,2.1vw,36px) 32px;
+  min-width:0; color:var(--desk-ink);
+}
+.special-mail-detail h1 { overflow-wrap:anywhere; font-size:26px; margin:10px 0 18px; line-height:1.4; }
+.special-mail-detail .special-mail-meta { overflow-wrap:anywhere; font-size:13px; color:var(--desk-muted); }
+.special-mail-detail .special-mail-actions {
+  float:none; display:flex; flex-wrap:wrap; align-items:center; gap:8px;
+  margin:20px 0 22px;
+}
+.special-mail-actions:empty { display:none; }
+html[data-theme] body .special-mail-actions .action-btn {
+  display:inline-flex; align-items:center; justify-content:center; gap:7px;
+  min-height:36px; padding:0 12px; border:1px solid var(--desk-line);
+  border-radius:10px; background:var(--desk-muted-surface); color:var(--desk-ink);
+  box-shadow:inset 0 1px rgba(255,255,255,.12),0 2px 5px rgba(25,50,38,.04);
+  font:inherit; font-size:13px; font-weight:600;
+}
+html[data-theme] body .special-mail-actions #btn-edit-special {
+  color:var(--desk-accent); background:var(--desk-selected); border-color:var(--desk-accent);
+}
+html[data-theme] body .special-mail-actions #btn-delete-special { color:#bf3b35; }
+html[data-theme="dark"] body .special-mail-actions #btn-delete-special { color:#ffaaa3; }
+html[data-theme] body .special-mail-actions .action-btn:hover { background:var(--desk-hover); transform:none; }
+html[data-theme] body .special-mail-actions #btn-delete-special:hover { background:rgba(191,59,53,.1); }
+.special-mail-actions .action-btn svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+html[data-theme] body .special-mail-detail .special-mail-body {
+  min-width:0; width:100%; min-height:180px; margin:22px 0 0; padding:0;
+  border:0; border-radius:0; background:transparent; box-shadow:none;
+}
+.special-mail-body:not(:has(iframe)) { white-space:pre-wrap; overflow-wrap:anywhere; }
+.special-mail-detail .rich-email-frame { width:100%; max-width:100%; min-width:0; display:block; }
+.special-mail-detail .special-mail-attachments { margin:18px 0; }
+.special-mail-detail .special-mail-attachment-name { overflow-wrap:anywhere; min-width:0; }
+@media(max-width:760px) {
+  .special-mail-detail h1 { font-size:22px; }
+  .special-mail-detail .special-mail-attachments { grid-template-columns:1fr; }
+}

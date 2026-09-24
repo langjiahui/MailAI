@@ -63,9 +63,46 @@ def api_mailbox_revision():
 
 # 必须在 /api/emails/{email_id} 之前注册，否则 search 会被当作数字 id 匹配。
 @router.get("/api/emails/search")
-def api_search_emails(q: str = "", limit: int = 1000, offset: int = 0, folder: str = ""):
+def api_search_emails(q: str = "", limit: int = 1000, offset: int = 0, folder: str = "", status: str = ""):
+    bounded_limit = max(1, min(limit, 1000))
     emails = db.search_emails([part for part in re.split(r"\s+", q.strip()) if part],
-                              max(1, min(limit, 1000)), offset=offset, list_view=True, folder=folder)
+                              bounded_limit, offset=offset, list_view=True, folder=folder)
+    # Keep literal/pinyin hits first. Semantic matches help only when a natural-
+    # language query has few exact hits; short names and addresses stay exact.
+    query = q.strip()
+    if (offset == 0 and len(query) >= 4 and re.search(r'[\u4e00-\u9fff]', query)
+            and '@' not in query and len(emails) < min(5, bounded_limit)):
+        from ... import semantic
+        if semantic.enabled():
+            try:
+                seen = {item['id'] for item in emails}
+                for email_id in semantic.search(query[:200], limit=12, min_score=0.55):
+                    if len(emails) >= bounded_limit:
+                        break
+                    if email_id in seen:
+                        continue
+                    with db.conn() as c:
+                        raw = c.execute(
+                            f'SELECT {db.EMAIL_LIST_COLUMNS} FROM emails WHERE id=? AND remote_missing=0',
+                            (email_id,),
+                        ).fetchone()
+                    if not raw:
+                        continue
+                    item = db._decode_rows([raw])[0]
+                    if folder and item.get('folder') != folder:
+                        continue
+                    if status == 'favorites' and not item.get('is_favorite'):
+                        continue
+                    if status in ('inbox', 'spam', 'quarantine') and item.get('status') != status:
+                        continue
+                    item['search_match'] = {
+                        'field': 'semantic',
+                        'text': (item.get('summary') or item.get('snippet') or item.get('subject') or '')[:150],
+                    }
+                    emails.append(item)
+                    seen.add(email_id)
+            except Exception:
+                log.exception('语义搜索失败，继续显示关键词结果')
     annotate_list_identities(emails)
     for item in emails:
         item.pop("body_text", None)

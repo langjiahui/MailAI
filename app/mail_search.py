@@ -4,24 +4,26 @@ PINYIN_FIELDS = ('subject', 'from_name')
 
 
 def register(connection):
-    from .pinyin_search import aliases
+    from .pinyin_search import aliases, body_aliases
     try:
         connection.create_function('mailai_pinyin', 1, aliases, deterministic=True)
+        connection.create_function('mailai_body_pinyin', 1, body_aliases, deterministic=True)
     except TypeError:  # Python/SQLite builds without the deterministic flag.
         connection.create_function('mailai_pinyin', 1, aliases)
+        connection.create_function('mailai_body_pinyin', 1, body_aliases)
 
 
 def expression(prefix=''):
     original = "||' '||".join(f"coalesce({prefix}{field},'')" for field in FIELDS)
     names = "||' '||".join(f"coalesce({prefix}{field},'')" for field in PINYIN_FIELDS)
-    return f"lower({original}||' '||mailai_pinyin({names}))"
+    return f"lower({original}||' '||mailai_pinyin({names})||' '||mailai_body_pinyin({prefix}body_text))"
 
 
 def initialize(connection):
     register(connection)
     search = connection.execute("SELECT 1 FROM sqlite_master WHERE name='email_search'").fetchone()
     view = connection.execute("SELECT sql FROM sqlite_master WHERE type='view' AND name='email_search_content'").fetchone()
-    if search and view and 'mailai_pinyin' in (view[0] or ''):
+    if search and view and 'mailai_body_pinyin' in (view[0] or ''):
         return
     # Rebuild the derived index once when upgrading from the literal-only schema.
     connection.execute('DROP TRIGGER IF EXISTS email_search_insert')
@@ -63,3 +65,29 @@ def predicate(connection, terms):
         candidates = ' UNION '.join('SELECT rowid FROM email_search WHERE text LIKE ?' for _ in cleaned)
         return f'id IN ({candidates})', args
     return '(' + ' OR '.join(expression() + ' LIKE ?' for _ in cleaned) + ')', args
+
+
+def match_preview(message, terms):
+    """Return a bounded plain-text excerpt; never return the full body to lists."""
+    import re
+    from .pinyin_search import aliases, body_match_span
+    needles = [str(term).strip().lower()[:80] for term in terms if str(term).strip()][:12]
+    for field in FIELDS:
+        text = re.sub(r"\s+", " ", str(message.get(field) or "")).strip()
+        positions = [text.lower().find(term) for term in needles if term in text.lower()]
+        if positions:
+            start = max(0, min(positions) - 28)
+            end = min(len(text), start + 150)
+            return {"field": field, "text": ("…" if start else "") + text[start:end] + ("…" if end < len(text) else "")}
+    for field in PINYIN_FIELDS:
+        text = str(message.get(field) or "")
+        if any(term in aliases(text).lower() for term in needles):
+            return {"field": field, "text": text[:150], "pinyin": True}
+    body = str(message.get('body_text') or '')
+    span = body_match_span(body, needles)
+    if span:
+        position = span[0]
+        start = max(0, position - 28)
+        end = min(len(body), position + 120)
+        return {"field": "body_text", "text": ("…" if start else "") + re.sub(r"\s+", " ", body[start:end]) + ("…" if end < len(body) else ""), "pinyin": True, "highlight": body[span[0]:span[1]]}
+    return None

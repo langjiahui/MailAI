@@ -129,7 +129,7 @@ let renderCount = 0;
 const context = vm.createContext({
   mailaiT: () => null, Map, Promise, encodeURIComponent,
   document: {getElementById: () => null},
-  mailLoadRevision: 0, currentServerFolder: '', currentFilter: {days: 9999},
+  mailLoadRevision: 0, draftListRevision: 0, currentServerFolder: '', currentFilter: {days: 9999},
   allEmails: [], allTodos: [], sentMessages: [], savedDrafts: [],
   updateSidebar() { renderCount++; }, updateDomainFilter() {}, applyFilters() {},
   loadAssistantAlerts() {},

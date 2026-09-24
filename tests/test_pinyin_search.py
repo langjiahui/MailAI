@@ -24,6 +24,17 @@ def main():
         for query in ('张展', 'zzs', 'zhangzhansheng', 'xmzb', 'xiangmuzhoubao'):
             assert [row['uid'] for row in db.search_emails([query])] == [1], query
 
+        db.upsert_email({
+            'uid': 2, 'folder': 'INBOX', 'status': 'inbox', 'date': '2026-09-11T09:00:00',
+            'subject': '公司动态', 'from_name': '订阅服务', 'from_addr': 'news@example.test',
+            'summary': '本周资讯', 'body_text': '管理层调整：原总裁王剑虎辞任。',
+        })
+        for query in ('wangjianhu', 'wjh'):
+            rows = db.search_emails([query], list_view=True)
+            assert [row['uid'] for row in rows] == [2], query
+            assert rows[0]['search_match']['highlight'] == '王剑虎'
+            assert 'body_text' not in rows[0]
+
         db.save_contact('person@example.test', '张展生', '示例企业')
         for query in ('zzs', 'zhangzhansheng', 'slqy', 'shiliqiye'):
             assert any(row['email'] == 'person@example.test' for row in db.search_contacts(query)), query
@@ -33,6 +44,7 @@ def main():
         }}}
         with patch.object(system_settings, '_load_registry', return_value=registry):
             assert system_settings.list_unified_inbox(q='zzs')[0]['uid'] == 1
+            assert system_settings.list_unified_inbox(q='wangjianhu')[0]['search_match']['highlight'] == '王剑虎'
 
         # An existing literal-only index is rebuilt in place on upgrade.
         with db.conn() as connection:
@@ -50,7 +62,7 @@ def main():
         db.init_db()
         with db.conn() as connection:
             view = connection.execute("SELECT sql FROM sqlite_master WHERE name='email_search_content'").fetchone()
-            assert view and 'mailai_pinyin' in view[0]
+            assert view and 'mailai_body_pinyin' in view[0]
         assert db.search_emails(['zzs'])[0]['uid'] == 1
 
     print('PASS local full-pinyin/initial search and existing-index migration')

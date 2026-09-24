@@ -261,10 +261,11 @@ async function refreshTaskCenter({lightweight = false} = {}) {
     const unavailableBlock = errors.length ? `<div class="task-load-error task-partial-error" role="status"><b>部分状态暂时无法读取</b><span>${esc(errors.join('、'))}未能加载，请重试确认。已加载的事项仍可处理。</span><button data-task-refresh>重新加载</button></div>` : '';
     const content = unavailableBlock + syncBlock + purgeBlock + outboxBlock + reminderBlock;
     host.dataset.partial = errors.length ? '1' : '0';
+    document.getElementById('task-center').classList.toggle('is-empty', !content);
     const attentionCount = visibleRows.filter(row => ['failed','unknown'].includes(row.status)).length + (showSync && !sync.running ? 1 : 0) + (purgeAttention ? 1 : 0);
     const activeCount = visibleRows.filter(row => ['queued','sending'].includes(row.status)).length + (sync.running ? 1 : 0) + (purge.pending ? 1 : 0);
     host.dataset.live = activeCount ? '1' : '0';
-    host.innerHTML = `<div class="task-overview"><div><span>当前邮箱</span><b>${esc((_systemConfig?.accounts || []).find(account => account.id === accountId)?.user || '')}</b></div><div class="task-overview-counts">${attentionCount ? `<span class="attention">${attentionCount} 项需处理</span>` : ''}${activeCount ? `<span>${activeCount} 项进行中</span>` : ''}${reminders.length ? `<span>${reminders.length} 项提醒</span>` : ''}${errors.length ? '<span class="attention">状态未完整</span>' : ''}${!errors.length && !attentionCount && !activeCount && !reminders.length ? '<span class="healthy">状态正常</span>' : ''}</div></div>` + (content || `<div class="task-empty"><b>目前没有需要处理的任务</b><span>正常同步进度会显示在左侧邮箱区域；发送失败或待确认邮件会出现在这里。</span></div>`);
+    host.innerHTML = (content ? `<div class="task-overview"><span>需要你关注的事项</span><div class="task-overview-counts">${attentionCount ? `<span class="attention">${attentionCount} 项需处理</span>` : ''}${activeCount ? `<span>${activeCount} 项进行中</span>` : ''}${reminders.length ? `<span>${reminders.length} 项提醒</span>` : ''}${errors.length ? '<span class="attention">状态未完整</span>' : ''}</div></div>${content}` : `<div class="task-empty"><span class="task-empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12 4.5 4.5L19 7"/></svg></span><div><b>目前没有待处理事项</b><span>发送中和异常邮件会显示在这里。</span></div><button type="button" data-task-open-sent>查看已发送邮件 <span aria-hidden="true">↗</span></button></div>`);
     for (const row of visibleRows.filter(row => row.status === 'unknown')) {
       const article = [...host.querySelectorAll('[data-outbox-token]')].find(item => item.dataset.outboxToken === row.token);
       if (!article) continue;
@@ -304,13 +305,15 @@ function renderSemanticProgress(stats) {
   const status = document.getElementById('semantic-status');
   if (!wrap || !status) return false;
   const p = stats?.progress || {};
+  const reindex = document.getElementById('semantic-reindex');
+  if (reindex) reindex.disabled = !!p.running;
   if (!p.running) { wrap.classList.add('hidden'); return false; }
   wrap.classList.remove('hidden');
   const fill = wrap.querySelector('i');
   if (p.phase === 'index' && p.total) {
     wrap.classList.add('determinate');
     fill.style.width = `${Math.round(100 * p.done / p.total)}%`;
-    status.textContent = (mailaiT('semantic.progress') || '正在重建索引 {done}/{total}…').replace('{done}', p.done).replace('{total}', p.total);
+    status.textContent = (mailaiT('semantic.progress') || '正在更新索引 {done}/{total}…').replace('{done}', p.done).replace('{total}', p.total);
   } else {
     // 首个批次返回前都在下载/加载模型，无法预估进度，用滚动条示意
     wrap.classList.remove('determinate');
@@ -326,7 +329,10 @@ function pollSemanticProgress() {
     const accountId = activeMailAccount()?.id;
     if (!accountId) { clearInterval(semanticPollTimer); return; }
     try {
-      if (!renderSemanticProgress(await api('/api/assistant/semantic', {accountId}))) clearInterval(semanticPollTimer);
+      if (!renderSemanticProgress(await api('/api/assistant/semantic', {accountId}))) {
+        clearInterval(semanticPollTimer);
+        loadSemanticStatus();
+      }
     } catch (_) { /* 状态轮询失败不影响重建本身 */ }
   }, 800);
 }
@@ -456,6 +462,10 @@ function addReadingActions(force = false) {
     }
     morePanel.querySelector('.reading-secondary-actions')?.remove();
     morePanel.prepend(secondary);
+    morePanel.querySelector('[data-reading-action="delete-current"]')?.remove();
+    if (selectedEmailDetail?.status !== 'trash') {
+      morePanel.insertAdjacentHTML('beforeend', `<button type="button" data-reading-action="delete-current">${icon('M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7M14 10v7')}<span>删除当前邮件</span></button>`);
+    }
   }
   host.querySelectorAll('button').forEach(button => {
     const label = button.getAttribute('aria-label') || button.textContent.trim();
@@ -471,9 +481,24 @@ function addReadingActions(force = false) {
     const action = actionButton?.dataset.readingAction;
     if (!action || !selectedEmailDetail) return;
     const row = selectedEmailDetail;
-    const accountId = activeMailAccount()?.id;
+    const accountId = selectedEmailAccountId || activeMailAccount()?.id;
     try {
-      if (action === 'favorite') {
+      if (action === 'delete-current') {
+        if (actionButton.disabled || bulkOperationActive) return;
+        actionButton.disabled = true;
+        try {
+          const result = await api('/api/emails/bulk', {accountId, method:'POST',
+            headers:{'Content-Type':'application/json'}, body:JSON.stringify({ids:[Number(row.id)], action:'trash'})});
+          if (result.failed?.length) throw new Error(result.failed[0].error || '删除失败，请重试');
+          if (selectedEmailDetail === row) resetReadingPane();
+          if (activeMailAccount()?.id === accountId) {
+            selectedMailIds.delete(Number(row.id));
+            if (!selectedMailIds.size) mailSelectionExplicit = false;
+          }
+          await loadData();
+          toast('当前邮件已移入已删除', 'success');
+        } finally { actionButton.disabled = false; }
+      } else if (action === 'favorite') {
         const button = actionButton; button.disabled = true;
         try {
           const result = await api(`/api/emails/${row.id}/favorite?value=${!row.is_favorite}`, {accountId,method:'POST'});
@@ -625,7 +650,7 @@ function initializeWorkspace() {
     <section id="task-center" class="task-center hidden" role="dialog" aria-modal="true" aria-labelledby="task-center-title"><header><div class="task-center-heading"><span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg></span><div><h2 id="task-center-title" data-i18n="task.title">任务与发件箱</h2><p data-i18n="task.subtitle">只展示进行中或需要你处理的事项</p></div></div><button type="button" id="close-task-center" aria-label="关闭任务与发件箱" data-i18n-aria="task.close"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"/></svg></button></header><label class="task-account-picker">查看邮箱<select id="task-center-account" aria-label="任务与发件箱所属邮箱"></select></label><div id="task-center-list"><div class="task-loading"><i></i><span data-i18n="task.loading">正在读取任务状态…</span></div></div></section>
     <dialog id="reminder-dialog"><form method="dialog"><h3 data-i18n="task.remindTitle">稍后提醒</h3><label><span data-i18n="task.remindTime">提醒时间</span> <input type="datetime-local" id="reminder-time" required></label><p><button value="cancel" data-i18n="common.cancel">取消</button><button type="button" id="save-reminder" data-i18n="task.remindSave">保存提醒</button></p></form></dialog>`);
   const listHeader = document.querySelector('.list-header');
-  listHeader.insertAdjacentHTML('afterend', `<div class="list-workspace-tools"><button id="btn-filter-panel" aria-expanded="false" data-i18n="filter.toggle">筛选</button><button id="btn-task-center" aria-expanded="false" aria-controls="task-center" data-i18n="task.title">任务与发件箱</button><div id="filter-chips"></div></div>`);
+  listHeader.insertAdjacentHTML('afterend', `<div class="list-workspace-tools"><button id="btn-filter-panel" aria-expanded="false" data-i18n="filter.toggle">筛选</button><div id="filter-chips"></div><button id="btn-task-center" aria-expanded="false" aria-controls="task-center" data-i18n="task.title">任务与发件箱</button></div>`);
   const filters = document.querySelector('.mail-filter-group');
   filters.id = 'workspace-filters'; filters.classList.add('hidden'); document.querySelector('.list-workspace-tools').after(filters);
   document.getElementById('btn-filter-panel').onclick = event => { const hidden = filters.classList.toggle('hidden'); event.currentTarget.setAttribute('aria-expanded', String(!hidden)); };
@@ -750,6 +775,7 @@ function initializeWorkspace() {
   document.getElementById('task-center-list').onclick = async event => {
     const accountId = event.currentTarget.dataset.accountId;
     try {
+      if (event.target.closest('[data-task-open-sent]')) { await openAccountMailbox(accountId, 'sent'); closeTaskCenter(); return; }
       if (event.target.dataset.cancelQueue) await api(`/api/mail/outbox/${event.target.dataset.cancelQueue}/cancel`, {accountId, method:'POST'});
       if (event.target.dataset.purgeAck) {
         const button = event.target;

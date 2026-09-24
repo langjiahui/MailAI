@@ -258,6 +258,13 @@ html[data-theme="dark"] .feedback-impact span,
 html[data-theme="dark"] .feedback-privacy { color:var(--dark-muted)!important; }
 html[data-theme="dark"] .task-row.needs-attention { background:rgba(91,63,46,.32)!important; border-color:rgba(232,168,102,.33)!important; }
 html[data-theme="dark"] .task-status { background:rgba(85,111,96,.34)!important; color:#cce2d4!important; }
+html[data-theme="dark"] .task-center .task-account-picker { background:rgba(35,51,43,.94)!important; border-color:var(--dark-line)!important; color:#adbeaf!important; }
+html[data-theme="dark"] .task-center .task-account-picker select { background:#22372b!important; border-color:var(--dark-line)!important; color:#e0efe3!important; }
+html[data-theme="dark"] .task-center .task-empty { background:rgba(38,56,47,.72)!important; border-color:var(--dark-line)!important; }
+html[data-theme="dark"] .task-center .task-empty-icon { background:rgba(84,143,106,.23)!important; color:#a7dcba!important; }
+html[data-theme="dark"] .task-center .task-empty>div>span { color:#a9bcae!important; }
+html[data-theme="dark"] .task-center .task-empty button { color:#acddbc!important; }
+html[data-theme="dark"] .task-center .task-empty button:hover { background:rgba(84,143,106,.22)!important; }
 
 /* Copilot must retain hierarchy even when the work area is dark. */
 html[data-theme="dark"] .assistant-panel,

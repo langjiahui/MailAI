@@ -453,7 +453,11 @@ body.assistant-docked .layout>.list-pane { width:355px; flex-basis:355px; }
 }
 
 /* One visual language across every Settings tab. */
-#system-view { background:#f3f7f4; }
+#system-view { background:#f3f7f4; display:flex; flex-direction:column; overflow:hidden; }
+/* Keep the shared title and tabs stationary; only the selected page scrolls. */
+#system-view > .system-header, #system-view > .system-tabs { flex-shrink:0; }
+#system-view > .system-tabs { position:static; }
+#system-view > .system-panel { flex:1 1 0; min-height:0; overflow:auto; scrollbar-gutter:stable both-edges; }
 #system-view .system-header,#system-view .system-tabs,#system-view .system-panel { width:100%; max-width:1280px; }
 #system-view .system-header { padding:2px 0 6px; margin-bottom:10px; }
 #system-view .system-header .eyebrow { color:#6f8c7d; font-size:10px; letter-spacing:.08em; }
@@ -975,6 +979,33 @@ html[data-theme="dark"] .reading-selection-sheet-head{border-color:#456951}html[
 /* Bound tool scopes and adaptive reading beside the assistant. */
 .task-account-picker { display:flex; align-items:center; gap:12px; margin:0 20px 14px; font-size:12px; }
 .task-account-picker select { min-width:0; flex:1; padding:8px; border:1px solid var(--border,#d7e2da); border-radius:8px; color:inherit; background:var(--surface,#fff); }
+
+/* A quiet, compact task center when there is nothing to act on. */
+.task-center.is-empty { bottom:auto; max-height:calc(100vh / var(--fz,1) - 106px); }
+.task-center .task-account-picker { flex:0 0 auto; gap:14px; margin:0; padding:14px 20px; border-bottom:1px solid #e7eeea; background:#fff; color:#72867a; font-size:11px; font-weight:650; }
+.task-center .task-account-picker select { min-height:36px; padding:6px 34px 6px 11px; border:1px solid #e2ebe5; border-radius:10px; background:#f8faf9; color:#2d4839; font-size:12px; font-weight:600; }
+.task-center .task-account-picker select:hover { border-color:#c5dacf; }
+.task-center #task-center-list { flex:1; padding:16px 20px 22px; }
+.task-center.is-empty #task-center-list { flex:0 0 auto; padding:17px 20px 23px; }
+.task-center .task-empty { min-height:0; flex-direction:row; align-items:flex-start; justify-content:flex-start; gap:12px; padding:18px; border:1px solid #e3ede7; border-radius:15px; background:#fff; text-align:left; }
+.task-center .task-empty::before { content:none; }
+.task-empty-icon { display:grid; place-items:center; flex:0 0 36px; width:36px; height:36px; border-radius:11px; background:#e9f5ee; color:#367e5d; }
+.task-empty-icon svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.task-center .task-empty>div { min-width:0; flex:1; }
+.task-center .task-empty b { display:block; margin:1px 0 4px; color:#2d4c3a; font-size:13px; line-height:1.4; }
+.task-center .task-empty>div>span { display:block; max-width:none; color:#829188; font-size:11px; line-height:1.55; }
+.task-center .task-empty button { align-self:center; flex:0 0 auto; padding:7px 9px; border:0; border-radius:8px; background:transparent; color:#36795b; font:inherit; font-size:11px; font-weight:650; white-space:nowrap; cursor:pointer; }
+.task-center .task-empty button:hover { background:#edf6f0; }
+.task-center .task-empty button span { margin-left:3px; font-size:12px; }
+.task-center .task-overview { align-items:center; padding:0 2px 12px; }
+.task-center .task-overview>span { color:#6e8174; font-size:11px; font-weight:650; }
+@media(max-width:600px) {
+  .task-center.is-empty { bottom:auto; max-height:calc(100vh / var(--fz,1) - 16px); }
+  .task-center .task-account-picker { padding:12px 14px; }
+  .task-center #task-center-list,.task-center.is-empty #task-center-list { padding:13px 14px 16px; }
+  .task-center .task-empty { flex-wrap:wrap; }
+  .task-center .task-empty button { margin-left:48px; }
+}
 .tool-account-label { display:block; margin-top:5px; overflow-wrap:anywhere; color:var(--text-muted,#7d8982); }
 body.assistant-split .layout { margin-right:434px; }
 body.assistant-split .layout>.list-pane, body.assistant-split [data-resizer="list"] { display:none; }

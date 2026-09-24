@@ -375,7 +375,7 @@ const I18N_MESSAGES = {
     'semantic.cardTitle': 'Semantic Search (Beta)',
     'semantic.cardDesc': 'Understands mails with similar meaning via a local embedding model, improving the assistant\'s retrieval',
     'semantic.enable': 'Enable semantic search',
-    'semantic.enableHint': 'First reindex downloads the model (~100MB); data never leaves this device',
+    'semantic.enableHint': 'Indexes new mail automatically; the first run downloads ~100MB. Mail stays on this device.',
     'semantic.note': 'When disabled, the assistant uses keyword search. Source checkouts additionally need the optional dependency (requirements-semantic.txt).',
     'semantic.reindexBtn': 'Rebuild index',
     'semantic.noDeps': 'Optional component not installed (requirements-semantic.txt)',
@@ -390,7 +390,7 @@ const I18N_MESSAGES = {
     'semantic.reindexed': 'Index rebuilt: {n} mails',
     'semantic.reindexingShort': 'Rebuilding…',
     'semantic.downloading': 'Downloading model (~100MB, first time only)…',
-    'semantic.progress': 'Rebuilding index {done}/{total}…',
+    'semantic.progress': 'Updating index {done}/{total}…',
 
     // 批二：设置面板 / 安全看板区块 / 规则中心 / 对话框
     'dash.statusEyebrow': 'Current posture',

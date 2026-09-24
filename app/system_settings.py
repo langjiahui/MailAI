@@ -290,18 +290,22 @@ def list_unified_inbox(days: int = 9999, limit: int = 1000, offset: int = 0, q: 
         if not path or not os.path.isfile(path):
             continue
         try:
-            from .mail_search import predicate
+            from .mail_search import predicate, match_preview
             import re
             with _sqlite_connection(path) as connection:
                 connection.row_factory = sqlite3.Row
                 condition, search_args = predicate(connection, re.split(r"\s+", q.strip()))
                 account_rows = connection.execute(
-                    f"SELECT {db.EMAIL_LIST_COLUMNS} FROM emails WHERE remote_missing=0 AND status='inbox' "
+                    f"SELECT {db.EMAIL_LIST_COLUMNS}{',body_text' if q.strip() else ''} FROM emails WHERE remote_missing=0 AND status='inbox' "
                     "AND datetime(COALESCE(NULLIF(date,''),created_at)) >= datetime('now','localtime', ?) "
                     f"AND {condition} ORDER BY date DESC,id DESC LIMIT ?",
                     [f"-{bounded_days} days", *search_args, bounded_limit + offset],
                 ).fetchall()
                 decoded_rows = db._decode_rows(account_rows)
+                if q.strip():
+                    for message in decoded_rows:
+                        message['search_match'] = match_preview(message, re.split(r"\s+", q.strip()))
+                        message.pop('body_text', None)
                 contact_names = db.contact_display_names(
                     [value for message in decoded_rows
                      for value in (message.get("from_addr"), message.get("to_addr")) if value],

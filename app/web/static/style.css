@@ -2294,6 +2294,7 @@ body { font-size: 13px; background: var(--bg); }
 .compose-ai-context-options { display:flex; flex-wrap:wrap; gap:6px; }
 .compose-ai-context-options label { position:relative; cursor:pointer; }
 .compose-ai-context-options input { position:absolute; opacity:0; pointer-events:none; }
+.compose-ai-context-options input:disabled { display:none; }
 .compose-ai-context-options span { display:inline-flex; align-items:center; min-height:27px; padding:4px 9px; border:1px solid rgba(66,101,87,.22); border-radius:999px; color:#4b6258; background:rgba(255,255,255,.82); font-size:10px; font-weight:650; transition:background .16s ease,border-color .16s ease,color .16s ease; }
 .compose-ai-context-options input:checked:not(:disabled)+span { border-color:rgba(45,125,94,.26); color:#286c53; background:#dfeee7; box-shadow:inset 0 1px white; }
 .compose-ai-context-options input:checked:not(:disabled)+span::before { content:'✓'; margin-right:4px; font-size:9px; }
@@ -2302,6 +2303,7 @@ body { font-size: 13px; background: var(--bg); }
 .compose-ai-context-options label:not(.unavailable):hover span { border-color:rgba(45,125,94,.42); }
 .compose-ai-context-options label.unavailable { cursor:default; }
 .compose-ai-context-options label.unavailable span { color:#75847d; border-color:rgba(66,101,87,.12); background:rgba(231,237,233,.58); box-shadow:none; }
+.compose-ai-context-options label.unavailable span::before { content:none!important; display:none!important; }
 .compose-ai-context-options label.unavailable span::after { content:'暂无'; margin-left:5px; color:#8e9b94; font-size:9px; font-weight:500; }
 .compose-ai-controls { display:grid; grid-template-columns:76px 76px minmax(0,1fr); align-items:end; gap:8px; }
 .compose-ai-controls label { display:grid; gap:5px; }

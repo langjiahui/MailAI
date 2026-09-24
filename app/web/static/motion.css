@@ -1,0 +1,110 @@
+/* Motion is feedback, not a delay before content becomes usable.
+   Unsupported discrete/auto-size transitions retain immediate native behavior. */
+:root { --motion-fast:120ms; --motion-med:180ms; --motion-slow:220ms; }
+
+/* Keep reading stable, including when the same message is refreshed. */
+#reading-content .reading-header,
+#reading-content .reading-main > .reading-section,
+#reading-content .drawer-email-body > .reading-section,
+#reading-content .security-result-trigger,
+.reading-selection-sheet.arriving { animation:none; }
+.phishing-alert-banner { animation:none; }
+.dashboard-panel:hover, .saved-account:hover { transform:none; }
+
+/* Remove spring/scale entrances; fade the whole surface as one unit. */
+.modal:not(.hidden) .modal-content,
+.compose-modal:not(.hidden) > .compose-card,
+.attachment-center:not(.hidden) .attachment-center-card,
+.compose-subdialog:not(.hidden) > section,
+.compose-modal > .compose-ai-panel,
+.task-center,
+.modal:not(.hidden) .modal-backdrop,
+.compose-modal:not(.hidden) .compose-backdrop,
+.attachment-center:not(.hidden) .attachment-center-backdrop,
+.compose-subdialog:not(.hidden) .compose-subdialog-backdrop,
+.task-center-backdrop:not(.hidden) { animation:none; }
+dialog[open] { animation:menuReveal 180ms ease-out; }
+
+@supports (transition-behavior:allow-discrete) {
+  :is(.modal,.compose-modal,.attachment-center,.compose-subdialog,
+      .task-center,.task-center-backdrop,#compose-ai-panel) {
+    opacity:1;
+    transition:opacity 180ms ease-out, display 180ms allow-discrete;
+  }
+  :is(.modal,.compose-modal,.attachment-center,.compose-subdialog,
+      .task-center,.task-center-backdrop,#compose-ai-panel).hidden {
+    opacity:0;
+    pointer-events:none;
+    transition-duration:120ms;
+  }
+  @starting-style {
+    :is(.modal,.compose-modal,.attachment-center,.compose-subdialog,
+        .task-center,.task-center-backdrop,#compose-ai-panel):not(.hidden) { opacity:0; }
+  }
+}
+
+/* Disclosure height is measured in motion.js for desktop WebKit as well. */
+@supports (interpolate-size:allow-keywords) {
+  #workspace-filters {
+    interpolate-size:allow-keywords;
+    height:auto;
+    overflow:clip;
+    opacity:1;
+    transition:height 240ms ease-out, opacity 180ms ease-out,
+      padding 240ms ease-out, margin 240ms ease-out, display 240ms allow-discrete;
+  }
+  #workspace-filters.hidden { height:0; opacity:0; padding-block:0; margin-block:0; pointer-events:none; }
+  @starting-style {
+    #workspace-filters:not(.hidden) { height:0; opacity:0; padding-block:0; margin-block:0; }
+  }
+}
+@keyframes surfaceArrive {
+  from { opacity:0; transform:translateY(14px) scale(.99); }
+  to { opacity:1; transform:translateY(0) scale(1); }
+}
+.modal:not(.hidden) .modal-content,
+.compose-modal:not(.hidden) > .compose-card,
+.attachment-center:not(.hidden) .attachment-center-card,
+.compose-subdialog:not(.hidden) > section {
+  animation:surfaceArrive 260ms cubic-bezier(.2,.8,.2,1) both;
+}
+@keyframes sidecarArrive {
+  from { opacity:0; transform:translateX(24px); }
+  to { opacity:1; transform:translateX(0); }
+}
+.compose-modal > .compose-ai-panel:not(.hidden),
+.task-center:not(.hidden) { animation:sidecarArrive 260ms cubic-bezier(.2,.8,.2,1) both; }
+@keyframes assistantOpen {
+  from { opacity:0; transform:translateX(28px); }
+  to { opacity:1; transform:none; }
+}
+@keyframes assistantClose {
+  from { opacity:1; transform:none; }
+  to { opacity:0; transform:translateX(22px); }
+}
+/* Only the wide dock keeps the same panes throughout the transition. */
+@media(min-width:1600px) {
+  .layout { transition:margin-right 280ms cubic-bezier(.2,.8,.2,1); }
+  .layout > .list-pane { transition:width 280ms ease-out, flex-basis 280ms ease-out; }
+}
+
+@keyframes menuReveal { from { opacity:0; translate:0 -4px; } to { opacity:1; translate:0 0; } }
+.reading-more-actions[open] .reading-more-menu,
+.reading-more-actions[open] .reading-more-panel,
+.assistant-scope-picker[open] .assistant-scope-options,
+.account-menu[open] > div { animation:menuReveal 140ms ease-out; }
+
+/* State changes stay in place; no moving buttons or staggered list entries. */
+@keyframes stateReveal { from { opacity:.5; } to { opacity:1; } }
+.bulk-toolbar:not(.hidden) { animation:stateReveal 140ms ease-out; }
+.email-item { animation:none; }
+
+@media (prefers-reduced-motion:reduce) {
+  *, *::before, *::after, details::details-content {
+    animation:none!important;
+    transition:none!important;
+    scroll-behavior:auto!important;
+  }
+}
+html.windows-performance :is(.modal,.compose-modal,.attachment-center,.compose-subdialog,
+  .task-center,.task-center-backdrop,#compose-ai-panel) { transition:none; }

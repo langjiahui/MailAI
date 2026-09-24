@@ -33,13 +33,13 @@ const deferred = () => { let resolve, reject; const promise=new Promise((a,b)=>{
   const requests=[];
   const t=vm.createContext({taskPollActive:false,taskCenterReminders:[],taskCenterPollTimer:0,
     taskCenterScope:()=>scope,activeMailAccount:()=>({id:'a'}),_systemConfig:{accounts:[{id:'a',user:'A'},{id:'b',user:'B'}]},
-    document:{getElementById:id=>id==='task-center-list'?host:{}},
+    document:{getElementById:id=>id==='task-center-list'?host:{classList:{toggle(){}}}},
     api:async(url,options)=>{requests.push([url,options.accountId]); if(url.includes('outbox')) return pending.promise; if(url.includes('reminders'))return [];return {};},
     esc:x=>x,mailaiT:()=>'',scheduleTaskCenterRefresh(){},clearTimeout,setTimeout,sessionStorage:{getItem:()=>true}});
   vm.runInContext(slice(workspace,'function actionableOutboxRows(', '\nfunction updateFilterChips'),t);
   const refresh=t.refreshTaskCenter(); pending.resolve([]);await refresh;
   assert.ok(requests.every(([,id])=>id==='b'),'Task requests use selected scope, not browsing account');
-  assert.equal(host.dataset.accountId,'b'); assert.ok(host.innerHTML.includes('<b>B</b>'));
+  assert.equal(host.dataset.accountId,'b'); assert.ok(host.innerHTML.includes('目前没有待处理事项'));
   pending=deferred();const stale=t.refreshTaskCenter();scope='a';host.innerHTML='new account loading';pending.reject(new Error('stale failure'));await stale;
   assert.equal(host.innerHTML,'new account loading','Old account failure must not replace new view');
   // A failed status source must not hide successfully loaded actions or imply health.
@@ -53,8 +53,7 @@ const deferred = () => { let resolve, reject; const promise=new Promise((a,b)=>{
     };
     await t.refreshTaskCenter();
     assert.ok(host.innerHTML.includes('重新加载'));
-    assert.ok(!host.innerHTML.includes('状态正常'));
-    assert.ok(!host.innerHTML.includes('目前没有需要处理的任务'));
+    assert.ok(!host.innerHTML.includes('目前没有待处理事项'));
     if(failure!=='/api/mail/outbox') assert.ok(host.innerHTML.includes('data-cancel-queue="queued"'));
     retryRequests.length=0;
     await t.refreshTaskCenter({lightweight:true});
@@ -62,6 +61,6 @@ const deferred = () => { let resolve, reject; const promise=new Promise((a,b)=>{
   }
   t.api=async(url)=>url.includes('reminders') || url.includes('outbox') ? [] : {};
   await t.refreshTaskCenter();
-  assert.ok(host.innerHTML.includes('状态正常'),'A successful retry can restore the healthy state');
+  assert.ok(host.innerHTML.includes('目前没有待处理事项'),'A successful retry can restore the healthy state');
   console.log('PASS tool account scopes, stale success/error responses, closed views and multi-chunk account isolation');
 })().catch(error=>{console.error(error);process.exitCode=1;});

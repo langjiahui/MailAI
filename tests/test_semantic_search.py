@@ -86,6 +86,31 @@ def main():
             hits = semantic.search("合同什么时候交付？", limit=5, min_score=0.0)
             assert hits[0] == id_contract and id_trip in hits
 
+            # New and edited messages catch up without another full rebuild.
+            id_new = _insert_email(3, "合同的补充约定", "交付日期已调整")
+            with patch.object(semantic, "enabled", return_value=True):
+                assert semantic.index_missing() == 1
+                with db.conn() as c:
+                    assert c.execute("SELECT 1 FROM email_vectors WHERE email_id=?", (id_new,)).fetchone()
+                assert semantic.index_missing() == 0
+                db.upsert_email({"uid": 3, "folder": "INBOX", "subject": "调整后的交付日期"})
+                with db.conn() as c:
+                    assert not c.execute("SELECT 1 FROM email_vectors WHERE email_id=?", (id_new,)).fetchone()
+                assert semantic.index_missing() == 1
+
+        # Top-level search keeps precise hits first and labels semantic additions.
+        from app.web.routes.mail_read import api_search_emails
+        with patch.object(semantic, "enabled", return_value=True), \
+                patch.object(semantic, "search", return_value=[id_trip]):
+            results = api_search_emails("请帮我找合同交付相关邮件")
+            assert results and results[-1]["id"] == id_trip
+            assert results[-1]["search_match"]["field"] == "semantic"
+            assert all("body_text" not in item for item in results)
+            precise = api_search_emails("采购合同")
+            assert precise[0]["id"] == id_contract
+            with patch.object(semantic, "search", side_effect=RuntimeError("model unavailable")):
+                assert api_search_emails("采购合同")[0]["id"] == id_contract
+
         # 助手 _sources 合并语义命中（关键词检索找不到的也能进上下文）
         from app import mail_assistant
         with patch.object(semantic, "enabled", return_value=True), \
