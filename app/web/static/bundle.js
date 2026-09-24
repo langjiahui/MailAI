@@ -210,6 +210,21 @@ const I18N_MESSAGES = {
     'compose.preview': 'Preview',
     'compose.previewTitle': 'Preview what recipients see',
     'compose.attach': 'Attachments',
+    'compose.shareClose': 'Close large attachment upload',
+    'compose.shareEyebrow': 'Large files',
+    'compose.cosDialogTitle': 'Upload a large attachment',
+    'compose.shareCancel': 'Cancel',
+    'compose.cosBucket': 'Bucket',
+    'compose.cosRegion': 'Region',
+    'compose.cosKeyPh': 'Leave blank if already saved',
+    'compose.cosSave': 'Save COS settings',
+    'compose.cosFile': 'Choose a large file',
+    'compose.cosExpiry': 'Download link expiry',
+    'compose.cosOneDay': '1 day',
+    'compose.cosThreeDays': '3 days',
+    'compose.cosSevenDays': '7 days',
+    'compose.cosHint': 'Use your own private COS bucket. The link expires, but the file remains in the bucket; set a lifecycle cleanup rule for mailai-shares/.',
+    'compose.cosUpload': 'Upload and insert',
     'compose.paste': 'Paste',
     'compose.pasteTitle': 'Paste attachments copied from the file manager',
     'compose.noSignature': 'No signature',
@@ -291,10 +306,12 @@ const I18N_MESSAGES = {
     'copilot.polish': 'Polish',
     'copilot.shorten': 'Shorten',
     'copilot.translateEn': 'Translate to English',
+    'copilot.translateZh': 'Translate to Chinese',
     'copilot.previewTitle': 'AI Draft Preview',
     'copilot.previewCheck': 'Verify facts, dates and recipients',
     'copilot.regenerate': 'Regenerate',
     'copilot.append': 'Append to body',
+    'copilot.replaceSubject': 'Replace subject',
     'copilot.replace': 'Replace body',
     'copilot.privacy': 'Only checked content is sent to your configured AI model; attachment names are shared, not their content.',
     'preview.eyebrow': 'Sending Preview',
@@ -982,6 +999,7 @@ const I18N_MESSAGES = {
     'att.typeOther': 'Other',
     'att.typeFile': 'File',
     'att.countLine': '{n} attachments · from {m} mails',
+    'att.countShown': 'Showing {n} attachments · from {m} mails',
     'att.previewTitle': 'Preview {name}',
     'att.source': 'Source',
     'att.noSubject': '(no subject)',
@@ -1575,6 +1593,7 @@ let draftSaveTimer = null;
 let draftMaxSaveTimer = null;
 let draftListRevision = 0;
 let composeAiRevision = 0;
+let composeAiController = null;
 let draftSession = {id: null, pending: Promise.resolve(), canceled: false, busy: false};
 let sendCapability = {configured: false, from_addr: ''};
 let signatureState = {items: [], default_id: '', profile: {}, ai_available: false};
@@ -2757,7 +2776,8 @@ function composeBodyHtml() {
 function renderSignatureSelect() {
   const select = document.getElementById('compose-signature-select');
   if (!select) return;
-  select.innerHTML = '<option value="">不使用签名</option>' + signatureState.items.map(item => `<option value="${esc(item.id)}">${esc(item.name)}${item.id === signatureState.default_id ? '（默认）' : ''}</option>`).join('');
+  const generatedSignoff = !currentSignatureId && Boolean(document.getElementById('compose-signature-content')?.innerText.trim());
+  select.innerHTML = `<option value="">${generatedSignoff ? 'AI 落款' : '不使用签名'}</option>` + signatureState.items.map(item => `<option value="${esc(item.id)}">${esc(item.name)}${item.id === signatureState.default_id ? '（默认）' : ''}</option>`).join('');
   select.value = currentSignatureId && signatureState.items.some(item => item.id === currentSignatureId) ? currentSignatureId : '';
 }
 
@@ -2826,7 +2846,7 @@ function hydrateComposeBody(seed) {
 
 async function openCompose(seed = {}) {
   if (document.body.classList.contains('compose-open')) {
-    if (!await closeCompose()) return;
+    if (!await closeCompose()) return false;
   }
   closeAssistant();
   hideContactSuggestions();
@@ -2869,6 +2889,7 @@ async function openCompose(seed = {}) {
   try { document.execCommand('styleWithCSS', false, true); } catch (_) {}
   resetComposeAiPanel();
   (composeContext.mode === 'forward' ? document.getElementById('compose-to') : composeMessageElement()).focus();
+  return true;
 }
 
 function rememberComposeSelection() {
@@ -2937,6 +2958,78 @@ function openComposePreview() {
 function closeComposePreview() {
   document.getElementById('compose-preview-modal').classList.add('hidden');
   document.getElementById('compose-preview-frame').srcdoc = '';
+}
+
+function closeShareLinkDialog() {
+  document.getElementById('share-link-dialog').classList.add('hidden');
+}
+
+async function openShareLinkDialog() {
+  document.getElementById('share-link-dialog').classList.remove('hidden');
+  document.getElementById('share-cos-file').focus();
+  try {
+    const state = await api('/api/share-storage/config', {accountId:composeAccountId});
+    if (document.getElementById('share-link-dialog').classList.contains('hidden')) return;
+    document.getElementById('share-cos-bucket').value = state.bucket || '';
+    document.getElementById('share-cos-region').value = state.region || '';
+    document.getElementById('share-cos-id').value = state.secret_id || '';
+    document.getElementById('share-cos-key').value = '';
+    document.querySelector('.share-cos-config').classList.toggle('hidden', Boolean(state.credential_available));
+    document.getElementById('share-cos-settings-toggle').classList.toggle('hidden', !state.credential_available);
+    document.getElementById('share-cos-status').textContent = state.credential_available ? 'COS 已配置，可以选择文件上传' : '首次使用请填写 COS 配置并保存';
+  } catch (error) {
+    document.getElementById('share-cos-status').textContent = '无法读取 COS 配置：' + error.message;
+  }
+}
+
+function normalizeShareUrl(value) {
+  try {
+    const url = new URL(String(value || '').trim());
+    if (url.protocol !== 'https:' || url.username || url.password || !url.hostname || url.href.length > 4096) return '';
+    return url.href;
+  } catch (_) { return ''; }
+}
+
+function insertSharedLink(name, value) {
+  const url = normalizeShareUrl(value);
+  if (!url) throw new Error('请填写有效的 HTTPS 分享链接');
+  const title = String(name || '').trim().slice(0, 160) || '共享文件';
+  const block = document.createElement('p');
+  block.dataset.mailaiSharedLink = 'true';
+  const heading = document.createElement('strong');
+  heading.textContent = `共享文件：${title}`;
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.textContent = url;
+  anchor.target = '_blank';
+  anchor.rel = 'noopener noreferrer';
+  block.append(heading, document.createElement('br'), anchor);
+  composeMessageElement().append(block);
+  clearComposePreflight();
+  queueDraftSave();
+  refreshComposeAiContext();
+  closeShareLinkDialog();
+  composeMessageElement().focus();
+}
+
+function uploadCosFile(file, days, accountId, onProgress) {
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open('POST', '/api/share-storage/upload');
+    request.setRequestHeader('X-MailAI-Account', accountId);
+    request.setRequestHeader('X-MailAI-Filename', encodeURIComponent(file.name));
+    request.setRequestHeader('X-MailAI-Expiry-Days', String(days));
+    request.setRequestHeader('Content-Type', 'application/octet-stream');
+    request.upload.onprogress = event => { if (event.lengthComputable) onProgress(Math.round(event.loaded / event.total * 100)); };
+    request.onerror = () => reject(new Error('上传连接中断，请检查网络后重试'));
+    request.onload = () => {
+      let response;
+      try { response = JSON.parse(request.responseText); } catch (_) { response = {}; }
+      if (request.status >= 200 && request.status < 300) resolve(response);
+      else reject(new Error(response.detail || `上传失败（${request.status}）`));
+    };
+    request.send(file);
+  });
 }
 
 function signatureProfileFromForm() {
@@ -3023,9 +3116,10 @@ async function composeFromEmail(mode) {
     try { recipients = await api(`/api/emails/${e.id}/reply-recipients?reply_all=${mode === 'reply_all'}`); }
     catch (err) { toast('无法准备回复：' + err.message, 'error'); return; }
   }
-  await openCompose({mode, ...recipients, subject: mode === 'forward' ? forwardSubject : replySubject,
+  const opened = await openCompose({mode, ...recipients, subject: mode === 'forward' ? forwardSubject : replySubject,
     message_html: '', quote_html: quoteOriginal(e, mode), reply_to_email_id: e.id, in_reply_to: e.message_id || '',
     references: [e.references_header, e.message_id].filter(Boolean).join(' '), original_text: e.body_text || '', account_id:e._account_id || activeMailAccount()?.id});
+  if (!opened) return;
   if (mode === 'forward' && Array.isArray(e.attachments) && e.attachments.length) {
     const forwardSession = draftSession;
     forwardSession.attachmentReads = (forwardSession.attachmentReads || 0) + 1;
@@ -3064,6 +3158,7 @@ function hideCompose() {
   ++composeAiRevision;
   hideContactSuggestions();
   closeComposePreview();
+  closeShareLinkDialog();
   closeSignatureManager();
   document.getElementById('compose-modal').classList.add('hidden');
   document.body.classList.remove('compose-open', 'compose-ai-active');
@@ -3120,18 +3215,21 @@ async function addComposeAttachments(files) {
   const session = draftSession;
   const accountId = composeAccountId;
   const selected = [...files];
-  const reserved = selected.reduce((sum, file) => sum + file.size, 0);
-  const total = composeAttachments.reduce((sum, item) => sum + (item.size || 0), 0) + (session.attachmentBytes || 0) + reserved;
-  if (session.busy || session.canceled) return;
-  if (selected.some(file => file.size > 20 * 1024 * 1024) || total > 25 * 1024 * 1024) {
-    return toast('单个附件不能超过 20MB，总大小不能超过 25MB', 'warn');
+  let available = 25 * 1024 * 1024 - composeAttachments.reduce((sum, item) => sum + (item.size || 0), 0) - (session.attachmentBytes || 0);
+  const direct = [], shared = [];
+  for (const file of selected) {
+    if (file.size <= 20 * 1024 * 1024 && file.size <= available) { direct.push(file); available -= file.size; }
+    else shared.push(file);
   }
+  const reserved = direct.reduce((sum, file) => sum + file.size, 0);
+  if (session.busy || session.canceled) return;
+  if (!direct.length && !shared.length) return;
   session.attachmentBytes = (session.attachmentBytes || 0) + reserved;
   session.attachmentReads = (session.attachmentReads || 0) + 1;
   const current = () => session === draftSession && accountId === composeAccountId && !session.canceled && !session.attachmentsClosed;
   try {
     const batch = [];
-    for (const file of selected) {
+    for (const file of direct) {
       const data = await readFileAsBase64(file);
       if (!current()) return;
       const bytes = Uint8Array.from(atob(data), char => char.charCodeAt(0));
@@ -3149,6 +3247,42 @@ async function addComposeAttachments(files) {
     session.attachmentBytes -= reserved;
     session.attachmentReads -= 1;
   }
+  if (shared.length && current()) await addLargeSharedFiles(shared);
+}
+
+async function addLargeSharedFiles(files) {
+  const accountId = composeAccountId;
+  let configured = false;
+  try {
+    const config = await api('/api/share-storage/config', {accountId});
+    configured = Boolean(config.credential_available);
+  } catch (_) {}
+  if (!configured) {
+    await openShareLinkDialog();
+    document.getElementById('share-cos-file').files = createFileList(files);
+    document.getElementById('share-cos-status').textContent = `${files.length} 个附件超过普通附件限制。连接存储后可上传并自动插入链接。`;
+    return;
+  }
+  const session = draftSession;
+  session.attachmentReads = (session.attachmentReads || 0) + 1;
+  try {
+    for (const file of files) {
+      if (file.size > 2 * 1024 * 1024 * 1024) { toast(`${file.name} 超过 2 GB 上限`, 'warn'); continue; }
+      const result = await uploadCosFile(file, 7, accountId, percent => {
+        document.getElementById('share-cos-status').textContent = `${file.name} 上传中 ${percent}%`;
+      });
+      if (session !== draftSession || accountId !== composeAccountId || session.canceled) return;
+      insertSharedLink(result.name || file.name, result.url);
+    }
+    toast('大附件已上传，下载链接已加入正文', 'success');
+  } catch (error) { toast(`大附件上传失败：${error.message}`, 'error'); }
+  finally { session.attachmentReads -= 1; }
+}
+
+function createFileList(files) {
+  const transfer = new DataTransfer();
+  files.forEach(file => transfer.items.add(file));
+  return transfer.files;
 }
 
 function draftFingerprint(payload) {
@@ -3307,6 +3441,7 @@ function refreshComposeAiContext() {
 
 function resetComposeAiPanel() {
   ++composeAiRevision;
+  composeAiController?.abort(); composeAiController = null;
   document.querySelectorAll('#btn-ai-generate, #btn-ai-regenerate, [data-ai-compose]').forEach(button => setLoading(button, false));
   composeAiSuggestion = '';
   document.getElementById('compose-ai-instruction').value = '';
@@ -3314,9 +3449,13 @@ function resetComposeAiPanel() {
   document.getElementById('compose-ai-length').value = '适中';
   document.querySelectorAll('.compose-ai-context-options input').forEach(input => { input.checked = true; });
   document.getElementById('compose-ai-output').textContent = '';
-  document.getElementById('compose-ai-status').textContent = '与邮箱守护助手是同一个 AI；草稿只进入预览，不会直接覆盖正文。';
+  document.getElementById('btn-ai-replace-subject').classList.add('hidden');
+  document.querySelectorAll('#btn-ai-replace-subject,#btn-ai-append,#btn-ai-replace').forEach(button => { button.disabled = true; });
+  document.getElementById('compose-ai-status').textContent = '草稿先进入预览，确认后再分别填写主题、正文和落款。';
   document.getElementById('compose-ai-panel').classList.remove('is-thinking', 'has-result');
   document.getElementById('compose-ai-preview').classList.add('hidden');
+  document.querySelector('.compose-ai-panel > .compose-ai-preview-actions').classList.add('hidden');
+  document.getElementById('btn-ai-regenerate').disabled = false;
   toggleComposeAiPanel(false);
   refreshComposeAiContext();
 }
@@ -3342,21 +3481,127 @@ function toggleComposeAiPanel(force) {
   }
 }
 
+function normalizeComposeAiSuggestion(result, separateSections, hasSignature) {
+  let body = String(result.content || '').trim();
+  if (!separateSections) {
+    if (hasSignature) {
+      const lines = body.split(/\r?\n/);
+      for (let index = Math.max(0, lines.length - 7); index < lines.length; index++) {
+        if (/^\s*(?:此致|此致敬礼|敬礼[！!]?|顺颂(?:商祺)?|Best regards,?|Regards,?)\s*$/i.test(lines[index])) {
+          body = lines.slice(0, index).join('\n').trim();
+          break;
+        }
+      }
+    }
+    return {subject:'', body, signoff:''};
+  }
+  let subject = String(result.subject || '').trim();
+  let signoff = String(result.signoff || '').trim();
+  if (body.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(body);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        subject ||= String(parsed.subject || '').trim();
+        signoff ||= String(parsed.signoff || '').trim();
+        body = String(parsed.body || parsed.content || '').trim();
+      }
+    } catch (_) {}
+  }
+  const lines = body.split(/\r?\n/);
+  const first = lines.findIndex(line => line.trim());
+  if (first >= 0) {
+    const match = lines[first].trim().match(/^(?:\*\*)?\s*(?:邮件主题|主题|Subject)\s*[:：]\s*(.*?)\s*(?:\*\*)?$/i);
+    if (match) {
+      subject ||= match[1].replace(/\*\*$/, '').trim();
+      lines.splice(first, 1);
+    }
+  }
+  for (let index = Math.max(0, lines.length - 8); index < lines.length; index++) {
+    if (/^\s*(?:此致|此致敬礼|敬礼[！!]?|顺颂(?:商祺)?|Best regards,?|Regards,?)\s*$/i.test(lines[index])) {
+      signoff ||= lines.slice(index).join('\n').trim();
+      lines.splice(index);
+      break;
+    }
+  }
+  if (hasSignature || /[Xx]{2,}|[（(][^）)]*(?:姓名|部门|单位|日期)[^）)]*[）)]|发件人姓名|YYYY|XXXX/.test(signoff)) signoff = '';
+  return {subject:subject.slice(0, 300), body:lines.join('\n').trim(), signoff};
+}
+
+async function streamComposeAssist(payload, onDelta, current) {
+  const controller = new AbortController();
+  composeAiController = controller;
+  try {
+    const response = await fetch('/api/mail/compose/assist-stream', {method:'POST', signal:controller.signal,
+      headers:{'Content-Type':'application/json', 'X-MailAI-Account':composeAccountId || ''}, body:JSON.stringify(payload)});
+    if (!response.ok || !response.body) {
+      const detail = await response.json().catch(() => ({}));
+      const error = new Error(typeof detail.detail === 'string' ? detail.detail : `生成请求失败（${response.status}）`);
+      error.unsupported = response.status === 404 || response.status === 405;
+      throw error;
+    }
+    const reader = response.body.getReader(), decoder = new TextDecoder();
+    let pending = '', raw = '', completed = null;
+    const consume = line => {
+      if (!line.trim()) return;
+      const event = JSON.parse(line);
+      if (event.type === 'delta') {
+        raw += event.content || '';
+        if (raw.length > 120000) throw new Error('生成内容过长，请缩小写作范围');
+        onDelta(raw);
+      } else if (event.type === 'done') completed = event;
+      else if (event.type === 'error') throw new Error(event.message || '生成中断，请重试');
+    };
+    while (true) {
+      const {value, done} = await reader.read();
+      if (!current()) { await reader.cancel(); return null; }
+      pending += decoder.decode(value || new Uint8Array(), {stream:!done});
+      if (pending.length > 2 * 1024 * 1024) throw new Error('生成响应异常，请重试');
+      const lines = pending.split('\n'); pending = lines.pop() || '';
+      lines.forEach(consume);
+      if (done) break;
+    }
+    if (pending.trim()) consume(pending);
+    if (!completed || !String(completed.content || '').trim()) throw new Error('生成未完成，请重试');
+    return completed;
+  } finally {
+    controller.abort();
+    if (composeAiController === controller) composeAiController = null;
+  }
+}
+
 async function aiCompose(operation, button) {
+  composeAiController?.abort();
   const session = draftSession;
   const revision = ++composeAiRevision;
   const current = () => session === draftSession && revision === composeAiRevision && !session.canceled && document.body.classList.contains('compose-open');
   const body = composeMessageElement();
-  const quickRewrite = ['polish','shorten','translate_en'].includes(operation);
-  if (quickRewrite && !body.innerText.trim()) return toast('请先填写需要改写的正文', 'warn');
+  const quickRewrite = ['polish','shorten','translate_en','translate_zh'].includes(operation);
+  if (quickRewrite && !body.innerText.trim()) {
+    const editor = document.getElementById('compose-body');
+    editor.classList.remove('needs-body');
+    void editor.offsetWidth;
+    editor.classList.add('needs-body');
+    editor.scrollIntoView({block:'nearest', behavior:'smooth'});
+    body.focus();
+    setTimeout(() => editor.classList.remove('needs-body'), 2400);
+    return toast('请先在左侧填写邮件正文，再使用此功能', 'warn');
+  }
   const selected = new Set([...document.querySelectorAll('.compose-ai-context-options input:checked:not(:disabled)')].map(input => input.value));
   const values = composeAiAvailability();
+  composeAiSuggestion = '';
+  document.querySelectorAll('#btn-ai-replace-subject,#btn-ai-append,#btn-ai-replace').forEach(control => { control.disabled = true; });
+  document.getElementById('btn-ai-replace-subject').classList.add('hidden');
+  document.getElementById('compose-ai-output').textContent = '正在连接模型…';
+  document.getElementById('compose-ai-preview-basis').textContent = '生成中';
+  document.getElementById('compose-ai-preview').classList.remove('hidden');
+  document.querySelector('.compose-ai-panel > .compose-ai-preview-actions').classList.remove('hidden');
+  document.getElementById('btn-ai-regenerate').disabled = true;
   setLoading(button, true, '生成中…');
   const panel = document.getElementById('compose-ai-panel');
   panel.classList.add('is-thinking'); panel.classList.remove('has-result');
   document.getElementById('compose-ai-status').textContent = '我正在结合你勾选的邮件上下文组织内容…';
   try {
-    const result = await api('/api/mail/compose/assist', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    const request = {
       operation,
       user_instruction: document.getElementById('compose-ai-instruction').value.trim(),
       subject: selected.has('subject') ? values.subject : '',
@@ -3366,14 +3611,50 @@ async function aiCompose(operation, button) {
       attachment_names: selected.has('attachments') ? values.attachments : [],
       tone: document.getElementById('compose-ai-tone').value,
       length: document.getElementById('compose-ai-length').value,
-    })});
+      has_signature: Boolean(currentSignatureId || document.getElementById('compose-signature-content').innerText.trim()),
+    };
+    const assist = payload => api('/api/mail/compose/assist', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const renderPreview = suggestion => {
+      const previewParts = [];
+      if (suggestion.subject) previewParts.push(`<p><strong>主题：${esc(suggestion.subject)}</strong></p>`);
+      previewParts.push(...suggestion.body.split(/\n{2,}/).filter(Boolean).map(block => `<p>${esc(block).replace(/\n/g, '<br>')}</p>`));
+      if (suggestion.signoff && !currentSignatureId && !document.getElementById('compose-signature-content').innerText.trim())
+        previewParts.push(`<p>${esc(suggestion.signoff).replace(/\n/g, '<br>')}</p>`);
+      document.getElementById('compose-ai-output').innerHTML = previewParts.join('');
+    };
+    let result;
+    try {
+      result = await streamComposeAssist(request, raw => {
+        if (!current()) return;
+        const partial = normalizeComposeAiSuggestion({content:raw}, !quickRewrite, request.has_signature);
+        renderPreview(partial);
+        document.getElementById('compose-ai-preview-basis').textContent = '正在生成';
+        document.getElementById('compose-ai-preview').classList.remove('hidden');
+        document.getElementById('compose-ai-status').textContent = '正在生成草稿，完成后即可使用。';
+      }, current);
+    } catch (error) {
+      if (!error.unsupported || !current()) throw error;
+      try { result = await assist(request); }
+      catch (legacyError) {
+        if (operation !== 'translate_zh' || !/不支持的 AI 写信操作/.test(legacyError.message) || !current()) throw legacyError;
+        result = await assist({operation:'polish',
+          user_instruction:'只把下方已有正文忠实翻译为简体中文。不要润色、总结、扩写或增删事实；保留段落、列表、数字、链接和专有名词。只输出译文正文。' +
+            (request.has_signature ? '邮件已经选择独立签名，不要生成落款或签名。' : ''),
+          subject:'', recipients:'', original_text:'', body_text:values.body,
+          attachment_names:[], tone:request.tone, length:request.length, has_signature:request.has_signature});
+      }
+    }
+    if (!result) return;
     if (!current()) return;
-    composeAiSuggestion = result.content;
-    document.getElementById('compose-ai-output').innerHTML = String(result.content || '').split(/\n{2,}/).filter(Boolean).map(block => `<p>${esc(block).replace(/\n/g, '<br>')}</p>`).join('');
+    composeAiSuggestion = normalizeComposeAiSuggestion(result, !quickRewrite,
+      Boolean(currentSignatureId || document.getElementById('compose-signature-content').innerText.trim()));
+    renderPreview(composeAiSuggestion);
+    document.getElementById('btn-ai-replace-subject').classList.toggle('hidden', !composeAiSuggestion.subject);
+    document.querySelectorAll('#btn-ai-replace-subject,#btn-ai-append,#btn-ai-replace').forEach(control => { control.disabled = false; });
     document.getElementById('compose-ai-preview-basis').textContent = `依据：${(result.basis || []).join('、')}`;
     document.getElementById('compose-ai-preview').classList.remove('hidden');
     panel.classList.add('has-result');
-    document.getElementById('compose-ai-status').textContent = '草稿已准备好。请核对事实后，再追加或替换正文。';
+    document.getElementById('compose-ai-status').textContent = '草稿已准备好。主题、正文和落款会分别放到对应位置。';
     document.getElementById('compose-ai-preview').scrollIntoView({block:'nearest', behavior:'smooth'});
     toast('AI 草稿已生成，请预览后决定如何使用', 'success');
   } catch (err) {
@@ -3381,15 +3662,26 @@ async function aiCompose(operation, button) {
     document.getElementById('compose-ai-status').textContent = '这次没有生成成功，可以调整要求后重试。';
     toast('AI 写作失败：' + err.message, 'error');
   }
-  finally { if (current()) { panel.classList.remove('is-thinking'); setLoading(button, false); } }
+  finally { if (current()) { panel.classList.remove('is-thinking'); setLoading(button, false); document.getElementById('btn-ai-regenerate').disabled = false; } }
 }
 
 function applyComposeAiSuggestion(mode) {
   if (!composeAiSuggestion) return;
+  const suggestion = typeof composeAiSuggestion === 'string' ? {body:composeAiSuggestion} : composeAiSuggestion;
+  if (mode === 'subject') {
+    if (!suggestion.subject) return;
+    document.getElementById('compose-subject').value = suggestion.subject;
+    clearComposePreflight(); queueDraftSave(); refreshComposeAiContext();
+    toast('AI 主题已填入主题栏', 'success');
+    document.getElementById('compose-subject').focus();
+    return;
+  }
   const body = composeMessageElement();
-  const html = esc(composeAiSuggestion).replace(/\n/g, '<br>');
+  const html = esc(suggestion.body || '').replace(/\n/g, '<br>');
   body.innerHTML = mode === 'append' && body.innerText.trim() ? `${body.innerHTML}<br><br>${html}` : html;
-  queueDraftSave(); refreshComposeAiContext();
+  if (suggestion.signoff && !currentSignatureId && !document.getElementById('compose-signature-content').innerText.trim())
+    renderComposeSignature('', esc(suggestion.signoff).replace(/\n/g, '<br>'));
+  clearComposePreflight(); queueDraftSave(); refreshComposeAiContext();
   const target = ['reply','reply_all'].includes(composeContext.mode) ? '回复' : (composeContext.mode === 'forward' ? '转发说明' : '正文');
   toast(mode === 'append' ? `AI 草稿已追加到${target}` : `AI 草稿已替换${target}，请核对后发送`, 'success');
   body.focus();
@@ -5636,6 +5928,7 @@ function accountSyncLabel(account) {
   if (account.sync_status === 'interrupted') return '上次同步中断';
   if (account.sync_error) return '同步失败';
   if (account.sync_status === 'canceled') return '同步已暂停';
+  if (Number(account.oversized_mail_count) > 0) return `${account.oversized_mail_count} 封超大邮件未下载`;
   return '';
 }
 
@@ -5730,11 +6023,14 @@ function renderSidebarAccounts() {
   const accounts = _systemConfig?.accounts || [];
   const pausedControl = document.getElementById('auto-sync-paused');
   const currentPaused = !!accounts.find(account => account.id === activeMailAccount()?.id)?.auto_sync_paused;
+  const oversizedCount = accounts.reduce((total, account) => total + Number(account.oversized_mail_count || 0), 0);
   if (pausedControl) pausedControl.checked = currentPaused;
   const syncButton = document.getElementById('btn-poll');
   if (syncButton) {
-    syncButton.title = currentPaused ? '自动收信已暂停；点击可手动同步' : '立即从服务器拉取邮件';
-    syncButton.setAttribute('aria-label', currentPaused ? '手动同步（自动收信已暂停）' : '同步邮件');
+    const syncHint = currentPaused ? '自动收信已暂停；点击可手动同步' : '立即从服务器拉取邮件';
+    const oversizedHint = oversizedCount ? `${oversizedCount} 封邮件超过 50 MB 未下载，可在其他邮件客户端查看或下载` : '';
+    syncButton.title = [syncHint, oversizedHint].filter(Boolean).join('；');
+    syncButton.setAttribute('aria-label', [currentPaused ? '手动同步（自动收信已暂停）' : '同步邮件', oversizedHint].filter(Boolean).join('；'));
   }
   const group = document.getElementById('account-mailbox-group');
   const primary = document.getElementById('primary-folder-group');
@@ -5742,7 +6038,7 @@ function renderSidebarAccounts() {
   const multiple = accounts.length > 1;
   renderMailboxSyncTracker(accounts);
   // 同步图标兼作状态灯：任一账号同步异常时在顶栏同步按钮上点红点
-  document.getElementById('btn-poll')?.classList.toggle('attention', accounts.some(account => account.sync_error || !account.credential_available || ['interrupted', 'canceled'].includes(account.sync_status)));
+  document.getElementById('btn-poll')?.classList.toggle('attention', accounts.some(account => account.sync_error || Number(account.oversized_mail_count) > 0 || !account.credential_available || ['interrupted', 'canceled'].includes(account.sync_status)));
   group?.classList.toggle('hidden', !multiple);
   primary?.classList.toggle('hidden', multiple);
   if (!host || !multiple) return;
@@ -5753,8 +6049,9 @@ function renderSidebarAccounts() {
       const collapsed = localStorage.getItem('collapsed:' + account.id) === '1';
       const syncing = account.credential_available && account.sync_status === 'running';
       const status = accountSyncLabel(account);
-      const statusVisible = Boolean(status) && (syncing || account.auto_sync_paused || account.sync_error || !account.credential_available || ['interrupted','canceled'].includes(account.sync_status));
-      const syncDetail = [account.sync_error || account.sync_message || account.user, syncing ? `已用时 ${account.sync_elapsed_seconds || 0} 秒；距上次进度更新 ${account.sync_quiet_seconds || 0} 秒` : '', account.sync_status === 'interrupted' ? '当前没有同步任务，点击顶部「同步」重新检查' : ''].filter(Boolean).join(' · ');
+      const statusVisible = Boolean(status) && (syncing || account.auto_sync_paused || account.sync_error || Number(account.oversized_mail_count) > 0 || !account.credential_available || ['interrupted','canceled'].includes(account.sync_status));
+      const oversizedDetail = Number(account.oversized_mail_count) > 0 ? `${account.oversized_mail_count} 封邮件超过 50 MB，未下载；可在其他邮件客户端查看或下载` : '';
+      const syncDetail = [account.sync_error || oversizedDetail || account.sync_message || account.user, syncing ? `已用时 ${account.sync_elapsed_seconds || 0} 秒；距上次进度更新 ${account.sync_quiet_seconds || 0} 秒` : '', account.sync_status === 'interrupted' ? '当前没有同步任务，点击顶部「同步」重新检查' : ''].filter(Boolean).join(' · ');
       return `<section class="sidebar-account ${selectedAccount ? 'active' : ''} ${collapsed ? 'collapsed' : ''}" data-sidebar-account="${esc(account.id)}">
         <div class="sidebar-account-heading">
         <button type="button" class="account-collapse" data-account-collapse="${esc(account.id)}" aria-label="${collapsed ? '展开' : '收起'} ${esc(account.user)}" aria-expanded="${!collapsed}"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 4 4 4-4 4"/></svg></button>
@@ -7794,7 +8091,8 @@ function renderAttachmentCenter() {
   const rows = attachmentItems.filter(item => (attachmentTypeFilter === 'all' || attachmentType(item) === attachmentTypeFilter) &&
     (!query || [item.name, item.subject, item.from_addr].some(value => String(value || '').toLowerCase().includes(query))));
   const sourceCount = new Set(rows.map(item => item.email_id)).size;
-  document.getElementById('attachment-count').textContent = (mailaiT('att.countLine') || '{n} 个附件 · 来自 {m} 封邮件').replace('{n}', rows.length).replace('{m}', sourceCount);
+  const countKey = attachmentCenterHasMore ? 'att.countShown' : 'att.countLine';
+  document.getElementById('attachment-count').textContent = (mailaiT(countKey) || (attachmentCenterHasMore ? '已显示 {n} 个附件 · 来自 {m} 封邮件' : '{n} 个附件 · 来自 {m} 封邮件')).replace('{n}', rows.length).replace('{m}', sourceCount);
   updateAttachmentTypeFilters();
   document.getElementById('attachment-grid').innerHTML = rows.length ? rows.map(item => `
     <a class="attachment-card type-${attachmentType(item)}" href="${mailboxResourceUrl(`/api/emails/${item.email_id}/attachments/${item.index}`, attachmentCenterAccountId)}" download="${esc(item.name)}" title="${(mailaiT('att.previewTitle') || '预览 {name}').replace('{name}', esc(item.name))}">
@@ -9191,6 +9489,49 @@ window.mailaiPrepareExit = async () => {
   return closeCompose();
 };
 document.getElementById('btn-add-attachment').addEventListener('click', () => document.getElementById('compose-attachments-input').click());
+document.getElementById('share-cos-settings-toggle').addEventListener('click', () => {
+  document.querySelector('.share-cos-config').classList.toggle('hidden');
+});
+document.querySelectorAll('[data-close-share-link]').forEach(button => button.addEventListener('click', closeShareLinkDialog));
+document.getElementById('share-cos-save').addEventListener('click', async event => {
+  const button = event.currentTarget;
+  button.disabled = true;
+  try {
+    await api('/api/share-storage/config', {accountId:composeAccountId, method:'POST',
+      headers:{'Content-Type':'application/json'}, body:JSON.stringify({
+        bucket:document.getElementById('share-cos-bucket').value,
+        region:document.getElementById('share-cos-region').value,
+        secret_id:document.getElementById('share-cos-id').value,
+        secret_key:document.getElementById('share-cos-key').value})});
+    document.getElementById('share-cos-key').value = '';
+    document.getElementById('share-cos-status').textContent = 'COS 配置已保存';
+    document.querySelector('.share-cos-config').classList.add('hidden');
+    document.getElementById('share-cos-settings-toggle').classList.remove('hidden');
+  } catch (error) { document.getElementById('share-cos-status').textContent = error.message; }
+  finally { button.disabled = false; }
+});
+document.getElementById('share-cos-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  const files = [...document.getElementById('share-cos-file').files];
+  if (!files.length) return toast('请先选择文件', 'warn');
+  if (files.some(file => file.size > 2 * 1024 * 1024 * 1024)) return toast('单个共享文件不能超过 2 GB', 'warn');
+  const session = draftSession, accountId = composeAccountId;
+  if (session.busy || session.canceled) return;
+  session.attachmentReads = (session.attachmentReads || 0) + 1;
+  const button = document.getElementById('share-cos-upload');
+  button.disabled = true;
+  try {
+    for (const [index, file] of files.entries()) {
+      const result = await uploadCosFile(file, Number(document.getElementById('share-cos-expiry').value), accountId,
+        percent => { button.textContent = percent >= 100 ? '正在上传至 COS…' : `上传 ${index + 1}/${files.length} · ${percent}%`; });
+      if (session !== draftSession || accountId !== composeAccountId || session.canceled) return;
+      insertSharedLink(result.name || file.name, result.url);
+    }
+    document.getElementById('share-cos-file').value = '';
+    toast('大附件已上传，分享链接已插入正文', 'success');
+  } catch (error) { toast(error.message, 'error'); }
+  finally { session.attachmentReads -= 1; button.disabled = false; button.textContent = mailaiT('compose.cosUpload') || '上传并插入邮件'; }
+});
 document.getElementById('btn-insert-compose-image').addEventListener('click', () => { rememberComposeSelection(); document.getElementById('compose-image-input').click(); });
 document.getElementById('compose-image-input').addEventListener('change', event => {
   insertComposeImage(event.target.files[0]).catch(err => toast('插入图片失败：' + err.message, 'error'));
@@ -9210,7 +9551,6 @@ async function pasteDesktopAttachments(showEmpty = true) {
     await addComposeAttachments(files);
   } catch (error) { toast('粘贴附件失败：' + error.message, 'error'); }
 }
-document.getElementById('btn-paste-attachment').addEventListener('click', () => pasteDesktopAttachments());
 const composeDropHost = document.querySelector('#compose-modal .compose-card');
 composeDropHost.addEventListener('dragover', event => {
   if (![...(event.dataTransfer?.types || [])].includes('Files')) return;
@@ -9387,6 +9727,7 @@ document.getElementById('compose-preflight').addEventListener('click', async eve
 document.getElementById('btn-compose-ai').addEventListener('click', () => toggleComposeAiPanel());
 document.getElementById('btn-close-compose-ai').addEventListener('click', () => toggleComposeAiPanel(false));
 document.getElementById('compose-ai-instruction').addEventListener('input', refreshComposeAiContext);
+document.addEventListener('mailai:language-changed', refreshComposeAiContext);
 document.querySelector('.compose-ai-context-options').addEventListener('change', refreshComposeAiContext);
 document.querySelector('.compose-ai-quick-actions').addEventListener('click', event => {
   const button = event.target.closest('[data-ai-compose]');
@@ -9402,6 +9743,7 @@ document.getElementById('btn-ai-regenerate').addEventListener('click', event => 
 });
 document.getElementById('btn-ai-append').addEventListener('click', () => applyComposeAiSuggestion('append'));
 document.getElementById('btn-ai-replace').addEventListener('click', () => applyComposeAiSuggestion('replace'));
+document.getElementById('btn-ai-replace-subject').addEventListener('click', () => applyComposeAiSuggestion('subject'));
 document.querySelectorAll('.compose-toolbar [data-command]').forEach(btn => {
   btn.addEventListener('mousedown', event => { event.preventDefault(); rememberComposeSelection(); });
   btn.addEventListener('click', () => runComposeCommand(btn.dataset.command));

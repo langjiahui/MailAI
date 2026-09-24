@@ -33,6 +33,13 @@ class FolderRequest(BaseModel):
     name: str
 
 
+class ShareStorageConfigRequest(BaseModel):
+    bucket: str
+    region: str
+    secret_id: str
+    secret_key: str = ""
+
+
 class BulkMailRequest(BaseModel):
     ids: list[int] = Field(default_factory=list)
     action: str
@@ -69,6 +76,7 @@ class ComposeAssistRequest(BaseModel):
     attachment_names: list[str] = Field(default_factory=list)
     tone: str = "正式"
     length: str = "适中"
+    has_signature: bool = False
 
 
 class ContactRequest(BaseModel):

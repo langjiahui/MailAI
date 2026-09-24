@@ -2294,10 +2294,15 @@ body { font-size: 13px; background: var(--bg); }
 .compose-ai-context-options { display:flex; flex-wrap:wrap; gap:6px; }
 .compose-ai-context-options label { position:relative; cursor:pointer; }
 .compose-ai-context-options input { position:absolute; opacity:0; pointer-events:none; }
-.compose-ai-context-options span { display:inline-flex; align-items:center; min-height:27px; padding:4px 9px; border:1px solid rgba(54,111,90,.11); border-radius:999px; color:#65776f; background:rgba(255,255,255,.62); font-size:10px; font-weight:650; transition:.16s ease; }
-.compose-ai-context-options input:checked+span { border-color:rgba(45,125,94,.2); color:#286c53; background:#dfeee7; box-shadow:inset 0 1px white; }
-.compose-ai-context-options input:checked+span::before { content:'✓'; margin-right:4px; font-size:9px; }
-.compose-ai-context-options label.unavailable { opacity:.38; cursor:not-allowed; }
+.compose-ai-context-options span { display:inline-flex; align-items:center; min-height:27px; padding:4px 9px; border:1px solid rgba(66,101,87,.22); border-radius:999px; color:#4b6258; background:rgba(255,255,255,.82); font-size:10px; font-weight:650; transition:background .16s ease,border-color .16s ease,color .16s ease; }
+.compose-ai-context-options input:checked:not(:disabled)+span { border-color:rgba(45,125,94,.26); color:#286c53; background:#dfeee7; box-shadow:inset 0 1px white; }
+.compose-ai-context-options input:checked:not(:disabled)+span::before { content:'✓'; margin-right:4px; font-size:9px; }
+.compose-ai-context-options input:not(:checked):not(:disabled)+span::before { content:''; box-sizing:border-box; width:9px; height:9px; margin-right:5px; border:1px solid #839a8d; border-radius:3px; background:rgba(255,255,255,.5); }
+.compose-ai-context-options input:not(:disabled):focus-visible+span { outline:2px solid #448e70; outline-offset:2px; }
+.compose-ai-context-options label:not(.unavailable):hover span { border-color:rgba(45,125,94,.42); }
+.compose-ai-context-options label.unavailable { cursor:default; }
+.compose-ai-context-options label.unavailable span { color:#75847d; border-color:rgba(66,101,87,.12); background:rgba(231,237,233,.58); box-shadow:none; }
+.compose-ai-context-options label.unavailable span::after { content:'暂无'; margin-left:5px; color:#8e9b94; font-size:9px; font-weight:500; }
 .compose-ai-controls { display:grid; grid-template-columns:76px 76px minmax(0,1fr); align-items:end; gap:8px; }
 .compose-ai-controls label { display:grid; gap:5px; }
 .compose-ai-controls select { width:100%; height:31px; padding:0 7px; border:1px solid rgba(50,107,87,.12); border-radius:9px; color:#40584e; background:rgba(255,255,255,.7); font-size:10.5px; }
@@ -2897,10 +2902,11 @@ body { font-size: 13px; background: var(--bg); }
 .advanced-rules-toggle i { color:#38755d; font-size:10px; font-style:normal; }
 .advanced-rules-panel #advanced-rules-content { padding-top:13px; }
 
-/* AI 写作只保留面板本身这一条滚动链路，预览内容自然展开。 */
+/* 预览正文在面板内滚动，操作按钮始终留在底部。 */
 .compose-ai-output { max-height:none; overflow:visible; scrollbar-width:none; }
 .compose-ai-preview { flex:0 0 auto; }
-.compose-ai-preview-actions { position:sticky; bottom:-18px; z-index:2; margin:0 -12px -12px; padding:9px 12px 12px; border-radius:0 0 13px 13px; background:linear-gradient(to bottom,rgba(247,251,249,.74),rgba(247,251,249,.98) 30%); backdrop-filter:blur(10px); }
+.compose-ai-panel > .compose-ai-preview-actions { position:relative; z-index:2; flex:0 0 auto; bottom:auto; margin:0; padding:11px 15px; border-top:1px solid rgba(45,119,91,.13); border-radius:0; background:rgba(247,251,249,.97); backdrop-filter:blur(10px); }
+.compose-ai-preview-actions button:disabled { opacity:.48; cursor:default; box-shadow:none; }
 .compose-ai-panel { overscroll-behavior:contain; }
 
 @media(max-width:1100px){
@@ -4687,7 +4693,7 @@ body.pane-resizing iframe { pointer-events: none; }
   .compose-ai-preview-head { display:grid; }
   .compose-ai-preview-head>span { white-space:normal; }
   .compose-ai-preview-actions { align-items:stretch; flex-direction:column-reverse; }
-  .compose-ai-preview-actions>div { display:grid; grid-template-columns:1fr 1fr; }
+  .compose-ai-preview-actions>div { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); }
 }
 
 /* Decision-oriented security operations dashboard. */

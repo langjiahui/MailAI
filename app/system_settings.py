@@ -207,10 +207,12 @@ def public_config() -> dict:
                 ).fetchone()
                 job = connection.execute("SELECT status,message,error,updated_at FROM sync_jobs WHERE job_key='mailbox'").fetchone()
                 last = connection.execute("SELECT value FROM runtime_settings WHERE key='last_sync_success'").fetchone()
+                oversized = connection.execute("SELECT value FROM runtime_settings WHERE key='oversized_mail_count'").fetchone()
             live = pipeline.get_live_fetch_state(path)
             # A persisted running record is a checkpoint, not proof of a live worker.
             status = 'running' if live['running'] else ('interrupted' if job and job[0] in ('running', 'pending') else job[0] if job else 'idle')
             return {"inbox": int(row[0] or 0), "unread": int(row[1] or 0),
+                    'oversized_mail_count': int(oversized[0] or 0) if oversized else 0,
                     'sync_status': status,
                     'sync_message': live['message'] if live['running'] else '上次同步中断，可重新同步' if status == 'interrupted' else job[1] if job else '',
                     'sync_error': live['error'] if live['running'] else job[2] if job else '',

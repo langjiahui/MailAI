@@ -48,7 +48,9 @@ def startup_init():
     if config.IMAP_USER and config.IMAP_PASSWORD:
         start_account_thread(pipeline.repair_local_mail_data,
                              name="mailai-repair-local-data")
-        if job and job.get("status") in ("running", "pending", "failed"):
+        account_id = system_settings._account_key(config.IMAP_HOST, config.IMAP_USER)
+        account = system_settings._load_registry().get("accounts", {}).get(account_id, {})
+        if job and job.get("status") in ("running", "pending", "failed") and not account.get("auto_sync_paused", False):
             start_account_thread(helpers.complete_mailbox_initialization, name="mailai-resume-sync")
 
 

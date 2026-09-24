@@ -32,6 +32,9 @@ html[data-theme] body .compose-toolbar button[aria-pressed="true"] { background:
 html[data-theme] body .compose-attachment-hint { color:var(--desk-muted)!important; font-size:11px; padding:8px 24px; }
 html[data-theme] body .compose-editor { background:var(--desk-surface)!important; color:var(--desk-ink)!important; box-shadow:none!important; padding:24px; }
 .compose-message { font-size:15px; line-height:1.8; }
+html[data-theme] body .compose-editor.needs-body {
+  box-shadow: inset 0 0 0 2px #5fae90, inset 0 0 0 6px rgba(95,174,144,.15)!important;
+}
 html[data-theme] body .compose-card>footer { padding:14px 24px; border-top:1px solid var(--desk-line); gap:12px; }
 html[data-theme] body :is(#btn-send-mail,#assistant-send,.contact-editor-card .primary-action,.contact-picker-footer .primary-action) {
   background:var(--desk-accent)!important; color:var(--desk-surface)!important; border-color:transparent!important;
@@ -39,6 +42,21 @@ html[data-theme] body :is(#btn-send-mail,#assistant-send,.contact-editor-card .p
 }
 html[data-theme] body #btn-send-mail { min-height:40px; padding-inline:22px; }
 html[data-theme] body #btn-discard-draft:hover { color:var(--ui-danger,#b95f57)!important; }
+.share-link-card { width:min(520px,calc(100% - 28px))!important; background:var(--desk-surface)!important; color:var(--desk-ink)!important; }
+.share-link-card form { display:grid; gap:13px; min-height:0; padding:20px; overflow-y:auto; }
+.share-link-card form label { display:grid; gap:6px; color:var(--desk-muted); font-size:12px; }
+.share-link-card form :is(input,select) { width:100%; min-height:39px; padding:8px 10px; border:1px solid var(--desk-line); border-radius:8px; background:var(--desk-surface); color:var(--desk-ink); font:inherit; }
+.share-link-card form input[type="file"] { padding:8px; }
+.share-link-card form p { margin:0; color:var(--desk-muted); font-size:12px; line-height:1.55; }
+.share-link-card form footer { display:flex; justify-content:flex-end; gap:8px; padding:6px 0 0; border:0; background:transparent; }
+.share-link-card form footer button,.share-cos-config>button { min-height:36px; padding:7px 13px; border:1px solid var(--desk-line); border-radius:8px; background:var(--desk-surface); color:var(--desk-ink); cursor:pointer; }
+.share-link-card form footer .primary-action { background:var(--desk-accent); color:var(--desk-surface); border-color:transparent; }
+.share-cos-config { display:grid; grid-template-columns:1fr 1fr; gap:12px; padding-bottom:15px; border-bottom:1px solid var(--desk-line); }
+.share-cos-config.hidden { display:none; }
+.share-cos-settings-toggle { align-self:start; border:0; background:transparent; color:var(--desk-accent); cursor:pointer; padding:0; font-size:12px; }
+.share-cos-config>button { align-self:end; }
+.share-cos-config>small { align-self:center; color:var(--desk-muted); line-height:1.45; }
+@media(max-width:760px){.compose-subdialog>.share-link-card{height:auto;max-height:calc(100% - 12px);width:100%!important}.share-cos-config{grid-template-columns:1fr}}
 html[data-theme] body :is(.attachment-center-tools,.todo-center-tools,.contact-center-tools,.attachment-type-filters) { background:transparent!important; border-color:var(--desk-line)!important; }
 html[data-theme] body :is(.attachment-search-box,.contact-search-box) { background:var(--desk-muted-surface)!important; border-color:var(--desk-line)!important; box-shadow:none!important; border-radius:8px; }
 html[data-theme] body .attachment-type-filters button { border-color:transparent!important; box-shadow:none!important; background:transparent!important; color:var(--desk-muted)!important; border-radius:7px; }

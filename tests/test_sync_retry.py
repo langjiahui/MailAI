@@ -50,5 +50,29 @@ def main():
     print('Incremental retry, descending history retry and batch folder reselection passed')
 
 
+def test_oversized_mail_is_reported_without_infinite_retry_status():
+    mail = MagicMock()
+    mail.__enter__.return_value = mail
+    mail.client.search.return_value = [7]
+    mail.client.fetch.return_value = {7: {b'RFC822.SIZE': 51 * 1024 * 1024}}
+    with patch('app.pipeline.MailClient', return_value=mail), \
+         patch('app.pipeline._set_fetch_state') as set_state, \
+         patch('app.pipeline._reset_action_guard'), \
+         patch('app.pipeline._InboxPriority') as priority, \
+         patch('app.pipeline.db.already_processed', return_value=False), \
+         patch('app.pipeline.db.count_history_imported', return_value=0), \
+         patch('app.pipeline.db.set_runtime_setting') as setting, \
+         patch('app.pipeline.process_message') as process:
+        priority.return_value.check.return_value = None
+        result = pipeline.fetch_all()
+    assert result['oversized'] == 1 and result['errors'] == 0
+    assert '超过 50 MB' in result['warning']
+    setting.assert_called_once_with('oversized_mail_count', '1')
+    assert set_state.call_args.kwargs['error'] == ''
+    assert '超过 50 MB' in set_state.call_args.kwargs['message']
+    process.assert_not_called()
+
+
 if __name__ == '__main__':
     main()
+    test_oversized_mail_is_reported_without_infinite_retry_status()

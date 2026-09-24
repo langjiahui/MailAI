@@ -624,7 +624,7 @@ def fetch_all(batch: int = 50, continue_with_folders: bool = False) -> dict:
         _reset_cancel()
         _reset_action_guard()
         _set_fetch_state(True, operation="fetch_all", message="正在扫描未处理邮件...")
-        result = {"ok": True, "fetched": 0, "quarantined": 0, "errors": 0}
+        result = {"ok": True, "fetched": 0, "quarantined": 0, "errors": 0, "oversized": 0}
         with MailClient() as mail:
             mail.ensure_quarantine_folder()
             mail.ensure_spam_folder()
@@ -633,6 +633,7 @@ def fetch_all(batch: int = 50, continue_with_folders: bool = False) -> dict:
             priority = _InboxPriority(max(server_uids, default=0))
             all_uids = [u for u in server_uids if not db.already_processed(config.INBOX_FOLDER, u)]
             if not all_uids:
+                db.set_runtime_setting("oversized_mail_count", "0")
                 db.reconcile_folder(config.INBOX_FOLDER, server_uids)
                 _set_fetch_state(bool(continue_with_folders), operation="sync_folders" if continue_with_folders else "fetch_all",
                                  message="收件箱已完成，正在准备其他文件夹…" if continue_with_folders else "没有更多未处理邮件")
@@ -663,7 +664,8 @@ def fetch_all(batch: int = 50, continue_with_folders: bool = False) -> dict:
                     size_item = sizes.get(uid, {})
                     raw_size = int(size_item.get(b"RFC822.SIZE") or size_item.get("RFC822.SIZE") or 0)
                     if raw_size > 50 * 1024 * 1024:
-                        result["errors"] += 1
+                        processed += 1
+                        result["oversized"] += 1
                         log.warning("历史邮件超过 50MB，未下载 uid=%s size=%s", uid, raw_size)
                         continue
                     mail.select_folder(config.INBOX_FOLDER, readonly=True)
@@ -686,16 +688,20 @@ def fetch_all(batch: int = 50, continue_with_folders: bool = False) -> dict:
                         log.exception("处理邮件失败 uid=%s", uid)
                         result["errors"] += 1
             priority.check(mail)
-            if not result["errors"]:
+            if not result["errors"] and not result["oversized"]:
                 # Priority checks may have imported mail after the first scan.
                 mail.select_folder(config.INBOX_FOLDER, readonly=True)
                 db.reconcile_folder(config.INBOX_FOLDER, list(mail.client.search(['ALL'])))
         final_error = f"仍有 {result['errors']} 封处理失败，可点击继续同步重试" if result["errors"] else ""
+        warning = f"{result['oversized']} 封邮件超过 50 MB，未下载；可在其他邮件客户端查看或下载" if result["oversized"] else ""
+        result["warning"] = warning
+        db.set_runtime_setting("oversized_mail_count", str(result["oversized"]))
+        final_message = "；".join(part for part in (final_error, warning) if part)
         _set_fetch_state(bool(continue_with_folders),
                          operation="sync_folders" if continue_with_folders else "fetch_all", total=total,
                          processed=processed, error=final_error,
-                         message=(f"收件箱已处理 {processed}/{total} 封，正在准备其他文件夹…"
-                                  if continue_with_folders else final_error or f"完成，共处理 {result['fetched']} 封"))
+                         message=(f"收件箱已检查 {processed}/{total} 封，正在准备其他文件夹…" if continue_with_folders
+                                  else final_message or f"完成，共处理 {result['fetched']} 封"))
         log.info("fetch_all 完成: %s", result)
         return result
     except Exception as e:
@@ -971,7 +977,8 @@ def sync_mail_folder(folder: str, limit: int = 0) -> dict:
 
 
 @account_work
-def sync_auxiliary_folders(limit_per_folder: int = 0, preserve_cancel: bool = False) -> dict:
+def sync_auxiliary_folders(limit_per_folder: int = 0, preserve_cancel: bool = False,
+                           inbox_warning: str = "") -> dict:
     """Complete first-run IMAP initialization for Sent, Drafts and custom folders."""
     if not _poll_lock.acquire(blocking=False):
         return {"ok": False, "msg": "上一次同步仍在进行"}
@@ -1054,9 +1061,10 @@ def sync_auxiliary_folders(limit_per_folder: int = 0, preserve_cancel: bool = Fa
                     if item["status"] in ("pending", "running"):
                         item["status"] = "canceled"
         error = f"{len(result['errors'])} 个文件夹同步失败，可稍后单独重试" if result["errors"] else ""
+        final_message = "；".join(part for part in (error, inbox_warning) if part)
         _set_fetch_state(False, operation="sync_folders", total=total, processed=processed,
                          canceled=result.get("canceled", False), error=error,
-                         message=error or f"完整初始化完成，共同步 {result['imported']} 封其他文件夹邮件",
+                         message=final_message or f"完整初始化完成，共同步 {result['imported']} 封其他文件夹邮件",
                          folder_progress=progress, folder_omitted=omitted)
         result["ok"] = not result["errors"]
         return result

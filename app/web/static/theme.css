@@ -865,7 +865,10 @@ html[data-theme="dark"] .compose-ai-controls select,
 html[data-theme="dark"] .compose-ai-output { color:#edf8f1!important; border-color:var(--dark-stroke)!important; background:rgba(5,20,14,.68)!important; color-scheme:dark; }
 html[data-theme="dark"] .compose-ai-context-options span,
 html[data-theme="dark"] :is(.compose-ai-quick-actions,.compose-ai-preview-actions) button { color:#c9dfd3!important; border-color:var(--dark-stroke)!important; background:rgba(42,71,56,.66)!important; }
-html[data-theme="dark"] .compose-ai-context-options input:checked+span { color:#d8ffea!important; border-color:rgba(121,220,165,.34)!important; background:rgba(49,130,90,.34)!important; }
+html[data-theme="dark"] .compose-ai-context-options input:checked:not(:disabled)+span { color:#d8ffea!important; border-color:rgba(121,220,165,.34)!important; background:rgba(49,130,90,.34)!important; }
+html[data-theme="dark"] .compose-ai-context-options input:not(:checked):not(:disabled)+span::before { border-color:#8cae99; background:rgba(12,30,20,.42); }
+html[data-theme="dark"] .compose-ai-context-options label.unavailable span { color:#9aafa3!important; border-color:rgba(126,166,142,.17)!important; background:rgba(38,61,48,.46)!important; }
+html[data-theme="dark"] .compose-ai-context-options label.unavailable span::after { color:#829d8b; }
 html[data-theme="dark"] .compose-ai-preview { border-color:rgba(119,206,158,.24)!important; background:linear-gradient(145deg,rgba(38,82,60,.48),rgba(15,36,27,.68))!important; }
 /* Sticky action bar under the AI draft preview: light gradient turned into the panel dark. */
 html[data-theme="dark"] .compose-ai-preview-actions { background:linear-gradient(to bottom,rgba(16,38,29,.74),rgba(13,32,24,.98) 30%)!important; }

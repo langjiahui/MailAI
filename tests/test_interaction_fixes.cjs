@@ -3,7 +3,8 @@ const source=fs.readFileSync('app/web/static/app.js','utf8');
 const extract=(a,b)=>source.slice(source.indexOf(a),source.indexOf(b,source.indexOf(a)));
 (async()=>{
  const warnings=[];const c={atob,crypto:require('node:crypto').webcrypto,draftSession:{},composeAccountId:'one',composeAttachments:[],readFileAsBase64:file=>Promise.resolve(Buffer.alloc(file.size).toString('base64')),renderComposeAttachments(){},queueDraftSave(){},clearComposePreflight(){},toast:x=>warnings.push(x)};
- vm.createContext(c);vm.runInContext(extract('async function addComposeAttachments(','async function saveCurrentDraft('),c);
+ c.addLargeSharedFiles=async files=>warnings.push(`${files.length} file routed to sharing`);
+ vm.createContext(c);vm.runInContext(extract('async function addComposeAttachments(','async function addLargeSharedFiles('),c);
  const file={name:'a',size:20*1024*1024};await Promise.all([c.addComposeAttachments([file]),c.addComposeAttachments([file])]);assert.equal(c.composeAttachments.length,1);assert.equal(warnings.length,1);
  let release;c.composeAttachments=[];c.readFileAsBase64=()=>new Promise(r=>release=r);
  const reading=c.addComposeAttachments([{name:'old',size:1}]);c.draftSession={};c.composeAttachments=[];release('ok');await reading;assert.equal(c.composeAttachments.length,0);

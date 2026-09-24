@@ -20,5 +20,15 @@ const assert = require('node:assert/strict');
     assert.equal(await page.locator('#compose-subject').inputValue(), 'Fwd: Original');
     assert.match(await page.locator('#compose-quote-content').innerHTML(), /<strong>Styled original<\/strong>/);
     assert.equal(await page.evaluate(() => atob(composeAttachments[0].data_base64)), 'forwarded file');
+    await page.evaluate(() => {
+      draftSession.busy = true;
+      selectedEmailDetail = {id:903, subject:'Another message', from_addr:'other@example.test',
+        to_addr:'work@example.test', date:new Date().toISOString(), body_text:'Another',
+        attachments:[{name:'other.txt', size:5, content_type:'text/plain'}],
+        _account_id:activeMailAccount().id};
+    });
+    await page.evaluate(() => composeFromEmail('forward'));
+    assert.equal(await page.locator('#compose-subject').inputValue(), 'Fwd: Original');
+    assert.deepEqual(await page.evaluate(() => composeAttachments.map(item => item.filename)), ['original.txt']);
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exit(1); });

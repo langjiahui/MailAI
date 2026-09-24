@@ -1,20 +1,77 @@
 """写信：草稿、发件、签名、发送前检查与发件箱队列。"""
+import json
 import logging
+import re
 
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import Response
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import Response, StreamingResponse
 
-from ... import config, db, outgoing_guard, signatures, smtp_client, system_settings
+from ... import config, db, outgoing_guard, share_storage, signatures, smtp_client, system_settings
 from ... import parser as mail_parser
 from ...llm import client as llm_client
 from ...parser import extract_rich_body
 from ..helpers import annotate_list_identities, current_server
 from ..schemas import (ComposeAssistRequest, DraftRequest, MailPreflightRequest,
-                       QueuedMailRequest, SendMailRequest, SignatureGenerateRequest,
+                       QueuedMailRequest, SendMailRequest, ShareStorageConfigRequest, SignatureGenerateRequest,
                        SignatureRequest)
 
 log = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def _structured_compose_result(content: str, allow_signoff: bool) -> dict:
+    """Accept structured output, while keeping older plain-text model replies usable."""
+    value = content.strip()
+    try:
+        parsed = json.loads(re.sub(r"^```(?:json)?\s*|\s*```$", "", value, flags=re.I))
+    except (ValueError, TypeError):
+        parsed = None
+    if isinstance(parsed, dict):
+        subject = str(parsed.get("subject") or "").strip()
+        body = str(parsed.get("body") or parsed.get("content") or "").strip()
+        signoff = str(parsed.get("signoff") or "").strip() if allow_signoff else ""
+    else:
+        lines = value.splitlines()
+        subject = ""
+        if lines and re.match(r"^\s*(?:主题|Subject)\s*[:：]", lines[0], re.I):
+            subject = re.sub(r"^\s*(?:主题|Subject)\s*[:：]\s*", "", lines.pop(0), flags=re.I).strip()
+        signoff = ""
+        for index in range(max(0, len(lines) - 7), len(lines)):
+            if re.fullmatch(r"\s*(?:此致|此致敬礼|敬礼[！!]?|顺颂(?:商祺)?|Best regards,?|Regards,?)\s*", lines[index], re.I):
+                signoff = "\n".join(lines[index:]).strip() if allow_signoff else ""
+                lines = lines[:index]
+                break
+        body = "\n".join(lines).strip()
+    # Placeholder identities or dates must never be inserted as a sender's signature.
+    if re.search(r"[Xx]{2,}|[（(][^）)]*(?:姓名|部门|单位|日期)[^）)]*[）)]|发件人姓名|YYYY|XXXX", signoff):
+        signoff = ""
+    return {"subject": subject[:300], "body": body, "signoff": signoff if allow_signoff else ""}
+
+
+@router.get("/api/share-storage/config")
+def api_share_storage_config():
+    return share_storage.public_config()
+
+
+@router.post("/api/share-storage/config")
+def api_save_share_storage_config(payload: ShareStorageConfigRequest):
+    try:
+        return share_storage.save_config(payload.bucket, payload.region, payload.secret_id,
+                                         payload.secret_key)
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@router.post("/api/share-storage/upload")
+async def api_share_storage_upload(request: Request):
+    try:
+        return await share_storage.upload_request(request, request.headers.get("x-mailai-filename", ""),
+                                                  int(request.headers.get("x-mailai-expiry-days", "7")))
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except Exception as exc:
+        log.exception("腾讯云 COS 大附件上传失败")
+        raise HTTPException(502, "上传至腾讯云 COS 失败，请检查存储桶、地域和密钥权限") from exc
 
 
 @router.get("/api/drafts")
@@ -128,8 +185,7 @@ def api_send_capability():
     }
 
 
-@router.post("/api/mail/compose/assist")
-def api_compose_assist(payload: ComposeAssistRequest):
+def _compose_assist_context(payload: ComposeAssistRequest, *, streaming: bool = False):
     operations = {
         "draft": "根据主题和已有要点起草一封完整邮件",
         "reply": "根据原邮件和已有内容生成直接、完整的回复",
@@ -137,11 +193,12 @@ def api_compose_assist(payload: ComposeAssistRequest):
         "polish": "润色邮件，修正语病并保持原意",
         "shorten": "压缩邮件，使其更简洁但不遗漏关键事项",
         "translate_en": "将邮件翻译为自然、专业的英文",
+        "translate_zh": "将已有邮件正文翻译为自然、专业的中文，保留原有段落、列表、数字、链接与专有名词，不增删事实",
     }
     instruction = operations.get(payload.operation)
     if not instruction:
         raise HTTPException(400, "不支持的 AI 写信操作")
-    if payload.operation in {"polish", "shorten", "translate_en"} and not payload.body_text.strip():
+    if payload.operation in {"polish", "shorten", "translate_en", "translate_zh"} and not payload.body_text.strip():
         raise HTTPException(400, "请先填写需要改写的正文")
 
     references: list[tuple[str, str]] = []
@@ -168,18 +225,76 @@ def api_compose_assist(payload: ComposeAssistRequest):
         "简短": "控制在 120 字左右，直达结论和行动项",
         "详细": "可分段说明背景、事项和下一步，但避免冗余",
     }.get(payload.length, "篇幅适中，完整覆盖关键事项")
+    if payload.operation in {"translate_en", "translate_zh"}:
+        length_guidance = "忠实翻译，不压缩或扩写原文，保留段落和列表结构"
+        if payload.has_signature:
+            length_guidance += "；邮件已选择独立签名，只翻译正文，不生成落款或签名"
     reference_text = "\n\n".join(f"【{label}】\n{value}" for label, value in references)
+    structured = payload.operation in {"draft", "reply", "forward"}
+    if streaming and structured:
+        output_rule = ("第一行写‘主题：’及建议主题，然后空一行写邮件正文；不要写‘正文：’标题。"
+                       + ("邮件已选择独立签名，不要在正文中写落款。" if payload.has_signature else
+                          "如需落款，放在正文末尾单独一段；不要使用姓名、部门或日期占位符。"))
+    elif structured:
+        output_rule = ("只输出 JSON 对象，字段为 subject、body、signoff。subject 是主题栏内容，不要写进 body；"
+                       "body 只包含称呼与正文。" +
+                       ("已选择邮件签名，signoff 必须为空，不要在 body 中写落款。" if payload.has_signature else
+                        "没有选择邮件签名；如能写出不虚构身份的简短落款，可放入 signoff，否则留空；不得使用姓名、部门、日期占位符。"))
+    else:
+        output_rule = "只输出修改后的正文，不要生成主题或落款。"
     messages = [
-        {"role": "system", "content": "你是企业邮件写作助手。只输出可直接使用的邮件正文，不解释过程，不使用 Markdown 代码块。严格依据用户提供的参考内容，不得虚构姓名、日期、数字、附件内容或承诺；信息不足时使用中性表达或明确保留待确认项。"},
+        {"role": "system", "content": "你是企业邮件写作助手。" + output_rule + "不解释过程，不使用 Markdown 代码块。严格依据用户提供的参考内容，不得虚构姓名、日期、数字、附件内容或承诺；信息不足时使用中性表达或明确保留待确认项。"},
         {"role": "user", "content": f"任务：{instruction}\n语气：{payload.tone}\n篇幅：{length_guidance}\n\n以下是本次允许参考的内容：\n{reference_text}"},
     ]
+    return messages, basis, structured
+
+
+@router.post("/api/mail/compose/assist")
+def api_compose_assist(payload: ComposeAssistRequest):
+    messages, basis, structured = _compose_assist_context(payload)
     result = llm_client.chat_completion(messages, temperature=0.25, max_tokens=1200, timeout=45)
     if not result:
         raise HTTPException(502, "AI 写作服务暂时不可用")
     content = result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
     if not content:
         raise HTTPException(502, "AI 没有返回可用正文")
-    return {"ok": True, "content": content, "basis": basis}
+    parts = _structured_compose_result(content, structured and not payload.has_signature)
+    if not parts["body"]:
+        raise HTTPException(502, "AI 没有返回可用正文")
+    return {"ok": True, "content": parts["body"], "subject": parts["subject"] if structured else "",
+            "signoff": parts["signoff"] if structured else "", "basis": basis}
+
+
+@router.post("/api/mail/compose/assist-stream")
+def api_compose_assist_stream(payload: ComposeAssistRequest):
+    messages, basis, structured = _compose_assist_context(payload, streaming=True)
+
+    def generate():
+        chunks = []
+        try:
+            for delta in llm_client.chat_completion_stream(messages, temperature=0.25,
+                                                            max_tokens=1200, timeout=45,
+                                                            require_completion=True):
+                chunks.append(delta)
+                yield json.dumps({"type": "delta", "content": delta}, ensure_ascii=False) + "\n"
+            if not chunks:
+                response = llm_client.chat_completion(messages, temperature=0.25, max_tokens=1200, timeout=45)
+                fallback = (response or {}).get("choices", [{}])[0].get("message", {}).get("content", "")
+                if fallback:
+                    chunks.append(fallback)
+                    yield json.dumps({"type": "delta", "content": fallback}, ensure_ascii=False) + "\n"
+            parts = _structured_compose_result("".join(chunks), structured and not payload.has_signature)
+            if not parts["body"]:
+                raise ValueError("AI 没有返回可用正文")
+            yield json.dumps({"type": "done", "content": parts["body"],
+                              "subject": parts["subject"] if structured else "",
+                              "signoff": parts["signoff"] if structured else "", "basis": basis}, ensure_ascii=False) + "\n"
+        except Exception:
+            log.exception("AI 写信流式生成失败")
+            yield json.dumps({"type": "error", "message": "生成中断，请重试；未完成内容不会写入邮件"}, ensure_ascii=False) + "\n"
+
+    return StreamingResponse(generate(), media_type="application/x-ndjson",
+                             headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
 
 
 @router.get("/api/mail/signatures")

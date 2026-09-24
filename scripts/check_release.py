@@ -74,6 +74,7 @@ TESTS = (
     'test_outgoing_guard.py',
     'test_preflight_gate.py',
     'test_signatures.py',
+    'test_compose_ai_sections.py', 'test_share_storage.py',
     'test_contacts.py', 'test_contact_identity.py', 'test_contact_name_ordering.py', 'test_sent_attachments.py', 'test_compose_file_tools.py', 'test_draft_completion_integrity.py',
     'test_mail_library.py',
     'test_chain_worker.py',
