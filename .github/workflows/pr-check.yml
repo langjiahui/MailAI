@@ -54,6 +54,7 @@ jobs:
       - name: Verify startup animation and preference persistence
         run: |
           node tests/test_preloader_browser.cjs
+          node tests/test_macos_startup_browser.cjs
           node tests/test_ui_preferences_restart.cjs "$(which python)"
 
       - name: Start isolated fixture server
@@ -69,6 +70,7 @@ jobs:
       - name: Run prepublish browser checks
         run: |
           node tests/prepublish_browser.cjs
+          node tests/test_macos_workspace_browser.cjs
           node tests/test_interaction_consistency_browser.cjs
           node tests/test_task_notices_browser.cjs
           node tests/test_attachment_library_ui.cjs

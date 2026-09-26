@@ -3735,7 +3735,7 @@ function renderSearchPreview(email) {
 
 function renderEmailItem(e, idx = 0) {
   const risk = getRiskLabel(e.score, e.verdict, e);
-  const selected = selectedEmailId === e.id ? 'selected' : '';
+  const selected = selectedEmailId === e.id && (!selectedEmailAccountId || e._account_id === selectedEmailAccountId) ? 'selected' : '';
   const bulkSelected = selectedMailIds.has(Number(e.id)) ? 'bulk-selected' : '';
   const hasAtt = e.attachments && e.attachments.length > 0;
   const outgoing = e.direction === 'outgoing';
@@ -8917,7 +8917,7 @@ function hideAppPreloader() {
       const zoom = Number(getComputedStyle(document.body).zoom) || 1;
       const x = value => (value - lane.left) / lane.width * 1000;
       const left = x(pane.left + 1), right = x(pane.right - 1);
-      const radius = Math.min(24 * zoom, pane.width / 4);
+      const radius = Math.min((parseFloat(getComputedStyle(readingPane).borderBottomLeftRadius) || 0) * zoom, pane.width / 4);
       const r = radius / lane.width * 1000;
       const targetD = `M${left} 38H${left}C${left} 52 ${left+r*.42} 62 ${left+r} 62H${right-r}C${right-r*.42} 62 ${right} 52 ${right} 38H${right}`;
       const sourceD = routePath.getAttribute('d');

@@ -5428,7 +5428,7 @@ function renderSearchPreview(email) {
 
 function renderEmailItem(e, idx = 0) {
   const risk = getRiskLabel(e.score, e.verdict, e);
-  const selected = selectedEmailId === e.id ? 'selected' : '';
+  const selected = selectedEmailId === e.id && (!selectedEmailAccountId || e._account_id === selectedEmailAccountId) ? 'selected' : '';
   const bulkSelected = selectedMailIds.has(Number(e.id)) ? 'bulk-selected' : '';
   const hasAtt = e.attachments && e.attachments.length > 0;
   const outgoing = e.direction === 'outgoing';
@@ -10610,7 +10610,7 @@ function hideAppPreloader() {
       const zoom = Number(getComputedStyle(document.body).zoom) || 1;
       const x = value => (value - lane.left) / lane.width * 1000;
       const left = x(pane.left + 1), right = x(pane.right - 1);
-      const radius = Math.min(24 * zoom, pane.width / 4);
+      const radius = Math.min((parseFloat(getComputedStyle(readingPane).borderBottomLeftRadius) || 0) * zoom, pane.width / 4);
       const r = radius / lane.width * 1000;
       const targetD = `M${left} 38H${left}C${left} 52 ${left+r*.42} 62 ${left+r} 62H${right-r}C${right-r*.42} 62 ${right} 52 ${right} 38H${right}`;
       const sourceD = routePath.getAttribute('d');
@@ -12672,6 +12672,20 @@ document.getElementById('task-center-list').addEventListener('click', async even
     const alignFrames = () => {
       const zoom = Number(getComputedStyle(document.body).zoom) || 1;
       const origin = startup.getBoundingClientRect();
+      if (document.documentElement.classList.contains('macos-native-window')) {
+        const reading = document.querySelector('.layout > .reading-pane')?.getBoundingClientRect();
+        const list = document.querySelector('.layout > .list-pane')?.getBoundingClientRect();
+        if (reading?.width) {
+          startup.style.setProperty('--startup-center', `${(reading.left+reading.width/2-origin.left)/zoom}px`);
+          startup.style.setProperty('--startup-reading-left', `${(reading.left-origin.left)/zoom}px`);
+        }
+        if (list?.width) startup.style.setProperty('--startup-list-right', `${(list.right-origin.left)/zoom}px`);
+        const brand = document.querySelector('.topbar .brand strong')?.getBoundingClientRect();
+        const signature = startup.querySelector('.preloader-brand');
+        if (brand?.width && signature) Object.assign(signature.style, {
+          left:`${(brand.left-origin.left)/zoom}px`, top:`${(brand.top-origin.top)/zoom}px`,
+        });
+      }
       frames.forEach(frame => {
         const pane = document.querySelector(`.layout > .${frame.dataset.startupPane}`);
         const rect = pane?.getBoundingClientRect();
@@ -13223,6 +13237,55 @@ document.getElementById('task-center-list').addEventListener('click', async even
       running.delete(details);
     };
   });
+})();
+
+;
+/* ---- macos-window.js ---- */
+// The native titlebar keeps its system hit targets; only its appearance changes.
+(() => {
+  let revision = 0;
+  let pending = Promise.resolve();
+  let regionFrame;
+  function updateDragRegion() {
+    cancelAnimationFrame(regionFrame);
+    regionFrame = requestAnimationFrame(() => {
+      if (!document.documentElement.classList.contains('macos-native-window')) return;
+      const sidebar = document.querySelector('.layout > .sidebar');
+      if (sidebar && sidebar.getBoundingClientRect().width) {
+        const style = getComputedStyle(sidebar);
+        const width = parseFloat(style.width);
+        if (Number.isFinite(width)) {
+          document.documentElement.style.setProperty('--mac-sidebar-width', `${width}px`);
+          document.documentElement.style.setProperty('--mac-rail-width', style.position === 'fixed' ? '0px' : `${width}px`);
+        }
+      }
+      const rect = document.querySelector('.topbar .brand')?.getBoundingClientRect();
+      if (rect?.width) window.pywebview?.api?.set_window_drag_region?.(rect.left, rect.right, window.innerWidth)?.catch(() => {});
+    });
+  }
+  const header = document.querySelector('.topbar');
+  if (header) new ResizeObserver(updateDragRegion).observe(header);
+  const sidebar = document.querySelector('.layout > .sidebar');
+  if (sidebar) new ResizeObserver(updateDragRegion).observe(sidebar);
+  window.addEventListener('resize', updateDragRegion);
+  async function syncNativeTheme() {
+    const method = window.pywebview?.api?.set_window_theme;
+    if (!method) return;
+    const token = ++revision;
+    try {
+      const theme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+      const mode = document.documentElement.dataset.themeMode || 'system';
+      pending = pending.catch(() => {}).then(() => token === revision ? method(theme, mode) : null);
+      const result = await pending;
+      if (token === revision && result?.ok) {
+        document.documentElement.classList.add('macos-native-window');
+        updateDragRegion();
+      }
+    } catch (_) { /* A missing/older desktop bridge keeps the standard web canvas. */ }
+  }
+  window.addEventListener('pywebviewready', syncNativeTheme);
+  document.addEventListener('mailai:themechange', syncNativeTheme);
+  syncNativeTheme();
 })();
 
 ;

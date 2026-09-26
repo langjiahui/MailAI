@@ -28,3 +28,10 @@ html=ctx.renderEmailItem({id:3,direction:'incoming',from_addr:'sender@example.te
 assert.match(html,/class="email-item[^\"]*\bunread\b/);
 assert.match(html,/未读邮件/,'Incoming unseen mail must keep its unread marker');
 console.log('Sent and outgoing mail never inherit inbox unread presentation');
+
+ctx.selectedEmailId=3; ctx.selectedEmailAccountId='work';
+const base={id:3,subject:'相同本地编号',from_addr:'colleague@example.test',status:'inbox',is_read:1};
+assert.match(ctx.renderEmailItem({...base,_account_id:'work'}),/class="email-item selected/);
+assert.doesNotMatch(ctx.renderEmailItem({...base,_account_id:'personal'}),/class="email-item selected/,
+  'Rerendering a unified inbox must not highlight another account’s matching local ID');
+console.log('Unified inbox selection stays scoped to the opened account');

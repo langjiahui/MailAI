@@ -17,6 +17,20 @@
     const alignFrames = () => {
       const zoom = Number(getComputedStyle(document.body).zoom) || 1;
       const origin = startup.getBoundingClientRect();
+      if (document.documentElement.classList.contains('macos-native-window')) {
+        const reading = document.querySelector('.layout > .reading-pane')?.getBoundingClientRect();
+        const list = document.querySelector('.layout > .list-pane')?.getBoundingClientRect();
+        if (reading?.width) {
+          startup.style.setProperty('--startup-center', `${(reading.left+reading.width/2-origin.left)/zoom}px`);
+          startup.style.setProperty('--startup-reading-left', `${(reading.left-origin.left)/zoom}px`);
+        }
+        if (list?.width) startup.style.setProperty('--startup-list-right', `${(list.right-origin.left)/zoom}px`);
+        const brand = document.querySelector('.topbar .brand strong')?.getBoundingClientRect();
+        const signature = startup.querySelector('.preloader-brand');
+        if (brand?.width && signature) Object.assign(signature.style, {
+          left:`${(brand.left-origin.left)/zoom}px`, top:`${(brand.top-origin.top)/zoom}px`,
+        });
+      }
       frames.forEach(frame => {
         const pane = document.querySelector(`.layout > .${frame.dataset.startupPane}`);
         const rect = pane?.getBoundingClientRect();

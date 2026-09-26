@@ -31,6 +31,7 @@ jobs:
           npm ci
           npx playwright install --with-deps chromium
           node tests/test_preloader_browser.cjs
+          node tests/test_macos_startup_browser.cjs
           node tests/test_ui_preferences_restart.cjs "$(which python)"
 
   windows-x64:

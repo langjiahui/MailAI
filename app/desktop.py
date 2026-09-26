@@ -416,6 +416,48 @@ class DesktopRuntime:
 class DesktopApi:
     def __init__(self, runtime: DesktopRuntime):
         self._runtime = runtime
+        self._macos_chrome_ready = False
+
+    def _prepare_window(self):
+        """Run on Cocoa's before_show event so the first web frame has final geometry."""
+        from .macos_appearance import apply_window_appearance, install_unified_titlebar
+        native = self._runtime.window.native
+        install_unified_titlebar(native)
+        self._macos_chrome_ready = True
+        dark = native.effectiveAppearance().bestMatchFromAppearancesWithNames_(
+            ['NSAppearanceNameAqua', 'NSAppearanceNameDarkAqua']) == 'NSAppearanceNameDarkAqua'
+        apply_window_appearance(native, 'dark' if dark else 'light', 'system')
+
+    def set_window_theme(self, theme, mode='system'):
+        """Only the macOS shell opts into the matching native/web canvas."""
+        if sys.platform != "darwin" or theme not in ("light", "dark") or mode not in ("light", "dark", "system"):
+            return {"ok": False}
+        from .macos_appearance import apply_window_appearance, install_unified_titlebar
+        runtime = self._runtime
+        def apply():
+            native = getattr(runtime.window, "native", None)
+            if native is not None:
+                if not self._macos_chrome_ready:
+                    install_unified_titlebar(native)
+                    self._macos_chrome_ready = True
+                apply_window_appearance(native, theme, mode)
+        return {"ok": runtime._call_after_safely("更新窗口主题", apply)}
+
+    def set_window_drag_region(self, left, right, viewport_width):
+        import math
+        if sys.platform != 'darwin':
+            return {"ok": False}
+        values = (left, right, viewport_width)
+        if not all(isinstance(v, (int, float)) and math.isfinite(v) for v in values):
+            return {"ok": False}
+        if not 0 <= left < right <= viewport_width or viewport_width <= 0:
+            return {"ok": False}
+        from .macos_appearance import update_drag_region
+        def apply():
+            native = getattr(self._runtime.window, 'native', None)
+            if native is not None:
+                update_drag_region(native, left, right, viewport_width)
+        return {"ok": self._runtime._call_after_safely('更新窗口拖动区域', apply)}
 
     def enable_notifications(self):
         return self._runtime.test_notification()
@@ -609,10 +651,11 @@ def run_macos_window(asgi_app, preferred_port: int = 0,
 
         cocoa.BrowserView.AppDelegate = MailAIAppDelegate
 
+        desktop_api = DesktopApi(runtime)
         window = webview.create_window(
             "MailAI",
-            url=url,
-            js_api=DesktopApi(runtime),
+            url=url + "?shell=macos",
+            js_api=desktop_api,
             width=1440,
             height=900,
             min_size=(900, 640),
@@ -621,6 +664,7 @@ def run_macos_window(asgi_app, preferred_port: int = 0,
             text_select=True,
         )
         runtime.window = window
+        window.events.before_show += desktop_api._prepare_window
         window.events.closing += runtime.handle_closing
 
         def ready():

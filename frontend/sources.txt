@@ -21,3 +21,4 @@ companion-motion.js
 onboarding.js
 model-usage.js
 motion.js
+macos-window.js

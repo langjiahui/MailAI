@@ -8,6 +8,10 @@
   <script src="/static/preferences.js"></script>
   <script>
     (() => {
+      // A presentation hint supplied by the Cocoa launcher, before the first paint.
+      if (new URLSearchParams(location.search).get('shell') === 'macos') {
+        document.documentElement.classList.add('macos-native-window');
+      }
       try {
         const mode = localStorage.getItem('mailai.preferences.theme.v1') || 'system';
         const dark = mode === 'dark' || (mode === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
@@ -36,7 +40,8 @@
   <link rel="stylesheet" href="/static/dashboard-polish.css?v=3">
   <link rel="stylesheet" href="/static/digest-polish.css?v=1">
   <link rel="stylesheet" href="/static/experience-polish.css?v=3">
-  <link rel="stylesheet" href="/static/page-polish.css?v=5">
+  <link rel="stylesheet" href="/static/page-polish.css?v=8">
+  <link rel="stylesheet" href="/static/macos-window.css?v=3">
 </head>
 <body>
   <div id="app-preloader" class="app-preloader" role="status" aria-live="polite">
@@ -945,7 +950,7 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=72441fe20124"></script>
+  <script src="/static/bundle.js?v=0d5cfcb6fc1f"></script>
   <script src="/static/settings-scroll.js?v=2"></script>
 </body>
 </html>
