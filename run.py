@@ -1,4 +1,6 @@
 """入口：初始化 → 启动定时拉取 → 启动 Web 面板。"""
+import errno
+import socket
 import multiprocessing
 import os
 
@@ -54,12 +56,15 @@ def _start_scheduler():
     )
     if config.IMAP_PASSWORD:
         scheduler.add_job(_poll_if_configured, id="poll_now")
+    from app.task_notifications import check_due_tasks
+    scheduler.add_job(check_due_tasks, "interval", seconds=15, id="task_reminders",
+                      max_instances=1, coalesce=True)
     scheduler.start()
     log.info("定时拉取服务已启动，间隔 %s 秒", config.POLL_INTERVAL_SECONDS)
     return scheduler
 
 
-def _run_app():
+def _run_app(server_socket=None):
     log.info("启动阶段：初始化数据库")
     db.init_db()
     log.info("启动阶段：恢复账号配置")
@@ -86,12 +91,32 @@ def _run_app():
         log.info("Web 面板: http://%s:%s", config.WEB_HOST, config.WEB_PORT)
         if getattr(sys, "frozen", False) and config.AUTO_OPEN_BROWSER:
             threading.Thread(target=_open_browser, daemon=True).start()
-        uvicorn.run(web_app, host=config.WEB_HOST, port=config.WEB_PORT, log_level="warning")
+        server = uvicorn.Server(uvicorn.Config(web_app, host=config.WEB_HOST, port=config.WEB_PORT, log_level="warning"))
+        server.run(sockets=[server_socket] if server_socket is not None else None)
     finally:
         scheduler.shutdown(wait=False)
         from app.mailbox_jobs import stop_outbox
         if not stop_outbox(timeout=5):
             log.warning("发件后台任务未能在 5 秒内停止；当前发送结果将在下次启动时核对")
+
+
+def _reserve_local_port():
+    """Keep the chosen socket open so another process cannot take the port."""
+    preferred = config.WEB_PORT
+    family = socket.AF_INET6 if ":" in config.WEB_HOST else socket.AF_INET
+    candidates = list(range(preferred, min(preferred + 20, 65536))) if preferred else []
+    for port in [*candidates, 0]:
+        try:
+            listener = socket.create_server((config.WEB_HOST, port), family=family)
+        except OSError as exc:
+            if exc.errno != errno.EADDRINUSE:
+                raise
+            continue
+        config.WEB_PORT = listener.getsockname()[1]
+        if preferred and config.WEB_PORT != preferred:
+            log.info("端口 %s 已被占用，已自动切换到 %s", preferred, config.WEB_PORT)
+        return listener
+    raise OSError("无法分配本地服务端口")
 
 
 def main():
@@ -102,8 +127,17 @@ def main():
             if not owns_instance:
                 log.warning("MailAI 已在运行，本次启动已停止")
                 return
+            # Reserve the source server port before starting any mail workers.
+            # Installed and source builds may use different data-directory locks.
+            listener = None
+            if not getattr(sys, "frozen", False):
+                listener = _reserve_local_port()
             ran = True
-            _run_app()
+            try:
+                _run_app(listener)
+            finally:
+                if listener is not None:
+                    listener.close()
     except BaseException:
         log.critical("MailAI 主进程异常退出", exc_info=True)
         raise

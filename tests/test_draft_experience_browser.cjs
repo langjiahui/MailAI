@@ -112,7 +112,7 @@ const path = require('node:path');
     await open(); await page.locator('#compose-message').fill('舍弃验证');
     await page.evaluate(()=>saveCurrentDraft());
     const discarded=await page.evaluate(()=>({id:currentDraftId,accountId:composeAccountId}));
-    await page.locator('#btn-discard-draft').click();await closed();
+    await page.locator('#btn-discard-draft').click();await page.locator('.mailai-question [data-confirm]').click();await closed();
     assert.equal((await list(discarded.accountId)).some(x=>x.id===discarded.id),false);
     pass('舍弃确认后删除同一草稿，不被自动保存重新创建');
 

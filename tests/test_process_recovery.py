@@ -4,6 +4,7 @@ No mail credentials or external services are used. This does not substitute
 for testing a real IMAP server or SMTP acknowledgments during disconnection.
 """
 import json
+import re
 import os
 from pathlib import Path
 import socket
@@ -79,6 +80,32 @@ def main():
                 assert get('/api/system/config')['accounts'] == [], 'test loaded a real account'
                 duplicate = start()
                 assert duplicate.wait(timeout=15) == 0, (Path(root) / 'server.log').read_text(encoding='utf-8', errors='replace')
+                # A different data directory bypasses the instance file lock.
+                with tempfile.TemporaryDirectory(prefix='mailai-port-conflict-') as other:
+                    conflict_log = Path(other) / 'conflict.log'
+                    with conflict_log.open('wb') as output_file:
+                        conflict = subprocess.Popen([sys.executable, 'run.py'], cwd=ROOT,
+                            env=dict(env, MAILAI_HOME=other), stdout=output_file, stderr=output_file)
+                        processes.append(conflict)
+                        deadline = time.monotonic() + 25
+                        while time.monotonic() < deadline:
+                            output = conflict_log.read_text(encoding='utf-8', errors='replace')
+                            assert conflict.poll() is None, output
+                            match = re.search(r'Web 面板: http://127.0.0.1:(\d+)', output)
+                            if match:
+                                selected_port = int(match.group(1))
+                                assert selected_port != port
+                                try:
+                                    with urllib.request.urlopen(f'http://127.0.0.1:{selected_port}/api/health', timeout=2) as response:
+                                        assert response.status == 200
+                                    break
+                                except urllib.error.URLError:
+                                    pass
+                            time.sleep(.05)
+                        else:
+                            raise AssertionError('automatic port fallback failed: ' + output)
+                        assert '已自动切换到' in output and 'Traceback' not in output, output
+                        conflict.terminate(); conflict.wait(timeout=10)
                 assert original.poll() is None
                 get('/api/health')
                 original.kill(); original.wait(timeout=8)

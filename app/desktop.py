@@ -300,20 +300,37 @@ class DesktopRuntime:
             log.exception("调度%s失败", label)
             return False
 
-    def _deliver_notification(self, title: str, body: str) -> None:
+    def _deliver_notification(self, title: str, body: str, target: dict | None = None) -> bool:
         try:
             from AppKit import NSUserNotification, NSUserNotificationCenter, NSUserNotificationDefaultSoundName
 
-            def deliver():
-                note = NSUserNotification.alloc().init()
-                note.setTitle_(title)
-                note.setInformativeText_(body)
-                note.setSoundName_(NSUserNotificationDefaultSoundName)
-                NSUserNotificationCenter.defaultUserNotificationCenter().deliverNotification_(note)
+            completed = threading.Event()
+            delivered = []
 
-            self._call_after_safely("发送 macOS 通知", deliver)
+            def deliver():
+                try:
+                    note = NSUserNotification.alloc().init()
+                    note.setTitle_(title)
+                    note.setInformativeText_(body)
+                    if target:
+                        note.setUserInfo_({"mailai_task": json.dumps(target)})
+                        note.setIdentifier_("mailai-task:" + json.dumps(target, sort_keys=True))
+                    note.setSoundName_(NSUserNotificationDefaultSoundName)
+                    NSUserNotificationCenter.defaultUserNotificationCenter().deliverNotification_(note)
+                    delivered.append(True)
+                finally:
+                    completed.set()
+
+            scheduled = self._call_after_safely("发送 macOS 通知", deliver)
+            if target and scheduled:
+                # Task checks run on a background worker; record acceptance only
+                # after Cocoa has submitted it, so callback failures can retry.
+                completed.wait(5)
+                return bool(delivered)
+            return scheduled
         except Exception:
             log.exception("发送 macOS 通知失败")
+            return False
 
     def install_native_controls(self) -> None:
         from AppKit import (
@@ -346,6 +363,15 @@ class DesktopRuntime:
 
             def userNotificationCenter_didActivateNotification_(self, center, notification):
                 runtime.show_window()
+                info = notification.userInfo() or {}
+                payload = info.get('mailai_task')
+                if payload:
+                    try:
+                        target = json.loads(payload)
+                        runtime._evaluate_js_safely('打开提醒任务',
+                            f"window.mailaiOpenTaskReminder?.({json.dumps(target)})")
+                    except (ValueError, TypeError):
+                        log.warning('无效的任务通知目标')
 
         controller = StatusController.alloc().init()
         status_item = NSStatusBar.systemStatusBar().statusItemWithLength_(NSSquareStatusItemLength)

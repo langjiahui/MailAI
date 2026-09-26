@@ -284,14 +284,13 @@ async function refreshTaskCenter({lightweight = false} = {}) {
       }
     }
     document.getElementById('btn-task-center').textContent = `${mailaiT('task.title') || '任务与发件箱'}${attentionCount ? (mailaiT('task.badgeAttention') || ' · {n} 项需处理').replace('{n}', attentionCount) : activeCount ? (mailaiT('task.badgeActive') || ' · {n} 项进行中').replace('{n}', activeCount) : errors.length ? ' · 状态待确认' : ''}`;
-    for (const reminder of allReminders.filter(item => new Date(item.at).getTime() <= Date.now())) {
-      const reminderAccount = reminder.account_id;
-      const key = `reminder:${reminderAccount}:${reminder.todo_id || reminder.email_id}:${reminder.at}`;
-      if (!sessionStorage.getItem(key)) {
-        sessionStorage.setItem(key, '1');
-        taskNotice(`到时间了：${reminder.subject} · ${reminder.account_user}`, '查看邮件', async () => { await openAccountMailbox(reminderAccount, 'inbox'); await revealEmailFromSource(reminder.email_id); });
-      }
-    }
+    const freshDue = allReminders.filter(item => new Date(item.at).getTime() <= Date.now()).filter(item => {
+      const key=`reminder:${item.account_id}:${item.todo_id || item.email_id}:${item.at}`;
+      if(sessionStorage.getItem(key))return false;
+      sessionStorage.setItem(key,'1');return true;
+    });
+    if(freshDue.length)taskNotice(`${freshDue.length} 项待办已到提醒时间`, '查看提醒',()=>window.mailaiOpenTaskReminder(),8000);
+
   } catch (error) { if (accountId !== taskCenterScope()) return; host.dataset.live = '0'; host.innerHTML = `<div class="task-load-error"><b>状态暂时无法更新</b><span>${esc(error.message)}</span><button data-task-refresh>重新加载</button></div>`; }
   finally { taskPollActive = false; scheduleTaskCenterRefresh(host.dataset.live === '1'); }
 }
@@ -657,13 +656,13 @@ function initializeAssistantPolish() {
 }
 
 function initializeWorkspace() {
-  document.getElementById('account-mailbox-nav').addEventListener('click', event => {
+  document.getElementById('account-mailbox-nav').addEventListener('click', async event => {
     const id = event.target.closest('[data-account-collapse]')?.dataset.accountCollapse;
     if (id) { localStorage.setItem('collapsed:' + id, localStorage.getItem('collapsed:' + id) === '1' ? '0' : '1'); renderSidebarAccounts(); [...document.querySelectorAll('[data-account-collapse]')].find(button => button.dataset.accountCollapse === id)?.focus(); }
     const managedId = event.target.closest('[data-account-manage]')?.dataset.accountManage;
     if (managedId) { showSystemView('account'); selectedManagedAccountId = managedId; renderAccountSelection(); }
     const aliasId = event.target.closest('[data-account-alias]')?.dataset.accountAlias;
-    if (aliasId) { const value = prompt('邮箱显示名称（留空恢复邮箱地址）：', localStorage.getItem('alias:' + aliasId) || ''); if (value !== null) { localStorage.setItem('alias:' + aliasId, value.trim().slice(0,40)); renderSidebarAccounts(); } }
+    if (aliasId) { const value = await mailaiAsk({title:'修改邮箱显示名称', message:'只更改本机显示，不影响邮箱地址。留空可恢复邮箱地址。', label:'显示名称', value:localStorage.getItem('alias:' + aliasId) || '', maxLength:40, confirmText:'保存名称'}); if (value !== null) { localStorage.setItem('alias:' + aliasId, value.trim().slice(0,40)); renderSidebarAccounts(); } }
   });
   document.body.insertAdjacentHTML('beforeend', `<div id="workspace-notice" class="workspace-notice hidden" role="status" aria-live="polite"></div>
     <div id="task-center-backdrop" class="task-center-backdrop hidden"></div>

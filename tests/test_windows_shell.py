@@ -47,6 +47,22 @@ def main():
     runtime.show_window()
     assert not runtime.hidden and not runtime.window.hidden and runtime.window.restored
 
+    from app.windows_notifications import reminder_icon_class, NIN_BALLOONUSERCLICK
+    clicked = threading.Event()
+    original = []
+    class BaseIcon:
+        def _on_notify(self, wparam, lparam): original.append((wparam,lparam))
+    icon = reminder_icon_class(BaseIcon, clicked.set)()
+    icon._on_notify(0,NIN_BALLOONUSERCLICK)
+    assert clicked.is_set() and not original
+    icon._on_notify(1,0x205)
+    assert original == [(1,0x205)], 'Normal tray menus must keep working'
+    opened=threading.Event()
+    runtime.window.evaluate_js=lambda script: (runtime.window.scripts.append(script),opened.set())
+    runtime.open_reminders()
+    assert opened.wait(2)
+    assert 'mailaiOpenTaskReminder' in runtime.window.scripts[-1]
+
     # The JS bridge recursively reflects public attributes. Native runtime must
     # stay private so WebView2 properties are never read on its worker thread.
     from app.desktop import DesktopApi

@@ -43,4 +43,9 @@ def save(email_id=None, todo_id=None, **fields):
             raise ValueError('请先恢复已完成的待办，再设置提醒')
         if fields:
             c.execute('UPDATE todos SET user_edited=1,' + ','.join(f'{k}=?' for k in fields) + ' WHERE id=?', [*fields.values(), task['id']])
+        if fields.get('remind_at') and fields['remind_at'] != task['remind_at']:
+            from .task_notifications import ensure_delivery_table
+            ensure_delivery_table(c)
+            c.execute("INSERT OR REPLACE INTO task_notice_delivery(todo_id,remind_at,sent,retry_after) VALUES(?,?,0,?)",
+                      (task['id'], fields['remind_at'], datetime.now().isoformat()))
         return dict(c.execute('SELECT * FROM todos WHERE id=?',(task['id'],)).fetchone())

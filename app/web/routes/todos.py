@@ -126,3 +126,23 @@ def api_all_reminders():
         except (ValueError, OSError):
             continue
     return items
+
+
+@router.get('/api/task-notices')
+def api_task_notices():
+    from ...task_notifications import reminder_records, capability
+    return {'items': reminder_records(), 'capability': capability()}
+
+
+@router.post('/api/task-notices/test')
+def api_test_task_notice():
+    from ...task_notifications import capability, deliver
+    status = capability()
+    if not status['supported']:
+        return {'ok':False,'message':status['hint']}
+    try:
+        ok = deliver('MailAI · 测试提醒', '看到这条通知，说明当前系统允许显示提醒。点击可查看提醒记录。', {'reminderInbox':True})
+        return {'ok':bool(ok), 'message':'已提交测试通知；是否显示取决于系统通知权限与勿扰设置。' if ok else '通知暂未提交，请稍后重试。'}
+    except Exception:
+        log.warning('测试待办通知失败', exc_info=True)
+        return {'ok':False,'message':'无法提交系统通知，请检查通知设置。'}

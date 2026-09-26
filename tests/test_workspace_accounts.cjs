@@ -9,10 +9,10 @@ const deferred = () => { let resolve, reject; const promise=new Promise((a,b)=>{
   const nodes={'todo-list':{},'todo-center':{classList:{add(){}}}};
   let request=deferred(), renders=0;
   const calls=[];
-  const c=vm.createContext({document:{getElementById:id=>nodes[id],body:{classList:{remove(){}}}},
+  const c=vm.createContext({document:{querySelector:()=>null,getElementById:id=>nodes[id],body:{classList:{remove(){}}}},
     api:async (url, options)=>{calls.push(options.accountId);return request.promise;},esc:x=>x,
     updateTodoBatchToolbar(){},renderTodoCenter:()=>renders++,setTimeout,updateSidebar(){},toast(){},window:{mailaiTasksChanged(){}},selectedTodoIds:new Set()});
-  vm.runInContext("let todoCenterLoading=false, todoBatchBusy=false; let todoCenterAccountId='a', todoCenterRevision=0, todoCenterRows=[];"+
+  vm.runInContext("let todoCenterLoading=false, todoBatchBusy=false, todoReturnFocus; const todoEdits=new Map(); const todoEditKey=(id,accountId)=>accountId+':'+id; let todoCenterAccountId='a', todoCenterRevision=0, todoCenterRows=[];"+
     slice(app,'async function loadTodoCenter()', 'async function saveTodoItem(')+
     slice(app,'async function setTodoBatchStatus(', 'async function openTodoCenter()'),c);
   const first=c.loadTodoCenter(); const old=request;

@@ -33,3 +33,55 @@ html[data-theme="dark"] .shared-file-card[data-state="failed"] small:last-child 
 html[data-theme] body #toast.error { top:84px; bottom:auto; max-width:min(540px, calc(100vw - 32px)); pointer-events:none; }
 html[data-theme] body #toast.error .toast-dismiss { pointer-events:auto; }
 .search-progress { flex-shrink:0; margin:0 14px 8px; font-size:11px; color:var(--desk-muted); }
+
+.todo-reminder-time { color:var(--desk-accent); font-size:11px; text-align:center; line-height:1.5; }
+#task-notices { width:min(720px,calc(100vw - 32px)); max-height:85vh; padding:0; border:1px solid var(--desk-line); border-radius:20px; background:var(--desk-surface); color:var(--desk-ink); box-shadow:0 24px 80px #0003; }
+#task-notices::backdrop { background:#13291f66; backdrop-filter:blur(5px); }
+#task-notices[open] { display:flex; flex-direction:column; }
+#task-notices header { display:flex; align-items:center; justify-content:space-between; padding:20px 24px; }
+#task-notices h2 { margin:4px 0 0; font-size:21px; }
+#task-notices small,#task-notices footer { color:var(--desk-muted); font-size:12px; }
+#task-notices button { cursor:pointer; border:1px solid var(--desk-line); border-radius:9px; padding:7px 11px; background:var(--desk-muted-surface); color:var(--desk-accent); font:inherit; font-size:12px; }
+#task-notices button:disabled { opacity:.5; cursor:default; }
+.notice-toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:0 24px; font-size:12px; }
+.notice-toolbar label { margin-right:auto; }
+#notice-capability { margin:12px 24px; color:var(--desk-muted); font-size:12px; line-height:1.6; }
+#notice-records { min-height:100px; overflow:auto; padding:0 24px 16px; }
+.notice-record { padding:14px; margin:8px 0; border-radius:12px; background:var(--desk-muted-surface); }
+.notice-record b,.notice-record small { display:block; overflow-wrap:anywhere; }
+.notice-record b { font-size:14px; }.notice-record small { margin-top:6px; }
+.notice-state { display:inline-block; margin:8px 0; padding:3px 8px; border-radius:6px; color:var(--desk-accent); background:var(--desk-selected); font-size:11px; }
+.notice-state[data-state="retry"] { color:#b66c22; }
+.notice-actions { display:flex; gap:6px; flex-wrap:wrap; }
+#task-notices footer { padding:14px 24px; line-height:1.6; }
+.notice-empty { padding:30px 0; text-align:center; line-height:2; }
+
+.plan-reminder-shortcuts { display:flex; flex-wrap:wrap; gap:6px; }.plan-reminder-shortcuts button { padding:6px 9px; border:1px solid var(--desk-line); border-radius:8px; background:var(--desk-muted-surface); color:var(--desk-accent); font:inherit; font-size:12px; cursor:pointer; }
+
+/* Quiet, consistent feedback without replacing the user's working context. */
+html[data-theme] body .mailai-question {
+  width:min(440px,calc(100vw - 32px)); max-height:calc(100dvh - 40px); overflow:auto;
+  margin:auto; padding:24px; border:1px solid var(--desk-line); border-radius:20px;
+  background:var(--desk-surface); color:var(--desk-ink); box-shadow:0 24px 80px #0003;
+}
+.mailai-question::backdrop { background:#13291f66; backdrop-filter:blur(5px); }
+.mailai-question h2 { font-size:20px; margin:0 0 12px; }
+.mailai-question .question-message { white-space:pre-wrap; overflow-wrap:anywhere; font-size:14px; line-height:1.7; color:var(--desk-muted); margin:0 0 20px; }
+.mailai-question .question-field:not([hidden]) { display:grid; gap:8px; font-size:13px; }
+html[data-theme] body .mailai-question input { box-sizing:border-box; width:100%; min-height:40px; padding:8px 12px; border:1px solid var(--desk-line); border-radius:10px; background:var(--desk-muted-surface); color:var(--desk-ink); font:inherit; }
+.mailai-question footer { display:flex; justify-content:flex-end; gap:8px; margin-top:24px; }
+html[data-theme] body .mailai-question button { min-height:38px; padding:8px 16px; border:0; border-radius:10px; background:var(--desk-muted-surface); color:var(--desk-ink); font:inherit; cursor:pointer; }
+html[data-theme] body .mailai-question [data-confirm] { background:var(--desk-accent); color:white; }
+html[data-theme] body .mailai-question [data-confirm].danger { background:#b4433c; color:white; }
+html[data-theme="dark"] body .mailai-question [data-confirm].danger { background:#ae3d36; }
+.mailai-question button:hover { filter:brightness(.94); }
+.mailai-question :focus-visible, #connection-recovery button:focus-visible, .todo-save-state button:focus-visible { outline:2px solid var(--desk-accent); outline-offset:3px; }
+.todo-save-state { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:5px; font-size:11px; color:var(--desk-muted); overflow-wrap:anywhere; }
+.todo-save-state[data-state="error"] { color:#b4433c; }
+html[data-theme="dark"] .todo-save-state[data-state="error"] { color:#f4aaa3; }
+.todo-save-state button, .todo-refresh-error button { border:0; border-radius:8px; padding:5px 9px; background:var(--desk-selected); color:var(--desk-accent); font:inherit; cursor:pointer; }
+.todo-refresh-error { padding:12px; margin-bottom:10px; border-radius:12px; background:var(--desk-muted-surface); color:var(--desk-ink); font-size:12px; }
+#connection-recovery:not([hidden]) { display:flex; align-items:center; gap:12px; position:fixed; z-index:30000; bottom:20px; left:50%; transform:translateX(-50%); width:max-content; max-width:calc(100vw - 32px); box-sizing:border-box; padding:12px 16px; border:1px solid var(--desk-line); border-radius:14px; background:var(--desk-surface); color:var(--desk-ink); box-shadow:0 10px 40px #0002; font-size:13px; }
+#connection-recovery span { max-width:540px; line-height:1.6; }
+#connection-recovery button { flex-shrink:0; border:0; border-radius:8px; padding:7px 10px; background:var(--desk-selected); color:var(--desk-accent); cursor:pointer; font:inherit; }
+@media(max-width:600px) { #connection-recovery:not([hidden]) { flex-wrap:wrap; } #connection-recovery span { flex-basis:100%; } }

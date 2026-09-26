@@ -168,3 +168,66 @@ html[data-theme] body .compose-card .compose-format-tools button:focus-visible {
 @media(max-width:760px) {
   html[data-theme] body .compose-card .compose-format-tools { padding-inline:16px; }
 }
+
+/* Attachment library: compact file silhouettes and separate preview/download targets. */
+#attachment-center .attachment-heading { min-width:0; }
+#attachment-center .attachment-heading-line { display:flex; align-items:center; gap:14px; min-width:0; flex-wrap:wrap; }
+#attachment-center #attachment-account-label { margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:38ch; }
+html[data-theme] body #attachment-center .attachment-center-card>header { padding:20px 24px 16px; border-bottom:0; }
+#attachment-center .attachment-heading p { margin:6px 0 0; }
+#attachment-center .attachment-center-tools { padding-top:0; padding-bottom:12px; }
+#attachment-center .attachment-type-filters { padding-bottom:16px; gap:5px; }
+html[data-theme] body #attachment-center .attachment-type-filters button { border:0; border-radius:9px; background:var(--desk-muted-surface); color:var(--desk-muted); box-shadow:none; }
+html[data-theme] body #attachment-center .attachment-type-filters button.active { background:var(--desk-selected); color:var(--desk-accent); }
+html[data-theme] body #attachment-center .attachment-type-filters button:hover { color:var(--desk-accent); }
+/* Rows must retain their content height when the scroll area contains many files. */
+#attachment-center .attachment-grid { gap:10px; padding-top:0; grid-auto-rows:max-content; }
+html[data-theme] body #attachment-center .attachment-card {
+  grid-template-columns:minmax(0,1fr) auto; gap:12px; align-items:stretch; min-height:auto; padding:16px;
+  border:1px solid var(--desk-line); border-radius:14px; background:var(--desk-surface)!important;
+  box-shadow:none!important; transform:none; transition:background .16s ease,border-color .16s ease;
+}
+html[data-theme] body #attachment-center .attachment-card:hover { background:var(--desk-muted-surface)!important; border-color:var(--desk-accent); transform:none; }
+#attachment-center .attachment-open { display:grid; grid-template-columns:42px minmax(0,1fr); gap:14px; align-items:start; min-width:0; text-decoration:none; color:inherit; border-radius:8px; }
+html[data-theme] body #attachment-center .attachment-file-icon {
+  --file-color:#687a75; display:block; position:relative; width:40px; height:54px; margin-top:2px;
+  border:0; border-radius:0; background:transparent!important; color:var(--file-color)!important;
+}
+html[data-theme] body #attachment-center .type-pdf .attachment-file-icon { --file-color:#b86a63; }
+html[data-theme] body #attachment-center .type-sheet .attachment-file-icon { --file-color:#458870; }
+html[data-theme] body #attachment-center .type-document .attachment-file-icon { --file-color:#6286b2; }
+html[data-theme] body #attachment-center .type-image .attachment-file-icon { --file-color:#b18c48; }
+html[data-theme] body #attachment-center .type-archive .attachment-file-icon { --file-color:#9375ad; }
+html[data-theme="dark"] body #attachment-center .attachment-file-icon { --file-color:#a5b8ac; }
+html[data-theme="dark"] body #attachment-center .type-pdf .attachment-file-icon { --file-color:#e3a59b; }
+html[data-theme="dark"] body #attachment-center .type-sheet .attachment-file-icon { --file-color:#91c7ac; }
+html[data-theme="dark"] body #attachment-center .type-document .attachment-file-icon { --file-color:#a0bcdf; }
+html[data-theme="dark"] body #attachment-center .type-image .attachment-file-icon { --file-color:#d7bc83; }
+html[data-theme="dark"] body #attachment-center .type-archive .attachment-file-icon { --file-color:#c2a6db; }
+#attachment-center .attachment-file-icon svg { display:block; width:40px; height:48px; fill:none; stroke:currentColor; stroke-width:1.4; stroke-linejoin:round; stroke-linecap:round; }
+#attachment-center .file-sheet { fill:currentColor; fill-opacity:.06; }
+#attachment-center .file-fold { fill:currentColor; fill-opacity:.12; }
+#attachment-center .file-mark { stroke-width:1.5; opacity:.8; }
+#attachment-center .attachment-file-icon strong { position:absolute; bottom:0; left:50%; transform:translateX(-50%); max-width:48px; padding:3px 5px; border-radius:4px; background:var(--desk-surface); color:inherit; font-size:9px; font-weight:750; letter-spacing:.035em; line-height:1; }
+html[data-theme] body #attachment-center .attachment-card-main>b { color:var(--desk-ink)!important; font-size:13px; line-height:1.5; }
+#attachment-center .attachment-facts { gap:0; margin-top:5px; flex-wrap:wrap; }
+html[data-theme] body #attachment-center .attachment-facts small { color:var(--desk-muted)!important; background:transparent!important; padding:0; font-size:10.5px; line-height:1.7; }
+#attachment-center .attachment-facts small+small::before { content:'·'; padding:0 7px; }
+html[data-theme] body #attachment-center :is(.attachment-source,.attachment-sender) { color:var(--desk-muted)!important; font-size:10.5px; line-height:1.5; }
+#attachment-center .attachment-source { margin-top:9px; }
+#attachment-center .attachment-source i { color:inherit; font-weight:400; }
+#attachment-center .attachment-sender { margin-top:2px; }
+#attachment-center .attachment-card-side { width:34px; align-items:center; gap:8px; }
+html[data-theme] body #attachment-center .attachment-download-action { width:32px; height:32px; flex-shrink:0; margin-top:auto; border:0; border-radius:9px; background:var(--desk-muted-surface)!important; color:var(--desk-accent)!important; text-decoration:none; }
+html[data-theme] body #attachment-center .attachment-download-action:hover { background:var(--desk-selected)!important; }
+#attachment-center .attachment-risk { display:block; padding:3px 5px; font-size:9px; }
+#attachment-center :is(.attachment-open,.attachment-download-action,.attachment-type-filters button):focus-visible { outline:2px solid var(--desk-accent); outline-offset:3px; }
+@media(max-width:820px) { #attachment-center .attachment-heading-line { gap:5px 12px; } #attachment-center .attachment-center-tools { gap:7px; } }
+@media(max-width:520px) {
+  html[data-theme] body #attachment-center .attachment-center-card>header { padding:18px 16px 14px; }
+  #attachment-center .attachment-heading-line { align-items:flex-start; flex-direction:column; }
+  #attachment-center #attachment-account-label { max-width:calc(100vw - 84px); }
+  html[data-theme] body #attachment-center .attachment-card { padding:13px 12px; gap:8px; }
+  #attachment-center .attachment-open { gap:10px; grid-template-columns:40px minmax(0,1fr); }
+}
+@media(prefers-reduced-motion:reduce) { #attachment-center .attachment-card { transition:none!important; } }

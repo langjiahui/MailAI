@@ -67,7 +67,11 @@ jobs:
           exit 1
 
       - name: Run prepublish browser checks
-        run: node tests/prepublish_browser.cjs
+        run: |
+          node tests/prepublish_browser.cjs
+          node tests/test_interaction_consistency_browser.cjs
+          node tests/test_task_notices_browser.cjs
+          node tests/test_attachment_library_ui.cjs
 
   secret-scan:
     runs-on: ubuntu-latest

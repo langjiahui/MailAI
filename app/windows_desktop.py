@@ -48,6 +48,7 @@ class WindowsDesktopRuntime:
         self.quitting = False
         self.tray = None
         self.tray_notice_shown = False
+        self._last_notice_is_task = False
         self._poll_lock = threading.Lock()
 
     def handle_closing(self, *_):
@@ -65,7 +66,7 @@ class WindowsDesktopRuntime:
         if not self.tray_notice_shown:
             self.tray_notice_shown = True
             try:
-                self.tray.notify("关闭窗口后仍会在后台收取和分析邮件", "MailAI 已在后台运行")
+                self._notify_tray("关闭窗口后仍会在后台收取和分析邮件", "MailAI 已在后台运行")
             except Exception:
                 log.exception("显示 Windows 托盘驻留提示失败")
         return False
@@ -79,6 +80,32 @@ class WindowsDesktopRuntime:
                     self.window.restore()
                 except Exception:
                     log.debug("Windows 窗口无需恢复", exc_info=True)
+
+    def _notify_tray(self, body, title, *, reminder=False):
+        self._last_notice_is_task = reminder
+        self.tray.notify(body, title)
+
+    def notify_task_reminder(self, title, body):
+        if self.quitting or self.tray is None:
+            return False
+        self._notify_tray(body, title, reminder=True)
+        return True
+
+    def on_notification_click(self):
+        if self._last_notice_is_task:
+            self.open_reminders()
+        else:
+            self.show_window()
+
+    def open_reminders(self, *_):
+        self.show_window()
+        def open_panel():
+            if self.window and not self.quitting:
+                try:
+                    self.window.evaluate_js("window.mailaiOpenTaskReminder?.({})")
+                except Exception:
+                    log.exception("打开 Windows 提醒记录失败")
+        threading.Thread(target=open_panel, name="mailai-reminder-open", daemon=True).start()
 
     def quit(self, *_):
         from .draft_lifecycle import request_safe_exit
@@ -118,7 +145,7 @@ class WindowsDesktopRuntime:
             return
         title, body = content
         try:
-            self.tray.notify(body, title)
+            self._notify_tray(body, title)
         except Exception:
             log.exception("发送 Windows 新邮件通知失败")
 
@@ -126,7 +153,7 @@ class WindowsDesktopRuntime:
         if not self.tray:
             return {"ok": False, "message": "系统托盘尚未就绪，请稍后重试"}
         try:
-            self.tray.notify("收到新邮件时会通过系统通知提醒你。", "MailAI 测试通知")
+            self._notify_tray("收到新邮件时会通过系统通知提醒你。", "MailAI 测试通知")
             return {"ok": True, "message": "已发送测试通知；若未显示，请检查 Windows 通知设置"}
         except Exception:
             log.exception("Windows 测试通知失败")
@@ -140,13 +167,15 @@ class WindowsDesktopRuntime:
             image = Image.open(_asset_path()).convert("RGBA").resize(
                 (64, 64), Image.Resampling.LANCZOS
             )
-            self.tray = pystray.Icon(
+            from .windows_notifications import reminder_icon_class
+            self.tray = reminder_icon_class(pystray.Icon, self.on_notification_click)(
                 "MailAI",
                 image,
                 "MailAI · 后台收信中",
                 menu=pystray.Menu(
                     pystray.MenuItem("打开 MailAI", self.show_window, default=True),
                     pystray.MenuItem("立即收取邮件", self.poll_now),
+                    pystray.MenuItem("提醒记录", self.open_reminders),
                     pystray.Menu.SEPARATOR,
                     pystray.MenuItem("退出 MailAI", self.quit),
                 ),

@@ -95,7 +95,7 @@ async function undoCases() {
 async function bulkCollectionCase() {
   const requests = [], offered = [];
   const context = vm.createContext({JSON, Date, URLSearchParams, AbortController, setTimeout, clearTimeout,
-    API:'', activeMailAccount:() => ({id:'a'}), document:{body:{classList:{contains:() => false}}},
+    window:{}, API:'', activeMailAccount:() => ({id:'a'}), document:{body:{classList:{contains:() => false}}},
     offerUndo:(...args) => offered.push(args), describeMailUndo:() => ({label:'标为已读',count:100}),
     fetch:async (url, options) => { requests.push(options); return {ok:true,json:async () => ({undo_token:'part',completed:100})}; },
   });

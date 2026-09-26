@@ -17,7 +17,7 @@
     })();
   </script>
   <link rel="icon" type="image/png" href="/static/assets/mailai-mark.png" />
-  <link rel="stylesheet" href="/static/style.css?v=model-usage-1" />
+  <link rel="stylesheet" href="/static/style.css?v=compose-context-2" />
   <link rel="stylesheet" href="/static/workspace.css?v=task-center-1" />
   <link rel="stylesheet" href="/static/companion.css?v=mint-4" />
   <link rel="stylesheet" href="/static/theme.css?v=task-center-1" />
@@ -26,13 +26,15 @@
   <link rel="stylesheet" href="/static/select-ui.css?v=dark-graphite-1">
   <link rel="stylesheet" href="/static/author.css?v=1">
   <link rel="stylesheet" href="/static/reading-polish.css?v=17">
-  <link rel="stylesheet" href="/static/dialog-polish.css?v=11">
+  <link rel="stylesheet" href="/static/dialog-polish.css?v=13">
   <link rel="stylesheet" href="/static/glass-material.css?v=2">
   <link rel="stylesheet" href="/static/motion.css?v=2">
   <link rel="stylesheet" href="/static/settings-layout.css?v=2">
   <link rel="stylesheet" href="/static/special-reading.css?v=1">
   <link rel="stylesheet" href="/static/list-header-polish.css?v=7">
-  <link rel="stylesheet" href="/static/interaction-recovery.css?v=1">
+  <link rel="stylesheet" href="/static/interaction-recovery.css?v=4">
+  <link rel="stylesheet" href="/static/dashboard-polish.css?v=1">
+  <link rel="stylesheet" href="/static/digest-polish.css?v=1">
 </head>
 <body>
   <div id="app-preloader" class="app-preloader" role="status" aria-live="polite">
@@ -569,7 +571,7 @@
       <div class="attachment-center-backdrop"></div>
       <section class="attachment-center-card" role="dialog" aria-modal="true" aria-labelledby="attachment-center-title">
         <header>
-          <div><span class="eyebrow" data-i18n="att.eyebrow">文件工作台</span><h2 id="attachment-center-title" data-i18n="att.title">附件中心</h2><small id="attachment-account-label" class="tool-account-label"></small><p data-i18n="att.desc">集中查找邮件中的文档、表格、图片与压缩文件</p></div>
+          <div class="attachment-heading"><div class="attachment-heading-line"><h2 id="attachment-center-title" data-i18n="att.title">附件中心</h2><small id="attachment-account-label" class="tool-account-label"></small></div><p data-i18n="att.desc">集中查找邮件中的文档、表格、图片与压缩文件</p></div>
           <button id="btn-close-attachments" class="btn-ghost" aria-label="关闭附件中心" data-i18n-aria="att.closeAria">✕</button>
         </header>
         <div class="attachment-center-tools">
@@ -941,7 +943,7 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=52e7314fc841"></script>
+  <script src="/static/bundle.js?v=28c11f70e7ba"></script>
   <script src="/static/settings-scroll.js?v=1"></script>
 </body>
 </html>
