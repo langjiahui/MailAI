@@ -37,6 +37,17 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict');
     await page.evaluate(()=>openContactCenter());await waitContacts();
     assert.ok((await page.locator('#contact-center-list').innerText()).includes('甲方联系人'));
     await page.locator('[data-contact-edit="colleague@example.test"]').click();
+    // An editor must not be clipped by the compact contact list underneath it.
+    for (const width of [1440,390]) {
+      await page.setViewportSize({width,height:900});
+      for (const selector of ['#contact-editor-title','#contact-form button[type="submit"]']) {
+        assert.ok(await page.locator(selector).evaluate(el=>{
+          const r=el.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
+          return r.top>=0 && r.bottom<=innerHeight && (hit===el || el.contains(hit));
+        }),`${selector} must be visible and reachable at ${width}px`);
+      }
+    }
+    await page.setViewportSize({width:1440,height:900});
     await page.locator('#contact-name').fill('甲方更新');
     await page.locator('#contact-form [type="submit"]').click();
     await page.waitForFunction(()=>document.getElementById('contact-editor').classList.contains('hidden'));

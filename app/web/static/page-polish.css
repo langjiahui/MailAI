@@ -1,0 +1,168 @@
+/* Secondary workspaces share the same quiet navigation and control hierarchy. */
+html[data-theme] body #system-view:not(.hidden) {
+ display:grid; grid-template-columns:160px minmax(0,1fr); grid-template-rows:auto minmax(0,1fr);
+ gap:20px 28px; padding:24px 28px; overflow:hidden;
+}
+html[data-theme] body #system-view>.system-header { grid-column:1/-1; grid-row:1; margin:0; padding:0; align-items:center; }
+html[data-theme] body #system-view>.system-header h2 { font-size:24px; line-height:1.3; margin:0 0 6px; }
+html[data-theme] body #system-view>.system-header p { margin:0; font-size:12px; color:var(--desk-muted); }
+html[data-theme] body #system-view>.system-tabs {
+ position:static; grid-column:1; grid-row:2; display:flex; flex-direction:column; align-self:start; gap:4px;
+ margin:0; padding:0; border:0!important; background:transparent!important; box-shadow:none!important; backdrop-filter:none;
+}
+html[data-theme] body #system-view>.system-tabs button {
+ min-height:40px; padding:10px 14px; font-size:13px; text-align:left; border-radius:9px;
+ background:transparent!important; color:var(--desk-muted)!important; box-shadow:none!important;
+}
+html[data-theme] body #system-view>.system-tabs button:hover { background:var(--desk-hover)!important; }
+html[data-theme] body #system-view>.system-tabs button.active { color:var(--desk-accent)!important; background:var(--desk-selected)!important; font-weight:650; }
+html[data-theme] body #system-view>.system-panel { grid-column:2; grid-row:2; margin:0; padding:0 4px 24px 0; min-height:0; }
+html[data-theme] body #system-view .settings-page-intro { margin:0 0 18px; padding:0; }
+#system-view .settings-page-intro h3 { font-size:18px; margin:0 0 6px; }
+#system-view .settings-page-intro p { font-size:12px; line-height:1.6; color:var(--desk-muted); }
+#system-view .preference-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr)); gap:20px; align-items:start; }
+#system-view .preference-col { width:100%; }
+html[data-theme] body #system-view .preference-card { padding:20px; border-radius:14px; box-shadow:none!important; }
+#system-view .preference-card-head { margin-bottom:16px; padding-bottom:14px; }
+#system-view .preference-card-head h3 { font-size:16px; }
+html[data-theme] body #system-view .preference-card :is(p,small) { font-size:12px; line-height:1.65; }
+#system-view .preference-card legend { font-size:13px; font-weight:600; }
+html[data-theme] body #system-view :is(.theme-options,.density-options,.font-size-options) label { padding:10px 12px; min-height:0; border-radius:10px; box-shadow:none!important; }
+#system-view :is(.theme-options,.density-options,.font-size-options) small { display:none; }
+#system-view :is(.theme-options,.density-options,.font-size-options) b { font-size:12px; }
+#system-view .notification-choice { padding:10px 12px; border-radius:10px; }
+#system-view .notification-choice b { font-size:13px; }
+#system-view .account-workspace { gap:20px; }
+html[data-theme] body #system-view :is(button,select,input):focus-visible { outline:2px solid var(--desk-accent); outline-offset:3px; }
+/* The learning prompt resumes when returning to mail, without changing progress. */
+body:has(#system-view:not(.hidden)) .start-card { display:none!important; }
+@media(max-width:1100px) {
+ html[data-theme] body #system-view:not(.hidden) { grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto minmax(0,1fr); gap:16px; padding:20px; }
+ html[data-theme] body #system-view>.system-tabs { grid-row:2; grid-column:1; flex-direction:row; overflow-x:auto; flex-wrap:nowrap; }
+ html[data-theme] body #system-view>.system-tabs button { flex:0 0 auto; padding:8px 12px; }
+ html[data-theme] body #system-view>.system-panel { grid-row:3; grid-column:1; }
+}
+/* Contacts: search first, group actions only when a group can be managed. */
+html[data-theme] body #contact-center .contact-center-card { width:min(940px,calc(96vw / var(--fz,1))); height:auto; min-height:min(440px,calc(70dvh / var(--fz,1))); max-height:calc(86dvh / var(--fz,1)); border-radius:20px; }
+html[data-theme] body #contact-center .contact-center-card>header { padding:22px 24px 14px; border-bottom:0; }
+#contact-center #contact-center-eyebrow { display:none; }
+#contact-center #contact-center-description { margin:8px 0 0; }
+html[data-theme] body #contact-center .contact-center-tools { padding:8px 24px 12px; gap:12px; border:0; flex-shrink:0; }
+#contact-center .attachment-search-box { min-height:40px; }
+#contact-center .attachment-search-box input { font-size:13px; }
+html[data-theme] body #contact-center .contact-group-toolbar { padding:0 24px 14px; gap:8px; flex-shrink:0; }
+#contact-center :is(#group-add-members,#group-rename,#group-delete):disabled { display:none; }
+#contact-center .contact-group-toolbar:has(#group-add-members:disabled)::after { content:'选择分组后可管理成员'; font-size:12px; color:var(--desk-muted); margin-left:4px; }
+html[data-theme] body #contact-center .contact-group-toolbar button { min-height:34px; padding:6px 12px; border:1px solid transparent; background:var(--desk-muted-surface); color:var(--desk-muted); font-size:12px; }
+html[data-theme] body #contact-center #group-delete { color:#b4594d; }
+#contact-center .contact-center-list { flex:0 1 auto; min-height:100px; grid-auto-rows:max-content; padding:0 24px 22px; gap:0; }
+html[data-theme] body #contact-center .contact-center-item { padding:14px 8px; min-height:76px; border:0; border-bottom:1px solid var(--desk-line); border-radius:0; background:transparent!important; box-shadow:none!important; }
+html[data-theme] body #contact-center .contact-center-item:last-child { border-bottom-color:transparent; }
+html[data-theme] body #contact-center .contact-center-item:hover { background:var(--desk-muted-surface)!important; border-radius:10px; }
+html[data-theme] body #contact-center .contact-center-item.selected { background:var(--desk-selected)!important; border-radius:10px; }
+#contact-center .contact-center-main b { font-size:14px; }
+#contact-center .contact-center-main :is(small,p) { font-size:12px; line-height:1.6; }
+html[data-theme] body #contact-center .contact-row-actions button { min-height:32px; font-size:12px; padding:6px 9px; border:1px solid transparent!important; color:var(--desk-muted)!important; background:transparent!important; }
+html[data-theme] body #contact-center .contact-row-actions [data-contact-compose] { background:var(--desk-selected)!important; color:var(--desk-accent)!important; }
+html[data-theme] body #contact-center .contact-row-actions .danger { color:#b4594d!important; }
+html[data-theme=dark] body #contact-center :is(#group-delete,.contact-row-actions .danger) { color:#e7a296!important; }
+html[data-theme] body #contact-center :is(button,select,input):focus-visible { outline:2px solid var(--desk-accent); outline-offset:3px; }
+@media(max-width:700px) {
+ #contact-center .contact-center-item { grid-template-columns:38px minmax(0,1fr) 32px; }
+ #contact-center .contact-center-item .contact-row-actions:not(:empty) { display:flex; grid-column:2/-1; justify-content:flex-end; flex-wrap:wrap; }
+ html[data-theme] body #contact-center .contact-group-toolbar { padding-inline:14px; }
+ #contact-center .contact-group-toolbar:has(#group-add-members:disabled)::after { display:none; }
+ #contact-center .contact-center-list { padding-inline:14px; }
+}
+/* Side-by-side writing panels share their top and bottom edges. */
+@media(min-width:1200px) {
+ html[data-theme] body .compose-modal:has(>.compose-ai-panel:not(.hidden)) {
+  --compose-work-height:min(780px,calc(100dvh / var(--fz,1) - 48px));
+  display:grid; grid-template-columns:minmax(0,980px) clamp(280px,calc(30vw / var(--fz,1)),400px); gap:16px;
+  padding:24px; align-content:center; justify-content:center;
+ }
+ html[data-theme] body .compose-modal:has(>.compose-ai-panel:not(.hidden))>.compose-card { width:100%; height:var(--compose-work-height); max-height:var(--compose-work-height); translate:none!important; }
+ html[data-theme] body .compose-modal>.compose-ai-panel:not(.hidden) { position:relative; inset:auto; width:100%; height:var(--compose-work-height); max-height:var(--compose-work-height); border-radius:14px; }
+}
+html[data-theme] body .compose-ai-panel-head { padding:18px; }
+#compose-ai-panel .compose-ai-panel-head small { font-size:12px; line-height:1.6; }
+#compose-ai-panel { container-type:inline-size; }
+#compose-ai-panel :is(.compose-ai-request>span,.compose-ai-controls label>span,.compose-ai-context-title b) { font-size:12px; color:var(--desk-ink); }
+@container(max-width:340px) {
+ #compose-ai-panel .compose-ai-controls { grid-template-columns:1fr 1fr; }
+ #compose-ai-panel .compose-ai-controls>button { grid-column:1/-1; width:100%; }
+}
+html[data-theme] body #compose-ai-panel textarea { font-size:13px; line-height:1.65; }
+html[data-theme] body #compose-ai-panel textarea:focus { box-shadow:none!important; }
+html[data-theme] body #compose-ai-panel textarea:focus-visible { outline:2px solid var(--desk-accent); outline-offset:2px; }
+@media(prefers-reduced-motion:reduce) { #contact-center .contact-center-item { transition:none; } }
+
+/* Secondary surface audit: keep nested editors independent of list height. */
+html[data-theme] body #contact-center .contact-editor { position:absolute; inset:0; padding:16px; }
+html[data-theme] body #contact-center .contact-editor-card { display:flex; flex-direction:column; max-height:calc(100dvh / var(--fz,1) - 32px); margin:0; }
+#contact-center .contact-editor-card>header,#contact-center .contact-editor-card>footer { flex-shrink:0; }
+#contact-center .contact-editor-fields { min-height:0; overflow-y:auto; overscroll-behavior:contain; }
+#contact-center .contact-editor-fields label { font-size:12px; }
+#contact-center .contact-editor-fields :is(input,textarea) { font-size:13px; }
+html[data-theme] body .logout-dialog { border-radius:20px; overflow:hidden; }
+body:has(#rules-view:not(.hidden),#dashboard-view:not(.hidden),dialog[open],.compose-modal:not(.hidden)) .start-card { display:none!important; }
+
+/* Rules are decisions, so descriptions and sensitivity controls remain readable. */
+#rules-view .rule-scenario-grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr)); gap:14px; }
+html[data-theme] body #rules-view .rule-scenario-card { padding:18px; border-radius:14px; background:var(--desk-surface); box-shadow:none; }
+#rules-view .rule-scenario-card h4 { font-size:14px; margin:12px 0 8px; }
+#rules-view :is(.rule-scenario-card p,.allowlist-copy p,.rule-scenario-head p,.allowlist-empty,.allowlist-form label) { font-size:12px; line-height:1.65; }
+#rules-view :is(.rule-scenario-card>small,.scenario-control label,.scenario-control em,.advanced-rules-toggle small) { font-size:11px; line-height:1.6; }
+#rules-view .scenario-control { margin-top:14px; padding-top:12px; }
+#rules-view .scenario-control select { min-height:34px; font-size:12px; }
+html[data-theme] body #rules-view :is(.rule-scenario-card p,.rule-scenario-card>small,.scenario-control label,.scenario-control em) { color:var(--desk-muted)!important; }
+#rules-view :is(input,select,button):focus-visible { outline:2px solid var(--desk-accent); outline-offset:3px; }
+
+/* Signature editing: quiet sections, legible fields, persistent save actions. */
+html[data-theme] body #signature-manager .signature-manager-card { width:min(960px,calc(100vw / var(--fz,1) - 32px))!important; max-height:calc(100dvh / var(--fz,1) - 32px); }
+#signature-manager .signature-manager-body { grid-template-columns:170px minmax(0,1fr); }
+#signature-manager .signature-manager-body>main { padding:20px 24px; }
+html[data-theme] body #signature-manager .signature-profile { padding:0 0 20px; border:0; border-bottom:1px solid var(--desk-line); border-radius:0; background:transparent!important; }
+#signature-manager .signature-section-title b { font-size:14px; }
+#signature-manager :is(.signature-section-title small,.signature-editor-head small,.signature-list>p) { font-size:12px; line-height:1.6; }
+#signature-manager :is(.signature-profile-grid label,.signature-editor-section>label,.signature-editor-head) { font-size:12px; }
+#signature-manager :is(.signature-profile-grid input,.signature-editor-section>label>input,.signature-section-title select) { min-height:36px; font-size:13px; }
+#signature-manager .signature-profile-grid { gap:12px; }
+#signature-manager .signature-ai-button { font-size:12px; min-height:36px; }
+#signature-manager .signature-editor-section { margin-top:20px; gap:12px; }
+#signature-manager .signature-editor { min-height:160px; font-size:14px; }
+#signature-manager :is(input,select,button,[contenteditable]):focus-visible { outline:2px solid var(--desk-accent); outline-offset:2px; }
+@media(max-width:760px) {
+ #signature-manager .signature-manager-body { grid-template-columns:minmax(0,1fr); }
+ #signature-manager .signature-manager-body>main { padding:16px; }
+ #signature-manager .signature-section-title { flex-wrap:wrap; }
+}
+
+/* The selected reminder tab already supplies the section heading. */
+#todo-center #task-notices header h2 { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+#todo-center #task-notices header { padding:14px 24px 6px; }
+#todo-center #notice-capability { padding:12px 14px; margin:12px 24px; background:var(--desk-muted-surface); border-radius:10px; }
+#todo-center #task-notices footer { border-top:1px solid var(--desk-line); }
+#todo-center .notice-empty { padding:36px 16px; }
+#share-cos-file::file-selector-button { border:0; border-radius:7px; background:var(--desk-selected); color:var(--desk-accent); padding:8px 12px; margin-right:12px; font:inherit; cursor:pointer; }
+html[data-theme] body #signature-manager :is(.signature-profile-grid label,.signature-editor-section>label,.signature-editor-head) { color:var(--desk-ink)!important; }
+html[data-theme] body #signature-manager :is(.signature-section-title small,.signature-editor-head small,.signature-list>p) { color:var(--desk-muted)!important; }
+@media(max-width:760px) {
+ #signature-manager .signature-manager-body>aside { max-height:110px; padding:10px 14px; }
+ #signature-manager .signature-list:has(>p) { margin-top:0; }
+ #signature-manager .signature-list>p { margin:8px 0 0; }
+ #signature-manager .signature-list>p small { display:none; }
+}
+#rules-view .allowlist-panel { grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr)); }
+#rules-view .allowlist-form { min-width:0; grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr)); }
+#rules-view .allowlist-list { grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr)); }
+/* Respond to the usable header width, including application font scaling. */
+.topbar { container-type:inline-size; container-name:mail-header; }
+@container mail-header (max-width:1000px) {
+ html[data-theme] body .topbar .brand { width:auto; min-width:0; flex:0 0 auto; }
+ .topbar .brand-copy { display:none; }
+ html[data-theme] body .topbar .global-search { min-width:0; flex:1 1 180px; margin:0; }
+ html[data-theme] body .topbar .global-actions { flex:0 0 auto; }
+ .topbar .nav-work-cluster .nav-action>span { display:none; }
+ html[data-theme] body .topbar .nav-work-cluster .nav-action { min-width:36px; padding-inline:10px; }
+}

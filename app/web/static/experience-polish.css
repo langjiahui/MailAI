@@ -1,0 +1,167 @@
+/* Shared controls, scoped to the working surfaces rather than email contents. */
+html[data-theme] body :is(#todo-center,#attachment-center,#task-center,.compose-ai-panel) :is(button,select,input[type=date]) {
+  border-radius:10px; font-family:inherit; transition:background-color .16s ease,border-color .16s ease,box-shadow .16s ease;
+}
+html[data-theme] body :is(#todo-center,#attachment-center,#task-center,.compose-ai-panel) button:not(:disabled) { cursor:pointer; }
+html[data-theme] body :is(#todo-center,#attachment-center,#task-center,.compose-ai-panel) button:disabled { opacity:.5; cursor:not-allowed; box-shadow:none; }
+html[data-theme] body :is(#todo-center,#attachment-center,#task-center,.compose-ai-panel) :is(button,select,input,textarea,a):focus-visible { outline:2px solid var(--desk-accent); outline-offset:3px; }
+html[data-theme] body :is(#todo-center,#attachment-center,#task-center,.compose-ai-panel) select { min-height:36px; cursor:pointer; padding-right:30px; border:1px solid var(--desk-line); background-color:var(--desk-muted-surface); color:var(--desk-ink); }
+.attachment-view-switch,.todo-view-tabs { display:flex; flex-wrap:wrap; gap:6px; flex-shrink:0; }
+.attachment-view-switch { justify-content:flex-end; margin:0 24px 12px; }
+html[data-theme] body :is(.attachment-view-switch,.todo-view-tabs) button { min-height:32px; padding:6px 12px; background:var(--desk-muted-surface); color:var(--desk-muted); border:1px solid transparent; border-radius:10px; font:inherit; font-size:12px; }
+html[data-theme] body :is(.attachment-view-switch,.todo-view-tabs) button[aria-pressed=true] { color:var(--desk-accent); background:var(--desk-selected); font-weight:650; border-color:color-mix(in srgb,var(--desk-accent) 28%,transparent); }
+html[data-theme] body :is(.attachment-view-switch,.todo-view-tabs) button:hover { color:var(--desk-accent); background:var(--desk-selected); }
+#attachment-center[data-file-view=list] .attachment-grid { grid-template-columns:minmax(0,1fr); gap:5px; }
+html[data-theme] body #attachment-center[data-file-view=list] .attachment-card { min-height:66px; padding:10px 14px; border:1px solid transparent; border-radius:10px; background:var(--desk-muted-surface); box-shadow:none; gap:10px; }
+html[data-theme] body #attachment-center[data-file-view=list] .attachment-card:hover { border-color:var(--desk-line); background:var(--desk-selected); }
+#attachment-center[data-file-view=list] .attachment-open { display:grid; grid-template-columns:34px minmax(120px,1.5fr) minmax(90px,1fr) 72px 94px; gap:12px; align-items:center; }
+#attachment-center[data-file-view=list] .attachment-card-main,#attachment-center[data-file-view=list] .attachment-facts { display:contents; }
+#attachment-center[data-file-view=list] .attachment-card-main>b { grid-column:2; grid-row:1; font-size:13px; }
+#attachment-center[data-file-view=list] .attachment-file-icon { width:30px; height:40px; grid-column:1; grid-row:1; }
+#attachment-center[data-file-view=list] .attachment-source { grid-column:3; grid-row:1; margin:0; min-width:0; }
+#attachment-center[data-file-view=list] .attachment-source i,#attachment-center[data-file-view=list] .attachment-sender { display:none; }
+#attachment-center[data-file-view=list] .attachment-facts>small:first-child { grid-column:4; grid-row:1; white-space:nowrap; }
+#attachment-center[data-file-view=list] .attachment-facts>small:last-child { grid-column:5; grid-row:1; white-space:nowrap; }
+#attachment-center[data-file-view=list] .attachment-card-side { flex-direction:row; align-items:center; justify-content:flex-end; width:80px; }
+#attachment-center[data-file-view=list] .attachment-download-action { margin:0; }
+.todo-view-tabs { padding:14px 24px 8px; }
+#todo-center .todo-center-tools { padding-top:8px; }
+#todo-center #task-notices { position:static; inset:auto; width:auto; max-width:none; min-height:0; max-height:none; margin:0; border:0; border-radius:0; box-shadow:none; flex:1; overflow:hidden; }
+#todo-center #task-notices:not([open]) { display:none; }
+#todo-center #task-notices[open] { display:flex; }
+#todo-center #task-notices header { padding:12px 24px; }
+#todo-center #task-notices h2 { font-size:16px; }
+#todo-center #notice-records { overflow:auto; min-height:0; flex:1; }
+html[data-theme] body .reading-header .prioritized-actions { display:flex; flex-direction:row; flex-wrap:wrap; gap:6px; background:transparent!important; padding:0!important; }
+html[data-theme] body .reading-header .prioritized-actions .empty-actions { display:none; }
+html[data-theme] body .reading-header .prioritized-actions :is(button,summary) { min-height:36px; border-radius:10px; }
+html[data-theme] body .reading-header .prioritized-actions :is(.reading-action-label,button>span) { display:inline!important; }
+html[data-theme] body .reading-header .prioritized-actions .reading-ai-group { padding-left:10px; border-left:1px solid var(--desk-line); }
+html[data-theme] body .reading-header .prioritized-actions .reading-work-actions { padding-left:0; border:0; }
+html[data-theme] body .reading-header .prioritized-actions .reading-more-panel button { width:100%; justify-content:flex-start; }
+.reading-overflow-actions:empty { display:none; }
+.reading-overflow-actions { display:grid; border-bottom:1px solid var(--desk-line); padding-bottom:6px; margin-bottom:6px; }
+#compose-ai-output { background:transparent; padding:0; }
+.ai-result-section { border:1px solid var(--desk-line); border-radius:12px; background:var(--desk-surface); margin:10px 0; overflow:hidden; }
+.ai-result-section>header { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 12px; background:var(--desk-muted-surface); font-size:12px; }
+html[data-theme] body .ai-result-section>header button { min-height:30px; padding:5px 10px; background:var(--desk-selected); color:var(--desk-accent); border:1px solid transparent; font-size:12px; }
+.ai-result-section>p { padding:0 12px; margin:12px 0; overflow-wrap:anywhere; }
+.ai-result-signoff small,.ai-signature-note { font-size:11px; color:var(--desk-muted); }
+/* Subject action sits beside its preview; footer remains for body and regeneration. */
+#btn-ai-replace-subject { display:none!important; }
+.compose-ai-panel>.compose-ai-preview-actions { flex-shrink:0; position:relative; z-index:2; padding:12px; background:var(--desk-surface); }
+.sync-error-details { margin-top:10px; color:var(--desk-muted); font-size:12px; }
+.sync-error-details summary { cursor:pointer; }
+.sync-paused-toggle { margin-bottom:12px; }
+@media(max-width:850px) {
+ #attachment-center[data-file-view=list] .attachment-open { grid-template-columns:30px minmax(80px,1fr) 72px; gap:8px; }
+ #attachment-center[data-file-view=list] .attachment-source,#attachment-center[data-file-view=list] .attachment-facts>small:last-child { display:none; }
+ #attachment-center[data-file-view=list] .attachment-facts>small:first-child { grid-column:3; }
+}
+@media(max-width:520px) {
+ .todo-view-tabs { padding:10px 14px; }
+ #attachment-center[data-file-view=list] .attachment-open { grid-template-columns:26px minmax(0,1fr); }
+ #attachment-center[data-file-view=list] .attachment-facts>small:first-child { grid-column:2; grid-row:2; }
+ #attachment-center[data-file-view=list] .attachment-card-side { width:58px; flex-direction:column; }
+ #todo-center .todo-plan-actions { max-width:none; }
+}
+@media(prefers-reduced-motion:reduce) { html[data-theme] body :is(#todo-center,#attachment-center,#task-center,.compose-ai-panel) :is(button,select,input) { transition:none; } }
+html[data-theme] body .reading-header .reading-actions.prioritized-actions :is(.reading-reply-group>.reading-icon-action,.reading-work-actions>button,.reading-ai-group>button) { width:auto!important; padding:0 10px!important; }
+#todo-center .todo-plan-actions .todo-status-action { width:auto; min-width:0; padding:6px 8px; white-space:nowrap; }
+
+.attachment-view-bar { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:10px; padding:0 24px 14px; flex-shrink:0; }
+#attachment-center .attachment-view-bar .attachment-type-filters { margin:0; padding:0; }
+.attachment-view-bar .attachment-view-switch { margin:0; }
+html[data-theme] body #attachment-center[data-file-view=list] .attachment-file-icon { width:28px; height:38px; margin:0; }
+html[data-theme] body #attachment-center[data-file-view=list] .attachment-card { min-height:60px; padding:8px 12px; background:var(--desk-surface)!important; }
+html[data-theme] body #attachment-center[data-file-view=list] .attachment-card:hover { background:var(--desk-muted-surface)!important; }
+#attachment-center[data-file-view=list] .attachment-facts small+small::before { display:none; }
+html[data-theme] body :is(#todo-center,#task-center,.compose-ai-panel) input[type=checkbox] { accent-color:var(--desk-accent); }
+/* Task center: one compact workspace, with navigation distinct from actions. */
+html[data-theme] body #todo-center .todo-center-card {
+ width:min(900px,calc(96vw / var(--fz,1))); height:auto; min-height:min(460px,calc(70dvh / var(--fz,1))); max-height:calc(86dvh / var(--fz,1));
+ border-radius:20px; background:var(--desk-surface)!important; box-shadow:0 24px 80px #142b2226;
+}
+html[data-theme] body #todo-center[data-todo-view=reminders] .todo-center-card { height:min(700px,calc(86dvh / var(--fz,1))); }
+html[data-theme] body #todo-center .todo-center-card>header { padding:26px 28px 20px; border-bottom:0; }
+#todo-center .todo-center-card>header .eyebrow { display:none; }
+#todo-center .todo-center-card>header h2 { font-size:22px; letter-spacing:.02em; }
+#todo-center .tool-account-label { margin-top:6px; color:var(--desk-muted); font-size:12px; }
+html[data-theme] body #btn-close-todos { width:32px; height:32px; min-height:32px; border:0; border-radius:50%; background:var(--desk-muted-surface); color:var(--desk-muted); }
+#todo-center .todo-view-tabs { padding:0 28px; gap:4px; border-bottom:1px solid var(--desk-line); flex-wrap:nowrap; overflow-x:auto; scrollbar-width:thin; }
+html[data-theme] body #todo-center .todo-view-tabs button {
+ position:relative; display:inline-flex; align-items:center; gap:6px; flex:0 0 auto; min-height:42px; padding:0 10px;
+ border:0; border-radius:6px 6px 0 0; background:transparent!important; color:var(--desk-muted); font-size:13px; white-space:nowrap;
+}
+html[data-theme] body #todo-center .todo-view-tabs button[aria-pressed=true] { color:var(--desk-accent); font-weight:650; }
+#todo-center .todo-view-tabs button[aria-pressed=true]::after { content:''; position:absolute; height:2px; border-radius:2px; background:var(--desk-accent); bottom:0; left:10px; right:10px; }
+#todo-center .todo-view-tabs small { font-size:11px; font-weight:500; padding:1px 5px; border-radius:5px; background:var(--desk-muted-surface); }
+#todo-center .todo-view-tabs [aria-pressed=true] small { background:var(--desk-selected); }
+#todo-center #btn-task-notices { margin-left:auto; }
+html[data-theme] body #todo-center .todo-center-tools { flex-shrink:0; border:0; padding:14px 28px 10px; min-height:36px; gap:12px; flex-wrap:wrap; }
+#todo-center .todo-center-tools .todo-show-done { margin-right:auto; font-size:12px; color:var(--desk-muted); }
+#todo-center:not([data-batch=true]) :is(.todo-select,.todo-batch-actions) { display:none!important; }
+html[data-theme] body #todo-batch-toggle { background:var(--desk-muted-surface); color:var(--desk-muted); border:0; padding:7px 12px; min-height:32px; font-size:12px; }
+#todo-center .todo-batch-actions { order:3; flex-basis:100%; justify-content:flex-start; flex-wrap:wrap; }
+#todo-center .todo-center-list { flex:0 1 auto; min-height:120px; padding:0 20px 22px; gap:0; grid-auto-rows:max-content; }
+html[data-theme] body #todo-center .todo-center-item {
+ position:relative; align-items:center; min-height:0; padding:18px 10px; border:0; border-bottom:1px solid var(--desk-line); border-radius:0;
+ background:transparent!important; box-shadow:none!important; gap:20px;
+}
+html[data-theme] body #todo-center .todo-center-item:last-of-type { border-bottom-color:transparent; }
+html[data-theme] body #todo-center .todo-center-item:hover { background:var(--desk-muted-surface)!important; border-radius:10px; }
+html[data-theme] body #todo-center .todo-title-input {
+ display:block; box-sizing:border-box; height:auto; min-height:24px; field-sizing:content; max-height:90px; width:100%; resize:none; white-space:normal; overflow:auto;
+ border:1px solid transparent!important; border-radius:6px; padding:2px 4px; margin:-2px -4px 7px; font:600 15px/1.5 system-ui,sans-serif;
+ color:var(--desk-ink)!important; background:transparent!important; box-shadow:none!important;
+}
+html[data-theme] body #todo-center .todo-title-input:hover { border-color:var(--desk-line)!important; }
+html[data-theme] body #todo-center .todo-title-input:focus { background:var(--desk-surface)!important; border-color:var(--desk-line)!important; }
+#todo-center .todo-time-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:0 0 7px; }
+html[data-theme] body #todo-center :is(.todo-time-chip,.todo-reminder-chip) { min-height:26px; padding:3px 7px; border:0; border-radius:6px; background:var(--desk-muted-surface)!important; color:var(--desk-muted); font:inherit; font-size:12px; }
+html[data-theme] body #todo-center .todo-time-chip.overdue { color:#ac4f42!important; background:#fbede9!important; }
+html[data-theme=dark] body #todo-center .todo-time-chip.overdue { color:#efb1a5!important; background:#592e284d!important; }
+html[data-theme] body #todo-center .todo-reminder-chip { color:var(--desk-accent); }
+#todo-center :is(.todo-no-reminder,.todo-done-label) { font-size:12px; color:var(--desk-muted); }
+#todo-center .todo-source-meta { padding:0; gap:6px; font-size:12px; line-height:1.5; align-items:center; }
+html[data-theme] body #todo-center .todo-source { min-height:0; padding:0; font-size:12px; font-weight:400; max-width:65%; line-height:1.5; }
+#todo-center .todo-source-meta>span { flex-shrink:0; }
+#todo-center .todo-source-meta time { border:0; padding-left:4px; font-size:11px; }
+html[data-theme] body #todo-center .todo-plan-actions { display:flex; flex-direction:row; flex:0 0 auto; width:auto; gap:8px; }
+html[data-theme] body #todo-center .todo-plan-actions button { width:auto; min-height:34px; padding:6px 12px; font-size:12px; border-radius:9px; }
+html[data-theme] body #todo-center .todo-complete-action { order:2; background:var(--desk-selected)!important; color:var(--desk-accent)!important; border:1px solid transparent!important; }
+html[data-theme] body #todo-center .todo-arrange-action { background:var(--desk-surface)!important; color:var(--desk-muted)!important; border:1px solid var(--desk-line)!important; }
+html[data-theme] body #todo-center .todo-plan-actions button:hover { background:var(--desk-hover)!important; color:var(--desk-accent)!important; border-color:var(--desk-accent)!important; }
+#todo-center .attachment-empty { min-height:170px; display:grid; place-content:center; color:var(--desk-muted); font-size:14px; }
+@container todo-center-card (max-width:640px) {
+ html[data-theme] body #todo-center .todo-center-card>header { padding:20px; }
+ #todo-center .todo-view-tabs { padding-inline:12px; }
+ html[data-theme] body #todo-center .todo-center-tools { padding:12px 20px 8px; flex-direction:row; align-items:center; }
+ #todo-center .todo-center-list { padding-inline:14px; }
+ html[data-theme] body #todo-center .todo-center-item { gap:10px; padding:16px 6px; }
+ html[data-theme] body #todo-center .todo-plan-actions { flex:0 0 100%; width:100%; justify-content:flex-end; }
+ #todo-center .todo-source-meta { flex-direction:row; flex-wrap:wrap; }
+ #todo-center .todo-source-meta time { flex-basis:100%; padding-left:0; }
+}
+/* Column labels make the dense file view readable without extra card borders. */
+.attachment-list-columns { display:none; }
+#attachment-center[data-file-view=list] .attachment-list-columns { display:grid; grid-template-columns:minmax(0,1fr) 80px; gap:10px; margin:0 24px 4px; padding:8px 13px; flex-shrink:0; color:var(--desk-muted); background:var(--desk-muted-surface); border-radius:8px; font-size:11px; }
+.attachment-list-columns>div { display:grid; grid-template-columns:34px minmax(120px,1.5fr) minmax(90px,1fr) 72px 94px; gap:12px; }
+.attachment-list-columns>div>span:first-child { grid-column:1/3; }
+.attachment-list-columns>span { text-align:right; padding-right:8px; }
+html[data-theme] body .attachment-view-switch { gap:2px; padding:3px; background:var(--desk-muted-surface); border-radius:10px; }
+html[data-theme] body .attachment-view-switch button { border:0; min-height:28px; padding:4px 10px; background:transparent; }
+html[data-theme] body .attachment-view-switch button[aria-pressed=true] { background:var(--desk-surface); box-shadow:0 1px 4px #142b2214; }
+@media(max-width:850px) {
+ .attachment-list-columns>div { grid-template-columns:30px minmax(80px,1fr) 72px; gap:8px; }
+ .attachment-list-columns>div>span:nth-child(2),.attachment-list-columns>div>span:nth-child(4) { display:none; }
+}
+@media(max-width:520px) {
+ #attachment-center[data-file-view=list] .attachment-list-columns { display:none; }
+ html[data-theme] body #todo-center .todo-center-card { max-height:calc(94dvh / var(--fz,1)); min-height:0; width:calc((100vw - 16px) / var(--fz,1)); }
+}
+
+#todo-center .todo-empty-state { padding:48px 20px; min-height:180px; display:flex; align-items:center; justify-content:center; flex-direction:column; text-align:center; color:var(--desk-muted); }
+#todo-center .todo-empty-state b { color:var(--desk-ink); font-size:16px; font-weight:600; }
+#todo-center .todo-empty-state p { margin:10px 0 18px; font-size:13px; line-height:1.6; }
+html[data-theme] body #todo-center .todo-empty-state button { border:1px solid var(--desk-line); padding:8px 14px; background:var(--desk-muted-surface); color:var(--desk-accent); font-size:12px; }

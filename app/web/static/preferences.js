@@ -9,7 +9,7 @@
     'mailai.preferences.theme.v1','mailai.preferences.showServerFolders.v1',
     'mailai-language','mailai-density','mailai-font-scale','mailai-companion-motion',
     'mailai-assistant-floating','mailai-assistant-layout-v1','mailai.workspace.paneSizes.v1',
-    'mailai-browsing-account','mailai.onboarding.v2',
+    'mailai-browsing-account','mailai.onboarding.v2','mailai.attachments.view.v1',
   ]);
   const allowed = key => keys.has(key) || /^(alias:|collapsed:|mailai-secretary-focus:)[\w.-]*$/.test(key);
   const store = window.localStorage;

@@ -35,7 +35,7 @@ const deferred = () => { let resolve, reject; const promise=new Promise((a,b)=>{
     taskCenterScope:()=>scope,activeMailAccount:()=>({id:'a'}),_systemConfig:{accounts:[{id:'a',user:'A'},{id:'b',user:'B'}]},
     document:{getElementById:id=>id==='task-center-list'?host:{classList:{toggle(){}}}},
     api:async(url,options)=>{requests.push([url,options.accountId]); if(url.includes('outbox')) return pending.promise; if(url.includes('reminders'))return [];return {};},
-    esc:x=>x,mailaiT:()=>'',scheduleTaskCenterRefresh(){},clearTimeout,setTimeout,sessionStorage:{getItem:()=>true}});
+    esc:x=>x,mailaiT:()=>'',scheduleTaskCenterRefresh(){},clearTimeout,setTimeout,sessionStorage:{getItem:()=>true},window:{}});
   vm.runInContext(slice(workspace,'function actionableOutboxRows(', '\nfunction updateFilterChips'),t);
   const refresh=t.refreshTaskCenter(); pending.resolve([]);await refresh;
   assert.ok(requests.every(([,id])=>id==='b'),'Task requests use selected scope, not browsing account');

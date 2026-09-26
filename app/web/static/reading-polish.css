@@ -282,23 +282,24 @@ html[data-theme] body #email-list .email-item.bulk-selected:hover { background:v
 html[data-theme] body .list-pane.selection-active #email-list .email-item.selected:not(.bulk-selected) { background:transparent!important; }
 html[data-theme] body .list-pane.selection-active #email-list .email-item.selected:not(.bulk-selected):hover { background:var(--desk-hover)!important; }
 
-/* One soft control family across the reading toolbar. */
+/* Compact reading controls: quiet secondary actions, one clear reply action. */
+html[data-theme] body .reading-header .reading-actions { padding:0!important; gap:6px; margin-top:10px; }
 html[data-theme] body .reading-header .reading-actions .reading-ai-group { padding-left:0; border-left:0; }
 html[data-theme] body .reading-header .reading-actions :is(.reading-icon-action,.reading-work-actions button,.reading-ai-group>button,.reading-more-actions>summary) {
-  box-sizing:border-box; height:40px; min-height:40px; padding:0 13px;
-  border:1px solid rgba(95,130,111,.16)!important; border-radius:12px;
-  background:linear-gradient(145deg,rgba(255,255,255,.96),rgba(245,250,247,.72))!important;
-  box-shadow:inset 0 1px rgba(255,255,255,.95),0 2px 6px rgba(30,66,47,.055)!important;
+  box-sizing:border-box; height:32px; min-height:32px; padding:0 10px;
+  border:1px solid rgba(95,130,111,.1)!important; border-radius:8px;
+  background:var(--desk-muted-surface)!important;
+  box-shadow:none!important;
   color:var(--desk-ink)!important; font-size:13px; font-weight:600;
 }
 html[data-theme] body .reading-header .reading-actions :is(.reading-icon-action,.reading-work-actions button,.reading-ai-group>button,.reading-more-actions>summary):hover,
 html[data-theme] body .reading-header .reading-actions .reading-more-actions[open]>summary {
   background:#edf6f0!important; border-color:rgba(62,126,88,.3)!important;
-  box-shadow:inset 0 1px rgba(255,255,255,.95),0 3px 10px rgba(30,66,47,.09)!important;
+  box-shadow:none!important;
   color:#285d43!important; transform:none; filter:none;
 }
 html[data-theme] body .reading-header .reading-actions button.reading-primary-action {
-  background:linear-gradient(145deg,#e3f3e9,#d9eddf)!important;
+  background:#e1f0e6!important;
   border-color:#afd4ba!important; color:#256346!important;
 }
 html[data-theme] body .reading-header .reading-actions button.reading-primary-action:hover {
@@ -306,9 +307,9 @@ html[data-theme] body .reading-header .reading-actions button.reading-primary-ac
   color:#1f583c!important; filter:none;
 }
 html[data-theme="dark"] body .reading-header .reading-actions :is(.reading-icon-action,.reading-work-actions button,.reading-ai-group>button,.reading-more-actions>summary) {
-  background:linear-gradient(145deg,rgba(50,64,54,.9),rgba(36,48,40,.86))!important;
-  border-color:rgba(174,204,184,.15)!important;
-  box-shadow:inset 0 1px rgba(255,255,255,.075),0 3px 10px rgba(0,0,0,.13)!important;
+  background:#233129!important;
+  border-color:rgba(174,204,184,.1)!important;
+  box-shadow:none!important;
   color:#e1eae3!important;
 }
 html[data-theme="dark"] body .reading-header .reading-actions :is(.reading-icon-action,.reading-work-actions button,.reading-ai-group>button,.reading-more-actions>summary):hover,
@@ -317,7 +318,7 @@ html[data-theme="dark"] body .reading-header .reading-actions .reading-more-acti
   color:#f0f6f1!important;
 }
 html[data-theme="dark"] body .reading-header .reading-actions button.reading-primary-action {
-  background:linear-gradient(145deg,#345e46,#2b513d)!important;
+  background:#2f5942!important;
   border-color:#547e62!important; color:#f1f8f2!important;
 }
 html[data-theme="dark"] body .reading-header .reading-actions button.reading-primary-action:hover {
@@ -327,7 +328,7 @@ html[data-theme="dark"] body .reading-header .reading-actions button.reading-pri
 @container (max-width:1080px) {
   html[data-theme] body .reading-header .reading-actions :is(.reading-icon-action:not(.reading-primary-action),.reading-work-actions button,.reading-ai-group>button) { padding:0; }
 }
-@media(max-width:760px) {
+@media(max-width:760px), (pointer:coarse) {
   html[data-theme] body .reading-header .reading-actions :is(.reading-icon-action,.reading-work-actions button,.reading-ai-group>button,.reading-more-actions>summary) { min-height:44px; }
 }
 html[data-theme] body .reading-header .reading-actions .reading-more-panel button { font-size:13px; font-weight:400; line-height:1.4; }
@@ -391,3 +392,30 @@ html[data-theme="dark"] body .reading-header .reading-actions .reading-more-pane
 html[data-theme] body .special-mail-actions .special-delete { color:#bf3b35!important; }
 html[data-theme="dark"] body .special-mail-actions .special-delete { color:#ffaaa3!important; }
 html[data-theme] body .special-mail-actions .special-delete:hover { background:rgba(191,59,53,.09)!important; }
+
+/* Mail rows emphasize the counterparty; routine metadata stays quiet. */
+html[data-theme] body #email-list .email-row-top { gap:10px; }
+html[data-theme] body #email-list .email-sender { flex:1 1 0; }
+html[data-theme] body #email-list .mail-direction-label {
+  flex:none; font-size:11px; font-weight:400; color:var(--desk-muted);
+}
+html[data-theme] body #email-list .email-tags { align-items:center; column-gap:8px; row-gap:4px; }
+html[data-theme] body #email-list .email-tags:not(:has(*)) { display:none; }
+html[data-theme] body #email-list :is(.mail-category,.mail-priority,.tag-attachment) {
+  background:transparent!important; border:0!important; box-shadow:none!important;
+  padding:0; border-radius:0; color:var(--desk-muted)!important; font-size:10px; font-weight:400;
+}
+html[data-theme] body #email-list .mail-category + .mail-priority::before {
+  content:'·'; margin-right:8px; opacity:.6;
+}
+html[data-theme] body #email-list .tag-attachment { margin-left:auto; display:inline-flex; align-items:center; }
+html[data-theme] body #email-list .tag-attachment svg {
+  width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:1.6;
+  stroke-linecap:round; stroke-linejoin:round;
+}
+html[data-theme] body #email-list .mail-account-tag {
+  max-width:150px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+
+/* Keep the right-aligned menu inside the reading pane when actions wrap. */
+html[data-theme] body .reading-header .reading-actions>.reading-more-actions { margin-inline-start:auto; }

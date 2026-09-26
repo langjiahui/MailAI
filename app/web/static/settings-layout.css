@@ -41,3 +41,17 @@ html[data-theme="dark"] #system-view > .system-panel.scrollbar-visible::-webkit-
 @media(forced-colors:active) {
   #system-view > .system-panel { scrollbar-color:auto; }
 }
+
+/* Keep the todo list width stable while its native scrollbar is hidden. */
+html[data-theme] body #todo-list {
+  scrollbar-width:thin; scrollbar-gutter:stable;
+  scrollbar-color:transparent transparent!important;
+}
+html[data-theme] body #todo-list::-webkit-scrollbar { width:7px; }
+html[data-theme] body #todo-list::-webkit-scrollbar-track { background:transparent!important; }
+html[data-theme] body #todo-list::-webkit-scrollbar-thumb { background:transparent!important; border-radius:8px; }
+html[data-theme] body #todo-list.scrollbar-visible { scrollbar-color:var(--desk-muted) transparent!important; }
+html[data-theme] body #todo-list.scrollbar-visible::-webkit-scrollbar-thumb { background:var(--desk-muted)!important; }
+@media(forced-colors:active) {
+  html[data-theme] body #todo-list { scrollbar-color:auto!important; }
+}

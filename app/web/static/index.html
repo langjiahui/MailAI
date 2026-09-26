@@ -25,16 +25,18 @@
   <link rel="stylesheet" href="/static/onboarding.css?v=font-scale-1">
   <link rel="stylesheet" href="/static/select-ui.css?v=dark-graphite-1">
   <link rel="stylesheet" href="/static/author.css?v=1">
-  <link rel="stylesheet" href="/static/reading-polish.css?v=17">
+  <link rel="stylesheet" href="/static/reading-polish.css?v=21">
   <link rel="stylesheet" href="/static/dialog-polish.css?v=13">
   <link rel="stylesheet" href="/static/glass-material.css?v=2">
   <link rel="stylesheet" href="/static/motion.css?v=2">
-  <link rel="stylesheet" href="/static/settings-layout.css?v=2">
+  <link rel="stylesheet" href="/static/settings-layout.css?v=3">
   <link rel="stylesheet" href="/static/special-reading.css?v=1">
   <link rel="stylesheet" href="/static/list-header-polish.css?v=7">
   <link rel="stylesheet" href="/static/interaction-recovery.css?v=4">
-  <link rel="stylesheet" href="/static/dashboard-polish.css?v=1">
+  <link rel="stylesheet" href="/static/dashboard-polish.css?v=2">
   <link rel="stylesheet" href="/static/digest-polish.css?v=1">
+  <link rel="stylesheet" href="/static/experience-polish.css?v=3">
+  <link rel="stylesheet" href="/static/page-polish.css?v=1">
 </head>
 <body>
   <div id="app-preloader" class="app-preloader" role="status" aria-live="polite">
@@ -84,7 +86,7 @@
           <button id="btn-attachments" class="nav-action nav-attachments" title="集中查找和下载附件"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 12.5 6.7-6.7a3.2 3.2 0 0 1 4.5 4.5l-8.8 8.8a5 5 0 0 1-7.1-7.1l8.2-8.2"/></svg><span data-i18n="nav.attachments">附件</span></button>
           <button id="btn-todos" class="nav-action nav-todos" title="查看从邮件识别的待办"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="16" rx="3"/><path d="m8.5 12 2.2 2.2 4.8-5M9 4V2.8M15 4V2.8"/></svg><span data-i18n="nav.todos">待办</span></button>
           <div class="top-menu nav-security-menu">
-            <button id="btn-security-menu" class="nav-action nav-menu-trigger nav-security" type="button" aria-haspopup="true" aria-expanded="false"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 19 6v5.2c0 4.7-2.8 8-7 9.8-4.2-1.8-7-5.1-7-9.8V6l7-3Z"/><path d="m8.5 12 2.2 2.2 4.8-5"/></svg><span data-i18n="nav.security">安全</span></button>
+            <button id="btn-security-menu" class="nav-action nav-menu-trigger nav-security" type="button" aria-label="安全管理" data-i18n-aria="security.heading" aria-haspopup="true" aria-expanded="false"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 19 6v5.2c0 4.7-2.8 8-7 9.8-4.2-1.8-7-5.1-7-9.8V6l7-3Z"/><path d="m8.5 12 2.2 2.2 4.8-5"/></svg><span data-i18n="nav.security">安全</span></button>
             <div class="top-menu-popover hidden" role="menu" aria-label="安全管理">
               <div class="top-menu-heading"><strong data-i18n="security.heading">安全管理</strong><small data-i18n="security.headingHint">研判、规则与处置策略</small></div>
               <div class="security-menu-grid">
@@ -555,15 +557,15 @@
         </div>
         <div id="contact-center-list" class="contact-center-list" aria-live="polite"></div>
         <footer id="contact-picker-footer" class="contact-picker-footer hidden"><span id="contact-picker-count" data-i18n="contacts.pickerNone">尚未选择</span><div><button id="btn-cancel-contact-picker" type="button" data-i18n="contacts.cancel">取消</button><button id="btn-apply-contacts" type="button" class="primary-action" data-i18n="contacts.apply">应用选择</button></div></footer>
+      </section>
         <div id="contact-editor" class="contact-editor hidden">
           <button type="button" class="contact-editor-backdrop" data-close-contact-editor aria-label="关闭编辑" data-i18n-aria="contacts.editorCloseAria"></button>
-          <form id="contact-form" class="contact-editor-card">
+          <form id="contact-form" class="contact-editor-card" role="dialog" aria-modal="true" aria-labelledby="contact-editor-title">
             <header><div><span class="eyebrow" data-i18n="contacts.editorEyebrow">个人通讯录</span><h3 id="contact-editor-title" data-i18n="contacts.editorTitle">新建联系人</h3></div><button type="button" data-close-contact-editor>✕</button></header>
             <div class="contact-editor-fields"><label><span data-i18n="contacts.name">姓名</span><input id="contact-name" maxlength="80" placeholder="例如：张敏" data-i18n-placeholder="contacts.namePh"></label><label><span data-i18n="contacts.email">邮箱</span><input id="contact-email" type="email" maxlength="180" required placeholder="name@example.com"></label><label><span data-i18n="contacts.company">公司 / 部门</span><input id="contact-company" maxlength="120" placeholder="选填" data-i18n-placeholder="contacts.optionalPh"></label><label><span data-i18n="contacts.note">备注</span><textarea id="contact-note" rows="3" maxlength="300" placeholder="选填，例如：采购负责人" data-i18n-placeholder="contacts.notePh"></textarea></label><label class="contact-favorite-check"><input id="contact-favorite" type="checkbox"> <span data-i18n="contacts.favorite">设为常用联系人</span></label></div>
             <footer><button type="button" data-close-contact-editor data-i18n="contacts.cancel">取消</button><button type="submit" class="primary-action" data-i18n="contacts.save">保存联系人</button></footer>
           </form>
         </div>
-      </section>
     </div>
 
     <!-- 附件中心 -->
@@ -943,7 +945,7 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=28c11f70e7ba"></script>
-  <script src="/static/settings-scroll.js?v=1"></script>
+  <script src="/static/bundle.js?v=84540c8d3a1e"></script>
+  <script src="/static/settings-scroll.js?v=2"></script>
 </body>
 </html>

@@ -455,24 +455,52 @@ def api_email_audit(email_id: int, limit: int = 50):
     return db.list_audit_logs(email_id=email_id, limit=limit)
 
 
+# A far-future due date pauses a task without losing its durable remote phase.
+_ACTION_PAUSED = '9999-12-31T23:59:59'
+
+
 @router.get('/api/mail/action-sync')
-def api_action_sync():
+def api_action_sync(include_paused: bool = False):
     with db.conn() as c:
+        clause = "pending_action IN ('trash','trash_copying','trash_copied','trash_locating')"
+        paused = c.execute(f"SELECT COUNT(*) FROM emails WHERE {clause} AND pending_due_at=?", (_ACTION_PAUSED,)).fetchone()[0]
+        where = clause if include_paused else clause + " AND COALESCE(pending_due_at,'')<>?"
+        params = () if include_paused else (_ACTION_PAUSED,)
         rows = [dict(row) for row in c.execute(
             "SELECT id,subject,pending_action,pending_error,pending_due_at,pending_attempts "
-            "FROM emails WHERE pending_action LIKE 'trash%' ORDER BY id DESC LIMIT 100")]
-        count = c.execute("SELECT COUNT(*) FROM emails WHERE pending_action LIKE 'trash%'").fetchone()[0]
-    return {'rows': rows, 'total': count}
+            f"FROM emails WHERE {where} ORDER BY id DESC LIMIT 100", params)]
+        count = c.execute(f"SELECT COUNT(*) FROM emails WHERE {where}", params).fetchone()[0]
+    for row in rows:
+        row['paused'] = row['pending_due_at'] == _ACTION_PAUSED
+    return {'rows': rows, 'total': count, 'paused_count': paused}
+
+
+def _change_action_schedule(email_id: int, pause: bool):
+    from ...trash_queue import mutation_lock
+    lock = mutation_lock()
+    if not lock.acquire(blocking=False):
+        raise HTTPException(409, '服务器操作正在进行，请稍后再试')
+    try:
+        with db.conn() as c:
+            changed = c.execute(
+                "UPDATE emails SET pending_due_at=? WHERE id=? "
+                "AND pending_action IN ('trash','trash_copying','trash_copied','trash_locating') "
+                "AND (COALESCE(pending_error,'')<>'' OR pending_due_at=?)",
+                (_ACTION_PAUSED if pause else '', email_id, _ACTION_PAUSED)).rowcount
+        if not changed:
+            raise HTTPException(409, '该任务已完成或仍在处理中，请刷新状态')
+        db.add_audit_log(email_id, 'pause_trash_sync' if pause else 'resume_trash_sync', actor='user',
+                         reason='保留本地删除状态及服务器操作阶段')
+    finally:
+        lock.release()
+    return {'ok': True, 'scheduled': not pause, 'paused': pause}
 
 
 @router.post('/api/mail/action-sync/{email_id}/retry')
 def api_retry_action_sync(email_id: int):
-    # Preserve the durable COPY/DELETE phase; only bring a failed retry forward.
-    # The existing serialized worker performs the actual server mutation.
-    with db.conn() as c:
-        changed = c.execute("UPDATE emails SET pending_due_at='' WHERE id=? "
-                            "AND pending_action LIKE 'trash%' AND COALESCE(pending_error,'')<>''",
-                            (email_id,)).rowcount
-    if not changed:
-        raise HTTPException(409, '该任务已完成或仍在处理中，请刷新状态')
-    return {'ok': True, 'scheduled': True}
+    return _change_action_schedule(email_id, False)
+
+
+@router.post('/api/mail/action-sync/{email_id}/pause')
+def api_pause_action_sync(email_id: int):
+    return _change_action_schedule(email_id, True)

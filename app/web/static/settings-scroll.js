@@ -26,3 +26,27 @@
     window.addEventListener('blur', () => { dragging = nearEdge = false; clearTimeout(timer); panel.classList.remove('scrollbar-visible'); });
   });
 })();
+
+/* Todo list: scrolling reveals the thumb; idle fades back to a clear gutter. */
+(() => {
+  const list = document.getElementById('todo-list');
+  if (!list) return;
+  let timer, dragging = false;
+  const hide = () => { clearTimeout(timer); list.classList.remove('scrollbar-visible'); };
+  const show = () => {
+    clearTimeout(timer);
+    list.classList.add('scrollbar-visible');
+    timer = setTimeout(() => { if (!dragging) hide(); }, 900);
+  };
+  list.addEventListener('scroll', show, {passive:true});
+  list.addEventListener('pointerdown', event => {
+    const rect = list.getBoundingClientRect();
+    if (event.clientX >= rect.right - 14 && list.scrollHeight > list.clientHeight) {
+      dragging = true; show();
+    }
+  }, {passive:true});
+  const release = () => { if (dragging) { dragging = false; show(); } };
+  window.addEventListener('pointerup', release);
+  window.addEventListener('pointercancel', release);
+  window.addEventListener('blur', () => { dragging = false; hide(); });
+})();

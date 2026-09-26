@@ -13,6 +13,7 @@ workspace.js
 secretary.js
 task-planner.js
 task-notices.js
+experience-polish.js
 assistant-images.js
 assistant-attachments.js
 companion.js

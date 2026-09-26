@@ -1,7 +1,7 @@
 /* A durable, cross-platform entry point for reminders, independent of toasts. */
 (() => {
   document.querySelector('.todo-batch-actions').insertAdjacentHTML('afterbegin','<button type="button" id="btn-task-notices">提醒记录</button>');
-  document.body.insertAdjacentHTML('beforeend', `<dialog id="task-notices" aria-labelledby="task-notices-title"><header><div><small>所有邮箱 · 每项任务最近一次提醒</small><h2 id="task-notices-title">提醒记录</h2></div><button type="button" data-notice-close aria-label="关闭提醒记录">×</button></header><div class="notice-toolbar"><label><input id="notice-show-done" type="checkbox"> 显示已处理</label><button type="button" id="notice-refresh">刷新</button><button type="button" id="notice-test">测试系统通知</button></div><p id="notice-capability" role="status"></p><div id="notice-records"></div><footer>系统通知已提交不代表已显示或已读。关闭窗口后可后台提醒；完全退出后，下次启动补提醒。</footer></dialog>`);
+  document.querySelector('#todo-center .todo-center-card').insertAdjacentHTML('beforeend', `<dialog id="task-notices" aria-labelledby="task-notices-title"><header><div><small>所有邮箱 · 每项任务最近一次提醒</small><h2 id="task-notices-title">提醒记录</h2></div><button type="button" data-notice-close aria-label="返回待办">返回待办</button></header><div class="notice-toolbar"><label><input id="notice-show-done" type="checkbox"> 显示已处理</label><button type="button" id="notice-refresh">刷新</button><button type="button" id="notice-test">测试系统通知</button></div><p id="notice-capability" role="status"></p><div id="notice-records"></div><footer>系统通知已提交不代表已显示或已读。关闭窗口后可后台提醒；完全退出后，下次启动补提醒。</footer></dialog>`);
   const dialog=document.getElementById('task-notices'), host=document.getElementById('notice-records');
   let rows=[], revision=0, timer, lastFocus, busy=false;
   const labels={scheduled:'等待提醒',due:'已到期',submitted:'已提交系统',retry:'通知待重试',done:'已完成',canceled:'已取消提醒'};
@@ -26,10 +26,13 @@
   window.mailaiOpenTaskReminder=async()=>{
     lastFocus=document.activeElement;
     document.getElementById('task-planner')?.close();
-    if(!dialog.open)dialog.showModal();if(rows.length)paint();else host.textContent='正在读取提醒…';await refresh();
+    if(document.getElementById('todo-center').classList.contains('hidden')) await openTodoCenter();
+    window.mailaiTodoTab?.('reminders');
+    if(!dialog.open)dialog.show();if(rows.length)paint();else host.textContent='正在读取提醒…';await refresh();
     clearInterval(timer);timer=setInterval(()=>{if(!document.hidden)refresh()},15000);
   };
-  dialog.addEventListener('close',()=>{++revision;clearInterval(timer);lastFocus?.isConnected&&lastFocus.focus();});
+  dialog.addEventListener('close',()=>{++revision;clearInterval(timer);if(document.getElementById('todo-center').dataset.todoView==='reminders'){window.mailaiTodoTab?.('all');lastFocus?.isConnected&&lastFocus.focus();}});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape' && dialog.open && !document.querySelector('#task-planner[open],.mailai-question[open]')){e.preventDefault();e.stopImmediatePropagation();dialog.close();}},true);
   dialog.querySelector('[data-notice-close]').onclick=()=>dialog.close();
   document.getElementById('btn-task-notices').onclick=()=>window.mailaiOpenTaskReminder();
   document.getElementById('notice-refresh').onclick=refresh;

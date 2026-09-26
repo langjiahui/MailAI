@@ -14,8 +14,11 @@ const assert = require('node:assert/strict');
   await page.locator('.sidebar-account-folders').first().locator('[data-account-action="inbox"]').click();
   await page.waitForFunction(()=>!unifiedMailbox && allEmails.length===12);
   await page.locator('#email-list .email-item').first().click();
+  if (!await page.locator('[data-reading-action="favorite"]').isVisible()) {
+   await page.locator('.reading-more-actions > summary').click();
+  }
   await page.locator('[data-reading-action="favorite"]').click();
-  await page.waitForSelector('[data-reading-action="favorite"][aria-pressed="true"]');
+  await page.waitForSelector('[data-reading-action="favorite"][aria-pressed="true"]',{state:'attached'});
   await page.locator('.sidebar-account-folders').first().locator('[data-account-action="favorites"]').click();
   await page.waitForFunction(()=>document.querySelectorAll('#email-list .email-item').length===1);
   assert.equal(await page.locator('#list-title').innerText(),'我的收藏');

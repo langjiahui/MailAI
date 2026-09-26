@@ -7,6 +7,7 @@ from .paths import USER_DIR
 PREFERENCE_PATH = USER_DIR / "ui-preferences.sqlite3"
 KEYS = {
     "mailai.preferences.theme.v1", "mailai.preferences.showServerFolders.v1",
+    "mailai.attachments.view.v1",
     "mailai-language", "mailai-density", "mailai-font-scale",
     "mailai-companion-motion", "mailai-assistant-floating",
     "mailai-assistant-layout-v1", "mailai.workspace.paneSizes.v1",

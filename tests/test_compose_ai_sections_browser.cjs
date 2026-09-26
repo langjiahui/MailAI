@@ -3,7 +3,7 @@ const {chromium} = require('playwright');
 const assert = require('node:assert/strict');
 
 (async () => {
-  const browser = await chromium.launch({headless:true, channel:'chrome'});
+  const browser = await chromium.launch({headless:true, ...(process.env.CI ? {} : {channel:'chrome'})});
   try {
     const page = await browser.newPage();
     await page.goto(process.env.MAILAI_PREVIEW_URL || 'http://127.0.0.1:18795');
@@ -31,8 +31,8 @@ const assert = require('node:assert/strict');
     await page.locator('#compose-ai-instruction').fill('写一封材料邮件');
     await page.evaluate(() => aiCompose('draft', document.getElementById('btn-ai-generate')));
     assert.equal(requests.at(-1).has_signature, false);
-    assert.equal(await page.locator('#btn-ai-replace-subject').isVisible(), true);
-    await page.locator('#btn-ai-replace-subject').click();
+    assert.equal(await page.locator('[data-ai-fill=subject]').isVisible(), true);
+    await page.locator('[data-ai-fill=subject]').click();
     assert.equal(await page.locator('#compose-subject').inputValue(), '项目材料');
     assert.equal((await page.locator('#compose-message').innerText()).trim(), '');
     assert.equal((await page.locator('#compose-signature-content').innerText()).trim(), '');
@@ -91,10 +91,10 @@ const assert = require('node:assert/strict');
     });
     await page.waitForFunction(() => document.getElementById('compose-ai-output').innerText.includes('正在生成'));
     assert.equal(await page.locator('#btn-ai-replace').isDisabled(), true);
-    assert.equal(await page.locator('#btn-ai-replace-subject').isDisabled(), true);
+    assert.equal(await page.locator('[data-ai-fill=subject]').isDisabled(), true);
     await page.evaluate(async () => { window.__finishComposeStream(); await window.__composeStreamTask; });
     assert.equal(await page.locator('#btn-ai-replace').isEnabled(), true);
-    assert.equal(await page.locator('#btn-ai-replace-subject').isEnabled(), true);
+    assert.equal(await page.locator('[data-ai-fill=subject]').isEnabled(), true);
     assert.match(await page.locator('#compose-ai-output').innerText(), /正在生成完整正文/);
     await page.evaluate(() => {
       const originalFetch = window.fetch;

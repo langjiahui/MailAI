@@ -1,10 +1,12 @@
 /* Search is one control: scope is context, not a detached action. */
 html[data-theme] body .topbar .global-search {
+  --search-field-surface:var(--desk-muted-surface);
   gap:9px; padding:0 12px; height:42px; box-sizing:border-box;
   border:1px solid var(--desk-line); border-radius:12px;
-  background:var(--desk-muted-surface); transition:border-color .18s,box-shadow .18s;
+  background:var(--search-field-surface); transition:border-color .18s,box-shadow .18s;
 }
 html[data-theme] body .global-search:focus-within {
+  --search-field-surface:var(--desk-surface);
   border-color:var(--desk-accent); box-shadow:0 0 0 3px color-mix(in srgb,var(--desk-accent) 10%,transparent);
 }
 html[data-theme] body .global-search .search-icon {
@@ -18,6 +20,16 @@ html[data-theme] body .global-search input,
 html[data-theme] body .global-search input:is(:hover,:focus,:focus-visible) {
   width:0; min-width:0; height:40px; padding:0!important; border:0!important;
   background:transparent!important; box-shadow:none!important; outline:none!important;
+}
+/* Browser autofill paints its own input background, even over transparent CSS.
+   Keep saved search entries on the same surface as the scope and search icon. */
+html[data-theme] body #global-search:is(:autofill,:-webkit-autofill) {
+  -webkit-box-shadow:inset 0 0 0 1000px var(--search-field-surface)!important;
+  box-shadow:inset 0 0 0 1000px var(--search-field-surface)!important;
+  -webkit-text-fill-color:var(--desk-ink)!important;
+  caret-color:var(--desk-ink);
+  border-radius:0;
+  transition:none;
 }
 /* A single compact period control aligned with the adjacent actions. */
 html[data-theme] body .dashboard-header-actions { align-items:center; gap:8px; }

@@ -47,7 +47,7 @@ async function pageAt(url) {
 (async () => {
   const values = {
     'mailai.preferences.theme.v1':'dark', 'mailai-language':'en',
-    'mailai-density':'compact','mailai-font-scale':'1.2',
+    'mailai.attachments.view.v1':'list','mailai-density':'compact','mailai-font-scale':'1.2',
     'mailai-companion-motion':'off','mailai-assistant-floating':'true',
     'mailai-assistant-layout-v1':'{"width":400}',
     'mailai.workspace.paneSizes.v1':'{"sidebar":250,"list":420}',

@@ -50,7 +50,7 @@
     const controls = 'button,input,select,textarea,a[href]';
     const focusKey = focusRow?.getAttribute(keyAttribute);
     const focusIndex = focusRow ? [...focusRow.querySelectorAll(controls)].indexOf(focused) : -1;
-    const selection = focused?.tagName === 'INPUT' && focused.type === 'text' ? [focused.selectionStart,focused.selectionEnd] : null;
+    const selection = (focused?.tagName === 'TEXTAREA' || (focused?.tagName === 'INPUT' && focused.type === 'text')) ? [focused.selectionStart,focused.selectionEnd] : null;
     const scroll = []; for (let n = host; n; n = n.parentElement) if (n.scrollHeight > n.clientHeight) scroll.push([n,n.scrollTop]);
     const desired = [...template.content.children].map(next => {
       const old = existing.get(next.getAttribute(keyAttribute));
@@ -65,7 +65,7 @@
       const row = [...host.children].find(n => n.getAttribute(keyAttribute) === focusKey);
       const control = row?.querySelectorAll(controls)[focusIndex];
       control?.focus({preventScroll:true});
-      if (selection && control?.type === 'text') control.setSelectionRange(...selection);
+      if (selection && (control?.tagName === 'TEXTAREA' || control?.type === 'text')) control.setSelectionRange(...selection);
     }
     scroll.forEach(([node,top]) => { node.scrollTop = top; });
   };

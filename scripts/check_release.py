@@ -120,6 +120,7 @@ def main():
                  [node, '--check', str(ROOT / 'app/web/static/secretary.js')],
                  [node, '--check', str(ROOT / 'app/web/static/task-planner.js')],
                  [node, '--check', str(ROOT / 'app/web/static/task-notices.js')],
+                 [node, '--check', str(ROOT / 'app/web/static/experience-polish.js')],
                  [node, '--check', str(ROOT / 'app/web/static/interaction-core.js')],
                  [node, str(ROOT / 'tests/test_sync_attention_ui.cjs')],
                  [node, str(ROOT / 'tests/test_transient_workspace_notice.cjs')],

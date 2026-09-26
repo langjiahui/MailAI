@@ -239,7 +239,7 @@ async function refreshTaskCenter({lightweight = false} = {}) {
       ['邮箱同步', () => api('/api/fetch_status', {accountId}), {}],
       ['稍后提醒', () => useCachedReminders ? taskCenterReminders : api('/api/reminders', {accountId}), []],
       ['到期提醒', () => useCachedReminders ? [] : api('/api/reminders/all', {accountId}), []],
-      ['删除同步', () => api('/api/mail/action-sync', {accountId}), {rows:[],total:0}],
+      ['删除同步', () => api('/api/mail/action-sync' + (window.mailaiShowPausedSync ? '?include_paused=true' : ''), {accountId}), {rows:[],total:0}],
       ['已删除邮件清理', () => api('/api/trash/purge/status', {accountId}), {}],
     ];
     const results = await Promise.allSettled(requests.map(([, read]) => Promise.resolve().then(read)));
@@ -261,13 +261,14 @@ async function refreshTaskCenter({lightweight = false} = {}) {
     const purgeAttention = Boolean(purge.unacknowledged || purge.cleanup_pending);
     const purgeBlock = purge.pending || purgeAttention ? `<section class="task-section"><h3>已删除邮件清理</h3><article class="task-row"><div class="task-row-main"><b>本地邮件已移除</b><span class="task-status">${purge.pending ? '远端待同步' : '仅本地完成'}</span></div><small>${purge.pending ? `${Number(purge.pending)} 封等待服务器删除，联网后自动退避重试。` : ''}${purge.unacknowledged ? `${Number(purge.unacknowledged)} 封无法安全确认远端删除，服务器可能仍保留；可在网页邮箱核对。` : ''}${purge.cleanup_pending ? `${Number(purge.cleanup_pending)} 个原文文件待清理，将在后台重试。` : ''}不影响本地邮件查看、搜索与写信。</small>${purge.unacknowledged ? `<div class="task-row-actions"><button data-purge-ack="${esc(JSON.stringify(purge.notice_ids || []))}">已知晓</button></div>` : ''} </article></section>` : '';
     const unavailableBlock = errors.length ? `<div class="task-load-error task-partial-error" role="status"><b>部分状态暂时无法读取</b><span>${esc(errors.join('、'))}未能加载，请重试确认。已加载的事项仍可处理。</span><button data-task-refresh>重新加载</button></div>` : '';
-    const actionBlock = actions.total ? `<section class="task-section"><h3>删除同步 <span>${Number(actions.total)}</span></h3>${actions.rows.map(row => `<article class="task-row"><div class="task-row-main"><b>${esc(row.subject || '无主题')}</b><span class="task-status">${row.pending_error ? '同步失败' : row.pending_action === 'trash' ? '本地已移除 · 等待同步' : '服务器处理中'}</span></div><small>${row.pending_error ? esc(row.pending_error) + '；系统会自动重试。' : '邮件已从本地列表移除，服务器操作尚未完成。'}${row.pending_error ? '请勿在网页邮箱重复移动，以免位置发生变化。' : ''}</small>${row.pending_error ? `<div class="task-row-actions"><button data-action-sync-retry="${row.id}">立即重试同步</button></div>` : ''}</article>`).join('')}</section>` : '';
+    const actionBlock = actions.total || actions.paused_count ? `<section class="task-section"><h3>删除同步 <span>${Number(actions.total)}</span></h3>${actions.paused_count ? `<button class="sync-paused-toggle" data-sync-paused-toggle aria-pressed="${!!window.mailaiShowPausedSync}">${window.mailaiShowPausedSync ? '收起已暂停' : '查看已暂停'}（${Number(actions.paused_count)}）</button>` : ''}${actions.rows.map(row => `<article class="task-row"><div class="task-row-main"><b>${esc(row.subject || '无主题')}</b><span class="task-status ${row.pending_error && !row.paused ? 'warning' : ''}">${row.paused ? '已暂停' : row.pending_error ? '同步待处理' : '等待服务器同步'}</span></div><small>${row.paused ? '已停止自动重试，本地仍保持删除状态。服务器端是否删除尚未确认，可核对网页邮箱后恢复同步。' : row.pending_action === 'trash_copying' && row.pending_error ? '服务器尚未确认垃圾箱中的副本。为避免重复复制，系统只核对结果；你也可以暂停，将此项移出待处理列表。' : row.pending_error ? '本地已移除，服务器同步未完成。可以重试或暂停，不影响收发其他邮件。' : '本地已移除，服务器操作尚未完成。'} </small>${row.pending_error ? `<details class="sync-error-details"><summary>查看失败详情 · 已尝试 ${Number(row.pending_attempts || 0)} 次</summary><small>${esc(row.pending_error)}</small></details>` : ''}${row.pending_error || row.paused ? `<div class="task-row-actions"><button data-action-sync-retry="${row.id}">${row.paused ? '恢复同步' : '重新核对并重试'}</button>${!row.paused ? `<button data-action-sync-pause="${row.id}">暂停同步</button>` : ''}</div>` : ''}</article>`).join('')}</section>` : '';
+
     const content = unavailableBlock + syncBlock + actionBlock + purgeBlock + outboxBlock + reminderBlock;
     host.dataset.partial = errors.length ? '1' : '0';
     document.getElementById('task-center').classList.toggle('is-empty', !content);
-    const attentionCount = visibleRows.filter(row => ['failed','unknown'].includes(row.status)).length + (showSync && !sync.running ? 1 : 0) + (purgeAttention ? 1 : 0) + actions.rows.filter(row => row.pending_error).length;
-    const activeCount = visibleRows.filter(row => ['queued','sending'].includes(row.status)).length + (sync.running ? 1 : 0) + (purge.pending ? 1 : 0) + (actions.total ? 1 : 0);
-    host.dataset.live = activeCount ? '1' : '0';
+    const attentionCount = visibleRows.filter(row => ['failed','unknown'].includes(row.status)).length + (showSync && !sync.running ? 1 : 0) + (purgeAttention ? 1 : 0) + actions.rows.filter(row => row.pending_error && !row.paused).length;
+    const activeCount = visibleRows.filter(row => ['queued','sending'].includes(row.status)).length + (sync.running ? 1 : 0) + (purge.pending ? 1 : 0) + (actions.rows.some(row => !row.paused && !row.pending_error) ? 1 : 0);
+    host.dataset.live = activeCount || actions.rows.some(row => !row.paused) ? '1' : '0';
     host.innerHTML = (content ? `<div class="task-overview"><span>需要你关注的事项</span><div class="task-overview-counts">${attentionCount ? `<span class="attention">${attentionCount} 项需处理</span>` : ''}${activeCount ? `<span>${activeCount} 项进行中</span>` : ''}${reminders.length ? `<span>${reminders.length} 项提醒</span>` : ''}${errors.length ? '<span class="attention">状态未完整</span>' : ''}</div></div>${content}` : `<div class="task-empty"><span class="task-empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12 4.5 4.5L19 7"/></svg></span><div><b>目前没有待处理事项</b><span>发送中和异常邮件会显示在这里。</span></div><button type="button" data-task-open-sent>查看已发送邮件 <span aria-hidden="true">↗</span></button></div>`);
     for (const row of visibleRows.filter(row => row.status === 'unknown')) {
       const article = [...host.querySelectorAll('[data-outbox-token]')].find(item => item.dataset.outboxToken === row.token);
@@ -483,14 +484,14 @@ function addReadingActions(force = false) {
     morePanel.prepend(secondary);
     morePanel.querySelector('[data-reading-action="delete-current"]')?.remove();
     if (selectedEmailDetail?.status !== 'trash') {
-      morePanel.insertAdjacentHTML('beforeend', `<button type="button" data-reading-action="delete-current">${icon('M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7M14 10v7')}<span>删除当前邮件</span></button>`);
+      morePanel.insertAdjacentHTML('beforeend', `<button type="button" data-reading-action="delete-current" data-action-hint="将这封邮件移入已删除">${icon('M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7M14 10v7')}<span>删除邮件</span></button>`);
     }
   }
   host.querySelectorAll('button').forEach(button => {
     const label = button.getAttribute('aria-label') || button.textContent.trim();
     if (label) {
       button.setAttribute('aria-label', label);
-      button.title = label;
+      button.title = button.dataset.actionHint || label;
     }
   });
   host.onclick = async event => {
@@ -872,4 +873,17 @@ document.getElementById('task-center-list').addEventListener('click', async even
     if (accountId === taskCenterScope()) { toast('已安排后台重试，可继续处理其他邮件', 'info'); await refreshTaskCenter(); }
   } catch (error) { if (accountId === taskCenterScope()) toast(error.message, 'error'); }
   finally { if (button.isConnected) button.disabled = false; }
+});
+
+document.getElementById('task-center-list').addEventListener('click', async event => {
+  if (event.target.closest('[data-sync-paused-toggle]')) { window.mailaiShowPausedSync = !window.mailaiShowPausedSync; await refreshTaskCenter(); return; }
+  const button = event.target.closest('[data-action-sync-pause]');
+  if (!button || button.disabled) return;
+  const accountId = taskCenterScope(), id = Number(button.dataset.actionSyncPause);
+  button.disabled = true;
+  try {
+    if (!await mailaiAsk({title:'暂停这封邮件的删除同步？', message:'停止自动重试并移出待处理列表。本地仍保持删除状态；服务器邮件可能仍在原文件夹或垃圾箱。你可以在“已暂停”中恢复同步。',confirmText:'暂停同步'})) return;
+    await api(`/api/mail/action-sync/${id}/pause`,{accountId,method:'POST'});
+    if (accountId === taskCenterScope()) { await refreshTaskCenter(); toast('已暂停，可在已暂停列表恢复','info'); }
+  } catch(error) { toast(error.message,'error'); } finally { if(button.isConnected) button.disabled=false; }
 });

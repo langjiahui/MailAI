@@ -3,7 +3,7 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
 (async()=>{const browser=await chromium.launch({headless:true});try{
  const p=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];p.on('pageerror',e=>errors.push(e.message));
  await p.goto('http://127.0.0.1:18795');await p.locator('.email-item').first().waitFor();await p.locator('#app-preloader').waitFor({state:'hidden'});
- await p.locator('#btn-attachments').click();await p.locator('.attachment-open').first().waitFor();
+ await p.locator('#btn-attachments').click();await p.locator('.attachment-open').first().waitFor();await p.locator('[data-file-view=cards]').click();
  await p.locator('.attachment-open').first().click();await p.locator('.file-preview').waitFor({state:'visible'});
  await p.locator('.file-preview button[aria-label="关闭预览"]').click();
  const [download]=await Promise.all([p.waitForEvent('download'),p.locator('.attachment-download-action').first().click()]);
