@@ -443,7 +443,7 @@ class DesktopApi:
                 apply_window_appearance(native, theme, mode)
         return {"ok": runtime._call_after_safely("更新窗口主题", apply)}
 
-    def set_window_drag_region(self, left, right, viewport_width):
+    def set_window_drag_region(self, left, right, viewport_width, gaps=None):
         import math
         if sys.platform != 'darwin':
             return {"ok": False}
@@ -452,11 +452,22 @@ class DesktopApi:
             return {"ok": False}
         if not 0 <= left < right <= viewport_width or viewport_width <= 0:
             return {"ok": False}
+        if gaps is not None:
+            if not isinstance(gaps, list) or len(gaps) > 32:
+                return {'ok': False}
+            for gap in gaps:
+                if (not isinstance(gap, list) or len(gap) != 2
+                        or not all(isinstance(v, (int, float)) and math.isfinite(v) for v in gap)
+                        or not 0 <= gap[0] < gap[1] <= viewport_width):
+                    return {'ok': False}
         from .macos_appearance import update_drag_region
         def apply():
             native = getattr(self._runtime.window, 'native', None)
             if native is not None:
-                update_drag_region(native, left, right, viewport_width)
+                if gaps is None:
+                    update_drag_region(native, left, right, viewport_width)
+                else:
+                    update_drag_region(native, left, right, viewport_width, gaps)
         return {"ok": self._runtime._call_after_safely('更新窗口拖动区域', apply)}
 
     def enable_notifications(self):

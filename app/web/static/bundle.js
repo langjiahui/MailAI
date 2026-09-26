@@ -13260,7 +13260,20 @@ document.getElementById('task-center-list').addEventListener('click', async even
         }
       }
       const rect = document.querySelector('.topbar .brand')?.getBoundingClientRect();
-      if (rect?.width) window.pywebview?.api?.set_window_drag_region?.(rect.left, rect.right, window.innerWidth)?.catch(() => {});
+      if (rect?.width) {
+        // Native drag/double-click applies to empty header space, never controls.
+        const occupied = [...header.querySelectorAll('.global-search,button,input,select,a,[role=button]')]
+          .map(el => el.getBoundingClientRect()).filter(r => r.width && r.height)
+          .sort((a,b) => a.left - b.left);
+        const gaps = [];
+        let edge = 108; // Native traffic lights use physical points, independent of font zoom.
+        for (const r of occupied) {
+          if (r.left > edge) gaps.push([edge, Math.min(r.left, innerWidth)]);
+          edge = Math.max(edge, r.right);
+        }
+        if (edge < innerWidth) gaps.push([edge, innerWidth]);
+        window.pywebview?.api?.set_window_drag_region?.(rect.left, rect.right, innerWidth, gaps)?.catch(() => {});
+      }
     });
   }
   const header = document.querySelector('.topbar');
@@ -13268,6 +13281,12 @@ document.getElementById('task-center-list').addEventListener('click', async even
   const sidebar = document.querySelector('.layout > .sidebar');
   if (sidebar) new ResizeObserver(updateDragRegion).observe(sidebar);
   window.addEventListener('resize', updateDragRegion);
+  window.addEventListener('mailai:native-fullscreen', event => {
+    const root = document.documentElement;
+    if (!root.classList.contains('macos-native-window')) return;
+    root.classList.toggle('macos-native-fullscreen', event.detail?.fullscreen === true);
+    updateDragRegion();
+  });
   async function syncNativeTheme() {
     const method = window.pywebview?.api?.set_window_theme;
     if (!method) return;

@@ -46,6 +46,22 @@ const {chromium, webkit} = require('playwright');
         }
       }
     }
+    await page.setViewportSize({width:1512,height:949});
+    for (const theme of ['light','dark']) {
+      await page.evaluate(theme=>applyTheme(theme),theme);
+      const before = await page.locator('.global-search').boundingBox();
+      await page.evaluate(()=>window.dispatchEvent(new CustomEvent('mailai:native-fullscreen',{detail:{fullscreen:true}})));
+      await page.waitForTimeout(200);
+      const brand = await page.locator('.topbar .brand').boundingBox();
+      const after = await page.locator('.global-search').boundingBox();
+      assert(Math.abs(brand.x-20)<1,'full screen should reclaim the traffic light space');
+      assert(await page.locator('.topbar .logo').isVisible(),'full screen brand icon is visible');
+      assert(Math.abs(before.x-after.x)<1,'search remains aligned with the mail column');
+      await page.evaluate(()=>window.dispatchEvent(new CustomEvent('mailai:native-fullscreen',{detail:{fullscreen:false}})));
+      await page.waitForTimeout(200);
+      assert((await page.locator('.topbar .brand').boundingBox()).x>=108,'restore native traffic light clearance');
+      assert(!await page.locator('.topbar .logo').isVisible());
+    }
     assert.deepEqual(errors,[]);
     console.log('macOS workspace: themes, 900–1512px windows, 90–130% font scaling and primary dialogs passed');
   } finally {await browser.close();}

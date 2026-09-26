@@ -7,13 +7,14 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from app.macos_appearance import apply_window_appearance, update_drag_region
 from app.desktop import DesktopApi
 
-kit = types.SimpleNamespace(NSAppearance=Mock(), NSColor=Mock(), NSWindowTitleHidden=1, NSWindowAbove=1)
+kit = types.SimpleNamespace(NSAppearance=Mock(), NSColor=Mock(), NSWindowTitleHidden=1, NSWindowAbove=1, NSWindowStyleMaskFullScreen=16384)
 with patch.dict(sys.modules, AppKit=kit):
     for theme, appearance, rgb in (
         ('light', 'NSAppearanceNameAqua', (238,240,239)),
         ('dark', 'NSAppearanceNameDarkAqua', (32,36,34)),
     ):
         native=Mock()
+        native.styleMask.return_value = 15
         apply_window_appearance(native, theme, theme)
         kit.NSAppearance.appearanceNamed_.assert_called_with(appearance)
         kit.NSColor.colorWithSRGBRed_green_blue_alpha_.assert_called_with(*(v/255 for v in rgb),1.0)
@@ -25,6 +26,7 @@ with patch.dict(sys.modules, AppKit=kit):
         native.setTitlebarSeparatorStyle_.assert_called_with(1)
     for theme in ('light', 'dark'):
         native = Mock()
+        native.styleMask.return_value = 15
         apply_window_appearance(native, theme, 'system')
         native.setAppearance_.assert_called_once_with(None)
 runtime=Mock()
@@ -92,6 +94,8 @@ kit.NSViewMinYMargin = 8
 kit.NSUserDefaults = Mock()
 kit.NSNotificationCenter = Mock()
 kit.NSWindowWillEnterFullScreenNotification = 'enter'
+kit.NSWindowDidEnterFullScreenNotification = 'entered'
+kit.NSWindowWillExitFullScreenNotification = 'exiting'
 kit.NSWindowDidExitFullScreenNotification = 'exit'
 kit.NSWindowWillCloseNotification = 'close'
 native = Mock()
@@ -101,12 +105,46 @@ with patch.dict(sys.modules, AppKit=kit), patch.object(chrome, '_drag_view_class
     chrome.install_unified_titlebar(native)
     drag = native._mailai_drag_view
     center = kit.NSNotificationCenter.defaultCenter()
-    assert center.addObserver_selector_name_object_.call_count == 3
+    assert center.addObserver_selector_name_object_.call_count == 5
     event = Mock(); event.object.return_value = native
     drag.windowWillEnterFullScreen_(event)
     native.toolbar().setVisible_.assert_called_with(False)
+    assert 'fullscreen:true' in native.contentView().evaluateJavaScript_completionHandler_.call_args.args[0]
     drag.windowDidExitFullScreen_(event)
     native.toolbar().setVisible_.assert_called_with(True)
+    assert 'fullscreen:false' in native.contentView().evaluateJavaScript_completionHandler_.call_args.args[0]
     drag.windowWillClose_(event)
     center.removeObserver_.assert_called_once_with(drag)
 print('Fullscreen toolbar occlusion, restoration and observer cleanup passed')
+
+# Empty header regions are scaled like the brand; malformed bridge data is rejected.
+with patch('app.desktop.sys.platform', 'darwin'):
+    for gaps in ('bad', [[1]], [[200, 100]], [[0, 1300]], [[0, float('inf')]]):
+        assert api.set_window_drag_region(110, 220, 1200, gaps) == {'ok': False}
+    with patch('app.macos_appearance.update_drag_region') as update:
+        assert api.set_window_drag_region(110, 220, 1200, [[110, 230], [700, 800]]) == {'ok': True}
+        runtime._call_after_safely.call_args.args[1]()
+        update.assert_called_once_with(runtime.window.native,110,220,1200,[[110,230],[700,800]])
+
+def rect(x,y,w,h):
+    return types.SimpleNamespace(origin=types.SimpleNamespace(x=x,y=y),size=types.SimpleNamespace(width=w,height=h))
+class Window:
+    def __init__(self):
+        self.current=rect(100,80,1000,700)
+        self.visible=rect(0,40,1512,900)
+    def frame(self): return self.current
+    def screen(self): return self
+    def visibleFrame(self): return self.visible
+    def setFrame_display_animate_(self,target,display,animate):
+        self.current=rect(*target[0],*target[1]) if isinstance(target,tuple) else target
+window=Window()
+chrome.toggle_maximized(window)
+assert window.frame().size.width==1512 and window.frame().origin.y==40
+chrome.toggle_maximized(window)
+assert window.frame().size.width==1000 and window.frame().origin.x==100 and window.frame().origin.y==80
+chrome.toggle_maximized(window)
+window.visible=rect(0,0,900,640)
+window.current=window.visible
+chrome.toggle_maximized(window)
+assert window.frame().size.width==900 and window.frame().size.height==640
+print('Double-click fills usable display, restores previous bounds and clamps after display changes')

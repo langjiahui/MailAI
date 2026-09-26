@@ -158,3 +158,21 @@ html.macos-native-window[data-theme] body .topbar .nav-action { display:inline-f
 }
 html.macos-native-window[data-theme] body .reading-pane .plain-email-body>* { max-width:min(100%,80ch); }
 html.macos-native-window[data-theme] body .topbar :is(#btn-contacts,#btn-attachments,#btn-todos) { display:inline-flex!important; }
+
+/* Full screen has no permanent traffic lights: use the left corner as a brand header.
+   Keeping the sidebar column width stable prevents the search field from shifting. */
+html.macos-native-window.macos-native-fullscreen {
+ --mac-control-inset:20px;
+ --mac-brand-width:max(96px,calc(var(--mac-sidebar-width) - var(--mac-control-inset) - 2px));
+}
+html.macos-native-window.macos-native-fullscreen[data-theme] body .topbar .brand { gap:8px; }
+html.macos-native-window.macos-native-fullscreen .topbar .logo {
+ display:flex; width:24px; height:24px; min-width:24px; padding:0; flex:0 0 24px;
+ border:0; border-radius:0; background:transparent; box-shadow:none;
+}
+html.macos-native-window.macos-native-fullscreen .topbar .logo img { width:24px; height:24px; }
+@container mac-header (max-width:1000px) {
+ html.macos-native-window.macos-native-fullscreen[data-theme] body .topbar .brand {
+  width:96px; min-width:96px; flex-basis:96px;
+ }
+}
