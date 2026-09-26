@@ -252,3 +252,14 @@ html[data-theme] body .list-workspace-tools #filter-chips button {
  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2;
  overflow:hidden; overflow-wrap:anywhere;
 }
+
+/* Preserve readable labels when the pane narrows or task status grows. */
+.list-header .list-title { flex:1 1 auto; flex-wrap:wrap; gap:2px 8px; }
+.list-header #list-title { white-space:normal; overflow:visible; overflow-wrap:anywhere; }
+.list-header .list-count { flex:none; max-width:none; overflow:visible; white-space:nowrap; }
+html[data-theme] body .list-workspace-tools { display:flex; flex-wrap:wrap; align-items:center; gap:5px; }
+.list-workspace-tools #btn-filter-panel { flex:none; }
+.list-workspace-tools #filter-chips { flex:1 1 90px; min-width:90px; }
+.list-workspace-tools #filter-chips:empty { flex-basis:0; min-width:0; padding:0; }
+.list-workspace-tools #filter-chips:has(>button:nth-child(3)) { flex-basis:100%; order:3; }
+.list-workspace-tools #btn-task-center { flex:0 1 auto; min-width:0; max-width:100%; margin-left:auto; white-space:normal; text-align:left; }

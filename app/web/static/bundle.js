@@ -5217,9 +5217,7 @@ function updateListTitle(count) {
     currentFilter.domain || currentFilter.attachments || currentFilter.unread || currentFilter.search || currentFilter.days !== 9999);
   const countNode = document.getElementById('list-count');
   const countUnit = mailaiT('list.countMail') || ' 封';
-  countNode.textContent = serverTotal > count && hasFacet
-    ? (mailaiT('list.countScoped') || '{count} 封（当前范围共 {total} 封）').replace('{count}', count).replace('{total}', serverTotal)
-    : count + countUnit;
+  countNode.textContent = count + countUnit;
   countNode.title = serverTotal > count && hasFacet
     ? (mailaiT('list.countScopedTitle') || '当前筛选结果 {count} 封；邮箱范围共 {total} 封').replace('{count}', count).replace('{total}', serverTotal)
     : '';
@@ -9932,7 +9930,6 @@ document.getElementById('account-mailbox-nav').addEventListener('click', event =
   if (action === 'unified') openUnifiedInbox().catch(err => toast('加载所有收件箱失败：' + err.message, 'error'));
   else openAccountMailbox(button.dataset.accountId, action).catch(err => toast('打开邮箱失败：' + err.message, 'error'));
 });
-document.getElementById('btn-sidebar-add-account').addEventListener('click', () => showSystemView('account'));
 document.getElementById('compose-from').addEventListener('change', async event => {
   const accountId = event.target.value;
   const session = draftSession;

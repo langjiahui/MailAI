@@ -71,6 +71,7 @@ jobs:
       - name: Run prepublish browser checks
         run: |
           node tests/prepublish_browser.cjs
+          node tests/test_list_header_browser.cjs
           node tests/test_macos_workspace_browser.cjs
           MAILAI_DESKTOP_SHELL=windows node tests/test_macos_workspace_browser.cjs
           node tests/test_interaction_consistency_browser.cjs
