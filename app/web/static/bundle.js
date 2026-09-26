@@ -2914,7 +2914,9 @@ function renderSignatureSelect() {
   select.value = currentSignatureId && signatureState.items.some(item => item.id === currentSignatureId) ? currentSignatureId : '';
 }
 
+let composeSignatureRevision = 0;
 function renderComposeSignature(signatureId, fallbackHtml = '') {
+  composeSignatureRevision++;
   currentSignatureId = signatureId || '';
   const item = signatureState.items.find(row => row.id === currentSignatureId);
   const html = item?.html || fallbackHtml || '';
@@ -3019,8 +3021,13 @@ async function openCompose(seed = {}) {
     sendCapability = capability; send.disabled = !capability.configured;
     send.textContent = capability.configured ? '发送' : '发送（当前邮箱未配置）'; send.title = capability.reason || '发送邮件';
   }).catch(error => { if (session === draftSession) { send.disabled = true; send.title = error.message; } });
+  const initialSignatureRevision = composeSignatureRevision;
   loadSignatures().then(state => {
-    if (session === draftSession && !seed.id && !currentSignatureId) renderComposeSignature(state.default_id || '');
+    // A late default must not replace a signature/AI signoff chosen while loading.
+    if (session === draftSession && !session.canceled && !seed.id && !currentSignatureId &&
+        composeSignatureRevision === initialSignatureRevision &&
+        !document.getElementById('compose-signature-content').innerText.trim())
+      renderComposeSignature(state.default_id || '');
   }).catch(() => {});
   try { document.execCommand('styleWithCSS', false, true); } catch (_) {}
   resetComposeAiPanel();

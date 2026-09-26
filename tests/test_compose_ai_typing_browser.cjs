@@ -8,6 +8,15 @@ const assert = require('node:assert/strict');
     const page = await browser.newPage({reducedMotion:'no-preference'});
     await page.goto(process.env.MAILAI_PREVIEW_URL || 'http://127.0.0.1:18795');
     await page.locator('.email-item').first().waitFor();
+    // Delayed defaults must not erase a signoff already filled in by the user/AI.
+    let releaseSignatures;
+    const signaturesReady = new Promise(resolve => { releaseSignatures = resolve; });
+    await page.route('**/api/mail/signatures**', async route => {
+      await signaturesReady;
+      await route.fulfill({contentType:'application/json', body:JSON.stringify({
+        items:[{id:'late-default', name:'默认签名', html:'迟到的默认签名'}], default_id:'late-default'
+      })});
+    });
     await page.evaluate(() => openCompose());
     const subject = '项目交付安排与后续事项确认';
     const body = '您好，项目组：\n\n请确认交付时间。👨‍👩‍👧‍👦 <文件> & 材料\n'.repeat(25);
@@ -16,6 +25,10 @@ const assert = require('node:assert/strict');
       composeAiSuggestion = {subject, body, signoff:'不要重复的签名'};
       applyComposeAiSuggestion('subject');
     }, {subject, body});
+    releaseSignatures();
+    await page.waitForFunction(() => signatureState.default_id === 'late-default');
+    assert.equal(await page.locator('#compose-signature-content').innerText(), '原有签名');
+    await page.unroute('**/api/mail/signatures**');
     await page.waitForFunction(full => {
       const value = document.getElementById('compose-subject').value;
       return value.length > 0 && value.length < full.length;
