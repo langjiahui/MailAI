@@ -1,5 +1,6 @@
 // The native titlebar keeps its system hit targets; only its appearance changes.
 (() => {
+  if (document.documentElement.classList.contains('windows-native-window')) return;
   let revision = 0;
   let pending = Promise.resolve();
   let regionFrame;
@@ -54,7 +55,7 @@
       pending = pending.catch(() => {}).then(() => token === revision ? method(theme, mode) : null);
       const result = await pending;
       if (token === revision && result?.ok) {
-        document.documentElement.classList.add('macos-native-window');
+        document.documentElement.classList.add('desktop-native-window', 'macos-native-window');
         updateDragRegion();
       }
     } catch (_) { /* A missing/older desktop bridge keeps the standard web canvas. */ }

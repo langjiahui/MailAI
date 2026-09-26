@@ -22,3 +22,4 @@ onboarding.js
 model-usage.js
 motion.js
 macos-window.js
+windows-window.js

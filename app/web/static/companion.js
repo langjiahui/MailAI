@@ -17,7 +17,7 @@
     const alignFrames = () => {
       const zoom = Number(getComputedStyle(document.body).zoom) || 1;
       const origin = startup.getBoundingClientRect();
-      if (document.documentElement.classList.contains('macos-native-window')) {
+      if (document.documentElement.classList.contains('desktop-native-window')) {
         const reading = document.querySelector('.layout > .reading-pane')?.getBoundingClientRect();
         const list = document.querySelector('.layout > .list-pane')?.getBoundingClientRect();
         if (reading?.width) {

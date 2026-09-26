@@ -40,6 +40,22 @@ def notify_poll_result(result: dict) -> None:
         _runtime.notify_poll_result(result)
 
 
+class WindowsDesktopApi(DesktopApi):
+    def set_window_theme(self, theme, mode='system'):
+        if theme not in ('light', 'dark') or mode not in ('light', 'dark', 'system'):
+            return {'ok': False}
+        return self._runtime.set_window_theme(theme)
+
+    def toggle_window_maximized(self):
+        return self._runtime.window_action('maximize')
+
+    def toggle_window_fullscreen(self):
+        return self._runtime.window_action('fullscreen')
+
+    def get_window_state(self):
+        return self._runtime.window_action('state')
+
+
 class WindowsDesktopRuntime:
     def __init__(self, poll_callback: Callable[[], dict] | None = None):
         self.window = None
@@ -50,6 +66,45 @@ class WindowsDesktopRuntime:
         self.tray_notice_shown = False
         self._last_notice_is_task = False
         self._poll_lock = threading.Lock()
+        self._window_theme = 'light'
+        self._fullscreen_restore_state = None
+
+    def _native_call(self, callback):
+        from .windows_appearance import on_ui_thread
+        try:
+            return on_ui_thread(getattr(self.window, 'native', None), callback)
+        except Exception:
+            log.exception('Windows 窗口操作失败')
+            return {'ok': False}
+
+    def set_window_theme(self, theme):
+        self._window_theme = theme
+        def apply():
+            from .windows_appearance import apply_caption_theme
+            apply_caption_theme(self.window.native, theme)
+            return {'ok': True}
+        return self._native_call(apply)
+
+    def window_action(self, action):
+        def apply():
+            from System.Windows.Forms import FormWindowState
+            native = self.window.native
+            fullscreen = bool(native.is_fullscreen)
+            if action == 'maximize' and not fullscreen:
+                native.WindowState = (FormWindowState.Normal if native.WindowState == FormWindowState.Maximized
+                                      else FormWindowState.Maximized)
+            elif action == 'fullscreen':
+                if not fullscreen:
+                    self._fullscreen_restore_state = native.WindowState
+                native.toggle_fullscreen()
+                if fullscreen and self._fullscreen_restore_state is not None:
+                    native.WindowState = self._fullscreen_restore_state
+                    self._fullscreen_restore_state = None
+                from .windows_appearance import apply_caption_theme
+                apply_caption_theme(native, self._window_theme)
+            return {'ok': True, 'fullscreen': bool(native.is_fullscreen),
+                    'maximized': native.WindowState == FormWindowState.Maximized}
+        return self._native_call(apply)
 
     def handle_closing(self, *_):
         if self.quitting:
@@ -201,17 +256,26 @@ def run_windows_window(asgi_app, preferred_port: int = 0,
 
         window = webview.create_window(
             "MailAI",
-            url=f"http://127.0.0.1:{local_server.port}/",
-            js_api=DesktopApi(runtime),
+            url=f"http://127.0.0.1:{local_server.port}/?shell=windows",
+            js_api=WindowsDesktopApi(runtime),
             width=1440,
             height=900,
             min_size=(900, 640),
             resizable=True,
-            background_color="#edf5f2",
+            background_color="#ffffff",
             text_select=True,
         )
         runtime.window = window
         window.events.closing += runtime.handle_closing
+        def prepare_window():
+            try:
+                from .ui_preferences import load
+                mode = load().get('mailai.preferences.theme.v1') or 'system'
+                theme = mode if mode in ('light', 'dark') else ('dark' if window.native.is_dark_theme() else 'light')
+                runtime.set_window_theme(theme)
+            except Exception:
+                log.debug('Windows 初始主题使用系统默认值', exc_info=True)
+        window.events.before_show += prepare_window
         def page_loaded():
             log.info("启动阶段：Windows 页面已加载")
             marker = os.environ.get("MAILAI_WINDOW_READY_FILE")

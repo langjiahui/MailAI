@@ -8,9 +8,10 @@
   <script src="/static/preferences.js"></script>
   <script>
     (() => {
-      // A presentation hint supplied by the Cocoa launcher, before the first paint.
-      if (new URLSearchParams(location.search).get('shell') === 'macos') {
-        document.documentElement.classList.add('macos-native-window');
+      // Native launchers opt in before the first paint; ordinary browsers keep their layout.
+      const shell = new URLSearchParams(location.search).get('shell');
+      if (shell === 'macos' || shell === 'windows') {
+        document.documentElement.classList.add('desktop-native-window', shell + '-native-window');
       }
       try {
         const mode = localStorage.getItem('mailai.preferences.theme.v1') || 'system';
@@ -41,7 +42,8 @@
   <link rel="stylesheet" href="/static/digest-polish.css?v=1">
   <link rel="stylesheet" href="/static/experience-polish.css?v=3">
   <link rel="stylesheet" href="/static/page-polish.css?v=8">
-  <link rel="stylesheet" href="/static/macos-window.css?v=4">
+  <link rel="stylesheet" href="/static/macos-window.css?v=5">
+  <link rel="stylesheet" href="/static/windows-window.css?v=1">
 </head>
 <body>
   <div id="app-preloader" class="app-preloader" role="status" aria-live="polite">
@@ -950,7 +952,7 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=4c929aa182d7"></script>
+  <script src="/static/bundle.js?v=490aa02f53d7"></script>
   <script src="/static/settings-scroll.js?v=2"></script>
 </body>
 </html>

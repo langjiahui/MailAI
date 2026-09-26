@@ -2,16 +2,28 @@
 const assert = require('node:assert/strict');
 const {chromium, webkit} = require('playwright');
 (async () => {
+  const shell = process.env.MAILAI_DESKTOP_SHELL || 'macos';
   const useWebKit = process.env.MAILAI_PRELOADER_WEBKIT === '1';
   const browser = await (useWebKit ? webkit : chromium).launch({...(!useWebKit && !process.env.CI ? {channel:'chrome'} : {})});
   const errors = [];
   try {
     const page = await browser.newPage();
+    if (shell === 'windows') await page.addInitScript(() => {
+      const state = {ok:true,fullscreen:false,maximized:false};
+      window.nativeCalls = [];
+      window.pywebview = {api:{
+        set_window_theme:async (...args)=>{nativeCalls.push(['theme',...args]);return {ok:true};},
+        get_window_state:async ()=>({...state}),
+        toggle_window_maximized:async ()=>{nativeCalls.push(['maximize']);state.maximized=!state.maximized;return {...state};},
+        toggle_window_fullscreen:async ()=>{nativeCalls.push(['fullscreen']);state.fullscreen=!state.fullscreen;return {...state};},
+      }};
+    });
     page.on('pageerror', error => errors.push(error.message));
-    await page.goto('http://127.0.0.1:18795/?shell=macos');
+    await page.goto(`http://127.0.0.1:18795/?shell=${shell}`);
     await page.locator('#app-preloader').waitFor({state:'detached'});
     await page.locator('#email-list .email-item').first().click();
     const commands = ['btn-compose','btn-contacts','btn-attachments','btn-todos','btn-preferences'];
+    if (shell === 'windows') commands.push('btn-window-fullscreen');
     for (const width of [900,1200,1512]) {
       await page.setViewportSize({width,height:width === 900 ? 640 : 949});
       for (const theme of ['light','dark']) {
@@ -47,7 +59,7 @@ const {chromium, webkit} = require('playwright');
       }
     }
     await page.setViewportSize({width:1512,height:949});
-    for (const theme of ['light','dark']) {
+    if (shell === 'macos') for (const theme of ['light','dark']) {
       await page.evaluate(theme=>applyTheme(theme),theme);
       const before = await page.locator('.global-search').boundingBox();
       await page.evaluate(()=>window.dispatchEvent(new CustomEvent('mailai:native-fullscreen',{detail:{fullscreen:true}})));
@@ -62,7 +74,30 @@ const {chromium, webkit} = require('playwright');
       assert((await page.locator('.topbar .brand').boundingBox()).x>=108,'restore native traffic light clearance');
       assert(!await page.locator('.topbar .logo').isVisible());
     }
+    if (shell === 'windows') {
+      assert(!await page.locator('html').evaluate(el=>el.classList.contains('macos-native-window')));
+      const calls = () => page.evaluate(()=>nativeCalls.filter(call=>call[0]==='maximize').length);
+      await page.locator('.topbar .brand').dblclick();
+      assert.equal(await calls(),1);
+      await page.locator('.global-search input').dblclick();
+      assert.equal(await calls(),1,'search must never maximize the window');
+      await page.locator('.topbar .brand').dblclick();
+      assert.equal(await calls(),2);
+      await page.keyboard.press('F11');
+      await page.waitForFunction(()=>document.documentElement.classList.contains('windows-native-fullscreen'));
+      assert.equal(await page.locator('#btn-window-fullscreen').getAttribute('aria-pressed'),'true');
+      await page.locator('.topbar .brand').dblclick();
+      assert.equal(await calls(),2,'double-click is inert in full screen');
+      await page.locator('#btn-window-fullscreen').click();
+      await page.waitForFunction(()=>!document.documentElement.classList.contains('windows-native-fullscreen'));
+      for (const theme of ['light','dark']) {
+        await page.evaluate(theme=>applyTheme(theme),theme);
+        await page.waitForFunction(theme=>nativeCalls.some(call=>call[0]==='theme' && call[1]===theme),theme);
+        await page.waitForTimeout(600); // Capture settled theme colors, not transition frames.
+        await page.screenshot({path:`build/windows-workspace-${theme}.png`});
+      }
+    }
     assert.deepEqual(errors,[]);
-    console.log('macOS workspace: themes, 900–1512px windows, 90–130% font scaling and primary dialogs passed');
+    console.log(`${shell} workspace: themes, 900–1512px windows, 90–130% font scaling and primary dialogs passed`);
   } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exit(1);});

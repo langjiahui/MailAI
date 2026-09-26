@@ -4,6 +4,7 @@ const path = require('node:path');
 const assert = require('node:assert/strict');
 const {chromium, webkit} = require('playwright');
 (async () => {
+  const shell = process.env.MAILAI_DESKTOP_SHELL || 'macos';
   const root = path.resolve(__dirname, '../app/web/static');
   const html = fs.readFileSync(path.join(root,'index.html'),'utf8').replace(/<script\b[^>]*src=[^>]*>[\s\S]*?<\/script>/g,'');
   const app = fs.readFileSync(path.join(root,'app.js'),'utf8');
@@ -20,8 +21,8 @@ const {chromium, webkit} = require('playwright');
         const file = path.join(root,url.pathname.replace('/static/',''));
         return fs.existsSync(file) ? route.fulfill({path:file}) : route.abort();
       });
-      await page.goto('http://mailai.test/?shell=macos');
-      assert(await page.locator('html').evaluate(el=>el.classList.contains('macos-native-window')), 'native layout must precede bridge readiness');
+      await page.goto(`http://mailai.test/?shell=${shell}`);
+      assert(await page.locator('html').evaluate((el,shell)=>el.classList.contains(shell+'-native-window'),shell), 'native layout must precede bridge readiness');
       assert.equal(await page.locator('html').getAttribute('data-theme'),theme);
       await page.addScriptTag({path:path.join(root,'companion.js')});
       await page.addScriptTag({content:handoff});
@@ -45,7 +46,7 @@ const {chromium, webkit} = require('playwright');
       assert(!geometry.backdrop.includes('radial-gradient'),'native startup must not return to ambient gradient wallpaper');
       assert.equal(geometry.line,'rgba(0, 0, 0, 0)');
       assert.equal(geometry.headerLine,'none');
-      assert(!await page.locator('.preloader-brand img').isVisible());
+      assert.equal(await page.locator('.preloader-brand img').isVisible(),shell === 'windows');
       await page.screenshot({path:path.resolve(__dirname,`../build/native-startup-${theme}.png`)});
       await page.evaluate(()=>hideAppPreloader());
       await page.waitForFunction(()=>document.getElementById('app-preloader').dataset.handoff==='running');
@@ -68,7 +69,7 @@ const {chromium, webkit} = require('playwright');
       await page.locator('#app-preloader').waitFor({state:'detached',timeout:1000});
       // An ordinary macOS browser does not opt into native chrome.
       await page.goto('http://mailai.test/');
-      assert(!await page.locator('html').evaluate(el=>el.classList.contains('macos-native-window')));
+      assert(!await page.locator('html').evaluate((el,shell)=>el.classList.contains(shell+'-native-window'),shell));
       await page.close();
     }
     console.log('native startup: first-paint theme/layout, surface continuity, brand alignment, handoff, resizing and reduced motion passed');
