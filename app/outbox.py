@@ -21,8 +21,9 @@ def _process_lock(path: str):
     try:
         if os.name == "nt":
             import msvcrt
-            stream.seek(0)
-            if not stream.read(1):
+            # Windows denies reads of a byte locked by another process.
+            # Inspect file size without touching the protected byte.
+            if os.fstat(stream.fileno()).st_size == 0:
                 stream.seek(0)
                 stream.write(b"0")
                 stream.flush()

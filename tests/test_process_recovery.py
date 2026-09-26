@@ -13,11 +13,32 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+from unittest.mock import patch
+from types import SimpleNamespace
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_windows_locked_byte():
+    from app import outbox
+    class Stream:
+        def fileno(self): return 7
+        def read(self, *_): raise AssertionError('Do not read a locked Windows byte')
+        def seek(self, *_): pass
+        def close(self): pass
+    windows = SimpleNamespace(LK_NBLCK=1, LK_UNLCK=2,
+                              locking=lambda *_: (_ for _ in ()).throw(OSError('locked')))
+    with patch.object(outbox.os, 'name', 'nt'), patch('builtins.open', return_value=Stream()), \
+         patch.object(outbox.os, 'makedirs'), patch.object(outbox.os, 'fstat', return_value=SimpleNamespace(st_size=1)), \
+         patch.dict(sys.modules, {'msvcrt':windows}):
+        with outbox._process_lock('existing.lock') as acquired:
+            assert acquired is False
+
+
 def main():
+    test_windows_locked_byte()
     with tempfile.TemporaryDirectory(prefix='mailai-process-recovery-') as root:
         with socket.socket() as listener:
             listener.bind(('127.0.0.1', 0))
@@ -57,7 +78,7 @@ def main():
                 original = start(); ready(original)
                 assert get('/api/system/config')['accounts'] == [], 'test loaded a real account'
                 duplicate = start()
-                assert duplicate.wait(timeout=15) == 0
+                assert duplicate.wait(timeout=15) == 0, (Path(root) / 'server.log').read_text(encoding='utf-8', errors='replace')
                 assert original.poll() is None
                 get('/api/health')
                 original.kill(); original.wait(timeout=8)
@@ -70,7 +91,7 @@ def main():
                 # uses TerminateProcess. Both are normal outcomes for this probe.
                 restarted.terminate()
                 assert restarted.wait(timeout=10) in ((0, 1) if os.name == 'nt' else (0, -15))
-                assert '已在运行' in (Path(root) / 'server.log').read_text(errors='replace')
+                assert '已在运行' in (Path(root) / 'server.log').read_text(encoding='utf-8', errors='replace')
             finally:
                 for process in processes:
                     if process.poll() is None:
