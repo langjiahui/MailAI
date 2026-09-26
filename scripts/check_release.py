@@ -71,6 +71,7 @@ TESTS = (
     'test_conversation_changes.py',
     'test_correspondence.py',
     'test_bulk_trash.py',
+    'test_trash_retry_limit.py',
     'test_thread_guard.py',
     'test_campaigns.py',
     'test_outgoing_guard.py',

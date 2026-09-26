@@ -1,7 +1,20 @@
-"""延迟删除队列：本地先隐藏，远端分阶段提交，失败指数退避。"""
+"""本地优先删除：远端失败后最多重试两次，随后结束同步。"""
 from datetime import datetime
 
 from .core import conn
+
+MAX_TRASH_ATTEMPTS = 3  # Initial attempt plus two retries, across all phases.
+_ACTIVE_PHASES = ('trash', 'trash_copying', 'trash_copied', 'trash_locating')
+
+
+def discard_exhausted_trash_actions():
+    """End old/exhausted jobs while retaining a durable local deletion marker."""
+    with conn() as c:
+        c.execute(
+            "UPDATE emails SET pending_action='trash_local',remote_missing=1,pending_due_at=NULL "
+            "WHERE pending_action IN ('trash','trash_copying','trash_copied','trash_locating') "
+            "AND pending_attempts>=?", (MAX_TRASH_ATTEMPTS,),
+        )
 
 
 def queue_trash(email_ids: list[int], delay_seconds: int = 120) -> tuple[list[dict], list[dict]]:
@@ -16,13 +29,13 @@ def queue_trash(email_ids: list[int], delay_seconds: int = 120) -> tuple[list[di
     with conn() as c:
         for email_id in ids:
             row = c.execute("SELECT * FROM emails WHERE id=?", (email_id,)).fetchone()
-            if not row or row['is_local_archive'] or row['cleanup_hold'] or row['remote_missing'] or row['pending_action'] or row['status'] == 'trash':
+            if not row or row['cleanup_hold'] or row['remote_missing'] or row['pending_action'] or row['status'] == 'trash':
                 continue
             before.append({key: row[key] for key in keys})
             c.execute(
-                "UPDATE emails SET remote_missing=1,pending_action='trash',pending_target='',"
+                "UPDATE emails SET remote_missing=1,pending_action=?,pending_target='',"
                 "pending_target_uid=NULL,pending_due_at=?,pending_attempts=0,pending_error='' WHERE id=?",
-                (due, email_id),
+                ('trash_local' if row['is_local_archive'] else 'trash', due, email_id),
             )
             updated = c.execute("SELECT * FROM emails WHERE id=?", (email_id,)).fetchone()
             after.append({key: updated[key] for key in keys})
@@ -31,6 +44,7 @@ def queue_trash(email_ids: list[int], delay_seconds: int = 120) -> tuple[list[di
 
 def due_trash_actions(limit: int = 200) -> list[dict]:
     """Return due phases. Rows remain queued until their remote phase is committed."""
+    discard_exhausted_trash_actions()
     with conn() as c:
         return [dict(row) for row in c.execute(
             "SELECT * FROM emails WHERE pending_action IN ('trash','trash_copying','trash_copied','trash_locating') "
@@ -49,25 +63,27 @@ def advance_trash_action(email_ids: list[int], *, action: str, target: str = '',
         for email_id in ids:
             c.execute(
                 "UPDATE emails SET pending_action=?,pending_target=?,pending_target_uid=?,"
-                "pending_due_at=?,pending_error='' WHERE id=?",
+                "pending_due_at=?,pending_error='' WHERE id=? "
+                "AND pending_action IN ('trash','trash_copying','trash_copied','trash_locating')",
                 (action, target, target_uids.get(email_id), datetime.now().isoformat(timespec="seconds"), email_id),
             )
 
 
 def retry_trash_action(email_ids: list[int], error: str):
-    """Back off persistent IMAP failures without exposing a deleted row again."""
+    """Retry twice, then retain only local deletion; never resurrect the message."""
     now = datetime.now()
     with conn() as c:
         for email_id in dict.fromkeys(int(value) for value in email_ids):
-            row = c.execute("SELECT pending_attempts FROM emails WHERE id=?", (email_id,)).fetchone()
-            if not row:
+            row = c.execute("SELECT pending_attempts,pending_action FROM emails WHERE id=?", (email_id,)).fetchone()
+            if not row or row['pending_action'] not in _ACTIVE_PHASES:
                 continue
             attempts = int(row['pending_attempts'] or 0) + 1
             delay = min(300, 5 * (2 ** min(attempts - 1, 6)))
             due = datetime.fromtimestamp(now.timestamp() + delay).isoformat(timespec="seconds")
             c.execute(
-                "UPDATE emails SET pending_attempts=?,pending_due_at=?,pending_error=? WHERE id=?",
-                (attempts, due, str(error or '')[:300], email_id),
+                "UPDATE emails SET pending_attempts=?,pending_due_at=?,pending_error=?,pending_action=? WHERE id=?",
+                (attempts, None if attempts >= MAX_TRASH_ATTEMPTS else due, str(error or '')[:300],
+                 'trash_local' if attempts >= MAX_TRASH_ATTEMPTS else row['pending_action'], email_id),
             )
 
 
@@ -76,7 +92,7 @@ def finish_trash_action(email_id: int, target: str, target_uid: int | None):
     with conn() as c:
         c.execute('BEGIN IMMEDIATE')
         active = c.execute("SELECT pending_action FROM emails WHERE id=?", (email_id,)).fetchone()
-        if not active or not str(active['pending_action'] or '').startswith('trash'):
+        if not active or active['pending_action'] not in _ACTIVE_PHASES:
             return False  # Locally purged/restored while the IMAP request was running.
         if target_uid:
             canonical = c.execute(
@@ -100,7 +116,7 @@ def finish_trash_action(email_id: int, target: str, target_uid: int | None):
         else:
             c.execute(
                 "UPDATE emails SET status='trash',remote_missing=1,pending_action='trash_locating',pending_target=?,"
-                "pending_target_uid=NULL,pending_due_at=NULL,pending_attempts=0,pending_error='' WHERE id=?",
+                "pending_target_uid=NULL,pending_due_at=NULL,pending_error='' WHERE id=?",
                 (target, email_id),
             )
         return True
@@ -113,8 +129,18 @@ def cancel_pending_trash(email_id: int) -> bool:
 
 
 def _cancel_pending_trash(email_id: int) -> bool:
-    """Cancel an operation only before the remote copy phase has started."""
+    """Restore locally before remote work starts or after its retry budget ends."""
     with conn() as c:
+        # A discarded sync has no remaining remote work. Restore its local copy
+        # without guessing whether the server's move completed.
+        changed = c.execute(
+            "UPDATE emails SET remote_missing=0,is_local_archive=1,pending_action='',pending_target='',"
+            "pending_target_uid=NULL,pending_due_at=NULL,pending_attempts=0,pending_error='',"
+            "status=CASE WHEN status='trash' THEN 'inbox' ELSE status END "
+            "WHERE id=? AND pending_action='trash_local'", (email_id,),
+        ).rowcount
+        if changed:
+            return True
         c.execute(
             "UPDATE emails SET remote_missing=0,pending_action='',pending_target='',pending_target_uid=NULL,"
             "pending_due_at=NULL,pending_attempts=0,pending_error='' WHERE id=? AND pending_action='trash'",

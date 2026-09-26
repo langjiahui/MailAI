@@ -51,6 +51,7 @@ from .emails import (
 from .trash import (
     queue_trash,
     due_trash_actions,
+    discard_exhausted_trash_actions,
     advance_trash_action,
     retry_trash_action,
     finish_trash_action,

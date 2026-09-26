@@ -1,6 +1,7 @@
 """Durable, account-scoped two-phase IMAP trash synchronization."""
 import logging
 import threading
+from contextlib import ExitStack
 from . import config
 from collections import defaultdict
 
@@ -49,8 +50,17 @@ def _process_due(limit: int = 200) -> dict:
         return {"processed": 0, "failed": 0}
     processed = failed = 0
     targets_to_sync = set()
-    with MailClient() as mail:
-        target = mail.ensure_trash_folder()
+    with ExitStack() as stack:
+        try:
+            mail = stack.enter_context(MailClient())
+            target = mail.ensure_trash_folder()
+        except Exception as exc:
+            # Connection/folder discovery failures also consume the bounded
+            # retry budget, otherwise offline accounts leave immortal jobs.
+            active = _still_pending(rows)
+            db.retry_trash_action([row['id'] for row in active], str(exc))
+            log.info("删除同步暂不可用，本地删除已保留: %s", exc)
+            return {"processed": 0, "failed": len(active)}
 
         for row in [item for item in rows if item['pending_action'] == 'trash_locating']:
             try:

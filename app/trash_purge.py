@@ -68,7 +68,7 @@ def suppressed_uids(c, folder):
 def _eligible(row):
     # Remote move failures must never veto an explicitly confirmed local purge.
     return bool(row and not row.get('cleanup_hold') and
-                (row.get('pending_action') or '') in ('', 'trash', 'trash_copying', 'trash_copied', 'trash_locating') and
+                (row.get('pending_action') or '') in ('', 'trash', 'trash_copying', 'trash_copied', 'trash_locating', 'trash_local') and
                 (row['status'] == 'trash' or str(row.get('pending_action') or '').startswith('trash')))
 
 

@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
  try {
   const page = await browser.newPage({viewport:{width:1440,height:1000}});
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
-  await page.goto('http://127.0.0.1:18795');
+  await page.goto(process.env.MAILAI_PREVIEW_URL || 'http://127.0.0.1:18795');
   await page.locator('.email-item').first().waitFor();
   let searchFailure = true;
   await page.route('**/api/**', async route => {
@@ -41,6 +41,7 @@ const assert = require('node:assert/strict');
   });
   assert.equal(await page.locator('#compose-subject').inputValue(),'原主题');
   await page.evaluate(()=>applyComposeAiSuggestion('replace'));
+  await page.waitForFunction(()=>!composeAiTyping);
   assert.equal(await page.locator('#compose-signature-content').innerText(),'谢谢');
   await page.evaluate(()=>undoComposeAiEdit());
   assert.equal(await page.locator('#compose-message').innerText(),'原正文');

@@ -36,7 +36,7 @@
   <link rel="stylesheet" href="/static/dashboard-polish.css?v=2">
   <link rel="stylesheet" href="/static/digest-polish.css?v=1">
   <link rel="stylesheet" href="/static/experience-polish.css?v=3">
-  <link rel="stylesheet" href="/static/page-polish.css?v=1">
+  <link rel="stylesheet" href="/static/page-polish.css?v=5">
 </head>
 <body>
   <div id="app-preloader" class="app-preloader" role="status" aria-live="polite">
@@ -677,7 +677,7 @@
               <div class="compose-ai-quick-actions" aria-label="AI 快速改写" data-i18n-aria="copilot.quickAria"><button type="button" data-ai-compose="polish" data-i18n="copilot.polish">润色正文</button><button type="button" data-ai-compose="shorten" data-i18n="copilot.shorten">精简</button><button type="button" data-ai-compose="translate_zh" data-i18n="copilot.translateZh">译为中文</button><button type="button" data-ai-compose="translate_en" data-i18n="copilot.translateEn">译为英文</button></div>
             </div>
             <div id="compose-ai-preview" class="compose-ai-preview hidden" aria-live="polite">
-              <div class="compose-ai-preview-head"><div><b data-i18n="copilot.previewTitle">AI 草稿预览</b><small id="compose-ai-preview-basis"></small></div><span data-i18n="copilot.previewCheck">请核对事实、日期和收件人</span></div>
+              <div class="compose-ai-preview-head"><div><b data-i18n="copilot.previewTitle">AI 草稿预览</b><small id="compose-ai-preview-basis"></small></div><button id="btn-ai-adjust" type="button">调整要求</button><span data-i18n="copilot.previewCheck">请核对事实、日期和收件人</span></div>
               <div id="compose-ai-output" class="compose-ai-output"></div>
             </div>
             <p class="compose-ai-privacy" data-i18n="copilot.privacy">仅将你勾选的内容发送给已配置的 AI 模型；“附件名称”不代表读取附件正文。</p>
@@ -945,7 +945,7 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=84540c8d3a1e"></script>
+  <script src="/static/bundle.js?v=a50dc09d8304"></script>
   <script src="/static/settings-scroll.js?v=2"></script>
 </body>
 </html>

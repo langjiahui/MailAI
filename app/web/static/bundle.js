@@ -2871,6 +2871,7 @@ async function revealEmailFromSource(emailId) {
 }
 
 function draftPayload() {
+  finishComposeAiTyping(); // Never save or send a partially animated suggestion.
   return {
     id: currentDraftId,
     source_draft_email_id: composeContext.source_draft_email_id || null,
@@ -3666,7 +3667,8 @@ function refreshComposeAiContext() {
   document.getElementById('compose-ai-scene-title').textContent = scene === '回复' ? '一起写好这封回复' : (scene === '转发说明' ? '一起补充清楚转发说明' : '告诉我这封邮件想达到什么目的');
   document.getElementById('btn-ai-generate').textContent = scene === '回复' ? '生成回复草稿' : (scene === '转发说明' ? '生成转发说明' : '生成邮件草稿');
   document.getElementById('btn-ai-append').textContent = `追加到${scene}`;
-  document.getElementById('btn-ai-replace').textContent = `替换${scene}`;
+  document.getElementById('btn-ai-append').classList.toggle('hidden', !values.body.trim());
+  document.getElementById('btn-ai-replace').textContent = `${values.body.trim() ? '替换' : '填入'}${scene}`;
   composeMessageElement().dataset.placeholder = scene === '回复' ? '在这里输入回复内容…' : (scene === '转发说明' ? '在这里输入转发说明…' : '输入邮件正文…');
 }
 
@@ -3868,8 +3870,8 @@ async function aiCompose(operation, button) {
     const assist = payload => api('/api/mail/compose/assist', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const renderPreview = suggestion => {
       const previewParts = [];
-      if (suggestion.subject) previewParts.push(`<section class="ai-result-section"><header><b>主题</b><button type="button" data-ai-fill="subject">填入主题</button></header><p>${esc(suggestion.subject)}</p></section>`);
-      previewParts.push('<section class="ai-result-section"><header><b>正文</b><button type="button" data-ai-fill="replace">替换正文</button></header>');
+      if (suggestion.subject) previewParts.push(`<section class="ai-result-section ai-result-subject"><header><b>建议主题</b><button type="button" data-ai-fill="subject">填入主题</button></header><p>${esc(suggestion.subject)}</p></section>`);
+      previewParts.push('<section class="ai-result-section ai-result-body"><header><b>正文</b></header>');
       previewParts.push(...suggestion.body.split(/\n{2,}/).filter(Boolean).map(block => `<p>${esc(block).replace(/\n/g, '<br>')}</p>`));
       previewParts.push('</section>');
       if (suggestion.signoff && !currentSignatureId && !document.getElementById('compose-signature-content').innerText.trim())
@@ -3909,9 +3911,11 @@ async function aiCompose(operation, button) {
     document.getElementById('compose-ai-preview-basis').textContent = `依据：${(result.basis || []).join('、')}`;
     document.getElementById('compose-ai-preview').classList.remove('hidden');
     panel.classList.add('has-result');
-    document.getElementById('compose-ai-status').textContent = '草稿已准备好。主题、正文和落款会分别放到对应位置。';
-    document.getElementById('compose-ai-preview').scrollIntoView({block:'nearest', behavior:'smooth'});
-    toast('AI 草稿已生成，请预览后决定如何使用', 'success');
+    refreshComposeAiContext();
+    document.getElementById('compose-ai-status').textContent = '先核对内容，再用底部按钮填入邮件。';
+    const scroll = panel.querySelector('.compose-ai-scroll');
+    const preview = document.getElementById('compose-ai-preview');
+    scroll.scrollTo({top:scroll.scrollTop + preview.getBoundingClientRect().top - scroll.getBoundingClientRect().top - 16, behavior:matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
   } catch (err) {
     if (!current()) return;
     if (err instanceof TypeError) window.mailaiConnectionFailed?.();
@@ -3957,6 +3961,7 @@ function rememberComposeAiEdit(before, fields, label) {
 }
 
 function undoComposeAiEdit() {
+  finishComposeAiTyping();
   const edit = draftSession.aiUndo;
   if (!edit || draftSession.canceled || draftSession.busy) return;
   const now = composeAiEditSnapshot();
@@ -3972,31 +3977,99 @@ function undoComposeAiEdit() {
   toast('已撤销上次 AI 修改', 'success');
 }
 
+// The typing effect is brief, local to this draft, and settles before user actions.
+let composeAiTyping = null;
+function finishComposeAiTyping() { composeAiTyping?.finish(); }
+
+function typeComposeAiText(target, text, append, complete) {
+  finishComposeAiTyping();
+  const session = draftSession;
+  const isSubject = target.tagName === 'INPUT';
+  const characters = typeof Intl.Segmenter === 'function'
+    ? Array.from(new Intl.Segmenter(undefined, {granularity:'grapheme'}).segment(text), item => item.segment)
+    : Array.from(text);
+  if (isSubject) target.value = '';
+  else if (append && target.innerText.trim()) target.insertAdjacentHTML('beforeend', '<br><br>');
+  else target.replaceChildren();
+  let written = 0, frame = 0, textNode = null;
+  const value = () => isSubject ? target.value : target.innerHTML;
+  let lastWritten = value();
+  const controller = new AbortController();
+  const valid = () => draftSession === session && !session.canceled && target.isConnected && document.body.classList.contains('compose-open');
+  const write = count => {
+    const chunk = characters.slice(written, count).join('');
+    written = count;
+    if (isSubject) target.value += chunk;
+    else chunk.split('\n').forEach((part, index) => {
+      if (index) { target.append(document.createElement('br')); textNode = null; }
+      if (!textNode) { textNode = document.createTextNode(''); target.append(textNode); }
+      textNode.appendData(part);
+    });
+    lastWritten = value();
+    if (document.activeElement === target) {
+      if (isSubject) target.setSelectionRange(target.value.length, target.value.length);
+      else {
+        const range = document.createRange(); range.selectNodeContents(target); range.collapse(false);
+        const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
+      }
+    }
+  };
+  const cleanup = () => {
+    cancelAnimationFrame(frame); controller.abort(); target.removeAttribute('aria-busy');
+    if (composeAiTyping === task) composeAiTyping = null;
+  };
+  const task = {finish() {
+    cleanup();
+    if (!valid() || value() !== lastWritten) return;
+    write(characters.length);
+    complete();
+  }};
+  composeAiTyping = task;
+  // Capture before editing, formatting, switching accounts, closing or sending.
+  ['pointerdown', 'keydown', 'beforeinput', 'compositionstart', 'click'].forEach(event =>
+    document.addEventListener(event, finishComposeAiTyping, {capture:true, signal:controller.signal}));
+  document.addEventListener('visibilitychange', finishComposeAiTyping, {signal:controller.signal});
+  // Programmatic edits must also stop the animation without overwriting new text.
+  target.addEventListener('input', () => { cleanup(); complete(); }, {capture:true, signal:controller.signal});
+  target.focus({preventScroll:true});
+  target.scrollIntoView({block:'nearest', behavior:'instant'});
+  target.setAttribute('aria-busy', 'true');
+  if (!characters.length || matchMedia('(prefers-reduced-motion: reduce)').matches) { task.finish(); return; }
+  const started = performance.now();
+  const duration = Math.min(1400, Math.max(420, characters.length * 9));
+  const tick = now => {
+    if (!valid() || value() !== lastWritten) { cleanup(); return; }
+    const count = Math.min(characters.length, Math.floor(characters.length * (now - started) / duration));
+    if (count > written) write(count);
+    if (written === characters.length) task.finish();
+    else frame = requestAnimationFrame(tick);
+  };
+  frame = requestAnimationFrame(tick);
+}
+
 function applyComposeAiSuggestion(mode) {
-  if (!composeAiSuggestion) return;
+  finishComposeAiTyping();
+  if (!composeAiSuggestion || draftSession.canceled || draftSession.busy) return;
   const suggestion = typeof composeAiSuggestion === 'string' ? {body:composeAiSuggestion} : composeAiSuggestion;
   const before = composeAiEditSnapshot();
   if (mode === 'subject') {
     if (!suggestion.subject) return;
-    document.getElementById('compose-subject').value = suggestion.subject;
-    rememberComposeAiEdit(before, ['subject'], '主题');
-    clearComposePreflight(); queueDraftSave(); refreshComposeAiContext();
-    toast('AI 主题已填入主题栏', 'success');
-    document.getElementById('compose-subject').focus();
-    highlightComposeAiTarget(document.getElementById('compose-subject'));
+    typeComposeAiText(document.getElementById('compose-subject'), suggestion.subject, false, () => {
+      rememberComposeAiEdit(before, ['subject'], '主题');
+      clearComposePreflight(); queueDraftSave(); refreshComposeAiContext();
+      toast('AI 主题已填入主题栏', 'success');
+    });
     return;
   }
   const body = composeMessageElement();
-  const html = esc(suggestion.body || '').replace(/\n/g, '<br>');
-  body.innerHTML = mode === 'append' && body.innerText.trim() ? `${body.innerHTML}<br><br>${html}` : html;
-  if (suggestion.signoff && !currentSignatureId && !document.getElementById('compose-signature-content').innerText.trim())
-    renderComposeSignature('', esc(suggestion.signoff).replace(/\n/g, '<br>'));
-  rememberComposeAiEdit(before, ['body', 'signature', 'signatureId'], mode === 'append' ? '追加内容' : '正文');
-  clearComposePreflight(); queueDraftSave(); refreshComposeAiContext();
-  const target = ['reply','reply_all'].includes(composeContext.mode) ? '回复' : (composeContext.mode === 'forward' ? '转发说明' : '正文');
-  toast(mode === 'append' ? `AI 草稿已追加到${target}` : `AI 草稿已替换${target}，请核对后发送`, 'success');
-  body.focus();
-  highlightComposeAiTarget(body);
+  typeComposeAiText(body, suggestion.body || '', mode === 'append', () => {
+    if (suggestion.signoff && !currentSignatureId && !document.getElementById('compose-signature-content').innerText.trim())
+      renderComposeSignature('', esc(suggestion.signoff).replace(/\n/g, '<br>'));
+    rememberComposeAiEdit(before, ['body', 'signature', 'signatureId'], mode === 'append' ? '追加内容' : '正文');
+    clearComposePreflight(); queueDraftSave(); refreshComposeAiContext();
+    const target = ['reply','reply_all'].includes(composeContext.mode) ? '回复' : (composeContext.mode === 'forward' ? '转发说明' : '正文');
+    toast(mode === 'append' ? `AI 草稿已追加到${target}` : `AI 草稿已填入${target}，请核对后发送`, 'success');
+  });
 }
 
 async function runMailPreflight(payload) {
@@ -5372,7 +5445,7 @@ function renderEmailItem(e, idx = 0) {
         </div>
         <div class="email-meta">
           <span class="mail-state-icons">${e.is_favorite ? '<span class="mail-state-star" title="已收藏">★</span>' : ''}${e.is_starred ? '<span class="mail-state-star" title="已加星标">★</span>' : ''}</span>
-          ${e._kind === 'draft' ? '<span class="risk-badge normal">草稿</span>' : e._kind === 'sent' ? `<span class="risk-badge ${['failed','unknown'].includes(e.status) ? 'high' : 'normal'}">${({failed:'失败',unknown:'待确认',sending:'发送中',sent:'已发送',accepted:'已接受'})[e.status] || '待确认'}</span>` : `<span class="risk-badge ${risk.class}">${risk.class === 'danger' ? '<i class="risk-alert-dot" aria-hidden="true">!</i>' : ''}${risk.text} ${e.score}</span>`}${e.pending_action ? `<span class="tag">${e.pending_error ? '删除同步失败，将重试' : e.pending_action === 'trash' ? '待同步删除 · 可取消' : '正在同步删除'}</span>` : ''}
+          ${e._kind === 'draft' ? '<span class="risk-badge normal">草稿</span>' : e._kind === 'sent' ? `<span class="risk-badge ${['failed','unknown'].includes(e.status) ? 'high' : 'normal'}">${({failed:'失败',unknown:'待确认',sending:'发送中',sent:'已发送',accepted:'已接受'})[e.status] || '待确认'}</span>` : `<span class="risk-badge ${risk.class}">${risk.class === 'danger' ? '<i class="risk-alert-dot" aria-hidden="true">!</i>' : ''}${risk.text} ${e.score}</span>`}${e.pending_action ? `<span class="tag">${e.pending_action === 'trash_local' ? '已在本地删除' : e.pending_error ? '后台重试中' : e.pending_action === 'trash' ? '待同步删除 · 可取消' : '正在同步删除'}</span>` : ''}
           <span class="email-date">${fmtDate(e.date)}</span>
         </div>
       </div>
@@ -5668,7 +5741,7 @@ function showMailContextMenu(x, y, id) {
       <button type="button" role="menuitem" data-context-action="reply_all">${mailContextIcon('<path d="m9 5-4 4 4 4M5 9h5c3.5 0 5.5 1.8 6.5 5M5.5 5 2 8.2l2 1.7"/>')}<span>回复全部</span></button>
       <button type="button" role="menuitem" data-context-action="forward">${mailContextIcon('<path d="m12 5 4.5 4-4.5 4M16 9h-6c-3.5 0-5.5 1.8-6.5 5"/>')}<span>转发</span></button>
       <div class="mail-context-separator"></div>` : ''}
-    ${inTrash ? `<button type="button" role="menuitem" ${pendingTrash ? 'data-context-action="cancel_trash"' : `data-context-folder="${esc(serverFolderForRole('inbox')?.name || 'INBOX')}"`}><span>${pendingTrash ? '取消删除（恢复原位置）' : '恢复到收件箱'}</span></button>` : ''}
+    ${inTrash ? `<button type="button" role="menuitem" ${pendingTrash ? 'data-context-action="cancel_trash"' : `data-context-folder="${esc(serverFolderForRole('inbox')?.name || 'INBOX')}"`}><span>${row.pending_action === 'trash_local' ? '恢复本地邮件' : pendingTrash ? '取消删除（恢复原位置）' : '恢复到收件箱'}</span></button>` : ''}
     ${readStateActions}
     <button type="button" role="menuitem" data-context-action="star">${mailContextIcon('<path d="m10 3 2.1 4.2 4.7.7-3.4 3.3.8 4.7-4.2-2.2-4.2 2.2.8-4.7-3.4-3.3 4.7-.7z"/>')}<span>添加星标</span></button>
     <div class="mail-context-separator"></div>
@@ -10255,6 +10328,10 @@ document.getElementById('btn-ai-regenerate').addEventListener('click', event => 
   const operation = ['reply','reply_all'].includes(composeContext.mode) ? 'reply' : (composeContext.mode === 'forward' ? 'forward' : 'draft');
   aiCompose(operation, event.currentTarget);
 });
+document.getElementById('btn-ai-adjust').addEventListener('click', () => {
+  document.getElementById('compose-ai-instruction').focus({preventScroll:true});
+  document.querySelector('#compose-ai-panel .compose-ai-scroll').scrollTo({top:0, behavior:matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
+});
 document.getElementById('btn-ai-append').addEventListener('click', () => applyComposeAiSuggestion('append'));
 document.getElementById('btn-ai-replace').addEventListener('click', () => applyComposeAiSuggestion('replace'));
 document.getElementById('btn-ai-replace-subject').addEventListener('click', () => applyComposeAiSuggestion('subject'));
@@ -11434,7 +11511,7 @@ async function refreshTaskCenter({lightweight = false} = {}) {
     const purgeAttention = Boolean(purge.unacknowledged || purge.cleanup_pending);
     const purgeBlock = purge.pending || purgeAttention ? `<section class="task-section"><h3>已删除邮件清理</h3><article class="task-row"><div class="task-row-main"><b>本地邮件已移除</b><span class="task-status">${purge.pending ? '远端待同步' : '仅本地完成'}</span></div><small>${purge.pending ? `${Number(purge.pending)} 封等待服务器删除，联网后自动退避重试。` : ''}${purge.unacknowledged ? `${Number(purge.unacknowledged)} 封无法安全确认远端删除，服务器可能仍保留；可在网页邮箱核对。` : ''}${purge.cleanup_pending ? `${Number(purge.cleanup_pending)} 个原文文件待清理，将在后台重试。` : ''}不影响本地邮件查看、搜索与写信。</small>${purge.unacknowledged ? `<div class="task-row-actions"><button data-purge-ack="${esc(JSON.stringify(purge.notice_ids || []))}">已知晓</button></div>` : ''} </article></section>` : '';
     const unavailableBlock = errors.length ? `<div class="task-load-error task-partial-error" role="status"><b>部分状态暂时无法读取</b><span>${esc(errors.join('、'))}未能加载，请重试确认。已加载的事项仍可处理。</span><button data-task-refresh>重新加载</button></div>` : '';
-    const actionBlock = actions.total || actions.paused_count ? `<section class="task-section"><h3>删除同步 <span>${Number(actions.total)}</span></h3>${actions.paused_count ? `<button class="sync-paused-toggle" data-sync-paused-toggle aria-pressed="${!!window.mailaiShowPausedSync}">${window.mailaiShowPausedSync ? '收起已暂停' : '查看已暂停'}（${Number(actions.paused_count)}）</button>` : ''}${actions.rows.map(row => `<article class="task-row"><div class="task-row-main"><b>${esc(row.subject || '无主题')}</b><span class="task-status ${row.pending_error && !row.paused ? 'warning' : ''}">${row.paused ? '已暂停' : row.pending_error ? '同步待处理' : '等待服务器同步'}</span></div><small>${row.paused ? '已停止自动重试，本地仍保持删除状态。服务器端是否删除尚未确认，可核对网页邮箱后恢复同步。' : row.pending_action === 'trash_copying' && row.pending_error ? '服务器尚未确认垃圾箱中的副本。为避免重复复制，系统只核对结果；你也可以暂停，将此项移出待处理列表。' : row.pending_error ? '本地已移除，服务器同步未完成。可以重试或暂停，不影响收发其他邮件。' : '本地已移除，服务器操作尚未完成。'} </small>${row.pending_error ? `<details class="sync-error-details"><summary>查看失败详情 · 已尝试 ${Number(row.pending_attempts || 0)} 次</summary><small>${esc(row.pending_error)}</small></details>` : ''}${row.pending_error || row.paused ? `<div class="task-row-actions"><button data-action-sync-retry="${row.id}">${row.paused ? '恢复同步' : '重新核对并重试'}</button>${!row.paused ? `<button data-action-sync-pause="${row.id}">暂停同步</button>` : ''}</div>` : ''}</article>`).join('')}</section>` : '';
+    const actionBlock = actions.total || actions.paused_count ? `<section class="task-section"><h3>删除同步 <span>${Number(actions.total)}</span></h3>${actions.paused_count ? `<button class="sync-paused-toggle" data-sync-paused-toggle aria-pressed="${!!window.mailaiShowPausedSync}">${window.mailaiShowPausedSync ? '收起已暂停' : '查看已暂停'}（${Number(actions.paused_count)}）</button>` : ''}${actions.rows.map(row => `<article class="task-row"><div class="task-row-main"><b>${esc(row.subject || '无主题')}</b><span class="task-status ${row.pending_error && !row.paused ? 'warning' : ''}">${row.paused ? '已暂停' : row.pending_error ? '同步待处理' : '等待服务器同步'}</span></div><small>${row.paused ? '已停止自动重试，本地仍保持删除状态。服务器端是否删除尚未确认，可核对网页邮箱后恢复同步。' : row.pending_error ? '已在本地删除。后台最多重试两次，仍未成功就自动结束，不影响本地使用。' : '本地已移除，服务器操作尚未完成。'} </small>${row.pending_error ? `<details class="sync-error-details"><summary>查看失败详情 · 已尝试 ${Number(row.pending_attempts || 0)} 次</summary><small>${esc(row.pending_error)}</small></details>` : ''}${row.pending_error || row.paused ? `<div class="task-row-actions"><button data-action-sync-retry="${row.id}">${row.paused ? '恢复同步' : '重新核对并重试'}</button>${!row.paused ? `<button data-action-sync-pause="${row.id}">暂停同步</button>` : ''}</div>` : ''}</article>`).join('')}</section>` : '';
 
     const content = unavailableBlock + syncBlock + actionBlock + purgeBlock + outboxBlock + reminderBlock;
     host.dataset.partial = errors.length ? '1' : '0';

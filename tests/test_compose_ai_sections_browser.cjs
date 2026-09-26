@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 (async () => {
   const browser = await chromium.launch({headless:true, ...(process.env.CI ? {} : {channel:'chrome'})});
   try {
-    const page = await browser.newPage();
+    const page = await browser.newPage({reducedMotion:'reduce'});
     await page.goto(process.env.MAILAI_PREVIEW_URL || 'http://127.0.0.1:18795');
     await page.locator('.email-item').first().waitFor();
     await page.evaluate(() => openCompose());
@@ -31,6 +31,9 @@ const assert = require('node:assert/strict');
     await page.locator('#compose-ai-instruction').fill('写一封材料邮件');
     await page.evaluate(() => aiCompose('draft', document.getElementById('btn-ai-generate')));
     assert.equal(requests.at(-1).has_signature, false);
+    assert.equal(await page.locator('#btn-ai-replace').innerText(), '填入正文');
+    assert.equal(await page.locator('#btn-ai-append').isVisible(), false);
+    assert.equal(await page.locator('[data-ai-fill=replace]').count(), 0);
     assert.equal(await page.locator('[data-ai-fill=subject]').isVisible(), true);
     await page.locator('[data-ai-fill=subject]').click();
     assert.equal(await page.locator('#compose-subject').inputValue(), '项目材料');
@@ -40,6 +43,8 @@ const assert = require('node:assert/strict');
     assert.equal(await page.locator('#compose-subject').inputValue(), '项目材料');
     assert.equal((await page.locator('#compose-message').innerText()).trim(), '请查收项目材料。');
     assert.match(await page.locator('#compose-signature-content').innerText(), /此致/);
+    assert.equal(await page.locator('#btn-ai-replace').innerText(), '替换正文');
+    assert.equal(await page.locator('#btn-ai-append').isVisible(), true);
     assert.equal(await page.locator('#compose-signature-select option').first().innerText(), 'AI 落款');
     await page.evaluate(() => {
       signatureState.items = [{id:'manual', name:'工作签名', html:'正式签名'}];

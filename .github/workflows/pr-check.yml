@@ -74,6 +74,7 @@ jobs:
           node tests/test_attachment_library_ui.cjs
           node tests/test_experience_polish_browser.cjs
           node tests/test_compose_ai_sections_browser.cjs
+          node tests/test_compose_ai_typing_browser.cjs
 
   secret-scan:
     runs-on: ubuntu-latest

@@ -133,7 +133,8 @@ def api_bulk_email_action(payload: BulkMailRequest):
         raise HTTPException(400, "不支持的批量操作")
     rows = [db.get_email(email_id) for email_id in ids]
     rows = [row for row in rows if row]
-    if payload.action != 'read' and any(row.get('is_local_archive') or row.get('cleanup_hold') for row in rows):
+    if payload.action != 'read' and any(row.get('cleanup_hold') or
+            (row.get('is_local_archive') and payload.action not in ('trash', 'cancel_trash')) for row in rows):
         raise HTTPException(409, '所选邮件包含仅本地保留或正在清理的邮件，不能执行服务器操作')
     if not rows:
         raise HTTPException(404, "所选邮件不存在")
@@ -461,6 +462,15 @@ _ACTION_PAUSED = '9999-12-31T23:59:59'
 
 @router.get('/api/mail/action-sync')
 def api_action_sync(include_paused: bool = False):
+    # Retire legacy jobs immediately when opening the panel, even if this
+    # account cannot authenticate and its background worker has not run.
+    from ...trash_queue import mutation_lock
+    lock = mutation_lock()
+    if lock.acquire(blocking=False):
+        try:
+            db.discard_exhausted_trash_actions()
+        finally:
+            lock.release()
     with db.conn() as c:
         clause = "pending_action IN ('trash','trash_copying','trash_copied','trash_locating')"
         paused = c.execute(f"SELECT COUNT(*) FROM emails WHERE {clause} AND pending_due_at=?", (_ACTION_PAUSED,)).fetchone()[0]
@@ -481,6 +491,7 @@ def _change_action_schedule(email_id: int, pause: bool):
     if not lock.acquire(blocking=False):
         raise HTTPException(409, '服务器操作正在进行，请稍后再试')
     try:
+        db.discard_exhausted_trash_actions()
         with db.conn() as c:
             changed = c.execute(
                 "UPDATE emails SET pending_due_at=? WHERE id=? "

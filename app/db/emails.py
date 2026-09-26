@@ -139,7 +139,7 @@ def list_emails(status=None, verdict=None, days=7, limit=1000, folder=None, offs
     # message's real received date, not the local indexing timestamp.
     columns = ('id,thread_id,status,priority,from_addr,subject,date,verdict,score,feedback,reviewed,arrival_kind,created_at,pending_action,processing_complete'
                if metadata_only else EMAIL_LIST_COLUMNS if list_view else '*')
-    visibility = "(pending_action IN ('trash','trash_copying','trash_copied','trash_locating') OR (remote_missing=0 AND status='trash'))" if status == 'trash' else 'remote_missing=0'
+    visibility = "(pending_action IN ('trash','trash_copying','trash_copied','trash_locating','trash_local') OR (remote_missing=0 AND status='trash'))" if status == 'trash' else 'remote_missing=0'
     sql = f"SELECT {columns} FROM emails WHERE {visibility} AND datetime(COALESCE(NULLIF(date,''),created_at)) >= datetime('now','localtime', ?)"
     args = [f"-{days} days"]
     if status == "favorites":
