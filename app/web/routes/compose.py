@@ -6,7 +6,7 @@ import re
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response, StreamingResponse
 
-from ... import config, db, outgoing_guard, share_storage, signatures, smtp_client, system_settings
+from ... import config, db, outgoing_guard, share_storage, share_tasks, signatures, smtp_client, system_settings
 from ... import parser as mail_parser
 from ...llm import client as llm_client
 from ...parser import extract_rich_body
@@ -67,11 +67,52 @@ async def api_share_storage_upload(request: Request):
     try:
         return await share_storage.upload_request(request, request.headers.get("x-mailai-filename", ""),
                                                   int(request.headers.get("x-mailai-expiry-days", "7")))
+    except share_storage.UploadBusyError as exc:
+        raise HTTPException(429, str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     except Exception as exc:
         log.exception("腾讯云 COS 大附件上传失败")
         raise HTTPException(502, "上传至腾讯云 COS 失败，请检查存储桶、地域和密钥权限") from exc
+
+
+@router.get('/api/share-storage/tasks')
+def api_share_tasks(draft_id: int):
+    return share_tasks.list_tasks(draft_id)
+
+
+@router.post('/api/share-storage/tasks')
+async def api_stage_share_task(request: Request, draft_id: int, days: int = 7):
+    try:
+        return await share_tasks.stage(request, draft_id, days)
+    except share_storage.UploadBusyError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@router.post('/api/share-storage/tasks/{token}/upload')
+async def api_upload_share_task(token: str):
+    try:
+        return await share_tasks.upload(token)
+    except share_storage.UploadBusyError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except Exception as exc:
+        log.exception('上传任务失败，已保留本地文件')
+        raise HTTPException(502, '上传未完成，文件已保存在本机，可稍后重试') from exc
+
+
+@router.delete('/api/share-storage/tasks/{token}')
+def api_remove_share_task(token: str):
+    try:
+        share_tasks.remove(token)
+        return {'ok': True}
+    except share_storage.UploadBusyError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
 
 
 @router.get("/api/drafts")
@@ -130,6 +171,10 @@ def api_delete_draft(draft_id: int):
         except Exception as exc:
             log.exception("舍弃服务器草稿失败")
             raise HTTPException(502, f"舍弃服务器草稿失败: {exc}")
+    try:
+        share_tasks.remove_draft(draft_id)
+    except share_storage.UploadBusyError as exc:
+        raise HTTPException(409, str(exc)) from exc
     db.delete_draft(draft_id)
     return {"ok": True}
 
@@ -426,6 +471,8 @@ def api_send_mail(payload: SendMailRequest):
 
 @router.post('/api/mail/outbox')
 def api_queue_mail(payload: QueuedMailRequest):
+    if payload.id and share_tasks.list_tasks(payload.id):
+        raise HTTPException(409, '大附件任务尚未完成，请打开草稿继续上传或移除后再发送')
     from ...outbox import enqueue
     data = payload.model_dump(exclude={'request_token'})
     try:

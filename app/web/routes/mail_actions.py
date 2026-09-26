@@ -453,3 +453,26 @@ def api_email_audit(email_id: int, limit: int = 50):
     if not db.get_email(email_id):
         raise HTTPException(404, "邮件不存在")
     return db.list_audit_logs(email_id=email_id, limit=limit)
+
+
+@router.get('/api/mail/action-sync')
+def api_action_sync():
+    with db.conn() as c:
+        rows = [dict(row) for row in c.execute(
+            "SELECT id,subject,pending_action,pending_error,pending_due_at,pending_attempts "
+            "FROM emails WHERE pending_action LIKE 'trash%' ORDER BY id DESC LIMIT 100")]
+        count = c.execute("SELECT COUNT(*) FROM emails WHERE pending_action LIKE 'trash%'").fetchone()[0]
+    return {'rows': rows, 'total': count}
+
+
+@router.post('/api/mail/action-sync/{email_id}/retry')
+def api_retry_action_sync(email_id: int):
+    # Preserve the durable COPY/DELETE phase; only bring a failed retry forward.
+    # The existing serialized worker performs the actual server mutation.
+    with db.conn() as c:
+        changed = c.execute("UPDATE emails SET pending_due_at='' WHERE id=? "
+                            "AND pending_action LIKE 'trash%' AND COALESCE(pending_error,'')<>''",
+                            (email_id,)).rowcount
+    if not changed:
+        raise HTTPException(409, '该任务已完成或仍在处理中，请刷新状态')
+    return {'ok': True, 'scheduled': True}

@@ -8,6 +8,14 @@ cd "${0:A:h}/.."
 # 同标识应用误认为同一个临时副本。
 export MAILAI_RELEASE_VERSION="${MAILAI_RELEASE_VERSION:-1.$(date +%Y%m%d).$(date +%H%M)}"
 export MAILAI_BUILD_VERSION="${MAILAI_BUILD_VERSION:-$(date +%Y%m%d).$(date +%H%M%S)}"
+NOTARIZE_ENABLED=0
+if [[ -n "${MAILAI_NOTARY_PROFILE:-}${MAILAI_NOTARY_KEY_BASE64:-}${MAILAI_NOTARY_KEY_ID:-}${MAILAI_NOTARY_ISSUER:-}" ]]; then
+  if [[ -z "${MAILAI_SIGN_IDENTITY:-}" || -z "${MAILAI_INSTALLER_IDENTITY:-}" ]]; then
+    echo "公证需要同时配置应用与安装器的 Developer ID 签名身份。" >&2
+    exit 1
+  fi
+  NOTARIZE_ENABLED=1
+fi
 
 # 每次仅保留本次正式发布物，避免旧 App 和 PyInstaller 中间目录混入 dist。
 rm -rf "dist/MailAI" "dist/MailAI.app" "dist/MailAI 2.app"
@@ -53,6 +61,12 @@ if [[ -n "${MAILAI_SIGN_IDENTITY:-}" ]]; then
 fi
 
 ditto -c -k --sequesterRsrc --keepParent dist/MailAI.app dist/MailAI-macOS.zip
+if [[ "$NOTARIZE_ENABLED" == 1 ]]; then
+  .venv-build/bin/python scripts/notarize_macos.py dist/MailAI-macOS.zip dist/MailAI.app
+  # Include the stapled application in both the portable archive and installer.
+  rm -f dist/MailAI-macOS.zip
+  ditto -c -k --sequesterRsrc --keepParent dist/MailAI.app dist/MailAI-macOS.zip
+fi
 echo "打包 zip 完成"
 
 # 标准安装器固定写入 /Applications，并主动刷新系统应用索引。
@@ -122,6 +136,7 @@ if [[ -n "${MAILAI_INSTALLER_IDENTITY:-}" ]]; then
   mv "$PKG_SCRIPTS/signed.pkg" dist/MailAI-macOS-arm64.pkg
   pkgutil --check-signature dist/MailAI-macOS-arm64.pkg
 fi
+.venv-build/bin/python scripts/notarize_macos.py dist/MailAI-macOS-arm64.pkg dist/MailAI-macOS-arm64.pkg
 
 DMG_STAGE="$(mktemp -d)"
 ditto dist/MailAI-macOS-arm64.pkg "$DMG_STAGE/安装 MailAI.pkg"
@@ -130,6 +145,11 @@ ditto dist/MailAI-macOS-arm64.pkg "$DMG_STAGE/安装 MailAI.pkg"
 dmg_mb=$(( $(du -sm "$DMG_STAGE" | cut -f1) + 100 ))
 hdiutil create -quiet -volname MailAI -srcfolder "$DMG_STAGE" -ov -format UDZO \
   -size "${dmg_mb}m" dist/MailAI-macOS-arm64.dmg
+if [[ -n "${MAILAI_SIGN_IDENTITY:-}" ]]; then
+  codesign --force --timestamp --sign "$MAILAI_SIGN_IDENTITY" dist/MailAI-macOS-arm64.dmg
+  codesign --verify --strict dist/MailAI-macOS-arm64.dmg
+fi
+.venv-build/bin/python scripts/notarize_macos.py dist/MailAI-macOS-arm64.dmg dist/MailAI-macOS-arm64.dmg
 echo "dmg 完成"
 rm -rf "dist/MailAI" "dist/MailAI.app"
 echo "构建完成：dist/MailAI-macOS-arm64.dmg、dist/MailAI-macOS-arm64.pkg、dist/MailAI-macOS.zip"

@@ -7,6 +7,7 @@ if (isWindowsDesktop) document.documentElement.classList.add('windows-performanc
 
 // ===== 全局状态 =====
 let allEmails = [];
+let mailSearchState = {revision:0, phase:'idle'};
 let allTodos = [];
 let currentFilter = {
   status: '',
@@ -1282,10 +1283,12 @@ function hydrateComposeBody(seed) {
   document.getElementById('compose-quote-label').textContent = labels[composeContext.mode] || '引用的原邮件';
 }
 
+let composeReturnFocus = null;
 async function openCompose(seed = {}) {
   if (document.body.classList.contains('compose-open')) {
     if (!await closeCompose()) return false;
   }
+  composeReturnFocus = document.activeElement;
   closeAssistant();
   hideContactSuggestions();
   composeAccountId = seed.account_id || activeMailAccount()?.id || '';
@@ -1315,6 +1318,7 @@ async function openCompose(seed = {}) {
   document.getElementById('compose-modal').classList.remove('hidden');
   document.body.classList.add('compose-open');
   const session = draftSession;
+  restoreSharedFileTasks(session, composeAccountId);
   send.disabled = true;
   api('/api/mail/send-capability', {accountId:composeAccountId}).then(capability => {
     if (session !== draftSession) return;
@@ -1391,6 +1395,7 @@ function openComposePreview() {
   document.getElementById('compose-preview-subject').textContent = document.getElementById('compose-subject').value.trim() || '（无主题）';
   document.getElementById('compose-preview-frame').srcdoc = richEmailDocument(composeBodyHtml() || '<p style="color:#8b9892">正文为空</p>', true);
   document.getElementById('compose-preview-modal').classList.remove('hidden');
+  document.querySelector('#compose-preview-modal header [data-close-compose-preview]').focus({preventScroll:true});
 }
 
 function closeComposePreview() {
@@ -1403,19 +1408,22 @@ function closeShareLinkDialog() {
 }
 
 async function openShareLinkDialog() {
+  const session = draftSession, accountId = composeAccountId;
+  const current = () => session === draftSession && accountId === composeAccountId && !session.canceled;
   document.getElementById('share-link-dialog').classList.remove('hidden');
   document.getElementById('share-cos-file').focus();
   try {
-    const state = await api('/api/share-storage/config', {accountId:composeAccountId});
-    if (document.getElementById('share-link-dialog').classList.contains('hidden')) return;
+    const state = await api('/api/share-storage/config', {accountId});
+    if (!current() || document.getElementById('share-link-dialog').classList.contains('hidden')) return;
     document.getElementById('share-cos-bucket').value = state.bucket || '';
     document.getElementById('share-cos-region').value = state.region || '';
     document.getElementById('share-cos-id').value = state.secret_id || '';
     document.getElementById('share-cos-key').value = '';
     document.querySelector('.share-cos-config').classList.toggle('hidden', Boolean(state.credential_available));
     document.getElementById('share-cos-settings-toggle').classList.toggle('hidden', !state.credential_available);
-    document.getElementById('share-cos-status').textContent = state.credential_available ? 'COS 已配置，可以选择文件上传' : '首次使用请填写 COS 配置并保存';
+    document.getElementById('share-cos-status').textContent = state.credential_available ? '存储已连接。大附件会自动转为下载链接。' : '首次连接需要腾讯云存储信息，保存后无需重复填写。也可直接把已有网盘分享链接粘贴到正文。';
   } catch (error) {
+    if (!current()) return;
     document.getElementById('share-cos-status').textContent = '无法读取 COS 配置：' + error.message;
   }
 }
@@ -1428,7 +1436,7 @@ function normalizeShareUrl(value) {
   } catch (_) { return ''; }
 }
 
-function insertSharedLink(name, value) {
+function insertSharedLink(name, value, expiresAt = '', closeDialog = true) {
   const url = normalizeShareUrl(value);
   if (!url) throw new Error('请填写有效的 HTTPS 分享链接');
   const title = String(name || '').trim().slice(0, 160) || '共享文件';
@@ -1442,24 +1450,32 @@ function insertSharedLink(name, value) {
   anchor.target = '_blank';
   anchor.rel = 'noopener noreferrer';
   block.append(heading, document.createElement('br'), anchor);
+  if (expiresAt && Number.isFinite(Date.parse(expiresAt))) {
+    const expiry = document.createElement('small');
+    expiry.textContent = `下载链接有效至 ${new Date(expiresAt).toLocaleString()}`;
+    block.append(document.createElement('br'), expiry);
+  }
   composeMessageElement().append(block);
   clearComposePreflight();
   queueDraftSave();
   refreshComposeAiContext();
-  closeShareLinkDialog();
+  if (closeDialog) closeShareLinkDialog();
   composeMessageElement().focus();
 }
 
-function uploadCosFile(file, days, accountId, onProgress) {
+function uploadCosFile(file, days, accountId, onProgress, endpoint = "/api/share-storage/upload") {
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
-    request.open('POST', '/api/share-storage/upload');
+    request.open('POST', endpoint);
+    request.timeout = 30 * 60 * 1000;
     request.setRequestHeader('X-MailAI-Account', accountId);
     request.setRequestHeader('X-MailAI-Filename', encodeURIComponent(file.name));
     request.setRequestHeader('X-MailAI-Expiry-Days', String(days));
     request.setRequestHeader('Content-Type', 'application/octet-stream');
     request.upload.onprogress = event => { if (event.lengthComputable) onProgress(Math.round(event.loaded / event.total * 100)); };
     request.onerror = () => reject(new Error('上传连接中断，请检查网络后重试'));
+    request.ontimeout = () => reject(new Error('上传等待超时，请检查网络后重试'));
+    request.onabort = () => reject(new Error('上传已取消'));
     request.onload = () => {
       let response;
       try { response = JSON.parse(request.responseText); } catch (_) { response = {}; }
@@ -1594,6 +1610,7 @@ async function composeFromEmail(mode) {
 function hideCompose() {
   draftSession.attachmentsClosed = true;
   ++composeAiRevision;
+  composeAiController?.abort(); composeAiController = null;
   hideContactSuggestions();
   closeComposePreview();
   closeShareLinkDialog();
@@ -1602,12 +1619,16 @@ function hideCompose() {
   document.body.classList.remove('compose-open', 'compose-ai-active');
   toggleComposeAiPanel(false);
   clearComposePreflight();
+  const returnFocus = composeReturnFocus;
+  composeReturnFocus = null;
+  (returnFocus?.isConnected && returnFocus.getClientRects().length ? returnFocus : document.getElementById('btn-compose'))?.focus({preventScroll:true});
 }
 
 async function closeCompose() {
   const session = draftSession;
   if (session.busy || session.closing || session.switching) return false;
   if (session.attachmentReads) { toast('附件正在读取，请稍候再关闭', 'warn'); return false; }
+  if (!checkUnresolvedSharedFiles()) return false;
   session.closing = true;
   try {
     await saveCurrentDraft();
@@ -1637,6 +1658,7 @@ function renderComposeAttachments() {
   const host = document.getElementById('compose-attachments');
   host.classList.toggle('hidden', !composeAttachments.length);
   host.innerHTML = composeAttachments.map((item, index) => `<span class="compose-attachment-chip"><svg viewBox="0 0 20 20"><path d="M7.2 10.7 12 5.9a2.5 2.5 0 0 1 3.5 3.5l-6.3 6.3a4 4 0 0 1-5.7-5.7l6-6"/></svg><button type="button" class="compose-attachment-open" data-preview-compose-attachment="${index}" title="预览附件"><b>${esc(item.filename)}</b><small>${formatFileSize(item.size || 0)} · 预览</small></button><button type="button" data-remove-attachment="${index}" aria-label="移除 ${esc(item.filename)}">×</button></span>`).join('');
+  renderSharedFileCards();
   refreshComposeAiContext();
 }
 
@@ -1688,33 +1710,111 @@ async function addComposeAttachments(files) {
   if (shared.length && current()) await addLargeSharedFiles(shared);
 }
 
-async function addLargeSharedFiles(files) {
-  const accountId = composeAccountId;
-  let configured = false;
-  try {
-    const config = await api('/api/share-storage/config', {accountId});
-    configured = Boolean(config.credential_available);
-  } catch (_) {}
-  if (!configured) {
-    await openShareLinkDialog();
-    document.getElementById('share-cos-file').files = createFileList(files);
-    document.getElementById('share-cos-status').textContent = `${files.length} 个附件超过普通附件限制。连接存储后可上传并自动插入链接。`;
-    return;
-  }
-  const session = draftSession;
+function checkUnresolvedSharedFiles() {
+  if (!draftSession.sharedFiles?.some(item => item.state === 'failed' && !item.taskId)) return true;
+  document.getElementById('compose-shared-files').scrollIntoView({block:'nearest'});
+  toast('有大附件尚未上传成功，文件不会随草稿保存。请在附件区重试，或移除后继续。', 'warn');
+  return false;
+}
+
+async function restoreSharedFileTasks(session, accountId) {
+  if (!session.id) return;
   session.attachmentReads = (session.attachmentReads || 0) + 1;
   try {
-    for (const file of files) {
-      if (file.size > 2 * 1024 * 1024 * 1024) { toast(`${file.name} 超过 2 GB 上限`, 'warn'); continue; }
-      const result = await uploadCosFile(file, 7, accountId, percent => {
-        document.getElementById('share-cos-status').textContent = `${file.name} 上传中 ${percent}%`;
-      });
-      if (session !== draftSession || accountId !== composeAccountId || session.canceled) return;
-      insertSharedLink(result.name || file.name, result.url);
+    const tasks = await api(`/api/share-storage/tasks?draft_id=${session.id}`, {accountId});
+    if (session !== draftSession || session.canceled) return;
+    session.sharedFiles = tasks.map(task => ({taskId:task.id, name:task.name, size:task.size, days:task.days,
+      state:'failed', remoteUploading:task.state === 'uploading', error:task.state === 'done' ? '上传已完成，点击重试恢复下载链接' : task.state === 'uploading' ? '后台仍在上传，稍后点击刷新状态' : task.error || '上次任务尚未完成，点击重试继续'}));
+    renderSharedFileCards();
+  } catch (error) {
+    if (session === draftSession) toast(`无法读取大附件任务：${error.message}`, 'error');
+  } finally { session.attachmentReads--; }
+}
+
+function renderSharedFileCards() {
+  const host = document.getElementById('compose-shared-files');
+  const items = draftSession.sharedFiles || [];
+  host.classList.toggle('hidden', !items.length);
+  host.innerHTML = items.map((item, index) => {
+    const labels = {waiting:item.taskId ? '已保存到本机 · 等待上传' : '等待保存到本机', uploading:`保存到本机 ${item.progress || 0}%`, saving:'正在保存至云端…', done:'上传完成', failed:item.remoteUploading ? '云端上传中' : '等待继续上传'};
+    const detail = item.state === 'failed' ? `${item.error}${item.taskId ? ' · 已保存本机，可关闭后继续' : ''}` : item.expiresAt ? `有效至 ${new Date(item.expiresAt).toLocaleString()}` : '大附件 · 通过下载链接分享';
+    return `<div class="shared-file-card" data-state="${item.state}"><div class="shared-file-info"><b>${esc(item.name)}</b><small>${formatFileSize(item.size)} · ${labels[item.state]}</small><small>${esc(detail)}</small></div>${['failed','waiting'].includes(item.state) ? `<div class="shared-file-actions"><button type="button" data-retry-share="${index}" ${draftSession.sharing ? 'disabled' : ''}>${item.remoteUploading ? '刷新状态' : '重试'}</button><button type="button" data-dismiss-share="${index}">移除</button></div>` : ''}${['uploading','saving'].includes(item.state) ? `<progress max="100" value="${item.progress || 0}" aria-label="${esc(item.name)}传输进度"></progress>` : ''}</div>`;
+  }).join('');
+}
+
+async function uploadSharedFileWithCard(file, days, session, accountId, onProgress = () => {}, existing = null) {
+  const current = () => session === draftSession && accountId === composeAccountId && !session.canceled;
+  if (!current()) return false;
+  const item = existing || {file, name:file.name, size:file.size, days};
+  if (!existing) (session.sharedFiles ||= []).push(item);
+  item.state = 'uploading'; item.remoteUploading = false; item.error = ''; item.progress = 0;
+  renderSharedFileCards();
+  try {
+    if (!item.taskId) {
+      await saveCurrentDraft({force:true});
+      if (!current()) return false;
+      if (!session.id) throw new Error('草稿未保存，请先填写主题或正文后重试');
+      const task = await uploadCosFile(file, days, accountId, percent => {
+        if (!current()) return;
+        item.progress = percent; renderSharedFileCards(); onProgress(percent);
+      }, `/api/share-storage/tasks?draft_id=${session.id}&days=${days}`);
+      item.taskId = task.id;
+      item.file = null;
     }
-    toast('大附件已上传，下载链接已加入正文', 'success');
-  } catch (error) { toast(`大附件上传失败：${error.message}`, 'error'); }
-  finally { session.attachmentReads -= 1; }
+    if (!current()) return false;
+    item.state = 'saving'; renderSharedFileCards();
+    const result = await api(`/api/share-storage/tasks/${item.taskId}/upload`, {accountId, method:'POST'});
+    if (!current()) return false;
+    const alreadyInserted = [...composeMessageElement().querySelectorAll('[data-mailai-share-task]')].find(node => node.dataset.mailaiShareTask === item.taskId);
+    if (!alreadyInserted || alreadyInserted.querySelector('a')?.href !== result.url) {
+      insertSharedLink(result.name || item.name, result.url, result.expires_at, false);
+      composeMessageElement().lastElementChild.dataset.mailaiShareTask = item.taskId;
+      alreadyInserted?.remove();
+    }
+    // Retain the task result until its link is durably saved in the draft.
+    await saveCurrentDraft({force:true});
+    if (!current()) return false;
+    await api(`/api/share-storage/tasks/${item.taskId}`, {accountId, method:'DELETE'});
+    item.state = 'done'; item.expiresAt = result.expires_at; item.file = null; item.taskId = null;
+    return true;
+  } catch (error) {
+    if (current()) { item.state = 'failed'; item.error = error.message || '连接中断，请重试'; }
+    return false;
+  } finally { if (current()) renderSharedFileCards(); }
+}
+
+async function addLargeSharedFiles(files) {
+  const accountId = composeAccountId, session = draftSession;
+  const current = () => session === draftSession && accountId === composeAccountId && !session.canceled;
+  if (!current() || session.busy) return;
+  if (session.sharing) return toast('大附件正在上传，请完成后再添加', 'warn');
+  if (files.some(file => !file.size || file.size > 2 * 1024 * 1024 * 1024)) return toast('共享文件须非空且不超过 2 GB', 'warn');
+  session.attachmentReads = (session.attachmentReads || 0) + 1;
+  session.sharing = true;
+  try {
+    let configured = false;
+    try {
+      const config = await api('/api/share-storage/config', {accountId});
+      configured = Boolean(config.credential_available);
+    } catch (_) {}
+    if (!current()) return;
+    if (!configured) {
+      await openShareLinkDialog();
+      if (!current()) return;
+      document.getElementById('share-cos-file').files = createFileList(files);
+      document.getElementById('share-cos-status').textContent = `${files.length} 个附件超过普通附件限制。连接存储后可上传并自动插入链接。`;
+      return;
+    }
+    const cards = files.map(file => ({file, name:file.name, size:file.size, days:7, state:'waiting'}));
+    (session.sharedFiles ||= []).push(...cards); renderSharedFileCards();
+    let failed = 0;
+    for (const [index, file] of files.entries()) {
+      if (!current()) return;
+      if (!await uploadSharedFileWithCard(file, 7, session, accountId, () => {}, cards[index])) failed++;
+    }
+    if (current()) toast(failed ? `${failed} 个文件上传失败，请在附件区重试或移除` : '大附件已上传，下载链接已加入正文', failed ? 'warn' : 'success');
+  } catch (error) { if (current()) toast(`大附件上传失败：${error.message}`, 'error'); }
+  finally { session.attachmentReads -= 1; session.sharing = false; if (current()) renderSharedFileCards(); }
 }
 
 function createFileList(files) {
@@ -1746,7 +1846,7 @@ function draftHasContent(payload) {
 
 function draftNeedsSave(session = draftSession, payload = draftPayload(), force = false) {
   if (session.canceled) return false;
-  if (!session.id && !session.queued && (!draftHasContent(payload) || (!force && draftEditingFingerprint() === session.initialEdit))) return false;
+  if (!session.id && !session.queued && ((!draftHasContent(payload) && !session.sharedFiles?.length) || (!force && draftEditingFingerprint() === session.initialEdit))) return false;
   const fingerprint = draftFingerprint(payload);
   return fingerprint !== session.savedFingerprint || Boolean(session.queued && fingerprint !== session.latestQueuedFingerprint);
 }
@@ -1754,7 +1854,7 @@ function draftNeedsSave(session = draftSession, payload = draftPayload(), force 
 function setDraftStatus(session, state) {
   if (session !== draftSession) return;
   const status = document.getElementById('draft-state');
-  const labels = {idle:'草稿自动保存', pending:'草稿自动保存', saving:'正在保存…', saved:'已存至本地草稿', error:'保存失败 · 点击重试'};
+  const labels = {idle:'草稿自动保存', pending:'有修改 · 等待保存', saving:'正在保存…', saved:'已存至本地草稿', error:'保存失败 · 点击重试'};
   status.textContent = labels[state];
   status.dataset.state = state;
   status.disabled = state !== 'error';
@@ -1879,6 +1979,9 @@ function refreshComposeAiContext() {
 
 function resetComposeAiPanel() {
   ++composeAiRevision;
+  document.getElementById('compose-ai-error').classList.add('hidden');
+  document.getElementById('compose-ai-undo').classList.add('hidden');
+  draftSession.aiUndo = null; draftSession.aiRetry = null;
   composeAiController?.abort(); composeAiController = null;
   document.querySelectorAll('#btn-ai-generate, #btn-ai-regenerate, [data-ai-compose]').forEach(button => setLoading(button, false));
   composeAiSuggestion = '';
@@ -2039,6 +2142,11 @@ async function aiCompose(operation, button) {
     instructionInput.focus({preventScroll:true});
     return toast('请先填写写作要求、主题或正文', 'warn');
   }
+  const previousSuggestion = composeAiSuggestion;
+  const previousPreview = document.getElementById('compose-ai-output').innerHTML;
+  const previousBasis = document.getElementById('compose-ai-preview-basis').textContent;
+  document.getElementById('compose-ai-error').classList.add('hidden');
+  session.aiRetry = () => aiCompose(operation, button);
   composeAiSuggestion = '';
   document.querySelectorAll('#btn-ai-replace-subject,#btn-ai-append,#btn-ai-replace').forEach(control => { control.disabled = true; });
   document.getElementById('btn-ai-replace-subject').classList.add('hidden');
@@ -2110,12 +2218,17 @@ async function aiCompose(operation, button) {
     toast('AI 草稿已生成，请预览后决定如何使用', 'success');
   } catch (err) {
     if (!current()) return;
-    document.getElementById('compose-ai-output').textContent = '';
-    document.getElementById('compose-ai-preview-basis').textContent = '';
-    document.getElementById('compose-ai-preview').classList.add('hidden');
-    document.querySelector('.compose-ai-panel > .compose-ai-preview-actions').classList.add('hidden');
-    document.getElementById('compose-ai-status').textContent = `生成失败：${err.message || '请稍后重试'}`;
-    toast('AI 写作失败：' + err.message, 'error');
+    composeAiSuggestion = previousSuggestion;
+    document.getElementById('compose-ai-output').innerHTML = previousSuggestion ? previousPreview : '';
+    document.getElementById('compose-ai-preview-basis').textContent = previousSuggestion ? previousBasis : '';
+    document.getElementById('compose-ai-preview').classList.toggle('hidden', !previousSuggestion);
+    document.querySelector('.compose-ai-panel > .compose-ai-preview-actions').classList.toggle('hidden', !previousSuggestion);
+    document.getElementById('btn-ai-replace-subject').classList.toggle('hidden', !previousSuggestion?.subject);
+    document.querySelectorAll('#btn-ai-replace-subject,#btn-ai-append,#btn-ai-replace').forEach(control => { control.disabled = !previousSuggestion; });
+    panel.classList.toggle('has-result', Boolean(previousSuggestion));
+    document.getElementById('compose-ai-status').textContent = previousSuggestion ? '本次生成失败，已保留上一份可用草稿。' : '生成未完成，你的邮件内容没有改变。';
+    document.getElementById('compose-ai-error-text').textContent = err.message || '连接暂时不可用，请稍后重试';
+    document.getElementById('compose-ai-error').classList.remove('hidden');
   }
   finally { if (current()) { panel.classList.remove('is-thinking'); setLoading(button, false); document.getElementById('btn-ai-regenerate').disabled = false; } }
 }
@@ -2130,12 +2243,45 @@ function highlightComposeAiTarget(element) {
   animation.id = 'ai-applied';
 }
 
+function composeAiEditSnapshot() {
+  return {subject:document.getElementById('compose-subject').value, body:composeMessageElement().innerHTML,
+    signature:document.getElementById('compose-signature-content').innerHTML, signatureId:currentSignatureId};
+}
+
+function rememberComposeAiEdit(before, fields, label) {
+  const after = composeAiEditSnapshot();
+  fields = fields.filter(key => before[key] !== after[key]);
+  if (!fields.length) return;
+  draftSession.aiUndo = {before, after, fields};
+  const button = document.getElementById('compose-ai-undo');
+  button.textContent = `撤销上次${label}修改`;
+  button.classList.remove('hidden');
+}
+
+function undoComposeAiEdit() {
+  const edit = draftSession.aiUndo;
+  if (!edit || draftSession.canceled || draftSession.busy) return;
+  const now = composeAiEditSnapshot();
+  // Never overwrite a manual edit made after applying the suggestion.
+  if (edit.fields.some(key => now[key] !== edit.after[key]))
+    return toast('这部分内容已有新的修改，为保留你的编辑，不能撤销上次 AI 填入', 'warn');
+  if (edit.fields.includes('subject')) document.getElementById('compose-subject').value = edit.before.subject;
+  if (edit.fields.includes('body')) composeMessageElement().innerHTML = edit.before.body;
+  if (edit.fields.includes('signature')) renderComposeSignature(edit.before.signatureId, edit.before.signature);
+  draftSession.aiUndo = null;
+  document.getElementById('compose-ai-undo').classList.add('hidden');
+  clearComposePreflight(); queueDraftSave(); refreshComposeAiContext();
+  toast('已撤销上次 AI 修改', 'success');
+}
+
 function applyComposeAiSuggestion(mode) {
   if (!composeAiSuggestion) return;
   const suggestion = typeof composeAiSuggestion === 'string' ? {body:composeAiSuggestion} : composeAiSuggestion;
+  const before = composeAiEditSnapshot();
   if (mode === 'subject') {
     if (!suggestion.subject) return;
     document.getElementById('compose-subject').value = suggestion.subject;
+    rememberComposeAiEdit(before, ['subject'], '主题');
     clearComposePreflight(); queueDraftSave(); refreshComposeAiContext();
     toast('AI 主题已填入主题栏', 'success');
     document.getElementById('compose-subject').focus();
@@ -2147,6 +2293,7 @@ function applyComposeAiSuggestion(mode) {
   body.innerHTML = mode === 'append' && body.innerText.trim() ? `${body.innerHTML}<br><br>${html}` : html;
   if (suggestion.signoff && !currentSignatureId && !document.getElementById('compose-signature-content').innerText.trim())
     renderComposeSignature('', esc(suggestion.signoff).replace(/\n/g, '<br>'));
+  rememberComposeAiEdit(before, ['body', 'signature', 'signatureId'], mode === 'append' ? '追加内容' : '正文');
   clearComposePreflight(); queueDraftSave(); refreshComposeAiContext();
   const target = ['reply','reply_all'].includes(composeContext.mode) ? '回复' : (composeContext.mode === 'forward' ? '转发说明' : '正文');
   toast(mode === 'append' ? `AI 草稿已追加到${target}` : `AI 草稿已替换${target}，请核对后发送`, 'success');
@@ -2443,7 +2590,14 @@ function toast(msg, type = 'info') {
   el.className = 'toast ' + type;
   el.classList.remove('hidden');
   clearTimeout(el._timer);
-  el._timer = setTimeout(() => el.classList.add('hidden'), 3000);
+  el.setAttribute('role', type === 'error' ? 'alert' : 'status');
+  if (type === 'error') {
+    const close = document.createElement('button');
+    close.type = 'button'; close.className = 'toast-dismiss'; close.textContent = '×';
+    close.setAttribute('aria-label', '关闭错误提示');
+    close.onclick = () => el.classList.add('hidden');
+    el.append(close);
+  } else el._timer = setTimeout(() => el.classList.add('hidden'), 3000);
 }
 
 async function api(path, opts = {}) {
@@ -2754,6 +2908,8 @@ function currentMailboxScopeLabel() {
     if (serverFolderForRole('quarantine')?.name === currentServerFolder) return '隔离区内';
     return `${currentServerFolder}内`;
   }
+  if (currentFilter.status === 'trash') return '已删除内';
+  if (currentFilter.status === 'favorites') return '我的收藏内';
   if (unifiedMailbox) return '所有收件箱内';
   if (currentFilter.status === 'inbox') return '收件箱内';
   if (currentFilter.status === 'quarantine') return '隔离区内';
@@ -3162,6 +3318,7 @@ function hideDashboard() {
 
 // ===== 筛选与排序 =====
 function applyFilters({silent = false} = {}) {
+  renderMailSearchStatus();
   document.getElementById('list-footer').classList.toggle('hidden', Boolean(specialMailbox || currentFilter.search));
   for (const id of ['filter-priority','filter-domain']) document.getElementById(id).closest('label, fieldset')?.classList.toggle('hidden', Boolean(specialMailbox));
   document.getElementById('global-search').placeholder = currentFilter.status === 'trash' ? (mailaiT('search.trash') || '搜索已删除邮件的主题、发件人、摘要…') : specialMailbox === 'sent' ? (mailaiT('search.sent') || '搜索当前已发送邮件…') : specialMailbox === 'drafts' ? (mailaiT('search.drafts') || '搜索当前草稿…') : currentServerFolder ? (mailaiT('search.folder') || '搜索当前文件夹或姓名拼音…') : (mailaiT('search.all') || '搜索主题、发件人、正文或姓名拼音…');
@@ -3169,6 +3326,10 @@ function applyFilters({silent = false} = {}) {
   if (specialMailbox && currentFilter.sort === 'score-desc') { currentFilter.sort = 'date-desc'; document.getElementById('list-sort').value = 'date-desc'; }
   document.getElementById('filter-unread').closest('label').classList.toggle('hidden', Boolean(specialMailbox));
   if (specialMailbox) { currentFilter.unread = false; document.getElementById('filter-unread').checked = false; }
+  if (!currentFilter.search) document.getElementById('search-error').classList.add('hidden');
+  const scope = document.getElementById('search-scope');
+  scope.textContent = currentMailboxScopeLabel().replace(/内$/, '');
+  scope.title = `搜索范围：${currentMailboxScopeLabel()}，仅搜索已同步到本机的邮件`;
   updateFilterSummary();
   if (specialMailbox) {
     for (const verdict of ['phishing','suspicious','clean','unreviewed']) {
@@ -3347,10 +3508,14 @@ function renderEmailList(emails, {silent = false} = {}) {
   const focusedAccountId = focused?.dataset.accountId || '';
   container.classList.toggle('silent-refresh', silent);
   emailListRenderSignature = signature;
+  if (!emails.length && currentFilter.search && mailSearchState.revision === searchRevision && mailSearchState.phase === 'loading') {
+    container.innerHTML = '<div class="email-empty"><div class="empty-text">正在搜索，请稍候…</div></div>'; updateBulkToolbar(); return;
+  }
   if (!emails.length) {
     container.innerHTML = `<div class="email-empty">
       <div class="empty-icon empty-mail-icon" aria-hidden="true"><svg viewBox="0 0 64 64"><rect x="10" y="16" width="44" height="34" rx="10"/><path d="m14 22 18 14 18-14M17 46l10-9M47 46l-10-9"/><path class="empty-mail-spark" d="M49 9v6M46 12h6"/></svg></div>
-      <div class="empty-text"><strong>这里暂时没有邮件</strong><small>换个文件夹或筛选条件看看</small></div>
+      <div class="empty-text"><strong>${currentFilter.search ? '没有找到匹配的邮件' : '这里暂时没有邮件'}</strong><small>${currentFilter.search ? `已在${esc(currentMailboxScopeLabel())}搜索“${esc(currentFilter.search)}”` : '可以调整筛选条件或切换文件夹'}</small></div>
+      <div class="search-empty-actions"><button type="button" data-search-recover="clear">清除搜索和筛选</button>${!unifiedMailbox && (specialMailbox || currentServerFolder || currentFilter.status) ? '<button type="button" data-search-recover="broaden">搜索当前账号全部邮件</button>' : ''}</div>
     </div>`;
     updateBulkToolbar();
     if (silent) container.scrollTop = scrollTop;
@@ -3958,7 +4123,7 @@ async function runBulkAction(action, target = '') {
       ? `已移入已删除 ${result.completed} 封，可在那里取消删除；稍后同步服务器`
       : action === 'read' || action === 'unread'
         ? `已标记 ${result.completed} 封邮件，服务器将在后台同步`
-        : `已处理 ${result.completed} 封邮件`;
+        : action === 'move' ? `服务器已移动 ${result.completed} 封邮件，本地状态已更新` : `已处理 ${result.completed} 封邮件`;
     toast(`${completedText}${result.failed.length ? `，失败 ${result.failed.length} 封` : ''}`, result.failed.length ? 'warn' : 'success');
     selectedMailIds = new Set(result.failed.map(item => item.id)); mailSelectionExplicit = !!selectedMailIds.size; selectionAnchorId = null; await loadData();
     if (result.failed.length && typeof showOperationFailures === 'function') showOperationFailures(result.failed, async () => {
@@ -7761,25 +7926,46 @@ document.addEventListener('keydown', event => {
   if (event.key === 'Escape' && !document.getElementById('correspondence-drawer').classList.contains('hidden')) closeCorrespondence();
 });
 
-document.getElementById('global-search').addEventListener('input', (e) => {
-  const query = e.target.value.trim();
+function renderMailSearchStatus() {
+  const current = mailSearchState.revision === searchRevision && Boolean(currentFilter.search);
+  const host = document.getElementById('search-progress');
+  host.classList.toggle('hidden', !current);
+  const busy = current && mailSearchState.phase === 'loading';
+  document.getElementById('global-search').setAttribute('aria-busy', String(busy));
+  document.getElementById('email-list').setAttribute('aria-busy', String(busy));
+  if (current) host.textContent = busy ? `正在搜索${currentMailboxScopeLabel()}…` : mailSearchState.phase === 'error' ? '搜索未完成，以下不能作为完整结果' : `搜索完成 · ${currentMailboxScopeLabel()} · 仅已同步邮件`;
+}
+
+function runGlobalSearch() {
+  const query = document.getElementById('global-search').value.trim();
   const revision = ++searchRevision;
   // Search keeps the selected folder, including local drafts and sent mail.
   currentFilter.search = query;
   resetReadingPane();
+  document.getElementById('search-error').classList.add('hidden');
+  mailSearchState = {revision, phase:query ? 'loading' : 'idle'};
+  renderMailSearchStatus();
   searchResults = null;
   clearTimeout(globalSearchTimer);
   globalSearchTimer = setTimeout(async () => {
-    if (!query || specialMailbox || currentFilter.status === 'trash') { applyFilters(); return; }
+    if (!query || specialMailbox || currentFilter.status === 'trash') { mailSearchState.phase = 'done'; applyFilters(); return; }
     try {
       const path = unifiedMailbox ? '/api/system/mail/unified-inbox?days=9999' : '/api/emails/search?days=9999';
       const results = await loadMailPages(`${path}&q=${encodeURIComponent(query)}&limit=1000${currentServerFolder ? '&folder=' + encodeURIComponent(currentServerFolder) : ''}${!unifiedMailbox && currentFilter.status ? '&status=' + encodeURIComponent(currentFilter.status) : ''}`, () => revision === searchRevision);
       if (revision !== searchRevision) return;
       searchResults = results;
+      mailSearchState.phase = 'done';
       selectedMailIds.clear(); mailSelectionExplicit = false; updateBulkToolbar(); applyFilters();
-    } catch (err) { toast('搜索失败：' + err.message, 'error'); }
+    } catch (err) {
+      if (revision !== searchRevision) return;
+      mailSearchState.phase = 'error'; renderMailSearchStatus();
+      const error = document.getElementById('search-error');
+      error.querySelector('span').textContent = `搜索未完成：${err.message}`;
+      error.classList.remove('hidden');
+    }
   }, 260);
-});
+}
+document.getElementById('global-search').addEventListener('input', runGlobalSearch);
 
 async function applySidebarFilter(reload = false) {
   resetReadingPane();
@@ -7885,6 +8071,7 @@ document.getElementById('compose-from').addEventListener('change', async event =
   if (session.busy || session.closing || session.switching || session.canceled) { event.target.value = composeAccountId; return; }
   hideContactSuggestions();
   if (draftSession.attachmentReads) { event.target.value = composeAccountId; return toast('附件正在读取，请稍候再切换发件账号', 'warn'); }
+  if (draftSession.sharedFiles?.some(item => item.state !== 'done')) { event.target.value = composeAccountId; toast('请先完成或移除大附件任务，再切换发件账号', 'warn'); return; }
   const previous = composeAccountId || activeMailAccount()?.id || '';
   if (accountId === previous) return;
   const previousSignature = {state:signatureState, id:currentSignatureId, html:document.getElementById('compose-signature-content').innerHTML};
@@ -7923,6 +8110,7 @@ document.getElementById('compose-from').addEventListener('change', async event =
     send.title = sendCapability.reason || '发送邮件';
     clearComposePreflight();
     resetComposeAiPanel();
+    renderSharedFileCards();
     refreshDraftList(previous).catch(() => {});
   } catch (err) {
     draftSession = session; currentDraftId = session.id;
@@ -8019,19 +8207,22 @@ document.getElementById('share-cos-settings-toggle').addEventListener('click', (
 document.querySelectorAll('[data-close-share-link]').forEach(button => button.addEventListener('click', closeShareLinkDialog));
 document.getElementById('share-cos-save').addEventListener('click', async event => {
   const button = event.currentTarget;
+  const session = draftSession, accountId = composeAccountId;
+  const current = () => session === draftSession && accountId === composeAccountId && !session.canceled;
   button.disabled = true;
   try {
-    await api('/api/share-storage/config', {accountId:composeAccountId, method:'POST',
+    await api('/api/share-storage/config', {accountId, method:'POST',
       headers:{'Content-Type':'application/json'}, body:JSON.stringify({
         bucket:document.getElementById('share-cos-bucket').value,
         region:document.getElementById('share-cos-region').value,
         secret_id:document.getElementById('share-cos-id').value,
         secret_key:document.getElementById('share-cos-key').value})});
+    if (!current()) return;
     document.getElementById('share-cos-key').value = '';
     document.getElementById('share-cos-status').textContent = 'COS 配置已保存';
     document.querySelector('.share-cos-config').classList.add('hidden');
     document.getElementById('share-cos-settings-toggle').classList.remove('hidden');
-  } catch (error) { document.getElementById('share-cos-status').textContent = error.message; }
+  } catch (error) { if (current()) document.getElementById('share-cos-status').textContent = error.message; }
   finally { button.disabled = false; }
 });
 document.getElementById('share-cos-form').addEventListener('submit', async event => {
@@ -8040,21 +8231,26 @@ document.getElementById('share-cos-form').addEventListener('submit', async event
   if (!files.length) return toast('请先选择文件', 'warn');
   if (files.some(file => file.size > 2 * 1024 * 1024 * 1024)) return toast('单个共享文件不能超过 2 GB', 'warn');
   const session = draftSession, accountId = composeAccountId;
-  if (session.busy || session.canceled) return;
+  if (session.busy || session.canceled || session.sharing) return;
+  session.sharing = true;
+  const days = Number(document.getElementById('share-cos-expiry').value);
   session.attachmentReads = (session.attachmentReads || 0) + 1;
   const button = document.getElementById('share-cos-upload');
   button.disabled = true;
   try {
+    closeShareLinkDialog();
+    const cards = files.map(file => ({file, name:file.name, size:file.size, days, state:'waiting'}));
+    (session.sharedFiles ||= []).push(...cards); renderSharedFileCards();
+    const failed = [];
     for (const [index, file] of files.entries()) {
-      const result = await uploadCosFile(file, Number(document.getElementById('share-cos-expiry').value), accountId,
-        percent => { button.textContent = percent >= 100 ? '正在上传至 COS…' : `上传 ${index + 1}/${files.length} · ${percent}%`; });
       if (session !== draftSession || accountId !== composeAccountId || session.canceled) return;
-      insertSharedLink(result.name || file.name, result.url);
+      if (!await uploadSharedFileWithCard(file, days, session, accountId, () => {}, cards[index])) failed.push(file);
     }
+    if (session !== draftSession || accountId !== composeAccountId || session.canceled) return;
     document.getElementById('share-cos-file').value = '';
-    toast('大附件已上传，分享链接已插入正文', 'success');
-  } catch (error) { toast(error.message, 'error'); }
-  finally { session.attachmentReads -= 1; button.disabled = false; button.textContent = mailaiT('compose.cosUpload') || '上传并插入邮件'; }
+    toast(failed.length ? `${failed.length} 个文件上传失败，请在附件区重试或移除` : '大附件已上传，分享链接已插入正文', failed.length ? 'warn' : 'success');
+  } catch (error) { if (session === draftSession && accountId === composeAccountId) toast(error.message, 'error'); }
+  finally { session.attachmentReads -= 1; session.sharing = false; button.disabled = false; button.textContent = mailaiT('compose.cosUpload') || '上传并插入邮件'; if (session === draftSession) renderSharedFileCards(); }
 });
 document.getElementById('btn-insert-compose-image').addEventListener('click', () => { rememberComposeSelection(); document.getElementById('compose-image-input').click(); });
 document.getElementById('compose-image-input').addEventListener('change', event => {
@@ -8172,6 +8368,7 @@ document.getElementById('btn-discard-draft').addEventListener('click', async () 
   } catch (e) { session.canceled = false; toast('舍弃草稿失败：' + e.message, 'error'); }
 });
 async function submitComposeMail(payload, preflightConfirmed = false) {
+  if (draftSession.sharedFiles?.some(item => item.state === 'failed')) { toast('有大附件上传失败，请先重试或移除后再发送', 'warn'); return false; }
   if (draftSession.attachmentReads) { toast('附件正在读取，请稍候再发送', 'warn'); return false; }
   if (draftSession.busy || draftSession.closing || draftSession.switching || draftSession.canceled) return false;
   let sent = false;
@@ -8204,6 +8401,7 @@ async function submitComposeMail(payload, preflightConfirmed = false) {
 }
 
 document.getElementById('btn-send-mail').addEventListener('click', async () => {
+  if (draftSession.sharedFiles?.some(item => item.state === 'failed')) return toast('有大附件上传失败，请先重试或移除后再发送', 'warn');
   if (draftSession.attachmentReads) return toast('附件正在读取，请稍候再发送', 'warn');
   if (draftSession.busy || draftSession.closing || draftSession.switching || draftSession.canceled) return;
   const payload = draftPayload();
@@ -8732,3 +8930,62 @@ setInterval(() => checkForAppUpdate(false), 24 * 60 * 60 * 1000);
     // ignore
   }
 })();
+
+// Recovery actions stay in the view that owns the operation.
+document.getElementById('compose-ai-undo').addEventListener('click', undoComposeAiEdit);
+document.getElementById('compose-ai-retry').addEventListener('click', () => draftSession.aiRetry?.());
+document.getElementById('search-retry').addEventListener('click', runGlobalSearch);
+document.getElementById('email-list').addEventListener('click', async event => {
+  const action = event.target.closest('[data-search-recover]')?.dataset.searchRecover;
+  if (!action) return;
+  const query = currentFilter.search;
+  currentFilter = {...currentFilter, verdict:'', category:'', days:9999, priority:'', domain:'', attachments:false, unread:false};
+  setSegmentedFilter('filter-days', '9999'); setSegmentedFilter('filter-priority', '');
+  document.getElementById('filter-domain').value = '';
+  document.getElementById('filter-attachments').checked = false;
+  document.getElementById('filter-unread').checked = false;
+  if (action === 'broaden') { specialMailbox = ''; currentServerFolder = ''; currentFilter.status = ''; updateActiveNav(); }
+  document.getElementById('global-search').value = action === 'broaden' ? query : '';
+  currentFilter.search = document.getElementById('global-search').value;
+  const revision = ++searchRevision; clearTimeout(globalSearchTimer); searchResults = null;
+  try { await loadData(); if (revision === searchRevision) runGlobalSearch(); } catch (error) { if (revision === searchRevision) toast(`加载邮件失败：${error.message}`, 'error'); }
+});
+
+document.getElementById('compose-shared-files').addEventListener('click', async event => {
+  const retry = event.target.closest('[data-retry-share]');
+  const dismiss = event.target.closest('[data-dismiss-share]');
+  const session = draftSession, accountId = composeAccountId;
+  if ((!retry && !dismiss) || session.sharing || session.busy || session.canceled) return;
+  const index = Number(retry ? retry.dataset.retryShare : dismiss.dataset.dismissShare);
+  const item = session.sharedFiles?.[index];
+  if (!item || !['failed','waiting'].includes(item.state)) return;
+  if (dismiss) {
+    try { if (item.taskId) await api(`/api/share-storage/tasks/${item.taskId}`, {accountId, method:'DELETE'});
+      if (session !== draftSession) return;
+      session.sharedFiles.splice(index, 1); renderSharedFileCards();
+    } catch (error) { toast(error.message, 'error'); }
+    return;
+  }
+  session.sharing = true; session.attachmentReads = (session.attachmentReads || 0) + 1;
+  try { await uploadSharedFileWithCard(item.file, item.days, session, accountId, () => {}, item); }
+  finally { session.sharing = false; session.attachmentReads--; if (session === draftSession) renderSharedFileCards(); }
+});
+
+// A single Escape closes only the innermost writing layer, never the draft.
+document.addEventListener('keydown', event => {
+  if (event.isComposing || event.keyCode === 229) return;
+  if (event.key !== 'Escape' || !document.body.classList.contains('compose-open')) return;
+  const visible = id => { const node = document.getElementById(id); return node && !node.classList.contains('hidden'); };
+  let close = null;
+  let focus = null;
+  if (visible('contact-suggestions')) { close = hideContactSuggestions; focus = contactInput; }
+  else if (visible('compose-preview-modal')) { close = closeComposePreview; focus = document.getElementById('btn-compose-preview'); }
+  else if (visible('share-link-dialog')) { close = closeShareLinkDialog; focus = document.getElementById('btn-share-link'); }
+  else if (visible('signature-manager')) { close = closeSignatureManager; focus = document.getElementById('btn-manage-signatures'); }
+  else if (visible('compose-ai-panel')) { close = () => toggleComposeAiPanel(false); }
+  if (!close) return;
+  event.preventDefault(); event.stopImmediatePropagation();
+  close();
+  if (focus?.getClientRects().length) focus.focus({preventScroll:true});
+  else if (!document.getElementById('compose-modal').contains(document.activeElement) || !document.activeElement.getClientRects().length) composeMessageElement().focus({preventScroll:true});
+}, true);

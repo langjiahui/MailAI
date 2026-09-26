@@ -142,8 +142,11 @@ def api_assistant_semantic_reindex():
     from ... import semantic
     if not semantic.deps_available():
         raise HTTPException(400, "未安装语义检索依赖（fastembed），请安装 requirements-semantic.txt 后重启")
+    if not semantic.enabled():
+        raise HTTPException(400, "请先启用语义检索")
     try:
-        return semantic.reindex()
+        semantic.schedule_missing(rebuild=True)
+        return {"scheduled": True}
     except Exception as exc:
         log.exception("语义索引重建失败")
         raise HTTPException(500, f"索引重建失败: {exc}")

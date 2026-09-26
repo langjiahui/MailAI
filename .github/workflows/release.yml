@@ -82,6 +82,10 @@ jobs:
             dist\MailAI-Windows-x64-Setup.exe
           if ($LASTEXITCODE) { throw "signtool failed with $LASTEXITCODE" }
           & $signtool.FullName verify /pa dist\MailAI-Windows-x64-Setup.exe
+          if ($LASTEXITCODE) { throw "Signature verification failed with $LASTEXITCODE" }
+      - name: Write checksum for final Windows installer
+        shell: pwsh
+        run: python scripts/write_sha256.py dist/MailAI-Windows-x64-Setup.exe
       - uses: actions/upload-artifact@v5
         with:
           name: release-windows-x64
@@ -174,6 +178,10 @@ jobs:
           } >> "$GITHUB_ENV"
       - name: Build Apple Silicon installer
         shell: bash
+        env:
+          MAILAI_NOTARY_KEY_BASE64: ${{ secrets.MACOS_NOTARY_KEY_BASE64 }}
+          MAILAI_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          MAILAI_NOTARY_ISSUER: ${{ secrets.MACOS_NOTARY_ISSUER }}
         run: |
           export MAILAI_RELEASE_VERSION="${GITHUB_REF_NAME#v}"
           export MAILAI_BUILD_VERSION="${GITHUB_RUN_NUMBER}"

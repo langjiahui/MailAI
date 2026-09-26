@@ -3,7 +3,9 @@ import asyncio
 import json
 import os
 import re
+import shutil
 import tempfile
+import threading
 import uuid
 from datetime import datetime, timedelta, timezone
 from urllib.parse import unquote
@@ -12,6 +14,12 @@ from . import config, credential_store, db, system_settings
 
 _SETTING = "cos_share_config"
 _MAX_FILE_BYTES = 2 * 1024 * 1024 * 1024
+_upload_slots = threading.BoundedSemaphore(2)
+_uploads = set()
+
+
+class UploadBusyError(RuntimeError):
+    pass
 
 
 def _account_id() -> str:
@@ -28,6 +36,8 @@ def public_config() -> dict:
         saved = json.loads(raw) if raw else {}
     except (ValueError, TypeError):
         saved = {}
+    if not isinstance(saved, dict):
+        saved = {}
     return {
         "bucket": saved.get("bucket", ""),
         "region": saved.get("region", ""),
@@ -40,6 +50,7 @@ def public_config() -> dict:
 
 def save_config(bucket: str, region: str, secret_id: str, secret_key: str = "") -> dict:
     bucket, region, secret_id = bucket.strip(), region.strip(), secret_id.strip()
+    secret_key = secret_key.strip()
     if not re.fullmatch(r"[a-z0-9][a-z0-9-]{1,62}-\d{5,15}", bucket):
         raise ValueError("存储桶名称格式不正确，请填写 bucket-appid")
     if not re.fullmatch(r"[a-z]{2,8}-[a-z0-9-]{2,24}", region):
@@ -71,13 +82,13 @@ def _client(settings: dict):
                                      SecretKey=key, Scheme="https", Timeout=60))
 
 
-def _upload_file(path: str, filename: str, size: int, days: int) -> dict:
+def _upload_file(path: str, filename: str, size: int, days: int, object_id: str = "") -> dict:
     settings = public_config()
     if not settings["bucket"] or not settings["region"] or not settings["credential_available"]:
         raise ValueError("请先配置腾讯云 COS")
     client = _client(settings)
     safe_name = re.sub(r"[\\/\r\n\x00-\x1f]", "_", filename).strip()[:160] or "共享文件"
-    key = f"mailai-shares/{uuid.uuid4().hex}/{safe_name}"
+    key = f"mailai-shares/{object_id or uuid.uuid4().hex}/{safe_name}"
     client.upload_file(Bucket=settings["bucket"], Key=key, LocalFilePath=path,
                        PartSize=10, MAXThread=2)
     seconds = days * 24 * 60 * 60
@@ -94,9 +105,23 @@ async def upload_request(request, encoded_filename: str, days: int) -> dict:
         raise ValueError("文件名无效")
     if not public_config()["credential_available"]:
         raise ValueError("请先配置腾讯云 COS")
-    fd, path = tempfile.mkstemp(prefix="mailai-share-")
+    length = getattr(request, 'headers', {}).get('content-length')
+    if length is not None:
+        try:
+            length = int(length)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("文件大小无效") from exc
+        if length <= 0 or length > _MAX_FILE_BYTES:
+            raise ValueError("共享文件大小须在 1 字节到 2 GB 之间")
+        if shutil.disk_usage(tempfile.gettempdir()).free < length + 64 * 1024 * 1024:
+            raise ValueError("本机临时空间不足，请释放磁盘空间后重试")
+    if not _upload_slots.acquire(blocking=False):
+        raise UploadBusyError("已有大附件正在上传，请等它完成后再试")
+    path = None
+    transferred = False
     size = 0
     try:
+        fd, path = tempfile.mkstemp(prefix="mailai-share-")
         with os.fdopen(fd, "wb") as output:
             async for chunk in request.stream():
                 size += len(chunk)
@@ -105,9 +130,33 @@ async def upload_request(request, encoded_filename: str, days: int) -> dict:
                 output.write(chunk)
         if not size:
             raise ValueError("不能上传空文件")
-        return await asyncio.to_thread(_upload_file, path, filename, size, days)
+        if length is not None and size != length:
+            raise ValueError("文件接收不完整，请重新选择并上传")
+
+        def upload_and_cleanup():
+            # Request cancellation does not stop a thread. Let that thread own
+            # the temporary file until COS has finished reading it.
+            try:
+                return _upload_file(path, filename, size, days)
+            finally:
+                try:
+                    os.unlink(path)
+                finally:
+                    _upload_slots.release()
+
+        task = asyncio.create_task(asyncio.to_thread(upload_and_cleanup))
+        _uploads.add(task)
+        def finished(done):
+            _uploads.discard(done)
+            if not done.cancelled():
+                done.exception()  # Consume failures even if the caller left.
+        task.add_done_callback(finished)
+        transferred = True
+        return await asyncio.shield(task)
     finally:
-        try:
-            os.unlink(path)
-        except FileNotFoundError:
-            pass
+        if not transferred:
+            try:
+                if path is not None:
+                    os.unlink(path)
+            finally:
+                _upload_slots.release()

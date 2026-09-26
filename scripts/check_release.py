@@ -56,6 +56,7 @@ TESTS = (
     'test_inno_setup_discovery.py',
     'test_runtime_logging.py',
     'test_isolated_startup.py',
+    'test_process_recovery.py', 'test_notarization.py',
     'test_mail_date_semantics.py',
     'test_history_ai_budget.py',
     'test_async_seen_sync.py',
@@ -74,7 +75,7 @@ TESTS = (
     'test_outgoing_guard.py',
     'test_preflight_gate.py',
     'test_signatures.py',
-    'test_compose_ai_sections.py', 'test_share_storage.py',
+    'test_compose_ai_sections.py', 'test_share_storage.py', 'test_share_tasks.py', 'test_action_sync_status.py',
     'test_contacts.py', 'test_contact_identity.py', 'test_contact_name_ordering.py', 'test_sent_attachments.py', 'test_compose_file_tools.py', 'test_draft_completion_integrity.py',
     'test_mail_library.py',
     'test_chain_worker.py',
@@ -84,6 +85,7 @@ TESTS = (
     'test_assistant_actions.py',
     'test_ollama_preset.py',
     'test_semantic_search.py',
+    'test_semantic_resilience.py',
     'test_linux_appimage.py',
     'test_server_cleanup.py',
 )
@@ -108,6 +110,7 @@ def main():
     commands += [[node, '--check', str(ROOT / 'app/web/static/attachment-preview.js')]]
     commands += [[node, '--check', str(ROOT / 'app/web/static/app.js')],
                  [node, str(ROOT / 'tests/test_interaction_fixes.cjs')],
+                 [node, str(ROOT / 'tests/test_share_upload_races.cjs')],
                  [node, str(ROOT / 'tests/test_trash_navigation.cjs')],
                  [node, str(ROOT / 'tests/test_async_ui_safety.cjs')],
                  [node, str(ROOT / 'tests/test_digest_races.cjs')],

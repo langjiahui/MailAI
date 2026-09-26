@@ -239,11 +239,13 @@ async function refreshTaskCenter({lightweight = false} = {}) {
       ['邮箱同步', () => api('/api/fetch_status', {accountId}), {}],
       ['稍后提醒', () => useCachedReminders ? taskCenterReminders : api('/api/reminders', {accountId}), []],
       ['到期提醒', () => useCachedReminders ? [] : api('/api/reminders/all', {accountId}), []],
+      ['删除同步', () => api('/api/mail/action-sync', {accountId}), {rows:[],total:0}],
       ['已删除邮件清理', () => api('/api/trash/purge/status', {accountId}), {}],
     ];
     const results = await Promise.allSettled(requests.map(([, read]) => Promise.resolve().then(read)));
     const errors = results.flatMap((result, index) => result.status === 'rejected' ? [requests[index][0]] : []);
-    const [rows, sync, reminders, allReminders, purge] = results.map((result, index) => result.status === 'fulfilled' ? result.value : requests[index][2]);
+    const [rows, sync, reminders, allReminders, actions, purge] = results.map((result, index) => result.status === 'fulfilled' ? result.value : requests[index][2]);
+    actions.rows = Array.isArray(actions.rows) ? actions.rows : [];
     rows.forEach(row => { try { row.error = row.error || JSON.parse(row.result || '{}').warning || ''; } catch (_) {} });
     if (accountId !== taskCenterScope()) return;
     taskCenterReminders = reminders;
@@ -259,11 +261,12 @@ async function refreshTaskCenter({lightweight = false} = {}) {
     const purgeAttention = Boolean(purge.unacknowledged || purge.cleanup_pending);
     const purgeBlock = purge.pending || purgeAttention ? `<section class="task-section"><h3>已删除邮件清理</h3><article class="task-row"><div class="task-row-main"><b>本地邮件已移除</b><span class="task-status">${purge.pending ? '远端待同步' : '仅本地完成'}</span></div><small>${purge.pending ? `${Number(purge.pending)} 封等待服务器删除，联网后自动退避重试。` : ''}${purge.unacknowledged ? `${Number(purge.unacknowledged)} 封无法安全确认远端删除，服务器可能仍保留；可在网页邮箱核对。` : ''}${purge.cleanup_pending ? `${Number(purge.cleanup_pending)} 个原文文件待清理，将在后台重试。` : ''}不影响本地邮件查看、搜索与写信。</small>${purge.unacknowledged ? `<div class="task-row-actions"><button data-purge-ack="${esc(JSON.stringify(purge.notice_ids || []))}">已知晓</button></div>` : ''} </article></section>` : '';
     const unavailableBlock = errors.length ? `<div class="task-load-error task-partial-error" role="status"><b>部分状态暂时无法读取</b><span>${esc(errors.join('、'))}未能加载，请重试确认。已加载的事项仍可处理。</span><button data-task-refresh>重新加载</button></div>` : '';
-    const content = unavailableBlock + syncBlock + purgeBlock + outboxBlock + reminderBlock;
+    const actionBlock = actions.total ? `<section class="task-section"><h3>删除同步 <span>${Number(actions.total)}</span></h3>${actions.rows.map(row => `<article class="task-row"><div class="task-row-main"><b>${esc(row.subject || '无主题')}</b><span class="task-status">${row.pending_error ? '同步失败' : row.pending_action === 'trash' ? '本地已移除 · 等待同步' : '服务器处理中'}</span></div><small>${row.pending_error ? esc(row.pending_error) + '；系统会自动重试。' : '邮件已从本地列表移除，服务器操作尚未完成。'}${row.pending_error ? '请勿在网页邮箱重复移动，以免位置发生变化。' : ''}</small>${row.pending_error ? `<div class="task-row-actions"><button data-action-sync-retry="${row.id}">立即重试同步</button></div>` : ''}</article>`).join('')}</section>` : '';
+    const content = unavailableBlock + syncBlock + actionBlock + purgeBlock + outboxBlock + reminderBlock;
     host.dataset.partial = errors.length ? '1' : '0';
     document.getElementById('task-center').classList.toggle('is-empty', !content);
-    const attentionCount = visibleRows.filter(row => ['failed','unknown'].includes(row.status)).length + (showSync && !sync.running ? 1 : 0) + (purgeAttention ? 1 : 0);
-    const activeCount = visibleRows.filter(row => ['queued','sending'].includes(row.status)).length + (sync.running ? 1 : 0) + (purge.pending ? 1 : 0);
+    const attentionCount = visibleRows.filter(row => ['failed','unknown'].includes(row.status)).length + (showSync && !sync.running ? 1 : 0) + (purgeAttention ? 1 : 0) + actions.rows.filter(row => row.pending_error).length;
+    const activeCount = visibleRows.filter(row => ['queued','sending'].includes(row.status)).length + (sync.running ? 1 : 0) + (purge.pending ? 1 : 0) + (actions.total ? 1 : 0);
     host.dataset.live = activeCount ? '1' : '0';
     host.innerHTML = (content ? `<div class="task-overview"><span>需要你关注的事项</span><div class="task-overview-counts">${attentionCount ? `<span class="attention">${attentionCount} 项需处理</span>` : ''}${activeCount ? `<span>${activeCount} 项进行中</span>` : ''}${reminders.length ? `<span>${reminders.length} 项提醒</span>` : ''}${errors.length ? '<span class="attention">状态未完整</span>' : ''}</div></div>${content}` : `<div class="task-empty"><span class="task-empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12 4.5 4.5L19 7"/></svg></span><div><b>目前没有待处理事项</b><span>发送中和异常邮件会显示在这里。</span></div><button type="button" data-task-open-sent>查看已发送邮件 <span aria-hidden="true">↗</span></button></div>`);
     for (const row of visibleRows.filter(row => row.status === 'unknown')) {
@@ -299,6 +302,7 @@ function updateFilterChips() {
 }
 
 let semanticPollTimer = null;
+let semanticViewRevision = 0;
 
 function renderSemanticProgress(stats) {
   const wrap = document.getElementById('semantic-progress');
@@ -314,6 +318,10 @@ function renderSemanticProgress(stats) {
     wrap.classList.add('determinate');
     fill.style.width = `${Math.round(100 * p.done / p.total)}%`;
     status.textContent = (mailaiT('semantic.progress') || '正在更新索引 {done}/{total}…').replace('{done}', p.done).replace('{total}', p.total);
+  } else if (p.phase === 'queued') {
+    status.textContent = mailaiT('semantic.queued') || '等待后台更新，邮件可正常使用';
+    wrap.classList.remove('determinate');
+    fill.style.width = '';
   } else {
     // 首个批次返回前都在下载/加载模型，无法预估进度，用滚动条示意
     wrap.classList.remove('determinate');
@@ -325,25 +333,34 @@ function renderSemanticProgress(stats) {
 
 function pollSemanticProgress() {
   clearInterval(semanticPollTimer);
+  const accountId = activeMailAccount()?.id;
+  const revision = semanticViewRevision;
+  let pending = false;
   semanticPollTimer = setInterval(async () => {
-    const accountId = activeMailAccount()?.id;
-    if (!accountId) { clearInterval(semanticPollTimer); return; }
+    if (!accountId || accountId !== activeMailAccount()?.id || revision !== semanticViewRevision) return;
+    if (pending) return;
+    pending = true;
     try {
-      if (!renderSemanticProgress(await api('/api/assistant/semantic', {accountId}))) {
+      const stats = await api('/api/assistant/semantic', {accountId});
+      if (accountId !== activeMailAccount()?.id || revision !== semanticViewRevision) return;
+      if (!renderSemanticProgress(stats)) {
         clearInterval(semanticPollTimer);
         loadSemanticStatus();
       }
     } catch (_) { /* 状态轮询失败不影响重建本身 */ }
+    finally { pending = false; }
   }, 800);
 }
 
 function stopSemanticProgress() {
+  ++semanticViewRevision;
   clearInterval(semanticPollTimer);
   semanticPollTimer = null;
   document.getElementById('semantic-progress')?.classList.add('hidden');
 }
 
 async function loadSemanticStatus() {
+  const revision = ++semanticViewRevision;
   const status = document.getElementById('semantic-status');
   const reindex = document.getElementById('semantic-reindex');
   const toggle = document.getElementById('semantic-enabled');
@@ -360,6 +377,7 @@ async function loadSemanticStatus() {
       api('/api/preferences', {accountId}),
       api('/api/assistant/semantic', {accountId}),
     ]);
+    if (revision !== semanticViewRevision || accountId !== activeMailAccount()?.id) return;
     if (!stats.deps_available) {
       // 依赖缺失时禁止打开开关，避免"开了但静默空转"
       toggle.checked = false;
@@ -376,10 +394,12 @@ async function loadSemanticStatus() {
       ? (mailaiT('semantic.indexed') || '已索引 {n} 封邮件').replace('{n}', stats.indexed) +
         (stats.last_indexed_at ? ` · ${String(stats.last_indexed_at).slice(0, 16)}` : '')
       : (mailaiT('semantic.notIndexed') || '尚未建立索引');
+    if (stats.progress?.error) status.textContent = mailaiT('semantic.indexFailed') || '索引更新未完成，可重试；关键词搜索仍可使用';
     reindex.classList.toggle('hidden', !stats.enabled);
     // 重建进行中（例如刚触发后切换了页签再回来）时恢复进度条与轮询
     if (renderSemanticProgress(stats)) pollSemanticProgress();
   } catch (_) {
+    if (revision !== semanticViewRevision || accountId !== activeMailAccount()?.id) return;
     status.textContent = mailaiT('semantic.error') || '暂时无法读取状态';
   }
 }
@@ -729,14 +749,13 @@ function initializeWorkspace() {
     const status = document.getElementById('semantic-status');
     setLoading(button, true, mailaiT('semantic.reindexingShort') || '重建中…');
     status.textContent = mailaiT('semantic.reindexing') || '正在重建索引（首次需下载模型，请稍候）…';
-    pollSemanticProgress();
+    const accountId = activeMailAccount()?.id;
     try {
-      const result = await api('/api/assistant/semantic/reindex', {accountId:activeMailAccount()?.id, method:'POST'});
-      toast((mailaiT('semantic.reindexed') || '语义索引已重建：{n} 封邮件').replace('{n}', result.indexed), 'success');
+      await api('/api/assistant/semantic/reindex', {accountId, method:'POST'});
+      if (accountId === activeMailAccount()?.id) toast(mailaiT('semantic.queued') || '等待后台更新，邮件可正常使用', 'success');
     } catch (error) {
-      toast(error.message, 'error');
+      if (accountId === activeMailAccount()?.id) toast(error.message, 'error');
     } finally {
-      stopSemanticProgress();
       setLoading(button, false);
       loadSemanticStatus();
     }
@@ -843,4 +862,15 @@ document.addEventListener('keydown', event => {
 document.addEventListener('click', event => {
   const more = document.querySelector('.reading-more-actions[open]');
   if (more && !more.contains(event.target)) more.open = false;
+});
+
+document.getElementById('task-center-list').addEventListener('click', async event => {
+  const button = event.target.closest('[data-action-sync-retry]');
+  if (!button || button.disabled) return;
+  const accountId = taskCenterScope(); button.disabled = true;
+  try {
+    await api(`/api/mail/action-sync/${Number(button.dataset.actionSyncRetry)}/retry`, {accountId, method:'POST'});
+    if (accountId === taskCenterScope()) { toast('已安排后台重试，可继续处理其他邮件', 'info'); await refreshTaskCenter(); }
+  } catch (error) { if (accountId === taskCenterScope()) toast(error.message, 'error'); }
+  finally { if (button.isConnected) button.disabled = false; }
 });

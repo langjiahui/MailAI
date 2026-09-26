@@ -43,7 +43,7 @@ const deferred = () => { let resolve, reject; const promise=new Promise((a,b)=>{
   pending=deferred();const stale=t.refreshTaskCenter();scope='a';host.innerHTML='new account loading';pending.reject(new Error('stale failure'));await stale;
   assert.equal(host.innerHTML,'new account loading','Old account failure must not replace new view');
   // A failed status source must not hide successfully loaded actions or imply health.
-  for (const failure of ['/api/mail/outbox','/api/fetch_status','/api/reminders','/api/reminders/all','/api/trash/purge/status']) {
+  for (const failure of ['/api/mail/outbox','/api/fetch_status','/api/reminders','/api/reminders/all','/api/mail/action-sync','/api/trash/purge/status']) {
     const retryRequests=[];
     t.api=async(url)=>{
       retryRequests.push(url);

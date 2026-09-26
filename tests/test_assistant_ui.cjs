@@ -28,7 +28,7 @@ assert.match(js, /floating \? '恢复自动布局' : '切换为浮动窗口'/,
 for (const name of ['openContactCenter','openCompose','showDashboard','showRulesView','showSystemView','openDigestModal','openAttachmentCenter','openTodoCenter']) {
   const start = appJs.indexOf(`function ${name}(`);
   assert.ok(start >= 0, `${name} should exist`);
-  assert.match(appJs.slice(start, start + 180), /closeAssistant\(\);/,
+  assert.match(appJs.slice(start, appJs.indexOf('\n}', start) + 2), /closeAssistant\(\);/,
     `${name} should retire the assistant before opening a primary workspace`);
 }
 assert.match(js, /async function openTaskCenter\(\)\s*\{\s*window\.closeAssistant\?\.\(\);/,

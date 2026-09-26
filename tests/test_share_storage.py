@@ -2,6 +2,7 @@
 import asyncio
 import sys
 import tempfile
+import threading
 from pathlib import Path
 from unittest.mock import patch
 
@@ -44,5 +45,74 @@ def test_config_and_upload():
             assert not Path(uploaded["LocalFilePath"]).exists()
 
 
+async def test_upload_lifecycle():
+    paths = []
+    entered = threading.Event()
+    release = threading.Event()
+    class Request:
+        headers = {'content-length': '3'}
+        async def stream(self):
+            yield b'abc'
+    def uploading(path, *args):
+        paths.append(path)
+        if len(paths) == 2:
+            entered.set()
+        assert release.wait(3)
+        assert Path(path).read_bytes() == b'abc', 'canceled caller removed an in-use file'
+        return {'url': 'https://example.test/file'}
+    with patch.object(share_storage, 'public_config', return_value={'credential_available': True}), \
+            patch.object(share_storage, '_upload_file', side_effect=uploading):
+        first = asyncio.create_task(share_storage.upload_request(Request(), 'a.txt', 7))
+        second = asyncio.create_task(share_storage.upload_request(Request(), 'b.txt', 7))
+        try:
+            assert await asyncio.to_thread(entered.wait, 2)
+            first.cancel()
+            try:
+                await first
+            except asyncio.CancelledError:
+                pass
+            assert all(Path(path).exists() for path in paths)
+            try:
+                await share_storage.upload_request(Request(), 'c.txt', 7)
+            except share_storage.UploadBusyError:
+                pass
+            else:
+                raise AssertionError('unbounded concurrent uploads')
+        finally:
+            release.set()
+            await second
+            await asyncio.gather(*list(share_storage._uploads))
+        assert all(not Path(path).exists() for path in paths)
+        # Both permits are returned after background cleanup.
+        assert share_storage._upload_slots.acquire(False)
+        assert share_storage._upload_slots.acquire(False)
+        share_storage._upload_slots.release()
+        share_storage._upload_slots.release()
+
+        class Oversize(Request):
+            headers = {'content-length': str(share_storage._MAX_FILE_BYTES + 1)}
+            async def stream(self):
+                raise AssertionError('read oversized request')
+                yield b''
+        try:
+            await share_storage.upload_request(Oversize(), 'big.txt', 7)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError('oversized header accepted')
+        class Truncated(Request):
+            headers = {'content-length': '9'}
+        with patch.object(share_storage, '_upload_file') as upload:
+            try:
+                await share_storage.upload_request(Truncated(), 'short.txt', 7)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError('truncated file accepted')
+            upload.assert_not_called()
+
+
 if __name__ == "__main__":
     test_config_and_upload()
+    asyncio.run(test_upload_lifecycle())
+    print('COS isolation, upload limits, cancellation and temporary-file cleanup passed')

@@ -82,5 +82,28 @@ function harness({account = {id: 'a'}, prefs = {}, stats = {}, fail = false} = {
     await ctx.loadSemanticStatus();
     assert.match(nodes['semantic-status'].textContent, /暂时无法读取/);
   }
+  // A late response from mailbox A must not overwrite mailbox B's controls.
+  {
+    const {ctx, nodes} = harness();
+    let resolvePrefs, resolveStats;
+    ctx.api = url => new Promise(resolve => {
+      if (url.includes('/api/preferences')) resolvePrefs = resolve;
+      else resolveStats = resolve;
+    });
+    const pending = ctx.loadSemanticStatus();
+    ctx.activeMailAccount = () => ({id: 'b'});
+    nodes['semantic-status'].textContent = 'mailbox B';
+    resolvePrefs({semantic_enabled: true});
+    resolveStats({deps_available: true, indexed: 500, enabled: true});
+    await pending;
+    assert.equal(nodes['semantic-status'].textContent, 'mailbox B');
+  }
+  {
+    const {ctx, nodes} = harness({stats: {
+      deps_available: true, enabled: true, indexed: 2, progress: {error: 'failed'},
+    }});
+    await ctx.loadSemanticStatus();
+    assert.match(nodes['semantic-status'].textContent, /未完成.*关键词/);
+  }
   console.log('Semantic toggle gating, status rendering and failure paths passed');
 })().catch(error => { console.error(error); process.exitCode = 1; });
