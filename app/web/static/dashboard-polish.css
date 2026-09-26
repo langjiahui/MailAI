@@ -78,3 +78,9 @@ html[data-theme] body .dashboard-attention-action {
   html[data-theme] body .dashboard-priority-actions { flex:0 0 auto; width:100%; flex-wrap:wrap; }
   html[data-theme] body .dashboard-priority-actions button { width:auto; min-height:36px; }
 }
+
+/* Leave breathing room between long search text and the native clear control. */
+html[data-theme] body #global-search { text-overflow:ellipsis; }
+html[data-theme] body #global-search::-webkit-search-cancel-button {
+ margin-inline-start:10px; margin-inline-end:0; cursor:pointer;
+}

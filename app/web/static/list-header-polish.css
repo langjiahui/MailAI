@@ -42,6 +42,10 @@ html[data-theme] body .list-header .list-sort select {
   border:0!important;
   background-color:var(--desk-muted-surface)!important;
   background-image:var(--select-arrow)!important;
+  /* Keep arrow geometry together: theme hover backgrounds reset these longhands. */
+  background-repeat:no-repeat!important;
+  background-position:right 10px center!important;
+  background-size:14px 14px!important;
   border-radius:999px;
   box-shadow:none!important;
   color:var(--desk-ink)!important;
@@ -119,8 +123,11 @@ html[data-theme] body .list-workspace-tools {
   min-height:26px;
   padding:4px 8px;
   border-radius:9px;
-  white-space:normal;
-  overflow-wrap:anywhere;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  white-space:nowrap;
+  overflow:hidden;
   text-align:left;
   line-height:1.45;
   cursor:pointer;
@@ -233,3 +240,15 @@ html[data-theme] body #email-list .search-match-preview {
 .search-match-label { color:var(--desk-accent); font-size:10px; font-weight:650; margin-right:6px; }
 .search-match-preview mark { color:var(--desk-ink); background:#f5e7a6; border-radius:3px; padding:0 1px; }
 html[data-theme="dark"] .search-match-preview mark { color:#ffe9a0; background:#51472b; }
+
+/* Long search terms stay compact; the remove affordance always remains visible. */
+html[data-theme] body .list-workspace-tools #filter-chips button {
+ background:var(--desk-selected)!important; color:var(--desk-accent)!important;
+ flex:0 1 auto;
+}
+#filter-chips .filter-chip-label { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#filter-chips .filter-chip-close { flex:none; font-size:13px; line-height:1; }
+#email-list .empty-text small {
+ display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2;
+ overflow:hidden; overflow-wrap:anywhere;
+}

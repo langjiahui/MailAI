@@ -298,7 +298,7 @@ async function refreshTaskCenter({lightweight = false} = {}) {
 
 function updateFilterChips() {
   const labels = {unread:currentFilter.unread ? '未读邮件' : '', days:currentFilter.days !== 9999 ? `近 ${currentFilter.days} 天` : '', priority:currentFilter.priority ? `${currentFilter.priority}重要程度` : '', domain:currentFilter.domain, attachments:currentFilter.attachments ? '含附件' : '', search:currentFilter.search, category:currentFilter.category, verdict:currentFilter.verdict ? ({clean:'正常', suspicious:'可疑', phishing:'高风险'})[currentFilter.verdict] : ''};
-  document.getElementById('filter-chips').innerHTML = Object.entries(labels).filter(([,value]) => value).map(([key,value]) => `<button type="button" data-remove-filter="${key}">${esc(value)} ×</button>`).join('');
+  document.getElementById('filter-chips').innerHTML = Object.entries(labels).filter(([,value]) => value).map(([key,value]) => `<button type="button" data-remove-filter="${key}" title="${esc(value)}" aria-label="移除筛选：${esc(value)}"><span class="filter-chip-label">${esc(value)}</span><span class="filter-chip-close" aria-hidden="true">×</span></button>`).join('');
 }
 
 let semanticPollTimer = null;
@@ -687,7 +687,7 @@ function initializeWorkspace() {
   document.getElementById('task-center-backdrop').onclick = closeTaskCenter;
   document.getElementById('task-center').addEventListener('keydown', event => { if (event.key === 'Escape') { event.preventDefault(); closeTaskCenter(); } });
   document.getElementById('filter-chips').onclick = event => {
-    const key = event.target.dataset.removeFilter; if (!key) return;
+    const key = event.target.closest('button[data-remove-filter]')?.dataset.removeFilter; if (!key) return;
     currentFilter[key] = key === 'days' ? 9999 : ['attachments','unread'].includes(key) ? false : '';
     setSegmentedFilter('filter-days', String(currentFilter.days)); setSegmentedFilter('filter-priority', currentFilter.priority);
     document.getElementById('filter-unread').checked = Boolean(currentFilter.unread);
