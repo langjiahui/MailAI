@@ -1,0 +1,71 @@
+/* One quiet assistant surface, with compact tools and a single composer. */
+html[data-theme] body #assistant-panel {
+ background:var(--desk-surface)!important; border-color:var(--desk-line)!important;
+ border-radius:16px; box-shadow:0 12px 36px #00000012!important;
+}
+html[data-theme] body #assistant-panel .assistant-head {
+ min-height:56px; padding:10px 14px; gap:8px; flex-shrink:0;
+ background:transparent!important; border-bottom:0;
+}
+html[data-theme] body #assistant-panel .assistant-head .assistant-mini {
+ width:32px; height:32px; flex:0 0 32px;
+}
+#assistant-panel .assistant-title .eyebrow { display:none; }
+#assistant-panel .assistant-title h2 { font-size:15px; }
+#assistant-panel .assistant-head-actions { gap:2px; }
+html[data-theme] body #assistant-panel .assistant-head-actions button {
+ width:30px; height:30px; min-width:30px; min-height:30px; padding:0; border:0;
+ background:transparent!important; color:var(--desk-muted)!important; box-shadow:none!important;
+}
+html[data-theme] body #assistant-panel :is(.assistant-head-actions button,#assistant-reading-back):hover {
+ background:var(--desk-selected)!important; color:var(--desk-ink)!important;
+}
+html[data-theme] body #assistant-panel #assistant-reading-back {
+ min-width:0; max-width:104px; padding:5px 7px; font-size:10px; overflow:hidden; text-overflow:ellipsis;
+ background:var(--desk-muted-surface); color:var(--desk-muted);
+}
+html[data-theme] body #assistant-panel .secretary-tabs {
+ gap:4px; padding:0 14px 10px; border:0; flex-shrink:0;
+}
+html[data-theme] body #assistant-panel .secretary-tabs button {
+ min-height:30px; padding:5px 12px; border:0; border-radius:8px;
+ background:transparent!important; color:var(--desk-muted)!important; box-shadow:none!important;
+}
+html[data-theme] body #assistant-panel .secretary-tabs button[aria-pressed=true],
+html[data-theme] body #assistant-panel .secretary-tabs button:hover {
+ background:var(--desk-muted-surface)!important; color:var(--desk-ink)!important;
+}
+#assistant-panel .assistant-messages { padding:12px 20px; }
+#assistant-panel .assistant-welcome { margin:clamp(16px,5vh,48px) auto auto; padding:0 0 20px; max-width:400px; }
+#assistant-panel .assistant-welcome-eyebrow { display:none; }
+#assistant-panel .assistant-welcome h3 { margin:0 0 8px; font-size:20px; line-height:1.4; }
+#assistant-panel .assistant-welcome>p { margin:0 0 20px; max-width:none; color:var(--desk-muted); }
+#assistant-panel .assistant-welcome .assistant-quick { gap:8px; }
+html[data-theme] body #assistant-panel .assistant-welcome .assistant-quick button {
+ min-height:62px; padding:11px 10px; gap:8px; border:1px solid transparent;
+ border-radius:10px; background:var(--desk-muted-surface)!important; color:var(--desk-ink)!important; box-shadow:none!important;
+}
+html[data-theme] body #assistant-panel .assistant-welcome .assistant-quick button:hover {
+ background:var(--desk-selected)!important; border-color:color-mix(in srgb,var(--desk-accent) 35%,var(--desk-line));
+}
+#assistant-panel .assistant-welcome .assistant-quick svg { width:16px; height:16px; flex-basis:16px; color:var(--desk-muted); }
+#assistant-panel .assistant-welcome .assistant-quick small { margin-top:2px; color:var(--desk-muted); }
+html[data-theme] body #assistant-panel .assistant-composer {
+ margin:8px 14px; padding:8px 10px; border-radius:12px;
+ background:var(--desk-muted-surface)!important; border-color:var(--desk-line)!important;
+}
+html[data-theme] body #assistant-panel .assistant-composer:focus-within {
+ border-color:color-mix(in srgb,var(--desk-accent) 55%,var(--desk-line))!important;
+ box-shadow:0 0 0 2px color-mix(in srgb,var(--desk-accent) 8%,transparent)!important;
+}
+html[data-theme] body #assistant-panel .assistant-scope-picker>summary { background:var(--desk-surface)!important; }
+#assistant-panel .assistant-privacy { background:transparent!important; padding-bottom:10px; }
+html.desktop-native-window body.assistant-split #assistant-panel {
+ border:0!important; border-left:1px solid var(--desk-line)!important; border-radius:0!important; box-shadow:none!important;
+}
+@media(max-width:520px) {
+ #assistant-panel .assistant-messages { padding-inline:14px; }
+ #assistant-panel .assistant-welcome { margin-top:18px; }
+ html[data-theme] body #assistant-panel .assistant-head { padding-inline:10px; gap:6px; }
+ html[data-theme] body #assistant-panel #assistant-reading-back { max-width:78px; }
+}

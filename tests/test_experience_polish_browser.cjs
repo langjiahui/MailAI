@@ -25,7 +25,9 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
   const ok=await p.locator('#attachment-grid').evaluate(g=>[...g.querySelectorAll('.attachment-card')].every(c=>{const r=c.getBoundingClientRect();return [...c.querySelectorAll('.attachment-file-icon,b,.attachment-download-action,.attachment-risk')].filter(n=>n.getClientRects().length).every(n=>{const b=n.getBoundingClientRect();return b.bottom<=r.bottom+1&&b.right<=r.right+1&&b.left>=r.left-1})}));assert(ok,'list containment '+width);
  }
  await p.setViewportSize({width:1512,height:950});await p.evaluate(()=>document.documentElement.dataset.theme='light');await p.screenshot({path:'build/experience-attachments.png'});
- await p.locator('#attachment-grid').evaluate(g=>g.scrollTop=600);const top=await p.locator('#attachment-grid').evaluate(g=>g.scrollTop);
+ await p.locator('#attachment-grid').evaluate(g=>g.scrollTop=600);
+ // Row height varies by density; measure after bringing the chosen file into view.
+ await p.locator('.attachment-open').nth(9).scrollIntoViewIfNeeded();const top=await p.locator('#attachment-grid').evaluate(g=>g.scrollTop);
  await p.locator('.attachment-open').nth(9).click();await p.locator('.file-preview').waitFor({state:'visible'});await p.locator('.file-preview button[aria-label="关闭预览"]').click();assert(Math.abs(await p.locator('#attachment-grid').evaluate(g=>g.scrollTop)-top)<100);
  await p.locator('#btn-close-attachments').click();
  // Same panel for reminders, and date views keep task scope explicit.

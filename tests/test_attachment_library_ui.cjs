@@ -48,5 +48,20 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
   await p.locator('.attachment-download-action').last().click({trial:true});
   await p.locator('#attachment-grid').evaluate(n=>n.scrollTop=0);
  }
+ // Compact rows must scale the SVG, not only its wrapper; keep actions reachable.
+ await p.locator('[data-file-view=list]').click();
+ for (const [width,scale,theme] of [[1512,1,'light'],[1512,1,'dark'],[900,1.3,'dark'],[390,1.2,'light']]) {
+  await p.setViewportSize({width,height:900});
+  await p.evaluate(({scale,theme})=>{document.body.style.zoom=String(scale);document.documentElement.style.setProperty('--fz',String(scale));applyTheme(theme);},{scale,theme});
+  await p.waitForTimeout(400);
+  const sizes=await p.locator('.attachment-card').first().evaluate(card=>{
+   const r=card.getBoundingClientRect(), svg=card.querySelector('.attachment-file-icon svg').getBoundingClientRect(), icon=card.querySelector('.attachment-file-icon').getBoundingClientRect();
+   return {row:r.height, svg:svg.height, icon:icon.height, contained:svg.top>=r.top&&svg.bottom<=r.bottom, overflow:card.scrollWidth>card.clientWidth+1};
+  });
+  assert(sizes.svg<=30*scale+1 && sizes.svg<=sizes.icon+1 && sizes.contained,'compact SVG must fit its small wrapper and row');
+  assert(!sizes.overflow,'compact rows must not overflow');
+  if(width===1512){assert(sizes.row<=50,'compact rows should stay close to 48px');await p.screenshot({path:`build/attachment-compact-${theme}.png`});}
+  await p.locator('.attachment-download-action').first().click({trial:true});
+ }
  assert.deepEqual(errors,[]);console.log('PASS attachment preview/download separation, file types, filters, dark/narrow layout, visible risk, 148-file scrolling and no overlap with enlarged text');
 }finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});

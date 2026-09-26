@@ -14,7 +14,7 @@ html[data-theme] body :is(.attachment-view-switch,.todo-view-tabs) button:hover 
 #attachment-center[data-file-view=list] .attachment-grid { grid-template-columns:minmax(0,1fr); gap:5px; }
 html[data-theme] body #attachment-center[data-file-view=list] .attachment-card { min-height:66px; padding:10px 14px; border:1px solid transparent; border-radius:10px; background:var(--desk-muted-surface); box-shadow:none; gap:10px; }
 html[data-theme] body #attachment-center[data-file-view=list] .attachment-card:hover { border-color:var(--desk-line); background:var(--desk-selected); }
-#attachment-center[data-file-view=list] .attachment-open { display:grid; grid-template-columns:34px minmax(120px,1.5fr) minmax(90px,1fr) 72px 94px; gap:12px; align-items:center; }
+#attachment-center[data-file-view=list] .attachment-open { display:grid; grid-template-columns:26px minmax(120px,1.5fr) minmax(90px,1fr) 72px 94px; gap:10px; align-items:center; }
 #attachment-center[data-file-view=list] .attachment-card-main,#attachment-center[data-file-view=list] .attachment-facts { display:contents; }
 #attachment-center[data-file-view=list] .attachment-card-main>b { grid-column:2; grid-row:1; font-size:13px; }
 #attachment-center[data-file-view=list] .attachment-file-icon { width:30px; height:40px; grid-column:1; grid-row:1; }
@@ -72,10 +72,16 @@ html[data-theme] body .reading-header .reading-actions.prioritized-actions :is(.
 .attachment-view-bar { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:10px; padding:0 24px 14px; flex-shrink:0; }
 #attachment-center .attachment-view-bar .attachment-type-filters { margin:0; padding:0; }
 .attachment-view-bar .attachment-view-switch { margin:0; }
-html[data-theme] body #attachment-center[data-file-view=list] .attachment-file-icon { width:28px; height:38px; margin:0; }
-html[data-theme] body #attachment-center[data-file-view=list] .attachment-card { min-height:60px; padding:8px 12px; background:var(--desk-surface)!important; }
+html[data-theme] body #attachment-center[data-file-view=list] .attachment-file-icon { width:24px; height:30px; margin:0; }
+html[data-theme] body #attachment-center[data-file-view=list] .attachment-card { min-height:48px; padding:7px 12px; background:var(--desk-surface)!important; align-items:center; }
 html[data-theme] body #attachment-center[data-file-view=list] .attachment-card:hover { background:var(--desk-muted-surface)!important; }
 #attachment-center[data-file-view=list] .attachment-facts small+small::before { display:none; }
+/* Scale the SVG itself; the card icon otherwise overflows the compact wrapper. */
+#attachment-center[data-file-view=list] .attachment-file-icon svg { width:24px; height:30px; stroke-width:1.6; }
+#attachment-center[data-file-view=list] .attachment-file-icon strong { display:none; }
+#attachment-center[data-file-view=list] .attachment-card-main>b { display:block; white-space:nowrap; text-overflow:ellipsis; overflow:hidden; }
+html[data-theme] body #attachment-center[data-file-view=list] .attachment-download-action { margin:0; }
+
 html[data-theme] body :is(#todo-center,#task-center,.compose-ai-panel) input[type=checkbox] { accent-color:var(--desk-accent); }
 /* Task center: one compact workspace, with navigation distinct from actions. */
 html[data-theme] body #todo-center .todo-center-card {
@@ -146,7 +152,7 @@ html[data-theme] body #todo-center .todo-plan-actions button:hover { background:
 /* Column labels make the dense file view readable without extra card borders. */
 .attachment-list-columns { display:none; }
 #attachment-center[data-file-view=list] .attachment-list-columns { display:grid; grid-template-columns:minmax(0,1fr) 80px; gap:10px; margin:0 24px 4px; padding:8px 13px; flex-shrink:0; color:var(--desk-muted); background:var(--desk-muted-surface); border-radius:8px; font-size:11px; }
-.attachment-list-columns>div { display:grid; grid-template-columns:34px minmax(120px,1.5fr) minmax(90px,1fr) 72px 94px; gap:12px; }
+.attachment-list-columns>div { display:grid; grid-template-columns:26px minmax(120px,1.5fr) minmax(90px,1fr) 72px 94px; gap:10px; }
 .attachment-list-columns>div>span:first-child { grid-column:1/3; }
 .attachment-list-columns>span { text-align:right; padding-right:8px; }
 html[data-theme] body .attachment-view-switch { gap:2px; padding:3px; background:var(--desk-muted-surface); border-radius:10px; }
