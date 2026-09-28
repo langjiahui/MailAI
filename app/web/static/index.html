@@ -36,6 +36,7 @@
   <link rel="stylesheet" href="/static/motion.css?v=2">
   <link rel="stylesheet" href="/static/mailbox-transition.css?v=3">
   <link rel="stylesheet" href="/static/settings-layout.css?v=3">
+  <link rel="stylesheet" href="/static/remote-control.css?v=1">
   <link rel="stylesheet" href="/static/special-reading.css?v=1">
   <link rel="stylesheet" href="/static/list-header-polish.css?v=10">
   <link rel="stylesheet" href="/static/interaction-recovery.css?v=4">
@@ -168,10 +169,50 @@
       <nav id="system-tabs" class="system-tabs">
         <button class="active" data-system-tab="preferences" data-i18n="tabs.preferences">常用设置</button>
         <button data-system-tab="account" data-i18n="tabs.account">邮箱账号</button>
+        <button data-system-tab="remote">手机控制</button>
         <button data-system-tab="maintenance" data-i18n="tabs.maintenance">数据与维护</button>
         <button data-system-tab="guide" data-i18n="tabs.guide">使用帮助</button>
         <button data-system-tab="about" data-i18n="tabs.about">关于与隐私</button>
       </nav>
+
+      <section class="system-panel hidden" data-system-panel="remote">
+        <div class="settings-page-intro"><div><h3>用手机聊天处理邮件</h3><p>查收、阅读与文字回复；发送前在聊天里确认。</p></div><span>本机执行</span></div>
+        <div class="remote-settings-grid">
+          <div class="remote-channel-stack">
+          <form id="weixin-control-form" class="connection-card">
+            <div class="connection-card-head"><div><span class="connection-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M3 4h14v10H8l-4 3v-3H3zM6 8h.01M10 8h.01M14 8h.01"/></svg></span><h3>个人微信</h3></div><span id="weixin-connection-state" class="connection-status" role="status" aria-live="polite">未连接</span></div>
+            <p class="form-hint">使用微信 ClawBot 扫码通道连接本人，无需企业微信。接入测试版；是否可扫码取决于微信账号和客户端是否支持该通道。</p>
+            <div class="remote-pairing"><div><b id="weixin-identity">第一步 · 扫码连接</b><p class="form-hint">用本人微信扫一扫，在手机确认。已启用时，先关闭连接再重新绑定。</p></div><button id="weixin-login" type="button" class="action-btn action-secondary">获取二维码</button></div>
+            <div id="weixin-qr-panel" class="remote-qr-panel hidden"><img id="weixin-qr-image" alt="使用本人微信扫描连接二维码" width="192" height="192"><div><p id="weixin-qr-message" role="status" aria-live="polite"></p><label id="weixin-verify-label" class="hidden">手机验证码<input id="weixin-verify-code" inputmode="numeric" autocomplete="one-time-code" maxlength="12"></label><button id="weixin-verify" class="action-btn action-secondary hidden" type="button">确认验证码</button><button id="weixin-cancel-login" class="action-btn action-secondary" type="button">取消扫码</button></div></div>
+            <fieldset class="remote-account-field"><legend>第二步 · 选择允许控制的邮箱</legend><div id="weixin-account-options">正在读取邮箱…</div></fieldset>
+            <label class="check-row"><input id="weixin-enabled" type="checkbox"><span>启用微信手机控制</span></label>
+            <p id="weixin-config-feedback" class="form-hint" role="status" aria-live="polite"></p>
+            <div class="connection-actions"><button id="weixin-save" type="submit" class="action-btn action-primary">保存设置</button><button id="weixin-reconnect" type="button" class="action-btn action-secondary" disabled>重新连接</button><button id="weixin-disable" type="button" class="action-btn action-secondary" disabled>关闭连接</button></div>
+          </form>
+          <details class="remote-dingtalk-details"><summary>钉钉连接<span>已有应用机器人时使用</span></summary>
+          <form id="remote-control-form" class="connection-card">
+            <div class="connection-card-head"><div><h3>钉钉</h3></div><span id="remote-connection-state" class="connection-status" role="status" aria-live="polite">未启用</span></div>
+            <p class="form-hint">普通钉钉客户端即可，但需要可创建应用机器人的组织权限。没有权限时可先保存设置，无需购买企业版。</p>
+            <label>Client ID<input id="remote-client-id" autocomplete="off" maxlength="160" placeholder="钉钉应用的 Client ID"></label>
+            <label>Client Secret<input id="remote-client-secret" type="password" autocomplete="new-password" maxlength="512" placeholder="保存在本机凭据库，已保存时可留空"></label>
+            <div class="form-row"><label>组织 Corp ID<input id="remote-corp-id" autocomplete="off" maxlength="160" placeholder="本人所在组织"></label><label>本人用户 ID<input id="remote-staff-id" autocomplete="off" maxlength="160" placeholder="钉钉 senderStaffId / User ID"></label></div>
+            <fieldset class="remote-account-field"><legend>允许手机控制的邮箱</legend><div id="remote-account-options">正在读取邮箱…</div></fieldset>
+            <label class="check-row"><input id="remote-enabled" type="checkbox"><span>启用钉钉手机控制</span></label>
+            <p id="remote-config-feedback" class="form-hint" role="status" aria-live="polite"></p>
+            <div class="connection-actions"><button id="remote-save" type="submit" class="action-btn action-primary">保存设置</button><button id="remote-reconnect" type="button" class="action-btn action-secondary" disabled>重新连接</button><button id="remote-disable" type="button" class="action-btn action-secondary" disabled>关闭连接</button></div>
+            <a href="https://opensource.dingtalk.com/developerpedia/docs/explore/tutorials/stream/bot/java/create-bot/" target="_blank" rel="noopener noreferrer">查看钉钉官方创建指南 ↗</a>
+          </form></details>
+          </div>
+          <aside class="remote-setup-guide">
+            <h3>连接后怎么使用</h3>
+            <ol><li>扫码绑定本人微信，选择邮箱并启用；钉钉则填写已发布的 Stream 机器人凭证。</li><li>连接状态显示“已连接”后，在手机机器人单聊发送“帮助”。仅接受绑定本人的指令。</li><li>回复先生成预览，核对邮箱、收件人和正文，再输入带编号的确认指令。</li></ol>
+            <h3>常用指令</h3>
+            <div class="remote-command-examples"><code>邮箱列表</code><code>切换邮箱 name@example.com</code><code>查收邮件</code><code>最新邮件</code><code>查看第 2 封</code><code>回复第 2 封：已收到，明天下午反馈</code><code>确认发送 预览编号</code><code>取消回复</code></div>
+            <p>“最新邮件”展示本机记录和最近同步时间；先“查收邮件”，同步完成后再查看。发送确认编号 10 分钟有效。</p>
+            <div class="remote-wechat-note"><h3>运行与隐私</h3><p>电脑须开机联网，MailAI 须在后台运行。只处理本人单聊，不支持群聊或附件操作。手机切换邮箱不会改变电脑当前邮箱。</p><p>邮件内容会经过所选聊天平台；基础指令不调用大模型。凭证保存在 macOS 钥匙串或 Windows 凭据管理器，关闭连接即停止受理新指令。</p></div>
+          </aside>
+        </div>
+      </section>
 
       <section class="system-panel hidden" data-system-panel="preferences">
         <div class="settings-page-intro preferences-intro"><div><h3 data-i18n="prefs.intro">让工作台更合你的习惯</h3><p data-i18n="prefs.introHint">调整阅读方式与提醒，修改后自动保存。</p></div><span data-i18n="prefs.autoSave">无需额外保存</span></div>
@@ -957,7 +998,7 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=77748ebc071a"></script>
+  <script src="/static/bundle.js?v=c4773f88be0c"></script>
   <script src="/static/settings-scroll.js?v=2"></script>
 </body>
 </html>

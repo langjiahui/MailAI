@@ -5171,6 +5171,8 @@ function renderUpdateProgress(state) {
   document.getElementById('update-progress-percent').textContent = total ? `${percent}%` : '连接中';
   document.getElementById('update-progress-fill').style.width = `${total ? percent : 36}%`;
   let detail = state.message || '';
+  // A stalled dialog must explain itself: "更新未完成" alone leaves the cause invisible.
+  if (phase === 'failed' && state.error) detail = state.error;
   if (phase === 'downloading' && total) {
     detail = `${formatUpdateBytes(downloaded)} / ${formatUpdateBytes(total)}`;
     if (state.speed_bps) detail += ` · ${formatUpdateBytes(state.speed_bps)}/秒`;

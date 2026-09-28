@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import http.client
 import json
 import logging
 import os
@@ -172,6 +173,25 @@ def _download(asset: dict, target: Path, progress=None) -> None:
                 progress(phase="verified", downloaded=total, total=total,
                          speed_bps=0, message="安装包已下载并校验通过")
             return
+    # The installer is tens of MB from a release CDN: a single dropped connection
+    # should not fail the whole update. Retry transient network errors only;
+    # size/hash mismatches are deterministic and fall through immediately.
+    for attempt in range(3):
+        try:
+            _download_fresh(asset, target, progress)
+            return
+        except (OSError, http.client.HTTPException) as exc:
+            if attempt == 2:
+                raise ValueError(f"安装包下载多次中断：{exc}") from exc
+            log.warning("安装包下载中断（第 %d 次），稍后重试：%s", attempt + 1, exc)
+            if progress:
+                progress(phase="downloading", downloaded=0,
+                         total=int(asset.get("size") or 0), speed_bps=0,
+                         message=f"下载中断，正在重试（{attempt + 2}/3）")
+            time.sleep(2 + attempt * 3)
+
+
+def _download_fresh(asset: dict, target: Path, progress=None) -> None:
     request = urllib.request.Request(
         asset["url"], headers={"Accept": "application/octet-stream", "User-Agent": f"MailAI/{current_version()}"}
     )

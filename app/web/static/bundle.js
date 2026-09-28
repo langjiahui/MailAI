@@ -6864,6 +6864,8 @@ function renderUpdateProgress(state) {
   document.getElementById('update-progress-percent').textContent = total ? `${percent}%` : '连接中';
   document.getElementById('update-progress-fill').style.width = `${total ? percent : 36}%`;
   let detail = state.message || '';
+  // A stalled dialog must explain itself: "更新未完成" alone leaves the cause invisible.
+  if (phase === 'failed' && state.error) detail = state.error;
   if (phase === 'downloading' && total) {
     detail = `${formatUpdateBytes(downloaded)} / ${formatUpdateBytes(total)}`;
     if (state.speed_bps) detail += ` · ${formatUpdateBytes(state.speed_bps)}/秒`;
@@ -13447,6 +13449,152 @@ document.getElementById('task-center-list').addEventListener('click', async even
   document.addEventListener('mailai:themechange', syncTheme);
   window.addEventListener('pywebviewready', ready);
   ready();
+})();
+
+;
+/* ---- remote-control.js ---- */
+// Local settings; external connections begin only after an explicit user action.
+(() => {
+  const panel = document.querySelector('[data-system-panel="remote"]');
+  if (!panel) return;
+  const byId = id => document.getElementById(id);
+  const visible = () => !panel.classList.contains('hidden') && !byId('system-view').classList.contains('hidden');
+  const channels = [
+    {prefix:'weixin', form:byId('weixin-control-form'), url:'/api/system/remote-control/weixin'},
+    {prefix:'remote', form:byId('remote-control-form'), url:'/api/system/remote-control'}
+  ];
+  let timer = 0, qrTimer = 0, login = null, pairing = false;
+  const field = (c, id) => byId(c.prefix + '-' + id);
+  function feedback(c, text, error=false) {
+    const node = field(c, 'config-feedback'); node.textContent = text; node.dataset.error = String(error);
+  }
+  function buttons(c) {
+    c.form.querySelectorAll('input,button').forEach(el => el.disabled = !!c.busy || !c.loaded);
+    field(c, 'reconnect').disabled = !!c.busy || !c.enabled;
+    field(c, 'disable').disabled = !!c.busy || !c.enabled;
+    if (c.prefix === 'weixin') {
+      field(c, 'login').disabled = !!c.busy || !c.loaded || c.enabled || pairing;
+      field(c, 'enabled').disabled = !!c.busy || !c.loaded || !c.bound;
+    }
+  }
+  function status(c, data) {
+    field(c, 'connection-state').textContent = data.connection?.message || '未启用';
+    if ('enabled' in data) c.enabled = data.enabled;
+    buttons(c);
+  }
+  function render(c, data) {
+    c.loaded = true;
+    if (c.prefix === 'remote') {
+      for (const id of ['client-id','corp-id','staff-id']) field(c,id).value = data[id.replaceAll('-','_')] || '';
+      field(c,'client-secret').value = '';
+      field(c,'client-secret').placeholder = data.secret_saved ? '已保存，留空保留现有密钥' : '保存在本机凭据库';
+    } else {
+      c.bound = !!data.bot_id && data.secret_saved;
+      field(c,'identity').textContent = c.bound ? '第一步 · 本人微信已绑定' : '第一步 · 扫码连接';
+    }
+    field(c,'enabled').checked = !!data.enabled;
+    const options = field(c,'account-options'); options.replaceChildren();
+    for (const account of data.accounts || []) {
+      const label = document.createElement('label'); label.className = 'check-row';
+      const input = document.createElement('input'); input.type = 'checkbox'; input.value = account.id;
+      input.checked = (data.account_ids || []).includes(account.id);
+      const span = document.createElement('span'); span.textContent = account.user;
+      label.append(input,span); options.append(label);
+    }
+    if (!options.childNodes.length) options.textContent = '请先在“邮箱账号”中连接邮箱。';
+    status(c,data);
+    if (!data.keychain_available) feedback(c,'系统凭据库不可用，无法安全保存连接凭证。',true);
+  }
+  async function refresh(c) {
+    if (c.busy || c.refreshing) return;
+    c.refreshing = true;
+    try {
+      const data = await api(c.url);
+      // Preserve unsaved fields while polling only the connection state.
+      if (!c.loaded) render(c,data); else status(c,data);
+    } catch (_) { feedback(c,'读取连接状态失败，重新打开“手机控制”可重试。',true); }
+    finally { c.refreshing = false; }
+  }
+  function payload(c) {
+    const data = {enabled:field(c,'enabled').checked,
+      account_ids:[...field(c,'account-options').querySelectorAll('input:checked')].map(el => el.value)};
+    if (c.prefix === 'remote') Object.assign(data, {client_id:field(c,'client-id').value.trim(),
+      client_secret:field(c,'client-secret').value, corp_id:field(c,'corp-id').value.trim(),staff_id:field(c,'staff-id').value.trim()});
+    return data;
+  }
+  async function action(c,path,body={}) {
+    if (c.busy || !c.loaded) return;
+    c.busy = true; buttons(c); feedback(c,'正在更新连接…');
+    try {
+      const data = await api(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      if ('enabled' in data) render(c,data); else status(c,data);
+      feedback(c,'设置已更新，连接状态会自动刷新。');
+    } catch (err) { feedback(c,err.message || '操作未完成，请重试。',true); }
+    finally { c.busy = false; buttons(c); }
+  }
+  for (const c of channels) {
+    buttons(c);
+    c.form.addEventListener('submit',e => {e.preventDefault(); action(c,c.url,payload(c));});
+    field(c,'reconnect').addEventListener('click',() => action(c,c.url+'/reconnect'));
+    field(c,'disable').addEventListener('click',() => action(c,c.url,{...payload(c),enabled:false,client_secret:''}));
+  }
+  const wc = channels[0];
+  function clearQR() {
+    clearTimeout(qrTimer);
+    const previous = login; login = null;
+    field(wc,'qr-panel').classList.add('hidden'); field(wc,'qr-image').removeAttribute('src');
+    field(wc,'verify-code').value = '';
+    if (previous) api(wc.url+'/login/'+encodeURIComponent(previous)+'/cancel',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}).catch(() => {});
+  }
+  async function pollQR(verify='') {
+    const current = login;
+    if (!current || !visible()) return;
+    clearTimeout(qrTimer);
+    try {
+      const data = await api(wc.url+'/login/'+encodeURIComponent(current)+'/poll',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({verify_code:verify})});
+      if (login !== current) return;
+      field(wc,'qr-message').textContent = data.message;
+      for (const id of ['verify-label','verify']) field(wc,id).classList.toggle('hidden',data.status !== 'need_verifycode');
+      if (data.status === 'confirmed') {
+        login = null; clearQR(); render(wc,data.config); feedback(wc,data.message); return;
+      }
+      if (['expired','verify_code_blocked','binded_redirect'].includes(data.status)) {
+        clearQR(); feedback(wc,data.message,true); return;
+      }
+      if (data.status === 'need_verifycode') return;
+    } catch (err) {
+      if (login !== current) return;
+      field(wc,'qr-message').textContent = err.message || '网络暂不可用，正在重试…';
+    }
+    if (login === current) qrTimer = setTimeout(pollQR,3000);
+  }
+  field(wc,'login').addEventListener('click',async () => {
+    if (pairing || wc.busy) return;
+    clearQR(); pairing = true; buttons(wc); feedback(wc,'正在获取微信二维码…');
+    try {
+      const data = await api(wc.url+'/login',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+      if (!visible()) {
+        api(wc.url+'/login/'+encodeURIComponent(data.login_id)+'/cancel',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}).catch(() => {}); return;
+      }
+      login = data.login_id;
+      field(wc,'qr-image').src = data.image; field(wc,'qr-message').textContent = data.message;
+      for (const id of ['verify-label','verify']) field(wc,id).classList.add('hidden');
+      field(wc,'qr-panel').classList.remove('hidden'); feedback(wc,'在手机确认后，选择邮箱并保存启用。');
+      qrTimer = setTimeout(pollQR,1500);
+    } catch (err) { feedback(wc,err.message || '获取二维码失败，请重试。',true); }
+    finally { pairing = false; buttons(wc); }
+  });
+  field(wc,'cancel-login').addEventListener('click',clearQR);
+  field(wc,'verify').addEventListener('click',() => pollQR(field(wc,'verify-code').value.trim()));
+  function watch() {
+    clearInterval(timer);
+    if (!visible()) { clearQR(); return; }
+    channels.forEach(refresh);
+    timer = setInterval(() => {if (!document.hidden) channels.forEach(refresh);},5000);
+  }
+  new MutationObserver(watch).observe(panel,{attributes:true,attributeFilter:['class']});
+  new MutationObserver(watch).observe(byId('system-view'),{attributes:true,attributeFilter:['class']});
+  byId('system-tabs').addEventListener('click',e => {if (e.target.closest('[data-system-tab="remote"]')) watch();});
 })();
 
 ;

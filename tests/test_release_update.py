@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.error
 import plistlib
 from pathlib import Path
 from unittest.mock import patch
@@ -171,6 +172,31 @@ def main():
         assert not stale_pkg.exists()
         assert note.read_text() == "keep me"
         popen.assert_called_once()
+
+    # A dropped connection retries; a persistent outage fails with a clear reason.
+    asset = {"url": "https://downloads.example.test/MailAI.exe", "sha256": hashlib.sha256(payload).hexdigest(),
+             "size": len(payload)}
+    with tempfile.TemporaryDirectory() as folder:
+        target = Path(folder) / "MailAI.exe"
+        calls = []
+        def flaky(*_args, **_kwargs):
+            calls.append(1)
+            if len(calls) == 1:
+                raise urllib.error.URLError("connection reset")
+            return Response(payload)
+        with patch.object(release_update.urllib.request, "urlopen", side_effect=flaky), patch.object(
+                release_update.time, "sleep"):
+            release_update._download(asset, target)
+        assert target.read_bytes() == payload and len(calls) == 2
+        with patch.object(release_update.urllib.request, "urlopen",
+                          side_effect=urllib.error.URLError("offline")), patch.object(
+                release_update.time, "sleep"):
+            try:
+                release_update._download(asset, Path(folder) / "MailAI-fresh.exe")
+            except ValueError as exc:
+                assert "下载多次中断" in str(exc)
+            else:
+                raise AssertionError("persistent outage should fail after retries")
     def fake_install(progress=None):
         progress(phase="downloading", downloaded=5, total=10, speed_bps=5, message="downloading")
         time.sleep(.03)
