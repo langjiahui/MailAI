@@ -5,7 +5,7 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v2.3.1**
+当前版本：**v2.3.2**
 
 本次更新：修复 HTML 邮件的 CSS 被误当正文预览、误显示为 AI 摘要的问题，并自动修复历史受影响邮件。加强邮箱同步失败退避、退出时的任务收尾、手机控制连接恢复与本地自动备份；优化邮件列表筛选、阅读区及其他桌面交互细节。手机控制仍需要电脑保持开机联网且 MailAI 正在运行，微信接入可用性以实际账号和通道为准。
 

@@ -23,7 +23,7 @@ const nodes = {
   'assistant-scope-clear': {classList:{toggle(name, value) { this.hidden = value; }}},
   'reading-content': {classList:{contains:() => true}},
   'assistant-panel': {style:{setProperty(){}}},
-  'email-list': {scrollTop:250}, 'assistant-reading-back': {},
+  'email-list': {scrollTop:250},
   'assistant-float': {setAttribute(name,value) { this[name] = value; }},
 };
 const ctx = {
@@ -49,7 +49,8 @@ ctx.updateAssistantPlacement(); assert.ok(classes.has('assistant-home')); assert
 nodes['reading-content'].classList.contains=()=>false; ctx.updateAssistantPlacement(); assert.ok(!classes.has('assistant-home')); assert.ok(classes.has('assistant-split'));
 nodes['email-list'].scrollTop=0;
 ctx.innerWidth=1800; ctx.updateAssistantPlacement(); assert.ok(classes.has('assistant-docked')); assert.equal(nodes['email-list'].scrollTop,250);
-ctx.innerWidth=760; ctx.updateAssistantPlacement(); assert.ok(classes.has('assistant-compact')); assert.equal(nodes['assistant-reading-back'].textContent,'返回邮件列表');
+ctx.innerWidth=760; ctx.updateAssistantPlacement(); assert.ok(classes.has('assistant-compact'));
+assert.doesNotMatch(html, /id="assistant-reading-back"/, 'Assistant closes through its existing close button');
 ctx.innerWidth=1800; ctx.getComputedStyle=()=>({getPropertyValue:()=> '1.5'}); ctx.updateAssistantPlacement(); assert.ok(classes.has('assistant-split'), 'Large fonts need the same readable split layout');
 classes.add('assistant-floating'); ctx.updateAssistantPlacement(); assert.ok(!classes.has('assistant-docked'));
 classes.delete('assistant-floating'); classes.delete('assistant-visible'); ctx.updateAssistantPlacement(); assert.ok(!classes.has('assistant-home'));

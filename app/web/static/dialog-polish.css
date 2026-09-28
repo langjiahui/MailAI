@@ -231,3 +231,115 @@ html[data-theme] body #attachment-center .attachment-download-action:hover { bac
   #attachment-center .attachment-open { gap:10px; grid-template-columns:40px minmax(0,1fr); }
 }
 @media(prefers-reduced-motion:reduce) { #attachment-center .attachment-card { transition:none!important; } }
+
+/* The composer preview is an email sheet inside the current app theme. */
+html[data-theme] body #compose-preview-modal>section {
+  width:min(860px,calc(100% - 32px));
+  height:min(790px,calc(100% - 36px));
+  max-height:none;
+  border:1px solid var(--desk-line)!important;
+  border-radius:16px;
+  background:var(--desk-surface)!important;
+  box-shadow:0 28px 76px #0004!important;
+}
+html[data-theme] body #compose-preview-modal>section>header {
+  min-height:70px;
+  padding:17px 22px;
+  background:var(--desk-surface)!important;
+  border-bottom:1px solid var(--desk-line)!important;
+}
+#compose-preview-modal>section>header h3 { margin-top:2px; font-size:19px; }
+html[data-theme] body #compose-preview-modal>section>header .eyebrow {
+  color:var(--desk-muted)!important;
+  font-size:11px;
+  letter-spacing:.03em;
+}
+html[data-theme] body #compose-preview-modal>section>header>button {
+  width:32px;
+  height:32px;
+  border:0!important;
+  border-radius:8px;
+  color:var(--desk-muted)!important;
+  background:transparent!important;
+}
+html[data-theme] body #compose-preview-modal>section>header>button:hover {
+  color:var(--desk-ink)!important;
+  background:var(--desk-hover)!important;
+}
+html[data-theme] body #compose-preview-modal .compose-preview-meta {
+  display:grid;
+  gap:7px;
+  padding:17px 26px;
+  border-bottom:1px solid var(--desk-line)!important;
+  background:var(--desk-surface)!important;
+}
+#compose-preview-modal .compose-preview-meta p {
+  display:grid;
+  grid-template-columns:54px minmax(0,1fr);
+  align-items:baseline;
+  gap:12px;
+  margin:0;
+  font-size:12px;
+  line-height:1.45;
+}
+html[data-theme] body #compose-preview-modal .compose-preview-meta span { color:var(--desk-muted)!important; }
+html[data-theme] body #compose-preview-modal .compose-preview-meta b {
+  color:var(--desk-ink)!important;
+  font-weight:600;
+  overflow-wrap:anywhere;
+  white-space:normal;
+}
+html[data-theme] body #compose-preview-modal .compose-preview-note {
+  margin:12px 20px 0;
+  padding:9px 12px;
+  border:1px solid color-mix(in srgb,#b88945 25%,var(--desk-line));
+  border-radius:8px;
+  color:var(--desk-ink);
+  background:color-mix(in srgb,#b88945 10%,var(--desk-surface));
+  font-size:12px;
+}
+#compose-preview-modal .compose-preview-note.hidden { display:none; }
+html[data-theme] body #compose-preview-frame {
+  display:block;
+  flex:1 1 auto;
+  width:calc(100% - 40px);
+  min-height:0;
+  margin:16px 20px;
+  border:1px solid #e1e7e3;
+  border-radius:10px;
+  background:#fff;
+  box-shadow:0 4px 18px #0000000d;
+}
+html[data-theme] body #compose-preview-modal>section>footer {
+  display:flex;
+  flex:0 0 auto;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  min-height:56px;
+  padding:10px 20px;
+  border-top:1px solid var(--desk-line)!important;
+  color:var(--desk-muted);
+  background:var(--desk-surface)!important;
+  font-size:11px;
+}
+html[data-theme] body #compose-preview-modal>section>footer>button {
+  min-height:34px;
+  padding:7px 13px;
+  border:1px solid var(--desk-line)!important;
+  border-radius:8px;
+  color:var(--desk-ink)!important;
+  background:var(--desk-muted-surface)!important;
+  font-size:12px;
+  font-weight:650;
+  cursor:pointer;
+}
+html[data-theme] body #compose-preview-modal>section>footer>button:hover { background:var(--desk-hover)!important; }
+#compose-preview-modal :is(button):focus-visible { outline:2px solid var(--desk-accent); outline-offset:2px; }
+@media(max-width:760px) {
+  html[data-theme] body #compose-preview-modal>section { width:100%; height:100%; max-height:100%; }
+  #compose-preview-modal .compose-preview-meta { padding-inline:16px; }
+  html[data-theme] body #compose-preview-frame { width:calc(100% - 24px); margin:12px; }
+  #compose-preview-modal>section>footer span { display:none; }
+  #compose-preview-modal>section>footer { justify-content:flex-end; }
+}

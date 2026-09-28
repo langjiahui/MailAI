@@ -20,7 +20,7 @@ const protectedMailto = context.protectRichEmailLinks('<a href="mailto:person@ex
 assert.match(protectedMailto, /data-mailai-href="mailto:person@example\.test\?subject=Hello" href="mailto:person@example\.test\?subject=Hello"/,
   'WKWebView must preserve mailto data for its native MailAI compose fallback');
 
-assert.match(source, /function richEmailDocument\(html, allowRemote = true\)/,
+assert.match(source, /function richEmailDocument\(html, allowRemote = true, composePreview = false\)/,
   'HTML mail renderer should allow remote images by default');
 assert.match(source, /data-mailai-theme="\$\{theme\}"/,
   'sandboxed HTML mail should inherit the active application theme');

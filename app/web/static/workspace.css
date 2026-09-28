@@ -1011,8 +1011,6 @@ body.assistant-split .layout { margin-right:434px; }
 body.assistant-split .layout>.list-pane, body.assistant-split [data-resizer="list"] { display:none; }
 body.assistant-split #assistant-panel { top:var(--assistant-dock-top,116px)!important; }
 body.assistant-compact #assistant-panel { inset:8px!important; width:calc(calc(100vw / var(--fz,1)) - 16px)!important; max-width:none; min-height:0; }
-#assistant-reading-back { border:0; border-radius:8px; padding:6px 8px; font-size:11px; white-space:nowrap; color:inherit; background:var(--surface-hover,rgba(100,130,110,.12)); cursor:pointer; }
-#assistant-reading-back[hidden] { display:none; }
 
 body.assistant-split-narrow .layout>.sidebar, body.assistant-split-narrow [data-resizer="sidebar"] { display:none; }
 

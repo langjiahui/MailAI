@@ -419,12 +419,12 @@ html[data-theme="dark"] body #rules-view { --rules-scroll-thumb:rgba(161,183,170
 #rules-view>:is(.rules-header,.allowlist-panel,.rule-scenario-panel,.threshold-panel,.advanced-rules-panel),
 #rules-view :is(.rules-toolbar,.rules-grid) { max-width:none; min-width:0; }
 #rules-view .rules-header {
- display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:center; gap:24px;
+ display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:18px;
  margin-bottom:20px;
 }
 #rules-view .rules-header>div:first-child { grid-column:1; grid-row:1; min-width:0; }
-#rules-view .rules-header-actions { display:contents; }
-#rules-view #btn-reset-rules { grid-column:2; grid-row:1; min-height:36px; font-size:12px; }
+#rules-view .rules-header-actions { display:flex; align-items:center; justify-self:end; gap:10px; }
+#rules-view #btn-reset-rules { min-height:38px; font-size:12px; }
 #rules-view .allowlist-panel { grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr); }
 #rules-view .allowlist-form { grid-template-columns:repeat(3,minmax(0,1fr)) auto; }
 #rules-view .allowlist-form label { min-width:0; }
@@ -445,8 +445,7 @@ html[data-theme="dark"] body #rules-view { --rules-scroll-thumb:rgba(161,183,170
  html[data-theme] body #rules-view { padding:16px 14px 24px; }
  #rules-view .rules-header { grid-template-columns:minmax(0,1fr) auto; gap:14px; }
  #rules-view .rules-header>div:first-child { grid-column:1/-1; grid-row:2; }
- #rules-view #btn-reset-rules { grid-column:1; justify-self:start; }
- #rules-view #btn-close-rules { grid-column:2; grid-row:1; }
+ #rules-view .rules-header-actions { grid-column:1/-1; grid-row:1; }
  #rules-view .rule-scenario-grid,#rules-view .rules-grid { grid-template-columns:1fr; }
  #rules-view .allowlist-form { grid-template-columns:1fr; }
  #rules-view .rule-scenario-head { display:grid; gap:10px; }

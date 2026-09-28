@@ -317,8 +317,12 @@ const I18N_MESSAGES = {
     'copilot.privacy': 'Only checked content is sent to your configured AI model; attachment names are shared, not their content.',
     'preview.eyebrow': 'Sending Preview',
     'preview.title': 'Mail Preview',
+    'preview.from': 'From',
     'preview.to': 'To',
     'preview.subject': 'Subject',
+    'preview.emptyBody': 'The message body is empty. Only the signature and quoted message appear below.',
+    'preview.lightCanvas': 'Previewed on a light email canvas',
+    'preview.back': 'Back to editing',
     'preview.close': 'Close preview',
     'preview.frame': 'Mail body preview',
     'sig.eyebrow': 'Personalized Sending',
@@ -3099,9 +3103,12 @@ async function insertComposeImage(file) {
 }
 
 function openComposePreview() {
+  const from = document.getElementById('compose-from');
+  document.getElementById('compose-preview-from').textContent = from.selectedOptions[0]?.textContent?.trim() || from.value || '（尚未选择）';
   document.getElementById('compose-preview-to').textContent = document.getElementById('compose-to').value.trim() || '（尚未填写）';
   document.getElementById('compose-preview-subject').textContent = document.getElementById('compose-subject').value.trim() || '（无主题）';
-  document.getElementById('compose-preview-frame').srcdoc = richEmailDocument(composeBodyHtml() || '<p style="color:#8b9892">正文为空</p>', true);
+  document.getElementById('compose-preview-note').classList.toggle('hidden', Boolean(composeMessageText()));
+  document.getElementById('compose-preview-frame').srcdoc = richEmailDocument(composeBodyHtml() || '<p>正文为空</p>', true, true);
   document.getElementById('compose-preview-modal').classList.remove('hidden');
   document.querySelector('#compose-preview-modal header [data-close-compose-preview]').focus({preventScroll:true});
 }
@@ -7287,9 +7294,9 @@ function handleExternalLinkClick(event) {
 
 document.addEventListener('click', handleExternalLinkClick, true);
 
-function richEmailDocument(html, allowRemote = true) {
+function richEmailDocument(html, allowRemote = true, composePreview = false) {
   const content = protectRichEmailLinks(html).replace(/\/api\/emails\/\d+\/inline\/\d+(?:\?mailai_account=[a-zA-Z0-9_-]+)?/g, path => path.includes('?') ? path : mailboxResourceUrl(path));
-  const theme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+  const theme = !composePreview && document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
   return `<!doctype html><html data-mailai-theme="${theme}"><head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:${allowRemote ? ' http: https:' : ''}; style-src 'unsafe-inline'; font-src data:;">
@@ -7302,6 +7309,7 @@ function richEmailDocument(html, allowRemote = true) {
       html[data-mailai-theme="dark"] body{color:#e4eee8;background:#16271f!important}
       html[data-mailai-theme="dark"] body a{color:#8ddfb2}
       html[data-mailai-theme="dark"] body blockquote{color:#b5c8bc;border-color:#486354}
+      ${composePreview ? 'html,body{min-height:100%;overflow:auto;background:#fff!important}body{max-width:760px;margin:0 auto;padding:30px 34px 48px;color:#26352d;font:15px/1.8 Arial,"PingFang SC","Microsoft YaHei",sans-serif}blockquote{color:#64766b}' : ''}
     </style></head><body>${content}</body></html>`;
 }
 
@@ -11973,8 +11981,6 @@ function updateAssistantPlacement() {
     const saved = assistantListScroll; assistantListScroll = null;
     requestAnimationFrame(() => { if (!document.body.classList.contains('assistant-split') && saved.account === activeMailAccount()?.id) list.scrollTop = saved.top; });
   }
-  const back = document.getElementById('assistant-reading-back');
-  if (back) { back.hidden = !(split || compact); back.textContent = mailaiT('nav.backToMailList') || '返回邮件列表'; }
   if (docked || split) document.getElementById('assistant-panel').style.setProperty('--assistant-dock-top', `${layout.getBoundingClientRect().top / scale}px`);
   if (home) {
     const rect = pane.getBoundingClientRect();
@@ -11999,7 +12005,6 @@ function returnToMailFromAssistant() {
 }
 
 function initializeAssistantPolish() {
-  document.getElementById('assistant-reading-back').onclick = returnToMailFromAssistant;
   const scope = document.getElementById('assistant-scope');
   scope.onchange = () => {
     assistantPinnedScope = scope.value === 'selected' && selectedEmailId ? [selectedEmailId] : null;

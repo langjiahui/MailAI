@@ -592,8 +592,6 @@ function updateAssistantPlacement() {
     const saved = assistantListScroll; assistantListScroll = null;
     requestAnimationFrame(() => { if (!document.body.classList.contains('assistant-split') && saved.account === activeMailAccount()?.id) list.scrollTop = saved.top; });
   }
-  const back = document.getElementById('assistant-reading-back');
-  if (back) { back.hidden = !(split || compact); back.textContent = mailaiT('nav.backToMailList') || '返回邮件列表'; }
   if (docked || split) document.getElementById('assistant-panel').style.setProperty('--assistant-dock-top', `${layout.getBoundingClientRect().top / scale}px`);
   if (home) {
     const rect = pane.getBoundingClientRect();
@@ -618,7 +616,6 @@ function returnToMailFromAssistant() {
 }
 
 function initializeAssistantPolish() {
-  document.getElementById('assistant-reading-back').onclick = returnToMailFromAssistant;
   const scope = document.getElementById('assistant-scope');
   scope.onchange = () => {
     assistantPinnedScope = scope.value === 'selected' && selectedEmailId ? [selectedEmailId] : null;
