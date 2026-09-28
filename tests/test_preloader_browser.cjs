@@ -116,6 +116,11 @@ const {chromium, webkit} = require('playwright');
     }
     await page.setViewportSize({width: 1440, height: 900});
 
+    // The responsive launcher and startup lane have CSS transitions after
+    // leaving the narrow viewport. Sample the stable destination, not its
+    // intermediate position on a slower CI runner.
+    await page.waitForTimeout(600);
+
     const before = await page.locator('.preloader-companion').boundingBox();
     const target = await page.locator('#assistant-orb .companion-art').boundingBox();
     await page.evaluate(() => hideAppPreloader());
