@@ -28,6 +28,7 @@ const nodes = {
 };
 const ctx = {
   getComputedStyle:()=>({getPropertyValue:()=> '1'}), requestAnimationFrame:fn=>fn(),
+  mailaiT:()=>null,
   document: {
     body:{classList:{contains:name => classes.has(name),toggle(name,value) { value ? classes.add(name) : classes.delete(name); }}},
     getElementById:id => nodes[id], querySelectorAll:() => [],
@@ -48,7 +49,7 @@ ctx.updateAssistantPlacement(); assert.ok(classes.has('assistant-home')); assert
 nodes['reading-content'].classList.contains=()=>false; ctx.updateAssistantPlacement(); assert.ok(!classes.has('assistant-home')); assert.ok(classes.has('assistant-split'));
 nodes['email-list'].scrollTop=0;
 ctx.innerWidth=1800; ctx.updateAssistantPlacement(); assert.ok(classes.has('assistant-docked')); assert.equal(nodes['email-list'].scrollTop,250);
-ctx.innerWidth=760; ctx.updateAssistantPlacement(); assert.ok(classes.has('assistant-compact')); assert.equal(nodes['assistant-reading-back'].textContent,'返回邮件');
+ctx.innerWidth=760; ctx.updateAssistantPlacement(); assert.ok(classes.has('assistant-compact')); assert.equal(nodes['assistant-reading-back'].textContent,'返回邮件列表');
 ctx.innerWidth=1800; ctx.getComputedStyle=()=>({getPropertyValue:()=> '1.5'}); ctx.updateAssistantPlacement(); assert.ok(classes.has('assistant-split'), 'Large fonts need the same readable split layout');
 classes.add('assistant-floating'); ctx.updateAssistantPlacement(); assert.ok(!classes.has('assistant-docked'));
 classes.delete('assistant-floating'); classes.delete('assistant-visible'); ctx.updateAssistantPlacement(); assert.ok(!classes.has('assistant-home'));

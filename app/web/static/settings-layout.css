@@ -6,7 +6,7 @@
 }
 #system-view > :is(.system-header,.system-tabs,.system-panel) {
   /* Override older per-tab :has() width caps as well. */
-  width:100%; max-width:1520px!important; min-width:0;
+  width:100%; max-width:none!important; min-width:0;
   margin-inline:auto;
 }
 #system-view > .system-panel {
@@ -17,10 +17,10 @@
 #system-view > .system-panel::-webkit-scrollbar { width:7px; height:7px; }
 #system-view > .system-panel::-webkit-scrollbar-track { background:transparent; }
 #system-view > .system-panel::-webkit-scrollbar-thumb { background:transparent; border-radius:8px; }
-#system-view > .system-panel.scrollbar-visible { scrollbar-color:#9bafa4 transparent; }
-#system-view > .system-panel.scrollbar-visible::-webkit-scrollbar-thumb { background:#9bafa4; }
-html[data-theme="dark"] #system-view > .system-panel.scrollbar-visible { scrollbar-color:#698578 transparent; }
-html[data-theme="dark"] #system-view > .system-panel.scrollbar-visible::-webkit-scrollbar-thumb { background:#698578; }
+#system-view > .system-panel.scrollbar-visible { scrollbar-color:rgba(92,111,101,.3) transparent; }
+#system-view > .system-panel.scrollbar-visible::-webkit-scrollbar-thumb { background:rgba(92,111,101,.3); }
+html[data-theme="dark"] #system-view > .system-panel.scrollbar-visible { scrollbar-color:rgba(161,183,170,.3) transparent; }
+html[data-theme="dark"] #system-view > .system-panel.scrollbar-visible::-webkit-scrollbar-thumb { background:rgba(161,183,170,.3); }
 #system-view .preference-grid { gap:20px; }
 #system-view .preference-col { gap:20px; }
 #system-view .system-tabs { display:flex; flex-wrap:wrap; gap:4px; }

@@ -91,6 +91,9 @@ TESTS = (
     'test_semantic_resilience.py',
     'test_linux_appimage.py',
     'test_server_cleanup.py',
+    'test_remote_control.py', 'test_remote_context.py', 'test_remote_briefing.py',
+    'test_remote_guidance.py', 'test_remote_help.py', 'test_remote_mail_format.py',
+    'test_remote_transports.py', 'test_weixin_media.py', 'test_weixin_presence.py',
 )
 
 

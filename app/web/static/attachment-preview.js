@@ -2,7 +2,7 @@
   const dialog = document.createElement('dialog');
   dialog.className = 'file-preview';
   dialog.setAttribute('aria-labelledby', 'file-preview-title');
-  dialog.innerHTML = `<header><div><small>附件预览</small><h2 id="file-preview-title"></h2></div><a class="btn-ghost" data-preview-download download>下载原文件</a><button type="button" aria-label="关闭预览">×</button></header><p class="file-preview-note" role="status"></p><main aria-busy="false"></main>`;
+  dialog.innerHTML = `<header><div><small>附件预览</small><h2 id="file-preview-title"></h2></div><a class="btn-ghost" data-preview-download download><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9m-3-3 3 3 3-3M4 15h12"/></svg><span>下载原文件</span></a><button type="button" aria-label="关闭预览">×</button></header><p class="file-preview-note" role="status"></p><main aria-busy="false"></main>`;
   document.body.append(dialog);
   const content = dialog.querySelector('main');
   const note = dialog.querySelector('.file-preview-note');

@@ -110,6 +110,8 @@ REM heuristic antivirus detections on unsigned internal software.
   --hidden-import "webview.platforms.winforms" ^
   --hidden-import "webview.platforms.edgechromium" ^
   --hidden-import "pystray._win32" ^
+  --hidden-import "dingtalk_stream" ^
+  --hidden-import "qrcode.image.pil" ^
   --add-data "%CD%\app\web\static;app\web\static" ^
   --add-data "%CD%\mailai.defaults.env;." ^
   --add-data "%CD%\VERSION;." run.py || goto :failed

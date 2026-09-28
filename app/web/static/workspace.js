@@ -593,7 +593,7 @@ function updateAssistantPlacement() {
     requestAnimationFrame(() => { if (!document.body.classList.contains('assistant-split') && saved.account === activeMailAccount()?.id) list.scrollTop = saved.top; });
   }
   const back = document.getElementById('assistant-reading-back');
-  if (back) { back.hidden = !(split || compact); back.textContent = split ? '返回邮件列表' : '返回邮件'; }
+  if (back) { back.hidden = !(split || compact); back.textContent = mailaiT('nav.backToMailList') || '返回邮件列表'; }
   if (docked || split) document.getElementById('assistant-panel').style.setProperty('--assistant-dock-top', `${layout.getBoundingClientRect().top / scale}px`);
   if (home) {
     const rect = pane.getBoundingClientRect();

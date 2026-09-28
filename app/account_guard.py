@@ -109,6 +109,11 @@ class AccountGuardMiddleware:
         # run in the outer LocalOriginMiddleware.
         if path in {"/api/ui-preferences", "/api/ui-preferences.js"}:
             return await self.app(scope, receive, send)
+        # QR polling and channel configuration touch their own database only.
+        # Keep a slow platform handshake from blocking desktop mailbox switching;
+        # actual remote mail commands acquire account-scoped work separately.
+        if path.startswith('/api/system/remote-control'):
+            return await self.app(scope, receive, send)
         public = path in {
             "/api/system/config", "/api/system/mail/discover",
             "/api/system/mail/login", "/api/system/mail/logout",

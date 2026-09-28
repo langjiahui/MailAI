@@ -60,6 +60,14 @@ def _start_scheduler():
     scheduler.add_job(check_due_tasks, "interval", seconds=15, id="task_reminders",
                       max_instances=1, coalesce=True)
     scheduler.start()
+    from app.dingtalk_remote import start as start_remote
+    from app.weixin_remote import start as start_weixin
+    for channel, start in (('微信', start_weixin), ('钉钉', start_remote)):
+        try:
+            start()
+        except Exception as exc:
+            # Optional channel state must not prevent local mail from starting.
+            log.warning('%s手机控制未能启动 (%s)，请在设置中检查', channel, type(exc).__name__)
     log.info("定时拉取服务已启动，间隔 %s 秒", config.POLL_INTERVAL_SECONDS)
     return scheduler
 
@@ -94,6 +102,10 @@ def _run_app(server_socket=None):
         server = uvicorn.Server(uvicorn.Config(web_app, host=config.WEB_HOST, port=config.WEB_PORT, log_level="warning"))
         server.run(sockets=[server_socket] if server_socket is not None else None)
     finally:
+        from app.dingtalk_remote import stop as stop_remote
+        stop_remote()
+        from app.weixin_remote import stop as stop_weixin
+        stop_weixin(notify=True)
         scheduler.shutdown(wait=False)
         from app.mailbox_jobs import stop_outbox
         if not stop_outbox(timeout=5):

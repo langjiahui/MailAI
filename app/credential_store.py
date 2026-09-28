@@ -29,16 +29,18 @@ def save(account_key: str, secret: str) -> bool:
                             "-a", account_key, "-w", secret], check=True,
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=8)
             return True
-        except Exception:
-            log.exception("macOS Keychain 写入失败")
+        except Exception as exc:
+            # CalledProcessError includes the command arguments, including -w.
+            # Never print a credential-bearing command or backend exception.
+            log.warning("macOS Keychain 写入失败 (%s)", type(exc).__name__)
             return False
     if not keyring:
         return False
     try:
         keyring.set_password(SERVICE, account_key, secret)
         return True
-    except Exception:
-        log.exception("系统凭据库写入失败")
+    except Exception as exc:
+        log.warning("系统凭据库写入失败 (%s)", type(exc).__name__)
         return False
 
 
@@ -58,8 +60,8 @@ def load(account_key: str) -> str:
         return ""
     try:
         return keyring.get_password(SERVICE, account_key) or ""
-    except Exception:
-        log.exception("系统凭据库读取失败")
+    except Exception as exc:
+        log.warning("系统凭据库读取失败 (%s)", type(exc).__name__)
         return ""
 
 

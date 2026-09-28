@@ -101,6 +101,7 @@ let mailboxConfigCheckedAt = 0;
 let emailListRenderSignature = '';
 let readingLoadRevision = 0;
 let readingLoadController = null;
+let readingTransition = null;
 let readSyncQueue = [];
 let readSyncRunning = false;
 let readSyncSequence = 0;
@@ -1121,6 +1122,7 @@ function syncSelectedEmailVisual(id, {emphasize = false, scroll = false, account
 }
 
 function resetReadingPane() {
+  readingTransition?.cancel();
   mailSelectionExplicit = false;
   readingLoadRevision += 1;
   readingLoadController?.abort();
@@ -3401,7 +3403,7 @@ function showDashboard() {
   hideRulesView(false);
   document.querySelector('.layout').classList.add('hidden');
   document.getElementById('dashboard-view').classList.remove('hidden');
-  setTopMenuLabel('btn-dashboard', mailaiT('dash.back') || '返回邮件');
+  setTopMenuLabel('btn-dashboard', mailaiT('nav.backToMailList') || '返回邮件列表');
   document.getElementById('btn-dashboard').title = mailaiT('dash.backTitle') || '返回邮件列表';
   loadDashboard(_dashboardDays);
 }
@@ -3796,6 +3798,7 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
     }
   }
   readingLoadRevision += 1;
+  readingTransition?.cancel();
   readingLoadController?.abort();
   readingLoadController = null;
   selectedEmailId = id;
@@ -4356,7 +4359,61 @@ function requestWasAborted(error, controller) {
     /fetch is aborted|aborted/i.test(String(error?.message || '')));
 }
 
+// Start fetching immediately; short local reads never flash a skeleton between messages.
+function beginReadingTransition(revision, animateArrival) {
+  readingTransition?.cancel();
+  removeSecurityFlyout();
+  const content = document.getElementById('reading-content');
+  const empty = document.getElementById('reading-empty');
+  const pane = document.querySelector('.reading-pane');
+  const preserve = !content.classList.contains('hidden') &&
+    Boolean(content.querySelector('.reading-header,.special-mail-detail'));
+  let timer, animation;
+  const state = {
+    cancel() {
+      clearTimeout(timer);
+      animation?.cancel();
+      content.classList.remove('reading-pending');
+      content.inert = false;
+      content.removeAttribute('aria-busy');
+      if (readingTransition === state) readingTransition = null;
+    },
+    finish(render) {
+      if (readingTransition !== state || revision !== readingLoadRevision) return;
+      clearTimeout(timer);
+      render();
+      content.inert = false;
+      content.removeAttribute('aria-busy');
+      content.classList.remove('reading-pending','hidden');
+      empty.classList.add('hidden');
+      pane.scrollTop = 0;
+      if (animateArrival && !matchMedia('(prefers-reduced-motion: reduce)').matches && content.animate) {
+        animation = content.animate([
+          {opacity:preserve ? .45 : .15, transform:'translateY(4px)'},
+          {opacity:1, transform:'translateY(0)'}
+        ], {duration:200, easing:'cubic-bezier(.2,.8,.2,1)'});
+      }
+    }
+  };
+  readingTransition = state;
+  content.setAttribute('aria-busy','true');
+  content.inert = true;
+  if (preserve) {
+    if (animateArrival) content.classList.add('reading-pending');
+  } else { content.classList.add('hidden'); empty.classList.remove('hidden'); }
+  timer = setTimeout(() => {
+    if (revision !== readingLoadRevision) { state.cancel(); return; }
+    if (readingTransition !== state) return;
+    content.innerHTML = `<div class="reading-loading-skeleton" style="padding:22px">${skeletonRows(3)}</div>`;
+    content.classList.remove('hidden','reading-pending');
+    empty.classList.add('hidden');
+    pane.scrollTop = 0;
+  }, 160);
+  return state;
+}
+
 async function selectEmail(id, options = {}) {
+  const animateArrival = selectedEmailId !== id || selectedEmailAccountId !== (options.accountId || '');
   const requestRevision = ++readingLoadRevision;
   const requestAccountId = options.accountId || activeMailAccount()?.id || '';
   readingLoadController?.abort();
@@ -4373,22 +4430,20 @@ async function selectEmail(id, options = {}) {
   if (clickedRow && !clickedRow.is_read) queueEmailReadSync(id, requestAccountId);
   const readingPane = document.querySelector('.reading-pane');
   readingPane.classList.add('show');
-  readingPane.scrollTop = 0;
-
-  document.getElementById('reading-empty').classList.add('hidden');
-  document.getElementById('reading-content').classList.remove('hidden');
-  document.getElementById('reading-content').innerHTML = `<div class="reading-loading-skeleton" style="padding:22px">${skeletonRows(3)}</div>`;
+  const transition = beginReadingTransition(requestRevision, animateArrival);
 
   try {
     const e = await api('/api/emails/' + id, {accountId:requestAccountId, signal:controller.signal});
     if (requestRevision !== readingLoadRevision || selectedEmailId !== id) return;
     selectedEmailDetail = e;
-    renderReadingPane(e);
+    transition.finish(() => renderReadingPane(e));
     if (!e.is_read) queueEmailReadSync(id, requestAccountId);
   } catch (err) {
     if (requestWasAborted(err, controller)) return;
     if (requestRevision !== readingLoadRevision || selectedEmailId !== id) return;
-    document.getElementById('reading-content').innerHTML = `<div class="reading-error">加载失败：${esc(err.message)}</div>`;
+    transition.finish(() => {
+      document.getElementById('reading-content').innerHTML = `<div class="reading-error">加载失败：${esc(err.message)}</div>`;
+    });
   } finally {
     if (readingLoadController === controller) readingLoadController = null;
   }
@@ -4580,7 +4635,7 @@ function showRulesView() {
   hideDashboard();
   document.querySelector('.layout').classList.add('hidden');
   document.getElementById('rules-view').classList.remove('hidden');
-  setTopMenuLabel('btn-rules', mailaiT('rules.backMail') || '返回邮件');
+  setTopMenuLabel('btn-rules', mailaiT('nav.backToMailList') || '返回邮件列表');
   loadRules().catch(e => toast('加载规则失败：' + e.message, 'error'));
 }
 

@@ -23,6 +23,7 @@ const I18N_MESSAGES = {
     'app.preloaderConnect': 'Preparing mailbox setup',
     'app.preloaderConnectHint': 'Connect an account to start receiving mail',
     'search.placeholder': 'Search subject, sender, body or pinyin...',
+    'nav.backToMailList': 'Back to mail list',
     'nav.compose': 'Compose',
     'nav.contacts': 'Contacts',
     'nav.attachments': 'Attachments',

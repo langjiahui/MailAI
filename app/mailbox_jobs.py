@@ -226,3 +226,9 @@ def _notify(future):
             notify_poll_result(result)
     except Exception:
         __import__('logging').getLogger(__name__).exception('邮箱后台同步失败')
+
+
+def poll_future(account_id):
+    """Observe the current job without issuing another poll or touching mailbox state."""
+    with _lock:
+        return _pending.get(account_id)

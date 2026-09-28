@@ -111,6 +111,27 @@ def _direct_answer(question: str) -> str | None:
     return None
 
 
+def todo_query_rows(question, todos=None):
+    """Share today's task scope between desktop chat and phone briefings."""
+    todos = db.list_todos(include_done=False) if todos is None else todos
+    today = date.today().isoformat()
+    if "过期" in question or "逾期" in question:
+        rows = [item for item in todos if item.get("deadline") and str(item["deadline"])[:10] < today]
+        heading = "已过期待办"
+    elif "今天" in question or "今日" in question:
+        def reminded_today(item):
+            try:
+                reminder = datetime.fromisoformat(str(item.get('remind_at') or ''))
+                return (reminder.astimezone() if reminder.tzinfo else reminder).date().isoformat() == today
+            except ValueError:
+                return False
+        rows = [item for item in todos if not item.get("deadline") or str(item["deadline"])[:10] <= today or reminded_today(item)]
+        heading = "今天需要处理的事项（含无截止日期、已过期和今天提醒的事项）"
+    else:
+        rows, heading = todos, "当前未完成待办"
+    return heading, rows
+
+
 def _todo_answer(question: str) -> str | None:
     # Only unqualified task-list questions can be answered from the whole todo list.
     # "这封钓鱼邮件怎么处理" / "ERP任务" must retain their mail-specific context.
@@ -121,16 +142,8 @@ def _todo_answer(question: str) -> str | None:
         r"(?:待办|任务|事项)(?:清单|列表|有哪些|是什么|已过期|已经过期|过期了|逾期了|需要处理|要处理|已逾期)?"
         r"|(?:今天|今日)(?:有什么|有哪些|需要|要)(?:要处理|处理|做|完成)(?:的事|什么|事项)?", normalized):
         return None
-    todos = db.list_todos(include_done=False)
+    heading, rows = todo_query_rows(question)
     today = date.today().isoformat()
-    if "过期" in question or "逾期" in question:
-        rows = [item for item in todos if item.get("deadline") and str(item["deadline"])[:10] < today]
-        heading = "已过期待办"
-    elif "今天" in question or "今日" in question:
-        rows = [item for item in todos if not item.get("deadline") or str(item["deadline"])[:10] <= today]
-        heading = "今天需要处理的事项（含无截止日期和已过期项）"
-    else:
-        rows, heading = todos, "当前未完成待办"
     if not rows:
         return f"我帮你看过了，{heading}目前没有需要处理的事项。"
     lines = [f"我帮你排了一下，{heading}有 {len(rows)} 项："]

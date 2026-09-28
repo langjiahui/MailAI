@@ -18,3 +18,5 @@ cos-python-sdk-v5>=1.9,<2
 olefile>=0.47,<1
 pypdfium2>=4.30,<6
 pypinyin>=0.53,<1
+dingtalk-stream==0.24.3
+qrcode>=8,<9
