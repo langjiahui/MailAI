@@ -130,6 +130,25 @@ def main():
             assert "SHA-256" in str(exc)
         else:
             raise AssertionError("tampered installer accepted")
+
+    # An already-verified installer must be reused instead of re-downloaded:
+    # replacing the file under an open macOS Installer window aborts the
+    # install with "Opened package is not the same at install time".
+    asset = {"url": "https://downloads.example.test/MailAI.exe", "sha256": hashlib.sha256(payload).hexdigest()}
+    with tempfile.TemporaryDirectory() as folder:
+        target = Path(folder) / "MailAI.exe"
+        target.write_bytes(payload)
+        progress = []
+        with patch.object(release_update.urllib.request, "urlopen",
+                          side_effect=AssertionError("verified installer must not be re-downloaded")):
+            release_update._download(asset, target, progress=lambda **state: progress.append(state))
+        assert target.read_bytes() == payload
+        assert [item["phase"] for item in progress] == ["verified"]
+        # A stale or truncated copy is replaced by a fresh download.
+        target.write_bytes(b"truncated")
+        with patch.object(release_update.urllib.request, "urlopen", side_effect=lambda *_args, **_kwargs: Response(payload)):
+            release_update._download(asset, target)
+        assert target.read_bytes() == payload
     def fake_install(progress=None):
         progress(phase="downloading", downloaded=5, total=10, speed_bps=5, message="downloading")
         time.sleep(.03)

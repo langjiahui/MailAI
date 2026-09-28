@@ -158,6 +158,20 @@ def check(*, force: bool = False) -> dict:
 
 
 def _download(asset: dict, target: Path, progress=None) -> None:
+    # A verified copy may already sit here from an earlier click. Reusing it
+    # avoids replacing a package file that an open Installer window is reading —
+    # macOS aborts those with "Opened package is not the same at install time".
+    if target.exists():
+        digest = hashlib.sha256()
+        with target.open("rb") as existing:
+            for chunk in iter(lambda: existing.read(1024 * 1024), b""):
+                digest.update(chunk)
+        if digest.hexdigest() == asset["sha256"]:
+            if progress:
+                total = target.stat().st_size
+                progress(phase="verified", downloaded=total, total=total,
+                         speed_bps=0, message="安装包已下载并校验通过")
+            return
     request = urllib.request.Request(
         asset["url"], headers={"Accept": "application/octet-stream", "User-Agent": f"MailAI/{current_version()}"}
     )
