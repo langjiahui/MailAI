@@ -1,199 +1,231 @@
 /* Shared desktop workspace. macOS reserves space for its native traffic lights;
    Windows overrides that inset while retaining its system caption above the page. */
-html.desktop-native-window {
+html:is(.desktop-native-window,.integrated-workspace) {
  --mac-sidebar-width:226px; --mac-rail-width:226px;
  --mac-control-inset:calc(108px / var(--fz,1));
  --mac-brand-width:max(62px,calc(var(--mac-sidebar-width) - var(--mac-control-inset) - 2px));
  --mac-rail:#eef0ef; --mac-canvas:#fff; --mac-list:#fafbfa;
  --mac-separator:rgba(47,63,55,.09); --mac-selected:#e5eee9;
 }
-html.desktop-native-window[data-theme="dark"] {
+html:is(.desktop-native-window,.integrated-workspace)[data-theme="dark"] {
  --mac-rail:#202422; --mac-canvas:#181c1a; --mac-list:#1b201d;
  --mac-separator:rgba(205,220,212,.09); --mac-selected:#2c3b32;
+}
+/* Browsers share the workspace without reserving native window controls. */
+html.integrated-workspace:not(.desktop-native-window) {
+ --mac-control-inset:20px;
+ --mac-brand-width:calc(var(--mac-sidebar-width) - 38px);
 }
 /* Leave a quiet gap after the native controls without moving the mail/search column. */
 html.macos-native-window:not(.macos-native-fullscreen) {
  --mac-control-inset:calc(116px / var(--fz,1));
 }
-html.desktop-native-window body {
+html:is(.desktop-native-window,.integrated-workspace) body {
  background:linear-gradient(to right,var(--mac-rail) 0 var(--mac-rail-width),var(--mac-canvas) var(--mac-rail-width) 100%)!important;
 }
-html.desktop-native-window body::before,html.desktop-native-window body::after { display:none!important; }
-html.desktop-native-window body:has(.layout.hidden) { --mac-rail-width:0px; }
+html:is(.desktop-native-window,.integrated-workspace) body::before,html:is(.desktop-native-window,.integrated-workspace) body::after { display:none!important; }
+html:is(.desktop-native-window,.integrated-workspace) body:has(.layout.hidden) { --mac-rail-width:0px; }
 /* A quiet, integrated desktop header. Native controls occupy the left edge. */
-html.desktop-native-window #app { padding:0; gap:0; }
-html.desktop-native-window[data-theme] body .topbar {
+html:is(.desktop-native-window,.integrated-workspace) #app { padding:0; gap:0; }
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar {
  height:calc(52px / var(--fz,1))!important; min-height:calc(52px / var(--fz,1))!important; margin:0; padding:0 16px 0 var(--mac-control-inset); position:relative;
  container:mac-header / inline-size;
  border:0!important; border-radius:0!important; background:transparent!important;
  box-shadow:none!important; backdrop-filter:none; -webkit-backdrop-filter:none;
  gap:16px;
 }
-html.desktop-native-window[data-theme] body .topbar::before { display:none; }
-html.desktop-native-window[data-theme] body .topbar .brand {
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar::before { display:none; }
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .brand {
  width:var(--mac-brand-width); min-width:var(--mac-brand-width); flex:0 0 var(--mac-brand-width); gap:0; user-select:none;
 }
-html.desktop-native-window .topbar .logo,
-html.desktop-native-window .topbar .brand-copy small { display:none; }
-html.desktop-native-window .topbar .brand-copy { display:block!important; }
-html.desktop-native-window .topbar .brand-copy strong { display:block; font-size:14px; font-weight:650; letter-spacing:0; }
+html:is(.desktop-native-window,.integrated-workspace) .topbar .logo,
+html:is(.desktop-native-window,.integrated-workspace) .topbar .brand-copy small { display:none; }
+html:is(.desktop-native-window,.integrated-workspace) .topbar .brand-copy { display:block!important; }
+html:is(.desktop-native-window,.integrated-workspace) .topbar .brand-copy strong { display:block; font-size:14px; font-weight:650; letter-spacing:0; }
 html.macos-native-window .topbar .brand-copy strong { line-height:20px; }
-html.desktop-native-window .topbar .global-search { margin:0; }
-html.desktop-native-window[data-theme] body .topbar .global-search {
+html:is(.desktop-native-window,.integrated-workspace) .topbar .global-search { margin:0; }
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .global-search {
  flex:1 1 240px; min-width:100px; max-width:480px; margin:0 auto 0 0;
  --search-field-surface:var(--mac-list);
  height:32px; border-radius:8px; box-shadow:none!important;
  border-color:var(--mac-separator)!important; background:var(--search-field-surface)!important;
 }
 /* The scope and input share one surface; the input must not paint a second pill. */
-html.desktop-native-window[data-theme] body .topbar .global-search #global-search,
-html.desktop-native-window[data-theme] body .topbar .global-search #global-search:is(:hover,:focus,:focus-visible) {
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .global-search #global-search,
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .global-search #global-search:is(:hover,:focus,:focus-visible) {
  height:32px; border:0!important; border-radius:0; background:transparent!important;
  -webkit-appearance:none; appearance:none;
  backdrop-filter:none; -webkit-backdrop-filter:none;
  box-shadow:none!important; outline:0!important;
 }
-html.desktop-native-window[data-theme] body .topbar .global-search #global-search:is(:autofill,:-webkit-autofill) {
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .global-search #global-search:is(:autofill,:-webkit-autofill) {
  -webkit-box-shadow:inset 0 0 0 1000px var(--search-field-surface)!important;
  box-shadow:inset 0 0 0 1000px var(--search-field-surface)!important;
 }
-html.desktop-native-window[data-theme] body .topbar .global-search:hover {
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .global-search:hover {
  border-color:color-mix(in srgb,var(--desk-accent) 25%,var(--mac-separator))!important;
 }
-html.desktop-native-window[data-theme] body .topbar .global-search:focus-within {
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .global-search:focus-within {
  border-color:color-mix(in srgb,var(--desk-accent) 65%,var(--mac-separator))!important;
  box-shadow:0 0 0 2px color-mix(in srgb,var(--desk-accent) 9%,transparent)!important;
 }
-html.desktop-native-window[data-theme] body .topbar .nav-cluster {
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .nav-cluster {
  border:0!important; box-shadow:none!important; background:transparent!important; padding:0; gap:2px;
 }
-html.desktop-native-window[data-theme] body .topbar .nav-action {
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .nav-action {
  min-height:32px; height:32px; border:0!important; border-radius:8px; box-shadow:none!important;
  background:transparent!important; padding-inline:9px; font-size:12px; font-weight:550;
 }
-html.desktop-native-window[data-theme] body .topbar .nav-action:hover,
-html.desktop-native-window[data-theme] body .topbar .nav-action[aria-expanded="true"] {
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .nav-action:hover,
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .nav-action[aria-expanded="true"] {
  background:rgba(107,130,118,.13)!important; transform:none;
 }
-html.desktop-native-window[data-theme] body .topbar #btn-compose {
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar #btn-compose {
  height:32px; min-height:32px; padding-inline:12px;
  border:0!important; box-shadow:none!important; border-radius:8px;
  color:var(--primary-deep)!important; background:rgba(75,145,113,.12)!important;
 }
-html.desktop-native-window[data-theme="dark"] body .topbar #btn-compose { color:#9ed1b8!important; }
-html.desktop-native-window[data-theme] body .topbar #btn-compose:hover { background:rgba(75,145,113,.23)!important; }
-html.desktop-native-window[data-theme] body .topbar .global-actions { flex:0 0 auto; gap:8px; }
-html.desktop-native-window .topbar .nav-icon { width:17px; height:17px; flex-basis:17px; }
-html.desktop-native-window .topbar .nav-system-cluster { margin-left:4px; }
+html:is(.desktop-native-window,.integrated-workspace)[data-theme="dark"] body .topbar #btn-compose { color:#9ed1b8!important; }
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar #btn-compose:hover { background:rgba(75,145,113,.23)!important; }
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .global-actions { flex:0 0 auto; gap:8px; }
+html:is(.desktop-native-window,.integrated-workspace) .topbar .nav-icon { width:17px; height:17px; flex-basis:17px; }
+html:is(.desktop-native-window,.integrated-workspace) .topbar .nav-system-cluster { margin-left:4px; }
 
 /* Let adjacent surfaces define the panes; reveal a handle only on interaction. */
-html.desktop-native-window[data-theme] body .layout { gap:0; padding:0; border-radius:0; }
-html.desktop-native-window[data-theme] body .layout>.sidebar {
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .layout { gap:0; padding:0; border-radius:0; }
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .layout>.sidebar {
  border:0!important; border-radius:0!important; box-shadow:none!important;
  background:var(--mac-rail)!important; padding:16px 12px 20px;
 }
-html.desktop-native-window[data-theme] body .layout>.list-pane {
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .layout>.list-pane {
  border:0!important; border-radius:0!important; box-shadow:none!important; background:var(--mac-list)!important;
 }
-html.desktop-native-window[data-theme] body .layout>.reading-pane {
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .layout>.reading-pane {
  border:0!important; border-radius:0!important; box-shadow:none!important; background:var(--mac-canvas)!important;
 }
-html.desktop-native-window .pane-resizer { flex-basis:8px; width:8px; min-width:8px; background:var(--mac-canvas); }
-html.desktop-native-window .pane-resizer::before { background:transparent; }
-html.desktop-native-window .pane-resizer[data-resizer="sidebar"] { background:var(--mac-list); }
-html.desktop-native-window .topbar::after { display:none; }
-html.desktop-native-window[data-theme] body .sidebar .nav-item {
+html:is(.desktop-native-window,.integrated-workspace) .pane-resizer { flex-basis:8px; width:8px; min-width:8px; background:var(--mac-canvas); }
+html:is(.desktop-native-window,.integrated-workspace) .pane-resizer::before { background:transparent; }
+html:is(.desktop-native-window,.integrated-workspace) .pane-resizer[data-resizer="sidebar"] { background:var(--mac-list); }
+html:is(.desktop-native-window,.integrated-workspace) .topbar::after { display:none; }
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .sidebar .nav-item {
  border:0!important; box-shadow:none!important; border-radius:8px; min-height:34px;
 }
-html.desktop-native-window[data-theme] body .sidebar .nav-item.active {
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .sidebar .nav-item.active {
  background:var(--mac-selected)!important; color:var(--desk-ink)!important;
 }
-html.desktop-native-window[data-theme] body .sidebar .account-mailbox-group { border:0!important; background:transparent!important; box-shadow:none!important; }
-html.desktop-native-window[data-theme] body .sidebar .account-mailbox-group+.account-mailbox-group { margin-top:14px; }
-html.desktop-native-window[data-theme] body .topbar .nav-action:focus-visible {
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .sidebar .account-mailbox-group { border:0!important; background:transparent!important; box-shadow:none!important; }
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .sidebar .account-mailbox-group+.account-mailbox-group { margin-top:14px; }
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .nav-action:focus-visible {
  outline:2px solid var(--desk-accent); outline-offset:2px;
 }
-html.desktop-native-window[data-theme] body .topbar .nav-action:not(:disabled):active { background:var(--mac-selected)!important; }
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .nav-action:not(:disabled):active { background:var(--mac-selected)!important; }
 @media(max-width:1024px) {
- html.desktop-native-window[data-theme] body .layout>.sidebar { border-radius:12px!important; border:1px solid var(--mac-separator)!important; }
+ html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .layout>.sidebar { border-radius:12px!important; border:1px solid var(--mac-separator)!important; }
 }
 /* Soften the rail's join with the header without gaps or an extra card outline. */
 @media(min-width:1025px) {
- html.desktop-native-window[data-theme] body .layout { background:var(--mac-list); }
- html.desktop-native-window[data-theme] body .layout>.sidebar { border-top-right-radius:12px!important; }
+ html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .layout { background:var(--mac-list); }
+ html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .layout>.sidebar { border-top-right-radius:12px!important; }
 }
 
 /* Startup is the same workspace beneath a temporary loading layer. */
-html.desktop-native-window[data-theme] .app-preloader::before {
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] .app-preloader::before {
  background:
-  linear-gradient(to right,var(--mac-rail) 0 var(--mac-rail-width),var(--mac-canvas) var(--mac-rail-width) 100%) top / 100% calc(52px / var(--fz,1)) no-repeat,
-  linear-gradient(to right,var(--mac-rail) 0 var(--mac-rail-width),var(--mac-list) var(--mac-rail-width) var(--startup-list-right,var(--mac-rail-width)),var(--mac-canvas) var(--startup-list-right,var(--mac-rail-width)) 100%)!important;
+  linear-gradient(to right,var(--mac-rail) 0 var(--startup-rail-right,var(--mac-rail-width)),var(--mac-canvas) var(--startup-rail-right,var(--mac-rail-width)) 100%) top / 100% var(--startup-header-height,calc(52px / var(--fz,1))) no-repeat,
+  linear-gradient(to right,var(--mac-rail) 0 var(--startup-rail-right,var(--mac-rail-width)),var(--mac-list) var(--startup-rail-right,var(--mac-rail-width)) var(--startup-list-right,var(--startup-rail-right,var(--mac-rail-width))),var(--mac-canvas) var(--startup-list-right,var(--startup-rail-right,var(--mac-rail-width))) 100%)!important;
 }
-html.desktop-native-window[data-theme] .preloader-workspace {
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] .preloader-workspace {
  mask-image:none; -webkit-mask-image:none; animation:none;
  color:var(--mac-separator);
  transition:opacity .95s cubic-bezier(.22,.7,.2,1) .12s;
 }
-html.desktop-native-window[data-theme] .preloader-frame {
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] .preloader-frame {
  border:0; background:var(--mac-canvas);
 }
-html.desktop-native-window[data-theme] .preloader-frame[data-startup-pane="sidebar"] { background:var(--mac-rail); }
-html.desktop-native-window[data-theme] .preloader-frame[data-startup-pane="list-pane"] { background:var(--mac-list); }
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] .preloader-frame[data-startup-pane="sidebar"] { background:var(--mac-rail); }
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] .preloader-frame[data-startup-pane="list-pane"] { background:var(--mac-list); }
 @media(min-width:1025px) {
- html.desktop-native-window[data-theme] .preloader-frame[data-startup-pane="sidebar"] {
+ html:is(.desktop-native-window,.integrated-workspace)[data-theme] .preloader-frame[data-startup-pane="sidebar"] {
   background:radial-gradient(circle at left bottom,transparent 12px,var(--mac-list) 12.5px) top right / 12px 12px no-repeat,var(--mac-rail);
  }
 }
-html.desktop-native-window .preloader-brand { left:108px; top:18px; gap:0; opacity:1; }
-html.desktop-native-window .preloader-brand :is(img,small) { display:none; }
-html.desktop-native-window .preloader-brand strong { font-size:14px; font-weight:650; letter-spacing:0; color:var(--text); }
+html:is(.desktop-native-window,.integrated-workspace) .preloader-brand { left:108px; top:18px; gap:0; opacity:1; }
+html:is(.desktop-native-window,.integrated-workspace) .preloader-brand :is(img,small) { display:none; }
+html:is(.desktop-native-window,.integrated-workspace) .preloader-brand strong { font-size:14px; font-weight:650; letter-spacing:0; color:var(--text); }
 html.macos-native-window .preloader-brand {
  left:var(--mac-control-inset); top:calc(26px / var(--fz,1) - 10px);
 }
 html.macos-native-window .preloader-brand strong { line-height:20px; }
-html.desktop-native-window .preloader-status span { color:var(--text); font-size:16px; font-weight:600; }
-html.desktop-native-window .preloader-status small { color:var(--muted); }
+html:is(.desktop-native-window,.integrated-workspace) .preloader-status span { color:var(--text); font-size:16px; font-weight:600; }
+html:is(.desktop-native-window,.integrated-workspace) .preloader-status small { color:var(--muted); }
 @media(prefers-reduced-motion:reduce) {
- html.desktop-native-window .app-preloader::before,
- html.desktop-native-window .preloader-workspace { transition:opacity .15s ease; }
+ html:is(.desktop-native-window,.integrated-workspace) .app-preloader::before,
+ html:is(.desktop-native-window,.integrated-workspace) .preloader-workspace { transition:opacity .15s ease; }
 }
 
-html.desktop-native-window[data-theme] body #account-mailbox-nav .sidebar-account {
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body #account-mailbox-nav .sidebar-account {
  border:0!important; box-shadow:none!important; background:transparent!important;
  margin-top:16px; padding-top:0;
 }
-html.desktop-native-window .pane-resizer i { height:48px; width:2px; }
-html.desktop-native-window .pane-resizer:is(:hover,:focus-visible,.dragging) i {
+html:is(.desktop-native-window,.integrated-workspace) .pane-resizer i { height:48px; width:2px; }
+html:is(.desktop-native-window,.integrated-workspace) .pane-resizer:is(:hover,:focus-visible,.dragging) i {
  background:var(--desk-accent); box-shadow:0 0 0 3px rgba(61,139,107,.08);
 }
 
-html.desktop-native-window .preloader-status,
-html.desktop-native-window .preloader-companion.companion-art { left:var(--startup-center,65%); }
+html:is(.desktop-native-window,.integrated-workspace) .preloader-status,
+html:is(.desktop-native-window,.integrated-workspace) .preloader-companion.companion-art { left:var(--startup-center,65%); }
 
-html.desktop-native-window .preloader-route { left:var(--startup-reading-left,45%); }
+html:is(.desktop-native-window,.integrated-workspace) .preloader-route { left:var(--startup-reading-left,45%); }
 
 /* Desktop commands stay reachable in smaller windows and larger font sizes. */
-html.desktop-native-window[data-theme] body .topbar .nav-work-cluster,
-html.desktop-native-window[data-theme] body .topbar .nav-system-cluster { display:flex!important; }
-html.desktop-native-window[data-theme] body .topbar .nav-security-menu { display:block!important; }
-html.desktop-native-window[data-theme] body .topbar .nav-action { display:inline-flex!important; }
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .nav-work-cluster,
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .nav-system-cluster { display:flex!important; }
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .nav-security-menu { display:block!important; }
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .nav-action { display:inline-flex!important; }
 @container mac-header (max-width:1000px) {
- html.desktop-native-window[data-theme] body .topbar .brand {
+ html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .brand {
   width:62px; min-width:62px; flex-basis:62px;
  }
- html.desktop-native-window[data-theme] body .topbar .global-actions { gap:4px; }
- html.desktop-native-window[data-theme] body .topbar .nav-action,
- html.desktop-native-window[data-theme] body .topbar #btn-compose {
+ html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .global-actions { gap:4px; }
+ html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .nav-action,
+ html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar #btn-compose {
   width:32px; min-width:32px; padding:0!important; gap:0;
  }
- html.desktop-native-window .topbar .nav-action>span {
+ html:is(.desktop-native-window,.integrated-workspace) .topbar .nav-action>span {
   display:block!important; position:absolute; width:1px; height:1px;
   overflow:hidden; clip-path:inset(50%); white-space:nowrap;
  }
- html.desktop-native-window .topbar .nav-action::after { display:none!important; }
+ html:is(.desktop-native-window,.integrated-workspace) .topbar .nav-action::after { display:none!important; }
 }
-html.desktop-native-window[data-theme] body .reading-pane .plain-email-body>* { max-width:min(100%,80ch); }
-html.desktop-native-window[data-theme] body .topbar :is(#btn-contacts,#btn-attachments,#btn-todos) { display:inline-flex!important; }
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .reading-pane .plain-email-body>* { max-width:min(100%,80ch); }
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar :is(#btn-contacts,#btn-attachments,#btn-todos) { display:inline-flex!important; }
+/* Browser windows have no caption controls to avoid, including at narrow widths. */
+html.integrated-workspace:not(.desktop-native-window) { --mac-control-inset:20px; }
+html.integrated-workspace:not(.desktop-native-window)[data-theme] body .topbar .brand { gap:8px; }
+html.integrated-workspace:not(.desktop-native-window) .topbar .logo {
+ display:flex; width:24px; height:24px; min-width:24px; flex:0 0 24px; padding:0;
+ border:0; border-radius:0; background:transparent; box-shadow:none;
+}
+html.integrated-workspace:not(.desktop-native-window) .topbar .logo img { width:24px; height:24px; }
+html.integrated-workspace:not(.desktop-native-window) .preloader-brand { left:20px; top:14px; gap:8px; }
+html.integrated-workspace:not(.desktop-native-window) .preloader-brand img { display:block; width:24px; height:24px; }
+@container mac-header (max-width:1000px) {
+ html.integrated-workspace:not(.desktop-native-window)[data-theme] body .topbar .brand {
+  width:96px; min-width:96px; flex-basis:96px;
+ }
+}
+@media(max-width:760px) {
+ html.integrated-workspace:not(.desktop-native-window)[data-theme] body .topbar {
+  height:auto!important; min-height:88px!important; flex-wrap:wrap!important; padding:8px 12px; gap:6px;
+ }
+ html.integrated-workspace:not(.desktop-native-window)[data-theme] body .topbar .brand { display:none!important; }
+ html.integrated-workspace:not(.desktop-native-window)[data-theme] body .topbar .global-search {
+  flex:1 1 100%!important; max-width:none; width:100%; margin:0;
+ }
+ html.integrated-workspace:not(.desktop-native-window)[data-theme] body .topbar .global-actions {
+  width:100%; justify-content:flex-end; gap:4px;
+ }
+}
 
 /* Full screen has no permanent traffic lights: use the left corner as a brand header.
    Keeping the sidebar column width stable prevents the search field from shifting. */

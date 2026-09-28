@@ -69,19 +69,17 @@ html[data-theme] body #workspace-filters :is(#filter-days,#filter-priority)>butt
 html[data-theme] body #workspace-filters :is(#filter-days,#filter-priority)>button:is(.active,:hover) { background:transparent!important; }
 
 html[data-theme] body #assistant-panel .secretary-tabs {
-  position:relative;
-  isolation:isolate;
-  display:grid;
-  grid-template-columns:repeat(2,94px);
-  width:max-content;
-  max-width:calc(100% - 28px);
-  gap:2px;
-  margin:0 14px 9px;
-  padding:3px;
+  display:flex;
+  width:auto;
+  max-width:none;
+  gap:20px;
+  margin:0 20px 6px;
+  padding:0;
   border:0!important;
-  border-radius:10px;
-  background:var(--desk-muted-surface)!important;
+  border-radius:0;
+  background:transparent!important;
 }
+html[data-theme] body #assistant-panel .secretary-tabs::before { content:none!important; display:none!important; }
 html[data-theme] body #assistant-panel .secretary-tabs::before,
 html[data-theme] body .attachment-view-switch::before {
   content:"";
@@ -110,8 +108,8 @@ html[data-theme] body .attachment-view-switch>button {
 html[data-theme] body #assistant-panel .secretary-tabs>button:is([aria-pressed="true"],:hover),
 html[data-theme] body .attachment-view-switch>button:is([aria-pressed="true"],:hover) {
   background:transparent!important;
-  box-shadow:none!important;
 }
+html[data-theme] body #assistant-panel .secretary-tabs>button[aria-pressed="true"] { box-shadow:inset 0 -2px var(--desk-accent)!important; }
 html[data-theme] body .attachment-view-switch {
   position:relative;
   isolation:isolate;

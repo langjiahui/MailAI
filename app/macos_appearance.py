@@ -83,11 +83,16 @@ def install_unified_titlebar(window):
 
 def sync_fullscreen_layout(window, fullscreen=None):
     """Push native Space state to WebKit without blocking the Cocoa event loop."""
+    # Before the first navigation Cocoa still owns a plain NSView placeholder.
+    # The ready theme bridge repeats this sync once WKWebView is installed.
+    evaluate = getattr(window.contentView(), 'evaluateJavaScript_completionHandler_', None)
+    if not callable(evaluate):
+        return
     if fullscreen is None:
         from AppKit import NSWindowStyleMaskFullScreen
         fullscreen = bool(window.styleMask() & NSWindowStyleMaskFullScreen)
     value = 'true' if fullscreen else 'false'
-    window.contentView().evaluateJavaScript_completionHandler_(
+    evaluate(
         "window.dispatchEvent(new CustomEvent('mailai:native-fullscreen',"
         "{detail:{fullscreen:" + value + "}}));", None)
 

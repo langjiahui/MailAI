@@ -79,6 +79,13 @@ print('Native geometry is ready before the first web frame and reused by the bri
 
 # Verify native notifications, including the restoration path, without needing a display.
 import app.macos_appearance as chrome
+placeholder_window = types.SimpleNamespace(contentView=lambda: object())
+chrome.sync_fullscreen_layout(placeholder_window, False)
+ready_webview = types.SimpleNamespace(evaluateJavaScript_completionHandler_=Mock())
+ready_window = types.SimpleNamespace(contentView=lambda: ready_webview)
+chrome.sync_fullscreen_layout(ready_window, True)
+assert 'fullscreen:true' in ready_webview.evaluateJavaScript_completionHandler_.call_args.args[0]
+print('Initial Cocoa placeholder is safe; ready WebKit receives fullscreen state')
 class FakeView:
     @classmethod
     def alloc(cls): return cls()

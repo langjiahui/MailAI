@@ -2127,7 +2127,7 @@ function assistantSourceItems(sources = []) {
 function assistantSourcesHtml(sources = [], accountId = '') {
   const items = assistantSourceItems(sources);
   if (!items.length) return '';
-  return `<details class="assistant-sources" ${items.length <= 3 ? 'open' : ''}>
+  return `<details class="assistant-sources">
     <summary><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14v11H3zM3 5l7 6 7-6"/></svg><span>参考邮件</span><em>${items.length} 封</em><span class="source-disclosure"><span class="source-expand">展开</span><span class="source-collapse">收起</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m5 6 3 3 3-3"/></svg></span></summary>
     <div class="assistant-source-list" role="list" aria-label="本次回答的参考邮件">${items.map((source, index) => {
       const title = source.subject || '（无主题）';
@@ -12801,19 +12801,34 @@ document.getElementById('task-center-list').addEventListener('click', async even
     const alignFrames = () => {
       const zoom = Number(getComputedStyle(document.body).zoom) || 1;
       const origin = startup.getBoundingClientRect();
-      if (document.documentElement.classList.contains('desktop-native-window')) {
+      if (document.documentElement.matches('.desktop-native-window,.integrated-workspace')) {
+        const sidebar = document.querySelector('.layout > .sidebar');
+        const sidebarRect = sidebar?.getBoundingClientRect();
+        const railRight = sidebarRect?.width && getComputedStyle(sidebar).position !== 'fixed'
+          ? Math.max(0, (sidebarRect.right-origin.left)/zoom) : 0;
+        startup.style.setProperty('--startup-rail-right', `${railRight}px`);
+        const header = document.querySelector('.topbar')?.getBoundingClientRect();
+        if (header?.height) startup.style.setProperty('--startup-header-height', `${header.height/zoom}px`);
         const reading = document.querySelector('.layout > .reading-pane')?.getBoundingClientRect();
         const list = document.querySelector('.layout > .list-pane')?.getBoundingClientRect();
-        if (reading?.width) {
+        if (reading?.width && reading.left >= 0 && reading.left < innerWidth && reading.right <= innerWidth+1) {
           startup.style.setProperty('--startup-center', `${(reading.left+reading.width/2-origin.left)/zoom}px`);
           startup.style.setProperty('--startup-reading-left', `${(reading.left-origin.left)/zoom}px`);
+        } else {
+          startup.style.setProperty('--startup-center', '50%');
+          startup.style.setProperty('--startup-reading-left', '0px');
         }
         if (list?.width) startup.style.setProperty('--startup-list-right', `${(list.right-origin.left)/zoom}px`);
         const brand = document.querySelector('.topbar .brand strong')?.getBoundingClientRect();
         const signature = startup.querySelector('.preloader-brand');
-        if (brand?.width && signature) Object.assign(signature.style, {
-          left:`${(brand.left-origin.left)/zoom}px`, top:`${(brand.top-origin.top)/zoom}px`,
-        });
+        const signatureText = signature?.querySelector('strong')?.getBoundingClientRect();
+        if (brand?.width && signatureText?.width) {
+          const signatureRect = signature.getBoundingClientRect();
+          Object.assign(signature.style, {
+            left:`${(signatureRect.left-origin.left+brand.left-signatureText.left)/zoom}px`,
+            top:`${(signatureRect.top-origin.top+brand.top-signatureText.top)/zoom}px`,
+          });
+        }
       }
       frames.forEach(frame => {
         const pane = document.querySelector(`.layout > .${frame.dataset.startupPane}`);
@@ -13379,7 +13394,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
   function updateDragRegion() {
     cancelAnimationFrame(regionFrame);
     regionFrame = requestAnimationFrame(() => {
-      if (!document.documentElement.classList.contains('macos-native-window')) return;
+      if (!document.documentElement.matches('.macos-native-window,.integrated-workspace')) return;
       const sidebar = document.querySelector('.layout > .sidebar');
       if (sidebar && sidebar.getBoundingClientRect().width) {
         const style = getComputedStyle(sidebar);
@@ -13389,6 +13404,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
           document.documentElement.style.setProperty('--mac-rail-width', style.position === 'fixed' ? '0px' : `${width}px`);
         }
       }
+      if (!document.documentElement.classList.contains('macos-native-window')) return;
       const rect = document.querySelector('.topbar .brand')?.getBoundingClientRect();
       if (rect?.width) {
         // Native drag/double-click applies to empty header space, never controls.
@@ -13411,6 +13427,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
   const sidebar = document.querySelector('.layout > .sidebar');
   if (sidebar) new ResizeObserver(updateDragRegion).observe(sidebar);
   window.addEventListener('resize', updateDragRegion);
+  updateDragRegion();
   window.addEventListener('mailai:native-fullscreen', event => {
     const root = document.documentElement;
     if (!root.classList.contains('macos-native-window')) return;

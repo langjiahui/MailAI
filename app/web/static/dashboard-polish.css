@@ -36,6 +36,10 @@ html[data-theme] body #global-search:is(:autofill,:-webkit-autofill) {
   border-radius:0;
   transition:none;
 }
+/* Chart scaffolding stays quiet in either theme; only the data carries color. */
+html[data-theme] body .trend-svg > line { stroke:var(--desk-line); }
+html[data-theme] body .trend-svg > text { fill:var(--desk-muted); }
+html[data-theme] body .trend-svg .trend-dot { fill:var(--desk-surface); }
 /* A single compact period control aligned with the adjacent actions. */
 html[data-theme] body .dashboard-header-actions { align-items:center; gap:8px; }
 html[data-theme] body .dashboard-header-actions label {

@@ -17,19 +17,34 @@
     const alignFrames = () => {
       const zoom = Number(getComputedStyle(document.body).zoom) || 1;
       const origin = startup.getBoundingClientRect();
-      if (document.documentElement.classList.contains('desktop-native-window')) {
+      if (document.documentElement.matches('.desktop-native-window,.integrated-workspace')) {
+        const sidebar = document.querySelector('.layout > .sidebar');
+        const sidebarRect = sidebar?.getBoundingClientRect();
+        const railRight = sidebarRect?.width && getComputedStyle(sidebar).position !== 'fixed'
+          ? Math.max(0, (sidebarRect.right-origin.left)/zoom) : 0;
+        startup.style.setProperty('--startup-rail-right', `${railRight}px`);
+        const header = document.querySelector('.topbar')?.getBoundingClientRect();
+        if (header?.height) startup.style.setProperty('--startup-header-height', `${header.height/zoom}px`);
         const reading = document.querySelector('.layout > .reading-pane')?.getBoundingClientRect();
         const list = document.querySelector('.layout > .list-pane')?.getBoundingClientRect();
-        if (reading?.width) {
+        if (reading?.width && reading.left >= 0 && reading.left < innerWidth && reading.right <= innerWidth+1) {
           startup.style.setProperty('--startup-center', `${(reading.left+reading.width/2-origin.left)/zoom}px`);
           startup.style.setProperty('--startup-reading-left', `${(reading.left-origin.left)/zoom}px`);
+        } else {
+          startup.style.setProperty('--startup-center', '50%');
+          startup.style.setProperty('--startup-reading-left', '0px');
         }
         if (list?.width) startup.style.setProperty('--startup-list-right', `${(list.right-origin.left)/zoom}px`);
         const brand = document.querySelector('.topbar .brand strong')?.getBoundingClientRect();
         const signature = startup.querySelector('.preloader-brand');
-        if (brand?.width && signature) Object.assign(signature.style, {
-          left:`${(brand.left-origin.left)/zoom}px`, top:`${(brand.top-origin.top)/zoom}px`,
-        });
+        const signatureText = signature?.querySelector('strong')?.getBoundingClientRect();
+        if (brand?.width && signatureText?.width) {
+          const signatureRect = signature.getBoundingClientRect();
+          Object.assign(signature.style, {
+            left:`${(signatureRect.left-origin.left+brand.left-signatureText.left)/zoom}px`,
+            top:`${(signatureRect.top-origin.top+brand.top-signatureText.top)/zoom}px`,
+          });
+        }
       }
       frames.forEach(frame => {
         const pane = document.querySelector(`.layout > .${frame.dataset.startupPane}`);

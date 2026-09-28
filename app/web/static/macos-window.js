@@ -7,7 +7,7 @@
   function updateDragRegion() {
     cancelAnimationFrame(regionFrame);
     regionFrame = requestAnimationFrame(() => {
-      if (!document.documentElement.classList.contains('macos-native-window')) return;
+      if (!document.documentElement.matches('.macos-native-window,.integrated-workspace')) return;
       const sidebar = document.querySelector('.layout > .sidebar');
       if (sidebar && sidebar.getBoundingClientRect().width) {
         const style = getComputedStyle(sidebar);
@@ -17,6 +17,7 @@
           document.documentElement.style.setProperty('--mac-rail-width', style.position === 'fixed' ? '0px' : `${width}px`);
         }
       }
+      if (!document.documentElement.classList.contains('macos-native-window')) return;
       const rect = document.querySelector('.topbar .brand')?.getBoundingClientRect();
       if (rect?.width) {
         // Native drag/double-click applies to empty header space, never controls.
@@ -39,6 +40,7 @@
   const sidebar = document.querySelector('.layout > .sidebar');
   if (sidebar) new ResizeObserver(updateDragRegion).observe(sidebar);
   window.addEventListener('resize', updateDragRegion);
+  updateDragRegion();
   window.addEventListener('mailai:native-fullscreen', event => {
     const root = document.documentElement;
     if (!root.classList.contains('macos-native-window')) return;

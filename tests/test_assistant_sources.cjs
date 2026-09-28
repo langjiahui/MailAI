@@ -9,7 +9,7 @@ const refs = Array.from({length:12}, (_,i)=>({id:311+i,subject:'同名邮件',fr
 const html = ctx.assistantSourcesHtml(refs,'account-a');
 assert.equal((html.match(/data-email-id=/g)||[]).length,12,'Never truncate reference history');
 assert.doesNotMatch(html.split('>')[0],/\bopen\b/,'Many references should be collapsed');
-assert.match(ctx.assistantSourcesHtml(refs.slice(0,3)).split('>')[0],/\bopen\b/);
+assert.doesNotMatch(ctx.assistantSourcesHtml(refs.slice(0,3)).split('>')[0],/\bopen\b/,'Even short reference lists start compact');
 assert.equal(ctx.assistantSourcesHtml([]),'');
 assert.equal((ctx.assistantSourcesHtml([refs[0],refs[0],{id:'invalid'}]).match(/data-email-id=/g)||[]).length,1);
 assert.match(html,/2026-09-12/,'Same subject messages retain differentiating metadata');

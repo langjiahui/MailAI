@@ -25,17 +25,53 @@ html[data-theme] body #assistant-panel #assistant-reading-back {
  background:var(--desk-muted-surface); color:var(--desk-muted);
 }
 html[data-theme] body #assistant-panel .secretary-tabs {
- gap:4px; padding:0 14px 10px; border:0; flex-shrink:0;
+ gap:20px; padding:0 20px; border:0; flex-shrink:0;
 }
 html[data-theme] body #assistant-panel .secretary-tabs button {
- min-height:30px; padding:5px 12px; border:0; border-radius:8px;
+ min-height:36px; padding:5px 1px 8px; border:0; border-radius:0;
  background:transparent!important; color:var(--desk-muted)!important; box-shadow:none!important;
 }
-html[data-theme] body #assistant-panel .secretary-tabs button[aria-pressed=true],
-html[data-theme] body #assistant-panel .secretary-tabs button:hover {
- background:var(--desk-muted-surface)!important; color:var(--desk-ink)!important;
+html[data-theme] body #assistant-panel .secretary-tabs button[aria-pressed=true] {
+ color:var(--desk-ink)!important; box-shadow:inset 0 -2px var(--desk-accent)!important;
 }
-#assistant-panel .assistant-messages { padding:12px 20px; }
+html[data-theme] body #assistant-panel .secretary-tabs button:hover { color:var(--desk-ink)!important; }
+#assistant-panel .assistant-messages { padding:20px 22px 28px; }
+html[data-theme] body #assistant-panel .assistant-message { margin-bottom:24px; }
+html[data-theme] body #assistant-panel .assistant-message.bot .assistant-bubble {
+ width:100%; max-width:100%; padding:0; border:0!important; border-radius:0;
+ background:transparent!important; color:var(--desk-ink)!important; box-shadow:none!important;
+ font-size:13px; line-height:1.75;
+}
+html[data-theme] body #assistant-panel .assistant-message.user .assistant-bubble {
+ max-width:90%; padding:10px 13px; border:0!important; border-radius:12px 12px 3px 12px;
+ background:var(--desk-selected)!important; color:var(--desk-ink)!important; box-shadow:none!important;
+ font-size:12px; line-height:1.65;
+}
+html[data-theme] body #assistant-panel .assistant-bubble details.assistant-sources {
+ margin-top:14px; padding:0; border:0!important;
+ border-radius:0; background:transparent!important; box-shadow:none!important;
+}
+html[data-theme] body #assistant-panel .assistant-sources summary {
+ min-height:30px; padding:4px 0; border:0!important; border-radius:0; color:var(--desk-muted)!important; font-size:11px;
+ background:transparent!important; box-shadow:none!important;
+}
+#assistant-panel .assistant-sources summary>svg { display:none; }
+#assistant-panel .assistant-sources .source-disclosure { margin-left:5px; }
+#assistant-panel .assistant-sources .source-disclosure>span { display:none; }
+html[data-theme] body #assistant-panel .assistant-source-list,
+html[data-theme] body #assistant-panel .assistant-source-list>div { background:transparent!important; border:0!important; box-shadow:none!important; }
+html[data-theme] body #assistant-panel .assistant-sources summary:hover { background:transparent!important; color:var(--desk-ink)!important; }
+#assistant-panel .assistant-source-list { max-height:240px; padding:2px 0 0; }
+html[data-theme] body #assistant-panel .assistant-sources button {
+ padding:8px 4px; border:0!important; border-radius:6px;
+ background:transparent!important; color:var(--desk-ink)!important;
+}
+html[data-theme] body #assistant-panel .assistant-sources button:hover { background:var(--desk-hover)!important; }
+html[data-theme] body #assistant-panel .assistant-sources .source-index {
+ color:var(--desk-accent)!important; background:var(--desk-muted-surface)!important;
+}
+#assistant-panel .assistant-sources .source-copy small { color:var(--desk-muted)!important; }
+#assistant-panel .assistant-sources .source-open { color:var(--desk-muted)!important; }
 #assistant-panel .assistant-welcome { margin:clamp(16px,5vh,48px) auto auto; padding:0 0 20px; max-width:400px; }
 #assistant-panel .assistant-welcome-eyebrow { display:none; }
 #assistant-panel .assistant-welcome h3 { margin:0 0 8px; font-size:20px; line-height:1.4; }
@@ -51,17 +87,30 @@ html[data-theme] body #assistant-panel .assistant-welcome .assistant-quick butto
 #assistant-panel .assistant-welcome .assistant-quick svg { width:16px; height:16px; flex-basis:16px; color:var(--desk-muted); }
 #assistant-panel .assistant-welcome .assistant-quick small { margin-top:2px; color:var(--desk-muted); }
 html[data-theme] body #assistant-panel .assistant-composer {
- margin:8px 14px; padding:8px 10px; border-radius:12px;
- background:var(--desk-muted-surface)!important; border-color:var(--desk-line)!important;
+ margin:4px 14px 6px; padding:6px 8px; border-radius:13px;
+ background:var(--desk-muted-surface)!important; border:1px solid transparent!important;
+ box-shadow:none!important;
 }
 html[data-theme] body #assistant-panel .assistant-composer:focus-within {
- border-color:color-mix(in srgb,var(--desk-accent) 55%,var(--desk-line))!important;
+ border-color:color-mix(in srgb,var(--desk-accent) 38%,var(--desk-line))!important;
  box-shadow:0 0 0 2px color-mix(in srgb,var(--desk-accent) 8%,transparent)!important;
 }
-html[data-theme] body #assistant-panel .assistant-scope-picker>summary { background:var(--desk-surface)!important; }
+html[data-theme] body #assistant-panel .assistant-scope-picker>summary { background:transparent!important; }
+html[data-theme] body #assistant-panel .assistant-composer .assistant-form {
+ border:0!important; border-radius:0; background:transparent!important; box-shadow:none!important;
+}
 #assistant-panel .assistant-privacy { background:transparent!important; padding-bottom:10px; }
-html.desktop-native-window body.assistant-split #assistant-panel {
- border:0!important; border-left:1px solid var(--desk-line)!important; border-radius:0!important; box-shadow:none!important;
+html.integrated-workspace body:is(.assistant-split,.assistant-docked,.assistant-home) #assistant-panel {
+ border:0!important; border-radius:0!important; box-shadow:none!important;
+}
+/* A single fading seam separates the reading and assistant workspaces. */
+html.integrated-workspace body:is(.assistant-split,.assistant-docked) #assistant-panel {
+ bottom:0!important; max-height:none;
+}
+html.integrated-workspace body:is(.assistant-split,.assistant-docked) #assistant-panel::before {
+ content:""; position:absolute; z-index:2; left:0; top:18px; bottom:0; width:1px;
+ background:linear-gradient(to bottom,transparent,color-mix(in srgb,var(--desk-muted) 24%,transparent) 16%,color-mix(in srgb,var(--desk-muted) 32%,transparent) 50%,color-mix(in srgb,var(--desk-muted) 24%,transparent) 84%,transparent);
+ pointer-events:none;
 }
 @media(max-width:520px) {
  #assistant-panel .assistant-messages { padding-inline:14px; }

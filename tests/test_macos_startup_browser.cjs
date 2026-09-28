@@ -22,8 +22,10 @@ const {chromium, webkit} = require('playwright');
         return fs.existsSync(file) ? route.fulfill({path:file}) : route.abort();
       });
       await page.goto(`http://mailai.test/?shell=${shell}`);
-      assert(await page.locator('html').evaluate((el,shell)=>el.classList.contains(shell+'-native-window'),shell), 'native layout must precede bridge readiness');
+      assert(await page.locator('html').evaluate((el,shell)=>shell === 'browser' ? !el.classList.contains('desktop-native-window') : el.classList.contains(shell+'-native-window'),shell), 'native layout must precede bridge readiness');
       assert.equal(await page.locator('html').getAttribute('data-theme'),theme);
+      await page.addScriptTag({path:path.join(root,'macos-window.js')});
+      await page.addScriptTag({path:path.join(root,'windows-window.js')});
       await page.addScriptTag({path:path.join(root,'companion.js')});
       await page.addScriptTag({content:handoff});
       await page.waitForTimeout(600);
@@ -46,12 +48,39 @@ const {chromium, webkit} = require('playwright');
       assert(!geometry.backdrop.includes('radial-gradient'),'native startup must not return to ambient gradient wallpaper');
       assert.equal(geometry.line,'rgba(0, 0, 0, 0)');
       assert.equal(geometry.headerLine,'none');
-      assert.equal(await page.locator('.preloader-brand img').isVisible(),shell === 'windows');
-      await page.screenshot({path:path.resolve(__dirname,`../build/native-startup-${theme}.png`)});
+      assert.equal(await page.locator('.preloader-brand img').isVisible(),shell !== 'macos');
+      // Saved sidebar widths and font zoom must align the header, backdrop and skeleton.
+      for (const width of [188,226,280]) {
+        for (const zoom of [0.9,1,1.3]) {
+          await page.evaluate(({width,zoom}) => {
+            document.body.style.zoom = zoom;
+            document.documentElement.style.setProperty('--fz', zoom);
+            document.querySelector('.layout>.sidebar').style.setProperty('width',width+'px','important');
+          },{width,zoom});
+          await page.waitForFunction(() => {
+            const sidebar = document.querySelector('.layout>.sidebar').getBoundingClientRect();
+            const root = getComputedStyle(document.documentElement);
+            const start = document.querySelector('#app-preloader');
+            const startStyle = getComputedStyle(start);
+            const zoom = Number(getComputedStyle(document.body).zoom) || 1;
+            const rail = parseFloat(root.getPropertyValue('--mac-rail-width'))*zoom;
+            const loadingRail = parseFloat(startStyle.getPropertyValue('--startup-rail-right'))*zoom;
+            const frame = document.querySelector('[data-startup-pane="sidebar"]').getBoundingClientRect();
+            return Math.abs(rail-sidebar.right)<1 && Math.abs(loadingRail-sidebar.right)<1 && Math.abs(frame.right-sidebar.right)<1;
+          });
+        }
+      }
+      await page.evaluate(() => {
+        document.body.style.zoom = '';
+        document.documentElement.style.removeProperty('--fz');
+        document.querySelector('.layout>.sidebar').style.removeProperty('width');
+      });
+      await page.waitForTimeout(600);
+      await page.screenshot({path:path.resolve(__dirname,`../build/${shell}-startup-${theme}.png`)});
       await page.evaluate(()=>hideAppPreloader());
       await page.waitForFunction(()=>document.getElementById('app-preloader').dataset.handoff==='running');
       await page.waitForTimeout(650);
-      await page.screenshot({path:path.resolve(__dirname,`../build/native-handoff-${theme}.png`)});
+      await page.screenshot({path:path.resolve(__dirname,`../build/${shell}-handoff-${theme}.png`)});
       await page.locator('.preloader-companion').evaluate(el=>el.getAnimations().forEach(a=>a.finish()));
       const from = await page.locator('.preloader-companion').boundingBox();
       const to = await page.locator('#assistant-orb .companion-art').boundingBox();
@@ -63,6 +92,8 @@ const {chromium, webkit} = require('playwright');
 
       await page.emulateMedia({reducedMotion:'reduce'});
       await page.reload();
+      await page.addScriptTag({path:path.join(root,'macos-window.js')});
+      await page.addScriptTag({path:path.join(root,'windows-window.js')});
       await page.addScriptTag({path:path.join(root,'companion.js')});
       await page.addScriptTag({content:handoff});
       await page.evaluate(()=>hideAppPreloader());

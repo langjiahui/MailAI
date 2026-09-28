@@ -8,6 +8,9 @@ const assert = require('node:assert/strict');
     const page = await browser.newPage({reducedMotion:'reduce'});
     await page.goto(process.env.MAILAI_PREVIEW_URL || 'http://127.0.0.1:18795');
     await page.locator('.email-item').first().waitFor();
+    // Assertions below use Chinese labels; the shared fixture can retain a
+    // different language from another UI test.
+    await page.evaluate(() => setI18nLanguage('zh-CN'));
     await page.evaluate(() => openCompose());
     await page.evaluate(() => toggleComposeAiPanel(true));
     const emptyContext = await page.locator('.compose-ai-context-options label.unavailable').evaluateAll(labels =>

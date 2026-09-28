@@ -10,6 +10,9 @@ const path=require('node:path');
     await page.goto('http://127.0.0.1:18795/');
     await page.waitForSelector('#email-list .email-item');
     assert.ok((await page.evaluate(()=>api('/api/system/config'))).accounts.every(a=>a.user.endsWith('@example.test')));
+    assert.equal(await page.evaluate(()=>document.documentElement.classList.contains('desktop-native-window')),false,'Browser layout must not pretend to be a native window');
+    assert.equal(await page.locator('.topbar').evaluate(n=>getComputedStyle(n).borderWidth),'0px','Browser uses the same integrated header');
+    assert.ok(await page.locator('.topbar .logo').isVisible(),'Browser header shows the brand mark without native traffic lights');
     await page.locator('#email-list .email-item').first().click();
     await page.locator('#assistant-orb').click();
     await page.locator('.assistant-welcome').waitFor();
@@ -30,6 +33,11 @@ const path=require('node:path');
     assert.equal(await page.locator('.assistant-welcome').count(),0);
     await page.locator('#assistant-close').click();await page.locator('#assistant-orb').click();
     await page.waitForFunction(()=>document.getElementById('assistant-panel').classList.contains('layout-stable'));
+    const seam=await page.locator('#assistant-panel').evaluate(n=>{
+      const s=getComputedStyle(n,'::before'); return {background:s.backgroundImage,pointerEvents:s.pointerEvents};
+    });
+    assert.match(seam.background,/linear-gradient/,'Docked assistant has one fading workspace separator');
+    assert.equal(seam.pointerEvents,'none','The separator must never intercept interactions');
     assert.equal(await page.locator('#assistant-quick').count(),0,'Reopening an existing chat must not restore examples');
     await page.evaluate(()=>{document.getElementById('assistant-scope').value='selected';updateAssistantScopeControl();});
     const card=page.locator('.assistant-composer');
@@ -59,6 +67,28 @@ const path=require('node:path');
     assert.equal(await card.isVisible(),false);
     await page.locator('[data-secretary-view="chat"]').click();
     assert.ok(await card.isVisible());
+    await page.evaluate(()=>appendAssistantMessage('assistant','这封邮件需要核对交期。',[{id:1,subject:'项目安排',from_addr:'colleague@example.test'}]));
+    for(const theme of ['light','dark']) {
+      const surfaces=await page.evaluate(theme=>{
+        document.documentElement.dataset.theme=theme;
+        const panel=document.getElementById('assistant-panel');
+        const answer=panel.querySelector('.assistant-message.bot:last-child .assistant-bubble');
+        const sources=answer.querySelector('.assistant-sources');
+        const tabs=panel.querySelector('.secretary-tabs');
+        return {answerBorder:getComputedStyle(answer).borderWidth,answerBackground:getComputedStyle(answer).backgroundColor,
+          sourceBorders:getComputedStyle(sources).borderWidth,sourceBackground:getComputedStyle(sources).backgroundColor,
+          sourceShadow:getComputedStyle(sources).boxShadow,sourceOpen:sources.open,
+          tabMarker:getComputedStyle(tabs,'::before').content,overflow:panel.scrollWidth>panel.clientWidth};
+      },theme);
+      assert.equal(surfaces.answerBorder,'0px',`${theme}: answer reads as content, not a card`);
+      assert.equal(surfaces.answerBackground,'rgba(0, 0, 0, 0)');
+      assert.equal(surfaces.sourceBorders,'0px',`${theme}: references have no nested frame or separator`);
+      assert.equal(surfaces.sourceBackground,'rgba(0, 0, 0, 0)');
+      assert.equal(surfaces.sourceShadow,'none');
+      assert.equal(surfaces.sourceOpen,false,'References start collapsed and leave room for the answer');
+      assert.equal(surfaces.tabMarker,'none',`${theme}: no sliding pill behind the tabs`);
+      assert.equal(surfaces.overflow,false);
+    }
     assert.deepEqual(errors,[]);
     console.log('PASS: welcome-only prompts, exact quick question, reopen/history/new chat, integrated scope, long input, four widths, briefing isolation, no JS errors');
   } finally {await browser.close();}

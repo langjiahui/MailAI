@@ -427,7 +427,7 @@ function assistantSourceItems(sources = []) {
 function assistantSourcesHtml(sources = [], accountId = '') {
   const items = assistantSourceItems(sources);
   if (!items.length) return '';
-  return `<details class="assistant-sources" ${items.length <= 3 ? 'open' : ''}>
+  return `<details class="assistant-sources">
     <summary><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14v11H3zM3 5l7 6 7-6"/></svg><span>参考邮件</span><em>${items.length} 封</em><span class="source-disclosure"><span class="source-expand">展开</span><span class="source-collapse">收起</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m5 6 3 3 3-3"/></svg></span></summary>
     <div class="assistant-source-list" role="list" aria-label="本次回答的参考邮件">${items.map((source, index) => {
       const title = source.subject || '（无主题）';

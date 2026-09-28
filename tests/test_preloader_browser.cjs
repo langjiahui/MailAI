@@ -36,7 +36,7 @@ const {chromium, webkit} = require('playwright');
     assert.equal(await page.locator('.preloader-route-line path').evaluate(el => getComputedStyle(el).vectorEffect), 'non-scaling-stroke',
       'route stroke weight must survive responsive resizing');
     assert.equal(await page.locator('.preloader-mail').count(), 2, 'only two quiet envelope markers remain');
-    assert.equal(await page.locator('.preloader-brand img').evaluate(el => parseFloat(getComputedStyle(el).width)), 38);
+    assert.equal(await page.locator('.preloader-brand img').evaluate(el => parseFloat(getComputedStyle(el).width)), 24);
     assert.equal(await page.locator('.preloader-route-line').evaluate(el => parseFloat(getComputedStyle(el).strokeWidth)), 1.1);
     const initialRoute = await page.locator('#preloader-route-path').getAttribute('d');
     const checkRouteCards = async () => {

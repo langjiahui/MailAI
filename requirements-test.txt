@@ -1,0 +1,3 @@
+-r requirements.txt
+# Starlette TestClient uses this optional client; production does not need it.
+httpx2>=2,<3
