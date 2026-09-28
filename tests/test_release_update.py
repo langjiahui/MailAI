@@ -149,6 +149,27 @@ def main():
         with patch.object(release_update.urllib.request, "urlopen", side_effect=lambda *_args, **_kwargs: Response(payload)):
             release_update._download(asset, target)
         assert target.read_bytes() == payload
+
+    # Once the new installer is verified, older downloaded installers are pruned.
+    with tempfile.TemporaryDirectory() as folder, patch.object(release_update, "USER_DIR", Path(folder)):
+        updates = Path(folder) / "updates"
+        updates.mkdir()
+        stale_pkg = updates / "MailAI-1.0.0-macos-arm64.pkg"
+        stale_pkg.write_bytes(b"old")
+        note = updates / "readme.txt"
+        note.write_text("keep me")
+        result = {"available": True, "installable": True, "latest_version": "1.1.0",
+                  "device": "macos-arm64", "asset": {"url": "https://downloads.example.test/MailAI.pkg",
+                                                     "sha256": hashlib.sha256(payload).hexdigest(), "size": len(payload)}}
+        with patch.object(release_update, "check", return_value=result), patch.object(
+                release_update.urllib.request, "urlopen", side_effect=lambda *_a, **_k: Response(payload)), patch.object(
+                release_update.subprocess, "Popen") as popen:
+            outcome = release_update.download_and_launch()
+        assert outcome["ok"] and outcome["version"] == "1.1.0"
+        assert (updates / "MailAI-1.1.0-macos-arm64.pkg").read_bytes() == payload
+        assert not stale_pkg.exists()
+        assert note.read_text() == "keep me"
+        popen.assert_called_once()
     def fake_install(progress=None):
         progress(phase="downloading", downloaded=5, total=10, speed_bps=5, message="downloading")
         time.sleep(.03)

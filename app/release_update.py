@@ -230,6 +230,13 @@ def download_and_launch(progress=None) -> dict:
     update_dir.mkdir(parents=True, exist_ok=True)
     target = update_dir / f"MailAI-{result['latest_version']}-{result['device']}{suffix}"
     _download(asset, target, progress=progress)
+    # Old installers are never reusable — prune them so the folder cannot pile up.
+    for stale in update_dir.glob("MailAI-*"):
+        if stale != target and stale.suffix.lower() in {".pkg", ".exe"} and stale.is_file():
+            try:
+                stale.unlink()
+            except OSError:
+                log.warning("无法清理旧安装包 %s", stale)
     if progress:
         progress(phase="launching", downloaded=int(asset.get("size") or 0),
                  total=int(asset.get("size") or 0), speed_bps=0, message="正在启动安装程序")
