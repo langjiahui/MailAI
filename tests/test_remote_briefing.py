@@ -37,7 +37,7 @@ def main():
                     (5, '待删除', 0, '高', 'inbox')):
                     db.upsert_email(dict(uid=uid, from_addr='sender@example.test', to_addr=account['user'],
                         subject=account_id + name, body_text='原邮件正文 ' + name, summary='已有摘要 ' + name,
-                        date=(today - timedelta(days=days)).isoformat() + 'T09:00:00', priority=priority, status=status))
+                        date=(today - timedelta(days=days)).isoformat() + 'T00:00:00', priority=priority, status=status))
                 emails = {r['subject']: r['id'] for r in db.list_emails(days=36500, limit=50)}
                 with db.conn() as c:
                     c.execute("UPDATE emails SET pending_action='trash_sync' WHERE id=?", (emails[account_id+'待删除'],))

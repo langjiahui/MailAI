@@ -5,7 +5,7 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v2.2.30**
+当前版本：**v2.3.0**
 
 本次更新：新增个人微信扫码手机控制（接入测试版）与钉钉机器人配置，可查询邮件、今日重点和待办，并在预览与一次性确认后回复；微信支持查看和传输附件。手机帮助改为分类短消息，邮件列表按条目排版并显示本地时间；优化邮箱切换与阅读过渡及桌面界面细节。手机控制需要电脑保持开机联网且 MailAI 正在运行，微信接入可用性以实际账号和通道为准。
 
