@@ -1803,6 +1803,8 @@ let selectedMailboxAccountId = '';
 let selectedEmailAccountId = '';
 let mailboxNavigationRevision = 0;
 let mailboxActivationQueue = Promise.resolve();
+let mailboxTransitionTimer = 0;
+let mailboxTransitionStartedAt = 0;
 const SERVER_FOLDER_VISIBILITY_KEY = 'mailai.preferences.showServerFolders.v1';
 
 function serverFoldersVisible() {
@@ -4756,6 +4758,8 @@ async function onNavClick(e) {
   if (specialMailbox && (filter === 'verdict' || filter === 'category')) {
     return toast('风险等级和 AI 分类用于收件邮件，请先选择收件箱', 'warn');
   }
+  const transitionRevision = filter === 'status' || filter === 'special' ? ++mailboxNavigationRevision : 0;
+  if (transitionRevision) beginMailboxTransition(transitionRevision, btn.textContent.trim().split(/\s+/)[0]);
   if (btn.closest('#folder-nav')) {
     unifiedMailbox = false;
     selectedMailboxAccountId = activeMailAccount()?.id || '';
@@ -4765,11 +4769,11 @@ async function onNavClick(e) {
   const leavingFavorites = changingMailbox && ['favorites','local_archive'].includes(currentFilter.status);
   if (changingMailbox) currentServerFolder = '';
   console.log('[nav click]', filter, value);
-  if (filter === 'status' && value === 'trash') { await openTrashMailbox(); updateActiveNav(); return; }
+  if (filter === 'status' && value === 'trash') { await openTrashMailbox({transitionRevision}); updateActiveNav(); return; }
   if (filter === 'status' && ['quarantine', 'spam'].includes(value)) {
     const serverFolder = serverFolderForRole(value);
     if (serverFolder?.name) {
-      await loadServerFolder(serverFolder.name);
+      await loadServerFolder(serverFolder.name, {transitionRevision});
       updateActiveNav();
       return;
     }
@@ -4795,8 +4799,10 @@ async function onNavClick(e) {
     setSegmentedFilter('filter-days', '9999');
     await loadData();
   } else if (value === 'favorites' || leavingServerFolder || leavingFavorites) await loadData();
+  if (transitionRevision && transitionRevision !== mailboxNavigationRevision) return;
   updateActiveNav();
   applyFilters();
+  if (transitionRevision) finishMailboxTransition(transitionRevision);
   const label = btn.textContent.trim().split(/\s+/)[0];
   toast(`已切换到：${label}`);
 }
@@ -6576,9 +6582,50 @@ async function activateMailAccount(accountId, {keepMailbox = false, quiet = fals
   return (_systemConfig?.accounts || []).find(item => item.id === accountId);
 }
 
+function beginMailboxTransition(revision, label) {
+  const overlay = document.getElementById('mailbox-transition');
+  if (!overlay) return;
+  clearTimeout(mailboxTransitionTimer);
+  mailboxTransitionStartedAt = performance.now();
+  overlay.dataset.revision = String(revision);
+  document.getElementById('mailbox-transition-account').textContent = label;
+  overlay.hidden = false;
+  overlay.classList.remove('is-leaving');
+  document.getElementById('email-list')?.classList.remove('mailbox-entering');
+  // Restart the entrance when a second account is chosen before the first loads.
+  overlay.style.animation = 'none';
+  void overlay.offsetWidth;
+  overlay.style.animation = '';
+  document.querySelector('.list-pane')?.setAttribute('aria-busy', 'true');
+  const list = document.getElementById('email-list');
+  overlay.style.top = `${list.offsetTop}px`;
+  overlay.style.height = `${list.clientHeight}px`;
+}
+
+function finishMailboxTransition(revision) {
+  const overlay = document.getElementById('mailbox-transition');
+  if (!overlay || overlay.hidden || overlay.dataset.revision !== String(revision)) return;
+  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const remaining = reducedMotion ? 0 : Math.max(0, 140 - (performance.now() - mailboxTransitionStartedAt));
+  mailboxTransitionTimer = setTimeout(() => {
+    if (overlay.dataset.revision !== String(revision)) return;
+    document.getElementById('email-list')?.classList.add('mailbox-entering');
+    overlay.classList.add('is-leaving');
+    mailboxTransitionTimer = setTimeout(() => {
+      if (overlay.dataset.revision !== String(revision)) return;
+      overlay.hidden = true;
+      overlay.classList.remove('is-leaving');
+      document.querySelector('.list-pane')?.removeAttribute('aria-busy');
+      setTimeout(() => document.getElementById('email-list')?.classList.remove('mailbox-entering'), 240);
+    }, reducedMotion ? 0 : 160);
+  }, remaining);
+}
+
 async function openAccountMailbox(accountId, mailbox) {
   if (bulkOperationActive) return toast('批量操作正在执行，请稍候', 'warn');
   const navigationRevision = ++mailboxNavigationRevision;
+  const switchingAccount = unifiedMailbox || activeMailAccount()?.id !== accountId || !document.getElementById('mailbox-transition')?.hidden;
+  beginMailboxTransition(navigationRevision, `${{inbox:'收件箱',sent:'已发送',drafts:'草稿箱',favorites:'我的收藏',trash:'已删除'}[mailbox] || mailbox} · ${(_systemConfig?.accounts || []).find(item => item.id === accountId)?.user || ''}`);
   resetReadingPane();
   // 乐观高亮：账号和文件夹状态必须一起切换，不等账号激活或列表加载。
   // 否则侧栏首次重绘仍会使用旧的 specialMailbox/currentFilter.status。
@@ -6611,6 +6658,7 @@ async function openAccountMailbox(accountId, mailbox) {
     currentServerFolder = previousMailboxState.currentServerFolder;
     currentFilter.status = previousMailboxState.status;
     updateActiveNav(); renderSidebarAccounts();
+    finishMailboxTransition(navigationRevision);
     throw err;
   }
   if (navigationRevision !== mailboxNavigationRevision || activeMailAccount()?.id !== accountId) return;
@@ -6619,15 +6667,24 @@ async function openAccountMailbox(accountId, mailbox) {
   currentFilter.verdict = ''; currentFilter.category = '';
   if (currentFilter.days !== 9999) { currentFilter.days = 9999; setSegmentedFilter('filter-days', '9999'); }
   if (mailbox === 'trash') {
-    await openTrashMailbox({resetPane:false});
+    await openTrashMailbox({resetPane:false, transitionRevision:navigationRevision});
     return;
   }
-  await Promise.all([loadData(), loadMailboxFolders()]);
+  // Observe folder failures immediately while the list can finish first.
+  const foldersPromise = loadMailboxFolders().then(() => null, error => error);
+  const loaded = await loadData();
+  if (!loaded && navigationRevision === mailboxNavigationRevision && switchingAccount) {
+    allEmails = []; sentMessages = []; savedDrafts = [];
+    applyFilters();
+  }
+  finishMailboxTransition(navigationRevision);
+  const folderError = await foldersPromise;
+  if (folderError) throw folderError;
   if (navigationRevision !== mailboxNavigationRevision || activeMailAccount()?.id !== accountId) return;
   updateActiveNav(); renderSidebarAccounts();
 }
 
-async function openTrashMailbox({resetPane = true} = {}) {
+async function openTrashMailbox({resetPane = true, transitionRevision = 0} = {}) {
   if (resetPane) resetReadingPane();
   clearMailSelection();
   specialMailbox = ''; currentServerFolder = ''; unifiedMailbox = false;
@@ -6651,7 +6708,9 @@ async function openTrashMailbox({resetPane = true} = {}) {
   document.getElementById('list-title').textContent = mailaiT('side.trash') || '已删除';
   document.getElementById('email-list').innerHTML = `<div class="email-empty"><div class="empty-text">${mailaiT('list.loadingTrash') || '正在读取已删除邮件…'}</div></div>`;
   // Local browsing must not wait for IMAP LIST/STATUS or a slow remote sync.
-  await loadData();
+  const loaded = await loadData();
+  if (!loaded && isCurrent() && transitionRevision) { allEmails = []; applyFilters(); }
+  if (transitionRevision) finishMailboxTransition(transitionRevision);
   if (!isCurrent()) return;
   const foldersLoaded = await loadMailboxFolders({quiet:true});
   if (!isCurrent()) return;
@@ -6673,6 +6732,7 @@ async function openTrashMailbox({resetPane = true} = {}) {
 async function openUnifiedInbox() {
   if (bulkOperationActive) return toast('批量操作正在执行，请稍候', 'warn');
   const navigationRevision = ++mailboxNavigationRevision;
+  beginMailboxTransition(navigationRevision, mailaiT('list.allInboxes') || '所有收件箱');
   resetReadingPane(); clearMailSelection();
   unifiedMailbox = true; selectedMailboxAccountId = '';
   updateActiveNav(); renderSidebarAccounts(); // 乐观高亮，不等加载完成
@@ -6680,7 +6740,9 @@ async function openUnifiedInbox() {
   currentFilter.status = ''; currentFilter.verdict = ''; currentFilter.category = '';
   currentFilter.search = ''; searchResults = null; ++searchRevision; clearTimeout(globalSearchTimer);
   document.getElementById('global-search').value = '';
-  await loadData();
+  const loaded = await loadData();
+  if (!loaded && navigationRevision === mailboxNavigationRevision) { allEmails = []; applyFilters(); }
+  finishMailboxTransition(navigationRevision);
   if (navigationRevision !== mailboxNavigationRevision) return;
   updateActiveNav(); renderSidebarAccounts();
 }
@@ -8460,10 +8522,14 @@ async function loadMailboxFolders({quiet = false} = {}) {
   }
 }
 
-async function loadServerFolder(folder) {
+async function loadServerFolder(folder, {transitionRevision = 0} = {}) {
+  if (!transitionRevision) {
+    transitionRevision = ++mailboxNavigationRevision;
+    beginMailboxTransition(transitionRevision, folder);
+  }
   resetReadingPane();
   const revision = ++mailLoadRevision;
-  const isCurrent = () => revision === mailLoadRevision && currentServerFolder === folder;
+  const isCurrent = () => revision === mailLoadRevision && transitionRevision === mailboxNavigationRevision && currentServerFolder === folder;
   currentServerFolder = folder; specialMailbox = '';
   currentFilter.status = ''; currentFilter.verdict = ''; currentFilter.category = ''; currentFilter.search = '';
   currentFilter.priority = ''; currentFilter.domain = ''; currentFilter.attachments = false;
@@ -8485,6 +8551,7 @@ async function loadServerFolder(folder) {
     allEmails = rows;
     applyFilters(); toast(`${folder} 已同步 ${result.imported} 封`, 'success');
   } catch (err) { if (isCurrent()) toast('文件夹同步失败：' + err.message, 'error'); }
+  finally { finishMailboxTransition(transitionRevision); }
 }
 document.getElementById('server-folder-nav').addEventListener('click', event => {
   const button = event.target.closest('[data-server-folder]'); if (button) loadServerFolder(button.dataset.serverFolder);
@@ -11719,7 +11786,7 @@ function addReadingActions(force = false) {
   const div = document.createElement('div'); div.className = 'reading-work-actions';
   const icon = paths => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${paths}"/></svg>`;
   div.innerHTML = `<button type="button" data-reading-action="favorite" aria-pressed="${Boolean(selectedEmailDetail?.is_favorite)}">${icon('m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z')}<span data-action-label>${selectedEmailDetail?.is_favorite ? (mailaiT('read.favorited') || '已收藏') : (mailaiT('read.favorite') || '收藏')}</span></button>
-    <button type="button" data-reading-action="todo">${icon('M6 4h12v16H6zM9 12l2 2 4-4')}<span>${mailaiT('read.todo') || '加入待办'}</span></button>
+    <button type="button" data-reading-action="todo">${icon('M3.5 7.5 5.5 9.5 9 6M12.5 8h8M3.5 16.5 5.5 18.5 9 15M12.5 17h8')}<span>${mailaiT('read.todo') || '加入待办'}</span></button>
     <button type="button" data-reading-action="remind">${icon('M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 4v5l3 2')}<span>${mailaiT('read.remind') || '稍后提醒'}</span></button>`;
   host.querySelector('.reading-mail-controls')?.appendChild(div);
   host.querySelector('.reading-ai-group')?.insertAdjacentHTML('beforeend', `<button type="button" data-reading-action="summary">${icon('M4 6h16M4 11h12M4 16h8m5-2 1 2 2 1-2 1-1 2-1-2-2-1 2-1z')}<span>${mailaiT('read.summary') || '总结邮件'}</span></button>

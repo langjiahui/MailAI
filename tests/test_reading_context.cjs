@@ -10,7 +10,7 @@ assert.match(source, /function reconcileReadingPane\(emails\)[\s\S]*emails\.some
   'A selected message that leaves the visible result set must be cleared');
 assert.match(source, /async function onNavClick\(e\)[\s\S]*e\.stopPropagation\(\);\s*resetReadingPane\(\);/,
   'Every left-navigation context switch must clear the reading pane immediately');
-assert.match(source, /async function loadServerFolder\(folder\) \{\s*resetReadingPane\(\);/,
+assert.match(source, /async function loadServerFolder\(folder[\s\S]*?\{[\s\S]*?resetReadingPane\(\);/,
   'Direct server-folder navigation must clear the previous detail');
 assert.match(source, /async function selectEmail\(id, options = \{\}\)[\s\S]*const requestRevision = \+\+readingLoadRevision[\s\S]*requestRevision !== readingLoadRevision \|\| selectedEmailId !== id/,
   'Late detail responses must not repaint a newer reading context');

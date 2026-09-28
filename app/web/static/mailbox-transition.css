@@ -1,0 +1,42 @@
+/* The list stays visually tied to the destination account while its data loads. */
+.list-pane .mailbox-transition {
+  position:absolute; left:0; right:0; z-index:4; padding:16px 16px 0;
+  overflow:hidden; background:var(--mac-list,var(--desk-surface));
+  color:var(--desk-ink); box-sizing:border-box;
+  animation:mailbox-transition-in .16s ease-out .05s both;
+}
+.list-pane .mailbox-transition[hidden] { display:none; }
+.mailbox-transition-heading { display:flex; align-items:center; gap:9px; min-width:0; padding:1px 2px 12px; }
+.mailbox-transition-heading>span:last-child { display:grid; gap:3px; min-width:0; }
+.mailbox-transition-heading strong { font-size:12px; font-weight:650; }
+.mailbox-transition-heading small { color:var(--desk-muted); font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mailbox-transition-spinner {
+  width:14px; height:14px; flex:none; border:1.5px solid var(--desk-line);
+  border-top-color:var(--desk-accent); border-radius:50%; animation:mailbox-transition-spin .85s linear infinite;
+}
+.mailbox-transition-rows { display:grid; }
+.mailbox-transition-rows>div {
+  height:80px; position:relative; border-bottom:1px solid var(--desk-line);
+}
+.mailbox-transition-rows>div::before,.mailbox-transition-rows>div::after {
+  content:""; position:absolute; left:8px; height:7px; border-radius:5px;
+  background:var(--desk-muted-surface); animation:mailbox-transition-breathe 1.4s ease-in-out infinite alternate;
+}
+.mailbox-transition-rows>div::before { top:19px; width:58%; }
+.mailbox-transition-rows>div::after { top:41px; width:78%; animation-delay:.18s; }
+html[data-theme="dark"] .mailbox-transition-rows>div::before,
+html[data-theme="dark"] .mailbox-transition-rows>div::after {
+  background:color-mix(in srgb,var(--desk-muted) 18%,var(--mac-list,var(--desk-surface)));
+}
+.list-pane .mailbox-transition.is-leaving { animation:mailbox-transition-out .16s ease-in both; pointer-events:none; }
+#email-list.mailbox-entering .email-group { animation:mailbox-list-enter .22s ease-out both; }
+@keyframes mailbox-transition-in { from { opacity:0; } to { opacity:1; } }
+@keyframes mailbox-transition-out { to { opacity:0; } }
+@keyframes mailbox-list-enter { from { opacity:.35; transform:translateY(5px); } to { opacity:1; transform:none; } }
+@keyframes mailbox-transition-spin { to { transform:rotate(360deg); } }
+@keyframes mailbox-transition-breathe { to { opacity:.45; } }
+@media (prefers-reduced-motion:reduce) {
+  .list-pane .mailbox-transition,.list-pane .mailbox-transition.is-leaving,
+  .mailbox-transition-spinner,.mailbox-transition-rows>div::before,
+  .mailbox-transition-rows>div::after,#email-list.mailbox-entering .email-group { animation:none; }
+}
