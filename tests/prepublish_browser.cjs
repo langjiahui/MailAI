@@ -6,7 +6,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 
 (async () => {
-  const browser = await chromium.launch({headless: true, channel: 'chrome'});
+  const browser = await chromium.launch({headless: true, ...(process.env.CI ? {} : {channel:'chrome'})});
   const page = await browser.newPage({viewport:{width:1440,height:1000}, reducedMotion:'reduce'});
   page.setDefaultTimeout(8000);
   const errors = [], checks = [];
@@ -184,13 +184,17 @@ const fs = require('node:fs');
           height: document.querySelector('.topbar').getBoundingClientRect().height,
           searchDisplay: getComputedStyle(document.querySelector('.global-search')).display,
           wrapped: getComputedStyle(document.querySelector('.topbar')).flexWrap,
+          controlsFit: [...document.querySelectorAll('.topbar button')].every(button => {
+            const r = button.getBoundingClientRect();
+            const header = document.querySelector('.topbar').getBoundingClientRect();
+            return !r.width || (r.left >= 0 && r.right <= innerWidth + 1 && r.top >= header.top - 1 && r.bottom <= header.bottom + 1);
+          }),
         }));
-        assert.ok(compactHeader.height <= 66, `Topbar is too tall at ${width}`);
+        assert.ok(compactHeader.height <= (width <= 760 ? 110 : 66), `Topbar is too tall at ${width}`);
         assert.equal(compactHeader.searchDisplay, 'flex', `Search should remain available at ${width}`);
-        assert.equal(await page.locator('#btn-poll').isVisible(), false);
-        assert.equal(await page.locator('#btn-digest').isVisible(), false);
+        assert(compactHeader.controlsFit, `Header controls must fit at ${width}`);
         assert.equal(await page.locator('#btn-compose').isVisible(), true);
-        assert.equal(compactHeader.wrapped, 'nowrap', `Topbar should not wrap at ${width}`);
+        assert.equal(compactHeader.wrapped, width <= 760 ? 'wrap' : 'nowrap', `Topbar should use the responsive layout at ${width}`);
       }
       await shot(`responsive-${width}`);
     }

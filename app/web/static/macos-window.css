@@ -220,7 +220,7 @@ html.integrated-workspace:not(.desktop-native-window) .preloader-brand img { dis
  }
  html.integrated-workspace:not(.desktop-native-window)[data-theme] body .topbar .brand { display:none!important; }
  html.integrated-workspace:not(.desktop-native-window)[data-theme] body .topbar .global-search {
-  flex:1 1 100%!important; max-width:none; width:100%; margin:0;
+  flex:1 1 calc(100% - 50px)!important; max-width:none; width:auto; margin:0;
  }
  html.integrated-workspace:not(.desktop-native-window)[data-theme] body .topbar .global-actions {
   width:100%; justify-content:flex-end; gap:4px;
