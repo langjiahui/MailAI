@@ -799,6 +799,27 @@ def diagnostics(lang: str = "zh") -> dict:
         else t("账号数据库映射异常，请重新打开软件", "Account database mapping is broken; restart the app"),
         check_id="isolation")
 
+    try:
+        free_bytes = shutil.disk_usage(config.DATA_DIR).free
+        free_gib = f'{free_bytes / (1024 ** 3):.1f} GiB'
+        disk_status = 'fail' if free_bytes < 128 * 1024 ** 2 else 'warning' if free_bytes < 512 * 1024 ** 2 else 'pass'
+        add(t('本机可用空间', 'Free disk space'), disk_status,
+            t(f'剩余 {free_gib}；空间不足会影响收信和本地备份',
+              f'{free_gib} available; low space can interrupt mail sync and backups'), check_id='disk')
+    except OSError:
+        add(t('本机可用空间', 'Free disk space'), 'warning',
+            t('暂时无法检查磁盘空间', 'Unable to check free disk space'), check_id='disk')
+
+    if account:
+        from .automatic_backup import _automatic_files, INTERVAL_SECONDS
+        automatic = _automatic_files(account_id)
+        recent = bool(automatic and time.time() - automatic[0].stat().st_mtime < INTERVAL_SECONDS + 24 * 3600)
+        add(t('自动备份', 'Automatic backup'), 'pass' if recent else 'warning',
+            t('最近 8 天已有完整本地备份' if recent else '尚无近期自动备份；软件运行时会定期尝试，空间不足时请手动备份',
+              'A full local backup exists from the last 8 days' if recent else
+              'No recent automatic backup; the app retries while running. Back up manually if space is low'),
+            check_id='backup')
+
     password = account_password(account_id) if account_id else ""
     in_vault = bool(password) and account.get("credential_storage") != "session"
     add(t("系统凭据库", "System credential vault"), "pass" if in_vault else "warning" if password else "fail",
@@ -898,13 +919,13 @@ def diagnostics(lang: str = "zh") -> dict:
             "checked_at": datetime.now().isoformat(timespec="seconds")}
 
 
-def create_backup(include_raw: bool = True) -> dict:
+def create_backup(include_raw: bool = True, *, automatic: bool = False) -> dict:
     """备份当前账号数据库和原始邮件，不包含授权码与模型密钥。"""
     backup_dir = os.path.join(config.DATA_DIR, "backups")
     os.makedirs(backup_dir, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
     account_id = _account_key(config.IMAP_HOST, config.IMAP_USER) if config.IMAP_USER else "local"
-    filename = f"MailAI-{account_id}-{stamp}.zip"
+    filename = f"MailAI-{account_id}-{stamp}{'-auto' if automatic else ''}.zip"
     target = os.path.join(backup_dir, filename)
     partial = target + ".part"
     try:
@@ -913,12 +934,17 @@ def create_backup(include_raw: bool = True) -> dict:
             with _sqlite_connection(config.DB_PATH) as source, _sqlite_connection(db_copy) as destination:
                 source.backup(destination)
             # Portable paths belong only to the snapshot, never the live database.
+            referenced_raw = set()
             with _sqlite_connection(db_copy) as snapshot:
+                if automatic and snapshot.execute('PRAGMA quick_check').fetchone()[0] != 'ok':
+                    raise ValueError('数据库校验未通过，自动备份已停止')
                 for email_id, raw_path in snapshot.execute("SELECT id,raw_path FROM emails WHERE raw_path IS NOT NULL").fetchall():
                     relative = os.path.relpath(raw_path, config.RAW_DIR).replace(os.sep, "/")
                     if relative == ".." or relative.startswith("../"):
                         raise ValueError("邮件原文位于当前账号目录之外，无法创建可迁移备份")
                     snapshot.execute("UPDATE emails SET raw_path=? WHERE id=?", (relative, email_id))
+                    if automatic and include_raw:
+                        referenced_raw.add('raw/' + relative)
             manifest = {
                 "version": 2, "created_at": datetime.now().isoformat(timespec="seconds"),
                 "account": config.IMAP_USER, "imap_host": config.IMAP_HOST,
@@ -934,6 +960,8 @@ def create_backup(include_raw: bool = True) -> dict:
                             if os.path.islink(path):
                                 raise ValueError("原始邮件目录包含符号链接，备份已停止")
                             archive.write(path, os.path.join("raw", os.path.relpath(path, config.RAW_DIR)))
+                if referenced_raw and not referenced_raw.issubset(archive.namelist()):
+                    raise ValueError('自动备份缺少邮件原文，已保留现有备份')
             os.chmod(partial, stat.S_IRUSR | stat.S_IWUSR)
             os.replace(partial, target)
     finally:
@@ -942,7 +970,8 @@ def create_backup(include_raw: bool = True) -> dict:
         except FileNotFoundError:
             pass
     size = os.path.getsize(target)
-    db.add_audit_log(None, "local_backup", actor="user", reason=f"创建本地备份 {filename}", meta={"size": size})
+    db.add_audit_log(None, "local_backup", actor="system" if automatic else "user",
+                     reason=f"创建{'自动' if automatic else '本地'}备份 {filename}", meta={"size": size})
     return {"ok": True, "filename": filename, "size": size, "created_at": manifest["created_at"]}
 
 

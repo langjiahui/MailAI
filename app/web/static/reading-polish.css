@@ -419,3 +419,12 @@ html[data-theme] body #email-list .mail-account-tag {
 
 /* Keep the right-aligned menu inside the reading pane when actions wrap. */
 html[data-theme] body .reading-header .reading-actions>.reading-more-actions { margin-inline-start:auto; }
+
+/* A saved message uses the same solid gold star as the message list. */
+html[data-theme] body .reading-header .reading-work-actions button[data-reading-action="favorite"][aria-pressed="true"] svg {
+  fill:currentColor;
+  color:#b7791f;
+}
+html[data-theme="dark"] body .reading-header .reading-work-actions button[data-reading-action="favorite"][aria-pressed="true"] svg {
+  color:#e9b95d;
+}

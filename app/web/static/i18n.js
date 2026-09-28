@@ -919,6 +919,8 @@ const I18N_MESSAGES = {
     'read.summaryTitle': 'AI Summary',
     'read.summaryHint': 'Key points, shown in full',
     'read.summaryHintDrawer': 'Quick grasp of the key points',
+    'read.previewTitle': 'Body preview',
+    'read.previewHint': 'Excerpt from the message, not an AI summary',
     'read.noSummary': 'No summary yet',
     'read.body': 'Mail body',
     'read.fmtHtml': 'Original HTML layout',

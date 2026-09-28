@@ -8,8 +8,10 @@ const styleCss = fs.readFileSync(path.join(__dirname, '../app/web/static/style.c
 
 assert.match(js, /<div id="primary-summary-content" class="markdown-body summary-box">/,
   'The primary AI summary should render without a collapsed state');
-assert.match(js, /read\.summaryTitle'\) \|\| 'AI 摘要'\}<\/span><small>\$\{mailaiT\('read\.summaryHint'\) \|\| '提炼重点，完整展示'\}/,
-  'The summary heading should explain that the full summary is visible');
+assert.match(js, /e\.summary \? \(mailaiT\('read\.summaryTitle'\) \|\| 'AI 摘要'\) : \(mailaiT\('read\.previewTitle'\) \|\| '正文预览'\)/,
+  'A missing AI summary must identify the fallback as a body preview');
+assert.match(js, /mailaiT\('read\.summaryHint'\) \|\| '提炼重点，完整展示'/,
+  'The generated summary heading should explain that the full summary is visible');
 assert.doesNotMatch(js, /btn-toggle-primary-summary|togglePrimarySummary|syncPrimarySummaryControl|展开完整摘要|收起摘要/,
   'The extra expand interaction should be removed');
 assert.doesNotMatch(workspaceCss, /summary-collapsible/,

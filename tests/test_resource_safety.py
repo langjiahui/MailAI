@@ -80,6 +80,21 @@ def main():
         assert mailbox_jobs.stop_outbox(timeout=5)
         assert not mailbox_jobs._outbox_started
 
+    # Exit cancels queued work and requests a cooperative stop from a running
+    # mailbox worker without pretending that a still-running task has finished.
+    from concurrent.futures import Future
+    running = Future()
+    assert running.set_running_or_notify_cancel()
+    with patch.object(mailbox_jobs, '_stopping', threading.Event()), \
+         patch.object(mailbox_jobs, '_pending', {'fixture': running}), \
+         patch.object(mailbox_jobs, '_executor') as executor, \
+         patch.object(mailbox_jobs, 'snapshot', return_value={'ACCOUNT_ID': 'fixture', 'DB_PATH': 'fixture.db'}), \
+         patch.object(mailbox_jobs.pipeline, 'cancel_fetch') as cancel:
+        assert not mailbox_jobs.stop_mailbox(timeout=0)
+        cancel.assert_called_once()
+        executor.shutdown.assert_called_once_with(wait=False, cancel_futures=True)
+    running.set_result({'ok': True})
+
     # Enforce bounds on newline-free data and perpetually streaming providers.
     try:
         list(client._response_lines(io.BytesIO(b'x'*(client.MAX_STREAM_LINE_BYTES+1)),float('inf')))

@@ -2640,7 +2640,7 @@ function renderDigestEmailDetail(e) {
       </div>
     </div>
     <div class="drawer-email-body">
-      <div class="reading-section drawer-summary-section"><div class="section-title"><span>${mailaiT('read.summaryTitle') || 'AI 摘要'}</span><small>${mailaiT('read.summaryHintDrawer') || '快速了解邮件重点'}</small></div>
+      <div class="reading-section drawer-summary-section"><div class="section-title"><span>${e.summary ? (mailaiT('read.summaryTitle') || 'AI 摘要') : (mailaiT('read.previewTitle') || '正文预览')}</span><small>${e.summary ? (mailaiT('read.summaryHintDrawer') || '快速了解邮件重点') : (mailaiT('read.previewHint') || '摘取正文开头，非 AI 提炼')}</small></div>
         <div class="markdown-body summary-box">${mdToHtml(e.summary || e.snippet || (mailaiT('read.noSummary') || '暂无摘要'))}</div>
       </div>
       <div class="reading-section drawer-body-section"><div class="section-title"><span>${mailaiT('read.body') || '邮件正文'}</span><small>${e.has_rich_body ? (e.has_remote_images ? (mailaiT('read.fmtHtmlImages') || 'HTML 原始排版 · 外链图片已显示') : (mailaiT('read.fmtHtml') || 'HTML 原始排版')) : (mailaiT('read.fmtPlain') || '纯文本邮件')}</small></div>
@@ -5966,7 +5966,7 @@ function renderReadingPane(e) {
       <main class="reading-main">
         ${renderConversationProgress(e)}
         <div class="reading-section summary-section primary-summary">
-          <div class="section-title"><span>${mailaiT('read.summaryTitle') || 'AI 摘要'}</span><small>${mailaiT('read.summaryHint') || '提炼重点，完整展示'}</small></div>
+          <div class="section-title"><span>${e.summary ? (mailaiT('read.summaryTitle') || 'AI 摘要') : (mailaiT('read.previewTitle') || '正文预览')}</span><small>${e.summary ? (mailaiT('read.summaryHint') || '提炼重点，完整展示') : (mailaiT('read.previewHint') || '摘取正文开头，非 AI 提炼')}</small></div>
           <div class="summary-quick-meta">
             ${e.category ? `<span>${esc(mailCategoryLabel(e.category))}</span>` : ''}
             ${e.priority ? `<span>${esc(mailPriorityLabel(e.priority))}</span>` : ''}

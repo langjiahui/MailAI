@@ -223,12 +223,16 @@ def main():
                 wx.process_message(saved,'new-secret',{**msg,'from_user_id':'other'})
                 wx.process_message(saved,'new-secret',{**msg,'group_id':'group'})
             assert len(sent)==2 and sent[0]['body']['msg']['client_id']==sent[1]['body']['msg']['client_id']
-            # Incomplete batches never advance cursor; login expiration ends polling.
+            # The cursor advances with a durable pending reply, so one failure
+            # cannot pin the entire platform batch after a restart.
             stop=threading.Event()
             def fail_message(*args): stop.set();raise RuntimeError('reply failed')
             with patch.object(wx,'_request',return_value={'msgs':[msg],'get_updates_buf':'new-cursor'}),patch.object(wx,'process_message',side_effect=fail_message):
                 wx._listen(saved,'new-secret',stop)
-            assert wx._cursor(saved['bot_id'])==''
+            assert wx._cursor(saved['bot_id'])=='new-cursor'
+            with closing(remote.connection()) as c:
+                assert c.execute('SELECT COUNT(*) FROM weixin_pending WHERE bot_id=?',
+                                 (saved['bot_id'],)).fetchone()[0] == 1
             with patch.object(wx,'_request',return_value={'ret':-14}):
                 wx._listen(saved,'new-secret',threading.Event())
             assert wx.status()['phase']=='expired'

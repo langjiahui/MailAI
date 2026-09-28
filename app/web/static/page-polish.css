@@ -68,6 +68,47 @@ html[data-theme] body #contact-center .contact-center-card>header { padding:22px
 html[data-theme] body #contact-center .contact-center-tools { padding:8px 24px 12px; gap:12px; border:0; flex-shrink:0; }
 #contact-center .attachment-search-box { min-height:40px; }
 #contact-center .attachment-search-box input { font-size:13px; }
+
+/* One search surface, like the mailbox search: focus belongs to the field,
+   rather than drawing a second rectangle around its inner input. */
+html[data-theme] body :is(#attachment-center,#contact-center) .attachment-search-box {
+  min-height:40px;
+  background:var(--desk-muted-surface)!important;
+  border:1px solid var(--desk-line)!important;
+  border-radius:8px!important;
+  box-shadow:none!important;
+  transition:border-color .16s ease,box-shadow .16s ease;
+}
+html[data-theme] body :is(#attachment-center,#contact-center) .attachment-search-box:hover {
+  border-color:color-mix(in srgb,var(--desk-accent) 25%,var(--desk-line))!important;
+}
+html[data-theme] body :is(#attachment-center,#contact-center) .attachment-search-box:focus-within {
+  border-color:color-mix(in srgb,var(--desk-accent) 65%,var(--desk-line))!important;
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--desk-accent) 9%,transparent)!important;
+}
+html[data-theme] body :is(#attachment-center,#contact-center) .attachment-search-box input,
+html[data-theme] body :is(#attachment-center,#contact-center) .attachment-search-box input:is(:hover,:focus,:focus-visible) {
+  min-height:38px;
+  padding-block:0;
+  border:0!important;
+  border-radius:0!important;
+  outline:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  color:var(--desk-ink)!important;
+  font-size:13px;
+}
+html[data-theme] body :is(#attachment-center,#contact-center) .attachment-search-box input::placeholder {
+  color:var(--desk-muted)!important;
+}
+html[data-theme] body :is(#attachment-center,#contact-center) .attachment-search-box svg {
+  stroke:var(--desk-muted);
+}
+html[data-theme] body #rules-view #rule-search:is(:focus,:focus-visible) {
+  outline:0!important;
+  border-color:color-mix(in srgb,var(--desk-accent) 65%,var(--rules-line))!important;
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--desk-accent) 9%,transparent)!important;
+}
 html[data-theme] body #contact-center .contact-group-toolbar { padding:0 24px 14px; gap:8px; flex-shrink:0; }
 #contact-center :is(#group-add-members,#group-rename,#group-delete):disabled { display:none; }
 #contact-center .contact-group-toolbar:has(#group-add-members:disabled)::after { content:'选择分组后可管理成员'; font-size:12px; color:var(--desk-muted); margin-left:4px; }

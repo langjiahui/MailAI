@@ -4,6 +4,7 @@ import email.utils
 from email import policy
 from email.parser import BytesParser
 import html as html_mod
+from html.parser import HTMLParser
 import os
 import re
 import hashlib
@@ -17,7 +18,6 @@ from . import config
 
 _URL_RE = re.compile(r'https?://[^\s<>"\'\]\)）】]+', re.I)
 _HREF_RE = re.compile(r'href=["\'](https?://[^"\']+)["\']', re.I)
-_TAG_RE = re.compile(r"<[^>]+>")
 _PHONE_RE = re.compile(r"(?<!\d)1[3-9]\d{9}(?!\d)")
 _IDCARD_RE = re.compile(r"(?<!\d)\d{17}[\dXx](?!\d)")
 _BANKCARD_RE = re.compile(r"(?<!\d)\d{16,19}(?!\d)")
@@ -100,10 +100,53 @@ def _message_bodies(msg, fallback_mail) -> tuple[str, str, bool]:
     return body_text, body_html, warning
 
 
+class _VisibleTextParser(HTMLParser):
+    """Extract visible mail text without passing CSS or script code to AI."""
+
+    _IGNORED = {"head", "style", "script", "template", "noscript", "svg"}
+    _BLOCKS = {"address", "article", "blockquote", "br", "div", "h1", "h2", "h3",
+               "h4", "h5", "h6", "hr", "li", "p", "section", "table", "td", "th", "tr"}
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts: list[str] = []
+        self.ignored: list[str] = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag in self._IGNORED:
+            self.ignored.append(tag)
+        elif not self.ignored and tag in self._BLOCKS:
+            self.parts.append("\n")
+
+    def handle_endtag(self, tag):
+        if self.ignored:
+            if tag == self.ignored[-1]:
+                self.ignored.pop()
+        elif tag in self._BLOCKS:
+            self.parts.append("\n")
+
+    def handle_data(self, data):
+        if not self.ignored:
+            self.parts.append(data)
+
+
 def strip_html(raw_html: str) -> str:
-    text = _TAG_RE.sub(" ", raw_html or "")
-    text = html_mod.unescape(text)
-    return re.sub(r"\s+", " ", text).strip()
+    extractor = _VisibleTextParser()
+    extractor.feed(raw_html or "")
+    extractor.close()
+    lines = [re.sub(r"\s+", " ", line).strip() for line in "".join(extractor.parts).splitlines()]
+    return "\n".join(line for line in lines if line)
+
+
+_CSS_LEAK_RE = re.compile(
+    r"(?:^|\s)(?:body|html|table|td|p|a|li|\.[\w-]+|#[\w-]+)\s*(?:,\s*[\w.#-]+\s*)*\{[^}]{0,500}"
+    r"(?:font-size|font-family|background(?:-color)?|padding|margin|color)\s*:", re.I,
+)
+
+
+def has_css_leak(text: str) -> bool:
+    """Recognize style rules accidentally included in old HTML-only mail text."""
+    return bool(_CSS_LEAK_RE.search(str(text or "")[:600]))
 
 
 def extract_urls(text: str, raw_html: str) -> list[str]:

@@ -10,7 +10,9 @@ import secrets
 import sqlite3
 import threading
 import time
-from contextlib import closing
+import weakref
+from contextlib import closing, contextmanager
+from functools import wraps
 
 from . import credential_store, db, system_settings
 from .account_context import snapshot, use
@@ -20,20 +22,102 @@ from .remote_help import render as help_text
 
 PATH = DATA_DIR / 'remote-control.sqlite3'
 LOCK = threading.RLock()
+_SESSION_LOCKS = weakref.WeakValueDictionary()
+_SCHEMA_LOCK = threading.Lock()
+_SCHEMA_READY_PATH = None
+
+
+class _CommandGate:
+    """Let independent chats run together, but finish them before changing access."""
+
+    def __init__(self):
+        self._condition = threading.Condition()
+        self._readers = 0
+        self._writer = False
+        self._waiting_writers = 0
+
+    @contextmanager
+    def read(self):
+        with self._condition:
+            self._condition.wait_for(lambda: not self._writer and not self._waiting_writers)
+            self._readers += 1
+        try:
+            yield
+        finally:
+            with self._condition:
+                self._readers -= 1
+                self._condition.notify_all()
+
+    @contextmanager
+    def write(self):
+        with self._condition:
+            self._waiting_writers += 1
+            try:
+                self._condition.wait_for(lambda: not self._writer and not self._readers)
+                self._writer = True
+            finally:
+                self._waiting_writers -= 1
+        try:
+            yield
+        finally:
+            with self._condition:
+                self._writer = False
+                self._condition.notify_all()
+
+
+CONFIG_GATE = _CommandGate()
+
+
+def config_change(function):
+    @wraps(function)
+    def wrapped(*args, **kwargs):
+        with CONFIG_GATE.write():
+            return function(*args, **kwargs)
+    return wrapped
+
+
+def _session_lock(channel, corp_id, staff_id, conversation_id):
+    # Weak values keep long-lived bots from accumulating one lock per old chat.
+    key = (channel, str(corp_id), str(staff_id), str(conversation_id))
+    with LOCK:
+        lock = _SESSION_LOCKS.get(key)
+        if lock is None:
+            lock = threading.RLock()
+            _SESSION_LOCKS[key] = lock
+        return lock
 
 
 def connection():
+    global _SCHEMA_READY_PATH
     PATH.parent.mkdir(parents=True, exist_ok=True)
+    if os.name != 'nt':
+        try:
+            fd = os.open(PATH, os.O_CREAT | os.O_EXCL | os.O_RDWR, 0o600)
+        except FileExistsError:
+            pass
+        else:
+            os.close(fd)
     c = sqlite3.connect(PATH, timeout=5)
     c.row_factory = sqlite3.Row
-    c.executescript('''
+    c.execute('PRAGMA busy_timeout=5000')
+    c.execute('PRAGMA synchronous=FULL')
+    with _SCHEMA_LOCK:
+        if _SCHEMA_READY_PATH != str(PATH):
+            c.executescript('''
         CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY, value TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, value TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS receipts (
             id TEXT PRIMARY KEY, response TEXT NOT NULL, created REAL NOT NULL);
         CREATE TABLE IF NOT EXISTS phone_progress (id TEXT PRIMARY KEY, value TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS phone_delivery (id TEXT PRIMARY KEY, progress_id TEXT NOT NULL, value TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS weixin_pending (
+            id TEXT PRIMARY KEY, bot_id TEXT NOT NULL, payload TEXT NOT NULL,
+            created REAL NOT NULL, retry_at REAL NOT NULL DEFAULT 0,
+            attempts INTEGER NOT NULL DEFAULT 0);
+        CREATE INDEX IF NOT EXISTS idx_weixin_pending_due
+            ON weixin_pending(bot_id, retry_at, created);
     ''')
+            _SCHEMA_READY_PATH = str(PATH)
     if os.name != 'nt':
         os.chmod(PATH, 0o600)
     return c
@@ -63,6 +147,7 @@ def public_config(channel='dingtalk'):
             'accounts': [{'id': k, 'user': a['user']} for k, a in accounts.items() if a.get('visible', True)]}
 
 
+@config_change
 def save_config(payload):
     with LOCK:
         previous = settings()
@@ -119,12 +204,16 @@ def _available(saved):
             if k in accounts and accounts[k].get('visible', True)}
 
 
-def handle_message(*, corp_id='', staff_id, conversation_id, message_id, text, private=True, channel='dingtalk'):
+def handle_message(*, corp_id='', staff_id, conversation_id, message_id, text, private=True,
+                   channel='dingtalk', binding_id=''):
     """Only called by an authenticated channel, never by a public HTTP endpoint."""
-    with LOCK:
+    with CONFIG_GATE.read(), _session_lock(channel, corp_id, staff_id, conversation_id):
         if channel not in ('dingtalk', 'weixin'):
             return None
         saved = settings(channel)
+        if (channel == 'weixin' and binding_id and
+                not secrets.compare_digest(str(saved.get('bot_id', '')), str(binding_id))):
+            return None
         if not authorized(saved, corp_id, staff_id, private, channel):
             return None  # Do not expose mail or account names to strangers/groups.
         if not conversation_id or not message_id or len(str(message_id)) > 512 or len(str(conversation_id)) > 512:
@@ -676,12 +765,13 @@ def _watch_id(saved, conversation_id, message_id):
 
 
 def remember_sync(channel, message_id, saved, account_id, future, *, conversation_id=''):
-    now = time.monotonic()
-    for key in list(_SYNC_WATCHES):
-        if now - _SYNC_WATCHES[key][0] > 600:
-            _SYNC_WATCHES.pop(key, None)
-    if len(_SYNC_WATCHES) < 64:
-        _SYNC_WATCHES[(channel, _watch_id(saved, conversation_id, message_id))] = (now, saved.copy(), account_id, future)
+    with LOCK:
+        now = time.monotonic()
+        for key in list(_SYNC_WATCHES):
+            if now - _SYNC_WATCHES[key][0] > 600:
+                _SYNC_WATCHES.pop(key, None)
+        if len(_SYNC_WATCHES) < 64:
+            _SYNC_WATCHES[(channel, _watch_id(saved, conversation_id, message_id))] = (now, saved.copy(), account_id, future)
 
 
 def deliver_sync_feedback(channel, message_id, deliver, *, conversation_id=''):

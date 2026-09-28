@@ -4,8 +4,10 @@ Protocol reference: Tencent/openclaw-weixin/docs/protocol_zh_CN.md.
 No OpenClaw installation, browser automation, or public callback port is needed.
 """
 import base64
+import hashlib
 import io
 import json
+import logging
 import secrets
 import threading
 import time
@@ -25,6 +27,7 @@ _state = {'phase': 'disabled', 'message': '未连接微信'}
 _notice_context = None  # Recent authorized conversation only; never persist its platform token.
 _presence_announced = False
 _last_recovery_notice = float('-inf')
+log = logging.getLogger(__name__)
 
 
 def trusted_base(value):
@@ -71,6 +74,7 @@ def status():
         return dict(_state)
 
 
+@remote_control.config_change
 def save_config(payload):
     with remote_control.LOCK:
         saved = remote_control.settings('weixin')
@@ -89,6 +93,7 @@ def save_config(payload):
             c.execute('INSERT OR REPLACE INTO settings VALUES(2,?)', (json.dumps(saved),))
             if any(previous.get(k) != saved.get(k) for k in ('enabled', 'account_ids')):
                 c.execute("DELETE FROM sessions WHERE id LIKE 'weixin:%'")
+                c.execute('DELETE FROM weixin_pending WHERE bot_id=?', (saved['bot_id'],))
         return remote_control.public_config('weixin')
 
 
@@ -145,7 +150,7 @@ def poll_login(login_id, verify_code=''):
         if not all(isinstance(v, str) and v and len(v) <= 8192 for v in (token, bot_id, user_id)):
             raise ValueError('微信未返回完整的本人身份，请重新扫码')
         base = trusted_base(data.get('baseurl') or current['base'])
-        with remote_control.LOCK, _lock:
+        with remote_control.CONFIG_GATE.write(), remote_control.LOCK, _lock:
             if not _login or _login['id'] != login_id:
                 return {'status': 'expired', 'message': '此二维码已被替换，请使用新二维码'}
             if not credential_store.save('remote-weixin:' + bot_id, token):
@@ -158,6 +163,7 @@ def poll_login(login_id, verify_code=''):
                 c.execute("DELETE FROM sessions WHERE id LIKE 'weixin:%'")
                 if old_bot_id != bot_id:
                     c.execute('DELETE FROM sessions WHERE id=?', ('weixin-cursor:' + old_bot_id,))
+                    c.execute('DELETE FROM weixin_pending WHERE bot_id=?', (old_bot_id,))
             _login = None
             if old_bot_id and old_bot_id != bot_id:
                 try:
@@ -183,6 +189,85 @@ def _cursor(bot_id, value=None):
             return value
         row = c.execute('SELECT value FROM sessions WHERE id=?', (key,)).fetchone()
         return json.loads(row[0]) if row else ''
+
+
+def _queue_update_batch(saved, result):
+    """Commit a batch's replyable messages and cursor in one local transaction."""
+    messages = result.get('msgs') or []
+    if not isinstance(messages, list):
+        raise ValueError('微信消息批次格式无效')
+    bot_id = saved['bot_id']
+    with closing(remote_control.connection()) as c, c:
+        for message in messages:
+            if (not isinstance(message, dict) or message.get('message_type') != 1 or message.get('group_id')
+                    or message.get('from_user_id') != saved.get('user_id')):
+                continue
+            message_id = message.get('message_id') or message.get('client_id')
+            context = message.get('context_token')
+            if isinstance(message_id, int) and not isinstance(message_id, bool):
+                message_id = str(message_id)
+            if (not isinstance(message_id, str) or not message_id or len(message_id) > 512
+                    or not isinstance(context, str) or not context or len(context) > 8192):
+                continue
+            items = message.get('item_list')
+            if not isinstance(items, list):
+                continue
+            compact_items = []
+            for item in items[:16]:
+                if not isinstance(item, dict):
+                    continue
+                if item.get('type') == 1 and isinstance(item.get('text_item'), dict):
+                    value = item['text_item'].get('text')
+                    if isinstance(value, str):
+                        compact_items.append({'type': 1, 'text_item': {'text': value[:4001]}})
+                elif item.get('type') == 3 and isinstance(item.get('voice_item'), dict):
+                    value = item['voice_item'].get('text')
+                    if isinstance(value, str):
+                        compact_items.append({'type': 3, 'voice_item': {'text': value[:4001]}})
+            if not compact_items:
+                continue
+            payload = {'message_type': 1, 'from_user_id': saved['user_id'], 'message_id': message_id,
+                       'client_id': message.get('client_id') if isinstance(message.get('client_id'), str) else '',
+                       'context_token': context, 'item_list': compact_items}
+            pending_id = hashlib.sha256((bot_id + ':' + message_id).encode()).hexdigest()
+            c.execute('INSERT OR IGNORE INTO weixin_pending(id,bot_id,payload,created) VALUES(?,?,?,?)',
+                      (pending_id, bot_id, json.dumps(payload, ensure_ascii=False), time.time()))
+        count = c.execute('SELECT COUNT(*) FROM weixin_pending WHERE bot_id=?', (bot_id,)).fetchone()[0]
+        if count > 1000:
+            raise RuntimeError('微信待回传指令过多，已暂停接收新指令')
+        cursor = result.get('get_updates_buf')
+        if cursor:
+            c.execute('INSERT OR REPLACE INTO sessions VALUES(?,?)',
+                      ('weixin-cursor:' + bot_id, json.dumps(cursor)))
+        return cursor, count
+
+
+def _drain_pending(saved, token, stop):
+    """A bad reply is deferred without pinning all later platform updates."""
+    import requests
+    bot_id = saved['bot_id']
+    with closing(remote_control.connection()) as c:
+        pending = c.execute('SELECT id,payload,attempts FROM weixin_pending '
+                            'WHERE bot_id=? AND retry_at<=? ORDER BY created,id LIMIT 8',
+                            (bot_id, time.time())).fetchall()
+    for row in pending:
+        if stop.is_set():
+            break
+        try:
+            process_message(saved, token, json.loads(row['payload']))
+        except Exception as exc:
+            attempts = row['attempts'] + 1
+            with closing(remote_control.connection()) as c, c:
+                c.execute('UPDATE weixin_pending SET attempts=?,retry_at=? WHERE id=?',
+                          (attempts, time.time() + min(300, 2 ** min(attempts, 8)), row['id']))
+            log.warning('微信指令回传待重试（%s）', type(exc).__name__)
+            if isinstance(exc, requests.RequestException):
+                break  # A shared connection failure should not trigger eight long waits.
+        else:
+            with closing(remote_control.connection()) as c, c:
+                c.execute('DELETE FROM weixin_pending WHERE id=?', (row['id'],))
+    with closing(remote_control.connection()) as c:
+        return c.execute('SELECT COUNT(*) FROM weixin_pending WHERE bot_id=?', (bot_id,)).fetchone()[0]
 
 
 def process_message(saved, token, message):
@@ -220,7 +305,7 @@ def process_message(saved, token, message):
             voice_hint = '语音暂只支持明确查询（例如“最新邮件”“查看第一封”）。发信、确认和附件传输请使用文字；无转写时请改用文字。\n\n'
     response = remote_control.handle_message(channel='weixin', staff_id=user,
                     conversation_id=user, message_id=str(message.get('message_id') or message.get('client_id') or ''),
-                    text=text, private=True)
+                    text=text, private=True, binding_id=saved['bot_id'])
     if response is None:
         return
     response = voice_hint + response
@@ -297,6 +382,9 @@ def _listen(saved, token, stop):
     cursor, delay, disconnected_at = _cursor(saved['bot_id']), 2, None
     while not stop.is_set():
         try:
+            _drain_pending(saved, token, stop)
+            if stop.is_set():
+                break
             result = _request(saved['base_url'], '/ilink/bot/getupdates', token=token,
                               body={'get_updates_buf': cursor}, read_timeout=40)
             if stop.is_set():
@@ -306,7 +394,6 @@ def _listen(saved, token, stop):
                 return
             if result.get('ret', 0) != 0 or result.get('errcode', 0) != 0:
                 raise ValueError('微信收取失败')
-            _status('connected', '已连接 · 仅接受扫码本人指令')
             now = time.monotonic()
             if disconnected_at is not None:
                 if now - disconnected_at >= 30 and now - _last_recovery_notice >= 300:
@@ -314,12 +401,21 @@ def _listen(saved, token, stop):
                     _send_presence(saved, token, 'MailAI 电脑端已恢复连接。可发“状态”或“最新邮件”核对；'
                                    '此前未收到结果的发信请先检查发件箱，勿直接重发。')
                 disconnected_at = None
-            for message in result.get('msgs') or []:
-                if stop.is_set():
-                    break
-                process_message(saved, token, message)
-            if not stop.is_set() and result.get('get_updates_buf'):
-                cursor = _cursor(saved['bot_id'], result['get_updates_buf'])
+            if not stop.is_set():
+                if result.get('msgs'):
+                    with remote_control.CONFIG_GATE.read():
+                        current = remote_control.settings('weixin')
+                        if (not current.get('enabled') or any(current.get(key) != saved.get(key)
+                                for key in ('bot_id', 'user_id', 'base_url'))):
+                            return
+                        next_cursor, outstanding = _queue_update_batch(saved, result)
+                else:
+                    next_cursor, outstanding = _queue_update_batch(saved, result)
+                if next_cursor:
+                    cursor = next_cursor
+                outstanding = _drain_pending(saved, token, stop)
+                _status('connected', (f'已连接 · {outstanding} 条手机回复待重试' if outstanding
+                                      else '已连接 · 仅接受扫码本人指令'))
             delay = 2
             stop.wait(.2)  # Avoid a busy loop if the service returns immediately.
         except requests.exceptions.ReadTimeout:

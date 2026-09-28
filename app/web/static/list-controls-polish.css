@@ -1,0 +1,179 @@
+/* Mail-list commands and filters share the same quiet surfaces as the mailbox. */
+html[data-theme] body .bulk-toolbar {
+  height:44px;
+  padding:6px 11px;
+  gap:6px;
+  color:var(--desk-ink)!important;
+  border-bottom:1px solid var(--desk-line)!important;
+  background:var(--desk-surface)!important;
+  box-shadow:none!important;
+}
+html[data-theme] body .bulk-toolbar #bulk-count {
+  gap:6px;
+  margin-right:5px;
+  color:var(--desk-ink)!important;
+  font-size:11px;
+  font-weight:650;
+}
+html[data-theme] body .bulk-toolbar #bulk-count::before {
+  width:17px;
+  height:17px;
+  border:0!important;
+  border-radius:5px;
+  color:var(--desk-accent)!important;
+  background:var(--desk-selected)!important;
+  box-shadow:none!important;
+}
+html[data-theme] body .bulk-actions { gap:3px; }
+html[data-theme] body .bulk-toolbar .bulk-actions button {
+  flex:0 0 29px;
+  width:29px!important;
+  min-width:29px!important;
+  height:29px!important;
+  min-height:29px!important;
+  border:1px solid transparent!important;
+  border-radius:8px;
+  color:var(--desk-muted)!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+html[data-theme] body .bulk-toolbar .bulk-actions button:hover {
+  color:var(--desk-accent)!important;
+  background:var(--desk-hover)!important;
+}
+html[data-theme] body .bulk-toolbar .bulk-actions .bulk-trash {
+  color:#ad655b!important;
+}
+html[data-theme] body .bulk-toolbar .bulk-actions .bulk-trash:hover {
+  color:#a44940!important;
+  background:color-mix(in srgb,#b35749 11%,var(--desk-surface))!important;
+}
+html[data-theme] body .bulk-toolbar .bulk-actions #bulk-folder {
+  min-width:82px;
+  max-width:119px;
+  height:29px;
+  min-height:29px;
+  margin-left:3px;
+  padding:0 24px 0 9px;
+  border:1px solid var(--desk-line)!important;
+  border-radius:8px;
+  color:var(--desk-ink)!important;
+  background-color:var(--desk-muted-surface)!important;
+  box-shadow:none!important;
+  font-size:10.5px;
+}
+html[data-theme] body .bulk-toolbar #bulk-cancel {
+  width:auto;
+  min-width:0;
+  height:29px;
+  min-height:29px;
+  padding:0 7px;
+  border:0!important;
+  color:var(--desk-muted)!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  font-size:10.5px;
+}
+html[data-theme] body .bulk-toolbar #bulk-cancel:hover {
+  color:var(--desk-ink)!important;
+  background:var(--desk-hover)!important;
+}
+
+html[data-theme] body #workspace-filters {
+  margin:0 10px 10px;
+  padding:13px 14px 9px;
+  border:1px solid var(--desk-line)!important;
+  border-radius:12px;
+  color:var(--desk-ink)!important;
+  background:var(--desk-surface)!important;
+  box-shadow:0 6px 16px rgba(25,41,32,.045)!important;
+}
+#workspace-filters .filter-heading { margin:0 0 4px; padding:0; }
+html[data-theme] body #workspace-filters .filter-heading b {
+  color:var(--desk-ink)!important;
+  font-size:12px;
+  font-weight:700;
+}
+html[data-theme] body #workspace-filters .filter-heading small,
+html[data-theme] body #workspace-filters :is(.filter-block legend,.filter-select-row,.filter-switch-row) small {
+  color:var(--desk-muted)!important;
+  font-size:9px;
+  line-height:1.4;
+}
+html[data-theme] body #workspace-filters .filter-heading>span {
+  color:var(--desk-accent)!important;
+  background:var(--desk-selected)!important;
+}
+#workspace-filters .filter-form { gap:0; }
+#workspace-filters :is(.filter-block,.filter-select-row,.filter-switch-row) {
+  min-width:0;
+  margin:0;
+  padding:10px 0;
+  border:0;
+  border-bottom:1px solid var(--desk-line);
+}
+#workspace-filters .filter-block legend { margin-bottom:7px; padding:0; }
+html[data-theme] body #workspace-filters :is(.filter-block legend,.filter-select-row,.filter-switch-row) b {
+  color:var(--desk-ink)!important;
+  font-size:11px;
+  font-weight:650;
+}
+#workspace-filters .filter-segments {
+  gap:2px;
+  padding:2px;
+  border:1px solid var(--desk-line)!important;
+  border-radius:9px;
+  background:var(--desk-muted-surface)!important;
+}
+html[data-theme] body #workspace-filters .filter-segments button {
+  min-height:27px;
+  border-radius:6px;
+  color:var(--desk-muted)!important;
+  background:transparent!important;
+  font-size:10px;
+  font-weight:600;
+}
+html[data-theme] body #workspace-filters .filter-segments button:hover {
+  color:var(--desk-ink)!important;
+  background:var(--desk-hover)!important;
+}
+html[data-theme] body #workspace-filters .filter-segments button.active {
+  color:var(--desk-accent)!important;
+  background:var(--desk-selected)!important;
+  box-shadow:none!important;
+  font-weight:700;
+}
+html[data-theme] body #workspace-filters #filter-domain {
+  flex:0 0 112px;
+  min-height:30px;
+  border:1px solid var(--desk-line)!important;
+  color:var(--desk-ink)!important;
+  background-color:var(--desk-muted-surface)!important;
+  box-shadow:none!important;
+}
+html[data-theme] body #workspace-filters .filter-clear-button {
+  align-self:flex-end;
+  width:auto;
+  min-height:29px;
+  margin-top:8px;
+  padding:5px 9px;
+  border:0!important;
+  color:var(--desk-muted)!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+html[data-theme] body #workspace-filters .filter-clear-button:hover:not(:disabled) {
+  color:var(--desk-accent)!important;
+  background:var(--desk-hover)!important;
+}
+html[data-theme] body :is(.bulk-toolbar,#workspace-filters) :is(button,select,input):focus-visible {
+  outline:2px solid var(--desk-accent);
+  outline-offset:2px;
+}
+@container mail-list-pane (max-width:430px) {
+  html[data-theme] body .bulk-toolbar { padding-inline:7px; gap:3px; }
+  html[data-theme] body .bulk-toolbar #bulk-count { font-size:10px; margin-right:0; }
+  html[data-theme] body .bulk-actions { gap:1px; }
+  html[data-theme] body .bulk-toolbar .bulk-actions button { flex-basis:26px; width:26px!important; min-width:26px!important; }
+  html[data-theme] body .bulk-toolbar .bulk-actions #bulk-folder { flex-basis:68px; min-width:68px; max-width:90px; margin-left:1px; }
+}

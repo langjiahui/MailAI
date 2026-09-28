@@ -835,6 +835,47 @@ def repair_mojibake_bodies() -> dict:
     return {"ok": True, "checked": checked, "updated": updated, "skipped": False}
 
 
+def repair_html_style_bodies() -> dict:
+    """Reparse historical HTML-only mail whose stored preview contains CSS."""
+    action = "repair_html_style_bodies_v1"
+    if db.audit_action_exists(action):
+        return {"ok": True, "checked": 0, "updated": 0, "skipped": True}
+    checked = updated = 0
+    for row in db.iter_emails():
+        if not any(parser.has_css_leak(row.get(key)) for key in ("body_text", "snippet", "summary")):
+            continue
+        raw_path = row.get("raw_path") or ""
+        if not os.path.isfile(raw_path):
+            continue
+        checked += 1
+        try:
+            with open(raw_path, "rb") as source:
+                parsed = parser.parse_message(
+                    int(row.get("uid") or 0), source.read(), save_raw=False,
+                    folder=row.get("folder") or config.INBOX_FOLDER,
+                )
+        except Exception:
+            log.exception("历史 HTML 正文重解析失败 email_id=%s", row.get("id"))
+            continue
+        if not parsed.get("body_text") or parser.has_css_leak(parsed["body_text"]):
+            continue
+        summary = "" if parser.has_css_leak(row.get("summary")) else row.get("summary")
+        with db.conn() as connection:
+            connection.execute(
+                "UPDATE emails SET snippet=?,body_text=?,body_html=?,urls=?,summary=? WHERE id=?",
+                (parsed["snippet"], parsed["body_text"], parsed["body_html"],
+                 json.dumps(parsed.get("urls") or [], ensure_ascii=False), summary, row["id"]),
+            )
+            if connection.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='email_vectors'"
+            ).fetchone():
+                connection.execute("DELETE FROM email_vectors WHERE email_id=?", (row["id"],))
+        updated += 1
+    db.add_audit_log(None, action, actor="system", reason="修复历史邮件正文混入 CSS 样式",
+                     meta={"checked": checked, "updated": updated})
+    return {"ok": True, "checked": checked, "updated": updated, "skipped": False}
+
+
 def repair_retired_security_signals() -> dict:
     """Remove retired AUTH_NONE and reapply built-in business-domain trust.
 
@@ -892,6 +933,7 @@ def repair_local_mail_data() -> dict:
     return {
         "attachments": repair_inline_attachment_metadata(),
         "encoding": repair_mojibake_bodies(),
+        "html_style": repair_html_style_bodies(),
         "security_rules": repair_retired_security_signals(),
     }
 

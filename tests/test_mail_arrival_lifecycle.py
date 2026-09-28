@@ -63,7 +63,10 @@ def main():
         jobs[1][1].set_result({'ok': True, 'notifications_delivered': True})
         clock.return_value = 30
         mailbox_jobs.poll_all(force=False)
-        assert [key for key, _ in jobs] == ['a', 'b', 'a'], 'Retry busy/failed account at the next heartbeat'
+        assert [key for key, _ in jobs] == ['a', 'b'], 'Failed account should back off briefly'
+        clock.return_value = 35
+        mailbox_jobs.poll_all(force=False)
+        assert [key for key, _ in jobs] == ['a', 'b', 'a'], 'Retry failed account after backoff'
         mailbox_jobs.poll_all(force=True, account_id='a')
         assert len(jobs) == 3
         jobs[2][1].set_result({'ok': True, 'notifications_delivered': True})

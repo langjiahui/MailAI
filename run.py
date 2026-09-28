@@ -47,7 +47,9 @@ def _open_browser():
 
 
 def _start_scheduler():
+    from datetime import datetime, timedelta
     from app.mailbox_jobs import start_outbox
+    from app.automatic_backup import run_due as run_automatic_backups
     start_outbox()
     scheduler = BackgroundScheduler()
     scheduler.add_job(
@@ -59,6 +61,9 @@ def _start_scheduler():
     from app.task_notifications import check_due_tasks
     scheduler.add_job(check_due_tasks, "interval", seconds=15, id="task_reminders",
                       max_instances=1, coalesce=True)
+    scheduler.add_job(run_automatic_backups, "interval", minutes=15,
+                      next_run_time=datetime.now() + timedelta(minutes=2),
+                      id="automatic_backups", max_instances=1, coalesce=True)
     scheduler.start()
     from app.dingtalk_remote import start as start_remote
     from app.weixin_remote import start as start_weixin
@@ -107,7 +112,9 @@ def _run_app(server_socket=None):
         from app.weixin_remote import stop as stop_weixin
         stop_weixin(notify=True)
         scheduler.shutdown(wait=False)
-        from app.mailbox_jobs import stop_outbox
+        from app.mailbox_jobs import stop_mailbox, stop_outbox
+        if not stop_mailbox(timeout=5):
+            log.warning("邮件同步任务尚在结束；重启后会重新核对同步进度")
         if not stop_outbox(timeout=5):
             log.warning("发件后台任务未能在 5 秒内停止；当前发送结果将在下次启动时核对")
 

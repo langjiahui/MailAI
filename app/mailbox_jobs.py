@@ -1,5 +1,5 @@
 """Background synchronization for every connected account."""
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, wait
 import threading
 from . import config, db, pipeline, system_settings
 from .account_context import snapshot, use
@@ -11,15 +11,25 @@ _executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix='mailbox')
 _pending = {}
 _lock = threading.Lock()
 _next_poll_at = {}
+_poll_failures = {}
 _poll_again = set()
+_stopping = threading.Event()
 _outbox_started = False
 _outbox_thread = None
 _outbox_stop = threading.Event()
 _outbox_lock = threading.Lock()
 
 
+def _delay_after_failure(account_id, now):
+    failures = min(_poll_failures.get(account_id, 0) + 1, 7)
+    _poll_failures[account_id] = failures
+    _next_poll_at[account_id] = now + min(300, 5 * 2 ** (failures - 1))
+
+
 @account_work
 def _poll(values):
+    if _stopping.is_set():
+        return {'ok': True, 'fetched': 0, 'canceled': True}
     # Refresh after acquiring the lease: queued work must not reuse a removed
     # account or credentials changed while another account occupied the pool.
     with use(snapshot(values['ACCOUNT_ID'])):
@@ -41,6 +51,8 @@ def _poll(values):
 
 def poll_all(force=True, account_id=None):
     import time
+    if _stopping.is_set():
+        return {'ok': False, 'msg': '邮件服务正在退出'}
     accounts = system_settings._load_registry().get('accounts', {})
     if not accounts:
         if not config.IMAP_PASSWORD:
@@ -56,11 +68,14 @@ def poll_all(force=True, account_id=None):
                 semantic.schedule_missing()
         except Exception:
             with _lock:
-                _next_poll_at[''] = 0
+                _delay_after_failure('', time.monotonic())
             raise
         if not result.get('ok') or result.get('errors'):
             with _lock:
-                _next_poll_at[''] = 0
+                _delay_after_failure('', time.monotonic())
+        else:
+            with _lock:
+                _poll_failures.pop('', None)
         return result
     queued = False
     with _lock:
@@ -72,7 +87,11 @@ def poll_all(force=True, account_id=None):
                     healthy = result.get('ok') and not result.get('errors') and not result.get('canceled')
                 except Exception:
                     healthy = False
-                if not healthy or finished_id in _poll_again:
+                if healthy:
+                    _poll_failures.pop(finished_id, None)
+                else:
+                    _delay_after_failure(finished_id, time.monotonic())
+                if finished_id in _poll_again:
                     _poll_again.discard(finished_id)
                     _next_poll_at[finished_id] = 0
         for key, account in accounts.items():
@@ -98,6 +117,24 @@ def poll_all(force=True, account_id=None):
             _pending[key] = _executor.submit(_poll, values)
             _pending[key].add_done_callback(_notify)
     return {'ok': True, 'fetched': 0, 'background': True, 'queued': queued}
+
+
+def stop_mailbox(timeout=5):
+    """Cancel queued polls, request cooperative stop, and bound shutdown wait."""
+    _stopping.set()
+    with _lock:
+        jobs = list(_pending.items())
+    for account_id, future in jobs:
+        future.cancel()
+        if future.running():
+            try:
+                with use(snapshot(account_id)):
+                    pipeline.cancel_fetch()
+            except (ValueError, KeyError):
+                pass  # Removed credentials must not block shutdown.
+    _executor.shutdown(wait=False, cancel_futures=True)
+    _, unfinished = wait([future for _, future in jobs], timeout=max(0, timeout)) if jobs else (set(), set())
+    return not unfinished
 
 
 def notify_new_message(email_id):
