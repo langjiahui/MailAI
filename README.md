@@ -5,7 +5,7 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v2.2.28**
+当前版本：**v2.2.29**
 
 本次更新：修复重复点击“下载并安装”后 macOS 安装器报“找不到要安装的软件”的问题——已下载并校验通过的安装包直接复用，不再重复下载替换正在安装的文件；新版本安装包就绪后自动清理更新目录中的历史安装包，避免长期占用磁盘空间。
 

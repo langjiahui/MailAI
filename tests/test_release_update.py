@@ -163,6 +163,7 @@ def main():
                                                      "sha256": hashlib.sha256(payload).hexdigest(), "size": len(payload)}}
         with patch.object(release_update, "check", return_value=result), patch.object(
                 release_update.urllib.request, "urlopen", side_effect=lambda *_a, **_k: Response(payload)), patch.object(
+                release_update.sys, "platform", "darwin"), patch.object(
                 release_update.subprocess, "Popen") as popen:
             outcome = release_update.download_and_launch()
         assert outcome["ok"] and outcome["version"] == "1.1.0"
