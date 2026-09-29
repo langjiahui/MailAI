@@ -7,10 +7,48 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from ... import assistant_actions, config, db, mail_assistant
 from ..helpers import prepare_assistant_images, prepare_assistant_materials
-from ..schemas import AssistantRequest
+from ..schemas import AssistantRequest, DocumentReplyPlanRequest, DocumentReplyPrepareRequest, DocumentReplyValuesRequest
 
 log = logging.getLogger(__name__)
 router = APIRouter()
+
+
+@router.post('/api/assistant/document-reply/plan')
+def api_document_reply_plan(payload: DocumentReplyPlanRequest):
+    from ... import assistant_document_reply
+    try:
+        return assistant_document_reply.plan(payload.email_id, payload.index, payload.instruction, payload.row_choice)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except Exception:
+        log.exception('小邮识别待填表格失败')
+        raise HTTPException(502, '表格识别失败，请稍后重试')
+
+
+@router.post('/api/assistant/document-reply/prepare')
+def api_document_reply_prepare(payload: DocumentReplyPrepareRequest):
+    from ... import assistant_document_reply
+    try:
+        return assistant_document_reply.prepare(payload.email_id, payload.index, payload.digest,
+                                                payload.fields, payload.instruction, payload.plan_token)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except Exception:
+        log.exception('小邮生成填写附件与回复失败')
+        raise HTTPException(502, '生成文件失败，未发送邮件')
+
+
+@router.post('/api/assistant/document-reply/values')
+def api_document_reply_values(payload: DocumentReplyValuesRequest):
+    from ... import assistant_document_reply
+    try:
+        return assistant_document_reply.suggest_values(payload.email_id, payload.index, payload.digest,
+                                                       payload.fields, payload.plan_token, payload.text)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except Exception:
+        log.exception('小邮提取待填信息失败')
+        raise HTTPException(502, '信息提取失败，请逐项填写')
 
 
 @router.get("/api/assistant/alerts")

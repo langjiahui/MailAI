@@ -16,6 +16,7 @@ task-notices.js
 experience-polish.js
 assistant-images.js
 assistant-attachments.js
+assistant-document-reply.js
 companion.js
 companion-motion.js
 onboarding.js

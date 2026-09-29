@@ -33,7 +33,7 @@ Object.assign(ctx, {
   allEmails:[], sentMessages:[], savedDrafts:[],
   _systemConfig:{accounts:[{id:'a',user:'a@example.test'}]},
   document:{getElementById:element}, clearTimeout(){}, setSegmentedFilter(){},
-  loadData:async()=>{loadCount++}, loadMailboxFolders:async()=>{folderLoadCount++;return true},
+  loadData:async()=>{loadCount++;return true}, loadMailboxFolders:async()=>{folderLoadCount++;return true},
   api:async()=>{syncCount++}, updateActiveNav(){}, renderSidebarAccounts(){sidebarRenders++}, toast(){},
 });
 vm.runInContext(open,ctx);

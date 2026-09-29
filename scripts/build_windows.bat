@@ -75,6 +75,10 @@ REM let the installer deploy it; --noupx also avoids executable packer traits.
   --hidden-import "qrcode.image.pil" ^
   --hidden-import "fastembed" ^
   --hidden-import "onnxruntime" ^
+  --hidden-import "xlutils.filter" ^
+  --hidden-import "xlwt" ^
+  --hidden-import "xlrd" ^
+  --hidden-import "olefile" ^
   --add-data "%CD%\app\web\static;app\web\static" ^
   --add-data "%CD%\mailai.defaults.env;." ^
   --add-data "%CD%\VERSION;." ^

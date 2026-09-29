@@ -443,7 +443,7 @@ function renderAssistantActionCard(bubble, action, account) {
   const card = document.createElement('div');
   card.className = 'assistant-action-card';
   card.innerHTML = `<div class="assistant-action-copy"><b>建议操作</b><span>${esc(action.summary || '')}</span></div>
-    <div class="assistant-action-buttons"><button type="button" data-action-confirm>确认执行</button><button type="button" data-action-dismiss>取消</button></div>`;
+    <div class="assistant-action-buttons"><button type="button" data-action-confirm>${action.type === 'fill_attachment_reply' ? '开始填写' : '确认执行'}</button><button type="button" data-action-dismiss>取消</button></div>`;
   const finish = html => { card.innerHTML = `<p class="assistant-action-result">${html}</p>`; };
   card.querySelector('[data-action-dismiss]').addEventListener('click', () => {
     finish('已取消，未执行任何操作。');
@@ -452,6 +452,11 @@ function renderAssistantActionCard(bubble, action, account) {
     const button = event.currentTarget;
     button.disabled = true;
     try {
+      if (action.type === 'fill_attachment_reply') {
+        await window.startAssistantDocumentReply?.(action.params?.email_id, account?.id || '', action.params?.instruction || '');
+        button.disabled = false;
+        return;
+      }
       const response = await fetch('/api/assistant/actions/execute', {method:'POST',
         headers:{'Content-Type':'application/json', 'X-MailAI-Account':account?.id || ''},
         body:JSON.stringify({type:action.type, params:action.params || {}})});
@@ -787,6 +792,7 @@ function assistantQuestionReferencesOpenEmail(value) {
   const question = String(value || '').toLowerCase().replace(/[\s，。！？?!、；;：:]/g, '');
   if (!question) return false;
   return /(?:这|此|本|当前|正在(?:阅读|查看|看|打开)|刚刚?(?:阅读|查看|看|打开))(?:的)?(?:一封|封|个)?(?:电子)?邮件/.test(question)
+    || /(?:填|填写|登记).*(?:附件|表格|文档|登记表).*(?:回复|回信)/.test(question)
     || /(?:这|此|本)(?:一)?封信/.test(question)
     || /^(?:它|这封|本封)(?:说|讲|写|提到|要求|主要|内容|重点|风险)/.test(question)
     || /(?:this|current|open)email/.test(question);
@@ -1299,12 +1305,13 @@ async function openCompose(seed = {}) {
   closeAssistant();
   hideContactSuggestions();
   composeAccountId = seed.account_id || activeMailAccount()?.id || '';
-  draftSession = {id: seed.id || null, accountId:composeAccountId, pending: Promise.resolve(), canceled: false, busy: false};
+  draftSession = {id: seed.id || null, accountId:composeAccountId, pending: Promise.resolve(), canceled: false, busy: false, assistantReview: Boolean(seed.assistant_review)};
   currentDraftId = seed.id || null;
   signatureState = {items:[], default_id:''};
   composeContext = {source_draft_email_id:seed.source_draft_email_id || null, mode: seed.mode || 'compose', reply_to_email_id: seed.reply_to_email_id || null, in_reply_to: seed.in_reply_to || '', references: seed.references || '', original_text: seed.original_text || ''};
   const titles = {reply: '回复邮件', reply_all: '回复全部', forward: '转发邮件', compose: '写邮件'};
   document.getElementById('compose-title').textContent = titles[composeContext.mode] || '写邮件';
+  document.getElementById('assistant-prepared-note').classList.toggle('hidden', !draftSession.assistantReview);
   document.getElementById('compose-to').value = seed.to_addr || '';
   document.getElementById('compose-cc').value = seed.cc_addr || '';
   document.getElementById('compose-bcc').value = seed.bcc_addr || '';
@@ -1320,7 +1327,7 @@ async function openCompose(seed = {}) {
   renderComposeAccountPicker(seed.account_id || activeMailAccount()?.id || '');
   const send = document.getElementById('btn-send-mail');
   send.disabled = !sendCapability.configured;
-  send.textContent = sendCapability.configured ? '发送' : (sendCapability.identity_matched === false && sendCapability.smtp_configured ? '发送（发件账号不匹配）' : '发送（当前邮箱未配置）');
+  send.textContent = sendCapability.configured ? (draftSession.assistantReview ? '确认发送' : '发送') : (sendCapability.identity_matched === false && sendCapability.smtp_configured ? '发送（发件账号不匹配）' : '发送（当前邮箱未配置）');
   send.title = sendCapability.reason || '发送邮件';
   document.getElementById('compose-modal').classList.remove('hidden');
   document.body.classList.add('compose-open');
@@ -1330,7 +1337,7 @@ async function openCompose(seed = {}) {
   api('/api/mail/send-capability', {accountId:composeAccountId}).then(capability => {
     if (session !== draftSession) return;
     sendCapability = capability; send.disabled = !capability.configured;
-    send.textContent = capability.configured ? '发送' : '发送（当前邮箱未配置）'; send.title = capability.reason || '发送邮件';
+    send.textContent = capability.configured ? (session.assistantReview ? '确认发送' : '发送') : '发送（当前邮箱未配置）'; send.title = capability.reason || '发送邮件';
   }).catch(error => { if (session === draftSession) { send.disabled = true; send.title = error.message; } });
   const initialSignatureRevision = composeSignatureRevision;
   loadSignatures().then(state => {
@@ -2898,12 +2905,17 @@ async function loadMailPages(path, isCurrent = () => true, maxRows = Number.POSI
 
 async function loadData({includeAncillary = true, silent = false} = {}) {
   const revision = ++mailLoadRevision;
+  const navigationRevision = mailboxNavigationRevision;
   const accountId = typeof activeMailAccount === 'function' ? activeMailAccount()?.id : '';
   const folder = currentServerFolder;
   const status = currentFilter.status;
+  const mailbox = specialMailbox;
   const days = currentFilter.days;
   const unified = typeof unifiedMailbox !== 'undefined' && unifiedMailbox;
-  const isCurrent = () => revision === mailLoadRevision && accountId === (typeof activeMailAccount === 'function' ? activeMailAccount()?.id : '') && folder === currentServerFolder && status === currentFilter.status && days === currentFilter.days && unified === (typeof unifiedMailbox !== 'undefined' && unifiedMailbox);
+  const isCurrent = () => revision === mailLoadRevision && navigationRevision === mailboxNavigationRevision &&
+    accountId === (typeof activeMailAccount === 'function' ? activeMailAccount()?.id : '') &&
+    folder === currentServerFolder && status === currentFilter.status && mailbox === specialMailbox &&
+    days === currentFilter.days && unified === (typeof unifiedMailbox !== 'undefined' && unifiedMailbox);
   // 空列表加载时给骨架屏；已有内容时保留旧列表，避免刷新闪烁
   const listNode = document.getElementById('email-list');
   if (!silent && listNode && !listNode.querySelector('.email-item')) listNode.innerHTML = skeletonRows();
@@ -2918,7 +2930,7 @@ async function loadData({includeAncillary = true, silent = false} = {}) {
     const requests = [loadMailPages(mailPath, isCurrent)];
     if (includeAncillary) requests.push(api('/api/todos'), api('/api/mail/sent'), api('/api/drafts'));
     const [emails, todos, sent, drafts] = await Promise.all(requests);
-    if (!isCurrent() || !emails) return;
+    if (!isCurrent() || !emails) return null;
     allEmails = emails;
     if (includeAncillary) {
       allTodos = todos;
@@ -2931,9 +2943,20 @@ async function loadData({includeAncillary = true, silent = false} = {}) {
     loadAssistantAlerts();
     return true;
   } catch (e) {
-    if (isCurrent()) toast('加载数据失败：' + e.message, 'error');
+    if (!isCurrent()) return null;
+    toast('加载数据失败：' + e.message, 'error');
     return false;
   }
+}
+
+function showMailboxLoadFailure() {
+  // Loading failure is not an empty mailbox. Keep its count out of the UI and
+  // give the user a direct retry, while never rendering another account's rows.
+  document.getElementById('list-count').textContent = '加载失败';
+  emailListRenderSignature = '';
+  renderedEmailIds = [];
+  clearMailSelection();
+  document.getElementById('email-list').innerHTML = `<div class="email-empty"><div class="empty-text"><strong>邮件列表加载失败</strong><small>邮件仍保存在邮箱中，请重试加载。</small></div><div class="search-empty-actions"><button type="button" data-mailbox-retry>重新加载</button></div></div>`;
 }
 
 // ===== 侧边栏统计 =====
@@ -3077,8 +3100,6 @@ async function onNavClick(e) {
     selectedMailboxAccountId = activeMailAccount()?.id || '';
   }
   const changingMailbox = filter === 'status' || filter === 'special';
-  const leavingServerFolder = changingMailbox && !!currentServerFolder;
-  const leavingFavorites = changingMailbox && ['favorites','local_archive'].includes(currentFilter.status);
   if (changingMailbox) currentServerFolder = '';
   console.log('[nav click]', filter, value);
   if (filter === 'status' && value === 'trash') { await openTrashMailbox({transitionRevision}); updateActiveNav(); return; }
@@ -3109,12 +3130,20 @@ async function onNavClick(e) {
   if (openingMailbox && currentFilter.days !== 9999) {
     currentFilter.days = 9999;
     setSegmentedFilter('filter-days', '9999');
-    await loadData();
-  } else if (value === 'favorites' || leavingServerFolder || leavingFavorites) await loadData();
+  }
+  // A previous mailbox may have loaded only Trash, Favorites or a server folder.
+  // Reload before filtering its rows into the new mailbox.
+  let loaded = true;
+  if (changingMailbox) {
+    loaded = await loadData();
+    if (loaded === null && transitionRevision === mailboxNavigationRevision) loaded = await loadData();
+  }
   if (transitionRevision && transitionRevision !== mailboxNavigationRevision) return;
   updateActiveNav();
-  applyFilters();
+  if (loaded !== true) showMailboxLoadFailure();
+  else if (loaded === true && !changingMailbox) applyFilters();
   if (transitionRevision) finishMailboxTransition(transitionRevision);
+  if (loaded !== true) return;
   const label = btn.textContent.trim().split(/\s+/)[0];
   toast(`已切换到：${label}`);
 }
@@ -4655,15 +4684,17 @@ function hideRulesView(showLayout = true) {
 // ===== 后台收信后的列表自动刷新 =====
 async function refreshMailboxIfChanged(force = false) {
   if (mailboxRefreshInFlight || !document.getElementById('app')) return;
+  const navigationRevision = mailboxNavigationRevision;
   mailboxRefreshInFlight = true;
   try {
     const state = await api('/api/mailbox/revision');
+    if (navigationRevision !== mailboxNavigationRevision || document.querySelector('.list-pane')?.getAttribute('aria-busy') === 'true') return;
     const changed = mailboxRevisionToken !== null && state.revision !== mailboxRevisionToken;
     if (force || changed) {
       // 邮件变化只刷新本地轻量列表。文件夹读取会建立 IMAP 连接，待办、草稿与
       // 已发送也有各自的刷新入口，不能在每次 AI 分析写库后一起重载。
       const loaded = await loadData({includeAncillary:false, silent:true});
-      if (loaded === false) return;
+      if (loaded !== true) return;
     }
     mailboxRevisionToken = state.revision;
     // 账户任务状态变化不一定修改邮件，但无需每 15 秒读取完整系统配置。
@@ -4989,7 +5020,6 @@ function finishMailboxTransition(revision) {
 async function openAccountMailbox(accountId, mailbox) {
   if (bulkOperationActive) return toast('批量操作正在执行，请稍候', 'warn');
   const navigationRevision = ++mailboxNavigationRevision;
-  const switchingAccount = unifiedMailbox || activeMailAccount()?.id !== accountId || !document.getElementById('mailbox-transition')?.hidden;
   beginMailboxTransition(navigationRevision, `${{inbox:'收件箱',sent:'已发送',drafts:'草稿箱',favorites:'我的收藏',trash:'已删除'}[mailbox] || mailbox} · ${(_systemConfig?.accounts || []).find(item => item.id === accountId)?.user || ''}`);
   resetReadingPane();
   // 乐观高亮：账号和文件夹状态必须一起切换，不等账号激活或列表加载。
@@ -5037,11 +5067,9 @@ async function openAccountMailbox(accountId, mailbox) {
   }
   // Observe folder failures immediately while the list can finish first.
   const foldersPromise = loadMailboxFolders().then(() => null, error => error);
-  const loaded = await loadData();
-  if (!loaded && navigationRevision === mailboxNavigationRevision && switchingAccount) {
-    allEmails = []; sentMessages = []; savedDrafts = [];
-    applyFilters();
-  }
+  let loaded = await loadData();
+  if (loaded === null && navigationRevision === mailboxNavigationRevision) loaded = await loadData();
+  if (loaded !== true && navigationRevision === mailboxNavigationRevision) showMailboxLoadFailure();
   finishMailboxTransition(navigationRevision);
   const folderError = await foldersPromise;
   if (folderError) throw folderError;
@@ -5073,10 +5101,11 @@ async function openTrashMailbox({resetPane = true, transitionRevision = 0} = {})
   document.getElementById('list-title').textContent = mailaiT('side.trash') || '已删除';
   document.getElementById('email-list').innerHTML = `<div class="email-empty"><div class="empty-text">${mailaiT('list.loadingTrash') || '正在读取已删除邮件…'}</div></div>`;
   // Local browsing must not wait for IMAP LIST/STATUS or a slow remote sync.
-  const loaded = await loadData();
-  if (!loaded && isCurrent() && transitionRevision) { allEmails = []; applyFilters(); }
+  let loaded = await loadData();
+  if (loaded === null && isCurrent()) loaded = await loadData();
+  if (loaded !== true && isCurrent()) showMailboxLoadFailure();
   if (transitionRevision) finishMailboxTransition(transitionRevision);
-  if (!isCurrent()) return;
+  if (!isCurrent() || loaded !== true) return;
   const foldersLoaded = await loadMailboxFolders({quiet:true});
   if (!isCurrent()) return;
   if (!foldersLoaded) {
@@ -5105,8 +5134,9 @@ async function openUnifiedInbox() {
   currentFilter.status = ''; currentFilter.verdict = ''; currentFilter.category = '';
   currentFilter.search = ''; searchResults = null; ++searchRevision; clearTimeout(globalSearchTimer);
   document.getElementById('global-search').value = '';
-  const loaded = await loadData();
-  if (!loaded && navigationRevision === mailboxNavigationRevision) { allEmails = []; applyFilters(); }
+  let loaded = await loadData();
+  if (loaded === null && navigationRevision === mailboxNavigationRevision) loaded = await loadData();
+  if (loaded !== true && navigationRevision === mailboxNavigationRevision) showMailboxLoadFailure();
   finishMailboxTransition(navigationRevision);
   if (navigationRevision !== mailboxNavigationRevision) return;
   updateActiveNav(); renderSidebarAccounts();
@@ -9241,6 +9271,15 @@ document.getElementById('compose-ai-undo').addEventListener('click', undoCompose
 document.getElementById('compose-ai-retry').addEventListener('click', () => draftSession.aiRetry?.());
 document.getElementById('search-retry').addEventListener('click', runGlobalSearch);
 document.getElementById('email-list').addEventListener('click', async event => {
+  if (event.target.closest('[data-mailbox-retry]')) {
+    const revision = ++mailboxNavigationRevision;
+    beginMailboxTransition(revision, document.getElementById('list-title').textContent || '邮件列表');
+    let loaded = await loadData();
+    if (loaded === null && revision === mailboxNavigationRevision) loaded = await loadData();
+    if (loaded !== true && revision === mailboxNavigationRevision) showMailboxLoadFailure();
+    finishMailboxTransition(revision);
+    return;
+  }
   const action = event.target.closest('[data-search-recover]')?.dataset.searchRecover;
   if (!action) return;
   const query = currentFilter.search;

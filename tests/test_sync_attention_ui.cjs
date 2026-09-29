@@ -92,8 +92,8 @@ assert.match(src, /sidebar-account-identity[\s\S]{0,400}account\.user\.split\('@
   assert.equal(history.children[1],analysis,'Keep the analysis available without leaving it expanded');
   assert.equal(context.assistantPinnedScope,null);
 
-  const refresh = vm.createContext({document:{getElementById:()=>({})},Date,
-    mailboxRefreshInFlight:false,mailboxRevisionToken:'old',mailboxConfigCheckedAt:Date.now(),
+  const refresh = vm.createContext({document:{getElementById:()=>({}),querySelector:()=>null},Date,
+    mailboxRefreshInFlight:false,mailboxNavigationRevision:0,mailboxRevisionToken:'old',mailboxConfigCheckedAt:Date.now(),
     api:async()=>({revision:'new'}),loadData:async()=>false});
   vm.runInContext(extract('async function refreshMailboxIfChanged(', '\nfunction startMailboxAutoRefresh'),refresh);
   await refresh.refreshMailboxIfChanged();

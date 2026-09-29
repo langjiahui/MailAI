@@ -1,0 +1,60 @@
+/* Keep form focus inside its own border instead of stacking outer halos. */
+html[data-theme] body :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea,[contenteditable="true"]):is(:focus,:focus-visible) {
+  border-color:var(--ui-focus) !important;
+  outline:2px solid var(--ui-focus) !important;
+  outline-offset:-2px !important;
+  box-shadow:none !important;
+}
+html[data-theme="dark"] body :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea,[contenteditable="true"]):is(:focus,:focus-visible) {
+  border-color:#72b995 !important;
+  outline-color:#72b995 !important;
+}
+
+/* The reply form owns the available height; only its middle section scrolls. */
+html body #assistant-document-reply[open] {
+  display:flex;
+  flex-direction:column;
+  box-sizing:border-box;
+  width:min(760px,calc(calc(100vw / var(--fz,1)) - 32px));
+  height:min(820px,calc(calc(100dvh / var(--fz,1)) - 32px));
+  max-height:calc(calc(100dvh / var(--fz,1)) - 32px);
+  padding:22px 22px 18px;
+  overflow:hidden;
+}
+#assistant-document-reply .document-reply-head,
+#assistant-document-reply .document-reply-source,
+#assistant-document-reply .document-reply-status,
+#assistant-document-reply .document-reply-foot { flex-shrink:0; }
+#assistant-document-reply .document-reply-content {
+  flex:1 1 auto;
+  min-height:0;
+  max-height:none;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  padding:2px 18px 14px 2px;
+  scrollbar-gutter:stable;
+  scrollbar-width:thin;
+  scrollbar-color:#b7cdc0 transparent;
+}
+#assistant-document-reply .document-reply-content::-webkit-scrollbar { width:9px; }
+#assistant-document-reply .document-reply-content::-webkit-scrollbar-track { background:transparent; }
+#assistant-document-reply .document-reply-content::-webkit-scrollbar-thumb {
+  border:2px solid transparent;
+  border-radius:9px;
+  background:#b7cdc0;
+  background-clip:padding-box;
+}
+#assistant-document-reply .document-reply-content::-webkit-scrollbar-thumb:hover { background-color:#8eae9c; }
+#assistant-document-reply .document-reply-fields input:focus { outline-offset:-2px; box-shadow:none; }
+html[data-theme="dark"] #assistant-document-reply .document-reply-content { scrollbar-color:#577363 transparent; }
+html[data-theme="dark"] #assistant-document-reply .document-reply-content::-webkit-scrollbar-thumb { background-color:#577363; }
+
+@media(max-width:600px) {
+  html body #assistant-document-reply[open] {
+    width:calc(calc(100vw / var(--fz,1)) - 16px);
+    height:calc(calc(100dvh / var(--fz,1)) - 16px);
+    max-height:calc(calc(100dvh / var(--fz,1)) - 16px);
+    padding:18px 14px 14px;
+  }
+  #assistant-document-reply .document-reply-content { padding-right:12px; }
+}

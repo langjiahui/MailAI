@@ -49,6 +49,7 @@
   <link rel="stylesheet" href="/static/list-controls-polish.css?v=1">
   <link rel="stylesheet" href="/static/tab-transitions.css?v=2">
   <link rel="stylesheet" href="/static/author.css?v=6">
+  <link rel="stylesheet" href="/static/input-scroll-polish.css?v=1">
 </head>
 <body>
   <div id="app-preloader" class="app-preloader" role="status" aria-live="polite">
@@ -702,6 +703,7 @@
       <div class="compose-backdrop"></div>
       <section class="compose-card" role="dialog" aria-modal="true" aria-labelledby="compose-title">
         <header><div><h2 id="compose-title" data-i18n="compose.title">写邮件</h2></div><button id="btn-close-compose" class="btn-ghost" title="保存草稿并关闭" aria-label="保存草稿并关闭" data-i18n-title="compose.close" data-i18n-aria="compose.close">✕</button></header>
+        <p id="assistant-prepared-note" class="assistant-prepared-note hidden">小邮已准备好回复。请预览填写后的附件、核对收件人和正文，再确认发送。</p>
         <div class="compose-fields">
           <label class="compose-from-picker"><span data-i18n="compose.from">发件账号</span><select id="compose-from" aria-label="选择发件账号" data-i18n-aria="compose.fromAria"></select></label>
           <div class="compose-recipient-field"><label><span data-i18n="compose.to">收件人</span><input id="compose-to" class="contact-input" type="text" autocomplete="off" placeholder="输入或从通讯录选择" data-i18n-placeholder="compose.toPh"></label><button type="button" class="recipient-book-button" data-contact-target="compose-to" title="从通讯录添加收件人" aria-label="从通讯录添加收件人" data-i18n-title="compose.toBook" data-i18n-aria="compose.toBook"><svg viewBox="0 0 20 20"><rect x="4.5" y="2.8" width="11.5" height="14.5" rx="2"/><circle cx="10.2" cy="7.7" r="1.6"/><path d="M7.6 14c.5-1.6 1.4-2.4 2.6-2.4s2.1.8 2.6 2.4M4.5 7H3M4.5 12H3"/></svg></button></div>
@@ -1045,7 +1047,7 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=0d7e8d036162"></script>
+  <script src="/static/bundle.js?v=676ac73349d2"></script>
   <script src="/static/settings-scroll.js?v=2"></script>
   <script type="module" src="/static/author-logo.js?v=4"></script>
 </body>

@@ -41,6 +41,12 @@ const {chromium} = require('playwright');
     await overlay.waitFor({state:'hidden',timeout:15000});
     await inbox(accounts[0].id).click();
     await overlay.waitFor({state:'hidden',timeout:15000});
+    const trash = page.locator(`.sidebar-account-folders [data-account-action="trash"][data-account-id="${accounts[0].id}"]`);
+    await trash.click();
+    await overlay.waitFor({state:'hidden',timeout:15000});
+    await inbox(accounts[0].id).click();
+    await overlay.waitFor({state:'hidden',timeout:15000});
+    assert.equal(await page.locator('#email-list .email-item').count(), 12, 'Inbox rows must return after Trash');
     for (const theme of ['light','dark']) {
       await page.evaluate(theme => applyTheme(theme),theme);
       await inbox(accounts[1].id).click();
@@ -51,6 +57,14 @@ const {chromium} = require('playwright');
       await inbox(accounts[0].id).click();
       await overlay.waitFor({state:'hidden',timeout:15000});
     }
+    // The compact, single-account sidebar uses onNavClick instead of the
+    // per-account navigation above; it must also restore Inbox after Trash.
+    await page.evaluate(() => { _systemConfig.accounts = _systemConfig.accounts.filter(account => account.id === activeMailAccount()?.id); renderSidebarAccounts(); });
+    await page.locator('#folder-nav .nav-item[data-filter="status"][data-value="trash"]').click();
+    await overlay.waitFor({state:'hidden',timeout:15000});
+    await page.locator('#folder-nav .nav-item[data-filter="status"][data-value="inbox"]').click();
+    await overlay.waitFor({state:'hidden',timeout:15000});
+    assert.equal(await page.locator('#email-list .email-item').count(), 12, 'single-account Inbox must reload after Trash');
     console.log('PASS mailbox transition, rapid account switching, light/dark themes');
   } finally { await browser.close(); }
 })().catch(error => {console.error(error);process.exit(1);});

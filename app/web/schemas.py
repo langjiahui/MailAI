@@ -178,6 +178,23 @@ class AssistantAttachmentRef(BaseModel):
     digest: str = Field(pattern=r'^[a-f0-9]{64}$')
 
 
+class DocumentReplyPlanRequest(BaseModel):
+    email_id: int = Field(ge=1)
+    index: int = Field(ge=0)
+    instruction: str = Field(default="", max_length=1000)
+    row_choice: int | None = Field(default=None, ge=1, le=1000)
+
+
+class DocumentReplyPrepareRequest(DocumentReplyPlanRequest):
+    digest: str = Field(pattern=r'^[a-f0-9]{64}$')
+    plan_token: str
+    fields: list[dict] = Field(min_length=1, max_length=25)
+
+
+class DocumentReplyValuesRequest(DocumentReplyPrepareRequest):
+    text: str = Field(min_length=1, max_length=3000)
+
+
 class AssistantRequest(BaseModel):
     question: str = Field(max_length=12000)
     history: list[dict] = Field(default_factory=list)
