@@ -49,7 +49,7 @@ html:is(.desktop-native-window,.integrated-workspace) .topbar .brand-copy strong
 html.macos-native-window .topbar .brand-copy strong { line-height:20px; }
 html:is(.desktop-native-window,.integrated-workspace) .topbar .global-search { margin:0; }
 html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .global-search {
- flex:1 1 240px; min-width:100px; max-width:clamp(180px,calc(var(--workspace-list-width,405px) - 2 * var(--workspace-list-inset)),480px); margin:0 auto 0 0;
+ flex:1 1 240px; min-width:100px; max-width:clamp(440px,calc(var(--workspace-list-width,405px) + 6vw),600px); margin:0 auto 0 0;
  --search-field-surface:var(--workspace-search);
  height:32px; border-radius:8px; box-shadow:none!important;
  border-color:var(--mac-separator)!important; background:var(--search-field-surface)!important;
@@ -185,11 +185,7 @@ html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .
 html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .nav-system-cluster { display:flex!important; }
 html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .nav-security-menu { display:block!important; }
 html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .nav-action { display:inline-flex!important; }
-@container mac-header (max-width:1000px) {
- html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .global-search { max-width:480px; }
- html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .brand {
-  width:62px; min-width:62px; flex-basis:62px;
- }
+@container mac-header (max-width:1240px) {
  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .global-actions { gap:4px; }
  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .nav-action,
  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar #btn-compose {
@@ -200,6 +196,13 @@ html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .
   overflow:hidden; clip-path:inset(50%); white-space:nowrap;
  }
  html:is(.desktop-native-window,.integrated-workspace) .topbar .nav-action::after { display:none!important; }
+}
+@media(max-width:1024px) {
+ @container mac-header (max-width:1000px) {
+  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .brand {
+   width:62px; min-width:62px; flex-basis:62px;
+  }
+ }
 }
 html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .reading-pane .plain-email-body>* { max-width:min(100%,80ch); }
 html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar :is(#btn-contacts,#btn-attachments,#btn-todos) { display:inline-flex!important; }
@@ -213,9 +216,11 @@ html.integrated-workspace:not(.desktop-native-window) .topbar .logo {
 html.integrated-workspace:not(.desktop-native-window) .topbar .logo img { width:24px; height:24px; }
 html.integrated-workspace:not(.desktop-native-window) .preloader-brand { left:20px; top:14px; gap:8px; }
 html.integrated-workspace:not(.desktop-native-window) .preloader-brand img { display:block; width:24px; height:24px; }
-@container mac-header (max-width:1000px) {
- html.integrated-workspace:not(.desktop-native-window)[data-theme] body .topbar .brand {
-  width:96px; min-width:96px; flex-basis:96px;
+@media(max-width:1024px) {
+ @container mac-header (max-width:1000px) {
+  html.integrated-workspace:not(.desktop-native-window)[data-theme] body .topbar .brand {
+   width:96px; min-width:96px; flex-basis:96px;
+  }
  }
 }
 @media(max-width:760px) {
@@ -243,8 +248,10 @@ html.macos-native-window.macos-native-fullscreen .topbar .logo {
  border:0; border-radius:0; background:transparent; box-shadow:none;
 }
 html.macos-native-window.macos-native-fullscreen .topbar .logo img { width:24px; height:24px; }
-@container mac-header (max-width:1000px) {
- html.macos-native-window.macos-native-fullscreen[data-theme] body .topbar .brand {
-  width:96px; min-width:96px; flex-basis:96px;
+@media(max-width:1024px) {
+ @container mac-header (max-width:1000px) {
+  html.macos-native-window.macos-native-fullscreen[data-theme] body .topbar .brand {
+   width:96px; min-width:96px; flex-basis:96px;
+  }
  }
 }

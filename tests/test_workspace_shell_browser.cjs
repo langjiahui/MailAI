@@ -29,27 +29,33 @@ const {chromium,webkit} = require('playwright');
         assert.equal(surfaces.join,0);
         assert.match(surfaces.top,/linear-gradient\(90deg/);
         assert.notEqual(surfaces.search,surfaces.rail);
+        const searchWidths=[];
         for(const list of [320,405,480]) {
           await page.evaluate(list=>applyPaneSizes({sidebar:226,list}),list);
           await page.waitForTimeout(120);
           const boxes=await page.evaluate(()=>{
             const rect=selector=>document.querySelector(selector).getBoundingClientRect();
             const search=rect('.global-search'),title=rect('.list-title'),list=rect('.list-pane');
-            return {left:search.left-title.left,rightInset:list.right-search.right,inset:title.left-list.left,width:search.width};
+            return {left:search.left-title.left,listWidth:list.width,inset:title.left-list.left,width:search.width};
           });
           assert(Math.abs(boxes.left)<1,`${shell}: search must align with the mail title`);
-          assert(Math.abs(boxes.rightInset-boxes.inset)<1,`${shell}: search must follow the list width`);
+          assert(boxes.width>=boxes.listWidth+60,`${shell}: search should extend past the narrow mail list`);
+          searchWidths.push(boxes.width);
         }
+        assert(searchWidths[0]<searchWidths[1]&&searchWidths[1]<searchWidths[2],`${shell}: search should grow with the mail list`);
         await page.evaluate(()=>applyPaneSizes({sidebar:226,list:405}));
-        for(const [width,scale] of [[900,1],[1200,1.3],[1920,1]]) {
+        for(const [width,scale] of [[900,1],[1025,1],[1150,1],[1200,1.3],[1300,1],[1920,1],[2560,1]]) {
           await page.setViewportSize({width,height:900});
           await page.evaluate(scale=>{document.body.style.zoom=scale;document.documentElement.style.setProperty('--fz',scale)},scale);
           await page.waitForTimeout(150);
           const metrics=await page.evaluate(()=>{
-            const search=document.querySelector('.global-search').getBoundingClientRect(),actions=document.querySelector('.global-actions').getBoundingClientRect();
-            return {overflow:document.documentElement.scrollWidth>innerWidth,overlap:search.right>actions.left+1};
+            const search=document.querySelector('.global-search').getBoundingClientRect(),actions=document.querySelector('.global-actions').getBoundingClientRect(),title=document.querySelector('.list-title').getBoundingClientRect();
+            return {overflow:document.documentElement.scrollWidth>innerWidth,overlap:search.right>actions.left+1,searchWidth:search.width,leftOffset:search.left-title.left};
           });
           assert(!metrics.overflow&&!metrics.overlap,JSON.stringify({shell,width,scale,metrics}));
+          assert(metrics.searchWidth>=260,JSON.stringify({shell,width,scale,metrics}));
+          if(width>=1025&&scale===1) assert(metrics.searchWidth>=420,JSON.stringify({shell,width,scale,metrics}));
+          if(width>=1025) assert(Math.abs(metrics.leftOffset)<2,JSON.stringify({shell,width,scale,metrics}));
         }
         await page.evaluate(()=>{document.body.style.zoom='1';document.documentElement.style.setProperty('--fz','1')});
         await page.setViewportSize({width:1512,height:950});
@@ -65,6 +71,6 @@ const {chromium,webkit} = require('playwright');
       await page.close();
     }
     assert.deepEqual(errors,[]);
-    console.log('Workspace shell: unified surfaces, toolbar gradient, search alignment after pane resizing, desktop font scaling and mobile controls passed for browser/macOS/Windows');
+    console.log('Workspace shell: unified surfaces, toolbar gradient, adaptive search width after pane resizing, desktop font scaling and mobile controls passed for browser/macOS/Windows');
   } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1});

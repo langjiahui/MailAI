@@ -16,9 +16,11 @@ html.windows-native-window .preloader-brand img {
 html.windows-native-window[data-theme] body .topbar #btn-window-fullscreen {
  width:32px; min-width:32px; padding:0;
 }
-@container mac-header (max-width:1000px) {
- html.windows-native-window[data-theme] body .topbar .brand {
-  width:96px; min-width:96px; flex-basis:96px;
+@media(max-width:1024px) {
+ @container mac-header (max-width:1000px) {
+  html.windows-native-window[data-theme] body .topbar .brand {
+   width:96px; min-width:96px; flex-basis:96px;
+  }
  }
 }
 html.windows-native-window[data-theme] body .topbar #btn-window-fullscreen[hidden] { display:none!important; }
