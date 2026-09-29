@@ -99,21 +99,97 @@ def test_document_fill():
             assert not inspect(output['payload'], ext)[0], 'filled targets must no longer be blank'
             if ext == '.pdf':
                 import pypdfium2
-                pdf = pypdfium2.PdfDocument(output['payload'])
-                try:
-                    pdf.init_forms()
-                    page = pdf[0]
+                from PIL import ImageChops
+                def render(data):
+                    pdf = pypdfium2.PdfDocument(data)
                     try:
-                        image = page.render(scale=2, draw_annots=True).to_pil().convert('RGB')
+                        pdf.init_forms()
+                        page = pdf[0]
+                        try:
+                            return page.render(scale=2, draw_annots=True).to_pil().convert('RGB')
+                        finally:
+                            page.close()
                     finally:
-                        page.close()
-                    assert any(pixel != (255, 255, 255) for pixel in image.get_flattened_data()), 'PDF filled text must be visible'
-                finally:
-                    pdf.close()
+                        pdf.close()
+                # Compare only the widget's interior, where the entered text
+                # should appear; the empty form border cannot satisfy this.
+                interior = (88, 78, 492, 112)
+                before = render(payload).crop(interior)
+                after = render(output['payload']).crop(interior)
+                assert ImageChops.difference(before, after).getbbox(), 'PDF filled text must be visibly different from the blank form'
             assert task._source(email_id, 0)[3] == payload
         assert not db.list_sent_messages(), 'preparing a document must not send the reply'
 
 
+def test_document_boundaries():
+    from app.document_fill import fill
+    relationships = b'''<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+      <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink"
+        Target="https://example.test/external" TargetMode = "External"/>
+    </Relationships>'''
+    source = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(word_file())) as original, zipfile.ZipFile(source, 'w') as output:
+        for member in original.infolist():
+            output.writestr(member, original.read(member))
+        output.writestr('word/_rels/document.xml.rels', relationships)
+    try:
+        inspect(source.getvalue(), '.docx')
+    except ValueError as exc:
+        assert '外部链接' in str(exc)
+    else:
+        raise AssertionError('external Word relationships must be rejected regardless of XML spacing')
+
+    from pypdf import PdfWriter
+    blank = io.BytesIO()
+    writer = PdfWriter()
+    writer.add_blank_page(300, 300)
+    writer.write(blank)
+    try:
+        inspect(blank.getvalue(), '.pdf')
+    except ValueError as exc:
+        assert '表单' in str(exc)
+    else:
+        raise AssertionError('a flat PDF must not be offered for automatic filling')
+    try:
+        fill(word_file(), '.docx', [{'sheet':'Word 文档','cell':'T1R1C2','value':'张三'},
+                                    {'sheet':'Word 文档','cell':'T1R1C2','value':'李四'}])
+    except ValueError as exc:
+        assert '位置无效' in str(exc)
+    else:
+        raise AssertionError('duplicate target edits must not overwrite each other')
+
+
+def test_document_api_flow():
+    from fastapi.testclient import TestClient
+    from app.web.server import app
+    with tempfile.TemporaryDirectory() as root, patch.object(config, 'DB_PATH', os.path.join(root, 'mail.db')), \
+            patch.object(config, 'IMAP_USER', 'me@example.com'), \
+            patch.object(config, 'IMAP_PASSWORD', 'fixture'), \
+            patch.object(task.client, 'chat_completion', side_effect=model):
+        db.init_db()
+        email_id = source_mail(root, '登记表.docx', word_file(), 21)
+        client = TestClient(app, base_url='http://127.0.0.1')
+        plan_response = client.post('/api/assistant/document-reply/plan', json={
+            'email_id':email_id, 'index':0, 'instruction':'填写登记表并回复'})
+        assert plan_response.status_code == 200, plan_response.text
+        plan = plan_response.json()
+        assert {field['label'] for field in plan['fields']} == {'姓名', '车牌号', '备注'}
+        fields = [dict(field, value='张三' if field['label'] == '姓名' else '沪A12345') for field in plan['fields']]
+        payload = {'email_id':email_id, 'index':0, 'digest':plan['digest'],
+                   'plan_token':plan['plan_token'], 'fields':fields}
+        altered = {**payload, 'digest':'0'*64}
+        assert client.post('/api/assistant/document-reply/prepare', json=altered).status_code == 400
+        prepared = client.post('/api/assistant/document-reply/prepare', json=payload)
+        assert prepared.status_code == 200, prepared.text
+        draft = client.get(f"/api/drafts/{prepared.json()['draft_id']}")
+        assert draft.status_code == 200
+        assert draft.json()['to_addr'] == 'sender@example.com'
+        assert len(draft.json()['attachments']) == 1
+        assert not db.list_sent_messages(), 'API preparation must never send email'
+
+
 if __name__ == '__main__':
     test_document_fill()
+    test_document_boundaries()
+    test_document_api_flow()
     print('DOCX/PDF filling and draft preparation passed')

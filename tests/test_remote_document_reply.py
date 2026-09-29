@@ -69,6 +69,21 @@ def test_remote_document_reply():
         assert calls[0].reply_to_email_id == email_id and len(calls[0].attachments) == 1
         assert '不匹配' in remote_control._mail_command('chat', state, f'确认发送 {token}', 'me@example.com', 'weixin')
 
+        # A desktop edit after WeChat preview invalidates the one-time token.
+        with patch.object(task.client, 'chat_completion', side_effect=_model):
+            remote_control._mail_command('chat', state, '填写附件', 'me@example.com', 'weixin')
+            remote_control._mail_command('chat', state, '填写字段1：李四', 'me@example.com', 'weixin')
+            remote_control._mail_command('chat', state, '填写字段2：沪B67890', 'me@example.com', 'weixin')
+            second_preview = remote_control._mail_command('chat', state, '生成附件回复', 'me@example.com', 'weixin')
+        second_token = re.search(r'确认发送 ([A-F0-9]{8})', second_preview)[1]
+        draft_id = state['prepared_draft_id']
+        modified = db.get_draft(draft_id)
+        modified['to_addr'] = 'another@example.com'
+        db.save_draft(modified, draft_id)
+        with patch.object(compose, 'api_send_mail', side_effect=lambda payload: calls.append(payload) or {'ok': True}):
+            blocked = remote_control._mail_command('chat', state, f'确认发送 {second_token}', 'me@example.com', 'weixin')
+        assert '草稿已变化' in blocked and len(calls) == 1, 'changed recipient must never be sent with an old token'
+
 
 if __name__ == '__main__':
     test_remote_document_reply()

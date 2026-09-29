@@ -32,9 +32,19 @@ def _zip_parts(raw: bytes):
             raise ValueError('Word 文件已损坏或格式不匹配')
         if any('vba' in name.casefold() or 'embeddings/' in name.casefold() for name in names):
             raise ValueError('含宏或嵌入对象的 Word 文档暂不支持自动填写')
-        if any(b'TargetMode="External"' in archive.read(name) or b"TargetMode='External'" in archive.read(name)
-               for name in names if name.endswith('.rels')):
-            raise ValueError('含外部链接的 Word 文档暂不支持自动填写')
+        for name in names:
+            if not name.endswith('.rels'):
+                continue
+            relationship_xml = archive.read(name)
+            if b'<!DOCTYPE' in relationship_xml.upper() or b'<!ENTITY' in relationship_xml.upper():
+                raise ValueError('Word 文档包含不支持的 XML 声明')
+            try:
+                relationships = ET.fromstring(relationship_xml, parser=ET.XMLParser(
+                    resolve_entities=False, no_network=True, huge_tree=False))
+            except ET.XMLSyntaxError as exc:
+                raise ValueError('Word 文件关系数据已损坏') from exc
+            if any(node.get('TargetMode', '').casefold() == 'external' for node in relationships.iter()):
+                raise ValueError('含外部链接的 Word 文档暂不支持自动填写')
         return archive
     except zipfile.BadZipFile as exc:
         raise ValueError('Word 文件已损坏或格式不匹配') from exc
