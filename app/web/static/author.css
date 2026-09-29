@@ -10,7 +10,7 @@
   background:radial-gradient(circle at 87% 12%,rgba(211,233,218,.8),transparent 36%),linear-gradient(115deg,#f2f6ef,#e9f2eb);
 }
 .author-logo {
-  position:relative; display:block; flex:none; width:136px; height:116px; padding:0;
+  position:relative; display:block; flex:none; width:148px; height:126px; padding:0;
   overflow:hidden; border:0; border-radius:22px; background:transparent; isolation:isolate;
   box-shadow:none; cursor:grab;
 }
@@ -82,7 +82,7 @@ html[data-theme="dark"] #system-view .app-update-actions .action-secondary:hover
 @media(max-width:800px) { .author-trust-grid { grid-template-columns:1fr; } .author-trust-card { min-height:0; } }
 @media(max-width:520px) {
   .author-hero { gap:16px; min-height:0; padding:22px; }
-  .author-logo { width:104px; height:90px; border-radius:17px; }
+  .author-logo { width:116px; height:100px; border-radius:17px; }
   .author-copy h3 { font-size:23px; }
   .author-trust-card { padding:20px; }
   #system-view .app-update-card { padding:22px; }

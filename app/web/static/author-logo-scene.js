@@ -12,7 +12,10 @@ export async function createAuthorLogo(canvas, image) {
   renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.NoToneMapping;
   const scene=new THREE.Scene();
   const camera=new THREE.OrthographicCamera(-5,5,4,-4,.1,40);camera.position.set(0,0,12);
-  const logo=new THREE.Group();logo.scale.z=.55;scene.add(logo);
+  const logo=new THREE.Group();logo.scale.z=1.32;scene.add(logo);
+  scene.add(new THREE.HemisphereLight(0xe7fff5,0x16445a,2.0));
+  const keyLight=new THREE.DirectionalLight(0xffffff,2.4);keyLight.position.set(-4,6,9);scene.add(keyLight);
+  const bounceLight=new THREE.DirectionalLight(0x81f3d0,1.15);bounceLight.position.set(5,-2,4);scene.add(bounceLight);
   const materials=[],geometries=[];
   const globalUniforms={uTime:{value:0},uStrength:{value:1.1},uAngle:{value:0}};
   const ctxCanvas=document.createElement('canvas');ctxCanvas.width=W;ctxCanvas.height=H;
@@ -33,27 +36,27 @@ export async function createAuthorLogo(canvas, image) {
 
   // Traces use the supplied image's pixel coordinates. Front view is orthographic.
   const layers=[
-    {name:'H rear upright',z:0,depth:19,phase:.60,
+    {name:'H rear upright',z:0,depth:82,phase:.60,
       outline:'M 940 572 L 940 393 C 940 367 954 348 978 341 L 1045 323 C 1060 318 1073 330 1073 349 L 1073 868 C 1073 890 1064 897 1048 893 L 961 878 C 946 875 940 868 940 851 Z',
       relief:(x,y)=>8*Math.sin((x-940)/133*Math.PI)+9*(1-(y-323)/571),
       center:[[1004,334],[1004,470],[1004,700],[1004,878]]},
-    {name:'J lower return and rear',z:12,depth:22,phase:.24,
+    {name:'J lower return and rear',z:12,depth:82,phase:.24,
       outline:'M 639 382 L 690 381 C 756 379 793 424 795 483 L 795 770 C 795 862 725 928 607 927 C 504 929 413 877 409 783 L 490 783 C 530 773 549 743 550 701 L 550 461 C 550 415 588 383 639 382 Z',
       relief:(x,y)=>13*g(x,y,701,586,123,390)+8*g(x,y,550,859,190,65),
       center:[[673,404],[755,475],[754,680],[740,821],[640,884],[518,878],[427,800]]},
-    {name:'L silhouette and fold',z:29,depth:17,phase:0,
+    {name:'L silhouette and fold',z:29,depth:76,phase:0,
       outline:'M 245 367 C 245 343 259 322 285 315 L 350 298 C 365 294 375 303 375 320 L 375 675 L 509 675 C 526 675 535 686 535 702 L 535 715 C 535 752 510 772 471 772 L 322 772 C 270 772 245 747 245 696 Z',
       relief:(x,y)=>11*g(x,y,325,377,76,100)+17*g(x,y,278,602,51,90)+12*g(x,y,449,699,110,38),
       center:[[311,320],[311,445],[301,573],[285,646],[323,714],[423,722],[508,711]]},
-    {name:'J inner curling face',z:53,depth:9,phase:.24,
+    {name:'J inner curling face',z:53,depth:54,phase:.24,
       outline:'M 639 383 C 680 383 711 404 711 446 L 711 749 C 711 817 679 856 628 869 C 588 880 547 867 520 845 C 501 829 491 808 492 786 C 532 774 551 745 551 701 L 550 461 C 550 416 588 384 639 383 Z',
       relief:(x,y)=>13*g(x,y,654,425,88,70)+20*g(x,y,652,749,88,171)-9*g(x,y,569,790,69,65),
       center:[[644,405],[624,471],[593,571],[594,708],[566,778],[529,800],[577,850],[651,837],[684,763]]},
-    {name:'H transverse fold and foreground leg',z:49,depth:11,phase:.49,
+    {name:'H transverse fold and foreground leg',z:49,depth:61,phase:.49,
       outline:'M 711 459 L 711 579 C 711 633 739 664 791 664 C 841 664 886 644 930 644 C 1006 640 1068 686 1070 752 L 1070 866 C 1070 887 1063 896 1048 891 L 960 878 C 946 875 940 868 940 851 L 940 712 C 940 680 925 668 890 668 L 795 666 C 739 666 711 635 711 580 Z',
       relief:(x,y)=>21*g(x,y,855,641,122,46)+16*g(x,y,1027,735,68,175),
       center:[[745,550],[752,614],[813,635],[921,615],[1000,643],[1038,738],[1006,869]]},
-    {name:'H upper satin ribbon',z:72,depth:5,phase:.49,
+    {name:'H upper satin ribbon',z:72,depth:40,phase:.49,
       outline:'M 711 459 L 711 578 C 711 633 739 664 791 664 C 841 664 886 644 930 644 C 1006 640 1068 686 1070 752 C 1069 678 1019 570 949 571 L 795 571 L 795 483 C 793 425 756 381 690 381 L 639 382 C 681 382 711 404 711 446 Z',
       relief:(x,y)=>10*g(x,y,763,486,72,118)+17*g(x,y,940,614,138,70),
       center:[[743,400],[755,480],[754,578],[790,619],[919,608],[1000,643],[1051,710]]}
@@ -118,7 +121,10 @@ export async function createAuthorLogo(canvas, image) {
             float reflection=clamp((core*.50+band*.27+tail*.17)*uStrength,0.0,.90);
             vec3 color=mix(base,mix(tint,vec3(1.0),core),reflection);
             color+=(1.0-base)*facing*tail*.035*uStrength;
-            color+=uAngle*((1.0-base)*(facing*.05+rim*.07)-base*.02);
+            float key=max(dot(n,normalize(vec3(-.38,.58,1.0))),0.0);
+            color*=.89+.14*key;
+            color+=vec3(.31,.70,.62)*pow(max(dot(reflect(-normalize(vec3(-.38,.58,1.0)),n),v),0.0),28.0)*.11;
+            color+=uAngle*((1.0-base)*(facing*.09+rim*.13)-base*.025);
             float low=min(min(base.r,base.g),base.b);
             float chroma=max(max(base.r,base.g),base.b)-low;
             float coverage=mix(1.0,smoothstep(.02,.065,chroma)*(1.0-smoothstep(.96,.995,low)),uOuter);
@@ -135,17 +141,25 @@ export async function createAuthorLogo(canvas, image) {
         const previous=originalContour[(i+originalContour.length-1)%originalContour.length],next=originalContour[(i+1)%originalContour.length];
         const tangent=next.clone().sub(previous).normalize();
         const outward=new THREE.Vector2(tangent.y,-tangent.x).multiplyScalar(winding);
-        return p.clone().addScaledVector(outward,-3.2);
+        return {shoulder:p.clone().addScaledVector(outward,layerIndex<3?4.7:0),wall:p.clone().addScaledVector(outward,-4.5)};
       });
       contour.push(contour[0]);
       const sidePositions=[],sideColors=[];
-      function sideVertex(p,z){const color=sampleEdge(p.x,p.y);sidePositions.push((p.x-CX)/S,(CY-p.y)/S,z/S);sideColors.push(color.r,color.g,color.b);}
+      function sideVertex(p,z,shade=1){const color=sampleEdge(p.x,p.y).multiplyScalar(shade);sidePositions.push((p.x-CX)/S,(CY-p.y)/S,z/S);sideColors.push(color.r,color.g,color.b);}
       for(let i=0;i<contour.length-1;i++){
-        const a=contour[i],b=contour[i+1],za=height(a.x,a.y)-4.5,zb=height(b.x,b.y)-4.5,back=layer.z-layer.depth;
-        sideVertex(a,za);sideVertex(b,zb);sideVertex(a,back);sideVertex(b,zb);sideVertex(b,back);sideVertex(a,back);
+        const a=contour[i],b=contour[i+1];
+        const topA=height(a.shoulder.x,a.shoulder.y),topB=height(b.shoulder.x,b.shoulder.y);
+        const wallA=height(a.wall.x,a.wall.y)-9,wallB=height(b.wall.x,b.wall.y)-9;
+        const back=layer.z-layer.depth;
+        // The rounded shoulder catches the key light before the deeper side wall.
+        sideVertex(a.shoulder,topA,1.16);sideVertex(b.shoulder,topB,1.16);sideVertex(a.wall,wallA,1.03);
+        sideVertex(b.shoulder,topB,1.16);sideVertex(b.wall,wallB,1.03);sideVertex(a.wall,wallA,1.03);
+        sideVertex(a.wall,wallA);sideVertex(b.wall,wallB);sideVertex(a.wall,back,.83);
+        sideVertex(b.wall,wallB);sideVertex(b.wall,back,.83);sideVertex(a.wall,back,.83);
       }
       const edgeGeometry=new THREE.BufferGeometry();edgeGeometry.setAttribute('position',new THREE.Float32BufferAttribute(sidePositions,3));edgeGeometry.setAttribute('color',new THREE.Float32BufferAttribute(sideColors,3));edgeGeometry.computeVertexNormals();
-      const edgeMaterial=new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide});const edge=new THREE.Mesh(edgeGeometry,edgeMaterial);logo.add(edge);materials.push(edgeMaterial);geometries.push(edgeGeometry);
+      const edgeMaterial=new THREE.MeshPhysicalMaterial({vertexColors:true,side:THREE.DoubleSide,roughness:.27,metalness:.18,clearcoat:.65,clearcoatRoughness:.2});
+      const edge=new THREE.Mesh(edgeGeometry,edgeMaterial);logo.add(edge);materials.push(edgeMaterial);geometries.push(edgeGeometry);
     }
   }
   layers.forEach(addLayer);

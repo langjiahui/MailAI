@@ -5,9 +5,9 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v2.3.5**
+当前版本：**v2.3.6**
 
-本次更新：加宽顶部搜索栏，使其随窗口和邮件列表宽度调整；在中等宽度窗口提前将工具按钮切换为图标，避免搜索栏被挤短。修正放大字号时搜索栏与邮件列表标题的对齐，适配浏览器及 macOS、Windows 桌面窗口。
+本次更新：升级作者页的 LJH 丝带标志为带侧壁、倒角与物理材质的三维模型，灯光随视角变化，进场展示角度加大到约 28°，鼠标悬停与拖动可在更大范围内查看立体效果；标志尺寸同步放大，文档说明已更新。
 
 ## 下载 MailAI
 

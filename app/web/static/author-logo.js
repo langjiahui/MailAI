@@ -37,11 +37,11 @@ if (mark) {
     if (playing) {
       time += dt;
       if (entrance.active) {
-        entrance.elapsed = Math.min(1.7, entrance.elapsed + dt);
-        const turn = Math.sin(Math.PI * entrance.elapsed / 1.7) ** 2;
-        entrance.yaw = -.22 * turn;
-        entrance.pitch = -.065 * turn;
-        if (entrance.elapsed === 1.7) {
+        entrance.elapsed = Math.min(1.9, entrance.elapsed + dt);
+        const turn = Math.sin(Math.PI * entrance.elapsed / 1.9) ** 2;
+        entrance.yaw = -.49 * turn;
+        entrance.pitch = -.105 * turn;
+        if (entrance.elapsed === 1.9) {
           entrance.active = false;
           entrance.yaw = entrance.pitch = 0;
         }
@@ -69,7 +69,7 @@ if (mark) {
     if (loading || scene || disposed) return;
     loading = true;
     try {
-      const { createAuthorLogo } = await import('./author-logo-scene.js?v=3');
+      const { createAuthorLogo } = await import('./author-logo-scene.js?v=4');
       if (disposed) return;
       scene = await createAuthorLogo(canvas, image);
       if (disposed) { scene.dispose(); return; }
@@ -118,14 +118,14 @@ if (mark) {
       pointerDown.dragging = true;
       mark.classList.add('is-rotating');
       if (!mark.hasPointerCapture(event.pointerId)) mark.setPointerCapture(event.pointerId);
-      targetYaw = clamp(pointerDown.yaw + dx * .004, .24);
-      targetPitch = clamp(pointerDown.pitch + dy * .003, .14);
+      targetYaw = clamp(pointerDown.yaw + dx * .006, .5);
+      targetPitch = clamp(pointerDown.pitch + dy * .0035, .19);
       schedule();
       return;
     }
     const bounds = mark.getBoundingClientRect();
-    targetYaw = clamp(((event.clientX - bounds.left) / bounds.width - .5) * .44, .24);
-    targetPitch = clamp(((event.clientY - bounds.top) / bounds.height - .5) * .24, .14);
+    targetYaw = clamp(((event.clientX - bounds.left) / bounds.width - .5) * .76, .43);
+    targetPitch = clamp(((event.clientY - bounds.top) / bounds.height - .5) * .34, .19);
     schedule();
   }
   function press(event) {
