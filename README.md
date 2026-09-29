@@ -5,9 +5,9 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v2.3.9**
+当前版本：**v2.3.10**
 
-本次更新：小邮支持识别并填写邮件中的 XLS/XLSX 表格附件，生成附带填写结果的回复草稿，核对后由用户确认发送；修复切换邮箱或文件夹时收件箱偶尔显示空列表的问题，并在列表加载失败时提供重试入口。
+本次更新：小邮的附件填写扩展至 DOCX 可定位空白处和 PDF 原生文本表单，并支持在微信单聊逐项补齐信息、取回填写结果、用一次性编号确认发送。桌面端继续生成带新附件的回复草稿，发送前由你核对；扫描件、扁平 PDF 和旧版 DOC 会提示改用可编辑模板。
 
 ## 下载 MailAI
 
