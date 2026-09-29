@@ -114,6 +114,14 @@ def _allowed(saved, descriptor):
 
 
 def load_attachment(descriptor):
+    if descriptor.get('draft_id'):
+        draft = db.get_draft(descriptor['draft_id'])
+        att = db.get_sent_attachment(descriptor['draft_id'], 0, draft=True) if draft else None
+        if not draft or not att or not _usable(db.get_email(draft.get('reply_to_email_id'))) \
+                or hashlib.sha256(att['payload']).hexdigest() != descriptor.get('digest') \
+                or len(att['payload']) > MAX_BYTES:
+            raise MediaValidationError('填写结果已变化或不可用，请在电脑端核对草稿。')
+        return att
     row = db.get_email(descriptor['email_id'])
     if not _usable(row):
         raise MediaValidationError('来源邮件已移除或隔离，未上传附件。')

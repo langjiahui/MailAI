@@ -82,9 +82,9 @@ def detect_proposal(question: str, email_ids: list[int] | None = None) -> dict |
 
     if _FILL_REPLY_TRIGGER.search(question) and len(ids) == 1:
         row = db.get_email(ids[0])
-        if row and any(str(item.get('name') or '').lower().endswith(('.xls', '.xlsx'))
+        if row and any(str(item.get('name') or '').lower().endswith(('.xls', '.xlsx', '.docx', '.pdf'))
                        for item in row.get('attachments') or []):
-            return {"type": "fill_attachment_reply", "summary": "填写当前邮件的表格附件并准备回复",
+            return {"type": "fill_attachment_reply", "summary": "填写当前邮件的文档附件并准备回复",
                     "params": {"email_id": ids[0], "instruction": question[:1000]}, "requires_confirmation": False}
 
     if _TODO_TRIGGER.search(question):
