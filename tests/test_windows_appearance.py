@@ -32,10 +32,10 @@ def setter(hwnd, attribute, pointer, size):
 win32=types.SimpleNamespace(dwmapi=types.SimpleNamespace(DwmSetWindowAttribute=Mock(side_effect=setter)))
 with patch.object(ctypes,'windll',win32,create=True):
     assert apply_caption_theme(native,'dark')
-    assert calls==[(20,1),(35,24|(28<<8)|(26<<16)),(36,226|(233<<8)|(229<<16))]
+    assert calls==[(20,1),(35,32|(38<<8)|(35<<16)),(36,226|(233<<8)|(229<<16))]
     calls.clear()
     assert apply_caption_theme(native,'light')
-    assert calls[0]==(20,0) and calls[1]==(35,0xFFFFFF)
+    assert calls[0]==(20,0) and calls[1]==(35,241|(244<<8)|(242<<16))
     # Older Windows rejects newer attributes; native controls remain available.
     win32.dwmapi.DwmSetWindowAttribute.side_effect=None
     win32.dwmapi.DwmSetWindowAttribute.return_value=-1

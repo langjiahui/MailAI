@@ -15,9 +15,12 @@ same Apache License, Version 2.0:
   - mailai-lockup.png
   - mailai-mark.png
 
-The file langjiahui-avatar.png is the author's personal avatar and is
+The files langjiahui-avatar.png and langjiahui-ljh.webp are the author's personal identity assets and are
 NOT covered by the Apache License. It may not be reused outside this
 project without permission.
+
+The author logo bundles Three.js 0.180.0 under the MIT license.
+See app/web/static/vendor/three/LICENSE for its copyright and terms.
 
 Third-party Python and JavaScript dependencies are installed at build
 time from their respective package registries and are governed by

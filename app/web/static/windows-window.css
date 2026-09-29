@@ -1,7 +1,7 @@
 /* The Windows caption remains native: no imitation caption buttons or lost Snap targets. */
 html.windows-native-window {
  --mac-control-inset:20px;
- --mac-brand-width:max(96px,calc(var(--mac-sidebar-width) - var(--mac-control-inset) - 2px));
+ --mac-brand-width:max(96px,calc(var(--mac-sidebar-width) - var(--mac-control-inset) + var(--workspace-list-inset) - 8px));
 }
 html.windows-native-window[data-theme] body .topbar .brand { gap:8px; }
 html.windows-native-window .topbar .logo {

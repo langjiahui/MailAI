@@ -671,7 +671,7 @@ def run_macos_window(asgi_app, preferred_port: int = 0,
             height=900,
             min_size=(900, 640),
             resizable=True,
-            background_color="#edf5f2",
+            background_color="#f1f4f2",
             text_select=True,
         )
         runtime.window = window

@@ -2,12 +2,14 @@
 
 入口：设置 → 关于与隐私。保留 MailAI 产品图标，不新增引导弹窗。
 
-素材：`app/web/static/assets/langjiahui-avatar.png`。使用内置 imagegen 从用户批准的概念稿整理，非 CLI。绿色 LJH 交织字母、暖白底、陶瓷质感；署名以 HTML 文本呈现。
+当前素材：`app/web/static/assets/langjiahui-ljh.webp`，来自用户上传并确认的蓝绿 LJH 丝带图。保留字形、比例和明暗细节，页面使用统一的玉绿／鼠尾草绿调色矩阵，与 MailAI 配色协调；署名以 HTML 文本呈现。旧的绿色陶瓷头像 `langjiahui-avatar.png` 留作历史素材。
 
-最终生成提示词：
+实现：`author-logo.js` 按可见性加载 `author-logo-scene.js`。用原图贴图、六层浅浮雕曲面和沿折边的流光保留参考图形态；不是完整的 360° 重建模型。每次打开作者页，用约 1.7 秒从正面转至约 13° 再回到正面，此后保持位置和角度稳定。鼠标移动或拖动可在有限角度内旋转，移开后平滑复原；直接操作会平滑接管进场动画，拖动不会触发点击暂停。无上下浮动或循环自动转动。扫光周期 4.6 秒，折边亮点周期 3.6 秒，点击 Logo 可暂停或播放流光。
 
-> Use case: precise-object-edit. Input is the approved langjiahui personal identity concept board. Produce ONE production avatar only: isolate and faithfully retain the large left-hand ivory rounded square tile with the intertwined forest-green and sage LJH ceramic ribbon symbol. Square canvas, tile fills 94% of frame, centered. Preserve the approved symbol geometry and colors and soft sculptural depth; simplify tiny texture for readability at 96px. Solid warm ivory background #F5F4EC, no transparency needed. Remove the entire right-hand wordmark and swatches and all text. No additional elements. This is an avatar asset for the MailAI author profile.
+Three.js 0.180.0 及其 MIT 许可证位于 `static/vendor/three/`；运行时不访问 CDN。页面不可见或浏览器标签隐藏时停止渲染，尊重系统减少动态效果设置；WebGL 不可用或上下文丢失时回退同色系静态图。画布背景透明，静态图滤掉白底，浅色和深色主题均直接融入作者区域。
+
+布局：作者页沿用设置右侧区域的完整宽度，滚动区域不再单独限宽居中。文字段落保留阅读宽度，滚动条位于工作区右边缘，标题和导航固定。
 
 数据说明依据：`app/config.py` 中数据库与原文目录、`app/db.py` 的 SQLite 连接、`app/llm/client.py` 的配置 API 请求。明确区分本机保存与联网处理，不宣称全离线、磁盘加密、无遥测或绝对安全；不虚构联系方式或认证。
 
-检查：`tests/test_author_browser.cjs` 隔离加载页面与真实导航处理代码，不访问邮箱或模型服务。截图输出到 `build/author-{light,dark,mobile}.png`。
+检查：`tests/test_author_browser.cjs` 隔离加载页面、真实导航处理代码与 Logo 模块，不访问邮箱或模型服务。覆盖懒加载、可见流光、暂停、减少动态效果、GPU 上下文丢失回退、离开页面停止渲染、语言、主题与窄屏布局。截图输出到 `build/author-{light,dark,mobile}.png`。

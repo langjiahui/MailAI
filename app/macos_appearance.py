@@ -144,7 +144,7 @@ def apply_window_appearance(window, theme, mode='system'):
     window.setTitleVisibility_(NSWindowTitleHidden)
     window.setTitlebarAppearsTransparent_(True)
     # Match the top of the web canvas, including explicit app theme overrides.
-    rgb = (32, 36, 34) if dark else (238, 240, 239)
+    rgb = (32, 38, 35) if dark else (241, 244, 242)
     window.setBackgroundColor_(NSColor.colorWithSRGBRed_green_blue_alpha_(*(v / 255 for v in rgb), 1.0))
     # pywebview paints this container explicitly after creating NSWindow.
     # Remove that backing tint as well; transparency alone cannot override it.

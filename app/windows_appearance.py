@@ -27,7 +27,7 @@ def apply_caption_theme(native, theme):
     """Unsupported DWM color attributes fall back to the OS caption (Windows 10)."""
     dark = theme == 'dark'
     rgb = lambda r, g, b: r | (g << 8) | (b << 16)
-    caption = rgb(24, 28, 26) if dark else rgb(255, 255, 255)
+    caption = rgb(32, 38, 35) if dark else rgb(241, 244, 242)
     text = rgb(226, 233, 229) if dark else rgb(39, 57, 48)
     try:
         setter = ctypes.windll.dwmapi.DwmSetWindowAttribute

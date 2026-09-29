@@ -250,20 +250,6 @@ html[data-theme] body #system-view [data-system-panel="guide"] .guide-warning {
  padding:16px 0; color:var(--info-muted)!important; font-size:12px;
 }
 html[data-theme] body #system-view [data-system-panel="guide"] .guide-warning strong { color:var(--info-ink)!important; }
-html[data-theme] body #system-view .author-page {
- --author-ink:var(--info-ink); --author-muted:var(--info-muted);
- --author-bg:transparent; --author-line:var(--info-line); --author-note:var(--info-soft);
-}
-html[data-theme] body #system-view .author-trust-grid { border-radius:0; }
-html[data-theme] body #system-view .author-boundary { background:var(--info-soft); border-radius:10px; }
-html[data-theme] body #system-view .app-update-card {
- background:var(--info-card)!important; border-color:var(--info-line)!important; box-shadow:none!important; border-radius:12px;
-}
-html[data-theme] body #system-view .app-update-meta>span,
-html[data-theme] body #system-view .app-release-summary { background:var(--info-soft)!important; border-color:var(--info-line)!important; box-shadow:none!important; }
-html[data-theme] body #system-view .app-update-card :is(h4,#app-version-label,strong,.app-release-summary p) { color:var(--info-ink)!important; }
-html[data-theme] body #system-view .app-update-card :is(#app-update-status,.app-update-policy,.author-card-label,small) { color:var(--info-muted)!important; }
-
 /* AI writing preview reads as one document, with one body-apply action. */
 html[data-theme] body #compose-ai-panel {
  --draft-surface:#fafbfa; --draft-paper:#fff; --draft-ink:#29312d;

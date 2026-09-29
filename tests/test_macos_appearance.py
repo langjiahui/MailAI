@@ -10,8 +10,8 @@ from app.desktop import DesktopApi
 kit = types.SimpleNamespace(NSAppearance=Mock(), NSColor=Mock(), NSWindowTitleHidden=1, NSWindowAbove=1, NSWindowStyleMaskFullScreen=16384)
 with patch.dict(sys.modules, AppKit=kit):
     for theme, appearance, rgb in (
-        ('light', 'NSAppearanceNameAqua', (238,240,239)),
-        ('dark', 'NSAppearanceNameDarkAqua', (32,36,34)),
+        ('light', 'NSAppearanceNameAqua', (241,244,242)),
+        ('dark', 'NSAppearanceNameDarkAqua', (32,38,35)),
     ):
         native=Mock()
         native.styleMask.return_value = 15

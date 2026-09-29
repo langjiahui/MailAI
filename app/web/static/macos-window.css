@@ -2,26 +2,30 @@
    Windows overrides that inset while retaining its system caption above the page. */
 html:is(.desktop-native-window,.integrated-workspace) {
  --mac-sidebar-width:226px; --mac-rail-width:226px;
+ --workspace-list-inset:14px;
  --mac-control-inset:calc(108px / var(--fz,1));
- --mac-brand-width:max(62px,calc(var(--mac-sidebar-width) - var(--mac-control-inset) - 2px));
- --mac-rail:#eef0ef; --mac-canvas:#fff; --mac-list:#fafbfa;
+ --mac-brand-width:max(62px,calc(var(--mac-sidebar-width) - var(--mac-control-inset) + var(--workspace-list-inset) - 8px));
+ --workspace-chrome:#f1f4f2; --workspace-toolbar-end:#fcfdfc; --workspace-search:#fff;
+ --workspace-toolbar:linear-gradient(90deg,var(--workspace-chrome) 0 var(--workspace-reading-left,36%),var(--workspace-toolbar-end) 100%);
+ --mac-rail:var(--workspace-chrome); --mac-canvas:#fff; --mac-list:var(--workspace-chrome);
  --mac-separator:rgba(47,63,55,.09); --mac-selected:#e5eee9;
 }
 html:is(.desktop-native-window,.integrated-workspace)[data-theme="dark"] {
- --mac-rail:#202422; --mac-canvas:#181c1a; --mac-list:#1b201d;
+ --workspace-chrome:#202623; --workspace-toolbar-end:#1b201d; --workspace-search:#2b342e;
+ --mac-canvas:#181c1a;
  --mac-separator:rgba(205,220,212,.09); --mac-selected:#2c3b32;
 }
 /* Browsers share the workspace without reserving native window controls. */
 html.integrated-workspace:not(.desktop-native-window) {
  --mac-control-inset:20px;
- --mac-brand-width:calc(var(--mac-sidebar-width) - 38px);
+ --mac-brand-width:calc(var(--mac-sidebar-width) + var(--workspace-list-inset) - 28px);
 }
 /* Leave a quiet gap after the native controls without moving the mail/search column. */
 html.macos-native-window:not(.macos-native-fullscreen) {
  --mac-control-inset:calc(116px / var(--fz,1));
 }
 html:is(.desktop-native-window,.integrated-workspace) body {
- background:linear-gradient(to right,var(--mac-rail) 0 var(--mac-rail-width),var(--mac-canvas) var(--mac-rail-width) 100%)!important;
+ background:var(--workspace-chrome)!important;
 }
 html:is(.desktop-native-window,.integrated-workspace) body::before,html:is(.desktop-native-window,.integrated-workspace) body::after { display:none!important; }
 html:is(.desktop-native-window,.integrated-workspace) body:has(.layout.hidden) { --mac-rail-width:0px; }
@@ -30,7 +34,7 @@ html:is(.desktop-native-window,.integrated-workspace) #app { padding:0; gap:0; }
 html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar {
  height:calc(52px / var(--fz,1))!important; min-height:calc(52px / var(--fz,1))!important; margin:0; padding:0 16px 0 var(--mac-control-inset); position:relative;
  container:mac-header / inline-size;
- border:0!important; border-radius:0!important; background:transparent!important;
+ border:0!important; border-radius:0!important; background:var(--workspace-toolbar)!important;
  box-shadow:none!important; backdrop-filter:none; -webkit-backdrop-filter:none;
  gap:16px;
 }
@@ -45,8 +49,8 @@ html:is(.desktop-native-window,.integrated-workspace) .topbar .brand-copy strong
 html.macos-native-window .topbar .brand-copy strong { line-height:20px; }
 html:is(.desktop-native-window,.integrated-workspace) .topbar .global-search { margin:0; }
 html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .global-search {
- flex:1 1 240px; min-width:100px; max-width:480px; margin:0 auto 0 0;
- --search-field-surface:var(--mac-list);
+ flex:1 1 240px; min-width:100px; max-width:clamp(180px,calc(var(--workspace-list-width,405px) - 2 * var(--workspace-list-inset)),480px); margin:0 auto 0 0;
+ --search-field-surface:var(--workspace-search);
  height:32px; border-radius:8px; box-shadow:none!important;
  border-color:var(--mac-separator)!important; background:var(--search-field-surface)!important;
 }
@@ -106,6 +110,10 @@ html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .layout>.
 html:is(.desktop-native-window,.integrated-workspace) .pane-resizer { flex-basis:8px; width:8px; min-width:8px; background:var(--mac-canvas); }
 html:is(.desktop-native-window,.integrated-workspace) .pane-resizer::before { background:transparent; }
 html:is(.desktop-native-window,.integrated-workspace) .pane-resizer[data-resizer="sidebar"] { background:var(--mac-list); }
+html:is(.desktop-native-window,.integrated-workspace) .pane-resizer[data-resizer="list"] { background:var(--workspace-chrome); }
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .list-pane :is(.email-list,.list-header,.list-workspace-tools,.list-footer) {
+ background:var(--workspace-chrome)!important; box-shadow:none!important;
+}
 html:is(.desktop-native-window,.integrated-workspace) .topbar::after { display:none; }
 html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .sidebar .nav-item {
  border:0!important; box-shadow:none!important; border-radius:8px; min-height:34px;
@@ -122,16 +130,16 @@ html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .
 @media(max-width:1024px) {
  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .layout>.sidebar { border-radius:12px!important; border:1px solid var(--mac-separator)!important; }
 }
-/* Soften the rail's join with the header without gaps or an extra card outline. */
+/* Navigation and list are a continuous surface directly beneath the toolbar. */
 @media(min-width:1025px) {
  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .layout { background:var(--mac-list); }
- html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .layout>.sidebar { border-top-right-radius:12px!important; }
+ html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .layout>.sidebar { border-radius:0!important; }
 }
 
 /* Startup is the same workspace beneath a temporary loading layer. */
 html:is(.desktop-native-window,.integrated-workspace)[data-theme] .app-preloader::before {
  background:
-  linear-gradient(to right,var(--mac-rail) 0 var(--startup-rail-right,var(--mac-rail-width)),var(--mac-canvas) var(--startup-rail-right,var(--mac-rail-width)) 100%) top / 100% var(--startup-header-height,calc(52px / var(--fz,1))) no-repeat,
+  var(--workspace-toolbar) top / 100% var(--startup-header-height,calc(52px / var(--fz,1))) no-repeat,
   linear-gradient(to right,var(--mac-rail) 0 var(--startup-rail-right,var(--mac-rail-width)),var(--mac-list) var(--startup-rail-right,var(--mac-rail-width)) var(--startup-list-right,var(--startup-rail-right,var(--mac-rail-width))),var(--mac-canvas) var(--startup-list-right,var(--startup-rail-right,var(--mac-rail-width))) 100%)!important;
 }
 html:is(.desktop-native-window,.integrated-workspace)[data-theme] .preloader-workspace {
@@ -144,11 +152,6 @@ html:is(.desktop-native-window,.integrated-workspace)[data-theme] .preloader-fra
 }
 html:is(.desktop-native-window,.integrated-workspace)[data-theme] .preloader-frame[data-startup-pane="sidebar"] { background:var(--mac-rail); }
 html:is(.desktop-native-window,.integrated-workspace)[data-theme] .preloader-frame[data-startup-pane="list-pane"] { background:var(--mac-list); }
-@media(min-width:1025px) {
- html:is(.desktop-native-window,.integrated-workspace)[data-theme] .preloader-frame[data-startup-pane="sidebar"] {
-  background:radial-gradient(circle at left bottom,transparent 12px,var(--mac-list) 12.5px) top right / 12px 12px no-repeat,var(--mac-rail);
- }
-}
 html:is(.desktop-native-window,.integrated-workspace) .preloader-brand { left:108px; top:18px; gap:0; opacity:1; }
 html:is(.desktop-native-window,.integrated-workspace) .preloader-brand :is(img,small) { display:none; }
 html:is(.desktop-native-window,.integrated-workspace) .preloader-brand strong { font-size:14px; font-weight:650; letter-spacing:0; color:var(--text); }
@@ -183,6 +186,7 @@ html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .
 html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .nav-security-menu { display:block!important; }
 html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .nav-action { display:inline-flex!important; }
 @container mac-header (max-width:1000px) {
+ html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .global-search { max-width:480px; }
  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .brand {
   width:62px; min-width:62px; flex-basis:62px;
  }
@@ -231,7 +235,7 @@ html.integrated-workspace:not(.desktop-native-window) .preloader-brand img { dis
    Keeping the sidebar column width stable prevents the search field from shifting. */
 html.macos-native-window.macos-native-fullscreen {
  --mac-control-inset:20px;
- --mac-brand-width:max(96px,calc(var(--mac-sidebar-width) - var(--mac-control-inset) - 2px));
+ --mac-brand-width:max(96px,calc(var(--mac-sidebar-width) - var(--mac-control-inset) + var(--workspace-list-inset) - 8px));
 }
 html.macos-native-window.macos-native-fullscreen[data-theme] body .topbar .brand { gap:8px; }
 html.macos-native-window.macos-native-fullscreen .topbar .logo {

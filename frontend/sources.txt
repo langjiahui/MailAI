@@ -21,6 +21,7 @@ companion-motion.js
 onboarding.js
 model-usage.js
 motion.js
+workspace-shell.js
 macos-window.js
 windows-window.js
 remote-control.js
