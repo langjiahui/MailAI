@@ -88,6 +88,8 @@ TESTS = (
     'test_export_corpus.py',
     'test_assistant_actions.py',
     'test_assistant_document_reply.py',
+    'test_document_fill.py',
+    'test_remote_document_reply.py',
     'test_ollama_preset.py',
     'test_semantic_search.py',
     'test_semantic_resilience.py',

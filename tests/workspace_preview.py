@@ -67,6 +67,7 @@ def main():
         def set_flagged(self,*args): pass
         def move(self,uid,folder,target): return uid+1000
         def fetch_new(self,**kwargs): return []
+        def fetch_folder(self,*args,**kwargs): return []
         def ensure_quarantine_folder(self): pass
         def ensure_spam_folder(self): pass
     if os.environ.get('MAILAI_CLEANUP_FIXTURE') == '1':

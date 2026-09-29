@@ -297,9 +297,13 @@ def _execute(key, state, saved, text, channel):
     if state.get('awaiting_reply') and canonicalize(text) is None:
         # Explicitly entered reply mode: the next free text is literal body, not model instructions.
         text = '回复：' + text
-    text, language_error = normalize(text, saved.get('ai_enabled', False), context={
-        'has_current': bool(state.get('selected')), 'current_number': _current_number(state),
-        'list_size': len(state.get('ids', [])), 'has_preview': bool(state.get('pending'))})
+    from .remote_document_reply import matches as document_command
+    if channel == 'weixin' and document_command(text):
+        language_error = None
+    else:
+        text, language_error = normalize(text, saved.get('ai_enabled', False), context={
+            'has_current': bool(state.get('selected')), 'current_number': _current_number(state),
+            'list_size': len(state.get('ids', [])), 'has_preview': bool(state.get('pending'))})
     if language_error:
         return language_error
     state['_ai_enabled'] = saved.get('ai_enabled', False)
@@ -312,6 +316,10 @@ def _execute(key, state, saved, text, channel):
 
 
 def _mail_command(key, state, text, user, channel):
+    from .remote_document_reply import command as document_reply_command
+    document_response = document_reply_command(state, text, user, channel)
+    if document_response is not None:
+        return document_response
     from .remote_media import command as media_command
     media_response = media_command(state, text, user, channel)
     if media_response is not None:
@@ -366,7 +374,7 @@ def _mail_command(key, state, text, user, channel):
         task = remote_briefing.task(ids[number - 1])
         if not task:
             return '这项待办或来源邮件已不可用，请输入“看看今天待办”刷新。'
-        if state.get('pending') and state['pending']['payload']['reply_to_email_id'] != task['email_id']:
+        if state.get('pending') and _pending_source_id(state['pending']) != task['email_id']:
             state.pop('pending', None)
         state.pop('awaiting_reply', None)
         state.update(selected_todo=task['id'], selected=task['email_id'], todo_view=True, last_view='todo', context_at=time.time())
@@ -404,6 +412,8 @@ def _mail_command(key, state, text, user, channel):
         if not state.get('pending') or state['pending']['expires'] < time.time():
             state.pop('pending', None)
             return '暂无有效的回复预览。请先查看邮件，再输入“回复：你的正文”。'
+        if state['pending'].get('draft_id'):
+            return '带填写附件的回复请在电脑端草稿箱修改；修改后微信确认编号会失效。'
         if not text.partition('：')[2].strip():
             return '请输入“修改回复：新的完整正文”；原预览仍保留。'
         state['selected'] = state['pending']['payload']['reply_to_email_id']
@@ -473,6 +483,24 @@ def _mail_command(key, state, text, user, channel):
         _save_session(key, state)  # Consume before SMTP; never auto-resend on uncertainty.
         if time.time() > pending['expires']:
             return '回复预览已过期，未发送。请重新输入回复内容。'
+        if pending.get('draft_id'):
+            draft = db.get_draft(pending['draft_id'])
+            from .remote_document_reply import draft_digest
+            if not draft or draft.get('reply_to_email_id') != pending['email_id'] or not draft.get('attachments') \
+                    or draft_digest(draft) != pending['digest']:
+                return '填写后的草稿已变化，未发送。请在电脑端核对。'
+            row = db.get_email(pending['email_id'])
+            if not _usable(row):
+                return '原邮件已移除或隔离，未发送。'
+            from .web.routes.compose import api_send_mail
+            from .web.schemas import SendMailRequest
+            normalized_draft = {**draft, **{key: draft.get(key) or '' for key in
+                                          ('to_addr', 'cc_addr', 'bcc_addr', 'subject', 'body_html', 'in_reply_to', 'references')}}
+            result = api_send_mail(SendMailRequest(**normalized_draft))
+            state.pop('prepared_draft_id', None)
+            db.add_audit_log(row['id'], 'remote_document_reply', actor='remote_confirmed',
+                             reason='本人通过微信核对附件与回复后确认发送', meta={'channel': channel})
+            return '邮件服务器已接受带填写附件的回复。' + ('请在 MailAI 核对发送警告。' if result.get('warning') else '')
         row = db.get_email(pending['payload']['reply_to_email_id'])
         if not row or row.get('remote_missing') or row.get('status') in ('trash', 'quarantine'):
             return '原邮件已移除或隔离，未发送。请在 MailAI 中核对。'
@@ -507,7 +535,7 @@ def _mail_command(key, state, text, user, channel):
     row = db.get_email(email_id) if email_id else None
     if not row or row.get('remote_missing') or row.get('status') in ('trash', 'quarantine'):
         return ('上次邮件上下文已过期。' if state.get('_expired_context') else '当前未选中可用邮件。') + '请输入“最新邮件”，再“查看第一封”。'
-    if state.get('pending') and state['pending']['payload']['reply_to_email_id'] != row['id']:
+    if state.get('pending') and _pending_source_id(state['pending']) != row['id']:
         state.pop('pending', None)
     state['selected'] = row['id']
     state['context_at'] = time.time()
@@ -574,13 +602,17 @@ def _mail_command(key, state, text, user, channel):
 def _expire_context(state):
     touched = state.get('context_at', state.get('listed_at'))
     if touched is not None and time.time() - touched > 1800:
-        for field in ('ids', 'selected', 'pending', 'awaiting_reply', 'listed_at', 'context_at', 'list_kind', 'todo_ids', 'todo_view', 'last_view', 'selected_todo', 'phone_page'):
+        for field in ('ids', 'selected', 'pending', 'awaiting_reply', 'document_plan', 'document_row_options', 'prepared_draft_id', 'listed_at', 'context_at', 'list_kind', 'todo_ids', 'todo_view', 'last_view', 'selected_todo', 'phone_page'):
             state.pop(field, None)
         state['_expired_context'] = True
 
 
 def _usable(row):
     return bool(row and not row.get('remote_missing') and row.get('status') not in ('trash', 'quarantine'))
+
+
+def _pending_source_id(pending):
+    return pending.get('email_id') if pending.get('draft_id') else pending['payload']['reply_to_email_id']
 
 
 def _current_number(state):
@@ -728,6 +760,16 @@ def _preview(state, user):
     if pending['expires'] < time.time():
         state.pop('pending', None)
         return '回复预览已过期，未发送。请重新输入“回复：你的正文”。'
+    if pending.get('draft_id'):
+        draft = db.get_draft(pending['draft_id'])
+        from .remote_document_reply import draft_digest
+        if not draft or not _usable(db.get_email(pending['email_id'])) or draft_digest(draft) != pending['digest']:
+            state.pop('pending', None)
+            return '填写后的草稿或原邮件已不可用，未发送。'
+        body = html.unescape(re.sub(r'(?i)<br\s*/?>', '\n', re.sub(r'<[^>]+>', '', draft['body_html'])))
+        return (f'回复预览（尚未发送）\n收件人：{draft["to_addr"]}\n主题：{draft["subject"]}\n'
+                f'附件：{draft["attachments"][0].get("filename", "已填写文档")}\n\n正文：\n{body[:3000]}\n\n'
+                f'发送“查看填写结果”核对附件；确认无误后发送：\n确认发送 {pending["token"]}')
     payload = pending['payload']
     if not _usable(db.get_email(payload['reply_to_email_id'])):
         state.pop('pending', None)

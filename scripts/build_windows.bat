@@ -79,6 +79,7 @@ REM let the installer deploy it; --noupx also avoids executable packer traits.
   --hidden-import "xlwt" ^
   --hidden-import "xlrd" ^
   --hidden-import "olefile" ^
+  --hidden-import "lxml.etree" ^
   --add-data "%CD%\app\web\static;app\web\static" ^
   --add-data "%CD%\mailai.defaults.env;." ^
   --add-data "%CD%\VERSION;." ^

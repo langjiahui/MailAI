@@ -1,4 +1,4 @@
-/* Prepare a filled spreadsheet reply. The send action remains in the compose window. */
+/* Prepare a filled document reply. The send action remains in the compose window. */
 (() => {
   const dialog = document.createElement('dialog');
   dialog.id = 'assistant-document-reply';
@@ -20,11 +20,11 @@
   function renderFiles() {
     const c = context;
     if (!c) return;
-    const items = c.items.filter(item => item.supported && /\.xlsx?$/i.test(item.name));
+    const items = c.items.filter(item => item.supported && /\.(?:xlsx?|docx|pdf)$/i.test(item.name));
     content.innerHTML = items.length
-      ? `<p>选择要填写的表格。原附件不会被修改。</p><div class="document-reply-files">${items.map(item =>
+      ? `<p>选择要填写的附件。原附件不会被修改。</p><div class="document-reply-files">${items.map(item =>
           `<label><input type="radio" name="document-reply-file" value="${item.index}" ${item.index === c.index ? 'checked' : ''}><span>${esc(item.name)}</span><small>${formatFileSize(item.size)}</small></label>`).join('')}</div>`
-      : '<p>这封邮件没有可填写的 XLS 或 XLSX 附件。</p>';
+      : '<p>这封邮件没有可填写的 XLS、XLSX、DOCX 或 PDF 附件。</p>';
     next.disabled = !items.length;
     next.textContent = '识别待填字段';
     back.classList.add('hidden');
@@ -47,11 +47,11 @@
   function renderFields() {
     const c = context;
     if (!c?.plan) return;
-    content.innerHTML = `<p>${esc(c.plan.name)} · 请检查字段对应的单元格，再填写内容。资料不足时可填“无”或返回修改。</p>
+    content.innerHTML = `<p>${esc(c.plan.name)} · 请检查字段位置，再填写内容。资料不足时可填“无”或返回修改。</p>
       <div class="document-reply-natural"><label for="document-reply-description">也可以一次描述填写信息</label><textarea id="document-reply-description" rows="2" maxlength="3000" placeholder="例如：驾驶员张三，电话138…，9月30日离沪，车牌沪A…"></textarea><button type="button" data-document-extract>提取并填入下方字段</button></div>
       <div class="document-reply-fields">${c.plan.fields.map((field, index) =>
-        `<label><span>${esc(field.label)} <small>${esc(field.sheet)} · ${esc(field.cell)}</small></span><input type="text" data-document-value="${index}" maxlength="500" value="${esc(field.value || '')}" autocomplete="off" placeholder="请输入实际信息" required></label>`).join('')}</div>
-      <details class="document-reply-preview"><summary>查看原表格单元格</summary><pre>${esc(c.plan.preview || '')}</pre></details>
+        `<label><span>${esc(field.label)} <small>${esc(field.location_label || `${field.sheet} · ${field.cell}`)}</small></span><input type="text" data-document-value="${index}" maxlength="500" value="${esc(field.value || '')}" autocomplete="off" placeholder="请输入实际信息" required></label>`).join('')}</div>
+      <details class="document-reply-preview"><summary>查看原文档字段</summary><pre>${esc(c.plan.preview || '')}</pre></details>
       ${c.rowOptions ? '' : '<details class="document-reply-correction"><summary>字段或位置识别有误？</summary><textarea rows="2" maxlength="800" placeholder="例如：车牌号应填写在 B8，还漏了同行人数"></textarea><button type="button" data-document-replan>按说明重新识别</button></details>'}
       <small class="document-reply-note">${esc(c.plan.note || '')}</small>`;
     next.disabled = false;
@@ -131,9 +131,9 @@
         renderFields();
       } else if (!c.plan) {
         const chosen = content.querySelector('input[name="document-reply-file"]:checked');
-        if (!chosen) throw new Error('请先选择表格附件');
+        if (!chosen) throw new Error('请先选择附件');
         c.index = Number(chosen.value);
-        status.textContent = '正在识别表格字段…';
+        status.textContent = '正在识别文档字段…';
         const identified = await api('/api/assistant/document-reply/plan', {accountId:c.accountId, method:'POST',
           headers:{'Content-Type':'application/json'}, body:JSON.stringify({email_id:c.emailId,index:c.index,instruction:c.instruction})});
         if (context !== c) return;
@@ -176,7 +176,7 @@
       const catalog = await api(`/api/emails/${c.emailId}/assistant-attachments`, {accountId});
       if (context !== c || accountId !== activeMailAccount()?.id) return;
       c.items = catalog.items || [];
-      c.index = c.items.find(item => item.supported && /\.xlsx?$/i.test(item.name))?.index ?? 0;
+      c.index = c.items.find(item => item.supported && /\.(?:xlsx?|docx|pdf)$/i.test(item.name))?.index ?? 0;
       dialog.querySelector('.document-reply-source').textContent = catalog.subject || '当前邮件';
       renderFiles();
     } catch (error) {
