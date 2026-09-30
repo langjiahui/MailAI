@@ -88,14 +88,15 @@
       if (c.busy) return;
       c.busy = true; event.currentTarget.disabled = true; next.disabled = true; back.disabled = true;
       status.textContent = '正在重新识别字段…';
+      const fieldKey = field => JSON.stringify([field.sheet, field.cell, field.label]);
       const previous = new Map(c.plan.fields.map((field, index) =>
-        [field.label, content.querySelector(`[data-document-value="${index}"]`)?.value.trim() || '']));
+        [fieldKey(field), content.querySelector(`[data-document-value="${index}"]`)?.value.trim() || '']));
       try {
         const revised = await api('/api/assistant/document-reply/plan', {accountId:c.accountId, method:'POST',
           headers:{'Content-Type':'application/json'}, body:JSON.stringify({email_id:c.emailId,index:c.index,
             instruction:(c.instruction.slice(0,150) + '\n字段修正：' + correction).slice(0,1000)})});
         if (context !== c || c.accountId !== activeMailAccount()?.id) return;
-        revised.fields.forEach(field => { if (previous.get(field.label)) field.value = previous.get(field.label); });
+        revised.fields.forEach(field => { if (previous.get(fieldKey(field))) field.value = previous.get(fieldKey(field)); });
         c.plan = revised;
         renderFields();
         status.textContent = '已重新识别，请核对字段和位置。';
@@ -140,31 +141,56 @@
         if (identified.needs_row_choice) { c.rowOptions = identified; renderRows(); }
         else { c.plan = identified; renderFields(); }
       } else {
-        const values = [...content.querySelectorAll('[data-document-value]')].map(input => input.value.trim());
-        const missing = values.findIndex(value => !value);
-        if (missing >= 0) { content.querySelector(`[data-document-value="${missing}"]`)?.focus(); throw new Error('请填写全部字段；不适用的项目可填“无”'); }
-        status.textContent = '正在填写文件、回读核对并准备回复…';
-        const fields = c.plan.fields.map((field, index) => ({...field, value:values[index]}));
-        const prepared = await api('/api/assistant/document-reply/prepare', {accountId:c.accountId, method:'POST',
-          headers:{'Content-Type':'application/json'}, body:JSON.stringify({email_id:c.emailId,index:c.index,
-            digest:c.plan.digest,plan_token:c.plan.plan_token,fields,instruction:c.instruction})});
-        if (context !== c || c.accountId !== activeMailAccount()?.id) return;
-        const draft = await api(`/api/drafts/${prepared.draft_id}`, {accountId:c.accountId});
-        close();
-        const opened = await openCompose({...draft, account_id:c.accountId, assistant_review:true});
-        toast(opened === false ? '回复已保存在草稿箱，请打开草稿并核对附件后发送。' :
-          '已生成填写后的附件和回复草稿。请预览附件并核对邮件，确认后再发送。', 'success');
+        if (!c.preparedDraftId) {
+          const values = [...content.querySelectorAll('[data-document-value]')].map(input => input.value.trim());
+          const missing = values.findIndex(value => !value);
+          if (missing >= 0) { content.querySelector(`[data-document-value="${missing}"]`)?.focus(); throw new Error('请填写全部字段；不适用的项目可填“无”'); }
+          status.textContent = '正在填写文件、回读核对并准备回复…';
+          const fields = c.plan.fields.map((field, index) => ({...field, value:values[index]}));
+          const prepared = await api('/api/assistant/document-reply/prepare', {accountId:c.accountId, method:'POST',
+            headers:{'Content-Type':'application/json'}, body:JSON.stringify({email_id:c.emailId,index:c.index,
+              digest:c.plan.digest,plan_token:c.plan.plan_token,fields,instruction:c.instruction})});
+          c.preparedDraftId = prepared.draft_id;
+        }
+        if (context !== c || c.accountId !== activeMailAccount()?.id) {
+          toast('回复已保存在原邮箱的草稿箱，请打开草稿并核对附件后发送。', 'warn');
+          return;
+        }
+        status.textContent = '正在打开已保存的回复草稿…';
+        const draft = await api(`/api/drafts/${c.preparedDraftId}`, {accountId:c.accountId});
+        if (context !== c || c.accountId !== activeMailAccount()?.id) {
+          toast('回复已保存在原邮箱的草稿箱，请打开草稿并核对附件后发送。', 'warn');
+          return;
+        }
+        try {
+          const opened = await openCompose({...draft, account_id:c.accountId, assistant_review:true});
+          close();
+          toast(opened === false ? '回复已保存在草稿箱，请打开草稿并核对附件后发送。' :
+            '已生成填写后的附件和回复草稿。请预览附件并核对邮件，确认后再发送。',
+            opened === false ? 'warn' : 'success');
+        } catch (_) {
+          close();
+          toast('回复已保存在草稿箱，但写信窗口未能打开。请到草稿箱核对附件后发送。', 'warn');
+        }
       }
     } catch (error) {
-      if (context === c) status.textContent = error.message || '处理失败，请重试';
+      if (context === c) {
+        status.textContent = c.preparedDraftId
+          ? '回复草稿已保存，但暂时无法打开。可重试打开，或到草稿箱核对后发送。'
+          : error.message || '处理失败，请重试';
+        if (c.preparedDraftId) {
+          next.textContent = '打开已保存草稿';
+          content.querySelectorAll('input, textarea, button').forEach(control => { control.disabled = true; });
+        }
+      }
     } finally {
-      if (context === c) { c.busy = false; next.disabled = false; back.disabled = false; }
+      if (context === c) { c.busy = false; next.disabled = false; back.disabled = Boolean(c.preparedDraftId); }
     }
   };
 
   window.startAssistantDocumentReply = async (emailId, accountId, instruction = '') => {
     if (!Number.isSafeInteger(Number(emailId)) || !accountId) throw new Error('请先在当前邮箱打开要回复的邮件');
-    const c = {emailId:Number(emailId), accountId, index:0, items:[], plan:null, rowOptions:null, rowChoice:null,
+    const c = {emailId:Number(emailId), accountId, index:0, items:[], plan:null, rowOptions:null, rowChoice:null, preparedDraftId:null,
       busy:false, instruction:String(instruction).slice(0,1000)};
     context = c;
     dialog.querySelector('.document-reply-source').textContent = '正在读取当前邮件附件…';
