@@ -16,7 +16,9 @@ const {chromium} = require('playwright');
     }}));
     let planCalls = 0;
     await page.route('**/api/assistant/document-reply/plan', route => {
-      const moved = ++planCalls > 1;
+      planCalls++;
+      if (planCalls === 2) return route.fulfill({status:503,json:{detail:'暂时无法识别'}});
+      const moved = planCalls > 2;
       return route.fulfill({json:{
         email_id:email,index:0,digest:'a'.repeat(64),plan_token:'fixture-token',name:'登记表.docx',
         fields:[{sheet:'Word 文档',cell:moved ? 'T1R2C2' : 'T1R1C2',label:'姓名',
@@ -44,6 +46,10 @@ const {chromium} = require('playwright');
     await page.locator('[data-document-value="0"]').fill('张三');
     await page.locator('.document-reply-correction summary').click();
     await page.locator('.document-reply-correction textarea').fill('姓名应填写在第二行');
+    await page.locator('[data-document-replan]').click();
+    await page.getByText('暂时无法识别').waitFor();
+    assert.equal(await page.locator('[data-document-replan]').isEnabled(), true,
+      'a failed replan must allow retry');
     await page.locator('[data-document-replan]').click();
     await page.waitForFunction(() => document.querySelector('[data-document-value="0"]')?.closest('label')?.textContent?.includes('第 2 行'));
     assert.equal(await page.locator('[data-document-value="0"]').inputValue(), '',

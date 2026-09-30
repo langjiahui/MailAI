@@ -12895,7 +12895,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
         const result = await api('/api/assistant/document-reply/values', {accountId:c.accountId, method:'POST',
           headers:{'Content-Type':'application/json'}, body:JSON.stringify({email_id:c.emailId,index:c.index,
             digest:c.plan.digest,plan_token:c.plan.plan_token,fields:c.plan.fields,text})});
-        if (context !== c || c.accountId !== activeMailAccount()?.id) return;
+      if (context !== c || c.accountId !== activeMailAccount()?.id) return;
         let count = 0;
         (result.values || []).forEach((value, index) => {
           const input = content.querySelector(`[data-document-value="${index}"]`);
@@ -12912,7 +12912,8 @@ document.getElementById('task-center-list').addEventListener('click', async even
       const correction = content.querySelector('.document-reply-correction textarea').value.trim();
       if (!correction) { status.textContent = '请说明需要修改的字段或位置'; return; }
       if (c.busy) return;
-      c.busy = true; event.currentTarget.disabled = true; next.disabled = true; back.disabled = true;
+      const button = event.currentTarget;
+      c.busy = true; button.disabled = true; next.disabled = true; back.disabled = true;
       status.textContent = '正在重新识别字段…';
       const fieldKey = field => JSON.stringify([field.sheet, field.cell, field.label]);
       const previous = new Map(c.plan.fields.map((field, index) =>
@@ -12929,7 +12930,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
       } catch (error) {
         if (context === c) status.textContent = error.message || '重新识别失败';
       } finally {
-        if (context === c) { c.busy = false; next.disabled = false; back.disabled = false; }
+        if (context === c) { c.busy = false; button.disabled = false; next.disabled = false; back.disabled = false; }
       }
     };
     content.querySelector('input[data-document-value]')?.focus();
@@ -12955,6 +12956,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
           headers:{'Content-Type':'application/json'}, body:JSON.stringify({email_id:c.emailId,index:c.index,
             row_choice:c.rowChoice,instruction:c.instruction})});
         if (context !== c) return;
+        if (c.accountId !== activeMailAccount()?.id) { status.textContent = '邮箱账号已切换，请关闭窗口后重新开始。'; return; }
         renderFields();
       } else if (!c.plan) {
         const chosen = content.querySelector('input[name="document-reply-file"]:checked');
@@ -12964,6 +12966,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
         const identified = await api('/api/assistant/document-reply/plan', {accountId:c.accountId, method:'POST',
           headers:{'Content-Type':'application/json'}, body:JSON.stringify({email_id:c.emailId,index:c.index,instruction:c.instruction})});
         if (context !== c) return;
+        if (c.accountId !== activeMailAccount()?.id) { status.textContent = '邮箱账号已切换，请关闭窗口后重新开始。'; return; }
         if (identified.needs_row_choice) { c.rowOptions = identified; renderRows(); }
         else { c.plan = identified; renderFields(); }
       } else {
@@ -13026,7 +13029,8 @@ document.getElementById('task-center-list').addEventListener('click', async even
     dialog.showModal();
     try {
       const catalog = await api(`/api/emails/${c.emailId}/assistant-attachments`, {accountId});
-      if (context !== c || accountId !== activeMailAccount()?.id) return;
+      if (context !== c) return;
+      if (accountId !== activeMailAccount()?.id) { status.textContent = '邮箱账号已切换，请关闭窗口后重新开始。'; return; }
       c.items = catalog.items || [];
       c.index = c.items.find(item => item.supported && /\.(?:xlsx?|docx|pdf)$/i.test(item.name))?.index ?? 0;
       dialog.querySelector('.document-reply-source').textContent = catalog.subject || '当前邮件';

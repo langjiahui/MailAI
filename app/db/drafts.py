@@ -7,7 +7,7 @@ from .emails import get_email
 from .trash import queue_trash
 
 
-def save_draft(data: dict, draft_id: int | None = None) -> int:
+def save_draft(data: dict, draft_id: int | None = None, *, document_reply_key: str | None = None) -> int:
     now = datetime.now().isoformat(timespec="seconds")
     fields = ("to_addr", "cc_addr", "bcc_addr", "subject", "body_html", "attachments_json",
               "reply_to_email_id", "mode", "in_reply_to", "references_header", "source_draft_email_id")
@@ -19,16 +19,33 @@ def save_draft(data: dict, draft_id: int | None = None) -> int:
         if draft_id:
             c.execute(
                 "UPDATE drafts SET to_addr=?,cc_addr=?,bcc_addr=?,subject=?,body_html=?,attachments_json=?,"
-                "reply_to_email_id=?,mode=?,in_reply_to=?,references_header=?,source_draft_email_id=?,updated_at=? WHERE id=?",
+                "reply_to_email_id=?,mode=?,in_reply_to=?,references_header=?,source_draft_email_id=?,updated_at=?,document_reply_key=NULL WHERE id=?",
                 (*values, now, draft_id),
             )
             if c.execute("SELECT changes() AS n").fetchone()["n"]:
                 return draft_id
+        if document_reply_key:
+            cur = c.execute(
+                "INSERT OR IGNORE INTO drafts(to_addr,cc_addr,bcc_addr,subject,body_html,attachments_json,reply_to_email_id,mode,in_reply_to,references_header,source_draft_email_id,created_at,updated_at,document_reply_key) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*values, now, now, document_reply_key),
+            )
+            if cur.rowcount:
+                return cur.lastrowid
+            existing = c.execute('SELECT id FROM drafts WHERE document_reply_key=?', (document_reply_key,)).fetchone()
+            if existing:
+                return existing['id']
+            raise RuntimeError('无法保存回复草稿')
         cur = c.execute(
             "INSERT INTO drafts(to_addr,cc_addr,bcc_addr,subject,body_html,attachments_json,reply_to_email_id,mode,in_reply_to,references_header,source_draft_email_id,created_at,updated_at) "
             "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)", (*values, now, now),
         )
         return cur.lastrowid
+
+
+def find_document_reply_draft(key: str):
+    with conn() as c:
+        row = c.execute('SELECT id FROM drafts WHERE document_reply_key=?', (key,)).fetchone()
+    return row['id'] if row else None
 
 
 def list_drafts():

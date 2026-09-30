@@ -371,6 +371,9 @@ def _run_migrations(c):
     for column in ("in_reply_to", "references_header"):
         if column not in _columns_of(c, "drafts"):
             c.execute(f"ALTER TABLE drafts ADD COLUMN {column} TEXT DEFAULT ''")
+    if 'document_reply_key' not in _columns_of(c, 'drafts'):
+        c.execute('ALTER TABLE drafts ADD COLUMN document_reply_key TEXT')
+    c.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_drafts_document_reply_key ON drafts(document_reply_key)')
     for column, definition in {'reply_to_email_id': 'INTEGER', 'in_reply_to': "TEXT DEFAULT ''", 'references_header': "TEXT DEFAULT ''"}.items():
         if column not in _columns_of(c, 'sent_messages'):
             c.execute(f'ALTER TABLE sent_messages ADD COLUMN {column} {definition}')

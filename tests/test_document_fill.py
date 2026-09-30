@@ -181,10 +181,23 @@ def test_document_api_flow():
         assert client.post('/api/assistant/document-reply/prepare', json=altered).status_code == 400
         prepared = client.post('/api/assistant/document-reply/prepare', json=payload)
         assert prepared.status_code == 200, prepared.text
+        repeated = client.post('/api/assistant/document-reply/prepare', json=payload)
+        assert repeated.status_code == 200 and repeated.json()['draft_id'] == prepared.json()['draft_id'], \
+            'a lost API response must not leave duplicate reply drafts after retry'
+        assert len(db.list_drafts()) == 1
         draft = client.get(f"/api/drafts/{prepared.json()['draft_id']}")
         assert draft.status_code == 200
         assert draft.json()['to_addr'] == 'sender@example.com'
         assert len(draft.json()['attachments']) == 1
+        edited = db.get_draft(prepared.json()['draft_id'])
+        edited['subject'] = '用户修改过的主题'
+        db.save_draft(edited, prepared.json()['draft_id'])
+        regenerated = client.post('/api/assistant/document-reply/prepare', json=payload)
+        assert regenerated.status_code == 200 and regenerated.json()['draft_id'] != prepared.json()['draft_id'], \
+            'a user-edited draft must not be silently reused as a new generated reply'
+        with db.conn() as conn:
+            conn.execute("UPDATE emails SET status='quarantine' WHERE id=?", (email_id,))
+        assert client.post('/api/assistant/document-reply/prepare', json=payload).status_code == 400
         assert not db.list_sent_messages(), 'API preparation must never send email'
 
 
