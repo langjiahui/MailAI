@@ -28,7 +28,15 @@ _MAX_TITLE = 200
 _TODO_TRIGGER = re.compile(r"(?:帮我|请|麻烦)?(?:创建|新建|添加|加|建|记)个?(待办|任务|提醒)|提醒我")
 _MARK_READ_TRIGGER = re.compile(r"(标记|标为|设为|全部|都|全设).{0,4}已读|已读(掉|完|所有|全部)")
 _REPLY_TRIGGER = re.compile(r"(帮我|请|麻烦)?(回复|答复|回一封|回个|写封回)")
-_FILL_REPLY_TRIGGER = re.compile(r"(?:填(?:写|好|一下)?|填写|登记).{0,24}(?:附件|表格|文档|文件|登记表).{0,24}(?:回复|回信|发回)|(?:附件|表格|文档|文件|登记表).{0,24}(?:填(?:写|好|一下)?|填写|登记).{0,24}(?:回复|回信|发回)")
+_FILL_REPLY_TRIGGER = re.compile(
+    r"(?:填(?:写|好|一下)?|登记).{0,24}(?:附件|表格|文档|文件|登记表).{0,24}(?:回复|回信|回邮件|发回)"
+    r"|(?:附件|表格|文档|文件|登记表).{0,24}(?:填(?:写|好|一下)?|登记).{0,24}(?:回复|回信|回邮件|发回)"
+    r"|(?:回复|回信|回邮件|发回).{0,24}(?:填(?:写|好|一下)?|登记).{0,24}(?:附件|表格|文档|文件|登记表)"
+)
+
+
+def requests_document_reply(question: str) -> bool:
+    return bool(_FILL_REPLY_TRIGGER.search(question or ''))
 
 _WEEKDAYS = {"一": 0, "二": 1, "三": 2, "四": 3, "五": 4, "六": 5, "日": 6, "天": 6}
 
@@ -80,12 +88,15 @@ def detect_proposal(question: str, email_ids: list[int] | None = None) -> dict |
         return None
     ids = [int(i) for i in (email_ids or []) if isinstance(i, int) or str(i).isdigit()]
 
-    if _FILL_REPLY_TRIGGER.search(question) and len(ids) == 1:
+    wants_document_reply = requests_document_reply(question)
+    if wants_document_reply and len(ids) == 1:
         row = db.get_email(ids[0])
-        if row and any(str(item.get('name') or '').lower().endswith(('.xls', '.xlsx', '.docx', '.pdf'))
-                       for item in row.get('attachments') or []):
+        if row and not row.get('remote_missing') and row.get('status') not in ('trash', 'quarantine'):
             return {"type": "fill_attachment_reply", "summary": "填写当前邮件的文档附件并准备回复",
                     "params": {"email_id": ids[0], "instruction": question[:1000]}, "requires_confirmation": False}
+
+    if wants_document_reply:
+        return None  # Never turn an attachment-fill request into a plain reply draft.
 
     if _TODO_TRIGGER.search(question):
         title = _todo_title(question)

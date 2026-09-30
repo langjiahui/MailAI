@@ -167,6 +167,7 @@ function assistantCases() {
   const end = app.indexOf('  let inlineImageCount', start);
   context.explicitIds = null; context.images = []; context.account = {id:'b'};
   context.question = '截止日期是什么'; context.assistantQuestionReferencesOpenEmail = () => false;
+  context.assistantQuestionRequestsDocumentReply = () => false;
   context.assistantPinnedScope = null; context.selectedEmailId = 22;
   const select = '(function(){' + app.slice(start, end) + ';return emailIds;})()';
   assert.deepEqual(plain(vm.runInContext(select, context)), [22]);

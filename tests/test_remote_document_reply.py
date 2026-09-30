@@ -84,6 +84,16 @@ def test_remote_document_reply():
             blocked = remote_control._mail_command('chat', state, f'确认发送 {second_token}', 'me@example.com', 'weixin')
         assert '草稿已变化' in blocked and len(calls) == 1, 'changed recipient must never be sent with an old token'
 
+        # Starting another fill invalidates the previous send confirmation,
+        # including while the new file is waiting for a row choice.
+        old_token = second_token
+        with patch.object(task.client, 'chat_completion', side_effect=_model):
+            assert '待填写字段' in remote_control._mail_command('chat', state, '填写附件', 'me@example.com', 'weixin')
+        assert not state.get('pending') and not state.get('prepared_draft_id')
+        with patch.object(compose, 'api_send_mail', side_effect=lambda payload: calls.append(payload) or {'ok': True}):
+            assert '不匹配' in remote_control._mail_command('chat', state, f'确认发送 {old_token}', 'me@example.com', 'weixin')
+        assert len(calls) == 1
+
 
 if __name__ == '__main__':
     test_remote_document_reply()

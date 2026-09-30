@@ -9,6 +9,7 @@ import io
 import json
 import re
 import zipfile
+from urllib.parse import urlsplit
 from lxml import etree as ET
 
 from .llm import client
@@ -43,8 +44,16 @@ def _zip_parts(raw: bytes):
                     resolve_entities=False, no_network=True, huge_tree=False))
             except ET.XMLSyntaxError as exc:
                 raise ValueError('Word 文件关系数据已损坏') from exc
-            if any(node.get('TargetMode', '').casefold() == 'external' for node in relationships.iter()):
-                raise ValueError('含外部链接的 Word 文档暂不支持自动填写')
+            for node in relationships.iter():
+                if node.get('TargetMode', '').casefold() != 'external':
+                    continue
+                target = urlsplit(node.get('Target') or '')
+                safe_link = (node.get('Type') ==
+                             'http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink'
+                             and ((target.scheme in ('http', 'https') and bool(target.netloc))
+                                  or (target.scheme == 'mailto' and bool(target.path))))
+                if not safe_link:
+                    raise ValueError('Word 文档含外部模板、对象或非网页链接，暂不支持自动填写')
         return archive
     except zipfile.BadZipFile as exc:
         raise ValueError('Word 文件已损坏或格式不匹配') from exc

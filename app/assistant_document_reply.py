@@ -46,7 +46,7 @@ def _verify_plan(email_id, index, digest, fields, plan_token):
 
 def _source(email_id: int, index: int, digest: str = ""):
     row = db.get_email(email_id)
-    if not row or row.get("remote_missing") or row.get("status") == "trash":
+    if not row or row.get("remote_missing") or row.get("status") in ("trash", "quarantine"):
         raise ValueError("来源邮件不存在或已移除")
     if not row.get("raw_path") or not Path(row["raw_path"]).is_file():
         raise ValueError("原始邮件尚未同步到本机")
@@ -458,11 +458,17 @@ def prepare(email_id: int, index: int, digest: str, fields: list[dict], instruct
     to = recipients(row, config.IMAP_USER)
     if not to["to_addr"]:
         raise ValueError("原邮件没有可确认的回复收件人")
+    stem = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '_', Path(name).stem).strip(' .')[:160] or '附件'
+    filename = f"{stem}_已填写{ext}"
+    request_key = hashlib.sha256(json.dumps(
+        [config.IMAP_USER, email_id, index, digest, plan_token, fields, instruction],
+        ensure_ascii=False, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    existing_id = db.find_document_reply_draft(request_key)
+    if existing_id and db.get_draft(existing_id):
+        return {"ok": True, "draft_id": existing_id, "filename": filename}
     filled = _filled(raw, ext, fields)
     if len(filled) > 20 * 1024 * 1024:
         raise ValueError("填写后的附件超过发送大小限制")
-    stem = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '_', Path(name).stem).strip(' .')[:160] or '附件'
-    filename = f"{stem}_已填写{ext}"
     body = _reply_text(row, filename, fields, instruction)
     subject = str(row.get("subject") or "")
     if not re.match(r"^(?:re|回复)\s*:", subject, re.I):
@@ -478,7 +484,8 @@ def prepare(email_id: int, index: int, digest: str, fields: list[dict], instruct
                               "body_html": "<p>" + "<br>".join(html.escape(line) for line in body.splitlines()) + "</p>",
                               "attachments": [attachment], "reply_to_email_id": email_id, "mode": "reply",
                               "in_reply_to": row.get("message_id") or "",
-                              "references": " ".join(x for x in (row.get("references_header"), row.get("message_id")) if x)})
+                              "references": " ".join(x for x in (row.get("references_header"), row.get("message_id")) if x)},
+                             document_reply_key=request_key)
     db.add_audit_log(email_id, "assistant_prepare_document_reply", actor="assistant_confirmed",
                      reason="用户核对字段后生成待发送回复", meta={"draft_id": draft_id, "attachment": filename})
     return {"ok": True, "draft_id": draft_id, "filename": filename}

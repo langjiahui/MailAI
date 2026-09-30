@@ -116,6 +116,11 @@ def command(state, text, user, channel):
                 '\n发送“填写附件第 1 个”选择。'
         else:
             index = supported[0][0]
+        # A new fill request supersedes any previous preview or send confirmation.
+        state.pop('document_plan', None)
+        state.pop('document_row_options', None)
+        state.pop('pending', None)
+        state.pop('prepared_draft_id', None)
         instruction = ((pick[2] if pick else start[1]) or '').strip()[:1000]
         try:
             plan = assistant_document_reply.plan(row['id'], index, instruction)
@@ -127,9 +132,6 @@ def command(state, text, user, channel):
                 f'{item["row"]}. {item["label"]}' for item in plan['choices'][:30]) +
                 '\n发送“选择填写第 3 行”这样的指令；仅写入所选行。')
         state['document_plan'] = {**plan, 'instruction': instruction, 'created': time.time()}
-        state.pop('document_row_options', None)
-        state.pop('pending', None)
-        state.pop('prepared_draft_id', None)
         state['context_at'] = time.time()
         return _plan_view(state['document_plan'])
     plan = _current(state)

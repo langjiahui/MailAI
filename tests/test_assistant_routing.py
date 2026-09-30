@@ -1,5 +1,6 @@
 """Common queries must keep their subject instead of becoming generic help/tasks."""
 import sys
+from datetime import date
 from pathlib import Path
 from unittest.mock import patch
 
@@ -44,7 +45,7 @@ def main():
         assert assistant.retrieve('第744封为什么有风险？') == [row]
         get.assert_called_once_with(744)
         search.assert_not_called()
-    named = {'id': 1, 'from_name': '姜超', 'subject': '项目进展', 'date': '2026-08-31'}
+    named = {'id': 1, 'from_name': '姜超', 'subject': '项目进展', 'date': date.today().isoformat()}
     with patch.object(assistant.db, 'search_emails', return_value=[named]), \
          patch.object(assistant.db, 'list_emails') as listing:
         assert assistant.retrieve('总结姜超最近三封邮件的重点') == [named]

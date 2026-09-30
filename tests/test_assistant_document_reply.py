@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app import assistant_actions, assistant_document_reply as task, config, db, mail_assistant
+from app import assistant_actions, assistant_attachments, assistant_document_reply as task, config, db, mail_assistant
 
 
 def _xlsx():
@@ -104,6 +104,30 @@ def _run_one(root, ext, payload):
     assert proposal and proposal['type'] == 'fill_attachment_reply'
     assert mail_assistant.ask('帮我填写附件并回复这封邮件', email_ids=[email_id])['action']['type'] == 'fill_attachment_reply'
     assert ('action', proposal) in list(mail_assistant.ask_stream('帮我填写附件并回复这封邮件', email_ids=[email_id]))
+    # The short wording in the inbox must use the document workflow even when
+    # cached attachment metadata has not caught up with the original message.
+    original_attachments = db.get_email(email_id)['attachments']
+    original_draft_count = len(db.list_drafts())
+    db.update_attachment_metadata(email_id, [])
+    short = '填写附件回复邮件'
+    for wording in (short, '填好文档回邮件', '回复邮件时填写附件'):
+        assert assistant_actions.requests_document_reply(wording), wording
+    catalog = assistant_attachments.catalog(email_id)
+    assert catalog['items'][0]['name'] == f'登记表{ext}' and catalog['items'][0]['supported']
+    assert assistant_actions.detect_proposal(short, [email_id])['type'] == 'fill_attachment_reply'
+    assert mail_assistant.ask(short, email_ids=[email_id])['action']['type'] == 'fill_attachment_reply'
+    assert any(event == 'action' and value['type'] == 'fill_attachment_reply'
+               for event, value in mail_assistant.ask_stream(short, email_ids=[email_id]))
+    assert not assistant_actions.detect_proposal(short)
+    no_scope = mail_assistant.ask(short)
+    assert '请先打开' in no_scope['answer'] and 'action' not in no_scope
+    no_scope_stream = list(mail_assistant.ask_stream(short))
+    assert not any(event == 'action' for event, _ in no_scope_stream)
+    assert any(event == 'delta' and '请先打开' in value for event, value in no_scope_stream)
+    many = mail_assistant.ask(short, email_ids=[email_id, email_id + 1])
+    assert '请只选择一封' in many['answer'] and 'action' not in many
+    assert len(db.list_drafts()) == original_draft_count, 'a fill request without one source must never create a plain reply draft'
+    db.update_attachment_metadata(email_id, original_attachments)
     with patch.object(task.client, 'chat_completion', side_effect=_model):
         plan = task.plan(email_id, 0)
         try:

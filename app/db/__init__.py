@@ -65,6 +65,7 @@ from .seen import (
 )
 from .drafts import (
     save_draft,
+    find_document_reply_draft,
     list_drafts,
     get_draft,
     complete_sent_draft,
