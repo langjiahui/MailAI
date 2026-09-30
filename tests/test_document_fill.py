@@ -132,12 +132,23 @@ def test_document_boundaries():
         for member in original.infolist():
             output.writestr(member, original.read(member))
         output.writestr('word/_rels/document.xml.rels', relationships)
+    assert inspect(source.getvalue(), '.docx')[0], 'ordinary hyperlinks must not prevent filling'
+    linked = fill(source.getvalue(), '.docx', [{'sheet':'Word 文档','cell':'T1R1C2','value':'张三'}])
+    with zipfile.ZipFile(io.BytesIO(linked)) as generated:
+        assert generated.read('word/_rels/document.xml.rels') == relationships, \
+            'the existing hyperlink relationship must be preserved unchanged'
+    unsafe_relationships = relationships.replace(b'/hyperlink', b'/attachedTemplate')
+    unsafe = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(word_file())) as original, zipfile.ZipFile(unsafe, 'w') as output:
+        for member in original.infolist():
+            output.writestr(member, original.read(member))
+        output.writestr('word/_rels/document.xml.rels', unsafe_relationships)
     try:
-        inspect(source.getvalue(), '.docx')
+        inspect(unsafe.getvalue(), '.docx')
     except ValueError as exc:
-        assert '外部链接' in str(exc)
+        assert '外部模板' in str(exc)
     else:
-        raise AssertionError('external Word relationships must be rejected regardless of XML spacing')
+        raise AssertionError('external templates must still be rejected')
 
     from pypdf import PdfWriter
     blank = io.BytesIO()
