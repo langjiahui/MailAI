@@ -27,8 +27,18 @@ def catalog(email_id):
     row = db.get_email(email_id)
     if not row or row.get('remote_missing'):
         raise ValueError('邮件不存在或已移除，请重新同步后选择')
+    attachments = row.get('attachments') or []
+    if not attachments or not any(kind(item.get('name') or '') in SUPPORTED for item in attachments):
+        # Cached metadata can lag behind the original MIME. Rebuild only when
+        # it cannot offer a usable file; the rebuilt order matches download indices.
+        raw_path = row.get('raw_path') or ''
+        try:
+            if raw_path and Path(raw_path).stat().st_size <= 40 * 1024 * 1024:
+                attachments = parser.attachment_metadata_from_path(raw_path) or attachments
+        except OSError:
+            pass
     items = []
-    for index, item in enumerate(row.get('attachments') or []):
+    for index, item in enumerate(attachments):
         name = str(item.get('name') or '未命名附件')
         ext = kind(name)
         reason = '' if ext in SUPPORTED else '暂不支持此格式，请转换为 PDF、DOCX、XLS、XLSX、PPTX、文本或截图'

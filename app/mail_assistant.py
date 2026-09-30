@@ -96,6 +96,12 @@ DOCUMENT_REPLY_ANSWER = (
 )
 
 
+def _document_reply_scope_answer(email_ids) -> str:
+    if email_ids and len(email_ids) > 1:
+        return '请只选择一封要填写附件的邮件，再说“填写附件并回复”。'
+    return '请先打开一封要填写附件的邮件，再说“填写附件并回复”。'
+
+
 def _direct_answer(question: str) -> str | None:
     """回答无需检索邮件的产品能力与使用帮助问题。"""
     normalized = re.sub(r"[\s，。！？?!、]", "", question.lower())
@@ -542,6 +548,8 @@ def ask(question: str, history: list[dict] | None = None, email_ids=None, images
     proposal = assistant_actions.detect_proposal((question or "").strip(), email_ids)
     if proposal and proposal['type'] == 'fill_attachment_reply':
         return {"answer": DOCUMENT_REPLY_ANSWER, "sources": [], "action": proposal}
+    if assistant_actions.requests_document_reply(question):
+        return {"answer": _document_reply_scope_answer(email_ids), "sources": []}
     result = _ask_impl(question, history, email_ids, images, materials)
     if not (images or materials):
         if proposal:
@@ -556,6 +564,10 @@ def ask_stream(question: str, history: list[dict] | None = None, email_ids=None,
         yield "action", proposal
         yield "sources", []
         yield "delta", DOCUMENT_REPLY_ANSWER
+        return
+    if assistant_actions.requests_document_reply(question):
+        yield "sources", []
+        yield "delta", _document_reply_scope_answer(email_ids)
         return
     if images or materials:
         from . import assistant_vision

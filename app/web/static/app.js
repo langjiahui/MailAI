@@ -788,11 +788,18 @@ async function showAssistantHistory() {
   } catch (e) { listEl.innerHTML = `<div class="assistant-history-empty">加载失败：${esc(e.message)}</div>`; }
 }
 
+function assistantQuestionRequestsDocumentReply(value) {
+  const question = String(value || '').toLowerCase().replace(/[\s，。！？?!、；;：:]/g, '');
+  return /(?:填|填写|登记).*(?:附件|表格|文档|文件|登记表).*(?:回复|回信|回邮件|发回)/.test(question)
+    || /(?:附件|表格|文档|文件|登记表).*(?:填|填写|登记).*(?:回复|回信|回邮件|发回)/.test(question)
+    || /(?:回复|回信|回邮件|发回).*(?:填|填写|登记).*(?:附件|表格|文档|文件|登记表)/.test(question);
+}
+
 function assistantQuestionReferencesOpenEmail(value) {
   const question = String(value || '').toLowerCase().replace(/[\s，。！？?!、；;：:]/g, '');
   if (!question) return false;
   return /(?:这|此|本|当前|正在(?:阅读|查看|看|打开)|刚刚?(?:阅读|查看|看|打开))(?:的)?(?:一封|封|个)?(?:电子)?邮件/.test(question)
-    || /(?:填|填写|登记).*(?:附件|表格|文档|登记表).*(?:回复|回信)/.test(question)
+    || assistantQuestionRequestsDocumentReply(question)
     || /(?:这|此|本)(?:一)?封信/.test(question)
     || /^(?:它|这封|本封)(?:说|讲|写|提到|要求|主要|内容|重点|风险)/.test(question)
     || /(?:this|current|open)email/.test(question);
@@ -864,6 +871,14 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
     mode = document.getElementById('assistant-scope').value = 'selected';
   }
   let emailIds = explicitIds || assistantPinnedScope;
+  // An attachment-fill request acts on the mail visibly open in this account.
+  // An older pinned scope must not silently redirect it to another message.
+  if (!explicitIds?.length && assistantQuestionRequestsDocumentReply(question)
+      && selectedEmailId && (!selectedEmailAccountId || selectedEmailAccountId === account?.id)) {
+    assistantPinnedScope = [selectedEmailId];
+    emailIds = [...assistantPinnedScope];
+    mode = document.getElementById('assistant-scope').value = 'selected';
+  }
   // Natural references such as “这封邮件” mean the message in the reading pane,
   // even when the scope picker was left at its default “当前邮箱”.  Pin the id so
   // follow-up questions stay on the same message and cannot fall back to a noisy

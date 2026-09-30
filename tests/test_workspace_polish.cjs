@@ -57,9 +57,11 @@ classes.delete('assistant-floating'); classes.delete('assistant-visible'); ctx.u
 assert.equal((html.match(/id="assistant-float"/g)||[]).length,1);
 assert.ok(html.indexOf('id="assistant-scope-picker"') > html.indexOf('id="assistant-messages"'));
 assert.match(app,/assistantPinnedScope = \[\.\.\.explicitIds\]/);
-const referenceSource = app.slice(app.indexOf('function assistantQuestionReferencesOpenEmail('), app.indexOf('\nasync function askAssistant('));
+const referenceSource = app.slice(app.indexOf('function assistantQuestionRequestsDocumentReply('), app.indexOf('\nasync function askAssistant('));
 const referenceCtx = {};
 vm.createContext(referenceCtx); vm.runInContext(referenceSource, referenceCtx);
+assert.equal(referenceCtx.assistantQuestionRequestsDocumentReply('填写附件回复邮件'), true);
+assert.equal(referenceCtx.assistantQuestionRequestsDocumentReply('回复邮件时填写附件'), true);
 for (const question of ['这个邮件说了什么', '总结这封邮件', '当前邮件安全吗', '正在看的邮件有什么重点', '它说了什么']) {
   assert.equal(referenceCtx.assistantQuestionReferencesOpenEmail(question), true, `Should bind the open email for: ${question}`);
 }

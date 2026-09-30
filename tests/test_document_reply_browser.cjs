@@ -11,6 +11,15 @@ const {chromium} = require('playwright');
     const account = await page.evaluate(() => activeMailAccount()?.id);
     const email = await page.evaluate(() => allEmails.find(item => item.attachments?.length)?.id);
     assert(account && email);
+    let askedScope;
+    await page.route('**/api/assistant/ask-stream', async route => {
+      askedScope = route.request().postDataJSON().email_ids;
+      const action = {type:'fill_attachment_reply',summary:'填写当前邮件的文档附件并准备回复',
+        params:{email_id:email,instruction:'填写附件回复邮件'}};
+      const events = [{type:'meta',conversation_id:1},{type:'action',action},{type:'sources',sources:[]},
+        {type:'delta',content:'点击开始填写。'},{type:'done'}];
+      await route.fulfill({contentType:'application/x-ndjson',body:events.map(JSON.stringify).join('\n')+'\n'});
+    });
     await page.route(/\/api\/emails\/\d+\/assistant-attachments$/, route => route.fulfill({json:{
       subject:'填写登记文档', items:[{index:0,name:'登记表.docx',size:1024,supported:true}]
     }}));
@@ -40,7 +49,18 @@ const {chromium} = require('playwright');
       attachments:[{filename:'登记表_已填写.docx',content_type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',size:1024,data_base64:'ZmFrZQ=='}]
       }});
     });
-    await page.evaluate(({email,account}) => window.startAssistantDocumentReply(email,account,'填写附件并回复'),{email,account});
+    await page.evaluate(({email,account}) => {
+      _systemConfig.model.available = true;
+      _systemConfig.model.verified = true;
+      selectedEmailId = email;
+      selectedEmailAccountId = account;
+      assistantPinnedScope = [999]; // An older conversation must not redirect the fill request.
+      document.getElementById('assistant-scope').value = 'selected';
+      return askAssistant('填写附件回复邮件');
+    },{email,account});
+    assert.deepEqual(askedScope,[email]);
+    await page.evaluate(() => document.querySelector('.assistant-action-card [data-action-confirm]').click());
+    await page.locator('#assistant-document-reply').waitFor({state:'visible'});
     await page.locator('input[name="document-reply-file"]').check();
     await page.locator('[data-document-next]').click();
     await page.locator('[data-document-value="0"]').fill('张三');
