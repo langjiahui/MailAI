@@ -63,6 +63,8 @@ def api_set_email_read(email_id: int, value: bool = True):
         raise HTTPException(409, "邮件当前无法更新")
     db.add_audit_log(email_id, "mark_read" if value else "mark_unread", actor="user",
                      reason="本地立即更新，后台同步邮箱服务器")
+    from ...desktop import refresh_dock_badge
+    refresh_dock_badge()
     return {"ok": True, "is_read": value, "sync_pending": True}
 
 
@@ -182,6 +184,9 @@ def api_bulk_email_action(payload: BulkMailRequest):
         for row in before:
             db.add_audit_log(row['id'], 'bulk_read', actor='user',
                              reason=f"本地立即标记为{'已读' if value else '未读'}，后台同步服务器")
+        if before:
+            from ...desktop import refresh_dock_badge
+            refresh_dock_badge()
         from ...mail_undo import record
         return {
             'ok': not failed, 'completed': len(before), 'queued': len(before),
