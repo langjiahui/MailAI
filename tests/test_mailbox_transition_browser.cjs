@@ -63,6 +63,11 @@ const {chromium} = require('playwright');
     await page.locator('#folder-nav .nav-item[data-filter="status"][data-value="trash"]').click();
     await overlay.waitFor({state:'hidden',timeout:15000});
     await page.locator('#folder-nav .nav-item[data-filter="status"][data-value="inbox"]').click();
+    assert.equal(await page.locator('#folder-nav .nav-item[data-filter="status"][data-value="inbox"]').evaluate(node => node.classList.contains('active')), true,
+      'folder selection should change on click while the mailbox request is pending');
+    await page.waitForFunction(() => document.querySelector('.sidebar .selection-glass-plate')?.getAnimations().length > 0,
+      null, {timeout:1000});
+    assert.equal(await page.locator('.list-pane').getAttribute('aria-busy'), 'true');
     await overlay.waitFor({state:'hidden',timeout:15000});
     assert.equal(await page.locator('#email-list .email-item').count(), 12, 'single-account Inbox must reload after Trash');
     console.log('PASS mailbox transition, rapid account switching, light/dark themes');

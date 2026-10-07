@@ -3146,6 +3146,9 @@ async function onNavClick(e) {
     currentFilter.days = 9999;
     setSegmentedFilter('filter-days', '9999');
   }
+  // Selection is click feedback: move the glass plate before the mailbox
+  // request starts, while the list and reading pane load independently.
+  updateActiveNav();
   // A previous mailbox may have loaded only Trash, Favorites or a server folder.
   // Reload before filtering its rows into the new mailbox.
   let loaded = true;
