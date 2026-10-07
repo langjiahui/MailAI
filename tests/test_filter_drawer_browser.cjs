@@ -48,6 +48,17 @@ const {chromium} = require('playwright');
     assert.equal(await clear.isVisible(), true);
     await button.click();
     assert.equal(await panel.isVisible(), false);
+    await page.setViewportSize({width:400,height:700});
+    await button.dispatchEvent('click');
+    await page.waitForTimeout(380);
+    const narrow = await page.evaluate(() => {
+      const list = document.getElementById('email-list').getBoundingClientRect();
+      const panel = document.getElementById('workspace-filters').getBoundingClientRect();
+      const clear = document.getElementById('btn-reset-filter').getBoundingClientRect();
+      return {listHeight:list.height,panelBottom:panel.bottom,clearBottom:clear.bottom};
+    });
+    assert(narrow.listHeight >= 100, 'narrow screens should retain room for the mail list');
+    assert(narrow.clearBottom < narrow.panelBottom, 'Clear all should remain visible on narrow screens');
     console.log('PASS filter drawer motion, list reflow and visible Clear all footer');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
