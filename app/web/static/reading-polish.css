@@ -199,6 +199,19 @@ html[data-theme] body .reading-header .reading-actions .reading-more-panel butto
 html[data-theme] body .reading-header .reading-actions .reading-more-panel button:hover { background:var(--desk-hover)!important; }
 html[data-theme] body .reading-main>.reading-section { background:transparent!important; border:0!important; box-shadow:none!important; border-radius:0; padding:12px 0; margin-bottom:12px; }
 html[data-theme] body .reading-main .summary-box { background:var(--desk-muted-surface)!important; border:0!important; border-radius:8px; padding:12px 16px; font-size:14px; line-height:1.7; }
+html[data-theme] body .optional-mail-summary { padding:8px 0!important; }
+html[data-theme] body .optional-mail-summary>summary.section-title {
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  min-height:36px; margin:0; cursor:pointer; list-style:none;
+}
+.optional-mail-summary>summary::-webkit-details-marker { display:none; }
+.optional-mail-summary .summary-disclosure { display:inline-flex; align-items:center; gap:5px; color:var(--desk-accent); font-size:12px; font-weight:500; }
+.optional-mail-summary .summary-disclosure svg { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:1.7; transition:transform .18s ease; }
+.optional-mail-summary[open] .summary-disclosure svg { transform:rotate(180deg); }
+.optional-mail-summary .summary-collapse-label,.optional-mail-summary[open] .summary-expand-label { display:none; }
+.optional-mail-summary[open] .summary-collapse-label { display:inline; }
+.optional-mail-summary>summary:focus-visible { outline:2px solid var(--desk-accent); outline-offset:3px; border-radius:4px; }
+.optional-mail-summary .summary-box { margin-top:8px; }
 html[data-theme] body .body-section .email-body { background:var(--desk-surface)!important; border:0!important; border-radius:0; box-shadow:none!important; }
 .email-body.plain-email-body { padding:12px 0; font-size:15px; line-height:1.85; }
 html[data-theme] body .section-title { font-size:12px; color:var(--desk-muted)!important; }
@@ -237,6 +250,7 @@ html[data-theme] body .section-title { font-size:12px; color:var(--desk-muted)!i
   .progress-loading { height:95px; }
   .conversation-progress .progress-disclosure>summary { min-height:62px; }
 }
+@media(prefers-reduced-motion:reduce) { .optional-mail-summary .summary-disclosure svg { transition:none; } }
 @media(prefers-reduced-motion:reduce) {
   .reading-actions *, .progress-disclosure * { transition:none!important; animation:none!important; }
 }

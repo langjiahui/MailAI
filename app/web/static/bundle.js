@@ -4344,6 +4344,12 @@ function closeDigestEmailDrawer() {
   }, 200);
 }
 
+document.addEventListener('toggle', event => {
+  if (event.target.matches?.('.optional-mail-summary')) {
+    localStorage.setItem('mailai-summary-expanded', event.target.open ? '1' : '0');
+  }
+}, true);
+
 function renderDigestEmailDetail(e) {
   const parseArr = (v) => {
     if (Array.isArray(v)) return v;
@@ -4368,9 +4374,9 @@ function renderDigestEmailDetail(e) {
       </div>
     </div>
     <div class="drawer-email-body">
-      <div class="reading-section drawer-summary-section"><div class="section-title"><span>${e.summary ? (mailaiT('read.summaryTitle') || 'AI 摘要') : (mailaiT('read.previewTitle') || '正文预览')}</span><small>${e.summary ? (mailaiT('read.summaryHintDrawer') || '快速了解邮件重点') : (mailaiT('read.previewHint') || '摘取正文开头，非 AI 提炼')}</small></div>
+      <details class="reading-section drawer-summary-section optional-mail-summary" ${localStorage.getItem('mailai-summary-expanded') === '1' ? 'open' : ''}><summary class="section-title"><span>${e.summary ? (mailaiT('read.summaryTitle') || 'AI 摘要') : (mailaiT('read.previewTitle') || '正文预览')}</span><span class="summary-disclosure"><span class="summary-expand-label">${mailaiT('common.expand') || '展开'}</span><span class="summary-collapse-label">${mailaiT('common.collapse') || '收起'}</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></span></summary>
         <div class="markdown-body summary-box">${mdToHtml(e.summary || e.snippet || (mailaiT('read.noSummary') || '暂无摘要'))}</div>
-      </div>
+      </details>
       <div class="reading-section drawer-body-section"><div class="section-title"><span>${mailaiT('read.body') || '邮件正文'}</span><small>${e.has_rich_body ? (e.has_remote_images ? (mailaiT('read.fmtHtmlImages') || 'HTML 原始排版 · 外链图片已显示') : (mailaiT('read.fmtHtml') || 'HTML 原始排版')) : (mailaiT('read.fmtPlain') || '纯文本邮件')}</small></div>
         ${e.has_rich_body ? '<div id="digest-rich-email-body" class="email-body rich-email-body"><div class="reading-loading">正在还原邮件排版…</div></div>' : `<div class="markdown-body email-body plain-email-body">${mdToHtml(e.body_text || '')}</div>`}
       </div>
@@ -7720,15 +7726,15 @@ function renderReadingPane(e) {
     <div class="reading-workspace">
       <main class="reading-main">
         ${renderConversationProgress(e)}
-        <div class="reading-section summary-section primary-summary">
-          <div class="section-title"><span>${e.summary ? (mailaiT('read.summaryTitle') || 'AI 摘要') : (mailaiT('read.previewTitle') || '正文预览')}</span><small>${e.summary ? (mailaiT('read.summaryHint') || '提炼重点，完整展示') : (mailaiT('read.previewHint') || '摘取正文开头，非 AI 提炼')}</small></div>
+        <details class="reading-section summary-section primary-summary optional-mail-summary" ${localStorage.getItem('mailai-summary-expanded') === '1' ? 'open' : ''}>
+          <summary class="section-title"><span>${e.summary ? (mailaiT('read.summaryTitle') || 'AI 摘要') : (mailaiT('read.previewTitle') || '正文预览')}</span><span class="summary-disclosure"><span class="summary-expand-label">${mailaiT('common.expand') || '展开'}</span><span class="summary-collapse-label">${mailaiT('common.collapse') || '收起'}</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></span></summary>
           <div class="summary-quick-meta">
             ${e.category ? `<span>${esc(mailCategoryLabel(e.category))}</span>` : ''}
             ${e.priority ? `<span>${esc(mailPriorityLabel(e.priority))}</span>` : ''}
             ${(e.attachments || []).length ? `<span>${(mailaiT('read.attachCount') || '{n} 个附件').replace('{n}', e.attachments.length)}</span>` : ''}
           </div>
           <div id="primary-summary-content" class="markdown-body summary-box">${mdToHtml(e.summary || e.snippet || (mailaiT('read.noSummary') || '暂无摘要'))}</div>
-        </div>
+        </details>
 
         <div class="reading-section body-section">
           <div class="section-title"><span>${mailaiT('read.body') || '邮件正文'}</span><div class="body-format-actions"><small>${e.has_rich_body ? (e.has_remote_images ? (mailaiT('read.fmtHtmlImages') || 'HTML 原始排版 · 外链图片已显示') : (mailaiT('read.fmtHtml') || 'HTML 原始排版')) : (mailaiT('read.fmtPlainOpt') || '纯文本邮件 · 优化排版')}</small></div></div>
