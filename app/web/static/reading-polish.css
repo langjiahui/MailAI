@@ -212,8 +212,6 @@ html[data-theme] body .optional-mail-summary .summary-toggle {
   display:flex; align-items:center; width:100%; min-height:52px; gap:10px; padding:9px 14px;
   border:0; background:transparent; color:var(--desk-ink); text-align:left; cursor:pointer;
 }
-.summary-toggle-icon { display:grid; place-items:center; flex:none; width:30px; height:30px; border-radius:9px; background:var(--desk-selected); color:var(--desk-accent); }
-.summary-toggle-icon svg { width:17px; height:17px; fill:none; stroke:currentColor; stroke-width:1.35; stroke-linecap:round; stroke-linejoin:round; }
 .summary-toggle-copy { display:flex; align-items:baseline; flex:1; min-width:0; gap:9px; }
 .summary-toggle-copy strong { font-size:13px; font-weight:650; }
 .summary-toggle-copy small { color:var(--desk-muted); font-size:11px; }

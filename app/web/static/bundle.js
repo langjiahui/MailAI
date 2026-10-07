@@ -4369,7 +4369,6 @@ function mailSummaryDisclosure(e, {drawer = false} = {}) {
   </div>`;
   return `<section class="reading-section ${drawer ? 'drawer-summary-section' : 'summary-section primary-summary'} optional-mail-summary ${expanded ? 'is-expanded' : ''}">
     <button type="button" class="summary-toggle" data-summary-toggle aria-expanded="${expanded}" aria-controls="${id}">
-      <span class="summary-toggle-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="m10 2 1.6 5.1L17 9l-5.4 1.9L10 16l-1.6-5.1L3 9l5.4-1.9L10 2Z"/><path d="m16 14 .5 1.5L18 16l-1.5.5L16 18l-.5-1.5L14 16l1.5-.5L16 14Z"/></svg></span>
       <span class="summary-toggle-copy"><strong>${title}</strong><small>${mailaiT('read.optionalSummary') || '需要时查看'}</small></span>
       <span class="summary-toggle-action"><span class="summary-expand-label">${mailaiT('common.expand') || '展开'}</span><span class="summary-collapse-label">${mailaiT('common.collapse') || '收起'}</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></span>
     </button>
