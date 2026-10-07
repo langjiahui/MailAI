@@ -924,6 +924,7 @@ const I18N_MESSAGES = {
     'read.toShort': 'To',
     'read.timeShort': 'Time',
     'read.summaryTitle': 'AI Summary',
+    'read.optionalSummary': 'View when needed',
     'read.summaryHint': 'Key points, shown in full',
     'read.summaryHintDrawer': 'Quick grasp of the key points',
     'read.previewTitle': 'Body preview',
