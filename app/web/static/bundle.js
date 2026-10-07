@@ -12150,10 +12150,54 @@ function initializeWorkspace() {
     <section id="task-center" class="task-center hidden" role="dialog" aria-modal="true" aria-labelledby="task-center-title"><header><div class="task-center-heading"><span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg></span><div><h2 id="task-center-title" data-i18n="task.title">任务与发件箱</h2><p data-i18n="task.subtitle">只展示进行中或需要你处理的事项</p></div></div><button type="button" id="close-task-center" aria-label="关闭任务与发件箱" data-i18n-aria="task.close"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"/></svg></button></header><label class="task-account-picker">查看邮箱<select id="task-center-account" aria-label="任务与发件箱所属邮箱"></select></label><div id="task-center-list"><div class="task-loading"><i></i><span data-i18n="task.loading">正在读取任务状态…</span></div></div></section>
     <dialog id="reminder-dialog"><form method="dialog"><h3 data-i18n="task.remindTitle">稍后提醒</h3><label><span data-i18n="task.remindTime">提醒时间</span> <input type="datetime-local" id="reminder-time" required></label><p><button value="cancel" data-i18n="common.cancel">取消</button><button type="button" id="save-reminder" data-i18n="task.remindSave">保存提醒</button></p></form></dialog>`);
   const listHeader = document.querySelector('.list-header');
-  listHeader.insertAdjacentHTML('afterend', `<div class="list-workspace-tools"><button id="btn-filter-panel" aria-expanded="false" data-i18n="filter.toggle">筛选</button><div id="filter-chips"></div><button id="btn-task-center" aria-expanded="false" aria-controls="task-center" data-i18n="task.title">任务与发件箱</button></div>`);
+  listHeader.insertAdjacentHTML('afterend', `<div class="list-workspace-tools"><button id="btn-filter-panel" aria-expanded="false" aria-controls="workspace-filters" data-i18n="filter.toggle">筛选</button><div id="filter-chips"></div><button id="btn-task-center" aria-expanded="false" aria-controls="task-center" data-i18n="task.title">任务与发件箱</button></div>`);
   const filters = document.querySelector('.mail-filter-group');
   filters.id = 'workspace-filters'; filters.classList.add('hidden'); document.querySelector('.list-workspace-tools').after(filters);
-  document.getElementById('btn-filter-panel').onclick = event => { const hidden = filters.classList.toggle('hidden'); event.currentTarget.setAttribute('aria-expanded', String(!hidden)); };
+  filters.setAttribute('aria-hidden', 'true'); filters.inert = true;
+  const filterBody = document.createElement('div');
+  filterBody.className = 'filter-panel-content';
+  filterBody.append(filters.querySelector('.filter-heading'), filters.querySelector('.filter-form'));
+  const filterFooter = document.createElement('div');
+  filterFooter.className = 'filter-panel-footer';
+  filterFooter.append(filterBody.querySelector('#btn-reset-filter'));
+  filters.append(filterBody, filterFooter);
+  const filterButton = document.getElementById('btn-filter-panel');
+  let filterOpen = false, filterAnimation = null, filterContentAnimation = null;
+  filterButton.onclick = () => {
+    const opening = !filterOpen;
+    const previousHeight = filterAnimation ? filters.getBoundingClientRect().height : opening ? 0 : filters.getBoundingClientRect().height;
+    const previousOpacity = filterAnimation ? Number(getComputedStyle(filters).opacity) : opening ? 0 : 1;
+    const previousContentTransform = filterContentAnimation ? getComputedStyle(filterBody).transform : opening ? 'translateY(-10px)' : 'translateY(0)';
+    const previousContentOpacity = filterContentAnimation ? Number(getComputedStyle(filterBody).opacity) : opening ? .65 : 1;
+    filterAnimation?.cancel(); filterContentAnimation?.cancel();
+    filterOpen = opening;
+    filterButton.setAttribute('aria-expanded', String(opening));
+    if (opening) { filters.classList.remove('hidden'); filters.inert = false; filters.setAttribute('aria-hidden', 'false'); }
+    else { filters.inert = true; filters.setAttribute('aria-hidden', 'true'); }
+    filters.style.height = 'auto'; filters.style.opacity = '1';
+    const targetHeight = opening ? filters.getBoundingClientRect().height : 0;
+    filters.style.height = `${previousHeight}px`;
+    filters.style.opacity = String(previousOpacity);
+    const finish = () => {
+      filters.style.height = ''; filters.style.opacity = '';
+      if (!opening) { filters.classList.add('hidden'); filters.inert = true; filters.setAttribute('aria-hidden', 'true'); }
+      filterAnimation = null;
+    };
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches || !filters.animate) { finish(); return; }
+    const animation = filters.animate([
+      {height:`${previousHeight}px`, opacity:previousOpacity},
+      {height:`${targetHeight}px`, opacity:opening ? 1 : 0},
+    ], {duration:opening ? 340 : 260, easing:'cubic-bezier(.22,.8,.24,1)', fill:'forwards'});
+    filterAnimation = animation;
+    filterContentAnimation = filterBody.animate([
+      {transform:previousContentTransform, opacity:previousContentOpacity},
+      {transform:opening ? 'translateY(0)' : 'translateY(-8px)', opacity:opening ? 1 : .55},
+    ], {duration:opening ? 340 : 260, easing:'cubic-bezier(.22,.8,.24,1)', fill:'forwards'});
+    animation.onfinish = () => {
+      if (filterAnimation !== animation) return;
+      finish(); animation.cancel(); filterContentAnimation?.cancel(); filterContentAnimation = null;
+    };
+  };
   updateWorkspaceToolScope();
   document.getElementById('task-center-account').onchange = event => {
     taskCenterAccountId = event.target.value;

@@ -81,13 +81,22 @@ html[data-theme] body .bulk-toolbar #bulk-cancel:hover {
 
 html[data-theme] body #workspace-filters {
   margin:0 10px 10px;
-  padding:13px 14px 9px;
+  padding:0!important;
+  display:flex;
+  flex-direction:column;
+  box-sizing:border-box;
+  max-height:min(calc(72vh / var(--fz,1)),calc(100% - 170px));
+  overflow:hidden!important;
+  flex-shrink:0;
   border:1px solid var(--desk-line)!important;
   border-radius:12px;
   color:var(--desk-ink)!important;
   background:var(--desk-surface)!important;
   box-shadow:0 6px 16px rgba(25,41,32,.045)!important;
+  transition:none!important;
 }
+.filter-panel-content { flex:1 1 auto; min-height:0; overflow:auto; overscroll-behavior:contain; padding:13px 14px 0; }
+.filter-panel-footer { display:flex; justify-content:flex-end; flex:none; padding:7px 14px 10px; border-top:1px solid var(--desk-line); background:var(--desk-surface); }
 #workspace-filters .filter-heading { margin:0 0 4px; padding:0; }
 html[data-theme] body #workspace-filters .filter-heading b {
   color:var(--desk-ink)!important;
@@ -155,7 +164,7 @@ html[data-theme] body #workspace-filters .filter-clear-button {
   align-self:flex-end;
   width:auto;
   min-height:29px;
-  margin-top:8px;
+  margin-top:0;
   padding:5px 9px;
   border:0!important;
   color:var(--desk-muted)!important;
