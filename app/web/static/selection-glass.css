@@ -1,0 +1,81 @@
+/* A moving selection surface; labels and icons stay crisp above the material. */
+html[data-theme="light"] {
+  --selection-glass-fill:linear-gradient(115deg,rgba(255,255,255,.77),rgba(215,239,225,.67));
+  --selection-glass-edge:rgba(255,255,255,.92);
+  --selection-glass-rim:rgba(55,126,91,.22);
+  --selection-glass-shadow:rgba(42,95,69,.13);
+}
+html[data-theme="dark"] {
+  --selection-glass-fill:linear-gradient(115deg,rgba(70,101,80,.67),rgba(36,67,48,.7));
+  --selection-glass-edge:rgba(220,249,228,.29);
+  --selection-glass-rim:rgba(125,197,149,.33);
+  --selection-glass-shadow:rgba(0,0,0,.25);
+}
+
+html[data-theme] body .sidebar,
+html[data-theme] body #email-list { position:relative; isolation:isolate; }
+
+html[data-theme] body .selection-glass-plate {
+  position:absolute;
+  z-index:0;
+  box-sizing:border-box;
+  border:1px solid var(--selection-glass-rim);
+  border-radius:10px;
+  background:var(--selection-glass-fill);
+  box-shadow:inset 0 1px var(--selection-glass-edge),
+    inset 1px 0 rgba(255,255,255,.25),
+    0 6px 16px var(--selection-glass-shadow);
+  -webkit-backdrop-filter:blur(13px) saturate(1.18);
+  backdrop-filter:blur(13px) saturate(1.18);
+  pointer-events:none;
+  will-change:transform;
+}
+html[data-theme] body .selection-glass-plate[hidden] { display:none!important; }
+html[data-theme] body #email-list .selection-glass-plate { border-radius:9px; }
+
+html[data-theme] body .sidebar.glass-selection-ready
+  :is(#folder-nav .nav-item.active,#account-mailbox-nav .nav-item.active,
+      #account-mailbox-nav .sidebar-account-folders button.active),
+html[data-theme] body .sidebar.glass-selection-ready
+  :is(#folder-nav .nav-item.active,#account-mailbox-nav .nav-item.active,
+      #account-mailbox-nav .sidebar-account-folders button.active):hover {
+  position:relative;
+  z-index:1;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+html[data-theme] body #email-list.glass-selection-ready .email-item.selected,
+html[data-theme] body #email-list.glass-selection-ready .email-item.selected:hover,
+html[data-theme] body #email-list.glass-selection-ready .email-item.quarantine.selected,
+html[data-theme] body #email-list.glass-selection-ready .email-item.spam.selected {
+  position:relative;
+  z-index:1;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) {
+  html[data-theme] body .selection-glass-plate {
+    background:var(--desk-selected);
+  }
+}
+@media (prefers-reduced-transparency:reduce) {
+  html[data-theme] body .selection-glass-plate {
+    background:var(--desk-selected);
+    -webkit-backdrop-filter:none;
+    backdrop-filter:none;
+  }
+}
+@media (prefers-contrast:more) {
+  html[data-theme] body .selection-glass-plate {
+    border-color:var(--desk-accent);
+    box-shadow:inset 0 0 0 1px var(--desk-accent);
+  }
+}
+@media (prefers-reduced-motion:reduce) {
+  html[data-theme] body .selection-glass-plate { will-change:auto; }
+}
+html.windows-performance body .selection-glass-plate {
+  -webkit-backdrop-filter:none;
+  backdrop-filter:none;
+}

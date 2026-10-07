@@ -26,3 +26,4 @@ workspace-shell.js
 macos-window.js
 windows-window.js
 remote-control.js
+selection-glass.js
