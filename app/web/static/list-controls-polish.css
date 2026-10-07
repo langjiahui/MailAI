@@ -85,7 +85,8 @@ html[data-theme] body #workspace-filters {
   display:flex;
   flex-direction:column;
   box-sizing:border-box;
-  max-height:min(calc(72vh / var(--fz,1)),calc(100% - 170px));
+  /* Leave room for the list header, controls, and at least one mail row. */
+  max-height:min(calc(72vh / var(--fz,1)),max(170px,calc(100% - 370px)));
   overflow:hidden!important;
   flex-shrink:0;
   border:1px solid var(--desk-line)!important;
