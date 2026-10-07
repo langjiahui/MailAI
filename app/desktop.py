@@ -93,6 +93,12 @@ def notify_poll_result(result: dict) -> None:
         _runtime.notify_poll_result(result)
 
 
+def refresh_dock_badge() -> None:
+    """Refresh the native badge after local mail state changes."""
+    if _runtime is not None:
+        _runtime.refresh_dock_badge()
+
+
 def reserve_loopback_socket(preferred_port: int = 0) -> tuple[socket.socket, int]:
     """Reserve a loopback listener, falling back to an OS-assigned free port."""
     candidates = [preferred_port] if preferred_port > 0 else []
@@ -190,7 +196,7 @@ class DesktopRuntime:
         try:
             self.hidden = False
             self.window.show()
-            self._set_dock_badge("")
+            self.refresh_dock_badge()
         except Exception:
             log.exception("显示 MailAI 窗口失败")
 
@@ -225,12 +231,20 @@ class DesktopRuntime:
         fetched = max(0, int((result or {}).get("fetched") or 0))
         if result and result.get("ok") and (result.get('received') or fetched):
             self._signal_mailbox_changed(result.get('received') or fetched)
+        self.refresh_dock_badge()
         content = notification_text(result)
         if content is None:
             return
         title, body = content
         self._deliver_notification(title, body)
-        self._set_dock_badge(str(fetched) if fetched else "")
+
+    def refresh_dock_badge(self) -> None:
+        try:
+            from .system_settings import unread_inbox_count
+            count = unread_inbox_count()
+            self._set_dock_badge(str(count) if count else "")
+        except Exception:
+            log.exception("读取未读邮件数量失败，保留当前 Dock 标记")
 
     def _signal_mailbox_changed(self, fetched: int) -> None:
         """Tell a visible webview to refresh without changing the selected mail."""
@@ -680,6 +694,8 @@ def run_macos_window(asgi_app, preferred_port: int = 0,
 
         def ready():
             runtime._call_after_safely("安装菜单栏控件", runtime.install_native_controls)
+            threading.Thread(target=runtime.refresh_dock_badge,
+                             name="mailai-dock-unread", daemon=True).start()
 
         from .paths import USER_DIR
         webview.start(ready, gui="cocoa", debug=False, private_mode=False,

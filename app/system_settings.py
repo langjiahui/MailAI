@@ -192,6 +192,27 @@ def _activate_storage(account: dict):
     db.init_db()
 
 
+def unread_inbox_count() -> int:
+    """Count the same unread inbox messages shown by the account sidebar."""
+    accounts = _load_registry().get("accounts", {})
+    paths = {
+        item.get("db_path") for item in accounts.values()
+        if item.get("visible", True) and item.get("db_path")
+    }
+    if not accounts:
+        paths = {config.DB_PATH}
+    total = 0
+    for path in paths:
+        if not path or not os.path.isfile(path):
+            continue
+        with _sqlite_connection(path) as connection:
+            total += int(connection.execute(
+                "SELECT COUNT(*) FROM emails WHERE remote_missing=0 "
+                "AND status='inbox' AND is_read=0"
+            ).fetchone()[0])
+    return total
+
+
 def public_config() -> dict:
     from . import pipeline
     registry = _load_registry()

@@ -50,8 +50,8 @@ def main():
          patch.object(assistant.db, 'list_emails') as listing:
         assert assistant.retrieve('总结姜超最近三封邮件的重点') == [named]
         listing.assert_not_called()
-    high = {'id': 2, 'priority': '高', 'subject': '紧急合同', 'date': '2026-09-03'}
-    normal = {'id': 3, 'priority': '中', 'subject': '例会', 'date': '2026-09-03'}
+    high = {'id': 2, 'priority': '高', 'subject': '紧急合同', 'date': date.today().isoformat()}
+    normal = {'id': 3, 'priority': '中', 'subject': '例会', 'date': date.today().isoformat()}
     with patch.object(assistant.db, 'list_emails', return_value=[normal, high]), \
          patch.object(assistant.db, 'get_email', return_value=high) as get, \
          patch.object(assistant.db, 'search_emails') as search:
