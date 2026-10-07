@@ -2644,19 +2644,28 @@ function closeDigestEmailDrawer() {
 document.addEventListener('click', event => {
   const button = event.target.closest?.('[data-summary-toggle]');
   if (!button) return;
-  const card = button.closest('.optional-mail-summary');
+  const content = document.getElementById(button.getAttribute('aria-controls'));
+  const card = content?.closest('.optional-mail-summary');
+  if (!card) return;
   const expanded = !card.classList.contains('is-expanded');
   card.classList.toggle('is-expanded', expanded);
+  button.classList.toggle('is-active', expanded);
   button.setAttribute('aria-expanded', String(expanded));
-  const content = card.querySelector('.summary-reveal');
   content.setAttribute('aria-hidden', String(!expanded));
   content.inert = !expanded;
   localStorage.setItem('mailai-summary-expanded', expanded ? '1' : '0');
 });
 
+function mailSummaryToolbarButton(e) {
+  const expanded = localStorage.getItem('mailai-summary-expanded') === '1';
+  const title = e.summary ? (mailaiT('read.summaryTitle') || 'AI 摘要') : (mailaiT('read.previewTitle') || '正文预览');
+  return `<button type="button" class="reading-summary-control ${expanded ? 'is-active' : ''}" data-summary-toggle aria-expanded="${expanded}" aria-controls="primary-summary-reveal"><span>${title}</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button>`;
+}
+
 function mailSummaryDisclosure(e, {drawer = false} = {}) {
   const expanded = localStorage.getItem('mailai-summary-expanded') === '1';
   const id = drawer ? 'drawer-summary-content' : 'primary-summary-content';
+  const revealId = drawer ? 'drawer-summary-reveal' : 'primary-summary-reveal';
   const title = e.summary ? (mailaiT('read.summaryTitle') || 'AI 摘要') : (mailaiT('read.previewTitle') || '正文预览');
   const quickMeta = drawer ? '' : `<div class="summary-quick-meta">
     ${e.category ? `<span>${esc(mailCategoryLabel(e.category))}</span>` : ''}
@@ -2664,11 +2673,11 @@ function mailSummaryDisclosure(e, {drawer = false} = {}) {
     ${(e.attachments || []).length ? `<span>${(mailaiT('read.attachCount') || '{n} 个附件').replace('{n}', e.attachments.length)}</span>` : ''}
   </div>`;
   return `<section class="reading-section ${drawer ? 'drawer-summary-section' : 'summary-section primary-summary'} optional-mail-summary ${expanded ? 'is-expanded' : ''}">
-    <button type="button" class="summary-toggle" data-summary-toggle aria-expanded="${expanded}" aria-controls="${id}">
+    ${drawer ? `<button type="button" class="summary-toggle" data-summary-toggle aria-expanded="${expanded}" aria-controls="${revealId}">
       <span class="summary-toggle-copy"><strong>${title}</strong><small>${mailaiT('read.optionalSummary') || '需要时查看'}</small></span>
       <span class="summary-toggle-action"><span class="summary-expand-label">${mailaiT('common.expand') || '展开'}</span><span class="summary-collapse-label">${mailaiT('common.collapse') || '收起'}</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></span>
-    </button>
-    <div class="summary-reveal" aria-hidden="${!expanded}" ${expanded ? '' : 'inert'}><div class="summary-reveal-inner">
+    </button>` : ''}
+    <div id="${revealId}" class="summary-reveal" aria-hidden="${!expanded}" ${expanded ? '' : 'inert'}><div class="summary-reveal-inner">
       ${quickMeta}<div id="${id}" class="markdown-body summary-box">${mdToHtml(e.summary || e.snippet || (mailaiT('read.noSummary') || '暂无摘要'))}</div>
     </div></div>
   </section>`;
@@ -6008,6 +6017,7 @@ function renderReadingPane(e) {
         <div class="reading-actions">
           <section class="reading-action-group reading-mail-group" aria-label="邮件操作"><span class="reading-action-group-title">${mailaiT('read.groupMail') || '邮件操作'}</span><div class="reading-mail-controls"><div class="reading-reply-actions">${replyActions}</div></div></section>
           <section class="reading-action-group reading-ai-group" aria-label="AI 助手"><span class="reading-action-group-title">${mailaiT('read.groupAi') || 'AI 助手'}</span></section>
+          ${mailSummaryToolbarButton(e)}
           <details class="reading-more-actions">
             <summary aria-label="更多邮件操作">
               <svg class="reading-more-symbol" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14M8 3v4M13 8v4M7 13v4"/></svg>

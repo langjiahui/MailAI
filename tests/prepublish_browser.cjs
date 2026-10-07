@@ -52,7 +52,7 @@ const fs = require('node:fs');
     pass('历史载入状态与轻量操作同排，主次清晰且具备可访问名称');
     await shot('home');
     await page.locator('#email-list .email-item').first().click();
-    await page.locator('#reading-content .reading-section').first().waitFor();
+    await page.locator('#reading-content .body-section').waitFor();
     await page.waitForFunction(() => document.querySelector('#email-list .email-item')?.dataset.readState === 'read');
     pass('统一收件箱打开邮件并更新已读');
 
