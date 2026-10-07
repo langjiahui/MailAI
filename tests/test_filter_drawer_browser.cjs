@@ -24,13 +24,19 @@ const {chromium} = require('playwright');
       const panel = document.getElementById('workspace-filters').getBoundingClientRect();
       const clear = document.getElementById('btn-reset-filter').getBoundingClientRect();
       const footer = document.querySelector('.list-footer').getBoundingClientRect();
-      return {panelBottom:panel.bottom,clearBottom:clear.bottom,footerTop:footer.top};
+      const content = document.querySelector('.filter-panel-content');
+      return {panelTop:panel.top,panelRight:panel.right,panelBottom:panel.bottom,
+        clearTop:clear.top,clearRight:clear.right,clearBottom:clear.bottom,footerTop:footer.top,
+        contentScrollHeight:content.scrollHeight,contentHeight:content.clientHeight};
     });
-    assert(geometry.clearBottom < geometry.panelBottom && geometry.clearBottom < geometry.footerTop,
-      'Clear all should remain above the panel edge and list footer');
+    assert(geometry.clearTop >= geometry.panelTop && geometry.clearTop < geometry.panelTop + 50
+      && geometry.panelRight - geometry.clearRight < 20,
+    'Clear all should sit in the top-right corner of the filter drawer');
+    assert(geometry.clearBottom < geometry.panelBottom && geometry.clearBottom < geometry.footerTop);
+    assert(geometry.contentScrollHeight <= geometry.contentHeight + 1,
+      'the full filter form should fit without an inner scrollbar at a normal desktop height');
     await page.locator('#filter-priority [data-value="高"]').click();
     assert.equal(await clear.isEnabled(), true);
-    await page.locator('.filter-panel-content').evaluate(node => { node.scrollTop = 0; });
     await clear.click();
     assert.equal(await page.locator('#filter-priority [data-value=""]').evaluate(node => node.classList.contains('active')), true);
     await button.click();
@@ -54,11 +60,16 @@ const {chromium} = require('playwright');
     const narrow = await page.evaluate(() => {
       const list = document.getElementById('email-list').getBoundingClientRect();
       const panel = document.getElementById('workspace-filters').getBoundingClientRect();
-      const clear = document.getElementById('btn-reset-filter').getBoundingClientRect();
-      return {listHeight:list.height,panelBottom:panel.bottom,clearBottom:clear.bottom};
+      const clear = document.getElementById('btn-reset-filter');
+      const clearTop = clear.getBoundingClientRect().top;
+      const content = document.querySelector('.filter-panel-content');
+      content.scrollTop = content.scrollHeight;
+      return {listHeight:list.height,panelBottom:panel.bottom,clearBottom:clear.getBoundingClientRect().bottom,
+        clearTop,clearTopAfterScroll:clear.getBoundingClientRect().top};
     });
     assert(narrow.listHeight >= 100, 'narrow screens should retain room for the mail list');
     assert(narrow.clearBottom < narrow.panelBottom, 'Clear all should remain visible on narrow screens');
-    console.log('PASS filter drawer motion, list reflow and visible Clear all footer');
+    assert.equal(narrow.clearTopAfterScroll, narrow.clearTop, 'Clear all should stay in place while options scroll');
+    console.log('PASS filter drawer motion, list reflow and persistent top-right Clear all');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
