@@ -930,6 +930,7 @@ const I18N_MESSAGES = {
     'read.toShort': 'To',
     'read.timeShort': 'Time',
     'read.summaryTitle': 'AI Summary',
+    'read.optionalSummary': 'View when needed',
     'read.summaryHint': 'Key points, shown in full',
     'read.summaryHintDrawer': 'Quick grasp of the key points',
     'read.previewTitle': 'Body preview',
@@ -4344,6 +4345,39 @@ function closeDigestEmailDrawer() {
   }, 200);
 }
 
+document.addEventListener('click', event => {
+  const button = event.target.closest?.('[data-summary-toggle]');
+  if (!button) return;
+  const card = button.closest('.optional-mail-summary');
+  const expanded = !card.classList.contains('is-expanded');
+  card.classList.toggle('is-expanded', expanded);
+  button.setAttribute('aria-expanded', String(expanded));
+  const content = card.querySelector('.summary-reveal');
+  content.setAttribute('aria-hidden', String(!expanded));
+  content.inert = !expanded;
+  localStorage.setItem('mailai-summary-expanded', expanded ? '1' : '0');
+});
+
+function mailSummaryDisclosure(e, {drawer = false} = {}) {
+  const expanded = localStorage.getItem('mailai-summary-expanded') === '1';
+  const id = drawer ? 'drawer-summary-content' : 'primary-summary-content';
+  const title = e.summary ? (mailaiT('read.summaryTitle') || 'AI 摘要') : (mailaiT('read.previewTitle') || '正文预览');
+  const quickMeta = drawer ? '' : `<div class="summary-quick-meta">
+    ${e.category ? `<span>${esc(mailCategoryLabel(e.category))}</span>` : ''}
+    ${e.priority ? `<span>${esc(mailPriorityLabel(e.priority))}</span>` : ''}
+    ${(e.attachments || []).length ? `<span>${(mailaiT('read.attachCount') || '{n} 个附件').replace('{n}', e.attachments.length)}</span>` : ''}
+  </div>`;
+  return `<section class="reading-section ${drawer ? 'drawer-summary-section' : 'summary-section primary-summary'} optional-mail-summary ${expanded ? 'is-expanded' : ''}">
+    <button type="button" class="summary-toggle" data-summary-toggle aria-expanded="${expanded}" aria-controls="${id}">
+      <span class="summary-toggle-copy"><strong>${title}</strong><small>${mailaiT('read.optionalSummary') || '需要时查看'}</small></span>
+      <span class="summary-toggle-action"><span class="summary-expand-label">${mailaiT('common.expand') || '展开'}</span><span class="summary-collapse-label">${mailaiT('common.collapse') || '收起'}</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></span>
+    </button>
+    <div class="summary-reveal" aria-hidden="${!expanded}" ${expanded ? '' : 'inert'}><div class="summary-reveal-inner">
+      ${quickMeta}<div id="${id}" class="markdown-body summary-box">${mdToHtml(e.summary || e.snippet || (mailaiT('read.noSummary') || '暂无摘要'))}</div>
+    </div></div>
+  </section>`;
+}
+
 function renderDigestEmailDetail(e) {
   const parseArr = (v) => {
     if (Array.isArray(v)) return v;
@@ -4368,9 +4402,7 @@ function renderDigestEmailDetail(e) {
       </div>
     </div>
     <div class="drawer-email-body">
-      <div class="reading-section drawer-summary-section"><div class="section-title"><span>${e.summary ? (mailaiT('read.summaryTitle') || 'AI 摘要') : (mailaiT('read.previewTitle') || '正文预览')}</span><small>${e.summary ? (mailaiT('read.summaryHintDrawer') || '快速了解邮件重点') : (mailaiT('read.previewHint') || '摘取正文开头，非 AI 提炼')}</small></div>
-        <div class="markdown-body summary-box">${mdToHtml(e.summary || e.snippet || (mailaiT('read.noSummary') || '暂无摘要'))}</div>
-      </div>
+      ${mailSummaryDisclosure(e, {drawer:true})}
       <div class="reading-section drawer-body-section"><div class="section-title"><span>${mailaiT('read.body') || '邮件正文'}</span><small>${e.has_rich_body ? (e.has_remote_images ? (mailaiT('read.fmtHtmlImages') || 'HTML 原始排版 · 外链图片已显示') : (mailaiT('read.fmtHtml') || 'HTML 原始排版')) : (mailaiT('read.fmtPlain') || '纯文本邮件')}</small></div>
         ${e.has_rich_body ? '<div id="digest-rich-email-body" class="email-body rich-email-body"><div class="reading-loading">正在还原邮件排版…</div></div>' : `<div class="markdown-body email-body plain-email-body">${mdToHtml(e.body_text || '')}</div>`}
       </div>
@@ -7720,15 +7752,7 @@ function renderReadingPane(e) {
     <div class="reading-workspace">
       <main class="reading-main">
         ${renderConversationProgress(e)}
-        <div class="reading-section summary-section primary-summary">
-          <div class="section-title"><span>${e.summary ? (mailaiT('read.summaryTitle') || 'AI 摘要') : (mailaiT('read.previewTitle') || '正文预览')}</span><small>${e.summary ? (mailaiT('read.summaryHint') || '提炼重点，完整展示') : (mailaiT('read.previewHint') || '摘取正文开头，非 AI 提炼')}</small></div>
-          <div class="summary-quick-meta">
-            ${e.category ? `<span>${esc(mailCategoryLabel(e.category))}</span>` : ''}
-            ${e.priority ? `<span>${esc(mailPriorityLabel(e.priority))}</span>` : ''}
-            ${(e.attachments || []).length ? `<span>${(mailaiT('read.attachCount') || '{n} 个附件').replace('{n}', e.attachments.length)}</span>` : ''}
-          </div>
-          <div id="primary-summary-content" class="markdown-body summary-box">${mdToHtml(e.summary || e.snippet || (mailaiT('read.noSummary') || '暂无摘要'))}</div>
-        </div>
+        ${mailSummaryDisclosure(e)}
 
         <div class="reading-section body-section">
           <div class="section-title"><span>${mailaiT('read.body') || '邮件正文'}</span><div class="body-format-actions"><small>${e.has_rich_body ? (e.has_remote_images ? (mailaiT('read.fmtHtmlImages') || 'HTML 原始排版 · 外链图片已显示') : (mailaiT('read.fmtHtml') || 'HTML 原始排版')) : (mailaiT('read.fmtPlainOpt') || '纯文本邮件 · 优化排版')}</small></div></div>
