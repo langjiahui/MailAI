@@ -57,6 +57,10 @@ const {chromium,webkit} = require('playwright');
       return ratio;
     });
     assert(stretch > 1.05, 'the moving plate should stretch in its travel direction');
+    await page.locator('#email-list .email-item.selected').evaluate(node => node.classList.add('unread'));
+    await page.waitForTimeout(55);
+    assert.equal(await page.locator('#email-list .selection-glass-plate').evaluate(node => node.getAnimations().length),
+      1, 'unrelated row updates must not cancel the slide');
     await page.waitForTimeout(360);
     await aligned('.sidebar .selection-glass-plate','.sidebar .nav-item.active');
     await aligned('#email-list .selection-glass-plate','#email-list .email-item.selected');

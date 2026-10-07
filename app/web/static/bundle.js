@@ -14076,14 +14076,24 @@ document.getElementById('task-center-list').addEventListener('click', async even
     },
   ];
 
-  function setBounds(plate, host, rect) {
+  function boundsFor(host, rect) {
     const frame = host.getBoundingClientRect();
     const scale = frame.width / host.offsetWidth || 1;
-    plate.style.left = `${(rect.left - frame.left) / scale + host.scrollLeft - host.clientLeft}px`;
-    plate.style.top = `${(rect.top - frame.top) / scale + host.scrollTop - host.clientTop}px`;
-    plate.style.width = `${rect.width / scale}px`;
-    plate.style.height = `${rect.height / scale}px`;
-    return scale;
+    return {
+      left:(rect.left - frame.left) / scale + host.scrollLeft - host.clientLeft,
+      top:(rect.top - frame.top) / scale + host.scrollTop - host.clientTop,
+      width:rect.width / scale,
+      height:rect.height / scale,
+      scale,
+    };
+  }
+
+  function setBounds(plate, bounds) {
+    for (const key of ['left','top','width','height']) plate.style[key] = `${bounds[key]}px`;
+  }
+
+  function sameBounds(a, b) {
+    return a && ['left','top','width','height'].every(key => Math.abs(a[key] - b[key]) < .5);
   }
 
   function animateMove(plate, from, to, kind, scale) {
@@ -14109,6 +14119,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
     if (!host) continue;
     let plate = null;
     let lastKey = '';
+    let lastBounds = null;
     let observedTarget = null;
     let queued = false;
     const resize = new ResizeObserver(() => schedule());
@@ -14119,6 +14130,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
       if (plate) plate.hidden = true;
       host.classList.remove('glass-selection-ready');
       lastKey = '';
+      lastBounds = null;
       if (observedTarget) resize.unobserve(observedTarget);
       observedTarget = null;
     }
@@ -14141,18 +14153,24 @@ document.getElementById('task-center-list').addEventListener('click', async even
         plate.setAttribute('aria-hidden', 'true');
         host.appendChild(plate);
         lastKey = '';
+        lastBounds = null;
       }
       const key = surface.key(target);
+      const bounds = boundsFor(host, rect);
+      // ResizeObserver and list updates can run immediately after selection.
+      // Do not cancel an in-flight slide when its destination did not move.
+      if (key === lastKey && sameBounds(lastBounds, bounds) && !plate.hidden) return;
       const from = plate.hidden || !lastKey ? null : plate.getBoundingClientRect();
       plate.getAnimations().forEach(animation => animation.cancel());
       plate.hidden = false;
-      const scale = setBounds(plate, host, rect);
+      setBounds(plate, bounds);
       host.classList.add('glass-selection-ready');
-      const maxDistance = host.clientHeight * scale * .8;
+      const maxDistance = host.clientHeight * bounds.scale * .8;
       if (from && key !== lastKey && Math.abs(from.top - rect.top) < maxDistance) {
-        animateMove(plate, from, rect, kind, scale);
+        animateMove(plate, from, rect, kind, bounds.scale);
       }
       lastKey = key;
+      lastBounds = bounds;
     }
 
     function schedule() {
