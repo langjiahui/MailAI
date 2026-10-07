@@ -671,13 +671,13 @@ function initializeWorkspace() {
   const filters = document.querySelector('.mail-filter-group');
   filters.id = 'workspace-filters'; filters.classList.add('hidden'); document.querySelector('.list-workspace-tools').after(filters);
   filters.setAttribute('aria-hidden', 'true'); filters.inert = true;
+  const filterHeader = document.createElement('div');
+  filterHeader.className = 'filter-panel-header';
+  filterHeader.append(filters.querySelector('.filter-heading'), filters.querySelector('#btn-reset-filter'));
   const filterBody = document.createElement('div');
   filterBody.className = 'filter-panel-content';
-  filterBody.append(filters.querySelector('.filter-heading'), filters.querySelector('.filter-form'));
-  const filterFooter = document.createElement('div');
-  filterFooter.className = 'filter-panel-footer';
-  filterFooter.append(filterBody.querySelector('#btn-reset-filter'));
-  filters.append(filterBody, filterFooter);
+  filterBody.append(filters.querySelector('.filter-form'));
+  filters.append(filterHeader, filterBody);
   const filterButton = document.getElementById('btn-filter-panel');
   let filterOpen = false, filterAnimation = null, filterContentAnimation = null;
   filterButton.onclick = () => {

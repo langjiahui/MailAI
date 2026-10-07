@@ -85,8 +85,8 @@ html[data-theme] body #workspace-filters {
   display:flex;
   flex-direction:column;
   box-sizing:border-box;
-  /* Leave room for the list header, controls, and at least one mail row. */
-  max-height:min(calc(72vh / var(--fz,1)),max(170px,calc(100% - 370px)));
+  /* Keep the drawer fully visible at normal heights and reserve space for mail. */
+  max-height:max(170px,calc(100% - 270px));
   overflow:hidden!important;
   flex-shrink:0;
   border:1px solid var(--desk-line)!important;
@@ -96,9 +96,29 @@ html[data-theme] body #workspace-filters {
   box-shadow:0 6px 16px rgba(25,41,32,.045)!important;
   transition:none!important;
 }
-.filter-panel-content { flex:1 1 auto; min-height:0; overflow:auto; overscroll-behavior:contain; padding:13px 14px 0; }
-.filter-panel-footer { display:flex; justify-content:flex-end; flex:none; padding:7px 14px 10px; border-top:1px solid var(--desk-line); background:var(--desk-surface); }
-#workspace-filters .filter-heading { margin:0 0 4px; padding:0; }
+.filter-panel-header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  flex:none;
+  padding:8px 14px 6px;
+  border-bottom:1px solid var(--desk-line);
+  background:var(--desk-surface);
+}
+.filter-panel-content {
+  flex:1 1 auto;
+  min-height:0;
+  overflow:auto;
+  overscroll-behavior:contain;
+  padding:6px 14px 10px;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(73,128,102,.28) transparent;
+}
+.filter-panel-content::-webkit-scrollbar { width:5px; }
+.filter-panel-content::-webkit-scrollbar-thumb { border-radius:5px; background:rgba(73,128,102,.28); }
+#workspace-filters .filter-heading { display:flex; flex:1; min-width:0; margin:0; padding:0; }
+#workspace-filters .filter-heading small { display:none; }
 html[data-theme] body #workspace-filters .filter-heading b {
   color:var(--desk-ink)!important;
   font-size:12px;
@@ -114,7 +134,7 @@ html[data-theme] body #workspace-filters .filter-heading>span {
   color:var(--desk-accent)!important;
   background:var(--desk-selected)!important;
 }
-#workspace-filters .filter-form { gap:0; }
+#workspace-filters .filter-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 12px; }
 #workspace-filters :is(.filter-block,.filter-select-row,.filter-switch-row) {
   min-width:0;
   margin:0;
@@ -122,7 +142,12 @@ html[data-theme] body #workspace-filters .filter-heading>span {
   border:0;
   border-bottom:1px solid var(--desk-line);
 }
-#workspace-filters .filter-block legend { margin-bottom:7px; padding:0; }
+#workspace-filters .filter-block { padding:7px 0 12px; }
+#workspace-filters .filter-block legend { margin-bottom:6px; padding:0; }
+#workspace-filters .filter-block legend small,
+#workspace-filters .filter-switch-row small { display:none!important; }
+#workspace-filters .filter-select-row { grid-column:1/-1; padding:8px 0; }
+#workspace-filters .filter-switch-row { padding:8px 0; }
 html[data-theme] body #workspace-filters :is(.filter-block legend,.filter-select-row,.filter-switch-row) b {
   color:var(--desk-ink)!important;
   font-size:11px;
@@ -140,8 +165,13 @@ html[data-theme] body #workspace-filters .filter-segments button {
   border-radius:6px;
   color:var(--desk-muted)!important;
   background:transparent!important;
-  font-size:10px;
+  font-size:9px;
   font-weight:600;
+}
+@container mail-list-pane (max-width:340px) {
+  #workspace-filters .filter-form { display:flex; flex-direction:column; gap:0; }
+  #workspace-filters .filter-block legend small,
+  #workspace-filters .filter-switch-row small { display:block!important; }
 }
 html[data-theme] body #workspace-filters .filter-segments button:hover {
   color:var(--desk-ink)!important;
@@ -162,7 +192,8 @@ html[data-theme] body #workspace-filters #filter-domain {
   box-shadow:none!important;
 }
 html[data-theme] body #workspace-filters .filter-clear-button {
-  align-self:flex-end;
+  flex:none;
+  align-self:center;
   width:auto;
   min-height:29px;
   margin-top:0;
