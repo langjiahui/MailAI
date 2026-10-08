@@ -5,9 +5,9 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v2.3.12**
+当前版本：**v2.3.13**
 
-本次更新：优化邮件筛选抽屉。收件时间与重要程度并排显示，常见桌面窗口无需在筛选卡片内滚动；“全部清除”移至右上角，窄窗口滚动筛选项时仍保持可见。抽屉展开和收起时，邮件列表继续跟随移动。
+本次更新：签名支持在光标位置插入图片，并可选择比例或输入宽度等比调整大小；保存后在邮件中保持设定尺寸。邮件正文图片可一键复制，再粘贴到签名等位置。支持 PNG、JPEG、GIF 和 WebP 图片。
 
 ## 下载 MailAI
 
