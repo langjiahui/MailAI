@@ -1533,11 +1533,63 @@ function fillSignatureProfile(profile = {}) {
 }
 
 let savedSignatureRange = null;
+let selectedSignatureImage = null;
 function rememberSignatureSelection() {
   const editor = document.getElementById('signature-editor');
   const selection = window.getSelection();
   if (!selection?.rangeCount || !editor.contains(selection.anchorNode)) return;
   savedSignatureRange = selection.getRangeAt(0).cloneRange();
+}
+
+function clearSignatureImageSelection() {
+  selectedSignatureImage?.classList.remove('signature-image-selected');
+  selectedSignatureImage = null;
+  document.getElementById('signature-image-controls').classList.add('hidden');
+}
+
+function signatureImageNaturalWidth(image) {
+  return image.naturalWidth || Number(image.getAttribute('width')) || Math.round(image.getBoundingClientRect().width) || 1;
+}
+
+function signatureImageWidth(image) {
+  return Number(image.getAttribute('width')) || Math.round(image.getBoundingClientRect().width) || signatureImageNaturalWidth(image);
+}
+
+function refreshSignatureImageControls() {
+  const image = selectedSignatureImage;
+  const editor = document.getElementById('signature-editor');
+  if (!image || !editor.contains(image)) return clearSignatureImageSelection();
+  const width = signatureImageWidth(image);
+  const percent = Math.max(1, Math.round(width / signatureImageNaturalWidth(image) * 100));
+  document.getElementById('signature-image-width').value = String(width);
+  document.getElementById('signature-image-scale').value = String(Math.min(200, percent));
+  document.getElementById('signature-image-scale-value').textContent = `${percent}%`;
+  document.querySelectorAll('[data-signature-image-scale]').forEach(button => {
+    button.classList.toggle('active', Number(button.dataset.signatureImageScale) === percent);
+  });
+}
+
+function selectSignatureImage(image) {
+  if (!image || !document.getElementById('signature-editor').contains(image)) return;
+  clearSignatureImageSelection();
+  selectedSignatureImage = image;
+  image.classList.add('signature-image-selected');
+  document.getElementById('signature-image-controls').classList.remove('hidden');
+  refreshSignatureImageControls();
+  if (!image.complete) image.addEventListener('load', () => {
+    if (selectedSignatureImage === image) refreshSignatureImageControls();
+  }, {once:true});
+}
+
+function setSignatureImageWidth(value) {
+  if (!selectedSignatureImage || !document.getElementById('signature-editor').contains(selectedSignatureImage)) return clearSignatureImageSelection();
+  const width = Math.min(1200, Math.max(16, Math.round(Number(value) || 0)));
+  selectedSignatureImage.setAttribute('width', String(width));
+  selectedSignatureImage.removeAttribute('height');
+  selectedSignatureImage.style.width = `${width}px`;
+  selectedSignatureImage.style.maxWidth = '100%';
+  selectedSignatureImage.style.height = 'auto';
+  refreshSignatureImageControls();
 }
 
 async function insertSignatureImage(file) {
@@ -1549,6 +1601,9 @@ async function insertSignatureImage(file) {
   if (document.getElementById('signature-manager').classList.contains('hidden') || signatureId !== editingSignatureId) return;
   const editor = document.getElementById('signature-editor');
   const image = document.createElement('img');
+  image.addEventListener('load', () => {
+    if (!image.hasAttribute('width')) setSignatureImageWidthForNewImage(image);
+  }, {once:true});
   image.src = src;
   image.alt = file.name;
   image.style.cssText = 'max-width:100%;height:auto;vertical-align:middle';
@@ -1565,11 +1620,22 @@ async function insertSignatureImage(file) {
   selection.removeAllRanges();
   selection.addRange(range);
   savedSignatureRange = range.cloneRange();
+  selectSignatureImage(image);
+}
+
+function setSignatureImageWidthForNewImage(image) {
+  const width = Math.min(360, image.naturalWidth || 360);
+  if (selectedSignatureImage === image) setSignatureImageWidth(width);
+  else {
+    image.setAttribute('width', String(width));
+    image.style.width = `${width}px`;
+  }
 }
 
 function editSignature(signatureId = '') {
   editingSignatureId = signatureId;
   savedSignatureRange = null;
+  clearSignatureImageSelection();
   const item = signatureState.items.find(row => row.id === signatureId);
   document.getElementById('signature-name').value = item?.name || '';
   document.getElementById('signature-editor').innerHTML = item?.html || '';
@@ -1593,11 +1659,16 @@ async function openSignatureManager() {
   document.getElementById('signature-manager').classList.remove('hidden');
 }
 
-function closeSignatureManager() { document.getElementById('signature-manager').classList.add('hidden'); }
+function closeSignatureManager() {
+  clearSignatureImageSelection();
+  document.getElementById('signature-manager').classList.add('hidden');
+}
 
 async function saveSignature() {
   const name = document.getElementById('signature-name').value.trim();
-  const html = document.getElementById('signature-editor').innerHTML.trim();
+  const editorCopy = document.getElementById('signature-editor').cloneNode(true);
+  editorCopy.querySelectorAll('.signature-image-selected').forEach(image => image.classList.remove('signature-image-selected'));
+  const html = editorCopy.innerHTML.trim();
   if (!name || !(document.getElementById('signature-editor').innerText.trim() || document.querySelector('#signature-editor img'))) return toast('请填写签名名称和内容', 'warn');
   signatureState = await api('/api/mail/signatures', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:editingSignatureId,name,html,profile:signatureProfileFromForm(),make_default:document.getElementById('signature-make-default').checked})});
   const saved = signatureState.items.find(item => item.name === name && item.html === html) || signatureState.items.at(-1);
@@ -8795,6 +8866,22 @@ document.getElementById('btn-delete-signature').addEventListener('click', async 
 document.getElementById('btn-ai-generate-signature').addEventListener('click', event => generateSignatures(event.currentTarget));
 document.getElementById('signature-editor').addEventListener('keyup', rememberSignatureSelection);
 document.getElementById('signature-editor').addEventListener('mouseup', rememberSignatureSelection);
+document.getElementById('signature-editor').addEventListener('click', event => {
+  const image = event.target.closest?.('img');
+  if (image) selectSignatureImage(image);
+  else clearSignatureImageSelection();
+});
+document.getElementById('signature-editor').addEventListener('input', () => {
+  if (selectedSignatureImage && !document.getElementById('signature-editor').contains(selectedSignatureImage)) clearSignatureImageSelection();
+});
+document.querySelectorAll('[data-signature-image-scale]').forEach(button => button.addEventListener('click', () => {
+  if (selectedSignatureImage) setSignatureImageWidth(signatureImageNaturalWidth(selectedSignatureImage) * Number(button.dataset.signatureImageScale) / 100);
+}));
+document.getElementById('signature-image-scale').addEventListener('input', event => {
+  if (selectedSignatureImage) setSignatureImageWidth(signatureImageNaturalWidth(selectedSignatureImage) * Number(event.target.value) / 100);
+});
+document.getElementById('signature-image-width').addEventListener('change', event => setSignatureImageWidth(event.target.value));
+document.getElementById('signature-image-done').addEventListener('click', clearSignatureImageSelection);
 document.getElementById('btn-insert-signature-image').addEventListener('pointerdown', rememberSignatureSelection);
 document.getElementById('btn-insert-signature-image').addEventListener('click', () => document.getElementById('signature-image-input').click());
 document.getElementById('signature-image-input').addEventListener('change', event => {
@@ -8807,6 +8894,7 @@ document.getElementById('signature-ai-options').addEventListener('click', event 
   const item = event.currentTarget._options?.[Number(button.dataset.aiSignature)];
   if (!item) return;
   editingSignatureId = '';
+  clearSignatureImageSelection();
   document.getElementById('signature-name').value = item.name;
   document.getElementById('signature-editor').innerHTML = item.html;
   document.getElementById('signature-make-default').checked = !signatureState.default_id;
