@@ -16,6 +16,11 @@ from .sync import (
     observe_uid_validity,
     get_first_uid,
     set_last_uid,
+    defer_mail_fetch,
+    due_mail_fetch_retries,
+    mail_fetch_retry_summary,
+    clear_mail_fetch_retry,
+    retry_all_mail_fetch_now,
 )
 from .emails import (
     upsert_email,

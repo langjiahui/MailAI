@@ -9,7 +9,7 @@ import time
 from datetime import datetime, timezone
 
 from . import config, db, parser, profiles, threads
-from .imap_client import MailClient, RawMessageBatch, mailbox_role
+from .imap_client import MailClient, RawMessageBatch, OversizedMessageError, mailbox_role
 from .account_guard import account_work
 from .llm import analyze as llm_analyze
 from .llm import client as llm_client
@@ -528,14 +528,24 @@ def poll_once() -> dict:
         _reset_cancel()
         _reset_action_guard()
         _set_fetch_state(True, operation="poll", message="正在拉取新邮件...")
-        result = {"ok": True, "fetched": 0, "quarantined": 0, "errors": 0, "notifications_delivered": True}
+        result = {"ok": True, "fetched": 0, "quarantined": 0, "errors": 0,
+                  "oversized": 0, "notifications_delivered": True}
         with MailClient() as mail:
             mail.ensure_quarantine_folder()
             mail.ensure_spam_folder()
             messages = mail.fetch_new(limit=config.INITIAL_FETCH_LIMIT)
-            cursor_blocked = False
             _set_fetch_state(True, operation="poll", total=len(messages),
                              message=f"发现 {len(messages)} 封新邮件，正在处理...")
+            if isinstance(messages, RawMessageBatch):
+                download = {'index': 0}
+                def on_start(uid, idx, total):
+                    download['index'] = idx
+                    _set_fetch_state(True, operation="poll", total=total, processed=idx - 1,
+                                     message=f"正在下载第 {idx}/{total} 封邮件（UID {uid}）...", persist=False)
+                messages.on_start = on_start
+                mail.on_download_progress = lambda uid, received, size: _set_fetch_state(
+                    True, operation="poll", total=len(messages), processed=download['index'] - 1,
+                    message=f"下载邮件 {uid}：{received / 1048576:.1f}/{size / 1048576:.1f} MB", persist=False)
             for idx, (uid, raw) in enumerate(messages, 1):
                 if _is_canceled():
                     _set_fetch_state(False, operation="poll", total=len(messages),
@@ -543,10 +553,12 @@ def poll_once() -> dict:
                                      message=f"已取消，处理了 {idx - 1}/{len(messages)} 封")
                     return {**result, "canceled": True}
                 if db.already_processed(config.INBOX_FOLDER, uid):
-                    if not cursor_blocked:
-                        db.set_last_uid(config.INBOX_FOLDER, uid)
+                    db.clear_mail_fetch_retry(config.INBOX_FOLDER, uid)
+                    db.set_last_uid(config.INBOX_FOLDER, uid)
                     continue
                 try:
+                    if isinstance(raw, Exception):
+                        raise raw
                     if raw is None:
                         raise RuntimeError(f'邮件 {uid} 正文暂未返回，将在下次同步重试')
                     _set_fetch_state(True, operation="poll", total=len(messages),
@@ -556,17 +568,26 @@ def poll_once() -> dict:
                     result['fetched'] += 1
                     if r["status"] == "quarantine":
                         result["quarantined"] += 1
-                except Exception:
+                    db.clear_mail_fetch_retry(config.INBOX_FOLDER, uid)
+                except Exception as exc:
                     log.exception("处理邮件失败 uid=%s", uid)
-                    result["errors"] += 1
-                    cursor_blocked = True
-                finally:
-                    if not cursor_blocked:
-                        db.set_last_uid(config.INBOX_FOLDER, uid)
-        final_error = f"{result['errors']} 封处理失败，下次同步将从失败位置重试" if result["errors"] else ""
+                    if isinstance(exc, OversizedMessageError):
+                        result['oversized'] += 1
+                    else:
+                        result["errors"] += 1
+                    db.defer_mail_fetch(config.INBOX_FOLDER, uid, str(exc),
+                                        size=exc.size if isinstance(exc, OversizedMessageError) else 0,
+                                        retry_after=86400 if isinstance(exc, OversizedMessageError) else None)
+                db.set_last_uid(config.INBOX_FOLDER, uid)
+        summary = db.mail_fetch_retry_summary(config.INBOX_FOLDER)
+        deferred = summary['count'] - summary.get('oversized', 0)
+        result['deferred'] = deferred
+        final_error = f"{deferred} 封邮件暂未完成，已安排单独重试；其他邮件继续同步" if deferred else ""
+        final_message = final_error or (f"完成；{summary['oversized']} 封超大邮件未自动下载" if summary.get('oversized')
+                                        else f"完成，共处理 {result['fetched']} 封")
         _set_fetch_state(False, operation="poll", total=len(messages),
                          processed=len(messages), error=final_error,
-                         message=final_error or f"完成，共处理 {result['fetched']} 封")
+                         message=final_message)
         return result
     except Exception as e:
         _set_fetch_state(False, error=str(e), message="拉取失败")

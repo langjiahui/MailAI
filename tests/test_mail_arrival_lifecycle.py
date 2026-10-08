@@ -31,11 +31,15 @@ def main():
     with patch.object(pipeline, 'MailClient', return_value=mail), \
          patch.object(pipeline, '_set_fetch_state'), patch.object(pipeline, '_reset_action_guard'), \
          patch.object(pipeline.db, 'already_processed', return_value=False), \
+         patch.object(pipeline.db, 'defer_mail_fetch') as deferred, \
+         patch.object(pipeline.db, 'clear_mail_fetch_retry'), \
+         patch.object(pipeline.db, 'mail_fetch_retry_summary', return_value={'count': 1}), \
          patch.object(pipeline.db, 'set_last_uid') as cursor, \
          patch.object(pipeline, 'process_message', return_value={'status':'inbox'}) as process:
         result = pipeline.poll_once()
         assert result['errors'] == 1 and result['fetched'] == 1
-        cursor.assert_not_called()
+        assert [call.args[1] for call in cursor.call_args_list] == [10, 11]
+        deferred.assert_called_once()
         assert process.call_args.args[1] == 11, 'Missing body must not block later new mail'
     client.search.return_value = []
     assert list(RawMessageBatch(client, 'INBOX', [10, 11])) == [(11, b'ok')]

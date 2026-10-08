@@ -134,6 +134,18 @@ CREATE TABLE IF NOT EXISTS sync_jobs (
     error TEXT DEFAULT '',
     updated_at TEXT
 );
+CREATE TABLE IF NOT EXISTS mail_fetch_retries (
+    folder TEXT NOT NULL,
+    uid INTEGER NOT NULL,
+    uid_validity INTEGER NOT NULL DEFAULT 0,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    due_at REAL NOT NULL DEFAULT 0,
+    error TEXT NOT NULL DEFAULT '',
+    size INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY(folder, uid)
+);
+CREATE INDEX IF NOT EXISTS idx_mail_fetch_retries_due ON mail_fetch_retries(folder,due_at);
 CREATE TABLE IF NOT EXISTS threads (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     thread_id TEXT UNIQUE NOT NULL,

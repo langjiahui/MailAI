@@ -229,11 +229,28 @@ def public_config() -> dict:
                 job = connection.execute("SELECT status,message,error,updated_at FROM sync_jobs WHERE job_key='mailbox'").fetchone()
                 last = connection.execute("SELECT value FROM runtime_settings WHERE key='last_sync_success'").fetchone()
                 oversized = connection.execute("SELECT value FROM runtime_settings WHERE key='oversized_mail_count'").fetchone()
+                retry_table = connection.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='mail_fetch_retries'"
+                ).fetchone()
+                deferred = connection.execute(
+                    "SELECT COUNT(*),MIN(CASE WHEN size<? THEN due_at END),"
+                    "SUM(CASE WHEN size>=? THEN 1 ELSE 0 END) FROM mail_fetch_retries",
+                    (50 * 1024 * 1024, 50 * 1024 * 1024),
+                ).fetchone() if retry_table else (0, None, 0)
+                deferred_first = connection.execute(
+                    "SELECT uid,error,size FROM mail_fetch_retries ORDER BY size>=?,due_at,uid LIMIT 1",
+                    (50 * 1024 * 1024,),
+                ).fetchone() if retry_table else None
             live = pipeline.get_live_fetch_state(path)
             # A persisted running record is a checkpoint, not proof of a live worker.
             status = 'running' if live['running'] else ('interrupted' if job and job[0] in ('running', 'pending') else job[0] if job else 'idle')
             return {"inbox": int(row[0] or 0), "unread": int(row[1] or 0),
                     'oversized_mail_count': int(oversized[0] or 0) if oversized else 0,
+                    'sync_deferred_count': int(deferred[0] or 0) - int(deferred[2] or 0),
+                    'sync_oversized_count': int(deferred[2] or 0),
+                    'sync_next_retry_at': deferred[1] if deferred else None,
+                    'sync_deferred_detail': {'uid': deferred_first[0], 'error': deferred_first[1],
+                                             'size': deferred_first[2]} if deferred_first else None,
                     'sync_status': status,
                     'sync_message': live['message'] if live['running'] else '上次同步中断，可重新同步' if status == 'interrupted' else job[1] if job else '',
                     'sync_error': live['error'] if live['running'] else job[2] if job else '',
@@ -929,11 +946,26 @@ def diagnostics(lang: str = "zh") -> dict:
         labels = {"completed": t("已完成", "Completed"), "running": t("进行中", "Running"),
                   "pending": t("等待中", "Pending"), "failed": t("失败", "Failed"),
                   "canceled": t("已暂停", "Paused")}
-        add(t("历史邮件初始化", "Initial mail import"), status,
-            f"{labels.get(job_status, job_status or t('未知', 'Unknown'))} · {job.get('processed', 0)}/{job.get('total', 0)}",
+        operation = job.get('operation') or ''
+        check_name = t("增量收信", "New mail sync") if operation == 'poll' else t("历史邮件初始化", "Initial mail import")
+        detail = f"{labels.get(job_status, job_status or t('未知', 'Unknown'))} · {job.get('processed', 0)}/{job.get('total', 0)}"
+        if job.get('error'):
+            detail += f" · {job['error']}"
+        add(check_name, status, detail,
             check_id="init")
     else:
         add(t("历史邮件初始化", "Initial mail import"), "warning", t("尚未启动", "Not started"), check_id="init")
+    deferred = db.mail_fetch_retry_summary(config.INBOX_FOLDER)
+    if deferred['count'] - deferred['oversized']:
+        add(t("待重试邮件", "Mail awaiting retry"), "warning",
+            t(f"{deferred['count'] - deferred['oversized']} 封邮件暂未下载，其他邮件可继续同步；点击同步可立即重试",
+              f"{deferred['count'] - deferred['oversized']} messages await retry; other mail can keep syncing. Click Sync to retry now."),
+            check_id="mail_retry")
+    if deferred['oversized']:
+        add(t("超大邮件", "Oversized mail"), "warning",
+            t(f"{deferred['oversized']} 封邮件超过 50 MB，需在其他邮件客户端查看或下载",
+              f"{deferred['oversized']} messages exceed 50 MB; open or download them in another mail client."),
+            check_id="mail_oversized")
     return {"ok": not any(item["status"] == "fail" for item in checks), "checks": checks,
             "data_dir": os.path.basename(config.DATA_DIR),
             "duration_ms": round((time.monotonic() - started) * 1000),
