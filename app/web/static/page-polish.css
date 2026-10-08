@@ -183,6 +183,30 @@ html[data-theme] body #signature-manager .signature-manager-card { width:min(960
 #signature-manager .signature-manager-body>main { padding:20px 24px; }
 html[data-theme] body #signature-manager .signature-profile { padding:0 0 20px; border:0; border-bottom:1px solid var(--desk-line); border-radius:0; background:transparent!important; }
 #signature-manager .signature-section-title b { font-size:14px; }
+#signature-manager #signature-ai-style {
+  flex:0 0 auto;
+  min-width:142px;
+  min-height:40px;
+  padding:0 36px 0 15px;
+  border:1px solid color-mix(in srgb,var(--desk-accent) 24%,var(--desk-line))!important;
+  border-radius:12px;
+  color:var(--desk-accent)!important;
+  background-color:var(--desk-selected)!important;
+  box-shadow:inset 0 1px color-mix(in srgb,var(--desk-surface) 75%,transparent),0 2px 7px color-mix(in srgb,var(--desk-ink) 5%,transparent);
+  font-size:12px;
+  font-weight:650;
+  letter-spacing:.01em;
+}
+#signature-manager #signature-ai-style:hover:not(:disabled) {
+  border-color:color-mix(in srgb,var(--desk-accent) 48%,var(--desk-line))!important;
+  background-color:var(--desk-hover)!important;
+  box-shadow:inset 0 1px color-mix(in srgb,var(--desk-surface) 75%,transparent),0 4px 11px color-mix(in srgb,var(--desk-ink) 9%,transparent);
+}
+#signature-manager #signature-ai-style:focus-visible {
+  border-color:var(--desk-accent)!important;
+  outline:2px solid color-mix(in srgb,var(--desk-accent) 32%,transparent)!important;
+  outline-offset:2px;
+}
 #signature-manager :is(.signature-section-title small,.signature-editor-head small,.signature-list>p) { font-size:12px; line-height:1.6; }
 #signature-manager :is(.signature-profile-grid label,.signature-editor-section>label,.signature-editor-head) { font-size:12px; }
 #signature-manager :is(.signature-profile-grid input,.signature-editor-section>label>input,.signature-section-title select) { min-height:36px; font-size:13px; }
