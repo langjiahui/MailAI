@@ -104,3 +104,63 @@
 
 .directory-review-tools [data-review-query] { flex:1 1 210px; max-width:280px; min-height:36px; }
 .directory-source-name,.directory-file span { overflow-wrap:anywhere; }
+
+/* Address-book actions use the same surface hierarchy as import/review dialogs. */
+html[data-theme] body #contact-center .contact-center-filters {
+  background:var(--desk-muted-surface)!important;
+  border:1px solid var(--desk-line)!important;
+  box-shadow:none!important;
+}
+html[data-theme] body #contact-center .contact-center-filters button {
+  background:transparent!important;
+  color:var(--desk-muted)!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+}
+html[data-theme] body #contact-center .contact-center-filters button:hover:not(:disabled) {
+  background:var(--desk-hover)!important;
+  color:var(--desk-ink)!important;
+}
+html[data-theme] body #contact-center .contact-center-filters button.active {
+  background:var(--desk-selected)!important;
+  color:var(--desk-accent)!important;
+  border-color:var(--desk-line)!important;
+}
+html[data-theme] body #contact-center .contact-new-button {
+  background:var(--desk-accent)!important;
+  color:var(--desk-surface)!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+}
+html[data-theme] body #contact-center .contact-new-button:hover:not(:disabled) {
+  filter:brightness(.94);
+}
+html[data-theme="dark"] body #contact-center .contact-star {
+  color:var(--desk-muted);
+  background:transparent;
+}
+html[data-theme="dark"] body #contact-center .contact-star:is(.active,:hover) {
+  color:#efc779;
+  background:#3a3021;
+}
+html[data-theme="dark"] body #contact-center .contact-star:focus-visible {
+  outline-color:#efc779;
+}
+html[data-theme="dark"] body #contact-center .contact-empty span {
+  color:var(--desk-accent);
+  background:var(--desk-selected);
+}
+html[data-theme] body #contact-center .contact-correspondence-trigger:is(:hover,:focus-visible) {
+  background:var(--desk-hover);
+  border-color:var(--desk-line);
+}
+html[data-theme] body #contact-center .contact-correspondence-trigger:active {
+  background:var(--desk-selected);
+  border-color:var(--desk-accent);
+}
+html[data-theme] body #contact-center .contact-frequency b {
+  color:var(--desk-ink)!important;
+}
+html[data-theme] body #contact-center .contact-frequency small {
+  color:var(--desk-muted)!important;
+}

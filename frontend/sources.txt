@@ -35,3 +35,4 @@ mail-reading-folds.js
 diagnostics-progress.js
 
 contact-directory.js
+mail-import.js

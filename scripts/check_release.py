@@ -35,6 +35,7 @@ TESTS = (
     'test_mail_arrival_lifecycle.py', 'test_mail_fetch_resilience.py', 'test_dock_unread_sync.py',
     'test_maturity_hardening.py', 'test_automatic_backup.py',
     'test_portable_backup.py',
+    'test_mail_import.py',
     'test_release_hardening.py',
     'test_document_preview.py', 'test_spreadsheet_preview.py', 'test_attachment_preview.py', 'test_inline_attachments.py', 'test_multimodal.py', 'test_server_folder_preference.py',
     'test_assistant_attachments.py',
