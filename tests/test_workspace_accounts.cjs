@@ -31,7 +31,7 @@ const deferred = () => { let resolve, reject; const promise=new Promise((a,b)=>{
 
   const host={dataset:{},innerHTML:'',querySelectorAll:()=>[]}; let scope='b'; let pending=deferred();
   const requests=[];
-  const t=vm.createContext({taskPollActive:false,taskCenterReminders:[],taskCenterPollTimer:0,
+  const t=vm.createContext({taskPollActive:false,taskCenterRefreshRequested:null,taskCenterReminders:[],taskCenterPollTimer:0,
     taskCenterScope:()=>scope,activeMailAccount:()=>({id:'a'}),_systemConfig:{accounts:[{id:'a',user:'A'},{id:'b',user:'B'}]},
     document:{getElementById:id=>id==='task-center-list'?host:{classList:{toggle(){}},querySelector:()=>null}},
     api:async(url,options)=>{requests.push([url,options.accountId]); if(url.includes('outbox')) return pending.promise; if(url.includes('reminders'))return [];return {};},
