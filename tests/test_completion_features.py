@@ -18,6 +18,7 @@ def main():
                 "ACCOUNT_ID": "a",
                 "DB_PATH": str(Path(root) / "a.db"),
                 "IMAP_USER": "me@example.test",
+                "SMTP_HOST": "smtp.example.test",
             }
         ),
     ):
