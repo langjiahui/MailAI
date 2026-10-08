@@ -5,6 +5,7 @@ let preferencesAccount = '';
 let preferencesLoadRevision = 0;
 let preferencesSaving = false;
 let taskPollActive = false;
+let taskCenterRefreshRequested = null;
 let taskCenterPollTimer = 0;
 let taskCenterReminders = [];
 let taskCenterLastFocus = null;
@@ -226,8 +227,9 @@ function actionableOutboxRows(rows = []) {
 async function refreshTaskCenter({lightweight = false} = {}) {
   if (document.getElementById('task-center')?.classList.contains?.('hidden') || document.hidden) return;
   if (taskPollActive) {
-    clearTimeout(taskCenterPollTimer);
-    taskCenterPollTimer = setTimeout(() => refreshTaskCenter({lightweight}), 250);
+    // Keep explicit refreshes even when the in-flight response has no live jobs.
+    // A full user refresh takes precedence over a background lightweight one.
+    taskCenterRefreshRequested = {lightweight: lightweight && (taskCenterRefreshRequested?.lightweight ?? true)};
     return;
   }
   taskPollActive = true;
@@ -299,7 +301,15 @@ async function refreshTaskCenter({lightweight = false} = {}) {
     if(freshDue.length)taskNotice(`${freshDue.length} 项待办已到提醒时间`, '查看提醒',()=>window.mailaiOpenTaskReminder(),8000);
 
   } catch (error) { if (accountId !== taskCenterScope()) return; host.dataset.live = '0'; host.innerHTML = `<div class="task-load-error"><b>状态暂时无法更新</b><span>${esc(error.message)}</span><button data-task-refresh>重新加载</button></div>`; }
-  finally { taskPollActive = false; scheduleTaskCenterRefresh(host.dataset.live === '1'); }
+  finally {
+    taskPollActive = false;
+    const requested = taskCenterRefreshRequested;
+    taskCenterRefreshRequested = null;
+    if (requested) {
+      clearTimeout(taskCenterPollTimer);
+      taskCenterPollTimer = setTimeout(() => refreshTaskCenter(requested), 0);
+    } else scheduleTaskCenterRefresh(host.dataset.live === '1');
+  }
 }
 
 function updateFilterChips() {
