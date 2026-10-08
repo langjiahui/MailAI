@@ -121,7 +121,15 @@ class MailClient:
             config.IMAP_HOST, port=config.IMAP_PORT, ssl=config.IMAP_SSL,
             ssl_context=ssl_context, timeout=30,
         )
-        self.client.login(config.IMAP_USER, config.IMAP_PASSWORD)
+        from .oauth_mail import imap_login
+        try:
+            imap_login(self.client, config.IMAP_USER, config.IMAP_PASSWORD)
+        except Exception:
+            try:
+                self.client.logout()
+            except Exception:
+                pass
+            raise
         return self
 
     def __exit__(self, *exc):

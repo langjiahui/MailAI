@@ -5,7 +5,7 @@ import os
 import sqlite3
 
 from fastapi import APIRouter, Header, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 from ... import config, db, mail_assistant, mail_providers, pipeline, release_update, system_settings
 from ...account_guard import start_account_thread
@@ -54,6 +54,11 @@ def api_system_update_install():
 @router.get("/api/system/update/install/status")
 def api_system_update_install_status():
     return release_update.install_status()
+
+
+@router.get("/api/system/update/install/outcome")
+def api_system_update_install_outcome():
+    return release_update.consume_install_outcome()
 
 
 @router.get("/api/system/mail/discover")
@@ -343,6 +348,52 @@ def api_model_test(payload: ModelConfigRequest | None = None):
 def api_system_diagnostics(lang: str = "zh"):
     # 界面语言来自前端偏好；只允许已知语言码，避免反射进文案
     return system_settings.diagnostics(lang=lang if lang in ("zh", "en") else "zh")
+
+
+# Bound concurrent diagnostics; a disconnected view cannot create unlimited probes.
+import threading
+_diagnostic_slots = threading.BoundedSemaphore(2)
+
+
+@router.get('/api/system/diagnostics/stream')
+def api_system_diagnostic_stream(lang: str = 'zh'):
+    import queue
+    if not _diagnostic_slots.acquire(blocking=False):
+        raise HTTPException(409, '已有检查正在运行，请稍后重试')
+    output = queue.Queue()
+    closed = threading.Event()
+    def emit(event):
+        if not closed.is_set():
+            output.put(event)
+    def run():
+        try:
+            data = system_settings.diagnostics(lang=lang if lang in ('zh','en') else 'zh', progress=emit)
+            emit({'type':'done','data':data})
+        except Exception:
+            log.warning('运行诊断中断', exc_info=False)
+            emit({'type':'error','message':'检查中断，请稍后重试' if lang != 'en' else 'Diagnostics interrupted; please retry'})
+        finally:
+            output.put(None)
+            _diagnostic_slots.release()
+    try:
+        start_account_thread(run, name='mailai-diagnostics')
+    except BaseException:
+        _diagnostic_slots.release()
+        raise
+    def events():
+        try:
+            while True:
+                try:
+                    item = output.get(timeout=1)
+                except queue.Empty:
+                    yield '\n'  # Keep the connection alive while a real probe is running.
+                    continue
+                if item is None:
+                    break
+                yield json.dumps(item,ensure_ascii=False)+'\n'
+        finally:
+            closed.set()
+    return StreamingResponse(events(),media_type='application/x-ndjson',headers={'Cache-Control':'no-store','X-Accel-Buffering':'no'})
 
 
 @router.get('/api/preferences')

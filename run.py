@@ -53,14 +53,13 @@ def _start_scheduler():
     start_outbox()
     scheduler = BackgroundScheduler()
     scheduler.add_job(
-        _poll_if_configured, "interval", seconds=min(30, config.POLL_INTERVAL_SECONDS), kwargs={'force': False},
+        _poll_if_configured, "interval", seconds=max(5, config.POLL_INTERVAL_SECONDS), kwargs={'force': False},
         id="poll", max_instances=1, coalesce=True,
     )
     if config.IMAP_PASSWORD:
         scheduler.add_job(_poll_if_configured, id="poll_now")
-    from app.task_notifications import check_due_tasks
-    scheduler.add_job(check_due_tasks, "interval", seconds=15, id="task_reminders",
-                      max_instances=1, coalesce=True)
+    from app.task_notifications import start_reminders
+    start_reminders()
     scheduler.add_job(run_automatic_backups, "interval", minutes=15,
                       next_run_time=datetime.now() + timedelta(minutes=2),
                       id="automatic_backups", max_instances=1, coalesce=True)
@@ -111,6 +110,8 @@ def _run_app(server_socket=None):
         stop_remote()
         from app.weixin_remote import stop as stop_weixin
         stop_weixin(notify=True)
+        from app.task_notifications import stop_reminders
+        stop_reminders()
         scheduler.shutdown(wait=False)
         from app.mailbox_jobs import stop_mailbox, stop_outbox
         if not stop_mailbox(timeout=5):

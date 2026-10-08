@@ -59,7 +59,8 @@ def test_connection(values: dict) -> dict:
         if bool(values.get("smtp_starttls", False)) and not use_ssl:
             client.starttls(context=ctx)
             client.ehlo()
-        client.login(user, password)
+        from .oauth_mail import smtp_login
+        smtp_login(client, user, password, values=values)
     return {"ok": True, "host": host, "port": port}
 
 
@@ -210,7 +211,10 @@ def build_message(data: dict) -> tuple[EmailMessage, list[str]]:
         msg["Cc"] = normalized["cc_addr"]
     msg["Subject"] = subject or "（无主题）"
     msg["Date"] = formatdate(localtime=True)
-    msg["Message-ID"] = make_msgid(domain=user.split("@")[-1])
+    delivery_id = data.get('_delivery_message_id')
+    if delivery_id and not re.fullmatch(r'<[^<>\s]{1,200}@[^<>\s]{1,200}>',str(delivery_id)):
+        raise ValueError('发送邮件标识无效')
+    msg["Message-ID"] = delivery_id or make_msgid(domain=user.split("@")[-1])
     if data.get("in_reply_to"):
         msg["In-Reply-To"] = data["in_reply_to"]
         msg["References"] = data.get("references") or data["in_reply_to"]
@@ -259,7 +263,8 @@ def _archive_sent(raw: bytes) -> str:
         ctx.verify_mode = ssl.CERT_NONE
     with IMAPClient(host, port=config.IMAP_PORT, ssl=config.IMAP_SSL,
                     ssl_context=ctx if config.IMAP_SSL else None, timeout=15) as client:
-        client.login(config.IMAP_USER, config.IMAP_PASSWORD)
+        from .oauth_mail import imap_login
+        imap_login(client, config.IMAP_USER, config.IMAP_PASSWORD)
         folders = client.list_folders()
         def text(value):
             return value.decode(errors="replace") if isinstance(value, bytes) else str(value)
@@ -298,7 +303,8 @@ def send(data: dict) -> dict:
         if config.SMTP_STARTTLS and not config.SMTP_SSL:
             client.starttls(context=ctx)
             client.ehlo()
-        client.login(user, password)
+        from .oauth_mail import smtp_login
+        smtp_login(client, user, password)
         refused = client.send_message(msg, from_addr=user, to_addrs=recipients)
         accepted = True
     finally:

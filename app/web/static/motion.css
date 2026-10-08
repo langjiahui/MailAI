@@ -116,3 +116,62 @@ html.windows-performance :is(.modal,.compose-modal,.attachment-center,.compose-s
 @media(prefers-reduced-motion:reduce) {
  #reading-content.reading-pending { opacity:1; transition:none; }
 }
+
+/* New work surfaces enter as a single unit, including wizard step changes. */
+.productivity-dialog[open] > .productivity-body,
+.directory-dialog[open] > .directory-dialog-body,
+.productivity-tabs ~ [role="tabpanel"]:not([hidden]),
+.productivity-resume-compose:not([hidden]) {
+  animation:stateReveal 180ms ease-out;
+}
+:is(.productivity-dialog,.directory-dialog) button,
+.directory-file, .directory-sheet, .directory-steps li,
+.diagnostic-item {
+  transition:background-color 140ms ease-out, border-color 140ms ease-out,
+    color 140ms ease-out, opacity 140ms ease-out, box-shadow 140ms ease-out;
+}
+:is(.productivity-dialog,.directory-dialog) button:active:not(:disabled) {
+  filter:brightness(.94);
+}
+/* Preserve rich button contents and geometry while a request is in flight. */
+button.motion-working {
+  position:relative;
+  cursor:progress!important;
+  opacity:.8!important;
+}
+button.motion-working::after {
+  content:"";
+  position:absolute;
+  pointer-events:none;
+  height:2px;
+  bottom:2px;
+  left:12%;
+  width:76%;
+  border-radius:2px;
+  background:currentColor;
+  animation:workPending 1100ms ease-in-out infinite;
+}
+@keyframes workPending {
+  0%,100% { transform:scaleX(.25); opacity:.4; }
+  50% { transform:scaleX(1); opacity:.9; }
+}
+[data-motion-pending]::before {
+  content:"";
+  display:inline-block;
+  width:.9em;
+  height:.9em;
+  margin-inline-end:.55em;
+  border:1.5px solid currentColor;
+  border-right-color:transparent;
+  border-radius:50%;
+  vertical-align:-.1em;
+  animation:motionWorking 850ms linear infinite;
+}
+@keyframes motionWorking { to { transform:rotate(360deg); } }
+.directory-complete > span { display:inline-block; animation:stateReveal 240ms ease-out; }
+.diagnostic-item:is(.pass,.warning,.fail,.interrupted) > .diagnostic-state-icon {
+  animation:stateReveal 180ms ease-out;
+}
+@media(prefers-reduced-motion:reduce) {
+  button.motion-working::after { transform:none; opacity:.8; }
+}

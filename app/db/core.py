@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS outbox (
     due_at TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
     result TEXT DEFAULT '{}', error TEXT DEFAULT ''
 );
+CREATE INDEX IF NOT EXISTS idx_outbox_status_due ON outbox(status,due_at);
 CREATE TABLE IF NOT EXISTS undo_operations (
     token TEXT PRIMARY KEY, payload TEXT NOT NULL, created_at TEXT NOT NULL,
     expires_at TEXT NOT NULL, used INTEGER DEFAULT 0
@@ -329,6 +330,9 @@ def conn():
     try:
         yield c
         c.commit()
+        if c.total_changes:
+            from ..energy_scheduler import database_changed
+            database_changed()
     finally:
         c.close()
 
@@ -344,6 +348,8 @@ def init_db():
         c.execute("PRAGMA synchronous=NORMAL")
         c.executescript(SCHEMA)
         _run_migrations(c)
+        from ..productivity import initialize
+        initialize(c)
         from ..mail_search import initialize
         initialize(c)
 
@@ -385,6 +391,13 @@ def _run_migrations(c):
             c.execute(f"ALTER TABLE drafts ADD COLUMN {column} TEXT DEFAULT ''")
     if 'document_reply_key' not in _columns_of(c, 'drafts'):
         c.execute('ALTER TABLE drafts ADD COLUMN document_reply_key TEXT')
+    if 'revision' not in _columns_of(c, 'drafts'):
+        c.execute('ALTER TABLE drafts ADD COLUMN revision INTEGER NOT NULL DEFAULT 1')
+    if 'send_at' not in _columns_of(c, 'drafts'):
+        c.execute("ALTER TABLE drafts ADD COLUMN send_at TEXT NOT NULL DEFAULT ''")
+    for column, definition in {'followup_days':'INTEGER NOT NULL DEFAULT 0', 'followup_at':"TEXT NOT NULL DEFAULT ''"}.items():
+        if column not in _columns_of(c,'drafts'):
+            c.execute(f'ALTER TABLE drafts ADD COLUMN {column} {definition}')
     c.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_drafts_document_reply_key ON drafts(document_reply_key)')
     for column, definition in {'reply_to_email_id': 'INTEGER', 'in_reply_to': "TEXT DEFAULT ''", 'references_header': "TEXT DEFAULT ''"}.items():
         if column not in _columns_of(c, 'sent_messages'):
@@ -449,6 +462,8 @@ def _run_migrations(c):
     if 'group_name' not in _columns_of(c, 'contacts'):
         c.execute("ALTER TABLE contacts ADD COLUMN group_name TEXT DEFAULT ''")
     c.execute("CREATE TABLE IF NOT EXISTS server_cleanup_jobs(token TEXT PRIMARY KEY,payload TEXT NOT NULL,status TEXT NOT NULL,created_at TEXT NOT NULL,expires_at TEXT NOT NULL,result TEXT DEFAULT '{}')")
+    from ..contact_directory import init_schema as init_directory_schema
+    init_directory_schema(c)
     c.execute('CREATE TABLE IF NOT EXISTS contact_groups(name TEXT PRIMARY KEY)')
     c.execute("INSERT OR IGNORE INTO contact_groups SELECT DISTINCT group_name FROM contacts WHERE group_name<>''")
     _merge_legacy_cleanup_archives(c)

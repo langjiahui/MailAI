@@ -93,8 +93,15 @@ def _upload_file(path: str, filename: str, size: int, days: int, object_id: str 
                        PartSize=10, MAXThread=2)
     seconds = days * 24 * 60 * 60
     url = client.get_presigned_download_url(Bucket=settings["bucket"], Key=key, Expired=seconds)
-    return {"name": safe_name, "url": url, "size": size,
-            "expires_at": (datetime.now(timezone.utc) + timedelta(seconds=seconds)).isoformat()}
+    result = {"name": safe_name, "url": url, "size": size,
+              "expires_at": (datetime.now(timezone.utc) + timedelta(seconds=seconds)).isoformat()}
+    try:
+        remember_link(result, key)
+    except Exception:
+        # A secondary catalog failure must not turn an uploaded, usable link
+        # into a failed upload. The original durable task still owns the result.
+        __import__('logging').getLogger(__name__).warning('分享链接目录未保存，上传结果仍保留')
+    return result
 
 
 async def upload_request(request, encoded_filename: str, days: int) -> dict:
@@ -160,3 +167,29 @@ async def upload_request(request, encoded_filename: str, days: int) -> dict:
                     os.unlink(path)
             finally:
                 _upload_slots.release()
+
+
+def remember_link(result, object_key):
+    settings=public_config()
+    with db.conn() as c:
+        c.execute('INSERT INTO shared_mail_links(object_key,name,size,bucket,region,url,expires_at,created_at) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(object_key) DO UPDATE SET url=excluded.url,expires_at=excluded.expires_at', (object_key,result['name'],result['size'],settings['bucket'],settings['region'],result['url'],result['expires_at'],datetime.now(timezone.utc).isoformat()))
+
+
+def list_links():
+    with db.conn() as c:
+        return [dict(r) for r in c.execute('SELECT id,name,size,expires_at,created_at,url FROM shared_mail_links ORDER BY created_at DESC LIMIT 200')]
+
+
+def renew_link(ident,days=7):
+    if days not in (1,3,7):raise ValueError('有效期只能为 1、3 或 7 天')
+    with db.conn() as c:row=c.execute('SELECT * FROM shared_mail_links WHERE id=?',(ident,)).fetchone()
+    if not row:raise ValueError('分享记录不存在')
+    settings=public_config()
+    if row['bucket']!=settings['bucket'] or row['region']!=settings['region']:raise ValueError('存储配置已变化，请恢复原存储桶配置后重试')
+    if not settings['credential_available']:raise ValueError('请先连接原来的存储桶')
+    client=_client(settings)
+    client.head_object(Bucket=row['bucket'],Key=row['object_key'])
+    url=client.get_presigned_download_url(Bucket=row['bucket'],Key=row['object_key'],Expired=days*86400)
+    result={'name':row['name'],'url':url,'size':row['size'],'expires_at':(datetime.now(timezone.utc)+timedelta(days=days)).isoformat()}
+    remember_link(result,row['object_key'])
+    return result

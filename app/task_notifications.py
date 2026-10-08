@@ -29,6 +29,7 @@ def deliver(title, body, target):
         from . import windows_desktop
         runtime = windows_desktop._runtime
         if runtime is not None and runtime.tray is not None:
+            runtime._last_task_target = target
             return runtime.notify_task_reminder(title, body)
     return False
 
@@ -92,7 +93,7 @@ def dispatch_account(account_id, account, now=None, send=None):
             rows = c.execute('''SELECT t.id,t.title,t.email_id,t.remind_at FROM todos t
                 LEFT JOIN task_notice_delivery n ON n.todo_id=t.id
                 WHERE t.status='open' AND t.remind_at IS NOT NULL
-                AND datetime(t.remind_at)<=datetime(?)
+                AND julianday(t.remind_at)<=julianday(?)
                 AND (n.todo_id IS NULL OR n.remind_at!=t.remind_at
                      OR (n.sent=0 AND n.retry_after<=?))
                 ORDER BY t.remind_at,t.id LIMIT 50''', (now.isoformat(), now.isoformat())).fetchall()
@@ -133,7 +134,53 @@ def check_due_tasks():
             try:
                 # Local tasks remain available even when mailbox login has expired.
                 dispatch_account(account_id, account)
+                from .productivity import dispatch_workflow
+                dispatch_workflow(account_id, account)
+                from .sent_followups import dispatch as dispatch_sent_followups
+                dispatch_sent_followups(account_id, account)
             except Exception:
                 log.warning('检查待办提醒失败', exc_info=True)
     finally:
         _lock.release()
+
+
+_reminder_stop = threading.Event()
+_reminder_thread = None
+_reminder_start_lock = threading.Lock()
+
+
+def start_reminders():
+    """Wake on a saved reminder or mail change; otherwise wait for the next due date."""
+    global _reminder_thread
+    with _reminder_start_lock:
+        if _reminder_thread and _reminder_thread.is_alive():
+            return
+        _reminder_stop.clear()
+        def run():
+            from .energy_scheduler import reminders_changed, next_delay
+            changed = True
+            while not _reminder_stop.is_set():
+                reminders_changed.clear()
+                try:
+                    accounts = system_settings._load_registry().get('accounts', {})
+                    if changed or next_delay(accounts, 'reminders') <= 1:
+                        check_due_tasks()
+                    delay = next_delay(accounts, 'reminders')
+                except Exception:
+                    log.exception('提醒调度暂不可用，将稍后重试')
+                    delay = 30
+                if not _reminder_stop.is_set():
+                    changed = reminders_changed.wait(delay)
+                    if changed: _reminder_stop.wait(.15)
+        _reminder_thread = threading.Thread(target=run, daemon=True, name='mailai-reminders')
+        _reminder_thread.start()
+
+
+def stop_reminders(timeout=5):
+    from .energy_scheduler import reminders_changed
+    _reminder_stop.set()
+    reminders_changed.set()
+    worker = _reminder_thread
+    if worker and worker is not threading.current_thread():
+        worker.join(timeout)
+    return not (worker and worker.is_alive())

@@ -129,7 +129,7 @@ def _decode_rows(rows):
 EMAIL_LIST_COLUMNS = (
     'id,uid,folder,message_id,thread_id,subject,from_addr,from_name,to_addr,date,'
     'snippet,summary,attachments,score,verdict,status,category,priority,reviewed,'
-    'feedback,recommended_status,is_read,is_starred,is_favorite,is_local_archive,created_at,arrival_kind,pending_action,pending_error'
+    'feedback,recommended_status,is_read,is_starred,is_favorite,is_local_archive,created_at,arrival_kind,pending_action,pending_error,handle_state,snoozed_until,followup_at,focus_override'
 )
 
 

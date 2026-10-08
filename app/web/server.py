@@ -87,10 +87,10 @@ def save_ui_preference(payload: dict):
     return {"ok": True}
 
 
-from .routes import assistant, compose, contacts, mail_actions, mail_read, reports, security, sync, system, todos, remote
+from .routes import assistant, compose, contacts, mail_actions, mail_read, reports, security, sync, system, todos, remote, productivity, oauth
 
 for _router_module in (system, security, reports, sync, mail_read,
-                       mail_actions, compose, contacts, assistant, todos, remote):
+                       mail_actions, compose, contacts, assistant, todos, remote, productivity, oauth):
     app.include_router(_router_module.router)
 
 

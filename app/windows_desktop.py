@@ -65,6 +65,7 @@ class WindowsDesktopRuntime:
         self.tray = None
         self.tray_notice_shown = False
         self._last_notice_is_task = False
+        self._last_task_target = None
         self._poll_lock = threading.Lock()
         self._window_theme = 'light'
         self._fullscreen_restore_state = None
@@ -148,16 +149,17 @@ class WindowsDesktopRuntime:
 
     def on_notification_click(self):
         if self._last_notice_is_task:
-            self.open_reminders()
+            self.open_reminders(target=self._last_task_target)
         else:
             self.show_window()
 
-    def open_reminders(self, *_):
+    def open_reminders(self, *_, target=None):
         self.show_window()
         def open_panel():
             if self.window and not self.quitting:
                 try:
-                    self.window.evaluate_js("window.mailaiOpenTaskReminder?.({})")
+                    import json
+                    self.window.evaluate_js('window.mailaiOpenTaskReminder?.('+json.dumps(target or {})+')')
                 except Exception:
                     log.exception("打开 Windows 提醒记录失败")
         threading.Thread(target=open_panel, name="mailai-reminder-open", daemon=True).start()

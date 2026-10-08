@@ -130,9 +130,9 @@ html[data-theme] body .compose-card :is(.compose-toolbar-actions,.compose-format
 html[data-theme] body .compose-card .compose-format-group { border:0!important; padding-inline:4px 12px; }
 html[data-theme] body .compose-card .compose-attachment-hint { background:var(--desk-surface)!important; padding-block:8px 0; }
 html[data-theme] body .compose-card #compose-message:focus-visible { outline:none!important; }
-/* Keep formatting on one calm, horizontally scrollable line at every dialog width. */
+/* Keep formatting controls visible as the writing area narrows. */
 html[data-theme] body .compose-card .compose-format-tools {
-  flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden; gap:4px;
+  flex-wrap:wrap; overflow:visible; gap:4px;
   padding:8px 24px; scrollbar-width:thin; scrollbar-color:var(--desk-line) transparent;
 }
 html[data-theme] body .compose-card .compose-format-group {

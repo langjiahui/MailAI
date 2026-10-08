@@ -51,6 +51,8 @@ def run_due():
     if not _lock.acquire(blocking=False):
         return
     try:
+        from .energy_scheduler import background_priority
+        background_priority()
         accounts = system_settings._load_registry().get('accounts', {})
         for account_id, account in accounts.items():
             if not account.get('visible', True) or busy(account_id):

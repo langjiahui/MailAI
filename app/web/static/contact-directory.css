@@ -1,0 +1,106 @@
+.directory-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:8px; padding:10px 24px; border-bottom:1px solid var(--desk-line); }
+.directory-toolbar label { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--desk-muted); }
+.directory-toolbar :is(button,select),.directory-load-more { font:inherit; font-size:12px; border:1px solid var(--desk-line); border-radius:8px; background:var(--desk-muted-surface); color:var(--desk-ink); padding:7px 10px; cursor:pointer; }
+.directory-toolbar button:last-child { margin-left:auto; }
+.directory-toolbar [hidden] { display:none!important; }
+.directory-contact-label { display:flex; gap:6px; align-items:center; margin-top:5px; font-size:11px; color:var(--desk-muted); }
+.directory-contact-label em { font-style:normal; color:var(--desk-accent); background:var(--desk-selected); border-radius:5px; padding:2px 5px; }
+.directory-load-more { display:block; margin:16px auto; }
+.directory-editor-details { grid-column:1/-1; border-top:1px solid var(--desk-line); padding-top:12px; }
+.directory-editor-details summary { cursor:pointer; font-size:13px; color:var(--desk-accent); }
+.directory-editor-details summary small { color:var(--desk-muted); font-size:11px; margin-left:6px; }
+.directory-profile-fields { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:15px 0; }
+.directory-profile-fields label { display:grid; gap:6px; min-width:0; color:var(--desk-muted); font-size:12px; }
+.directory-profile-fields :is(input,textarea) { width:100%; box-sizing:border-box; padding:8px 10px; border:1px solid var(--desk-line); border-radius:8px; color:var(--desk-ink); background:var(--desk-surface); font:inherit; }
+.directory-dialog { width:min(1000px,calc(100vw / var(--fz,1) - 32px)); max-height:calc(100dvh / var(--fz,1) - 36px); padding:0; border:1px solid var(--desk-line); border-radius:14px; background:var(--desk-surface); color:var(--desk-ink); box-shadow:0 22px 70px #0003; overflow:auto; font:inherit; font-size:14px; line-height:1.6; }
+.directory-dialog::backdrop { background:#182c2355; backdrop-filter:blur(3px); }
+.directory-dialog>header { position:sticky; top:0; z-index:3; display:flex; justify-content:space-between; align-items:center; padding:18px 22px; background:var(--desk-surface); border-bottom:1px solid var(--desk-line); }
+.directory-dialog h2 { font-size:20px; margin:0; }
+.directory-dialog>header p { color:var(--desk-muted); margin:4px 0 0; font-size:12px; }
+.directory-dialog h3 { font-size:16px; margin:18px 0 6px; }
+.directory-dialog button,.directory-dialog input,.directory-dialog select { font:inherit; }
+.directory-dialog button { padding:7px 12px; border:1px solid var(--desk-line); border-radius:8px; background:var(--desk-muted-surface); color:var(--desk-ink); font-size:13px; cursor:pointer; }
+.directory-dialog button.primary-action { background:var(--desk-accent); color:var(--desk-surface); border-color:transparent; font-weight:650; }
+.directory-dialog button:disabled { opacity:.45; cursor:not-allowed; }
+.directory-dialog [data-directory-close] { width:32px; height:32px; padding:0; border:0; background:transparent; font-size:23px; }
+.directory-dialog :is(input,select) { color:var(--desk-ink); background:var(--desk-surface); border:1px solid var(--desk-line); border-radius:7px; padding:8px 10px; min-width:0; box-sizing:border-box; }
+.directory-dialog input[type=checkbox] { width:16px; height:16px; flex:none; accent-color:var(--desk-accent); padding:0; margin:3px 0 0; }
+.directory-dialog [hidden] { display:none!important; }
+.directory-dialog :is(button,input,select):focus-visible { outline:2px solid var(--desk-accent); outline-offset:2px; }
+.directory-dialog-body { padding:20px 22px; }
+.directory-hint { color:var(--desk-muted); font-size:12px; line-height:1.7; }
+.directory-error { color:var(--ui-danger,#b04d43); font-size:13px; }
+.directory-dialog footer { display:flex; flex-wrap:wrap; justify-content:space-between; gap:10px; margin-top:20px; padding-top:16px; border-top:1px solid var(--desk-line); }
+.directory-steps { display:flex; list-style:none; gap:20px; padding:0; margin:0 0 20px; color:var(--desk-muted); font-size:12px; }
+.directory-steps li.active { color:var(--desk-accent); font-weight:650; }
+.directory-file { position:relative; display:grid; gap:8px; padding:30px 24px; border:1px dashed var(--desk-line); border-radius:10px; background:var(--desk-muted-surface); cursor:pointer; margin:20px 0; }
+.directory-file input { position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; }
+.directory-file:focus-within { outline:2px solid var(--desk-accent); }
+.directory-file span { font-size:12px; color:var(--desk-muted); }
+.directory-import-options { color:var(--desk-muted); font-size:12px; }
+.directory-import-options p { margin:5px 0; }
+.directory-secondary-links { display:flex; flex-wrap:wrap; gap:6px; }
+.directory-secondary-links button { border:0; background:transparent; color:var(--desk-muted); padding-inline:6px; font-size:12px; }
+.directory-sheets { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.directory-sheet { border:1px solid var(--desk-line); border-radius:10px; padding:12px 14px; }
+.directory-sheet>label { display:flex; gap:10px; align-items:flex-start; cursor:pointer; }
+.directory-sheet strong,.directory-sheet small { display:block; }
+.directory-sheet small { margin-top:3px; font-size:12px; color:var(--desk-muted); }
+.directory-sheet details { margin-top:12px; border-top:1px solid var(--desk-line); padding-top:8px; font-size:12px; color:var(--desk-muted); }
+.directory-sheet summary { cursor:pointer; }
+.directory-sheet details>label { display:flex; gap:8px; align-items:center; margin:12px 0; }
+.directory-sheet input[type=number] { width:74px; }
+.directory-mapping { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.directory-mapping label { display:grid; gap:5px; }
+.directory-policy { display:grid; gap:8px; margin-top:18px; font-size:13px; }
+.directory-policy select { width:min(100%,420px); }
+.directory-counts { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:18px; }
+.directory-counts span { padding:8px 14px; border-radius:8px; background:var(--desk-muted-surface); font-size:12px; color:var(--desk-muted); }
+.directory-counts b { margin-left:8px; color:var(--desk-ink); font-size:17px; }
+.directory-review-tools { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:18px 0 10px; }
+.directory-review-tools>span { margin-left:auto; font-size:12px; color:var(--desk-muted); }
+.directory-review-row { border:1px solid var(--desk-line); border-radius:9px; margin:7px 0; }
+.directory-review-row>summary { display:flex; gap:10px; align-items:center; padding:12px; cursor:pointer; }
+.directory-review-row>summary>span { flex:1; min-width:0; }
+.directory-review-row strong,.directory-review-row small { display:block; }
+.directory-review-row small { color:var(--desk-muted); font-size:12px; overflow-wrap:anywhere; }
+.directory-review-row em { font-style:normal; color:var(--desk-accent); font-size:12px; flex-shrink:0; }
+.directory-review-row em.conflict { color:var(--ui-danger,#b04d43); }
+.directory-review-detail { padding:0 14px 14px; }
+.directory-dialog table { width:100%; border-collapse:collapse; font-size:12px; text-align:left; }
+.directory-dialog th,.directory-dialog td { border-bottom:1px solid var(--desk-line); padding:8px; word-break:break-word; }
+.directory-dialog th { color:var(--desk-muted); font-weight:500; background:var(--desk-muted-surface); }
+.directory-preserved { color:var(--desk-muted); font-size:12px; }
+.directory-conflict { padding:10px 12px; background:color-mix(in srgb,var(--ui-danger,#b04d43) 6%,var(--desk-surface)); color:var(--desk-ink); border-radius:8px; margin:12px 0; font-size:12px; }
+.directory-conflict p { margin:5px 0; }
+.directory-pager { display:flex; justify-content:center; align-items:center; gap:15px; margin:15px 0; font-size:12px; color:var(--desk-muted); }
+.directory-pending-preview { margin:20px 0 0; border-top:1px solid var(--desk-line); padding-top:14px; font-size:12px; }
+.directory-pending-preview summary { cursor:pointer; color:var(--desk-accent); }
+.directory-complete { text-align:center; padding:24px; }
+.directory-complete>span { font-size:30px; color:var(--desk-accent); }
+.directory-complete p,.directory-complete small { color:var(--desk-muted); }
+.directory-pending-row { display:flex; width:100%; text-align:left; justify-content:space-between; gap:12px; margin:10px 0; padding:12px!important; }
+.directory-pending-row :is(strong,small) { display:block; }
+.directory-pending-row small,.directory-pending-row em { font-size:12px; color:var(--desk-muted); font-style:normal; }
+.directory-history p { border-bottom:1px solid var(--desk-line); padding:10px 0; }
+.directory-history small { display:block; color:var(--desk-muted); }
+@media(max-width:650px) { .directory-profile-fields,.directory-sheets,.directory-mapping { grid-template-columns:1fr; } .directory-dialog-body { padding:16px; } .directory-steps { gap:10px; flex-wrap:wrap; } .directory-review-row>summary { flex-wrap:wrap; } .directory-review-row em { margin-left:26px; } }
+
+/* The confirmation stays visible even when reviewing hundreds of people. */
+.directory-dialog[open] { display:flex; flex-direction:column; overflow:hidden; }
+.directory-dialog:not([open]) { display:none; }
+.directory-dialog>header { position:relative; flex:none; }
+.directory-dialog>.directory-dialog-body { flex:1; min-height:0; overflow-y:auto; }
+.directory-dialog>footer { flex:none; margin:0; padding:15px 22px; border-top:1px solid var(--desk-line); background:var(--desk-surface); }
+
+.directory-editor-source { grid-column:1/-1; margin:0; color:var(--desk-muted); font-size:12px; overflow-wrap:anywhere; }
+
+.directory-profile-fields textarea { resize:vertical; min-height:62px; line-height:1.65; }
+.directory-profile-fields .directory-field-wide { grid-column:1/-1; }
+.directory-dialog button[aria-busy=true] { display:inline-flex; align-items:center; gap:7px; }
+.directory-dialog button[aria-busy=true]::before { content:""; width:11px; height:11px; flex:none; border:1.5px solid currentColor; border-right-color:transparent; border-radius:50%; animation:directory-working .8s linear infinite; }
+@keyframes directory-working { to { transform:rotate(360deg); } }
+@media(prefers-reduced-motion:reduce) { .directory-dialog button[aria-busy=true]::before { animation:none; } }
+
+.directory-review-tools [data-review-query] { flex:1 1 210px; max-width:280px; min-height:36px; }
+.directory-source-name,.directory-file span { overflow-wrap:anywhere; }

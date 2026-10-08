@@ -182,6 +182,9 @@ class DesktopRuntime:
         if self.quitting:
             return None
         self.hidden = True
+        self._window_visibility_revision = getattr(self, '_window_visibility_revision', 0) + 1
+        self._evaluate_js_safely("暂停隐藏窗口的界面刷新",
+            f"window.mailaiEnergy?.nativeVisibility({self._window_visibility_revision}, false)")
         try:
             target = window or self.window
             if target:
@@ -196,6 +199,9 @@ class DesktopRuntime:
         try:
             self.hidden = False
             self.window.show()
+            self._window_visibility_revision = getattr(self, '_window_visibility_revision', 0) + 1
+            self._evaluate_js_safely("恢复窗口的界面刷新",
+                f"window.mailaiEnergy?.nativeVisibility({self._window_visibility_revision}, true)")
             self.refresh_dock_badge()
         except Exception:
             log.exception("显示 MailAI 窗口失败")
@@ -431,6 +437,13 @@ class DesktopApi:
     def __init__(self, runtime: DesktopRuntime):
         self._runtime = runtime
         self._macos_chrome_ready = False
+
+    def open_compose_window(self, draft_id: int, account_id: str):
+        from .compose_windows import open_window
+        try:
+            return open_window(self._runtime, draft_id, account_id, self)
+        except (ValueError, RuntimeError):
+            return {'ok': False, 'message': '独立窗口未打开，草稿仍保留；请检查草稿与邮箱连接后重试'}
 
     def _prepare_window(self):
         """Run on Cocoa's before_show event so the first web frame has final geometry."""

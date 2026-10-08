@@ -1,4 +1,4 @@
-"""Cross-platform release discovery and user-confirmed installer launch."""
+"""Cross-platform release discovery and user-confirmed installation."""
 from __future__ import annotations
 
 import hashlib
@@ -37,6 +37,33 @@ _install_state: dict[str, object] = {
     "status": "idle", "phase": "idle", "running": False, "downloaded": 0,
     "total": 0, "percent": 0, "speed_bps": 0, "message": "尚未开始下载", "error": "",
 }
+
+_MACOS_INSTALL_COMMAND = r'''
+pkg_path=$1
+outcome_path=$2
+log_path=$3
+app_path=$4
+# Keep this process outside MailAI: the package preinstall stops the running app.
+# AppleScript asks macOS for administrator authorization; Installer.app never opens.
+/usr/bin/osascript \
+  -e 'on run argv' \
+  -e 'set pkgPath to item 1 of argv' \
+  -e 'with timeout of 3600 seconds' \
+  -e 'do shell script "/usr/sbin/installer -pkg " & quoted form of pkgPath & " -target /" with administrator privileges' \
+  -e 'end timeout' \
+  -e 'end run' "$pkg_path" > "$log_path" 2>&1
+result=$?
+if (( result == 0 )); then
+  print -r -- success > "${outcome_path}.tmp"
+else
+  print -r -- failed > "${outcome_path}.tmp"
+fi
+/bin/mv -f "${outcome_path}.tmp" "$outcome_path"
+# The package also relaunches MailAI. This covers a postinstall launch failure
+# and brings the app forward only after the installer command has finished.
+/usr/bin/open -a "$app_path" >/dev/null 2>&1 || true
+exit "$result"
+'''
 
 
 def _ssl_context() -> ssl.SSLContext:
@@ -160,8 +187,7 @@ def check(*, force: bool = False) -> dict:
 
 def _download(asset: dict, target: Path, progress=None) -> None:
     # A verified copy may already sit here from an earlier click. Reusing it
-    # avoids replacing a package file that an open Installer window is reading —
-    # macOS aborts those with "Opened package is not the same at install time".
+    # avoids replacing a package file while installation is reading it.
     if target.exists():
         digest = hashlib.sha256()
         with target.open("rb") as existing:
@@ -267,11 +293,93 @@ def download_and_launch(progress=None) -> dict:
             creationflags=getattr(subprocess, "DETACHED_PROCESS", 0),
         )
     elif sys.platform == "darwin":
-        subprocess.Popen(["open", str(target)], close_fds=True)
+        outcome_path = update_dir / "install-outcome.txt"
+        log_path = update_dir / "install-output.log"
+        pending_path = update_dir / "install-pending.json"
+        outcome_path.unlink(missing_ok=True)
+        log_path.unlink(missing_ok=True)
+        pending_path.write_text(json.dumps({
+            "version": result["latest_version"], "started_at": time.time(),
+        }), encoding="utf-8")
+        try:
+            installer = subprocess.Popen(
+                ["/bin/zsh", "-f", "-c", _MACOS_INSTALL_COMMAND, "mailai-update",
+                 str(target), str(outcome_path), str(log_path), "/Applications/MailAI.app"],
+                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL, close_fds=True, start_new_session=True,
+            )
+        except OSError:
+            pending_path.unlink(missing_ok=True)
+            raise
+        if progress:
+            progress(phase="installing", downloaded=target.stat().st_size,
+                     total=target.stat().st_size, speed_bps=0,
+                     message="请在系统提示中授权安装；完成后 MailAI 会自动重新打开")
+        # The package normally terminates this MailAI process before wait()
+        # returns. The detached shell completes independently and records the
+        # outcome for the newly launched app.
+        if installer.wait() != 0:
+            detail = _macos_install_error(log_path)
+            pending_path.unlink(missing_ok=True)
+            outcome_path.unlink(missing_ok=True)
+            log_path.unlink(missing_ok=True)
+            raise ValueError(detail)
+        log.info("已安装 MailAI %s", result["latest_version"])
+        return {"ok": True, "version": result["latest_version"],
+                "phase": "installed", "message": "安装完成，MailAI 已重新打开"}
     else:
         raise ValueError("当前系统不支持启动安装器")
     log.info("已启动 MailAI %s 更新安装器", result["latest_version"])
     return {"ok": True, "version": result["latest_version"], "message": "安装器已启动"}
+
+
+def _macos_install_error(log_path: Path) -> str:
+    try:
+        output = log_path.read_text(encoding="utf-8", errors="replace")[-1000:].strip()
+    except OSError:
+        output = ""
+    if "(-128)" in output or "User canceled" in output or "用户已取消" in output:
+        return "已取消安装，MailAI 保持原版本。"
+    detail = " ".join(output.split())[-240:]
+    return f"安装失败：{detail}" if detail else "安装失败，请重试或从发布页手动安装。"
+
+
+def consume_install_outcome() -> dict:
+    """Show an interrupted app update's result once after MailAI restarts."""
+    update_dir = USER_DIR / "updates"
+    pending_path = update_dir / "install-pending.json"
+    outcome_path = update_dir / "install-outcome.txt"
+    log_path = update_dir / "install-output.log"
+    try:
+        pending = json.loads(pending_path.read_text(encoding="utf-8"))
+        version = str(pending.get("version") or "")
+        started_at = float(pending.get("started_at") or 0)
+    except (OSError, ValueError, TypeError, AttributeError):
+        return {"pending": False}
+    if time.time() - started_at > 60 * 60:
+        pending_path.unlink(missing_ok=True)
+        outcome_path.unlink(missing_ok=True)
+        log_path.unlink(missing_ok=True)
+        return {"pending": False}
+    try:
+        outcome = outcome_path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return {"pending": True, "version": version}
+    if outcome not in {"success", "failed"}:
+        return {"pending": True, "version": version}
+    pending_path.unlink(missing_ok=True)
+    outcome_path.unlink(missing_ok=True)
+    if outcome == "failed":
+        message = _macos_install_error(log_path)
+        log_path.unlink(missing_ok=True)
+        return {"pending": False, "status": "failed", "version": version,
+                "message": message}
+    log_path.unlink(missing_ok=True)
+    if current_version() != version:
+        return {"pending": False, "status": "failed", "version": version,
+                "message": f"安装程序已结束，但当前版本仍是 {current_version()}。请重试更新。"}
+    return {"pending": False, "status": "success", "version": version,
+            "message": f"MailAI 已更新到 {version}"}
 
 
 def _set_install_state(**values) -> dict:
@@ -304,7 +412,7 @@ def start_install() -> dict:
         try:
             result = download_and_launch(progress=report)
             _set_install_state(
-                status="completed", phase="launched", running=False, speed_bps=0,
+                status="completed", phase=result.get("phase") or "launched", running=False, speed_bps=0,
                 message=result.get("message") or "安装器已启动", error="",
                 version=result.get("version") or "",
             )

@@ -146,8 +146,12 @@ def api_save_draft(payload: DraftRequest):
         source = db.get_email(payload.source_draft_email_id)
         if not source or source.get("status") != "draft" or source.get("remote_missing"):
             raise HTTPException(409, "来源服务器草稿已变化，请重新打开草稿")
-    draft_id = db.save_draft(payload.model_dump(), payload.id)
-    return {"ok": True, "id": draft_id}
+    try:
+        draft_id, revision = db.save_draft(payload.model_dump(), payload.id, expected_revision=payload.expected_revision,
+                                           strict=True, return_revision=True)
+    except ValueError as exc:
+        raise HTTPException(409, str(exc))
+    return {"ok": True, "id": draft_id, "revision": revision}
 
 
 @router.delete("/api/drafts/{draft_id}")
@@ -336,8 +340,10 @@ def api_compose_assist(payload: ComposeAssistRequest):
     parts = _structured_compose_result(content, structured and not payload.has_signature)
     if not parts["body"]:
         raise HTTPException(502, "AI 没有返回可用正文")
+    from ...mail_evidence import compose_checks
+    checks = compose_checks(parts['subject'] + '\n' + parts['body'], '\n'.join((payload.subject,payload.body_text,payload.original_text,payload.user_instruction)))
     return {"ok": True, "content": parts["body"], "subject": parts["subject"] if structured else "",
-            "signoff": parts["signoff"] if structured else "", "basis": basis}
+            "signoff": parts["signoff"] if structured else "", "basis": basis, 'checks':checks}
 
 
 @router.post("/api/mail/compose/assist-stream")
@@ -361,9 +367,11 @@ def api_compose_assist_stream(payload: ComposeAssistRequest):
             parts = _structured_compose_result("".join(chunks), structured and not payload.has_signature)
             if not parts["body"]:
                 raise ValueError("AI 没有返回可用正文")
+            from ...mail_evidence import compose_checks
+            checks = compose_checks(parts['subject'] + '\n' + parts['body'], '\n'.join((payload.subject,payload.body_text,payload.original_text,payload.user_instruction)))
             yield json.dumps({"type": "done", "content": parts["body"],
                               "subject": parts["subject"] if structured else "",
-                              "signoff": parts["signoff"] if structured else "", "basis": basis}, ensure_ascii=False) + "\n"
+                              "signoff": parts["signoff"] if structured else "", "basis": basis, 'checks':checks}, ensure_ascii=False) + "\n"
         except Exception:
             log.exception("AI 写信流式生成失败")
             yield json.dumps({"type": "error", "message": "生成中断，请重试；未完成内容不会写入邮件"}, ensure_ascii=False) + "\n"
@@ -443,6 +451,9 @@ def api_send_mail(payload: SendMailRequest):
     dangerous = [item for item in local_review if item.get("level") == "danger"]
     if dangerous and not payload.preflight_confirmed:
         raise HTTPException(400, f"发送前仍有高风险项未确认：{dangerous[0]['message']}")
+    from email.utils import make_msgid
+    data['_delivery_message_id'] = make_msgid(domain=config.IMAP_USER.rsplit('@',1)[-1])
+    data['message_id'] = data['_delivery_message_id']
     record_id = db.create_sent_message(data)
     result = None
     try:
@@ -450,6 +461,12 @@ def api_send_mail(payload: SendMailRequest):
         db.finish_sent_message(record_id, ok=True, error=result.get("warning", ""),
                                smtp_response="partially accepted" if result.get("refused_recipients") else "accepted",
                                sent_folder=result["sent_folder"], message_id=result.get("message_id", ""))
+        try:
+            from ...sent_followups import register
+            register(record_id,payload.followup_days,payload.followup_at)
+        except Exception:
+            log.exception('邮件已发送，但跟进安排暂未保存')
+            result['warning'] = (result.get('warning','')+'；跟进安排未保存，请在待办中手动安排提醒').strip('；')
         if payload.id:
             db.complete_sent_draft(payload.id)
         db.add_audit_log(None, "send_mail", actor="user", reason=f"发送邮件：{payload.subject}",
@@ -487,11 +504,29 @@ def api_outbox():
     return items()
 
 
+@router.patch('/api/mail/outbox/{token}/schedule')
+def api_reschedule_mail(token: str, payload: dict):
+    from ...outbox import reschedule
+    try:
+        return reschedule(token, payload.get('at', ''))
+    except ValueError as exc:
+        raise HTTPException(409, str(exc))
+
+
 @router.post('/api/mail/outbox/{token}/cancel')
 def api_cancel_outbox(token: str):
     from ...outbox import cancel
     try:
         return cancel(token)
+    except ValueError as exc:
+        raise HTTPException(409, str(exc))
+
+
+@router.post('/api/mail/outbox/{token}/edit')
+def api_edit_queued_mail(token: str):
+    from ...outbox import edit_queued
+    try:
+        return edit_queued(token)
     except ValueError as exc:
         raise HTTPException(409, str(exc))
 

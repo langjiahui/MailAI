@@ -6,6 +6,7 @@
   const seed = window.mailaiPreferenceSeed;
   if (!seed || typeof seed !== 'object') return;
   const keys = new Set([
+    'mailai.productivity.preferences.v1',
     'mailai.preferences.theme.v1','mailai.preferences.showServerFolders.v1',
     'mailai-language','mailai-density','mailai-font-scale','mailai-companion-motion',
     'mailai-assistant-floating','mailai-assistant-layout-v1','mailai.workspace.paneSizes.v1',
