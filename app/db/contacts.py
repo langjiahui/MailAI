@@ -138,7 +138,7 @@ def contact_display_names(addresses, *, connection=None) -> dict[str, dict]:
     return result
 
 
-def search_contacts(query: str = "", limit: int = 20, favorites_only: bool = False, group_name: str = ""):
+def search_contacts(query: str = "", limit: int = 20, favorites_only: bool = False, group_name: str = "", offset: int = 0, department: str = ""):
     """合并个人通讯录和邮件往来历史；个人名称、收藏与隐藏状态优先。"""
     query = (query or "").strip().lower()
     contacts: dict[str, dict] = {}
@@ -152,6 +152,8 @@ def search_contacts(query: str = "", limit: int = 20, favorites_only: bool = Fal
             "FROM sent_messages WHERE status IN ('sent','accepted')"
         ).fetchall()
         saved_rows = c.execute("SELECT * FROM contacts").fetchall()
+        from ..contact_directory import profiles
+        directory_profiles = profiles(c)
 
     def remember(address: str, name: str = "", contact_date: str = ""):
         address = (address or "").strip().lower()
@@ -193,6 +195,8 @@ def search_contacts(query: str = "", limit: int = 20, favorites_only: bool = Fal
             "company": row["company"] or "",
             "note": row["note"] or "",
             'group_name': row['group_name'] or '',
+            'profile': {k:v for k,v in directory_profiles.get(address,{}).items() if not k.startswith('_')},
+            'directory_source':directory_profiles.get(address,{}).get('_source',''),
             "favorite": bool(row["favorite"]),
             "manual": row["source"] == "manual",
         })
@@ -200,23 +204,34 @@ def search_contacts(query: str = "", limit: int = 20, favorites_only: bool = Fal
     for address, item in contacts.items():
         if (not item["manual"] or not str(item["name"] or "").strip()) and address in learned_names:
             item["name"] = learned_names[address]["name"]
+    from ..contact_directory import _signature
+    saved_by_email={row['email'].casefold():dict(row) for row in saved_rows}
+    for address,item in contacts.items():
+        item['directory_revision']=_signature(saved_by_email.get(address),directory_profiles.get(address,{}))
     values = [item for address, item in contacts.items() if address not in hidden]
     if group_name:
         values = [item for item in values if (not item.get('group_name') if group_name == '__ungrouped__' else item.get('group_name') == group_name)]
+    if department:
+        values = [item for item in values if item.get('profile',{}).get('department') == department]
     if favorites_only:
         values = [item for item in values if item["favorite"]]
     if query:
         from ..pinyin_search import matches
-        values = [item for item in values if matches(query, item['name'], item['email'], item['company'])]
-    return sorted(values, key=lambda item: (-int(item["favorite"]), -item["count"], item["email"]))[:max(1, min(limit, 300))]
+        values = [item for item in values if matches(query, item['name'], item['email'], item['company'], *[str(v) for k,v in item.get('profile',{}).items() if k != 'custom_fields'], *[str(v) for v in item.get('profile',{}).get('custom_fields',{}).values()])]
+    return sorted(values, key=lambda item: (-int(item["favorite"]), -item["count"], item["email"]))[max(0,offset):max(0,offset)+max(1, min(limit, 300))]
 
 
 def save_contact(email: str, name: str = "", company: str = "", note: str = "",
-                 favorite: bool = False) -> dict:
+                 favorite: bool = False, *, profile=None, group_name=None, expected_directory_revision=None) -> dict:
     """新增或更新个人联系人；历史学习到的记录会被个人资料覆盖。"""
     normalized = (email or "").strip().lower()
     now = datetime.now().isoformat(timespec="seconds")
     with conn() as c:
+        c.execute('BEGIN IMMEDIATE')
+        from ..contact_directory import _signature, profiles, save_profile
+        old=c.execute('SELECT * FROM contacts WHERE email=?',(normalized,)).fetchone()
+        if expected_directory_revision is not None and _signature(dict(old) if old else None,profiles(c).get(normalized,{})) != expected_directory_revision:
+            raise ValueError('联系人资料已在其他操作中更新，请重新打开后编辑；当前输入仍保留')
         c.execute(
             "INSERT INTO contacts(email,name,company,note,favorite,source,hidden,created_at,updated_at) "
             "VALUES(?,?,?,?,?,'manual',0,?,?) ON CONFLICT(email) DO UPDATE SET "
@@ -224,6 +239,12 @@ def save_contact(email: str, name: str = "", company: str = "", note: str = "",
             "source='manual',hidden=0,updated_at=excluded.updated_at",
             (normalized, name.strip(), company.strip(), note.strip(), int(favorite), now, now),
         )
+        if profile is not None:
+            save_profile(c,normalized,profile)
+        if group_name is not None:
+            group=str(group_name).strip()[:80]
+            if group: c.execute('INSERT OR IGNORE INTO contact_groups(name) VALUES(?)',(group,))
+            c.execute('UPDATE contacts SET group_name=? WHERE email=?',(group,normalized))
     return next(item for item in search_contacts(normalized, 10) if item["email"] == normalized)
 
 

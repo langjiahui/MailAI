@@ -34,9 +34,12 @@ SESSION_CREDENTIAL_NOTICE = "系统凭据库保存失败，授权码仅在本次
 
 
 def account_password(account_id):
+    account = _load_registry().get("accounts", {}).get(account_id, {})
+    if account.get('auth_type') == 'oauth2':
+        from .oauth_mail import available
+        return 'oauth2' if available(account_id) else ''
     if account_id in _session_credentials:
         return _session_credentials[account_id]
-    account = _load_registry().get("accounts", {}).get(account_id, {})
     # A failed replacement must never revive an older password from the vault.
     if account.get("credential_storage") == "session":
         return ""
@@ -299,6 +302,7 @@ def public_config() -> dict:
              "active": bool(account_password(account_id)) and account_id == registry.get("last_account"),
              "credential_available": bool(account_password(account_id)),
              "credential_storage": item.get("credential_storage", "vault"),
+             "auth_type": item.get('auth_type', 'password'),
              "auto_sync_paused": bool(item.get("auto_sync_paused", False)), **local_counts(item)}
             for account_id, item in registry.get("accounts", {}).items()
             if item.get("visible", True)
@@ -373,7 +377,8 @@ def test_mail_connection(values: dict) -> dict:
     client = IMAPClient(values["host"], port=int(values["port"]), ssl=bool(values.get("ssl", True)),
                         ssl_context=ctx, timeout=15)
     try:
-        client.login(values["user"], values["password"])
+        from .oauth_mail import imap_login
+        imap_login(client, values['user'], values['password'], values=values)
         folders = client.list_folders()
         return {"ok": True, "folders": len(folders)}
     finally:
@@ -415,6 +420,7 @@ def login_mail(values: dict):
         "smtp_starttls": bool(values.get("smtp_starttls", False)),
         "smtp_verify_ssl": bool(values.get("smtp_verify_ssl", values.get("verify_ssl", True))),
         "smtp_verified": bool(smtp_result.get("ok")),
+        "auth_type": values.get('auth_type', 'password'),
     })
     registry["last_account"] = account_id
     _save_registry(registry)
@@ -424,7 +430,10 @@ def login_mail(values: dict):
     _activate_storage(registry["accounts"][account_id])
     with db.conn() as connection:
         has_local_mail = connection.execute("SELECT 1 FROM emails LIMIT 1").fetchone() is not None
-    stored_securely = _save_account_password(account_id, values["password"])
+    if values.get('auth_type') == 'oauth2':
+        stored_securely = True
+    else:
+        stored_securely = _save_account_password(account_id, values["password"])
     _persist({"IMAP_HOST": host, "IMAP_PORT": config.IMAP_PORT, "IMAP_USER": user,
               "IMAP_PASSWORD": "", "IMAP_SSL": config.IMAP_SSL,
               "IMAP_VERIFY_SSL": config.IMAP_VERIFY_SSL})
@@ -470,6 +479,7 @@ def update_mail_account(account_id: str, values: dict) -> dict:
     stored_securely = _save_account_password(account_id, values["password"])
     account["credential_storage"] = "vault" if stored_securely else "session"
     account.update({
+        'auth_type': 'password',
         "port": int(values["port"]), "ssl": bool(values.get("ssl", True)),
         "verify_ssl": bool(values.get("verify_ssl", True)),
         "smtp_host": str(values.get("smtp_host") or "").strip(),
@@ -612,6 +622,9 @@ def logout_mail(clear_history: bool = False, account_id: str = "") -> dict:
     _save_registry(registry)
     _session_credentials.pop(target_id, None)
     credential_store.delete(target_id)
+    if account.get('auth_type') == 'oauth2':
+        from .oauth_mail import forget
+        forget(target_id)
 
     if is_active:
         config.IMAP_USER = ""
@@ -801,7 +814,7 @@ def test_model(values: dict | None = None) -> dict:
         return {"ok": False, "message": str(exc)}
 
 
-def diagnostics(lang: str = "zh") -> dict:
+def diagnostics(lang: str = "zh", progress=None) -> dict:
     """Run real local and remote probes without returning credentials or mail content."""
     # 诊断名称与说明是后端固有文案；前端按当前界面语言传 lang，英文界面不落中文。
     en = lang == "en"
@@ -809,12 +822,31 @@ def diagnostics(lang: str = "zh") -> dict:
         return en_text if en else zh
 
     checks = []
-    def add(name: str, status: str, detail: str, *, probe: str = "local",
-            issue: str = "", check_id: str = ""):
-        # check_id 是不随语言变化的稳定标识，前端据此给出修复指引
-        checks.append({"id": check_id, "name": name, "status": status, "ok": status == "pass",
-                       "detail": detail, "probe": probe, "issue": issue})
+    names = {
+        'db':t('本地数据库','Local database'), 'isolation':t('账号隔离','Account isolation'),
+        'disk':t('本机可用空间','Free disk space'), 'backup':t('自动备份','Automatic backup'),
+        'vault':t('系统凭据库','System credential vault'), 'imap':t('邮箱收信','Mailbox receiving'),
+        'smtp':t('SMTP 发信','SMTP sending'), 'model':t('AI 模型','AI model'),
+        'init':t('历史邮件初始化','Initial mail import'),
+    }
+    timings = {}
+    def emit(event):
+        if progress:
+            progress(event)
+    emit({'type':'plan', 'checks':[{'id':key,'name':name,'probe':'live' if key in ('imap','smtp','model') else 'local','status':'queued','detail':t('等待检查','Waiting')} for key,name in names.items()]})
+    def begin(key):
+        timings[key] = time.monotonic()
+        emit({'type':'check','check':{'id':key,'name':names.get(key,key),'probe':'live' if key in ('imap','smtp','model') else 'local','status':'running','detail':t('正在检查…','Checking…')}})
+    def report(item):
+        item['duration_ms'] = round((time.monotonic() - timings.get(item['id'],time.monotonic())) * 1000)
+        emit({'type':'check','check':dict(item)})
+    def add(name: str, status: str, detail: str, *, probe: str = 'local', issue: str = '', check_id: str = '', emit_result=True):
+        item = {'id':check_id,'name':name,'status':status,'ok':status=='pass','detail':detail,'probe':probe,'issue':issue}
+        checks.append(item)
+        if emit_result:
+            report(item)
 
+    begin('db')
     try:
         with _sqlite_connection(config.DB_PATH) as connection:
             integrity = connection.execute("PRAGMA quick_check").fetchone()[0]
@@ -824,6 +856,7 @@ def diagnostics(lang: str = "zh") -> dict:
     except (OSError, sqlite3.Error):
         add(t("本地数据库", "Local database"), "fail", t("数据库无法打开或校验", "Database cannot be opened or verified"), check_id="db")
 
+    begin('isolation')
     registry = _load_registry()
     visible_accounts = [item for item in registry.get("accounts", {}).values()
                         if item.get("visible", True)]
@@ -837,6 +870,7 @@ def diagnostics(lang: str = "zh") -> dict:
         else t("账号数据库映射异常，请重新打开软件", "Account database mapping is broken; restart the app"),
         check_id="isolation")
 
+    begin('disk')
     try:
         free_bytes = shutil.disk_usage(config.DATA_DIR).free
         free_gib = f'{free_bytes / (1024 ** 3):.1f} GiB'
@@ -848,6 +882,7 @@ def diagnostics(lang: str = "zh") -> dict:
         add(t('本机可用空间', 'Free disk space'), 'warning',
             t('暂时无法检查磁盘空间', 'Unable to check free disk space'), check_id='disk')
 
+    begin('backup')
     if account:
         from .automatic_backup import _automatic_files, INTERVAL_SECONDS
         automatic = _automatic_files(account_id)
@@ -858,6 +893,10 @@ def diagnostics(lang: str = "zh") -> dict:
               'No recent automatic backup; the app retries while running. Back up manually if space is low'),
             check_id='backup')
 
+    else:
+        add(names['backup'],'warning',t('尚未登录邮箱，未检查自动备份','No mailbox signed in; backup not checked'),check_id='backup')
+
+    begin('vault')
     password = account_password(account_id) if account_id else ""
     in_vault = bool(password) and account.get("credential_storage") != "session"
     add(t("系统凭据库", "System credential vault"), "pass" if in_vault else "warning" if password else "fail",
@@ -908,11 +947,15 @@ def diagnostics(lang: str = "zh") -> dict:
     else:
         add(t("AI 模型", "AI model"), "fail", t("尚未配置 API Key", "No API key configured"), probe="live", issue="configuration", check_id="model")
 
+    live_ids = {t('邮箱收信','Mailbox receiving'):'imap',t('SMTP 发信','SMTP sending'):'smtp',t('AI 模型','AI model'):'model'}
     live_results = {}
     started = time.monotonic()
     with ThreadPoolExecutor(max_workers=3, thread_name_prefix="diagnostic") as executor:
-        futures = {executor.submit(callback): (name, kind)
-                   for name, (kind, callback) in probes.items()}
+        from contextvars import copy_context
+        futures = {}
+        for name, (kind, callback) in probes.items():
+            begin(live_ids[name])
+            futures[executor.submit(copy_context().run, callback)] = (name, kind)
         for future in as_completed(futures):
             name, kind = futures[future]
             try:
@@ -932,13 +975,16 @@ def diagnostics(lang: str = "zh") -> dict:
             except Exception as exc:
                 detail, issue = friendly_failure(kind, exc)
                 live_results[name] = ("fail", detail, issue)
+            status, detail, issue = live_results[name]
+            report({'id':live_ids[name],'name':name,'status':status,'ok':status=='pass','detail':detail,'probe':'live','issue':issue})
     live_ids = {t("邮箱收信", "Mailbox receiving"): "imap", t("SMTP 发信", "SMTP sending"): "smtp",
                 t("AI 模型", "AI model"): "model"}
     for name in live_ids:
         if name in live_results:
             status, detail, issue = live_results[name]
-            add(name, status, detail, probe="live", issue=issue, check_id=live_ids[name])
+            add(name, status, detail, probe="live", issue=issue, check_id=live_ids[name],emit_result=False)
 
+    begin('init')
     job = db.get_sync_job()
     if job:
         job_status = job.get("status")

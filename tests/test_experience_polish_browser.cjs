@@ -5,17 +5,23 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
  await p.goto('http://127.0.0.1:18795');await p.locator('.email-item').first().waitFor();await p.locator('#app-preloader').waitFor({state:'hidden'});
  assert(await p.evaluate(()=>activeMailAccount().user.endsWith('@example.test')));
  // Failed remote COPY can be paused without claiming remote success.
- let paused=false;const writes=[];
+ let paused=false;const writes=[];let releasePendingRead;
+ const pendingRead=new Promise(resolve=>{releasePendingRead=resolve});let holdPausedRead=false;
  await p.route('**/api/mail/action-sync**',async r=>{
   const u=new URL(r.request().url());
   if(r.request().method()==='POST'){writes.push(u.pathname);paused=u.pathname.endsWith('/pause');return r.fulfill({json:{ok:true}})}
   const row={id:999,subject:'同步结果待核对',pending_action:'trash_copying',pending_error:'副本结果未知',pending_attempts:9,paused};
   const rows=!paused||u.searchParams.has('include_paused')?[row]:[];
+  if(holdPausedRead && paused && !u.searchParams.has('include_paused')) await pendingRead;
   return r.fulfill({json:{rows,total:rows.length,paused_count:paused?1:0}});
  });
  await p.evaluate(()=>openTaskCenter());await p.locator('[data-action-sync-pause]').click();await p.locator('.mailai-question [data-confirm]').click();
  await p.locator('[data-sync-paused-toggle]').waitFor();assert.equal(await p.locator('[data-action-sync-pause]').count(),0);
- await p.locator('[data-sync-paused-toggle]').click();await p.locator('[data-action-sync-retry]').waitFor();assert.match(await p.locator('#task-center-list').innerText(),/服务器端是否删除尚未确认/);
+ holdPausedRead=true;
+ const pendingRequest=p.waitForRequest(r=>r.url().includes('/api/mail/action-sync') && r.method()==='GET' && !r.url().includes('include_paused'));
+ await p.evaluate(()=>{void refreshTaskCenter();});await pendingRequest;
+ await p.locator('[data-sync-paused-toggle]').click();releasePendingRead();
+ await p.locator('[data-action-sync-retry]').waitFor();assert.match(await p.locator('#task-center-list').innerText(),/服务器端是否删除尚未确认/);
  await p.locator('[data-action-sync-retry]').click();await p.locator('[data-action-sync-pause]').waitFor();assert.deepEqual(writes,['/api/mail/action-sync/999/pause','/api/mail/action-sync/999/retry']);await p.evaluate(()=>closeTaskCenter());
  // Attachments retain preview/download behavior in a dense, aligned list.
  await p.locator('#btn-attachments').click();await p.locator('.attachment-open').first().waitFor();await p.locator('button[data-file-view=list]').click();

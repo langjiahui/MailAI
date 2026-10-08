@@ -21,11 +21,15 @@ for stream in (sys.stdout, sys.stderr):
     if reconfigure:
         reconfigure(encoding="utf-8", errors="backslashreplace")
 TESTS = (
+    'test_energy_scheduler.py',
+    'test_completion_features.py',
+    'test_productivity.py', 'test_productivity_lifecycle.py', 'test_oauth_mail.py', 'test_mail_idle.py', 'test_attachment_text.py',
     'test_cc_reading.py',
     'test_trash_purge.py',
     'test_model_providers.py',
     'test_model_usage.py',
-    'test_live_diagnostics.py',
+    'test_contact_directory.py',
+    'test_live_diagnostics.py', 'test_diagnostics_progress.py',
     'test_optimization_guards.py', 'test_interaction_fixes.py', 'test_pinyin_search.py',
     'test_resource_safety.py',
     'test_mail_arrival_lifecycle.py', 'test_mail_fetch_resilience.py', 'test_dock_unread_sync.py',
@@ -109,6 +113,7 @@ def main():
     commands.append([sys.executable, str(ROOT / 'scripts/build_frontend.py'), '--check'])
     commands.append([sys.executable, str(ROOT / 'tests/evaluate.py'), '--gate'])
     commands.append([node, '--check', str(ROOT / 'app/web/static/bundle.js')])
+    commands.append([node, str(ROOT / 'tests/test_diagnostics_progress.cjs')])
     if sys.platform == 'darwin':
         commands.append([sys.executable, str(ROOT / 'tests/test_mail_links_webkit.py')])
     commands += [[node, '--check', str(ROOT / 'app/web/static/server-cleanup.js')]]
@@ -119,6 +124,10 @@ def main():
     commands += [[node, '--check', str(ROOT / 'app/web/static/mail-library.js')]]
     commands += [[node, '--check', str(ROOT / 'app/web/static/attachment-preview.js')]]
     commands += [[node, '--check', str(ROOT / 'app/web/static/app.js')],
+                 [node, '--check', str(ROOT / 'app/web/static/productivity.js')],
+                 [node, '--check', str(ROOT / 'app/web/static/mail-reading-folds.js')],
+                 [node, str(ROOT / 'tests/test_reading_folds.cjs')],
+                 [node, str(ROOT / 'tests/test_productivity_ui.cjs')],
                  [node, str(ROOT / 'tests/test_interaction_fixes.cjs')],
                  [node, str(ROOT / 'tests/test_share_upload_races.cjs')],
                  [node, str(ROOT / 'tests/test_trash_navigation.cjs')],
@@ -139,6 +148,10 @@ def main():
                  [node, '--check', str(ROOT / 'app/web/static/workspace.js')],
                  [node, '--check', str(ROOT / 'app/web/static/companion.js')],
                  [node, '--check', str(ROOT / 'app/web/static/companion-motion.js')],
+                 [node, '--check', str(ROOT / 'app/web/static/energy-ui.js')],
+                 [node, str(ROOT / 'tests/test_energy_ui.cjs')],
+                 [node, '--check', str(ROOT / 'app/web/static/energy-reminders.js')],
+                 [node, str(ROOT / 'tests/test_energy_reminders.cjs')],
                  [node, str(ROOT / 'tests/test_workspace_polish.cjs')],
                  [node, str(ROOT / 'tests/test_workspace_accounts.cjs')],
                  [node, str(ROOT / 'tests/test_conversation_progress_ui.cjs')],

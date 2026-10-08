@@ -49,11 +49,13 @@ def _poll(values):
         return result
 
 
-def poll_all(force=True, account_id=None):
+def poll_all(force=True, account_id=None, from_idle=False):
     import time
     if _stopping.is_set():
         return {'ok': False, 'msg': '邮件服务正在退出'}
     accounts = system_settings._load_registry().get('accounts', {})
+    from . import mail_idle
+    mail_idle.ensure(accounts)
     if not accounts:
         if not config.IMAP_PASSWORD:
             return {'ok': False, 'msg': '邮箱尚未配置'}
@@ -102,11 +104,11 @@ def poll_all(force=True, account_id=None):
             if not force and account.get('auto_sync_paused', False):
                 continue
             if key in _pending:
-                if force:
+                if force or from_idle:
                     _poll_again.add(key)
                     queued = True
                 continue
-            if not force and time.monotonic() < _next_poll_at.get(key, 0):
+            if not force and not from_idle and time.monotonic() < _next_poll_at.get(key, 0):
                 continue
             try:
                 values = snapshot(key)
@@ -122,6 +124,8 @@ def poll_all(force=True, account_id=None):
 def stop_mailbox(timeout=5):
     """Cancel queued polls, request cooperative stop, and bound shutdown wait."""
     _stopping.set()
+    from . import mail_idle
+    mail_idle.stop()
     with _lock:
         jobs = list(_pending.items())
     for account_id, future in jobs:
@@ -217,14 +221,21 @@ def start_outbox():
         initialized, retries = {}, {}
         try:
             from .web.server import api_send_mail, SendMailRequest
+            from .energy_scheduler import outbox_changed, next_delay
+            changed = True
             while not _outbox_stop.is_set():
-                delay = 3
+                outbox_changed.clear()  # Preserve commits that arrive during a pass.
                 try:
-                    _check_outboxes(initialized, retries, time.monotonic(), lambda data: api_send_mail(SendMailRequest(**data)))
+                    accounts = system_settings._load_registry().get('accounts', {})
+                    if changed or next_delay(accounts, 'outbox', retries=retries) <= 1:
+                        _check_outboxes(initialized, retries, time.monotonic(), lambda data: api_send_mail(SendMailRequest(**data)))
+                    delay = next_delay(accounts, 'outbox', retries=retries)
                 except Exception:
                     delay = 30
                     __import__('logging').getLogger(__name__).exception('发件箱检查暂不可用，将稍后重试')
-                _outbox_stop.wait(delay)
+                if not _outbox_stop.is_set():
+                    changed = outbox_changed.wait(delay)
+                    if changed: _outbox_stop.wait(.15)  # Coalesce batch writes without delaying a due send.
         finally:
             with _outbox_lock:
                 _outbox_started = False
@@ -241,6 +252,8 @@ def stop_outbox(timeout=5):
     """Interrupt the idle wait; never replay an interrupted SMTP send."""
     with _outbox_lock:
         _outbox_stop.set()
+        from .energy_scheduler import outbox_changed
+        outbox_changed.set()
         worker = _outbox_thread
     if worker and worker is not threading.current_thread():
         worker.join(timeout=timeout)

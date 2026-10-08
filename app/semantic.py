@@ -293,6 +293,8 @@ def schedule_missing(rebuild: bool = False) -> None:
         _set_progress(running=True, phase="queued", done=0, total=0, error="")
 
     def run():
+        from .energy_scheduler import background_priority
+        background_priority()
         try:
             while True:
                 with _update_lock:

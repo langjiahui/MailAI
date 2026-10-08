@@ -120,6 +120,7 @@ class AccountGuardMiddleware:
             "/api/system/mail/switch", "/api/system/mail/preferred", "/api/system/model",
             "/api/system/model/test", "/api/health",
         }
+        public = public or path.startswith('/api/oauth/')
         headers = dict(scope.get('headers', []))
         account_id = headers.get(b'x-mailai-account', b'').decode('ascii', errors='ignore')
         if not account_id and scope.get('method') == 'GET':
@@ -132,6 +133,7 @@ class AccountGuardMiddleware:
                 response = JSONResponse({"detail": "请先登录邮箱账号"}, status_code=401)
                 return await response(scope, receive, send)
         exclusive = path in {
+            '/api/oauth/complete',
             "/api/system/server-cleanup/execute",
             "/api/system/mail/login", "/api/system/mail/logout", "/api/system/mail/switch"
         } or (path.startswith("/api/system/backups/") and path.endswith("/restore"))
@@ -144,6 +146,7 @@ class AccountGuardMiddleware:
                                       '/api/system/mail/switch', '/api/system/mail/account/update',
                                       '/api/system/mail/preferred',
                                       '/api/system/mail/discover', '/api/system/model', '/api/system/model/test'}
+            global_settings = global_settings or path.startswith('/api/oauth/')
             if account_id and not global_settings:
                 from .account_context import snapshot, use
                 try:

@@ -49,7 +49,7 @@ def build(email_id):
             params = sorted(keys)
             rows = connection.execute(f"""SELECT id,message_id,in_reply_to,references_header,thread_id,
                 from_addr,from_name,to_addr,subject,date,status,substr(body_text,1,6000) AS body_text,
-                snippet,verdict,score,reviewed,feedback,processing_complete,pending_action FROM emails WHERE remote_missing=0 AND status NOT IN ('trash','spam','quarantine','draft')
+                snippet,verdict,score,reviewed,feedback,processing_complete,pending_action,handle_state,snoozed_until,followup_at FROM emails WHERE remote_missing=0 AND status NOT IN ('trash','spam','quarantine','draft')
                 AND (lower(message_id) IN ({marks}) OR lower(in_reply_to) IN ({marks}) OR lower(thread_id) IN ({marks}))
                 ORDER BY date DESC,id DESC LIMIT ?""", params * 3 + [MAX_MESSAGES + 1]).fetchall()
             replies = connection.execute(f"""SELECT id,message_id,in_reply_to,references_header,
@@ -115,6 +115,10 @@ def build(email_id):
     else:
         status = '处理状态待确认'
         next_step = '核对最新往来后，确认是否需要自己推进或等待反馈。'
+        saved_state = current.get('handle_state')
+        if saved_state in ('reply','waiting','later','done'):
+            status = {'reply':'当前邮件已标记待回复','waiting':'当前邮件已标记等待对方','later':'当前邮件已安排稍后处理','done':'当前邮件已标记处理完成'}[saved_state]
+            next_step = '此状态来自你的邮件处理安排；不代表整件事或其他待办已完成。'
     return dict(account_id=config.ACCOUNT_ID, account_user=config.IMAP_USER, email_id=email_id,
         status=status, next_step=next_step, timeline=timeline, tasks=tasks[:100], changes=changes,
         truncated=truncated or len(tasks) > 100, linked_count=len(timeline),

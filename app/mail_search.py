@@ -1,5 +1,5 @@
 """SQLite substring index with local full-pinyin and initials aliases."""
-FIELDS = ('subject', 'from_addr', 'from_name', 'summary', 'snippet', 'body_text', 'category')
+FIELDS = ('subject', 'from_addr', 'from_name', 'summary', 'snippet', 'body_text', 'category', 'attachments')
 PINYIN_FIELDS = ('subject', 'from_name')
 
 
@@ -23,7 +23,7 @@ def initialize(connection):
     register(connection)
     search = connection.execute("SELECT 1 FROM sqlite_master WHERE name='email_search'").fetchone()
     view = connection.execute("SELECT sql FROM sqlite_master WHERE type='view' AND name='email_search_content'").fetchone()
-    if search and view and 'mailai_body_pinyin' in (view[0] or ''):
+    if search and view and 'mailai_body_pinyin' in (view[0] or '') and 'attachments' in (view[0] or ''):
         return
     # Rebuild the derived index once when upgrading from the literal-only schema.
     connection.execute('DROP TRIGGER IF EXISTS email_search_insert')

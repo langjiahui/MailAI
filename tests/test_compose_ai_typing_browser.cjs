@@ -8,6 +8,7 @@ const assert = require('node:assert/strict');
     const page = await browser.newPage({reducedMotion:'no-preference'});
     await page.goto(process.env.MAILAI_PREVIEW_URL || 'http://127.0.0.1:18795');
     await page.locator('.email-item').first().waitFor();
+    await page.locator('#app-preloader').waitFor({state:'hidden'});
     // Delayed defaults must not erase a signoff already filled in by the user/AI.
     let releaseSignatures;
     const signaturesReady = new Promise(resolve => { releaseSignatures = resolve; });

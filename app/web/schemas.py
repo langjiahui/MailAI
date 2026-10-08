@@ -86,6 +86,8 @@ class ContactRequest(BaseModel):
     note: str = ""
     favorite: bool = False
     group_name: str = ''
+    profile: dict | None = None
+    directory_revision: str | None = None
 
 
 class ContactFavoriteRequest(BaseModel):
@@ -144,6 +146,10 @@ class ModelConfigRequest(BaseModel):
 
 
 class DraftRequest(BaseModel):
+    expected_revision: int | None = Field(default=None, ge=1)
+    send_at: str = ''
+    followup_days: int = Field(default=0,ge=0,le=90)
+    followup_at: str = ''
     source_draft_email_id: int | None = None
     id: int | None = None
     to_addr: str = ""

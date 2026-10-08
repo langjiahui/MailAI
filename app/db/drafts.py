@@ -7,27 +7,39 @@ from .emails import get_email
 from .trash import queue_trash
 
 
-def save_draft(data: dict, draft_id: int | None = None, *, document_reply_key: str | None = None) -> int:
+def save_draft(data: dict, draft_id: int | None = None, *, document_reply_key: str | None = None,
+               expected_revision=None, strict=False, return_revision=False):
     now = datetime.now().isoformat(timespec="seconds")
     fields = ("to_addr", "cc_addr", "bcc_addr", "subject", "body_html", "attachments_json",
-              "reply_to_email_id", "mode", "in_reply_to", "references_header", "source_draft_email_id")
+              "reply_to_email_id", "mode", "in_reply_to", "references_header", "source_draft_email_id", "send_at", "followup_days", "followup_at")
     data = dict(data)
     data["references_header"] = data.get("references", "")
     data["attachments_json"] = json.dumps(data.get("attachments") or [], ensure_ascii=False)
+    data['send_at'] = data.get('send_at') or ''
+    data['followup_days'] = data.get('followup_days') or 0
+    data['followup_at'] = data.get('followup_at') or ''
     values = [data.get(k) for k in fields]
     with conn() as c:
+        c.execute('BEGIN IMMEDIATE')
         if draft_id:
+            if strict and c.execute("SELECT 1 FROM outbox WHERE status IN ('queued','sending','unknown') AND json_extract(payload,'$.id')=?", (draft_id,)).fetchone():
+                raise ValueError('草稿已有发送任务，请先取消发送或核对结果')
+            current = c.execute('SELECT revision FROM drafts WHERE id=?', (draft_id,)).fetchone()
+            if strict and not current:
+                raise ValueError('草稿已发送或删除，请重新打开')
+            if current and expected_revision is not None and current['revision'] != expected_revision:
+                raise ValueError('草稿已在其他窗口更新；当前文字仍保留，请复制后重新打开最新草稿')
             c.execute(
                 "UPDATE drafts SET to_addr=?,cc_addr=?,bcc_addr=?,subject=?,body_html=?,attachments_json=?,"
-                "reply_to_email_id=?,mode=?,in_reply_to=?,references_header=?,source_draft_email_id=?,updated_at=?,document_reply_key=NULL WHERE id=?",
+                "reply_to_email_id=?,mode=?,in_reply_to=?,references_header=?,source_draft_email_id=?,send_at=?,followup_days=?,followup_at=?,updated_at=?,document_reply_key=NULL,revision=revision+1 WHERE id=?",
                 (*values, now, draft_id),
             )
             if c.execute("SELECT changes() AS n").fetchone()["n"]:
-                return draft_id
+                return (draft_id, current['revision']+1) if return_revision else draft_id
         if document_reply_key:
             cur = c.execute(
-                "INSERT OR IGNORE INTO drafts(to_addr,cc_addr,bcc_addr,subject,body_html,attachments_json,reply_to_email_id,mode,in_reply_to,references_header,source_draft_email_id,created_at,updated_at,document_reply_key) "
-                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*values, now, now, document_reply_key),
+                "INSERT OR IGNORE INTO drafts(to_addr,cc_addr,bcc_addr,subject,body_html,attachments_json,reply_to_email_id,mode,in_reply_to,references_header,source_draft_email_id,send_at,followup_days,followup_at,created_at,updated_at,document_reply_key) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*values, now, now, document_reply_key),
             )
             if cur.rowcount:
                 return cur.lastrowid
@@ -36,10 +48,10 @@ def save_draft(data: dict, draft_id: int | None = None, *, document_reply_key: s
                 return existing['id']
             raise RuntimeError('无法保存回复草稿')
         cur = c.execute(
-            "INSERT INTO drafts(to_addr,cc_addr,bcc_addr,subject,body_html,attachments_json,reply_to_email_id,mode,in_reply_to,references_header,source_draft_email_id,created_at,updated_at) "
-            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)", (*values, now, now),
+            "INSERT INTO drafts(to_addr,cc_addr,bcc_addr,subject,body_html,attachments_json,reply_to_email_id,mode,in_reply_to,references_header,source_draft_email_id,send_at,followup_days,followup_at,created_at,updated_at) "
+            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*values, now, now),
         )
-        return cur.lastrowid
+        return (cur.lastrowid, 1) if return_revision else cur.lastrowid
 
 
 def find_document_reply_draft(key: str):
@@ -53,7 +65,7 @@ def list_drafts():
         rows = [dict(r) for r in c.execute(
             "SELECT id,to_addr,cc_addr,bcc_addr,subject,substr(body_html,1,1000) AS body_html,"
             "attachments_json,reply_to_email_id,mode,in_reply_to,references_header,"
-            "source_draft_email_id,created_at,updated_at FROM drafts ORDER BY updated_at DESC"
+            "source_draft_email_id,created_at,updated_at,revision,send_at,followup_days,followup_at FROM drafts ORDER BY updated_at DESC"
         ).fetchall()]
     for row in rows:
         row["references"] = row.get("references_header") or ""

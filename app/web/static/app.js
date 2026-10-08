@@ -145,7 +145,7 @@ function updateFilterSummary() {
   const active = [
     currentFilter.days !== 9999, Boolean(currentFilter.priority), Boolean(currentFilter.domain),
     currentFilter.attachments, currentFilter.unread, Boolean(currentFilter.search), Boolean(currentFilter.status),
-    Boolean(currentFilter.verdict), Boolean(currentFilter.category), Boolean(specialMailbox), Boolean(currentServerFolder),
+    Boolean(currentFilter.verdict), Boolean(currentFilter.category), Boolean(window.mailaiWorkflowFilterLabel?.()), Boolean(specialMailbox), Boolean(currentServerFolder),
   ].filter(Boolean).length;
   const badge = document.getElementById('filter-active-count');
   if (badge) { badge.textContent = active; badge.classList.toggle('hidden', !active); }
@@ -307,13 +307,14 @@ function renderContactCenter() {
       return `<article class="contact-center-item ${checked ? 'selected' : ''}" data-contact-email="${esc(item.email)}">
         ${picker ? `<button type="button" class="contact-pick-check" data-contact-pick="${esc(item.email)}" aria-label="${checked ? '取消选择' : '选择'} ${esc(item.email)}"><span>${checked ? '✓' : ''}</span></button>` : ''}
         <span class="contact-center-avatar">${esc(contactInitial(item))}</span>
-        <div class="contact-center-main"><b>${esc(item.name || item.email)}</b><small>${item.name ? `${esc(item.email)}${item.company ? ` · ${esc(item.company)}` : ''}` : (item.company ? esc(item.company) : '从邮件往来自动识别')}</small>${item.note ? `<p>${esc(item.note)}</p>` : ''}</div>
+        <div class="contact-center-main"><b>${esc(item.name || item.email)}</b><small>${item.name ? `${esc(item.email)}${item.company ? ` · ${esc(item.company)}` : ''}` : (item.company ? esc(item.company) : '从邮件往来自动识别')}</small>${window.mailaiDirectoryContactLabel?.(item) || ''}</div>
         ${picker ? `<div class="contact-frequency"><b>${item.count || 0}</b><small>${mailaiT('contact.exchanges') || '往来次数'}</small></div>` : `<button type="button" class="contact-frequency contact-correspondence-trigger" data-contact-correspondence="${esc(item.email)}" aria-label="查看与${esc(item.name || item.email)}的往来邮件"><b>${item.count || 0}</b><small>${mailaiT('contact.exchanges') || '往来次数'}</small></button>`}
         <button type="button" class="contact-star ${item.favorite ? 'active' : ''}" data-contact-favorite="${esc(item.email)}" data-favorite="${item.favorite ? '1' : '0'}" aria-label="${item.favorite ? '取消常用' : '设为常用'}">★</button>
         <div class="contact-row-actions">${picker ? '' : `<button type="button" data-contact-compose="${esc(item.email)}">${mailaiT('contact.compose') || '写邮件'}</button><button type="button" data-contact-edit="${esc(item.email)}">${mailaiT('contact.edit') || '编辑'}</button>${selectedGroup && selectedGroup !== '__ungrouped__' ? `<button type="button" data-group-remove-member="${esc(item.email)}">${mailaiT('contact.removeFromGroup') || '移出分组'}</button>` : ''}<button type="button" class="danger" data-contact-delete="${esc(item.email)}">${mailaiT('contact.remove') || '移除'}</button>`}</div>
       </article>`;
     }).join('');
   }
+  if (contactCenterHasMore) list.insertAdjacentHTML('beforeend','<button type="button" class="directory-load-more" data-directory-more>加载更多联系人</button>');
   const footer = document.getElementById('contact-picker-footer');
   footer.classList.toggle('hidden', !picker);
   document.getElementById('contact-picker-count').textContent = selectedContactEmails.size ? `已选择 ${selectedContactEmails.size} 位联系人` : '尚未选择';
@@ -334,7 +335,8 @@ function applyContactSelection(input, selected, contacts) {
 }
 
 let contactLoadRevision = 0;
-async function loadContactCenter() {
+let contactCenterHasMore = false;
+async function loadContactCenter(more = false) {
   if (!contactCenterSession) return;
   const revision = ++contactLoadRevision;
   const accountId = contactAccountId();
@@ -344,11 +346,13 @@ async function loadContactCenter() {
   const selectAll = document.getElementById('group-select-all');
   if (selectAll) selectAll.disabled = true;
   try {
-    const items = await api(`/api/mail/contacts?q=${encodeURIComponent(query)}&limit=300&favorites_only=${favorite}&group_name=${encodeURIComponent(group)}`, {accountId});
+    const items = await api(`/api/mail/contacts?q=${encodeURIComponent(query)}&limit=300&favorites_only=${favorite}&group_name=${encodeURIComponent(group)}&offset=${more ? contactCenterItems.length : 0}${window.mailaiDirectoryQuery?.() || ''}`, {accountId});
     if (revision !== contactLoadRevision || accountId !== contactAccountId()) return;
-    contactCenterItems = items;
+    contactCenterItems = more ? [...new Map([...contactCenterItems,...items].map(row=>[row.email,row])).values()] : items;
+    contactCenterHasMore = items.length === 300;
     items.forEach(item => contactPickerContacts.set(item.email.toLowerCase(), item));
     await window.refreshContactGroups?.();
+    await window.mailaiDirectoryRefresh?.();
     if (revision !== contactLoadRevision) return;
     renderContactCenter();
   } catch (error) {
@@ -409,6 +413,7 @@ function openContactEditor(item = null) {
   document.getElementById('contact-company').value = item?.company || '';
   document.getElementById('contact-note').value = item?.note || '';
   document.getElementById('contact-favorite').checked = Boolean(item?.favorite);
+  window.mailaiDirectoryEdit?.(item);
   document.getElementById('contact-editor').classList.remove('hidden');
   (item ? document.getElementById('contact-name') : document.getElementById('contact-email')).focus();
 }
@@ -1217,6 +1222,9 @@ function draftPayload() {
     reply_to_email_id: composeContext.reply_to_email_id,
     in_reply_to: composeContext.in_reply_to,
     references: composeContext.references,
+    send_at: document.getElementById('compose-send-at')?.value || '',
+    followup_days: Number(document.getElementById('compose-followup-days')?.value || 0),
+    followup_at: document.getElementById('compose-followup-at')?.value || '',
   };
 }
 
@@ -1320,7 +1328,8 @@ async function openCompose(seed = {}) {
   closeAssistant();
   hideContactSuggestions();
   composeAccountId = seed.account_id || activeMailAccount()?.id || '';
-  draftSession = {id: seed.id || null, accountId:composeAccountId, pending: Promise.resolve(), canceled: false, busy: false, assistantReview: Boolean(seed.assistant_review)};
+  window.mailaiProductivityComposeReset?.(seed);
+  draftSession = {id: seed.id || null, revision:seed.revision || null, accountId:composeAccountId, pending: Promise.resolve(), canceled: false, busy: false, assistantReview: Boolean(seed.assistant_review)};
   currentDraftId = seed.id || null;
   signatureState = {items:[], default_id:''};
   composeContext = {source_draft_email_id:seed.source_draft_email_id || null, mode: seed.mode || 'compose', reply_to_email_id: seed.reply_to_email_id || null, in_reply_to: seed.in_reply_to || '', references: seed.references || '', original_text: seed.original_text || ''};
@@ -1752,6 +1761,7 @@ async function composeFromEmail(mode) {
 }
 
 function hideCompose() {
+  window.mailaiProductivityComposeClosed?.();
   draftSession.attachmentsClosed = true;
   ++composeAiRevision;
   composeAiController?.abort(); composeAiController = null;
@@ -2039,17 +2049,19 @@ async function saveCurrentDraft({force = false} = {}) {
     if (fingerprint === session.savedFingerprint) return;
     const indicator = setTimeout(() => setDraftStatus(session, 'saving'), 800);
     payload.id = session.id;
+    payload.expected_revision = session.revision || null;
     session.saving = true;
     try {
       const isNew = !session.id;
       const result = await api('/api/drafts', {accountId, method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
       session.id = result.id;
+      session.revision = result.revision || session.revision;
       session.savedFingerprint = fingerprint;
       if (session !== draftSession || session.canceled) return;
       currentDraftId = result.id;
       ++draftListRevision;
       if (activeMailAccount()?.id === accountId) {
-        const row = {...payload, id:result.id, updated_at:new Date().toISOString()};
+        const row = {...payload, id:result.id, revision:session.revision, updated_at:new Date().toISOString()};
         const index = savedDrafts.findIndex(item => item.id === result.id);
         if (index === -1) savedDrafts = [row, ...savedDrafts];
         else savedDrafts = savedDrafts.map(item => item.id === result.id ? {...item, ...row} : item);
@@ -2356,6 +2368,7 @@ async function aiCompose(operation, button) {
     composeAiSuggestion = normalizeComposeAiSuggestion(result, !quickRewrite,
       Boolean(currentSignatureId || document.getElementById('compose-signature-content').innerText.trim()));
     renderPreview(composeAiSuggestion);
+    window.mailaiShowComposeChecks?.(result.checks || []);
     document.getElementById('btn-ai-replace-subject').classList.toggle('hidden', !composeAiSuggestion.subject);
     document.querySelectorAll('#btn-ai-replace-subject,#btn-ai-append,#btn-ai-replace').forEach(control => { control.disabled = false; });
     document.getElementById('compose-ai-preview-basis').textContent = `依据：${(result.basis || []).join('、')}`;
@@ -2570,6 +2583,8 @@ async function runMailPreflight(payload) {
 function composePreflightFingerprint(payload = draftPayload()) {
   return JSON.stringify({
     account_id:composeAccountId,
+    send_at:payload.send_at || '',
+    followup_days:payload.followup_days || 0, followup_at:payload.followup_at || '',
     to_addr:payload.to_addr, cc_addr:payload.cc_addr, bcc_addr:payload.bcc_addr,
     subject:payload.subject, body_html:payload.body_html, mode:payload.mode,
     reply_to_email_id:payload.reply_to_email_id,
@@ -2924,6 +2939,7 @@ function setLoading(el, loading, text) {
     else el.textContent = text || '处理中…';
     el.disabled = true;
     el.classList.add('loading');
+    el.setAttribute('aria-busy', 'true');
   } else {
     if (Object.prototype.hasOwnProperty.call(el.dataset, 'originalHtml')) {
       el.innerHTML = el.dataset.originalHtml;
@@ -2931,6 +2947,7 @@ function setLoading(el, loading, text) {
     }
     el.disabled = false;
     el.classList.remove('loading');
+    el.removeAttribute('aria-busy');
   }
 }
 
@@ -3638,6 +3655,7 @@ function applyFilters({silent = false} = {}) {
     return;
   }
   let list = [...(currentFilter.search && searchResults !== null ? searchResults : allEmails)];
+  list = window.mailaiProductivityFilter?.(list) || list;
 
   // 全局搜索返回完整历史；仍要遵守用户当前选择的时间范围。
   if (currentFilter.days !== 9999) {
@@ -3717,7 +3735,7 @@ function updateListTitle(count) {
   const riskTitle = {phishing:mailaiT('risk.phishing') || '钓鱼邮件', suspicious:mailaiT('risk.suspicious') || '可疑邮件', clean:mailaiT('risk.clean') || '正常邮件', unreviewed:mailaiT('risk.unreviewed') || '待分析'}[currentFilter.verdict];
   if (riskTitle) title += ` · ${riskTitle}`;
   if (currentFilter.category) title += ` · ${currentFilter.category}`;
-  document.getElementById('list-title').textContent = title;
+  document.getElementById('list-title').textContent = typeof window !== 'undefined' ? window.mailaiProductivityTitle?.(title) || title : title;
   const serverCounts = serverMailboxCounts();
   const totalKey = currentFilter.status || (!currentFilter.verdict && !currentFilter.category ? 'all' : '');
   const selectedServerMailbox = currentServerFolder
@@ -3779,12 +3797,14 @@ function mailListSignature(emails) {
       e.pending_action, e.pending_error, e.recommended_status, e.counterpart_name,
       e.counterpart_addr, e.counterpart_count, e.from_name, e.from_addr, e.date,
       e.subject, e.summary, e.snippet, e.category, e.priority,
+      e.handle_state, e.snoozed_until, e.followup_at, e.focus_override, e._conversationCount,
       (e.attachments || []).length,
     ]),
   });
 }
 
 function renderEmailList(emails, {silent = false} = {}) {
+  emails = window.mailaiProductivityList?.(emails) || emails;
   const container = document.getElementById('email-list');
   renderedEmailIds = emails.filter(item => !item._kind).map(item => Number(item.id));
   const visibleEmails = emails.slice(0, mailRenderLimit);
@@ -3830,7 +3850,7 @@ function renderEmailList(emails, {silent = false} = {}) {
       <div class="email-group">
         <div class="group-header">
           <span class="group-title">${esc(group.label)}</span>
-          <span class="group-count">${items.length}${mailaiT('list.countMail') || ' 封'}</span>
+          <span class="group-count">${items.length}${items.some(item => item._conversationCount) ? ' 组' : mailaiT('list.countMail') || ' 封'}</span>
         </div>
         ${items.map((e, i) => renderEmailItem(e, i)).join('')}
       </div>
@@ -3969,6 +3989,7 @@ function renderEmailItem(e, idx = 0) {
       <div class="email-subject">${esc(e.subject)}</div>
       <div class="email-preview ${currentFilter.search && e.search_match ? 'search-match-preview' : ''}">${renderSearchPreview(e)}</div>
       <div class="email-tags">
+        ${typeof window !== 'undefined' ? window.mailaiProductivityTags?.(e) || '' : ''}
         ${unifiedMailbox && e._account_user ? `<span class="mail-account-tag" title="所属邮箱 ${esc(e._account_user)}">${esc(e._account_user)}</span>` : ''}
         ${e.category ? `<span class="tag mail-category">${esc(mailCategoryLabel(e.category))}</span>` : ''}
         ${e.priority ? `<span class="tag mail-priority tag-priority-${e.priority}">${esc(mailPriorityLabel(e.priority))}</span>` : ''}
@@ -4848,7 +4869,17 @@ function hideRulesView(showLayout = true) {
 
 // ===== 后台收信后的列表自动刷新 =====
 async function refreshMailboxIfChanged(force = false) {
-  if (mailboxRefreshInFlight || !document.getElementById('app')) return;
+  if (!document.getElementById('app')) return;
+  if (mailboxRefreshInFlight) {
+    if (force) refreshMailboxIfChanged.pendingForce = true;
+    return;
+  }
+  if (typeof window !== 'undefined' && window.mailaiEnergy &&
+      (!window.mailaiEnergy.active() || document.body.classList.contains('compose-open') ||
+       document.querySelector('.layout')?.classList.contains('hidden'))) {
+    if (force) window.mailaiEnergy.run('mailbox', true);
+    return;
+  }
   const navigationRevision = mailboxNavigationRevision;
   mailboxRefreshInFlight = true;
   try {
@@ -4861,6 +4892,7 @@ async function refreshMailboxIfChanged(force = false) {
       const loaded = await loadData({includeAncillary:false, silent:true});
       if (loaded !== true) return;
     }
+    if ((force || changed) && typeof window !== 'undefined') window.mailaiWorkflowChanged?.();
     mailboxRevisionToken = state.revision;
     // 账户任务状态变化不一定修改邮件，但无需每 15 秒读取完整系统配置。
     const now = Date.now();
@@ -4880,22 +4912,31 @@ async function refreshMailboxIfChanged(force = false) {
     // 后台心跳失败不打扰阅读；下次心跳或窗口重新获得焦点时重试。
   } finally {
     mailboxRefreshInFlight = false;
+    if (refreshMailboxIfChanged.pendingForce) {
+      refreshMailboxIfChanged.pendingForce = false;
+      if (typeof window !== 'undefined' && window.mailaiEnergy) window.mailaiEnergy.run('mailbox', true);
+      else refreshMailboxIfChanged(true);
+    }
   }
 }
 
 function startMailboxAutoRefresh() {
   if (mailboxRefreshTimer) return;
   refreshMailboxIfChanged();
-  mailboxRefreshTimer = setInterval(() => {
-    if (!document.hidden) refreshMailboxIfChanged();
-  }, 15000);
+  if (window.mailaiEnergy) {
+    mailboxRefreshTimer = 1;
+    window.mailaiEnergy.register('mailbox', refreshMailboxIfChanged, 30000,
+      () => !document.body.classList.contains('compose-open') && !document.querySelector('.layout')?.classList.contains('hidden'));
+  } else {
+    mailboxRefreshTimer = setInterval(() => { if (!document.hidden) refreshMailboxIfChanged(); }, 30000);
+  }
 }
 
 window.mailaiMailboxUpdated = () => refreshMailboxIfChanged(true);
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) refreshMailboxIfChanged();
+  if (!document.hidden && !window.mailaiEnergy) refreshMailboxIfChanged();
 });
-window.addEventListener('focus', () => refreshMailboxIfChanged());
+window.addEventListener('focus', () => { if (!window.mailaiEnergy) refreshMailboxIfChanged(); });
 
 // ===== 系统中心 =====
 let _systemConfig = null;
@@ -5077,7 +5118,7 @@ function renderSidebarAccounts() {
   if (!host || !multiple) return;
   const inboxTotal = accounts.reduce((sum, account) => sum + Number(account.inbox || 0), 0);
   host.innerHTML = `<button type="button" class="nav-item unified-inbox-button ${unifiedMailbox ? 'active' : ''}" data-account-action="unified">
-    <span class="icon"><svg viewBox="0 0 20 20"><path d="M3.5 6.5h13v9h-13zM6 4h8M3.5 11h3l1.4 2h4.2l1.4-2h3"/></svg></span><span>${mailaiT('list.allInboxes') || '所有收件箱'}</span><span class="count">${inboxTotal}</span></button>` + accounts.map(account => {
+    <span class="icon"><svg viewBox="0 0 20 20"><path d="M3 5h14v11H3zM3 6l7 5 7-5"/></svg></span><span>${mailaiT('list.allInboxes') || '所有收件箱'}</span><span class="count">${inboxTotal}</span></button>` + accounts.map(account => {
       const selectedAccount = selectedMailboxAccountId === account.id && !unifiedMailbox;
       const collapsed = localStorage.getItem('collapsed:' + account.id) === '1';
       const syncing = account.credential_available && account.sync_status === 'running';
@@ -5097,7 +5138,7 @@ function renderSidebarAccounts() {
         ${statusVisible ? `<span class="account-sync-state ${syncing ? 'running' : 'warning'}" title="${esc(syncDetail)}">${syncing ? '<i class="account-sync-spinner" aria-hidden="true"></i>' : ''}${esc(status)}</span>` : ''}
         <details class="account-menu"><summary aria-label="管理 ${esc(account.user)}" title="${mailaiT('side.accountOptions') || '邮箱选项'}">⋯</summary><div><button type="button" data-account-alias="${esc(account.id)}">${mailaiT('side.renameAccount') || '修改显示名称'}</button><button type="button" data-account-manage="${esc(account.id)}">${mailaiT('side.manageAccount') || '管理此邮箱'}</button></div></details>
         </div>
-        <div class="sidebar-account-folders">${[['favorites', mailaiT('side.favorites') || '我的收藏','m10 2 2.4 5 5.6.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.6-.8Z'],['inbox', mailaiT('side.inbox') || '收件箱','M3 4h14v12H3zM3 11h4l1 2h4l1-2h4'],['sent', mailaiT('side.sent') || '已发送','m3 9 14-6-5 14-3-6-6-2Zm6 2 8-8'],['drafts', mailaiT('side.drafts') || '草稿箱','M5 2h7l4 4v12H5zM12 2v5h4M8 11h5M8 14h4'],['trash', mailaiT('side.trash') || '已删除','M4 6h12M7 6V3h6v3M6 8l1 9h6l1-9']].map(([action,label,path]) => `<button type="button" class="${selectedAccount && (action === 'local_archive' ? currentFilter.status === 'local_archive' : action === 'favorites' ? currentFilter.status === 'favorites' : action === 'trash' ? currentFilter.status === 'trash' || Boolean(currentServerFolder && currentServerFolder === serverFolderForRole('trash')?.name) : action === 'inbox' ? currentFilter.status === 'inbox' && !specialMailbox && !currentServerFolder : specialMailbox === action) ? 'active' : ''}" data-account-action="${action}" data-account-id="${esc(account.id)}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="${path}"/></svg><span>${label}</span>${action === 'inbox' && Number(account.unread) ? `<em title="未读邮件">${Number(account.unread)}</em>` : ''}</button>`).join('')}</div>
+        <div class="sidebar-account-folders">${[['favorites', mailaiT('side.favorites') || '我的收藏','m10 2 2.4 5 5.6.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.6-.8Z'],['inbox', mailaiT('side.inbox') || '收件箱','M3 13v4h14v-4M10 3v9m-3-3 3 3 3-3'],['sent', mailaiT('side.sent') || '已发送','m3 9 14-6-5 14-3-6-6-2Zm6 2 8-8'],['drafts', mailaiT('side.drafts') || '草稿箱','M5 2h7l4 4v12H5zM12 2v5h4M8 11h5M8 14h4'],['trash', mailaiT('side.trash') || '已删除','M4 6h12M7 6V3h6v3M6 8l1 9h6l1-9']].map(([action,label,path]) => `<button type="button" class="${selectedAccount && (action === 'local_archive' ? currentFilter.status === 'local_archive' : action === 'favorites' ? currentFilter.status === 'favorites' : action === 'trash' ? currentFilter.status === 'trash' || Boolean(currentServerFolder && currentServerFolder === serverFolderForRole('trash')?.name) : action === 'inbox' ? currentFilter.status === 'inbox' && !specialMailbox && !currentServerFolder : specialMailbox === action) ? 'active' : ''}" data-account-action="${action}" data-account-id="${esc(account.id)}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="${path}"/></svg><span>${label}</span>${action === 'inbox' && Number(account.unread) ? `<em title="未读邮件">${Number(account.unread)}</em>` : ''}</button>`).join('')}</div>
       </section>`;
     }).join('');
 }
@@ -5420,12 +5461,12 @@ function renderUpdateProgress(state) {
   const labels = {
     queued:'正在准备更新', checking:'正在确认版本', downloading:'正在下载安装包',
     verifying:'正在校验安装包', verified:'校验完成', launching:'正在启动安装程序',
-    launched:'安装程序已启动', failed:'更新未完成',
+    installing:'等待授权并安装', installed:'安装完成', launched:'安装程序已启动', failed:'更新未完成',
   };
   box.classList.remove('hidden');
   box.classList.toggle('indeterminate', !total && state.running);
   box.classList.toggle('verifying', phase === 'verifying' || phase === 'verified');
-  box.classList.toggle('complete', phase === 'launched');
+  box.classList.toggle('complete', phase === 'launched' || phase === 'installed');
   box.setAttribute('aria-valuenow', String(percent));
   document.getElementById('update-progress-label').textContent = labels[phase] || state.message || '正在更新';
   document.getElementById('update-progress-percent').textContent = total ? `${percent}%` : '连接中';
@@ -5437,6 +5478,8 @@ function renderUpdateProgress(state) {
     detail = `${formatUpdateBytes(downloaded)} / ${formatUpdateBytes(total)}`;
     if (state.speed_bps) detail += ` · ${formatUpdateBytes(state.speed_bps)}/秒`;
   } else if (phase === 'verifying') detail = '正在核对 SHA-256，确保安装包完整且未被篡改…';
+  else if (phase === 'installing') detail = '请在 macOS 弹出的授权窗口中确认；安装完成后 MailAI 会重新打开。';
+  else if (phase === 'installed') detail = '安装完成，正在重新打开 MailAI。';
   else if (phase === 'launched') detail = '请按系统提示完成安装；完成后将尝试自动打开 MailAI。';
   document.getElementById('update-progress-detail').textContent = detail;
   const button = document.getElementById('btn-install-update');
@@ -5487,13 +5530,33 @@ async function installAppUpdate(event) {
     if (result) {
       await new Promise(resolve => setTimeout(resolve, 700));
       document.getElementById('update-dialog').close();
-      toast(result.message || '安装器已启动；安装完成后将尝试自动打开 MailAI', 'success');
+      toast(result.message || '更新已完成', 'success');
     }
   } catch (error) {
     toast(error.message, 'error');
   } finally {
     appUpdateInstalling = false;
     setLoading(button, false);
+  }
+}
+
+async function showInterruptedAppUpdateOutcome() {
+  // The macOS package stops the old app while replacing it. The detached
+  // installer leaves a one-time result for this newly opened window.
+  for (let attempt = 0; attempt < 90; attempt++) {
+    let outcome;
+    try { outcome = await api('/api/system/update/install/outcome'); }
+    catch (_) { return; }
+    if (outcome.status === 'success') {
+      toast(outcome.message || 'MailAI 已更新', 'success');
+      return;
+    }
+    if (outcome.status === 'failed') {
+      toast(outcome.message || '更新未完成', 'error');
+      return;
+    }
+    if (!outcome.pending) return;
+    await new Promise(resolve => setTimeout(resolve, 1000));
   }
 }
 
@@ -5922,12 +5985,17 @@ async function copyRenderedMailImage(image) {
 function installRichEmailImageCopy(doc, listeners) {
   const button = doc.createElement('button');
   button.type = 'button';
+  button.setAttribute('data-mailai-copy-image', '');
+  const style = doc.createElement('style');
+  style.textContent = '[data-mailai-copy-image][aria-busy=true]::before{content:"";display:inline-block;width:10px;height:10px;margin-right:5px;border:1.5px solid currentColor;border-right-color:transparent;border-radius:50%;vertical-align:-1px;animation:mailaiCopyWorking .85s linear infinite}@keyframes mailaiCopyWorking{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){[data-mailai-copy-image]::before{animation:none!important}}';
+  doc.head.append(style);
   button.textContent = mailaiT('read.copyImage') || '复制图片';
   button.setAttribute('aria-label', mailaiT('read.copyImage') || '复制这张邮件图片');
   button.style.cssText = 'position:fixed;z-index:2147483647;display:none;padding:5px 9px;border:1px solid #cfe1d6;border-radius:8px;background:#f8fffa;color:#286b50;box-shadow:0 3px 12px #183e2b33;font:12px Arial,sans-serif;cursor:pointer';
   doc.body.append(button);
   let activeImage = null;
   const show = event => {
+    if (button.disabled) return;
     const image = event.target?.closest?.('img');
     if (!image) { if (event.target !== button) button.style.display = 'none'; return; }
     activeImage = image;
@@ -5938,11 +6006,14 @@ function installRichEmailImageCopy(doc, listeners) {
   };
   const copy = async event => {
     event.preventDefault();
-    if (!activeImage) return;
+    if (!activeImage || button.disabled) return;
+    const label = button.textContent;
     button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
+    button.textContent = currentI18nLanguage() === 'en' ? 'Copying…' : '复制中…';
     try { await copyRenderedMailImage(activeImage); toast(mailaiT('read.imageCopied') || '图片已复制，可粘贴到签名或其他位置', 'success'); }
     catch (error) { toast('复制图片失败：' + error.message + '。外链图片可尝试右键复制。', 'warn'); }
-    finally { button.disabled = false; }
+    finally { button.disabled = false; button.removeAttribute('aria-busy'); button.textContent = label; }
   };
   doc.addEventListener('pointerover', show);
   button.addEventListener('click', copy);
@@ -5965,6 +6036,7 @@ function autoSizeRichEmailFrame(frame) {
       const doc = frame.contentDocument;
       if (!doc?.body || !frame.isConnected) return;
       richEmailFrames.add(frame);
+      window.mailaiFoldReadingDocument?.(doc, frame);
       applyRichEmailFrameTheme(frame);
       let queued = 0, disposed = false, measured = '';
       const listeners = [];
@@ -6200,7 +6272,7 @@ function renderReadingPane(e) {
               <span>更多</span>
               <svg class="reading-more-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 7.5 4.5 4.5 4.5-4.5"/></svg>
             </summary>
-            <div class="reading-more-panel">${!['trash','spam','quarantine','draft'].includes(e.status) ? '<button type="button" onclick="openConversationProgress()"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 4h10v9H9l-4 3V4Z"/><path d="M8 7h4M8 10h4"/></svg><span>会话进展</span></button>' : ''}${decisionGroup}</div>
+            <div class="reading-more-panel">${decisionGroup}</div>
           </details>
         </div>
       </div>
@@ -6238,7 +6310,7 @@ function renderReadingPane(e) {
 
         <div class="reading-section body-section">
           <div class="section-title"><span>${mailaiT('read.body') || '邮件正文'}</span><div class="body-format-actions"><small>${e.has_rich_body ? (e.has_remote_images ? (mailaiT('read.fmtHtmlImages') || 'HTML 原始排版 · 外链图片已显示') : (mailaiT('read.fmtHtml') || 'HTML 原始排版')) : (mailaiT('read.fmtPlainOpt') || '纯文本邮件 · 优化排版')}</small></div></div>
-          ${e.has_rich_body ? `<div id="rich-email-body" class="email-body rich-email-body"><div class="reading-loading">${mailaiT('read.restoring') || '正在还原邮件排版…'}</div></div>` : `<div class="markdown-body email-body plain-email-body">${mdToHtml(e.body_text || '')}</div>`}
+          ${e.has_rich_body ? `<div id="rich-email-body" class="email-body rich-email-body"><div class="reading-loading">${mailaiT('read.restoring') || '正在还原邮件排版…'}</div></div>` : `<div class="markdown-body email-body plain-email-body">${window.mailaiReadingText?.(e) || mdToHtml(e.body_text || '')}</div>`}
         </div>
 
         ${attachments}
@@ -7271,7 +7343,7 @@ function renderAttachmentCenter() {
         <small class="attachment-sender">${esc(item.from_addr || (mailaiT('att.unknownSender') || '未知发件人'))}</small>
       </span>
     </a>
-      <span class="attachment-card-side">
+      <span class="attachment-card-side"><button type="button" class="attachment-compare-action" data-attachment-compare data-email-id="${item.email_id}" data-attachment-index="${item.index}" aria-label="比较同名文件：${esc(item.name)}" title="比较同名文件"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3h9v11H7zM4 6v11h9"/></svg></button>
         ${['danger', 'warn'].includes(getRiskLabel(item.score, item.verdict, item).class) ? `<em class="attachment-risk">${getRiskLabel(item.score, item.verdict, item).text}</em>` : ''}
         <a class="attachment-download-action" href="${mailboxResourceUrl(`/api/emails/${item.email_id}/attachments/${item.index}`, attachmentCenterAccountId)}" download="${esc(item.name)}" data-preview-download aria-label="${esc((mailaiT('att.downloadFile') || '下载 {name}').replace('{name}',item.name))}" title="${esc((mailaiT('att.downloadFile') || '下载 {name}').replace('{name}',item.name))}"><svg class="attachment-download" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9m-3-3 3 3 3-3M4 15h12"/></svg></a>
       </span>
@@ -7618,6 +7690,7 @@ document.getElementById('contact-form').addEventListener('submit', async event =
       company:document.getElementById('contact-company').value.trim(), note:document.getElementById('contact-note').value.trim(),
       group_name:document.getElementById('contact-group-name')?.value || '',
       favorite:document.getElementById('contact-favorite').checked,
+      ...(window.mailaiDirectoryFields ? {profile:window.mailaiDirectoryFields(),directory_revision:window.mailaiDirectoryEditRevision?.()} : {}),
     })});
     if (session !== contactCenterSession) return;
     closeContactEditor(); await loadContactCenter(); await loadData({silent:true}); toast('联系人已保存，邮件列表姓名已更新', 'success');
@@ -7905,27 +7978,7 @@ document.getElementById('diagnostic-results').addEventListener('click', event =>
   (field || document.querySelector(`[data-system-panel="${action.dataset.diagnosticTarget}"]`))?.scrollIntoView({block:'center', behavior:'smooth'});
 });
 
-document.getElementById('btn-run-diagnostics').addEventListener('click', async () => {
-  const button = document.getElementById('btn-run-diagnostics');
-  const results = document.getElementById('diagnostic-results');
-  setLoading(button, true, mailaiT('diag.checking') || '检查中…');
-  try {
-    // 诊断要实测 IMAP/SMTP/模型连接，可能远超通用 20s GET 超时
-    const data = await api(`/api/system/diagnostics?lang=${encodeURIComponent(currentI18nLanguage())}`, {timeoutMs: 120000});
-    const activeAccount = (_systemConfig?.accounts || []).find(account => account.active);
-    results.innerHTML = `<p class="diagnostic-scope">${activeAccount ? (mailaiT('diag.scope') || '本次检查：{user}。').replace('{user}', esc(activeAccount.user)) : (mailaiT('diag.scopeNone') || '本次未检测到正在使用的邮箱。')}${mailaiT('diag.scopeNote') || '诊断会实测当前邮箱和已配置的模型服务。'}</p>` + data.checks.map((item, index) => {
-      const status = item.status || (item.ok ? 'pass' : 'fail');
-      const icon = status === 'pass' ? '✓' : status === 'warning' ? 'i' : '!';
-      const label = item.probe === 'live' ? (mailaiT('diag.live') || '实测') : (mailaiT('diag.local') || '本地');
-      const guidance = status === 'pass' ? null : diagnosticAdvice(item);
-      return `<div class="diagnostic-item ${esc(status)}" style="animation-delay:${index*45}ms"><span>${icon}</span><b>${esc(item.name)}<em>${label}</em></b><small title="${esc(item.detail)}">${esc(item.detail)}</small>${guidance ?
-        `<p class="diagnostic-advice">${esc(guidance.advice)}</p><button type="button" class="diagnostic-action" data-diagnostic-target="${guidance.target}" data-diagnostic-field="${guidance.field}">${guidance.action} →</button>` : ''}</div>`;
-    }).join('');
-    results.classList.remove('hidden');
-    toast(data.ok ? (mailaiT('diag.pass') || '真实检查通过') : (mailaiT('diag.fail') || '检查发现连接或配置失败'), data.ok ? 'success' : 'error');
-  } catch (err) { toast((mailaiT('diag.failed') || '诊断失败：') + err.message, 'error'); }
-  finally { setLoading(button, false); }
-});
+document.getElementById('btn-run-diagnostics').addEventListener('click', () => window.mailaiRunDiagnostics?.());
 document.getElementById('btn-enable-notifications').addEventListener('click', async () => {
   if (window.pywebview?.api?.enable_notifications) {
     try {
@@ -8891,9 +8944,14 @@ document.getElementById('signature-image-width').addEventListener('change', even
 document.getElementById('signature-image-done').addEventListener('click', clearSignatureImageSelection);
 document.getElementById('btn-insert-signature-image').addEventListener('pointerdown', rememberSignatureSelection);
 document.getElementById('btn-insert-signature-image').addEventListener('click', () => document.getElementById('signature-image-input').click());
-document.getElementById('signature-image-input').addEventListener('change', event => {
-  insertSignatureImage(event.target.files[0]).catch(error => toast('插入签名图片失败：' + error.message, 'error'));
+document.getElementById('signature-image-input').addEventListener('change', async event => {
+  const file = event.target.files[0], button = document.getElementById('btn-insert-signature-image');
   event.target.value = '';
+  if (!file || button.disabled) return;
+  setLoading(button, true, '读取图片…');
+  try { await insertSignatureImage(file); }
+  catch(error) { toast('插入签名图片失败：' + error.message, 'error'); }
+  finally { setLoading(button, false); }
 });
 document.getElementById('signature-ai-options').addEventListener('click', event => {
   const button = event.target.closest('[data-ai-signature]');
@@ -8972,6 +9030,7 @@ async function submitComposeMail(payload, preflightConfirmed = false) {
     }
     payload.id = session.id;
     session.sendToken ||= crypto.randomUUID();
+    payload.expected_revision = session.revision || null;
     const result = await api('/api/mail/outbox', {accountId, method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...payload, request_token:session.sendToken})});
     session.canceled = true;
     if (session === draftSession) { currentDraftId = null; clearComposePreflight(); hideCompose(); }
@@ -9504,6 +9563,7 @@ setTimeout(() => {
   // version's release notes immediately after an upgrade.
   checkForAppUpdate(false);
 }, 1800);
+setTimeout(showInterruptedAppUpdateOutcome, 1200);
 // Users who keep the app running for weeks would otherwise never hear about
 // new releases: re-check once a day. The backend's 30-minute cache keeps
 // this from ever hitting GitHub more than once per check, and a silent

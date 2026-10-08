@@ -83,6 +83,7 @@ jobs:
           node tests/test_mailbox_transition_browser.cjs
           node tests/test_selection_glass_browser.cjs
           node tests/test_signature_images_browser.cjs
+          node tests/test_productivity_motion_browser.cjs
 
   secret-scan:
     runs-on: ubuntu-latest

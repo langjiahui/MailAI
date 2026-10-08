@@ -80,7 +80,7 @@ TRUSTED_SENDERS = {
 
 # ===== 拉取策略 =====
 # Guard against accidental 0/very-small intervals causing a tight background loop.
-POLL_INTERVAL_SECONDS = max(30, _i("POLL_INTERVAL_SECONDS", 300))
+POLL_INTERVAL_SECONDS = max(30, _i("POLL_INTERVAL_SECONDS", 60))
 INITIAL_FETCH_LIMIT = _i("INITIAL_FETCH_LIMIT", 20)
 # Historical mail is imported newest-first. Only a bounded recent window gets
 # productivity AI enrichment; local security rules still inspect every message.

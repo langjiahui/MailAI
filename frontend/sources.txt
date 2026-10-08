@@ -5,6 +5,7 @@
 i18n.js
 attachment-preview.js
 interaction-core.js
+energy-ui.js
 app.js
 conversation-progress.js
 mail-library.js
@@ -13,6 +14,7 @@ workspace.js
 secretary.js
 task-planner.js
 task-notices.js
+energy-reminders.js
 experience-polish.js
 assistant-images.js
 assistant-attachments.js
@@ -27,3 +29,9 @@ macos-window.js
 windows-window.js
 remote-control.js
 selection-glass.js
+productivity.js
+mail-reading-folds.js
+
+diagnostics-progress.js
+
+contact-directory.js
