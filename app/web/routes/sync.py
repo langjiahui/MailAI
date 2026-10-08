@@ -3,7 +3,7 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 
-from ... import config, pipeline
+from ... import config, db, pipeline
 from ...account_guard import start_account_thread
 from ..helpers import complete_mailbox_initialization, current_server
 from ..schemas import FolderRequest
@@ -93,6 +93,7 @@ def api_delete_mail_folder(name: str):
 @router.post("/api/poll")
 def api_poll():
     from ...mailbox_jobs import poll_all
+    db.retry_all_mail_fetch_now(config.INBOX_FOLDER)
     busy = pipeline.get_live_fetch_state()['running']
     result = poll_all(force=True, account_id=getattr(config, 'ACCOUNT_ID', '') or None)
     if not result.get('ok') and not busy:
