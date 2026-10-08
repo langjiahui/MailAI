@@ -3102,8 +3102,8 @@ async function loadData({includeAncillary = true, silent = false} = {}) {
     const mailPath = unified
       ? `/api/system/mail/unified-inbox?days=${days}&limit=1000`
       : currentFilter.status === 'local_archive' ? '/api/emails?days=365000&status=local_archive'
-      : currentFilter.status === 'favorites' ? '/api/emails?days=9999&status=favorites'
-      : currentFilter.status === 'trash' ? '/api/emails?days=9999&status=trash'
+      : currentFilter.status === 'favorites' ? '/api/emails?days=365000&status=favorites'
+      : currentFilter.status === 'trash' ? '/api/emails?days=365000&status=trash'
       : (folder ? `/api/emails?days=9999&folder=${encodeURIComponent(folder)}` : '/api/emails?days=' + days);
     const draftsRevision = draftListRevision;
     const requests = [loadMailPages(mailPath, isCurrent)];

@@ -107,6 +107,22 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve,ms));
     await page.locator('[data-reading-action=favorite]').click();
     await page.waitForFunction(()=>document.querySelector('[data-reading-action=favorite]')?.getAttribute('aria-pressed')==='true');
     assert.equal(await page.locator('#reading-content .reading-risk-group').count(),0);
+    // Very old archives remain visible after favorite/delete/restore actions.
+    await page.evaluate(id=>openAccountMailbox(id,'favorites'),target.id);
+    const favoriteRow=page.locator('.email-item').filter({hasText:'历史导入-'+stamp});
+    await favoriteRow.waitFor(); assert.equal(await favoriteRow.count(),1);
+    await favoriteRow.click({button:'right'});
+    await page.locator('[data-context-action=trash]').click();
+    await favoriteRow.waitFor({state:'hidden'});
+    await page.evaluate(id=>openAccountMailbox(id,'trash'),target.id);
+    const trashRow=page.locator('.email-item').filter({hasText:'历史导入-'+stamp});
+    await trashRow.waitFor();
+    await trashRow.click({button:'right'});
+    assert.match(await page.locator('[data-context-action=cancel_trash]').textContent(),/恢复本地邮件/);
+    await page.locator('[data-context-action=cancel_trash]').click();
+    await trashRow.waitFor({state:'hidden'});
+    await page.evaluate(id=>openAccountMailbox(id,'local_archive'),target.id);
+    await page.waitForFunction(value=>allEmails.filter(e=>e.subject.includes(value)).length===2,'历史导入-'+stamp);
     // Repeated export: all duplicates, with a clear explanation and disabled apply.
     await page.evaluate(()=>window.mailaiMailImport.open());
     await dialog.locator('#mail-import-files').setInputFiles({name:'same.eml',mimeType:'message/rfc822',buffer:raw('one')});
