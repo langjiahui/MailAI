@@ -190,6 +190,24 @@ html[data-theme] body #signature-manager .signature-profile { padding:0 0 20px; 
 #signature-manager .signature-ai-button { font-size:12px; min-height:36px; }
 #signature-manager .signature-editor-section { margin-top:20px; gap:12px; }
 #signature-manager .signature-editor { min-height:160px; font-size:14px; }
+#signature-manager .signature-editor-tools { display:flex; align-items:center; gap:10px; }
+#signature-manager .signature-editor-tools button { padding:5px 10px; border:1px solid var(--desk-line); border-radius:8px; color:var(--desk-accent); background:var(--desk-surface); font-size:12px; cursor:pointer; }
+#signature-manager .signature-editor-tools button:hover { background:var(--desk-hover); }
+#signature-manager .signature-editor img { display:inline-block; max-width:100%; height:auto; vertical-align:middle; cursor:pointer; border-radius:3px; }
+#signature-manager .signature-editor img.signature-image-selected { outline:2px solid var(--desk-accent); outline-offset:3px; }
+#signature-manager .signature-image-controls { display:grid; gap:12px; padding:14px 16px; border:1px solid var(--desk-line); border-radius:12px; background:var(--desk-surface); color:var(--desk-ink); box-shadow:0 8px 24px rgba(28,72,51,.06); }
+#signature-manager .signature-image-controls-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+#signature-manager .signature-image-controls-head strong { font-size:13px; }
+#signature-manager .signature-image-controls-head button { border:0; background:transparent; color:var(--desk-accent); font-size:12px; cursor:pointer; }
+#signature-manager .signature-image-presets { display:flex; gap:6px; flex-wrap:wrap; }
+#signature-manager .signature-image-presets button { min-width:56px; padding:6px 10px; border:1px solid var(--desk-line); border-radius:8px; background:var(--desk-muted-surface); color:var(--desk-ink); font-size:12px; cursor:pointer; }
+#signature-manager .signature-image-presets button.active { border-color:var(--desk-accent); background:var(--desk-selected); color:var(--desk-accent); }
+#signature-manager .signature-image-size-row { display:flex; align-items:center; gap:10px; font-size:12px; }
+#signature-manager .signature-image-size-row label { width:56px; flex:none; }
+#signature-manager .signature-image-size-row input[type=range] { flex:1; min-width:100px; accent-color:var(--desk-accent); }
+#signature-manager .signature-image-size-row output { width:46px; text-align:right; color:var(--desk-accent); }
+#signature-manager .signature-image-size-row input[type=number] { width:100px; min-height:30px; padding:4px 8px; border:1px solid var(--desk-line); border-radius:8px; color:var(--desk-ink); background:var(--desk-surface); font:inherit; }
+#signature-manager .signature-image-controls>small { color:var(--desk-muted); font-size:11px; }
 #signature-manager :is(input,select,button,[contenteditable]):focus-visible { outline:2px solid var(--desk-accent); outline-offset:2px; }
 @media(max-width:760px) {
  #signature-manager .signature-manager-body { grid-template-columns:minmax(0,1fr); }

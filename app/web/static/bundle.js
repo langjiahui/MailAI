@@ -347,6 +347,14 @@ const I18N_MESSAGES = {
     'sig.sigNamePh': 'E.g.: Work signature',
     'sig.content': 'Signature content',
     'sig.contentHint': 'Edit text and formatting directly',
+    'sig.insertImage': 'Insert image',
+    'sig.imageSize': 'Resize image',
+    'sig.imageDone': 'Done',
+    'sig.imageScale': 'Original size',
+    'sig.imageWidth': 'Width',
+    'sig.imageSizeHint': 'Height adjusts automatically to preserve the image ratio. Click the image to resize it again.',
+    'read.copyImage': 'Copy image',
+    'read.imageCopied': 'Image copied. Paste it into a signature or elsewhere.',
     'sig.makeDefault': 'Set as default signature',
     'sig.delete': 'Delete signature',
     'sig.cancel': 'Cancel',
@@ -3236,8 +3244,110 @@ function fillSignatureProfile(profile = {}) {
   for (const key of ['name','title','department','company','phone','email','website']) document.getElementById(`signature-profile-${key}`).value = profile[key] || '';
 }
 
+let savedSignatureRange = null;
+let selectedSignatureImage = null;
+function rememberSignatureSelection() {
+  const editor = document.getElementById('signature-editor');
+  const selection = window.getSelection();
+  if (!selection?.rangeCount || !editor.contains(selection.anchorNode)) return;
+  savedSignatureRange = selection.getRangeAt(0).cloneRange();
+}
+
+function clearSignatureImageSelection() {
+  selectedSignatureImage?.classList.remove('signature-image-selected');
+  selectedSignatureImage = null;
+  document.getElementById('signature-image-controls').classList.add('hidden');
+}
+
+function signatureImageNaturalWidth(image) {
+  return image.naturalWidth || Number(image.getAttribute('width')) || Math.round(image.getBoundingClientRect().width) || 1;
+}
+
+function signatureImageWidth(image) {
+  return Number(image.getAttribute('width')) || Math.round(image.getBoundingClientRect().width) || signatureImageNaturalWidth(image);
+}
+
+function refreshSignatureImageControls() {
+  const image = selectedSignatureImage;
+  const editor = document.getElementById('signature-editor');
+  if (!image || !editor.contains(image)) return clearSignatureImageSelection();
+  const width = signatureImageWidth(image);
+  const percent = Math.max(1, Math.round(width / signatureImageNaturalWidth(image) * 100));
+  document.getElementById('signature-image-width').value = String(width);
+  document.getElementById('signature-image-scale').value = String(Math.min(200, percent));
+  document.getElementById('signature-image-scale-value').textContent = `${percent}%`;
+  document.querySelectorAll('[data-signature-image-scale]').forEach(button => {
+    button.classList.toggle('active', Number(button.dataset.signatureImageScale) === percent);
+  });
+}
+
+function selectSignatureImage(image) {
+  if (!image || !document.getElementById('signature-editor').contains(image)) return;
+  clearSignatureImageSelection();
+  selectedSignatureImage = image;
+  image.classList.add('signature-image-selected');
+  document.getElementById('signature-image-controls').classList.remove('hidden');
+  refreshSignatureImageControls();
+  if (!image.complete) image.addEventListener('load', () => {
+    if (selectedSignatureImage === image) refreshSignatureImageControls();
+  }, {once:true});
+}
+
+function setSignatureImageWidth(value) {
+  if (!selectedSignatureImage || !document.getElementById('signature-editor').contains(selectedSignatureImage)) return clearSignatureImageSelection();
+  const width = Math.min(1200, Math.max(16, Math.round(Number(value) || 0)));
+  selectedSignatureImage.setAttribute('width', String(width));
+  selectedSignatureImage.removeAttribute('height');
+  selectedSignatureImage.style.width = `${width}px`;
+  selectedSignatureImage.style.maxWidth = '100%';
+  selectedSignatureImage.style.height = 'auto';
+  refreshSignatureImageControls();
+}
+
+async function insertSignatureImage(file) {
+  if (!file) return;
+  if (!/^image\/(png|jpeg|gif|webp)$/i.test(file.type)) return toast('支持 PNG、JPEG、GIF 或 WebP 图片', 'warn');
+  if (file.size > 5 * 1024 * 1024) return toast('单张签名图片不能超过 5MB', 'warn');
+  const signatureId = editingSignatureId;
+  const src = `data:${file.type};base64,${await readFileAsBase64(file)}`;
+  if (document.getElementById('signature-manager').classList.contains('hidden') || signatureId !== editingSignatureId) return;
+  const editor = document.getElementById('signature-editor');
+  const image = document.createElement('img');
+  image.addEventListener('load', () => {
+    if (!image.hasAttribute('width')) setSignatureImageWidthForNewImage(image);
+  }, {once:true});
+  image.src = src;
+  image.alt = file.name;
+  image.style.cssText = 'max-width:100%;height:auto;vertical-align:middle';
+  const range = savedSignatureRange && editor.contains(savedSignatureRange.commonAncestorContainer)
+    ? savedSignatureRange.cloneRange() : document.createRange();
+  if (!editor.contains(range.commonAncestorContainer)) range.selectNodeContents(editor);
+  if (!savedSignatureRange || !editor.contains(savedSignatureRange.commonAncestorContainer)) range.collapse(false);
+  range.deleteContents();
+  range.insertNode(image);
+  range.setStartAfter(image);
+  range.collapse(true);
+  editor.focus();
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+  savedSignatureRange = range.cloneRange();
+  selectSignatureImage(image);
+}
+
+function setSignatureImageWidthForNewImage(image) {
+  const width = Math.min(360, image.naturalWidth || 360);
+  if (selectedSignatureImage === image) setSignatureImageWidth(width);
+  else {
+    image.setAttribute('width', String(width));
+    image.style.width = `${width}px`;
+  }
+}
+
 function editSignature(signatureId = '') {
   editingSignatureId = signatureId;
+  savedSignatureRange = null;
+  clearSignatureImageSelection();
   const item = signatureState.items.find(row => row.id === signatureId);
   document.getElementById('signature-name').value = item?.name || '';
   document.getElementById('signature-editor').innerHTML = item?.html || '';
@@ -3261,12 +3371,17 @@ async function openSignatureManager() {
   document.getElementById('signature-manager').classList.remove('hidden');
 }
 
-function closeSignatureManager() { document.getElementById('signature-manager').classList.add('hidden'); }
+function closeSignatureManager() {
+  clearSignatureImageSelection();
+  document.getElementById('signature-manager').classList.add('hidden');
+}
 
 async function saveSignature() {
   const name = document.getElementById('signature-name').value.trim();
-  const html = document.getElementById('signature-editor').innerHTML.trim();
-  if (!name || !document.getElementById('signature-editor').innerText.trim()) return toast('请填写签名名称和内容', 'warn');
+  const editorCopy = document.getElementById('signature-editor').cloneNode(true);
+  editorCopy.querySelectorAll('.signature-image-selected').forEach(image => image.classList.remove('signature-image-selected'));
+  const html = editorCopy.innerHTML.trim();
+  if (!name || !(document.getElementById('signature-editor').innerText.trim() || document.querySelector('#signature-editor img'))) return toast('请填写签名名称和内容', 'warn');
   signatureState = await api('/api/mail/signatures', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:editingSignatureId,name,html,profile:signatureProfileFromForm(),make_default:document.getElementById('signature-make-default').checked})});
   const saved = signatureState.items.find(item => item.name === name && item.html === html) || signatureState.items.at(-1);
   editingSignatureId = saved?.id || editingSignatureId;
@@ -7478,6 +7593,67 @@ function syncRichEmailFrameTheme(theme = document.documentElement.dataset.theme)
 document.addEventListener('mailai:themechange', event => syncRichEmailFrameTheme(event.detail?.theme));
 // The frame stays script-disabled; only the parent-installed click listener can
 // route web links externally or mail links into MailAI's composer.
+async function copyRenderedMailImage(image) {
+  const source = image.currentSrc || image.src;
+  if (!source || !image.complete || !image.naturalWidth) throw new Error('图片尚未加载完成');
+  const url = new URL(source, location.href);
+  const response = await fetch(source, {mode:'cors', credentials:url.origin === location.origin ? 'same-origin' : 'omit'});
+  if (!response.ok) throw new Error('图片无法读取');
+  const original = await response.blob();
+  if (!/^image\/(png|jpeg|gif|webp)$/i.test(original.type) || original.size > 20 * 1024 * 1024) throw new Error('图片格式或大小不支持复制');
+  let png = original;
+  if (original.type !== 'image/png') {
+    const bitmap = await createImageBitmap(original);
+    try {
+      if (bitmap.width * bitmap.height > 24_000_000) throw new Error('图片分辨率过大');
+      const canvas = document.createElement('canvas');
+      canvas.width = bitmap.width; canvas.height = bitmap.height;
+      canvas.getContext('2d').drawImage(bitmap, 0, 0);
+      png = await new Promise((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('图片转换失败')), 'image/png'));
+    } finally { bitmap.close(); }
+  }
+  if (navigator.clipboard?.write && window.ClipboardItem) {
+    try {
+      await navigator.clipboard.write([new ClipboardItem({'image/png':png})]);
+      return;
+    } catch (error) {
+      if (!window.pywebview?.api?.copy_image_png) throw error;
+    }
+  }
+  if (!window.pywebview?.api?.copy_image_png) throw new Error('当前环境不支持图片剪贴板');
+  await window.pywebview.api.copy_image_png(await assistantImageDataUrl(png));
+}
+
+function installRichEmailImageCopy(doc, listeners) {
+  const button = doc.createElement('button');
+  button.type = 'button';
+  button.textContent = mailaiT('read.copyImage') || '复制图片';
+  button.setAttribute('aria-label', mailaiT('read.copyImage') || '复制这张邮件图片');
+  button.style.cssText = 'position:fixed;z-index:2147483647;display:none;padding:5px 9px;border:1px solid #cfe1d6;border-radius:8px;background:#f8fffa;color:#286b50;box-shadow:0 3px 12px #183e2b33;font:12px Arial,sans-serif;cursor:pointer';
+  doc.body.append(button);
+  let activeImage = null;
+  const show = event => {
+    const image = event.target?.closest?.('img');
+    if (!image) { if (event.target !== button) button.style.display = 'none'; return; }
+    activeImage = image;
+    const rect = image.getBoundingClientRect();
+    button.style.left = `${Math.max(6, Math.min(rect.right - 76, doc.documentElement.clientWidth - 82))}px`;
+    button.style.top = `${Math.max(6, rect.top + 6)}px`;
+    button.style.display = 'block';
+  };
+  const copy = async event => {
+    event.preventDefault();
+    if (!activeImage) return;
+    button.disabled = true;
+    try { await copyRenderedMailImage(activeImage); toast(mailaiT('read.imageCopied') || '图片已复制，可粘贴到签名或其他位置', 'success'); }
+    catch (error) { toast('复制图片失败：' + error.message + '。外链图片可尝试右键复制。', 'warn'); }
+    finally { button.disabled = false; }
+  };
+  doc.addEventListener('pointerover', show);
+  button.addEventListener('click', copy);
+  listeners.push([doc, 'pointerover', show], [button, 'click', copy]);
+}
+
 let richEmailCleanupObserver;
 function autoSizeRichEmailFrame(frame) {
   // One owner for detached frames: observers and image callbacks must not keep
@@ -7543,6 +7719,7 @@ function autoSizeRichEmailFrame(frame) {
       const blockMailForm = event => { event.preventDefault(); toast('请使用邮件中的网页链接，表单不能在邮件正文内提交', 'warn'); };
       doc.addEventListener('submit', blockMailForm, true);
       listeners.push([doc, 'submit', blockMailForm]);
+      installRichEmailImageCopy(doc, listeners);
       resize();
       doc.querySelectorAll('img').forEach(image => {
         if (!image.complete) for (const event of ['load', 'error']) {
@@ -10399,12 +10576,37 @@ document.getElementById('btn-delete-signature').addEventListener('click', async 
   toast('签名已删除', 'success');
 });
 document.getElementById('btn-ai-generate-signature').addEventListener('click', event => generateSignatures(event.currentTarget));
+document.getElementById('signature-editor').addEventListener('keyup', rememberSignatureSelection);
+document.getElementById('signature-editor').addEventListener('mouseup', rememberSignatureSelection);
+document.getElementById('signature-editor').addEventListener('click', event => {
+  const image = event.target.closest?.('img');
+  if (image) selectSignatureImage(image);
+  else clearSignatureImageSelection();
+});
+document.getElementById('signature-editor').addEventListener('input', () => {
+  if (selectedSignatureImage && !document.getElementById('signature-editor').contains(selectedSignatureImage)) clearSignatureImageSelection();
+});
+document.querySelectorAll('[data-signature-image-scale]').forEach(button => button.addEventListener('click', () => {
+  if (selectedSignatureImage) setSignatureImageWidth(signatureImageNaturalWidth(selectedSignatureImage) * Number(button.dataset.signatureImageScale) / 100);
+}));
+document.getElementById('signature-image-scale').addEventListener('input', event => {
+  if (selectedSignatureImage) setSignatureImageWidth(signatureImageNaturalWidth(selectedSignatureImage) * Number(event.target.value) / 100);
+});
+document.getElementById('signature-image-width').addEventListener('change', event => setSignatureImageWidth(event.target.value));
+document.getElementById('signature-image-done').addEventListener('click', clearSignatureImageSelection);
+document.getElementById('btn-insert-signature-image').addEventListener('pointerdown', rememberSignatureSelection);
+document.getElementById('btn-insert-signature-image').addEventListener('click', () => document.getElementById('signature-image-input').click());
+document.getElementById('signature-image-input').addEventListener('change', event => {
+  insertSignatureImage(event.target.files[0]).catch(error => toast('插入签名图片失败：' + error.message, 'error'));
+  event.target.value = '';
+});
 document.getElementById('signature-ai-options').addEventListener('click', event => {
   const button = event.target.closest('[data-ai-signature]');
   if (!button) return;
   const item = event.currentTarget._options?.[Number(button.dataset.aiSignature)];
   if (!item) return;
   editingSignatureId = '';
+  clearSignatureImageSelection();
   document.getElementById('signature-name').value = item.name;
   document.getElementById('signature-editor').innerHTML = item.html;
   document.getElementById('signature-make-default').checked = !signatureState.default_id;
