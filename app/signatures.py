@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import html
+import base64
+import binascii
 import json
 import re
 import uuid
@@ -16,7 +18,7 @@ PROFILE_FIELDS = ("name", "title", "department", "company", "phone", "email", "w
 
 def sanitize_html(value: str) -> str:
     """Remove active content while retaining ordinary rich signature markup."""
-    value = str(value or "")[:50000]
+    value = str(value or "")
     value = re.sub(r"<\s*(script|style|iframe|object|embed|form)[^>]*>.*?<\s*/\s*\1\s*>", "", value,
                    flags=re.I | re.S)
     value = re.sub(r"<\s*(script|style|iframe|object|embed|form)[^>]*/?\s*>", "", value, flags=re.I)
@@ -24,6 +26,29 @@ def sanitize_html(value: str) -> str:
     value = re.sub(r"\s+on[a-z]+\s*=\s*[^\s>]+", "", value, flags=re.I)
     value = re.sub(r"(href|src)\s*=\s*(['\"])\s*javascript:.*?\2", r'\1="#"', value, flags=re.I | re.S)
     return value.strip()
+
+
+def _check_signature_images(value: str) -> None:
+    """Keep embedded signature pictures intact while matching send-time limits."""
+    if len(value) > 15_000_000:
+        raise ValueError("签名内容过大，请缩小图片后重试")
+    total = 0
+    for tag in re.findall(r"<img\b[^>]*>", value, flags=re.I | re.S):
+        source = re.search(r"\bsrc\s*=\s*(['\"])(.*?)\1", tag, flags=re.I | re.S)
+        if not source or not source.group(2).lower().startswith("data:"):
+            continue
+        match = re.fullmatch(r"data:image/(png|jpeg|gif|webp);base64,([A-Za-z0-9+/=]+)", source.group(2), flags=re.I)
+        if not match:
+            raise ValueError("签名图片格式无效，请使用 PNG、JPEG、GIF 或 WebP")
+        try:
+            size = len(base64.b64decode(match.group(2), validate=True))
+        except (ValueError, binascii.Error) as exc:
+            raise ValueError("签名图片数据无效") from exc
+        if size > 5 * 1024 * 1024:
+            raise ValueError("单张签名图片不能超过 5MB")
+        total += size
+    if total > 10 * 1024 * 1024:
+        raise ValueError("签名图片总大小不能超过 10MB")
 
 
 def _clean_profile(profile: dict | None) -> dict:
@@ -59,6 +84,7 @@ def load() -> dict:
 def save(item: dict, profile: dict | None = None, make_default: bool = False) -> dict:
     state = load()
     signature_id = str(item.get("id") or uuid.uuid4().hex)
+    _check_signature_images(str(item.get("html") or ""))
     saved = {"id": signature_id, "name": str(item.get("name") or "我的签名").strip()[:80],
              "html": sanitize_html(item.get("html") or "")}
     if not saved["html"]:

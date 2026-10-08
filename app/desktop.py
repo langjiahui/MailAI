@@ -582,6 +582,32 @@ class DesktopApi:
                           'data_base64':base64.b64encode(raw).decode(), 'size':size})
         return items
 
+    def copy_image_png(self, data_url: str):
+        """Copy a user-selected rendered image when the webview lacks ClipboardItem."""
+        import base64
+        import binascii
+        if sys.platform != 'darwin':
+            raise ValueError('当前桌面环境不支持图片复制')
+        prefix = 'data:image/png;base64,'
+        if not isinstance(data_url, str) or not data_url.startswith(prefix):
+            raise ValueError('图片格式无效')
+        encoded = data_url[len(prefix):]
+        if len(encoded) > 28_000_000:
+            raise ValueError('图片过大')
+        try:
+            raw = base64.b64decode(encoded, validate=True)
+        except (ValueError, binascii.Error) as exc:
+            raise ValueError('图片数据无效') from exc
+        if not raw.startswith(b'\x89PNG\r\n\x1a\n') or len(raw) > 20 * 1024 * 1024:
+            raise ValueError('图片格式或大小无效')
+        from AppKit import NSPasteboard, NSPasteboardTypePNG
+        from Foundation import NSData
+        board = NSPasteboard.generalPasteboard()
+        board.clearContents()
+        if not board.setData_forType_(NSData.dataWithBytes_length_(raw, len(raw)), NSPasteboardTypePNG):
+            raise ValueError('系统剪贴板写入失败')
+        return {'ok': True}
+
     def download_attachment(self, email_id: int, attachment_index: int, suggested_name: str = "", account_id: str = "", source: str = "email"):
         """Save an attachment through the native dialog used by packaged apps."""
         from webview import FileDialog

@@ -1,5 +1,6 @@
 """Desktop shell must survive a configured port being occupied."""
 import socket
+import base64
 import sys
 import tempfile
 import threading
@@ -71,6 +72,22 @@ def main():
     assert runtime.handle_closing(fake) is None
 
     desktop_api = DesktopApi(DesktopRuntime())
+    written = []
+    board = types.SimpleNamespace(clearContents=lambda: written.append('clear'),
+                                  setData_forType_=lambda data, kind: written.append((data, kind)) or True)
+    appkit = types.SimpleNamespace(NSPasteboard=types.SimpleNamespace(generalPasteboard=lambda: board),
+                                   NSPasteboardTypePNG='public.png')
+    foundation = types.SimpleNamespace(NSData=types.SimpleNamespace(dataWithBytes_length_=lambda raw, size: raw[:size]))
+    png = b'\x89PNG\r\n\x1a\nfixture'
+    with patch('app.desktop.sys.platform', 'darwin'), patch.dict(sys.modules, {'AppKit':appkit, 'Foundation':foundation}):
+        assert desktop_api.copy_image_png('data:image/png;base64,' + base64.b64encode(png).decode()) == {'ok': True}
+        assert written == ['clear', (png, 'public.png')]
+        try:
+            desktop_api.copy_image_png('data:image/png;base64,' + base64.b64encode(b'not png').decode())
+        except ValueError:
+            pass
+        else:
+            raise AssertionError('Native clipboard accepted invalid PNG bytes')
     with patch("app.desktop.webbrowser.open", return_value=True) as browser_open:
         assert desktop_api.open_external_url("https://example.test/payroll")["ok"]
         browser_open.assert_called_once_with("https://example.test/payroll", new=2)
