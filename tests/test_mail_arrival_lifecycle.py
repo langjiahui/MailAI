@@ -77,10 +77,11 @@ def main():
         clock.return_value = 60
         mailbox_jobs.poll_all(force=False)
         assert [key for key, _ in jobs] == ['a', 'b', 'a', 'a'], 'Keep a manual request made while busy'
-        jobs[3][1].set_result({'ok': True, 'notifications_delivered': True})
+        jobs[3][1].set_result({'ok': True, 'errors': 1, 'notifications_delivered': True})
         clock.return_value = 300
         mailbox_jobs.poll_all(force=False)
         assert jobs[-1][0] == 'b', 'Healthy accounts retain their configured interval'
+        assert 'a' not in mailbox_jobs._poll_failures, 'A deferred message must not back off the entire account'
 
     paused_registry = {'accounts': {'a': {'visible': True, 'auto_sync_paused': True}}}
     with patch.object(mailbox_jobs.system_settings, '_load_registry', return_value=paused_registry), \
