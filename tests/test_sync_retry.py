@@ -14,11 +14,16 @@ def main():
     with patch('app.pipeline.MailClient', return_value=mail), \
          patch('app.pipeline._set_fetch_state'), patch('app.pipeline._reset_action_guard'), \
          patch('app.pipeline.db.already_processed', return_value=False), \
+         patch('app.pipeline.db.defer_mail_fetch') as deferred, \
+         patch('app.pipeline.db.clear_mail_fetch_retry'), \
+         patch('app.pipeline.db.mail_fetch_retry_summary', return_value={'count': 1}), \
          patch('app.pipeline.db.set_last_uid') as cursor, \
          patch('app.pipeline.process_message', side_effect=[{'status': 'inbox'}, RuntimeError('decode'), {'status': 'inbox'}]):
         result = pipeline.poll_once()
         assert result['errors'] == 1
-        cursor.assert_called_once_with(config.INBOX_FOLDER, 10)
+        assert [call.args[1] for call in cursor.call_args_list] == [10, 11, 12]
+        deferred.assert_called_once()
+        assert deferred.call_args.args[:2] == (config.INBOX_FOLDER, 11)
     mail.fetch_older.return_value = [(7, b'a'), (8, b'b'), (9, b'c')]
     with patch('app.pipeline.MailClient', return_value=mail), \
          patch('app.pipeline._set_fetch_state'), patch('app.pipeline._reset_action_guard'), \

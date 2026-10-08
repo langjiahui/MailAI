@@ -1,8 +1,10 @@
 """持久化同步任务与文件夹同步状态（last_uid / UIDVALIDITY）。"""
+import time
 from datetime import datetime
 
 from .core import conn
 
+MAX_AUTOMATIC_RETRY_BYTES = 50 * 1024 * 1024
 
 # ---------- durable sync jobs ----------
 
@@ -23,6 +25,63 @@ def get_sync_job() -> dict | None:
     with conn() as c:
         row = c.execute("SELECT * FROM sync_jobs WHERE job_key='mailbox'").fetchone()
         return dict(row) if row else None
+
+
+def defer_mail_fetch(folder: str, uid: int, error: str, *, size: int = 0,
+                     retry_after: int | None = None) -> dict:
+    """Persist a failed UID before the mailbox cursor is allowed past it."""
+    now = time.time()
+    with conn() as c:
+        previous = c.execute(
+            "SELECT attempts FROM mail_fetch_retries WHERE folder=? AND uid=?", (folder, uid)
+        ).fetchone()
+        attempts = int(previous['attempts'] or 0) + 1 if previous else 1
+        delay = retry_after if retry_after is not None else min(3600, 30 * (2 ** min(attempts - 1, 7)))
+        validity = c.execute("SELECT uid_validity FROM sync_state WHERE folder=?", (folder,)).fetchone()
+        generation = int(validity['uid_validity'] or 0) if validity else 0
+        c.execute(
+            "INSERT INTO mail_fetch_retries(folder,uid,uid_validity,attempts,due_at,error,size,updated_at) "
+            "VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(folder,uid) DO UPDATE SET "
+            "uid_validity=excluded.uid_validity,attempts=excluded.attempts,due_at=excluded.due_at,"
+            "error=excluded.error,size=excluded.size,updated_at=excluded.updated_at",
+            (folder, uid, generation, attempts, now + delay, str(error)[:500], int(size or 0),
+             datetime.now().isoformat(timespec='seconds')),
+        )
+    return {'uid': uid, 'attempts': attempts, 'due_at': now + delay}
+
+
+def due_mail_fetch_retries(folder: str, *, limit: int = 20) -> list[int]:
+    with conn() as c:
+        return [int(row['uid']) for row in c.execute(
+            "SELECT uid FROM mail_fetch_retries WHERE folder=? AND due_at<=? AND size<? "
+            "ORDER BY due_at,uid LIMIT ?",
+            (folder, time.time(), MAX_AUTOMATIC_RETRY_BYTES, limit),
+        )]
+
+
+def mail_fetch_retry_summary(folder: str) -> dict:
+    with conn() as c:
+        row = c.execute(
+            "SELECT COUNT(*) AS count,"
+            "SUM(CASE WHEN size>=? THEN 1 ELSE 0 END) AS oversized,"
+            "MIN(CASE WHEN size<? THEN due_at END) AS next_retry_at "
+            "FROM mail_fetch_retries WHERE folder=?",
+            (MAX_AUTOMATIC_RETRY_BYTES, MAX_AUTOMATIC_RETRY_BYTES, folder),
+        ).fetchone()
+        return {'count': int(row['count'] or 0), 'oversized': int(row['oversized'] or 0),
+                'next_retry_at': row['next_retry_at']}
+
+
+def clear_mail_fetch_retry(folder: str, uid: int):
+    with conn() as c:
+        c.execute("DELETE FROM mail_fetch_retries WHERE folder=? AND uid=?", (folder, uid))
+
+
+def retry_all_mail_fetch_now(folder: str) -> int:
+    with conn() as c:
+        result = c.execute("UPDATE mail_fetch_retries SET due_at=0 WHERE folder=? AND size<?",
+                           (folder, MAX_AUTOMATIC_RETRY_BYTES))
+        return result.rowcount
 
 
 # ---------- sync_state ----------
@@ -51,6 +110,7 @@ def observe_uid_validity(folder: str, value: int, *, reset: bool = False) -> boo
             if not reset:
                 raise RuntimeError("服务器邮件编号已变化，请先重新同步文件夹")
             c.execute("DELETE FROM seen_sync_jobs WHERE email_id IN (SELECT id FROM emails WHERE folder=?)", (folder,))
+            c.execute("DELETE FROM mail_fetch_retries WHERE folder=?", (folder,))
             c.execute(
                 "UPDATE emails SET uid=-id,is_local_archive=1,remote_missing=0,"
                 "pending_action='',pending_target='',pending_target_uid=NULL,pending_due_at=NULL,"
@@ -84,6 +144,6 @@ def set_last_uid(folder: str, uid: int):
     with conn() as c:
         c.execute(
             "INSERT INTO sync_state(folder,last_uid) VALUES(?,?) "
-            "ON CONFLICT(folder) DO UPDATE SET last_uid=excluded.last_uid",
+            "ON CONFLICT(folder) DO UPDATE SET last_uid=MAX(sync_state.last_uid,excluded.last_uid)",
             (folder, uid),
         )

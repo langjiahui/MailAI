@@ -2,6 +2,7 @@
 import logging
 import re
 import ssl
+import time
 import certifi
 
 from imapclient import IMAPClient
@@ -9,22 +10,50 @@ from imapclient import IMAPClient
 from . import config, db
 
 log = logging.getLogger(__name__)
+MAX_AUTOMATIC_MESSAGE_BYTES = 50 * 1024 * 1024
+BODY_CHUNK_BYTES = 512 * 1024
+
+
+class OversizedMessageError(RuntimeError):
+    def __init__(self, uid: int, size: int):
+        self.size = size
+        super().__init__(f'邮件 {uid} 超过 50 MB，已暂停自动下载')
+
+
+class MailTransportError(RuntimeError):
+    """The mailbox connection itself is unavailable; stop this poll."""
 
 
 class RawMessageBatch:
     """Sized UID plan, with at most one body download in flight."""
-    def __init__(self, client, folder, uids, *, tolerate_missing=False):
+    def __init__(self, client, folder, uids, *, tolerate_missing=False, fetcher=None):
         self.client, self.folder, self.uids = client, folder, list(uids)
         self.tolerate_missing = tolerate_missing
+        self.fetcher = fetcher
+        self.on_start = None
 
     def __len__(self):
         return len(self.uids)
 
     def newest_first(self):
-        return RawMessageBatch(self.client, self.folder, sorted(self.uids, reverse=True), tolerate_missing=self.tolerate_missing)
+        batch = RawMessageBatch(self.client, self.folder, sorted(self.uids, reverse=True),
+                                tolerate_missing=self.tolerate_missing, fetcher=self.fetcher)
+        batch.on_start = self.on_start
+        return batch
 
     def __iter__(self):
-        for uid in self.uids:
+        for idx, uid in enumerate(self.uids, 1):
+            if self.on_start:
+                self.on_start(uid, idx, len(self.uids))
+            if self.fetcher is not None:
+                try:
+                    yield uid, self.fetcher(uid, self.folder)
+                except Exception as exc:
+                    if not self.tolerate_missing or isinstance(exc, MailTransportError):
+                        raise
+                    log.warning('邮件正文下载失败 uid=%s: %s', uid, exc)
+                    yield uid, exc
+                continue
             # Processing the previous message may have selected a quarantine or
             # spam folder. UIDs are folder-scoped, so always reselect the source.
             self.client.select_folder(self.folder, readonly=True)
@@ -100,6 +129,71 @@ class MailClient:
             self.client.logout()
         except Exception:
             pass
+
+    def _reconnect(self):
+        old = self.client
+        try:
+            old._imap.shutdown()
+        except Exception:
+            pass
+        self.client = None
+        self.__enter__()
+
+    def _fetch_uid_bounded_once(self, uid: int, folder: str, deadline: float) -> bytes:
+        if time.monotonic() >= deadline:
+            raise TimeoutError(f'邮件 {uid} 下载超过 120 秒')
+        self.select_folder(folder, readonly=True)
+        info = self.client.fetch([uid], ['RFC822.SIZE']).get(uid, {})
+        size = int(info.get(b'RFC822.SIZE') or info.get('RFC822.SIZE') or 0)
+        if size > MAX_AUTOMATIC_MESSAGE_BYTES:
+            raise OversizedMessageError(uid, size)
+        if size <= 0:
+            # Some servers omit RFC822.SIZE. A single read remains capped.
+            data = self.client.fetch([uid], ['BODY.PEEK[]']).get(uid, {})
+            raw = data.get(b'BODY[]')
+            if raw is None:
+                raise RuntimeError(f'邮件 {uid} 正文暂未返回')
+            if len(raw) > MAX_AUTOMATIC_MESSAGE_BYTES:
+                raise OversizedMessageError(uid, len(raw))
+            return raw
+        chunks = []
+        received = 0
+        while received < size:
+            if time.monotonic() >= deadline:
+                raise TimeoutError(f'邮件 {uid} 下载超过 120 秒')
+            length = min(BODY_CHUNK_BYTES, size - received)
+            data = self.client.fetch([uid], [f'BODY.PEEK[]<{received}.{length}>']).get(uid, {})
+            raw = data.get(f'BODY[]<{received}>'.encode())
+            if raw is None and received == 0:
+                raw = data.get(b'BODY[]')
+            if not isinstance(raw, bytes) or not raw:
+                raise RuntimeError(f'邮件 {uid} 在 {received}/{size} 字节处中断')
+            if len(raw) > length:
+                raise RuntimeError(f'邮件 {uid} 服务器未按分段返回正文')
+            chunks.append(raw)
+            received += len(raw)
+            callback = getattr(self, 'on_download_progress', None)
+            if callback:
+                callback(uid, received, size)
+        return b''.join(chunks)
+
+    def fetch_uid_bounded(self, uid: int, folder: str) -> bytes:
+        """Read one message in bounded chunks; reconnect before a transport retry."""
+        deadline = time.monotonic() + 120
+        for attempt in range(3):
+            try:
+                return self._fetch_uid_bounded_once(uid, folder, deadline)
+            except OversizedMessageError:
+                raise
+            except Exception:
+                if attempt == 2 or time.monotonic() >= deadline:
+                    raise
+                log.warning('邮件下载重试 uid=%s attempt=%s', uid, attempt + 1, exc_info=True)
+                try:
+                    self._reconnect()
+                except Exception as exc:
+                    raise MailTransportError('邮箱连接中断，请稍后重试同步') from exc
+                time.sleep(0.4 * (attempt + 1))
 
     @staticmethod
     def _uid_validity(info) -> int:
@@ -516,9 +610,18 @@ class MailClient:
             uids = self.client.search(["ALL"])
             if limit:
                 uids = uids[-limit:]
+        due = db.due_mail_fetch_retries(config.INBOX_FOLDER)
+        present_due = []
+        for uid in due:
+            if uid in self.client.search(['UID', str(uid)]):
+                present_due.append(uid)
+            else:
+                db.clear_mail_fetch_retry(config.INBOX_FOLDER, uid)
+        uids = sorted(set(uids) | set(present_due))
         if not uids:
             return []
-        return RawMessageBatch(self.client, config.INBOX_FOLDER, sorted(uids), tolerate_missing=True)
+        return RawMessageBatch(self.client, config.INBOX_FOLDER, uids,
+                               tolerate_missing=True, fetcher=self.fetch_uid_bounded)
 
     def fetch_older(self, before_uid: int, limit: int = 20):
         """拉取早于 before_uid 的邮件，按 UID 降序取 limit 封。"""

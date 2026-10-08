@@ -43,7 +43,7 @@ def _poll(values):
         if result.get('fetched'):
             from . import semantic
             semantic.schedule_missing()
-        if result.get('ok') and not result.get('errors') and not result.get('canceled'):
+        if result.get('ok') and not result.get('canceled'):
             db.set_runtime_setting('last_sync_success', __import__('datetime').datetime.now().isoformat(timespec='seconds'))
         result['account_user'] = config.IMAP_USER
         return result
@@ -70,7 +70,7 @@ def poll_all(force=True, account_id=None):
             with _lock:
                 _delay_after_failure('', time.monotonic())
             raise
-        if not result.get('ok') or result.get('errors'):
+        if not result.get('ok'):
             with _lock:
                 _delay_after_failure('', time.monotonic())
         else:
@@ -84,7 +84,7 @@ def poll_all(force=True, account_id=None):
                 future = _pending.pop(finished_id)
                 try:
                     result = future.result()
-                    healthy = result.get('ok') and not result.get('errors') and not result.get('canceled')
+                    healthy = result.get('ok') and not result.get('canceled')
                 except Exception:
                     healthy = False
                 if healthy:

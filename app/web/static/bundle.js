@@ -6667,8 +6667,10 @@ function accountSyncLabel(account) {
     return {poll:'正在检查新邮件', fetch_all:'正在扫描历史邮件', fetch_more:'正在加载更多邮件', sync_folders:'正在同步文件夹', sync_folder:'正在同步文件夹'}[account.sync_operation] || '正在连接邮箱';
   }
   if (account.sync_status === 'interrupted') return '上次同步中断';
+  if (Number(account.sync_deferred_count) > 0) return `${account.sync_deferred_count} 封待重试`;
   if (account.sync_error) return '同步失败';
   if (account.sync_status === 'canceled') return '同步已暂停';
+  if (Number(account.sync_oversized_count) > 0) return `${account.sync_oversized_count} 封超大邮件未下载`;
   if (Number(account.oversized_mail_count) > 0) return `${account.oversized_mail_count} 封超大邮件未下载`;
   return '';
 }
@@ -6764,14 +6766,16 @@ function renderSidebarAccounts() {
   const accounts = _systemConfig?.accounts || [];
   const pausedControl = document.getElementById('auto-sync-paused');
   const currentPaused = !!accounts.find(account => account.id === activeMailAccount()?.id)?.auto_sync_paused;
-  const oversizedCount = accounts.reduce((total, account) => total + Number(account.oversized_mail_count || 0), 0);
+  const oversizedCount = accounts.reduce((total, account) => total + Math.max(Number(account.oversized_mail_count || 0), Number(account.sync_oversized_count || 0)), 0);
+  const deferredCount = accounts.reduce((total, account) => total + Number(account.sync_deferred_count || 0), 0);
   if (pausedControl) pausedControl.checked = currentPaused;
   const syncButton = document.getElementById('btn-poll');
   if (syncButton) {
     const syncHint = currentPaused ? '自动收信已暂停；点击可手动同步' : '立即从服务器拉取邮件';
     const oversizedHint = oversizedCount ? `${oversizedCount} 封邮件超过 50 MB 未下载，可在其他邮件客户端查看或下载` : '';
-    syncButton.title = [syncHint, oversizedHint].filter(Boolean).join('；');
-    syncButton.setAttribute('aria-label', [currentPaused ? '手动同步（自动收信已暂停）' : '同步邮件', oversizedHint].filter(Boolean).join('；'));
+    const deferredHint = deferredCount ? `${deferredCount} 封邮件待重试；点击同步立即重试` : '';
+    syncButton.title = [syncHint, deferredHint, oversizedHint].filter(Boolean).join('；');
+    syncButton.setAttribute('aria-label', [currentPaused ? '手动同步（自动收信已暂停）' : '同步邮件', deferredHint, oversizedHint].filter(Boolean).join('；'));
   }
   const group = document.getElementById('account-mailbox-group');
   const primary = document.getElementById('primary-folder-group');
@@ -6779,7 +6783,7 @@ function renderSidebarAccounts() {
   const multiple = accounts.length > 1;
   renderMailboxSyncTracker(accounts);
   // 同步图标兼作状态灯：任一账号同步异常时在顶栏同步按钮上点红点
-  document.getElementById('btn-poll')?.classList.toggle('attention', accounts.some(account => account.sync_error || Number(account.oversized_mail_count) > 0 || !account.credential_available || ['interrupted', 'canceled'].includes(account.sync_status)));
+  document.getElementById('btn-poll')?.classList.toggle('attention', accounts.some(account => account.sync_error || Number(account.sync_deferred_count) > 0 || Number(account.sync_oversized_count) > 0 || Number(account.oversized_mail_count) > 0 || !account.credential_available || ['interrupted', 'canceled'].includes(account.sync_status)));
   group?.classList.toggle('hidden', !multiple);
   primary?.classList.toggle('hidden', multiple);
   if (!host || !multiple) return;
@@ -6790,9 +6794,12 @@ function renderSidebarAccounts() {
       const collapsed = localStorage.getItem('collapsed:' + account.id) === '1';
       const syncing = account.credential_available && account.sync_status === 'running';
       const status = accountSyncLabel(account);
-      const statusVisible = Boolean(status) && (syncing || account.auto_sync_paused || account.sync_error || Number(account.oversized_mail_count) > 0 || !account.credential_available || ['interrupted','canceled'].includes(account.sync_status));
-      const oversizedDetail = Number(account.oversized_mail_count) > 0 ? `${account.oversized_mail_count} 封邮件超过 50 MB，未下载；可在其他邮件客户端查看或下载` : '';
-      const syncDetail = [account.sync_error || oversizedDetail || account.sync_message || account.user, syncing ? `已用时 ${account.sync_elapsed_seconds || 0} 秒；距上次进度更新 ${account.sync_quiet_seconds || 0} 秒` : '', account.sync_status === 'interrupted' ? '当前没有同步任务，点击顶部「同步」重新检查' : ''].filter(Boolean).join(' · ');
+      const statusVisible = Boolean(status) && (syncing || account.auto_sync_paused || account.sync_error || Number(account.sync_deferred_count) > 0 || Number(account.sync_oversized_count) > 0 || Number(account.oversized_mail_count) > 0 || !account.credential_available || ['interrupted','canceled'].includes(account.sync_status));
+      const accountOversizedCount = Math.max(Number(account.oversized_mail_count || 0), Number(account.sync_oversized_count || 0));
+      const oversizedDetail = accountOversizedCount > 0 ? `${accountOversizedCount} 封邮件超过 50 MB，未下载；可在其他邮件客户端查看或下载` : '';
+      const retryAt = account.sync_next_retry_at ? new Date(Number(account.sync_next_retry_at) * 1000).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
+      const deferredDetail = Number(account.sync_deferred_count) > 0 ? `${account.sync_deferred_count} 封邮件待重试${account.sync_deferred_detail?.uid ? `（邮件编号 ${account.sync_deferred_detail.uid}：${account.sync_deferred_detail.error || '下载失败'}）` : ''}；${retryAt ? `预计 ${retryAt} 自动重试，` : ''}点击顶部「同步」可立即重试` : '';
+      const syncDetail = [account.sync_error || oversizedDetail || account.sync_message || account.user, deferredDetail, syncing ? `已用时 ${account.sync_elapsed_seconds || 0} 秒；距上次进度更新 ${account.sync_quiet_seconds || 0} 秒` : '', account.sync_status === 'interrupted' ? '当前没有同步任务，点击顶部「同步」重新检查' : ''].filter(Boolean).join(' · ');
       return `<section class="sidebar-account ${selectedAccount ? 'active' : ''} ${collapsed ? 'collapsed' : ''}" data-sidebar-account="${esc(account.id)}">
         <div class="sidebar-account-heading">
         <button type="button" class="account-collapse" data-account-collapse="${esc(account.id)}" aria-label="${collapsed ? '展开' : '收起'} ${esc(account.user)}" aria-expanded="${!collapsed}"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 4 4 4-4 4"/></svg></button>
