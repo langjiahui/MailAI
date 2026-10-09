@@ -50,6 +50,9 @@ def main():
         return value
 
     spin_until(lambda: not view.isLoading())
+    static = Path(__file__).resolve().parents[1] / 'app/web/static'
+    evaluate('\n'.join((static / name).read_text(encoding='utf-8') for name in
+                       ('i18n.js', 'i18n-catalog.js', 'i18n-runtime.js')))
     evaluate("window.calls=[];window.composeCalls=[];window.notices=[];window.toast=(...x)=>notices.push(x);window.normalizeRecipientText=x=>x.replace(/\\s*,\\s*/g,', ');window.esc=x=>x.replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',\"'\":'&#39;'}[c]));window.openCompose=x=>composeCalls.push(x);window.pywebview={api:{open_external_url:async u=>{calls.push(u);return {ok:true}}}};" + functions)
     fixtures = [
         ('<a href="https://example.test/pay?a=1&amp;b=2"><span>查看工资条</span></a>', 'a', 'https://example.test/pay?a=1&b=2', 'web'),

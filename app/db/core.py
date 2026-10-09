@@ -285,6 +285,15 @@ CREATE TABLE IF NOT EXISTS contacts (
     created_at TEXT,
     updated_at TEXT
 );
+CREATE TABLE IF NOT EXISTS contact_tags (
+    name TEXT PRIMARY KEY COLLATE NOCASE
+);
+CREATE TABLE IF NOT EXISTS contact_tag_members (
+    email TEXT NOT NULL COLLATE NOCASE,
+    tag TEXT NOT NULL COLLATE NOCASE,
+    PRIMARY KEY(email,tag)
+);
+CREATE INDEX IF NOT EXISTS idx_contact_tag_members_tag ON contact_tag_members(tag);
 CREATE TABLE IF NOT EXISTS assistant_conversations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,

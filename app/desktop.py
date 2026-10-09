@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Callable
 
 import uvicorn
+from .ui_copy import ui_text, ui_format, ui_language
 
 
 log = logging.getLogger(__name__)
@@ -75,13 +76,13 @@ def notification_text(result: dict) -> tuple[str, str] | None:
         return None
     quarantined = max(0, int(result.get("quarantined") or 0))
     errors = max(0, int(result.get("errors") or 0))
-    title = f"收到 {fetched} 封新邮件"
+    title = ui_format('收到 {0} 封新邮件', fetched)
     details = []
     if quarantined:
-        details.append(f"其中 {quarantined} 封需要安全关注")
+        details.append(ui_format('其中 {0} 封需要安全关注', quarantined))
     if errors:
-        details.append(f"{errors} 封将在下次同步时重试")
-    body = "，".join(details) or "邮件已同步，请打开 MailAI 查看"
+        details.append(ui_format('{0} 封将在下次同步时重试', errors))
+    body = ('; ' if ui_language() == 'en' else '，').join(details) or ui_text('邮件已同步，请打开 MailAI 查看')
     if result.get('account_user'):
         body = str(result['account_user']) + ' · ' + body
     return title, body
@@ -177,6 +178,7 @@ class DesktopRuntime:
         self._status_icon = None
         self._status_controller = None
         self._notification_delegate = None
+        self._native_menu_entries = []
 
     def handle_closing(self, window=None):
         if self.quitting:
@@ -287,7 +289,7 @@ class DesktopRuntime:
         return True
 
     def test_notification(self) -> dict:
-        self._deliver_notification("MailAI 通知已开启", "关闭窗口后，新邮件和安全提醒会继续在后台送达。")
+        self._deliver_notification(ui_text('MailAI 通知已开启'), ui_text('关闭窗口后，新邮件和安全提醒会继续在后台送达。'))
         return {"ok": True, "message": "系统通知已开启"}
 
     def _set_dock_badge(self, label: str) -> None:
@@ -404,25 +406,27 @@ class DesktopRuntime:
             button.setTitle_("")
         else:
             button.setTitle_("M")
-        button.setToolTip_("MailAI · 后台收信中")
+        button.setToolTip_(ui_text('MailAI · 后台收信中'))
         button.setImageScaling_(NSImageScaleProportionallyDown)
 
         menu = NSMenu.alloc().initWithTitle_("MailAI")
-        open_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("打开 MailAI", "showMailAI:", "")
+        open_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(ui_text('打开 MailAI'), "showMailAI:", "")
         open_item.setTarget_(controller)
         menu.addItem_(open_item)
-        poll_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("立即收取邮件", "pollMailAI:", "")
+        poll_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(ui_text('立即收取邮件'), "pollMailAI:", "")
         poll_item.setTarget_(controller)
         menu.addItem_(poll_item)
         menu.addItem_(NSMenuItem.separatorItem())
-        state_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("✓ 后台收信已开启", None, "")
+        state_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(ui_text('✓ 后台收信已开启'), None, "")
         state_item.setEnabled_(False)
         menu.addItem_(state_item)
         menu.addItem_(NSMenuItem.separatorItem())
-        quit_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("退出 MailAI", "quitMailAI:", "q")
+        quit_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(ui_text('退出 MailAI'), "quitMailAI:", "q")
         quit_item.setTarget_(controller)
         menu.addItem_(quit_item)
         status_item.setMenu_(menu)
+        self._native_menu_entries = [(open_item, '打开 MailAI'), (poll_item, '立即收取邮件'),
+                                     (state_item, '✓ 后台收信已开启'), (quit_item, '退出 MailAI')]
 
         notification_center = NSUserNotificationCenter.defaultUserNotificationCenter()
         notification_center.setDelegate_(controller)
@@ -431,6 +435,15 @@ class DesktopRuntime:
         self._notification_delegate = controller
         self._status_item = status_item
         self._status_icon = status_icon
+
+    def refresh_language(self):
+        def apply():
+            if self._status_item:
+                self._status_item.button().setToolTip_(ui_text('MailAI · 后台收信中'))
+            for item, source in self._native_menu_entries:
+                item.setTitle_(ui_text(source))
+        if self._native_menu_entries:
+            self._call_after_safely('refresh native language', apply)
 
 
 class DesktopApi:

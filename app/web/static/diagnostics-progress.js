@@ -20,7 +20,7 @@
           const line=buffer.slice(0,newline); buffer=buffer.slice(newline+1);
           if (line.trim()) await onEvent(JSON.parse(line));
         }
-        if (buffer.length > 1024*1024) throw Error('检查结果过大，请重试');
+        if (buffer.length > 1024*1024) throw Error(mailaiText('检查结果过大，请重试'));
         if (done) { if (buffer.trim()) await onEvent(JSON.parse(buffer)); break; }
       }
     } finally { await reader.cancel().catch(()=>{}); reader.releaseLock(); }
@@ -35,7 +35,7 @@
     let complete = false;
     setLoading(button,true,translate('检查中…','Checking…')); button.setAttribute('aria-expanded','true');
     host.classList.remove('hidden'); host.setAttribute('aria-busy','true');
-    host.innerHTML=`<p class="diagnostic-scope">${account?.user ? (mailaiT('diag.scope') || '本次检查：{user}。').replace('{user}',esc(account.user)) : (mailaiT('diag.scopeNone') || '本次未检测到正在使用的邮箱。')}${mailaiT('diag.scopeNote') || '诊断会实测当前邮箱和已配置的模型服务。'}</p><div class="diagnostic-overall"><span data-diagnostic-summary role="status" aria-live="polite"></span><progress data-diagnostic-progress value="0" max="9" aria-label="检查完成进度"></progress></div>`;
+    host.innerHTML=`<p class="diagnostic-scope">${account?.user ? (mailaiT('diag.scope') || '本次检查：{user}。').replace('{user}',esc(account.user)) : (mailaiT('diag.scopeNone') || '本次未检测到正在使用的邮箱。')}${mailaiT('diag.scopeNote') || '诊断会实测当前邮箱和已配置的模型服务。'}</p><div class="diagnostic-overall"><span data-diagnostic-summary role="status" aria-live="polite"></span><progress data-diagnostic-progress value="0" max="9" aria-label="检查完成进度" data-i18n-aria="ui.c022bbfed35e"></progress></div>`;
     const summary=host.querySelector('[data-diagnostic-summary]'), progress=host.querySelector('[data-diagnostic-progress]');
     const rowFor = (item) => [...host.querySelectorAll('[data-check-id]')].find(n=>n.dataset.checkId===item.id);
     const updateSummary=()=>{
@@ -44,7 +44,7 @@
       const failed=rows.filter(item=>item.status==='fail').length, warnings=rows.filter(item=>item.status==='warning').length;
       const outcome=failed ? translate(` · ${failed} 项失败`,` · ${failed} failed`) : warnings ? translate(` · ${warnings} 项需要注意`,` · ${warnings} need attention`) : '';
       progress.max=rows.length; progress.value=done;
-      summary.textContent=complete ? translate(`检查完成 · ${done}/${rows.length} 项 · 用时 ${Math.round((Date.now()-start)/1000)} 秒`,`Finished · ${done}/${rows.length} checks · ${Math.round((Date.now()-start)/1000)}s`)+outcome : translate(`已完成 ${done}/${rows.length} 项${active.length ? ' · 正在检查：'+active.join('、') : ''}`,`${done}/${rows.length} complete${active.length ? ' · Checking: '+active.join(', ') : ''}`);
+      mailaiBindUI(summary, "textContent", () => (complete ? translate(`检查完成 · ${done}/${rows.length} 项 · 用时 ${Math.round((Date.now()-start)/1000)} 秒`,`Finished · ${done}/${rows.length} checks · ${Math.round((Date.now()-start)/1000)}s`)+outcome : translate(`已完成 ${done}/${rows.length} 项${active.length ? mailaiText(' · 正在检查：')+active.join('、') : ''}`,`${done}/${rows.length} complete${active.length ? ' · Checking: '+active.join(', ') : ''}`)));
     };
     const update = item => {
       items.set(item.id,item);
@@ -55,7 +55,7 @@
       const icon=status==='pass'?'✓':status==='running'?'':status==='queued'?'·':status==='warning'?'i':'!';
       const guidance=['warning','fail'].includes(status)?diagnosticAdvice(item):null;
       row.className='diagnostic-item '+status;
-      row.innerHTML=`<span class="diagnostic-state-icon" aria-hidden="true">${icon}</span><b>${esc(item.name)}<em>${item.probe==='live' ? (mailaiT('diag.live')||'实测'):(mailaiT('diag.local')||'本地')}</em></b><small title="${esc(item.detail || '')}">${esc(item.detail || '')}</small><div class="diagnostic-item-state"><strong>${labels[status] || esc(status)}</strong>${terminal.has(status) && Number.isFinite(item.duration_ms) && item.duration_ms >= 100 ? `<time>${(item.duration_ms/1000).toFixed(1)}s</time>`:''}</div>${guidance ? `<details class="diagnostic-help"><summary>${translate('如何处理','How to fix')}</summary><p class="diagnostic-advice">${esc(guidance.advice)}</p><button type="button" class="diagnostic-action" data-diagnostic-target="${guidance.target}" data-diagnostic-field="${guidance.field}">${guidance.action} →</button></details>`:''}`;
+      row.innerHTML=`<span class="diagnostic-state-icon" aria-hidden="true">${icon}</span><b>${esc(item.name)}<em>${item.probe==='live' ? (mailaiT('diag.live')||'实测'):(mailaiT('diag.local')||'本地')}</em></b><small title="${esc(mailaiSystemMessage(item.detail) || '')}">${esc(mailaiSystemMessage(item.detail) || '')}</small><div class="diagnostic-item-state"><strong>${labels[status] || esc(status)}</strong>${terminal.has(status) && Number.isFinite(item.duration_ms) && item.duration_ms >= 100 ? `<time>${(item.duration_ms/1000).toFixed(1)}s</time>`:''}</div>${guidance ? `<details class="diagnostic-help"><summary>${translate('如何处理','How to fix')}</summary><p class="diagnostic-advice">${esc(guidance.advice)}</p><button type="button" class="diagnostic-action" data-diagnostic-target="${guidance.target}" data-diagnostic-field="${guidance.field}">${guidance.action} →</button></details>`:''}`;
       updateSummary();
     };
     items.forEach(update);

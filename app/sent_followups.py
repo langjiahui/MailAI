@@ -74,6 +74,7 @@ def arrange(sent_id, at="", cancel=False):
 def dispatch(account_id, account, send=None):
     from .account_context import use
     from .task_notifications import deliver
+    from .ui_copy import ui_text
 
     send = send or deliver
     with use(
@@ -101,8 +102,8 @@ def dispatch(account_id, account, send=None):
         for row in rows:
             try:
                 accepted = send(
-                    "MailAI · 发出的邮件需要跟进",
-                    "本机尚未同步到回复：" + (row["subject"] or "邮件")[:120],
+                    ui_text('MailAI · 发出的邮件需要跟进'),
+                    ui_text('本机尚未同步到回复：') + (row["subject"] or ui_text('邮件'))[:120],
                     {"accountId": account_id, "sentFollowupId": row["sent_id"]},
                 )
             except Exception:

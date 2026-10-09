@@ -1,3 +1,4 @@
+const i18nContext = require('./helpers/i18n.cjs');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
@@ -10,11 +11,11 @@ const plain = value => JSON.parse(JSON.stringify(value));
 function undoHarness() {
   let now = 1000;
   const calls = [], notices = [];
-  const context = vm.createContext({URLSearchParams, Date:{now:() => now},
+  const context = vm.createContext(i18nContext({URLSearchParams, Date:{now:() => now},
     _systemConfig:{accounts:[{id:'a',user:'work@example.test'}]},
     taskNotice:(...args) => notices.push(args), loadData:async () => {},
     api:async (url, options) => { calls.push({url, account:options.accountId}); return {failed:[]}; },
-  });
+  }));
   vm.runInContext('let undoOperations = [], latestUndoAction = null, undoInProgress = false;\n' +
     workspace.slice(workspace.indexOf('function describeMailUndo('), workspace.indexOf("document.addEventListener('keydown'")), context);
   return {context, calls, notices, advance:ms => now += ms,
@@ -94,11 +95,11 @@ async function undoCases() {
 
 async function bulkCollectionCase() {
   const requests = [], offered = [];
-  const context = vm.createContext({JSON, Date, URLSearchParams, AbortController, setTimeout, clearTimeout,
+  const context = vm.createContext(i18nContext({JSON, Date, URLSearchParams, AbortController, setTimeout, clearTimeout,
     window:{}, API:'', activeMailAccount:() => ({id:'a'}), document:{body:{classList:{contains:() => false}}},
     offerUndo:(...args) => offered.push(args), describeMailUndo:() => ({label:'标为已读',count:100}),
     fetch:async (url, options) => { requests.push(options); return {ok:true,json:async () => ({undo_token:'part',completed:100})}; },
-  });
+  }));
   const start = app.indexOf('async function api(');
   vm.runInContext(app.slice(start, app.indexOf('\nfunction ', start)), context);
   const collector = [];
@@ -109,7 +110,7 @@ async function bulkCollectionCase() {
   await context.api('/api/emails/bulk', {method:'POST',body:'{}'});
   assert.equal(offered.length, 1, 'A standalone action should immediately offer undo');
 
-  const bulk = vm.createContext({selectedMailIds:new Set(Array.from({length:205}, (_,i) => i + 1)),
+  const bulk = vm.createContext(i18nContext({selectedMailIds:new Set(Array.from({length:205}, (_,i) => i + 1)),
     unifiedMailbox:false, bulkOperationActive:false, currentFilter:{status:'inbox'},
     activeMailAccount:() => ({id:'a'}), setBulkOperationState(){}, setLocalEmailReadState(){},
     api:async (url, options) => {
@@ -117,7 +118,7 @@ async function bulkCollectionCase() {
       options.undoCollector.push({token:'chunk-' + payload.ids[0],at:Date.now(),details:{label:'标为已读',count:payload.ids.length}});
       return {completed:payload.ids.length,failed:[]};
     }, offerUndo:(...args) => offered.push(args), toast(){}, loadData:async () => {},
-  });
+  }));
   vm.runInContext(app.slice(app.indexOf('async function runBulkAction('), app.indexOf('async function purgeTrash(')), bulk);
   await bulk.runBulkAction('read');
   assert.equal(offered.length, 2);
@@ -129,14 +130,14 @@ function assistantCases() {
   const nodes = {'assistant-scope':{value:'account'},'assistant-scope-label':{},
     'assistant-scope-note':{},'assistant-scope-clear':{classList:{toggle(){}}}};
   let resets = 0, opens = 0, chatOpens = 0, account = 'a';
-  const context = vm.createContext({JSON, Number, assistantScopeKey:'',assistantPinnedScope:[11],assistantHistoryLoaded:false,
+  const context = vm.createContext(i18nContext({JSON, Number, assistantScopeKey:'',assistantPinnedScope:[11],assistantHistoryLoaded:false,
     window:{showSecretaryChat(){chatOpens++;}},
     selectedEmailId:22, selectedEmailDetail:{id:22,subject:'邮件 B'},allEmails:[{id:11,subject:'邮件 A'}],
     activeMailAccount:() => ({id:account,user:account + '@example.test'}),
     resetAssistantConversation(){resets++;context.assistantRevision++;},assistantRevision:0,
     openAssistant(){opens++;assert.equal(context.assistantHistoryLoaded,true);},
     document:{getElementById:id => nodes[id],querySelector:() => ({setAttribute(){}}),querySelectorAll:() => []},
-  });
+  }));
   vm.runInContext(workspace.slice(workspace.indexOf('function openAssistantForEmail('), workspace.indexOf('function addReadingActions(')) +
     workspace.slice(workspace.indexOf('function updateAssistantScopeControl('), workspace.indexOf('function updateAssistantPlacement(')), context);
   context.openAssistantForEmail({id:22});

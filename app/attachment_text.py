@@ -65,7 +65,7 @@ def _worker(output, attachment, _page):
         output.close()
 
 
-def extract_local(email_id, index):
+def extract_local(email_id, index, *, cache=False):
     from .preview_worker import preview_isolated
 
     row = db.get_email(email_id)
@@ -85,9 +85,25 @@ def extract_local(email_id, index):
         or len(attachment["payload"]) > 10 * 1024 * 1024
     ):
         raise ValueError("附件不存在、为空或超过 10 MB")
+    digest = hashlib.sha256(attachment['payload']).hexdigest()
+    if cache:
+        with db.conn() as c:
+            cached = c.execute(
+                'SELECT digest,name,body,note FROM attachment_text_index WHERE email_id=? AND attachment_index=?',
+                (email_id, index),
+            ).fetchone()
+        if cached and cached['digest'] == digest and cached['name'] == attachment['name']:
+            return dict(kind='text', digest=digest, name=cached['name'],
+                        text=cached['body'], note=cached['note'])
     result = preview_isolated(attachment, worker=_worker)
     if result.get("kind") != "text":
         raise ValueError(result.get("message") or "文字提取未完成，请稍后重试")
+    if cache:
+        with db.conn() as c:
+            c.execute(
+                'INSERT OR REPLACE INTO attachment_text_index VALUES(?,?,?,?,?,?)',
+                (email_id, index, result['digest'], result['name'], result['text'], result['note']),
+            )
     return result
 
 
@@ -102,3 +118,16 @@ def search_excerpts(text, query):
             return {'excerpts':matches, 'more':True, 'empty':not text.strip()}
         matches.append(text[max(0,match.start()-60):min(len(text),match.end()+100)])
     return {'excerpts':matches, 'more':False, 'empty':not text.strip()}
+
+
+def limited_text(item):
+    """Conservatively disclose bounded extraction, never certify whole documents."""
+    import re
+
+    note = item.get('note') or ''
+    if Path(item.get('name') or '').suffix.lower() in ('.xls', '.xlsx'):
+        # Sheet row/cell limits cannot be inferred from the extracted text.
+        return True
+    if any(int(read) < int(total) for read, total in re.findall(r'(\d+)/(\d+)', note)):
+        return True
+    return bool(re.search(r'仅提取|截断|内容较长|仅提供', note))

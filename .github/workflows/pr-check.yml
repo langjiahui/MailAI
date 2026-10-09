@@ -25,6 +25,9 @@ jobs:
       - name: Install Python dependencies
         run: python -m pip install -r requirements-test.txt
 
+      - name: Install frontend check dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
       - name: Run offline release gate
         run: python scripts/check_release.py
 
@@ -77,6 +80,7 @@ jobs:
           node tests/test_interaction_consistency_browser.cjs
           node tests/test_task_notices_browser.cjs
           node tests/test_attachment_library_ui.cjs
+          node tests/test_attachment_content_browser.cjs
           node tests/test_experience_polish_browser.cjs
           node tests/test_compose_ai_sections_browser.cjs
           node tests/test_compose_ai_typing_browser.cjs
@@ -84,8 +88,11 @@ jobs:
           node tests/test_selection_glass_browser.cjs
           node tests/test_signature_images_browser.cjs
           node tests/test_productivity_motion_browser.cjs
-          node tests/test_dark_tools_browser.cjs
           node tests/test_mail_import_browser.cjs
+          node tests/test_mail_login_browser.cjs
+          node tests/test_dark_tools_browser.cjs
+          node tests/test_contact_filters_browser.cjs
+          node tests/test_i18n_browser.cjs
 
   mail-import-windows:
     runs-on: windows-2022

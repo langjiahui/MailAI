@@ -9,7 +9,7 @@ const appJs = fs.readFileSync(path.join(__dirname, '../app/web/static/app.js'), 
 
 assert.match(html, /id="assistant-new"[\s\S]*?<svg[^>]*>[\s\S]*?id="assistant-history"[\s\S]*?<svg/,
   'New conversation and history should use aligned SVG icons');
-assert.match(js, /setAttribute\('aria-label', `参考范围：\$\{label\}，点击更改`\)/,
+assert.match(js, /mailaiBindUI\([^\n]+"@aria-label"[^\n]+mailaiTemplate`参考范围：\$\{label\}，点击更改`/,
   'The compact scope chip must expose its current value and purpose to assistive technology');
 assert.match(html, /id="assistant-welcome-template"[\s\S]*?id="assistant-quick"[\s\S]*?<\/template>/,
   'Example questions belong in the new-conversation template, not the fixed composer');
@@ -23,7 +23,7 @@ assert.match(html, /id="assistant-float"[^>]*aria-label="切换为浮动窗口"[
   'Window mode should be a direct icon action instead of a one-item overflow menu');
 assert.doesNotMatch(html, /class="assistant-menu"/,
   'A one-item overflow menu should not add an unnecessary interaction layer');
-assert.match(js, /floating \? '恢复自动布局' : '切换为浮动窗口'/,
+assert.match(js, /floating \? mailaiText\('恢复自动布局'\) : mailaiText\('切换为浮动窗口'\)/,
   'Display mode copy should explain the resulting action');
 for (const name of ['openContactCenter','openCompose','showDashboard','showRulesView','showSystemView','openDigestModal','openAttachmentCenter','openTodoCenter']) {
   const start = appJs.indexOf(`function ${name}(`);

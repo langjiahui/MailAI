@@ -1237,7 +1237,7 @@ body.feedback-open .mail-assistant { opacity:0; visibility:hidden; pointer-event
 .fetch-overlay.settings-context:not(.expanded) .progress-bar { display:none; }
 .fetch-overlay.settings-context:not(.expanded) .fetch-count { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .fetch-overlay.settings-context:not(.expanded) .btn-cancel { position:absolute; right:49px; top:13px; float:none; min-width:62px; padding:6px 9px; font-size:10px; }
-[data-system-panel="maintenance"] .admin-settings .connection-actions {
+[data-system-panel="ai"] .connection-actions {
   position:sticky; bottom:-1px; z-index:3; margin:18px -4px -4px; padding:12px 4px 4px;
   background:linear-gradient(180deg,rgba(250,252,251,0),#fafcfb 28%);
 }
@@ -2304,7 +2304,7 @@ body { font-size: 13px; background: var(--bg); }
 .compose-ai-context-options label.unavailable { cursor:default; }
 .compose-ai-context-options label.unavailable span { color:#75847d; border-color:rgba(66,101,87,.12); background:rgba(231,237,233,.58); box-shadow:none; }
 .compose-ai-context-options label.unavailable span::before { content:none!important; display:none!important; }
-.compose-ai-context-options label.unavailable span::after { content:'暂无'; margin-left:5px; color:#8e9b94; font-size:9px; font-weight:500; }
+.compose-ai-context-options label.unavailable span::after { content:var(--mailai-copy-unavailable,'暂无'); margin-left:5px; color:#8e9b94; font-size:9px; font-weight:500; }
 .compose-ai-controls { display:grid; grid-template-columns:76px 76px minmax(0,1fr); align-items:end; gap:8px; }
 .compose-ai-controls label { display:grid; gap:5px; }
 .compose-ai-controls select { width:100%; height:31px; padding:0 7px; border:1px solid rgba(50,107,87,.12); border-radius:9px; color:#40584e; background:rgba(255,255,255,.7); font-size:10.5px; }
@@ -3078,7 +3078,7 @@ body { font-size: 13px; background: var(--bg); }
 .admin-settings > summary small { margin-top:4px; color:var(--muted); font-size:9.5px; font-weight:500; }
 .admin-settings > summary i { font-size:10px; font-style:normal; }
 .admin-settings[open] > summary i { font-size:0; }
-.admin-settings[open] > summary i::after { content:'收起'; font-size:10px; }
+.admin-settings[open] > summary i::after { content:var(--mailai-copy-collapse,'收起'); font-size:10px; }
 .admin-settings .connection-card { margin:0 12px 12px; }
 .diagnostic-card{max-width:1440px;margin:14px auto 0;padding:18px;border:1px solid var(--border);border-radius:14px;background:rgba(250,252,250,.68);box-shadow:0 10px 30px rgba(45,67,58,.07)}
 .diagnostic-card>div:first-child{display:flex;align-items:center;gap:11px}.diagnostic-card h3,.diagnostic-card p{margin:0}.diagnostic-card p{margin-top:4px;color:var(--muted);font-size:11px}.diagnostic-card>.action-btn{margin-top:14px}
@@ -4860,7 +4860,7 @@ body.pane-resizing iframe { pointer-events: none; }
 .compose-message a { color:#176fba; }
 .compose-signature { margin-top:24px; padding-top:16px; border-top:1px solid rgba(61,109,90,.13); }
 .compose-signature.hidden { display:none; }
-.compose-signature::before { content:'签名'; display:block; margin-bottom:8px; color:#a0aaa5; font-size:9px; letter-spacing:.08em; }
+.compose-signature::before { content:var(--mailai-copy-signature,'签名'); display:block; margin-bottom:8px; color:#a0aaa5; font-size:9px; letter-spacing:.08em; }
 #compose-signature-content { overflow-wrap:anywhere; }
 
 .compose-subdialog { position:absolute; z-index:30; inset:0; display:grid; place-items:center; padding:20px; }

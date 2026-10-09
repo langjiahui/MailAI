@@ -4,6 +4,8 @@
  * credentials or attachment data is accepted by this allowlisted store. */
 (() => {
   const seed = window.mailaiPreferenceSeed;
+  const language = () => seed?.['mailai-language'] || window.localStorage.getItem('mailai-language');
+  const copy = (zh, en) => language() === 'en' ? en : zh;
   if (!seed || typeof seed !== 'object') return;
   const keys = new Set([
     'mailai.productivity.preferences.v1',
@@ -22,7 +24,7 @@
     request.open('POST', '/api/ui-preferences', false);
     request.setRequestHeader('Content-Type', 'application/json');
     request.send(JSON.stringify({key, value}));
-    if (request.status !== 200) throw new Error('本地偏好保存失败');
+    if (request.status !== 200) throw new Error(copy('本地偏好保存失败', 'Could not save local preferences'));
     seed[key] = value;
   };
   // Migrate only currently accessible legacy preferences; disk wins otherwise.
@@ -39,7 +41,7 @@
     if (storage === store && allowed(key)) {
       try { save(key, value); }
       catch (error) {
-        window.alert('设置未能保存到本地，请检查磁盘空间或目录权限后重试。');
+        window.alert(copy('设置未能保存到本地，请检查磁盘空间或目录权限后重试。', 'Settings could not be saved locally. Check disk space or folder permissions and retry.'));
         throw error;
       }
     }

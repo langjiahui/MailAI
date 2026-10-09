@@ -17,7 +17,7 @@
     fullscreenButton.hidden = false;
     fullscreenButton.setAttribute('aria-pressed', String(state.fullscreen === true));
     const english = root.lang?.startsWith('en');
-    const label = state.fullscreen ? (english ? 'Exit full screen (F11)' : '退出全屏（F11）') : (english ? 'Full screen (F11)' : '全屏（F11）');
+    const label = state.fullscreen ? (english ? 'Exit full screen (F11)' : mailaiText('退出全屏（F11）')) : (english ? 'Full screen (F11)' : mailaiText('全屏（F11）'));
     fullscreenButton.title = label;
     fullscreenButton.setAttribute('aria-label', label);
     fullscreenButton.innerHTML = `<svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">${state.fullscreen ? exitIcon : enterIcon}</svg>`;

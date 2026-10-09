@@ -1,3 +1,4 @@
+const i18nContext = require('./helpers/i18n.cjs');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
@@ -49,7 +50,7 @@ for (const selector of [
   '.threshold-panel',
   '.top-menu-popover',
   '.backup-item',
-  '[data-system-panel="maintenance"] .admin-settings .connection-actions'
+  '[data-system-panel="ai"] .connection-actions'
   ,'.compose-toolbar-status #draft-state'
   ,'.signature-list>button small'
   ,'.recipient-list'
@@ -81,7 +82,7 @@ const nodes = Object.fromEntries(['notification-options','notification-save-stat
 const ctx = {preferencesSaving:false,preferencesAccount:'',preferencesLoadRevision:0,account:{id:'a',user:'a@example.test'},
   document:{getElementById:id=>nodes[id]}, syncPreferenceChoices(){}, loadSemanticStatus(){},
   activeMailAccount(){return ctx.account;}, api:async(url,options)=>{assert.equal(options.accountId,'a');return {notifications:'high_risk'};}};
-vm.createContext(ctx);
+vm.createContext(i18nContext(ctx));
 vm.runInContext(source.slice(source.indexOf('async function loadWorkspacePreferences()'),source.indexOf('function syncPreferenceChoices()')),ctx);
 (async()=>{
   await ctx.loadWorkspacePreferences();

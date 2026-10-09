@@ -90,6 +90,11 @@ class ContactRequest(BaseModel):
     directory_revision: str | None = None
 
 
+class ContactPendingRequest(ContactRequest):
+    update_policy: str = 'create'
+    expected_revision: str | None = None
+
+
 class ContactFavoriteRequest(BaseModel):
     email: str
     favorite: bool = True

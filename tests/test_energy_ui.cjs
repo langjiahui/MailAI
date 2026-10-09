@@ -1,9 +1,10 @@
+const i18nContext = require('./helpers/i18n.cjs');
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const code=fs.readFileSync('app/web/static/energy-ui.js','utf8');
 let now=0,id=0,focus=true;const timers=new Map(),windowEvents={},docEvents={};
 const document={body:{},hidden:false,hasFocus:()=>focus,querySelectorAll:()=>[],getElementById:()=>null,addEventListener:(name,fn)=>docEvents[name]=fn};
 const window={addEventListener:(name,fn)=>windowEvents[name]=fn};
-const context=vm.createContext({document,window,MutationObserver:class{observe(){}},Date:{now:()=>now},setTimeout:(fn,ms)=>{const key=++id;timers.set(key,{fn,at:now+ms});return key},clearTimeout:key=>timers.delete(key),console});
+const context=vm.createContext(i18nContext({document,window,MutationObserver:class{observe(){}},Date:{now:()=>now},setTimeout:(fn,ms)=>{const key=++id;timers.set(key,{fn,at:now+ms});return key},clearTimeout:key=>timers.delete(key),console}));
 vm.runInContext(code,context);
 const advance=async(ms)=>{const target=now+ms;while(true){const next=[...timers.entries()].filter(([,t])=>t.at<=target).sort((a,b)=>a[1].at-b[1].at)[0];if(!next)break;now=next[1].at;timers.delete(next[0]);next[1].fn();await Promise.resolve();await Promise.resolve();}now=target;};
 (async()=>{
@@ -28,7 +29,7 @@ const advance=async(ms)=>{const target=now+ms;while(true){const next=[...timers.
  const workspace=fs.readFileSync('app/web/static/workspace.js','utf8');
  const slice=workspace.slice(workspace.indexOf('async function refreshTaskCenter('),workspace.indexOf('function updateFilterChips('));
  let requests=0;
- const blocked=vm.createContext({document:{getElementById:()=>({classList:{contains:()=>true}})},api:()=>requests++});
+ const blocked=vm.createContext(i18nContext({document:{getElementById:()=>({classList:{contains:()=>true}})},api:()=>requests++}));
  vm.runInContext(slice,blocked);await blocked.refreshTaskCenter();assert.equal(requests,0);
  console.log('PASS energy UI: one timer, closed panels, focus/visibility pause, deferred updates and resume');
 })().catch(e=>{console.error(e);process.exitCode=1;});

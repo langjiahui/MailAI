@@ -1,3 +1,4 @@
+const i18nContext = require('./helpers/i18n.cjs');
 const fs = require('node:fs'), vm = require('node:vm'), assert = require('node:assert/strict');
 const source = fs.readFileSync(require('node:path').join(__dirname,'../app/web/static/app.js'),'utf8');
 const tick = () => new Promise(resolve=>setImmediate(resolve));
@@ -9,11 +10,11 @@ async function preflightCase(change) {
   const waiting = new Promise(done=>{resolve=done;});
   const nodes = new Map();
   const draft = {to_addr:'old@example.test',cc_addr:'',bcc_addr:'',subject:'original',body_html:'<p>original</p>',mode:'compose',attachments:[]};
-  const context = vm.createContext({JSON,Error,AbortController,setTimeout,clearTimeout,draftSession:{},composeAccountId:'a',composeAttachments:[],composeContext:{mode:'compose'},
+  const context = vm.createContext(i18nContext({JSON,Error,AbortController,setTimeout,clearTimeout,draftSession:{},composeAccountId:'a',composeAttachments:[],composeContext:{mode:'compose'},
     draftPayload:()=>({...draft}),composeMessageText:()=> 'original',
     document:{body:{classList:{contains:()=>true}},getElementById:id=>{if(!nodes.has(id))nodes.set(id,node());return nodes.get(id);}},
     api:async (url, options)=>{assert.equal(options.accountId,'a');await waiting;return {issues:[],recipients:{to_addr:'normalized@example.test',cc_addr:'',bcc_addr:''}};},
-    esc:String,toggleComposeAiPanel(){}});
+    esc:String,toggleComposeAiPanel(){}}));
   vm.runInContext(source.slice(source.indexOf('async function runMailPreflight('),source.indexOf('function clearComposePreflight(')),context);
   const pending = context.runMailPreflight({...draft});
   change?.(draft,context);
@@ -28,14 +29,14 @@ async function preflightCase(change) {
 
 async function preflightTimeout() {
   let cleared = false;
-  const context = vm.createContext({JSON,Error,AbortController,draftSession:{},composeAccountId:'a',
+  const context = vm.createContext(i18nContext({JSON,Error,AbortController,draftSession:{},composeAccountId:'a',
     composeAttachments:[],composeContext:{mode:'compose'},composePreflightFingerprint:()=> 'same',
     composeMessageText:()=> 'body',
     setTimeout(callback, ms){assert.equal(ms,15000);return setImmediate(callback);},
     clearTimeout(timer){cleared=true;clearImmediate(timer);},
     api:async(path, options)=>{assert.equal(path,'/api/mail/preflight');return new Promise((resolve,reject)=>{
       options.signal.addEventListener('abort',()=>reject(Error('aborted')),{once:true});
-    });}});
+    });}}));
   const start=source.indexOf('async function runMailPreflight(');
   vm.runInContext(source.slice(start,source.indexOf('function clearComposePreflight(',start)),context);
   await assert.rejects(context.runMailPreflight({}),/安全检查超时，邮件尚未发送/);
@@ -45,7 +46,7 @@ async function preflightTimeout() {
 async function contactSuggestionRace() {
   const requests = [];
   const rendered = [];
-  const context = vm.createContext({
+  const context = vm.createContext(i18nContext({
     contactSuggestionRevision:0, contactInput:null, composeAccountId:'account-a',
     activeMailAccount:()=>({id:'account-a'}),
     currentContactToken:input=>input.value,
@@ -53,7 +54,7 @@ async function contactSuggestionRace() {
     hideContactSuggestions(){},
     encodeURIComponent,
     api:(url, options)=>new Promise(resolve=>requests.push({url, options, resolve})),
-  });
+  }));
   const start = source.indexOf('async function loadContactSuggestions(');
   const end = source.indexOf('function chooseContact(', start);
   vm.runInContext(source.slice(start, end), context);
@@ -75,7 +76,7 @@ async function readingRace() {
   let active = 'a';
   const other = {id:1,is_read:0};
   let readPosts = 0;
-  const context = vm.createContext({skeletonRows:()=>'',readingTransition:null,removeSecurityFlyout(){},matchMedia:()=>({matches:true}),readingLoadRevision:0,readingLoadController:null,readSyncQueue:[],readSyncRunning:false,readSyncSequence:0,readSyncJobs:new Map(),
+  const context = vm.createContext(i18nContext({skeletonRows:()=>'',readingTransition:null,removeSecurityFlyout(){},matchMedia:()=>({matches:true}),readingLoadRevision:0,readingLoadController:null,readSyncQueue:[],readSyncRunning:false,readSyncSequence:0,readSyncJobs:new Map(),
     selectedEmailId:null,selectedEmailAccountId:'',selectedEmailDetail:null,AbortController,setTimeout,clearTimeout,
     allEmails:[],searchResults:null,currentFilter:{unread:false},unifiedMailbox:false,CSS:{escape:String},activeMailAccount:()=>({id:active}),toast(){},
     document:{getElementById:node,querySelector:node},syncSelectedEmailVisual(){},renderReadingPane(){},startReadingFlight(){},esc:String,
@@ -83,7 +84,7 @@ async function readingRace() {
       assert.equal(options.accountId,'a');
       if(options.method==='POST'){readPosts++;await waiting;return {ok:true};}
       return {id:1,is_read:0};
-    }});
+    }}));
   vm.runInContext(source.slice(source.indexOf('function readSyncKey('),source.indexOf('async function selectUnifiedEmail(')),context);
   await context.selectEmail(1);
   await context.selectEmail(1);
@@ -97,7 +98,7 @@ async function readingRace() {
 async function readingAbort() {
   const nodes = new Map();
   const getNode = id => { if(!nodes.has(id)) nodes.set(id,node()); return nodes.get(id); };
-  const context = vm.createContext({skeletonRows:()=>'',readingTransition:null,removeSecurityFlyout(){},matchMedia:()=>({matches:true}),readingLoadRevision:0,readingLoadController:null,readSyncQueue:[],readSyncRunning:false,
+  const context = vm.createContext(i18nContext({skeletonRows:()=>'',readingTransition:null,removeSecurityFlyout(){},matchMedia:()=>({matches:true}),readingLoadRevision:0,readingLoadController:null,readSyncQueue:[],readSyncRunning:false,
     readSyncSequence:0,readSyncJobs:new Map(),selectedEmailId:null,selectedEmailAccountId:'',selectedEmailDetail:null,
     AbortController,setTimeout,clearTimeout,allEmails:[],searchResults:null,currentFilter:{unread:false},unifiedMailbox:false,CSS:{escape:String},
     activeMailAccount:()=>({id:'a'}),toast(){},esc:String,syncSelectedEmailVisual(){},renderReadingPane(){},startReadingFlight(){},
@@ -107,7 +108,7 @@ async function readingAbort() {
         const error = new Error('Fetch is aborted'); error.name='AbortError'; reject(error);
       },{once:true}));
       return Promise.resolve({id:2,is_read:1});
-    }});
+    }}));
   vm.runInContext(source.slice(source.indexOf('function readSyncKey('),source.indexOf('async function selectUnifiedEmail(')),context);
   const stale = context.selectEmail(1);
   await tick();
@@ -122,7 +123,7 @@ async function rapidReadingMarksEveryClick() {
   const posts = [];
   let sidebarRenders = 0;
   const rows = [1, 2, 3, 4, 5].map(id => ({id, is_read:0}));
-  const context = vm.createContext({skeletonRows:()=>'',readingTransition:null,removeSecurityFlyout(){},matchMedia:()=>({matches:true}),readingLoadRevision:0,readingLoadController:null,readSyncQueue:[],readSyncRunning:false,
+  const context = vm.createContext(i18nContext({skeletonRows:()=>'',readingTransition:null,removeSecurityFlyout(){},matchMedia:()=>({matches:true}),readingLoadRevision:0,readingLoadController:null,readSyncQueue:[],readSyncRunning:false,
     readSyncSequence:0,readSyncJobs:new Map(),selectedEmailId:null,selectedEmailAccountId:'',selectedEmailDetail:null,
     AbortController,setTimeout,clearTimeout,allEmails:rows,searchResults:null,currentFilter:{unread:false},unifiedMailbox:false,CSS:{escape:String},
     _systemConfig:{accounts:[{id:'a',active:true,unread:5}]},renderSidebarAccounts(){sidebarRenders++;},
@@ -134,7 +135,7 @@ async function rapidReadingMarksEveryClick() {
         activeRequest = {resolve,reject};
         options.signal.addEventListener('abort',()=>{const error=Error('aborted');error.name='AbortError';reject(error);},{once:true});
       });
-    }});
+    }}));
   vm.runInContext(source.slice(source.indexOf('function readSyncKey('),source.indexOf('async function selectUnifiedEmail(')),context);
   const selections = [];
   for (const row of rows) { selections.push(context.selectEmail(row.id)); await tick(); }

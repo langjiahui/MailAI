@@ -3,6 +3,8 @@
   "private": true,
   "description": "MailAI frontend tooling (browser release tests)",
   "devDependencies": {
+    "acorn": "^8.19.0",
+    "parse5": "^8.0.1",
     "playwright": "^1.55.0"
   }
 }

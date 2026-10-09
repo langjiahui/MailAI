@@ -1,3 +1,4 @@
+const i18nContext = require('./helpers/i18n.cjs');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
@@ -14,7 +15,7 @@ const button = {
   textContent:'收件箱 208',
   closest(selector) { return selector === '#folder-nav' ? {} : null; },
 };
-const context = vm.createContext({
+const context = vm.createContext(i18nContext({
   bulkOperationActive:false,
   currentFilter:{status:'trash', days:9999, verdict:'', category:''},
   currentServerFolder:'', specialMailbox:'', unifiedMailbox:false,
@@ -24,7 +25,7 @@ const context = vm.createContext({
   loadData:async()=>{loads++;return responses.shift();},
   updateActiveNav(){}, applyFilters(){renders++;}, showMailboxLoadFailure(){failures++;},
   toast(){}, console,
-});
+}));
 vm.runInContext(onNavClick, context);
 const click = () => context.onNavClick({target:{closest:selector=>selector === '.nav-item' ? button : null}, preventDefault(){}, stopPropagation(){}});
 

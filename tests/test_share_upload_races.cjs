@@ -1,3 +1,4 @@
+const i18nContext = require('./helpers/i18n.cjs');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
@@ -16,7 +17,7 @@ function harness(api) {
     insertSharedLink: () => actions.push('inserted'),
     document: {getElementById: () => ({})}, createFileList: x => x,
   };
-  vm.createContext(ctx); vm.runInContext(functionText, ctx);
+  vm.createContext(i18nContext(ctx)); vm.runInContext(functionText, ctx);
   return {ctx, actions, session};
 }
 (async () => {

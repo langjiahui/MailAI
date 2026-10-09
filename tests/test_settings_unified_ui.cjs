@@ -6,7 +6,7 @@ const html = fs.readFileSync(path.join(__dirname, '../app/web/static/index.html'
 const css = fs.readFileSync(path.join(__dirname, '../app/web/static/workspace.css'), 'utf8');
 const onboarding = fs.readFileSync(path.join(__dirname, '../app/web/static/onboarding.js'), 'utf8');
 
-for (const panel of ['preferences', 'account', 'maintenance', 'guide']) {
+for (const panel of ['preferences', 'account', 'ai', 'maintenance', 'guide']) {
   const match = html.match(new RegExp(`data-system-panel="${panel}"[\\s\\S]*?<div class="([^"]*settings-page-intro[^"]*)"`));
   assert.ok(match, `${panel} should use the shared Settings page intro`);
 }
@@ -18,7 +18,7 @@ assert.match(html, /class="maintenance-grid"[\s\S]*id="btn-run-diagnostics"[\s\S
   'Maintenance actions should use the same balanced card grid');
 assert.match(css, /\[data-system-panel="guide"\] \.guide-grid article\s*\{[^}]*background:#fff/,
   'Help cards should match other Settings surfaces');
-assert.match(html, /class="guide-intro-actions"><span[^>]*>6 个使用主题<\/span><\/div>/,
+assert.match(html, /class="guide-intro-actions"><span[^>]*>14 个功能主题<\/span><\/div>/,
   'Replay belongs to the guide heading action area instead of floating above the cards');
 assert.match(onboarding, /\.guide-intro-actions'\)\.append\(replay\)/,
   'Replay action should be mounted inside the guide heading');

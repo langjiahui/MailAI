@@ -44,7 +44,7 @@ const assert=require('node:assert/strict');
  }
  await page.locator('#start-enable').click();
  await page.locator('.start-model').waitFor({state:'hidden'});assert.equal(saved,1);
- assert.equal(await page.locator('.admin-settings #model-config-form').count(),1);
+ assert.equal(await page.locator('[data-system-panel="ai"] #model-config-form').count(),1);
  await page.locator('.start-card .action-primary').click();
  await page.locator('.start-card .action-primary').click();
  assert.match(await page.locator('.start-card h3').textContent(),/2 \/ 3/);

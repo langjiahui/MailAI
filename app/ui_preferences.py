@@ -1,6 +1,8 @@
 """Non-secret UI preferences, independent of a WebView's changing HTTP port."""
 import re
 import sqlite3
+import sys
+import logging
 from contextlib import closing
 from .paths import USER_DIR
 
@@ -44,3 +46,11 @@ def save(key, value):
             raise ValueError("界面偏好数量超出限制")
         # Null tombstones prevent an old origin's cache resurrecting a reset.
         conn.execute("INSERT OR REPLACE INTO preferences VALUES (?,?)", (key, value))
+    if key == 'mailai-language':
+        for name in ('app.desktop', 'app.windows_desktop'):
+            runtime = getattr(sys.modules.get(name), '_runtime', None)
+            if runtime is not None and hasattr(runtime, 'refresh_language'):
+                try:
+                    runtime.refresh_language()
+                except Exception:
+                    logging.getLogger(__name__).exception('Native language refresh failed')

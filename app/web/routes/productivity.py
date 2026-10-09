@@ -216,17 +216,17 @@ def index_attachment(email_id: int, index: int):
 
 @router.post('/api/productivity/attachments/{email_id}/{index}/search')
 def search_file_contents(email_id: int, index: int, payload: dict):
-    from ...attachment_text import extract_local, search_excerpts
+    from ...attachment_text import extract_local, search_excerpts, limited_text
     query = payload.get('query')
     checked(search_excerpts, '', query)  # Validate before launching a parser.
-    item = checked(extract_local, email_id, index)
-    return {**checked(search_excerpts, item['text'], query), 'name':item['name'], 'note':item['note']}
+    item = checked(extract_local, email_id, index, cache=True)
+    return {**checked(search_excerpts, item['text'], query), 'name':item['name'], 'note':item['note'], 'limited':limited_text(item)}
 
 
 @router.post("/api/productivity/attachments/compare")
 def compare_attachments(payload: dict):
     import difflib
-    from ...attachment_text import extract_local
+    from ...attachment_text import extract_local, limited_text
 
     refs = payload.get("items")
     if (
@@ -241,6 +241,8 @@ def compare_attachments(payload: dict):
         )
     ):
         raise HTTPException(400, "请选择两个有效附件")
+    if (refs[0]['email_id'], refs[0]['index']) == (refs[1]['email_id'], refs[1]['index']):
+        raise HTTPException(400, "请选择两份不同的附件")
     before, after = [checked(extract_local, r["email_id"], r["index"]) for r in refs]
     lines = list(
         __import__("itertools").islice(
@@ -251,13 +253,15 @@ def compare_attachments(payload: dict):
                 tofile=after["name"],
                 lineterm="",
             ),
-            200,
+            201,
         )
     )
     return {
         "identical": before["digest"] == after["digest"],
         "text_equal": before["text"] == after["text"],
-        "diff": "\n".join(lines),
+        "diff": "\n".join(lines[:200]),
+        "diff_truncated": len(lines) > 200,
+        "limited": limited_text(before) or limited_text(after),
         "notes": [before["note"], after["note"]],
         "scope": "仅比较提取到的文字，最多 200 行差异；图表、格式及截断范围外内容未核对",
     }

@@ -8,6 +8,7 @@ from pathlib import Path
 
 from . import db, system_settings
 from .account_context import use
+from .ui_copy import ui_text, ui_format
 
 log = logging.getLogger(__name__)
 _lock = threading.Lock()
@@ -102,8 +103,8 @@ def dispatch_account(account_id, account, now=None, send=None):
             for row in rows:
                 c.execute('INSERT OR REPLACE INTO task_notice_delivery(todo_id,remind_at,sent,retry_after) VALUES(?,?,0,?)',
                           (row['id'], row['remind_at'], (now + timedelta(seconds=60)).isoformat()))
-        title = 'MailAI · 待办到时间了' if len(rows) == 1 else f'MailAI · {len(rows)} 项待办到时间了'
-        body = rows[0]['title'][:160] + (f' 等 {len(rows)} 项' if len(rows) > 1 else '')
+        title = ui_text('MailAI · 待办到时间了') if len(rows) == 1 else ui_format('MailAI · {0} 项待办到时间了', len(rows))
+        body = rows[0]['title'][:160] + (ui_format(' 等 {0} 项', len(rows)) if len(rows) > 1 else '')
         body += '\n' + account.get('user', '')
         target = {'accountId': account_id, 'todoId': rows[0]['id'], 'remindAt': rows[0]['remind_at']}
         try:

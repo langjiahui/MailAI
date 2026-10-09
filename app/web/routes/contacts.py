@@ -1,22 +1,25 @@
 """通讯录与联系人分组。"""
 import logging
+from typing import Literal
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Query
 from starlette.concurrency import run_in_threadpool
 from fastapi.responses import Response
 
 from ... import db, contact_directory
 from ..helpers import correspondence_payload, valid_contact_email
 from ..schemas import (ContactFavoriteRequest, ContactGroupMembersRequest,
-                       ContactGroupRequest, ContactRequest)
+                       ContactGroupRequest, ContactRequest, ContactPendingRequest)
+from .contact_tags import router as tag_router
 
 log = logging.getLogger(__name__)
 router = APIRouter()
+router.include_router(tag_router)
 
 
 @router.get("/api/mail/contacts")
-def api_mail_contacts(q: str = "", limit: int = 20, favorites_only: bool = False, group_name: str = "", offset: int = 0, department: str = ""):
-    return db.search_contacts(q, limit, favorites_only, group_name, max(0,min(offset,10000)), department)
+def api_mail_contacts(q: str = "", limit: int = 20, favorites_only: bool = False, group_name: str = "", offset: int = 0, department: str = "", tag: list[str] = Query(default=[]), tag_mode: Literal['any','all'] = 'any', company: str = ''):
+    return db.search_contacts(q, limit, favorites_only, group_name, max(0,min(offset,10000)), department, tags=tag if isinstance(tag,list) else (), tag_mode=tag_mode, company=company)
 
 
 @router.get('/api/mail/contact-groups')
@@ -94,7 +97,7 @@ async def api_directory_file(request: Request, filename: str = '通讯录.xlsx')
 @router.post('/api/mail/contacts/directory/preview')
 def api_directory_preview(payload: dict):
     try:
-        return contact_directory.preview(payload.get('token',''),payload.get('sheets'),payload.get('policy','sync'),payload.get('mapping'))
+        return contact_directory.preview(payload.get('token',''),payload.get('sheets'),payload.get('policy','fill'),payload.get('mapping'))
     except ValueError as exc:
         raise HTTPException(409,str(exc))
 
@@ -118,9 +121,17 @@ def api_directory_pending():
 
 
 @router.post('/api/mail/contacts/directory/pending/{record_key}')
-def api_directory_resolve(record_key: str, payload: ContactRequest):
+def api_directory_resolve(record_key: str, payload: ContactPendingRequest):
     try:
         return contact_directory.resolve_pending(record_key,payload.model_dump())
+    except ValueError as exc:
+        raise HTTPException(409,str(exc))
+
+
+@router.post('/api/mail/contacts/directory/pending/{record_key}/preview')
+def api_directory_pending_preview(record_key: str, payload: ContactRequest):
+    try:
+        return contact_directory.preview_pending(record_key,payload.model_dump())
     except ValueError as exc:
         raise HTTPException(409,str(exc))
 

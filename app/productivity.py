@@ -520,6 +520,7 @@ def dispatch_workflow(account_id, account, send=None):
     import time
     from .account_context import use
     from .task_notifications import deliver
+    from .ui_copy import ui_text, ui_format
 
     send = send or deliver
     with use(
@@ -549,9 +550,9 @@ def dispatch_workflow(account_id, account, send=None):
         row = rows[0]
         try:
             accepted = send(
-                "MailAI · 邮件到处理时间了",
-                (row["subject"] or "邮件")[:120]
-                + (" 等 " + str(len(rows)) + " 项" if len(rows) > 1 else "")
+                ui_text('MailAI · 邮件到处理时间了'),
+                (row["subject"] or ui_text('邮件'))[:120]
+                + (ui_format(' 等 {0} 项', len(rows)) if len(rows) > 1 else '')
                 + "\n"
                 + account.get("user", ""),
                 {"accountId": account_id, "workflowEmailId": row["email_id"]},

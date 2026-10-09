@@ -1,3 +1,4 @@
+const i18nContext = require('./helpers/i18n.cjs');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const assert=require('node:assert/strict');
@@ -6,7 +7,7 @@ const code=fs.readFileSync(path.join(__dirname,'../app/web/static/productivity.j
 const start=code.indexOf('  window.mailaiProductivityFilter =');
 const end=code.indexOf('  window.mailaiProductivityTags =',start);
 const context={window:{},specialMailbox:'',mailboxNavigationRevision:1,owner:()=> 'a',updateWorkflowRows:()=>{},labels:{reply:'待回复'},state:{navigation:1,view:'reply',conversations:false,senders:new Map()}};
-vm.createContext(context);vm.runInContext(code.slice(start,end),context);
+vm.createContext(i18nContext(context));vm.runInContext(code.slice(start,end),context);
 const rows=[{id:1,_account_id:'a',thread_id:'thread',handle_state:'reply',priority:'低',from_addr:'vip@example.test'},{id:2,_account_id:'a',thread_id:'thread',handle_state:'done'},{id:1,_account_id:'b',thread_id:'thread',handle_state:'waiting',priority:'高'}];
 assert.equal(context.window.mailaiProductivityFilter(rows).length,1);
 assert.equal(context.window.mailaiProductivityTitle('所有收件箱'),'所有收件箱 · 待回复');

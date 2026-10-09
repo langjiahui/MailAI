@@ -1,11 +1,12 @@
+const i18nContext = require('./helpers/i18n.cjs');
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 let now=0,items=[],callback,next,initial,notices=0,fetches=0,visible=true;
 const events={},seen=new Map(),window={mailaiEnergy:{active:()=>visible,register:(name,fn)=>callback=fn,
   reschedule:(name,delay)=>next=delay,run:()=>visible?callback():undefined},addEventListener:(name,fn)=>events[name]=fn};
-const context=vm.createContext({window,Date:Object.assign(class extends Date {},{now:()=>now}),
+const context=vm.createContext(i18nContext({window,Date:Object.assign(class extends Date {},{now:()=>now}),
  activeMailAccount:()=>({id:'a'}),initialLoad:{then:fn=>initial=fn},
  api:async()=>{fetches++;return items},sessionStorage:{getItem:k=>seen.get(k),setItem:(k,v)=>seen.set(k,v)},
- taskNotice:()=>notices++});
+ taskNotice:()=>notices++}));
 vm.runInContext(fs.readFileSync('app/web/static/energy-reminders.js','utf8'),context);
 (async()=>{
  items=[{account_id:'a',todo_id:1,email_id:5,at:new Date(5000).toISOString()}];

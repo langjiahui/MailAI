@@ -1,3 +1,4 @@
+const i18nContext = require('./helpers/i18n.cjs');
 const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict');
 const source=fs.readFileSync(require('path').join(__dirname,'../app/web/static/app.js'),'utf8');
 const nodes=new Map();
@@ -5,14 +6,14 @@ const node=id=>{if(!nodes.has(id))nodes.set(id,{innerHTML:'',textContent:'',valu
 const requests=[];
 const streamCalls=[],streamQueues=[];
 const encodeLine=obj=>new TextEncoder().encode(JSON.stringify(obj)+'\n');
-const c=vm.createContext({mailaiT: () => null,console,Map,AbortController,TextDecoder,TextEncoder,setTimeout,clearTimeout,localStorage:{getItem:()=>''},document:{getElementById:node,createElement:()=>({value:'',textContent:''})},
+const c=vm.createContext(i18nContext({mailaiT: () => null,console,Map,AbortController,TextDecoder,TextEncoder,setTimeout,clearTimeout,localStorage:{getItem:()=>''},document:{getElementById:node,createElement:()=>({value:'',textContent:''})},
   activeMailAccount:()=>({id:'a'}),renderDigest:x=>x,esc:String,toast(){},setDigestTitle(){},setLoading(){},localDateKey:()=> '2026-09-10',
   api:(url,opts)=>new Promise((resolve,reject)=>requests.push({url,opts,resolve,reject})),
   fetch:(url,opts)=>{streamCalls.push({url,opts});
     // 每个流一个投喂队列：push({value}) 发分块，push({done:true}) 结束
     const queue=[],waiters=[];
     streamQueues.push(item=>{ if(waiters.length) waiters.shift()(item); else queue.push(item); });
-    return Promise.resolve({ok:true,body:{getReader:()=>({read:()=> queue.length ? Promise.resolve(queue.shift()) : new Promise(r=>waiters.push(r))})}});}});
+    return Promise.resolve({ok:true,body:{getReader:()=>({read:()=> queue.length ? Promise.resolve(queue.shift()) : new Promise(r=>waiters.push(r))})}});}}));
 vm.runInContext(source.slice(source.indexOf('let _digestHistory ='),source.indexOf('// ===== 事件绑定 =====',source.indexOf('let _digestHistory ='))),c);
 vm.runInContext('_digestAccountId="a"',c);
 (async()=>{

@@ -1,12 +1,13 @@
+const i18nContext = require('./helpers/i18n.cjs');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 
 const source = fs.readFileSync('app/web/static/app.js', 'utf8');
 const host = {innerHTML: ''};
-const context = vm.createContext({
+const context = vm.createContext(i18nContext({
   document: {getElementById: id => id === 'allowlist-list' ? host : null},
-});
+}));
 
 vm.runInContext(source.slice(source.indexOf('function esc('), source.indexOf('\nfunction mailDateGroup(')), context);
 assert.equal(context.esc(1), '1', 'Numeric database ids must be safe to render');

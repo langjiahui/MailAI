@@ -10,7 +10,7 @@
       sessionStorage.setItem(key, '1');
       return true;
     });
-    if (due.length) taskNotice(due.length + ' 项待办已到提醒时间', '查看提醒',
+    if (due.length) taskNotice(due.length + mailaiText(' 项待办已到提醒时间'), mailaiText('查看提醒'),
       () => window.mailaiOpenTaskReminder?.(), 8000);
   }
   async function refresh() {

@@ -1,0 +1,112 @@
+.mail-login-dialog { padding:0; width:min(650px,calc(100vw - 32px)); max-height:calc(100dvh - 40px); border:1px solid var(--border); border-radius:20px; color:var(--text); background:var(--surface); box-shadow:0 24px 80px rgba(0,0,0,.2); overflow:hidden; }
+.mail-login-dialog[open] { display:flex; flex-direction:column; }
+.mail-login-dialog::backdrop { background:rgba(8,18,14,.5); backdrop-filter:blur(8px); }
+html[data-theme="light"] .mail-login-dialog { --surface:#fff; --surface-soft:#f4f7f5; --bg:#f8faf9; --border:#e1e8e3; background:#fff; }
+.mail-login-head { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; padding:26px 28px 20px; border-bottom:1px solid var(--border); flex:none; }
+.mail-login-head small { color:var(--muted); font-size:12px; }
+.mail-login-head h2 { margin:8px 0 10px; font-size:24px; line-height:1.3; letter-spacing:-.4px; }
+.mail-login-head p { margin:0; color:var(--muted); font-size:13px; line-height:1.7; }
+.mail-login-dialog button { font:inherit; cursor:pointer; }
+.mail-login-dialog button:disabled { opacity:.55; cursor:default; }
+.mail-login-close { flex:none; width:32px; height:32px; padding:0; border:0; border-radius:9px; background:var(--surface-soft); color:var(--muted); font-size:22px!important; }
+.mail-login-body { padding:22px 28px 26px; overflow-y:auto; min-height:0; overscroll-behavior:contain; }
+.mail-login-address-form { padding-bottom:20px; margin-bottom:20px; border-bottom:1px solid var(--border); }
+.mail-login-address-form label { display:flex!important; flex-wrap:wrap; gap:6px 12px!important; justify-content:space-between; align-items:baseline; margin-bottom:10px; }
+.mail-login-address-form label span { color:var(--muted); font-size:11px; font-weight:400; }
+.mail-login-address-row { display:flex; gap:8px; }
+.mail-login-address-row input { min-width:0; flex:1; }
+.mail-login-address-row button { flex:none; border:1px solid var(--border); border-radius:9px; padding:0 16px; color:var(--text); background:var(--surface-soft); }
+.mail-login-address-row button:enabled { color:var(--primary-deep); border-color:var(--primary); background:var(--primary-soft); }
+#mail-login-address-hint { color:var(--muted); font-size:11px; line-height:1.6; margin:8px 0 0; }
+#mail-login-address-hint:empty { display:none; }
+.mail-login-providers { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.mail-login-providers button { position:relative; display:flex; align-items:center; gap:12px; min-height:88px; padding:15px; text-align:left; border:1px solid var(--border); border-radius:13px; background:var(--surface); color:var(--text); transition:background .15s,border-color .15s; }
+.mail-login-providers button:hover { background:var(--surface-soft); border-color:var(--primary); }
+.mail-login-dialog button:focus-visible, .mail-login-dialog input:focus-visible { outline:2px solid var(--primary); outline-offset:3px; }
+.mail-login-providers button>span:nth-child(2) { min-width:0; display:grid; gap:6px; }
+.mail-login-providers button[data-recommended="true"] { border-color:var(--primary); background:var(--primary-soft); }
+.mail-login-provider-badge { position:absolute; top:7px; right:10px; font-size:9px; color:var(--primary-deep); }
+.mail-login-providers b { font-size:14px; line-height:1.4; }
+.mail-login-providers small { color:var(--muted); font-size:11px; line-height:1.5; }
+.mail-login-mark { flex:none; display:grid; place-items:center; width:36px; height:36px; border-radius:10px; background:var(--primary-soft); color:var(--primary-deep); font-size:19px; font-weight:700; }
+.mail-login-caption { color:var(--muted); font-size:12px; line-height:1.7; margin:15px 0 0; }
+.mail-login-foot { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 28px; border-top:1px solid var(--border); color:var(--muted); font-size:11px; flex:none; }
+.mail-login-foot button, .mail-login-admin button { border:1px solid var(--border); border-radius:8px; background:var(--surface-soft); color:var(--text); padding:9px 12px; flex:none; }
+.mail-login-body label { display:grid; gap:9px; font-size:13px; font-weight:600; }
+.mail-login-body input { width:100%; min-height:44px; padding:10px 12px; border:1px solid var(--border); border-radius:9px; background:var(--bg); color:var(--text); font:inherit; font-weight:400; }
+.mail-login-capability { margin:19px 0 14px; padding:12px 14px; border-radius:9px; background:var(--surface-soft); color:var(--muted); font-size:12px; line-height:1.6; }
+.mail-login-capability[data-ready="true"] { color:var(--success-deep); background:var(--success-soft); }
+.mail-login-capability[data-ready="true"] { background:transparent; padding:0; margin:18px 0 14px; }
+.mail-login-capability[data-ready="true"]::before { content:'✓'; margin-right:7px; }
+.mail-login-primary { width:100%; padding:13px 16px; min-height:46px; border:0; border-radius:10px; color:var(--surface); background:var(--primary-deep); font-weight:600!important; }
+#mail-login-browser-link { display:block; margin-top:14px; font-size:12px; }
+#mail-login-browser-link[hidden] { display:none; }
+#mail-login-status { font-size:13px; line-height:1.7; margin:14px 0 0; }
+#mail-login-status:empty { display:none; }
+#mail-login-status[aria-busy="true"] { display:flex; gap:9px; align-items:flex-start; color:var(--muted); }
+#mail-login-status[aria-busy="true"]::before { content:''; flex:none; width:12px; height:12px; margin-top:4px; border:2px solid var(--border); border-top-color:var(--primary); border-radius:50%; animation:mailLoginSpin .8s linear infinite; }
+#mail-login-cancel-auth { display:block; margin:12px auto 0; border:0; color:var(--muted); background:transparent; padding:5px 10px; }
+#mail-login-cancel-auth[hidden] { display:none; }
+#mail-login-cancel-auth:hover { color:var(--text); }
+#mail-login-status[data-error="true"] { color:var(--danger-deep); }
+.mail-login-admin { margin-top:24px; padding-top:16px; border-top:1px solid var(--border); }
+.mail-login-admin summary { cursor:pointer; font-size:12px; color:var(--muted); }
+.mail-login-admin p { margin:12px 0; font-size:12px; color:var(--muted); line-height:1.7; }
+.mail-login-admin form { display:grid; gap:14px; padding-top:6px; }
+.mail-login-admin form p { margin:0; }
+.mail-login-admin button { justify-self:start; }
+.mail-login-credential-guide { grid-column:1 / -1; display:grid; gap:12px; margin:0 0 22px; padding:16px 0; border-top:1px solid var(--border); border-bottom:1px solid var(--border); background:transparent; }
+.mail-login-guide-actions { display:flex; align-items:flex-start; gap:12px; justify-content:space-between; }
+.mail-login-guide-actions details { min-width:0; flex:1; }
+.mail-login-guide-actions>a { flex:none; padding-top:1px; text-decoration:none; }
+.mail-login-guide-actions>a:hover { text-decoration:underline; }
+.mail-login-credential-heading { display:flex; align-items:center; justify-content:space-between; gap:14px; }
+.mail-login-credential-heading b { font-size:14px; color:var(--text); }
+.mail-login-credential-heading button { padding:3px 0; border:0; background:transparent; color:var(--primary-deep); font:inherit; cursor:pointer; font-size:12px; }
+.mail-login-credential-guide summary { cursor:pointer; font-size:12px; color:var(--muted); }
+.mail-login-credential-guide p { font-size:12px; line-height:1.8; color:var(--muted); margin:12px 0; }
+.mail-login-credential-guide a, .mail-login-dialog a { color:var(--primary-deep); font-size:12px; }
+.mail-login-credential-error { color:var(--danger-deep); font-size:12px; line-height:1.7; margin:12px 0 0; }
+.mail-login-credential-error[hidden] { display:none; }
+.mail-login-password-wrap { position:relative; display:flex; align-items:center; }
+.mail-login-password-wrap input { padding-right:48px!important; }
+.mail-login-password-toggle { position:absolute; top:50%; right:5px; transform:translateY(-50%); display:grid; place-items:center; width:34px; height:34px; padding:0; border:0; border-radius:7px; color:var(--muted); background:transparent; cursor:pointer; }
+.mail-login-password-toggle:hover { background:var(--primary-soft); color:var(--primary-deep); }
+.mail-login-password-toggle svg { width:18px; height:18px; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; fill:none; }
+.mail-login-address-error { display:block; margin:7px 0 0; color:var(--danger-deep); font-size:11px; line-height:1.5; }
+.mail-login-address-error[hidden] { display:none; }
+.mail-login-password-toggle:focus-visible,.mail-login-credential-guide :is(button,a):focus-visible { outline:2px solid var(--primary); outline-offset:3px; }
+.account-detail:has(#mail-add-panel[data-login-provider]:not(.hidden)) .account-detail-top { display:none; }
+.account-detail #mail-add-panel[data-login-provider] { width:min(560px,100%); padding:0; }
+.account-detail #mail-add-panel[data-login-provider] .mail-add-panel-head { padding:0; margin:0 0 18px; border:0; }
+.account-detail #mail-add-panel[data-login-provider] .mail-add-panel-head .account-detail-eyebrow { display:none; }
+.account-detail #mail-add-panel[data-login-provider] .mail-add-panel-head b { font-size:22px; color:var(--text); }
+.account-detail #mail-add-panel[data-login-provider]>label { color:var(--text); font-size:12px; margin-top:18px; }
+.account-detail #mail-add-panel[data-login-provider] input:not([type=checkbox]) { min-height:44px; font-size:13px; }
+.account-detail #mail-add-panel[data-login-provider]>.connection-actions { margin-top:20px; padding-top:18px; border-color:var(--border); }
+.account-detail #mail-add-panel[data-login-provider] .provider-hint { padding:0; margin:12px 0 20px; border:0; background:transparent; color:var(--muted); font-size:11px; }
+.account-detail #mail-add-panel[data-login-provider] .mail-advanced { border:1px solid var(--border); border-radius:10px; padding:12px 14px; }
+.account-detail #mail-add-panel[data-login-provider] .mail-advanced summary { font-size:12px; color:var(--muted); }
+.account-detail #mail-add-panel[data-login-provider] .connection-actions>button { min-height:43px; padding:11px 24px; }
+.account-detail #mail-add-panel[data-login-provider] .connection-actions>button svg { display:none; }
+.mail-add-panel[data-login-busy="true"] { cursor:progress; }
+#onboarding-form.mail-login-await-provider > :not(#onboarding-later):not(#onboarding-manage-accounts) { display:none; }
+#onboarding-form .onboarding-help { display:none; }
+#mail-login-onboarding { width:100%; margin-top:8px; }
+#mail-login-onboarding[hidden] { display:none; }
+.mail-add-panel[data-login-provider] .mail-add-panel-head small { display:none; }
+html[data-theme="dark"] .mail-login-primary { color:#10271d; }
+html[data-theme="dark"] .account-detail #mail-add-panel[data-login-provider],html[data-theme="dark"] .account-detail #mail-add-panel[data-login-provider] .provider-hint { background:transparent!important; box-shadow:none!important; border:0!important; }
+@keyframes mailLoginSpin { to { transform:rotate(360deg); } }
+@media(prefers-reduced-motion:reduce) { #mail-login-status[aria-busy="true"]::before { animation:none; } .mail-login-providers button { transition:none; } }
+@media(max-width:520px) {
+  .mail-login-head { padding:22px 20px 18px; }
+  .mail-login-body { padding:18px 20px 22px; }
+  .mail-login-providers { grid-template-columns:1fr; gap:9px; }
+  .mail-login-providers button { min-height:72px; }
+  .mail-login-foot { padding:14px 20px; }
+  .mail-login-foot span { line-height:1.6; }
+  .mail-login-address-form label span { width:100%; }
+  .mail-login-guide-actions { flex-wrap:wrap; }
+  .mail-login-guide-actions details { flex-basis:100%; }
+}

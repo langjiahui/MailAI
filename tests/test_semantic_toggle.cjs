@@ -1,3 +1,4 @@
+const i18nContext = require('./helpers/i18n.cjs');
 /* 语义检索开关：依赖缺失时禁用开关并提示，依赖可用时正常渲染状态。 */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -32,7 +33,7 @@ function harness({account = {id: 'a'}, prefs = {}, stats = {}, fail = false} = {
       return url.includes('/api/preferences') ? prefs : stats;
     },
   };
-  vm.createContext(ctx);
+  vm.createContext(i18nContext(ctx));
   vm.runInContext(source.slice(start, end), ctx);
   return {ctx, nodes, label};
 }

@@ -4,6 +4,7 @@ import threading
 from urllib.parse import urlencode, urlsplit
 from . import db
 from .account_context import snapshot, use
+from .ui_copy import ui_text
 
 _lock = threading.Lock()
 
@@ -33,7 +34,7 @@ def open_window(runtime, draft_id, account_id, delegate):
             {"compose_draft": draft_id, "compose_account": account_id}
         )
         window = webview.create_window(
-            "MailAI · 写邮件",
+            ui_text('MailAI · 写邮件'),
             url=url,
             width=1050,
             height=760,

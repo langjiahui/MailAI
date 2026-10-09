@@ -21,6 +21,8 @@ for stream in (sys.stdout, sys.stderr):
     if reconfigure:
         reconfigure(encoding="utf-8", errors="backslashreplace")
 TESTS = (
+    'test_i18n_service_copy.py',
+    'test_i18n_native.py',
     'test_energy_scheduler.py',
     'test_completion_features.py',
     'test_productivity.py', 'test_productivity_lifecycle.py', 'test_oauth_mail.py', 'test_mail_idle.py', 'test_attachment_text.py',
@@ -29,6 +31,8 @@ TESTS = (
     'test_model_providers.py',
     'test_model_usage.py',
     'test_contact_directory.py',
+    'test_contact_tags.py',
+    'test_contact_pending_merge.py',
     'test_live_diagnostics.py', 'test_diagnostics_progress.py',
     'test_optimization_guards.py', 'test_interaction_fixes.py', 'test_pinyin_search.py',
     'test_resource_safety.py',
@@ -120,12 +124,14 @@ def main():
     commands += [[node, '--check', str(ROOT / 'app/web/static/server-cleanup.js')]]
     commands += [[node, '--check', str(ROOT / 'app/web/static/i18n.js')]]
     commands += [[node, '--check', str(ROOT / 'app/web/static/preferences.js')]]
-    commands += [[node, str(ROOT / 'tests/test_i18n.cjs')]]
+    commands += [[node, str(ROOT / 'tests/test_i18n.cjs')],
+                 [node, str(ROOT / 'tests/test_i18n_coverage.cjs')]]
     commands += [[node, '--check', str(ROOT / 'app/web/static/onboarding.js')]]
     commands += [[node, '--check', str(ROOT / 'app/web/static/mail-library.js')]]
     commands += [[node, '--check', str(ROOT / 'app/web/static/attachment-preview.js')]]
     commands += [[node, '--check', str(ROOT / 'app/web/static/app.js')],
                  [node, '--check', str(ROOT / 'app/web/static/productivity.js')],
+                 [node, '--check', str(ROOT / 'app/web/static/mail-login.js')],
                  [node, '--check', str(ROOT / 'app/web/static/mail-reading-folds.js')],
                  [node, str(ROOT / 'tests/test_reading_folds.cjs')],
                  [node, str(ROOT / 'tests/test_productivity_ui.cjs')],
