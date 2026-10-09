@@ -18,7 +18,7 @@ const han=/[\u3400-\u9fff]/;
       await page.waitForTimeout(80);
       const leaks=await page.locator(selector).evaluate(root=>[root,...root.querySelectorAll('*')].flatMap(n=>{
         if(!n.getClientRects().length&&!(n.tagName==='OPTION'&&n.closest('select')?.getClientRects().length))return[];
-        if(n.closest('[contenteditable=true],textarea'))return[];
+        if(n.closest('[contenteditable=true],textarea,#compose-signature-content') || n.tagName==='OPTION' && n.closest('#compose-signature-select') && n.value)return[];
         const result=[];
         for(const c of n.childNodes)if(c.nodeType===3&&/[\u3400-\u9fff]/.test(c.textContent))result.push(n.tagName+': '+c.textContent);
         for(const a of ['title','placeholder','aria-label','alt','data-tooltip','data-placeholder'])if(/[\u3400-\u9fff]/.test(n.getAttribute(a)||''))result.push(a+': '+n.getAttribute(a));

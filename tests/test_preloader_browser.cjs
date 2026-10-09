@@ -24,6 +24,7 @@ const {chromium, webkit} = require('playwright');
     });
     await page.emulateMedia({reducedMotion:'no-preference'});
     await page.goto('http://mailai.test/');
+    for (const file of ['i18n.js','i18n-catalog.js','i18n-runtime.js']) await page.addScriptTag({path:path.join(root,file)});
     await page.addScriptTag({path: path.join(root, 'companion.js')});
     await page.addScriptTag({content: hidePreloaderSource});
 
@@ -164,6 +165,7 @@ const {chromium, webkit} = require('playwright');
     // CSS zoom changes visual coordinates; verify the logo's actual pieces,
     // not just the opacity of its parent, before the cross-fade completes.
     await page.reload();
+    for (const file of ['i18n.js','i18n-catalog.js','i18n-runtime.js']) await page.addScriptTag({path:path.join(root,file)});
     await page.addScriptTag({path: path.join(root, 'companion.js')});
     await page.addScriptTag({content: hidePreloaderSource});
     await page.evaluate(() => {
@@ -205,6 +207,7 @@ const {chromium, webkit} = require('playwright');
     assert.equal(await preloader.count(), 0, 'handoff should remove its overlay and animation effects');
 
     await page.reload();
+    for (const file of ['i18n.js','i18n-catalog.js','i18n-runtime.js']) await page.addScriptTag({path:path.join(root,file)});
     await page.addScriptTag({path: path.join(root, 'companion.js')});
     await page.emulateMedia({reducedMotion: 'reduce'});
     assert.equal(await page.locator('.preloader-mail-one').evaluate(el => getComputedStyle(el).animationName), 'none');

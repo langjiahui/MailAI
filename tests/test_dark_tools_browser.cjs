@@ -33,6 +33,7 @@ async function contrast(locator, minimum = 4.5) {
     ])}));
     await page.goto('http://127.0.0.1:18795/');
     await page.locator('#app-preloader').waitFor({state:'detached'});
+    await page.evaluate(() => setI18nLanguage('zh-CN'));
     await page.evaluate(async () => { document.documentElement.dataset.theme = 'dark'; await openContactCenter(); });
     const entry = page.locator('#contact-center .productivity-panel-entry');
     await contrast(entry);
@@ -138,8 +139,9 @@ async function contrast(locator, minimum = 4.5) {
     await page.locator('#todo-center .todo-center-card').screenshot({path:'/tmp/mailai-dark-todos-after.png'});
     // Paging controls are only rendered after a list reaches its display limit.
     await page.evaluate(() => {
-      const seed = todoCenterRows[0];
-      todoCenterRows = [{...seed,id:1001}, {...seed,id:1002}];
+      const seed = {status:'open',title:'Synthetic contrast check',deadline:'',email_id:1,...todoCenterRows[0]};
+      todoCenterRows = [{...seed,id:1001,status:'open'}, {...seed,id:1002,status:'open'}];
+      window.mailaiTodoMatches = () => true;
       todoRenderLimit = 1; renderTodoCenter();
     });
     const moreTodos = page.locator('.todo-render-more');
