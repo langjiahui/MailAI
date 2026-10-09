@@ -389,6 +389,7 @@ html[data-theme] body #rules-view :is(.scenario-card-head>span,.scenario-safe-no
 }
 html[data-theme] body #rules-view .scenario-control { border-color:var(--rules-line)!important; }
 html[data-theme] body #rules-view .advanced-rules-toggle:hover { background:var(--rules-soft)!important; }
+html[data-theme] body #rules-view .advanced-rules-toggle i { color:var(--desk-accent); }
 html[data-theme] body #rules-view .rule-detail-popover { background:var(--rules-card)!important; border-color:var(--rules-line)!important; color:var(--rules-ink)!important; }
 html[data-theme] body #rules-view :is(input,select,button):focus-visible { outline:2px solid var(--desk-accent); outline-offset:3px; }
 

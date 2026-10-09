@@ -532,9 +532,12 @@ html[data-theme]
 
 /* Quiet mail list; contextual tools belong to their own panels. */
 html[data-theme] body .list-workspace-tools { padding-block: 3px 7px; }
-.productivity-panel-entry { flex:none; border:1px solid var(--border); border-radius:8px; padding:7px 10px; background:transparent; color:var(--text-primary); font:inherit; font-size:12px; cursor:pointer; white-space:nowrap; }
-.productivity-panel-entry:hover { background:var(--bg-hover, #edf4ef); }
-.productivity-panel-entry:focus-visible { outline:2px solid #327b62; outline-offset:2px; }
+/* Tool entries share theme tokens with their host, including hover in dark mode. */
+.productivity-panel-entry { flex:none; min-height:36px; border:1px solid var(--desk-line,#e2e7e4); border-radius:8px; padding:7px 12px; background:var(--desk-muted-surface,#f7f8f8); color:var(--desk-ink,#26342e); font:inherit; font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; transition:background-color 140ms ease-out,border-color 140ms ease-out; }
+.productivity-panel-entry:hover:not(:disabled) { background:var(--desk-hover,#eef2ef); border-color:var(--desk-accent,#34775b); }
+.productivity-panel-entry:active:not(:disabled) { background:var(--desk-selected,#e7f0eb); }
+.productivity-panel-entry:focus-visible { outline:2px solid var(--desk-accent,#34775b); outline-offset:3px; }
+@media(prefers-reduced-motion:reduce) { .productivity-panel-entry { transition:none; } }
 .contact-center-tools,.attachment-center-tools { flex-wrap:wrap; }
 .task-account-picker { flex-wrap:wrap; gap:10px; }
 .task-account-picker select { flex:1; min-width:120px; }
@@ -546,8 +549,8 @@ html[data-theme] body .list-workspace-tools { padding-block: 3px 7px; }
 html[data-theme] body .list-workspace-tools:has(#filter-chips:empty) { display:none; }
 .list-sort { display:flex; align-items:center; gap:6px; }
 html[data-theme] body .list-sort #btn-filter-panel { border:0; background:transparent; color:var(--desk-muted, #64776e); border-radius:8px; padding:6px 8px; font-size:12px; cursor:pointer; flex:none; }
-html[data-theme] body .list-sort #btn-filter-panel:hover, html[data-theme] body .list-sort #btn-filter-panel[aria-expanded="true"] { background:var(--desk-tint, #e8f1ec); color:var(--desk-accent, #327b62); }
-.list-sort #btn-filter-panel:focus-visible { outline:2px solid #327b62; outline-offset:2px; }
+html[data-theme] body .list-sort #btn-filter-panel:hover, html[data-theme] body .list-sort #btn-filter-panel[aria-expanded="true"] { background:var(--desk-selected, #e7f0eb); color:var(--desk-accent, #327b62); }
+.list-sort #btn-filter-panel:focus-visible { outline:2px solid var(--desk-accent,#34775b); outline-offset:2px; }
 /* The selection highlight must not return the off-canvas sidebar to layout. */
 @media(max-width:1024px) {
   html[data-theme] body .layout>.sidebar.glass-selection-ready { position:fixed; }

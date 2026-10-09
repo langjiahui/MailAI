@@ -1,0 +1,72 @@
+.mail-import-dialog { width:min(800px,calc(100vw / var(--fz,1) - 32px)); max-height:calc(100dvh / var(--fz,1) - 40px); padding:0; border:1px solid var(--desk-line); border-radius:16px; background:var(--desk-surface); color:var(--desk-ink); font:14px/1.6 system-ui,sans-serif; box-shadow:0 24px 80px #0004; }
+.mail-import-dialog[open] { display:flex; flex-direction:column; overflow:hidden; }
+.mail-import-dialog::backdrop { background:#030705aa; backdrop-filter:blur(3px); }
+.mail-import-dialog header { display:flex; flex:none; align-items:center; justify-content:space-between; gap:16px; padding:20px 24px 14px; border-bottom:1px solid var(--desk-line); }
+.mail-import-dialog h2 { margin:0; font-size:21px; }
+.mail-import-dialog header p { margin:5px 0 0; font-size:12px; color:var(--desk-muted); }
+.mail-import-dialog button { min-height:36px; padding:7px 12px; border:1px solid var(--desk-line); border-radius:8px; background:var(--desk-muted-surface); color:var(--desk-ink); font:inherit; font-size:13px; cursor:pointer; transition:background-color .14s,color .14s,border-color .14s; }
+.mail-import-dialog button:hover:not(:disabled) { background:var(--desk-hover); border-color:var(--desk-accent); }
+.mail-import-dialog button:active:not(:disabled) { background:var(--desk-selected); }
+.mail-import-dialog button:disabled { opacity:.45; cursor:not-allowed; }
+.mail-import-dialog button.primary-action { background:var(--desk-accent); color:var(--desk-surface); font-weight:650; border-color:transparent; }
+.mail-import-dialog button.primary-action:hover:not(:disabled) { background:var(--desk-accent); filter:brightness(.94); }
+.mail-import-dialog :is(button,input,select,summary):focus-visible { outline:2px solid var(--desk-accent); outline-offset:3px; }
+.mail-import-dialog header button { border:0; background:transparent; width:36px; padding:0; font-size:24px; flex:none; }
+.mail-import-steps { display:flex; flex:none; justify-content:space-between; gap:14px; list-style:none; padding:14px 24px; margin:0; border-bottom:1px solid var(--desk-line); color:var(--desk-muted); font-size:13px; }
+.mail-import-steps li { display:flex; align-items:center; gap:7px; }
+.mail-import-steps li b { font-weight:inherit; }
+.mail-import-steps span { display:grid; place-items:center; width:24px; height:24px; border-radius:50%; background:var(--desk-muted-surface); font-size:12px; }
+.mail-import-steps .active { color:var(--desk-accent); font-weight:650; }
+.mail-import-steps .active span { background:var(--desk-selected); }
+.mail-import-body { padding:18px 24px; min-height:0; overflow-y:auto; }
+.mail-import-options { display:grid; grid-template-columns:1.4fr 1fr; gap:14px; }
+.mail-import-options label { display:grid; gap:7px; color:var(--desk-ink); font-size:13px; }
+.mail-import-options :is(input,select) { width:100%; box-sizing:border-box; min-height:38px; padding:8px 10px; border:1px solid var(--desk-line); border-radius:8px; background:var(--desk-muted-surface); color:var(--desk-ink); font:inherit; }
+.mail-import-options :is(input,select):disabled { opacity:.75; }
+.mail-import-location,.mail-import-help,.mail-import-file-box :is(p,small),.mail-import-progress small,.mail-import-samples small { color:var(--desk-muted); font-size:12px; }
+.mail-import-location { margin:10px 0 16px; }
+.mail-import-help { border:1px solid var(--desk-line); border-radius:9px; padding:10px 14px; margin-bottom:14px; }
+.mail-import-help summary { cursor:pointer; color:var(--desk-ink); }
+.mail-import-help ol { padding-left:20px; }
+.mail-import-help li { margin:8px 0; }
+.mail-import-file-box { padding:22px; text-align:center; border:1px dashed var(--desk-line); border-radius:12px; background:var(--desk-muted-surface); }
+.mail-import-file-box p { margin:6px 0 14px; }
+.mail-import-file-box>div { display:flex; justify-content:center; flex-wrap:wrap; gap:10px; }
+.mail-import-file-box small { display:block; margin-top:14px; }
+[data-import-selected] { font-size:12px; overflow-wrap:anywhere; }
+[data-import-selected] ul { padding-left:20px; color:var(--desk-muted); }
+.mail-import-progress { padding:14px; border:1px solid var(--desk-line); background:var(--desk-muted-surface); border-radius:10px; }
+.mail-import-progress p { margin:0 0 8px; }
+.mail-import-progress progress { width:100%; height:8px; accent-color:var(--desk-accent); display:block; }
+.mail-import-progress small { display:block; margin-top:8px; }
+.mail-import-progress [data-import-current] { overflow-wrap:anywhere; }
+.mail-import-live { margin-top:10px; padding-top:10px; border-top:1px solid var(--desk-line); font-size:12px; color:var(--desk-ink); }
+.mail-import-folders { margin:14px 0; padding:12px 14px; border:1px solid var(--desk-line); border-radius:10px; font-size:13px; }
+.mail-import-folders :is(p,small) { color:var(--desk-muted); font-size:12px; }
+.mail-import-folders ul { list-style:none; padding:0; margin:10px 0 0; }
+.mail-import-folders li { display:flex; justify-content:space-between; gap:12px; padding:7px 0; border-top:1px solid var(--desk-line); }
+.mail-import-folders li span { overflow-wrap:anywhere; min-width:0; }
+.mail-import-folders li b { white-space:nowrap; color:var(--desk-accent); }
+.mail-import-origin { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mail-import-counts { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:16px; }
+.mail-import-counts>div { display:grid; gap:3px; padding:12px; border:1px solid var(--desk-line); border-radius:10px; background:var(--desk-muted-surface); }
+.mail-import-counts small { color:var(--desk-muted); font-size:12px; }
+.mail-import-counts b { font-size:22px; color:var(--desk-ink); }
+.mail-import-counts [data-count="new"] { color:var(--desk-accent); }
+.mail-import-result-message { font-size:13px; }
+.mail-import-dialog details summary { cursor:pointer; }
+.mail-import-samples article { border-bottom:1px solid var(--desk-line); padding:10px 0; }
+.mail-import-samples small { display:block; overflow-wrap:anywhere; }
+[data-import-errors] { margin-top:12px; font-size:12px; color:var(--desk-muted); overflow-wrap:anywhere; }
+[data-import-error] { color:var(--ui-danger,#b45950); font-size:13px; overflow-wrap:anywhere; }
+html[data-theme=dark] [data-import-error] { color:#efb1a5; }
+.mail-import-history { margin-top:16px; border-top:1px solid var(--desk-line); padding-top:12px; font-size:12px; color:var(--desk-muted); }
+.mail-import-history:empty { display:none; }
+.mail-import-history button { display:flex; align-items:center; justify-content:space-between; width:100%; gap:10px; margin-top:8px; text-align:left; }
+.mail-import-history small { display:block; color:var(--desk-muted); font-size:11px; }
+.mail-import-history b { font-size:12px; flex-shrink:0; color:var(--desk-accent); }
+.mail-import-dialog footer { display:flex; flex:none; flex-wrap:wrap; gap:8px; align-items:center; padding:14px 24px; border-top:1px solid var(--desk-line); background:var(--desk-surface); }
+.mail-import-dialog footer>span { flex:1; }
+.mail-import-dialog [hidden] { display:none!important; }
+@media(max-width:600px) { .mail-import-options { grid-template-columns:1fr; } .mail-import-counts { grid-template-columns:repeat(2,1fr); } .mail-import-body { padding:16px; } .mail-import-dialog header { padding:16px; } .mail-import-steps { padding:12px 16px; gap:8px; font-size:12px; } .mail-import-dialog footer { padding:12px 16px; } }
+@media(prefers-reduced-motion:reduce) { .mail-import-dialog button { transition:none; } }

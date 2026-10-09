@@ -76,12 +76,12 @@ const deferred = () => { let resolve; const promise = new Promise(r => { resolve
     assert(await fold.evaluate(n => n.getAnimations().length > 0));
     await page.waitForTimeout(60);
     await fold.locator('summary').evaluate(n => n.click());
-    await page.waitForTimeout(260);
+    await page.waitForFunction(()=>!document.getElementById('motion-test-fold').open && document.getElementById('motion-test-fold').style.overflow==='');
     assert.equal(await fold.evaluate(n => n.open), false);
     assert.equal(await fold.evaluate(n => n.style.overflow), '');
     await fold.locator('summary').focus();
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(300);
+    await page.waitForFunction(()=>document.getElementById('motion-test-fold').open && document.getElementById('motion-test-fold').style.overflow==='');
     assert.equal(await fold.evaluate(n => n.open), true);
     await page.emulateMedia({reducedMotion:'reduce'});
     await fold.locator('summary').click();
@@ -112,7 +112,7 @@ const deferred = () => { let resolve; const promise = new Promise(r => { resolve
     const sheet = page.locator('.directory-sheet details').first();
     await sheet.locator('summary').evaluate(n => n.click());
     assert(await sheet.evaluate(n => n.getAnimations().length>0));
-    await page.waitForTimeout(280);
+    await page.waitForFunction(()=>document.querySelector('.directory-sheet details')?.style.overflow==='');
     assert.equal(await sheet.evaluate(n=>n.style.overflow), '');
     await page.locator('[data-directory-close]').click();
     // Rich HTML mail uses a separate document and must receive the same motion.
@@ -125,7 +125,7 @@ const deferred = () => { let resolve; const promise = new Promise(r => { resolve
       window.motionFrameAnimated=summary.parentElement.getAnimations().length>0;
     });
     assert.equal(await page.evaluate(()=>window.motionFrameAnimated),true);
-    await page.waitForTimeout(280);
+    await page.waitForFunction(()=>document.getElementById('motion-test-frame').contentDocument.querySelector('details')?.style.overflow==='');
     assert.equal(await page.evaluate(()=>document.getElementById('motion-test-frame').contentDocument.querySelector('details').style.overflow),'');
     await page.evaluate(()=>document.getElementById('motion-test-frame').remove());
     assert.deepEqual(errors, []);

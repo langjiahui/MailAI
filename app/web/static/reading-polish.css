@@ -9,6 +9,19 @@ html[data-theme="dark"] {
   --desk-line:#303a34; --desk-ink:#e4ebe7; --desk-muted:#a4b2a9;
   --desk-hover:#242e28; --desk-selected:#293c31; --desk-accent:#8ac5a5;
 }
+/* Paging controls keep a readable label and count on both themes. */
+html[data-theme] body :is(.email-render-more,.todo-render-more) {
+ background:var(--desk-muted-surface); color:var(--desk-accent); border-color:var(--desk-line);
+}
+html[data-theme] body :is(.email-render-more,.todo-render-more):hover {
+ background:var(--desk-hover); border-color:var(--desk-accent);
+}
+html[data-theme] body :is(.email-render-more,.todo-render-more):active { background:var(--desk-selected); }
+html[data-theme] body :is(.email-render-more,.todo-render-more) small { color:var(--desk-muted); }
+html[data-theme] body :is(.email-render-more,.todo-render-more):focus-visible { outline:2px solid var(--desk-accent); outline-offset:2px; }
+html[data-theme] body .server-folder-group .nav-title button { background:var(--desk-muted-surface); color:var(--desk-accent); }
+html[data-theme] body .server-folder-group .nav-title button:is(:hover,:active) { background:var(--desk-selected); }
+html[data-theme] body .server-folder-group .nav-title button:focus-visible { outline:2px solid var(--desk-accent); outline-offset:2px; }
 /* Keep the theme’s ambient gradient and background ornaments. */
 html[data-theme="dark"] body {
   background:

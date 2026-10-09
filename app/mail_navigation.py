@@ -23,6 +23,18 @@ def navigation_delegate(base_delegate, app_url, opener):
     import objc
 
     class MailAINavigationDelegate(base_delegate):
+        def webView_runOpenPanelWithParameters_initiatedByFrame_completionHandler_(self, webview, param, frame, handler):
+            # pywebview 6.2 uses OPEN for every HTML file input. WKWebView's
+            # webkitdirectory input needs a folder picker, then expands its URLs.
+            if not getattr(param, 'allowsDirectories', lambda: False)():
+                return objc.super(MailAINavigationDelegate, self).webView_runOpenPanelWithParameters_initiatedByFrame_completionHandler_(webview, param, frame, handler)
+            from webview import FileDialog
+            from webview.platforms import cocoa
+            from Foundation import NSURL
+            browser = next(iter(cocoa.BrowserView.instances.values()))
+            files = browser.create_file_dialog(FileDialog.FOLDER, '', param.allowsMultipleSelection(), '', (), main_thread=True)
+            handler([NSURL.fileURLWithPath_(path) for path in files] if files else None)
+
         def webView_decidePolicyForNavigationAction_decisionHandler_(self, webview, action, handler):
             source = action.sourceFrame()
             decision = navigation_action(
