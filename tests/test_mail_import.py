@@ -1,5 +1,6 @@
 """Offline client-mail import integrity, recovery and account-isolation checks."""
 import mailbox
+from io import BytesIO
 import asyncio
 import csv
 import sys
@@ -78,7 +79,7 @@ def test_round_trip_and_dedup():
         assert imp.signature(raw)[1] == imp.signature(equivalent)[1]
         upload(token, '收件箱/重复.EML', equivalent)
         boxpath = root/'sent.mbox'; box = mailbox.mbox(boxpath)
-        box.add(message('sent@example.test')); box.add(raw); box.close()
+        box.add(BytesIO(message('sent@example.test'))); box.add(BytesIO(raw)); box.close()
         upload(token, '已发送.mbox', boxpath.read_bytes())
         result = scan(token)
         assert (result['found'], result['new'], result['duplicates'], result['failed']) == (4,2,2,0), result
@@ -246,8 +247,8 @@ def test_duplicate_progress_and_complete_reports():
         raw = message('already-imported')
         first = imp.create()['token']; upload(first,'first.eml',raw); scan(first); apply(first)
         path=root/'large.mbox'; box=mailbox.mbox(path)
-        for _ in range(75): box.add(raw)
-        for _ in range(70): box.add(b'not a valid email')
+        for _ in range(75): box.add(BytesIO(raw))
+        for _ in range(70): box.add(BytesIO(b'not a valid email'))
         box.close()
         token=imp.create('=危险名称')['token']; upload(token,'+核对.mbox',path.read_bytes())
         progress=[]; original_update=imp._update
@@ -276,9 +277,13 @@ def test_duplicate_progress_and_complete_reports():
 
 
 if __name__ == '__main__':
-    test_round_trip_and_dedup()
+    # mailbox.add(bytes) replaces LF with os.linesep without stripping CR.
+    # Use streams for valid exports and exercise Windows CRLF on every runner.
+    for separator in (b'\n', b'\r\n'):
+        with patch.object(mailbox, 'linesep', separator):
+            test_round_trip_and_dedup()
+            test_duplicate_progress_and_complete_reports()
     test_interruption_retry_and_live_dedup()
     test_invalid_inputs_and_forwarded_identity()
     test_upload_disconnect_and_limits()
-    test_duplicate_progress_and_complete_reports()
     print('Client mail import: MIME/attachments, dedup, account isolation, pause/retry, concurrent sync and invalid inputs passed')
