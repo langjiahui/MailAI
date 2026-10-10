@@ -98,7 +98,9 @@ def api_assistant_ask(payload: AssistantRequest):
         db.add_assistant_message(conversation_id, "user", assistant_attachments.history_text(assistant_vision.history_text(payload.question, images),materials), images=images)
         db.set_assistant_alert_context(conversation_id, payload.email_ids if payload.alert_context else [])
         result = mail_assistant.ask(payload.question, payload.history, payload.email_ids, **({'images': images} if images else {}), **({'materials':materials} if materials else {}))
-        db.add_assistant_message(conversation_id, "assistant", result["answer"], result.get("sources") or [])
+        message_id = db.add_assistant_message(conversation_id, "assistant", result["answer"], result.get("sources") or [])
+        from ...companion_growth import safe_record
+        safe_record('tool', key=f'assistant:{message_id}')
         return {**result, "conversation_id": conversation_id}
     except ValueError as exc:
         raise HTTPException(400, str(exc))
@@ -139,7 +141,9 @@ def api_assistant_ask_stream(payload: AssistantRequest):
             if not answer:
                 answer = mail_assistant._empty_answer(payload.question)
                 yield json.dumps({"type": "delta", "content": answer}, ensure_ascii=False) + "\n"
-            db.add_assistant_message(conversation_id, "assistant", answer, sources)
+            message_id = db.add_assistant_message(conversation_id, "assistant", answer, sources)
+            from ...companion_growth import safe_record
+            safe_record('tool', key=f'assistant:{message_id}')
             yield json.dumps({"type": "done"}, ensure_ascii=False) + "\n"
         except Exception as exc:
             log.exception("助手流式回答失败")

@@ -134,6 +134,10 @@ def finish_sent_message(record_id: int, *, ok: bool, error: str = "",
              datetime.now().isoformat(timespec="seconds") if ok else None, message_id, record_id),
         )
 
+        if ok and c.execute('SELECT 1 FROM sent_messages WHERE id=?', (record_id,)).fetchone():
+            from ..companion_growth import safe_record
+            safe_record('sent', key=f'sent:{record_id}', connection=c)
+
 
 def list_sent_messages(limit: int = 500):
     with conn() as c:

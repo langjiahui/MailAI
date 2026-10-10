@@ -638,8 +638,8 @@ const I18N_MESSAGES = {
     'acct.updateNote': 'Updating authorization does not switch the current account',
     'acct.dangerSummary': 'Remove this mailbox',
     'acct.dangerTitle': 'Remove account from MailAI',
-    'acct.dangerHint': 'You can keep or clear the local mail history.',
-    'acct.dangerBtn': 'Delete mailbox',
+    'acct.dangerHint': 'Choose whether to keep or clear local mail history in the next step.',
+    'acct.dangerBtn': 'Remove mailbox',
     'acct.addPanelEyebrow': 'Connection settings',
     'acct.addTitle': 'Add mailbox',
     'acct.addPanelHint': 'Use a client authorization code; MailAI detects common providers automatically.',
@@ -694,6 +694,10 @@ const I18N_MESSAGES = {
     'maint.diagCopy': 'Checks local data plus mailbox and AI connections. Sends no mail.',
     'maint.notifyBtn': 'System notifications',
     'maint.runBtn': 'Start check',
+    'maint.diagResults': 'View results',
+    'maint.diagClose': 'Close diagnostics',
+    'maint.diagRerun': 'Run again',
+    'maint.diagUnchecked': 'Not checked yet',
     'maint.backupTitle': 'Backup & migration',
     'maint.backupCopy': 'Local backups roll back this device; migration packages move to a new computer or OS.',
     'maint.backupBadge': 'Local & migration',
@@ -724,6 +728,8 @@ const I18N_MESSAGES = {
     'backup.ariaDelete': 'Delete',
     'backup.ariaBackup': 'backup',
     'backup.ariaRestore': 'Restore this backup',
+    'backup.deleteLocalAria': 'Delete this backup',
+    'backup.deleteMigrationAria': 'Delete this migration package',
     'maint.cleanupTitle': 'Clean up server mail',
     'maint.cleanupCopy': 'Free up mail server space while keeping full mail locally.',
     'maint.cleanupBadge': 'Manual only',
@@ -805,7 +811,7 @@ const I18N_MESSAGES = {
     'rules.advancedHint': 'Inspect each technical rule, its toggle and risk score',
     'rules.advancedExpand': 'Expand',
     'rules.searchPh': 'Search rule name, code or description…',
-    'logout.title': 'Delete mailbox',
+    'logout.title': 'Remove mailbox',
     'logout.subtitle': 'The authorization code stored on this device will be removed',
     'dlg.close': 'Close',
     'logout.prompt': 'Choose how to handle this mailbox\'s local mail history:',
@@ -815,7 +821,7 @@ const I18N_MESSAGES = {
     'logout.clearHint': 'Also permanently delete this account\'s local database and raw mail. Other accounts are unaffected.',
     'logout.warning': 'This cannot be undone. Mail on the server is not deleted.',
     'logout.cancel': 'Cancel',
-    'logout.confirm': 'Delete mailbox',
+    'logout.confirm': 'Confirm removal',
     'digest.sourceTitle': 'Source mail',
     'digest.viewInList': 'View in mail list',
     'corr.eyebrow': 'Contact mail',
@@ -4967,8 +4973,8 @@ const MAILAI_UI_COPY = {
     "Select the account to delete first"
   ],
   "ui.6b1d7497602d": [
-    "{0} · 删除后将移除本机保存的邮箱授权码",
-    "{0} · Deleting removes the mailbox credentials saved on this device"
+    "{0} · 将移除本机保存的邮箱账号和授权码",
+    "{0} · Removing this mailbox clears its credentials from this device"
   ],
   "ui.de314e67644a": [
     "正在安全停止邮件同步…",
@@ -9052,7 +9058,7 @@ const MAILAI_UI_COPY = {
   ],
   "ui.f93ecd2cd5cb": [
     "全部正常邮件（含发件、草稿）",
-    "All regular mail (including sent mail and drafts)"
+    "Regular mail, sent & drafts"
   ],
   "ui.699ef8314304": [
     "隔离区",
@@ -14957,6 +14963,887 @@ const MAILAI_UI_COPY = {
   "ui.f0c57618c402": [
     "服务器中存在多个同标识副本，请同步后重试",
     "Multiple copies with the same identifier exist on the server. Sync and try again."
+  ],
+  "ui.069464f28b7c": [
+    "本地数据库",
+    "Local database"
+  ],
+  "ui.23c54adf04a2": [
+    "账号隔离",
+    "Account isolation"
+  ],
+  "ui.168080a7b851": [
+    "本机可用空间",
+    "Free disk space"
+  ],
+  "ui.ba3dfa68377f": [
+    "自动备份",
+    "Automatic backup"
+  ],
+  "ui.1ed70b834399": [
+    "系统凭据库",
+    "System credential vault"
+  ],
+  "ui.fa52916efddb": [
+    "邮箱收信",
+    "Mailbox receiving"
+  ],
+  "ui.ef9d9d6321a5": [
+    "SMTP 发信",
+    "SMTP sending"
+  ],
+  "ui.23a052718902": [
+    "AI 模型",
+    "AI model"
+  ],
+  "ui.36c25db56ca7": [
+    "历史邮件初始化",
+    "Initial mail import"
+  ],
+  "ui.a70696ffdfde": [
+    "当前邮箱使用独立数据库",
+    "This mailbox uses its own database"
+  ],
+  "ui.f42d08bf0f1a": [
+    "账号数据库映射异常，请重新打开软件",
+    "Account database mapping is broken; restart the app"
+  ],
+  "ui.bfd92bdcc960": [
+    "剩余 {0}；空间不足会影响收信和本地备份",
+    "{0} available; low space can interrupt mail sync and backups"
+  ],
+  "ui.8b5b5d7e2508": [
+    "最近 8 天已有完整本地备份",
+    "A full local backup exists from the last 8 days"
+  ],
+  "ui.4bfdb2d02f75": [
+    "尚无近期自动备份；软件运行时会定期尝试，空间不足时请手动备份",
+    "No recent automatic backup; the app retries while running. Back up manually if space is low"
+  ],
+  "ui.990d41233f13": [
+    "尚未登录邮箱，未检查自动备份",
+    "No mailbox signed in; backup not checked"
+  ],
+  "ui.70e71792ad5a": [
+    "授权码已持久保存在系统凭据库",
+    "Password is stored persistently in the system credential vault"
+  ],
+  "ui.e72efd3212c2": [
+    "IMAP连接失败，请检查地址、网络和服务状态",
+    "IMAP connection failed; check the address, network and service"
+  ],
+  "ui.7d831cae8804": [
+    "SMTP连接失败，请检查地址、网络和服务状态",
+    "SMTP connection failed; check the address, network and service"
+  ],
+  "ui.4af19ef8faaa": [
+    "模型连接失败，请检查地址、网络和服务状态",
+    "Model connection failed; check the address, network and service"
+  ],
+  "ui.1ac3549b7896": [
+    "尚未登录或授权码不可用",
+    "Not signed in or password unavailable"
+  ],
+  "ui.b335e5b2af24": [
+    "尚未配置完整的 SMTP 地址和凭据",
+    "SMTP address and credentials are not fully configured"
+  ],
+  "ui.c98e118e0a43": [
+    "模型",
+    "Model"
+  ],
+  "ui.080d8395d826": [
+    "尚未配置 API Key",
+    "No API key configured"
+  ],
+  "ui.26c8cfcbf763": [
+    "等待中",
+    "Pending"
+  ],
+  "ui.09c5dbb3ac8d": [
+    "增量收信",
+    "New mail sync"
+  ],
+  "ui.66009c547bed": [
+    "尚未启动",
+    "Not started"
+  ],
+  "ui.9916ab3da0b1": [
+    "待重试邮件",
+    "Mail awaiting retry"
+  ],
+  "ui.2ff62666bb3f": [
+    "{0} 封邮件暂未下载，其他邮件可继续同步；点击同步可立即重试",
+    "{0} messages await retry; other mail can keep syncing. Click Sync to retry now."
+  ],
+  "ui.7b489dd1a6a5": [
+    "超大邮件",
+    "Oversized mail"
+  ],
+  "ui.b1b1f0d5de3e": [
+    "{0} 封邮件超过 50 MB，需在其他邮件客户端查看或下载",
+    "{0} messages exceed 50 MB; open or download them in another mail client."
+  ],
+  "ui.fbeff29f928b": [
+    "结构与索引校验通过",
+    "Structure and index check passed"
+  ],
+  "ui.6a7880a897db": [
+    "数据库校验异常",
+    "Database integrity check failed"
+  ],
+  "ui.e5706757bffd": [
+    "数据库无法打开或校验",
+    "Database cannot be opened or verified"
+  ],
+  "ui.9259312f3bc5": [
+    "暂时无法检查磁盘空间",
+    "Unable to check free disk space"
+  ],
+  "ui.f6680d397177": [
+    "授权码仅在本次运行中有效",
+    "Password is only valid for this session"
+  ],
+  "ui.ee1c9caace84": [
+    "没有可用授权码",
+    "No password available"
+  ],
+  "ui.69dc7e6453be": [
+    "IMAP认证失败，请核对授权码或 API Key",
+    "IMAP authentication failed; check the password or API key"
+  ],
+  "ui.67af731df773": [
+    "SMTP认证失败，请核对授权码或 API Key",
+    "SMTP authentication failed; check the password or API key"
+  ],
+  "ui.294ed6612c9c": [
+    "模型认证失败，请核对授权码或 API Key",
+    "Model authentication failed; check the password or API key"
+  ],
+  "ui.c758e1fe1a33": [
+    "IMAP证书校验失败",
+    "IMAP certificate verification failed"
+  ],
+  "ui.11424e29109a": [
+    "SMTP证书校验失败",
+    "SMTP certificate verification failed"
+  ],
+  "ui.8ed959477ebd": [
+    "模型证书校验失败",
+    "Model certificate verification failed"
+  ],
+  "ui.ea71cce69f75": [
+    "IMAP连接超时",
+    "IMAP connection timed out"
+  ],
+  "ui.92a8567e9f55": [
+    "SMTP连接超时",
+    "SMTP connection timed out"
+  ],
+  "ui.25be9e1d2710": [
+    "模型连接超时",
+    "Model connection timed out"
+  ],
+  "ui.23dc6f589325": [
+    "IMAP服务器地址无法解析",
+    "IMAP server address cannot be resolved"
+  ],
+  "ui.0b0c5cd75ce3": [
+    "SMTP服务器地址无法解析",
+    "SMTP server address cannot be resolved"
+  ],
+  "ui.83445d153f0f": [
+    "模型服务器地址无法解析",
+    "Model server address cannot be resolved"
+  ],
+  "ui.4c2624bf7166": [
+    "IMAP服务器拒绝连接",
+    "IMAP server refused the connection"
+  ],
+  "ui.f31243132812": [
+    "SMTP服务器拒绝连接",
+    "SMTP server refused the connection"
+  ],
+  "ui.80b538baa746": [
+    "模型服务器拒绝连接",
+    "Model server refused the connection"
+  ],
+  "ui.8f31a776d53b": [
+    "等待检查",
+    "Waiting"
+  ],
+  "ui.6b72c3d6855c": [
+    "正在检查…",
+    "Checking…"
+  ],
+  "ui.1abf6dd7db70": [
+    "实测登录成功，可读取 {0} 个文件夹",
+    "Signed in successfully; {0} folders readable"
+  ],
+  "ui.4d8c1c5b4283": [
+    "未知",
+    "Unknown"
+  ],
+  "ui.b3dc3265ba4b": [
+    "实测认证成功（未发送邮件）",
+    "Authentication succeeded (no mail sent)"
+  ],
+  "ui.4147b0ccec73": [
+    "实测请求成功 · {0}",
+    "Live request succeeded · {0}"
+  ],
+  "ui.600e5808b0eb": [
+    "接口未返回有效结果",
+    "API returned no usable result"
+  ],
+  "ui.4c65601f7fa4": [
+    "实测失败：",
+    "Live check failed: "
+  ],
+  "pet.launch": [
+    "小邮养成",
+    "XiaoYou growth"
+  ],
+  "pet.settingsHint": [
+    "一起读信、学习和工作，解锁成长形态与装扮。",
+    "Read, learn and work together to unlock new forms and outfits."
+  ],
+  "pet.open": [
+    "养成手账",
+    "Growth journal"
+  ],
+  "pet.close": [
+    "关闭养成手账",
+    "Close growth journal"
+  ],
+  "pet.summary": [
+    "{0} · {1} 邮票",
+    "{0} · {1} stamps"
+  ],
+  "pet.growth": [
+    "成长度",
+    "Growth"
+  ],
+  "pet.stamps": [
+    "邮票积分",
+    "Stamps"
+  ],
+  "pet.daily": [
+    "今日小目标",
+    "Daily goals"
+  ],
+  "pet.autoReward": [
+    "完成后自动获得奖励",
+    "Rewards are granted automatically"
+  ],
+  "pet.quest.reader": [
+    "认真读完 3 封邮件",
+    "Read 3 emails"
+  ],
+  "pet.quest.focus": [
+    "专注使用 10 分钟",
+    "Stay active for 10 minutes"
+  ],
+  "pet.quest.helper": [
+    "使用工具或小邮 2 次",
+    "Use tools or XiaoYou twice"
+  ],
+  "pet.quest.student": [
+    "学习 1 个帮助主题",
+    "Explore one help topic"
+  ],
+  "pet.complete": [
+    "已完成",
+    "Completed"
+  ],
+  "pet.activities": [
+    "日常成长来源",
+    "Everyday growth"
+  ],
+  "pet.todayGain": [
+    "今日 +{0} 成长 · +{1} 邮票",
+    "Today +{0} growth · +{1} stamps"
+  ],
+  "pet.activity.active": [
+    "活跃使用",
+    "Active time"
+  ],
+  "pet.activity.reading": [
+    "阅读时间",
+    "Reading time"
+  ],
+  "pet.activity.click": [
+    "日常点击",
+    "Interactions"
+  ],
+  "pet.activity.read": [
+    "认真阅读邮件",
+    "Emails read"
+  ],
+  "pet.activity.received": [
+    "收到新邮件",
+    "New mail received"
+  ],
+  "pet.activity.sent": [
+    "成功发送邮件",
+    "Mail sent successfully"
+  ],
+  "pet.activity.tool": [
+    "工具与小邮协作",
+    "Tools and assistant"
+  ],
+  "pet.activity.learn": [
+    "帮助学习",
+    "Help topics learned"
+  ],
+  "pet.timeRule": [
+    "每 {0} 秒 +{1} 成长 / +{2} 邮票，每日奖励前 {3} 秒",
+    "Every {0}s: +{1} growth / +{2} stamps; first {3}s rewarded daily"
+  ],
+  "pet.countRule": [
+    "每 {0} 次 +{1} 成长 / +{2} 邮票，每日奖励前 {3} 次",
+    "Every {0}: +{1} growth / +{2} stamps; first {3} rewarded daily"
+  ],
+  "pet.timingNote": [
+    "只计前台活跃时间，超过 90 秒未操作即暂停。邮件阅读满 8 秒计为认真阅读，同一封每天奖励一次；帮助主题展开并阅读 8 秒获得学习奖励。进度条显示今日奖励上限，次数与时间仍继续统计。",
+    "Only active foreground time counts; timers pause after 90 seconds without input. Read an email for 8 seconds to earn one reading reward per email per day. Keep a help topic open for 8 seconds to earn learning rewards. Progress bars show daily reward limits; activity totals continue counting."
+  ],
+  "pet.journeyNote": [
+    "成长度来自日常积累，也可以兑换成长莓补充。每次进化都保留小邮熟悉的样子，再增加新的细节。",
+    "Earn growth through everyday activity or redeem growth berries. Each evolution adds new details to XiaoYou’s familiar appearance."
+  ],
+  "pet.stage1": [
+    "初见嫩芽",
+    "Little sprout"
+  ],
+  "pet.stage2": [
+    "萌芽信使",
+    "Budding messenger"
+  ],
+  "pet.stage3": [
+    "花苞伙伴",
+    "Blossom buddy"
+  ],
+  "pet.stage4": [
+    "星章邮差",
+    "Star courier"
+  ],
+  "pet.stage5": [
+    "远行使者",
+    "Voyaging messenger"
+  ],
+  "pet.stage6": [
+    "极光守护",
+    "Aurora guardian"
+  ],
+  "pet.stage7": [
+    "星河小邮",
+    "Starlight XiaoYou"
+  ],
+  "pet.stageHint1": [
+    "一封信，一点成长，从今天开始相伴。",
+    "One email, a little growth. Start your journey today."
+  ],
+  "pet.stageHint2": [
+    "头顶长出新的叶片，慢慢熟悉你的工作节奏。",
+    "A new leaf appears as XiaoYou learns your work rhythm."
+  ],
+  "pet.stageHint3": [
+    "嫩芽开出小花，学习与阅读让陪伴更丰富。",
+    "A little flower blooms through reading and learning."
+  ],
+  "pet.stageHint4": [
+    "戴上星章，解锁闪光特效与更丰富的装扮。",
+    "Earn a star badge and unlock sparkles and more outfits."
+  ],
+  "pet.stageHint5": [
+    "披上远行披风，还可以兑换信使小翅膀。",
+    "Gain a travel cape and unlock messenger wings."
+  ],
+  "pet.stageHint6": [
+    "脚边亮起极光光环，让每一天的成长可见。",
+    "An aurora halo lights up each day of growth."
+  ],
+  "pet.stageHint7": [
+    "星光围绕身边，记录你们长久的共同成长。",
+    "Starlight surrounds XiaoYou, marking your journey together."
+  ],
+  "pet.streakNote": [
+    "每天第一次有效活动 +10 成长 / +5 邮票；每连续 7 天额外 +30 成长 / +20 邮票。中断只重置连续天数，已获得的成长、积分和道具一直保留。",
+    "Your first activity each day gives +10 growth / +5 stamps. Every 7 consecutive days adds +30 growth / +20 stamps. Missing a day only resets your streak; growth, stamps and items are kept."
+  ],
+  "pet.threshold": [
+    "累计 {0} 成长度",
+    "{0} lifetime growth"
+  ],
+  "pet.current": [
+    "当前阶段",
+    "Current stage"
+  ],
+  "pet.unlocked": [
+    "已解锁",
+    "Unlocked"
+  ],
+  "pet.shopTitle": [
+    "小邮的补给铺",
+    "XiaoYou’s supply shop"
+  ],
+  "pet.balance": [
+    "可用 {0} 邮票",
+    "{0} stamps available"
+  ],
+  "pet.reset.palette": [
+    "恢复薄荷色",
+    "Mint palette"
+  ],
+  "pet.reset.accessory": [
+    "卸下配饰",
+    "Remove accessory"
+  ],
+  "pet.reset.effect": [
+    "关闭兑换特效",
+    "Remove effect"
+  ],
+  "pet.wearing": [
+    "正在穿戴",
+    "Equipped"
+  ],
+  "pet.wear": [
+    "穿戴",
+    "Equip"
+  ],
+  "pet.berryLimit": [
+    "今日已用满",
+    "Daily limit reached"
+  ],
+  "pet.stageRequired": [
+    "{0} 解锁",
+    "Unlock at {0}"
+  ],
+  "pet.feedPrice": [
+    "{0} 邮票 · 喂一次",
+    "{0} stamps · Feed"
+  ],
+  "pet.buyPrice": [
+    "{0} 邮票 · 兑换",
+    "{0} stamps · Redeem"
+  ],
+  "pet.owned": [
+    "已拥有 · 可重复穿戴",
+    "Owned · Equip anytime"
+  ],
+  "pet.itemRequirement": [
+    "{0} 邮票 · {1} 可兑换",
+    "{0} stamps · Available at {1}"
+  ],
+  "pet.item.scarf": [
+    "暖橙围巾",
+    "Warm scarf"
+  ],
+  "pet.item.sky": [
+    "晴空蓝",
+    "Sky blue"
+  ],
+  "pet.item.peach": [
+    "蜜桃粉",
+    "Peach pink"
+  ],
+  "pet.item.cap": [
+    "信使帽",
+    "Messenger cap"
+  ],
+  "pet.item.satchel": [
+    "金色邮包",
+    "Golden satchel"
+  ],
+  "pet.item.sparkles": [
+    "点点星光",
+    "Little sparkles"
+  ],
+  "pet.item.orbit": [
+    "星环轨迹",
+    "Star orbit"
+  ],
+  "pet.item.wings": [
+    "信使小翅膀",
+    "Messenger wings"
+  ],
+  "pet.item.aurora": [
+    "极光涟漪",
+    "Aurora ripples"
+  ],
+  "pet.item.berry": [
+    "成长莓",
+    "Growth berry"
+  ],
+  "pet.itemHint.scarf": [
+    "温暖的小围巾，陪你读完每一封信。",
+    "A cozy scarf for reading together."
+  ],
+  "pet.itemHint.sky": [
+    "换上轻盈的晴空配色。",
+    "A soft blue palette inspired by clear skies."
+  ],
+  "pet.itemHint.peach": [
+    "换上柔和的蜜桃配色。",
+    "A gentle peach palette."
+  ],
+  "pet.itemHint.cap": [
+    "专属信使帽，开始认真送信。",
+    "A special cap for a dedicated messenger."
+  ],
+  "pet.itemHint.satchel": [
+    "给熟悉的邮包装点金色细节。",
+    "Golden details for a familiar mailbag."
+  ],
+  "pet.itemHint.sparkles": [
+    "身边浮现轻轻闪动的星光。",
+    "Softly twinkling stars around XiaoYou."
+  ],
+  "pet.itemHint.orbit": [
+    "一圈缓缓摇动的星环。",
+    "A gently swaying star orbit."
+  ],
+  "pet.itemHint.wings": [
+    "长出一对轻盈的小翅膀。",
+    "A pair of delicate messenger wings."
+  ],
+  "pet.itemHint.aurora": [
+    "脚边泛起柔和的极光涟漪。",
+    "Soft aurora ripples at XiaoYou’s feet."
+  ],
+  "pet.itemHint.berry": [
+    "立即 +80 成长度，每天最多 3 次。",
+    "Instantly adds 80 growth; up to 3 per day."
+  ],
+  "pet.shopNote": [
+    "永久装扮兑换后自动穿戴，同类配饰或特效一次穿戴一个。花费邮票不会扣除成长度。轻动效开关和系统减少动态效果设置同时适用于成长特效。",
+    "Permanent outfits equip automatically. One item per slot can be equipped at a time. Spending stamps never reduces growth. The companion animation preference and system reduced-motion setting apply to growth effects."
+  ],
+  "pet.historyTitle": [
+    "一起成长的日子",
+    "Days of growing together"
+  ],
+  "pet.last14": [
+    "最近 14 个活跃日",
+    "Last 14 recorded days"
+  ],
+  "pet.historyEmpty": [
+    "还没有成长记录。读一封信，开始今天的陪伴吧。",
+    "No growth records yet. Read an email to begin today’s journey."
+  ],
+  "pet.privacyNote": [
+    "成长进度保存在本机当前邮箱中，不同邮箱分别养成。只记录次数、时长和奖励，不保存邮件正文或键盘输入。暂停养成后停止新增行为统计，已有成长与装扮保留。",
+    "Progress is saved locally for the current mailbox; each account has its own companion. Only counts, durations and rewards are recorded, never mail text or keystrokes. Pausing stops new activity records and keeps existing progress and outfits."
+  ],
+  "pet.heroEyebrow": [
+    "每一天，都长大一点",
+    "A little growth every day"
+  ],
+  "pet.next": [
+    "距下一阶段 {0}",
+    "{0} to next stage"
+  ],
+  "pet.maxStage": [
+    "已到最高形态 · 成长继续积累",
+    "Final form · Growth continues"
+  ],
+  "pet.days": [
+    "天",
+    " days"
+  ],
+  "pet.streak": [
+    "连续陪伴",
+    "Day streak"
+  ],
+  "pet.earned": [
+    "累计获得邮票",
+    "Lifetime stamps"
+  ],
+  "pet.tabs": [
+    "养成手账页面",
+    "Growth journal pages"
+  ],
+  "pet.today": [
+    "今日成长",
+    "Today"
+  ],
+  "pet.journey": [
+    "进化旅程",
+    "Evolution"
+  ],
+  "pet.shop": [
+    "兑换装扮",
+    "Shop"
+  ],
+  "pet.history": [
+    "成长记录",
+    "Journal"
+  ],
+  "pet.loading": [
+    "正在读取养成进度…",
+    "Loading growth progress…"
+  ],
+  "pet.login": [
+    "连接邮箱后即可开始养成小邮。",
+    "Connect a mailbox to start growing XiaoYou."
+  ],
+  "pet.retry": [
+    "重新读取",
+    "Reload"
+  ],
+  "pet.pause": [
+    "暂停养成",
+    "Pause growth"
+  ],
+  "pet.resume": [
+    "继续养成",
+    "Resume growth"
+  ],
+  "pet.paused": [
+    "养成已暂停，已有成长和装扮会保留。",
+    "Growth is paused. Existing progress and outfits are kept."
+  ],
+  "pet.resumed": [
+    "养成已继续，和小邮一起开始今天的工作吧。",
+    "Growth resumed. Start today’s work with XiaoYou."
+  ],
+  "pet.fed": [
+    "小邮吃下成长莓，成长度 +80。",
+    "XiaoYou enjoyed a growth berry. +80 growth."
+  ],
+  "pet.bought": [
+    "兑换成功，已为小邮穿戴。",
+    "Redeemed and equipped."
+  ],
+  "pet.equipped": [
+    "装扮已更新。",
+    "Outfit updated."
+  ],
+  "pet.error.item": [
+    "道具不存在",
+    "Item does not exist"
+  ],
+  "pet.error.stage": [
+    "达到对应成长阶段后即可兑换",
+    "Reach the required stage to redeem this item"
+  ],
+  "pet.error.berry": [
+    "成长莓每天最多使用 3 次",
+    "Growth berries can be used up to 3 times per day"
+  ],
+  "pet.error.stamps": [
+    "邮票积分不足，完成日常活动即可积累",
+    "Not enough stamps. Earn more through everyday activities"
+  ],
+  "pet.error.slot": [
+    "装扮位置无效",
+    "Invalid outfit slot"
+  ],
+  "pet.error.owned": [
+    "请先兑换此装扮",
+    "Redeem this outfit first"
+  ],
+  "pet.styleChoice": [
+    "形象路线",
+    "Character style"
+  ],
+  "pet.themeSettings": ["小邮积分主题", "XiaoYou reward themes"],
+  "pet.themeSettingsHint": ["用日常成长获得的邮票，兑换工作台与小邮的配套主题。", "Use stamps from everyday growth to unlock matching workspace and XiaoYou themes."],
+  "pet.themeDefault": ["当前使用默认主题", "Default theme is active"],
+  "pet.themeCurrent": ["当前主题：{0}", "Active theme: {0}"],
+  "pet.themeShop": ["主题兑换", "Theme rewards"],
+  "pet.themeReset": ["恢复默认主题", "Restore default theme"],
+  "pet.themeNote": ["小邮带你换工作台：主题与小邮默认配色一起变化，可爱、帅气路线都适用；单独穿戴的小邮配色优先。支持浅色、暗色与跟随系统。", "Let XiaoYou refresh your workspace: themes coordinate with its default palette on both cute and cool routes. An equipped pet palette takes priority. Light, dark and system modes are supported."],
+  "pet.themePermanent": ["永久解锁 · 免费切换 · 随当前邮箱保存", "Permanent unlock · Free switching · Saved per mailbox"],
+  "pet.themeActive": ["正在使用", "Active"],
+  "pet.themeUse": ["启用主题", "Apply theme"],
+  "pet.themeBought": ["主题兑换成功，工作台与小邮已换上新配色。", "Theme unlocked. Your workspace and XiaoYou now share a new palette."],
+  "pet.themeApplied": ["主题已启用，可爱、帅气路线和已有装扮都已保留。", "Theme applied. Both character routes and owned outfits are kept."],
+  "pet.themeRestored": ["已恢复默认界面，解锁的主题仍可随时启用。", "Default appearance restored. Unlocked themes remain available."],
+  "pet.item.theme_monochrome": ["黑白简约", "Monochrome"],
+  "pet.itemHint.theme_monochrome": ["黑白与石墨灰，清晰安静的工作台；小邮换上银灰色调。", "A clean workspace in black, white and graphite; XiaoYou adopts soft silver tones."],
+  "pet.item.theme_baowu": ["宝武蓝", "Baowu blue"],
+  "pet.itemHint.theme_baowu": ["深蓝、钢蓝与清透浅蓝，沉稳有力量；小邮换上钢蓝色调。", "Deep blue, steel blue and airy light blue; XiaoYou adopts coordinated steel-blue tones."],
+  "pet.style.nature": [
+    "可爱 · 自然信使",
+    "Cute · Nature messenger"
+  ],
+  "pet.style.ranger": [
+    "帅气 · 星际先锋",
+    "Cool · Space ranger"
+  ],
+  "pet.styleFree": [
+    "两条路线免费切换 · 成长共享",
+    "Switch freely between both styles · Shared progress"
+  ],
+  "pet.styleUpdated": [
+    "形象路线已切换，成长和道具继续保留。",
+    "Character style updated. Progress and items are kept."
+  ],
+  "pet.rangerStage1": [
+    "初见先锋",
+    "Young ranger"
+  ],
+  "pet.rangerStage2": [
+    "见习信使",
+    "Cadet courier"
+  ],
+  "pet.rangerStage3": [
+    "战术伙伴",
+    "Tactical buddy"
+  ],
+  "pet.rangerStage4": [
+    "电光邮差",
+    "Electric courier"
+  ],
+  "pet.rangerStage5": [
+    "深空使者",
+    "Deep-space messenger"
+  ],
+  "pet.rangerStage6": [
+    "星际守卫",
+    "Space guardian"
+  ],
+  "pet.rangerStage7": [
+    "星河领航",
+    "Starlight captain"
+  ],
+  "pet.rangerHint1": [
+    "硬朗眉眼与沉稳配色，开始并肩成长。",
+    "Confident brows and cool tones. Start growing side by side."
+  ],
+  "pet.rangerHint2": [
+    "戴上先锋头盔，解锁战术外套。",
+    "Gain a ranger helmet and unlock a tactical jacket."
+  ],
+  "pet.rangerHint3": [
+    "点亮能量徽章，准备迎接新的挑战。",
+    "Light up an energy badge and prepare for new challenges."
+  ],
+  "pet.rangerHint4": [
+    "装备电光护目镜，还可兑换装甲与电光特效。",
+    "Gain a luminous visor and unlock armor and electric effects."
+  ],
+  "pet.rangerHint5": [
+    "披上深空披风，解锁锋利的机甲翼。",
+    "Gain a deep-space cape and unlock angular mech wings."
+  ],
+  "pet.rangerHint6": [
+    "脚边浮现能量光环，守护你的每一天。",
+    "An energy halo marks every day by your side."
+  ],
+  "pet.rangerHint7": [
+    "星光与能量围绕，成为并肩工作的领航伙伴。",
+    "Starlight and energy surround your trusted captain."
+  ],
+  "pet.item.midnight": [
+    "深空蓝",
+    "Midnight blue"
+  ],
+  "pet.item.jacket": [
+    "战术外套",
+    "Tactical jacket"
+  ],
+  "pet.item.visor": [
+    "电光护目镜",
+    "Electric visor"
+  ],
+  "pet.item.armor": [
+    "先锋装甲",
+    "Ranger armor"
+  ],
+  "pet.item.lightning": [
+    "电光脉冲",
+    "Electric pulse"
+  ],
+  "pet.item.mech_wings": [
+    "机甲翼",
+    "Mech wings"
+  ],
+  "pet.itemHint.midnight": [
+    "冷峻的深空配色，帅气又沉稳。",
+    "A cool, confident deep-space palette."
+  ],
+  "pet.itemHint.jacket": [
+    "利落的战术领口与硬朗线条。",
+    "A sharp tactical collar and structured silhouette."
+  ],
+  "pet.itemHint.visor": [
+    "透明能量镜片，亮起冰蓝电光。",
+    "Transparent energy lenses with icy blue highlights."
+  ],
+  "pet.itemHint.armor": [
+    "肩甲与胸甲搭配，点亮能量核心。",
+    "Shoulder and chest plates with a glowing energy core."
+  ],
+  "pet.itemHint.lightning": [
+    "身边出现冰蓝电弧与能量轨迹。",
+    "Icy blue arcs and energy trails surround XiaoYou."
+  ],
+  "pet.itemHint.mech_wings": [
+    "金属色的机甲翼，带有锋利的折线轮廓。",
+    "Metallic mech wings with an angular silhouette."
+  ],
+  "pet.error.style": [
+    "形象路线无效",
+    "Invalid character style"
+  ],
+  "pet.requestTimeout": [
+    "养成服务响应超时，请稍后重试。",
+    "Growth service timed out. Please try again shortly."
+  ],
+  "pet.purchaseUncertain": [
+    "兑换结果待核对，重试会核对同一笔兑换，不会重复扣分。",
+    "Purchase outcome is pending. Retry checks the same purchase without charging twice."
+  ],
+  "pet.purchasePending": [
+    "「{0}」的兑换结果待核对。",
+    "The outcome of your {0} purchase is pending."
+  ],
+  "pet.reconcile": [
+    "核对兑换结果",
+    "Check purchase"
+  ],
+  "pet.evolved": [
+    "小邮进化为「{0}」！新解锁 {1} 种道具。",
+    "XiaoYou evolved into {0}! {1} new items unlocked."
+  ],
+  "pet.goalsCompleted": [
+    "今日目标已完成：{0}，奖励已到账。",
+    "Daily goals completed: {0}. Rewards granted."
+  ],
+  "pet.earnedNow": [
+    "本次 +{0} 成长度 · +{1} 邮票，已保存。",
+    "Saved: +{0} growth · +{1} stamps."
+  ],
+  "pet.purchaseHistory": [
+    "兑换记录",
+    "Purchase history"
+  ],
+  "pet.last20": [
+    "最近 20 笔",
+    "Last 20 purchases"
+  ],
+  "pet.purchaseCost": [
+    "−{0} 邮票",
+    "−{0} stamps"
+  ],
+  "pet.purchaseGrowth": [
+    "+{0} 成长度",
+    "+{0} growth"
+  ],
+  "pet.purchaseEmpty": [
+    "还没有兑换记录，积累邮票后去补给铺看看吧。",
+    "No purchases yet. Earn stamps and visit the supply shop."
+  ],
+  "pet.error.purchaseMismatch": [
+    "兑换请求与道具不一致",
+    "The purchase request does not match this item"
+  ],
+  "pet.error.kind": [
+    "未知成长行为",
+    "Unknown growth activity"
   ]
 };
 const MAILAI_I18N_CHINESE = {
@@ -15271,8 +16158,8 @@ const MAILAI_I18N_CHINESE = {
   "acct.updateNote": "更新授权不会切换当前收发账号",
   "acct.dangerSummary": "移除此邮箱",
   "acct.dangerTitle": "从 MailAI 移除账号",
-  "acct.dangerHint": "你可以选择保留或同时清理本地邮件记录。",
-  "acct.dangerBtn": "删除邮箱",
+  "acct.dangerHint": "下一步可选择保留或清理本地邮件记录。",
+  "acct.dangerBtn": "移除邮箱",
   "acct.addPanelEyebrow": "连接设置",
   "acct.addTitle": "新增邮箱",
   "acct.addPanelHint": "使用客户端授权码，MailAI 会自动识别常见邮箱服务。",
@@ -15697,8 +16584,8 @@ const MAILAI_I18N_CHINESE = {
   "fb.privacy": "反馈仅用于本机规则校准和审计记录，不会回复发件人。",
   "fb.cancel": "取消",
   "fb.confirm": "确认标记",
-  "logout.title": "删除邮箱",
-  "logout.subtitle": "删除后将移除本机保存的邮箱授权码",
+  "logout.title": "移除邮箱",
+  "logout.subtitle": "移除本机保存的邮箱账号和授权码",
   "logout.prompt": "请选择如何处理该邮箱保存在本机的邮件历史：",
   "logout.keepTitle": "保留邮件历史",
   "logout.keepHint": "从账号列表移除邮箱和授权码；以后重新添加时可继续使用本地邮件。",
@@ -15706,7 +16593,7 @@ const MAILAI_I18N_CHINESE = {
   "logout.clearHint": "同时永久删除该账号的本地数据库和原始邮件，其他账号不受影响。",
   "logout.warning": "此操作无法撤销。服务器上的邮件不会被删除。",
   "logout.cancel": "取消",
-  "logout.confirm": "删除邮箱",
+  "logout.confirm": "确认移除",
   "digest.sourceTitle": "来源邮件",
   "digest.viewInList": "在邮件列表中查看",
   "corr.eyebrow": "联系人邮件",
@@ -16052,6 +16939,10 @@ const MAILAI_I18N_CHINESE = {
   "backup.portable": "迁移包",
   "backup.ariaExport": "导出迁移包到指定位置",
   "backup.ariaDelete": "删除",
+  "backup.ariaDownload": "下载此备份",
+  "backup.ariaRestore": "恢复此备份",
+  "backup.deleteLocalAria": "删除此备份",
+  "backup.deleteMigrationAria": "删除此迁移包",
   "backup.ariaBackup": "备份",
   "backup.latest": "最新",
   "backup.showOlder": "查看更早备份",
@@ -17468,6 +18359,7 @@ function mailaiLabelHTML(label) {
     nativeVisibility(revision, visible) {
       if (revision < nativeRevision) return;
       nativeRevision = revision; nativeHidden = !visible;
+      document.dispatchEvent(new CustomEvent('mailai:foreground-changed',{detail:{visible}}));
       if (visible) window.mailaiEnergy.resume();
       else window.mailaiEnergy.pause();
     },
@@ -20405,7 +21297,9 @@ async function api(path, opts = {}) {
       if (/^\/api\/(?:mail\/compose\/assist|assistant\/ask|digest)/.test(path)) window.mailaiServiceFailed?.('model',accountId);
       else if (/^\/api\/(?:mail\/(?:folders|sync|send)|emails\/\d+\/(?:move|star|feedback)|drafts\/\d+)/.test(path)) window.mailaiServiceFailed?.('mail',accountId);
     }
-    throw new Error(message || `HTTP ${res.status}`);
+    const failure = new Error(message || `HTTP ${res.status}`);
+    if (path.startsWith('/api/companion/')) failure.status = res.status;
+    throw failure;
   }
   const data = await res.json();
   if (data.undo_token && typeof offerUndo === 'function') {
@@ -20430,7 +21324,10 @@ async function api(path, opts = {}) {
 
 function setLoading(el, loading, text) {
   if (loading) {
-    if (!el.classList.contains('loading')) el.dataset.originalHtml = el.innerHTML;
+    if (!el.classList.contains('loading')) {
+      el.dataset.originalHtml = el.innerHTML;
+      if (el.hasAttribute('data-i18n')) el.dataset.originalI18n = el.getAttribute('data-i18n');
+    }
     const source = mailaiCopySource(text || '');
     const labels = [...el.children].filter(child => child.tagName === 'SPAN');
     const label = labels.find(child => getComputedStyle(child).display !== 'none') || labels.at(-1);
@@ -20444,6 +21341,11 @@ function setLoading(el, loading, text) {
       el.innerHTML = el.dataset.originalHtml;
       delete el.dataset.originalHtml;
     }
+    if (el.dataset.originalI18n) {
+      el.setAttribute('data-i18n',el.dataset.originalI18n);
+      delete el.dataset.originalI18n;
+    }
+    applyI18n(el);
     el.disabled = false;
     el.classList.remove('loading');
     el.removeAttribute('aria-busy');
@@ -21021,7 +21923,7 @@ function renderTrendChart(trend) {
     { key: 'phishing', label: mailaiT('risk.phishing') || '钓鱼', color: '#ef4444' },
     { key: 'suspicious', label: mailaiT('risk.suspicious') || '可疑', color: '#f59e0b' },
     { key: 'spam', label: mailaiT('risk.spam') || '垃圾', color: '#94a3b8' },
-    { key: 'clean', label: mailaiT('risk.clean') || '正常', color: '#10b981' },
+    { key: 'clean', label: mailaiT('risk.clean') || '正常', color: 'var(--reward-accent,#10b981)' },
   ];
   const W = Math.max(460, dates.length * 64), H = 200, padL = 30, padB = 28, padT = 14, padR = 14;
   const plotW = W - padL - padR, plotH = H - padT - padB;
@@ -21036,8 +21938,8 @@ function renderTrendChart(trend) {
         <stop offset="100%" stop-color="#ef4444" stop-opacity="0"/>
       </linearGradient>
       <linearGradient id="grad-clean" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#10b981" stop-opacity="0.18"/>
-        <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
+        <stop offset="0%" stop-color="var(--reward-accent,#10b981)" stop-opacity="0.18"/>
+        <stop offset="100%" stop-color="var(--reward-accent,#10b981)" stop-opacity="0"/>
       </linearGradient>
     </defs>`;
 
@@ -22167,6 +23069,7 @@ async function selectEmail(id, options = {}) {
     const e = await api('/api/emails/' + id, {accountId:requestAccountId, signal:controller.signal});
     if (requestRevision !== readingLoadRevision || selectedEmailId !== id) return;
     selectedEmailDetail = e;
+    globalThis.mailaiPet?.openedEmail(id, requestAccountId);
     transition.finish(() => renderReadingPane(e));
     if (!e.is_read) queueEmailReadSync(id, requestAccountId);
   } catch (err) {
@@ -23137,7 +24040,7 @@ async function loadSystemConfig() {
     return `<button type="button" class="saved-account ${account.active ? 'active' : ''} ${selected ? 'selected' : ''}" data-account-id="${esc(account.id)}" aria-pressed="${selected}" title="管理 ${esc(account.user)}" data-i18n-title="ui.e3ee2c47a190">
       <span class="saved-account-avatar">${esc(accountMark(account))}</span>
       <span class="saved-account-identity"><b>${esc(account.user)}</b><small><i></i>${esc(account.host)}</small></span>
-      <span class="saved-account-state ${stateClass}"><i></i>${esc(state)}</span>
+      <span class="saved-account-state ${stateClass}"><i></i>${mailaiLabelHTML(state)}</span>
       <svg class="saved-account-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 10 3 3 6-6"/></svg>
     </button>`;
   }).join('')}</div>` : '';
@@ -23166,7 +24069,7 @@ function renderAccountSelection() {
   if (!account) return;
   document.getElementById('selected-account-avatar').textContent = accountMark(account);
   mailaiBindUI(document.getElementById('selected-account-role'), "textContent", () => (account.active ? (mailaiT('acct.stateActive') || '当前发件账号') : (mailaiT('acct.roleConnected') || '已连接邮箱')));
-  document.getElementById('selected-account-name').textContent = account.user;
+  mailaiBindUI(document.getElementById('selected-account-name'), 'textContent', () => account.user);
   mailaiBindUI(document.getElementById('selected-account-help'), "textContent", () => (account.credential_available
     ? (account.credential_storage === 'session' ? (mailaiT('acct.helpSession') || '授权码仅本次运行有效，退出软件后需要重新登录') : (mailaiT('acct.helpSaved') || '连接信息已保存，可随时更新授权码'))
     : (mailaiT('acct.helpMissing') || '本机没有可用授权码，请重新登录')));
@@ -23442,7 +24345,21 @@ function applyRichEmailFrameTheme(frame, theme = document.documentElement.datase
   if (!doc?.body) return;
   restoreRichEmailThemeOverrides(frame);
   doc.documentElement.setAttribute('data-mailai-theme', theme === 'dark' ? 'dark' : 'light');
+  const rewardRoot=globalThis.document?.documentElement;
+  const rewardStyle=rewardRoot?.dataset?.rewardTheme && globalThis.getComputedStyle?.(rewardRoot);
+  const rewardColor=name=>{
+    const value=rewardStyle?.getPropertyValue(`--reward-${name}`).trim();
+    return /^#[\da-f]{6}$/i.test(value || '') ? value : null;
+  };
+  const paper=rewardColor('soft'),ink=rewardColor('ink'),link=rewardColor('accent'),line=rewardColor('line');
+  let rewardSheet=doc.getElementById?.('mailai-reward-theme');
+  if (paper && ink && link) {
+    if (!rewardSheet) { rewardSheet=doc.createElement('style');rewardSheet.id='mailai-reward-theme';doc.head.append(rewardSheet); }
+    rewardSheet.textContent=`html[data-mailai-theme],html[data-mailai-theme] body{background:${paper}!important;color:${ink}}html[data-mailai-theme] body a{color:${link}}html[data-mailai-theme] body blockquote{color:${ink};border-color:${line || paper}}`;
+  } else rewardSheet?.remove();
   if (theme !== 'dark') return;
+  const darkPaper=paper || '#16271f',darkInk=ink || '#e4eee8',darkLink=link || '#8ddfb2';
+  const darkPaperRgb=[1,3,5].map(index=>parseInt(darkPaper.slice(index,index+2),16));
   const overrides = frame._mailThemeOverrides = [];
   const override = (node, property, value) => {
     overrides.push({node, property, value:node.style.getPropertyValue(property), priority:node.style.getPropertyPriority(property)});
@@ -23454,11 +24371,11 @@ function applyRichEmailFrameTheme(frame, theme = document.documentElement.datase
   for (const node of nodes) {
     if (node.matches?.('img,svg,path,video,canvas,picture,source')) continue;
     const background = richEmailColor(doc.defaultView.getComputedStyle(node).backgroundColor);
-    if (background?.alpha > .55 && richEmailLuminance(background.rgb) > .5) override(node, 'background-color', '#16271f');
+    if (background?.alpha > .55 && richEmailLuminance(background.rgb) > .5) override(node, 'background-color', darkPaper);
   }
   const backgroundCache = new WeakMap();
   const effectiveBackground = node => {
-    if (!node) return {rgb:[22, 39, 31], alpha:1};
+    if (!node) return {rgb:darkPaperRgb, alpha:1};
     if (backgroundCache.has(node)) return backgroundCache.get(node);
     const own = richEmailColor(doc.defaultView.getComputedStyle(node).backgroundColor);
     const result = own?.alpha > .55 ? own : effectiveBackground(node.parentElement);
@@ -23474,7 +24391,7 @@ function applyRichEmailFrameTheme(frame, theme = document.documentElement.datase
     const foregroundLum = richEmailLuminance(foreground.rgb);
     const backgroundLum = richEmailLuminance(background.rgb);
     const contrast = (Math.max(foregroundLum, backgroundLum) + .05) / (Math.min(foregroundLum, backgroundLum) + .05);
-    if (contrast < 4.5) override(node, 'color', backgroundLum > .5 ? '#29372f' : node.matches?.('a') ? '#8ddfb2' : '#e4eee8');
+    if (contrast < 4.5) override(node, 'color', backgroundLum > .5 ? '#29372f' : node.matches?.('a') ? darkLink : darkInk);
   }
 }
 
@@ -23484,6 +24401,7 @@ function syncRichEmailFrameTheme(theme = document.documentElement.dataset.theme)
   }
 }
 document.addEventListener('mailai:themechange', event => syncRichEmailFrameTheme(event.detail?.theme));
+document.addEventListener('mailai:reward-themechange', () => syncRichEmailFrameTheme());
 // The frame stays script-disabled; only the parent-installed click listener can
 // route web links externally or mail links into MailAI's composer.
 async function copyRenderedMailImage(image) {
@@ -25501,6 +26419,7 @@ function diagnosticAdvice(item) {
 document.getElementById('diagnostic-results').addEventListener('click', event => {
   const action = event.target.closest('[data-diagnostic-target]');
   if (!action) return;
+  document.getElementById('diagnostics-drawer')?.close();
   selectSystemTab(action.dataset.diagnosticTarget);
   if (action.dataset.diagnosticTarget === 'account') {
     const current = (_systemConfig?.accounts || []).find(account => account.active);
@@ -25535,10 +26454,10 @@ function renderBackupItem(item, index) {
   const tDelete = mailaiT('backup.delete') || '删除';
   const tRestore = mailaiT('backup.restore') || '恢复';
   const tPortable = mailaiT('backup.portable') || '迁移包';
-  const download = `<button type="button" data-download-backup="${esc(item.filename)}" data-portable="${item.portable ? 'true' : 'false'}" aria-label="${item.portable ? (mailaiT('backup.ariaExport') || '导出迁移包到指定位置') : (mailaiT('backup.ariaDownload') || `下载 ${esc(label)} 的备份`)}">${tSave}</button>`;
-  const remove = `<button type="button" data-delete-backup="${esc(item.filename)}" data-portable="${item.portable ? 'true' : 'false'}" aria-label="${mailaiT('backup.ariaDelete') || '删除'} ${item.portable ? tPortable : (mailaiT('backup.ariaBackup') || '备份')}">${tDelete}</button>`;
-  const actions = item.portable ? `${download}${remove}` : `<button type="button" data-restore-backup="${esc(item.filename)}" aria-label="${mailaiT('backup.ariaRestore') || `恢复 ${esc(label)} 的备份`}">${tRestore}</button>${download}${remove}`;
-  return `<div class="backup-item"><div class="backup-record-copy"><b>${esc(label)}${item.portable ? `<em>${tPortable}</em>` : index === 0 ? `<em>${mailaiT('backup.latest') || '最新'}</em>` : ''}</b><small title="${esc(item.filename)}">${esc(item.filename)}</small></div><small class="backup-record-size">${formatFileSize(item.size)}</small><div class="backup-record-actions">${actions}</div></div>`;
+  const download = `<button type="button" data-download-backup="${esc(item.filename)}" data-portable="${item.portable ? 'true' : 'false'}" aria-label="${item.portable ? (mailaiT('backup.ariaExport') || '导出迁移包到指定位置') : (mailaiT('backup.ariaDownload') || `下载 ${esc(label)} 的备份`)}" data-i18n="backup.saveAs" data-i18n-aria="${item.portable ? 'backup.ariaExport' : 'backup.ariaDownload'}">${tSave}</button>`;
+  const remove = `<button type="button" data-delete-backup="${esc(item.filename)}" data-portable="${item.portable ? 'true' : 'false'}" aria-label="${mailaiT('backup.ariaDelete') || '删除'} ${item.portable ? tPortable : (mailaiT('backup.ariaBackup') || '备份')}" data-i18n="backup.delete" data-i18n-aria="${item.portable ? 'backup.deleteMigrationAria' : 'backup.deleteLocalAria'}">${tDelete}</button>`;
+  const actions = item.portable ? `${download}${remove}` : `<button type="button" data-restore-backup="${esc(item.filename)}" aria-label="${mailaiT('backup.ariaRestore') || `恢复 ${esc(label)} 的备份`}" data-i18n="backup.restore" data-i18n-aria="backup.ariaRestore">${tRestore}</button>${download}${remove}`;
+  return `<div class="backup-item"><div class="backup-record-copy"><b>${Number.isNaN(date.getTime()) ? `<span data-i18n="backup.localFallback">${esc(label)}</span>` : esc(label)}${item.portable ? `<em data-i18n="backup.portable">${tPortable}</em>` : index === 0 ? `<em data-i18n="backup.latest">${mailaiT('backup.latest') || '最新'}</em>` : ''}</b><small title="${esc(item.filename)}">${esc(item.filename)}</small></div><small class="backup-record-size">${formatFileSize(item.size)}</small><div class="backup-record-actions">${actions}</div></div>`;
 }
 async function loadBackups() {
   const accountId = activeMailAccount()?.id;
@@ -25547,10 +26466,10 @@ async function loadBackups() {
     const [localItems, portableItems] = await Promise.all([api('/api/system/backups', {accountId}), api('/api/system/portable-backups', {accountId})]);
     const items = [...portableItems, ...localItems].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
     if (accountId !== activeMailAccount()?.id) return;
-    host.innerHTML = items.length ? items.slice(0, 3).map(renderBackupItem).join('') + (items.length > 3 ? `<details class="older-backups"><summary>${mailaiT('backup.showOlder') || '查看更早备份'} (${items.length - 3})</summary>${items.slice(3).map((item,index)=>renderBackupItem(item,index+3)).join('')}</details>` : '') : `<div class="backup-empty"><b>${mailaiT('backup.emptyTitle') || '还没有备份'}</b><small>${mailaiT('backup.emptyHint') || '创建第一份备份，为邮件留一份本地副本。'}</small></div>`;
+    host.innerHTML = items.length ? items.slice(0, 3).map(renderBackupItem).join('') + (items.length > 3 ? `<details class="older-backups"><summary><span data-i18n="backup.showOlder">${mailaiT('backup.showOlder') || '查看更早备份'}</span> (${items.length - 3})</summary>${items.slice(3).map((item,index)=>renderBackupItem(item,index+3)).join('')}</details>` : '') : `<div class="backup-empty"><b data-i18n="backup.emptyTitle">${mailaiT('backup.emptyTitle') || '还没有备份'}</b><small data-i18n="backup.emptyHint">${mailaiT('backup.emptyHint') || '创建第一份备份，为邮件留一份本地副本。'}</small></div>`;
     window.refreshCleanupHistory?.(accountId);
   } catch (_) {
-    if (accountId === activeMailAccount()?.id) host.innerHTML = `<div class="backup-empty"><b>${mailaiT('backup.loadFailTitle') || '暂时无法读取备份'}</b><small>${mailaiT('backup.loadFailHint') || '请稍后重新打开此页。'}</small></div>`;
+    if (accountId === activeMailAccount()?.id) host.innerHTML = `<div class="backup-empty"><b data-i18n="backup.loadFailTitle">${mailaiT('backup.loadFailTitle') || '暂时无法读取备份'}</b><small data-i18n="backup.loadFailHint">${mailaiT('backup.loadFailHint') || '请稍后重新打开此页。'}</small></div>`;
   }
 }
 document.getElementById('btn-create-backup').addEventListener('click', async () => {
@@ -25761,7 +26680,7 @@ function openLogoutDialog(accountId = selectedManagedAccountId) {
   const target = accounts.find(account => account.id === accountId);
   if (!target) return toast(mailaiText('请先选择要删除的邮箱'), 'error');
   modal.dataset.accountId = target.id;
-  mailaiBindUI(document.getElementById('logout-account-label'), "textContent", () => (mailaiTemplate`${target.user} · 删除后将移除本机保存的邮箱授权码`));
+  mailaiBindUI(document.getElementById('logout-account-label'), "textContent", () => (mailaiTemplate`${target.user} · 将移除本机保存的邮箱账号和授权码`));
   const keep = modal.querySelector('input[value="keep"]');
   keep.checked = true;
   modal.querySelectorAll('.logout-choice').forEach(choice => choice.classList.toggle('selected', choice.contains(keep)));
@@ -29425,31 +30344,52 @@ document.getElementById('task-center-list').addEventListener('click', async even
     <g class="companion-figure">
       <path class="companion-foot-left" d="M37 88 34 98Q35 102 44 100L48 88" fill="#35745A"/>
       <path class="companion-foot-right" d="M64 89 67 99Q72 102 79 98L75 86" fill="#35745A"/>
+      <g class="growth-wings" fill="#DAEEF7" stroke="#85B5C6" stroke-width="1.3"><path d="M31 58Q5 32 9 61Q11 78 34 77ZM81 58Q107 32 103 61Q101 78 78 77Z"/></g>
+      <g class="growth-mech-wings" fill="#48718F" stroke="#243F55" stroke-width="1.5"><path d="m28 54-20-20 5 38 19 8 2-10ZM84 54l20-20-5 38-19 8-2-10Z"/><path d="m12 42 12 22M100 42 88 64" stroke="#8AE4E8" stroke-width="2"/></g>
+      <path class="growth-cape" d="M29 64 20 96Q56 111 92 96L83 64Z" fill="#719EC0" stroke="#477A9E"/>
       <g class="companion-torso">
       <path class="companion-arm-left" d="M26 62Q13 61 16 75Q20 79 29 71" fill="#91C9AC" stroke="#599C7B" stroke-width="1.3"/>
       <g class="companion-wave"><path d="M84 60Q99 54 99 64Q99 71 86 76" fill="#91C9AC" stroke="#599C7B" stroke-width="1.3"/></g>
-      <path d="M25 52C25 27 38 20 56 20S87 29 87 53L85 76Q83 95 57 96Q29 96 26 79Z" fill="#B5DDC5" stroke="#649F80" stroke-width="1.4"/>
+      <path class="growth-body" d="M25 52C25 27 38 20 56 20S87 29 87 53L85 76Q83 95 57 96Q29 96 26 79Z" fill="#B5DDC5" stroke="#649F80" stroke-width="1.4"/>
       <path d="M30 46Q31 26 53 25" stroke="#E8F5ED" stroke-width="4" stroke-linecap="round"/>
       <g class="companion-leaves">
       <path d="M48 22Q41 12 34 15Q33 25 48 27" fill="#398564"/>
       <path d="M48 23Q52 8 66 12Q64 24 48 27" fill="#5AA584"/>
       </g>
+      <g class="growth-leaf" fill="#65AD89"><path d="M60 21Q69 10 78 18Q77 28 62 26Z"/></g>
+      <g class="growth-flower"><path d="M55 19v-7" stroke="#599C7B" stroke-width="2"/><g fill="#EDAFBD"><circle cx="55" cy="9" r="4"/><circle cx="51" cy="12" r="4"/><circle cx="59" cy="12" r="4"/></g><circle cx="55" cy="12" r="2.6" fill="#F9D889"/></g>
+      <g class="growth-cap"><path d="M33 30Q33 12 56 13Q76 14 77 30Z" fill="#719EC0" stroke="#477A9E"/><path d="M29 30h53" stroke="#477A9E" stroke-width="4" stroke-linecap="round"/><path d="m50 21 6 4 6-4" stroke="#FFF5D9" stroke-width="2"/></g>
+      <g class="growth-ranger-crest" fill="#446780" stroke="#264C67" stroke-width="1.2"><path d="m30 36 2-13 24-8 24 8 2 13-12-8H42Z"/><path d="m48 20 8 3 8-3" stroke="#8AE4E8" stroke-width="2.5"/><path d="M30 33v13M82 33v13" stroke="#446780" stroke-width="6"/></g>
       <g class="companion-head">
       <rect x="33" y="35" width="47" height="39" rx="17" fill="#F6FBF6"/>
       <g class="companion-gaze">
         <g class="companion-eyes"><rect x="43" y="48" width="5" height="9" rx="2.5" fill="#285640"/><rect x="65" y="48" width="5" height="9" rx="2.5" fill="#285640"/></g>
         <g class="companion-happy-eyes" stroke="#285640" stroke-width="2.7" stroke-linecap="round"><path d="M42 53q3-5 6 0M64 53q3-5 6 0"/></g>
+        <path class="growth-ranger-brows" d="m41 43 9 3m12 0 9-3" stroke="#264C67" stroke-width="2.5" stroke-linecap="round"/>
         <path class="companion-smile" d="M53 60q3.5 3 7 0" stroke="#52836A" stroke-width="1.8" stroke-linecap="round"/>
         <ellipse cx="40" cy="60" rx="4" ry="2.2" fill="#E9B9A5" opacity=".55"/><ellipse cx="73" cy="60" rx="4" ry="2.2" fill="#E9B9A5" opacity=".55"/>
       </g>
       </g>
+      <g class="growth-visor"><path d="M36 46h41l-3 12H40Z" fill="#64D9E3" fill-opacity=".25" stroke="#285875" stroke-width="2"/><path d="m39 49 34 0" stroke="#A2FFFF" stroke-width="1.5"/></g>
+      <path class="growth-ranger-collar" d="m31 72 7-5 7 7 11 5 11-5 7-7 7 5-7 7-7-1-11 6-11-6-7 1Z" fill="#446780" stroke="#264C67" stroke-width="1.2"/>
+      <path class="growth-ranger-badge" d="m38 79 5 5-5 5-5-5Z" fill="#83D5E3" stroke="#417C9D"/>
+      <g class="growth-jacket" fill="#41607B" stroke="#294459" stroke-width="1.4"><path d="m28 72 10-5 7 9 11 4 11-4 7-9 10 5-4 16-23 7-24-7Z"/><path d="m38 70 7 10 11 4 11-4 7-10" fill="none" stroke="#8FB7D0"/><path d="M56 84v10" stroke="#294459" stroke-width="2"/></g>
+      <g class="growth-armor" fill="#587C93" stroke="#2C4E65" stroke-width="1.5"><path d="m26 72 10-5 8 5 12 4 12-4 8-5 10 5-6 12-9-4-3 12-12 6-12-6-3-12-9 4Z"/><path d="m45 80 11 4 11-4-3 11-8 3-8-3Z" fill="#304D67"/><path d="m53 81 7 0-5 6h5l-8 6 3-6h-5Z" fill="#91EAF0" stroke="none"/></g>
+      <g class="growth-scarf" fill="#EDAE87" stroke="#C88360"><path d="M32 68q24 10 48 0l-1 8q-23 9-46 0Z"/><path d="m65 76 10 2-2 15-10-5Z"/></g>
+      <path class="growth-medal" d="m39 77 2 4 4 .5-3 3 .5 4-3.5-2-3.5 2 .5-4-3-3 4-.5Z" fill="#F3CE72" stroke="#B99E65"/>
       <path d="M32 71 77 89" stroke="#528A6C" stroke-width="3"/>
       <g class="companion-bag"><g transform="rotate(12 65 82)"><rect x="51" y="73" width="30" height="20" rx="5" fill="#FFF5D9" stroke="#B99E65" stroke-width="1.3"/><path d="m54 77 12 8 12-8" stroke="#B99E65" stroke-width="1.5" stroke-linejoin="round"/></g></g>
       </g>
     </g>
+    <g class="growth-stars" fill="#E7BE64"><path d="m18 27 2 5 5 2-5 2-2 5-2-5-5-2 5-2ZM96 72l2 4 4 2-4 2-2 4-2-4-4-2 4-2Z"/><circle cx="87" cy="12" r="2"/><circle cx="15" cy="78" r="2"/></g>
+    <g class="growth-orbit" stroke="#9BBCDC" opacity=".65"><ellipse cx="56" cy="65" rx="50" ry="20" transform="rotate(-22 56 65)"/><circle cx="9" cy="77" r="3" fill="#E7BE64"/></g>
+    <g class="growth-berry"><path d="M88 65q-8-9-10 0q-1 9 10 13q11-4 10-13q-2-9-10 0Z" fill="#E899A8" stroke="#B4687C"/><path d="M88 63q-4-8 3-9q4 6-3 9Z" fill="#5AA584"/><circle cx="84" cy="69" r="1" fill="#FFF5D9"/><circle cx="90" cy="72" r="1" fill="#FFF5D9"/></g>
+    <g class="growth-lightning" stroke="#63D6F4" stroke-width="2" stroke-linejoin="round"><path d="m11 51 7-11-2 11 7-1-8 12 2-11ZM92 80l7-11-2 11 7-1-8 12 2-11Z"/><path d="M25 100q31 12 62 0" stroke="#67A3E7"/></g>
+    <g class="growth-aura"><ellipse cx="56" cy="99" rx="39" ry="8" stroke="#B5A3DB" stroke-width="2"/><ellipse cx="56" cy="99" rx="31" ry="5" stroke="#83CBBB"/></g>
     <g class="companion-thinking" fill="#5B9477"><circle cx="85" cy="23" r="2"/><circle cx="92" cy="17" r="2.7"/><circle cx="101" cy="14" r="3.3"/></g>
     <g class="companion-alert"><circle cx="92" cy="32" r="8" fill="currentColor"/><path d="M92 28v4M92 35h.01" stroke="white" stroke-width="2" stroke-linecap="round"/></g>
   </svg>`;
+  window.mailaiCompanionArt = art;
   document.querySelectorAll('.companion-art, .assistant-mini').forEach(host => {
     host.classList.add('companion-avatar');
     host.innerHTML = art;
@@ -29659,6 +30599,475 @@ document.getElementById('task-center-list').addEventListener('click', async even
   document.addEventListener('visibilitychange',refresh);
   window.addEventListener('resize',refresh);
   refresh();
+})();
+
+;
+/* ---- reward-theme-bridge.js ---- */
+/* Resolve legacy fixed UI colors through the reward palette. Layout, semantic
+ * status colors, mail content, images and independently equipped pets are kept.
+ * The bridge is scoped: the original themes retain their original CSS values. */
+(() => {
+  const colorToken = /#[\da-f]{3,8}\b|rgba?\([^)]*\)|\b(?:white|black)\b/gi;
+  function rgba(value) {
+    if (value === 'white') return [255,255,255,1];
+    if (value === 'black') return [0,0,0,1];
+    if (value[0] === '#') {
+      let hex=value.slice(1);
+      if (hex.length===3 || hex.length===4) hex=[...hex].map(char=>char+char).join('');
+      if (hex.length!==6 && hex.length!==8) return null;
+      return [0,2,4].map(index=>parseInt(hex.slice(index,index+2),16)).concat(hex.length===8 ? parseInt(hex.slice(6),16)/255 : 1);
+    }
+    const parts=value.match(/[\d.]+/g)?.map(Number);
+    return parts?.length>=3 ? [...parts.slice(0,3),parts[3] ?? 1] : null;
+  }
+  function tone(value) {
+    const channels=rgba(value.toLowerCase());
+    if (!channels) return null;
+    const [r,g,b,alpha]=channels,high=Math.max(r,g,b),low=Math.min(r,g,b),delta=high-low;
+    let hue=delta ? high===r ? (g-b)/delta : high===g ? (b-r)/delta+2 : (r-g)/delta+4 : 0;
+    hue=(hue*60+360)%360;
+    return {alpha,light:(high+low)/510,saturation:high ? delta/high : 0,hue};
+  }
+  function translate(value, property, onAccent) {
+    return value.replace(colorToken,original=>{
+      const color=tone(original);
+      if (!color || color.alpha===0) return original;
+      const {alpha,light,saturation,hue}=color;
+      // Red, amber and other categorical colors continue conveying their meaning.
+      if (saturation>.24 && (hue<55 || hue>265)) return original;
+      let role;
+      if (/shadow/.test(property)) {
+        if (saturation<.24) return original;
+        role='accent';
+      }
+      else if (/accent|primary|highlight|focus|caret/.test(property)) role='accent';
+      else if (/color$|ink|text|copy|muted|subtle/.test(property) && !/background|border|outline/.test(property)) {
+        role=onAccent && light>.72 ? 'on-accent' : saturation>.28 ? 'accent' : light<.32 || light>.72 ? 'ink' : 'muted';
+      } else if (/border|outline|line|edge|rim|separator/.test(property)) role=saturation>.3 && light<.7 ? 'accent' : 'line';
+      else if (/fill|stroke/.test(property)) role='accent';
+      else {
+        if (light<.04 && alpha<.9) return original; // Backdrops remain neutral translucent black.
+        role=light>.96 ? 'surface' : light>.87 ? 'soft' : saturation>.28 && light>.2 && light<.72 ? 'accent' : light>.6 ? 'selected' : 'soft';
+      }
+      const variable=`var(--reward-${role})`;
+      return alpha<1 ? `color-mix(in srgb,${variable} ${Math.round(alpha*10000)/100}%,transparent)` : variable;
+    });
+  }
+  function selectors(value) {
+    // Commas inside :is(), :not() or attribute values are not selector boundaries.
+    const parts=[];let start=0,depth=0,quote='';
+    for (let index=0;index<value.length;index++) {
+      const char=value[index];
+      if (char==='\\') { index++;continue; }
+      if (quote) { if (char===quote) quote='';continue; }
+      if (char==='"' || char==="'") quote=char;
+      else if (char==='(' || char==='[') depth++;
+      else if (char===')' || char===']') depth--;
+      else if (char===',' && !depth) { parts.push(value.slice(start,index).trim());start=index+1; }
+    }
+    parts.push(value.slice(start).trim());return parts;
+  }
+  function scope(selector) {
+    return /^(?:html(?=[.#[:\s>]|$)|:root)/.test(selector)
+      ? selector.replace(/^(html|:root)/,'$1[data-reward-theme]')
+      : `html[data-reward-theme] ${selector}`;
+  }
+  function bridge(rules) {
+    let result='';
+    for (const rule of rules) {
+      if (rule instanceof CSSStyleRule) {
+        const selector=selectors(rule.selectorText).filter(value=>
+          !/\.(?:growth-|mail-companion|companion-(?:leaf|gaze|body|eyes))|pet-item-art|pet-theme-preview|pet-theme-mini/.test(value) &&
+          !/\b(?:success|danger|warn(?:ing)?|risk-|security-|priority-|diagnostic-(?:error|warn))/.test(value)
+        ).map(scope).join(',');
+        if (!selector) continue;
+        const background=rule.style.getPropertyValue('background') || rule.style.getPropertyValue('background-color');
+        const onAccent=/var\(--(?:primary|desk-accent|success)/.test(background) || [...background.matchAll(colorToken)].some(match=>{
+          const color=tone(match[0]);return color && color.alpha>=.8 && color.saturation>.28 && color.light>.2 && color.light<.72;
+        });
+        let declarations='';
+        for (const property of rule.style) {
+          if (!/^(?:--|color$|background(?:-color|-image)?$|border(?:-(?:top|right|bottom|left))?(?:-color)?$|outline(?:-color)?$|box-shadow$|text-shadow$|fill$|stroke$|caret-color$|accent-color$|text-decoration-color$)/.test(property)) continue;
+          if (/^--.*(?:success|danger|warn)/.test(property)) continue;
+          const value=rule.style.getPropertyValue(property),mapped=translate(value,property,onAccent);
+          // Keep later transparent/currentColor resets in the same cascade as
+          // mapped rules; otherwise an earlier fixed background can reappear.
+          if (value!==mapped || !property.startsWith('--')) declarations+=`${property}:${mapped}!important;`;
+        }
+        if (declarations) result+=`${selector}{${declarations}}\n`;
+      } else if (rule.cssRules && !/keyframes/i.test(rule.cssText.slice(0,40))) {
+        const nested=bridge(rule.cssRules);
+        if (nested) result+=`${rule.cssText.slice(0,rule.cssText.indexOf('{'))}{${nested}}\n`;
+      }
+    }
+    return result;
+  }
+  let css='';
+  for (const sheet of document.styleSheets) {
+    if (!sheet.href?.includes('/static/') || /(?:reward-themes|companion(?:-growth)?)\.css/.test(sheet.href)) continue;
+    try { css+=bridge(sheet.cssRules); } catch (_) { /* A non-local stylesheet is outside the workspace. */ }
+  }
+  const style=document.createElement('style');
+  style.id='reward-theme-legacy-bridge';style.textContent=css;
+  document.querySelector('link[href*="/reward-themes.css"]')?.before(style);
+  function syncBrandIcon() {
+    const icon=document.querySelector('link[rel="icon"]'),mark=document.querySelector('.reward-brand-mark');
+    if (!icon || !mark) return;
+    if (!document.documentElement.dataset.rewardTheme) {
+      icon.type='image/png';icon.href='/static/assets/mailai-mark.png';return;
+    }
+    const palette=getComputedStyle(document.documentElement),svg=mark.cloneNode(true);
+    svg.setAttribute('xmlns','http://www.w3.org/2000/svg');svg.removeAttribute('class');
+    for (const [selector,property,role] of [
+      ['.reward-brand-shield','fill','accent'],['.reward-brand-base','fill','pet'],
+      ['.reward-brand-check','stroke','accent'],['.reward-brand-star','fill','pet-outline']
+    ]) svg.querySelector(selector).setAttribute(property,palette.getPropertyValue(`--reward-${role}`).trim());
+    icon.type='image/svg+xml';icon.href=`data:image/svg+xml,${encodeURIComponent(svg.outerHTML)}`;
+  }
+  document.addEventListener('mailai:reward-themechange',syncBrandIcon);
+  document.addEventListener('mailai:themechange',syncBrandIcon);
+})();
+
+;
+/* ---- companion-growth.js ---- */
+/* Account-local pet journal. Foreground activity only; no email content is sent. */
+(() => {
+  const t = (name, ...args) => {
+    const key = `pet.${name}`;
+    const copy = mailaiT(key) || MAILAI_UI_COPY[key]?.[0] || name;
+    return copy.replace(/\{(\d+)\}/g, (_, index) => String(args[index] ?? ''));
+  };
+  const owner = () => activeMailAccount()?.id || '';
+  const label = (name, ...args) => esc(t(name, ...args));
+  const stageName = stage => t(`${state?.style === 'ranger' ? 'rangerStage' : 'stage'}${stage}`);
+  const stageHint = stage => label(`${state?.style === 'ranger' ? 'rangerHint' : 'stageHint'}${stage}`);
+  const numerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
+  const duration = seconds => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+  const post = body => ({method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  let state = null, account = '', revision = 0, tab = 'today', dialog, returnFocus;
+  let busy = false, tickBusy = false, pending = null, clicks = 0, lastClick = 0;
+  let lastInput = performance.now(), lastSample = performance.now(), reading = null;
+  let lastRefresh = 0, refreshAccount = '', purchaseIntent = null, feedback = null, renderKey = '';
+  const intents = new Map();
+  const intentKey = id => `mailai-companion-purchase:${id}`;
+  function saveIntent(id, intent) {
+    intent ? intents.set(id,intent) : intents.delete(id);
+    if (id === account) purchaseIntent = intent;
+    try { intent ? localStorage.setItem(intentKey(id),JSON.stringify(intent)) : localStorage.removeItem(intentKey(id)); } catch (_) {}
+  }
+  function loadIntent(id) {
+    if (intents.has(id)) return intents.get(id);
+    try {
+      const value = JSON.parse(localStorage.getItem(intentKey(id)) || 'null');
+      if (value && /^[a-z_]+$/.test(value.item) && /^[a-zA-Z0-9-]{8,80}$/.test(value.token)) return value;
+    } catch (_) {}
+    return null;
+  }
+  async function request(path, options = {}) {
+    const controller = new AbortController();
+    const timeout = setTimeout(()=>controller.abort(),12000);
+    try { return await api(`/api/companion/${path}`,{...options,signal:controller.signal}); }
+    catch (error) {
+      if (controller.signal.aborted) throw new Error(t('requestTimeout'));
+      throw error;
+    } finally { clearTimeout(timeout); }
+  }
+  const learning = new Map();
+  const launched = document.getElementById('companion-growth-launch');
+  const summary = document.getElementById('companion-growth-summary');
+  const level = document.getElementById('companion-level');
+
+  function applyRewardTheme(theme) {
+    const root=document.documentElement,previous=root.dataset.rewardTheme;
+    if (theme) root.dataset.rewardTheme=theme;
+    else delete root.dataset.rewardTheme;
+    if (previous!==theme) document.dispatchEvent(new CustomEvent('mailai:reward-themechange'));
+  }
+  function resetAppearance() {
+    for (const key of ['petStage','petPalette','petAccessory','petEffect','petStyle']) delete document.body.dataset[key];
+    applyRewardTheme();
+    const themeSummary = document.getElementById('companion-theme-summary');
+    if (themeSummary) themeSummary.textContent = t('themeDefault');
+    summary.textContent = ''; level.textContent = numerals[0];
+  }
+  function paint() {
+    if (!state || account !== owner()) return;
+    const body = document.body.dataset;
+    body.petStage = String(state.stage);
+    body.petStyle = state.style || 'nature';
+    body.petPalette = state.equipped.palette || 'mint';
+    body.petAccessory = state.equipped.accessory || 'none';
+    body.petEffect = state.equipped.effect || 'none';
+    const theme = state.equipped.theme;
+    applyRewardTheme(theme && state.items.some(item=>item.id === theme && item.slot === 'theme' && item.owned) ? theme : undefined);
+    const themeSummary = document.getElementById('companion-theme-summary');
+    if (themeSummary) {
+      themeSummary.removeAttribute('data-i18n');
+      themeSummary.textContent = theme ? t('themeCurrent',t(`item.${theme}`)) : t('themeDefault');
+    }
+    level.textContent = numerals[state.stage-1];
+    summary.textContent = t('summary', stageName(state.stage), state.stamps);
+    if (dialog?.open) render();
+  }
+  function accept(result, id, rev) {
+    if (id !== owner() || id !== account || rev !== revision) return false;
+    const previous = state;
+    state = result;
+    if (!result.enabled || (previous && previous.enabled !== result.enabled)) {
+      // A preference change in another window must also discard buffered activity.
+      clicks = 0; pending = null; learning.clear(); lastSample = 0;
+    }
+    let notice = '';
+    if (previous && result.stage > previous.stage) {
+      const unlocked = result.items.filter(item=>item.stage > previous.stage && item.stage <= result.stage).length;
+      notice = t('evolved',stageName(result.stage),unlocked);
+      feedback = {copy:notice,until:Date.now()+20000};
+      if (!dialog?.open) toast(notice,'success');
+    } else if (previous) {
+      const goals = result.quests.filter(q=>q.complete && (result.day !== previous.day || !previous.quests.some(old=>old.id === q.id && old.complete)));
+      if (goals.length) notice = t('goalsCompleted',goals.map(q=>t(`quest.${q.id}`)).join(' · '));
+      else if (result.xp > previous.xp || result.earned > previous.earned) notice = t('earnedNow',Math.max(0,result.xp-previous.xp),Math.max(0,result.earned-previous.earned));
+      if (goals.length) feedback = {copy:notice,until:Date.now()+20000};
+    }
+    paint();
+    if (notice && dialog?.open) message(notice);
+    return true;
+  }
+  async function refresh() {
+    const id = owner();
+    if (!id || busy || refreshAccount === id) return;
+    refreshAccount = id; lastRefresh = performance.now();
+    const rev = ++revision;
+    try { accept(await request('growth', {accountId:id}), id, rev); }
+    catch (error) { if (id === owner() && rev === revision && dialog?.open) message(mailaiSystemMessage(error.message), true); }
+    finally { if (refreshAccount === id) refreshAccount = ''; }
+  }
+  function checkAccount() {
+    const id = owner();
+    if (id === account) return;
+    account = id; state = null; ++revision; pending = null; clicks = 0; reading = null;
+    learning.clear(); feedback = null; renderKey = ''; lastSample = 0; lastRefresh = 0;
+    purchaseIntent = loadIntent(id); resetAppearance();
+    if (dialog?.open) { dialog.close(); }
+    if (id) void refresh();
+  }
+  function message(copy, error = false) {
+    const node = dialog?.querySelector('[data-pet-message]');
+    if (node) { node.textContent = copy; node.classList.toggle('is-error', error); }
+  }
+  function ensureDialog() {
+    if (dialog) return;
+    dialog = document.createElement('dialog');
+    dialog.id = 'companion-growth-dialog';
+    dialog.className = 'pet-journal';
+    dialog.setAttribute('aria-labelledby', 'pet-journal-title');
+    dialog.innerHTML = `<header class="pet-journal-head"><div><small>MAILAI · COMPANION</small><h2 id="pet-journal-title"></h2></div><button type="button" data-pet-close>×</button></header><div class="pet-journal-body"></div><footer class="pet-journal-footer"><span data-pet-message role="status" aria-live="polite"></span><button type="button" data-pet-enabled></button></footer>`;
+    document.body.append(dialog);
+    dialog.addEventListener('click', async event => {
+      if (event.target === dialog) {
+        const bounds = dialog.getBoundingClientRect();
+        if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) dialog.close();
+        return;
+      }
+      const button = event.target.closest('button');
+      if (!button) return;
+      if (button.hasAttribute('data-pet-close')) return dialog.close();
+      if (button.dataset.petTab) {
+        tab = button.dataset.petTab; render();
+        dialog.querySelector(`[data-pet-tab="${tab}"]`)?.focus({preventScroll:true});
+        return;
+      }
+      if (button.hasAttribute('data-pet-retry')) return refresh();
+      if (busy || !state) return;
+      let path, payload, notice;
+      if (button.hasAttribute('data-pet-enabled')) {
+        path = 'preferences'; payload = {enabled:!state.enabled}; notice = payload.enabled ? t('resumed') : t('paused');
+        // Discard activity gathered under the previous preference.
+        clicks = 0; pending = null; learning.clear(); lastSample = performance.now();
+      } else if (button.dataset.petStyle) {
+        path = 'style'; payload = {style:button.dataset.petStyle}; notice = t('styleUpdated');
+      } else if (button.dataset.petBuy || button.hasAttribute('data-pet-reconcile')) {
+        if (purchaseIntent && !button.hasAttribute('data-pet-reconcile')) return;
+        path = 'purchase';
+        payload = purchaseIntent || {item:button.dataset.petBuy,token:crypto.randomUUID()};
+        saveIntent(account,payload);
+        notice = t(payload.item === 'berry' ? 'fed' : state.items.find(item=>item.id === payload.item)?.slot === 'theme' ? 'themeBought' : 'bought');
+      } else if (button.dataset.petSlot) {
+        path = 'equip'; payload = {slot:button.dataset.petSlot, item:button.dataset.petEquip || ''}; notice = t(payload.slot === 'theme' ? payload.item ? 'themeApplied' : 'themeRestored' : 'equipped');
+      } else return;
+      busy = true; button.disabled = true; button.setAttribute('aria-busy', 'true');
+      const id = account, rev = ++revision;
+      try {
+        const result = await request(path, {...post(payload), accountId:id});
+        if (path === 'purchase') saveIntent(id,null);
+        accept(result, id, rev);
+        if (id === account && id === owner() && dialog.open) message(notice);
+      } catch (error) {
+        // Only business/validation rejection resolves this intent. A permission
+        // or rate-limit error on a retry says nothing about the original commit.
+        if (path === 'purchase' && [400,422].includes(error.status)) saveIntent(id,null);
+        if (id === account && id === owner() && dialog.open) message(path === 'purchase' && purchaseIntent ? t('purchaseUncertain') : mailaiSystemMessage(error.message), true);
+      } finally {
+        busy = false;
+        renderKey = '';
+        if (dialog.open && id === account && id === owner()) render();
+        if (button.isConnected) { button.disabled = false; button.removeAttribute('aria-busy'); }
+      }
+    });
+    dialog.addEventListener('close', () => { if (returnFocus?.isConnected) returnFocus.focus({preventScroll:true}); });
+  }
+  async function open() {
+    checkAccount(); ensureDialog(); returnFocus = document.activeElement;
+    if (!dialog.open) dialog.showModal();
+    render();
+    await refresh();
+  }
+  function avatar(extra = '') { return `<div class="pet-portrait ${extra}">${window.mailaiCompanionArt || ''}</div>`; }
+  function reward(xp, stamps) { return `<span class="pet-reward">+${xp} ${label('growth')} · +${stamps} ${label('stamps')}</span>`; }
+  function todayView() {
+    const s = state;
+    return `<div class="pet-section-title"><h3>${label('daily')}</h3><span>${label('autoReward')}</span></div><div class="pet-quests">${s.quests.map(q => `<article class="pet-quest ${q.complete ? 'is-complete' : ''}"><span class="pet-quest-check" aria-hidden="true">${q.complete ? '✓' : '○'}</span><div><b>${label(`quest.${q.id}`)}</b>${reward(q.xp,q.stamps)}<progress value="${q.progress}" max="${q.target}" aria-label="${label(`quest.${q.id}`)}"></progress></div><small>${q.complete ? label('complete') : q.metric === 'active' ? duration(q.progress)+' / '+duration(q.target) : `${q.progress} / ${q.target}`}</small></article>`).join('')}</div>
+    <div class="pet-section-title"><h3>${label('activities')}</h3><span>${label('todayGain',s.today.xp,s.today.stamps)}</span></div>
+    <div class="pet-activities">${Object.entries(s.rules).map(([kind,r]) => {
+      const value = s.today.counts[kind] || 0, timed = ['active','reading'].includes(kind);
+      return `<article><div><b>${label(`activity.${kind}`)}</b><strong>${timed ? duration(value) : value}</strong></div><progress value="${Math.min(value,r.cap)}" max="${r.cap}" aria-label="${label(`activity.${kind}`)}"></progress><small>${label(timed ? 'timeRule' : 'countRule',r.unit,r.xp,r.stamps,r.cap)}</small></article>`;
+    }).join('')}</div><p class="pet-note">${label('timingNote')}</p>`;
+  }
+  function journeyView() {
+    return `<p class="pet-note">${label('journeyNote')}</p><div class="pet-journey">${state.stages.map((floor,index) => {
+      const stage = index+1, unlocked = state.stage >= stage;
+      return `<article class="${unlocked ? 'is-unlocked' : ''} ${state.stage === stage ? 'is-current' : ''}"><span class="pet-stage-number">${numerals[index]}</span><div><b>${esc(stageName(stage))}</b><p>${stageHint(stage)}</p><small>${label('threshold',floor)}${state.stage === stage ? ' · '+label('current') : unlocked ? ' · '+label('unlocked') : ''}</small></div></article>`;
+    }).join('')}</div><p class="pet-note">${label('streakNote')}</p>`;
+  }
+  function shopView() {
+    const s = state;
+    return `${themeShopView()}<div class="pet-section-title"><h3>${label('shopTitle')}</h3><span>${label('balance',s.stamps)}</span></div><div class="pet-reset-outfit">${['palette','accessory','effect'].map(slot=>`<button type="button" data-pet-slot="${slot}" ${!s.equipped[slot] || busy ? 'disabled' : ''}>${label(`reset.${slot}`)}</button>`).join('')}</div><div class="pet-shop">${s.items.filter(item=>item.slot !== 'theme').map(item => {
+      const locked = s.stage < item.stage, equipped = s.equipped[item.slot] === item.id;
+      const depleted = item.id === 'berry' && s.berry_today >= 3;
+      const unavailable = locked || (!item.owned && s.stamps < item.cost) || depleted || busy || (!!purchaseIntent && !item.owned);
+      const action = item.owned ? `data-pet-slot="${item.slot}" data-pet-equip="${item.id}"` : `data-pet-buy="${item.id}"`;
+      const caption = equipped ? t('wearing') : item.owned ? t('wear') : depleted ? t('berryLimit') : locked ? t('stageRequired',stageName(item.stage)) : t(item.id === 'berry' ? 'feedPrice' : 'buyPrice',item.cost);
+      return `<article class="pet-shop-item ${locked ? 'is-locked' : ''}"><div class="pet-item-art" data-item-preview="${item.id}" aria-hidden="true">${avatar()}</div><div class="pet-item-copy"><b>${label(`item.${item.id}`)}</b><p>${label(`itemHint.${item.id}`)}</p><small>${item.owned ? label('owned') : label('itemRequirement',item.cost,stageName(item.stage))}</small></div><button type="button" ${action} ${unavailable || equipped ? 'disabled' : ''}>${esc(caption)}</button></article>`;
+    }).join('')}</div><p class="pet-note">${label('shopNote')}</p>`;
+  }
+  function themeShopView() {
+    const s = state;
+    return `<section class="pet-theme-shop"><div class="pet-section-title pet-themes-title"><h3>${label('themeShop')}</h3><button type="button" data-pet-slot="theme" ${!s.equipped.theme || busy ? 'disabled' : ''}>${label('themeReset')}</button></div><p class="pet-note pet-theme-note">${label('themeNote')}</p><div class="pet-theme-grid">${s.items.filter(item=>item.slot === 'theme').map(item=>{
+      const active = s.equipped.theme === item.id;
+      const disabled = busy || active || (!item.owned && (s.stamps < item.cost || !!purchaseIntent || s.stage < item.stage));
+      return `<article class="pet-theme-card ${active ? 'is-current' : ''}"><div class="pet-theme-preview" data-theme-preview="${item.id}" aria-hidden="true"><div class="pet-theme-mini-bar"><i></i><i></i><i></i></div><div class="pet-theme-mini-nav"><i></i><i></i><i></i></div><div class="pet-theme-mini-mail"><i></i><i></i><i></i></div>${avatar('pet-theme-mini-pet')}</div><div class="pet-theme-copy"><b>${label(`item.${item.id}`)}</b><p>${label(`itemHint.${item.id}`)}</p><small>${label('themePermanent')}</small></div><button type="button" ${item.owned ? `data-pet-slot="theme" data-pet-equip="${item.id}"` : `data-pet-buy="${item.id}"`} ${disabled ? 'disabled' : ''}>${active ? label('themeActive') : item.owned ? label('themeUse') : label('buyPrice',item.cost)}</button></article>`;
+    }).join('')}</div></section>`;
+  }
+  function historyView() {
+    return `<div class="pet-section-title"><h3>${label('historyTitle')}</h3><span>${label('last14')}</span></div>${state.history.length ? `<div class="pet-history">${state.history.map(day=>`<article><time>${esc(day.day)}</time>${reward(day.xp,day.stamps)}</article>`).join('')}</div>` : `<p class="pet-empty">${label('historyEmpty')}</p>`}<p class="pet-note">${label('privacyNote')}</p><div class="pet-section-title pet-purchase-title"><h3>${label('purchaseHistory')}</h3><span>${label('last20')}</span></div>${(state.purchases || []).length ? `<div class="pet-history">${state.purchases.map(item=>`<article><div><b>${label(`item.${item.item}`)}</b><time>${esc(item.created_at.slice(0,16).replace('T',' '))}</time></div><span>${label('purchaseCost',item.cost)}${item.xp ? ' · '+label('purchaseGrowth',item.xp) : ''}</span></article>`).join('')}</div>` : `<p class="pet-empty">${label('purchaseEmpty')}</p>`}`;
+  }
+  function render() {
+    if (!dialog) return;
+    dialog.querySelector('#pet-journal-title').textContent = t('open');
+    const close = dialog.querySelector('[data-pet-close]');
+    close.setAttribute('aria-label',t('close'));
+    const pref = dialog.querySelector('[data-pet-enabled]');
+    pref.textContent = t(state?.enabled ? 'pause' : 'resume'); pref.disabled = !state || busy;
+    const host = dialog.querySelector('.pet-journal-body');
+    if (!state) {
+      host.innerHTML = `<p class="pet-empty">${label(account ? 'loading' : 'login')}</p><button type="button" data-pet-retry>${label('retry')}</button>`;
+      return;
+    }
+    const key = JSON.stringify([tab,state.style,state.xp,state.stamps,state.earned,state.streak,state.enabled,state.equipped,state.berry_today,state.day,purchaseIntent,busy,feedback && Date.now()<feedback.until ? feedback.copy : '',tab === 'today' ? state.today : tab === 'history' ? [state.history,state.purchases] : null]);
+    if (key === renderKey) return;
+    renderKey = key;
+    const focus = document.activeElement;
+    const focusKey = focus?.closest('.pet-journal') ? Object.entries(focus.dataset).find(([key])=>['petTab','petBuy','petEquip','petSlot','petStyle'].includes(key)) : null;
+    const scroll = host.scrollTop;
+    const next = state.next_stage_xp;
+    const progress = next ? (state.xp-state.stage_floor)/(next-state.stage_floor)*100 : 100;
+    host.innerHTML = `${purchaseIntent ? `<div class="pet-pending" role="status"><span>${label('purchasePending',t(`item.${purchaseIntent.item}`))}</span><button type="button" data-pet-reconcile ${busy ? 'disabled' : ''}>${label('reconcile')}</button></div>` : ''}${feedback && Date.now()<feedback.until ? `<p class="pet-milestone" role="status">${esc(feedback.copy)}</p>` : ''}<section class="pet-hero">${avatar('pet-hero-portrait')}<div class="pet-hero-copy"><span class="pet-eyebrow">${label('heroEyebrow')}</span><h3>${esc(stageName(state.stage))} <small>${numerals[state.stage-1]}</small></h3><p>${stageHint(state.stage)}</p><div class="pet-growth-label"><b>${label('growth')} ${state.xp.toLocaleString()}</b><span>${next ? label('next',next-state.xp) : label('maxStage')}</span></div><progress max="100" value="${progress}" aria-label="${label('growth')}"></progress></div></section>
+    <div class="pet-style-choice"><span>${label('styleChoice')}</span>${['nature','ranger'].map(style=>`<button type="button" data-pet-style="${style}" aria-pressed="${state.style === style}" ${state.style === style || busy ? 'disabled' : ''}>${label(`style.${style}`)}</button>`).join('')}<small>${label('styleFree')}</small></div>
+    <div class="pet-stats"><article><strong>${state.stamps.toLocaleString()}</strong><span>${label('stamps')}</span></article><article><strong>${state.streak}<small>${label('days')}</small></strong><span>${label('streak')}</span></article><article><strong>${state.earned.toLocaleString()}</strong><span>${label('earned')}</span></article></div>
+    ${!state.enabled ? `<p class="pet-paused">${label('paused')}</p>` : ''}<nav class="pet-tabs" aria-label="${label('tabs')}">${['today','journey','shop','history'].map(name=>`<button type="button" data-pet-tab="${name}" aria-pressed="${tab === name}">${label(name)}</button>`).join('')}</nav><section class="pet-tab-content">${({today:todayView,journey:journeyView,shop:shopView,history:historyView})[tab]()}</section>`;
+    host.scrollTop = scroll;
+    if (focusKey && focus?.isConnected === false) {
+      const [key,value] = focusKey;
+      const attr = key.replace(/[A-Z]/g,char=>'-'+char.toLowerCase());
+      host.querySelector(`[data-${attr}="${CSS.escape(value)}"]`)?.focus({preventScroll:true});
+    }
+  }
+
+  const activity = () => { lastInput = performance.now(); };
+  for (const event of ['pointerdown','keydown','wheel','touchstart']) document.addEventListener(event,activity,{passive:true});
+  document.addEventListener('click',event => {
+    const now = performance.now();
+    // Exclude pet controls from mailbox-click rewards, debounce rapid clicking.
+    if (event.isTrusted && state?.enabled && account === owner() && isForeground() && now-lastClick >= 600 && !event.target.closest('.pet-journal, #companion-growth-launch, #companion-growth-settings')) {
+      lastClick = now; clicks = Math.min(10, clicks+1);
+    }
+  });
+  document.addEventListener('toggle',event => {
+    const details = event.target;
+    if (!details.matches?.('.help-topic details, details.help-faq')) return;
+    if (!state?.enabled || account !== owner() || !isForeground()) return;
+    const name = details.querySelector('summary [data-i18n]')?.dataset.i18n;
+    if (name) details.open ? learning.set(name,{node:details,since:performance.now()}) : learning.delete(name);
+  },true);
+  const isForeground = () => window.mailaiEnergy?.active() ?? (!document.hidden && document.hasFocus());
+  const resetClock = () => { lastSample = 0; learning.clear(); clicks = 0; };
+  window.addEventListener('blur',resetClock);
+  window.addEventListener('focus',() => { resetClock(); activity(); });
+  document.addEventListener('visibilitychange',resetClock);
+  document.addEventListener('mailai:foreground-changed',resetClock);
+
+  async function tick() {
+    checkAccount();
+    const now = performance.now(), elapsed = lastSample ? Math.min(10,Math.max(0,Math.floor((now-lastSample)/1000))) : 0;
+    lastSample = now;
+    if (!account || tickBusy || busy) return;
+    if (!state || !state.enabled) {
+      if (now-lastRefresh >= (state ? 30000 : 10000)) void refresh();
+      return;
+    }
+    const foreground = isForeground(), active = foreground && now-lastInput < 90000 ? elapsed : 0;
+    const id = account;
+    const pane = document.querySelector('.reading-pane');
+    const rect = pane?.getBoundingClientRect();
+    const readerVisible = reading?.account === id && selectedEmailDetail?.id === reading.id &&
+      !document.querySelector('dialog[open], .modal:not(.hidden)') && rect?.width && rect.right > 0 && rect.left < innerWidth && getComputedStyle(pane).visibility !== 'hidden' && !document.querySelector('.layout')?.classList.contains('hidden');
+    const readingSeconds = active && readerVisible ? Math.min(active,Math.floor((now-reading.since)/1000)) : 0;
+    const lesson = foreground && !dialog?.open ? [...learning.entries()].find(([,entry]) => {
+      const bounds = entry.node.getBoundingClientRect();
+      return entry.node.open && now-entry.since >= 8000 && bounds.height && bounds.top < innerHeight && bounds.bottom > 0 && getComputedStyle(entry.node).visibility !== 'hidden';
+    }) : null;
+    if (lesson) learning.delete(lesson[0]);
+    if (pending && (pending.account !== id || Date.now()-pending.at > 30000)) pending = null;
+    if (!pending && (active || clicks || lesson)) {
+      pending = {account:id,at:Date.now(),payload:{token:crypto.randomUUID(),active,reading:readingSeconds,clicks:foreground ? clicks : 0,email_id:readingSeconds ? reading.id : null,learn:lesson?.[0] || ''}};
+      clicks = 0;
+    }
+    if (!pending) {
+      // Pick up server-side incoming/sent/tool rewards without active timers.
+      if (foreground && now-lastRefresh >= 30000) void refresh();
+      return;
+    }
+    const batch = pending, rev = ++revision;
+    tickBusy = true;
+    try {
+      const result = await request('heartbeat',{...post(batch.payload),accountId:id});
+      if (pending === batch) pending = null;
+      accept(result,id,rev);
+    } catch (_) { /* Retry the same token within 30 seconds; never accrue offline time. */ }
+    finally { tickBusy = false; }
+  }
+  async function openThemes() {
+    tab = 'shop'; await open();
+    dialog?.querySelector('.pet-themes-title')?.scrollIntoView({block:'start'});
+  }
+  window.mailaiPet = {open, openThemes, refresh, openedEmail(id,accountId) { checkAccount(); reading = {id,account:accountId,since:performance.now()}; }};
+  launched.addEventListener('click',open);
+  document.getElementById('companion-growth-settings').addEventListener('click',open);
+  document.getElementById('companion-theme-settings')?.addEventListener('click',openThemes);
+  document.addEventListener('mailai:language-changed',() => { feedback = null; renderKey = ''; message(''); paint(); });
+  new MutationObserver(checkAccount).observe(document.getElementById('account-mailbox-nav'),{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+  window.mailaiEnergy.register('companion-growth',tick,10000);
+  checkAccount();
 })();
 
 ;
@@ -32916,7 +34325,29 @@ document.getElementById('task-center-list').addEventListener('click', async even
   const terminal = new Set(['pass','warning','fail']);
   const translate = (zh, en) => currentI18nLanguage() === 'en' ? en : zh;
   const names = [['db','本地数据库','Local database'],['isolation','账号隔离','Account isolation'],['disk','本机可用空间','Free disk space'],['backup','自动备份','Automatic backup'],['vault','系统凭据库','System credential vault'],['imap','邮箱收信','Mailbox receiving'],['smtp','SMTP 发信','SMTP sending'],['model','AI 模型','AI model'],['init','历史邮件初始化','Initial mail import']];
-  let running = false;
+  let running = false, refreshLanguage = null;
+  window.mailaiOpenDiagnostics = () => {
+    const drawer=document.getElementById('diagnostics-drawer');
+    if (!drawer || !document.getElementById('diagnostic-results')?.childElementCount) return;
+    if (!drawer.open) drawer.showModal();
+  };
+  if (typeof document !== 'undefined') {
+    document.addEventListener('mailai:language-changed', () => refreshLanguage?.());
+    document.getElementById('btn-view-diagnostics')?.addEventListener('click',window.mailaiOpenDiagnostics);
+    document.getElementById('btn-close-diagnostics')?.addEventListener('click',()=>document.getElementById('diagnostics-drawer').close());
+    document.getElementById('btn-rerun-diagnostics')?.addEventListener('click',()=>window.mailaiRunDiagnostics());
+    const drawer=document.getElementById('diagnostics-drawer');
+    drawer?.addEventListener('click',event=>{
+      if (event.target!==drawer) return;
+      const rect=drawer.getBoundingClientRect();
+      if (event.clientX<rect.left || event.clientX>rect.right || event.clientY<rect.top || event.clientY>rect.bottom) drawer.close();
+    });
+    drawer?.addEventListener('keydown',event=>{if(event.key==='Escape')event.stopPropagation();});
+    drawer?.addEventListener('close',()=>{
+      const view=document.getElementById('btn-view-diagnostics');
+      if (view?.getClientRects().length) view.focus({preventScroll:true});
+    });
+  }
   async function readStream(response, onEvent) {
     if (!response.body?.getReader) {
       for (const line of (await response.text()).split('\n')) if (line.trim()) await onEvent(JSON.parse(line));
@@ -32945,32 +34376,72 @@ document.getElementById('task-center-list').addEventListener('click', async even
     const button=document.getElementById('btn-run-diagnostics'), host=document.getElementById('diagnostic-results');
     const account=activeMailAccount(), accountId=account?.id || '', start=Date.now(), controller=new AbortController();
     const items=new Map(names.map(([id,zh,en])=>[id,{id,name:translate(zh,en),status:'queued',probe:['imap','smtp','model'].includes(id)?'live':'local',detail:translate('等待检查','Waiting')}])) ;
-    let complete = false;
-    setLoading(button,true,translate('检查中…','Checking…')); button.setAttribute('aria-expanded','true');
+    let complete = false, interrupted = false, finishedAt = 0;
+    setLoading(button,true,translate('检查中…','Checking…'));
+    document.getElementById('btn-rerun-diagnostics').disabled=true;
+    document.getElementById('btn-view-diagnostics').disabled=false;
     host.classList.remove('hidden'); host.setAttribute('aria-busy','true');
-    host.innerHTML=`<p class="diagnostic-scope">${account?.user ? (mailaiT('diag.scope') || '本次检查：{user}。').replace('{user}',esc(account.user)) : (mailaiT('diag.scopeNone') || '本次未检测到正在使用的邮箱。')}${mailaiT('diag.scopeNote') || '诊断会实测当前邮箱和已配置的模型服务。'}</p><div class="diagnostic-overall"><span data-diagnostic-summary role="status" aria-live="polite"></span><progress data-diagnostic-progress value="0" max="9" aria-label="检查完成进度" data-i18n-aria="ui.c022bbfed35e"></progress></div>`;
+    host.innerHTML=`<div class="diagnostic-overall"><span class="diagnostic-overall-icon" aria-hidden="true"></span><div class="diagnostic-overall-copy"><b data-diagnostic-title></b><span data-diagnostic-summary role="status" aria-live="polite"></span></div><progress data-diagnostic-progress value="0" max="9" aria-label="检查完成进度" data-i18n-aria="ui.c022bbfed35e"></progress></div><p class="diagnostic-scope"></p><div class="diagnostic-attention"><b data-diagnostic-attention-title></b><div class="diagnostic-list" data-diagnostic-attention></div></div><div class="diagnostic-list" data-diagnostic-pending></div><details class="diagnostic-passed"><summary><span data-diagnostic-passed-title></span><small data-diagnostic-toggle></small></summary><div class="diagnostic-list" data-diagnostic-passed></div></details>`;
+    host.scrollTop=0;
+    window.mailaiOpenDiagnostics();
     const summary=host.querySelector('[data-diagnostic-summary]'), progress=host.querySelector('[data-diagnostic-progress]');
-    const rowFor = (item) => [...host.querySelectorAll('[data-check-id]')].find(n=>n.dataset.checkId===item.id);
+    const overall=host.querySelector('.diagnostic-overall'), title=host.querySelector('[data-diagnostic-title]');
+    const attention=host.querySelector('.diagnostic-attention'), attentionList=host.querySelector('[data-diagnostic-attention]');
+    const pendingList=host.querySelector('[data-diagnostic-pending]'), passed=host.querySelector('.diagnostic-passed'), passedList=host.querySelector('[data-diagnostic-passed]');
+    const rowNodes=new Map();
+    const itemName=item=>{const source=mailaiCopySource(item.name && item.name!==item.id?item.name:'');if(source&&mailaiUICopyKeys.has(source))return mailaiText(source);const entry=names.find(([id])=>id===item.id);return entry?translate(entry[1],entry[2]):mailaiSystemMessage(source || item.id);};
     const updateSummary=()=>{
       const rows=[...items.values()], done=rows.filter(item=>terminal.has(item.status)).length;
-      const active=rows.filter(item=>item.status==='running').map(item=>item.name);
+      const active=rows.filter(item=>item.status==='running').map(itemName);
       const failed=rows.filter(item=>item.status==='fail').length, warnings=rows.filter(item=>item.status==='warning').length;
-      const outcome=failed ? translate(` · ${failed} 项失败`,` · ${failed} failed`) : warnings ? translate(` · ${warnings} 项需要注意`,` · ${warnings} need attention`) : '';
+      const passedCount=rows.filter(item=>item.status==='pass').length;
+      const concerns=rows.filter(item=>['fail','warning','interrupted'].includes(item.status));
+      const phase=interrupted?'interrupted':!complete?'running':failed?'fail':warnings?'warning':'pass';
+      overall.dataset.state=phase;
+      const cardStatus=document.getElementById('diagnostic-card-status');
+      cardStatus.classList.remove('hidden'); cardStatus.dataset.state=phase;
+      mailaiBindUI(cardStatus,'textContent',()=>phase==='running'?translate('检查中','Checking'):phase==='pass'?translate('全部通过','All passed'):phase==='interrupted'?translate('未完成','Incomplete'):translate('需要处理','Needs attention'));
+      overall.querySelector('.diagnostic-overall-icon').textContent=phase==='pass'?'✓':phase==='running'?'':'!';
+      mailaiBindUI(title,'textContent',()=>interrupted?translate('检查未完成','Diagnostics incomplete'):!complete?translate('正在检查…','Checking…'):failed?translate(`${failed} 项检查失败`,`${failed} ${failed===1?'check':'checks'} failed`):warnings?translate(`${warnings} 项需要注意`,`${warnings} ${warnings===1?'check needs':'checks need'} attention`):(mailaiT('diag.pass') || '检查通过'));
       progress.max=rows.length; progress.value=done;
-      mailaiBindUI(summary, "textContent", () => (complete ? translate(`检查完成 · ${done}/${rows.length} 项 · 用时 ${Math.round((Date.now()-start)/1000)} 秒`,`Finished · ${done}/${rows.length} checks · ${Math.round((Date.now()-start)/1000)}s`)+outcome : translate(`已完成 ${done}/${rows.length} 项${active.length ? mailaiText(' · 正在检查：')+active.join('、') : ''}`,`${done}/${rows.length} complete${active.length ? ' · Checking: '+active.join(', ') : ''}`)));
+      progress.classList.toggle('hidden',complete || interrupted);
+      const outcome=(failed?translate(` · ${failed} 项失败`,` · ${failed} failed`):'')+(warnings?translate(` · ${warnings} 项需要注意`,` · ${warnings} need attention`):'');
+      mailaiBindUI(summary,'textContent',()=>interrupted?translate(`已保留 ${done}/${rows.length} 项结果，请重新检查。`,`${done}/${rows.length} results retained. Run diagnostics again.`):complete?translate(`${done}/${rows.length} 项完成 · 用时 ${Math.round((finishedAt-start)/1000)} 秒`,`${done}/${rows.length} checks complete · ${Math.round((finishedAt-start)/1000)}s`)+outcome:translate(`已完成 ${done}/${rows.length} 项${active.length ? ' · '+active.join('、') : ''}`,`${done}/${rows.length} complete${active.length ? ' · '+active.join(', ') : ''}`));
+      mailaiBindUI(host.querySelector('.diagnostic-scope'),'textContent',()=>account?.user?translate(`检查邮箱：${account.user}`,`Mailbox checked: ${account.user}`):(mailaiT('diag.scopeNone') || '本次未检测到正在使用的邮箱。'));
+      attention.classList.toggle('hidden',!concerns.length);
+      pendingList.classList.toggle('hidden',!active.length);
+      passed.classList.toggle('hidden',!passedCount);
+      mailaiBindUI(host.querySelector('[data-diagnostic-attention-title]'),'textContent',()=>translate(`需要留意 · ${concerns.length} 项`,`Needs attention · ${concerns.length} ${concerns.length===1?'check':'checks'}`));
+      mailaiBindUI(host.querySelector('[data-diagnostic-passed-title]'),'textContent',()=>translate(`已通过 · ${passedCount} 项`,`Passed · ${passedCount} ${passedCount===1?'check':'checks'}`));
+      mailaiBindUI(host.querySelector('[data-diagnostic-toggle]'),'textContent',()=>passed.open?translate('收起详情','Hide details'):translate('查看详情','View details'));
+      const order={fail:0,warning:1,interrupted:2};
+      concerns.sort((a,b)=>order[a.status]-order[b.status]).forEach(item=>{const row=rowNodes.get(item.id);if(row)attentionList.append(row);});
     };
-    const update = item => {
-      items.set(item.id,item);
-      let row=rowFor(item);
-      if (!row) { row=document.createElement('div'); row.dataset.checkId=item.id; host.append(row); }
+    const renderRow = item => {
+      let row=rowNodes.get(item.id);
+      if (!row) { row=document.createElement('div'); row.dataset.checkId=item.id; rowNodes.set(item.id,row); }
       const status=item.status || (item.ok?'pass':'fail');
       const labels={queued:translate('等待检查','Waiting'),running:translate('正在检查','Checking'),pass:translate('通过','Passed'),warning:translate('需要注意','Attention'),fail:translate('失败','Failed'),interrupted:translate('未完成','Not completed')};
       const icon=status==='pass'?'✓':status==='running'?'':status==='queued'?'·':status==='warning'?'i':'!';
       const guidance=['warning','fail'].includes(status)?diagnosticAdvice(item):null;
+      const helpOpen=row.querySelector('.diagnostic-help')?.open;
       row.className='diagnostic-item '+status;
-      row.innerHTML=`<span class="diagnostic-state-icon" aria-hidden="true">${icon}</span><b>${esc(item.name)}<em>${item.probe==='live' ? (mailaiT('diag.live')||'实测'):(mailaiT('diag.local')||'本地')}</em></b><small title="${esc(mailaiSystemMessage(item.detail) || '')}">${esc(mailaiSystemMessage(item.detail) || '')}</small><div class="diagnostic-item-state"><strong>${labels[status] || esc(status)}</strong>${terminal.has(status) && Number.isFinite(item.duration_ms) && item.duration_ms >= 100 ? `<time>${(item.duration_ms/1000).toFixed(1)}s</time>`:''}</div>${guidance ? `<details class="diagnostic-help"><summary>${translate('如何处理','How to fix')}</summary><p class="diagnostic-advice">${esc(guidance.advice)}</p><button type="button" class="diagnostic-action" data-diagnostic-target="${guidance.target}" data-diagnostic-field="${guidance.field}">${guidance.action} →</button></details>`:''}`;
+      row.classList.toggle('hidden',status==='queued');
+      const source=mailaiCopySource(item.detail || '');
+      const importProgress=item.id==='init' && source.match(/^([^·]+) · (\d+\/\d+)(?: · (.*))?$/);
+      const liveFailure=source.match(/^(?:实测失败：|Live check failed: )(.*)$/s);
+      const detail=importProgress ? `${mailaiText(mailaiCopySource(importProgress[1].trim()))} · ${importProgress[2]}${importProgress[3]?' · '+mailaiSystemMessage(mailaiCopySource(importProgress[3])):''}` : liveFailure ? translate('实测失败：','Live check failed: ')+mailaiSystemMessage(mailaiCopySource(liveFailure[1])) : mailaiSystemMessage(source);
+      row.innerHTML=`<span class="diagnostic-state-icon" aria-hidden="true">${icon}</span><b>${esc(itemName(item))}<em>${item.probe==='live' ? (mailaiT('diag.live')||'实测'):(mailaiT('diag.local')||'本地')}</em></b><small title="${esc(detail)}">${esc(detail)}</small><div class="diagnostic-item-state"><strong>${labels[status] || esc(status)}</strong>${terminal.has(status) && Number.isFinite(item.duration_ms) && item.duration_ms >= 100 ? `<time>${(item.duration_ms/1000).toFixed(1)}s</time>`:''}</div>${guidance ? `<details class="diagnostic-help"${helpOpen?' open':''}><summary>${translate('如何处理','How to fix')}</summary><p class="diagnostic-advice">${esc(guidance.advice)}</p><button type="button" class="diagnostic-action" data-diagnostic-target="${guidance.target}" data-diagnostic-field="${guidance.field}">${esc(guidance.action)} →</button></details>`:''}`;
+      (status==='pass'?passedList:['warning','fail','interrupted'].includes(status)?attentionList:pendingList).append(row);
+    };
+    const update = item => {
+      item={...items.get(item.id),...item,status:item.status || (item.ok?'pass':'fail')};
+      items.set(item.id,item);
+      renderRow(item);
       updateSummary();
     };
+    passed.addEventListener('toggle',updateSummary);
+    refreshLanguage=()=>{items.forEach(renderRow);updateSummary();};
     items.forEach(update);
     const timeout=setTimeout(()=>controller.abort(),120000);
     try {
@@ -32980,15 +34451,16 @@ document.getElementById('task-center-list').addEventListener('click', async even
         if (event.type==='plan') event.checks.forEach(update);
         else if (event.type==='check') update(event.check);
         else if (event.type==='error') throw Error(event.message);
-        else if (event.type==='done') { event.data.checks.forEach(item=>update({...items.get(item.id),...item})); complete=true; updateSummary(); const warnings=event.data.checks.filter(item=>item.status==='warning').length; toast(!event.data.ok ? (mailaiT('diag.fail')||'检查发现连接或配置失败') : warnings ? translate(`检查完成，${warnings} 项需要注意`,`Finished; ${warnings} checks need attention`) : (mailaiT('diag.pass')||'检查通过'),!event.data.ok?'error':warnings?'warn':'success'); }
+        else if (event.type==='done') { event.data.checks.forEach(item=>update({...items.get(item.id),...item})); complete=true; finishedAt=Date.now(); updateSummary(); const warnings=event.data.checks.filter(item=>item.status==='warning').length; toast(!event.data.ok ? (mailaiT('diag.fail')||'检查发现连接或配置失败') : warnings ? translate(`检查完成，${warnings} 项需要注意`,`Finished; ${warnings} checks need attention`) : (mailaiT('diag.pass')||'检查通过'),!event.data.ok?'error':warnings?'warn':'success'); }
       });
       if (!complete) throw Error(translate('检查连接已中断，请重新检查','Connection interrupted; run diagnostics again'));
     } catch(error) {
       const message=error.name==='AbortError'?translate('检查超时，请检查网络后重试','Diagnostics timed out; check the network and retry'):error.message;
+      interrupted=true; finishedAt=Date.now();
       for (const item of items.values()) if (!terminal.has(item.status)) update({...item,status:'interrupted',detail:message});
-      summary.textContent=translate(`检查未完成，已保留 ${[...items.values()].filter(item=>terminal.has(item.status)).length}/${items.size} 项结果。`,`Diagnostics incomplete; ${[...items.values()].filter(item=>terminal.has(item.status)).length}/${items.size} results retained.`);
+      updateSummary();
       toast((mailaiT('diag.failed')||'诊断失败：')+message,'error');
-    } finally { clearTimeout(timeout); host.setAttribute('aria-busy','false'); setLoading(button,false); running=false; }
+    } finally { clearTimeout(timeout); host.setAttribute('aria-busy','false'); setLoading(button,false); document.getElementById('btn-rerun-diagnostics').disabled=false; running=false; }
   };
 })();
 

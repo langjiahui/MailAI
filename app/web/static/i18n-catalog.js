@@ -3397,8 +3397,8 @@ const MAILAI_UI_COPY = {
     "Select the account to delete first"
   ],
   "ui.6b1d7497602d": [
-    "{0} · 删除后将移除本机保存的邮箱授权码",
-    "{0} · Deleting removes the mailbox credentials saved on this device"
+    "{0} · 将移除本机保存的邮箱账号和授权码",
+    "{0} · Removing this mailbox clears its credentials from this device"
   ],
   "ui.de314e67644a": [
     "正在安全停止邮件同步…",
@@ -7482,7 +7482,7 @@ const MAILAI_UI_COPY = {
   ],
   "ui.f93ecd2cd5cb": [
     "全部正常邮件（含发件、草稿）",
-    "All regular mail (including sent mail and drafts)"
+    "Regular mail, sent & drafts"
   ],
   "ui.699ef8314304": [
     "隔离区",
@@ -13387,6 +13387,887 @@ const MAILAI_UI_COPY = {
   "ui.f0c57618c402": [
     "服务器中存在多个同标识副本，请同步后重试",
     "Multiple copies with the same identifier exist on the server. Sync and try again."
+  ],
+  "ui.069464f28b7c": [
+    "本地数据库",
+    "Local database"
+  ],
+  "ui.23c54adf04a2": [
+    "账号隔离",
+    "Account isolation"
+  ],
+  "ui.168080a7b851": [
+    "本机可用空间",
+    "Free disk space"
+  ],
+  "ui.ba3dfa68377f": [
+    "自动备份",
+    "Automatic backup"
+  ],
+  "ui.1ed70b834399": [
+    "系统凭据库",
+    "System credential vault"
+  ],
+  "ui.fa52916efddb": [
+    "邮箱收信",
+    "Mailbox receiving"
+  ],
+  "ui.ef9d9d6321a5": [
+    "SMTP 发信",
+    "SMTP sending"
+  ],
+  "ui.23a052718902": [
+    "AI 模型",
+    "AI model"
+  ],
+  "ui.36c25db56ca7": [
+    "历史邮件初始化",
+    "Initial mail import"
+  ],
+  "ui.a70696ffdfde": [
+    "当前邮箱使用独立数据库",
+    "This mailbox uses its own database"
+  ],
+  "ui.f42d08bf0f1a": [
+    "账号数据库映射异常，请重新打开软件",
+    "Account database mapping is broken; restart the app"
+  ],
+  "ui.bfd92bdcc960": [
+    "剩余 {0}；空间不足会影响收信和本地备份",
+    "{0} available; low space can interrupt mail sync and backups"
+  ],
+  "ui.8b5b5d7e2508": [
+    "最近 8 天已有完整本地备份",
+    "A full local backup exists from the last 8 days"
+  ],
+  "ui.4bfdb2d02f75": [
+    "尚无近期自动备份；软件运行时会定期尝试，空间不足时请手动备份",
+    "No recent automatic backup; the app retries while running. Back up manually if space is low"
+  ],
+  "ui.990d41233f13": [
+    "尚未登录邮箱，未检查自动备份",
+    "No mailbox signed in; backup not checked"
+  ],
+  "ui.70e71792ad5a": [
+    "授权码已持久保存在系统凭据库",
+    "Password is stored persistently in the system credential vault"
+  ],
+  "ui.e72efd3212c2": [
+    "IMAP连接失败，请检查地址、网络和服务状态",
+    "IMAP connection failed; check the address, network and service"
+  ],
+  "ui.7d831cae8804": [
+    "SMTP连接失败，请检查地址、网络和服务状态",
+    "SMTP connection failed; check the address, network and service"
+  ],
+  "ui.4af19ef8faaa": [
+    "模型连接失败，请检查地址、网络和服务状态",
+    "Model connection failed; check the address, network and service"
+  ],
+  "ui.1ac3549b7896": [
+    "尚未登录或授权码不可用",
+    "Not signed in or password unavailable"
+  ],
+  "ui.b335e5b2af24": [
+    "尚未配置完整的 SMTP 地址和凭据",
+    "SMTP address and credentials are not fully configured"
+  ],
+  "ui.c98e118e0a43": [
+    "模型",
+    "Model"
+  ],
+  "ui.080d8395d826": [
+    "尚未配置 API Key",
+    "No API key configured"
+  ],
+  "ui.26c8cfcbf763": [
+    "等待中",
+    "Pending"
+  ],
+  "ui.09c5dbb3ac8d": [
+    "增量收信",
+    "New mail sync"
+  ],
+  "ui.66009c547bed": [
+    "尚未启动",
+    "Not started"
+  ],
+  "ui.9916ab3da0b1": [
+    "待重试邮件",
+    "Mail awaiting retry"
+  ],
+  "ui.2ff62666bb3f": [
+    "{0} 封邮件暂未下载，其他邮件可继续同步；点击同步可立即重试",
+    "{0} messages await retry; other mail can keep syncing. Click Sync to retry now."
+  ],
+  "ui.7b489dd1a6a5": [
+    "超大邮件",
+    "Oversized mail"
+  ],
+  "ui.b1b1f0d5de3e": [
+    "{0} 封邮件超过 50 MB，需在其他邮件客户端查看或下载",
+    "{0} messages exceed 50 MB; open or download them in another mail client."
+  ],
+  "ui.fbeff29f928b": [
+    "结构与索引校验通过",
+    "Structure and index check passed"
+  ],
+  "ui.6a7880a897db": [
+    "数据库校验异常",
+    "Database integrity check failed"
+  ],
+  "ui.e5706757bffd": [
+    "数据库无法打开或校验",
+    "Database cannot be opened or verified"
+  ],
+  "ui.9259312f3bc5": [
+    "暂时无法检查磁盘空间",
+    "Unable to check free disk space"
+  ],
+  "ui.f6680d397177": [
+    "授权码仅在本次运行中有效",
+    "Password is only valid for this session"
+  ],
+  "ui.ee1c9caace84": [
+    "没有可用授权码",
+    "No password available"
+  ],
+  "ui.69dc7e6453be": [
+    "IMAP认证失败，请核对授权码或 API Key",
+    "IMAP authentication failed; check the password or API key"
+  ],
+  "ui.67af731df773": [
+    "SMTP认证失败，请核对授权码或 API Key",
+    "SMTP authentication failed; check the password or API key"
+  ],
+  "ui.294ed6612c9c": [
+    "模型认证失败，请核对授权码或 API Key",
+    "Model authentication failed; check the password or API key"
+  ],
+  "ui.c758e1fe1a33": [
+    "IMAP证书校验失败",
+    "IMAP certificate verification failed"
+  ],
+  "ui.11424e29109a": [
+    "SMTP证书校验失败",
+    "SMTP certificate verification failed"
+  ],
+  "ui.8ed959477ebd": [
+    "模型证书校验失败",
+    "Model certificate verification failed"
+  ],
+  "ui.ea71cce69f75": [
+    "IMAP连接超时",
+    "IMAP connection timed out"
+  ],
+  "ui.92a8567e9f55": [
+    "SMTP连接超时",
+    "SMTP connection timed out"
+  ],
+  "ui.25be9e1d2710": [
+    "模型连接超时",
+    "Model connection timed out"
+  ],
+  "ui.23dc6f589325": [
+    "IMAP服务器地址无法解析",
+    "IMAP server address cannot be resolved"
+  ],
+  "ui.0b0c5cd75ce3": [
+    "SMTP服务器地址无法解析",
+    "SMTP server address cannot be resolved"
+  ],
+  "ui.83445d153f0f": [
+    "模型服务器地址无法解析",
+    "Model server address cannot be resolved"
+  ],
+  "ui.4c2624bf7166": [
+    "IMAP服务器拒绝连接",
+    "IMAP server refused the connection"
+  ],
+  "ui.f31243132812": [
+    "SMTP服务器拒绝连接",
+    "SMTP server refused the connection"
+  ],
+  "ui.80b538baa746": [
+    "模型服务器拒绝连接",
+    "Model server refused the connection"
+  ],
+  "ui.8f31a776d53b": [
+    "等待检查",
+    "Waiting"
+  ],
+  "ui.6b72c3d6855c": [
+    "正在检查…",
+    "Checking…"
+  ],
+  "ui.1abf6dd7db70": [
+    "实测登录成功，可读取 {0} 个文件夹",
+    "Signed in successfully; {0} folders readable"
+  ],
+  "ui.4d8c1c5b4283": [
+    "未知",
+    "Unknown"
+  ],
+  "ui.b3dc3265ba4b": [
+    "实测认证成功（未发送邮件）",
+    "Authentication succeeded (no mail sent)"
+  ],
+  "ui.4147b0ccec73": [
+    "实测请求成功 · {0}",
+    "Live request succeeded · {0}"
+  ],
+  "ui.600e5808b0eb": [
+    "接口未返回有效结果",
+    "API returned no usable result"
+  ],
+  "ui.4c65601f7fa4": [
+    "实测失败：",
+    "Live check failed: "
+  ],
+  "pet.launch": [
+    "小邮养成",
+    "XiaoYou growth"
+  ],
+  "pet.settingsHint": [
+    "一起读信、学习和工作，解锁成长形态与装扮。",
+    "Read, learn and work together to unlock new forms and outfits."
+  ],
+  "pet.open": [
+    "养成手账",
+    "Growth journal"
+  ],
+  "pet.close": [
+    "关闭养成手账",
+    "Close growth journal"
+  ],
+  "pet.summary": [
+    "{0} · {1} 邮票",
+    "{0} · {1} stamps"
+  ],
+  "pet.growth": [
+    "成长度",
+    "Growth"
+  ],
+  "pet.stamps": [
+    "邮票积分",
+    "Stamps"
+  ],
+  "pet.daily": [
+    "今日小目标",
+    "Daily goals"
+  ],
+  "pet.autoReward": [
+    "完成后自动获得奖励",
+    "Rewards are granted automatically"
+  ],
+  "pet.quest.reader": [
+    "认真读完 3 封邮件",
+    "Read 3 emails"
+  ],
+  "pet.quest.focus": [
+    "专注使用 10 分钟",
+    "Stay active for 10 minutes"
+  ],
+  "pet.quest.helper": [
+    "使用工具或小邮 2 次",
+    "Use tools or XiaoYou twice"
+  ],
+  "pet.quest.student": [
+    "学习 1 个帮助主题",
+    "Explore one help topic"
+  ],
+  "pet.complete": [
+    "已完成",
+    "Completed"
+  ],
+  "pet.activities": [
+    "日常成长来源",
+    "Everyday growth"
+  ],
+  "pet.todayGain": [
+    "今日 +{0} 成长 · +{1} 邮票",
+    "Today +{0} growth · +{1} stamps"
+  ],
+  "pet.activity.active": [
+    "活跃使用",
+    "Active time"
+  ],
+  "pet.activity.reading": [
+    "阅读时间",
+    "Reading time"
+  ],
+  "pet.activity.click": [
+    "日常点击",
+    "Interactions"
+  ],
+  "pet.activity.read": [
+    "认真阅读邮件",
+    "Emails read"
+  ],
+  "pet.activity.received": [
+    "收到新邮件",
+    "New mail received"
+  ],
+  "pet.activity.sent": [
+    "成功发送邮件",
+    "Mail sent successfully"
+  ],
+  "pet.activity.tool": [
+    "工具与小邮协作",
+    "Tools and assistant"
+  ],
+  "pet.activity.learn": [
+    "帮助学习",
+    "Help topics learned"
+  ],
+  "pet.timeRule": [
+    "每 {0} 秒 +{1} 成长 / +{2} 邮票，每日奖励前 {3} 秒",
+    "Every {0}s: +{1} growth / +{2} stamps; first {3}s rewarded daily"
+  ],
+  "pet.countRule": [
+    "每 {0} 次 +{1} 成长 / +{2} 邮票，每日奖励前 {3} 次",
+    "Every {0}: +{1} growth / +{2} stamps; first {3} rewarded daily"
+  ],
+  "pet.timingNote": [
+    "只计前台活跃时间，超过 90 秒未操作即暂停。邮件阅读满 8 秒计为认真阅读，同一封每天奖励一次；帮助主题展开并阅读 8 秒获得学习奖励。进度条显示今日奖励上限，次数与时间仍继续统计。",
+    "Only active foreground time counts; timers pause after 90 seconds without input. Read an email for 8 seconds to earn one reading reward per email per day. Keep a help topic open for 8 seconds to earn learning rewards. Progress bars show daily reward limits; activity totals continue counting."
+  ],
+  "pet.journeyNote": [
+    "成长度来自日常积累，也可以兑换成长莓补充。每次进化都保留小邮熟悉的样子，再增加新的细节。",
+    "Earn growth through everyday activity or redeem growth berries. Each evolution adds new details to XiaoYou’s familiar appearance."
+  ],
+  "pet.stage1": [
+    "初见嫩芽",
+    "Little sprout"
+  ],
+  "pet.stage2": [
+    "萌芽信使",
+    "Budding messenger"
+  ],
+  "pet.stage3": [
+    "花苞伙伴",
+    "Blossom buddy"
+  ],
+  "pet.stage4": [
+    "星章邮差",
+    "Star courier"
+  ],
+  "pet.stage5": [
+    "远行使者",
+    "Voyaging messenger"
+  ],
+  "pet.stage6": [
+    "极光守护",
+    "Aurora guardian"
+  ],
+  "pet.stage7": [
+    "星河小邮",
+    "Starlight XiaoYou"
+  ],
+  "pet.stageHint1": [
+    "一封信，一点成长，从今天开始相伴。",
+    "One email, a little growth. Start your journey today."
+  ],
+  "pet.stageHint2": [
+    "头顶长出新的叶片，慢慢熟悉你的工作节奏。",
+    "A new leaf appears as XiaoYou learns your work rhythm."
+  ],
+  "pet.stageHint3": [
+    "嫩芽开出小花，学习与阅读让陪伴更丰富。",
+    "A little flower blooms through reading and learning."
+  ],
+  "pet.stageHint4": [
+    "戴上星章，解锁闪光特效与更丰富的装扮。",
+    "Earn a star badge and unlock sparkles and more outfits."
+  ],
+  "pet.stageHint5": [
+    "披上远行披风，还可以兑换信使小翅膀。",
+    "Gain a travel cape and unlock messenger wings."
+  ],
+  "pet.stageHint6": [
+    "脚边亮起极光光环，让每一天的成长可见。",
+    "An aurora halo lights up each day of growth."
+  ],
+  "pet.stageHint7": [
+    "星光围绕身边，记录你们长久的共同成长。",
+    "Starlight surrounds XiaoYou, marking your journey together."
+  ],
+  "pet.streakNote": [
+    "每天第一次有效活动 +10 成长 / +5 邮票；每连续 7 天额外 +30 成长 / +20 邮票。中断只重置连续天数，已获得的成长、积分和道具一直保留。",
+    "Your first activity each day gives +10 growth / +5 stamps. Every 7 consecutive days adds +30 growth / +20 stamps. Missing a day only resets your streak; growth, stamps and items are kept."
+  ],
+  "pet.threshold": [
+    "累计 {0} 成长度",
+    "{0} lifetime growth"
+  ],
+  "pet.current": [
+    "当前阶段",
+    "Current stage"
+  ],
+  "pet.unlocked": [
+    "已解锁",
+    "Unlocked"
+  ],
+  "pet.shopTitle": [
+    "小邮的补给铺",
+    "XiaoYou’s supply shop"
+  ],
+  "pet.balance": [
+    "可用 {0} 邮票",
+    "{0} stamps available"
+  ],
+  "pet.reset.palette": [
+    "恢复薄荷色",
+    "Mint palette"
+  ],
+  "pet.reset.accessory": [
+    "卸下配饰",
+    "Remove accessory"
+  ],
+  "pet.reset.effect": [
+    "关闭兑换特效",
+    "Remove effect"
+  ],
+  "pet.wearing": [
+    "正在穿戴",
+    "Equipped"
+  ],
+  "pet.wear": [
+    "穿戴",
+    "Equip"
+  ],
+  "pet.berryLimit": [
+    "今日已用满",
+    "Daily limit reached"
+  ],
+  "pet.stageRequired": [
+    "{0} 解锁",
+    "Unlock at {0}"
+  ],
+  "pet.feedPrice": [
+    "{0} 邮票 · 喂一次",
+    "{0} stamps · Feed"
+  ],
+  "pet.buyPrice": [
+    "{0} 邮票 · 兑换",
+    "{0} stamps · Redeem"
+  ],
+  "pet.owned": [
+    "已拥有 · 可重复穿戴",
+    "Owned · Equip anytime"
+  ],
+  "pet.itemRequirement": [
+    "{0} 邮票 · {1} 可兑换",
+    "{0} stamps · Available at {1}"
+  ],
+  "pet.item.scarf": [
+    "暖橙围巾",
+    "Warm scarf"
+  ],
+  "pet.item.sky": [
+    "晴空蓝",
+    "Sky blue"
+  ],
+  "pet.item.peach": [
+    "蜜桃粉",
+    "Peach pink"
+  ],
+  "pet.item.cap": [
+    "信使帽",
+    "Messenger cap"
+  ],
+  "pet.item.satchel": [
+    "金色邮包",
+    "Golden satchel"
+  ],
+  "pet.item.sparkles": [
+    "点点星光",
+    "Little sparkles"
+  ],
+  "pet.item.orbit": [
+    "星环轨迹",
+    "Star orbit"
+  ],
+  "pet.item.wings": [
+    "信使小翅膀",
+    "Messenger wings"
+  ],
+  "pet.item.aurora": [
+    "极光涟漪",
+    "Aurora ripples"
+  ],
+  "pet.item.berry": [
+    "成长莓",
+    "Growth berry"
+  ],
+  "pet.itemHint.scarf": [
+    "温暖的小围巾，陪你读完每一封信。",
+    "A cozy scarf for reading together."
+  ],
+  "pet.itemHint.sky": [
+    "换上轻盈的晴空配色。",
+    "A soft blue palette inspired by clear skies."
+  ],
+  "pet.itemHint.peach": [
+    "换上柔和的蜜桃配色。",
+    "A gentle peach palette."
+  ],
+  "pet.itemHint.cap": [
+    "专属信使帽，开始认真送信。",
+    "A special cap for a dedicated messenger."
+  ],
+  "pet.itemHint.satchel": [
+    "给熟悉的邮包装点金色细节。",
+    "Golden details for a familiar mailbag."
+  ],
+  "pet.itemHint.sparkles": [
+    "身边浮现轻轻闪动的星光。",
+    "Softly twinkling stars around XiaoYou."
+  ],
+  "pet.itemHint.orbit": [
+    "一圈缓缓摇动的星环。",
+    "A gently swaying star orbit."
+  ],
+  "pet.itemHint.wings": [
+    "长出一对轻盈的小翅膀。",
+    "A pair of delicate messenger wings."
+  ],
+  "pet.itemHint.aurora": [
+    "脚边泛起柔和的极光涟漪。",
+    "Soft aurora ripples at XiaoYou’s feet."
+  ],
+  "pet.itemHint.berry": [
+    "立即 +80 成长度，每天最多 3 次。",
+    "Instantly adds 80 growth; up to 3 per day."
+  ],
+  "pet.shopNote": [
+    "永久装扮兑换后自动穿戴，同类配饰或特效一次穿戴一个。花费邮票不会扣除成长度。轻动效开关和系统减少动态效果设置同时适用于成长特效。",
+    "Permanent outfits equip automatically. One item per slot can be equipped at a time. Spending stamps never reduces growth. The companion animation preference and system reduced-motion setting apply to growth effects."
+  ],
+  "pet.historyTitle": [
+    "一起成长的日子",
+    "Days of growing together"
+  ],
+  "pet.last14": [
+    "最近 14 个活跃日",
+    "Last 14 recorded days"
+  ],
+  "pet.historyEmpty": [
+    "还没有成长记录。读一封信，开始今天的陪伴吧。",
+    "No growth records yet. Read an email to begin today’s journey."
+  ],
+  "pet.privacyNote": [
+    "成长进度保存在本机当前邮箱中，不同邮箱分别养成。只记录次数、时长和奖励，不保存邮件正文或键盘输入。暂停养成后停止新增行为统计，已有成长与装扮保留。",
+    "Progress is saved locally for the current mailbox; each account has its own companion. Only counts, durations and rewards are recorded, never mail text or keystrokes. Pausing stops new activity records and keeps existing progress and outfits."
+  ],
+  "pet.heroEyebrow": [
+    "每一天，都长大一点",
+    "A little growth every day"
+  ],
+  "pet.next": [
+    "距下一阶段 {0}",
+    "{0} to next stage"
+  ],
+  "pet.maxStage": [
+    "已到最高形态 · 成长继续积累",
+    "Final form · Growth continues"
+  ],
+  "pet.days": [
+    "天",
+    " days"
+  ],
+  "pet.streak": [
+    "连续陪伴",
+    "Day streak"
+  ],
+  "pet.earned": [
+    "累计获得邮票",
+    "Lifetime stamps"
+  ],
+  "pet.tabs": [
+    "养成手账页面",
+    "Growth journal pages"
+  ],
+  "pet.today": [
+    "今日成长",
+    "Today"
+  ],
+  "pet.journey": [
+    "进化旅程",
+    "Evolution"
+  ],
+  "pet.shop": [
+    "兑换装扮",
+    "Shop"
+  ],
+  "pet.history": [
+    "成长记录",
+    "Journal"
+  ],
+  "pet.loading": [
+    "正在读取养成进度…",
+    "Loading growth progress…"
+  ],
+  "pet.login": [
+    "连接邮箱后即可开始养成小邮。",
+    "Connect a mailbox to start growing XiaoYou."
+  ],
+  "pet.retry": [
+    "重新读取",
+    "Reload"
+  ],
+  "pet.pause": [
+    "暂停养成",
+    "Pause growth"
+  ],
+  "pet.resume": [
+    "继续养成",
+    "Resume growth"
+  ],
+  "pet.paused": [
+    "养成已暂停，已有成长和装扮会保留。",
+    "Growth is paused. Existing progress and outfits are kept."
+  ],
+  "pet.resumed": [
+    "养成已继续，和小邮一起开始今天的工作吧。",
+    "Growth resumed. Start today’s work with XiaoYou."
+  ],
+  "pet.fed": [
+    "小邮吃下成长莓，成长度 +80。",
+    "XiaoYou enjoyed a growth berry. +80 growth."
+  ],
+  "pet.bought": [
+    "兑换成功，已为小邮穿戴。",
+    "Redeemed and equipped."
+  ],
+  "pet.equipped": [
+    "装扮已更新。",
+    "Outfit updated."
+  ],
+  "pet.error.item": [
+    "道具不存在",
+    "Item does not exist"
+  ],
+  "pet.error.stage": [
+    "达到对应成长阶段后即可兑换",
+    "Reach the required stage to redeem this item"
+  ],
+  "pet.error.berry": [
+    "成长莓每天最多使用 3 次",
+    "Growth berries can be used up to 3 times per day"
+  ],
+  "pet.error.stamps": [
+    "邮票积分不足，完成日常活动即可积累",
+    "Not enough stamps. Earn more through everyday activities"
+  ],
+  "pet.error.slot": [
+    "装扮位置无效",
+    "Invalid outfit slot"
+  ],
+  "pet.error.owned": [
+    "请先兑换此装扮",
+    "Redeem this outfit first"
+  ],
+  "pet.styleChoice": [
+    "形象路线",
+    "Character style"
+  ],
+  "pet.themeSettings": ["小邮积分主题", "XiaoYou reward themes"],
+  "pet.themeSettingsHint": ["用日常成长获得的邮票，兑换工作台与小邮的配套主题。", "Use stamps from everyday growth to unlock matching workspace and XiaoYou themes."],
+  "pet.themeDefault": ["当前使用默认主题", "Default theme is active"],
+  "pet.themeCurrent": ["当前主题：{0}", "Active theme: {0}"],
+  "pet.themeShop": ["主题兑换", "Theme rewards"],
+  "pet.themeReset": ["恢复默认主题", "Restore default theme"],
+  "pet.themeNote": ["小邮带你换工作台：主题与小邮默认配色一起变化，可爱、帅气路线都适用；单独穿戴的小邮配色优先。支持浅色、暗色与跟随系统。", "Let XiaoYou refresh your workspace: themes coordinate with its default palette on both cute and cool routes. An equipped pet palette takes priority. Light, dark and system modes are supported."],
+  "pet.themePermanent": ["永久解锁 · 免费切换 · 随当前邮箱保存", "Permanent unlock · Free switching · Saved per mailbox"],
+  "pet.themeActive": ["正在使用", "Active"],
+  "pet.themeUse": ["启用主题", "Apply theme"],
+  "pet.themeBought": ["主题兑换成功，工作台与小邮已换上新配色。", "Theme unlocked. Your workspace and XiaoYou now share a new palette."],
+  "pet.themeApplied": ["主题已启用，可爱、帅气路线和已有装扮都已保留。", "Theme applied. Both character routes and owned outfits are kept."],
+  "pet.themeRestored": ["已恢复默认界面，解锁的主题仍可随时启用。", "Default appearance restored. Unlocked themes remain available."],
+  "pet.item.theme_monochrome": ["黑白简约", "Monochrome"],
+  "pet.itemHint.theme_monochrome": ["黑白与石墨灰，清晰安静的工作台；小邮换上银灰色调。", "A clean workspace in black, white and graphite; XiaoYou adopts soft silver tones."],
+  "pet.item.theme_baowu": ["宝武蓝", "Baowu blue"],
+  "pet.itemHint.theme_baowu": ["深蓝、钢蓝与清透浅蓝，沉稳有力量；小邮换上钢蓝色调。", "Deep blue, steel blue and airy light blue; XiaoYou adopts coordinated steel-blue tones."],
+  "pet.style.nature": [
+    "可爱 · 自然信使",
+    "Cute · Nature messenger"
+  ],
+  "pet.style.ranger": [
+    "帅气 · 星际先锋",
+    "Cool · Space ranger"
+  ],
+  "pet.styleFree": [
+    "两条路线免费切换 · 成长共享",
+    "Switch freely between both styles · Shared progress"
+  ],
+  "pet.styleUpdated": [
+    "形象路线已切换，成长和道具继续保留。",
+    "Character style updated. Progress and items are kept."
+  ],
+  "pet.rangerStage1": [
+    "初见先锋",
+    "Young ranger"
+  ],
+  "pet.rangerStage2": [
+    "见习信使",
+    "Cadet courier"
+  ],
+  "pet.rangerStage3": [
+    "战术伙伴",
+    "Tactical buddy"
+  ],
+  "pet.rangerStage4": [
+    "电光邮差",
+    "Electric courier"
+  ],
+  "pet.rangerStage5": [
+    "深空使者",
+    "Deep-space messenger"
+  ],
+  "pet.rangerStage6": [
+    "星际守卫",
+    "Space guardian"
+  ],
+  "pet.rangerStage7": [
+    "星河领航",
+    "Starlight captain"
+  ],
+  "pet.rangerHint1": [
+    "硬朗眉眼与沉稳配色，开始并肩成长。",
+    "Confident brows and cool tones. Start growing side by side."
+  ],
+  "pet.rangerHint2": [
+    "戴上先锋头盔，解锁战术外套。",
+    "Gain a ranger helmet and unlock a tactical jacket."
+  ],
+  "pet.rangerHint3": [
+    "点亮能量徽章，准备迎接新的挑战。",
+    "Light up an energy badge and prepare for new challenges."
+  ],
+  "pet.rangerHint4": [
+    "装备电光护目镜，还可兑换装甲与电光特效。",
+    "Gain a luminous visor and unlock armor and electric effects."
+  ],
+  "pet.rangerHint5": [
+    "披上深空披风，解锁锋利的机甲翼。",
+    "Gain a deep-space cape and unlock angular mech wings."
+  ],
+  "pet.rangerHint6": [
+    "脚边浮现能量光环，守护你的每一天。",
+    "An energy halo marks every day by your side."
+  ],
+  "pet.rangerHint7": [
+    "星光与能量围绕，成为并肩工作的领航伙伴。",
+    "Starlight and energy surround your trusted captain."
+  ],
+  "pet.item.midnight": [
+    "深空蓝",
+    "Midnight blue"
+  ],
+  "pet.item.jacket": [
+    "战术外套",
+    "Tactical jacket"
+  ],
+  "pet.item.visor": [
+    "电光护目镜",
+    "Electric visor"
+  ],
+  "pet.item.armor": [
+    "先锋装甲",
+    "Ranger armor"
+  ],
+  "pet.item.lightning": [
+    "电光脉冲",
+    "Electric pulse"
+  ],
+  "pet.item.mech_wings": [
+    "机甲翼",
+    "Mech wings"
+  ],
+  "pet.itemHint.midnight": [
+    "冷峻的深空配色，帅气又沉稳。",
+    "A cool, confident deep-space palette."
+  ],
+  "pet.itemHint.jacket": [
+    "利落的战术领口与硬朗线条。",
+    "A sharp tactical collar and structured silhouette."
+  ],
+  "pet.itemHint.visor": [
+    "透明能量镜片，亮起冰蓝电光。",
+    "Transparent energy lenses with icy blue highlights."
+  ],
+  "pet.itemHint.armor": [
+    "肩甲与胸甲搭配，点亮能量核心。",
+    "Shoulder and chest plates with a glowing energy core."
+  ],
+  "pet.itemHint.lightning": [
+    "身边出现冰蓝电弧与能量轨迹。",
+    "Icy blue arcs and energy trails surround XiaoYou."
+  ],
+  "pet.itemHint.mech_wings": [
+    "金属色的机甲翼，带有锋利的折线轮廓。",
+    "Metallic mech wings with an angular silhouette."
+  ],
+  "pet.error.style": [
+    "形象路线无效",
+    "Invalid character style"
+  ],
+  "pet.requestTimeout": [
+    "养成服务响应超时，请稍后重试。",
+    "Growth service timed out. Please try again shortly."
+  ],
+  "pet.purchaseUncertain": [
+    "兑换结果待核对，重试会核对同一笔兑换，不会重复扣分。",
+    "Purchase outcome is pending. Retry checks the same purchase without charging twice."
+  ],
+  "pet.purchasePending": [
+    "「{0}」的兑换结果待核对。",
+    "The outcome of your {0} purchase is pending."
+  ],
+  "pet.reconcile": [
+    "核对兑换结果",
+    "Check purchase"
+  ],
+  "pet.evolved": [
+    "小邮进化为「{0}」！新解锁 {1} 种道具。",
+    "XiaoYou evolved into {0}! {1} new items unlocked."
+  ],
+  "pet.goalsCompleted": [
+    "今日目标已完成：{0}，奖励已到账。",
+    "Daily goals completed: {0}. Rewards granted."
+  ],
+  "pet.earnedNow": [
+    "本次 +{0} 成长度 · +{1} 邮票，已保存。",
+    "Saved: +{0} growth · +{1} stamps."
+  ],
+  "pet.purchaseHistory": [
+    "兑换记录",
+    "Purchase history"
+  ],
+  "pet.last20": [
+    "最近 20 笔",
+    "Last 20 purchases"
+  ],
+  "pet.purchaseCost": [
+    "−{0} 邮票",
+    "−{0} stamps"
+  ],
+  "pet.purchaseGrowth": [
+    "+{0} 成长度",
+    "+{0} growth"
+  ],
+  "pet.purchaseEmpty": [
+    "还没有兑换记录，积累邮票后去补给铺看看吧。",
+    "No purchases yet. Earn stamps and visit the supply shop."
+  ],
+  "pet.error.purchaseMismatch": [
+    "兑换请求与道具不一致",
+    "The purchase request does not match this item"
+  ],
+  "pet.error.kind": [
+    "未知成长行为",
+    "Unknown growth activity"
   ]
 };
 const MAILAI_I18N_CHINESE = {
@@ -13701,8 +14582,8 @@ const MAILAI_I18N_CHINESE = {
   "acct.updateNote": "更新授权不会切换当前收发账号",
   "acct.dangerSummary": "移除此邮箱",
   "acct.dangerTitle": "从 MailAI 移除账号",
-  "acct.dangerHint": "你可以选择保留或同时清理本地邮件记录。",
-  "acct.dangerBtn": "删除邮箱",
+  "acct.dangerHint": "下一步可选择保留或清理本地邮件记录。",
+  "acct.dangerBtn": "移除邮箱",
   "acct.addPanelEyebrow": "连接设置",
   "acct.addTitle": "新增邮箱",
   "acct.addPanelHint": "使用客户端授权码，MailAI 会自动识别常见邮箱服务。",
@@ -14127,8 +15008,8 @@ const MAILAI_I18N_CHINESE = {
   "fb.privacy": "反馈仅用于本机规则校准和审计记录，不会回复发件人。",
   "fb.cancel": "取消",
   "fb.confirm": "确认标记",
-  "logout.title": "删除邮箱",
-  "logout.subtitle": "删除后将移除本机保存的邮箱授权码",
+  "logout.title": "移除邮箱",
+  "logout.subtitle": "移除本机保存的邮箱账号和授权码",
   "logout.prompt": "请选择如何处理该邮箱保存在本机的邮件历史：",
   "logout.keepTitle": "保留邮件历史",
   "logout.keepHint": "从账号列表移除邮箱和授权码；以后重新添加时可继续使用本地邮件。",
@@ -14136,7 +15017,7 @@ const MAILAI_I18N_CHINESE = {
   "logout.clearHint": "同时永久删除该账号的本地数据库和原始邮件，其他账号不受影响。",
   "logout.warning": "此操作无法撤销。服务器上的邮件不会被删除。",
   "logout.cancel": "取消",
-  "logout.confirm": "删除邮箱",
+  "logout.confirm": "确认移除",
   "digest.sourceTitle": "来源邮件",
   "digest.viewInList": "在邮件列表中查看",
   "corr.eyebrow": "联系人邮件",
@@ -14482,6 +15363,10 @@ const MAILAI_I18N_CHINESE = {
   "backup.portable": "迁移包",
   "backup.ariaExport": "导出迁移包到指定位置",
   "backup.ariaDelete": "删除",
+  "backup.ariaDownload": "下载此备份",
+  "backup.ariaRestore": "恢复此备份",
+  "backup.deleteLocalAria": "删除此备份",
+  "backup.deleteMigrationAria": "删除此迁移包",
   "backup.ariaBackup": "备份",
   "backup.latest": "最新",
   "backup.showOlder": "查看更早备份",

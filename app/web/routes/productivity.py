@@ -11,7 +11,10 @@ router = APIRouter()
 
 def checked(action, *args, **kwargs):
     try:
-        return action(*args, **kwargs)
+        result = action(*args, **kwargs)
+        from ...companion_growth import safe_record, _now
+        safe_record('tool', key=f"{_now().date()}:productivity:{getattr(action, '__name__', 'tool')}")
+        return result
     except (ValueError, TypeError) as exc:
         raise HTTPException(400, str(exc)) from exc
 

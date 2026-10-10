@@ -23,6 +23,8 @@ assistant-attachments.js
 assistant-document-reply.js
 companion.js
 companion-motion.js
+reward-theme-bridge.js
+companion-growth.js
 onboarding.js
 model-usage.js
 model-service.js

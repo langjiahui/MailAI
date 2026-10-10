@@ -2,9 +2,9 @@ const i18nContext = require('./helpers/i18n.cjs');
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const code=fs.readFileSync('app/web/static/energy-ui.js','utf8');
 let now=0,id=0,focus=true;const timers=new Map(),windowEvents={},docEvents={};
-const document={body:{},hidden:false,hasFocus:()=>focus,querySelectorAll:()=>[],getElementById:()=>null,addEventListener:(name,fn)=>docEvents[name]=fn};
+const document={body:{},hidden:false,hasFocus:()=>focus,querySelectorAll:()=>[],getElementById:()=>null,addEventListener:(name,fn)=>docEvents[name]=fn,dispatchEvent:event=>docEvents[event.type]?.(event)};
 const window={addEventListener:(name,fn)=>windowEvents[name]=fn};
-const context=vm.createContext(i18nContext({document,window,MutationObserver:class{observe(){}},Date:{now:()=>now},setTimeout:(fn,ms)=>{const key=++id;timers.set(key,{fn,at:now+ms});return key},clearTimeout:key=>timers.delete(key),console}));
+const context=vm.createContext(i18nContext({document,window,CustomEvent:class {constructor(type,options){this.type=type;this.detail=options.detail;}},MutationObserver:class{observe(){}},Date:{now:()=>now},setTimeout:(fn,ms)=>{const key=++id;timers.set(key,{fn,at:now+ms});return key},clearTimeout:key=>timers.delete(key),console}));
 vm.runInContext(code,context);
 const advance=async(ms)=>{const target=now+ms;while(true){const next=[...timers.entries()].filter(([,t])=>t.at<=target).sort((a,b)=>a[1].at-b[1].at)[0];if(!next)break;now=next[1].at;timers.delete(next[0]);next[1].fn();await Promise.resolve();await Promise.resolve();}now=target;};
 (async()=>{
@@ -22,9 +22,10 @@ const advance=async(ms)=>{const target=now+ms;while(true){const next=[...timers.
  open=true;window.mailaiEnergy.refresh();await advance(60000);assert(tasks>0);
  window.mailaiEnergy.pause();assert.equal(timers.size,0);
  window.mailaiEnergy.resume();await Promise.resolve();assert(timers.size<=1);
- window.mailaiEnergy.nativeVisibility(2,false);assert.equal(timers.size,0);
+ let visibleSignal;document.addEventListener('mailai:foreground-changed',event=>visibleSignal=event.detail.visible);
+ window.mailaiEnergy.nativeVisibility(2,false);assert.equal(visibleSignal,false);assert.equal(timers.size,0);
  windowEvents.focus();await Promise.resolve();assert.equal(timers.size,0,'Browser focus cannot override native window hiding');
- window.mailaiEnergy.nativeVisibility(3,true);await Promise.resolve();assert(timers.size<=1);
+ window.mailaiEnergy.nativeVisibility(3,true);assert.equal(visibleSignal,true);await Promise.resolve();assert(timers.size<=1);
  window.mailaiEnergy.nativeVisibility(2,false);await Promise.resolve();assert(window.mailaiEnergy.active(),'A delayed hide callback cannot disable a restored window');
  const workspace=fs.readFileSync('app/web/static/workspace.js','utf8');
  const slice=workspace.slice(workspace.indexOf('async function refreshTaskCenter('),workspace.indexOf('function updateFilterChips('));

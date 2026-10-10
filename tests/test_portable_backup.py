@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app import config, db, portable_backup, system_settings
+from app import config, db, portable_backup, system_settings, companion_growth
 
 
 def test_portable_round_trip_and_integrity():
@@ -25,6 +25,13 @@ def test_portable_round_trip_and_integrity():
             with db.conn() as connection:
                 connection.execute("INSERT INTO emails(uid,folder,message_id,subject,raw_path,created_at,pending_action) VALUES(1,'INBOX','<portable@example.test>','portable',?,datetime('now'),'delete')", (str(raw),))
                 connection.execute("INSERT INTO outbox(token,payload,status,due_at,created_at,updated_at) VALUES('send','{}','queued','','','')")
+            with db.conn() as connection:
+                connection.execute('UPDATE companion_profile SET xp=1200,stamps=1100 WHERE id=1')
+            companion_growth.purchase('scarf', token='backup-scarf-once')
+            companion_growth.purchase('berry', token='backup-berry-once')
+            companion_growth.purchase('theme_monochrome', token='backup-theme-mono')
+            companion_growth.purchase('theme_baowu', token='backup-theme-blue')
+            pet_before = companion_growth.snapshot()
             result = portable_backup.create(password="")
             package = portable_backup.stored_path(result["filename"])
             preview = portable_backup.inspect(package)
@@ -69,6 +76,9 @@ def test_portable_round_trip_and_integrity():
             with patch.multiple(config, **target_values):
                 db.init_db()
                 restored = portable_backup.restore_current(package)
+                assert companion_growth.snapshot() == pet_before
+                assert companion_growth.purchase('berry', token='backup-berry-once') == pet_before
+                assert companion_growth.purchase('theme_baowu', token='backup-theme-blue') == pet_before
                 message = db.get_email(1)
                 assert restored["requires_resync"] is True
                 assert message["raw_path"].startswith(str(target_raw) + os.sep)

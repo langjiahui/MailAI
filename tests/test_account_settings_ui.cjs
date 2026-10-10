@@ -15,7 +15,7 @@ assert.match(html, /id="account-selection-actions"[\s\S]*id="selected-account-st
 assert.match(html, /id="selected-account-avatar"[\s\S]*id="selected-account-role"[\s\S]*id="selected-account-name"/,
   'The account identity block should expose avatar, role, and address in reading order');
 assert.match(html, /class="account-danger-zone"[\s\S]*id="btn-delete-mail"/,
-  'Destructive account removal should be visually demoted behind a disclosure');
+  'Account removal should have a separate labeled action row');
 assert.match(css, /\.account-workspace\s*\{[^}]*grid-template-columns:320px minmax\(0,1fr\)/,
   'Wide account settings should use a directory-detail layout');
 assert.match(css, /\.account-profile>\.saved-account-avatar\s*\{[^}]*display:grid[^}]*place-items:center/,

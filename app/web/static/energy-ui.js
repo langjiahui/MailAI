@@ -37,6 +37,7 @@
     nativeVisibility(revision, visible) {
       if (revision < nativeRevision) return;
       nativeRevision = revision; nativeHidden = !visible;
+      document.dispatchEvent(new CustomEvent('mailai:foreground-changed',{detail:{visible}}));
       if (visible) window.mailaiEnergy.resume();
       else window.mailaiEnergy.pause();
     },

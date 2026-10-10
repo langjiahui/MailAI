@@ -14,6 +14,33 @@ const han=/[\u3400-\u9fff]/;
     assert.equal(await page.evaluate(()=>currentI18nLanguage()),'en','English must apply on startup from persisted preferences');
     assert.equal(await page.evaluate(()=>document.documentElement.style.getPropertyValue('--mailai-copy-signature')), '"Signature"');
     await page.evaluate(()=>document.documentElement.dataset.theme='dark');
+    // Translated navigation copy must remain inside its controls at desktop zoom.
+    for(const language of ['en','zh-CN']) for(const theme of ['light','dark']) for(const width of [900,1200,1512]) for(const scale of [1,1.3]) {
+      await page.setViewportSize({width,height:900});
+      await page.evaluate(({language,theme,scale})=>{setI18nLanguage(language);applyTheme(theme);document.body.style.zoom=scale;document.documentElement.style.setProperty('--fz',scale);},{language,theme,scale});
+      // Leave the filter drawer open to catch menu stacking conflicts as well.
+      if(await page.locator('#btn-filter-panel').getAttribute('aria-expanded')!=='true') await page.locator('#btn-filter-panel').click();
+      await page.locator('#btn-security-menu').click();
+      const layout=await page.locator('.top-menu-popover').evaluate(root=>{
+        const box=root.getBoundingClientRect();
+        const overflow=[...root.querySelectorAll('.top-menu-label,.top-menu-item small,.policy-control small')].filter(n=>n.scrollWidth>n.clientWidth+1).map(n=>n.textContent);
+        const items=[...root.querySelectorAll('.top-menu-item')].map(n=>{const box=n.getBoundingClientRect();return {box,reachable:box.width>0&&box.height>0&&n.contains(document.elementFromPoint(box.x+box.width/2,box.y+box.height/2))};});
+        const control=root.querySelector('select'),style=getComputedStyle(control),canvas=document.createElement('canvas'),context=canvas.getContext('2d');
+        context.font=`${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+        return {overflow,inViewport:box.left>=0&&box.right<=innerWidth+1&&box.bottom<=innerHeight+1,separated:items[0].box.bottom<=items[1].box.top,reachable:items.every(item=>item.reachable),optionFits:[...control.options].every(option=>context.measureText(option.text).width<=control.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight))};
+      });
+      assert.deepEqual(layout.overflow,[],`Security menu text overflow: ${language}/${theme}/${width}/${scale}`);
+      assert(layout.inViewport&&layout.separated&&layout.reachable&&layout.optionFits,JSON.stringify({language,theme,width,scale,layout}));
+      await page.keyboard.press('Escape');
+      assert.equal(await page.locator('#btn-security-menu').getAttribute('aria-expanded'),'false');
+      await page.evaluate(()=>showSystemView('remote'));
+      const clipped=await page.locator('.remote-progress').evaluate(root=>[...root.querySelectorAll('li > span:last-child')].filter(n=>n.scrollWidth>n.clientWidth+1).map(n=>n.textContent));
+      assert.deepEqual(clipped,[],`Remote setup steps overflow: ${language}/${theme}/${width}/${scale}`);
+      await page.evaluate(()=>hideSystemView(true));
+    }
+    await page.setViewportSize({width:1440,height:1000});
+    await page.evaluate(()=>{setI18nLanguage('en');applyTheme('dark');document.body.style.zoom='1';document.documentElement.style.setProperty('--fz','1');});
+    if(await page.locator('#btn-filter-panel').getAttribute('aria-expanded')==='true') await page.locator('#btn-filter-panel').click();
     const audit=async selector=>{
       await page.waitForTimeout(80);
       const leaks=await page.locator(selector).evaluate(root=>[root,...root.querySelectorAll('*')].flatMap(n=>{
@@ -112,6 +139,6 @@ const han=/[\u3400-\u9fff]/;
     await page.evaluate(()=>{const label=document.createElement('span');label.id='i18n-stale-state';document.body.append(label);mailaiBindUI(label,'textContent',()=>mailaiText('正在搜索…'));label.textContent='由新渲染器接管';setI18nLanguage('zh-CN');});
     assert.equal(await page.locator('#i18n-stale-state').textContent(),'由新渲染器接管','Language changes must not replay stale bindings');
     assert.deepEqual(errors,[]);
-    console.log('i18n browser checks passed: startup, filters, archive title/empty state, advanced search, secondary dialogs, reminders, dashboard, rules, settings, composer, service errors and language switching');
+    console.log('i18n browser checks passed: security menu and remote steps at desktop zoom, startup, filters, archive title/empty state, advanced search, secondary dialogs, reminders, dashboard, rules, settings, composer, service errors and language switching');
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});

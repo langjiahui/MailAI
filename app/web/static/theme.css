@@ -1745,18 +1745,7 @@ html[data-theme="dark"] .account-detail .account-primary-actions > span {
   color: #a9c0b3!important;
   font-size: 11px;
 }
-html[data-theme="dark"] .account-detail .account-danger-zone summary {
-  color: #b6c8bd;
-  padding: 18px 0 4px;
-  font-size: 11px;
-}
-html[data-theme="dark"] .account-detail .account-danger-zone[open] summary { color: #f2b3aa; }
-html[data-theme="dark"] .account-detail .account-danger-zone > div {
-  background: rgba(113,51,44,.18);
-  border-color: rgba(233,150,138,.24);
-}
-html[data-theme="dark"] .account-detail .account-danger-zone b { color: #f2c8c0!important; }
-html[data-theme="dark"] .account-detail .account-danger-zone small { color: #cdb3ac!important; }
+html[data-theme="dark"] .account-detail .account-remove-icon { color:var(--ui-danger,#d68079)!important; }
 
 /* A compact provider selector and a calm, consistent connection surface. */
 #model-config-form > label:has(#model-provider) { max-width: 380px; }

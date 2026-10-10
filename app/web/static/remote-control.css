@@ -46,13 +46,14 @@
 .remote-settings-grid .connection-status::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--muted); opacity:.65; }
 .remote-settings-grid .connection-status[data-phase="connected"]::before { background:var(--primary-deep); opacity:1; }
 .remote-settings-grid .connection-status:is([data-phase="error"],[data-phase="expired"],[data-phase="reply_failed"]) { color:var(--danger,#c65b54); }
-.remote-progress { display:flex; gap:18px; list-style:none; padding:18px 0 22px; margin:0; }
-.remote-progress li { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); }
-.remote-progress li span { width:24px; height:24px; display:grid; place-items:center; border-radius:50%; background:rgba(127,127,127,.08); font-size:11px; }
+.remote-progress { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; list-style:none; padding:18px 0 22px; margin:0; }
+.remote-progress li { display:flex; align-items:flex-start; gap:8px; min-width:0; font-size:12px; color:var(--muted); }
+.remote-progress li > span:first-child { flex:0 0 24px; width:24px; height:24px; display:grid; place-items:center; border-radius:50%; background:rgba(127,127,127,.08); font-size:11px; }
+.remote-progress li > span:last-child { min-width:0; padding-top:3px; line-height:1.5; overflow-wrap:anywhere; }
 .remote-progress li.current { color:var(--text); font-weight:600; }
-.remote-progress li.current span { background:var(--primary-deep); color:white; }
-html[data-theme="dark"] .remote-progress li.current span { color:#17251d; }
-.remote-progress li.complete span { background:rgba(72,137,104,.14); color:var(--primary-deep); }
+.remote-progress li.current > span:first-child { background:var(--primary-deep); color:white; }
+html[data-theme="dark"] .remote-progress li.current > span:first-child { color:#17251d; }
+.remote-progress li.complete > span:first-child { background:rgba(72,137,104,.14); color:var(--primary-deep); }
 .remote-state-detail { margin:0 0 14px; font-size:12px; line-height:1.65; color:var(--muted); }
 .remote-state-detail:empty { display:none; }
 .remote-pairing { padding-bottom:18px; margin-bottom:16px; border-bottom:1px solid var(--border); }

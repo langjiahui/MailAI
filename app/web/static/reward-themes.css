@@ -1,0 +1,156 @@
+/* Redeemed themes layer over the existing light/dark system, scoped per mailbox. */
+html[data-reward-theme="theme_monochrome"] {
+  --reward-canvas:#f1f2f4; --reward-surface:#ffffff; --reward-soft:#f7f7f8;
+  --reward-line:#dedfe3; --reward-ink:#24262b; --reward-muted:#656a73;
+  --reward-hover:#ededf0; --reward-selected:#e5e6ea; --reward-accent:#30343c;
+  --reward-on-accent:#ffffff; --reward-pet:#d0d2d6; --reward-pet-outline:#717782;
+  --reward-pet-ink:#3a414d;
+}
+html[data-theme="dark"][data-reward-theme="theme_monochrome"] {
+  --reward-canvas:#111216; --reward-surface:#1b1d23; --reward-soft:#17191f;
+  --reward-line:#363940; --reward-ink:#eceef2; --reward-muted:#a9aeb8;
+  --reward-hover:#282b33; --reward-selected:#323640; --reward-accent:#e1e4eb;
+  --reward-on-accent:#17191f;
+}
+html[data-reward-theme="theme_baowu"] {
+  --reward-canvas:#edf3f9; --reward-surface:#ffffff; --reward-soft:#f3f7fc;
+  --reward-line:#d4e0ec; --reward-ink:#18344d; --reward-muted:#57728b;
+  --reward-hover:#e9f1fa; --reward-selected:#dcebf9; --reward-accent:#005eaa;
+  --reward-on-accent:#ffffff; --reward-pet:#95c6e7; --reward-pet-outline:#347da8;
+  --reward-pet-ink:#1c5a8b;
+}
+html[data-theme="dark"][data-reward-theme="theme_baowu"] {
+  --reward-canvas:#0c1826; --reward-surface:#142437; --reward-soft:#101e2f;
+  --reward-line:#30465e; --reward-ink:#e2eefb; --reward-muted:#9fb7cf;
+  --reward-hover:#1c334d; --reward-selected:#224564; --reward-accent:#8cc9ff;
+  --reward-on-accent:#0c1826;
+}
+html[data-theme][data-reward-theme]:is(html,.integrated-workspace,.desktop-native-window) {
+  --bg:var(--reward-canvas)!important; --surface:var(--reward-surface)!important; --surface-soft:var(--reward-soft)!important;
+  --sidebar:var(--reward-soft)!important; --panel:var(--reward-surface)!important; --text:var(--reward-ink)!important;
+  --muted:var(--reward-muted)!important; --border:var(--reward-line)!important;
+  --primary:var(--reward-accent)!important; --primary-deep:var(--reward-accent)!important; --primary-soft:var(--reward-selected)!important;
+  --glass:var(--reward-surface)!important; --glass-strong:var(--reward-surface)!important; --glass-soft:var(--reward-soft)!important; --glass-border:var(--reward-line)!important;
+  --desk-canvas:var(--reward-canvas)!important; --desk-surface:var(--reward-surface)!important; --desk-muted-surface:var(--reward-soft)!important;
+  --desk-line:var(--reward-line)!important; --desk-ink:var(--reward-ink)!important; --desk-muted:var(--reward-muted)!important;
+  --desk-hover:var(--reward-hover)!important; --desk-selected:var(--reward-selected)!important; --desk-accent:var(--reward-accent)!important;
+  --workspace-surface:var(--reward-soft)!important; --workspace-ink:var(--reward-ink)!important;
+  --ui-focus:var(--reward-accent)!important; --ui-focus-ring:color-mix(in srgb,var(--reward-accent) 18%,transparent)!important;
+  --dark-canvas:var(--reward-canvas)!important; --dark-raised:var(--reward-surface)!important; --dark-raised-2:var(--reward-hover)!important;
+  --dark-field:var(--reward-soft)!important; --dark-line:var(--reward-line)!important; --dark-line-strong:var(--reward-line)!important;
+  --dark-ink:var(--reward-ink)!important; --dark-muted:var(--reward-muted)!important; --dark-subtle:var(--reward-muted)!important;
+  --dark-glass:var(--reward-surface)!important; --dark-glass-strong:var(--reward-surface)!important; --dark-glass-soft:var(--reward-soft)!important;
+  --dark-stroke:var(--reward-line)!important; --dark-stroke-hi:var(--reward-line)!important; --dark-highlight:var(--reward-accent)!important;
+  --dark-copy:var(--reward-ink)!important; --dark-copy-muted:var(--reward-muted)!important;
+  --workspace-chrome:var(--reward-soft)!important; --workspace-toolbar-end:var(--reward-surface)!important;
+  --workspace-search:var(--reward-surface)!important;
+  --mac-rail:var(--reward-soft)!important; --mac-list:var(--reward-soft)!important;
+  --mac-canvas:var(--reward-surface)!important; --mac-separator:var(--reward-line)!important;
+  --mac-selected:var(--reward-selected)!important;
+  --selection-glass-fill:var(--reward-selected)!important; --selection-glass-edge:var(--reward-line)!important;
+  --selection-glass-rim:var(--reward-line)!important; --selection-glass-shadow:rgba(0,0,0,.1)!important;
+}
+html[data-theme][data-reward-theme],html[data-theme][data-reward-theme] body {
+  background:var(--reward-canvas)!important; color:var(--reward-ink);
+}
+html[data-theme][data-reward-theme] body::before,html[data-theme][data-reward-theme] body::after { display:none; }
+.reward-brand-mark { display:none; }
+html[data-theme][data-reward-theme] body .topbar .logo img { display:none!important; }
+html[data-theme][data-reward-theme] body .topbar .logo .reward-brand-mark { display:block; width:24px; height:24px; overflow:visible; }
+html[data-theme][data-reward-theme] .reward-brand-shield { fill:var(--reward-accent); }
+html[data-theme][data-reward-theme] .reward-brand-base { fill:var(--reward-pet); }
+html[data-theme][data-reward-theme] .reward-brand-check { stroke:var(--reward-accent); }
+html[data-theme][data-reward-theme] .reward-brand-star { fill:var(--reward-pet-outline); }
+html[data-theme][data-reward-theme] body .topbar .brand-copy :is(strong,.mailai-wordmark-ai) { color:var(--reward-ink)!important; }
+html[data-theme][data-reward-theme] body .topbar .brand-copy .mailai-wordmark-ai { color:var(--reward-accent)!important; }
+html[data-theme][data-reward-theme] body :is(.connection-icon,.task-empty-icon,.reading-empty .empty-icon) { background:var(--reward-selected)!important; color:var(--reward-accent)!important; border-color:var(--reward-line)!important; }
+html[data-theme][data-reward-theme] body :is(.nav-item.active,.nav-action.active,.system-tabs button.active) svg { color:var(--reward-accent)!important; }
+html[data-theme][data-reward-theme] body :is(.connection-icon,.task-empty-icon,.reading-empty .empty-icon) svg { stroke:currentColor!important; }
+html[data-theme][data-reward-theme] body .author-trust-card .author-card-label { background:var(--reward-selected)!important; color:var(--reward-accent)!important; }
+html[data-reward-theme="theme_monochrome"] body .author-logo :is(img,canvas) { filter:grayscale(1)!important; }
+html[data-reward-theme="theme_baowu"] body .author-logo :is(img,canvas) { filter:grayscale(1) sepia(1) saturate(3) hue-rotate(170deg)!important; }
+html[data-theme][data-reward-theme] body :is(.topbar,.list-pane,.reading-pane,.dashboard-view,.rules-view,.system-view,.preference-card,.connection-card,.modal-content,.drawer-panel,.reading-section,.summary-section,.body-section,.insight-section,.kpi-card,.chart-box,.rule-card,.contact-center-card,.compose-card,.task-center,.top-menu-panel,.reading-more-menu,.toast) {
+  color:var(--reward-ink)!important; background:var(--reward-surface)!important; border-color:var(--reward-line)!important;
+}
+html[data-theme][data-reward-theme] body :is(.sidebar,.group-header,.list-header,.list-footer,.reading-header,.summary-box,.email-body,.global-search input,.nav-work-cluster,.theme-options label,.density-options label,.font-size-options label,.language-options label,.help-search,.help-category,.help-topic,.help-faq,.account-detail) {
+  background:var(--reward-soft)!important; border-color:var(--reward-line)!important;
+}
+html[data-theme][data-reward-theme] body :is(.sender-name,.email-subject,.reading-subject,.brand-copy,.preference-row b,.preference-card-head h3,.theme-options b,.density-options b,.font-size-options b,.language-options b,.assistant-title h2,.help-topic h3,.system-header h2,.settings-page-intro h3,.dashboard-header h2) { color:var(--reward-ink)!important; }
+html[data-theme][data-reward-theme] body :is(.email-preview,.email-date,.section-title,.brand-copy small,.preference-row small,.theme-options small,.theme-settings>p,.density-settings>p,.font-size-settings>p,.language-settings>p,.help-topic p,.help-faq p) { color:var(--reward-muted)!important; }
+html[data-theme][data-reward-theme] body :is(.nav-item,.nav-title,.reading-work-actions button,.btn-ghost,.top-menu-item,.list-workspace-tools button,.nav-action) { color:var(--reward-muted)!important; }
+html[data-theme][data-reward-theme] body .reading-actions { background:transparent!important; }
+html[data-theme][data-reward-theme] .trend-svg line { stroke:var(--reward-line); }
+html[data-theme][data-reward-theme] .trend-svg text { fill:var(--reward-muted); }
+html[data-theme][data-reward-theme] .trend-svg .trend-dot { fill:var(--reward-surface); }
+html[data-theme][data-reward-theme] body .connection-icon { color:var(--reward-accent)!important; }
+html[data-theme][data-reward-theme] body :is(.nav-item:hover,.nav-item.active,.email-item:hover,.email-item.selected,.nav-action.active,.nav-action:hover,.top-menu-item:hover,.system-tabs button.active,.theme-options label:has(input:checked),.density-options label:has(input:checked),.font-size-options label:has(input:checked),.language-options label:has(input:checked)) {
+  background:var(--reward-selected)!important; color:var(--reward-accent)!important; border-color:var(--reward-line)!important;
+}
+html[data-theme][data-reward-theme] body .email-item.unread { background:var(--reward-soft)!important; }
+html[data-theme][data-reward-theme] body .email-item.unread.selected { background:var(--reward-selected)!important; }
+html[data-theme][data-reward-theme] #email-list .email-item.selected :is(.email-subject,.sender-name) { color:var(--reward-ink)!important; }
+html[data-theme][data-reward-theme] body :is(.mail-account-tag,.nav-item .count,.sender-domain,.list-count,.tag,.assistant-quick button,.assistant-shortcut) {
+  background:var(--reward-selected)!important; color:var(--reward-accent)!important; border-color:var(--reward-line)!important;
+}
+html[data-theme][data-reward-theme]:is(.integrated-workspace,.desktop-native-window,html) body .topbar #btn-compose,
+html[data-theme][data-reward-theme] body :is(#btn-compose,#btn-compose:hover,#btn-send-mail,#assistant-send,.primary-action,.nav-compose,.contact-editor-card .primary-action,.contact-picker-footer .primary-action) {
+  background:var(--reward-accent)!important; color:var(--reward-on-accent)!important; border-color:var(--reward-accent)!important; box-shadow:none!important;
+}
+html[data-theme][data-reward-theme] body .compose-send-button { background:var(--reward-accent)!important; color:var(--reward-on-accent)!important; }
+html[data-theme][data-reward-theme] body #assistant-send svg path { stroke:var(--reward-on-accent)!important; }
+html[data-theme][data-reward-theme] body :is(input:not([type=checkbox]):not([type=radio]):not([type=range]),textarea,select,[contenteditable="true"]) {
+  color:var(--reward-ink)!important; background-color:var(--reward-soft)!important; border-color:var(--reward-line)!important;
+}
+html[data-theme][data-reward-theme] body input::placeholder,html[data-theme][data-reward-theme] body textarea::placeholder { color:var(--reward-muted)!important; }
+html[data-theme][data-reward-theme] body :is(input[type=checkbox],input[type=radio]) { accent-color:var(--reward-accent); }
+html[data-theme][data-reward-theme] body :is(.theme-options label:has(input:checked),.density-options label:has(input:checked),.font-size-options label:has(input:checked)) { border-color:var(--reward-accent)!important; }
+/* Themes tint the default pet only. Owned pet palettes always take priority. */
+html[data-reward-theme] body[data-pet-palette="mint"] { --pet-body:var(--reward-pet); --pet-outline:var(--reward-pet-outline); }
+html[data-reward-theme] body :is(.companion-arm-left,.companion-arm-right,.companion-wave path) { fill:var(--pet-body); stroke:var(--pet-outline); }
+html[data-reward-theme] body :is(.companion-foot-left,.companion-foot-right,.growth-leaf,.companion-leaves path) { fill:var(--pet-outline); }
+html[data-reward-theme] body .companion-eyes rect { fill:var(--reward-pet-ink); }
+html[data-reward-theme] body :is(.companion-happy-eyes,.companion-smile) { stroke:var(--reward-pet-ink); }
+html[data-theme][data-reward-theme] body .pet-journal {
+  --pet-ink:var(--reward-ink); --pet-muted:var(--reward-muted); --pet-line:var(--reward-line);
+  --pet-paper:var(--reward-surface); --pet-tint:var(--reward-soft); --pet-accent:var(--reward-accent);
+}
+html[data-theme][data-reward-theme] body .pet-hero { background:linear-gradient(130deg,var(--reward-selected),var(--reward-soft)); }
+html[data-theme][data-reward-theme] body :is(.companion-growth-launch,.companion-level,.assistant-orb) { background:var(--reward-soft)!important; border-color:var(--reward-line)!important; color:var(--reward-accent)!important; }
+html[data-theme][data-reward-theme] body .companion-growth-launch>span:nth-child(2) { color:var(--reward-muted); }
+html[data-reward-theme="theme_monochrome"] body .growth-stars { fill:#8e96a5; }
+html[data-reward-theme="theme_baowu"] body .growth-stars { fill:#54b2ee; }
+html[data-reward-theme] body .growth-cape { fill:var(--reward-pet-outline); stroke:var(--reward-pet); }
+
+/* Theme rewards have a workspace preview, independent of the active theme. */
+.pet-theme-shop { margin-bottom:26px; padding-bottom:25px; border-bottom:1px solid var(--pet-line); }
+.pet-themes-title button { border:1px solid var(--pet-line); border-radius:8px; background:transparent; color:var(--pet-muted); padding:6px 9px; font-size:10px; }
+.pet-theme-note { margin:0 0 14px; }
+.pet-theme-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.pet-theme-card { display:flex; flex-direction:column; min-width:0; padding:0 14px 14px; border:1px solid var(--pet-line); border-radius:15px; overflow:hidden; }
+.pet-theme-card.is-current { border-color:var(--pet-accent); }
+.pet-theme-copy { flex:1; }
+.pet-theme-copy b { font-size:13px; }
+.pet-theme-copy p { font-size:11px; line-height:1.65; color:var(--pet-muted); margin:7px 0; }
+.pet-theme-copy small { font-size:10px; color:var(--pet-muted); }
+.pet-theme-card>button { border:1px solid var(--pet-line); border-radius:9px; padding:8px; background:var(--pet-tint); color:var(--pet-accent); font-size:11px; margin-top:13px; }
+.pet-theme-preview { --preview-bg:#eceef2; --preview-paper:#fff; --preview-accent:#424751; --preview-pet:#d0d2d6; --preview-outline:#717782; position:relative; height:132px; margin:0 -14px 14px; padding:14px; display:grid; grid-template-columns:40px 1fr; grid-template-rows:19px 1fr; gap:7px; background:var(--preview-bg); }
+.pet-theme-preview[data-theme-preview="theme_baowu"] { --preview-bg:#e3edf8; --preview-accent:#005eaa; --preview-pet:#95c6e7; --preview-outline:#347da8; }
+.pet-theme-preview[data-theme-preview] { --pet-body:var(--preview-pet); --pet-outline:var(--preview-outline); --reward-pet-ink:var(--preview-outline); }
+.pet-theme-mini-bar { grid-column:1/-1; display:flex; gap:3px; align-items:center; padding:0 7px; border-radius:5px; background:var(--preview-accent); }
+.pet-theme-mini-bar i { width:3px; height:3px; border-radius:50%; background:#fff; opacity:.7; }
+.pet-theme-mini-nav,.pet-theme-mini-mail { border-radius:5px; padding:9px 6px; background:var(--preview-paper); }
+.pet-theme-mini-nav i,.pet-theme-mini-mail i { display:block; height:4px; border-radius:2px; background:var(--preview-accent); opacity:.14; margin-bottom:7px; }
+.pet-theme-mini-nav i:first-child { opacity:.5; }
+.pet-theme-mini-mail i { width:65%; }
+.pet-theme-mini-mail i:first-child { opacity:.65; width:45%; height:6px; }
+.pet-theme-mini-mail i:last-child { width:40%; }
+.pet-theme-mini-pet { position:absolute; right:17px; bottom:8px; width:70px; height:70px; }
+.pet-theme-preview .growth-body { fill:var(--preview-pet); stroke:var(--preview-outline); }
+.pet-theme-preview[data-theme-preview] .growth-stars { fill:var(--preview-accent); }
+.pet-theme-preview[data-theme-preview] .growth-cape { fill:var(--preview-outline); }
+@media(max-width:420px) {
+  .pet-theme-grid { gap:9px; }
+  .pet-theme-preview { height:112px; padding:11px; grid-template-columns:26px 1fr; }
+  .pet-theme-mini-pet { width:60px; height:60px; right:10px; bottom:7px; }
+  .pet-theme-copy small { display:block; line-height:1.6; }
+}
