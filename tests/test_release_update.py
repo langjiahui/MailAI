@@ -164,41 +164,42 @@ def main():
         with patch.object(release_update, "check", return_value=result), patch.object(
                 release_update.urllib.request, "urlopen", side_effect=lambda *_a, **_k: Response(payload)), patch.object(
                 release_update.sys, "platform", "darwin"), patch.object(
-                release_update.subprocess, "Popen") as popen:
-            popen.return_value.wait.return_value = 0
+                release_update.subprocess, "run") as launch:
             progress = []
             outcome = release_update.download_and_launch(progress=lambda **state: progress.append(state))
         assert outcome["ok"] and outcome["version"] == "1.1.0"
-        assert outcome["phase"] == "installed"
-        assert progress[-1]["phase"] == "installing"
+        assert outcome["phase"] == "installer_opened"
+        assert progress[-1]["phase"] == "installer_opened"
         assert (updates / "MailAI-1.1.0-macos-arm64.pkg").read_bytes() == payload
         assert not stale_pkg.exists()
         assert note.read_text() == "keep me"
-        popen.assert_called_once()
-        argv, options = popen.call_args
-        assert argv[0][:4] == ["/bin/zsh", "-f", "-c", release_update._MACOS_INSTALL_COMMAND]
-        assert argv[0][5] == str(updates / "MailAI-1.1.0-macos-arm64.pkg")
-        assert "with administrator privileges" in argv[0][3]
-        assert "quoted form of pkgPath" in argv[0][3]
-        assert options["start_new_session"] and options["stdin"] == subprocess.DEVNULL
+        launch.assert_called_once()
+        argv, options = launch.call_args
+        assert argv[0] == ["/usr/bin/open", "-b", "com.apple.installer",
+                           str(updates / "MailAI-1.1.0-macos-arm64.pkg")]
+        assert options["check"] and options["timeout"] == 15
+        assert options["stdin"] == subprocess.DEVNULL
+        # Opening Installer does not claim success before the new version runs.
+        with patch.object(release_update, "current_version", return_value="1.0.0"):
+            assert release_update.consume_install_outcome() == {"pending": False}
+        assert (updates / "install-pending.json").exists()
+        with patch.object(release_update, "current_version", return_value="1.1.0"):
+            assert release_update.consume_install_outcome()["status"] == "success"
+        assert release_update.consume_install_outcome() == {"pending": False}
 
-        # Authorization cancellation remains visible to the running app.
-        class CancelledInstall:
-            def wait(self):
-                return 1
-        def cancel_install(argv, **_kwargs):
-            Path(argv[7]).write_text("User canceled. (-128)", encoding="utf-8")
-            return CancelledInstall()
-        with patch.object(release_update, "check", return_value=result), patch.object(
-                release_update.sys, "platform", "darwin"), patch.object(
-                release_update.subprocess, "Popen", side_effect=cancel_install):
-            try:
-                release_update.download_and_launch()
-            except ValueError as exc:
-                assert "已取消安装" in str(exc)
-            else:
-                raise AssertionError("canceled authorization accepted")
-        assert not (updates / "install-pending.json").exists()
+        # Installer launch failure clears pending state and offers manual install.
+        for error in (OSError("missing Installer"), subprocess.CalledProcessError(1, "open"),
+                      subprocess.TimeoutExpired("open", 15)):
+            with patch.object(release_update, "check", return_value=result), patch.object(
+                    release_update.sys, "platform", "darwin"), patch.object(
+                    release_update.subprocess, "run", side_effect=error):
+                try:
+                    release_update.download_and_launch()
+                except ValueError as exc:
+                    assert "无法打开 macOS 安装器" in str(exc)
+                else:
+                    raise AssertionError("failed launch accepted")
+            assert not (updates / "install-pending.json").exists()
 
         # A killed old app leaves the installer result for the relaunched app.
         (updates / "install-pending.json").write_text('{"version":"1.1.0","started_at":' + str(time.time()) + '}', encoding="utf-8")
@@ -218,38 +219,6 @@ def main():
         with patch.object(release_update, "current_version", return_value="1.0.0"):
             mismatch = release_update.consume_install_outcome()
         assert mismatch["status"] == "failed" and "当前版本仍是 1.0.0" in mismatch["message"]
-
-    # Exercise the detached shell's argument passing and completion markers
-    # without invoking a real administrator prompt or changing /Applications.
-    if sys.platform == 'darwin':
-        with tempfile.TemporaryDirectory() as folder:
-            root = Path(folder)
-            fake_osascript = root / "fake-osascript"
-            fake_open = root / "fake-open"
-            fake_osascript.write_text(
-                '#!/bin/zsh\nprint -r -- "${argv[-1]}" > "$MAILAI_TEST_CAPTURE"\n'
-                'if [[ "${MAILAI_TEST_FAIL:-}" == 1 ]]; then\n'
-                '  print -r -- "User canceled. (-128)" >&2\n  exit 1\nfi\n', encoding="utf-8")
-            fake_open.write_text('#!/bin/zsh\nprint -r -- "$@" > "$MAILAI_TEST_OPEN"\n', encoding="utf-8")
-            fake_osascript.chmod(0o755)
-            fake_open.chmod(0o755)
-            command = release_update._MACOS_INSTALL_COMMAND.replace(
-                "/usr/bin/osascript", str(fake_osascript)).replace("/usr/bin/open", str(fake_open))
-            package = root / "mail ai's update.pkg"
-            package.write_bytes(payload)
-            outcome = root / "outcome.txt"
-            output = root / "output.log"
-            env = {**os.environ, "MAILAI_TEST_CAPTURE": str(root / "capture.txt"),
-                   "MAILAI_TEST_OPEN": str(root / "opened.txt")}
-            args = ["/bin/zsh", "-f", "-c", command, "mailai-update", str(package),
-                    str(outcome), str(output), "/Applications/MailAI.app"]
-            assert subprocess.run(args, env=env, check=False).returncode == 0
-            assert outcome.read_text(encoding="utf-8").strip() == "success"
-            assert (root / "capture.txt").read_text(encoding="utf-8").strip() == str(package)
-            assert "/Applications/MailAI.app" in (root / "opened.txt").read_text(encoding="utf-8")
-            assert subprocess.run(args, env={**env, "MAILAI_TEST_FAIL": "1"}, check=False).returncode == 1
-            assert outcome.read_text(encoding="utf-8").strip() == "failed"
-            assert "User canceled" in output.read_text(encoding="utf-8")
 
     # A dropped connection retries; a persistent outage fails with a clear reason.
     asset = {"url": "https://downloads.example.test/MailAI.exe", "sha256": hashlib.sha256(payload).hexdigest(),

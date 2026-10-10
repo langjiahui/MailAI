@@ -21,7 +21,8 @@ body[data-pet-effect="orbit"] .growth-orbit { transform-origin:56px 65px; animat
 body[data-pet-effect="aurora"] .growth-aura { animation:pet-twinkle 2.5s ease-in-out infinite; }
 @keyframes pet-twinkle { 50% { opacity:.35; } }
 @keyframes pet-orbit { 50% { transform:rotate(12deg); opacity:.35; } }
-.companion-level { position:absolute; bottom:0; left:calc(50% - 10px); min-width:20px; padding:1px 5px; border:1px solid #cfdfd5; border-radius:8px; background:#f4faf6; color:#47765d; font:700 9px/1.4 inherit; pointer-events:none; }
+.companion-level { display:inline-block; margin-left:6px; font-weight:650; white-space:nowrap; }
+.companion-level::before { content:'·'; margin-right:6px; font-weight:400; }
 .companion-growth-launch { display:flex; align-items:center; gap:9px; margin:9px 14px 0; padding:9px 12px; border:1px solid #d9e7df; border-radius:12px; background:#edf5f0; color:#47765d; text-align:left; font-size:11px; cursor:pointer; flex:none; }
 .companion-growth-launch>span:first-child { font-weight:700; }
 .companion-growth-launch>span:nth-child(2) { margin-left:auto; color:#6b8075; }
@@ -118,7 +119,6 @@ html[data-theme="dark"] .pet-journal { --pet-ink:#dce9e0; --pet-muted:#a0b1a7; -
 html[data-theme="dark"] .pet-hero { background:radial-gradient(ellipse at 10% 30%,#427b5e44,transparent 60%),var(--pet-tint); }
 html[data-theme="dark"] .companion-growth-launch { background:#283c30; color:#c6e1d0; border-color:#3b5143; }
 html[data-theme="dark"] .companion-growth-launch>span:nth-child(2) { color:#9bb9a7; }
-html[data-theme="dark"] .companion-level { background:#293c30; color:#b9d9c5; border-color:#46614e; }
 @media(max-width:600px) {
   .pet-journal { width:calc(100vw / var(--fz,1) - 16px); max-height:calc(100vh / var(--fz,1) - 16px); border-radius:18px; }
   .pet-journal-head,.pet-journal-footer { padding:14px 16px; }
@@ -133,10 +133,18 @@ html[data-theme="dark"] .companion-level { background:#293c30; color:#b9d9c5; bo
   .pet-shop { gap:9px; }
 }
 /* A free masculine ranger route shares progress with the nature messenger. */
-.growth-berry,.growth-ranger-collar,.growth-ranger-badge,.growth-ranger-crest,.growth-ranger-brows,.growth-jacket,.growth-armor,.growth-visor,.growth-mech-wings,.growth-lightning { display:none; }
+.growth-berry,.growth-ranger-hair,.growth-ranger-collar,.growth-ranger-badge,.growth-ranger-crest,.growth-ranger-brows,.growth-jacket,.growth-armor,.growth-visor,.growth-mech-wings,.growth-lightning { display:none; }
+.growth-ranger-hair { --pet-hair:#30485f; --pet-hair-edge:#20384c; --pet-hair-shine:#7098b2; }
+.ranger-hair-crown,.ranger-hair-fringe { fill:var(--pet-hair); stroke:var(--pet-hair-edge); stroke-width:1.2; }
+.ranger-hair-shine { stroke:var(--pet-hair-shine); }
+html[data-reward-theme="theme_monochrome"] .growth-ranger-hair { --pet-hair:#414853; --pet-hair-edge:#2a3038; --pet-hair-shine:#939ca8; }
+html[data-reward-theme="theme_baowu"] .growth-ranger-hair { --pet-hair:#244d78; --pet-hair-edge:#173653; --pet-hair-shine:#639ac7; }
+/* Each card previews its own theme, even while the other theme is equipped. */
+.pet-theme-preview[data-theme-preview="theme_monochrome"] .growth-ranger-hair { --pet-hair:#414853; --pet-hair-edge:#2a3038; --pet-hair-shine:#939ca8; }
+.pet-theme-preview[data-theme-preview="theme_baowu"] .growth-ranger-hair { --pet-hair:#244d78; --pet-hair-edge:#173653; --pet-hair-shine:#639ac7; }
 body[data-pet-style="ranger"] { --pet-body:#accbd9; --pet-outline:#62889f; }
 body[data-pet-style="ranger"]:where([data-pet-stage="5"],[data-pet-stage="6"],[data-pet-stage="7"]) { --pet-body:#8bb5cc; }
-body[data-pet-style="ranger"] .growth-ranger-brows,body[data-pet-style="ranger"] .growth-ranger-collar { display:block; }
+body[data-pet-style="ranger"] .growth-ranger-hair,body[data-pet-style="ranger"] .growth-ranger-brows,body[data-pet-style="ranger"] .growth-ranger-collar { display:block; }
 body[data-pet-style="ranger"]:not([data-pet-stage="1"]) .growth-ranger-crest { display:block; }
 body[data-pet-style="ranger"] .companion-leaves,body[data-pet-style="ranger"] .growth-leaf,body[data-pet-style="ranger"] .growth-flower { visibility:hidden; }
 body[data-pet-style="ranger"] .growth-cape { fill:#304D67; stroke:#6BA6CD; stroke-width:2; }
@@ -161,8 +169,11 @@ body[data-pet-style="ranger"] .pet-item-art .companion-leaves,body[data-pet-styl
 
 body[data-pet-style="ranger"]:not([data-pet-stage="1"]):not([data-pet-stage="2"]) .growth-ranger-badge { display:block; }
 body[data-pet-accessory="cap"] .growth-ranger-crest { visibility:hidden; }
+body[data-pet-accessory="cap"] .ranger-hair-crown { visibility:hidden; }
 .pet-item-art .growth-ranger-crest { visibility:visible!important; }
+.pet-item-art .ranger-hair-crown { visibility:visible!important; }
 .pet-item-art[data-item-preview="cap"] .growth-ranger-crest { visibility:hidden!important; }
+.pet-item-art[data-item-preview="cap"] .ranger-hair-crown { visibility:hidden!important; }
 .pet-item-art[data-item-preview="berry"] .growth-berry { display:block; }
 .pet-pending { display:flex; align-items:center; gap:12px; justify-content:space-between; padding:12px 14px; margin-bottom:14px; border:1px solid var(--pet-line); border-radius:12px; background:var(--pet-tint); font-size:11px; line-height:1.7; }
 .pet-pending button { flex:none; color:var(--pet-accent); background:var(--pet-paper); border:1px solid var(--pet-line); border-radius:8px; padding:7px 10px; font-size:11px; }

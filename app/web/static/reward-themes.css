@@ -115,7 +115,7 @@ html[data-theme][data-reward-theme] body .pet-journal {
   --pet-paper:var(--reward-surface); --pet-tint:var(--reward-soft); --pet-accent:var(--reward-accent);
 }
 html[data-theme][data-reward-theme] body .pet-hero { background:linear-gradient(130deg,var(--reward-selected),var(--reward-soft)); }
-html[data-theme][data-reward-theme] body :is(.companion-growth-launch,.companion-level,.assistant-orb) { background:var(--reward-soft)!important; border-color:var(--reward-line)!important; color:var(--reward-accent)!important; }
+html[data-theme][data-reward-theme] body :is(.companion-growth-launch,.assistant-orb) { background:var(--reward-soft)!important; border-color:var(--reward-line)!important; color:var(--reward-accent)!important; }
 html[data-theme][data-reward-theme] body .companion-growth-launch>span:nth-child(2) { color:var(--reward-muted); }
 html[data-reward-theme="theme_monochrome"] body .growth-stars { fill:#8e96a5; }
 html[data-reward-theme="theme_baowu"] body .growth-stars { fill:#54b2ee; }

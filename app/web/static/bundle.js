@@ -15216,6 +15216,10 @@ const MAILAI_UI_COPY = {
     "关闭养成手账",
     "Close growth journal"
   ],
+  "pet.level": [
+    "{0}级",
+    "Lv.{0}"
+  ],
   "pet.summary": [
     "{0} · {1} 邮票",
     "{0} · {1} stamps"
@@ -15710,12 +15714,12 @@ const MAILAI_UI_COPY = {
     "Starlight captain"
   ],
   "pet.rangerHint1": [
-    "硬朗眉眼与沉稳配色，开始并肩成长。",
-    "Confident brows and cool tones. Start growing side by side."
+    "利落短发、硬朗眉眼与沉稳配色，开始并肩成长。",
+    "Swept short hair, confident brows and cool tones. Start growing side by side."
   ],
   "pet.rangerHint2": [
-    "戴上先锋头盔，解锁战术外套。",
-    "Gain a ranger helmet and unlock a tactical jacket."
+    "戴上先锋耳机与能量发饰，解锁战术外套。",
+    "Gain ranger earpieces and an energy hair badge. Unlock a tactical jacket."
   ],
   "pet.rangerHint3": [
     "点亮能量徽章，准备迎接新的挑战。",
@@ -15844,6 +15848,26 @@ const MAILAI_UI_COPY = {
   "pet.error.kind": [
     "未知成长行为",
     "Unknown growth activity"
+  ],
+  "ui.88014d53e4b9": [
+    "macOS 安装器已打开",
+    "macOS Installer opened"
+  ],
+  "ui.69b88f08e4f4": [
+    "重新打开安装器",
+    "Reopen Installer"
+  ],
+  "ui.17883f85f188": [
+    "安装包已下载并校验。请在 macOS 安装器中继续安装；取消安装不会更改当前版本。",
+    "Installer downloaded and verified. Continue in macOS Installer; canceling leaves the current version unchanged."
+  ],
+  "ui.c28e2855a794": [
+    "已打开 macOS 安装器，请在安装器中继续；安装完成后将尝试重新打开 MailAI。",
+    "macOS Installer opened. Continue there; MailAI will try to reopen after installation."
+  ],
+  "ui.3393089c6d77": [
+    "无法打开 macOS 安装器，请重试或从发布页手动安装。",
+    "Could not open macOS Installer. Retry or install manually from the release page."
   ]
 };
 const MAILAI_I18N_CHINESE = {
@@ -23899,26 +23923,30 @@ function renderUpdateProgress(state) {
     get queued() { return mailaiText('正在准备更新'); }, get checking() { return mailaiText('正在确认版本'); }, get downloading() { return mailaiText('正在下载安装包'); },
     get verifying() { return mailaiText('正在校验安装包'); }, get verified() { return mailaiText('校验完成'); }, get launching() { return mailaiText('正在启动安装程序'); },
     get installing() { return mailaiText('等待授权并安装'); }, get installed() { return mailaiText('安装完成'); }, get launched() { return mailaiText('安装程序已启动'); }, get failed() { return mailaiText('更新未完成'); },
+    get installer_opened() { return mailaiText('macOS 安装器已打开'); },
   };
   box.classList.remove('hidden');
   box.classList.toggle('indeterminate', !total && state.running);
   box.classList.toggle('verifying', phase === 'verifying' || phase === 'verified');
-  box.classList.toggle('complete', phase === 'launched' || phase === 'installed');
+  box.classList.toggle('complete', phase === 'launched' || phase === 'installed' || phase === 'installer_opened');
   box.setAttribute('aria-valuenow', String(percent));
   mailaiBindUI(document.getElementById('update-progress-label'), "textContent", () => (labels[phase] || mailaiSystemMessage(state.message) || mailaiText('正在更新')));
   mailaiBindUI(document.getElementById('update-progress-percent'), "textContent", () => (total ? `${percent}%` : mailaiText('连接中')));
   document.getElementById('update-progress-fill').style.width = `${total ? percent : 36}%`;
-  let detail = state.message || '';
-  // A stalled dialog must explain itself: "更新未完成" alone leaves the cause invisible.
-  if (phase === 'failed' && state.error) detail = state.error;
-  if (phase === 'downloading' && total) {
-    detail = `${formatUpdateBytes(downloaded)} / ${formatUpdateBytes(total)}`;
-    if (state.speed_bps) detail += mailaiTemplate` · ${formatUpdateBytes(state.speed_bps)}/秒`;
-  } else if (phase === 'verifying') detail = mailaiText('正在核对 SHA-256，确保安装包完整且未被篡改…');
-  else if (phase === 'installing') detail = mailaiText('请在 macOS 弹出的授权窗口中确认；安装完成后 MailAI 会重新打开。');
-  else if (phase === 'installed') detail = mailaiText('安装完成，正在重新打开 MailAI。');
-  else if (phase === 'launched') detail = mailaiText('请按系统提示完成安装；完成后将尝试自动打开 MailAI。');
-  document.getElementById('update-progress-detail').textContent = detail;
+  mailaiBindUI(document.getElementById('update-progress-detail'), 'textContent', () => {
+    let detail = state.message || '';
+    // A stalled dialog must explain itself: "更新未完成" alone leaves the cause invisible.
+    if (phase === 'failed' && state.error) detail = state.error;
+    if (phase === 'downloading' && total) {
+      detail = `${formatUpdateBytes(downloaded)} / ${formatUpdateBytes(total)}`;
+      if (state.speed_bps) detail += mailaiTemplate` · ${formatUpdateBytes(state.speed_bps)}/秒`;
+    } else if (phase === 'verifying') detail = mailaiText('正在核对 SHA-256，确保安装包完整且未被篡改…');
+    else if (phase === 'installing') detail = mailaiText('请在 macOS 弹出的授权窗口中确认；安装完成后 MailAI 会重新打开。');
+    else if (phase === 'installed') detail = mailaiText('安装完成，正在重新打开 MailAI。');
+    else if (phase === 'launched') detail = mailaiText('请按系统提示完成安装；完成后将尝试自动打开 MailAI。');
+    else if (phase === 'installer_opened') detail = mailaiText('安装包已下载并校验。请在 macOS 安装器中继续安装；取消安装不会更改当前版本。');
+    return mailaiSystemMessage(detail);
+  });
   const button = document.getElementById('btn-install-update');
   if (button && appUpdateInstalling) mailaiBindUI(button, "textContent", () => (phase === 'downloading' && total ? mailaiTemplate`下载中 ${percent}%` : (labels[phase] || mailaiText('正在更新…'))));
 }
@@ -23959,27 +23987,34 @@ async function installAppUpdate(event) {
   const button = document.getElementById('btn-install-update');
   if (appUpdateInstalling) return;
   appUpdateInstalling = true;
+  let installerOpened = false;
   setLoading(button, true, mailaiText('正在准备更新…'));
   try {
     const started = await api('/api/system/update/install', {method:'POST'});
     renderUpdateProgress(started);
     const result = await monitorAppUpdateInstall();
     if (result) {
-      await new Promise(resolve => setTimeout(resolve, 700));
-      document.getElementById('update-dialog').close();
-      toast(mailaiSystemMessage(result.message) || mailaiText('更新已完成'), 'success');
+      installerOpened = result.phase === 'installer_opened';
+      if (result.phase !== 'installer_opened') {
+        await new Promise(resolve => setTimeout(resolve, 700));
+        document.getElementById('update-dialog').close();
+      }
+      toast(mailaiSystemMessage(result.message) || mailaiText('更新已完成'), result.phase === 'installer_opened' ? 'info' : 'success');
     }
   } catch (error) {
     toast(mailaiSystemMessage(error.message), 'error');
   } finally {
     appUpdateInstalling = false;
     setLoading(button, false);
+    if (installerOpened) {
+      mailaiBindUI(button, 'textContent', () => mailaiText('重新打开安装器'));
+    }
   }
 }
 
 async function showInterruptedAppUpdateOutcome() {
-  // The macOS package stops the old app while replacing it. The detached
-  // installer leaves a one-time result for this newly opened window.
+  // Confirm the running version after macOS Installer replaces and reopens
+  // the app. Also consume completion markers from older update versions.
   for (let attempt = 0; attempt < 90; attempt++) {
     let outcome;
     try { outcome = await api('/api/system/update/install/outcome'); }
@@ -30358,10 +30393,15 @@ document.getElementById('task-center-list').addEventListener('click', async even
       </g>
       <g class="growth-leaf" fill="#65AD89"><path d="M60 21Q69 10 78 18Q77 28 62 26Z"/></g>
       <g class="growth-flower"><path d="M55 19v-7" stroke="#599C7B" stroke-width="2"/><g fill="#EDAFBD"><circle cx="55" cy="9" r="4"/><circle cx="51" cy="12" r="4"/><circle cx="59" cy="12" r="4"/></g><circle cx="55" cy="12" r="2.6" fill="#F9D889"/></g>
-      <g class="growth-cap"><path d="M33 30Q33 12 56 13Q76 14 77 30Z" fill="#719EC0" stroke="#477A9E"/><path d="M29 30h53" stroke="#477A9E" stroke-width="4" stroke-linecap="round"/><path d="m50 21 6 4 6-4" stroke="#FFF5D9" stroke-width="2"/></g>
-      <g class="growth-ranger-crest" fill="#446780" stroke="#264C67" stroke-width="1.2"><path d="m30 36 2-13 24-8 24 8 2 13-12-8H42Z"/><path d="m48 20 8 3 8-3" stroke="#8AE4E8" stroke-width="2.5"/><path d="M30 33v13M82 33v13" stroke="#446780" stroke-width="6"/></g>
       <g class="companion-head">
       <rect x="33" y="35" width="47" height="39" rx="17" fill="#F6FBF6"/>
+      <g class="growth-ranger-hair" stroke-linejoin="round">
+        <path class="ranger-hair-crown" d="M31 36Q28 29 38 25l-1-6 11 3 13-9 1 7 12-2-2 7q12 3 9 13L70 35 42 35Z"/>
+        <path class="ranger-hair-fringe" d="M31 34q10-8 23-5 14-6 26 3l-2 13-4-8q-8-4-14-1l-8 5-3-5-7 4-5-4-2 10-4-4Z"/>
+        <path class="ranger-hair-shine" d="m40 28 8 1 10-6m1 7q7-3 13 0" fill="none" stroke-width="1.8" stroke-linecap="round"/>
+      </g>
+      <g class="growth-ranger-crest" fill="#446780" stroke="#264C67" stroke-width="1.2"><path d="M30 36h4v13h-4q-4-6 0-13ZM79 36h4q4 7 0 13h-4Z"/><path d="M30 40v5M83 40v5" stroke="#8AE4E8" stroke-width="2" stroke-linecap="round"/><path d="m69 29 6 2-2 6-5-3Z" fill="#83D5E3"/></g>
+      <g class="growth-cap"><path d="M33 30Q33 12 56 13Q76 14 77 30Z" fill="#719EC0" stroke="#477A9E"/><path d="M29 30h53" stroke="#477A9E" stroke-width="4" stroke-linecap="round"/><path d="m50 21 6 4 6-4" stroke="#FFF5D9" stroke-width="2"/></g>
       <g class="companion-gaze">
         <g class="companion-eyes"><rect x="43" y="48" width="5" height="9" rx="2.5" fill="#285640"/><rect x="65" y="48" width="5" height="9" rx="2.5" fill="#285640"/></g>
         <g class="companion-happy-eyes" stroke="#285640" stroke-width="2.7" stroke-linecap="round"><path d="M42 53q3-5 6 0M64 53q3-5 6 0"/></g>
@@ -30409,7 +30449,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
   });
   const root = document.getElementById('mail-assistant');
   const orb = document.getElementById('assistant-orb');
-  const caption = document.getElementById('companion-caption');
+  const caption = document.getElementById('companion-caption-copy');
   const toggle = document.getElementById('companion-motion');
   const key = 'mailai-companion-motion';
   try { toggle.checked = localStorage.getItem(key) !== 'off'; } catch (_) {}
@@ -30458,12 +30498,13 @@ document.getElementById('task-center-list').addEventListener('click', async even
     const label = root.classList.contains('companion-finished') ? mailaiText('整理好了，来看看') : {
       get calm() { return mailaiText('小邮在这里'); }, get thinking() { return mailaiText('正在帮你整理'); }, get warn() { return mailaiText('有邮件需要留意'); }, get danger() { return mailaiText('有高风险邮件待核实'); },
     }[state];
-    caption.textContent = label;
+    mailaiBindUI(caption, 'textContent', () => label);
     mailaiBindUI(orb, "@aria-label", () => (mailaiTemplate`${label}，打开 MailAI 邮件助手`));
     orb.setAttribute('aria-expanded', String(document.body.classList.contains('assistant-visible')));
   };
   new MutationObserver(sync).observe(root, {attributes:true, attributeFilter:['class']});
   new MutationObserver(sync).observe(document.body, {attributes:true, attributeFilter:['class']});
+  document.addEventListener('mailai:language-changed', sync);
   document.addEventListener('visibilitychange', () => document.body.classList.toggle('companion-paused', document.hidden));
   sync();
 })();
@@ -30788,7 +30829,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
     applyRewardTheme();
     const themeSummary = document.getElementById('companion-theme-summary');
     if (themeSummary) themeSummary.textContent = t('themeDefault');
-    summary.textContent = ''; level.textContent = numerals[0];
+    summary.textContent = ''; level.textContent = t('level',1);
   }
   function paint() {
     if (!state || account !== owner()) return;
@@ -30805,7 +30846,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
       themeSummary.removeAttribute('data-i18n');
       themeSummary.textContent = theme ? t('themeCurrent',t(`item.${theme}`)) : t('themeDefault');
     }
-    level.textContent = numerals[state.stage-1];
+    level.textContent = t('level',state.stage);
     summary.textContent = t('summary', stageName(state.stage), state.stamps);
     if (dialog?.open) render();
   }
@@ -30981,7 +31022,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
     const scroll = host.scrollTop;
     const next = state.next_stage_xp;
     const progress = next ? (state.xp-state.stage_floor)/(next-state.stage_floor)*100 : 100;
-    host.innerHTML = `${purchaseIntent ? `<div class="pet-pending" role="status"><span>${label('purchasePending',t(`item.${purchaseIntent.item}`))}</span><button type="button" data-pet-reconcile ${busy ? 'disabled' : ''}>${label('reconcile')}</button></div>` : ''}${feedback && Date.now()<feedback.until ? `<p class="pet-milestone" role="status">${esc(feedback.copy)}</p>` : ''}<section class="pet-hero">${avatar('pet-hero-portrait')}<div class="pet-hero-copy"><span class="pet-eyebrow">${label('heroEyebrow')}</span><h3>${esc(stageName(state.stage))} <small>${numerals[state.stage-1]}</small></h3><p>${stageHint(state.stage)}</p><div class="pet-growth-label"><b>${label('growth')} ${state.xp.toLocaleString()}</b><span>${next ? label('next',next-state.xp) : label('maxStage')}</span></div><progress max="100" value="${progress}" aria-label="${label('growth')}"></progress></div></section>
+    host.innerHTML = `${purchaseIntent ? `<div class="pet-pending" role="status"><span>${label('purchasePending',t(`item.${purchaseIntent.item}`))}</span><button type="button" data-pet-reconcile ${busy ? 'disabled' : ''}>${label('reconcile')}</button></div>` : ''}${feedback && Date.now()<feedback.until ? `<p class="pet-milestone" role="status">${esc(feedback.copy)}</p>` : ''}<section class="pet-hero">${avatar('pet-hero-portrait')}<div class="pet-hero-copy"><span class="pet-eyebrow">${label('heroEyebrow')}</span><h3>${esc(stageName(state.stage))} <small>${label('level',state.stage)}</small></h3><p>${stageHint(state.stage)}</p><div class="pet-growth-label"><b>${label('growth')} ${state.xp.toLocaleString()}</b><span>${next ? label('next',next-state.xp) : label('maxStage')}</span></div><progress max="100" value="${progress}" aria-label="${label('growth')}"></progress></div></section>
     <div class="pet-style-choice"><span>${label('styleChoice')}</span>${['nature','ranger'].map(style=>`<button type="button" data-pet-style="${style}" aria-pressed="${state.style === style}" ${state.style === style || busy ? 'disabled' : ''}>${label(`style.${style}`)}</button>`).join('')}<small>${label('styleFree')}</small></div>
     <div class="pet-stats"><article><strong>${state.stamps.toLocaleString()}</strong><span>${label('stamps')}</span></article><article><strong>${state.streak}<small>${label('days')}</small></strong><span>${label('streak')}</span></article><article><strong>${state.earned.toLocaleString()}</strong><span>${label('earned')}</span></article></div>
     ${!state.enabled ? `<p class="pet-paused">${label('paused')}</p>` : ''}<nav class="pet-tabs" aria-label="${label('tabs')}">${['today','journey','shop','history'].map(name=>`<button type="button" data-pet-tab="${name}" aria-pressed="${tab === name}">${label(name)}</button>`).join('')}</nav><section class="pet-tab-content">${({today:todayView,journey:journeyView,shop:shopView,history:historyView})[tab]()}</section>`;
@@ -31064,7 +31105,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
   launched.addEventListener('click',open);
   document.getElementById('companion-growth-settings').addEventListener('click',open);
   document.getElementById('companion-theme-settings')?.addEventListener('click',openThemes);
-  document.addEventListener('mailai:language-changed',() => { feedback = null; renderKey = ''; message(''); paint(); });
+  document.addEventListener('mailai:language-changed',() => { feedback = null; renderKey = ''; message(''); paint(); if (!state) level.textContent = t('level',1); });
   new MutationObserver(checkAccount).observe(document.getElementById('account-mailbox-nav'),{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
   window.mailaiEnergy.register('companion-growth',tick,10000);
   checkAccount();

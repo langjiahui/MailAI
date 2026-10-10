@@ -13640,6 +13640,10 @@ const MAILAI_UI_COPY = {
     "关闭养成手账",
     "Close growth journal"
   ],
+  "pet.level": [
+    "{0}级",
+    "Lv.{0}"
+  ],
   "pet.summary": [
     "{0} · {1} 邮票",
     "{0} · {1} stamps"
@@ -14134,12 +14138,12 @@ const MAILAI_UI_COPY = {
     "Starlight captain"
   ],
   "pet.rangerHint1": [
-    "硬朗眉眼与沉稳配色，开始并肩成长。",
-    "Confident brows and cool tones. Start growing side by side."
+    "利落短发、硬朗眉眼与沉稳配色，开始并肩成长。",
+    "Swept short hair, confident brows and cool tones. Start growing side by side."
   ],
   "pet.rangerHint2": [
-    "戴上先锋头盔，解锁战术外套。",
-    "Gain a ranger helmet and unlock a tactical jacket."
+    "戴上先锋耳机与能量发饰，解锁战术外套。",
+    "Gain ranger earpieces and an energy hair badge. Unlock a tactical jacket."
   ],
   "pet.rangerHint3": [
     "点亮能量徽章，准备迎接新的挑战。",
@@ -14268,6 +14272,26 @@ const MAILAI_UI_COPY = {
   "pet.error.kind": [
     "未知成长行为",
     "Unknown growth activity"
+  ],
+  "ui.88014d53e4b9": [
+    "macOS 安装器已打开",
+    "macOS Installer opened"
+  ],
+  "ui.69b88f08e4f4": [
+    "重新打开安装器",
+    "Reopen Installer"
+  ],
+  "ui.17883f85f188": [
+    "安装包已下载并校验。请在 macOS 安装器中继续安装；取消安装不会更改当前版本。",
+    "Installer downloaded and verified. Continue in macOS Installer; canceling leaves the current version unchanged."
+  ],
+  "ui.c28e2855a794": [
+    "已打开 macOS 安装器，请在安装器中继续；安装完成后将尝试重新打开 MailAI。",
+    "macOS Installer opened. Continue there; MailAI will try to reopen after installation."
+  ],
+  "ui.3393089c6d77": [
+    "无法打开 macOS 安装器，请重试或从发布页手动安装。",
+    "Could not open macOS Installer. Retry or install manually from the release page."
   ]
 };
 const MAILAI_I18N_CHINESE = {

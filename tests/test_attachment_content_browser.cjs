@@ -13,6 +13,8 @@ const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {
   const realFiles=await page.evaluate(()=>attachmentItems);
   const realFile=realFiles[0], account=await page.evaluate(()=>attachmentCenterAccountId);
   const files=Array.from({length:301},(_,i)=>({email_id:i+100,index:0,name:[0,299,300].includes(i)?`合同-${i}.txt`:`图片-${i}.png`,size:40,date:'2026-10-08T09:00:00',subject:'合同交期确认',from_addr:'colleague@example.test'}));
+  const longName='2026年宝钢股份股价信息、人事变动、最新新闻、宝信软件股份信息、钢铁行业财经-'.repeat(8)+'合同.txt';
+  files[0].name=longName;
   const firstGate=deferred();let started=false;const searched=[],offsets=[];
   await page.route('**/api/attachments?*',route=>{
    const url=new URL(route.request().url()),offset=Number(url.searchParams.get('offset') || 0);offsets.push(offset);
@@ -30,6 +32,16 @@ const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {
   assert.equal(await page.locator('#attachment-compare-tab').count(),0);
   await page.locator('.attachment-search-empty').waitFor();
   await page.locator('#productivity-dialog').screenshot({path:'/tmp/mailai-attachment-search-empty.png'});
+  // WebKit's selected-option text must not create an invisible horizontal overflow.
+  await page.locator('[data-file-scope]').selectOption('one');
+  assert((await page.locator('[data-file-choice] option:checked').textContent()).includes(longName),'Keep the complete filename in the native menu');
+  for(const [width,theme] of [[1440,'light'],[1440,'dark'],[600,'light'],[390,'dark']]){
+   await page.setViewportSize({width,height:1000});await page.evaluate(theme=>document.documentElement.dataset.theme=theme,theme);
+   for(const selector of ['#productivity-dialog','.productivity-body','.attachment-search-controls'])
+    assert(await page.locator(selector).evaluate(n=>n.scrollWidth<=n.clientWidth+1),`Long selected filename must fit ${selector} at ${width}px in ${theme}`);
+  }
+  await page.setViewportSize({width:1440,height:1000});await page.evaluate(()=>document.documentElement.dataset.theme='light');
+  await page.locator('[data-file-scope]').selectOption('all');
   await page.locator('[data-file-example="合同编号"]').click();
   assert.equal(await page.locator('[data-file-query]').inputValue(),'合同编号');
   await page.locator('[data-file-query]').fill('.*');

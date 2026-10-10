@@ -101,10 +101,15 @@
       </g>
       <g class="growth-leaf" fill="#65AD89"><path d="M60 21Q69 10 78 18Q77 28 62 26Z"/></g>
       <g class="growth-flower"><path d="M55 19v-7" stroke="#599C7B" stroke-width="2"/><g fill="#EDAFBD"><circle cx="55" cy="9" r="4"/><circle cx="51" cy="12" r="4"/><circle cx="59" cy="12" r="4"/></g><circle cx="55" cy="12" r="2.6" fill="#F9D889"/></g>
-      <g class="growth-cap"><path d="M33 30Q33 12 56 13Q76 14 77 30Z" fill="#719EC0" stroke="#477A9E"/><path d="M29 30h53" stroke="#477A9E" stroke-width="4" stroke-linecap="round"/><path d="m50 21 6 4 6-4" stroke="#FFF5D9" stroke-width="2"/></g>
-      <g class="growth-ranger-crest" fill="#446780" stroke="#264C67" stroke-width="1.2"><path d="m30 36 2-13 24-8 24 8 2 13-12-8H42Z"/><path d="m48 20 8 3 8-3" stroke="#8AE4E8" stroke-width="2.5"/><path d="M30 33v13M82 33v13" stroke="#446780" stroke-width="6"/></g>
       <g class="companion-head">
       <rect x="33" y="35" width="47" height="39" rx="17" fill="#F6FBF6"/>
+      <g class="growth-ranger-hair" stroke-linejoin="round">
+        <path class="ranger-hair-crown" d="M31 36Q28 29 38 25l-1-6 11 3 13-9 1 7 12-2-2 7q12 3 9 13L70 35 42 35Z"/>
+        <path class="ranger-hair-fringe" d="M31 34q10-8 23-5 14-6 26 3l-2 13-4-8q-8-4-14-1l-8 5-3-5-7 4-5-4-2 10-4-4Z"/>
+        <path class="ranger-hair-shine" d="m40 28 8 1 10-6m1 7q7-3 13 0" fill="none" stroke-width="1.8" stroke-linecap="round"/>
+      </g>
+      <g class="growth-ranger-crest" fill="#446780" stroke="#264C67" stroke-width="1.2"><path d="M30 36h4v13h-4q-4-6 0-13ZM79 36h4q4 7 0 13h-4Z"/><path d="M30 40v5M83 40v5" stroke="#8AE4E8" stroke-width="2" stroke-linecap="round"/><path d="m69 29 6 2-2 6-5-3Z" fill="#83D5E3"/></g>
+      <g class="growth-cap"><path d="M33 30Q33 12 56 13Q76 14 77 30Z" fill="#719EC0" stroke="#477A9E"/><path d="M29 30h53" stroke="#477A9E" stroke-width="4" stroke-linecap="round"/><path d="m50 21 6 4 6-4" stroke="#FFF5D9" stroke-width="2"/></g>
       <g class="companion-gaze">
         <g class="companion-eyes"><rect x="43" y="48" width="5" height="9" rx="2.5" fill="#285640"/><rect x="65" y="48" width="5" height="9" rx="2.5" fill="#285640"/></g>
         <g class="companion-happy-eyes" stroke="#285640" stroke-width="2.7" stroke-linecap="round"><path d="M42 53q3-5 6 0M64 53q3-5 6 0"/></g>
@@ -152,7 +157,7 @@
   });
   const root = document.getElementById('mail-assistant');
   const orb = document.getElementById('assistant-orb');
-  const caption = document.getElementById('companion-caption');
+  const caption = document.getElementById('companion-caption-copy');
   const toggle = document.getElementById('companion-motion');
   const key = 'mailai-companion-motion';
   try { toggle.checked = localStorage.getItem(key) !== 'off'; } catch (_) {}
@@ -201,12 +206,13 @@
     const label = root.classList.contains('companion-finished') ? mailaiText('整理好了，来看看') : {
       get calm() { return mailaiText('小邮在这里'); }, get thinking() { return mailaiText('正在帮你整理'); }, get warn() { return mailaiText('有邮件需要留意'); }, get danger() { return mailaiText('有高风险邮件待核实'); },
     }[state];
-    caption.textContent = label;
+    mailaiBindUI(caption, 'textContent', () => label);
     mailaiBindUI(orb, "@aria-label", () => (mailaiTemplate`${label}，打开 MailAI 邮件助手`));
     orb.setAttribute('aria-expanded', String(document.body.classList.contains('assistant-visible')));
   };
   new MutationObserver(sync).observe(root, {attributes:true, attributeFilter:['class']});
   new MutationObserver(sync).observe(document.body, {attributes:true, attributeFilter:['class']});
+  document.addEventListener('mailai:language-changed', sync);
   document.addEventListener('visibilitychange', () => document.body.classList.toggle('companion-paused', document.hidden));
   sync();
 })();

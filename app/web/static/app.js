@@ -5513,26 +5513,30 @@ function renderUpdateProgress(state) {
     get queued() { return mailaiText('正在准备更新'); }, get checking() { return mailaiText('正在确认版本'); }, get downloading() { return mailaiText('正在下载安装包'); },
     get verifying() { return mailaiText('正在校验安装包'); }, get verified() { return mailaiText('校验完成'); }, get launching() { return mailaiText('正在启动安装程序'); },
     get installing() { return mailaiText('等待授权并安装'); }, get installed() { return mailaiText('安装完成'); }, get launched() { return mailaiText('安装程序已启动'); }, get failed() { return mailaiText('更新未完成'); },
+    get installer_opened() { return mailaiText('macOS 安装器已打开'); },
   };
   box.classList.remove('hidden');
   box.classList.toggle('indeterminate', !total && state.running);
   box.classList.toggle('verifying', phase === 'verifying' || phase === 'verified');
-  box.classList.toggle('complete', phase === 'launched' || phase === 'installed');
+  box.classList.toggle('complete', phase === 'launched' || phase === 'installed' || phase === 'installer_opened');
   box.setAttribute('aria-valuenow', String(percent));
   mailaiBindUI(document.getElementById('update-progress-label'), "textContent", () => (labels[phase] || mailaiSystemMessage(state.message) || mailaiText('正在更新')));
   mailaiBindUI(document.getElementById('update-progress-percent'), "textContent", () => (total ? `${percent}%` : mailaiText('连接中')));
   document.getElementById('update-progress-fill').style.width = `${total ? percent : 36}%`;
-  let detail = state.message || '';
-  // A stalled dialog must explain itself: "更新未完成" alone leaves the cause invisible.
-  if (phase === 'failed' && state.error) detail = state.error;
-  if (phase === 'downloading' && total) {
-    detail = `${formatUpdateBytes(downloaded)} / ${formatUpdateBytes(total)}`;
-    if (state.speed_bps) detail += mailaiTemplate` · ${formatUpdateBytes(state.speed_bps)}/秒`;
-  } else if (phase === 'verifying') detail = mailaiText('正在核对 SHA-256，确保安装包完整且未被篡改…');
-  else if (phase === 'installing') detail = mailaiText('请在 macOS 弹出的授权窗口中确认；安装完成后 MailAI 会重新打开。');
-  else if (phase === 'installed') detail = mailaiText('安装完成，正在重新打开 MailAI。');
-  else if (phase === 'launched') detail = mailaiText('请按系统提示完成安装；完成后将尝试自动打开 MailAI。');
-  document.getElementById('update-progress-detail').textContent = detail;
+  mailaiBindUI(document.getElementById('update-progress-detail'), 'textContent', () => {
+    let detail = state.message || '';
+    // A stalled dialog must explain itself: "更新未完成" alone leaves the cause invisible.
+    if (phase === 'failed' && state.error) detail = state.error;
+    if (phase === 'downloading' && total) {
+      detail = `${formatUpdateBytes(downloaded)} / ${formatUpdateBytes(total)}`;
+      if (state.speed_bps) detail += mailaiTemplate` · ${formatUpdateBytes(state.speed_bps)}/秒`;
+    } else if (phase === 'verifying') detail = mailaiText('正在核对 SHA-256，确保安装包完整且未被篡改…');
+    else if (phase === 'installing') detail = mailaiText('请在 macOS 弹出的授权窗口中确认；安装完成后 MailAI 会重新打开。');
+    else if (phase === 'installed') detail = mailaiText('安装完成，正在重新打开 MailAI。');
+    else if (phase === 'launched') detail = mailaiText('请按系统提示完成安装；完成后将尝试自动打开 MailAI。');
+    else if (phase === 'installer_opened') detail = mailaiText('安装包已下载并校验。请在 macOS 安装器中继续安装；取消安装不会更改当前版本。');
+    return mailaiSystemMessage(detail);
+  });
   const button = document.getElementById('btn-install-update');
   if (button && appUpdateInstalling) mailaiBindUI(button, "textContent", () => (phase === 'downloading' && total ? mailaiTemplate`下载中 ${percent}%` : (labels[phase] || mailaiText('正在更新…'))));
 }
@@ -5573,27 +5577,34 @@ async function installAppUpdate(event) {
   const button = document.getElementById('btn-install-update');
   if (appUpdateInstalling) return;
   appUpdateInstalling = true;
+  let installerOpened = false;
   setLoading(button, true, mailaiText('正在准备更新…'));
   try {
     const started = await api('/api/system/update/install', {method:'POST'});
     renderUpdateProgress(started);
     const result = await monitorAppUpdateInstall();
     if (result) {
-      await new Promise(resolve => setTimeout(resolve, 700));
-      document.getElementById('update-dialog').close();
-      toast(mailaiSystemMessage(result.message) || mailaiText('更新已完成'), 'success');
+      installerOpened = result.phase === 'installer_opened';
+      if (result.phase !== 'installer_opened') {
+        await new Promise(resolve => setTimeout(resolve, 700));
+        document.getElementById('update-dialog').close();
+      }
+      toast(mailaiSystemMessage(result.message) || mailaiText('更新已完成'), result.phase === 'installer_opened' ? 'info' : 'success');
     }
   } catch (error) {
     toast(mailaiSystemMessage(error.message), 'error');
   } finally {
     appUpdateInstalling = false;
     setLoading(button, false);
+    if (installerOpened) {
+      mailaiBindUI(button, 'textContent', () => mailaiText('重新打开安装器'));
+    }
   }
 }
 
 async function showInterruptedAppUpdateOutcome() {
-  // The macOS package stops the old app while replacing it. The detached
-  // installer leaves a one-time result for this newly opened window.
+  // Confirm the running version after macOS Installer replaces and reopens
+  // the app. Also consume completion markers from older update versions.
   for (let attempt = 0; attempt < 90; attempt++) {
     let outcome;
     try { outcome = await api('/api/system/update/install/outcome'); }
