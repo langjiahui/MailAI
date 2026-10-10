@@ -175,6 +175,7 @@ def main():
                  [node, str(ROOT / 'tests/test_draft_queue.cjs')],
                  [node, str(ROOT / 'tests/test_mail_pages.cjs')],
                  [node, str(ROOT / 'tests/test_loading_buttons.cjs')],
+                 [node, str(ROOT / 'tests/test_update_install_ui.cjs')],
                  [node, str(ROOT / 'tests/test_reading_context.cjs')],
                  [node, str(ROOT / 'tests/test_reading_header_ui.cjs')],
                  [node, str(ROOT / 'tests/test_review_actions.cjs')],

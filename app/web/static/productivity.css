@@ -687,7 +687,9 @@ html[data-theme] body .productivity-dialog .attachment-query-bar>button { min-wi
 .attachment-search-controls label { display:flex; flex-direction:row; gap:10px; align-items:center; color:var(--desk-muted); font-size:12px; min-width:0; }
 .attachment-search-controls [data-file-picker] { flex:1; min-width:220px; }
 html[data-theme] body .productivity-dialog .attachment-search-controls select { width:auto; max-width:100%; min-height:34px; padding:6px 28px 6px 10px; border:1px solid var(--desk-line); border-radius:8px; }
-.attachment-search-controls [data-file-picker] select { flex:1; width:0!important; }
+/* WebKit lets a long selected option paint outside the flex-sized control.
+   Clip the closed control's text, while retaining the native dropdown menu. */
+.attachment-search-controls [data-file-picker] select { flex:1; width:0!important; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .attachment-scope-hint { margin:10px 0 0; font-size:11px; }
 .attachment-search-progress { padding:12px 14px; margin:20px 0 18px; border:1px solid var(--desk-line); border-radius:11px; background:var(--desk-muted-surface); }
 .attachment-search-progress>div { display:flex; align-items:center; justify-content:space-between; gap:10px; }
