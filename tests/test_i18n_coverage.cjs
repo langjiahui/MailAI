@@ -23,7 +23,7 @@ function htmlAudit(html,file,full=false){const tree=(full?parse:parseFragment)(h
 if(n.nodeName==='#text'&&hasHan(n.value)&&!ancestors.some(p=>['script','style','title','textarea'].includes(p.tagName)||(p.attrs||[]).some(a=>a.name==='data-i18n'||a.name==='contenteditable'&&a.value==='true')))missing.push({file,text:n.value.trim(),reason:'Unmarked HTML text'});
 for(const c of n.childNodes||[])visit(c,[...ancestors,n]);if(n.content)visit(n.content,[...ancestors,n]);};visit(tree);}
 htmlAudit(fs.readFileSync(path.join(base,'index.html'),'utf8'),'index.html',true);
-for(const file of fs.readFileSync(path.join(root,'frontend/sources.txt'),'utf8').split('\n').filter(s=>s&&!s.startsWith('#')&&!s.startsWith('i18n'))){const code=fs.readFileSync(path.join(base,file),'utf8');const ast=acorn.parse(code,{ecmaVersion:'latest',locations:true});walk(ast,(n,parents)=>{
+for(const file of fs.readFileSync(path.join(root,'frontend/sources.txt'),'utf8').split(/\r?\n/).filter(s=>s&&!s.startsWith('#')&&!s.startsWith('i18n'))){const code=fs.readFileSync(path.join(base,file),'utf8');const ast=acorn.parse(code,{ecmaVersion:'latest',locations:true});walk(ast,(n,parents)=>{
 if(n.type==='CallExpression'&&n.callee.name==='mailaiText'&&n.arguments[0]?.type==='Literal'){const text=n.arguments[0].value;if(hasHan(text)&&!sources.has(text))missing.push({file,line:n.loc.start.line,text,reason:'Missing dynamic copy'});return false;}
 if(n.type==='TaggedTemplateExpression'&&n.tag.name==='mailaiTemplate'){const t=n.quasi,text=t.quasis.map((q,i)=>q.value.cooked+(i<t.expressions.length?`{${i}}`:'')).join('');if(hasHan(text)&&!sources.has(text))missing.push({file,line:n.loc.start.line,text,reason:'Missing template copy'});return;}
 return check(n,parents);
