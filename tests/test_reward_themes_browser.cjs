@@ -131,16 +131,15 @@ const {chromium} = require('playwright');
       const config=await api('/api/system/config'),other=config.accounts.find(account=>!account.active);
       await activateMailAccount(other.id,{quiet:true});
     });
-    await page.waitForFunction(()=>document.body.dataset.petStage === '1');
-    assert.equal(await page.evaluate(()=>document.documentElement.dataset.rewardTheme),undefined);
+    assert.equal(await page.evaluate(()=>document.documentElement.dataset.rewardTheme),'theme_baowu');
     await page.evaluate(()=>window.mailaiPet.openThemes());
-    assert(await dialog.locator('[data-pet-buy="theme_monochrome"]').isDisabled());
+    assert(await dialog.locator('[data-pet-slot="theme"][data-pet-equip="theme_monochrome"]').isEnabled());
     await page.evaluate(async()=>{
       const config=await api('/api/system/config'),work=config.accounts.find(account=>account.user==='work@example.test');
       await activateMailAccount(work.id,{quiet:true});
     });
     await page.waitForFunction(()=>document.documentElement.dataset.rewardTheme === 'theme_baowu');
     assert.deepEqual(errors,[]);
-    console.log('Reward themes: purchases/retry, persistence, light/dark, both pet routes, palette priority, contrast, reset, mobile, i18n and account isolation passed');
+    console.log('Reward themes: purchases/retry, persistence, light/dark, both pet routes, palette priority, contrast, reset, mobile, i18n and client-wide sharing passed');
   } finally { await browser.close(); }
 })().catch(error=>{console.error(error);process.exitCode=1;});

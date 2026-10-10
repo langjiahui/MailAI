@@ -15,6 +15,7 @@ const {chromium} = require('playwright');
     const dialog = page.locator('#companion-growth-dialog');
     await dialog.waitFor({state:'visible'});
     assert.match(await dialog.textContent(),/花苞伙伴/);
+    assert.match(await dialog.locator('.pet-client-note').textContent(),/所有邮箱共享/);
     assert.equal(await dialog.locator('.pet-hero .growth-flower').evaluate(n=>getComputedStyle(n).display),'block');
     await dialog.locator('[data-pet-tab="shop"]').click();
     assert.equal(await dialog.locator('[data-pet-buy="wings"]').isEnabled(),false);
@@ -170,20 +171,21 @@ const {chromium} = require('playwright');
     assert(await dialog.locator('.pet-journal-body').evaluate(n=>n.scrollWidth <= n.clientWidth+1));
     await page.keyboard.press('Escape');
     await page.setViewportSize({width:1280,height:900});
-    // Switching accounts clears the previous companion immediately.
+    // Switching mailboxes retains the client companion and its outfit.
+    const shared = await page.evaluate(()=>api('/api/companion/growth'));
     await page.evaluate(async()=>{
       const config = await api('/api/system/config');
       const other = config.accounts.find(a=>!a.active);
       await api('/api/system/mail/switch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({account_id:other.id})});
       await loadSystemConfig();
     });
-    await page.waitForFunction(()=>document.body.dataset.petStage === '1');
-    assert.equal(await page.evaluate(()=>document.body.dataset.petPalette),'mint');
+    await page.waitForFunction(stage=>document.body.dataset.petStage === String(stage),shared.stage);
+    assert.equal(await page.evaluate(()=>document.body.dataset.petPalette),shared.equipped.palette || 'mint');
     await page.evaluate(()=>window.mailaiPet.open());
     const fresh = await page.evaluate(()=>api('/api/companion/growth'));
-    assert.equal(fresh.xp,0);
-    assert.equal(fresh.stamps,0);
+    assert.match(await dialog.locator('.pet-client-note').textContent(),/Shared across mailboxes/);
+    assert.deepEqual(fresh,shared);
     assert.deepEqual(errors,[]);
-    console.log('Pet journal: purchases, evolution, failure recovery, persistence, timers, motion, i18n, mobile and account isolation passed');
+    console.log('Pet journal: purchases, evolution, failure recovery, persistence, timers, motion, i18n, mobile and client-wide sharing passed');
   } finally { await browser.close(); }
 })().catch(error=>{console.error(error);process.exitCode=1});

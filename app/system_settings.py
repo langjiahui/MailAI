@@ -612,6 +612,8 @@ def logout_mail(clear_history: bool = False, account_id: str = "") -> dict:
                          reason=f"退出邮箱 {old_user}", meta={"clear_history": bool(clear_history)})
 
     if clear_history:
+        from . import companion_growth
+        companion_growth.snapshot()  # Preserve legacy growth before deleting a mailbox.
         _remove_account_storage(target_id, account)
         registry["accounts"].pop(target_id, None)
     else:
@@ -1048,9 +1050,14 @@ def create_backup(include_raw: bool = True, *, automatic: bool = False) -> dict:
                 "version": 2, "created_at": datetime.now().isoformat(timespec="seconds"),
                 "account": config.IMAP_USER, "imap_host": config.IMAP_HOST,
                 "includes_raw_mail": include_raw,
+                "client_companion": True,
             }
+            from . import companion_growth
+            companion_copy = os.path.join(temp_dir, 'companion.sqlite3')
+            companion_growth.export_store(companion_copy)
             with zipfile.ZipFile(partial, "w", compression=zipfile.ZIP_DEFLATED) as archive:
                 archive.write(db_copy, "mailai.db")
+                archive.write(companion_copy, 'companion.sqlite3')
                 archive.writestr("manifest.json", json.dumps(manifest, ensure_ascii=False, indent=2))
                 if include_raw and os.path.isdir(config.RAW_DIR):
                     for root, _, files in os.walk(config.RAW_DIR):
@@ -1130,6 +1137,8 @@ def _freeze_restored_side_effects(snapshot_path: str):
             )
         if 'seen_sync_jobs' in tables:
             connection.execute("DELETE FROM seen_sync_jobs")
+        if 'companion_award_outbox' in tables:
+            connection.execute('DELETE FROM companion_award_outbox')
         if 'emails' in tables:
             columns = {row[1] for row in connection.execute('PRAGMA table_info(emails)')}
             assignments = []
@@ -1233,6 +1242,10 @@ def restore_backup(filename: str, *, start_date: str = "", end_date: str = "") -
             db_restore = os.path.join(temp_dir, "mailai.db")
             with open(db_restore, "wb") as output:
                 output.write(archive.read("mailai.db"))
+            companion_restore = os.path.join(temp_dir, 'companion.sqlite3')
+            if 'companion.sqlite3' in names and not ranged:
+                with archive.open('companion.sqlite3') as src, open(companion_restore, 'wb') as dst:
+                    shutil.copyfileobj(src, dst)
             with _sqlite_connection(db_restore) as connection:
                 integrity = connection.execute("PRAGMA integrity_check").fetchone()[0]
             if integrity != "ok":
@@ -1299,6 +1312,9 @@ def restore_backup(filename: str, *, start_date: str = "", end_date: str = "") -
                 os.replace(staged_raw, config.RAW_DIR)
                 raw_swapped = True
             _copy_database(db_restore, config.DB_PATH)
+            if os.path.isfile(companion_restore):
+                from . import companion_growth
+                companion_growth.import_store(companion_restore)
         except BaseException:
             if raw_swapped or raw_moved:
                 if os.path.exists(config.RAW_DIR):

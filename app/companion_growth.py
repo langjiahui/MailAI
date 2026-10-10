@@ -1,16 +1,15 @@
-"""Account-local XiaoYou growth. Only counters and deduplication keys, never mail text.
-
-All awards and purchases use the same SQLite write transaction as their source
-operation where possible. Spending stamps never subtracts lifetime experience.
-"""
+"""Client-wide XiaoYou growth, with transactional mailbox award outboxes."""
 import hashlib
 import json
 import logging
 import time
+import sqlite3
+from contextlib import contextmanager, closing
+from pathlib import Path
 from datetime import datetime, timedelta
 from uuid import uuid4
 
-from . import db
+from . import db, config
 
 log = logging.getLogger(__name__)
 STAGES = (0, 240, 1200, 3600, 9000, 20000, 50000)
@@ -49,7 +48,8 @@ ITEMS = {
 }
 
 
-def initialize(c):
+def initialize(c, *, mailbox=True):
+    legacy = bool(c.execute("SELECT 1 FROM sqlite_master WHERE name='companion_profile'").fetchone())
     c.executescript('''
         CREATE TABLE IF NOT EXISTS companion_profile (
             id INTEGER PRIMARY KEY CHECK(id=1), xp INTEGER NOT NULL DEFAULT 0,
@@ -85,6 +85,206 @@ def initialize(c):
     for name, default in (('style', 'nature'), ('cleanup_day', '')):
         if name not in columns:
             c.execute(f"ALTER TABLE companion_profile ADD COLUMN {name} TEXT NOT NULL DEFAULT '{default}'")
+    if not mailbox:
+        return
+    c.execute('CREATE TABLE IF NOT EXISTS companion_source (id TEXT PRIMARY KEY, namespace TEXT NOT NULL)')
+    if not c.execute('SELECT 1 FROM companion_source').fetchone():
+        generation = uuid4().hex
+        source_id = _source_id(config.DB_PATH) if legacy else 'mail:' + generation
+        namespace = _namespace() if legacy else _namespace() + ':' + generation
+        c.execute('INSERT INTO companion_source VALUES(?,?)', (source_id, namespace))
+    c.execute('''CREATE TABLE IF NOT EXISTS companion_award_outbox (
+        token TEXT PRIMARY KEY, kind TEXT NOT NULL, event_key TEXT NOT NULL,
+        namespace TEXT NOT NULL, created_at TEXT NOT NULL)''')
+
+
+def _source_id(path):
+    return 'mail:' + hashlib.sha256(str(Path(path).resolve()).encode()).hexdigest()
+
+
+def _namespace(path=None):
+    from .account_context import current
+    account = current.get()
+    scoped = path is None
+    path = Path(path or config.DB_PATH).resolve()
+    if path.is_file():
+        with closing(sqlite3.connect(path.as_uri() + '?mode=ro', uri=True, timeout=2)) as source:
+            if source.execute("SELECT 1 FROM sqlite_master WHERE name='companion_source'").fetchone():
+                identity = source.execute('SELECT namespace FROM companion_source').fetchone()
+                if identity:
+                    return identity[0]
+    if scoped and account and account.get('ACCOUNT_ID'):
+        return account['ACCOUNT_ID']
+    try:
+        registry = json.loads((Path(config.DATA_DIR) / 'account_registry.json').read_text(encoding='utf-8'))
+        for account_id, entry in registry.get('accounts', {}).items():
+            if entry.get('db_path') and Path(entry['db_path']).resolve() == path:
+                return account_id
+    except (OSError, ValueError):
+        pass
+    return path.parent.name if path.parent.parent.name == 'accounts' else _source_id(path)
+
+
+def store_path():
+    """Managed accounts share the user root; standalone databases use their data folder."""
+    root, mail = Path(config.DATA_DIR).resolve(), Path(config.DB_PATH).resolve()
+    if not mail.is_relative_to(root):
+        root = mail.parent
+    return root / 'companion.sqlite3'
+
+
+def _sources():
+    root = store_path().parent
+    return sorted({Path(config.DB_PATH).resolve(), root / 'mailai.db', *root.glob('accounts/*/mailai.db')})
+
+
+def _merge(c, source, namespace, *, additive=True):
+    """Preserve already earned balances; union permanent unlocks and receipts."""
+    profile = dict(source.execute('SELECT * FROM companion_profile WHERE id=1').fetchone())
+    current = _profile(c)
+    operation = 'xp=xp+?,stamps=stamps+?,earned=earned+?' if additive else 'xp=MAX(xp,?),stamps=MAX(stamps,?),earned=MAX(earned,?)'
+    c.execute('UPDATE companion_profile SET ' + operation + ' WHERE id=1',
+              (profile['xp'], profile['stamps'], profile['earned']))
+    # Empty legacy profiles must not replace the current appearance/preferences.
+    if profile['xp'] or profile['earned'] or profile['equipped'] != '{}' or not profile['enabled'] or profile.get('style', 'nature') != 'nature':
+        if (profile.get('last_tick', 0), profile['last_day']) >= (current['last_tick'], current['last_day']):
+            c.execute('UPDATE companion_profile SET style=?,equipped=?,enabled=?,last_tick=? WHERE id=1',
+                      (profile.get('style', 'nature'), profile['equipped'], profile['enabled'],
+                       profile['last_tick']))
+    if profile['last_day'] > current['last_day'] or (profile['last_day'] == current['last_day'] and profile['streak'] > current['streak']):
+        c.execute('UPDATE companion_profile SET last_day=?,streak=? WHERE id=1', (profile['last_day'], profile['streak']))
+    for source_row in source.execute('SELECT * FROM companion_days'):
+        row = _day(c, source_row['day'])
+        for metric, value in json.loads(source_row['counts']).items():
+            previous = row['counts'].get(metric, 0)
+            row['counts'][metric] = previous + value if additive else max(previous, value)
+        row['quests'] = sorted(set(row['quests']) | set(json.loads(source_row['quests'])))
+        row['xp'] = row['xp'] + source_row['xp'] if additive else max(row['xp'], source_row['xp'])
+        row['stamps'] = row['stamps'] + source_row['stamps'] if additive else max(row['stamps'], source_row['stamps'])
+        _save_day(c, row)
+    for row in source.execute('SELECT * FROM companion_events'):
+        key = row['key'] if row['key'].startswith(('tick:', 'learn:')) or not namespace else namespace + ':' + row['key']
+        c.execute('INSERT OR IGNORE INTO companion_events VALUES(?,?)', (key, row['day']))
+        if namespace and row['key'].startswith('tool:'):
+            # Legacy tool hashes cannot reveal which ones were daily office tools.
+            # Preserve a shared alias as well as the mailbox-specific assistant key.
+            c.execute('INSERT OR IGNORE INTO companion_events VALUES(?,?)', (row['key'], row['day']))
+    for row in source.execute('SELECT * FROM companion_reading'):
+        mail_id = f"{namespace}:{row['email_id']}" if namespace else row['email_id']
+        c.execute('INSERT OR IGNORE INTO companion_reading VALUES(?,?,?)', (row['day'], mail_id, row['seconds']))
+    for row in source.execute('SELECT * FROM companion_purchases'):
+        c.execute('INSERT OR IGNORE INTO companion_purchases VALUES(?,?,?,?,?)', tuple(row))
+    for row in source.execute('SELECT * FROM companion_inventory'):
+        c.execute('INSERT OR IGNORE INTO companion_inventory VALUES(?,?)', tuple(row))
+
+
+def _migrate(c):
+    for path in _sources():
+        if not path.is_file() or path == store_path():
+            continue
+        # Read only. Never update the source mailbox during migration.
+        source = None
+        c.execute('SAVEPOINT companion_migration')
+        try:
+            source = sqlite3.connect(path.as_uri() + '?mode=ro', uri=True, timeout=2)
+            source.row_factory = sqlite3.Row
+            source.execute('BEGIN')
+            if not source.execute("SELECT 1 FROM sqlite_master WHERE name='companion_profile'").fetchone():
+                continue
+            identity = source.execute('SELECT * FROM companion_source').fetchone() if source.execute(
+                "SELECT 1 FROM sqlite_master WHERE name='companion_source'").fetchone() else None
+            source_id = identity['id'] if identity else _source_id(path)
+            if c.execute('SELECT 1 FROM companion_imports WHERE id=?', (source_id,)).fetchone():
+                continue
+            _merge(c, source, identity['namespace'] if identity else _namespace(path))
+            c.execute('INSERT INTO companion_imports VALUES(?)', (source_id,))
+        except (sqlite3.DatabaseError, ValueError, TypeError, KeyError):
+            c.execute('ROLLBACK TO companion_migration')
+            log.exception('旧邮箱的小邮记录暂时无法迁移，原始记录保留，稍后重试')
+        finally:
+            c.execute('RELEASE companion_migration')
+            if source is not None:
+                source.close()
+
+
+@contextmanager
+def connection(*, migrate=True):
+    path = store_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    c = sqlite3.connect(path, timeout=15)
+    c.row_factory = sqlite3.Row
+    try:
+        initialize(c, mailbox=False)
+        c.execute('CREATE TABLE IF NOT EXISTS companion_imports (id TEXT PRIMARY KEY)')
+        c.execute('CREATE TABLE IF NOT EXISTS companion_client (id TEXT PRIMARY KEY)')
+        if not c.execute('SELECT 1 FROM companion_client').fetchone():
+            c.execute('INSERT INTO companion_client VALUES(?)', (uuid4().hex,))
+        c.commit()
+        c.execute('BEGIN IMMEDIATE')
+        if migrate:
+            _migrate(c)
+        c.commit()
+        yield c
+        c.commit()
+    except BaseException:
+        c.rollback()
+        raise
+    finally:
+        c.close()
+
+
+def drain_outbox(path):
+    """Called after mail commits. Receipt survives a crash before outbox deletion."""
+    try:
+        with closing(sqlite3.connect(path, timeout=2)) as source, source:
+            source.row_factory = sqlite3.Row
+            if not source.execute("SELECT 1 FROM sqlite_master WHERE name='companion_award_outbox'").fetchone():
+                return
+            rows = source.execute('SELECT * FROM companion_award_outbox ORDER BY rowid LIMIT 100').fetchall()
+            if not rows:
+                return
+            with connection() as c:
+                c.execute('BEGIN IMMEDIATE')
+                for row in rows:
+                    receipt = 'outbox:' + row['token']
+                    if c.execute('SELECT 1 FROM companion_events WHERE key=?', (receipt,)).fetchone():
+                        continue
+                    _award(c, row['kind'], key=row['event_key'], namespace=row['namespace'],
+                           now=datetime.fromisoformat(row['created_at']))
+                    c.execute('INSERT INTO companion_events VALUES(?,?)', (receipt, row['created_at'][:10]))
+            source.executemany('DELETE FROM companion_award_outbox WHERE token=?', [(row['token'],) for row in rows])
+    except Exception:
+        log.exception('小邮成长记录暂时不可用，已保留待重试记录')
+
+
+def export_store(target):
+    snapshot()  # Include committed mailbox awards before taking a backup.
+    with connection() as source, closing(sqlite3.connect(target)) as destination:
+        source.backup(destination)
+
+
+def import_store(path):
+    """Merge a portable client backup once, without rolling back this client's progress."""
+    source = sqlite3.connect(Path(path).resolve().as_uri() + '?mode=ro', uri=True)
+    source.row_factory = sqlite3.Row
+    try:
+        source.execute('BEGIN')
+        if source.execute('PRAGMA integrity_check').fetchone()[0] != 'ok':
+            raise ValueError('小邮备份数据库校验失败')
+        source_id = source.execute('SELECT id FROM companion_client').fetchone()['id']
+        with connection(migrate=False) as c:
+            c.execute('BEGIN IMMEDIATE')
+            if c.execute('SELECT 1 FROM companion_client WHERE id=?', (source_id,)).fetchone() or c.execute(
+                    'SELECT 1 FROM companion_imports WHERE id=?', ('client:' + source_id,)).fetchone():
+                return
+            # A client backup is a snapshot, not a new source of earned rewards.
+            # Keep the higher progress when importing onto an existing client.
+            _merge(c, source, '', additive=False)
+            c.execute('INSERT INTO companion_imports VALUES(?)', ('client:' + source_id,))
+            c.executemany('INSERT OR IGNORE INTO companion_imports VALUES(?)',
+                          [(row['id'],) for row in source.execute('SELECT id FROM companion_imports')])
+    finally:
+        source.close()
 
 
 def _now():
@@ -114,7 +314,7 @@ def _save_day(c, row):
               (json.dumps(row['counts']), json.dumps(row['quests']), row['xp'], row['stamps'], row['day']))
 
 
-def _award(c, kind, amount=1, *, key='', now=None):
+def _award(c, kind, amount=1, *, key='', now=None, namespace=None):
     """Caller owns write transaction. Dedup keys are hashed and never contain content."""
     if kind not in RULES:
         raise ValueError('未知成长行为')
@@ -124,7 +324,12 @@ def _award(c, kind, amount=1, *, key='', now=None):
     now = now or _now()
     day = now.date().isoformat()
     if key:
-        digest = kind + ':' + hashlib.sha256(f'{kind}:{key}'.encode()).hexdigest()
+        shared = kind == 'learn' or (kind == 'tool' and ':productivity:' in key)
+        namespace = '' if shared else (_namespace() if namespace is None else namespace)
+        legacy = kind + ':' + hashlib.sha256(f'{kind}:{key}'.encode()).hexdigest()
+        if namespace and c.execute('SELECT 1 FROM companion_events WHERE key=?', (namespace + ':' + legacy,)).fetchone():
+            return False
+        digest = kind + ':' + hashlib.sha256(f'{kind}:{namespace}:{key}'.encode()).hexdigest() if namespace else legacy
         if not c.execute('INSERT OR IGNORE INTO companion_events VALUES(?,?)', (digest, day)).rowcount:
             return False
     row = _day(c, day)
@@ -135,7 +340,7 @@ def _award(c, kind, amount=1, *, key='', now=None):
     if after == before:
         return False
     # Incoming mail grows the pet, but does not claim an active-day streak.
-    if kind != 'received' and profile['last_day'] != day:
+    if kind != 'received' and profile['last_day'] < day:
         yesterday = (now.date() - timedelta(days=1)).isoformat()
         streak = profile['streak'] + 1 if profile['last_day'] == yesterday else 1
         c.execute('UPDATE companion_profile SET streak=?,last_day=? WHERE id=1', (streak, day))
@@ -154,7 +359,7 @@ def _award(c, kind, amount=1, *, key='', now=None):
 
 
 def record(kind, *, key='', now=None):
-    with db.conn() as c:
+    with connection() as c:
         c.execute('BEGIN IMMEDIATE')
         return _award(c, kind, key=key, now=now)
 
@@ -163,10 +368,25 @@ def safe_record(kind, *, key='', connection=None):
     """Optional growth must never prevent receiving, sending or assistant work."""
     try:
         if connection is not None:
+            if store_path().is_file():
+                try:
+                    with closing(sqlite3.connect(store_path(), timeout=2)) as preferences:
+                        preference = preferences.execute('SELECT enabled FROM companion_profile WHERE id=1').fetchone()
+                        if preference and not preference[0]:
+                            return
+                except sqlite3.DatabaseError:
+                    # Another request may still be creating the client store.
+                    # Keep a committed mail reward queued until it is ready.
+                    log.debug('小邮客户端存储尚未准备好，成长记录进入待入账队列')
+            if not connection.in_transaction:
+                connection.execute('BEGIN')
             # Roll back partial optional awards without touching the mail transaction.
             connection.execute('SAVEPOINT companion_award')
             try:
-                _award(connection, kind, key=key)
+                identity = connection.execute('SELECT namespace FROM companion_source').fetchone() if connection.execute(
+                    "SELECT 1 FROM sqlite_master WHERE name='companion_source'").fetchone() else None
+                connection.execute('INSERT OR IGNORE INTO companion_award_outbox VALUES(?,?,?,?,?)',
+                                   (uuid4().hex, kind, key, identity[0] if identity else _namespace(), _now().isoformat()))
             except Exception:
                 connection.execute('ROLLBACK TO companion_award')
                 raise
@@ -189,6 +409,7 @@ def _snapshot(c, now=None):
     last = profile['last_day']
     streak = profile['streak'] if last in (now.date().isoformat(), (now.date()-timedelta(days=1)).isoformat()) else 0
     return {
+        'scope': 'client',
         'xp': profile['xp'], 'stamps': profile['stamps'], 'earned': profile['earned'],
         'enabled': bool(profile['enabled']), 'stage': stage, 'stage_floor': STAGES[stage-1],
         'next_stage_xp': STAGES[stage] if stage < len(STAGES) else None,
@@ -209,14 +430,21 @@ def _snapshot(c, now=None):
 
 
 def snapshot():
-    with db.conn() as c:
+    for path in _sources():
+        if path.is_file():
+            drain_outbox(str(path))
+    with connection() as c:
         c.execute('BEGIN')  # Keep profile, balance and inventory in one consistent read view.
         return _snapshot(c)
 
 
 def heartbeat(token, active=0, reading=0, clicks=0, email_id=None, learn=''):
     """One client batch, safe to retry. Wall time bounds concurrent-tab timers."""
-    with db.conn() as c:
+    valid_email = False
+    if reading and email_id:
+        with db.conn() as mail:
+            valid_email = bool(mail.execute('SELECT 1 FROM emails WHERE id=?', (email_id,)).fetchone())
+    with connection() as c:
         c.execute('BEGIN IMMEDIATE')
         profile = _profile(c)
         if not profile['enabled']:
@@ -241,15 +469,16 @@ def heartbeat(token, active=0, reading=0, clicks=0, email_id=None, learn=''):
             _award(c, 'active', active)
         if clicks:
             _award(c, 'click', min(clicks, 10))
-        if reading and active and email_id and c.execute('SELECT 1 FROM emails WHERE id=?', (email_id,)).fetchone():
+        if reading and active and valid_email:
+            reading_id = f'{_namespace()}:{email_id}'
             reading = min(reading, active)
             _award(c, 'reading', reading)
             observed = c.execute('SELECT seconds FROM companion_reading WHERE day=? AND email_id=?',
-                                 (day, email_id)).fetchone()
+                                 (day, reading_id)).fetchone()
             seconds = min(8, (observed['seconds'] if observed else 0) + reading)
             if not observed or observed['seconds'] < 8:
                 c.execute('INSERT INTO companion_reading VALUES(?,?,?) ON CONFLICT(day,email_id) DO UPDATE SET seconds=excluded.seconds',
-                          (day, email_id, seconds))
+                          (day, reading_id, seconds))
             if seconds >= 8:
                 _award(c, 'read', key=f'{day}:{email_id}')
         if learn:
@@ -261,7 +490,7 @@ def purchase(item_id, token=''):
     item = ITEMS.get(item_id)
     if not item:
         raise ValueError('道具不存在')
-    with db.conn() as c:
+    with connection() as c:
         c.execute('BEGIN IMMEDIATE')
         token = token or uuid4().hex
         receipt = c.execute('SELECT item FROM companion_purchases WHERE token=?', (token,)).fetchone()
@@ -299,7 +528,7 @@ def purchase(item_id, token=''):
 def equip(slot, item_id):
     if slot not in ('palette', 'accessory', 'effect', 'theme'):
         raise ValueError('装扮位置无效')
-    with db.conn() as c:
+    with connection() as c:
         c.execute('BEGIN IMMEDIATE')
         if item_id and (item_id not in ITEMS or ITEMS[item_id]['slot'] != slot or not c.execute(
                 'SELECT 1 FROM companion_inventory WHERE item=?', (item_id,)).fetchone()):
@@ -314,7 +543,7 @@ def equip(slot, item_id):
 
 
 def set_enabled(enabled):
-    with db.conn() as c:
+    with connection() as c:
         c.execute('BEGIN IMMEDIATE')
         c.execute('UPDATE companion_profile SET enabled=?,last_tick=? WHERE id=1', (int(enabled), time.time()))
         return _snapshot(c)
@@ -323,7 +552,7 @@ def set_enabled(enabled):
 def set_style(style):
     if style not in ('nature', 'ranger'):
         raise ValueError('形象路线无效')
-    with db.conn() as c:
+    with connection() as c:
         c.execute('BEGIN IMMEDIATE')
         c.execute('UPDATE companion_profile SET style=? WHERE id=1', (style,))
         return _snapshot(c)
