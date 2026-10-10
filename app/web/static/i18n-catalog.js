@@ -13644,6 +13644,15 @@ const MAILAI_UI_COPY = {
     "{0}级",
     "Lv.{0}"
   ],
+  "pet.clientOwner": [
+    "客户端的小邮 · 所有邮箱共享",
+    "Your client companion · Shared across mailboxes"
+  ],
+  "pet.backupInvalid": ["小邮备份数据库校验失败", "Companion backup database integrity check failed"],
+  "pet.clientStorage": [
+    "成长、邮票、装扮和兑换主题保存在本机客户端，切换邮箱或升级安装都会保留。",
+    "Growth, stamps, outfits and reward themes belong to this local client and persist across mailbox switches and upgrades."
+  ],
   "pet.summary": [
     "{0} · {1} 邮票",
     "{0} · {1} stamps"
@@ -13961,8 +13970,8 @@ const MAILAI_UI_COPY = {
     "No growth records yet. Read an email to begin today’s journey."
   ],
   "pet.privacyNote": [
-    "成长进度保存在本机当前邮箱中，不同邮箱分别养成。只记录次数、时长和奖励，不保存邮件正文或键盘输入。暂停养成后停止新增行为统计，已有成长与装扮保留。",
-    "Progress is saved locally for the current mailbox; each account has its own companion. Only counts, durations and rewards are recorded, never mail text or keystrokes. Pausing stops new activity records and keeps existing progress and outfits."
+    "成长进度保存在本机客户端，所有邮箱共享同一只小邮和每日奖励上限。只记录次数、时长和奖励，不保存邮件正文或键盘输入。暂停养成后停止新增行为统计，已有成长与装扮保留。",
+    "Progress is saved in this local client; all mailboxes share one companion and daily reward limits. Only counts, durations and rewards are recorded, never mail text or keystrokes. Pausing stops new activity records and keeps existing progress and outfits."
   ],
   "pet.heroEyebrow": [
     "每一天，都长大一点",
@@ -14083,7 +14092,7 @@ const MAILAI_UI_COPY = {
   "pet.themeShop": ["主题兑换", "Theme rewards"],
   "pet.themeReset": ["恢复默认主题", "Restore default theme"],
   "pet.themeNote": ["小邮带你换工作台：主题与小邮默认配色一起变化，可爱、帅气路线都适用；单独穿戴的小邮配色优先。支持浅色、暗色与跟随系统。", "Let XiaoYou refresh your workspace: themes coordinate with its default palette on both cute and cool routes. An equipped pet palette takes priority. Light, dark and system modes are supported."],
-  "pet.themePermanent": ["永久解锁 · 免费切换 · 随当前邮箱保存", "Permanent unlock · Free switching · Saved per mailbox"],
+  "pet.themePermanent": ["永久解锁 · 免费切换 · 客户端共享", "Permanent unlock · Free switching · Shared by this client"],
   "pet.themeActive": ["正在使用", "Active"],
   "pet.themeUse": ["启用主题", "Apply theme"],
   "pet.themeBought": ["主题兑换成功，工作台与小邮已换上新配色。", "Theme unlocked. Your workspace and XiaoYou now share a new palette."],

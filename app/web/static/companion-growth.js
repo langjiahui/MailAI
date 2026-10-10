@@ -1,4 +1,4 @@
-/* Account-local pet journal. Foreground activity only; no email content is sent. */
+/* Client-wide pet journal. Foreground activity only; no email content is sent. */
 (() => {
   const t = (name, ...args) => {
     const key = `pet.${name}`;
@@ -17,17 +17,22 @@
   let lastInput = performance.now(), lastSample = performance.now(), reading = null;
   let lastRefresh = 0, refreshAccount = '', purchaseIntent = null, feedback = null, renderKey = '';
   const intents = new Map();
-  const intentKey = id => `mailai-companion-purchase:${id}`;
+  const intentKey = () => 'mailai-companion-purchase:client';
   function saveIntent(id, intent) {
-    intent ? intents.set(id,intent) : intents.delete(id);
-    if (id === account) purchaseIntent = intent;
-    try { intent ? localStorage.setItem(intentKey(id),JSON.stringify(intent)) : localStorage.removeItem(intentKey(id)); } catch (_) {}
+    intent ? intents.set('client',intent) : intents.delete('client');
+    purchaseIntent = intent;
+    try {
+      intent ? localStorage.setItem(intentKey(),JSON.stringify(intent)) : localStorage.removeItem(intentKey());
+      localStorage.removeItem(`mailai-companion-purchase:${id}`);
+    } catch (_) {}
   }
   function loadIntent(id) {
-    if (intents.has(id)) return intents.get(id);
+    if (intents.has('client')) return intents.get('client');
     try {
-      const value = JSON.parse(localStorage.getItem(intentKey(id)) || 'null');
-      if (value && /^[a-z_]+$/.test(value.item) && /^[a-zA-Z0-9-]{8,80}$/.test(value.token)) return value;
+      const value = JSON.parse(localStorage.getItem(intentKey()) || localStorage.getItem(`mailai-companion-purchase:${id}`) || 'null');
+      if (value && /^[a-z_]+$/.test(value.item) && /^[a-zA-Z0-9-]{8,80}$/.test(value.token)) {
+        saveIntent(id,value); return value;
+      }
     } catch (_) {}
     return null;
   }
@@ -113,11 +118,11 @@
   function checkAccount() {
     const id = owner();
     if (id === account) return;
-    account = id; state = null; ++revision; pending = null; clicks = 0; reading = null;
+    account = id; ++revision; pending = null; clicks = 0; reading = null;
     learning.clear(); feedback = null; renderKey = ''; lastSample = 0; lastRefresh = 0;
-    purchaseIntent = loadIntent(id); resetAppearance();
-    if (dialog?.open) { dialog.close(); }
-    if (id) void refresh();
+    purchaseIntent = loadIntent(id);
+    if (id) { paint(); void refresh(); }
+    else { state = null; resetAppearance(); if (dialog?.open) dialog.close(); }
   }
   function message(copy, error = false) {
     const node = dialog?.querySelector('[data-pet-message]');
@@ -180,6 +185,7 @@
         renderKey = '';
         if (dialog.open && id === account && id === owner()) render();
         if (button.isConnected) { button.disabled = false; button.removeAttribute('aria-busy'); }
+        if (id !== account) void refresh();
       }
     });
     dialog.addEventListener('close', () => { if (returnFocus?.isConnected) returnFocus.focus({preventScroll:true}); });
@@ -253,6 +259,10 @@
     <div class="pet-style-choice"><span>${label('styleChoice')}</span>${['nature','ranger'].map(style=>`<button type="button" data-pet-style="${style}" aria-pressed="${state.style === style}" ${state.style === style || busy ? 'disabled' : ''}>${label(`style.${style}`)}</button>`).join('')}<small>${label('styleFree')}</small></div>
     <div class="pet-stats"><article><strong>${state.stamps.toLocaleString()}</strong><span>${label('stamps')}</span></article><article><strong>${state.streak}<small>${label('days')}</small></strong><span>${label('streak')}</span></article><article><strong>${state.earned.toLocaleString()}</strong><span>${label('earned')}</span></article></div>
     ${!state.enabled ? `<p class="pet-paused">${label('paused')}</p>` : ''}<nav class="pet-tabs" aria-label="${label('tabs')}">${['today','journey','shop','history'].map(name=>`<button type="button" data-pet-tab="${name}" aria-pressed="${tab === name}">${label(name)}</button>`).join('')}</nav><section class="pet-tab-content">${({today:todayView,journey:journeyView,shop:shopView,history:historyView})[tab]()}</section>`;
+    const accountNote = document.createElement('div');
+    accountNote.className = 'pet-client-note';
+    accountNote.innerHTML = `<span>${label('clientOwner')}</span><small>${label('clientStorage')}</small>`;
+    host.prepend(accountNote);
     host.scrollTop = scroll;
     if (focusKey && focus?.isConnected === false) {
       const [key,value] = focusKey;

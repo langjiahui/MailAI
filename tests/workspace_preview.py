@@ -55,16 +55,16 @@ def main():
             sent_id = db.create_sent_message(dict(from_addr=user, to_addr='customer@example.test',
                 subject='项目交付时间确认', body_html='<p>您好，项目交付时间已经确认，请查收。</p>', attachments=[]))
             db.finish_sent_message(sent_id, ok=True, sent_folder='Sent', message_id=f'fixture-{label}@example.test')
-            if os.environ.get('MAILAI_GROWTH_FIXTURE') == '1':
-                with db.conn() as c:
-                    c.execute("UPDATE companion_profile SET xp=?,stamps=?,earned=?,streak=0,last_day='' WHERE id=1",
-                              (3530,1800,1800) if label == 'work' else (0,0,0))
-                    c.execute('DELETE FROM companion_days')
-                    c.execute('DELETE FROM companion_events')
     registry['last_account'] = next(iter(registry['accounts']))
     system_settings._save_registry(registry)
     config.DB_PATH = registry['accounts'][registry['last_account']]['db_path']
     config.RAW_DIR = registry['accounts'][registry['last_account']]['raw_dir']
+    if os.environ.get('MAILAI_GROWTH_FIXTURE') == '1':
+        from app import companion_growth
+        with companion_growth.connection() as c:
+            c.execute("UPDATE companion_profile SET xp=3530,stamps=1800,earned=1800,streak=0,last_day='' WHERE id=1")
+            c.execute('DELETE FROM companion_days')
+            c.execute('DELETE FROM companion_events')
     class FakeMail:
         def __enter__(self): return self
         def __exit__(self,*args): pass

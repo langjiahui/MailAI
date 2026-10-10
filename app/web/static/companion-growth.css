@@ -37,6 +37,9 @@ body[data-pet-effect="aurora"] .growth-aura { animation:pet-twinkle 2.5s ease-in
 .pet-journal-head h2 { font-size:21px; margin:5px 0 0; letter-spacing:-.4px; }
 .pet-journal-head button { width:32px; height:32px; padding:0; border:1px solid var(--pet-line); border-radius:50%; color:var(--pet-muted); background:transparent; font-size:22px; }
 .pet-journal-body { padding:23px 26px; min-height:0; overflow:auto; overscroll-behavior:contain; }
+.pet-client-note { display:flex; flex-direction:column; gap:5px; margin-bottom:15px; color:var(--pet-muted); font-size:11px; line-height:1.6; overflow-wrap:anywhere; }
+.pet-client-note>span { color:var(--pet-ink); font-weight:600; }
+.pet-client-note>small { font-size:10px; }
 .pet-hero { display:flex; gap:22px; align-items:center; padding:18px 20px; border-radius:18px; border:1px solid var(--pet-line); background:radial-gradient(ellipse at 10% 30%,#cfe7d9aa,transparent 60%),var(--pet-tint); }
 .pet-portrait { width:88px; height:88px; flex:none; }
 .pet-hero-portrait { width:126px; height:126px; }

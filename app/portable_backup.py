@@ -253,6 +253,11 @@ def create(*, include_raw: bool = True, password: str = "", since: str = "", unt
                 "credentials_included": False, "encrypted": bool(password),
             }
             members = {"mailai.db": snapshot_path}
+            from . import companion_growth
+            companion_path = os.path.join(temp_dir, 'companion.sqlite3')
+            companion_growth.export_store(companion_path)
+            members['companion.sqlite3'] = companion_path
+            manifest['content']['client_companion'] = True
             members.update(objects)
             plain_zip = os.path.join(temp_dir, "portable.zip")
             checksums = {name: _sha256_file(path) for name, path in members.items()}
@@ -314,6 +319,10 @@ def restore_current(source: str, *, password: str = "") -> dict:
         os.makedirs(staged_raw)
         with zipfile.ZipFile(archive_path) as archive:
             with archive.open("mailai.db") as src, open(staged_db, "wb") as dst: shutil.copyfileobj(src, dst)
+            companion_path = os.path.join(temp_dir, 'companion.sqlite3')
+            if 'companion.sqlite3' in archive.namelist():
+                with archive.open('companion.sqlite3') as src, open(companion_path, 'wb') as dst:
+                    shutil.copyfileobj(src, dst)
             for info in archive.infolist():
                 if not info.filename.startswith("objects/") or info.is_dir(): continue
                 destination = os.path.join(staged_raw, *PurePosixPath(info.filename).parts)
@@ -344,6 +353,9 @@ def restore_current(source: str, *, password: str = "") -> dict:
             if os.path.exists(config.RAW_DIR): os.replace(config.RAW_DIR, rollback_raw); moved = True
             os.replace(staged_raw, config.RAW_DIR); swapped = True
             system_settings._copy_database(staged_db, config.DB_PATH)
+            if os.path.isfile(companion_path):
+                from . import companion_growth
+                companion_growth.import_store(companion_path)
         except BaseException:
             if swapped and os.path.exists(config.RAW_DIR): shutil.rmtree(config.RAW_DIR)
             if moved: os.replace(rollback_raw, config.RAW_DIR)

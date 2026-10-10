@@ -1,4 +1,4 @@
-"""Growth caps, deduplication, lifecycle hooks and atomic account-local purchases."""
+"""Growth caps, deduplication, lifecycle hooks and atomic client-wide purchases."""
 import sys
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
@@ -58,7 +58,7 @@ def main():
                 completed = growth.heartbeat('fragment-0002',active=4,reading=4,email_id=received)
                 assert completed['today']['counts']['read'] == 2
             # Caps stop rewards but retain honest activity totals.
-            with db.conn() as c:
+            with growth.connection() as c:
                 c.execute('BEGIN IMMEDIATE')
                 growth._award(c,'click',100)
                 before = growth._snapshot(c)
@@ -91,7 +91,7 @@ def main():
             except ValueError: pass
             try: growth.equip('accessory','cap'); raise AssertionError('unowned item equipped')
             except ValueError: pass
-            with db.conn() as c:
+            with growth.connection() as c:
                 c.execute('UPDATE companion_profile SET xp=1200,stamps=1000 WHERE id=1')
             before = growth.snapshot()
             ranger = growth.set_style('ranger')
@@ -115,7 +115,7 @@ def main():
             assert len([r for r in growth.snapshot()['purchases'] if r['item'] == 'berry']) == 3
             try: growth.purchase('berry'); raise AssertionError('berry daily limit bypassed')
             except ValueError: pass
-            with db.conn() as c: c.execute('UPDATE companion_profile SET stamps=0 WHERE id=1')
+            with growth.connection() as c: c.execute('UPDATE companion_profile SET stamps=0 WHERE id=1')
             try: growth.purchase('sky'); raise AssertionError('overspent')
             except ValueError: pass
             assert growth.snapshot()['stamps'] == 0
@@ -129,7 +129,7 @@ def main():
             assert db.get_sent_message(sent)['status'] == 'sent'
             assert growth.snapshot()['xp'] == original
         # Two concurrent first-time purchases spend once.
-        with use(context), db.conn() as c:
+        with use(context), growth.connection() as c:
             c.execute('UPDATE companion_profile SET stamps=120,xp=240 WHERE id=1')
         def purchase_sky(_):
             with use(context): return growth.purchase('sky')
@@ -148,7 +148,7 @@ def main():
                 assert growth.purchase('berry',token='berry-once-0001')['stamps'] == next_day['stamps']
                 assert growth.snapshot()['berry_today'] == 0
         # Concurrent consumable retries also charge once, not once per worker.
-        with use(context), db.conn() as c:
+        with use(context), growth.connection() as c:
             c.execute('UPDATE companion_profile SET stamps=600 WHERE id=1')
         def purchase_berry(_):
             with use(context): return growth.purchase('berry',token='concurrent-berry')
@@ -162,7 +162,7 @@ def main():
             except ValueError: pass
             try: growth.equip('theme','sky'); raise AssertionError('pet palette applied as workspace theme')
             except ValueError: pass
-            with db.conn() as c: c.execute('UPDATE companion_profile SET stamps=1000 WHERE id=1')
+            with growth.connection() as c: c.execute('UPDATE companion_profile SET stamps=1000 WHERE id=1')
             baseline = growth.snapshot()
             mono = growth.purchase('theme_monochrome',token='theme-mono-once')
             assert mono['stamps'] == 700 and mono['xp'] == baseline['xp']
@@ -185,16 +185,15 @@ def main():
             assert growth.snapshot() == themed
         with use({'ACCOUNT_ID':'growth-b','DB_PATH':str(Path(root)/'b.db'),'IMAP_USER':'b@example.test'}):
             db.init_db()
-            assert growth.snapshot()['xp'] == 0
-            assert growth.snapshot()['equipped'] == {}
-            assert growth.snapshot()['style'] == 'nature'
-            with db.conn() as c: c.execute('ALTER TABLE companion_profile DROP COLUMN style')
+            assert growth.snapshot() == themed
+            assert growth.snapshot()['scope'] == 'client'
+            with growth.connection() as c: c.execute('ALTER TABLE companion_profile DROP COLUMN style')
             db.init_db()
             assert growth.snapshot()['style'] == 'nature'
         for invalid in ({'token':'bad'}, {'token':'valid-token','active':-1}, {'token':'valid-token','clicks':11}, {'token':'valid-token','reading':31}):
             try: Heartbeat(**invalid); raise AssertionError(invalid)
             except ValidationError: pass
-    print('Companion growth caps, streaks, hooks, purchases, persistence and account isolation passed')
+    print('Companion growth caps, streaks, hooks, purchases, persistence and client-wide sharing passed')
 
 
 if __name__ == '__main__': main()

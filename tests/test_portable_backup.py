@@ -25,7 +25,7 @@ def test_portable_round_trip_and_integrity():
             with db.conn() as connection:
                 connection.execute("INSERT INTO emails(uid,folder,message_id,subject,raw_path,created_at,pending_action) VALUES(1,'INBOX','<portable@example.test>','portable',?,datetime('now'),'delete')", (str(raw),))
                 connection.execute("INSERT INTO outbox(token,payload,status,due_at,created_at,updated_at) VALUES('send','{}','queued','','','')")
-            with db.conn() as connection:
+            with companion_growth.connection() as connection:
                 connection.execute('UPDATE companion_profile SET xp=1200,stamps=1100 WHERE id=1')
             companion_growth.purchase('scarf', token='backup-scarf-once')
             companion_growth.purchase('berry', token='backup-berry-once')

@@ -25,6 +25,7 @@ TESTS = (
     'test_i18n_native.py',
     'test_energy_scheduler.py',
     'test_companion_growth.py',
+    'test_companion_client.py',
     'test_completion_features.py',
     'test_productivity.py', 'test_productivity_lifecycle.py', 'test_oauth_mail.py', 'test_mail_idle.py', 'test_attachment_text.py',
     'test_cc_reading.py',

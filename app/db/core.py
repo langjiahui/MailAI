@@ -331,7 +331,8 @@ BEGIN DELETE FROM assistant_images WHERE message_id=OLD.id; END;
 
 @contextmanager
 def conn():
-    c = sqlite3.connect(config.DB_PATH, timeout=15)
+    source_path = config.DB_PATH
+    c = sqlite3.connect(source_path, timeout=15)
     c.row_factory = sqlite3.Row
     c.execute("PRAGMA busy_timeout=15000")
     from ..mail_search import register
@@ -343,7 +344,11 @@ def conn():
             from ..energy_scheduler import database_changed
             database_changed()
     finally:
+        changed = c.total_changes
         c.close()
+    if changed:
+        from ..companion_growth import drain_outbox
+        drain_outbox(source_path)
 
 
 def _columns_of(c, table: str) -> set:

@@ -1,4 +1,4 @@
-"""Validated endpoints for the account-local companion journal."""
+"""Validated endpoints for the client-wide companion journal."""
 from typing import Literal
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
