@@ -1,9 +1,10 @@
+const i18nContext = require('./helpers/i18n.cjs');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const src = fs.readFileSync(require('node:path').join(__dirname,'../app/web/static/app.js'),'utf8');
 const resolve = src.slice(src.indexOf('function serverFolderForRole('),src.indexOf('function serverMailboxCounts('));
-const ctx = vm.createContext({mailboxFolders:[], mailaiT: () => null});
+const ctx = vm.createContext(i18nContext({mailboxFolders:[], mailaiT: () => null}));
 vm.runInContext(resolve,ctx);
 for (const name of ['Trash','Deleted Items','已删除邮件','废纸篓']) {
   ctx.mailboxFolders = [{name:'Spam',flags:['\\Junk']},{name,flags:[]}];

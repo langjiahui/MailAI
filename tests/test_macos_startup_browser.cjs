@@ -24,6 +24,7 @@ const {chromium, webkit} = require('playwright');
       await page.goto(`http://mailai.test/?shell=${shell}`);
       assert(await page.locator('html').evaluate((el,shell)=>shell === 'browser' ? !el.classList.contains('desktop-native-window') : el.classList.contains(shell+'-native-window'),shell), 'native layout must precede bridge readiness');
       assert.equal(await page.locator('html').getAttribute('data-theme'),theme);
+      for (const file of ['i18n.js','i18n-catalog.js','i18n-runtime.js']) await page.addScriptTag({path:path.join(root,file)});
       await page.addScriptTag({path:path.join(root,'macos-window.js')});
       await page.addScriptTag({path:path.join(root,'windows-window.js')});
       await page.addScriptTag({path:path.join(root,'companion.js')});
@@ -92,6 +93,7 @@ const {chromium, webkit} = require('playwright');
 
       await page.emulateMedia({reducedMotion:'reduce'});
       await page.reload();
+      for (const file of ['i18n.js','i18n-catalog.js','i18n-runtime.js']) await page.addScriptTag({path:path.join(root,file)});
       await page.addScriptTag({path:path.join(root,'macos-window.js')});
       await page.addScriptTag({path:path.join(root,'windows-window.js')});
       await page.addScriptTag({path:path.join(root,'companion.js')});

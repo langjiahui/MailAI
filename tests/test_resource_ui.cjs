@@ -1,3 +1,4 @@
+const i18nContext = require('./helpers/i18n.cjs');
 // Isolated Chromium checks: never opens the user's mailbox or calls a model.
 const fs = require('node:fs');
 const path = require('node:path');
@@ -7,11 +8,11 @@ const {chromium} = require('playwright');
 const source = fs.readFileSync(path.join(__dirname, '../app/web/static/app.js'), 'utf8');
 async function polling() {
   let callback, calls = 0, resolve, account = 'a';
-  const context = vm.createContext({_fetchPollTimer:null,_fetchPollController:null,AbortController,
+  const context = vm.createContext(i18nContext({_fetchPollTimer:null,_fetchPollController:null,AbortController,
     activeMailAccount:()=>({id:account}),showFetchOverlay(){},hideFetchOverlay(){},setLoading(){},
     setInterval(fn){callback=fn;return 1;},clearInterval(){},
     document:{getElementById:()=>null},api:async()=>{calls++;return new Promise(done=>{resolve=done;});},
-    updateFetchOverlay(){throw Error('Stale result must not update another account');},loadData(){},toast(){}});
+    updateFetchOverlay(){throw Error('Stale result must not update another account');},loadData(){},toast(){}}));
   vm.runInContext(source.slice(source.indexOf('function startFetchMonitor()'),source.indexOf('function showFetchOverlay()')),context);
   context.startFetchMonitor();const first=callback();
   for(let n=0;n<200;n++)await callback();
@@ -26,6 +27,7 @@ async function polling() {
     const page=await browser.newPage();
     const errors=[];page.on('pageerror',e=>errors.push(e.message));
     await page.setContent('<main id="host"></main>');
+    for (const name of ['i18n.js','i18n-catalog.js','i18n-runtime.js']) await page.addScriptTag({path:path.join(__dirname, '../app/web/static', name)});
     await page.addScriptTag({content:source.slice(source.indexOf('const richEmailFrames ='),source.indexOf('function mountRichEmailBody('))});
     await page.evaluate(()=>{
       window.mount=(html)=>{

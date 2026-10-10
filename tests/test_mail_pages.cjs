@@ -1,3 +1,4 @@
+const i18nContext = require('./helpers/i18n.cjs');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
@@ -8,7 +9,7 @@ const styles = fs.readFileSync(path.join(__dirname, '../app/web/static/style.css
 const workspaceStyles = fs.readFileSync(path.join(__dirname, '../app/web/static/workspace.css'), 'utf8');
 const groupStart = source.indexOf('function mailDateGroup(');
 const groupEnd = source.indexOf('\nfunction fmtDate(', groupStart);
-const groupContext = vm.createContext({Date, Number, String, mailaiT: () => null});
+const groupContext = vm.createContext(i18nContext({Date, Number, String, mailaiT: () => null}));
 vm.runInContext(source.slice(groupStart, groupEnd), groupContext);
 const referenceNow = new Date(2026, 8, 7, 12, 0, 0);
 assert.deepEqual(
@@ -43,7 +44,7 @@ assert.match(source, /const firstDelta = !answer\.trim\(\)/, 'The first answer t
 assert.match(source, /event\.detail_en \|\| event\.detail/, 'Assistant progress must explain the current stage and preserve the selected language');
 assert.match(source, /if \(!retrying\) assistantHistory\.push/, 'Retry must not append the same user question to history twice');
 assert.match(source, /event\.state === 'searching' && emailIds\?\.length/, 'Selected-mail analysis must be described as reading, not a mailbox search');
-assert.match(source, /if \(sources\.length\) document\.getElementById\('assistant-scope-note'\)/, 'A zero-source event must not claim that zero mails were analyzed');
+assert.match(source, /if \(sources\.length\) mailaiBindUI\(document\.getElementById\('assistant-scope-note'\)/, 'A zero-source event must not claim that zero mails were analyzed');
 assert.match(workspaceStyles, /\.assistant-progress-copy small/, 'Assistant progress must use compact title and detail typography');
 assert.match(styles, /compose-modal:has\(> \.compose-ai-panel:not\(\.hidden\)\) > \.compose-card \{ translate:-210px 0; \}/, 'Compose sidecar movement must not overwrite the modal transform animation');
 assert.match(fs.readFileSync(path.join(__dirname, '../app/web/static/onboarding.js'), 'utf8'), /getElementById\('app'\)[\s\S]*append\(card\)/, 'Onboarding coach mark must share the app stacking context');
@@ -78,7 +79,7 @@ assert.match(source, /data-mailai-signature/, 'Draft and send HTML must preserve
 assert.match(source, /contactInput\.value = \[prefix, contactRecipientValue\(item\)\]\.filter\(Boolean\)\.join\(', '\)/, 'Choosing a contact must retain its display name without leaving a trailing comma');
 const recipientStart = source.indexOf('function lastRecipientSeparatorIndex');
 const recipientEnd = source.indexOf('function hideContactSuggestions', recipientStart);
-const recipientContext = vm.createContext({String, mailaiT: () => null});
+const recipientContext = vm.createContext(i18nContext({String, mailaiT: () => null}));
 vm.runInContext(source.slice(recipientStart, recipientEnd), recipientContext);
 assert.equal(recipientContext.normalizeRecipientText(' first@example.com， second@example.com； '), 'first@example.com, second@example.com');
 assert.equal(recipientContext.normalizeRecipientText('first@example.com, '), 'first@example.com');
@@ -126,7 +127,7 @@ const end = source.indexOf('// ===== 侧边栏统计', start);
 let release;
 let delayed = false;
 let renderCount = 0;
-const context = vm.createContext({
+const context = vm.createContext(i18nContext({
   mailaiT: () => null, Map, Promise, encodeURIComponent,
   document: {getElementById: () => null},
   mailLoadRevision: 0, mailboxNavigationRevision: 0, draftListRevision: 0,
@@ -144,7 +145,7 @@ const context = vm.createContext({
     const offset = Number(new URL(url, 'http://local').searchParams.get('offset'));
     return Array.from({length: Math.max(0, Math.min(1000, 2505 - offset))}, (_, i) => ({id: offset + i}));
   },
-});
+}));
 vm.runInContext(source.slice(start, end), context);
 (async () => {
   await context.loadData();

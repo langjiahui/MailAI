@@ -1,3 +1,4 @@
+const i18nContext = require('./helpers/i18n.cjs');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
@@ -30,9 +31,9 @@ const card = {
   innerHTML: '',
   querySelector: selector => selector.includes('confirm') ? confirmButton : dismissButton,
 };
-const ctx = vm.createContext({
+const ctx = vm.createContext(i18nContext({
   esc, document: { createElement: () => card },
-});
+}));
 vm.runInContext(appSource.slice(
   appSource.indexOf('function renderAssistantActionCard('),
   appSource.indexOf('function assistantTableCells(')), ctx);

@@ -1,3 +1,4 @@
+const i18nContext = require('./helpers/i18n.cjs');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
@@ -8,7 +9,7 @@ const source = fs.readFileSync(path.join(base, 'app.js'), 'utf8');
 const html = fs.readFileSync(path.join(base, 'index.html'), 'utf8');
 const start = source.indexOf("const CLOUD_MODEL_PROVIDERS");
 const end = source.indexOf("document.getElementById('model-provider').addEventListener", start);
-const context = vm.createContext({URL, mailaiT: () => null, document: {getElementById: () => null}});
+const context = vm.createContext(i18nContext({URL, mailaiT: () => null, document: {getElementById: () => null}}));
 vm.runInContext(source.slice(start, end), context);
 
 assert.match(html, /id="model-data-notice"[^>]*role="status"[^>]*aria-live="polite"/,

@@ -1,3 +1,4 @@
+const i18nContext = require('./helpers/i18n.cjs');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
@@ -7,7 +8,7 @@ const end = source.indexOf('\nfunction queueDraftSave()', start);
 const calls = [];
 let release;
 const barrier = new Promise(resolve => { release = resolve; });
-const context = vm.createContext({
+const context = vm.createContext(i18nContext({
   composeAccountId: 'draft-test-account',
   Promise, JSON, Date, clearTimeout, setTimeout,
   draftSaveTimer: null, draftMaxSaveTimer:null, draftListRevision:0, currentDraftId: null, savedDrafts: [], specialMailbox:'',
@@ -21,7 +22,7 @@ const context = vm.createContext({
     if (calls.length === 1) await barrier;
     return {id: 42};
   },
-});
+}));
 vm.runInContext(source.slice(start, end), context);
 context.draftHasContent = () => true;
 context.draftEditingFingerprint = () => 'edited';

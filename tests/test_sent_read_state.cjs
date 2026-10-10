@@ -1,3 +1,4 @@
+const i18nContext = require('./helpers/i18n.cjs');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
@@ -11,7 +12,7 @@ const ctx = {
   getRiskLabel:()=>({class:'normal',text:'正常'}), getDomain:value=>String(value).split('@')[1] || '',
   esc:value=>String(value ?? ''), fmtDate:()=>'', needsRiskAttention:()=>false,
 };
-vm.createContext(ctx); vm.runInContext(source.slice(start,end),ctx);
+vm.createContext(i18nContext(ctx)); vm.runInContext(source.slice(start,end),ctx);
 ctx.sentMessages=[{id:1,to_addr:'receiver@example.test',subject:'已发送',status:'sent',is_read:0}];
 ctx.savedDrafts=[];
 const sent=ctx.specialMailboxRows()[0];

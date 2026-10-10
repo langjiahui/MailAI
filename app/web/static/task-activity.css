@@ -1,0 +1,15 @@
+/* The tray stays still while only its arrow rises: no label or layout movement. */
+.task-activity-running .task-activity-arrow {
+  stroke:var(--desk-accent,#34775b);
+  animation:taskArrowRise 1.3s ease-in-out infinite;
+}
+@keyframes taskArrowRise {
+  0% { transform:translateY(3px); opacity:0; }
+  25% { transform:translateY(1px); opacity:1; }
+  65% { transform:translateY(-1px); opacity:1; }
+  100% { transform:translateY(-4px); opacity:0; }
+}
+.task-activity-background .task-activity-arrow { animation-play-state:paused; }
+@media(prefers-reduced-motion:reduce) {
+  .task-activity-running .task-activity-arrow { animation:none!important; transform:none; opacity:1; }
+}

@@ -3,6 +3,8 @@
 # app/web/static/bundle.js 与 index.html 中的缓存版本号；
 # scripts/check_release.py 会校验产物是最新的。
 i18n.js
+i18n-catalog.js
+i18n-runtime.js
 attachment-preview.js
 interaction-core.js
 energy-ui.js
@@ -23,6 +25,7 @@ companion.js
 companion-motion.js
 onboarding.js
 model-usage.js
+model-service.js
 motion.js
 workspace-shell.js
 macos-window.js
@@ -30,9 +33,13 @@ windows-window.js
 remote-control.js
 selection-glass.js
 productivity.js
+mail-login.js
 mail-reading-folds.js
 
 diagnostics-progress.js
 
 contact-directory.js
+contact-filters.js
 mail-import.js
+task-activity.js
+help-center.js

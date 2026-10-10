@@ -52,6 +52,7 @@ def init_schema(c):
     c.execute("CREATE TABLE IF NOT EXISTS contact_directory_profiles(email TEXT PRIMARY KEY COLLATE NOCASE,data_json TEXT NOT NULL DEFAULT '{}',imported_json TEXT NOT NULL DEFAULT '{}',source_file TEXT NOT NULL DEFAULT '',updated_at TEXT NOT NULL DEFAULT '')")
     c.execute("CREATE TABLE IF NOT EXISTS contact_directory_pending(record_key TEXT PRIMARY KEY,data_json TEXT NOT NULL,reason TEXT NOT NULL,source_file TEXT NOT NULL,source_sheet TEXT NOT NULL,row_number INTEGER NOT NULL,status TEXT NOT NULL DEFAULT 'pending',updated_at TEXT NOT NULL)")
     c.execute("CREATE TABLE IF NOT EXISTS contact_directory_imports(id INTEGER PRIMARY KEY AUTOINCREMENT,filename TEXT NOT NULL,digest TEXT NOT NULL,result_json TEXT NOT NULL,created_at TEXT NOT NULL)")
+    _discard_pending_without_email(c)
 
 
 def clean(value, maximum=300):
@@ -222,30 +223,18 @@ def _valid_email(value):
 def _merge(sheets, selected, overrides):
     chosen=[s for s in sheets if s['name'] in selected]
     if not chosen: raise ValueError('请至少选择一张工作表')
-    # Email-rich summary sheets take precedence over phone-only layouts.
+    # Only an explicit valid email identifies a contact; never infer it from an employee ID.
     chosen.sort(key=lambda s:(-sum('email' in h[2].values() for h in s['headers']), '干部' in s['name'], '人员' not in s['name']))
     raw=[r for sheet in chosen for r in _extract(sheet,overrides.get(sheet['name']))]
-    valid={};pending=[];by_id={}
+    valid={};ignored=0
     for row in raw:
         email=_valid_email(row.get('email'))
-        if not email: pending.append(row);continue
+        if not email: ignored+=1;continue
         row=dict(row,email=email,conflicts=[])
         if email not in valid: valid[email]=row
         else: _combine(valid[email],row)
-    for row in valid.values():
-        uid=row.get('employee_id')
-        if uid: by_id.setdefault(uid,[]).append(row)
-    unresolved={}
-    for row in pending:
-        uid=row.get('employee_id');matches=by_id.get(uid,[]) if uid else []
-        if len(matches)==1 and clean(matches[0]['name']).replace(' ','')==clean(row['name']).replace(' ',''):
-            _combine(matches[0],row)
-        else:
-            key=(uid+':'+row['name']) if uid else row['source_sheet']+':'+str(row['source_row'])
-            if key in unresolved and unresolved[key]['name']==row['name']: _combine(unresolved[key],row)
-            else: unresolved[key]=dict(row,conflicts=[], reason='邮箱格式异常' if row.get('email') else '缺少邮箱')
-    if len(valid)+len(unresolved)>MAX_ROWS: raise ValueError('每次最多导入 5000 位联系人')
-    return list(valid.values()),list(unresolved.values())
+    if len(valid)>MAX_ROWS: raise ValueError('每次最多导入 5000 位联系人')
+    return list(valid.values()),ignored
 
 
 def _combine(target, other):
@@ -325,7 +314,7 @@ def _signature(contact, profile):
     return hashlib.sha256(json.dumps({'contact':contact,'profile':profile},sort_keys=True,ensure_ascii=False).encode()).hexdigest()
 
 
-def preview(token, selected, policy='sync', overrides=None):
+def preview(token, selected, policy='fill', overrides=None):
     if policy not in ('sync','fill','replace'): raise ValueError('更新方式无效')
     if not isinstance(selected,list) or not all(isinstance(v,str) for v in selected): raise ValueError('请选择工作表')
     overrides=overrides or {}
@@ -337,18 +326,10 @@ def preview(token, selected, policy='sync', overrides=None):
         if len([v for v in override['fields'].values() if v])!=len(set(str(v) for v in override['fields'].values() if v)): raise ValueError('一列不能同时映射多个字段')
     with _LOCK:
         source=_get(token)
-        rows,pending=_merge(source['sheets'],selected,overrides)
-        if not rows and not pending: raise ValueError('没有识别到人员记录，请检查工作表和字段映射')
+        rows,ignored=_merge(source['sheets'],selected,overrides)
+        if not rows and not ignored: raise ValueError('没有识别到人员记录，请检查工作表和字段映射')
         with conn() as c:
             saved={r['email'].casefold():dict(r) for r in c.execute('SELECT * FROM contacts')};extra=profiles(c)
-            resolved={r['record_key']:json.loads(r['data_json']).get('resolved_email') for r in c.execute("SELECT record_key,data_json FROM contact_directory_pending WHERE status='resolved'")}
-        outstanding=[]
-        for row in pending:
-            verified=resolved.get(_record_key(row))
-            if verified and verified in saved:
-                rows.append(dict(row,email=verified))
-            else: outstanding.append(row)
-        pending=outstanding
         items=[]
         for incoming in rows:
             email=incoming['email'];old=saved.get(email);profile=extra.get(email,{})
@@ -373,8 +354,8 @@ def preview(token, selected, policy='sync', overrides=None):
                 for address in previous_addresses:
                     incoming.setdefault('conflicts',[]).append({'field':'email','label':'同工号的邮箱','primary':email,'other':address,'source_sheet':'现有通讯录','source_row':0})
             items.append({'email':email,'name':incoming.get('name',''),'department':incoming.get('department',''),'employee_id':incoming.get('employee_id',''),'status':'new' if old is None else 'update' if changes else 'unchanged','changes':changes,'protected':protected,'conflicts':incoming.get('conflicts',[]),'source_sheet':incoming['source_sheet'],'source_row':incoming['source_row'],'hidden':bool(old and old.get('hidden')),'_next':next_values,'_baseline':next_baseline,'_incoming':incoming,'_signature':_signature(old,profile)})
-        plan=_cache({'filename':source['filename'],'digest':source['digest'],'items':items,'pending':pending,'policy':policy})
-        return {'token':plan,'items':[{k:v for k,v in row.items() if not k.startswith('_')} for row in items],'pending':[{'name':r.get('name',''),'employee_id':r.get('employee_id',''),'source_sheet':r['source_sheet'],'source_row':r['source_row'],'reason':r['reason']} for r in pending],'counts':{status:sum(r['status']==status for r in items) for status in ('new','update','unchanged')}|{'conflict':sum(bool(r['conflicts']) for r in items),'protected':sum(bool(r['protected']) for r in items),'pending':len(pending)}}
+        plan=_cache({'filename':source['filename'],'digest':source['digest'],'items':items,'pending':[],'ignored':ignored,'policy':policy})
+        return {'token':plan,'items':[{k:v for k,v in row.items() if not k.startswith('_')} for row in items],'pending':[],'counts':{status:sum(r['status']==status for r in items) for status in ('new','update','unchanged')}|{'conflict':sum(bool(r['conflicts']) for r in items),'protected':sum(bool(r['protected']) for r in items),'pending':0,'ignored':ignored}}
 
 
 def _record_key(row):
@@ -384,6 +365,7 @@ def _record_key(row):
 
 
 def _pending(c,row,source,reason):
+    if not _valid_email(row.get('email')):return
     key=_record_key(row)
     c.execute("INSERT INTO contact_directory_pending(record_key,data_json,reason,source_file,source_sheet,row_number,updated_at) VALUES(?,?,?,?,?,?,?) ON CONFLICT(record_key) DO UPDATE SET data_json=excluded.data_json,reason=excluded.reason,source_file=excluded.source_file,status='pending',updated_at=excluded.updated_at",(key,json.dumps(row,ensure_ascii=False),reason,source,row['source_sheet'],row['source_row'],datetime.now().isoformat(timespec='seconds')))
 
@@ -396,10 +378,11 @@ def apply(token, selected_emails):
         if 'items' not in plan: raise ValueError('请先预览导入结果')
         selected=set(selected_emails);allowed={r['email'] for r in plan['items']}
         if not selected<=allowed: raise ValueError('选择中包含预览外的联系人')
-        counts={'new':0,'update':0,'unchanged':0,'skipped':0,'pending':len(plan['pending'])}
+        counts={'new':0,'update':0,'unchanged':0,'skipped':0,'pending':0,'ignored':plan.get('ignored',0)}
         now=datetime.now().isoformat(timespec='seconds')
         with conn() as c:
-            c.execute('BEGIN IMMEDIATE');existing={r['email'].casefold():dict(r) for r in c.execute('SELECT * FROM contacts')};extra=profiles(c)
+            c.execute('BEGIN IMMEDIATE');_discard_pending_without_email(c)
+            existing={r['email'].casefold():dict(r) for r in c.execute('SELECT * FROM contacts')};extra=profiles(c)
             for row in plan['items']:
                 if row['email'] in selected and _signature(existing.get(row['email']),extra.get(row['email'],{}))!=row['_signature']:
                     raise ValueError('联系人资料已被修改，请重新预览后导入')
@@ -417,7 +400,6 @@ def apply(token, selected_emails):
                     key=_record_key(row['_incoming'])
                     c.execute("UPDATE contact_directory_pending SET status='resolved' WHERE record_key=?",(key,))
                 counts[row['status']]+=1
-            for row in plan['pending']: _pending(c,row,plan['filename'],row['reason'])
             c.execute('INSERT INTO contact_directory_imports(filename,digest,result_json,created_at) VALUES(?,?,?,?)',(plan['filename'],plan['digest'],json.dumps(counts),now))
         plan['result']={'ok':True,**counts}
         return plan['result']
@@ -425,6 +407,7 @@ def apply(token, selected_emails):
 
 def summary():
     with conn() as c:
+        _discard_pending_without_email(c)
         extra=profiles(c);visible={r['email'].casefold() for r in c.execute('SELECT email FROM contacts WHERE hidden=0')}
         depts={}
         for email,p in extra.items():
@@ -436,25 +419,69 @@ def summary():
 
 def pending_records():
     with conn() as c:
+        _discard_pending_without_email(c)
         return [dict(r)|{'data':json.loads(r['data_json'])} for r in c.execute("SELECT * FROM contact_directory_pending WHERE status='pending' ORDER BY updated_at DESC LIMIT 5000")]
 
 
-def resolve_pending(key,data):
+def _discard_pending_without_email(c):
+    for row in c.execute('SELECT record_key,data_json FROM contact_directory_pending').fetchall():
+        try:email=json.loads(row['data_json']).get('email')
+        except (ValueError,AttributeError,TypeError):email=''
+        if not _valid_email(email):
+            c.execute('DELETE FROM contact_directory_pending WHERE record_key=?',(row['record_key'],))
+
+
+def _pending_review(c,key,data):
     email=_valid_email(data.get('email'))
     if not email:raise ValueError('请填写有效邮箱')
+    name=clean(data.get('name'),80)
+    if not name:raise ValueError('请填写姓名')
+    row=c.execute("SELECT * FROM contact_directory_pending WHERE record_key=? AND status='pending'",(key,)).fetchone()
+    if not row:raise ValueError('该记录已处理，请刷新列表')
+    contact=c.execute('SELECT * FROM contacts WHERE email=?',(email,)).fetchone()
+    contact=dict(contact) if contact else None
+    profile=profiles(c).get(email,{})
+    incoming={'name':name,'company':clean(data.get('company'),120),**_flatten(normalize_profile(data.get('profile') or {}))}
+    current={**{k:(contact or {}).get(k,'') for k in ('name','company')},**_flatten(profile)}
+    revision=_signature({'pending':dict(row),'contact':contact,'incoming':incoming,'email':email},profile)
+    return email,row,contact,profile,incoming,current,revision
+
+
+def preview_pending(key,data):
+    with conn() as c:
+        email,row,contact,profile,incoming,current,revision=_pending_review(c,key,data)
+    differences=[{'field':k,'label':ALL_FIELDS.get(k,k.removeprefix('custom:')),'before':current.get(k,''),'after':v,'fills_blank':not current.get(k)} for k,v in incoming.items() if v and v!=current.get(k,'')]
+    return {'email':email,'existing':contact is not None,'hidden':bool(contact and contact.get('hidden')),
+            'expected_revision':revision,'differences':differences}
+
+
+def resolve_pending(key,data):
+    policy=data.get('update_policy','create')
+    if policy not in ('create','fill','replace'):raise ValueError('更新方式无效')
     now=datetime.now().isoformat(timespec='seconds')
     with conn() as c:
         c.execute('BEGIN IMMEDIATE')
-        row=c.execute("SELECT * FROM contact_directory_pending WHERE record_key=? AND status='pending'",(key,)).fetchone()
-        if not row:raise ValueError('该记录已处理，请刷新列表')
-        if c.execute('SELECT 1 FROM contacts WHERE email=?',(email,)).fetchone():raise ValueError('已有同邮箱联系人，请先核对或在通讯录编辑现有资料，避免覆盖')
-        profile=normalize_profile(data.get('profile') or {})
-        c.execute("INSERT INTO contacts(email,name,company,source,created_at,updated_at) VALUES(?,?,?,'manual',?,?)",(email,clean(data.get('name'),80),clean(data.get('company'),120),now,now))
-        save_profile(c,email,profile)
+        email,row,contact,profile,incoming,current,revision=_pending_review(c,key,data)
+        expected=data.get('expected_revision')
+        if contact and (policy=='create' or not expected):
+            raise ValueError('已有同邮箱联系人，请先核对差异并选择更新方式')
+        if expected and expected!=revision:raise ValueError('资料已变化，请重新核对差异后保存')
+        values=dict(current)
+        accepted={k:v for k,v in incoming.items() if v and (not contact or policy=='replace' or not current.get(k) or current.get(k)==v)}
+        values.update(accepted)
+        merged=normalize_profile(_unflatten(values))
+        if contact:
+            c.execute("UPDATE contacts SET name=?,company=?,source='manual',updated_at=? WHERE email=?",(values['name'],values['company'],now,email))
+        else:
+            c.execute("INSERT INTO contacts(email,name,company,source,created_at,updated_at) VALUES(?,?,?,'manual',?,?)",(email,values['name'],values['company'],now,now))
+        save_profile(c,email,merged)
         original=json.loads(row['data_json'])
-        baseline={**{k:original.get(k,'') for k in ('name','company')},**_flatten(original)}
-        baseline={k:v for k,v in baseline.items() if v}
+        imported={**{k:original.get(k,'') for k in ('name','company')},**_flatten(original)}
+        baseline=dict(profile.get('_imported') or {})
+        for k in accepted:
+            if imported.get(k):baseline[k]=imported[k]
+            else:baseline.pop(k,None)
         c.execute('UPDATE contact_directory_profiles SET imported_json=?,source_file=? WHERE email=?',(json.dumps(baseline,ensure_ascii=False),row['source_file'],email))
         original['resolved_email']=email
-        c.execute("UPDATE contact_directory_pending SET status='resolved',data_json=? WHERE record_key=?",(json.dumps(original,ensure_ascii=False),key))
-    return {'ok':True,'email':email}
+        c.execute("UPDATE contact_directory_pending SET status='resolved',data_json=?,updated_at=? WHERE record_key=?",(json.dumps(original,ensure_ascii=False),now,key))
+    return {'ok':True,'email':email,'updated':contact is not None}

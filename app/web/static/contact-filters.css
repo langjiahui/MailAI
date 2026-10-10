@@ -1,0 +1,81 @@
+/* Compact, theme-aware address-book filters and multi-label management. */
+#contact-center :is(.contact-group-toolbar[hidden],.directory-toolbar[hidden],.contact-editor-fields>label[hidden]),.contact-filter-bar [hidden],.contact-filter-chips[hidden],.contact-tag-bulk[hidden],.contact-tags-dialog [hidden] { display:none!important; }
+.contact-filter-bar { position:relative; z-index:2; display:flex; align-items:center; flex-wrap:wrap; gap:8px; padding:0 24px 14px; flex:none; }
+.contact-filter-bar>[data-contact-results] { margin-left:auto; font-size:12px; color:var(--desk-muted); }
+.contact-filter-menu { position:relative; }
+html[data-theme] body #contact-center .contact-center-card:has(.contact-filter-menu[open]) { overflow:visible; }
+.contact-filter-menu>summary,.contact-filter-bar>button,.contact-filter-chips button,.contact-tag-bulk button { display:flex; align-items:center; gap:8px; padding:7px 11px; min-height:34px; border:1px solid var(--desk-line); border-radius:8px; background:var(--desk-muted-surface); color:var(--desk-ink); cursor:pointer; font:inherit; font-size:12px; list-style:none; }
+.contact-filter-menu summary::-webkit-details-marker { display:none; }
+.contact-filter-menu[open]>summary { border-color:var(--desk-accent); background:var(--desk-selected); }
+.contact-filter-menu>summary>span:last-child { color:var(--desk-muted); }
+.contact-filter-menu [data-tag-count] { color:var(--desk-accent); font-weight:650; }
+.contact-filter-popover { position:absolute; z-index:10; top:calc(100% + 7px); left:0; width:310px; max-width:calc(100vw / var(--fz,1) - 40px); max-height:calc(60dvh / var(--fz,1)); overflow:auto; padding:14px; border:1px solid var(--desk-line); border-radius:12px; background:var(--desk-surface); color:var(--desk-ink); box-shadow:0 12px 35px #0003; }
+.contact-filter-popover label { display:grid; gap:6px; color:var(--desk-muted); font-size:12px; }
+.contact-filter-popover :is(input[type=search],select),.contact-tags-dialog :is(input,select) { box-sizing:border-box; width:100%; min-width:0; padding:8px 10px; border:1px solid var(--desk-line); border-radius:7px; background:var(--desk-muted-surface); color:var(--desk-ink); font:inherit; font-size:13px; }
+.contact-filter-popover button { border:1px solid var(--desk-line); border-radius:7px; background:var(--desk-muted-surface); color:var(--desk-ink); padding:7px 10px; font:inherit; font-size:12px; cursor:pointer; }
+.contact-filter-popover footer { display:flex; justify-content:space-between; gap:8px; margin-top:12px; border-top:1px solid var(--desk-line); padding-top:12px; }
+.contact-filter-popover footer { flex-wrap:wrap; }
+.contact-tag-options { max-height:260px; overflow:auto; margin:10px 0; }
+.contact-tag-section { margin:10px 0 5px; color:var(--desk-muted); font-size:11px; }
+.contact-filter-popover .contact-tag-option { display:flex; align-items:center; gap:9px; padding:8px 6px; border-radius:6px; color:var(--desk-ink); cursor:pointer; }
+.contact-tag-option:has(input:checked) { background:var(--desk-selected); }
+.contact-tag-option>span { flex:1; overflow-wrap:anywhere; }
+.contact-tag-option input { accent-color:var(--desk-accent); width:15px; height:15px; flex:none; }
+.contact-tag-option small { color:var(--desk-muted); }
+.contact-filter-hint { font-size:12px; line-height:1.6; color:var(--desk-muted); margin:12px 0; }
+.contact-filter-popover [data-department-field] { margin-top:12px; }
+.contact-filter-chips,.contact-tag-bulk { display:flex; align-items:center; flex-wrap:wrap; gap:7px; padding:0 24px 12px; flex:none; color:var(--desk-muted); font-size:12px; }
+.contact-filter-chips button { min-height:28px; padding:4px 8px; background:var(--desk-selected); color:var(--desk-accent); }
+.contact-filter-chips [data-clear-all] { border-color:transparent; background:transparent; color:var(--desk-muted); }
+.contact-tag-bulk { padding-top:10px; border-top:1px solid var(--desk-line); background:var(--desk-muted-surface); }
+.contact-tag-bulk>span { margin-right:auto; }
+html[data-theme] body #contact-center .contact-import-entry { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:36px; padding:8px 12px; border:1px solid var(--desk-line); border-radius:9px; background:transparent; color:var(--desk-ink); font-size:12px; font-weight:500; box-shadow:none; }
+html[data-theme] body #contact-center .contact-import-entry:hover:not(:disabled) { background:var(--desk-hover); border-color:var(--desk-line); }
+html[data-theme] body #contact-center .contact-import-entry:active:not(:disabled) { background:var(--desk-selected); }
+.contact-import-entry svg { flex:none; color:var(--desk-muted); }
+html[data-theme] body #contact-center .contact-new-button { min-height:36px; padding:8px 13px; border-radius:9px; font-size:12px; font-weight:600; }
+#contact-center .contact-labels { flex-wrap:wrap; gap:5px; }
+#contact-center .contact-labels small { font-size:11px; }
+#contact-center.contact-tag-selecting .contact-center-item { grid-template-columns:24px 42px minmax(0,1fr) 62px 34px auto; }
+.contact-tag-check { display:flex; align-items:center; justify-content:center; }
+.contact-tag-check input { width:16px; height:16px; accent-color:var(--desk-accent); cursor:pointer; }
+.contact-tags-dialog { padding:0; width:min(540px,calc(100vw / var(--fz,1) - 32px)); max-height:calc(100dvh / var(--fz,1) - 36px); border:1px solid var(--desk-line); border-radius:14px; background:var(--desk-surface); color:var(--desk-ink); box-shadow:0 22px 70px #0004; font:inherit; font-size:14px; }
+.contact-tags-dialog::backdrop { background:#08110ccc; backdrop-filter:blur(3px); }
+.contact-tags-dialog[open] { display:flex; flex-direction:column; }
+.contact-tags-dialog>header { display:flex; gap:16px; align-items:flex-start; padding:18px 22px; border-bottom:1px solid var(--desk-line); flex:none; }
+.contact-tags-dialog h2 { margin:0; font-size:19px; }
+.contact-tags-dialog header p { margin:6px 0 0; color:var(--desk-muted); font-size:12px; line-height:1.6; }
+.contact-tags-dialog form { display:flex; flex-direction:column; min-height:0; }
+.contact-tags-dialog section { padding:18px 22px; overflow:auto; }
+.contact-tags-dialog label { display:grid; gap:7px; font-size:12px; color:var(--desk-muted); }
+.contact-tags-dialog button { padding:7px 11px; border:1px solid var(--desk-line); border-radius:7px; background:var(--desk-muted-surface); color:var(--desk-ink); font:inherit; font-size:12px; cursor:pointer; }
+.contact-tags-dialog button.primary-action { background:var(--desk-accent); color:var(--desk-surface); border-color:transparent; }
+.contact-tags-dialog>header [data-tags-close] { margin-left:auto; border:0; padding:0; width:28px; flex:none; font-size:23px; background:transparent; }
+.contact-tags-dialog footer { padding:12px 22px; display:flex; justify-content:flex-end; border-top:1px solid var(--desk-line); flex:none; }
+.contact-tag-create { display:flex; align-items:flex-end; gap:8px; flex-wrap:wrap; margin-top:18px; border-top:1px solid var(--desk-line); padding-top:16px; }
+.contact-tag-create label { flex:1 1 190px; }
+.contact-tag-member-actions { display:flex; gap:8px; margin-top:12px; }
+.contact-tag-manager>div { display:flex; gap:7px; align-items:center; padding:9px 0; border-bottom:1px solid var(--desk-line); }
+.contact-tag-manager>div>span { flex:1; min-width:0; overflow-wrap:anywhere; }
+.contact-tag-manager small { color:var(--desk-muted); margin-right:8px; }
+.contact-tags-dialog .contact-tag-error { color:var(--ui-danger,#c96156); }
+.contact-tags-dialog [data-tags-message] { min-height:18px; margin-bottom:0; font-size:12px; }
+.contact-editor-tags { grid-column:1/-1; display:flex; align-items:center; gap:12px; padding:10px 0; border-top:1px solid var(--desk-line); }
+.contact-editor-tags>div { flex:1; min-width:0; }
+.contact-editor-tags>div>span { color:var(--desk-muted); font-size:12px; }
+.contact-editor-tag-values { display:flex; gap:5px; flex-wrap:wrap; margin-top:6px; }
+.contact-editor-tag-values em { font-style:normal; font-size:11px; padding:3px 6px; border-radius:5px; background:var(--desk-selected); color:var(--desk-accent); }
+.contact-editor-tag-values small { color:var(--desk-muted); font-size:12px; }
+.contact-editor-tags>button { padding:7px 10px; border:1px solid var(--desk-line); border-radius:7px; background:var(--desk-muted-surface); color:var(--desk-ink); font:inherit; font-size:12px; cursor:pointer; }
+.contact-tags-dialog :disabled,.contact-tag-bulk :disabled { opacity:.45; cursor:not-allowed; }
+.contact-tags-dialog :is(button,input,select):focus-visible,.contact-filter-bar :is(summary,button,input,select):focus-visible { outline:2px solid var(--desk-accent); outline-offset:3px; }
+.contact-filter-bar :is(button,summary):hover,.contact-filter-popover button:hover:not(:disabled),.contact-tags-dialog button:hover:not(:disabled) { background:var(--desk-hover); }
+.contact-tags-dialog button.primary-action:hover:not(:disabled) { background:var(--desk-accent); filter:brightness(.94); }
+@media(max-width:700px) {
+ .contact-filter-bar,.contact-filter-chips,.contact-tag-bulk { padding-inline:14px; }
+ #contact-center.contact-tag-selecting .contact-center-item { grid-template-columns:24px 38px minmax(0,1fr) 32px; }
+ #contact-center.contact-tag-selecting .contact-center-item .contact-row-actions:not(:empty) { grid-column:3/-1; }
+ .contact-filter-popover { width:280px; max-width:calc(100vw / var(--fz,1) - 44px); }
+ .contact-filter-menu[data-more-menu] .contact-filter-popover { left:-72px; }
+ .contact-tag-manager>div { flex-wrap:wrap; }
+}

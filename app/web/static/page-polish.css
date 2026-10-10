@@ -111,7 +111,7 @@ html[data-theme] body #rules-view #rule-search:is(:focus,:focus-visible) {
 }
 html[data-theme] body #contact-center .contact-group-toolbar { padding:0 24px 14px; gap:8px; flex-shrink:0; }
 #contact-center :is(#group-add-members,#group-rename,#group-delete):disabled { display:none; }
-#contact-center .contact-group-toolbar:has(#group-add-members:disabled)::after { content:'选择分组后可管理成员'; font-size:12px; color:var(--desk-muted); margin-left:4px; }
+#contact-center .contact-group-toolbar:has(#group-add-members:disabled)::after { content:var(--mailai-copy-group-members,'选择分组后可管理成员'); font-size:12px; color:var(--desk-muted); margin-left:4px; }
 html[data-theme] body #contact-center .contact-group-toolbar button { min-height:34px; padding:6px 12px; border:1px solid transparent; background:var(--desk-muted-surface); color:var(--desk-muted); font-size:12px; }
 html[data-theme] body #contact-center #group-delete { color:#b4594d; }
 #contact-center .contact-center-list { flex:0 1 auto; min-height:100px; grid-auto-rows:max-content; padding:0 24px 22px; gap:0; }

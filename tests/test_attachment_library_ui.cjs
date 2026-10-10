@@ -3,9 +3,9 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
 (async()=>{const browser=await chromium.launch({headless:true});try{
  const p=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];p.on('pageerror',e=>errors.push(e.message));
  await p.goto('http://127.0.0.1:18795');await p.locator('.email-item').first().waitFor();await p.locator('#app-preloader').waitFor({state:'hidden'});
- await p.locator('#btn-attachments').click();await p.locator('.attachment-open').first().waitFor();await p.locator('[data-file-view=cards]').click();
+ await p.locator('#btn-attachments').click();await p.locator('.attachment-open').first().waitFor();await p.locator('button[data-file-view=cards]').click();
  await p.locator('.attachment-open').first().click();await p.locator('.file-preview').waitFor({state:'visible'});
- await p.locator('.file-preview button[aria-label="关闭预览"]').click();
+ await p.locator('.file-preview header>button').click();
  const [download]=await Promise.all([p.waitForEvent('download'),p.locator('.attachment-download-action').first().click()]);
  assert.equal(download.suggestedFilename(),'交付安排.csv');assert(!await p.locator('.file-preview').isVisible());
  await p.evaluate(()=>{
@@ -49,7 +49,7 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
   await p.locator('#attachment-grid').evaluate(n=>n.scrollTop=0);
  }
  // Compact rows must scale the SVG, not only its wrapper; keep actions reachable.
- await p.locator('[data-file-view=list]').click();
+ await p.locator('button[data-file-view=list]').click();
  for (const [width,scale,theme] of [[1512,1,'light'],[1512,1,'dark'],[900,1.3,'dark'],[390,1.2,'light']]) {
   await p.setViewportSize({width,height:900});
   await p.evaluate(({scale,theme})=>{document.body.style.zoom=String(scale);document.documentElement.style.setProperty('--fz',String(scale));applyTheme(theme);},{scale,theme});

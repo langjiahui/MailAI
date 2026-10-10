@@ -138,7 +138,7 @@ def contact_display_names(addresses, *, connection=None) -> dict[str, dict]:
     return result
 
 
-def search_contacts(query: str = "", limit: int = 20, favorites_only: bool = False, group_name: str = "", offset: int = 0, department: str = ""):
+def search_contacts(query: str = "", limit: int = 20, favorites_only: bool = False, group_name: str = "", offset: int = 0, department: str = "", *, tags=(), tag_mode='any', company='', _all=False):
     """合并个人通讯录和邮件往来历史；个人名称、收藏与隐藏状态优先。"""
     query = (query or "").strip().lower()
     contacts: dict[str, dict] = {}
@@ -154,6 +154,8 @@ def search_contacts(query: str = "", limit: int = 20, favorites_only: bool = Fal
         saved_rows = c.execute("SELECT * FROM contacts").fetchall()
         from ..contact_directory import profiles
         directory_profiles = profiles(c)
+        from . import contact_tags
+        personal_tags = contact_tags.members(c)
 
     def remember(address: str, name: str = "", contact_date: str = ""):
         address = (address or "").strip().lower()
@@ -208,17 +210,31 @@ def search_contacts(query: str = "", limit: int = 20, favorites_only: bool = Fal
     saved_by_email={row['email'].casefold():dict(row) for row in saved_rows}
     for address,item in contacts.items():
         item['directory_revision']=_signature(saved_by_email.get(address),directory_profiles.get(address,{}))
+        contact_tags.annotate(item, personal_tags.get(address, []))
     values = [item for address, item in contacts.items() if address not in hidden]
+    values = filter_contact_values(values,query,favorites_only,group_name,department,tags=tags,tag_mode=tag_mode,company=company)
+    values = sorted(values, key=lambda item: (-int(item["favorite"]), -item["count"], item["email"]))
+    return values if _all else values[max(0,offset):max(0,offset)+max(1, min(limit, 300))]
+
+
+def filter_contact_values(values, query='', favorites_only=False, group_name='', department='', *, tags=(), tag_mode='any', company=''):
+    """Apply the same facets to a collection and its pre-pagination counts."""
+    from . import contact_tags
+    query = str(query or '').strip().lower()
     if group_name:
         values = [item for item in values if (not item.get('group_name') if group_name == '__ungrouped__' else item.get('group_name') == group_name)]
     if department:
         values = [item for item in values if item.get('profile',{}).get('department') == department]
+    if company:
+        values = [item for item in values if item.get('company') == company]
+    if tags:
+        values = [item for item in values if contact_tags.matches(item, tags, tag_mode)]
     if favorites_only:
         values = [item for item in values if item["favorite"]]
     if query:
         from ..pinyin_search import matches
-        values = [item for item in values if matches(query, item['name'], item['email'], item['company'], *[str(v) for k,v in item.get('profile',{}).items() if k != 'custom_fields'], *[str(v) for v in item.get('profile',{}).get('custom_fields',{}).values()])]
-    return sorted(values, key=lambda item: (-int(item["favorite"]), -item["count"], item["email"]))[max(0,offset):max(0,offset)+max(1, min(limit, 300))]
+        values = [item for item in values if matches(query, item['name'], item['email'], item['company'], *[tag['name'] for tag in item['tags']], *[str(v) for k,v in item.get('profile',{}).items() if k != 'custom_fields'], *[str(v) for v in item.get('profile',{}).get('custom_fields',{}).values()])]
+    return values
 
 
 def save_contact(email: str, name: str = "", company: str = "", note: str = "",

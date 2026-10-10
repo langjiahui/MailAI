@@ -1,0 +1,77 @@
+/* Maintenance follows the available panel width, including desktop font zoom. */
+#system-view > [data-system-panel="maintenance"] { container-type:inline-size; }
+#system-view [data-system-panel="maintenance"] .maintenance-grid {
+  grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; align-items:start;
+}
+#system-view [data-system-panel="maintenance"] .diagnostic-card {
+  min-height:0; padding:22px; border-radius:14px; box-shadow:none;
+}
+#system-view [data-system-panel="maintenance"] :is(.client-import-card,.maintenance-diagnostics) {
+  grid-column:auto; display:flex; flex-direction:column; align-self:stretch;
+}
+#system-view [data-system-panel="maintenance"] :is(.backup-card,.server-cleanup-card) { grid-column:1/-1; }
+#system-view [data-system-panel="maintenance"] .maintenance-card-head { gap:12px; align-items:flex-start!important; }
+#system-view [data-system-panel="maintenance"] .maintenance-card-copy h3 { font-size:15px; line-height:1.4; }
+#system-view [data-system-panel="maintenance"] .maintenance-card-copy p { margin-top:5px; line-height:1.65; }
+#system-view [data-system-panel="maintenance"] .maintenance-badge { display:inline-flex; margin-left:auto; }
+#system-view [data-system-panel="maintenance"] .maintenance-card-actions { gap:10px; margin:18px 0 0; padding:0; }
+#system-view [data-system-panel="maintenance"] .client-import-card .maintenance-card-actions { align-items:center; }
+#system-view [data-system-panel="maintenance"] .maintenance-head-actions { margin-top:18px; width:auto; }
+#system-view [data-system-panel="maintenance"] .maintenance-card-actions>span { line-height:1.65; color:var(--desk-muted); }
+#system-view [data-system-panel="maintenance"] .action-secondary { border:1px solid var(--desk-line); background:var(--desk-muted-surface); color:var(--desk-ink); }
+#system-view [data-system-panel="maintenance"] .action-secondary:hover { background:var(--desk-hover); border-color:var(--desk-accent); }
+#system-view [data-system-panel="maintenance"] .maintenance-grid:has(.diagnostic-results:not(.hidden)) .client-import-card { align-self:start; }
+#system-view [data-system-panel="maintenance"] .maintenance-backup-body {
+  display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,1fr); gap:24px;
+  margin-top:20px; padding-top:20px; border-top:1px solid var(--desk-line);
+}
+#system-view [data-system-panel="maintenance"] :is(.maintenance-local-backups,.maintenance-migration) { min-width:0; }
+#system-view [data-system-panel="maintenance"] .maintenance-migration { padding-left:24px; border-left:1px solid var(--desk-line); }
+#system-view [data-system-panel="maintenance"] .maintenance-subsection-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+#system-view [data-system-panel="maintenance"] .maintenance-subsection-head h4 { margin:0; color:var(--desk-ink); font-size:13px; font-weight:600; }
+#system-view [data-system-panel="maintenance"] .maintenance-subsection-head p { margin:5px 0 0; font-size:11px; color:var(--desk-muted); }
+#system-view [data-system-panel="maintenance"] .maintenance-subsection-head button { flex:none; }
+#system-view [data-system-panel="maintenance"] .portable-export-range { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:18px 0 0; }
+#system-view [data-system-panel="maintenance"] .portable-export-range label { min-width:0; display:grid; gap:7px; color:var(--desk-muted); }
+#system-view [data-system-panel="maintenance"] .portable-export-range input { width:100%; min-width:0; box-sizing:border-box; min-height:36px; padding:7px 9px; background:var(--desk-muted-surface); color:var(--desk-ink); border-color:var(--desk-line); font:inherit; }
+#system-view [data-system-panel="maintenance"] .portable-export-range>span { grid-column:1/-1; font-size:11px; line-height:1.6; color:var(--desk-muted); }
+#system-view [data-system-panel="maintenance"] p.maintenance-migration-note { margin:12px 0 0; font-size:11px; line-height:1.7; color:var(--desk-muted); }
+#system-view [data-system-panel="maintenance"] .backup-list { margin-top:10px; }
+#system-view [data-system-panel="maintenance"] .backup-item { display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:8px 12px; padding:14px 0; }
+#system-view [data-system-panel="maintenance"] .backup-record-copy b { flex-wrap:wrap; gap:6px; line-height:1.5; font-variant-numeric:tabular-nums; }
+#system-view [data-system-panel="maintenance"] .backup-record-size { grid-column:2; grid-row:1; align-self:start; padding-top:3px; }
+#system-view [data-system-panel="maintenance"] .backup-record-actions { grid-column:3; grid-row:1; flex-wrap:wrap; gap:6px; }
+#system-view [data-system-panel="maintenance"] .backup-record-actions :is(button,a) { min-height:28px; padding:4px 10px; }
+#system-view [data-system-panel="maintenance"] .backup-empty { padding:34px 8px; }
+#system-view [data-system-panel="maintenance"] .maintenance-cleanup-steps { grid-template-columns:repeat(3,minmax(0,1fr)); gap:22px; margin:22px 0; }
+#system-view [data-system-panel="maintenance"] .maintenance-cleanup-steps li { min-width:0; gap:10px; }
+#system-view [data-system-panel="maintenance"] .maintenance-cleanup-steps li+li { border-left:1px solid var(--desk-line); padding-left:22px; }
+#system-view [data-system-panel="maintenance"] .maintenance-cleanup-steps small { margin-top:5px; color:var(--desk-muted); }
+#system-view [data-system-panel="maintenance"] .maintenance-cleanup-footer { display:flex; align-items:center; justify-content:space-between; gap:16px; border-top:1px solid var(--desk-line); padding-top:16px; }
+#system-view [data-system-panel="maintenance"] .maintenance-cleanup-note { flex:1; margin:0; padding:9px 12px; }
+#system-view [data-system-panel="maintenance"] .maintenance-cleanup-footer .maintenance-card-actions { flex:none; margin:0; }
+#system-view [data-system-panel="maintenance"] .diagnostic-results { grid-template-columns:minmax(0,1fr); }
+
+@container (max-width:900px) {
+  #system-view [data-system-panel="maintenance"] .maintenance-backup-body { grid-template-columns:minmax(0,1fr); gap:20px; }
+  #system-view [data-system-panel="maintenance"] .maintenance-migration { padding:20px 0 0; border-left:0; border-top:1px solid var(--desk-line); }
+  #system-view [data-system-panel="maintenance"] .client-import-card .maintenance-badge { display:none; }
+  #system-view [data-system-panel="maintenance"] .maintenance-cleanup-footer { flex-wrap:wrap; }
+  #system-view [data-system-panel="maintenance"] .maintenance-cleanup-note { flex-basis:100%; }
+  #system-view [data-system-panel="maintenance"] .maintenance-cleanup-footer .maintenance-card-actions { margin-left:auto; }
+}
+@container (max-width:620px) {
+  #system-view [data-system-panel="maintenance"] .maintenance-grid { grid-template-columns:minmax(0,1fr); }
+  #system-view [data-system-panel="maintenance"] .diagnostic-card { padding:18px; }
+  #system-view [data-system-panel="maintenance"] .client-import-card .maintenance-card-actions { flex-direction:row; align-items:center; }
+  #system-view [data-system-panel="maintenance"] .backup-item { grid-template-columns:minmax(0,1fr) auto; }
+  #system-view [data-system-panel="maintenance"] .backup-record-actions { grid-column:1/-1; grid-row:auto; }
+  #system-view [data-system-panel="maintenance"] .maintenance-cleanup-steps { grid-template-columns:minmax(0,1fr); gap:18px; }
+  #system-view [data-system-panel="maintenance"] .maintenance-cleanup-steps li+li { padding-left:0; border:0; }
+}
+@container (max-width:380px) {
+  #system-view [data-system-panel="maintenance"] .maintenance-card-head { flex-wrap:wrap; }
+  #system-view [data-system-panel="maintenance"] .maintenance-badge { margin:0 0 0 47px; }
+  #system-view [data-system-panel="maintenance"] .portable-export-range { grid-template-columns:minmax(0,1fr); }
+  #system-view [data-system-panel="maintenance"] .maintenance-subsection-head { flex-wrap:wrap; }
+}

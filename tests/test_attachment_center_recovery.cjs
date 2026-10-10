@@ -1,13 +1,14 @@
+const i18nContext = require('./helpers/i18n.cjs');
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const source=fs.readFileSync('app/web/static/app.js','utf8');
 const nodes=Object.fromEntries(['attachment-search','attachment-count','attachment-grid','attachment-account-label','attachment-center'].map(id=>[id,{value:'',innerHTML:'',classList:{add(){},remove(){}}}]));
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 let pending=deferred(); const accounts=[];
-const c=vm.createContext({attachmentItems:[],attachmentTypeFilter:'all',
+const c=vm.createContext(i18nContext({attachmentItems:[],attachmentTypeFilter:'all',
  document:{getElementById:id=>nodes[id],body:{classList:{add(){},remove(){}}}},
  activeMailAccount:()=>({id:'a',user:'A'}),closeAssistant(){},updateAttachmentTypeFilters(){},
  api:async(url,options)=>{accounts.push(options.accountId);return pending.promise;},esc:x=>x,
- animateCountText:(node,n,format)=>node.textContent=format(n),mailaiT:()=>''});
+ animateCountText:(node,n,format)=>node.textContent=format(n),mailaiT:()=>''}));
 vm.runInContext(source.slice(source.indexOf('let attachmentCenterAccountId ='),source.indexOf('function mailboxResourceUrl(')),c);
 (async()=>{
  const initial=c.openAttachmentCenter();

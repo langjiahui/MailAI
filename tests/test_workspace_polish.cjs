@@ -1,3 +1,4 @@
+const i18nContext = require('./helpers/i18n.cjs');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
@@ -9,7 +10,7 @@ const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'workspace.css'), 'utf8');
 const outboxSource = workspace.slice(workspace.indexOf('function actionableOutboxRows('), workspace.indexOf('\nasync function refreshTaskCenter'));
 const outboxCtx = {};
-vm.createContext(outboxCtx); vm.runInContext(outboxSource, outboxCtx);
+vm.createContext(i18nContext(outboxCtx)); vm.runInContext(outboxSource, outboxCtx);
 assert.deepEqual(Array.from(outboxCtx.actionableOutboxRows([
   {token:'new-success',draft_id:1,status:'sent'}, {token:'old-failure',draft_id:1,status:'failed'},
   {token:'current-failure',draft_id:2,status:'failed'}, {token:'history',status:'canceled'},
@@ -37,7 +38,7 @@ const ctx = {
   assistantPinnedScope:null, selectedEmailId:null, selectedEmailDetail:null,
   allEmails:[{id:7,subject:'合同确认'}], activeMailAccount:()=>({user:'work@example.test'}), innerWidth:1440,
 };
-vm.createContext(ctx); vm.runInContext(source, ctx);
+vm.createContext(i18nContext(ctx)); vm.runInContext(source, ctx);
 ctx.updateAssistantScopeControl(); assert.equal(nodes['assistant-scope-label'].textContent,'当前邮箱');
 nodes['assistant-scope'].value='selected'; ctx.assistantPinnedScope=[7];
 ctx.updateAssistantScopeControl(); assert.equal(nodes['assistant-scope-label'].textContent,'合同确认');
@@ -59,7 +60,7 @@ assert.ok(html.indexOf('id="assistant-scope-picker"') > html.indexOf('id="assist
 assert.match(app,/assistantPinnedScope = \[\.\.\.explicitIds\]/);
 const referenceSource = app.slice(app.indexOf('function assistantQuestionRequestsDocumentReply('), app.indexOf('\nasync function askAssistant('));
 const referenceCtx = {};
-vm.createContext(referenceCtx); vm.runInContext(referenceSource, referenceCtx);
+vm.createContext(i18nContext(referenceCtx)); vm.runInContext(referenceSource, referenceCtx);
 assert.equal(referenceCtx.assistantQuestionRequestsDocumentReply('填写附件回复邮件'), true);
 assert.equal(referenceCtx.assistantQuestionRequestsDocumentReply('回复邮件时填写附件'), true);
 for (const question of ['这个邮件说了什么', '总结这封邮件', '当前邮件安全吗', '正在看的邮件有什么重点', '它说了什么']) {

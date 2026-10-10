@@ -5,6 +5,7 @@ const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const base = path.join(__dirname, '../app/web/static');
 const source = fs.readFileSync(path.join(base, 'i18n.js'), 'utf8');
+const catalogSource = fs.readFileSync(path.join(base, 'i18n-catalog.js'), 'utf8');
 const html = fs.readFileSync(path.join(base, 'index.html'), 'utf8');
 const manifest = fs.readFileSync(path.join(__dirname, '../frontend/sources.txt'), 'utf8');
 
@@ -50,12 +51,12 @@ const ctx = {
   CustomEvent: class { constructor(type, init) { this.type = type; this.detail = init?.detail; } },
 };
 vm.createContext(ctx);
-vm.runInContext(source + '\nthis.__api = { I18N_MESSAGES, currentI18nLanguage, mailaiT, applyI18n, setI18nLanguage };', ctx);
+vm.runInContext(source + catalogSource + '\nObject.assign(I18N_MESSAGES.en, Object.fromEntries(Object.entries(MAILAI_UI_COPY).map(([k,v]) => [k,v[1]])));\nthis.__api = { I18N_MESSAGES, currentI18nLanguage, mailaiT, applyI18n, setI18nLanguage };', ctx);
 const { I18N_MESSAGES, currentI18nLanguage, mailaiT, applyI18n, setI18nLanguage } = ctx.__api;
 
 // 覆盖：index.html 中每个 data-i18n* 键都必须有英文翻译
 const keys = new Set();
-for (const match of html.matchAll(/data-i18n(?:-placeholder|-title|-aria)?="([^"]+)"/g)) keys.add(match[1]);
+for (const match of html.matchAll(/data-i18n(?:-placeholder|-title|-aria|-alt|-data-placeholder)?="([^"]+)"/g)) keys.add(match[1]);
 assert.ok(keys.size >= 40, `expected the first slice to cover >=40 keys, got ${keys.size}`);
 for (const key of keys) assert.ok(I18N_MESSAGES.en[key], `missing English translation for ${key}`);
 

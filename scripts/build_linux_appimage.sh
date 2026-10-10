@@ -23,6 +23,7 @@ rm -rf .venv-build
 "$PYTHON_BIN" -m venv .venv-build
 .venv-build/bin/python -m pip install -q --upgrade pip
 .venv-build/bin/python -m pip install -q -r requirements-build.txt
+npm ci --ignore-scripts --no-audit --no-fund
 .venv-build/bin/python scripts/check_release.py
 .venv-build/bin/python scripts/prepare_bundle_config.py
 .venv-build/bin/pyinstaller --noconfirm --clean MailAI.linux.spec

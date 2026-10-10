@@ -22,10 +22,10 @@
     return (
       mdToHtml(parts.body) +
       (parts.signature
-        ? `<details class="mail-reading-fold"><summary>签名与落款 · 展开</summary><div>${mdToHtml(parts.signature)}</div></details>`
+        ? `<details class="mail-reading-fold"><summary><span data-i18n="ui.a68aee74764b">签名与落款 · 展开</span></summary><div>${mdToHtml(parts.signature)}</div></details>`
         : "") +
       (parts.quote
-        ? `<details class="mail-reading-fold"><summary>历史引用 · 展开原文</summary><div>${mdToHtml(parts.quote)}</div></details>`
+        ? `<details class="mail-reading-fold"><summary><span data-i18n="ui.e1cf789fcd33">历史引用 · 展开原文</span></summary><div>${mdToHtml(parts.quote)}</div></details>`
         : "")
     );
   };
@@ -39,11 +39,11 @@
     for (const [selector, label] of [
       [
         'blockquote[type="cite"],blockquote[cite],.gmail_quote,.yahoo_quoted,[data-mailai-quote],[data-compose-section="quote"]',
-        "历史引用 · 展开原文",
+        mailaiText("历史引用 · 展开原文"),
       ],
       [
         '.gmail_signature,.moz-signature,[data-mailai-signature],[data-compose-section="signature"]',
-        "签名与落款 · 展开",
+        mailaiText("签名与落款 · 展开"),
       ],
     ]) {
       const nodes = [...doc.querySelectorAll(selector)].filter(
@@ -56,7 +56,8 @@
         const details = doc.createElement("details");
         details.dataset.mailaiFold = "true";
         const summary = doc.createElement("summary");
-        summary.textContent = label;
+        const source = mailaiCopySource(label);
+        mailaiBindUI(summary, "textContent", () => mailaiText(source));
         node.before(details);
         details.append(summary, node);
       }

@@ -67,7 +67,7 @@ document.getElementById('btn-server-cleanup').onclick = async () => {
     const inbox = items.find(item => item.role === 'inbox' || item.name === 'INBOX');
     if (inbox) document.getElementById('cleanup-folder').value = inbox.name;
     refreshCleanupHistory(dialog.dataset.accountId);
-  } catch (error) { document.getElementById('cleanup-error').textContent = error.message; }
+  } catch (error) { document.getElementById('cleanup-error').textContent = mailaiSystemMessage(error.message); }
   finally { setCleanupBusy(false); }
 };
 document.getElementById('cleanup-age').onchange = event => { if (event.target.value !== 'custom') document.getElementById('cleanup-date').value = cleanupDate(Number(event.target.value)); invalidateCleanupPreview(); };
@@ -87,7 +87,7 @@ document.getElementById('cleanup-preview').onclick = async event => {
     cleanupPreview = result;
     document.getElementById('cleanup-preview-results').innerHTML = `<p><b>${esc(cleanupT('cleanup.previewSummary', '待清理 {count} 封').replace('{count}', result.count))} · ${formatFileSize(result.bytes)}</b></p><p>${esc(cleanupT('cleanup.previewNote', '已核对完整原文与服务器一致。预览 10 分钟内有效。实际释放容量由服务器统计为准。'))}</p><div class="cleanup-mail-list">${result.items.map(item => `<div><b>${esc(item.subject)}</b><small>${esc(item.from_addr || '')} · ${esc(item.date || '')} · ${formatFileSize(item.size)}</small></div>`).join('')}</div>${result.skipped.length ? `<details><summary>${esc(cleanupT('cleanup.skipped', '跳过 {n} 封').replace('{n}', result.skipped.length))}</summary>${result.skipped.map(item=>`<p>${esc(item.subject)}：${esc(item.reason)}</p>`).join('')}</details>` : ''}${result.more ? `<p>${esc(cleanupT('cleanup.moreNote', '还有邮件未列入本批，本次只清理上方列表。'))}</p><button type="button" data-cleanup-page="next">${esc(cleanupT('cleanup.nextPage', '查看下一批'))}</button>` : ''}${result.offset ? `<button type="button" data-cleanup-page="previous">${esc(cleanupT('cleanup.prevPage', '查看上一批'))}</button>` : ''}`;
     document.getElementById('cleanup-confirmation').classList.toggle('hidden', !result.count);
-  } catch (error) { document.getElementById('cleanup-error').textContent = error.message; }
+  } catch (error) { document.getElementById('cleanup-error').textContent = mailaiSystemMessage(error.message); }
   finally { setLoading(button,false); setCleanupBusy(false); }
 };
 document.getElementById('cleanup-execute').onclick = async event => {
@@ -98,7 +98,7 @@ document.getElementById('cleanup-execute').onclick = async event => {
     const result = await api('/api/system/server-cleanup/execute', {accountId:dialog.dataset.accountId,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,confirmation:document.getElementById('cleanup-confirm-email').value,acknowledge:document.getElementById('cleanup-ack').checked})});
     document.getElementById('cleanup-result').innerHTML = renderCleanupResult(result);
     await loadData(); await loadBackups(); await refreshCleanupHistory(dialog.dataset.accountId);
-  } catch (error) { document.getElementById('cleanup-error').textContent = error.message + cleanupT('cleanup.errorSuffix', '。若请求已开始，请查看最近清理记录并核对服务器，不要盲目重试。'); }
+  } catch (error) { document.getElementById('cleanup-error').textContent = mailaiSystemMessage(error.message) + cleanupT('cleanup.errorSuffix', '。若请求已开始，请查看最近清理记录并核对服务器，不要盲目重试。'); }
   finally { invalidateCleanupPreview(); setLoading(button,false); setCleanupBusy(false); }
 };
 

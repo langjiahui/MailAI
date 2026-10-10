@@ -105,6 +105,14 @@
 .directory-review-tools [data-review-query] { flex:1 1 210px; max-width:280px; min-height:36px; }
 .directory-source-name,.directory-file span { overflow-wrap:anywhere; }
 
+.directory-pending-merge { margin-top:18px; padding:16px; border:1px solid var(--desk-line); border-radius:10px; background:var(--desk-muted-surface); }
+.directory-pending-merge h3 { margin-top:0; }
+.directory-pending-merge [data-pending-differences] { overflow-x:auto; }
+.directory-pending-merge table { width:100%; border-collapse:collapse; font-size:12px; }
+.directory-pending-merge caption { text-align:left; color:var(--desk-muted); padding:8px 0; }
+.directory-pending-merge :is(th,td) { text-align:left; vertical-align:top; padding:8px; border-bottom:1px solid var(--desk-line); overflow-wrap:anywhere; white-space:pre-wrap; }
+.directory-pending-merge td:last-child { color:var(--desk-accent); }
+
 /* Address-book actions use the same surface hierarchy as import/review dialogs. */
 html[data-theme] body #contact-center .contact-center-filters {
   background:var(--desk-muted-surface)!important;

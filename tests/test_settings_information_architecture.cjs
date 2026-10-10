@@ -8,6 +8,7 @@ const docs = fs.readFileSync(path.join(__dirname, '../docs/开发者架构与运
 
 assert.match(html, /data-system-tab="preferences"[^>]*>常用设置/);
 assert.match(html, /data-system-tab="account"[^>]*>邮箱账号/);
+assert.match(html, /data-system-tab="ai"[^>]*>AI 服务/);
 assert.match(html, /data-system-tab="maintenance"[^>]*>数据与维护/);
 assert.match(html, /data-system-tab="guide"[^>]*>使用帮助/);
 assert.doesNotMatch(html, /id="btn-help"|设置与帮助/,
@@ -16,8 +17,12 @@ assert.match(html, /id="btn-preferences"[^>]*class="nav-action[^>]*>[\s\S]*?<spa
   'The top-level Settings action should open Settings directly');
 assert.doesNotMatch(html, /data-system-(?:tab|panel)="(?:workflow|architecture)"/,
   'Developer architecture must not compete with user settings');
-assert.match(html, /<details class="admin-settings">[\s\S]*模型服务配置[\s\S]*id="model-config-form"/,
-  'Model API controls must live in a collapsed administrator area');
+assert.match(html, /data-system-panel="ai"[\s\S]*id="model-usage-open"[\s\S]*id="model-config-form"/,
+  'Model configuration and usage must live on the dedicated AI services page');
+assert.doesNotMatch(html.slice(html.indexOf('data-system-panel="maintenance"')), /id="model-config-form"|class="admin-settings"/,
+  'Data maintenance must not contain model configuration');
+assert.match(js, /target:'ai', field:'model-base-url'/,
+  'Model diagnostic advice must navigate to AI services');
 assert.match(docs, /邮件处理流程[\s\S]*分层架构[\s\S]*技术栈/,
   'Removed technical material must remain available to developers');
 assert.doesNotMatch(html, /id="btn-switch-mail"/, 'Settings must not duplicate the sidebar mailbox switcher');

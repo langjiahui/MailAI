@@ -1,8 +1,8 @@
 /* Focused workspaces: retain existing operations and move their entry points. */
 (() => {
   const center = document.getElementById('attachment-center'), grid = document.getElementById('attachment-grid');
-  const switcher = document.createElement('div'); switcher.className='attachment-view-switch'; switcher.setAttribute('role','group'); switcher.setAttribute('aria-label','附件显示方式');
-  switcher.innerHTML='<button type="button" data-file-view="cards">卡片</button><button type="button" data-file-view="list">紧凑列表</button>';
+  const switcher = document.createElement('div'); switcher.className='attachment-view-switch'; switcher.setAttribute('role','group'); mailaiBindUI(switcher, "@aria-label", () => (mailaiText('附件显示方式')));
+  switcher.innerHTML="<button type=\"button\" data-file-view=\"cards\"><span data-i18n=\"ui.fb5640f8e12e\">卡片</span></button><button type=\"button\" data-file-view=\"list\"><span data-i18n=\"ui.a92bf42ee499\">紧凑列表</span></button>";
   const filters=document.getElementById('attachment-type-filters'), bar=document.createElement('div');bar.className='attachment-view-bar';filters.before(bar);bar.append(filters,switcher);
   function fileView(view, save=false) {
     const top=grid.scrollTop;
@@ -12,14 +12,14 @@
     if(save) try { localStorage.setItem('mailai.attachments.view.v1',center.dataset.fileView); } catch {}
   }
   const columns=document.createElement('div');columns.className='attachment-list-columns';columns.setAttribute('aria-hidden','true');
-  columns.innerHTML='<div><span>文件名称</span><span>来源邮件</span><span>大小</span><span>邮件时间</span></div><span>操作</span>';grid.before(columns);
+  columns.innerHTML="<div><span><span data-i18n=\"ui.273c65ddc3f1\">文件名称</span></span><span><span data-i18n=\"ui.dff425d08a89\">来源邮件</span></span><span><span data-i18n=\"ui.50db7447b966\">大小</span></span><span><span data-i18n=\"ui.6b14580ef1bc\">邮件时间</span></span></div><span><span data-i18n=\"ui.ed31fbb483ee\">操作</span></span>";grid.before(columns);
   let saved;try{saved=localStorage.getItem('mailai.attachments.view.v1')}catch{}
   fileView(saved || 'list');
   switcher.onclick=e=>{const b=e.target.closest('[data-file-view]');if(b)fileView(b.dataset.fileView,true)};
 
   const todo=document.getElementById('todo-center'), list=document.getElementById('todo-list');
-  const tabs=document.createElement('nav');tabs.className='todo-view-tabs';tabs.setAttribute('aria-label','待办视图');
-  const names={all:'全部待办',today:'今天',overdue:'已逾期',later:'以后',unplanned:'未安排'};
+  const tabs=document.createElement('nav');tabs.className='todo-view-tabs';mailaiBindUI(tabs, "@aria-label", () => (mailaiText('待办视图')));
+  const names={get all() { return mailaiText('全部待办'); },get today() { return mailaiText('今天'); },get overdue() { return mailaiText('已逾期'); },get later() { return mailaiText('以后'); },get unplanned() { return mailaiText('未安排'); }};
   tabs.innerHTML=Object.entries(names).map(([key,label])=>`<button type="button" data-todo-view="${key}" aria-pressed="${key==='all'}">${label}</button>`).join('');
   todo.querySelector('.todo-center-tools').before(tabs);
   const noticeButton=document.getElementById('btn-task-notices');tabs.append(noticeButton);noticeButton.setAttribute('aria-pressed','false');
@@ -29,8 +29,8 @@
     if(!dates.length)return 'unplanned';const now=localDateKey();return dates[0]<now?'overdue':dates[0]===now?'today':'later';
   }
   window.mailaiTodoEmpty=()=>{
-    const titles={all:'还没有待办事项',today:'今天没有待办',overdue:'没有逾期待办',later:'没有安排以后的待办',unplanned:'没有未安排的待办'};
-    return `<div class="todo-empty-state"><b>${titles[view] || titles.all}</b><p>${view==='all'?'可以从邮件中添加待办，再设置截止时间与提醒。':'其他任务可在全部待办中查看。'}</p>${view==='all'?'':'<button type="button" data-todo-empty-all>查看全部待办</button>'}</div>`;
+    const titles={get all() { return mailaiText('还没有待办事项'); },get today() { return mailaiText('今天没有待办'); },get overdue() { return mailaiText('没有逾期待办'); },get later() { return mailaiText('没有安排以后的待办'); },get unplanned() { return mailaiText('没有未安排的待办'); }};
+    return `<div class="todo-empty-state"><b>${titles[view] || titles.all}</b><p>${view==='all'?mailaiText('可以从邮件中添加待办，再设置截止时间与提醒。'):mailaiText('其他任务可在全部待办中查看。')}</p>${view==='all'?'':"<button type=\"button\" data-todo-empty-all><span data-i18n=\"ui.0f1f3c58fd43\">查看全部待办</span></button>"}</div>`;
   };
   list.addEventListener('click',e=>{if(e.target.closest('[data-todo-empty-all]'))window.mailaiTodoTab('all')});
   window.mailaiTodoMatches=item=>view==='all'||view==='reminders'||(item.status!=='done'&&group(item)===view);
@@ -50,12 +50,12 @@
   };
   tabs.addEventListener('click',e=>{const b=e.target.closest('button[data-todo-view]');if(!b)return;document.getElementById('task-notices').close();window.mailaiTodoTab(b.dataset.todoView)});
   const tools=todo.querySelector('.todo-center-tools');
-  const batch=document.createElement('button');batch.type='button';batch.id='todo-batch-toggle';batch.textContent='批量管理';batch.setAttribute('aria-pressed','false');tools.append(batch);
+  const batch=document.createElement('button');batch.type='button';batch.id='todo-batch-toggle';mailaiBindUI(batch, "textContent", () => (mailaiText('批量管理')));batch.setAttribute('aria-pressed','false');tools.append(batch);
   batch.onclick=()=>{
-    const enabled=todo.dataset.batch!=='true';todo.dataset.batch=String(enabled);batch.setAttribute('aria-pressed',String(enabled));batch.textContent=enabled?'退出批量':'批量管理';
+    const enabled=todo.dataset.batch!=='true';todo.dataset.batch=String(enabled);batch.setAttribute('aria-pressed',String(enabled));mailaiBindUI(batch, "textContent", () => (enabled?mailaiText('退出批量'):mailaiText('批量管理')));
     if(!enabled){selectedTodoIds.clear();renderTodoCenter()}
   };
-  document.getElementById('todo-complete-all').textContent='完成当前视图';
+  mailaiBindUI(document.getElementById('todo-complete-all'), "textContent", () => (mailaiText('完成当前视图')));
   document.getElementById('todo-complete-all').removeAttribute('data-i18n');
 
   // Move the actual buttons, keeping their handlers and accessible names.
@@ -81,7 +81,7 @@
   const output=document.getElementById('compose-ai-output');
   output.addEventListener('click',e=>{
     const b=e.target.closest('[data-ai-fill]');if(!b||b.disabled||!composeAiSuggestion||document.getElementById('compose-ai-panel').classList.contains('is-thinking'))return;
-    applyComposeAiSuggestion(b.dataset.aiFill);b.textContent=b.dataset.aiFill==='subject'?'已填入主题':'已替换正文';
+    applyComposeAiSuggestion(b.dataset.aiFill);mailaiBindUI(b, "textContent", () => (b.dataset.aiFill==='subject'?mailaiText('已填入主题'):mailaiText('已替换正文')));
   });
   const updatePreviewButtons=()=>{
     const busy=document.getElementById('compose-ai-panel').classList.contains('is-thinking');

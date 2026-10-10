@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Callable
 
 from .desktop import DesktopApi, notification_text, start_local_server
+from .ui_copy import ui_text
 
 
 log = logging.getLogger(__name__)
@@ -122,7 +123,7 @@ class WindowsDesktopRuntime:
         if not self.tray_notice_shown:
             self.tray_notice_shown = True
             try:
-                self._notify_tray("关闭窗口后仍会在后台收取和分析邮件", "MailAI 已在后台运行")
+                self._notify_tray(ui_text('关闭窗口后仍会在后台收取和分析邮件'), ui_text('MailAI 已在后台运行'))
             except Exception:
                 log.exception("显示 Windows 托盘驻留提示失败")
         return False
@@ -210,7 +211,7 @@ class WindowsDesktopRuntime:
         if not self.tray:
             return {"ok": False, "message": "系统托盘尚未就绪，请稍后重试"}
         try:
-            self._notify_tray("收到新邮件时会通过系统通知提醒你。", "MailAI 测试通知")
+            self._notify_tray(ui_text('收到新邮件时会通过系统通知提醒你。'), ui_text('MailAI 测试通知'))
             return {"ok": True, "message": "已发送测试通知；若未显示，请检查 Windows 通知设置"}
         except Exception:
             log.exception("Windows 测试通知失败")
@@ -228,19 +229,29 @@ class WindowsDesktopRuntime:
             self.tray = reminder_icon_class(pystray.Icon, self.on_notification_click)(
                 "MailAI",
                 image,
-                "MailAI · 后台收信中",
-                menu=pystray.Menu(
-                    pystray.MenuItem("打开 MailAI", self.show_window, default=True),
-                    pystray.MenuItem("立即收取邮件", self.poll_now),
-                    pystray.MenuItem("提醒记录", self.open_reminders),
-                    pystray.Menu.SEPARATOR,
-                    pystray.MenuItem("退出 MailAI", self.quit),
-                ),
+                ui_text('MailAI · 后台收信中'),
+                menu=self._tray_menu(),
             )
             self.tray.run_detached()
         except Exception:
             self.tray = None
             log.exception("Windows 系统托盘初始化失败；窗口关闭时将保留在任务栏")
+
+    def _tray_menu(self):
+        import pystray
+        return pystray.Menu(
+            pystray.MenuItem(ui_text('打开 MailAI'), self.show_window, default=True),
+            pystray.MenuItem(ui_text('立即收取邮件'), self.poll_now),
+            pystray.MenuItem(ui_text('提醒记录'), self.open_reminders),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem(ui_text('退出 MailAI'), self.quit),
+        )
+
+    def refresh_language(self):
+        if self.tray:
+            self.tray.title = ui_text('MailAI · 后台收信中')
+            self.tray.menu = self._tray_menu()
+            self.tray.update_menu()
 
 
 def run_windows_window(asgi_app, preferred_port: int = 0,

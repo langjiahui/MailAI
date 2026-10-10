@@ -1,10 +1,11 @@
+const i18nContext = require('./helpers/i18n.cjs');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const source = fs.readFileSync(require('node:path').join(__dirname, '../app/web/static/app.js'), 'utf8');
 const start = source.indexOf('function getRiskLabel(');
 const end = source.indexOf('// ===== 数据加载', start);
-const context = vm.createContext({mailaiT: () => null});
+const context = vm.createContext(i18nContext({mailaiT: () => null}));
 vm.runInContext(source.slice(start, end), context);
 assert.equal(context.getRiskLabel(95, 'clean', {feedback:'fp', reviewed:1}).text, '已确认误报');
 assert.equal(context.getRiskLabel(0, 'clean', {feedback:'fn'}).class, 'danger');

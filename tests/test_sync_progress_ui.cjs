@@ -10,7 +10,7 @@ assert.match(html, /id="btn-toggle-fetch"[^>]*aria-expanded="false"/,
   'Synchronization status must expose an accessible expand control');
 assert.match(css, /\.fetch-overlay\.settings-context:not\(\.expanded\) \.fetch-progress-box\s*\{[^}]*min-height:58px/,
   'Settings should use a compact synchronization dock');
-assert.match(css, /\[data-system-panel="maintenance"\] \.admin-settings \.connection-actions\s*\{[^}]*position:sticky/,
+assert.match(css, /\[data-system-panel="ai"\] \.connection-actions\s*\{[^}]*position:sticky/,
   'Model configuration actions should remain visible while scrolling');
 assert.match(js, /function setFetchSettingsContext\(active\)/,
   'The synchronization dock should respond to Settings visibility');

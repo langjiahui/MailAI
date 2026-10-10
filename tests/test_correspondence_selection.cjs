@@ -1,3 +1,4 @@
+const i18nContext = require('./helpers/i18n.cjs');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
@@ -11,7 +12,7 @@ const apiCalls = [];
 let refreshes = 0;
 let confirmation = '';
 let activeAccountId = 'account-one';
-const context = vm.createContext({
+const context = vm.createContext(i18nContext({
   Set, Number,
   document: {
     body: {style: {}},
@@ -33,7 +34,7 @@ const context = vm.createContext({
   },
   loadData: async () => { refreshes += 1; },
   toast: () => {},
-});
+}));
 vm.runInContext(source.slice(start, end), context);
 
 const data = {counterpart: 'person@example.test', emails: [

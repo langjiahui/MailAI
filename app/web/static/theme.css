@@ -1094,7 +1094,7 @@ html[data-theme="dark"] .backup-item { color:#dcebe2!important; border:1px solid
 html[data-theme="dark"] .backup-item a { color:#91dfb5!important; }
 html[data-theme="dark"] .backup-item button { color:#f1cf98!important; background:rgba(126,85,35,.3)!important; }
 html[data-theme="dark"] [data-system-panel="maintenance"] .admin-settings .connection-card { border-color:var(--dark-stroke)!important; background:rgba(16,37,27,.66)!important; }
-html[data-theme="dark"] [data-system-panel="maintenance"] .admin-settings .connection-actions { background:linear-gradient(180deg,transparent,#10251b 32%)!important; }
+html[data-theme="dark"] [data-system-panel="ai"] .connection-actions { background:linear-gradient(180deg,transparent,#10251b 32%)!important; }
 html[data-theme="dark"] [data-system-panel="maintenance"] .diagnostic-item { color:#dcebe2!important; background:rgba(7,25,18,.5)!important; }
 
 /* Final component-level polish: small status, identity and overflow surfaces. */

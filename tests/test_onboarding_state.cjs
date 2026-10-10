@@ -8,7 +8,7 @@ assert.match(source, /button\.onclick = \(\) => action\(button\)/,
   'guide actions should receive their button so they can expose a busy state');
 assert.match(source, /if \(aiRunning \|\| el\('assistant-send'\)\?\.disabled\)/,
   'the assistant guide must reject repeated submissions while a request is active');
-assert.match(source, /button\.disabled = true; button\.textContent = '正在总结…'/,
+assert.match(source, /button\.disabled = true; mailaiBindUI\(button, "textContent",[^\n]+mailaiText\('正在总结…'\)/,
   'the guide action must lock immediately and explain its state');
 assert.match(source, /async function hasAssistantHistory\(\)[\s\S]*message_count\) >= 2/,
   'persisted assistant history should identify returning users after reinstall');

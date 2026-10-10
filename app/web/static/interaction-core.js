@@ -1,14 +1,14 @@
 /* Shared interaction primitives. Loaded before app.js so modal keys are contained. */
 (() => {
   let activeDialog = null;
-  window.mailaiAsk = ({title, message = '', confirmText = '确认', danger = false, value, label = title, maxLength = 200}) => {
+  window.mailaiAsk = ({title, message = '', confirmText = mailaiText('确认'), danger = false, value, label = title, maxLength = 200}) => {
     // A repeated click must not open another confirmation for the same action.
     if (activeDialog) return Promise.resolve(value === undefined ? false : null);
     const previous = document.activeElement;
     const dialog = document.createElement('dialog');
     dialog.className = 'mailai-question';
     dialog.setAttribute('aria-labelledby', 'mailai-question-title');
-    dialog.innerHTML = '<form><h2 id="mailai-question-title"></h2><p class="question-message" id="mailai-question-message"></p><label class="question-field"><span></span><input autocomplete="off"></label><footer><button type="button" data-cancel>取消</button><button type="submit" data-confirm></button></footer></form>';
+    dialog.innerHTML = "<form><h2 id=\"mailai-question-title\"></h2><p class=\"question-message\" id=\"mailai-question-message\"></p><label class=\"question-field\"><span></span><input autocomplete=\"off\"></label><footer><button type=\"button\" data-cancel><span data-i18n=\"ui.2cd0f3be8738\">取消</span></button><button type=\"submit\" data-confirm></button></footer></form>";
     dialog.querySelector('h2').textContent = title;
     const messageNode = dialog.querySelector('.question-message');
     messageNode.textContent = message; messageNode.hidden = !message;
@@ -75,24 +75,24 @@
   function getBanner() {
     if (banner) return banner;
     banner = document.createElement('aside'); banner.id = 'connection-recovery'; banner.hidden = true;
-    banner.innerHTML = '<span role="status"></span><button type="button">检查连接</button><button type="button" aria-label="关闭连接提示">×</button>';
+    banner.innerHTML = "<span role=\"status\"></span><button type=\"button\"><span data-i18n=\"ui.9fada042cf88\">检查连接</span></button><button type=\"button\" aria-label=\"关闭连接提示\" data-i18n-aria=\"ui.7b4c6f739fc7\">×</button>";
     banner.querySelector('button').onclick = () => recoveryAction ? recoveryAction() : check();
     banner.lastElementChild.onclick = () => { dismissedIssue = currentIssue; banner.hidden = true; };
     document.body.append(banner); return banner;
   }
   async function check() {
     if (checking) return; checking = true;
-    const bar = getBanner(), button = bar.querySelector('button'); recoveryAction = null; currentIssue = 'local'; button.textContent = '检查连接'; button.disabled = true;
+    const bar = getBanner(), button = bar.querySelector('button'); recoveryAction = null; currentIssue = 'local'; mailaiBindUI(button, "textContent", () => (mailaiText('检查连接'))); button.disabled = true;
     const controller = new AbortController(), timeout = setTimeout(() => controller.abort(),5000);
     try {
       const result = await fetch('/api/health',{signal:controller.signal,cache:'no-store'});
       if (!result.ok) throw new Error('health');
       const data = await result.json();
       if (!('imap_configured' in data)) throw new Error('health');
-      bar.querySelector('span').textContent = '本地服务已连接。请重试未完成的操作；发送状态不明时，先到任务与发件箱核对。';
+      mailaiBindUI(bar.querySelector('span'), "textContent", () => (mailaiText('本地服务已连接。请重试未完成的操作；发送状态不明时，先到任务与发件箱核对。')));
       bar.hidden = false;
     } catch (_) {
-      bar.querySelector('span').textContent = '暂时连接不到本地服务。请确认 MailAI 正在运行，并使用启动时显示的地址。当前页面内容已保留。';
+      mailaiBindUI(bar.querySelector('span'), "textContent", () => (mailaiText('暂时连接不到本地服务。请确认 MailAI 正在运行，并使用启动时显示的地址。当前页面内容已保留。')));
       bar.hidden = false;
     } finally { clearTimeout(timeout); checking = false; button.disabled = false; }
   }
@@ -103,15 +103,15 @@
     if (dismissedIssue === issue) return;
     const bar = getBanner(); currentIssue = issue; targetAccount = accountId;
     const account = (typeof _systemConfig !== 'undefined' ? _systemConfig?.accounts : [])?.find(a => a.id === accountId);
-    bar.querySelector('span').textContent = kind === 'model'
-      ? 'AI 服务暂时未能完成请求。邮件内容已保留，可重试或检查模型连接。'
-      : `邮箱操作未完成${account?.user ? '（' + account.user + '）' : ''}。请检查邮箱连接；发送或移动结果不明时，先核对状态再重试。`;
-    bar.querySelector('button').textContent = kind === 'model' ? '模型设置' : '邮箱设置';
+    mailaiBindUI(bar.querySelector('span'), "textContent", () => (kind === 'model'
+      ? mailaiText('AI 服务暂时未能完成请求。邮件内容已保留，可重试或检查模型连接。')
+      : mailaiTemplate`邮箱操作未完成${account?.user ? '（' + account.user + '）' : ''}。请检查邮箱连接；发送或移动结果不明时，先核对状态再重试。`));
+    mailaiBindUI(bar.querySelector('button'), "textContent", () => (kind === 'model' ? mailaiText('模型设置') : mailaiText('邮箱设置')));
     recoveryAction = async () => {
       const selected = targetAccount;
       if (document.body.classList.contains('compose-open') && !(await closeCompose())) return;
       bar.hidden = true; dismissedIssue = currentIssue;
-      showSystemView(kind === 'model' ? 'maintenance' : 'account');
+      showSystemView(kind === 'model' ? 'ai' : 'account');
       if (kind !== 'model' && selected) { selectedManagedAccountId = selected; renderAccountSelection(); }
       if (kind === 'model') document.getElementById('model-base-url')?.scrollIntoView({block:'center'});
     };

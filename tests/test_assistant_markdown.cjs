@@ -1,3 +1,4 @@
+const i18nContext = require('./helpers/i18n.cjs');
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
@@ -10,7 +11,7 @@ const start = source.indexOf('function assistantTableCells');
 const end = source.indexOf('function assistantAnswerHtml');
 assert.ok(start >= 0 && end > start, 'Table parsing helpers must be present');
 const context = {};
-vm.runInNewContext(`${source.slice(start, end)}\nthis.cells=assistantTableCells;this.block=assistantTableBlock;`, context);
+vm.runInNewContext(`${source.slice(start, end)}\nthis.cells=assistantTableCells;this.block=assistantTableBlock;`, i18nContext(context));
 
 const inline = value => String(value).replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 const standard = context.block([

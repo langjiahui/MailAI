@@ -33,7 +33,7 @@ function initializeContactGroups() {
     const dialog = document.getElementById('group-dialog');
     dialog.dataset.previous = rename ? document.getElementById('contact-group-filter').value : '';
     dialog.dataset.accountId = contactAccountId();
-    document.getElementById('group-dialog-title').textContent = rename ? (mailaiT('contact.groupRename') || '修改分组') : (mailaiT('contact.groupCreate') || '新增分组');
+    mailaiBindUI(document.getElementById('group-dialog-title'), "textContent", () => (rename ? (mailaiT('contact.groupRename') || '修改分组') : (mailaiT('contact.groupCreate') || '新增分组')));
     document.getElementById('group-dialog-name').value = dialog.dataset.previous;
     document.getElementById('group-dialog-error').textContent = '';
     dialog.showModal();
@@ -45,7 +45,7 @@ function initializeContactGroups() {
     event.preventDefault();
     const dialog = document.getElementById('group-dialog'), button = event.submitter;
     const session = contactCenterSession;
-    setLoading(button, true, '保存中…');
+    setLoading(button, true, mailaiText('保存中…'));
     try {
       const result = await api('/api/mail/contact-groups', {accountId:dialog.dataset.accountId,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:document.getElementById('group-dialog-name').value,previous:dialog.dataset.previous || null})});
       if (session !== contactCenterSession) return;
@@ -54,17 +54,17 @@ function initializeContactGroups() {
       if (session !== contactCenterSession) return;
       document.getElementById('contact-group-filter').value = result.name;
       await loadContactCenter(); updateContactGroupControls();
-      toast('分组已保存，点击“添加人员”选择已有联系人', 'success');
-    } catch (error) { document.getElementById('group-dialog-error').textContent = error.message; }
+      toast(mailaiText('分组已保存，点击“添加人员”选择已有联系人'), 'success');
+    } catch (error) { document.getElementById('group-dialog-error').textContent = mailaiSystemMessage(error.message); }
     finally { setLoading(button, false); }
   };
   document.getElementById('group-delete').onclick = async event => {
     const name = document.getElementById('contact-group-filter').value;
-    if (!name || !confirm(`删除分组“${name}”？组内联系人会保留并移至未分组。`)) return;
-    const button = event.currentTarget; setLoading(button,true,'删除中…');
+    if (!name || !confirm(mailaiTemplate`删除分组“${name}”？组内联系人会保留并移至未分组。`)) return;
+    const button = event.currentTarget; setLoading(button,true,mailaiText('删除中…'));
     const session = contactCenterSession;
     try { await api(`/api/mail/contact-groups?name=${encodeURIComponent(name)}`, {accountId:contactAccountId(),method:'DELETE'}); if (session !== contactCenterSession) return; document.getElementById('contact-group-filter').value = ''; await loadContactCenter(); }
-    catch (error) { toast(error.message,'error'); }
+    catch (error) { toast(mailaiSystemMessage(error.message),'error'); }
     finally { setLoading(button,false); }
   };
 }
@@ -81,7 +81,7 @@ function openBackupRestore(filename) {
   document.getElementById('restore-end').value = '';
   dialog.showModal();
 }
-document.body.insertAdjacentHTML('beforeend', `<dialog id="backup-restore-dialog" class="library-dialog"><form id="backup-restore-form"><h2>恢复邮件备份</h2><p id="restore-filename" class="library-filename"></p><label>恢复方式<select id="restore-mode"><option value="range">按时间范围恢复邮件</option><option value="full">完整恢复所有备份数据</option></select></label><fieldset id="restore-dates"><legend>按邮件日期（包含开始和结束当天）</legend><label>开始日期<input type="date" id="restore-start" required></label><label>结束日期<input type="date" id="restore-end" required></label></fieldset><p>按范围恢复会合并所选邮件及原文附件，保留范围外邮件、通讯录和设置。完整恢复会替换当前数据。恢复前均会自动创建安全备份。</p><p id="restore-error" role="alert"></p><footer><button type="button" data-library-close="backup-restore-dialog">取消</button><button id="restore-submit" type="submit">开始恢复</button></footer></form></dialog>`);
+document.body.insertAdjacentHTML('beforeend', `<dialog id="backup-restore-dialog" class="library-dialog"><form id="backup-restore-form"><h2><span data-i18n="ui.9efbae489bd2">恢复邮件备份</span></h2><p id="restore-filename" class="library-filename"></p><label><span data-i18n="ui.08a4fbe4d6ae">恢复方式</span><select id="restore-mode"><option value="range" data-i18n="ui.0a1c05c630d5">按时间范围恢复邮件</option><option value="full" data-i18n="ui.1339bc94e01f">完整恢复所有备份数据</option></select></label><fieldset id="restore-dates"><legend><span data-i18n="ui.3bdda5f3718c">按邮件日期（包含开始和结束当天）</span></legend><label><span data-i18n="ui.760506491eef">开始日期</span><input type="date" id="restore-start" required></label><label><span data-i18n="ui.895cd52fbbb6">结束日期</span><input type="date" id="restore-end" required></label></fieldset><p><span data-i18n="ui.592c17cedc4e">按范围恢复会合并所选邮件及原文附件，保留范围外邮件、通讯录和设置。完整恢复会替换当前数据。恢复前均会自动创建安全备份。</span></p><p id="restore-error" role="alert"></p><footer><button type="button" data-library-close="backup-restore-dialog"><span data-i18n="ui.2cd0f3be8738">取消</span></button><button id="restore-submit" type="submit"><span data-i18n="ui.d558c25cd315">开始恢复</span></button></footer></form></dialog>`);
 document.getElementById('restore-mode').onchange = event => { document.getElementById('restore-dates').disabled = event.target.value === 'full'; };
 document.addEventListener('click', event => { const button = event.target.closest('[data-library-close]'); if (button) document.getElementById(button.dataset.libraryClose).close(); });
 document.getElementById('backup-restore-form').onsubmit = async event => {
@@ -90,43 +90,43 @@ document.getElementById('backup-restore-form').onsubmit = async event => {
   const ranged = document.getElementById('restore-mode').value === 'range';
   const start = document.getElementById('restore-start').value, end = document.getElementById('restore-end').value;
   const errorBox = document.getElementById('restore-error'); errorBox.textContent = '';
-  if (ranged && (!start || !end || start > end)) { errorBox.textContent = '请选择有效日期，开始日期不能晚于结束日期'; return; }
-  if (!ranged && !confirm('完整恢复将替换当前邮件、通讯录及备份内的其他数据，确认继续？')) return;
-  const button = document.getElementById('restore-submit'); setLoading(button, true, '恢复中…');
+  if (ranged && (!start || !end || start > end)) { mailaiBindUI(errorBox, "textContent", () => (mailaiText('请选择有效日期，开始日期不能晚于结束日期'))); return; }
+  if (!ranged && !confirm(mailaiText('完整恢复将替换当前邮件、通讯录及备份内的其他数据，确认继续？'))) return;
+  const button = document.getElementById('restore-submit'); setLoading(button, true, mailaiText('恢复中…'));
   const cancel = dialog.querySelector('[data-library-close]'); cancel.disabled = true;
   dialog.oncancel = event => event.preventDefault();
   try {
     const query = ranged ? '?' + new URLSearchParams({start_date:start,end_date:end}) : '';
     const result = await api(`/api/system/backups/${encodeURIComponent(dialog.dataset.filename)}/restore${query}`, {accountId:dialog.dataset.accountId,method:'POST'});
     dialog.close();
-    toast(`${ranged ? `已恢复 ${result.restored_count} 封邮件` : '完整恢复完成'}，已保留安全备份`, 'success');
+    toast(mailaiTemplate`${ranged ? mailaiTemplate`已恢复 ${result.restored_count} 封邮件` : mailaiText('完整恢复完成')}，已保留安全备份`, 'success');
     await loadData(); await loadBackups();
-  } catch (error) { errorBox.textContent = error.message; }
+  } catch (error) { errorBox.textContent = mailaiSystemMessage(error.message); }
   finally { setLoading(button, false); cancel.disabled = false; dialog.oncancel = null; }
 };
 
 let groupMemberSelection = new Map();
 let groupMemberRevision = 0;
 let groupMemberTimer;
-document.body.insertAdjacentHTML('beforeend', `<dialog id="group-members-dialog" class="library-dialog group-members-dialog" aria-labelledby="group-members-title"><form id="group-members-form"><h2 id="group-members-title">添加已有人员</h2><p id="group-members-description"></p><label>搜索已有联系人<input id="group-members-search" type="search" placeholder="姓名、拼音、邮箱或公司" autocomplete="off"></label><p>支持多选。已有其他分组的人员加入后会移至当前分组；姓名、备注等资料保持不变。</p><div id="group-members-list" class="group-members-list" aria-live="polite"></div><p id="group-members-error" role="alert"></p><footer><span id="group-members-count">已选择 0 人</span><button type="button" data-library-close="group-members-dialog">取消</button><button type="submit" id="group-members-save" disabled>加入分组</button></footer></form></dialog>`);
+document.body.insertAdjacentHTML('beforeend', `<dialog id="group-members-dialog" class="library-dialog group-members-dialog" aria-labelledby="group-members-title"><form id="group-members-form"><h2 id="group-members-title"><span data-i18n="ui.9e72765c53ed">添加已有人员</span></h2><p id="group-members-description"></p><label><span data-i18n="ui.a0d79b9840f7">搜索已有联系人</span><input id="group-members-search" type="search" placeholder="姓名、拼音、邮箱或公司" autocomplete="off" data-i18n-placeholder="ui.a23f4b54dd2b"></label><p><span data-i18n="ui.a4d3a4fe552b">支持多选。已有其他分组的人员加入后会移至当前分组；姓名、备注等资料保持不变。</span></p><div id="group-members-list" class="group-members-list" aria-live="polite"></div><p id="group-members-error" role="alert"></p><footer><span id="group-members-count"><span data-i18n="ui.e8a5ee93c78a">已选择 0 人</span></span><button type="button" data-library-close="group-members-dialog"><span data-i18n="ui.2cd0f3be8738">取消</span></button><button type="submit" id="group-members-save" disabled><span data-i18n="ui.410513b14aed">加入分组</span></button></footer></form></dialog>`);
 function syncGroupMemberCount() {
-  document.getElementById('group-members-count').textContent = `已选择 ${groupMemberSelection.size} 人`;
+  mailaiBindUI(document.getElementById('group-members-count'), "textContent", () => (mailaiTemplate`已选择 ${groupMemberSelection.size} 人`));
   document.getElementById('group-members-save').disabled = !groupMemberSelection.size;
 }
 async function loadGroupMemberCandidates() {
   const dialog = document.getElementById('group-members-dialog');
   const revision = ++groupMemberRevision;
   const host = document.getElementById('group-members-list');
-  host.textContent = '正在加载联系人…';
+  mailaiBindUI(host, "textContent", () => (mailaiText('正在加载联系人…')));
   try {
     const items = await api(`/api/mail/contacts?limit=300&q=${encodeURIComponent(document.getElementById('group-members-search').value.trim())}`, {accountId:dialog.dataset.accountId});
     if (revision !== groupMemberRevision || !dialog.open) return;
     host.innerHTML = items.length ? items.map(item => {
       const member = item.group_name === dialog.dataset.group;
-      return `<label class="group-member-option"><input type="checkbox" value="${esc(item.email)}" ${member ? 'checked disabled' : groupMemberSelection.has(item.email) ? 'checked' : ''}><span><b>${esc(item.name || item.email)}</b><small>${esc(item.email)}</small></span><em>${member ? '已在此组' : esc(item.group_name || '未分组')}</em></label>`;
-    }).join('') + (items.length === 300 ? '<p>已显示前 300 位，请搜索以查找更多联系人。</p>' : '') : '<p>没有找到已有联系人，请尝试其他搜索词。</p>';
+      return `<label class="group-member-option"><input type="checkbox" value="${esc(item.email)}" ${member ? 'checked disabled' : groupMemberSelection.has(item.email) ? 'checked' : ''}><span><b>${esc(item.name || item.email)}</b><small>${esc(item.email)}</small></span><em>${member ? mailaiText('已在此组') : esc(item.group_name || mailaiText('未分组'))}</em></label>`;
+    }).join('') + (items.length === 300 ? "<p><span data-i18n=\"ui.539ba4463aeb\">已显示前 300 位，请搜索以查找更多联系人。</span></p>" : '') : "<p><span data-i18n=\"ui.41e3af3db4ca\">没有找到已有联系人，请尝试其他搜索词。</span></p>";
   } catch (error) {
-    if (revision === groupMemberRevision) host.textContent = '加载失败：' + error.message;
+    if (revision === groupMemberRevision) mailaiBindUI(host, "textContent", () => (mailaiText('加载失败：') + mailaiSystemMessage(error.message)));
   }
 }
 function openGroupMemberPicker() {
@@ -138,7 +138,7 @@ function openGroupMemberPicker() {
   groupMemberSelection = new Map();
   document.getElementById('group-members-search').value = '';
   document.getElementById('group-members-error').textContent = '';
-  document.getElementById('group-members-description').textContent = `加入分组：${group}`;
+  mailaiBindUI(document.getElementById('group-members-description'), "textContent", () => (mailaiTemplate`加入分组：${group}`));
   syncGroupMemberCount(); dialog.showModal(); loadGroupMemberCandidates();
 }
 document.getElementById('group-members-search').oninput = () => {
@@ -157,7 +157,7 @@ document.getElementById('group-members-form').onsubmit = async event => {
   const dialog = document.getElementById('group-members-dialog');
   const session = contactCenterSession;
   if (!groupMemberSelection.size) return;
-  const button = document.getElementById('group-members-save'); setLoading(button, true, '添加中…');
+  const button = document.getElementById('group-members-save'); setLoading(button, true, mailaiText('添加中…'));
   try {
     const result = await api('/api/mail/contact-groups/members', {accountId:dialog.dataset.accountId,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:dialog.dataset.group,emails:[...groupMemberSelection.keys()]})});
     if (session !== contactCenterSession) return;
@@ -168,8 +168,8 @@ document.getElementById('group-members-form').onsubmit = async event => {
       document.querySelectorAll('[data-contact-filter]').forEach(item => item.classList.toggle('active', item.dataset.contactFilter === 'all'));
       await loadContactCenter();
     }
-    toast(`已添加 ${result.count} 位人员`, 'success');
-  } catch (error) { document.getElementById('group-members-error').textContent = error.message; }
+    toast(mailaiTemplate`已添加 ${result.count} 位人员`, 'success');
+  } catch (error) { document.getElementById('group-members-error').textContent = mailaiSystemMessage(error.message); }
   finally { setLoading(button, false); syncGroupMemberCount(); }
 };
 document.addEventListener('click', async event => {
@@ -178,11 +178,11 @@ document.addEventListener('click', async event => {
   if (!button) return;
   const name = document.getElementById('contact-group-filter').value;
   const session = contactCenterSession;
-  setLoading(button, true, '移出中…');
+  setLoading(button, true, mailaiText('移出中…'));
   try {
     await api('/api/mail/contact-groups/members', {accountId:contactAccountId(),method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,emails:[button.dataset.groupRemoveMember],remove:true})});
     if (session !== contactCenterSession) return;
-    await loadContactCenter(); toast('已移出分组，联系人仍保留在通讯录中', 'success');
-  } catch (error) { toast(error.message, 'error'); }
+    await loadContactCenter(); toast(mailaiText('已移出分组，联系人仍保留在通讯录中'), 'success');
+  } catch (error) { toast(mailaiSystemMessage(error.message), 'error'); }
   finally { setLoading(button, false); }
 });

@@ -1,0 +1,41 @@
+/* A dedicated model page; the same form also travels into first-run setup. */
+html[data-theme] #system-view [data-system-panel="ai"] .settings-page-intro { align-items:flex-start; }
+#system-view [data-system-panel="ai"] #model-usage-open { flex:none; display:flex; gap:6px; align-items:center; width:max-content; max-width:100%; white-space:nowrap; min-height:36px; padding:8px 12px; border:1px solid var(--desk-line); border-radius:9px; background:var(--desk-surface); color:var(--desk-ink); font-size:12px; box-shadow:none; }
+#system-view [data-system-panel="ai"] #model-usage-open:hover { background:var(--desk-hover); }
+html[data-theme] #system-view [data-system-panel="ai"] #model-config-form { margin:0; padding:24px; overflow:visible; border:1px solid var(--desk-line)!important; background:var(--desk-surface)!important; border-radius:14px; box-shadow:none!important; }
+#model-config-form#model-config-form.model-service-form { container-type:inline-size; }
+#model-config-form.model-service-form .model-service-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:28px; margin-top:24px; }
+#model-config-form.model-service-form .model-service-section { min-width:0; }
+#model-config-form.model-service-form .model-service-section+.model-service-section { padding-left:28px; border-left:1px solid var(--desk-line); }
+#model-config-form.model-service-form .model-service-section h4 { margin:0 0 16px; color:var(--desk-ink); font-size:14px; font-weight:650; }
+#model-config-form.model-service-form .model-service-section label { display:grid; gap:6px; margin:16px 0 0; color:var(--desk-ink); font-size:12px; line-height:1.6; }
+#model-config-form.model-service-form .model-service-section .check-row { display:flex; align-items:flex-start; gap:8px; }
+#model-config-form.model-service-form .check-row input { flex:none; margin-top:3px; accent-color:var(--desk-accent); }
+#model-config-form.model-service-form .form-row { grid-template-columns:minmax(0,1fr); }
+#model-config-form.model-service-form .form-row>label:first-child,#model-config-form.model-service-form .model-service-section>h4+label { margin-top:0; }
+html[data-theme] #model-config-form.model-service-form :is(input:not([type="checkbox"]),select,textarea) { width:100%; min-width:0; box-sizing:border-box; min-height:40px; margin:0; padding:9px 11px; border:1px solid var(--desk-line)!important; border-radius:9px; background:var(--desk-muted-surface)!important; color:var(--desk-ink)!important; font:inherit; font-size:12px; box-shadow:none!important; }
+#model-config-form.model-service-form .form-hint { margin:8px 0 16px; font-size:11px; line-height:1.75; color:var(--desk-muted); }
+#model-config-form.model-service-form .model-service-section>details { margin-top:20px; padding-top:16px; border-top:1px solid var(--desk-line); }
+#model-config-form.model-service-form .model-service-section>details>summary { cursor:pointer; color:var(--desk-ink); font-size:12px; }
+#model-config-form.model-service-form :is(input,select,textarea,summary):focus-visible { outline:2px solid var(--desk-accent); outline-offset:3px; }
+html[data-theme] #system-view [data-system-panel="ai"] .connection-actions { justify-content:flex-end; margin:24px -24px -24px; padding:16px 24px; border-top:1px solid var(--desk-line); background:var(--desk-surface)!important; border-radius:0 0 14px 14px; }
+#system-view [data-system-panel="ai"] .connection-actions .action-btn { min-height:38px; padding:8px 14px; border-radius:9px; font-size:12px; }
+#system-view [data-system-panel="ai"] .connection-actions .action-secondary { border:1px solid var(--desk-line); background:var(--desk-muted-surface); color:var(--desk-ink); }
+@container (max-width:720px) {
+  #model-config-form.model-service-form .model-service-fields { grid-template-columns:minmax(0,1fr); gap:24px; }
+  #model-config-form.model-service-form .model-service-section+.model-service-section { border-left:0; padding:24px 0 0; border-top:1px solid var(--desk-line); }
+}
+@media (max-width:600px) {
+  html[data-theme] #system-view [data-system-panel="ai"] #model-config-form { padding:18px; }
+  html[data-theme] #system-view [data-system-panel="ai"] .connection-actions { margin:24px -18px -18px; padding:14px 18px; flex-wrap:wrap; }
+}
+
+#system-view [data-system-panel="ai"] .connection-icon { flex:none; border:0; background:var(--desk-selected)!important; color:var(--desk-accent)!important; box-shadow:none; }
+
+#model-config-form.model-service-form .model-key-control { margin-top:16px; }
+#model-config-form.model-service-form .model-key-control>label { margin:0 0 6px; }
+#model-config-form.model-service-form .model-key-field { position:relative; }
+html[data-theme] #model-config-form.model-service-form .model-key-field input { padding-right:74px; }
+#model-config-form.model-service-form #model-key-visibility { position:absolute; right:6px; top:50%; transform:translateY(-50%); min-height:30px; padding:5px 10px; border:0; border-radius:6px; background:transparent; color:var(--desk-accent); font:inherit; font-size:11px; cursor:pointer; }
+#model-config-form.model-service-form #model-key-visibility:hover { background:var(--desk-selected); }
+#model-config-form.model-service-form #model-key-visibility:focus-visible { outline:2px solid var(--desk-accent); outline-offset:1px; }

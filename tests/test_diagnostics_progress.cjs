@@ -1,5 +1,6 @@
+const i18nContext = require('./helpers/i18n.cjs');
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
-const context={window:{},TextDecoder,Set,Map};vm.createContext(context);
+const context={window:{},TextDecoder,Set,Map};vm.createContext(i18nContext(context));
 vm.runInContext(fs.readFileSync('app/web/static/diagnostics-progress.js','utf8'),context);
 (async()=>{
  const encoder=new TextEncoder(),events=[];

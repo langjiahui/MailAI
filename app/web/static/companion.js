@@ -177,11 +177,11 @@
       }
       previous = state;
     }
-    const label = root.classList.contains('companion-finished') ? '整理好了，来看看' : {
-      calm:'小邮在这里', thinking:'正在帮你整理', warn:'有邮件需要留意', danger:'有高风险邮件待核实',
+    const label = root.classList.contains('companion-finished') ? mailaiText('整理好了，来看看') : {
+      get calm() { return mailaiText('小邮在这里'); }, get thinking() { return mailaiText('正在帮你整理'); }, get warn() { return mailaiText('有邮件需要留意'); }, get danger() { return mailaiText('有高风险邮件待核实'); },
     }[state];
     caption.textContent = label;
-    orb.setAttribute('aria-label', `${label}，打开 MailAI 邮件助手`);
+    mailaiBindUI(orb, "@aria-label", () => (mailaiTemplate`${label}，打开 MailAI 邮件助手`));
     orb.setAttribute('aria-expanded', String(document.body.classList.contains('assistant-visible')));
   };
   new MutationObserver(sync).observe(root, {attributes:true, attributeFilter:['class']});

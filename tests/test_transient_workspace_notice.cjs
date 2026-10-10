@@ -1,3 +1,4 @@
+const i18nContext = require('./helpers/i18n.cjs');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
@@ -19,12 +20,12 @@ const document = {
   createElement() { return {setAttribute(){}, textContent:'', onclick:null}; },
   addEventListener(name, callback) { listeners[name] = callback; },
 };
-const context = vm.createContext({
+const context = vm.createContext(i18nContext({
   console, Date, document,
   window:{matchMedia(){return null;}}, localStorage:{getItem(){return null;}},
   setTimeout(callback, delay) { timers.push({callback, delay}); return timers.length; },
   clearTimeout() {}, api:async()=>({failed:[]}), loadData:async()=>{},
-});
+}));
 const end = src.indexOf('\nfunction showOperationFailures');
 vm.runInContext(src.slice(0, end), context);
 context.offerUndo(['token-1'], 'account-1');

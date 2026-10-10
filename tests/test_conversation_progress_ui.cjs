@@ -1,11 +1,12 @@
+const i18nContext = require('./helpers/i18n.cjs');
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const source=fs.readFileSync('app/web/static/conversation-progress.js','utf8');
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 let request=deferred();const calls=[];const disclosure={open:false};
 const host={dataset:{accountId:'a',emailId:'1'},isConnected:true,innerHTML:'',setAttribute(){},removeAttribute(){},querySelector:()=>disclosure};
-const c=vm.createContext({document:{getElementById:id=>id==='conversation-progress'?host:{addEventListener(){}}},window:{addEventListener(){}},
+const c=vm.createContext(i18nContext({document:{getElementById:id=>id==='conversation-progress'?host:{addEventListener(){}}},window:{addEventListener(){}},
  activeMailAccount:()=>({id:'a'}),selectedEmailDetail:{id:1},esc:value=>String(value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;'),fmtDate:x=>x,
- api:async(url,opts)=>{calls.push([url,opts.accountId]);return request.promise;}});
+ api:async(url,opts)=>{calls.push([url,opts.accountId]);return request.promise;}}));
 vm.runInContext(source,c);
 const data={account_user:'a@example.test',status:'处理状态待确认',next_step:'请核对',timeline:[{source:'email',id:1,date:'2026-09-22',direction:'incoming',sender:'<b>sender</b>',subject:'<img src=x>',excerpt:'<script>bad()</script>',current:true}],tasks:[],linked_count:1,basis:'待办依据',scope:'仅本邮箱'};
 (async()=>{

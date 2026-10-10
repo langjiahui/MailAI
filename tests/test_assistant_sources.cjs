@@ -1,9 +1,10 @@
+const i18nContext = require('./helpers/i18n.cjs');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const source = fs.readFileSync('app/web/static/app.js', 'utf8');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const ctx = vm.createContext({esc, mdToHtml:esc});
+const ctx = vm.createContext(i18nContext({esc, mdToHtml:esc}));
 vm.runInContext(source.slice(source.indexOf('function assistantSourceItems('), source.indexOf('function setAssistantState(')), ctx);
 const refs = Array.from({length:12}, (_,i)=>({id:311+i,subject:'同名邮件',from_addr:'team@example.test',date:`2026-09-${String(i+1).padStart(2,'0')}`}));
 const html = ctx.assistantSourcesHtml(refs,'account-a');

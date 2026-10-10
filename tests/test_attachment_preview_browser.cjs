@@ -11,6 +11,7 @@ const path = require('path');
    return route.fulfill({contentType:'text/html; charset=utf-8',body:'<a class="attachment" href="/api/emails/1/attachments/0?mailai_account=test" download="通知.docx">通知.docx</a><a class="attachment-card" href="/api/emails/2/attachments/0?mailai_account=test" download="附件中心.docx">附件中心.docx</a>'});
   });
   await page.goto('http://mailai.test/');
+  for (const name of ['i18n.js','i18n-catalog.js','i18n-runtime.js']) await page.addScriptTag({path:path.join(__dirname, '../app/web/static', name)});
   await page.addStyleTag({path:path.join(__dirname,'../app/web/static/attachment-preview.css')});
   await page.addScriptTag({path:path.join(__dirname,'../app/web/static/attachment-preview.js')});
   const source=fs.readFileSync(path.join(__dirname,'../app/web/static/app.js'),'utf8');

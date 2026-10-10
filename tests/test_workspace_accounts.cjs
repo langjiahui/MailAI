@@ -1,3 +1,4 @@
+const i18nContext = require('./helpers/i18n.cjs');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
@@ -9,9 +10,9 @@ const deferred = () => { let resolve, reject; const promise=new Promise((a,b)=>{
   const nodes={'todo-list':{},'todo-center':{classList:{add(){}}}};
   let request=deferred(), renders=0;
   const calls=[];
-  const c=vm.createContext({document:{querySelector:()=>null,getElementById:id=>nodes[id],body:{classList:{remove(){}}}},
+  const c=vm.createContext(i18nContext({document:{querySelector:()=>null,getElementById:id=>nodes[id],body:{classList:{remove(){}}}},
     api:async (url, options)=>{calls.push(options.accountId);return request.promise;},esc:x=>x,
-    updateTodoBatchToolbar(){},renderTodoCenter:()=>renders++,setTimeout,updateSidebar(){},toast(){},window:{mailaiTasksChanged(){}},selectedTodoIds:new Set()});
+    updateTodoBatchToolbar(){},renderTodoCenter:()=>renders++,setTimeout,updateSidebar(){},toast(){},window:{mailaiTasksChanged(){}},selectedTodoIds:new Set()}));
   vm.runInContext("let todoCenterLoading=false, todoBatchBusy=false, todoReturnFocus; const todoEdits=new Map(); const todoEditKey=(id,accountId)=>accountId+':'+id; let todoCenterAccountId='a', todoCenterRevision=0, todoCenterRows=[];"+
     slice(app,'async function loadTodoCenter()', 'async function saveTodoItem(')+
     slice(app,'async function setTodoBatchStatus(', 'async function openTodoCenter()'),c);
@@ -31,11 +32,11 @@ const deferred = () => { let resolve, reject; const promise=new Promise((a,b)=>{
 
   const host={dataset:{},innerHTML:'',querySelectorAll:()=>[]}; let scope='b'; let pending=deferred();
   const requests=[];
-  const t=vm.createContext({taskPollActive:false,taskCenterRefreshRequested:null,taskCenterReminders:[],taskCenterPollTimer:0,
+  const t=vm.createContext(i18nContext({taskPollActive:false,taskCenterRefreshRequested:null,taskCenterReminders:[],taskCenterPollTimer:0,
     taskCenterScope:()=>scope,activeMailAccount:()=>({id:'a'}),_systemConfig:{accounts:[{id:'a',user:'A'},{id:'b',user:'B'}]},
     document:{getElementById:id=>id==='task-center-list'?host:{classList:{toggle(){}},querySelector:()=>null}},
     api:async(url,options)=>{requests.push([url,options.accountId]); if(url.includes('outbox')) return pending.promise; if(url.includes('reminders'))return [];return {};},
-    esc:x=>x,mailaiT:()=>'',scheduleTaskCenterRefresh(){},clearTimeout,setTimeout,sessionStorage:{getItem:()=>true},window:{}});
+    esc:x=>x,mailaiT:()=>'',scheduleTaskCenterRefresh(){},clearTimeout,setTimeout,sessionStorage:{getItem:()=>true},window:{}}));
   vm.runInContext(slice(workspace,'function actionableOutboxRows(', '\nfunction updateFilterChips'),t);
   const refresh=t.refreshTaskCenter(); pending.resolve([]);await refresh;
   assert.ok(requests.every(([,id])=>id==='b'),'Task requests use selected scope, not browsing account');

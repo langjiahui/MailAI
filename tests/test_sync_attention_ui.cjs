@@ -1,3 +1,4 @@
+const i18nContext = require('./helpers/i18n.cjs');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
@@ -16,7 +17,7 @@ function element(id) {
   if (!elements.has(id)) elements.set(id, fakeElement());
   return elements.get(id);
 }
-const context = vm.createContext({Number, JSON, console, setTimeout:()=>0, clearTimeout(){},
+const context = vm.createContext(i18nContext({Number, JSON, console, setTimeout:()=>0, clearTimeout(){},
   document:{getElementById:element,createElement:fakeElement}, activeMailAccount:()=>({id:'a'}), toast(){},
   localStorage:{getItem(){return null;}}, esc:value=>String(value).replaceAll('<','&lt;'), _systemConfig:{accounts:[]},
   assistantAlerts:null, assistantController:null, assistantNoticeKey:'', assistantAlertTimer:0,
@@ -26,7 +27,7 @@ const context = vm.createContext({Number, JSON, console, setTimeout:()=>0, clear
     context.assistantController?.abort(); context.assistantController=null;
     context.assistantAlertContextIds=[]; element('assistant-messages').children=[];
   },
-  setAssistantState:s=>context.petState=s});
+  setAssistantState:s=>context.petState=s}));
 vm.runInContext(extract('let assistantAlertRevision = 0;', '\nfunction analyzeNewAssistantAlerts'), context);
 vm.runInContext(extract('async function markAssistantAlertsSeen()', '\nfunction closeAssistant'), context);
 vm.runInContext(extract('let mailboxSyncTrackerTimer = 0;', '\nfunction renderSidebarAccounts'), context);
@@ -92,9 +93,9 @@ assert.match(src, /sidebar-account-identity[\s\S]{0,400}account\.user\.split\('@
   assert.equal(history.children[1],analysis,'Keep the analysis available without leaving it expanded');
   assert.equal(context.assistantPinnedScope,null);
 
-  const refresh = vm.createContext({document:{getElementById:()=>({}),querySelector:()=>null},Date,
+  const refresh = vm.createContext(i18nContext({document:{getElementById:()=>({}),querySelector:()=>null},Date,
     mailboxRefreshInFlight:false,mailboxNavigationRevision:0,mailboxRevisionToken:'old',mailboxConfigCheckedAt:Date.now(),
-    api:async()=>({revision:'new'}),loadData:async()=>false});
+    api:async()=>({revision:'new'}),loadData:async()=>false}));
   vm.runInContext(extract('async function refreshMailboxIfChanged(', '\nfunction startMailboxAutoRefresh'),refresh);
   await refresh.refreshMailboxIfChanged();
   assert.equal(refresh.mailboxRevisionToken,'old','Failed list loading must be retried on the next heartbeat');

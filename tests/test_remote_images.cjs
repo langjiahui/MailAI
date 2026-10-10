@@ -1,3 +1,4 @@
+const i18nContext = require('./helpers/i18n.cjs');
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -5,7 +6,7 @@ const vm = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname, '../app/web/static/app.js'), 'utf8');
 const protectSource = source.slice(source.indexOf('function protectRichEmailLinks('), source.indexOf('\nasync function openExternalLink'));
-const context = vm.createContext({});
+const context = vm.createContext(i18nContext({}));
 context.window = context;
 vm.runInContext(protectSource, context);
 const protectedMail = context.protectRichEmailLinks('<!doctype html><html><head><title>工资单</title></head><body style="background:#fff"><table><tr><td><img src="data:image/png;base64,AAAA"><a target="_blank" href="https://example.test/payroll?a=1&amp;b=2">查看工资条</a></td></tr></table></body></html>');

@@ -1,11 +1,11 @@
 // Only tests/workspace_preview.py: temporary accounts, no real mail sent.
 const {chromium}=require('playwright'),assert=require('node:assert/strict');
 (async()=>{
-  const browser=await chromium.launch({headless:true,channel:'chrome'}),page=await browser.newPage({viewport:{width:1440,height:1000}});
+  const browser=await chromium.launch({headless:true}),page=await browser.newPage({viewport:{width:1440,height:1000},reducedMotion:'reduce'});
   const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
   const waitContacts=()=>page.waitForFunction(()=>document.querySelectorAll('.contact-center-item').length>0);
   try{
-    await page.goto('http://127.0.0.1:18795/');await page.waitForFunction(()=>_systemConfig?.accounts?.length===2);
+    await page.goto(process.env.MAILAI_PREVIEW_URL||'http://127.0.0.1:18795/');await page.locator('#app-preloader').waitFor({state:'detached'});await page.waitForFunction(()=>_systemConfig?.accounts?.length===2);
     const accounts=await page.evaluate(()=>_systemConfig.accounts);assert.ok(accounts.every(a=>a.user.endsWith('@example.test')));
     const a=await page.evaluate(()=>activeMailAccount().id),b=accounts.find(x=>x.id!==a).id;
     await page.evaluate(async({a,b})=>{
@@ -56,18 +56,23 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict');
     console.log('PASS 浏览账号与发件账号不同时，编辑联系人仍写入其所属账号');
     await page.locator('#btn-close-contacts').click();
     await page.evaluate(()=>openContactCenter('compose-cc'));await waitContacts();
-    await page.locator('#group-create').click();await page.locator('#group-dialog-name').fill('乙方分组');
-    await page.locator('#group-dialog-form [type="submit"]').click();
-    await page.waitForFunction(()=>document.getElementById('contact-group-filter').value==='乙方分组');
-    const groups=await page.evaluate(async({a,b})=>Promise.all([a,b].map(accountId=>api('/api/mail/contact-groups',{accountId}))),{a,b});
-    assert.ok(!groups[0].some(g=>g.name==='乙方分组'));assert.ok(groups[1].some(g=>g.name==='乙方分组'));
-    await page.locator('#group-add-members').click();
-    await page.locator('#group-members-list input[value="colleague@example.test"]').check();
-    await page.locator('#group-members-save').click();
-    await page.waitForFunction(()=>!document.getElementById('group-members-dialog').open);
+    await page.locator('[data-tag-menu]>summary').click();await page.locator('[data-tag-manage]').click();
+    await page.locator('[data-new-tag]').fill('乙方标签');
+    await page.locator('#contact-tags-dialog [type="submit"]').click();
+    await page.locator('#contact-tags-dialog').waitFor({state:'hidden'});
+    const tags=await page.evaluate(async({a,b})=>Promise.all([a,b].map(accountId=>api('/api/mail/contact-tags',{accountId}))),{a,b});
+    assert.ok(!tags[0].tags.some(t=>t.name==='乙方标签'));assert.ok(tags[1].tags.some(t=>t.name==='乙方标签'));
+    await page.evaluate(async b=>{closeContactCenter();await openAccountMailbox(b,'inbox');await openContactCenter();},b);
+    await page.locator('[data-tag-menu]>summary').click();
+    await page.locator('[data-bulk-toggle]').click();
+    await page.locator('[data-tag-contact="colleague@example.test"]').check();
+    await page.locator('[data-bulk-apply]').click();
+    await page.locator('[data-member-tag]').selectOption('乙方标签');
+    await page.locator('[data-member-add]').click();
+    await page.locator('#contact-tags-dialog').waitFor({state:'hidden'});
     const member=await page.evaluate(b=>api('/api/mail/contacts?q=colleague',{accountId:b}),b);
-    assert.equal(member[0].group_name,'乙方分组');
-    console.log('PASS 分组创建、候选成员读取与添加均绑定发件账号');
+    assert.ok(member[0].tags.some(t=>t.id==='personal:乙方标签'));
+    console.log('PASS 标签创建绑定发件账号、批量标记绑定当前通讯录账号');
     assert.deepEqual(errors,[]);
   }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});
