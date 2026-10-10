@@ -1,0 +1,173 @@
+/* Natural evolution and owned equipment reuse XiaoYou's existing vector rig. */
+body { --pet-body:#b5ddc5; --pet-outline:#649f80; }
+body[data-pet-stage="3"],body[data-pet-stage="4"] { --pet-body:#a8d9c0; }
+body[data-pet-stage="5"],body[data-pet-stage="6"],body[data-pet-stage="7"] { --pet-body:#98d2bc; }
+body[data-pet-palette="sky"] { --pet-body:#b2d7ed; --pet-outline:#729ab7; }
+body[data-pet-palette="peach"] { --pet-body:#f1cab9; --pet-outline:#c18e7d; }
+.growth-body { fill:var(--pet-body); stroke:var(--pet-outline); transition:fill .4s; }
+.growth-leaf,.growth-flower,.growth-medal,.growth-cape,.growth-wings,.growth-cap,.growth-scarf,.growth-stars,.growth-orbit,.growth-aura { display:none; }
+body[data-pet-stage]:not([data-pet-stage="1"]) .growth-leaf { display:block; }
+body[data-pet-stage="3"] .growth-flower,body[data-pet-stage="4"] .growth-flower,body[data-pet-stage="5"] .growth-flower,body[data-pet-stage="6"] .growth-flower,body[data-pet-stage="7"] .growth-flower { display:block; }
+body[data-pet-stage="4"] .growth-medal,body[data-pet-stage="5"] .growth-medal,body[data-pet-stage="6"] .growth-medal,body[data-pet-stage="7"] .growth-medal { display:block; }
+body[data-pet-stage="5"] .growth-cape,body[data-pet-stage="6"] .growth-cape,body[data-pet-stage="7"] .growth-cape { display:block; }
+body[data-pet-stage="6"] .growth-aura,body[data-pet-stage="7"] .growth-aura { display:block; }
+body[data-pet-stage="7"] .growth-stars { display:block; }
+body[data-pet-accessory="scarf"] .growth-scarf,body[data-pet-accessory="cap"] .growth-cap,body[data-pet-accessory="wings"] .growth-wings { display:block; }
+body[data-pet-accessory="cap"] .mail-companion .companion-leaves,body[data-pet-accessory="cap"] .growth-leaf,body[data-pet-accessory="cap"] .growth-flower { visibility:hidden; }
+body[data-pet-accessory="satchel"] .companion-bag rect { fill:#f0d8a0; stroke:#927642; stroke-width:2; }
+body[data-pet-effect="sparkles"] .growth-stars,body[data-pet-effect="orbit"] .growth-orbit,body[data-pet-effect="aurora"] .growth-aura { display:block; }
+body[data-pet-effect="sparkles"] .growth-stars,body[data-pet-stage="7"] .growth-stars { animation:pet-twinkle 3s ease-in-out infinite; }
+body[data-pet-effect="orbit"] .growth-orbit { transform-origin:56px 65px; animation:pet-orbit 6s ease-in-out infinite; }
+body[data-pet-effect="aurora"] .growth-aura { animation:pet-twinkle 2.5s ease-in-out infinite; }
+@keyframes pet-twinkle { 50% { opacity:.35; } }
+@keyframes pet-orbit { 50% { transform:rotate(12deg); opacity:.35; } }
+.companion-level { position:absolute; bottom:0; left:calc(50% - 10px); min-width:20px; padding:1px 5px; border:1px solid #cfdfd5; border-radius:8px; background:#f4faf6; color:#47765d; font:700 9px/1.4 inherit; pointer-events:none; }
+.companion-growth-launch { display:flex; align-items:center; gap:9px; margin:9px 14px 0; padding:9px 12px; border:1px solid #d9e7df; border-radius:12px; background:#edf5f0; color:#47765d; text-align:left; font-size:11px; cursor:pointer; flex:none; }
+.companion-growth-launch>span:first-child { font-weight:700; }
+.companion-growth-launch>span:nth-child(2) { margin-left:auto; color:#6b8075; }
+.pet-journal { --pet-ink:#2d493b; --pet-muted:#718277; --pet-line:#e1e9e3; --pet-paper:#fffefa; --pet-tint:#edf4ed; --pet-accent:#467f62; width:min(720px,calc(100vw / var(--fz,1) - 32px)); max-height:calc(100vh / var(--fz,1) - 40px); padding:0; border:1px solid var(--pet-line); border-radius:24px; color:var(--pet-ink); background:var(--pet-paper); box-shadow:0 32px 100px #1d342e3d; overflow:hidden; }
+.pet-journal[open] { display:flex; flex-direction:column; }
+.pet-journal::backdrop { background:#1a302e66; backdrop-filter:blur(6px); }
+.pet-journal button { font:inherit; cursor:pointer; }
+.pet-journal button:focus-visible { outline:2px solid var(--pet-accent); outline-offset:3px; }
+.pet-journal button:disabled { opacity:.5; cursor:default; }
+.pet-journal-head { display:flex; justify-content:space-between; align-items:center; padding:21px 26px 17px; border-bottom:1px solid var(--pet-line); flex:none; }
+.pet-journal-head small { color:var(--pet-muted); font-size:9px; letter-spacing:2px; }
+.pet-journal-head h2 { font-size:21px; margin:5px 0 0; letter-spacing:-.4px; }
+.pet-journal-head button { width:32px; height:32px; padding:0; border:1px solid var(--pet-line); border-radius:50%; color:var(--pet-muted); background:transparent; font-size:22px; }
+.pet-journal-body { padding:23px 26px; min-height:0; overflow:auto; overscroll-behavior:contain; }
+.pet-hero { display:flex; gap:22px; align-items:center; padding:18px 20px; border-radius:18px; border:1px solid var(--pet-line); background:radial-gradient(ellipse at 10% 30%,#cfe7d9aa,transparent 60%),var(--pet-tint); }
+.pet-portrait { width:88px; height:88px; flex:none; }
+.pet-hero-portrait { width:126px; height:126px; }
+.pet-hero-copy { flex:1; min-width:0; }
+.pet-eyebrow { color:var(--pet-muted); font-size:10px; }
+.pet-hero h3 { font-size:25px; margin:7px 0; font-weight:750; }
+.pet-hero h3 small { display:inline-block; font-size:11px; border:1px solid var(--pet-line); padding:3px 7px; border-radius:6px; vertical-align:middle; color:var(--pet-accent); }
+.pet-hero p { font-size:12px; color:var(--pet-muted); line-height:1.65; margin:0 0 16px; }
+.pet-growth-label { display:flex; justify-content:space-between; gap:10px; font-size:11px; margin-bottom:7px; }
+.pet-growth-label span { color:var(--pet-muted); }
+.pet-journal progress { appearance:none; width:100%; height:5px; border:0; border-radius:9px; overflow:hidden; background:var(--pet-line); color:var(--pet-accent); display:block; }
+.pet-journal progress::-webkit-progress-bar { background:var(--pet-line); border-radius:9px; }
+.pet-journal progress::-webkit-progress-value { background:var(--pet-accent); border-radius:9px; }
+.pet-journal progress::-moz-progress-bar { background:var(--pet-accent); border-radius:9px; }
+.pet-stats { display:grid; grid-template-columns:repeat(3,1fr); padding:19px 0; }
+.pet-stats article { display:flex; flex-direction:column; align-items:center; gap:5px; border-right:1px solid var(--pet-line); }
+.pet-stats article:last-child { border:0; }
+.pet-stats strong { font-size:22px; font-variant-numeric:tabular-nums; }
+.pet-stats strong small { font-weight:500; font-size:11px; margin-left:4px; }
+.pet-stats span { font-size:11px; color:var(--pet-muted); }
+.pet-tabs { display:flex; padding:4px; gap:4px; background:var(--pet-tint); border-radius:12px; }
+.pet-tabs button { flex:1; min-width:0; border:0; border-radius:9px; color:var(--pet-muted); background:transparent; padding:9px 4px; font-size:12px; }
+.pet-tabs button[aria-pressed="true"] { background:var(--pet-paper); color:var(--pet-ink); box-shadow:0 2px 7px #2447350c; font-weight:700; }
+.pet-tab-content { padding-top:21px; }
+.pet-section-title { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+.pet-section-title h3 { margin:0; font-size:13px; }
+.pet-section-title>span { font-size:10px; color:var(--pet-muted); }
+.pet-quests { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:24px; }
+.pet-quest { display:flex; align-items:center; gap:10px; border:1px solid var(--pet-line); border-radius:12px; padding:13px 12px; }
+.pet-quest>div { flex:1; min-width:0; }
+.pet-quest b { display:block; font-size:12px; margin-bottom:5px; }
+.pet-reward { font-size:10px; color:var(--pet-muted); }
+.pet-quest progress { margin-top:9px; height:3px; }
+.pet-quest>small { font-size:10px; color:var(--pet-muted); white-space:nowrap; }
+.pet-quest-check { color:var(--pet-muted); font-size:17px; }
+.pet-quest.is-complete { background:var(--pet-tint); }
+.pet-quest.is-complete .pet-quest-check { color:var(--pet-accent); }
+.pet-activities { display:grid; grid-template-columns:1fr 1fr; gap:13px 20px; }
+.pet-activities article>div { display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-bottom:8px; }
+.pet-activities b { font-size:11px; font-weight:500; }
+.pet-activities strong { font-size:14px; }
+.pet-activities small { display:block; color:var(--pet-muted); font-size:9px; line-height:1.6; margin-top:5px; }
+.pet-note { color:var(--pet-muted); font-size:11px; line-height:1.85; margin:17px 0 0; }
+.pet-journey { display:grid; gap:9px; margin-top:16px; }
+.pet-journey article { display:flex; gap:15px; align-items:center; padding:14px 16px; border:1px solid var(--pet-line); border-radius:12px; opacity:.65; }
+.pet-journey article.is-unlocked { opacity:1; }
+.pet-journey article.is-current { background:var(--pet-tint); border-color:var(--pet-accent); }
+.pet-stage-number { display:grid; place-items:center; width:38px; height:38px; border:1px solid var(--pet-line); border-radius:50%; font-size:13px; color:var(--pet-accent); flex:none; }
+.pet-journey b { font-size:13px; }
+.pet-journey p { font-size:11px; color:var(--pet-muted); margin:5px 0; }
+.pet-journey small { font-size:10px; color:var(--pet-muted); }
+.pet-reset-outfit { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:13px; }
+.pet-reset-outfit button { background:transparent; border:1px solid var(--pet-line); border-radius:8px; padding:6px 9px; color:var(--pet-muted); font-size:10px; }
+.pet-shop { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.pet-shop-item { display:flex; flex-direction:column; align-items:stretch; border:1px solid var(--pet-line); border-radius:15px; overflow:hidden; padding:0 14px 14px; }
+.pet-item-art { display:grid; place-items:center; margin:0 -14px 13px; height:108px; background:var(--pet-tint); }
+.pet-item-copy { flex:1; }
+.pet-item-copy b { font-size:13px; }
+.pet-item-copy p { font-size:11px; color:var(--pet-muted); line-height:1.65; margin:6px 0; }
+.pet-item-copy small { font-size:10px; color:var(--pet-muted); }
+.pet-shop-item>button { color:var(--pet-accent); border:1px solid var(--pet-line); border-radius:9px; background:var(--pet-tint); padding:8px; margin-top:12px; font-size:11px; }
+.pet-item-art .growth-body { fill:#b5ddc5; stroke:#649f80; }
+.pet-item-art[data-item-preview="sky"] .growth-body { fill:#b2d7ed; stroke:#729ab7; }
+.pet-item-art[data-item-preview="peach"] .growth-body { fill:#f1cab9; stroke:#c18e7d; }
+.pet-item-art .growth-scarf,.pet-item-art .growth-cap,.pet-item-art .growth-wings,.pet-item-art .growth-stars,.pet-item-art .growth-orbit,.pet-item-art .growth-aura,.pet-item-art .growth-cape { display:none!important; }
+.pet-item-art[data-item-preview="scarf"] .growth-scarf,.pet-item-art[data-item-preview="cap"] .growth-cap,.pet-item-art[data-item-preview="wings"] .growth-wings,.pet-item-art[data-item-preview="sparkles"] .growth-stars,.pet-item-art[data-item-preview="orbit"] .growth-orbit,.pet-item-art[data-item-preview="aurora"] .growth-aura { display:block!important; }
+.pet-item-art .companion-leaves,.pet-item-art .growth-leaf,.pet-item-art .growth-flower { visibility:visible!important; }
+.pet-item-art[data-item-preview="cap"] .companion-leaves,.pet-item-art[data-item-preview="cap"] .growth-leaf,.pet-item-art[data-item-preview="cap"] .growth-flower { visibility:hidden!important; }
+.pet-item-art[data-item-preview] .companion-bag rect { fill:#FFF5D9; stroke:#B99E65; stroke-width:1.3; }
+.pet-item-art[data-item-preview="satchel"] .companion-bag rect { fill:#f0d8a0; stroke:#927642; stroke-width:2; }
+.pet-item-art[data-item-preview="berry"] { background:radial-gradient(circle at 30% 40%,#f6d9e0,transparent 60%),var(--pet-tint); }
+.pet-history article { display:flex; justify-content:space-between; padding:13px 0; border-bottom:1px solid var(--pet-line); font-size:12px; }
+.pet-empty { text-align:center; color:var(--pet-muted); padding:35px 10px; font-size:13px; }
+.pet-journal-footer { display:flex; align-items:center; gap:12px; justify-content:space-between; padding:12px 26px; border-top:1px solid var(--pet-line); flex:none; min-height:47px; }
+.pet-journal-footer>span { font-size:11px; color:var(--pet-muted); }
+.pet-journal-footer .is-error { color:#b55b55; }
+.pet-journal-footer>button { flex:none; border:0; background:transparent; padding:4px 0; font-size:11px; color:var(--pet-muted); }
+.pet-paused { font-size:11px; color:var(--pet-muted); padding:10px; background:var(--pet-tint); border-radius:10px; }
+html[data-theme="dark"] .pet-journal { --pet-ink:#dce9e0; --pet-muted:#a0b1a7; --pet-line:#3b4b42; --pet-paper:#202c25; --pet-tint:#293b30; --pet-accent:#96c8aa; }
+html[data-theme="dark"] .pet-hero { background:radial-gradient(ellipse at 10% 30%,#427b5e44,transparent 60%),var(--pet-tint); }
+html[data-theme="dark"] .companion-growth-launch { background:#283c30; color:#c6e1d0; border-color:#3b5143; }
+html[data-theme="dark"] .companion-growth-launch>span:nth-child(2) { color:#9bb9a7; }
+html[data-theme="dark"] .companion-level { background:#293c30; color:#b9d9c5; border-color:#46614e; }
+@media(max-width:600px) {
+  .pet-journal { width:calc(100vw / var(--fz,1) - 16px); max-height:calc(100vh / var(--fz,1) - 16px); border-radius:18px; }
+  .pet-journal-head,.pet-journal-footer { padding:14px 16px; }
+  .pet-journal-body { padding:16px; }
+  .pet-hero { gap:12px; padding:12px; }
+  .pet-hero-portrait { width:80px; height:80px; }
+  .pet-hero h3 { font-size:20px; }
+  .pet-hero p { font-size:11px; margin-bottom:9px; }
+  .pet-growth-label { font-size:10px; flex-wrap:wrap; gap:4px; }
+  .pet-quests { grid-template-columns:1fr; }
+  .pet-activities { gap:12px; }
+  .pet-shop { gap:9px; }
+}
+/* A free masculine ranger route shares progress with the nature messenger. */
+.growth-berry,.growth-ranger-collar,.growth-ranger-badge,.growth-ranger-crest,.growth-ranger-brows,.growth-jacket,.growth-armor,.growth-visor,.growth-mech-wings,.growth-lightning { display:none; }
+body[data-pet-style="ranger"] { --pet-body:#accbd9; --pet-outline:#62889f; }
+body[data-pet-style="ranger"]:where([data-pet-stage="5"],[data-pet-stage="6"],[data-pet-stage="7"]) { --pet-body:#8bb5cc; }
+body[data-pet-style="ranger"] .growth-ranger-brows,body[data-pet-style="ranger"] .growth-ranger-collar { display:block; }
+body[data-pet-style="ranger"]:not([data-pet-stage="1"]) .growth-ranger-crest { display:block; }
+body[data-pet-style="ranger"] .companion-leaves,body[data-pet-style="ranger"] .growth-leaf,body[data-pet-style="ranger"] .growth-flower { visibility:hidden; }
+body[data-pet-style="ranger"] .growth-cape { fill:#304D67; stroke:#6BA6CD; stroke-width:2; }
+body[data-pet-style="ranger"] .growth-stars { fill:#81DDED; }
+body[data-pet-style="ranger"][data-pet-stage="4"] .growth-visor,body[data-pet-style="ranger"][data-pet-stage="5"] .growth-visor,body[data-pet-style="ranger"][data-pet-stage="6"] .growth-visor,body[data-pet-style="ranger"][data-pet-stage="7"] .growth-visor { display:block; }
+body[data-pet-style="ranger"] .growth-medal { fill:#83D5E3; stroke:#417C9D; }
+body[data-pet-palette="sky"] { --pet-body:#b2d7ed; --pet-outline:#729ab7; }
+body[data-pet-palette="peach"] { --pet-body:#f1cab9; --pet-outline:#c18e7d; }
+body[data-pet-palette="midnight"] { --pet-body:#6a8eac; --pet-outline:#365773; }
+body[data-pet-accessory="jacket"] .growth-jacket,body[data-pet-accessory="visor"] .growth-visor,body[data-pet-accessory="armor"] .growth-armor,body[data-pet-accessory="mech_wings"] .growth-mech-wings { display:block; }
+body[data-pet-accessory="armor"] .growth-jacket { display:none; }
+body[data-pet-effect="lightning"] .growth-lightning { display:block; animation:pet-twinkle 1.6s ease-in-out infinite; }
+.pet-style-choice { display:flex; align-items:center; gap:7px; margin-top:13px; flex-wrap:wrap; }
+.pet-style-choice>span { margin-right:3px; color:var(--pet-muted); font-size:11px; }
+.pet-style-choice button { border:1px solid var(--pet-line); border-radius:8px; background:transparent; color:var(--pet-muted); padding:7px 11px; font-size:11px; }
+.pet-style-choice button[aria-pressed="true"] { background:var(--pet-tint); color:var(--pet-accent); border-color:var(--pet-accent); opacity:1; }
+.pet-style-choice small { margin-left:auto; font-size:10px; color:var(--pet-muted); }
+.pet-item-art[data-item-preview="midnight"] .growth-body { fill:#6a8eac; stroke:#365773; }
+.pet-item-art .growth-jacket,.pet-item-art .growth-armor,.pet-item-art .growth-visor,.pet-item-art .growth-mech-wings,.pet-item-art .growth-lightning { display:none!important; }
+.pet-item-art[data-item-preview="jacket"] .growth-jacket,.pet-item-art[data-item-preview="visor"] .growth-visor,.pet-item-art[data-item-preview="armor"] .growth-armor,.pet-item-art[data-item-preview="mech_wings"] .growth-mech-wings,.pet-item-art[data-item-preview="lightning"] .growth-lightning { display:block!important; }
+body[data-pet-style="ranger"] .pet-item-art .companion-leaves,body[data-pet-style="ranger"] .pet-item-art .growth-leaf,body[data-pet-style="ranger"] .pet-item-art .growth-flower { visibility:hidden!important; }
+
+body[data-pet-style="ranger"]:not([data-pet-stage="1"]):not([data-pet-stage="2"]) .growth-ranger-badge { display:block; }
+body[data-pet-accessory="cap"] .growth-ranger-crest { visibility:hidden; }
+.pet-item-art .growth-ranger-crest { visibility:visible!important; }
+.pet-item-art[data-item-preview="cap"] .growth-ranger-crest { visibility:hidden!important; }
+.pet-item-art[data-item-preview="berry"] .growth-berry { display:block; }
+.pet-pending { display:flex; align-items:center; gap:12px; justify-content:space-between; padding:12px 14px; margin-bottom:14px; border:1px solid var(--pet-line); border-radius:12px; background:var(--pet-tint); font-size:11px; line-height:1.7; }
+.pet-pending button { flex:none; color:var(--pet-accent); background:var(--pet-paper); border:1px solid var(--pet-line); border-radius:8px; padding:7px 10px; font-size:11px; }
+.pet-milestone { margin:0 0 14px; padding:12px 14px; background:var(--pet-tint); border-left:3px solid var(--pet-accent); border-radius:8px; font-size:12px; line-height:1.7; }
+.pet-purchase-title { margin-top:24px; }
+.pet-history article>div { display:flex; flex-direction:column; gap:5px; }
+.pet-history article>div b { font-size:12px; font-weight:600; }
+.pet-history article time,.pet-history article>span { color:var(--pet-muted); font-size:10px; }

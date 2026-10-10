@@ -421,14 +421,15 @@ body.assistant-docked .layout>.list-pane { width:355px; flex-basis:355px; }
 .account-primary-actions { display:flex; align-items:center; gap:13px; padding:16px 0 20px; border-top:1px solid #edf1ed; }
 .account-primary-actions .action-btn { margin:0; }
 .account-primary-actions>span { color:#8c9b92; font-size:10px; line-height:1.5; }
-.account-danger-zone { border-top:1px solid #edf1ed; color:#7b8b82; }
-.account-danger-zone summary { width:max-content; padding:16px 0 4px; cursor:pointer; font-size:10.5px; }
-.account-danger-zone[open] summary { color:#9d4e48; }
-.account-danger-zone>div { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-top:10px; padding:13px; border:1px solid #f0dddd; border-radius:9px; background:#fffafa; }
-.account-danger-zone b,.account-danger-zone small { display:block; }
-.account-danger-zone b { color:#744a46; font-size:11px; }
-.account-danger-zone small { margin-top:4px; color:#a38480; font-size:9.5px; line-height:1.5; }
-.account-danger-zone .action-btn { flex-shrink:0; padding:7px 10px; font-size:10px; }
+.account-danger-zone { display:flex; align-items:center; flex-wrap:wrap; gap:12px; padding-top:20px; border-top:1px solid var(--desk-line); color:var(--desk-ink); }
+.account-remove-icon { flex:none; display:grid; place-items:center; width:34px; height:34px; border-radius:9px; background:color-mix(in srgb,var(--ui-danger,#b95f57) 9%,transparent); color:var(--ui-danger,#b95f57); }
+.account-remove-icon svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
+.account-remove-copy { flex:1 1 220px; min-width:0; }
+.account-danger-zone h4 { margin:0; color:var(--desk-ink); font-size:12px; font-weight:600; line-height:1.5; }
+.account-danger-zone small { display:block; margin-top:4px; color:var(--desk-muted); font-size:11px; line-height:1.6; white-space:normal; overflow:visible; overflow-wrap:anywhere; }
+.account-danger-zone .action-btn { flex:none; min-height:36px; margin:0 0 0 auto; padding:8px 13px; border:1px solid color-mix(in srgb,var(--ui-danger,#b95f57) 38%,var(--desk-line)); border-radius:9px; background:var(--desk-surface); color:var(--ui-danger,#b95f57); font-size:11px; line-height:1.5; white-space:normal; }
+.account-danger-zone .action-btn:hover:not(:disabled) { background:color-mix(in srgb,var(--ui-danger,#b95f57) 8%,var(--desk-surface)); border-color:var(--ui-danger,#b95f57); }
+.account-danger-zone .action-btn:focus-visible { outline:2px solid var(--ui-danger,#b95f57); outline-offset:3px; }
 .account-detail .mail-add-panel { margin:0; padding:22px 0 0; border:0; border-radius:0; background:transparent; box-shadow:none; }
 .account-detail .mail-add-panel-head { margin-bottom:19px; padding-bottom:17px; border-bottom:1px solid #edf1ed; }
 .account-detail .mail-add-panel-head b { color:#294737; font-size:16px; font-weight:650; }
@@ -449,7 +450,7 @@ body.assistant-docked .layout>.list-pane { width:355px; flex-basis:355px; }
   .account-directory,.account-detail { padding:16px; }
   .account-directory .saved-account-list,.account-facts { grid-template-columns:1fr; }
   .account-primary-actions { align-items:flex-start; flex-direction:column; }
-  .account-danger-zone>div { align-items:flex-start; flex-direction:column; }
+  .account-danger-zone { align-items:flex-start; }
 }
 
 /* One visual language across every Settings tab. */

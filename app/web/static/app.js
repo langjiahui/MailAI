@@ -2911,7 +2911,9 @@ async function api(path, opts = {}) {
       if (/^\/api\/(?:mail\/compose\/assist|assistant\/ask|digest)/.test(path)) window.mailaiServiceFailed?.('model',accountId);
       else if (/^\/api\/(?:mail\/(?:folders|sync|send)|emails\/\d+\/(?:move|star|feedback)|drafts\/\d+)/.test(path)) window.mailaiServiceFailed?.('mail',accountId);
     }
-    throw new Error(message || `HTTP ${res.status}`);
+    const failure = new Error(message || `HTTP ${res.status}`);
+    if (path.startsWith('/api/companion/')) failure.status = res.status;
+    throw failure;
   }
   const data = await res.json();
   if (data.undo_token && typeof offerUndo === 'function') {
@@ -2936,7 +2938,10 @@ async function api(path, opts = {}) {
 
 function setLoading(el, loading, text) {
   if (loading) {
-    if (!el.classList.contains('loading')) el.dataset.originalHtml = el.innerHTML;
+    if (!el.classList.contains('loading')) {
+      el.dataset.originalHtml = el.innerHTML;
+      if (el.hasAttribute('data-i18n')) el.dataset.originalI18n = el.getAttribute('data-i18n');
+    }
     const source = mailaiCopySource(text || '');
     const labels = [...el.children].filter(child => child.tagName === 'SPAN');
     const label = labels.find(child => getComputedStyle(child).display !== 'none') || labels.at(-1);
@@ -2950,6 +2955,11 @@ function setLoading(el, loading, text) {
       el.innerHTML = el.dataset.originalHtml;
       delete el.dataset.originalHtml;
     }
+    if (el.dataset.originalI18n) {
+      el.setAttribute('data-i18n',el.dataset.originalI18n);
+      delete el.dataset.originalI18n;
+    }
+    applyI18n(el);
     el.disabled = false;
     el.classList.remove('loading');
     el.removeAttribute('aria-busy');
@@ -3527,7 +3537,7 @@ function renderTrendChart(trend) {
     { key: 'phishing', label: mailaiT('risk.phishing') || '钓鱼', color: '#ef4444' },
     { key: 'suspicious', label: mailaiT('risk.suspicious') || '可疑', color: '#f59e0b' },
     { key: 'spam', label: mailaiT('risk.spam') || '垃圾', color: '#94a3b8' },
-    { key: 'clean', label: mailaiT('risk.clean') || '正常', color: '#10b981' },
+    { key: 'clean', label: mailaiT('risk.clean') || '正常', color: 'var(--reward-accent,#10b981)' },
   ];
   const W = Math.max(460, dates.length * 64), H = 200, padL = 30, padB = 28, padT = 14, padR = 14;
   const plotW = W - padL - padR, plotH = H - padT - padB;
@@ -3542,8 +3552,8 @@ function renderTrendChart(trend) {
         <stop offset="100%" stop-color="#ef4444" stop-opacity="0"/>
       </linearGradient>
       <linearGradient id="grad-clean" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#10b981" stop-opacity="0.18"/>
-        <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
+        <stop offset="0%" stop-color="var(--reward-accent,#10b981)" stop-opacity="0.18"/>
+        <stop offset="100%" stop-color="var(--reward-accent,#10b981)" stop-opacity="0"/>
       </linearGradient>
     </defs>`;
 
@@ -4673,6 +4683,7 @@ async function selectEmail(id, options = {}) {
     const e = await api('/api/emails/' + id, {accountId:requestAccountId, signal:controller.signal});
     if (requestRevision !== readingLoadRevision || selectedEmailId !== id) return;
     selectedEmailDetail = e;
+    globalThis.mailaiPet?.openedEmail(id, requestAccountId);
     transition.finish(() => renderReadingPane(e));
     if (!e.is_read) queueEmailReadSync(id, requestAccountId);
   } catch (err) {
@@ -5643,7 +5654,7 @@ async function loadSystemConfig() {
     return `<button type="button" class="saved-account ${account.active ? 'active' : ''} ${selected ? 'selected' : ''}" data-account-id="${esc(account.id)}" aria-pressed="${selected}" title="管理 ${esc(account.user)}" data-i18n-title="ui.e3ee2c47a190">
       <span class="saved-account-avatar">${esc(accountMark(account))}</span>
       <span class="saved-account-identity"><b>${esc(account.user)}</b><small><i></i>${esc(account.host)}</small></span>
-      <span class="saved-account-state ${stateClass}"><i></i>${esc(state)}</span>
+      <span class="saved-account-state ${stateClass}"><i></i>${mailaiLabelHTML(state)}</span>
       <svg class="saved-account-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 10 3 3 6-6"/></svg>
     </button>`;
   }).join('')}</div>` : '';
@@ -5672,7 +5683,7 @@ function renderAccountSelection() {
   if (!account) return;
   document.getElementById('selected-account-avatar').textContent = accountMark(account);
   mailaiBindUI(document.getElementById('selected-account-role'), "textContent", () => (account.active ? (mailaiT('acct.stateActive') || '当前发件账号') : (mailaiT('acct.roleConnected') || '已连接邮箱')));
-  document.getElementById('selected-account-name').textContent = account.user;
+  mailaiBindUI(document.getElementById('selected-account-name'), 'textContent', () => account.user);
   mailaiBindUI(document.getElementById('selected-account-help'), "textContent", () => (account.credential_available
     ? (account.credential_storage === 'session' ? (mailaiT('acct.helpSession') || '授权码仅本次运行有效，退出软件后需要重新登录') : (mailaiT('acct.helpSaved') || '连接信息已保存，可随时更新授权码'))
     : (mailaiT('acct.helpMissing') || '本机没有可用授权码，请重新登录')));
@@ -5948,7 +5959,21 @@ function applyRichEmailFrameTheme(frame, theme = document.documentElement.datase
   if (!doc?.body) return;
   restoreRichEmailThemeOverrides(frame);
   doc.documentElement.setAttribute('data-mailai-theme', theme === 'dark' ? 'dark' : 'light');
+  const rewardRoot=globalThis.document?.documentElement;
+  const rewardStyle=rewardRoot?.dataset?.rewardTheme && globalThis.getComputedStyle?.(rewardRoot);
+  const rewardColor=name=>{
+    const value=rewardStyle?.getPropertyValue(`--reward-${name}`).trim();
+    return /^#[\da-f]{6}$/i.test(value || '') ? value : null;
+  };
+  const paper=rewardColor('soft'),ink=rewardColor('ink'),link=rewardColor('accent'),line=rewardColor('line');
+  let rewardSheet=doc.getElementById?.('mailai-reward-theme');
+  if (paper && ink && link) {
+    if (!rewardSheet) { rewardSheet=doc.createElement('style');rewardSheet.id='mailai-reward-theme';doc.head.append(rewardSheet); }
+    rewardSheet.textContent=`html[data-mailai-theme],html[data-mailai-theme] body{background:${paper}!important;color:${ink}}html[data-mailai-theme] body a{color:${link}}html[data-mailai-theme] body blockquote{color:${ink};border-color:${line || paper}}`;
+  } else rewardSheet?.remove();
   if (theme !== 'dark') return;
+  const darkPaper=paper || '#16271f',darkInk=ink || '#e4eee8',darkLink=link || '#8ddfb2';
+  const darkPaperRgb=[1,3,5].map(index=>parseInt(darkPaper.slice(index,index+2),16));
   const overrides = frame._mailThemeOverrides = [];
   const override = (node, property, value) => {
     overrides.push({node, property, value:node.style.getPropertyValue(property), priority:node.style.getPropertyPriority(property)});
@@ -5960,11 +5985,11 @@ function applyRichEmailFrameTheme(frame, theme = document.documentElement.datase
   for (const node of nodes) {
     if (node.matches?.('img,svg,path,video,canvas,picture,source')) continue;
     const background = richEmailColor(doc.defaultView.getComputedStyle(node).backgroundColor);
-    if (background?.alpha > .55 && richEmailLuminance(background.rgb) > .5) override(node, 'background-color', '#16271f');
+    if (background?.alpha > .55 && richEmailLuminance(background.rgb) > .5) override(node, 'background-color', darkPaper);
   }
   const backgroundCache = new WeakMap();
   const effectiveBackground = node => {
-    if (!node) return {rgb:[22, 39, 31], alpha:1};
+    if (!node) return {rgb:darkPaperRgb, alpha:1};
     if (backgroundCache.has(node)) return backgroundCache.get(node);
     const own = richEmailColor(doc.defaultView.getComputedStyle(node).backgroundColor);
     const result = own?.alpha > .55 ? own : effectiveBackground(node.parentElement);
@@ -5980,7 +6005,7 @@ function applyRichEmailFrameTheme(frame, theme = document.documentElement.datase
     const foregroundLum = richEmailLuminance(foreground.rgb);
     const backgroundLum = richEmailLuminance(background.rgb);
     const contrast = (Math.max(foregroundLum, backgroundLum) + .05) / (Math.min(foregroundLum, backgroundLum) + .05);
-    if (contrast < 4.5) override(node, 'color', backgroundLum > .5 ? '#29372f' : node.matches?.('a') ? '#8ddfb2' : '#e4eee8');
+    if (contrast < 4.5) override(node, 'color', backgroundLum > .5 ? '#29372f' : node.matches?.('a') ? darkLink : darkInk);
   }
 }
 
@@ -5990,6 +6015,7 @@ function syncRichEmailFrameTheme(theme = document.documentElement.dataset.theme)
   }
 }
 document.addEventListener('mailai:themechange', event => syncRichEmailFrameTheme(event.detail?.theme));
+document.addEventListener('mailai:reward-themechange', () => syncRichEmailFrameTheme());
 // The frame stays script-disabled; only the parent-installed click listener can
 // route web links externally or mail links into MailAI's composer.
 async function copyRenderedMailImage(image) {
@@ -8007,6 +8033,7 @@ function diagnosticAdvice(item) {
 document.getElementById('diagnostic-results').addEventListener('click', event => {
   const action = event.target.closest('[data-diagnostic-target]');
   if (!action) return;
+  document.getElementById('diagnostics-drawer')?.close();
   selectSystemTab(action.dataset.diagnosticTarget);
   if (action.dataset.diagnosticTarget === 'account') {
     const current = (_systemConfig?.accounts || []).find(account => account.active);
@@ -8041,10 +8068,10 @@ function renderBackupItem(item, index) {
   const tDelete = mailaiT('backup.delete') || '删除';
   const tRestore = mailaiT('backup.restore') || '恢复';
   const tPortable = mailaiT('backup.portable') || '迁移包';
-  const download = `<button type="button" data-download-backup="${esc(item.filename)}" data-portable="${item.portable ? 'true' : 'false'}" aria-label="${item.portable ? (mailaiT('backup.ariaExport') || '导出迁移包到指定位置') : (mailaiT('backup.ariaDownload') || `下载 ${esc(label)} 的备份`)}">${tSave}</button>`;
-  const remove = `<button type="button" data-delete-backup="${esc(item.filename)}" data-portable="${item.portable ? 'true' : 'false'}" aria-label="${mailaiT('backup.ariaDelete') || '删除'} ${item.portable ? tPortable : (mailaiT('backup.ariaBackup') || '备份')}">${tDelete}</button>`;
-  const actions = item.portable ? `${download}${remove}` : `<button type="button" data-restore-backup="${esc(item.filename)}" aria-label="${mailaiT('backup.ariaRestore') || `恢复 ${esc(label)} 的备份`}">${tRestore}</button>${download}${remove}`;
-  return `<div class="backup-item"><div class="backup-record-copy"><b>${esc(label)}${item.portable ? `<em>${tPortable}</em>` : index === 0 ? `<em>${mailaiT('backup.latest') || '最新'}</em>` : ''}</b><small title="${esc(item.filename)}">${esc(item.filename)}</small></div><small class="backup-record-size">${formatFileSize(item.size)}</small><div class="backup-record-actions">${actions}</div></div>`;
+  const download = `<button type="button" data-download-backup="${esc(item.filename)}" data-portable="${item.portable ? 'true' : 'false'}" aria-label="${item.portable ? (mailaiT('backup.ariaExport') || '导出迁移包到指定位置') : (mailaiT('backup.ariaDownload') || `下载 ${esc(label)} 的备份`)}" data-i18n="backup.saveAs" data-i18n-aria="${item.portable ? 'backup.ariaExport' : 'backup.ariaDownload'}">${tSave}</button>`;
+  const remove = `<button type="button" data-delete-backup="${esc(item.filename)}" data-portable="${item.portable ? 'true' : 'false'}" aria-label="${mailaiT('backup.ariaDelete') || '删除'} ${item.portable ? tPortable : (mailaiT('backup.ariaBackup') || '备份')}" data-i18n="backup.delete" data-i18n-aria="${item.portable ? 'backup.deleteMigrationAria' : 'backup.deleteLocalAria'}">${tDelete}</button>`;
+  const actions = item.portable ? `${download}${remove}` : `<button type="button" data-restore-backup="${esc(item.filename)}" aria-label="${mailaiT('backup.ariaRestore') || `恢复 ${esc(label)} 的备份`}" data-i18n="backup.restore" data-i18n-aria="backup.ariaRestore">${tRestore}</button>${download}${remove}`;
+  return `<div class="backup-item"><div class="backup-record-copy"><b>${Number.isNaN(date.getTime()) ? `<span data-i18n="backup.localFallback">${esc(label)}</span>` : esc(label)}${item.portable ? `<em data-i18n="backup.portable">${tPortable}</em>` : index === 0 ? `<em data-i18n="backup.latest">${mailaiT('backup.latest') || '最新'}</em>` : ''}</b><small title="${esc(item.filename)}">${esc(item.filename)}</small></div><small class="backup-record-size">${formatFileSize(item.size)}</small><div class="backup-record-actions">${actions}</div></div>`;
 }
 async function loadBackups() {
   const accountId = activeMailAccount()?.id;
@@ -8053,10 +8080,10 @@ async function loadBackups() {
     const [localItems, portableItems] = await Promise.all([api('/api/system/backups', {accountId}), api('/api/system/portable-backups', {accountId})]);
     const items = [...portableItems, ...localItems].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
     if (accountId !== activeMailAccount()?.id) return;
-    host.innerHTML = items.length ? items.slice(0, 3).map(renderBackupItem).join('') + (items.length > 3 ? `<details class="older-backups"><summary>${mailaiT('backup.showOlder') || '查看更早备份'} (${items.length - 3})</summary>${items.slice(3).map((item,index)=>renderBackupItem(item,index+3)).join('')}</details>` : '') : `<div class="backup-empty"><b>${mailaiT('backup.emptyTitle') || '还没有备份'}</b><small>${mailaiT('backup.emptyHint') || '创建第一份备份，为邮件留一份本地副本。'}</small></div>`;
+    host.innerHTML = items.length ? items.slice(0, 3).map(renderBackupItem).join('') + (items.length > 3 ? `<details class="older-backups"><summary><span data-i18n="backup.showOlder">${mailaiT('backup.showOlder') || '查看更早备份'}</span> (${items.length - 3})</summary>${items.slice(3).map((item,index)=>renderBackupItem(item,index+3)).join('')}</details>` : '') : `<div class="backup-empty"><b data-i18n="backup.emptyTitle">${mailaiT('backup.emptyTitle') || '还没有备份'}</b><small data-i18n="backup.emptyHint">${mailaiT('backup.emptyHint') || '创建第一份备份，为邮件留一份本地副本。'}</small></div>`;
     window.refreshCleanupHistory?.(accountId);
   } catch (_) {
-    if (accountId === activeMailAccount()?.id) host.innerHTML = `<div class="backup-empty"><b>${mailaiT('backup.loadFailTitle') || '暂时无法读取备份'}</b><small>${mailaiT('backup.loadFailHint') || '请稍后重新打开此页。'}</small></div>`;
+    if (accountId === activeMailAccount()?.id) host.innerHTML = `<div class="backup-empty"><b data-i18n="backup.loadFailTitle">${mailaiT('backup.loadFailTitle') || '暂时无法读取备份'}</b><small data-i18n="backup.loadFailHint">${mailaiT('backup.loadFailHint') || '请稍后重新打开此页。'}</small></div>`;
   }
 }
 document.getElementById('btn-create-backup').addEventListener('click', async () => {
@@ -8267,7 +8294,7 @@ function openLogoutDialog(accountId = selectedManagedAccountId) {
   const target = accounts.find(account => account.id === accountId);
   if (!target) return toast(mailaiText('请先选择要删除的邮箱'), 'error');
   modal.dataset.accountId = target.id;
-  mailaiBindUI(document.getElementById('logout-account-label'), "textContent", () => (mailaiTemplate`${target.user} · 删除后将移除本机保存的邮箱授权码`));
+  mailaiBindUI(document.getElementById('logout-account-label'), "textContent", () => (mailaiTemplate`${target.user} · 将移除本机保存的邮箱账号和授权码`));
   const keep = modal.querySelector('input[value="keep"]');
   keep.checked = true;
   modal.querySelectorAll('.logout-choice').forEach(choice => choice.classList.toggle('selected', choice.contains(keep)));

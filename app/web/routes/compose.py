@@ -342,6 +342,9 @@ def api_compose_assist(payload: ComposeAssistRequest):
         raise HTTPException(502, "AI 没有返回可用正文")
     from ...mail_evidence import compose_checks
     checks = compose_checks(parts['subject'] + '\n' + parts['body'], '\n'.join((payload.subject,payload.body_text,payload.original_text,payload.user_instruction)))
+    from ...companion_growth import safe_record
+    from uuid import uuid4
+    safe_record('tool', key=f'writing:{uuid4()}')
     return {"ok": True, "content": parts["body"], "subject": parts["subject"] if structured else "",
             "signoff": parts["signoff"] if structured else "", "basis": basis, 'checks':checks}
 
@@ -369,6 +372,9 @@ def api_compose_assist_stream(payload: ComposeAssistRequest):
                 raise ValueError("AI 没有返回可用正文")
             from ...mail_evidence import compose_checks
             checks = compose_checks(parts['subject'] + '\n' + parts['body'], '\n'.join((payload.subject,payload.body_text,payload.original_text,payload.user_instruction)))
+            from ...companion_growth import safe_record
+            from uuid import uuid4
+            safe_record('tool', key=f'writing:{uuid4()}')
             yield json.dumps({"type": "done", "content": parts["body"],
                               "subject": parts["subject"] if structured else "",
                               "signoff": parts["signoff"] if structured else "", "basis": basis, 'checks':checks}, ensure_ascii=False) + "\n"

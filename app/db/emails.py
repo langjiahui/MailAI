@@ -80,6 +80,10 @@ def already_processed(folder: str, uid: int) -> bool:
 def finish_email_processing(email_id: int):
     with conn() as c:
         c.execute("UPDATE emails SET processing_complete=1 WHERE id=?", (email_id,))
+        row = c.execute("SELECT message_id,arrival_kind,status FROM emails WHERE id=?", (email_id,)).fetchone()
+        if row and row['arrival_kind'] == 'new' and row['status'] == 'inbox':
+            from ..companion_growth import safe_record
+            safe_record('received', key=row['message_id'] or f'email:{email_id}', connection=c)
 
 
 def claim_mail_notification(email_id: int) -> bool:
