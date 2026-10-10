@@ -383,7 +383,8 @@ def safe_record(kind, *, key='', connection=None):
             # Roll back partial optional awards without touching the mail transaction.
             connection.execute('SAVEPOINT companion_award')
             try:
-                identity = connection.execute('SELECT namespace FROM companion_source').fetchone()
+                identity = connection.execute('SELECT namespace FROM companion_source').fetchone() if connection.execute(
+                    "SELECT 1 FROM sqlite_master WHERE name='companion_source'").fetchone() else None
                 connection.execute('INSERT OR IGNORE INTO companion_award_outbox VALUES(?,?,?,?,?)',
                                    (uuid4().hex, kind, key, identity[0] if identity else _namespace(), _now().isoformat()))
             except Exception:
