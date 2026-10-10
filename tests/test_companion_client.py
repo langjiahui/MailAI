@@ -13,7 +13,21 @@ from app import config, db, companion_growth as growth
 from app.account_context import use
 
 
+def test_first_store_initialization():
+    with tempfile.TemporaryDirectory() as temp:
+        account = dict(ACCOUNT_ID='first',DB_PATH=str(Path(temp)/'mailai.db'),IMAP_USER='first@example.test')
+        with patch.object(config,'DATA_DIR',temp), use(account):
+            db.init_db()
+            growth.store_path().touch()  # Another request has opened the file, before creating its tables.
+            with db.conn() as c:
+                growth.safe_record('sent',key='first-committed-send',connection=c)
+            result = growth.snapshot()
+            assert result['xp'] == 20 and result['today']['counts']['sent'] == 1
+            assert growth.snapshot() == result
+
+
 def main():
+    test_first_store_initialization()
     now = datetime(2026, 10, 10, 10, tzinfo=timezone(timedelta(hours=8)))
     with tempfile.TemporaryDirectory() as temp:
         root = Path(temp)

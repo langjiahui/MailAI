@@ -369,16 +369,23 @@ def safe_record(kind, *, key='', connection=None):
     try:
         if connection is not None:
             if store_path().is_file():
-                with closing(sqlite3.connect(store_path(), timeout=2)) as preferences:
-                    if not preferences.execute('SELECT enabled FROM companion_profile WHERE id=1').fetchone()[0]:
-                        return
+                try:
+                    with closing(sqlite3.connect(store_path(), timeout=2)) as preferences:
+                        preference = preferences.execute('SELECT enabled FROM companion_profile WHERE id=1').fetchone()
+                        if preference and not preference[0]:
+                            return
+                except sqlite3.DatabaseError:
+                    # Another request may still be creating the client store.
+                    # Keep a committed mail reward queued until it is ready.
+                    log.debug('小邮客户端存储尚未准备好，成长记录进入待入账队列')
             if not connection.in_transaction:
                 connection.execute('BEGIN')
             # Roll back partial optional awards without touching the mail transaction.
             connection.execute('SAVEPOINT companion_award')
             try:
+                identity = connection.execute('SELECT namespace FROM companion_source').fetchone()
                 connection.execute('INSERT OR IGNORE INTO companion_award_outbox VALUES(?,?,?,?,?)',
-                                   (uuid4().hex, kind, key, _namespace(), _now().isoformat()))
+                                   (uuid4().hex, kind, key, identity[0] if identity else _namespace(), _now().isoformat()))
             except Exception:
                 connection.execute('ROLLBACK TO companion_award')
                 raise
