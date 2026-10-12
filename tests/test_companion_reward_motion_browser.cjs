@@ -33,6 +33,7 @@ const {chromium,webkit} = require('playwright');
     await preview.locator('[data-pet-preview-play]').click();
     await page.waitForFunction(()=>getComputedStyle(document.querySelector('.pet-live-art .pet-wing-left')).animationPlayState==='paused');
     await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    assert.equal(await preview.locator('.companion-eyes').evaluate(n=>getComputedStyle(n).animationPlayState),'paused','Pause includes the normal blink');
     const frozen=await wing.evaluate(n=>getComputedStyle(n).transform);
     await page.waitForTimeout(180);
     assert.equal(await wing.evaluate(n=>getComputedStyle(n).transform),frozen,'Pause must freeze the preview');
@@ -62,6 +63,15 @@ const {chromium,webkit} = require('playwright');
     await page.waitForTimeout(120);
     const running=await preview.locator('.pet-star').first().evaluate(n=>getComputedStyle(n).animationPlayState);
     assert.equal(running,'running');
+    const originalAppearance=await page.evaluate(()=>({petStyle:document.body.dataset.petStyle,petAccessory:document.body.dataset.petAccessory,petEffect:document.body.dataset.petEffect}));
+    for(const style of ['nature','ranger']) {
+      for(const [slot,item,part] of [['petAccessory','wings','.pet-wing-left'],['petAccessory','mech_wings','.pet-mech-left'],['petEffect','sparkles','.pet-star'],['petEffect','orbit','.pet-orbit-stream'],['petEffect','aurora','.pet-aurora-ripple'],['petEffect','lightning','.pet-bolt']]) {
+        await page.evaluate(({style,slot,item})=>{document.body.dataset.petStyle=style;document.body.dataset[slot]=item;},{style,slot,item});
+        const node=page.locator('#assistant-orb .mail-companion '+part).first();
+        assert.notEqual(await node.evaluate(n=>getComputedStyle(n).animationName),'none',`${style}/${item} must animate when equipped on the real companion`);
+      }
+    }
+    await page.evaluate(saved=>Object.assign(document.body.dataset,saved),originalAppearance);
     await dialog.locator('.pet-journal-body').evaluate(n=>n.scrollTop=n.scrollHeight);
     await page.waitForTimeout(200);
     assert.equal(await preview.locator('.pet-star').first().evaluate(n=>getComputedStyle(n).animationPlayState),'paused','Offscreen preview must stop');

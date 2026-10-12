@@ -30432,8 +30432,8 @@ document.getElementById('task-center-list').addEventListener('click', async even
       <path class="growth-ranger-collar" d="m31 72 7-5 7 7 11 5 11-5 7-7 7 5-7 7-7-1-11 6-11-6-7 1Z" fill="#446780" stroke="#264C67" stroke-width="1.2"/>
       <path class="growth-ranger-badge" d="m38 79 5 5-5 5-5-5Z" fill="#83D5E3" stroke="#417C9D"/>
       <g class="growth-jacket" fill="#41607B" stroke="#294459" stroke-width="1.4"><path d="m28 72 10-5 7 9 11 4 11-4 7-9 10 5-4 16-23 7-24-7Z"/><path class="pet-reward-motion pet-jacket-trace" d="m38 70 7 10 11 4 11-4 7-10" fill="none" stroke="#8FB7D0"/><path d="M56 84v10" stroke="#294459" stroke-width="2"/></g>
-      <g class="growth-armor" fill="#587C93" stroke="#2C4E65" stroke-width="1.5"><path d="m26 72 10-5 8 5 12 4 12-4 8-5 10 5-6 12-9-4-3 12-12 6-12-6-3-12-9 4Z"/><path d="m45 80 11 4 11-4-3 11-8 3-8-3Z" fill="#304D67"/><path class="pet-reward-motion pet-armor-core" d="m53 81 7 0-5 6h5l-8 6 3-6h-5Z" fill="#91EAF0" stroke="none"/></g>
-      <g class="growth-scarf" fill="#EDAE87" stroke="#C88360"><path d="M32 68q24 10 48 0l-1 8q-23 9-46 0Z"/><path class="pet-reward-motion pet-scarf-tail" d="m65 76 10 2-2 15-10-5Z"/></g>
+      <g class="growth-armor" fill="#587C93" stroke="#2C4E65" stroke-width="1.5"><path d="m26 72 10-5 8 5 12 4 12-4 8-5 10 5-6 12-9-4-3 12-12 6-12-6-3-12-9 4Z"/><path d="m45 80 11 4 11-4-3 11-8 3-8-3Z" fill="#304D67"/><path class="pet-reward-motion pet-armor-core" d="m36 77 8 0-5 6h5l-9 7 3-7h-5Z" fill="#91EAF0" stroke="none"/></g>
+      <g class="growth-scarf" fill="#EDAE87" stroke="#C88360"><path d="M32 68q24 10 48 0l-1 8q-23 9-46 0Z"/><path class="pet-reward-motion pet-scarf-tail" d="m34 76 10 2-2 18-12-4Z"/></g>
       <path class="growth-medal" d="m39 77 2 4 4 .5-3 3 .5 4-3.5-2-3.5 2 .5-4-3-3 4-.5Z" fill="#F3CE72" stroke="#B99E65"/>
       <path d="M32 71 77 89" stroke="#528A6C" stroke-width="3"/>
       <g class="companion-bag"><g transform="rotate(12 65 82)"><rect x="51" y="73" width="30" height="20" rx="5" fill="#FFF5D9" stroke="#B99E65" stroke-width="1.3"/><path d="m54 77 12 8 12-8" stroke="#B99E65" stroke-width="1.5" stroke-linejoin="round"/><path class="pet-reward-motion pet-satchel-glint" d="M54 75h24" stroke="#FFF7C9" stroke-width="2" stroke-linecap="round"/></g></g>
@@ -30973,7 +30973,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
       if (button.dataset.petPreview) return selectPreview(button.dataset.petPreview, true);
       if (button.hasAttribute('data-pet-preview-close')) {
         previewOpen = false;
-        dialog.querySelector('.pet-live-preview').hidden = true;
+        dialog.querySelector('.pet-live-preview').hidden = true; message('');
         dialog.querySelector(`[data-pet-preview="${previewItem}"]`)?.focus();
         return;
       }

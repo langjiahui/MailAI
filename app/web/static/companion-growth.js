@@ -182,7 +182,7 @@
       if (button.dataset.petPreview) return selectPreview(button.dataset.petPreview, true);
       if (button.hasAttribute('data-pet-preview-close')) {
         previewOpen = false;
-        dialog.querySelector('.pet-live-preview').hidden = true;
+        dialog.querySelector('.pet-live-preview').hidden = true; message('');
         dialog.querySelector(`[data-pet-preview="${previewItem}"]`)?.focus();
         return;
       }

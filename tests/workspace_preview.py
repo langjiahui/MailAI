@@ -65,6 +65,10 @@ def main():
             c.execute("UPDATE companion_profile SET xp=3530,stamps=1800,earned=1800,streak=0,last_day='' WHERE id=1")
             c.execute('DELETE FROM companion_days')
             c.execute('DELETE FROM companion_events')
+    if os.environ.get('MAILAI_REWARD_MOTION_FIXTURE') == '1':
+        from app import companion_growth
+        with companion_growth.connection() as c:
+            c.execute("UPDATE companion_profile SET xp=20000,stamps=10000,earned=10000,enabled=0 WHERE id=1")
     class FakeMail:
         def __enter__(self): return self
         def __exit__(self,*args): pass
@@ -131,8 +135,9 @@ def main():
     server.app.router.on_startup.clear()
     from app.mailbox_jobs import start_outbox
     start_outbox()
-    print('ISOLATED_FIXTURE http://127.0.0.1:18795',flush=True)
-    uvicorn.run(server.app,host='127.0.0.1',port=18795,log_level='warning')
+    port = int(os.environ.get('MAILAI_FIXTURE_PORT', '18795'))
+    print(f'ISOLATED_FIXTURE http://127.0.0.1:{port}',flush=True)
+    uvicorn.run(server.app,host='127.0.0.1',port=port,log_level='warning')
 
 
 if __name__ == '__main__':

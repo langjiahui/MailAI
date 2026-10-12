@@ -160,6 +160,8 @@ jobs:
           node tests/test_companion_growth_recovery_browser.cjs
           node tests/test_companion_reward_motion_browser.cjs
           MAILAI_BROWSER=webkit node tests/test_companion_reward_motion_browser.cjs
+          node tests/test_companion_equipped_motion_browser.cjs
+          MAILAI_BROWSER=webkit node tests/test_companion_equipped_motion_browser.cjs
           stop_fixture
           start_fixture
           node tests/test_reward_themes_browser.cjs
