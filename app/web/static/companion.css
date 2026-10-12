@@ -24,7 +24,8 @@ html[data-theme="dark"] .compose-edge-tools .compose-ai-main.compose-perch .comp
   position:relative; display:block; grid-row:1 / -1; width:64px; height:48px;
   align-self:end; margin-top:-8px; border-bottom:2px solid #71a68e;
 }
-.compose-perch-art .mail-companion { overflow:hidden; transform-origin:50% 100%; animation:perch-peek 6s ease-in-out infinite; }
+.compose-perch-art .mail-companion { overflow:visible; transform-origin:50% 100%; animation:perch-peek 6s ease-in-out infinite; }
+.compose-perch-art .mail-companion :is(.companion-foot-left,.companion-foot-right,.growth-cape) { display:none; }
 .compose-perch-art .companion-bag,.compose-perch-art .companion-shadow,
 .compose-perch-art .companion-arm-left,.compose-perch-art .companion-wave { display:none; }
 .perch-paw { position:absolute; bottom:-4px; width:13px; height:9px; background:#b5ddc5; border:1.5px solid #649f80; border-radius:6px; box-shadow:0 2px 2px #254b3a18; }
@@ -62,6 +63,7 @@ html[data-theme="dark"] .compose-ai-tools .compose-perch:hover { background:#305
 .companion-wave { transform-origin:86px 68px; }
 .companion-caption { position:absolute; bottom:calc(100% + 4px); right:0; width:max-content; max-width:220px; padding:7px 11px; border:1px solid #e2ebe5; border-radius:11px 11px 3px 11px; background:#fff; color:#4b6c59; box-shadow:0 4px 15px #234d3910; font-size:11px; font-weight:500; opacity:0; visibility:hidden; transform:translateY(3px); transition:opacity .15s,transform .15s; pointer-events:none; }
 .assistant-orb:hover .companion-caption,.assistant-orb:focus-visible .companion-caption,.state-thinking .companion-caption,.companion-finished .companion-caption { opacity:1; visibility:visible; transform:none; }
+body.companion-working .assistant-orb .companion-caption { opacity:1; visibility:visible; transform:none; }
 .mail-assistant:has(.assistant-nudge:not(.hidden)) .companion-caption { opacity:0; visibility:hidden; }
 .mail-assistant .assistant-nudge { bottom:88px; font-size:12px; background:#fff; border-color:#e1ebe5; box-shadow:0 7px 24px #294a3914; }
 .mail-assistant .assistant-badge { right:0; top:3px; min-width:19px; height:19px; padding:0 4px; border:2px solid #fff; font-size:9px; box-shadow:none; background:#bf6358; }
@@ -72,6 +74,11 @@ html[data-theme="dark"] .compose-ai-tools .compose-perch:hover { background:#305
 .state-thinking .companion-thinking circle,.compose-ai-panel.is-thinking .companion-thinking circle { animation:courier-think 1.4s ease-in-out infinite; }
 .state-thinking .companion-thinking circle:nth-child(2) { animation-delay:.18s; }
 .state-thinking .companion-thinking circle:nth-child(3) { animation-delay:.36s; }
+body.companion-working .companion-thinking { display:block; }
+body.companion-working .companion-thinking circle { animation:courier-think 1.4s ease-in-out infinite; }
+body.companion-working .companion-thinking circle:nth-child(2) { animation-delay:.18s; }
+body.companion-working .companion-thinking circle:nth-child(3) { animation-delay:.36s; }
+body.companion-working .compose-perch .mail-companion { animation:none; transform:none; }
 .state-warn .companion-alert { display:block; color:#cb943e; }
 .state-danger .companion-alert { display:block; color:#c76156; }
 .state-warn .companion-smile,.state-danger .companion-smile { transform:scaleY(.35); transform-origin:56px 60px; }

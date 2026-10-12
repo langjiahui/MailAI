@@ -4,7 +4,9 @@
   --select-focus: rgba(47, 125, 95, .17);
 }
 
-html body select:not(.hidden):not([multiple]) {
+/* Match themed form resets without replacing the native menu or keyboard input. */
+html body select:not(.hidden):not([multiple]),
+html[data-theme] body select:not(.hidden):not([multiple]) {
   -webkit-appearance: none;
   appearance: none;
   padding-inline-end: 32px;
@@ -78,10 +80,16 @@ html body .list-sort select {
 }
 
 /* Dense editor dropdowns keep their compact footprint. */
-html body .compose-format-tools select:not(.hidden) {
+html body .compose-format-tools select:not(.hidden),
+html[data-theme] body .compose-format-tools select:not(.hidden) {
   padding-inline-end: 22px;
   background-position: right 6px center !important;
   background-size: 11px 11px !important;
+}
+
+/* The saved-search control has its own ID-level padding reset. */
+html body .productivity-dialog #productivity-saved-search {
+  padding-inline-end: 32px !important;
 }
 
 @media (max-width: 620px) {

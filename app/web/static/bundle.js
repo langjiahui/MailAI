@@ -1576,6 +1576,9 @@ if (typeof document !== 'undefined') {
 /* ---- i18n-catalog.js ---- */
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "digest.waitTimeout": ["日报生成等待超时，请点击刷新重试；已保存的日报仍在。", "Report generation timed out. Select Refresh to retry. Saved reports are kept."],
+  "digest.streamInterrupted": ["日报连接提前中断，请点击刷新重试；未完成内容不会覆盖已保存的日报。", "The report connection ended before completion. Select Refresh to retry. Partial output will not replace a saved report."],
+  "digest.saveFailed": ["日报保存失败，请点击刷新重试；原有日报仍保留", "Could not save the report. Select Refresh to retry. Your previous report is kept."],
   "pet.gifts": ["领取礼物", "Gifts"],
   "pet.tab.today": ["今日", "Today"],
   "pet.tab.journey": ["进化", "Stages"],
@@ -19443,6 +19446,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
   let answer = '', sources = [], completed = false, pendingAction = null;
   let paintTimer = null;
   const streamDeadline = setTimeout(() => controller.abort(), 360000);
+  const finishCompanionWork = globalThis.mailaiCompanionWork?.begin(controller.signal);
   const validAnswer = () => answer.replace(/\[email_id:(\d+)\]/g, (match, id) => sources.some(s => String(s.id) === id) ? match : mailaiText('（来源未核实）'));
   const paint = () => {
     bubble.classList.remove('assistant-progress-bubble');
@@ -19511,6 +19515,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
     bubble.insertAdjacentHTML('beforeend', `<p class="operation-note">${controller.signal.aborted ? mailaiText('已停止，已生成内容保留。') : esc(mailaiSystemMessage(error.message) || mailaiText('分析中断，已生成内容保留。可以重试。'))}</p>`);
     document.getElementById('assistant-retry').classList.remove('hidden');
   } finally {
+    finishCompanionWork?.();
     clearTimeout(paintTimer);
     clearTimeout(streamDeadline);
     controller.abort();
@@ -20187,6 +20192,7 @@ async function generateSignatures(button) {
   const profile = signatureProfileFromForm();
   if (!profile.name && !profile.email) return toast(mailaiText('请至少填写姓名或邮箱'), 'warn');
   setLoading(button, true, mailaiText('AI 生成中…'));
+  const finishCompanionWork = globalThis.mailaiCompanionWork?.begin();
   try {
     const result = await api('/api/mail/signatures/generate', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({profile,style:document.getElementById('signature-ai-style').value})});
     const host = document.getElementById('signature-ai-options');
@@ -20194,7 +20200,7 @@ async function generateSignatures(button) {
     host._options = result.options;
     host.classList.remove('hidden');
   } catch (err) { toast(mailaiText('AI 签名生成失败：') + mailaiSystemMessage(err.message), 'error'); }
-  finally { setLoading(button, false); }
+  finally { finishCompanionWork?.(); setLoading(button, false); }
 }
 
 function quoteOriginal(e, mode) {
@@ -20724,6 +20730,7 @@ function normalizeComposeAiSuggestion(result, separateSections, hasSignature) {
 async function streamComposeAssist(payload, onDelta, current) {
   const controller = new AbortController();
   composeAiController = controller;
+  const finishCompanionWork = globalThis.mailaiCompanionWork?.begin(controller.signal);
   try {
     const response = await fetch('/api/mail/compose/assist-stream', {method:'POST', signal:controller.signal,
       headers:{'Content-Type':'application/json', 'X-MailAI-Account':composeAccountId || ''}, body:JSON.stringify(payload)});
@@ -20759,6 +20766,7 @@ async function streamComposeAssist(payload, onDelta, current) {
     return completed;
   } finally {
     controller.abort();
+    finishCompanionWork?.();
     if (composeAiController === controller) composeAiController = null;
   }
 }
@@ -20825,7 +20833,11 @@ async function aiCompose(operation, button) {
       length: document.getElementById('compose-ai-length').value,
       has_signature: Boolean(currentSignatureId || document.getElementById('compose-signature-content').innerText.trim()),
     };
-    const assist = payload => api('/api/mail/compose/assist', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const assist = async payload => {
+      const finishWork = globalThis.mailaiCompanionWork?.begin();
+      try { return await api('/api/mail/compose/assist', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); }
+      finally { finishWork?.(); }
+    };
     const renderPreview = suggestion => {
       const previewParts = [];
       if (suggestion.subject) previewParts.push(`<section class="ai-result-section ai-result-subject"><header><b><span data-i18n="ui.95f3addc578e">建议主题</span></b><button type="button" data-ai-fill="subject"><span data-i18n="ui.0e6065f49212">填入主题</span></button></header><p>${esc(suggestion.subject)}</p></section>`);
@@ -25473,6 +25485,7 @@ async function openDigestModal() {
   const loaded = await loadDigestHistory(accountId);
   if (!digestViewCurrent(revision, accountId)) return;
   if (!loaded) { mailaiBindUI(document.getElementById('digest-body'), "textContent", () => (mailaiText('日报历史加载失败，请关闭后重试；已保存的日报不会被删除。'))); return; }
+  if (digestGenerationJobs.has(accountId)) { await generateDigest(); return; }
   // 默认显示今天的日报：优先从历史记录里取，没有才提示生成
   const today = localDateKey();
   const todayDigest = _digestHistory.find(d => d.digest_date === today);
@@ -25500,50 +25513,66 @@ function showDigestGeneratePrompt() {
 // 日报流式生成：NDJSON 逐段渲染，服务端在完整生成后才落库
 function streamDigestGeneration(accountId, onDelta) {
   return (async () => {
-    const response = await fetch('/api/digest/stream', {headers: {'X-MailAI-Account': accountId || ''}});
-    if (!response.ok || !response.body) {
-      const detail = await response.json().catch(() => ({}));
-      throw new Error(typeof detail.detail === 'string' ? detail.detail : mailaiTemplate`请求未完成（${response.status}），请稍后重试`);
-    }
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let pending = '', text = '', digest = '', paintTimer = null;
-    const paint = () => { if (onDelta) onDelta(text); };
-    const fail = message => { const err = new Error(message || (mailaiT('digest.failedToast') || '日报生成失败')); err.partial = text; throw err; };
+    const controller = new AbortController();
+    const finishCompanionWork = globalThis.mailaiCompanionWork?.begin(controller.signal);
+    let reader, paintTimer = null, text = '', digest = '', completed = false, timedOut = false, timeoutId;
+    const timeoutError = () => new Error(mailaiT('digest.waitTimeout') || '日报生成等待超时，请点击刷新重试；已保存的日报仍在。');
+    const deadline = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => {
+        timedOut = true;
+        reject(timeoutError());
+        controller.abort();
+      }, 90000);
+    });
+    const bounded = action => Promise.race([action, deadline]);
+    const paint = () => { if (text && onDelta) onDelta(text); };
+    const eventLine = line => {
+      if (!line.trim()) return;
+      const event = JSON.parse(line);
+      if (event.type === 'delta') {
+        if (typeof event.content !== 'string') throw new Error((mailaiT('digest.streamInterrupted') || '日报连接提前中断，请点击刷新重试；未完成内容不会覆盖已保存的日报。'));
+        const firstDelta = !text.trim();
+        text += event.content;
+        if (text.length > 200000) throw new Error(mailaiT('digest.tooLong') || '日报内容异常，请重试');
+        if (firstDelta) paint();
+        else if (!paintTimer) paintTimer = setTimeout(() => { paintTimer = null; paint(); }, 120);
+      } else if (event.type === 'done') {
+        digest = typeof event.digest === 'string' ? event.digest : text;
+        completed = true;
+      } else if (event.type === 'error') throw new Error(event.message || (mailaiT('digest.streamInterrupted') || '日报连接提前中断，请点击刷新重试；未完成内容不会覆盖已保存的日报。'));
+    };
     try {
-      while (true) {
-        const {value, done} = await reader.read();
+      const response = await bounded(fetch('/api/digest/stream', {signal:controller.signal,headers: {'X-MailAI-Account': accountId || ''}}));
+      if (!response.ok || !response.body) {
+        const detail = await bounded(response.json().catch(() => ({})));
+        throw new Error(typeof detail.detail === 'string' ? detail.detail : mailaiTemplate`请求未完成（${response.status}），请稍后重试`);
+      }
+      reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let pending = '';
+      while (!completed) {
+        const {value, done} = await bounded(reader.read());
         pending += decoder.decode(value || new Uint8Array(), {stream: !done});
         const lines = pending.split('\n'); pending = lines.pop() || '';
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          const event = JSON.parse(line);
-          if (event.type === 'delta') {
-            const firstDelta = !text.trim();
-            text += event.content || '';
-            if (text.length > 200000) fail(mailaiT('digest.tooLong') || '日报内容异常，请重试');
-            // 每个 token 都重建 Markdown DOM 会占满 UI 线程：首个片段立刻上屏，其余按帧合并
-            if (firstDelta) paint();
-            else if (!paintTimer) paintTimer = setTimeout(() => { paintTimer = null; paint(); }, 120);
-          } else if (event.type === 'done') digest = event.digest || text;
-          else if (event.type === 'error') fail(event.message);
-        }
-        if (done) break;
+        if (pending.length > 250000) throw new Error(mailaiT('digest.tooLong') || '日报内容异常，请重试');
+        for (const line of lines) { eventLine(line); if (completed) break; }
+        if (done) { if (!completed && pending.trim()) eventLine(pending); break; }
       }
-      if (pending.trim()) {
-        const event = JSON.parse(pending);
-        if (event.type === 'done') digest = event.digest || text;
-        else if (event.type === 'error') fail(event.message);
-      }
+      if (!completed || !digest.trim()) throw new Error((mailaiT('digest.streamInterrupted') || '日报连接提前中断，请点击刷新重试；未完成内容不会覆盖已保存的日报。'));
+      paint();
+      return {digest};
+    } catch (error) {
+      if (timedOut) error = timeoutError();
+      error.partial = text;
+      throw error;
     } finally {
-      clearTimeout(paintTimer);
+      clearTimeout(paintTimer); clearTimeout(timeoutId);
+      reader?.cancel?.().catch(() => {});
+      controller.abort();
+      finishCompanionWork?.();
     }
-    paint();
-    if (!digest.trim()) fail(mailaiT('digest.failedToast') || '日报生成失败');
-    return {digest};
   })();
 }
-
 async function generateDigest() {
   const revision = nextDigestView();
   const accountId = _digestAccountId || activeMailAccount()?.id || '';
@@ -25555,13 +25584,23 @@ async function generateDigest() {
   try {
     let job = digestGenerationJobs.get(accountId);
     if (!job) {
-      job = streamDigestGeneration(accountId, text => {
-        if (digestViewCurrent(revision, accountId)) document.getElementById('digest-body').innerHTML = renderDigest(text);
+      job = {text:'',onDelta:null,promise:null};
+      job.promise = streamDigestGeneration(accountId, text => {
+        job.text = text; job.onDelta?.(text);
       });
       digestGenerationJobs.set(accountId, job);
-      job.finally(() => { if (digestGenerationJobs.get(accountId) === job) digestGenerationJobs.delete(accountId); }).catch(() => {});
+      job.promise.finally(() => {
+        if (digestGenerationJobs.get(accountId) === job) digestGenerationJobs.delete(accountId);
+        if (!digestGenerationJobs.size) setLoading(btn, false);
+      }).catch(() => {});
     }
-    const data = await job;
+    // Refresh/reopen attaches to the latest view, keeping the current text and
+    // sharing one server request instead of binding deltas to a stale revision.
+    job.onDelta = text => {
+      if (digestViewCurrent(revision, accountId)) document.getElementById('digest-body').innerHTML = renderDigest(text);
+    };
+    if (job.text) job.onDelta(job.text);
+    const data = await job.promise;
     if (!digestViewCurrent(revision, accountId)) return;
     document.getElementById('digest-body').innerHTML = renderDigest(data.digest);
     toast(mailaiT('digest.done') || '日报生成完毕', 'success');
@@ -25581,6 +25620,7 @@ async function generateDigest() {
       const parsed = JSON.parse(msg);
       if (parsed.detail) msg = parsed.detail;
     } catch {}
+    msg = mailaiSystemMessage(msg);
     // 流式生成中途失败时保留已生成的内容，只在下方提示中断原因
     if (e.partial) {
       document.getElementById('digest-body').innerHTML = renderDigest(e.partial) + `<p class="operation-note">${esc(msg)}</p>`;
@@ -30583,6 +30623,24 @@ document.getElementById('task-center-list').addEventListener('click', async even
   });
   const root = document.getElementById('mail-assistant');
   const orb = document.getElementById('assistant-orb');
+  // Each actual model request owns its finish callback. Overlapping requests
+  // cannot stop each other's animation, and abort releases its activity at once.
+  const work = new Set();
+  window.mailaiCompanionWork = {
+    begin(signal) {
+      const token = {};
+      const finish = () => {
+        signal?.removeEventListener('abort',finish);
+        if (!work.delete(token)) return;
+        document.body.classList.toggle('companion-working',work.size>0);
+      };
+      if (signal?.aborted) return finish;
+      work.add(token);
+      document.body.classList.add('companion-working');
+      signal?.addEventListener('abort',finish,{once:true});
+      return finish;
+    },
+  };
   const caption = document.getElementById('companion-caption-copy');
   const toggle = document.getElementById('companion-motion');
   const key = 'mailai-companion-motion';
@@ -30597,8 +30655,19 @@ document.getElementById('task-center-list').addEventListener('click', async even
   const perch = document.getElementById('btn-compose-ai');
   const perchArt = perch?.querySelector('.compose-perch-art');
   if (perchArt) {
-    // Crop the shared character at the waist; the paws sit over the window ledge.
+    // Keep the body behind the ledge, while wings and effects can extend beyond
+    // the cropped portrait viewport. Both wings still follow the shared torso rig.
     perchArt.innerHTML = art.replace('viewBox="0 0 112 112"', 'viewBox="15 6 82 70"') + '<i class="perch-paw perch-paw-left"></i><i class="perch-paw perch-paw-right"></i>';
+    const perchSvg = perchArt.querySelector('.mail-companion');
+    perchSvg.insertAdjacentHTML('afterbegin', '<defs><clipPath id="mailai-perch-body-clip" clipPathUnits="userSpaceOnUse"><rect x="-112" y="-112" width="336" height="188"/></clipPath></defs>');
+    const perchTorso = perchSvg.querySelector('.companion-torso');
+    const perchBody = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    perchBody.setAttribute('class', 'companion-perch-body');
+    perchBody.setAttribute('clip-path', 'url(#mailai-perch-body-clip)');
+    for (const part of Array.from(perchTorso.children)) {
+      if (!part.matches('.growth-wings,.growth-mech-wings')) perchBody.appendChild(part);
+    }
+    perchTorso.appendChild(perchBody);
     const resetLook = () => { perch.style.removeProperty('--look-x'); perch.style.removeProperty('--look-y'); };
     document.querySelector('.compose-card').addEventListener('pointermove', event => {
       if (!toggle.checked || reducedMotion.matches || event.pointerType === 'touch') return resetLook();
@@ -30617,18 +30686,20 @@ document.getElementById('task-center-list').addEventListener('click', async even
     orb.style.setProperty('--look-y', `${Math.max(-1.5, Math.min(1.5, (event.clientY - bounds.top - bounds.height / 2) / 18))}px`);
   });
   orb.addEventListener('pointerleave', () => { orb.style.removeProperty('--look-x'); orb.style.removeProperty('--look-y'); });
-  let previous = '', successTimer;
+  let previous = '', successTimer, wasWorking = false;
   const sync = () => {
-    const state = ['thinking', 'danger', 'warn'].find(value => root.classList.contains(`state-${value}`)) || 'calm';
+    const working = document.body.classList.contains('companion-working');
+    const state = working ? 'thinking' : ['thinking', 'danger', 'warn'].find(value => root.classList.contains(`state-${value}`)) || 'calm';
     if (state !== previous) {
       clearTimeout(successTimer);
       root.classList.remove('companion-finished');
-      if (previous === 'thinking' && state === 'calm' && root.dataset.answerComplete === 'true') {
+      if (previous === 'thinking' && state === 'calm' && root.dataset.answerComplete === 'true' && !wasWorking) {
         root.classList.add('companion-finished');
         successTimer = setTimeout(() => { root.classList.remove('companion-finished'); sync(); }, 3000);
       }
       previous = state;
     }
+    wasWorking = working;
     const label = root.classList.contains('companion-finished') ? mailaiText('整理好了，来看看') : {
       get calm() { return mailaiText('小邮在这里'); }, get thinking() { return mailaiText('正在帮你整理'); }, get warn() { return mailaiText('有邮件需要留意'); }, get danger() { return mailaiText('有高风险邮件待核实'); },
     }[state];
@@ -30661,6 +30732,12 @@ document.getElementById('task-center-list').addEventListener('click', async even
   const neutral = [0,0,0,1,1];
   const pose = (x=0,y=0,r=0,sx=1,sy=1) => [x,y,r,sx,sy];
   const clips = {
+    work: {duration:1800,frames:[
+      [0,{}], [.18,{torso:pose(0,1,-2),head:pose(0,1,-5),wave:pose(0,0,-12)}],
+      [.38,{torso:pose(0,-.5,1),head:pose(0,-1,3),wave:pose(0,-1,-28),'arm-left':pose(0,0,6)}],
+      [.58,{torso:pose(0,1,-1),head:pose(0,1,-4),wave:pose(0,0,-13),'arm-left':pose(0,0,-4)}],
+      [.78,{torso:pose(0,-.5,1),head:pose(0,-1,2),wave:pose(0,-1,-24)}], [1,{}],
+    ]},
     peek: {duration:2000, frames:[
       [0,{}], [.12,{head:pose(-2,0,-6)}],
       [.28,{torso:pose(-2,0,-5),head:pose(-3,-1,-7),wave:pose(0,0,9)}],
@@ -30709,9 +30786,9 @@ document.getElementById('task-center-list').addEventListener('click', async even
   };
   // The startup mascot has its own strictly horizontal hand-off. Excluding it
   // here prevents the ambient character clips from adding vertical movement.
-  const rigs = [...document.querySelectorAll('.mail-companion')].filter(svg => !svg.closest('.compose-perch,.app-preloader')).map(svg => ({
+  const rigs = [...document.querySelectorAll('.mail-companion')].filter(svg => !svg.closest('.app-preloader')).map(svg => ({
     svg, parts:Object.fromEntries(names.map(name=>[name,svg.querySelector(`.companion-${name}`)])),
-    animations:[],timer:0,mode:'',next:0,
+    animations:[],timer:0,mode:'',next:0,perch:!!svg.closest('.compose-perch'),
   }));
   const enabled = () => !document.hidden && !reduced.matches && !document.body.classList.contains('companion-still') && !document.body.classList.contains('companion-paused');
   const visible = rig => rig.svg.getClientRects().length && getComputedStyle(rig.svg).visibility !== 'hidden';
@@ -30738,10 +30815,10 @@ document.getElementById('task-center-list').addEventListener('click', async even
       });
       // Preserve the actual pose when interrupted, avoiding snaps on hover/state changes.
       keys[0].transform=start[part];
-      const anim=rig.parts[part].animate(keys,{duration:clip.duration,fill:'none'});
+      const anim=rig.parts[part].animate(keys,{duration:clip.duration,fill:'none',iterations:name==='work'?Infinity:1});
       rig.animations.push(anim);
     }
-    rig.timer=setTimeout(()=>{rig.animations=[];if(after) after();},clip.duration+25);
+    if(name!=='work')rig.timer=setTimeout(()=>{rig.animations=[];if(after) after();},clip.duration+25);
   };
   const schedule = rig => {
     if(!enabled() || !visible(rig)) return;
@@ -30754,20 +30831,22 @@ document.getElementById('task-center-list').addEventListener('click', async even
   const refresh = () => rigs.forEach(rig=>{
     let mode='idle';
     if(!enabled() || !visible(rig)) mode='off';
-    else if(rig.svg.closest('.state-thinking,.compose-ai-panel.is-thinking')) mode='think';
+    else if(document.body.classList.contains('companion-working') || rig.svg.closest('.state-thinking,.compose-ai-panel.is-thinking')) mode='work';
+    else if(rig.perch) mode='off';
     else if(rig.svg.closest('.companion-finished')) mode='happy';
     else if(rig.svg.closest('.state-danger,.state-warn')) mode='attentive';
     if(mode===rig.mode) return;
     rig.mode=mode;
     if(mode==='off') {stop(rig);return;}
-    if(mode==='happy') play(rig,'happy');
+    if(mode==='work') play(rig,'work');
+    else if(mode==='happy') play(rig,'happy');
     else if(mode==='think') play(rig,'think',()=>schedule(rig));
     else play(rig,'peek',()=>schedule(rig));
   });
   let greetingAt=-Infinity;
   const greet=()=>{
     const rig=rigs.find(item=>orb.contains(item.svg));
-    if(!rig || !enabled() || rig.mode==='think' || rig.mode==='happy' || performance.now()-greetingAt<2200) return;
+    if(!rig || !enabled() || rig.mode==='work' || rig.mode==='think' || rig.mode==='happy' || performance.now()-greetingAt<2200) return;
     greetingAt=performance.now();play(rig,'greet',()=>rig.mode==='idle' && schedule(rig));
   };
   orb.addEventListener('pointerenter',greet);
@@ -30868,7 +30947,9 @@ document.getElementById('task-center-list').addEventListener('click', async even
         });
         let declarations='';
         for (const property of rule.style) {
-          if (!/^(?:--|color$|background(?:-color|-image)?$|border(?:-(?:top|right|bottom|left))?(?:-color)?$|outline(?:-color)?$|box-shadow$|text-shadow$|fill$|stroke$|caret-color$|accent-color$|text-decoration-color$)/.test(property)) continue;
+          // A mapped background shorthand resets image geometry too. Preserve
+          // subsequent longhands at the same specificity so icons do not tile.
+          if (!/^(?:--|color$|background(?:-color|-image|-repeat|-position(?:-x|-y)?|-size|-attachment|-origin|-clip)?$|border(?:-(?:top|right|bottom|left))?(?:-color)?$|outline(?:-color)?$|box-shadow$|text-shadow$|fill$|stroke$|caret-color$|accent-color$|text-decoration-color$)/.test(property)) continue;
           if (/^--.*(?:success|danger|warn)/.test(property)) continue;
           const value=rule.style.getPropertyValue(property),mapped=translate(value,property,onAccent);
           // Keep later transparent/currentColor resets in the same cascade as

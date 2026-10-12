@@ -949,6 +949,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
   let answer = '', sources = [], completed = false, pendingAction = null;
   let paintTimer = null;
   const streamDeadline = setTimeout(() => controller.abort(), 360000);
+  const finishCompanionWork = globalThis.mailaiCompanionWork?.begin(controller.signal);
   const validAnswer = () => answer.replace(/\[email_id:(\d+)\]/g, (match, id) => sources.some(s => String(s.id) === id) ? match : mailaiText('（来源未核实）'));
   const paint = () => {
     bubble.classList.remove('assistant-progress-bubble');
@@ -1017,6 +1018,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
     bubble.insertAdjacentHTML('beforeend', `<p class="operation-note">${controller.signal.aborted ? mailaiText('已停止，已生成内容保留。') : esc(mailaiSystemMessage(error.message) || mailaiText('分析中断，已生成内容保留。可以重试。'))}</p>`);
     document.getElementById('assistant-retry').classList.remove('hidden');
   } finally {
+    finishCompanionWork?.();
     clearTimeout(paintTimer);
     clearTimeout(streamDeadline);
     controller.abort();
@@ -1693,6 +1695,7 @@ async function generateSignatures(button) {
   const profile = signatureProfileFromForm();
   if (!profile.name && !profile.email) return toast(mailaiText('请至少填写姓名或邮箱'), 'warn');
   setLoading(button, true, mailaiText('AI 生成中…'));
+  const finishCompanionWork = globalThis.mailaiCompanionWork?.begin();
   try {
     const result = await api('/api/mail/signatures/generate', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({profile,style:document.getElementById('signature-ai-style').value})});
     const host = document.getElementById('signature-ai-options');
@@ -1700,7 +1703,7 @@ async function generateSignatures(button) {
     host._options = result.options;
     host.classList.remove('hidden');
   } catch (err) { toast(mailaiText('AI 签名生成失败：') + mailaiSystemMessage(err.message), 'error'); }
-  finally { setLoading(button, false); }
+  finally { finishCompanionWork?.(); setLoading(button, false); }
 }
 
 function quoteOriginal(e, mode) {
@@ -2230,6 +2233,7 @@ function normalizeComposeAiSuggestion(result, separateSections, hasSignature) {
 async function streamComposeAssist(payload, onDelta, current) {
   const controller = new AbortController();
   composeAiController = controller;
+  const finishCompanionWork = globalThis.mailaiCompanionWork?.begin(controller.signal);
   try {
     const response = await fetch('/api/mail/compose/assist-stream', {method:'POST', signal:controller.signal,
       headers:{'Content-Type':'application/json', 'X-MailAI-Account':composeAccountId || ''}, body:JSON.stringify(payload)});
@@ -2265,6 +2269,7 @@ async function streamComposeAssist(payload, onDelta, current) {
     return completed;
   } finally {
     controller.abort();
+    finishCompanionWork?.();
     if (composeAiController === controller) composeAiController = null;
   }
 }
@@ -2331,7 +2336,11 @@ async function aiCompose(operation, button) {
       length: document.getElementById('compose-ai-length').value,
       has_signature: Boolean(currentSignatureId || document.getElementById('compose-signature-content').innerText.trim()),
     };
-    const assist = payload => api('/api/mail/compose/assist', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const assist = async payload => {
+      const finishWork = globalThis.mailaiCompanionWork?.begin();
+      try { return await api('/api/mail/compose/assist', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); }
+      finally { finishWork?.(); }
+    };
     const renderPreview = suggestion => {
       const previewParts = [];
       if (suggestion.subject) previewParts.push(`<section class="ai-result-section ai-result-subject"><header><b><span data-i18n="ui.95f3addc578e">建议主题</span></b><button type="button" data-ai-fill="subject"><span data-i18n="ui.0e6065f49212">填入主题</span></button></header><p>${esc(suggestion.subject)}</p></section>`);
@@ -6979,6 +6988,7 @@ async function openDigestModal() {
   const loaded = await loadDigestHistory(accountId);
   if (!digestViewCurrent(revision, accountId)) return;
   if (!loaded) { mailaiBindUI(document.getElementById('digest-body'), "textContent", () => (mailaiText('日报历史加载失败，请关闭后重试；已保存的日报不会被删除。'))); return; }
+  if (digestGenerationJobs.has(accountId)) { await generateDigest(); return; }
   // 默认显示今天的日报：优先从历史记录里取，没有才提示生成
   const today = localDateKey();
   const todayDigest = _digestHistory.find(d => d.digest_date === today);
@@ -7006,50 +7016,66 @@ function showDigestGeneratePrompt() {
 // 日报流式生成：NDJSON 逐段渲染，服务端在完整生成后才落库
 function streamDigestGeneration(accountId, onDelta) {
   return (async () => {
-    const response = await fetch('/api/digest/stream', {headers: {'X-MailAI-Account': accountId || ''}});
-    if (!response.ok || !response.body) {
-      const detail = await response.json().catch(() => ({}));
-      throw new Error(typeof detail.detail === 'string' ? detail.detail : mailaiTemplate`请求未完成（${response.status}），请稍后重试`);
-    }
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let pending = '', text = '', digest = '', paintTimer = null;
-    const paint = () => { if (onDelta) onDelta(text); };
-    const fail = message => { const err = new Error(message || (mailaiT('digest.failedToast') || '日报生成失败')); err.partial = text; throw err; };
+    const controller = new AbortController();
+    const finishCompanionWork = globalThis.mailaiCompanionWork?.begin(controller.signal);
+    let reader, paintTimer = null, text = '', digest = '', completed = false, timedOut = false, timeoutId;
+    const timeoutError = () => new Error(mailaiT('digest.waitTimeout') || '日报生成等待超时，请点击刷新重试；已保存的日报仍在。');
+    const deadline = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => {
+        timedOut = true;
+        reject(timeoutError());
+        controller.abort();
+      }, 90000);
+    });
+    const bounded = action => Promise.race([action, deadline]);
+    const paint = () => { if (text && onDelta) onDelta(text); };
+    const eventLine = line => {
+      if (!line.trim()) return;
+      const event = JSON.parse(line);
+      if (event.type === 'delta') {
+        if (typeof event.content !== 'string') throw new Error((mailaiT('digest.streamInterrupted') || '日报连接提前中断，请点击刷新重试；未完成内容不会覆盖已保存的日报。'));
+        const firstDelta = !text.trim();
+        text += event.content;
+        if (text.length > 200000) throw new Error(mailaiT('digest.tooLong') || '日报内容异常，请重试');
+        if (firstDelta) paint();
+        else if (!paintTimer) paintTimer = setTimeout(() => { paintTimer = null; paint(); }, 120);
+      } else if (event.type === 'done') {
+        digest = typeof event.digest === 'string' ? event.digest : text;
+        completed = true;
+      } else if (event.type === 'error') throw new Error(event.message || (mailaiT('digest.streamInterrupted') || '日报连接提前中断，请点击刷新重试；未完成内容不会覆盖已保存的日报。'));
+    };
     try {
-      while (true) {
-        const {value, done} = await reader.read();
+      const response = await bounded(fetch('/api/digest/stream', {signal:controller.signal,headers: {'X-MailAI-Account': accountId || ''}}));
+      if (!response.ok || !response.body) {
+        const detail = await bounded(response.json().catch(() => ({})));
+        throw new Error(typeof detail.detail === 'string' ? detail.detail : mailaiTemplate`请求未完成（${response.status}），请稍后重试`);
+      }
+      reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let pending = '';
+      while (!completed) {
+        const {value, done} = await bounded(reader.read());
         pending += decoder.decode(value || new Uint8Array(), {stream: !done});
         const lines = pending.split('\n'); pending = lines.pop() || '';
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          const event = JSON.parse(line);
-          if (event.type === 'delta') {
-            const firstDelta = !text.trim();
-            text += event.content || '';
-            if (text.length > 200000) fail(mailaiT('digest.tooLong') || '日报内容异常，请重试');
-            // 每个 token 都重建 Markdown DOM 会占满 UI 线程：首个片段立刻上屏，其余按帧合并
-            if (firstDelta) paint();
-            else if (!paintTimer) paintTimer = setTimeout(() => { paintTimer = null; paint(); }, 120);
-          } else if (event.type === 'done') digest = event.digest || text;
-          else if (event.type === 'error') fail(event.message);
-        }
-        if (done) break;
+        if (pending.length > 250000) throw new Error(mailaiT('digest.tooLong') || '日报内容异常，请重试');
+        for (const line of lines) { eventLine(line); if (completed) break; }
+        if (done) { if (!completed && pending.trim()) eventLine(pending); break; }
       }
-      if (pending.trim()) {
-        const event = JSON.parse(pending);
-        if (event.type === 'done') digest = event.digest || text;
-        else if (event.type === 'error') fail(event.message);
-      }
+      if (!completed || !digest.trim()) throw new Error((mailaiT('digest.streamInterrupted') || '日报连接提前中断，请点击刷新重试；未完成内容不会覆盖已保存的日报。'));
+      paint();
+      return {digest};
+    } catch (error) {
+      if (timedOut) error = timeoutError();
+      error.partial = text;
+      throw error;
     } finally {
-      clearTimeout(paintTimer);
+      clearTimeout(paintTimer); clearTimeout(timeoutId);
+      reader?.cancel?.().catch(() => {});
+      controller.abort();
+      finishCompanionWork?.();
     }
-    paint();
-    if (!digest.trim()) fail(mailaiT('digest.failedToast') || '日报生成失败');
-    return {digest};
   })();
 }
-
 async function generateDigest() {
   const revision = nextDigestView();
   const accountId = _digestAccountId || activeMailAccount()?.id || '';
@@ -7061,13 +7087,23 @@ async function generateDigest() {
   try {
     let job = digestGenerationJobs.get(accountId);
     if (!job) {
-      job = streamDigestGeneration(accountId, text => {
-        if (digestViewCurrent(revision, accountId)) document.getElementById('digest-body').innerHTML = renderDigest(text);
+      job = {text:'',onDelta:null,promise:null};
+      job.promise = streamDigestGeneration(accountId, text => {
+        job.text = text; job.onDelta?.(text);
       });
       digestGenerationJobs.set(accountId, job);
-      job.finally(() => { if (digestGenerationJobs.get(accountId) === job) digestGenerationJobs.delete(accountId); }).catch(() => {});
+      job.promise.finally(() => {
+        if (digestGenerationJobs.get(accountId) === job) digestGenerationJobs.delete(accountId);
+        if (!digestGenerationJobs.size) setLoading(btn, false);
+      }).catch(() => {});
     }
-    const data = await job;
+    // Refresh/reopen attaches to the latest view, keeping the current text and
+    // sharing one server request instead of binding deltas to a stale revision.
+    job.onDelta = text => {
+      if (digestViewCurrent(revision, accountId)) document.getElementById('digest-body').innerHTML = renderDigest(text);
+    };
+    if (job.text) job.onDelta(job.text);
+    const data = await job.promise;
     if (!digestViewCurrent(revision, accountId)) return;
     document.getElementById('digest-body').innerHTML = renderDigest(data.digest);
     toast(mailaiT('digest.done') || '日报生成完毕', 'success');
@@ -7087,6 +7123,7 @@ async function generateDigest() {
       const parsed = JSON.parse(msg);
       if (parsed.detail) msg = parsed.detail;
     } catch {}
+    msg = mailaiSystemMessage(msg);
     // 流式生成中途失败时保留已生成的内容，只在下方提示中断原因
     if (e.partial) {
       document.getElementById('digest-body').innerHTML = renderDigest(e.partial) + `<p class="operation-note">${esc(msg)}</p>`;

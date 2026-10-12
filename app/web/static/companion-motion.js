@@ -8,6 +8,12 @@
   const neutral = [0,0,0,1,1];
   const pose = (x=0,y=0,r=0,sx=1,sy=1) => [x,y,r,sx,sy];
   const clips = {
+    work: {duration:1800,frames:[
+      [0,{}], [.18,{torso:pose(0,1,-2),head:pose(0,1,-5),wave:pose(0,0,-12)}],
+      [.38,{torso:pose(0,-.5,1),head:pose(0,-1,3),wave:pose(0,-1,-28),'arm-left':pose(0,0,6)}],
+      [.58,{torso:pose(0,1,-1),head:pose(0,1,-4),wave:pose(0,0,-13),'arm-left':pose(0,0,-4)}],
+      [.78,{torso:pose(0,-.5,1),head:pose(0,-1,2),wave:pose(0,-1,-24)}], [1,{}],
+    ]},
     peek: {duration:2000, frames:[
       [0,{}], [.12,{head:pose(-2,0,-6)}],
       [.28,{torso:pose(-2,0,-5),head:pose(-3,-1,-7),wave:pose(0,0,9)}],
@@ -56,9 +62,9 @@
   };
   // The startup mascot has its own strictly horizontal hand-off. Excluding it
   // here prevents the ambient character clips from adding vertical movement.
-  const rigs = [...document.querySelectorAll('.mail-companion')].filter(svg => !svg.closest('.compose-perch,.app-preloader')).map(svg => ({
+  const rigs = [...document.querySelectorAll('.mail-companion')].filter(svg => !svg.closest('.app-preloader')).map(svg => ({
     svg, parts:Object.fromEntries(names.map(name=>[name,svg.querySelector(`.companion-${name}`)])),
-    animations:[],timer:0,mode:'',next:0,
+    animations:[],timer:0,mode:'',next:0,perch:!!svg.closest('.compose-perch'),
   }));
   const enabled = () => !document.hidden && !reduced.matches && !document.body.classList.contains('companion-still') && !document.body.classList.contains('companion-paused');
   const visible = rig => rig.svg.getClientRects().length && getComputedStyle(rig.svg).visibility !== 'hidden';
@@ -85,10 +91,10 @@
       });
       // Preserve the actual pose when interrupted, avoiding snaps on hover/state changes.
       keys[0].transform=start[part];
-      const anim=rig.parts[part].animate(keys,{duration:clip.duration,fill:'none'});
+      const anim=rig.parts[part].animate(keys,{duration:clip.duration,fill:'none',iterations:name==='work'?Infinity:1});
       rig.animations.push(anim);
     }
-    rig.timer=setTimeout(()=>{rig.animations=[];if(after) after();},clip.duration+25);
+    if(name!=='work')rig.timer=setTimeout(()=>{rig.animations=[];if(after) after();},clip.duration+25);
   };
   const schedule = rig => {
     if(!enabled() || !visible(rig)) return;
@@ -101,20 +107,22 @@
   const refresh = () => rigs.forEach(rig=>{
     let mode='idle';
     if(!enabled() || !visible(rig)) mode='off';
-    else if(rig.svg.closest('.state-thinking,.compose-ai-panel.is-thinking')) mode='think';
+    else if(document.body.classList.contains('companion-working') || rig.svg.closest('.state-thinking,.compose-ai-panel.is-thinking')) mode='work';
+    else if(rig.perch) mode='off';
     else if(rig.svg.closest('.companion-finished')) mode='happy';
     else if(rig.svg.closest('.state-danger,.state-warn')) mode='attentive';
     if(mode===rig.mode) return;
     rig.mode=mode;
     if(mode==='off') {stop(rig);return;}
-    if(mode==='happy') play(rig,'happy');
+    if(mode==='work') play(rig,'work');
+    else if(mode==='happy') play(rig,'happy');
     else if(mode==='think') play(rig,'think',()=>schedule(rig));
     else play(rig,'peek',()=>schedule(rig));
   });
   let greetingAt=-Infinity;
   const greet=()=>{
     const rig=rigs.find(item=>orb.contains(item.svg));
-    if(!rig || !enabled() || rig.mode==='think' || rig.mode==='happy' || performance.now()-greetingAt<2200) return;
+    if(!rig || !enabled() || rig.mode==='work' || rig.mode==='think' || rig.mode==='happy' || performance.now()-greetingAt<2200) return;
     greetingAt=performance.now();play(rig,'greet',()=>rig.mode==='idle' && schedule(rig));
   };
   orb.addEventListener('pointerenter',greet);

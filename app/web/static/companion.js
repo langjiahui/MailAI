@@ -207,6 +207,24 @@
   });
   const root = document.getElementById('mail-assistant');
   const orb = document.getElementById('assistant-orb');
+  // Each actual model request owns its finish callback. Overlapping requests
+  // cannot stop each other's animation, and abort releases its activity at once.
+  const work = new Set();
+  window.mailaiCompanionWork = {
+    begin(signal) {
+      const token = {};
+      const finish = () => {
+        signal?.removeEventListener('abort',finish);
+        if (!work.delete(token)) return;
+        document.body.classList.toggle('companion-working',work.size>0);
+      };
+      if (signal?.aborted) return finish;
+      work.add(token);
+      document.body.classList.add('companion-working');
+      signal?.addEventListener('abort',finish,{once:true});
+      return finish;
+    },
+  };
   const caption = document.getElementById('companion-caption-copy');
   const toggle = document.getElementById('companion-motion');
   const key = 'mailai-companion-motion';
@@ -221,8 +239,19 @@
   const perch = document.getElementById('btn-compose-ai');
   const perchArt = perch?.querySelector('.compose-perch-art');
   if (perchArt) {
-    // Crop the shared character at the waist; the paws sit over the window ledge.
+    // Keep the body behind the ledge, while wings and effects can extend beyond
+    // the cropped portrait viewport. Both wings still follow the shared torso rig.
     perchArt.innerHTML = art.replace('viewBox="0 0 112 112"', 'viewBox="15 6 82 70"') + '<i class="perch-paw perch-paw-left"></i><i class="perch-paw perch-paw-right"></i>';
+    const perchSvg = perchArt.querySelector('.mail-companion');
+    perchSvg.insertAdjacentHTML('afterbegin', '<defs><clipPath id="mailai-perch-body-clip" clipPathUnits="userSpaceOnUse"><rect x="-112" y="-112" width="336" height="188"/></clipPath></defs>');
+    const perchTorso = perchSvg.querySelector('.companion-torso');
+    const perchBody = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    perchBody.setAttribute('class', 'companion-perch-body');
+    perchBody.setAttribute('clip-path', 'url(#mailai-perch-body-clip)');
+    for (const part of Array.from(perchTorso.children)) {
+      if (!part.matches('.growth-wings,.growth-mech-wings')) perchBody.appendChild(part);
+    }
+    perchTorso.appendChild(perchBody);
     const resetLook = () => { perch.style.removeProperty('--look-x'); perch.style.removeProperty('--look-y'); };
     document.querySelector('.compose-card').addEventListener('pointermove', event => {
       if (!toggle.checked || reducedMotion.matches || event.pointerType === 'touch') return resetLook();
@@ -241,18 +270,20 @@
     orb.style.setProperty('--look-y', `${Math.max(-1.5, Math.min(1.5, (event.clientY - bounds.top - bounds.height / 2) / 18))}px`);
   });
   orb.addEventListener('pointerleave', () => { orb.style.removeProperty('--look-x'); orb.style.removeProperty('--look-y'); });
-  let previous = '', successTimer;
+  let previous = '', successTimer, wasWorking = false;
   const sync = () => {
-    const state = ['thinking', 'danger', 'warn'].find(value => root.classList.contains(`state-${value}`)) || 'calm';
+    const working = document.body.classList.contains('companion-working');
+    const state = working ? 'thinking' : ['thinking', 'danger', 'warn'].find(value => root.classList.contains(`state-${value}`)) || 'calm';
     if (state !== previous) {
       clearTimeout(successTimer);
       root.classList.remove('companion-finished');
-      if (previous === 'thinking' && state === 'calm' && root.dataset.answerComplete === 'true') {
+      if (previous === 'thinking' && state === 'calm' && root.dataset.answerComplete === 'true' && !wasWorking) {
         root.classList.add('companion-finished');
         successTimer = setTimeout(() => { root.classList.remove('companion-finished'); sync(); }, 3000);
       }
       previous = state;
     }
+    wasWorking = working;
     const label = root.classList.contains('companion-finished') ? mailaiText('整理好了，来看看') : {
       get calm() { return mailaiText('小邮在这里'); }, get thinking() { return mailaiText('正在帮你整理'); }, get warn() { return mailaiText('有邮件需要留意'); }, get danger() { return mailaiText('有高风险邮件待核实'); },
     }[state];

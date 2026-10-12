@@ -59,6 +59,13 @@ def main():
     system_settings._save_registry(registry)
     config.DB_PATH = registry['accounts'][registry['last_account']]['db_path']
     config.RAW_DIR = registry['accounts'][registry['last_account']]['raw_dir']
+    if os.environ.get('MAILAI_DIGEST_FIXTURE') == '1':
+        import time
+        def digest_stream():
+            yield '## 生成中的日报\n\n第一段已到达。\n'
+            time.sleep(1)
+            yield '\n## 后续内容\n\n这是完整日报。'
+        pipeline.today_digest_stream = digest_stream
     if os.environ.get('MAILAI_GIFT_FIXTURE') == '1':
         # Ephemeral test authority exists only in this isolated fixture, never in the app.
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey

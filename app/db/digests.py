@@ -4,11 +4,13 @@ from datetime import datetime
 from .core import conn
 
 
-def save_digest(content: str, digest_date: str | None = None):
+def save_digest(content: str, digest_date: str | None = None, *, replace: bool = False):
     now = datetime.now().isoformat(timespec="seconds")
     if digest_date is None:
         digest_date = now[:10]
     with conn() as c:
+        if replace:
+            c.execute("DELETE FROM digest_history WHERE digest_date=?", (digest_date,))
         cur = c.execute(
             "INSERT INTO digest_history(digest_date, content, created_at) VALUES(?,?,?)",
             (digest_date, content, now),
