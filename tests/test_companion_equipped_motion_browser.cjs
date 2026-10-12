@@ -70,6 +70,8 @@ async function checkMotion(page, hosts, part, context) {
     await page.goto(base);
     await page.locator('#app-preloader').waitFor({state:'detached'});
     await page.waitForFunction(()=>document.body.dataset.petStage==='6');
+    assert(await page.locator('#assistant-orb .growth-wings').evaluate(n=>!!n.closest('.companion-torso')),'Shoulders follow the actual torso pose');
+    assert(await page.locator('#assistant-orb .growth-visor').evaluate(n=>!!n.closest('.companion-head')),'Visor follows head turns');
     await page.evaluate(()=>mailaiPet.openThemes());
     const before=await page.evaluate(()=>api('/api/companion/growth'));
     assert.equal(before.stamps,10000);assert.equal(before.enabled,false);

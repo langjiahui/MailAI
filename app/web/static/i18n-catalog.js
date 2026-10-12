@@ -13938,12 +13938,12 @@ const MAILAI_UI_COPY = {
     "Staggered stars twinkle and drift as a comet passes by."
   ],
   "pet.itemHint.orbit": [
-    "光点沿倾斜星环环绕，拖出缓缓流动的光轨。",
-    "A satellite circles a tilted ring with a flowing light trail."
+    "光点绕过身后、掠过身前，倾斜星环带出细腻的光轨。",
+    "A satellite slips behind and in front of XiaoYou along a fine, tilted light trail."
   ],
   "pet.itemHint.wings": [
-    "羽翼交替舒展、轻轻扇动，羽毛细节随动作起伏。",
-    "Delicate feathered wings open and flap with a soft rhythm."
+    "羽翼短促扇动后自然舒展，层叠羽片随动作轻轻回弹。",
+    "Layered feathers follow a gentle wingbeat and settle with a soft rebound."
   ],
   "pet.itemHint.aurora": [
     "三层极光涟漪逐圈扩散，薄薄的光幕随风流动。",
@@ -14228,8 +14228,8 @@ const MAILAI_UI_COPY = {
     "Icy blue arcs and energy trails surround XiaoYou."
   ],
   "pet.itemHint.mech_wings": [
-    "机甲翼缓缓展开、回收，冰蓝能量沿翼面流动。",
-    "Mechanical wings unfold and retract as icy energy flows across them."
+    "铰链带动机甲翼分段展开、锁定再收拢，能量沿翼面充盈。",
+    "Hinged panels unfold, lock into place and retract as energy charges the wings."
   ],
   "pet.error.style": [
     "形象路线无效",

@@ -189,41 +189,63 @@ body[data-pet-accessory="cap"] .ranger-hair-crown { visibility:hidden; }
 .mail-companion[data-reward-visible="true"]:not(.pet-preview-svg) .pet-reward-motion,
 .pet-shop-item:is(:hover,:focus-within) .mail-companion[data-reward-visible="true"] .pet-reward-motion,
 .pet-live-art[data-preview-playing="true"] .mail-companion[data-reward-visible="true"] .pet-reward-motion { animation-play-state:running; }
-.pet-wing-left { --pet-clip:pet-feather-left; --pet-duration:2.6s; transform-origin:31px 65px; }
-.pet-wing-right { --pet-clip:pet-feather-right; --pet-duration:2.6s; transform-origin:81px 65px; }
-.pet-mech-left { --pet-clip:pet-mech-left; --pet-duration:4.2s; transform-origin:30px 64px; }
-.pet-mech-right { --pet-clip:pet-mech-right; --pet-duration:4.2s; transform-origin:82px 64px; }
-.pet-mech-charge { --pet-clip:pet-charge; --pet-duration:2.8s; stroke-dasharray:6 5; }
-.pet-star { --pet-clip:pet-starlight; --pet-duration:3.6s; transform-box:fill-box; transform-origin:center; }
-.pet-star:nth-child(2n) { --pet-duration:4.4s; --pet-delay:-1.7s; }
-.pet-star:nth-child(3n) { --pet-delay:-2.5s; }
-.pet-star-trail { --pet-clip:pet-comet; --pet-duration:4.8s; stroke-dasharray:6 18; }
-.pet-orbit-stream { --pet-clip:pet-orbit-flow; --pet-duration:7s; stroke-dasharray:14 86; animation-timing-function:linear; }
-.pet-orbit-satellite { --pet-delay:-3.5s; stroke-dasharray:1 99; }
-.pet-aurora-ripple { --pet-clip:pet-ripple; --pet-duration:4.2s; transform-origin:56px 99px; }
-.pet-aurora-ripple:nth-child(3) { --pet-delay:-1.4s; }
-.pet-aurora-ripple:nth-child(4) { --pet-delay:-2.8s; }
-.pet-aurora-veil { --pet-clip:pet-veil; --pet-duration:5.6s; transform-origin:56px 95px; }
-.pet-bolt { --pet-clip:pet-energy; --pet-duration:3.2s; transform-box:fill-box; transform-origin:center; }
-.pet-bolt:nth-child(2) { --pet-delay:-1.6s; }
-.pet-energy-stream { --pet-clip:pet-orbit-flow; --pet-duration:3.2s; stroke-dasharray:18 82; animation-timing-function:linear; }
-.pet-scarf-tail { --pet-clip:pet-scarf-breeze; --pet-duration:3.8s; transform-origin:39px 77px; }
-.pet-cap-shine { --pet-clip:pet-charge; --pet-duration:4.6s; stroke-dasharray:5 6; }
-.pet-satchel-glint { --pet-clip:pet-bag-shine; --pet-duration:4.8s; }
-.pet-visor-scan { --pet-clip:pet-visor-sweep; --pet-duration:3.8s; }
-.pet-jacket-trace { --pet-charge-lap:-38; --pet-clip:pet-charge; --pet-duration:5s; stroke-dasharray:5 14; }
-.pet-armor-core { --pet-clip:pet-core; --pet-duration:3.4s; transform-box:fill-box; transform-origin:center; }
-.pet-palette-shine { --pet-clip:pet-shimmer; --pet-duration:4.6s; }
-.pet-berry-float { --pet-clip:pet-berry-bob; --pet-duration:3s; transform-origin:88px 69px; }
+/* A short wingbeat followed by settling is more natural than perpetual rocking. */
+.pet-wing-left { --pet-clip:pet-feather-left; --pet-duration:4.8s; transform-origin:31px 65px; }
+.pet-wing-right { --pet-clip:pet-feather-right; --pet-duration:4.8s; transform-origin:31px 65px; }
+.pet-feather-fan { --pet-clip:pet-feather-follow; --pet-duration:4.8s; --pet-delay:.09s; transform-origin:27px 65px; }
+.pet-mech-left { --pet-clip:pet-mech-left; --pet-duration:7.6s; transform-origin:30px 64px; }
+.pet-mech-right { --pet-clip:pet-mech-right; --pet-duration:7.6s; transform-origin:30px 64px; }
+.pet-mech-panel { --pet-clip:pet-panel-deploy; --pet-duration:7.6s; --pet-delay:.16s; transform-origin:24px 61px; }
+.pet-mech-charge { --pet-clip:pet-mech-power; --pet-duration:7.6s; --pet-delay:.16s; stroke-dasharray:20 80; }
+.pet-mech-led { --pet-clip:pet-mech-indicator; --pet-duration:7.6s; --pet-delay:.16s; }
+.growth-stars { color:#E7BE64; }
+body[data-pet-style="ranger"] .growth-stars { color:#81DDED; }
+html[data-reward-theme="theme_monochrome"] body .growth-stars { color:#8e96a5; }
+html[data-reward-theme="theme_baowu"] body .growth-stars { color:#54b2ee; }
+.pet-star { --pet-clip:pet-starlight; --pet-duration:6.4s; --pet-delay:-.8s; transform-box:fill-box; transform-origin:center; }
+.pet-star:nth-child(2n) { --pet-duration:7.8s; --pet-delay:-3.6s; }
+.pet-star:nth-child(3n) { --pet-delay:-5.1s; }
+.pet-star-ray { --pet-clip:pet-star-rays; --pet-duration:6.4s; --pet-delay:-.8s; transform-origin:17px 33px; }
+.pet-star-trail { --pet-clip:pet-comet; --pet-duration:9.6s; stroke-dasharray:12 88; opacity:0; }
+/* Clip in local ring coordinates, then tilt the whole orbit. The body occludes the rear. */
+.pet-orbit-rear ellipse { clip-path:inset(0 0 50% 0); }
+.pet-orbit-front ellipse { clip-path:inset(50% 0 0 0); }
+.pet-orbit-stream { --pet-clip:pet-orbit-flow; --pet-duration:8.4s; stroke-dasharray:10 90; stroke-linecap:round; animation-timing-function:linear; }
+.pet-orbit-halo { stroke-dasharray:13 87; }
+.pet-orbit-satellite { stroke-dasharray:.3 99.7; }
+.pet-orbit-rear { opacity:.5; }
+.pet-aurora-ripple { --pet-clip:pet-ripple; --pet-duration:6s; transform-origin:56px 99px; opacity:.35; }
+.pet-aurora-ripple:nth-of-type(2) { --pet-delay:-2s; }
+.pet-aurora-ripple:nth-of-type(3) { --pet-delay:-4s; }
+.pet-aurora-veil { --pet-clip:pet-veil; --pet-duration:9s; transform-origin:56px 99px; }
+.pet-aurora-ribbon { --pet-clip:pet-ribbon; --pet-duration:9s; --pet-delay:-2s; transform-origin:56px 99px; }
+.pet-aurora-mote { --pet-clip:pet-mote; --pet-duration:6s; --pet-delay:-1s; opacity:.6; }
+.pet-aurora-mote:last-child { --pet-delay:-4s; }
+.pet-bolt { --pet-clip:pet-energy; --pet-duration:7.2s; opacity:.2; }
+.pet-bolt:nth-child(2) { --pet-delay:-3.6s; }
+.pet-bolt path[pathLength] { stroke-dasharray:100; }
+.pet-bolt-branch { --pet-clip:pet-arc-branch; --pet-duration:7.2s; --pet-delay:.18s; stroke-dasharray:100; opacity:.3; }
+.pet-bolt:nth-child(2) .pet-bolt-branch { --pet-delay:-3.42s; }
+.pet-energy-stream { --pet-clip:pet-orbit-flow; --pet-duration:5s; stroke-dasharray:8 92; stroke-linecap:round; animation-timing-function:linear; opacity:.6; }
+.pet-scarf-tail { --pet-clip:pet-scarf-breeze; --pet-duration:6.2s; transform-origin:39px 77px; }
+.pet-scarf-tip { --pet-clip:pet-cloth-follow; --pet-duration:6.2s; --pet-delay:.18s; transform-origin:37px 90px; }
+.pet-cap-shine { --pet-clip:pet-charge; --pet-duration:8s; stroke-dasharray:3 19; }
+.pet-satchel-glint { --pet-clip:pet-bag-shine; --pet-duration:8s; opacity:.15; }
+.pet-visor-scan { --pet-clip:pet-visor-sweep; --pet-duration:7.8s; opacity:.3; }
+.pet-jacket-trace { --pet-charge-lap:-38; --pet-clip:pet-charge; --pet-duration:8.6s; stroke-dasharray:5 33; }
+.pet-armor-core { --pet-clip:pet-core; --pet-duration:5.8s; transform-origin:38px 83px; }
+.pet-core-ring { --pet-clip:pet-core-orbit; --pet-duration:11.6s; stroke-dasharray:10 15; transform-origin:38px 83px; animation-timing-function:linear; }
+.pet-palette-shine { --pet-clip:pet-shimmer; --pet-duration:9s; }
+.pet-berry-float { --pet-clip:pet-berry-bob; --pet-duration:5.6s; transform-origin:88px 69px; }
 body[data-pet-accessory="wings"] .mail-companion:not(.pet-preview-svg) .growth-wings .pet-reward-motion,
 body[data-pet-accessory="mech_wings"] .mail-companion:not(.pet-preview-svg) .growth-mech-wings .pet-reward-motion,
-body[data-pet-accessory="scarf"] .mail-companion:not(.pet-preview-svg) .pet-scarf-tail,
-body[data-pet-accessory="cap"] .mail-companion:not(.pet-preview-svg) .pet-cap-shine,
-body[data-pet-accessory="satchel"] .mail-companion:not(.pet-preview-svg) .pet-satchel-glint,
-body[data-pet-accessory="visor"] .mail-companion:not(.pet-preview-svg) .pet-visor-scan,
-body[data-pet-accessory="jacket"] .mail-companion:not(.pet-preview-svg) .pet-jacket-trace,
-body[data-pet-accessory="armor"] .mail-companion:not(.pet-preview-svg) .pet-armor-core,
-body[data-pet-style="ranger"]:is([data-pet-stage="4"],[data-pet-stage="5"],[data-pet-stage="6"],[data-pet-stage="7"]) .mail-companion:not(.pet-preview-svg) .pet-visor-scan,
+body[data-pet-accessory="scarf"] .mail-companion:not(.pet-preview-svg) .growth-scarf .pet-reward-motion,
+body[data-pet-accessory="cap"] .mail-companion:not(.pet-preview-svg) .growth-cap .pet-reward-motion,
+body[data-pet-accessory="satchel"] .mail-companion:not(.pet-preview-svg) .companion-bag .pet-reward-motion,
+body[data-pet-accessory="visor"] .mail-companion:not(.pet-preview-svg) .growth-visor .pet-reward-motion,
+body[data-pet-accessory="jacket"] .mail-companion:not(.pet-preview-svg) .growth-jacket .pet-reward-motion,
+body[data-pet-accessory="armor"] .mail-companion:not(.pet-preview-svg) .growth-armor .pet-reward-motion,
+body[data-pet-style="ranger"]:is([data-pet-stage="4"],[data-pet-stage="5"],[data-pet-stage="6"],[data-pet-stage="7"]) .mail-companion:not(.pet-preview-svg) .growth-visor .pet-reward-motion,
 body:is([data-pet-effect="sparkles"],[data-pet-stage="7"]) .mail-companion:not(.pet-preview-svg) .growth-stars .pet-reward-motion,
 body[data-pet-effect="orbit"] .mail-companion:not(.pet-preview-svg) .growth-orbit .pet-reward-motion,
 body:is([data-pet-effect="aurora"],[data-pet-stage="6"],[data-pet-stage="7"]) .mail-companion:not(.pet-preview-svg) .growth-aura .pet-reward-motion,
@@ -235,31 +257,57 @@ body[data-pet-palette]:not([data-pet-palette="mint"]) .mail-companion:not(.pet-p
 .pet-item-art[data-item-preview="orbit"] .growth-orbit .pet-reward-motion,
 .pet-item-art[data-item-preview="aurora"] .growth-aura .pet-reward-motion,
 .pet-item-art[data-item-preview="lightning"] .growth-lightning .pet-reward-motion,
-.pet-item-art[data-item-preview="scarf"] .pet-scarf-tail,
-.pet-item-art[data-item-preview="cap"] .pet-cap-shine,
-.pet-item-art[data-item-preview="satchel"] .pet-satchel-glint,
-.pet-item-art[data-item-preview="visor"] .pet-visor-scan,
-.pet-item-art[data-item-preview="jacket"] .pet-jacket-trace,
-.pet-item-art[data-item-preview="armor"] .pet-armor-core,
+.pet-item-art[data-item-preview="scarf"] .growth-scarf .pet-reward-motion,
+.pet-item-art[data-item-preview="cap"] .growth-cap .pet-reward-motion,
+.pet-item-art[data-item-preview="satchel"] .companion-bag .pet-reward-motion,
+.pet-item-art[data-item-preview="visor"] .growth-visor .pet-reward-motion,
+.pet-item-art[data-item-preview="jacket"] .growth-jacket .pet-reward-motion,
+.pet-item-art[data-item-preview="armor"] .growth-armor .pet-reward-motion,
 .pet-item-art[data-item-preview="berry"] .pet-berry-float,
 .pet-item-art:is([data-item-preview="sky"],[data-item-preview="peach"],[data-item-preview="midnight"]) .pet-palette-shine { animation-name:var(--pet-clip); }
-@keyframes pet-feather-left { 0%,100% { transform:rotate(-7deg) scaleX(.86); } 50% { transform:rotate(10deg) scaleX(1.05); } }
-@keyframes pet-feather-right { 0%,100% { transform:rotate(7deg) scaleX(.86); } 50% { transform:rotate(-10deg) scaleX(1.05); } }
-@keyframes pet-mech-left { 0%,100% { transform:rotate(3deg) scaleX(.83); } 40%,65% { transform:rotate(-9deg) scaleX(1); } }
-@keyframes pet-mech-right { 0%,100% { transform:rotate(-3deg) scaleX(.83); } 40%,65% { transform:rotate(9deg) scaleX(1); } }
-@keyframes pet-charge { 0% { stroke-dashoffset:0; opacity:.65; } 50% { opacity:1; } 100% { stroke-dashoffset:var(--pet-charge-lap,-22); opacity:.65; } }
-@keyframes pet-starlight { 0%,100% { opacity:.35; transform:translateY(2px) scale(.7); } 45% { opacity:1; transform:translateY(-3px) scale(1.15) rotate(9deg); } 75% { opacity:.7; transform:translateY(-5px) scale(.9); } }
-@keyframes pet-comet { 0%,100% { opacity:0; stroke-dashoffset:18; } 30%,65% { opacity:.85; } 85% { opacity:0; stroke-dashoffset:-18; } }
+@keyframes pet-feather-left {
+  0%,100% { transform:rotate(-2deg) scaleX(.96); }
+  8% { transform:rotate(-13deg) scaleX(1); }
+  17% { transform:rotate(20deg) scaleX(.78); }
+  25% { transform:rotate(-16deg) scaleX(1.02); }
+  34% { transform:rotate(12deg) scaleX(.87); }
+  43% { transform:rotate(-5deg) scaleX(.98); }
+  55%,85% { transform:rotate(-2deg) scaleX(.96); }
+}
+@keyframes pet-feather-right {
+  0%,100% { transform:rotate(-2deg) scaleX(.96); }
+  8% { transform:rotate(-13deg) scaleX(1); }
+  17% { transform:rotate(20deg) scaleX(.78); }
+  25% { transform:rotate(-16deg) scaleX(1.02); }
+  34% { transform:rotate(12deg) scaleX(.87); }
+  43% { transform:rotate(-5deg) scaleX(.98); }
+  55%,85% { transform:rotate(-2deg) scaleX(.96); }
+}
+@keyframes pet-feather-follow { 0%,55%,100% { transform:rotate(0); } 10% { transform:rotate(5deg); } 20% { transform:rotate(-11deg) scaleY(.92); } 29% { transform:rotate(8deg); } 38% { transform:rotate(-6deg); } 47% { transform:rotate(2deg); } }
+@keyframes pet-mech-left { 0%,100% { transform:rotate(8deg) scaleX(.92); } 12% { transform:rotate(10deg) scaleX(.9); } 30% { transform:rotate(-13deg) scaleX(1); } 37%,65% { transform:rotate(-10deg) scaleX(1); } 85% { transform:rotate(9deg) scaleX(.92); } }
+@keyframes pet-mech-right { 0%,100% { transform:rotate(8deg) scaleX(.92); } 12% { transform:rotate(10deg) scaleX(.9); } 30% { transform:rotate(-13deg) scaleX(1); } 37%,65% { transform:rotate(-10deg) scaleX(1); } 85% { transform:rotate(9deg) scaleX(.92); } }
+@keyframes pet-panel-deploy { 0%,100% { transform:rotate(14deg); } 16% { transform:rotate(14deg); } 34% { transform:rotate(-9deg); } 41%,63% { transform:rotate(-6deg); } 84% { transform:rotate(15deg); } 91% { transform:rotate(14deg); } }
+@keyframes pet-mech-power { 0%,22%,78%,100% { opacity:.1; stroke-dashoffset:100; } 32% { opacity:.9; } 68% { opacity:.9; stroke-dashoffset:-100; } }
+@keyframes pet-mech-indicator { 0%,22%,85%,100% { opacity:.25; } 35%,65% { opacity:1; } }
+@keyframes pet-charge { 0%,64%,100% { opacity:.3; stroke-dashoffset:0; } 72% { opacity:.8; } 88% { opacity:.8; stroke-dashoffset:var(--pet-charge-lap,-22); } 96% { opacity:.3; stroke-dashoffset:var(--pet-charge-lap,-22); } }
+@keyframes pet-starlight { 0% { opacity:0; transform:translate(0,3px) scale(.75); } 18% { opacity:.55; } 35% { opacity:.95; transform:translate(1px,0) scale(1.06); } 60% { opacity:.55; transform:translate(-.5px,-2px) scale(.92); } 88%,100% { opacity:0; transform:translate(0,-6px) scale(.7); } }
+@keyframes pet-star-rays { 0%,15%,70%,100% { opacity:0; transform:scale(.6); } 35% { opacity:.7; transform:scale(1); } 55% { opacity:.1; transform:scale(1.15); } }
+@keyframes pet-comet { 0%,55%,100% { opacity:0; stroke-dashoffset:110; } 62% { opacity:.8; stroke-dashoffset:75; } 78% { opacity:.5; stroke-dashoffset:0; } 85% { opacity:0; stroke-dashoffset:-20; } }
 @keyframes pet-orbit-flow { to { stroke-dashoffset:-100; } }
-@keyframes pet-ripple { 0% { transform:scale(.72); opacity:.15; } 35% { opacity:.8; } 100% { transform:scale(1.2); opacity:.1; } }
-@keyframes pet-veil { 0%,100% { transform:translateX(-3px) scaleY(.86); opacity:.09; } 50% { transform:translateX(3px) scaleY(1.06); opacity:.22; } }
-@keyframes pet-energy { 0%,100% { opacity:.35; transform:scale(.94); } 45%,65% { opacity:1; transform:scale(1.06); } }
-@keyframes pet-scarf-breeze { 0%,100% { transform:rotate(-5deg); } 50% { transform:rotate(9deg); } }
-@keyframes pet-bag-shine { 0%,100% { transform:translateY(0); opacity:0; } 35% { opacity:.8; } 70% { transform:translateY(15px); opacity:0; } }
-@keyframes pet-visor-sweep { 0%,100% { transform:translateY(0); opacity:.4; } 55% { transform:translateY(6px); opacity:1; } }
-@keyframes pet-core { 0%,100% { opacity:.5; transform:scale(.94); } 50% { opacity:1; transform:scale(1.08); } }
-@keyframes pet-shimmer { 0%,100% { opacity:.4; } 50% { opacity:1; } }
-@keyframes pet-berry-bob { 0%,100% { transform:translateY(1px) rotate(-4deg); } 50% { transform:translateY(-4px) rotate(4deg); } }
+@keyframes pet-ripple { 0% { transform:scale(.62,.72); opacity:0; } 18% { opacity:.5; } 65% { opacity:.22; } 100% { transform:scale(1.17,1.08); opacity:0; } }
+@keyframes pet-veil { 0%,100% { transform:skewX(-4deg) scaleY(.96); opacity:.12; } 38% { transform:skewX(3deg) scaleY(1.04); opacity:.2; } 70% { transform:skewX(-1deg) scaleY(.99); opacity:.14; } }
+@keyframes pet-ribbon { 0%,100% { transform:translateX(-1px) skewX(3deg); opacity:.5; } 45% { transform:translateX(1px) skewX(-4deg); opacity:1; } }
+@keyframes pet-mote { 0%,100% { opacity:0; transform:translate(0,2px); } 22% { opacity:.65; } 70% { opacity:.3; transform:translate(2px,-9px); } 95% { opacity:0; transform:translate(3px,-12px); } }
+@keyframes pet-energy { 0%,50%,100% { opacity:.08; } 62% { opacity:.2; } 68% { opacity:.9; } 77% { opacity:.25; } 84% { opacity:.7; } 94% { opacity:.08; } }
+@keyframes pet-arc-branch { 0%,62%,100% { opacity:0; stroke-dashoffset:100; } 72% { opacity:.75; stroke-dashoffset:0; } 87% { opacity:.3; } 95% { opacity:0; stroke-dashoffset:-100; } }
+@keyframes pet-scarf-breeze { 0%,100% { transform:rotate(-2deg); } 22% { transform:rotate(6deg); } 38% { transform:rotate(-4deg); } 51% { transform:rotate(2deg); } 72% { transform:rotate(-1deg); } }
+@keyframes pet-cloth-follow { 0%,100% { transform:rotate(1deg); } 27% { transform:rotate(-7deg); } 44% { transform:rotate(5deg); } 60% { transform:rotate(-2deg); } 80% { transform:rotate(1deg); } }
+@keyframes pet-bag-shine { 0%,60%,100% { transform:translateX(-1px); opacity:0; } 68% { opacity:.65; } 82% { transform:translateX(8px); opacity:.55; } 90% { transform:translateX(8px); opacity:0; } }
+@keyframes pet-visor-sweep { 0%,50%,100% { transform:translateX(0); opacity:.08; } 60% { opacity:.65; } 78% { transform:translateX(24px); opacity:.6; } 86% { transform:translateX(24px); opacity:.08; } }
+@keyframes pet-core { 0%,100% { opacity:.65; transform:scale(.985); } 32% { opacity:.95; transform:scale(1.025); } 55% { opacity:.7; transform:scale(1); } }
+@keyframes pet-core-orbit { to { transform:rotate(360deg); } }
+@keyframes pet-shimmer { 0%,52%,100% { opacity:.7; } 68% { opacity:1; } 85% { opacity:.75; } }
+@keyframes pet-berry-bob { 0%,100% { transform:translateY(1px) rotate(-2deg); } 34% { transform:translateY(-2px) rotate(2deg); } 64% { transform:translateY(-.5px) rotate(-1deg); } }
 .pet-live-preview { border:1px solid var(--pet-line); border-radius:18px; overflow:hidden; margin:20px 0; background:var(--pet-paper); }
 .pet-live-art { height:250px; margin:0; background:radial-gradient(ellipse at 50% 75%,color-mix(in srgb,var(--pet-accent) 15%,transparent),transparent 64%),var(--pet-tint); }
 .pet-live-art .pet-portrait { width:220px; height:220px; }
