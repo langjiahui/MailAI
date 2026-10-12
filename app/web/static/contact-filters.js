@@ -9,6 +9,21 @@
   bar.className = 'contact-filter-bar';
   bar.innerHTML = `<details class="contact-filter-menu" data-tag-menu><summary><span data-i18n="ui.1d0fd5f9336d">标签</span> <span data-tag-count hidden></span><span aria-hidden="true">⌄</span></summary><section class="contact-filter-popover"><label class="contact-tag-search"><span data-i18n="ui.6158fd863c28">查找标签</span><input type="search" data-tag-search placeholder="输入标签名称" autocomplete="off" data-i18n-placeholder="ui.4919d0b20893"></label><div data-tag-options class="contact-tag-options"></div><label class="contact-tag-mode"><span data-i18n="ui.6e0634298099">多个标签</span><select data-tag-mode aria-label="多个标签的匹配方式" data-i18n-aria="ui.00cff074af26"><option value="any" data-i18n="ui.200fcebff6bd">包含任意标签</option><option value="all" data-i18n="ui.d811aabc3fd1">同时包含全部标签</option></select></label><footer><button type="button" data-tag-manage><span data-i18n="ui.e8b481c247b1">管理个人标签</span></button><button type="button" data-filter-done><span data-i18n="ui.c0b3fbff51cc">完成</span></button></footer></section></details><details class="contact-filter-menu" data-more-menu><summary><span data-i18n="ui.dbdccc3594d6">更多筛选</span><span aria-hidden="true">⌄</span></summary><section class="contact-filter-popover"><label data-company-field><span data-i18n="ui.e06ff957ed48">公司</span><select data-contact-company><option value="" data-i18n="ui.a6c7411df887">全部公司</option></select></label><div data-department-field></div><p class="contact-filter-hint"><span data-i18n="ui.1c066c0d4300">部门等资料用于筛选，个人标签可自由分类。</span></p><button type="button" data-filter-done><span data-i18n="ui.c0b3fbff51cc">完成</span></button></section></details><button type="button" data-bulk-toggle><span data-i18n="ui.3ffa953cc8f6">批量标记</span></button><span data-contact-results role="status" aria-live="polite"></span>`;
   legacy.after(bar);
+  const icon = paths => `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+  for (const [selector, paths] of [
+    ['[data-tag-menu]', '<path d="M3 3h6l8 8-6 6-8-8V3Z"/><circle cx="6.5" cy="6.5" r=".8"/>'],
+    ['[data-more-menu]', '<path d="M3 5h14M3 10h14M3 15h14"/><path d="M7 3v4m6 1v4m-6 1v4"/>'],
+  ]) {
+    const summary = bar.querySelector(selector + '>summary');
+    summary.insertAdjacentHTML('afterbegin', icon(paths));
+    const chevron = summary.lastElementChild; chevron.className = 'contact-filter-chevron';
+    chevron.innerHTML = icon('<path d="m6 8 4 4 4-4"/>');
+  }
+  const moreCount = document.createElement('span'); moreCount.dataset.moreCount = ''; moreCount.hidden = true;
+  bar.querySelector('[data-more-menu] .contact-filter-chevron').before(moreCount);
+  const moreDone = bar.querySelector('[data-more-menu] [data-filter-done]');
+  const moreFooter = document.createElement('footer'); moreDone.before(moreFooter); moreFooter.append(moreDone);
+  for (const done of bar.querySelectorAll('[data-filter-done]')) done.classList.add('primary-action');
   const bulkToggle=bar.querySelector('[data-bulk-toggle]');
   bar.querySelector('[data-tag-menu] footer').insertBefore(bulkToggle,bar.querySelector('[data-tag-menu] [data-filter-done]'));
   mailaiBindUI(bar.querySelector('[data-tag-manage]'), "textContent", () => (mailaiText('管理标签')));
@@ -87,6 +102,10 @@
   function renderControls() {
     renderTags();
     const count=bar.querySelector('[data-tag-count]');count.hidden=!state.tags.size;count.textContent=state.tags.size;
+    bar.querySelector('[data-tag-menu]').dataset.active=String(Boolean(state.tags.size));
+    const moreCount=bar.querySelector('[data-more-count]'), moreFilters=Number(Boolean(state.company))+Number(Boolean(dept.value));
+    moreCount.hidden=!moreFilters;moreCount.textContent=moreFilters;
+    bar.querySelector('[data-more-menu]').dataset.active=String(Boolean(moreFilters));
     bar.querySelector('[data-tag-mode]').value=state.mode;
     bar.querySelector('.contact-tag-mode').hidden=state.tags.size<2;
     const company=bar.querySelector('[data-contact-company]');

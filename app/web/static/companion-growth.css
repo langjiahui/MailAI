@@ -16,11 +16,6 @@ body[data-pet-accessory="scarf"] .growth-scarf,body[data-pet-accessory="cap"] .g
 body[data-pet-accessory="cap"] .mail-companion .companion-leaves,body[data-pet-accessory="cap"] .growth-leaf,body[data-pet-accessory="cap"] .growth-flower { visibility:hidden; }
 body[data-pet-accessory="satchel"] .companion-bag rect { fill:#f0d8a0; stroke:#927642; stroke-width:2; }
 body[data-pet-effect="sparkles"] .growth-stars,body[data-pet-effect="orbit"] .growth-orbit,body[data-pet-effect="aurora"] .growth-aura { display:block; }
-body[data-pet-effect="sparkles"] .growth-stars,body[data-pet-stage="7"] .growth-stars { animation:pet-twinkle 3s ease-in-out infinite; }
-body[data-pet-effect="orbit"] .growth-orbit { transform-origin:56px 65px; animation:pet-orbit 6s ease-in-out infinite; }
-body[data-pet-effect="aurora"] .growth-aura { animation:pet-twinkle 2.5s ease-in-out infinite; }
-@keyframes pet-twinkle { 50% { opacity:.35; } }
-@keyframes pet-orbit { 50% { transform:rotate(12deg); opacity:.35; } }
 .companion-level { display:inline-block; margin-left:6px; font-weight:650; white-space:nowrap; }
 .companion-level::before { content:'·'; margin-right:6px; font-weight:400; }
 .companion-growth-launch { display:flex; align-items:center; gap:9px; margin:9px 14px 0; padding:9px 12px; border:1px solid #d9e7df; border-radius:12px; background:#edf5f0; color:#47765d; text-align:left; font-size:11px; cursor:pointer; flex:none; }
@@ -94,7 +89,7 @@ body[data-pet-effect="aurora"] .growth-aura { animation:pet-twinkle 2.5s ease-in
 .pet-reset-outfit { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:13px; }
 .pet-reset-outfit button { background:transparent; border:1px solid var(--pet-line); border-radius:8px; padding:6px 9px; color:var(--pet-muted); font-size:10px; }
 .pet-shop { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-.pet-shop-item { display:flex; flex-direction:column; align-items:stretch; border:1px solid var(--pet-line); border-radius:15px; overflow:hidden; padding:0 14px 14px; }
+.pet-shop-item { position:relative; display:flex; flex-direction:column; align-items:stretch; border:1px solid var(--pet-line); border-radius:15px; overflow:hidden; padding:0 14px 14px; }
 .pet-item-art { display:grid; place-items:center; margin:0 -14px 13px; height:108px; background:var(--pet-tint); }
 .pet-item-copy { flex:1; }
 .pet-item-copy b { font-size:13px; }
@@ -159,7 +154,7 @@ body[data-pet-palette="peach"] { --pet-body:#f1cab9; --pet-outline:#c18e7d; }
 body[data-pet-palette="midnight"] { --pet-body:#6a8eac; --pet-outline:#365773; }
 body[data-pet-accessory="jacket"] .growth-jacket,body[data-pet-accessory="visor"] .growth-visor,body[data-pet-accessory="armor"] .growth-armor,body[data-pet-accessory="mech_wings"] .growth-mech-wings { display:block; }
 body[data-pet-accessory="armor"] .growth-jacket { display:none; }
-body[data-pet-effect="lightning"] .growth-lightning { display:block; animation:pet-twinkle 1.6s ease-in-out infinite; }
+body[data-pet-effect="lightning"] .growth-lightning { display:block; }
 .pet-style-choice { display:flex; align-items:center; gap:7px; margin-top:13px; flex-wrap:wrap; }
 .pet-style-choice>span { margin-right:3px; color:var(--pet-muted); font-size:11px; }
 .pet-style-choice button { border:1px solid var(--pet-line); border-radius:8px; background:transparent; color:var(--pet-muted); padding:7px 11px; font-size:11px; }
@@ -185,3 +180,109 @@ body[data-pet-accessory="cap"] .ranger-hair-crown { visibility:hidden; }
 .pet-history article>div { display:flex; flex-direction:column; gap:5px; }
 .pet-history article>div b { font-size:12px; font-weight:600; }
 .pet-history article time,.pet-history article>span { color:var(--pet-muted); font-size:10px; }
+
+/* Reward motion uses independent parts; only visible equipment and the selected preview run. */
+.pet-reward-motion { animation-duration:var(--pet-duration,3s); animation-delay:var(--pet-delay,0s); animation-timing-function:ease-in-out; animation-iteration-count:infinite; animation-play-state:paused; }
+.mail-companion[data-reward-visible="true"]:not(.pet-preview-svg) .pet-reward-motion,
+.pet-shop-item:is(:hover,:focus-within) .mail-companion[data-reward-visible="true"] .pet-reward-motion,
+.pet-live-art[data-preview-playing="true"] .mail-companion[data-reward-visible="true"] .pet-reward-motion { animation-play-state:running; }
+.pet-wing-left { --pet-clip:pet-feather-left; --pet-duration:2.6s; transform-origin:31px 65px; }
+.pet-wing-right { --pet-clip:pet-feather-right; --pet-duration:2.6s; transform-origin:81px 65px; }
+.pet-mech-left { --pet-clip:pet-mech-left; --pet-duration:4.2s; transform-origin:30px 64px; }
+.pet-mech-right { --pet-clip:pet-mech-right; --pet-duration:4.2s; transform-origin:82px 64px; }
+.pet-mech-charge { --pet-clip:pet-charge; --pet-duration:2.8s; stroke-dasharray:6 5; }
+.pet-star { --pet-clip:pet-starlight; --pet-duration:3.6s; transform-box:fill-box; transform-origin:center; }
+.pet-star:nth-child(2n) { --pet-duration:4.4s; --pet-delay:-1.7s; }
+.pet-star:nth-child(3n) { --pet-delay:-2.5s; }
+.pet-star-trail { --pet-clip:pet-comet; --pet-duration:4.8s; stroke-dasharray:6 18; }
+.pet-orbit-stream { --pet-clip:pet-orbit-flow; --pet-duration:7s; stroke-dasharray:14 86; animation-timing-function:linear; }
+.pet-orbit-satellite { --pet-delay:-3.5s; stroke-dasharray:1 99; }
+.pet-aurora-ripple { --pet-clip:pet-ripple; --pet-duration:4.2s; transform-origin:56px 99px; }
+.pet-aurora-ripple:nth-child(3) { --pet-delay:-1.4s; }
+.pet-aurora-ripple:nth-child(4) { --pet-delay:-2.8s; }
+.pet-aurora-veil { --pet-clip:pet-veil; --pet-duration:5.6s; transform-origin:56px 95px; }
+.pet-bolt { --pet-clip:pet-energy; --pet-duration:3.2s; transform-box:fill-box; transform-origin:center; }
+.pet-bolt:nth-child(2) { --pet-delay:-1.6s; }
+.pet-energy-stream { --pet-clip:pet-orbit-flow; --pet-duration:3.2s; stroke-dasharray:18 82; animation-timing-function:linear; }
+.pet-scarf-tail { --pet-clip:pet-scarf-breeze; --pet-duration:3.8s; transform-origin:69px 77px; }
+.pet-cap-shine { --pet-clip:pet-charge; --pet-duration:4.6s; stroke-dasharray:5 6; }
+.pet-satchel-glint { --pet-clip:pet-bag-shine; --pet-duration:4.8s; }
+.pet-visor-scan { --pet-clip:pet-visor-sweep; --pet-duration:3.8s; }
+.pet-jacket-trace { --pet-charge-lap:-38; --pet-clip:pet-charge; --pet-duration:5s; stroke-dasharray:5 14; }
+.pet-armor-core { --pet-clip:pet-core; --pet-duration:3.4s; transform-box:fill-box; transform-origin:center; }
+.pet-palette-shine { --pet-clip:pet-shimmer; --pet-duration:4.6s; }
+.pet-berry-float { --pet-clip:pet-berry-bob; --pet-duration:3s; transform-origin:88px 69px; }
+body[data-pet-accessory="wings"] .mail-companion:not(.pet-preview-svg) .growth-wings .pet-reward-motion,
+body[data-pet-accessory="mech_wings"] .mail-companion:not(.pet-preview-svg) .growth-mech-wings .pet-reward-motion,
+body[data-pet-accessory="scarf"] .mail-companion:not(.pet-preview-svg) .pet-scarf-tail,
+body[data-pet-accessory="cap"] .mail-companion:not(.pet-preview-svg) .pet-cap-shine,
+body[data-pet-accessory="satchel"] .mail-companion:not(.pet-preview-svg) .pet-satchel-glint,
+body[data-pet-accessory="visor"] .mail-companion:not(.pet-preview-svg) .pet-visor-scan,
+body[data-pet-accessory="jacket"] .mail-companion:not(.pet-preview-svg) .pet-jacket-trace,
+body[data-pet-accessory="armor"] .mail-companion:not(.pet-preview-svg) .pet-armor-core,
+body[data-pet-style="ranger"]:is([data-pet-stage="4"],[data-pet-stage="5"],[data-pet-stage="6"],[data-pet-stage="7"]) .mail-companion:not(.pet-preview-svg) .pet-visor-scan,
+body:is([data-pet-effect="sparkles"],[data-pet-stage="7"]) .mail-companion:not(.pet-preview-svg) .growth-stars .pet-reward-motion,
+body[data-pet-effect="orbit"] .mail-companion:not(.pet-preview-svg) .growth-orbit .pet-reward-motion,
+body:is([data-pet-effect="aurora"],[data-pet-stage="6"],[data-pet-stage="7"]) .mail-companion:not(.pet-preview-svg) .growth-aura .pet-reward-motion,
+body[data-pet-effect="lightning"] .mail-companion:not(.pet-preview-svg) .growth-lightning .pet-reward-motion,
+body[data-pet-palette]:not([data-pet-palette="mint"]) .mail-companion:not(.pet-preview-svg) .pet-palette-shine,
+.pet-item-art[data-item-preview="wings"] .growth-wings .pet-reward-motion,
+.pet-item-art[data-item-preview="mech_wings"] .growth-mech-wings .pet-reward-motion,
+.pet-item-art[data-item-preview="sparkles"] .growth-stars .pet-reward-motion,
+.pet-item-art[data-item-preview="orbit"] .growth-orbit .pet-reward-motion,
+.pet-item-art[data-item-preview="aurora"] .growth-aura .pet-reward-motion,
+.pet-item-art[data-item-preview="lightning"] .growth-lightning .pet-reward-motion,
+.pet-item-art[data-item-preview="scarf"] .pet-scarf-tail,
+.pet-item-art[data-item-preview="cap"] .pet-cap-shine,
+.pet-item-art[data-item-preview="satchel"] .pet-satchel-glint,
+.pet-item-art[data-item-preview="visor"] .pet-visor-scan,
+.pet-item-art[data-item-preview="jacket"] .pet-jacket-trace,
+.pet-item-art[data-item-preview="armor"] .pet-armor-core,
+.pet-item-art[data-item-preview="berry"] .pet-berry-float,
+.pet-item-art:is([data-item-preview="sky"],[data-item-preview="peach"],[data-item-preview="midnight"]) .pet-palette-shine { animation-name:var(--pet-clip); }
+@keyframes pet-feather-left { 0%,100% { transform:rotate(-7deg) scaleX(.86); } 50% { transform:rotate(10deg) scaleX(1.05); } }
+@keyframes pet-feather-right { 0%,100% { transform:rotate(7deg) scaleX(.86); } 50% { transform:rotate(-10deg) scaleX(1.05); } }
+@keyframes pet-mech-left { 0%,100% { transform:rotate(3deg) scaleX(.83); } 40%,65% { transform:rotate(-9deg) scaleX(1); } }
+@keyframes pet-mech-right { 0%,100% { transform:rotate(-3deg) scaleX(.83); } 40%,65% { transform:rotate(9deg) scaleX(1); } }
+@keyframes pet-charge { 0% { stroke-dashoffset:0; opacity:.65; } 50% { opacity:1; } 100% { stroke-dashoffset:var(--pet-charge-lap,-22); opacity:.65; } }
+@keyframes pet-starlight { 0%,100% { opacity:.35; transform:translateY(2px) scale(.7); } 45% { opacity:1; transform:translateY(-3px) scale(1.15) rotate(9deg); } 75% { opacity:.7; transform:translateY(-5px) scale(.9); } }
+@keyframes pet-comet { 0%,100% { opacity:0; stroke-dashoffset:18; } 30%,65% { opacity:.85; } 85% { opacity:0; stroke-dashoffset:-18; } }
+@keyframes pet-orbit-flow { to { stroke-dashoffset:-100; } }
+@keyframes pet-ripple { 0% { transform:scale(.72); opacity:.15; } 35% { opacity:.8; } 100% { transform:scale(1.2); opacity:.1; } }
+@keyframes pet-veil { 0%,100% { transform:translateX(-3px) scaleY(.86); opacity:.09; } 50% { transform:translateX(3px) scaleY(1.06); opacity:.22; } }
+@keyframes pet-energy { 0%,100% { opacity:.35; transform:scale(.94); } 45%,65% { opacity:1; transform:scale(1.06); } }
+@keyframes pet-scarf-breeze { 0%,100% { transform:rotate(-5deg); } 50% { transform:rotate(9deg); } }
+@keyframes pet-bag-shine { 0%,100% { transform:translateY(0); opacity:0; } 35% { opacity:.8; } 70% { transform:translateY(15px); opacity:0; } }
+@keyframes pet-visor-sweep { 0%,100% { transform:translateY(0); opacity:.4; } 55% { transform:translateY(6px); opacity:1; } }
+@keyframes pet-core { 0%,100% { opacity:.5; transform:scale(.94); } 50% { opacity:1; transform:scale(1.08); } }
+@keyframes pet-shimmer { 0%,100% { opacity:.4; } 50% { opacity:1; } }
+@keyframes pet-berry-bob { 0%,100% { transform:translateY(1px) rotate(-4deg); } 50% { transform:translateY(-4px) rotate(4deg); } }
+.pet-live-preview { border:1px solid var(--pet-line); border-radius:18px; overflow:hidden; margin:20px 0; background:var(--pet-paper); }
+.pet-live-art { height:250px; margin:0; background:radial-gradient(ellipse at 50% 75%,color-mix(in srgb,var(--pet-accent) 15%,transparent),transparent 64%),var(--pet-tint); }
+.pet-live-art .pet-portrait { width:220px; height:220px; }
+.pet-live-art .growth-body { fill:var(--pet-body); stroke:var(--pet-outline); }
+.pet-live-art[data-item-preview="sky"] { --pet-body:#b2d7ed; --pet-outline:#729ab7; }
+.pet-live-art[data-item-preview="peach"] { --pet-body:#f1cab9; --pet-outline:#c18e7d; }
+.pet-live-art[data-item-preview="midnight"] { --pet-body:#6a8eac; --pet-outline:#365773; }
+.pet-preview-copy { padding:17px 18px; }
+.pet-preview-heading { display:flex; align-items:center; gap:12px; justify-content:space-between; }
+.pet-preview-heading h4 { margin:0; font-size:16px; }
+.pet-preview-tools>small { font-size:10px; color:var(--pet-muted); }
+.pet-preview-copy p { font-size:11px; line-height:1.8; color:var(--pet-muted); margin:9px 0; }
+.pet-preview-controls { display:flex; gap:8px; align-items:center; margin-top:12px; }
+.pet-preview-controls select { flex:1; min-width:0; width:0; background:var(--pet-tint); color:var(--pet-ink); border:1px solid var(--pet-line); border-radius:9px; padding:9px; font:inherit; font-size:12px; }
+.pet-preview-controls button { border:1px solid var(--pet-line); border-radius:9px; padding:8px 12px; color:var(--pet-accent); background:var(--pet-paper); font-size:11px; }
+.pet-preview-controls button { flex:none; }
+.pet-preview-footnote { margin-bottom:0!important; font-size:10px!important; }
+.pet-shop-item>.pet-preview-icon { position:absolute; z-index:1; top:9px; right:9px; display:grid; place-items:center; width:32px; height:32px; margin:0; padding:7px; border:1px solid var(--pet-line); border-radius:50%; color:var(--pet-muted); background:var(--pet-paper); opacity:.85; }
+.pet-shop-item>.pet-preview-icon:hover,.pet-shop-item>.pet-preview-icon:focus-visible { color:var(--pet-accent); opacity:1; border-color:var(--pet-accent); }
+.pet-preview-icon svg { width:17px; height:17px; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+.pet-shop-item>button[data-pet-buy],.pet-shop-item>button[data-pet-slot] { margin-top:7px; }
+@media(max-width:600px) { .pet-live-art { height:224px; } .pet-live-art .pet-portrait { width:196px; height:196px; } .pet-preview-copy { padding:13px; } }
+
+.app-preloader .pet-reward-motion { animation:none!important; }
+
+.pet-live-preview[hidden] { display:none; }
+.pet-preview-tools { display:flex; align-items:center; gap:9px; }
+.pet-preview-tools button { display:grid; place-items:center; width:26px; height:26px; padding:0; border:0; border-radius:50%; font-size:20px; color:var(--pet-muted); background:transparent; }
+.pet-preview-tools button:hover { color:var(--pet-accent); background:var(--pet-tint); }

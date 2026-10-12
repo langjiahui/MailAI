@@ -13914,8 +13914,8 @@ const MAILAI_UI_COPY = {
     "Growth berry"
   ],
   "pet.itemHint.scarf": [
-    "温暖的小围巾，陪你读完每一封信。",
-    "A cozy scarf for reading together."
+    "围巾尾端随微风轻摆，陪你读完每一封信。",
+    "A cozy scarf with a tail that sways in a gentle breeze."
   ],
   "pet.itemHint.sky": [
     "换上轻盈的晴空配色。",
@@ -13934,25 +13934,34 @@ const MAILAI_UI_COPY = {
     "Golden details for a familiar mailbag."
   ],
   "pet.itemHint.sparkles": [
-    "身边浮现轻轻闪动的星光。",
-    "Softly twinkling stars around XiaoYou."
+    "星星错落闪烁、缓缓上浮，身边掠过一束星光。",
+    "Staggered stars twinkle and drift as a comet passes by."
   ],
   "pet.itemHint.orbit": [
-    "一圈缓缓摇动的星环。",
-    "A gently swaying star orbit."
+    "光点沿倾斜星环环绕，拖出缓缓流动的光轨。",
+    "A satellite circles a tilted ring with a flowing light trail."
   ],
   "pet.itemHint.wings": [
-    "长出一对轻盈的小翅膀。",
-    "A pair of delicate messenger wings."
+    "羽翼交替舒展、轻轻扇动，羽毛细节随动作起伏。",
+    "Delicate feathered wings open and flap with a soft rhythm."
   ],
   "pet.itemHint.aurora": [
-    "脚边泛起柔和的极光涟漪。",
-    "Soft aurora ripples at XiaoYou’s feet."
+    "三层极光涟漪逐圈扩散，薄薄的光幕随风流动。",
+    "Three aurora rings expand beneath a gently flowing light veil."
   ],
   "pet.itemHint.berry": [
     "立即 +80 成长度，每天最多 3 次。",
     "Instantly adds 80 growth; up to 3 per day."
   ],
+  "pet.previewIcon": ["预览 {0}", "Preview {0}"],
+  "pet.previewClose": ["收起预览", "Close preview"],
+  "pet.previewTitle": ["动态预览", "Live preview"],
+  "pet.previewChoose": ["选择预览装扮", "Choose an outfit to preview"],
+  "pet.previewPlay": ["播放预览", "Play preview"],
+  "pet.previewPause": ["暂停预览", "Pause preview"],
+  "pet.previewing": ["正在预览：{0}", "Previewing: {0}"],
+  "pet.previewSafe": ["兑换前先看效果，预览不消耗邮票，当前装扮保持不变。", "Try the look before redeeming. Previewing uses no stamps and keeps your current outfit."],
+  "pet.previewStatic": ["轻动效已关闭或系统已启用减少动态效果，当前显示静态预览。", "Companion motion is off or your system requests reduced motion. A static preview is shown."],
   "pet.shopNote": [
     "永久装扮兑换后自动穿戴，同类配饰或特效一次穿戴一个。花费邮票不会扣除成长度。轻动效开关和系统减少动态效果设置同时适用于成长特效。",
     "Permanent outfits equip automatically. One item per slot can be equipped at a time. Spending stamps never reduces growth. The companion animation preference and system reduced-motion setting apply to growth effects."
@@ -14219,8 +14228,8 @@ const MAILAI_UI_COPY = {
     "Icy blue arcs and energy trails surround XiaoYou."
   ],
   "pet.itemHint.mech_wings": [
-    "金属色的机甲翼，带有锋利的折线轮廓。",
-    "Metallic mech wings with an angular silhouette."
+    "机甲翼缓缓展开、回收，冰蓝能量沿翼面流动。",
+    "Mechanical wings unfold and retract as icy energy flows across them."
   ],
   "pet.error.style": [
     "形象路线无效",

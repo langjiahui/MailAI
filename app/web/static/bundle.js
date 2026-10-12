@@ -15490,8 +15490,8 @@ const MAILAI_UI_COPY = {
     "Growth berry"
   ],
   "pet.itemHint.scarf": [
-    "温暖的小围巾，陪你读完每一封信。",
-    "A cozy scarf for reading together."
+    "围巾尾端随微风轻摆，陪你读完每一封信。",
+    "A cozy scarf with a tail that sways in a gentle breeze."
   ],
   "pet.itemHint.sky": [
     "换上轻盈的晴空配色。",
@@ -15510,25 +15510,34 @@ const MAILAI_UI_COPY = {
     "Golden details for a familiar mailbag."
   ],
   "pet.itemHint.sparkles": [
-    "身边浮现轻轻闪动的星光。",
-    "Softly twinkling stars around XiaoYou."
+    "星星错落闪烁、缓缓上浮，身边掠过一束星光。",
+    "Staggered stars twinkle and drift as a comet passes by."
   ],
   "pet.itemHint.orbit": [
-    "一圈缓缓摇动的星环。",
-    "A gently swaying star orbit."
+    "光点沿倾斜星环环绕，拖出缓缓流动的光轨。",
+    "A satellite circles a tilted ring with a flowing light trail."
   ],
   "pet.itemHint.wings": [
-    "长出一对轻盈的小翅膀。",
-    "A pair of delicate messenger wings."
+    "羽翼交替舒展、轻轻扇动，羽毛细节随动作起伏。",
+    "Delicate feathered wings open and flap with a soft rhythm."
   ],
   "pet.itemHint.aurora": [
-    "脚边泛起柔和的极光涟漪。",
-    "Soft aurora ripples at XiaoYou’s feet."
+    "三层极光涟漪逐圈扩散，薄薄的光幕随风流动。",
+    "Three aurora rings expand beneath a gently flowing light veil."
   ],
   "pet.itemHint.berry": [
     "立即 +80 成长度，每天最多 3 次。",
     "Instantly adds 80 growth; up to 3 per day."
   ],
+  "pet.previewIcon": ["预览 {0}", "Preview {0}"],
+  "pet.previewClose": ["收起预览", "Close preview"],
+  "pet.previewTitle": ["动态预览", "Live preview"],
+  "pet.previewChoose": ["选择预览装扮", "Choose an outfit to preview"],
+  "pet.previewPlay": ["播放预览", "Play preview"],
+  "pet.previewPause": ["暂停预览", "Pause preview"],
+  "pet.previewing": ["正在预览：{0}", "Previewing: {0}"],
+  "pet.previewSafe": ["兑换前先看效果，预览不消耗邮票，当前装扮保持不变。", "Try the look before redeeming. Previewing uses no stamps and keeps your current outfit."],
+  "pet.previewStatic": ["轻动效已关闭或系统已启用减少动态效果，当前显示静态预览。", "Companion motion is off or your system requests reduced motion. A static preview is shown."],
   "pet.shopNote": [
     "永久装扮兑换后自动穿戴，同类配饰或特效一次穿戴一个。花费邮票不会扣除成长度。轻动效开关和系统减少动态效果设置同时适用于成长特效。",
     "Permanent outfits equip automatically. One item per slot can be equipped at a time. Spending stamps never reduces growth. The companion animation preference and system reduced-motion setting apply to growth effects."
@@ -15795,8 +15804,8 @@ const MAILAI_UI_COPY = {
     "Icy blue arcs and energy trails surround XiaoYou."
   ],
   "pet.itemHint.mech_wings": [
-    "金属色的机甲翼，带有锋利的折线轮廓。",
-    "Metallic mech wings with an angular silhouette."
+    "机甲翼缓缓展开、回收，冰蓝能量沿翼面流动。",
+    "Mechanical wings unfold and retract as icy energy flows across them."
   ],
   "pet.error.style": [
     "形象路线无效",
@@ -30388,14 +30397,14 @@ document.getElementById('task-center-list').addEventListener('click', async even
     <g class="companion-figure">
       <path class="companion-foot-left" d="M37 88 34 98Q35 102 44 100L48 88" fill="#35745A"/>
       <path class="companion-foot-right" d="M64 89 67 99Q72 102 79 98L75 86" fill="#35745A"/>
-      <g class="growth-wings" fill="#DAEEF7" stroke="#85B5C6" stroke-width="1.3"><path d="M31 58Q5 32 9 61Q11 78 34 77ZM81 58Q107 32 103 61Q101 78 78 77Z"/></g>
-      <g class="growth-mech-wings" fill="#48718F" stroke="#243F55" stroke-width="1.5"><path d="m28 54-20-20 5 38 19 8 2-10ZM84 54l20-20-5 38-19 8-2-10Z"/><path d="m12 42 12 22M100 42 88 64" stroke="#8AE4E8" stroke-width="2"/></g>
+      <g class="growth-wings" fill="#DAEEF7" stroke="#85B5C6" stroke-width="1.3"><g class="pet-reward-motion pet-wing-left"><path d="M31 58Q5 32 9 61Q11 78 34 77Z"/><path d="M28 64Q17 49 13 53M29 70Q18 65 13 61" fill="none" opacity=".6"/></g><g class="pet-reward-motion pet-wing-right"><path d="M81 58Q107 32 103 61Q101 78 78 77Z"/><path d="M84 64Q95 49 99 53M83 70Q94 65 99 61" fill="none" opacity=".6"/></g></g>
+      <g class="growth-mech-wings" fill="#48718F" stroke="#243F55" stroke-width="1.5"><g class="pet-reward-motion pet-mech-left"><path d="m28 54-20-20 5 38 19 8 2-10Z"/><path class="pet-reward-motion pet-mech-charge" d="m12 42 12 22" stroke="#8AE4E8" stroke-width="2"/></g><g class="pet-reward-motion pet-mech-right"><path d="M84 54l20-20-5 38-19 8-2-10Z"/><path class="pet-reward-motion pet-mech-charge" d="M100 42 88 64" stroke="#8AE4E8" stroke-width="2"/></g></g>
       <path class="growth-cape" d="M29 64 20 96Q56 111 92 96L83 64Z" fill="#719EC0" stroke="#477A9E"/>
       <g class="companion-torso">
       <path class="companion-arm-left" d="M26 62Q13 61 16 75Q20 79 29 71" fill="#91C9AC" stroke="#599C7B" stroke-width="1.3"/>
       <g class="companion-wave"><path d="M84 60Q99 54 99 64Q99 71 86 76" fill="#91C9AC" stroke="#599C7B" stroke-width="1.3"/></g>
       <path class="growth-body" d="M25 52C25 27 38 20 56 20S87 29 87 53L85 76Q83 95 57 96Q29 96 26 79Z" fill="#B5DDC5" stroke="#649F80" stroke-width="1.4"/>
-      <path d="M30 46Q31 26 53 25" stroke="#E8F5ED" stroke-width="4" stroke-linecap="round"/>
+      <path class="pet-reward-motion pet-palette-shine" d="M30 46Q31 26 53 25" stroke="#E8F5ED" stroke-width="4" stroke-linecap="round"/>
       <g class="companion-leaves">
       <path d="M48 22Q41 12 34 15Q33 25 48 27" fill="#398564"/>
       <path d="M48 23Q52 8 66 12Q64 24 48 27" fill="#5AA584"/>
@@ -30410,7 +30419,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
         <path class="ranger-hair-shine" d="m40 28 8 1 10-6m1 7q7-3 13 0" fill="none" stroke-width="1.8" stroke-linecap="round"/>
       </g>
       <g class="growth-ranger-crest" fill="#446780" stroke="#264C67" stroke-width="1.2"><path d="M30 36h4v13h-4q-4-6 0-13ZM79 36h4q4 7 0 13h-4Z"/><path d="M30 40v5M83 40v5" stroke="#8AE4E8" stroke-width="2" stroke-linecap="round"/><path d="m69 29 6 2-2 6-5-3Z" fill="#83D5E3"/></g>
-      <g class="growth-cap"><path d="M33 30Q33 12 56 13Q76 14 77 30Z" fill="#719EC0" stroke="#477A9E"/><path d="M29 30h53" stroke="#477A9E" stroke-width="4" stroke-linecap="round"/><path d="m50 21 6 4 6-4" stroke="#FFF5D9" stroke-width="2"/></g>
+      <g class="growth-cap"><path d="M33 30Q33 12 56 13Q76 14 77 30Z" fill="#719EC0" stroke="#477A9E"/><path d="M29 30h53" stroke="#477A9E" stroke-width="4" stroke-linecap="round"/><path class="pet-reward-motion pet-cap-shine" d="m50 21 6 4 6-4" stroke="#FFF5D9" stroke-width="2"/></g>
       <g class="companion-gaze">
         <g class="companion-eyes"><rect x="43" y="48" width="5" height="9" rx="2.5" fill="#285640"/><rect x="65" y="48" width="5" height="9" rx="2.5" fill="#285640"/></g>
         <g class="companion-happy-eyes" stroke="#285640" stroke-width="2.7" stroke-linecap="round"><path d="M42 53q3-5 6 0M64 53q3-5 6 0"/></g>
@@ -30419,22 +30428,22 @@ document.getElementById('task-center-list').addEventListener('click', async even
         <ellipse cx="40" cy="60" rx="4" ry="2.2" fill="#E9B9A5" opacity=".55"/><ellipse cx="73" cy="60" rx="4" ry="2.2" fill="#E9B9A5" opacity=".55"/>
       </g>
       </g>
-      <g class="growth-visor"><path d="M36 46h41l-3 12H40Z" fill="#64D9E3" fill-opacity=".25" stroke="#285875" stroke-width="2"/><path d="m39 49 34 0" stroke="#A2FFFF" stroke-width="1.5"/></g>
+      <g class="growth-visor"><path d="M36 46h41l-3 12H40Z" fill="#64D9E3" fill-opacity=".25" stroke="#285875" stroke-width="2"/><path class="pet-reward-motion pet-visor-scan" d="m39 49 34 0" stroke="#A2FFFF" stroke-width="1.5"/></g>
       <path class="growth-ranger-collar" d="m31 72 7-5 7 7 11 5 11-5 7-7 7 5-7 7-7-1-11 6-11-6-7 1Z" fill="#446780" stroke="#264C67" stroke-width="1.2"/>
       <path class="growth-ranger-badge" d="m38 79 5 5-5 5-5-5Z" fill="#83D5E3" stroke="#417C9D"/>
-      <g class="growth-jacket" fill="#41607B" stroke="#294459" stroke-width="1.4"><path d="m28 72 10-5 7 9 11 4 11-4 7-9 10 5-4 16-23 7-24-7Z"/><path d="m38 70 7 10 11 4 11-4 7-10" fill="none" stroke="#8FB7D0"/><path d="M56 84v10" stroke="#294459" stroke-width="2"/></g>
-      <g class="growth-armor" fill="#587C93" stroke="#2C4E65" stroke-width="1.5"><path d="m26 72 10-5 8 5 12 4 12-4 8-5 10 5-6 12-9-4-3 12-12 6-12-6-3-12-9 4Z"/><path d="m45 80 11 4 11-4-3 11-8 3-8-3Z" fill="#304D67"/><path d="m53 81 7 0-5 6h5l-8 6 3-6h-5Z" fill="#91EAF0" stroke="none"/></g>
-      <g class="growth-scarf" fill="#EDAE87" stroke="#C88360"><path d="M32 68q24 10 48 0l-1 8q-23 9-46 0Z"/><path d="m65 76 10 2-2 15-10-5Z"/></g>
+      <g class="growth-jacket" fill="#41607B" stroke="#294459" stroke-width="1.4"><path d="m28 72 10-5 7 9 11 4 11-4 7-9 10 5-4 16-23 7-24-7Z"/><path class="pet-reward-motion pet-jacket-trace" d="m38 70 7 10 11 4 11-4 7-10" fill="none" stroke="#8FB7D0"/><path d="M56 84v10" stroke="#294459" stroke-width="2"/></g>
+      <g class="growth-armor" fill="#587C93" stroke="#2C4E65" stroke-width="1.5"><path d="m26 72 10-5 8 5 12 4 12-4 8-5 10 5-6 12-9-4-3 12-12 6-12-6-3-12-9 4Z"/><path d="m45 80 11 4 11-4-3 11-8 3-8-3Z" fill="#304D67"/><path class="pet-reward-motion pet-armor-core" d="m53 81 7 0-5 6h5l-8 6 3-6h-5Z" fill="#91EAF0" stroke="none"/></g>
+      <g class="growth-scarf" fill="#EDAE87" stroke="#C88360"><path d="M32 68q24 10 48 0l-1 8q-23 9-46 0Z"/><path class="pet-reward-motion pet-scarf-tail" d="m65 76 10 2-2 15-10-5Z"/></g>
       <path class="growth-medal" d="m39 77 2 4 4 .5-3 3 .5 4-3.5-2-3.5 2 .5-4-3-3 4-.5Z" fill="#F3CE72" stroke="#B99E65"/>
       <path d="M32 71 77 89" stroke="#528A6C" stroke-width="3"/>
-      <g class="companion-bag"><g transform="rotate(12 65 82)"><rect x="51" y="73" width="30" height="20" rx="5" fill="#FFF5D9" stroke="#B99E65" stroke-width="1.3"/><path d="m54 77 12 8 12-8" stroke="#B99E65" stroke-width="1.5" stroke-linejoin="round"/></g></g>
+      <g class="companion-bag"><g transform="rotate(12 65 82)"><rect x="51" y="73" width="30" height="20" rx="5" fill="#FFF5D9" stroke="#B99E65" stroke-width="1.3"/><path d="m54 77 12 8 12-8" stroke="#B99E65" stroke-width="1.5" stroke-linejoin="round"/><path class="pet-reward-motion pet-satchel-glint" d="M54 75h24" stroke="#FFF7C9" stroke-width="2" stroke-linecap="round"/></g></g>
       </g>
     </g>
-    <g class="growth-stars" fill="#E7BE64"><path d="m18 27 2 5 5 2-5 2-2 5-2-5-5-2 5-2ZM96 72l2 4 4 2-4 2-2 4-2-4-4-2 4-2Z"/><circle cx="87" cy="12" r="2"/><circle cx="15" cy="78" r="2"/></g>
-    <g class="growth-orbit" stroke="#9BBCDC" opacity=".65"><ellipse cx="56" cy="65" rx="50" ry="20" transform="rotate(-22 56 65)"/><circle cx="9" cy="77" r="3" fill="#E7BE64"/></g>
-    <g class="growth-berry"><path d="M88 65q-8-9-10 0q-1 9 10 13q11-4 10-13q-2-9-10 0Z" fill="#E899A8" stroke="#B4687C"/><path d="M88 63q-4-8 3-9q4 6-3 9Z" fill="#5AA584"/><circle cx="84" cy="69" r="1" fill="#FFF5D9"/><circle cx="90" cy="72" r="1" fill="#FFF5D9"/></g>
-    <g class="growth-lightning" stroke="#63D6F4" stroke-width="2" stroke-linejoin="round"><path d="m11 51 7-11-2 11 7-1-8 12 2-11ZM92 80l7-11-2 11 7-1-8 12 2-11Z"/><path d="M25 100q31 12 62 0" stroke="#67A3E7"/></g>
-    <g class="growth-aura"><ellipse cx="56" cy="99" rx="39" ry="8" stroke="#B5A3DB" stroke-width="2"/><ellipse cx="56" cy="99" rx="31" ry="5" stroke="#83CBBB"/></g>
+    <g class="growth-stars" fill="#E7BE64"><path class="pet-reward-motion pet-star" d="m18 27 2 5 5 2-5 2-2 5-2-5-5-2 5-2Z"/><path class="pet-reward-motion pet-star" d="M96 72l2 4 4 2-4 2-2 4-2-4-4-2 4-2Z"/><circle class="pet-reward-motion pet-star" cx="87" cy="12" r="2"/><circle class="pet-reward-motion pet-star" cx="15" cy="78" r="2"/><path class="pet-reward-motion pet-star-trail" d="m72 16 16-6" stroke="#F4D98C" stroke-width="1.6" stroke-linecap="round"/><circle class="pet-reward-motion pet-star" cx="101" cy="49" r="1.3"/><circle class="pet-reward-motion pet-star" cx="34" cy="9" r="1.3"/></g>
+    <g class="growth-orbit" stroke="#9BBCDC"><ellipse cx="56" cy="65" rx="50" ry="20" transform="rotate(-22 56 65)" opacity=".35"/><ellipse class="pet-reward-motion pet-orbit-stream" cx="56" cy="65" rx="50" ry="20" transform="rotate(-22 56 65)" pathLength="100" stroke="#D1EAF6" stroke-width="2.5" stroke-linecap="round"/><ellipse class="pet-reward-motion pet-orbit-stream pet-orbit-satellite" cx="56" cy="65" rx="50" ry="20" transform="rotate(-22 56 65)" pathLength="100" stroke="#E7BE64" stroke-width="4" stroke-linecap="round"/></g>
+    <g class="growth-berry pet-reward-motion pet-berry-float"><path d="M88 65q-8-9-10 0q-1 9 10 13q11-4 10-13q-2-9-10 0Z" fill="#E899A8" stroke="#B4687C"/><path d="M88 63q-4-8 3-9q4 6-3 9Z" fill="#5AA584"/><circle cx="84" cy="69" r="1" fill="#FFF5D9"/><circle cx="90" cy="72" r="1" fill="#FFF5D9"/></g>
+    <g class="growth-lightning" stroke="#63D6F4" stroke-width="2" stroke-linejoin="round"><path class="pet-reward-motion pet-bolt" d="m11 51 7-11-2 11 7-1-8 12 2-11Z"/><path class="pet-reward-motion pet-bolt" d="M92 80l7-11-2 11 7-1-8 12 2-11Z"/><path class="pet-reward-motion pet-energy-stream" d="M25 100q31 12 62 0" stroke="#67A3E7" pathLength="100"/></g>
+    <g class="growth-aura"><path class="pet-reward-motion pet-aurora-veil" d="M17 85Q28 58 32 87Q43 72 56 88Q74 61 79 85Q92 68 95 91Q57 106 17 94Z" fill="#83CBBB" opacity=".13"/><ellipse class="pet-reward-motion pet-aurora-ripple" cx="56" cy="99" rx="39" ry="8" stroke="#B5A3DB" stroke-width="2"/><ellipse class="pet-reward-motion pet-aurora-ripple" cx="56" cy="99" rx="31" ry="5" stroke="#83CBBB"/><ellipse class="pet-reward-motion pet-aurora-ripple" cx="56" cy="99" rx="26" ry="4" stroke="#C8DDF0"/></g>
     <g class="companion-thinking" fill="#5B9477"><circle cx="85" cy="23" r="2"/><circle cx="92" cy="17" r="2.7"/><circle cx="101" cy="14" r="3.3"/></g>
     <g class="companion-alert"><circle cx="92" cy="32" r="8" fill="currentColor"/><path d="M92 28v4M92 35h.01" stroke="white" stroke-width="2" stroke-linecap="round"/></g>
   </svg>`;
@@ -30798,6 +30807,34 @@ document.getElementById('task-center-list').addEventListener('click', async even
   let busy = false, tickBusy = false, pending = null, clicks = 0, lastClick = 0;
   let lastInput = performance.now(), lastSample = performance.now(), reading = null;
   let lastRefresh = 0, refreshAccount = '', purchaseIntent = null, feedback = null, renderKey = '';
+  let previewItem = 'sparkles', previewPlaying = true, previewOpen = false;
+  const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
+  const motionAllowed = () => !motionPreference.matches && !document.body.classList.contains('companion-still');
+  const motionHosts = new Set();
+  const motionVisibility = new IntersectionObserver(entries => {
+    for (const entry of entries) entry.target.dataset.rewardVisible = String(entry.isIntersecting);
+  });
+  function watchRewardMotion() {
+    for (const svg of motionHosts) if (!svg.isConnected) { motionVisibility.unobserve(svg); motionHosts.delete(svg); }
+    for (const svg of document.querySelectorAll('.mail-companion')) {
+      svg.classList.toggle('pet-preview-svg', !!svg.closest('.pet-item-art'));
+      if (!motionHosts.has(svg)) {
+        svg.dataset.rewardVisible = 'false'; motionHosts.add(svg); motionVisibility.observe(svg);
+      }
+    }
+  }
+  function updatePreviewMotion() {
+    const art = dialog?.querySelector('.pet-live-art');
+    const button = dialog?.querySelector('[data-pet-preview-play]');
+    if (art) art.dataset.previewPlaying = String(previewPlaying && motionAllowed());
+    if (button) {
+      button.disabled = !motionAllowed();
+      button.textContent = t(previewPlaying && motionAllowed() ? 'previewPause' : 'previewPlay');
+      button.setAttribute('aria-pressed', String(previewPlaying && motionAllowed()));
+    }
+    const note = dialog?.querySelector('[data-pet-motion-note]');
+    if (note) note.textContent = t(motionAllowed() ? 'previewSafe' : 'previewStatic');
+  }
   const intents = new Map();
   const intentKey = () => 'mailai-companion-purchase:client';
   function saveIntent(id, intent) {
@@ -30933,6 +30970,16 @@ document.getElementById('task-center-list').addEventListener('click', async even
         return;
       }
       if (button.hasAttribute('data-pet-retry')) return refresh();
+      if (button.dataset.petPreview) return selectPreview(button.dataset.petPreview, true);
+      if (button.hasAttribute('data-pet-preview-close')) {
+        previewOpen = false;
+        dialog.querySelector('.pet-live-preview').hidden = true;
+        dialog.querySelector(`[data-pet-preview="${previewItem}"]`)?.focus();
+        return;
+      }
+      if (button.hasAttribute('data-pet-preview-play')) {
+        previewPlaying = !previewPlaying; updatePreviewMotion(); return;
+      }
       if (busy || !state) return;
       let path, payload, notice;
       if (button.hasAttribute('data-pet-enabled')) {
@@ -30970,6 +31017,9 @@ document.getElementById('task-center-list').addEventListener('click', async even
         if (id !== account) void refresh();
       }
     });
+    dialog.addEventListener('change', event => {
+      if (event.target.matches('[data-pet-preview-select]')) selectPreview(event.target.value);
+    });
     dialog.addEventListener('close', () => { if (returnFocus?.isConnected) returnFocus.focus({preventScroll:true}); });
   }
   async function open() {
@@ -30979,6 +31029,23 @@ document.getElementById('task-center-list').addEventListener('click', async even
     await refresh();
   }
   function avatar(extra = '') { return `<div class="pet-portrait ${extra}">${window.mailaiCompanionArt || ''}</div>`; }
+  function previewView() {
+    const items = state.items.filter(item => item.slot !== 'theme');
+    const item = items.find(item => item.id === previewItem) || items[0];
+    previewItem = item.id;
+    return `<div class="pet-live-art pet-item-art" data-item-preview="${item.id}" data-preview-playing="${previewPlaying && motionAllowed()}">${avatar()}</div><div class="pet-preview-copy"><div class="pet-preview-heading"><h4 id="pet-preview-title">${label(`item.${item.id}`)}</h4><div class="pet-preview-tools"><small>${label('previewTitle')}</small><button type="button" data-pet-preview-close title="${label('previewClose')}" aria-label="${label('previewClose')}">×</button></div></div><p>${label(`itemHint.${item.id}`)}</p><div class="pet-preview-controls"><select data-pet-preview-select aria-label="${label('previewChoose')}">${items.map(entry => `<option value="${entry.id}" ${entry.id === item.id ? 'selected' : ''}>${label(`item.${entry.id}`)}</option>`).join('')}</select><button type="button" data-pet-preview-play aria-pressed="${previewPlaying && motionAllowed()}" ${!motionAllowed() ? 'disabled' : ''}>${label(previewPlaying && motionAllowed() ? 'previewPause' : 'previewPlay')}</button></div><p class="pet-preview-footnote" data-pet-motion-note>${label(motionAllowed() ? 'previewSafe' : 'previewStatic')}</p></div>`;
+  }
+  function selectPreview(item, scroll = false) {
+    if (!state?.items.some(entry => entry.id === item && entry.slot !== 'theme')) return;
+    const host = dialog?.querySelector('.pet-live-preview');
+    if (!host) return;
+    const focused = document.activeElement?.matches('[data-pet-preview-select]');
+    previewItem = item; previewPlaying = true; previewOpen = true; host.hidden = false; host.innerHTML = previewView();
+    watchRewardMotion();
+    if (focused) host.querySelector('[data-pet-preview-select]').focus({preventScroll:true});
+    if (scroll) { host.scrollIntoView({block:'start'}); host.querySelector('[data-pet-preview-select]').focus({preventScroll:true}); }
+    message(t('previewing',t(`item.${item}`)));
+  }
   function reward(xp, stamps) { return `<span class="pet-reward">+${xp} ${label('growth')} · +${stamps} ${label('stamps')}</span>`; }
   function todayView() {
     const s = state;
@@ -30997,13 +31064,13 @@ document.getElementById('task-center-list').addEventListener('click', async even
   }
   function shopView() {
     const s = state;
-    return `${themeShopView()}<div class="pet-section-title"><h3>${label('shopTitle')}</h3><span>${label('balance',s.stamps)}</span></div><div class="pet-reset-outfit">${['palette','accessory','effect'].map(slot=>`<button type="button" data-pet-slot="${slot}" ${!s.equipped[slot] || busy ? 'disabled' : ''}>${label(`reset.${slot}`)}</button>`).join('')}</div><div class="pet-shop">${s.items.filter(item=>item.slot !== 'theme').map(item => {
+    return `${themeShopView()}<section class="pet-live-preview" aria-labelledby="pet-preview-title" ${previewOpen ? '' : 'hidden'}>${previewView()}</section><div class="pet-section-title"><h3>${label('shopTitle')}</h3><span>${label('balance',s.stamps)}</span></div><div class="pet-reset-outfit">${['palette','accessory','effect'].map(slot=>`<button type="button" data-pet-slot="${slot}" ${!s.equipped[slot] || busy ? 'disabled' : ''}>${label(`reset.${slot}`)}</button>`).join('')}</div><div class="pet-shop">${s.items.filter(item=>item.slot !== 'theme').map(item => {
       const locked = s.stage < item.stage, equipped = s.equipped[item.slot] === item.id;
       const depleted = item.id === 'berry' && s.berry_today >= 3;
       const unavailable = locked || (!item.owned && s.stamps < item.cost) || depleted || busy || (!!purchaseIntent && !item.owned);
       const action = item.owned ? `data-pet-slot="${item.slot}" data-pet-equip="${item.id}"` : `data-pet-buy="${item.id}"`;
       const caption = equipped ? t('wearing') : item.owned ? t('wear') : depleted ? t('berryLimit') : locked ? t('stageRequired',stageName(item.stage)) : t(item.id === 'berry' ? 'feedPrice' : 'buyPrice',item.cost);
-      return `<article class="pet-shop-item ${locked ? 'is-locked' : ''}"><div class="pet-item-art" data-item-preview="${item.id}" aria-hidden="true">${avatar()}</div><div class="pet-item-copy"><b>${label(`item.${item.id}`)}</b><p>${label(`itemHint.${item.id}`)}</p><small>${item.owned ? label('owned') : label('itemRequirement',item.cost,stageName(item.stage))}</small></div><button type="button" ${action} ${unavailable || equipped ? 'disabled' : ''}>${esc(caption)}</button></article>`;
+      return `<article class="pet-shop-item ${locked ? 'is-locked' : ''}"><button type="button" class="pet-preview-icon" data-pet-preview="${item.id}" title="${label('previewIcon',t(`item.${item.id}`))}" aria-label="${label('previewIcon',t(`item.${item.id}`))}"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.5 12s3.2-6 9.5-6 9.5 6 9.5 6-3.2 6-9.5 6S2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.5"/></svg></button><div class="pet-item-art" data-item-preview="${item.id}" aria-hidden="true">${avatar()}</div><div class="pet-item-copy"><b>${label(`item.${item.id}`)}</b><p>${label(`itemHint.${item.id}`)}</p><small>${item.owned ? label('owned') : label('itemRequirement',item.cost,stageName(item.stage))}</small></div><button type="button" ${action} ${unavailable || equipped ? 'disabled' : ''}>${esc(caption)}</button></article>`;
     }).join('')}</div><p class="pet-note">${label('shopNote')}</p>`;
   }
   function themeShopView() {
@@ -31045,6 +31112,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
     accountNote.className = 'pet-client-note';
     accountNote.innerHTML = `<span>${label('clientOwner')}</span><small>${label('clientStorage')}</small>`;
     host.prepend(accountNote);
+    watchRewardMotion();
     host.scrollTop = scroll;
     if (focusKey && focus?.isConnected === false) {
       const [key,value] = focusKey;
@@ -31127,6 +31195,9 @@ document.getElementById('task-center-list').addEventListener('click', async even
   document.addEventListener('mailai:language-changed',() => { feedback = null; renderKey = ''; message(''); paint(); if (!state) level.textContent = t('level',1); });
   new MutationObserver(checkAccount).observe(document.getElementById('account-mailbox-nav'),{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
   window.mailaiEnergy.register('companion-growth',tick,10000);
+  motionPreference.addEventListener('change', updatePreviewMotion);
+  new MutationObserver(updatePreviewMotion).observe(document.body,{attributes:true,attributeFilter:['class']});
+  watchRewardMotion();
   checkAccount();
 })();
 
@@ -33926,6 +33997,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
     qq: {name:'QQ / Foxmail', mark:'Q', note:()=>t('客户端授权码连接', 'Client authorization code'), url:'https://mail.qq.com/', domains:['qq.com','foxmail.com'], host:'imap.qq.com', smtp:'smtp.qq.com', guide:()=>t('打开 QQ 邮箱网页版，在设置中找到 POP3 / IMAP / SMTP 服务，开启 IMAP / SMTP 并生成授权码，再回到这里填写。网页版支持的扫码仅用于登录网页。', 'Open QQ Mail settings, enable IMAP / SMTP and generate a client authorization code. Return here to enter it. Website QR login signs you into the website only.')},
     exmail: {name:()=>t('腾讯企业邮箱', 'Tencent Enterprise Mail'), get mark() { return mailaiText('企'); }, note:()=>t('企业邮箱 · 客户端专用密码', 'Enterprise client password'), url:'https://exmail.qq.com/', host:'imap.exmail.qq.com', smtp:'smtp.exmail.qq.com', guide:()=>t('在企业邮箱网页版开启 IMAP / SMTP 服务；开启安全登录的邮箱，请获取客户端专用密码。没有相关设置时，请联系企业管理员。', 'Enable IMAP / SMTP in your enterprise mailbox. If secure sign-in is enabled, get a client-specific password. Contact your administrator if these settings are unavailable.')},
     google: {name:'Google / Gmail', mark:'G', note:()=>t('在 Google 官方页面授权', 'Authorize with Google'), oauth:true},
+    gmailPassword: {name:'Gmail', hidden:true, host:'imap.gmail.com', smtp:'smtp.gmail.com', url:'https://myaccount.google.com/apppasswords', guide:()=>t('1. 在 Google 账号中开启两步验证。\n2. 打开应用专用密码页面，将应用名称填写为 MailAI，生成 16 位专用密码。\n3. 回到这里粘贴专用密码，点击“验证并连接”。请使用与上方相同的 Google 账号，不要填写 Google 登录密码。\n如果没有应用专用密码选项，工作或学校账号、仅使用安全密钥的账号及高级保护账号可能不支持，请使用官方授权或联系管理员。', '1. Enable 2-Step Verification in your Google Account.\n2. Open App passwords, name the app MailAI, and generate a 16-character password.\n3. Paste it here and click Verify and connect. Use the same Google Account as above, not your Google sign-in password.\nWork or school accounts, security-key-only accounts, and Advanced Protection may not support app passwords. Use official authorization or contact your administrator.')},
     microsoft: {name:'Microsoft / Outlook', mark:'M', note:()=>t('Outlook · Microsoft 365 国际版', 'Outlook · Microsoft 365 global'), oauth:true},
     netease: {name:()=>t('网易邮箱', 'NetEase Mail'), get mark() { return mailaiText('易'); }, note:()=>t('163 · 126 · Yeah 授权码', '163 · 126 · Yeah authorization code'), url:'https://mail.163.com/', domains:['163.com','126.com','yeah.net'], guide:()=>t('打开对应的网易邮箱网页版，在设置中开启 IMAP / SMTP 服务，按页面提示生成客户端授权密码。', 'Open your NetEase mailbox settings, enable IMAP / SMTP and generate a client authorization password.')},
     other: {name:()=>t('其他邮箱', 'Other mailbox'), mark:'@', note:()=>t('iCloud · 企业邮箱 · 自定义 IMAP', 'iCloud · Enterprise · Custom IMAP'), guide:()=>t('使用邮箱服务商提供的客户端授权码或应用专用密码。企业邮箱可向管理员获取 IMAP / SMTP 服务器信息，在高级设置中填写。', 'Use the client code or app password provided by your mail service. Ask your administrator for IMAP / SMTP settings if needed.')},
@@ -33939,6 +34011,21 @@ document.getElementById('task-center-list').addEventListener('click', async even
   dialog.setAttribute('aria-labelledby', 'mail-login-title');
   document.body.append(dialog);
   const request = (path, data) => api('/api/oauth/' + path, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+  function externalLink(link) {
+    link.target = '_blank'; link.rel = 'noopener noreferrer';
+    link.onclick = async event => {
+      if (!window.pywebview?.api?.open_external_url) return;
+      event.preventDefault();
+      try {
+        const result = await window.pywebview.api.open_external_url(link.href);
+        if (result?.ok === false) throw new Error(t('未能打开浏览器，请重试。', 'Could not open the browser. Please retry.'));
+      } catch (error) { toast(mailaiSystemMessage(error.message), 'error'); }
+    };
+  }
+  const passwordLabel = key => key === 'gmailPassword' ? t('Google 应用专用密码', 'Google app password') : ['qq','netease'].includes(key) ? t('客户端授权码', 'Client authorization code') : t('客户端密码或授权码', 'Client password or authorization code');
+  const passwordPlaceholder = key => key === 'gmailPassword' ? t('粘贴 Google 生成的 16 位应用专用密码', 'Paste the 16-character Google app password') : t('请输入邮箱提供的客户端密码或授权码', 'Enter the client password or authorization code');
+  const credentialGuideTitle = key => key === 'gmailPassword' ? t('如何获取 Google 应用专用密码？', 'How do I get a Google app password?') : t('如何获取授权码或客户端密码？', 'How do I get a client code or password?');
+  const credentialLinkText = key => key === 'gmailPassword' ? t('生成应用专用密码 ↗', 'Generate app password ↗') : key === 'exmail' ? t('获取客户端密码 ↗', 'Get client password ↗') : t('获取授权码 ↗', 'Get authorization code ↗');
   const current = run => session === run && dialog.open;
   function dispose() {
     const previous = session; session = null;
@@ -33989,6 +34076,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
     body.append(addressForm);
     const grid = document.createElement('div'); grid.className = 'mail-login-providers';
     for (const [key, provider] of Object.entries(providers)) {
+      if (provider.hidden) continue;
       const button = document.createElement('button'); button.type = 'button'; button.dataset.loginProvider = key;
       const mark = document.createElement('span'); mark.className = 'mail-login-mark'; mark.textContent = provider.mark; mark.setAttribute('aria-hidden','true');
       const copy = document.createElement('span'), name = document.createElement('b'), note = document.createElement('small');
@@ -34012,7 +34100,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
   function infer(account) {
     const host = (account?.host || '').toLowerCase(), domain = (account?.user || '').split('@').pop().toLowerCase();
     if (host.includes('exmail.qq.com')) return 'exmail';
-    if (host.includes('gmail.com')) return account.auth_type === 'oauth2' ? 'google' : 'other';
+    if (host.includes('gmail.com')) return account.auth_type === 'oauth2' ? 'google' : 'gmailPassword';
     if (account?.auth_type === 'oauth2' && host.includes('outlook.office365.com')) return 'microsoft';
     return Object.keys(providers).find(key => providers[key].domains?.includes(domain)) || 'other';
   }
@@ -34051,11 +34139,15 @@ document.getElementById('task-center-list').addEventListener('click', async even
       change.onclick = () => open({source:prefix, user:el(`${prefix}-user`).value.trim()}); row.append(change);
     }
     const details = document.createElement('details'), summary = document.createElement('summary'), copy = document.createElement('p');
-    summary.textContent = t('如何获取授权码或客户端密码？', 'How do I get a client code or password?'); copy.textContent = provider.guide(); details.append(summary, copy);
+    summary.textContent = credentialGuideTitle(key); copy.textContent = provider.guide(); details.append(summary, copy);
+    if (key === 'gmailPassword') {
+      details.open = true;
+      const verification = document.createElement('a'); verification.href = 'https://myaccount.google.com/signinoptions/two-step-verification';
+      verification.textContent = t('开启两步验证 ↗', 'Enable 2-Step Verification ↗'); externalLink(verification); details.append(verification);
+    }
     if (provider.url) {
       const link = document.createElement('a'); link.href = provider.url; link.target = '_blank'; link.rel = 'noopener noreferrer';
-      link.textContent = key === 'exmail' ? t('获取客户端密码 ↗', 'Get client password ↗') : t('获取授权码 ↗', 'Get authorization code ↗');
-      link.onclick = event => { if (window.pywebview?.api?.open_external_url) { event.preventDefault(); window.pywebview.api.open_external_url(provider.url).catch(error=>toast(mailaiSystemMessage(error.message),'error')); } };
+      link.textContent = credentialLinkText(key); externalLink(link);
       const links = document.createElement('div'); links.className = 'mail-login-guide-actions'; links.append(details, link);
       guide.append(row, links);
     }
@@ -34066,9 +34158,10 @@ document.getElementById('task-center-list').addEventListener('click', async even
     error.setAttribute('role','status'); error.setAttribute('aria-live','polite');
     form.append(error);
     const label = el(`${prefix}-password`).closest('label').querySelector('span');
-    label.removeAttribute('data-i18n'); label.textContent = key === 'qq' || key === 'netease' ? t('客户端授权码', 'Client authorization code') : t('客户端密码或授权码', 'Client password or authorization code');
+    label.removeAttribute('data-i18n'); label.textContent = passwordLabel(key);
     const input = el(`${prefix}-password`); input.removeAttribute('data-i18n-placeholder');
-    input.placeholder = t('请输入邮箱提供的客户端密码或授权码', 'Enter the client password or authorization code');
+    input.placeholder = passwordPlaceholder(key);
+    input.oninput = () => { if (selection[prefix] === 'gmailPassword') input.value = input.value.replace(/\s/g, ''); };
     if (!input.parentElement.classList.contains('mail-login-password-wrap')) {
       const wrap = document.createElement('div'); wrap.className = 'mail-login-password-wrap'; input.before(wrap); wrap.append(input);
       const toggle = document.createElement('button'); toggle.type = 'button'; toggle.className = 'mail-login-password-toggle';
@@ -34134,6 +34227,26 @@ document.getElementById('task-center-list').addEventListener('click', async even
     header(text(provider.name), t('在系统浏览器中授权，返回后自动验证并连接邮箱。', 'Authorize in your browser; MailAI then verifies and connects the mailbox.'), true);
     dialog.querySelector('.mail-login-body').innerHTML = `<form id="mail-login-oauth-form"><label>${t('要连接的邮箱', 'Mailbox to connect')}<input id="mail-login-email" type="email" required autocomplete="email" placeholder="name@example.com"></label><p class="mail-login-caption">${t('请在官方页面选择同一个邮箱。MailAI 不收集你的登录密码。', 'Choose the same mailbox on the official page. MailAI does not collect your sign-in password.')}</p><div id="mail-login-capability" class="mail-login-capability" role="status"></div><button type="submit" id="mail-login-authorize" class="mail-login-primary" disabled>${t('前往官方授权', 'Authorize with provider')}</button><a id="mail-login-browser-link" target="_blank" rel="noopener noreferrer" hidden>${t('重新打开官方授权页面 ↗', 'Reopen official authorization ↗')}</a><p id="mail-login-status" role="status" aria-live="polite"></p></form><details class="mail-login-admin"><summary>${t('管理员接入设置', 'Administrator setup')}</summary><p>${t('由应用维护者或企业管理员配置已注册的桌面应用。普通用户无需填写客户端信息。', 'An app maintainer or administrator configures the registered desktop application. Mailbox users do not need to enter client details.')}</p><form id="mail-login-admin-form"><label>Client ID<input id="mail-login-client" required maxlength="300" autocomplete="off"></label>${key === 'google' ? `<label>${t('桌面应用客户端密钥（如需）', 'Desktop client secret (if required)')}<input id="mail-login-secret" type="password" autocomplete="new-password" placeholder="${t('已有密钥可留空', 'Leave blank to keep the saved secret')}"></label>` : ''}<p>${key === 'google' ? t('使用 Google 桌面应用客户端，启用邮箱访问权限，并完成适用的应用验证。回调使用 127.0.0.1 随机端口。', 'Use a Google desktop client with mail access and the applicable app verification. Callback uses 127.0.0.1 on a random port.') : t('使用 Microsoft 桌面公共客户端，启用 IMAP / SMTP 委派权限及离线访问；企业可能要求管理员许可。回调使用 localhost 随机端口。', 'Use a Microsoft desktop public client with delegated IMAP / SMTP and offline access. Enterprise policy may require admin consent. Callback uses localhost on a random port.')}</p><button type="submit">${t('保存接入配置', 'Save configuration')}</button><p id="mail-login-admin-status" role="status" aria-live="polite"></p></form></details>`;
     const email = el('mail-login-email'), action = el('mail-login-authorize'), status = el('mail-login-status'), capability = el('mail-login-capability');
+    const setup = document.createElement('section'); setup.className = 'mail-login-setup'; setup.hidden = true;
+    const explanation = document.createElement('p');
+    explanation.textContent = key === 'google' ? t('当前版本尚未接入 Google 一键登录。若你的账号支持应用专用密码，可按下方步骤连接；官方授权需要应用维护者先配置。', 'Google sign-in has not been set up. If your account supports app passwords, use the steps below; official authorization requires setup by the app maintainer.') : t('Microsoft 官方登录需要应用维护者先配置桌面应用 Client ID。邮箱地址无法代替 Client ID，配置完成后才能打开授权页面。', 'Microsoft sign-in requires a desktop app Client ID configured by the app maintainer. An email address cannot replace a Client ID.');
+    setup.append(explanation);
+    if (key === 'google' && !context.account) {
+      const alternative = document.createElement('button'); alternative.id = 'mail-login-gmail-password'; alternative.type = 'button'; alternative.className = 'mail-login-primary';
+      alternative.textContent = t('使用 Gmail 应用专用密码连接', 'Connect with a Gmail app password');
+      alternative.onclick = () => { if (run.busy || !oauthForm.reportValidity()) return; context.user = email.value.trim(); credentials('gmailPassword'); };
+      setup.append(alternative);
+    }
+    const configure = document.createElement('button'); configure.id = 'mail-login-configure'; configure.type = 'button';
+    configure.textContent = t('配置官方登录（应用维护者）', 'Set up official sign-in (app maintainer)');
+    configure.onclick = () => { dialog.querySelector('.mail-login-admin').open = true; el('mail-login-client').focus(); };
+    setup.append(configure); el('mail-login-oauth-form').after(setup);
+    if (key === 'google') {
+      const help = document.createElement('p');
+      help.textContent = t('在 Google Cloud 创建项目，设置 Google Auth Platform 的品牌信息、受众和邮箱访问权限（https://mail.google.com/），然后创建“桌面应用”类型的 OAuth 客户端。测试模式需添加要连接的邮箱为测试用户。将 Client ID 和客户端密钥填入下方，保存后再点击“前往官方授权”。', 'Create a Google Cloud project, configure branding, audience and mail access (https://mail.google.com/) in Google Auth Platform, then create a Desktop app OAuth client. In testing mode, add the mailbox as a test user. Enter its Client ID and secret below, save, then authorize.');
+      const consoleLink = document.createElement('a'); consoleLink.href = 'https://console.cloud.google.com/auth/clients'; consoleLink.textContent = t('打开 Google Cloud 配置 ↗', 'Open Google Cloud setup ↗'); externalLink(consoleLink);
+      el('mail-login-admin-form').before(help, consoleLink);
+    }
     const cancel = document.createElement('button'); cancel.id = 'mail-login-cancel-auth'; cancel.type = 'button'; cancel.hidden = true;
     cancel.textContent = t('取消授权', 'Cancel authorization'); action.after(cancel);
     const isAttempt = attempt => current(run) && run.attempt === attempt;
@@ -34149,8 +34262,10 @@ document.getElementById('task-center-list').addEventListener('click', async even
     if (dialog.open) email.focus();
     function available() {
       const ready = !!run.clients?.[key]?.client_id;
-      capability.textContent = ready ? t('官方授权已配置', 'Official authorization configured') : t('官方授权暂未配置，请联系应用维护者或企业管理员。', 'Official authorization is not configured. Contact the app maintainer or administrator.');
+      capability.textContent = ready ? t('官方授权已配置', 'Official authorization configured') : t('尚未配置官方登录，暂时无法跳转授权页面。', 'Official sign-in is not configured; the authorization page is unavailable.');
       capability.dataset.ready = String(ready); action.disabled = !ready || run.busy;
+      action.hidden = !ready; setup.hidden = ready;
+      dialog.querySelector('.mail-login-head p').textContent = ready ? t('在系统浏览器中授权，返回后自动验证并连接邮箱。', 'Authorize in your browser; MailAI then verifies and connects the mailbox.') : t('选择下方连接方式，或由应用维护者配置官方登录。', 'Choose a connection method below, or ask the app maintainer to set up official sign-in.');
     }
     function lock(value) {
       run.busy = value;
@@ -34281,11 +34396,12 @@ document.getElementById('task-center-list').addEventListener('click', async even
       if (!guide || !provider) continue;
       guide.querySelector('b').textContent = text(provider.name);
       const change = guide.querySelector('button'); if (change) change.textContent = t('更换', 'Change');
-      guide.querySelector('summary').textContent = t('如何获取授权码或客户端密码？', 'How do I get a client code or password?');
+      guide.querySelector('summary').textContent = credentialGuideTitle(selection[prefix]);
       guide.querySelector('p').textContent = provider.guide();
-      const link = guide.querySelector('a'); if (link) link.textContent = selection[prefix] === 'exmail' ? t('获取客户端密码 ↗', 'Get client password ↗') : t('获取授权码 ↗', 'Get authorization code ↗');
-      el(`${prefix}-password`).closest('label').querySelector('span').textContent = ['qq','netease'].includes(selection[prefix]) ? t('客户端授权码', 'Client authorization code') : t('客户端密码或授权码', 'Client password or authorization code');
-      el(`${prefix}-password`).placeholder = t('请输入邮箱提供的客户端密码或授权码', 'Enter the client password or authorization code');
+      const link = guide.querySelector('.mail-login-guide-actions>a'); if (link) link.textContent = credentialLinkText(selection[prefix]);
+      const verification = guide.querySelector('details a'); if (verification) verification.textContent = t('开启两步验证 ↗', 'Enable 2-Step Verification ↗');
+      el(`${prefix}-password`).closest('label').querySelector('span').textContent = passwordLabel(selection[prefix]);
+      el(`${prefix}-password`).placeholder = passwordPlaceholder(selection[prefix]);
       updatePasswordToggle(prefix); validateAddress(prefix);
     }
   }
@@ -34761,6 +34877,21 @@ document.getElementById('task-center-list').addEventListener('click', async even
   bar.className = 'contact-filter-bar';
   bar.innerHTML = `<details class="contact-filter-menu" data-tag-menu><summary><span data-i18n="ui.1d0fd5f9336d">标签</span> <span data-tag-count hidden></span><span aria-hidden="true">⌄</span></summary><section class="contact-filter-popover"><label class="contact-tag-search"><span data-i18n="ui.6158fd863c28">查找标签</span><input type="search" data-tag-search placeholder="输入标签名称" autocomplete="off" data-i18n-placeholder="ui.4919d0b20893"></label><div data-tag-options class="contact-tag-options"></div><label class="contact-tag-mode"><span data-i18n="ui.6e0634298099">多个标签</span><select data-tag-mode aria-label="多个标签的匹配方式" data-i18n-aria="ui.00cff074af26"><option value="any" data-i18n="ui.200fcebff6bd">包含任意标签</option><option value="all" data-i18n="ui.d811aabc3fd1">同时包含全部标签</option></select></label><footer><button type="button" data-tag-manage><span data-i18n="ui.e8b481c247b1">管理个人标签</span></button><button type="button" data-filter-done><span data-i18n="ui.c0b3fbff51cc">完成</span></button></footer></section></details><details class="contact-filter-menu" data-more-menu><summary><span data-i18n="ui.dbdccc3594d6">更多筛选</span><span aria-hidden="true">⌄</span></summary><section class="contact-filter-popover"><label data-company-field><span data-i18n="ui.e06ff957ed48">公司</span><select data-contact-company><option value="" data-i18n="ui.a6c7411df887">全部公司</option></select></label><div data-department-field></div><p class="contact-filter-hint"><span data-i18n="ui.1c066c0d4300">部门等资料用于筛选，个人标签可自由分类。</span></p><button type="button" data-filter-done><span data-i18n="ui.c0b3fbff51cc">完成</span></button></section></details><button type="button" data-bulk-toggle><span data-i18n="ui.3ffa953cc8f6">批量标记</span></button><span data-contact-results role="status" aria-live="polite"></span>`;
   legacy.after(bar);
+  const icon = paths => `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+  for (const [selector, paths] of [
+    ['[data-tag-menu]', '<path d="M3 3h6l8 8-6 6-8-8V3Z"/><circle cx="6.5" cy="6.5" r=".8"/>'],
+    ['[data-more-menu]', '<path d="M3 5h14M3 10h14M3 15h14"/><path d="M7 3v4m6 1v4m-6 1v4"/>'],
+  ]) {
+    const summary = bar.querySelector(selector + '>summary');
+    summary.insertAdjacentHTML('afterbegin', icon(paths));
+    const chevron = summary.lastElementChild; chevron.className = 'contact-filter-chevron';
+    chevron.innerHTML = icon('<path d="m6 8 4 4 4-4"/>');
+  }
+  const moreCount = document.createElement('span'); moreCount.dataset.moreCount = ''; moreCount.hidden = true;
+  bar.querySelector('[data-more-menu] .contact-filter-chevron').before(moreCount);
+  const moreDone = bar.querySelector('[data-more-menu] [data-filter-done]');
+  const moreFooter = document.createElement('footer'); moreDone.before(moreFooter); moreFooter.append(moreDone);
+  for (const done of bar.querySelectorAll('[data-filter-done]')) done.classList.add('primary-action');
   const bulkToggle=bar.querySelector('[data-bulk-toggle]');
   bar.querySelector('[data-tag-menu] footer').insertBefore(bulkToggle,bar.querySelector('[data-tag-menu] [data-filter-done]'));
   mailaiBindUI(bar.querySelector('[data-tag-manage]'), "textContent", () => (mailaiText('管理标签')));
@@ -34839,6 +34970,10 @@ document.getElementById('task-center-list').addEventListener('click', async even
   function renderControls() {
     renderTags();
     const count=bar.querySelector('[data-tag-count]');count.hidden=!state.tags.size;count.textContent=state.tags.size;
+    bar.querySelector('[data-tag-menu]').dataset.active=String(Boolean(state.tags.size));
+    const moreCount=bar.querySelector('[data-more-count]'), moreFilters=Number(Boolean(state.company))+Number(Boolean(dept.value));
+    moreCount.hidden=!moreFilters;moreCount.textContent=moreFilters;
+    bar.querySelector('[data-more-menu]').dataset.active=String(Boolean(moreFilters));
     bar.querySelector('[data-tag-mode]').value=state.mode;
     bar.querySelector('.contact-tag-mode').hidden=state.tags.size<2;
     const company=bar.querySelector('[data-contact-company]');

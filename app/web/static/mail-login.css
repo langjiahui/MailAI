@@ -39,6 +39,11 @@ html[data-theme="light"] .mail-login-dialog { --surface:#fff; --surface-soft:#f4
 .mail-login-capability[data-ready="true"] { background:transparent; padding:0; margin:18px 0 14px; }
 .mail-login-capability[data-ready="true"]::before { content:'✓'; margin-right:7px; }
 .mail-login-primary { width:100%; padding:13px 16px; min-height:46px; border:0; border-radius:10px; color:var(--surface); background:var(--primary-deep); font-weight:600!important; }
+.mail-login-primary[hidden], .mail-login-setup[hidden] { display:none; }
+.mail-login-setup { display:grid; gap:12px; }
+.mail-login-setup p { margin:0; color:var(--muted); font-size:12px; line-height:1.8; }
+#mail-login-configure { justify-self:start; border:0; padding:4px 0; color:var(--primary-deep); background:transparent; font-size:12px; }
+.mail-login-credential-guide p { white-space:pre-line; }
 #mail-login-browser-link { display:block; margin-top:14px; font-size:12px; }
 #mail-login-browser-link[hidden] { display:none; }
 #mail-login-status { font-size:13px; line-height:1.7; margin:14px 0 0; }
@@ -77,18 +82,32 @@ html[data-theme="light"] .mail-login-dialog { --surface:#fff; --surface-soft:#f4
 .mail-login-address-error[hidden] { display:none; }
 .mail-login-password-toggle:focus-visible,.mail-login-credential-guide :is(button,a):focus-visible { outline:2px solid var(--primary); outline-offset:3px; }
 .account-detail:has(#mail-add-panel[data-login-provider]:not(.hidden)) .account-detail-top { display:none; }
-.account-detail #mail-add-panel[data-login-provider] { width:min(560px,100%); padding:0; }
-.account-detail #mail-add-panel[data-login-provider] .mail-add-panel-head { padding:0; margin:0 0 18px; border:0; }
+/* Keep the connection card and its form in proportion on wide settings pages. */
+html[data-theme] body #system-view>.system-panel[data-system-panel="account"]:has(#mail-add-panel[data-login-provider]:not(.hidden)) { width:100%; max-width:1340px!important; justify-self:center; }
+.account-detail:has(#mail-add-panel[data-login-provider]:not(.hidden)) { min-height:0; padding:clamp(22px,2vw,32px); border-radius:16px; }
+.account-detail #mail-add-panel[data-login-provider] { width:min(820px,100%); margin-inline:auto; padding:0; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px 18px; align-content:start; }
+.account-detail #mail-add-panel[data-login-provider]>:not(label) { grid-column:1 / -1; }
+.account-detail #mail-add-panel[data-login-provider] .mail-add-panel-head { padding:0; margin:0 0 4px; border:0; }
 .account-detail #mail-add-panel[data-login-provider] .mail-add-panel-head .account-detail-eyebrow { display:none; }
-.account-detail #mail-add-panel[data-login-provider] .mail-add-panel-head b { font-size:22px; color:var(--text); }
-.account-detail #mail-add-panel[data-login-provider]>label { color:var(--text); font-size:12px; margin-top:18px; }
-.account-detail #mail-add-panel[data-login-provider] input:not([type=checkbox]) { min-height:44px; font-size:13px; }
-.account-detail #mail-add-panel[data-login-provider]>.connection-actions { margin-top:20px; padding-top:18px; border-color:var(--border); }
-.account-detail #mail-add-panel[data-login-provider] .provider-hint { padding:0; margin:12px 0 20px; border:0; background:transparent; color:var(--muted); font-size:11px; }
-.account-detail #mail-add-panel[data-login-provider] .mail-advanced { border:1px solid var(--border); border-radius:10px; padding:12px 14px; }
+.account-detail #mail-add-panel[data-login-provider] .mail-add-panel-head b { font-size:22px; line-height:1.4; letter-spacing:-.4px; color:var(--text); }
+.account-detail #mail-add-panel[data-login-provider] .mail-add-panel-head small { display:block; margin-top:6px; color:var(--muted); font-size:12px; line-height:1.7; }
+.account-detail #mail-add-panel[data-login-provider]>label { min-width:0; color:var(--text); font-size:12px; margin:0; }
+.account-detail #mail-add-panel[data-login-provider] input:not([type=checkbox]) { min-height:46px; margin-top:9px; padding:12px 14px; border-radius:10px; font-size:13px; }
+.account-detail #mail-add-panel[data-login-provider] .mail-login-credential-guide { margin:0; padding:16px 18px; gap:10px; border:1px solid var(--desk-line); border-radius:12px; background:var(--desk-muted-surface); }
+.account-detail #mail-add-panel[data-login-provider] .mail-login-credential-heading { gap:10px; }
+.account-detail #mail-add-panel[data-login-provider] .mail-login-credential-heading::before { content:'@'; display:grid; place-items:center; flex:none; width:32px; height:32px; border-radius:9px; color:var(--primary-deep); background:var(--primary-soft); font-size:19px; font-weight:600; }
+.account-detail #mail-add-panel[data-login-provider] .mail-login-credential-heading b { flex:1; font-size:13px; }
+.account-detail #mail-add-panel[data-login-provider] .mail-login-credential-guide p { margin-bottom:0; }
+.account-detail #mail-add-panel[data-login-provider]>.connection-actions { margin:0; padding-top:18px; border-color:var(--desk-line); }
+.account-detail #mail-add-panel[data-login-provider] .provider-hint { padding:0; margin:-10px 0 0; border:0; background:transparent; color:var(--muted); font-size:11px; line-height:1.7; }
+.account-detail #mail-add-panel[data-login-provider] .mail-advanced { margin:0; border:1px solid var(--desk-line); border-radius:10px; padding:10px 14px; }
 .account-detail #mail-add-panel[data-login-provider] .mail-advanced summary { font-size:12px; color:var(--muted); }
-.account-detail #mail-add-panel[data-login-provider] .connection-actions>button { min-height:43px; padding:11px 24px; }
+.account-detail #mail-add-panel[data-login-provider] .connection-actions>button { min-height:42px; margin:0; padding:10px 22px; border-radius:10px; font-size:12px; box-shadow:0 3px 9px color-mix(in srgb,var(--primary-deep) 14%,transparent); }
 .account-detail #mail-add-panel[data-login-provider] .connection-actions>button svg { display:none; }
+#system-view .account-workspace.editor-open .account-directory { padding:22px; border-radius:16px; }
+#system-view .account-workspace.editor-open .account-directory-head { padding-bottom:18px; }
+#system-view .account-workspace.editor-open .saved-account { min-height:66px; padding:11px; border-radius:11px; }
+#system-view .account-workspace.editor-open .account-isolation-note { margin-top:18px; padding-top:16px; font-size:11px; line-height:1.7; }
 .mail-add-panel[data-login-busy="true"] { cursor:progress; }
 #onboarding-form.mail-login-await-provider > :not(#onboarding-later):not(#onboarding-manage-accounts) { display:none; }
 #onboarding-form .onboarding-help { display:none; }
@@ -99,7 +118,13 @@ html[data-theme="dark"] .mail-login-primary { color:#10271d; }
 html[data-theme="dark"] .account-detail #mail-add-panel[data-login-provider],html[data-theme="dark"] .account-detail #mail-add-panel[data-login-provider] .provider-hint { background:transparent!important; box-shadow:none!important; border:0!important; }
 @keyframes mailLoginSpin { to { transform:rotate(360deg); } }
 @media(prefers-reduced-motion:reduce) { #mail-login-status[aria-busy="true"]::before { animation:none; } .mail-login-providers button { transition:none; } }
+@media(max-width:1240px) {
+  .account-detail #mail-add-panel[data-login-provider] { grid-template-columns:minmax(0,1fr); gap:18px; }
+}
 @media(max-width:520px) {
+  .account-detail:has(#mail-add-panel[data-login-provider]:not(.hidden)) { padding:18px; }
+  #system-view .account-workspace.editor-open .account-directory { padding:18px; }
+  .account-detail #mail-add-panel[data-login-provider] .mail-login-credential-guide { padding:14px; }
   .mail-login-head { padding:22px 20px 18px; }
   .mail-login-body { padding:18px 20px 22px; }
   .mail-login-providers { grid-template-columns:1fr; gap:9px; }

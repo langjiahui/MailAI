@@ -6,6 +6,7 @@
     qq: {name:'QQ / Foxmail', mark:'Q', note:()=>t('客户端授权码连接', 'Client authorization code'), url:'https://mail.qq.com/', domains:['qq.com','foxmail.com'], host:'imap.qq.com', smtp:'smtp.qq.com', guide:()=>t('打开 QQ 邮箱网页版，在设置中找到 POP3 / IMAP / SMTP 服务，开启 IMAP / SMTP 并生成授权码，再回到这里填写。网页版支持的扫码仅用于登录网页。', 'Open QQ Mail settings, enable IMAP / SMTP and generate a client authorization code. Return here to enter it. Website QR login signs you into the website only.')},
     exmail: {name:()=>t('腾讯企业邮箱', 'Tencent Enterprise Mail'), get mark() { return mailaiText('企'); }, note:()=>t('企业邮箱 · 客户端专用密码', 'Enterprise client password'), url:'https://exmail.qq.com/', host:'imap.exmail.qq.com', smtp:'smtp.exmail.qq.com', guide:()=>t('在企业邮箱网页版开启 IMAP / SMTP 服务；开启安全登录的邮箱，请获取客户端专用密码。没有相关设置时，请联系企业管理员。', 'Enable IMAP / SMTP in your enterprise mailbox. If secure sign-in is enabled, get a client-specific password. Contact your administrator if these settings are unavailable.')},
     google: {name:'Google / Gmail', mark:'G', note:()=>t('在 Google 官方页面授权', 'Authorize with Google'), oauth:true},
+    gmailPassword: {name:'Gmail', hidden:true, host:'imap.gmail.com', smtp:'smtp.gmail.com', url:'https://myaccount.google.com/apppasswords', guide:()=>t('1. 在 Google 账号中开启两步验证。\n2. 打开应用专用密码页面，将应用名称填写为 MailAI，生成 16 位专用密码。\n3. 回到这里粘贴专用密码，点击“验证并连接”。请使用与上方相同的 Google 账号，不要填写 Google 登录密码。\n如果没有应用专用密码选项，工作或学校账号、仅使用安全密钥的账号及高级保护账号可能不支持，请使用官方授权或联系管理员。', '1. Enable 2-Step Verification in your Google Account.\n2. Open App passwords, name the app MailAI, and generate a 16-character password.\n3. Paste it here and click Verify and connect. Use the same Google Account as above, not your Google sign-in password.\nWork or school accounts, security-key-only accounts, and Advanced Protection may not support app passwords. Use official authorization or contact your administrator.')},
     microsoft: {name:'Microsoft / Outlook', mark:'M', note:()=>t('Outlook · Microsoft 365 国际版', 'Outlook · Microsoft 365 global'), oauth:true},
     netease: {name:()=>t('网易邮箱', 'NetEase Mail'), get mark() { return mailaiText('易'); }, note:()=>t('163 · 126 · Yeah 授权码', '163 · 126 · Yeah authorization code'), url:'https://mail.163.com/', domains:['163.com','126.com','yeah.net'], guide:()=>t('打开对应的网易邮箱网页版，在设置中开启 IMAP / SMTP 服务，按页面提示生成客户端授权密码。', 'Open your NetEase mailbox settings, enable IMAP / SMTP and generate a client authorization password.')},
     other: {name:()=>t('其他邮箱', 'Other mailbox'), mark:'@', note:()=>t('iCloud · 企业邮箱 · 自定义 IMAP', 'iCloud · Enterprise · Custom IMAP'), guide:()=>t('使用邮箱服务商提供的客户端授权码或应用专用密码。企业邮箱可向管理员获取 IMAP / SMTP 服务器信息，在高级设置中填写。', 'Use the client code or app password provided by your mail service. Ask your administrator for IMAP / SMTP settings if needed.')},
@@ -19,6 +20,21 @@
   dialog.setAttribute('aria-labelledby', 'mail-login-title');
   document.body.append(dialog);
   const request = (path, data) => api('/api/oauth/' + path, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+  function externalLink(link) {
+    link.target = '_blank'; link.rel = 'noopener noreferrer';
+    link.onclick = async event => {
+      if (!window.pywebview?.api?.open_external_url) return;
+      event.preventDefault();
+      try {
+        const result = await window.pywebview.api.open_external_url(link.href);
+        if (result?.ok === false) throw new Error(t('未能打开浏览器，请重试。', 'Could not open the browser. Please retry.'));
+      } catch (error) { toast(mailaiSystemMessage(error.message), 'error'); }
+    };
+  }
+  const passwordLabel = key => key === 'gmailPassword' ? t('Google 应用专用密码', 'Google app password') : ['qq','netease'].includes(key) ? t('客户端授权码', 'Client authorization code') : t('客户端密码或授权码', 'Client password or authorization code');
+  const passwordPlaceholder = key => key === 'gmailPassword' ? t('粘贴 Google 生成的 16 位应用专用密码', 'Paste the 16-character Google app password') : t('请输入邮箱提供的客户端密码或授权码', 'Enter the client password or authorization code');
+  const credentialGuideTitle = key => key === 'gmailPassword' ? t('如何获取 Google 应用专用密码？', 'How do I get a Google app password?') : t('如何获取授权码或客户端密码？', 'How do I get a client code or password?');
+  const credentialLinkText = key => key === 'gmailPassword' ? t('生成应用专用密码 ↗', 'Generate app password ↗') : key === 'exmail' ? t('获取客户端密码 ↗', 'Get client password ↗') : t('获取授权码 ↗', 'Get authorization code ↗');
   const current = run => session === run && dialog.open;
   function dispose() {
     const previous = session; session = null;
@@ -69,6 +85,7 @@
     body.append(addressForm);
     const grid = document.createElement('div'); grid.className = 'mail-login-providers';
     for (const [key, provider] of Object.entries(providers)) {
+      if (provider.hidden) continue;
       const button = document.createElement('button'); button.type = 'button'; button.dataset.loginProvider = key;
       const mark = document.createElement('span'); mark.className = 'mail-login-mark'; mark.textContent = provider.mark; mark.setAttribute('aria-hidden','true');
       const copy = document.createElement('span'), name = document.createElement('b'), note = document.createElement('small');
@@ -92,7 +109,7 @@
   function infer(account) {
     const host = (account?.host || '').toLowerCase(), domain = (account?.user || '').split('@').pop().toLowerCase();
     if (host.includes('exmail.qq.com')) return 'exmail';
-    if (host.includes('gmail.com')) return account.auth_type === 'oauth2' ? 'google' : 'other';
+    if (host.includes('gmail.com')) return account.auth_type === 'oauth2' ? 'google' : 'gmailPassword';
     if (account?.auth_type === 'oauth2' && host.includes('outlook.office365.com')) return 'microsoft';
     return Object.keys(providers).find(key => providers[key].domains?.includes(domain)) || 'other';
   }
@@ -131,11 +148,15 @@
       change.onclick = () => open({source:prefix, user:el(`${prefix}-user`).value.trim()}); row.append(change);
     }
     const details = document.createElement('details'), summary = document.createElement('summary'), copy = document.createElement('p');
-    summary.textContent = t('如何获取授权码或客户端密码？', 'How do I get a client code or password?'); copy.textContent = provider.guide(); details.append(summary, copy);
+    summary.textContent = credentialGuideTitle(key); copy.textContent = provider.guide(); details.append(summary, copy);
+    if (key === 'gmailPassword') {
+      details.open = true;
+      const verification = document.createElement('a'); verification.href = 'https://myaccount.google.com/signinoptions/two-step-verification';
+      verification.textContent = t('开启两步验证 ↗', 'Enable 2-Step Verification ↗'); externalLink(verification); details.append(verification);
+    }
     if (provider.url) {
       const link = document.createElement('a'); link.href = provider.url; link.target = '_blank'; link.rel = 'noopener noreferrer';
-      link.textContent = key === 'exmail' ? t('获取客户端密码 ↗', 'Get client password ↗') : t('获取授权码 ↗', 'Get authorization code ↗');
-      link.onclick = event => { if (window.pywebview?.api?.open_external_url) { event.preventDefault(); window.pywebview.api.open_external_url(provider.url).catch(error=>toast(mailaiSystemMessage(error.message),'error')); } };
+      link.textContent = credentialLinkText(key); externalLink(link);
       const links = document.createElement('div'); links.className = 'mail-login-guide-actions'; links.append(details, link);
       guide.append(row, links);
     }
@@ -146,9 +167,10 @@
     error.setAttribute('role','status'); error.setAttribute('aria-live','polite');
     form.append(error);
     const label = el(`${prefix}-password`).closest('label').querySelector('span');
-    label.removeAttribute('data-i18n'); label.textContent = key === 'qq' || key === 'netease' ? t('客户端授权码', 'Client authorization code') : t('客户端密码或授权码', 'Client password or authorization code');
+    label.removeAttribute('data-i18n'); label.textContent = passwordLabel(key);
     const input = el(`${prefix}-password`); input.removeAttribute('data-i18n-placeholder');
-    input.placeholder = t('请输入邮箱提供的客户端密码或授权码', 'Enter the client password or authorization code');
+    input.placeholder = passwordPlaceholder(key);
+    input.oninput = () => { if (selection[prefix] === 'gmailPassword') input.value = input.value.replace(/\s/g, ''); };
     if (!input.parentElement.classList.contains('mail-login-password-wrap')) {
       const wrap = document.createElement('div'); wrap.className = 'mail-login-password-wrap'; input.before(wrap); wrap.append(input);
       const toggle = document.createElement('button'); toggle.type = 'button'; toggle.className = 'mail-login-password-toggle';
@@ -214,6 +236,26 @@
     header(text(provider.name), t('在系统浏览器中授权，返回后自动验证并连接邮箱。', 'Authorize in your browser; MailAI then verifies and connects the mailbox.'), true);
     dialog.querySelector('.mail-login-body').innerHTML = `<form id="mail-login-oauth-form"><label>${t('要连接的邮箱', 'Mailbox to connect')}<input id="mail-login-email" type="email" required autocomplete="email" placeholder="name@example.com"></label><p class="mail-login-caption">${t('请在官方页面选择同一个邮箱。MailAI 不收集你的登录密码。', 'Choose the same mailbox on the official page. MailAI does not collect your sign-in password.')}</p><div id="mail-login-capability" class="mail-login-capability" role="status"></div><button type="submit" id="mail-login-authorize" class="mail-login-primary" disabled>${t('前往官方授权', 'Authorize with provider')}</button><a id="mail-login-browser-link" target="_blank" rel="noopener noreferrer" hidden>${t('重新打开官方授权页面 ↗', 'Reopen official authorization ↗')}</a><p id="mail-login-status" role="status" aria-live="polite"></p></form><details class="mail-login-admin"><summary>${t('管理员接入设置', 'Administrator setup')}</summary><p>${t('由应用维护者或企业管理员配置已注册的桌面应用。普通用户无需填写客户端信息。', 'An app maintainer or administrator configures the registered desktop application. Mailbox users do not need to enter client details.')}</p><form id="mail-login-admin-form"><label>Client ID<input id="mail-login-client" required maxlength="300" autocomplete="off"></label>${key === 'google' ? `<label>${t('桌面应用客户端密钥（如需）', 'Desktop client secret (if required)')}<input id="mail-login-secret" type="password" autocomplete="new-password" placeholder="${t('已有密钥可留空', 'Leave blank to keep the saved secret')}"></label>` : ''}<p>${key === 'google' ? t('使用 Google 桌面应用客户端，启用邮箱访问权限，并完成适用的应用验证。回调使用 127.0.0.1 随机端口。', 'Use a Google desktop client with mail access and the applicable app verification. Callback uses 127.0.0.1 on a random port.') : t('使用 Microsoft 桌面公共客户端，启用 IMAP / SMTP 委派权限及离线访问；企业可能要求管理员许可。回调使用 localhost 随机端口。', 'Use a Microsoft desktop public client with delegated IMAP / SMTP and offline access. Enterprise policy may require admin consent. Callback uses localhost on a random port.')}</p><button type="submit">${t('保存接入配置', 'Save configuration')}</button><p id="mail-login-admin-status" role="status" aria-live="polite"></p></form></details>`;
     const email = el('mail-login-email'), action = el('mail-login-authorize'), status = el('mail-login-status'), capability = el('mail-login-capability');
+    const setup = document.createElement('section'); setup.className = 'mail-login-setup'; setup.hidden = true;
+    const explanation = document.createElement('p');
+    explanation.textContent = key === 'google' ? t('当前版本尚未接入 Google 一键登录。若你的账号支持应用专用密码，可按下方步骤连接；官方授权需要应用维护者先配置。', 'Google sign-in has not been set up. If your account supports app passwords, use the steps below; official authorization requires setup by the app maintainer.') : t('Microsoft 官方登录需要应用维护者先配置桌面应用 Client ID。邮箱地址无法代替 Client ID，配置完成后才能打开授权页面。', 'Microsoft sign-in requires a desktop app Client ID configured by the app maintainer. An email address cannot replace a Client ID.');
+    setup.append(explanation);
+    if (key === 'google' && !context.account) {
+      const alternative = document.createElement('button'); alternative.id = 'mail-login-gmail-password'; alternative.type = 'button'; alternative.className = 'mail-login-primary';
+      alternative.textContent = t('使用 Gmail 应用专用密码连接', 'Connect with a Gmail app password');
+      alternative.onclick = () => { if (run.busy || !oauthForm.reportValidity()) return; context.user = email.value.trim(); credentials('gmailPassword'); };
+      setup.append(alternative);
+    }
+    const configure = document.createElement('button'); configure.id = 'mail-login-configure'; configure.type = 'button';
+    configure.textContent = t('配置官方登录（应用维护者）', 'Set up official sign-in (app maintainer)');
+    configure.onclick = () => { dialog.querySelector('.mail-login-admin').open = true; el('mail-login-client').focus(); };
+    setup.append(configure); el('mail-login-oauth-form').after(setup);
+    if (key === 'google') {
+      const help = document.createElement('p');
+      help.textContent = t('在 Google Cloud 创建项目，设置 Google Auth Platform 的品牌信息、受众和邮箱访问权限（https://mail.google.com/），然后创建“桌面应用”类型的 OAuth 客户端。测试模式需添加要连接的邮箱为测试用户。将 Client ID 和客户端密钥填入下方，保存后再点击“前往官方授权”。', 'Create a Google Cloud project, configure branding, audience and mail access (https://mail.google.com/) in Google Auth Platform, then create a Desktop app OAuth client. In testing mode, add the mailbox as a test user. Enter its Client ID and secret below, save, then authorize.');
+      const consoleLink = document.createElement('a'); consoleLink.href = 'https://console.cloud.google.com/auth/clients'; consoleLink.textContent = t('打开 Google Cloud 配置 ↗', 'Open Google Cloud setup ↗'); externalLink(consoleLink);
+      el('mail-login-admin-form').before(help, consoleLink);
+    }
     const cancel = document.createElement('button'); cancel.id = 'mail-login-cancel-auth'; cancel.type = 'button'; cancel.hidden = true;
     cancel.textContent = t('取消授权', 'Cancel authorization'); action.after(cancel);
     const isAttempt = attempt => current(run) && run.attempt === attempt;
@@ -229,8 +271,10 @@
     if (dialog.open) email.focus();
     function available() {
       const ready = !!run.clients?.[key]?.client_id;
-      capability.textContent = ready ? t('官方授权已配置', 'Official authorization configured') : t('官方授权暂未配置，请联系应用维护者或企业管理员。', 'Official authorization is not configured. Contact the app maintainer or administrator.');
+      capability.textContent = ready ? t('官方授权已配置', 'Official authorization configured') : t('尚未配置官方登录，暂时无法跳转授权页面。', 'Official sign-in is not configured; the authorization page is unavailable.');
       capability.dataset.ready = String(ready); action.disabled = !ready || run.busy;
+      action.hidden = !ready; setup.hidden = ready;
+      dialog.querySelector('.mail-login-head p').textContent = ready ? t('在系统浏览器中授权，返回后自动验证并连接邮箱。', 'Authorize in your browser; MailAI then verifies and connects the mailbox.') : t('选择下方连接方式，或由应用维护者配置官方登录。', 'Choose a connection method below, or ask the app maintainer to set up official sign-in.');
     }
     function lock(value) {
       run.busy = value;
@@ -361,11 +405,12 @@
       if (!guide || !provider) continue;
       guide.querySelector('b').textContent = text(provider.name);
       const change = guide.querySelector('button'); if (change) change.textContent = t('更换', 'Change');
-      guide.querySelector('summary').textContent = t('如何获取授权码或客户端密码？', 'How do I get a client code or password?');
+      guide.querySelector('summary').textContent = credentialGuideTitle(selection[prefix]);
       guide.querySelector('p').textContent = provider.guide();
-      const link = guide.querySelector('a'); if (link) link.textContent = selection[prefix] === 'exmail' ? t('获取客户端密码 ↗', 'Get client password ↗') : t('获取授权码 ↗', 'Get authorization code ↗');
-      el(`${prefix}-password`).closest('label').querySelector('span').textContent = ['qq','netease'].includes(selection[prefix]) ? t('客户端授权码', 'Client authorization code') : t('客户端密码或授权码', 'Client password or authorization code');
-      el(`${prefix}-password`).placeholder = t('请输入邮箱提供的客户端密码或授权码', 'Enter the client password or authorization code');
+      const link = guide.querySelector('.mail-login-guide-actions>a'); if (link) link.textContent = credentialLinkText(selection[prefix]);
+      const verification = guide.querySelector('details a'); if (verification) verification.textContent = t('开启两步验证 ↗', 'Enable 2-Step Verification ↗');
+      el(`${prefix}-password`).closest('label').querySelector('span').textContent = passwordLabel(selection[prefix]);
+      el(`${prefix}-password`).placeholder = passwordPlaceholder(selection[prefix]);
       updatePasswordToggle(prefix); validateAddress(prefix);
     }
   }

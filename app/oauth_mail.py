@@ -295,7 +295,7 @@ def begin(provider, user):
                     raise ValueError("未获得离线授权，请在官方页面重新同意邮箱权限")
                 flow["tokens"] = value
                 flow["status"] = "ready"
-                text = "授权已返回，请回到 MailAI 点击“连接邮箱”完成连接。"
+                text = "授权成功，请回到 MailAI。应用会自动验证并连接邮箱。"
             except Exception as exc:
                 flow["status"] = "failed"
                 flow["error"] = (
