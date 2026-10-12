@@ -50,9 +50,12 @@ const port=Number(process.env.MAILAI_WORKING_FIXTURE_PORT||18807);
     const idle=()=>page.waitForFunction(()=>!document.body.classList.contains('companion-working'));
     const loops=selector=>page.locator(selector).evaluate(node=>node.getAnimations().filter(animation=>animation.effect.getTiming().iterations===Infinity).map(animation=>animation.currentTime));
     const progressing=async selector=>{
-      await page.waitForFunction(selector=>document.querySelector(selector).getAnimations().some(animation=>animation.effect.getTiming().iterations===Infinity),selector);
-      const before=await loops(selector);await page.waitForTimeout(130);const after=await loops(selector);
-      assert(after.length&&after.some((time,index)=>time>before[index]+30),'Work animation must keep progressing');
+      // WebKit can expose a pending animation before its timeline starts. Wait
+      // for a running clock, then prove it advances instead of sampling at a
+      // fixed wall-clock interval that is unreliable on a busy CI runner.
+      await page.waitForFunction(selector=>document.querySelector(selector).getAnimations().some(animation=>animation.effect.getTiming().iterations===Infinity&&animation.playState==='running'&&animation.currentTime!==null),selector);
+      const before=await loops(selector);
+      await page.waitForFunction(({selector,before})=>document.querySelector(selector).getAnimations().filter(animation=>animation.effect.getTiming().iterations===Infinity).some((animation,index)=>animation.currentTime!==null&&animation.currentTime>before[index]+30),{selector,before},{timeout:5000,polling:100});
     };
     const digest='/api/digest/stream',chat='/api/assistant/ask-stream',compose='/api/mail/compose/assist-stream';
     const emit=(path,event,close)=>page.evaluate(({path,event,close})=>modelFixture.push(path,event,close),{path,event,close});
