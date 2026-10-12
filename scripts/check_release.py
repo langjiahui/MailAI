@@ -26,6 +26,7 @@ TESTS = (
     'test_energy_scheduler.py',
     'test_companion_growth.py',
     'test_companion_client.py',
+    'test_companion_gifts.py',
     'test_completion_features.py',
     'test_productivity.py', 'test_productivity_lifecycle.py', 'test_oauth_mail.py', 'test_mail_idle.py', 'test_attachment_text.py',
     'test_cc_reading.py',
@@ -120,6 +121,7 @@ def main():
     commands.append([sys.executable, str(ROOT / 'scripts/build_frontend.py'), '--check'])
     commands.append([sys.executable, str(ROOT / 'tests/evaluate.py'), '--gate'])
     commands.append([node, '--check', str(ROOT / 'app/web/static/bundle.js')])
+    commands.append([node, '--check', str(ROOT / 'scripts/gift_issuer.js')])
     commands.append([node, str(ROOT / 'tests/test_diagnostics_progress.cjs')])
     if sys.platform == 'darwin':
         commands.append([sys.executable, str(ROOT / 'tests/test_mail_links_webkit.py')])

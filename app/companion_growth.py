@@ -80,6 +80,10 @@ def initialize(c, *, mailbox=True):
         CREATE TABLE IF NOT EXISTS companion_inventory (
             item TEXT PRIMARY KEY, acquired_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS companion_gifts (
+            id TEXT PRIMARY KEY, code TEXT NOT NULL, title TEXT NOT NULL,
+            items TEXT NOT NULL, recipient TEXT NOT NULL, claimed_at TEXT NOT NULL
+        );
     ''')
     columns = {r['name'] for r in c.execute('PRAGMA table_info(companion_profile)')}
     for name, default in (('style', 'nature'), ('cleanup_day', '')):
@@ -176,6 +180,16 @@ def _merge(c, source, namespace, *, additive=True):
         c.execute('INSERT OR IGNORE INTO companion_purchases VALUES(?,?,?,?,?)', tuple(row))
     for row in source.execute('SELECT * FROM companion_inventory'):
         c.execute('INSERT OR IGNORE INTO companion_inventory VALUES(?,?)', tuple(row))
+    if not additive and source.execute("SELECT 1 FROM sqlite_master WHERE name='companion_gifts'").fetchone():
+        from . import companion_gifts as gifts
+        for row in source.execute('SELECT * FROM companion_gifts'):
+            payload, code = gifts.verify(row['code'])
+            # A portable backup can already contain receipts merged from another client.
+            # Preserve their signed original recipient; new claims still enforce binding.
+            gifts._receipt(c, payload, code)
+            c.execute('INSERT OR IGNORE INTO companion_gifts VALUES(?,?,?,?,?,?)',
+                      (payload['kid'] + ':' + payload['id'], code, payload['title'], json.dumps(payload['items']),
+                       payload['recipient'], row['claimed_at']))
 
 
 def _migrate(c):
@@ -279,7 +293,17 @@ def import_store(path):
                 return
             # A client backup is a snapshot, not a new source of earned rewards.
             # Keep the higher progress when importing onto an existing client.
+            current = _profile(c)
+            pristine = (not current['xp'] and not current['earned'] and current['equipped'] == '{}'
+                        and not c.execute('SELECT 1 FROM companion_inventory').fetchone()
+                        and not c.execute('SELECT 1 FROM companion_gifts').fetchone())
             _merge(c, source, '', additive=False)
+            if pristine:
+                # A restored empty client keeps the original gift recipient identity.
+                if len(source_id) != 32 or any(ch not in '0123456789abcdef' for ch in source_id):
+                    raise ValueError('小邮备份领取编号无效')
+                c.execute('DELETE FROM companion_client')
+                c.execute('INSERT INTO companion_client VALUES(?)', (source_id,))
             c.execute('INSERT INTO companion_imports VALUES(?)', ('client:' + source_id,))
             c.executemany('INSERT OR IGNORE INTO companion_imports VALUES(?)',
                           [(row['id'],) for row in source.execute('SELECT id FROM companion_imports')])
@@ -408,8 +432,12 @@ def _snapshot(c, now=None):
     inventory = {r['item'] for r in c.execute('SELECT item FROM companion_inventory')}
     last = profile['last_day']
     streak = profile['streak'] if last in (now.date().isoformat(), (now.date()-timedelta(days=1)).isoformat()) else 0
+    from .companion_gifts import recipient_code
     return {
         'scope': 'client',
+        'claim_code': recipient_code(c.execute('SELECT id FROM companion_client ORDER BY rowid LIMIT 1').fetchone()['id']),
+        'gifts': [{'id': r['id'], 'title': r['title'], 'items': json.loads(r['items']), 'claimed_at': r['claimed_at']} for r in
+                  c.execute('SELECT id,title,items,claimed_at FROM companion_gifts ORDER BY rowid DESC LIMIT 20')],
         'xp': profile['xp'], 'stamps': profile['stamps'], 'earned': profile['earned'],
         'enabled': bool(profile['enabled']), 'stage': stage, 'stage_floor': STAGES[stage-1],
         'next_stage_xp': STAGES[stage] if stage < len(STAGES) else None,

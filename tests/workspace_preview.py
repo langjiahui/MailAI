@@ -59,6 +59,24 @@ def main():
     system_settings._save_registry(registry)
     config.DB_PATH = registry['accounts'][registry['last_account']]['db_path']
     config.RAW_DIR = registry['accounts'][registry['last_account']]['raw_dir']
+    if os.environ.get('MAILAI_GIFT_FIXTURE') == '1':
+        # Ephemeral test authority exists only in this isolated fixture, never in the app.
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+        from app import companion_gifts, companion_growth
+        from scripts.companion_gift_issuer import issue, public
+        gift_key = Ed25519PrivateKey.generate()
+        kid, value = public(gift_key)
+        companion_gifts.TRUSTED_KEYS[kid] = value
+        recipient = companion_growth.snapshot()['claim_code']
+        codes = {}
+        for name, items, target in [('exclusive',['wings','orbit','theme_baowu'],recipient),('campaign',['armor','sparkles'],'*'),('another',['scarf'],'*'),('wrong',['aurora'],companion_gifts.recipient_code('0'*32))]:
+            _, codes[name] = issue(gift_key,items,title='赠礼测试 '+name,recipient=target)
+        import time
+        _,codes['expired'] = issue(gift_key,['scarf'],title='过期赠礼',days=1,now=int(time.time())-172800)
+        @server.app.get('/fixture/gifts')
+        def gift_fixture_codes():
+            return codes
+        companion_growth.set_enabled(False)
     if os.environ.get('MAILAI_GROWTH_FIXTURE') == '1':
         from app import companion_growth
         with companion_growth.connection() as c:

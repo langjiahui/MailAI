@@ -146,7 +146,7 @@ jobs:
           }
           trap stop_fixture EXIT
           start_fixture() {
-            MAILAI_GROWTH_FIXTURE=1 python tests/workspace_preview.py > fixture-growth.log 2>&1 &
+            MAILAI_GIFT_FIXTURE="${1:-0}" MAILAI_GROWTH_FIXTURE="${2:-1}" python tests/workspace_preview.py > fixture-growth.log 2>&1 &
             fixture_pid=$!
             for i in $(seq 1 30); do
               curl -sf http://127.0.0.1:18795/api/health > /dev/null && return 0
@@ -166,6 +166,14 @@ jobs:
           start_fixture
           node tests/test_reward_themes_browser.cjs
           node tests/test_reward_theme_surfaces_browser.cjs
+          stop_fixture
+          start_fixture 1 0
+          node tests/test_companion_gifts_browser.cjs
+          stop_fixture
+          start_fixture 1 0
+          MAILAI_BROWSER=webkit node tests/test_companion_gifts_browser.cjs
+          node tests/test_companion_gift_issuer_browser.cjs
+          MAILAI_BROWSER=webkit node tests/test_companion_gift_issuer_browser.cjs
 
   secret-scan:
     runs-on: ubuntu-latest
