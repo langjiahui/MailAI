@@ -97,6 +97,28 @@ html[data-theme][data-reward-theme] body :is(#btn-compose,#btn-compose:hover,#bt
   background:var(--reward-accent)!important; color:var(--reward-on-accent)!important; border-color:var(--reward-accent)!important; box-shadow:none!important;
 }
 html[data-theme][data-reward-theme] body .compose-send-button { background:var(--reward-accent)!important; color:var(--reward-on-accent)!important; }
+/* Keep the primary action above the native-window hover palette. */
+html[data-theme][data-reward-theme]:is(html,.integrated-workspace,.desktop-native-window) body .topbar #btn-compose {
+  transition:background-color .16s ease,border-color .16s ease,box-shadow .16s ease;
+}
+html[data-theme][data-reward-theme]:is(html,.integrated-workspace,.desktop-native-window) body .topbar #btn-compose:hover:not(:disabled) {
+  background:color-mix(in srgb,var(--reward-accent) 92%,var(--reward-on-accent))!important;
+  color:var(--reward-on-accent)!important;
+  border-color:var(--reward-accent)!important;
+  box-shadow:0 2px 7px color-mix(in srgb,var(--reward-accent) 16%,transparent)!important;
+  transform:none!important;
+}
+html[data-theme][data-reward-theme]:is(html,.integrated-workspace,.desktop-native-window) body .topbar #btn-compose:active:not(:disabled) {
+  background:var(--reward-accent)!important;
+  box-shadow:inset 0 1px 3px color-mix(in srgb,var(--reward-on-accent) 18%,transparent)!important;
+}
+html[data-theme][data-reward-theme]:is(html,.integrated-workspace,.desktop-native-window) body .topbar #btn-compose:focus-visible {
+  outline:2px solid var(--reward-accent)!important;
+  outline-offset:3px;
+}
+@media(prefers-reduced-motion:reduce) {
+  html[data-theme][data-reward-theme]:is(html,.integrated-workspace,.desktop-native-window) body .topbar #btn-compose { transition:none!important; }
+}
 html[data-theme][data-reward-theme] body #assistant-send svg path { stroke:var(--reward-on-accent)!important; }
 html[data-theme][data-reward-theme] body :is(input:not([type=checkbox]):not([type=radio]):not([type=range]),textarea,select,[contenteditable="true"]) {
   color:var(--reward-ink)!important; background-color:var(--reward-soft)!important; border-color:var(--reward-line)!important;
@@ -104,6 +126,12 @@ html[data-theme][data-reward-theme] body :is(input:not([type=checkbox]):not([typ
 html[data-theme][data-reward-theme] body input::placeholder,html[data-theme][data-reward-theme] body textarea::placeholder { color:var(--reward-muted)!important; }
 html[data-theme][data-reward-theme] body :is(input[type=checkbox],input[type=radio]) { accent-color:var(--reward-accent); }
 html[data-theme][data-reward-theme] body :is(.theme-options label:has(input:checked),.density-options label:has(input:checked),.font-size-options label:has(input:checked)) { border-color:var(--reward-accent)!important; }
+/* The legacy palette bridge skips the vector rig stylesheet. Keep its clear
+ * avatar surfaces above mapped legacy button and avatar backgrounds. */
+html[data-theme][data-reward-theme] body :is(.mail-assistant .assistant-orb,.assistant-mini.companion-avatar,.compose-edge-tools .compose-ai-main.compose-perch),
+html[data-theme][data-reward-theme] body :is(.mail-assistant .assistant-orb,.compose-edge-tools .compose-ai-main.compose-perch):is(:hover,:active,.active) {
+  background:transparent!important; border:0!important; box-shadow:none!important; backdrop-filter:none!important;
+}
 /* Themes tint the default pet only. Owned pet palettes always take priority. */
 html[data-reward-theme] body[data-pet-palette="mint"] { --pet-body:var(--reward-pet); --pet-outline:var(--reward-pet-outline); }
 html[data-reward-theme] body :is(.companion-arm-left,.companion-arm-right,.companion-wave path) { fill:var(--pet-body); stroke:var(--pet-outline); }

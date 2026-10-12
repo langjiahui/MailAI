@@ -95,6 +95,13 @@ jobs:
           node tests/test_contact_filters_browser.cjs
           node tests/test_i18n_browser.cjs
           node tests/test_diagnostics_layout_browser.cjs
+          node tests/test_companion_working_browser.cjs
+          MAILAI_BROWSER=webkit node tests/test_companion_working_browser.cjs
+          node tests/test_companion_perch_wings_browser.cjs
+          MAILAI_BROWSER=webkit node tests/test_companion_perch_wings_browser.cjs
+          node tests/test_reward_theme_selects_browser.cjs
+          node tests/test_digest_recovery_browser.cjs
+          MAILAI_BROWSER=webkit node tests/test_digest_recovery_browser.cjs
 
   mail-import-windows:
     runs-on: windows-2022
@@ -166,6 +173,8 @@ jobs:
           start_fixture
           node tests/test_reward_themes_browser.cjs
           node tests/test_reward_theme_surfaces_browser.cjs
+          node tests/test_companion_theme_transparency_browser.cjs
+          MAILAI_BROWSER=webkit node tests/test_companion_theme_transparency_browser.cjs
           stop_fixture
           start_fixture 1 0
           node tests/test_companion_gifts_browser.cjs

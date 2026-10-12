@@ -5,11 +5,13 @@ const nodes=new Map();
 const node=id=>{if(!nodes.has(id))nodes.set(id,{innerHTML:'',textContent:'',value:'',classList:{hidden:false,contains(){return this.hidden},add(){this.hidden=true}},appendChild(){}});return nodes.get(id)};
 const requests=[];
 const streamCalls=[],streamQueues=[];
+let fastTimeout=false,hangFetch=false;
 const encodeLine=obj=>new TextEncoder().encode(JSON.stringify(obj)+'\n');
-const c=vm.createContext(i18nContext({mailaiT: () => null,console,Map,AbortController,TextDecoder,TextEncoder,setTimeout,clearTimeout,localStorage:{getItem:()=>''},document:{getElementById:node,createElement:()=>({value:'',textContent:''})},
+const c=vm.createContext(i18nContext({mailaiT: key => ({'digest.waitTimeout':'Report generation timed out','digest.streamInterrupted':'Report connection interrupted'}[key]||null),console,Map,AbortController,TextDecoder,TextEncoder,setTimeout:(fn,delay)=>setTimeout(fn,fastTimeout&&delay===90000?5:delay),clearTimeout,localStorage:{getItem:()=>''},document:{getElementById:node,createElement:()=>({value:'',textContent:''})},
   activeMailAccount:()=>({id:'a'}),renderDigest:x=>x,esc:String,toast(){},setDigestTitle(){},setLoading(){},localDateKey:()=> '2026-09-10',
   api:(url,opts)=>new Promise((resolve,reject)=>requests.push({url,opts,resolve,reject})),
   fetch:(url,opts)=>{streamCalls.push({url,opts});
+    if(hangFetch)return new Promise(()=>{});
     // 每个流一个投喂队列：push({value}) 发分块，push({done:true}) 结束
     const queue=[],waiters=[];
     streamQueues.push(item=>{ if(waiters.length) waiters.shift()(item); else queue.push(item); });
@@ -48,5 +50,32 @@ vm.runInContext('_digestAccountId="a"',c);
   assert.equal(node('digest-body').innerHTML,'第一段完整日报');
   first=c.loadDigestById(7,'a');vm.runInContext('_digestAccountId="b"',c);requests[7].reject(Error('A failure'));await first;
   assert.ok(!node('digest-body').innerHTML.includes('A failure'));
-  console.log('PASS digest latest selection, old success/failure, close/account guards, deduplicated streaming generation and incremental paint');
+  vm.runInContext('_digestAccountId="a"',c);
+  // Refresh reconnects live deltas, and a done frame finishes without waiting for EOF.
+  first=c.generateDigest();await new Promise(r=>setTimeout(r,0));
+  const refreshed=streamQueues.at(-1);
+  refreshed({value:encodeLine({type:'delta',content:'visible before refresh'})});await new Promise(r=>setTimeout(r,0));
+  const beforeCalls=streamCalls.length;second=c.generateDigest();
+  assert.equal(node('digest-body').innerHTML,'visible before refresh','Refresh keeps the currently generated text');
+  assert.equal(streamCalls.length,beforeCalls,'Refresh cannot create a second generation request');
+  refreshed({value:encodeLine({type:'delta',content:' plus new live text'})});await new Promise(r=>setTimeout(r,150));
+  assert.match(node('digest-body').innerHTML,/new live text/,'Refreshed view receives ongoing deltas');
+  refreshed({value:encodeLine({type:'done',digest:'complete without EOF'})});await new Promise(r=>setTimeout(r,0));
+  requests.at(-1).resolve([]);await Promise.all([first,second]);
+  assert.equal(node('digest-body').innerHTML,'complete without EOF');
+  // EOF without done must retain partial output as an error, not a completed report.
+  first=c.generateDigest();await new Promise(r=>setTimeout(r,0));
+  streamQueues.at(-1)({value:encodeLine({type:'delta',content:'partial report'})});streamQueues.at(-1)({done:true});
+  await first;assert.match(node('digest-body').innerHTML,/partial report/);assert.match(node('digest-body').innerHTML,/interrupted/);
+  assert.equal(vm.runInContext('digestGenerationJobs.size',c),0);
+  // Bound both a stalled fetch and a stalled body; release deduplication for retry.
+  fastTimeout=true;hangFetch=true;await c.generateDigest();
+  assert.match(node('digest-body').innerHTML,/timed out/);assert(streamCalls.at(-1).opts.signal.aborted);
+  assert.equal(vm.runInContext('digestGenerationJobs.size',c),0);
+  hangFetch=false;await c.generateDigest();assert.match(node('digest-body').innerHTML,/timed out/);
+  assert.equal(vm.runInContext('digestGenerationJobs.size',c),0);
+  c.mailaiT=()=>null;hangFetch=true;await c.generateDigest();
+  assert.match(node('digest-body').innerHTML,/等待超时/,'Default Chinese locale must have a readable timeout message');
+  hangFetch=false;fastTimeout=false;
+  console.log('PASS digest history/account guards, shared incremental generation, refresh reconnection, completion, partial preservation and localized timeout recovery');
 })().catch(e=>{console.error(e);process.exitCode=1});

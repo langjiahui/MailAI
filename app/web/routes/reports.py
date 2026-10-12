@@ -47,11 +47,9 @@ def api_digest():
     text = pipeline.today_digest()
     if not text:
         raise HTTPException(503, "LLM 未配置或今天没有可分析的邮件")
-    # 保存日报历史，同一天多次生成则保留最新一次（先删后插）
+    # Replace within one transaction so a failed insert cannot erase the saved report.
     today = datetime.now().strftime("%Y-%m-%d")
-    with db.conn() as c:
-        c.execute("DELETE FROM digest_history WHERE digest_date=?", (today,))
-    db.save_digest(text, today)
+    db.save_digest(text, today, replace=True)
     return {"digest": text}
 
 
@@ -76,9 +74,12 @@ def api_digest_stream():
             return
         # 完整生成后才落库：同一天多次生成保留最新一次（先删后插）
         today = datetime.now().strftime("%Y-%m-%d")
-        with db.conn() as c:
-            c.execute("DELETE FROM digest_history WHERE digest_date=?", (today,))
-        db.save_digest(text, today)
+        try:
+            db.save_digest(text, today, replace=True)
+        except Exception:
+            log.exception("日报保存失败，保留原日报")
+            yield json.dumps({"type": "error", "message": "日报保存失败，请点击刷新重试；原有日报仍保留"}, ensure_ascii=False) + "\n"
+            return
         yield json.dumps({"type": "done", "digest": text}, ensure_ascii=False) + "\n"
 
     return StreamingResponse(generate(), media_type="application/x-ndjson")

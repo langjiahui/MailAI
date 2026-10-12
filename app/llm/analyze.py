@@ -238,6 +238,7 @@ def daily_digest_stream(items: list[dict]):
                 temperature=0.3,
                 max_tokens=client.config.LLM_DIGEST_MAX_TOKENS,
                 timeout=client.config.LLM_DIGEST_TIMEOUT,
+                require_completion=True,
             ):
                 if delta:
                     emitted = True
@@ -245,7 +246,7 @@ def daily_digest_stream(items: list[dict]):
         except Exception:
             if emitted:
                 log.exception("LLM 日报流式生成中断，保留已生成部分")
-                return
+                raise
             log.exception("LLM 日报流式生成失败，使用本地兜底")
         if emitted:
             return

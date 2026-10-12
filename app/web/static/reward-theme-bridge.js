@@ -82,7 +82,9 @@
         });
         let declarations='';
         for (const property of rule.style) {
-          if (!/^(?:--|color$|background(?:-color|-image)?$|border(?:-(?:top|right|bottom|left))?(?:-color)?$|outline(?:-color)?$|box-shadow$|text-shadow$|fill$|stroke$|caret-color$|accent-color$|text-decoration-color$)/.test(property)) continue;
+          // A mapped background shorthand resets image geometry too. Preserve
+          // subsequent longhands at the same specificity so icons do not tile.
+          if (!/^(?:--|color$|background(?:-color|-image|-repeat|-position(?:-x|-y)?|-size|-attachment|-origin|-clip)?$|border(?:-(?:top|right|bottom|left))?(?:-color)?$|outline(?:-color)?$|box-shadow$|text-shadow$|fill$|stroke$|caret-color$|accent-color$|text-decoration-color$)/.test(property)) continue;
           if (/^--.*(?:success|danger|warn)/.test(property)) continue;
           const value=rule.style.getPropertyValue(property),mapped=translate(value,property,onAccent);
           // Keep later transparent/currentColor resets in the same cascade as

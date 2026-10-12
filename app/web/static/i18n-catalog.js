@@ -1,5 +1,8 @@
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "digest.waitTimeout": ["日报生成等待超时，请点击刷新重试；已保存的日报仍在。", "Report generation timed out. Select Refresh to retry. Saved reports are kept."],
+  "digest.streamInterrupted": ["日报连接提前中断，请点击刷新重试；未完成内容不会覆盖已保存的日报。", "The report connection ended before completion. Select Refresh to retry. Partial output will not replace a saved report."],
+  "digest.saveFailed": ["日报保存失败，请点击刷新重试；原有日报仍保留", "Could not save the report. Select Refresh to retry. Your previous report is kept."],
   "pet.gifts": ["领取礼物", "Gifts"],
   "pet.tab.today": ["今日", "Today"],
   "pet.tab.journey": ["进化", "Stages"],
