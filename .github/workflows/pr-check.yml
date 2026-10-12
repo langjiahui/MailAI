@@ -132,7 +132,7 @@ jobs:
         run: |
           python -m pip install -r requirements.txt
           npm ci
-          npx playwright install --with-deps chromium
+          npx playwright install --with-deps chromium webkit
       - name: Verify growth, recovery, themes and themed surfaces
         shell: bash
         run: |
@@ -158,6 +158,10 @@ jobs:
           start_fixture
           node tests/test_companion_growth_browser.cjs
           node tests/test_companion_growth_recovery_browser.cjs
+          node tests/test_companion_reward_motion_browser.cjs
+          MAILAI_BROWSER=webkit node tests/test_companion_reward_motion_browser.cjs
+          node tests/test_companion_equipped_motion_browser.cjs
+          MAILAI_BROWSER=webkit node tests/test_companion_equipped_motion_browser.cjs
           stop_fixture
           start_fixture
           node tests/test_reward_themes_browser.cjs
