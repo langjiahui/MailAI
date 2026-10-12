@@ -57,8 +57,8 @@ const {chromium,webkit}=require('playwright');
   assert.match(await dialog.locator('[data-pet-gift-error]').textContent(),/8 KB/);
   // Import a file, then simulate a committed claim whose response was lost.
   await dialog.locator('[data-pet-gift-file]').setInputFiles({name:'活动礼包.mailaigift',mimeType:'text/plain',buffer:Buffer.from(codes.campaign)});
-  assert.equal(await input.inputValue(),codes.campaign);
   await dialog.locator('[data-pet-gift-claim]').waitFor({state:'visible'});
+  assert.equal(await input.inputValue(),codes.campaign,'File contents are checked after import and automatic preview finish');
   await page.route('**/api/companion/gifts/claim',async route=>{await route.fetch();await route.fulfill({status:503,contentType:'application/json',body:'{"detail":"fixture response lost"}'})});
   await dialog.locator('[data-pet-gift-claim]').click();await page.waitForFunction(()=>document.querySelector('[data-pet-gift-error]')?.textContent.includes('fixture response lost'));assert(await page.evaluate(()=>!!localStorage.getItem('mailai-companion-gift-pending')));
   await fillCode(codes.another);await verify.click();await dialog.locator('[data-pet-gift-claim]').waitFor({state:'visible'});
