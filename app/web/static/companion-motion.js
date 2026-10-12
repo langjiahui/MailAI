@@ -60,7 +60,7 @@
     svg, parts:Object.fromEntries(names.map(name=>[name,svg.querySelector(`.companion-${name}`)])),
     animations:[],timer:0,mode:'',next:0,
   }));
-  const enabled = () => !document.hidden && !reduced.matches && !document.body.classList.contains('companion-still');
+  const enabled = () => !document.hidden && !reduced.matches && !document.body.classList.contains('companion-still') && !document.body.classList.contains('companion-paused');
   const visible = rig => rig.svg.getClientRects().length && getComputedStyle(rig.svg).visibility !== 'hidden';
   const stop = rig => {
     clearTimeout(rig.timer);

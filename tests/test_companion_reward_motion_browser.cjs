@@ -35,8 +35,10 @@ const {chromium,webkit} = require('playwright');
     await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
     assert.equal(await preview.locator('.companion-eyes').evaluate(n=>getComputedStyle(n).animationPlayState),'paused','Pause includes the normal blink');
     const frozen=await wing.evaluate(n=>getComputedStyle(n).transform);
+    const frozenParts=await preview.evaluate(host=>[...host.querySelectorAll('.growth-wings .pet-reward-motion')].map(n=>getComputedStyle(n).transform));
     await page.waitForTimeout(180);
     assert.equal(await wing.evaluate(n=>getComputedStyle(n).transform),frozen,'Pause must freeze the preview');
+    assert.deepEqual(await preview.evaluate(host=>[...host.querySelectorAll('.growth-wings .pet-reward-motion')].map(n=>getComputedStyle(n).transform)),frozenParts,'Pause freezes distal feather motion too');
     await preview.locator('[data-pet-preview-play]').click();
     const clips=new Set();
     for(const item of ['wings','mech_wings','sparkles','orbit','aurora','lightning','scarf','cap','satchel','visor','jacket','armor','sky','peach','midnight','berry']) {
@@ -49,7 +51,24 @@ const {chromium,webkit} = require('playwright');
       active.forEach(n=>clips.add(n.name));
     }
     assert(clips.size>=12,'Rewards must offer distinct motion, not one shared opacity loop');
+    await select.selectOption('orbit');
+    const depth=await preview.evaluate(host=>{
+      const rear=host.querySelector('.pet-orbit-rear'), front=host.querySelector('.pet-orbit-front'), body=host.querySelector('.companion-figure');
+      const rearStream=rear.querySelector('.pet-orbit-stream'), frontStream=front.querySelector('.pet-orbit-stream');
+      return {
+        rearBehind:!!(rear.compareDocumentPosition(body)&Node.DOCUMENT_POSITION_FOLLOWING),
+        frontAhead:!!(body.compareDocumentPosition(front)&Node.DOCUMENT_POSITION_FOLLOWING),
+        rearClip:getComputedStyle(rearStream).clipPath, frontClip:getComputedStyle(frontStream).clipPath,
+        offsetGap:Math.abs(parseFloat(getComputedStyle(rearStream).strokeDashoffset)-parseFloat(getComputedStyle(frontStream).strokeDashoffset)),
+      };
+    });
+    assert(depth.rearBehind&&depth.frontAhead,'Orbit must pass behind and in front of the body');
+    assert.notEqual(depth.rearClip,'none');assert.notEqual(depth.frontClip,'none');assert.notEqual(depth.rearClip,depth.frontClip);
+    assert(depth.offsetGap<.1,'Front/rear orbit trails must join without a phase jump');
     await select.selectOption('sparkles');
+    await page.evaluate(()=>mailaiEnergy.nativeVisibility(1000,false));
+    assert.equal(await preview.locator('.pet-star').first().evaluate(n=>getComputedStyle(n).animationName),'none','Native hidden windows stop the new layers');
+    await page.evaluate(()=>mailaiEnergy.nativeVisibility(1001,true));
     await page.emulateMedia({reducedMotion:'reduce'});
     await page.waitForFunction(()=>document.querySelector('[data-pet-preview-play]').disabled);
     assert(await preview.locator('[data-pet-preview-play]').isDisabled());
