@@ -32,14 +32,22 @@ async function checkMotion(page, hosts, part, context) {
     return {name:css.animationName,play:css.animationPlayState,time:animation?.currentTime,visible,hidden};
   }),selectors);
   const first=await sample();
-  await page.waitForTimeout(160);
-  const next=await sample();
   for(let i=0;i<selectors.length;i++) {
     const label=`${context}: ${selectors[i]}`;
     assert(first[i].visible,`${label} must be visible: ${JSON.stringify(first[i])}`);
     assert.notEqual(first[i].name,'none',`${label} must have an animation`);
     assert.equal(first[i].play,'running',`${label} must run while visible`);
-    assert(next[i].time>first[i].time+40,`${label} must actually advance`);
+  }
+  // A panel can become visible before its first animation frame is committed.
+  // Wait for actual progress instead of assuming a fixed CI rendering speed.
+  try {
+    await page.waitForFunction(({selectors,first})=>selectors.every((selector,index)=>{
+      const node=document.querySelector(selector), css=getComputedStyle(node);
+      const animation=node.getAnimations().find(a=>a.animationName===css.animationName);
+      return css.animationPlayState==='running' && animation?.currentTime>first[index].time+40;
+    }),{selectors,first},{timeout:5000});
+  } catch(error) {
+    throw new Error(`${context} must actually advance: before=${JSON.stringify(first)}, after=${JSON.stringify(await sample())}`,{cause:error});
   }
 }
 (async()=>{
