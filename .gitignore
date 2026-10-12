@@ -27,5 +27,8 @@ docs/*.docx
 scripts/fill_competition_form.py
 scripts/refresh_competition_form_from_reference.py
 node_modules
+issuer.pem
+*.mailaigift
+.mailai-gift-issuer/
 ui-preferences.sqlite3*
 webview/

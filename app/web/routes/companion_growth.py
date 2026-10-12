@@ -3,6 +3,7 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from ... import companion_growth as growth
+from ... import companion_gifts as gifts
 
 router = APIRouter()
 
@@ -32,6 +33,10 @@ class Style(BaseModel):
 
 class Preference(BaseModel):
     enabled: bool
+
+
+class Gift(BaseModel):
+    code: str = Field(min_length=1, max_length=gifts.MAX_CODE)
 
 
 def checked(action, *args):
@@ -69,3 +74,13 @@ def preferences(payload: Preference):
 @router.post('/api/companion/style')
 def style(payload: Style):
     return checked(growth.set_style, payload.style)
+
+
+@router.post('/api/companion/gifts/preview')
+def preview_gift(payload: Gift):
+    return checked(gifts.preview, payload.code)
+
+
+@router.post('/api/companion/gifts/claim')
+def claim_gift(payload: Gift):
+    return checked(gifts.claim, payload.code)

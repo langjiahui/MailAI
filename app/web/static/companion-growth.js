@@ -11,14 +11,37 @@
   const stageHint = stage => label(`${state?.style === 'ranger' ? 'rangerHint' : 'stageHint'}${stage}`);
   const numerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
   const duration = seconds => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+  const dateLabel = (value, dayOnly = false) => {
+    const date = new Date(dayOnly ? value+'T12:00:00' : value);
+    return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat(currentI18nLanguage(), dayOnly ? {dateStyle:'medium'} : {dateStyle:'medium',timeStyle:'short'}).format(date);
+  };
   const post = body => ({method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
   let state = null, account = '', revision = 0, tab = 'today', dialog, returnFocus;
   let busy = false, tickBusy = false, pending = null, clicks = 0, lastClick = 0;
   let lastInput = performance.now(), lastSample = performance.now(), reading = null;
   let lastRefresh = 0, refreshAccount = '', purchaseIntent = null, feedback = null, renderKey = '';
   let previewItem = 'sparkles', previewPlaying = true, previewOpen = false;
+  let giftDraft = '', giftPreview = null, giftError = '', giftErrorKey = '', giftBusy = false;
+  let giftPending = '', giftFileName = '', giftReadRevision = 0, giftOperation = '';
+  const cleanGiftCode = code => String(code).replace(/\s+/g,'').replace(/^\uFEFF+/,'');
+  try { giftPending = localStorage.getItem('mailai-companion-gift-pending') || ''; giftDraft = giftPending; } catch (_) {}
+  const saveGiftPending = code => {
+    giftPending = code;
+    try { code ? localStorage.setItem('mailai-companion-gift-pending',code) : localStorage.removeItem('mailai-companion-gift-pending'); } catch (_) {}
+  };
+  function editGift(code = '', file = '') {
+    ++giftReadRevision; giftDraft = code; giftFileName = file; giftPreview = null;
+    giftError = ''; giftErrorKey = ''; previewOpen = false; message('');
+  }
+  function focusGift(selector, scroll = false) {
+    if (!dialog?.open || tab !== 'gifts') return;
+    const node = dialog.querySelector(selector);
+    if (scroll) node?.scrollIntoView({block:'nearest'});
+    node?.focus({preventScroll:true});
+  }
   const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
   const motionAllowed = () => !motionPreference.matches && !document.body.classList.contains('companion-still');
+  const previewNote = () => motionAllowed() ? tab === 'gifts' ? 'giftPreviewSafe' : 'previewSafe' : 'previewStatic';
   const motionHosts = new Set();
   const motionVisibility = new IntersectionObserver(entries => {
     for (const entry of entries) entry.target.dataset.rewardVisible = String(entry.isIntersecting);
@@ -42,7 +65,7 @@
       button.setAttribute('aria-pressed', String(previewPlaying && motionAllowed()));
     }
     const note = dialog?.querySelector('[data-pet-motion-note]');
-    if (note) note.textContent = t(motionAllowed() ? 'previewSafe' : 'previewStatic');
+    if (note) note.textContent = t(previewNote());
   }
   const intents = new Map();
   const intentKey = () => 'mailai-companion-purchase:client';
@@ -162,7 +185,7 @@
     dialog.id = 'companion-growth-dialog';
     dialog.className = 'pet-journal';
     dialog.setAttribute('aria-labelledby', 'pet-journal-title');
-    dialog.innerHTML = `<header class="pet-journal-head"><div><small>MAILAI · COMPANION</small><h2 id="pet-journal-title"></h2></div><button type="button" data-pet-close>×</button></header><div class="pet-journal-body"></div><footer class="pet-journal-footer"><span data-pet-message role="status" aria-live="polite"></span><button type="button" data-pet-enabled></button></footer>`;
+    dialog.innerHTML = `<header class="pet-journal-head"><div><small>MAILAI · COMPANION</small><h2 id="pet-journal-title"></h2></div><button type="button" class="modern-close" data-pet-close><svg viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="m6 6 8 8M14 6l-8 8"/></svg></button></header><div class="pet-journal-body"></div><footer class="pet-journal-footer"><span data-pet-message role="status" aria-live="polite"></span><button type="button" data-pet-enabled></button></footer>`;
     document.body.append(dialog);
     dialog.addEventListener('click', async event => {
       if (event.target === dialog) {
@@ -175,6 +198,7 @@
       if (button.hasAttribute('data-pet-close')) return dialog.close();
       if (button.dataset.petTab) {
         tab = button.dataset.petTab; render();
+        dialog.querySelector('.pet-tab-content')?.scrollIntoView({block:'start'});
         dialog.querySelector(`[data-pet-tab="${tab}"]`)?.focus({preventScroll:true});
         return;
       }
@@ -189,6 +213,25 @@
       if (button.hasAttribute('data-pet-preview-play')) {
         previewPlaying = !previewPlaying; updatePreviewMotion(); return;
       }
+      if (button.hasAttribute('data-pet-gift-copy')) {
+        try { await navigator.clipboard.writeText(state.claim_code); message(t('giftCopied')); }
+        catch (_) { dialog.querySelector('[data-pet-claim-code]')?.focus(); dialog.querySelector('[data-pet-claim-code]')?.select(); message(t('giftCopyFallback')); }
+        return;
+      }
+      if (button.hasAttribute('data-pet-gift-import')) return dialog.querySelector('[data-pet-gift-file]')?.click();
+      if (button.hasAttribute('data-pet-gift-preview')) return runGift('preview');
+      if (button.hasAttribute('data-pet-gift-claim')) return runGift('claim');
+      if (button.hasAttribute('data-pet-gift-reconcile')) {
+        if (busy || !giftPending) return;
+        editGift(giftPending); return runGift('preview');
+      }
+      if (button.hasAttribute('data-pet-gift-clear')) {
+        if (busy) return; editGift(); renderKey = ''; render(); focusGift('[data-pet-gift-code]'); return;
+      }
+      if (button.hasAttribute('data-pet-gift-wear')) {
+        return visitOutfits(giftPreview?.items.map(item=>item.id) || []);
+      }
+      if (button.dataset.petGiftOutfits) return visitOutfits(state.gifts.find(gift=>gift.id===button.dataset.petGiftOutfits)?.items || []);
       if (busy || !state) return;
       let path, payload, notice;
       if (button.hasAttribute('data-pet-enabled')) {
@@ -226,10 +269,96 @@
         if (id !== account) void refresh();
       }
     });
-    dialog.addEventListener('change', event => {
+    dialog.addEventListener('input', event => {
+      if (!event.target.matches('[data-pet-gift-code]') || busy) return;
+      editGift(event.target.value);
+      dialog.querySelector('.pet-gift-result')?.remove();
+      const error = dialog.querySelector('[data-pet-gift-error]'); if (error) error.textContent = '';
+      const verify = dialog.querySelector('[data-pet-gift-preview]'); if (verify) verify.disabled = !giftDraft.trim();
+      const clear = dialog.querySelector('[data-pet-gift-clear]'); if (clear) clear.disabled = !giftDraft;
+      event.target.setAttribute('aria-invalid','false');
+      const hint = dialog.querySelector('.pet-gift-source summary small'); if (hint) hint.textContent = t('giftInputHint');
+    });
+    dialog.addEventListener('keydown', event => {
+      if (event.target.matches('[data-pet-gift-code]') && event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault(); void runGift('preview');
+      }
+    });
+    dialog.addEventListener('change', async event => {
+      if (event.target.matches('[data-pet-gift-file]')) {
+        const file = event.target.files?.[0]; event.target.value = '';
+        if (!file || busy) return;
+        editGift(); const read = giftReadRevision, id = account;
+        if (file.size > 8192) { giftErrorKey = 'giftFileLarge'; renderKey = ''; render(); focusGift('[data-pet-gift-code]'); return; }
+        try {
+          const text = await file.text();
+          if (read !== giftReadRevision || id !== account || busy) return;
+          editGift(text,file.name); renderKey = ''; render();
+          await runGift('preview');
+        } catch (_) {
+          if (read !== giftReadRevision || id !== account) return;
+          giftErrorKey = 'giftFileError'; renderKey = ''; render(); focusGift('[data-pet-gift-code]');
+        }
+        return;
+      }
       if (event.target.matches('[data-pet-preview-select]')) selectPreview(event.target.value);
     });
     dialog.addEventListener('close', () => { if (returnFocus?.isConnected) returnFocus.focus({preventScroll:true}); });
+  }
+  function visitOutfits(items) {
+    tab = 'shop'; render();
+    const cards = items.map(item=>dialog.querySelector(`[data-pet-item="${CSS.escape(item)}"]`)).filter(Boolean);
+    for (const card of cards) { card.setAttribute('data-gift-focus','true'); card.tabIndex = -1; }
+    const card = cards[0];
+    card?.scrollIntoView({block:'center'});
+    const button = card?.querySelector('button[data-pet-slot]');
+    (button && !button.disabled ? button : card)?.focus({preventScroll:true});
+  }
+  async function runGift(mode) {
+    if (busy || !state) return;
+    if (!giftDraft.trim()) { giftErrorKey = 'giftEmpty'; renderKey = ''; render(); focusGift('[data-pet-gift-code]'); return; }
+    if (mode === 'claim' && (!giftPreview || giftPreview.claimed)) return;
+    if (mode === 'claim' && giftPending && cleanGiftCode(giftPending) !== cleanGiftCode(giftDraft)) {
+      giftErrorKey = 'giftResolveFirst'; renderKey = ''; render(); focusGift('[data-pet-gift-reconcile]'); return;
+    }
+    busy = true; giftBusy = true; giftOperation = mode; giftError = ''; giftErrorKey = '';
+    const id = account, rev = ++revision, code = giftDraft;
+    const isPending = () => giftPending && cleanGiftCode(giftPending) === cleanGiftCode(code);
+    if (mode === 'claim') saveGiftPending(code);
+    renderKey = ''; render();
+    try {
+      const result = await request(`gifts/${mode}`, {...post({code}),accountId:id});
+      if (id !== account || id !== owner() || rev !== revision) return;
+      if (mode === 'preview') {
+        if (result.claimed) accept(await request('growth',{accountId:id}),id,rev);
+        if (id !== account || id !== owner() || rev !== revision) return;
+        giftPreview = result;
+      } else {
+        accept(result,id,rev); giftPreview = {...giftPreview,claimed:true}; message(t('giftClaimed'));
+      }
+      if (isPending()) saveGiftPending('');
+      if (giftPreview?.claimed) giftPreview.items = giftPreview.items.map(item=>({...item,owned:state.items.some(entry=>entry.id===item.id && entry.owned)}));
+    } catch (error) {
+      // A definite business rejection must not leave the client unable to use another voucher.
+      // Server receipts still prevent duplicates if the original voucher is entered again.
+      if ([400,422].includes(error.status) && isPending()) saveGiftPending('');
+      if (id === account && id === owner()) giftError = error.message;
+    } finally {
+      busy = false; giftBusy = false; giftOperation = ''; renderKey = '';
+      if (dialog.open) render();
+      if (id !== account) void refresh();
+      else focusGift(giftError || giftErrorKey ? '[data-pet-gift-code]' : giftPreview?.claimed ? '[data-pet-gift-wear]' : '[data-pet-gift-claim]', true);
+    }
+  }
+  function giftsView() {
+    const card = item => {
+      const owned = state.items.some(entry=>entry.id === item.id && entry.owned), wearing = state.equipped[item.slot] === item.id;
+      return `<article tabindex="0">${item.slot === 'theme' ? `<div class="pet-theme-preview" data-theme-preview="${item.id}" aria-hidden="true"><div class="pet-theme-mini-bar"><i></i><i></i><i></i></div><div class="pet-theme-mini-nav"><i></i><i></i><i></i></div><div class="pet-theme-mini-mail"><i></i><i></i><i></i></div>${avatar('pet-theme-mini-pet')}</div>` : `<button type="button" class="pet-preview-icon" data-pet-preview="${item.id}" title="${label('previewIcon',t(`item.${item.id}`))}" aria-label="${label('previewIcon',t(`item.${item.id}`))}"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.5 12s3.2-6 9.5-6 9.5 6 9.5 6-3.2 6-9.5 6S2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.5"/></svg></button><div class="pet-item-art" data-item-preview="${item.id}" aria-hidden="true">${avatar()}</div>`}<b>${label(`item.${item.id}`)}</b><small>${label(giftPreview.claimed ? 'giftOwned' : owned ? 'giftAlreadyOwned' : 'giftPermanent')}</small>${giftPreview.claimed ? `<button type="button" data-pet-slot="${item.slot}" data-pet-equip="${item.id}" ${busy || !owned || wearing ? 'disabled' : ''}>${label(wearing ? item.slot === 'theme' ? 'themeActive' : 'wearing' : item.slot === 'theme' ? 'themeUse' : 'wear')}</button>` : ''}</article>`;
+    };
+    const error = giftErrorKey ? t(giftErrorKey) : mailaiSystemMessage(giftError);
+    const step = giftPreview?.claimed ? 3 : giftPreview ? 2 : 1;
+    const preview = giftPreview ? `<section class="pet-gift-result" aria-labelledby="pet-gift-result-title"><div class="pet-gift-success" ${giftPreview.claimed ? '' : 'hidden'} role="status"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10 4 4 8-8"/></svg><div><b>${label('giftSuccessTitle')}</b><small>${label('giftSuccessHint')}</small></div></div><div class="pet-section-title"><h3 id="pet-gift-result-title">${esc(giftPreview.title)}</h3><span class="pet-gift-kind">${label(giftPreview.exclusive ? 'giftExclusive' : 'giftCampaign')}</span></div><p class="pet-note">${giftPreview.expires ? label('giftDeadline',new Date(giftPreview.expires*1000).toLocaleString(currentI18nLanguage())) : label('giftNoDeadline')}</p><div class="pet-gift-items">${giftPreview.items.map(card).join('')}</div><section class="pet-live-preview" aria-labelledby="pet-preview-title" ${previewOpen ? '' : 'hidden'}>${previewView()}</section><div class="pet-gift-confirm"><p>${label(giftPreview.claimed ? 'giftSlotHint' : 'giftSafe')}</p><button type="button" class="pet-gift-primary" ${giftPreview.claimed ? 'data-pet-gift-wear' : 'data-pet-gift-claim'} ${busy || (giftPending && cleanGiftCode(giftPending)!==cleanGiftCode(giftDraft)) ? 'disabled' : ''}>${label(giftBusy && giftOperation === 'claim' ? 'giftClaiming' : giftPreview.claimed ? 'giftWearNow' : 'giftClaim')}</button></div></section>` : '';
+    return `<section class="pet-gift-panel"><div class="pet-section-title"><h3>${label('giftTitle')}</h3><span class="pet-gift-free">${label('giftFree')}</span></div><p class="pet-note">${label('giftIntro')}</p><ol class="pet-gift-steps" aria-label="${label('giftSteps')}">${['giftStepCode','giftStepPreview','giftStepWear'].map((name,index)=>`<li ${step===index+1 ? 'aria-current="step"' : ''} class="${index+1<step ? 'is-done' : ''}"><span>${index+1<step ? '✓' : index+1}</span>${label(name)}</li>`).join('')}</ol><details class="pet-gift-identity"><summary>${label('giftIdentitySummary')}<small>${label('giftIdentityRequest')}</small></summary><label for="pet-claim-code">${label('giftIdentity')}</label><div><input id="pet-claim-code" data-pet-claim-code readonly value="${esc(state.claim_code)}" aria-label="${label('giftIdentity')}"><button type="button" data-pet-gift-copy>${label('giftCopy')}</button></div><small>${label('giftIdentityHint')}</small></details>${giftPending ? `<div class="pet-gift-pending" role="status"><p>${label(cleanGiftCode(giftPending) !== cleanGiftCode(giftDraft) ? 'giftResolveFirst' : 'giftPending')}</p><button type="button" data-pet-gift-reconcile ${busy ? 'disabled' : ''}>${label('giftReconcile')}</button></div>` : ''}<details class="pet-gift-source" ${!giftPreview || error ? 'open' : ''}><summary>${label(giftPreview ? 'giftChange' : 'giftCode')}<small>${giftFileName ? esc(giftFileName) : label('giftInputHint')}</small></summary><label class="pet-visually-hidden" for="pet-gift-code">${label('giftCode')}</label><textarea id="pet-gift-code" data-pet-gift-code maxlength="8192" spellcheck="false" autocomplete="off" aria-describedby="pet-gift-error" aria-invalid="${!!error}" placeholder="${label('giftCodePlaceholder')}" ${busy ? 'disabled' : ''}>${esc(giftDraft)}</textarea><div class="pet-gift-actions"><input type="file" data-pet-gift-file accept=".mailaigift,.txt" hidden><button type="button" data-pet-gift-import ${busy ? 'disabled' : ''}>${label('giftImport')}</button><button type="button" data-pet-gift-clear ${busy || !giftDraft ? 'disabled' : ''}>${label('giftClear')}</button><button type="button" class="pet-gift-primary" data-pet-gift-preview ${busy || !giftDraft.trim() ? 'disabled' : ''}>${label(giftBusy && giftOperation === 'preview' ? 'giftChecking' : 'giftVerify')}</button></div></details><p id="pet-gift-error" class="pet-gift-error" data-pet-gift-error role="alert">${esc(error)}</p>${preview}</section><div class="pet-section-title pet-purchase-title"><h3>${label('giftHistory')}</h3><span>${label('giftHistoryLimit')}</span></div>${state.gifts.length ? `<div class="pet-history">${state.gifts.map(gift=>`<article><div><b>${esc(gift.title)}</b><small>${gift.items.map(item=>label(`item.${item}`)).join(' · ')}</small><time>${esc(dateLabel(gift.claimed_at))}</time></div><button type="button" data-pet-gift-outfits="${esc(gift.id)}" aria-label="${label('giftViewOutfitsNamed',gift.title)}">${label('giftViewOutfits')}</button></article>`).join('')}</div>` : `<p class="pet-empty">${label('giftHistoryEmpty')}</p>`}`;
   }
   async function open() {
     checkAccount(); ensureDialog(); returnFocus = document.activeElement;
@@ -239,10 +368,11 @@
   }
   function avatar(extra = '') { return `<div class="pet-portrait ${extra}">${window.mailaiCompanionArt || ''}</div>`; }
   function previewView() {
-    const items = state.items.filter(item => item.slot !== 'theme');
+    const items = state.items.filter(item => item.slot !== 'theme' && (tab !== 'gifts' || giftPreview?.items.some(gift=>gift.id===item.id)));
+    if (!items.length) return '';
     const item = items.find(item => item.id === previewItem) || items[0];
     previewItem = item.id;
-    return `<div class="pet-live-art pet-item-art" data-item-preview="${item.id}" data-preview-playing="${previewPlaying && motionAllowed()}">${avatar()}</div><div class="pet-preview-copy"><div class="pet-preview-heading"><h4 id="pet-preview-title">${label(`item.${item.id}`)}</h4><div class="pet-preview-tools"><small>${label('previewTitle')}</small><button type="button" data-pet-preview-close title="${label('previewClose')}" aria-label="${label('previewClose')}">×</button></div></div><p>${label(`itemHint.${item.id}`)}</p><div class="pet-preview-controls"><select data-pet-preview-select aria-label="${label('previewChoose')}">${items.map(entry => `<option value="${entry.id}" ${entry.id === item.id ? 'selected' : ''}>${label(`item.${entry.id}`)}</option>`).join('')}</select><button type="button" data-pet-preview-play aria-pressed="${previewPlaying && motionAllowed()}" ${!motionAllowed() ? 'disabled' : ''}>${label(previewPlaying && motionAllowed() ? 'previewPause' : 'previewPlay')}</button></div><p class="pet-preview-footnote" data-pet-motion-note>${label(motionAllowed() ? 'previewSafe' : 'previewStatic')}</p></div>`;
+    return `<div class="pet-live-art pet-item-art" data-item-preview="${item.id}" data-preview-playing="${previewPlaying && motionAllowed()}">${avatar()}</div><div class="pet-preview-copy"><div class="pet-preview-heading"><h4 id="pet-preview-title">${label(`item.${item.id}`)}</h4><div class="pet-preview-tools"><small>${label('previewTitle')}</small><button type="button" data-pet-preview-close title="${label('previewClose')}" aria-label="${label('previewClose')}">×</button></div></div><p>${label(`itemHint.${item.id}`)}</p><div class="pet-preview-controls"><select data-pet-preview-select aria-label="${label('previewChoose')}">${items.map(entry => `<option value="${entry.id}" ${entry.id === item.id ? 'selected' : ''}>${label(`item.${entry.id}`)}</option>`).join('')}</select><button type="button" data-pet-preview-play aria-pressed="${previewPlaying && motionAllowed()}" ${!motionAllowed() ? 'disabled' : ''}>${label(previewPlaying && motionAllowed() ? 'previewPause' : 'previewPlay')}</button></div><p class="pet-preview-footnote" data-pet-motion-note>${label(previewNote())}</p></div>`;
   }
   function selectPreview(item, scroll = false) {
     if (!state?.items.some(entry => entry.id === item && entry.slot !== 'theme')) return;
@@ -274,12 +404,12 @@
   function shopView() {
     const s = state;
     return `${themeShopView()}<section class="pet-live-preview" aria-labelledby="pet-preview-title" ${previewOpen ? '' : 'hidden'}>${previewView()}</section><div class="pet-section-title"><h3>${label('shopTitle')}</h3><span>${label('balance',s.stamps)}</span></div><div class="pet-reset-outfit">${['palette','accessory','effect'].map(slot=>`<button type="button" data-pet-slot="${slot}" ${!s.equipped[slot] || busy ? 'disabled' : ''}>${label(`reset.${slot}`)}</button>`).join('')}</div><div class="pet-shop">${s.items.filter(item=>item.slot !== 'theme').map(item => {
-      const locked = s.stage < item.stage, equipped = s.equipped[item.slot] === item.id;
+      const locked = !item.owned && s.stage < item.stage, equipped = s.equipped[item.slot] === item.id;
       const depleted = item.id === 'berry' && s.berry_today >= 3;
       const unavailable = locked || (!item.owned && s.stamps < item.cost) || depleted || busy || (!!purchaseIntent && !item.owned);
       const action = item.owned ? `data-pet-slot="${item.slot}" data-pet-equip="${item.id}"` : `data-pet-buy="${item.id}"`;
       const caption = equipped ? t('wearing') : item.owned ? t('wear') : depleted ? t('berryLimit') : locked ? t('stageRequired',stageName(item.stage)) : t(item.id === 'berry' ? 'feedPrice' : 'buyPrice',item.cost);
-      return `<article class="pet-shop-item ${locked ? 'is-locked' : ''}"><button type="button" class="pet-preview-icon" data-pet-preview="${item.id}" title="${label('previewIcon',t(`item.${item.id}`))}" aria-label="${label('previewIcon',t(`item.${item.id}`))}"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.5 12s3.2-6 9.5-6 9.5 6 9.5 6-3.2 6-9.5 6S2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.5"/></svg></button><div class="pet-item-art" data-item-preview="${item.id}" aria-hidden="true">${avatar()}</div><div class="pet-item-copy"><b>${label(`item.${item.id}`)}</b><p>${label(`itemHint.${item.id}`)}</p><small>${item.owned ? label('owned') : label('itemRequirement',item.cost,stageName(item.stage))}</small></div><button type="button" ${action} ${unavailable || equipped ? 'disabled' : ''}>${esc(caption)}</button></article>`;
+      return `<article data-pet-item="${item.id}" class="pet-shop-item ${locked ? 'is-locked' : ''}"><button type="button" class="pet-preview-icon" data-pet-preview="${item.id}" title="${label('previewIcon',t(`item.${item.id}`))}" aria-label="${label('previewIcon',t(`item.${item.id}`))}"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.5 12s3.2-6 9.5-6 9.5 6 9.5 6-3.2 6-9.5 6S2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.5"/></svg></button><div class="pet-item-art" data-item-preview="${item.id}" aria-hidden="true">${avatar()}</div><div class="pet-item-copy"><b>${label(`item.${item.id}`)}</b><p>${label(`itemHint.${item.id}`)}</p><small>${item.owned ? label('owned') : label('itemRequirement',item.cost,stageName(item.stage))}</small></div><button type="button" ${action} ${unavailable || equipped ? 'disabled' : ''}>${esc(caption)}</button></article>`;
     }).join('')}</div><p class="pet-note">${label('shopNote')}</p>`;
   }
   function themeShopView() {
@@ -287,11 +417,11 @@
     return `<section class="pet-theme-shop"><div class="pet-section-title pet-themes-title"><h3>${label('themeShop')}</h3><button type="button" data-pet-slot="theme" ${!s.equipped.theme || busy ? 'disabled' : ''}>${label('themeReset')}</button></div><p class="pet-note pet-theme-note">${label('themeNote')}</p><div class="pet-theme-grid">${s.items.filter(item=>item.slot === 'theme').map(item=>{
       const active = s.equipped.theme === item.id;
       const disabled = busy || active || (!item.owned && (s.stamps < item.cost || !!purchaseIntent || s.stage < item.stage));
-      return `<article class="pet-theme-card ${active ? 'is-current' : ''}"><div class="pet-theme-preview" data-theme-preview="${item.id}" aria-hidden="true"><div class="pet-theme-mini-bar"><i></i><i></i><i></i></div><div class="pet-theme-mini-nav"><i></i><i></i><i></i></div><div class="pet-theme-mini-mail"><i></i><i></i><i></i></div>${avatar('pet-theme-mini-pet')}</div><div class="pet-theme-copy"><b>${label(`item.${item.id}`)}</b><p>${label(`itemHint.${item.id}`)}</p><small>${label('themePermanent')}</small></div><button type="button" ${item.owned ? `data-pet-slot="theme" data-pet-equip="${item.id}"` : `data-pet-buy="${item.id}"`} ${disabled ? 'disabled' : ''}>${active ? label('themeActive') : item.owned ? label('themeUse') : label('buyPrice',item.cost)}</button></article>`;
+      return `<article data-pet-item="${item.id}" class="pet-theme-card ${active ? 'is-current' : ''}"><div class="pet-theme-preview" data-theme-preview="${item.id}" aria-hidden="true"><div class="pet-theme-mini-bar"><i></i><i></i><i></i></div><div class="pet-theme-mini-nav"><i></i><i></i><i></i></div><div class="pet-theme-mini-mail"><i></i><i></i><i></i></div>${avatar('pet-theme-mini-pet')}</div><div class="pet-theme-copy"><b>${label(`item.${item.id}`)}</b><p>${label(`itemHint.${item.id}`)}</p><small>${label('themePermanent')}</small></div><button type="button" ${item.owned ? `data-pet-slot="theme" data-pet-equip="${item.id}"` : `data-pet-buy="${item.id}"`} ${disabled ? 'disabled' : ''}>${active ? label('themeActive') : item.owned ? label('themeUse') : label('buyPrice',item.cost)}</button></article>`;
     }).join('')}</div></section>`;
   }
   function historyView() {
-    return `<div class="pet-section-title"><h3>${label('historyTitle')}</h3><span>${label('last14')}</span></div>${state.history.length ? `<div class="pet-history">${state.history.map(day=>`<article><time>${esc(day.day)}</time>${reward(day.xp,day.stamps)}</article>`).join('')}</div>` : `<p class="pet-empty">${label('historyEmpty')}</p>`}<p class="pet-note">${label('privacyNote')}</p><div class="pet-section-title pet-purchase-title"><h3>${label('purchaseHistory')}</h3><span>${label('last20')}</span></div>${(state.purchases || []).length ? `<div class="pet-history">${state.purchases.map(item=>`<article><div><b>${label(`item.${item.item}`)}</b><time>${esc(item.created_at.slice(0,16).replace('T',' '))}</time></div><span>${label('purchaseCost',item.cost)}${item.xp ? ' · '+label('purchaseGrowth',item.xp) : ''}</span></article>`).join('')}</div>` : `<p class="pet-empty">${label('purchaseEmpty')}</p>`}`;
+    return `<div class="pet-section-title"><h3>${label('historyTitle')}</h3><span>${label('last14')}</span></div>${state.history.length ? `<div class="pet-history">${state.history.map(day=>`<article><time>${esc(dateLabel(day.day,true))}</time>${reward(day.xp,day.stamps)}</article>`).join('')}</div>` : `<p class="pet-empty">${label('historyEmpty')}</p>`}<p class="pet-note">${label('privacyNote')}</p><div class="pet-section-title pet-purchase-title"><h3>${label('purchaseHistory')}</h3><span>${label('last20')}</span></div>${(state.purchases || []).length ? `<div class="pet-history">${state.purchases.map(item=>`<article><div><b>${label(`item.${item.item}`)}</b><time>${esc(dateLabel(item.created_at))}</time></div><span>${label('purchaseCost',item.cost)}${item.xp ? ' · '+label('purchaseGrowth',item.xp) : ''}</span></article>`).join('')}</div>` : `<p class="pet-empty">${label('purchaseEmpty')}</p>`}`;
   }
   function render() {
     if (!dialog) return;
@@ -305,28 +435,36 @@
       host.innerHTML = `<p class="pet-empty">${label(account ? 'loading' : 'login')}</p><button type="button" data-pet-retry>${label('retry')}</button>`;
       return;
     }
-    const key = JSON.stringify([tab,state.style,state.xp,state.stamps,state.earned,state.streak,state.enabled,state.equipped,state.berry_today,state.day,purchaseIntent,busy,feedback && Date.now()<feedback.until ? feedback.copy : '',tab === 'today' ? state.today : tab === 'history' ? [state.history,state.purchases] : null]);
+    const key = JSON.stringify([state.items.map(item=>[item.id,item.owned]),state.gifts,tab === 'gifts' ? [giftDraft,giftPreview,giftError,giftErrorKey,giftBusy,giftPending,giftFileName] : null,tab,state.style,state.xp,state.stamps,state.earned,state.streak,state.enabled,state.equipped,state.berry_today,state.day,purchaseIntent,busy,feedback && Date.now()<feedback.until ? feedback.copy : '',tab === 'today' ? state.today : tab === 'history' ? [state.history,state.purchases] : null]);
     if (key === renderKey) return;
     renderKey = key;
     const focus = document.activeElement;
-    const focusKey = focus?.closest('.pet-journal') ? Object.entries(focus.dataset).find(([key])=>['petTab','petBuy','petEquip','petSlot','petStyle'].includes(key)) : null;
+    const giftSelection = focus?.matches('[data-pet-gift-code],[data-pet-claim-code]') ? [focus.selectionStart,focus.selectionEnd] : null;
+    const identityOpen = host.querySelector('.pet-gift-identity')?.open;
+    const focusKey = focus?.closest('.pet-journal') ? Object.entries(focus.dataset).find(([key])=>['petTab','petBuy','petEquip','petSlot','petStyle','petGiftCode','petGiftPreview','petGiftClaim','petGiftWear','petGiftCopy','petGiftReconcile','petGiftOutfits','petClaimCode','petPreviewSelect','petPreviewPlay','petPreviewClose'].includes(key)) : null;
     const scroll = host.scrollTop;
     const next = state.next_stage_xp;
     const progress = next ? (state.xp-state.stage_floor)/(next-state.stage_floor)*100 : 100;
     host.innerHTML = `${purchaseIntent ? `<div class="pet-pending" role="status"><span>${label('purchasePending',t(`item.${purchaseIntent.item}`))}</span><button type="button" data-pet-reconcile ${busy ? 'disabled' : ''}>${label('reconcile')}</button></div>` : ''}${feedback && Date.now()<feedback.until ? `<p class="pet-milestone" role="status">${esc(feedback.copy)}</p>` : ''}<section class="pet-hero">${avatar('pet-hero-portrait')}<div class="pet-hero-copy"><span class="pet-eyebrow">${label('heroEyebrow')}</span><h3>${esc(stageName(state.stage))} <small>${label('level',state.stage)}</small></h3><p>${stageHint(state.stage)}</p><div class="pet-growth-label"><b>${label('growth')} ${state.xp.toLocaleString()}</b><span>${next ? label('next',next-state.xp) : label('maxStage')}</span></div><progress max="100" value="${progress}" aria-label="${label('growth')}"></progress></div></section>
     <div class="pet-style-choice"><span>${label('styleChoice')}</span>${['nature','ranger'].map(style=>`<button type="button" data-pet-style="${style}" aria-pressed="${state.style === style}" ${state.style === style || busy ? 'disabled' : ''}>${label(`style.${style}`)}</button>`).join('')}<small>${label('styleFree')}</small></div>
     <div class="pet-stats"><article><strong>${state.stamps.toLocaleString()}</strong><span>${label('stamps')}</span></article><article><strong>${state.streak}<small>${label('days')}</small></strong><span>${label('streak')}</span></article><article><strong>${state.earned.toLocaleString()}</strong><span>${label('earned')}</span></article></div>
-    ${!state.enabled ? `<p class="pet-paused">${label('paused')}</p>` : ''}<nav class="pet-tabs" aria-label="${label('tabs')}">${['today','journey','shop','history'].map(name=>`<button type="button" data-pet-tab="${name}" aria-pressed="${tab === name}">${label(name)}</button>`).join('')}</nav><section class="pet-tab-content">${({today:todayView,journey:journeyView,shop:shopView,history:historyView})[tab]()}</section>`;
+    ${!state.enabled ? `<p class="pet-paused">${label('paused')}</p>` : ''}<nav class="pet-tabs" aria-label="${label('tabs')}">${['today','journey','shop','gifts','history'].map(name=>`<button type="button" data-pet-tab="${name}" aria-pressed="${tab === name}" aria-label="${label(name)}"><span class="pet-tab-label">${label(name)}</span><span class="pet-tab-short" aria-hidden="true">${label(`tab.${name}`)}</span></button>`).join('')}</nav><section class="pet-tab-content">${({today:todayView,journey:journeyView,shop:shopView,gifts:giftsView,history:historyView})[tab]()}</section>`;
     const accountNote = document.createElement('div');
     accountNote.className = 'pet-client-note';
     accountNote.innerHTML = `<span>${label('clientOwner')}</span><small>${label('clientStorage')}</small>`;
     host.prepend(accountNote);
     watchRewardMotion();
+    if (identityOpen) { const identity = host.querySelector('.pet-gift-identity'); if (identity) identity.open = true; }
     host.scrollTop = scroll;
     if (focusKey && focus?.isConnected === false) {
       const [key,value] = focusKey;
       const attr = key.replace(/[A-Z]/g,char=>'-'+char.toLowerCase());
-      host.querySelector(`[data-${attr}="${CSS.escape(value)}"]`)?.focus({preventScroll:true});
+      const replacement = host.querySelector(`[data-${attr}="${CSS.escape(value)}"]`);
+      if (giftSelection && replacement && !replacement.disabled) {
+        replacement.closest('details').open = true;
+        replacement.setSelectionRange(...giftSelection);
+      }
+      replacement?.focus({preventScroll:true});
     }
   }
 
