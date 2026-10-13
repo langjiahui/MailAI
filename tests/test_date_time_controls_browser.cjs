@@ -109,7 +109,14 @@ async function contrast(locator) {
       await page.evaluate(()=>setI18nLanguage('en'));assert.equal(await trigger('deadline').getAttribute('aria-haspopup'),'dialog');
       await trigger('send').click();assert.equal(await panel.locator('.datetime-apply').textContent(),'Apply');
       await page.setViewportSize({width:390,height:600});
-      const bounds=await panel.boundingBox();assert(bounds.x>=0 && bounds.x+bounds.width<=390 && bounds.y>=0 && bounds.y+bounds.height<=600);
+      // Viewport acknowledgment can precede the browser's resize event.
+      await page.waitForFunction(()=>{
+        const panel=document.querySelector('.datetime-panel:popover-open,.datetime-panel.is-open');
+        if(!panel)return false;
+        const bounds=panel.getBoundingClientRect();
+        return bounds.x>=0 && bounds.right<=390 && bounds.y>=0 && bounds.bottom<=600;
+      },null,{timeout:5000});
+      const bounds=await panel.boundingBox();assert(bounds.x>=0 && bounds.x+bounds.width<=390 && bounds.y>=0 && bounds.y+bounds.height<=600,JSON.stringify({engine:type.name(),bounds}));
       const initial=await page.evaluate(()=>document.activeElement.className);for(let i=0;i<25;i++)await page.keyboard.press('Tab');
       assert(await page.evaluate(()=>document.activeElement.closest('.datetime-panel')!==null),`Tab stays within the open picker (${initial})`);
       await page.keyboard.press('Escape');
