@@ -89,7 +89,7 @@ const {chromium,webkit}=require('playwright');
         const frame=document.querySelector('#reward-mail-fixture'),doc=frame.contentDocument;
         return {paper:doc.querySelector('div').style.backgroundColor,text:doc.querySelector('div').style.color,
           link:doc.defaultView.getComputedStyle(doc.querySelector('a')).textDecorationLine,
-          image:doc.querySelector('img').getAttribute('src'),palette:getComputedStyle(document.documentElement).getPropertyValue('--reward-soft').trim()};
+          image:doc.querySelector('img').getAttribute('src'),palette:getComputedStyle(document.documentElement).getPropertyValue('--reward-surface').trim()};
       });
       const rgb=mail.palette.slice(1).match(/../g).map(value=>parseInt(value,16));
       assert.equal(mail.paper,`rgb(${rgb.join(', ')})`);assert(mail.image.startsWith('data:image/svg+xml'));
