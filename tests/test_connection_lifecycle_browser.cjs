@@ -19,8 +19,9 @@ const {chromium, webkit} = require('playwright');
         };
       });
       await page.addScriptTag({content:fs.readFileSync('app/web/static/interaction-core.js','utf8')});
-      await page.evaluate(() => {
+      await page.evaluate(async () => {
         window.dispatchEvent(new Event('beforeunload', {cancelable:true}));
+        await Promise.resolve();
         mailaiConnectionFailed();
       });
       assert.deepEqual(await page.evaluate(() => probes), [], 'Do not wait until pagehide to suppress teardown probes');

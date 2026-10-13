@@ -76,7 +76,7 @@
     leavingPage = true;
     // Draft protection may cancel navigation in a later event listener.
     queueMicrotask(() => {
-      if (event.defaultPrevented || event.returnValue) leavingPage = false;
+      if (event.defaultPrevented || (typeof event.returnValue === 'string' && event.returnValue)) leavingPage = false;
     });
   });
   // A fetch canceled by navigation can reject after pagehide. Do not start a
