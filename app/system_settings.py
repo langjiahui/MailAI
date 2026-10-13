@@ -132,7 +132,7 @@ def initialize_current_account():
         for key, item in ordered:
             # Only the preferred (or first) mailbox may ask at startup. Other
             # saved accounts are recovered silently if already authorized.
-            with credential_store.prompt_policy(key == ordered[0][0]):
+            with credential_store.prompt_policy(key == ordered[0][0], retry_canceled=False):
                 password = account_password(key)
             if password:
                 selected = (key, item, password)
@@ -523,6 +523,9 @@ def switch_mail_account(account_id: str) -> dict:
         raise KeyError("账号不存在")
     password = account_password(account_id)
     if not password:
+        key='oauth:' + account_id if account.get('auth_type') == 'oauth2' else account_id
+        if credential_store.authorization_required(key):
+            raise RuntimeError('凭据仍待解锁或安全迁移，请再次点击解锁；现有数据保留')
         raise RuntimeError("该账号的授权码不在系统凭据库中，请重新登录")
     fallback = discover(account.get("user", ""))
     values = {
@@ -563,6 +566,9 @@ def remember_mail_account(account_id: str) -> dict:
     if not account or not account.get('visible', True):
         raise KeyError('账号不存在')
     if not account_password(account_id):
+        key='oauth:' + account_id if account.get('auth_type') == 'oauth2' else account_id
+        if credential_store.authorization_required(key):
+            raise RuntimeError('凭据仍待解锁或安全迁移，请再次点击解锁；现有数据保留')
         raise RuntimeError('该邮箱需要重新登录')
     registry['last_account'] = account_id
     _save_registry(registry)

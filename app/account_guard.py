@@ -104,7 +104,18 @@ class AccountGuardMiddleware:
         from .credential_store import prompt_policy
         # ContextVars flow through FastAPI's worker threads but are not inherited
         # by independent scheduler/IDLE threads. GET/status loads stay quiet.
-        with prompt_policy(scope.get('method') == 'POST'):
+        path=scope.get('path','')
+        credential_actions={
+            '/api/system/mail/login','/api/system/mail/logout','/api/system/mail/switch',
+            '/api/system/mail/preferred','/api/system/mail/account/update',
+            '/api/system/model','/api/system/model/test','/api/oauth/clients','/api/oauth/start','/api/oauth/complete',
+            '/api/system/remote-control','/api/system/remote-control/reconnect',
+            '/api/system/remote-control/weixin','/api/system/remote-control/weixin/login',
+            '/api/system/remote-control/weixin/reconnect','/api/share-storage/config',
+        }
+        foreground=scope.get('method')=='POST' and (path in credential_actions or (
+            path.startswith('/api/system/remote-control/weixin/login/') and path.endswith('/poll')))
+        with prompt_policy(foreground):
             return await self._request(scope, receive, send)
 
     async def _request(self, scope, receive, send):

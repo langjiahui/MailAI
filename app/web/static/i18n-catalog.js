@@ -1,10 +1,11 @@
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
-  "credential.migratedHelp": ["已迁入统一保险库，后续升级通常可沿用授权。", "Moved to the shared vault. Authorization normally carries over when MailAI is updated."],
+  "credential.retryRequired": ["凭据仍待解锁或安全迁移，请再次点击解锁；现有数据保留", "Credentials still need unlocking or security migration. Select Unlock again; existing data is preserved."],
+  "credential.migratedHelp": ["已迁入加固后的统一保险库，其他已迁移邮箱共用一次解锁。", "Moved to the hardened shared vault. Other migrated mailboxes share the same unlock."],
   "credential.unlock": ["解锁凭据", "Unlock credentials"],
   "credential.pending": ["等待解锁", "Awaiting unlock"],
   "credential.selectToUnlock": ["点击邮箱解锁凭据", "Select mailbox to unlock"],
-  "credential.pendingHelp": ["点击解锁。凭据共用保险库；首次为系统“security”工具选择“始终允许”后，后续升级通常可沿用。旧凭据可能仍需逐项确认。", "Select Unlock. Credentials share one vault. Choose Always Allow for the system security tool the first time; authorization normally carries over across updates. Legacy items may still need individual confirmation."],
+  "credential.pendingHelp": ["点击解锁。已迁移凭据共用保险库，取消后可再次尝试；升级或钥匙串锁定时可能需要一次系统确认。", "Select Unlock. Migrated credentials share one vault. You can retry after canceling; an update or a locked keychain may require one system confirmation."],
   "datetime.chooseDate": ["选择日期", "Choose date"],
   "datetime.chooseTime": ["选择时间", "Choose time"],
   "datetime.chooseDateTime": ["选择日期和时间", "Choose date and time"],

@@ -94,6 +94,10 @@ jobs:
           node tests/test_dark_tools_browser.cjs
           node tests/test_contact_filters_browser.cjs
           node tests/test_i18n_browser.cjs
+          node tests/test_date_time_controls_browser.cjs
+          node tests/test_date_time_boundaries_browser.cjs
+          node tests/test_date_time_workflows_browser.cjs
+          node tests/test_keychain_unlock_browser.cjs
           node tests/test_diagnostics_layout_browser.cjs
           node tests/test_companion_working_browser.cjs
           MAILAI_BROWSER=webkit node tests/test_companion_working_browser.cjs

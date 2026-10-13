@@ -18,8 +18,10 @@ from .paths import USER_DIR
 
 log=logging.getLogger(__name__)
 SERVICE='MailAI'
-MASTER_ACCOUNT='credential-vault-key:v1'
-MAGIC=b'MAILAI-CREDENTIALS1\0'
+MASTER_ACCOUNT='credential-vault-key:v2'
+LEGACY_MASTER_ACCOUNT='credential-vault-key:v1'
+MAGIC=b'MAILAI-CREDENTIALS2\0'
+LEGACY_MAGIC=b'MAILAI-CREDENTIALS1\0'
 ERROR=-1
 MAX_BYTES=16*1024*1024
 
@@ -32,6 +34,7 @@ class Vault:
         self._records=None
         self._quiet_failure=None
         self._broken=False
+        self._needs_upgrade=False
 
     def _master(self,interactive,*,create=False):
         if self._key is not None:
@@ -41,7 +44,7 @@ class Vault:
         status,value=macos_keychain.read_for_app(SERVICE,MASTER_ACCOUNT,interactive=interactive)
         if status==macos_keychain.NOT_FOUND and create:
             # Losing a key must never overwrite an existing encrypted file.
-            if self.path.exists():
+            if self.path.exists() and not self._needs_upgrade:
                 return ERROR
             key=os.urandom(32)
             status=macos_keychain.add_new(SERVICE,MASTER_ACCOUNT,base64.urlsafe_b64encode(key).decode('ascii'),interactive=interactive)
@@ -76,17 +79,32 @@ class Vault:
         if not self.path.exists():
             self._records={'items':{},'removed':[]}
             return 0
-        status=self._master(interactive)
-        if status:
-            return ERROR if status==macos_keychain.NOT_FOUND else status
         try:
             if self.path.stat().st_size>MAX_BYTES:
                 raise ValueError('Credential vault is too large')
             blob=self.path.read_bytes()
-            if not blob.startswith(MAGIC) or len(blob)<len(MAGIC)+28:
+            magic=LEGACY_MAGIC if blob.startswith(LEGACY_MAGIC) else MAGIC
+            if not blob.startswith(magic) or len(blob)<len(magic)+28:
                 raise ValueError('Invalid credential vault')
-            nonce=blob[len(MAGIC):len(MAGIC)+12]
-            plaintext=AESGCM(self._key).decrypt(nonce,blob[len(MAGIC)+12:],MAGIC)
+            if magic==LEGACY_MAGIC:
+                self._needs_upgrade=True
+                if not interactive:
+                    return -25308
+                status,value=macos_keychain.read_for_app(SERVICE,LEGACY_MASTER_ACCOUNT,interactive=True)
+                if status:
+                    return ERROR if status==macos_keychain.NOT_FOUND else status
+                if len(value)!=44:
+                    raise ValueError('Invalid legacy master')
+                key=base64.b64decode(value.encode('ascii'),altchars=b'-_',validate=True)
+                if len(key)!=32:
+                    raise ValueError('Invalid legacy master')
+            else:
+                status=self._master(interactive)
+                if status:
+                    return ERROR if status==macos_keychain.NOT_FOUND else status
+                key=self._key
+            nonce=blob[len(magic):len(magic)+12]
+            plaintext=AESGCM(key).decrypt(nonce,blob[len(magic)+12:],magic)
             record=json.loads(plaintext)
             if (record.get('version')!=1 or not isinstance(record.get('items'),dict)
                 or not isinstance(record.get('removed'),list)
@@ -101,15 +119,22 @@ class Vault:
             return ERROR
 
     def get(self,key,*,interactive=False):
-        with self._lock:
+        if not self._lock.acquire(blocking=interactive):
+            return -25308,''
+        try:
             status=self._load(interactive)
             if status:
                 return status,''
+            if self._needs_upgrade:
+                if not interactive or not self._write(self._records,interactive=True):
+                    return -25308,''
             if key in self._records['items']:
                 return 0,self._records['items'][key]
             if key in self._records['removed']:
                 return 0,''  # Tombstones block revival from a legacy item.
             return macos_keychain.NOT_FOUND,''
+        finally:
+            self._lock.release()
 
     def _write(self,record,interactive):
         status=self._master(interactive,create=True)
@@ -128,6 +153,7 @@ class Vault:
                 output.write(blob);output.flush();os.fsync(output.fileno())
             os.replace(temp,self.path)
             self._records=record
+            self._needs_upgrade=False
             return True
         except OSError as exc:
             log.warning('Could not save encrypted credential vault (%s)',type(exc).__name__)
@@ -142,7 +168,7 @@ class Vault:
         with self._lock:
             if self._load(interactive):
                 return False
-            if self._records['items'].get(key)==secret and key not in self._records['removed']:
+            if not self._needs_upgrade and self._records['items'].get(key)==secret and key not in self._records['removed']:
                 return True
             record={'items':{**self._records['items'],key:secret},
                     'removed':[k for k in self._records['removed'] if k!=key]}
@@ -175,9 +201,9 @@ def remove(key,*,interactive=False):
 
 
 def unlocked():
-    return _instance._key is not None and _instance._records is not None and not _instance._broken
+    return _instance._key is not None and _instance._records is not None and not _instance._broken and not _instance._needs_upgrade
 
 
 def contains(key):
-    with _instance._lock:
-        return bool(_instance._records is not None and key in _instance._records['items'])
+    record=_instance._records
+    return bool(record is not None and not _instance._needs_upgrade and key in record['items'])

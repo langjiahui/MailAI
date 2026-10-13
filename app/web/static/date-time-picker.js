@@ -8,6 +8,11 @@
   const pad=n=>String(n).padStart(2,'0');
   const dateValue=d=>`${String(d.getFullYear()).padStart(4,'0')}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
   const timeValue=d=>`${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const effectiveZoom=node=>{
+    let zoom=1;
+    for(let parent=node;parent;parent=parent.parentElement) zoom*=parseFloat(getComputedStyle(parent).zoom)||1;
+    return zoom;
+  };
   const english=()=>document.documentElement.lang.startsWith('en');
   const t=key=>mailaiT(`datetime.${key}`) || MAILAI_UI_COPY[`datetime.${key}`][0];
   const localDate=value=>{
@@ -104,6 +109,11 @@
     function allowedDate(value) {
       return (!input.min || value>=input.min.slice(0,10)) && (!input.max || value<=input.max.slice(0,10));
     }
+    function clampDate(value) {
+      if(input.min && value<input.min.slice(0,10)) return input.min.slice(0,10);
+      if(input.max && value>input.max.slice(0,10)) return input.max.slice(0,10);
+      return value;
+    }
     function candidate() {
       if (hasTime && (hour.value==='' || minute.value==='' || !hour.validity.valid || !minute.validity.valid)) return '';
       const time=hasTime?`${pad(+hour.value)}:${pad(+minute.value)}`:'';
@@ -125,6 +135,8 @@
     }
     function moveMonth(amount) {view.setMonth(view.getMonth()+amount);renderCalendar();}
     function renderCalendar(focusDate) {
+      const bounded=localDate(clampDate(dateValue(view)));
+      if(bounded)view=new Date(bounded.getFullYear(),bounded.getMonth(),1);
       month.value=String(view.getMonth());year.value=String(view.getFullYear());calendar.replaceChildren();
       const first=new Date(view.getFullYear(),view.getMonth(),1),start=new Date(first);
       start.setDate(1-(first.getDay()+6)%7);const today=dateValue(new Date());
@@ -149,6 +161,8 @@
       const prev=panel.querySelector('[data-direction="previous"]'),next=panel.querySelector('[data-direction="next"]');
       prev.disabled=view.getFullYear()<=+year.options[0].value && view.getMonth()===0;
       next.disabled=view.getFullYear()>=+year.options[year.options.length-1].value && view.getMonth()===11;
+      if(input.min)prev.disabled ||= dateValue(new Date(view.getFullYear(),view.getMonth(),0))<input.min.slice(0,10);
+      if(input.max)next.disabled ||= dateValue(new Date(view.getFullYear(),view.getMonth()+1,1))>input.max.slice(0,10);
       calendar.setAttribute('aria-label',t('calendar'));
     }
     function populate() {
@@ -167,6 +181,8 @@
         if(hasTime){hour.value=pad(d.getHours());minute.value=pad(d.getMinutes());}validate();
       }));
       if(hasDate) {
+        const clamped=localDate(clampDate(dateValue(view)));
+        if(clamped)view=new Date(clamped.getFullYear(),clamped.getMonth(),1);
         month.replaceChildren();year.replaceChildren();
         for(let i=0;i<12;i++)month.add(new Option(new Intl.DateTimeFormat(english()?'en-US':'zh-CN',{month:'long'}).format(new Date(2024,i,1)),String(i)));
         const min=localDate(input.min)?.getFullYear() || Math.min(1900,view.getFullYear());
@@ -188,16 +204,19 @@
     function position() {
       if (!opened) return;
       if (!input.isConnected || !trigger.getClientRects().length || getComputedStyle(trigger).visibility==='hidden') {close(false);return;}
-      const rect=trigger.getBoundingClientRect(),width=panel.offsetWidth,height=panel.offsetHeight,gap=8;
-      panel.style.left=`${Math.max(8,Math.min(rect.left,innerWidth-width-8))}px`;
+      const zoom=effectiveZoom(panel),gap=8;
+      panel.style.maxWidth=`${Math.max(0,innerWidth-16)/zoom}px`;
+      panel.style.maxHeight=`${Math.max(0,innerHeight-16)/zoom}px`;
+      const rect=trigger.getBoundingClientRect(),bounds=panel.getBoundingClientRect(),width=bounds.width,height=bounds.height;
+      panel.style.left=`${Math.max(8,Math.min(rect.left,innerWidth-width-8))/zoom}px`;
       const below=innerHeight-rect.bottom-gap,above=rect.top-gap;
-      panel.style.top=`${Math.max(8,Math.min(below>=height || below>=above?rect.bottom+gap:rect.top-height-gap,innerHeight-height-8))}px`;
+      panel.style.top=`${Math.max(8,Math.min(below>=height || below>=above?rect.bottom+gap:rect.top-height-gap,innerHeight-height-8))/zoom}px`;
     }
     function open() {
       if(input.disabled || input.readOnly)return;
       active?.close(false);
       const now=new Date(),value=input.value;
-      draftDate=hasDate?(value.slice(0,10)||dateValue(now)):'';
+      draftDate=hasDate?clampDate(value.slice(0,10)||dateValue(now)):'';
       const selected=localDate(draftDate)||now;view=new Date(selected.getFullYear(),selected.getMonth(),1);
       if(hasTime){hour.disabled=false;minute.disabled=false;const time=(kind==='time'?value:value.split('T')[1])||timeValue(now);[hour.value,minute.value]=time.split(':').slice(0,2);}
       populate();opened=true;active=control;trigger.setAttribute('aria-expanded','true');
@@ -222,7 +241,14 @@
     });
     input.addEventListener('input',sync);input.addEventListener('change',sync);
     input.addEventListener('focus',()=>trigger.focus());
-    input.addEventListener('invalid',event=>{event.preventDefault();open();status.textContent=input.validationMessage;});
+    input.addEventListener('invalid',event=>{
+      event.preventDefault();
+      const first=input.form && [...input.form.elements].find(node=>node.willValidate && !node.validity.valid);
+      if(first && first!==input)return;
+      open();
+      status.textContent=input.validity.valueMissing || input.validity.badInput
+        ? t(hasTime?(hasDate?'invalidDateTime':'invalidTime'):'invalidDate') : t('rangeError');
+    });
     // Existing flows set .value directly when reopening a dialog or applying a
     // shortcut. Delegate to the native setter so their display stays current.
     Object.defineProperty(input,'value',{configurable:true,get(){return valueProperty.get.call(this);},set(value){valueProperty.set.call(this,value);sync();}});

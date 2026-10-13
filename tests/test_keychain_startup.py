@@ -84,7 +84,7 @@ class StartupTests(unittest.TestCase):
             self.assertEqual(config.IMAP_PASSWORD, '')
 
     def test_post_request_allows_explicit_access_but_get_and_response_status_do_not(self):
-        async def exercise(method):
+        async def exercise(method, path='/api/system/remote-control'):
             seen = []
             async def app(scope, receive, send):
                 seen.append(store._interactive.get())
@@ -95,11 +95,12 @@ class StartupTests(unittest.TestCase):
                 public_status()
             async def noop(*args):
                 pass
-            await AccountGuardMiddleware(app)({'type':'http','path':'/api/system/remote-control', 'method':method}, noop, noop)
+            await AccountGuardMiddleware(app)({'type':'http','path':path, 'method':method}, noop, noop)
             self.assertFalse(store._interactive.get())
             return seen
         self.assertEqual(asyncio.run(exercise('GET')), [False,False,False])
         self.assertEqual(asyncio.run(exercise('POST')), [True,True,False])
+        self.assertEqual(asyncio.run(exercise('POST','/api/ui-preferences')), [False,False,False])
 
 
 if __name__ == '__main__':

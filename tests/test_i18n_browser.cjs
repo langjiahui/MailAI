@@ -45,7 +45,7 @@ const han=/[\u3400-\u9fff]/;
       await page.waitForTimeout(80);
       const leaks=await page.locator(selector).evaluate(root=>[root,...root.querySelectorAll('*')].flatMap(n=>{
         if(!n.getClientRects().length&&!(n.tagName==='OPTION'&&n.closest('select')?.getClientRects().length))return[];
-        if(n.closest('[contenteditable=true],textarea,#compose-signature-content') || n.tagName==='OPTION' && n.closest('#compose-signature-select') && n.value)return[];
+        if(n.closest('[contenteditable=true],textarea,#compose-signature-content,[data-user-content]') || n.tagName==='OPTION' && n.closest('#compose-signature-select') && n.value)return[];
         const result=[];
         for(const c of n.childNodes)if(c.nodeType===3&&/[\u3400-\u9fff]/.test(c.textContent))result.push(n.tagName+': '+c.textContent);
         for(const a of ['title','placeholder','aria-label','alt','data-tooltip','data-placeholder'])if(/[\u3400-\u9fff]/.test(n.getAttribute(a)||''))result.push(a+': '+n.getAttribute(a));
@@ -90,7 +90,9 @@ const han=/[\u3400-\u9fff]/;
     await page.locator('#todo-center .productivity-panel-entry').first().click();await audit('#productivity-dialog');
     await page.evaluate(()=>document.querySelector('#productivity-dialog').close());
     await page.locator('#btn-task-notices').click();await page.locator('#notice-capability').filter({hasText:/\S/}).waitFor();await audit('#task-notices');
+    const originalTitles=await page.locator('#notice-records [data-user-content]').allTextContents();
     await page.evaluate(()=>setI18nLanguage('zh-CN'));await page.evaluate(()=>setI18nLanguage('en'));await audit('#task-notices');
+    assert.deepEqual(await page.locator('#notice-records [data-user-content]').allTextContents(),originalTitles,'Language switching preserves user task titles');
     await page.locator('[data-notice-close]').click();await page.locator('#btn-close-todos').click();
     await page.evaluate(()=>openTaskCenter());await audit('#task-center');await page.locator('#close-task-center').click();
     await page.evaluate(()=>openAssistant());await audit('#assistant-panel');

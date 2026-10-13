@@ -1576,11 +1576,12 @@ if (typeof document !== 'undefined') {
 /* ---- i18n-catalog.js ---- */
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
-  "credential.migratedHelp": ["已迁入统一保险库，后续升级通常可沿用授权。", "Moved to the shared vault. Authorization normally carries over when MailAI is updated."],
+  "credential.retryRequired": ["凭据仍待解锁或安全迁移，请再次点击解锁；现有数据保留", "Credentials still need unlocking or security migration. Select Unlock again; existing data is preserved."],
+  "credential.migratedHelp": ["已迁入加固后的统一保险库，其他已迁移邮箱共用一次解锁。", "Moved to the hardened shared vault. Other migrated mailboxes share the same unlock."],
   "credential.unlock": ["解锁凭据", "Unlock credentials"],
   "credential.pending": ["等待解锁", "Awaiting unlock"],
   "credential.selectToUnlock": ["点击邮箱解锁凭据", "Select mailbox to unlock"],
-  "credential.pendingHelp": ["点击解锁。凭据共用保险库；首次为系统“security”工具选择“始终允许”后，后续升级通常可沿用。旧凭据可能仍需逐项确认。", "Select Unlock. Credentials share one vault. Choose Always Allow for the system security tool the first time; authorization normally carries over across updates. Legacy items may still need individual confirmation."],
+  "credential.pendingHelp": ["点击解锁。已迁移凭据共用保险库，取消后可再次尝试；升级或钥匙串锁定时可能需要一次系统确认。", "Select Unlock. Migrated credentials share one vault. You can retry after canceling; an update or a locked keychain may require one system confirmation."],
   "datetime.chooseDate": ["选择日期", "Choose date"],
   "datetime.chooseTime": ["选择时间", "Choose time"],
   "datetime.chooseDateTime": ["选择日期和时间", "Choose date and time"],
@@ -24286,8 +24287,8 @@ function renderAccountSelection() {
   document.getElementById('selected-account-avatar').textContent = accountMark(account);
   mailaiBindUI(document.getElementById('selected-account-role'), "textContent", () => (account.active ? (mailaiT('acct.stateActive') || '当前发件账号') : (mailaiT('acct.roleConnected') || '已连接邮箱')));
   mailaiBindUI(document.getElementById('selected-account-name'), 'textContent', () => account.user);
-  mailaiBindUI(document.getElementById('selected-account-help'), "textContent", () => (account.credential_authorization_required ? mailaiText('点击解锁。凭据共用保险库；首次为系统“security”工具选择“始终允许”后，后续升级通常可沿用。旧凭据可能仍需逐项确认。') : account.credential_available
-    ? (account.credential_migrated ? mailaiText('已迁入统一保险库，后续升级通常可沿用授权。') : account.credential_storage === 'session' ? (mailaiT('acct.helpSession') || '授权码仅本次运行有效，退出软件后需要重新登录') : (mailaiT('acct.helpSaved') || '连接信息已保存，可随时更新授权码'))
+  mailaiBindUI(document.getElementById('selected-account-help'), "textContent", () => (account.credential_authorization_required ? mailaiText('点击解锁。已迁移凭据共用保险库，取消后可再次尝试；升级或钥匙串锁定时可能需要一次系统确认。') : account.credential_available
+    ? (account.credential_migrated ? mailaiText('已迁入加固后的统一保险库，其他已迁移邮箱共用一次解锁。') : account.credential_storage === 'session' ? (mailaiT('acct.helpSession') || '授权码仅本次运行有效，退出软件后需要重新登录') : (mailaiT('acct.helpSaved') || '连接信息已保存，可随时更新授权码'))
     : (mailaiT('acct.helpMissing') || '本机没有可用授权码，请重新登录')));
   mailaiBindUI(document.getElementById('btn-manage-mail'), "textContent", () => (account.credential_authorization_required ? mailaiText('解锁凭据') : account.credential_available ? (mailaiT('acct.updateBtn') || '更新登录信息') : (mailaiT('acct.reloginBtn') || '重新登录')));
   mailaiBindUI(document.getElementById('selected-account-state'), "textContent", () => (mailaiSystemMessage(account.sync_error) ? (mailaiT('acct.syncFailed') || '最近同步失败') : account.last_sync ? (mailaiT('acct.lastSync') || '最近同步：') + fmtDate(account.last_sync) : (mailaiT('acct.noSync') || '尚无成功同步记录')));
@@ -29032,12 +29033,12 @@ async function refreshTaskCenter({lightweight = false} = {}) {
     const syncRetryPath = ['fetch_all','sync_folders','sync_folder'].includes(sync.operation) ? '/api/fetch_all'
       : sync.operation === 'fetch_more' ? '/api/fetch_more' : '/api/poll';
     const syncBlock = showSync ? `<section class="task-section"><h3>${sync.running ? mailaiText('进行中的任务') : mailaiText('需要处理')} <span>1</span></h3><article class="task-row ${mailaiSystemMessage(sync.error) || sync.resumable ? 'needs-attention' : ''}"><div class="task-row-main"><b><span data-i18n="ui.4da9233eb5da">邮箱同步</span></b><span class="task-status ${sync.running ? 'running' : 'warning'}">${sync.running ? mailaiText('进行中') : mailaiText('需处理')}</span></div><small>${esc(mailaiSystemMessage(sync.message) || (sync.running ? mailaiText('正在同步…') : mailaiText('同步已中断')))}${mailaiSystemMessage(sync.error) ? `<br>${esc(mailaiSystemMessage(sync.error))}` : ''}</small>${!sync.running ? `<div class="task-row-actions"><button class="primary" data-sync-retry="${syncRetryPath}"><span data-i18n="ui.4a7af23b6505">重新同步</span></button></div>` : ''}</article></section>` : '';
-    const outboxBlock = visibleRows.length ? `<section class="task-section"><h3><span data-i18n="ui.02d55e8b9e34">发件箱</span> <span>${visibleRows.length}</span></h3>${visibleRows.map(row => `<article class="task-row ${['failed','unknown'].includes(row.status) ? 'needs-attention' : ''}" data-outbox-token="${esc(row.token)}"><div class="task-row-main"><b>${esc(row.subject || mailaiText('无主题'))}</b><span class="task-status status-${esc(row.status)}">${esc(labels[row.status] || row.status)}</span></div><small>${esc(row.to_addr || '')}${row.status === 'queued' ? `<br><span data-i18n="ui.d05a31c6bd88">计划发送：${esc(new Date(row.due_at).toLocaleString(currentI18nLanguage()))}</span>` : ''}${mailaiSystemMessage(row.error) ? ` · ${esc(mailaiSystemMessage(row.error))}` : ''}${row.status === 'unknown' ? "<br><span data-i18n=\"ui.025deda378be\">请核对服务器已发送邮件，避免重复发送。</span>" : ''}</small><div class="task-row-actions">${row.status === 'queued' ? `<button data-edit-queue="${esc(row.token)}"><span data-i18n="ui.51726c4a26ab">编辑邮件</span></button><button data-time-queue="${esc(row.token)}"><span data-i18n="ui.fd094431c8ca">调整时间</span></button><button data-cancel-queue="${esc(row.token)}"><span data-i18n="ui.554bfa5fa81c">取消发送</span></button>` : ''}${row.status === 'failed' && row.draft_id ? `<button class="primary" data-outbox-draft="${esc(row.draft_id)}"><span data-i18n="ui.9a2717984f6e">编辑草稿后重试</span></button>` : ''}</div></article>`).join('')}</section>` : '';
-    const reminderBlock = reminders.length ? `<section class="task-section"><h3><span data-i18n="ui.879d8543c3f3">稍后提醒</span> <span>${reminders.length}</span></h3>${reminders.map(item => `<article class="task-row"><div class="task-row-main"><b>${esc(item.subject)}</b><span class="task-status">${esc(fmtDate(item.at))}</span></div><small><span data-i18n="ui.8aa2aaf9660e">到期后提醒你处理这封邮件</span></small><div class="task-row-actions"><button class="primary" data-reminder-open="${item.email_id}"><span data-i18n="ui.ac711aa9178c">查看邮件</span></button><button data-reminder-dismiss="${item.email_id}" data-task-reminder="${item.todo_id || ''}"><span data-i18n="ui.56f252b08c5a">关闭提醒</span></button></div></article>`).join('')}</section>` : '';
+    const outboxBlock = visibleRows.length ? `<section class="task-section"><h3><span data-i18n="ui.02d55e8b9e34">发件箱</span> <span>${visibleRows.length}</span></h3>${visibleRows.map(row => `<article class="task-row ${['failed','unknown'].includes(row.status) ? 'needs-attention' : ''}" data-outbox-token="${esc(row.token)}"><div class="task-row-main"><b data-user-content>${esc(row.subject || mailaiText('无主题'))}</b><span class="task-status status-${esc(row.status)}">${esc(labels[row.status] || row.status)}</span></div><small>${esc(row.to_addr || '')}${row.status === 'queued' ? `<br><span data-i18n="ui.d05a31c6bd88">计划发送：${esc(new Date(row.due_at).toLocaleString(currentI18nLanguage()))}</span>` : ''}${mailaiSystemMessage(row.error) ? ` · ${esc(mailaiSystemMessage(row.error))}` : ''}${row.status === 'unknown' ? "<br><span data-i18n=\"ui.025deda378be\">请核对服务器已发送邮件，避免重复发送。</span>" : ''}</small><div class="task-row-actions">${row.status === 'queued' ? `<button data-edit-queue="${esc(row.token)}"><span data-i18n="ui.51726c4a26ab">编辑邮件</span></button><button data-time-queue="${esc(row.token)}"><span data-i18n="ui.fd094431c8ca">调整时间</span></button><button data-cancel-queue="${esc(row.token)}"><span data-i18n="ui.554bfa5fa81c">取消发送</span></button>` : ''}${row.status === 'failed' && row.draft_id ? `<button class="primary" data-outbox-draft="${esc(row.draft_id)}"><span data-i18n="ui.9a2717984f6e">编辑草稿后重试</span></button>` : ''}</div></article>`).join('')}</section>` : '';
+    const reminderBlock = reminders.length ? `<section class="task-section"><h3><span data-i18n="ui.879d8543c3f3">稍后提醒</span> <span>${reminders.length}</span></h3>${reminders.map(item => `<article class="task-row"><div class="task-row-main"><b data-user-content>${esc(item.subject)}</b><span class="task-status">${esc(fmtDate(item.at))}</span></div><small><span data-i18n="ui.8aa2aaf9660e">到期后提醒你处理这封邮件</span></small><div class="task-row-actions"><button class="primary" data-reminder-open="${item.email_id}"><span data-i18n="ui.ac711aa9178c">查看邮件</span></button><button data-reminder-dismiss="${item.email_id}" data-task-reminder="${item.todo_id || ''}"><span data-i18n="ui.56f252b08c5a">关闭提醒</span></button></div></article>`).join('')}</section>` : '';
     const purgeAttention = Boolean(purge.unacknowledged || purge.cleanup_pending);
     const purgeBlock = purge.pending || purgeAttention ? `<section class="task-section"><h3><span data-i18n="ui.d6fb20548442">已删除邮件清理</span></h3><article class="task-row"><div class="task-row-main"><b><span data-i18n="ui.955433eb5cec">本地邮件已移除</span></b><span class="task-status">${purge.pending ? mailaiText('远端待同步') : mailaiText('仅本地完成')}</span></div><small><span data-i18n="ui.e7dca6979cc1">${purge.pending ? mailaiTemplate`${Number(purge.pending)} 封等待服务器删除，联网后自动退避重试。` : ''}${purge.unacknowledged ? mailaiTemplate`${Number(purge.unacknowledged)} 封无法安全确认远端删除，服务器可能仍保留；可在网页邮箱核对。` : ''}${purge.cleanup_pending ? mailaiTemplate`${Number(purge.cleanup_pending)} 个原文文件待清理，将在后台重试。` : ''}不影响本地邮件查看、搜索与写信。</span></small>${purge.unacknowledged ? `<div class="task-row-actions"><button data-purge-ack="${esc(JSON.stringify(purge.notice_ids || []))}"><span data-i18n="ui.2fd7bd21a2f6">已知晓</span></button></div>` : ''} </article></section>` : '';
     const unavailableBlock = errors.length ? `<div class="task-load-error task-partial-error" role="status"><b><span data-i18n="ui.3234ff9269f3">部分状态暂时无法读取</span></b><span>${esc(errors.join('、'))}<span data-i18n="ui.d1adc449f9bf">未能加载，请重试确认。已加载的事项仍可处理。</span></span><button data-task-refresh><span data-i18n="ui.7bdd5ce1e298">重新加载</span></button></div>` : '';
-    const actionBlock = actions.total || actions.paused_count ? `<section class="task-section"><h3><span data-i18n="ui.06be274af039">删除同步</span> <span>${Number(actions.total)}</span></h3>${actions.paused_count ? `<button class="sync-paused-toggle" data-sync-paused-toggle aria-pressed="${!!window.mailaiShowPausedSync}">${window.mailaiShowPausedSync ? mailaiText('收起已暂停') : mailaiText('查看已暂停')}（${Number(actions.paused_count)}）</button>` : ''}${actions.rows.map(row => `<article class="task-row"><div class="task-row-main"><b>${esc(row.subject || mailaiText('无主题'))}</b><span class="task-status ${row.pending_error && !row.paused ? 'warning' : ''}">${row.paused ? mailaiText('已暂停') : row.pending_error ? mailaiText('同步待处理') : mailaiText('等待服务器同步')}</span></div><small>${row.paused ? mailaiText('已停止自动重试，本地仍保持删除状态。服务器端是否删除尚未确认，可核对网页邮箱后恢复同步。') : row.pending_error ? mailaiText('已在本地删除。后台最多重试两次，仍未成功就自动结束，不影响本地使用。') : mailaiText('本地已移除，服务器操作尚未完成。')} </small>${row.pending_error ? `<details class="sync-error-details"><summary><span data-i18n="ui.c776f5b86412">查看失败详情 · 已尝试 ${Number(row.pending_attempts || 0)} 次</span></summary><small>${esc(row.pending_error)}</small></details>` : ''}${row.pending_error || row.paused ? `<div class="task-row-actions"><button data-action-sync-retry="${row.id}">${row.paused ? mailaiText('恢复同步') : mailaiText('重新核对并重试')}</button>${!row.paused ? `<button data-action-sync-pause="${row.id}"><span data-i18n="ui.052e30e39429">暂停同步</span></button>` : ''}</div>` : ''}</article>`).join('')}</section>` : '';
+    const actionBlock = actions.total || actions.paused_count ? `<section class="task-section"><h3><span data-i18n="ui.06be274af039">删除同步</span> <span>${Number(actions.total)}</span></h3>${actions.paused_count ? `<button class="sync-paused-toggle" data-sync-paused-toggle aria-pressed="${!!window.mailaiShowPausedSync}">${window.mailaiShowPausedSync ? mailaiText('收起已暂停') : mailaiText('查看已暂停')}（${Number(actions.paused_count)}）</button>` : ''}${actions.rows.map(row => `<article class="task-row"><div class="task-row-main"><b data-user-content>${esc(row.subject || mailaiText('无主题'))}</b><span class="task-status ${row.pending_error && !row.paused ? 'warning' : ''}">${row.paused ? mailaiText('已暂停') : row.pending_error ? mailaiText('同步待处理') : mailaiText('等待服务器同步')}</span></div><small>${row.paused ? mailaiText('已停止自动重试，本地仍保持删除状态。服务器端是否删除尚未确认，可核对网页邮箱后恢复同步。') : row.pending_error ? mailaiText('已在本地删除。后台最多重试两次，仍未成功就自动结束，不影响本地使用。') : mailaiText('本地已移除，服务器操作尚未完成。')} </small>${row.pending_error ? `<details class="sync-error-details"><summary><span data-i18n="ui.c776f5b86412">查看失败详情 · 已尝试 ${Number(row.pending_attempts || 0)} 次</span></summary><small>${esc(row.pending_error)}</small></details>` : ''}${row.pending_error || row.paused ? `<div class="task-row-actions"><button data-action-sync-retry="${row.id}">${row.paused ? mailaiText('恢复同步') : mailaiText('重新核对并重试')}</button>${!row.paused ? `<button data-action-sync-pause="${row.id}"><span data-i18n="ui.052e30e39429">暂停同步</span></button>` : ''}</div>` : ''}</article>`).join('')}</section>` : '';
 
     const content = unavailableBlock + syncBlock + actionBlock + purgeBlock + outboxBlock + reminderBlock;
     host.dataset.partial = errors.length ? '1' : '0';
@@ -29957,7 +29958,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
       const rank=r=>['due','submitted','retry'].includes(r.state)?0:r.state==='scheduled'?1:2;
       return rank(a)-rank(b)||String(a.remind_at||a.last_reminder).localeCompare(String(b.remind_at||b.last_reminder));
     });
-    const html=visible.length?visible.map(r=>`<article class="notice-record" data-notice-key="${esc(r.account_id)}:${r.id}"><div><b>${esc(r.title)}</b><small>${esc(r.account_user)} · ${esc((r.remind_at||r.last_reminder||'').replace('T',' ').slice(0,16))}</small><span class="notice-state" data-state="${r.state}">${labels[r.state]}</span>${r.state==='retry'?"<small><span data-i18n=\"ui.dd4c2ac94177\">系统暂未接受通知，稍后会自动重试；可先处理此任务。</span></small>":''}</div><div class="notice-actions"><button data-notice-action="open"><span data-i18n="ui.36550b9c5748">查看任务</span></button>${!['done','canceled'].includes(r.state)?"<button data-notice-action=\"later\"><span data-i18n=\"ui.c2a29a783b63\">10 分钟后</span></button><button data-notice-action=\"tomorrow\"><span data-i18n=\"ui.6a1e759cb774\">明天 9 点</span></button><button data-notice-action=\"done\"><span data-i18n=\"ui.c0b3fbff51cc\">完成</span></button>":''}</div></article>`).join(''):"<div class=\"notice-empty\"><span data-i18n=\"ui.7c2b43508cfb\">没有待处理的提醒</span><br><small><span data-i18n=\"ui.dab8da14396d\">在待办中设置提醒时间后，会显示在这里。</span></small></div>";
+    const html=visible.length?visible.map(r=>`<article class="notice-record" data-notice-key="${esc(r.account_id)}:${r.id}"><div><b data-user-content>${esc(r.title)}</b><small>${esc(r.account_user)} · ${esc((r.remind_at||r.last_reminder||'').replace('T',' ').slice(0,16))}</small><span class="notice-state" data-state="${r.state}">${labels[r.state]}</span>${r.state==='retry'?"<small><span data-i18n=\"ui.dd4c2ac94177\">系统暂未接受通知，稍后会自动重试；可先处理此任务。</span></small>":''}</div><div class="notice-actions"><button data-notice-action="open"><span data-i18n="ui.36550b9c5748">查看任务</span></button>${!['done','canceled'].includes(r.state)?"<button data-notice-action=\"later\"><span data-i18n=\"ui.c2a29a783b63\">10 分钟后</span></button><button data-notice-action=\"tomorrow\"><span data-i18n=\"ui.6a1e759cb774\">明天 9 点</span></button><button data-notice-action=\"done\"><span data-i18n=\"ui.c0b3fbff51cc\">完成</span></button>":''}</div></article>`).join(''):"<div class=\"notice-empty\"><span data-i18n=\"ui.7c2b43508cfb\">没有待处理的提醒</span><br><small><span data-i18n=\"ui.dab8da14396d\">在待办中设置提醒时间后，会显示在这里。</span></small></div>";
     mailaiPatchRows(host,html,'data-notice-key',()=>busy);
   }
   async function refresh() {
@@ -36076,6 +36077,11 @@ document.getElementById('task-center-list').addEventListener('click', async even
   const pad=n=>String(n).padStart(2,'0');
   const dateValue=d=>`${String(d.getFullYear()).padStart(4,'0')}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
   const timeValue=d=>`${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const effectiveZoom=node=>{
+    let zoom=1;
+    for(let parent=node;parent;parent=parent.parentElement) zoom*=parseFloat(getComputedStyle(parent).zoom)||1;
+    return zoom;
+  };
   const english=()=>document.documentElement.lang.startsWith('en');
   const t=key=>mailaiT(`datetime.${key}`) || MAILAI_UI_COPY[`datetime.${key}`][0];
   const localDate=value=>{
@@ -36172,6 +36178,11 @@ document.getElementById('task-center-list').addEventListener('click', async even
     function allowedDate(value) {
       return (!input.min || value>=input.min.slice(0,10)) && (!input.max || value<=input.max.slice(0,10));
     }
+    function clampDate(value) {
+      if(input.min && value<input.min.slice(0,10)) return input.min.slice(0,10);
+      if(input.max && value>input.max.slice(0,10)) return input.max.slice(0,10);
+      return value;
+    }
     function candidate() {
       if (hasTime && (hour.value==='' || minute.value==='' || !hour.validity.valid || !minute.validity.valid)) return '';
       const time=hasTime?`${pad(+hour.value)}:${pad(+minute.value)}`:'';
@@ -36193,6 +36204,8 @@ document.getElementById('task-center-list').addEventListener('click', async even
     }
     function moveMonth(amount) {view.setMonth(view.getMonth()+amount);renderCalendar();}
     function renderCalendar(focusDate) {
+      const bounded=localDate(clampDate(dateValue(view)));
+      if(bounded)view=new Date(bounded.getFullYear(),bounded.getMonth(),1);
       month.value=String(view.getMonth());year.value=String(view.getFullYear());calendar.replaceChildren();
       const first=new Date(view.getFullYear(),view.getMonth(),1),start=new Date(first);
       start.setDate(1-(first.getDay()+6)%7);const today=dateValue(new Date());
@@ -36217,6 +36230,8 @@ document.getElementById('task-center-list').addEventListener('click', async even
       const prev=panel.querySelector('[data-direction="previous"]'),next=panel.querySelector('[data-direction="next"]');
       prev.disabled=view.getFullYear()<=+year.options[0].value && view.getMonth()===0;
       next.disabled=view.getFullYear()>=+year.options[year.options.length-1].value && view.getMonth()===11;
+      if(input.min)prev.disabled ||= dateValue(new Date(view.getFullYear(),view.getMonth(),0))<input.min.slice(0,10);
+      if(input.max)next.disabled ||= dateValue(new Date(view.getFullYear(),view.getMonth()+1,1))>input.max.slice(0,10);
       calendar.setAttribute('aria-label',t('calendar'));
     }
     function populate() {
@@ -36235,6 +36250,8 @@ document.getElementById('task-center-list').addEventListener('click', async even
         if(hasTime){hour.value=pad(d.getHours());minute.value=pad(d.getMinutes());}validate();
       }));
       if(hasDate) {
+        const clamped=localDate(clampDate(dateValue(view)));
+        if(clamped)view=new Date(clamped.getFullYear(),clamped.getMonth(),1);
         month.replaceChildren();year.replaceChildren();
         for(let i=0;i<12;i++)month.add(new Option(new Intl.DateTimeFormat(english()?'en-US':'zh-CN',{month:'long'}).format(new Date(2024,i,1)),String(i)));
         const min=localDate(input.min)?.getFullYear() || Math.min(1900,view.getFullYear());
@@ -36256,16 +36273,19 @@ document.getElementById('task-center-list').addEventListener('click', async even
     function position() {
       if (!opened) return;
       if (!input.isConnected || !trigger.getClientRects().length || getComputedStyle(trigger).visibility==='hidden') {close(false);return;}
-      const rect=trigger.getBoundingClientRect(),width=panel.offsetWidth,height=panel.offsetHeight,gap=8;
-      panel.style.left=`${Math.max(8,Math.min(rect.left,innerWidth-width-8))}px`;
+      const zoom=effectiveZoom(panel),gap=8;
+      panel.style.maxWidth=`${Math.max(0,innerWidth-16)/zoom}px`;
+      panel.style.maxHeight=`${Math.max(0,innerHeight-16)/zoom}px`;
+      const rect=trigger.getBoundingClientRect(),bounds=panel.getBoundingClientRect(),width=bounds.width,height=bounds.height;
+      panel.style.left=`${Math.max(8,Math.min(rect.left,innerWidth-width-8))/zoom}px`;
       const below=innerHeight-rect.bottom-gap,above=rect.top-gap;
-      panel.style.top=`${Math.max(8,Math.min(below>=height || below>=above?rect.bottom+gap:rect.top-height-gap,innerHeight-height-8))}px`;
+      panel.style.top=`${Math.max(8,Math.min(below>=height || below>=above?rect.bottom+gap:rect.top-height-gap,innerHeight-height-8))/zoom}px`;
     }
     function open() {
       if(input.disabled || input.readOnly)return;
       active?.close(false);
       const now=new Date(),value=input.value;
-      draftDate=hasDate?(value.slice(0,10)||dateValue(now)):'';
+      draftDate=hasDate?clampDate(value.slice(0,10)||dateValue(now)):'';
       const selected=localDate(draftDate)||now;view=new Date(selected.getFullYear(),selected.getMonth(),1);
       if(hasTime){hour.disabled=false;minute.disabled=false;const time=(kind==='time'?value:value.split('T')[1])||timeValue(now);[hour.value,minute.value]=time.split(':').slice(0,2);}
       populate();opened=true;active=control;trigger.setAttribute('aria-expanded','true');
@@ -36290,7 +36310,14 @@ document.getElementById('task-center-list').addEventListener('click', async even
     });
     input.addEventListener('input',sync);input.addEventListener('change',sync);
     input.addEventListener('focus',()=>trigger.focus());
-    input.addEventListener('invalid',event=>{event.preventDefault();open();status.textContent=input.validationMessage;});
+    input.addEventListener('invalid',event=>{
+      event.preventDefault();
+      const first=input.form && [...input.form.elements].find(node=>node.willValidate && !node.validity.valid);
+      if(first && first!==input)return;
+      open();
+      status.textContent=input.validity.valueMissing || input.validity.badInput
+        ? t(hasTime?(hasDate?'invalidDateTime':'invalidTime'):'invalidDate') : t('rangeError');
+    });
     // Existing flows set .value directly when reopening a dialog or applying a
     // shortcut. Delegate to the native setter so their display stays current.
     Object.defineProperty(input,'value',{configurable:true,get(){return valueProperty.get.call(this);},set(value){valueProperty.set.call(this,value);sync();}});

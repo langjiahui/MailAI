@@ -13,23 +13,31 @@ SERVICE = "MailAI"
 # Process memory only: never persist or log this cache. Empty results (including
 # denied/canceled access) are cached too, so background requests do not keep
 # reopening the OS authorization dialog. Explicit saves refresh the entry;
-# restarting the app starts a fresh authorization session.
+# a later explicit unlock retries cancellation; status refreshes stay quiet.
 _session_cache: dict[str, str] = {}
 _vault_lock = threading.RLock()
 _interactive = ContextVar('credential_prompt_allowed', default=False)
 _quiet_unavailable: set[str] = set()
 _authorization_required: set[str] = set()
 _master_blocked: set[str] = set()
+_key_locks: dict[str, threading.RLock] = {}
+_attempts = ContextVar('credential_request_attempts', default=None)
+_retry_canceled = ContextVar('credential_retry_canceled', default=True)
 
 
 @contextmanager
-def prompt_policy(allowed: bool):
+def prompt_policy(allowed: bool, *, retry_canceled: bool = True):
     """Only explicit actions/current-account restoration may show OS dialogs."""
     token = _interactive.set(allowed)
+    retry_token = _retry_canceled.set(retry_canceled)
+    attempts_token = _attempts.set(set()) if allowed and _attempts.get() is None else None
     try:
         yield
     finally:
         _interactive.reset(token)
+        _retry_canceled.reset(retry_token)
+        if attempts_token is not None:
+            _attempts.reset(attempts_token)
 
 
 def quiet(function):
@@ -64,36 +72,68 @@ def available() -> bool:
     return _keyring() is not None or platform.system() == "Darwin"
 
 
+def _operation_lock(key):
+    with _vault_lock:
+        return _key_locks.setdefault(key, threading.RLock())
+
+
 def save(account_key: str, secret: str) -> bool:
     if not account_key or not secret:
         return False
-    with _vault_lock:
-        _quiet_unavailable.discard(account_key)
-        _authorization_required.discard(account_key)
-        _master_blocked.discard(account_key)
-        # Never serve an older cached credential after a failed replacement.
-        _session_cache[account_key] = ""
+    with _operation_lock(account_key):
+        with _vault_lock:
+            _quiet_unavailable.discard(account_key)
+            _authorization_required.discard(account_key)
+            _master_blocked.discard(account_key)
+            _session_cache[account_key] = ""
         saved = _save_to_vault(account_key, secret)
         if saved:
-            _session_cache[account_key] = secret
+            with _vault_lock:
+                _session_cache[account_key] = secret
         return saved
 
 
 def load(account_key: str) -> str:
     if not account_key:
         return ""
-    with _vault_lock:
-        if account_key in _master_blocked and platform.system()=='Darwin':
+    mac = platform.system() == 'Darwin'
+    interactive = _interactive.get()
+    operation = _operation_lock(account_key)
+    if not operation.acquire(blocking=interactive or not mac):
+        with _vault_lock:
+            value=_session_cache.get(account_key, '')
+            if mac and not value:
+                _authorization_required.add(account_key)
+            return value
+    try:
+        recovered = False
+        if mac:
             from . import macos_credential_vault
-            if macos_credential_vault.unlocked():
-                _session_cache.pop(account_key,None)
+            recovered = macos_credential_vault.unlocked()
+        with _vault_lock:
+            if account_key in _master_blocked and recovered:
+                _session_cache.pop(account_key, None)
                 _quiet_unavailable.discard(account_key)
                 _master_blocked.discard(account_key)
-        if account_key not in _session_cache:
-            if platform.system() == 'Darwin':
-                return _load_macos(account_key)
-            _session_cache[account_key] = _load_from_vault(account_key)
-        return _session_cache[account_key]
+            attempts = _attempts.get()
+            if interactive and _retry_canceled.get() and account_key in _authorization_required and (attempts is None or account_key not in attempts):
+                _session_cache.pop(account_key, None)
+            if account_key in _session_cache:
+                return _session_cache[account_key]
+            if mac and interactive and attempts is not None and '__master_denied__' in attempts and not recovered:
+                _authorization_required.add(account_key)
+                _master_blocked.add(account_key)
+                return ''
+            if interactive and attempts is not None:
+                attempts.add(account_key)
+        if mac:
+            return _load_macos(account_key)
+        value = _load_from_vault(account_key)
+        with _vault_lock:
+            _session_cache[account_key] = value
+        return value
+    finally:
+        operation.release()
 
 
 def _load_macos(account_key: str) -> str:
@@ -102,7 +142,10 @@ def _load_macos(account_key: str) -> str:
     try:
         status,value=macos_credential_vault.get(account_key,interactive=interactive)
         if status in macos_keychain.AUTH_REQUIRED:
-            _master_blocked.add(account_key)
+            with _vault_lock:
+                _master_blocked.add(account_key)
+                if interactive and _attempts.get() is not None:
+                    _attempts.get().add('__master_denied__')
         if status==macos_keychain.NOT_FOUND:
             if not interactive and account_key in _quiet_unavailable:
                 return ''
@@ -121,34 +164,30 @@ def _load_macos(account_key: str) -> str:
         # Do not fall back to an interactive CLI if the quiet native read fails.
         log.warning('macOS Keychain 读取失败 (%s)', type(exc).__name__)
         status, value = -1, ''
-    if status == 0:
-        _session_cache[account_key] = value
-        _quiet_unavailable.discard(account_key)
-        _authorization_required.discard(account_key)
-        _master_blocked.discard(account_key)
-        return value
-    _quiet_unavailable.add(account_key)
-    if status in macos_keychain.AUTH_REQUIRED:
-        _authorization_required.add(account_key)
-    if interactive or status == macos_keychain.NOT_FOUND:
-        # A real cancellation is remembered; quiet authorization failures must
-        # remain retryable by the next explicit account selection.
-        _session_cache[account_key] = ''
-        if interactive:
+    with _vault_lock:
+        if status == 0:
+            _session_cache[account_key] = value
+            _quiet_unavailable.discard(account_key)
             _authorization_required.discard(account_key)
-    return ''
+            _master_blocked.discard(account_key)
+            return value
+        _quiet_unavailable.add(account_key)
+        if status in macos_keychain.AUTH_REQUIRED:
+            _authorization_required.add(account_key)
+        if interactive or status == macos_keychain.NOT_FOUND:
+            _session_cache[account_key] = ''
+        return ''
 
 
 def delete(account_key: str):
     if not account_key:
         return
-    with _vault_lock:
-        _quiet_unavailable.discard(account_key)
-        _authorization_required.discard(account_key)
-        _master_blocked.discard(account_key)
-        # Even if deletion fails, this process must not revive a logged-out
-        # credential from its cache or automatically retry vault access.
-        _session_cache[account_key] = ""
+    with _operation_lock(account_key):
+        with _vault_lock:
+            _quiet_unavailable.discard(account_key)
+            _authorization_required.discard(account_key)
+            _master_blocked.discard(account_key)
+            _session_cache[account_key] = ""
         _delete_from_vault(account_key)
 
 

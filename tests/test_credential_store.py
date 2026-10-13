@@ -152,18 +152,49 @@ class CredentialStoreTests(unittest.TestCase):
             self.assertEqual(read.call_count, 2)
             self.assertTrue(read.call_args.kwargs['interactive'])
 
-    def test_macos_explicit_cancellation_is_not_reprompted(self):
+    def test_macos_cancellation_stays_quiet_but_a_new_explicit_action_retries(self):
         with patch.object(store.platform, 'system', return_value='Darwin'), \
-             patch.object(macos_keychain, 'read_for_app', return_value=(-128, '')) as read:
+             patch.object(macos_keychain, 'read_for_app', side_effect=[(-128, ''), (0, 'fixture-retry')]) as read:
             with store.prompt_policy(True):
-                self.assertEqual(store.load('canceled'), '')
-            for _ in range(5):
-                with store.prompt_policy(True):
+                for _ in range(5):
                     self.assertEqual(store.load('canceled'), '')
+            for _ in range(5):
+                self.assertEqual(store.load('canceled'), '')
             read.assert_called_once()
+            self.assertTrue(store.authorization_required('canceled'))
+            with store.prompt_policy(True):
+                self.assertEqual(store.load('canceled'), 'fixture-retry')
+            self.assertEqual(read.call_count, 2)
             self.assertFalse(store.authorization_required('canceled'))
-            self.assertTrue(store.save('canceled', 'fixture-relogin'))
-            self.assertEqual(store.load('canceled'), 'fixture-relogin')
+
+    def test_pending_authorization_does_not_block_other_status_reads(self):
+        entered, release, finished = threading.Event(), threading.Event(), threading.Event()
+        def read(key, **kwargs):
+            if key == 'pending':
+                entered.set()
+                self.assertTrue(release.wait(3))
+            return 0, 'fixture-secret'
+        def authorize():
+            with store.prompt_policy(True):
+                return store.load('pending')
+        def status():
+            value = store.load('other')
+            finished.set()
+            return value
+        with patch.object(store.platform, 'system', return_value='Darwin'), \
+             patch.object(macos_credential_vault, 'get', side_effect=read):
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                foreground = pool.submit(authorize)
+                self.assertTrue(entered.wait(2))
+                background = pool.submit(status)
+                try:
+                    self.assertTrue(finished.wait(1), 'Global cache lock must not be held during OS authorization')
+                    self.assertEqual(background.result(), 'fixture-secret')
+                    self.assertEqual(store.load('pending'), '')
+                    self.assertTrue(store.authorization_required('pending'))
+                finally:
+                    release.set()
+                self.assertEqual(foreground.result(timeout=2), 'fixture-secret')
 
     def test_quiet_status_cannot_inherit_interactive_request_policy(self):
         @store.quiet
