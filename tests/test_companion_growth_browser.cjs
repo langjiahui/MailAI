@@ -7,7 +7,7 @@ const {chromium} = require('playwright');
     const page = await browser.newPage({viewport:{width:1280,height:900}});
     const errors = [];
     page.on('pageerror',error=>errors.push(error.message));
-    await page.goto('http://127.0.0.1:18795/');
+    await page.goto(process.env.MAILAI_TEST_BASE_URL || 'http://127.0.0.1:18795/');
     await page.locator('#app-preloader').waitFor({state:'detached'});
     await page.waitForFunction(()=>document.body.dataset.petStage === '3');
     await page.locator('#assistant-orb').click();
@@ -171,6 +171,12 @@ const {chromium} = require('playwright');
     assert(await dialog.locator('.pet-journal-body').evaluate(n=>n.scrollWidth <= n.clientWidth+1));
     await page.keyboard.press('Escape');
     await page.setViewportSize({width:1280,height:900});
+    // Freeze legitimate heartbeat changes while checking exact client-wide
+    // state equality; live heartbeat accumulation is exercised above.
+    await page.evaluate(async()=>{
+      await api('/api/companion/preferences',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:false})});
+      await mailaiPet.refresh();
+    });
     // Switching mailboxes retains the client companion and its outfit.
     const shared = await page.evaluate(()=>api('/api/companion/growth'));
     await page.evaluate(async()=>{
@@ -185,6 +191,10 @@ const {chromium} = require('playwright');
     const fresh = await page.evaluate(()=>api('/api/companion/growth'));
     assert.match(await dialog.locator('.pet-client-note').textContent(),/Shared across mailboxes/);
     assert.deepEqual(fresh,shared);
+    await page.evaluate(async()=>{
+      await api('/api/companion/preferences',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:true})});
+      await mailaiPet.refresh();
+    });
     assert.deepEqual(errors,[]);
     console.log('Pet journal: purchases, evolution, failure recovery, persistence, timers, motion, i18n, mobile and client-wide sharing passed');
   } finally { await browser.close(); }
