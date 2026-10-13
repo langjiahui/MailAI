@@ -5,12 +5,24 @@ const browserType = require('playwright')[process.env.MAILAI_BROWSER || 'chromiu
 // Measure rendered text against the composited surface, including transparent buttons.
 async function contrast(locator, minimum = 4.5) {
   const result = await locator.evaluate(node => {
-    const rgb = value => value.match(/[\d.]+/g).map(Number);
+    const canvas=document.createElement('canvas');canvas.width=canvas.height=1;
+    const context=canvas.getContext('2d');
+    const rgb = value => {
+      context.clearRect(0,0,1,1);context.fillStyle=value;context.fillRect(0,0,1,1);
+      const values=[...context.getImageData(0,0,1,1).data];values[3]/=255;return values;
+    };
     const mix = (top, bottom) => top.slice(0, 3).map((v, i) => v * (top[3] ?? 1) + bottom[i] * (1 - (top[3] ?? 1)));
     const luminance = color => color.map(v => v / 255).map(v => v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4).reduce((sum, v, i) => sum + v * [.2126, .7152, .0722][i], 0);
     const chain = [];
     for (let n = node; n; n = n.parentElement) chain.unshift(n);
-    const background = chain.reduce((bg, n) => mix(rgb(getComputedStyle(n).backgroundColor), bg), [255, 255, 255]);
+    const background = chain.reduce((bg, n) => {
+      bg=mix(rgb(getComputedStyle(n).backgroundColor),bg);
+      if(n.id==='contact-center-filters' && node.closest('[data-contact-filter]')?.classList.contains('active')) {
+        const indicator=getComputedStyle(n,'::before');
+        if(indicator.content!=='none')bg=mix(rgb(indicator.backgroundColor),bg);
+      }
+      return bg;
+    }, [255, 255, 255]);
     const foreground = mix(rgb(getComputedStyle(node).color), background);
     const light = luminance(foreground), dark = luminance(background);
     return {text:node.textContent.trim(), ratio:(Math.max(light, dark) + .05) / (Math.min(light, dark) + .05), background};
