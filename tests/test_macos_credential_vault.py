@@ -42,7 +42,7 @@ class VaultTests(unittest.TestCase):
             return 0
         for obj,name,value in [(module,'_instance',self.vault),(store.platform,'system',lambda:'Darwin')]:
             mocked=patch.object(obj,name,value);mocked.start();self.addCleanup(mocked.stop)
-        for name,fn in [('read',read),('add_new',add),('delete',lambda *a,**kw:0)]:
+        for name,fn in [('read_for_app',read),('add_new',add),('delete',lambda *a,**kw:0)]:
             mocked=patch.object(native,name,side_effect=fn);mocked.start();self.addCleanup(mocked.stop)
         self.reset_store()
         self.addCleanup(self.reset_store)
@@ -181,6 +181,14 @@ class VaultTests(unittest.TestCase):
         self.assertEqual(self.legacy['fixture'],'fixture-legacy-secret')
         self.assertEqual(store.load('fixture'),'fixture-legacy-secret')
 
+    def test_reader_access_creation_failure_keeps_the_legacy_session_usable(self):
+        self.legacy['fixture']='fixture-legacy-secret'
+        with patch.object(module,'put',side_effect=OSError('fixture-sensitive-error')),store.prompt_policy(True):
+            with self.assertLogs(store.log,level='WARNING') as output:
+                self.assertEqual(store.load('fixture'),'fixture-legacy-secret')
+        self.assertNotIn('fixture-sensitive-error','\n'.join(output.output))
+        self.assertEqual(store.load('fixture'),'fixture-legacy-secret')
+
     def test_startup_and_passive_status_restore_three_accounts_with_one_authorization(self):
         from app import config,system_settings
         users=['one@example.test','two@example.test','three@example.test']
@@ -209,7 +217,7 @@ class VaultTests(unittest.TestCase):
         for key in ('a','b'):
             self.assertTrue(self.vault.put(key,'fixture-secret-'+key))
         self.upgrade()
-        with patch.object(native,'read',return_value=(-128,'')),store.prompt_policy(True):
+        with patch.object(native,'read_for_app',return_value=(-128,'')),store.prompt_policy(True):
             self.assertEqual(store.load('a'),'')
         with store.prompt_policy(True):
             self.assertEqual(store.load('b'),'fixture-secret-b')

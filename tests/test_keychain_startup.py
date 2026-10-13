@@ -40,7 +40,7 @@ class StartupTests(unittest.TestCase):
                  patch.object(system_settings, '_save_registry'), \
                  patch.object(system_settings, '_activate_storage'), \
                  patch.object(system_settings, '_persist'), \
-                 patch.object(macos_keychain, 'read', side_effect=read):
+                 patch.object(macos_keychain, 'read_for_app', side_effect=read):
                 config.IMAP_USER = config.IMAP_PASSWORD = ''
                 system_settings.initialize_current_account()
                 # FastAPI's startup hook also restores the active account.
@@ -77,7 +77,7 @@ class StartupTests(unittest.TestCase):
         registry = {'last_account':'a', 'accounts':{key:dict(user=key+'@example.test',host='imap.example.test') for key in ('a','b','c')}}
         with patch.object(config, 'IMAP_PASSWORD', ''), patch.object(config, 'IMAP_USER', ''), \
              patch.object(system_settings, '_load_registry', return_value=registry), \
-             patch.object(macos_keychain, 'read', side_effect=read):
+             patch.object(macos_keychain, 'read_for_app', side_effect=read):
             system_settings.initialize_current_account()
             system_settings.initialize_current_account()
             self.assertEqual([key for key, interactive in calls if interactive], ['a'])

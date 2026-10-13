@@ -125,7 +125,7 @@ class CredentialStoreTests(unittest.TestCase):
     def test_macos_native_migration_and_encrypted_mutations_share_cache(self):
         with patch.object(store, '_keyring', return_value=None), \
              patch.object(store.platform, 'system', return_value='Darwin'), \
-             patch.object(macos_keychain, 'read', return_value=(0, 'fixture-password')) as read, \
+             patch.object(macos_keychain, 'read_for_app', return_value=(0, 'fixture-password')) as read, \
              patch.object(store.subprocess, 'run') as command:
             self.assertEqual(store.load('native'), 'fixture-password')
             self.assertEqual(store.load('native'), 'fixture-password')
@@ -140,7 +140,7 @@ class CredentialStoreTests(unittest.TestCase):
 
     def test_macos_quiet_failure_can_be_unlocked_by_explicit_action(self):
         with patch.object(store.platform, 'system', return_value='Darwin'), \
-             patch.object(macos_keychain, 'read', side_effect=[(-25308, ''), (0, 'fixture')]) as read:
+             patch.object(macos_keychain, 'read_for_app', side_effect=[(-25308, ''), (0, 'fixture')]) as read:
             for _ in range(8):
                 self.assertEqual(store.load('locked'), '')
             self.assertTrue(store.authorization_required('locked'))
@@ -154,7 +154,7 @@ class CredentialStoreTests(unittest.TestCase):
 
     def test_macos_explicit_cancellation_is_not_reprompted(self):
         with patch.object(store.platform, 'system', return_value='Darwin'), \
-             patch.object(macos_keychain, 'read', return_value=(-128, '')) as read:
+             patch.object(macos_keychain, 'read_for_app', return_value=(-128, '')) as read:
             with store.prompt_policy(True):
                 self.assertEqual(store.load('canceled'), '')
             for _ in range(5):
@@ -170,7 +170,7 @@ class CredentialStoreTests(unittest.TestCase):
         def status():
             return store.load('status-only')
         with patch.object(store.platform, 'system', return_value='Darwin'), \
-             patch.object(macos_keychain, 'read', return_value=(-25308, '')) as read:
+             patch.object(macos_keychain, 'read_for_app', return_value=(-25308, '')) as read:
             with store.prompt_policy(True):
                 self.assertEqual(status(), '')
             read.assert_called_once_with('MailAI', 'status-only', interactive=False)
@@ -178,7 +178,7 @@ class CredentialStoreTests(unittest.TestCase):
 
     def test_quiet_native_failure_never_falls_back_to_interactive_backend(self):
         with patch.object(store.platform, 'system', return_value='Darwin'), \
-             patch.object(macos_keychain, 'read', side_effect=OSError('fixture-secret')) as read, \
+             patch.object(macos_keychain, 'read_for_app', side_effect=OSError('fixture-secret')) as read, \
              patch.object(store.subprocess, 'run') as command:
             with self.assertLogs(store.log, level='WARNING') as logs:
                 self.assertEqual(store.load('broken'), '')

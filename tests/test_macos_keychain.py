@@ -54,6 +54,19 @@ class NativeTests(unittest.TestCase):
         self.assertEqual(self.query_result(False,native.NOT_FOUND),(native.NOT_FOUND,''))
 
     def test_new_master_is_added_natively_without_overwriting_existing_items(self):
+        self.cf.CFArrayGetCount.argtypes=[C.c_void_p]
+        self.cf.CFArrayGetCount.restype=C.c_long
+        self.cf.CFArrayGetValueAtIndex.argtypes=[C.c_void_p,C.c_long]
+        self.cf.CFArrayGetValueAtIndex.restype=C.c_void_p
+        self.security.SecTrustedApplicationValidateWithPath.argtypes=[C.c_void_p,C.c_char_p]
+        self.security.SecTrustedApplicationValidateWithPath.restype=C.c_int32
+        actual_access=self.security.SecAccessCreate
+        def access(descriptor,apps,result):
+            self.assertTrue(apps,'A null trusted list would use changing caller identity')
+            self.assertEqual(self.cf.CFArrayGetCount(apps),1,'Do not grant access to all applications')
+            trusted=self.cf.CFArrayGetValueAtIndex(apps,0)
+            self.assertEqual(self.security.SecTrustedApplicationValidateWithPath(trusted,b'/usr/bin/security'),0)
+            return actual_access(descriptor,apps,result)
         def add(query,result):
             legacy=C.c_uint8()
             self.assertEqual(self.security.SecKeychainGetUserInteractionAllowed(C.byref(legacy)),0)
@@ -61,10 +74,13 @@ class NativeTests(unittest.TestCase):
             data=self.cf.CFDictionaryGetValue(query,C.c_void_p.in_dll(self.security,'kSecValueData'))
             value=C.string_at(self.cf.CFDataGetBytePtr(data),self.cf.CFDataGetLength(data)).decode()
             self.assertEqual(value,'fixture-master-key')
+            self.assertTrue(self.cf.CFDictionaryGetValue(query,C.c_void_p.in_dll(self.security,'kSecAttrAccess')))
             return native.DUPLICATE
-        with patch.object(self.security,'SecItemAdd',side_effect=add) as addition:
+        with patch.object(self.security,'SecAccessCreate',side_effect=access) as creation, \
+             patch.object(self.security,'SecItemAdd',side_effect=add) as addition:
             self.assertEqual(native.add_new('MailAI-synthetic-test','fixture-master','fixture-master-key'),native.DUPLICATE)
             addition.assert_called_once()
+            creation.assert_called_once()
 
     def test_interaction_policy_restores_previous_setting_on_exception(self):
         before = C.c_uint8()

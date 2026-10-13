@@ -1576,11 +1576,11 @@ if (typeof document !== 'undefined') {
 /* ---- i18n-catalog.js ---- */
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
-  "credential.migratedHelp": ["已迁入统一保险库，其他已迁移的邮箱无需单独授权。", "Moved to the shared vault. Other migrated mailboxes do not need separate authorization."],
+  "credential.migratedHelp": ["已迁入统一保险库，后续升级通常可沿用授权。", "Moved to the shared vault. Authorization normally carries over when MailAI is updated."],
   "credential.unlock": ["解锁凭据", "Unlock credentials"],
   "credential.pending": ["等待解锁", "Awaiting unlock"],
   "credential.selectToUnlock": ["点击邮箱解锁凭据", "Select mailbox to unlock"],
-  "credential.pendingHelp": ["点击解锁。已迁移的凭据共用保险库；旧凭据首次迁移可能仍需逐项授权。", "Select Unlock. Migrated credentials share one vault; legacy items may still need individual authorization during their first migration."],
+  "credential.pendingHelp": ["点击解锁。凭据共用保险库；首次为系统“security”工具选择“始终允许”后，后续升级通常可沿用。旧凭据可能仍需逐项确认。", "Select Unlock. Credentials share one vault. Choose Always Allow for the system security tool the first time; authorization normally carries over across updates. Legacy items may still need individual confirmation."],
   "datetime.chooseDate": ["选择日期", "Choose date"],
   "datetime.chooseTime": ["选择时间", "Choose time"],
   "datetime.chooseDateTime": ["选择日期和时间", "Choose date and time"],
@@ -24286,8 +24286,8 @@ function renderAccountSelection() {
   document.getElementById('selected-account-avatar').textContent = accountMark(account);
   mailaiBindUI(document.getElementById('selected-account-role'), "textContent", () => (account.active ? (mailaiT('acct.stateActive') || '当前发件账号') : (mailaiT('acct.roleConnected') || '已连接邮箱')));
   mailaiBindUI(document.getElementById('selected-account-name'), 'textContent', () => account.user);
-  mailaiBindUI(document.getElementById('selected-account-help'), "textContent", () => (account.credential_authorization_required ? mailaiText('点击解锁。已迁移的凭据共用保险库；旧凭据首次迁移可能仍需逐项授权。') : account.credential_available
-    ? (account.credential_migrated ? mailaiText('已迁入统一保险库，其他已迁移的邮箱无需单独授权。') : account.credential_storage === 'session' ? (mailaiT('acct.helpSession') || '授权码仅本次运行有效，退出软件后需要重新登录') : (mailaiT('acct.helpSaved') || '连接信息已保存，可随时更新授权码'))
+  mailaiBindUI(document.getElementById('selected-account-help'), "textContent", () => (account.credential_authorization_required ? mailaiText('点击解锁。凭据共用保险库；首次为系统“security”工具选择“始终允许”后，后续升级通常可沿用。旧凭据可能仍需逐项确认。') : account.credential_available
+    ? (account.credential_migrated ? mailaiText('已迁入统一保险库，后续升级通常可沿用授权。') : account.credential_storage === 'session' ? (mailaiT('acct.helpSession') || '授权码仅本次运行有效，退出软件后需要重新登录') : (mailaiT('acct.helpSaved') || '连接信息已保存，可随时更新授权码'))
     : (mailaiT('acct.helpMissing') || '本机没有可用授权码，请重新登录')));
   mailaiBindUI(document.getElementById('btn-manage-mail'), "textContent", () => (account.credential_authorization_required ? mailaiText('解锁凭据') : account.credential_available ? (mailaiT('acct.updateBtn') || '更新登录信息') : (mailaiT('acct.reloginBtn') || '重新登录')));
   mailaiBindUI(document.getElementById('selected-account-state'), "textContent", () => (mailaiSystemMessage(account.sync_error) ? (mailaiT('acct.syncFailed') || '最近同步失败') : account.last_sync ? (mailaiT('acct.lastSync') || '最近同步：') + fmtDate(account.last_sync) : (mailaiT('acct.noSync') || '尚无成功同步记录')));

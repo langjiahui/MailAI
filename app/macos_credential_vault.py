@@ -38,7 +38,7 @@ class Vault:
             return 0
         if self._quiet_failure is not None and not interactive:
             return self._quiet_failure
-        status,value=macos_keychain.read(SERVICE,MASTER_ACCOUNT,interactive=interactive)
+        status,value=macos_keychain.read_for_app(SERVICE,MASTER_ACCOUNT,interactive=interactive)
         if status==macos_keychain.NOT_FOUND and create:
             # Losing a key must never overwrite an existing encrypted file.
             if self.path.exists():

@@ -1,14 +1,17 @@
 """Read macOS credentials with an explicit OS authorization policy.
 
 Background/status queries must fail quietly when an item needs authorization.
-Use Security.framework directly: killing the `security` CLI on a short timeout
-can interrupt an authorization dialog before the user finishes responding.
+Quiet queries use Security.framework with all authorization UI suppressed.
+Explicit restoration uses Apple's fixed /usr/bin/security reader so its trust
+survives MailAI upgrades. No command-line argument contains a secret.
 """
 import ctypes as C
 from contextlib import contextmanager
 from ctypes.util import find_library
 from functools import lru_cache
 import logging
+import re
+import subprocess
 import threading
 
 NOT_FOUND = -25300
@@ -16,6 +19,57 @@ DUPLICATE = -25299
 AUTH_REQUIRED = {-25308, -25293, -128}
 _interaction_lock = threading.RLock()
 log = logging.getLogger(__name__)
+SYSTEM_READER = '/usr/bin/security'
+
+
+def read_for_app(service: str, account: str, *, interactive: bool = False) -> tuple[int, str]:
+    """Only foreground restoration may invoke the stable system reader.
+
+    `security -q` does NOT suppress authorization dialogs, so background callers
+    must continue using the native quiet query rather than launching a child.
+    """
+    if not interactive:
+        return read(service, account, interactive=False)
+    return _read_system_tool(service, account)
+
+
+def _read_system_tool(service: str, account: str, *, keychain: str = '') -> tuple[int, str]:
+    command = [SYSTEM_READER, 'find-generic-password', '-s', service, '-a', account, '-g']
+    if keychain:  # Used only by isolated integration tests, never a search-list mutation.
+        command.append(keychain)
+    try:
+        result = subprocess.run(command, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                                stderr=subprocess.PIPE, timeout=240, check=False)
+    except subprocess.TimeoutExpired:
+        return -128, ''  # Remember cancellation; never open a second dialog as fallback.
+    except OSError as exc:
+        log.warning('System credential reader unavailable (%s)', type(exc).__name__)
+        return -1, ''
+    if result.returncode:
+        # POSIX process exit codes retain only the low byte of OSStatus.
+        for status in (NOT_FOUND, -25308, -25293, -128):
+            if result.returncode == status % 256:
+                return status, ''
+        return -1, ''
+    try:
+        # -w ambiguously hex-encodes non-printable data. -g carries an explicit
+        # 0x marker, preserving Unicode, backslashes and leading/trailing spaces.
+        output = result.stderr.removesuffix(b'\n')
+        if not output.startswith(b'password: '):
+            return -1, ''
+        value = output[len(b'password: '):]
+        if value.startswith(b'0x'):
+            match = re.fullmatch(rb'0x([0-9A-Fa-f]+) +(?:"[^\r\n]*")?', value)
+            if not match or len(match[1]) % 2:
+                return -1, ''
+            return 0, bytes.fromhex(match[1].decode('ascii')).decode('utf-8')
+        if len(value) >= 2 and value.startswith(b'"') and value.endswith(b'"'):
+            return 0, value[1:-1].decode('utf-8')
+        if not value:  # security prints no buffer representation for an empty item.
+            return 0, ''
+    except (ValueError, UnicodeError):
+        pass
+    return -1, ''  # Never log malformed output, which could contain a credential.
 
 
 @lru_cache(maxsize=1)
@@ -45,6 +99,12 @@ def _libraries():
     security.SecItemAdd.restype = C.c_int32
     security.SecItemDelete.argtypes = [C.c_void_p]
     security.SecItemDelete.restype = C.c_int32
+    security.SecTrustedApplicationCreateFromPath.argtypes = [C.c_char_p, C.POINTER(C.c_void_p)]
+    security.SecTrustedApplicationCreateFromPath.restype = C.c_int32
+    security.SecAccessCreate.argtypes = [C.c_void_p, C.c_void_p, C.POINTER(C.c_void_p)]
+    security.SecAccessCreate.restype = C.c_int32
+    cf.CFArrayCreate.argtypes = [C.c_void_p, C.POINTER(C.c_void_p), C.c_long, C.c_void_p]
+    cf.CFArrayCreate.restype = C.c_void_p
     return security, cf
 
 
@@ -120,7 +180,7 @@ def _read(service: str, account: str, *, interactive: bool) -> tuple[int, str]:
 
 
 @contextmanager
-def _item_query(service, account, secret=None):
+def _item_query(service, account, secret=None, *, system_reader=False):
     security, cf = _libraries()
     owned = []
     query = None
@@ -133,6 +193,25 @@ def _item_query(service, account, secret=None):
             data=secret.encode('utf-8')
             owned.append(cf.CFDataCreate(None,C.c_char_p(data),len(data)))
             names.append('kSecValueData');values.append(owned[-1])
+        if system_reader:
+            trusted = C.c_void_p()
+            status = security.SecTrustedApplicationCreateFromPath(SYSTEM_READER.encode(), C.byref(trusted))
+            if trusted.value:
+                owned.append(trusted.value)
+            if status or not trusted.value:
+                raise OSError('Could not identify the system credential reader')
+            apps = cf.CFArrayCreate(None, (C.c_void_p * 1)(trusted.value), 1,
+                                   C.addressof(C.c_char.in_dll(cf, 'kCFTypeArrayCallBacks')))
+            owned.append(apps)
+            if not apps:
+                raise MemoryError('Could not create credential reader access')
+            access = C.c_void_p()
+            status = security.SecAccessCreate(owned[0], apps, C.byref(access))
+            if access.value:
+                owned.append(access.value)
+            if status or not access.value:
+                raise OSError('Could not create credential reader access')
+            names.append('kSecAttrAccess');values.append(access.value)
         if not all(owned):
             raise MemoryError('Could not build a keychain item')
         count=len(names)
@@ -153,12 +232,12 @@ def _item_query(service, account, secret=None):
 
 
 def add_new(service: str, account: str, secret: str, *, interactive: bool = False) -> int:
-    """Create a master key without ever replacing an existing one."""
+    """Create a master trusting only the stable reader; never replace old ACLs."""
     with interaction_policy(interactive) as status:
         if status:
             return status
         security,_=_libraries()
-        with _item_query(service,account,secret) as query:
+        with _item_query(service,account,secret,system_reader=True) as query:
             return security.SecItemAdd(query,None)
 
 
