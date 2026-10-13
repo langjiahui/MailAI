@@ -52,13 +52,16 @@ zsh scripts/prepare_macos_icon.command
 .venv-build/bin/python scripts/smoke_macos_app.py dist/MailAI.app
 rm -f mailai.defaults.env
 
-# 可选签名：仅在发布流水线注入证书身份时启用（见 docs/代码签名.md）。
-# 本地构建不设置这两个变量，产物保持未签名，行为与之前完全一致。
+# Release builds require a persistent identity; local unsigned previews remain possible.
 if [[ -n "${MAILAI_SIGN_IDENTITY:-}" ]]; then
-  echo "使用开发者证书为应用签名：$MAILAI_SIGN_IDENTITY"
-  codesign --force --options runtime --timestamp --deep \
-    --sign "$MAILAI_SIGN_IDENTITY" dist/MailAI.app
-  codesign --verify --deep --strict --verbose=2 dist/MailAI.app
+  .venv-build/bin/python scripts/macos_signing.py dist/MailAI.app
+  if [[ "${MAILAI_SIGNING_MODE:-}" == "self-signed" ]]; then
+    .venv-build/bin/python scripts/verify_macos_signing_upgrade.py --reference-app dist/MailAI.app
+  fi
+  .venv-build/bin/python scripts/smoke_macos_app.py dist/MailAI.app --verify-keychain-query
+elif [[ "${CI:-}" == "1" ]]; then
+  echo "发布构建缺少固定签名身份，拒绝回退到临时签名。" >&2
+  exit 1
 fi
 
 ditto -c -k --sequesterRsrc --keepParent dist/MailAI.app dist/MailAI-macOS.zip
@@ -129,6 +132,9 @@ pkgbuild \
   --scripts "$PKG_SCRIPTS" \
   dist/MailAI-macOS-arm64.pkg
 echo "pkgbuild 完成"
+if [[ -n "${MAILAI_SIGN_IDENTITY:-}" ]]; then
+  .venv-build/bin/python scripts/verify_macos_package_signature.py dist/MailAI-macOS-arm64.pkg
+fi
 
 if [[ -n "${MAILAI_INSTALLER_IDENTITY:-}" ]]; then
   echo "使用开发者证书为安装器签名：$MAILAI_INSTALLER_IDENTITY"
@@ -146,7 +152,7 @@ ditto dist/MailAI-macOS-arm64.pkg "$DMG_STAGE/安装 MailAI.pkg"
 dmg_mb=$(( $(du -sm "$DMG_STAGE" | cut -f1) + 100 ))
 hdiutil create -quiet -volname MailAI -srcfolder "$DMG_STAGE" -ov -format UDZO \
   -size "${dmg_mb}m" dist/MailAI-macOS-arm64.dmg
-if [[ -n "${MAILAI_SIGN_IDENTITY:-}" ]]; then
+if [[ -n "${MAILAI_SIGN_IDENTITY:-}" && "${MAILAI_SIGNING_MODE:-developer-id}" != "self-signed" ]]; then
   codesign --force --timestamp --sign "$MAILAI_SIGN_IDENTITY" dist/MailAI-macOS-arm64.dmg
   codesign --verify --strict dist/MailAI-macOS-arm64.dmg
 fi

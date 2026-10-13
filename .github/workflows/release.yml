@@ -145,12 +145,14 @@ jobs:
         env:
           MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
           MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_SELF_SIGN_CERTIFICATE: ${{ secrets.MACOS_SELF_SIGN_CERTIFICATE }}
+          MACOS_SELF_SIGN_PASSWORD: ${{ secrets.MACOS_SELF_SIGN_PASSWORD }}
           MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
           MACOS_SIGN_IDENTITY: ${{ vars.MACOS_SIGN_IDENTITY }}
           MACOS_INSTALLER_IDENTITY: ${{ vars.MACOS_INSTALLER_IDENTITY }}
         run: |
           if [ -z "$MACOS_CERTIFICATE" ]; then
-            echo "No signing certificate configured; building unsigned artifacts."
+            python3 scripts/import_macos_self_signing.py
             exit 0
           fi
           CERT_PATH="$RUNNER_TEMP/mailai-cert.p12"
@@ -181,6 +183,9 @@ jobs:
             echo "MAILAI_SIGN_IDENTITY=$SIGN_IDENTITY"
             echo "MAILAI_INSTALLER_IDENTITY=$INSTALLER_IDENTITY"
           } >> "$GITHUB_ENV"
+      - name: Verify real keychain access across signed upgrades
+        if: env.MAILAI_SIGNING_MODE == 'self-signed'
+        run: python3 scripts/verify_macos_signing_upgrade.py
       - name: Build Apple Silicon installer
         shell: bash
         env:
@@ -203,6 +208,12 @@ jobs:
             dist/MailAI-macOS-arm64.pkg.sha256
             dist/MailAI-macOS-arm64.dmg
           if-no-files-found: error
+      - name: Remove temporary self-signing keychain
+        if: always()
+        shell: bash
+        run: |
+          keychain="$RUNNER_TEMP/mailai-self-signing.keychain-db"
+          if [ -f "$keychain" ]; then security delete-keychain "$keychain"; fi
 
   publish:
     needs: [windows-x64, macos-arm64, linux-x64]
