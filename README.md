@@ -5,7 +5,7 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v2.8.8**
+当前版本：**v2.8.9**
 
 本次更新：macOS 应用改用固定自签名证书，钥匙串身份绑定证书与应用标识，不再随每次构建的哈希变化。使用独立测试钥匙串验证不同构建覆盖、重新启动后可无弹窗读取，同时拒绝临时签名和不同应用标识；发布流程缺少固定签名或验证失败会停止，不回退到临时签名。从旧版首次迁移可能仍需一次“始终允许”，完成迁移后，使用同一固定身份的后续版本可延续授权；钥匙串锁定、手动撤销权限或更换证书仍可能要求验证。自签名不等同 Apple Developer ID 或公证，不消除系统安装来源提示，也不更改现有邮箱凭据或放宽钥匙串权限。
 
