@@ -77,7 +77,7 @@
         ).map(scope).join(',');
         if (!selector) continue;
         const background=rule.style.getPropertyValue('background') || rule.style.getPropertyValue('background-color');
-        const onAccent=/var\(--(?:primary|desk-accent|success)/.test(background) || [...background.matchAll(colorToken)].some(match=>{
+        const onAccent=/var\(--(?:primary(?:-deep)?|desk-accent|success)\s*[,)]/.test(background) || [...background.matchAll(colorToken)].some(match=>{
           const color=tone(match[0]);return color && color.alpha>=.8 && color.saturation>.28 && color.light>.2 && color.light<.72;
         });
         let declarations='';
@@ -101,7 +101,7 @@
   }
   let css='';
   for (const sheet of document.styleSheets) {
-    if (!sheet.href?.includes('/static/') || /(?:reward-themes|companion(?:-growth)?)\.css/.test(sheet.href)) continue;
+    if (!sheet.href?.includes('/static/') || /(?:reward-themes|control-theme|date-time-picker|companion(?:-growth)?)\.css/.test(sheet.href)) continue;
     try { css+=bridge(sheet.cssRules); } catch (_) { /* A non-local stylesheet is outside the workspace. */ }
   }
   const style=document.createElement('style');

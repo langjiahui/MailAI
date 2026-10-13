@@ -101,6 +101,13 @@ class AccountGuardMiddleware:
         self.app = app
 
     async def __call__(self, scope, receive, send):
+        from .credential_store import prompt_policy
+        # ContextVars flow through FastAPI's worker threads but are not inherited
+        # by independent scheduler/IDLE threads. GET/status loads stay quiet.
+        with prompt_policy(scope.get('method') == 'POST'):
+            return await self._request(scope, receive, send)
+
+    async def _request(self, scope, receive, send):
         path = scope.get("path", "")
         if scope["type"] != "http" or not path.startswith("/api/"):
             return await self.app(scope, receive, send)

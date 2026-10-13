@@ -1,0 +1,41 @@
+/* Filled actions use one foreground/background pair, including their children.
+ * This final layer also wins over the generated legacy reward-theme bridge. */
+:root { --control-accent:var(--desk-accent); --control-on-accent:#fff; }
+html[data-theme="dark"] { --control-on-accent:#14251c; }
+html[data-reward-theme] {
+  --control-accent:var(--reward-accent);
+  --control-on-accent:var(--reward-on-accent);
+}
+html[data-theme][data-theme][data-theme] body :is(button.primary-action,button.action-primary,button.btn-primary,button.onboarding-submit,
+  #btn-compose,#btn-send-mail,#assistant-send,#task-planner #plan-save,#save-reminder,
+  .library-dialog button[type="submit"],.contact-new-button,#group-add-members,#todo-complete-selected,
+  .compose-ai-main:not(.compose-perch),.preflight-confirm-send,[data-action-confirm]),
+html[data-theme][data-theme][data-theme] body .special-mail-actions #btn-edit-special {
+  background:var(--control-accent)!important;
+  color:var(--control-on-accent)!important;
+  border-color:var(--control-accent)!important;
+}
+html[data-theme][data-theme][data-theme] body :is(button.primary-action,button.action-primary,button.btn-primary,button.onboarding-submit,
+  #btn-compose,#btn-send-mail,#assistant-send,#task-planner #plan-save,#save-reminder,
+  .library-dialog button[type="submit"],.contact-new-button,#group-add-members,#todo-complete-selected,
+  .compose-ai-main:not(.compose-perch),.preflight-confirm-send,[data-action-confirm]) :is(span,svg),
+html[data-theme][data-theme][data-theme] body .special-mail-actions #btn-edit-special :is(span,svg) {
+  color:inherit!important;
+}
+html[data-theme][data-theme][data-theme] body :is(button.primary-action,button.action-primary,button.btn-primary,button.onboarding-submit,
+  #btn-compose,#btn-send-mail,#assistant-send,#task-planner #plan-save,#save-reminder,
+  .library-dialog button[type="submit"],.contact-new-button,#group-add-members,#todo-complete-selected,
+  .compose-ai-main:not(.compose-perch),.preflight-confirm-send,[data-action-confirm]):hover:not(:disabled),
+html[data-theme][data-theme][data-theme] body .special-mail-actions #btn-edit-special:hover:not(:disabled) {
+  background:var(--control-accent)!important;
+  color:var(--control-on-accent)!important;
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--control-accent) 22%,transparent)!important;
+}
+html[data-theme][data-theme][data-theme] body :is(button.primary-action,button.action-primary,button.btn-primary,
+  #btn-compose,#btn-send-mail,#assistant-send,#plan-save,#save-reminder):focus-visible,
+html[data-theme][data-theme][data-theme] body .special-mail-actions #btn-edit-special:focus-visible {
+  outline:2px solid var(--control-accent)!important; outline-offset:3px;
+}
+/* Line icons inherit the action's foreground rather than a theme accent. */
+html[data-theme][data-theme][data-theme] body .special-mail-actions #btn-edit-special svg,
+html[data-theme][data-theme][data-theme] body #assistant-send svg path { stroke:currentColor!important; }

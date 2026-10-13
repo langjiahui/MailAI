@@ -766,30 +766,35 @@ button.loading::before {
 .feedback-fn .feedback-impact { border-color:rgba(177,86,73,.11); color:#80564e; background:rgba(252,235,232,.66); }
 .feedback-fn .feedback-impact::before { content:'!'; background:#bd6659; }
 .feedback-impact b { font-size:11.5px; }
-.feedback-impact span { grid-column:2; color:#6f8179; font-size:10px; line-height:1.5; }
+.feedback-impact > span { grid-column:2; color:#6f8179; font-size:11.5px; line-height:1.6; }
+.feedback-impact b > span { color:inherit; font:inherit; }
 .feedback-reason-fieldset { min-width:0; margin:0; padding:0; border:0; }
 .feedback-reason-fieldset legend { width:100%; margin-bottom:10px; color:#344b42; font-size:12px; font-weight:750; }
 .feedback-reason-fieldset legend small { margin-left:6px; color:#8b9893; font-size:9.5px; font-weight:500; }
-.feedback-reasons { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
-.feedback-reasons button { display:flex; align-items:center; justify-content:flex-start; gap:7px; min-width:0; min-height:38px; padding:8px 10px; border:1px solid rgba(54,102,83,.11); border-radius:11px; color:#50675e; background:rgba(255,255,255,.72); font-size:10.5px; cursor:pointer; transition:.15s ease; }
-.feedback-reasons button span { display:grid; place-items:center; width:16px; height:16px; flex:0 0 16px; border:1px solid #a7b9b1; border-radius:6px; color:transparent; font-size:9px; }
+.feedback-reasons { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.feedback-reasons button { display:flex; align-items:center; justify-content:flex-start; gap:9px; min-width:0; min-height:44px; padding:10px 12px; border:1px solid rgba(54,102,83,.11); border-radius:11px; color:#50675e; background:rgba(255,255,255,.72); font:inherit; font-size:12px; line-height:1.45; text-align:start; cursor:pointer; transition:border-color .15s ease,background-color .15s ease,box-shadow .15s ease; }
+/* The first span is the checkmark; i18n adds another span for the reason text. */
+.feedback-reasons button > span:first-child { display:grid; place-items:center; width:18px; height:18px; flex:0 0 18px; border:1px solid #a7b9b1; border-radius:6px; color:transparent; font-size:10px; }
+.feedback-reasons button > span[data-i18n] { display:block; min-width:0; flex:1; color:inherit; font:inherit; white-space:normal; overflow-wrap:anywhere; }
 .feedback-reasons button:hover { border-color:rgba(55,125,96,.27); background:#fff; }
 .feedback-reasons button:focus-visible { outline:3px solid rgba(55,125,96,.13); outline-offset:2px; border-color:rgba(55,125,96,.34); }
 .feedback-reasons button.selected { border-color:rgba(55,125,96,.36); color:#2f6f56; background:#eaf5ef; box-shadow:0 0 0 2px rgba(55,125,96,.07); }
-.feedback-reasons button.selected span { color:#fff; border-color:#3d8266; background:#3d8266; }
+.feedback-reasons button.selected > span:first-child { color:#fff; border-color:#3d8266; background:#3d8266; }
 .feedback-fn .feedback-reasons button.selected { border-color:rgba(181,91,78,.3); color:#965044; background:#fbebe8; box-shadow:0 0 0 2px rgba(181,91,78,.06); }
-.feedback-fn .feedback-reasons button.selected span { border-color:#b96054; background:#b96054; }
+.feedback-fn .feedback-reasons button.selected > span:first-child { border-color:#b96054; background:#b96054; }
 .feedback-note-label { position:relative; display:grid; gap:8px; color:#344b42; font-size:12px; font-weight:750; }
 .feedback-note-label > span small { color:#919e98; font-size:9.5px; font-weight:500; }
 .feedback-note-label textarea { width:100%; min-height:86px; box-sizing:border-box; resize:vertical; padding:11px 13px 24px; border:1px solid rgba(50,100,80,.13); border-radius:12px; outline:0; color:#31463e; background:rgba(255,255,255,.76); font:inherit; font-size:11px; line-height:1.6; }
 .feedback-note-label textarea:focus { border-color:rgba(52,126,96,.38); background:#fff; box-shadow:0 0 0 3px rgba(52,126,96,.08); }
-.feedback-note-label em { position:absolute; right:10px; bottom:8px; color:#9ba6a1; font-size:9px; font-style:normal; font-weight:500; }
+.feedback-note-label em { position:absolute; right:22px; bottom:10px; color:#9ba6a1; font-size:10px; font-style:normal; font-weight:500; }
 .feedback-privacy { margin:0; color:#96a19c; font-size:9.5px; }
 .feedback-actions { display:flex; justify-content:flex-end; gap:9px; padding:14px 22px 19px; border-top:1px solid rgba(53,101,82,.08); background:rgba(255,255,255,.35); }
 .feedback-actions .action-btn { min-width:100px; min-height:38px; border-radius:11px; }
 .feedback-fn .feedback-actions .action-primary { border-color:#b95f53; background:#b95f53; }
 body.feedback-open .mail-assistant { opacity:0; visibility:hidden; pointer-events:none; }
 @media(max-width:560px){.feedback-header{padding:17px}.feedback-modal-body{padding:16px 17px}.feedback-reasons{grid-template-columns:repeat(2,minmax(0,1fr))}.feedback-actions{padding:13px 17px 17px}.feedback-heading-icon{display:none}}
+@media(max-width:400px){.feedback-reasons{grid-template-columns:minmax(0,1fr)}.feedback-actions .action-btn{min-width:0;flex:1}}
+@media(prefers-reduced-motion:reduce){.feedback-reasons button{transition:none}}
 .digest-empty {
   text-align: center;
   padding: 40px 20px;
@@ -1099,7 +1104,7 @@ body.feedback-open .mail-assistant { opacity:0; visibility:hidden; pointer-event
 .contact-pick-check span { width:20px; height:20px; display:grid; place-items:center; border:1.5px solid #86a99b; border-radius:7px; color:white; font-size:11px; }
 .contact-center-item.selected .contact-pick-check span { border-color:#398064; background:#398064; }
 .contact-empty { display:grid; justify-items:center; gap:7px; padding:90px 20px; color:#82918b; text-align:center; }
-.contact-empty span { width:52px; height:52px; display:grid; place-items:center; border-radius:16px; color:#3f8067; background:#e2f0ea; font-size:25px; }
+.contact-empty>span:first-child:not([data-i18n]) { width:52px; height:52px; display:grid; place-items:center; border-radius:16px; color:#3f8067; background:#e2f0ea; font-size:25px; }
 .contact-empty b { color:#52675f; font-size:14px; }
 .contact-empty small { font-size:10.5px; }
 .contact-picker-footer { display:flex; align-items:center; justify-content:space-between; padding:13px 24px; border-top:1px solid rgba(48,104,86,.1); background:rgba(255,255,255,.46); }

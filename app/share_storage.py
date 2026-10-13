@@ -30,6 +30,7 @@ def _secret_name() -> str:
     return "cos-share:" + _account_id()
 
 
+@credential_store.quiet
 def public_config() -> dict:
     raw = db.get_runtime_settings().get(_SETTING, "")
     try:
@@ -57,6 +58,10 @@ def save_config(bucket: str, region: str, secret_id: str, secret_key: str = "") 
         raise ValueError("地域格式不正确，例如 ap-guangzhou")
     if not re.fullmatch(r"[A-Za-z0-9_-]{8,128}", secret_id):
         raise ValueError("SecretId 格式不正确")
+    if not secret_key:
+        # Saving an existing connection is an explicit user action; its quiet
+        # status response must not prevent authorization of the saved key.
+        credential_store.load(_secret_name())
     previous = public_config()
     if not secret_key and secret_id != previous["secret_id"]:
         raise ValueError("更换 SecretId 时请同时填写 SecretKey")
@@ -83,6 +88,7 @@ def _client(settings: dict):
 
 
 def _upload_file(path: str, filename: str, size: int, days: int, object_id: str = "") -> dict:
+    credential_store.load(_secret_name())
     settings = public_config()
     if not settings["bucket"] or not settings["region"] or not settings["credential_available"]:
         raise ValueError("请先配置腾讯云 COS")

@@ -21,6 +21,10 @@ for stream in (sys.stdout, sys.stderr):
     if reconfigure:
         reconfigure(encoding="utf-8", errors="backslashreplace")
 TESTS = (
+    'test_credential_store.py',
+    'test_keychain_startup.py',
+    'test_macos_keychain.py',
+    'test_macos_credential_vault.py',
     'test_i18n_service_copy.py',
     'test_i18n_native.py',
     'test_energy_scheduler.py',

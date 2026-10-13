@@ -12,8 +12,8 @@ from app import dingtalk_remote as ding, weixin_remote as wx
 
 
 def main():
-    from app import credential_store
-    with patch.object(credential_store,'_keyring',return_value=None),patch.object(credential_store.platform,'system',return_value='Darwin'),patch.object(credential_store.subprocess,'run',side_effect=subprocess.CalledProcessError(1,['security','-w','fixture-private-secret'])):
+    from app import credential_store, macos_credential_vault
+    with patch.object(credential_store.platform,'system',return_value='Darwin'),patch.object(macos_credential_vault,'put',side_effect=OSError('fixture-private-secret')):
         with unittest.TestCase().assertLogs('app.credential_store',level='WARNING') as logs:
             assert not credential_store.save('fixture','fixture-private-secret')
         assert 'fixture-private-secret' not in '\n'.join(logs.output)

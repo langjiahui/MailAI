@@ -1,0 +1,67 @@
+/* Explicit semantic colors: excluded from the legacy theme translator.
+ * Host scope outranks dialog ID rules and the bridge's added theme scope. */
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control).datetime-control { display:inline-flex; position:relative; width:100%; min-width:0; vertical-align:middle; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) input.datetime-source {
+  position:absolute!important; width:1px!important; height:1px!important; min-width:0!important; min-height:0!important;
+  padding:0!important; border:0!important; margin:0!important; opacity:0!important; pointer-events:none!important; clip-path:inset(50%);
+}
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-trigger {
+  display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; min-width:0; min-height:40px;
+  padding:10px 12px; border:1px solid var(--desk-line)!important; border-radius:10px;
+  background:var(--desk-muted-surface)!important; color:var(--desk-ink)!important;
+  box-shadow:none!important; font:inherit; font-size:13px; line-height:1.4; text-align:start; cursor:pointer;
+}
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-trigger span { color:inherit!important; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-trigger.is-empty { color:var(--desk-muted)!important; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-trigger svg { flex:0 0 18px; width:18px; height:18px; fill:none!important; stroke:currentColor!important; stroke-width:1.5; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-trigger:hover:not(:disabled) { border-color:var(--desk-accent)!important; background:var(--desk-hover)!important; transform:none!important; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-trigger:disabled { opacity:.5; cursor:default; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-trigger:focus-visible,
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-panel :is(button,select,input):focus-visible { outline:2px solid var(--desk-accent)!important; outline-offset:2px; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-panel {
+  display:none; position:fixed; inset:auto; margin:0; box-sizing:border-box; width:340px; max-width:calc(100vw - 16px);
+  max-height:calc(100dvh - 16px); overflow:auto; padding:16px; z-index:30000;
+  border:1px solid var(--desk-line)!important; border-radius:16px;
+  background:var(--desk-surface)!important; color:var(--desk-ink)!important;
+  box-shadow:0 12px 40px rgba(0,0,0,.22)!important; font:inherit; font-size:13px; line-height:1.4;
+}
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-panel:popover-open,
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-panel.is-open { display:block; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-panel::backdrop { background:transparent; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-panel :is(button,select,input) { box-sizing:border-box; font:inherit; color:var(--desk-ink)!important; box-shadow:none!important; transform:none!important; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-panel button { border:1px solid transparent!important; border-radius:8px; background:transparent!important; cursor:pointer; padding:7px 9px; line-height:1.4; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-panel button:hover:not(:disabled) { background:var(--desk-hover)!important; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-panel button:disabled { opacity:.35; cursor:default; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-heading { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-heading strong { color:var(--desk-ink)!important; font-size:14px; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-panel .datetime-dismiss { padding:3px 9px; font-size:20px; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-shortcuts { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-panel .datetime-shortcut { padding:6px 9px; font-size:12px; color:var(--desk-accent)!important; background:var(--desk-selected)!important; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-navigation { display:flex; gap:6px; align-items:center; margin-bottom:10px; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-navigation select { width:auto; min-width:0; min-height:34px; padding:5px 27px 5px 9px!important; border:1px solid var(--desk-line)!important; border-radius:8px; background-color:var(--desk-muted-surface)!important; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-navigation select:first-of-type { flex:1; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-panel .datetime-month-step { font-size:20px; padding:2px 10px; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-weekdays,
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-calendar { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:3px; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-weekdays { margin-bottom:5px; text-align:center; font-size:11px; color:var(--desk-muted)!important; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-panel .datetime-day { min-height:34px; padding:5px 0; font-size:13px; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-panel .datetime-day.is-outside { color:var(--desk-muted)!important; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-panel .datetime-day.is-today { border-color:var(--desk-accent)!important; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-panel .datetime-day[aria-pressed="true"],
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-panel .datetime-apply {
+  color:var(--control-on-accent)!important; background:var(--control-accent)!important; border-color:var(--control-accent)!important;
+}
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-panel :is(.datetime-day[aria-pressed="true"],.datetime-apply):hover:not(:disabled) { background:var(--control-accent)!important; box-shadow:0 0 0 2px var(--desk-selected)!important; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-time { display:grid; grid-template-columns:1fr 1fr; gap:10px; padding-top:12px; margin-top:12px; border-top:1px solid var(--desk-line); }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-time label { display:grid; gap:5px; margin:0; font-size:12px; color:var(--desk-muted)!important; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-time label span { color:var(--desk-muted)!important; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-time input { width:100%; min-width:0; min-height:40px; padding:8px 10px; border:1px solid var(--desk-line)!important; border-radius:8px; background:var(--desk-muted-surface)!important; font-size:16px; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-local-hint { grid-column:1/-1; font-size:11px; color:var(--desk-muted)!important; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-status { min-height:18px; margin:12px 0; font-size:12px; color:var(--desk-muted)!important; overflow-wrap:anywhere; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-footer { display:flex; align-items:center; justify-content:flex-end; gap:6px; padding-top:10px; border-top:1px solid var(--desk-line); }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-panel .datetime-clear { margin-right:auto; color:var(--desk-muted)!important; }
+html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-panel [hidden] { display:none!important; }
+@media(max-width:420px) {
+  html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-panel { width:calc(100vw - 16px); padding:12px; }
+  html[data-theme][data-theme] body :is(#task-planner,#reminder-dialog,.datetime-control) .datetime-panel .datetime-day { min-height:38px; }
+}

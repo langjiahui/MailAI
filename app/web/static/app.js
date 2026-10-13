@@ -337,6 +337,46 @@ function applyContactSelection(input, selected, contacts) {
 
 let contactLoadRevision = 0;
 let contactCenterHasMore = false;
+let contactFilterTransitionDirection = 0;
+let contactFilterAnimation = null;
+function updateContactCenterFilter() {
+  const filters = document.getElementById('contact-center-filters');
+  filters.dataset.filter = contactCenterFilter;
+  filters.querySelectorAll('[data-contact-filter]').forEach(button => {
+    const active = button.dataset.contactFilter === contactCenterFilter;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
+}
+
+function finishContactFilterTransition(animate = true) {
+  const list = document.getElementById('contact-center-list');
+  const direction = contactFilterTransitionDirection;
+  contactFilterTransitionDirection = 0;
+  list.classList.remove('is-filter-switching');
+  list.removeAttribute('aria-busy');
+  contactFilterAnimation?.cancel();
+  contactFilterAnimation = null;
+  if (animate && direction && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    contactFilterAnimation = list.animate([
+      {opacity:.55, transform:`translateX(${direction * 8}px)`},
+      {opacity:1, transform:'translateX(0)'}
+    ], {duration:190, easing:'cubic-bezier(.2,.7,.2,1)'});
+  }
+}
+
+function selectContactCenterFilter(button) {
+  if (!contactCenterSession || !button || button.dataset.contactFilter === contactCenterFilter) return;
+  contactCenterFilter = button.dataset.contactFilter;
+  updateContactCenterFilter();
+  contactFilterAnimation?.cancel();
+  contactFilterTransitionDirection = contactCenterFilter === 'favorite' ? 1 : -1;
+  const list = document.getElementById('contact-center-list');
+  list.setAttribute('aria-busy', 'true');
+  list.classList.add('is-filter-switching');
+  loadContactCenter();
+}
+
 async function loadContactCenter(more = false) {
   if (!contactCenterSession) return;
   const revision = ++contactLoadRevision;
@@ -356,8 +396,12 @@ async function loadContactCenter(more = false) {
     await window.mailaiDirectoryRefresh?.();
     if (revision !== contactLoadRevision) return;
     renderContactCenter();
+    finishContactFilterTransition();
   } catch (error) {
-    if (revision === contactLoadRevision) document.getElementById('contact-center-list').innerHTML = `<div class="contact-empty"><b><span data-i18n="ui.c86bef9ec60d">通讯录加载失败</span></b><small>${esc(mailaiSystemMessage(error.message))}</small></div>`;
+    if (revision === contactLoadRevision) {
+      document.getElementById('contact-center-list').innerHTML = `<div class="contact-empty"><b><span data-i18n="ui.c86bef9ec60d">通讯录加载失败</span></b><small>${esc(mailaiSystemMessage(error.message))}</small></div>`;
+      finishContactFilterTransition();
+    }
   } finally {
     if (selectAll && revision === contactLoadRevision) selectAll.disabled = false;
   }
@@ -386,7 +430,8 @@ async function openContactCenter(target = '') {
   const owner = (_systemConfig?.accounts || []).find(account => account.id === contactCenterAccountId);
   mailaiBindUI(document.getElementById('contact-center-description'), "textContent", () => (`${owner?.user || (mailaiT('contact.currentAccount') || '当前邮箱')} · ` + (target ? (mailaiT('contact.descPick') || '勾选或取消勾选后点击应用；未完成的手输内容会保留') : (mailaiT('contact.desc') || '常用联系人优先显示，可补充姓名和公司'))));
   document.getElementById('contact-center-search').value = '';
-  document.querySelectorAll('[data-contact-filter]').forEach(button => button.classList.toggle('active', button.dataset.contactFilter === contactCenterFilter));
+  updateContactCenterFilter();
+  finishContactFilterTransition(false);
   document.getElementById('contact-center').classList.remove('hidden');
   document.body.classList.add('modal-open');
   await loadContactCenter();
@@ -394,6 +439,7 @@ async function openContactCenter(target = '') {
 
 function closeContactCenter() {
   ++contactLoadRevision;
+  finishContactFilterTransition(false);
   clearTimeout(contactSearchTimer);
   contactCenterSession = null; contactEditorSession = null;
   contactCenterAccountId = '';
@@ -5045,6 +5091,7 @@ function dismissMailboxSyncTracker(tracker, signature) {
 }
 
 function accountSyncLabel(account) {
+  if (account.credential_authorization_required) return mailaiText('点击邮箱解锁凭据');
   if (!account.credential_available) return mailaiText('需要重新登录');
   if (account.auto_sync_paused && account.sync_status !== 'running') return mailaiText('自动收信已暂停');
   if (account.sync_status === 'running') {
@@ -5204,8 +5251,15 @@ function renderSidebarAccounts() {
 }
 
 async function activateMailAccount(accountId, {keepMailbox = false, quiet = false} = {}) {
-  const account = (_systemConfig?.accounts || []).find(item => item.id === accountId);
+  let account = (_systemConfig?.accounts || []).find(item => item.id === accountId);
+  let preferenceSaved = false;
   if (!account) throw new Error(mailaiText('邮箱账号不存在'));
+  if (account.credential_authorization_required) {
+    await api('/api/system/mail/preferred', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({account_id:accountId})});
+    preferenceSaved = true;
+    await loadSystemConfig();
+    account = (_systemConfig?.accounts || []).find(item => item.id === accountId);
+  }
   if (!account.credential_available) {
     showSystemView('account');
     selectedManagedAccountId = account.id;
@@ -5213,7 +5267,7 @@ async function activateMailAccount(accountId, {keepMailbox = false, quiet = fals
     throw new Error(mailaiText('该邮箱需要重新登录'));
   }
   if (!account.active) {
-    await api('/api/system/mail/preferred', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({account_id:accountId})});
+    if (!preferenceSaved) await api('/api/system/mail/preferred', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({account_id:accountId})});
     window.assistantAttachments?.clear(); assistantLastAttachments=[];
     window.assistantImages?.clear(); assistantLastImages = []; assistantLastQuestion = ''; assistantLastScope = null; assistantLastAlertContext = false;
     assistantController?.abort(); assistantController = null; ++assistantRevision;
@@ -5668,7 +5722,7 @@ async function loadSystemConfig() {
   document.getElementById('account-count').textContent = String(accounts.length);
   accountsHost.classList.toggle('hidden', accounts.length < 1);
   accountsHost.innerHTML = accounts.length ? `<div class="saved-account-list">${accounts.map(account => {
-    const state = account.active ? (mailaiT('acct.stateActive') || '当前发件账号') : account.credential_available ? (mailaiT('acct.stateReady') || '已连接') : (mailaiT('acct.stateReauth') || '需重新登录');
+    const state = account.credential_authorization_required ? mailaiText('等待解锁') : account.active ? (mailaiT('acct.stateActive') || '当前发件账号') : account.credential_available ? (mailaiT('acct.stateReady') || '已连接') : (mailaiT('acct.stateReauth') || '需重新登录');
     const stateClass = account.active ? 'current' : account.credential_available ? 'ready' : 'reauth';
     const selected = account.id === selectedManagedAccountId;
     return `<button type="button" class="saved-account ${account.active ? 'active' : ''} ${selected ? 'selected' : ''}" data-account-id="${esc(account.id)}" aria-pressed="${selected}" title="管理 ${esc(account.user)}" data-i18n-title="ui.e3ee2c47a190">
@@ -5698,16 +5752,16 @@ function renderAccountSelection() {
     button.classList.toggle('selected', selected);
     button.setAttribute('aria-pressed', String(selected));
   });
-  mailaiBindUI(status, "textContent", () => (account ? (account.credential_available ? (mailaiT('acct.credOk') || '授权码可用') : (mailaiT('acct.credNeeded') || '需要登录')) : (mailaiT('acct.notConnected') || '未连接')));
+  mailaiBindUI(status, "textContent", () => (account?.credential_authorization_required ? mailaiText('等待解锁') : account ? (account.credential_available ? (mailaiT('acct.credOk') || '授权码可用') : (mailaiT('acct.credNeeded') || '需要登录')) : (mailaiT('acct.notConnected') || '未连接')));
   status.className = `connection-status ${account?.credential_available ? 'connected' : account ? 'failed' : ''}`;
   if (!account) return;
   document.getElementById('selected-account-avatar').textContent = accountMark(account);
   mailaiBindUI(document.getElementById('selected-account-role'), "textContent", () => (account.active ? (mailaiT('acct.stateActive') || '当前发件账号') : (mailaiT('acct.roleConnected') || '已连接邮箱')));
   mailaiBindUI(document.getElementById('selected-account-name'), 'textContent', () => account.user);
-  mailaiBindUI(document.getElementById('selected-account-help'), "textContent", () => (account.credential_available
-    ? (account.credential_storage === 'session' ? (mailaiT('acct.helpSession') || '授权码仅本次运行有效，退出软件后需要重新登录') : (mailaiT('acct.helpSaved') || '连接信息已保存，可随时更新授权码'))
+  mailaiBindUI(document.getElementById('selected-account-help'), "textContent", () => (account.credential_authorization_required ? mailaiText('点击解锁。已迁移的凭据共用保险库；旧凭据首次迁移可能仍需逐项授权。') : account.credential_available
+    ? (account.credential_migrated ? mailaiText('已迁入统一保险库，其他已迁移的邮箱无需单独授权。') : account.credential_storage === 'session' ? (mailaiT('acct.helpSession') || '授权码仅本次运行有效，退出软件后需要重新登录') : (mailaiT('acct.helpSaved') || '连接信息已保存，可随时更新授权码'))
     : (mailaiT('acct.helpMissing') || '本机没有可用授权码，请重新登录')));
-  mailaiBindUI(document.getElementById('btn-manage-mail'), "textContent", () => (account.credential_available ? (mailaiT('acct.updateBtn') || '更新登录信息') : (mailaiT('acct.reloginBtn') || '重新登录')));
+  mailaiBindUI(document.getElementById('btn-manage-mail'), "textContent", () => (account.credential_authorization_required ? mailaiText('解锁凭据') : account.credential_available ? (mailaiT('acct.updateBtn') || '更新登录信息') : (mailaiT('acct.reloginBtn') || '重新登录')));
   mailaiBindUI(document.getElementById('selected-account-state'), "textContent", () => (mailaiSystemMessage(account.sync_error) ? (mailaiT('acct.syncFailed') || '最近同步失败') : account.last_sync ? (mailaiT('acct.lastSync') || '最近同步：') + fmtDate(account.last_sync) : (mailaiT('acct.noSync') || '尚无成功同步记录')));
   mailaiBindUI(document.getElementById('selected-account-host'), "textContent", () => (account.host || (mailaiT('acct.autoHost') || '自动识别')));
 }
@@ -7752,10 +7806,17 @@ document.getElementById('contact-center-search').addEventListener('input', () =>
 });
 document.getElementById('contact-center-filters').addEventListener('click', event => {
   const button = event.target.closest('[data-contact-filter]');
-  if (!button) return;
-  contactCenterFilter = button.dataset.contactFilter;
-  document.querySelectorAll('[data-contact-filter]').forEach(item => item.classList.toggle('active', item === button));
-  loadContactCenter();
+  selectContactCenterFilter(button);
+});
+document.getElementById('contact-center-filters').addEventListener('keydown', event => {
+  const buttons = [...event.currentTarget.querySelectorAll('[data-contact-filter]')];
+  const index = buttons.indexOf(event.target.closest('[data-contact-filter]'));
+  if (index < 0 || !['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+  event.preventDefault();
+  const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1
+    : (index + (event.key === 'ArrowRight' ? 1 : -1) + buttons.length) % buttons.length;
+  buttons[next].focus({preventScroll:true});
+  selectContactCenterFilter(buttons[next]);
 });
 document.getElementById('contact-center-list').addEventListener('click', async event => {
   const session = contactCenterSession;
@@ -8332,8 +8393,16 @@ document.getElementById('saved-accounts').addEventListener('click', async event 
 });
 document.getElementById('btn-add-mail').addEventListener('click', () => openMailAddPanel());
 document.getElementById('btn-cancel-add-mail').addEventListener('click', closeMailAddPanel);
-document.getElementById('btn-manage-mail').addEventListener('click', () => {
+document.getElementById('btn-manage-mail').addEventListener('click', async () => {
   const account = selectedManagedAccount();
+  if (account?.credential_authorization_required) {
+    const button = document.getElementById('btn-manage-mail');
+    button.disabled = true;
+    try { await activateMailAccount(account.id, {keepMailbox:true}); await loadSystemConfig(); }
+    catch (error) { await loadSystemConfig().catch(() => {}); toast(mailaiSystemMessage(error.message), 'warn'); }
+    finally { button.disabled = false; }
+    return;
+  }
   if (account) openMailAddPanel(account);
 });
 function openLogoutDialog(accountId = selectedManagedAccountId) {

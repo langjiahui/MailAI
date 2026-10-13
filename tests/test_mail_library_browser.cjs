@@ -6,6 +6,14 @@ const assert = require('node:assert/strict');
  const page=await browser.newPage({viewport:{width:1440,height:1000},reducedMotion:'reduce'});
  page.setDefaultTimeout(10000);
  const errors=[]; page.on('pageerror',e=>errors.push(e.message));
+ async function chooseDate(id,value) {
+  await page.locator(`#${id} + .datetime-trigger`).click();
+  const panel=page.locator('.datetime-panel:visible');
+  await panel.locator('.datetime-navigation select').last().selectOption(value.slice(0,4));
+  await panel.locator('.datetime-navigation select').first().selectOption(String(Number(value.slice(5,7))-1));
+  await panel.locator(`[data-date="${value}"]`).click();
+  await panel.locator('.datetime-apply').click();
+ }
  try {
   await page.goto('http://127.0.0.1:18795');
   await page.waitForSelector('#email-list .email-item');
@@ -83,8 +91,8 @@ const assert = require('node:assert/strict');
    await page.waitForSelector('#backup-list [data-restore-backup]');
    await page.locator('#backup-list [data-restore-backup]').first().click();
    const today=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Shanghai'});
-   await page.locator('#restore-start').fill('2026-01-01');
-   await page.locator('#restore-end').fill('2026-12-31');
+   await chooseDate('restore-start','2026-01-01');
+   await chooseDate('restore-end','2026-12-31');
    await page.screenshot({path:`build/mail-library-restore-${theme}.png`});
    await page.locator('#restore-submit').click();
    await page.waitForFunction(()=>!document.getElementById('backup-restore-dialog').open);

@@ -130,7 +130,10 @@ def initialize_current_account():
         ordered = sorted(visible, key=lambda pair: pair[0] != preferred)
         selected = None
         for key, item in ordered:
-            password = account_password(key)
+            # Only the preferred (or first) mailbox may ask at startup. Other
+            # saved accounts are recovered silently if already authorized.
+            with credential_store.prompt_policy(key == ordered[0][0]):
+                password = account_password(key)
             if password:
                 selected = (key, item, password)
                 break
@@ -216,6 +219,7 @@ def unread_inbox_count() -> int:
     return total
 
 
+@credential_store.quiet
 def public_config() -> dict:
     from . import pipeline
     registry = _load_registry()
@@ -301,6 +305,10 @@ def public_config() -> dict:
             {"id": account_id, "user": item.get("user", ""), "host": item.get("host", ""),
              "active": bool(account_password(account_id)) and account_id == registry.get("last_account"),
              "credential_available": bool(account_password(account_id)),
+             "credential_authorization_required": credential_store.authorization_required(
+                 'oauth:' + account_id if item.get('auth_type') == 'oauth2' else account_id),
+             "credential_migrated": credential_store.is_migrated(
+                 'oauth:' + account_id if item.get('auth_type') == 'oauth2' else account_id),
              "credential_storage": item.get("credential_storage", "vault"),
              "auth_type": item.get('auth_type', 'password'),
              "auto_sync_paused": bool(item.get("auto_sync_paused", False)), **local_counts(item)}

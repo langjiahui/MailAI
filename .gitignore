@@ -31,4 +31,6 @@ issuer.pem
 *.mailaigift
 .mailai-gift-issuer/
 ui-preferences.sqlite3*
+credentials.v1.enc
+.credential-vault-*
 webview/

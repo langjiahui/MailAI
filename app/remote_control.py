@@ -136,6 +136,7 @@ def secret_key(client_id):
     return 'remote-dingtalk:' + client_id
 
 
+@credential_store.quiet
 def public_config(channel='dingtalk'):
     saved = settings(channel)
     accounts = system_settings._load_registry().get('accounts', {})

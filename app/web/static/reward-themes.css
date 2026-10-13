@@ -97,6 +97,16 @@ html[data-theme][data-reward-theme] body :is(#btn-compose,#btn-compose:hover,#bt
   background:var(--reward-accent)!important; color:var(--reward-on-accent)!important; border-color:var(--reward-accent)!important; box-shadow:none!important;
 }
 html[data-theme][data-reward-theme] body .compose-send-button { background:var(--reward-accent)!important; color:var(--reward-on-accent)!important; }
+html[data-theme][data-reward-theme] body .feedback-reasons button.selected > span:first-child {
+  background:var(--reward-accent)!important; color:var(--reward-on-accent)!important; border-color:var(--reward-accent)!important;
+}
+html[data-theme][data-reward-theme] body .feedback-reasons button {
+  color:var(--reward-ink)!important; background:var(--reward-soft)!important;
+}
+html[data-theme][data-reward-theme] body .feedback-reasons button.selected {
+  background:var(--reward-selected)!important; border-color:var(--reward-accent)!important;
+}
+html[data-theme][data-reward-theme] body .feedback-reasons button > span[data-i18n] { color:inherit!important; }
 /* Keep the primary action above the native-window hover palette. */
 html[data-theme][data-reward-theme]:is(html,.integrated-workspace,.desktop-native-window) body .topbar #btn-compose {
   transition:background-color .16s ease,border-color .16s ease,box-shadow .16s ease;

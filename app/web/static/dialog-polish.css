@@ -141,6 +141,21 @@ html[data-theme] body .compose-card .compose-format-group {
   border-radius:0; background:transparent!important; box-shadow:none!important;
 }
 html[data-theme] body .compose-card .compose-format-group:last-child { border-right:0!important; }
+
+/* Short, quiet separators instead of full-height borders between tool groups. */
+html[data-theme][data-theme] body .compose-card .compose-toolbar .compose-format-group {
+  position:relative; border:0!important;
+  padding-inline:4px 12px;
+}
+html[data-theme][data-theme] body .compose-card .compose-toolbar .compose-format-group:not(:last-child)::after {
+  content:""; position:absolute; inset-inline-end:0; top:50%;
+  width:1px; height:16px; transform:translateY(-50%); border-radius:1px;
+  background:color-mix(in srgb,var(--desk-ink) 16%,transparent);
+  pointer-events:none;
+}
+@media(max-width:760px) {
+  html[data-theme][data-theme] body .compose-card .compose-toolbar .compose-format-group:not(:last-child)::after { display:none; }
+}
 html[data-theme] body .compose-card .compose-format-tools :is(button,select) {
   min-height:30px; border-radius:7px; font-size:12px;
 }

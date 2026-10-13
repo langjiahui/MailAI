@@ -494,3 +494,66 @@ html[data-theme] body .reading-header .reading-work-actions button[data-reading-
 html[data-theme="dark"] body .reading-header .reading-work-actions button[data-reading-action="favorite"][aria-pressed="true"] svg {
   color:#e9b95d;
 }
+
+/* Reading toolbar: separate mail and AI actions with air, using the live palette. */
+html[data-theme] body .reading-header .reading-header-inner .reading-actions {
+  column-gap:8px; row-gap:10px;
+}
+html[data-theme] body .reading-header .reading-header-inner .reading-actions>.reading-ai-group {
+  margin-inline-start:10px; padding-inline-start:0!important;
+  border-left:0!important; border-inline-start:0!important;
+}
+html[data-theme] body .reading-header .reading-header-inner .reading-actions>.reading-risk-group {
+  margin-inline-start:10px; padding-inline-start:0!important;
+  border-left:0!important; border-inline-start:0!important;
+}
+html[data-theme] body .reading-header .reading-header-inner .reading-actions .reading-reply-divider {
+  display:none;
+}
+html[data-theme] body .reading-header .reading-header-inner .reading-actions :is(
+  .reading-mail-group .reading-icon-action,.reading-mail-group .reading-work-actions>button,
+  .reading-ai-group>button,.reading-summary-control,.reading-more-actions>summary
+) {
+  border-color:transparent!important; border-radius:9px;
+  background-color:transparent!important; background-image:none!important; color:var(--desk-ink)!important;
+  box-shadow:none!important; transform:none!important; filter:none!important;
+  transition:background-color .16s ease,border-color .16s ease,color .16s ease;
+}
+html[data-theme] body .reading-header .reading-header-inner .reading-actions :is(
+  .reading-mail-group .reading-icon-action,.reading-mail-group .reading-work-actions>button,
+  .reading-ai-group>button,.reading-summary-control,.reading-more-actions>summary
+):hover:not(:disabled),
+html[data-theme] body .reading-header .reading-header-inner .reading-actions>.reading-more-actions[open]>summary {
+  background-color:var(--desk-hover)!important; color:var(--desk-ink)!important;
+  border-color:color-mix(in srgb,var(--desk-accent) 24%,var(--desk-line))!important;
+}
+html[data-theme] body .reading-header .reading-header-inner .reading-actions :is(
+  .reading-mail-group button.reading-primary-action,.reading-summary-control[aria-expanded="true"]
+) {
+  background-color:var(--desk-selected)!important; color:var(--desk-accent)!important;
+  border-color:color-mix(in srgb,var(--desk-accent) 24%,var(--desk-line))!important;
+}
+html[data-theme] body .reading-header .reading-header-inner .reading-actions :is(
+  .reading-mail-group button.reading-primary-action,.reading-summary-control[aria-expanded="true"]
+):hover:not(:disabled) {
+  background-color:var(--desk-selected)!important; color:var(--desk-accent)!important;
+  border-color:color-mix(in srgb,var(--desk-accent) 52%,var(--desk-line))!important;
+}
+html[data-theme] body .reading-header .reading-header-inner .reading-actions :is(
+  .reading-mail-group .reading-icon-action,.reading-mail-group .reading-work-actions>button,
+  .reading-ai-group>button,.reading-summary-control,.reading-more-actions>summary
+):focus-visible {
+  outline:2px solid var(--desk-accent)!important; outline-offset:3px;
+}
+html[data-theme] body .reading-header .reading-header-inner .reading-actions :is(
+  .reading-mail-group .reading-icon-action,.reading-mail-group .reading-work-actions>button,.reading-ai-group>button
+):disabled { opacity:.48; cursor:default; }
+@media(max-width:760px) {
+  html[data-theme] body .reading-header .reading-header-inner .reading-actions>.reading-ai-group,
+  html[data-theme] body .reading-header .reading-header-inner .reading-actions>.reading-risk-group {
+    margin-inline-start:0;
+  }
+}
+@media(prefers-reduced-motion:reduce) {
+  html[data-theme] body .reading-header .reading-header-inner .reading-actions :is(button,summary) { transition:none; }
+}
