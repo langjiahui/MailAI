@@ -28,7 +28,9 @@ const {chromium,webkit} = require('playwright');
     await page.waitForFunction(()=>document.querySelector('.pet-live-art .mail-companion').dataset.rewardVisible==='true');
     const wing=preview.locator('.pet-wing-left');
     const first=await wing.evaluate(n=>getComputedStyle(n).transform);
-    await page.waitForTimeout(350);
+    // Rendering on a loaded CI host may not commit a frame within a fixed delay.
+    // Still require an actual visible transform change, within a bounded wait.
+    await page.waitForFunction(first=>getComputedStyle(document.querySelector('.pet-live-art .pet-wing-left')).transform!==first,first,{timeout:5000});
     assert.notEqual(await wing.evaluate(n=>getComputedStyle(n).transform),first,'Wing must visibly flap');
     await preview.locator('[data-pet-preview-play]').click();
     await page.waitForFunction(()=>getComputedStyle(document.querySelector('.pet-live-art .pet-wing-left')).animationPlayState==='paused');
