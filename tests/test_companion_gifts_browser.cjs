@@ -5,7 +5,7 @@ const {chromium,webkit}=require('playwright');
  const browser=await (process.env.MAILAI_BROWSER==='webkit'?webkit:chromium).launch({headless:true});
  try{
   const page=await browser.newPage({viewport:{width:1280,height:960}});
-  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  const errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error('Page error:',e.stack)});
   await page.goto('http://127.0.0.1:18795/');await page.locator('#app-preloader').waitFor({state:'detached'});
   await page.evaluate(async()=>{setI18nLanguage('zh-CN');await mailaiPet.open()});
   const dialog=page.locator('#companion-growth-dialog');await dialog.locator('[data-pet-tab="gifts"]').click();

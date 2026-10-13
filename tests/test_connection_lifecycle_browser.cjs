@@ -20,6 +20,11 @@ const {chromium, webkit} = require('playwright');
       });
       await page.addScriptTag({content:fs.readFileSync('app/web/static/interaction-core.js','utf8')});
       await page.evaluate(() => {
+        window.dispatchEvent(new Event('beforeunload', {cancelable:true}));
+        mailaiConnectionFailed();
+      });
+      assert.deepEqual(await page.evaluate(() => probes), [], 'Do not wait until pagehide to suppress teardown probes');
+      await page.evaluate(() => {
         window.dispatchEvent(new PageTransitionEvent('pagehide', {persisted:true}));
         // A background request rejects during navigation and asks for recovery.
         mailaiConnectionFailed(); mailaiConnectionFailed();
@@ -34,6 +39,14 @@ const {chromium, webkit} = require('playwright');
       assert.deepEqual(await page.evaluate(() => probes), ['/api/health'], 'Returning to a cached page must restore recovery');
       await page.evaluate(() => mailaiConnectionRestored());
       assert(await page.locator('#connection-recovery').isHidden());
+      await page.evaluate(async () => {
+        window.addEventListener('beforeunload', event => event.preventDefault(), {once:true});
+        window.dispatchEvent(new Event('beforeunload', {cancelable:true}));
+        await Promise.resolve();
+        mailaiConnectionFailed();
+      });
+      await page.waitForFunction(() => probes.length === 2 && !document.querySelector('#connection-recovery button').disabled);
+      assert(await page.locator('#connection-recovery').isVisible(), 'Canceled navigation must keep connection recovery usable');
       assert.deepEqual(errors, []);
       console.log(`${name}: navigation suppresses new health probes; restored pages recover normally`);
     } finally { await browser.close(); }

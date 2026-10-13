@@ -18410,6 +18410,13 @@ function mailaiLabelHTML(label) {
 
   let banner, checking = false, dismissedIssue = '', currentIssue = '', targetAccount = '';
   let leavingPage = false;
+  window.addEventListener('beforeunload', event => {
+    leavingPage = true;
+    // Draft protection may cancel navigation in a later event listener.
+    queueMicrotask(() => {
+      if (event.defaultPrevented || event.returnValue) leavingPage = false;
+    });
+  });
   // A fetch canceled by navigation can reject after pagehide. Do not start a
   // new recovery request in a document which is already being discarded.
   window.addEventListener('pagehide', () => { leavingPage = true; });

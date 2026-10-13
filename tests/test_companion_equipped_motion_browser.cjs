@@ -66,7 +66,7 @@ async function checkMotion(page, hosts, part, context) {
     assert(ready,`Disposable fixture did not start: ${logs}`);
     browser=await (process.env.MAILAI_BROWSER==='webkit'?webkit:chromium).launch({headless:true});
     const page=await browser.newPage({viewport:{width:1440,height:1000}});
-    const errors=[];page.on('pageerror',e=>errors.push(e.message));
+    const errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error('Page error:',e.stack)});
     await page.goto(base);
     await page.locator('#app-preloader').waitFor({state:'detached'});
     await page.waitForFunction(()=>document.body.dataset.petStage==='6');
