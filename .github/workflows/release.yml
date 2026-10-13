@@ -211,9 +211,7 @@ jobs:
       - name: Remove temporary self-signing keychain
         if: always()
         shell: bash
-        run: |
-          keychain="$RUNNER_TEMP/mailai-self-signing.keychain-db"
-          if [ -f "$keychain" ]; then security delete-keychain "$keychain"; fi
+        run: python3 scripts/cleanup_macos_self_signing.py
 
   publish:
     needs: [windows-x64, macos-arm64, linux-x64]

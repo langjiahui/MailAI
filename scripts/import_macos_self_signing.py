@@ -1,5 +1,7 @@
 """Import the existing release identity into an isolated build keychain."""
 import base64
+import json
+import shlex
 import os
 from pathlib import Path
 import secrets
@@ -18,6 +20,9 @@ def main():
     if keychain.exists():
         raise ValueError('Build keychain already exists')
     key_password=secrets.token_urlsafe(40)
+    previous=shlex.split(subprocess.run(['security','list-keychains','-d','user'],check=True,capture_output=True,text=True).stdout)
+    snapshot=root/'mailai-signing-search-list.json'
+    snapshot.write_text(json.dumps(previous))
     def security(*args):
         # Never echo commands or tool errors that may contain secret arguments.
         result=subprocess.run(['security',*map(str,args)],capture_output=True)
@@ -32,11 +37,15 @@ def main():
             stream.write(base64.b64decode(encoded,validate=True));stream.flush()
             security('import',stream.name,'-P',password,'-T','/usr/bin/codesign','-k',keychain)
         security('set-key-partition-list','-S','apple-tool:,apple:','-s','-k',key_password,keychain)
-        # Explicit --keychain is used by codesign. No login/default keychain edits.
+        # macOS 14 also resolves private keys via the user search list, even
+        # when codesign is given --keychain. Restore it during cleanup.
+        security('list-keychains','-d','user','-s',keychain,*previous)
         with open(os.environ['GITHUB_ENV'],'a') as output:
             output.write(f'MAILAI_SIGNING_MODE=self-signed\nMAILAI_SIGN_IDENTITY={fingerprint()}\nMAILAI_SIGNING_KEYCHAIN={keychain}\n')
         print('Imported fixed self-signed identity into isolated build keychain')
     except BaseException:
+        subprocess.run(['security','list-keychains','-d','user','-s',*previous],capture_output=True)
+        snapshot.unlink(missing_ok=True)
         if keychain.exists():
             subprocess.run(['security','delete-keychain',str(keychain)],capture_output=True)
         raise

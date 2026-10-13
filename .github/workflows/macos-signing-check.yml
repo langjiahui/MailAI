@@ -1,0 +1,27 @@
+name: Verify macOS signing identity
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  signing:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Import fixed identity
+        env:
+          MACOS_SELF_SIGN_CERTIFICATE: ${{ secrets.MACOS_SELF_SIGN_CERTIFICATE }}
+          MACOS_SELF_SIGN_PASSWORD: ${{ secrets.MACOS_SELF_SIGN_PASSWORD }}
+        run: python3 scripts/import_macos_self_signing.py
+      - name: Inspect public signing identity
+        run: |
+          security find-identity -p codesigning "$MAILAI_SIGNING_KEYCHAIN"
+          security find-certificate -a -Z "$MAILAI_SIGNING_KEYCHAIN"
+      - name: Verify upgrade access without authorization UI
+        run: python3 scripts/verify_macos_signing_upgrade.py
+      - name: Restore build keychain state
+        if: always()
+        run: python3 scripts/cleanup_macos_self_signing.py
