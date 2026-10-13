@@ -101,16 +101,20 @@ class VaultTests(unittest.TestCase):
         self.assertEqual(store.load('mail-c'),self.legacy['mail-c'])
         self.assertEqual(self.calls,[('read',module.MASTER_ACCOUNT,True)])
 
-    def test_file_permissions_and_ciphertext_exclude_secrets_identifiers_and_master(self):
+    def test_ciphertext_excludes_secrets_identifiers_and_master(self):
         identifier='fixture-account-identifier'
         secret='fixture-邮箱-password-that-must-not-be-persisted-in-plaintext'
         self.assertTrue(self.vault.put(identifier,secret))
         blob=self.path.read_bytes()
         for value in (identifier,secret,self.master):
             self.assertNotIn(value.encode('utf-8'),blob)
-        self.assertEqual(stat.S_IMODE(self.path.stat().st_mode),0o600)
         self.assertEqual(list(self.path.parent.glob('.credential-vault-*')),[])
         self.assertEqual(self.vault.get(identifier),(0,secret))
+
+    @unittest.skipUnless(os.name == 'posix', 'POSIX mode bits apply to macOS vault files')
+    def test_vault_file_is_readable_and_writable_only_by_its_owner(self):
+        self.assertTrue(self.vault.put('fixture','fixture-secret'))
+        self.assertEqual(stat.S_IMODE(self.path.stat().st_mode),0o600)
 
     def test_changed_payload_uses_a_new_nonce(self):
         self.assertTrue(self.vault.put('fixture','fixture-secret-one'))

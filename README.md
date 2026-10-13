@@ -5,7 +5,7 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v2.8.2**
+当前版本：**v2.8.3**
 
 本次更新：修复部分主题下主按钮文字、图标和选中状态不清楚的问题，优化反馈选项、阅读与写信工具栏及国际化文字布局。统一替换日期和时间选择控件，支持日历、时间输入、快捷选择和键盘操作，并适配浅色、暗色、兑换主题及窄窗口。macOS 使用统一加密凭据保险库，减少启动和后台状态查询的重复钥匙串弹窗；旧凭据首次迁移仍可能逐项授权，迁移后共用一个主密钥解锁，当前未接入 Touch ID，临时签名包升级可能需重新授权主密钥。通讯录“全部 / 常用”增加明显选中底块、悬停描边、按压反馈、滑动指示块和列表过渡，支持键盘与减少动态效果设置。已有邮件、账号配置、草稿、成长和装扮继续保留。
 
