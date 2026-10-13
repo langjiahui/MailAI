@@ -1,8 +1,8 @@
 /* Run after test_reward_themes_browser.cjs on the same isolated fixture. */
 const assert=require('node:assert/strict');
-const {chromium}=require('playwright');
+const {chromium,webkit}=require('playwright');
 (async()=>{
-  const browser=await chromium.launch({headless:true});
+  const browser=await (process.env.MAILAI_BROWSER==='webkit'?webkit:chromium).launch({headless:true});
   try {
     const page=await browser.newPage({viewport:{width:1440,height:960}}),errors=[];
     page.on('pageerror',error=>errors.push(error.message));
@@ -88,10 +88,12 @@ const {chromium}=require('playwright');
       const mail=await page.evaluate(()=>{
         const frame=document.querySelector('#reward-mail-fixture'),doc=frame.contentDocument;
         return {paper:doc.querySelector('div').style.backgroundColor,text:doc.querySelector('div').style.color,
+          link:doc.defaultView.getComputedStyle(doc.querySelector('a')).textDecorationLine,
           image:doc.querySelector('img').getAttribute('src'),palette:getComputedStyle(document.documentElement).getPropertyValue('--reward-soft').trim()};
       });
       const rgb=mail.palette.slice(1).match(/../g).map(value=>parseInt(value,16));
       assert.equal(mail.paper,`rgb(${rgb.join(', ')})`);assert(mail.image.startsWith('data:image/svg+xml'));
+      assert(mail.link.includes('underline'),'Links remain distinguishable from monochrome body text');
     }
     await page.evaluate(async()=>{
       await api('/api/companion/equip',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slot:'theme',item:''})});await mailaiPet.refresh();

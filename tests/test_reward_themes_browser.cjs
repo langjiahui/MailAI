@@ -1,8 +1,8 @@
 /* Fresh isolated growth fixture; no real mailbox/model/network services. */
 const assert = require('node:assert/strict');
-const {chromium} = require('playwright');
+const {chromium,webkit} = require('playwright');
 (async()=>{
-  const browser = await chromium.launch({headless:true});
+  const browser = await (process.env.MAILAI_BROWSER==='webkit'?webkit:chromium).launch({headless:true});
   try {
     const page=await browser.newPage({viewport:{width:1440,height:960}}), errors=[];
     page.on('pageerror',error=>errors.push(error.message));
@@ -10,6 +10,15 @@ const {chromium} = require('playwright');
     await page.locator('#app-preloader').waitFor({state:'detached'});
     await page.waitForFunction(()=>!!document.body.dataset.petStage);
     await page.emulateMedia({reducedMotion:'reduce'});
+    const snapshot=()=>page.evaluate(()=>['body','.topbar','.sidebar','.list-pane','.reading-pane','.global-search'].map(selector=>{
+      const css=getComputedStyle(document.querySelector(selector));
+      return {selector,background:css.backgroundColor,color:css.color,shadow:css.boxShadow,blur:css.backdropFilter || css.webkitBackdropFilter};
+    }));
+    const defaults={};
+    for(const mode of ['light','dark']) {
+      await page.evaluate(mode=>applyTheme(mode),mode);
+      defaults[mode]=await snapshot();
+    }
     await page.evaluate(async()=>{
       setI18nLanguage('zh-CN');applyTheme('light');
       await api('/api/companion/preferences',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:false})});
@@ -72,7 +81,7 @@ const {chromium} = require('playwright');
             const body=getComputedStyle(document.body),button=getComputedStyle(document.querySelector('#btn-compose'));
             return {bg:body.backgroundColor,button:rewardThemeContrast(button.color,button.backgroundColor),text:rewardThemeContrast(body.color,body.backgroundColor),pet:getComputedStyle(document.querySelector('.pet-hero .growth-body')).fill};
           });
-          assert.equal(colors.bg,{theme_monochrome:{light:'rgb(241, 242, 244)',dark:'rgb(17, 18, 22)'},theme_baowu:{light:'rgb(237, 243, 249)',dark:'rgb(12, 24, 38)'}}[theme][mode]);
+          assert.equal(colors.bg,mode==='light'?'rgb(255, 255, 255)':'rgb(0, 0, 0)');
           assert(colors.button>=4.5 && colors.text>=4.5,JSON.stringify({theme,style,mode,colors}));
           assert.equal(colors.pet,theme === 'theme_monochrome' ? 'rgb(208, 210, 214)' : 'rgb(149, 198, 231)');
           await page.keyboard.press('Escape');
@@ -93,6 +102,21 @@ const {chromium} = require('playwright');
             assert(panel.contrast>=4.5,JSON.stringify({theme,mode,panel}));
           }
           assert(panels.selected>=4.5,`${theme}/${mode} selected row contrast`);
+          await page.waitForFunction(()=>document.querySelector('#email-list .selection-glass-plate:not([hidden])'));
+          const material=await page.evaluate(()=>['.topbar','#email-list .selection-glass-plate','#assistant-panel'].map(selector=>{
+            const css=getComputedStyle(document.querySelector(selector));
+            return {selector,blur:css.backdropFilter || css.webkitBackdropFilter,background:css.backgroundColor,shadow:css.boxShadow};
+          }));
+          assert(material.every(item=>!item.blur || item.blur==='none'),JSON.stringify({theme,mode,material}));
+          assert.equal(material[1].background,panels.expected.selected,'Selected fill must be opaque');
+          assert(material[1].shadow.replace(/rgba?\([^)]*\)/g,'color').split(',').every(shadow=>shadow.includes('inset')),'Selection must not retain an ambient shadow');
+          const hover=page.locator('.email-item:not(.selected)').first();await hover.hover();
+          const hovered=await hover.evaluate(n=>getComputedStyle(n).backgroundColor);
+          assert.notEqual(hovered,panels.expected.surface,'Hover must remain visible on the pure canvas');
+          assert.notEqual(hovered,panels.expected.selected,'Hover must differ from selection');
+          await page.keyboard.press('Tab');await page.locator('#btn-compose').focus();
+          assert.equal(await page.locator('#btn-compose').evaluate(n=>getComputedStyle(n).outlineStyle),'solid');
+          await page.mouse.move(1400,50);
           if(style==='ranger')await page.screenshot({path:`/tmp/mailai-${theme}-${mode}-reading.png`});
           await page.evaluate(()=>showSystemView('preferences'));
           const settings=await page.locator('.preference-card').first().evaluate(n=>{const c=getComputedStyle(n);return {bg:c.backgroundColor,contrast:rewardThemeContrast(c.color,c.backgroundColor)};});
@@ -139,6 +163,15 @@ const {chromium} = require('playwright');
       await activateMailAccount(work.id,{quiet:true});
     });
     await page.waitForFunction(()=>document.documentElement.dataset.rewardTheme === 'theme_baowu');
+    await page.evaluate(async()=>{
+      await api('/api/companion/equip',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slot:'theme',item:''})});
+      await mailaiPet.refresh();hideSystemView(true);
+    });
+    await page.keyboard.press('Escape');await page.setViewportSize({width:1440,height:960});await page.mouse.move(1400,50);
+    for(const mode of ['light','dark']) {
+      await page.evaluate(mode=>applyTheme(mode),mode);
+      assert.deepEqual(await snapshot(),defaults[mode],`Default ${mode} theme must fully restore its materials`);
+    }
     assert.deepEqual(errors,[]);
     console.log('Reward themes: purchases/retry, persistence, light/dark, both pet routes, palette priority, contrast, reset, mobile, i18n and client-wide sharing passed');
   } finally { await browser.close(); }

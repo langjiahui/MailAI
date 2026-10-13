@@ -24585,7 +24585,8 @@ function applyRichEmailFrameTheme(frame, theme = document.documentElement.datase
   let rewardSheet=doc.getElementById?.('mailai-reward-theme');
   if (paper && ink && link) {
     if (!rewardSheet) { rewardSheet=doc.createElement('style');rewardSheet.id='mailai-reward-theme';doc.head.append(rewardSheet); }
-    rewardSheet.textContent=`html[data-mailai-theme],html[data-mailai-theme] body{background:${paper}!important;color:${ink}}html[data-mailai-theme] body a{color:${link}}html[data-mailai-theme] body blockquote{color:${ink};border-color:${line || paper}}`;
+    const linkDecoration=['theme_monochrome','theme_baowu'].includes(rewardRoot.dataset.rewardTheme)?';text-decoration:underline;text-underline-offset:2px':'';
+    rewardSheet.textContent=`html[data-mailai-theme],html[data-mailai-theme] body{background:${paper}!important;color:${ink}}html[data-mailai-theme] body a{color:${link}${linkDecoration}}html[data-mailai-theme] body blockquote{color:${ink};border-color:${line || paper}}`;
   } else rewardSheet?.remove();
   if (theme !== 'dark') return;
   const darkPaper=paper || '#16271f',darkInk=ink || '#e4eee8',darkLink=link || '#8ddfb2';

@@ -178,6 +178,7 @@ jobs:
           start_fixture
           node tests/test_reward_themes_browser.cjs
           node tests/test_reward_theme_surfaces_browser.cjs
+          MAILAI_BROWSER=webkit node tests/test_reward_theme_surfaces_browser.cjs
           node tests/test_companion_theme_transparency_browser.cjs
           MAILAI_BROWSER=webkit node tests/test_companion_theme_transparency_browser.cjs
           stop_fixture
