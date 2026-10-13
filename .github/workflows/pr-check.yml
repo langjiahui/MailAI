@@ -78,6 +78,7 @@ jobs:
           node tests/test_macos_workspace_browser.cjs
           MAILAI_DESKTOP_SHELL=windows node tests/test_macos_workspace_browser.cjs
           node tests/test_interaction_consistency_browser.cjs
+          node tests/test_connection_lifecycle_browser.cjs
           node tests/test_task_notices_browser.cjs
           node tests/test_attachment_library_ui.cjs
           node tests/test_attachment_content_browser.cjs

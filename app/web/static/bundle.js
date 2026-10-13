@@ -18409,6 +18409,11 @@ function mailaiLabelHTML(label) {
   };
 
   let banner, checking = false, dismissedIssue = '', currentIssue = '', targetAccount = '';
+  let leavingPage = false;
+  // A fetch canceled by navigation can reject after pagehide. Do not start a
+  // new recovery request in a document which is already being discarded.
+  window.addEventListener('pagehide', () => { leavingPage = true; });
+  window.addEventListener('pageshow', () => { leavingPage = false; });
   let recoveryAction = null;
   function getBanner() {
     if (banner) return banner;
@@ -18419,7 +18424,7 @@ function mailaiLabelHTML(label) {
     document.body.append(banner); return banner;
   }
   async function check() {
-    if (checking) return; checking = true;
+    if (leavingPage || checking) return; checking = true;
     const bar = getBanner(), button = bar.querySelector('button'); recoveryAction = null; currentIssue = 'local'; mailaiBindUI(button, "textContent", () => (mailaiText('检查连接'))); button.disabled = true;
     const controller = new AbortController(), timeout = setTimeout(() => controller.abort(),5000);
     try {
@@ -18430,6 +18435,7 @@ function mailaiLabelHTML(label) {
       mailaiBindUI(bar.querySelector('span'), "textContent", () => (mailaiText('本地服务已连接。请重试未完成的操作；发送状态不明时，先到任务与发件箱核对。')));
       bar.hidden = false;
     } catch (_) {
+      if (leavingPage) return;
       mailaiBindUI(bar.querySelector('span'), "textContent", () => (mailaiText('暂时连接不到本地服务。请确认 MailAI 正在运行，并使用启动时显示的地址。当前页面内容已保留。')));
       bar.hidden = false;
     } finally { clearTimeout(timeout); checking = false; button.disabled = false; }

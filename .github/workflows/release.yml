@@ -36,6 +36,7 @@ jobs:
           node tests/test_ui_preferences_restart.cjs "$(which python)"
           node tests/test_date_time_controls_browser.cjs
           node tests/test_date_time_boundaries_browser.cjs
+          node tests/test_connection_lifecycle_browser.cjs
 
   windows-x64:
     needs: metadata
