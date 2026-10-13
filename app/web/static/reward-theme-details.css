@@ -1,0 +1,87 @@
+/* Final control treatment for the two reward themes. Palette and layout stay
+ * in their existing layers; default themes do not match these selectors. */
+html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) {
+  --reward-popup-shadow:0 8px 26px rgba(0,0,0,.09),0 2px 6px rgba(0,0,0,.04);
+  --reward-control-edge:color-mix(in srgb,var(--reward-line) 78%,var(--reward-muted));
+}
+html[data-theme="dark"][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) {
+  --reward-popup-shadow:0 12px 32px rgba(0,0,0,.3),0 2px 8px rgba(0,0,0,.18);
+}
+html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .topbar .global-search {
+  --search-field-surface:var(--reward-soft);
+  background:var(--reward-soft)!important;
+  border-color:var(--reward-line)!important;
+  border-radius:9px!important;
+  transition:background-color .14s ease,border-color .14s ease,box-shadow .14s ease;
+}
+html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .topbar .global-search:hover {
+  border-color:var(--reward-control-edge)!important;
+}
+html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .topbar .global-search:focus-within {
+  --search-field-surface:var(--reward-surface);
+  background:var(--reward-surface)!important;
+  border-color:var(--reward-accent)!important;
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--reward-accent) 12%,transparent)!important;
+}
+html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body #app .topbar #btn-compose:hover:not(:disabled) {
+  background:color-mix(in srgb,var(--reward-accent) 94%,var(--reward-on-accent))!important;
+  box-shadow:none!important;
+}
+html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body #app .topbar #btn-compose:active:not(:disabled) {
+  background:var(--reward-accent)!important;
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.12)!important;
+}
+html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body #email-list .email-item:not(.unread) .email-subject {
+  font-weight:500!important;
+}
+html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body #email-list .email-date {
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body :is(.sidebar,#email-list) .selection-glass-plate,
+html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .sidebar :is(.nav-item,.sidebar-account-folders>button) {
+  border-radius:8px!important;
+}
+html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .reading-header .reading-actions :is(.reading-icon-action,.reading-work-actions button,.reading-ai-group>button,.reading-more-actions>summary) {
+  border-color:transparent!important;
+  border-radius:8px!important;
+  background:transparent!important;
+  color:var(--reward-muted)!important;
+  font-weight:550;
+  box-shadow:none!important;
+  transition:background-color .14s ease,color .14s ease,border-color .14s ease;
+}
+html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .reading-header .reading-actions :is(.reading-icon-action,.reading-work-actions button,.reading-ai-group>button,.reading-more-actions>summary):hover:not(:disabled),
+html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .reading-header .reading-actions .reading-more-actions[open]>summary {
+  background:var(--reward-hover)!important;
+  color:var(--reward-ink)!important;
+  border-color:var(--reward-line)!important;
+}
+html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .reading-header .reading-actions button.reading-primary-action {
+  background:var(--reward-selected)!important;
+  color:var(--reward-accent)!important;
+}
+html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .reading-header .reading-actions button.reading-primary-action:hover:not(:disabled) {
+  background:color-mix(in srgb,var(--reward-selected) 90%,var(--reward-accent))!important;
+}
+html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .reading-header .reading-actions :is(button[aria-pressed="true"],button[aria-expanded="true"]) {
+  background:var(--reward-selected)!important;
+  color:var(--reward-ink)!important;
+}
+html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .reading-header .reading-actions :is(button,summary):focus-visible {
+  outline:2px solid var(--reward-accent)!important;
+  outline-offset:2px;
+}
+html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body :is(.top-menu-popover,.reading-more-panel,.contact-filter-popover,.contact-editor-card,.contact-tags-card,.datetime-panel,#assistant-panel) {
+  border-color:var(--reward-line)!important;
+  box-shadow:var(--reward-popup-shadow)!important;
+}
+html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body :is(.compose-card,.contact-center-card,.attachment-center-card,.contact-editor-card,.pet-journal) {
+  border-radius:16px!important;
+  border-color:var(--reward-line)!important;
+  box-shadow:var(--reward-popup-shadow)!important;
+}
+@media(prefers-reduced-motion:reduce) {
+  html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .topbar .global-search,
+  html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .reading-header .reading-actions :is(button,summary) { transition:none!important; }
+}

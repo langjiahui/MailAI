@@ -31082,7 +31082,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
   }
   let css='';
   for (const sheet of document.styleSheets) {
-    if (!sheet.href?.includes('/static/') || /(?:reward-themes|control-theme|date-time-picker|companion(?:-growth)?)\.css/.test(sheet.href)) continue;
+    if (!sheet.href?.includes('/static/') || /(?:reward-themes|reward-theme-details|control-theme|date-time-picker|companion(?:-growth)?)\.css/.test(sheet.href)) continue;
     try { css+=bridge(sheet.cssRules); } catch (_) { /* A non-local stylesheet is outside the workspace. */ }
   }
   const style=document.createElement('style');

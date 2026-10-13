@@ -63,7 +63,10 @@ const {chromium,webkit} = require('playwright');
     const contrast=await page.evaluate(()=>{
       window.rewardThemeContrast=(foreground,background)=>{
         const lum=color=>{
-          const rgb=color.match(/[\d.]+/g).slice(0,3).map(Number).map(value=>{value/=255;return value<=.04045?value/12.92:((value+.055)/1.055)**2.4;});
+          // Computed color-mix values may use color(srgb ...), not rgb bytes.
+          const canvas=document.createElement('canvas');canvas.width=canvas.height=1;
+          const context=canvas.getContext('2d');context.fillStyle=color;context.fillRect(0,0,1,1);
+          const rgb=[...context.getImageData(0,0,1,1).data].slice(0,3).map(value=>{value/=255;return value<=.04045?value/12.92:((value+.055)/1.055)**2.4;});
           return rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722;
         };
         const a=lum(foreground),b=lum(background);return(Math.max(a,b)+.05)/(Math.min(a,b)+.05);
@@ -98,7 +101,7 @@ const {chromium,webkit} = require('playwright');
             }),selected:rewardThemeContrast(getComputedStyle(document.querySelector('.email-item.selected .email-subject')).color,expected.selected)};
           });
           for(const panel of panels.rows) {
-            assert.equal(panel.bg,panels.expected[['.sidebar','.list-pane'].includes(panel.selector)?'soft':'surface'],JSON.stringify({theme,mode,panel}));
+            assert.equal(panel.bg,panels.expected[['.sidebar','.list-pane','.global-search'].includes(panel.selector)?'soft':'surface'],JSON.stringify({theme,mode,panel}));
             assert(panel.contrast>=4.5,JSON.stringify({theme,mode,panel}));
           }
           assert(panels.selected>=4.5,`${theme}/${mode} selected row contrast`);
@@ -125,7 +128,16 @@ const {chromium,webkit} = require('playwright');
           assert.notEqual(hovered,panels.expected.selected,'Hover must differ from selection');
           await page.keyboard.press('Tab');await page.locator('#btn-compose').focus();
           assert.equal(await page.locator('#btn-compose').evaluate(n=>getComputedStyle(n).outlineStyle),'solid');
+          for(const selector of ['#btn-compose','.reading-actions button.reading-primary-action']) {
+            const button=page.locator(selector).first();await button.hover();
+            assert(await button.evaluate(node=>{const css=getComputedStyle(node),label=node.querySelector('.reading-action-label,span[data-i18n]');return rewardThemeContrast(getComputedStyle(label || node).color,css.backgroundColor)>=4.5}),`${theme}/${mode}/${selector}: hover contrast`);
+          }
           await page.mouse.move(1400,50);
+          await page.locator('#global-search').focus();
+          const focusedSearch=await page.locator('.global-search').evaluate(node=>{const css=getComputedStyle(node);return {background:css.backgroundColor,shadow:css.boxShadow};});
+          assert.equal(focusedSearch.background,panels.expected.surface,'Focused search must rise above the quiet field');
+          assert.notEqual(focusedSearch.shadow,'none','Search focus must remain visible');
+          await page.locator('#global-search').evaluate(node=>node.blur());
           if(style==='ranger')await page.screenshot({path:`/tmp/mailai-${theme}-${mode}-reading.png`});
           await page.evaluate(()=>showSystemView('preferences'));
           const settings=await page.locator('.preference-card').first().evaluate(n=>{const c=getComputedStyle(n);return {bg:c.backgroundColor,contrast:rewardThemeContrast(c.color,c.backgroundColor)};});
