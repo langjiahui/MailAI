@@ -44,6 +44,10 @@ int main(void) {
     SecKeychainRef fixture=NULL;CFArrayRef search=NULL;
     const char *fixturePath=getenv("_MAILAI_TEST_AGENT_KEYCHAIN");
     if(!status && fixturePath && *fixturePath) {
+        /* Signed test callers can never access the production service, even
+         * if someone supplies a path alias for the login keychain. */
+        CFDictionarySetValue(query,kSecAttrService,CFSTR("MailAI.IsolatedAgentUpgradeTest"));
+        CFDictionarySetValue(query,kSecAttrAccount,CFSTR("synthetic-agent-master"));
         status=SecKeychainOpen(fixturePath,&fixture);
         if(!status) {
             if(!strcmp(action,"add"))CFDictionarySetValue(query,kSecUseKeychain,fixture);

@@ -24,6 +24,10 @@ jobs:
         run: python3 scripts/verify_macos_signing_upgrade.py
       - name: Build immutable credential reader
         run: python3 scripts/build_macos_credential_agent.py
+      - name: Verify immutable reader and signed caller isolation
+        run: |
+          python3 -m pip install cryptography
+          python3 scripts/verify_macos_credential_agent.py
       - uses: actions/upload-artifact@v5
         with:
           name: credential-agent-v1
