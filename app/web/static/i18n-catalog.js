@@ -5,7 +5,7 @@ const MAILAI_UI_COPY = {
   "credential.unlock": ["解锁凭据", "Unlock credentials"],
   "credential.pending": ["等待解锁", "Awaiting unlock"],
   "credential.selectToUnlock": ["点击邮箱解锁凭据", "Select mailbox to unlock"],
-  "credential.pendingHelp": ["点击解锁。已迁移凭据共用保险库，取消后可再次尝试；升级或钥匙串锁定时可能需要一次系统确认。", "Select Unlock. Migrated credentials share one vault. You can retry after canceling; an update or a locked keychain may require one system confirmation."],
+  "credential.pendingHelp": ["点击解锁。已迁移凭据共用保险库，取消后可再次尝试；完成旧凭据迁移或钥匙串锁定时可能需要系统确认。普通升级会复用授权。", "Select Unlock. Migrated credentials share one vault. Retry after canceling; completing legacy migration or a locked keychain may require confirmation. Normal updates reuse authorization."],
   "datetime.chooseDate": ["选择日期", "Choose date"],
   "datetime.chooseTime": ["选择时间", "Choose time"],
   "datetime.chooseDateTime": ["选择日期和时间", "Choose date and time"],

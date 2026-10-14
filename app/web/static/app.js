@@ -5758,7 +5758,7 @@ function renderAccountSelection() {
   document.getElementById('selected-account-avatar').textContent = accountMark(account);
   mailaiBindUI(document.getElementById('selected-account-role'), "textContent", () => (account.active ? (mailaiT('acct.stateActive') || '当前发件账号') : (mailaiT('acct.roleConnected') || '已连接邮箱')));
   mailaiBindUI(document.getElementById('selected-account-name'), 'textContent', () => account.user);
-  mailaiBindUI(document.getElementById('selected-account-help'), "textContent", () => (account.credential_authorization_required ? mailaiText('点击解锁。已迁移凭据共用保险库，取消后可再次尝试；升级或钥匙串锁定时可能需要一次系统确认。') : account.credential_available
+  mailaiBindUI(document.getElementById('selected-account-help'), "textContent", () => (account.credential_authorization_required ? mailaiText('点击解锁。已迁移凭据共用保险库，取消后可再次尝试；完成旧凭据迁移或钥匙串锁定时可能需要系统确认。普通升级会复用授权。') : account.credential_available
     ? (account.credential_migrated ? mailaiText('已迁入加固后的统一保险库，其他已迁移邮箱共用一次解锁。') : account.credential_storage === 'session' ? (mailaiT('acct.helpSession') || '授权码仅本次运行有效，退出软件后需要重新登录') : (mailaiT('acct.helpSaved') || '连接信息已保存，可随时更新授权码'))
     : (mailaiT('acct.helpMissing') || '本机没有可用授权码，请重新登录')));
   mailaiBindUI(document.getElementById('btn-manage-mail'), "textContent", () => (account.credential_authorization_required ? mailaiText('解锁凭据') : account.credential_available ? (mailaiT('acct.updateBtn') || '更新登录信息') : (mailaiT('acct.reloginBtn') || '重新登录')));
