@@ -22,6 +22,13 @@ jobs:
           security find-certificate -a -Z "$MAILAI_SIGNING_KEYCHAIN"
       - name: Verify upgrade access without authorization UI
         run: python3 scripts/verify_macos_signing_upgrade.py
+      - name: Build immutable credential reader
+        run: python3 scripts/build_macos_credential_agent.py
+      - uses: actions/upload-artifact@v5
+        with:
+          name: credential-agent-v1
+          path: build/credential-agent-v1/credential-agent-v1.zip
+          if-no-files-found: error
       - name: Restore build keychain state
         if: always()
         run: python3 scripts/cleanup_macos_self_signing.py
