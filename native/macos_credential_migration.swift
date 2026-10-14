@@ -3,6 +3,7 @@
 import Foundation
 import CryptoKit
 import Security
+import Darwin
 
 func fail(_ message: String) -> Never { fputs(message + "\n", stderr); exit(1) }
 let expected = "identifier \"com.langjiahui.mailai.credential-agent.v1\" and certificate leaf = H\"a04567b09e3230ba773b70e6b1343244b387186b\""
@@ -49,7 +50,12 @@ do {
     let magic=Data("MAILAI-CREDENTIALS3\0".utf8)
     let sealed=try AES.GCM.seal(plaintext,using:SymmetricKey(data:newKey),authenticating:magic)
     guard let combined=sealed.combined, try AES.GCM.open(AES.GCM.SealedBox(combined:combined),using:SymmetricKey(data:newKey),authenticating:magic)==plaintext else { fail("Encrypted migration verification failed") }
-    try (magic+combined).write(to:output,options:[.atomic,.withoutOverwriting])
-    try FileManager.default.setAttributes([.posixPermissions:0o600],ofItemAtPath:output.path)
+    let temporary=output.deletingLastPathComponent().appendingPathComponent(".credential-migration-"+UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at:temporary) }
+    let descriptor=open(temporary.path,O_WRONLY|O_CREAT|O_EXCL,0o600)
+    guard descriptor>=0 else { fail("Could not create private encrypted output") }
+    let handle=FileHandle(fileDescriptor:descriptor,closeOnDealloc:true)
+    try handle.write(contentsOf:magic+combined);try handle.synchronize();try handle.close()
+    guard link(temporary.path,output.path)==0 else { fail("Destination exists or atomic install failed") }
     print("PASS migrated \(items.count) credential records; original vault retained")
 } catch { fail("Could not persist encrypted migration") }
