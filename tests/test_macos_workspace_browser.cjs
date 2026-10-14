@@ -72,7 +72,9 @@ const {chromium, webkit} = require('playwright');
       await page.evaluate(()=>window.dispatchEvent(new CustomEvent('mailai:native-fullscreen',{detail:{fullscreen:false}})));
       await page.waitForTimeout(200);
       assert((await page.locator('.topbar .brand').boundingBox()).x>=108,'restore native traffic light clearance');
-      assert(!await page.locator('.topbar .logo').isVisible());
+      assert(await page.locator('.topbar .logo .brand-mark').isVisible(),'Desktop header must display the folded-M mark');
+      const markBox=await page.locator('.topbar .logo').boundingBox();
+      assert(markBox.width<=24.5&&markBox.height<=24.5,'Header identity must stay compact');
     }
     if (shell === 'windows') {
       assert(!await page.locator('html').evaluate(el=>el.classList.contains('macos-native-window')));
