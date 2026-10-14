@@ -24,6 +24,7 @@ assistant-document-reply.js
 companion.js
 companion-motion.js
 reward-theme-bridge.js
+brand.js
 companion-growth.js
 onboarding.js
 model-usage.js

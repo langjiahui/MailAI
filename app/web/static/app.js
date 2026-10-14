@@ -9563,6 +9563,24 @@ function hideAppPreloader() {
   preloader.dataset.handoff = 'running';
   // Confirm that the workspace is ready, not that remote mail sync succeeded.
   preloader.classList.add('completion-confirmed');
+  // The completed folded mark docks into the live header using measured
+  // geometry, including native insets, font zoom and resizable mail panes.
+  const entrance = preloader.querySelector('.brand-entrance');
+  const logo = targetBrand?.querySelector('[data-brand-mark]');
+  if (!reducedMotion && entrance && logo && onboarding?.classList.contains('hidden')) {
+    const from = entrance.getBoundingClientRect(), to = logo.getBoundingClientRect();
+    if (from.width && to.width) {
+      preloader.classList.add('brand-docking');
+      const zoom = Number(getComputedStyle(document.body).zoom) || 1;
+      const dx = (to.left + to.width/2 - from.left - from.width/2)/zoom;
+      const dy = (to.top + to.height/2 - from.top - from.height/2)/zoom;
+      animations.push(entrance.animate([
+        {transform:'translateX(-50%) translate3d(0,0,0) scale(1)',opacity:1,filter:'none'},
+        {transform:`translateX(-50%) translate3d(${dx}px,${dy}px,0) scale(${to.width/from.width})`,opacity:1,filter:'none',offset:.8},
+        {transform:`translateX(-50%) translate3d(${dx}px,${dy}px,0) scale(${to.width/from.width})`,opacity:0,filter:'none'},
+      ], {duration:1100,easing:'cubic-bezier(.42,0,.22,1)',fill:'both'}));
+    }
+  }
   const readyLabel = preloader.querySelector('.preloader-status span');
   const readyHint = preloader.querySelector('.preloader-status small');
   if (readyLabel) {
@@ -9656,7 +9674,7 @@ function hideAppPreloader() {
     const zoom = Number(getComputedStyle(document.body).zoom) || 1;
     // Match each element instead of scaling the whole lockup: the workspace
     // has its own icon size, text baseline and responsive subtitle visibility.
-    for (const selector of ['img','strong','small']) {
+    for (const selector of ['[data-brand-mark]','strong','small']) {
       const start = sourceBrand.querySelector(selector);
       const end = targetBrand.querySelector(selector);
       if (!start || !end) continue;

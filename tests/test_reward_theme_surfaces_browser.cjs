@@ -7,7 +7,7 @@ const {chromium,webkit}=require('playwright');
     const page=await browser.newPage({viewport:{width:1440,height:960}}),errors=[];
     page.on('pageerror',error=>errors.push(error.message));
     await page.emulateMedia({reducedMotion:'reduce'});
-    await page.goto('http://127.0.0.1:18795/');
+    await page.goto(process.env.MAILAI_TEST_URL || 'http://127.0.0.1:18795/');
     await page.locator('#app-preloader').waitFor({state:'detached'});
     await page.waitForFunction(()=>document.body.dataset.petStage);
     await page.evaluate(()=>setI18nLanguage('zh-CN'));
@@ -29,11 +29,11 @@ const {chromium,webkit}=require('playwright');
         await page.evaluate(mode=>applyTheme(mode),mode);
         const brand=await page.evaluate(()=>{
           const mark=document.querySelector('.reward-brand-mark'),root=getComputedStyle(document.documentElement);
-          return {visible:getComputedStyle(mark).display,original:getComputedStyle(document.querySelector('.logo img')).display,
-            color:getComputedStyle(mark.querySelector('.reward-brand-shield')).fill,
-            accent:root.getPropertyValue('--reward-accent').trim(),favicon:document.querySelector('link[rel="icon"]').href};
+          return {visible:getComputedStyle(mark).display,
+            color:getComputedStyle(mark.querySelector('.brand-front')).fill,
+            accent:root.getPropertyValue('--brand-front').trim(),favicon:document.querySelector('link[rel="icon"]').href};
         });
-        assert.equal(brand.visible,'block');assert.equal(brand.original,'none');
+        assert.equal(brand.visible,'block');
         assert(await page.locator('#assistant-orb').evaluate(n=>parseFloat(getComputedStyle(n).borderRadius)>0),'Theme must preserve the pet button shape');
         assert(brand.favicon.startsWith('data:image/svg+xml,'));
         assert(decodeURIComponent(brand.favicon).includes(`fill="${brand.accent}"`));
@@ -98,9 +98,8 @@ const {chromium,webkit}=require('playwright');
     await page.evaluate(async()=>{
       await api('/api/companion/equip',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slot:'theme',item:''})});await mailaiPet.refresh();
     });
-    assert.equal(await page.locator('.logo img').evaluate(n=>getComputedStyle(n).display),'block');
-    assert.equal(await page.locator('.reward-brand-mark').evaluate(n=>getComputedStyle(n).display),'none');
-    assert(!(await page.locator('link[rel="icon"]').getAttribute('href')).startsWith('data:'));
+    assert.equal(await page.locator('.reward-brand-mark').evaluate(n=>getComputedStyle(n).display),'block');
+    assert((await page.locator('link[rel="icon"]').getAttribute('href')).startsWith('data:image/svg+xml,'));
     assert.equal(await page.evaluate(()=>document.querySelector('#reward-mail-fixture').contentDocument.getElementById('mailai-reward-theme')),null);
     await page.evaluate(()=>{
       const frame=document.querySelector('#reward-mail-fixture');richEmailFrames.delete(frame);frame.remove();

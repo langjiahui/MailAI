@@ -101,26 +101,11 @@
   }
   let css='';
   for (const sheet of document.styleSheets) {
-    if (!sheet.href?.includes('/static/') || /(?:reward-themes|reward-theme-details|control-theme|date-time-picker|companion(?:-growth)?)\.css/.test(sheet.href)) continue;
+    if (!sheet.href?.includes('/static/') || /(?:reward-themes|reward-theme-details|control-theme|brand|date-time-picker|companion(?:-growth)?)\.css/.test(sheet.href)) continue;
     try { css+=bridge(sheet.cssRules); } catch (_) { /* A non-local stylesheet is outside the workspace. */ }
   }
   const style=document.createElement('style');
   style.id='reward-theme-legacy-bridge';style.textContent=css;
   document.querySelector('link[href*="/reward-themes.css"]')?.before(style);
-  function syncBrandIcon() {
-    const icon=document.querySelector('link[rel="icon"]'),mark=document.querySelector('.reward-brand-mark');
-    if (!icon || !mark) return;
-    if (!document.documentElement.dataset.rewardTheme) {
-      icon.type='image/png';icon.href='/static/assets/mailai-mark.png';return;
-    }
-    const palette=getComputedStyle(document.documentElement),svg=mark.cloneNode(true);
-    svg.setAttribute('xmlns','http://www.w3.org/2000/svg');svg.removeAttribute('class');
-    for (const [selector,property,role] of [
-      ['.reward-brand-shield','fill','accent'],['.reward-brand-base','fill','pet'],
-      ['.reward-brand-check','stroke','accent'],['.reward-brand-star','fill','pet-outline']
-    ]) svg.querySelector(selector).setAttribute(property,palette.getPropertyValue(`--reward-${role}`).trim());
-    icon.type='image/svg+xml';icon.href=`data:image/svg+xml,${encodeURIComponent(svg.outerHTML)}`;
-  }
-  document.addEventListener('mailai:reward-themechange',syncBrandIcon);
-  document.addEventListener('mailai:themechange',syncBrandIcon);
+  // Brand geometry and adaptive favicon are owned by brand.js.
 })();

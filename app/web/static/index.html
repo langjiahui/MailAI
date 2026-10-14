@@ -21,7 +21,7 @@
       } catch (_) {}
     })();
   </script>
-  <link rel="icon" type="image/png" href="/static/assets/mailai-mark.png" />
+  <link rel="icon" type="image/svg+xml" href="/static/assets/mailai-mark.svg" />
   <link rel="stylesheet" href="/static/style.css?v=span-styles-20261013" />
   <link rel="stylesheet" href="/static/workspace.css?v=span-styles-20261013" />
   <link rel="stylesheet" href="/static/companion.css?v=working-perch-20261012" />
@@ -66,6 +66,7 @@
   <link rel="stylesheet" href="/static/control-theme.css?v=evidence-compose-20261014">
   <link rel="stylesheet" href="/static/date-time-picker.css?v=boundaries-20261013">
   <link rel="stylesheet" href="/static/reward-theme-details.css?v=1">
+  <link rel="stylesheet" href="/static/brand.css?v=folded-m-1">
 </head>
 <body>
   <div id="app-preloader" class="app-preloader" role="status" aria-live="polite">
@@ -76,9 +77,10 @@
     </div>
     <div class="preloader-content">
       <div class="preloader-brand" aria-label="MailAI 邮件安全与效率助手" data-i18n-aria="ui.d0569bb4c12c">
-        <img src="/static/assets/mailai-mark.png" alt="" />
+        <span data-brand-mark aria-hidden="true"></span>
         <span><strong class="mailai-wordmark">Mail<span class="mailai-wordmark-ai">AI</span></strong><small data-i18n="app.tagline">邮件安全与效率助手</small></span>
       </div>
+      <div class="brand-entrance" data-brand-mark aria-hidden="true"></div>
       <div class="preloader-status">
         <span data-i18n="app.preloaderInit">正在初始化邮件工作台</span>
         <small data-i18n="app.preloaderInitHint">小邮正在载入账户与邮件数据</small>
@@ -98,15 +100,7 @@
     <header class="topbar">
       <button id="btn-mobile-nav" class="mobile-nav-button" type="button" aria-label="打开邮箱文件夹" data-i18n-aria="nav.openFolders" aria-expanded="false"><svg viewBox="0 0 20 20"><path d="M3.5 5.5h13M3.5 10h13M3.5 14.5h13"/></svg></button>
       <div class="brand">
-        <span class="logo" aria-hidden="true">
-          <img src="/static/assets/mailai-mark.png" alt="" />
-          <svg class="reward-brand-mark" viewBox="0 0 64 64" focusable="false">
-            <path class="reward-brand-shield" d="M12 32V20q0-4 4-6L30 7q2-1 4 0l13 7v5L32 12 18 19v17Z M47 24q0-2 3-2t3 2v10l-6 4Z"/>
-            <path class="reward-brand-base" d="M12 38 30 49q2 1 4 0l19-11v9q0 4-4 6l-15 8q-2 1-4 0l-14-8q-4-2-4-6Z"/>
-            <path class="reward-brand-check" d="m26 30 6 6 10-11" fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-            <path class="reward-brand-star" d="m53 5 2 5 5 2-5 2-2 5-2-5-5-2 5-2Z"/>
-          </svg>
-        </span>
+        <span class="logo" data-brand-mark aria-hidden="true"></span>
         <span class="brand-copy"><strong class="mailai-wordmark">Mail<span class="mailai-wordmark-ai">AI</span></strong><small data-i18n="app.tagline">邮件安全与效率助手</small></span>
       </div>
       <div class="global-search">
@@ -1130,7 +1124,7 @@
     <!-- 邮箱连接与模型启用分别完成 -->
     <div id="onboarding-overlay" class="onboarding-overlay hidden">
       <section class="onboarding-card" aria-labelledby="onboarding-title">
-        <div class="onboarding-brand"><img src="/static/assets/mailai-mark.png" alt=""><span>MailAI</span></div>
+        <div class="onboarding-brand"><span data-brand-mark aria-hidden="true"></span><span>MailAI</span></div>
         <div class="onboarding-step" data-i18n="ob.step">开始使用 · 连接邮箱</div>
         <h2 id="onboarding-title" data-i18n="ob.title">欢迎使用 MailAI</h2>
         <p data-i18n="ob.intro">让小邮帮你读邮件、理待办、留意风险来信。连接邮箱后即可使用邮件功能；小邮对话和 AI 分析需要另行配置模型服务，可稍后设置。</p>
@@ -1186,7 +1180,7 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=0d6badabafbc"></script>
+  <script src="/static/bundle.js?v=abbee99a67b8"></script>
   <script src="/static/settings-scroll.js?v=2"></script>
   <script type="module" src="/static/author-logo.js?v=4"></script>
 </body>

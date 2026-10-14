@@ -26,6 +26,7 @@ const {chromium, webkit} = require('playwright');
     await page.goto('http://mailai.test/');
     for (const file of ['i18n.js','i18n-catalog.js','i18n-runtime.js']) await page.addScriptTag({path:path.join(root,file)});
     await page.addScriptTag({path: path.join(root, 'companion.js')});
+      await page.addScriptTag({path:path.join(root,'brand.js')});
     await page.addScriptTag({content: hidePreloaderSource});
 
     const preloader = page.locator('#app-preloader');
@@ -37,7 +38,7 @@ const {chromium, webkit} = require('playwright');
     assert.equal(await page.locator('.preloader-route-line path').evaluate(el => getComputedStyle(el).vectorEffect), 'non-scaling-stroke',
       'route stroke weight must survive responsive resizing');
     assert.equal(await page.locator('.preloader-mail').count(), 2, 'only two quiet envelope markers remain');
-    assert.equal(await page.locator('.preloader-brand img').evaluate(el => parseFloat(getComputedStyle(el).width)), 24);
+    assert.equal(await page.locator('.preloader-brand [data-brand-mark]').evaluate(el => parseFloat(getComputedStyle(el).width)), 24);
     assert.equal(await page.locator('.preloader-route-line').evaluate(el => parseFloat(getComputedStyle(el).strokeWidth)), 1.1);
     const initialRoute = await page.locator('#preloader-route-path').getAttribute('d');
     const checkRouteCards = async () => {
@@ -167,6 +168,7 @@ const {chromium, webkit} = require('playwright');
     await page.reload();
     for (const file of ['i18n.js','i18n-catalog.js','i18n-runtime.js']) await page.addScriptTag({path:path.join(root,file)});
     await page.addScriptTag({path: path.join(root, 'companion.js')});
+      await page.addScriptTag({path:path.join(root,'brand.js')});
     await page.addScriptTag({content: hidePreloaderSource});
     await page.evaluate(() => {
       document.body.style.zoom = '1.2';
@@ -195,7 +197,7 @@ const {chromium, webkit} = require('playwright');
     });
     assert(contourAlignment < 2,
       `zoomed route must land on the real reading pane bottom edge (${contourAlignment.toFixed(2)}px)`);
-    for (const selector of ['img', 'strong', 'small']) {
+    for (const selector of ['[data-brand-mark]', 'strong', 'small']) {
       const from = await page.locator(`.preloader-brand ${selector}`).boundingBox();
       const to = await page.locator(`.topbar .brand ${selector}`).boundingBox();
       if (!from || !to) continue;
@@ -209,6 +211,7 @@ const {chromium, webkit} = require('playwright');
     await page.reload();
     for (const file of ['i18n.js','i18n-catalog.js','i18n-runtime.js']) await page.addScriptTag({path:path.join(root,file)});
     await page.addScriptTag({path: path.join(root, 'companion.js')});
+      await page.addScriptTag({path:path.join(root,'brand.js')});
     await page.emulateMedia({reducedMotion: 'reduce'});
     assert.equal(await page.locator('.preloader-mail-one').evaluate(el => getComputedStyle(el).animationName), 'none');
     assert.equal(await page.locator('.preloader-route-sheen').evaluate(el => getComputedStyle(el).animationName), 'none');

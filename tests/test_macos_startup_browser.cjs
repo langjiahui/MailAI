@@ -28,6 +28,7 @@ const {chromium, webkit} = require('playwright');
       await page.addScriptTag({path:path.join(root,'macos-window.js')});
       await page.addScriptTag({path:path.join(root,'windows-window.js')});
       await page.addScriptTag({path:path.join(root,'companion.js')});
+      await page.addScriptTag({path:path.join(root,'brand.js')});
       await page.addScriptTag({content:handoff});
       await page.waitForTimeout(600);
       const geometry = await page.evaluate(() => {
@@ -49,7 +50,7 @@ const {chromium, webkit} = require('playwright');
       assert(!geometry.backdrop.includes('radial-gradient'),'native startup must not return to ambient gradient wallpaper');
       assert.equal(geometry.line,'rgba(0, 0, 0, 0)');
       assert.equal(geometry.headerLine,'none');
-      assert.equal(await page.locator('.preloader-brand img').isVisible(),shell !== 'macos');
+      assert.equal(await page.locator('.preloader-brand [data-brand-mark]').isVisible(),true);
       // Saved sidebar widths and font zoom must align the header, backdrop and skeleton.
       for (const width of [188,226,280]) {
         for (const zoom of [0.9,1,1.3]) {
@@ -97,6 +98,7 @@ const {chromium, webkit} = require('playwright');
       await page.addScriptTag({path:path.join(root,'macos-window.js')});
       await page.addScriptTag({path:path.join(root,'windows-window.js')});
       await page.addScriptTag({path:path.join(root,'companion.js')});
+      await page.addScriptTag({path:path.join(root,'brand.js')});
       await page.addScriptTag({content:handoff});
       await page.evaluate(()=>hideAppPreloader());
       await page.locator('#app-preloader').waitFor({state:'detached',timeout:1000});
