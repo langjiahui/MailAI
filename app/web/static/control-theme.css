@@ -39,3 +39,228 @@ html[data-theme][data-theme][data-theme] body .special-mail-actions #btn-edit-sp
 /* Line icons inherit the action's foreground rather than a theme accent. */
 html[data-theme][data-theme][data-theme] body .special-mail-actions #btn-edit-special svg,
 html[data-theme][data-theme][data-theme] body #assistant-send svg path { stroke:currentColor!important; }
+/* Secondary toolbar actions use surface ink in every state. The legacy color
+ * bridge can mistake a green hover fill for a primary action and assign dark
+ * on-accent text to a dark surface. Keep this pair explicit above that cascade. */
+html[data-theme][data-theme][data-theme] body #app .topbar .nav-action:not(.nav-compose) {
+  --toolbar-hover:color-mix(in srgb,var(--desk-hover) 92%,var(--desk-ink));
+  --toolbar-pressed:color-mix(in srgb,var(--desk-selected) 90%,var(--desk-ink));
+  background:transparent!important;
+  color:var(--desk-ink)!important;
+  box-shadow:none!important;
+  transform:none!important;
+  transition:background-color .14s ease,box-shadow .14s ease;
+}
+html[data-theme][data-theme][data-theme] body #app .topbar .nav-action:not(.nav-compose):hover:not(:disabled) {
+  background:var(--toolbar-hover)!important;
+  color:var(--desk-ink)!important;
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--desk-line) 85%,var(--desk-ink))!important;
+}
+html[data-theme][data-theme][data-theme] body #app .topbar .nav-action:not(.nav-compose):is(.active,[aria-expanded="true"]):not(:disabled) {
+  background:var(--desk-selected)!important;
+  color:var(--desk-ink)!important;
+  box-shadow:inset 0 0 0 1px var(--desk-line)!important;
+}
+html[data-theme][data-theme][data-theme] body #app .topbar .nav-action:not(.nav-compose):active:not(:disabled) {
+  background:var(--toolbar-pressed)!important;
+  color:var(--desk-ink)!important;
+}
+html[data-theme][data-theme][data-theme] body #app .topbar .nav-action:not(.nav-compose) :is(span,svg) {
+  color:inherit!important;
+}
+html[data-theme][data-theme][data-theme] body #app .topbar .nav-action:not(.nav-compose) svg {
+  stroke:currentColor!important;
+}
+html[data-theme][data-theme][data-theme] body #app .topbar .nav-action:not(.nav-compose):focus-visible {
+  outline:2px solid var(--desk-accent)!important;
+  outline-offset:2px;
+}
+@media(prefers-reduced-motion:reduce) {
+  html[data-theme][data-theme][data-theme] body #app .topbar .nav-action:not(.nav-compose) { transition:none!important; }
+}
+/* Batch commands belong to the list surface, not the primary-action palette.
+ * Explicit pairs also prevent legacy gradients from becoming bright accents. */
+html[data-theme][data-theme][data-theme] body #bulk-toolbar {
+  --bulk-danger:#a83f36;
+  position:relative; inset:auto; flex-shrink:0;
+  height:auto;
+  min-height:48px;
+  padding:8px 12px;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:6px 10px;
+  background:var(--desk-surface)!important;
+  color:var(--desk-ink)!important;
+  border-bottom:1px solid var(--desk-line)!important;
+  box-shadow:none!important;
+}
+html[data-theme][data-theme][data-theme] body #bulk-toolbar:not(.hidden) { display:grid; }
+html[data-theme][data-theme][data-theme] body .list-pane.selection-active>.list-header { display:none!important; }
+html[data-theme="dark"][data-theme][data-theme] body #bulk-toolbar { --bulk-danger:#ffb4aa; }
+html[data-theme][data-theme][data-theme] body #bulk-toolbar #bulk-count {
+  grid-column:1; grid-row:1;
+  gap:7px; margin:0;
+  color:var(--desk-ink)!important;
+  font-size:12px; font-weight:650;
+}
+html[data-theme][data-theme][data-theme] body #bulk-toolbar #bulk-count::before {
+  flex:0 0 20px; width:20px; height:20px;
+  background:var(--desk-selected)!important;
+  color:var(--desk-ink)!important;
+  border:1px solid var(--desk-line)!important;
+  box-shadow:none!important;
+}
+html[data-theme][data-theme][data-theme] body #bulk-toolbar .bulk-actions {
+  display:flex; grid-column:1 / -1; grid-row:2;
+  gap:4px; min-width:0; align-items:center;
+}
+html[data-theme][data-theme][data-theme] body #bulk-toolbar button {
+  flex:0 0 32px; width:32px!important; min-width:32px!important;
+  height:32px!important; min-height:32px!important; padding:0;
+  border:1px solid transparent!important; border-radius:7px;
+  background:transparent!important;
+  color:var(--desk-ink)!important;
+  box-shadow:none!important; transform:none!important;
+  transition:background-color .14s ease,border-color .14s ease;
+}
+html[data-theme][data-theme][data-theme] body #bulk-toolbar button:hover:not(:disabled) {
+  background:var(--desk-hover)!important;
+  border-color:var(--desk-line)!important;
+}
+html[data-theme][data-theme][data-theme] body #bulk-toolbar button:active:not(:disabled) {
+  background:var(--desk-selected)!important;
+}
+html[data-theme][data-theme][data-theme] body #bulk-toolbar button :is(span,svg) { color:inherit!important; margin:0; }
+html[data-theme][data-theme][data-theme] body #bulk-toolbar button svg { width:16px; height:16px; stroke:currentColor!important; }
+html[data-theme][data-theme][data-theme] body #bulk-toolbar button.bulk-trash { color:var(--bulk-danger)!important; }
+html[data-theme][data-theme][data-theme] body #bulk-toolbar button.bulk-trash:hover:not(:disabled) {
+  background:color-mix(in srgb,var(--bulk-danger) 10%,var(--desk-surface))!important;
+  border-color:color-mix(in srgb,var(--bulk-danger) 30%,var(--desk-line))!important;
+}
+html[data-theme][data-theme][data-theme] body #bulk-toolbar #bulk-folder {
+  flex:1 1 100px; width:auto; min-width:80px; max-width:none;
+  height:32px; min-height:32px; margin:0 0 0 auto; padding:0 28px 0 10px;
+  border:1px solid var(--desk-line)!important; border-radius:7px;
+  background-color:var(--desk-muted-surface)!important;
+  background-image:var(--select-arrow)!important;
+  color:var(--desk-ink)!important; box-shadow:none!important;
+  font-size:12px; font-weight:550;
+}
+html[data-theme][data-theme][data-theme] body #bulk-toolbar #bulk-folder:hover:not(:disabled) {
+  background-color:var(--desk-hover)!important;
+  border-color:var(--desk-accent)!important;
+}
+html[data-theme][data-theme][data-theme] body #bulk-toolbar #bulk-cancel {
+  grid-column:2; grid-row:1;
+  width:auto!important; min-width:44px!important; padding:0 9px;
+  border-color:var(--desk-line)!important;
+  font-size:12px;
+}
+html[data-theme][data-theme][data-theme] body #bulk-toolbar :is(button,select):focus-visible {
+  outline:2px solid var(--desk-accent)!important; outline-offset:2px;
+}
+html[data-theme][data-theme][data-theme] body #bulk-toolbar.busy #bulk-count { white-space:normal; line-height:1.5; }
+html[data-theme][data-theme][data-theme] body #bulk-toolbar.busy { grid-template-columns:minmax(0,1fr) auto; }
+html[data-theme][data-theme][data-theme] body #bulk-toolbar.busy .bulk-actions { grid-column:1 / -1; grid-row:2; }
+html[data-theme][data-theme][data-theme] body #bulk-toolbar.busy #bulk-cancel { grid-column:2; }
+html[data-theme][data-theme][data-theme] body #bulk-toolbar.busy #bulk-count::before {
+  content:''; flex-basis:16px; width:16px; height:16px;
+  background:transparent!important;
+  border:2px solid var(--desk-line)!important;
+  border-top-color:var(--desk-accent)!important;
+}
+html[data-theme][data-theme][data-theme] body #bulk-toolbar.busy::after { display:none; }
+@container mail-list-pane (min-width:560px) {
+  html[data-theme][data-theme][data-theme] body #bulk-toolbar { grid-template-columns:auto minmax(0,1fr) auto; }
+  html[data-theme][data-theme][data-theme] body #bulk-toolbar .bulk-actions { grid-column:2; grid-row:1; }
+  html[data-theme][data-theme][data-theme] body #bulk-toolbar .bulk-actions button {
+    flex-basis:auto; width:auto!important; padding-inline:7px;
+  }
+  html[data-theme][data-theme][data-theme] body #bulk-toolbar .bulk-actions button span { display:inline; font-size:11px; }
+  html[data-theme][data-theme][data-theme] body #bulk-toolbar #bulk-cancel { grid-column:3; }
+}
+@container mail-list-pane (max-width:320px) {
+  html[data-theme][data-theme][data-theme] body #bulk-toolbar { padding-inline:8px; }
+  html[data-theme][data-theme][data-theme] body #bulk-toolbar .bulk-actions { gap:2px; }
+  html[data-theme][data-theme][data-theme] body #bulk-toolbar .bulk-actions button { flex-basis:30px; width:30px!important; min-width:30px!important; }
+  html[data-theme][data-theme][data-theme] body #bulk-toolbar #bulk-folder { min-width:72px; font-size:11px; padding-left:7px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  html[data-theme][data-theme][data-theme] body #bulk-toolbar :is(button,select) { transition:none!important; }
+}
+/* The selection preview keeps its paper stack without accent-colored outlines. */
+html[data-theme][data-theme][data-theme] body #email-list .email-item.bulk-selected {
+  background:var(--desk-selected)!important;
+  border-color:var(--desk-line)!important;
+  box-shadow:none!important;
+}
+html[data-theme][data-theme][data-theme] body #email-list .email-item.bulk-selected:hover {
+  background:color-mix(in srgb,var(--desk-selected) 95%,var(--desk-ink))!important;
+}
+html[data-theme][data-theme][data-theme] body .reading-selection-stack { background:var(--desk-muted-surface)!important; }
+html[data-theme][data-theme][data-theme] body .reading-selection-sheet {
+  background:var(--desk-surface)!important;
+  border-color:var(--desk-line)!important;
+  box-shadow:0 8px 24px rgba(0,0,0,.12)!important;
+}
+html[data-theme][data-theme][data-theme] body .reading-selection-sheet[data-depth]:not([data-depth="0"]) { background:var(--desk-muted-surface)!important; }
+html[data-theme][data-theme][data-theme] body .reading-selection-sheet-head { border-color:var(--desk-line)!important; }
+html[data-theme][data-theme][data-theme] body .reading-selection-sheet-head>span { background:var(--desk-selected)!important; color:var(--desk-ink)!important; }
+/* Evidence uses neutral themed surfaces; green/amber/red retain risk meaning. */
+html[data-theme][data-theme][data-theme] body #security-analysis-panel {
+  --security-success:#21694b; --security-warn:#8a560c; --security-danger:#9f3834;
+  background:var(--desk-muted-surface)!important;
+  color:var(--desk-ink)!important; border-color:var(--desk-line)!important;
+  box-shadow:0 16px 48px rgba(0,0,0,.18)!important;
+  backdrop-filter:none!important; -webkit-backdrop-filter:none!important;
+}
+html[data-theme="dark"][data-theme][data-theme] body #security-analysis-panel {
+  --security-success:#92dcaf; --security-warn:#f0c978; --security-danger:#ffa9a4;
+}
+html[data-theme][data-theme][data-theme] body #security-analysis-panel .security-flyout-head {
+  background:var(--desk-muted-surface)!important; border-color:var(--desk-line)!important;
+}
+html[data-theme][data-theme][data-theme] body #security-analysis-panel :is(h3,.finding-copy strong,.evidence-dimension span,.info-grid) { color:var(--desk-ink)!important; }
+html[data-theme][data-theme][data-theme] body #security-analysis-panel :is(.eyebrow,.section-title,.section-title small,.finding-detail,.finding-tech,.info-label,.evidence-dimension small) { color:var(--desk-muted)!important; }
+html[data-theme][data-theme][data-theme] body #security-analysis-panel .security-flyout-head button {
+  background:var(--desk-surface)!important; color:var(--desk-ink)!important;
+  border-color:var(--desk-line)!important; box-shadow:none!important;
+}
+html[data-theme][data-theme][data-theme] body #security-analysis-panel .security-flyout-head button:hover { background:var(--desk-hover)!important; }
+html[data-theme][data-theme][data-theme] body #security-analysis-panel .security-flyout-head button:focus-visible { outline:2px solid var(--desk-accent)!important; outline-offset:2px; }
+html[data-theme][data-theme][data-theme] body #security-analysis-panel :is(.reading-section,.evidence-dimension) {
+  background:var(--desk-surface)!important; border-color:var(--desk-line)!important; box-shadow:none!important;
+}
+html[data-theme][data-theme][data-theme] body #security-analysis-panel .info-grid { background:transparent!important; border-color:var(--desk-line)!important; }
+html[data-theme][data-theme][data-theme] body #security-analysis-panel .security-flyout-result {
+  --result-accent:var(--security-success);
+  background:color-mix(in srgb,var(--result-accent) 4%,var(--desk-surface))!important;
+  border-color:color-mix(in srgb,var(--result-accent) 22%,var(--desk-line))!important;
+}
+html[data-theme][data-theme][data-theme] body #security-analysis-panel .security-flyout-result.security-warn { --result-accent:var(--security-warn); }
+html[data-theme][data-theme][data-theme] body #security-analysis-panel .security-flyout-result.security-danger { --result-accent:var(--security-danger); }
+html[data-theme][data-theme][data-theme] body #security-analysis-panel .security-flyout-result.security-muted { --result-accent:var(--desk-muted); }
+html[data-theme][data-theme][data-theme] body #security-analysis-panel .security-flyout-result :is(h4,.gauge-score) { color:var(--result-accent)!important; }
+html[data-theme][data-theme][data-theme] body #security-analysis-panel .security-flyout-result :is(p,span.gauge-label,div>span:not(.gauge-score)) { color:var(--desk-muted)!important; }
+html[data-theme][data-theme][data-theme] body #security-analysis-panel .gauge-svg circle:first-child { stroke:var(--desk-line)!important; }
+html[data-theme][data-theme][data-theme] body #security-analysis-panel .gauge-arc { stroke:var(--result-accent)!important; }
+html[data-theme][data-theme][data-theme] body #security-analysis-panel :is(.evidence-dimension b,.finding-weight) { color:var(--security-danger)!important; }
+/* The hover label is its own surface; the pet's avatar stays transparent. */
+html[data-theme][data-theme][data-theme] body #btn-compose-ai .compose-ai-label {
+  background:var(--desk-selected)!important;
+  color:var(--desk-ink)!important;
+  border:1px solid var(--desk-line)!important;
+  box-shadow:0 3px 10px rgba(0,0,0,.08)!important;
+}
+html[data-theme][data-theme][data-theme] body #btn-compose-ai:focus-visible { outline:2px solid var(--desk-accent)!important; outline-offset:3px; }
+/* Only the on-screen signature inherits the workspace palette. CSS does not
+ * rewrite saved HTML, outgoing signatures, links or embedded image data. */
+html[data-theme][data-theme][data-theme] body #compose-signature { color:var(--desk-ink)!important; border-color:var(--desk-line)!important; }
+html[data-theme][data-theme][data-theme] body #compose-signature::before { color:var(--desk-muted)!important; }
+html[data-theme][data-theme][data-theme] body #compose-signature-content,
+html[data-theme][data-theme][data-theme] body #compose-signature-content :is(div,p,span,strong,b,em,i,small,address,td) {
+  color:var(--desk-ink)!important;
+}
+html[data-theme][data-theme][data-theme] body #compose-signature-content a {
+  color:var(--desk-accent)!important; text-decoration:underline; text-underline-offset:2px;
+}
+html[data-theme][data-theme][data-theme] body #compose-signature-content :is(hr,[style*="border-top"]) { border-color:var(--desk-accent)!important; }

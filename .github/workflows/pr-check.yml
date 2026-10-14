@@ -179,6 +179,12 @@ jobs:
           node tests/test_reward_themes_browser.cjs
           node tests/test_reward_theme_surfaces_browser.cjs
           MAILAI_BROWSER=webkit node tests/test_reward_theme_surfaces_browser.cjs
+          node tests/test_toolbar_hover_browser.cjs
+          MAILAI_BROWSER=webkit node tests/test_toolbar_hover_browser.cjs
+          node tests/test_bulk_toolbar_browser.cjs
+          MAILAI_BROWSER=webkit node tests/test_bulk_toolbar_browser.cjs
+          node tests/test_evidence_compose_theme_browser.cjs
+          MAILAI_BROWSER=webkit node tests/test_evidence_compose_theme_browser.cjs
           node tests/test_companion_theme_transparency_browser.cjs
           MAILAI_BROWSER=webkit node tests/test_companion_theme_transparency_browser.cjs
           stop_fixture

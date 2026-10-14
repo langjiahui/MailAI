@@ -24,6 +24,12 @@ const port=Number(process.env.MAILAI_TRANSPARENT_FIXTURE_PORT||18797);
   const mutate=async(path,body)=>page.evaluate(async({path,body})=>{await api('/api/companion/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});await mailaiPet.refresh()},{path,body});
   for(const item of ['theme_monochrome','theme_baowu','sky','wings','orbit'])await mutate('purchase',{item,token:crypto.randomUUID()});
   const transparent=async selector=>{
+   // Theme removal can still be interpolating a previous focus shadow. Measure
+   // settled finite transitions, without waiting on the pet's ambient loops.
+   await page.locator(selector).evaluate(async n=>{
+    n.getBoundingClientRect();
+    await Promise.all(n.getAnimations().filter(a=>Number.isFinite(a.effect?.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})));
+   });
    const css=await page.locator(selector).evaluate(n=>{const s=getComputedStyle(n);return{background:s.backgroundColor,image:s.backgroundImage,shadow:s.boxShadow,border:s.borderTopWidth,backdrop:s.backdropFilter||s.webkitBackdropFilter}});
    assert.equal(css.background,'rgba(0, 0, 0, 0)',`${selector} ${JSON.stringify(css)}`);
    assert.equal(css.image,'none',`${selector}: no colored gradient`);
