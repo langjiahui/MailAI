@@ -28,6 +28,7 @@ class AgentTests(unittest.TestCase):
                 self.assertEqual(agent.request('add',secret=value),(-1,''))
             install.assert_not_called()
 
+    @unittest.skipUnless(os.name=='posix','macOS reader uses POSIX ownership and private installation modes')
     def test_archive_tampering_and_symbolic_link_install_are_rejected(self):
         with tempfile.TemporaryDirectory() as folder:
             root=Path(folder);bundle=root/'bundle';native_dir=bundle/'app/native';native_dir.mkdir(parents=True)
