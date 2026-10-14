@@ -44,7 +44,10 @@ const {chromium,webkit}=require('playwright');
     for(const theme of ['', 'theme_monochrome','theme_baowu'])for(const mode of ['light','dark']) {
       expectedTheme=theme;expectedMode=mode;
       await page.evaluate(async({theme,mode})=>{await api('/api/companion/equip',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slot:'theme',item:theme})});await mailaiPet.refresh();applyTheme(mode);setI18nLanguage('zh-CN');},{theme,mode});
-      const selected=await page.locator('.email-item.bulk-selected').first().evaluate(n=>({bg:getComputedStyle(n).backgroundColor,list:getComputedStyle(n.parentElement).backgroundColor,image:getComputedStyle(n).backgroundImage}));
+      // Refreshing the equipped theme can replace list rows. Query and read in
+      // one page evaluation so WebKit never measures a detached locator node.
+      await page.waitForFunction(()=>document.querySelectorAll('.email-item.bulk-selected').length===3);
+      const selected=await page.evaluate(()=>{const n=document.querySelector('.email-item.bulk-selected');return {bg:getComputedStyle(n).backgroundColor,list:getComputedStyle(n.parentElement).backgroundColor,image:getComputedStyle(n).backgroundImage};});
       assert.equal(selected.image,'none','Selection must use a quiet surface');
       assert.notEqual(selected.bg,selected.list,'Selected messages remain visible');
       for(const width of [240,320,440,560,700]) {
