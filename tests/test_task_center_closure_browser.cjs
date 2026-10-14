@@ -47,6 +47,9 @@ const engine = process.env.MAILAI_BROWSER === 'webkit' ? webkit : chromium;
   assert.equal(await page.locator('#compose-subject').inputValue(),'failed draft');
   await page.evaluate(()=>closeCompose());await page.unroute('**/api/mail/outbox');
   await page.evaluate(async accountId=>{
+   const tasks=await api('/api/todos?include_done=true',{accountId});
+   for(const task of tasks.filter(row=>row.email_id===1 && row.status==='done'))
+    await api(`/api/todos/${task.id}/reopen`,{accountId,method:'POST'});
    await api('/api/emails/1/remind',{accountId,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({at:new Date(Date.now()+86400000).toISOString()})});
    await openTaskCenter();
   },accountId);

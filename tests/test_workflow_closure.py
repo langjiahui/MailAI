@@ -8,6 +8,7 @@ import tempfile
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
 from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
@@ -163,7 +164,7 @@ def warning_lifecycle():
     # Upgrade an older outbox in place, retaining its previously hidden warning.
     import sqlite3
     legacy = str(Path(HOME.name)/'legacy.db')
-    with sqlite3.connect(legacy) as connection:
+    with closing(sqlite3.connect(legacy)) as connection, connection:
         connection.execute("CREATE TABLE outbox(token TEXT PRIMARY KEY,payload TEXT NOT NULL,status TEXT NOT NULL,due_at TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,result TEXT DEFAULT '{}',error TEXT DEFAULT '')")
         connection.execute("INSERT INTO outbox VALUES(?,?,'sent','','','',?,'')", ('legacy',json.dumps(data()),json.dumps({'warning':'legacy warning'})))
     with patch.object(config,'DB_PATH',legacy):
