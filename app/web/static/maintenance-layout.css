@@ -50,6 +50,70 @@
 #system-view [data-system-panel="maintenance"] .maintenance-cleanup-note { flex:1; margin:0; padding:9px 12px; }
 #system-view [data-system-panel="maintenance"] .maintenance-cleanup-footer .maintenance-card-actions { flex:none; margin:0; }
 
+/* Maintenance surfaces use paired palette tokens. Legacy green gradients map
+ * to a light accent in redeemed dark themes, washing out the entire card. */
+html[data-theme] body #system-view [data-system-panel="maintenance"] .diagnostic-card {
+  background:var(--desk-surface)!important;
+  color:var(--desk-ink)!important;
+  border-color:var(--desk-line)!important;
+  box-shadow:none!important;
+}
+html[data-theme] body #system-view [data-system-panel="maintenance"] :is(.maintenance-card-copy h3,.maintenance-subsection-head h4,.backup-record-copy b,.maintenance-cleanup-steps b) {
+  color:var(--desk-ink)!important;
+}
+html[data-theme] body #system-view [data-system-panel="maintenance"] :is(.maintenance-card-copy p,.maintenance-subsection-head p,.maintenance-card-actions>span,.backup-record-copy small,.backup-record-size,.older-backups>summary,.portable-export-range,.maintenance-migration-note,.maintenance-cleanup-steps small,.backup-empty small) {
+  color:var(--desk-muted)!important;
+}
+html[data-theme] body #system-view [data-system-panel="maintenance"] .connection-icon {
+  background:var(--desk-selected)!important;
+  color:var(--desk-accent)!important;
+  box-shadow:none!important;
+}
+html[data-theme] body #system-view [data-system-panel="maintenance"] .connection-icon svg {
+  color:inherit!important;
+  stroke:currentColor!important;
+}
+html[data-theme] body #system-view [data-system-panel="maintenance"] :is(.maintenance-badge:not(.caution):not([data-state]),.backup-record-copy em,.maintenance-cleanup-steps li>span) {
+  background:var(--desk-muted-surface)!important;
+  color:var(--desk-muted)!important;
+  border-color:var(--desk-line)!important;
+}
+html[data-theme] body #system-view [data-system-panel="maintenance"] .backup-item {
+  background:transparent!important;
+  color:var(--desk-ink)!important;
+  border:0!important;
+  border-bottom:1px solid var(--desk-line)!important;
+  border-radius:0;
+}
+html[data-theme] body #system-view [data-system-panel="maintenance"] :is(.action-secondary,.backup-record-actions button,.backup-record-actions a) {
+  background:var(--desk-muted-surface)!important;
+  color:var(--desk-ink)!important;
+  border:1px solid var(--desk-line)!important;
+  box-shadow:none!important;
+  transform:none!important;
+  transition:background-color .14s ease,border-color .14s ease;
+}
+html[data-theme] body #system-view [data-system-panel="maintenance"] :is(.action-secondary,.backup-record-actions button,.backup-record-actions a):hover:not(:disabled) {
+  background:var(--desk-hover)!important;
+  color:var(--desk-ink)!important;
+  border-color:var(--desk-accent)!important;
+}
+html[data-theme] body #system-view [data-system-panel="maintenance"] button :is(span,svg) { color:inherit!important; }
+html[data-theme] body #system-view [data-system-panel="maintenance"] :is(button,a,summary):focus-visible {
+  outline:2px solid var(--desk-accent)!important;
+  outline-offset:2px;
+}
+#system-view [data-system-panel="maintenance"] .maintenance-card-copy { min-width:0; flex:1; }
+#system-view [data-system-panel="maintenance"] .backup-record-copy { min-width:0; }
+#system-view [data-system-panel="maintenance"] .backup-record-copy small {
+  display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+#system-view [data-system-panel="maintenance"] .maintenance-card-actions { flex-wrap:wrap; }
+
+@media(prefers-reduced-motion:reduce) {
+  #system-view [data-system-panel="maintenance"] :is(.action-secondary,.backup-record-actions button,.backup-record-actions a) { transition:none; }
+}
+
 /* Results live outside the maintenance grid so card heights stay aligned. */
 #system-view [data-system-panel="maintenance"] :is(.client-import-card,.maintenance-diagnostics) .maintenance-card-actions { margin-top:auto; padding-top:18px; }
 #system-view #diagnostic-card-status { font-size:10px; white-space:nowrap; }

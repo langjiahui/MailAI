@@ -81,6 +81,24 @@ html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[d
   border-color:var(--reward-line)!important;
   box-shadow:var(--reward-popup-shadow)!important;
 }
+/* Correspondence rows are surfaces, never primary action fills. Legacy dark
+ * greens otherwise map to the near-white accent of the monochrome theme. */
+html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body #correspondence-drawer .correspondence-item {
+  background:var(--reward-surface)!important;
+  color:var(--reward-ink)!important;
+  border-color:var(--reward-line)!important;
+  box-shadow:none!important;
+}
+html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body #correspondence-drawer .correspondence-item:hover {
+  background:var(--reward-hover)!important;
+}
+html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body #correspondence-drawer .correspondence-item:is(.current,.selected) {
+  background:var(--reward-selected)!important;
+  border-color:var(--reward-accent)!important;
+}
+html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body #correspondence-drawer .correspondence-open:disabled {
+  opacity:1;
+}
 @media(prefers-reduced-motion:reduce) {
   html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .topbar .global-search,
   html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .reading-header .reading-actions :is(button,summary) { transition:none!important; }

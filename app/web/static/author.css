@@ -4,13 +4,13 @@
   --author-soft:#f7f8f4; --author-accent:#dcece2;
   color:var(--author-ink); width:100%; max-width:none!important; margin-inline:0!important;
 }
-.author-hero {
-  display:flex; align-items:center; gap:26px; min-height:150px; padding:26px 34px;
-  border:0; border-radius:22px;
-  background:radial-gradient(circle at 87% 12%,rgba(211,233,218,.8),transparent 36%),linear-gradient(115deg,#f2f6ef,#e9f2eb);
+html[data-theme] body #system-view .author-hero {
+  display:flex; align-items:center; gap:24px; min-height:0; padding:20px 24px;
+  border:1px solid var(--desk-line)!important; border-radius:14px;
+  background:var(--desk-muted-surface)!important; box-shadow:none!important;
 }
 .author-logo {
-  position:relative; display:block; flex:none; width:148px; height:126px; padding:0;
+  position:relative; display:block; flex:none; width:112px; height:96px; padding:0;
   overflow:hidden; border:0; border-radius:22px; background:transparent; isolation:isolate;
   box-shadow:none; cursor:grab;
 }
@@ -25,11 +25,12 @@
 .author-logo canvas { position:absolute; inset:0; display:block; width:100%; height:100%; opacity:0; }
 .author-logo[data-logo-state="ready"] canvas { opacity:1; }
 .author-logo[data-logo-state="ready"] .author-avatar { visibility:hidden; }
-.author-copy { min-width:0; }
+.author-copy { min-width:0; max-width:58ch; }
 .author-eyebrow,.author-card-label { color:var(--author-muted); font-size:11px; font-weight:700; letter-spacing:.055em; }
-.author-copy h3 { margin:5px 0 3px; color:var(--author-ink); font-size:29px; overflow-wrap:anywhere; }
-.author-copy p { margin:5px 0 0; color:var(--author-muted); font-size:13px; line-height:1.65; }
-.author-copy .author-role { color:var(--author-ink); font-weight:650; }
+.author-copy h3 { margin:6px 0 4px; color:var(--desk-ink); font-size:26px; line-height:1.2; font-weight:650; letter-spacing:-.025em; overflow-wrap:anywhere; }
+.author-copy p { margin:6px 0 0; color:var(--desk-muted); font-size:13px; line-height:1.65; }
+.author-copy .author-role { color:var(--desk-ink); font-weight:550; }
+html[data-theme] body #system-view .author-copy .author-eyebrow { color:var(--desk-muted)!important; font-weight:550; letter-spacing:.035em; }
 .author-section-heading { margin:31px 0 17px; }
 .author-section-heading h3 { margin:0 0 7px; color:var(--author-ink); font-size:19px; }
 .author-section-heading p,.author-trust-card p,.author-boundary p { margin:0; color:var(--author-muted); font-size:13px; line-height:1.75; }
@@ -68,7 +69,6 @@ html[data-theme="dark"] #system-view > .author-page {
   --author-ink:#e3e8e5; --author-muted:#aebeb3; --author-bg:#252e28;
   --author-soft:#252d28; --author-accent:#344d3d;
 }
-html[data-theme="dark"] .author-hero { background:radial-gradient(circle at 87% 12%,rgba(55,92,65,.35),transparent 36%),linear-gradient(115deg,#28392e,#243027); }
 html[data-theme="dark"] .author-trust-card:nth-child(2) { background:#28352c; }
 html[data-theme="dark"] .author-trust-card:nth-child(3) { background:#29392f; }
 html[data-theme="dark"] .author-trust-card .author-card-label { color:#bfdfca; }
@@ -81,10 +81,10 @@ html[data-theme="dark"] #system-view .app-update-actions .action-secondary:hover
 @media(max-width:1000px) { #system-view .app-update-card { grid-template-columns:1fr; gap:22px; } .app-update-actions { width:100%; max-width:430px; } }
 @media(max-width:800px) { .author-trust-grid { grid-template-columns:1fr; } .author-trust-card { min-height:0; } }
 @media(max-width:520px) {
-  .author-hero { gap:16px; min-height:0; padding:22px; }
-  .author-logo { width:116px; height:100px; border-radius:17px; }
-  .author-copy h3 { font-size:23px; }
+  html[data-theme] body #system-view .author-hero { gap:16px; padding:18px; }
+  .author-logo { width:80px; height:70px; border-radius:14px; }
+  .author-copy h3 { font-size:22px; }
   .author-trust-card { padding:20px; }
   #system-view .app-update-card { padding:22px; }
 }
-@media(max-width:390px) { .author-hero { flex-wrap:wrap; } .app-update-actions { grid-template-columns:1fr; } .app-update-actions #btn-check-update { grid-column:auto; } }
+@media(max-width:390px) { html[data-theme] body #system-view .author-hero { flex-wrap:wrap; } .app-update-actions { grid-template-columns:1fr; } .app-update-actions #btn-check-update { grid-column:auto; } }
