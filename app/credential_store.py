@@ -151,15 +151,25 @@ def _load_macos(account_key: str) -> str:
                 return ''
             status,value=macos_keychain.read_for_app(SERVICE,account_key,interactive=interactive)
             if status==0 and value:
-                # Adopt only data the OS already authorized. A quiet master-key
-                # creation/read must not add another migration authorization.
+                # Adopt only data the OS already authorized. Prefer a quiet
+                # master-key write, but finish an explicitly authorized migration
+                # when an older build left an inaccessible master without a file.
+                # Otherwise every launch returns to the individual legacy item.
                 try:
                     migrated = macos_credential_vault.put(account_key,value,interactive=False)
+                    attempts = _attempts.get()
+                    if (not migrated and interactive and
+                        (attempts is None or '__migration_master_attempted__' not in attempts)):
+                        if attempts is not None:
+                            attempts.add('__migration_master_attempted__')
+                        migrated = macos_credential_vault.put(account_key,value,interactive=True)
                 except Exception as exc:
                     log.warning('Credential migration deferred (%s); legacy item retained', type(exc).__name__)
                     migrated = False
                 if not migrated:
                     log.warning('Credential migration deferred; legacy item retained')
+                else:
+                    log.info('Credential migration completed')
     except Exception as exc:
         # Do not fall back to an interactive CLI if the quiet native read fails.
         log.warning('macOS Keychain 读取失败 (%s)', type(exc).__name__)

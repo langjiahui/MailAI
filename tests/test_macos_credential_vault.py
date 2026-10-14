@@ -101,6 +101,73 @@ class VaultTests(unittest.TestCase):
         self.assertEqual(store.load('mail-c'),self.legacy['mail-c'])
         self.assertEqual(self.calls,[('read',module.MASTER_ACCOUNT,True)])
 
+    def test_existing_master_without_vault_finishes_legacy_migration(self):
+        # Old builds can leave a master behind without writing the encrypted
+        # file. Authorizing the individual password alone does not authorize it.
+        self.master=base64.urlsafe_b64encode(os.urandom(32)).decode('ascii')
+        self.locked=True
+        self.legacy={'mail-a':'fixture-a','mail-b':'fixture-b'}
+        with store.prompt_policy(True):
+            self.assertEqual(store.load('mail-a'),'fixture-a')
+        self.assertTrue(self.path.exists(),'Successful explicit unlock must finish migration')
+        self.assertTrue(module.contains('mail-a'))
+        with store.prompt_policy(True):
+            self.assertEqual(store.load('mail-b'),'fixture-b')
+        self.assertEqual(sum(op=='read' and key==module.MASTER_ACCOUNT and interactive for op,key,interactive in self.calls),1)
+        # A fresh process under the now-authorized stable identity reads both
+        # accounts without returning to their individual legacy keychain items.
+        self.vault=module.Vault(self.path);module._instance=self.vault
+        self.reset_store();self.calls.clear()
+        self.assertEqual(store.load('mail-a'),'fixture-a')
+        self.assertEqual(store.load('mail-b'),'fixture-b')
+        self.assertEqual(self.calls,[('read',module.MASTER_ACCOUNT,False)])
+
+    def test_quiet_legacy_read_never_authorizes_an_existing_master(self):
+        self.master=base64.urlsafe_b64encode(os.urandom(32)).decode('ascii')
+        self.locked=True
+        # The individual item may already permit the current application while
+        # the older master still requires authorization.
+        original=native.read_for_app
+        def read(service,key,*,interactive=False):
+            if key=='mail-a':
+                self.calls.append(('read',key,interactive))
+                return 0,'fixture-a'
+            return original(service,key,interactive=interactive)
+        with patch.object(native,'read_for_app',side_effect=read):
+            with self.assertLogs(store.log,level='WARNING'):
+                self.assertEqual(store.load('mail-a'),'fixture-a')
+        self.assertFalse(self.path.exists())
+        self.assertFalse(any(interactive for op,key,interactive in self.calls))
+
+    def test_denied_master_migration_is_bounded_and_preserves_legacy_items(self):
+        self.master=base64.urlsafe_b64encode(os.urandom(32)).decode('ascii')
+        before=self.master
+        self.locked=True;self.legacy={'mail-a':'fixture-a','mail-b':'fixture-b'}
+        original=native.read_for_app
+        def read(service,key,*,interactive=False):
+            if key==module.MASTER_ACCOUNT and interactive:
+                self.calls.append(('read',key,interactive))
+                return -128,''
+            return original(service,key,interactive=interactive)
+        with patch.object(native,'read_for_app',side_effect=read):
+            with self.assertLogs(store.log,level='WARNING') as logs:
+                with store.prompt_policy(True):
+                    self.assertEqual(store.load('mail-a'),'fixture-a')
+                    self.assertEqual(store.load('mail-b'),'fixture-b')
+            self.assertEqual(sum(key==module.MASTER_ACCOUNT and interactive for op,key,interactive in self.calls),1)
+            calls=len(self.calls)
+            for _ in range(5):self.assertEqual(store.load('mail-a'),'fixture-a')
+            self.assertEqual(len(self.calls),calls)
+            self.assertFalse(self.path.exists());self.assertEqual(self.master,before)
+            self.assertEqual(self.legacy,{'mail-a':'fixture-a','mail-b':'fixture-b'})
+            self.assertNotIn('fixture-a',''.join(logs.output))
+            self.assertNotIn(before,''.join(logs.output))
+        # A later explicit action can finish migration; cancellation never
+        # replaces the old master or destroys the individually stored values.
+        self.vault=module.Vault(self.path);module._instance=self.vault;self.reset_store()
+        with store.prompt_policy(True):self.assertEqual(store.load('mail-a'),'fixture-a')
+        self.assertTrue(self.path.exists())
+
     def test_ciphertext_excludes_secrets_identifiers_and_master(self):
         identifier='fixture-account-identifier'
         secret='fixture-邮箱-password-that-must-not-be-persisted-in-plaintext'
