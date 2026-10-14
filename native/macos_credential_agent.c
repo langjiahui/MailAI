@@ -40,6 +40,16 @@ int main(void) {
     CFDictionarySetValue(query,kSecAttrService,CFSTR("MailAI"));
     CFDictionarySetValue(query,kSecAttrAccount,CFSTR("credential-agent-key:v1"));
     CFDictionarySetValue(query,kSecUseAuthenticationUI,interactive?kSecUseAuthenticationUIAllow:kSecUseAuthenticationUIFail);
+    /* Explicit isolated test keychain. Production never sets this variable. */
+    SecKeychainRef fixture=NULL;CFArrayRef search=NULL;
+    const char *fixturePath=getenv("_MAILAI_TEST_AGENT_KEYCHAIN");
+    if(!status && fixturePath && *fixturePath) {
+        status=SecKeychainOpen(fixturePath,&fixture);
+        if(!status) {
+            if(!strcmp(action,"add"))CFDictionarySetValue(query,kSecUseKeychain,fixture);
+            else { const void *v[]={fixture};search=CFArrayCreate(NULL,v,1,&kCFTypeArrayCallBacks);CFDictionarySetValue(query,kSecMatchSearchList,search); }
+        }
+    }
     CFTypeRef result=NULL;CFDataRef data=NULL;
     if(!status && !strcmp(action,"add")) {
         CFDictionarySetValue(query,kSecAttrLabel,CFSTR("MailAI 本机凭据"));
@@ -53,6 +63,6 @@ int main(void) {
     printf("%d\n",(int)status);
     if(!status && result)fwrite(CFDataGetBytePtr(result),1,44,stdout);
     printf("\n");
-    memset(secret,0,sizeof(secret));if(result)CFRelease(result);if(data)CFRelease(data);CFRelease(query);
+    memset(secret,0,sizeof(secret));if(result)CFRelease(result);if(data)CFRelease(data);if(search)CFRelease(search);if(fixture)CFRelease(fixture);CFRelease(query);
     return 0;
 }

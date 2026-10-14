@@ -27,7 +27,9 @@ jobs:
       - uses: actions/upload-artifact@v5
         with:
           name: credential-agent-v1
-          path: build/credential-agent-v1/credential-agent-v1.zip
+          path: |
+            build/credential-agent-v1/credential-agent-v1.zip
+            build/credential-agent-v1/credential-agent-probes.zip
           if-no-files-found: error
       - name: Restore build keychain state
         if: always()
