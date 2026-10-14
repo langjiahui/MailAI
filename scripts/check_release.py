@@ -28,6 +28,7 @@ TESTS = (
     'test_macos_upgrade_auth.py',
     'test_macos_signing.py',
     'test_macos_credential_vault.py',
+    'test_macos_credential_agent.py',
     'test_i18n_service_copy.py',
     'test_i18n_native.py',
     'test_energy_scheduler.py',

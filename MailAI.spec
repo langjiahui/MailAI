@@ -11,7 +11,7 @@ a = Analysis(
     ['run.py'],
     pathex=[],
     binaries=[],
-    datas=[('app/web/static', 'app/web/static'), ('mailai.defaults.env', '.'), ('VERSION', '.')],
+    datas=[('app/web/static', 'app/web/static'), ('app/native', 'app/native'), ('mailai.defaults.env', '.'), ('VERSION', '.')],
     hiddenimports=['webview.platforms.cocoa', 'fastembed', 'onnxruntime', 'qcloud_cos', 'dingtalk_stream', 'qrcode.image.pil', 'xlutils.filter', 'xlwt', 'xlrd', 'olefile', 'lxml.etree'],
     hookspath=[],
     hooksconfig={},

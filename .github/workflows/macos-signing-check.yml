@@ -23,7 +23,7 @@ jobs:
       - name: Verify upgrade access without authorization UI
         run: python3 scripts/verify_macos_signing_upgrade.py
       - name: Build immutable credential reader
-        run: python3 scripts/build_macos_credential_agent.py
+        run: python3 scripts/build_macos_credential_agent.py --probes-only
       - name: Verify immutable reader and signed caller isolation
         run: |
           python3 -m pip install cryptography

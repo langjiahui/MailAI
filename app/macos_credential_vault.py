@@ -18,23 +18,27 @@ from .paths import USER_DIR
 
 log=logging.getLogger(__name__)
 SERVICE='MailAI'
-MASTER_ACCOUNT='credential-vault-key:v2'
+MASTER_ACCOUNT='credential-agent-key:v1'
+PREVIOUS_MASTER_ACCOUNT='credential-vault-key:v2'
 LEGACY_MASTER_ACCOUNT='credential-vault-key:v1'
-MAGIC=b'MAILAI-CREDENTIALS2\0'
+MAGIC=b'MAILAI-CREDENTIALS3\0'
+PREVIOUS_MAGIC=b'MAILAI-CREDENTIALS2\0'
 LEGACY_MAGIC=b'MAILAI-CREDENTIALS1\0'
 ERROR=-1
 MAX_BYTES=16*1024*1024
 
 
 class Vault:
-    def __init__(self,path):
+    def __init__(self,path,legacy_path=None):
         self.path=Path(path)
+        self.legacy_path=Path(legacy_path) if legacy_path is not None else None
         self._lock=threading.RLock()
         self._key=None
         self._records=None
         self._quiet_failure=None
         self._broken=False
         self._needs_upgrade=False
+        self._legacy_requires_foreground=False
 
     def _master(self,interactive,*,create=False):
         if self._key is not None:
@@ -76,21 +80,24 @@ class Vault:
             return ERROR
         if self._records is not None:
             return 0
-        if not self.path.exists():
+        source=self.path if self.path.exists() else self.legacy_path
+        if source is None or not source.exists():
             self._records={'items':{},'removed':[]}
             return 0
         try:
-            if self.path.stat().st_size>MAX_BYTES:
+            if source.stat().st_size>MAX_BYTES:
                 raise ValueError('Credential vault is too large')
-            blob=self.path.read_bytes()
-            magic=LEGACY_MAGIC if blob.startswith(LEGACY_MAGIC) else MAGIC
+            blob=source.read_bytes()
+            magic=next((m for m in (LEGACY_MAGIC,PREVIOUS_MAGIC,MAGIC) if blob.startswith(m)),MAGIC)
             if not blob.startswith(magic) or len(blob)<len(magic)+28:
                 raise ValueError('Invalid credential vault')
-            if magic==LEGACY_MAGIC:
+            if magic!=MAGIC:
                 self._needs_upgrade=True
-                if not interactive:
+                self._legacy_requires_foreground=magic==LEGACY_MAGIC
+                if magic==LEGACY_MAGIC and not interactive:
                     return -25308
-                status,value=macos_keychain.read_for_app(SERVICE,LEGACY_MASTER_ACCOUNT,interactive=True)
+                account=LEGACY_MASTER_ACCOUNT if magic==LEGACY_MAGIC else PREVIOUS_MASTER_ACCOUNT
+                status,value=macos_keychain.read_for_app(SERVICE,account,interactive=interactive)
                 if status:
                     return ERROR if status==macos_keychain.NOT_FOUND else status
                 if len(value)!=44:
@@ -126,7 +133,7 @@ class Vault:
             if status:
                 return status,''
             if self._needs_upgrade:
-                if not interactive or not self._write(self._records,interactive=True):
+                if (self._legacy_requires_foreground and not interactive) or not self._write(self._records,interactive=interactive):
                     return -25308,''
             if key in self._records['items']:
                 return 0,self._records['items'][key]
@@ -185,7 +192,7 @@ class Vault:
             return self._write(record,interactive)
 
 
-_instance=Vault(USER_DIR/'credentials.v1.enc')
+_instance=Vault(USER_DIR/'credentials.agent.v1.enc',legacy_path=USER_DIR/'credentials.v1.enc')
 
 
 def get(key,*,interactive=False):

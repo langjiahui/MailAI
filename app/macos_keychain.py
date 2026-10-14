@@ -18,6 +18,9 @@ AUTH_REQUIRED = {-25308, -25293, -128}
 _interaction_lock = threading.RLock()
 log = logging.getLogger(__name__)
 def read_for_app(service: str, account: str, *, interactive: bool = False) -> tuple[int, str]:
+    if service=='MailAI' and account=='credential-agent-key:v1':
+        from .macos_credential_agent import request
+        return request('read',interactive=interactive)
     return read(service, account, interactive=interactive)
 
 
@@ -162,6 +165,9 @@ def _item_query(service, account, secret=None):
 
 def add_new(service: str, account: str, secret: str, *, interactive: bool = False) -> int:
     """Create a master for the application; never replace an existing key or ACL."""
+    if service=='MailAI' and account=='credential-agent-key:v1':
+        from .macos_credential_agent import request
+        return request('add',interactive=interactive,secret=secret)[0]
     with interaction_policy(interactive) as status:
         if status:
             return status

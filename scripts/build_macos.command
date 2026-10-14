@@ -57,6 +57,8 @@ if [[ -n "${MAILAI_SIGN_IDENTITY:-}" ]]; then
   .venv-build/bin/python scripts/macos_signing.py dist/MailAI.app
   if [[ "${MAILAI_SIGNING_MODE:-}" == "self-signed" ]]; then
     .venv-build/bin/python scripts/verify_macos_signing_upgrade.py --reference-app dist/MailAI.app
+    .venv-build/bin/python scripts/build_macos_credential_agent.py --probes-only
+    .venv-build/bin/python scripts/verify_macos_credential_agent.py
   fi
   .venv-build/bin/python scripts/smoke_macos_app.py dist/MailAI.app --verify-keychain-query
 elif [[ "${CI:-}" == "1" ]]; then

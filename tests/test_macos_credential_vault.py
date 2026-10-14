@@ -139,6 +139,48 @@ class VaultTests(unittest.TestCase):
         self.assertFalse(self.path.exists())
         self.assertFalse(any(interactive for op,key,interactive in self.calls))
 
+    def test_previous_vault_migrates_all_records_quietly_and_keeps_original(self):
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+        import json
+        previous=self.path.with_name('previous.enc');key=os.urandom(32);nonce=os.urandom(12)
+        record={'version':1,'items':{'mail-a':'fixture-a','mail-b':'fixture-b'},'removed':['deleted']}
+        original=module.PREVIOUS_MAGIC+nonce+AESGCM(key).encrypt(nonce,json.dumps(record).encode(),module.PREVIOUS_MAGIC)
+        previous.write_bytes(original)
+        self.vault=module.Vault(self.path,legacy_path=previous);module._instance=self.vault
+        original_read=native.read_for_app
+        def read(service,account,*,interactive=False):
+            if account==module.PREVIOUS_MASTER_ACCOUNT:
+                self.calls.append(('read',account,interactive))
+                return 0,base64.urlsafe_b64encode(key).decode()
+            return original_read(service,account,interactive=interactive)
+        with patch.object(native,'read_for_app',side_effect=read):
+            self.assertEqual(store.load('mail-a'),'fixture-a')
+            self.assertEqual(store.load('mail-b'),'fixture-b')
+        self.assertEqual(previous.read_bytes(),original)
+        self.assertTrue(self.path.read_bytes().startswith(module.MAGIC))
+        self.assertFalse(any(interactive for operation,account,interactive in self.calls))
+        self.vault=module.Vault(self.path,legacy_path=previous);module._instance=self.vault
+        self.reset_store();self.calls.clear()
+        for account in ('mail-a','mail-b'):
+            self.assertEqual(store.load(account),'fixture-'+account[-1])
+        self.assertEqual(self.vault.get('deleted'),(0,''))
+        self.assertEqual(self.calls,[('read',module.MASTER_ACCOUNT,False)])
+
+    def test_previous_vault_migration_failure_retains_original_and_all_items(self):
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+        import json
+        previous=self.path.with_name('previous.enc');key=os.urandom(32);nonce=os.urandom(12)
+        original=module.PREVIOUS_MAGIC+nonce+AESGCM(key).encrypt(nonce,json.dumps({'version':1,'items':{'mail-a':'fixture-a'},'removed':[]}).encode(),module.PREVIOUS_MAGIC)
+        previous.write_bytes(original);vault=module.Vault(self.path,legacy_path=previous)
+        original_read=native.read_for_app
+        def read(service,account,*,interactive=False):
+            return (0,base64.urlsafe_b64encode(key).decode()) if account==module.PREVIOUS_MASTER_ACCOUNT else original_read(service,account,interactive=interactive)
+        with patch.object(native,'read_for_app',side_effect=read),patch.object(module.os,'replace',side_effect=OSError('fixture')):
+            with self.assertLogs(module.log,level='WARNING'):
+                self.assertEqual(vault.get('mail-a'),(-25308,''))
+        self.assertEqual(previous.read_bytes(),original);self.assertFalse(self.path.exists())
+        self.assertEqual(vault.get('mail-a'),(0,'fixture-a'))
+
     def test_denied_master_migration_is_bounded_and_preserves_legacy_items(self):
         self.master=base64.urlsafe_b64encode(os.urandom(32)).decode('ascii')
         before=self.master
