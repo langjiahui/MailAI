@@ -57,6 +57,8 @@ jobs:
       - name: Verify startup animation and preference persistence
         run: |
           node tests/test_preloader_browser.cjs
+          node tests/test_brand_browser.cjs
+          MAILAI_BROWSER=webkit node tests/test_brand_browser.cjs
           node tests/test_macos_startup_browser.cjs
           MAILAI_DESKTOP_SHELL=windows node tests/test_macos_startup_browser.cjs
           node tests/test_ui_preferences_restart.cjs "$(which python)"

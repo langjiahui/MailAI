@@ -28105,6 +28105,24 @@ function hideAppPreloader() {
   preloader.dataset.handoff = 'running';
   // Confirm that the workspace is ready, not that remote mail sync succeeded.
   preloader.classList.add('completion-confirmed');
+  // The completed folded mark docks into the live header using measured
+  // geometry, including native insets, font zoom and resizable mail panes.
+  const entrance = preloader.querySelector('.brand-entrance');
+  const logo = targetBrand?.querySelector('[data-brand-mark]');
+  if (!reducedMotion && entrance && logo && onboarding?.classList.contains('hidden')) {
+    const from = entrance.getBoundingClientRect(), to = logo.getBoundingClientRect();
+    if (from.width && to.width) {
+      preloader.classList.add('brand-docking');
+      const zoom = Number(getComputedStyle(document.body).zoom) || 1;
+      const dx = (to.left + to.width/2 - from.left - from.width/2)/zoom;
+      const dy = (to.top + to.height/2 - from.top - from.height/2)/zoom;
+      animations.push(entrance.animate([
+        {transform:'translateX(-50%) translate3d(0,0,0) scale(1)',opacity:1,filter:'none'},
+        {transform:`translateX(-50%) translate3d(${dx}px,${dy}px,0) scale(${to.width/from.width})`,opacity:1,filter:'none',offset:.8},
+        {transform:`translateX(-50%) translate3d(${dx}px,${dy}px,0) scale(${to.width/from.width})`,opacity:0,filter:'none'},
+      ], {duration:1100,easing:'cubic-bezier(.42,0,.22,1)',fill:'both'}));
+    }
+  }
   const readyLabel = preloader.querySelector('.preloader-status span');
   const readyHint = preloader.querySelector('.preloader-status small');
   if (readyLabel) {
@@ -28198,7 +28216,7 @@ function hideAppPreloader() {
     const zoom = Number(getComputedStyle(document.body).zoom) || 1;
     // Match each element instead of scaling the whole lockup: the workspace
     // has its own icon size, text baseline and responsive subtitle visibility.
-    for (const selector of ['img','strong','small']) {
+    for (const selector of ['[data-brand-mark]','strong','small']) {
       const start = sourceBrand.querySelector(selector);
       const end = targetBrand.querySelector(selector);
       if (!start || !end) continue;
@@ -31082,28 +31100,44 @@ document.getElementById('task-center-list').addEventListener('click', async even
   }
   let css='';
   for (const sheet of document.styleSheets) {
-    if (!sheet.href?.includes('/static/') || /(?:reward-themes|reward-theme-details|control-theme|date-time-picker|companion(?:-growth)?)\.css/.test(sheet.href)) continue;
+    if (!sheet.href?.includes('/static/') || /(?:reward-themes|reward-theme-details|control-theme|brand|date-time-picker|companion(?:-growth)?)\.css/.test(sheet.href)) continue;
     try { css+=bridge(sheet.cssRules); } catch (_) { /* A non-local stylesheet is outside the workspace. */ }
   }
   const style=document.createElement('style');
   style.id='reward-theme-legacy-bridge';style.textContent=css;
   document.querySelector('link[href*="/reward-themes.css"]')?.before(style);
-  function syncBrandIcon() {
-    const icon=document.querySelector('link[rel="icon"]'),mark=document.querySelector('.reward-brand-mark');
-    if (!icon || !mark) return;
-    if (!document.documentElement.dataset.rewardTheme) {
-      icon.type='image/png';icon.href='/static/assets/mailai-mark.png';return;
-    }
-    const palette=getComputedStyle(document.documentElement),svg=mark.cloneNode(true);
-    svg.setAttribute('xmlns','http://www.w3.org/2000/svg');svg.removeAttribute('class');
-    for (const [selector,property,role] of [
-      ['.reward-brand-shield','fill','accent'],['.reward-brand-base','fill','pet'],
-      ['.reward-brand-check','stroke','accent'],['.reward-brand-star','fill','pet-outline']
-    ]) svg.querySelector(selector).setAttribute(property,palette.getPropertyValue(`--reward-${role}`).trim());
-    icon.type='image/svg+xml';icon.href=`data:image/svg+xml,${encodeURIComponent(svg.outerHTML)}`;
+  // Brand geometry and adaptive favicon are owned by brand.js.
+})();
+
+;
+/* ---- brand.js ---- */
+/* One folded-M geometry for the workspace, startup, onboarding and favicon. */
+(() => {
+  const paths = [
+    ['back', 'right', 'm47 29 11-7v23q0 3-3 5l-2 1.4q-2.3 1.6-4.6 0L47 50q-1-1-1-3V31Z'],
+    ['back', 'fold', 'm10 17 7.5-4.7q2-1.3 4 0L40 24.6 30 31.3q-2 1.3-4 0L12 23q-4-2.7-2-6Z'],
+    ['front', 'left', 'M6 22q0-3.7 2.7-4.7 2-.7 4 1l5.3 3.5V45q0 3-2.5 4.7L13 51.4q-2 1.4-4 0l-1.2-.8Q6 49.3 6 47Z'],
+    ['front', 'cross', 'm26.5 31.7 27-18q3-2 4.5 1.2 1 1.9 1 4.8v3.2q0 3.2-2.7 5L40 38.3q-2.1 1.4-4.2 0Z'],
+  ];
+  function markup(front = 'var(--brand-front)', back = 'var(--brand-back)') {
+    return `<svg xmlns="http://www.w3.org/2000/svg" class="brand-mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false">${paths.map(([tone,part,d]) => `<path class="brand-${tone} brand-${part}" fill="${tone === 'front' ? front : back}" d="${d}"/>`).join('')}</svg>`;
   }
-  document.addEventListener('mailai:reward-themechange',syncBrandIcon);
-  document.addEventListener('mailai:themechange',syncBrandIcon);
+  document.querySelectorAll('[data-brand-mark]').forEach(host => {
+    host.innerHTML = markup();
+    if (host.classList.contains('logo')) host.firstElementChild.classList.add('reward-brand-mark');
+  });
+  function syncIcon() {
+    const icon = document.querySelector('link[rel="icon"]');
+    if (!icon) return;
+    const style = getComputedStyle(document.documentElement);
+    const front = style.getPropertyValue('--brand-front').trim() || '#0e5a54';
+    const back = style.getPropertyValue('--brand-back').trim() || '#94c7b6';
+    icon.type = 'image/svg+xml';
+    icon.href = `data:image/svg+xml,${encodeURIComponent(markup(front, back))}`;
+  }
+  document.addEventListener('mailai:themechange', syncIcon);
+  document.addEventListener('mailai:reward-themechange', syncIcon);
+  syncIcon();
 })();
 
 ;

@@ -3,7 +3,7 @@ set -e
 cd "${0:A:h}/.."
 iconset="build/mailai.iconset"
 mkdir -p "$iconset"
-source_icon="app/web/static/assets/mailai-mark.png"
+source_icon="app/web/static/assets/mailai-app-icon-1024.png"
 for size in 16 32 128 256 512; do
   sips -z "$size" "$size" "$source_icon" --out "$iconset/icon_${size}x${size}.png" >/dev/null
   double=$((size * 2))

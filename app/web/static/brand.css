@@ -1,0 +1,50 @@
+/* Final brand layer; identity stays consistent across desktop shells. */
+:root { --brand-front:#0e5a54; --brand-back:#94c7b6; }
+.brand-mark { display:block; width:100%; height:100%; overflow:visible; }
+.preloader-brand [data-brand-mark] { display:block; width:24px; height:24px; flex:0 0 24px; }
+.onboarding-brand [data-brand-mark] { display:block; width:32px; height:32px; }
+html[data-theme="dark"] { --brand-front:#d4eee4; --brand-back:#69ad96; }
+html[data-reward-theme="theme_monochrome"] { --brand-front:#292929; --brand-back:#8a8a8a; }
+html[data-theme="dark"][data-reward-theme="theme_monochrome"] { --brand-front:#ececec; --brand-back:#999; }
+html[data-reward-theme="theme_baowu"] { --brand-front:#005eaa; --brand-back:#8ab5d8; }
+html[data-theme="dark"][data-reward-theme="theme_baowu"] { --brand-front:#d1e7fb; --brand-back:#6b9fc8; }
+html[data-theme][data-theme] body .brand-mark { display:block; width:100%; height:100%; overflow:visible; }
+html[data-theme][data-theme] body .brand-mark .brand-front { fill:var(--brand-front)!important; stroke:none!important; }
+html[data-theme][data-theme] body .brand-mark .brand-back { fill:var(--brand-back)!important; stroke:none!important; }
+html[data-theme][data-theme] body .topbar .logo {
+  display:flex!important; flex:0 0 24px; width:24px; height:24px; min-width:24px;
+  padding:0; border:0; border-radius:0; background:transparent!important; box-shadow:none!important;
+}
+html[data-theme][data-theme] body .topbar .brand { gap:8px; }
+html[data-theme][data-theme] body .topbar .logo .reward-brand-mark { display:block!important; width:24px; height:24px; }
+html[data-theme][data-theme] body .preloader-brand [data-brand-mark] { display:block; width:24px; height:24px; flex:0 0 24px; }
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .preloader-brand [data-brand-mark] {
+  position:absolute; left:-32px; top:50%; transform:translateY(-50%);
+}
+html[data-theme][data-theme] body .onboarding-brand [data-brand-mark] { display:block; width:32px; height:32px; }
+/* The fold is a finite, transform-only entrance. Data readiness still owns
+ * removal of the loader; no extra timer delays opening the workspace. */
+.brand-entrance {
+  position:absolute; top:calc(55% - 126px); left:var(--startup-center,50%);
+  width:88px; height:88px; transform:translateX(-50%); pointer-events:none;
+  opacity:1; transition:opacity .32s ease,filter .32s ease;
+}
+.brand-entrance .brand-mark { perspective:600px; }
+.brand-entrance .brand-mark path { transform-box:fill-box; transform-origin:50% 50%; }
+.brand-entrance .brand-right { animation:brand-stand .66s .08s cubic-bezier(.22,1,.36,1) both; }
+.brand-entrance .brand-left { animation:brand-stand .66s cubic-bezier(.22,1,.36,1) both; }
+.brand-entrance .brand-fold { transform-origin:0 50%; animation:brand-unfold .82s .12s cubic-bezier(.22,1,.36,1) both; }
+.brand-entrance .brand-cross { transform-origin:100% 50%; animation:brand-cross .88s .24s cubic-bezier(.22,1,.36,1) both; }
+@keyframes brand-stand { from { opacity:0; transform:translateY(12px) scaleY(.86); } to { opacity:1; transform:none; } }
+@keyframes brand-unfold { from { opacity:0; transform:translate(-6px,-3px) rotate(-18deg) scaleX(.45); } to { opacity:1; transform:none; } }
+@keyframes brand-cross { from { opacity:0; transform:translate(5px,-5px) rotate(16deg) scaleX(.42); } to { opacity:1; transform:none; } }
+.app-preloader.leaving .brand-entrance { opacity:0; filter:blur(2px); }
+.app-preloader.brand-docking .preloader-brand [data-brand-mark] { opacity:0; }
+@media(max-width:760px) { .brand-entrance { top:calc(47% - 108px); width:72px; height:72px; } }
+@media(max-height:500px) { .brand-entrance { top:calc(47% - 82px); width:56px; height:56px; } }
+@media(prefers-reduced-motion:reduce) {
+  .brand-entrance,.brand-entrance path { animation:none!important; transition:none!important; transform:none!important; filter:none!important; }
+  .brand-entrance { transform:translateX(-50%)!important; }
+}
+.companion-still .brand-entrance path { animation:none!important; transform:none!important; }
+.companion-still .brand-entrance { transition:none!important; }

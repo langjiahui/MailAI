@@ -398,7 +398,7 @@ class DesktopRuntime:
         controller = StatusController.alloc().init()
         status_item = NSStatusBar.systemStatusBar().statusItemWithLength_(NSSquareStatusItemLength)
         button = status_item.button()
-        status_icon = NSImage.alloc().initWithContentsOfFile_(str(desktop_asset_path()))
+        status_icon = NSImage.alloc().initWithContentsOfFile_(str(desktop_asset_path("mailai-menu-template.png")))
         if status_icon is not None:
             status_icon.setSize_(NSMakeSize(18, 18))
             status_icon.setTemplate_(True)
