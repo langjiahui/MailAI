@@ -18,7 +18,10 @@
     context.originalReminder=localTime(task?.remind_at);
     get('remind').value=context.remind ? localTime(Date.now()+3600000) : context.originalReminder;
     get('reopen').hidden=task?.status!=='done';
-    get('save').disabled=task?.status==='done';
+    get('save').disabled=task?.status==='done' || Boolean(context.saving);
+    get('reopen').disabled=Boolean(context.reopening);
+    if (context.saving) get('save').setAttribute('aria-busy','true'); else get('save').removeAttribute('aria-busy');
+    mailaiBindUI(get('save'), 'textContent', () => context.saving ? mailaiText('保存中…') : mailaiText('保存安排'));
     mailaiBindUI(get('error'), "textContent", () => (task?.status==='done' ? mailaiText('这条任务已完成。需要继续跟进时，请先恢复。') : ''));
     mailaiBindUI(get('date-label'), "textContent", () => (get('stage').value==='waiting' ? mailaiText('跟进日期（可选）') : mailaiText('截止日期（可选）')));
   }
@@ -64,19 +67,51 @@
   get('stage').onchange=()=>{mailaiBindUI(get('date-label'), "textContent", () => (get('stage').value==='waiting'?mailaiText('跟进日期（可选）'):mailaiText('截止日期（可选）')));};
   get('existing').onchange=()=>paint(context.matches.find(t=>t.id===Number(get('existing').value)));
   get('reopen').onclick=async()=>{
-    const c=context;get('reopen').disabled=true;
-    try {await api(`/api/todos/${c.task.id}/reopen`,{accountId:c.accountId,method:'POST'});c.task.status='open';paint(c.task);window.mailaiTasksChanged(c.accountId);}catch(e){get('error').textContent=mailaiSystemMessage(e.message);}finally{get('reopen').disabled=false;}
-  };
-  dialog.querySelector('form').onsubmit=async event=>{
-    event.preventDefault();const c=context;if(!c)return;
-    const payload={title:get('title').value.trim(),kind:get('kind').value,stage:get('stage').value,deadline:get('deadline').value};
-    if(get('remind').value!==c.originalReminder)payload.remind_at=get('remind').value;
-    const reminderChanged=Object.hasOwn(payload,'remind_at');
-    const reminderValue=get('remind').value;
-    get('save').disabled=true;mailaiBindUI(get('save'), "textContent", () => (mailaiText('保存中…')));get('error').textContent='';
+    const c=context, task=c?.task;if(!task || c.reopening)return;
+    c.reopening=true;get('reopen').disabled=true;
     try {
-      await api(c.task?`/api/todos/${c.task.id}`:`/api/emails/${c.emailId}/todo`,{accountId:c.accountId,method:c.task?'PATCH':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      if(context===c)dialog.close();window.mailaiTasksChanged(c.accountId);toast(reminderChanged ? (reminderValue ? mailaiTemplate`已设置提醒：${reminderValue.replace('T',' ')}；请保持 MailAI 运行` : mailaiText('已取消提醒，任务仍保留')) : mailaiText('任务已保存，提醒时间未改变'),'success');
-    }catch(e){if(context===c)get('error').textContent=mailaiSystemMessage(e.message);}finally{if(context===c){get('save').disabled=false;mailaiBindUI(get('save'), "textContent", () => (mailaiText('保存安排')));}}
+      await api(`/api/todos/${task.id}/reopen`,{accountId:c.accountId,method:'POST'});
+      task.status='open';
+      if(context===c && dialog.open && c.task===task)paint(task);
+      window.mailaiTasksChanged(c.accountId);
+    }catch(e){if(context===c && dialog.open)get('error').textContent=mailaiSystemMessage(e.message);}
+    finally{c.reopening=false;if(context===c)get('reopen').disabled=false;}
+  };
+  const editorValues = () => ({title:get('title').value.trim(),kind:get('kind').value,stage:get('stage').value,deadline:get('deadline').value,remind_at:get('remind').value});
+  dialog.querySelector('form').onsubmit=async event=>{
+    event.preventDefault();const c=context;if(!c || c.saving)return;
+    const originalTask=c.task;
+    const currentValues=editorValues(), snapshot=JSON.stringify(currentValues);
+    const payload={...currentValues};
+    if(payload.remind_at===c.originalReminder)delete payload.remind_at;
+    const reminderChanged=Object.hasOwn(payload,'remind_at');
+    const reminderValue=currentValues.remind_at;
+    c.saving=true;get('save').disabled=true;get('save').setAttribute('aria-busy','true');
+    mailaiBindUI(get('save'), "textContent", () => (mailaiText('保存中…')));get('error').textContent='';
+    try {
+      const result=await api(originalTask?`/api/todos/${originalTask.id}`:`/api/emails/${c.emailId}/todo`,{accountId:c.accountId,method:originalTask?'PATCH':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      window.mailaiTasksChanged(c.accountId);
+      if(context!==c || !dialog.open)return;
+      const sameTask=c.task===originalTask;
+      const saved=result.task || originalTask;
+      if(saved) {
+        const index=c.matches.findIndex(task=>task.id===saved.id);
+        if(index<0)c.matches.push(saved);else c.matches[index]=saved;
+      }
+      if(sameTask) {
+        c.task=saved;
+        c.originalReminder=localTime(saved?.remind_at ?? reminderValue);
+      }
+      if(sameTask && JSON.stringify(editorValues())===snapshot) {
+        dialog.close();
+        toast(reminderChanged ? (reminderValue ? mailaiTemplate`已设置提醒：${reminderValue.replace('T',' ')}；请保持 MailAI 运行` : mailaiText('已取消提醒，任务仍保留')) : mailaiText('任务已保存，提醒时间未改变'),'success');
+      } else {
+        mailaiBindUI(get('error'), 'textContent', () => mailaiText('刚才的安排已保存，当前编辑内容仍保留。确认后可再次保存。'));
+      }
+    }catch(e){if(context===c && dialog.open)get('error').textContent=mailaiSystemMessage(e.message);}
+    finally{
+      c.saving=false;
+      if(context===c){get('save').disabled=c.task?.status==='done';get('save').removeAttribute('aria-busy');mailaiBindUI(get('save'), "textContent", () => (mailaiText('保存安排')));}
+    }
   };
 })();

@@ -72,10 +72,9 @@ def enqueue(token, payload, delay=10):
         c.execute('BEGIN IMMEDIATE')
         old = c.execute('SELECT payload,status FROM outbox WHERE token=?', (token,)).fetchone()
         if not old and payload.get('id'):
-            if payload.get('expected_revision') is not None:
-                draft = c.execute('SELECT revision FROM drafts WHERE id=?', (payload['id'],)).fetchone()
-                if not draft or draft['revision'] != payload['expected_revision']:
-                    raise ValueError('草稿已在其他窗口更新或已移除，请核对最新内容后发送')
+            draft = c.execute('SELECT revision FROM drafts WHERE id=?', (payload['id'],)).fetchone()
+            if not draft or (payload.get('expected_revision') is not None and draft['revision'] != payload['expected_revision']):
+                raise ValueError('草稿已在其他窗口更新或已移除，请核对最新内容后发送')
             pending = c.execute("SELECT token FROM outbox WHERE status IN ('queued','sending','unknown') AND json_extract(payload,'$.id')=?", (payload['id'],)).fetchone()
             if pending:
                 raise ValueError('这份草稿已有发送任务，请先在任务与发件箱中撤销或确认发送结果')
@@ -116,7 +115,10 @@ def reschedule(token, at):
         row = c.execute("SELECT payload FROM outbox WHERE token=? AND status='queued'", (token,)).fetchone()
         if not row:
             raise ValueError('任务已开始发送或已结束，不能修改时间')
-        payload = json.loads(row['payload']); payload['send_at'] = due
+        payload = json.loads(row['payload'])
+        if payload.get('followup_at') and datetime.fromisoformat(local_time(payload['followup_at'])) <= datetime.fromisoformat(due):
+            raise ValueError('跟进时间必须晚于新的发送时间，请编辑邮件重新安排跟进')
+        payload['send_at'] = due
         c.execute('UPDATE outbox SET due_at=?,payload=?,updated_at=? WHERE token=? AND status=\'queued\'', (due,json.dumps(payload,ensure_ascii=False,sort_keys=True),datetime.now().isoformat(),token))
         if payload.get('id'):
             c.execute('UPDATE drafts SET send_at=?,updated_at=?,revision=revision+1 WHERE id=?', (due,datetime.now().isoformat(),payload['id']))
@@ -167,18 +169,64 @@ def resolve(token, delivered):
                 register(record_id,payload.get('followup_days',0),payload.get('followup_at',''))
             except Exception:
                 __import__('logging').getLogger(__name__).warning('已核对发送结果，但跟进安排未恢复，请手动安排待办')
+                warning = '跟进安排未保存，请在待办中手动安排提醒'
+                with db.conn() as c:
+                    result = json.loads(row['result'] or '{}')
+                    result['warning'] = (result.get('warning', '') + '；' + warning).strip('；')
+                    c.execute('UPDATE outbox SET result=?,warning_acknowledged=0 WHERE token=?',
+                              (json.dumps(result, ensure_ascii=False), token))
+                    c.execute('UPDATE sent_messages SET error=? WHERE id=?', (result['warning'], record_id))
         db.complete_sent_draft(json.loads(row['payload']).get('id'))
     db.add_audit_log(None, 'resolve_send_outcome', actor='user', reason='已送达' if delivered else '未送达', meta={'token': token})
     return {'ok': True}
 
 
+def _public_item(row):
+    row = dict(row)
+    payload = json.loads(row.pop('payload'))
+    result = json.loads(row['result'] or '{}')
+    row['warning'] = result.get('warning') or ''
+    row['needs_attention'] = row['status'] == 'sent' and bool(row['warning']) and not row['warning_acknowledged']
+    row['sent_record_id'] = result.get('sent_record_id')
+    row['refused_recipients'] = result.get('refused_recipients') or []
+    row.update(subject=payload.get('subject'), to_addr=payload.get('to_addr'), draft_id=payload.get('id'))
+    return row
+
+
+def item(token):
+    with db.conn() as c:
+        row = c.execute('SELECT * FROM outbox WHERE token=?', (token,)).fetchone()
+    return _public_item(row) if row else None
+
+
 def items():
     with db.conn() as c:
-        rows = [dict(row) for row in c.execute("SELECT * FROM outbox WHERE status IN ('queued','sending','failed','unknown') OR token IN (SELECT token FROM outbox WHERE status NOT IN ('queued','sending','failed','unknown') ORDER BY created_at DESC LIMIT 200) ORDER BY created_at DESC")]
-    for row in rows:
-        payload = json.loads(row.pop('payload'))
-        row.update(subject=payload.get('subject'), to_addr=payload.get('to_addr'), draft_id=payload.get('id'))
-    return rows
+        rows = [dict(row) for row in c.execute("SELECT * FROM outbox WHERE status IN ('queued','sending','failed','unknown') OR (status='sent' AND warning_acknowledged=0 AND COALESCE(json_extract(result,'$.warning'),'')<>'') OR token IN (SELECT token FROM outbox WHERE status NOT IN ('queued','sending','failed','unknown') ORDER BY created_at DESC LIMIT 200) ORDER BY created_at DESC")]
+    return [_public_item(row) for row in rows]
+
+
+def acknowledge_warning(token):
+    with db.conn() as c:
+        c.execute("UPDATE outbox SET warning_acknowledged=1,updated_at=? WHERE token=? AND status='sent' AND COALESCE(json_extract(result,'$.warning'),'')<>''", (datetime.now().isoformat(), token))
+        if not c.execute('SELECT changes()').fetchone()[0]:
+            raise ValueError('没有可确认的发送警告，请刷新发件箱')
+    return {'ok': True}
+
+
+def send_now(payload, send):
+    """Direct/phone sends use the same durable claim as the desktop queue."""
+    from . import config
+    from uuid import uuid4
+    with _process_lock(config.DB_PATH + '.outbox.lock') as owned:
+        if not owned:
+            raise ValueError('邮箱正在发送邮件，请稍后核对发件箱后重试')
+        if payload.get('send_at'):
+            raise ValueError('这份邮件有定时发送安排，请在发件箱中核对后发送')
+        token = 'direct-' + uuid4().hex
+        enqueue(token, payload, delay=0)
+        with db.conn() as c:
+            c.execute("UPDATE outbox SET status='sending' WHERE token=? AND status='queued'", (token,))
+        return _deliver(token, payload, send, raise_error=True)
 
 
 def process(send):
@@ -211,21 +259,29 @@ def _process_locked(send):
             if not c.execute('SELECT changes()').fetchone()[0]:
                 continue
             payload = json.loads(c.execute('SELECT payload FROM outbox WHERE token=?', (token,)).fetchone()[0])
-        result, error, status = {}, '', 'sent'
-        context_token = current_send_token.set(token)
-        try:
-            result = send(payload)
-        except Exception as exc:
-            import smtplib
-            known = isinstance(exc, (smtplib.SMTPRecipientsRefused, smtplib.SMTPAuthenticationError, ValueError)) or getattr(exc, 'status_code', 500) < 500
-            status = 'failed' if known else 'unknown'
-            error = str(exc)[:300] if known else '发送结果待确认，请先核对服务器已发送邮件，避免重复发送'
-        finally:
-            current_send_token.reset(context_token)
-        with db.conn() as c:
-            stored = json.loads(c.execute('SELECT result FROM outbox WHERE token=?', (token,)).fetchone()[0] or '{}')
-            result = {**stored, **(result or {})}
-            if status == 'unknown' and result.get('sent_record_id'):
-                c.execute("UPDATE sent_messages SET status='unknown',error=? WHERE id=?", (error, result['sent_record_id']))
-            c.execute('UPDATE outbox SET status=?,result=?,error=?,updated_at=? WHERE token=?',
-                      (status, json.dumps(result, ensure_ascii=False), error, datetime.now().isoformat(), token))
+        _deliver(token, payload, send)
+
+
+def _deliver(token, payload, send, *, raise_error=False):
+    result, error, status, failure = {}, '', 'sent', None
+    context_token = current_send_token.set(token)
+    try:
+        result = send(payload)
+    except Exception as exc:
+        import smtplib
+        failure = exc
+        known = isinstance(exc, (smtplib.SMTPRecipientsRefused, smtplib.SMTPAuthenticationError, smtplib.SMTPDataError, ValueError)) or getattr(exc, 'status_code', 500) < 500
+        status = 'failed' if known else 'unknown'
+        error = str(exc)[:300] if known else '发送结果待确认，请先核对服务器已发送邮件，避免重复发送'
+    finally:
+        current_send_token.reset(context_token)
+    with db.conn() as c:
+        stored = json.loads(c.execute('SELECT result FROM outbox WHERE token=?', (token,)).fetchone()[0] or '{}')
+        result = {**stored, **(result or {})}
+        if status == 'unknown' and result.get('sent_record_id'):
+            c.execute("UPDATE sent_messages SET status='unknown',error=? WHERE id=?", (error, result['sent_record_id']))
+        c.execute('UPDATE outbox SET status=?,result=?,error=?,updated_at=? WHERE token=?',
+                  (status, json.dumps(result, ensure_ascii=False), error, datetime.now().isoformat(), token))
+    if failure is not None and raise_error:
+        raise failure
+    return result

@@ -4128,6 +4128,7 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
     <div class="special-mail-meta"><b>${kind === 'drafts' ? mailaiText('收件人') : mailaiText('发送至')}：</b>${esc(recipients || mailaiText('尚未填写'))}<br><b><span data-i18n="ui.2bfff9580494">时间：</span></b>${esc(fmtDate(row.sent_at || row.updated_at || row.created_at))}</div>
     <div class="special-mail-actions">${kind === 'drafts' ? "<button class=\"action-btn action-primary compact\" id=\"btn-edit-special\"><svg viewBox=\"0 0 20 20\"><path d=\"m4 14.5-.5 2 2-.5L15 6.5 13.5 5 4 14.5ZM12 6.5l1.5 1.5\"/></svg><span data-i18n=\"ui.fd4b9e3b6c68\">继续编辑</span></button><button class=\"action-btn compact\" id=\"btn-delete-special\"><svg viewBox=\"0 0 20 20\"><path d=\"M4 6h12M8 6V4h4v2m-6 0 1 10h6l1-10M9 9v4m2-4v4\"/></svg><span data-i18n=\"ui.855f17276246\">舍弃草稿</span></button>" : failed ? "<button class=\"action-btn action-primary compact\" id=\"btn-edit-special\"><svg viewBox=\"0 0 20 20\"><path d=\"m4 14.5-.5 2 2-.5L15 6.5 13.5 5 4 14.5Z\"/></svg><span data-i18n=\"ui.1532ca4d4634\">重新编辑</span></button>" : (row._remote || ['sent','accepted'].includes(row.status)) ? "<button class=\"action-btn action-primary compact\" id=\"btn-edit-special\"><span data-i18n=\"ui.6b10f1cab097\">再次编辑</span></button>" : ''}</div>
     ${failed ? `<div class="special-mail-error"><b><span data-i18n="ui.48ef62f16b21">失败原因：</span></b>${esc(mailaiSystemMessage(row.error) || mailaiText('未知错误'))}</div>` : ''}
+    ${!failed && row.error ? `<div class="special-mail-error" role="status"><b data-i18n="send.warning">${esc(mailaiText('发送提示'))}：</b>${esc(mailaiSystemMessage(row.error))}</div>` : ''}
     ${specialAttachments}
     <article class="special-mail-body" id="special-mail-body"></article>
   </div>`;
@@ -6362,7 +6363,7 @@ function renderReadingPane(e) {
   const flagIcon = actionIcon('M5 21V4m0 1c3-2 5 2 8 0s5-1 6 0v10c-3-1-4-2-7 0s-5-2-7 0');
   let decisionActions = '';
   if (e.status === 'quarantine' || e.status === 'spam') {
-    decisionActions += `<button class="btn-success" onclick="restoreEmail(${e.id})">${restoreIcon}<span><span data-i18n="ui.8541ab93c902">恢复回收件箱</span></span></button>`;
+    decisionActions += `<button class="btn-success" onclick="restoreEmail(${e.id}, this)">${restoreIcon}<span><span data-i18n="ui.8541ab93c902">恢复回收件箱</span></span></button>`;
     if (!e.reviewed) decisionActions += `<button class="btn-danger" onclick="confirmEmail(${e.id}, '保留隔离', this)">${shieldIcon}<span><span data-i18n="ui.6a0de9be2fa2">保留隔离</span></span></button>`;
     decisionActions += `<button class="btn-ghost" onclick="feedbackEmail(${e.id}, 'fp')">${checkIcon}<span><span data-i18n="ui.751b0c47d545">标记为正常</span></span></button>`;
   } else if (needsRiskAttention(e) && (e.recommended_status === 'quarantine' || e.recommended_status === 'spam')) {
@@ -6857,11 +6858,21 @@ function fmtSize(n) {
 }
 
 // ===== 操作 =====
-async function restoreEmail(id) {
-  await api('/api/emails/' + id + '/restore', { method: 'POST' });
-  toast(mailaiText('已恢复回收件箱'), 'success');
-  resetReadingPane();
-  await loadData();
+async function restoreEmail(id, button = null) {
+  if (button?.disabled) return;
+  const accountId = activeMailAccount()?.id, revision = readingLoadRevision;
+  if (button) setLoading(button, true, mailaiText('正在恢复…'));
+  try {
+    await api('/api/emails/' + id + '/restore', {accountId, method: 'POST'});
+    toast(mailaiText('已恢复回收件箱'), 'success');
+    if (accountId !== activeMailAccount()?.id) return;
+    if (revision === readingLoadRevision) resetReadingPane();
+    await loadData({silent:true});
+  } catch (error) {
+    toast(mailaiText('恢复未完成，请重试：') + mailaiSystemMessage(error.message), 'error');
+  } finally {
+    if (button?.isConnected) setLoading(button, false);
+  }
 }
 
 async function confirmEmail(id, label = mailaiText('结果'), button = null) {

@@ -96,6 +96,24 @@ def account_work(function):
     return wrapped
 
 
+def start_account_task(target, *args):
+    """Keep a detached upload pinned until its actual thread exits, even on abort."""
+    import asyncio
+    from concurrent.futures import Future
+    future = Future()
+    def run():
+        try:
+            value = target(*args)
+        except BaseException as exc:
+            if not future.done():
+                future.set_exception(exc)
+        else:
+            if not future.done():
+                future.set_result(value)
+    start_account_thread(run, name='mailai-account-task')
+    return asyncio.wrap_future(future)
+
+
 class AccountGuardMiddleware:
     def __init__(self, app):
         self.app = app
@@ -152,6 +170,7 @@ class AccountGuardMiddleware:
                 return await response(scope, receive, send)
         exclusive = path in {
             '/api/oauth/complete',
+            '/api/system/portable-backups/restore',
             "/api/system/server-cleanup/execute",
             "/api/system/mail/login", "/api/system/mail/logout", "/api/system/mail/switch"
         } or (path.startswith("/api/system/backups/") and path.endswith("/restore"))

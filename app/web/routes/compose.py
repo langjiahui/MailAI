@@ -438,6 +438,18 @@ def api_mail_preflight(payload: MailPreflightRequest):
 
 @router.post("/api/mail/send")
 def api_send_mail(payload: SendMailRequest):
+    from ... import outbox
+    if outbox.current_send_token.get() is not None:
+        return _send_mail(payload)
+    if payload.id and share_tasks.list_tasks(payload.id):
+        raise HTTPException(409, '大附件任务尚未完成，请打开草稿继续上传或移除后再发送')
+    try:
+        return outbox.send_now(payload.model_dump(), lambda data: _send_mail(SendMailRequest(**data)))
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+def _send_mail(payload: SendMailRequest):
     data = payload.model_dump()
     data["from_addr"] = config.IMAP_USER
     try:
@@ -478,6 +490,9 @@ def api_send_mail(payload: SendMailRequest):
         db.add_audit_log(None, "send_mail", actor="user", reason=f"发送邮件：{payload.subject}",
                          meta={"message_id": result["message_id"], "recipients": result["recipients"],
                                "preflight_issues": [item["code"] for item in local_review]})
+        if result.get('warning'):
+            with db.conn() as c:
+                c.execute('UPDATE sent_messages SET error=? WHERE id=?', (result['warning'], record_id))
         return {"ok": True, **result}
     except Exception as exc:
         if result is not None:
@@ -508,6 +523,34 @@ def api_queue_mail(payload: QueuedMailRequest):
 def api_outbox():
     from ...outbox import items
     return items()
+
+
+@router.post('/api/mail/outbox/{token}/acknowledge')
+def api_acknowledge_send_warning(token: str):
+    from ...outbox import acknowledge_warning
+    try:
+        return acknowledge_warning(token)
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@router.get('/api/mail/outbox/{token}/retry-draft')
+def api_refused_recipient_draft(token: str):
+    """Only prepare a new draft for refused recipients; never submit another send."""
+    from ...outbox import item
+    row = item(token)
+    if not row or row['status'] != 'sent' or not row['refused_recipients'] or not row['sent_record_id']:
+        raise HTTPException(409, '没有可补发的拒收记录，请核对已发送邮件')
+    sent = db.get_sent_message(row['sent_record_id'])
+    if not sent:
+        raise HTTPException(404, '发送记录不存在')
+    # Preserve To/Cc/Bcc roles, including the privacy of refused Bcc recipients.
+    from email.utils import getaddresses, formataddr
+    refused = {address.casefold() for address in row['refused_recipients']}
+    fields = {key: ', '.join(formataddr((name, address)) for name, address in getaddresses([sent.get(key) or '']) if address.casefold() in refused)
+              for key in ('to_addr', 'cc_addr', 'bcc_addr')}
+    return {**{key: value for key, value in sent.items() if key != 'attachments_json'}, **fields,
+            'id': None, 'source_draft_email_id': None, 'send_at': '', 'followup_at': '', 'followup_days': 0, 'mode': 'compose'}
 
 
 @router.patch('/api/mail/outbox/{token}/schedule')

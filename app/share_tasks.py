@@ -157,7 +157,18 @@ async def upload(token):
             _active.discard(str(path)); share_storage._upload_slots.release()
             raise
     # Cancellation must not erase the persisted task or release the slot early.
-    task = asyncio.create_task(asyncio.to_thread(_execute, path))
+    from .account_guard import start_account_task
+    try:
+        task = start_account_task(_execute, path)
+    except BaseException:
+        try:
+            with _lock:
+                _active.discard(str(path))
+                row.update(state='failed', error='上传未完成，文件已保存在本机，可稍后重试')
+                _write(path, row)
+        finally:
+            share_storage._upload_slots.release()
+        raise
     _workers.add(task)
     def finished(done):
         _workers.discard(done)
@@ -178,3 +189,14 @@ def remove(token):
 def remove_draft(draft_id):
     for row in list_tasks(draft_id):
         remove(row['id'])
+
+
+def discard_account(db_path):
+    root = Path(os.path.realpath(db_path) + '.share-uploads')
+    with _lock:
+        if any(Path(path).parent == root for path in _active):
+            raise share_storage.UploadBusyError('此邮箱仍有大附件正在上传，请完成后再清空')
+        if root.is_symlink():
+            root.unlink()
+        elif root.exists():
+            shutil.rmtree(root)

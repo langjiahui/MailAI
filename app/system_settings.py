@@ -594,6 +594,12 @@ def _remove_account_storage(account_id: str, account: dict):
     if not raw_dir or (raw_dir != legacy_raw and not inside_account_root(raw_dir)):
         raise ValueError("账号邮件目录路径不安全，已停止清空")
 
+    # Clear inputs before deleting the database/registry that makes them reachable.
+    # Active upload/import workers hold the account lease; direct callers also
+    # receive an explicit failure from each sidecar manager instead of success.
+    from . import share_tasks, mail_import
+    share_tasks.discard_account(db_path)
+    mail_import.discard_account(db_path)
     for path in (db_path, db_path + "-wal", db_path + "-shm"):
         if os.path.lexists(path):
             os.remove(path)

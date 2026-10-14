@@ -1,10 +1,14 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 import os
+import hashlib
+from pathlib import Path
 
 
 release_version = os.environ.get('MAILAI_RELEASE_VERSION', '1.0.12')
 build_version = os.environ.get('MAILAI_BUILD_VERSION', '1')
+icon_hash = hashlib.sha256(Path('app/web/static/assets/mailai-app-icon-1024.png').read_bytes()).hexdigest()[:12]
+macos_icon = f'build/mailai-{icon_hash}.icns'
 
 
 a = Analysis(
@@ -38,7 +42,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['build/mailai.icns'],
+    icon=[macos_icon],
 )
 coll = COLLECT(
     exe,
@@ -52,7 +56,7 @@ coll = COLLECT(
 app = BUNDLE(
     coll,
     name='MailAI.app',
-    icon='build/mailai.icns',
+    icon=macos_icon,
     bundle_identifier='com.langjiahui.mailai',
     info_plist={
         'CFBundleDisplayName': 'MailAI',

@@ -323,7 +323,16 @@ def schedule_missing(rebuild: bool = False) -> None:
             with use(values):
                 _set_progress(running=False, phase="", error="索引更新失败，请稍后重试")
 
-    threading.Thread(target=run, name="semantic-index", daemon=True).start()
+    from .account_guard import start_account_thread
+    try:
+        start_account_thread(run, name="semantic-index")
+    except BaseException:
+        with _update_lock:
+            _update_pending.discard(key)
+            _update_again.discard(key)
+            _rebuild_pending.discard(key)
+        _set_progress(running=False, phase="", error="索引更新失败，请稍后重试")
+        raise
 
 
 def index_stats() -> dict:

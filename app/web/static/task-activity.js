@@ -34,7 +34,7 @@
       active: visible.filter(row => ['queued','sending'].includes(row.status)).length +
         (sync.running ? 1 : 0) + (purge.pending ? 1 : 0) +
         (changes.some(row => !row.paused && !row.pending_error) ? 1 : 0),
-      attention: visible.filter(row => ['failed','unknown'].includes(row.status)).length +
+      attention: visible.filter(row => ['failed','unknown'].includes(row.status) || outboxNeedsAttention(row)).length +
         (!sync.running && (sync.error || sync.canceled || sync.resumable) ? 1 : 0) +
         (purge.unacknowledged || purge.cleanup_pending ? 1 : 0) +
         changes.filter(row => row.pending_error && !row.paused).length,

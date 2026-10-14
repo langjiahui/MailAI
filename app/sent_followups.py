@@ -27,6 +27,8 @@ def register(sent_id, days=0, at=""):
         if at
         else (sent_at + timedelta(days=days)).isoformat(timespec="seconds")
     )
+    if datetime.fromisoformat(when) <= sent_at:
+        raise ValueError('跟进时间已早于实际发送时间，请重新安排跟进')
     with db.conn() as c:
         c.execute(
             "INSERT OR IGNORE INTO sent_followups(sent_id,at,created_at) VALUES(?,?,?)",

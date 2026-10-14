@@ -36,7 +36,7 @@ def _plan_view(plan):
 def draft_digest(draft):
     """Bind the WeChat confirmation to the exact reviewed draft and file."""
     keys = ('to_addr', 'cc_addr', 'bcc_addr', 'subject', 'body_html', 'reply_to_email_id',
-            'in_reply_to', 'references')
+            'in_reply_to', 'references', 'send_at', 'followup_days', 'followup_at')
     attachments = [(item.get('filename'), item.get('sha256'), item.get('data_base64'))
                    for item in draft.get('attachments') or [] if isinstance(item, dict)]
     data = [draft.get(key) for key in keys] + [attachments]

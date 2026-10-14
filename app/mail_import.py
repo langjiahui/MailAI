@@ -39,8 +39,26 @@ class SourceLimit(Exception):
 
 
 def _root():
-    owner = hashlib.sha256(os.path.realpath(config.DB_PATH).encode()).hexdigest()[:24]
+    return _account_root(config.DB_PATH)
+
+
+def _account_root(db_path):
+    owner = hashlib.sha256(os.path.realpath(db_path).encode()).hexdigest()[:24]
     return Path(config.DATA_DIR) / 'mail-client-imports' / owner
+
+
+def discard_account(db_path):
+    root = _account_root(db_path)
+    parent = root.parent.resolve()
+    if os.path.commonpath([str(parent), os.path.realpath(config.DATA_DIR)]) != os.path.realpath(config.DATA_DIR):
+        raise ValueError('导入暂存目录路径不安全，已停止清空')
+    with _lock:
+        if any(Path(path).parent == root for path in _active):
+            raise ValueError('此邮箱仍在导入邮件，请暂停后再清空')
+        if root.is_symlink():
+            root.unlink()
+        elif root.exists():
+            shutil.rmtree(root)
 
 
 def _path(token):

@@ -85,9 +85,10 @@ def main():
             }
         )
         db.finish_sent_message(other, ok=True, message_id="<other@example.test>")
-        sent_followups.register(
-            other, at=(datetime.now() - timedelta(seconds=1)).isoformat()
-        )
+        sent_followups.register(other, at=(datetime.now() + timedelta(days=1)).isoformat())
+        with db.conn() as connection:
+            connection.execute('UPDATE sent_followups SET at=? WHERE sent_id=?',
+                               ((datetime.now() - timedelta(seconds=1)).isoformat(), other))
         calls = []
         account = {"db_path": config.DB_PATH, "user": "me@example.test"}
         assert (

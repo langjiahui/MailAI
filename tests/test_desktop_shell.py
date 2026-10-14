@@ -5,7 +5,7 @@ import sys
 import tempfile
 import threading
 import types
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 from email.message import EmailMessage
 from pathlib import Path
 
@@ -21,7 +21,7 @@ except ModuleNotFoundError:
         FileDialog=types.SimpleNamespace(SAVE=1, OPEN=2, FOLDER=3)
     )
 
-from app.desktop import DesktopApi, DesktopRuntime, desktop_asset_path, notification_text, register_installed_application, reserve_loopback_socket
+from app.desktop import DesktopApi, DesktopRuntime, desktop_asset_path, notification_text, register_installed_application, reserve_loopback_socket, refresh_macos_dock_icon
 from app import config, db
 
 
@@ -34,6 +34,28 @@ def main():
     assert 'button.setTitle_("✉︎")' not in desktop_source
     assert "window.mailaiOpenMailto?." in desktop_source
     assert register_installed_application() is False
+    # Always read the installed file rather than Cocoa's named-image cache.
+    # Failed/missing images must leave the existing icon and startup intact.
+    image = Mock()
+    image.isValid.return_value = True
+    native = Mock()
+    kit = types.SimpleNamespace(NSImage=Mock(), NSApplication=Mock())
+    kit.NSImage.alloc.return_value.initWithContentsOfFile_.return_value = image
+    kit.NSApplication.sharedApplication.return_value = native
+    with patch('app.desktop.sys.platform', 'darwin'), patch.dict(sys.modules, AppKit=kit):
+        assert refresh_macos_dock_icon() is True
+        kit.NSImage.alloc.return_value.initWithContentsOfFile_.assert_called_once_with(
+            str(desktop_asset_path('mailai-app-icon-1024.png')))
+        native.setApplicationIconImage_.assert_called_once_with(image)
+        native.dockTile.return_value.display.assert_called_once_with()
+        native.reset_mock()
+        image.isValid.return_value = False
+        assert refresh_macos_dock_icon() is False
+        native.setApplicationIconImage_.assert_not_called()
+        with patch('app.desktop.desktop_asset_path', return_value=ROOT/'absent-dock-icon.png'):
+            assert refresh_macos_dock_icon() is False
+    with patch('app.desktop.sys.platform', 'win32'):
+        assert refresh_macos_dock_icon() is False
     build_source = (ROOT / "scripts" / "build_macos.command").read_text(encoding="utf-8")
     assert 'cat > "$PKG_SCRIPTS/preinstall"' in build_source
     assert "/usr/bin/pgrep -x MailAI" in build_source

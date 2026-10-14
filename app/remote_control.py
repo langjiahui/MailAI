@@ -495,7 +495,7 @@ def _mail_command(key, state, text, user, channel):
                 return '原邮件已移除或隔离，未发送。'
             from .web.routes.compose import api_send_mail
             from .web.schemas import SendMailRequest
-            normalized_draft = {**draft, **{key: draft.get(key) or '' for key in
+            normalized_draft = {**draft, 'expected_revision': draft['revision'], **{key: draft.get(key) or '' for key in
                                           ('to_addr', 'cc_addr', 'bcc_addr', 'subject', 'body_html', 'in_reply_to', 'references')}}
             result = api_send_mail(SendMailRequest(**normalized_draft))
             state.pop('prepared_draft_id', None)

@@ -32,6 +32,28 @@ const html=`<!doctype html><html lang="zh-CN" data-theme="light"><head><meta cha
    const future=await page.locator('.datetime-panel:visible').evaluate(n=>({selectedYear:n.querySelector('.datetime-navigation select:last-of-type').value,enabledDays:n.querySelectorAll('.datetime-day:not(:disabled)').length}));
    assert.equal(future.selectedYear,'2040');assert(future.enabledDays>0);
    await page.keyboard.press('Escape');
+   // Clearing a previously populated native field must allow the first submit,
+   // including WebKit's cached date validation and all three enhanced types.
+   await page.evaluate(()=>{
+    document.getElementById('start').value='2026-10-13';document.getElementById('end').value='2026-10-14';
+    const form=document.getElementById('form');
+    form.insertAdjacentHTML('beforeend','<div id="clear-boundary-tests"><input id="clear-date" type="date" value="2026-10-14" min="2026-10-01"><input id="clear-datetime" type="datetime-local" value="2026-10-14T09:30" step="60"><input id="clear-time" type="time" value="09:30" max="18:00"></div>');
+    window.clearedSubmissions=0;form.addEventListener('submit',()=>++window.clearedSubmissions);
+   });
+   await page.locator('#clear-time + .datetime-trigger').waitFor();
+   for(const [index,id] of ['clear-date','clear-datetime','clear-time'].entries()){
+    const before=await page.locator('#'+id).evaluate(n=>({type:n.type,defaultValue:n.defaultValue,min:n.min,max:n.max,step:n.step}));
+    await page.locator('#'+id).evaluate(n=>{n.value='';});
+    await page.locator('#form > button[type=submit]').click();
+    assert.equal(await page.evaluate(()=>clearedSubmissions),index+1,`${engine.name()}/${id}: first submit after clearing must succeed`);
+    assert.deepEqual(await page.locator('#'+id).evaluate(n=>({type:n.type,defaultValue:n.defaultValue,min:n.min,max:n.max,step:n.step})),before);
+   }
+   await page.evaluate(()=>{
+    document.getElementById('form').reset();
+    window.clearedReset=['clear-date','clear-datetime','clear-time'].map(id=>document.getElementById(id).value);
+    document.getElementById('clear-boundary-tests').remove();
+   });
+   assert.deepEqual(await page.evaluate(()=>clearedReset),['2026-10-14','2026-10-14T09:30','09:30']);
    await page.evaluate(()=>{document.getElementById('start').value='2026-10-13';});
    for(const [width,zoom] of [[1000,1],[1000,1.25],[390,1],[390,1.25],[390,1.4]]){
     await page.setViewportSize({width,height:750});
@@ -49,5 +71,5 @@ const html=`<!doctype html><html lang="zh-CN" data-theme="light"><head><meta cha
   }finally{await browser.close();}
  }
  fs.writeFileSync('build/audit-20261013-date-controls.json',JSON.stringify(report,null,2));
- console.log('PASS date boundaries: two engines, scaled/narrow layouts, first invalid focus, browser/UI language mismatch and future minimum');
+ console.log('PASS date boundaries: two engines, first submit after clearing all date/time types, preserved constraints/reset, scaled/narrow layouts, first invalid focus, language mismatch and future minimum');
 })().catch(e=>{console.error(e);process.exitCode=1;});

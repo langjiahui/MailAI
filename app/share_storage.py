@@ -157,7 +157,8 @@ async def upload_request(request, encoded_filename: str, days: int) -> dict:
                 finally:
                     _upload_slots.release()
 
-        task = asyncio.create_task(asyncio.to_thread(upload_and_cleanup))
+        from .account_guard import start_account_task
+        task = start_account_task(upload_and_cleanup)
         _uploads.add(task)
         def finished(done):
             _uploads.discard(done)

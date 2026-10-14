@@ -82,6 +82,8 @@ jobs:
           node tests/test_interaction_consistency_browser.cjs
           node tests/test_connection_lifecycle_browser.cjs
           node tests/test_task_notices_browser.cjs
+          node tests/test_task_center_closure_browser.cjs
+          MAILAI_BROWSER=webkit node tests/test_task_center_closure_browser.cjs
           node tests/test_attachment_library_ui.cjs
           node tests/test_attachment_content_browser.cjs
           MAILAI_BROWSER=webkit node tests/test_attachment_content_browser.cjs
@@ -109,6 +111,41 @@ jobs:
           node tests/test_reward_theme_selects_browser.cjs
           node tests/test_digest_recovery_browser.cjs
           MAILAI_BROWSER=webkit node tests/test_digest_recovery_browser.cjs
+
+  interaction-continuity-browser:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install interaction test dependencies
+        run: |
+          python -m pip install -r requirements.txt
+          npm ci
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Verify delayed actions with an isolated mailbox fixture
+        shell: bash
+        env:
+          MAILAI_BROWSER: ${{ matrix.browser }}
+        run: |
+          python tests/workspace_preview.py > fixture-interaction.log 2>&1 &
+          fixture_pid=$!
+          trap 'kill "$fixture_pid" 2>/dev/null || true; wait "$fixture_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:18795/api/health > /dev/null; then ready=1; break; fi
+            sleep 1
+          done
+          if [ "$ready" != 1 ]; then cat fixture-interaction.log; exit 1; fi
+          node tests/test_interaction_continuity_browser.cjs
 
   mail-import-windows:
     runs-on: windows-2022

@@ -66,7 +66,7 @@ TESTS = (
     'test_attachment_center_history.py', 'test_quote_html.py', 'test_auto_sync_pause.py',
     'test_batch_move.py',
     'test_confirm_recovery.py',
-    'test_feedback_moves.py', 'test_account_guard.py', 'test_reply_recipients.py',
+    'test_feedback_moves.py', 'test_account_guard.py', 'test_workflow_closure.py', 'test_reply_recipients.py',
     'test_draft_thread.py', 'test_draft_lifecycle.py', 'test_folder_safety.py', 'test_sync_retry.py', 'test_system_settings.py',
     'test_email_identity.py',
     'test_assistant_routing.py',

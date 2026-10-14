@@ -30,6 +30,29 @@ def desktop_asset_path(filename: str = "mailai-mark.png") -> Path:
     return base / "app" / "web" / "static" / "assets" / filename
 
 
+def refresh_macos_dock_icon() -> bool:
+    """Load the installed icon afresh on Cocoa's main thread, bypassing Dock cache."""
+    if sys.platform != "darwin":
+        return False
+    try:
+        from AppKit import NSApplication, NSImage
+
+        path = desktop_asset_path("mailai-app-icon-1024.png")
+        if not path.is_file():
+            return False
+        image = NSImage.alloc().initWithContentsOfFile_(str(path))
+        if image is None or not image.isValid():
+            log.warning("macOS Dock 图标无效，保留系统图标")
+            return False
+        app = NSApplication.sharedApplication()
+        app.setApplicationIconImage_(image)
+        app.dockTile().display()
+        return True
+    except Exception:
+        log.exception("刷新 macOS Dock 图标失败")
+        return False
+
+
 def register_installed_application() -> bool:
     """Register only the persistent Applications copy with LaunchServices."""
     if not (getattr(sys, "frozen", False) and sys.platform == "darwin"):
@@ -745,6 +768,7 @@ def run_macos_window(asgi_app, preferred_port: int = 0,
         window.events.closing += runtime.handle_closing
 
         def ready():
+            runtime._call_after_safely("刷新 Dock 图标", refresh_macos_dock_icon)
             runtime._call_after_safely("安装菜单栏控件", runtime.install_native_controls)
             threading.Thread(target=runtime.refresh_dock_badge,
                              name="mailai-dock-unread", daemon=True).start()

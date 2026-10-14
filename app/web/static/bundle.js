@@ -1576,6 +1576,24 @@ if (typeof document !== 'undefined') {
 /* ---- i18n-catalog.js ---- */
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "task.pausedElsewhere": ["发送任务已暂停，内容保留在原邮箱草稿箱", "The send task was paused. Its contents remain in the original mailbox's drafts."],
+  "task.verifyOutcome": ["核对发送结果", "Verify delivery outcome"],
+  "mail.restoring": ["正在恢复…", "Restoring…"],
+  "mail.restoreFailed": ["恢复未完成，请重试：", "Restore did not complete. Please retry: "],
+  "task.editsKept": ["刚才的安排已保存，当前编辑内容仍保留。确认后可再次保存。", "The previous arrangement was saved. Your current edits are still here; review and save again."],
+  "send.followupElapsed": ["跟进时间已早于实际发送时间，请重新安排跟进", "The follow-up time is earlier than the actual send time. Please reschedule it."],
+  "share.cleanupBusy": ["此邮箱仍有大附件正在上传，请完成后再清空", "This mailbox has an active attachment upload. Wait for it to finish before clearing data."],
+  "import.cleanupPath": ["导入暂存目录路径不安全，已停止清空", "The import staging path is unsafe. Cleanup was stopped."],
+  "import.cleanupBusy": ["此邮箱仍在导入邮件，请暂停后再清空", "This mailbox is importing mail. Pause the import before clearing data."],
+  "send.followupReschedule": ["跟进时间必须晚于新的发送时间，请编辑邮件重新安排跟进", "The follow-up must be later than the new send time. Edit the email to reschedule it."],
+  "send.noWarning": ["没有可确认的发送警告，请刷新发件箱", "No delivery warning to acknowledge. Refresh the outbox."],
+  "send.busy": ["邮箱正在发送邮件，请稍后核对发件箱后重试", "Mail is being sent. Check the outbox and try again later."],
+  "send.scheduledDirect": ["这份邮件有定时发送安排，请在发件箱中核对后发送", "This email is scheduled. Review its delivery arrangement in the outbox."],
+  "send.noRefused": ["没有可补发的拒收记录，请核对已发送邮件", "No refused recipients are available for retry. Check Sent mail."],
+  "send.warningTitle": ["已发送 · 需处理", "Sent · Needs attention"],
+  "send.warningHandled": ["确认已处理", "Mark as handled"],
+  "send.retryRefused": ["仅向拒收对象补发", "Retry refused recipients only"],
+  "send.warning": ["发送提示", "Delivery notice"],
   "credential.retryRequired": ["凭据仍待解锁或安全迁移，请再次点击解锁；现有数据保留", "Credentials still need unlocking or security migration. Select Unlock again; existing data is preserved."],
   "credential.migratedHelp": ["已迁入加固后的统一保险库，其他已迁移邮箱共用一次解锁。", "Moved to the hardened shared vault. Other migrated mailboxes share the same unlock."],
   "credential.unlock": ["解锁凭据", "Unlock credentials"],
@@ -22670,6 +22688,7 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
     <div class="special-mail-meta"><b>${kind === 'drafts' ? mailaiText('收件人') : mailaiText('发送至')}：</b>${esc(recipients || mailaiText('尚未填写'))}<br><b><span data-i18n="ui.2bfff9580494">时间：</span></b>${esc(fmtDate(row.sent_at || row.updated_at || row.created_at))}</div>
     <div class="special-mail-actions">${kind === 'drafts' ? "<button class=\"action-btn action-primary compact\" id=\"btn-edit-special\"><svg viewBox=\"0 0 20 20\"><path d=\"m4 14.5-.5 2 2-.5L15 6.5 13.5 5 4 14.5ZM12 6.5l1.5 1.5\"/></svg><span data-i18n=\"ui.fd4b9e3b6c68\">继续编辑</span></button><button class=\"action-btn compact\" id=\"btn-delete-special\"><svg viewBox=\"0 0 20 20\"><path d=\"M4 6h12M8 6V4h4v2m-6 0 1 10h6l1-10M9 9v4m2-4v4\"/></svg><span data-i18n=\"ui.855f17276246\">舍弃草稿</span></button>" : failed ? "<button class=\"action-btn action-primary compact\" id=\"btn-edit-special\"><svg viewBox=\"0 0 20 20\"><path d=\"m4 14.5-.5 2 2-.5L15 6.5 13.5 5 4 14.5Z\"/></svg><span data-i18n=\"ui.1532ca4d4634\">重新编辑</span></button>" : (row._remote || ['sent','accepted'].includes(row.status)) ? "<button class=\"action-btn action-primary compact\" id=\"btn-edit-special\"><span data-i18n=\"ui.6b10f1cab097\">再次编辑</span></button>" : ''}</div>
     ${failed ? `<div class="special-mail-error"><b><span data-i18n="ui.48ef62f16b21">失败原因：</span></b>${esc(mailaiSystemMessage(row.error) || mailaiText('未知错误'))}</div>` : ''}
+    ${!failed && row.error ? `<div class="special-mail-error" role="status"><b data-i18n="send.warning">${esc(mailaiText('发送提示'))}：</b>${esc(mailaiSystemMessage(row.error))}</div>` : ''}
     ${specialAttachments}
     <article class="special-mail-body" id="special-mail-body"></article>
   </div>`;
@@ -24904,7 +24923,7 @@ function renderReadingPane(e) {
   const flagIcon = actionIcon('M5 21V4m0 1c3-2 5 2 8 0s5-1 6 0v10c-3-1-4-2-7 0s-5-2-7 0');
   let decisionActions = '';
   if (e.status === 'quarantine' || e.status === 'spam') {
-    decisionActions += `<button class="btn-success" onclick="restoreEmail(${e.id})">${restoreIcon}<span><span data-i18n="ui.8541ab93c902">恢复回收件箱</span></span></button>`;
+    decisionActions += `<button class="btn-success" onclick="restoreEmail(${e.id}, this)">${restoreIcon}<span><span data-i18n="ui.8541ab93c902">恢复回收件箱</span></span></button>`;
     if (!e.reviewed) decisionActions += `<button class="btn-danger" onclick="confirmEmail(${e.id}, '保留隔离', this)">${shieldIcon}<span><span data-i18n="ui.6a0de9be2fa2">保留隔离</span></span></button>`;
     decisionActions += `<button class="btn-ghost" onclick="feedbackEmail(${e.id}, 'fp')">${checkIcon}<span><span data-i18n="ui.751b0c47d545">标记为正常</span></span></button>`;
   } else if (needsRiskAttention(e) && (e.recommended_status === 'quarantine' || e.recommended_status === 'spam')) {
@@ -25399,11 +25418,21 @@ function fmtSize(n) {
 }
 
 // ===== 操作 =====
-async function restoreEmail(id) {
-  await api('/api/emails/' + id + '/restore', { method: 'POST' });
-  toast(mailaiText('已恢复回收件箱'), 'success');
-  resetReadingPane();
-  await loadData();
+async function restoreEmail(id, button = null) {
+  if (button?.disabled) return;
+  const accountId = activeMailAccount()?.id, revision = readingLoadRevision;
+  if (button) setLoading(button, true, mailaiText('正在恢复…'));
+  try {
+    await api('/api/emails/' + id + '/restore', {accountId, method: 'POST'});
+    toast(mailaiText('已恢复回收件箱'), 'success');
+    if (accountId !== activeMailAccount()?.id) return;
+    if (revision === readingLoadRevision) resetReadingPane();
+    await loadData({silent:true});
+  } catch (error) {
+    toast(mailaiText('恢复未完成，请重试：') + mailaiSystemMessage(error.message), 'error');
+  } finally {
+    if (button?.isConnected) setLoading(button, false);
+  }
 }
 
 async function confirmEmail(id, label = mailaiText('结果'), button = null) {
@@ -28813,6 +28842,8 @@ let taskCenterPollTimer = 0;
 let taskCenterReminders = [];
 let taskCenterLastFocus = null;
 let taskCenterAccountId = '';
+let taskCenterViewRevision = 0;
+const taskCenterPendingActions = new Set();
 function taskCenterScope() {
   return document.getElementById('task-center')?.classList.contains('hidden')
     ? activeMailAccount()?.id : taskCenterAccountId || activeMailAccount()?.id;
@@ -28985,6 +29016,7 @@ function showQueuedMail(result, accountId) {
 
 async function openTaskCenter() {
   window.closeAssistant?.();
+  ++taskCenterViewRevision;
   taskCenterLastFocus = document.activeElement;
   taskCenterAccountId = activeMailAccount()?.id || '';
   const selector = document.getElementById('task-center-account');
@@ -29004,6 +29036,7 @@ async function openTaskCenter() {
 }
 
 function closeTaskCenter() {
+  ++taskCenterViewRevision;
   clearTimeout(taskCenterPollTimer); taskCenterPollTimer = 0;
   document.getElementById('task-center').classList.add('hidden');
   document.getElementById('task-center-backdrop').classList.add('hidden');
@@ -29018,10 +29051,85 @@ function scheduleTaskCenterRefresh(enabled) {
   taskCenterPollTimer = setTimeout(() => refreshTaskCenter({lightweight:true}), 2500);
 }
 
+function outboxWarning(row) {
+  if (row.warning) return row.warning;
+  try { return JSON.parse(row.result || '{}').warning || ''; } catch (_) { return ''; }
+}
+
+function outboxNeedsAttention(row) {
+  return row.status === 'sent' && !row.warning_acknowledged && Boolean(outboxWarning(row));
+}
+
+const taskCenterActionAttributes = ['data-task-open-sent','data-edit-queue','data-time-queue','data-cancel-queue','data-purge-ack','data-task-refresh','data-sync-retry','data-outbox-draft','data-reminder-open','data-reminder-dismiss','data-outbox-ack','data-outbox-refused','data-outbox-sent','data-resolve-send','data-action-sync-retry','data-action-sync-pause','data-sync-paused-toggle'];
+function taskCenterActionKey(node, accountId) {
+  const action = taskCenterActionAttributes.find(name => node.hasAttribute(name));
+  return action ? JSON.stringify([accountId, action, node.getAttribute(action)]) : '';
+}
+
+function updateTaskCenterPending(host, accountId) {
+  if (!host.querySelectorAll) return;
+  for (const node of host.querySelectorAll('button')) {
+    const row = node.closest('[data-task-row]');
+    const pending = taskCenterPendingActions.has(taskCenterActionKey(node, accountId)) ||
+      [...(row?.querySelectorAll('button') || [])].some(control => taskCenterPendingActions.has(taskCenterActionKey(control, accountId)));
+    if (pending) {
+      if (node._taskDisabledBefore === undefined) node._taskDisabledBefore = node.disabled;
+      node.disabled = true; node.setAttribute('aria-busy', 'true');
+    } else if (node._taskDisabledBefore !== undefined) {
+      node.disabled = node._taskDisabledBefore; delete node._taskDisabledBefore;
+      node.removeAttribute('aria-busy');
+    }
+  }
+}
+
+function paintTaskCenter(host, html, accountId) {
+  // Leave unchanged rows intact, including focused controls and expanded errors.
+  if (!host.replaceChildren || !document.createElement) { host.innerHTML = html; return () => {}; }
+  const language = currentI18nLanguage();
+  const sameScope = host._taskScope === accountId;
+  if (sameScope && host._taskMarkup === html && host._taskLanguage === language &&
+      host._taskChildren?.length === host.children.length && host._taskChildren.every((node, index) => node === host.children[index])) {
+    return () => updateTaskCenterPending(host, accountId);
+  }
+  const focused = document.activeElement;
+  const focusedRow = host.contains(focused) ? focused.closest('[data-task-row]') : null;
+  const focusedKey = focusedRow?.dataset.taskRow;
+  const controlKey = focusedRow ? taskCenterActionKey(focused, accountId) : '';
+  const scroll = sameScope ? host.scrollTop : 0;
+  const existing = new Map(sameScope ? [...host.querySelectorAll('[data-task-row]')].map(node => [node.dataset.taskRow, node]) : []);
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  for (const next of template.content.querySelectorAll('[data-task-row]')) {
+    const old = existing.get(next.dataset.taskRow);
+    const markup = next.outerHTML;
+    if (old && old._taskMarkup === markup && old._taskLanguage === language) {
+      next.replaceWith(old);
+    } else {
+      next._taskMarkup = markup;
+      next._taskLanguage = language;
+      const expanded = [...(old?.querySelectorAll('details') || [])].map(node => node.open);
+      next.querySelectorAll('details').forEach((node, index) => { node.open = expanded[index] || false; });
+    }
+  }
+  host.replaceChildren(template.content);
+  host._taskScope = accountId; host._taskMarkup = html; host._taskLanguage = language;
+  host._taskChildren = [...host.children];
+  host.scrollTop = scroll;
+  return () => {
+    updateTaskCenterPending(host, accountId);
+    if (!focusedRow) return;
+    const row = [...host.querySelectorAll('[data-task-row]')].find(node => node.dataset.taskRow === focusedKey);
+    const replacement = focused?.isConnected ? focused : [...(row?.querySelectorAll('button,summary,a[href]') || [])].find(node => taskCenterActionKey(node, accountId) === controlKey);
+    const target = replacement || row?.querySelector('button:not(:disabled),summary') || document.getElementById('task-center')?.querySelector('header button');
+    if (target && !target.disabled) target.focus({preventScroll:true});
+    host.scrollTop = scroll;
+  };
+}
+
 function actionableOutboxRows(rows = []) {
   const seenDrafts = new Set();
   return rows.filter(row => {
-    if (row.status === 'unknown') return true;
+    if (row.status === 'unknown' || outboxNeedsAttention(row)) return true;
     if (row.draft_id) {
       const key = String(row.draft_id);
       if (seenDrafts.has(key)) return false;
@@ -29056,7 +29164,7 @@ async function refreshTaskCenter({lightweight = false} = {}) {
     const errors = results.flatMap((result, index) => result.status === 'rejected' ? [requests[index][0]] : []);
     const [rows, sync, reminders, allReminders, actions, purge] = results.map((result, index) => result.status === 'fulfilled' ? result.value : requests[index][2]);
     actions.rows = Array.isArray(actions.rows) ? actions.rows : [];
-    rows.forEach(row => { try { row.error = row.error || JSON.parse(row.result || '{}').warning || ''; } catch (_) {} });
+    rows.forEach(row => { try { const result = JSON.parse(row.result || '{}'); row.warning = row.warning || result.warning || ''; row.error = row.error || row.warning; row.sent_record_id = row.sent_record_id || result.sent_record_id; row.refused_recipients = row.refused_recipients || result.refused_recipients || []; } catch (_) {} });
     if (accountId !== taskCenterScope()) return;
     taskCenterReminders = reminders;
     host.dataset.accountId = accountId || '';
@@ -29065,35 +29173,50 @@ async function refreshTaskCenter({lightweight = false} = {}) {
     const showSync = Boolean(sync.running || sync.error || sync.canceled || sync.resumable);
     const syncRetryPath = ['fetch_all','sync_folders','sync_folder'].includes(sync.operation) ? '/api/fetch_all'
       : sync.operation === 'fetch_more' ? '/api/fetch_more' : '/api/poll';
-    const syncBlock = showSync ? `<section class="task-section"><h3>${sync.running ? mailaiText('进行中的任务') : mailaiText('需要处理')} <span>1</span></h3><article class="task-row ${mailaiSystemMessage(sync.error) || sync.resumable ? 'needs-attention' : ''}"><div class="task-row-main"><b><span data-i18n="ui.4da9233eb5da">邮箱同步</span></b><span class="task-status ${sync.running ? 'running' : 'warning'}">${sync.running ? mailaiText('进行中') : mailaiText('需处理')}</span></div><small>${esc(mailaiSystemMessage(sync.message) || (sync.running ? mailaiText('正在同步…') : mailaiText('同步已中断')))}${mailaiSystemMessage(sync.error) ? `<br>${esc(mailaiSystemMessage(sync.error))}` : ''}</small>${!sync.running ? `<div class="task-row-actions"><button class="primary" data-sync-retry="${syncRetryPath}"><span data-i18n="ui.4a7af23b6505">重新同步</span></button></div>` : ''}</article></section>` : '';
-    const outboxBlock = visibleRows.length ? `<section class="task-section"><h3><span data-i18n="ui.02d55e8b9e34">发件箱</span> <span>${visibleRows.length}</span></h3>${visibleRows.map(row => `<article class="task-row ${['failed','unknown'].includes(row.status) ? 'needs-attention' : ''}" data-outbox-token="${esc(row.token)}"><div class="task-row-main"><b data-user-content>${esc(row.subject || mailaiText('无主题'))}</b><span class="task-status status-${esc(row.status)}">${esc(labels[row.status] || row.status)}</span></div><small>${esc(row.to_addr || '')}${row.status === 'queued' ? `<br><span data-i18n="ui.d05a31c6bd88">计划发送：${esc(new Date(row.due_at).toLocaleString(currentI18nLanguage()))}</span>` : ''}${mailaiSystemMessage(row.error) ? ` · ${esc(mailaiSystemMessage(row.error))}` : ''}${row.status === 'unknown' ? "<br><span data-i18n=\"ui.025deda378be\">请核对服务器已发送邮件，避免重复发送。</span>" : ''}</small><div class="task-row-actions">${row.status === 'queued' ? `<button data-edit-queue="${esc(row.token)}"><span data-i18n="ui.51726c4a26ab">编辑邮件</span></button><button data-time-queue="${esc(row.token)}"><span data-i18n="ui.fd094431c8ca">调整时间</span></button><button data-cancel-queue="${esc(row.token)}"><span data-i18n="ui.554bfa5fa81c">取消发送</span></button>` : ''}${row.status === 'failed' && row.draft_id ? `<button class="primary" data-outbox-draft="${esc(row.draft_id)}"><span data-i18n="ui.9a2717984f6e">编辑草稿后重试</span></button>` : ''}</div></article>`).join('')}</section>` : '';
-    const reminderBlock = reminders.length ? `<section class="task-section"><h3><span data-i18n="ui.879d8543c3f3">稍后提醒</span> <span>${reminders.length}</span></h3>${reminders.map(item => `<article class="task-row"><div class="task-row-main"><b data-user-content>${esc(item.subject)}</b><span class="task-status">${esc(fmtDate(item.at))}</span></div><small><span data-i18n="ui.8aa2aaf9660e">到期后提醒你处理这封邮件</span></small><div class="task-row-actions"><button class="primary" data-reminder-open="${item.email_id}"><span data-i18n="ui.ac711aa9178c">查看邮件</span></button><button data-reminder-dismiss="${item.email_id}" data-task-reminder="${item.todo_id || ''}"><span data-i18n="ui.56f252b08c5a">关闭提醒</span></button></div></article>`).join('')}</section>` : '';
+    const syncBlock = showSync ? `<section class="task-section"><h3>${sync.running ? mailaiText('进行中的任务') : mailaiText('需要处理')} <span>1</span></h3><article data-task-row="sync" class="task-row ${mailaiSystemMessage(sync.error) || sync.resumable ? 'needs-attention' : ''}"><div class="task-row-main"><b><span data-i18n="ui.4da9233eb5da">邮箱同步</span></b><span class="task-status ${sync.running ? 'running' : 'warning'}">${sync.running ? mailaiText('进行中') : mailaiText('需处理')}</span></div><small>${esc(mailaiSystemMessage(sync.message) || (sync.running ? mailaiText('正在同步…') : mailaiText('同步已中断')))}${mailaiSystemMessage(sync.error) ? `<br>${esc(mailaiSystemMessage(sync.error))}` : ''}</small>${!sync.running ? `<div class="task-row-actions"><button class="primary" data-sync-retry="${syncRetryPath}"><span data-i18n="ui.4a7af23b6505">重新同步</span></button></div>` : ''}</article></section>` : '';
+    const outboxBlock = visibleRows.length ? `<section class="task-section"><h3><span data-i18n="ui.02d55e8b9e34">发件箱</span> <span>${visibleRows.length}</span></h3>${visibleRows.map(row => `<article data-task-row="outbox:${esc(row.token)}" class="task-row ${(['failed','unknown'].includes(row.status) || outboxNeedsAttention(row)) ? 'needs-attention' : ''}" data-outbox-token="${esc(row.token)}"><div class="task-row-main"><b data-user-content>${esc(row.subject || mailaiText('无主题'))}</b><span class="task-status status-${esc(row.status)}" ${outboxNeedsAttention(row) ? 'data-i18n="send.warningTitle"' : ''}>${esc(outboxNeedsAttention(row) ? mailaiText('已发送 · 需处理') : labels[row.status] || row.status)}</span></div><small>${esc(row.to_addr || '')}${row.status === 'queued' ? `<br><span data-i18n="ui.d05a31c6bd88">计划发送：${esc(new Date(row.due_at).toLocaleString(currentI18nLanguage()))}</span>` : ''}${mailaiSystemMessage(row.error) ? ` · ${esc(mailaiSystemMessage(row.error))}` : ''}${row.status === 'unknown' ? "<br><span data-i18n=\"ui.025deda378be\">请核对服务器已发送邮件，避免重复发送。</span>" : ''}</small><div class="task-row-actions">${row.status === 'queued' ? `<button data-edit-queue="${esc(row.token)}"><span data-i18n="ui.51726c4a26ab">编辑邮件</span></button><button data-time-queue="${esc(row.token)}"><span data-i18n="ui.fd094431c8ca">调整时间</span></button><button data-cancel-queue="${esc(row.token)}"><span data-i18n="ui.554bfa5fa81c">取消发送</span></button>` : ''}${row.status === 'failed' && row.draft_id ? `<button class="primary" data-outbox-draft="${esc(row.draft_id)}"><span data-i18n="ui.9a2717984f6e">编辑草稿后重试</span></button>` : ''}${outboxNeedsAttention(row) ? `${row.sent_record_id ? `<button data-outbox-sent="${esc(row.sent_record_id)}"><span data-i18n="ui.c259135be1d3">查看已发送邮件</span></button>` : ''}${row.refused_recipients?.length ? `<button class="primary" data-outbox-refused="${esc(row.token)}" data-i18n="send.retryRefused">${esc(mailaiText('仅向拒收对象补发'))}</button>` : ''}<button data-outbox-ack="${esc(row.token)}" data-i18n="send.warningHandled">${esc(mailaiText('确认已处理'))}</button>` : ''}</div></article>`).join('')}</section>` : '';
+    const reminderBlock = reminders.length ? `<section class="task-section"><h3><span data-i18n="ui.879d8543c3f3">稍后提醒</span> <span>${reminders.length}</span></h3>${reminders.map(item => `<article data-task-row="reminder:${esc(item.todo_id || item.email_id)}" class="task-row"><div class="task-row-main"><b data-user-content>${esc(item.subject)}</b><span class="task-status">${esc(fmtDate(item.at))}</span></div><small><span data-i18n="ui.8aa2aaf9660e">到期后提醒你处理这封邮件</span></small><div class="task-row-actions"><button class="primary" data-reminder-open="${item.email_id}"><span data-i18n="ui.ac711aa9178c">查看邮件</span></button><button data-reminder-dismiss="${item.email_id}" data-task-reminder="${item.todo_id || ''}"><span data-i18n="ui.56f252b08c5a">关闭提醒</span></button></div></article>`).join('')}</section>` : '';
     const purgeAttention = Boolean(purge.unacknowledged || purge.cleanup_pending);
-    const purgeBlock = purge.pending || purgeAttention ? `<section class="task-section"><h3><span data-i18n="ui.d6fb20548442">已删除邮件清理</span></h3><article class="task-row"><div class="task-row-main"><b><span data-i18n="ui.955433eb5cec">本地邮件已移除</span></b><span class="task-status">${purge.pending ? mailaiText('远端待同步') : mailaiText('仅本地完成')}</span></div><small><span data-i18n="ui.e7dca6979cc1">${purge.pending ? mailaiTemplate`${Number(purge.pending)} 封等待服务器删除，联网后自动退避重试。` : ''}${purge.unacknowledged ? mailaiTemplate`${Number(purge.unacknowledged)} 封无法安全确认远端删除，服务器可能仍保留；可在网页邮箱核对。` : ''}${purge.cleanup_pending ? mailaiTemplate`${Number(purge.cleanup_pending)} 个原文文件待清理，将在后台重试。` : ''}不影响本地邮件查看、搜索与写信。</span></small>${purge.unacknowledged ? `<div class="task-row-actions"><button data-purge-ack="${esc(JSON.stringify(purge.notice_ids || []))}"><span data-i18n="ui.2fd7bd21a2f6">已知晓</span></button></div>` : ''} </article></section>` : '';
+    const purgeBlock = purge.pending || purgeAttention ? `<section class="task-section"><h3><span data-i18n="ui.d6fb20548442">已删除邮件清理</span></h3><article data-task-row="purge" class="task-row"><div class="task-row-main"><b><span data-i18n="ui.955433eb5cec">本地邮件已移除</span></b><span class="task-status">${purge.pending ? mailaiText('远端待同步') : mailaiText('仅本地完成')}</span></div><small><span data-i18n="ui.e7dca6979cc1">${purge.pending ? mailaiTemplate`${Number(purge.pending)} 封等待服务器删除，联网后自动退避重试。` : ''}${purge.unacknowledged ? mailaiTemplate`${Number(purge.unacknowledged)} 封无法安全确认远端删除，服务器可能仍保留；可在网页邮箱核对。` : ''}${purge.cleanup_pending ? mailaiTemplate`${Number(purge.cleanup_pending)} 个原文文件待清理，将在后台重试。` : ''}不影响本地邮件查看、搜索与写信。</span></small>${purge.unacknowledged ? `<div class="task-row-actions"><button data-purge-ack="${esc(JSON.stringify(purge.notice_ids || []))}"><span data-i18n="ui.2fd7bd21a2f6">已知晓</span></button></div>` : ''} </article></section>` : '';
     const unavailableBlock = errors.length ? `<div class="task-load-error task-partial-error" role="status"><b><span data-i18n="ui.3234ff9269f3">部分状态暂时无法读取</span></b><span>${esc(errors.join('、'))}<span data-i18n="ui.d1adc449f9bf">未能加载，请重试确认。已加载的事项仍可处理。</span></span><button data-task-refresh><span data-i18n="ui.7bdd5ce1e298">重新加载</span></button></div>` : '';
-    const actionBlock = actions.total || actions.paused_count ? `<section class="task-section"><h3><span data-i18n="ui.06be274af039">删除同步</span> <span>${Number(actions.total)}</span></h3>${actions.paused_count ? `<button class="sync-paused-toggle" data-sync-paused-toggle aria-pressed="${!!window.mailaiShowPausedSync}">${window.mailaiShowPausedSync ? mailaiText('收起已暂停') : mailaiText('查看已暂停')}（${Number(actions.paused_count)}）</button>` : ''}${actions.rows.map(row => `<article class="task-row"><div class="task-row-main"><b data-user-content>${esc(row.subject || mailaiText('无主题'))}</b><span class="task-status ${row.pending_error && !row.paused ? 'warning' : ''}">${row.paused ? mailaiText('已暂停') : row.pending_error ? mailaiText('同步待处理') : mailaiText('等待服务器同步')}</span></div><small>${row.paused ? mailaiText('已停止自动重试，本地仍保持删除状态。服务器端是否删除尚未确认，可核对网页邮箱后恢复同步。') : row.pending_error ? mailaiText('已在本地删除。后台最多重试两次，仍未成功就自动结束，不影响本地使用。') : mailaiText('本地已移除，服务器操作尚未完成。')} </small>${row.pending_error ? `<details class="sync-error-details"><summary><span data-i18n="ui.c776f5b86412">查看失败详情 · 已尝试 ${Number(row.pending_attempts || 0)} 次</span></summary><small>${esc(row.pending_error)}</small></details>` : ''}${row.pending_error || row.paused ? `<div class="task-row-actions"><button data-action-sync-retry="${row.id}">${row.paused ? mailaiText('恢复同步') : mailaiText('重新核对并重试')}</button>${!row.paused ? `<button data-action-sync-pause="${row.id}"><span data-i18n="ui.052e30e39429">暂停同步</span></button>` : ''}</div>` : ''}</article>`).join('')}</section>` : '';
+    const actionBlock = actions.total || actions.paused_count ? `<section class="task-section"><h3><span data-i18n="ui.06be274af039">删除同步</span> <span>${Number(actions.total)}</span></h3>${actions.paused_count ? `<button class="sync-paused-toggle" data-sync-paused-toggle aria-pressed="${!!window.mailaiShowPausedSync}">${window.mailaiShowPausedSync ? mailaiText('收起已暂停') : mailaiText('查看已暂停')}（${Number(actions.paused_count)}）</button>` : ''}${actions.rows.map(row => `<article data-task-row="action:${row.id}" class="task-row"><div class="task-row-main"><b data-user-content>${esc(row.subject || mailaiText('无主题'))}</b><span class="task-status ${row.pending_error && !row.paused ? 'warning' : ''}">${row.paused ? mailaiText('已暂停') : row.pending_error ? mailaiText('同步待处理') : mailaiText('等待服务器同步')}</span></div><small>${row.paused ? mailaiText('已停止自动重试，本地仍保持删除状态。服务器端是否删除尚未确认，可核对网页邮箱后恢复同步。') : row.pending_error ? mailaiText('已在本地删除。后台最多重试两次，仍未成功就自动结束，不影响本地使用。') : mailaiText('本地已移除，服务器操作尚未完成。')} </small>${row.pending_error ? `<details class="sync-error-details"><summary><span data-i18n="ui.c776f5b86412">查看失败详情 · 已尝试 ${Number(row.pending_attempts || 0)} 次</span></summary><small>${esc(row.pending_error)}</small></details>` : ''}${row.pending_error || row.paused ? `<div class="task-row-actions"><button data-action-sync-retry="${row.id}">${row.paused ? mailaiText('恢复同步') : mailaiText('重新核对并重试')}</button>${!row.paused ? `<button data-action-sync-pause="${row.id}"><span data-i18n="ui.052e30e39429">暂停同步</span></button>` : ''}</div>` : ''}</article>`).join('')}</section>` : '';
 
     const content = unavailableBlock + syncBlock + actionBlock + purgeBlock + outboxBlock + reminderBlock;
     host.dataset.partial = errors.length ? '1' : '0';
     document.getElementById('task-center').classList.toggle('is-empty', !content);
-    const attentionCount = visibleRows.filter(row => ['failed','unknown'].includes(row.status)).length + (showSync && !sync.running ? 1 : 0) + (purgeAttention ? 1 : 0) + actions.rows.filter(row => row.pending_error && !row.paused).length;
+    const attentionCount = visibleRows.filter(row => ['failed','unknown'].includes(row.status) || outboxNeedsAttention(row)).length + (showSync && !sync.running ? 1 : 0) + (purgeAttention ? 1 : 0) + actions.rows.filter(row => row.pending_error && !row.paused).length;
     const activeCount = visibleRows.filter(row => ['queued','sending'].includes(row.status)).length + (sync.running ? 1 : 0) + (purge.pending ? 1 : 0) + (actions.rows.some(row => !row.paused && !row.pending_error) ? 1 : 0);
     host.dataset.live = activeCount || actions.rows.some(row => !row.paused) ? '1' : '0';
-    host.innerHTML = (content ? `<div class="task-overview"><span><span data-i18n="ui.3b0ab91f6fca">需要你关注的事项</span></span><div class="task-overview-counts">${attentionCount ? `<span class="attention"><span data-i18n="ui.2f107a978338">${attentionCount} 项需处理</span></span>` : ''}${activeCount ? `<span><span data-i18n="ui.03e4c949512a">${activeCount} 项进行中</span></span>` : ''}${reminders.length ? `<span><span data-i18n="ui.8d64726be90c">${reminders.length} 项提醒</span></span>` : ''}${errors.length ? "<span class=\"attention\"><span data-i18n=\"ui.ea1b1f517e26\">状态未完整</span></span>" : ''}</div></div>${content}` : `<div class="task-empty"><span class="task-empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12 4.5 4.5L19 7"/></svg></span><div><b><span data-i18n="ui.6d335bd93c50">目前没有待处理事项</span></b><span><span data-i18n="ui.d4584d380fdd">发送中和异常邮件会显示在这里。</span></span></div><button type="button" data-task-open-sent><span data-i18n="ui.c259135be1d3">查看已发送邮件</span> <span aria-hidden="true">↗</span></button></div>`);
+    const finishPaint = paintTaskCenter(host, (content ? `<div class="task-overview"><span><span data-i18n="ui.3b0ab91f6fca">需要你关注的事项</span></span><div class="task-overview-counts">${attentionCount ? `<span class="attention"><span data-i18n="ui.2f107a978338">${attentionCount} 项需处理</span></span>` : ''}${activeCount ? `<span><span data-i18n="ui.03e4c949512a">${activeCount} 项进行中</span></span>` : ''}${reminders.length ? `<span><span data-i18n="ui.8d64726be90c">${reminders.length} 项提醒</span></span>` : ''}${errors.length ? "<span class=\"attention\"><span data-i18n=\"ui.ea1b1f517e26\">状态未完整</span></span>" : ''}</div></div>${content}` : `<div class="task-empty"><span class="task-empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12 4.5 4.5L19 7"/></svg></span><div><b><span data-i18n="ui.6d335bd93c50">目前没有待处理事项</span></b><span><span data-i18n="ui.d4584d380fdd">发送中和异常邮件会显示在这里。</span></span></div><button type="button" data-task-open-sent><span data-i18n="ui.c259135be1d3">查看已发送邮件</span> <span aria-hidden="true">↗</span></button></div>`), accountId);
     for (const row of visibleRows.filter(row => row.status === 'unknown')) {
       const article = [...host.querySelectorAll('[data-outbox-token]')].find(item => item.dataset.outboxToken === row.token);
       if (!article) continue;
       const actions = article.querySelector('.task-row-actions');
+      if (actions.querySelector('[data-resolve-send]')) continue;
       for (const delivered of [true, false]) {
-        const button = document.createElement('button'); mailaiBindUI(button, "textContent", () => (delivered ? mailaiText('确认已送达') : mailaiText('确认未送达')));
+        const button = document.createElement('button');
+        button.type = 'button'; button.dataset.resolveSend = row.token + ':' + delivered;
+        mailaiBindUI(button, "textContent", () => (delivered ? mailaiText('确认已送达') : mailaiText('确认未送达')));
         if (!delivered) button.className = 'primary';
         button.onclick = async () => {
-          if (!confirm(delivered ? mailaiText('已核对服务器或收件人，确认这封邮件已送达？') : mailaiText('已核对服务器或收件人，确认未送达？确认后才允许从草稿重新发送。'))) return;
-          try { await api(`/api/mail/outbox/${row.token}/resolve?delivered=${delivered}`, {accountId, method:'POST'}); refreshTaskCenter(); }
-          catch (error) { toast(mailaiSystemMessage(error.message), 'error'); }
+          const key = taskCenterActionKey(button, accountId);
+          if (button.disabled || taskCenterPendingActions.has(key)) return;
+          taskCenterPendingActions.add(key); updateTaskCenterPending(host, accountId);
+          try {
+            const confirmed = await window.mailaiAsk({
+              title: mailaiText('核对发送结果'),
+              message: (row.subject || mailaiText('无主题')) + '\n' + (row.to_addr || '') + '\n\n' + (delivered ? mailaiText('已核对服务器或收件人，确认这封邮件已送达？') : mailaiText('已核对服务器或收件人，确认未送达？确认后才允许从草稿重新发送。')),
+              confirmText: delivered ? mailaiText('确认已送达') : mailaiText('确认未送达'),
+            });
+            if (!confirmed || accountId !== taskCenterScope() || document.getElementById('task-center').classList.contains('hidden')) return;
+            await api(`/api/mail/outbox/${encodeURIComponent(row.token)}/resolve?delivered=${delivered}`, {accountId, method:'POST'});
+            await refreshTaskCenter();
+          } catch (error) { toast(mailaiSystemMessage(error.message), 'error'); }
+          finally { taskCenterPendingActions.delete(key); updateTaskCenterPending(host, host.dataset.accountId); }
         }; actions.append(button);
       }
     }
+    finishPaint();
     const taskButton = document.getElementById('btn-task-center');
     const taskCount = taskButton.querySelector('[data-task-count]');
     const pending = attentionCount + activeCount;
@@ -29544,6 +29667,7 @@ function initializeWorkspace() {
   };
   updateWorkspaceToolScope();
   document.getElementById('task-center-account').onchange = event => {
+    ++taskCenterViewRevision;
     taskCenterAccountId = event.target.value;
     window.mailaiTaskActivity?.scopeChanged();
     const host = document.getElementById('task-center-list');
@@ -29662,46 +29786,64 @@ function initializeWorkspace() {
   document.body.classList.toggle('assistant-floating', localStorage.getItem('mailai-assistant-floating') === 'true');
   initializeAssistantPolish();
   document.getElementById('task-center-list').onclick = async event => {
+    const node = event.target.closest('button');
+    if (!node || node.disabled || !event.currentTarget.contains(node)) return;
+    if (!node.matches('[data-task-open-sent],[data-edit-queue],[data-time-queue],[data-cancel-queue],[data-purge-ack],[data-task-refresh],[data-sync-retry],[data-outbox-draft],[data-reminder-open],[data-reminder-dismiss],[data-outbox-ack],[data-outbox-refused],[data-outbox-sent]')) return;
     const accountId = event.currentTarget.dataset.accountId;
+    const viewRevision = taskCenterViewRevision;
+    const currentView = () => viewRevision === taskCenterViewRevision && accountId === taskCenterScope() && !document.getElementById('task-center').classList.contains('hidden');
+    const pendingKey = taskCenterActionKey(node, accountId);
+    if (taskCenterPendingActions.has(pendingKey)) return;
+    taskCenterPendingActions.add(pendingKey);
+    updateTaskCenterPending(event.currentTarget, accountId);
     try {
-      if (event.target.closest('[data-task-open-sent]')) { await openAccountMailbox(accountId, 'sent'); closeTaskCenter(); return; }
-      if (event.target.dataset.editQueue) {
-        const node = event.target;
-        if (node.disabled) return;
-        node.disabled = true;
-        try {
-          const result = await api(`/api/mail/outbox/${encodeURIComponent(node.dataset.editQueue)}/edit`, {accountId, method:'POST'});
-          const draft = await api(`/api/drafts/${result.draft_id}`, {accountId});
-          closeTaskCenter();
-          await openCompose({...draft, account_id:accountId});
-          toast(mailaiText('发送任务已暂停，请编辑后重新确认发送安排'), 'success');
-        } finally { if (node.isConnected) node.disabled = false; }
+      if (node.hasAttribute('data-task-open-sent') || node.dataset.outboxSent) {
+        await openAccountMailbox(accountId, 'sent');
+        if (!currentView()) return;
+        closeTaskCenter();
+        if (node.dataset.outboxSent) await selectSpecialMessage(Number(node.dataset.outboxSent));
         return;
       }
-      if (event.target.dataset.timeQueue) { window.mailaiProductivity?.scheduleTime(event.target.dataset.timeQueue, accountId); return; }
-      if (event.target.dataset.cancelQueue) await api(`/api/mail/outbox/${event.target.dataset.cancelQueue}/cancel`, {accountId, method:'POST'});
-      if (event.target.dataset.purgeAck) {
-        const button = event.target;
-        if (button.disabled) return;
-        button.disabled = true;
-        try {
-          await api('/api/trash/purge/acknowledge', {accountId, method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ids:JSON.parse(button.dataset.purgeAck)})});
-        } finally { button.disabled = false; }
+      if (node.dataset.editQueue) {
+        const result = await api(`/api/mail/outbox/${encodeURIComponent(node.dataset.editQueue)}/edit`, {accountId, method:'POST'});
+        const draft = await api(`/api/drafts/${result.draft_id}`, {accountId});
+        if (!currentView()) { toast(mailaiText('发送任务已暂停，内容保留在原邮箱草稿箱'), 'success'); return; }
+        closeTaskCenter();
+        await openCompose({...draft, account_id:accountId});
+        toast(mailaiText('发送任务已暂停，请编辑后重新确认发送安排'), 'success');
+        return;
       }
-      if (event.target.dataset.taskRefresh !== undefined) return refreshTaskCenter();
-      if (event.target.dataset.syncRetry) {
-        await api(event.target.dataset.syncRetry, {accountId, method:'POST'});
+      if (node.dataset.timeQueue) { await window.mailaiProductivity?.scheduleTime(node.dataset.timeQueue, accountId); return; }
+      if (node.dataset.cancelQueue) await api(`/api/mail/outbox/${encodeURIComponent(node.dataset.cancelQueue)}/cancel`, {accountId, method:'POST'});
+      if (node.dataset.purgeAck) await api('/api/trash/purge/acknowledge', {accountId, method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ids:JSON.parse(node.dataset.purgeAck)})});
+      if (node.dataset.outboxAck) await api(`/api/mail/outbox/${encodeURIComponent(node.dataset.outboxAck)}/acknowledge`, {accountId, method:'POST'});
+      if (node.dataset.outboxRefused) {
+        const draft = await api(`/api/mail/outbox/${encodeURIComponent(node.dataset.outboxRefused)}/retry-draft`, {accountId});
+        if (!currentView()) return;
+        closeTaskCenter();
+        await openCompose({...draft, account_id:accountId});
+        return;
+      }
+      if (node.hasAttribute('data-task-refresh')) return await refreshTaskCenter();
+      if (node.dataset.syncRetry) {
+        await api(node.dataset.syncRetry, {accountId, method:'POST'});
         if (accountId === activeMailAccount()?.id) startFetchMonitor();
         taskNotice(mailaiText('已重新开始邮箱同步 · ') + ((_systemConfig?.accounts || []).find(account => account.id === accountId)?.user || ''));
       }
-      if (event.target.dataset.outboxDraft) { const draft = await api(`/api/drafts/${event.target.dataset.outboxDraft}`, {accountId}); openCompose({...draft,account_id:accountId}); closeTaskCenter(); return; }
-      if (event.target.dataset.reminderOpen) { await openAccountMailbox(accountId, 'inbox'); await revealEmailFromSource(Number(event.target.dataset.reminderOpen)); closeTaskCenter(); return; }
-      if (event.target.dataset.reminderDismiss) {
-        await api(event.target.dataset.taskReminder ? `/api/task-reminders/${event.target.dataset.taskReminder}` : `/api/reminders/${event.target.dataset.reminderDismiss}`, {accountId, method:'DELETE'});
+      if (node.dataset.outboxDraft) {
+        const draft = await api(`/api/drafts/${node.dataset.outboxDraft}`, {accountId});
+        if (!currentView()) return;
+        if (await openCompose({...draft,account_id:accountId}) && currentView()) closeTaskCenter();
+        return;
+      }
+      if (node.dataset.reminderOpen) { await openAccountMailbox(accountId, 'inbox'); if (!currentView()) return; await revealEmailFromSource(Number(node.dataset.reminderOpen)); if (currentView()) closeTaskCenter(); return; }
+      if (node.dataset.reminderDismiss) {
+        await api(node.dataset.taskReminder ? `/api/task-reminders/${node.dataset.taskReminder}` : `/api/reminders/${node.dataset.reminderDismiss}`, {accountId, method:'DELETE'});
         window.mailaiTasksChanged?.(accountId);
       }
-      refreshTaskCenter();
+      if (currentView()) await refreshTaskCenter();
     } catch (error) { toast(mailaiSystemMessage(error.message), 'error'); }
+    finally { taskCenterPendingActions.delete(pendingKey); updateTaskCenterPending(document.getElementById('task-center-list'), taskCenterScope()); }
   };
   document.getElementById('save-reminder').onclick = async () => {
     const dialog = document.getElementById('reminder-dialog');
@@ -29712,7 +29854,7 @@ function initializeWorkspace() {
   new MutationObserver(addReadingActions).observe(document.getElementById('reading-content'), {childList:true});
   new MutationObserver(updateFilterChips).observe(document.getElementById('list-title'), {childList:true});
   document.addEventListener('keydown', event => {
-    if (event.key === 'Escape' && !document.getElementById('task-center').classList.contains('hidden')) closeTaskCenter();
+    if (event.key === 'Escape' && !document.querySelector('dialog[open]') && !document.getElementById('task-center').classList.contains('hidden')) closeTaskCenter();
     if (event.key === 'Tab') {
       if (document.querySelector('dialog[open]')) return; // Native modal dialogs own their focus trap.
       const dialog = [...document.querySelectorAll('[role="dialog"][aria-modal="true"]')].reverse().find(node => node.getClientRects().length);
@@ -29754,25 +29896,31 @@ document.addEventListener('click', event => {
 document.getElementById('task-center-list').addEventListener('click', async event => {
   const button = event.target.closest('[data-action-sync-retry]');
   if (!button || button.disabled) return;
-  const accountId = taskCenterScope(); button.disabled = true;
+  const host = document.getElementById('task-center-list'), accountId = host.dataset.accountId;
+  const key = taskCenterActionKey(button, accountId);
+  if (taskCenterPendingActions.has(key)) return;
+  taskCenterPendingActions.add(key); updateTaskCenterPending(host, accountId);
   try {
     await api(`/api/mail/action-sync/${Number(button.dataset.actionSyncRetry)}/retry`, {accountId, method:'POST'});
     if (accountId === taskCenterScope()) { toast(mailaiText('已安排后台重试，可继续处理其他邮件'), 'info'); await refreshTaskCenter(); }
   } catch (error) { if (accountId === taskCenterScope()) toast(mailaiSystemMessage(error.message), 'error'); }
-  finally { if (button.isConnected) button.disabled = false; }
+  finally { taskCenterPendingActions.delete(key); updateTaskCenterPending(host, taskCenterScope()); }
 });
 
 document.getElementById('task-center-list').addEventListener('click', async event => {
   if (event.target.closest('[data-sync-paused-toggle]')) { window.mailaiShowPausedSync = !window.mailaiShowPausedSync; await refreshTaskCenter(); return; }
   const button = event.target.closest('[data-action-sync-pause]');
   if (!button || button.disabled) return;
-  const accountId = taskCenterScope(), id = Number(button.dataset.actionSyncPause);
-  button.disabled = true;
+  const host = document.getElementById('task-center-list'), accountId = host.dataset.accountId, id = Number(button.dataset.actionSyncPause);
+  const key = taskCenterActionKey(button, accountId), viewRevision = taskCenterViewRevision;
+  if (taskCenterPendingActions.has(key)) return;
+  taskCenterPendingActions.add(key); updateTaskCenterPending(host, accountId);
   try {
     if (!await mailaiAsk({get title() { return mailaiText('暂停这封邮件的删除同步？'); }, get message() { return mailaiText('停止自动重试并移出待处理列表。本地仍保持删除状态；服务器邮件可能仍在原文件夹或垃圾箱。你可以在“已暂停”中恢复同步。'); },get confirmText() { return mailaiText('暂停同步'); }})) return;
+    if (viewRevision !== taskCenterViewRevision || accountId !== taskCenterScope()) return;
     await api(`/api/mail/action-sync/${id}/pause`,{accountId,method:'POST'});
     if (accountId === taskCenterScope()) { await refreshTaskCenter(); toast(mailaiText('已暂停，可在已暂停列表恢复'),'info'); }
-  } catch(error) { toast(mailaiSystemMessage(error.message),'error'); } finally { if(button.isConnected) button.disabled=false; }
+  } catch(error) { toast(mailaiSystemMessage(error.message),'error'); } finally { taskCenterPendingActions.delete(key); updateTaskCenterPending(host, taskCenterScope()); }
 });
 
 ;
@@ -29913,7 +30061,10 @@ document.getElementById('task-center-list').addEventListener('click', async even
     context.originalReminder=localTime(task?.remind_at);
     get('remind').value=context.remind ? localTime(Date.now()+3600000) : context.originalReminder;
     get('reopen').hidden=task?.status!=='done';
-    get('save').disabled=task?.status==='done';
+    get('save').disabled=task?.status==='done' || Boolean(context.saving);
+    get('reopen').disabled=Boolean(context.reopening);
+    if (context.saving) get('save').setAttribute('aria-busy','true'); else get('save').removeAttribute('aria-busy');
+    mailaiBindUI(get('save'), 'textContent', () => context.saving ? mailaiText('保存中…') : mailaiText('保存安排'));
     mailaiBindUI(get('error'), "textContent", () => (task?.status==='done' ? mailaiText('这条任务已完成。需要继续跟进时，请先恢复。') : ''));
     mailaiBindUI(get('date-label'), "textContent", () => (get('stage').value==='waiting' ? mailaiText('跟进日期（可选）') : mailaiText('截止日期（可选）')));
   }
@@ -29959,20 +30110,52 @@ document.getElementById('task-center-list').addEventListener('click', async even
   get('stage').onchange=()=>{mailaiBindUI(get('date-label'), "textContent", () => (get('stage').value==='waiting'?mailaiText('跟进日期（可选）'):mailaiText('截止日期（可选）')));};
   get('existing').onchange=()=>paint(context.matches.find(t=>t.id===Number(get('existing').value)));
   get('reopen').onclick=async()=>{
-    const c=context;get('reopen').disabled=true;
-    try {await api(`/api/todos/${c.task.id}/reopen`,{accountId:c.accountId,method:'POST'});c.task.status='open';paint(c.task);window.mailaiTasksChanged(c.accountId);}catch(e){get('error').textContent=mailaiSystemMessage(e.message);}finally{get('reopen').disabled=false;}
-  };
-  dialog.querySelector('form').onsubmit=async event=>{
-    event.preventDefault();const c=context;if(!c)return;
-    const payload={title:get('title').value.trim(),kind:get('kind').value,stage:get('stage').value,deadline:get('deadline').value};
-    if(get('remind').value!==c.originalReminder)payload.remind_at=get('remind').value;
-    const reminderChanged=Object.hasOwn(payload,'remind_at');
-    const reminderValue=get('remind').value;
-    get('save').disabled=true;mailaiBindUI(get('save'), "textContent", () => (mailaiText('保存中…')));get('error').textContent='';
+    const c=context, task=c?.task;if(!task || c.reopening)return;
+    c.reopening=true;get('reopen').disabled=true;
     try {
-      await api(c.task?`/api/todos/${c.task.id}`:`/api/emails/${c.emailId}/todo`,{accountId:c.accountId,method:c.task?'PATCH':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      if(context===c)dialog.close();window.mailaiTasksChanged(c.accountId);toast(reminderChanged ? (reminderValue ? mailaiTemplate`已设置提醒：${reminderValue.replace('T',' ')}；请保持 MailAI 运行` : mailaiText('已取消提醒，任务仍保留')) : mailaiText('任务已保存，提醒时间未改变'),'success');
-    }catch(e){if(context===c)get('error').textContent=mailaiSystemMessage(e.message);}finally{if(context===c){get('save').disabled=false;mailaiBindUI(get('save'), "textContent", () => (mailaiText('保存安排')));}}
+      await api(`/api/todos/${task.id}/reopen`,{accountId:c.accountId,method:'POST'});
+      task.status='open';
+      if(context===c && dialog.open && c.task===task)paint(task);
+      window.mailaiTasksChanged(c.accountId);
+    }catch(e){if(context===c && dialog.open)get('error').textContent=mailaiSystemMessage(e.message);}
+    finally{c.reopening=false;if(context===c)get('reopen').disabled=false;}
+  };
+  const editorValues = () => ({title:get('title').value.trim(),kind:get('kind').value,stage:get('stage').value,deadline:get('deadline').value,remind_at:get('remind').value});
+  dialog.querySelector('form').onsubmit=async event=>{
+    event.preventDefault();const c=context;if(!c || c.saving)return;
+    const originalTask=c.task;
+    const currentValues=editorValues(), snapshot=JSON.stringify(currentValues);
+    const payload={...currentValues};
+    if(payload.remind_at===c.originalReminder)delete payload.remind_at;
+    const reminderChanged=Object.hasOwn(payload,'remind_at');
+    const reminderValue=currentValues.remind_at;
+    c.saving=true;get('save').disabled=true;get('save').setAttribute('aria-busy','true');
+    mailaiBindUI(get('save'), "textContent", () => (mailaiText('保存中…')));get('error').textContent='';
+    try {
+      const result=await api(originalTask?`/api/todos/${originalTask.id}`:`/api/emails/${c.emailId}/todo`,{accountId:c.accountId,method:originalTask?'PATCH':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      window.mailaiTasksChanged(c.accountId);
+      if(context!==c || !dialog.open)return;
+      const sameTask=c.task===originalTask;
+      const saved=result.task || originalTask;
+      if(saved) {
+        const index=c.matches.findIndex(task=>task.id===saved.id);
+        if(index<0)c.matches.push(saved);else c.matches[index]=saved;
+      }
+      if(sameTask) {
+        c.task=saved;
+        c.originalReminder=localTime(saved?.remind_at ?? reminderValue);
+      }
+      if(sameTask && JSON.stringify(editorValues())===snapshot) {
+        dialog.close();
+        toast(reminderChanged ? (reminderValue ? mailaiTemplate`已设置提醒：${reminderValue.replace('T',' ')}；请保持 MailAI 运行` : mailaiText('已取消提醒，任务仍保留')) : mailaiText('任务已保存，提醒时间未改变'),'success');
+      } else {
+        mailaiBindUI(get('error'), 'textContent', () => mailaiText('刚才的安排已保存，当前编辑内容仍保留。确认后可再次保存。'));
+      }
+    }catch(e){if(context===c && dialog.open)get('error').textContent=mailaiSystemMessage(e.message);}
+    finally{
+      c.saving=false;
+      if(context===c){get('save').disabled=c.task?.status==='done';get('save').removeAttribute('aria-busy');mailaiBindUI(get('save'), "textContent", () => (mailaiText('保存安排')));}
+    }
   };
 })();
 
@@ -35908,7 +36091,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
       active: visible.filter(row => ['queued','sending'].includes(row.status)).length +
         (sync.running ? 1 : 0) + (purge.pending ? 1 : 0) +
         (changes.some(row => !row.paused && !row.pending_error) ? 1 : 0),
-      attention: visible.filter(row => ['failed','unknown'].includes(row.status)).length +
+      attention: visible.filter(row => ['failed','unknown'].includes(row.status) || outboxNeedsAttention(row)).length +
         (!sync.running && (sync.error || sync.canceled || sync.resumable) ? 1 : 0) +
         (purge.unacknowledged || purge.cleanup_pending ? 1 : 0) +
         changes.filter(row => row.pending_error && !row.paused).length,
@@ -36369,7 +36552,15 @@ document.getElementById('task-center-list').addEventListener('click', async even
     });
     // Existing flows set .value directly when reopening a dialog or applying a
     // shortcut. Delegate to the native setter so their display stays current.
-    Object.defineProperty(input,'value',{configurable:true,get(){return valueProperty.get.call(this);},set(value){valueProperty.set.call(this,value);sync();}});
+    Object.defineProperty(input,'value',{configurable:true,get(){return valueProperty.get.call(this);},set(value){
+      // WebKit can retain the old native date fields after assigning an empty
+      // value, rejecting the next form submission even though validity is true.
+      // Recreate those fields when clearing, keeping constraints and reset values.
+      if (value === '' && ['date','datetime-local','time'].includes(this.type)) {
+        const nativeType=this.type;this.type='text';valueProperty.set.call(this,'');this.type=nativeType;
+      } else valueProperty.set.call(this,value);
+      sync();
+    }});
     const control={sync,close,position,refresh(){sync();if(opened)populate();}};controls.set(input,control);sync();
   }
   function scan(root) {

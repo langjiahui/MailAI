@@ -251,7 +251,15 @@
     });
     // Existing flows set .value directly when reopening a dialog or applying a
     // shortcut. Delegate to the native setter so their display stays current.
-    Object.defineProperty(input,'value',{configurable:true,get(){return valueProperty.get.call(this);},set(value){valueProperty.set.call(this,value);sync();}});
+    Object.defineProperty(input,'value',{configurable:true,get(){return valueProperty.get.call(this);},set(value){
+      // WebKit can retain the old native date fields after assigning an empty
+      // value, rejecting the next form submission even though validity is true.
+      // Recreate those fields when clearing, keeping constraints and reset values.
+      if (value === '' && ['date','datetime-local','time'].includes(this.type)) {
+        const nativeType=this.type;this.type='text';valueProperty.set.call(this,'');this.type=nativeType;
+      } else valueProperty.set.call(this,value);
+      sync();
+    }});
     const control={sync,close,position,refresh(){sync();if(opened)populate();}};controls.set(input,control);sync();
   }
   function scan(root) {

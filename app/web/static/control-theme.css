@@ -1,6 +1,79 @@
 /* Filled actions use one foreground/background pair, including their children.
  * This final layer also wins over the generated legacy reward-theme bridge. */
 :root { --control-accent:var(--desk-accent); --control-on-accent:#fff; }
+/* Security navigation is a quiet surface menu. Its open trigger anchors the
+ * panel; a separate accent diamond adds no information and breaks the theme. */
+html[data-theme][data-theme][data-theme] body #app .nav-security-menu .top-menu-popover {
+  top:calc(100% + 8px); right:0;
+  width:296px; max-width:calc(100vw / var(--fz,1) - 24px);
+  padding:10px; border:1px solid var(--desk-line)!important;
+  border-radius:14px;
+  background:var(--desk-surface)!important; color:var(--desk-ink)!important;
+  box-shadow:0 12px 32px rgba(0,0,0,.14),0 2px 6px rgba(0,0,0,.06)!important;
+  backdrop-filter:none!important; -webkit-backdrop-filter:none!important;
+}
+html[data-theme="dark"][data-theme][data-theme] body #app .nav-security-menu .top-menu-popover {
+  box-shadow:0 14px 36px rgba(0,0,0,.3),0 2px 8px rgba(0,0,0,.18)!important;
+}
+html[data-theme][data-theme][data-theme] body #app .nav-security-menu .top-menu-popover::before { content:none!important; display:none!important; }
+html[data-theme][data-theme][data-theme] body #app .nav-security-menu .top-menu-heading {
+  gap:3px; padding:5px 8px 12px; color:var(--desk-ink)!important;
+}
+html[data-theme][data-theme][data-theme] body #app .nav-security-menu .top-menu-heading strong { font-size:13px; font-weight:650; color:var(--desk-ink)!important; }
+html[data-theme][data-theme][data-theme] body #app .nav-security-menu :is(.top-menu-heading small,.top-menu-item small,.policy-control small) {
+  color:var(--desk-muted)!important; font-size:11px; line-height:1.5;
+}
+html[data-theme][data-theme][data-theme] body #app .nav-security-menu .security-menu-grid {
+  gap:4px; padding:0; border:0!important; background:transparent!important; box-shadow:none!important;
+}
+html[data-theme][data-theme][data-theme] body #app .nav-security-menu .top-menu-item {
+  grid-template-columns:32px minmax(0,1fr) 12px; column-gap:10px;
+  min-height:62px; padding:10px 8px; border:1px solid transparent!important;
+  border-radius:9px; background:transparent!important; color:var(--desk-ink)!important;
+  box-shadow:none!important; transform:none!important;
+  transition:background-color .14s ease,border-color .14s ease;
+}
+html[data-theme][data-theme][data-theme] body #app .nav-security-menu .top-menu-item .top-menu-label { font-size:12px; font-weight:600; color:inherit!important; }
+html[data-theme][data-theme][data-theme] body #app .nav-security-menu .top-menu-item small { margin-top:2px; }
+html[data-theme][data-theme][data-theme] body #app .nav-security-menu .top-menu-item::after {
+  content:''; grid-column:3; grid-row:1 / 3; justify-self:center;
+  width:5px; height:5px; border:0; border-top:1.5px solid var(--desk-muted); border-right:1.5px solid var(--desk-muted);
+  background:transparent!important; transform:rotate(45deg); box-shadow:none!important;
+}
+html[data-theme][data-theme][data-theme] body #app .nav-security-menu .top-menu-icon {
+  width:32px; height:32px; border-radius:9px;
+  background:var(--desk-selected)!important; color:var(--desk-accent)!important;
+}
+html[data-theme][data-theme][data-theme] body #app .nav-security-menu .top-menu-icon svg { color:inherit!important; stroke:currentColor!important; }
+html[data-theme][data-theme][data-theme] body #app .nav-security-menu .top-menu-item:hover {
+  background:var(--desk-hover)!important; border-color:var(--desk-line)!important;
+}
+html[data-theme][data-theme][data-theme] body #app .nav-security-menu .top-menu-item:active { background:var(--desk-selected)!important; }
+html[data-theme][data-theme][data-theme] body #app .nav-security-menu .top-menu-item:focus-visible {
+  outline:2px solid var(--desk-accent)!important; outline-offset:-2px;
+}
+html[data-theme][data-theme][data-theme] body #app .nav-security-menu .policy-control {
+  margin:10px 0 0; padding:12px 8px 5px; gap:9px;
+  border:0!important; border-top:1px solid var(--desk-line)!important; border-radius:0;
+  background:transparent!important; box-shadow:none!important; color:var(--desk-ink)!important;
+}
+html[data-theme][data-theme][data-theme] body #app .nav-security-menu .policy-control b { font-size:12px; font-weight:600; color:var(--desk-ink)!important; }
+html[data-theme][data-theme][data-theme] body #app .nav-security-menu .policy-select-wrap {
+  border:1px solid var(--desk-line)!important; border-radius:8px;
+  background:var(--desk-muted-surface)!important; box-shadow:none!important;
+  padding:0 10px; gap:8px!important;
+}
+html[data-theme][data-theme][data-theme] body #app .nav-security-menu .policy-select-wrap:focus-within {
+  outline:2px solid var(--desk-accent); outline-offset:2px;
+}
+html[data-theme][data-theme][data-theme] body #app .nav-security-menu .policy-control select {
+  min-height:36px; font-size:12px; font-weight:550;
+  border:0!important; outline:0!important;
+  color:var(--desk-ink)!important; background-color:transparent!important; box-shadow:none!important;
+}
+@media(prefers-reduced-motion:reduce) {
+  html[data-theme][data-theme][data-theme] body #app .nav-security-menu .top-menu-item { transition:none!important; }
+}
 html[data-theme="dark"] { --control-on-accent:#14251c; }
 html[data-reward-theme] {
   --control-accent:var(--reward-accent);

@@ -76,6 +76,11 @@ def run_due():
                               IMAP_HOST=account.get('host', ''), IMAP_USER=account.get('user', ''))
                 guard.acquire_work()
                 try:
+                    current = system_settings._load_registry().get('accounts', {}).get(account_id)
+                    if (not current or not current.get('visible', True)
+                            or current.get('db_path') != db_path or current.get('raw_dir') != raw_dir
+                            or not os.path.isfile(db_path) or not os.path.isdir(raw_dir)):
+                        continue  # A removal may have finished while we waited for the lease.
                     with use(values):
                         system_settings.create_backup(include_raw=True, automatic=True)
                 finally:

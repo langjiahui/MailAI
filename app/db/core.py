@@ -12,7 +12,7 @@ INSERT OR IGNORE INTO mailbox_sequence VALUES(1,0);
 CREATE TABLE IF NOT EXISTS outbox (
     token TEXT PRIMARY KEY, payload TEXT NOT NULL, status TEXT NOT NULL,
     due_at TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
-    result TEXT DEFAULT '{}', error TEXT DEFAULT ''
+    result TEXT DEFAULT '{}', error TEXT DEFAULT '', warning_acknowledged INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_outbox_status_due ON outbox(status,due_at);
 CREATE TABLE IF NOT EXISTS undo_operations (
@@ -379,6 +379,10 @@ def _run_migrations(c):
     for column, definition in {'stage': "TEXT DEFAULT 'active'", 'kind': "TEXT DEFAULT 'execution'", 'remind_at': 'TEXT'}.items():
         if column not in _columns_of(c, 'todos'):
             c.execute(f'ALTER TABLE todos ADD COLUMN {column} {definition}')
+    if 'warning_acknowledged' not in _columns_of(c, 'outbox'):
+        c.execute('ALTER TABLE outbox ADD COLUMN warning_acknowledged INTEGER NOT NULL DEFAULT 0')
+    c.execute("CREATE INDEX IF NOT EXISTS idx_outbox_pending_warning ON outbox(created_at DESC) "
+              "WHERE status='sent' AND warning_acknowledged=0 AND COALESCE(json_extract(result,'$.warning'),'')<>''")
     # Preserve legacy reminders as task reminders, once, in this transaction.
     legacy = c.execute("SELECT value FROM runtime_settings WHERE key='mail_reminders'").fetchone()
     if legacy:

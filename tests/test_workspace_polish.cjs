@@ -8,7 +8,7 @@ const workspace = fs.readFileSync(path.join(root, 'workspace.js'), 'utf8');
 const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'workspace.css'), 'utf8');
-const outboxSource = workspace.slice(workspace.indexOf('function actionableOutboxRows('), workspace.indexOf('\nasync function refreshTaskCenter'));
+const outboxSource = workspace.slice(workspace.indexOf('function outboxWarning('), workspace.indexOf('\nasync function refreshTaskCenter'));
 const outboxCtx = {};
 vm.createContext(i18nContext(outboxCtx)); vm.runInContext(outboxSource, outboxCtx);
 assert.deepEqual(Array.from(outboxCtx.actionableOutboxRows([

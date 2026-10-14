@@ -85,6 +85,7 @@ def main():
             assert db.mailbox_revision()['revision'] != revision
             # Queue insertion is idempotent; cancellation prevents any SMTP call.
             payload = {'subject':'Safe fixture','id':1}
+            db.save_draft(payload)  # Sending tests use an actual persisted draft.
             outbox.enqueue('cancel', payload, delay=0); outbox.enqueue('cancel', payload, delay=0)
             outbox.cancel('cancel')
             sends = []

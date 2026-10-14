@@ -8,6 +8,7 @@ from pathlib import Path
 
 from . import db, system_settings
 from .account_context import use
+from .account_guard import account_work
 from .ui_copy import ui_text, ui_format
 
 log = logging.getLogger(__name__)
@@ -125,6 +126,7 @@ def dispatch_account(account_id, account, now=None, send=None):
         return 0
 
 
+@account_work
 def check_due_tasks():
     if not _lock.acquire(blocking=False):
         return

@@ -53,9 +53,10 @@ def _parse_deadline(text: str) -> str | None:
     m = re.search(r"下?周([一二三四五六日天])", text) or re.search(r"下?星期([一二三四五六日天])", text)
     if m:
         target = _WEEKDAYS[m.group(1)]
-        days = (target - today.weekday()) % 7
-        if days == 0 or "下" in m.group(0):
-            days += 7
+        if "下" in m.group(0):
+            days = 7 - today.weekday() + target
+        else:
+            days = (target - today.weekday()) % 7 or 7
         return (today + timedelta(days=days)).isoformat()
     m = re.search(r"(\d{1,2})\s*月\s*(\d{1,2})\s*[日号]", text)
     if m:
