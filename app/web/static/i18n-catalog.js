@@ -1,5 +1,13 @@
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "searchLoop.scopeTitle": ["选择检索范围", "Choose the search scope"],
+  "searchLoop.scopeHelp": ["当前列表汇总多个邮箱。可继续检索所有收件箱，或指定邮箱让小邮搜索该账号全部已同步邮件。", "This list combines accounts. Search all inboxes, or choose an account for Xiaoyou to search all its synced mail."],
+  "searchLoop.scopeAccount": ["用小邮检索的邮箱", "Account for Xiaoyou search"],
+  "searchLoop.scopePlaceholder": ["请选择邮箱", "Choose an account"],
+  "searchLoop.scopeInbox": ["收件箱 {0} 封", "{0} inbox messages"],
+  "searchLoop.scopeAll": ["在所有账号中搜索", "Search all accounts"],
+  "searchLoop.scopeContinue": ["用小邮查找所选邮箱", "Search the selected account with Xiaoyou"],
+  "searchLoop.scopeMissing": ["该邮箱已不可用，请重新选择", "This account is unavailable. Choose another account."],
   "searchLoop.collapseSources": ["收起候选邮件", "Collapse candidates"],
   "searchLoop.openFailed": ["邮件暂未打开，检索结果已保留。可以重试打开，或换一批候选。", "The message could not be opened. Your results are kept; retry opening it or try another batch."],
   "searchLoop.datesChanged": ["已取消日期限制，其余条件保留", "Date limits removed; other filters kept"],

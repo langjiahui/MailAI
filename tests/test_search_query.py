@@ -14,6 +14,14 @@ from app.search_query import expand_natural_query, interpret_query
 def main():
     cases = {
         '发件人是方君': {'sender':'方君'},
+        '找到发件人是方君的邮件': {'sender':'方君'},
+        '请帮我找出发件人是方君的邮件': {'sender':'方君'},
+        '查询一下发件人为方君的邮件': {'sender':'方君'},
+        '找到收件人是李明的邮件': {'recipient':'李明'},
+        '发件人 是 方君的邮件': {'sender':'方君'},
+        '发件人是方君且主题包含合同': {'sender':'方君','subject':'合同'},
+        '发件人是\"方君的邮件\"': {'sender':'方君的邮件'},
+        '主题包含我的邮件': {'subject':'我的邮件'},
         '寄件人为方君': {'sender':'方君'},
         '来自方君的邮件': {'sender':'方君'},
         '方君发来的邮件': {'sender':'方君'},
@@ -70,7 +78,7 @@ def main():
         db.upsert_email({'uid':3,'status':'sent','folder':'Sent','from_name':'方君','subject':'季度合同','date':'2026-10-15T12:00:00'})
         from app.web.routes import mail_read, productivity as routes
         with patch('app.semantic.enabled',return_value=True), patch('app.semantic.search',return_value=[second]) as semantic:
-            for query in ['发件人是方君','from:fangjun','发给李明的邮件']:
+            for query in ['找到发件人是方君的邮件','发件人是方君','from:fangjun','发给李明的邮件']:
                 rows = mail_read.api_search_emails(q=query,status='inbox')
                 assert [row['id'] for row in rows] == [first], (query,rows)
                 assert 'body_text' not in rows[0]

@@ -546,22 +546,22 @@ def _search_result(question, history=None, search_context=None):
     except ValueError:
         parsed = {'criteria':{'text':question}, 'structured':False}
     local = parsed['criteria']
-    # Preserve explicit field restrictions; free prose can be interpreted by
-    # the AI planner without inheriting a guessed sender from a longer clause.
-    explicit = {'sender':r'from:|(?:发件人|发送人|寄件人)(?:是|为|包含|含有|[:：])',
-                'recipient':r'to:|(?:收件人|接收人|抄送)(?:是|为|包含|含有|[:：])',
-                'subject':r'subject:|(?:主题|标题)(?:是|为|包含|含有|[:：])',
-                'filename':r'filename:|(?:附件名|附件名称|文件名)(?:是|为|包含|含有|[:：])',
-                'mailbox':r'in:|邮件范围(?:是|为|[:：])',
-                'state':r'state:|处理状态(?:是|为|[:：])',
-                'category':r'category:|分类(?:是|为|[:：])'}
-    hard = {key:local[key] for key,pattern in explicit.items() if local.get(key) and re.search(r'(?<!\S)(?:'+pattern+')',question,re.I)}
-    hard.update({key:local[key] for key in ('after','before','has_attachment','unread') if local.get(key)})
+    # The shared parser only emits explicit, deterministic restrictions. Keep
+    # the same sender/date/etc. when handing a quick search to the assistant,
+    # including prefixed commands and natural sender clauses.
+    fields = ('sender', 'recipient', 'subject', 'filename', 'after', 'before',
+              'mailbox', 'state', 'category', 'has_attachment', 'unread')
+    hard = {key: local[key] for key in fields if local.get(key)}
     if search_context and search_context.get('action'):
         plan = search_context['criteria']
         criteria = dict(plan)
     else:
-        plan = _ai_search_plan(question,history)
+        # A fresh field search needs no model to guess extra keywords. Mixed
+        # queries interpret the remaining prose; conversational refinements keep
+        # the history needed to preserve earlier conditions.
+        prose = local.get('text') or ''
+        planner_question = prose if hard and not history else question
+        plan = _ai_search_plan(planner_question,history) if prose or not hard or history else None
         criteria = {**(plan or {}),**hard}
         if plan is None:
             criteria['text'] = local.get('text') if hard else question

@@ -33,6 +33,17 @@ def main():
             with patch.object(system_settings,'_load_registry',return_value={'accounts':{'search':{'db_path':str(Path(folder)/'mail.db'),'user':'me@example.test'}}}):
                 assert system_settings.list_unified_inbox(q='方君')
 
+        # Structured searches must not add guessed keywords or require a model.
+        with patch.object(mail_assistant,'_ai_search_plan',side_effect=AssertionError('A field-only search does not need planning')):
+            for query in ['找到发件人是方君的邮件','方君发来的邮件','来自方君的邮件']:
+                assert [r['id'] for r in mail_assistant._search_sources(query)] == [first],query
+
+        # A short follow-up still needs its earlier conversational conditions.
+        with patch.object(mail_assistant,'_ai_search_plan',return_value={'sender':'方君','has_attachment':True,'terms':[],'text':''}):
+            followup=mail_assistant._search_result('有附件',history=[{'role':'user','content':'发件人是方君'}])
+            assert followup['snapshot']['criteria']['sender']=='方君'
+            assert followup['snapshot']['criteria']['has_attachment'] is True
+
         # Semantic additions must obey sender, subject, date and mailbox filters.
         with patch.object(semantic,'enabled',return_value=True),patch.object(semantic,'search',return_value=[first,other,removed,missing]):
             rows=mail_assistant._search_sources('发件人是方君 语意线索')

@@ -26,7 +26,7 @@ _DATES = r'(?:今天|昨天|前天|本周|这周|上周|本月|这个月|上个�
 def expand_natural_query(query, *, today=None):
     today = today or date.today()
     original = str(query or '').strip()
-    prefix = re.match(r'^(?:请)?(?:帮我|给我)?(?:查一下|找一下|搜一下|查找|搜索|查询|找|搜)\s*', original)
+    prefix = re.match(r'^(?:请)?(?:帮我|给我)?(?:查询一下|查找一下|搜索一下|查一下|找一下|搜一下|找到|找出|查到|查出|查找|搜索|查询|检索|找|搜)\s*', original)
     text = original[prefix.end():] if prefix else original
     source = text
     protected = []
@@ -36,12 +36,16 @@ def expand_natural_query(query, *, today=None):
     text = re.sub(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'', hide, text)
     # Separators count only before a recognised clause, never inside quotes.
     starts = '(?:' + _FIELD_NAMES + '|' + _DATES + r'|有附件|带附件|含附件|未读|尚未阅读)'
-    text = re.sub(r'(?:并且|而且|同时)(?=\s*' + starts + ')', ' ', text)
+    text = re.sub(r'(?:并且|而且|同时|以及|且)(?=\s*' + starts + ')', ' ', text)
     text = re.sub(r'[，；;,](?=\s*' + starts + ')', ' ', text)
-    pattern = r'(?<!\S)(' + _FIELD_NAMES + r')(?:是|为|包含|含有|[:：])\s*([^\s，；;,]+)'
+    pattern = r'(?<!\S)(' + _FIELD_NAMES + r')\s*(?:是|为|包含|含有|[:：])\s*([^\s，；;,]+)'
     def replace(match):
         value = match[2].strip('，；;,')
         operator = _FIELDS[match[1]]
+        # Mail is the object of the command, not part of a sender/recipient.
+        # Quoted values were protected above and stay literal.
+        if operator in {'from', 'to'} and value.endswith('的邮件'):
+            value = value[:-3]
         value = {name:key for key,name in _VALUE_NAMES.get(operator,{}).items()}.get(value,value)
         return operator + ':' + shlex.quote(value)
     text = re.sub(pattern, replace, text)
@@ -115,7 +119,8 @@ def interpret_query(query):
             operator = names[field]
             value = _VALUE_NAMES.get(operator,{}).get(value,value)
             text = str(value)
-            if re.search(r'''[\s，；;,:"'\\]''', text):
+            if (re.search(r'''[\s，；;,:"'\\]''', text)
+                    or (field in {'sender', 'recipient'} and text.endswith('的邮件'))):
                 text = json.dumps(text,ensure_ascii=False)
             token['display'] = display_fields[field] + text
         elif field == 'text':

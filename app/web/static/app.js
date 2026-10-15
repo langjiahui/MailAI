@@ -8959,6 +8959,10 @@ function startSearchInAssistant() {
     toast(mailaiText('小邮正在处理其他问题，完成后可再次点击帮你查找'), 'info');
     return;
   }
+  if (unifiedMailbox) {
+    window.mailaiAssistantSearch?.chooseScope(query);
+    return;
+  }
   // A fresh, read-only mailbox search must not inherit a selected-message pin,
   // a filtered empty list, old attachments, or a previous action conversation.
   resetAssistantConversation({focus:false});
