@@ -152,8 +152,19 @@ ditto dist/MailAI-macOS-arm64.pkg "$DMG_STAGE/安装 MailAI.pkg"
 # hdiutil 从文件夹估算 UDZO 镜像大小时可能偏小（CI 实测 66MB 的 pkg 报
 # "No space left on device"），显式按源目录大小 +100MB 余量指定镜像尺寸。
 dmg_mb=$(( $(du -sm "$DMG_STAGE" | cut -f1) + 100 ))
-hdiutil create -quiet -volname MailAI -srcfolder "$DMG_STAGE" -ov -format UDZO \
-  -size "${dmg_mb}m" dist/MailAI-macOS-arm64.dmg
+for dmg_attempt in 1 2 3; do
+  if hdiutil create -volname MailAI -srcfolder "$DMG_STAGE" -ov -format UDZO \
+      -size "${dmg_mb}m" dist/MailAI-macOS-arm64.dmg; then
+    break
+  fi
+  if [[ "$dmg_attempt" == 3 ]]; then
+    echo "DMG 创建连续三次失败，停止发布" >&2
+    exit 1
+  fi
+  echo "DMG 创建失败，等待后重试（$dmg_attempt/3）" >&2
+  sleep $((dmg_attempt * 2))
+done
+rm -rf "$DMG_STAGE"
 if [[ -n "${MAILAI_SIGN_IDENTITY:-}" && "${MAILAI_SIGNING_MODE:-developer-id}" != "self-signed" ]]; then
   codesign --force --timestamp --sign "$MAILAI_SIGN_IDENTITY" dist/MailAI-macOS-arm64.dmg
   codesign --verify --strict dist/MailAI-macOS-arm64.dmg

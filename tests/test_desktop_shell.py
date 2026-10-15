@@ -7,7 +7,7 @@ import threading
 import types
 from unittest.mock import patch, Mock
 from email.message import EmailMessage
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -36,10 +36,21 @@ def main():
     assert register_installed_application() is False
     # Touch before registering, in the application user's own process. Refuse
     # preview bundles and report failed commands instead of claiming a refresh.
+    class MacPath(PurePosixPath):
+        def resolve(self):
+            return self
+
+        @classmethod
+        def home(cls):
+            return cls('/Users/test')
+
+        def exists(self):
+            return True
+
     with patch('app.desktop.sys.platform', 'darwin'), \
             patch('app.desktop.sys.frozen', True, create=True), \
             patch('app.desktop.sys.executable', '/Applications/MailAI.app/Contents/MacOS/MailAI'), \
-            patch('app.desktop.Path.exists', return_value=True), \
+            patch('app.desktop.Path', MacPath), \
             patch('app.desktop.subprocess.run', return_value=types.SimpleNamespace(returncode=0)) as run:
         assert register_installed_application() is True
         assert run.call_args_list[0].args[0] == ['/usr/bin/touch', '/Applications/MailAI.app']
