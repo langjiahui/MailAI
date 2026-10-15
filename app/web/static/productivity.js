@@ -866,7 +866,7 @@
     return `<div class="attachment-hit-heading"><span class="attachment-content-file-icon" aria-hidden="true">${attachmentUiIcon('files')}<small>${esc(ext)}</small></span><div class="attachment-hit-title"><strong>${esc(file.name)}</strong><span>${esc(file.subject || mailaiText('无主题'))}</span></div>${badge}</div>`;
   }
   function attachmentLinks(file, accountId) {
-    return `<div class="productivity-actions attachment-file-links"><a class="attachment-preview-link" href="${esc(mailboxResourceUrl(`/api/emails/${Number(file.email_id)}/attachments/${Number(file.index ?? file.attachment_index)}`,accountId))}" download="${esc(file.name)}">${attachmentUiIcon('preview')}<span><span data-i18n="ui.d1cd84df295b">预览原文件</span></span></a><button type="button" data-file-source-email="${Number(file.email_id)}">${attachmentUiIcon('mail')}<span><span data-i18n="ui.afa0010e45c4">查看来源邮件</span></span></button></div>`;
+    return `<div class="productivity-actions attachment-file-links"><a class="attachment-preview-link" data-preview-attachment href="${esc(mailboxResourceUrl(`/api/emails/${Number(file.email_id)}/attachments/${Number(file.index ?? file.attachment_index)}`,accountId))}" download="${esc(file.name)}">${attachmentUiIcon('preview')}<span><span data-i18n="ui.d1cd84df295b">预览原文件</span></span></a><button type="button" data-file-source-email="${Number(file.email_id)}">${attachmentUiIcon('mail')}<span><span data-i18n="ui.afa0010e45c4">查看来源邮件</span></span></button></div>`;
   }
   function bindAttachmentSources(host, accountId) {
     host.addEventListener('click', async event => {

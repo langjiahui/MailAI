@@ -8,14 +8,14 @@ const path = require('path');
   const page = await browser.newPage({viewport:{width:1200,height:850}});
   await page.route('http://mailai.test/**', route => {
    if(route.request().url().includes('/preview')) return route.fulfill({json:{kind:'text',name:'通知.docx',text:'关于开展书画比赛的通知\n请各部门组织报名。\n<script>window.hacked=true</script>',message:'DOCX 正文预览，图片和原始排版请下载查看'}});
-   return route.fulfill({contentType:'text/html; charset=utf-8',body:'<a class="attachment" href="/api/emails/1/attachments/0?mailai_account=test" download="通知.docx">通知.docx</a><a class="attachment-card" href="/api/emails/2/attachments/0?mailai_account=test" download="附件中心.docx">附件中心.docx</a>'});
+   return route.fulfill({contentType:'text/html; charset=utf-8',body:'<a data-preview-attachment class="attachment" href="/api/emails/1/attachments/0?mailai_account=test" download="通知.docx">通知.docx</a><a data-preview-attachment class="attachment-card" href="/api/emails/2/attachments/0?mailai_account=test" download="附件中心.docx">附件中心.docx</a>'});
   });
   await page.goto('http://mailai.test/');
   for (const name of ['i18n.js','i18n-catalog.js','i18n-runtime.js']) await page.addScriptTag({path:path.join(__dirname, '../app/web/static', name)});
   await page.addStyleTag({path:path.join(__dirname,'../app/web/static/attachment-preview.css')});
   await page.addScriptTag({path:path.join(__dirname,'../app/web/static/attachment-preview.js')});
   const source=fs.readFileSync(path.join(__dirname,'../app/web/static/app.js'),'utf8');
-  await page.addScriptTag({content:'function activeMailAccount(){return {id:"test"}}; function mailboxResourceUrl(p){return p};'+source.slice(source.indexOf('async function downloadAttachmentInDesktop('),source.indexOf('let todoRenderLimit'))});
+  await page.addScriptTag({content:'function activeMailAccount(){return {id:"test"}}; function mailboxResourceUrl(p){return p};'+source.slice(source.indexOf('function attachmentEyeIcon('),source.indexOf('let todoRenderLimit'))});
   await page.locator('.attachment').click();
   await page.locator('.file-preview pre').waitFor();
   assert.match(await page.locator('.file-preview pre').textContent(), /书画比赛/);

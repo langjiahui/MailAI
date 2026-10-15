@@ -22,7 +22,7 @@ html[data-theme] body #attachment-center[data-file-view=list] .attachment-card:h
 #attachment-center[data-file-view=list] .attachment-source i,#attachment-center[data-file-view=list] .attachment-sender { display:none; }
 #attachment-center[data-file-view=list] .attachment-facts>small:first-child { grid-column:4; grid-row:1; white-space:nowrap; }
 #attachment-center[data-file-view=list] .attachment-facts>small:last-child { grid-column:5; grid-row:1; white-space:nowrap; }
-#attachment-center[data-file-view=list] .attachment-card-side { flex-direction:row; align-items:center; justify-content:flex-end; width:80px; }
+#attachment-center[data-file-view=list] .attachment-card-side { flex-direction:row; align-items:center; justify-content:flex-end; width:152px; }
 #attachment-center[data-file-view=list] .attachment-download-action { margin:0; }
 .todo-view-tabs { padding:14px 24px 8px; }
 #todo-center .todo-center-tools { padding-top:8px; }
@@ -62,7 +62,7 @@ html[data-theme] body .ai-result-section>header button { min-height:30px; paddin
  .todo-view-tabs { padding:10px 14px; }
  #attachment-center[data-file-view=list] .attachment-open { grid-template-columns:26px minmax(0,1fr); }
  #attachment-center[data-file-view=list] .attachment-facts>small:first-child { grid-column:2; grid-row:2; }
- #attachment-center[data-file-view=list] .attachment-card-side { width:58px; flex-direction:column; }
+ #attachment-center[data-file-view=list] .attachment-card-side { width:112px; flex-direction:row; flex-wrap:wrap; }
  #todo-center .todo-plan-actions { max-width:none; }
 }
 @media(prefers-reduced-motion:reduce) { html[data-theme] body :is(#todo-center,#attachment-center,#task-center,.compose-ai-panel) :is(button,select,input) { transition:none; } }

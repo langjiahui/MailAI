@@ -652,6 +652,11 @@ class DesktopApi:
             raise ValueError('系统剪贴板写入失败')
         return {'ok': True}
 
+    def open_attachment(self, email_id: int, attachment_index: int, account_id: str = "", source: str = "email"):
+        """Open a user-selected attachment using the system's default application."""
+        from .desktop_attachments import load_attachment, open_attachment_copy
+        return open_attachment_copy(load_attachment(email_id, attachment_index, account_id, source))
+
     def download_attachment(self, email_id: int, attachment_index: int, suggested_name: str = "", account_id: str = "", source: str = "email"):
         """Save an attachment through the native dialog used by packaged apps."""
         from webview import FileDialog

@@ -1870,7 +1870,7 @@ function localDateKey(value = new Date()) {
 function renderComposeAttachments() {
   const host = document.getElementById('compose-attachments');
   host.classList.toggle('hidden', !composeAttachments.length);
-  host.innerHTML = composeAttachments.map((item, index) => `<span class="compose-attachment-chip"><svg viewBox="0 0 20 20"><path d="M7.2 10.7 12 5.9a2.5 2.5 0 0 1 3.5 3.5l-6.3 6.3a4 4 0 0 1-5.7-5.7l6-6"/></svg><button type="button" class="compose-attachment-open" data-preview-compose-attachment="${index}" title="预览附件" data-i18n-title="ui.25da0f0b157a"><b>${esc(item.filename)}</b><small><span data-i18n="ui.8b8d59323b83">${formatFileSize(item.size || 0)} · 预览</span></small></button><button type="button" data-remove-attachment="${index}" aria-label="移除 ${esc(item.filename)}" data-i18n-aria="ui.5ec00cbabf0b">×</button></span>`).join('');
+  host.innerHTML = composeAttachments.map((item, index) => `<span class="compose-attachment-chip"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.2 10.7 12 5.9a2.5 2.5 0 0 1 3.5 3.5l-6.3 6.3a4 4 0 0 1-5.7-5.7l6-6"/></svg><button type="button" class="compose-attachment-open" data-open-compose-attachment="${index}" title="${esc(mailaiText('用默认应用打开'))}"><b>${esc(item.filename)}</b><small>${formatFileSize(item.size || 0)}</small></button><button type="button" class="attachment-preview-action" data-preview-compose-attachment="${index}" title="${esc(mailaiText('预览附件'))}" aria-label="${esc(mailaiText('预览附件'))}">${attachmentEyeIcon()}</button><button type="button" data-remove-attachment="${index}" aria-label="移除 ${esc(item.filename)}" data-i18n-aria="ui.5ec00cbabf0b">×</button></span>`).join('');
   renderSharedFileCards();
   refreshComposeAiContext();
 }
@@ -4125,10 +4125,11 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
   const failed = kind === 'sent' && row.status === 'failed';
   const originLabel = row._remote ? (kind === 'drafts' ? mailaiText('服务器草稿') : mailaiText('服务器已发送邮件')) : (kind === 'drafts' ? mailaiText('本地草稿') : failed ? mailaiText('发送失败') : row.status === 'unknown' ? mailaiText('发送结果待确认，请在任务与发件箱中核对') : row.status === 'sending' ? mailaiText('正在发送') : mailaiText('已发送邮件'));
   const specialAttachments = (row.attachments || []).length ? `<div class="special-mail-attachments">
-    <b><span data-i18n="ui.c7225dbf105e">附件</span></b><div class="special-mail-attachment-list">${row.attachments.map((item, index) => row._remote
-      ? `<a class="special-mail-attachment-item" href="${mailboxResourceUrl(`/api/emails/${row.remote_email_id}/attachments/${index}`)}" download><span class="special-mail-attachment-name">${esc(item.name || item.filename || mailaiText('未命名附件'))}</span><small><span data-i18n="ui.fc89deae5f5e">${formatFileSize(item.size || 0)} · 下载</span></small></a>`
-      : kind === 'sent' ? `<a class="special-mail-attachment-item" href="${mailboxResourceUrl(`/api/mail/sent/${row.id}/attachments/${index}`)}" download="${esc(item.filename || item.name || mailaiText('附件'))}" title="预览附件，可下载原文件" data-i18n-title="ui.0317dc6ed60e"><span class="special-mail-attachment-name">${esc(item.filename || item.name || mailaiText('未命名附件'))}</span><small><span data-i18n="ui.fc2427fba3b7">${formatFileSize(item.size || 0)} · 预览 / 下载</span></small></a>`
-      : `<span class="special-mail-attachment-item"><span class="special-mail-attachment-name">${esc(item.filename || item.name || mailaiText('未命名附件'))}</span><small>${formatFileSize(item.size || 0)}</small></span>`).join('')}</div>
+    <b><span data-i18n="ui.c7225dbf105e">附件</span></b><div class="special-mail-attachment-list">${row.attachments.map((item, index) => {
+      const name = item.filename || item.name || mailaiText('未命名附件');
+      const url = mailboxResourceUrl(row._remote ? `/api/emails/${row.remote_email_id}/attachments/${index}` : kind === 'sent' ? `/api/mail/sent/${row.id}/attachments/${index}` : `/api/drafts/${row.id}/attachments/${index}`);
+      return `<span class="attachment-row"><a class="special-mail-attachment-item" href="${url}" download="${esc(name)}" title="${esc(mailaiText('用默认应用打开'))}"><span class="special-mail-attachment-name">${esc(name)}</span><small>${formatFileSize(item.size || 0)}</small></a>${attachmentPreviewAction(url, name)}${attachmentDownloadAction(url, name)}</span>`;
+    }).join('')}</div>
     </div>` : '';
   pane.innerHTML = `<div class="special-mail-detail">
     <span class="eyebrow">${originLabel}</span>
@@ -6397,11 +6398,11 @@ function renderReadingPane(e) {
     <div class="reading-section">
       <div class="section-title"><span data-i18n="ui.f552e66b6dfe">📎 附件（${e.attachments.length}）</span></div>
       <div class="attachments">${e.attachments.map((a, i) => `
-        <a class="attachment" href="${mailboxResourceUrl(`/api/emails/${e.id}/attachments/${i}`)}" download="${esc(a.name)}" target="_blank">
+        <div class="attachment-row"><a class="attachment" href="${mailboxResourceUrl(`/api/emails/${e.id}/attachments/${i}`)}" download="${esc(a.name)}" title="${esc(mailaiText('用默认应用打开'))}">
           <span class="att-icon">📄</span>
           <span class="att-name">${esc(a.name)}</span>
           <span class="att-size">${fmtSize(a.size)}</span>
-        </a>
+        </a>${attachmentPreviewAction(mailboxResourceUrl(`/api/emails/${e.id}/attachments/${i}`), a.name)}${attachmentDownloadAction(mailboxResourceUrl(`/api/emails/${e.id}/attachments/${i}`), a.name)}</div>
       `).join('')}</div>
     </div>
   ` : '';
@@ -7591,7 +7592,7 @@ function renderAttachmentCenter() {
   updateAttachmentTypeFilters();
   document.getElementById('attachment-grid').innerHTML = rows.length ? rows.map(item => `
     <article class="attachment-card type-${attachmentType(item)}">
-    <a class="attachment-open" href="${mailboxResourceUrl(`/api/emails/${item.email_id}/attachments/${item.index}`, attachmentCenterAccountId)}" download="${esc(item.name)}" title="${(mailaiT('att.previewTitle') || '预览 {name}').replace('{name}', esc(item.name))}">
+    <a class="attachment-open" href="${mailboxResourceUrl(`/api/emails/${item.email_id}/attachments/${item.index}`, attachmentCenterAccountId)}" download="${esc(item.name)}" title="${esc(mailaiText('用默认应用打开'))}">
       ${attachmentFileIcon(item)}
       <span class="attachment-card-main">
         <b title="${esc(item.name)}">${esc(item.name)}</b>
@@ -7602,6 +7603,7 @@ function renderAttachmentCenter() {
     </a>
       <span class="attachment-card-side"><button type="button" class="attachment-compare-action" data-attachment-tools data-email-id="${item.email_id}" data-attachment-index="${item.index}" aria-label="附件操作：${esc(item.name)}" title="附件操作" aria-haspopup="dialog" data-i18n-title="ui.24c0c6687fe1" data-i18n-aria="ui.debe2b33cb8d"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="4" cy="10" r="1"/><circle cx="10" cy="10" r="1"/><circle cx="16" cy="10" r="1"/></svg></button>
         ${['danger', 'warn'].includes(getRiskLabel(item.score, item.verdict, item).class) ? `<em class="attachment-risk">${getRiskLabel(item.score, item.verdict, item).text}</em>` : ''}
+        ${attachmentPreviewAction(mailboxResourceUrl(`/api/emails/${item.email_id}/attachments/${item.index}`, attachmentCenterAccountId), item.name)}
         <a class="attachment-download-action" href="${mailboxResourceUrl(`/api/emails/${item.email_id}/attachments/${item.index}`, attachmentCenterAccountId)}" download="${esc(item.name)}" data-preview-download aria-label="${esc((mailaiT('att.downloadFile') || '下载 {name}').replace('{name}',item.name))}" title="${esc((mailaiT('att.downloadFile') || '下载 {name}').replace('{name}',item.name))}"><svg class="attachment-download" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9m-3-3 3 3 3-3M4 15h12"/></svg></a>
       </span>
     </article>`).join('') + (attachmentCenterHasMore ? "<button type=\"button\" class=\"attachment-retry\" data-attachment-more><span data-i18n=\"ui.92bf391321e2\">加载更多附件</span></button>" : '') : `<div class="attachment-empty">${mailaiT('att.noMatch') || '没有找到匹配的附件'}</div>`;
@@ -7648,29 +7650,76 @@ function mailboxResourceUrl(path, accountId = activeMailAccount()?.id || '') {
   return url.pathname + url.search;
 }
 
+function attachmentEyeIcon() {
+  return '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 10s3-5.5 8-5.5 8 5.5 8 5.5-3 5.5-8 5.5S2 10 2 10Z"/><circle cx="10" cy="10" r="2.3"/></svg>';
+}
+
+function attachmentPreviewAction(url, name) {
+  return `<a class="attachment-preview-action" href="${esc(url)}" download="${esc(name)}" data-preview-attachment title="${esc(mailaiText('预览附件'))}" aria-label="${esc(mailaiText('预览附件') + '：' + name)}">${attachmentEyeIcon()}</a>`;
+}
+
+function attachmentDownloadAction(url, name) {
+  return `<a class="attachment-save-action" href="${esc(url)}" download="${esc(name)}" data-preview-download title="${esc(mailaiText('下载原文件'))}" aria-label="${esc(mailaiText('下载原文件') + '：' + name)}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9m-3-3 3 3 3-3M4 15h12"/></svg></a>`;
+}
+
+function attachmentReference(link) {
+  const url = new URL(link.href, location.origin);
+  if (url.origin !== location.origin) return null;
+  const match = url.pathname.match(/^\/api\/(emails|mail\/sent|drafts)\/(\d+)\/attachments\/(\d+)$/);
+  if (!match) return null;
+  return {id: Number(match[2]), index: Number(match[3]), source: match[1] === 'emails' ? 'email' : match[1] === 'drafts' ? 'draft' : 'sent',
+    accountId: url.searchParams.get('mailai_account') || activeMailAccount()?.id || ''};
+}
+
+const attachmentOpenRequests = new WeakSet();
+async function openAttachmentWithApplication(link) {
+  const ref = attachmentReference(link);
+  if (!ref || attachmentOpenRequests.has(link)) return;
+  if (!window.pywebview?.api?.open_attachment) {
+    const save = link.cloneNode(true);
+    save.setAttribute('data-preview-download', ''); save.removeAttribute('data-preview-attachment');
+    save.hidden = true; document.body.append(save); save.click(); save.remove();
+    toast(mailaiText('浏览器版将下载附件，请在下载后用本地应用打开'), 'info');
+    return;
+  }
+  attachmentOpenRequests.add(link);
+  link.setAttribute('aria-busy', 'true');
+  try {
+    const result = await window.pywebview.api.open_attachment(ref.id, ref.index, ref.accountId, ref.source);
+    if (!result?.ok) throw new Error(result?.message || mailaiText('无法打开附件，请检查是否安装了支持此格式的应用，或下载原文件'));
+  } catch (error) {
+    toast(mailaiText('附件打开失败：') + mailaiSystemMessage(error.message), 'error');
+  } finally {
+    attachmentOpenRequests.delete(link); link.removeAttribute('aria-busy');
+  }
+}
+
 async function downloadAttachmentInDesktop(event) {
   const link = event.target.closest('a[href*="/api/emails/"][href*="/attachments/"], a[href*="/api/mail/sent/"][href*="/attachments/"], a[href*="/api/drafts/"][href*="/attachments/"]');
   if (!link) return;
-  const accountId = new URL(link.href).searchParams.get('mailai_account') || activeMailAccount()?.id || '';
+  const reference = attachmentReference(link);
+  if (!reference) return;
+  const accountId = reference.accountId;
   link.href = mailboxResourceUrl(link.getAttribute('href'), accountId);
-  if (!link.hasAttribute('data-preview-download') && window.openAttachmentPreview) {
+  if (link.hasAttribute('data-preview-attachment') && window.openAttachmentPreview) {
     event.preventDefault();
     event.stopImmediatePropagation();
     window.openAttachmentPreview(link);
     return;
   }
+  if (!link.hasAttribute('data-preview-download')) {
+    event.preventDefault(); event.stopImmediatePropagation();
+    await openAttachmentWithApplication(link);
+    return;
+  }
   if (!window.pywebview?.api?.download_attachment) return;
-  const match = link.getAttribute('href')?.match(/\/api\/emails\/(\d+)\/attachments\/(\d+)/);
-  const sentMatch = link.getAttribute('href')?.match(/\/api\/mail\/sent\/(\d+)\/attachments\/(\d+)/);
-  const draftMatch = link.getAttribute('href')?.match(/\/api\/drafts\/(\d+)\/attachments\/(\d+)/);
-  const attachmentMatch = match || sentMatch || draftMatch;
-  if (!attachmentMatch) return;
   event.preventDefault();
   event.stopPropagation();
   const filename = link.getAttribute('download') || link.querySelector('b')?.textContent || link.textContent.trim() || mailaiText('附件');
   try {
-    const result = await window.pywebview.api.download_attachment(Number(attachmentMatch[1]), Number(attachmentMatch[2]), filename, accountId, sentMatch ? 'sent' : draftMatch ? 'draft' : 'email');
+    const result = await window.pywebview.api.download_attachment(reference.id, reference.index, filename, accountId, reference.source);
     if (result?.ok) toast(mailaiTemplate`附件已保存：${result.filename || filename}`, 'success');
+    else if (!result?.canceled) throw new Error(result?.message || mailaiText('附件下载失败'));
   } catch (err) {
     toast(mailaiText('附件下载失败：') + (mailaiSystemMessage(err?.message) || err), 'error');
   }
@@ -9271,19 +9320,24 @@ document.getElementById('compose-attachments-input').addEventListener('change', 
   event.target.value = '';
 });
 document.getElementById('compose-attachments').addEventListener('click', async event => {
-  const preview = event.target.closest('[data-preview-compose-attachment]');
-  if (preview) {
+  const action = event.target.closest('[data-preview-compose-attachment], [data-open-compose-attachment]');
+  if (action) {
     const session = draftSession, accountId = composeAccountId;
-    const index = Number(preview.dataset.previewComposeAttachment), item = composeAttachments[index];
+    const preview = action.hasAttribute('data-preview-compose-attachment');
+    const index = Number(action.dataset.previewComposeAttachment ?? action.dataset.openComposeAttachment), item = composeAttachments[index];
+    if (!item || action.disabled) return;
     if (session.busy || session.attachmentReads) return toast(mailaiText('请等待附件读取完成'), 'warn');
     try {
+      action.disabled = true;
       await saveCurrentDraft({force:true});
       if (session !== draftSession || session.canceled || composeAttachments[index] !== item) return;
       const link = document.createElement('a');
       link.href = mailboxResourceUrl(`/api/drafts/${session.id}/attachments/${index}`, accountId);
       link.download = item.filename || mailaiText('附件');
-      window.openAttachmentPreview(link);
-    } catch (error) { toast(mailaiText('预览失败：') + mailaiSystemMessage(error.message), 'error'); }
+      if (preview) window.openAttachmentPreview(link);
+      else await openAttachmentWithApplication(link);
+    } catch (error) { toast((preview ? mailaiText('预览失败：') : mailaiText('附件打开失败：')) + mailaiSystemMessage(error.message), 'error'); }
+    finally { action.disabled = false; }
     return;
   }
   const button = event.target.closest('[data-remove-attachment]');

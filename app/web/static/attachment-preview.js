@@ -2,11 +2,12 @@
   const dialog = document.createElement('dialog');
   dialog.className = 'file-preview';
   dialog.setAttribute('aria-labelledby', 'file-preview-title');
-  dialog.innerHTML = `<header><div><small><span data-i18n="ui.018f5d61f823">附件预览</span></small><h2 id="file-preview-title"></h2></div><a class="btn-ghost" data-preview-download download><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9m-3-3 3 3 3-3M4 15h12"/></svg><span><span data-i18n="ui.aa1d4263667a">下载原文件</span></span></a><button type="button" aria-label="关闭预览" data-i18n-aria="ui.1eb05d311508">×</button></header><p class="file-preview-note" role="status"></p><main aria-busy="false"></main>`;
+  dialog.innerHTML = `<header><div><small><span data-i18n="ui.018f5d61f823">附件预览</span></small><h2 id="file-preview-title"></h2></div><a class="btn-ghost" data-preview-open download><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M11 3h6v6m0-6-9 9M8 4H4v12h12v-4"/></svg><span data-i18n="attachment.openDefault">用默认应用打开</span></a><a class="btn-ghost" data-preview-download download><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9m-3-3 3 3 3-3M4 15h12"/></svg><span><span data-i18n="ui.aa1d4263667a">下载原文件</span></span></a><button type="button" aria-label="关闭预览" data-i18n-aria="ui.1eb05d311508">×</button></header><p class="file-preview-note" role="status"></p><main aria-busy="false"></main>`;
   document.body.append(dialog);
   const content = dialog.querySelector('main');
   const note = dialog.querySelector('.file-preview-note');
-  const download = dialog.querySelector('a');
+  const download = dialog.querySelector('[data-preview-download]');
+  const open = dialog.querySelector('[data-preview-open]');
   let controller, objectUrl, generation = 0, previousFocus;
   function cleanup() {
     generation++;
@@ -132,6 +133,7 @@
     dialog.querySelector('h2').textContent = name;
     download.href = url.href;
     download.download = name;
+    open.href = url.href; open.download = name;
     mailaiBindUI(note, "textContent", () => (mailaiText('正在加载预览…')));
     content.setAttribute('aria-busy', 'true');
     if (!dialog.open) dialog.showModal();
