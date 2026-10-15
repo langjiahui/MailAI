@@ -22,7 +22,9 @@
   };
   function button(label,cls,handler) {
     const node=document.createElement('button');node.type='button';node.className=cls;
-    node.textContent=label;node.addEventListener('click',handler);return node;
+    // Pickers live inside labels. Keep native label activation from forwarding
+    // a second click/focus to the hidden date input after opening the panel.
+    node.textContent=label;node.addEventListener('click',event=>{event.preventDefault();handler(event);});return node;
   }
   function enhance(input) {
     if (controls.has(input) || input.hidden || input.classList.contains('hidden')) return;
@@ -36,10 +38,12 @@
     icon.innerHTML=hasDate?'<rect x="3" y="4" width="14" height="13" rx="2"/><path d="M6 2v4m8-4v4M3 8h14m-10 3h2m2 0h2m-6 3h2"/>':'<circle cx="10" cy="10" r="7"/><path d="M10 6v4l3 2"/>';
     const display=document.createElement('span');trigger.append(display,icon);
     const panel=document.createElement('div');panel.className='datetime-panel';panel.id=`datetime-panel-${++serial}`;
-    panel.setAttribute('popover','auto');panel.setAttribute('role','dialog');panel.setAttribute('aria-modal','false');
+    // Outside clicks and Escape are handled here, including embedded WebKit.
+    // Native auto-dismiss must not race the opening click in the host label.
+    panel.setAttribute('popover','manual');panel.setAttribute('role','dialog');panel.setAttribute('aria-modal','false');
     trigger.setAttribute('aria-haspopup','dialog');trigger.setAttribute('aria-controls',panel.id);trigger.setAttribute('aria-expanded','false');
     wrapper.append(trigger,panel);
-    let opened=false,draftDate='',view=new Date();
+    let opened=false,nativePopover=false,draftDate='',view=new Date();
     const title=document.createElement('strong');title.id=`${panel.id}-title`;
     panel.setAttribute('aria-labelledby',title.id);
     const head=document.createElement('div');head.className='datetime-heading';
@@ -220,18 +224,30 @@
       const selected=localDate(draftDate)||now;view=new Date(selected.getFullYear(),selected.getMonth(),1);
       if(hasTime){hour.disabled=false;minute.disabled=false;const time=(kind==='time'?value:value.split('T')[1])||timeValue(now);[hour.value,minute.value]=time.split(':').slice(0,2);}
       populate();opened=true;active=control;trigger.setAttribute('aria-expanded','true');
-      if(panel.showPopover)panel.showPopover();else panel.classList.add('is-open');
+      nativePopover=false;
+      if(typeof panel.showPopover==='function') {
+        try {panel.showPopover();nativePopover=panel.matches(':popover-open');} catch (_) {}
+      }
+      if(!nativePopover)showFallback();
       position();(calendar?.querySelector('[tabindex="0"]') || hour || dismiss).focus({preventScroll:true});
     }
     function close(restore) {
       if(!opened)return;
       opened=false;trigger.setAttribute('aria-expanded','false');
       if(hasTime){hour.disabled=true;minute.disabled=true;}
-      if(panel.hidePopover && panel.matches(':popover-open'))panel.hidePopover();panel.classList.remove('is-open');
+      if(nativePopover) {try {panel.hidePopover();} catch (_) {}}
+      nativePopover=false;panel.classList.remove('is-open');
       if(active===control)active=null;
       if(restore && trigger.isConnected && !trigger.disabled)trigger.focus({preventScroll:true});
     }
-    panel.addEventListener('toggle',event=>{if(event.newState==='closed' && opened)close(panel.contains(document.activeElement));});
+    function showFallback() {
+      nativePopover=false;panel.removeAttribute('popover');panel.classList.add('is-open');
+    }
+    panel.addEventListener('toggle',event=>{
+      // Some embedded WebViews accept showPopover but immediately dismiss it.
+      // Keep a usable panel inside the owning modal rather than an empty click.
+      if(event.newState==='closed' && opened && nativePopover) {showFallback();position();}
+    });
     panel.addEventListener('keydown',event=>{
       if(event.key==='Escape'){event.preventDefault();event.stopPropagation();close(true);}
       if(event.key==='Tab') {

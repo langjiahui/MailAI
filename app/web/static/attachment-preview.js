@@ -17,11 +17,15 @@
   }
   function close() { dialog.close(); }
   dialog.querySelector('button').addEventListener('click', close);
-  dialog.addEventListener('click', event => { if (event.target === dialog) close(); });
+  dialog.addEventListener('click', event => {
+    if (event.target !== dialog) return;
+    const bounds = dialog.getBoundingClientRect();
+    if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) close();
+  });
   dialog.addEventListener('close', () => { cleanup(); previousFocus?.focus?.(); });
   dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
   document.addEventListener('keydown', event => {
-    if (dialog.open && event.key === 'Escape') {
+    if (dialog.open && event.key === 'Escape' && dialog.contains(event.target)) {
       event.preventDefault(); event.stopImmediatePropagation(); close();
     }
   }, true);

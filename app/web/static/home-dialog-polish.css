@@ -1,0 +1,168 @@
+/* Workspace chrome follows palette pairs. Mail bodies and original files keep
+   their own rendering rules. This sheet bypasses the legacy color bridge. */
+html[data-theme] body {
+  --workspace-copy:color-mix(in srgb,var(--desk-muted) 88%,var(--desk-ink));
+  --dialog-room:calc((100dvh - 24px) / var(--fz,1));
+}
+html[data-theme] body .layout :is(.email-date,.email-preview,.mail-account-tag,.email-tags .mail-category,.email-date-group,.sidebar .nav-title,.list-footer) { color:var(--workspace-copy)!important; }
+html[data-theme] body .email-item { border-radius:10px; transition:background-color .15s ease; }
+html[data-theme] body .email-item.selected { background:var(--desk-selected)!important; box-shadow:inset 3px 0 var(--desk-accent)!important; }
+html[data-theme] body .email-item:hover:not(.selected) { background:var(--desk-hover)!important; }
+html[data-theme] body .email-item :is(.sender-name,.email-subject) { color:var(--desk-ink)!important; }
+html[data-theme] body .layout :is(.reading-meta .meta-label,.reading-message-time,.sender-contact-link small,.reading-empty p) { color:var(--workspace-copy)!important; }
+html[data-theme] body .layout :is(.email-item,button,a,summary,select,input):focus-visible { outline:2px solid var(--desk-accent); outline-offset:2px; }
+/* Native dialog min-heights must never override the scaled viewport cap. */
+html[data-theme] body dialog {
+  min-width:0!important; min-height:0!important;
+  max-width:calc((100dvw - 24px) / var(--fz,1))!important;
+  max-height:var(--dialog-room)!important;
+  box-sizing:border-box; overscroll-behavior:contain;
+  scrollbar-width:thin; scrollbar-color:var(--desk-line) transparent;
+}
+/* Reminder records also live inside the task workspace as an embedded panel. */
+html[data-theme] body #todo-center #task-notices { max-width:100%!important; max-height:none!important; }
+html[data-theme] body :is(.modal-content,.contact-editor-card,.signature-manager-card,.share-link-card,.preflight-dialog) {
+  max-width:calc((100dvw - 24px) / var(--fz,1)); max-height:var(--dialog-room);
+  color:var(--desk-ink)!important; background:var(--desk-surface)!important;
+  border-color:var(--desk-line)!important; border-radius:16px;
+}
+html[data-theme] body :is(dialog,.contact-editor-card,.signature-manager-card,.share-link-card,.preflight-dialog) :is(button,a,summary,input,select,textarea):focus-visible {
+  outline:2px solid var(--desk-accent); outline-offset:3px;
+}
+html[data-theme] body dialog>header {
+  flex-shrink:0; gap:16px; background:var(--desk-surface)!important;
+  color:var(--desk-ink)!important; border-color:var(--desk-line)!important;
+}
+html[data-theme] body dialog>header>:first-child { min-width:0; }
+html[data-theme] body dialog>header :is(h2,h3) { color:var(--desk-ink)!important; overflow-wrap:anywhere; line-height:1.4; }
+html[data-theme] body dialog>header>button { flex:none; min-width:32px; min-height:32px; }
+html[data-theme] body :is(.productivity-dialog,.mail-login-dialog) {
+  overflow:hidden!important; background:var(--desk-surface)!important; color:var(--desk-ink)!important;
+}
+html[data-theme] body :is(.productivity-dialog,.mail-login-dialog)[open] { display:flex; flex-direction:column; }
+html[data-theme] body .productivity-dialog .productivity-body,
+html[data-theme] body .mail-login-dialog .mail-login-body { min-height:0; overflow:auto; overscroll-behavior:contain; }
+html[data-theme] body .productivity-dialog .productivity-hint { color:var(--workspace-copy)!important; }
+/* Uniform preview chrome does not recolor original document/image pixels. */
+html[data-theme] body .file-preview { background:var(--desk-surface)!important; color:var(--desk-ink)!important; border-color:var(--desk-line)!important; border-radius:16px; }
+html[data-theme] body .file-preview :is(.file-preview-note,header small) { color:var(--workspace-copy)!important; }
+html[data-theme] body .file-preview header>a { color:var(--desk-ink)!important; background:var(--desk-muted-surface)!important; border:1px solid var(--desk-line)!important; padding:8px 12px; border-radius:9px; }
+html[data-theme] body .file-preview header>button { background:var(--desk-muted-surface)!important; color:var(--desk-ink)!important; border-color:var(--desk-line)!important; }
+/* Keep forms readable when labels and action text grow in English. */
+html[data-theme] body :is(.productivity-body,.contact-editor-card,.share-link-card,.mail-login-body) label { min-width:0; }
+html[data-theme] body :is(.productivity-body,.contact-editor-card,.share-link-card,.mail-login-body) :is(input:not([type=checkbox]):not([type=radio]),select,textarea) { min-width:0; max-width:100%; box-sizing:border-box; }
+html[data-theme] body :is(.productivity-body,.contact-editor-card,.share-link-card,.mail-login-body) :is(p,small) { overflow-wrap:anywhere; }
+html[data-theme] body :is(.mailai-question,.migration-password-dialog) { overflow:auto; }
+html[data-theme] body .mailai-question footer { flex-wrap:wrap; gap:10px; }
+html[data-theme] body .mailai-question footer button { min-height:38px; white-space:normal; line-height:1.5; }
+/* A long sheet scrolls its content while keeping the dismissal action visible. */
+html[data-theme] body :is(#assistant-attachment-picker,#assistant-document-reply,#model-usage-dialog,#mail-import-dialog) { overflow:hidden; }
+html[data-theme] body #assistant-document-reply .document-reply-content,
+html[data-theme] body #assistant-attachment-picker .attachment-picker-grid,
+html[data-theme] body #model-usage-dialog #usage-body { min-height:0; overflow:auto; }
+html[data-theme] body :is(.compose-card,.attachment-center-card,.todo-center-card,.contact-editor-card,.signature-manager-card)>header { gap:16px; }
+html[data-theme] body :is(.compose-card,.attachment-center-card,.todo-center-card,.contact-editor-card,.signature-manager-card)>header>:first-child { min-width:0; }
+html[data-theme] body :is(.compose-card,.attachment-center-card,.todo-center-card,.contact-editor-card,.signature-manager-card)>header :is(h2,h3) { line-height:1.4; overflow-wrap:anywhere; }
+html[data-theme] body :is(#btn-close-compose,#btn-close-contacts,#btn-close-attachments,#btn-close-todos,#btn-close-contact-editor) { flex:none; min-width:32px; min-height:32px; }
+html[data-theme] body .compose-toolbar-actions { gap:8px; }
+html[data-theme] body .compose-card>footer { flex-shrink:0; }
+/* On wide screens metadata and reading sections retain a comfortable line length. */
+@media(min-width:1800px) {
+  .reading-content>.reading-header .reading-header-inner,
+  .reading-content>.reading-workspace { max-width:1280px; margin-inline:auto; }
+}
+@media(max-width:760px) {
+  html[data-theme] body .compose-card .compose-format-tools {
+    flex-wrap:nowrap!important; overflow-x:auto!important; overflow-y:hidden!important;
+    padding:6px 14px; max-height:48px; gap:4px;
+    scrollbar-width:thin; scrollbar-color:var(--desk-line) transparent;
+  }
+  html[data-theme] body .compose-card .compose-format-group { flex:none; }
+  html[data-theme] body .compose-card .compose-toolbar-actions { flex-wrap:wrap; padding:8px 14px; gap:6px; }
+  html[data-theme] body .compose-card .compose-toolbar-actions>button { min-height:32px; }
+  html[data-theme] body .compose-card .compose-attachment-hint { font-size:11px; line-height:1.6; }
+  html[data-theme] body .compose-card .compose-fields { padding-block:4px; }
+  html[data-theme] body .compose-card>footer { padding:10px 12px; gap:6px; }
+  html[data-theme] body .compose-card>footer>div { gap:6px; }
+  html[data-theme] body .compose-card>footer button { min-height:34px; padding:7px 10px; font-size:12px; line-height:1.5; }
+  html[data-theme] body .compose-card>footer #btn-send-mail { min-height:36px; padding-inline:16px; }
+  html[data-theme] body .signature-manager-body { grid-template-columns:minmax(0,1fr); overflow:auto; }
+  html[data-theme] body .signature-manager-body>aside { max-height:150px; border-right:0; border-bottom:1px solid var(--desk-line); }
+  html[data-theme] body .signature-manager-body>main { overflow:visible; }
+  html[data-theme] body .signature-manager-card>footer { flex-wrap:wrap; }
+  html[data-theme] body .signature-manager-card>footer>div { flex-wrap:wrap; }
+  html[data-theme] body .file-preview header { flex-wrap:wrap; gap:10px; padding:14px; }
+  html[data-theme] body .file-preview header>div { flex:1 1 calc(100% - 50px); }
+  html[data-theme] body .file-preview header>button { order:1; }
+  html[data-theme] body .file-preview header>a { order:2; margin-left:auto; }
+  html[data-theme] body .file-preview header>div { order:0; }
+  html[data-theme] body .file-preview h2 { font-size:15px; }
+  html[data-theme] body .file-preview-note { padding:10px 14px; }
+  html[data-theme] body .productivity-dialog>header { padding:16px 18px; }
+  html[data-theme] body .productivity-dialog>header h2 { font-size:19px; }
+  html[data-theme] body .productivity-dialog .productivity-body { padding:18px; }
+  html[data-theme] body #todo-center .todo-view-tabs { flex-wrap:wrap; overflow:visible; padding:8px 14px; gap:4px; }
+  html[data-theme] body #todo-center .todo-view-tabs button { flex:0 1 auto; padding:7px 9px; }
+  html[data-theme] body #todo-center .todo-center-tools { flex-wrap:wrap; gap:8px; }
+  html[data-theme] body .attachment-type-filters { flex-wrap:wrap; overflow:visible; }
+  html[data-theme] body .attachment-type-filters button { flex:none; }
+}
+/* A compact, two-row toolbar keeps every original action reachable on a narrow
+   window. Settings uses its own compact header and return action. */
+@media(max-width:760px) {
+  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body:not(:has(#system-view:not(.hidden))) .topbar {
+    display:grid!important; grid-template-columns:calc(32px / var(--fz,1)) minmax(0,1fr); grid-template-rows:calc(32px / var(--fz,1)) calc(32px / var(--fz,1));
+    height:calc(96px / var(--fz,1))!important; min-height:calc(96px / var(--fz,1))!important;
+    padding:calc(8px / var(--fz,1)) calc(12px / var(--fz,1)); gap:calc(8px / var(--fz,1)); align-content:center;
+  }
+  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body:not(:has(#system-view:not(.hidden))) .topbar .brand { display:none!important; }
+  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body:not(:has(#system-view:not(.hidden))) .topbar .global-search {
+    grid-column:1/-1; grid-row:1; width:100%; min-width:0; max-width:none; margin:0; height:calc(32px / var(--fz,1));
+  }
+  html.macos-native-window:not(.macos-native-fullscreen)[data-theme] body:not(:has(#system-view:not(.hidden))) .topbar .global-search { margin-left:calc(104px / var(--fz,1)); width:calc(100% - 104px / var(--fz,1)); }
+  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body:not(:has(#system-view:not(.hidden))) .topbar #btn-mobile-nav { grid-column:1; grid-row:2; margin:0; width:calc(32px / var(--fz,1)); height:calc(32px / var(--fz,1)); min-width:0; padding:0; }
+  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body:not(:has(#system-view:not(.hidden))) .topbar .global-actions {
+    grid-column:2; grid-row:2; width:100%; min-width:0; justify-content:space-between; gap:0; margin:0;
+  }
+  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body:not(:has(#system-view:not(.hidden))) .topbar .nav-cluster { margin:0; padding:0; gap:0; }
+  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body:not(:has(#system-view:not(.hidden))) .topbar .nav-action,
+  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body:not(:has(#system-view:not(.hidden))) .topbar #btn-compose { width:max(26px,calc(32px / var(--fz,1)))!important; min-width:max(26px,calc(32px / var(--fz,1)))!important; height:calc(32px / var(--fz,1))!important; min-height:calc(32px / var(--fz,1))!important; padding:0!important; }
+  html[data-theme][data-theme][data-theme] body:not(:has(#system-view:not(.hidden))) #app .nav-security-menu .top-menu-popover {
+    position:fixed; top:calc(100px / var(--fz,1)); right:calc(12px / var(--fz,1));
+    max-height:calc((100dvh - 116px) / var(--fz,1)); overflow:auto;
+  }
+}
+@media(prefers-reduced-motion:reduce) { .email-item,.compose-card,.attachment-center-card { transition:none!important; } }
+
+@media(max-width:760px) {
+  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body:not(:has(#system-view:not(.hidden))) .topbar .global-search #global-search { height:calc(32px / var(--fz,1))!important; }
+  .compose-card .compose-format-tools::-webkit-scrollbar { height:5px; }
+  .compose-card .compose-format-tools::-webkit-scrollbar-thumb { background:var(--desk-line); border-radius:8px; }
+}
+@media(max-width:760px) {
+  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body:not(:has(#system-view:not(.hidden))) .topbar { z-index:950; }
+  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .reading-pane.show { inset:calc(96px / var(--fz,1)) 0 0!important; }
+  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .layout>.sidebar { top:calc(104px / var(--fz,1)); }
+}
+
+/* Automatic assistant panels may become shorter than the desktop drag minimum. */
+html[data-theme] body:not(.assistant-floating) #assistant-panel { min-height:0!important; min-width:0!important; }
+/* Secondary controls and destructive confirmations use explicit color pairs;
+   legacy theme mapping must not turn their foreground into the fill color. */
+html[data-theme] body #btn-new-signature {
+  color:var(--desk-ink)!important; background:var(--desk-muted-surface)!important;
+  border-color:var(--desk-line)!important; box-shadow:none!important;
+}
+html[data-theme] body :is(#task-planner,#assistant-attachment-picker,.task-center) header :is(p,small),
+html[data-theme] body :is(#migration-password-eyebrow,.todo-source) { color:var(--workspace-copy)!important; }
+html[data-theme] body #attachment-center .attachment-type-filters button.active { color:var(--desk-ink)!important; background:var(--desk-selected)!important; }
+html[data-theme][data-theme] body :is(#app #migration-password-submit,.document-reply-foot [data-document-next]) {
+  background:var(--control-accent)!important; color:var(--control-on-accent)!important; border-color:var(--control-accent)!important;
+}
+html[data-theme][data-theme] body :is(.mailai-question [data-confirm].danger,#btn-confirm-logout) {
+  background:#b4433c!important; color:#fff!important; border-color:#b4433c!important;
+}
+html[data-theme][data-theme] body :is(.mailai-question [data-confirm].danger,#btn-confirm-logout):hover:not(:disabled) { background:#9b3832!important; border-color:#9b3832!important; }
+html[data-theme] body #contact-center .contact-star { color:var(--workspace-copy)!important; background:transparent!important; }
+html[data-theme] body #contact-center .contact-star:is(.active,:hover) { color:#8c5a07!important; background:#fff1d1!important; }
+html[data-theme="dark"] body #contact-center .contact-star:is(.active,:hover) { color:#efcc82!important; background:#3c321f!important; }

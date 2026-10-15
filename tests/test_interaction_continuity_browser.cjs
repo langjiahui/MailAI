@@ -15,6 +15,7 @@ async function awaitStart(gate, label) {
   const page=await browser.newPage({viewport:{width:1440,height:1000},reducedMotion:'reduce'});
   page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://127.0.0.1:18795/');await page.locator('#app-preloader').waitFor({state:'detached'});
+  await page.evaluate(()=>setI18nLanguage('zh-CN'));
   assert(await page.evaluate(()=>_systemConfig.accounts.every(a=>a.user.endsWith('@example.test'))));
   const accountId=await page.evaluate(()=>activeMailAccount().id);
   const due=new Date(Date.now()+86400000).toISOString();

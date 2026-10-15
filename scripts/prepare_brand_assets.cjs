@@ -10,7 +10,9 @@ const start=source.indexOf('  const paths = '),end=source.indexOf('  document.qu
 const context={};vm.createContext(context);vm.runInContext(source.slice(start,end)+'\nthis.markup=markup;',context);
 const mark=context.markup('#0e5a54','#94c7b6').replace('aria-hidden="true"','role="img" aria-label="MailAI"');
 const template=context.markup('#000','#000');
-const app=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><rect x="12" y="12" width="1000" height="1000" rx="224" fill="#f5f6f0"/><rect x="13" y="13" width="998" height="998" rx="223" fill="none" stroke="#cdd8d1" stroke-width="2"/><g transform="translate(145 127) scale(11.46875)">${mark.replace(/^<svg[^>]*>/,'').replace(/<\/svg>$/,'')}</g></svg>`;
+// Native Dock artwork uses an 824px body on a 1024px canvas, matching the
+// visual bounds of neighboring apps. Scale the tile and mark together.
+const app=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><g transform="translate(90.112 90.112) scale(0.824)"><rect x="12" y="12" width="1000" height="1000" rx="224" fill="#f5f6f0"/><rect x="13" y="13" width="998" height="998" rx="223" fill="none" stroke="#cdd8d1" stroke-width="2"/><g transform="translate(145 127) scale(11.46875)">${mark.replace(/^<svg[^>]*>/,'').replace(/<\/svg>$/,'')}</g></g></svg>`;
 (async()=>{
  fs.mkdirSync(assets,{recursive:true});
  fs.writeFileSync(path.join(assets,'mailai-mark.svg'),mark);

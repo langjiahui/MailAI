@@ -1,5 +1,11 @@
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "settings.categories": ["设置分类", "Settings categories"],
+  "settings.syncTitle": ["收信与文件夹", "Sync and folders"],
+  "settings.syncHint": ["管理工作台的收信方式", "Manage how this workspace receives mail"],
+  "settings.companionTitle": ["小邮与个性化", "Companion and personalization"],
+  "settings.companionHint": ["主题、成长与陪伴方式", "Themes, growth and companion behavior"],
+  "settings.aboutHint": ["了解数据的使用方式，查看版本与更新。", "Understand how your data is used and check for updates."],
   "task.pausedElsewhere": ["发送任务已暂停，内容保留在原邮箱草稿箱", "The send task was paused. Its contents remain in the original mailbox's drafts."],
   "task.verifyOutcome": ["核对发送结果", "Verify delivery outcome"],
   "mail.restoring": ["正在恢复…", "Restoring…"],

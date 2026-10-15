@@ -239,6 +239,45 @@ jobs:
           node tests/test_companion_gift_issuer_browser.cjs
           MAILAI_BROWSER=webkit node tests/test_companion_gift_issuer_browser.cjs
 
+  responsive-ui-browser:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install responsive UI test dependencies
+        run: |
+          python -m pip install -r requirements.txt
+          npm ci
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Verify settings, homepage and dialogs in both languages and all palettes
+        shell: bash
+        env:
+          MAILAI_BROWSER: ${{ matrix.browser }}
+        run: |
+          MAILAI_REWARD_MOTION_FIXTURE=1 python tests/workspace_preview.py > fixture-responsive.log 2>&1 &
+          fixture_pid=$!
+          trap 'kill "$fixture_pid" 2>/dev/null || true; wait "$fixture_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:18795/api/health > /dev/null; then ready=1; break; fi
+            sleep 1
+          done
+          if [ "$ready" != 1 ]; then cat fixture-responsive.log; exit 1; fi
+          node tests/test_settings_responsive_browser.cjs
+          node tests/test_home_dialog_responsive_browser.cjs
+          node tests/test_home_dialog_palette_browser.cjs
+          node tests/test_overlay_interactions_browser.cjs
+          node tests/test_date_time_workflows_browser.cjs
+
   secret-scan:
     runs-on: ubuntu-latest
     steps:

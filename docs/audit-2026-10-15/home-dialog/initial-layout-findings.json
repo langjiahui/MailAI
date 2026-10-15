@@ -1,0 +1,143 @@
+[
+  {
+    "name": "compose",
+    "language": "en",
+    "width": 390,
+    "height": 844,
+    "scale": 1,
+    "x": 8,
+    "y": 8,
+    "right": 382,
+    "bottom": 836,
+    "overflow": false,
+    "clippedButtons": [
+      ""
+    ]
+  },
+  {
+    "name": "attachments",
+    "language": "en",
+    "width": 390,
+    "height": 844,
+    "scale": 1,
+    "x": 0,
+    "y": 0,
+    "right": 390,
+    "bottom": 844,
+    "overflow": false,
+    "clippedButtons": [
+      "Archive",
+      "Other"
+    ]
+  },
+  {
+    "name": "todos",
+    "language": "zh-CN",
+    "width": 390,
+    "height": 844,
+    "scale": 1,
+    "x": 8,
+    "y": 188.90625,
+    "right": 382,
+    "bottom": 655.09375,
+    "overflow": false,
+    "clippedButtons": [
+      "Unscheduled0",
+      "btn-task-notices"
+    ]
+  },
+  {
+    "name": "todos",
+    "language": "en",
+    "width": 390,
+    "height": 844,
+    "scale": 1,
+    "x": 8,
+    "y": 162.90625,
+    "right": 382,
+    "bottom": 681.09375,
+    "overflow": false,
+    "clippedButtons": [
+      "Unscheduled0",
+      "btn-task-notices"
+    ]
+  },
+  {
+    "name": "search",
+    "language": "zh-CN",
+    "width": 900,
+    "height": 640,
+    "scale": 1.25,
+    "x": 21.25,
+    "y": -55,
+    "right": 878.75,
+    "bottom": 695,
+    "overflow": false,
+    "clippedButtons": []
+  },
+  {
+    "name": "search",
+    "language": "en",
+    "width": 900,
+    "height": 640,
+    "scale": 1.25,
+    "x": 21.25,
+    "y": -55,
+    "right": 878.75,
+    "bottom": 695,
+    "overflow": false,
+    "clippedButtons": []
+  },
+  {
+    "name": "templates",
+    "language": "zh-CN",
+    "width": 900,
+    "height": 640,
+    "scale": 1.25,
+    "x": 21.25,
+    "y": -55,
+    "right": 878.75,
+    "bottom": 695,
+    "overflow": false,
+    "clippedButtons": []
+  },
+  {
+    "name": "templates",
+    "language": "en",
+    "width": 900,
+    "height": 640,
+    "scale": 1.25,
+    "x": 21.25,
+    "y": -55,
+    "right": 878.75,
+    "bottom": 695,
+    "overflow": false,
+    "clippedButtons": []
+  },
+  {
+    "name": "login",
+    "language": "zh-CN",
+    "width": 900,
+    "height": 640,
+    "scale": 1.25,
+    "x": 43.75,
+    "y": -55,
+    "right": 856.25,
+    "bottom": 695,
+    "overflow": false,
+    "clippedButtons": []
+  },
+  {
+    "name": "login",
+    "language": "en",
+    "width": 900,
+    "height": 640,
+    "scale": 1.25,
+    "x": 43.75,
+    "y": -55,
+    "right": 856.25,
+    "bottom": 695,
+    "overflow": false,
+    "clippedButtons": []
+  }
+]

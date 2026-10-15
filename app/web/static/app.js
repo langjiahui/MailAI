@@ -665,21 +665,28 @@ function assistantDesktopLayout() {
   return window.innerWidth > ASSISTANT_BREAKPOINT;
 }
 
+function assistantLayoutViewport() {
+  const scale = Number.parseFloat(getComputedStyle(document.body).zoom) || 1;
+  return {width:window.innerWidth / scale, height:window.innerHeight / scale, scale};
+}
+
 function defaultAssistantLayout() {
+  const {width:viewportWidth, height:viewportHeight} = assistantLayoutViewport();
   const margin = 16;
-  const width = Math.min(420, window.innerWidth - margin * 2);
-  const height = Math.min(690, window.innerHeight - margin * 2);
-  return {x: window.innerWidth - width - 26, y: window.innerHeight - height - 24, width, height};
+  const width = Math.min(420, viewportWidth - margin * 2);
+  const height = Math.min(690, viewportHeight - margin * 2);
+  return {x: viewportWidth - width - 26, y: viewportHeight - height - 24, width, height};
 }
 
 function clampAssistantLayout(layout) {
+  const {width:viewportWidth, height:viewportHeight} = assistantLayoutViewport();
   const margin = 8;
-  const minWidth = Math.min(340, window.innerWidth - margin * 2);
-  const minHeight = Math.min(430, window.innerHeight - margin * 2);
-  const width = Math.min(Math.max(Number(layout.width) || 420, minWidth), window.innerWidth - margin * 2);
-  const height = Math.min(Math.max(Number(layout.height) || 690, minHeight), window.innerHeight - margin * 2);
-  const x = Math.min(Math.max(Number(layout.x) || margin, margin), window.innerWidth - width - margin);
-  const y = Math.min(Math.max(Number(layout.y) || margin, margin), window.innerHeight - height - margin);
+  const minWidth = Math.min(340, viewportWidth - margin * 2);
+  const minHeight = Math.min(430, viewportHeight - margin * 2);
+  const width = Math.min(Math.max(Number(layout.width) || 420, minWidth), viewportWidth - margin * 2);
+  const height = Math.min(Math.max(Number(layout.height) || 690, minHeight), viewportHeight - margin * 2);
+  const x = Math.min(Math.max(Number(layout.x) || margin, margin), viewportWidth - width - margin);
+  const y = Math.min(Math.max(Number(layout.y) || margin, margin), viewportHeight - height - margin);
   return {x, y, width, height};
 }
 
@@ -721,7 +728,8 @@ function initAssistantLayout() {
     panel.classList.add('layout-stable', mode === 'move' ? 'is-moving' : 'is-resizing');
     document.body.classList.add('assistant-adjusting');
     const move = moveEvent => {
-      const dx = moveEvent.clientX - start.pointerX, dy = moveEvent.clientY - start.pointerY;
+      const scale = assistantLayoutViewport().scale;
+      const dx = (moveEvent.clientX - start.pointerX) / scale, dy = (moveEvent.clientY - start.pointerY) / scale;
       layout = mode === 'move'
         ? applyAssistantLayout({...start, x: start.x + dx, y: start.y + dy})
         : applyAssistantLayout({...start, width: start.width + dx, height: start.height + dy});
@@ -2838,7 +2846,7 @@ document.addEventListener('click', event => {
 function mailSummaryToolbarButton(e) {
   const expanded = localStorage.getItem('mailai-summary-expanded') === '1';
   const title = e.summary ? (mailaiT('read.summaryTitle') || 'AI 摘要') : (mailaiT('read.previewTitle') || '正文预览');
-  return `<button type="button" class="reading-summary-control ${expanded ? 'is-active' : ''}" data-summary-toggle aria-expanded="${expanded}" aria-controls="primary-summary-reveal"><span>${title}</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button>`;
+  return `<button type="button" class="reading-summary-control ${expanded ? 'is-active' : ''}" data-summary-toggle aria-expanded="${expanded}" aria-controls="primary-summary-reveal"><span data-i18n="${e.summary ? 'read.summaryTitle' : 'read.previewTitle'}">${title}</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button>`;
 }
 
 function mailSummaryDisclosure(e, {drawer = false} = {}) {
@@ -2887,7 +2895,7 @@ function renderDigestEmailDetail(e) {
     </div>
     <div class="drawer-email-body">
       ${mailSummaryDisclosure(e, {drawer:true})}
-      <div class="reading-section drawer-body-section"><div class="section-title"><span>${mailaiT('read.body') || '邮件正文'}</span><small>${e.has_rich_body ? (e.has_remote_images ? (mailaiT('read.fmtHtmlImages') || 'HTML 原始排版 · 外链图片已显示') : (mailaiT('read.fmtHtml') || 'HTML 原始排版')) : (mailaiT('read.fmtPlain') || '纯文本邮件')}</small></div>
+      <div class="reading-section drawer-body-section"><div class="section-title"><span data-i18n="read.body">${mailaiT('read.body') || '邮件正文'}</span><small>${e.has_rich_body ? (e.has_remote_images ? (mailaiT('read.fmtHtmlImages') || 'HTML 原始排版 · 外链图片已显示') : (mailaiT('read.fmtHtml') || 'HTML 原始排版')) : (mailaiT('read.fmtPlain') || '纯文本邮件')}</small></div>
         ${e.has_rich_body ? "<div id=\"digest-rich-email-body\" class=\"email-body rich-email-body\"><div class=\"reading-loading\"><span data-i18n=\"ui.14219f870d0c\">正在还原邮件排版…</span></div></div>" : `<div class="markdown-body email-body plain-email-body">${mdToHtml(e.body_text || '')}</div>`}
       </div>
       <div class="reading-section drawer-findings-section"><div class="section-title"><span>${mailaiT('read.security') || '安全分析'}</span><small>${(mailaiT('read.ruleScore') || '规则分 {n}').replace('{n}', e.score || 0)}</small></div>
@@ -5474,6 +5482,10 @@ function selectSystemTab(name) {
   _systemTab = name;
   document.querySelectorAll('[data-system-tab]').forEach(b => { const active = b.dataset.systemTab === name; b.classList.toggle('active', active); if (active) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
   document.querySelectorAll('[data-system-panel]').forEach(p => p.classList.toggle('hidden', p.dataset.systemPanel !== name));
+  const selected = document.querySelector('#system-tabs [aria-current="page"]');
+  if (selected && selected.parentElement.scrollWidth > selected.parentElement.clientWidth) {
+    selected.scrollIntoView({block:'nearest', inline:'nearest'});
+  }
 }
 
 let availableAppUpdate = null;
@@ -5844,7 +5856,7 @@ function renderMessageRecipients(e) {
   const cc = recipientEmails(e.cc_addr);
   const row = (label, addresses) => `<div class="meta-recipient-row"><span class="meta-label">${label}</span><span class="recipient-full-line">${renderRecipients(addresses.join(', '), e.recipient_names, true)}<span class="recipient-count">${(mailaiT('read.peopleCount') || '共 {n} 人').replace('{n}', addresses.length)}</span></span></div>`;
   const preview = to.map(address => esc(e.recipient_names?.[address.toLowerCase()] || address)).join('、');
-  return `<div class="message-recipients"><details><summary><span class="recipient-collapsed-copy"><span class="meta-label">${mailaiT('read.to') || '收件人：'}</span>${preview || '—'}</span><span class="recipient-expand-label">${mailaiT('common.expand') || '展开'}</span><span class="recipient-collapse-label">${mailaiT('common.collapse') || '收起'}</span></summary><div class="recipient-details">${row(mailaiT('read.to') || '收件人：', to)}${cc.length ? row(mailaiT('read.cc') || '抄送：', cc) : ''}</div></details></div>`;
+  return `<div class="message-recipients"><details><summary><span class="recipient-collapsed-copy"><span class="meta-label" data-i18n="read.to">${mailaiT('read.to') || '收件人：'}</span>${preview || '—'}</span><span class="recipient-expand-label" data-i18n="common.expand">${mailaiT('common.expand') || '展开'}</span><span class="recipient-collapse-label" data-i18n="common.collapse">${mailaiT('common.collapse') || '收起'}</span></summary><div class="recipient-details">${row(mailaiT('read.to') || '收件人：', to)}${cc.length ? row(mailaiT('read.cc') || '抄送：', cc) : ''}</div></details></div>`;
 }
 
 function renderRecipients(raw, names = {}, full = false) {
@@ -6391,17 +6403,17 @@ function renderReadingPane(e) {
           <h2 class="reading-subject">${esc(e.subject)}</h2>
           <button type="button" class="security-result-trigger security-${risk.class} ${riskNeedsAttention ? 'needs-attention' : ''} ${risk.class === 'danger' && riskNeedsAttention ? 'risk-attention-intro' : ''}" aria-expanded="false" onclick="toggleSecurityAnalysis()" title="打开智能研判明细" data-i18n-title="ui.f4512bbf37ea">
             <span aria-hidden="true">${risk.class === 'danger' || risk.class === 'warn' ? '!' : risk.class === 'muted' ? '…' : '✓'}</span>
-            <small>${mailaiT('read.securityResult') || '安全结果'}</small><b>${esc(risk.text)}</b><em>${riskScore}</em>
+            <small data-i18n="read.securityResult">${mailaiT('read.securityResult') || '安全结果'}</small><b>${esc(risk.text)}</b><em>${riskScore}</em>
           </button>
         </div>
         <div class="reading-meta">
           <div class="meta-avatar">${(e.from_name || e.from_addr || '?').charAt(0).toUpperCase()}</div>
           <div class="meta-fields">
-            <div class="meta-sender-row"><span class="meta-label">${mailaiT('read.from') || '发件人：'}</span>${renderSenderContact(e.from_name, e.from_addr)}</div>
+            <div class="meta-sender-row"><span class="meta-label" data-i18n="read.from">${mailaiT('read.from') || '发件人：'}</span>${renderSenderContact(e.from_name, e.from_addr)}</div>
             ${renderMessageRecipients(e)}
           </div>
           <div class="meta-badges">
-            <time class="reading-message-time" title="${esc(e.date || '')}"><span class="meta-label">${mailaiT('read.time') || '时间：'}</span>${fmtDate(e.date)}</time>
+            <time class="reading-message-time" title="${esc(e.date || '')}"><span class="meta-label" data-i18n="read.time">${mailaiT('read.time') || '时间：'}</span><span class="reading-date-text">${fmtDate(e.date)}</span></time>
             ${e.is_local_archive ? `<span class="tag" title="此邮件仅保存在本机" data-i18n-title="ui.7bfc5091b329"><span data-i18n="ui.d7e7b551d372">本地归档${e.folder?.startsWith('LOCAL_IMPORT/') ? ' · ' + esc(e.folder.slice('LOCAL_IMPORT/'.length)) : ''}</span></span>` : ''}
             ${e.category ? `<span class="tag mail-category">${esc(mailCategoryLabel(e.category))}</span>` : ''}
             ${e.priority ? `<span class="tag mail-priority tag-priority-${e.priority}">${esc(mailPriorityLabel(e.priority))}</span>` : ''}
@@ -6454,7 +6466,7 @@ function renderReadingPane(e) {
         ${mailSummaryDisclosure(e)}
 
         <div class="reading-section body-section">
-          <div class="section-title"><span>${mailaiT('read.body') || '邮件正文'}</span><div class="body-format-actions"><small>${e.has_rich_body ? (e.has_remote_images ? (mailaiT('read.fmtHtmlImages') || 'HTML 原始排版 · 外链图片已显示') : (mailaiT('read.fmtHtml') || 'HTML 原始排版')) : (mailaiT('read.fmtPlainOpt') || '纯文本邮件 · 优化排版')}</small></div></div>
+          <div class="section-title"><span data-i18n="read.body">${mailaiT('read.body') || '邮件正文'}</span><div class="body-format-actions"><small>${e.has_rich_body ? (e.has_remote_images ? (mailaiT('read.fmtHtmlImages') || 'HTML 原始排版 · 外链图片已显示') : (mailaiT('read.fmtHtml') || 'HTML 原始排版')) : (mailaiT('read.fmtPlainOpt') || '纯文本邮件 · 优化排版')}</small></div></div>
           ${e.has_rich_body ? `<div id="rich-email-body" class="email-body rich-email-body"><div class="reading-loading">${mailaiT('read.restoring') || '正在还原邮件排版…'}</div></div>` : `<div class="markdown-body email-body plain-email-body">${window.mailaiReadingText?.(e) || mdToHtml(e.body_text || '')}</div>`}
         </div>
 
@@ -6463,6 +6475,22 @@ function renderReadingPane(e) {
     </div>
   `;
   const readingContent = document.getElementById('reading-content');
+  for (const [selector, reader] of [
+    ['.security-result-trigger>b', () => getRiskLabel(e.score, e.verdict, e).text],
+    ['.reading-header .mail-category', () => mailCategoryLabel(e.category)],
+    ['.reading-header .mail-priority', () => mailPriorityLabel(e.priority)],
+    ['.reading-date-text', () => fmtDate(e.date)],
+    ['.body-section .body-format-actions>small', () => mailaiT(e.has_rich_body ? (e.has_remote_images ? 'read.fmtHtmlImages' : 'read.fmtHtml') : 'read.fmtPlainOpt') || (e.has_rich_body ? (e.has_remote_images ? 'HTML 原始排版 · 外链图片已显示' : 'HTML 原始排版') : '纯文本邮件 · 优化排版')],
+  ]) {
+    const node = readingContent.querySelector(selector);
+    if (node) mailaiBindUI(node, 'textContent', reader);
+  }
+  readingContent.querySelectorAll('.message-recipients .meta-recipient-row').forEach((row, index) => {
+    const label = row.querySelector('.meta-label'), count = row.querySelector('.recipient-count');
+    const total = recipientEmails(index ? e.cc_addr : e.to_addr).length;
+    if (label) mailaiBindUI(label, 'textContent', () => mailaiT(index ? 'read.cc' : 'read.to') || (index ? '抄送：' : '收件人：'));
+    if (count) mailaiBindUI(count, 'textContent', () => (mailaiT('read.peopleCount') || '共 {n} 人').replace('{n}', total));
+  });
   const securityBackdrop = readingContent.querySelector('.security-flyout-backdrop');
   const securityFlyout = readingContent.querySelector('.security-flyout');
   if (securityBackdrop && securityFlyout) document.body.append(securityBackdrop, securityFlyout);
@@ -7972,6 +8000,23 @@ document.getElementById('system-tabs').addEventListener('click', e => {
   const button = e.target.closest('[data-system-tab]');
   if (button) { selectSystemTab(button.dataset.systemTab); if (button.dataset.systemTab === 'maintenance') loadBackups(); }
 });
+// Arrow navigation works for both the sidebar and the narrow horizontal strip.
+document.getElementById('system-tabs').addEventListener('keydown', event => {
+  if (event.altKey || event.ctrlKey || event.metaKey) return;
+  const current = event.target.closest('[data-system-tab]');
+  if (!current) return;
+  const buttons = [...document.querySelectorAll('#system-tabs [data-system-tab]')];
+  const index = buttons.indexOf(current);
+  let next;
+  if (event.key === 'Home') next = 0;
+  else if (event.key === 'End') next = buttons.length - 1;
+  else if (['ArrowRight', 'ArrowDown'].includes(event.key)) next = (index + 1) % buttons.length;
+  else if (['ArrowLeft', 'ArrowUp'].includes(event.key)) next = (index - 1 + buttons.length) % buttons.length;
+  else return;
+  event.preventDefault();
+  buttons[next].click();
+  buttons[next].focus({preventScroll:true});
+});
 document.querySelectorAll('[data-about-target]').forEach(button => {
   button.addEventListener('click', () => {
     const target = button.dataset.aboutTarget;
@@ -8273,7 +8318,9 @@ document.getElementById('btn-import-portable').addEventListener('click', () => d
 
 // 语言切换：静态标记由 applyI18n 处理，这里重渲染 JS 动态区域
 document.addEventListener('mailai:language-changed', () => {
+  try { renderComposeAccountPicker(document.getElementById('compose-from').value); renderSignatureSelect(); } catch (_) {}
   try { applyFilters(); updateFacetScopeLabels(); } catch (_) {}
+  try { renderSidebarAccounts(); } catch (_) {}
   try { addReadingActions(true); } catch (_) {}
   try { if (_dashboardData) renderDashboard(_dashboardData); } catch (_) {}
   try { refreshRulesLanguage(); } catch (_) {}

@@ -7,6 +7,7 @@ const assert = require('node:assert/strict');
   const page = await browser.newPage({viewport:{width:1440,height:1000}});
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://127.0.0.1:18795');await page.locator('.email-item').first().waitFor();await page.locator('#app-preloader').waitFor({state:'hidden'});
+ await page.evaluate(()=>setI18nLanguage('zh-CN'));
   await page.evaluate(async()=>{const rows=await api('/api/todos?include_done=true');if(rows[0]?.status==='done')await api(`/api/todos/${rows[0].id}/reopen`,{method:'POST'})});
   await page.locator('#btn-todos').click();const title=page.locator('.todo-title-input').first();await title.waitFor();
   let fail=true, writes=[];

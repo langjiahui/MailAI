@@ -90,12 +90,13 @@ const {chromium} = require('playwright');
       commandColumns:getComputedStyle(document.querySelector('.remote-command-examples')).gridTemplateColumns.split(' ').length};
     });
     assert(layout.grid>layout.panel*.9,shell+' '+theme+' '+width+' should use panel width');
-    if(width>=1512) {
-     assert(Math.abs(layout.leftY-layout.rightY)<3,shell+' '+theme+' '+width+' two-column alignment');
-     assert(layout.left>500 && layout.right>600,shell+' '+theme+' '+width+' readable columns');
-    } else {
-     assert(layout.rightY>layout.leftY,shell+' '+theme+' '+width+' stacked columns');
-    }
+    const sideBySide=Math.abs(layout.leftY-layout.rightY)<3;
+    if(width>=1512) assert(sideBySide,shell+' '+theme+' '+width+' two-column alignment');
+    if(width<=900) assert(!sideBySide && layout.rightY>layout.leftY,shell+' '+theme+' '+width+' stacked columns');
+    // The settings sidebar and font scale determine the available form width.
+    // Intermediate windows may use either layout, provided both columns fit.
+    if(sideBySide) assert(layout.left>=360 && layout.right>=360,shell+' '+theme+' '+width+' readable columns');
+    else assert(layout.rightY>layout.leftY,shell+' '+theme+' '+width+' stacked columns');
     if(width===2048) assert.equal(layout.commandColumns,2,shell+' '+theme+' wide commands');
    }
    assert.deepEqual(errors,[]);
