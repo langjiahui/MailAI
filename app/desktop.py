@@ -70,21 +70,32 @@ def register_installed_application() -> bool:
         "LaunchServices.framework/Support/lsregister"
     )
     try:
-        if registrar.exists():
-            subprocess.run(
-                [str(registrar), "-f", "-trusted", str(app_path)],
-                check=False,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=8,
-            )
-        subprocess.run(
+        # Update the bundle timestamp before registration so icon services see
+        # the new content-addressed ICNS, not the previous installation state.
+        touched = subprocess.run(
             ["/usr/bin/touch", str(app_path)],
             check=False,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             timeout=4,
         )
+        if touched.returncode:
+            # A root-owned installed bundle may be read-only to this user.
+            # Installer already touches it; still register in this user's GUI.
+            log.debug("应用目录不可写，继续注册 MailAI 图标")
+        if registrar.exists():
+            registered = subprocess.run(
+                [str(registrar), "-f", "-trusted", str(app_path)],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=8,
+            )
+            if registered.returncode:
+                log.warning("注册 MailAI 应用图标失败")
+                return False
+        else:
+            return False
         return True
     except (OSError, subprocess.SubprocessError):
         log.exception("刷新 macOS 应用注册失败")

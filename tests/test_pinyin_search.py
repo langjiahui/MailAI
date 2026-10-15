@@ -61,7 +61,7 @@ def main():
                 pass
         db.init_db()
         with db.conn() as connection:
-            view = connection.execute("SELECT sql FROM sqlite_master WHERE name='email_search_content'").fetchone()
+            view = connection.execute("SELECT sql FROM sqlite_master WHERE name='email_search_source'").fetchone()
             assert view and 'mailai_body_pinyin' in view[0]
         assert db.search_emails(['zzs'])[0]['uid'] == 1
 

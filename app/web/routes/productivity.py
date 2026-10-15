@@ -19,20 +19,34 @@ def checked(action, *args, **kwargs):
         raise HTTPException(400, str(exc)) from exc
 
 
+@router.post('/api/productivity/search/interpret')
+def interpret_search(payload: dict):
+    from ...search_query import interpret_query
+    try:
+        return interpret_query(payload.get('query') or '')
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@router.get('/api/productivity/search/interpret')
+def interpret_search_text(q: str = ''):
+    return interpret_search({'query':q})
+
+
 @router.post("/api/productivity/search")
 def search(payload: dict):
     criteria = payload.get("criteria") or {}
-    if not isinstance(criteria, dict):
-        raise HTTPException(400, "搜索条件无效")
+    try:
+        criteria = productivity.normalize_search_criteria(criteria)
+        offset = max(0, int(payload.get('offset', 0)))
+        limit = max(1, min(int(payload.get('limit', 50)), 200))
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(400, str(exc)) from exc
     if payload.get("all_accounts"):
         import os
         from ... import system_settings
         from ...account_context import use
 
-        offset, limit = (
-            max(0, int(payload.get("offset", 0))),
-            max(1, min(int(payload.get("limit", 50)), 200)),
-        )
         if offset > 10000:
             raise HTTPException(400, "请缩小搜索范围")
         items, failed, more = [], [], False
@@ -84,12 +98,14 @@ def search(payload: dict):
             "has_more": len(items) > offset + limit or more,
             "failed_accounts": failed,
             "scope": "所有可见账号，仅已同步到本机的邮件",
+            "criteria": criteria,
         }
     return checked(
         productivity.search,
         criteria,
-        offset=payload.get("offset", 0),
-        limit=payload.get("limit", 50),
+        offset=offset,
+        limit=limit,
+        mailbox_rows=bool(payload.get('mailbox_rows')) and criteria.get('mailbox') in {'sent','drafts'},
     )
 
 

@@ -37,9 +37,13 @@ Object.assign(ctx, {
   loadData:async()=>{loadCount++;return true}, loadMailboxFolders:async()=>{folderLoadCount++;return true},
   api:async()=>{syncCount++}, updateActiveNav(){}, renderSidebarAccounts(){sidebarRenders++}, toast(){},
 });
+let canceledSearches=0;
+ctx.mailSearchController={abort(){canceledSearches++;}};
+vm.runInContext(src.slice(src.indexOf('function advanceMailSearchRevision('),src.indexOf('\nwindow.mailaiGetSearchInterpretation')),ctx);
 vm.runInContext(open,ctx);
 (async()=>{
  await ctx.openAccountMailbox('a','sent');
+ assert.equal(canceledSearches,1,'mailbox navigation must cancel an in-flight search');
  assert.equal(ctx.specialMailbox,'sent');
  assert.equal(ctx.currentFilter.status,'');
  assert.equal(loadCount,1,'sent navigation should load its list once');

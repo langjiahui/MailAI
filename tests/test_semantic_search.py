@@ -98,18 +98,16 @@ def main():
                     assert not c.execute("SELECT 1 FROM email_vectors WHERE email_id=?", (id_new,)).fetchone()
                 assert semantic.index_missing() == 1
 
-        # Top-level search keeps precise hits first and labels semantic additions.
+        # Fast search never invokes semantic inference; AI recall is opt-in.
         from app.web.routes.mail_read import api_search_emails
         with patch.object(semantic, "enabled", return_value=True), \
-                patch.object(semantic, "search", return_value=[id_trip]):
+                patch.object(semantic, "search", return_value=[id_trip]) as ai_search:
             results = api_search_emails("请帮我找合同交付相关邮件")
-            assert results and results[-1]["id"] == id_trip
-            assert results[-1]["search_match"]["field"] == "semantic"
+            assert results == []
             assert all("body_text" not in item for item in results)
             precise = api_search_emails("采购合同")
             assert precise[0]["id"] == id_contract
-            with patch.object(semantic, "search", side_effect=RuntimeError("model unavailable")):
-                assert api_search_emails("采购合同")[0]["id"] == id_contract
+            ai_search.assert_not_called()
 
         # 助手 _sources 合并语义命中（关键词检索找不到的也能进上下文）
         from app import mail_assistant

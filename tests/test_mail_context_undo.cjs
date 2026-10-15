@@ -166,7 +166,7 @@ function assistantCases() {
 
   const start = app.indexOf("  let mode = document.getElementById('assistant-scope').value;", app.indexOf('async function askAssistant('));
   const end = app.indexOf('  let inlineImageCount', start);
-  context.explicitIds = null; context.images = []; context.account = {id:'b'};
+  context.searchMode = false; context.explicitIds = null; context.images = []; context.account = {id:'b'};
   context.question = '截止日期是什么'; context.assistantQuestionReferencesOpenEmail = () => false;
   context.assistantQuestionRequestsDocumentReply = () => false;
   context.assistantPinnedScope = null; context.selectedEmailId = 22;

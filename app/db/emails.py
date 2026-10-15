@@ -208,24 +208,42 @@ def mailbox_revision() -> dict:
 
 
 def search_emails(terms: list[str], limit: int = 200, offset: int = 0,
-                  list_view: bool = False, folder: str = "") -> list[dict]:
+                  list_view: bool = False, folder: str = "", status: str = "", criteria=None) -> list[dict]:
     """在完整本地邮箱上执行参数化全文模糊检索，不受列表页 2000 封限制。"""
     cleaned = [str(term).strip().lower()[:80] for term in terms if str(term).strip()][:12]
-    if not cleaned:
+    if not cleaned and not criteria and not folder and not status:
         return list_emails(days=9999, limit=limit, offset=offset, list_view=list_view)
     columns = EMAIL_LIST_COLUMNS + ',body_text' if list_view else '*'
     with conn() as c:
         from ..mail_search import predicate
-        condition, args = predicate(c, cleaned)
+        if criteria:
+            from ..productivity import search_conditions
+            condition, args, _, _ = search_conditions(criteria)
+            mailbox = criteria.get('mailbox')
+            if mailbox and mailbox != 'all':
+                condition += ' AND status=?'
+                args.append('draft' if mailbox == 'drafts' else mailbox)
+        else:
+            condition, args = predicate(c, cleaned)
         if folder:
             condition += ' AND folder=?'
             args.append(folder)
-        sql = f"SELECT {columns} FROM emails WHERE remote_missing=0 AND {condition} ORDER BY date DESC,id DESC LIMIT ? OFFSET ?"
+        if status == 'favorites':
+            condition += ' AND is_favorite=1'
+        elif status and status != 'trash':
+            condition += ' AND status=?'
+            args.append(status)
+        visibility = "(pending_action IN ('trash','trash_copying','trash_copied','trash_locating','trash_local') OR (remote_missing=0 AND status='trash'))" if status == 'trash' else 'remote_missing=0'
+        sql = f"SELECT {columns} FROM emails WHERE {visibility} AND {condition} ORDER BY date DESC,id DESC LIMIT ? OFFSET ?"
         args.extend([max(1, min(limit, 1000)), max(0, offset)])
         rows = _decode_rows(c.execute(sql, args).fetchall())
         from ..mail_search import match_preview
         for row in rows:
-            row['search_match'] = match_preview(row, cleaned)
+            if status == 'trash':
+                row['status'] = 'trash'
+            row['search_match'] = match_preview(row, cleaned) or (
+                {'field':'from_name','text':row.get('from_name') or row.get('from_addr') or ''}
+                if criteria and criteria.get('sender') else None)
             if list_view:
                 row.pop('body_text', None)
         return rows

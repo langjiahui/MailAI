@@ -185,13 +185,37 @@ html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .
 html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .nav-system-cluster { display:flex!important; }
 html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .nav-security-menu { display:block!important; }
 html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .nav-action { display:inline-flex!important; }
+/* Search can give up spare width before familiar command labels disappear.
+   Container sizes already account for native controls and application zoom. */
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .nav-work-cluster .nav-action,
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar #btn-compose {
+ width:auto; min-width:32px; gap:7px;
+}
+html:is(.desktop-native-window,.integrated-workspace) .topbar #btn-compose>span,
+html:is(.desktop-native-window,.integrated-workspace) .topbar .nav-work-cluster .nav-action>span {
+ display:inline!important; position:static; width:auto; height:auto;
+ overflow:visible; clip-path:none; white-space:nowrap;
+}
 @container mac-header (max-width:1240px) {
  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .global-actions { gap:4px; }
+ html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .nav-work-cluster .nav-action { padding-inline:7px; }
+}
+@container mac-header (max-width:900px) {
+ html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .nav-work-cluster .nav-action {
+  width:32px; min-width:32px; padding:0!important; gap:0;
+ }
+ html:is(.desktop-native-window,.integrated-workspace) .topbar .nav-work-cluster .nav-action>span {
+  display:block!important; position:absolute; width:1px; height:1px;
+  overflow:hidden; clip-path:inset(50%); white-space:nowrap;
+ }
+ html:is(.desktop-native-window,.integrated-workspace) .topbar .nav-work-cluster .nav-action::after { display:none!important; }
+}
+@container mac-header (max-width:720px) {
  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .nav-action,
  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar #btn-compose {
   width:32px; min-width:32px; padding:0!important; gap:0;
  }
- html:is(.desktop-native-window,.integrated-workspace) .topbar .nav-action>span {
+ html:is(.desktop-native-window,.integrated-workspace) .topbar #btn-compose>span {
   display:block!important; position:absolute; width:1px; height:1px;
   overflow:hidden; clip-path:inset(50%); white-space:nowrap;
  }

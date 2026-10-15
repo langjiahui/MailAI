@@ -155,7 +155,10 @@ def api_mail_account_update(payload: MailAccountUpdateRequest):
 
 @router.get("/api/system/mail/unified-inbox")
 def api_unified_inbox(days: int = 9999, limit: int = 1000, offset: int = 0, q: str = ''):
-    emails = system_settings.list_unified_inbox(days=days, limit=limit, offset=offset, q=q)
+    try:
+        emails = system_settings.list_unified_inbox(days=days, limit=limit, offset=offset, q=q)
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(400, str(exc)) from exc
     for email in emails:
         annotate_list_identity(email, email.pop("_contact_names", {}))
         email.pop("body_text", None)

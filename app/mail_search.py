@@ -13,33 +13,40 @@ def register(connection):
         connection.create_function('mailai_body_pinyin', 1, body_aliases)
 
 
-def expression(prefix=''):
+def expression(prefix='', *, include_pinyin=True):
     original = "||' '||".join(f"coalesce({prefix}{field},'')" for field in FIELDS)
+    if not include_pinyin:
+        return f"lower({original})"
     names = "||' '||".join(f"coalesce({prefix}{field},'')" for field in PINYIN_FIELDS)
     return f"lower({original}||' '||mailai_pinyin({names})||' '||mailai_body_pinyin({prefix}body_text))"
 
 
 def initialize(connection):
     register(connection)
-    search = connection.execute("SELECT 1 FROM sqlite_master WHERE name='email_search'").fetchone()
-    view = connection.execute("SELECT sql FROM sqlite_master WHERE type='view' AND name='email_search_content'").fetchone()
-    if search and view and 'mailai_body_pinyin' in (view[0] or '') and 'attachments' in (view[0] or ''):
+    search = connection.execute("SELECT sql FROM sqlite_master WHERE name='email_search'").fetchone()
+    view = connection.execute("SELECT sql FROM sqlite_master WHERE type='view' AND name='email_search_source'").fetchone()
+    if (search and "content=" not in (search[0] or '').replace(' ', '').lower()
+            and view and 'mailai_body_pinyin' in (view[0] or '') and 'attachments' in (view[0] or '')):
         return
-    # Rebuild the derived index once when upgrading from the literal-only schema.
+    # Store searchable text, including pinyin, in FTS itself. An external-content
+    # view recomputed all body aliases whenever LIKE verified an index hit (and
+    # for every row for two-character Chinese terms).
+    # Keep the view only as the source of the one-time rebuild.
     connection.execute('DROP TRIGGER IF EXISTS email_search_insert')
     connection.execute('DROP TRIGGER IF EXISTS email_search_delete')
     connection.execute('DROP TRIGGER IF EXISTS email_search_update')
     connection.execute('DROP TABLE IF EXISTS email_search')
     connection.execute('DROP VIEW IF EXISTS email_search_content')
+    connection.execute('DROP VIEW IF EXISTS email_search_source')
     # Older system SQLite builds may lack FTS5 or the trigram tokenizer.
     connection.execute('SAVEPOINT search_setup')
     try:
-        connection.execute(f'CREATE VIEW email_search_content AS SELECT id,{expression()} AS text FROM emails')
-        connection.execute("CREATE VIRTUAL TABLE email_search USING fts5(text, content='email_search_content', content_rowid='id', tokenize='trigram')")
+        connection.execute(f'CREATE VIEW email_search_source AS SELECT id,{expression()} AS text FROM emails')
+        connection.execute("CREATE VIRTUAL TABLE email_search USING fts5(text, tokenize='trigram')")
         connection.execute(f"CREATE TRIGGER email_search_insert AFTER INSERT ON emails BEGIN INSERT INTO email_search(rowid,text) VALUES(new.id,{expression('new.')}); END")
-        connection.execute(f"CREATE TRIGGER email_search_delete AFTER DELETE ON emails BEGIN INSERT INTO email_search(email_search,rowid,text) VALUES('delete',old.id,{expression('old.')}); END")
-        connection.execute(f"CREATE TRIGGER email_search_update AFTER UPDATE OF {','.join(FIELDS)} ON emails BEGIN INSERT INTO email_search(email_search,rowid,text) VALUES('delete',old.id,{expression('old.')}); INSERT INTO email_search(rowid,text) VALUES(new.id,{expression('new.')}); END")
-        connection.execute("INSERT INTO email_search(email_search) VALUES('rebuild')")
+        connection.execute("CREATE TRIGGER email_search_delete AFTER DELETE ON emails BEGIN DELETE FROM email_search WHERE rowid=old.id; END")
+        connection.execute(f"CREATE TRIGGER email_search_update AFTER UPDATE OF {','.join(FIELDS)} ON emails BEGIN UPDATE email_search SET text={expression('new.')} WHERE rowid=new.id; END")
+        connection.execute("INSERT INTO email_search(rowid,text) SELECT id,text FROM email_search_source")
     except Exception as exc:
         connection.execute('ROLLBACK TO search_setup')
         if 'no such module' not in str(exc) and 'no such tokenizer' not in str(exc):
@@ -49,10 +56,13 @@ def initialize(connection):
 
 
 def indexed(connection, terms):
-    # A trigram requires three consecutive literal characters. For shorter
-    # Chinese words, wildcard patterns and mixed OR queries use the old path.
-    return all(len(term) >= 3 and '%' not in term and '_' not in term for term in terms) and bool(
-        connection.execute("SELECT 1 FROM sqlite_master WHERE name='email_search'").fetchone())
+    search = connection.execute("SELECT sql FROM sqlite_master WHERE name='email_search'").fetchone()
+    if not search:
+        return False
+    # Stored content also makes a scan for short terms and LIKE wildcards cheap.
+    # Unmigrated external indexes still require three literal characters.
+    return "content=" not in (search[0] or '').replace(' ', '').lower() or all(
+        len(term) >= 3 and '%' not in term and '_' not in term for term in terms)
 
 
 def predicate(connection, terms):
@@ -64,7 +74,14 @@ def predicate(connection, terms):
     if indexed(connection, cleaned):
         candidates = ' UNION '.join('SELECT rowid FROM email_search WHERE text LIKE ?' for _ in cleaned)
         return f'id IN ({candidates})', args
-    return '(' + ' OR '.join(expression() + ' LIKE ?' for _ in cleaned) + ')', args
+    # Unmigrated accounts and SQLite without trigram support retain a literal
+    # scan. A term containing Chinese cannot match ASCII-only pinyin aliases,
+    # so do not transliterate every body on this fallback path either.
+    import re
+    return '(' + ' OR '.join(
+        expression(include_pinyin=not re.search(r'[\u3400-\u9fff]', term)) + ' LIKE ?'
+        for term in cleaned
+    ) + ')', args
 
 
 def match_preview(message, terms):

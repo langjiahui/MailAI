@@ -55,10 +55,29 @@ def main():
             sent_id = db.create_sent_message(dict(from_addr=user, to_addr='customer@example.test',
                 subject='项目交付时间确认', body_html='<p>您好，项目交付时间已经确认，请查收。</p>', attachments=[]))
             db.finish_sent_message(sent_id, ok=True, sent_folder='Sent', message_id=f'fixture-{label}@example.test')
+            if os.environ.get('MAILAI_SEARCH_FIXTURE') == '1':
+                for n in range(40):
+                    db.upsert_email(dict(uid=100+n,from_addr='search@example.test',from_name='检索同事',to_addr=user,
+                        subject=f'搜索闭环合同 {n+1}',body_text='合同线索和交付安排。',status='inbox',
+                        date=(datetime.now()-timedelta(days=2 if n<25 else 45)).isoformat()))
     registry['last_account'] = next(iter(registry['accounts']))
     system_settings._save_registry(registry)
     config.DB_PATH = registry['accounts'][registry['last_account']]['db_path']
     config.RAW_DIR = registry['accounts'][registry['last_account']]['raw_dir']
+    if os.environ.get('MAILAI_SEARCH_FIXTURE') == '1':
+        from app import mail_assistant, productivity
+        import re,time
+        def search_plan(question,history=None):
+            return productivity.normalize_search_criteria({'sender':'检索同事','after':(datetime.now()-timedelta(days=6)).date().isoformat(),'before':datetime.now().date().isoformat(),'query':'闭环合同'})
+        def search_answer(messages,**kwargs):
+            match=re.search(r'\[email_id:(\d+)\]',messages[-1]['content'])
+            yield '我找到了这批候选邮件，可以先打开原邮件核对。'
+            time.sleep(.12)
+            if match: yield f"[email_id:{match[1]}]"
+        mail_assistant._ai_search_plan=search_plan
+        mail_assistant.client.available=lambda:True
+        mail_assistant.client.chat_completion_stream=search_answer
+        mail_assistant.client.chat_completion=lambda messages,**kwargs:{'choices':[{'message':{'content':''.join(search_answer(messages))}}]}
     if os.environ.get('MAILAI_DIGEST_FIXTURE') == '1':
         import time
         def digest_stream():

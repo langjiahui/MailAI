@@ -1,6 +1,7 @@
 """Offline update contract: device matching, version gating and checksum enforcement."""
 import hashlib
 import io
+import json
 import os
 import ssl
 import subprocess
@@ -42,6 +43,73 @@ def manifest(version="1.1.0", digest="a" * 64):
     }
 
 
+
+def verify_gui_icon_registration(postinstall_text):
+    """Run the real installer flow with isolated stand-ins for OS commands."""
+    with tempfile.TemporaryDirectory(prefix='mailai-icon-install-') as folder:
+        root = Path(folder)
+        applications = root / 'Applications'
+        app = applications / 'MailAI.app'
+        (app / 'Contents').mkdir(parents=True)
+        (app / 'Contents/Info.plist').write_bytes(plistlib.dumps({
+            'CFBundleIdentifier': 'com.langjiahui.mailai'}))
+        tools = root / 'tools'
+        tools.mkdir()
+        driver = tools / 'driver'
+        driver.write_text('#!' + sys.executable + '\n' + """
+import json,os,sys
+from pathlib import Path
+name=Path(sys.argv[0]).name
+with open(os.environ['ICON_AUDIT_LOG'],'a') as output:
+ output.write(json.dumps([name,os.getenv('ICON_GUI_UID'),sys.argv[1:]])+'\\n')
+if name=='stat':print('icon-user')
+elif name=='id':print('501')
+elif name=='launchctl':
+ os.environ['ICON_GUI_UID']=sys.argv[2];os.execv(sys.argv[3],sys.argv[3:])
+elif name=='sudo':os.execv(sys.argv[3],sys.argv[3:])
+elif name=='lsregister' and os.getenv('ICON_GUI_UID') and os.getenv('ICON_REG_FAIL')=='1':sys.exit(1)
+""")
+        driver.chmod(0o755)
+        script = postinstall_text.replace('/Applications', str(applications))
+        staging_script = postinstall_text
+        for name, absolute in [('lsregister', '/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister'),
+                               ('stat', '/usr/bin/stat'), ('id', '/usr/bin/id'),
+                               ('launchctl', '/bin/launchctl'), ('sudo', '/usr/bin/sudo'),
+                               ('open', '/usr/bin/open'), ('mdimport', '/usr/bin/mdimport')]:
+            (tools/name).symlink_to(driver)
+            script = script.replace(absolute, str(tools/name))
+            staging_script = staging_script.replace(absolute, str(tools/name))
+        installer = root/'postinstall'
+        installer.write_text(script)
+        audit = root/'commands.jsonl'
+        for fail in ('0', '1'):
+            audit.write_text('')
+            subprocess.run(['zsh', str(installer)], check=True,
+                env={**os.environ, 'MAILAI_APPLICATIONS_DIR': str(applications),
+                     'ICON_AUDIT_LOG': str(audit), 'ICON_REG_FAIL': fail})
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                calls = [json.loads(line) for line in audit.read_text().splitlines()]
+                if any(call[0]=='open' for call in calls):break
+                time.sleep(.05)
+            else:raise AssertionError('Installer did not relaunch after GUI registration')
+            gui = [call for call in calls if call[1]=='501']
+            registered = next(i for i,call in enumerate(gui) if call[0]=='lsregister')
+            opened = next(i for i,call in enumerate(gui) if call[0]=='open')
+            assert registered < opened
+            assert gui[registered][2] == ['-f','-trusted',str(app)]
+            assert gui[opened][2] == ['-a',str(app)]
+            assert plistlib.loads((app/'Contents/Info.plist').read_bytes())['CFBundleIdentifier']=='com.langjiahui.mailai'
+        # A staged package must never register the production bundle ID with OS
+        # services or relaunch a second app copy under the user's identity.
+        installer.write_text(staging_script)
+        audit.write_text('')
+        subprocess.run(['zsh', str(installer)], check=True,
+            env={**os.environ, 'MAILAI_APPLICATIONS_DIR': str(applications),
+                 'ICON_AUDIT_LOG': str(audit)})
+        assert audit.read_text() == ''
+
+
 def main():
     static_dir = Path(__file__).resolve().parents[1] / "app" / "web" / "static"
     update_ui = (static_dir / "index.html").read_text(encoding="utf-8")
@@ -80,6 +148,7 @@ def main():
     assert notes and notes != "请查看本版本发布说明。"
     assert notes in release_body(release_update.current_version(), notes)
     if sys.platform == "darwin":
+        verify_gui_icon_registration(postinstall_text)
         with tempfile.TemporaryDirectory() as folder:
             applications = Path(folder)
             old_app = applications / "MailAI.app"

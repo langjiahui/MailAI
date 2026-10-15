@@ -213,6 +213,10 @@ class AssistantRequest(BaseModel):
     email_ids: list[int] | None = None
     scope_label: str = ''
     alert_context: bool = False
+    search_mode: bool = False
+    search_run_id: str = Field(default='',max_length=64)
+    search_action: str = Field(default='',max_length=32)
+    search_value: str = Field(default='',max_length=250)
     images: list[AssistantImage] = Field(default_factory=list, max_length=3)
     attachments: list[AssistantAttachmentRef] = Field(default_factory=list, max_length=3)
 

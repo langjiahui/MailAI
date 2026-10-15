@@ -34,6 +34,27 @@ def main():
     assert 'button.setTitle_("✉︎")' not in desktop_source
     assert "window.mailaiOpenMailto?." in desktop_source
     assert register_installed_application() is False
+    # Touch before registering, in the application user's own process. Refuse
+    # preview bundles and report failed commands instead of claiming a refresh.
+    with patch('app.desktop.sys.platform', 'darwin'), \
+            patch('app.desktop.sys.frozen', True, create=True), \
+            patch('app.desktop.sys.executable', '/Applications/MailAI.app/Contents/MacOS/MailAI'), \
+            patch('app.desktop.Path.exists', return_value=True), \
+            patch('app.desktop.subprocess.run', return_value=types.SimpleNamespace(returncode=0)) as run:
+        assert register_installed_application() is True
+        assert run.call_args_list[0].args[0] == ['/usr/bin/touch', '/Applications/MailAI.app']
+        assert run.call_args_list[1].args[0][1:] == ['-f', '-trusted', '/Applications/MailAI.app']
+        run.reset_mock()
+        run.side_effect = [types.SimpleNamespace(returncode=0), types.SimpleNamespace(returncode=1)]
+        assert register_installed_application() is False
+        run.reset_mock()
+        run.side_effect = [types.SimpleNamespace(returncode=1), types.SimpleNamespace(returncode=0)]
+        assert register_installed_application() is True, 'Root-owned bundles still register for the GUI user'
+        assert len(run.call_args_list) == 2
+        run.reset_mock()
+        with patch('app.desktop.sys.executable', '/tmp/MailAI.app/Contents/MacOS/MailAI'):
+            assert register_installed_application() is False
+            run.assert_not_called()
     # Always read the installed file rather than Cocoa's named-image cache.
     # Failed/missing images must leave the existing icon and startup intact.
     image = Mock()

@@ -124,8 +124,12 @@ def refresh_workflow():
 
 def criteria_from_query(query, criteria=None):
     result = dict(criteria or {})
+    for key, value in list(result.items()):
+        if isinstance(value, str):
+            result[key] = value.strip()
     try:
-        words = shlex.split(query)
+        from .search_query import expand_natural_query
+        words = shlex.split(expand_natural_query(query.strip() or str(result.get('query') or result.get('text') or '')))
     except ValueError:
         raise ValueError("搜索引号未闭合")
     plain = []
@@ -142,21 +146,31 @@ def criteria_from_query(query, criteria=None):
     }
     for word in words:
         key, sep, value = word.partition(":")
+        key = key.lower()
         if sep and key in names:
-            result[names[key]] = value
+            field = names[key]
+            value = value.strip()
+            if not value:
+                raise ValueError("搜索条件不能为空")
+            existing = result.get(field)
+            if existing and not (field == 'mailbox' and existing == 'all') and str(existing).casefold() != value.casefold():
+                raise ValueError("搜索语法与表单条件冲突，请清空重复条件后重试")
+            result[field] = value
         elif word == "has:attachment":
             result["has_attachment"] = True
         elif word == "is:unread":
             result["unread"] = True
         else:
             plain.append(word)
-    result["text"] = " ".join(plain) or str(result.get("text") or "")
+    result["text"] = " ".join(plain)
+    result["terms"] = plain[:12]
     return result
 
 
-def search(criteria, *, offset=0, limit=50):
+def normalize_search_criteria(criteria):
+    if not isinstance(criteria, dict):
+        raise ValueError('搜索条件无效')
     criteria = criteria_from_query(str(criteria.get("query") or "")[:1000], criteria)
-    limit, offset = max(1, min(int(limit), 200)), max(0, int(offset))
     mailbox = criteria.get("mailbox") or "all"
     if mailbox not in {"all", "inbox", "sent", "drafts", "trash", "quarantine", "spam"}:
         raise ValueError("请选择有效的邮件范围")
@@ -172,9 +186,102 @@ def search(criteria, *, offset=0, limit=50):
     state = criteria.get("state") or ""
     if state and state not in STATES | {"due", "focus"}:
         raise ValueError("处理状态无效")
+    return criteria
+
+
+def _search_excerpt(value, terms):
+    text = re.sub(r'\s+', ' ', str(value or '')).strip()
+    lower = text.lower()
+    positions = [lower.find(term.lower()) for term in terms if term.lower() in lower]
+    start = max(0, min(positions) - 40) if positions else 0
+    end = min(len(text), start + 200)
+    return ('…' if start else '') + text[start:end] + ('…' if end < len(text) else '')
+
+
+def search_conditions(criteria, *, kind='email', date_expr="COALESCE(NULLIF(date,''),created_at)", body_col='body_text', att_col='attachments'):
+    """Shared SQL conditions for form search and interpreted mailbox search."""
+    condition, args = '1=1', []
+    after, before = criteria.get('after') or '', criteria.get('before') or ''
+    state = criteria.get('state') or ''
+    if kind == "email" and criteria.get("category"):
+        condition += " AND category=?"
+        args.append(str(criteria["category"])[:100])
+    sender = "coalesce(from_addr,'')" if kind != 'draft' else '?'
+    sender_args = [config.IMAP_USER] if kind == 'draft' else []
+    sender_name = "coalesce(from_name,'')" if kind == 'email' else "''"
+    recipient_names = 'recipient_names'
+    if kind == 'sent':
+        copy = "SELECT {field} FROM emails e WHERE e.remote_missing=0 AND e.status='sent' AND e.message_id<>'' AND lower(trim(e.message_id))=lower(trim(sent_messages.message_id)) LIMIT 1"
+        sender_name = "coalesce((" + copy.format(field='from_name') + "),'')"
+        recipient_names = "coalesce((" + copy.format(field='recipient_names') + "),'{}')"
+    if kind == 'email':
+        sender += "||' '||coalesce(from_name,'')||' '||coalesce((SELECT group_concat(name,' ') FROM contacts WHERE lower(email)=lower(emails.from_addr) AND hidden=0),'')"
+    elif kind == 'sent':
+        sender += "||' '||" + sender_name
+    recipient = "coalesce(to_addr,'')||' '||coalesce(cc_addr,'')"
+    if kind in {'email', 'sent'}:
+        recipient += f"||' '||coalesce((SELECT group_concat(value,' ') FROM json_each(CASE WHEN json_valid({recipient_names}) THEN {recipient_names} ELSE '{{}}' END)),'')"
+    expressions = {
+        "sender": sender,
+        "recipient": recipient,
+        "subject": "subject",
+        "filename": att_col,
+    }
+    for key, expression in expressions.items():
+        if key == "filename":
+            if criteria.get(key):
+                condition += f" AND EXISTS(SELECT 1 FROM json_each(CASE WHEN json_valid({att_col}) THEN {att_col} ELSE '[]' END) a WHERE lower(coalesce(json_extract(CASE WHEN json_valid(a.value) THEN a.value ELSE '{{}}' END,'$.name'),json_extract(CASE WHEN json_valid(a.value) THEN a.value ELSE '{{}}' END,'$.filename'),'')) LIKE ? ESCAPE '\\')"
+                args.append("%" + _like(str(criteria[key])[:250].lower()) + "%")
+            continue
+        if criteria.get(key):
+            if key == 'sender':
+                args.extend(sender_args)
+                if kind in {'email', 'sent'} and str(criteria[key]).isascii():
+                    expression += f"||' '||mailai_pinyin({sender_name})"
+            condition += (
+                f" AND lower(coalesce({expression},'')) LIKE ? ESCAPE '\\'"
+            )
+            args.append("%" + _like(str(criteria[key])[:250].lower()) + "%")
+    visible_body = body_col if kind == 'email' else f'mailai_visible_text({body_col})'
+    for token in criteria.get('terms', []):
+        expression = f"coalesce(subject,'')||' '||{recipient}||' '||coalesce({visible_body},'')||' '||{sender}"
+        args.extend(sender_args)
+        if kind == 'email':
+            expression += "||' '||coalesce(summary,'')||' '||coalesce(snippet,'')"
+        condition += f" AND lower({expression}) LIKE ? ESCAPE '\\'"
+        args.append("%" + _like(token.lower()) + "%")
+    if criteria.get("has_attachment"):
+        condition += f" AND json_array_length(CASE WHEN json_valid({att_col}) THEN {att_col} ELSE '[]' END)>0"
+    for date, op in ((after, ">="), (before, "<=")):
+        if date:
+            condition += f" AND date({date_expr}) {op} date(?)"
+            args.append(date)
+    if kind == "email":
+        if criteria.get("unread"):
+            condition += " AND is_read=0"
+        if state == "due":
+            condition += " AND handle_state='waiting' AND followup_at<>'' AND followup_at<=?"
+            args.append(datetime.now().isoformat(timespec="seconds"))
+        elif state == "focus":
+            condition += " AND focus_override<>'other' AND (focus_override='focus' OR (focus_override='' AND (priority='高' OR EXISTS(SELECT 1 FROM focus_senders f WHERE lower(from_addr)=f.address AND f.choice='focus') OR EXISTS(SELECT 1 FROM contacts c WHERE lower(from_addr)=lower(c.email) AND c.favorite=1 AND c.hidden=0)))) AND NOT EXISTS(SELECT 1 FROM focus_senders f WHERE lower(from_addr)=f.address AND f.choice='other' AND focus_override='')"
+        elif state:
+            condition += " AND handle_state=?"
+            args.append(state)
+    return condition, args, sender_name, visible_body
+
+
+def search(criteria, *, offset=0, limit=50, mailbox_rows=False):
+    criteria = normalize_search_criteria(criteria)
+    limit, offset = max(1, min(int(limit), 200)), max(0, int(offset))
+    mailbox = criteria.get('mailbox') or 'all'
+    after, before = criteria.get('after') or '', criteria.get('before') or ''
+    state = criteria.get('state') or ''
     refresh_workflow()
     result = []
     with db.conn() as c:
+        from .parser import strip_html
+        c.create_function('mailai_visible_text', 1, lambda value: strip_html(value or ''))
+        c.create_function('mailai_search_excerpt', 1, lambda value: _search_excerpt(value, criteria['terms']))
         # SQL only uses these fixed expressions; user values are always parameters.
         specs = [
             (
@@ -188,7 +295,7 @@ def search(criteria, *, offset=0, limit=50):
             (
                 "sent_messages",
                 "sent",
-                "COALESCE(sent_at,created_at)",
+                "COALESCE(NULLIF(sent_at,''),created_at)",
                 "body_html",
                 "attachments_json",
                 "status='sent'",
@@ -199,14 +306,7 @@ def search(criteria, *, offset=0, limit=50):
             specs = [
                 spec
                 for spec in specs
-                if spec[1]
-                == (
-                    "draft"
-                    if mailbox == "drafts"
-                    else "sent"
-                    if mailbox == "sent"
-                    else "email"
-                )
+                if spec[1] == 'email' or spec[1] == ('draft' if mailbox == 'drafts' else 'sent' if mailbox == 'sent' else '')
             ]
         for table, kind, date_expr, body_col, att_col, condition in specs:
             args = []
@@ -214,65 +314,30 @@ def search(criteria, *, offset=0, limit=50):
                 condition += " AND NOT (status='sent' AND message_id<>'' AND EXISTS(SELECT 1 FROM sent_messages s WHERE s.status='sent' AND lower(trim(s.message_id))=lower(trim(emails.message_id))))"
                 if mailbox == "all":
                     condition += " AND status NOT IN ('trash','spam','quarantine')"
-                elif mailbox not in ("sent", "drafts"):
+                else:
                     condition += " AND status=?"
-                    args.append(mailbox)
+                    args.append('draft' if mailbox == 'drafts' else mailbox)
+            if kind == 'sent':
+                condition += " AND NOT EXISTS(SELECT 1 FROM emails e WHERE e.message_id<>'' AND lower(trim(e.message_id))=lower(trim(sent_messages.message_id)) AND (e.status='trash' OR e.pending_action='trash'))"
             if kind != "email" and (
                 criteria.get("unread") or state or criteria.get("category")
             ):
                 continue
-            if kind == "email" and criteria.get("category"):
-                condition += " AND category=?"
-                args.append(str(criteria["category"])[:100])
-            expressions = {
-                "sender": "from_addr" if kind != "draft" else "''",
-                "recipient": "coalesce(to_addr,'')||' '||coalesce(cc_addr,'')",
-                "subject": "subject",
-                "filename": att_col,
-            }
-            for key, expression in expressions.items():
-                if key == "filename":
-                    if criteria.get(key):
-                        condition += f" AND EXISTS(SELECT 1 FROM json_each(CASE WHEN json_valid({att_col}) THEN {att_col} ELSE '[]' END) a WHERE lower(coalesce(json_extract(CASE WHEN json_valid(a.value) THEN a.value ELSE '{{}}' END,'$.name'),json_extract(CASE WHEN json_valid(a.value) THEN a.value ELSE '{{}}' END,'$.filename'),'')) LIKE ? ESCAPE '\\')"
-                        args.append("%" + _like(str(criteria[key])[:250].lower()) + "%")
-                    continue
-                if criteria.get(key):
-                    condition += (
-                        f" AND lower(coalesce({expression},'')) LIKE ? ESCAPE '\\'"
-                    )
-                    args.append("%" + _like(str(criteria[key])[:250].lower()) + "%")
-            for token in str(criteria.get("text") or "")[:1000].split()[:12]:
-                expression = f"coalesce(subject,'')||' '||coalesce(to_addr,'')||' '||coalesce({body_col},'')"
-                if kind != "draft":
-                    expression += "||' '||coalesce(from_addr,'')"
-                condition += f" AND lower({expression}) LIKE ? ESCAPE '\\'"
-                args.append("%" + _like(token.lower()) + "%")
-            if criteria.get("has_attachment"):
-                condition += (
-                    f" AND {att_col} NOT IN ('[]','', 'null') AND {att_col} IS NOT NULL"
-                )
-            for date, op in ((after, ">="), (before, "<=")):
-                if date:
-                    condition += f" AND date({date_expr}) {op} date(?)"
-                    args.append(date)
-            if kind == "email":
-                if criteria.get("unread"):
-                    condition += " AND is_read=0"
-                if state == "due":
-                    condition += " AND handle_state='waiting' AND followup_at<>'' AND followup_at<=?"
-                    args.append(datetime.now().isoformat(timespec="seconds"))
-                elif state == "focus":
-                    condition += " AND focus_override<>'other' AND (focus_override='focus' OR (focus_override='' AND (priority='高' OR EXISTS(SELECT 1 FROM focus_senders f WHERE lower(from_addr)=f.address AND f.choice='focus') OR EXISTS(SELECT 1 FROM contacts c WHERE lower(from_addr)=lower(c.email) AND c.favorite=1 AND c.hidden=0)))) AND NOT EXISTS(SELECT 1 FROM focus_senders f WHERE lower(from_addr)=f.address AND f.choice='other' AND focus_override='')"
-                elif state:
-                    condition += " AND handle_state=?"
-                    args.append(state)
+            extra, values, sender_name, visible_body = search_conditions(criteria, kind=kind, date_expr=date_expr, body_col=body_col, att_col=att_col)
+            condition += ' AND ' + extra
+            args.extend(values)
             fields = (
                 "id,subject,to_addr,"
                 + ("from_addr," if kind != "draft" else "'' AS from_addr,")
-                + f"{date_expr} AS date,substr({body_col},1,300) AS preview"
+                + f"{sender_name} AS from_name,"
+                + f"{date_expr} AS date,"
+                + (f"mailai_search_excerpt({visible_body})" if criteria['terms'] else f"substr({visible_body},1,200)") + " AS preview"
             )
             if kind == "email":
                 fields += ",status,handle_state,snoozed_until,followup_at,thread_id,message_id,priority"
+            if mailbox_rows:
+                fields += f",cc_addr,{att_col} AS search_attachments"
+                fields += ',recipient_names' if kind == 'email' else ',bcc_addr'
             rows = c.execute(
                 f"SELECT {fields} FROM {table} WHERE {condition} ORDER BY {date_expr} DESC,id DESC LIMIT ?",
                 (*args, offset + limit + 1),
@@ -280,9 +345,25 @@ def search(criteria, *, offset=0, limit=50):
             for row in rows:
                 item = dict(row)
                 item["kind"] = kind
-                item["preview"] = re.sub("<[^>]*>", " ", item.get("preview") or "")[
-                    :200
-                ]
+                if kind == 'draft':
+                    item['from_addr'] = config.IMAP_USER
+                item["preview"] = (item.get("preview") or "")[:200]
+                if mailbox_rows:
+                    try:
+                        attachments = json.loads(item.pop('search_attachments') or '[]')
+                    except (ValueError, TypeError):
+                        attachments = []
+                    item['attachments'] = [{k:v for k,v in entry.items() if k != 'data_base64'} for entry in attachments if isinstance(entry,dict)] if isinstance(attachments,list) else []
+                    if kind == 'email':
+                        item.update(id=-item['id'], remote_email_id=item['id'], _remote=True)
+                        try:
+                            item['recipient_names'] = json.loads(item['recipient_names'] or '{}')
+                        except (ValueError, TypeError):
+                            item['recipient_names'] = {}
+                    item.update(_search_summary=True, summary=item['preview'],
+                                updated_at=item['date'],sent_at=item['date'],created_at=item['date'])
+                    if kind != 'email':
+                        item['status'] = 'draft' if kind == 'draft' else 'sent'
                 result.append(item)
     result.sort(key=lambda r: (r["date"] or "", r["id"], r["kind"]), reverse=True)
     return {
@@ -329,7 +410,7 @@ def save_named(kind, payload):
         else (
             name,
             json.dumps(
-                criteria_from_query("", payload.get("criteria") or {}),
+                normalize_search_criteria(payload.get("criteria") or {}),
                 ensure_ascii=False,
             ),
         )

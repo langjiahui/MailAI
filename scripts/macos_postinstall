@@ -47,17 +47,26 @@ fi
 
 /bin/rmdir "$APPLICATIONS_DIR/MailAI.localized" 2>/dev/null || true
 /usr/bin/touch "$APP"
-[[ -x "$REGISTER" ]] && "$REGISTER" -f -trusted "$APP" >/dev/null 2>&1 || true
-/usr/bin/mdimport "$APP" >/dev/null 2>&1 || true
 
 # A package update closes the running app before replacing it. Best-effort
 # relaunch for the interactive console user; failure must never fail install.
 if [[ "$APPLICATIONS_DIR" == "/Applications" ]]; then
+  # Staging/verification copies must not compete with the installed application
+  # for the same Launch Services and notification identity.
+  [[ -x "$REGISTER" ]] && "$REGISTER" -f -trusted "$APP" >/dev/null 2>&1 || true
+  /usr/bin/mdimport "$APP" >/dev/null 2>&1 || true
   CONSOLE_USER="$(/usr/bin/stat -f '%Su' /dev/console 2>/dev/null || true)"
   if [[ -n "$CONSOLE_USER" && "$CONSOLE_USER" != "root" && "$CONSOLE_USER" != "loginwindow" ]]; then
     CONSOLE_UID="$(/usr/bin/id -u "$CONSOLE_USER" 2>/dev/null || true)"
     if [[ -n "$CONSOLE_UID" ]]; then
       (
+        # Installer runs as root. Refresh the GUI user's app association too;
+        # root's Launch Services registration alone cannot refresh their icon.
+        # Keep the stable bundle ID so existing notification permission remains.
+        if [[ -x "$REGISTER" ]]; then
+          /bin/launchctl asuser "$CONSOLE_UID" /usr/bin/sudo -u "$CONSOLE_USER" \
+            "$REGISTER" -f -trusted "$APP" >/dev/null 2>&1 || true
+        fi
         /bin/sleep 1
         /bin/launchctl asuser "$CONSOLE_UID" /usr/bin/sudo -u "$CONSOLE_USER" \
           /usr/bin/open -a "$APP" >/dev/null 2>&1 || true

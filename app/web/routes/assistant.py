@@ -13,6 +13,18 @@ log = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _search_context(payload):
+    if not (payload.search_run_id or payload.search_action):
+        return None
+    if not payload.search_mode or not payload.search_run_id or not payload.conversation_id:
+        raise HTTPException(400,'这次检索已不可用，请重新检索')
+    from ... import assistant_search
+    try:
+        return assistant_search.prepare(payload.search_run_id,payload.conversation_id,payload.search_action,payload.search_value)
+    except ValueError as exc:
+        raise HTTPException(400,str(exc)) from exc
+
+
 @router.post('/api/assistant/document-reply/plan')
 def api_document_reply_plan(payload: DocumentReplyPlanRequest):
     from ... import assistant_document_reply
@@ -91,14 +103,20 @@ def api_assistant_ask(payload: AssistantRequest):
     from ... import assistant_vision, assistant_attachments
     images = prepare_assistant_images(payload)
     materials = prepare_assistant_materials(payload, images)
+    search_context = _search_context(payload)
     try:
         conversation_id = payload.conversation_id
         if not conversation_id or not db.assistant_conversation_exists(conversation_id):
             conversation_id = db.create_assistant_conversation(payload.question.strip()[:36] or "新对话")
         db.add_assistant_message(conversation_id, "user", assistant_attachments.history_text(assistant_vision.history_text(payload.question, images),materials), images=images)
         db.set_assistant_alert_context(conversation_id, payload.email_ids if payload.alert_context else [])
-        result = mail_assistant.ask(payload.question, payload.history, payload.email_ids, **({'images': images} if images else {}), **({'materials':materials} if materials else {}))
+        result = mail_assistant.ask(payload.question, payload.history, payload.email_ids, **({'images': images} if images else {}), **({'materials':materials} if materials else {}), **({'search_mode':True} if payload.search_mode else {}), **({'search_context':search_context} if search_context else {}))
+        snapshot = result.pop('search',None)
         message_id = db.add_assistant_message(conversation_id, "assistant", result["answer"], result.get("sources") or [])
+        if snapshot:
+            from ... import assistant_search
+            run = assistant_search.create(conversation_id,snapshot)
+            result['search'] = assistant_search.public(assistant_search.finish(run['id'],message_id))
         from ...companion_growth import safe_record
         safe_record('tool', key=f'assistant:{message_id}')
         return {**result, "conversation_id": conversation_id}
@@ -114,6 +132,7 @@ def api_assistant_ask_stream(payload: AssistantRequest):
     from ... import assistant_vision, assistant_attachments
     images = prepare_assistant_images(payload)
     materials = prepare_assistant_materials(payload, images)
+    search_context = _search_context(payload)
     conversation_id = payload.conversation_id
     if not conversation_id or not db.assistant_conversation_exists(conversation_id):
         conversation_id = db.create_assistant_conversation(payload.question.strip()[:36] or "新对话")
@@ -122,11 +141,16 @@ def api_assistant_ask_stream(payload: AssistantRequest):
 
     def generate():
         answer_parts, sources = [], []
+        search_run = None
         try:
             yield json.dumps({"type": "meta", "conversation_id": conversation_id}, ensure_ascii=False) + "\n"
             yield json.dumps({'type': 'scope', 'label': payload.scope_label or config.IMAP_USER}, ensure_ascii=False) + '\n'
-            for event, value in mail_assistant.ask_stream(payload.question, payload.history, payload.email_ids, **({'images': images} if images else {}), **({'materials':materials} if materials else {})):
-                if event == "sources":
+            for event, value in mail_assistant.ask_stream(payload.question, payload.history, payload.email_ids, **({'images': images} if images else {}), **({'materials':materials} if materials else {}), **({'search_mode':True} if payload.search_mode else {}), **({'search_context':search_context} if search_context else {})):
+                if event == 'search':
+                    from ... import assistant_search
+                    search_run = assistant_search.create(conversation_id,value)
+                    yield json.dumps({'type':'search','search':assistant_search.public(search_run)},ensure_ascii=False)+'\n'
+                elif event == "sources":
                     sources = value
                     yield json.dumps({"type": "sources", "sources": value}, ensure_ascii=False) + "\n"
                 elif event == "action":
@@ -142,6 +166,8 @@ def api_assistant_ask_stream(payload: AssistantRequest):
                 answer = mail_assistant._empty_answer(payload.question)
                 yield json.dumps({"type": "delta", "content": answer}, ensure_ascii=False) + "\n"
             message_id = db.add_assistant_message(conversation_id, "assistant", answer, sources)
+            if search_run:
+                yield json.dumps({'type':'search','search':assistant_search.public(assistant_search.finish(search_run['id'],message_id))},ensure_ascii=False)+'\n'
             from ...companion_growth import safe_record
             safe_record('tool', key=f'assistant:{message_id}')
             yield json.dumps({"type": "done"}, ensure_ascii=False) + "\n"
@@ -149,7 +175,9 @@ def api_assistant_ask_stream(payload: AssistantRequest):
             log.exception("助手流式回答失败")
             message = str(exc) if isinstance(exc, assistant_vision.ImageAnalysisError) else '分析中断，已生成的内容保留，可重试。'
             answer = mail_assistant.validated_citations(''.join(answer_parts), sources) + '\n\n' + message
-            db.add_assistant_message(conversation_id, "assistant", answer, sources)
+            message_id = db.add_assistant_message(conversation_id, "assistant", answer, sources)
+            if search_run:
+                assistant_search.finish(search_run['id'],message_id,'error')
             yield json.dumps({"type": "error", "message": message}, ensure_ascii=False) + "\n"
     return StreamingResponse(generate(), media_type="application/x-ndjson")
 
@@ -213,7 +241,21 @@ def api_assistant_conversation(conversation_id: int):
     if not db.assistant_conversation_exists(conversation_id):
         raise HTTPException(404, "会话不存在")
     messages = db.get_assistant_messages(conversation_id)
+    from ... import assistant_search
+    assistant_search.restore(messages,conversation_id)
     return {"id": conversation_id, "messages": messages, **db.assistant_alert_context(conversation_id, messages)}
+
+
+@router.post('/api/assistant/search-runs/{run_id}/found')
+def api_search_found(run_id: str,payload: dict):
+    from ... import assistant_search
+    try:
+        value = payload.get('email_id')
+        if value is not None and (not isinstance(value,int) or isinstance(value,bool)):
+            raise ValueError('请从这次检索结果中选择邮件')
+        return assistant_search.confirm(run_id,value)
+    except ValueError as exc:
+        raise HTTPException(400,str(exc)) from exc
 
 
 @router.get('/api/emails/{email_id}/assistant-attachments')

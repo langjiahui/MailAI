@@ -1,0 +1,37 @@
+.assistant-search-result { margin-top:16px;padding:14px;border:1px solid var(--desk-line);border-radius:12px;background:var(--desk-muted-surface);min-width:0; }
+.assistant-message[data-search-pending] button[data-email-id] { pointer-events:none;opacity:.5; }
+.assistant-search-result>header { display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:13px; }
+.assistant-search-result>header>small { color:var(--desk-muted); }
+.assistant-search-conditions { display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px; }
+.assistant-search-conditions>span { max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:3px 7px;border-radius:6px;background:var(--desk-selected);font-size:11px;color:var(--desk-accent); }
+.assistant-search-scope,.assistant-search-skipped { display:block;color:var(--desk-muted);font-size:11px;line-height:1.6;overflow-wrap:anywhere; }
+.assistant-search-change { display:block;color:var(--desk-accent);font-size:11px;line-height:1.65;margin-top:5px; }
+.assistant-search-open-error { margin:8px 0;color:var(--desk-muted);font-size:12px;line-height:1.65; }
+.assistant-search-source-list { display:grid;gap:6px;margin:10px 0; }
+.assistant-search-source { display:flex!important;align-items:center;gap:9px;width:100%;text-align:left;border:1px solid var(--desk-line)!important;border-radius:9px!important;padding:9px!important;background:var(--desk-surface)!important;color:var(--desk-ink)!important;cursor:pointer; }
+.assistant-search-source[hidden],.assistant-search-clue[hidden] { display:none!important; }
+.assistant-search-source>span:nth-child(2) { flex:1;min-width:0; }
+.assistant-search-source b { display:block;font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.assistant-search-source small { display:block;color:var(--desk-muted);font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.assistant-search-source-index { flex:none;color:var(--desk-muted);font-size:11px; }
+.assistant-search-actions,.assistant-search-secondary { display:flex;flex-wrap:wrap;gap:7px; }
+.assistant-search-result button:not(.assistant-search-source),.assistant-search-inline-retry,.assistant-search-return button { min-height:32px;border:1px solid var(--desk-line);border-radius:8px;padding:5px 9px;background:var(--desk-selected);color:var(--desk-accent);cursor:pointer;font:inherit;font-size:12px; }
+.assistant-search-result button:disabled,.assistant-search-return button:disabled { opacity:.5;cursor:wait; }
+.assistant-search-result button:focus-visible,.assistant-search-clue input:focus-visible,.assistant-search-return button:focus-visible { outline:2px solid var(--desk-accent);outline-offset:2px; }
+.assistant-search-result .assistant-search-secondary { margin-top:9px; }
+.assistant-search-controls { margin:10px 0;padding:10px 0;border-top:1px solid var(--desk-line);border-bottom:1px solid var(--desk-line); }
+.assistant-search-result .assistant-search-secondary button,.assistant-search-result .assistant-search-more { padding-left:0;border-color:transparent;background:transparent;font-size:11px; }
+.assistant-search-clue { display:grid;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--desk-line); }
+.assistant-search-clue label { display:grid;gap:4px;font-size:11px; }
+.assistant-search-clue :is(input,select) { min-width:0;width:100%;max-width:100%;min-height:34px;box-sizing:border-box;border:1px solid var(--desk-line);border-radius:7px;background:var(--desk-surface);color:var(--desk-ink);padding:6px 8px;font:inherit;font-size:12px; }
+.assistant-search-clue>div { display:flex;gap:7px; }
+.assistant-search-result.is-found { border-color:var(--desk-accent); }
+.assistant-search-return { position:sticky;top:0;z-index:3;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;background:var(--desk-muted-surface);border-bottom:1px solid var(--desk-line);color:var(--desk-ink);font-size:12px; }
+.assistant-search-return>div { display:flex;gap:7px; }
+body.assistant-visible .assistant-search-return { display:none; }
+.search-empty-ai { padding:16px!important;border:1px solid var(--desk-line);border-radius:12px;background:var(--desk-muted-surface);text-align:left;justify-items:start!important; }
+.search-empty-ai>b { font-size:13px;color:var(--desk-ink); }
+.search-empty-ai>p { margin:0;color:var(--desk-muted);font-size:12px;line-height:1.65; }
+.search-empty-ai>button { background:var(--desk-accent)!important;color:var(--desk-surface)!important;min-height:38px;padding:7px 12px;border:0;border-radius:8px;cursor:pointer;font-weight:600; }
+.search-ai-assist { display:block;margin:5px 12px 9px;padding:0;border:0;background:transparent;color:var(--desk-accent);font-size:12px;text-align:left;cursor:pointer; }
+.search-ai-assist[hidden] { display:none; }

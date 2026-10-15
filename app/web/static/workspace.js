@@ -412,8 +412,17 @@ async function refreshTaskCenter({lightweight = false} = {}) {
 }
 
 function updateFilterChips() {
+  const parsed = window.mailaiGetSearchInterpretation?.();
   const labels = {workflow:window.mailaiWorkflowFilterLabel?.() || '', unread:currentFilter.unread ? mailaiText('未读邮件') : '', days:currentFilter.days !== 9999 ? mailaiTemplate`近 ${currentFilter.days} 天` : '', priority:currentFilter.priority ? mailaiTemplate`${currentFilter.priority}重要程度` : '', domain:currentFilter.domain, attachments:currentFilter.attachments ? mailaiText('含附件') : '', search:currentFilter.search, category:currentFilter.category, verdict:currentFilter.verdict ? ({get clean() { return mailaiText('正常'); }, get suspicious() { return mailaiText('可疑'); }, get phishing() { return mailaiText('高风险'); }})[currentFilter.verdict] : ''};
-  document.getElementById('filter-chips').innerHTML = Object.entries(labels).filter(([,value]) => value).map(([key,value]) => `<button type="button" data-remove-filter="${key}" title="${esc(value)}" aria-label="移除筛选：${esc(value)}" data-i18n-aria="ui.f398b052d41d"><span class="filter-chip-label">${esc(value)}</span><span class="filter-chip-close" aria-hidden="true">×</span></button>`).join('');
+  if (parsed?.structured) labels.search = '';
+  const tokenNames = {sender:mailaiText('发件人'),recipient:mailaiText('收件人 / 抄送'),subject:mailaiText('主题'),filename:mailaiText('附件名称或类型'),after:mailaiText('开始日期'),before:mailaiText('结束日期'),mailbox:mailaiText('邮件范围'),state:mailaiText('处理状态'),category:mailaiText('AI 分类'),has_attachment:mailaiText('有附件'),unread:mailaiText('仅未读'),text:mailaiText('关键词')};
+  const scopes = {all:mailaiText('全部正常邮件（含发件、草稿）'),inbox:mailaiText('收件箱'),sent:mailaiText('已发送'),drafts:mailaiText('草稿'),trash:mailaiText('已删除'),spam:mailaiText('垃圾邮件'),quarantine:mailaiText('隔离区')};
+  const conditions = parsed?.structured ? parsed.tokens.map(token => {
+    const value = token.field === 'mailbox' ? scopes[token.value] || token.value : token.value;
+    const label = token.value === true ? tokenNames[token.field] : `${tokenNames[token.field]}: ${value}`;
+    return `<button type="button" data-remove-search-token="${token.field}" title="${esc(label)}"><span class="filter-chip-label">${esc(label)}</span><span class="filter-chip-close" aria-hidden="true">×</span></button>`;
+  }).join('') : '';
+  document.getElementById('filter-chips').innerHTML = Object.entries(labels).filter(([,value]) => value).map(([key,value]) => `<button type="button" data-remove-filter="${key}" title="${esc(value)}" aria-label="移除筛选：${esc(value)}" data-i18n-aria="ui.f398b052d41d"><span class="filter-chip-label">${esc(value)}</span><span class="filter-chip-close" aria-hidden="true">×</span></button>`).join('') + conditions;
 }
 
 let semanticPollTimer = null;
@@ -848,6 +857,8 @@ function initializeWorkspace() {
   document.getElementById('task-center-backdrop').onclick = closeTaskCenter;
   document.getElementById('task-center').addEventListener('keydown', event => { if (event.key === 'Escape') { event.preventDefault(); closeTaskCenter(); } });
   document.getElementById('filter-chips').onclick = event => {
+    const token = event.target.closest('button[data-remove-search-token]');
+    if (token) { window.mailaiRemoveSearchToken?.(token.dataset.removeSearchToken); return; }
     const key = event.target.closest('button[data-remove-filter]')?.dataset.removeFilter; if (!key) return;
     if (key === 'workflow') window.mailaiClearWorkflowFilter?.();
     currentFilter[key] = key === 'days' ? 9999 : ['attachments','unread'].includes(key) ? false : '';
@@ -855,8 +866,10 @@ function initializeWorkspace() {
     document.getElementById('filter-unread').checked = Boolean(currentFilter.unread);
     document.getElementById('filter-domain').value = currentFilter.domain; document.getElementById('filter-attachments').checked = currentFilter.attachments;
     document.getElementById('global-search').value = currentFilter.search;
-    searchResults = null; ++searchRevision; clearTimeout(globalSearchTimer);
-    applySidebarFilter(key === 'days'); updateFilterChips();
+    searchResults = null; advanceMailSearchRevision();
+    if (currentFilter.search) runGlobalSearch();
+    else applySidebarFilter(key === 'days');
+    updateFilterChips();
   };
   const density = document.getElementById('workspace-density'); density.value = localStorage.getItem('mailai-density') || 'comfortable';
   document.body.dataset.density = density.value;
@@ -949,7 +962,7 @@ function initializeWorkspace() {
   document.getElementById('assistant-stop').onclick = () => assistantController?.abort();
   document.getElementById('assistant-retry').onclick = () => {
     document.querySelector('#assistant-messages .assistant-message.bot:last-child')?.remove();
-    askAssistant(assistantLastQuestion, assistantLastScope, assistantLastImages, assistantLastAttachments, assistantLastAlertContext, {retry:true});
+    askAssistant(assistantLastQuestion, assistantLastScope, assistantLastImages, assistantLastAttachments, assistantLastAlertContext, {retry:true,searchMode:assistantSearchMode,searchRequest:assistantLastSearchRequest});
   };
   document.body.classList.toggle('assistant-floating', localStorage.getItem('mailai-assistant-floating') === 'true');
   initializeAssistantPolish();

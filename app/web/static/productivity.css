@@ -423,12 +423,6 @@
 .productivity-body label > input[type="checkbox"] {
   width: auto;
 }
-.productivity-search-results-ready
-  #productivity-search-form
-  .productivity-grid
-  label:not(:first-child) {
-  display: none;
-}
 .productivity-dialog #productivity-saved-search {
   padding: 8px;
   border: 1px solid var(--border, #dce5e0);
@@ -791,3 +785,31 @@ html[data-theme] body .productivity-dialog .attachment-action-list button { disp
 .productivity-filter-collapse { min-height:28px; padding:4px 8px; border:0; border-radius:6px; background:transparent; color:var(--desk-muted,#64746b); font:inherit; font-size:12px; cursor:pointer; }
 .productivity-filter-collapse:hover { background:var(--desk-hover,#eef2ef); color:var(--desk-ink,#26342e); }
 .productivity-filter-collapse:focus-visible { outline:2px solid var(--desk-accent,#34775b); outline-offset:2px; }
+
+/* Advanced search keeps applied conditions visible and never hides fields on submit. */
+.productivity-dialog[data-panel="advanced-search"]{width:min(940px,calc(96vw / var(--fz,1)));max-height:calc(92dvh / var(--fz,1))}
+.advanced-search-intro{margin:0 0 12px;color:var(--desk-muted,var(--muted));font-size:13px;line-height:1.6}
+.advanced-search-grid{gap:12px 18px;margin:0 0 14px}.advanced-search-grid label{font-size:12px;font-weight:550}
+.advanced-search-checks{display:flex;align-items:center;flex-wrap:wrap;gap:10px 20px;font-size:12px;margin:12px 0}
+.advanced-search-checks label{display:flex;align-items:center;gap:7px}.advanced-search-checks input[type="checkbox"]{width:16px;height:16px;margin:0;accent-color:var(--desk-accent,var(--primary))}
+.advanced-search-more,.advanced-search-syntax,.advanced-search-saved{border-top:1px solid var(--desk-line,var(--border));padding:10px 0;font-size:12px}
+.advanced-search-more summary,.advanced-search-syntax summary,.advanced-search-saved summary{cursor:pointer;color:var(--desk-muted,var(--muted));width:fit-content;line-height:1.5}
+.advanced-search-more .productivity-grid{margin-bottom:0}.advanced-search-more .productivity-grid label{font-size:12px}
+.advanced-search-actions{margin:12px 0 8px}.advanced-search-actions button{min-width:88px}.advanced-search-local{margin:8px 0 12px}
+.advanced-search-saved .productivity-actions{margin-bottom:0}.advanced-search-saved select{min-width:0;max-width:100%}
+.advanced-search-output{margin-top:16px;padding-top:16px;border-top:1px solid var(--desk-line,var(--border))}
+.advanced-search-result-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.advanced-search-result-heading h3{font-size:14px;margin:0}
+.advanced-search-result-heading button{font-size:12px;background:transparent!important;padding:5px 8px}
+.advanced-search-applied{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}.advanced-search-applied:empty{display:none}
+.advanced-search-applied span{padding:4px 8px;border-radius:6px;background:var(--desk-muted-surface,var(--surface));color:var(--desk-muted,var(--muted));font-size:11px;overflow-wrap:anywhere;max-width:100%;box-sizing:border-box}
+.advanced-search-empty{padding:24px 16px;background:var(--desk-muted-surface,var(--surface));border-radius:10px;text-align:center}.advanced-search-empty strong{font-size:14px}.advanced-search-empty p{font-size:12px;line-height:1.7;color:var(--desk-muted,var(--muted));margin-bottom:0}
+.advanced-search-collapsed [data-search-fields]{display:none}
+@media(max-width:600px){.productivity-dialog[data-panel="advanced-search"] .productivity-body{padding:14px}.advanced-search-grid{grid-template-columns:1fr}.advanced-search-result-heading{align-items:flex-start}.advanced-search-checks{gap:10px 14px}}
+@media(min-width:980px){
+ .productivity-dialog[data-panel="advanced-search"]{width:min(1180px,calc(96vw / var(--fz,1)))}
+ .productivity-dialog[data-panel="advanced-search"]>.productivity-body{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);column-gap:24px}
+ .productivity-dialog[data-panel="advanced-search"] .productivity-body>:is([data-account-label],.advanced-search-intro,[data-message]){grid-column:1/-1}
+ .productivity-dialog[data-panel="advanced-search"] #productivity-search-form{grid-column:1;min-width:0}
+ .productivity-dialog[data-panel="advanced-search"] .advanced-search-output{grid-column:2;grid-row:3;margin:0;padding:0 0 0 24px;border-top:0;border-left:1px solid var(--desk-line,var(--border));min-width:0}
+ .productivity-dialog[data-panel="advanced-search"] #productivity-search-results{max-height:calc(68dvh / var(--fz,1));overflow:auto;padding-right:4px}
+}

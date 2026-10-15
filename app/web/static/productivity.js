@@ -130,7 +130,7 @@
       ?.setAttribute("aria-expanded", String(title === mailaiText("高级搜索")));
     dialogAccount = account;
     if (!dialog.open) returnFocus = document.activeElement;
-    dialog.classList.remove("productivity-search-results-ready");
+    dialog.classList.remove("productivity-search-results-ready", "advanced-search-collapsed");
     dialog.dataset.panel = "";
     dialog.innerHTML = `<header><h2 id="productivity-title">${mailaiLabelHTML(title)}</h2><button type="button" data-close-productivity aria-label="关闭${esc(title)}" data-i18n-aria="ui.3f92dbe70cb4">✕</button></header><div class="productivity-body"><p class="productivity-hint" data-account-label></p>${body}<p data-message role="status" aria-live="polite"></p></div>`;
     const accountRow = _systemConfig?.accounts?.find((a) => a.id === account);
@@ -312,7 +312,12 @@
     searchBtn.setAttribute("aria-controls", "productivity-dialog");
     searchBtn.setAttribute("aria-expanded", "false");
     mailaiBindUI(searchBtn, "@aria-label", () => (mailaiText("高级搜索与保存搜索")));
-    searchBtn.onclick = () => openSearch();
+    searchBtn.onclick = () => {
+      const parsed = window.mailaiGetSearchInterpretation?.();
+      if (!parsed?.structured) return openSearch(currentFilter.search ? {query:currentFilter.search} : {});
+      const mailbox = parsed.criteria.mailbox || specialMailbox || (['inbox','trash','spam','quarantine'].includes(currentFilter.status) ? currentFilter.status : 'all');
+      openSearch({...parsed.criteria,query:parsed.tokens.find(token=>token.field==='text')?.canonical || '',mailbox}, unifiedMailbox);
+    };
     document.querySelector(".global-search").append(searchBtn);
     for (const nav of ["risk-nav", "category-nav"]) {
       const section = document.getElementById(nav)?.closest(".nav-group");
@@ -364,131 +369,138 @@
       );
     return result;
   }
-  function openSearch(seed = {}, allAccounts = false) {
-    const rev = open(
-      mailaiText("高级搜索"),
-      `<form id="productivity-search-form"><div class="productivity-grid"><label class="wide"><span data-i18n="ui.039eff12b871">关键词或搜索条件</span><input data-criterion="query" placeholder="例如 from:person@example.com filename:pdf" data-i18n-placeholder="ui.bf8c2c84371f"></label><label><span data-i18n="ui.bae32961a3b5">发件人</span><input data-criterion="sender"></label><label><span data-i18n="ui.7a6d6cee582d">收件人 / 抄送</span><input data-criterion="recipient"></label><label><span data-i18n="ui.788db1cfec2a">主题</span><input data-criterion="subject"></label><label><span data-i18n="ui.d10109f8116b">附件名称或类型</span><input data-criterion="filename" placeholder="例如 合同.pdf 或 .xlsx" data-i18n-placeholder="ui.d68c94f0a221"></label><label><span data-i18n="ui.760506491eef">开始日期</span><input type="date" data-criterion="after"></label><label><span data-i18n="ui.895cd52fbbb6">结束日期</span><input type="date" data-criterion="before"></label><label><span data-i18n="ui.932ea885da06">邮件范围</span><select data-criterion="mailbox"><option value="all" data-i18n="ui.f93ecd2cd5cb">全部正常邮件（含发件、草稿）</option><option value="inbox" data-i18n="ui.63a5e7b73911">收件箱</option><option value="sent" data-i18n="ui.60823aaec73b">已发送</option><option value="drafts" data-i18n="ui.2a2fd29bd27a">草稿</option><option value="trash" data-i18n="ui.077a6d37719a">已删除</option><option value="quarantine" data-i18n="ui.699ef8314304">隔离区</option><option value="spam" data-i18n="ui.73c996531fe0">垃圾邮件</option></select></label><label><span data-i18n="ui.04229dd66789">AI 分类</span><input data-criterion="category" placeholder="例如 订阅推送、项目工作" data-i18n-placeholder="ui.6b2603525721"></label><label><span data-i18n="ui.d5e74de3449e">处理状态</span><select data-criterion="state"><option value="" data-i18n="ui.f203d577d142">不限</option>${Object.entries(
-        labels,
-      )
-        .map(([k, v]) => `<option value="${k}" data-i18n="${mailaiUICopyKeys.get(mailaiCopySource(v))}">${v}</option>`)
-        .join(
-          "",
-        )}<option value="due" data-i18n="ui.dcaf2b13ca8f">等待反馈已到期</option><option value="focus" data-i18n="ui.17cf368141bb">重点邮件</option></select></label><label><span><input type="checkbox" data-criterion="has_attachment"> <span data-i18n="ui.184ea93ac496">有附件</span></span></label><label><span><input type="checkbox" data-criterion="unread"> <span data-i18n="ui.975b35e1ec59">仅未读</span></span></label></div><label><input type="checkbox" id="productivity-all-accounts"> <span data-i18n="ui.8d1630336cbf">搜索所有可见账号</span></label><div class="productivity-actions"><button type="submit" class="primary-action"><span data-i18n="ui.44ce7ae909bb">搜索</span></button>${button(mailaiText("保存本次条件"), "save-search")}<select id="productivity-saved-search" aria-label="使用已保存的搜索" data-i18n-aria="ui.a232f99a42c5"><option value="" data-i18n="ui.72f9e5e9ebfc">已保存的搜索…</option></select></div></form><p class="productivity-hint"><span data-i18n="ui.ed3046209eaf">所有条件同时满足；仅搜索本地已同步数据。搜索结果不会调用 AI。附件内容请到“附件中心 → 文字与版本”搜索。</span></p><div class="productivity-actions"><button type="button" data-search-expand hidden><span data-i18n="ui.c17b24161af0">展开搜索条件</span></button></div><div id="productivity-search-results" aria-live="polite"></div>`,
-    );
-    dialog.querySelectorAll("[data-criterion]").forEach((n) => {
-      const v = seed[n.dataset.criterion];
-      if (n.type === "checkbox") n.checked = Boolean(v);
-      else if (v !== undefined) n.value = v;
-    });
-    dialog.querySelector("#productivity-all-accounts").checked = allAccounts;
-    let criteria = {},
-      offset = 0,
-      all = false;
+  function openSearch(seed = {}, allAccounts) {
+    if (!seed.query && seed.text) seed = {...seed, query: seed.text};
+    const rev = open(mailaiText('高级搜索'), `
+      <p class="advanced-search-intro" data-i18n="search.intro">按姓名、邮箱、主题或正文查找邮件，填写的条件需要同时满足。</p>
+      <form id="productivity-search-form">
+        <div data-search-fields>
+          <div class="productivity-grid advanced-search-grid">
+            <label class="wide"><span data-i18n="search.keywords">关键词</span><input data-criterion="query" maxlength="1000" placeholder="搜索主题、正文、姓名或邮箱" data-i18n-placeholder="search.keywordsPlaceholder"></label>
+            <label><span data-i18n="search.sender">发件人姓名或邮箱</span><input data-criterion="sender" maxlength="250" placeholder="例如 方君、fangjun 或邮箱地址" data-i18n-placeholder="search.senderPlaceholder"></label>
+            <label><span data-i18n="search.recipient">收件人 / 抄送</span><input data-criterion="recipient" maxlength="250" placeholder="姓名或邮箱地址" data-i18n-placeholder="search.recipientPlaceholder"></label>
+            <label><span data-i18n="ui.788db1cfec2a">主题</span><input data-criterion="subject" maxlength="250"></label>
+            <label><span data-i18n="ui.d10109f8116b">附件名称或类型</span><input data-criterion="filename" maxlength="250" placeholder="例如 合同.pdf 或 .xlsx" data-i18n-placeholder="ui.d68c94f0a221"></label>
+            <label><span data-i18n="ui.760506491eef">开始日期</span><input type="date" data-criterion="after"></label>
+            <label><span data-i18n="search.endInclusive">结束日期（包含当天）</span><input type="date" data-criterion="before"></label>
+            <label class="wide"><span data-i18n="ui.932ea885da06">邮件范围</span><select data-criterion="mailbox"><option value="all" data-i18n="ui.f93ecd2cd5cb">全部正常邮件（含发件、草稿）</option><option value="inbox" data-i18n="ui.63a5e7b73911">收件箱</option><option value="sent" data-i18n="ui.60823aaec73b">已发送</option><option value="drafts" data-i18n="ui.2a2fd29bd27a">草稿</option><option value="trash" data-i18n="ui.077a6d37719a">已删除</option><option value="quarantine" data-i18n="ui.699ef8314304">隔离区</option><option value="spam" data-i18n="ui.73c996531fe0">垃圾邮件</option></select></label>
+          </div>
+          <div class="advanced-search-checks"><label><input type="checkbox" id="productivity-all-accounts"><span data-i18n="ui.8d1630336cbf">搜索所有可见账号</span></label><label><input type="checkbox" data-criterion="has_attachment"><span data-i18n="ui.184ea93ac496">有附件</span></label><label><input type="checkbox" data-criterion="unread"><span data-i18n="ui.975b35e1ec59">仅未读</span></label></div>
+          <details class="advanced-search-more"><summary data-i18n="search.more">更多筛选</summary><div class="productivity-grid">
+            <label><span data-i18n="ui.04229dd66789">AI 分类</span><input data-criterion="category" placeholder="例如 订阅推送、项目工作" data-i18n-placeholder="ui.6b2603525721"></label>
+            <label><span data-i18n="ui.d5e74de3449e">处理状态</span><select data-criterion="state"><option value="" data-i18n="ui.f203d577d142">不限</option>${Object.entries(labels).map(([k,v])=>`<option value="${k}" data-i18n="${mailaiUICopyKeys.get(mailaiCopySource(v))}">${v}</option>`).join('')}<option value="due" data-i18n="ui.dcaf2b13ca8f">等待反馈已到期</option><option value="focus" data-i18n="ui.17cf368141bb">重点邮件</option></select></label>
+          </div><p class="productivity-hint" data-i18n="search.receivedFilters">分类和处理状态用于已同步邮件；本地发件记录和草稿不会匹配这些条件。</p></details>
+          <details class="advanced-search-syntax"><summary data-i18n="search.syntaxTitle">搜索语法说明（可选）</summary><p class="productivity-hint" data-i18n="search.syntaxHelp">也可在关键词中输入 from:方君、subject:合同、filename:pdf。多词都要匹配，双引号表示完整短语；语法与下方字段不能填写不同的同类条件。</p></details>
+        </div>
+        <div class="productivity-actions advanced-search-actions"><button type="submit" class="primary-action" data-i18n="ui.44ce7ae909bb">搜索</button><button type="button" data-search-reset data-i18n="search.reset">清空条件</button></div>
+        <p class="productivity-hint advanced-search-local" data-i18n="search.localScope">仅搜索本机已同步的数据；默认不含已删除、垃圾邮件和隔离邮件。附件字段只匹配文件名，附件正文请在附件中心搜索。</p>
+        <details class="advanced-search-saved"><summary data-i18n="search.savedTitle">保存与常用搜索</summary><div class="productivity-actions">${button(mailaiText('保存本次条件'),'save-search')}<select id="productivity-saved-search" aria-label="使用已保存的搜索" data-i18n-aria="ui.a232f99a42c5"><option value="" data-i18n="ui.72f9e5e9ebfc">已保存的搜索…</option></select></div><p class="productivity-hint" data-saved-search-status></p></details>
+      </form>
+      <section class="advanced-search-output" aria-label="搜索结果" data-i18n-aria="search.results"><div class="advanced-search-result-heading"><h3 data-search-count data-i18n="search.results">搜索结果</h3><button type="button" data-search-expand hidden></button></div><div class="advanced-search-applied" data-search-applied></div><div id="productivity-search-results" aria-live="polite"><p class="productivity-hint" data-i18n="search.initial">填写需要的条件后点击搜索；不必填写所有字段。</p></div></section>
+    `);
+    dialog.dataset.panel = 'advanced-search';
+    const form = dialog.querySelector('#productivity-search-form');
+    form.querySelector('.advanced-search-actions').after(dialog.querySelector('[data-message]'));
+    const host = dialog.querySelector('#productivity-search-results');
+    const submit = form.querySelector('[type=submit]');
+    const expand = dialog.querySelector('[data-search-expand]');
+    const count = dialog.querySelector('[data-search-count]');
+    const saved = dialog.querySelector('#productivity-saved-search');
+    const allControl = dialog.querySelector('#productivity-all-accounts');
     const account = dialogAccount;
+    let criteria = {}, offset = 0, all = false, requestRevision = 0, controller, searched = false;
+    let savedItems = new Map();
+    form.querySelectorAll('[data-criterion]').forEach(node => {
+      const value = seed[node.dataset.criterion];
+      if (node.type === 'checkbox') node.checked = Boolean(value);
+      else if (value !== undefined) node.value = value;
+    });
+    allControl.checked = allAccounts ?? Boolean(seed.all_accounts);
+    form.querySelector('.advanced-search-more').open = Boolean(seed.state || seed.category);
+    const working = value => {
+      submit.disabled = value;
+      host.setAttribute('aria-busy', String(value));
+      submit.setAttribute('aria-busy', String(value));
+    };
+    const cancel = () => { ++requestRevision; controller?.abort(); working(false); };
+    dialog.addEventListener('close', cancel, {once:true});
+    const updateExpand = () => mailaiBindUI(expand, 'textContent', () => dialog.classList.contains('advanced-search-collapsed') ? mailaiText('展开搜索条件') : mailaiText('收起搜索条件'));
+    expand.onclick = () => {dialog.classList.toggle('advanced-search-collapsed'); updateExpand();};
+    const paintApplied = effective => {
+      const chips = dialog.querySelector('[data-search-applied]'); chips.replaceChildren();
+      const mailboxLabel = form.querySelector(`[data-criterion="mailbox"] option[value="${effective.mailbox || 'all'}"]`)?.textContent || '';
+      const entries = [[mailaiText('邮件范围'),mailboxLabel], [mailaiText('邮箱'),all ? mailaiText('所有可见账号') : (_systemConfig?.accounts?.find(a=>a.id===account)?.user || mailaiText('当前邮箱'))]];
+      for (const [key,label] of [['text',mailaiText('关键词')],['sender',mailaiText('发件人')],['recipient',mailaiText('收件人 / 抄送')],['subject',mailaiText('主题')],['filename',mailaiText('附件名称或类型')],['after',mailaiText('开始日期')],['before',mailaiText('结束日期')],['category',mailaiText('AI 分类')],['state',mailaiText('处理状态')]]) {
+        if (effective[key]) entries.push([label,key==='state' ? form.querySelector(`[data-criterion="state"] option[value="${effective[key]}"]`)?.textContent || effective[key] : effective[key]]);
+      }
+      if (effective.has_attachment) entries.push(['',mailaiText('有附件')]);
+      if (effective.unread) entries.push(['',mailaiText('仅未读')]);
+      entries.forEach(([label,value])=>{const chip=document.createElement('span');chip.textContent=(label ? label+'：' : '')+value;chips.append(chip);});
+    };
+    const changed = () => {
+      const pending = submit.disabled;
+      cancel();
+      const more = host.querySelector('[data-more-search]');
+      if (more) more.disabled = true;
+      if (searched || pending) msg(mailaiText('条件已修改，请点击搜索更新结果'));
+    };
+    form.addEventListener('input', changed); form.addEventListener('change', changed);
     const run = async (append = false) => {
-      const submit = dialog.querySelector("[type=submit]");
-      return busy(submit, async () => {
-        if (!append) {
-          criteria = getCriteria();
-          offset = 0;
-          all = dialog.querySelector("#productivity-all-accounts").checked;
-        }
-        msg(mailaiText("正在搜索…"));
-        const result = await api("/api/productivity/search", {
-          accountId: account,
-          ...json({ criteria, offset, limit: 50, all_accounts: all }),
-        });
-        if (!live(rev)) return;
-        dialog.classList.add("productivity-search-results-ready");
-        const expand = dialog.querySelector("[data-search-expand]");
-        expand.hidden = false;
-        expand.onclick = () => {
-          const collapsed = dialog.classList.toggle(
-            "productivity-search-results-ready",
-          );
-          mailaiBindUI(expand, "textContent", () => (collapsed ? mailaiText("展开搜索条件") : mailaiText("收起搜索条件")));
-        };
-        const host = dialog.querySelector("#productivity-search-results");
-        host.querySelector("[data-more-search]")?.remove();
+      if (append && submit.disabled) return;
+      controller?.abort(); controller = new AbortController();
+      const request = ++requestRevision;
+      const current = () => live(rev) && request === requestRevision;
+      if (!append) {criteria = getCriteria(); all = allControl.checked; offset = 0;}
+      working(true); msg(mailaiText('正在搜索…'));
+      try {
+        const result = await api('/api/productivity/search', {accountId:account, signal:controller.signal, ...json({criteria,offset,limit:50,all_accounts:all})});
+        if (!current()) return;
+        searched = true; expand.hidden = false; updateExpand();
+        host.querySelector('[data-more-search]')?.remove();
         if (!append) host.replaceChildren();
         for (const row of result.items) {
-          const node = document.createElement("button");
-          node.type = "button";
-          node.className = "productivity-result";
-          node.innerHTML = `<strong>${esc(row.subject || mailaiText("无主题"))}</strong><small>${esc(row.account_user || "")} ${esc({ get email() { return mailaiText("邮件"); }, get sent() { return mailaiText("已发送"); }, get draft() { return mailaiText("草稿"); } }[row.kind])} · ${esc(row.from_addr || row.to_addr || "")} · ${esc(row.date ? new Date(row.date).toLocaleString(currentI18nLanguage()) : "")}</small><small>${esc(row.preview || "")}</small>`;
-          node.onclick = () =>
-            busy(node, async () => {
-              await revealResult(row, account);
-              if (live(rev)) dialog.close();
-            });
-          host.append(node);
+          const node = document.createElement('button'); node.type='button'; node.className='productivity-result';
+          const kind = row.kind==='sent' || row.status==='sent' ? mailaiText('已发送') : row.kind==='draft' || row.status==='draft' ? mailaiText('草稿') : mailaiText('邮件');
+          const sender = [row.from_name,row.from_addr || row.to_addr].filter(Boolean).join(' · ');
+          node.innerHTML=`<strong>${esc(row.subject || mailaiText('无主题'))}</strong><small>${esc(row.account_user || '')} ${esc(kind)} · ${esc(sender)} · ${esc(row.date ? new Date(row.date).toLocaleString(currentI18nLanguage()) : '')}</small><small>${esc(row.preview || '')}</small>`;
+          node.onclick=()=>busy(node,async()=>{await revealResult(row,account);if(live(rev))dialog.close();});host.append(node);
         }
-        window.mailaiMotion.reveal(host);
         offset += result.items.length;
-        if (result.has_more) {
-          const more = document.createElement("button");
-          more.type = "button";
-          more.dataset.moreSearch = "";
-          mailaiBindUI(more, "textContent", () => (mailaiText("继续显示")));
-          more.onclick = () => run(true);
-          host.append(more);
-        }
-        if (!offset)
-          mailaiBindUI(host, "textContent", () => (mailaiText("没有匹配结果，可减少条件或扩大时间范围。")));
-        msg(
-          result.scope +
-            (result.failed_accounts?.length
-              ? mailaiText("；部分账号未读取，请切换对应账号检查")
-              : "") +
-            mailaiTemplate` · 已显示 ${offset} 项`,
-        );
-      });
+        paintApplied(result.criteria || criteria);
+        const shown = offset;
+        mailaiBindUI(count,'textContent',()=>mailaiTemplate`已显示 ${shown} 封邮件`);
+        if (!offset) host.innerHTML='<div class="advanced-search-empty"><strong data-i18n="search.noResults">没有符合这些条件的邮件</strong><p data-i18n="search.emptyHelp">可以先只填写发件人，再逐步添加主题或日期；也请确认邮件已同步到当前邮箱。</p></div>';
+        if (result.has_more) {const more=document.createElement('button');more.type='button';more.dataset.moreSearch='';mailaiBindUI(more,'textContent',()=>mailaiText('继续显示'));more.onclick=()=>run(true);host.append(more);}
+        window.mailaiMotion.reveal(host);
+        msg(result.failed_accounts?.length ? mailaiText('部分账号未读取，当前结果不完整，请切换对应账号检查') : mailaiText('搜索完成，以上结果符合所示条件'));
+      } catch (error) {
+        if (!current() || error.name==='AbortError') return;
+        msg(mailaiSystemMessage(error.message),true);
+      } finally {if(current())working(false);}
     };
-    dialog.querySelector("form").onsubmit = (event) => {
-      event.preventDefault();
-      run();
+    form.onsubmit=event=>{event.preventDefault();run();};
+    form.querySelector('[data-search-reset]').onclick=()=>{
+      cancel();form.reset();allControl.checked=false;
+      dialog.classList.remove('advanced-search-collapsed');
+      form.querySelector('.advanced-search-more').open=false;
+      host.innerHTML='<p class="productivity-hint" data-i18n="search.initial">填写需要的条件后点击搜索；不必填写所有字段。</p>';
+      dialog.querySelector('[data-search-applied]').replaceChildren();
+      mailaiBindUI(count,'textContent',()=>mailaiText('搜索结果'));expand.hidden=true;searched=false;criteria={};offset=0;msg('');form.querySelector('[data-criterion="query"]').focus();
     };
-    const saved = dialog.querySelector("#productivity-saved-search");
-    api("/api/productivity/searches", { accountId: account })
-      .then((items) => {
-        if (!live(rev)) return;
-        for (const item of items) {
-          const option = new Option(item.name, String(item.id));
-          saved.add(option);
-        }
-        saved.onchange = () => {
-          const item = items.find((x) => String(x.id) === saved.value);
-          if (item) openSearch(item.criteria, all);
-        };
-      })
-      .catch(
-        (error) =>
-          live(rev) && msg(mailaiText("已保存搜索暂时无法读取：") + mailaiSystemMessage(error.message), true),
-      );
-    dialog.querySelector('[data-productivity-action="save-search"]').onclick = (
-      event,
-    ) =>
-      busy(event.currentTarget, async () => {
-        const name = await mailaiAsk({
-          get title() { return mailaiText("保存搜索条件"); },
-          get label() { return mailaiText("名称"); },
-          get value() { return mailaiText("常用搜索"); },
-        });
-        if (!name || !live(rev)) return;
-        const criteria = getCriteria();
-        const result = await api("/api/productivity/searches", {
-          accountId: account,
-          ...json({ name, criteria }),
-        });
-        if (live(rev)) {
-          msg(mailaiText("搜索条件已保存"));
-          saved.add(new Option(name, String(result.id)));
-          saved.addEventListener("change", () => {
-            if (saved.value === String(result.id)) openSearch(criteria, all);
-          });
-        }
-      });
-    if (Object.keys(seed).length) run();
+    const savedStatus=dialog.querySelector('[data-saved-search-status]');
+    api('/api/productivity/searches',{accountId:account}).then(items=>{
+      if(!live(rev))return;
+      for(const item of items){savedItems.set(String(item.id),item);saved.add(new Option(item.name,String(item.id)));}
+    }).catch(error=>{if(live(rev))savedStatus.textContent=mailaiText('已保存搜索暂时无法读取：')+mailaiSystemMessage(error.message);});
+    saved.onchange=()=>{const item=savedItems.get(saved.value);if(item)openSearch(item.criteria);};
+    form.querySelector('[data-productivity-action="save-search"]').onclick=event=>busy(event.currentTarget,async()=>{
+      const name=await mailaiAsk({get title(){return mailaiText('保存搜索条件');},get label(){return mailaiText('名称');},get value(){return mailaiText('常用搜索');}});
+      if(!name || !live(rev))return;
+      const savedCriteria={...getCriteria(),all_accounts:allControl.checked};
+      const result=await api('/api/productivity/searches',{accountId:account,...json({name,criteria:savedCriteria})});
+      if(live(rev)){savedItems.set(String(result.id),{name,criteria:savedCriteria});saved.add(new Option(name,String(result.id)));mailaiBindUI(savedStatus,'textContent',()=>mailaiText('搜索条件已保存'));}
+    });
+    if(Object.keys(seed).length)run();
   }
   async function revealResult(row, account) {
     const id = row.account_id || account;

@@ -46,7 +46,7 @@ TESTS = (
     'test_contact_tags.py',
     'test_contact_pending_merge.py',
     'test_live_diagnostics.py', 'test_diagnostics_progress.py',
-    'test_optimization_guards.py', 'test_interaction_fixes.py', 'test_pinyin_search.py',
+    'test_optimization_guards.py', 'test_interaction_fixes.py', 'test_pinyin_search.py', 'test_search_index_cost.py',
     'test_resource_safety.py',
     'test_mail_arrival_lifecycle.py', 'test_mail_fetch_resilience.py', 'test_dock_unread_sync.py',
     'test_maturity_hardening.py', 'test_automatic_backup.py',
@@ -72,7 +72,10 @@ TESTS = (
     'test_assistant_routing.py',
     'test_send_outcome.py',
     'test_desktop_shell.py',
-    'test_desktop_attachments.py',
+    'test_advanced_search.py',
+    'test_search_query.py',
+    'test_search_handoff.py',
+    'test_assistant_search_loop.py',
     'test_mail_notifications.py',
     'test_brand_assets.py',
     'test_macos_appearance.py',
@@ -138,6 +141,7 @@ def main():
     if sys.platform == 'darwin':
         commands.append([sys.executable, str(ROOT / 'tests/test_mail_links_webkit.py')])
         commands.append([sys.executable, str(ROOT / 'tests/test_settings_scrollbar_webkit.py')])
+        commands.append([sys.executable, str(ROOT / 'tests/test_reader_scrollbar_webkit.py')])
     commands += [[node, '--check', str(ROOT / 'app/web/static/server-cleanup.js')]]
     commands += [[node, '--check', str(ROOT / 'app/web/static/i18n.js')]]
     commands += [[node, '--check', str(ROOT / 'app/web/static/preferences.js')]]

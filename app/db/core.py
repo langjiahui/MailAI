@@ -308,6 +308,15 @@ CREATE TABLE IF NOT EXISTS assistant_messages (
     sources TEXT DEFAULT '[]',
     created_at TEXT
 );
+CREATE TABLE IF NOT EXISTS assistant_search_runs (
+    id TEXT PRIMARY KEY,
+    conversation_id INTEGER NOT NULL REFERENCES assistant_conversations(id) ON DELETE CASCADE,
+    message_id INTEGER REFERENCES assistant_messages(id) ON DELETE CASCADE,
+    status TEXT NOT NULL DEFAULT 'running',
+    payload TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_assistant_search_conversation ON assistant_search_runs(conversation_id,message_id);
 CREATE TABLE IF NOT EXISTS assistant_images (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     message_id INTEGER NOT NULL REFERENCES assistant_messages(id) ON DELETE CASCADE,

@@ -36,7 +36,9 @@ jobs:
       - name: Install native WebKit test dependencies
         run: python -m pip install pyobjc-core==12.2.2 pyobjc-framework-Cocoa==12.2.2 pyobjc-framework-WebKit==12.2.2
       - name: Verify native scrollbar removal and stable content geometry
-        run: python tests/test_settings_scrollbar_webkit.py
+        run: |
+          python tests/test_settings_scrollbar_webkit.py
+          python tests/test_reader_scrollbar_webkit.py
 
   release-gate:
     runs-on: ubuntu-latest
@@ -108,6 +110,9 @@ jobs:
           node tests/prepublish_browser.cjs
           node tests/test_list_header_browser.cjs
           node tests/test_macos_workspace_browser.cjs
+          node tests/test_reading_original_browser.cjs
+          node tests/test_reader_search_browser.cjs
+          node tests/test_air_toolbar_browser.cjs
           MAILAI_DESKTOP_SHELL=windows node tests/test_macos_workspace_browser.cjs
           node tests/test_interaction_consistency_browser.cjs
           node tests/test_connection_lifecycle_browser.cjs
@@ -116,10 +121,15 @@ jobs:
           MAILAI_BROWSER=webkit node tests/test_mail_notification_navigation_browser.cjs
           node tests/test_task_center_closure_browser.cjs
           MAILAI_BROWSER=webkit node tests/test_task_center_closure_browser.cjs
-          node tests/test_reading_original_browser.cjs
-          node tests/test_attachment_library_ui.cjs
+          node tests/test_advanced_search_browser.cjs
+          MAILAI_BROWSER=webkit node tests/test_advanced_search_browser.cjs
+          node tests/test_search_query_browser.cjs
+          MAILAI_BROWSER=webkit node tests/test_search_query_browser.cjs
+          node tests/test_search_handoff_browser.cjs
+          MAILAI_BROWSER=webkit node tests/test_search_handoff_browser.cjs
           node tests/test_attachment_open_browser.cjs
           MAILAI_BROWSER=webkit node tests/test_attachment_open_browser.cjs
+          node tests/test_attachment_library_ui.cjs
           node tests/test_attachment_content_browser.cjs
           MAILAI_BROWSER=webkit node tests/test_attachment_content_browser.cjs
           node tests/test_experience_polish_browser.cjs
@@ -146,6 +156,21 @@ jobs:
           node tests/test_reward_theme_selects_browser.cjs
           node tests/test_digest_recovery_browser.cjs
           MAILAI_BROWSER=webkit node tests/test_digest_recovery_browser.cjs
+
+      - name: Verify guided AI search and result follow-through
+        shell: bash
+        run: |
+          MAILAI_SEARCH_FIXTURE=1 MAILAI_FIXTURE_PORT=18796 python tests/workspace_preview.py > fixture-search.log 2>&1 &
+          fixture_pid=$!
+          trap 'kill "$fixture_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:18796/api/health > /dev/null; then ready=1; break; fi
+            sleep 1
+          done
+          test "$ready" = 1 || { cat fixture-search.log; exit 1; }
+          MAILAI_FIXTURE_URL=http://127.0.0.1:18796 node tests/test_assistant_search_loop_browser.cjs
+          MAILAI_FIXTURE_URL=http://127.0.0.1:18796 MAILAI_BROWSER=webkit node tests/test_assistant_search_loop_browser.cjs
 
   interaction-continuity-browser:
     runs-on: ubuntu-latest

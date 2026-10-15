@@ -328,6 +328,10 @@ def current_smtp_verified() -> bool:
 
 def list_unified_inbox(days: int = 9999, limit: int = 1000, offset: int = 0, q: str = '') -> list[dict]:
     """只读聚合所有可见账号的本地收件箱，不改变当前发信账号。"""
+    from .search_query import interpret_query
+    parsed = interpret_query(q)
+    criteria = parsed['criteria'] if parsed['structured'] else None
+    terms = parsed['criteria']['terms']
     registry = _load_registry()
     rows: list[dict] = []
     bounded_days = max(1, min(int(days or 9999), 9999))
@@ -340,11 +344,17 @@ def list_unified_inbox(days: int = 9999, limit: int = 1000, offset: int = 0, q: 
         if not path or not os.path.isfile(path):
             continue
         try:
-            from .mail_search import predicate, match_preview
-            import re
+            from .mail_search import predicate, match_preview, register
             with _sqlite_connection(path) as connection:
                 connection.row_factory = sqlite3.Row
-                condition, search_args = predicate(connection, re.split(r"\s+", q.strip()))
+                if criteria:
+                    from .productivity import search_conditions
+                    register(connection)
+                    condition, search_args, _, _ = search_conditions(criteria)
+                    if criteria.get('mailbox', 'all') not in {'all','inbox'}:
+                        condition += ' AND 0=1'
+                else:
+                    condition, search_args = predicate(connection, terms)
                 account_rows = connection.execute(
                     f"SELECT {db.EMAIL_LIST_COLUMNS}{',body_text' if q.strip() else ''} FROM emails WHERE remote_missing=0 AND status='inbox' "
                     "AND datetime(COALESCE(NULLIF(date,''),created_at)) >= datetime('now','localtime', ?) "
@@ -354,7 +364,9 @@ def list_unified_inbox(days: int = 9999, limit: int = 1000, offset: int = 0, q: 
                 decoded_rows = db._decode_rows(account_rows)
                 if q.strip():
                     for message in decoded_rows:
-                        message['search_match'] = match_preview(message, re.split(r"\s+", q.strip()))
+                        message['search_match'] = match_preview(message, terms) or (
+                            {'field':'from_name','text':message.get('from_name') or message.get('from_addr') or ''}
+                            if criteria and criteria.get('sender') else None)
                         message.pop('body_text', None)
                 contact_names = db.contact_display_names(
                     [value for message in decoded_rows

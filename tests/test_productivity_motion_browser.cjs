@@ -115,18 +115,18 @@ const deferred = () => { let resolve; const promise = new Promise(r => { resolve
     await page.waitForFunction(()=>document.querySelector('.directory-sheet details')?.style.overflow==='');
     assert.equal(await sheet.evaluate(n=>n.style.overflow), '');
     await page.locator('[data-directory-close]').click();
-    // Rich HTML mail uses a separate document and must receive the same motion.
+    // Rich HTML mail retains its original signature and quote DOM, without
+    // adding disclosure controls or changing their initial visibility.
     await page.evaluate(() => {
       const frame=document.createElement('iframe'); frame.id='motion-test-frame';
+      autoSizeRichEmailFrame(frame);
       document.getElementById('reading-content').append(frame);
-      frame.contentDocument.body.innerHTML='<p>当前正文</p><blockquote type="cite">历史内容</blockquote>';
-      mailaiFoldReadingDocument(frame.contentDocument,frame);
-      const summary=frame.contentDocument.querySelector('summary'); summary.click();
-      window.motionFrameAnimated=summary.parentElement.getAnimations().length>0;
+      frame.srcdoc='<p>当前正文</p><div class="gmail_signature">完整签名</div><blockquote type="cite">历史内容</blockquote>';
     });
-    assert.equal(await page.evaluate(()=>window.motionFrameAnimated),true);
-    await page.waitForFunction(()=>document.getElementById('motion-test-frame').contentDocument.querySelector('details')?.style.overflow==='');
-    assert.equal(await page.evaluate(()=>document.getElementById('motion-test-frame').contentDocument.querySelector('details').style.overflow),'');
+    await page.waitForFunction(()=>document.getElementById('motion-test-frame').contentDocument.querySelector('blockquote')?.textContent==='历史内容');
+    assert.equal(await page.evaluate(()=>document.getElementById('motion-test-frame').contentDocument.querySelectorAll('details[data-mailai-fold]').length),0);
+    assert.equal(await page.frameLocator('#motion-test-frame').locator('.gmail_signature').evaluate(n=>getComputedStyle(n).display),'block');
+    assert.equal(await page.frameLocator('#motion-test-frame').locator('blockquote').evaluate(n=>getComputedStyle(n).display),'block');
     await page.evaluate(()=>document.getElementById('motion-test-frame').remove());
     assert.deepEqual(errors, []);
     console.log('PASS productivity motion: slow loads, stable busy buttons, failure recovery, stale dialogs, overlapping requests, rapid/keyboard disclosures, reduced motion and narrow layout');

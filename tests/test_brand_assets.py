@@ -31,11 +31,15 @@ class BrandAssetsTest(unittest.TestCase):
             for path in paths:
                 self.assertIn(f'd="{path}"', svg)
 
-    def test_native_blue_identity_and_windows_notification_icon(self):
+    def test_neutral_native_identity_and_windows_notification_icon(self):
         with Image.open(ASSETS / 'mailai-app-icon-1024.png') as image:
             colors = image.getcolors(1024 * 1024)
-            blue = sum(count for count, (r,g,b,a) in colors if a == 255 and b > r + 30 and g > r + 20)
-            self.assertGreater(blue, 20000)
+            graphite = sum(count for count, (r,g,b,a) in colors
+                           if a == 255 and max(r,g,b) < 100 and max(r,g,b)-min(r,g,b) <= 18)
+            saturated = sum(count for count, (r,g,b,a) in colors
+                            if a > 200 and max(r,g,b)-min(r,g,b) > 24)
+            self.assertGreater(graphite, 20000, 'Solid M stays readable at native sizes')
+            self.assertEqual(saturated, 0, 'Native identity stays neutral across workspace themes')
         with Image.open(ASSETS / 'mailai-icon-256.ico') as image:
             self.assertIn((16, 16), image.ico.sizes())
             self.assertIn((256, 256), image.ico.sizes())

@@ -70,7 +70,7 @@ const han=/[\u3400-\u9fff]/;
     if(process.env.MAILAI_SCREENSHOT_DIR){fs.mkdirSync(process.env.MAILAI_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:process.env.MAILAI_SCREENSHOT_DIR+'/i18n-archive-dark.png'});}
     await page.evaluate(()=>window.mailaiProductivity.openSearch());await audit('#productivity-dialog');
     const input=page.locator('[data-criterion=query]'),state=page.locator('[data-criterion=state]');
-    await input.fill('采购合同 {0} <b>保留输入</b>');await state.selectOption('reply');
+    await input.fill('采购合同 {0} <b>保留输入</b>');await page.locator('.advanced-search-more summary').click();await state.selectOption('reply');
     await page.evaluate(()=>setI18nLanguage('zh-CN'));await page.waitForTimeout(80);
     assert.equal(await page.locator('#productivity-title').textContent(),'高级搜索');
     assert.equal(await state.locator('option:checked').textContent(),'待回复');

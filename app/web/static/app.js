@@ -8,6 +8,7 @@ if (isWindowsDesktop) document.documentElement.classList.add('windows-performanc
 // ===== 全局状态 =====
 let allEmails = [];
 let mailSearchState = {revision:0, phase:'idle'};
+let mailSearchController = null;
 let allTodos = [];
 let currentFilter = {
   status: '',
@@ -57,6 +58,8 @@ let assistantLastScope = null;
 let assistantLastImages = [];
 let assistantLastAttachments = [];
 let assistantLastAlertContext = false;
+let assistantSearchMode = false;
+let assistantLastSearchRequest = null;
 let assistantPinnedScope = null;
 let assistantNoticeKey = '';
 let assistantScopeKey = '';
@@ -794,6 +797,8 @@ function closeAssistant() {
   }, 280);
 }
 function resetAssistantConversation({focus = true} = {}) {
+  window.mailaiAssistantSearch?.reset(); assistantLastSearchRequest = null;
+  assistantSearchMode = false;
   window.assistantAttachments?.clear(); assistantLastAttachments=[];
   window.assistantImages?.clear(); assistantLastImages = [];
   if (focus) window.showSecretaryChat?.();
@@ -810,6 +815,8 @@ function resetAssistantConversation({focus = true} = {}) {
   if (focus) document.getElementById('assistant-input').focus();
 }
 async function loadAssistantConversation(id) {
+  window.mailaiAssistantSearch?.reset(); assistantLastSearchRequest = null;
+  assistantSearchMode = false;
   assistantController?.abort(); assistantController = null;
   assistantLastQuestion = ''; assistantLastScope = null; assistantLastAlertContext = false;
   setAssistantState(assistantNotificationState(assistantAlerts));
@@ -825,10 +832,17 @@ async function loadAssistantConversation(id) {
   const wrap = document.getElementById('assistant-messages'); wrap.innerHTML = '';
   (data.messages || []).forEach(message => {
     const element = appendAssistantMessage(message.role, message.content, message.sources || []);
+    if (message.search) window.mailaiAssistantSearch?.restore(element,message.search,message.sources || []);
     if (message.images?.length) window.assistantImages?.showSent(element, message.images);
     assistantHistory.push({role:message.role, content:message.content});
   });
   if (!data.messages?.length) resetAssistantConversation();
+  if (window.mailaiAssistantSearch?.base()) {
+    assistantSearchMode = true; assistantPinnedScope = null;
+    document.getElementById('assistant-scope').value='account';
+    assistantScopeKey=JSON.stringify([activeMailAccount()?.id,'account',null,true]);
+    window.mailaiAssistantSearch.focusLatest();
+  }
   assistantAlertContextIds = data.alert_email_ids || [];
   reconcileAssistantRiskAnalysis(data.pending_alert_ids);
   document.getElementById('assistant-history-panel').classList.add('hidden'); assistantHistoryLoaded = true;
@@ -925,8 +939,13 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
   question = String(question || '').trim(); if (!question || assistantController) return;
   window.showSecretaryChat?.();
   const account = activeMailAccount();
+  const searchMode = !images.length && !attachments.length && Boolean(options.searchMode || (assistantSearchMode && !explicitIds?.length && document.getElementById('assistant-scope').value === 'account'));
   if(attachments.length)explicitIds=[...new Set(attachments.map(r=>r.email_id))];
   let mode = document.getElementById('assistant-scope').value;
+  if (searchMode) {
+    explicitIds = null; assistantPinnedScope = null;
+    mode = document.getElementById('assistant-scope').value = 'account';
+  }
   if (explicitIds?.length) {
     assistantPinnedScope = [...explicitIds];
     mode = document.getElementById('assistant-scope').value = 'selected';
@@ -934,7 +953,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
   let emailIds = explicitIds || assistantPinnedScope;
   // An attachment-fill request acts on the mail visibly open in this account.
   // An older pinned scope must not silently redirect it to another message.
-  if (!explicitIds?.length && assistantQuestionRequestsDocumentReply(question)
+  if (!searchMode && !explicitIds?.length && assistantQuestionRequestsDocumentReply(question)
       && selectedEmailId && (!selectedEmailAccountId || selectedEmailAccountId === account?.id)) {
     assistantPinnedScope = [selectedEmailId];
     emailIds = [...assistantPinnedScope];
@@ -944,7 +963,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
   // even when the scope picker was left at its default “当前邮箱”.  Pin the id so
   // follow-up questions stay on the same message and cannot fall back to a noisy
   // whole-mailbox keyword search.
-  if (!emailIds && selectedEmailId && assistantQuestionReferencesOpenEmail(question)) {
+  if (!searchMode && !emailIds && selectedEmailId && assistantQuestionReferencesOpenEmail(question)) {
     assistantPinnedScope = [selectedEmailId];
     emailIds = [...assistantPinnedScope];
     mode = document.getElementById('assistant-scope').value = 'selected';
@@ -964,9 +983,12 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
   }
   const imageScope = inlineImageCount ? mailaiTemplate`邮件内嵌图片 ${inlineImageCount} 张 · ` : images.length ? mailaiTemplate`${images.length} 张图片 · ` : '';
   const scope = `${account?.user || mailaiText('当前邮箱')} · ${attachments.length ? attachments.length+mailaiText(' 个附件 · ') : ''}${imageScope}${emailIds ? (emailIds.length ? mailaiText('所选范围 ') + emailIds.length + mailaiText(' 封') : mailaiText('未附邮件')) : mailaiText('全部已同步邮件')}`;
-  const scopeKey = JSON.stringify([account?.id, mode, emailIds]);
+  const scopeKey = JSON.stringify([account?.id, mode, emailIds, searchMode]);
   if (assistantScopeKey && assistantScopeKey !== scopeKey) resetAssistantConversation();
   assistantScopeKey = scopeKey; assistantLastQuestion = question;
+  assistantSearchMode = searchMode;
+  const searchRequest = searchMode ? (options.searchRequest || window.mailaiAssistantSearch?.base() || {}) : {};
+  assistantLastSearchRequest = searchMode ? {...searchRequest} : null;
   assistantAlertContextIds = alertContext ? [...(emailIds || [])] : [];
   assistantLastAlertContext = alertContext;
   assistantLastScope = emailIds;
@@ -983,6 +1005,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
   if(images.length && userMessage)window.assistantImages?.showSent(userMessage,images);
   if (!retrying) assistantHistory.push({role:'user', content:historyQuestion});
   const thinking = appendAssistantMessage('assistant', '');
+  window.mailaiAssistantSearch?.begin(thinking,searchMode);
   const bubble = thinking.querySelector('.assistant-bubble');
   bubble.classList.add('assistant-progress-bubble');
   const initialProgress = attachments.length
@@ -1000,7 +1023,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
   document.getElementById('assistant-retry').classList.add('hidden');
   setAssistantState('thinking'); document.getElementById('assistant-send').disabled = true;
   document.getElementById('mail-assistant').dataset.answerComplete = 'false';
-  let answer = '', sources = [], completed = false, pendingAction = null;
+  let answer = '', sources = [], completed = false, pendingAction = null, searchMeta = null;
   let paintTimer = null;
   const streamDeadline = setTimeout(() => controller.abort(), 360000);
   const finishCompanionWork = globalThis.mailaiCompanionWork?.begin(controller.signal);
@@ -1014,7 +1037,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
   try {
     const response = await fetch('/api/assistant/ask-stream', {method:'POST', signal:controller.signal,
       headers:{'Content-Type':'application/json', 'X-MailAI-Account':account?.id || ''},
-      body:JSON.stringify({question, history:assistantHistory.slice(0, -1).slice(-6), conversation_id:assistantConversationId, email_ids:emailIds, scope_label:scope, images, attachments, alert_context:alertContext})});
+      body:JSON.stringify({question, history:assistantHistory.slice(0, -1).slice(-6), conversation_id:assistantConversationId, email_ids:emailIds, scope_label:scope, images, attachments, alert_context:alertContext, search_mode:searchMode, ...searchRequest})});
     if (!response.ok || !response.body) {const detail=await response.json().catch(()=>({}));throw new Error(typeof detail.detail==='string'?detail.detail:mailaiTemplate`请求未完成（${response.status}），请检查图片格式、大小和模型连接`);}
     const reader = response.body.getReader(); const decoder = new TextDecoder();
     let pending = '';
@@ -1022,6 +1045,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
       if (!line.trim() || revision !== assistantRevision) return;
       const event = JSON.parse(line);
       if (event.type === 'meta') assistantConversationId = event.conversation_id;
+      else if (event.type === 'search') { searchMeta=event.search; thinking.dataset.searchRunId=searchMeta.id; }
       else if (event.type === 'sources') {
         sources = event.sources || [];
         if (sources.length) mailaiBindUI(document.getElementById('assistant-scope-note'), "textContent", () => ((mailaiT('asst.runScope') || '{scope} · 本次分析 {count} 封（每次最多 20 封）').replace('{scope}', scope).replace('{count}', sources.length)));
@@ -1063,6 +1087,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
     document.getElementById('mail-assistant').dataset.answerComplete = 'true';
     paint();
     bubble.insertAdjacentHTML('beforeend', assistantSourcesHtml(sources, account?.id || ''));
+    if (searchMode && searchMeta) window.mailaiAssistantSearch?.complete(thinking,searchMeta,sources);
     if (pendingAction) renderAssistantActionCard(bubble, pendingAction, account);
     assistantHistory.push({role:'assistant', content:validAnswer()});
   } catch (error) {
@@ -1071,6 +1096,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
     bubble.insertAdjacentHTML('beforeend', assistantSourcesHtml(sources, account?.id || ''));
     bubble.insertAdjacentHTML('beforeend', `<p class="operation-note">${controller.signal.aborted ? mailaiText('已停止，已生成内容保留。') : esc(mailaiSystemMessage(error.message) || mailaiText('分析中断，已生成内容保留。可以重试。'))}</p>`);
     document.getElementById('assistant-retry').classList.remove('hidden');
+    if (searchMode) window.mailaiAssistantSearch?.failed(thinking);
   } finally {
     finishCompanionWork?.();
     clearTimeout(paintTimer);
@@ -1081,6 +1107,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
       document.getElementById('assistant-send').disabled = false;
       document.getElementById('assistant-stop').classList.add('hidden');
       setAssistantState(assistantNotificationState(assistantAlerts));
+      window.mailaiAssistantSearch?.idle();
     }
   }
 }
@@ -1206,6 +1233,7 @@ function syncSelectedEmailVisual(id, {emphasize = false, scroll = false, account
 }
 
 function resetReadingPane() {
+  window.mailaiAssistantSearch?.clearReader();
   readingTransition?.cancel();
   mailSelectionExplicit = false;
   readingLoadRevision += 1;
@@ -3144,11 +3172,11 @@ function needsRiskAttention(email = {}) {
 // ===== 数据加载 =====
 let mailLoadRevision = 0;
 
-async function loadMailPages(path, isCurrent = () => true, maxRows = Number.POSITIVE_INFINITY) {
+async function loadMailPages(path, isCurrent = () => true, maxRows = Number.POSITIVE_INFINITY, signal) {
   const rows = new Map();
   let offset = 0;
   while (isCurrent()) {
-    const page = await api(`${path}&offset=${offset}`);
+    const page = await api(`${path}&offset=${offset}`, signal ? {signal} : {});
     if (!isCurrent()) return null;
     for (const row of page) {
       if (rows.size >= maxRows) break;
@@ -3748,7 +3776,7 @@ function applyFilters({silent = false} = {}) {
     });
   }
 
-  if (currentFilter.status === 'trash' && currentFilter.search) {
+  if (currentFilter.status === 'trash' && currentFilter.search && searchResults === null) {
     const terms = currentFilter.search.toLowerCase().split(/\s+/).filter(Boolean);
     list = list.filter(e => terms.every(term => [e.subject,e.from_addr,e.from_name,e.summary,e.snippet].join(' ').toLowerCase().includes(term)));
   }
@@ -3844,25 +3872,26 @@ function updateListTitle(count) {
 }
 
 function specialMailboxRows() {
-  if (specialMailbox === 'drafts') return savedDrafts.map(d => ({
+  const source = currentFilter.search && searchResults !== null ? searchResults : specialMailbox === 'drafts' ? savedDrafts : sentMessages;
+  if (specialMailbox === 'drafts') return source.map(d => ({
     ...d, _kind:'draft', date:d.updated_at, get from_name() { return mailaiText('草稿'); }, from_addr:d.to_addr || mailaiText('尚未填写收件人'),
     direction:'outgoing', get direction_label() { return mailaiText('发给'); }, counterpart_addr:d.to_addr || mailaiText('尚未填写收件人'),
-    summary:(d.body_html || '').replace(/<[^>]+>/g, ' '), score:0, verdict:'clean', status:'draft',
+    summary:d._search_summary ? d.summary : (d.body_html || '').replace(/<[^>]+>/g, ' '), score:0, verdict:'clean', status:'draft',
   }));
-  return sentMessages.map(s => ({
+  return source.map(s => ({
     ...s, _kind:'sent', is_read:1, date:s.sent_at || s.created_at,
     from_name:s.status === 'sent' ? mailaiText('已发送') : mailaiText('发送失败'), from_addr:s.to_addr || s.cc_addr || s.bcc_addr,
     direction:'outgoing', get direction_label() { return mailaiText('发给'); }, counterpart_name:s.counterpart_name || '',
     counterpart_addr:s.counterpart_addr || s.to_addr || s.cc_addr || s.bcc_addr,
     counterpart_count:s.counterpart_count || (String([s.to_addr,s.cc_addr,s.bcc_addr].filter(Boolean).join(', ')).match(/@/g) || []).length,
-    summary:(s.body_html || '').replace(/<[^>]+>/g, ' '), score:0, verdict:'clean', status:s.status,
+    summary:s._search_summary ? s.summary : (s.body_html || '').replace(/<[^>]+>/g, ' '), score:0, verdict:'clean', status:s.status,
   }));
 }
 
 function renderSpecialMailbox({silent = false} = {}) {
   let rows = specialMailboxRows();
   const query = (currentFilter.search || '').toLowerCase();
-  if (query) rows = rows.filter(row => [row.subject,row.to_addr,row.cc_addr,row.bcc_addr,row.counterpart_name,Object.values(row.recipient_names || {}).join(' '),row.summary].some(value => String(value || '').toLowerCase().includes(query)));
+  if (query && searchResults === null) rows = rows.filter(row => [row.subject,row.to_addr,row.cc_addr,row.bcc_addr,row.counterpart_name,Object.values(row.recipient_names || {}).join(' '),row.summary].some(value => String(value || '').toLowerCase().includes(query)));
   if (currentFilter.days !== 9999) rows = rows.filter(row => new Date(row.date).getTime() >= Date.now() - currentFilter.days * 86400000);
   if (currentFilter.attachments) rows = rows.filter(row => row.attachments?.length);
   rows.sort((a,b) => (currentFilter.sort === 'date-asc' ? 1 : -1) * (new Date(a.date || 0) - new Date(b.date || 0)));
@@ -3909,11 +3938,17 @@ function renderEmailList(emails, {silent = false} = {}) {
   if (!emails.length && currentFilter.search && mailSearchState.revision === searchRevision && mailSearchState.phase === 'loading') {
     container.innerHTML = "<div class=\"email-empty\"><div class=\"empty-text\"><span data-i18n=\"ui.ec18026a6ac6\">正在搜索，请稍候…</span></div></div>"; updateBulkToolbar(); return;
   }
+  if (!emails.length && currentFilter.search && mailSearchState.revision === searchRevision && mailSearchState.phase === 'error') {
+    container.innerHTML = '<div class="email-empty"><div class="empty-text"><strong data-i18n="search.failed">搜索未完成</strong><small data-i18n="search.failedHelp">请重试；本次结果尚不能判断是否有匹配的邮件。</small></div><div class="search-empty-actions"><button type="button" data-search-recover="retry" data-i18n="search.retry">重试搜索</button></div></div>';
+    updateBulkToolbar(); return;
+  }
   if (!emails.length) {
     container.innerHTML = `<div class="email-empty">
       <div class="empty-icon empty-mail-icon" aria-hidden="true"><svg viewBox="0 0 64 64"><rect x="10" y="16" width="44" height="34" rx="10"/><path d="m14 22 18 14 18-14M17 46l10-9M47 46l-10-9"/><path class="empty-mail-spark" d="M49 9v6M46 12h6"/></svg></div>
       <div class="empty-text"><strong>${currentFilter.search ? mailaiText('没有找到匹配的邮件') : mailaiText('这里暂时没有邮件')}</strong><small>${currentFilter.search ? mailaiTemplate`已在${esc(currentMailboxScopeLabel())}搜索“${esc(currentFilter.search)}”` : mailaiText('可以调整筛选条件或切换文件夹')}</small></div>
-      <div class="search-empty-actions"><button type="button" data-search-recover="clear"><span data-i18n="ui.b2f09a6bba8d">清除搜索和筛选</span></button>${!unifiedMailbox && (specialMailbox || currentServerFolder || currentFilter.status) ? "<button type=\"button\" data-search-recover=\"broaden\"><span data-i18n=\"ui.1e62738ff5c6\">搜索当前账号全部邮件</span></button>" : ''}</div>
+      ${currentFilter.search ? '<p class="search-empty-help" data-i18n="search.quickAdvice">试试姓名、邮箱或主题中的关键词；也可以扩大范围继续查找。</p>' : ''}
+      <div class="search-empty-actions">${currentFilter.search?'<button type="button" data-search-recover="edit" data-i18n="searchLoop.editQuery">修改关键词</button>':'<button type="button" data-search-recover="clear" data-i18n="ui.b2f09a6bba8d">清除搜索和筛选</button>'}${!unifiedMailbox && (specialMailbox || currentServerFolder || currentFilter.status) ? "<button type=\"button\" data-search-recover=\"broaden\"><span data-i18n=\"ui.1e62738ff5c6\">搜索当前账号全部邮件</span></button>" : ''}</div>
+      ${currentFilter.search ? `<div class="search-empty-ai"><b data-i18n="searchLoop.entryTitle">记得大概内容，也可以继续找</b><p data-i18n="searchLoop.entryHelp">小邮会理解你的描述，再找相关邮件。原问题会自动带入。</p><button type="button" data-search-recover="assistant" data-i18n="searchLoop.entryButton">让小邮帮我找</button><small>${esc(mailaiText(MAILAI_UI_COPY['searchLoop.entryScope'][0]).replace('{0}',activeMailAccount()?.user || mailaiText('当前邮箱')))}</small></div>` : ''}
     </div>`;
     updateBulkToolbar();
     if (silent) container.scrollTop = scrollTop;
@@ -4090,11 +4125,12 @@ function renderEmailItem(e, idx = 0) {
 
 // ===== 阅读区 =====
 async function selectSpecialMessage(id, suppliedRow = null) {  const kind = specialMailbox;
-  let row = suppliedRow || (kind === 'drafts' ? savedDrafts.find(x => x.id === id) : sentMessages.find(x => x.id === id));
+  let row = suppliedRow || (currentFilter.search && searchResults?.find(x => x.id === id)) || (kind === 'drafts' ? savedDrafts.find(x => x.id === id) : sentMessages.find(x => x.id === id));
   if (!row) return;
-  if (!row._remote && !suppliedRow) {
+  if ((!row._remote || row._search_summary) && !suppliedRow) {
     try {
-      row = await api(kind === 'drafts' ? `/api/drafts/${id}` : `/api/mail/sent/${id}`);
+      const full = await api(row._remote ? `/api/emails/${row.remote_email_id}` : kind === 'drafts' ? `/api/drafts/${id}` : `/api/mail/sent/${id}`);
+      row = {...row,...full,id,remote_email_id:row.remote_email_id,_remote:row._remote};
     } catch (error) {
       toast(mailaiText('加载邮件详情失败：') + mailaiSystemMessage(error.message), 'error');
       return;
@@ -4725,6 +4761,7 @@ function beginReadingTransition(revision, animateArrival) {
 }
 
 async function selectEmail(id, options = {}) {
+  window.mailaiAssistantSearch?.clearReader();
   const animateArrival = selectedEmailId !== id || selectedEmailAccountId !== (options.accountId || '');
   const requestRevision = ++readingLoadRevision;
   const requestAccountId = options.accountId || activeMailAccount()?.id || '';
@@ -5312,14 +5349,14 @@ async function activateMailAccount(accountId, {keepMailbox = false, quiet = fals
     window.assistantAttachments?.clear(); assistantLastAttachments=[];
     window.assistantImages?.clear(); assistantLastImages = []; assistantLastQuestion = ''; assistantLastScope = null; assistantLastAlertContext = false;
     assistantController?.abort(); assistantController = null; ++assistantRevision;
-    ++mailLoadRevision; ++readingLoadRevision; ++searchRevision;
+    ++mailLoadRevision; ++readingLoadRevision; advanceMailSearchRevision();
     readingLoadController?.abort(); readingLoadController = null;
     document.getElementById('assistant-send').disabled = false;
     document.getElementById('assistant-stop').classList.add('hidden');
     document.getElementById('assistant-retry').classList.add('hidden');
     mailaiBindUI(document.getElementById('assistant-scope-note'), "textContent", () => (account.user + mailaiText(' · 全部已同步邮件')));
     assistantHistory = []; assistantConversationId = null; assistantHistoryLoaded = false; assistantAlertContextIds = [];
-    assistantAlerts = null; assistantNoticeKey = ''; assistantScopeKey = '';
+    assistantAlerts = null; assistantNoticeKey = ''; assistantScopeKey = ''; assistantSearchMode = false;
     ++assistantAlertRevision;
     setAssistantState('calm');
     document.getElementById('assistant-nudge').classList.add('hidden');
@@ -5425,7 +5462,7 @@ async function openAccountMailbox(accountId, mailbox) {
     throw err;
   }
   if (navigationRevision !== mailboxNavigationRevision || activeMailAccount()?.id !== accountId) return;
-  currentFilter.search = ''; searchResults = null; ++searchRevision; clearTimeout(globalSearchTimer);
+  currentFilter.search = ''; searchResults = null; advanceMailSearchRevision(); clearTimeout(globalSearchTimer);
   document.getElementById('global-search').value = '';
   currentFilter.verdict = ''; currentFilter.category = '';
   if (currentFilter.days !== 9999) { currentFilter.days = 9999; setSegmentedFilter('filter-days', '9999'); }
@@ -5452,7 +5489,7 @@ async function openTrashMailbox({resetPane = true, transitionRevision = 0} = {})
   currentFilter.status = 'trash'; currentFilter.days = 9999;
   currentFilter.search = ''; currentFilter.verdict = ''; currentFilter.category = '';
   currentFilter.priority = ''; currentFilter.domain = ''; currentFilter.attachments = false;
-  searchResults = null; ++searchRevision; clearTimeout(globalSearchTimer);
+  searchResults = null; advanceMailSearchRevision(); clearTimeout(globalSearchTimer);
   document.getElementById('global-search').value = '';
   setSegmentedFilter('filter-days', '9999');
   setSegmentedFilter('filter-priority', '');
@@ -5500,7 +5537,7 @@ async function openUnifiedInbox() {
   updateActiveNav(); renderSidebarAccounts(); // 乐观高亮，不等加载完成
   specialMailbox = ''; currentServerFolder = '';
   currentFilter.status = ''; currentFilter.verdict = ''; currentFilter.category = '';
-  currentFilter.search = ''; searchResults = null; ++searchRevision; clearTimeout(globalSearchTimer);
+  currentFilter.search = ''; searchResults = null; advanceMailSearchRevision(); clearTimeout(globalSearchTimer);
   document.getElementById('global-search').value = '';
   let loaded = await loadData();
   if (loaded === null && navigationRevision === mailboxNavigationRevision) loaded = await loadData();
@@ -7487,7 +7524,7 @@ async function loadServerFolder(folder, {transitionRevision = 0} = {}) {
   currentServerFolder = folder; specialMailbox = '';
   currentFilter.status = ''; currentFilter.verdict = ''; currentFilter.category = ''; currentFilter.search = '';
   currentFilter.priority = ''; currentFilter.domain = ''; currentFilter.attachments = false;
-  searchResults = null; ++searchRevision; clearTimeout(globalSearchTimer);
+  searchResults = null; advanceMailSearchRevision(); clearTimeout(globalSearchTimer);
   selectedMailIds.clear(); mailSelectionExplicit = false; updateBulkToolbar();
   setSegmentedFilter('filter-priority', '');
   document.getElementById('filter-domain').value = '';
@@ -8894,11 +8931,50 @@ function renderMailSearchStatus() {
   document.getElementById('global-search').setAttribute('aria-busy', String(busy));
   document.getElementById('email-list').setAttribute('aria-busy', String(busy));
   if (current) mailaiBindUI(host, "textContent", () => (busy ? mailaiTemplate`正在搜索${currentMailboxScopeLabel()}…` : mailSearchState.phase === 'error' ? mailaiText('搜索未完成，以下不能作为完整结果') : mailaiTemplate`搜索完成 · ${currentMailboxScopeLabel()} · 仅已同步邮件`));
+  let helper=document.getElementById('search-ai-assist');
+  if(!helper){helper=document.createElement('button');helper.type='button';helper.id='search-ai-assist';helper.className='search-ai-assist';helper.onclick=startSearchInAssistant;host.after(helper);mailaiBindUI(helper,'textContent',()=>mailaiText(MAILAI_UI_COPY['searchLoop.entryResults'][0]));}
+  helper.hidden=!(current && mailSearchState.phase==='done' && searchResults?.length);
+}
+
+function advanceMailSearchRevision() {
+  mailSearchController?.abort();
+  mailSearchController = null;
+  clearTimeout(globalSearchTimer);
+  return ++searchRevision;
+}
+
+window.mailaiGetSearchInterpretation = () => mailSearchState.revision === searchRevision && currentFilter.search ? mailSearchState.parsed : null;
+window.mailaiRemoveSearchToken = field => {
+  const parsed = window.mailaiGetSearchInterpretation();
+  if (!parsed) return;
+  document.getElementById('global-search').value = parsed.tokens.filter(token => token.field !== field).map(token => token.display).join(' ');
+  runGlobalSearch();
+};
+
+function startSearchInAssistant() {
+  const query = String(currentFilter.search || '').trim();
+  if (!query) return;
+  if (assistantController) {
+    openAssistant();
+    toast(mailaiText('小邮正在处理其他问题，完成后可再次点击帮你查找'), 'info');
+    return;
+  }
+  // A fresh, read-only mailbox search must not inherit a selected-message pin,
+  // a filtered empty list, old attachments, or a previous action conversation.
+  resetAssistantConversation({focus:false});
+  assistantPinnedScope = null; assistantScopeKey = ''; assistantSearchMode = true;
+  document.getElementById('assistant-scope').value = 'account';
+  updateAssistantScopeControl();
+  const input = document.getElementById('assistant-input');
+  input.value = query; resizeAssistantInput();
+  openAssistant();
+  askAssistant(query, null, [], [], false, {searchMode:true});
+  if (assistantController) { input.value=''; resizeAssistantInput(); }
 }
 
 function runGlobalSearch() {
   const query = document.getElementById('global-search').value.trim();
-  const revision = ++searchRevision;
+  const revision = advanceMailSearchRevision();
   // Search keeps the selected folder, including local drafts and sent mail.
   currentFilter.search = query;
   resetReadingPane();
@@ -8906,12 +8982,38 @@ function runGlobalSearch() {
   mailSearchState = {revision, phase:query ? 'loading' : 'idle'};
   renderMailSearchStatus();
   searchResults = null;
+  if (query) searchResults = [];
+  applyFilters();
+  window.updateFilterChips?.();
   clearTimeout(globalSearchTimer);
   globalSearchTimer = setTimeout(async () => {
-    if (!query || specialMailbox || currentFilter.status === 'trash') { mailSearchState.phase = 'done'; applyFilters(); return; }
+    if (!query) { mailSearchState.phase = 'done'; applyFilters(); return; }
     try {
-      const path = unifiedMailbox ? '/api/system/mail/unified-inbox?days=9999' : '/api/emails/search?days=9999';
-      const results = await loadMailPages(`${path}&q=${encodeURIComponent(query)}&limit=1000${currentServerFolder ? '&folder=' + encodeURIComponent(currentServerFolder) : ''}${!unifiedMailbox && currentFilter.status ? '&status=' + encodeURIComponent(currentFilter.status) : ''}`, () => revision === searchRevision);
+      const controller = new AbortController();
+      mailSearchController = controller;
+      const parsed = await api(`/api/productivity/search/interpret?q=${encodeURIComponent(query)}`, {signal:controller.signal});
+      if (revision !== searchRevision) return;
+      mailSearchState.parsed = parsed;
+      window.updateFilterChips?.();
+      if (specialMailbox && !parsed.structured) {
+        searchResults = null; mailSearchState.phase = 'done'; applyFilters(); return;
+      }
+      let results;
+      if (specialMailbox) {
+        const scope = specialMailbox;
+        if (parsed.criteria.mailbox && !['all',scope].includes(parsed.criteria.mailbox)) throw new Error(mailaiText('搜索范围与当前文件夹冲突，请切换文件夹或调整条件'));
+        const criteria = {...parsed.criteria, query:parsed.tokens.find(token=>token.field==='text')?.canonical || '', mailbox:scope};
+        results = [];
+        for (let offset=0; revision === searchRevision; offset+=200) {
+          const page = await api('/api/productivity/search', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({criteria,offset,limit:200,mailbox_rows:true}), signal:controller.signal});
+          results.push(...page.items);
+          if (!page.has_more) break;
+        }
+      } else {
+        const path = unifiedMailbox ? '/api/system/mail/unified-inbox?days=9999' : '/api/emails/search?days=9999';
+        const searchQuery = parsed.structured ? parsed.canonical : query;
+        results = await loadMailPages(`${path}&q=${encodeURIComponent(searchQuery)}&limit=1000${currentServerFolder ? '&folder=' + encodeURIComponent(currentServerFolder) : ''}${!unifiedMailbox && currentFilter.status ? '&status=' + encodeURIComponent(currentFilter.status) : ''}`, () => revision === searchRevision, Number.POSITIVE_INFINITY, controller.signal);
+      }
       if (revision !== searchRevision) return;
       searchResults = results;
       mailSearchState.phase = 'done';
@@ -8922,6 +9024,7 @@ function runGlobalSearch() {
       const error = document.getElementById('search-error');
       mailaiBindUI(error.querySelector('span'), "textContent", () => (mailaiTemplate`搜索未完成：${mailaiSystemMessage(err.message)}`));
       error.classList.remove('hidden');
+      applyFilters();
     }
   }, 260);
 }
@@ -8967,7 +9070,7 @@ document.getElementById('filter-attachments').addEventListener('change', (e) => 
 
 document.getElementById('btn-reset-filter').addEventListener('click', async () => {
   resetReadingPane();
-  ++searchRevision; clearTimeout(globalSearchTimer); searchResults = null;
+  advanceMailSearchRevision(); clearTimeout(globalSearchTimer); searchResults = null;
   specialMailbox = ''; currentServerFolder = '';
   currentFilter = { status: '', verdict: '', category: '', days: 9999, priority: '', domain: '', search: '', attachments: false, sort: 'date-desc' };
   document.getElementById('global-search').value = '';
@@ -9655,15 +9758,19 @@ function syncScrollIndicator(target) {
     return;
   }
   indicator.hidden = false;
-  indicator.style.left = `${Math.round(rect.right - (window.innerWidth <= 760 ? 7 : 9))}px`;
-  indicator.style.top = `${Math.round(rect.top + inset)}px`;
-  indicator.style.height = `${Math.round(trackHeight)}px`;
+  // rect uses viewport pixels; this fixed overlay lives inside the zoomed body.
+  // Convert back to its CSS coordinates exactly once, including thumb travel.
+  const zoom = Number.parseFloat(getComputedStyle(document.body).zoom) || 1;
+  indicator.style.width = `${(window.innerWidth <= 760 ? 4 : 5) / zoom}px`;
+  indicator.style.left = `${(rect.right - (window.innerWidth <= 760 ? 7 : 9)) / zoom}px`;
+  indicator.style.top = `${(rect.top + inset) / zoom}px`;
+  indicator.style.height = `${trackHeight / zoom}px`;
   const thumb = indicator.firstElementChild;
   const thumbHeight = Math.min(trackHeight, Math.max(34, trackHeight * target.clientHeight / target.scrollHeight));
   const travel = trackHeight - thumbHeight;
   const offset = travel * Math.min(1, Math.max(0, target.scrollTop / overflow));
-  thumb.style.height = `${Math.round(thumbHeight)}px`;
-  thumb.style.transform = `translateY(${Math.round(offset)}px)`;
+  thumb.style.height = `${thumbHeight / zoom}px`;
+  thumb.style.transform = `translateY(${offset / zoom}px)`;
 }
 
 function showScrollIndicator(target) {
@@ -9973,6 +10080,9 @@ document.getElementById('email-list').addEventListener('click', async event => {
   }
   const action = event.target.closest('[data-search-recover]')?.dataset.searchRecover;
   if (!action) return;
+  if (action === 'assistant') { startSearchInAssistant(); return; }
+  if (action === 'edit') { const input=document.getElementById('global-search');input.focus();input.select();return; }
+  if (action === 'retry') { runGlobalSearch(); return; }
   const query = currentFilter.search;
   currentFilter = {...currentFilter, verdict:'', category:'', days:9999, priority:'', domain:'', attachments:false, unread:false};
   setSegmentedFilter('filter-days', '9999'); setSegmentedFilter('filter-priority', '');
@@ -9982,7 +10092,7 @@ document.getElementById('email-list').addEventListener('click', async event => {
   if (action === 'broaden') { specialMailbox = ''; currentServerFolder = ''; currentFilter.status = ''; updateActiveNav(); }
   document.getElementById('global-search').value = action === 'broaden' ? query : '';
   currentFilter.search = document.getElementById('global-search').value;
-  const revision = ++searchRevision; clearTimeout(globalSearchTimer); searchResults = null;
+  const revision = advanceMailSearchRevision(); clearTimeout(globalSearchTimer); searchResults = null;
   try { await loadData(); if (revision === searchRevision) runGlobalSearch(); } catch (error) { if (revision === searchRevision) toast(mailaiTemplate`加载邮件失败：${mailaiSystemMessage(error.message)}`, 'error'); }
 });
 
