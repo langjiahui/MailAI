@@ -129,6 +129,8 @@ jobs:
           MAILAI_BROWSER=webkit node tests/test_search_query_browser.cjs
           node tests/test_search_handoff_browser.cjs
           MAILAI_BROWSER=webkit node tests/test_search_handoff_browser.cjs
+          node tests/test_search_scope_browser.cjs
+          MAILAI_BROWSER=webkit node tests/test_search_scope_browser.cjs
           node tests/test_attachment_open_browser.cjs
           MAILAI_BROWSER=webkit node tests/test_attachment_open_browser.cjs
           node tests/test_attachment_library_ui.cjs

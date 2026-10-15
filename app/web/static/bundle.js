@@ -1579,6 +1579,14 @@ if (typeof document !== 'undefined') {
 /* ---- i18n-catalog.js ---- */
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "searchLoop.scopeTitle": ["选择检索范围", "Choose the search scope"],
+  "searchLoop.scopeHelp": ["当前列表汇总多个邮箱。可继续检索所有收件箱，或指定邮箱让小邮搜索该账号全部已同步邮件。", "This list combines accounts. Search all inboxes, or choose an account for Xiaoyou to search all its synced mail."],
+  "searchLoop.scopeAccount": ["用小邮检索的邮箱", "Account for Xiaoyou search"],
+  "searchLoop.scopePlaceholder": ["请选择邮箱", "Choose an account"],
+  "searchLoop.scopeInbox": ["收件箱 {0} 封", "{0} inbox messages"],
+  "searchLoop.scopeAll": ["在所有账号中搜索", "Search all accounts"],
+  "searchLoop.scopeContinue": ["用小邮查找所选邮箱", "Search the selected account with Xiaoyou"],
+  "searchLoop.scopeMissing": ["该邮箱已不可用，请重新选择", "This account is unavailable. Choose another account."],
   "update.notPublished": ["更新版本尚未正式发布", "This update has not been officially published."],
   "update.invalidReleasePage": ["更新发布页与官方仓库不一致", "The update release page does not match the official repository."],
   "update.invalidAssets": ["官方安装包列表无效", "The official installer list is invalid."],
@@ -27667,6 +27675,10 @@ function startSearchInAssistant() {
     toast(mailaiText('小邮正在处理其他问题，完成后可再次点击帮你查找'), 'info');
     return;
   }
+  if (unifiedMailbox) {
+    window.mailaiAssistantSearch?.chooseScope(query);
+    return;
+  }
   // A fresh, read-only mailbox search must not inherit a selected-message pin,
   // a filtered empty list, old attachments, or a previous action conversation.
   resetAssistantConversation({focus:false});
@@ -30501,7 +30513,47 @@ document.getElementById('task-center-list').addEventListener('click', async even
   });
   host.addEventListener('keydown',event=>{const form=event.target.closest('.assistant-search-clue');if(form&&event.key==='Escape'){form.hidden=true;form.closest('.assistant-search-result').querySelector('[data-search-loop-clue]').focus();event.stopPropagation();}});
   document.addEventListener('mailai:language-changed',()=>{for(const id of runs.keys())render(id);focusLatest();});
-  window.mailaiAssistantSearch={reset,base,begin,idle,complete,restore,failed,clearReader,focusLatest};
+  let scopeDialog=null;
+  function chooseScope(query){
+    if(scopeDialog?.open){scopeDialog.focus();return;}
+    const previous=[document.activeElement,document.getElementById('search-ai-assist'),document.querySelector('[data-search-recover=assistant]')].find(node=>node?.tagName==='BUTTON'&&node.getClientRects().length)||document.activeElement;
+    const dialog=document.createElement('dialog');scopeDialog=dialog;
+    dialog.className='mailai-question assistant-search-scope';
+    dialog.setAttribute('aria-labelledby','assistant-search-scope-title');
+    const accounts=()=>_systemConfig?.accounts || [];
+    const options=accounts().map(account=>`<option value="${esc(account.id)}">${esc(account.user)}${Number.isFinite(account.inbox)?' · '+esc(t('scopeInbox').replace('{0}',account.inbox)):''}</option>`).join('');
+    dialog.innerHTML=`<form><h2 id="assistant-search-scope-title" data-i18n="searchLoop.scopeTitle">${esc(t('scopeTitle'))}</h2><p class="question-message" data-i18n="searchLoop.scopeHelp">${esc(t('scopeHelp'))}</p><label class="question-field"><span data-i18n="searchLoop.scopeAccount">${esc(t('scopeAccount'))}</span><select required aria-label="${esc(t('scopeAccount'))}"><option value="">${esc(t('scopePlaceholder'))}</option>${options}</select></label><p class="assistant-search-open-error" role="alert" hidden></p><footer><button type="button" data-search-scope-all data-confirm>${esc(t('scopeAll'))}</button><button type="submit" data-search-scope-submit>${esc(t('scopeContinue'))}</button><button type="button" data-search-scope-cancel>${esc(t('cancel'))}</button></footer></form>`;
+    document.body.append(dialog);dialog.showModal();dialog.querySelector('[data-search-scope-all]').focus();
+    dialog.addEventListener('close',()=>{if(scopeDialog===dialog)scopeDialog=null;dialog.remove();if(previous?.isConnected&&!document.querySelector('dialog[open]'))previous.focus({preventScroll:true});},{once:true});
+    dialog.querySelector('[data-search-scope-cancel]').onclick=()=>dialog.close();
+    dialog.querySelector('[data-search-scope-all]').onclick=()=>{
+      dialog.close();
+      window.mailaiProductivity.openSearch({query,mailbox:'inbox'},true);
+      document.getElementById('productivity-search-form')?.requestSubmit();
+    };
+    dialog.querySelector('form').onsubmit=async event=>{
+      event.preventDefault();
+      const id=dialog.querySelector('select').value;
+      const error=dialog.querySelector('[role=alert]');
+      if(!accounts().some(account=>account.id===id)){error.hidden=false;error.textContent=t('scopeMissing');return;}
+      const controls=dialog.querySelectorAll('select,[data-search-scope-submit],[data-search-scope-all]');
+      controls.forEach(control=>control.disabled=true);error.hidden=true;
+      const revision=mailboxNavigationRevision+1;
+      try{
+        await openAccountMailbox(id,'inbox');
+        // Cancel, failed activation and a newer navigation must not start a
+        // request against an old account merely because its ID is still cached.
+        if(!dialog.open||mailboxNavigationRevision!==revision||unifiedMailbox||activeMailAccount()?.id!==id)return;
+        dialog.close();
+        document.getElementById('global-search').value=query;
+        runGlobalSearch();
+        startSearchInAssistant();
+      }catch(failure){if(dialog.open){error.hidden=false;error.textContent=mailaiSystemMessage(failure.message);}}
+      finally{controls.forEach(control=>control.disabled=false);}
+    };
+  }
+
+  window.mailaiAssistantSearch={chooseScope,reset,base,begin,idle,complete,restore,failed,clearReader,focusLatest};
 })();
 
 ;

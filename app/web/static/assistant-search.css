@@ -35,3 +35,8 @@ body.assistant-visible .assistant-search-return { display:none; }
 .search-empty-ai>button { background:var(--desk-accent)!important;color:var(--desk-surface)!important;min-height:38px;padding:7px 12px;border:0;border-radius:8px;cursor:pointer;font-weight:600; }
 .search-ai-assist { display:block;margin:5px 12px 9px;padding:0;border:0;background:transparent;color:var(--desk-accent);font-size:12px;text-align:left;cursor:pointer; }
 .search-ai-assist[hidden] { display:none; }
+
+html[data-theme] body dialog.assistant-search-scope { box-sizing:border-box;width:min(440px,calc((100vw - 32px) / var(--fz,1)))!important;max-height:calc((100dvh - 32px) / var(--fz,1))!important;overflow:auto; }
+.assistant-search-scope select { min-width:0;max-width:100%;width:100%;min-height:40px;padding:8px;border:1px solid var(--desk-line);border-radius:8px;background:var(--desk-muted-surface);color:var(--desk-ink);font:inherit; }
+html[data-theme] body .assistant-search-scope footer { display:grid;grid-template-columns:minmax(0,1fr); }
+.assistant-search-scope button { white-space:normal;overflow-wrap:anywhere; }

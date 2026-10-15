@@ -154,5 +154,45 @@
   });
   host.addEventListener('keydown',event=>{const form=event.target.closest('.assistant-search-clue');if(form&&event.key==='Escape'){form.hidden=true;form.closest('.assistant-search-result').querySelector('[data-search-loop-clue]').focus();event.stopPropagation();}});
   document.addEventListener('mailai:language-changed',()=>{for(const id of runs.keys())render(id);focusLatest();});
-  window.mailaiAssistantSearch={reset,base,begin,idle,complete,restore,failed,clearReader,focusLatest};
+  let scopeDialog=null;
+  function chooseScope(query){
+    if(scopeDialog?.open){scopeDialog.focus();return;}
+    const previous=[document.activeElement,document.getElementById('search-ai-assist'),document.querySelector('[data-search-recover=assistant]')].find(node=>node?.tagName==='BUTTON'&&node.getClientRects().length)||document.activeElement;
+    const dialog=document.createElement('dialog');scopeDialog=dialog;
+    dialog.className='mailai-question assistant-search-scope';
+    dialog.setAttribute('aria-labelledby','assistant-search-scope-title');
+    const accounts=()=>_systemConfig?.accounts || [];
+    const options=accounts().map(account=>`<option value="${esc(account.id)}">${esc(account.user)}${Number.isFinite(account.inbox)?' · '+esc(t('scopeInbox').replace('{0}',account.inbox)):''}</option>`).join('');
+    dialog.innerHTML=`<form><h2 id="assistant-search-scope-title" data-i18n="searchLoop.scopeTitle">${esc(t('scopeTitle'))}</h2><p class="question-message" data-i18n="searchLoop.scopeHelp">${esc(t('scopeHelp'))}</p><label class="question-field"><span data-i18n="searchLoop.scopeAccount">${esc(t('scopeAccount'))}</span><select required aria-label="${esc(t('scopeAccount'))}"><option value="">${esc(t('scopePlaceholder'))}</option>${options}</select></label><p class="assistant-search-open-error" role="alert" hidden></p><footer><button type="button" data-search-scope-all data-confirm>${esc(t('scopeAll'))}</button><button type="submit" data-search-scope-submit>${esc(t('scopeContinue'))}</button><button type="button" data-search-scope-cancel>${esc(t('cancel'))}</button></footer></form>`;
+    document.body.append(dialog);dialog.showModal();dialog.querySelector('[data-search-scope-all]').focus();
+    dialog.addEventListener('close',()=>{if(scopeDialog===dialog)scopeDialog=null;dialog.remove();if(previous?.isConnected&&!document.querySelector('dialog[open]'))previous.focus({preventScroll:true});},{once:true});
+    dialog.querySelector('[data-search-scope-cancel]').onclick=()=>dialog.close();
+    dialog.querySelector('[data-search-scope-all]').onclick=()=>{
+      dialog.close();
+      window.mailaiProductivity.openSearch({query,mailbox:'inbox'},true);
+      document.getElementById('productivity-search-form')?.requestSubmit();
+    };
+    dialog.querySelector('form').onsubmit=async event=>{
+      event.preventDefault();
+      const id=dialog.querySelector('select').value;
+      const error=dialog.querySelector('[role=alert]');
+      if(!accounts().some(account=>account.id===id)){error.hidden=false;error.textContent=t('scopeMissing');return;}
+      const controls=dialog.querySelectorAll('select,[data-search-scope-submit],[data-search-scope-all]');
+      controls.forEach(control=>control.disabled=true);error.hidden=true;
+      const revision=mailboxNavigationRevision+1;
+      try{
+        await openAccountMailbox(id,'inbox');
+        // Cancel, failed activation and a newer navigation must not start a
+        // request against an old account merely because its ID is still cached.
+        if(!dialog.open||mailboxNavigationRevision!==revision||unifiedMailbox||activeMailAccount()?.id!==id)return;
+        dialog.close();
+        document.getElementById('global-search').value=query;
+        runGlobalSearch();
+        startSearchInAssistant();
+      }catch(failure){if(dialog.open){error.hidden=false;error.textContent=mailaiSystemMessage(failure.message);}}
+      finally{controls.forEach(control=>control.disabled=false);}
+    };
+  }
+
+  window.mailaiAssistantSearch={chooseScope,reset,base,begin,idle,complete,restore,failed,clearReader,focusLatest};
 })();

@@ -1,5 +1,13 @@
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "searchLoop.scopeTitle": ["选择检索范围", "Choose the search scope"],
+  "searchLoop.scopeHelp": ["当前列表汇总多个邮箱。可继续检索所有收件箱，或指定邮箱让小邮搜索该账号全部已同步邮件。", "This list combines accounts. Search all inboxes, or choose an account for Xiaoyou to search all its synced mail."],
+  "searchLoop.scopeAccount": ["用小邮检索的邮箱", "Account for Xiaoyou search"],
+  "searchLoop.scopePlaceholder": ["请选择邮箱", "Choose an account"],
+  "searchLoop.scopeInbox": ["收件箱 {0} 封", "{0} inbox messages"],
+  "searchLoop.scopeAll": ["在所有账号中搜索", "Search all accounts"],
+  "searchLoop.scopeContinue": ["用小邮查找所选邮箱", "Search the selected account with Xiaoyou"],
+  "searchLoop.scopeMissing": ["该邮箱已不可用，请重新选择", "This account is unavailable. Choose another account."],
   "update.notPublished": ["更新版本尚未正式发布", "This update has not been officially published."],
   "update.invalidReleasePage": ["更新发布页与官方仓库不一致", "The update release page does not match the official repository."],
   "update.invalidAssets": ["官方安装包列表无效", "The official installer list is invalid."],
