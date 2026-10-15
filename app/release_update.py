@@ -14,6 +14,7 @@ import sys
 import threading
 import time
 import urllib.parse
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -26,6 +27,14 @@ log = logging.getLogger(__name__)
 DEFAULT_MANIFEST_URL = (
     "https://github.com/langjiahui/MailAI/releases/latest/download/latest.json"
 )
+GITHUB_API_URL = "https://api.github.com/repos/langjiahui/MailAI/releases"
+GITHUB_RELEASE_URL = "https://github.com/langjiahui/MailAI/releases"
+GITHUB_ASSET_NAMES = {
+    "windows-x64": "MailAI-Windows-x64-Setup.exe",
+    "macos-arm64": "MailAI-macOS-arm64.pkg",
+    "linux-x64": "MailAI-Linux-x64.AppImage",
+}
+_NETWORK_ERRORS = (OSError, http.client.HTTPException)
 MANIFEST_MAX_BYTES = 1024 * 1024
 DOWNLOAD_MAX_BYTES = 500 * 1024 * 1024
 _CACHE_SECONDS = 30 * 60
@@ -84,22 +93,103 @@ def _https_url(value: object, label: str) -> str:
     return url
 
 
-def _read_json_url(url: str) -> dict:
+def _read_json_url(url: str, *, timeout: float = 6) -> dict:
     request = urllib.request.Request(
         _https_url(url, "更新地址"),
         headers={"Accept": "application/json", "User-Agent": f"MailAI/{current_version()}"},
     )
-    with urllib.request.urlopen(request, context=_ssl_context(), timeout=12) as response:
+    with urllib.request.urlopen(request, context=_ssl_context(), timeout=timeout) as response:
         content_length = int(response.headers.get("Content-Length") or 0)
         if content_length > MANIFEST_MAX_BYTES:
             raise ValueError("更新清单过大")
         raw = response.read(MANIFEST_MAX_BYTES + 1)
     if len(raw) > MANIFEST_MAX_BYTES:
         raise ValueError("更新清单过大")
+    if content_length and len(raw) != content_length:
+        raise http.client.IncompleteRead(raw, content_length - len(raw))
     value = json.loads(raw.decode("utf-8"))
     if not isinstance(value, dict):
         raise ValueError("更新清单格式错误")
     return value
+
+
+def _transient_network_error(error: Exception) -> bool:
+    if isinstance(error, urllib.error.HTTPError):
+        return error.code in {408, 429} or 500 <= error.code <= 599
+    reason = getattr(error, "reason", error)
+    if isinstance(reason, ssl.SSLCertVerificationError):
+        return False
+    return isinstance(error, _NETWORK_ERRORS)
+
+
+def _github_manifest(release: dict) -> dict:
+    """Use GitHub's release metadata when the manifest/CDN connection drops."""
+    tag = str(release.get("tag_name") or "")
+    _version_tuple(tag)
+    if release.get("draft") or release.get("prerelease"):
+        raise ValueError("更新版本尚未正式发布")
+    if release.get("html_url") != f"{GITHUB_RELEASE_URL}/tag/{tag}":
+        raise ValueError("更新发布页与官方仓库不一致")
+    assets = {}
+    names = {name:device for device,name in GITHUB_ASSET_NAMES.items()}
+    raw_assets = release.get("assets")
+    if not isinstance(raw_assets, list) or any(not isinstance(item, dict) for item in raw_assets):
+        raise ValueError("官方安装包列表无效")
+    for item in raw_assets:
+        device = names.get(item.get("name"))
+        if not device:
+            continue
+        expected = f"{GITHUB_RELEASE_URL}/download/{tag}/{item['name']}"
+        digest = str(item.get("digest") or "")
+        asset_id = item.get("id")
+        if (device in assets or item.get("browser_download_url") != expected
+                or not re.fullmatch(r"sha256:[a-fA-F0-9]{64}", digest)
+                or type(asset_id) is not int or asset_id <= 0):
+            raise ValueError("官方安装包信息或 SHA-256 校验值无效")
+        assets[device] = {"url": expected, "sha256": digest[7:].lower(),
+                          "size": int(item.get("size") or 0),
+                          "api_url": f"{GITHUB_API_URL}/assets/{asset_id}"}
+    if not assets:
+        raise ValueError("官方发布缺少可校验的安装包")
+    return {"version": tag.lstrip("v"), "release_url": release["html_url"],
+            "published_at": release.get("published_at") or "",
+            "notes": str(release.get("body") or ""), "assets": assets}
+
+
+def _read_manifest(url: str) -> dict:
+    # Only the default source may fall back to our official repository. An
+    # enterprise/custom source must never silently switch to a public release.
+    official = url == DEFAULT_MANIFEST_URL
+    for attempt in range(3):
+        try:
+            if official and attempt:
+                return _github_manifest(_read_json_url(GITHUB_API_URL + "/latest"))
+            return _read_json_url(url)
+        except _NETWORK_ERRORS as exc:
+            if not _transient_network_error(exc):
+                if isinstance(getattr(exc, "reason", exc), ssl.SSLCertVerificationError):
+                    raise ValueError("无法验证更新服务器的安全证书，请检查系统日期或网络代理后重试") from exc
+                raise ValueError("无法连接更新服务，请稍后重试或点击“查看发布页”手动下载") from exc
+            if attempt == 2:
+                raise ValueError("连接更新服务中断，请重试或点击“查看发布页”手动下载") from exc
+            log.warning("更新连接中断，尝试第 %d 个请求：%s", attempt + 2, type(exc).__name__)
+            time.sleep(0.2 * (attempt + 1))
+    raise AssertionError("Unreachable update retry state")
+
+
+def _github_download_fallback(asset: dict) -> dict:
+    url = str(asset.get("url") or "")
+    match = re.fullmatch(re.escape(GITHUB_RELEASE_URL) + r"/download/(v?[0-9.]+)/([^/]+)", url)
+    if not match or match[2] not in GITHUB_ASSET_NAMES.values():
+        return asset
+    if asset.get("api_url"):
+        return {**asset, "url": asset["api_url"]}
+    manifest = _github_manifest(_read_json_url(GITHUB_API_URL + "/tags/" + match[1]))
+    candidate = next((item for item in manifest["assets"].values() if item["url"] == url), None)
+    if not candidate or candidate["sha256"] != asset["sha256"] or (
+            asset.get("size") and candidate["size"] != asset["size"]):
+        raise ValueError("备用下载的安装包与更新清单不一致，已停止更新")
+    return {**asset, "url": candidate["api_url"]}
 
 
 def evaluate_manifest(manifest: dict, *, device: str | None = None) -> dict:
@@ -123,6 +213,11 @@ def evaluate_manifest(manifest: dict, *, device: str | None = None) -> dict:
         if expected_suffix and not urllib.parse.urlparse(url).path.lower().endswith(expected_suffix):
             raise ValueError(f"{device} 安装包格式不正确")
         asset = {"url": url, "sha256": digest, "size": int(raw_asset.get("size") or 0)}
+        if raw_asset.get("api_url"):
+            api_url = str(raw_asset["api_url"])
+            if not re.fullmatch(re.escape(GITHUB_API_URL) + r"/assets/[1-9][0-9]*", api_url):
+                raise ValueError("备用下载地址不属于官方仓库")
+            asset["api_url"] = api_url
     return {
         "current_version": installed,
         "latest_version": latest,
@@ -152,7 +247,7 @@ def check(*, force: bool = False) -> dict:
         if not force and isinstance(cached, dict) and now - float(_cache.get("checked_at") or 0) < _CACHE_SECONDS:
             return dict(cached)
     manifest_url = os.getenv("MAILAI_UPDATE_MANIFEST_URL", DEFAULT_MANIFEST_URL).strip()
-    result = evaluate_manifest(_read_json_url(manifest_url))
+    result = evaluate_manifest(_read_manifest(manifest_url))
     with _lock:
         _cache.update(checked_at=now, result=dict(result))
     return result
@@ -175,14 +270,22 @@ def _download(asset: dict, target: Path, progress=None) -> None:
     # The installer is tens of MB from a release CDN: a single dropped connection
     # should not fail the whole update. Retry transient network errors only;
     # size/hash mismatches are deterministic and fall through immediately.
+    download_asset = asset
     for attempt in range(3):
         try:
-            _download_fresh(asset, target, progress)
+            _download_fresh(download_asset, target, progress)
             return
         except (OSError, http.client.HTTPException) as exc:
             if attempt == 2:
-                raise ValueError(f"安装包下载多次中断：{exc}") from exc
+                raise ValueError("安装包下载多次中断，请重试或从发布页手动下载") from exc
+            if not _transient_network_error(exc):
+                raise
             log.warning("安装包下载中断（第 %d 次），稍后重试：%s", attempt + 1, exc)
+            if download_asset is asset:
+                try:
+                    download_asset = _github_download_fallback(asset)
+                except _NETWORK_ERRORS:
+                    log.warning("备用下载信息暂时不可用，继续重试原地址")
             if progress:
                 progress(phase="downloading", downloaded=0,
                          total=int(asset.get("size") or 0), speed_bps=0,

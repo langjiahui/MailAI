@@ -5558,6 +5558,7 @@ function selectSystemTab(name) {
 }
 
 let availableAppUpdate = null;
+let appUpdateCheckRevision = 0;
 let appUpdateInstalling = false;
 const MAILAI_SHARE_URL = 'https://github.com/langjiahui/MailAI/releases/latest';
 
@@ -5718,15 +5719,27 @@ async function monitorAppUpdateInstall() {
 }
 
 async function checkForAppUpdate(manual = false) {
+  const revision = ++appUpdateCheckRevision;
   const button = document.getElementById('btn-check-update');
   if (manual && button) setLoading(button, true, mailaiText('检查中…'));
+  const status = document.getElementById('app-update-status');
+  if (manual && status) {
+    status.dataset.updateState = 'neutral';
+    mailaiBindUI(status, 'textContent', () => mailaiText(MAILAI_UI_COPY['update.checking'][0]));
+  }
   try {
-    const result = await api(`/api/system/update${manual ? '?force=true' : ''}`);
+    const result = await api(`/api/system/update${manual ? '?force=true' : ''}`, {timeoutMs:35000});
+    if (revision !== appUpdateCheckRevision) return result;
     renderAppVersion(result);
     if (result.available) showAppUpdate(result);
     else if (manual) toast(mailaiSystemMessage(result.message) || (result.supported ? mailaiText('当前已是最新版本') : mailaiText('当前设备暂无对应安装包')), result.development ? 'info' : 'success');
     return result;
   } catch (error) {
+    if (revision !== appUpdateCheckRevision) return;
+    if (status) {
+      status.dataset.updateState = 'error';
+      mailaiBindUI(status, 'textContent', () => mailaiText(MAILAI_UI_COPY['update.checkFailed'][0]));
+    }
     if (manual) toast(mailaiSystemMessage(error.message), 'warn');
   } finally {
     if (manual && button) setLoading(button, false);

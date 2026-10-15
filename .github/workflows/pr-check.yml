@@ -107,6 +107,8 @@ jobs:
 
       - name: Run prepublish browser checks
         run: |
+          node tests/test_update_check_browser.cjs
+          MAILAI_BROWSER=webkit node tests/test_update_check_browser.cjs
           node tests/prepublish_browser.cjs
           node tests/test_list_header_browser.cjs
           node tests/test_macos_workspace_browser.cjs

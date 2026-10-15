@@ -1579,6 +1579,19 @@ if (typeof document !== 'undefined') {
 /* ---- i18n-catalog.js ---- */
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "update.notPublished": ["更新版本尚未正式发布", "This update has not been officially published."],
+  "update.invalidReleasePage": ["更新发布页与官方仓库不一致", "The update release page does not match the official repository."],
+  "update.invalidAssets": ["官方安装包列表无效", "The official installer list is invalid."],
+  "update.invalidDigest": ["官方安装包信息或 SHA-256 校验值无效", "The official installer metadata or SHA-256 checksum is invalid."],
+  "update.missingAssets": ["官方发布缺少可校验的安装包", "The official release has no verifiable installer."],
+  "update.fallbackMismatch": ["备用下载的安装包与更新清单不一致，已停止更新", "The fallback installer does not match the update manifest. Updating has stopped."],
+  "update.invalidFallback": ["备用下载地址不属于官方仓库", "The fallback download address is outside the official repository."],
+  "update.downloadInterrupted": ["安装包下载多次中断，请重试或从发布页手动下载", "The installer download was repeatedly interrupted. Retry or download manually from the release page."],
+  "update.checking": ["正在检查更新…", "Checking for updates…"],
+  "update.checkFailed": ["检查未完成，请重试或查看发布页", "Check incomplete. Retry or view releases."],
+  "update.connectionInterrupted": ["连接更新服务中断，请重试或点击“查看发布页”手动下载", "The update connection was interrupted. Retry or select View releases to download manually."],
+  "update.connectionFailed": ["无法连接更新服务，请稍后重试或点击“查看发布页”手动下载", "Could not connect to the update service. Retry later or select View releases to download manually."],
+  "update.certificateFailed": ["无法验证更新服务器的安全证书，请检查系统日期或网络代理后重试", "Could not verify the update server certificate. Check the system date or network proxy and retry."],
   "searchLoop.collapseSources": ["收起候选邮件", "Collapse candidates"],
   "searchLoop.openFailed": ["邮件暂未打开，检索结果已保留。可以重试打开，或换一批候选。", "The message could not be opened. Your results are kept; retry opening it or try another batch."],
   "searchLoop.datesChanged": ["已取消日期限制，其余条件保留", "Date limits removed; other filters kept"],
@@ -24240,6 +24253,7 @@ function selectSystemTab(name) {
 }
 
 let availableAppUpdate = null;
+let appUpdateCheckRevision = 0;
 let appUpdateInstalling = false;
 const MAILAI_SHARE_URL = 'https://github.com/langjiahui/MailAI/releases/latest';
 
@@ -24400,15 +24414,27 @@ async function monitorAppUpdateInstall() {
 }
 
 async function checkForAppUpdate(manual = false) {
+  const revision = ++appUpdateCheckRevision;
   const button = document.getElementById('btn-check-update');
   if (manual && button) setLoading(button, true, mailaiText('检查中…'));
+  const status = document.getElementById('app-update-status');
+  if (manual && status) {
+    status.dataset.updateState = 'neutral';
+    mailaiBindUI(status, 'textContent', () => mailaiText(MAILAI_UI_COPY['update.checking'][0]));
+  }
   try {
-    const result = await api(`/api/system/update${manual ? '?force=true' : ''}`);
+    const result = await api(`/api/system/update${manual ? '?force=true' : ''}`, {timeoutMs:35000});
+    if (revision !== appUpdateCheckRevision) return result;
     renderAppVersion(result);
     if (result.available) showAppUpdate(result);
     else if (manual) toast(mailaiSystemMessage(result.message) || (result.supported ? mailaiText('当前已是最新版本') : mailaiText('当前设备暂无对应安装包')), result.development ? 'info' : 'success');
     return result;
   } catch (error) {
+    if (revision !== appUpdateCheckRevision) return;
+    if (status) {
+      status.dataset.updateState = 'error';
+      mailaiBindUI(status, 'textContent', () => mailaiText(MAILAI_UI_COPY['update.checkFailed'][0]));
+    }
     if (manual) toast(mailaiSystemMessage(error.message), 'warn');
   } finally {
     if (manual && button) setLoading(button, false);
