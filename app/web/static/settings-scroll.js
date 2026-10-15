@@ -8,16 +8,22 @@
   const panelFor = target => target instanceof Element ? target.closest('#system-view > .system-panel') : null;
   const overflows = panel => panel.scrollHeight > panel.clientHeight || panel.scrollWidth > panel.clientWidth;
   const panels = [...view.querySelectorAll(':scope > .system-panel')];
+  // A persistent overflow probe avoids older WKWebView deferring native gutter
+  // creation until the first real scroll. Never toggle the live panel to measure.
+  const probe = document.createElement('div');
+  probe.className = 'settings-scrollbar-probe';
+  probe.setAttribute('aria-hidden', 'true');
+  document.body.append(probe);
   const measure = panel => {
     if (!panel.getClientRects().length || !panel.clientHeight) return;
-    panel.classList.add('scrollbar-measuring');
-    const style = getComputedStyle(panel);
-    const size = Math.max(0, panel.offsetWidth - panel.clientWidth - parseFloat(style.borderLeftWidth) - parseFloat(style.borderRightWidth));
+    const nativeSize = Math.max(0, probe.offsetWidth - probe.clientWidth);
+    const customSize = parseFloat(getComputedStyle(probe, '::-webkit-scrollbar').width) || 0;
+    const size = CSS.supports('scrollbar-width', 'thin') ? nativeSize : Math.max(nativeSize, customSize);
     panel.style.setProperty('--settings-scrollbar-size', `${size}px`);
-    panel.classList.remove('scrollbar-measuring');
   };
-  const resize = new ResizeObserver(entries => entries.forEach(({target}) => measure(target)));
+  const resize = new ResizeObserver(() => panels.forEach(measure));
   panels.forEach(panel => resize.observe(panel));
+  resize.observe(probe);
   const atEdge = (panel, event) => {
     const rect = panel.getBoundingClientRect();
     return event.clientX >= rect.right - 16 && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;

@@ -9,6 +9,19 @@ permissions:
   contents: read
 
 jobs:
+  native-scrollbar-macos:
+    runs-on: macos-14
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Install native WebKit test dependencies
+        run: python -m pip install pyobjc-core==12.2.2 pyobjc-framework-Cocoa==12.2.2 pyobjc-framework-WebKit==12.2.2
+      - name: Verify native scrollbar removal and stable content geometry
+        run: python tests/test_settings_scrollbar_webkit.py
+
   release-gate:
     runs-on: ubuntu-latest
     steps:
