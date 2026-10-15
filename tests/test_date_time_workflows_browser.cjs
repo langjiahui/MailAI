@@ -2,7 +2,9 @@
 const assert=require('node:assert/strict');
 const {chromium,webkit}=require('playwright');
 (async()=>{
-  for(const type of [chromium,webkit]) {
+  const engines=[chromium,webkit].filter(type=>!process.env.MAILAI_BROWSER || process.env.MAILAI_BROWSER===type.name());
+  assert(engines.length,'Unknown MAILAI_BROWSER');
+  for(const type of engines) {
     const browser=await type.launch({headless:true});
     try {
       const page=await browser.newPage({viewport:{width:1440,height:1000},reducedMotion:'reduce'}),errors=[];
