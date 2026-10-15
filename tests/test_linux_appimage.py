@@ -1,5 +1,6 @@
 """Linux AppImage 打包链路的静态守卫：脚本、spec 与工作流保持一致。"""
 import sys
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -31,7 +32,11 @@ def main():
     assert "linux-x64:" in workflow
     assert "bash scripts/build_linux_appimage.sh" in workflow
     assert "dist/MailAI-Linux-x64.AppImage" in workflow
-    assert "needs: [windows-x64, macos-arm64, linux-x64]" in workflow
+    publish_needs = re.search(r"(?m)^  publish:\n    needs: \[([^\]]+)\]", workflow)
+    assert publish_needs, "发布任务必须声明构建和质量检查依赖"
+    dependencies = {name.strip() for name in publish_needs.group(1).split(",")}
+    assert {"windows-x64", "macos-arm64", "linux-x64", "quality"} <= dependencies
+    assert '--commit "$GITHUB_SHA"' in workflow, "质量门禁必须匹配发布提交"
 
     # 更新清单覆盖 Linux 资产
     assert '"linux-x64": "MailAI-Linux-x64.AppImage"' in manifest
