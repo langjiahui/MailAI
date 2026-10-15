@@ -18,7 +18,8 @@ def main():
         target = Path(command[-1])
         assert target.read_bytes() == att['payload']
         assert target.name == att['name']
-        assert target.stat().st_mode & 0o777 == 0o600
+        if files.os.name != 'nt':
+            assert target.stat().st_mode & 0o777 == 0o600
         assert kwargs['check'] and kwargs['timeout'] == 15
         paths.append(target)
 
@@ -34,7 +35,7 @@ def main():
         with patch.object(files.sys, 'platform', 'win32'), patch.object(files.os, 'startfile', create=True) as start:
             assert files.open_attachment_copy(att)['ok']
             assert Path(start.call_args.args[0]).read_bytes() == att['payload']
-        with patch.object(files.subprocess, 'run', side_effect=subprocess.CalledProcessError(1, 'open')):
+        with patch.object(files.sys, 'platform', 'darwin'), patch.object(files.subprocess, 'run', side_effect=subprocess.CalledProcessError(1, 'open')):
             try:
                 files.open_attachment_copy(att)
                 raise AssertionError('Missing application must be reported')
@@ -47,7 +48,7 @@ def main():
                     raise AssertionError(name)
                 except ValueError:
                     run.assert_not_called()
-        with patch.object(files.subprocess, 'run') as run:
+        with patch.object(files.sys, 'platform', 'darwin'), patch.object(files.subprocess, 'run') as run:
             assert files.open_attachment_copy({'name': '../../报告.txt', 'payload': b'text'})['ok']
             target = Path(run.call_args.args[0][-1])
             assert target.resolve().is_relative_to(Path(files._storage.name).resolve())
