@@ -9758,9 +9758,11 @@ function syncScrollIndicator(target) {
     return;
   }
   indicator.hidden = false;
-  // rect uses viewport pixels; this fixed overlay lives inside the zoomed body.
-  // Convert back to its CSS coordinates exactly once, including thumb travel.
-  const zoom = Number.parseFloat(getComputedStyle(document.body).zoom) || 1;
+  // Fixed elements inherit body zoom in newer engines, while older native
+  // WebKit reports them in unscaled coordinates. Measure the overlay itself
+  // so positions, width and thumb travel use the same coordinate space.
+  const cssWidth = Number.parseFloat(getComputedStyle(indicator).width);
+  const zoom = indicator.getBoundingClientRect().width / cssWidth || 1;
   indicator.style.width = `${(window.innerWidth <= 760 ? 4 : 5) / zoom}px`;
   indicator.style.left = `${(rect.right - (window.innerWidth <= 760 ? 7 : 9)) / zoom}px`;
   indicator.style.top = `${(rect.top + inset) / zoom}px`;
