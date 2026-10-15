@@ -1,8 +1,8 @@
 // Run against tests/workspace_preview.py; native calls are recorded, never launched.
-const {chromium} = require('playwright');
+const {chromium, webkit} = require('playwright');
 const assert = require('node:assert/strict');
 (async () => {
-  const browser = await chromium.launch({channel:'chrome', headless:true});
+  const browser = await (process.env.MAILAI_BROWSER === 'webkit' ? webkit : chromium).launch({headless:true});
   try {
     const page = await browser.newPage({viewport:{width:1440,height:1000}});
     page.setDefaultTimeout(15000);

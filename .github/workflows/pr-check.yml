@@ -117,6 +117,8 @@ jobs:
           node tests/test_task_center_closure_browser.cjs
           MAILAI_BROWSER=webkit node tests/test_task_center_closure_browser.cjs
           node tests/test_attachment_library_ui.cjs
+          node tests/test_attachment_open_browser.cjs
+          MAILAI_BROWSER=webkit node tests/test_attachment_open_browser.cjs
           node tests/test_attachment_content_browser.cjs
           MAILAI_BROWSER=webkit node tests/test_attachment_content_browser.cjs
           node tests/test_experience_polish_browser.cjs
