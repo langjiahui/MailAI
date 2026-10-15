@@ -1,5 +1,5 @@
-/* Reveal the native draggable thumb on activity, then hide even if the
-   pointer is resting at the edge. Keep the gutter width unchanged. */
+/* Remove the idle native scrollbar: WKWebView can ignore transparent thumb
+   colors. Reserve its measured width so the contents never shift. */
 (() => {
   const view = document.getElementById('system-view');
   if (!view) return;
@@ -7,6 +7,17 @@
   const hide = () => { clearTimeout(timer); active?.classList.remove('scrollbar-visible'); active = null; };
   const panelFor = target => target instanceof Element ? target.closest('#system-view > .system-panel') : null;
   const overflows = panel => panel.scrollHeight > panel.clientHeight || panel.scrollWidth > panel.clientWidth;
+  const panels = [...view.querySelectorAll(':scope > .system-panel')];
+  const measure = panel => {
+    if (!panel.getClientRects().length || !panel.clientHeight) return;
+    panel.classList.add('scrollbar-measuring');
+    const style = getComputedStyle(panel);
+    const size = Math.max(0, panel.offsetWidth - panel.clientWidth - parseFloat(style.borderLeftWidth) - parseFloat(style.borderRightWidth));
+    panel.style.setProperty('--settings-scrollbar-size', `${size}px`);
+    panel.classList.remove('scrollbar-measuring');
+  };
+  const resize = new ResizeObserver(entries => entries.forEach(({target}) => measure(target)));
+  panels.forEach(panel => resize.observe(panel));
   const atEdge = (panel, event) => {
     const rect = panel.getBoundingClientRect();
     return event.clientX >= rect.right - 16 && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
@@ -14,6 +25,7 @@
   const reveal = panel => {
     if (!overflows(panel)) return;
     if (active !== panel) hide();
+    measure(panel);
     active = panel; clearTimeout(timer); panel.classList.add('scrollbar-visible');
     timer = setTimeout(() => { if (!dragging) hide(); }, 900);
   };
@@ -24,9 +36,11 @@
     if (event.button === 0 && panel && atEdge(panel, event) && overflows(panel)) { dragging = true; reveal(panel); }
   }, {passive:true});
   const release = () => { if (dragging) { dragging = false; if (active) reveal(active); } };
-  window.addEventListener('pointerup', release);
-  window.addEventListener('pointercancel', release);
+  window.addEventListener('pointermove', event => { if (dragging && !(event.buttons & 1)) release(); }, {capture:true, passive:true});
+  window.addEventListener('pointerup', release, true);
+  window.addEventListener('pointercancel', release, true);
   window.addEventListener('blur', () => { dragging = false; hide(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) { dragging = false; hide(); } });
   view.addEventListener('click', event => { if (event.target.closest('[data-system-tab],#btn-close-system')) { dragging = false; hide(); } });
 })();
 

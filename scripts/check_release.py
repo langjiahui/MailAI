@@ -135,6 +135,7 @@ def main():
     commands.append([node, str(ROOT / 'tests/test_diagnostics_progress.cjs')])
     if sys.platform == 'darwin':
         commands.append([sys.executable, str(ROOT / 'tests/test_mail_links_webkit.py')])
+        commands.append([sys.executable, str(ROOT / 'tests/test_settings_scrollbar_webkit.py')])
     commands += [[node, '--check', str(ROOT / 'app/web/static/server-cleanup.js')]]
     commands += [[node, '--check', str(ROOT / 'app/web/static/i18n.js')]]
     commands += [[node, '--check', str(ROOT / 'app/web/static/preferences.js')]]
