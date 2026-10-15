@@ -58,6 +58,7 @@ jobs:
         run: |
           node tests/test_preloader_browser.cjs
           node tests/test_brand_browser.cjs
+          node tests/test_author_browser.cjs
           MAILAI_BROWSER=webkit node tests/test_brand_browser.cjs
           node tests/test_macos_startup_browser.cjs
           MAILAI_DESKTOP_SHELL=windows node tests/test_macos_startup_browser.cjs
@@ -274,6 +275,8 @@ jobs:
           done
           if [ "$ready" != 1 ]; then cat fixture-responsive.log; exit 1; fi
           node tests/test_settings_responsive_browser.cjs
+          node tests/test_settings_navigation_scroll_browser.cjs
+          node tests/test_about_overview_browser.cjs
           node tests/test_home_dialog_responsive_browser.cjs
           node tests/test_home_dialog_palette_browser.cjs
           node tests/test_overlay_interactions_browser.cjs

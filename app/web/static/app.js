@@ -5534,8 +5534,22 @@ function renderAppVersion(result) {
   const device = document.getElementById('app-device-label');
   const releaseLink = document.getElementById('app-release-link');
   if (label) label.textContent = `MailAI ${result.current_version || ''}`.trim();
-  if (device) device.textContent = appDeviceName(result.device);
+  if (device) {
+    device.removeAttribute('data-i18n');
+    mailaiBindUI(device, 'textContent', () => appDeviceName(result.device));
+  }
   if (releaseLink && result.release_url) releaseLink.href = result.release_url;
+  if (status) status.dataset.updateState = result.development || !result.supported ? 'neutral' : result.available ? 'available' : 'latest';
+  const published = new Date(result.published_at || '');
+  const publishedMeta = document.getElementById('app-release-date-meta');
+  const publishedLabel = document.getElementById('app-release-date');
+  const hasPublished = /^\d{4}-\d{2}-\d{2}T/.test(result.published_at || '') && Number.isFinite(published.getTime());
+  if (publishedMeta) publishedMeta.hidden = !hasPublished;
+  if (publishedLabel && hasPublished) {
+    publishedLabel.dateTime = published.toISOString();
+    mailaiBindUI(publishedLabel, 'textContent', () => new Intl.DateTimeFormat(document.documentElement.lang || 'zh-CN', {year:'numeric',month:'short',day:'numeric'}).format(published));
+  }
+
   const releaseSummary = document.getElementById('app-release-summary');
   const releaseTitle = document.getElementById('app-release-summary-title');
   const releaseNotes = document.getElementById('app-release-summary-notes');
@@ -5556,7 +5570,9 @@ function showAppUpdate(result) {
   availableAppUpdate = result;
   const dialog = document.getElementById('update-dialog');
   if (!dialog || dialog.open) return;
-  document.getElementById('update-dialog-title').textContent = `${result.current_version} → ${result.latest_version}`;
+  const title = document.getElementById('update-dialog-title');
+  title.removeAttribute('data-i18n');
+  mailaiBindUI(title, 'textContent', () => `${result.current_version} → ${result.latest_version}`);
   mailaiBindUI(document.getElementById('update-dialog-device'), "textContent", () => (mailaiTemplate`已为这台设备匹配 ${appDeviceName(result.device)} 安装包。`));
   mailaiBindUI(document.getElementById('update-dialog-notes-title'), "textContent", () => (mailaiTemplate`${result.latest_version} 版本发布说明`));
   mailaiBindUI(document.getElementById('update-dialog-notes'), "textContent", () => (result.notes || mailaiText('本版本暂未提供发布说明。')));

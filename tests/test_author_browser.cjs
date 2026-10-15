@@ -77,17 +77,18 @@ const root = path.resolve(__dirname, '../app/web/static');
       await page.evaluate(t => document.documentElement.dataset.theme=t,theme);
       await page.waitForTimeout(250);
       await page.screenshot({path:path.resolve(__dirname,`../build/author-${theme}.png`),fullPage:true});
-      const colors = await page.locator('.author-page').evaluate(el => {
-        const s=getComputedStyle(el); return ['--author-ink','--author-muted','--author-bg'].map(k=>s.getPropertyValue(k).trim());
+      const contrast = await page.locator('.author-page').evaluate(root => {
+        const ctx=document.createElement('canvas').getContext('2d');
+        const paint=color=>{ctx.fillStyle=color;ctx.fillRect(0,0,1,1)};
+        const luminance=rgb=>rgb.slice(0,3).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4}).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);
+        return [...root.querySelectorAll('.author-copy h3,.author-copy p,.author-motto,.author-trust-card p,.author-boundary p')].map(n=>{
+          const chain=[];for(let parent=n;parent;parent=parent.parentElement)chain.unshift(parent);
+          ctx.clearRect(0,0,1,1);paint('#fff');chain.forEach(parent=>paint(getComputedStyle(parent).backgroundColor));
+          const bg=luminance([...ctx.getImageData(0,0,1,1).data]);ctx.clearRect(0,0,1,1);paint(getComputedStyle(n).color);
+          const fg=luminance([...ctx.getImageData(0,0,1,1).data]);return {text:n.textContent.slice(0,40),ratio:(Math.max(fg,bg)+.05)/(Math.min(fg,bg)+.05)};
+        }).filter(row=>row.ratio<4.5);
       });
-      const luminance = hex => {
-        const c=hex.slice(1).match(/../g).map(x=>parseInt(x,16)/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4);
-        return c[0]*.2126+c[1]*.7152+c[2]*.0722;
-      };
-      for(const ink of colors.slice(0,2)) {
-        const a=luminance(ink),b=luminance(colors[2]);
-        assert((Math.max(a,b)+.05)/(Math.min(a,b)+.05)>=4.5,`${theme} text contrast`);
-      }
+      assert.deepEqual(contrast,[],`${theme} rendered text contrast`);
     }
     await page.evaluate(()=>document.documentElement.dataset.theme='light');
     for (const width of [1920,2560,3440]) {
@@ -97,9 +98,9 @@ const root = path.resolve(__dirname, '../app/web/static');
         const view=document.getElementById('system-view'),panel=document.querySelector('.author-page');
         const bounds=view.getBoundingClientRect(),content=panel.getBoundingClientRect();
         const tabs=view.querySelector('.system-tabs').getBoundingClientRect();
-        return {edgeGap:bounds.right-content.right,navGap:content.left-tabs.right,overflow:panel.scrollWidth-panel.clientWidth};
+        return {edgeGap:bounds.right-content.right,contentWidth:content.width,navGap:content.left-tabs.right,overflow:panel.scrollWidth-panel.clientWidth};
       });
-      assert(layout.edgeGap<=12,`${width}px: scroll gutter must remain at the workspace edge`);
+      assert(layout.edgeGap>=0 && layout.contentWidth>=800 && layout.contentWidth<=1808,`${width}px: content stays inside the workspace at a bounded reading width`);
       assert(layout.navGap<=32,`${width}px: content must use available width`);
       assert(layout.overflow<=1,`${width}px: no horizontal overflow`);
       if (width===1920) await page.screenshot({path:path.resolve(__dirname,'../build/author-wide.png'),fullPage:true});

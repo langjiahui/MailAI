@@ -662,17 +662,20 @@ const I18N_MESSAGES = {
     'about.motto': 'Calmer mail handling, more transparent AI.',
     'about.dataHeading': 'About your data',
     'about.dataHint': 'Stored locally does not mean everything is offline. Here is where data lives and when the network is used.',
-    'about.t1Label': '01 · Local storage',
+    'about.t1Label': 'Local storage',
     'about.t1Title': 'Mail data stays on this device',
     'about.t1Copy': 'MailAI\'s mail database and downloaded raw mail live in the local data directory. Mail servers keep their own copies; local storage is not disk encryption — protect your device and backups.',
-    'about.t2Label': '02 · Mailbox connection',
+    'about.t2Label': 'Mailbox connection',
     'about.t2Title': 'Sync and sending need the network',
     'about.t2Copy': 'Connecting, syncing and sending talk to the configured mail servers. Remote images or external links in mail may also reach third-party sites.',
-    'about.t3Label': '03 · AI processing',
+    'about.t3Label': 'AI processing',
     'about.t3Title': 'You configure the model service',
     'about.t3Copy': 'AI analysis and Xiaoyou chats send the mail content, conversation and related attachments needed for the task to the configured model API. Automatic analysis may also trigger requests — not only when you click Xiaoyou. The provider\'s own policy governs its data handling.',
     'about.boundaryTitle': 'Assists judgment, never replaces your confirmation',
     'about.boundaryCopy': 'AI summaries and risk detection can miss or misjudge. For payments, credentials or critical business, verify the original through a trusted channel. Whether a self-hosted model is offline depends on your deployment and network.',
+    'about.currentVersion': 'Current version',
+    'about.latestPublished': 'Latest release',
+    'about.contactAuthor': 'Contact the author',
     'about.updateLabel': 'Version & updates',
     'about.updateReading': 'Reading current version…',
     'about.deviceLabel': 'This device',
@@ -16346,17 +16349,20 @@ const MAILAI_I18N_CHINESE = {
   "about.motto": "让邮件处理更从容，让 AI 的使用更透明。",
   "about.dataHeading": "关于你的数据",
   "about.dataHint": "本地保存，不代表所有处理都离线。这里说明数据保存在哪里，以及什么时候会联网。",
-  "about.t1Label": "01 · 本机存储",
+  "about.t1Label": "本机存储",
   "about.t1Title": "邮件数据保存在本机",
   "about.t1Copy": "MailAI 的邮件数据库与下载的邮件原文保存在本机数据目录。邮箱服务器仍保留其自身数据；本地保存不等于磁盘加密，请妥善保护设备和备份。",
-  "about.t2Label": "02 · 邮箱连接",
+  "about.t2Label": "邮箱连接",
   "about.t2Title": "收发与同步需要联网",
   "about.t2Copy": "连接邮箱、同步和发送邮件会与配置的邮箱服务器通信。邮件中的远程图片或外部链接，也可能访问第三方网站。",
-  "about.t3Label": "03 · AI 处理",
+  "about.t3Label": "AI 处理",
   "about.t3Title": "模型服务由你配置",
   "about.t3Copy": "AI 分析和小邮对话会将任务所需的邮件内容、对话及相关附件内容发送到配置的模型 API。自动分析也可能触发请求，并非只有点击小邮才发送。服务商的数据处理规则以其政策为准。",
   "about.boundaryTitle": "辅助判断，不替代你的确认",
   "about.boundaryCopy": "AI 摘要和风险识别可能存在遗漏或误判。涉及付款、账号凭据或重要业务，请核对原文并通过可信渠道确认。自部署模型是否离线，取决于你的实际部署与网络配置。",
+  "about.currentVersion": "当前版本",
+  "about.latestPublished": "最新发布",
+  "about.contactAuthor": "联系作者",
   "about.updateLabel": "版本与更新",
   "about.updateReading": "正在读取当前版本…",
   "about.deviceLabel": "当前设备",
@@ -24104,8 +24110,22 @@ function renderAppVersion(result) {
   const device = document.getElementById('app-device-label');
   const releaseLink = document.getElementById('app-release-link');
   if (label) label.textContent = `MailAI ${result.current_version || ''}`.trim();
-  if (device) device.textContent = appDeviceName(result.device);
+  if (device) {
+    device.removeAttribute('data-i18n');
+    mailaiBindUI(device, 'textContent', () => appDeviceName(result.device));
+  }
   if (releaseLink && result.release_url) releaseLink.href = result.release_url;
+  if (status) status.dataset.updateState = result.development || !result.supported ? 'neutral' : result.available ? 'available' : 'latest';
+  const published = new Date(result.published_at || '');
+  const publishedMeta = document.getElementById('app-release-date-meta');
+  const publishedLabel = document.getElementById('app-release-date');
+  const hasPublished = /^\d{4}-\d{2}-\d{2}T/.test(result.published_at || '') && Number.isFinite(published.getTime());
+  if (publishedMeta) publishedMeta.hidden = !hasPublished;
+  if (publishedLabel && hasPublished) {
+    publishedLabel.dateTime = published.toISOString();
+    mailaiBindUI(publishedLabel, 'textContent', () => new Intl.DateTimeFormat(document.documentElement.lang || 'zh-CN', {year:'numeric',month:'short',day:'numeric'}).format(published));
+  }
+
   const releaseSummary = document.getElementById('app-release-summary');
   const releaseTitle = document.getElementById('app-release-summary-title');
   const releaseNotes = document.getElementById('app-release-summary-notes');
@@ -24126,7 +24146,9 @@ function showAppUpdate(result) {
   availableAppUpdate = result;
   const dialog = document.getElementById('update-dialog');
   if (!dialog || dialog.open) return;
-  document.getElementById('update-dialog-title').textContent = `${result.current_version} → ${result.latest_version}`;
+  const title = document.getElementById('update-dialog-title');
+  title.removeAttribute('data-i18n');
+  mailaiBindUI(title, 'textContent', () => `${result.current_version} → ${result.latest_version}`);
   mailaiBindUI(document.getElementById('update-dialog-device'), "textContent", () => (mailaiTemplate`已为这台设备匹配 ${appDeviceName(result.device)} 安装包。`));
   mailaiBindUI(document.getElementById('update-dialog-notes-title'), "textContent", () => (mailaiTemplate`${result.latest_version} 版本发布说明`));
   mailaiBindUI(document.getElementById('update-dialog-notes'), "textContent", () => (result.notes || mailaiText('本版本暂未提供发布说明。')));

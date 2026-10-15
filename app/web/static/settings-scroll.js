@@ -1,30 +1,33 @@
-/* Keep the native draggable scrollbar, revealing it only on intent. */
+/* Reveal the native draggable thumb on activity, then hide even if the
+   pointer is resting at the edge. Keep the gutter width unchanged. */
 (() => {
   const view = document.getElementById('system-view');
   if (!view) return;
-  view.querySelectorAll(':scope > .system-panel').forEach(panel => {
-    let timer;
-    let nearEdge = false;
-    let dragging = false;
-    const show = () => {
-      clearTimeout(timer);
-      panel.classList.add('scrollbar-visible');
-      timer = setTimeout(() => {
-        if (!nearEdge && !dragging) panel.classList.remove('scrollbar-visible');
-      }, 800);
-    };
-    panel.addEventListener('scroll', show, {passive:true});
-    panel.addEventListener('pointermove', event => {
-      const rect = panel.getBoundingClientRect();
-      const wasNearEdge = nearEdge;
-      nearEdge = rect.right - event.clientX < 20;
-      if (nearEdge || wasNearEdge) show();
-    }, {passive:true});
-    panel.addEventListener('pointerleave', () => { nearEdge = false; if (panel.classList.contains('scrollbar-visible')) show(); });
-    panel.addEventListener('pointerdown', () => { if (nearEdge) { dragging = true; show(); } });
-    window.addEventListener('pointerup', () => { if (dragging) { dragging = false; show(); } });
-    window.addEventListener('blur', () => { dragging = nearEdge = false; clearTimeout(timer); panel.classList.remove('scrollbar-visible'); });
-  });
+  let active = null, timer, dragging = false;
+  const hide = () => { clearTimeout(timer); active?.classList.remove('scrollbar-visible'); active = null; };
+  const panelFor = target => target instanceof Element ? target.closest('#system-view > .system-panel') : null;
+  const overflows = panel => panel.scrollHeight > panel.clientHeight || panel.scrollWidth > panel.clientWidth;
+  const atEdge = (panel, event) => {
+    const rect = panel.getBoundingClientRect();
+    return event.clientX >= rect.right - 16 && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
+  };
+  const reveal = panel => {
+    if (!overflows(panel)) return;
+    if (active !== panel) hide();
+    active = panel; clearTimeout(timer); panel.classList.add('scrollbar-visible');
+    timer = setTimeout(() => { if (!dragging) hide(); }, 900);
+  };
+  view.addEventListener('scroll', event => { const panel = panelFor(event.target); if (panel) reveal(panel); }, {capture:true, passive:true});
+  view.addEventListener('pointermove', event => { const panel = panelFor(event.target); if (panel && atEdge(panel, event)) reveal(panel); }, {passive:true});
+  view.addEventListener('pointerdown', event => {
+    const panel = panelFor(event.target);
+    if (event.button === 0 && panel && atEdge(panel, event) && overflows(panel)) { dragging = true; reveal(panel); }
+  }, {passive:true});
+  const release = () => { if (dragging) { dragging = false; if (active) reveal(active); } };
+  window.addEventListener('pointerup', release);
+  window.addEventListener('pointercancel', release);
+  window.addEventListener('blur', () => { dragging = false; hide(); });
+  view.addEventListener('click', event => { if (event.target.closest('[data-system-tab],#btn-close-system')) { dragging = false; hide(); } });
 })();
 
 /* Todo list: scrolling reveals the thumb; idle fades back to a clear gutter. */
