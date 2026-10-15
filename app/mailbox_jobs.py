@@ -150,7 +150,8 @@ def notify_new_message(email_id):
     allowed = mail_assistant.notification_allowed(email)
     result = dict(ok=True, received=1, fetched=int(allowed),
                   quarantined=int(allowed and mail_assistant.needs_risk_attention(email)),
-                  account_user=config.IMAP_USER, account_id=getattr(config, 'ACCOUNT_ID', ''))
+                  account_user=config.IMAP_USER, account_id=getattr(config, 'ACCOUNT_ID', ''),
+                  mail={key: email.get(key) for key in ('id', 'subject', 'from_name', 'from_addr')})
     import sys
     if getattr(sys, 'frozen', False):
         if sys.platform == 'darwin':

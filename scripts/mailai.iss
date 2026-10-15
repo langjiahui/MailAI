@@ -56,9 +56,12 @@ Type: filesandordirs; Name: "{app}\_internal"
 Source: "..\dist\windows\MailAI\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\MailAI"; Filename: "{app}\MailAI.exe"
+Name: "{group}\MailAI"; Filename: "{app}\MailAI.exe"; AppUserModelID: "com.langjiahui.mailai"
 Name: "{autodesktop}\MailAI"; Filename: "{app}\MailAI.exe"; Tasks: desktopicon
 Name: "{userstartup}\MailAI"; Filename: "{app}\MailAI.exe"; Tasks: startup
+
+[Registry]
+Root: HKCU; Subkey: "Software\Classes\AppUserModelId\com.langjiahui.mailai"; Flags: uninsdeletekey
 
 [Run]
 Filename: "{app}\MailAI.exe"; Description: "启动 MailAI"; Flags: nowait postinstall

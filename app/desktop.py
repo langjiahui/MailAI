@@ -17,7 +17,8 @@ from pathlib import Path
 from typing import Callable
 
 import uvicorn
-from .ui_copy import ui_text, ui_format, ui_language
+from .ui_copy import ui_text
+from .mail_notifications import notification_text, notification_target, notification_key
 
 
 log = logging.getLogger(__name__)
@@ -88,27 +89,6 @@ def register_installed_application() -> bool:
     except (OSError, subprocess.SubprocessError):
         log.exception("刷新 macOS 应用注册失败")
         return False
-
-
-def notification_text(result: dict) -> tuple[str, str] | None:
-    """Build a concise notification for a completed background poll."""
-    if not result or not result.get("ok") or result.get("canceled") or result.get('notifications_delivered'):
-        return None
-    fetched = max(0, int(result.get("fetched") or 0))
-    if not fetched:
-        return None
-    quarantined = max(0, int(result.get("quarantined") or 0))
-    errors = max(0, int(result.get("errors") or 0))
-    title = ui_format('收到 {0} 封新邮件', fetched)
-    details = []
-    if quarantined:
-        details.append(ui_format('其中 {0} 封需要安全关注', quarantined))
-    if errors:
-        details.append(ui_format('{0} 封将在下次同步时重试', errors))
-    body = ('; ' if ui_language() == 'en' else '，').join(details) or ui_text('邮件已同步，请打开 MailAI 查看')
-    if result.get('account_user'):
-        body = str(result['account_user']) + ' · ' + body
-    return title, body
 
 
 def notify_poll_result(result: dict) -> None:
@@ -267,7 +247,12 @@ class DesktopRuntime:
         if content is None:
             return
         title, body = content
-        self._deliver_notification(title, body)
+        self._deliver_notification(title, body, mail_target=notification_target(result))
+
+    def open_mail_notification(self, target):
+        self.show_window()
+        self._evaluate_js_safely("打开通知邮件",
+            f"window.mailaiOpenMailNotification?.({json.dumps(target)})")
 
     def refresh_dock_badge(self) -> None:
         try:
@@ -345,7 +330,7 @@ class DesktopRuntime:
             log.exception("调度%s失败", label)
             return False
 
-    def _deliver_notification(self, title: str, body: str, target: dict | None = None) -> bool:
+    def _deliver_notification(self, title: str, body: str, target: dict | None = None, *, mail_target: dict | None = None) -> bool:
         try:
             from AppKit import NSUserNotification, NSUserNotificationCenter, NSUserNotificationDefaultSoundName
 
@@ -357,7 +342,10 @@ class DesktopRuntime:
                     note = NSUserNotification.alloc().init()
                     note.setTitle_(title)
                     note.setInformativeText_(body)
-                    if target:
+                    if mail_target:
+                        note.setUserInfo_({"mailai_mail": json.dumps(mail_target)})
+                        note.setIdentifier_("mailai-mail:" + notification_key(mail_target))
+                    elif target:
                         note.setUserInfo_({"mailai_task": json.dumps(target)})
                         note.setIdentifier_("mailai-task:" + json.dumps(target, sort_keys=True))
                     note.setSoundName_(NSUserNotificationDefaultSoundName)
@@ -409,6 +397,13 @@ class DesktopRuntime:
             def userNotificationCenter_didActivateNotification_(self, center, notification):
                 runtime.show_window()
                 info = notification.userInfo() or {}
+                mail_payload = info.get('mailai_mail')
+                if mail_payload:
+                    try:
+                        runtime.open_mail_notification(json.loads(mail_payload))
+                    except (ValueError, TypeError):
+                        log.warning('无效的邮件通知目标')
+                    return
                 payload = info.get('mailai_task')
                 if payload:
                     try:

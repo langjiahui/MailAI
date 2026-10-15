@@ -5048,6 +5048,37 @@ function startMailboxAutoRefresh() {
 }
 
 window.mailaiMailboxUpdated = () => refreshMailboxIfChanged(true);
+// Serialize native clicks so a slower account switch cannot open a same-ID
+// message in a different mailbox. Only explicit clicks mark a message read.
+let mailNotificationQueue = Promise.resolve();
+window.mailaiOpenMailNotification = (target) => {
+  if (!target || typeof target.accountId !== 'string' || !target.accountId ||
+      !Number.isSafeInteger(target.emailId) || target.emailId <= 0) return Promise.resolve(false);
+  const {accountId, emailId} = target;
+  const open = async () => {
+    try {
+      if (bulkOperationActive) {
+        toast(mailaiText('批量操作正在执行，请稍候'), 'warn');
+        return false;
+      }
+      if (!_systemConfig) await loadSystemConfig();
+      if (!(_systemConfig?.accounts || []).some(account => account.id === accountId))
+        throw new Error(mailaiText('邮箱账号不存在'));
+      await openAccountMailbox(accountId, 'inbox');
+      if (activeMailAccount()?.id !== accountId || selectedMailboxAccountId !== accountId) return false;
+      hideDashboard();
+      hideRulesView(false);
+      hideSystemView(true);
+      await revealEmailFromSource(emailId);
+      return selectedEmailId === emailId && Boolean(selectedEmailDetail);
+    } catch (error) {
+      toast(mailaiText('来源邮件打开失败：') + mailaiSystemMessage(error.message), 'error');
+      return false;
+    }
+  };
+  mailNotificationQueue = mailNotificationQueue.catch(() => {}).then(open);
+  return mailNotificationQueue;
+};
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && !window.mailaiEnergy) refreshMailboxIfChanged();
 });

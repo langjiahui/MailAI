@@ -110,6 +110,7 @@ REM heuristic antivirus detections on unsigned internal software.
   --hidden-import "webview.platforms.winforms" ^
   --hidden-import "webview.platforms.edgechromium" ^
   --hidden-import "pystray._win32" ^
+  --collect-all "winrt" ^
   --hidden-import "dingtalk_stream" ^
   --hidden-import "qrcode.image.pil" ^
   --add-data "%CD%\app\web\static;app\web\static" ^

@@ -126,6 +126,7 @@ def main():
             result = notify.call_args.args[0]
             assert result['received'] == 1 and result['fetched'] == 1 and result['quarantined'] == 1
             assert result['account_id'] == 'arrival-test'
+            assert result['mail']['id'] == email_id and result['mail']['subject'] == 'new'
             history = db.upsert_email(dict(uid=21, arrival_kind='history', score=80))
             mailbox_jobs.notify_new_message(history)
             assert notify.call_count == 1

@@ -31,6 +31,15 @@ class BrandAssetsTest(unittest.TestCase):
             for path in paths:
                 self.assertIn(f'd="{path}"', svg)
 
+    def test_native_blue_identity_and_windows_notification_icon(self):
+        with Image.open(ASSETS / 'mailai-app-icon-1024.png') as image:
+            colors = image.getcolors(1024 * 1024)
+            blue = sum(count for count, (r,g,b,a) in colors if a == 255 and b > r + 30 and g > r + 20)
+            self.assertGreater(blue, 20000)
+        with Image.open(ASSETS / 'mailai-icon-256.ico') as image:
+            self.assertIn((16, 16), image.ico.sizes())
+            self.assertIn((256, 256), image.ico.sizes())
+
 
 if __name__ == '__main__':
     unittest.main()

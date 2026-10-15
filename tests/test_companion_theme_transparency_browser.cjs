@@ -69,6 +69,11 @@ const port=Number(process.env.MAILAI_TRANSPARENT_FIXTURE_PORT||18797);
   await transparent('#assistant-orb');await page.locator('#assistant-orb').hover();await transparent('#assistant-orb');
   await page.evaluate(()=>openCompose());await transparent('#btn-compose-ai');await page.evaluate(()=>toggleComposeAiPanel(true));await transparent('.compose-ai-avatar');
   await page.evaluate(()=>closeCompose());await mutate('equip',{slot:'theme',item:''});
+  // Escape above leaves keyboard focus on the orb. The default dark theme
+  // intentionally draws a focus halo; verify that focus separately from idle.
+  await page.locator('#assistant-orb').focus();
+  assert(await page.locator('#assistant-orb').evaluate(n=>getComputedStyle(n).outlineStyle!=='none'),'Default theme keyboard focus remains visible');
+  await page.locator('#assistant-orb').blur();
   await transparent('#assistant-orb');
   assert.deepEqual(errors,[]);
   console.log('Transparent XiaoYou: both reward themes, light/dark, cute/cool, floating/chat/writing avatars, hover, active, focus, palette priority and scaled compact layout passed');

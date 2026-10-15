@@ -11,6 +11,7 @@ from typing import Callable
 
 from .desktop import DesktopApi, notification_text, start_local_server
 from .ui_copy import ui_text
+from .mail_notifications import notification_key, notification_target
 
 
 log = logging.getLogger(__name__)
@@ -65,6 +66,7 @@ class WindowsDesktopRuntime:
         self.quitting = False
         self.tray = None
         self.tray_notice_shown = False
+        self.toast_service = None
         self._last_notice_is_task = False
         self._last_task_target = None
         self._poll_lock = threading.Lock()
@@ -142,15 +144,66 @@ class WindowsDesktopRuntime:
         self._last_notice_is_task = reminder
         self.tray.notify(body, title)
 
+    def _notify_native(self, title, body, *, mail_target=None, task_target=None):
+        if self.quitting:
+            return False
+        # Never infer a historical balloon's target from the latest arrival.
+        # The fallback can only restore the window / complete reminder inbox.
+        fallback_lock = threading.Lock()
+        fallback_sent = False
+        fallback_delivered = False
+        def fallback():
+            nonlocal fallback_sent, fallback_delivered
+            with fallback_lock:
+                if fallback_sent or self.quitting or self.tray is None:
+                    return
+                fallback_sent = True
+            try:
+                self._notify_tray(body, title, reminder=task_target is not None)
+                fallback_delivered = True
+            except Exception:
+                log.exception('发送 Windows 兼容通知失败')
+        if self.toast_service is not None:
+            import uuid
+            target = mail_target or task_target
+            key = notification_key(target) if target else uuid.uuid4().hex
+            def activate():
+                if self.quitting:
+                    return
+                if mail_target:
+                    self.open_mail_notification(mail_target)
+                elif task_target is not None:
+                    self.open_reminders(target=task_target)
+                else:
+                    self.show_window()
+            try:
+                self.toast_service.show(title, body, key=key,
+                    group='mail' if mail_target else 'tasks' if task_target is not None else 'system',
+                    on_click=activate, on_failure=fallback)
+                return True
+            except Exception:
+                log.exception('Windows 通知中心暂不可用，使用兼容通知')
+        fallback()
+        return fallback_delivered
+
+    def open_mail_notification(self, target):
+        self.show_window()
+        def open_mail():
+            if self.window and not self.quitting:
+                try:
+                    self.window.evaluate_js('window.mailaiOpenMailNotification?.('+json.dumps(target)+')')
+                except Exception:
+                    log.exception('打开 Windows 通知邮件失败')
+        threading.Thread(target=open_mail, name='mailai-notification-open', daemon=True).start()
+
     def notify_task_reminder(self, title, body):
         if self.quitting or self.tray is None:
             return False
-        self._notify_tray(body, title, reminder=True)
-        return True
+        return self._notify_native(title, body, task_target=dict(self._last_task_target or {}))
 
     def on_notification_click(self):
         if self._last_notice_is_task:
-            self.open_reminders(target=self._last_task_target)
+            self.open_reminders()
         else:
             self.show_window()
 
@@ -199,11 +252,11 @@ class WindowsDesktopRuntime:
             except Exception:
                 log.exception("通知 Windows 邮件列表自动刷新失败")
         content = notification_text(result)
-        if content is None or not self.tray:
+        if content is None or (not self.tray and self.toast_service is None):
             return
         title, body = content
         try:
-            self._notify_tray(body, title)
+            self._notify_native(title, body, mail_target=notification_target(result))
         except Exception:
             log.exception("发送 Windows 新邮件通知失败")
 
@@ -211,7 +264,8 @@ class WindowsDesktopRuntime:
         if not self.tray:
             return {"ok": False, "message": "系统托盘尚未就绪，请稍后重试"}
         try:
-            self._notify_tray(ui_text('收到新邮件时会通过系统通知提醒你。'), ui_text('MailAI 测试通知'))
+            if not self._notify_native(ui_text('MailAI 测试通知'), ui_text('收到新邮件时会通过系统通知提醒你。')):
+                return {"ok": False, "message": "无法发送测试通知，请检查 Windows 通知设置"}
             return {"ok": True, "message": "已发送测试通知；若未显示，请检查 Windows 通知设置"}
         except Exception:
             log.exception("Windows 测试通知失败")
@@ -233,6 +287,12 @@ class WindowsDesktopRuntime:
                 menu=self._tray_menu(),
             )
             self.tray.run_detached()
+            if sys.platform == 'win32':
+                try:
+                    from .windows_notifications import WindowsToastService
+                    self.toast_service = WindowsToastService(_asset_path())
+                except Exception:
+                    log.exception('Windows 通知中心初始化失败，保留兼容通知')
         except Exception:
             self.tray = None
             log.exception("Windows 系统托盘初始化失败；窗口关闭时将保留在任务栏")
