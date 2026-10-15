@@ -166,3 +166,12 @@ html[data-theme][data-theme] body :is(.mailai-question [data-confirm].danger,#bt
 html[data-theme] body #contact-center .contact-star { color:var(--workspace-copy)!important; background:transparent!important; }
 html[data-theme] body #contact-center .contact-star:is(.active,:hover) { color:#8c5a07!important; background:#fff1d1!important; }
 html[data-theme="dark"] body #contact-center .contact-star:is(.active,:hover) { color:#efcc82!important; background:#3c321f!important; }
+
+/* A wide home layout can retain its measured height until the next resize
+   event. Narrow windows must obey the viewport even during that transition. */
+@media(max-width:760px) {
+  html[data-theme] body #assistant-panel {
+    box-sizing:border-box; height:auto!important;
+    max-height:calc((100dvh - 16px) / var(--fz,1))!important;
+  }
+}

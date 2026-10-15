@@ -25,6 +25,8 @@ const cases=require('./helpers/home-dialog-cases.cjs');
     await p.evaluate(mode=>applyTheme(mode),mode);
     for(const[width,height,scale]of widths) {
      await p.setViewportSize({width,height});await p.evaluate(scale=>{document.body.style.zoom=scale;document.documentElement.style.setProperty('--fz',scale)},scale);
+     // WebKit delivers resize events on the next frame; measure the settled layout.
+     await p.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
      const context={theme,mode,language,name,width,height,scale};
      const metrics=await p.locator(selector).evaluate(n=>{
       const r=n.getBoundingClientRect();
