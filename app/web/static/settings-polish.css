@@ -48,7 +48,7 @@ html[data-theme] body #system-view>.system-panel {
 html[data-theme] body #system-view>.system-panel::-webkit-scrollbar { display:none; width:7px; height:7px; }
 html[data-theme] body #system-view>.system-panel.scrollbar-visible { scrollbar-width:thin!important; padding-right:8px; }
 html[data-theme] body #system-view>.system-panel.scrollbar-visible::-webkit-scrollbar { display:block; }
-html[data-theme] body>.settings-scrollbar-probe { position:fixed; top:-1000px; left:-1000px; width:100px; height:100px; margin:0; padding:0; border:0; overflow:scroll; visibility:hidden; pointer-events:none; contain:strict; scrollbar-width:thin!important; }
+html[data-theme] body>.settings-scrollbar-probe { position:fixed; top:-1000px; left:-1000px; width:100px; height:100px; margin:0; padding:0; border:0; overflow:auto; visibility:hidden; pointer-events:none; contain:strict; scrollbar-gutter:stable; scrollbar-width:thin!important; scrollbar-color:var(--desk-muted) transparent!important; }
 html[data-theme] body>.settings-scrollbar-probe::-webkit-scrollbar { display:block; width:7px; height:7px; }
 html[data-theme] body #system-view>.system-panel::-webkit-scrollbar-track { background:transparent!important; }
 html[data-theme] body #system-view>.system-panel::-webkit-scrollbar-thumb { background:transparent!important; border:0!important; border-radius:8px; }

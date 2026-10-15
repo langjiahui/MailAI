@@ -13,6 +13,9 @@
   const probe = document.createElement('div');
   probe.className = 'settings-scrollbar-probe';
   probe.setAttribute('aria-hidden', 'true');
+  const overflow = document.createElement('div');
+  overflow.style.cssText = 'height:200px;width:1px';
+  probe.append(overflow);
   document.body.append(probe);
   const measure = panel => {
     if (!panel.getClientRects().length || !panel.clientHeight) return;

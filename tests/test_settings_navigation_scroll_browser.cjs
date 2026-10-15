@@ -29,13 +29,13 @@ const {chromium,webkit}=require('playwright');
  }
  await page.setViewportSize({width:1512,height:760});await page.evaluate(()=>{selectSystemTab('maintenance');setI18nLanguage('zh-CN');window.dispatchEvent(new Event('blur'));});
  const panel=page.locator('[data-system-panel="maintenance"]');await panel.evaluate(n=>{n.scrollTop=0});await page.waitForFunction(()=>!document.querySelector('[data-system-panel="maintenance"]').classList.contains('scrollbar-visible'));
- const contentGeometry=()=>panel.evaluate(n=>{const r=n.firstElementChild.getBoundingClientRect();return {left:r.left,right:r.right,width:r.width}});
+ const contentGeometry=()=>panel.evaluate(n=>{const r=n.firstElementChild.getBoundingClientRect();return {left:r.left,right:r.right,width:r.width,gutter:n.offsetWidth-n.clientWidth,padding:getComputedStyle(n).paddingRight,reserved:n.style.getPropertyValue('--settings-scrollbar-size'),probe:(()=>{const p=document.querySelector('.settings-scrollbar-probe');return {gutter:p.offsetWidth-p.clientWidth,width:getComputedStyle(p).scrollbarWidth,color:getComputedStyle(p).scrollbarColor}})()}});
  const geometryBefore=await contentGeometry(),bounds=await panel.boundingBox();
  await page.mouse.move(bounds.x+100,bounds.y+100);await page.mouse.wheel(0,420);
  await page.waitForFunction(()=>{const n=document.querySelector('[data-system-panel="maintenance"]');return n.scrollTop>0&&n.classList.contains('scrollbar-visible')});
  assert.equal(await panel.evaluate(n=>getComputedStyle(n).scrollbarWidth),'thin');
  const geometryActive=await contentGeometry();
- assert(Math.abs(geometryActive.width-geometryBefore.width)<=1,'Revealing the native scrollbar must preserve content width');
+ assert(Math.abs(geometryActive.width-geometryBefore.width)<=1,JSON.stringify({message:'Revealing the native scrollbar must preserve content width',geometryBefore,geometryActive}));
  await page.waitForFunction(()=>!document.querySelector('[data-system-panel="maintenance"]').classList.contains('scrollbar-visible'));
  assert.equal(await panel.evaluate(n=>getComputedStyle(n).scrollbarWidth),'none');
  assert.equal(await panel.evaluate(n=>n.offsetWidth-n.clientWidth),0);
