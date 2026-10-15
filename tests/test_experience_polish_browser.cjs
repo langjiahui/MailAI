@@ -34,7 +34,7 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
  await p.locator('#attachment-grid').evaluate(g=>g.scrollTop=600);
  // Row height varies by density; measure after bringing the chosen file into view.
  await p.locator('.attachment-open').nth(9).scrollIntoViewIfNeeded();const top=await p.locator('#attachment-grid').evaluate(g=>g.scrollTop);
- await p.locator('.attachment-open').nth(9).click();await p.locator('.file-preview').waitFor({state:'visible'});await p.locator('.file-preview button[aria-label="关闭预览"]').click();assert(Math.abs(await p.locator('#attachment-grid').evaluate(g=>g.scrollTop)-top)<100);
+ await p.locator('.attachment-preview-action').nth(9).click();await p.locator('.file-preview').waitFor({state:'visible'});await p.locator('.file-preview button[aria-label="关闭预览"]').click();assert(Math.abs(await p.locator('#attachment-grid').evaluate(g=>g.scrollTop)-top)<100);
  await p.locator('#btn-close-attachments').click();
  // Same panel for reminders, and date views keep task scope explicit.
  await p.evaluate(async()=>{await openTodoCenter();const base=todoCenterRows[0];const day=localDateKey();todoCenterRows=[{...base,id:101,title:'今天的工作',status:'open',deadline:day,remind_at:''},{...base,id:102,title:'逾期工作',status:'open',deadline:'2000-01-01',remind_at:''},{...base,id:103,title:'未安排工作',status:'open',deadline:'',remind_at:''}];renderTodoCenter()});
