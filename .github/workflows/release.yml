@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   metadata:
@@ -213,8 +214,30 @@ jobs:
         shell: bash
         run: python3 scripts/cleanup_macos_self_signing.py
 
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Require the quality gate for the exact release commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          for attempt in $(seq 1 60); do
+            state=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow pr-check.yml --event push --commit "$GITHUB_SHA" --limit 1 --json status,conclusion --jq '.[0] | if . == null then "pending" elif .status == "completed" then .conclusion else .status end')
+            if [ "$state" = "success" ]; then exit 0; fi
+            case "$state" in
+              failure|cancelled|timed_out|action_required|startup_failure)
+                echo "Release quality gate ended with $state" >&2; exit 1 ;;
+            esac
+            echo "Waiting for release quality gate: $state"
+            sleep 30
+          done
+          echo "Release quality gate did not complete within 30 minutes" >&2
+          exit 1
+
   publish:
-    needs: [windows-x64, macos-arm64, linux-x64]
+    needs: [windows-x64, macos-arm64, linux-x64, quality]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

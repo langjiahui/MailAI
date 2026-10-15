@@ -242,6 +242,7 @@ jobs:
   responsive-ui-browser:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         browser: [chromium, webkit]
     steps:
