@@ -2895,7 +2895,7 @@ function renderDigestEmailDetail(e) {
     </div>
     <div class="drawer-email-body">
       ${mailSummaryDisclosure(e, {drawer:true})}
-      <div class="reading-section drawer-body-section"><div class="section-title"><span data-i18n="read.body">${mailaiT('read.body') || '邮件正文'}</span><small>${e.has_rich_body ? (e.has_remote_images ? (mailaiT('read.fmtHtmlImages') || 'HTML 原始排版 · 外链图片已显示') : (mailaiT('read.fmtHtml') || 'HTML 原始排版')) : (mailaiT('read.fmtPlain') || '纯文本邮件')}</small></div>
+      <div class="reading-section drawer-body-section"><div class="section-title"><span data-i18n="read.body">${mailaiT('read.body') || '邮件正文'}</span>${e.has_rich_body ? '' : `<small>${mailaiT('read.fmtPlain') || '纯文本邮件'}</small>`}</div>
         ${e.has_rich_body ? "<div id=\"digest-rich-email-body\" class=\"email-body rich-email-body\"><div class=\"reading-loading\"><span data-i18n=\"ui.14219f870d0c\">正在还原邮件排版…</span></div></div>" : `<div class="markdown-body email-body plain-email-body">${mdToHtml(e.body_text || '')}</div>`}
       </div>
       <div class="reading-section drawer-findings-section"><div class="section-title"><span>${mailaiT('read.security') || '安全分析'}</span><small>${(mailaiT('read.ruleScore') || '规则分 {n}').replace('{n}', e.score || 0)}</small></div>
@@ -6240,7 +6240,6 @@ function autoSizeRichEmailFrame(frame) {
       const doc = frame.contentDocument;
       if (!doc?.body || !frame.isConnected) return;
       richEmailFrames.add(frame);
-      window.mailaiFoldReadingDocument?.(doc, frame);
       applyRichEmailFrameTheme(frame);
       let queued = 0, disposed = false, measured = '';
       const listeners = [];
@@ -6514,7 +6513,7 @@ function renderReadingPane(e) {
         ${mailSummaryDisclosure(e)}
 
         <div class="reading-section body-section">
-          <div class="section-title"><span data-i18n="read.body">${mailaiT('read.body') || '邮件正文'}</span><div class="body-format-actions"><small>${e.has_rich_body ? (e.has_remote_images ? (mailaiT('read.fmtHtmlImages') || 'HTML 原始排版 · 外链图片已显示') : (mailaiT('read.fmtHtml') || 'HTML 原始排版')) : (mailaiT('read.fmtPlainOpt') || '纯文本邮件 · 优化排版')}</small></div></div>
+          <div class="section-title"><span data-i18n="read.body">${mailaiT('read.body') || '邮件正文'}</span>${e.has_rich_body ? '' : `<div class="body-format-actions"><small>${mailaiT('read.fmtPlainOpt') || '纯文本邮件 · 优化排版'}</small></div>`}</div>
           ${e.has_rich_body ? `<div id="rich-email-body" class="email-body rich-email-body"><div class="reading-loading">${mailaiT('read.restoring') || '正在还原邮件排版…'}</div></div>` : `<div class="markdown-body email-body plain-email-body">${window.mailaiReadingText?.(e) || mdToHtml(e.body_text || '')}</div>`}
         </div>
 
@@ -6528,7 +6527,7 @@ function renderReadingPane(e) {
     ['.reading-header .mail-category', () => mailCategoryLabel(e.category)],
     ['.reading-header .mail-priority', () => mailPriorityLabel(e.priority)],
     ['.reading-date-text', () => fmtDate(e.date)],
-    ['.body-section .body-format-actions>small', () => mailaiT(e.has_rich_body ? (e.has_remote_images ? 'read.fmtHtmlImages' : 'read.fmtHtml') : 'read.fmtPlainOpt') || (e.has_rich_body ? (e.has_remote_images ? 'HTML 原始排版 · 外链图片已显示' : 'HTML 原始排版') : '纯文本邮件 · 优化排版')],
+    ['.body-section .body-format-actions>small', () => mailaiT('read.fmtPlainOpt') || '纯文本邮件 · 优化排版'],
   ]) {
     const node = readingContent.querySelector(selector);
     if (node) mailaiBindUI(node, 'textContent', reader);

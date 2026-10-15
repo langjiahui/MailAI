@@ -21480,7 +21480,7 @@ function renderDigestEmailDetail(e) {
     </div>
     <div class="drawer-email-body">
       ${mailSummaryDisclosure(e, {drawer:true})}
-      <div class="reading-section drawer-body-section"><div class="section-title"><span data-i18n="read.body">${mailaiT('read.body') || '邮件正文'}</span><small>${e.has_rich_body ? (e.has_remote_images ? (mailaiT('read.fmtHtmlImages') || 'HTML 原始排版 · 外链图片已显示') : (mailaiT('read.fmtHtml') || 'HTML 原始排版')) : (mailaiT('read.fmtPlain') || '纯文本邮件')}</small></div>
+      <div class="reading-section drawer-body-section"><div class="section-title"><span data-i18n="read.body">${mailaiT('read.body') || '邮件正文'}</span>${e.has_rich_body ? '' : `<small>${mailaiT('read.fmtPlain') || '纯文本邮件'}</small>`}</div>
         ${e.has_rich_body ? "<div id=\"digest-rich-email-body\" class=\"email-body rich-email-body\"><div class=\"reading-loading\"><span data-i18n=\"ui.14219f870d0c\">正在还原邮件排版…</span></div></div>" : `<div class="markdown-body email-body plain-email-body">${mdToHtml(e.body_text || '')}</div>`}
       </div>
       <div class="reading-section drawer-findings-section"><div class="section-title"><span>${mailaiT('read.security') || '安全分析'}</span><small>${(mailaiT('read.ruleScore') || '规则分 {n}').replace('{n}', e.score || 0)}</small></div>
@@ -24825,7 +24825,6 @@ function autoSizeRichEmailFrame(frame) {
       const doc = frame.contentDocument;
       if (!doc?.body || !frame.isConnected) return;
       richEmailFrames.add(frame);
-      window.mailaiFoldReadingDocument?.(doc, frame);
       applyRichEmailFrameTheme(frame);
       let queued = 0, disposed = false, measured = '';
       const listeners = [];
@@ -25099,7 +25098,7 @@ function renderReadingPane(e) {
         ${mailSummaryDisclosure(e)}
 
         <div class="reading-section body-section">
-          <div class="section-title"><span data-i18n="read.body">${mailaiT('read.body') || '邮件正文'}</span><div class="body-format-actions"><small>${e.has_rich_body ? (e.has_remote_images ? (mailaiT('read.fmtHtmlImages') || 'HTML 原始排版 · 外链图片已显示') : (mailaiT('read.fmtHtml') || 'HTML 原始排版')) : (mailaiT('read.fmtPlainOpt') || '纯文本邮件 · 优化排版')}</small></div></div>
+          <div class="section-title"><span data-i18n="read.body">${mailaiT('read.body') || '邮件正文'}</span>${e.has_rich_body ? '' : `<div class="body-format-actions"><small>${mailaiT('read.fmtPlainOpt') || '纯文本邮件 · 优化排版'}</small></div>`}</div>
           ${e.has_rich_body ? `<div id="rich-email-body" class="email-body rich-email-body"><div class="reading-loading">${mailaiT('read.restoring') || '正在还原邮件排版…'}</div></div>` : `<div class="markdown-body email-body plain-email-body">${window.mailaiReadingText?.(e) || mdToHtml(e.body_text || '')}</div>`}
         </div>
 
@@ -25113,7 +25112,7 @@ function renderReadingPane(e) {
     ['.reading-header .mail-category', () => mailCategoryLabel(e.category)],
     ['.reading-header .mail-priority', () => mailPriorityLabel(e.priority)],
     ['.reading-date-text', () => fmtDate(e.date)],
-    ['.body-section .body-format-actions>small', () => mailaiT(e.has_rich_body ? (e.has_remote_images ? 'read.fmtHtmlImages' : 'read.fmtHtml') : 'read.fmtPlainOpt') || (e.has_rich_body ? (e.has_remote_images ? 'HTML 原始排版 · 外链图片已显示' : 'HTML 原始排版') : '纯文本邮件 · 优化排版')],
+    ['.body-section .body-format-actions>small', () => mailaiT('read.fmtPlainOpt') || '纯文本邮件 · 优化排版'],
   ]) {
     const node = readingContent.querySelector(selector);
     if (node) mailaiBindUI(node, 'textContent', reader);
@@ -35277,72 +35276,9 @@ document.getElementById('task-center-list').addEventListener('click', async even
 
 ;
 /* ---- mail-reading-folds.js ---- */
-/* Fold only explicit mail quote/signature markers. The original message stays intact. */
+/* Display the complete message in source order, including signatures and quotes. */
 (() => {
-  const quoteMarker =
-    /^(?:[-_]{3,}[^\n]{0,50}(?:Original Message|原始邮件)[^\n]*|On [^\n]{1,180}wrote:|在[^\n]{1,180}写道[:：])\s*$/im;
-  const headerMarker =
-    /^(?:From:|发件人[:：])[^\n]*\n(?:[^\n]*\n){0,2}(?:Sent:|Date:|发送时间[:：]|日期[:：])/im;
-  function split(text) {
-    text = String(text || "").replace(/\r\n?/g, "\n");
-    const marker = quoteMarker.exec(text) || headerMarker.exec(text);
-    let body = marker ? text.slice(0, marker.index) : text;
-    const quote = marker ? text.slice(marker.index) : "";
-    const signatureMarker = /^-- ?\n/m.exec(body);
-    let signature = "";
-    if (signatureMarker && body.length - signatureMarker.index <= 2500) {
-      signature = body.slice(signatureMarker.index);
-      body = body.slice(0, signatureMarker.index);
-    }
-    return { body, quote, signature };
-  }
-  window.mailaiReadingText = (email) => {
-    const parts = split(email.body_text);
-    return (
-      mdToHtml(parts.body) +
-      (parts.signature
-        ? `<details class="mail-reading-fold"><summary><span data-i18n="ui.a68aee74764b">签名与落款 · 展开</span></summary><div>${mdToHtml(parts.signature)}</div></details>`
-        : "") +
-      (parts.quote
-        ? `<details class="mail-reading-fold"><summary><span data-i18n="ui.e1cf789fcd33">历史引用 · 展开原文</span></summary><div>${mdToHtml(parts.quote)}</div></details>`
-        : "")
-    );
-  };
-  window.mailaiFoldReadingDocument = (doc, frame) => {
-    if (!frame.closest("#reading-content,#digest-email-drawer")) return;
-    const style = doc.createElement("style");
-    style.textContent =
-      'details[data-mailai-fold]{margin:16px 0;border-top:1px solid #dce5df;padding-top:10px}details[data-mailai-fold]>summary{cursor:pointer;color:#63776a;font:13px/1.7 Arial,sans-serif;padding:6px 0}html[data-mailai-theme="dark"] details[data-mailai-fold]{border-color:#41584b}html[data-mailai-theme="dark"] details[data-mailai-fold]>summary{color:#adc4b5}';
-    doc.head.append(style);
-    window.mailaiMotion?.bindDisclosures(doc);
-    for (const [selector, label] of [
-      [
-        'blockquote[type="cite"],blockquote[cite],.gmail_quote,.yahoo_quoted,[data-mailai-quote],[data-compose-section="quote"]',
-        mailaiText("历史引用 · 展开原文"),
-      ],
-      [
-        '.gmail_signature,.moz-signature,[data-mailai-signature],[data-compose-section="signature"]',
-        mailaiText("签名与落款 · 展开"),
-      ],
-    ]) {
-      const nodes = [...doc.querySelectorAll(selector)].filter(
-        (node) =>
-          !node.parentElement?.closest(selector) &&
-          !node.closest("details[data-mailai-fold]"),
-      );
-      for (const node of nodes) {
-        if (!node.textContent.trim() && !node.querySelector("img")) continue;
-        const details = doc.createElement("details");
-        details.dataset.mailaiFold = "true";
-        const summary = doc.createElement("summary");
-        const source = mailaiCopySource(label);
-        mailaiBindUI(summary, "textContent", () => mailaiText(source));
-        node.before(details);
-        details.append(summary, node);
-      }
-    }
-  };
-  window.mailaiMailTextSections = split;
+  window.mailaiReadingText = (email) => mdToHtml(email?.body_text || '');
 })();
 
 ;
