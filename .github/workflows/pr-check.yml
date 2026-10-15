@@ -20,7 +20,10 @@ jobs:
       - name: Install notification test dependencies
         run: python -m pip install -r requirements-test.txt "winrt-runtime>=3.2,<4" "winrt-Windows.Data.Xml.Dom>=3.2,<4" "winrt-Windows.Foundation>=3.2,<4" "winrt-Windows.Foundation.Collections>=3.2,<4" "winrt-Windows.UI.Notifications>=3.2,<4"
       - name: Verify native projection and account-bound notification callbacks
-        run: python tests/test_mail_notifications.py
+        env:
+          PYTHONUTF8: "1"
+          PYTHONFAULTHANDLER: "1"
+        run: python -u -m unittest discover -s tests -p test_mail_notifications.py -v
 
   native-scrollbar-macos:
     runs-on: macos-14
