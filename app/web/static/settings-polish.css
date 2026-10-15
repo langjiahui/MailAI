@@ -243,3 +243,9 @@ html[data-theme] body #system-view .guide-replay-action {
 }
 html[data-theme] body #system-view #btn-delete-mail { color:#b7423b!important; }
 html[data-theme="dark"] body #system-view #btn-delete-mail { color:#efaaa3!important; }
+
+/* English cleanup actions must wrap with the available card width, including
+   Linux font metrics and enlarged text. flex:none otherwise sizes to content. */
+#system-view .maintenance-cleanup-footer .maintenance-card-actions { min-width:0; max-width:100%; }
+#system-view .maintenance-cleanup-footer .maintenance-card-actions>* { min-width:0; max-width:100%; white-space:normal; overflow-wrap:anywhere; }
+#system-view .maintenance-cleanup-steps li>div { min-width:0; overflow-wrap:anywhere; }

@@ -74,6 +74,17 @@ const {chromium, webkit} = require('playwright');
         }
       }
     }
+    // Wider platform fonts and enlarged English text must not push the cleanup
+    // action group past the narrow maintenance card.
+    await page.setViewportSize({width:390,height:1000});
+    await page.evaluate(()=>{
+      document.body.style.zoom='1';document.documentElement.style.setProperty('--fz','1');
+      setI18nLanguage('en');showSystemView('maintenance');
+      document.querySelectorAll('.maintenance-cleanup-footer :is(span,button)').forEach(n=>n.style.fontSize='16px');
+    });
+    const cleanupOverflow=await page.locator('.server-cleanup-card').evaluate(card=>card.scrollWidth>card.clientWidth+2);
+    assert(!cleanupOverflow,'Enlarged English cleanup actions must wrap inside the card');
+    await page.evaluate(()=>document.querySelectorAll('.maintenance-cleanup-footer :is(span,button)').forEach(n=>n.style.removeProperty('font-size')));
     // Real preference interactions still work after the controls are regrouped.
     await page.setViewportSize({width:1512,height:1000});
     await page.evaluate(()=>{document.body.style.zoom='1';document.documentElement.style.setProperty('--fz','1');setI18nLanguage('en');showSystemView('preferences');});
