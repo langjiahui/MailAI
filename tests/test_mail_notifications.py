@@ -116,7 +116,8 @@ class MailNotificationTests(unittest.TestCase):
         notification.add_failed.call_args.args[0](None, None)
         failed.assert_called_once()
         manager.create_toast_notifier_with_id.return_value.show.assert_called_once_with(notification)
-        runtime.uninit_apartment.assert_called_once()
+        runtime.init_apartment.assert_not_called()
+        runtime.uninit_apartment.assert_not_called()
 
     def test_windows_failure_is_not_recorded_as_delivered(self):
         runtime = WindowsDesktopRuntime()
@@ -127,21 +128,39 @@ class MailNotificationTests(unittest.TestCase):
 
     @unittest.skipUnless(sys.platform == 'win32', 'Requires the actual Windows Runtime')
     def test_actual_windows_projection_without_sending_or_registration(self):
-        from winrt.runtime import init_apartment, uninit_apartment, ApartmentType
+        from collections import OrderedDict
+        from threading import RLock, Thread
         from winrt.windows.data.xml.dom import XmlDocument
         from winrt.windows.ui.notifications import ToastNotification
-        init_apartment(ApartmentType.MULTI_THREADED)
-        try:
-            icon = Path(__file__).resolve().parents[1]/'app/web/static/assets/mailai-icon-256.png'
-            document = XmlDocument()
-            document.load_xml(toast_xml('主题 & <literal>', '发件人\n账号', icon))
-            toast = ToastNotification(document)
-            toast.tag, toast.group = 'projection-check', 'mail'
+        # Exercise the real projection and production lifetime across a worker
+        # exit, while replacing only OS delivery and avoiding registry writes.
+        service = WindowsToastService.__new__(WindowsToastService)
+        service._xml, service._toast = XmlDocument, ToastNotification
+        service._manager = Mock()
+        service._icon = Path(__file__).resolve().parents[1]/'app/web/static/assets/mailai-icon-256.png'
+        service._lock, service._pending = RLock(), OrderedDict()
+        failures = []
+        def deliver():
+            try:
+                for number in range(3):
+                    service.show('主题 & <literal>', '发件人\n账号',
+                        key='projection-check-'+str(number), group='mail',
+                        on_click=lambda: None, on_failure=lambda: None)
+            except Exception as error:
+                failures.append(error)
+        worker = Thread(target=deliver)
+        worker.start()
+        worker.join(10)
+        self.assertFalse(worker.is_alive(), 'Native projection worker completed')
+        self.assertEqual(failures, [])
+        self.assertEqual(service._manager.create_toast_notifier_with_id.return_value.show.call_count, 3)
+        self.assertEqual([toast.tag for toast in service._pending.values()],
+                         ['projection-check-'+str(number) for number in range(3)])
+        for toast in service._pending.values():
             token = toast.add_activated(lambda _sender, _event: None)
             toast.remove_activated(token)
-            self.assertEqual(toast.tag, 'projection-check')
-        finally:
-            uninit_apartment()
+            self.assertEqual(toast.group, 'mail')
+
 
 
 if __name__ == '__main__':

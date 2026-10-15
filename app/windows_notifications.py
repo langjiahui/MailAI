@@ -49,26 +49,24 @@ class WindowsToastService:
                 winreg.SetValueEx(key, name, 0, winreg.REG_SZ, value)
 
     def show(self, title, body, *, key, group, on_click, on_failure):
-        from winrt.runtime import init_apartment, uninit_apartment, ApartmentType
-        init_apartment(ApartmentType.MULTI_THREADED)
-        try:
-            document = self._xml()
-            document.load_xml(toast_xml(title, body, self._icon))
-            toast = self._toast(document)
-            toast.tag = key
-            toast.group = group
-            toast.add_activated(lambda _sender, _event: on_click())
-            toast.add_failed(lambda _sender, _event: on_failure())
-            with self._lock:
-                # Windows' per-app history is bounded; keep enough callbacks
-                # for historical clicks, without retaining all mail forever.
-                self._pending[key] = toast
-                self._pending.move_to_end(key)
-                while len(self._pending) > 128:
-                    self._pending.popitem(last=False)
-            self._manager.create_toast_notifier_with_id(APP_ID).show(toast)
-        finally:
-            uninit_apartment()
+        # PyWinRT initializes worker threads automatically. Keep the runtime
+        # alive for retained toasts and callbacks; per-call teardown can release
+        # their COM objects after the apartment has already been destroyed.
+        document = self._xml()
+        document.load_xml(toast_xml(title, body, self._icon))
+        toast = self._toast(document)
+        toast.tag = key
+        toast.group = group
+        toast.add_activated(lambda _sender, _event: on_click())
+        toast.add_failed(lambda _sender, _event: on_failure())
+        with self._lock:
+            # Windows' per-app history is bounded; keep enough callbacks
+            # for historical clicks, without retaining all mail forever.
+            self._pending[key] = toast
+            self._pending.move_to_end(key)
+            while len(self._pending) > 128:
+                self._pending.popitem(last=False)
+        self._manager.create_toast_notifier_with_id(APP_ID).show(toast)
 
 
 def reminder_icon_class(base, on_click):
