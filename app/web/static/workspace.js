@@ -413,7 +413,7 @@ async function refreshTaskCenter({lightweight = false} = {}) {
 
 function updateFilterChips() {
   const parsed = window.mailaiGetSearchInterpretation?.();
-  const labels = {workflow:window.mailaiWorkflowFilterLabel?.() || '', unread:currentFilter.unread ? mailaiText('未读邮件') : '', days:currentFilter.days !== 9999 ? mailaiTemplate`近 ${currentFilter.days} 天` : '', priority:currentFilter.priority ? mailaiTemplate`${currentFilter.priority}重要程度` : '', domain:currentFilter.domain, attachments:currentFilter.attachments ? mailaiText('含附件') : '', search:currentFilter.search, category:currentFilter.category, verdict:currentFilter.verdict ? ({get clean() { return mailaiText('正常'); }, get suspicious() { return mailaiText('可疑'); }, get phishing() { return mailaiText('高风险'); }})[currentFilter.verdict] : ''};
+  const labels = {mailTags:currentFilter.mailTags?.length ? currentFilter.mailTags.join(currentFilter.mailTagMode === 'all' ? ' + ' : ' / ') : '', workflow:window.mailaiWorkflowFilterLabel?.() || '', unread:currentFilter.unread ? mailaiText('未读邮件') : '', days:currentFilter.days !== 9999 ? mailaiTemplate`近 ${currentFilter.days} 天` : '', priority:currentFilter.priority ? mailaiTemplate`${currentFilter.priority}重要程度` : '', domain:currentFilter.domain, attachments:currentFilter.attachments ? mailaiText('含附件') : '', search:currentFilter.search, category:currentFilter.category, verdict:currentFilter.verdict ? ({get clean() { return mailaiText('正常'); }, get suspicious() { return mailaiText('可疑'); }, get phishing() { return mailaiText('高风险'); }})[currentFilter.verdict] : ''};
   if (parsed?.structured) labels.search = '';
   const tokenNames = {sender:mailaiText('发件人'),recipient:mailaiText('收件人 / 抄送'),subject:mailaiText('主题'),filename:mailaiText('附件名称或类型'),after:mailaiText('开始日期'),before:mailaiText('结束日期'),mailbox:mailaiText('邮件范围'),state:mailaiText('处理状态'),category:mailaiText('AI 分类'),has_attachment:mailaiText('有附件'),unread:mailaiText('仅未读'),text:mailaiText('关键词')};
   const scopes = {all:mailaiText('全部正常邮件（含发件、草稿）'),inbox:mailaiText('收件箱'),sent:mailaiText('已发送'),drafts:mailaiText('草稿'),trash:mailaiText('已删除'),spam:mailaiText('垃圾邮件'),quarantine:mailaiText('隔离区')};
@@ -861,7 +861,7 @@ function initializeWorkspace() {
     if (token) { window.mailaiRemoveSearchToken?.(token.dataset.removeSearchToken); return; }
     const key = event.target.closest('button[data-remove-filter]')?.dataset.removeFilter; if (!key) return;
     if (key === 'workflow') window.mailaiClearWorkflowFilter?.();
-    currentFilter[key] = key === 'days' ? 9999 : ['attachments','unread'].includes(key) ? false : '';
+    currentFilter[key] = key === 'mailTags' ? [] : key === 'days' ? 9999 : ['attachments','unread'].includes(key) ? false : '';
     setSegmentedFilter('filter-days', String(currentFilter.days)); setSegmentedFilter('filter-priority', currentFilter.priority);
     document.getElementById('filter-unread').checked = Boolean(currentFilter.unread);
     document.getElementById('filter-domain').value = currentFilter.domain; document.getElementById('filter-attachments').checked = currentFilter.attachments;

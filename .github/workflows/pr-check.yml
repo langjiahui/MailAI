@@ -165,6 +165,25 @@ jobs:
           node tests/test_digest_recovery_browser.cjs
           MAILAI_BROWSER=webkit node tests/test_digest_recovery_browser.cjs
 
+      - name: Verify mail labels and batch failure recovery
+        shell: bash
+        run: |
+          MAILAI_FIXTURE_PORT=18805 python tests/workspace_preview.py > fixture-labels-basic.log 2>&1 &
+          basic_pid=$!
+          MAILAI_TAG_FIXTURE=1 MAILAI_FIXTURE_PORT=18806 python tests/workspace_preview.py > fixture-labels.log 2>&1 &
+          fixture_pid=$!
+          trap 'kill "$basic_pid" "$fixture_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:18805/api/health > /dev/null && curl -sf http://127.0.0.1:18806/api/health > /dev/null; then ready=1; break; fi
+            sleep 1
+          done
+          test "$ready" = 1 || { cat fixture-labels-basic.log fixture-labels.log; exit 1; }
+          MAILAI_TEST_URL=http://127.0.0.1:18805/ node tests/test_mail_tags_browser.cjs
+          MAILAI_TEST_URL=http://127.0.0.1:18805/ MAILAI_BROWSER=webkit node tests/test_mail_tags_browser.cjs
+          node tests/test_mail_tags_edges_browser.cjs
+          MAILAI_BROWSER=webkit node tests/test_mail_tags_edges_browser.cjs
+
       - name: Verify guided AI search and result follow-through
         shell: bash
         run: |

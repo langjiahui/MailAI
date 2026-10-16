@@ -45,6 +45,7 @@ TESTS = (
     'test_model_usage.py',
     'test_contact_directory.py',
     'test_contact_tags.py',
+    'test_mail_tags.py',
     'test_contact_pending_merge.py',
     'test_live_diagnostics.py', 'test_diagnostics_progress.py',
     'test_optimization_guards.py', 'test_interaction_fixes.py', 'test_pinyin_search.py', 'test_search_index_cost.py',

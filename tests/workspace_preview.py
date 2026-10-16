@@ -28,7 +28,7 @@ def main():
         Path(account['raw_dir']).mkdir()
         with use(dict(ACCOUNT_ID=key, DB_PATH=account['db_path'], RAW_DIR=account['raw_dir'], IMAP_USER=user)):
             db.init_db()
-            for n in range(12):
+            for n in range(325 if os.environ.get('MAILAI_TAG_FIXTURE') == '1' else 12):
                 db.upsert_email(dict(uid=n+1,subject=['采购合同交期确认','项目周报与下周安排','部门培训通知'][n%3],
                     from_addr='colleague@example.test',from_name='项目同事',to_addr=user,
                     date=(datetime.now()-timedelta(days=n//3)).isoformat(),status='inbox',category=['项目工作','系统通知'][n%2],

@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/static/mail-tags.css?v=1">
   <title>MailAI · 邮件安全与效率助手</title>
   <script src="/api/ui-preferences.js"></script>
   <script src="/static/preferences.js?v=i18n-20261010"></script>
@@ -696,6 +697,12 @@
           </nav>
         </section>
 
+        <section id="mail-tag-group" class="nav-group">
+          <div class="nav-title mail-tag-heading"><span data-i18n="mailTags.0ac038eea001">邮件标签</span><button type="button" data-mail-tag-manage title="管理标签与自动打标规则" data-i18n-title="mailTags.af2c26e26404" data-i18n="mailTags.bb6d995724f4">管理</button></div>
+          <nav id="mail-tag-nav" aria-label="按邮件标签筛选" data-i18n-aria="mailTags.bf2e009dcd54"></nav>
+          <div class="mail-tag-selection" data-mail-tag-selection hidden><select data-mail-tag-mode aria-label="多个标签的匹配方式" data-i18n-aria="ui.00cff074af26"><option value="any" data-i18n="ui.200fcebff6bd">包含任意标签</option><option value="all" data-i18n="ui.d811aabc3fd1">同时包含全部标签</option></select><button type="button" data-mail-tag-clear data-i18n="mailTags.5b950039a69d">清除标签筛选</button></div>
+        </section>
+
         <section class="nav-group mail-filter-group">
           <div class="filter-heading"><div><b data-i18n="filter.title">筛选条件</b><small data-i18n="filter.titleHint">组合条件会同时生效</small></div><span id="filter-active-count" class="hidden">0</span></div>
           <div class="filter-form">
@@ -734,6 +741,7 @@
             <button type="button" data-bulk-action="star" title="添加星标" data-i18n-title="bulk.starTitle"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 3 2.1 4.2 4.7.7-3.4 3.3.8 4.7-4.2-2.2-4.2 2.2.8-4.7-3.4-3.3 4.7-.7z"/></svg><span data-i18n="bulk.star">星标</span></button>
             <button type="button" class="bulk-trash" data-bulk-action="trash" title="移入垃圾箱" data-i18n-title="bulk.trashTitle"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12M7 6V4h6v2M6 8l.7 8h6.6l.7-8M8.5 9.5v4M11.5 9.5v4"/></svg><span data-i18n="bulk.trash">垃圾箱</span></button>
             <button type="button" class="bulk-trash hidden" data-bulk-action="purge" title="彻底删除所选邮件（不可恢复）" aria-label="彻底删除所选邮件" data-i18n-title="ui.a3183a8093c1" data-i18n-aria="ui.b82daa89f603"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12M7 6V4h6v2M6 8l.7 8h6.6l.7-8M8 9l4 4m0-4-4 4"/></svg><span><span data-i18n="ui.7aa6d0ef5feb">彻底删除</span></span></button>
+            <button type="button" data-bulk-mail-tags title="为所选邮件添加或移除标签" data-i18n-title="mailTags.8e012f2f324d"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 3h6l8 8-6 6-8-8V3Z"/><circle cx="6.5" cy="6.5" r=".8"/></svg><span data-i18n="ui.1d0fd5f9336d">标签</span></button>
             <select id="bulk-folder" aria-label="移动所选邮件" data-i18n-aria="bulk.moveAria"><option value="" data-i18n="bulk.move">移动到…</option></select>
           </div>
           <button type="button" id="bulk-cancel" aria-label="取消选择" title="取消选择 (Esc)" data-i18n-aria="bulk.cancel" data-i18n-title="bulk.cancel" data-i18n="bulk.done">完成</button>
@@ -1196,7 +1204,7 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=2c1d1cabda20"></script>
+  <script src="/static/bundle.js?v=c4a81069530c"></script>
   <script src="/static/settings-scroll.js?v=5"></script>
   <script type="module" src="/static/author-logo.js?v=5"></script>
 </body>

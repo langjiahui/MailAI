@@ -48,3 +48,5 @@ mail-import.js
 task-activity.js
 help-center.js
 date-time-picker.js
+
+mail-tags.js

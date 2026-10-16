@@ -371,6 +371,8 @@ def init_db():
         c.execute("PRAGMA synchronous=NORMAL")
         c.executescript(SCHEMA)
         _run_migrations(c)
+        from .mail_tags import initialize as initialize_mail_tags
+        initialize_mail_tags(c)
         from ..companion_growth import initialize
         initialize(c)
         from ..productivity import initialize

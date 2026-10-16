@@ -361,7 +361,7 @@ def list_unified_inbox(days: int = 9999, limit: int = 1000, offset: int = 0, q: 
                     f"AND {condition} ORDER BY date DESC,id DESC LIMIT ?",
                     [f"-{bounded_days} days", *search_args, bounded_limit + offset],
                 ).fetchall()
-                decoded_rows = db._decode_rows(account_rows)
+                decoded_rows = db._decode_rows(account_rows, connection=connection)
                 if q.strip():
                     for message in decoded_rows:
                         message['search_match'] = match_preview(message, terms) or (

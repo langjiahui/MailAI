@@ -71,6 +71,9 @@ def raises(function, *args):
 
 def test_round_trip_and_dedup():
     with fixture() as (root, account), account('work'):
+        from app.db import mail_tags
+        tag=mail_tags.save_tag('导入自动标签')['id']
+        mail_tags.save_rule('导入规则',[{'field':'subject','operator':'contains','value':'历史项目资料'}],[tag])
         raw = message()
         job = imp.create('Foxmail 历史', 3); token = job['token']
         upload(token, '收件箱/原件.eml', raw)
@@ -91,6 +94,7 @@ def test_round_trip_and_dedup():
         rows = db.list_emails(status='local_archive', days=365000)
         assert len(rows) == 2 and {r['folder'] for r in rows} == {'LOCAL_IMPORT/Foxmail 历史/收件箱','LOCAL_IMPORT/Foxmail 历史/已发送'}
         for row in rows:
+            assert [label['id'] for label in row['tags']]==[tag], 'Imported mail runs the same arrival labeling rules'
             assert row['uid'] < 0 and row['is_local_archive'] == row['is_read'] == row['notification_sent'] == row['processing_complete'] == 1
             assert row['arrival_kind'] == 'history' and row['pending_action'] == ''
             assert '历史邮件' in row['body_text'] and row['date'].startswith('1993')

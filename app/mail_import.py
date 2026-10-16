@@ -516,6 +516,8 @@ def _insert(token, item, raw):
                           verdict='unreviewed', review_source='client_import', summary=parsed['snippet'])
             keys = list(record)
             cursor = c.execute(f"INSERT INTO emails({','.join(keys)}) VALUES({','.join('?' for _ in keys)})", [record[k] for k in keys])
+            from .db.mail_tags import apply_to_email
+            apply_to_email(c, cursor.lastrowid, record)
             stat = target.stat()
             c.execute('INSERT INTO mail_client_fingerprints VALUES(?,?,?,?,?,?,?)',
                       (cursor.lastrowid, item['raw_digest'], item['digest'], str(target), stat.st_size, stat.st_mtime_ns, token))

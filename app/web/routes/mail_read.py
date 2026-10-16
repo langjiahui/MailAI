@@ -3,7 +3,8 @@ import os
 import re
 import bleach
 
-from fastapi import APIRouter, HTTPException
+from typing import Literal
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
 
 from ... import db, pipeline, profiles, system_settings, threads
@@ -29,9 +30,9 @@ def safe_quote_html(html: str) -> str:
 
 @router.get("/api/emails")
 def api_emails(status: str | None = None, verdict: str | None = None, days: int = 7,
-               folder: str | None = None, offset: int = 0):
+               folder: str | None = None, offset: int = 0, tag: list[str] = Query(default=[], max_length=50), tag_mode: Literal["any", "all"] = "any"):
     emails = db.list_emails(status=status, verdict=verdict, days=days, folder=folder,
-                            offset=offset, list_view=True)
+                            offset=offset, list_view=True, tags=tag if isinstance(tag,list) else (), tag_mode=tag_mode)
     annotate_list_identities(emails)
     for e in emails:  # 列表页不返回全文
         if status == "trash" and e.get("pending_action"):
@@ -61,7 +62,7 @@ def api_mailbox_revision():
 
 # 必须在 /api/emails/{email_id} 之前注册，否则 search 会被当作数字 id 匹配。
 @router.get("/api/emails/search")
-def api_search_emails(q: str = "", limit: int = 1000, offset: int = 0, folder: str = "", status: str = ""):
+def api_search_emails(q: str = "", limit: int = 1000, offset: int = 0, folder: str = "", status: str = "", tag: list[str] = Query(default=[], max_length=50), tag_mode: Literal["any", "all"] = "any"):
     bounded_limit = max(1, min(limit, 1000))
     from ...search_query import interpret_query
     try:
@@ -71,7 +72,7 @@ def api_search_emails(q: str = "", limit: int = 1000, offset: int = 0, folder: s
     structured = parsed['structured']
     emails = db.search_emails(parsed['criteria']['terms'],
                               bounded_limit, offset=offset, list_view=True, folder=folder, status=status,
-                              criteria=parsed['criteria'] if structured else None)
+                              criteria=parsed['criteria'] if structured else None, tags=tag if isinstance(tag,list) else (), tag_mode=tag_mode)
     # Fast search is local and deterministic. AI retrieval is an explicit
     # assistant action offered by the empty-state UI.
     annotate_list_identities(emails)

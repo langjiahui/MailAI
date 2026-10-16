@@ -14,6 +14,8 @@ let currentFilter = {
   status: '',
   verdict: '',
   category: '',
+  mailTags: [],
+  mailTagMode: 'any',
   days: 9999,
   priority: '',
   domain: '',
@@ -148,7 +150,7 @@ function updateFilterSummary() {
   const active = [
     currentFilter.days !== 9999, Boolean(currentFilter.priority), Boolean(currentFilter.domain),
     currentFilter.attachments, currentFilter.unread, Boolean(currentFilter.search), Boolean(currentFilter.status),
-    Boolean(currentFilter.verdict), Boolean(currentFilter.category), Boolean(window.mailaiWorkflowFilterLabel?.()), Boolean(specialMailbox), Boolean(currentServerFolder),
+    Boolean(currentFilter.verdict), Boolean(currentFilter.category), Boolean(currentFilter.mailTags?.length), Boolean(window.mailaiWorkflowFilterLabel?.()), Boolean(specialMailbox), Boolean(currentServerFolder),
   ].filter(Boolean).length;
   const badge = document.getElementById('filter-active-count');
   if (badge) { badge.textContent = active; badge.classList.toggle('hidden', !active); }
@@ -1271,7 +1273,7 @@ async function revealEmailFromSource(emailId) {
     currentServerFolder = '';
     currentFilter.status = '';
     currentFilter.verdict = '';
-    currentFilter.category = '';
+    currentFilter.category = ''; currentFilter.mailTags = [];
     currentFilter.priority = '';
     currentFilter.domain = '';
     currentFilter.search = '';
@@ -3212,6 +3214,7 @@ async function loadData({includeAncillary = true, silent = false} = {}) {
       : currentFilter.status === 'trash' ? '/api/emails?days=365000&status=trash'
       : (folder ? `/api/emails?days=9999&folder=${encodeURIComponent(folder)}` : '/api/emails?days=' + days);
     const draftsRevision = draftListRevision;
+    const tagCatalog = typeof window !== 'undefined' ? window.mailaiRefreshTags?.(accountId) : null;
     const requests = [loadMailPages(mailPath, isCurrent)];
     if (includeAncillary) requests.push(api('/api/todos'), api('/api/mail/sent'), api('/api/drafts'));
     const [emails, todos, sent, drafts] = await Promise.all(requests);
@@ -3225,6 +3228,8 @@ async function loadData({includeAncillary = true, silent = false} = {}) {
     updateSidebar();
     updateDomainFilter();
     applyFilters({silent});
+    // Mail remains readable even if the optional label catalogue is slow.
+    void tagCatalog?.then(() => { if(isCurrent())applyFilters({silent:true}); });
     loadAssistantAlerts();
     return true;
   } catch (e) {
@@ -3399,12 +3404,12 @@ async function onNavClick(e) {
   }
   if (filter === 'special') {
     specialMailbox = value;
-    currentFilter.status = ''; currentFilter.verdict = ''; currentFilter.category = '';
+    currentFilter.status = ''; currentFilter.verdict = ''; currentFilter.category = ''; currentFilter.mailTags = [];
   } else if (filter === 'status') {
     specialMailbox = '';
     currentFilter.status = value;
     currentFilter.verdict = '';
-    currentFilter.category = '';
+    currentFilter.category = ''; currentFilter.mailTags = [];
   } else if (filter === 'verdict') {
     // Risk is a facet inside the current mailbox scope, not a new mailbox.
     currentFilter.verdict = currentFilter.verdict === value ? '' : value;
@@ -3754,6 +3759,7 @@ function applyFilters({silent = false} = {}) {
   scope.textContent = currentMailboxScopeLabel().replace(/内$/, '');
   mailaiBindUI(scope, "title", () => (mailaiTemplate`搜索范围：${currentMailboxScopeLabel()}，仅搜索已同步到本机的邮件`));
   updateFilterSummary();
+  document.getElementById('mail-tag-group').hidden = Boolean(specialMailbox);
   if (specialMailbox) {
     for (const verdict of ['phishing','suspicious','clean','unreviewed']) {
       const badge = document.getElementById('count-' + verdict);
@@ -3804,6 +3810,9 @@ function applyFilters({silent = false} = {}) {
 
   // AI 分类是一个分面：统计必须遵守其他筛选条件，但不先套用分类自身，
   // 这样选中某一分类后，用户仍可看到并切换到同一筛选范围内的其他分类。
+  window.mailaiRenderMailTags?.(list.filter(e => (!currentFilter.verdict || mailVerdictKey(e) === currentFilter.verdict) &&
+    (!currentFilter.category || (e.category || '未分类') === currentFilter.category)));
+  list = list.filter(e => window.mailaiMatchMailTags?.(e) !== false);
   const riskRows = currentFilter.category ? list.filter(e => (e.category || '未分类') === currentFilter.category) : list;
   for (const verdict of ['phishing','suspicious','clean','unreviewed']) {
     const badge = document.getElementById('count-' + verdict);
@@ -3845,6 +3854,7 @@ function updateListTitle(count) {
     else if (currentFilter.status === 'trash') title = mailaiT('side.trash') || '已删除';
     const riskTitle = {phishing:mailaiT('risk.phishing') || '钓鱼邮件', suspicious:mailaiT('risk.suspicious') || '可疑邮件', clean:mailaiT('risk.clean') || '正常邮件', unreviewed:mailaiT('risk.unreviewed') || '待分析'}[currentFilter.verdict];
     if (riskTitle) title += ` · ${riskTitle}`;
+    if (currentFilter.mailTags?.length) title += ` · ${currentFilter.mailTags.join(currentFilter.mailTagMode === 'all' ? ' + ' : ' / ')}`;
     if (currentFilter.category) title += ` · ${mailCategoryLabel(currentFilter.category)}`;
     return typeof window !== 'undefined' ? window.mailaiProductivityTitle?.(title) || title : title;
   });
@@ -3855,7 +3865,7 @@ function updateListTitle(count) {
   const serverTotal = unifiedMailbox ? 0 : selectedServerMailbox
     ? Number(selectedServerMailbox.messages || 0)
     : totalKey ? Number(serverCounts?.[totalKey] || 0) : 0;
-  const hasFacet = Boolean(currentFilter.verdict || currentFilter.category || currentFilter.priority ||
+  const hasFacet = Boolean(currentFilter.mailTags?.length || currentFilter.verdict || currentFilter.category || currentFilter.priority ||
     currentFilter.domain || currentFilter.attachments || currentFilter.unread || currentFilter.search || currentFilter.days !== 9999);
   const countNode = document.getElementById('list-count');
   const countUnit = mailaiT('list.countMail') || ' 封';
@@ -3909,7 +3919,7 @@ function mailListSignature(emails) {
       e.is_favorite, e.is_starred, e.score, e.verdict, e.feedback, e.reviewed,
       e.pending_action, e.pending_error, e.recommended_status, e.counterpart_name,
       e.counterpart_addr, e.counterpart_count, e.from_name, e.from_addr, e.date,
-      e.subject, e.summary, e.snippet, e.category, e.priority,
+      e.subject, e.summary, e.snippet, e.category, e.priority, JSON.stringify(e.tags || []),
       e.handle_state, e.snoozed_until, e.followup_at, e.focus_override, e._conversationCount,
       (e.attachments || []).length,
     ]),
@@ -4111,6 +4121,7 @@ function renderEmailItem(e, idx = 0) {
         ${e.is_local_archive && e.folder?.startsWith('LOCAL_IMPORT/') ? `<span class="tag mail-import-origin" title="本地归档 / ${esc(e.folder.slice('LOCAL_IMPORT/'.length))}" data-i18n-title="ui.5b919f20e24b"><span data-i18n="ui.d8b9213d566b">归档 / ${esc(e.folder.slice('LOCAL_IMPORT/'.length))}</span></span>` : ''}
         ${typeof window !== 'undefined' ? window.mailaiProductivityTags?.(e) || '' : ''}
         ${unifiedMailbox && e._account_user ? `<span class="mail-account-tag" title="所属邮箱 ${esc(e._account_user)}" data-i18n-title="ui.49e516857c90">${esc(e._account_user)}</span>` : ''}
+        ${typeof window !== 'undefined' ? window.mailaiMailTagChips?.(e, 3) || '' : ''}
         ${e.category ? `<span class="tag mail-category">${esc(mailCategoryLabel(e.category))}</span>` : ''}
         ${e.priority ? `<span class="tag mail-priority tag-priority-${e.priority}">${esc(mailPriorityLabel(e.priority))}</span>` : ''}
         ${hasAtt ? `<span class="tag tag-attachment" title="${mailaiT('list.tagAttachment') || '附件'}" aria-label="${mailaiT('list.tagAttachment') || '附件'}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7 10 5-5a3 3 0 0 1 4 4l-7 7a4.5 4.5 0 0 1-6-6l7-7m-5 9 7-7"/></svg></span>` : ''}
@@ -5465,7 +5476,7 @@ async function openAccountMailbox(accountId, mailbox) {
   if (navigationRevision !== mailboxNavigationRevision || activeMailAccount()?.id !== accountId) return;
   currentFilter.search = ''; searchResults = null; advanceMailSearchRevision(); clearTimeout(globalSearchTimer);
   document.getElementById('global-search').value = '';
-  currentFilter.verdict = ''; currentFilter.category = '';
+  currentFilter.verdict = ''; currentFilter.category = ''; currentFilter.mailTags = [];
   if (currentFilter.days !== 9999) { currentFilter.days = 9999; setSegmentedFilter('filter-days', '9999'); }
   if (mailbox === 'trash') {
     await openTrashMailbox({resetPane:false, transitionRevision:navigationRevision});
@@ -5488,7 +5499,7 @@ async function openTrashMailbox({resetPane = true, transitionRevision = 0} = {})
   clearMailSelection();
   specialMailbox = ''; currentServerFolder = ''; unifiedMailbox = false;
   currentFilter.status = 'trash'; currentFilter.days = 9999;
-  currentFilter.search = ''; currentFilter.verdict = ''; currentFilter.category = '';
+  currentFilter.search = ''; currentFilter.verdict = ''; currentFilter.category = ''; currentFilter.mailTags = [];
   currentFilter.priority = ''; currentFilter.domain = ''; currentFilter.attachments = false;
   searchResults = null; advanceMailSearchRevision(); clearTimeout(globalSearchTimer);
   document.getElementById('global-search').value = '';
@@ -5537,7 +5548,7 @@ async function openUnifiedInbox() {
   unifiedMailbox = true; selectedMailboxAccountId = '';
   updateActiveNav(); renderSidebarAccounts(); // 乐观高亮，不等加载完成
   specialMailbox = ''; currentServerFolder = '';
-  currentFilter.status = ''; currentFilter.verdict = ''; currentFilter.category = '';
+  currentFilter.status = ''; currentFilter.verdict = ''; currentFilter.category = ''; currentFilter.mailTags = [];
   currentFilter.search = ''; searchResults = null; advanceMailSearchRevision(); clearTimeout(globalSearchTimer);
   document.getElementById('global-search').value = '';
   let loaded = await loadData();
@@ -6517,6 +6528,7 @@ function renderReadingPane(e) {
             ${e.priority ? `<span class="tag mail-priority tag-priority-${e.priority}">${esc(mailPriorityLabel(e.priority))}</span>` : ''}
           </div>
         </div>
+        <div class="reading-mail-labels"><span data-reading-mail-tags>${window.mailaiMailTagChips?.(e) || ''}</span><button type="button" class="mail-label-edit" data-edit-mail-tags><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 3h6l8 8-6 6-8-8V3Z"/><circle cx="6.5" cy="6.5" r=".8"/></svg><span data-i18n="ui.b819b0dd5668">设置标签</span></button></div>
         <div class="reading-actions">
           <section class="reading-action-group reading-mail-group" aria-label="邮件操作" data-i18n-aria="ui.15ecc4e1adf5"><span class="reading-action-group-title">${mailaiT('read.groupMail') || '邮件操作'}</span><div class="reading-mail-controls"><div class="reading-reply-actions">${replyActions}</div></div></section>
           <section class="reading-action-group reading-ai-group" aria-label="AI 助手" data-i18n-aria="ui.1b0049fcfd41"><span class="reading-action-group-title">${mailaiT('read.groupAi') || 'AI 助手'}</span></section>
@@ -7536,7 +7548,7 @@ async function loadServerFolder(folder, {transitionRevision = 0} = {}) {
   const revision = ++mailLoadRevision;
   const isCurrent = () => revision === mailLoadRevision && transitionRevision === mailboxNavigationRevision && currentServerFolder === folder;
   currentServerFolder = folder; specialMailbox = '';
-  currentFilter.status = ''; currentFilter.verdict = ''; currentFilter.category = ''; currentFilter.search = '';
+  currentFilter.status = ''; currentFilter.verdict = ''; currentFilter.category = ''; currentFilter.mailTags = []; currentFilter.search = '';
   currentFilter.priority = ''; currentFilter.domain = ''; currentFilter.attachments = false;
   searchResults = null; advanceMailSearchRevision(); clearTimeout(globalSearchTimer);
   selectedMailIds.clear(); mailSelectionExplicit = false; updateBulkToolbar();
@@ -9090,7 +9102,7 @@ document.getElementById('btn-reset-filter').addEventListener('click', async () =
   resetReadingPane();
   advanceMailSearchRevision(); clearTimeout(globalSearchTimer); searchResults = null;
   specialMailbox = ''; currentServerFolder = '';
-  currentFilter = { status: '', verdict: '', category: '', days: 9999, priority: '', domain: '', search: '', attachments: false, sort: 'date-desc' };
+  currentFilter = { status: '', verdict: '', category: '', mailTags: [], mailTagMode: 'any', days: 9999, priority: '', domain: '', search: '', attachments: false, sort: 'date-desc' };
   document.getElementById('global-search').value = '';
   setSegmentedFilter('filter-days', '9999');
   setSegmentedFilter('filter-priority', '');

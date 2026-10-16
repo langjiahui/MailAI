@@ -16145,7 +16145,104 @@ const MAILAI_UI_COPY = {
   "ui.3393089c6d77": [
     "无法打开 macOS 安装器，请重试或从发布页手动安装。",
     "Could not open macOS Installer. Retry or install manually from the release page."
-  ]
+  ],
+  "mailTags.4942ef85f2d4": ["用标签整理项目、客户和日常邮件", "Organize projects, clients and everyday mail with labels"],
+  "mailTags.3ec239688fa7": ["还没有标签，先在下方创建一个。", "No labels yet. Create one below."],
+  "mailTags.3e823b57739f": ["请先选择具体邮箱，再批量设置标签", "Select a mailbox before labeling multiple messages"],
+  "mailTags.b1452f38910d": ["每次最多为 300 封邮件设置标签", "Label up to 300 messages at a time"],
+  "mailTags.4c63f93fc425": ["设置标签 · {0} 封邮件", "Set labels · {0} messages"],
+  "mailTags.208262d6a078": ["设置邮件标签", "Set message labels"],
+  "mailTags.b4154f1371ed": ["可设置多个标签；标签只在当前邮箱中使用。", "Select multiple labels. Labels belong to this mailbox."],
+  "mailTags.277c532bb96c": ["保存标签", "Save labels"],
+  "mailTags.040692852ad5": ["新建标签", "New label"],
+  "mailTags.d2d2792be958": ["例如：项目 A、待跟进", "e.g. Project A, Follow up"],
+  "mailTags.2fa505cac3fc": ["操作方式", "Action"],
+  "mailTags.fa33f0a971aa": ["添加所选标签（保留原有标签）", "Add selected labels (keep existing labels)"],
+  "mailTags.a88c33102e08": ["移除所选标签", "Remove selected labels"],
+  "mailTags.295ec0c1afa9": ["邮件标签已保存", "Message labels saved"],
+  "mailTags.b9406dc2ac55": ["已创建，保存后添加到邮件", "Label created. Save to add it to the messages."],
+  "mailTags.55fde6c2daae": ["匹配字段", "Field"],
+  "mailTags.e1f0f1cb1ab4": ["匹配方式", "Operator"],
+  "mailTags.f56dd05e1d51": ["匹配内容", "Match text"],
+  "mailTags.f9c794b20df9": ["输入地址、域名或关键词", "Enter an address, domain or keyword"],
+  "mailTags.cde3b661f757": ["移除此条件", "Remove condition"],
+  "mailTags.107319b8b39d": ["包含", "Contains"],
+  "mailTags.4bc69a0562ff": ["等于", "Equals"],
+  "mailTags.5f60ffcf600a": ["不包含", "Does not contain"],
+  "mailTags.0ac038eea001": ["邮件标签", "Mail labels"],
+  "mailTags.14a6149cc7f9": ["{0} · 标签筛选可与 AI 分类同时使用", "{0} · Combine labels with AI categories"],
+  "mailTags.5d033fdc3269": ["标签管理", "Manage labels"],
+  "mailTags.49c87837d794": ["自动打标规则 ", "Automatic rules "],
+  "mailTags.88ca83c0374a": ["标签名称", "Label name"],
+  "mailTags.0fff42b8624f": ["例如：客户、项目 A、发票", "e.g. Clients, Project A, Invoices"],
+  "mailTags.070a8016fcc3": ["颜色", "Color"],
+  "mailTags.4b29ce8e4093": ["取消编辑", "Cancel editing"],
+  "mailTags.051836569928": ["编辑", "Edit"],
+  "mailTags.fd8d47324bff": ["创建标签后，可手动设置或按规则自动添加。", "Create labels, then apply them manually or with automatic rules."],
+  "mailTags.cdcd9666ff73": ["编辑标签", "Edit label"],
+  "mailTags.ce3f0e3ea501": ["标签已保存", "Label saved"],
+  "mailTags.be8ba03969e1": ["删除“{0}”？将移除邮件上的此标签{1}。邮件会保留。", "Delete “{0}”? This removes the label from messages{1}. Messages will be kept."],
+  "mailTags.1a1798d98d44": ["，并更新相关自动规则", " and updates related automatic rules"],
+  "mailTags.169762cededd": ["新收取的邮件会自动匹配已启用规则，命中后追加标签。匹配不区分大小写。", "Newly received messages are checked against enabled rules. Matching rules add labels. Matching is case-insensitive."],
+  "mailTags.af89131d3056": ["新建规则", "New rule"],
+  "mailTags.2f98c3668c3f": ["应用到已有邮件", "Apply to existing mail"],
+  "mailTags.79ab0dbf4e8b": [" 条条件 → ", " conditions → "],
+  "mailTags.dfb802238b38": ["已启用", "Enabled"],
+  "mailTags.a8c3698b5b8c": ["已停用", "Disabled"],
+  "mailTags.30236ab20997": ["满足全部", "Match all"],
+  "mailTags.cab338e1cb67": ["满足任意", "Match any"],
+  "mailTags.b65704e74505": ["按发件人、主题或正文关键词，自动整理收件。", "Organize incoming mail by sender, subject or body keywords."],
+  "mailTags.11a370a1d7dc": ["请先在“标签管理”中创建标签。", "Create a label in Manage labels first."],
+  "mailTags.752a9908bb66": ["规则已更新", "Rule updated"],
+  "mailTags.6e2e96b4a2bd": ["删除此规则？已添加到邮件的标签会保留。", "Delete this rule? Existing message labels will be kept."],
+  "mailTags.04e366e33981": ["规则已删除", "Rule deleted"],
+  "mailTags.3a01152507d0": ["已为 {0} 封邮件添加标签", "Labels added to {0} messages"],
+  "mailTags.18dba51b47c8": ["规则名称", "Rule name"],
+  "mailTags.a4873c83cfc1": ["例如：客户合同自动归档", "e.g. Client contract labels"],
+  "mailTags.cbdfb8401c2e": ["匹配条件", "Conditions"],
+  "mailTags.13c7fe62a93c": ["满足全部条件", "Match all conditions"],
+  "mailTags.c81426ef298c": ["满足任意条件", "Match any condition"],
+  "mailTags.ec4e73603d7f": ["＋ 添加条件", "＋ Add condition"],
+  "mailTags.c51c6e6657db": ["自动添加标签（可多选）", "Add labels (select multiple)"],
+  "mailTags.d23ee5171cce": ["启用规则", "Enable rule"],
+  "mailTags.b5aa919e9a97": ["保存规则", "Save rule"],
+  "mailTags.efe0feab9fd4": ["编辑规则", "Edit rule"],
+  "mailTags.e9e79583ee01": ["新建自动规则", "New automatic rule"],
+  "mailTags.025e2de5cc57": ["请至少选择一个标签", "Select at least one label"],
+  "mailTags.4b8be7713ab9": ["规则已保存，下次收件时自动生效", "Rule saved. It will run on newly received mail."],
+  "mailTags.a3ea3c17b401": ["确认删除", "Confirm deletion"],
+  "mailTags.af2c26e26404": ["管理标签与自动打标规则", "Manage labels and automatic rules"],
+  "mailTags.bb6d995724f4": ["管理", "Manage"],
+  "mailTags.bf2e009dcd54": ["按邮件标签筛选", "Filter by mail labels"],
+  "mailTags.5b950039a69d": ["清除标签筛选", "Clear label filters"],
+  "mailTags.8e012f2f324d": ["为所选邮件添加或移除标签", "Add or remove labels on selected messages"],
+  "mailTags.5736e0feea5a": ["名称不能为空，不能包含控制字符，且不能超过 80 字", "Enter a name of up to 80 characters without control characters"],
+  "mailTags.1a5a2cdc0b7f": ["请选择有效的标签颜色", "Choose a valid label color"],
+  "mailTags.b999b09603dc": ["每次最多设置 50 个有效标签", "Select up to 50 valid labels"],
+  "mailTags.bdee55f28cd8": ["每次请选择 1 至 300 封邮件和有效的设置方式", "Select 1 to 300 messages and a valid action"],
+  "mailTags.a145b0e20ad8": ["所选邮件已不存在，请刷新后重新选择", "Some selected messages no longer exist. Refresh and select them again."],
+  "mailTags.f6b8985c0b06": ["请选择匹配方式并设置 1 至 20 条条件", "Choose a match mode and add 1 to 20 conditions"],
+  "mailTags.f81436590246": ["规则条件必须选择发件人、主题或正文，并填写 1 至 500 字的匹配内容", "Choose sender, subject or body and enter 1 to 500 characters for each condition"],
+  "mailTags.f2cabbbae97d": ["规则已不存在，请刷新后重试", "This rule no longer exists. Refresh and try again."],
+  "mailTags.aedc98a4618c": ["无效的标签筛选条件", "Invalid label filters"],
+  "mailTags.25e5b30852f6": ["查找邮件标签", "Find mail labels"],
+  "mailTags.5a2d271ad581": ["查找标签…", "Find labels…"],
+  "mailTags.84a95d1b38c6": ["有尚未保存的修改", "You have unsaved changes"],
+  "mailTags.9b7824cefa1e": ["放弃修改", "Discard changes"],
+  "mailTags.5377a8befa38": ["已保存，但列表刷新失败；请刷新列表查看最新标签", "Saved, but the list could not be refreshed. Refresh the list to see the latest labels."],
+  "mailTags.6e4a864fafe2": ["邮件已不存在，请刷新列表", "This message no longer exists. Refresh the list."],
+  "mailTags.c2291a517299": ["批量操作每次最多选择 50 个标签", "Select up to 50 labels for a batch action"],
+  "mailTags.e20dbb33d184": ["正在设置标签 · {0} / {1}", "Setting labels · {0} / {1}"],
+  "mailTags.3a2347ddd877": ["已完成 {0} 封，剩余 {1} 封未完成；保存可重试剩余邮件。{2}", "Completed {0} messages; {1} remain. Save to retry the remaining messages. {2}"],
+  "mailTags.608ea5151e98": ["测试匹配", "Test matching"],
+  "mailTags.ebf2f8812f5b": ["请先填写匹配内容", "Enter the match text first"],
+  "mailTags.f1be2af839f9": ["正在测试匹配…", "Testing matching…"],
+  "mailTags.e7cb79e5c72b": ["已有 {0} 封邮件满足条件", "{0} existing messages match these conditions"],
+  "mailTags.d9d70e607ad0": ["仅预览匹配结果，不会修改邮件标签。", "This preview does not change message labels."],
+  "mailTags.1ad8b915dc7a": ["每次最多读取 1000 封邮件的标签", "Read labels for up to 1,000 messages at a time"],
+  "mailTags.f721beb2e89f": ["无效的标签编辑快照，请重新打开设置窗口", "The label editing snapshot is invalid. Reopen the label picker."],
+  "mailTags.b0a2b1a013da": ["规则条件无效，请重新设置", "Invalid rule conditions. Set them again."],
+  "mailTags.3f6c514b0fc1": ["重试剩余 {0} 封", "Retry remaining {0} messages"]
 };
 const MAILAI_I18N_CHINESE = {
   "app.tagline": "邮件安全与效率助手",
@@ -18730,6 +18827,8 @@ let currentFilter = {
   status: '',
   verdict: '',
   category: '',
+  mailTags: [],
+  mailTagMode: 'any',
   days: 9999,
   priority: '',
   domain: '',
@@ -18864,7 +18963,7 @@ function updateFilterSummary() {
   const active = [
     currentFilter.days !== 9999, Boolean(currentFilter.priority), Boolean(currentFilter.domain),
     currentFilter.attachments, currentFilter.unread, Boolean(currentFilter.search), Boolean(currentFilter.status),
-    Boolean(currentFilter.verdict), Boolean(currentFilter.category), Boolean(window.mailaiWorkflowFilterLabel?.()), Boolean(specialMailbox), Boolean(currentServerFolder),
+    Boolean(currentFilter.verdict), Boolean(currentFilter.category), Boolean(currentFilter.mailTags?.length), Boolean(window.mailaiWorkflowFilterLabel?.()), Boolean(specialMailbox), Boolean(currentServerFolder),
   ].filter(Boolean).length;
   const badge = document.getElementById('filter-active-count');
   if (badge) { badge.textContent = active; badge.classList.toggle('hidden', !active); }
@@ -19987,7 +20086,7 @@ async function revealEmailFromSource(emailId) {
     currentServerFolder = '';
     currentFilter.status = '';
     currentFilter.verdict = '';
-    currentFilter.category = '';
+    currentFilter.category = ''; currentFilter.mailTags = [];
     currentFilter.priority = '';
     currentFilter.domain = '';
     currentFilter.search = '';
@@ -21928,6 +22027,7 @@ async function loadData({includeAncillary = true, silent = false} = {}) {
       : currentFilter.status === 'trash' ? '/api/emails?days=365000&status=trash'
       : (folder ? `/api/emails?days=9999&folder=${encodeURIComponent(folder)}` : '/api/emails?days=' + days);
     const draftsRevision = draftListRevision;
+    const tagCatalog = typeof window !== 'undefined' ? window.mailaiRefreshTags?.(accountId) : null;
     const requests = [loadMailPages(mailPath, isCurrent)];
     if (includeAncillary) requests.push(api('/api/todos'), api('/api/mail/sent'), api('/api/drafts'));
     const [emails, todos, sent, drafts] = await Promise.all(requests);
@@ -21941,6 +22041,8 @@ async function loadData({includeAncillary = true, silent = false} = {}) {
     updateSidebar();
     updateDomainFilter();
     applyFilters({silent});
+    // Mail remains readable even if the optional label catalogue is slow.
+    void tagCatalog?.then(() => { if(isCurrent())applyFilters({silent:true}); });
     loadAssistantAlerts();
     return true;
   } catch (e) {
@@ -22115,12 +22217,12 @@ async function onNavClick(e) {
   }
   if (filter === 'special') {
     specialMailbox = value;
-    currentFilter.status = ''; currentFilter.verdict = ''; currentFilter.category = '';
+    currentFilter.status = ''; currentFilter.verdict = ''; currentFilter.category = ''; currentFilter.mailTags = [];
   } else if (filter === 'status') {
     specialMailbox = '';
     currentFilter.status = value;
     currentFilter.verdict = '';
-    currentFilter.category = '';
+    currentFilter.category = ''; currentFilter.mailTags = [];
   } else if (filter === 'verdict') {
     // Risk is a facet inside the current mailbox scope, not a new mailbox.
     currentFilter.verdict = currentFilter.verdict === value ? '' : value;
@@ -22470,6 +22572,7 @@ function applyFilters({silent = false} = {}) {
   scope.textContent = currentMailboxScopeLabel().replace(/内$/, '');
   mailaiBindUI(scope, "title", () => (mailaiTemplate`搜索范围：${currentMailboxScopeLabel()}，仅搜索已同步到本机的邮件`));
   updateFilterSummary();
+  document.getElementById('mail-tag-group').hidden = Boolean(specialMailbox);
   if (specialMailbox) {
     for (const verdict of ['phishing','suspicious','clean','unreviewed']) {
       const badge = document.getElementById('count-' + verdict);
@@ -22520,6 +22623,9 @@ function applyFilters({silent = false} = {}) {
 
   // AI 分类是一个分面：统计必须遵守其他筛选条件，但不先套用分类自身，
   // 这样选中某一分类后，用户仍可看到并切换到同一筛选范围内的其他分类。
+  window.mailaiRenderMailTags?.(list.filter(e => (!currentFilter.verdict || mailVerdictKey(e) === currentFilter.verdict) &&
+    (!currentFilter.category || (e.category || '未分类') === currentFilter.category)));
+  list = list.filter(e => window.mailaiMatchMailTags?.(e) !== false);
   const riskRows = currentFilter.category ? list.filter(e => (e.category || '未分类') === currentFilter.category) : list;
   for (const verdict of ['phishing','suspicious','clean','unreviewed']) {
     const badge = document.getElementById('count-' + verdict);
@@ -22561,6 +22667,7 @@ function updateListTitle(count) {
     else if (currentFilter.status === 'trash') title = mailaiT('side.trash') || '已删除';
     const riskTitle = {phishing:mailaiT('risk.phishing') || '钓鱼邮件', suspicious:mailaiT('risk.suspicious') || '可疑邮件', clean:mailaiT('risk.clean') || '正常邮件', unreviewed:mailaiT('risk.unreviewed') || '待分析'}[currentFilter.verdict];
     if (riskTitle) title += ` · ${riskTitle}`;
+    if (currentFilter.mailTags?.length) title += ` · ${currentFilter.mailTags.join(currentFilter.mailTagMode === 'all' ? ' + ' : ' / ')}`;
     if (currentFilter.category) title += ` · ${mailCategoryLabel(currentFilter.category)}`;
     return typeof window !== 'undefined' ? window.mailaiProductivityTitle?.(title) || title : title;
   });
@@ -22571,7 +22678,7 @@ function updateListTitle(count) {
   const serverTotal = unifiedMailbox ? 0 : selectedServerMailbox
     ? Number(selectedServerMailbox.messages || 0)
     : totalKey ? Number(serverCounts?.[totalKey] || 0) : 0;
-  const hasFacet = Boolean(currentFilter.verdict || currentFilter.category || currentFilter.priority ||
+  const hasFacet = Boolean(currentFilter.mailTags?.length || currentFilter.verdict || currentFilter.category || currentFilter.priority ||
     currentFilter.domain || currentFilter.attachments || currentFilter.unread || currentFilter.search || currentFilter.days !== 9999);
   const countNode = document.getElementById('list-count');
   const countUnit = mailaiT('list.countMail') || ' 封';
@@ -22625,7 +22732,7 @@ function mailListSignature(emails) {
       e.is_favorite, e.is_starred, e.score, e.verdict, e.feedback, e.reviewed,
       e.pending_action, e.pending_error, e.recommended_status, e.counterpart_name,
       e.counterpart_addr, e.counterpart_count, e.from_name, e.from_addr, e.date,
-      e.subject, e.summary, e.snippet, e.category, e.priority,
+      e.subject, e.summary, e.snippet, e.category, e.priority, JSON.stringify(e.tags || []),
       e.handle_state, e.snoozed_until, e.followup_at, e.focus_override, e._conversationCount,
       (e.attachments || []).length,
     ]),
@@ -22827,6 +22934,7 @@ function renderEmailItem(e, idx = 0) {
         ${e.is_local_archive && e.folder?.startsWith('LOCAL_IMPORT/') ? `<span class="tag mail-import-origin" title="本地归档 / ${esc(e.folder.slice('LOCAL_IMPORT/'.length))}" data-i18n-title="ui.5b919f20e24b"><span data-i18n="ui.d8b9213d566b">归档 / ${esc(e.folder.slice('LOCAL_IMPORT/'.length))}</span></span>` : ''}
         ${typeof window !== 'undefined' ? window.mailaiProductivityTags?.(e) || '' : ''}
         ${unifiedMailbox && e._account_user ? `<span class="mail-account-tag" title="所属邮箱 ${esc(e._account_user)}" data-i18n-title="ui.49e516857c90">${esc(e._account_user)}</span>` : ''}
+        ${typeof window !== 'undefined' ? window.mailaiMailTagChips?.(e, 3) || '' : ''}
         ${e.category ? `<span class="tag mail-category">${esc(mailCategoryLabel(e.category))}</span>` : ''}
         ${e.priority ? `<span class="tag mail-priority tag-priority-${e.priority}">${esc(mailPriorityLabel(e.priority))}</span>` : ''}
         ${hasAtt ? `<span class="tag tag-attachment" title="${mailaiT('list.tagAttachment') || '附件'}" aria-label="${mailaiT('list.tagAttachment') || '附件'}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7 10 5-5a3 3 0 0 1 4 4l-7 7a4.5 4.5 0 0 1-6-6l7-7m-5 9 7-7"/></svg></span>` : ''}
@@ -24181,7 +24289,7 @@ async function openAccountMailbox(accountId, mailbox) {
   if (navigationRevision !== mailboxNavigationRevision || activeMailAccount()?.id !== accountId) return;
   currentFilter.search = ''; searchResults = null; advanceMailSearchRevision(); clearTimeout(globalSearchTimer);
   document.getElementById('global-search').value = '';
-  currentFilter.verdict = ''; currentFilter.category = '';
+  currentFilter.verdict = ''; currentFilter.category = ''; currentFilter.mailTags = [];
   if (currentFilter.days !== 9999) { currentFilter.days = 9999; setSegmentedFilter('filter-days', '9999'); }
   if (mailbox === 'trash') {
     await openTrashMailbox({resetPane:false, transitionRevision:navigationRevision});
@@ -24204,7 +24312,7 @@ async function openTrashMailbox({resetPane = true, transitionRevision = 0} = {})
   clearMailSelection();
   specialMailbox = ''; currentServerFolder = ''; unifiedMailbox = false;
   currentFilter.status = 'trash'; currentFilter.days = 9999;
-  currentFilter.search = ''; currentFilter.verdict = ''; currentFilter.category = '';
+  currentFilter.search = ''; currentFilter.verdict = ''; currentFilter.category = ''; currentFilter.mailTags = [];
   currentFilter.priority = ''; currentFilter.domain = ''; currentFilter.attachments = false;
   searchResults = null; advanceMailSearchRevision(); clearTimeout(globalSearchTimer);
   document.getElementById('global-search').value = '';
@@ -24253,7 +24361,7 @@ async function openUnifiedInbox() {
   unifiedMailbox = true; selectedMailboxAccountId = '';
   updateActiveNav(); renderSidebarAccounts(); // 乐观高亮，不等加载完成
   specialMailbox = ''; currentServerFolder = '';
-  currentFilter.status = ''; currentFilter.verdict = ''; currentFilter.category = '';
+  currentFilter.status = ''; currentFilter.verdict = ''; currentFilter.category = ''; currentFilter.mailTags = [];
   currentFilter.search = ''; searchResults = null; advanceMailSearchRevision(); clearTimeout(globalSearchTimer);
   document.getElementById('global-search').value = '';
   let loaded = await loadData();
@@ -25233,6 +25341,7 @@ function renderReadingPane(e) {
             ${e.priority ? `<span class="tag mail-priority tag-priority-${e.priority}">${esc(mailPriorityLabel(e.priority))}</span>` : ''}
           </div>
         </div>
+        <div class="reading-mail-labels"><span data-reading-mail-tags>${window.mailaiMailTagChips?.(e) || ''}</span><button type="button" class="mail-label-edit" data-edit-mail-tags><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 3h6l8 8-6 6-8-8V3Z"/><circle cx="6.5" cy="6.5" r=".8"/></svg><span data-i18n="ui.b819b0dd5668">设置标签</span></button></div>
         <div class="reading-actions">
           <section class="reading-action-group reading-mail-group" aria-label="邮件操作" data-i18n-aria="ui.15ecc4e1adf5"><span class="reading-action-group-title">${mailaiT('read.groupMail') || '邮件操作'}</span><div class="reading-mail-controls"><div class="reading-reply-actions">${replyActions}</div></div></section>
           <section class="reading-action-group reading-ai-group" aria-label="AI 助手" data-i18n-aria="ui.1b0049fcfd41"><span class="reading-action-group-title">${mailaiT('read.groupAi') || 'AI 助手'}</span></section>
@@ -26252,7 +26361,7 @@ async function loadServerFolder(folder, {transitionRevision = 0} = {}) {
   const revision = ++mailLoadRevision;
   const isCurrent = () => revision === mailLoadRevision && transitionRevision === mailboxNavigationRevision && currentServerFolder === folder;
   currentServerFolder = folder; specialMailbox = '';
-  currentFilter.status = ''; currentFilter.verdict = ''; currentFilter.category = ''; currentFilter.search = '';
+  currentFilter.status = ''; currentFilter.verdict = ''; currentFilter.category = ''; currentFilter.mailTags = []; currentFilter.search = '';
   currentFilter.priority = ''; currentFilter.domain = ''; currentFilter.attachments = false;
   searchResults = null; advanceMailSearchRevision(); clearTimeout(globalSearchTimer);
   selectedMailIds.clear(); mailSelectionExplicit = false; updateBulkToolbar();
@@ -27806,7 +27915,7 @@ document.getElementById('btn-reset-filter').addEventListener('click', async () =
   resetReadingPane();
   advanceMailSearchRevision(); clearTimeout(globalSearchTimer); searchResults = null;
   specialMailbox = ''; currentServerFolder = '';
-  currentFilter = { status: '', verdict: '', category: '', days: 9999, priority: '', domain: '', search: '', attachments: false, sort: 'date-desc' };
+  currentFilter = { status: '', verdict: '', category: '', mailTags: [], mailTagMode: 'any', days: 9999, priority: '', domain: '', search: '', attachments: false, sort: 'date-desc' };
   document.getElementById('global-search').value = '';
   setSegmentedFilter('filter-days', '9999');
   setSegmentedFilter('filter-priority', '');
@@ -29678,7 +29787,7 @@ async function refreshTaskCenter({lightweight = false} = {}) {
 
 function updateFilterChips() {
   const parsed = window.mailaiGetSearchInterpretation?.();
-  const labels = {workflow:window.mailaiWorkflowFilterLabel?.() || '', unread:currentFilter.unread ? mailaiText('未读邮件') : '', days:currentFilter.days !== 9999 ? mailaiTemplate`近 ${currentFilter.days} 天` : '', priority:currentFilter.priority ? mailaiTemplate`${currentFilter.priority}重要程度` : '', domain:currentFilter.domain, attachments:currentFilter.attachments ? mailaiText('含附件') : '', search:currentFilter.search, category:currentFilter.category, verdict:currentFilter.verdict ? ({get clean() { return mailaiText('正常'); }, get suspicious() { return mailaiText('可疑'); }, get phishing() { return mailaiText('高风险'); }})[currentFilter.verdict] : ''};
+  const labels = {mailTags:currentFilter.mailTags?.length ? currentFilter.mailTags.join(currentFilter.mailTagMode === 'all' ? ' + ' : ' / ') : '', workflow:window.mailaiWorkflowFilterLabel?.() || '', unread:currentFilter.unread ? mailaiText('未读邮件') : '', days:currentFilter.days !== 9999 ? mailaiTemplate`近 ${currentFilter.days} 天` : '', priority:currentFilter.priority ? mailaiTemplate`${currentFilter.priority}重要程度` : '', domain:currentFilter.domain, attachments:currentFilter.attachments ? mailaiText('含附件') : '', search:currentFilter.search, category:currentFilter.category, verdict:currentFilter.verdict ? ({get clean() { return mailaiText('正常'); }, get suspicious() { return mailaiText('可疑'); }, get phishing() { return mailaiText('高风险'); }})[currentFilter.verdict] : ''};
   if (parsed?.structured) labels.search = '';
   const tokenNames = {sender:mailaiText('发件人'),recipient:mailaiText('收件人 / 抄送'),subject:mailaiText('主题'),filename:mailaiText('附件名称或类型'),after:mailaiText('开始日期'),before:mailaiText('结束日期'),mailbox:mailaiText('邮件范围'),state:mailaiText('处理状态'),category:mailaiText('AI 分类'),has_attachment:mailaiText('有附件'),unread:mailaiText('仅未读'),text:mailaiText('关键词')};
   const scopes = {all:mailaiText('全部正常邮件（含发件、草稿）'),inbox:mailaiText('收件箱'),sent:mailaiText('已发送'),drafts:mailaiText('草稿'),trash:mailaiText('已删除'),spam:mailaiText('垃圾邮件'),quarantine:mailaiText('隔离区')};
@@ -30126,7 +30235,7 @@ function initializeWorkspace() {
     if (token) { window.mailaiRemoveSearchToken?.(token.dataset.removeSearchToken); return; }
     const key = event.target.closest('button[data-remove-filter]')?.dataset.removeFilter; if (!key) return;
     if (key === 'workflow') window.mailaiClearWorkflowFilter?.();
-    currentFilter[key] = key === 'days' ? 9999 : ['attachments','unread'].includes(key) ? false : '';
+    currentFilter[key] = key === 'mailTags' ? [] : key === 'days' ? 9999 : ['attachments','unread'].includes(key) ? false : '';
     setSegmentedFilter('filter-days', String(currentFilter.days)); setSegmentedFilter('filter-priority', currentFilter.priority);
     document.getElementById('filter-unread').checked = Boolean(currentFilter.unread);
     document.getElementById('filter-domain').value = currentFilter.domain; document.getElementById('filter-attachments').checked = currentFilter.attachments;
@@ -37284,6 +37393,392 @@ document.getElementById('task-center-list').addEventListener('click', async even
   document.addEventListener('close',()=>active?.position(),true);
   window.addEventListener('resize',()=>active?.position());
   document.addEventListener('scroll',()=>active?.position(),true);
+})();
+
+;
+/* ---- mail-tags.js ---- */
+/* Mail labels share the existing AI-category facet and account-scoped mail state. */
+(() => {
+  const state = {account:'', tags:[], rules:[], revision:0, query:'', rows:[]};
+  const group = document.getElementById('mail-tag-group');
+  const nav = document.getElementById('mail-tag-nav');
+  const ordered = tags => [...tags].sort((a,b)=>a.name.localeCompare(b.name,currentI18nLanguage(),{numeric:true,sensitivity:'base'}));
+  const post = body => ({method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  const selected = () => currentFilter.mailTags || [];
+  const isCurrent = account => account === (activeMailAccount()?.id || '');
+  const color = tag => /^#[a-f\d]{6}$/i.test(tag.color) ? tag.color : '#548879';
+  const chip = tag => `<span class="mail-label-chip" data-user-content title="${esc(tag.name)}"><i style="--mail-label-color:${color(tag)}"></i><span class="mail-label-name">${esc(tag.name)}</span></span>`;
+  window.mailaiMailTagChips = (email, limit = Number.POSITIVE_INFINITY) => {
+    const tags = email.tags || [];
+    return tags.slice(0,limit).map(chip).join('') + (tags.length>limit ? `<span class="mail-label-overflow" title="${esc(tags.slice(limit).map(t=>t.name).join(' · '))}">+${tags.length-limit}</span>` : '');
+  };
+  window.mailaiMatchMailTags = email => {
+    const names = new Set((email.tags || []).map(tag => tag.name));
+    return !selected().length || (currentFilter.mailTagMode === 'all' ? selected().every(name => names.has(name)) : selected().some(name => names.has(name)));
+  };
+  window.mailaiRefreshTags = async (account, strict = false) => {
+    const revision = ++state.revision;
+    if (state.account !== account) {
+      state.account = account; state.tags = []; state.rules = [];
+      currentFilter.mailTags = []; currentFilter.mailTagMode = 'any'; state.query='';
+      group.querySelector('[data-mail-label-search]').value='';
+      if(dialog.open && !busy) dialog.close();
+    }
+    try {
+      const data = await api('/api/mail/tags', {accountId:account});
+      if (revision !== state.revision || !isCurrent(account)) return;
+      state.tags = ordered(data.tags); state.rules = data.rules;
+    } catch (error) { if(strict)throw error; }
+  };
+  const search = document.createElement('input');
+  search.type='search';search.dataset.mailLabelSearch='';search.className='mail-label-search';
+  group.querySelector('.mail-tag-heading').after(search);
+  mailaiBindUI(search,'@aria-label',()=>mailaiText('查找邮件标签'));
+  mailaiBindUI(search,'placeholder',()=>mailaiText('查找标签…'));
+  search.oninput=()=>{state.query=search.value.trim().toLocaleLowerCase();window.mailaiRenderMailTags(state.rows);};
+  window.mailaiRenderMailTags = rows => {
+    state.rows=rows;
+    group.hidden = Boolean(specialMailbox);
+    const tags = new Map((isCurrent(state.account) ? state.tags : []).map(tag => [tag.name, {...tag, count:0}]));
+    for (const email of rows) for (const tag of email.tags || []) {
+      if (!tags.has(tag.name)) tags.set(tag.name, {...tag, count:0});
+      tags.get(tag.name).count++;
+    }
+    for (const name of selected()) if (!tags.has(name)) tags.set(name, {name, color:'#548879', count:0});
+    const scroll=nav.scrollTop, focus=nav.querySelector('button:focus')?.dataset.mailTag;
+    search.hidden=tags.size<7 && !state.query;
+    nav.innerHTML = [...tags.values()].filter(tag=>!state.query || tag.name.toLocaleLowerCase().includes(state.query)).sort((a,b) => a.name.localeCompare(b.name,currentI18nLanguage(),{numeric:true,sensitivity:'base'})).map(tag => `<button type="button" class="nav-item mail-tag-filter ${selected().includes(tag.name) ? 'active' : ''}" data-mail-tag="${esc(tag.name)}" aria-pressed="${selected().includes(tag.name)}"><span class="mail-label-check" aria-hidden="true">${selected().includes(tag.name) ? '✓' : ''}</span><span class="mail-label-dot" style="--mail-label-color:${color(tag)}"></span><span class="mail-tag-name" data-user-content>${esc(tag.name)}</span><span class="count">${tag.count}</span></button>`).join('') || `<p class="mail-tags-empty">${state.query ? mailaiText('没有匹配的标签') : mailaiText("用标签整理项目、客户和日常邮件")}</p>`;
+    nav.scrollTop=scroll;
+    if(focus)nav.querySelector(`[data-mail-tag="${CSS.escape(focus)}"]`)?.focus({preventScroll:true});
+    group.querySelector('[data-mail-tag-selection]').hidden = !selected().length;
+    group.querySelector('[data-mail-tag-mode]').value = currentFilter.mailTagMode || 'any';
+    group.querySelector('[data-mail-tag-mode]').hidden = selected().length < 2;
+  };
+  nav.onclick = event => {
+    const button = event.target.closest('[data-mail-tag]');
+    if (!button || bulkOperationActive) return;
+    const names = new Set(selected()), name = button.dataset.mailTag;
+    if (names.has(name)) names.delete(name); else names.add(name);
+    currentFilter.mailTags = [...names];
+    applyFilters();
+  };
+  group.querySelector('[data-mail-tag-clear]').onclick = () => { currentFilter.mailTags = []; applyFilters(); };
+  group.querySelector('[data-mail-tag-mode]').onchange = event => { currentFilter.mailTagMode = event.target.value; applyFilters(); };
+
+  const dialog = document.createElement('dialog');
+  dialog.id = 'mail-tags-dialog'; dialog.className = 'mail-tags-dialog';
+  dialog.setAttribute('aria-labelledby', 'mail-tags-title');
+  document.body.append(dialog);
+  dialog.addEventListener('close', () => { if (!dialog.open) dialog.replaceChildren(); });
+  let busy = false, session = 0, opening = 0, dirty=false;
+  function message(text, error=false) {
+    const host=dialog.querySelector('.mail-tags-message');if(!host)return;
+    const source=mailaiCopySource(text);
+    mailaiBindUI(host,'textContent',()=>mailaiSystemMessage(source));host.classList.toggle('error',error);
+  }
+  function requestClose() {
+    if(busy)return;
+    if(!dirty){dialog.close();return;}
+    if(dialog.querySelector('.mail-tags-unsaved'))return;
+    const box=document.createElement('div');box.className='mail-tags-unsaved mail-tags-confirm';
+    box.innerHTML=`<p><span data-i18n="mailTags.84a95d1b38c6">${mailaiText('有尚未保存的修改')}</span></p><button type="button" data-keep-editing><span data-i18n="ui.fd4b9e3b6c68">${mailaiText('继续编辑')}</span></button><button type="button" data-discard><span data-i18n="mailTags.9b7824cefa1e">${mailaiText('放弃修改')}</span></button>`;
+    dialog.querySelector('header').after(box);
+    box.querySelector('[data-keep-editing]').onclick=()=>box.remove();
+    box.querySelector('[data-discard]').onclick=()=>{dirty=false;dialog.close();};
+    box.querySelector('[data-keep-editing]').focus();
+  }
+  function requestDiscard(action) {
+    if(!dirty){action();return;}
+    if(dialog.querySelector('.mail-tags-unsaved'))return;
+    requestClose();
+    const discard=dialog.querySelector('[data-discard]');
+    if(discard)discard.onclick=()=>{dirty=false;dialog.querySelector('.mail-tags-unsaved')?.remove();action();};
+  }
+  dialog.addEventListener('input',event=>{if(!event.target.matches('[type=search]'))dirty=true;});
+  dialog.addEventListener('change',event=>{if(!event.target.matches('[type=search]'))dirty=true;});
+  // Keep the local catalogue usable even when a successful write's refresh fails.
+  async function write(path, opts) {
+    const result=await api(path,opts);
+    if(state.account===opts.accountId){
+      const payload=opts.body ? JSON.parse(opts.body) : {};
+      if(path==='/api/mail/tags')state.tags=[...state.tags.filter(t=>t.id!==result.id),{count:0,...state.tags.find(t=>t.id===result.id),...result}];
+      else if(path==='/api/mail/tag-rules')state.rules=[...state.rules.filter(r=>r.id!==result.id),{...payload,id:result.id}];
+      else if(opts.method==='DELETE' && path.startsWith('/api/mail/tag-rules/'))state.rules=state.rules.filter(r=>r.id!==Number(path.split('/').at(-1)));
+      else if(opts.method==='DELETE' && path.startsWith('/api/mail/tags/')){
+        const id=Number(path.split('/').at(-1));state.tags=state.tags.filter(t=>t.id!==id);
+        state.rules=state.rules.map(r=>({...r,tag_ids:r.tag_ids.filter(t=>t!==id)})).filter(r=>r.tag_ids.length);
+      }
+    }
+    return result;
+  }
+  function shell(title, subtitle) {
+    ++session;dirty=false;
+    dialog.innerHTML = `<header><div><h2 id="mail-tags-title">${esc(title)}</h2><p>${esc(subtitle)}</p></div><button type="button" class="mail-tags-close" aria-label="${mailaiText("关闭")}" data-i18n-aria="ui.3fd47edce45b">×</button></header><div class="mail-tags-message" role="status" aria-live="polite"></div><div class="mail-tags-body"></div>`;
+    const titleSource=mailaiCopySource(title),subtitleSource=mailaiCopySource(subtitle);
+    mailaiBindUI(dialog.querySelector('#mail-tags-title'),'textContent',()=>mailaiSystemMessage(titleSource));
+    mailaiBindUI(dialog.querySelector('header p'),'textContent',()=>mailaiSystemMessage(subtitleSource));
+    dialog.querySelector('.mail-tags-close').onclick = requestClose;
+    if (!dialog.open) dialog.showModal();
+    return dialog.querySelector('.mail-tags-body');
+  }
+  dialog.addEventListener('cancel', event => { event.preventDefault();requestClose(); });
+  // A pending mutation stays attached to its original account even if the UI changes.
+  async function mutate(account, action, after) {
+    if (busy) return;
+    busy = true;
+    const revision = session, activeAtStart = activeMailAccount()?.id || '', navigationAtStart=mailboxNavigationRevision;
+    const controls = [...dialog.querySelectorAll('button,input,select')].map(node => [node,node.disabled]);
+    controls.forEach(([node]) => node.disabled = true);
+    dialog.setAttribute('aria-busy','true');
+    dialog.querySelector('.mail-tags-body').inert = true;
+    const statusNode = dialog.querySelector('.mail-tags-message');
+    statusNode.textContent = mailaiText("正在保存…"); statusNode.classList.remove('error');
+    try {
+      const result = await action();
+      dirty=false;
+      let refreshError=false;
+      if (revision !== session) return;
+      if (isCurrent(activeAtStart) && navigationAtStart===mailboxNavigationRevision) {
+        try { if (isCurrent(account)) await window.mailaiRefreshTags(account,true); } catch (_) { refreshError=true; }
+        try { await after?.(result); } catch (_) { refreshError=true; }
+        if(refreshError){
+          const text=mailaiText('已保存，但列表刷新失败；请刷新列表查看最新标签');
+          if(dialog.open)message(text);else toast(text,'warn');
+        }
+      } else dialog.close();
+    } catch (error) {
+      if (revision === session) { statusNode.textContent = mailaiSystemMessage(error.message); statusNode.classList.add('error'); }
+    } finally {
+      busy = false; dialog.removeAttribute('aria-busy');
+      const body = dialog.querySelector('.mail-tags-body'); if(body)body.inert = false;
+      controls.forEach(([node,disabled]) => { if (node.isConnected) node.disabled = disabled; });
+    }
+  }
+  function checks(tags, ids = []) {
+    return (tags.length>6?`<input class="mail-label-search mail-picker-search" type="search" data-picker-search aria-label="${mailaiText('查找邮件标签')}" placeholder="${mailaiText('查找标签…')}" data-i18n-placeholder="mailTags.5a2d271ad581" data-i18n-aria="mailTags.25e5b30852f6">`:'') + ordered(tags).map(tag => `<label class="mail-tag-choice" data-label-option="${esc(tag.name.toLocaleLowerCase())}"><input type="checkbox" name="tag_ids" value="${tag.id}" ${ids.includes(tag.id) ? 'checked' : ''}>${chip(tag)}</label>`).join('') || `<p class="mail-tags-empty"><span data-i18n="mailTags.3ec239688fa7">${mailaiText("还没有标签，先在下方创建一个。")}</span></p>`;
+  }
+  dialog.addEventListener('input',event=>{
+    if(!event.target.matches('[data-picker-search]'))return;
+    const host=event.target.closest('.mail-tag-choices'),q=event.target.value.trim().toLocaleLowerCase();
+    for(const option of host.querySelectorAll('[data-label-option]'))option.hidden=Boolean(q&&!option.dataset.labelOption.includes(q));
+    let empty=host.querySelector('[data-label-no-match]');
+    if(!empty){empty=document.createElement('p');empty.dataset.labelNoMatch='';empty.className='mail-tags-empty';host.append(empty);mailaiBindUI(empty,'textContent',()=>mailaiText('没有匹配的标签'));}
+    empty.hidden=Boolean(host.querySelector('[data-label-option]:not([hidden])'));
+  });
+  function chosen(host) { return [...host.querySelectorAll('[name=tag_ids]:checked')].map(node => Number(node.value)); }
+  async function refreshMailbox(account) {
+    const activeAtStart = activeMailAccount()?.id || '';
+    if (!isCurrent(account) && !unifiedMailbox) return;
+    const reader = selectedEmailDetail, readerAccount = selectedEmailAccountId || account;
+    const navigation=mailboxNavigationRevision;
+    const live=()=>isCurrent(activeAtStart) && navigation===mailboxNavigationRevision;
+    const searchSnapshot=searchResults;
+    if(searchSnapshot){
+      const ids=[...new Set(searchSnapshot.filter(row=>(!row._account_id || row._account_id===account)&&!row._kind).map(row=>row.id))];
+      for(let start=0;start<ids.length && live();start+=1000){
+        const result=await api('/api/mail/tags/snapshot',{...post({ids:ids.slice(start,start+1000)}),accountId:account});
+        if(!live() || searchSnapshot!==searchResults)return;
+        const byId=new Map(result.items.map(item=>[item.id,item.tags]));
+        for(const row of searchSnapshot)if((!row._account_id || row._account_id===account)&&byId.has(row.id))row.tags=byId.get(row.id);
+      }
+    }
+    if(!live())return;
+    if(!await loadData({includeAncillary:false,silent:true}))throw new Error('refresh');
+    if(!live())return;
+    if (reader && selectedEmailId === reader.id && readerAccount === (selectedEmailAccountId || account)) {
+      const result = await api('/api/mail/tags/snapshot', {...post({ids:[reader.id]}),accountId:readerAccount});
+      if(live() && selectedEmailDetail===reader && selectedEmailId===reader.id && readerAccount===(selectedEmailAccountId||account)){
+        const fresh=result.items[0];
+        if(!fresh)return;
+        selectedEmailDetail.tags=fresh.tags;
+        const host=document.querySelector('[data-reading-mail-tags]');
+        if(host)host.innerHTML=window.mailaiMailTagChips(fresh);
+      }
+    }
+  }
+
+  window.mailaiEditMailTags = async (bulk = false) => {
+    if (busy || bulkOperationActive) return;
+    if (bulk && unifiedMailbox) return toast(mailaiText("请先选择具体邮箱，再批量设置标签"), 'warn');
+    const openRevision=++opening, navigation=mailboxNavigationRevision;
+    const account = bulk ? activeMailAccount()?.id || '' : selectedEmailAccountId || activeMailAccount()?.id || '';
+    let ids = bulk ? [...selectedMailIds] : selectedEmailId ? [selectedEmailId] : [];
+    if (!ids.length) return;
+
+    try {
+      const [data, snapshot] = await Promise.all([api('/api/mail/tags', {accountId:account}),
+        bulk ? Promise.resolve(null) : api('/api/mail/tags/snapshot',{...post({ids}),accountId:account})]);
+      if(openRevision!==opening || navigation!==mailboxNavigationRevision || busy)return;
+      if (bulk ? !isCurrent(account) : account !== (selectedEmailAccountId || activeMailAccount()?.id || '') || ids[0] !== selectedEmailId) return;
+      const initial = !bulk ? (snapshot.items[0]?.tags || []).map(tag => tag.id) : [];
+      if(!bulk && !snapshot.items.length)return toast(mailaiText('邮件已不存在，请刷新列表'),'warn');
+      if(bulk && (ids.length!==selectedMailIds.size || ids.some(id=>!selectedMailIds.has(id))))return;
+      const body = shell(bulk ? mailaiTemplate`设置标签 · ${ids.length} 封邮件` : mailaiText("设置邮件标签"), mailaiText("可设置多个标签；标签只在当前邮箱中使用。"));
+      body.innerHTML = `<form data-assign-form><div class="mail-tag-choices">${checks(data.tags,initial)}</div>${bulk ? `<label class="mail-tags-field"><span data-i18n="mailTags.2fa505cac3fc">${mailaiText("操作方式")}</span><select name="mode"><option value="add" data-i18n="mailTags.fa33f0a971aa">${mailaiText("添加所选标签（保留原有标签）")}</option><option value="remove" data-i18n="mailTags.a88c33102e08">${mailaiText("移除所选标签")}</option></select></label>` : ''}<footer><button type="button" data-dismiss><span data-i18n="ui.2cd0f3be8738">${mailaiText("取消")}</span></button><button class="primary-action" type="submit"><span data-i18n="mailTags.277c532bb96c">${mailaiText("保存标签")}</span></button></footer></form><form class="mail-tags-inline-create"><label class="mail-tags-field"><span data-i18n="mailTags.040692852ad5">${mailaiText("新建标签")}</span><input name="name" required maxlength="80" placeholder="${mailaiText("例如：项目 A、待跟进")}" data-i18n-placeholder="mailTags.d2d2792be958"></label><button type="submit"><span data-i18n="ui.cde2cd071d25">${mailaiText("创建")}</span></button></form>`;
+      dirty=false;
+      body.querySelector('[data-dismiss]').onclick = requestClose;
+      body.querySelector('[data-assign-form]').onsubmit = event => {
+        event.preventDefault();
+        const tagIds = chosen(body), mode = bulk ? body.querySelector('[name=mode]').value : 'replace';
+        if(bulk && tagIds.length>50)return message(mailaiText('批量操作每次最多选择 50 个标签'),true);
+        if (bulk && !tagIds.length) return message(mailaiText('请至少选择一个标签'),true);
+        void mutate(account, async () => {
+          const result={items:[],failed:[],completed:0};
+          for(let start=0;start<ids.length;start+=100){
+            const batch=ids.slice(start,start+100);
+            message(mailaiTemplate`正在设置标签 · ${start} / ${ids.length}`);
+            try{
+              const part=await write('/api/mail/tags/members',{...post({ids:batch,tag_ids:tagIds,mode,...(!bulk?{original_tag_ids:initial}:{})}),accountId:account});
+              result.items.push(...part.items);result.completed+=batch.length;
+            }catch(error){result.failed.push(...batch);result.error=mailaiSystemMessage(error.message);}
+          }
+          return result;
+        }, async result => {
+          if(result.failed.length){
+            ids=result.failed;dirty=true;
+            mailaiBindUI(body.querySelector('[data-assign-form] [type=submit]'),'textContent',()=>mailaiTemplate`重试剩余 ${ids.length} 封`);
+            if(bulk){selectedMailIds=new Set(ids);syncBulkSelectionVisuals();}
+            message(mailaiTemplate`已完成 ${result.completed} 封，剩余 ${ids.length} 封未完成；保存可重试剩余邮件。${result.error}`,true);
+            try{await refreshMailbox(account);}catch(_){}
+            return;
+          }
+          dialog.close(); await refreshMailbox(account); toast(mailaiText("邮件标签已保存"),'success');
+        });
+      };
+      body.querySelector('.mail-tags-inline-create').onsubmit = event => {
+        event.preventDefault();
+        const form = event.target, previous = chosen(body);
+        void mutate(account, () => write('/api/mail/tags',{...post({name:form.elements.name.value}),accountId:account}), result => {
+          data.tags.push(result);
+          body.querySelector('.mail-tag-choices').innerHTML = checks(data.tags,[...previous,result.id]);
+          form.reset(); dirty=true; dialog.querySelector('.mail-tags-message').textContent = mailaiText("已创建，保存后添加到邮件");
+        });
+      };
+    } catch (error) { toast(error.message,'error'); }
+  };
+
+  function conditionRow(condition = {field:'sender',operator:'contains',value:''}) {
+    return `<div class="mail-tag-condition"><select aria-label="${mailaiText("匹配字段")}" data-field data-i18n-aria="mailTags.55fde6c2daae">${[['sender',mailaiText("发件人")],['subject',mailaiText("主题")],['body',mailaiText("正文")]].map(([value,label]) => `<option value="${value}" data-i18n="${mailaiUICopyKeys.get(mailaiCopySource(label))}" ${condition.field === value ? 'selected' : ''}>${label}</option>`).join('')}</select><select aria-label="${mailaiText("匹配方式")}" data-operator data-i18n-aria="mailTags.e1f0f1cb1ab4">${[['contains',mailaiText("包含")],['equals',mailaiText("等于")],['not_contains',mailaiText("不包含")]].map(([value,label]) => `<option value="${value}" data-i18n="${mailaiUICopyKeys.get(mailaiCopySource(label))}" ${condition.operator === value ? 'selected' : ''}>${label}</option>`).join('')}</select><input aria-label="${mailaiText("匹配内容")}" required maxlength="500" placeholder="${mailaiText("输入地址、域名或关键词")}" value="${esc(condition.value)}" data-i18n-placeholder="mailTags.f9c794b20df9" data-i18n-aria="mailTags.f56dd05e1d51"><button type="button" data-remove-condition aria-label="${mailaiText("移除此条件")}" data-i18n-aria="mailTags.cde3b661f757">×</button></div>`;
+  }
+  async function manage(tab='tags') {
+    if (busy) return;
+    const account = activeMailAccount()?.id || '', openRevision=++opening, navigation=mailboxNavigationRevision;
+    try {
+      const data = await api('/api/mail/tags',{accountId:account});
+      if (!isCurrent(account)||openRevision!==opening||navigation!==mailboxNavigationRevision||busy) return;
+      state.account=account; state.tags=ordered(data.tags); state.rules=data.rules;
+      const body = shell(mailaiText("邮件标签"), mailaiTemplate`${activeMailAccount()?.user || mailaiText("当前邮箱")} · 标签筛选可与 AI 分类同时使用`);
+      body.innerHTML = `<div class="mail-tags-tabs" role="tablist" aria-label="${mailaiText("标签管理")}" data-i18n-aria="mailTags.5d033fdc3269"><button type="button" role="tab" id="mail-label-tab-tags" aria-controls="mail-label-manager" tabindex="${tab==='tags'?0:-1}" aria-selected="${tab==='tags'}" data-tab="tags"><span data-i18n="mailTags.5d033fdc3269">${mailaiText("标签管理")}</span></button><button type="button" role="tab" id="mail-label-tab-rules" aria-controls="mail-label-manager" tabindex="${tab==='rules'?0:-1}" aria-selected="${tab==='rules'}" data-tab="rules"><span data-i18n="mailTags.49c87837d794">${mailaiText("自动打标规则 ")}</span><span>${state.rules.length}</span></button></div><section id="mail-label-manager" role="tabpanel" data-manager-panel></section>`;
+      for (const button of body.querySelectorAll('[data-tab]')) button.onclick = () => { if(dirty){requestDiscard(()=>button.click());return;} for (const item of body.querySelectorAll('[data-tab]')) {item.setAttribute('aria-selected',String(item===button));item.tabIndex=item===button?0:-1;} renderPanel(button.dataset.tab); };
+      function renderPanel(view) {
+        dirty=false;
+        dialog.querySelector('.mail-tags-unsaved')?.remove();
+        body.querySelector('[data-tab=rules] span').textContent=state.rules.length;
+        const panel = body.querySelector('[data-manager-panel]');
+        panel.setAttribute('aria-labelledby',`mail-label-tab-${view}`);
+        if (view === 'tags') {
+          panel.innerHTML = `<div class="mail-tags-list">${state.tags.map(tag => `<article>${chip(tag)}<small>${tag.count}<span data-i18n="ui.a5a7f147d294">${mailaiText(" 封")}</span></small><button type="button" data-edit-tag="${tag.id}"><span data-i18n="mailTags.051836569928">${mailaiText("编辑")}</span></button><button type="button" data-delete-tag="${tag.id}"><span data-i18n="ui.2f9daa828907">${mailaiText("删除")}</span></button></article>`).join('') || `<p class="mail-tags-empty"><span data-i18n="mailTags.fd8d47324bff">${mailaiText("创建标签后，可手动设置或按规则自动添加。")}</span></p>`}</div><form data-tag-form><h3 data-tag-form-title><span data-i18n="mailTags.040692852ad5">${mailaiText("新建标签")}</span></h3><div class="mail-tags-create"><label class="mail-tags-field"><span data-i18n="mailTags.88ca83c0374a">${mailaiText("标签名称")}</span><input name="name" required maxlength="80" placeholder="${mailaiText("例如：客户、项目 A、发票")}" data-i18n-placeholder="mailTags.0fff42b8624f"></label><label class="mail-tags-field"><span data-i18n="mailTags.070a8016fcc3">${mailaiText("颜色")}</span><input type="color" name="color" value="#548879"></label><button class="primary-action" type="submit"><span data-i18n="ui.a3030bf8f16d">${mailaiText("保存")}</span></button><button type="button" data-reset-tag hidden><span data-i18n="mailTags.4b29ce8e4093">${mailaiText("取消编辑")}</span></button></div></form>`;
+          let editing = null;
+          const form = panel.querySelector('form');
+          const reset = () => { dirty=false;editing=null; form.reset(); panel.querySelector('[data-tag-form-title]').textContent=mailaiText("新建标签"); panel.querySelector('[data-reset-tag]').hidden=true; };
+          panel.querySelector('[data-reset-tag]').onclick = reset;
+          for (const button of panel.querySelectorAll('[data-edit-tag]')) button.onclick = () => { if(dirty){requestDiscard(()=>button.click());return;} const tag=state.tags.find(t=>t.id===Number(button.dataset.editTag)); editing=tag.id; form.elements.name.value=tag.name; form.elements.color.value=tag.color; panel.querySelector('[data-tag-form-title]').textContent=mailaiText("编辑标签"); panel.querySelector('[data-reset-tag]').hidden=false; form.elements.name.focus(); };
+          form.onsubmit = event => {
+            event.preventDefault();
+            const previous = state.tags.find(t=>t.id===editing)?.name;
+            void mutate(account, () => write('/api/mail/tags',{...post({id:editing,name:form.elements.name.value,color:form.elements.color.value}),accountId:account}), async result => {
+              if(previous) currentFilter.mailTags=selected().map(name=>name===previous?result.name:name);
+              renderPanel('tags'); await refreshMailbox(account);
+              dialog.querySelector('.mail-tags-message').textContent=mailaiText("标签已保存");
+            });
+          };
+          for (const button of panel.querySelectorAll('[data-delete-tag]')) button.onclick = () => {
+            if(dirty){requestDiscard(()=>button.click());return;}
+            const tag=state.tags.find(t=>t.id===Number(button.dataset.deleteTag));
+            const affected=state.rules.filter(rule=>rule.tag_ids.includes(tag.id)).length;
+            confirmInline(button, mailaiTemplate`删除“${tag.name}”？将移除邮件上的此标签${affected ? mailaiText("，并更新相关自动规则") : ''}。邮件会保留。`, () => void mutate(account, () => write(`/api/mail/tags/${tag.id}`,{method:'DELETE',accountId:account}), async () => {
+              currentFilter.mailTags=selected().filter(name=>name!==tag.name); renderPanel('tags'); await refreshMailbox(account);
+              dialog.querySelector('.mail-tags-message').textContent=mailaiText("标签已删除");
+            }));
+          };
+        } else {
+          panel.innerHTML = `<p class="mail-tags-hint"><span data-i18n="mailTags.169762cededd">${mailaiText("新收取的邮件会自动匹配已启用规则，命中后追加标签。匹配不区分大小写。")}</span></p><div class="mail-tags-list">${state.rules.map(rule => `<article><div><b data-user-content>${esc(rule.name)}</b><small>${rule.enabled?mailaiText("已启用"):mailaiText("已停用")} · ${rule.match_mode==='all'?mailaiText("满足全部"):mailaiText("满足任意")} ${rule.conditions.length}<span data-i18n="mailTags.79ab0dbf4e8b">${mailaiText(" 条条件 → ")}</span>${esc(rule.tag_ids.map(id=>state.tags.find(t=>t.id===id)?.name).filter(Boolean).join(currentI18nLanguage()==='en'?', ':'、'))}</small></div><button type="button" data-toggle-rule="${rule.id}">${rule.enabled?mailaiText("停用"):mailaiText("启用")}</button><button type="button" data-edit-rule="${rule.id}"><span data-i18n="mailTags.051836569928">${mailaiText("编辑")}</span></button><button type="button" data-delete-rule="${rule.id}"><span data-i18n="ui.2f9daa828907">${mailaiText("删除")}</span></button></article>`).join('') || `<p class="mail-tags-empty"><span data-i18n="mailTags.b65704e74505">${mailaiText("按发件人、主题或正文关键词，自动整理收件。")}</span></p>`}</div><div class="mail-tags-rule-actions"><button type="button" class="primary-action" data-new-rule ${!state.tags.length?'disabled':''}><span data-i18n="mailTags.af89131d3056">${mailaiText("新建规则")}</span></button><button type="button" data-apply-rules ${!state.rules.some(r=>r.enabled)?'disabled':''}><span data-i18n="mailTags.2f98c3668c3f">${mailaiText("应用到已有邮件")}</span></button></div><div data-rule-editor></div>${!state.tags.length?`<p class="mail-tags-hint"><span data-i18n="mailTags.11a370a1d7dc">${mailaiText("请先在“标签管理”中创建标签。")}</span></p>`:''}`;
+          panel.querySelector('[data-new-rule]').onclick = () => editRule();
+          for(const button of panel.querySelectorAll('[data-edit-rule]')) button.onclick=()=>editRule(state.rules.find(r=>r.id===Number(button.dataset.editRule)));
+          for(const button of panel.querySelectorAll('[data-toggle-rule]')) button.onclick=()=>{ const rule=state.rules.find(r=>r.id===Number(button.dataset.toggleRule)); void mutate(account,()=>write('/api/mail/tag-rules',{...post({...rule,enabled:!rule.enabled}),accountId:account}),()=>{renderPanel('rules');dialog.querySelector('.mail-tags-message').textContent=mailaiText("规则已更新");}); };
+          for(const button of panel.querySelectorAll('[data-delete-rule]')) button.onclick=()=>confirmInline(button,mailaiText("删除此规则？已添加到邮件的标签会保留。"),()=>void mutate(account,()=>write(`/api/mail/tag-rules/${button.dataset.deleteRule}`,{method:'DELETE',accountId:account}),()=>{renderPanel('rules');dialog.querySelector('.mail-tags-message').textContent=mailaiText("规则已删除");}));
+          panel.querySelector('[data-apply-rules]').onclick=()=>void mutate(account,()=>write('/api/mail/tag-rules/apply',{method:'POST',accountId:account}),async result=>{await refreshMailbox(account);renderPanel('rules');dialog.querySelector('.mail-tags-message').textContent=mailaiTemplate`已为 ${result.count} 封邮件添加标签`;});
+          function editRule(rule) {
+            if(dirty){requestDiscard(()=>editRule(rule));return;}
+            dirty=false;
+            const host=panel.querySelector('[data-rule-editor]');
+            panel.querySelector('.mail-tags-list').hidden=true;
+            panel.querySelector('.mail-tags-rule-actions').hidden=true;
+            host.innerHTML=`<form data-rule-form><h3>${rule?mailaiText("编辑规则"):mailaiText("新建自动规则")}</h3><label class="mail-tags-field"><span data-i18n="mailTags.18dba51b47c8">${mailaiText("规则名称")}</span><input name="name" required maxlength="80" value="${esc(rule?.name||'')}" placeholder="${mailaiText("例如：客户合同自动归档")}" data-i18n-placeholder="mailTags.a4873c83cfc1"></label><label class="mail-tags-field"><span data-i18n="mailTags.cbdfb8401c2e">${mailaiText("匹配条件")}</span><select name="match_mode"><option value="all" ${rule?.match_mode!=='any'?'selected':''} data-i18n="mailTags.13c7fe62a93c">${mailaiText("满足全部条件")}</option><option value="any" ${rule?.match_mode==='any'?'selected':''} data-i18n="mailTags.c81426ef298c">${mailaiText("满足任意条件")}</option></select></label><div data-conditions>${(rule?.conditions||[undefined]).map(conditionRow).join('')}</div><button type="button" data-add-condition><span data-i18n="mailTags.ec4e73603d7f">${mailaiText("＋ 添加条件")}</span></button><fieldset><legend><span data-i18n="mailTags.c51c6e6657db">${mailaiText("自动添加标签（可多选）")}</span></legend><div class="mail-tag-choices">${checks(state.tags,rule?.tag_ids)}</div></fieldset><label class="mail-tag-choice"><input name="enabled" type="checkbox" ${rule?.enabled!==false?'checked':''}><span data-i18n="mailTags.d23ee5171cce">${mailaiText("启用规则")}</span></label><div class="mail-rule-preview" data-rule-preview role="status" aria-live="polite"></div><footer><button type="button" data-preview-rule><span data-i18n="mailTags.608ea5151e98">${mailaiText('测试匹配')}</span></button><button type="button" data-cancel-rule><span data-i18n="ui.2cd0f3be8738">${mailaiText("取消")}</span></button><button type="submit" class="primary-action"><span data-i18n="mailTags.b5aa919e9a97">${mailaiText("保存规则")}</span></button></footer></form>`;
+            host.querySelector('[data-cancel-rule]').onclick=()=>requestDiscard(()=>{host.replaceChildren();panel.querySelector('.mail-tags-list').hidden=false;panel.querySelector('.mail-tags-rule-actions').hidden=false;});
+            const syncConditions=()=>{
+              const rows=[...host.querySelectorAll('.mail-tag-condition')];
+              for(const row of rows)row.querySelector('[data-remove-condition]').disabled=rows.length===1;
+              host.querySelector('[data-add-condition]').disabled=rows.length>=20;
+            };
+            host.querySelector('[data-add-condition]').onclick=()=>{if(host.querySelectorAll('.mail-tag-condition').length<20){host.querySelector('[data-conditions]').insertAdjacentHTML('beforeend',conditionRow());dirty=true;syncConditions();invalidatePreview();}};
+            host.querySelector('[data-conditions]').onclick=event=>{const button=event.target.closest('[data-remove-condition]');if(button&&host.querySelectorAll('.mail-tag-condition').length>1){button.closest('.mail-tag-condition').remove();dirty=true;syncConditions();invalidatePreview();}};
+            syncConditions();
+            mailaiBindUI(host.querySelector('h3'),'textContent',()=>rule?mailaiText('编辑规则'):mailaiText('新建自动规则'));
+            const form=host.querySelector('form');
+            const conditions=()=>[...form.querySelectorAll('.mail-tag-condition')].map(row=>({field:row.querySelector('[data-field]').value,operator:row.querySelector('[data-operator]').value,value:row.querySelector('input').value}));
+            let previewRevision=0;
+            const invalidatePreview=()=>{++previewRevision;host.querySelector('[data-rule-preview]').replaceChildren();};
+            host.addEventListener('input',invalidatePreview);host.addEventListener('change',invalidatePreview);
+            host.querySelector('[data-preview-rule]').onclick=async event=>{
+              const button=event.currentTarget, revision=++previewRevision, editorSession=session;
+              if(conditions().some(condition=>!condition.value.trim()))return message(mailaiText('请先填写匹配内容'),true);
+              button.disabled=true;
+              const output=host.querySelector('[data-rule-preview]');output.textContent=mailaiText('正在测试匹配…');
+              try{
+                const result=await api('/api/mail/tag-rules/preview',{...post({conditions:conditions(),match_mode:form.elements.match_mode.value}),accountId:account});
+                if(revision!==previewRevision||editorSession!==session||!form.isConnected||!isCurrent(account))return;
+                output.innerHTML=`<b>${esc(mailaiTemplate`已有 ${result.count} 封邮件满足条件`)}</b><p><span data-i18n="mailTags.d9d70e607ad0">${mailaiText('仅预览匹配结果，不会修改邮件标签。')}</span></p>`+result.examples.map(item=>`<div data-user-content><span>${esc(item.subject||mailaiText('无主题'))}</span><small>${esc(item.from_addr||'')}</small></div>`).join('');
+              }catch(error){if(revision===previewRevision&&editorSession===session&&form.isConnected)output.textContent=mailaiSystemMessage(error.message);}
+              finally{if(button.isConnected)button.disabled=false;}
+            };
+            form.onsubmit=event=>{
+              event.preventDefault(); const tagIds=chosen(form);
+              if(!tagIds.length){dialog.querySelector('.mail-tags-message').textContent=mailaiText("请至少选择一个标签");return;}
+              ++previewRevision;
+              const payload={id:rule?.id||null,name:form.elements.name.value,enabled:form.elements.enabled.checked,match_mode:form.elements.match_mode.value,tag_ids:tagIds,conditions:[...form.querySelectorAll('.mail-tag-condition')].map(row=>({field:row.querySelector('[data-field]').value,operator:row.querySelector('[data-operator]').value,value:row.querySelector('input').value}))};
+              void mutate(account,()=>write('/api/mail/tag-rules',{...post(payload),accountId:account}),()=>{renderPanel('rules');dialog.querySelector('.mail-tags-message').textContent=mailaiText("规则已保存，下次收件时自动生效");});
+            };
+            form.elements.name.focus();
+          }
+        }
+      }
+      function confirmInline(button,text,action) {
+        const old=body.querySelector('.mail-tags-confirm');old?.remove();
+        const confirm=document.createElement('div');confirm.className='mail-tags-confirm';
+        confirm.innerHTML=`<p>${esc(text)}</p><button type="button" data-no><span data-i18n="ui.2cd0f3be8738">${mailaiText("取消")}</span></button><button type="button" data-yes><span data-i18n="mailTags.a3ea3c17b401">${mailaiText("确认删除")}</span></button>`;
+        button.closest('article').after(confirm);confirm.querySelector('[data-no]').onclick=()=>confirm.remove();confirm.querySelector('[data-yes]').onclick=action;
+        confirm.querySelector('[data-no]').focus();
+      }
+      body.querySelector('.mail-tags-tabs').addEventListener('keydown',event=>{
+        if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+        event.preventDefault();const tabs=[...body.querySelectorAll('[data-tab]')];
+        const target=event.key==='Home'?tabs[0]:event.key==='End'?tabs.at(-1):tabs[(tabs.indexOf(document.activeElement)+(event.key==='ArrowRight'?1:tabs.length-1))%tabs.length];
+        target.click();target.focus();
+      });
+      renderPanel(tab);
+    } catch(error){toast(error.message,'error');}
+  }
+  document.addEventListener('mailai:language-changed',()=>{
+    const host=dialog.querySelector('.mail-tags-message');
+    if(host && host.textContent){const source=mailaiCopySource(host.textContent);message(mailaiSystemMessage(source),host.classList.contains('error'));}
+    if(group.isConnected)window.mailaiRenderMailTags(state.rows);
+  });
+  group.querySelector('[data-mail-tag-manage]').onclick=()=>void manage();
+  document.addEventListener('click',event=>{
+    if(event.target.closest('[data-edit-mail-tags]'))void window.mailaiEditMailTags();
+    if(event.target.closest('[data-bulk-mail-tags]'))void window.mailaiEditMailTags(true);
+  });
 })();
 
 ;

@@ -52,6 +52,8 @@ def upsert_email(e: dict) -> int:
             if imported and not occupied:
                 c.execute("UPDATE emails SET folder=?,uid=?,is_local_archive=0,remote_missing=0 WHERE id=?",
                           (e.get("folder", "INBOX"), e["uid"], imported["id"]))
+        was_present = c.execute('SELECT 1 FROM emails WHERE folder=? AND uid=?',
+                                (e['folder'], e['uid'])).fetchone()
         c.execute(
             f"INSERT INTO emails({','.join(fields)}) VALUES({placeholders}) ON CONFLICT(folder,uid) {conflict}",
             values,
@@ -64,6 +66,9 @@ def upsert_email(e: dict) -> int:
         if row and supplied.intersection({"subject", "from_name", "from_addr", "to_addr", "summary", "snippet", "body_text"}):
             if c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='email_vectors'").fetchone():
                 c.execute("DELETE FROM email_vectors WHERE email_id=?", (row["id"],))
+        if row and not was_present:
+            from .mail_tags import apply_to_email
+            apply_to_email(c, row['id'], e)
         return row["id"]
 
 
@@ -113,7 +118,7 @@ def folder_uids(folder: str) -> set[int]:
         ).fetchall()}
 
 
-def _decode_rows(rows):
+def _decode_rows(rows, connection=None):
     out = []
     for r in rows:
         d = dict(r)
@@ -127,6 +132,13 @@ def _decode_rows(rows):
         except (TypeError, json.JSONDecodeError):
             d["auth"] = {}
         out.append(d)
+    if out:
+        from .mail_tags import annotate
+        if connection is not None:
+            annotate(connection, out)
+        else:
+            with conn() as c:
+                annotate(c, out)
     return out
 
 
@@ -138,7 +150,7 @@ EMAIL_LIST_COLUMNS = (
 
 
 def list_emails(status=None, verdict=None, days=7, limit=1000, folder=None, offset=0,
-                metadata_only=False, list_view=False):
+                metadata_only=False, list_view=False, tags=(), tag_mode="any"):
     # Historical mail may be imported today. Lists and reports must follow the
     # message's real received date, not the local indexing timestamp.
     columns = ('id,thread_id,status,priority,from_addr,subject,date,verdict,score,feedback,reviewed,arrival_kind,created_at,pending_action,processing_complete'
@@ -157,11 +169,15 @@ def list_emails(status=None, verdict=None, days=7, limit=1000, folder=None, offs
     if folder:
         sql += " AND folder=?"
         args.append(folder)
+    from .mail_tags import filter_sql
+    tag_condition, tag_args = filter_sql(tags, tag_mode)
+    sql += tag_condition
+    args.extend(tag_args)
     sql += " ORDER BY date DESC, id DESC LIMIT ? OFFSET ?"
     args.extend([limit, max(0, offset)])
     with conn() as c:
         rows = c.execute(sql, args).fetchall()
-        return [dict(row) for row in rows] if metadata_only else _decode_rows(rows)
+        return [dict(row) for row in rows] if metadata_only else _decode_rows(rows, connection=c)
 
 
 def iter_emails(batch_size=25):
@@ -208,10 +224,10 @@ def mailbox_revision() -> dict:
 
 
 def search_emails(terms: list[str], limit: int = 200, offset: int = 0,
-                  list_view: bool = False, folder: str = "", status: str = "", criteria=None) -> list[dict]:
+                  list_view: bool = False, folder: str = "", status: str = "", criteria=None, tags=(), tag_mode="any") -> list[dict]:
     """在完整本地邮箱上执行参数化全文模糊检索，不受列表页 2000 封限制。"""
     cleaned = [str(term).strip().lower()[:80] for term in terms if str(term).strip()][:12]
-    if not cleaned and not criteria and not folder and not status:
+    if not cleaned and not criteria and not folder and not status and not tags:
         return list_emails(days=9999, limit=limit, offset=offset, list_view=list_view)
     columns = EMAIL_LIST_COLUMNS + ',body_text' if list_view else '*'
     with conn() as c:
@@ -233,10 +249,14 @@ def search_emails(terms: list[str], limit: int = 200, offset: int = 0,
         elif status and status != 'trash':
             condition += ' AND status=?'
             args.append(status)
+        from .mail_tags import filter_sql
+        tag_condition, tag_args = filter_sql(tags, tag_mode)
+        condition += tag_condition
+        args.extend(tag_args)
         visibility = "(pending_action IN ('trash','trash_copying','trash_copied','trash_locating','trash_local') OR (remote_missing=0 AND status='trash'))" if status == 'trash' else 'remote_missing=0'
         sql = f"SELECT {columns} FROM emails WHERE {visibility} AND {condition} ORDER BY date DESC,id DESC LIMIT ? OFFSET ?"
         args.extend([max(1, min(limit, 1000)), max(0, offset)])
-        rows = _decode_rows(c.execute(sql, args).fetchall())
+        rows = _decode_rows(c.execute(sql, args).fetchall(), connection=c)
         from ..mail_search import match_preview
         for row in rows:
             if status == 'trash':
@@ -285,7 +305,7 @@ def list_attachments(limit: int = 500, offset: int = 0, query: str = "", kind: s
             "WHERE remote_missing=0 AND attachments IS NOT NULL AND attachments NOT IN ('','[]') ORDER BY date DESC,id DESC"
         )
         for raw in rows:
-            row = _decode_rows([raw])[0]
+            row = _decode_rows([raw], connection=c)[0]
             for index, item in enumerate(row.get("attachments") or []):
                 if kind != 'all' and _attachment_kind(item) != kind:
                     continue
@@ -343,7 +363,7 @@ def update_attachment_metadata(email_id: int, attachments: list[dict]):
 
 def get_email(email_id: int):
     with conn() as c:
-        rows = _decode_rows(c.execute("SELECT * FROM emails WHERE id=?", (email_id,)).fetchall())
+        rows = _decode_rows(c.execute("SELECT * FROM emails WHERE id=?", (email_id,)).fetchall(), connection=c)
     return rows[0] if rows else None
 
 
