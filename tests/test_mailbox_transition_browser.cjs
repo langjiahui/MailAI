@@ -8,6 +8,7 @@ const {chromium} = require('playwright');
     const page = await browser.newPage();
     await page.goto('http://127.0.0.1:18795/?shell=macos');
     await page.locator('#app-preloader').waitFor({state:'detached'});
+    await page.evaluate(()=>setI18nLanguage('zh-CN'));
     const accounts = await page.evaluate(() => _systemConfig.accounts.map(({id,user}) => ({id,user})));
     assert.equal(accounts.length, 2);
     assert(accounts.every(account => account.user.endsWith('@example.test')));

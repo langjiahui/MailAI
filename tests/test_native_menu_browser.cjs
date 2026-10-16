@@ -51,6 +51,8 @@ const {chromium,webkit}=require('playwright');
   assert.equal(await page.evaluate(()=>mailaiNativeMenu('unknown-action')),false);
   await page.evaluate(()=>setI18nLanguage('en'));
   assert.equal(await page.evaluate(()=>mailaiText('请先完成或关闭当前弹窗，再使用此菜单')),'Finish or close the current dialog before using this menu.');
+  // Native language changes persist in the shared fixture across browser sessions.
+  await page.evaluate(()=>setI18nLanguage('zh-CN'));
   assert.deepEqual(errors,[]);
   console.log('PASS native menu pages, shortcuts, saved font sizing, update single-flight and unsaved editor protection');
  }finally{await browser.close();}
