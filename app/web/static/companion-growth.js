@@ -505,7 +505,7 @@
     // Keep accurate reading/activity batches while in use. Once idle, only
     // check for server-side rewards once a minute; input restores the cadence.
     window.mailaiEnergy.reschedule('companion-growth',
-      (state?.enabled && now-lastInput < 90000) || pending ? 10000 : 60000);
+      !state || (state.enabled && now-lastInput < 90000) || pending ? 10000 : 60000);
     if (!account || tickBusy || busy) return;
     if (!state || !state.enabled) {
       if (now-lastRefresh >= (state ? 30000 : 10000)) void refresh();
