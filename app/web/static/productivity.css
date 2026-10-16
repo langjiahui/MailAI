@@ -536,7 +536,7 @@ html[data-theme] body .list-workspace-tools { padding-block: 3px 7px; }
 .task-account-picker { flex-wrap:wrap; gap:10px; }
 .task-account-picker select { flex:1; min-width:120px; }
 .productivity-outbox-entry { position:relative; }
-.productivity-outbox-entry [data-task-count] { position:absolute; top:0; right:0; border-radius:10px; padding:1px 4px; font-style:normal; font-size:10px; background:var(--accent,#327b62); color:#fff; }
+.productivity-outbox-entry [data-task-count] { position:absolute; top:0; right:0; border-radius:10px; padding:1px 4px; font-style:normal; font-size:10px; background:var(--desk-accent,var(--primary,#327b62)); color:var(--reward-on-accent,var(--desk-surface,#fff)); }
 .productivity-outbox-entry [hidden] { display:none!important; }
 @media(max-width:1100px) { .productivity-outbox-entry>span { display:none; } }
 

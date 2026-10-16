@@ -6526,9 +6526,9 @@ function renderReadingPane(e) {
             ${e.is_local_archive ? `<span class="tag" title="此邮件仅保存在本机" data-i18n-title="ui.7bfc5091b329"><span data-i18n="ui.d7e7b551d372">本地归档${e.folder?.startsWith('LOCAL_IMPORT/') ? ' · ' + esc(e.folder.slice('LOCAL_IMPORT/'.length)) : ''}</span></span>` : ''}
             ${e.category ? `<span class="tag mail-category">${esc(mailCategoryLabel(e.category))}</span>` : ''}
             ${e.priority ? `<span class="tag mail-priority tag-priority-${e.priority}">${esc(mailPriorityLabel(e.priority))}</span>` : ''}
+            <span data-reading-mail-tags>${window.mailaiMailTagChips?.(e, 2) || ''}</span>
           </div>
         </div>
-        <div class="reading-mail-labels"><span data-reading-mail-tags>${window.mailaiMailTagChips?.(e) || ''}</span><button type="button" class="mail-label-edit" data-edit-mail-tags><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 3h6l8 8-6 6-8-8V3Z"/><circle cx="6.5" cy="6.5" r=".8"/></svg><span data-i18n="ui.b819b0dd5668">设置标签</span></button></div>
         <div class="reading-actions">
           <section class="reading-action-group reading-mail-group" aria-label="邮件操作" data-i18n-aria="ui.15ecc4e1adf5"><span class="reading-action-group-title">${mailaiT('read.groupMail') || '邮件操作'}</span><div class="reading-mail-controls"><div class="reading-reply-actions">${replyActions}</div></div></section>
           <section class="reading-action-group reading-ai-group" aria-label="AI 助手" data-i18n-aria="ui.1b0049fcfd41"><span class="reading-action-group-title">${mailaiT('read.groupAi') || 'AI 助手'}</span></section>

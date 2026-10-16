@@ -50,3 +50,4 @@ help-center.js
 date-time-picker.js
 
 mail-tags.js
+native-menu.js

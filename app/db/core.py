@@ -470,12 +470,16 @@ def _run_migrations(c):
         "cc_addr": "TEXT",
         "processing_complete": "INTEGER DEFAULT 1",
         "notification_sent": "INTEGER NOT NULL DEFAULT 0",
+        "notification_claim": "TEXT NOT NULL DEFAULT ''",
+        "notification_retry_at": "REAL NOT NULL DEFAULT 0",
     }
     for col, dtype in new_email_cols.items():
         if col not in emails_cols:
             c.execute(f"ALTER TABLE emails ADD COLUMN {col} {dtype}")
             if col == 'notification_sent':
                 c.execute('UPDATE emails SET notification_sent=1')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_email_notification_retry ON emails(notification_retry_at,id) '
+              'WHERE notification_sent=0 AND notification_retry_at>0')
     if 'alert_email_ids' not in _columns_of(c, 'assistant_conversations'):
         c.execute("ALTER TABLE assistant_conversations ADD COLUMN alert_email_ids TEXT DEFAULT '[]'")
     if 'uid_validity' not in _columns_of(c, 'sync_state'):

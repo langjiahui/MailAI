@@ -37,9 +37,10 @@ def configure_windows_app_identity() -> bool:
         return False
 
 
-def notify_poll_result(result: dict) -> None:
+def notify_poll_result(result: dict) -> bool:
     if _runtime is not None:
-        _runtime.notify_poll_result(result)
+        return _runtime.notify_poll_result(result)
+    return False
 
 
 class WindowsDesktopApi(DesktopApi):
@@ -252,13 +253,16 @@ class WindowsDesktopRuntime:
             except Exception:
                 log.exception("通知 Windows 邮件列表自动刷新失败")
         content = notification_text(result)
-        if content is None or (not self.tray and self.toast_service is None):
-            return
+        if content is None:
+            return True
+        if not self.tray and self.toast_service is None:
+            return False
         title, body = content
         try:
-            self._notify_native(title, body, mail_target=notification_target(result))
+            return self._notify_native(title, body, mail_target=notification_target(result))
         except Exception:
             log.exception("发送 Windows 新邮件通知失败")
+            return False
 
     def test_notification(self) -> dict:
         if not self.tray:

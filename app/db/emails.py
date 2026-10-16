@@ -91,13 +91,38 @@ def finish_email_processing(email_id: int):
             safe_record('received', key=row['message_id'] or f'email:{email_id}', connection=c)
 
 
-def claim_mail_notification(email_id: int) -> bool:
+def claim_mail_notification(email_id: int, *, now=None) -> str | None:
+    import time
+    import uuid
+    now = time.time() if now is None else now
+    token = uuid.uuid4().hex
     with conn() as c:
-        return c.execute(
-            "UPDATE emails SET notification_sent=1 WHERE id=? AND notification_sent=0 "
+        claimed = c.execute(
+            "UPDATE emails SET notification_claim=?,notification_retry_at=? "
+            "WHERE id=? AND notification_sent=0 AND notification_retry_at<=? "
             "AND processing_complete=1 AND arrival_kind='new' AND remote_missing=0",
-            (email_id,),
-        ).rowcount == 1
+            (token, now + 60, email_id, now),
+        ).rowcount
+        return token if claimed else None
+
+
+def finish_mail_notification(email_id: int, token: str, accepted: bool, *, now=None):
+    import time
+    now = time.time() if now is None else now
+    with conn() as c:
+        c.execute('UPDATE emails SET notification_sent=?,notification_claim=?,notification_retry_at=? '
+                  'WHERE id=? AND notification_claim=?',
+                  (int(accepted), '', 0 if accepted else now + 60, email_id, token))
+
+
+def pending_mail_notifications(*, now=None, limit=5):
+    import time
+    now = time.time() if now is None else now
+    with conn() as c:
+        return [row['id'] for row in c.execute(
+            "SELECT id FROM emails WHERE notification_sent=0 AND notification_retry_at>0 "
+            "AND notification_retry_at<=? AND processing_complete=1 AND arrival_kind='new' "
+            "AND remote_missing=0 ORDER BY notification_retry_at,id LIMIT ?", (now, limit))]
 
 
 def count_history_imported() -> int:

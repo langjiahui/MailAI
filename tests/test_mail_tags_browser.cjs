@@ -29,7 +29,14 @@ const {chromium,webkit}=require('playwright');
     await form.locator('[type=submit]').click();await dialog.locator('[data-edit-tag]').nth(2).waitFor();
     await dialog.locator('.mail-tags-close').click();
     await page.locator('.email-item[data-id="1"]').click();
-    await page.locator('[data-edit-mail-tags]').click();
+    const labelAction=page.locator('.reading-work-actions [data-edit-mail-tags]');
+    await labelAction.waitFor({state:'visible'});
+    assert.equal(await labelAction.count(),1);
+    assert.equal(await labelAction.getAttribute('aria-haspopup'),'dialog');
+    assert.equal(await page.locator('[data-reading-mail-tags]').textContent(),'');
+    assert.equal(await page.locator('[data-reading-mail-tags]').evaluate(n=>n.getClientRects().length),0,'Untagged mail must not reserve a label row');
+    // The compact action stays keyboard-accessible within the existing toolbar.
+    await labelAction.focus();await page.keyboard.press('Enter');
     await dialog.locator('.mail-tag-choice').filter({hasText:'项目 A'}).locator('input').check();
     await dialog.locator('.mail-tag-choice').filter({hasText:'客户'}).locator('input').check();
     await dialog.locator('[data-assign-form] [type=submit]').click();
@@ -58,6 +65,29 @@ const {chromium,webkit}=require('playwright');
     await page.waitForFunction(()=>allEmails.filter(e=>e.tags.some(t=>t.name==='失败重试')).length===3);
     assert.equal(await page.evaluate(()=>allEmails.find(e=>e.id===1).tags.length),3);
     await page.locator('#bulk-cancel').click();
+    await page.locator('.email-item[data-id="1"]').click();
+    await page.waitForFunction(()=>document.querySelectorAll('[data-reading-mail-tags] .mail-label-chip').length===2);
+    assert.equal(await page.locator('[data-reading-mail-tags] .mail-label-overflow').textContent(),'+1');
+    assert.equal(await page.locator('[data-reading-mail-tags]').evaluate(n=>Boolean(n.closest('.meta-badges'))),true);
+    for(const language of ['zh-CN','en'])for(const theme of ['light','dark'])for(const width of [1800,1440,1100,600,390]){
+      await page.setViewportSize({width,height:1000});
+      await page.evaluate(({language,theme})=>{setI18nLanguage(language);applyTheme(theme);},{language,theme});
+      const geometry=await page.locator('.reading-header-inner').evaluate(header=>{
+        const meta=header.querySelector('.reading-meta'),button=header.querySelector('[data-edit-mail-tags]'),rect=button.getBoundingClientRect(),bounds=header.getBoundingClientRect();
+        return {overflow:header.scrollWidth>header.clientWidth+1||meta.scrollWidth>meta.clientWidth+1,inside:rect.left>=bounds.left&&rect.right<=bounds.right,icon:button.querySelector('svg').getBoundingClientRect().width,title:button.title};
+      });
+      assert(!geometry.overflow&&geometry.inside&&geometry.icon>0,JSON.stringify({language,theme,width,geometry}));
+      assert.equal(geometry.title,language==='en'?'Set tags':'设置标签');
+    }
+    await page.setViewportSize({width:1440,height:1000});
+    await page.evaluate(()=>{setI18nLanguage('zh-CN');applyTheme('light');});
+    // Removing the final label updates the header without reserving any space.
+    await labelAction.click();
+    await dialog.locator('[name=tag_ids]:checked').first().waitFor();
+    for(const checkbox of await dialog.locator('[name=tag_ids]').all())await checkbox.uncheck();
+    await dialog.locator('[data-assign-form] [type=submit]').click();await dialog.waitFor({state:'hidden'});
+    await page.waitForFunction(()=>selectedEmailDetail.tags.length===0&&document.querySelector('[data-reading-mail-tags]')?.textContent==='');
+    assert.equal(await page.locator('[data-reading-mail-tags]').evaluate(n=>n.getClientRects().length),0);
     // Author a rule with two fields and two targets, then apply it to historical mail.
     await page.locator('[data-mail-tag-manage]').click();
     await dialog.locator('[data-tab=rules]').click();await dialog.locator('[data-new-rule]').click();

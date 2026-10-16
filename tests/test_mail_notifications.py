@@ -49,17 +49,13 @@ class MailNotificationTests(unittest.TestCase):
             self.assertIsNone(notification_target({**arrival(), **invalid}))
 
     def test_mac_mail_and_task_payloads_are_distinct(self):
-        note = Mock()
-        kit = SimpleNamespace(NSUserNotification=Mock(), NSUserNotificationCenter=Mock(),
-                              NSUserNotificationDefaultSoundName='default')
-        kit.NSUserNotification.alloc.return_value.init.return_value = note
         runtime = desktop.DesktopRuntime()
         target = notification_target(arrival())
-        with patch.dict(sys.modules, AppKit=kit), patch.object(runtime, '_call_after_safely',
-                side_effect=lambda _label, callback: (callback(), True)[1]):
+        service = Mock()
+        service.deliver.return_value = True
+        with patch.object(runtime, '_notifications', return_value=service):
             self.assertTrue(runtime._deliver_notification('邮件', '发件人', mail_target=target))
-        self.assertIn('mailai_mail', note.setUserInfo_.call_args.args[0])
-        self.assertTrue(note.setIdentifier_.call_args.args[0].startswith('mailai-mail:'))
+        service.deliver.assert_called_once_with('邮件', '发件人', task_target=None, mail_target=target)
         with patch.object(runtime, 'show_window') as show, patch.object(runtime, '_evaluate_js_safely') as script:
             runtime.open_mail_notification(target)
             show.assert_called_once()

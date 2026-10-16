@@ -141,6 +141,8 @@ def check_due_tasks():
                 dispatch_workflow(account_id, account)
                 from .sent_followups import dispatch as dispatch_sent_followups
                 dispatch_sent_followups(account_id, account)
+                from .mailbox_jobs import retry_mail_notifications
+                retry_mail_notifications(account_id, account)
             except Exception:
                 log.warning('检查待办提醒失败', exc_info=True)
     finally:

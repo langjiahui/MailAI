@@ -12,11 +12,11 @@
 .mail-tag-selection select{min-width:0;width:125px;font-size:11px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:5px}
 .mail-tag-selection button{font-size:11px;border:0;background:transparent;color:var(--muted);cursor:pointer}
 .mail-tags-empty{margin:8px 10px;font-size:12px;line-height:1.7;color:var(--muted,#7c898f)}
-.reading-mail-labels{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:12px}
 [data-reading-mail-tags]{display:contents}
-.mail-label-edit{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border:1px dashed var(--border,#d4dedc);background:transparent;color:var(--muted);font-size:11px;border-radius:6px;cursor:pointer}
-.mail-label-edit:hover{background:var(--surface-soft,#edf2f0)}
-.mail-label-edit svg{height:13px;width:13px;stroke:currentColor;fill:none;stroke-width:1.4}
+/* Empty mail has no label row; assigned labels share the existing metadata. */
+.reading-header .reading-header-inner .meta-badges:has([data-reading-mail-tags]:not(:empty)){max-inline-size:min(440px,45cqw);min-width:0;flex-shrink:1}
+[data-reading-mail-tags] .mail-label-chip{max-width:110px;padding:2px 6px;font-size:10px}
+@container message-header (max-width:600px){.reading-header .reading-header-inner .meta-badges:has([data-reading-mail-tags]:not(:empty)){max-inline-size:100%;width:auto;margin-inline:0}}
 .mail-tags-dialog{width:min(640px,calc(100vw - 32px));max-height:min(780px,calc(100dvh - 40px));padding:0;border:1px solid var(--border,#dbe3e5);border-radius:18px;background:var(--surface,#fff);color:var(--text,#233138);box-shadow:0 24px 80px #0003;overflow:auto;overscroll-behavior:contain}
 .mail-tags-dialog::backdrop{background:#12262c66;backdrop-filter:blur(5px)}
 .mail-tags-dialog header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:24px 26px 12px}
@@ -64,7 +64,7 @@
 .mail-tags-dialog legend{font-size:12px;color:var(--muted)}
 .mail-tags-confirm{padding:12px;border-radius:8px;background:var(--surface-soft,#edf2f0);font-size:12px;line-height:1.7}
 .mail-tags-confirm p{margin:0 0 10px}.mail-tags-confirm button{margin-right:8px}
-.mail-tags-dialog :focus-visible,.mail-label-edit:focus-visible,#mail-tag-group button:focus-visible{outline:2px solid var(--primary,#548879);outline-offset:2px}
+.mail-tags-dialog :focus-visible,#mail-tag-group button:focus-visible{outline:2px solid var(--primary,#548879);outline-offset:2px}
 #mail-tag-group[hidden],#mail-tag-group [hidden],.mail-tags-dialog [hidden]{display:none!important}
 @media(max-width:520px){.mail-tags-dialog header{padding:18px 18px 10px}.mail-tags-body{padding:0 18px 18px}.mail-tags-message{padding:0 18px}.mail-tag-condition{grid-template-columns:1fr 1fr 30px}.mail-tag-condition input{grid-column:1/3;grid-row:2}.mail-tag-condition button{grid-column:3;grid-row:1/3}.mail-tags-list article{flex-wrap:wrap}.mail-tags-list article>div{flex-basis:100%}}
 

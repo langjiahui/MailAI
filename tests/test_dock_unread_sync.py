@@ -25,6 +25,7 @@ def main():
                                  for name, path in paths.items()}}
         runtime = desktop.DesktopRuntime()
         runtime._set_dock_badge = Mock()
+        runtime._deliver_notification = Mock(return_value=True)
         with patch.object(system_settings, '_load_registry', return_value=registry), \
              patch.object(desktop, '_runtime', runtime):
             runtime.refresh_dock_badge()

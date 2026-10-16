@@ -27,6 +27,8 @@ from .emails import (
     already_processed,
     finish_email_processing,
     claim_mail_notification,
+    finish_mail_notification,
+    pending_mail_notifications,
     count_history_imported,
     folder_uids,
     EMAIL_LIST_COLUMNS,

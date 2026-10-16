@@ -60,18 +60,14 @@ def main():
         with patch.object(notices.sys,'platform','darwin'), patch.object(desktop,'_runtime',None), patch.object(notices.subprocess,'run') as run:
             assert notices.deliver('待办','" & do shell script "bad',{'accountId':'a'})
             assert run.call_args.args[0][-1]=='" & do shell script "bad'
-        native = MagicMock()
-        center = MagicMock()
-        kit = SimpleNamespace(NSUserNotification=native,
-            NSUserNotificationCenter=center, NSUserNotificationDefaultSoundName='default')
+        service = MagicMock()
         runtime = desktop.DesktopRuntime()
         target = {'accountId':'a','todoId':1,'remindAt':'time'}
-        with patch.dict(sys.modules, {'AppKit':kit}), patch.object(runtime, '_call_after_safely', side_effect=lambda label, callback: (callback(), True)[1]):
+        with patch.object(runtime, '_notifications', return_value=service):
+            service.deliver.return_value = True
             assert runtime._deliver_notification('任务提醒','核对附件',target)
-            note = native.alloc.return_value.init.return_value
-            assert 'mailai_task' in note.setUserInfo_.call_args.args[0]
-            center.defaultUserNotificationCenter.return_value.deliverNotification_.assert_called_once_with(note)
-        with patch.dict(sys.modules, {'AppKit':kit}), patch.object(runtime, '_call_after_safely', return_value=False):
+            service.deliver.assert_called_once_with('任务提醒','核对附件',task_target=target,mail_target=None)
+            service.deliver.return_value = False
             assert runtime._deliver_notification('任务提醒','核对附件',target) is False
         print('Task reminders passed: grouped delivery, restart dedup, retry lease, reschedule, completion, account isolation, safe source notification')
 

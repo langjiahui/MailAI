@@ -73,6 +73,9 @@ def next_delay(accounts, kind, *, now=None, retries=None):
                         deadlines += [max(_epoch(row[0]), now + cooldown) for row in purge_rows]
                 else:
                     deadlines = [_epoch(row[0]) for row in _rows(c, "SELECT min(CASE WHEN n.remind_at=t.remind_at AND n.sent=0 AND n.retry_after>t.remind_at THEN n.retry_after ELSE t.remind_at END) FROM todos t LEFT JOIN task_notice_delivery n ON n.todo_id=t.id WHERE t.status='open' AND t.remind_at IS NOT NULL AND (n.todo_id IS NULL OR n.remind_at!=t.remind_at OR n.sent=0) HAVING count(*)>0")]
+                    import sys
+                    if getattr(sys, 'frozen', False) and sys.platform in ('darwin', 'win32'):
+                        deadlines += [_epoch(row[0]) for row in _rows(c, "SELECT min(notification_retry_at) FROM emails WHERE notification_sent=0 AND notification_retry_at>0 AND processing_complete=1 AND arrival_kind='new' AND remote_missing=0 HAVING count(*)>0")]
                     deadlines += [max(_epoch(row[0]), float(row[1] or 0)) for row in _rows(c, "SELECT at,retry_after FROM mail_workflow_notices WHERE sent=0")]
                     deadlines += [max(_epoch(row[0]), float(row[1] or 0)) for row in _rows(c, "SELECT f.at,f.retry_after FROM sent_followups f JOIN sent_messages s ON s.id=f.sent_id WHERE f.state='scheduled' AND f.sent=0 AND s.status='sent'")]
                 for deadline in deadlines:

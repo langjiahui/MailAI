@@ -193,7 +193,7 @@
         if(!fresh)return;
         selectedEmailDetail.tags=fresh.tags;
         const host=document.querySelector('[data-reading-mail-tags]');
-        if(host)host.innerHTML=window.mailaiMailTagChips(fresh);
+        if(host)host.innerHTML=window.mailaiMailTagChips(fresh,2);
       }
     }
   }

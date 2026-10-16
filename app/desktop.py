@@ -18,7 +18,7 @@ from typing import Callable
 
 import uvicorn
 from .ui_copy import ui_text
-from .mail_notifications import notification_text, notification_target, notification_key
+from .mail_notifications import notification_text, notification_target
 
 
 log = logging.getLogger(__name__)
@@ -102,10 +102,11 @@ def register_installed_application() -> bool:
         return False
 
 
-def notify_poll_result(result: dict) -> None:
+def notify_poll_result(result: dict) -> bool:
     """Notify the active desktop runtime after a scheduled poll."""
     if _runtime is not None:
-        _runtime.notify_poll_result(result)
+        return _runtime.notify_poll_result(result)
+    return False
 
 
 def refresh_dock_badge() -> None:
@@ -191,8 +192,10 @@ class DesktopRuntime:
         self._status_item = None
         self._status_icon = None
         self._status_controller = None
-        self._notification_delegate = None
+        self._notification_service = None
+        self._notification_lock = threading.Lock()
         self._native_menu_entries = []
+        self._main_menu = None
         self._window_foreground = None
         self._window_visibility_revision = 0
         self._window_visibility_lock = threading.Lock()
@@ -269,16 +272,16 @@ class DesktopRuntime:
 
         threading.Thread(target=run, name="mailai-menu-poll", daemon=True).start()
 
-    def notify_poll_result(self, result: dict, force: bool = False) -> None:
+    def notify_poll_result(self, result: dict, force: bool = False) -> bool:
         fetched = max(0, int((result or {}).get("fetched") or 0))
         if result and result.get("ok") and (result.get('received') or fetched):
             self._signal_mailbox_changed(result.get('received') or fetched)
         self.refresh_dock_badge()
         content = notification_text(result)
         if content is None:
-            return
+            return True
         title, body = content
-        self._deliver_notification(title, body, mail_target=notification_target(result))
+        return self._deliver_notification(title, body, mail_target=notification_target(result))
 
     def open_mail_notification(self, target):
         self.show_window()
@@ -328,8 +331,33 @@ class DesktopRuntime:
         return True
 
     def test_notification(self) -> dict:
-        self._deliver_notification(ui_text('MailAI 通知已开启'), ui_text('关闭窗口后，新邮件和安全提醒会继续在后台送达。'))
-        return {"ok": True, "message": "系统通知已开启"}
+        try:
+            if not self._notifications().authorized(request=True, timeout=30):
+                return {"ok": False, "message": "未获得通知权限"}
+            accepted = self._deliver_notification(ui_text('MailAI 通知已开启'), ui_text('关闭窗口后，新邮件和安全提醒会继续在后台送达。'))
+            return {"ok": accepted, "message": "已发送测试通知" if accepted else "未能提交系统通知，请稍后重试"}
+        except Exception:
+            log.exception("测试 macOS 通知失败")
+            return {"ok": False, "message": "未能提交系统通知，请稍后重试"}
+
+    def _notifications(self):
+        from .macos_notifications import MacNotificationService
+        with self._notification_lock:
+            if self._notification_service is None:
+                self._notification_service = MacNotificationService(self)
+            return self._notification_service
+
+    def _open_notification_info(self, info):
+        self.show_window()
+        try:
+            if info.get('mailai_mail'):
+                self.open_mail_notification(json.loads(info['mailai_mail']))
+            elif info.get('mailai_task'):
+                target = json.loads(info['mailai_task'])
+                self._evaluate_js_safely('打开提醒任务',
+                    f"window.mailaiOpenTaskReminder?.({json.dumps(target)})")
+        except (ValueError, TypeError):
+            log.warning('无效的系统通知目标')
 
     def _set_dock_badge(self, label: str) -> None:
         try:
@@ -362,36 +390,10 @@ class DesktopRuntime:
             return False
 
     def _deliver_notification(self, title: str, body: str, target: dict | None = None, *, mail_target: dict | None = None) -> bool:
+        if self.quitting:
+            return False
         try:
-            from AppKit import NSUserNotification, NSUserNotificationCenter, NSUserNotificationDefaultSoundName
-
-            completed = threading.Event()
-            delivered = []
-
-            def deliver():
-                try:
-                    note = NSUserNotification.alloc().init()
-                    note.setTitle_(title)
-                    note.setInformativeText_(body)
-                    if mail_target:
-                        note.setUserInfo_({"mailai_mail": json.dumps(mail_target)})
-                        note.setIdentifier_("mailai-mail:" + notification_key(mail_target))
-                    elif target:
-                        note.setUserInfo_({"mailai_task": json.dumps(target)})
-                        note.setIdentifier_("mailai-task:" + json.dumps(target, sort_keys=True))
-                    note.setSoundName_(NSUserNotificationDefaultSoundName)
-                    NSUserNotificationCenter.defaultUserNotificationCenter().deliverNotification_(note)
-                    delivered.append(True)
-                finally:
-                    completed.set()
-
-            scheduled = self._call_after_safely("发送 macOS 通知", deliver)
-            if target and scheduled:
-                # Task checks run on a background worker; record acceptance only
-                # after Cocoa has submitted it, so callback failures can retry.
-                completed.wait(5)
-                return bool(delivered)
-            return scheduled
+            return self._notifications().deliver(title, body, task_target=target, mail_target=mail_target)
         except Exception:
             log.exception("发送 macOS 通知失败")
             return False
@@ -407,7 +409,6 @@ class DesktopRuntime:
             NSObject,
             NSSquareStatusItemLength,
             NSStatusBar,
-            NSUserNotificationCenter,
         )
 
         runtime = self
@@ -421,28 +422,6 @@ class DesktopRuntime:
 
             def quitMailAI_(self, sender):
                 runtime.quit()
-
-            def userNotificationCenter_shouldPresentNotification_(self, center, notification):
-                return True
-
-            def userNotificationCenter_didActivateNotification_(self, center, notification):
-                runtime.show_window()
-                info = notification.userInfo() or {}
-                mail_payload = info.get('mailai_mail')
-                if mail_payload:
-                    try:
-                        runtime.open_mail_notification(json.loads(mail_payload))
-                    except (ValueError, TypeError):
-                        log.warning('无效的邮件通知目标')
-                    return
-                payload = info.get('mailai_task')
-                if payload:
-                    try:
-                        target = json.loads(payload)
-                        runtime._evaluate_js_safely('打开提醒任务',
-                            f"window.mailaiOpenTaskReminder?.({json.dumps(target)})")
-                    except (ValueError, TypeError):
-                        log.warning('无效的任务通知目标')
 
         controller = StatusController.alloc().init()
         status_item = NSStatusBar.systemStatusBar().statusItemWithLength_(NSSquareStatusItemLength)
@@ -477,13 +456,14 @@ class DesktopRuntime:
         self._native_menu_entries = [(open_item, '打开 MailAI'), (poll_item, '立即收取邮件'),
                                      (state_item, '✓ 后台收信已开启'), (quit_item, '退出 MailAI')]
 
-        notification_center = NSUserNotificationCenter.defaultUserNotificationCenter()
-        notification_center.setDelegate_(controller)
         NSApplication.sharedApplication().setActivationPolicy_(0)
         self._status_controller = controller
-        self._notification_delegate = controller
         self._status_item = status_item
         self._status_icon = status_icon
+        try:
+            self._notifications()
+        except Exception:
+            log.exception('初始化 macOS 通知失败；保留菜单栏并等待通知重试')
 
     def refresh_language(self):
         def apply():
@@ -491,7 +471,9 @@ class DesktopRuntime:
                 self._status_item.button().setToolTip_(ui_text('MailAI · 后台收信中'))
             for item, source in self._native_menu_entries:
                 item.setTitle_(ui_text(source))
-        if self._native_menu_entries:
+            if self._main_menu:
+                self._main_menu.refresh_language()
+        if self._native_menu_entries or self._main_menu:
             self._call_after_safely('refresh native language', apply)
 
 
@@ -743,6 +725,8 @@ def run_macos_window(asgi_app, preferred_port: int = 0,
     try:
         import webview
         from webview.platforms import cocoa
+        from .macos_menu import install_menu_factory
+        native_menu = install_menu_factory(runtime, cocoa)
         from .mail_navigation import navigation_delegate
 
         def open_mail_link(url):
@@ -807,6 +791,8 @@ def run_macos_window(asgi_app, preferred_port: int = 0,
             text_select=True,
         )
         runtime.window = window
+        window.events.before_load += native_menu.web_loading
+        window.events.loaded += native_menu.web_loaded
         window.events.before_show += desktop_api._prepare_window
         window.events.closing += runtime.handle_closing
         window.events.minimized += lambda: runtime.set_window_foreground(False)

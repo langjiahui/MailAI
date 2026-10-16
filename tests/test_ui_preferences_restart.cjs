@@ -84,5 +84,5 @@ async function pageAt(url) {
 })().catch(error => {console.error(error);process.exitCode=1;}).finally(async () => {
   if (browser) await browser.close();
   await stop();
-  fs.rmSync(home,{recursive:true,force:true});
+  fs.rmSync(home,{recursive:true,force:true,maxRetries:20,retryDelay:100});
 });

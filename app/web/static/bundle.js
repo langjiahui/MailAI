@@ -1579,6 +1579,32 @@ if (typeof document !== 'undefined') {
 /* ---- i18n-catalog.js ---- */
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "nativeMenu.viewTitle": ["显示菜单", "View"],
+  "nativeMenu.8a1474446080": ["关于 MailAI", "About MailAI"],
+  "nativeMenu.2ba74de12dbb": ["检查更新…", "Check for Updates…"],
+  "nativeMenu.da9fc8ba9497": ["设置…", "Settings…"],
+  "nativeMenu.ec309ab207ef": ["服务", "Services"],
+  "nativeMenu.2fd6b8f7df7d": ["隐藏 MailAI", "Hide MailAI"],
+  "nativeMenu.d32bd5a0edfe": ["隐藏其他", "Hide Others"],
+  "nativeMenu.b1288e4ac09e": ["全部显示", "Show All"],
+  "nativeMenu.03717b6f1070": ["重做", "Redo"],
+  "nativeMenu.410a8e8a6bf2": ["剪切", "Cut"],
+  "nativeMenu.335179267471": ["粘贴", "Paste"],
+  "nativeMenu.3a5040b68abf": ["全选", "Select All"],
+  "nativeMenu.b7eaf4a368f3": ["放大界面", "Zoom In"],
+  "nativeMenu.a6878682a7b8": ["缩小界面", "Zoom Out"],
+  "nativeMenu.b3e9d07962be": ["标准字号", "Actual Size"],
+  "nativeMenu.0504ff38a44b": ["布局与外观…", "Layout and Appearance…"],
+  "nativeMenu.aa8b6477c2ce": ["切换全屏", "Toggle Full Screen"],
+  "nativeMenu.9efe01f647d6": ["窗口", "Window"],
+  "nativeMenu.21ef56f942c9": ["缩放窗口", "Zoom"],
+  "nativeMenu.91a1d31663b9": ["显示主窗口", "Show Main Window"],
+  "nativeMenu.6bddcd7312e6": ["前置全部窗口", "Bring All to Front"],
+  "nativeMenu.bdf525d0f476": ["MailAI 使用帮助", "MailAI Help"],
+  "nativeMenu.fd938ad1645d": ["快捷键说明", "Keyboard Shortcuts"],
+  "nativeMenu.0572f0d56683": ["反馈问题…", "Report an Issue…"],
+  "nativeMenu.ae796be1813e": ["请先完成或关闭当前弹窗，再使用此菜单", "Finish or close the current dialog before using this menu."],
+  "notify.submitFailed": ["未能提交系统通知，请稍后重试", "The system notification could not be submitted. Please try again later."],
   "compose.truncatedDraft": ["模型输出达到长度上限，草稿未完成，请缩短写作要求后重试", "The model reached its output limit. The draft is incomplete; shorten your writing instructions and try again."],
   "modelResult.connection": ["模型连接", "Model connection"],
   "modelResult.failed": ["连接验证失败", "Connection verification failed"],
@@ -25339,9 +25365,9 @@ function renderReadingPane(e) {
             ${e.is_local_archive ? `<span class="tag" title="此邮件仅保存在本机" data-i18n-title="ui.7bfc5091b329"><span data-i18n="ui.d7e7b551d372">本地归档${e.folder?.startsWith('LOCAL_IMPORT/') ? ' · ' + esc(e.folder.slice('LOCAL_IMPORT/'.length)) : ''}</span></span>` : ''}
             ${e.category ? `<span class="tag mail-category">${esc(mailCategoryLabel(e.category))}</span>` : ''}
             ${e.priority ? `<span class="tag mail-priority tag-priority-${e.priority}">${esc(mailPriorityLabel(e.priority))}</span>` : ''}
+            <span data-reading-mail-tags>${window.mailaiMailTagChips?.(e, 2) || ''}</span>
           </div>
         </div>
-        <div class="reading-mail-labels"><span data-reading-mail-tags>${window.mailaiMailTagChips?.(e) || ''}</span><button type="button" class="mail-label-edit" data-edit-mail-tags><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 3h6l8 8-6 6-8-8V3Z"/><circle cx="6.5" cy="6.5" r=".8"/></svg><span data-i18n="ui.b819b0dd5668">设置标签</span></button></div>
         <div class="reading-actions">
           <section class="reading-action-group reading-mail-group" aria-label="邮件操作" data-i18n-aria="ui.15ecc4e1adf5"><span class="reading-action-group-title">${mailaiT('read.groupMail') || '邮件操作'}</span><div class="reading-mail-controls"><div class="reading-reply-actions">${replyActions}</div></div></section>
           <section class="reading-action-group reading-ai-group" aria-label="AI 助手" data-i18n-aria="ui.1b0049fcfd41"><span class="reading-action-group-title">${mailaiT('read.groupAi') || 'AI 助手'}</span></section>
@@ -29963,6 +29989,7 @@ function addReadingActions(force = false) {
   const div = document.createElement('div'); div.className = 'reading-work-actions';
   const icon = paths => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${paths}"/></svg>`;
   div.innerHTML = `<button type="button" data-reading-action="favorite" aria-pressed="${Boolean(selectedEmailDetail?.is_favorite)}">${icon('m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z')}<span data-action-label>${selectedEmailDetail?.is_favorite ? (mailaiT('read.favorited') || '已收藏') : (mailaiT('read.favorite') || '收藏')}</span></button>
+    <button type="button" data-edit-mail-tags aria-haspopup="dialog" aria-label="${mailaiText('设置标签')}" data-i18n-aria="ui.b819b0dd5668">${icon('M3 3h7l11 11-7 7L3 10V3zM7 7h.01')}<span data-i18n="ui.1d0fd5f9336d">${mailaiText('标签')}</span></button>
     <button type="button" data-reading-action="todo">${icon('M3.5 7.5 5.5 9.5 9 6M12.5 8h8M3.5 16.5 5.5 18.5 9 15M12.5 17h8')}<span>${mailaiT('read.todo') || '加入待办'}</span></button>
     <button type="button" data-reading-action="remind">${icon('M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 4v5l3 2')}<span>${mailaiT('read.remind') || '稍后提醒'}</span></button>`;
   host.querySelector('.reading-mail-controls')?.appendChild(div);
@@ -37592,7 +37619,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
         if(!fresh)return;
         selectedEmailDetail.tags=fresh.tags;
         const host=document.querySelector('[data-reading-mail-tags]');
-        if(host)host.innerHTML=window.mailaiMailTagChips(fresh);
+        if(host)host.innerHTML=window.mailaiMailTagChips(fresh,2);
       }
     }
   }
@@ -37779,6 +37806,54 @@ document.getElementById('task-center-list').addEventListener('click', async even
     if(event.target.closest('[data-edit-mail-tags]'))void window.mailaiEditMailTags();
     if(event.target.closest('[data-bulk-mail-tags]'))void window.mailaiEditMailTags(true);
   });
+})();
+
+;
+/* ---- native-menu.js ---- */
+/* Native menus navigate existing features; update installation keeps its own confirmation. */
+(() => {
+  let checking = false;
+  window.mailaiNativeMenu = async action => {
+    const routes = {about:'about', settings:'preferences', updates:'about', help:'guide', shortcuts:'guide'};
+    if (action === 'feedback') {
+      try { await openExternalLink('https://github.com/langjiahui/MailAI/issues'); }
+      catch (error) { toast(mailaiSystemMessage(error.message), 'warn'); return false; }
+      return true;
+    }
+    if (['font-larger','font-smaller','font-reset'].includes(action)) {
+      const control = document.getElementById('font-size');
+      if (!control?.onchange) return false;
+      const options = [...control.options].map(option => Number(option.value));
+      const current = Number(control.value);
+      const next = action === 'font-reset' ? 1 : action === 'font-larger'
+        ? options.find(value => value > current) ?? options.at(-1)
+        : [...options].reverse().find(value => value < current) ?? options[0];
+      control.value = String(next);
+      control.dispatchEvent(new Event('change', {bubbles:true}));
+      return true;
+    }
+    if (!Object.hasOwn(routes, action)) return false;
+    if (document.querySelector('dialog[open], .modal:not(.hidden), .compose-modal:not(.hidden), .attachment-center:not(.hidden)')) {
+      toast(mailaiText('请先完成或关闭当前弹窗，再使用此菜单'), 'info');
+      return false;
+    }
+    if (!document.getElementById('task-center').classList.contains('hidden')) closeTaskCenter();
+    showSystemView(routes[action]);
+    if (action === 'shortcuts') {
+      document.querySelector('[data-system-panel="guide"] [data-help-reset]')?.click();
+      const shortcuts = document.querySelector('.help-shortcuts');
+      shortcuts.hidden = false;
+      shortcuts.tabIndex = -1;
+      shortcuts.focus({preventScroll:true});
+      shortcuts.scrollIntoView({block:'center'});
+    }
+    if (action === 'updates' && !checking) {
+      checking = true;
+      try { await checkForAppUpdate(true); }
+      finally { checking = false; }
+    }
+    return true;
+  };
 })();
 
 ;

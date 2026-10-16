@@ -141,26 +141,45 @@ def stop_mailbox(timeout=5):
     return not unfinished
 
 
-def notify_new_message(email_id):
+def notify_new_message(email_id, *, retry=False):
     """Deliver once per completed new message, including manual/history-priority polls."""
     from . import mail_assistant
     email = db.get_email(email_id)
-    if not email or not db.claim_mail_notification(email_id):
+    if not email:
         return
-    allowed = mail_assistant.notification_allowed(email)
-    result = dict(ok=True, received=1, fetched=int(allowed),
-                  quarantined=int(allowed and mail_assistant.needs_risk_attention(email)),
-                  account_user=config.IMAP_USER, account_id=getattr(config, 'ACCOUNT_ID', ''),
-                  mail={key: email.get(key) for key in ('id', 'subject', 'from_name', 'from_addr')})
-    import sys
-    if getattr(sys, 'frozen', False):
+    token = db.claim_mail_notification(email_id)
+    if not token:
+        return
+    accepted = False
+    try:
+        allowed = mail_assistant.notification_allowed(email) and not (retry and email.get('is_read'))
+        result = dict(ok=True, received=1, fetched=int(allowed),
+                      quarantined=int(allowed and mail_assistant.needs_risk_attention(email)),
+                      account_user=config.IMAP_USER, account_id=getattr(config, 'ACCOUNT_ID', ''),
+                      mail={key: email.get(key) for key in ('id', 'subject', 'from_name', 'from_addr')})
+        import sys
+        if not getattr(sys, 'frozen', False) or sys.platform not in ('darwin', 'win32'):
+            accepted = True  # Source/browser builds use application-owned alerts.
+            return
         if sys.platform == 'darwin':
             from .desktop import notify_poll_result
-        elif sys.platform == 'win32':
-            from .windows_desktop import notify_poll_result
         else:
-            return
-        notify_poll_result(result)
+            from .windows_desktop import notify_poll_result
+        accepted = bool(notify_poll_result(result))
+    finally:
+        # A queue submission is not delivery. Persist only the native acknowledgement;
+        # failed submissions retain a durable retry deadline, including across restart.
+        db.finish_mail_notification(email_id, token, accepted)
+
+
+@account_work
+def retry_mail_notifications(account_id, account):
+    import sys
+    if not getattr(sys, 'frozen', False) or sys.platform not in ('darwin', 'win32'):
+        return
+    with use({'ACCOUNT_ID': account_id, 'DB_PATH': account['db_path'], 'IMAP_USER': account['user']}):
+        for email_id in db.pending_mail_notifications():
+            notify_new_message(email_id, retry=True)
 
 
 def _check_outboxes(initialized, retries, now, send):
