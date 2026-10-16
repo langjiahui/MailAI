@@ -468,7 +468,14 @@
     }
   }
 
-  const activity = () => { lastInput = performance.now(); };
+  const activity = () => {
+    const now = performance.now(), wasIdle = now-lastInput >= 90000;
+    lastInput = now;
+    if (wasIdle) {
+      lastSample = now; // Never count the quiet interval as reading time.
+      window.mailaiEnergy.reschedule('companion-growth', 10000);
+    }
+  };
   for (const event of ['pointerdown','keydown','wheel','touchstart']) document.addEventListener(event,activity,{passive:true});
   document.addEventListener('click',event => {
     const now = performance.now();
@@ -495,6 +502,10 @@
     checkAccount();
     const now = performance.now(), elapsed = lastSample ? Math.min(10,Math.max(0,Math.floor((now-lastSample)/1000))) : 0;
     lastSample = now;
+    // Keep accurate reading/activity batches while in use. Once idle, only
+    // check for server-side rewards once a minute; input restores the cadence.
+    window.mailaiEnergy.reschedule('companion-growth',
+      (state?.enabled && now-lastInput < 90000) || pending ? 10000 : 60000);
     if (!account || tickBusy || busy) return;
     if (!state || !state.enabled) {
       if (now-lastRefresh >= (state ? 30000 : 10000)) void refresh();

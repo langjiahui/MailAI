@@ -7,35 +7,32 @@ const {chromium}=require('playwright');
 const root=path.resolve(__dirname,'..'),assets=path.join(root,'app/web/static/assets');
 const source=fs.readFileSync(path.join(root,'app/web/static/brand.js'),'utf8');
 const start=source.indexOf('  const paths = '),end=source.indexOf('  document.querySelectorAll');
-const context={};vm.createContext(context);vm.runInContext(source.slice(start,end)+'\nthis.markup=markup;',context);
-const mark=context.markup('#0e5a54','#94c7b6').replace('aria-hidden="true"','role="img" aria-label="MailAI"');
-const template=context.markup('#000','#000');
-// Native surfaces keep a neutral identity; in-app marks retain theme colors.
-const nativeMark=context.markup('url(#graphite)','url(#fold)');
-// Native Dock artwork uses an 824px body on a 1024px canvas, matching the
-// visual bounds of neighboring apps. Scale the tile and mark together.
-const app=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-<defs>
-  <linearGradient id="glass" x1="0" y1="0" x2=".8" y2="1"><stop stop-color="#ffffff" stop-opacity=".98"/><stop offset=".55" stop-color="#f4f5f6" stop-opacity=".97"/><stop offset="1" stop-color="#e4e7ea" stop-opacity=".96"/></linearGradient>
-  <linearGradient id="rim" x1="0" y1="0" x2=".6" y2="1"><stop stop-color="#ffffff"/><stop offset=".55" stop-color="#ffffff" stop-opacity=".6"/><stop offset="1" stop-color="#bfc5cb" stop-opacity=".72"/></linearGradient>
-  <linearGradient id="graphite" x1="0" y1="0" x2=".6" y2="1"><stop stop-color="#42484e"/><stop offset="1" stop-color="#24292e"/></linearGradient>
-  <linearGradient id="fold" x1="0" y1="0" x2=".7" y2="1"><stop stop-color="#969da4"/><stop offset="1" stop-color="#737b83"/></linearGradient>
-</defs>
-<g transform="translate(90.112 90.112) scale(0.824)">
-  <rect x="12" y="12" width="1000" height="1000" rx="224" fill="url(#glass)"/>
-  <rect x="14" y="14" width="996" height="996" rx="222" fill="none" stroke="url(#rim)" stroke-width="4"/>
-  <rect x="20" y="20" width="984" height="984" rx="216" fill="none" stroke="#ffffff" stroke-opacity=".38" stroke-width="2"/>
-  <g transform="translate(145 127) scale(11.46875)">${nativeMark.replace(/^<svg[^>]*>/,'').replace(/<\/svg>$/,'')}</g>
-</g></svg>`;
+const context={};vm.createContext(context);vm.runInContext(source.slice(start,end)+'\nthis.markup=markup;this.pathsMarkup=pathsMarkup;',context);
+const palette={shade:'#292929',reflection:'#005eaa',backShade:'#6b9fc8'};
+const mark=context.markup('#0e5a54','#94c7b6',palette,'mailai-mark').replace('aria-hidden="true"','role="img" aria-label="MailAI"');
+// macOS template glyphs must remain monochrome for the system's light/dark tint.
+const template='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'+context.pathsMarkup('#000','#000')+'</svg>';
+// Approved glass artwork keeps its 824px Dock body and original folded-M paths.
+const nativeMark=context.pathsMarkup('url(#graphite)','url(#fold)').replaceAll('<path class=', '<path filter="url(#bevel)" class=');
+const artwork=fs.readFileSync(path.join(__dirname,'brand-app-icon.svg'),'utf8');
+if(!artwork.includes('<!-- BRAND_MARK -->'))throw new Error('Native icon template is missing the shared mark');
+const app=artwork.replace('<!-- BRAND_MARK -->',nativeMark);
+// Keep the bundled/exportable wordmark from retaining the retired shield logo.
+const lockup=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2057 764">
+ <svg x="70" y="72" width="620" height="620" viewBox="0 0 1024 1024">${app.replace(/^<svg[^>]*>/,'').replace(/<\/svg>\s*$/,'')}</svg>
+ <text x="720" y="478" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-size="346" font-weight="700" letter-spacing="-12" fill="#0e5a54">Mail<tspan fill="#005eaa">AI</tspan></text>
+ <text x="732" y="606" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="66" letter-spacing="16" fill="#536b61">邮件安全与效率助手</text>
+</svg>`;
 (async()=>{
  fs.mkdirSync(assets,{recursive:true});
  fs.writeFileSync(path.join(assets,'mailai-mark.svg'),mark);
  fs.writeFileSync(path.join(assets,'mailai-app-icon.svg'),app);
+ fs.writeFileSync(path.join(assets,'mailai-lockup.svg'),lockup);
  const browser=await chromium.launch({headless:true});
  try {
   const page=await browser.newPage({deviceScaleFactor:1});
-  async function render(svg,size,name){
-   await page.setViewportSize({width:size,height:size});
+  async function render(svg,size,name,height=size){
+   await page.setViewportSize({width:size,height});
    await page.setContent('<style>html,body{margin:0;background:transparent;width:100%;height:100%}svg{display:block;width:100%;height:100%}</style>'+svg);
    await page.screenshot({path:path.join(assets,name),omitBackground:true});
   }
@@ -43,6 +40,7 @@ const app=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   await render(app,1024,'mailai-app-icon-1024.png');
   await render(app,256,'mailai-icon-256.png');
   await render(template,64,'mailai-menu-template.png');
+  await render(lockup,2057,'mailai-lockup.png',764);
  } finally { await browser.close(); }
- console.log('Generated shared folded-M SVGs, 1024/256px app icons and menu template');
+ console.log('Generated shared folded-M SVGs, native icons, menu template and brand lockup');
 })().catch(error=>{console.error(error);process.exitCode=1;});

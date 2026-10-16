@@ -17,6 +17,9 @@ const advance=async(ms)=>{const target=now+ms;while(true){const next=[...timers.
  let requested=false;window.mailaiEnergy.register('force',force=>requested=force,30000);
  window.mailaiEnergy.run('force',true);assert.equal(requested,false);
  focus=true;windowEvents.focus();await Promise.resolve();assert(requested,'A background change is delivered on focus');
+ const beforeFocus=mail;
+ for(let n=0;n<5;n++){focus=false;windowEvents.blur();focus=true;windowEvents.focus();await Promise.resolve();}
+ assert.equal(mail,beforeFocus,'Quick focus switches preserve refresh deadlines instead of issuing fresh reads');
  document.hidden=true;docEvents.visibilitychange();assert.equal(timers.size,0);
  document.hidden=false;docEvents.visibilitychange();await Promise.resolve();assert(timers.size<=1);
  open=true;window.mailaiEnergy.refresh();await advance(60000);assert(tasks>0);

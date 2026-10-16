@@ -48,7 +48,7 @@ def next_delay(accounts, kind, *, now=None, retries=None):
     now = time.time() if now is None else now
     delay = float(STOP_CHECK_SECONDS)
     for key, account in accounts.items():
-        if kind == 'reminders' and not account.get('visible', True):
+        if not account.get('visible', True):
             continue
         if retries and key in retries and retries[key][1] > time.monotonic():
             delay = min(delay, retries[key][1] - time.monotonic())

@@ -9,6 +9,7 @@ from fastapi.responses import Response, StreamingResponse
 from ... import config, db, outgoing_guard, share_storage, share_tasks, signatures, smtp_client, system_settings
 from ... import parser as mail_parser
 from ...llm import client as llm_client
+from ...llm.output import visible_text
 from ...parser import extract_rich_body
 from ..helpers import annotate_list_identities, current_server
 from ..schemas import (ComposeAssistRequest, DraftRequest, MailPreflightRequest,
@@ -19,9 +20,18 @@ log = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _compose_response_content(result) -> str:
+    choices = (result or {}).get('choices') or []
+    if not choices:
+        return ''
+    if choices[0].get('finish_reason') == 'length':
+        raise HTTPException(502, '模型输出达到长度上限，草稿未完成，请缩短写作要求后重试')
+    return visible_text((choices[0].get('message') or {}).get('content'))
+
+
 def _structured_compose_result(content: str, allow_signoff: bool) -> dict:
     """Accept structured output, while keeping older plain-text model replies usable."""
-    value = content.strip()
+    value = visible_text(content).strip()
     try:
         parsed = json.loads(re.sub(r"^```(?:json)?\s*|\s*```$", "", value, flags=re.I))
     except (ValueError, TypeError):
@@ -322,7 +332,7 @@ def _compose_assist_context(payload: ComposeAssistRequest, *, streaming: bool = 
     else:
         output_rule = "只输出修改后的正文，不要生成主题或落款。"
     messages = [
-        {"role": "system", "content": "你是企业邮件写作助手。" + output_rule + "不解释过程，不使用 Markdown 代码块。严格依据用户提供的参考内容，不得虚构姓名、日期、数字、附件内容或承诺；信息不足时使用中性表达或明确保留待确认项。"},
+        {"role": "system", "content": "你是企业邮件写作助手。" + output_rule + "只返回最终邮件内容，不输出思考过程、分析步骤或写作说明，不使用 Markdown 代码块。除明确要求翻译外，使用与写作要求相同的语言。严格依据用户提供的参考内容，不得虚构姓名、日期、数字、附件内容或承诺；信息不足时使用中性表达或明确保留待确认项。"},
         {"role": "user", "content": f"任务：{instruction}\n语气：{payload.tone}\n篇幅：{length_guidance}\n\n以下是本次允许参考的内容：\n{reference_text}"},
     ]
     return messages, basis, structured
@@ -334,7 +344,7 @@ def api_compose_assist(payload: ComposeAssistRequest):
     result = llm_client.chat_completion(messages, temperature=0.25, max_tokens=1200, timeout=45)
     if not result:
         raise HTTPException(502, "AI 写作服务暂时不可用")
-    content = result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+    content = _compose_response_content(result).strip()
     if not content:
         raise HTTPException(502, "AI 没有返回可用正文")
     parts = _structured_compose_result(content, structured and not payload.has_signature)
@@ -363,7 +373,7 @@ def api_compose_assist_stream(payload: ComposeAssistRequest):
                 yield json.dumps({"type": "delta", "content": delta}, ensure_ascii=False) + "\n"
             if not chunks:
                 response = llm_client.chat_completion(messages, temperature=0.25, max_tokens=1200, timeout=45)
-                fallback = (response or {}).get("choices", [{}])[0].get("message", {}).get("content", "")
+                fallback = _compose_response_content(response)
                 if fallback:
                     chunks.append(fallback)
                     yield json.dumps({"type": "delta", "content": fallback}, ensure_ascii=False) + "\n"

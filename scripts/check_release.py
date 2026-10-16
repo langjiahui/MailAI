@@ -41,6 +41,7 @@ TESTS = (
     'test_cc_reading.py',
     'test_trash_purge.py',
     'test_model_providers.py',
+    'test_llm_visible_output.py',
     'test_model_usage.py',
     'test_contact_directory.py',
     'test_contact_tags.py',

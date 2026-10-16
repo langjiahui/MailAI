@@ -1579,6 +1579,12 @@ if (typeof document !== 'undefined') {
 /* ---- i18n-catalog.js ---- */
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "compose.truncatedDraft": ["模型输出达到长度上限，草稿未完成，请缩短写作要求后重试", "The model reached its output limit. The draft is incomplete; shorten your writing instructions and try again."],
+  "modelResult.connection": ["模型连接", "Model connection"],
+  "modelResult.failed": ["连接验证失败", "Connection verification failed"],
+  "modelResult.checking": ["请稍候，正在检查当前服务地址和模型。", "Please wait while the service URL and model are checked."],
+  "modelResult.keyHelp": ["请检查 API Key 是否正确，并确认它属于当前服务地址。", "Check that the API key is correct and belongs to this service URL."],
+  "modelResult.retryHelp": ["请检查服务地址、模型名称和 API Key，修改后重新验证。", "Check the service URL, model name and API key, then try again."],
   "searchLoop.scopeTitle": ["选择检索范围", "Choose the search scope"],
   "searchLoop.scopeHelp": ["当前列表汇总多个邮箱。可继续检索所有收件箱，或指定邮箱让小邮搜索该账号全部已同步邮件。", "This list combines accounts. Search all inboxes, or choose an account for Xiaoyou to search all its synced mail."],
   "searchLoop.scopeAccount": ["用小邮检索的邮箱", "Account for Xiaoyou search"],
@@ -18672,7 +18678,14 @@ function mailaiLabelHTML(label) {
     },
     run(name, force = false) { const job = jobs.get(name); if (job) return run(job, force); },
     pause() { paused = true; clearTimeout(timer); timer = 0; },
-    resume() { paused = false; for (const job of jobs.values()) run(job, true); schedule(); },
+    resume() {
+      paused = false;
+      // Focus changes are frequent (menus, dialogs, switching apps). Preserve
+      // deadlines and deliver only overdue work or explicitly deferred changes.
+      const now = Date.now();
+      for (const job of jobs.values()) if (job.force || job.next <= now) run(job);
+      schedule();
+    },
     nativeVisibility(revision, visible) {
       if (revision < nativeRevision) return;
       nativeRevision = revision; nativeHidden = !visible;
@@ -23489,6 +23502,7 @@ async function selectEmail(id, options = {}) {
     if (requestRevision !== readingLoadRevision || selectedEmailId !== id) return;
     selectedEmailDetail = e;
     globalThis.mailaiPet?.openedEmail(id, requestAccountId);
+    if (animateArrival) window.mailaiCompanionMotion?.wake();
     transition.finish(() => renderReadingPane(e));
     if (!e.is_read) queueEmailReadSync(id, requestAccountId);
   } catch (err) {
@@ -31664,8 +31678,11 @@ document.getElementById('task-center-list').addEventListener('click', async even
   new MutationObserver(sync).observe(root, {attributes:true, attributeFilter:['class']});
   new MutationObserver(sync).observe(document.body, {attributes:true, attributeFilter:['class']});
   document.addEventListener('mailai:language-changed', sync);
-  let nativeHidden = false;
-  const syncPaused = () => document.body.classList.toggle('companion-paused', document.hidden || nativeHidden);
+  let nativeHidden = false, focused = document.hasFocus();
+  const syncPaused = () => document.body.classList.toggle('companion-paused',
+    document.hidden || nativeHidden || !focused);
+  window.addEventListener('blur', () => { focused = false; syncPaused(); });
+  window.addEventListener('focus', () => { focused = true; syncPaused(); });
   document.addEventListener('visibilitychange', syncPaused);
   document.addEventListener('mailai:foreground-changed', event => {
     nativeHidden = event.detail?.visible === false; syncPaused();
@@ -31676,7 +31693,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
 
 ;
 /* ---- companion-motion.js ---- */
-/* Short, coordinated acting beats with breathing room between them. */
+/* Event-driven acting: brief reactions, no recurring idle animation timer. */
 (() => {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const root = document.getElementById('mail-assistant');
@@ -31742,19 +31759,24 @@ document.getElementById('task-center-list').addEventListener('click', async even
   // here prevents the ambient character clips from adding vertical movement.
   const rigs = [...document.querySelectorAll('.mail-companion')].filter(svg => !svg.closest('.app-preloader')).map(svg => ({
     svg, parts:Object.fromEntries(names.map(name=>[name,svg.querySelector(`.companion-${name}`)])),
-    animations:[],timer:0,mode:'',next:0,perch:!!svg.closest('.compose-perch'),
+    animations:[],timer:0,mode:'',intersecting:false,
   }));
   const enabled = () => !document.hidden && !reduced.matches && !document.body.classList.contains('companion-still') && !document.body.classList.contains('companion-paused');
-  const visible = rig => rig.svg.getClientRects().length && getComputedStyle(rig.svg).visibility !== 'hidden';
+  const visible = rig => rig.intersecting &&
+    !(orb.contains(rig.svg) && document.body.classList.contains('assistant-visible')) &&
+    rig.svg.getClientRects().length && getComputedStyle(rig.svg).visibility !== 'hidden';
+  let awakeUntil = 0, awakeTimer = 0;
   const stop = rig => {
     clearTimeout(rig.timer);
     rig.animations.forEach(anim=>anim.cancel()); rig.animations=[];
+    if (rig.svg.dataset.motionActive !== 'false') rig.svg.dataset.motionActive = 'false';
   };
   const transform = p => `translate(${p[0]}px,${p[1]}px) rotate(${p[2]}deg) scale(${p[3]},${p[4]})`;
-  const play = (rig,name,after) => {
+  const play = (rig,name) => {
     const start=Object.fromEntries(names.map(part=>[part,getComputedStyle(rig.parts[part]).transform]));
     stop(rig);
     if(!enabled() || !visible(rig)) return;
+    rig.svg.dataset.motionActive = 'true';
     const clip=clips[name];
     for(const part of names) {
       // Accessories lag the body's turn and rebound after it settles.
@@ -31772,47 +31794,69 @@ document.getElementById('task-center-list').addEventListener('click', async even
       const anim=rig.parts[part].animate(keys,{duration:clip.duration,fill:'none',iterations:name==='work'?Infinity:1});
       rig.animations.push(anim);
     }
-    if(name!=='work')rig.timer=setTimeout(()=>{rig.animations=[];if(after) after();},clip.duration+25);
-  };
-  const schedule = rig => {
-    if(!enabled() || !visible(rig)) return;
-    const thinking=rig.mode==='think';
-    rig.timer=setTimeout(()=>{
-      const name=thinking?'think':['peek','step','stretch'][rig.next++%3];
-      play(rig,name,()=>schedule(rig));
-    },thinking?1200:4000+Math.random()*2500);
+    if(name!=='work')rig.timer=setTimeout(()=>{rig.animations=[];},clip.duration+25);
   };
   const refresh = () => rigs.forEach(rig=>{
-    let mode='idle';
+    let mode='off';
     if(!enabled() || !visible(rig)) mode='off';
     else if(document.body.classList.contains('companion-working') || rig.svg.closest('.state-thinking,.compose-ai-panel.is-thinking')) mode='work';
-    else if(rig.perch) mode='off';
     else if(rig.svg.closest('.companion-finished')) mode='happy';
-    else if(rig.svg.closest('.state-danger,.state-warn')) mode='attentive';
+    else if(performance.now() < awakeUntil) mode='peek';
     if(mode===rig.mode) return;
     rig.mode=mode;
     if(mode==='off') {stop(rig);return;}
-    if(mode==='work') play(rig,'work');
-    else if(mode==='happy') play(rig,'happy');
-    else if(mode==='think') play(rig,'think',()=>schedule(rig));
-    else play(rig,'peek',()=>schedule(rig));
+    play(rig,mode);
   });
-  let greetingAt=-Infinity;
-  const greet=()=>{
-    const rig=rigs.find(item=>orb.contains(item.svg));
-    if(!rig || !enabled() || rig.mode==='work' || rig.mode==='think' || rig.mode==='happy' || performance.now()-greetingAt<2200) return;
-    greetingAt=performance.now();play(rig,'greet',()=>rig.mode==='idle' && schedule(rig));
+  const wake = () => {
+    if (!enabled()) return;
+    awakeUntil = performance.now() + 3500;
+    clearTimeout(awakeTimer);
+    awakeTimer = setTimeout(() => { awakeUntil = 0; refresh(); }, 3500);
+    refresh();
   };
-  orb.addEventListener('pointerenter',greet);
-  orb.addEventListener('focus',greet);
-  const observer=new MutationObserver(refresh);
+  window.mailaiCompanionMotion = {wake};
+  let greetingAt=-Infinity;
+  const greet=event=>{
+    const rig=rigs.find(item=>item.svg.closest('.companion-art,.assistant-mini,.compose-perch')?.contains(event.target));
+    if(!rig || !enabled() || !visible(rig) || rig.mode==='work' || rig.mode==='happy' || performance.now()-greetingAt<2200) return;
+    greetingAt=performance.now();wake();play(rig,'greet');
+  };
+  for (const rig of rigs) {
+    const host = rig.svg.closest('.companion-art,.assistant-mini,.compose-perch');
+    host?.addEventListener('pointerenter',greet);
+    host?.addEventListener('focusin',greet);
+    stop(rig);
+  }
+  // The launcher still occupies a rectangle when its opacity is zero. Combine
+  // actual viewport intersection with the chat state before running any rig.
+  const intersection = new IntersectionObserver(entries => {
+    for (const entry of entries) {
+      const rig = rigs.find(item=>item.svg===entry.target);
+      if (rig) rig.intersecting = entry.isIntersecting;
+    }
+    refresh();
+  });
+  rigs.forEach(rig=>intersection.observe(rig.svg));
+  let chatOpen = document.body.classList.contains('assistant-visible');
+  const sync = () => {
+    const open = document.body.classList.contains('assistant-visible');
+    const opened = open && !chatOpen;
+    chatOpen = open;
+    if (!enabled()) {
+      clearTimeout(awakeTimer); awakeTimer = 0; awakeUntil = 0;
+    }
+    if (opened) wake();
+    refresh();
+  };
+  const observer=new MutationObserver(sync);
   observer.observe(document.body,{attributes:true,attributeFilter:['class']});
   observer.observe(root,{attributes:true,attributeFilter:['class']});
   document.querySelectorAll('.assistant-panel,.compose-ai-panel').forEach(el=>observer.observe(el,{attributes:true,attributeFilter:['class']}));
-  reduced.addEventListener('change',refresh);
-  document.addEventListener('visibilitychange',refresh);
+  reduced.addEventListener('change',sync);
+  document.addEventListener('visibilitychange',sync);
+  document.addEventListener('mailai:foreground-changed',sync);
   window.addEventListener('resize',refresh);
-  refresh();
+  sync();
 })();
 
 ;
@@ -31931,7 +31975,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
 
 ;
 /* ---- brand.js ---- */
-/* One folded-M geometry for the workspace, startup, onboarding and favicon. */
+/* Shared folded-M geometry; theme-aware glass reflections for every web mark. */
 (() => {
   const paths = [
     ['back', 'right', 'm47 29 11-7v23q0 3-3 5l-2 1.4q-2.3 1.6-4.6 0L47 50q-1-1-1-3V31Z'],
@@ -31939,8 +31983,18 @@ document.getElementById('task-center-list').addEventListener('click', async even
     ['front', 'left', 'M6 22q0-3.7 2.7-4.7 2-.7 4 1l5.3 3.5V45q0 3-2.5 4.7L13 51.4q-2 1.4-4 0l-1.2-.8Q6 49.3 6 47Z'],
     ['front', 'cross', 'm26.5 31.7 27-18q3-2 4.5 1.2 1 1.9 1 4.8v3.2q0 3.2-2.7 5L40 38.3q-2.1 1.4-4.2 0Z'],
   ];
-  function markup(front = 'var(--brand-front)', back = 'var(--brand-back)') {
-    return `<svg xmlns="http://www.w3.org/2000/svg" class="brand-mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false">${paths.map(([tone,part,d]) => `<path class="brand-${tone} brand-${part}" fill="${tone === 'front' ? front : back}" d="${d}"/>`).join('')}</svg>`;
+  let brandSequence = 0;
+  function pathsMarkup(front, back) {
+    return paths.map(([tone,part,d]) => `<path class="brand-${tone} brand-${part}" fill="${tone === 'front' ? front : back}" d="${d}"/>`).join('');
+  }
+  function markup(front = 'var(--brand-front)', back = 'var(--brand-back)', palette = {}, id = `mailai-brand-${++brandSequence}`) {
+    const shade = palette.shade || 'var(--brand-shade)';
+    const reflection = palette.reflection || 'var(--brand-reflection)';
+    const backShade = palette.backShade || 'var(--brand-back-shade)';
+    return `<svg xmlns="http://www.w3.org/2000/svg" class="brand-mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><defs>
+      <linearGradient id="${id}-front" x1="0" y1="0" x2=".9" y2="1"><stop class="brand-front-stop" stop-color="${front}"/><stop class="brand-shade-stop" offset=".3" stop-color="${shade}"/><stop offset=".65" stop-color="${front}"/><stop class="brand-reflection-stop" offset="1" stop-color="${reflection}"/></linearGradient>
+      <linearGradient id="${id}-back" x1="0" y1="0" x2=".8" y2="1"><stop class="brand-back-stop" stop-color="${back}"/><stop offset=".45" stop-color="${back}"/><stop class="brand-back-shade-stop" offset="1" stop-color="${backShade}"/></linearGradient>
+    </defs>${pathsMarkup(`url(#${id}-front)`, `url(#${id}-back)`)}</svg>`;
   }
   document.querySelectorAll('[data-brand-mark]').forEach(host => {
     host.innerHTML = markup();
@@ -31952,8 +32006,13 @@ document.getElementById('task-center-list').addEventListener('click', async even
     const style = getComputedStyle(document.documentElement);
     const front = style.getPropertyValue('--brand-front').trim() || '#0e5a54';
     const back = style.getPropertyValue('--brand-back').trim() || '#94c7b6';
+    const palette = {
+      shade: style.getPropertyValue('--brand-shade').trim() || '#292929',
+      reflection: style.getPropertyValue('--brand-reflection').trim() || '#005eaa',
+      backShade: style.getPropertyValue('--brand-back-shade').trim() || '#6b9fc8',
+    };
     icon.type = 'image/svg+xml';
-    icon.href = `data:image/svg+xml,${encodeURIComponent(markup(front, back))}`;
+    icon.href = `data:image/svg+xml,${encodeURIComponent(markup(front, back, palette, 'mailai-favicon'))}`;
   }
   document.addEventListener('mailai:themechange', syncIcon);
   document.addEventListener('mailai:reward-themechange', syncIcon);
@@ -32432,7 +32491,14 @@ document.getElementById('task-center-list').addEventListener('click', async even
     }
   }
 
-  const activity = () => { lastInput = performance.now(); };
+  const activity = () => {
+    const now = performance.now(), wasIdle = now-lastInput >= 90000;
+    lastInput = now;
+    if (wasIdle) {
+      lastSample = now; // Never count the quiet interval as reading time.
+      window.mailaiEnergy.reschedule('companion-growth', 10000);
+    }
+  };
   for (const event of ['pointerdown','keydown','wheel','touchstart']) document.addEventListener(event,activity,{passive:true});
   document.addEventListener('click',event => {
     const now = performance.now();
@@ -32459,6 +32525,10 @@ document.getElementById('task-center-list').addEventListener('click', async even
     checkAccount();
     const now = performance.now(), elapsed = lastSample ? Math.min(10,Math.max(0,Math.floor((now-lastSample)/1000))) : 0;
     lastSample = now;
+    // Keep accurate reading/activity batches while in use. Once idle, only
+    // check for server-side rewards once a minute; input restores the cadence.
+    window.mailaiEnergy.reschedule('companion-growth',
+      (state?.enabled && now-lastInput < 90000) || pending ? 10000 : 60000);
     if (!account || tickBusy || busy) return;
     if (!state || !state.enabled) {
       if (now-lastRefresh >= (state ? 30000 : 10000)) void refresh();
@@ -32531,8 +32601,30 @@ document.getElementById('task-center-list').addEventListener('click', async even
   (document.getElementById('app') || document.body).append(card);
   const modal = document.createElement('div');
   modal.id = 'start-model'; modal.className = 'start-model hidden';
-  modal.innerHTML = `<section class="start-model-panel" role="dialog" aria-modal="true" aria-labelledby="start-model-title"><span class="onboarding-step"><span data-i18n="ui.8b17d932e60d">设置小邮 · 可稍后完成</span></span><h2 id="start-model-title"><span data-i18n="ui.aa3a10fddb9f">为小邮连接 AI 模型</span></h2><p><span data-i18n="ui.91b6c88a8772">邮箱和模型分别配置。启用后，小邮可以总结邮件、整理待办、辅助写信。</span></p><details><summary><span data-i18n="ui.6e48e41be7f4">没有 API Key？</span></summary><p><span data-i18n="ui.b04994f584b9">API Key 是模型服务的访问密钥，与邮箱授权码不同。请向企业管理员获取服务地址、模型名称和 API Key，或从所选模型服务商获取。</span></p></details><div id="start-model-form"></div><p><span data-i18n="ui.5c9947093207">使用 AI 时，相关邮件内容会发送至配置的模型服务。验证连接会发送简短请求，可能产生服务费用。</span></p><p id="start-model-result" role="status" aria-live="polite"></p><div class="start-actions"><button id="start-enable" class="action-btn action-primary"><span data-i18n="ui.4e634e80bcff">验证并启用</span></button><button id="start-model-later" class="btn-ghost"><span data-i18n="ui.17c7b357d97f">稍后设置，进入邮箱</span></button></div></section>`;
+  modal.innerHTML = `<section class="start-model-panel" role="dialog" aria-modal="true" aria-labelledby="start-model-title"><span class="onboarding-step"><span data-i18n="ui.8b17d932e60d">设置小邮 · 可稍后完成</span></span><h2 id="start-model-title"><span data-i18n="ui.aa3a10fddb9f">为小邮连接 AI 模型</span></h2><p><span data-i18n="ui.91b6c88a8772">邮箱和模型分别配置。启用后，小邮可以总结邮件、整理待办、辅助写信。</span></p><details><summary><span data-i18n="ui.6e48e41be7f4">没有 API Key？</span></summary><p><span data-i18n="ui.b04994f584b9">API Key 是模型服务的访问密钥，与邮箱授权码不同。请向企业管理员获取服务地址、模型名称和 API Key，或从所选模型服务商获取。</span></p></details><div id="start-model-form"></div><p><span data-i18n="ui.5c9947093207">使用 AI 时，相关邮件内容会发送至配置的模型服务。验证连接会发送简短请求，可能产生服务费用。</span></p><div id="start-model-result" class="start-model-result" data-state="idle" role="status" aria-live="polite" aria-atomic="true" tabindex="-1"><span class="start-model-result-icon" aria-hidden="true">i</span><div><strong id="start-model-result-title"></strong><p id="start-model-result-detail"></p><p id="start-model-result-help" hidden></p></div></div><div class="start-actions"><button id="start-enable" class="action-btn action-primary"><span data-i18n="ui.4e634e80bcff">验证并启用</span></button><button id="start-model-later" class="btn-ghost"><span data-i18n="ui.17c7b357d97f">稍后设置，进入邮箱</span></button></div></section>`;
   document.body.append(modal);
+
+  function modelResult(phase, message) {
+    const result = el('start-model-result');
+    result.dataset.state = phase;
+    result.setAttribute('role', phase === 'error' ? 'alert' : 'status');
+    result.setAttribute('aria-live', phase === 'error' ? 'assertive' : 'polite');
+    result.querySelector('.start-model-result-icon').textContent = {idle:'i', loading:'…', error:'!', success:'✓'}[phase];
+    const titles = {idle:() => mailaiText('模型连接'), loading:() => mailaiText('正在验证模型连接…'),
+      error:() => mailaiText('连接验证失败'), success:() => mailaiText('连接成功，小邮已就绪。')};
+    mailaiBindUI(el('start-model-result-title'), 'textContent', titles[phase]);
+    mailaiBindUI(el('start-model-result-detail'), 'textContent', () => mailaiSystemMessage(
+      typeof message === 'function' ? message() : message || ''));
+    const help = el('start-model-result-help');
+    help.hidden = phase !== 'error';
+    mailaiBindUI(help, 'textContent', () => phase === 'error' ? (/401|API Key 无效/i.test(String(message))
+      ? mailaiText('请检查 API Key 是否正确，并确认它属于当前服务地址。')
+      : mailaiText('请检查服务地址、模型名称和 API Key，修改后重新验证。')) : '');
+    if (phase === 'error') {
+      result.focus({preventScroll:true});
+      result.scrollIntoView({block:'nearest'});
+    }
+  }
 
   function clearHighlight() { document.querySelectorAll('.start-highlight').forEach(n => n.classList.remove('start-highlight')); }
   function hideCard() { clearHighlight(); card.classList.add('hidden'); }
@@ -32627,7 +32719,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
     hideCard(); priorFocus = document.activeElement;
     const form = el('model-config-form'); modelHome = document.createComment('model form home');
     form.before(modelHome); el('start-model-form').append(form);
-    mailaiBindUI(el('start-model-result'), "textContent", () => (ready() ? mailaiText('当前模型已经过验证。') : _systemConfig?.model?.available ? mailaiText('已保存模型配置，请验证当前连接。') : mailaiText('填写模型服务信息后，验证并启用。')));
+    modelResult('idle', () => ready() ? mailaiText('当前模型已经过验证。') : _systemConfig?.model?.available ? mailaiText('已保存模型配置，请验证当前连接。') : mailaiText('填写模型服务信息后，验证并启用。'));
     modal.classList.remove('hidden'); el('model-provider').focus();
   }
   el('start-model-later').onclick = closeModel;
@@ -32635,16 +32727,16 @@ document.getElementById('task-center-list').addEventListener('click', async even
     const form = el('model-config-form'); if (!form.reportValidity() || busy) return;
     busy = true; el('start-enable').disabled = true; el('start-model-later').disabled = true;
     const controls = [...form.elements]; controls.forEach(n => n.disabled = true);
-    mailaiBindUI(el('start-model-result'), "textContent", () => (mailaiText('正在验证模型连接…')));
+    modelResult('loading', () => mailaiText('请稍候，正在检查当前服务地址和模型。'));
     try {
       const payload = modelFormPayload();
       const options = {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)};
       const result = await api('/api/system/model/test', options);
       if (!result.ok) throw new Error(result.message || mailaiText('连接失败，请检查服务地址、模型名称和 API Key'));
       await api('/api/system/model', options); await loadSystemConfig();
-      mailaiBindUI(el('start-model-result'), "textContent", () => (mailaiText('连接成功，小邮已就绪。'))); toast(mailaiText('连接成功，小邮已就绪'), 'success');
+      modelResult('success', () => mailaiText('连接成功，小邮已就绪。')); toast(mailaiText('连接成功，小邮已就绪'), 'success');
       busy = false; closeModel(); refreshAssistant();
-    } catch (error) { el('start-model-result').textContent = mailaiSystemMessage(error.message); }
+    } catch (error) { modelResult('error', error.message || mailaiText('连接失败，请检查服务地址、模型名称和 API Key')); }
     finally { busy = false; controls.forEach(n => n.disabled = false); el('start-enable').disabled = false; el('start-model-later').disabled = false; }
   };
   modal.addEventListener('keydown', event => {

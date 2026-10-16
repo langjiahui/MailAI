@@ -15,8 +15,30 @@
   (document.getElementById('app') || document.body).append(card);
   const modal = document.createElement('div');
   modal.id = 'start-model'; modal.className = 'start-model hidden';
-  modal.innerHTML = `<section class="start-model-panel" role="dialog" aria-modal="true" aria-labelledby="start-model-title"><span class="onboarding-step"><span data-i18n="ui.8b17d932e60d">设置小邮 · 可稍后完成</span></span><h2 id="start-model-title"><span data-i18n="ui.aa3a10fddb9f">为小邮连接 AI 模型</span></h2><p><span data-i18n="ui.91b6c88a8772">邮箱和模型分别配置。启用后，小邮可以总结邮件、整理待办、辅助写信。</span></p><details><summary><span data-i18n="ui.6e48e41be7f4">没有 API Key？</span></summary><p><span data-i18n="ui.b04994f584b9">API Key 是模型服务的访问密钥，与邮箱授权码不同。请向企业管理员获取服务地址、模型名称和 API Key，或从所选模型服务商获取。</span></p></details><div id="start-model-form"></div><p><span data-i18n="ui.5c9947093207">使用 AI 时，相关邮件内容会发送至配置的模型服务。验证连接会发送简短请求，可能产生服务费用。</span></p><p id="start-model-result" role="status" aria-live="polite"></p><div class="start-actions"><button id="start-enable" class="action-btn action-primary"><span data-i18n="ui.4e634e80bcff">验证并启用</span></button><button id="start-model-later" class="btn-ghost"><span data-i18n="ui.17c7b357d97f">稍后设置，进入邮箱</span></button></div></section>`;
+  modal.innerHTML = `<section class="start-model-panel" role="dialog" aria-modal="true" aria-labelledby="start-model-title"><span class="onboarding-step"><span data-i18n="ui.8b17d932e60d">设置小邮 · 可稍后完成</span></span><h2 id="start-model-title"><span data-i18n="ui.aa3a10fddb9f">为小邮连接 AI 模型</span></h2><p><span data-i18n="ui.91b6c88a8772">邮箱和模型分别配置。启用后，小邮可以总结邮件、整理待办、辅助写信。</span></p><details><summary><span data-i18n="ui.6e48e41be7f4">没有 API Key？</span></summary><p><span data-i18n="ui.b04994f584b9">API Key 是模型服务的访问密钥，与邮箱授权码不同。请向企业管理员获取服务地址、模型名称和 API Key，或从所选模型服务商获取。</span></p></details><div id="start-model-form"></div><p><span data-i18n="ui.5c9947093207">使用 AI 时，相关邮件内容会发送至配置的模型服务。验证连接会发送简短请求，可能产生服务费用。</span></p><div id="start-model-result" class="start-model-result" data-state="idle" role="status" aria-live="polite" aria-atomic="true" tabindex="-1"><span class="start-model-result-icon" aria-hidden="true">i</span><div><strong id="start-model-result-title"></strong><p id="start-model-result-detail"></p><p id="start-model-result-help" hidden></p></div></div><div class="start-actions"><button id="start-enable" class="action-btn action-primary"><span data-i18n="ui.4e634e80bcff">验证并启用</span></button><button id="start-model-later" class="btn-ghost"><span data-i18n="ui.17c7b357d97f">稍后设置，进入邮箱</span></button></div></section>`;
   document.body.append(modal);
+
+  function modelResult(phase, message) {
+    const result = el('start-model-result');
+    result.dataset.state = phase;
+    result.setAttribute('role', phase === 'error' ? 'alert' : 'status');
+    result.setAttribute('aria-live', phase === 'error' ? 'assertive' : 'polite');
+    result.querySelector('.start-model-result-icon').textContent = {idle:'i', loading:'…', error:'!', success:'✓'}[phase];
+    const titles = {idle:() => mailaiText('模型连接'), loading:() => mailaiText('正在验证模型连接…'),
+      error:() => mailaiText('连接验证失败'), success:() => mailaiText('连接成功，小邮已就绪。')};
+    mailaiBindUI(el('start-model-result-title'), 'textContent', titles[phase]);
+    mailaiBindUI(el('start-model-result-detail'), 'textContent', () => mailaiSystemMessage(
+      typeof message === 'function' ? message() : message || ''));
+    const help = el('start-model-result-help');
+    help.hidden = phase !== 'error';
+    mailaiBindUI(help, 'textContent', () => phase === 'error' ? (/401|API Key 无效/i.test(String(message))
+      ? mailaiText('请检查 API Key 是否正确，并确认它属于当前服务地址。')
+      : mailaiText('请检查服务地址、模型名称和 API Key，修改后重新验证。')) : '');
+    if (phase === 'error') {
+      result.focus({preventScroll:true});
+      result.scrollIntoView({block:'nearest'});
+    }
+  }
 
   function clearHighlight() { document.querySelectorAll('.start-highlight').forEach(n => n.classList.remove('start-highlight')); }
   function hideCard() { clearHighlight(); card.classList.add('hidden'); }
@@ -111,7 +133,7 @@
     hideCard(); priorFocus = document.activeElement;
     const form = el('model-config-form'); modelHome = document.createComment('model form home');
     form.before(modelHome); el('start-model-form').append(form);
-    mailaiBindUI(el('start-model-result'), "textContent", () => (ready() ? mailaiText('当前模型已经过验证。') : _systemConfig?.model?.available ? mailaiText('已保存模型配置，请验证当前连接。') : mailaiText('填写模型服务信息后，验证并启用。')));
+    modelResult('idle', () => ready() ? mailaiText('当前模型已经过验证。') : _systemConfig?.model?.available ? mailaiText('已保存模型配置，请验证当前连接。') : mailaiText('填写模型服务信息后，验证并启用。'));
     modal.classList.remove('hidden'); el('model-provider').focus();
   }
   el('start-model-later').onclick = closeModel;
@@ -119,16 +141,16 @@
     const form = el('model-config-form'); if (!form.reportValidity() || busy) return;
     busy = true; el('start-enable').disabled = true; el('start-model-later').disabled = true;
     const controls = [...form.elements]; controls.forEach(n => n.disabled = true);
-    mailaiBindUI(el('start-model-result'), "textContent", () => (mailaiText('正在验证模型连接…')));
+    modelResult('loading', () => mailaiText('请稍候，正在检查当前服务地址和模型。'));
     try {
       const payload = modelFormPayload();
       const options = {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)};
       const result = await api('/api/system/model/test', options);
       if (!result.ok) throw new Error(result.message || mailaiText('连接失败，请检查服务地址、模型名称和 API Key'));
       await api('/api/system/model', options); await loadSystemConfig();
-      mailaiBindUI(el('start-model-result'), "textContent", () => (mailaiText('连接成功，小邮已就绪。'))); toast(mailaiText('连接成功，小邮已就绪'), 'success');
+      modelResult('success', () => mailaiText('连接成功，小邮已就绪。')); toast(mailaiText('连接成功，小邮已就绪'), 'success');
       busy = false; closeModel(); refreshAssistant();
-    } catch (error) { el('start-model-result').textContent = mailaiSystemMessage(error.message); }
+    } catch (error) { modelResult('error', error.message || mailaiText('连接失败，请检查服务地址、模型名称和 API Key')); }
     finally { busy = false; controls.forEach(n => n.disabled = false); el('start-enable').disabled = false; el('start-model-later').disabled = false; }
   };
   modal.addEventListener('keydown', event => {

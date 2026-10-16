@@ -1,0 +1,15 @@
+{
+  "geometryUnchanged": true,
+  "assets": {
+    "mailai-app-icon.svg": "2ce6f70dbd480e16d33e1496038d4dd5ad853f64b1663b6987a9b68f308d3c64",
+    "mailai-app-icon-1024.png": "a61c4d47b5f55a4778b202f954ac3c98915aa287d4732325d760ea8a086153c0",
+    "mailai-icon-256.png": "f3a01a6a1aeb41463a16c95fbb96cad008b5e6bb9fc41f1d355caa700a71cea4",
+    "mailai-icon-256.ico": "80318d40313af2378dfe82ecf1c036c36bf1fe7d17103809fbc917b3603ccde8",
+    "mailai-mark.svg": "c01ed4cd0e34626e9f204d02c9dacc8b45569887e92a3f05267954b9ab3c0a10",
+    "mailai-mark.png": "dddff8eb66494130b7f73ed5f3fc68a6ae8ab0f4c62b796102c6ba6b62fde64d",
+    "mailai-menu-template.png": "943518f07e860b4d550e80a7ef7d2a8510557a7c9b7afcdb244c72b99a1b0dc1",
+    "mailai-lockup.svg": "ea5ebeef7d483bf7b085463df4e7a3ef69608fb068c46916d23f9c47d8ef5cb1",
+    "mailai-lockup.png": "bb736206837294a93bc514fcd384fcf32da0d7d43775df63ce1cbc1fdadd5b59",
+    "build/mailai-a61c4d47b5f5.icns": "6c33ff4aba00393ea562bb0f022994014d4ba57f4412d9e6812e98b361399bd0"
+  }
+}

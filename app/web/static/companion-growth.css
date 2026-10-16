@@ -186,7 +186,7 @@ body[data-pet-accessory="cap"] .ranger-hair-crown { visibility:hidden; }
 
 /* Reward motion uses independent parts; only visible equipment and the selected preview run. */
 .pet-reward-motion { animation-duration:var(--pet-duration,3s); animation-delay:var(--pet-delay,0s); animation-timing-function:ease-in-out; animation-iteration-count:infinite; animation-play-state:paused; }
-.mail-companion[data-reward-visible="true"]:not(.pet-preview-svg) .pet-reward-motion,
+.mail-companion[data-reward-visible="true"][data-motion-active="true"]:not(.pet-preview-svg) .pet-reward-motion,
 .pet-shop-item:is(:hover,:focus-within) .mail-companion[data-reward-visible="true"] .pet-reward-motion,
 .pet-live-art[data-preview-playing="true"] .mail-companion[data-reward-visible="true"] .pet-reward-motion { animation-play-state:running; }
 /* A short wingbeat followed by settling is more natural than perpetual rocking. */
@@ -347,6 +347,10 @@ body[data-pet-palette]:not([data-pet-palette="mint"]) .mail-companion:not(.pet-p
 .pet-live-art[data-preview-playing="true"] .mail-companion[data-reward-visible="true"] * { animation-play-state:running; }
 /* Opening the chat hides its floating launcher without changing its viewport bounds. */
 body.assistant-visible #assistant-orb .mail-companion * { animation-play-state:paused!important; }
+/* Keep the outfit, blink and ledge portrait still between deliberate reactions.
+ * Selected shop previews keep their explicit play/pause controls. */
+.mail-companion[data-motion-active="false"],
+.mail-companion[data-motion-active="false"] * { animation-play-state:paused!important; }
 
 /* Signed gifts use the same theme tokens and outfit art as the stamp shop. */
 .pet-gift-panel { border:1px solid var(--pet-line); border-radius:16px; padding:18px; background:var(--pet-paper); }

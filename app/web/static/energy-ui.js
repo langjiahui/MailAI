@@ -33,7 +33,14 @@
     },
     run(name, force = false) { const job = jobs.get(name); if (job) return run(job, force); },
     pause() { paused = true; clearTimeout(timer); timer = 0; },
-    resume() { paused = false; for (const job of jobs.values()) run(job, true); schedule(); },
+    resume() {
+      paused = false;
+      // Focus changes are frequent (menus, dialogs, switching apps). Preserve
+      // deadlines and deliver only overdue work or explicitly deferred changes.
+      const now = Date.now();
+      for (const job of jobs.values()) if (job.force || job.next <= now) run(job);
+      schedule();
+    },
     nativeVisibility(revision, visible) {
       if (revision < nativeRevision) return;
       nativeRevision = revision; nativeHidden = !visible;

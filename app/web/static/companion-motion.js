@@ -1,4 +1,4 @@
-/* Short, coordinated acting beats with breathing room between them. */
+/* Event-driven acting: brief reactions, no recurring idle animation timer. */
 (() => {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const root = document.getElementById('mail-assistant');
@@ -64,19 +64,24 @@
   // here prevents the ambient character clips from adding vertical movement.
   const rigs = [...document.querySelectorAll('.mail-companion')].filter(svg => !svg.closest('.app-preloader')).map(svg => ({
     svg, parts:Object.fromEntries(names.map(name=>[name,svg.querySelector(`.companion-${name}`)])),
-    animations:[],timer:0,mode:'',next:0,perch:!!svg.closest('.compose-perch'),
+    animations:[],timer:0,mode:'',intersecting:false,
   }));
   const enabled = () => !document.hidden && !reduced.matches && !document.body.classList.contains('companion-still') && !document.body.classList.contains('companion-paused');
-  const visible = rig => rig.svg.getClientRects().length && getComputedStyle(rig.svg).visibility !== 'hidden';
+  const visible = rig => rig.intersecting &&
+    !(orb.contains(rig.svg) && document.body.classList.contains('assistant-visible')) &&
+    rig.svg.getClientRects().length && getComputedStyle(rig.svg).visibility !== 'hidden';
+  let awakeUntil = 0, awakeTimer = 0;
   const stop = rig => {
     clearTimeout(rig.timer);
     rig.animations.forEach(anim=>anim.cancel()); rig.animations=[];
+    if (rig.svg.dataset.motionActive !== 'false') rig.svg.dataset.motionActive = 'false';
   };
   const transform = p => `translate(${p[0]}px,${p[1]}px) rotate(${p[2]}deg) scale(${p[3]},${p[4]})`;
-  const play = (rig,name,after) => {
+  const play = (rig,name) => {
     const start=Object.fromEntries(names.map(part=>[part,getComputedStyle(rig.parts[part]).transform]));
     stop(rig);
     if(!enabled() || !visible(rig)) return;
+    rig.svg.dataset.motionActive = 'true';
     const clip=clips[name];
     for(const part of names) {
       // Accessories lag the body's turn and rebound after it settles.
@@ -94,45 +99,67 @@
       const anim=rig.parts[part].animate(keys,{duration:clip.duration,fill:'none',iterations:name==='work'?Infinity:1});
       rig.animations.push(anim);
     }
-    if(name!=='work')rig.timer=setTimeout(()=>{rig.animations=[];if(after) after();},clip.duration+25);
-  };
-  const schedule = rig => {
-    if(!enabled() || !visible(rig)) return;
-    const thinking=rig.mode==='think';
-    rig.timer=setTimeout(()=>{
-      const name=thinking?'think':['peek','step','stretch'][rig.next++%3];
-      play(rig,name,()=>schedule(rig));
-    },thinking?1200:4000+Math.random()*2500);
+    if(name!=='work')rig.timer=setTimeout(()=>{rig.animations=[];},clip.duration+25);
   };
   const refresh = () => rigs.forEach(rig=>{
-    let mode='idle';
+    let mode='off';
     if(!enabled() || !visible(rig)) mode='off';
     else if(document.body.classList.contains('companion-working') || rig.svg.closest('.state-thinking,.compose-ai-panel.is-thinking')) mode='work';
-    else if(rig.perch) mode='off';
     else if(rig.svg.closest('.companion-finished')) mode='happy';
-    else if(rig.svg.closest('.state-danger,.state-warn')) mode='attentive';
+    else if(performance.now() < awakeUntil) mode='peek';
     if(mode===rig.mode) return;
     rig.mode=mode;
     if(mode==='off') {stop(rig);return;}
-    if(mode==='work') play(rig,'work');
-    else if(mode==='happy') play(rig,'happy');
-    else if(mode==='think') play(rig,'think',()=>schedule(rig));
-    else play(rig,'peek',()=>schedule(rig));
+    play(rig,mode);
   });
-  let greetingAt=-Infinity;
-  const greet=()=>{
-    const rig=rigs.find(item=>orb.contains(item.svg));
-    if(!rig || !enabled() || rig.mode==='work' || rig.mode==='think' || rig.mode==='happy' || performance.now()-greetingAt<2200) return;
-    greetingAt=performance.now();play(rig,'greet',()=>rig.mode==='idle' && schedule(rig));
+  const wake = () => {
+    if (!enabled()) return;
+    awakeUntil = performance.now() + 3500;
+    clearTimeout(awakeTimer);
+    awakeTimer = setTimeout(() => { awakeUntil = 0; refresh(); }, 3500);
+    refresh();
   };
-  orb.addEventListener('pointerenter',greet);
-  orb.addEventListener('focus',greet);
-  const observer=new MutationObserver(refresh);
+  window.mailaiCompanionMotion = {wake};
+  let greetingAt=-Infinity;
+  const greet=event=>{
+    const rig=rigs.find(item=>item.svg.closest('.companion-art,.assistant-mini,.compose-perch')?.contains(event.target));
+    if(!rig || !enabled() || !visible(rig) || rig.mode==='work' || rig.mode==='happy' || performance.now()-greetingAt<2200) return;
+    greetingAt=performance.now();wake();play(rig,'greet');
+  };
+  for (const rig of rigs) {
+    const host = rig.svg.closest('.companion-art,.assistant-mini,.compose-perch');
+    host?.addEventListener('pointerenter',greet);
+    host?.addEventListener('focusin',greet);
+    stop(rig);
+  }
+  // The launcher still occupies a rectangle when its opacity is zero. Combine
+  // actual viewport intersection with the chat state before running any rig.
+  const intersection = new IntersectionObserver(entries => {
+    for (const entry of entries) {
+      const rig = rigs.find(item=>item.svg===entry.target);
+      if (rig) rig.intersecting = entry.isIntersecting;
+    }
+    refresh();
+  });
+  rigs.forEach(rig=>intersection.observe(rig.svg));
+  let chatOpen = document.body.classList.contains('assistant-visible');
+  const sync = () => {
+    const open = document.body.classList.contains('assistant-visible');
+    const opened = open && !chatOpen;
+    chatOpen = open;
+    if (!enabled()) {
+      clearTimeout(awakeTimer); awakeTimer = 0; awakeUntil = 0;
+    }
+    if (opened) wake();
+    refresh();
+  };
+  const observer=new MutationObserver(sync);
   observer.observe(document.body,{attributes:true,attributeFilter:['class']});
   observer.observe(root,{attributes:true,attributeFilter:['class']});
   document.querySelectorAll('.assistant-panel,.compose-ai-panel').forEach(el=>observer.observe(el,{attributes:true,attributeFilter:['class']}));
-  reduced.addEventListener('change',refresh);
-  document.addEventListener('visibilitychange',refresh);
+  reduced.addEventListener('change',sync);
+  document.addEventListener('visibilitychange',sync);
+  document.addEventListener('mailai:foreground-changed',sync);
   window.addEventListener('resize',refresh);
-  refresh();
+  sync();
 })();

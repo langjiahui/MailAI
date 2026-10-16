@@ -294,8 +294,11 @@
   new MutationObserver(sync).observe(root, {attributes:true, attributeFilter:['class']});
   new MutationObserver(sync).observe(document.body, {attributes:true, attributeFilter:['class']});
   document.addEventListener('mailai:language-changed', sync);
-  let nativeHidden = false;
-  const syncPaused = () => document.body.classList.toggle('companion-paused', document.hidden || nativeHidden);
+  let nativeHidden = false, focused = document.hasFocus();
+  const syncPaused = () => document.body.classList.toggle('companion-paused',
+    document.hidden || nativeHidden || !focused);
+  window.addEventListener('blur', () => { focused = false; syncPaused(); });
+  window.addEventListener('focus', () => { focused = true; syncPaused(); });
   document.addEventListener('visibilitychange', syncPaused);
   document.addEventListener('mailai:foreground-changed', event => {
     nativeHidden = event.detail?.visible === false; syncPaused();

@@ -12,8 +12,14 @@ works created for MailAI by the author and are distributed under the
 same Apache License, Version 2.0:
 
   - mailai-icon-256.png
+  - mailai-icon-256.ico
+  - mailai-app-icon.svg
+  - mailai-app-icon-1024.png
   - mailai-lockup.png
+  - mailai-lockup.svg
   - mailai-mark.png
+  - mailai-mark.svg
+  - mailai-menu-template.png
 
 The files langjiahui-avatar.png and langjiahui-ljh.webp are the author's personal identity assets and are
 NOT covered by the Apache License. It may not be reused outside this

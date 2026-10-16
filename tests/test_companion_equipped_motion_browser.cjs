@@ -16,10 +16,12 @@ const rewards=[
   ['palette','midnight','.pet-palette-shine'],
 ];
 async function checkMotion(page, hosts, part, context) {
+  await page.evaluate(()=>mailaiCompanionMotion.wake());
   const selectors=hosts.map(host=>`${host} .mail-companion ${part}`);
   await page.waitForFunction(selectors=>selectors.every(selector=>{
     const node=document.querySelector(selector);
-    return node?.closest('.mail-companion').dataset.rewardVisible==='true' && getComputedStyle(node).visibility==='visible';
+    const svg=node?.closest('.mail-companion');
+    return svg?.dataset.rewardVisible==='true' && svg.dataset.motionActive==='true' && getComputedStyle(node).visibility==='visible';
   }),selectors);
   const sample=()=>page.evaluate(selectors=>selectors.map(selector=>{
     const node=document.querySelector(selector), css=getComputedStyle(node);

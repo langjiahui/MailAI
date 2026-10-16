@@ -138,6 +138,8 @@ jobs:
           MAILAI_BROWSER=webkit node tests/test_attachment_content_browser.cjs
           node tests/test_experience_polish_browser.cjs
           node tests/test_compose_ai_sections_browser.cjs
+          node tests/test_onboarding_browser.cjs
+          MAILAI_BROWSER=webkit node tests/test_onboarding_browser.cjs
           node tests/test_compose_ai_typing_browser.cjs
           node tests/test_mailbox_transition_browser.cjs
           node tests/test_selection_glass_browser.cjs
@@ -155,6 +157,8 @@ jobs:
           node tests/test_diagnostics_layout_browser.cjs
           node tests/test_companion_working_browser.cjs
           MAILAI_BROWSER=webkit node tests/test_companion_working_browser.cjs
+          node tests/test_energy_motion_browser.cjs
+          MAILAI_BROWSER=webkit node tests/test_energy_motion_browser.cjs
           node tests/test_companion_perch_wings_browser.cjs
           MAILAI_BROWSER=webkit node tests/test_companion_perch_wings_browser.cjs
           node tests/test_reward_theme_selects_browser.cjs

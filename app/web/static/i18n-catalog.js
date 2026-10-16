@@ -1,5 +1,11 @@
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "compose.truncatedDraft": ["模型输出达到长度上限，草稿未完成，请缩短写作要求后重试", "The model reached its output limit. The draft is incomplete; shorten your writing instructions and try again."],
+  "modelResult.connection": ["模型连接", "Model connection"],
+  "modelResult.failed": ["连接验证失败", "Connection verification failed"],
+  "modelResult.checking": ["请稍候，正在检查当前服务地址和模型。", "Please wait while the service URL and model are checked."],
+  "modelResult.keyHelp": ["请检查 API Key 是否正确，并确认它属于当前服务地址。", "Check that the API key is correct and belongs to this service URL."],
+  "modelResult.retryHelp": ["请检查服务地址、模型名称和 API Key，修改后重新验证。", "Check the service URL, model name and API key, then try again."],
   "searchLoop.scopeTitle": ["选择检索范围", "Choose the search scope"],
   "searchLoop.scopeHelp": ["当前列表汇总多个邮箱。可继续检索所有收件箱，或指定邮箱让小邮搜索该账号全部已同步邮件。", "This list combines accounts. Search all inboxes, or choose an account for Xiaoyou to search all its synced mail."],
   "searchLoop.scopeAccount": ["用小邮检索的邮箱", "Account for Xiaoyou search"],

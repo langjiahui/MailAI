@@ -193,14 +193,36 @@ class DesktopRuntime:
         self._status_controller = None
         self._notification_delegate = None
         self._native_menu_entries = []
+        self._window_foreground = None
+        self._window_visibility_revision = 0
+        self._window_visibility_lock = threading.Lock()
+
+    def set_window_foreground(self, visible: bool, *, force: bool = False) -> None:
+        """Forward native focus/visibility, even when WKWebView retains DOM focus."""
+        visible = bool(visible and not self.hidden)
+        with self._window_visibility_lock:
+            if self.quitting or (visible == self._window_foreground and not force):
+                return
+            self._window_foreground = visible
+            self._window_visibility_revision += 1
+            revision = self._window_visibility_revision
+        self._evaluate_js_safely('更新窗口节能状态',
+            f"window.mailaiEnergy?.nativeVisibility({revision}, {json.dumps(visible)})")
+
+    def sync_native_foreground(self, *, force: bool = False) -> None:
+        # Call on Cocoa's main thread; minimized/restored events come from
+        # pywebview workers and must marshal here before inspecting NSWindow.
+        from AppKit import NSApplication
+        app = NSApplication.sharedApplication()
+        native = getattr(self.window, 'native', None)
+        self.set_window_foreground(app.isActive() and not app.isHidden() and
+                                   not (native and native.isMiniaturized()), force=force)
 
     def handle_closing(self, window=None):
         if self.quitting:
             return None
         self.hidden = True
-        self._window_visibility_revision = getattr(self, '_window_visibility_revision', 0) + 1
-        self._evaluate_js_safely("暂停隐藏窗口的界面刷新",
-            f"window.mailaiEnergy?.nativeVisibility({self._window_visibility_revision}, false)")
+        self.set_window_foreground(False)
         try:
             target = window or self.window
             if target:
@@ -215,9 +237,7 @@ class DesktopRuntime:
         try:
             self.hidden = False
             self.window.show()
-            self._window_visibility_revision = getattr(self, '_window_visibility_revision', 0) + 1
-            self._evaluate_js_safely("恢复窗口的界面刷新",
-                f"window.mailaiEnergy?.nativeVisibility({self._window_visibility_revision}, true)")
+            self.set_window_foreground(True)
             self.refresh_dock_badge()
         except Exception:
             log.exception("显示 MailAI 窗口失败")
@@ -750,6 +770,18 @@ def run_macos_window(asgi_app, preferred_port: int = 0,
         base_delegate = cocoa.BrowserView.AppDelegate
 
         class MailAIAppDelegate(base_delegate):
+            def applicationDidBecomeActive_(self, notification):
+                runtime.sync_native_foreground()
+
+            def applicationDidResignActive_(self, notification):
+                runtime.set_window_foreground(False)
+
+            def applicationDidHide_(self, notification):
+                runtime.set_window_foreground(False)
+
+            def applicationDidUnhide_(self, notification):
+                runtime.sync_native_foreground()
+
             def applicationShouldTerminate_(self, app):
                 if not runtime.quitting:
                     runtime.quit()
@@ -777,6 +809,11 @@ def run_macos_window(asgi_app, preferred_port: int = 0,
         runtime.window = window
         window.events.before_show += desktop_api._prepare_window
         window.events.closing += runtime.handle_closing
+        window.events.minimized += lambda: runtime.set_window_foreground(False)
+        window.events.restored += lambda: runtime._call_after_safely(
+            '恢复窗口节能状态', runtime.sync_native_foreground)
+        window.events.loaded += lambda: runtime._call_after_safely(
+            '初始化窗口节能状态', lambda: runtime.sync_native_foreground(force=True))
 
         def ready():
             runtime._call_after_safely("刷新 Dock 图标", refresh_macos_dock_icon)

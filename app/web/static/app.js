@@ -4786,6 +4786,7 @@ async function selectEmail(id, options = {}) {
     if (requestRevision !== readingLoadRevision || selectedEmailId !== id) return;
     selectedEmailDetail = e;
     globalThis.mailaiPet?.openedEmail(id, requestAccountId);
+    if (animateArrival) window.mailaiCompanionMotion?.wake();
     transition.finish(() => renderReadingPane(e));
     if (!e.is_read) queueEmailReadSync(id, requestAccountId);
   } catch (err) {

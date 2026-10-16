@@ -50,6 +50,9 @@ def main():
             with db.conn() as c: c.execute('UPDATE todos SET remind_at=?',((datetime.now()-timedelta(seconds=1)).isoformat(),))
             assert energy.next_delay({'a':account},'reminders')==1
             assert energy.next_delay({'a':{**account,'visible':False}},'reminders')==60
+            outbox.enqueue('hidden-deadline',{'subject':'fixture hidden deadline'},delay=0)
+            assert energy.next_delay({'a':account},'outbox')==1
+            assert energy.next_delay({'a':{**account,'visible':False}},'outbox')==60, 'Hidden accounts cannot wake the outbox on overdue jobs'
             retries={'a':(3,time.monotonic()+40)}
             assert 39<=energy.next_delay({'a':account},'outbox',retries=retries)<=41
             # A failed transaction must not emit a successful-change wakeup.
@@ -80,6 +83,14 @@ def main():
         mailbox_jobs._next_poll_at['fixture']=time.monotonic()+60
         mailbox_jobs.poll_all(force=False,account_id='fixture',from_idle=True);submit.assert_called_once()
     mailbox_jobs._pending.clear();mailbox_jobs._next_poll_at.clear()
+
+    # Logged-out accounts retain local history in the registry, but cannot
+    # supply credentials/snapshots. Do not retry them or initialize their DBs.
+    initialized={'hidden':'old.db'}; retries={'hidden':(2,0)}
+    with patch.object(mailbox_jobs.system_settings,'_load_registry',return_value={'accounts':{'hidden':{'visible':False}}}), patch.object(mailbox_jobs,'snapshot') as take_snapshot:
+        mailbox_jobs._check_outboxes(initialized,retries,0,lambda payload:None)
+        take_snapshot.assert_not_called()
+        assert initialized=={} and retries=={}
 
     # Real sleeping workers: a newly committed job wakes immediately, but never
     # executes before its deadline. Sending and notification delivery are mocked.

@@ -88,6 +88,7 @@ const {chromium,webkit} = require('playwright');
     for(const style of ['nature','ranger']) {
       for(const [slot,item,part] of [['petAccessory','wings','.pet-wing-left'],['petAccessory','mech_wings','.pet-mech-left'],['petEffect','sparkles','.pet-star'],['petEffect','orbit','.pet-orbit-stream'],['petEffect','aurora','.pet-aurora-ripple'],['petEffect','lightning','.pet-bolt']]) {
         await page.evaluate(({style,slot,item})=>{document.body.dataset.petStyle=style;document.body.dataset[slot]=item;},{style,slot,item});
+        await page.evaluate(()=>mailaiCompanionMotion.wake());
         const node=page.locator('#assistant-orb .mail-companion '+part).first();
         assert.notEqual(await node.evaluate(n=>getComputedStyle(n).animationName),'none',`${style}/${item} must animate when equipped on the real companion`);
       }

@@ -30,13 +30,13 @@ const {chromium,webkit}=require('playwright');
         const brand=await page.evaluate(()=>{
           const mark=document.querySelector('.reward-brand-mark'),root=getComputedStyle(document.documentElement);
           return {visible:getComputedStyle(mark).display,
-            color:getComputedStyle(mark.querySelector('.brand-front')).fill,
+            color:getComputedStyle(mark.querySelector('.brand-front-stop')).stopColor,
             accent:root.getPropertyValue('--brand-front').trim(),favicon:document.querySelector('link[rel="icon"]').href};
         });
         assert.equal(brand.visible,'block');
         assert(await page.locator('#assistant-orb').evaluate(n=>parseFloat(getComputedStyle(n).borderRadius)>0),'Theme must preserve the pet button shape');
         assert(brand.favicon.startsWith('data:image/svg+xml,'));
-        assert(decodeURIComponent(brand.favicon).includes(`fill="${brand.accent}"`));
+        assert(decodeURIComponent(brand.favicon).includes(`stop-color="${brand.accent}"`));
         await page.evaluate(()=>openCompose());
         await page.locator('#compose-modal').waitFor({state:'visible'});
         await inspect('.compose-card');

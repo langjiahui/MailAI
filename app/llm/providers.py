@@ -1,4 +1,5 @@
 """OpenAI Chat Completions provider presets and shared URL validation."""
+import re
 from urllib.parse import urlsplit, urlunsplit
 
 PRESETS = [
@@ -56,6 +57,10 @@ def adapt_body(body, provider, extra):
             body['max_completion_tokens'] = body.pop('max_tokens')
     elif provider == 'deepseek' and model.startswith('deepseek-v4'):
         body['thinking'] = {'type': 'disabled'}
+    elif provider in ('custom', 'other') and re.match(r'^qwen3(?:[.\-_]|$)', model):
+        # Self-hosted Qwen gateways can put <think> in ordinary content.
+        # Keep task output concise; an explicit extra parameter can override this.
+        body['chat_template_kwargs'] = {'enable_thinking': False}
     body.update(validate_extra(extra))
     # null explicitly omits an optional parameter for incompatible gateways.
     return {k: v for k, v in body.items() if v is not None}

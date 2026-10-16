@@ -166,7 +166,9 @@ def notify_new_message(email_id):
 def _check_outboxes(initialized, retries, now, send):
     """One bounded pass; a broken account must not spin or starve other accounts."""
     from . import outbox
-    accounts = system_settings._load_registry().get('accounts', {})
+    accounts = {key: account for key, account in
+                system_settings._load_registry().get('accounts', {}).items()
+                if account.get('visible', True)}
     for cache in (initialized, retries):
         for account_id in list(cache):
             if account_id not in accounts:

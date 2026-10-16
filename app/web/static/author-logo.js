@@ -23,7 +23,8 @@ if (mark) {
     mark.setAttribute('aria-pressed', String(playing && !!scene && !contextLost));
     mark.disabled = !scene || contextLost;
   };
-  const active = () => scene && visible && panelOpen && !document.hidden && !disposed && !contextLost;
+  const foreground = () => window.mailaiEnergy?.active() ?? (!document.hidden && document.hasFocus());
+  const active = () => scene && visible && panelOpen && foreground() && !disposed && !contextLost;
   function stop() {
     cancelAnimationFrame(raf);
     raf = 0;
@@ -85,7 +86,7 @@ if (mark) {
     }
   }
   function sync() {
-    if (visible && panelOpen && !document.hidden && !disposed) {
+    if (visible && panelOpen && foreground() && !disposed) {
       ensureScene();
       if (scene && entrance.pending) {
         entrance.pending = false;
@@ -203,6 +204,9 @@ if (mark) {
   canvas.addEventListener('webglcontextrestored', restored);
   reduced.addEventListener('change', reduce);
   document.addEventListener('visibilitychange', sync);
+  window.addEventListener('blur', stop);
+  window.addEventListener('focus', sync);
+  document.addEventListener('mailai:foreground-changed', sync);
   document.addEventListener('mailai:language-changed', language);
   function pagehide(event) {
     stop();
@@ -215,6 +219,9 @@ if (mark) {
     window.removeEventListener('pointercancel', release);
     reduced.removeEventListener('change', reduce);
     document.removeEventListener('visibilitychange', sync);
+    window.removeEventListener('blur', stop);
+    window.removeEventListener('focus', sync);
+    document.removeEventListener('mailai:foreground-changed', sync);
     document.removeEventListener('mailai:language-changed', language);
     window.removeEventListener('pageshow', sync);
     scene?.dispose();

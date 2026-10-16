@@ -17,6 +17,25 @@
 .start-model-panel { width:560px; max-width:100%; max-height:calc(calc(100dvh / var(--fz,1)) - 48px); overflow:auto; padding:28px; border:1px solid var(--border); border-radius:22px; background:var(--glass,#fff); color:var(--text); }
 .start-model-panel h2 { margin:8px 0; }
 .start-model-panel p { color:var(--muted); line-height:1.7; font-size:13px; }
+/* Result states are independent of the decorative theme and glass opacity. */
+#start-model-result { display:flex; align-items:flex-start; gap:11px; margin:16px 0; padding:14px 16px; border:1px solid var(--border); border-radius:12px; color:var(--text); background:var(--surface,#fff); scroll-margin:16px; }
+#start-model-result>div { min-width:0; }
+#start-model-result .start-model-result-icon { flex:none; display:grid; place-items:center; width:23px; height:23px; border:1.5px solid currentColor; border-radius:50%; font-size:15px; font-weight:800; line-height:1; }
+#start-model-result strong { display:block; font-size:14px; line-height:23px; }
+#start-model-result p { margin:5px 0 0; color:inherit; font-size:13px; line-height:1.65; overflow-wrap:anywhere; }
+#start-model-result p[hidden] { display:none; }
+html[data-theme] body #start-model-result[data-state="error"] {
+ --model-result-accent:#9f3834;
+ color:var(--desk-ink,var(--text))!important;
+ background:color-mix(in srgb,var(--model-result-accent) 5%,var(--desk-surface,var(--surface,#fff)))!important;
+ border-color:color-mix(in srgb,var(--model-result-accent) 24%,var(--desk-line,var(--border)))!important;
+ box-shadow:inset 0 1px 0 #ffffff80;
+}
+html[data-theme="dark"] body #start-model-result[data-state="error"] { --model-result-accent:#ffb5ac; box-shadow:inset 0 1px 0 #ffffff08; }
+#start-model-result[data-state="error"] strong { color:var(--model-result-accent); }
+#start-model-result[data-state="error"] .start-model-result-icon { color:var(--model-result-accent); background:color-mix(in srgb,var(--model-result-accent) 10%,transparent); border-color:color-mix(in srgb,var(--model-result-accent) 40%,transparent); }
+#start-model-result[data-state="error"]:focus-visible { outline:2px solid currentColor; outline-offset:3px; }
+#start-model-result[data-state="loading"] .start-model-result-icon { border-style:dashed; }
 .start-model-panel .connection-card { margin:16px 0; box-shadow:none; }
 .start-model-panel .connection-actions { display:none; }
 .start-model-panel label:has(#multimodal-model),.start-model-panel label:has(#model-multimodal-enabled),.start-model-panel label:has(#model-verify-ssl),.start-model-panel .connection-card>details { display:none; }

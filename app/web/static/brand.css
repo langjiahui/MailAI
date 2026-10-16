@@ -1,16 +1,15 @@
 /* Final brand layer; identity stays consistent across desktop shells. */
-:root { --brand-front:#0e5a54; --brand-back:#94c7b6; }
+:root { --brand-front:#0e5a54; --brand-back:#94c7b6; --brand-shade:#292929; --brand-reflection:#005eaa; --brand-back-shade:#6b9fc8; }
 .brand-mark { display:block; width:100%; height:100%; overflow:visible; }
 .preloader-brand [data-brand-mark] { display:block; width:24px; height:24px; flex:0 0 24px; }
 .onboarding-brand [data-brand-mark] { display:block; width:32px; height:32px; }
-html[data-theme="dark"] { --brand-front:#d4eee4; --brand-back:#69ad96; }
-html[data-reward-theme="theme_monochrome"] { --brand-front:#292929; --brand-back:#8a8a8a; }
-html[data-theme="dark"][data-reward-theme="theme_monochrome"] { --brand-front:#ececec; --brand-back:#999; }
-html[data-reward-theme="theme_baowu"] { --brand-front:#005eaa; --brand-back:#8ab5d8; }
-html[data-theme="dark"][data-reward-theme="theme_baowu"] { --brand-front:#d1e7fb; --brand-back:#6b9fc8; }
+html[data-theme="dark"] { --brand-front:#d4eee4; --brand-back:#69ad96; --brand-shade:#b0d7c8; --brand-reflection:#a6d8f5; --brand-back-shade:#79a9c6; }
+html[data-reward-theme="theme_monochrome"] { --brand-front:#292929; --brand-back:#8a8a8a; --brand-shade:#141414; --brand-reflection:#4a4a4a; --brand-back-shade:#777; }
+html[data-theme="dark"][data-reward-theme="theme_monochrome"] { --brand-front:#ececec; --brand-back:#999; --brand-shade:#ccc; --brand-reflection:#fff; --brand-back-shade:#888; }
+html[data-reward-theme="theme_baowu"] { --brand-front:#005eaa; --brand-back:#8ab5d8; --brand-shade:#16394d; --brand-reflection:#0e5a54; --brand-back-shade:#69ad96; }
+html[data-theme="dark"][data-reward-theme="theme_baowu"] { --brand-front:#d1e7fb; --brand-back:#6b9fc8; --brand-shade:#a4cceb; --brand-reflection:#b3e4d0; --brand-back-shade:#69ad96; }
 html[data-theme][data-theme] body .brand-mark { display:block; width:100%; height:100%; overflow:visible; }
-html[data-theme][data-theme] body .brand-mark .brand-front { fill:var(--brand-front)!important; stroke:none!important; }
-html[data-theme][data-theme] body .brand-mark .brand-back { fill:var(--brand-back)!important; stroke:none!important; }
+html[data-theme][data-theme] body .brand-mark path { stroke:none!important; }
 html[data-theme][data-theme] body .topbar .logo {
   display:flex!important; flex:0 0 24px; width:24px; height:24px; min-width:24px;
   padding:0; border:0; border-radius:0; background:transparent!important; box-shadow:none!important;

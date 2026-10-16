@@ -32,17 +32,24 @@ const handoff=app.slice(app.indexOf('function hideAppPreloader('),app.indexOf('/
      const style=getComputedStyle(document.documentElement);
      const rgb=value=>{const c=document.createElement('canvas').getContext('2d');c.fillStyle=value;c.fillRect(0,0,1,1);return[...c.getImageData(0,0,1,1).data].slice(0,3);};
      const lum=value=>rgb(value).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4;}).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);
-     const front=getComputedStyle(n.querySelector('.brand-front')).fill,back=getComputedStyle(n.querySelector('.brand-back')).fill;
+     const front=getComputedStyle(n.querySelector('.brand-front-stop')).stopColor,back=getComputedStyle(n.querySelector('.brand-back-stop')).stopColor;
+     const tones=['.brand-front-stop','.brand-shade-stop','.brand-reflection-stop'].map(s=>getComputedStyle(n.querySelector(s)).stopColor);
      const surface=style.getPropertyValue('--workspace-chrome').trim()||getComputedStyle(document.body).backgroundColor;
-     const a=lum(front),b=lum(surface);
-     return {front,back,ratio:(Math.max(a,b)+.05)/(Math.min(a,b)+.05),paths:[...n.querySelectorAll('path')].map(p=>p.getAttribute('d'))};
+     const b=lum(surface);
+     const ratios=tones.map(c=>{const a=lum(c);return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);});
+     const ids=[...document.querySelectorAll('[data-brand-mark] linearGradient')].map(g=>g.id);
+     return {front,back,ratio:Math.min(...ratios),unique:ids.length===new Set(ids).size,
+       palette:['front','back','shade','reflection','back-shade'].map(k=>style.getPropertyValue(`--brand-${k}`).trim()),
+       paths:[...n.querySelectorAll('path')].map(p=>p.getAttribute('d'))};
     });
     assert(brand.ratio>=3,`${shell}/${mode}/${theme}: ${JSON.stringify(brand)}`);
     assert.notEqual(brand.front,brand.back,'Paper layers stay distinct');
+    assert(brand.unique,'Each mounted mark owns its gradient definitions');
     assert.deepEqual(await entrance.locator('path').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('d'))),brand.paths);
     const icon=decodeURIComponent(await page.locator('link[rel="icon"]').getAttribute('href'));
     assert(icon.startsWith('data:image/svg+xml,'));assert(!icon.includes('var(--'),'Favicon must resolve palette variables');
     for(const d of brand.paths)assert(icon.includes(d),'Favicon shares fold geometry');
+    for(const color of brand.palette)assert(icon.includes(`stop-color="${color}"`),'Favicon resolves every theme reflection');
    }
    await page.evaluate(()=>{delete document.documentElement.dataset.rewardTheme;document.dispatchEvent(new Event('mailai:reward-themechange'));});
    if(shell==='macos')await page.screenshot({path:`build/brand-startup-${mode}.png`});

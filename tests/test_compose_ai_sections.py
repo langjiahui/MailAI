@@ -8,6 +8,7 @@ from app.web.routes import compose
 from app.web.schemas import ComposeAssistRequest
 import json
 import asyncio
+from fastapi import HTTPException
 
 
 async def _events(response):
@@ -25,6 +26,18 @@ def test_plain_response_with_placeholder():
     assert result["subject"] == "项目材料"
     assert result["body"] == "请查收文件。"
     assert result["signoff"] == ""
+
+
+def test_reasoning_is_not_a_draft_part():
+    result = _structured_compose_result('<think>internal notes</think>{"subject":"会议通知","body":"周五下午一点，802会议室。"}', False)
+    assert result == {'subject':'会议通知', 'body':'周五下午一点，802会议室。', 'signoff':''}
+    assert _structured_compose_result('<think>unfinished notes', False)['body'] == ''
+    try:
+        compose._compose_response_content({'choices':[{'message':{'content':'unfinished draft'}, 'finish_reason':'length'}]})
+    except HTTPException as error:
+        assert error.status_code == 502
+    else:
+        raise AssertionError('Truncated model output must not become a completed draft')
 
 
 def test_compose_stream_progress_and_final_parts():
@@ -67,5 +80,6 @@ def test_compose_stream_interruption_never_completes():
 if __name__ == "__main__":
     test_structured_parts()
     test_plain_response_with_placeholder()
+    test_reasoning_is_not_a_draft_part()
     test_compose_stream_progress_and_final_parts()
     test_compose_stream_interruption_never_completes()

@@ -12,6 +12,7 @@ from typing import Any
 from .. import config
 from .providers import completion_url, adapt_body
 from . import usage
+from .output import content_text, visible_text, VisibleTextStream
 
 log = logging.getLogger(__name__)
 MAX_RESPONSE_BYTES = 4 * 1024 * 1024
@@ -127,7 +128,15 @@ def chat_completion(messages: list[dict[str, Any]], *, response_format: dict | N
     finally:
         usage.record(usage_ctx, result if isinstance(result, dict) else None)
     try:
-        return json.loads(raw)
+        result = json.loads(raw)
+        if isinstance(result, dict):
+            for choice in result.get('choices') or []:
+                if not isinstance(choice, dict):
+                    continue
+                message = choice.get('message') or {}
+                if isinstance(message, dict) and 'content' in message:
+                    message['content'] = visible_text(message['content'])
+        return result
     except json.JSONDecodeError:
         log.warning("LLM 返回非 JSON: %s", raw[:200])
         return None
@@ -163,6 +172,7 @@ def chat_completion_stream(messages: list[dict[str, Any]], *, temperature: float
     )
     emitted = finished = False
     text_length = 0
+    visible = VisibleTextStream()
     try:
         deadline = time.monotonic() + min(timeout or config.LLM_TIMEOUT, 300)
         with urllib.request.urlopen(req, context=_ssl_context(), timeout=min(timeout or config.LLM_TIMEOUT, 300)) as resp:
@@ -187,22 +197,23 @@ def chat_completion_stream(messages: list[dict[str, Any]], *, temperature: float
                     content = (choice.get("delta") or {}).get("content")
                     if content is None:
                         content = (choice.get("message") or {}).get("content")
-                    if isinstance(content, list):
-                        content = "".join(
-                            str(part.get("text") or part.get("content") or "")
-                            for part in content if isinstance(part, dict)
-                        )
+                    content = content_text(content)
                     if isinstance(content, str) and content:
                         text_length += len(content)
                         if text_length > MAX_STREAM_TEXT:
                             raise RuntimeError('模型输出过长，请分批分析')
-                        emitted = True
-                        yield content
+                        content = visible.feed(content)
+                        if content:
+                            emitted = True
+                            yield content
                     # Final usage can arrive after finish_reason, with choices=[].
                 except (json.JSONDecodeError, TypeError, IndexError):
                     continue
-        if require_completion and emitted and not finished:
+        tail = visible.finish()
+        if require_completion and (emitted or tail) and not finished:
             raise RuntimeError('模型连接提前结束，分析尚未完成')
+        if tail:
+            yield tail
     except Exception as exc:
         log.warning("LLM 流式请求异常: %s", exc)
         if require_completion and emitted:

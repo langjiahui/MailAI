@@ -125,6 +125,37 @@ def main():
     runtime.quitting = True
     assert runtime.handle_closing(fake) is None
 
+    # DOM focus can remain true in a background WKWebView. Native application
+    # and minimization state independently pause/resume optional interface work.
+    runtime = DesktopRuntime()
+    runtime.window = Mock()
+    runtime.window.native.isMiniaturized.return_value = False
+    native_app = Mock()
+    native_app.isActive.return_value = True
+    native_app.isHidden.return_value = False
+    kit = types.SimpleNamespace(NSApplication=Mock())
+    kit.NSApplication.sharedApplication.return_value = native_app
+    with patch.dict(sys.modules, AppKit=kit), patch.object(runtime,'_evaluate_js_safely') as evaluate:
+        runtime.sync_native_foreground()
+        assert evaluate.call_args.args[1].endswith('(1, true)')
+        native_app.isActive.return_value = False
+        runtime.sync_native_foreground()
+        assert evaluate.call_args.args[1].endswith('(2, false)')
+        runtime.sync_native_foreground()
+        assert evaluate.call_count == 2, 'Duplicate native events cannot trigger repeated refreshes'
+        native_app.isActive.return_value = True
+        runtime.window.native.isMiniaturized.return_value = True
+        runtime.sync_native_foreground()
+        assert evaluate.call_count == 2, 'Activating a minimized app must keep its UI paused'
+        runtime.window.native.isMiniaturized.return_value = False
+        runtime.sync_native_foreground()
+        assert evaluate.call_args.args[1].endswith('(3, true)')
+        runtime.sync_native_foreground(force=True)
+        assert evaluate.call_args.args[1].endswith('(4, true)'), 'Page load resends state after JS is ready'
+        runtime.hidden = True
+        runtime.sync_native_foreground()
+        assert evaluate.call_args.args[1].endswith('(5, false)')
+
     desktop_api = DesktopApi(DesktopRuntime())
     written = []
     board = types.SimpleNamespace(clearContents=lambda: written.append('clear'),
