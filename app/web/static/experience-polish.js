@@ -66,6 +66,8 @@
     for(const item of moving){const target=width<item.threshold?item.overflow:item.home;if(item.node.parentNode!==target)target.append(item.node)}
     host.classList.add('prioritized-actions');
     host.querySelectorAll('.reading-action-group').forEach(group=>group.classList.toggle('empty-actions',!group.querySelector('button')));
+    const more=host.querySelector('.reading-more-actions[open]');
+    if(more)requestAnimationFrame(()=>positionReadingMorePanel(more));
   }
   const observer=new MutationObserver(()=>{
     const host=document.querySelector('.reading-header .reading-actions');if(!host||host===observedHost||!host.querySelector('.reading-work-actions'))return;

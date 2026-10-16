@@ -173,7 +173,7 @@ html[data-theme] body :is(.reading-header,.reading-header-inner,.reading-workspa
 .reading-header .reading-meta { margin-top:14px; }
 .reading-header .meta-fields { font-size:12px; }
 html[data-theme] body .reading-header .reading-actions { gap:8px; margin-top:14px; padding:0; }
-html[data-theme] body .reading-header .reading-actions :is(.reading-icon-action,.reading-work-actions button,.reading-ai-group>button) {
+html[data-theme] body .reading-header .reading-actions :is(.reading-reply-group>.reading-icon-action,.reading-work-actions>button,.reading-ai-group>button) {
   border-color:transparent!important; background:transparent!important; box-shadow:none!important;
   color:var(--desk-muted)!important; border-radius:7px; height:36px; min-height:36px;
 }
@@ -196,20 +196,28 @@ html[data-theme] body .reading-header .reading-actions .reading-ai-group { borde
 .reading-more-actions>summary .reading-more-chevron { width:13px; height:13px; transition:transform .16s ease; }
 .reading-more-actions[open]>summary .reading-more-chevron { transform:rotate(180deg); }
 .reading-more-panel {
-  position:absolute; right:0; top:calc(100% + 6px); z-index:30; width:210px;
-  padding:6px; border:1px solid var(--desk-line); border-radius:10px;
-  background:var(--desk-surface); box-shadow:0 12px 32px #0002;
+  position:absolute; right:0; top:calc(100% + 7px); z-index:30;
+  box-sizing:border-box; width:232px; max-width:calc(100vw - 24px);
+  max-height:min(440px,60dvh); overflow-y:auto; overscroll-behavior:contain;
+  padding:6px; border:1px solid var(--desk-line); border-radius:12px;
+  background:var(--desk-surface); box-shadow:0 12px 32px #00000014,0 2px 6px #00000008;
 }
-html[data-theme] body .reading-header .reading-actions .reading-more-panel :is(.reading-risk-group,.reading-decision-actions,.reading-secondary-actions) { display:flex; flex-direction:column; align-items:stretch; width:100%; padding:0; border:0; gap:2px; }
-html[data-theme] body .reading-header .reading-actions .reading-more-panel .reading-risk-group { margin-top:5px; padding-top:5px; border-top:1px solid var(--desk-line); }
+html[data-theme] body .reading-header .reading-actions .reading-more-panel :is(.reading-risk-group,.reading-decision-actions,.reading-secondary-actions,.reading-overflow-actions) { display:flex; flex-direction:column; align-items:stretch; width:100%; padding:0; border:0; gap:2px; }
+html[data-theme] body .reading-header .reading-actions .reading-more-panel .reading-risk-group { margin:8px 0 0; padding:0; border:0!important; }
 html[data-theme] body .reading-header .reading-actions .reading-more-panel button {
-  display:flex; align-items:center; justify-content:flex-start; gap:8px; width:100%; min-height:36px;
-  padding:8px 10px; border:0!important; border-radius:6px; box-shadow:none!important;
-  background:transparent!important; color:var(--desk-ink)!important; font:inherit; font-size:12px; cursor:pointer;
+  display:flex; align-items:center; justify-content:flex-start; gap:12px; width:100%; height:auto; min-height:40px;
+  padding:9px 12px; border:0!important; border-radius:7px; box-shadow:none!important;
+  background:transparent!important; color:var(--desk-ink)!important; font:inherit; font-size:13px;
+  font-weight:400; line-height:1.4; text-align:start; white-space:normal; overflow-wrap:anywhere; cursor:pointer;
 }
-.reading-header .reading-actions .reading-more-panel button span { display:inline!important; }
-.reading-more-panel svg { width:16px; height:16px; flex:none; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.reading-header .reading-actions .reading-more-panel button span { display:inline!important; font:inherit; }
+.reading-more-panel svg { width:16px; height:16px; flex:none; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; opacity:.8; }
 html[data-theme] body .reading-header .reading-actions .reading-more-panel button:hover { background:var(--desk-hover)!important; }
+html[data-theme] body .reading-header .reading-actions .reading-more-panel button:focus-visible { background:var(--desk-hover)!important; outline:2px solid var(--desk-accent)!important; outline-offset:-2px; }
+html[data-theme] body .reading-header .reading-actions .reading-more-panel button:disabled { opacity:.45; cursor:default; background:transparent!important; }
+@media(pointer:coarse) {
+  html[data-theme] body .reading-header .reading-actions .reading-more-panel button { min-height:44px; }
+}
 html[data-theme] body .reading-main>.reading-section { background:transparent!important; border:0!important; box-shadow:none!important; border-radius:0; padding:12px 0; margin-bottom:12px; }
 html[data-theme] body .reading-main .summary-box { background:var(--desk-muted-surface)!important; border:0!important; border-radius:8px; padding:12px 16px; font-size:14px; line-height:1.7; }
 html[data-theme] body .drawer-email-body>.reading-section.optional-mail-summary {
@@ -334,14 +342,14 @@ html[data-theme] body .list-pane.selection-active #email-list .email-item.select
 /* Compact reading controls: quiet secondary actions, one clear reply action. */
 html[data-theme] body .reading-header .reading-actions { padding:0!important; gap:6px; margin-top:10px; }
 html[data-theme] body .reading-header .reading-actions .reading-ai-group { padding-left:0; border-left:0; }
-html[data-theme] body .reading-header .reading-actions :is(.reading-icon-action,.reading-work-actions button,.reading-ai-group>button,.reading-more-actions>summary) {
+html[data-theme] body .reading-header .reading-actions :is(.reading-reply-group>.reading-icon-action,.reading-work-actions>button,.reading-ai-group>button,.reading-more-actions>summary) {
   box-sizing:border-box; height:32px; min-height:32px; padding:0 10px;
   border:1px solid rgba(95,130,111,.1)!important; border-radius:8px;
   background:var(--desk-muted-surface)!important;
   box-shadow:none!important;
   color:var(--desk-ink)!important; font-size:13px; font-weight:600;
 }
-html[data-theme] body .reading-header .reading-actions :is(.reading-icon-action,.reading-work-actions button,.reading-ai-group>button,.reading-more-actions>summary):hover,
+html[data-theme] body .reading-header .reading-actions :is(.reading-reply-group>.reading-icon-action,.reading-work-actions>button,.reading-ai-group>button,.reading-more-actions>summary):hover,
 html[data-theme] body .reading-header .reading-actions .reading-more-actions[open]>summary {
   background:#edf6f0!important; border-color:rgba(62,126,88,.3)!important;
   box-shadow:none!important;
@@ -355,13 +363,13 @@ html[data-theme] body .reading-header .reading-actions button.reading-primary-ac
   background:#cfebd8!important; border-color:#8dc4a0!important;
   color:#1f583c!important; filter:none;
 }
-html[data-theme="dark"] body .reading-header .reading-actions :is(.reading-icon-action,.reading-work-actions button,.reading-ai-group>button,.reading-more-actions>summary) {
+html[data-theme="dark"] body .reading-header .reading-actions :is(.reading-reply-group>.reading-icon-action,.reading-work-actions>button,.reading-ai-group>button,.reading-more-actions>summary) {
   background:#233129!important;
   border-color:rgba(174,204,184,.1)!important;
   box-shadow:none!important;
   color:#e1eae3!important;
 }
-html[data-theme="dark"] body .reading-header .reading-actions :is(.reading-icon-action,.reading-work-actions button,.reading-ai-group>button,.reading-more-actions>summary):hover,
+html[data-theme="dark"] body .reading-header .reading-actions :is(.reading-reply-group>.reading-icon-action,.reading-work-actions>button,.reading-ai-group>button,.reading-more-actions>summary):hover,
 html[data-theme="dark"] body .reading-header .reading-actions .reading-more-actions[open]>summary {
   background:#34483a!important; border-color:rgba(161,207,175,.32)!important;
   color:#f0f6f1!important;
@@ -375,24 +383,10 @@ html[data-theme="dark"] body .reading-header .reading-actions button.reading-pri
   color:#fff!important;
 }
 @container (max-width:1080px) {
-  html[data-theme] body .reading-header .reading-actions :is(.reading-icon-action:not(.reading-primary-action),.reading-work-actions button,.reading-ai-group>button) { padding:0; }
+  html[data-theme] body .reading-header .reading-actions :is(.reading-reply-group>.reading-icon-action:not(.reading-primary-action),.reading-work-actions>button,.reading-ai-group>button) { padding:0; }
 }
 @media(max-width:760px), (pointer:coarse) {
-  html[data-theme] body .reading-header .reading-actions :is(.reading-icon-action,.reading-work-actions button,.reading-ai-group>button,.reading-more-actions>summary) { min-height:44px; }
-}
-html[data-theme] body .reading-header .reading-actions .reading-more-panel button { font-size:13px; font-weight:400; line-height:1.4; }
-/* Actions moved from the toolbar must take on the menu's flat row style. */
-html[data-theme] body .reading-header .reading-actions .reading-more-panel button.reading-icon-action,
-html[data-theme] body .reading-header .reading-actions .reading-more-panel button[data-reading-action] {
-  width:100%; height:auto; min-height:36px; padding:8px 10px;
-  justify-content:flex-start; border:0!important; border-radius:6px;
-  background:transparent!important; box-shadow:none!important;
-  color:var(--desk-ink)!important; font-size:13px; font-weight:400;
-}
-html[data-theme] body .reading-header .reading-actions .reading-more-panel button.reading-icon-action:hover,
-html[data-theme] body .reading-header .reading-actions .reading-more-panel button[data-reading-action]:hover {
-  background:var(--desk-hover)!important; border:0!important;
-  box-shadow:none!important; color:var(--desk-ink)!important;
+  html[data-theme] body .reading-header .reading-actions :is(.reading-reply-group>.reading-icon-action,.reading-work-actions>button,.reading-ai-group>button,.reading-more-actions>summary) { min-height:44px; }
 }
 #conversation-progress-dialog .progress-latest { border-left:0; background:var(--desk-muted-surface); padding:14px; border-radius:8px; }
 #conversation-progress-dialog .progress-detail>header { background:transparent; }
@@ -428,7 +422,7 @@ html[data-theme] body .reading-pane .plain-email-body>* {
 
 /* Separate the current-message delete action from informational actions. */
 html[data-theme] body .reading-header .reading-actions .reading-more-panel button[data-reading-action="delete-current"] {
-  margin-top:5px; border-radius:6px; color:#bf3b35!important;
+  margin-top:8px; color:#bf3b35!important;
 }
 html[data-theme="dark"] body .reading-header .reading-actions .reading-more-panel button[data-reading-action="delete-current"] { color:#ffaaa3!important; }
 

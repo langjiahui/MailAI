@@ -39,8 +39,8 @@ html[data-theme] body .reading-header .prioritized-actions :is(.reading-action-l
 html[data-theme] body .reading-header .prioritized-actions .reading-ai-group { padding-left:10px; border-left:1px solid var(--desk-line); }
 html[data-theme] body .reading-header .prioritized-actions .reading-work-actions { padding-left:0; border:0; }
 html[data-theme] body .reading-header .prioritized-actions .reading-more-panel button { width:100%; justify-content:flex-start; }
-.reading-overflow-actions:empty { display:none; }
-.reading-overflow-actions { display:grid; border-bottom:1px solid var(--desk-line); padding-bottom:6px; margin-bottom:6px; }
+.reading-overflow-actions:empty { display:none!important; }
+.reading-overflow-actions { display:grid; gap:2px; border:0; padding:0; margin:0 0 8px; }
 #compose-ai-output { background:transparent; padding:0; }
 .ai-result-section { border:1px solid var(--desk-line); border-radius:12px; background:var(--desk-surface); margin:10px 0; overflow:hidden; }
 .ai-result-section>header { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 12px; background:var(--desk-muted-surface); font-size:12px; }

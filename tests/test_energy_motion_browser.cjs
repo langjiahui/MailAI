@@ -1,4 +1,4 @@
-/* Disposable mailbox: motion is available on intent, and silent while idle. */
+/* Disposable mailbox: sparse ambient motion, responsive reactions, strict background pause. */
 const assert = require('node:assert/strict');
 const {spawn} = require('node:child_process');
 const {once} = require('node:events');
@@ -34,7 +34,7 @@ const port = Number(process.env.MAILAI_ENERGY_FIXTURE_PORT || 18831);
     await page.evaluate(()=>selectEmail(1));await awake('#assistant-orb .mail-companion');
     assert.equal(await page.locator('#assistant-orb .pet-mech-left').evaluate(n=>getComputedStyle(n).animationPlayState),'running');
     await idle(); // The finite response must settle without further interaction.
-    await page.waitForTimeout(4500);await idle(); // No ambient timer restarts it.
+    await page.waitForTimeout(4500);await idle(); // Ambient motion waits at least eight seconds.
     // Refreshing the same selected mail is not a new read intent.
     await page.evaluate(()=>selectEmail(1));await idle();
     await page.evaluate(()=>openAssistant());await awake('#assistant-panel .mail-companion');
@@ -79,8 +79,95 @@ const port = Number(process.env.MAILAI_ENERGY_FIXTURE_PORT || 18831);
     assert.equal(await page.evaluate(()=>energyDelays.at(-1)),10000,'Input restores the reading cadence immediately');
     await page.evaluate(async()=>{energyClockOffset+=10000;await mailaiEnergy.run('companion-growth');delete performance.now;});
     assert.equal(heartbeats.at(-1)?.active,10,'Resuming cannot award the 91-second idle interval');
+    // A controlled clock covers minutes of ambient behavior without wall-clock sleeps.
+    await page.evaluate(async()=>{await closeCompose();closeAssistant();});
+    await page.clock.install();
+    await page.evaluate(()=>{
+      Math.random=()=>.5;
+      // The preceding heartbeat test advances performance.now independently.
+      // Start this scenario's input timestamp in the newly installed clock.
+      document.dispatchEvent(new Event('input'));
+      window.dispatchEvent(new Event('blur'));
+      window.ambientClips=[];
+      new MutationObserver(()=>{
+        const running=[...document.querySelectorAll('.mail-companion[data-motion-kind="ambient"]')];
+        if(running.length) ambientClips.push({clips:running.map(svg=>svg.dataset.motionClip),at:performance.now()});
+      }).observe(document.body,{subtree:true,attributes:true,attributeFilter:['data-motion-active']});
+    });
+    await page.emulateMedia({reducedMotion:'no-preference'});
+    await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+    await page.clock.runFor(11501);
+    assert.equal(await page.locator('#assistant-orb .mail-companion').getAttribute('data-motion-kind'),'ambient');
+    assert.equal(await page.locator('#assistant-orb .pet-mech-left').evaluate(n=>getComputedStyle(n).animationPlayState),'paused','Ambient motion must not wake outfit loops');
+    await page.clock.runFor(2000);
+    assert.equal(await page.locator('#assistant-orb .mail-companion').getAttribute('data-motion-active'),'false','Ambient clips must settle');
+    assert.equal(await page.locator('#assistant-orb .companion-eyes').evaluate(n=>getComputedStyle(n).transform),'none','Settled eyes must not freeze half closed');
+    await page.clock.runFor(75000);
+    const clips=await page.evaluate(()=>ambientClips);
+    assert(clips.length>=5,'Idle mascot must periodically react');
+    assert(clips.every(event=>event.clips.length===1),'Only one ambient mascot may perform');
+    assert(clips.some(event=>['stretch','step','peek','think'].includes(event.clips[0])),`Long idle must include a larger gesture: ${JSON.stringify(clips)}`);
+    const micro=clips.map(event=>event.clips[0]).filter(name=>['breathe','tilt'].includes(name));
+    assert(micro.every((name,index)=>!index||name!==micro[index-1]),'Micro gestures must not repeat consecutively');
+    await page.evaluate(()=>{window.dispatchEvent(new Event('blur'));ambientClips.length=0;});
+    await page.clock.runFor(120000);
+    assert.equal(await page.evaluate(()=>ambientClips.length),0,'Background must not schedule ambient motion');
+    await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+    await page.clock.runFor(7000);
+    assert.equal(await page.evaluate(()=>ambientClips.length),0,'Foreground return must not replay stale gestures');
+    await page.clock.runFor(4501);
+    await page.evaluate(()=>window.finishAmbientWork=mailaiCompanionWork.begin());
+    assert.equal(await page.locator('#assistant-orb .mail-companion').getAttribute('data-motion-clip'),'work','Work must interrupt ambient motion');
+    await page.clock.runFor(40000);
+    assert.equal(await page.locator('#assistant-orb .mail-companion').getAttribute('data-motion-clip'),'work','No ambient clip may interrupt work');
+    await page.evaluate(()=>{finishAmbientWork();ambientClips.length=0;});
+    for(let i=0;i<8;i++) {
+      await page.evaluate(()=>document.dispatchEvent(new Event('input')));
+      await page.clock.runFor(14000);
+    }
+    assert((await page.evaluate(()=>ambientClips)).every(event=>['breathe','tilt'].includes(event.clips[0])),'Ongoing input must defer large gestures');
+    await page.emulateMedia({reducedMotion:'reduce'});
+    await page.evaluate(()=>{ambientClips.length=0;});
+    await page.clock.runFor(120000);
+    assert.equal(await page.evaluate(()=>ambientClips.length),0,'Reduced motion must disable ambient scheduling');
+    // Both saved skins have distinct idle, greeting, working and completion clips.
+    const setStyle=style=>page.evaluate(async style=>{
+      await api('/api/companion/style',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({style})});
+      await mailaiPet.refresh();
+    },style);
+    const motionClip=()=>page.locator('#assistant-orb .mail-companion').getAttribute('data-motion-clip');
+    await setStyle('ranger');
+    await page.evaluate(()=>{ambientClips.length=0;});
+    await page.emulateMedia({reducedMotion:'no-preference'});
+    await page.clock.runFor(90000);
+    const rangerClips=await page.evaluate(()=>ambientClips.map(event=>event.clips[0]));
+    assert(rangerClips.includes('nod') && rangerClips.includes('alert'),'Ranger needs its own micro gestures');
+    assert(rangerClips.some(name=>['survey','ready','step'].includes(name)),'Ranger needs its own idle gestures');
+    assert(rangerClips.every(name=>['nod','alert','survey','ready','step'].includes(name)),'Ranger must not borrow nature gestures');
+    await page.evaluate(()=>document.querySelector('#assistant-orb .companion-art').dispatchEvent(new Event('pointerenter')));
+    assert.equal(await motionClip(),'salute');
+    await page.evaluate(()=>window.finishSkinWork=mailaiCompanionWork.begin());
+    assert.equal(await motionClip(),'rangerWork');
+    await setStyle('nature');
+    assert.equal(await motionClip(),'work','Changing skin during work updates the active clip');
+    await setStyle('ranger');
+    assert.equal(await motionClip(),'rangerWork');
+    await page.evaluate(()=>finishSkinWork());
+    await page.evaluate(()=>{const root=document.getElementById('mail-assistant');root.dataset.answerComplete='true';root.classList.add('state-thinking');});
+    await page.evaluate(()=>document.getElementById('mail-assistant').classList.remove('state-thinking'));
+    assert.equal(await motionClip(),'victory');
+    await setStyle('nature');
+    assert.equal(await motionClip(),'happy','Completion feedback follows the new skin');
+    await page.evaluate(()=>document.getElementById('mail-assistant').classList.remove('companion-finished'));
+    await page.clock.runFor(4000);
+    await page.evaluate(()=>document.querySelector('#assistant-orb .companion-art').dispatchEvent(new Event('pointerenter')));
+    assert.equal(await motionClip(),'greet');
+    await page.evaluate(()=>{document.body.dataset.petStyle='unknown-future-skin';mailaiCompanionMotion.wake();});
+    await page.clock.runFor(4000);
+    await page.evaluate(()=>mailaiCompanionMotion.wake());
+    assert.equal(await motionClip(),'peek','Unknown skins fall back safely');
     assert.deepEqual(errors,[]);
-    console.log('PASS motion energy: idle has zero running rig animations; email intent, finite reactions, same-email refresh, chat/hidden launcher, focus/native pause, ongoing work, perch and reduced motion');
+    console.log('PASS motion energy: distinct skin personalities and live skin switching, sparse ambient gestures, non-repeating motion, quiet outfits, input deferral, background/reduced-motion suspension; email intent, finite reactions, same-email refresh, chat/hidden launcher, focus/native pause, ongoing work, perch and reduced motion');
   } finally {
     if(browser)await browser.close();
     const stopped=once(fixture,'exit');fixture.kill('SIGTERM');if(fixture.exitCode===null)await stopped;

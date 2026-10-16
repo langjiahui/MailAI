@@ -6535,7 +6535,7 @@ function renderReadingPane(e) {
           ${mailSummaryToolbarButton(e)}
           <details class="reading-more-actions">
             <summary aria-label="更多邮件操作" data-i18n-aria="ui.e8ee3628b5cc">
-              <svg class="reading-more-symbol" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14M8 3v4M13 8v4M7 13v4"/></svg>
+              <svg class="reading-more-symbol" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h.01M10 10h.01M16 10h.01" stroke-width="3"/></svg>
               <span><span data-i18n="ui.38844b135cf7">更多</span></span>
               <svg class="reading-more-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 7.5 4.5 4.5 4.5-4.5"/></svg>
             </summary>

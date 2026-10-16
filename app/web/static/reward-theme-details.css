@@ -42,7 +42,7 @@ html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[d
 html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .sidebar :is(.nav-item,.sidebar-account-folders>button) {
   border-radius:8px!important;
 }
-html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .reading-header .reading-actions :is(.reading-icon-action,.reading-work-actions button,.reading-ai-group>button,.reading-more-actions>summary) {
+html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .reading-header .reading-actions :is(.reading-reply-group>.reading-icon-action,.reading-work-actions>button,.reading-ai-group>button,.reading-more-actions>summary) {
   border-color:transparent!important;
   border-radius:8px!important;
   background:transparent!important;
@@ -51,7 +51,7 @@ html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[d
   box-shadow:none!important;
   transition:background-color .14s ease,color .14s ease,border-color .14s ease;
 }
-html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .reading-header .reading-actions :is(.reading-icon-action,.reading-work-actions button,.reading-ai-group>button,.reading-more-actions>summary):hover:not(:disabled),
+html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .reading-header .reading-actions :is(.reading-reply-group>.reading-icon-action,.reading-work-actions>button,.reading-ai-group>button,.reading-more-actions>summary):hover:not(:disabled),
 html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .reading-header .reading-actions .reading-more-actions[open]>summary {
   background:var(--reward-hover)!important;
   color:var(--reward-ink)!important;

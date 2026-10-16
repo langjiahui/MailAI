@@ -611,6 +611,8 @@ function addReadingActions(force = false) {
     if (selectedEmailDetail?.status !== 'trash') {
       morePanel.insertAdjacentHTML('beforeend', `<button type="button" data-reading-action="delete-current" data-action-hint="${esc(mailaiText('将这封邮件移入已删除'))}">${icon('M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7M14 10v7')}<span><span data-i18n="ui.2f9d72d5133f">删除邮件</span></span></button>`);
     }
+    const more = morePanel.closest('details');
+    more.ontoggle = () => { if (more.open) requestAnimationFrame(() => positionReadingMorePanel(more)); };
   }
   applyI18n(host);
   host.querySelectorAll('button').forEach(button => {
@@ -1062,13 +1064,60 @@ function initializeWorkspace() {
 
 initializeWorkspace();
 
+// Keep the disclosure inside its reading pane, including short/zoomed windows.
+function positionReadingMorePanel(more) {
+  if (!more?.isConnected || !more.open) return;
+  const panel = more.querySelector('.reading-more-panel');
+  const trigger = more.querySelector('summary').getBoundingClientRect();
+  const pane = more.closest('.reading-pane')?.getBoundingClientRect();
+  const left = Math.max(12, (pane?.left || 0) + 8);
+  const right = Math.min(innerWidth - 12, pane?.right ?? innerWidth);
+  const top = Math.max(12, (pane?.top || 0) + 8);
+  const bottom = Math.min(innerHeight - 12, pane?.bottom ?? innerHeight);
+  if (trigger.bottom < top || trigger.top > bottom) { more.open = false; return; }
+  panel.style.transform = 'none';
+  panel.style.top = 'calc(100% + 7px)';
+  panel.style.bottom = 'auto';
+  const scale = panel.getBoundingClientRect().width / panel.offsetWidth || 1;
+  const below = Math.max(0, bottom - trigger.bottom - 7 * scale);
+  const above = Math.max(0, trigger.top - top - 7 * scale);
+  const upward = panel.scrollHeight * scale > below && above > below;
+  panel.style.maxHeight = `${Math.min(440, (upward ? above : below) / scale)}px`;
+  if (upward) { panel.style.top = 'auto'; panel.style.bottom = 'calc(100% + 7px)'; }
+  const rect = panel.getBoundingClientRect();
+  const x = Math.max(left, Math.min(rect.left, right - rect.width));
+  panel.style.transform = `translateX(${(x - rect.left) / scale}px)`;
+}
+const repositionReadingMore = () => positionReadingMorePanel(document.querySelector('.reading-more-actions[open]'));
+window.addEventListener('resize', () => requestAnimationFrame(repositionReadingMore));
+document.addEventListener('scroll', event => {
+  const more = document.querySelector('.reading-more-actions[open]');
+  if (more && !more.contains(event.target)) positionReadingMorePanel(more);
+}, true);
+
 // Dismiss only this disclosure; Escape returns the keyboard to its trigger.
 document.addEventListener('keydown', event => {
-  const more = document.querySelector('.reading-more-actions[open]');
+  const more = event.target.closest('.reading-more-actions') || document.querySelector('.reading-more-actions[open]');
   if (event.key === 'Escape' && more) {
     more.open = false;
     more.querySelector('summary')?.focus();
+  } else if (more?.contains(event.target) && ['ArrowDown','ArrowUp','Home','End'].includes(event.key)) {
+    event.preventDefault();
+    more.open = true;
+    positionReadingMorePanel(more);
+    const buttons = [...more.querySelectorAll('button:not(:disabled)')].filter(button => button.getClientRects().length);
+    if (!buttons.length) return;
+    const current = buttons.indexOf(document.activeElement);
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1
+      : event.key === 'ArrowDown' ? (current + 1) % buttons.length : (current < 0 ? buttons.length - 1 : (current - 1 + buttons.length) % buttons.length);
+    buttons[next].focus();
   }
+});
+document.addEventListener('focusin', event => {
+  const more = document.querySelector('.reading-more-actions[open]');
+  // WebKit focuses the reading-pane ancestor on mouse-down on a button.
+  // Keep the disclosure mounted until that button receives its click.
+  if (more && !more.contains(event.target) && !event.target.contains(more)) more.open = false;
 });
 document.addEventListener('click', event => {
   const more = document.querySelector('.reading-more-actions[open]');

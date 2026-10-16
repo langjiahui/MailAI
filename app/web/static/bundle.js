@@ -25374,7 +25374,7 @@ function renderReadingPane(e) {
           ${mailSummaryToolbarButton(e)}
           <details class="reading-more-actions">
             <summary aria-label="更多邮件操作" data-i18n-aria="ui.e8ee3628b5cc">
-              <svg class="reading-more-symbol" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14M8 3v4M13 8v4M7 13v4"/></svg>
+              <svg class="reading-more-symbol" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h.01M10 10h.01M16 10h.01" stroke-width="3"/></svg>
               <span><span data-i18n="ui.38844b135cf7">更多</span></span>
               <svg class="reading-more-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 7.5 4.5 4.5 4.5-4.5"/></svg>
             </summary>
@@ -30011,6 +30011,8 @@ function addReadingActions(force = false) {
     if (selectedEmailDetail?.status !== 'trash') {
       morePanel.insertAdjacentHTML('beforeend', `<button type="button" data-reading-action="delete-current" data-action-hint="${esc(mailaiText('将这封邮件移入已删除'))}">${icon('M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7M14 10v7')}<span><span data-i18n="ui.2f9d72d5133f">删除邮件</span></span></button>`);
     }
+    const more = morePanel.closest('details');
+    more.ontoggle = () => { if (more.open) requestAnimationFrame(() => positionReadingMorePanel(more)); };
   }
   applyI18n(host);
   host.querySelectorAll('button').forEach(button => {
@@ -30462,13 +30464,60 @@ function initializeWorkspace() {
 
 initializeWorkspace();
 
+// Keep the disclosure inside its reading pane, including short/zoomed windows.
+function positionReadingMorePanel(more) {
+  if (!more?.isConnected || !more.open) return;
+  const panel = more.querySelector('.reading-more-panel');
+  const trigger = more.querySelector('summary').getBoundingClientRect();
+  const pane = more.closest('.reading-pane')?.getBoundingClientRect();
+  const left = Math.max(12, (pane?.left || 0) + 8);
+  const right = Math.min(innerWidth - 12, pane?.right ?? innerWidth);
+  const top = Math.max(12, (pane?.top || 0) + 8);
+  const bottom = Math.min(innerHeight - 12, pane?.bottom ?? innerHeight);
+  if (trigger.bottom < top || trigger.top > bottom) { more.open = false; return; }
+  panel.style.transform = 'none';
+  panel.style.top = 'calc(100% + 7px)';
+  panel.style.bottom = 'auto';
+  const scale = panel.getBoundingClientRect().width / panel.offsetWidth || 1;
+  const below = Math.max(0, bottom - trigger.bottom - 7 * scale);
+  const above = Math.max(0, trigger.top - top - 7 * scale);
+  const upward = panel.scrollHeight * scale > below && above > below;
+  panel.style.maxHeight = `${Math.min(440, (upward ? above : below) / scale)}px`;
+  if (upward) { panel.style.top = 'auto'; panel.style.bottom = 'calc(100% + 7px)'; }
+  const rect = panel.getBoundingClientRect();
+  const x = Math.max(left, Math.min(rect.left, right - rect.width));
+  panel.style.transform = `translateX(${(x - rect.left) / scale}px)`;
+}
+const repositionReadingMore = () => positionReadingMorePanel(document.querySelector('.reading-more-actions[open]'));
+window.addEventListener('resize', () => requestAnimationFrame(repositionReadingMore));
+document.addEventListener('scroll', event => {
+  const more = document.querySelector('.reading-more-actions[open]');
+  if (more && !more.contains(event.target)) positionReadingMorePanel(more);
+}, true);
+
 // Dismiss only this disclosure; Escape returns the keyboard to its trigger.
 document.addEventListener('keydown', event => {
-  const more = document.querySelector('.reading-more-actions[open]');
+  const more = event.target.closest('.reading-more-actions') || document.querySelector('.reading-more-actions[open]');
   if (event.key === 'Escape' && more) {
     more.open = false;
     more.querySelector('summary')?.focus();
+  } else if (more?.contains(event.target) && ['ArrowDown','ArrowUp','Home','End'].includes(event.key)) {
+    event.preventDefault();
+    more.open = true;
+    positionReadingMorePanel(more);
+    const buttons = [...more.querySelectorAll('button:not(:disabled)')].filter(button => button.getClientRects().length);
+    if (!buttons.length) return;
+    const current = buttons.indexOf(document.activeElement);
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1
+      : event.key === 'ArrowDown' ? (current + 1) % buttons.length : (current < 0 ? buttons.length - 1 : (current - 1 + buttons.length) % buttons.length);
+    buttons[next].focus();
   }
+});
+document.addEventListener('focusin', event => {
+  const more = document.querySelector('.reading-more-actions[open]');
+  // WebKit focuses the reading-pane ancestor on mouse-down on a button.
+  // Keep the disclosure mounted until that button receives its click.
+  if (more && !more.contains(event.target) && !event.target.contains(more)) more.open = false;
 });
 document.addEventListener('click', event => {
   const more = document.querySelector('.reading-more-actions[open]');
@@ -31126,6 +31175,8 @@ document.getElementById('task-center-list').addEventListener('click', async even
     for(const item of moving){const target=width<item.threshold?item.overflow:item.home;if(item.node.parentNode!==target)target.append(item.node)}
     host.classList.add('prioritized-actions');
     host.querySelectorAll('.reading-action-group').forEach(group=>group.classList.toggle('empty-actions',!group.querySelector('button')));
+    const more=host.querySelector('.reading-more-actions[open]');
+    if(more)requestAnimationFrame(()=>positionReadingMorePanel(more));
   }
   const observer=new MutationObserver(()=>{
     const host=document.querySelector('.reading-header .reading-actions');if(!host||host===observedHost||!host.querySelector('.reading-work-actions'))return;
@@ -31829,7 +31880,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
 
 ;
 /* ---- companion-motion.js ---- */
-/* Event-driven acting: brief reactions, no recurring idle animation timer. */
+/* Brief reactions and sparse ambient gestures, suspended outside the foreground. */
 (() => {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const root = document.getElementById('mail-assistant');
@@ -31838,7 +31889,53 @@ document.getElementById('task-center-list').addEventListener('click', async even
   // x, y, rotation, horizontal scale, vertical scale, in SVG coordinates.
   const neutral = [0,0,0,1,1];
   const pose = (x=0,y=0,r=0,sx=1,sy=1) => [x,y,r,sx,sy];
+  const profiles = {
+    nature: {micro:['breathe','tilt'],gestures:['peek','stretch','think'],reactions:{}},
+    ranger: {micro:['nod','alert'],gestures:['survey','ready','step'],
+      reactions:{peek:'survey',greet:'salute',work:'rangerWork',happy:'victory'}},
+  };
+  const style = () => Object.hasOwn(profiles,document.body.dataset.petStyle) ? document.body.dataset.petStyle : 'nature';
   const clips = {
+    nod: {duration:1400,frames:[
+      [0,{}], [.3,{head:pose(0,1.3,2),torso:pose(0,.3)}],
+      [.58,{head:pose(0,-.4,-1)}], [1,{}],
+    ]},
+    alert: {duration:1800,frames:[
+      [0,{}], [.3,{head:pose(1,-.5,2)}], [.62,{head:pose(-.7,-.3,-2)}], [1,{}],
+    ]},
+    survey: {duration:2000,frames:[
+      [0,{}], [.2,{head:pose(2,-1,4),torso:pose(.5,0,1)}],
+      [.42,{head:pose(2,-1,4),wave:pose(0,0,-8)}],
+      [.68,{head:pose(-2,-.5,-4),torso:pose(-.5,0,-1)}], [1,{}],
+    ]},
+    ready: {duration:1900,frames:[
+      [0,{}], [.22,{figure:pose(0,.7,0,1.01,.99),head:pose(0,1,3)}],
+      [.48,{torso:pose(0,-.8),head:pose(0,-1,-2),'arm-left':pose(0,0,12),wave:pose(0,0,-16)}],
+      [.72,{torso:pose(0,-.3),head:pose(0,-.5,-1),wave:pose(0,0,-6)}], [1,{}],
+    ]},
+    salute: {duration:1500,frames:[
+      [0,{}], [.22,{torso:pose(0,-.5,-1),head:pose(0,-.6,-2),wave:pose(-2,-3,-42)}],
+      [.46,{torso:pose(0,-.5,-1),head:pose(0,.6,2),wave:pose(-2,-3,-42)}],
+      [.7,{head:pose(0,-.3,-1),wave:pose(-1,-1,-20)}], [1,{}],
+    ]},
+    rangerWork: {duration:1600,frames:[
+      [0,{}], [.22,{head:pose(0,1,4),torso:pose(0,.4),wave:pose(-1,0,-18)}],
+      [.45,{head:pose(1,.5,2),wave:pose(-1,-1,-28),'arm-left':pose(0,0,4)}],
+      [.7,{head:pose(-1,.5,-2),wave:pose(0,0,-14)}], [1,{}],
+    ]},
+    victory: {duration:1500,frames:[
+      [0,{}], [.2,{figure:pose(0,.8,0,1.02,.98),head:pose(0,1,2)}],
+      [.42,{figure:pose(0,-2,-2),wave:pose(0,-2,-48),'arm-left':pose(0,0,12),head:pose(0,-.6,-3)}],
+      [.65,{figure:pose(0,-1,-1),wave:pose(0,-2,-42),head:pose(0,.5,2)}],
+      [.82,{wave:pose(0,0,-12)}], [1,{}],
+    ]},
+    breathe: {duration:1900,frames:[
+      [0,{}], [.45,{torso:pose(0,-.5,0,1.008,1.012),head:pose(0,-.7,-1)}], [1,{}],
+    ]},
+    tilt: {duration:1800,frames:[
+      [0,{}], [.35,{head:pose(.5,-.5,3),torso:pose(0,0,1)}],
+      [.65,{head:pose(.5,-.5,3)}], [1,{}],
+    ]},
     work: {duration:1800,frames:[
       [0,{}], [.18,{torso:pose(0,1,-2),head:pose(0,1,-5),wave:pose(0,0,-12)}],
       [.38,{torso:pose(0,-.5,1),head:pose(0,-1,3),wave:pose(0,-1,-28),'arm-left':pose(0,0,6)}],
@@ -31895,16 +31992,29 @@ document.getElementById('task-center-list').addEventListener('click', async even
   // here prevents the ambient character clips from adding vertical movement.
   const rigs = [...document.querySelectorAll('.mail-companion')].filter(svg => !svg.closest('.app-preloader')).map(svg => ({
     svg, parts:Object.fromEntries(names.map(name=>[name,svg.querySelector(`.companion-${name}`)])),
-    animations:[],timer:0,mode:'',intersecting:false,
+    animations:[],timer:0,mode:'',style:'',intersecting:false,lastMicro:'',lastGesture:'',
   }));
   const enabled = () => !document.hidden && !reduced.matches && !document.body.classList.contains('companion-still') && !document.body.classList.contains('companion-paused');
   const visible = rig => rig.intersecting &&
     !(orb.contains(rig.svg) && document.body.classList.contains('assistant-visible')) &&
     rig.svg.getClientRects().length && getComputedStyle(rig.svg).visibility !== 'hidden';
-  let awakeUntil = 0, awakeTimer = 0;
+  let awakeUntil = 0, awakeTimer = 0, ambientTimer = 0;
+  const randomDelay = (min,max) => min + Math.random() * (max-min);
+  let gestureAt = performance.now() + randomDelay(40000,70000);
+  let activityAt = performance.now();
+  // Reading, typing and scrolling postpone larger gestures, without a per-frame loop.
+  for (const type of ['pointerdown','keydown','input','scroll']) {
+    document.addEventListener(type,()=>{activityAt=performance.now();},{capture:true,passive:true});
+  }
+  const choose = (items,last) => {
+    const choices=items.filter(name=>name!==last);
+    return choices[Math.floor(Math.random()*choices.length)];
+  };
   const stop = rig => {
     clearTimeout(rig.timer);
     rig.animations.forEach(anim=>anim.cancel()); rig.animations=[];
+    delete rig.svg.dataset.motionKind;
+    delete rig.svg.dataset.motionClip;
     if (rig.svg.dataset.motionActive !== 'false') rig.svg.dataset.motionActive = 'false';
   };
   const transform = p => `translate(${p[0]}px,${p[1]}px) rotate(${p[2]}deg) scale(${p[3]},${p[4]})`;
@@ -31912,8 +32022,11 @@ document.getElementById('task-center-list').addEventListener('click', async even
     const start=Object.fromEntries(names.map(part=>[part,getComputedStyle(rig.parts[part]).transform]));
     stop(rig);
     if(!enabled() || !visible(rig)) return;
+    rig.svg.dataset.motionKind = rig.mode === 'ambient' ? 'ambient' : 'reaction';
+    const clipName=profiles[style()].reactions[name] || name;
+    rig.svg.dataset.motionClip = clipName;
     rig.svg.dataset.motionActive = 'true';
-    const clip=clips[name];
+    const clip=clips[clipName];
     for(const part of names) {
       // Accessories lag the body's turn and rebound after it settles.
       const keys=clip.frames.map(([offset,frame],index)=>{
@@ -31925,24 +32038,69 @@ document.getElementById('task-center-list').addEventListener('click', async even
         }
         return {offset,transform:transform(value),easing:'cubic-bezier(.22,.65,.3,1)'};
       });
+      // Leave stationary parts alone; retain interrupted parts until they settle.
+      if((start[part]==='none' || start[part]==='matrix(1, 0, 0, 1, 0, 0)') &&
+        keys.every(key=>key.transform===transform(neutral))) continue;
       // Preserve the actual pose when interrupted, avoiding snaps on hover/state changes.
       keys[0].transform=start[part];
       const anim=rig.parts[part].animate(keys,{duration:clip.duration,fill:'none',iterations:name==='work'?Infinity:1});
       rig.animations.push(anim);
     }
-    if(name!=='work')rig.timer=setTimeout(()=>{rig.animations=[];},clip.duration+25);
+    if(rig.mode==='ambient') {
+      const eyes=rig.svg.querySelector('.companion-eyes');
+      if(eyes) rig.animations.push(eyes.animate([
+        {offset:0,transform:'scaleY(1)'},{offset:.35,transform:'scaleY(1)'},
+        {offset:.40,transform:'scaleY(.12)'},{offset:.46,transform:'scaleY(1)'},
+        {offset:1,transform:'scaleY(1)'},
+      ],{duration:clip.duration,fill:'none'}));
+    }
+    if(name!=='work')rig.timer=setTimeout(()=>{
+      if(rig.mode==='ambient') {
+        stop(rig);rig.mode='off';refresh();
+      } else {
+        rig.animations.forEach(anim=>anim.cancel());rig.animations=[];
+      }
+    },clip.duration+25);
   };
-  const refresh = () => rigs.forEach(rig=>{
-    let mode='off';
-    if(!enabled() || !visible(rig)) mode='off';
-    else if(document.body.classList.contains('companion-working') || rig.svg.closest('.state-thinking,.compose-ai-panel.is-thinking')) mode='work';
-    else if(rig.svg.closest('.companion-finished')) mode='happy';
-    else if(performance.now() < awakeUntil) mode='peek';
-    if(mode===rig.mode) return;
-    rig.mode=mode;
-    if(mode==='off') {stop(rig);return;}
-    play(rig,mode);
-  });
+  const idleRigs = () => enabled() ? rigs.filter(rig=>visible(rig) && rig.mode==='off') : [];
+  const scheduleAmbient = () => {
+    // One timer and one performing mascot. A foreground return starts a fresh wait.
+    if(!idleRigs().length || rigs.some(rig=>rig.mode!=='off')) {
+      clearTimeout(ambientTimer);ambientTimer=0;return;
+    }
+    if(ambientTimer) return;
+    ambientTimer=setTimeout(()=>{
+      ambientTimer=0;
+      const candidates=idleRigs();
+      const rig=candidates.find(item=>item.svg.closest('.compose-perch')) || candidates[0];
+      if(!rig) return;
+      const now=performance.now();
+      // Keep the writing portrait subtle, and avoid large gestures during input.
+      const large=now>=gestureAt && now-activityAt>=15000 && !rig.svg.closest('.compose-perch');
+      const profile=profiles[style()];
+      const name=large ? choose(profile.gestures,rig.lastGesture) : choose(profile.micro,rig.lastMicro);
+      if(large) {rig.lastGesture=name;gestureAt=now+randomDelay(40000,70000);}
+      else rig.lastMicro=name;
+      rig.mode='ambient';play(rig,name);
+    },randomDelay(8000,15000));
+  };
+  const refresh = () => {
+    rigs.forEach(rig=>{
+      const nextStyle=style(), changed=rig.style!==nextStyle;
+      rig.style=nextStyle;
+      let mode='off';
+      if(!enabled() || !visible(rig)) mode='off';
+      else if(document.body.classList.contains('companion-working') || rig.svg.closest('.state-thinking,.compose-ai-panel.is-thinking')) mode='work';
+      else if(rig.svg.closest('.companion-finished')) mode='happy';
+      else if(performance.now() < awakeUntil) mode='peek';
+      else if(rig.mode==='ambient' && !changed) mode='ambient';
+      if(mode===rig.mode && !changed) return;
+      rig.mode=mode;
+      if(mode==='off') {stop(rig);return;}
+      play(rig,mode);
+    });
+    scheduleAmbient();
+  };
   const wake = () => {
     if (!enabled()) return;
     awakeUntil = performance.now() + 3500;
@@ -31980,12 +32138,13 @@ document.getElementById('task-center-list').addEventListener('click', async even
     chatOpen = open;
     if (!enabled()) {
       clearTimeout(awakeTimer); awakeTimer = 0; awakeUntil = 0;
+      gestureAt=performance.now()+randomDelay(40000,70000);
     }
     if (opened) wake();
     refresh();
   };
   const observer=new MutationObserver(sync);
-  observer.observe(document.body,{attributes:true,attributeFilter:['class']});
+  observer.observe(document.body,{attributes:true,attributeFilter:['class','data-pet-style']});
   observer.observe(root,{attributes:true,attributeFilter:['class']});
   document.querySelectorAll('.assistant-panel,.compose-ai-panel').forEach(el=>observer.observe(el,{attributes:true,attributeFilter:['class']}));
   reduced.addEventListener('change',sync);
