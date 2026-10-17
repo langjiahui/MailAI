@@ -77,9 +77,13 @@ const {chromium,webkit}=require('playwright');
   await page.evaluate(()=>{document.body.style.zoom=1;document.documentElement.style.setProperty('--fz','1');closeAssistant();
    window.fixtureActionCalls=0;
    taskNotice('Fixture action','Run',()=>{fixtureActionCalls++;return new Promise(resolve=>{window.fixtureActionFinish=()=>{taskNotice('Fixture completed','',null,1500);resolve();};});},250);
+   // Establish focus before the deliberately short lifetime can elapse between
+   // browser RPCs on a busy runner. The following wait still exceeds that lifetime.
+   document.querySelector('#workspace-notice button').focus();
   });
   const notice=page.locator('#workspace-notice');
-  await notice.locator('button').first().focus();await page.waitForTimeout(450);
+  assert(await notice.locator('button').first().evaluate(button=>button===document.activeElement));
+  await page.waitForTimeout(450);
   assert(await notice.isVisible(),'A focused action must not time out');
   await notice.locator('button').first().press('Enter');
   assert.equal(await notice.locator('[aria-busy=true]').count(),1);
@@ -104,8 +108,10 @@ const {chromium,webkit}=require('playwright');
   await page.evaluate(()=>{taskNotice('New operation');fixtureRejectOld(new Error('old failure'));});
   assert.match(await notice.innerText(),/New operation/);
   await page.locator('#global-search').focus();
-  await page.evaluate(()=>taskNotice('Hover keeps this visible','',null,250));
+  await page.evaluate(()=>taskNotice('Hover keeps this visible','',null,0));
   await notice.hover();await page.waitForTimeout(450);
+  await page.evaluate(()=>{const host=document.getElementById('workspace-notice');host._remaining=250;scheduleTaskNotice(host);});
+  await page.waitForTimeout(450);
   assert(await notice.isVisible(),'Hover pauses the dismissal timer');
   await page.mouse.move(5,5);await notice.waitFor({state:'hidden'});
   // Save a real synthetic task: pending/failure preserve the form; success

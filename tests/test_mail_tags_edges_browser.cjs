@@ -90,6 +90,7 @@ const {chromium,webkit}=require('playwright');
   for(const language of ['zh-CN','en'])for(const theme of ['light','dark']){
    await page.evaluate(({language,theme})=>{setI18nLanguage(language);applyTheme(theme);},{language,theme});
    await page.locator('[data-mail-tag-manage]').click();
+   await dialog.waitFor({state:'visible'});
    for(const width of [1440,600,390]){
     await page.setViewportSize({width,height:700});
     const metrics=await dialog.evaluate(n=>({scroll:n.scrollWidth,width:n.clientWidth,rect:n.getBoundingClientRect().toJSON(),header:n.querySelector('header').getBoundingClientRect().toJSON()}));
