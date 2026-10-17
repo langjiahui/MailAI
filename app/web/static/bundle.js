@@ -1579,6 +1579,31 @@ if (typeof document !== 'undefined') {
 /* ---- i18n-catalog.js ---- */
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "searchLoop.openMail": ["打开邮件", "Open message"],
+  "searchLoop.openingMail": ["打开中…", "Opening…"],
+  "searchLoop.showDetails": ["展开邮件信息", "Expand mail details"],
+  "searchLoop.hideDetails": ["收起邮件信息", "Collapse mail details"],
+  "searchLoop.preview": ["邮件片段", "Mail excerpt"],
+  "searchLoop.date": ["时间", "Date"],
+  "asst.dockWidth": ["调整小邮面板宽度", "Resize assistant panel"],
+  "asst.dockWidthHelp": ["拖动或按左右方向键调整，双击或按 Enter 恢复默认宽度", "Drag or use Left/Right arrows to resize. Double-click or press Enter to reset."],
+  "asst.dockWidthValue": ["{0} 像素", "{0} pixels"],
+  "command.open": ["打开快捷操作", "Open quick actions"],
+  "command.openHint": ["打开快捷操作（⌘K / Ctrl+K）", "Open quick actions (⌘K / Ctrl+K)"],
+  "command.placeholder": ["搜索命令、邮箱，或输入邮件关键词", "Find commands, mailboxes, or search mail"],
+  "command.empty": ["没有匹配的命令", "No matching commands"],
+  "command.navigate": ["选择", "Select"],
+  "command.execute": ["打开", "Open"],
+  "command.close": ["关闭", "Close"],
+  "command.searchCurrent": ["搜索当前邮件", "Search current mail"],
+  "command.currentAccount": ["当前邮箱：{0}", "Current mailbox: {0}"],
+  "command.currentInbox": ["当前邮箱 · 收件箱", "Current mailbox · Inbox"],
+  "command.switchInbox": ["切换到收件箱", "Switch to inbox"],
+  "command.switchAccount": ["切换邮箱", "Switch mailbox"],
+  "command.searchMail": ["搜索邮件：{0}", "Search mail: {0}"],
+  "command.commonActions": ["常用操作", "Quick actions"],
+  "command.settings": ["设置", "Settings"],
+  "command.searchGroup": ["搜索邮件", "Search mail"],
   "nativeMenu.viewTitle": ["显示菜单", "View"],
   "nativeMenu.8a1474446080": ["关于 MailAI", "About MailAI"],
   "nativeMenu.2ba74de12dbb": ["检查更新…", "Check for Updates…"],
@@ -1643,12 +1668,20 @@ const MAILAI_UI_COPY = {
   "searchLoop.candidates": ["找到这些候选邮件", "Candidate messages"],
   "searchLoop.empty": ["还没找到合适的邮件", "No suitable message yet"],
   "searchLoop.found": ["已找到目标邮件", "Target message found"],
-  "searchLoop.wrong": ["结果不对", "Different results"],
+  "asst.transcript": ["小邮对话记录", "Xiaoyou conversation"],
+  "asst.jumpLatest": ["回到最新", "Jump to latest"],
+  "feedback.working": ["正在处理…", "Working…"],
+  "feedback.retry": ["操作未完成，可重试：{0}", "Action did not complete. Retry: {0}"],
+  "feedback.viewTasks": ["查看待办", "View tasks"],
+  "searchLoop.opening": ["正在打开原邮件…", "Opening original message…"],
+  "searchLoop.wrong": ["排除这批，继续找", "Skip these and keep searching"],
   "searchLoop.wrongHint": ["跳过这批候选，保持其他条件继续查找", "Skip this batch and keep the other conditions"],
   "searchLoop.dates": ["放宽时间", "Any date"],
   "searchLoop.keywords": ["放宽关键词", "Broaden keywords"],
   "searchLoop.undo": ["撤销上一步", "Undo last change"],
   "searchLoop.clue": ["补充线索", "Add a clue"],
+  "searchLoop.editSender": ["修改发件人条件", "Edit sender filter"],
+  "searchLoop.editKeywords": ["修改内容线索", "Edit content clues"],
   "searchLoop.clueType": ["你还记得什么？", "What else do you remember?"],
   "searchLoop.sender": ["发件人", "Sender"],
   "searchLoop.recipient": ["收件人", "Recipient"],
@@ -19473,11 +19506,13 @@ function renderAssistantWelcome() {
   const wrap = document.getElementById('assistant-messages');
   wrap.replaceChildren(document.getElementById('assistant-welcome-template').content.cloneNode(true));
   wrap.classList.add('is-welcome');
+  window.mailaiAssistantScroll?.follow();
 }
 function appendAssistantMessage(role, content, sources = []) {
   if (role === 'user') content = String(content || '').replace(/\n?（本次附图 \d+ 张；原图不存入历史，后续核对图片细节请重新上传。）/g, '');
   if (role !== 'user') content = String(content || '').replace(/\[email_id:(\d+)\]/g, (match, id) => sources.some(source => String(source.id) === id) ? match : mailaiText('（来源未核实）'));
   const wrap = document.getElementById('assistant-messages');
+  if (role === 'user') window.mailaiAssistantScroll?.follow();
   wrap.querySelector('.assistant-welcome')?.remove();
   wrap.classList.remove('is-welcome');
   if (role !== 'user' && !String(content || '').trim()) content = mailaiText('这次分析没有完整返回。你可以把刚才的问题再发一次，我会重新帮你查。');
@@ -19485,7 +19520,10 @@ function appendAssistantMessage(role, content, sources = []) {
   const accountId = activeMailAccount()?.id || '';
   const sourceHtml = role !== 'user' ? assistantSourcesHtml(sources, accountId) : '';
   el.innerHTML = `<div class="assistant-bubble">${role === 'user' ? esc(content) : assistantAnswerHtml(content, sources, accountId)}${sourceHtml}</div>`;
-  wrap.appendChild(el); wrap.scrollTop = wrap.scrollHeight; return el;
+  wrap.appendChild(el);
+  if (window.mailaiAssistantScroll) window.mailaiAssistantScroll.changed();
+  else wrap.scrollTop = wrap.scrollHeight;
+  return el;
 }
 function assistantProgressHtml(title, detail = '') {
   return `<div class="assistant-progress" role="status" aria-live="polite"><span class="thinking-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="assistant-progress-copy"><b>${esc(title)}</b>${detail ? `<small>${esc(detail)}</small>` : ''}</span></div>`;
@@ -19671,6 +19709,7 @@ async function loadAssistantConversation(id) {
   if (revision !== assistantRevision) return;
   assistantConversationId = Number(id); assistantHistory = [];
   const wrap = document.getElementById('assistant-messages'); wrap.innerHTML = '';
+  window.mailaiAssistantScroll?.follow();
   (data.messages || []).forEach(message => {
     const element = appendAssistantMessage(message.role, message.content, message.sources || []);
     if (message.search) window.mailaiAssistantSearch?.restore(element,message.search,message.sources || []);
@@ -19872,8 +19911,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
   const paint = () => {
     bubble.classList.remove('assistant-progress-bubble');
     bubble.innerHTML = assistantAnswerHtml(validAnswer(), sources, account?.id || '');
-    const wrap = document.getElementById('assistant-messages');
-    if (wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight < 160) wrap.scrollTop = wrap.scrollHeight;
+    window.mailaiAssistantScroll?.changed();
   };
   try {
     const response = await fetch('/api/assistant/ask-stream', {method:'POST', signal:controller.signal,
@@ -22855,7 +22893,13 @@ function renderEmailList(emails, {silent = false} = {}) {
       showMailContextMenu(event.clientX, event.clientY, id);
     });
     item.addEventListener('keydown', event => {
+      if(event.target!==item||event.isComposing||event.keyCode===229)return;
       const id = Number(item.dataset.id);
+      if(!event.ctrlKey&&!event.metaKey&&!event.altKey&&!event.shiftKey&&['ArrowDown','ArrowUp','Home','End'].includes(event.key)){
+        const rows=[...container.querySelectorAll('.email-item')].filter(row=>row.getClientRects().length);
+        const index=rows.indexOf(item),next=event.key==='Home'?0:event.key==='End'?rows.length-1:Math.max(0,Math.min(rows.length-1,index+(event.key==='ArrowDown'?1:-1)));
+        event.preventDefault();rows[next]?.focus({preventScroll:true});rows[next]?.scrollIntoView({block:'nearest',inline:'nearest'});return;
+      }
       if (event.key === 'Enter') {
         event.preventDefault();
         if (!specialMailbox && !unifiedMailbox) selectionAnchorId = id;
@@ -23185,11 +23229,27 @@ function mailContextIcon(path) {
   return `<svg viewBox="0 0 20 20" aria-hidden="true">${path}</svg>`;
 }
 
-function hideMailContextMenu() {
+function hideMailContextMenu({restoreFocus=false}={}) {
   const menu = document.getElementById('mail-context-menu');
-  if (!menu) return;
+  if (!menu || menu.classList.contains('hidden')) return;
   menu.classList.add('hidden');
   menu.setAttribute('aria-hidden', 'true');
+  let target=menu._returnFocus;
+  const scope=menu._returnScope;
+  if(restoreFocus&&!target?.isConnected&&scope?.accountId===(activeMailAccount()?.id||'')&&scope.unified===unifiedMailbox){
+    target=[...document.querySelectorAll('#email-list .email-item')].find(row=>Number(row.dataset.id)===Number(menu.dataset.contextId)&&(row.dataset.accountId||'')===scope.rowAccount);
+  }
+  if(restoreFocus&&target?.isConnected)target.focus({preventScroll:true});
+  menu._returnFocus=null;
+  menu._returnScope=null;
+}
+
+function positionMailContextMenu(menu,x,y) {
+  const scale=Number.parseFloat(getComputedStyle(document.body).zoom)||1;
+  menu.style.left='0px';menu.style.top='0px';
+  const rect=menu.getBoundingClientRect();
+  menu.style.left=`${Math.max(8,Math.min(x,window.innerWidth-rect.width-8))/scale}px`;
+  menu.style.top=`${Math.max(8,Math.min(y,window.innerHeight-rect.height-8))/scale}px`;
 }
 
 function ensureMailContextMenu() {
@@ -23201,6 +23261,28 @@ function ensureMailContextMenu() {
   menu.setAttribute('role', 'menu');
   menu.setAttribute('aria-hidden', 'true');
   document.body.appendChild(menu);
+  const folders=(open,focus=false)=>{
+    const group=menu.querySelector('.mail-context-folders'),trigger=menu.querySelector('[data-context-action=folders]');
+    if(!group||trigger?.disabled)return;
+    group.classList.toggle('hidden',!open);trigger.setAttribute('aria-expanded',String(open));
+    const rect=menu.getBoundingClientRect();positionMailContextMenu(menu,rect.left,rect.top);
+    if(focus)(open?group.querySelector('button:not(:disabled)'):trigger)?.focus();
+  };
+  menu.addEventListener('keydown',event=>{
+    if(event.isComposing||event.keyCode===229||event.ctrlKey||event.metaKey||event.altKey)return;
+    const inFolders=Boolean(event.target.closest('.mail-context-folders'));
+    if(event.key==='Escape'){
+      event.preventDefault();event.stopPropagation();
+      if(inFolders||menu.querySelector('[data-context-action=folders]')?.getAttribute('aria-expanded')==='true')folders(false,true);else hideMailContextMenu({restoreFocus:true});return;
+    }
+    if(event.key==='Tab'){hideMailContextMenu({restoreFocus:true});return;}
+    if(event.key==='ArrowRight'&&event.target.matches('[data-context-action=folders]')){event.preventDefault();folders(true,true);return;}
+    if(event.key==='ArrowLeft'&&inFolders){event.preventDefault();folders(false,true);return;}
+    if(!['ArrowDown','ArrowUp','Home','End'].includes(event.key))return;
+    const buttons=[...menu.querySelectorAll('[role=menuitem]:not(:disabled)')].filter(button=>button.getClientRects().length);
+    const index=buttons.indexOf(document.activeElement),next=event.key==='Home'?0:event.key==='End'?buttons.length-1:(index+(event.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length;
+    event.preventDefault();event.stopPropagation();buttons[next]?.focus();
+  });
   menu.addEventListener('click', async event => {
     const folderButton = event.target.closest('[data-context-folder]');
     if (folderButton) {
@@ -23214,7 +23296,7 @@ function ensureMailContextMenu() {
     const action = button.dataset.contextAction;
     const id = Number(menu.dataset.contextId);
     if (action === 'folders') {
-      menu.querySelector('.mail-context-folders')?.classList.toggle('hidden');
+      folders(menu.querySelector('.mail-context-folders')?.classList.contains('hidden'));
       return;
     }
     hideMailContextMenu();
@@ -23246,6 +23328,10 @@ function showMailContextMenu(x, y, id) {
        <button type="button" role="menuitem" data-context-action="unread">${mailContextIcon('<path d="M3.5 5.5h13v9h-13zM4.5 7l5.5 4 5.5-4M14.5 3.5h2"/>')}<span><span data-i18n="ui.2312be9fcfa0">标记为未读</span></span></button>`
     : `<button type="button" role="menuitem" data-context-action="${row.is_read ? 'unread' : 'read'}">${mailContextIcon('<path d="M3.5 5.5h13v9h-13zM4.5 7l5.5 4 5.5-4"/>')}<span>${row.is_read ? mailaiText('标记为未读') : mailaiText('标记为已读')}</span></button>`;
   menu.dataset.contextId = id;
+  menu._returnFocus=document.querySelector(`#email-list .email-item[data-id="${Number(id)}"]`);
+  menu._returnScope={accountId:activeMailAccount()?.id||'',unified:unifiedMailbox,rowAccount:menu._returnFocus?.dataset.accountId||''};
+  const list=document.getElementById('email-list');
+  menu._listScrollTop=list.scrollTop;menu._listScrollLeft=list.scrollLeft;
   menu.innerHTML = `
     <div class="mail-context-summary">${count > 1 ? mailaiTemplate`已选 ${count} 封邮件` : mailaiText('邮件操作')}<small>${localSelection ? mailaiText('包含本地归档；可在阅读窗口收藏，不能移动到服务器') : count > 1 ? mailaiText('以下操作将应用到所选邮件') : mailaiText('右键快捷操作')}</small></div>
     ${count === 1 ? `
@@ -23258,18 +23344,15 @@ function showMailContextMenu(x, y, id) {
     ${readStateActions}
     <button type="button" role="menuitem" data-context-action="star" ${localSelection ? mailaiText('disabled title="星标需要同步服务器，本地归档请使用收藏"') : ''}>${mailContextIcon('<path d="m10 3 2.1 4.2 4.7.7-3.4 3.3.8 4.7-4.2-2.2-4.2 2.2.8-4.7-3.4-3.3 4.7-.7z"/>')}<span><span data-i18n="ui.e817525bedb9">添加星标</span></span></button>
     <div class="mail-context-separator"></div>
-    <button type="button" role="menuitem" data-context-action="folders" ${localSelection ? mailaiText('disabled title="本地归档不会上传到服务器"') : ''}>${mailContextIcon('<path d="M3.5 6h5l1.5 2h6.5v8h-13z"/>')}<span><span data-i18n="ui.711c5507708d">移动到文件夹</span></span><b>›</b></button>
-    <div class="mail-context-folders hidden">${folderOptions || "<small><span data-i18n=\"ui.aefd65f9a2a4\">暂无可用文件夹</span></small>"}</div>
+    <button type="button" role="menuitem" data-context-action="folders" aria-expanded="false" aria-controls="mail-context-folders" ${localSelection ? mailaiText('disabled title="本地归档不会上传到服务器"') : ''}>${mailContextIcon('<path d="M3.5 6h5l1.5 2h6.5v8h-13z"/>')}<span><span data-i18n="ui.711c5507708d">移动到文件夹</span></span><b>›</b></button>
+    <div id="mail-context-folders" class="mail-context-folders hidden" role="group" aria-label="${esc(mailaiText('移动到文件夹'))}">${folderOptions || "<small><span data-i18n=\"ui.aefd65f9a2a4\">暂无可用文件夹</span></small>"}</div>
     ${!inTrash ? `<button type="button" class="danger" role="menuitem" data-context-action="trash">${mailContextIcon('<path d="M4 6h12M7 6V4h6v2M6 8l.7 8h6.6l.7-8M8.5 9.5v4M11.5 9.5v4"/>')}<span><span data-i18n="ui.0beae53e661c">移入已删除</span></span></button>` : "<button type=\"button\" class=\"danger\" role=\"menuitem\" data-context-action=\"purge\"><span><span data-i18n=\"ui.4ee7d3299549\">彻底删除…</span></span></button>"}
     <div class="mail-context-separator"></div>
     <button type="button" role="menuitem" data-context-action="select-all">${mailContextIcon('<path d="M4 4h12v12H4zM7 10l2 2 4-4"/>')}<span><span data-i18n="ui.70b25d866a2e">全选当前列表</span></span><kbd>⌘A</kbd></button>
     ${count > 1 ? `<button type="button" role="menuitem" data-context-action="clear">${mailContextIcon('<path d="m6 6 8 8M14 6l-8 8"/>')}<span><span data-i18n="ui.74966e20df2e">取消选择</span></span><kbd>Esc</kbd></button>` : ''}`;
   menu.classList.remove('hidden');
   menu.setAttribute('aria-hidden', 'false');
-  menu.style.left = '0px'; menu.style.top = '0px';
-  const rect = menu.getBoundingClientRect();
-  menu.style.left = `${Math.max(8, Math.min(x, window.innerWidth - rect.width - 8))}px`;
-  menu.style.top = `${Math.max(8, Math.min(y, window.innerHeight - rect.height - 8))}px`;
+  positionMailContextMenu(menu,x,y);
   menu.querySelector('button')?.focus();
 }
 
@@ -26327,7 +26410,11 @@ document.getElementById('bulk-cancel').addEventListener('click', () => {
 document.addEventListener('click', event => {
   if (!event.target.closest('#mail-context-menu')) hideMailContextMenu();
 });
-document.getElementById('email-list').addEventListener('scroll', hideMailContextMenu, {passive:true});
+document.getElementById('email-list').addEventListener('scroll', event=>{
+  const menu=document.getElementById('mail-context-menu'),list=event.currentTarget;
+  // WebKit may deliver an earlier layout scroll after the menu has opened.
+  if(menu&&(Math.abs(list.scrollTop-menu._listScrollTop)>.5||Math.abs(list.scrollLeft-menu._listScrollLeft)>.5))hideMailContextMenu();
+}, {passive:true});
 document.addEventListener('keydown', event => {
   const target = event.target;
   const editing = target instanceof HTMLElement && (
@@ -29450,9 +29537,21 @@ themeMediaQuery?.addEventListener?.('change', () => {
   if (savedThemeMode() === 'system') applyTheme('system');
 });
 
+function pauseTaskNotice(host) {
+  clearTimeout(host._dismissTimer);
+  if(host._dismissAt)host._remaining=Math.max(1,host._dismissAt-Date.now());
+  host._dismissAt=0;
+}
+function scheduleTaskNotice(host) {
+  pauseTaskNotice(host);
+  if(!host._noticeToken || !host._remaining || host._noticeBusy || host.matches(':hover') || host.contains(document.activeElement))return;
+  host._dismissAt=Date.now()+host._remaining;
+  host._dismissTimer=setTimeout(()=>hideTaskNotice(host),host._remaining);
+}
 function hideTaskNotice(host) {
   clearTimeout(host._dismissTimer);
   clearTimeout(host._hideTimer);
+  host._noticeToken=null;
   host.classList.add('is-fading');
   host._hideTimer = setTimeout(() => {
     host.classList.add('hidden');
@@ -29462,15 +29561,50 @@ function hideTaskNotice(host) {
 
 function taskNotice(message, actionText = '', action = null, dismissAfter = 0) {
   const host = document.getElementById('workspace-notice');
+  const hadFocus=host.contains(document.activeElement);
   clearTimeout(host._dismissTimer);
   clearTimeout(host._hideTimer);
+  const ticket={};host._noticeToken=ticket;host._noticeBusy=false;
+  host._remaining=dismissAfter;host._dismissAt=0;
+  host.removeAttribute('aria-busy');host.dataset.state='ready';
   host.replaceChildren();
   const copy = document.createElement('span'); copy.textContent = message; host.append(copy);
-  if (actionText) { const button = document.createElement('button'); button.textContent = actionText; button.onclick = action; host.append(button); }
+  if (actionText && action) {
+    const button=document.createElement('button');button.type='button';button.textContent=actionText;
+    button.onclick=async()=>{
+      if(host._noticeBusy||host._noticeToken!==ticket)return;
+      pauseTaskNotice(host);host._noticeBusy=true;host.dataset.state='working';
+      // Keep keyboard focus on the action while the guard blocks repeat presses.
+      button.setAttribute('aria-disabled','true');button.setAttribute('aria-busy','true');
+      mailaiBindUI(button,'textContent',()=>mailaiText('正在处理…'));
+      try {await action();}
+      catch(error){
+        if(host._noticeToken!==ticket)return;
+        host.dataset.state='error';host._remaining=0;
+        mailaiBindUI(copy,'textContent',()=>mailaiTemplate`操作未完成，可重试：${mailaiSystemMessage(error.message)}`);
+      } finally {
+        if(host._noticeToken===ticket){
+          host._noticeBusy=false;button.removeAttribute('aria-disabled');button.removeAttribute('aria-busy');
+          mailaiBindUI(button,'textContent',()=>actionText);
+          if(host.dataset.state!=='error')host.dataset.state='ready';
+          scheduleTaskNotice(host);
+        }
+      }
+    };
+    host.append(button);
+  }
   const close = document.createElement('button'); close.textContent = '×'; mailaiBindUI(close, "@aria-label", () => (mailaiText('关闭提示'))); close.onclick = () => hideTaskNotice(host); host.append(close);
   host.classList.remove('is-fading');
   host.classList.remove('hidden');
-  if (dismissAfter > 0) host._dismissTimer = setTimeout(() => hideTaskNotice(host), dismissAfter);
+  if(hadFocus)host.querySelector('button')?.focus({preventScroll:true});
+  host.onpointerenter=()=>pauseTaskNotice(host);
+  host.onpointerleave=()=>scheduleTaskNotice(host);
+  if(!host._noticeFocusBound){
+    host._noticeFocusBound=true;
+    host.addEventListener('focusin',()=>pauseTaskNotice(host));
+    host.addEventListener('focusout',()=>queueMicrotask(()=>{if(host._noticeToken)scheduleTaskNotice(host);}));
+  }
+  scheduleTaskNotice(host);
 }
 
 function describeMailUndo(path, body, result, accountId) {
@@ -30134,6 +30268,7 @@ function updateAssistantPlacement() {
   const displayLabel = floating ? mailaiText('恢复自动布局') : mailaiText('切换为浮动窗口');
   displayButton.title = displayLabel;
   displayButton.setAttribute('aria-label', displayLabel);
+  window.mailaiAssistantDivider?.update();
 }
 
 function returnToMailFromAssistant() {
@@ -30555,6 +30690,132 @@ document.getElementById('task-center-list').addEventListener('click', async even
 });
 
 ;
+/* ---- assistant-divider.js ---- */
+/* Viewport clamps never overwrite the user's preferred dock width. Floating sizes stay independent. */
+(() => {
+  const key='mailai.assistant.dockWidth.v1',defaultWidth=420;
+  const handle=document.getElementById('assistant-dock-divider'),panel=document.getElementById('assistant-panel');
+  const pane=document.querySelector('.reading-pane'),layout=document.querySelector('.layout');
+  let preferred=defaultWidth,drag=null,limits={min:320,max:720},effective=defaultWidth;
+  try { const value=Number(localStorage.getItem(key));if(Number.isFinite(value)&&value>=240&&value<=720)preferred=value; } catch (_) {}
+  const scale=()=>Number.parseFloat(getComputedStyle(document.body).zoom)||1;
+  const enabled=()=>document.body.matches('.assistant-visible:is(.assistant-split,.assistant-docked)')&&!panel.classList.contains('hidden');
+  function save(){
+    try { if(preferred===defaultWidth)localStorage.removeItem(key);else localStorage.setItem(key,String(preferred)); }
+    catch (_) { toast(mailaiText('显示偏好未保存，请稍后重试'),'warn'); }
+  }
+  function update(){
+    handle.hidden=!enabled();
+    if(handle.hidden){if(drag)finish(false);return;}
+    const zoom=scale(),style=getComputedStyle(layout),box=layout.getBoundingClientRect();
+    const fixed=[...layout.children].filter(node=>node!==pane&&node.getClientRects().length);
+    const reserved=fixed.reduce((sum,node)=>sum+node.getBoundingClientRect().width/zoom,0)
+      +(parseFloat(style.columnGap)||0)*fixed.length+(parseFloat(style.paddingLeft)||0)+(parseFloat(style.paddingRight)||0);
+    limits.max=Math.max(240,Math.min(720,Math.floor(innerWidth/zoom-box.left/zoom-14-reserved-440)));
+    limits.min=Math.min(320,limits.max);
+    effective=Math.round(Math.max(limits.min,Math.min(limits.max,preferred)));
+    const readingTop=pane.scrollTop,messages=document.getElementById('assistant-messages');
+    const heldTop=window.mailaiAssistantScroll?.isFollowing()===false?messages.scrollTop:null;
+    const width=effective+'px';
+    if(document.body.style.getPropertyValue('--assistant-dock-width')!==width)document.body.style.setProperty('--assistant-dock-width',width);
+    const rect=panel.getBoundingClientRect();
+    handle.style.setProperty('--assistant-divider-left',rect.left/zoom+'px');
+    handle.style.setProperty('--assistant-divider-top',rect.top/zoom+'px');
+    handle.style.setProperty('--assistant-divider-height',rect.height/zoom+'px');
+    handle.setAttribute('aria-valuemin',String(limits.min));handle.setAttribute('aria-valuemax',String(limits.max));
+    handle.setAttribute('aria-valuenow',String(effective));handle.setAttribute('aria-valuetext',mailaiTemplate`${effective} 像素`);
+    pane.scrollTop=readingTop;if(heldTop!==null)messages.scrollTop=heldTop;
+  }
+  function finish(commit){
+    if(!drag)return;
+    const previous=drag;drag=null;
+    if(commit&&previous.moved){preferred=effective;save();}else preferred=previous.preferred;
+    handle.classList.remove('is-dragging');document.body.classList.remove('assistant-width-adjusting');
+    if(handle.hasPointerCapture(previous.pointerId))handle.releasePointerCapture(previous.pointerId);
+    update();
+  }
+  function reset(){preferred=defaultWidth;save();update();}
+  handle.addEventListener('pointerdown',event=>{
+    if(!enabled()||event.button!==0||!event.isPrimary||drag)return;
+    event.preventDefault();handle.focus({preventScroll:true});
+    drag={x:event.clientX,width:effective,preferred,zoom:scale(),pointerId:event.pointerId};
+    handle.setPointerCapture(event.pointerId);handle.classList.add('is-dragging');document.body.classList.add('assistant-width-adjusting');
+  });
+  handle.addEventListener('pointermove',event=>{
+    if(!drag||event.pointerId!==drag.pointerId)return;
+    if(Math.abs(drag.x-event.clientX)>2)drag.moved=true;
+    preferred=drag.width+(drag.x-event.clientX)/drag.zoom;update();
+  });
+  handle.addEventListener('pointerup',event=>{if(event.pointerId===drag?.pointerId)finish(true);});
+  handle.addEventListener('pointercancel',event=>{if(event.pointerId===drag?.pointerId)finish(false);});
+  handle.addEventListener('lostpointercapture',()=>finish(false));
+  handle.addEventListener('dblclick',()=>{finish(false);reset();});
+  handle.addEventListener('keydown',event=>{
+    if(event.isComposing||event.ctrlKey||event.metaKey||event.altKey)return;
+    if(event.key==='Escape'&&drag){event.preventDefault();event.stopPropagation();finish(false);return;}
+    if(!enabled()||drag||!['ArrowLeft','ArrowRight','Home','End','Enter'].includes(event.key))return;
+    event.preventDefault();event.stopPropagation();
+    if(event.key==='Enter'){reset();return;}
+    const step=event.shiftKey?48:16;
+    preferred=event.key==='Home'?limits.min:event.key==='End'?limits.max:effective+(event.key==='ArrowLeft'?step:-step);
+    preferred=Math.max(limits.min,Math.min(limits.max,preferred));save();update();
+  });
+  window.addEventListener('blur',()=>finish(false));
+  window.addEventListener('resize',()=>{finish(false);update();});
+  document.addEventListener('mailai:language-changed',update);
+  let layoutFrame=0;
+  const schedule=()=>{if(!layoutFrame)layoutFrame=requestAnimationFrame(()=>{layoutFrame=0;update();});};
+  window.mailaiAssistantDivider={update:schedule};
+  update();
+})();
+
+;
+/* ---- assistant-scroll.js ---- */
+/* Follow live output until the reader chooses an earlier part of the chat. */
+(() => {
+  const host=document.getElementById('assistant-messages');
+  const jump=document.getElementById('assistant-jump-latest');
+  let following=true;
+  const atEnd=()=>host.scrollHeight-host.clientHeight-host.scrollTop<=24;
+  function update(){
+    jump.hidden=!host.querySelector('.assistant-message') || atEnd();
+  }
+  function changed(){
+    if(following)host.scrollTop=host.scrollHeight;
+    update();
+  }
+  function follow(){following=true;changed();}
+  function pause(){following=false;}
+  function restore(top){
+    following=false;
+    host.scrollTop=top;
+    update();
+  }
+  host.addEventListener('scroll',()=>{following=atEnd();update();},{passive:true});
+  // Wheel intent is available before the first scroll event or a new token.
+  host.addEventListener('wheel',event=>{if(event.deltaY<0)pause();},{passive:true});
+  host.addEventListener('keydown',event=>{
+    if(event.target===host && ['ArrowUp','PageUp','Home'].includes(event.key))pause();
+    if(event.target===host&&event.key==='Home'&&!event.altKey&&!event.metaKey&&!event.ctrlKey){
+      event.preventDefault();restore(0);
+    }
+  });
+  jump.addEventListener('click',()=>{follow();host.focus({preventScroll:true});});
+  let resizeFrame=0;
+  const resize=new ResizeObserver(()=>{
+    if(!resizeFrame)resizeFrame=requestAnimationFrame(()=>{resizeFrame=0;changed();});
+  });
+  resize.observe(host);
+  const observed=new Set();
+  new MutationObserver(()=>{
+    for(const node of observed)if(node.parentElement!==host){resize.unobserve(node);observed.delete(node);}
+    for(const node of host.children)if(!observed.has(node)){resize.observe(node);observed.add(node);}
+    changed();
+  }).observe(host,{childList:true,subtree:true,characterData:true});
+  window.mailaiAssistantScroll={changed,follow,pause,restore,isFollowing:()=>following};
+})();
+
+;
 /* ---- assistant-search.js ---- */
 /* Search follow-through: reliable refinements, visible conditions and reader return. */
 (() => {
@@ -30569,19 +30830,59 @@ document.getElementById('task-center-list').addEventListener('click', async even
   function base(){const run=runs.get(latest);return current(run)&&run.status==='complete'?{search_run_id:run.id}:null;}
   function idle(){
     if(!assistantController)document.querySelectorAll('[data-search-pending]').forEach(node=>delete node.dataset.searchPending);
-    document.querySelectorAll('[data-search-loop-action],[data-search-loop-clue],[data-search-loop-more],[data-search-loop-source],[data-search-loop-retry],.assistant-search-clue :is(input,select,button)').forEach(button=>{button.disabled=Boolean(assistantController||opening);});
+    document.querySelectorAll('[data-search-loop-action],[data-search-edit],[data-search-loop-clue],[data-search-loop-more],[data-search-loop-source],[data-search-loop-retry],.assistant-search-clue :is(input,select,button)').forEach(button=>{button.disabled=Boolean(assistantController||opening);});
+    for(const [id,node] of messages){
+      node.querySelectorAll('[data-search-loop-source]').forEach(button=>{
+        const busy=opening?.runId===id && opening.emailId===Number(button.dataset.searchLoopSource);
+        button.classList.toggle('is-opening',busy);
+        if(busy)button.setAttribute('aria-busy','true');else button.removeAttribute('aria-busy');
+        const label=button.querySelector('[data-search-open-label]');if(label)label.textContent=busy?t('openingMail'):t('openMail');
+        if(runs.get(id)?.reviewedId===Number(button.dataset.searchLoopSource))button.setAttribute('aria-current','true');else button.removeAttribute('aria-current');
+      });
+      const status=node.querySelector('.assistant-search-open-status');
+      node.querySelectorAll('[data-search-source-details]').forEach(button=>{
+        if(runs.get(id)?.reviewedId===Number(button.dataset.searchSourceDetails))button.setAttribute('aria-current','true');else button.removeAttribute('aria-current');
+      });
+      if(status)status.hidden=opening?.runId!==id;
+    }
   }
-  function summary(run){
+  function summary(run,editable){
     const labels={sender:t('sender'),recipient:t('recipient'),subject:t('subject'),filename:t('filename'),after:t('after'),before:t('before'),state:t('state'),category:t('category'),mailbox:mailaiText('邮件范围')};
     const mailboxes={inbox:mailaiText('收件箱'),sent:mailaiText('已发送'),drafts:mailaiText('草稿'),trash:mailaiText('已删除'),spam:mailaiText('垃圾邮件'),quarantine:mailaiText('隔离区')};
     const states={unhandled:mailaiText('待处理'),reply:mailaiText('待回复'),waiting:mailaiText('等待反馈'),later:mailaiText('稍后处理'),done:mailaiText('已完成'),due:mailaiText('等待反馈已到期'),focus:mailaiText('重点邮件')};
     const chips=(run.conditions || []).filter(c=>c.field!=='mailbox'||c.value!=='all').map(c=>{
       const value=c.field==='state' ? states[c.value] || c.value : c.field==='mailbox'?mailboxes[c.value] || c.value:c.value;
       const text=c.field==='has_attachment'?t('withAttachments'):c.field==='unread'?t('unread'):`${labels[c.field] || c.field}: ${value}`;
+      if(editable&&c.field==='sender')return `<button type="button" class="assistant-search-condition" data-search-edit="set_sender" aria-expanded="false" aria-controls="search-clue-${esc(run.id)}" aria-label="${esc(t('editSender'))}" title="${esc(t('editSender')+' · '+text)}"><span>${esc(text)}</span><span aria-hidden="true">✎</span></button>`;
       return `<span title="${esc(text)}">${esc(text)}</span>`;
     });
-    if(run.keywords?.length)chips.push(`<span title="${esc(run.keywords.join(' · '))}">${esc(t('keywordsLabel'))}: ${esc(run.keywords.join(' · '))}</span>`);
+    if(run.keywords?.length){
+      const text=`${t('keywordsLabel')}: ${run.keywords.join(' · ')}`;
+      chips.push(editable?`<button type="button" class="assistant-search-condition" data-search-edit="set_keywords" aria-expanded="false" aria-controls="search-clue-${esc(run.id)}" aria-label="${esc(t('editKeywords'))}" title="${esc(t('editKeywords')+' · '+text)}"><span>${esc(text)}</span><span aria-hidden="true">✎</span></button>`:`<span title="${esc(text)}">${esc(text)}</span>`);
+    }
     return chips.join('');
+  }
+  function clueVisibility(node,visible,trigger){
+    const form=node.querySelector('.assistant-search-clue');if(!form)return;
+    if(trigger)form._returnFocus=trigger;
+    form.hidden=!visible;
+    node.querySelectorAll('[data-search-edit],[data-search-loop-clue]').forEach(button=>button.setAttribute('aria-expanded',String(visible&&button===form._returnFocus)));
+    if(visible){form.querySelector('input').focus();form.querySelector('input').select();}
+    else if(form._returnFocus?.isConnected)form._returnFocus.focus({preventScroll:true});
+  }
+  function openClue(node,run,trigger,action){
+    const form=node.querySelector('.assistant-search-clue');if(!form)return;
+    const sender=action?action==='set_sender':!(run.conditions||[]).some(c=>c.field==='sender');
+    form.querySelector('select').value=sender?'set_sender':'set_keywords';
+    form.querySelector('.assistant-search-clue-label').textContent=t(sender?'sender':'topicWord');
+    const input=form.querySelector('input');input.placeholder=t(sender?'senderPlaceholder':'keywordPlaceholder');
+    input.value=action?(sender?(run.conditions||[]).find(c=>c.field==='sender')?.value||'':(run.keywords||[]).join(' ')):'';
+    form.dataset.originalValue=input.value.trim();form.dataset.originalAction=form.querySelector('select').value;
+    clueVisibility(node,true,trigger);
+  }
+  function sourceTime(value){
+    const date=new Date(value);
+    return Number.isNaN(date.getTime())?String(value).slice(0,16):date.toLocaleString(currentI18nLanguage(),{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false});
   }
   function render(id){
     const run=runs.get(id),node=messages.get(id);if(!run||!node?.isConnected)return;
@@ -30591,23 +30892,37 @@ document.getElementById('task-center-list').addEventListener('click', async even
     const sources=run.sources || [];
     const found=sources.find(source=>Number(source.id)===Number(run.found_id));
     const shown=found?[found]:sources;
+    const expanded=Boolean(run.expanded)&&!found;
     const active=id===latest && run.status==='complete';
     const adjustment={relax_dates:'datesChanged',relax_keywords:'keywordsChanged',set_sender:'senderChanged',set_keywords:'clueChanged',undo:'undone'}[run.adjustment];
     const actions=(run.actions || []).filter(action=>action!=='undo').slice(0,2);
     const clueIsSender=!(run.conditions || []).some(condition=>condition.field==='sender');
-    const sourceRows=shown.map((source,index)=>`<button type="button" class="assistant-search-source" data-search-loop-source="${Number(source.id)}" ${index>=3?'hidden':''}>
-      <span class="assistant-search-source-index">${index+1}</span><span><b>${esc(source.subject || mailaiText('（无主题）'))}</b><small>${esc([source.from_name || source.from_addr,String(source.date || '').slice(0,10)].filter(Boolean).join(' · '))}</small></span><span aria-hidden="true">↗</span></button>`).join('');
+    const sourceRows=shown.map((source,index)=>{
+      const details=run.details?.has(Number(source.id))||false,subject=source.subject||mailaiText('（无主题）');
+      const detailId=`search-source-${run.id}-${Number(source.id)}`;
+      return `<div class="assistant-search-candidate" ${index>=3&&!expanded?'hidden':''}>
+        <button type="button" class="assistant-search-source" data-search-source-details="${Number(source.id)}" aria-expanded="${details}" aria-controls="${esc(detailId)}" aria-label="${esc((details?t('hideDetails'):t('showDetails'))+': '+subject)}" title="${esc([subject,source.from_name,source.from_addr].filter(Boolean).join('\n'))}" ${index>=3&&!expanded?'hidden':''}>
+          <span class="assistant-search-source-index">${index+1}</span><span><b>${esc(subject)}</b><small>${esc([source.from_name || source.from_addr,String(source.date || '').slice(0,10)].filter(Boolean).join(' · '))}</small></span><span class="assistant-search-source-chevron" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="m6 8 4 4 4-4"/></svg></span>
+        </button>
+        <div class="assistant-search-detail" id="${esc(detailId)}" ${details?'':'hidden'}>
+          <dl><dt>${esc(t('sender'))}</dt><dd>${esc(source.from_addr||source.from_name||'')}</dd>${source.date?`<dt>${esc(t('date'))}</dt><dd><time datetime="${esc(source.date)}">${esc(sourceTime(source.date))}</time></dd>`:''}</dl>
+          ${source.preview?`<p class="assistant-search-excerpt"><strong>${esc(t('preview'))}</strong>${esc(source.preview)}</p>`:''}
+          <footer class="assistant-search-detail-actions"><button type="button" class="assistant-search-open-mail" data-search-loop-source="${Number(source.id)}" aria-label="${esc(t('openMail')+': '+subject)}" title="${esc(subject)}"><span data-search-open-label>${esc(t('openMail'))}</span><span class="assistant-search-source-open" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M4 10h12m-5-5 5 5-5 5"/></svg></span></button></footer>
+        </div>
+      </div>`;
+    }).join('');
     const html=`<section class="assistant-search-result${found?' is-found':''}" aria-label="${esc(t('results'))}">
       <header><b>${esc(found?t('found'):sources.length?t('candidates'):t('empty'))}</b><small>${sources.length&&!found?String(sources.length):''}</small></header>
-      <div class="assistant-search-conditions">${summary(run)}</div>
+      <div class="assistant-search-conditions">${summary(run,active&&!found)}</div>
       <small class="assistant-search-scope">${esc(run.account_user)} · ${esc(t('localScope'))}</small>
       ${adjustment?`<small class="assistant-search-change" role="status">${esc(t(adjustment))}</small>`:''}
       ${run.excluded_count?`<small class="assistant-search-skipped">${esc(t('skipped').replace('{0}',run.excluded_count))}</small>`:''}
+      <p class="assistant-search-open-status" role="status" hidden>${esc(t('opening'))}</p>
       <div class="assistant-search-source-list">${sourceRows}</div>
-      ${shown.length>3?`<button type="button" class="assistant-search-more" data-search-loop-more>${esc(t('more').replace('{0}',shown.length-3))}</button>`:''}
+      ${shown.length>3?`<button type="button" class="assistant-search-more" data-search-loop-more data-expanded="${expanded}" aria-expanded="${expanded}">${esc(expanded?t('collapseSources'):t('more').replace('{0}',shown.length-3))}</button>`:''}
       ${active?`<div class="assistant-search-controls">${found?`<button type="button" data-search-loop-action="resume">${esc(t('continue'))}</button>`:
-      `<div class="assistant-search-actions">${actions.map(action=>`<button type="button" data-search-loop-action="${action}" title="${esc(action==='exclude_results'?t('wrongHint'):t(actionNames[action]))}">${esc(t(actionNames[action]))}</button>`).join('')}<button type="button" data-search-loop-clue>${esc(t('clue'))}</button></div>
-      <form class="assistant-search-clue" hidden><label><span>${esc(t('clueType'))}</span><select aria-label="${esc(t('clueType'))}"><option value="set_sender" ${clueIsSender?'selected':''}>${esc(t('sender'))}</option><option value="set_keywords" ${clueIsSender?'':'selected'}>${esc(t('topicWord'))}</option></select></label><label><span class="assistant-search-clue-label">${esc(t(clueIsSender?'sender':'topicWord'))}</span><input maxlength="250" placeholder="${esc(t(clueIsSender?'senderPlaceholder':'keywordPlaceholder'))}" required></label><div><button type="submit">${esc(t('searchAgain'))}</button><button type="button" data-search-loop-cancel>${esc(t('cancel'))}</button></div></form>`}
+      `<div class="assistant-search-actions">${actions.map(action=>`<button type="button" data-search-loop-action="${action}" title="${esc(action==='exclude_results'?t('wrongHint'):t(actionNames[action]))}">${esc(t(actionNames[action]))}</button>`).join('')}<button type="button" data-search-loop-clue aria-expanded="false" aria-controls="search-clue-${esc(run.id)}">${esc(t('clue'))}</button></div>
+      <form id="search-clue-${esc(run.id)}" class="assistant-search-clue" hidden><label><span>${esc(t('clueType'))}</span><select aria-label="${esc(t('clueType'))}"><option value="set_sender" ${clueIsSender?'selected':''}>${esc(t('sender'))}</option><option value="set_keywords" ${clueIsSender?'':'selected'}>${esc(t('topicWord'))}</option></select></label><label><span class="assistant-search-clue-label">${esc(t(clueIsSender?'sender':'topicWord'))}</span><input maxlength="250" placeholder="${esc(t(clueIsSender?'senderPlaceholder':'keywordPlaceholder'))}" required></label><div><button type="submit">${esc(t('searchAgain'))}</button><button type="button" data-search-loop-cancel>${esc(t('cancel'))}</button></div></form>`}
       <div class="assistant-search-secondary">${!found&&run.actions?.includes('undo')?`<button type="button" data-search-loop-action="undo">${esc(t('undo'))}</button>`:''}<button type="button" data-search-loop-action="new">${esc(t('new'))}</button></div></div>`:
       run.status==='error'?`<button type="button" data-search-loop-action="retry">${esc(t('retry'))}</button>`:`<small>${esc(t('previous'))}</small>`}
     </section>`;
@@ -30616,12 +30931,13 @@ document.getElementById('task-center-list').addEventListener('click', async even
     idle();
   }
   function remember(node,meta,sources){
-    const run={...meta,account:owner(),sources};runs.set(run.id,run);messages.set(run.id,node);
+    const previous=runs.get(meta.id);
+    const run={...meta,account:owner(),sources,details:previous?.details,expanded:previous?.expanded};runs.set(run.id,run);messages.set(run.id,node);
     if(run.status==='complete')latest=run.id;
     render(run.id);
   }
-  function focusLatest(){const node=messages.get(latest);if(!node?.isConnected)return;const host=document.getElementById('assistant-messages');const box=host.getBoundingClientRect();host.scrollTop+=(node.getBoundingClientRect().top-box.top)/(box.height/host.clientHeight || 1);}
-  function complete(node,meta,sources){remember(node,meta,sources);for(const id of runs.keys())if(id!==meta.id)render(id);queueMicrotask(focusLatest);}
+  function focusLatest(){const node=messages.get(latest);if(!node?.isConnected)return;window.mailaiAssistantScroll?.pause();const host=document.getElementById('assistant-messages');const box=host.getBoundingClientRect();host.scrollTop+=(node.getBoundingClientRect().top-box.top)/(box.height/host.clientHeight || 1);}
+  function complete(node,meta,sources){const follow=window.mailaiAssistantScroll?.isFollowing()??true;remember(node,meta,sources);for(const id of runs.keys())if(id!==meta.id)render(id);if(follow)queueMicrotask(focusLatest);}
   function restore(node,meta,sources){const previous=latest;remember(node,meta,sources);if(previous&&previous!==latest)render(previous);}
   function begin(node,mode){failedNode=null;document.querySelectorAll('[data-search-loop-retry]').forEach(button=>button.remove());if(mode)node.dataset.searchPending='true';idle();}
   function failed(node){failedNode=node;node.querySelector('.assistant-bubble').insertAdjacentHTML('beforeend',`<button type="button" class="assistant-search-inline-retry" data-search-loop-retry>${esc(t('retry'))}</button>`);}
@@ -30641,26 +30957,40 @@ document.getElementById('task-center-list').addEventListener('click', async even
     if(account!==owner()||!current(run))return;
     runs.set(run.id,{...run,...meta});render(run.id);return true;
   }
+  async function restorePosition(context){
+    await new Promise(resolve=>requestAnimationFrame(resolve));
+    if(context.account!==owner()||context.conversation!==assistantConversationId)return;
+    const node=messages.get(context.runId),run=runs.get(context.runId);
+    if(!node||!run)return;
+    let changed=false;
+    if(context.expanded&&!run.expanded&&!run.found_id){run.expanded=true;changed=true;}
+    if(context.detailsExpanded&&!run.details?.has(context.emailId)){if(!run.details)run.details=new Set();run.details.add(context.emailId);changed=true;}
+    if(changed)render(run.id);
+    const source=node.querySelector(`[data-search-source-details="${context.emailId}"]`);
+    source?.focus({preventScroll:true});
+    window.mailaiAssistantScroll?.restore(context.scrollTop);
+  }
   async function returnToResults(){
     const context=reader;if(!context||context.account!==owner())return;
     if(assistantConversationId!==context.conversation)await loadAssistantConversation(context.conversation);
     if(context.account!==owner())return;
-    openAssistant();messages.get(context.runId)?.scrollIntoView({block:'nearest'});
+    openAssistant();await restorePosition(context);
   }
   async function openSource(run,emailId){
     if(!current(run)||assistantController||opening)return;
     const account=owner(),conversation=assistantConversationId;
-    const ticket={account,conversation,emailId};opening=ticket;idle();
+    const ticket={account,conversation,emailId,runId:run.id,expanded:Boolean(run.expanded),detailsExpanded:Boolean(run.details?.has(emailId)),scrollTop:host.scrollTop};opening=ticket;idle();
     try{
       await goToAssistantEmail(emailId);
-      if(account!==owner()||conversation!==assistantConversationId||selectedEmailId!==emailId)return;
+      if(opening!==ticket||account!==owner()||conversation!==assistantConversationId||selectedEmailId!==emailId)return;
       if(!selectedEmailDetail){
         openAssistant();const node=messages.get(run.id);node?.querySelector('.assistant-search-open-error')?.remove();
         node?.querySelector('.assistant-search-source-list')?.insertAdjacentHTML('beforebegin',`<p class="assistant-search-open-error" role="alert">${esc(t('openFailed'))}</p>`);
-        node?.scrollIntoView({block:'nearest'});return;
+        await restorePosition(ticket);return;
       }
       if(run.status!=='complete')return;
-      reader={account,conversation,runId:run.id,emailId};
+      run.reviewedId=emailId;
+      reader=ticket;
       const bar=document.createElement('div');bar.className='assistant-search-return';
       bar.innerHTML=`<span>${esc(t('reviewing'))}</span><div><button type="button" data-search-return>${esc(t('back'))}</button><button type="button" data-search-found>${esc(t('thisOne'))}</button></div>`;
       document.getElementById('reading-content').before(bar);
@@ -30672,7 +31002,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
         catch(error){if(account===owner())toast(mailaiSystemMessage(error.message),'error');}
         finally{bar.querySelectorAll('button').forEach(button=>button.disabled=false);}
       };
-    }catch(error){if(account===owner())toast(mailaiSystemMessage(error.message),'error');}
+    }catch(error){if(account===owner()&&conversation===assistantConversationId){openAssistant();await restorePosition(ticket);toast(mailaiSystemMessage(error.message),'error');}}
     finally{if(opening===ticket)opening=null;idle();}
   }
   const host=document.getElementById('assistant-messages');
@@ -30681,13 +31011,28 @@ document.getElementById('task-center-list').addEventListener('click', async even
     if(node&&!run&&assistantController&&event.target.closest('[data-email-id]')){event.preventDefault();event.stopImmediatePropagation();return;}
     if(event.target.closest('[data-search-loop-retry]')){event.stopImmediatePropagation();if(failedNode===event.target.closest('.assistant-message')&&!assistantController)document.getElementById('assistant-retry').click();return;}
     if(!run)return;
+    const detail=event.target.closest('[data-search-source-details]');
+    if(detail){
+      event.preventDefault();event.stopImmediatePropagation();
+      const id=Number(detail.dataset.searchSourceDetails),expanded=detail.getAttribute('aria-expanded')!=='true';
+      if(!run.details)run.details=new Set();if(expanded)run.details.add(id);else run.details.delete(id);
+      detail.focus({preventScroll:true});
+      window.mailaiAssistantScroll?.pause();detail.setAttribute('aria-expanded',String(expanded));
+      const source=run.sources.find(source=>Number(source.id)===id);
+      detail.setAttribute('aria-label',(expanded?t('hideDetails'):t('showDetails'))+': '+(source?.subject||mailaiText('（无主题）')));
+      document.getElementById(detail.getAttribute('aria-controls')).hidden=!expanded;
+      window.mailaiAssistantScroll?.changed();return;
+    }
+    const edit=event.target.closest('[data-search-edit]');
+    if(edit){if(!assistantController&&!opening)openClue(node,run,edit,edit.dataset.searchEdit);return;}
     const source=event.target.closest('[data-search-loop-source],[data-email-id]');
     if(source){event.preventDefault();event.stopImmediatePropagation();openSource(run,Number(source.dataset.searchLoopSource || source.dataset.emailId));return;}
     if(event.target.closest('[data-search-loop-more]')){
       const button=event.target.closest('button'),expanded=button.dataset.expanded==='true';
       const sources=[...node.querySelectorAll('.assistant-search-source')];
-      sources.forEach((source,index)=>{if(index>=3)source.hidden=expanded;});
-      button.dataset.expanded=String(!expanded);button.textContent=expanded?t('more').replace('{0}',sources.length-3):t('collapseSources');
+      sources.forEach((source,index)=>{if(index>=3){source.hidden=expanded;source.closest('.assistant-search-candidate').hidden=expanded;}});
+      run.expanded=!expanded;
+      button.dataset.expanded=String(!expanded);button.setAttribute('aria-expanded',String(!expanded));button.textContent=expanded?t('more').replace('{0}',sources.length-3):t('collapseSources');
       if(expanded)button.scrollIntoView({block:'nearest'});return;
     }
     const button=event.target.closest('[data-search-loop-action]');
@@ -30698,8 +31043,9 @@ document.getElementById('task-center-list').addEventListener('click', async even
       refine(run,action);return;
     }
     const clue=node.querySelector('.assistant-search-clue');
-    if(event.target.closest('[data-search-loop-clue]')&&clue){clue.hidden=!clue.hidden;if(!clue.hidden)clue.querySelector('input').focus();}
-    if(event.target.closest('[data-search-loop-cancel]')&&clue){clue.hidden=true;node.querySelector('[data-search-loop-clue]').focus();}
+    const trigger=event.target.closest('[data-search-loop-clue]');
+    if(trigger&&clue){if(clue.hidden)openClue(node,run,trigger);else clueVisibility(node,false);}
+    if(event.target.closest('[data-search-loop-cancel]')&&clue)clueVisibility(node,false);
   },true);
   host.addEventListener('change',event=>{
     const form=event.target.closest('.assistant-search-clue');if(!form||event.target.tagName!=='SELECT')return;
@@ -30708,10 +31054,52 @@ document.getElementById('task-center-list').addEventListener('click', async even
   host.addEventListener('submit',event=>{
     const form=event.target.closest('.assistant-search-clue');if(!form)return;event.preventDefault();
     const run=runs.get(form.closest('[data-search-run-id]').dataset.searchRunId);
-    const value=form.querySelector('input').value.trim();if(value)refine(run,form.querySelector('select').value,value);
+    const value=form.querySelector('input').value.trim(),action=form.querySelector('select').value;
+    if(value&&value===form.dataset.originalValue&&action===form.dataset.originalAction){clueVisibility(form.closest('.assistant-message'),false);return;}
+    if(value)refine(run,action,value);
   });
-  host.addEventListener('keydown',event=>{const form=event.target.closest('.assistant-search-clue');if(form&&event.key==='Escape'){form.hidden=true;form.closest('.assistant-search-result').querySelector('[data-search-loop-clue]').focus();event.stopPropagation();}});
-  document.addEventListener('mailai:language-changed',()=>{for(const id of runs.keys())render(id);focusLatest();});
+  host.addEventListener('keydown',event=>{
+    if(event.isComposing||event.keyCode===229)return;
+    const form=event.target.closest('.assistant-search-clue');
+    if(form&&event.key==='Escape'){event.preventDefault();clueVisibility(form.closest('.assistant-message'),false);event.stopPropagation();return;}
+    const detail=event.target.closest('.assistant-search-candidate')?.querySelector('[data-search-source-details][aria-expanded=true]');
+    if(detail&&event.key==='Escape'){event.preventDefault();event.stopPropagation();detail.click();detail.focus({preventScroll:true});return;}
+    const source=event.target.closest('[data-search-source-details]');
+    if(!source||event.ctrlKey||event.metaKey||event.altKey||event.shiftKey||!['ArrowDown','ArrowUp','Home','End'].includes(event.key))return;
+    const rows=[...source.closest('.assistant-search-source-list').querySelectorAll('[data-search-source-details]')].filter(button=>!button.disabled&&!button.hidden);
+    const index=rows.indexOf(source),next=event.key==='Home'?0:event.key==='End'?rows.length-1:Math.max(0,Math.min(rows.length-1,index+(event.key==='ArrowDown'?1:-1)));
+    event.preventDefault();event.stopPropagation();rows[next]?.focus({preventScroll:true});rows[next]?.scrollIntoView({block:'nearest',inline:'nearest'});
+  });
+  document.addEventListener('mailai:language-changed',()=>{
+    const top=host.scrollTop,following=window.mailaiAssistantScroll?.isFollowing();
+    const focused=document.activeElement,focusRun=focused?.closest('[data-search-run-id]')?.dataset.searchRunId;
+    const focusAttribute=['data-search-source-details','data-search-loop-source','data-search-edit','data-search-loop-action','data-search-loop-clue','data-search-loop-more','data-search-loop-cancel'].find(name=>focused?.hasAttribute(name));
+    const focusValue=focusAttribute?focused.getAttribute(focusAttribute):null;
+    const focusField=focused?.closest('.assistant-search-clue')?focused.tagName.toLowerCase():null;
+    const selection=focused?.matches('.assistant-search-clue input')?[focused.selectionStart,focused.selectionEnd,focused.selectionDirection]:null;
+    for(const id of runs.keys()){
+      const node=messages.get(id),form=node?.querySelector('.assistant-search-clue');
+      const draft=form&&!form.hidden?{
+        action:form.querySelector('select').value,value:form.querySelector('input').value,
+        originalAction:form.dataset.originalAction,originalValue:form.dataset.originalValue,
+        edit:form._returnFocus?.dataset.searchEdit,
+      }:null;
+      render(id);
+      if(!draft)continue;
+      const next=node.querySelector('.assistant-search-clue');if(!next)continue;
+      const sender=draft.action==='set_sender';
+      next.hidden=false;next.querySelector('select').value=draft.action;next.querySelector('input').value=draft.value;
+      next.querySelector('.assistant-search-clue-label').textContent=t(sender?'sender':'topicWord');
+      next.querySelector('input').placeholder=t(sender?'senderPlaceholder':'keywordPlaceholder');
+      next.dataset.originalAction=draft.originalAction;next.dataset.originalValue=draft.originalValue;
+      next._returnFocus=draft.edit?node.querySelector(`[data-search-edit="${draft.edit}"]`):node.querySelector('[data-search-loop-clue]');
+      next._returnFocus?.setAttribute('aria-expanded','true');
+    }
+    const node=messages.get(focusRun);
+    const target=focusAttribute?[...node?.querySelectorAll(`[${focusAttribute}]`)||[]].find(element=>element.getAttribute(focusAttribute)===focusValue):focusField?node?.querySelector('.assistant-search-clue '+focusField):null;
+    target?.focus({preventScroll:true});if(selection&&target?.tagName==='INPUT')target.setSelectionRange(...selection);
+    if(following)window.mailaiAssistantScroll?.follow();else if(window.mailaiAssistantScroll)window.mailaiAssistantScroll.restore(top);else host.scrollTop=top;
+  });
   let scopeDialog=null;
   function chooseScope(query){
     if(scopeDialog?.open){scopeDialog.focus();return;}
@@ -30979,7 +31367,11 @@ document.getElementById('task-center-list').addEventListener('click', async even
       }
       if(sameTask && JSON.stringify(editorValues())===snapshot) {
         dialog.close();
-        toast(reminderChanged ? (reminderValue ? mailaiTemplate`已设置提醒：${reminderValue.replace('T',' ')}；请保持 MailAI 运行` : mailaiText('已取消提醒，任务仍保留')) : mailaiText('任务已保存，提醒时间未改变'),'success');
+        const message=reminderChanged ? (reminderValue ? mailaiTemplate`已设置提醒：${reminderValue.replace('T',' ')}；请保持 MailAI 运行` : mailaiText('已取消提醒，任务仍保留')) : mailaiText('任务已保存，提醒时间未改变');
+        taskNotice(message,mailaiText('查看待办'),async()=>{
+          if(activeMailAccount()?.id!==c.accountId)return;
+          await openTodoCenter();
+        },6500);
       } else {
         mailaiBindUI(get('error'), 'textContent', () => mailaiText('刚才的安排已保存，当前编辑内容仍保留。确认后可再次保存。'));
       }
@@ -33834,6 +34226,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
   const button = (text, action, extra = "") =>
     `<button type="button" data-productivity-action="${action}" ${extra}>${mailaiLabelHTML(text)}</button>`;
   let dialog,
+    dialogClosed = Promise.resolve(),
     modalRevision = 0,
     dialogAccount = "",
     returnFocus;
@@ -33887,6 +34280,8 @@ document.getElementById('task-center-list').addEventListener('click', async even
       dialog.setAttribute("aria-labelledby", "productivity-title");
       document.body.append(dialog);
       dialog.addEventListener("close", () => {
+        // Native close events are queued: another panel may already be open.
+        if (dialog.open) return;
         document
           .querySelector(".search-filter-button")
           ?.setAttribute("aria-expanded", "false");
@@ -33923,7 +34318,13 @@ document.getElementById('task-center-list').addEventListener('click', async even
     mailaiBindUI(dialog.querySelector("[data-account-label]"), "textContent", () => (mailaiTemplate`${accountRow?.user || mailaiText("当前邮箱")} · 数据保存在本机`));
     dialog.querySelector("[data-close-productivity]").onclick = () =>
       dialog.close();
-    if (!dialog.open) dialog.showModal();
+    if (!dialog.open) {
+      dialogClosed = new Promise(resolve => {
+        const settled = () => { if (dialog.open) return;dialog.removeEventListener('close',settled);resolve(); };
+        dialog.addEventListener('close',settled);
+      });
+      dialog.showModal();
+    }
     (
       dialog.querySelector(
         "input:not([type=checkbox]):not([type=hidden]),textarea",
@@ -35524,47 +35925,126 @@ document.getElementById('task-center-list').addEventListener('click', async even
       finish();
     }
   }
-  function palette() {
+  let paletteRunning=false;
+  const paletteBlocked=()=>paletteRunning||bulkOperationActive||Boolean(document.querySelector('dialog[open],.modal:not(.hidden),.compose-modal:not(.hidden),.attachment-center:not(.hidden),#task-center:not(.hidden),#onboarding-overlay:not(.hidden),#start-model:not(.hidden)'));
+  async function palette() {
+    if(paletteBlocked())return;
+    // A native close event can arrive after the next keyboard shortcut. Let
+    // the old panel finish restoring focus and invalidating its requests first.
+    if(dialog&&!dialog.open)await dialogClosed;
+    if(paletteBlocked())return;
     const rev = open(
       mailaiText("快捷操作"),
-      `<input id="productivity-command-query" placeholder="搜索操作，如 回复、附件、待办…" aria-label="搜索快捷操作" data-i18n-placeholder="ui.aa7c8eb8c806" data-i18n-aria="ui.717bfece6fe9"><div id="productivity-commands"></div><p class="productivity-hint"><span data-i18n="ui.f312768aaa2b">⌘ / Ctrl + K 打开 · J / K 下一封 / 上一封 · R 回复 · / 搜索。输入文字、弹窗和写信时不触发单键快捷操作。</span></p>`,
+      `<input id="productivity-command-query" type="text" role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls="productivity-commands" autocomplete="off" spellcheck="false" maxlength="500" placeholder="搜索命令、邮箱，或输入邮件关键词" aria-label="搜索快捷操作" data-i18n-placeholder="command.placeholder" data-i18n-aria="ui.717bfece6fe9"><div id="productivity-commands" role="listbox" aria-label="快捷操作" data-i18n-aria="guide.shortcuts.command"></div><div class="command-empty" role="status" hidden data-i18n="command.empty">没有匹配的命令</div><footer class="command-hints"><span><kbd>↑</kbd><kbd>↓</kbd> <span data-i18n="command.navigate">选择</span></span><span><kbd>↵</kbd> <span data-i18n="command.execute">打开</span></span><span><kbd>Esc</kbd> <span data-i18n="command.close">关闭</span></span></footer>`,
     );
-    const commands = [
-      [mailaiText("写邮件"), () => document.getElementById("btn-compose").click()],
-      [mailaiText("高级搜索"), openSearch],
-      [mailaiText("邮件模板"), templates],
-      [mailaiText("附件中心"), () => document.getElementById("btn-attachments").click()],
-      [mailaiText("待办"), () => document.getElementById("btn-todos").click()],
-      [mailaiText("定时发送"), scheduled],
-      [mailaiText("通讯录互导"), contacts],
-      [mailaiText("同步邮件"), () => document.getElementById("btn-poll").click()],
-    ];
+    dialog.dataset.panel='commands';
+    const launcher=document.getElementById('btn-command-palette');
+    launcher?.setAttribute('aria-expanded','true');
     const host = dialog.querySelector("#productivity-commands");
-    function draw(query = "") {
-      host.replaceChildren();
-      commands
-        .filter(([name]) => name.includes(query))
-        .forEach(([name, fn]) => {
-          const node = document.createElement("button");
-          node.type = "button";
-          node.className = "productivity-result";
-          node.textContent = name;
-          node.onclick = () => {
-            if (live(rev)) dialog.close();
-            fn();
-          };
-          host.append(node);
-        });
+    const input=dialog.querySelector('#productivity-command-query');
+    const origin=returnFocus;
+    const selection=origin?.matches('input,textarea')?[origin.selectionStart,origin.selectionEnd]:null;
+    mailaiBindUI(dialog.querySelector('[data-account-label]'),'textContent',()=>mailaiTemplate`当前邮箱：${activeMailAccount()?.user||mailaiText('未选择邮箱')}`);
+    const normalize=value=>String(value).normalize('NFKC').toLocaleLowerCase();
+    const showMail=()=>{hideDashboard();hideRulesView(false);hideSystemView(true);};
+    let choices=[],active=-1;
+    const searchIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m15.5 15.5 4.3 4.3"/></svg>';
+    const commandPaths={advanced:'M4 7h16M4 17h16M8 4v6M16 14v6',templates:'M6 3h8l4 4v14H6zM14 3v5h4M9 12h6M9 16h6',scheduled:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M12 7v5l3 2','contact-import':'M4 8h15l-4-4M20 16H5l4 4'};
+    function highlight(value,words){
+      const chars=[...String(value)],offsets=[],marked=new Set();let normalized='';
+      chars.forEach((char,index)=>{const text=normalize(char);normalized+=text;for(let n=0;n<text.length;n++)offsets.push(index);});
+      for(const word of words){let at=0;while((at=normalized.indexOf(word,at))>=0){for(let n=at;n<at+word.length;n++)marked.add(offsets[n]);at+=word.length;}}
+      let html='',inside=false;
+      chars.forEach((char,index)=>{const match=marked.has(index);if(match!==inside){html+=match?'<mark>':'</mark>';inside=match;}html+=esc(char);});
+      return html+(inside?'</mark>':'');
     }
+    function commands(){
+      const hasAccount=Boolean(owner());
+      const item=(id,label,run,buttonId,aliases='',needsAccount=true)=>({id,label,run,buttonId,aliases,group:'actions',detail:'',disabled:needsAccount&&!hasAccount});
+      const rows=[
+        item('focus-search',mailaiText('搜索当前邮件'),()=>{showMail();const target=document.getElementById('global-search');target.focus();target.select();},'', 'search mail sou suo'),
+        item('compose',mailaiText('写邮件'),()=>document.getElementById('btn-compose').click(),'btn-compose','compose write xie youjian'),
+        item('advanced',mailaiText('高级搜索'),openSearch,'','advanced search'),
+        item('templates',mailaiText('邮件模板'),templates,'','template moban'),
+        item('attachments',mailaiText('附件中心'),openAttachmentCenter,'btn-attachments','attachment fujian'),
+        item('todos',mailaiText('待办'),openTodoCenter,'btn-todos','todo task daiban'),
+        item('scheduled',mailaiText('定时发送'),scheduled,'','scheduled send'),
+        item('contacts',mailaiText('联系人'),()=>openContactCenter(),'btn-contacts','contact tongxunlu'),
+        item('contact-import',mailaiText('通讯录互导'),contacts,'','import export contacts'),
+        item('sync',mailaiText('同步邮件'),()=>document.getElementById('btn-poll').click(),'btn-poll','sync tongbu'),
+        item('settings',mailaiText('设置'),()=>{showSystemView('preferences');document.querySelector('[data-system-tab=preferences]')?.focus();},'btn-preferences','settings preferences shezhi',false),
+      ];
+      for(const account of _systemConfig?.accounts||[])rows.push({id:'account:'+account.id,label:account.user,detail:account.id===owner()?mailaiText('当前邮箱 · 收件箱'):mailaiText('切换到收件箱'),group:'accounts',aliases:'account mailbox inbox '+mailaiText('切换邮箱'),run:async()=>{await openAccountMailbox(account.id,'inbox');if(owner()===account.id){showMail();document.querySelector('#email-list .email-item')?.focus({preventScroll:true});}}});
+      return rows;
+    }
+    function select(index,scroll=false){
+      active=index;
+      host.querySelectorAll('[role=option]').forEach((option,i)=>option.setAttribute('aria-selected',String(i===active)));
+      const selected=host.querySelector(`[data-command-index="${active}"]`);
+      if(selected){input.setAttribute('aria-activedescendant',selected.id);if(scroll)selected.scrollIntoView({block:'nearest'});}
+      else input.removeAttribute('aria-activedescendant');
+    }
+    function draw(query = "",preserve=false) {
+      const previous=choices[active]?.id,words=normalize(query).trim().split(/\s+/).filter(Boolean);
+      choices=commands().filter(command=>words.every(word=>normalize([command.label,mailaiCopySource(command.label),command.aliases].join(' ')).includes(word)));
+      if(query.trim()&&owner()){
+        const term=query.trim();
+        choices.push({id:'search-query',label:mailaiTemplate`搜索邮件：${term}`,detail:currentMailboxScopeLabel(),group:'search',run:()=>{showMail();const target=document.getElementById('global-search');target.value=term;target.dispatchEvent(new Event('input',{bubbles:true}));target.focus();}});
+      }
+      let group='';
+      host.innerHTML=choices.map((command,index)=>{
+        const heading=command.group!==group?`<div class="command-group" role="presentation">${esc(command.group==='accounts'?mailaiText('切换邮箱'):command.group==='search'?mailaiText('搜索邮件'):mailaiText('常用操作'))}</div>`:'';group=command.group;
+        const icon=command.buttonId?document.getElementById(command.buttonId)?.querySelector('svg')?.outerHTML:commandPaths[command.id]?`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${commandPaths[command.id]}"/></svg>`:searchIcon;
+        return `${heading}<div class="command-option" id="command-option-${index}" role="option" aria-selected="false" aria-disabled="${Boolean(command.disabled)}" data-command-index="${index}" data-command-id="${esc(command.id)}"><span class="command-icon" aria-hidden="true">${command.group==='accounts'?esc(command.label.slice(0,1).toUpperCase()):icon||searchIcon}</span><span class="command-copy"><strong>${highlight(command.label,words)}</strong>${command.detail?`<small>${highlight(command.detail,words)}</small>`:''}</span><span class="command-open" aria-hidden="true">↵</span></div>`;
+      }).join('');
+      dialog.querySelector('.command-empty').hidden=choices.length>0;
+      const prior=preserve?choices.findIndex(command=>command.id===previous&&!command.disabled):-1;
+      select(prior>=0?prior:choices.findIndex(command=>!command.disabled));
+    }
+    async function execute(index){
+      const command=choices[index];if(!live(rev)||paletteRunning||!command||command.disabled)return;
+      paletteRunning=true;launcher?.setAttribute('aria-busy','true');
+      // Wait for the shared dialog's close listeners before opening another
+      // productivity panel, otherwise its revision/focus would be invalidated.
+      const closed=new Promise(resolve=>dialog.addEventListener('close',resolve,{once:true}));
+      dialog.close();await closed;
+      try{await command.run();}
+      catch(error){toast(mailaiSystemMessage(error.message),'error');}
+      finally{paletteRunning=false;launcher?.removeAttribute('aria-busy');}
+    }
+    const onKey=event=>{
+      event.stopPropagation();
+      if(event.isComposing||event.keyCode===229||input._composing)return;
+      if(event.key==='ArrowDown'||event.key==='ArrowUp'){
+        const enabled=choices.map((command,index)=>command.disabled?-1:index).filter(index=>index>=0);
+        const at=enabled.indexOf(active);event.preventDefault();select(enabled[(at+(event.key==='ArrowDown'?1:-1)+enabled.length)%enabled.length]??-1,true);
+      }else if(event.key==='Enter'&&event.target===input){event.preventDefault();execute(active);}
+      else if((event.metaKey||event.ctrlKey)&&event.key.toLowerCase()==='k'){event.preventDefault();dialog.close();}
+    };
+    const languageChanged=()=>{if(live(rev))draw(input.value,true);};
+    dialog.addEventListener('keydown',onKey);
+    document.addEventListener('mailai:language-changed',languageChanged);
+    dialog.addEventListener('close',()=>{
+      dialog.removeEventListener('keydown',onKey);document.removeEventListener('mailai:language-changed',languageChanged);
+      launcher?.setAttribute('aria-expanded','false');input.setAttribute('aria-expanded','false');
+      if(!paletteRunning&&selection&&origin===document.activeElement&&selection[0]!==null)origin.setSelectionRange(...selection);
+    },{once:true});
+    host.onpointerdown=event=>{if(event.target.closest('[data-command-index]'))event.preventDefault();};
+    host.onpointermove=event=>{const option=event.target.closest('[data-command-index]');if(option&&!choices[Number(option.dataset.commandIndex)]?.disabled)select(Number(option.dataset.commandIndex));};
+    host.onclick=event=>{const option=event.target.closest('[data-command-index]');if(option)execute(Number(option.dataset.commandIndex));};
     draw();
-    dialog.querySelector("#productivity-command-query").oninput = (e) =>
-      draw(e.target.value);
-    dialog.querySelector("#productivity-command-query").focus();
+    input.oninput=()=>{if(!input._composing)draw(input.value);};
+    input.addEventListener('compositionstart',()=>{input._composing=true;});
+    input.addEventListener('compositionend',()=>{input._composing=false;draw(input.value);});
+    input.focus();
   }
+  const commandLauncher=document.getElementById('btn-command-palette');
+  commandLauncher.onclick=palette;
+  commandLauncher.querySelector('kbd').textContent=/Mac|iPhone|iPad/.test(navigator.platform)?'⌘K':'Ctrl K';
   document.addEventListener("keydown", (event) => {
     if (event.isComposing || event.keyCode === 229) return;
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-      if (document.querySelector("dialog[open]")) return;
+      if (paletteBlocked()) return;
       event.preventDefault();
       palette();
       return;

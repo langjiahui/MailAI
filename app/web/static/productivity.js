@@ -48,6 +48,7 @@
   const button = (text, action, extra = "") =>
     `<button type="button" data-productivity-action="${action}" ${extra}>${mailaiLabelHTML(text)}</button>`;
   let dialog,
+    dialogClosed = Promise.resolve(),
     modalRevision = 0,
     dialogAccount = "",
     returnFocus;
@@ -101,6 +102,8 @@
       dialog.setAttribute("aria-labelledby", "productivity-title");
       document.body.append(dialog);
       dialog.addEventListener("close", () => {
+        // Native close events are queued: another panel may already be open.
+        if (dialog.open) return;
         document
           .querySelector(".search-filter-button")
           ?.setAttribute("aria-expanded", "false");
@@ -137,7 +140,13 @@
     mailaiBindUI(dialog.querySelector("[data-account-label]"), "textContent", () => (mailaiTemplate`${accountRow?.user || mailaiText("当前邮箱")} · 数据保存在本机`));
     dialog.querySelector("[data-close-productivity]").onclick = () =>
       dialog.close();
-    if (!dialog.open) dialog.showModal();
+    if (!dialog.open) {
+      dialogClosed = new Promise(resolve => {
+        const settled = () => { if (dialog.open) return;dialog.removeEventListener('close',settled);resolve(); };
+        dialog.addEventListener('close',settled);
+      });
+      dialog.showModal();
+    }
     (
       dialog.querySelector(
         "input:not([type=checkbox]):not([type=hidden]),textarea",
@@ -1738,47 +1747,126 @@
       finish();
     }
   }
-  function palette() {
+  let paletteRunning=false;
+  const paletteBlocked=()=>paletteRunning||bulkOperationActive||Boolean(document.querySelector('dialog[open],.modal:not(.hidden),.compose-modal:not(.hidden),.attachment-center:not(.hidden),#task-center:not(.hidden),#onboarding-overlay:not(.hidden),#start-model:not(.hidden)'));
+  async function palette() {
+    if(paletteBlocked())return;
+    // A native close event can arrive after the next keyboard shortcut. Let
+    // the old panel finish restoring focus and invalidating its requests first.
+    if(dialog&&!dialog.open)await dialogClosed;
+    if(paletteBlocked())return;
     const rev = open(
       mailaiText("快捷操作"),
-      `<input id="productivity-command-query" placeholder="搜索操作，如 回复、附件、待办…" aria-label="搜索快捷操作" data-i18n-placeholder="ui.aa7c8eb8c806" data-i18n-aria="ui.717bfece6fe9"><div id="productivity-commands"></div><p class="productivity-hint"><span data-i18n="ui.f312768aaa2b">⌘ / Ctrl + K 打开 · J / K 下一封 / 上一封 · R 回复 · / 搜索。输入文字、弹窗和写信时不触发单键快捷操作。</span></p>`,
+      `<input id="productivity-command-query" type="text" role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls="productivity-commands" autocomplete="off" spellcheck="false" maxlength="500" placeholder="搜索命令、邮箱，或输入邮件关键词" aria-label="搜索快捷操作" data-i18n-placeholder="command.placeholder" data-i18n-aria="ui.717bfece6fe9"><div id="productivity-commands" role="listbox" aria-label="快捷操作" data-i18n-aria="guide.shortcuts.command"></div><div class="command-empty" role="status" hidden data-i18n="command.empty">没有匹配的命令</div><footer class="command-hints"><span><kbd>↑</kbd><kbd>↓</kbd> <span data-i18n="command.navigate">选择</span></span><span><kbd>↵</kbd> <span data-i18n="command.execute">打开</span></span><span><kbd>Esc</kbd> <span data-i18n="command.close">关闭</span></span></footer>`,
     );
-    const commands = [
-      [mailaiText("写邮件"), () => document.getElementById("btn-compose").click()],
-      [mailaiText("高级搜索"), openSearch],
-      [mailaiText("邮件模板"), templates],
-      [mailaiText("附件中心"), () => document.getElementById("btn-attachments").click()],
-      [mailaiText("待办"), () => document.getElementById("btn-todos").click()],
-      [mailaiText("定时发送"), scheduled],
-      [mailaiText("通讯录互导"), contacts],
-      [mailaiText("同步邮件"), () => document.getElementById("btn-poll").click()],
-    ];
+    dialog.dataset.panel='commands';
+    const launcher=document.getElementById('btn-command-palette');
+    launcher?.setAttribute('aria-expanded','true');
     const host = dialog.querySelector("#productivity-commands");
-    function draw(query = "") {
-      host.replaceChildren();
-      commands
-        .filter(([name]) => name.includes(query))
-        .forEach(([name, fn]) => {
-          const node = document.createElement("button");
-          node.type = "button";
-          node.className = "productivity-result";
-          node.textContent = name;
-          node.onclick = () => {
-            if (live(rev)) dialog.close();
-            fn();
-          };
-          host.append(node);
-        });
+    const input=dialog.querySelector('#productivity-command-query');
+    const origin=returnFocus;
+    const selection=origin?.matches('input,textarea')?[origin.selectionStart,origin.selectionEnd]:null;
+    mailaiBindUI(dialog.querySelector('[data-account-label]'),'textContent',()=>mailaiTemplate`当前邮箱：${activeMailAccount()?.user||mailaiText('未选择邮箱')}`);
+    const normalize=value=>String(value).normalize('NFKC').toLocaleLowerCase();
+    const showMail=()=>{hideDashboard();hideRulesView(false);hideSystemView(true);};
+    let choices=[],active=-1;
+    const searchIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m15.5 15.5 4.3 4.3"/></svg>';
+    const commandPaths={advanced:'M4 7h16M4 17h16M8 4v6M16 14v6',templates:'M6 3h8l4 4v14H6zM14 3v5h4M9 12h6M9 16h6',scheduled:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M12 7v5l3 2','contact-import':'M4 8h15l-4-4M20 16H5l4 4'};
+    function highlight(value,words){
+      const chars=[...String(value)],offsets=[],marked=new Set();let normalized='';
+      chars.forEach((char,index)=>{const text=normalize(char);normalized+=text;for(let n=0;n<text.length;n++)offsets.push(index);});
+      for(const word of words){let at=0;while((at=normalized.indexOf(word,at))>=0){for(let n=at;n<at+word.length;n++)marked.add(offsets[n]);at+=word.length;}}
+      let html='',inside=false;
+      chars.forEach((char,index)=>{const match=marked.has(index);if(match!==inside){html+=match?'<mark>':'</mark>';inside=match;}html+=esc(char);});
+      return html+(inside?'</mark>':'');
     }
+    function commands(){
+      const hasAccount=Boolean(owner());
+      const item=(id,label,run,buttonId,aliases='',needsAccount=true)=>({id,label,run,buttonId,aliases,group:'actions',detail:'',disabled:needsAccount&&!hasAccount});
+      const rows=[
+        item('focus-search',mailaiText('搜索当前邮件'),()=>{showMail();const target=document.getElementById('global-search');target.focus();target.select();},'', 'search mail sou suo'),
+        item('compose',mailaiText('写邮件'),()=>document.getElementById('btn-compose').click(),'btn-compose','compose write xie youjian'),
+        item('advanced',mailaiText('高级搜索'),openSearch,'','advanced search'),
+        item('templates',mailaiText('邮件模板'),templates,'','template moban'),
+        item('attachments',mailaiText('附件中心'),openAttachmentCenter,'btn-attachments','attachment fujian'),
+        item('todos',mailaiText('待办'),openTodoCenter,'btn-todos','todo task daiban'),
+        item('scheduled',mailaiText('定时发送'),scheduled,'','scheduled send'),
+        item('contacts',mailaiText('联系人'),()=>openContactCenter(),'btn-contacts','contact tongxunlu'),
+        item('contact-import',mailaiText('通讯录互导'),contacts,'','import export contacts'),
+        item('sync',mailaiText('同步邮件'),()=>document.getElementById('btn-poll').click(),'btn-poll','sync tongbu'),
+        item('settings',mailaiText('设置'),()=>{showSystemView('preferences');document.querySelector('[data-system-tab=preferences]')?.focus();},'btn-preferences','settings preferences shezhi',false),
+      ];
+      for(const account of _systemConfig?.accounts||[])rows.push({id:'account:'+account.id,label:account.user,detail:account.id===owner()?mailaiText('当前邮箱 · 收件箱'):mailaiText('切换到收件箱'),group:'accounts',aliases:'account mailbox inbox '+mailaiText('切换邮箱'),run:async()=>{await openAccountMailbox(account.id,'inbox');if(owner()===account.id){showMail();document.querySelector('#email-list .email-item')?.focus({preventScroll:true});}}});
+      return rows;
+    }
+    function select(index,scroll=false){
+      active=index;
+      host.querySelectorAll('[role=option]').forEach((option,i)=>option.setAttribute('aria-selected',String(i===active)));
+      const selected=host.querySelector(`[data-command-index="${active}"]`);
+      if(selected){input.setAttribute('aria-activedescendant',selected.id);if(scroll)selected.scrollIntoView({block:'nearest'});}
+      else input.removeAttribute('aria-activedescendant');
+    }
+    function draw(query = "",preserve=false) {
+      const previous=choices[active]?.id,words=normalize(query).trim().split(/\s+/).filter(Boolean);
+      choices=commands().filter(command=>words.every(word=>normalize([command.label,mailaiCopySource(command.label),command.aliases].join(' ')).includes(word)));
+      if(query.trim()&&owner()){
+        const term=query.trim();
+        choices.push({id:'search-query',label:mailaiTemplate`搜索邮件：${term}`,detail:currentMailboxScopeLabel(),group:'search',run:()=>{showMail();const target=document.getElementById('global-search');target.value=term;target.dispatchEvent(new Event('input',{bubbles:true}));target.focus();}});
+      }
+      let group='';
+      host.innerHTML=choices.map((command,index)=>{
+        const heading=command.group!==group?`<div class="command-group" role="presentation">${esc(command.group==='accounts'?mailaiText('切换邮箱'):command.group==='search'?mailaiText('搜索邮件'):mailaiText('常用操作'))}</div>`:'';group=command.group;
+        const icon=command.buttonId?document.getElementById(command.buttonId)?.querySelector('svg')?.outerHTML:commandPaths[command.id]?`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${commandPaths[command.id]}"/></svg>`:searchIcon;
+        return `${heading}<div class="command-option" id="command-option-${index}" role="option" aria-selected="false" aria-disabled="${Boolean(command.disabled)}" data-command-index="${index}" data-command-id="${esc(command.id)}"><span class="command-icon" aria-hidden="true">${command.group==='accounts'?esc(command.label.slice(0,1).toUpperCase()):icon||searchIcon}</span><span class="command-copy"><strong>${highlight(command.label,words)}</strong>${command.detail?`<small>${highlight(command.detail,words)}</small>`:''}</span><span class="command-open" aria-hidden="true">↵</span></div>`;
+      }).join('');
+      dialog.querySelector('.command-empty').hidden=choices.length>0;
+      const prior=preserve?choices.findIndex(command=>command.id===previous&&!command.disabled):-1;
+      select(prior>=0?prior:choices.findIndex(command=>!command.disabled));
+    }
+    async function execute(index){
+      const command=choices[index];if(!live(rev)||paletteRunning||!command||command.disabled)return;
+      paletteRunning=true;launcher?.setAttribute('aria-busy','true');
+      // Wait for the shared dialog's close listeners before opening another
+      // productivity panel, otherwise its revision/focus would be invalidated.
+      const closed=new Promise(resolve=>dialog.addEventListener('close',resolve,{once:true}));
+      dialog.close();await closed;
+      try{await command.run();}
+      catch(error){toast(mailaiSystemMessage(error.message),'error');}
+      finally{paletteRunning=false;launcher?.removeAttribute('aria-busy');}
+    }
+    const onKey=event=>{
+      event.stopPropagation();
+      if(event.isComposing||event.keyCode===229||input._composing)return;
+      if(event.key==='ArrowDown'||event.key==='ArrowUp'){
+        const enabled=choices.map((command,index)=>command.disabled?-1:index).filter(index=>index>=0);
+        const at=enabled.indexOf(active);event.preventDefault();select(enabled[(at+(event.key==='ArrowDown'?1:-1)+enabled.length)%enabled.length]??-1,true);
+      }else if(event.key==='Enter'&&event.target===input){event.preventDefault();execute(active);}
+      else if((event.metaKey||event.ctrlKey)&&event.key.toLowerCase()==='k'){event.preventDefault();dialog.close();}
+    };
+    const languageChanged=()=>{if(live(rev))draw(input.value,true);};
+    dialog.addEventListener('keydown',onKey);
+    document.addEventListener('mailai:language-changed',languageChanged);
+    dialog.addEventListener('close',()=>{
+      dialog.removeEventListener('keydown',onKey);document.removeEventListener('mailai:language-changed',languageChanged);
+      launcher?.setAttribute('aria-expanded','false');input.setAttribute('aria-expanded','false');
+      if(!paletteRunning&&selection&&origin===document.activeElement&&selection[0]!==null)origin.setSelectionRange(...selection);
+    },{once:true});
+    host.onpointerdown=event=>{if(event.target.closest('[data-command-index]'))event.preventDefault();};
+    host.onpointermove=event=>{const option=event.target.closest('[data-command-index]');if(option&&!choices[Number(option.dataset.commandIndex)]?.disabled)select(Number(option.dataset.commandIndex));};
+    host.onclick=event=>{const option=event.target.closest('[data-command-index]');if(option)execute(Number(option.dataset.commandIndex));};
     draw();
-    dialog.querySelector("#productivity-command-query").oninput = (e) =>
-      draw(e.target.value);
-    dialog.querySelector("#productivity-command-query").focus();
+    input.oninput=()=>{if(!input._composing)draw(input.value);};
+    input.addEventListener('compositionstart',()=>{input._composing=true;});
+    input.addEventListener('compositionend',()=>{input._composing=false;draw(input.value);});
+    input.focus();
   }
+  const commandLauncher=document.getElementById('btn-command-palette');
+  commandLauncher.onclick=palette;
+  commandLauncher.querySelector('kbd').textContent=/Mac|iPhone|iPad/.test(navigator.platform)?'⌘K':'Ctrl K';
   document.addEventListener("keydown", (event) => {
     if (event.isComposing || event.keyCode === 229) return;
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-      if (document.querySelector("dialog[open]")) return;
+      if (paletteBlocked()) return;
       event.preventDefault();
       palette();
       return;

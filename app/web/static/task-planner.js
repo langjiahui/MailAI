@@ -104,7 +104,11 @@
       }
       if(sameTask && JSON.stringify(editorValues())===snapshot) {
         dialog.close();
-        toast(reminderChanged ? (reminderValue ? mailaiTemplate`已设置提醒：${reminderValue.replace('T',' ')}；请保持 MailAI 运行` : mailaiText('已取消提醒，任务仍保留')) : mailaiText('任务已保存，提醒时间未改变'),'success');
+        const message=reminderChanged ? (reminderValue ? mailaiTemplate`已设置提醒：${reminderValue.replace('T',' ')}；请保持 MailAI 运行` : mailaiText('已取消提醒，任务仍保留')) : mailaiText('任务已保存，提醒时间未改变');
+        taskNotice(message,mailaiText('查看待办'),async()=>{
+          if(activeMailAccount()?.id!==c.accountId)return;
+          await openTodoCenter();
+        },6500);
       } else {
         mailaiBindUI(get('error'), 'textContent', () => mailaiText('刚才的安排已保存，当前编辑内容仍保留。确认后可再次保存。'));
       }

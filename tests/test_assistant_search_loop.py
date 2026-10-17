@@ -58,9 +58,18 @@ def main():
         stream=assistant.api_assistant_ask_stream(request)
         async def collect():return [json.loads(chunk) async for chunk in stream.body_iterator]
         events=asyncio.run(collect());meta=[event['search'] for event in events if event['type']=='search'][-1]
+        source_event=next(event for event in events if event['type']=='sources')
+        assert source_event['sources'][0]['from_name']=='方君'
+        assert source_event['sources'][0]['preview']=='合同交付安排'
+        assert 'body_text' not in source_event['sources'][0]
+        assert db.get_email(selected)['is_read']==before
         assert meta['status']=='complete' and 'relax_dates' not in meta['actions'] and 'undo' in meta['actions']
         history=assistant.api_assistant_conversation(conv)
         assert history['messages'][-1]['search']['id']==meta['id']
+        assert history['messages'][-1]['sources']==source_event['sources']
+        long_preview=mail_assistant._source_citations([{'id':1,'body_text':'交付安排 '*500}],with_preview=True)[0]
+        assert len(long_preview['preview'])<=281 and long_preview['preview'].endswith('…')
+        assert 'preview' not in mail_assistant._source_citations([{'id':1,'body_text':'本机正文'}])[0]
         assert not any(event['type']=='action' for event in events)
         # Failed runs keep their exact filters for a deterministic retry.
         failed=assistant_search.create(conv,result['snapshot']);assistant_search.finish(failed['id'],db.add_assistant_message(conv,'assistant','失败',[]),'error')

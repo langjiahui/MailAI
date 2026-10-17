@@ -8,12 +8,17 @@ const timers = [];
 const listeners = {};
 const classes = new Set(['hidden']);
 const host = {
+  dataset:{},children:[],
+  contains(node) { return this.children.includes(node); },
+  matches() { return false; },
+  removeAttribute() {},
+  addEventListener() {},
   classList: {
     add(...names) { names.forEach(name => classes.add(name)); },
     remove(...names) { names.forEach(name => classes.delete(name)); },
   },
-  replaceChildren() {},
-  append() {},
+  replaceChildren() { this.children=[]; },
+  append(node) { this.children.push(node); },
 };
 const document = {
   getElementById(id) { assert.equal(id, 'workspace-notice'); return host; },

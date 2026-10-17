@@ -51,6 +51,7 @@ async function pageAt(url) {
     'mailai-companion-motion':'off','mailai-assistant-floating':'true',
     'mailai-assistant-layout-v1':'{"width":400}',
     'mailai.workspace.paneSizes.v1':'{"sidebar":250,"list":420}',
+    'mailai.assistant.dockWidth.v1':'548',
     'mailai.preferences.showServerFolders.v1':'true',
     'mailai-browsing-account':'test-account', 'alias:test-account':'Work',
     'collapsed:test-account':'1', 'mailai-secretary-focus:test-account':'decision',
@@ -69,10 +70,12 @@ async function pageAt(url) {
   assert.equal(await page.evaluate(() => document.documentElement.dataset.theme),'dark', 'dark theme must apply in the head, before the workspace loads');
   assert.deepEqual(await page.evaluate(keys => Object.fromEntries(keys.map(key => [key,localStorage.getItem(key)])),Object.keys(values)), values);
   await page.evaluate(() => localStorage.removeItem('mailai-assistant-layout-v1'));
+  await page.evaluate(() => localStorage.removeItem('mailai.assistant.dockWidth.v1'));
   await browser.close(); browser=null;
   await stop();
   page = await pageAt(await start());
   assert.equal(await page.evaluate(() => localStorage.getItem('mailai-assistant-layout-v1')),null);
+  assert.equal(await page.evaluate(() => localStorage.getItem('mailai.assistant.dockWidth.v1')),null);
   assert.equal(await page.evaluate(() => localStorage.getItem('mailai.preferences.theme.v1')),'dark');
   page.on('dialog', dialog => dialog.dismiss());
   await page.route('**/api/ui-preferences', route => route.fulfill({status:500,body:'disk unavailable'}));

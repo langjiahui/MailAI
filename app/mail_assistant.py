@@ -402,6 +402,20 @@ def notification_allowed(email: dict, prefs=None, favorites=None) -> bool:
     return True
 
 
+def _source_citations(sources, with_preview=False):
+    citations = []
+    for email in sources:
+        item = {"id": email["id"], "subject": email.get("subject") or "（无主题）",
+                "from_name": email.get("from_name") or "", "from_addr": email.get("from_addr") or "",
+                "date": email.get("date") or "", "score": email.get("score") or 0}
+        if with_preview:
+            text = re.sub(r'\s+', ' ', str(email.get('summary') or email.get('snippet') or email.get('body_text') or '')[:4000]).strip()
+            text = parser.redact(text[:1000])
+            item['preview'] = text[:280] + ('…' if len(text) > 280 else '')
+        citations.append(item)
+    return citations
+
+
 def validated_citations(answer, sources):
     allowed = {str(e['id']) for e in sources}
     return re.sub(r'\[email_id:(\d+)\]', lambda m: m[0] if m[1] in allowed else '（来源未核实）', answer)
@@ -656,9 +670,7 @@ def _ask_impl(question: str, history: list[dict] | None = None, email_ids=None, 
                  "from_addr": e.get("from_addr") or "", "date": e.get("date") or "", "score": e.get("score") or 0}
                 for e in sources if e]}
     sources = source_rows if source_rows is not None else _search_sources(question,history) if search_mode else _sources(question, email_ids)
-    citations = [{"id": e["id"], "subject": e.get("subject") or "（无主题）",
-                  "from_addr": e.get("from_addr") or "", "date": e.get("date") or "",
-                  "score": e.get("score") or 0} for e in sources]
+    citations = _source_citations(sources, with_preview=search_mode)
     if not sources:
         return {"answer": _empty_answer(question), "sources": []}
     context = []
@@ -780,9 +792,7 @@ def ask_stream(question: str, history: list[dict] | None = None, email_ids=None,
     if search_result:
         yield 'search', search_result['snapshot']
     task_question = search_result['snapshot']['root_question'] + '\n本次要求：' + question if search_context else question
-    citations = [{"id": e["id"], "subject": e.get("subject") or "（无主题）",
-                  "from_addr": e.get("from_addr") or "", "date": e.get("date") or "",
-                  "score": e.get("score") or 0} for e in sources]
+    citations = _source_citations(sources, with_preview=search_mode)
     yield "sources", citations
     if not sources:
         yield "status", {"state": "composing", "message": "没有找到直接相关的邮件",

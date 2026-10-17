@@ -28,6 +28,7 @@ const nodes = {
   'assistant-float': {setAttribute(name,value) { this[name] = value; }},
 };
 const ctx = {
+  window: {},
   getComputedStyle:()=>({getPropertyValue:()=> '1'}), requestAnimationFrame:fn=>fn(),
   mailaiT:()=>null,
   document: {

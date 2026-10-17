@@ -1,0 +1,44 @@
+/* One searchable command surface, sharing the existing productivity dialog. */
+html[data-theme] body .global-search #btn-command-palette {
+ flex:0 0 auto; min-width:30px; min-height:28px; margin-right:0; padding:3px 7px;
+ border:1px solid var(--desk-line); border-radius:6px; box-shadow:none;
+ background:var(--desk-surface); color:var(--desk-muted); cursor:pointer;
+}
+html[data-theme] body .topbar .global-search input { padding-right:10px!important; }
+html[data-theme] body .topbar .global-search .search-filter-button { position:static;transform:none;flex:0 0 28px;margin-right:7px; }
+#btn-command-palette kbd { font:inherit; font-size:11px; white-space:nowrap; }
+html[data-theme] body .global-search #btn-command-palette:is(:hover,[aria-expanded=true]) { background:var(--desk-selected);color:var(--desk-accent); }
+#btn-command-palette:focus-visible { outline:2px solid var(--desk-accent);outline-offset:2px; }
+#btn-command-palette[aria-busy=true] { cursor:progress;opacity:.65; }
+html[data-theme] body #productivity-dialog[data-panel=commands] {
+ width:min(580px,calc((100dvw - 24px) / var(--fz,1)));padding:0;
+ background:var(--desk-surface);color:var(--desk-ink);border:1px solid var(--desk-line);border-radius:16px;
+}
+html[data-theme] body #productivity-dialog[data-panel=commands]>header { padding:14px 18px; }
+html[data-theme] body #productivity-dialog[data-panel=commands] h2 { font-size:15px;line-height:1.4; }
+html[data-theme] body #productivity-dialog[data-panel=commands] .productivity-body { display:flex;flex-direction:column;gap:0;padding:0;overflow:hidden; }
+#productivity-dialog[data-panel=commands] [data-account-label] { margin:0;padding:10px 18px 0;overflow-wrap:anywhere;font-size:11px;color:var(--desk-muted); }
+html[data-theme] body #productivity-dialog[data-panel=commands] #productivity-command-query {
+ flex:0 0 auto;width:calc(100% - 24px);min-width:0;min-height:42px;margin:10px 12px;padding:9px 11px;
+ border:1px solid var(--desk-line);border-radius:9px;background:var(--desk-muted-surface);color:var(--desk-ink);font:inherit;font-size:13px;
+}
+html[data-theme] body #productivity-dialog[data-panel=commands] #productivity-command-query:focus { outline:0;box-shadow:0 0 0 2px color-mix(in srgb,var(--desk-accent) 18%,transparent);border-color:var(--desk-accent); }
+#productivity-commands { min-height:0;max-height:min(440px,calc((100dvh - 240px) / var(--fz,1)));overflow:auto;overscroll-behavior:contain;padding:0 8px 8px; }
+.command-group { padding:12px 10px 5px;font-size:11px;color:var(--desk-muted); }
+.command-option { display:flex;align-items:center;gap:10px;min-width:0;min-height:44px;padding:8px 10px;border-radius:8px;cursor:pointer;color:var(--desk-ink);background:transparent;transition:background-color 120ms ease; }
+.command-option[aria-selected=true] { background:var(--desk-selected); }
+.command-option[aria-disabled=true] { opacity:.5;cursor:default; }
+.command-icon { display:grid;place-items:center;flex:0 0 28px;width:28px;height:28px;color:var(--desk-muted);border-radius:7px;background:var(--desk-muted-surface);font-size:12px; }
+.command-icon svg { width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round; }
+.command-copy { min-width:0;flex:1; }
+.command-copy strong { display:block;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.command-copy small { display:block;font-size:11px;color:var(--desk-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.command-copy mark { padding:0;border-radius:2px;color:inherit;background:color-mix(in srgb,var(--desk-accent) 18%,transparent);font-weight:750; }
+.command-open { flex:none;color:var(--desk-muted);opacity:0; }
+.command-option[aria-selected=true] .command-open { opacity:1; }
+.command-hints { display:flex;flex:0 0 auto;flex-wrap:wrap;gap:16px;padding:10px 18px;border-top:1px solid var(--desk-line);color:var(--desk-muted);font-size:11px; }
+.command-hints kbd { font:inherit; }
+.command-empty { padding:26px 18px;text-align:center;color:var(--desk-muted);font-size:13px; }
+.command-empty[hidden] { display:none; }
+#productivity-dialog[data-panel=commands] [data-message]:empty { display:none; }
+@media(prefers-reduced-motion:reduce) { .command-option { transition:none; } }

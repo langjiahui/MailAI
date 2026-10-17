@@ -50,9 +50,21 @@ themeMediaQuery?.addEventListener?.('change', () => {
   if (savedThemeMode() === 'system') applyTheme('system');
 });
 
+function pauseTaskNotice(host) {
+  clearTimeout(host._dismissTimer);
+  if(host._dismissAt)host._remaining=Math.max(1,host._dismissAt-Date.now());
+  host._dismissAt=0;
+}
+function scheduleTaskNotice(host) {
+  pauseTaskNotice(host);
+  if(!host._noticeToken || !host._remaining || host._noticeBusy || host.matches(':hover') || host.contains(document.activeElement))return;
+  host._dismissAt=Date.now()+host._remaining;
+  host._dismissTimer=setTimeout(()=>hideTaskNotice(host),host._remaining);
+}
 function hideTaskNotice(host) {
   clearTimeout(host._dismissTimer);
   clearTimeout(host._hideTimer);
+  host._noticeToken=null;
   host.classList.add('is-fading');
   host._hideTimer = setTimeout(() => {
     host.classList.add('hidden');
@@ -62,15 +74,50 @@ function hideTaskNotice(host) {
 
 function taskNotice(message, actionText = '', action = null, dismissAfter = 0) {
   const host = document.getElementById('workspace-notice');
+  const hadFocus=host.contains(document.activeElement);
   clearTimeout(host._dismissTimer);
   clearTimeout(host._hideTimer);
+  const ticket={};host._noticeToken=ticket;host._noticeBusy=false;
+  host._remaining=dismissAfter;host._dismissAt=0;
+  host.removeAttribute('aria-busy');host.dataset.state='ready';
   host.replaceChildren();
   const copy = document.createElement('span'); copy.textContent = message; host.append(copy);
-  if (actionText) { const button = document.createElement('button'); button.textContent = actionText; button.onclick = action; host.append(button); }
+  if (actionText && action) {
+    const button=document.createElement('button');button.type='button';button.textContent=actionText;
+    button.onclick=async()=>{
+      if(host._noticeBusy||host._noticeToken!==ticket)return;
+      pauseTaskNotice(host);host._noticeBusy=true;host.dataset.state='working';
+      // Keep keyboard focus on the action while the guard blocks repeat presses.
+      button.setAttribute('aria-disabled','true');button.setAttribute('aria-busy','true');
+      mailaiBindUI(button,'textContent',()=>mailaiText('正在处理…'));
+      try {await action();}
+      catch(error){
+        if(host._noticeToken!==ticket)return;
+        host.dataset.state='error';host._remaining=0;
+        mailaiBindUI(copy,'textContent',()=>mailaiTemplate`操作未完成，可重试：${mailaiSystemMessage(error.message)}`);
+      } finally {
+        if(host._noticeToken===ticket){
+          host._noticeBusy=false;button.removeAttribute('aria-disabled');button.removeAttribute('aria-busy');
+          mailaiBindUI(button,'textContent',()=>actionText);
+          if(host.dataset.state!=='error')host.dataset.state='ready';
+          scheduleTaskNotice(host);
+        }
+      }
+    };
+    host.append(button);
+  }
   const close = document.createElement('button'); close.textContent = '×'; mailaiBindUI(close, "@aria-label", () => (mailaiText('关闭提示'))); close.onclick = () => hideTaskNotice(host); host.append(close);
   host.classList.remove('is-fading');
   host.classList.remove('hidden');
-  if (dismissAfter > 0) host._dismissTimer = setTimeout(() => hideTaskNotice(host), dismissAfter);
+  if(hadFocus)host.querySelector('button')?.focus({preventScroll:true});
+  host.onpointerenter=()=>pauseTaskNotice(host);
+  host.onpointerleave=()=>scheduleTaskNotice(host);
+  if(!host._noticeFocusBound){
+    host._noticeFocusBound=true;
+    host.addEventListener('focusin',()=>pauseTaskNotice(host));
+    host.addEventListener('focusout',()=>queueMicrotask(()=>{if(host._noticeToken)scheduleTaskNotice(host);}));
+  }
+  scheduleTaskNotice(host);
 }
 
 function describeMailUndo(path, body, result, accountId) {
@@ -734,6 +781,7 @@ function updateAssistantPlacement() {
   const displayLabel = floating ? mailaiText('恢复自动布局') : mailaiText('切换为浮动窗口');
   displayButton.title = displayLabel;
   displayButton.setAttribute('aria-label', displayLabel);
+  window.mailaiAssistantDivider?.update();
 }
 
 function returnToMailFromAssistant() {

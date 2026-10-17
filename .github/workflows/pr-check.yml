@@ -376,6 +376,57 @@ jobs:
           node tests/test_overlay_interactions_browser.cjs
           node tests/test_date_time_workflows_browser.cjs
 
+  assistant-workspace-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install isolated interaction test dependencies
+        run: |
+          python -m pip install -r requirements.txt
+          npm ci
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Verify assistant workspace and commands
+        env:
+          MAILAI_BROWSER: ${{ matrix.browser }}
+        shell: bash
+        run: |
+          mkdir -p build
+          MAILAI_SEARCH_FIXTURE=1 python tests/workspace_preview.py > fixture-assistant.log 2>&1 &
+          fixture_pid=$!
+          trap 'kill "$fixture_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:18795/api/health > /dev/null; then ready=1; break; fi
+            sleep 1
+          done
+          test "$ready" = 1 || { cat fixture-assistant.log; exit 1; }
+          node tests/test_assistant_divider_browser.cjs
+          node tests/test_assistant_interactions_browser.cjs
+          node tests/test_candidate_details_browser.cjs
+          node tests/test_keyboard_refinement_browser.cjs
+          node tests/test_assistant_search_loop_browser.cjs
+          node tests/test_command_palette_browser.cjs
+          node tests/test_assistant_ui_matrix_browser.cjs
+      - uses: actions/upload-artifact@v5
+        if: failure()
+        with:
+          name: assistant-workspace-${{ matrix.browser }}
+          path: |
+            build/*.png
+            fixture-assistant.log
+
   secret-scan:
     runs-on: ubuntu-latest
     steps:

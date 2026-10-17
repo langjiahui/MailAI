@@ -634,11 +634,13 @@ function renderAssistantWelcome() {
   const wrap = document.getElementById('assistant-messages');
   wrap.replaceChildren(document.getElementById('assistant-welcome-template').content.cloneNode(true));
   wrap.classList.add('is-welcome');
+  window.mailaiAssistantScroll?.follow();
 }
 function appendAssistantMessage(role, content, sources = []) {
   if (role === 'user') content = String(content || '').replace(/\n?（本次附图 \d+ 张；原图不存入历史，后续核对图片细节请重新上传。）/g, '');
   if (role !== 'user') content = String(content || '').replace(/\[email_id:(\d+)\]/g, (match, id) => sources.some(source => String(source.id) === id) ? match : mailaiText('（来源未核实）'));
   const wrap = document.getElementById('assistant-messages');
+  if (role === 'user') window.mailaiAssistantScroll?.follow();
   wrap.querySelector('.assistant-welcome')?.remove();
   wrap.classList.remove('is-welcome');
   if (role !== 'user' && !String(content || '').trim()) content = mailaiText('这次分析没有完整返回。你可以把刚才的问题再发一次，我会重新帮你查。');
@@ -646,7 +648,10 @@ function appendAssistantMessage(role, content, sources = []) {
   const accountId = activeMailAccount()?.id || '';
   const sourceHtml = role !== 'user' ? assistantSourcesHtml(sources, accountId) : '';
   el.innerHTML = `<div class="assistant-bubble">${role === 'user' ? esc(content) : assistantAnswerHtml(content, sources, accountId)}${sourceHtml}</div>`;
-  wrap.appendChild(el); wrap.scrollTop = wrap.scrollHeight; return el;
+  wrap.appendChild(el);
+  if (window.mailaiAssistantScroll) window.mailaiAssistantScroll.changed();
+  else wrap.scrollTop = wrap.scrollHeight;
+  return el;
 }
 function assistantProgressHtml(title, detail = '') {
   return `<div class="assistant-progress" role="status" aria-live="polite"><span class="thinking-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="assistant-progress-copy"><b>${esc(title)}</b>${detail ? `<small>${esc(detail)}</small>` : ''}</span></div>`;
@@ -832,6 +837,7 @@ async function loadAssistantConversation(id) {
   if (revision !== assistantRevision) return;
   assistantConversationId = Number(id); assistantHistory = [];
   const wrap = document.getElementById('assistant-messages'); wrap.innerHTML = '';
+  window.mailaiAssistantScroll?.follow();
   (data.messages || []).forEach(message => {
     const element = appendAssistantMessage(message.role, message.content, message.sources || []);
     if (message.search) window.mailaiAssistantSearch?.restore(element,message.search,message.sources || []);
@@ -1033,8 +1039,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
   const paint = () => {
     bubble.classList.remove('assistant-progress-bubble');
     bubble.innerHTML = assistantAnswerHtml(validAnswer(), sources, account?.id || '');
-    const wrap = document.getElementById('assistant-messages');
-    if (wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight < 160) wrap.scrollTop = wrap.scrollHeight;
+    window.mailaiAssistantScroll?.changed();
   };
   try {
     const response = await fetch('/api/assistant/ask-stream', {method:'POST', signal:controller.signal,
@@ -4016,7 +4021,13 @@ function renderEmailList(emails, {silent = false} = {}) {
       showMailContextMenu(event.clientX, event.clientY, id);
     });
     item.addEventListener('keydown', event => {
+      if(event.target!==item||event.isComposing||event.keyCode===229)return;
       const id = Number(item.dataset.id);
+      if(!event.ctrlKey&&!event.metaKey&&!event.altKey&&!event.shiftKey&&['ArrowDown','ArrowUp','Home','End'].includes(event.key)){
+        const rows=[...container.querySelectorAll('.email-item')].filter(row=>row.getClientRects().length);
+        const index=rows.indexOf(item),next=event.key==='Home'?0:event.key==='End'?rows.length-1:Math.max(0,Math.min(rows.length-1,index+(event.key==='ArrowDown'?1:-1)));
+        event.preventDefault();rows[next]?.focus({preventScroll:true});rows[next]?.scrollIntoView({block:'nearest',inline:'nearest'});return;
+      }
       if (event.key === 'Enter') {
         event.preventDefault();
         if (!specialMailbox && !unifiedMailbox) selectionAnchorId = id;
@@ -4346,11 +4357,27 @@ function mailContextIcon(path) {
   return `<svg viewBox="0 0 20 20" aria-hidden="true">${path}</svg>`;
 }
 
-function hideMailContextMenu() {
+function hideMailContextMenu({restoreFocus=false}={}) {
   const menu = document.getElementById('mail-context-menu');
-  if (!menu) return;
+  if (!menu || menu.classList.contains('hidden')) return;
   menu.classList.add('hidden');
   menu.setAttribute('aria-hidden', 'true');
+  let target=menu._returnFocus;
+  const scope=menu._returnScope;
+  if(restoreFocus&&!target?.isConnected&&scope?.accountId===(activeMailAccount()?.id||'')&&scope.unified===unifiedMailbox){
+    target=[...document.querySelectorAll('#email-list .email-item')].find(row=>Number(row.dataset.id)===Number(menu.dataset.contextId)&&(row.dataset.accountId||'')===scope.rowAccount);
+  }
+  if(restoreFocus&&target?.isConnected)target.focus({preventScroll:true});
+  menu._returnFocus=null;
+  menu._returnScope=null;
+}
+
+function positionMailContextMenu(menu,x,y) {
+  const scale=Number.parseFloat(getComputedStyle(document.body).zoom)||1;
+  menu.style.left='0px';menu.style.top='0px';
+  const rect=menu.getBoundingClientRect();
+  menu.style.left=`${Math.max(8,Math.min(x,window.innerWidth-rect.width-8))/scale}px`;
+  menu.style.top=`${Math.max(8,Math.min(y,window.innerHeight-rect.height-8))/scale}px`;
 }
 
 function ensureMailContextMenu() {
@@ -4362,6 +4389,28 @@ function ensureMailContextMenu() {
   menu.setAttribute('role', 'menu');
   menu.setAttribute('aria-hidden', 'true');
   document.body.appendChild(menu);
+  const folders=(open,focus=false)=>{
+    const group=menu.querySelector('.mail-context-folders'),trigger=menu.querySelector('[data-context-action=folders]');
+    if(!group||trigger?.disabled)return;
+    group.classList.toggle('hidden',!open);trigger.setAttribute('aria-expanded',String(open));
+    const rect=menu.getBoundingClientRect();positionMailContextMenu(menu,rect.left,rect.top);
+    if(focus)(open?group.querySelector('button:not(:disabled)'):trigger)?.focus();
+  };
+  menu.addEventListener('keydown',event=>{
+    if(event.isComposing||event.keyCode===229||event.ctrlKey||event.metaKey||event.altKey)return;
+    const inFolders=Boolean(event.target.closest('.mail-context-folders'));
+    if(event.key==='Escape'){
+      event.preventDefault();event.stopPropagation();
+      if(inFolders||menu.querySelector('[data-context-action=folders]')?.getAttribute('aria-expanded')==='true')folders(false,true);else hideMailContextMenu({restoreFocus:true});return;
+    }
+    if(event.key==='Tab'){hideMailContextMenu({restoreFocus:true});return;}
+    if(event.key==='ArrowRight'&&event.target.matches('[data-context-action=folders]')){event.preventDefault();folders(true,true);return;}
+    if(event.key==='ArrowLeft'&&inFolders){event.preventDefault();folders(false,true);return;}
+    if(!['ArrowDown','ArrowUp','Home','End'].includes(event.key))return;
+    const buttons=[...menu.querySelectorAll('[role=menuitem]:not(:disabled)')].filter(button=>button.getClientRects().length);
+    const index=buttons.indexOf(document.activeElement),next=event.key==='Home'?0:event.key==='End'?buttons.length-1:(index+(event.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length;
+    event.preventDefault();event.stopPropagation();buttons[next]?.focus();
+  });
   menu.addEventListener('click', async event => {
     const folderButton = event.target.closest('[data-context-folder]');
     if (folderButton) {
@@ -4375,7 +4424,7 @@ function ensureMailContextMenu() {
     const action = button.dataset.contextAction;
     const id = Number(menu.dataset.contextId);
     if (action === 'folders') {
-      menu.querySelector('.mail-context-folders')?.classList.toggle('hidden');
+      folders(menu.querySelector('.mail-context-folders')?.classList.contains('hidden'));
       return;
     }
     hideMailContextMenu();
@@ -4407,6 +4456,10 @@ function showMailContextMenu(x, y, id) {
        <button type="button" role="menuitem" data-context-action="unread">${mailContextIcon('<path d="M3.5 5.5h13v9h-13zM4.5 7l5.5 4 5.5-4M14.5 3.5h2"/>')}<span><span data-i18n="ui.2312be9fcfa0">标记为未读</span></span></button>`
     : `<button type="button" role="menuitem" data-context-action="${row.is_read ? 'unread' : 'read'}">${mailContextIcon('<path d="M3.5 5.5h13v9h-13zM4.5 7l5.5 4 5.5-4"/>')}<span>${row.is_read ? mailaiText('标记为未读') : mailaiText('标记为已读')}</span></button>`;
   menu.dataset.contextId = id;
+  menu._returnFocus=document.querySelector(`#email-list .email-item[data-id="${Number(id)}"]`);
+  menu._returnScope={accountId:activeMailAccount()?.id||'',unified:unifiedMailbox,rowAccount:menu._returnFocus?.dataset.accountId||''};
+  const list=document.getElementById('email-list');
+  menu._listScrollTop=list.scrollTop;menu._listScrollLeft=list.scrollLeft;
   menu.innerHTML = `
     <div class="mail-context-summary">${count > 1 ? mailaiTemplate`已选 ${count} 封邮件` : mailaiText('邮件操作')}<small>${localSelection ? mailaiText('包含本地归档；可在阅读窗口收藏，不能移动到服务器') : count > 1 ? mailaiText('以下操作将应用到所选邮件') : mailaiText('右键快捷操作')}</small></div>
     ${count === 1 ? `
@@ -4419,18 +4472,15 @@ function showMailContextMenu(x, y, id) {
     ${readStateActions}
     <button type="button" role="menuitem" data-context-action="star" ${localSelection ? mailaiText('disabled title="星标需要同步服务器，本地归档请使用收藏"') : ''}>${mailContextIcon('<path d="m10 3 2.1 4.2 4.7.7-3.4 3.3.8 4.7-4.2-2.2-4.2 2.2.8-4.7-3.4-3.3 4.7-.7z"/>')}<span><span data-i18n="ui.e817525bedb9">添加星标</span></span></button>
     <div class="mail-context-separator"></div>
-    <button type="button" role="menuitem" data-context-action="folders" ${localSelection ? mailaiText('disabled title="本地归档不会上传到服务器"') : ''}>${mailContextIcon('<path d="M3.5 6h5l1.5 2h6.5v8h-13z"/>')}<span><span data-i18n="ui.711c5507708d">移动到文件夹</span></span><b>›</b></button>
-    <div class="mail-context-folders hidden">${folderOptions || "<small><span data-i18n=\"ui.aefd65f9a2a4\">暂无可用文件夹</span></small>"}</div>
+    <button type="button" role="menuitem" data-context-action="folders" aria-expanded="false" aria-controls="mail-context-folders" ${localSelection ? mailaiText('disabled title="本地归档不会上传到服务器"') : ''}>${mailContextIcon('<path d="M3.5 6h5l1.5 2h6.5v8h-13z"/>')}<span><span data-i18n="ui.711c5507708d">移动到文件夹</span></span><b>›</b></button>
+    <div id="mail-context-folders" class="mail-context-folders hidden" role="group" aria-label="${esc(mailaiText('移动到文件夹'))}">${folderOptions || "<small><span data-i18n=\"ui.aefd65f9a2a4\">暂无可用文件夹</span></small>"}</div>
     ${!inTrash ? `<button type="button" class="danger" role="menuitem" data-context-action="trash">${mailContextIcon('<path d="M4 6h12M7 6V4h6v2M6 8l.7 8h6.6l.7-8M8.5 9.5v4M11.5 9.5v4"/>')}<span><span data-i18n="ui.0beae53e661c">移入已删除</span></span></button>` : "<button type=\"button\" class=\"danger\" role=\"menuitem\" data-context-action=\"purge\"><span><span data-i18n=\"ui.4ee7d3299549\">彻底删除…</span></span></button>"}
     <div class="mail-context-separator"></div>
     <button type="button" role="menuitem" data-context-action="select-all">${mailContextIcon('<path d="M4 4h12v12H4zM7 10l2 2 4-4"/>')}<span><span data-i18n="ui.70b25d866a2e">全选当前列表</span></span><kbd>⌘A</kbd></button>
     ${count > 1 ? `<button type="button" role="menuitem" data-context-action="clear">${mailContextIcon('<path d="m6 6 8 8M14 6l-8 8"/>')}<span><span data-i18n="ui.74966e20df2e">取消选择</span></span><kbd>Esc</kbd></button>` : ''}`;
   menu.classList.remove('hidden');
   menu.setAttribute('aria-hidden', 'false');
-  menu.style.left = '0px'; menu.style.top = '0px';
-  const rect = menu.getBoundingClientRect();
-  menu.style.left = `${Math.max(8, Math.min(x, window.innerWidth - rect.width - 8))}px`;
-  menu.style.top = `${Math.max(8, Math.min(y, window.innerHeight - rect.height - 8))}px`;
+  positionMailContextMenu(menu,x,y);
   menu.querySelector('button')?.focus();
 }
 
@@ -7488,7 +7538,11 @@ document.getElementById('bulk-cancel').addEventListener('click', () => {
 document.addEventListener('click', event => {
   if (!event.target.closest('#mail-context-menu')) hideMailContextMenu();
 });
-document.getElementById('email-list').addEventListener('scroll', hideMailContextMenu, {passive:true});
+document.getElementById('email-list').addEventListener('scroll', event=>{
+  const menu=document.getElementById('mail-context-menu'),list=event.currentTarget;
+  // WebKit may deliver an earlier layout scroll after the menu has opened.
+  if(menu&&(Math.abs(list.scrollTop-menu._listScrollTop)>.5||Math.abs(list.scrollLeft-menu._listScrollLeft)>.5))hideMailContextMenu();
+}, {passive:true});
 document.addEventListener('keydown', event => {
   const target = event.target;
   const editing = target instanceof HTMLElement && (

@@ -6,7 +6,7 @@
   <link rel="stylesheet" href="/static/mail-tags.css?v=compact-reader-2">
   <title>MailAI · 邮件安全与效率助手</title>
   <script src="/api/ui-preferences.js"></script>
-  <script src="/static/preferences.js?v=i18n-20261010"></script>
+  <script src="/static/preferences.js?v=dock-width-20261017"></script>
   <script>
     (() => {
       // Both browser and native shells share the workspace; only native shells reserve window controls.
@@ -40,15 +40,15 @@
   <link rel="stylesheet" href="/static/remote-control.css?v=4">
   <link rel="stylesheet" href="/static/special-reading.css?v=1">
   <link rel="stylesheet" href="/static/list-header-polish.css?v=10">
-  <link rel="stylesheet" href="/static/interaction-recovery.css?v=5">
+  <link rel="stylesheet" href="/static/interaction-recovery.css?v=keyboard-navigation-20261017">
   <link rel="stylesheet" href="/static/dashboard-polish.css?v=4">
   <link rel="stylesheet" href="/static/digest-polish.css?v=1">
   <link rel="stylesheet" href="/static/experience-polish.css?v=more-menu-20261016">
   <link rel="stylesheet" href="/static/page-polish.css?v=i18n-20261010">
   <link rel="stylesheet" href="/static/macos-window.css?v=air-toolbar-15">
   <link rel="stylesheet" href="/static/windows-window.css?v=3">
-  <link rel="stylesheet" href="/static/assistant-polish.css?v=6">
-  <link rel="stylesheet" href="/static/assistant-search.css?v=2">
+  <link rel="stylesheet" href="/static/assistant-polish.css?v=preview-actions-20261017">
+  <link rel="stylesheet" href="/static/assistant-search.css?v=preview-cards-20261017">
   <link rel="stylesheet" href="/static/list-controls-polish.css?v=5">
   <link rel="stylesheet" href="/static/tab-transitions.css?v=2">
   <link rel="stylesheet" href="/static/author.css?v=7">
@@ -71,6 +71,8 @@
   <link rel="stylesheet" href="/static/brand.css?v=glass-green-baowu-1">
   <link rel="stylesheet" href="/static/settings-polish.css?v=7">
   <link rel="stylesheet" href="/static/home-dialog-polish.css?v=1">
+  <link rel="stylesheet" href="/static/command-palette.css?v=1">
+  <link rel="stylesheet" href="/static/assistant-divider.css?v=1">
 </head>
 <body>
   <div id="app-preloader" class="app-preloader" role="status" aria-live="polite">
@@ -110,6 +112,7 @@
       <div class="global-search">
         <span class="search-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m15.5 15.5 4.3 4.3"/></svg></span>
         <span id="search-scope" class="search-scope"><span data-i18n="ui.fe595850aebb">全部邮件</span></span><input id="global-search" type="search" aria-label="搜索主题、发件人、正文或姓名拼音" data-i18n-aria="search.placeholder" placeholder="搜索主题、发件人、正文或姓名拼音..." data-i18n-placeholder="search.placeholder" />
+        <button id="btn-command-palette" type="button" aria-label="打开快捷操作" title="打开快捷操作（⌘K / Ctrl+K）" data-i18n-aria="command.open" data-i18n-title="command.openHint" aria-haspopup="dialog" aria-controls="productivity-dialog" aria-expanded="false" aria-keyshortcuts="Meta+K Control+K"><kbd>⌘K</kbd></button>
       </div>
       <div class="global-actions">
         <button id="btn-compose" class="nav-action nav-compose" title="写新邮件" data-i18n-title="ui.48a6f4d3b205"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l11-11a2.8 2.8 0 0 0-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4M4 20h16"/></svg><span data-i18n="nav.compose">写邮件</span></button>
@@ -1091,6 +1094,8 @@
         <span id="companion-caption" class="companion-caption"><span id="companion-caption-copy" data-i18n="asst.caption">小邮在这里</span><span id="companion-level" class="companion-level">Lv.1</span></span>
         <span id="assistant-badge" class="assistant-badge hidden">0</span>
       </button>
+      <div id="assistant-dock-divider" role="separator" aria-orientation="vertical" aria-controls="assistant-panel" aria-label="调整小邮面板宽度" data-i18n-aria="asst.dockWidth" aria-describedby="assistant-divider-help" title="拖动或按左右方向键调整，双击或按 Enter 恢复默认宽度" data-i18n-title="asst.dockWidthHelp" tabindex="0" hidden></div>
+      <span id="assistant-divider-help" class="sr-only" data-i18n="asst.dockWidthHelp">拖动或按左右方向键调整，双击或按 Enter 恢复默认宽度</span>
       <aside id="assistant-panel" class="assistant-panel hidden" aria-label="MailAI 邮件助手" data-i18n-aria="asst.panelAria">
         <header class="assistant-head">
           <div class="assistant-mini"><span></span><i></i><i></i></div>
@@ -1110,7 +1115,8 @@
           <div class="secretary-focus" aria-label="简报视角" data-i18n-aria="asst.focusAria"><button type="button" data-secretary-focus="execution" aria-pressed="true" data-i18n="asst.focusExecution">执行视角</button><button type="button" data-secretary-focus="decision" aria-pressed="false" data-i18n="asst.focusDecision">决策视角</button><button type="button" id="secretary-refresh" aria-label="刷新工作简报" data-i18n-aria="asst.briefingRefresh" data-i18n="asst.briefingRefreshText">刷新</button></div>
           <div id="secretary-content" aria-live="polite"></div>
         </section>
-        <div id="assistant-messages" class="assistant-messages"></div>
+        <div id="assistant-messages" class="assistant-messages" tabindex="0" role="region" aria-label="小邮对话记录" data-i18n-aria="asst.transcript"></div>
+        <div class="assistant-scroll-actions"><button type="button" id="assistant-jump-latest" aria-controls="assistant-messages" hidden><span aria-hidden="true">↓</span> <span data-i18n="asst.jumpLatest">回到最新</span></button></div>
         <template id="assistant-welcome-template">
           <section class="assistant-welcome" aria-label="开始新对话" data-i18n-aria="asst.welcomeAria">
             <span class="assistant-welcome-eyebrow" data-i18n="asst.welcomeEyebrow">和小邮一起，把工作理清楚</span>
@@ -1204,7 +1210,7 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=5c8e2e6c3725"></script>
+  <script src="/static/bundle.js?v=0b24a6edf9ef"></script>
   <script src="/static/settings-scroll.js?v=5"></script>
   <script type="module" src="/static/author-logo.js?v=5"></script>
 </body>

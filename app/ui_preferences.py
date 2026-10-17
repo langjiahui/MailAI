@@ -14,6 +14,7 @@ KEYS = {
     "mailai-language", "mailai-density", "mailai-font-scale",
     "mailai-companion-motion", "mailai-assistant-floating",
     "mailai-assistant-layout-v1", "mailai.workspace.paneSizes.v1",
+    "mailai.assistant.dockWidth.v1",
     "mailai-browsing-account", "mailai.onboarding.v2",
 }
 
