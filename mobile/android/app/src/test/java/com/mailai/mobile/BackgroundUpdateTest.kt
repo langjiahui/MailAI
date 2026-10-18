@@ -17,6 +17,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
+// Keep JVM protocol fixtures on JSSE; Android Conscrypt is exercised on the emulator.
+@org.robolectric.annotation.ConscryptMode(org.robolectric.annotation.ConscryptMode.Mode.OFF)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [29], application = android.app.Application::class)
 class BackgroundUpdateTest {
