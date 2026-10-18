@@ -242,8 +242,12 @@ class MailStore(context: Context, id: String) :
     }
 
     private fun createNotificationTables(db: SQLiteDatabase) {
-        db.execSQL("CREATE TABLE IF NOT EXISTS arrival_cursor (folder TEXT PRIMARY KEY, validity INTEGER NOT NULL, uid INTEGER NOT NULL)")
-        db.execSQL("CREATE TABLE IF NOT EXISTS arrival_pending (key TEXT PRIMARY KEY, payload TEXT NOT NULL)")
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS arrival_cursor (folder TEXT PRIMARY KEY, validity INTEGER NOT NULL, uid INTEGER NOT NULL)"
+        )
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS arrival_pending (key TEXT PRIMARY KEY, payload TEXT NOT NULL)"
+        )
     }
 
     /** First sync and UIDVALIDITY changes establish a baseline without alerting old mail. */
@@ -252,27 +256,55 @@ class MailStore(context: Context, id: String) :
         val db = writableDatabase
         db.beginTransaction()
         try {
-            val previous = db.rawQuery("SELECT validity,uid FROM arrival_cursor WHERE folder='INBOX'", null).use {
-                if (it.moveToFirst()) it.getLong(0) to it.getLong(1) else null
-            }
+            val previous =
+                db.rawQuery("SELECT validity,uid FROM arrival_cursor WHERE folder='INBOX'", null)
+                    .use { if (it.moveToFirst()) it.getLong(0) to it.getLong(1) else null }
             if (previous?.first != validity) db.delete("arrival_pending", null, null)
-            else incoming.filter { it.unread && it.uid > previous.second }.forEach { m ->
-                db.insertWithOnConflict("arrival_pending", null, ContentValues().apply {
-                    put("key", m.key); put("payload", mailJson(m).toString())
-                }, SQLiteDatabase.CONFLICT_IGNORE)
-            }
-            val high = maxOf(incoming.maxOfOrNull { it.uid } ?: 0L, if (previous?.first == validity) previous.second else 0L)
-            db.insertWithOnConflict("arrival_cursor", null, ContentValues().apply {
-                put("folder", "INBOX"); put("validity", validity); put("uid", high)
-            }, SQLiteDatabase.CONFLICT_REPLACE)
+            else
+                incoming
+                    .filter { it.unread && it.uid > previous.second }
+                    .forEach { m ->
+                        db.insertWithOnConflict(
+                            "arrival_pending",
+                            null,
+                            ContentValues().apply {
+                                put("key", m.key)
+                                put("payload", mailJson(m).toString())
+                            },
+                            SQLiteDatabase.CONFLICT_IGNORE,
+                        )
+                    }
+            val high =
+                maxOf(
+                    incoming.maxOfOrNull { it.uid } ?: 0L,
+                    if (previous?.first == validity) previous.second else 0L,
+                )
+            db.insertWithOnConflict(
+                "arrival_cursor",
+                null,
+                ContentValues().apply {
+                    put("folder", "INBOX")
+                    put("validity", validity)
+                    put("uid", high)
+                },
+                SQLiteDatabase.CONFLICT_REPLACE,
+            )
             db.setTransactionSuccessful()
-        } finally { db.endTransaction() }
+        } finally {
+            db.endTransaction()
+        }
     }
 
-    @Synchronized fun pendingArrivals(): List<MailItem> = readableDatabase.rawQuery("SELECT payload FROM arrival_pending", null).use { c ->
-        buildList { while (c.moveToNext()) add(mailFrom(JSONObject(c.getString(0)))) }
+    @Synchronized
+    fun pendingArrivals(): List<MailItem> =
+        readableDatabase.rawQuery("SELECT payload FROM arrival_pending", null).use { c ->
+            buildList { while (c.moveToNext()) add(mailFrom(JSONObject(c.getString(0)))) }
+        }
+
+    @Synchronized
+    fun acknowledgeArrivals() {
+        writableDatabase.delete("arrival_pending", null, null)
     }
-    @Synchronized fun acknowledgeArrivals() { writableDatabase.delete("arrival_pending", null, null) }
 
     @Synchronized
     fun clearMessageCache() {
@@ -342,11 +374,37 @@ class MailStore(context: Context, id: String) :
 
     @Synchronized
     fun save(d: Draft) {
-        val current = draft(d.id)
-        check(current == null || current.state in setOf(SendState.DRAFT, SendState.FAILED)) {
-            "邮件已进入发送流程，不能覆盖"
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            check(d.state in setOf(SendState.DRAFT, SendState.FAILED)) { "发送记录不能作为草稿保存" }
+            val current = draft(d.id)
+            check(current == null || current.state in setOf(SendState.DRAFT, SendState.FAILED)) {
+                "邮件已进入发送流程，不能覆盖"
+            }
+            writeDraft(d.copy(updated = System.currentTimeMillis()))
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
         }
-        writeDraft(d.copy(updated = System.currentTimeMillis()))
+    }
+
+    /** Reserve the exact content and sending state in one durable transaction. */
+    @Synchronized
+    fun beginSend(d: Draft) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            check(d.state in setOf(SendState.DRAFT, SendState.FAILED)) { "这封邮件不能重复发送" }
+            val current = draft(d.id)
+            check(current == null || current.state in setOf(SendState.DRAFT, SendState.FAILED)) {
+                "这封邮件已在处理中，请勿重复发送"
+            }
+            writeDraft(d.copy(state = SendState.CONNECTING, updated = System.currentTimeMillis()))
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
     }
 
     private fun writeDraft(d: Draft) {

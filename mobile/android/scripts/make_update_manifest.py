@@ -25,7 +25,7 @@ tag = f'android-v{version}'
 manifest = dict(schema=1, applicationId=package[1], version=version, code=int(package[2]),
     url=f'https://github.com/langjiahui/MailAI/releases/download/{tag}/{args.apk.name}',
     sha256=hashlib.file_digest(args.apk.open('rb'), 'sha256').hexdigest(), size=args.apk.stat().st_size,
-    notes='优化窄屏、大字号与键盘遮挡；长正文输入保持光标可见；修复取消后等待不结束，完善重试与草稿保存反馈。',
+    notes='优化弱网、断网与后台恢复；离线读取缓存和附件；补强发送防重与待确认保护，完善草稿保存失败重试。',
     page=f'https://github.com/langjiahui/MailAI/releases/tag/{tag}')
 args.output.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
 print(f'Update manifest ready: {version} / {manifest["code"]}')

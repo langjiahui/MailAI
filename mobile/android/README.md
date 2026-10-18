@@ -1,8 +1,8 @@
 # MailAI Android 测试版
 
-当前 Android 版本：**2.10.0-beta.3**（versionCode **2100003**），最低 Android 10。
+当前 Android 版本：**2.10.0-beta.4**（versionCode **2100004**），最低 Android 10。
 
-[下载安装包](https://github.com/langjiahui/MailAI/releases/download/android-v2.10.0-beta.3/MailAI-Android-2.10.0-beta.3.apk) · [发布说明](https://github.com/langjiahui/MailAI/releases/tag/android-v2.10.0-beta.3)
+[下载安装包](https://github.com/langjiahui/MailAI/releases/download/android-v2.10.0-beta.4/MailAI-Android-2.10.0-beta.4.apk) · [发布说明](https://github.com/langjiahui/MailAI/releases/tag/android-v2.10.0-beta.4)
 
 Kotlin + Jetpack Compose 原生客户端。手机直接通过 IMAP/SMTP 连接邮箱，电脑关机后仍可工作，不需要桌面服务或 Google Play 服务。设计遵循简洁图形、原生按压反馈、清楚的等待与恢复状态。
 
@@ -62,14 +62,16 @@ python3 scripts/build_distribution.py  # 使用仓库外的固定签名配置
 
 每次发布先核对最近正式版本和 Android 测试版本，按 CONTRIBUTING 判断版本变化，保持 Android VERSION、README、标签与 APK 元数据一致。运行仓库既有门禁及 Android 测试；固定签名构建，生成 `mailai-android-update.json` 与 SHA256SUMS，发布为 GitHub **Pre-release**，不替换桌面 Latest 或历史安装包。具体记录见 [本次发布说明](RELEASE.md)。
 
-## beta.3 交互修订
+## beta.4 弱网与恢复修订
 
-导航和邮箱选项按可用宽度换行；收件箱标题与草稿状态随内容滚动。长正文编辑区随键盘高度伸缩，光标保持可见；收件人/主题支持键盘“下一步”。状态提示与操作分区，长错误可展开详情，取消后可重新操作，草稿保存失败提供重试。修复快速取消后一直停在等待状态的问题，统一浅色与深色控件配色。
+离线时仍能阅读已缓存正文、打开已下载附件和编辑草稿；网络恢复不会自动重发邮件。等待超过 8 秒会显示慢连接提示，断网、连接超时和本地保存失败分别说明。草稿保存失败保留编辑内容并提供明确重试。
+
+发送内容与开始发送状态在同一数据库事务中记录。连接失败可以人工重试；提交后确认丢失则保留“结果待确认”，锁定直接重发；切后台或系统回收进程后继续保持保护。Android 保存的任务状态只记录导航和草稿 ID，返回原任务时从本地数据库恢复编辑内容。
 
 ## 验收
 
-- JVM：30 项通过，包含 TLS/STARTTLS、中文附件往返、错误证书/域名、发送确认丢失、账号隔离、草稿重开、v1→v2 无损迁移、通知基准/去重/重启、更新清单安全和取消阻塞操作。
-- Android 15 AOSP ARM64：9 项设备测试，覆盖 Keystore、附件副本、草稿恢复、真实系统通知栏点击与隐私、偏好恢复/检查反馈、后台任务失败保留草稿，以及窄屏/大字号、真实键盘焦点与长正文可见性、快速取消与重试。以本次发布验收记录为最终执行结果。
+- JVM：33 项通过，包含 TLS/STARTTLS、中文附件往返、错误证书/域名、发送确认丢失、账号隔离、草稿重开、v1→v2 无损迁移、通知基准/去重/重启、更新清单安全和取消阻塞操作。
+- Android 15 AOSP ARM64：13 项设备测试，覆盖 Keystore、附件副本、草稿恢复、真实系统通知栏点击与隐私、偏好恢复/检查反馈、后台任务失败保留草稿，以及窄屏/大字号、真实键盘焦点与长正文可见性、快速取消与重试。以本次发布验收记录为最终执行结果。
 - 项目既有离线发布门禁：244/244 通过（项目 `.venv-build` 环境）。
 - 实体机、真实邮箱、厂商后台保活仍需测试；不把模拟器验收等同所有设备稳定性。
 

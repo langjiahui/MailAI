@@ -144,6 +144,15 @@ fun MailScreen(vm: MailViewModel, open: (Account, Attachment, Boolean) -> Unit) 
             Column(Modifier.safeDrawingPadding().imePadding().fillMaxSize()) {
                 if (vm.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
                 else Spacer(Modifier.height(4.dp))
+                if (vm.ready && !vm.online)
+                    Text(
+                        "当前离线 · 可以阅读缓存、继续写草稿",
+                        Modifier.fillMaxWidth()
+                            .padding(horizontal = 18.dp, vertical = 8.dp)
+                            .semantics { liveRegion = LiveRegionMode.Polite },
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 if (vm.status.isNotBlank()) OperationStatus(vm)
                 if (!vm.ready)
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -285,6 +294,16 @@ private fun OperationStatus(vm: MailViewModel) {
                     if (vm.error) MaterialTheme.colorScheme.error
                     else MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (vm.operationHint.isNotBlank())
+                Text(
+                    vm.operationHint,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier =
+                        Modifier.padding(top = 6.dp).semantics {
+                            liveRegion = LiveRegionMode.Polite
+                        },
+                )
             FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 if (clipped) TextButton(onClick = { details = true }) { Text("详情") }
                 if (vm.busy && vm.cancellable) TextButton(onClick = vm::cancel) { Text("取消") }

@@ -10,6 +10,7 @@ import java.security.KeyStore
 import java.util.concurrent.atomic.AtomicInteger
 import javax.net.ssl.*
 import kotlin.concurrent.thread
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
@@ -106,6 +107,13 @@ class SendRecoveryTest {
                 fail("must not resend uncertain mail")
             } catch (_: IllegalStateException) {}
             assertEquals(1, count.get())
+            val reopened = MailRepository(context, accounts)
+            assertEquals(SendState.UNCERTAIN, reopened.store(a).draft(d.id)?.state)
+            try {
+                reopened.send(a, d, Operation()) {}
+                fail("reopen must not unlock uncertain mail")
+            } catch (_: IllegalStateException) {}
+            assertEquals(1, count.get())
         } finally {
             server.close()
             worker.join(2000)
@@ -137,5 +145,107 @@ class SendRecoveryTest {
         } catch (_: javax.mail.MessagingException) {}
         assertEquals(SendState.FAILED, repo.store(a).draft(d.id)?.state)
         assertEquals(d.body, repo.store(a).draft(d.id)?.body)
+    }
+
+    @Test
+    fun delayedAcknowledgementRejectsConcurrentAndStaleResubmission() = runBlocking {
+        TransportTest.tlsFixture()
+        FaultSmtpServer(holdAcknowledgement = true).use { server ->
+            val a =
+                Account(
+                    email = "slow@example.test",
+                    imap = Server("localhost"),
+                    smtp = Server("localhost", server.port),
+                )
+            val accounts = AccountStore(context, cipher).apply { put(a, "fixture") }
+            val repo =
+                MailRepository(
+                    context,
+                    accounts,
+                    MailTransport({ InetAddress.getByName("127.0.0.1") }, TransportTest.trusted),
+                )
+            val d = Draft(to = "receiver@example.test", body = "唯一发送的内容")
+            val sending =
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
+                    val op = Operation()
+                    try {
+                        repo.send(a, d, op) {}
+                    } finally {
+                        op.release()
+                    }
+                }
+            try {
+                assertTrue(server.received.await(5, java.util.concurrent.TimeUnit.SECONDS))
+                assertEquals(SendState.TRANSMITTING, repo.store(a).draft(d.id)?.state)
+                try {
+                    repo.send(a, d, Operation()) {}
+                    fail("double send must be blocked")
+                } catch (_: IllegalStateException) {}
+                MailStore(context, a.id).use { secondConnection ->
+                    try {
+                        secondConnection.beginSend(d.copy(body = "不能覆盖的旧快照"))
+                        fail("must not replace reserved content")
+                    } catch (_: IllegalStateException) {}
+                    try {
+                        secondConnection.save(d)
+                        fail("stale autosave must not unlock sending")
+                    } catch (_: IllegalStateException) {}
+                }
+                assertEquals(1, server.connections.get())
+                server.acknowledge.countDown()
+                assertEquals(SendState.SENT, sending.await())
+                val restored = MailRepository(context, accounts)
+                assertEquals(SendState.SENT, restored.store(a).draft(d.id)?.state)
+                assertEquals(d.body, restored.store(a).draft(d.id)?.body)
+                try {
+                    restored.send(a, d, Operation()) {}
+                    fail("sent record must not resubmit")
+                } catch (_: IllegalStateException) {}
+                assertEquals(1, server.deliveries.get())
+            } finally {
+                server.acknowledge.countDown()
+                sending.cancel()
+            }
+        }
+    }
+
+    @Test
+    fun preSubmissionDisconnectPreservesDraftAndOnlyExplicitRetrySends() = runBlocking {
+        TransportTest.tlsFixture()
+        FaultSmtpServer(rejectFirstConnection = true).use { server ->
+            val a =
+                Account(
+                    email = "retry@example.test",
+                    imap = Server("localhost"),
+                    smtp = Server("localhost", server.port),
+                )
+            val accounts = AccountStore(context, cipher).apply { put(a, "fixture") }
+            val repo =
+                MailRepository(
+                    context,
+                    accounts,
+                    MailTransport({ InetAddress.getByName("127.0.0.1") }, TransportTest.trusted),
+                )
+            val d = Draft(to = "receiver@example.test", body = "断网时保留的正文")
+            val first = Operation()
+            try {
+                repo.send(a, d, first) {}
+                fail("first connection should drop")
+            } catch (_: javax.mail.MessagingException) {} finally {
+                first.release()
+            }
+            assertEquals(SendState.FAILED, repo.store(a).draft(d.id)?.state)
+            assertEquals(d.body, repo.store(a).draft(d.id)?.body)
+            assertEquals(0, server.deliveries.get())
+            assertEquals(1, server.connections.get())
+            val retry = Operation()
+            try {
+                assertEquals(SendState.SENT, repo.send(a, d, retry) {})
+            } finally {
+                retry.release()
+            }
+            assertEquals(1, server.deliveries.get())
+            assertEquals(2, server.connections.get())
+        }
     }
 }

@@ -13,6 +13,16 @@ import com.mailai.mobile.ui.MailViewModel
 class MainActivity : ComponentActivity() {
     private val model: MailViewModel by viewModels()
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        model.rememberLocation()
+        super.onSaveInstanceState(outState)
+    }
+
+    override fun onStop() {
+        model.onBackground()
+        super.onStop()
+    }
+
     override fun onResume() {
         super.onResume()
         model.resumeCache()

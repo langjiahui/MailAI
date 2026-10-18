@@ -3,15 +3,15 @@ package com.mailai.mobile.data
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import com.mailai.mobile.background.AppPreferences
+import com.mailai.mobile.background.MailNotifications
 import com.mailai.mobile.mail.*
 import java.io.File
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
-import com.mailai.mobile.background.AppPreferences
-import com.mailai.mobile.background.MailNotifications
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class MailRepository(
@@ -59,19 +59,29 @@ class MailRepository(
 
     suspend fun sync(a: Account, folder: String, limit: Int, op: Operation) =
         withContext(Dispatchers.IO) {
-            syncLocks.computeIfAbsent(a.id) { Mutex() }.withLock {
-                op.check()
-                val (validity, messages) = transport.sync(a, accounts.password(a.id), folder, maxOf(limit, store(a).messages(folder).size), op)
-                op.check()
-                val db = store(a)
-                db.replaceWindow(folder, validity, messages)
-                if (folder.equals("INBOX", true)) {
-                    db.recordArrivals(validity, messages)
-                    if (AppPreferences(context).background) MailNotifications.show(context, a, db.pendingArrivals())
-                    db.acknowledgeArrivals()
-                    AppPreferences(context).syncResult(a.id, true)
+            syncLocks
+                .computeIfAbsent(a.id) { Mutex() }
+                .withLock {
+                    op.check()
+                    val (validity, messages) =
+                        transport.sync(
+                            a,
+                            accounts.password(a.id),
+                            folder,
+                            maxOf(limit, store(a).messages(folder).size),
+                            op,
+                        )
+                    op.check()
+                    val db = store(a)
+                    db.replaceWindow(folder, validity, messages)
+                    if (folder.equals("INBOX", true)) {
+                        db.recordArrivals(validity, messages)
+                        if (AppPreferences(context).background)
+                            MailNotifications.show(context, a, db.pendingArrivals())
+                        db.acknowledgeArrivals()
+                        AppPreferences(context).syncResult(a.id, true)
+                    }
                 }
-            }
         }
 
     suspend fun read(a: Account, item: MailItem, op: Operation) =
@@ -167,8 +177,7 @@ class MailRepository(
     suspend fun send(a: Account, draft: Draft, op: Operation, status: (String) -> Unit): SendState =
         withContext(Dispatchers.IO) {
             val db = store(a)
-            db.save(draft)
-            db.transition(draft.id, setOf(SendState.DRAFT, SendState.FAILED), SendState.CONNECTING)
+            db.beginSend(draft)
             var submitted = false
             try {
                 status("正在连接发件服务器…")

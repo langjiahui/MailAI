@@ -4,10 +4,12 @@ import android.app.Application
 import android.net.Uri
 import androidx.compose.runtime.*
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.mailai.mobile.MailApplication
 import com.mailai.mobile.data.*
 import com.mailai.mobile.mail.*
+import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import javax.mail.AuthenticationFailedException
 import javax.net.ssl.SSLException
@@ -18,7 +20,15 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-class MailViewModel(app: Application) : AndroidViewModel(app) {
+class MailViewModel(app: Application, private val savedState: SavedStateHandle) :
+    AndroidViewModel(app) {
+    private val connection = ConnectionMonitor(app)
+    var online by mutableStateOf(connection.online.value)
+        private set
+
+    var operationHint by mutableStateOf("")
+        private set
+
     val repo = (app as MailApplication).repository
     private val _feedback = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val feedback = _feedback.asSharedFlow()
@@ -86,16 +96,41 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
     private var latestSave: Job? = null
 
     init {
+        viewModelScope.launch { connection.online.collect { online = it } }
         viewModelScope.launch {
+            val location = savedState.get<Array<String>>("location")
             try {
                 accounts = repo.initialize()
-                account = accounts.firstOrNull()
+                account =
+                    accounts.find { it.id == location?.getOrNull(1) } ?: accounts.firstOrNull()
                 if (account == null) page = "add"
                 else {
+                    folder = location?.getOrNull(2)?.takeIf { it.isNotBlank() } ?: "INBOX"
                     loadCache()
-                    refresh()
+                    when (location?.firstOrNull()) {
+                        "compose" -> {
+                            val restored =
+                                withContext(Dispatchers.IO) {
+                                    repo
+                                        .store(requireNotNull(account))
+                                        .draft(location.getOrNull(3).orEmpty())
+                                }
+                            if (restored != null) {
+                                draft = restored
+                                page = "compose"
+                                saveStatus = draftStatus(restored)
+                            }
+                        }
+                        "reader" -> {
+                            selected = mails.find { it.key == location.getOrNull(4) }
+                            if (selected != null) page = "reader"
+                        }
+                    }
                 }
                 ready = true
+                // Restoring a composer must never reconnect SMTP or submit a saved draft.
+                if (account != null && page == "inbox" && online) refresh()
+                else if (page == "reader" && selected?.body == null) fetchBody()
             } catch (t: Throwable) {
                 status = "无法读取本地数据，请勿卸载应用。"
                 error = true
@@ -104,11 +139,62 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * Save only navigation identifiers in Android's task state, never email text or credentials.
+     */
+    fun rememberLocation() {
+        if (ready)
+            savedState["location"] =
+                arrayOf(
+                    page,
+                    account?.id.orEmpty(),
+                    folder,
+                    draft?.id.orEmpty(),
+                    selected?.key.orEmpty(),
+                )
+    }
+
+    fun onBackground() {
+        rememberLocation()
+        val a = account ?: return
+        val d = draft ?: return
+        if (page == "compose" && !busy && d.state in setOf(SendState.DRAFT, SendState.FAILED))
+            save(d, a)
+    }
+
+    private fun draftStatus(d: Draft) =
+        when (d.state) {
+            SendState.UNCERTAIN,
+            SendState.TRANSMITTING -> "发送结果待确认，请先核查邮箱；为避免重复发送，已锁定重发"
+            SendState.SENT -> "服务器已接受 · 此设备的发送记录"
+            SendState.CONNECTING -> "正在连接发件服务器，请勿重复发送"
+            SendState.FAILED -> "未提交成功 · 草稿已保留，可编辑后重新发送"
+            else -> "草稿已保存在此设备"
+        }
+
+    private fun requireOnline() {
+        check(online) { "当前离线，已缓存邮件与草稿仍可使用；联网后重试" }
+    }
+
     fun resumeCache() {
         if (!ready || busy) return
         viewModelScope.launch {
             try {
+                latestSave?.join()
                 loadCache()
+                // Keep in-memory unsaved edits. Terminal send states come from the durable record.
+                val a = account
+                val current = draft
+                if (page == "compose" && a != null && current != null) {
+                    val persisted = withContext(Dispatchers.IO) { repo.store(a).draft(current.id) }
+                    if (
+                        draft == current &&
+                            persisted?.state in setOf(SendState.SENT, SendState.UNCERTAIN)
+                    ) {
+                        draft = persisted
+                        saveStatus = draftStatus(requireNotNull(persisted))
+                    }
+                }
             } catch (_: Exception) {
                 status = "本地邮件暂时无法读取，请稍后重试"
                 error = true
@@ -159,14 +245,17 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
             when (cause) {
                 is AuthenticationFailedException -> return "登录失败，请检查授权码及邮箱的 IMAP/SMTP 设置"
                 is SSLException -> return "安全连接验证失败，请检查服务器地址与证书"
-                is UnknownHostException -> return "无法连接服务器，请检查网络和服务器地址"
+                is android.database.sqlite.SQLiteException -> return "本地存储不可用，请检查可用空间后重试"
+                is SocketTimeoutException -> return "连接超时，请检查网络后重试"
+                is UnknownHostException ->
+                    return if (online) "无法连接服务器，请检查网络和服务器地址" else "网络已断开，联网后可重试"
             }
             cause = cause?.cause
         }
         return when (t) {
             is IllegalArgumentException,
             is IllegalStateException -> t.message?.take(140) ?: "操作未完成，请检查填写内容"
-            else -> "连接或保存失败，内容已保留，请检查网络后重试"
+            else -> if (online) "操作未完成，请检查网络或稍后重试" else "网络已断开，已缓存内容仍可使用；联网后重试"
         }
     }
 
@@ -174,6 +263,8 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
         label: String,
         canCancel: Boolean = true,
         again: (() -> Unit)? = null,
+        network: Boolean = false,
+        failureMessage: (Throwable) -> String = ::message,
         block: suspend (Operation, (String) -> Unit) -> Unit,
     ) {
         if (busy) return
@@ -184,6 +275,15 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
         status = label
         error = false
         retry = again
+        operationHint = ""
+        val slowHint =
+            viewModelScope.launch {
+                delay(8000)
+                if (op === token && !token.isCancelled)
+                    operationHint =
+                        if (!canCancel && network) "仍在等待服务器，请勿重复发送；结果会保存在发送记录中"
+                        else if (network) "连接较慢，仍在等待响应；可以取消后稍后重试" else "仍在处理中，请稍候"
+            }
         job =
             viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
                 try {
@@ -196,10 +296,11 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
                     if (op === token) status = "已取消，原有内容已保留"
                 } catch (t: Throwable) {
                     if (op === token) {
-                        status = if (token.isCancelled) "已取消，原有内容已保留" else message(t)
+                        status = if (token.isCancelled) "已取消，原有内容已保留" else failureMessage(t)
                         error = !token.isCancelled
                     }
                 } finally {
+                    slowHint.cancel()
                     // Cleanup AND the UI state transition must survive cancellation. Returning
                     // from an IO context to a cancelled Main context can otherwise skip reset.
                     withContext(NonCancellable) {
@@ -210,6 +311,7 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
                                 error = false
                             }
                             busy = false
+                            operationHint = ""
                             op = null
                         }
                     }
@@ -220,6 +322,7 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
     fun cancel() {
         if (!busy || !cancellable) return
         status = "正在取消，请稍候…"
+        operationHint = ""
         cancellable = false
         op?.cancel()
         job?.cancel()
@@ -279,7 +382,8 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
         if (more) limit += 50
         val box = folder
         val count = limit
-        run("正在同步邮件…", again = { refresh() }) { token, progress ->
+        run("正在同步邮件…", again = { refresh() }, network = true) { token, progress ->
+            requireOnline()
             repo.sync(a, box, count, token)
             token.check()
             loadCache()
@@ -296,7 +400,8 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun add(a: Account, password: String) {
-        run("正在验证邮箱…") { token, progress ->
+        run("正在验证邮箱…", network = true) { token, progress ->
+            requireOnline()
             repo.add(a, password, token, progress)
             accounts = repo.initialize()
             account = a
@@ -320,14 +425,17 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
     fun fetchBody() {
         val a = account ?: return
         val item = selected ?: return
-        run(if (item.body == null) "正在读取正文…" else "正在更新已读状态…", again = { fetchBody() }) {
-            token,
-            progress ->
+        run(
+            if (item.body == null) "正在读取正文…" else "正在更新已读状态…",
+            again = { fetchBody() },
+            network = true,
+        ) { token, progress ->
+            if (item.body == null) requireOnline()
             val loaded = repo.read(a, item, token)
             token.check()
             selected = loaded
             try {
-                if (loaded.unread) {
+                if (loaded.unread && online) {
                     repo.seen(a, loaded, token)
                     selected = loaded.copy(unread = false)
                 }
@@ -365,13 +473,17 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
         dismissStatus()
         draft = d
         page = "compose"
-        saveStatus =
-            if (d.state == SendState.UNCERTAIN) "发送结果待确认，请先核查邮箱；本版不提供直接重发"
-            else if (d.state == SendState.SENT) "服务器已接受 · 此设备的发送记录" else "草稿已保存在此设备"
+        saveStatus = draftStatus(d)
     }
 
     fun update(d: Draft) {
-        if (busy || d.state !in setOf(SendState.DRAFT, SendState.FAILED)) return
+        if (
+            busy ||
+                draft?.id != d.id ||
+                draft?.state !in setOf(SendState.DRAFT, SendState.FAILED) ||
+                d.state !in setOf(SendState.DRAFT, SendState.FAILED)
+        )
+            return
         draft = d.copy(state = SendState.DRAFT)
         account?.let { save(requireNotNull(draft), it) }
     }
@@ -383,9 +495,19 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
                 saves.withLock {
                     try {
                         withContext(Dispatchers.IO) { repo.store(a).save(d) }
-                        if (draft?.id == d.id && draft == d) saveStatus = "草稿已保存在此设备"
+                        if (draft?.id == d.id && draft == d) {
+                            saveStatus = "草稿已保存在此设备"
+                            if (!busy && status.startsWith("草稿保存失败")) dismissStatus()
+                        }
                     } catch (_: Exception) {
-                        if (draft?.id == d.id) saveStatus = "保存失败，请保留当前页面并重试"
+                        if (draft?.id == d.id && draft == d) {
+                            saveStatus = "保存失败，请保留当前页面并重试"
+                            if (!busy) {
+                                status = "草稿保存失败，当前内容仍在编辑器中，请重试保存"
+                                error = true
+                                retry = ::retrySave
+                            }
+                        }
                     }
                 }
             }
@@ -394,13 +516,20 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
     fun retrySave() {
         val a = account ?: return
         val d = draft ?: return
-        if (!busy && d.state in setOf(SendState.DRAFT, SendState.FAILED)) save(d, a)
+        if (d.state !in setOf(SendState.DRAFT, SendState.FAILED)) return
+        run("正在保存草稿…", false, again = ::retrySave) { _, _ ->
+            latestSave?.join()
+            saves.withLock { withContext(Dispatchers.IO) { repo.store(a).save(d) } }
+            saveStatus = "草稿已保存在此设备"
+            status = saveStatus
+        }
     }
 
     fun saveAndLeave() {
         val a = account ?: return
         val d = draft ?: return
         run("正在保存草稿…", false, again = { saveAndLeave() }) { _, _ ->
+            latestSave?.join()
             saves.withLock { withContext(Dispatchers.IO) { repo.store(a).save(d) } }
             saveStatus = "草稿已保存在此设备"
             loadCache()
@@ -443,7 +572,8 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
     fun download(file: Attachment) {
         val a = account ?: return
         val m = selected ?: return
-        run("正在下载 ${file.name}…", again = { download(file) }) { token, progress ->
+        run("正在下载 ${file.name}…", again = { download(file) }, network = true) { token, progress ->
+            if (file.local.isBlank() || !repo.file(a, file.local).isFile) requireOnline()
             var lastProgress = 0L
             val (next, cached) =
                 repo.download(a, m, file, token) { bytes ->
@@ -461,6 +591,7 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun send() {
+        if (busy || draft?.state !in setOf(SendState.DRAFT, SendState.FAILED)) return
         val a = account ?: return
         val d = draft ?: return
         try {
@@ -472,17 +603,53 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
             error = true
             return
         }
-        run("正在保存并准备发送…", false) { token, progress ->
+        var attempted = false
+        run(
+            "正在保存并准备发送…",
+            false,
+            network = true,
+            failureMessage = { cause ->
+                when (draft?.state) {
+                    SendState.UNCERTAIN,
+                    SendState.TRANSMITTING -> draftStatus(requireNotNull(draft))
+                    SendState.SENT -> "服务器已接受邮件，本地列表暂未刷新；请勿重复发送"
+                    else -> "未提交成功 · ${message(cause)}；请核对草稿后重新发送"
+                }
+            },
+        ) { token, progress ->
             latestSave?.join()
-            val state = saves.withLock { repo.send(a, d, token, progress) }
-            draft = withContext(Dispatchers.IO) { repo.store(a).draft(d.id) }
+            try {
+                saves.withLock { withContext(Dispatchers.IO) { repo.store(a).save(d) } }
+                requireOnline()
+                attempted = true
+                saves.withLock { repo.send(a, d, token, progress) }
+            } finally {
+                // Even a dropped connection/cancelled UI must reflect the durable SMTP state.
+                withContext(NonCancellable) {
+                    try {
+                        val persisted = withContext(Dispatchers.IO) { repo.store(a).draft(d.id) }
+                        if (persisted != null) {
+                            draft = persisted
+                            saveStatus = draftStatus(persisted)
+                        } else if (attempted) {
+                            draft = d.copy(state = SendState.UNCERTAIN)
+                            saveStatus = "暂时无法核对发送记录，请先检查邮箱，避免重复发送"
+                        }
+                    } catch (t: Exception) {
+                        if (attempted) {
+                            draft = d.copy(state = SendState.UNCERTAIN)
+                            saveStatus = "暂时无法核对发送记录，请先检查邮箱，避免重复发送"
+                        }
+                        throw t
+                    }
+                }
+            }
             loadCache()
-            if (state == SendState.SENT) {
+            if (draft?.state == SendState.SENT) {
                 page = "inbox"
                 status = "邮件已发送 · 发送记录保存在此设备"
                 _feedback.tryEmit(Unit)
             } else {
-                saveStatus = "发送结果待确认，请先核查邮箱，避免重复发送"
                 status = saveStatus
                 error = true
             }
@@ -490,6 +657,7 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     override fun onCleared() {
+        connection.close()
         op?.cancel()
         super.onCleared()
     }
