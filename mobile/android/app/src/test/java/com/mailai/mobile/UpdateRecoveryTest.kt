@@ -64,6 +64,8 @@ class UpdateRecoveryTest {
                 } catch (_: CancellationException) {}
             }
         withContext(Dispatchers.IO) { assertTrue(entered.await(5, TimeUnit.SECONDS)) }
+        updates.download() // A second request must not replace active progress with "preparing".
+        assertEquals("正在下载更新…", updates.state.value.message)
         http.cancel()
         finish.countDown()
         job.join()

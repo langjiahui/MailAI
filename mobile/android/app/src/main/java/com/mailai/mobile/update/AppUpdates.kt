@@ -18,6 +18,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -241,18 +242,19 @@ class AppUpdates(private val context: Context) {
     fun apk(c: UpdateCandidate) = File(directory, "mailai-${c.code}.apk")
 
     fun checkNow() {
+        if (state.value.checking || state.value.downloading) return
+        mutable.value = mutable.value.copy(message = "正在检查更新…", failed = false, checking = true)
         WorkManager.getInstance(context)
             .enqueueUniqueWork(
                 "update-check-now",
                 ExistingWorkPolicy.KEEP,
                 OneTimeWorkRequestBuilder<UpdateCheckWorker>().build(),
             )
-        mutable.value = mutable.value.copy(message = "正在检查更新…", failed = false, checking = true)
     }
 
     fun download(automatic: Boolean = false) {
         val c = state.value.candidate ?: return
-        if (automatic && state.value.ready) return
+        if (state.value.downloading || (automatic && state.value.ready)) return
         val work =
             OneTimeWorkRequestBuilder<UpdateDownloadWorker>()
                 .setInputData(workDataOf("code" to c.code))
@@ -264,16 +266,19 @@ class AppUpdates(private val context: Context) {
                         .build()
                 )
                 .build()
+        mutable.update { current ->
+            if (current.downloading) current
+            else
+                current.copy(
+                    message = if (automatic) "等待 Wi-Fi 下载更新" else "正在准备下载…",
+                    failed = false,
+                )
+        }
         WorkManager.getInstance(context)
             .enqueueUniqueWork(
                 if (automatic) "update-auto-download" else "update-download",
                 ExistingWorkPolicy.KEEP,
                 work,
-            )
-        mutable.value =
-            mutable.value.copy(
-                message = if (automatic) "等待 Wi-Fi 下载更新" else "正在准备下载…",
-                failed = false,
             )
     }
 
