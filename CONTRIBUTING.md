@@ -67,6 +67,10 @@ pytest 通过 `tests/test_offline_suite.py` 以子进程方式逐个运行脚本
 
 这套分级规则从 `v2.8.22` 之后的发布开始执行，历史发布不追溯改号。`v2.8.22` 的邮件标签属于新增能力，按本规则原本应从 `v2.8.21` 升为 `v2.9.0`；保留已发布的 `v2.8.22`，后续依据实际变更选择新版本。
 
+### Android 预发布通道
+
+Android 测试版本独立记录在 `mobile/android/VERSION` 与对应 README，使用 `android-v<版本>` 标签及 GitHub Pre-release，固定分发签名与递增的 versionCode。以最近正式版本和该测试通道的变更按上述分级规则确定目标版本，再追加 `-beta.N`；不改写已有标签/附件，不替换桌面 Latest。根目录 VERSION 继续代表当前桌面正式版本，正式全平台发布时按完整变化同步统一版本。Android 发布仍需执行现有门禁和移动端测试，更新清单与 APK 元数据必须一致。
+
 ## 分支与 PR 规范
 
 - 从 `main` 切分支，命名：`feat/xxx`、`fix/xxx`、`docs/xxx`、`chore/xxx`
