@@ -10,7 +10,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.*
@@ -18,12 +21,18 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
@@ -48,8 +57,14 @@ private val Light =
         onSecondaryContainer = Color(0xFF243226),
         outline = Color(0xFF788273),
         background = Color(0xFFFDFDFB),
+        onBackground = Color(0xFF242923),
         surface = Color(0xFFFDFDFB),
         surfaceVariant = Color(0xFFF0F1EE),
+        surfaceContainerHighest = Color(0xFFE5E8E1),
+        surfaceContainer = Color(0xFFF0F1EE),
+        surfaceContainerHigh = Color(0xFFECEEE8),
+        surfaceContainerLow = Color(0xFFF7F8F3),
+        surfaceTint = Color(0xFF334A3B),
         onSurface = Color(0xFF242923),
         onSurfaceVariant = Color(0xFF687063),
         outlineVariant = Color(0xFFECEEE8),
@@ -66,8 +81,14 @@ private val Dark =
         onSecondaryContainer = Color(0xFFDAE5D2),
         outline = Color(0xFF788273),
         background = Color(0xFF171A18),
+        onBackground = Color(0xFFECEEE7),
         surface = Color(0xFF171A18),
         surfaceVariant = Color(0xFF252A26),
+        surfaceContainerHighest = Color(0xFF353C34),
+        surfaceContainer = Color(0xFF252A26),
+        surfaceContainerHigh = Color(0xFF2E352E),
+        surfaceContainerLow = Color(0xFF1D221D),
+        surfaceTint = Color(0xFFC5D4BD),
         onSurface = Color(0xFFECEEE7),
         onSurfaceVariant = Color(0xFFABB2A6),
         outlineVariant = Color(0xFF32392F),
@@ -77,6 +98,13 @@ private val Dark =
 fun MailScreen(vm: MailViewModel, open: (Account, Attachment, Boolean) -> Unit) {
     MaterialTheme(colorScheme = if (isSystemInDarkTheme()) Dark else Light) {
         val view = LocalView.current
+        val focus = LocalFocusManager.current
+        val keyboard = LocalSoftwareKeyboardController.current
+        LaunchedEffect(vm.busy, vm.page) {
+            // Keep actions and feedback visible when a submitted form starts network work.
+            focus.clearFocus()
+            keyboard?.hide()
+        }
         val lifecycle = LocalLifecycleOwner.current.lifecycle
         LaunchedEffect(vm, lifecycle) {
             lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -116,35 +144,7 @@ fun MailScreen(vm: MailViewModel, open: (Account, Attachment, Boolean) -> Unit) 
             Column(Modifier.safeDrawingPadding().imePadding().fillMaxSize()) {
                 if (vm.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
                 else Spacer(Modifier.height(4.dp))
-                if (vm.status.isNotBlank())
-                    Surface(
-                        color = MaterialTheme.colorScheme.surfaceVariant,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                    ) {
-                        Row(
-                            Modifier.padding(start = 12.dp).fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                vm.status,
-                                Modifier.weight(1f).padding(vertical = 10.dp).semantics {
-                                    liveRegion = LiveRegionMode.Polite
-                                },
-                                fontSize = 13.sp,
-                                color =
-                                    if (vm.error) MaterialTheme.colorScheme.error
-                                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            if (vm.busy && vm.cancellable)
-                                TextButton(onClick = vm::cancel) { Text("取消") }
-                            else if (!vm.busy) {
-                                if (vm.error && vm.canRetry)
-                                    TextButton(onClick = vm::retry) { Text("重试") }
-                                TextButton(onClick = vm::dismissStatus) { Text("关闭") }
-                            }
-                        }
-                    }
+                if (vm.status.isNotBlank()) OperationStatus(vm)
                 if (!vm.ready)
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text("正在读取此设备上的邮箱…")
@@ -190,7 +190,7 @@ fun MailScreen(vm: MailViewModel, open: (Account, Attachment, Boolean) -> Unit) 
                     }
                 },
                 dismissButton = {
-                    Row {
+                    Column(horizontalAlignment = Alignment.End) {
                         TextButton(
                             onClick = {
                                 leave = false
@@ -208,7 +208,7 @@ fun MailScreen(vm: MailViewModel, open: (Account, Attachment, Boolean) -> Unit) 
                 onDismissRequest = { confirmSend = false },
                 title = { Text("发送这封邮件？") },
                 text = {
-                    Column {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
                         Text("发件人：${vm.account?.email}")
                         Spacer(Modifier.height(12.dp))
                         Text("收件人：${vm.draft?.to}")
@@ -261,6 +261,51 @@ fun MailScreen(vm: MailViewModel, open: (Account, Attachment, Boolean) -> Unit) 
 }
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
+private fun OperationStatus(vm: MailViewModel) {
+    var clipped by remember(vm.status) { mutableStateOf(false) }
+    var details by remember { mutableStateOf(false) }
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+            Text(
+                vm.status,
+                Modifier.padding(top = 10.dp).semantics { liveRegion = LiveRegionMode.Polite },
+                fontSize = 13.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                onTextLayout = {
+                    clipped =
+                        it.didOverflowHeight || (0 until it.lineCount).any(it::isLineEllipsized)
+                },
+                color =
+                    if (vm.error) MaterialTheme.colorScheme.error
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                if (clipped) TextButton(onClick = { details = true }) { Text("详情") }
+                if (vm.busy && vm.cancellable) TextButton(onClick = vm::cancel) { Text("取消") }
+                else if (!vm.busy) {
+                    if (vm.canRetry && (vm.error || vm.status.startsWith("已取消")))
+                        TextButton(onClick = vm::retry) { Text("重试") }
+                    TextButton(onClick = vm::dismissStatus) { Text("关闭") }
+                }
+            }
+        }
+    }
+    if (details)
+        AlertDialog(
+            onDismissRequest = { details = false },
+            title = { Text(if (vm.error) "操作未完成" else "操作状态") },
+            text = { Text(vm.status, Modifier.verticalScroll(rememberScrollState())) },
+            confirmButton = { TextButton(onClick = { details = false }) { Text("返回") } },
+        )
+}
+
+@Composable
 private fun Heading(title: String, sub: String = "") {
     Column(Modifier.padding(horizontal = 22.dp, vertical = 16.dp)) {
         Text(title, fontSize = 30.sp, fontWeight = FontWeight.SemiBold)
@@ -270,18 +315,18 @@ private fun Heading(title: String, sub: String = "") {
 }
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun Nav(
     label: String,
     back: () -> Unit,
     enabled: Boolean = true,
-    actions: @Composable RowScope.() -> Unit = {},
+    actions: @Composable FlowRowScope.() -> Unit = {},
 ) {
-    Row(
+    FlowRow(
         Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         TextButton(onClick = back, enabled = enabled) { Text("‹  $label") }
-        Spacer(Modifier.weight(1f))
         actions()
     }
 }
@@ -312,22 +357,6 @@ private fun Inbox(vm: MailViewModel, listState: LazyListState) {
                 Text("刷新")
             }
         }
-        Heading(boxName(vm.folder), vm.account?.email ?: "添加邮箱后即可收发邮件")
-        Row(
-            Modifier.padding(horizontal = 22.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            FilterChip(
-                selected = !vm.unreadOnly,
-                onClick = { vm.unreadOnly = false },
-                label = { Text("全部") },
-            )
-            FilterChip(
-                selected = vm.unreadOnly,
-                onClick = { vm.unreadOnly = true },
-                label = { Text("未读") },
-            )
-        }
         val list =
             vm.mails.filter {
                 (!vm.unreadOnly || it.unread) &&
@@ -335,6 +364,24 @@ private fun Inbox(vm: MailViewModel, listState: LazyListState) {
                         (it.sender + it.subject + it.body.orEmpty()).contains(vm.query, true))
             }
         LazyColumn(Modifier.weight(1f), state = listState) {
+            item(key = "heading") {
+                Heading(boxName(vm.folder), vm.account?.email ?: "添加邮箱后即可收发邮件")
+                Row(
+                    Modifier.padding(horizontal = 22.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FilterChip(
+                        selected = !vm.unreadOnly,
+                        onClick = { vm.unreadOnly = false },
+                        label = { Text("全部") },
+                    )
+                    FilterChip(
+                        selected = vm.unreadOnly,
+                        onClick = { vm.unreadOnly = true },
+                        label = { Text("未读") },
+                    )
+                }
+            }
             if (list.isEmpty())
                 item {
                     Empty(
@@ -412,7 +459,12 @@ private fun Inbox(vm: MailViewModel, listState: LazyListState) {
             TextField(
                 value = vm.query,
                 onValueChange = { vm.query = it },
-                placeholder = { Text("搜索本地邮件", fontSize = 14.sp) },
+                placeholder = {
+                    Text("搜索本地邮件", fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions =
+                    KeyboardActions(onSearch = { defaultKeyboardAction(ImeAction.Done) }),
                 singleLine = true,
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(24.dp),
@@ -510,7 +562,7 @@ private fun Reader(vm: MailViewModel, back: () -> Unit) {
             title = { Text("邮件详情") },
             text = {
                 SelectionContainer {
-                    Column {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
                         Text("发件人")
                         Text(m.sender)
                         Spacer(Modifier.height(16.dp))
@@ -593,75 +645,107 @@ private fun Reader(vm: MailViewModel, back: () -> Unit) {
 @Composable
 private fun Composer(vm: MailViewModel, back: () -> Unit, send: () -> Unit) {
     val d = vm.draft ?: return
+    val focus = LocalFocusManager.current
+    val bodyRequester = remember { BringIntoViewRequester() }
+    var bodyFocused by remember { mutableStateOf(false) }
     val editable = !vm.busy && d.state in setOf(SendState.DRAFT, SendState.FAILED)
     val picker =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) vm.attach(uri)
         }
     Column(Modifier.fillMaxSize()) {
-        Nav("返回", back, !vm.busy) {
-            Text("写信", Modifier.weight(1f), fontWeight = FontWeight.Medium)
-            TextButton(onClick = send, enabled = editable) { Text("发送") }
-        }
-        Column(
-            Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 22.dp)
-        ) {
-            Text(
-                "发件人  ${vm.account?.email}",
-                fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(vertical = 14.dp),
-            )
-            TextField(
-                value = d.to,
-                onValueChange = { vm.update(d.copy(to = it)) },
-                label = { Text("收件人") },
-                singleLine = true,
-                readOnly = !editable,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                modifier = Modifier.fillMaxWidth(),
-                colors = paperFields(),
-            )
-            TextField(
-                value = d.subject,
-                onValueChange = { vm.update(d.copy(subject = it)) },
-                label = { Text("主题") },
-                singleLine = true,
-                readOnly = !editable,
-                modifier = Modifier.fillMaxWidth(),
-                colors = paperFields(),
-            )
-            TextField(
-                value = d.body,
-                onValueChange = { vm.update(d.copy(body = it)) },
-                placeholder = { Text("写下想说的话…") },
-                readOnly = !editable,
-                minLines = 10,
-                modifier = Modifier.fillMaxWidth(),
-                colors = paperFields(),
-            )
-            d.attachments.forEach { attachment ->
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(attachment.name, Modifier.weight(1f), fontSize = 13.sp)
-                    TextButton(
-                        onClick = { vm.update(d.copy(attachments = d.attachments - attachment)) },
-                        enabled = editable,
-                    ) {
-                        Text("移除")
-                    }
+        Nav("返回", back, !vm.busy) { TextButton(onClick = send, enabled = editable) { Text("发送") } }
+        BoxWithConstraints(Modifier.weight(1f)) {
+            val editorHeight = (maxHeight * 0.7f).coerceAtLeast(96.dp)
+            LaunchedEffect(d.body, editorHeight, bodyFocused) {
+                if (bodyFocused) {
+                    withFrameNanos {}
+                    bodyRequester.bringIntoView()
                 }
             }
-            if (editable) TextButton(onClick = { picker.launch(arrayOf("*/*")) }) { Text("添加附件") }
+            Column(
+                Modifier.fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 22.dp)
+            ) {
+                Text(
+                    vm.saveStatus,
+                    Modifier.fillMaxWidth().padding(vertical = 10.dp).semantics {
+                        liveRegion = LiveRegionMode.Polite
+                    },
+                    fontSize = 12.sp,
+                    color =
+                        if (vm.saveStatus.contains("失败") || d.state == SendState.UNCERTAIN)
+                            MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (vm.saveStatus.startsWith("保存失败"))
+                    TextButton(onClick = vm::retrySave, enabled = !vm.busy) { Text("重试保存") }
+                Text(
+                    "发件人  ${vm.account?.email}",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 14.dp),
+                )
+                TextField(
+                    value = d.to,
+                    onValueChange = { vm.update(d.copy(to = it)) },
+                    label = { Text("收件人") },
+                    singleLine = true,
+                    readOnly = !editable,
+                    keyboardOptions =
+                        KeyboardOptions(
+                            keyboardType = KeyboardType.Email,
+                            imeAction = ImeAction.Next,
+                        ),
+                    keyboardActions =
+                        KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Next) }),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = paperFields(),
+                )
+                TextField(
+                    value = d.subject,
+                    onValueChange = { vm.update(d.copy(subject = it)) },
+                    label = { Text("主题") },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                    keyboardActions =
+                        KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Next) }),
+                    singleLine = true,
+                    readOnly = !editable,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = paperFields(),
+                )
+                TextField(
+                    value = d.body,
+                    onValueChange = { vm.update(d.copy(body = it)) },
+                    placeholder = { Text("写下想说的话…") },
+                    readOnly = !editable,
+                    minLines = 3,
+                    modifier =
+                        Modifier.fillMaxWidth()
+                            .heightIn(max = editorHeight)
+                            .bringIntoViewRequester(bodyRequester)
+                            .onFocusChanged { bodyFocused = it.isFocused }
+                            .testTag("compose-body"),
+                    colors = paperFields(),
+                )
+                d.attachments.forEach { attachment ->
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(attachment.name, Modifier.weight(1f), fontSize = 13.sp)
+                        TextButton(
+                            onClick = {
+                                vm.update(d.copy(attachments = d.attachments - attachment))
+                            },
+                            enabled = editable,
+                        ) {
+                            Text("移除")
+                        }
+                    }
+                }
+                if (editable)
+                    TextButton(onClick = { picker.launch(arrayOf("*/*")) }) { Text("添加附件") }
+            }
         }
-        Text(
-            vm.saveStatus,
-            Modifier.fillMaxWidth().padding(18.dp).semantics { liveRegion = LiveRegionMode.Polite },
-            fontSize = 12.sp,
-            color =
-                if (vm.saveStatus.contains("失败") || d.state == SendState.UNCERTAIN)
-                    MaterialTheme.colorScheme.error
-                else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 
@@ -678,8 +762,8 @@ private fun paperFields() =
 private fun Drafts(vm: MailViewModel) {
     Column(Modifier.fillMaxSize()) {
         Nav("邮箱", { vm.go("boxes") }, !vm.busy)
-        Heading("草稿与发送记录", vm.account?.email.orEmpty())
-        LazyColumn {
+        LazyColumn(Modifier.weight(1f)) {
+            item { Heading("草稿与发送记录", vm.account?.email.orEmpty()) }
             if (vm.drafts.isEmpty()) item { Empty("暂无草稿", "写信时会自动保存，下次打开仍可继续。") }
             items(vm.drafts, key = { it.id }) { d ->
                 Column(
@@ -709,6 +793,7 @@ private fun Drafts(vm: MailViewModel) {
 }
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun AddAccount(vm: MailViewModel, back: () -> Unit) {
     val editing = vm.editingAccount
     var email by rememberSaveable(editing?.id) { mutableStateOf(editing?.email.orEmpty()) }
@@ -749,7 +834,7 @@ private fun AddAccount(vm: MailViewModel, back: () -> Unit) {
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Row {
+            FlowRow {
                 TextButton(
                     onClick = {
                         imap = "imap.qq.com"
@@ -790,12 +875,16 @@ private fun AddAccount(vm: MailViewModel, back: () -> Unit) {
             TextField(
                 value = password,
                 onValueChange = { password = it },
-                label = { Text("密码 / 授权码") },
+                label = { Text("授权码 / 密码", fontSize = 14.sp) },
                 singleLine = true,
                 enabled = !vm.busy,
                 colors = paperFields(),
                 visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                keyboardOptions =
+                    KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        imeAction = ImeAction.Done,
+                    ),
                 modifier = Modifier.fillMaxWidth(),
             )
             TextButton(onClick = { advanced = !advanced }, enabled = !vm.busy) {
@@ -809,8 +898,13 @@ private fun AddAccount(vm: MailViewModel, back: () -> Unit) {
                 )
             AnimatedVisibility(advanced) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    FormField("发件人名称（可选）", name, { name = it }, !vm.busy)
-                    FormField("登录用户名（留空使用邮箱地址）", username, { username = it }, !vm.busy)
+                    FormField("发件人名称", name, { name = it }, !vm.busy)
+                    FormField("登录用户名", username, { username = it }, !vm.busy)
+                    Text(
+                        "留空使用邮箱地址",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                     Text(
                         "收信服务器",
                         fontWeight = FontWeight.Medium,
@@ -916,6 +1010,7 @@ private fun FormField(
     enabled: Boolean,
     keyboard: KeyboardType = KeyboardType.Text,
 ) {
+    val focus = LocalFocusManager.current
     TextField(
         value = value,
         onValueChange = change,
@@ -923,7 +1018,8 @@ private fun FormField(
         colors = paperFields(),
         enabled = enabled,
         singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = keyboard),
+        keyboardOptions = KeyboardOptions(keyboardType = keyboard, imeAction = ImeAction.Next),
+        keyboardActions = KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Next) }),
         modifier = Modifier.fillMaxWidth(),
     )
 }

@@ -15,6 +15,9 @@ class Operation {
     }
 
     @Volatile private var cancelled = false
+    val isCancelled: Boolean
+        get() = cancelled
+
     private val sockets = CopyOnWriteArrayList<Socket>()
 
     fun check() {

@@ -185,30 +185,40 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
         error = false
         retry = again
         job =
-            viewModelScope.launch {
+            viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
                 try {
                     block(token) { value ->
-                        viewModelScope.launch { if (op === token) status = value }
+                        viewModelScope.launch {
+                            if (op === token && !token.isCancelled) status = value
+                        }
                     }
                 } catch (e: CancellationException) {
                     if (op === token) status = "已取消，原有内容已保留"
                 } catch (t: Throwable) {
                     if (op === token) {
-                        status = message(t)
-                        error = true
+                        status = if (token.isCancelled) "已取消，原有内容已保留" else message(t)
+                        error = !token.isCancelled
                     }
                 } finally {
-                    withContext(NonCancellable + Dispatchers.IO) { token.release() }
-                    if (op === token) {
-                        busy = false
-                        op = null
+                    // Cleanup AND the UI state transition must survive cancellation. Returning
+                    // from an IO context to a cancelled Main context can otherwise skip reset.
+                    withContext(NonCancellable) {
+                        withContext(Dispatchers.IO) { token.release() }
+                        if (op === token) {
+                            if (token.isCancelled) {
+                                status = "已取消，原有内容已保留"
+                                error = false
+                            }
+                            busy = false
+                            op = null
+                        }
                     }
                 }
             }
     }
 
     fun cancel() {
-        if (!cancellable) return
+        if (!busy || !cancellable) return
         status = "正在取消，请稍候…"
         cancellable = false
         op?.cancel()
@@ -379,6 +389,12 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
                     }
                 }
             }
+    }
+
+    fun retrySave() {
+        val a = account ?: return
+        val d = draft ?: return
+        if (!busy && d.state in setOf(SendState.DRAFT, SendState.FAILED)) save(d, a)
     }
 
     fun saveAndLeave() {
