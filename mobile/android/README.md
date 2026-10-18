@@ -1,8 +1,8 @@
 # MailAI Android 测试版
 
-当前 Android 版本：**2.10.0-beta.1**（versionCode **2100001**），最低 Android 10。
+当前 Android 版本：**2.10.0-beta.2**（versionCode **2100002**），最低 Android 10。
 
-[下载安装包](https://github.com/langjiahui/MailAI/releases/download/android-v2.10.0-beta.1/MailAI-Android-2.10.0-beta.1.apk) · [发布说明](https://github.com/langjiahui/MailAI/releases/tag/android-v2.10.0-beta.1)
+[下载安装包](https://github.com/langjiahui/MailAI/releases/download/android-v2.10.0-beta.2/MailAI-Android-2.10.0-beta.2.apk) · [发布说明](https://github.com/langjiahui/MailAI/releases/tag/android-v2.10.0-beta.2)
 
 Kotlin + Jetpack Compose 原生客户端。手机直接通过 IMAP/SMTP 连接邮箱，电脑关机后仍可工作，不需要桌面服务或 Google Play 服务。设计遵循简洁图形、原生按压反馈、清楚的等待与恢复状态。
 
@@ -64,7 +64,7 @@ python3 scripts/build_distribution.py  # 使用仓库外的固定签名配置
 
 ## 验收
 
-- JVM：26 项通过，包含 TLS/STARTTLS、中文附件往返、错误证书/域名、发送确认丢失、账号隔离、草稿重开、v1→v2 无损迁移、通知基准/去重/重启、更新清单安全和取消阻塞操作。
+- JVM：30 项通过，包含 TLS/STARTTLS、中文附件往返、错误证书/域名、发送确认丢失、账号隔离、草稿重开、v1→v2 无损迁移、通知基准/去重/重启、更新清单安全和取消阻塞操作。
 - Android 15 AOSP ARM64：6 项设备测试，覆盖 Keystore、附件副本、草稿恢复、真实系统通知栏点击与隐私、偏好恢复/检查反馈、后台任务失败保留草稿。以本次发布验收记录为最终执行结果。
 - 项目既有离线发布门禁：244/244 通过（项目 `.venv-build` 环境）。
 - 实体机、真实邮箱、厂商后台保活仍需测试；不把模拟器验收等同所有设备稳定性。

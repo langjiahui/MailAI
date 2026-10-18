@@ -134,22 +134,27 @@ internal object UpdatePolicy {
     }
 }
 
-internal class UpdateHttp {
+internal class UpdateHttp(clientOverride: OkHttpClient? = null) {
     @Volatile private var stopped = false
     @Volatile private var call: Call? = null
+    val isCancelled: Boolean
+        get() = stopped || Thread.currentThread().isInterrupted
+
     private val client =
-        OkHttpClient.Builder()
-            .followRedirects(false)
-            .followSslRedirects(false)
-            .connectTimeout(20, TimeUnit.SECONDS)
-            .readTimeout(25, TimeUnit.SECONDS)
-            .callTimeout(5, TimeUnit.MINUTES)
-            .dns(
-                object : Dns {
-                    override fun lookup(hostname: String) = listOf(NetworkPolicy.resolve(hostname))
-                }
-            )
-            .build()
+        clientOverride
+            ?: OkHttpClient.Builder()
+                .followRedirects(false)
+                .followSslRedirects(false)
+                .connectTimeout(20, TimeUnit.SECONDS)
+                .readTimeout(25, TimeUnit.SECONDS)
+                .callTimeout(5, TimeUnit.MINUTES)
+                .dns(
+                    object : Dns {
+                        override fun lookup(hostname: String) =
+                            listOf(NetworkPolicy.resolve(hostname))
+                    }
+                )
+                .build()
 
     fun cancel() {
         stopped = true
@@ -157,7 +162,7 @@ internal class UpdateHttp {
     }
 
     fun check() {
-        if (stopped || Thread.currentThread().isInterrupted) throw CancellationException("更新已取消")
+        if (isCancelled) throw CancellationException("更新已取消")
     }
 
     fun response(url: String): Response {
@@ -327,6 +332,11 @@ class AppUpdates(private val context: Context) {
                 mutable.value = state.value.copy(checking = false)
                 throw e
             } catch (_: Exception) {
+                if (http.isCancelled) {
+                    mutable.value =
+                        state.value.copy(checking = false, message = "检查已取消", failed = false)
+                    throw CancellationException("检查已取消")
+                }
                 mutable.value =
                     state.value.copy(checking = false, message = "暂时无法检查更新，请检查网络后重试", failed = true)
                 false
@@ -401,6 +411,17 @@ class AppUpdates(private val context: Context) {
                 mutable.value = state.value.copy(downloading = false, message = "下载已取消")
                 throw e
             } catch (_: Exception) {
+                // Call.cancel() closes a blocked socket with IOException, not
+                // CancellationException.
+                if (http.isCancelled) {
+                    mutable.value =
+                        state.value.copy(
+                            downloading = false,
+                            message = "下载已取消，可稍后重试",
+                            failed = false,
+                        )
+                    throw CancellationException("下载已取消")
+                }
                 mutable.value =
                     state.value.copy(
                         downloading = false,
