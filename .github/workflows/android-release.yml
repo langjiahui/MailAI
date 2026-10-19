@@ -1,0 +1,141 @@
+name: Android signed release
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: 'Android source branch, tag or commit (pinned when this run starts)'
+        required: true
+        default: 'codex/android-xiaoyou'
+        type: string
+      publish:
+        description: 'Publish a formal Android release after all checks; false creates acceptance artifacts only'
+        required: true
+        default: false
+        type: boolean
+  push:
+    tags: ['android-v*']
+    branches: ['codex/android-release-loop']
+    paths: ['.github/workflows/android-release.yml', 'scripts/android_release.py', 'tests/test_android_release.py']
+  pull_request:
+    paths: ['.github/workflows/android-release.yml', 'scripts/android_release.py', 'tests/test_android_release.py']
+
+permissions:
+  contents: read
+concurrency:
+  group: android-signed-${{ (inputs.publish || startsWith(github.ref, 'refs/tags/android-v')) && 'formal' || format('{0}-{1}', github.event_name, github.ref) }}
+  cancel-in-progress: false
+
+jobs:
+  tooling:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python -m unittest discover -s tests -p test_android_release.py -v
+
+  build:
+    if: github.event_name != 'pull_request'
+    needs: tooling
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: tooling
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_ref || (startsWith(github.ref, 'refs/tags/android-v') && github.ref) || 'codex/android-xiaoyou' }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+          log-accepted-android-sdk-licenses: false
+      - name: Configure the fixed Android signer
+        env:
+          ANDROID_SIGNING_KEYSTORE_B64: ${{ secrets.ANDROID_SIGNING_KEYSTORE_B64 }}
+          ANDROID_SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}
+          ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
+        shell: python
+        run: |
+          import base64, os
+          from pathlib import Path
+          names = ('ANDROID_SIGNING_KEYSTORE_B64', 'ANDROID_SIGNING_STORE_PASSWORD', 'ANDROID_SIGNING_KEY_PASSWORD')
+          if not all(os.environ.get(name) for name in names):
+              raise SystemExit('Android signing secrets are not configured')
+          key = Path(os.environ['RUNNER_TEMP']) / 'mailai-android.jks'
+          key.write_bytes(base64.b64decode(os.environ[names[0]], validate=True))
+          key.chmod(0o600)
+          with open(os.environ['GITHUB_ENV'], 'a') as f:
+              f.write('MAILAI_ANDROID_KEYSTORE=' + str(key) + '\n')
+      - name: Test, lint and build the signed distribution
+        working-directory: source/mobile/android
+        env:
+          MAILAI_ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}
+          MAILAI_ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
+        run: ./gradlew :app:testDebugUnitTest :app:lintRelease :app:assembleRelease --no-daemon
+      - name: Validate Android version, signer and updater contract
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORMAL: ${{ inputs.publish || startsWith(github.ref, 'refs/tags/android-v') }}
+          TAG_REF: ${{ startsWith(github.ref, 'refs/tags/android-v') && github.ref_name || '' }}
+        shell: bash
+        run: |
+          if [ -n "$TAG_REF" ]; then
+            test "$TAG_REF" = "android-v$(cat source/mobile/android/VERSION)"
+          fi
+          args=()
+          if [ "$FORMAL" = true ]; then args+=(--formal); fi
+          python tooling/scripts/android_release.py package --source source --sdk "$ANDROID_HOME" --output android-release-assets "${args[@]}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Android-signed-acceptance
+          path: android-release-assets/*
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Android-release-test-reports
+          path: |
+            source/mobile/android/app/build/reports/
+            source/mobile/android/app/build/test-results/
+      - name: Remove temporary signing material
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/mailai-android.jks"
+
+  publish:
+    if: inputs.publish || startsWith(github.ref, 'refs/tags/android-v')
+    needs: build
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+          log-accepted-android-sdk-licenses: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: Android-signed-acceptance
+          path: android-release-assets
+      - name: Publish complete assets and verify the public update path
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/android_release.py publish --sdk "$ANDROID_HOME" --output android-release-assets
