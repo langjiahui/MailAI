@@ -1,0 +1,17 @@
+{
+  "endpoint": "https://api.kimi.com/coding/v1/chat/completions",
+  "body": {
+    "model": "kimi-for-coding",
+    "messages": [
+      {
+        "role": "user",
+        "content": "只回复 OK"
+      }
+    ],
+    "stream": true,
+    "max_tokens": 4096,
+    "stream_options": {
+      "include_usage": true
+    }
+  }
+}

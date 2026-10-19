@@ -1,0 +1,13 @@
+MailAI Android development preview
+Copyright MailAI contributors. Apache License 2.0; see MailAI-LICENSE.txt.
+
+AndroidX (Google / Android Open Source Project), Kotlin and kotlinx.coroutines (JetBrains): Apache License 2.0. License text included in MailAI-LICENSE.txt.
+OkHttp 4.12.0 and Okio (Square contributors): Apache License 2.0, see MailAI-LICENSE.txt.
+Source: https://github.com/square/okhttp/tree/parent-4.12.0 and https://github.com/square/okio
+JavaMail / Android Activation 1.6.7 (Oracle, Eclipse contributors): CDDL 1.1 or GPLv2 with Classpath Exception; this distribution uses the CDDL option. Original licenses and notices included alongside this file.
+Unmodified source archives:
+https://repo.maven.apache.org/maven2/com/sun/mail/android-mail/1.6.7/android-mail-1.6.7-sources.jar
+https://repo.maven.apache.org/maven2/com/sun/mail/android-activation/1.6.7/android-activation-1.6.7-sources.jar
+jsoup 1.21.1 (Jonathan Hedley and contributors): MIT, see jsoup-LICENSE.txt.
+
+No test servers, test certificates or test credentials are included in the application.

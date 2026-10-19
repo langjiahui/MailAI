@@ -1,0 +1,11 @@
+.gradle/
+.kotlin/
+**/build/
+local.properties
+*.jks
+*.keystore
+captures/
+# Repository-wide data/ excludes mail data, but this package contains Kotlin source.
+!app/src/main/java/com/mailai/mobile/data/
+app/src/main/java/com/mailai/mobile/data/*
+!app/src/main/java/com/mailai/mobile/data/*.kt
