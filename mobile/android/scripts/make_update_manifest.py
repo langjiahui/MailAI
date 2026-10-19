@@ -12,6 +12,8 @@ parser.add_argument('apk', type=Path)
 parser.add_argument('--sdk', type=Path, required=True)
 parser.add_argument('--output', type=Path, required=True)
 args = parser.parse_args()
+assert args.output.name == 'mailai-android-update.json', 'Use the manifest filename expected by installed Android clients'
+args.output.parent.mkdir(parents=True, exist_ok=True)
 root = Path(__file__).resolve().parents[1]
 version = (root / 'VERSION').read_text().strip()
 assert re.fullmatch(r'\d+\.\d+\.\d+(?:-beta\.\d+)?', version)
@@ -19,13 +21,13 @@ bin_dir = args.sdk / 'build-tools/35.0.0'
 subprocess.run([str(bin_dir / 'apksigner'), 'verify', '--verbose', str(args.apk)], check=True)
 info = subprocess.check_output([str(bin_dir / 'aapt'), 'dump', 'badging', str(args.apk)], text=True)
 package = re.search(r"package: name='([^']+)' versionCode='(\d+)' versionName='([^']+)'", info)
-assert package and package[1] == 'com.mailai.mobile' and package[3] == version
+assert package and package[1] == 'com.mailai.mobile' and package[3] == version and int(package[2]) == int((root / 'VERSION_CODE').read_text().strip())
 assert args.apk.name == f'MailAI-Android-{version}.apk'
 tag = f'android-v{version}'
 manifest = dict(schema=1, applicationId=package[1], version=version, code=int(package[2]),
     url=f'https://github.com/langjiahui/MailAI/releases/download/{tag}/{args.apk.name}',
     sha256=hashlib.file_digest(args.apk.open('rb'), 'sha256').hexdigest(), size=args.apk.stat().st_size,
-    notes='MailAI 安卓正式版：姓名正确解码，多人收件人默认折叠；通讯录与手机联系人选择；按原邮件显示 HTML、表格、内嵌与外部图片；提示改为自动消失的浮动气泡，不挤占内容',
+    notes='Android 独立版本 1.0.0：与 Web 版本分开管理；沿用当前全部邮件、通讯录及原版阅读功能，同签名覆盖安装保留数据',
     page=f'https://github.com/langjiahui/MailAI/releases/tag/{tag}')
 args.output.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
 print(f'Update manifest ready: {version} / {manifest["code"]}')

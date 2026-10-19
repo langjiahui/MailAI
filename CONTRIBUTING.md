@@ -67,11 +67,15 @@ pytest 通过 `tests/test_offline_suite.py` 以子进程方式逐个运行脚本
 
 这套分级规则从 `v2.8.22` 之后的发布开始执行，历史发布不追溯改号。`v2.8.22` 的邮件标签属于新增能力，按本规则原本应从 `v2.8.21` 升为 `v2.9.0`；保留已发布的 `v2.8.22`，后续依据实际变更选择新版本。
 
-### Android 预发布通道
+### Android 与 Web 独立版本
 
-Android 测试版本独立记录在 `mobile/android/VERSION` 与对应 README，使用 `android-v<版本>` 标签及 GitHub Pre-release，固定分发签名与递增的 versionCode。以最近正式版本和该测试通道的变更按上述分级规则确定目标版本，再追加 `-beta.N`；不改写已有标签/附件，不替换桌面 Latest。根目录 VERSION 继续代表当前桌面正式版本，正式全平台发布时按完整变化同步统一版本。Android 发布仍需执行现有门禁和移动端测试，更新清单与 APK 元数据必须一致。
+Android 与 Web/桌面是两条独立产品版本线，分别依据各自最近正式发布和完整变更判断 MAJOR/MINOR/PATCH；不得借用另一端的版本号，也不因同仓库、同日发布而强制统一版本。根目录 `VERSION` 与 `v<版本>` 标签表示 Web/桌面；Android 使用 `mobile/android/VERSION` 与 `android-v<版本>`，其当前版本、更新内容和安装包元数据在 Android README 与 RELEASE 中维护。根 README 分别列出两端当前版本。
 
-安卓版可独立发布正式版本，继续使用 `mobile/android/VERSION`、`android-v<版本>` 和固定签名递增 versionCode；正式包名称为 MailAI，不含“预览”。正式 Android Release 不标 Pre-release，使用 `latest=false` 保留桌面下载入口；根 VERSION 仍表示桌面版本，只有全平台统一发布时同步。安卓版首次正式版本应检查从最近正式版本以来的完整变更，不将测试序号视为产品功能版本。旧测试客户端不识别无 beta 后缀清单时，首次正式版通过下载 APK 覆盖安装；之后正式客户端只订阅正式 Android 发布。
+Android 独立版本从 **1.0.0** 开始。已发布的 `android-v2.10.0` 与此前 beta 属于历史共用编号，保留原标签和附件，不覆盖、不追溯改号。`1.0.0` 是用户明确要求的版本线分离，功能与数据保持兼容，不代表回退旧功能；之后只以独立 Android 版本作为分级基准。
+
+`mobile/android/VERSION_CODE` 单独记录 Android 内部安装序号，必须高于所有已发布 Android 包（包括历史共用编号），不得从用户可见的版本号重新计算或归零；应用内更新按 versionCode 比较新旧，仍核对 versionName、包名、哈希、大小与固定签名。当前分离发布使用 versionName `1.0.0`、versionCode `2100101`，可覆盖 `2.10.0`（2100100）并保留数据。
+
+Android 正式发布不标 Pre-release，使用 `latest=false` 保留 Web/桌面下载入口；测试发布在 Android 自己的目标版本后追加 `-beta.N`，标 Pre-release。正式客户端只订阅正式 Android 发布。更新清单附件名固定为 `mailai-android-update.json`，清单与 APK 元数据必须一致，执行现有门禁及移动端测试。旧 beta 客户端首次进入正式通道需手动覆盖安装。
 
 ## 分支与 PR 规范
 
