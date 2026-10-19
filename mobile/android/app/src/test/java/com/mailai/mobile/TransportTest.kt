@@ -97,6 +97,45 @@ class TransportTest {
     private fun transport() = MailTransport({ InetAddress.getByName("127.0.0.1") }, trusted)
 
     @Test
+    fun loginFailureIdentifiesReceivingStageWithoutExposingSecret() {
+        val op = Operation()
+        try {
+            val error =
+                assertThrows(MailLoginFailure::class.java) {
+                    transport().verify(account(), "synthetic-wrong-password", op) {}
+                }
+            assertEquals("收信", error.stage)
+            assertEquals("localhost", error.host)
+            assertFalse(error.message.orEmpty().contains("synthetic-wrong-password"))
+        } finally {
+            op.release()
+        }
+    }
+
+    @Test
+    fun loginFailureIdentifiesSmtpAfterImapSucceeded() {
+        val outgoing = GreenMail(ServerSetup(0, "127.0.0.1", "smtps"))
+        outgoing.start()
+        outgoing.setUser("sender@example.test", "sender@example.test", "different-password")
+        val op = Operation()
+        try {
+            val error =
+                assertThrows(MailLoginFailure::class.java) {
+                    transport().verify(
+                        account().copy(smtp = Server("localhost", outgoing.smtps.port)),
+                        "test-password",
+                        op,
+                    ) {}
+                }
+            assertEquals("发信", error.stage)
+            assertEquals("localhost", error.host)
+        } finally {
+            op.release()
+            outgoing.stop()
+        }
+    }
+
+    @Test
     fun encryptedChineseMailAndAttachmentRoundTrip() {
         val client = transport()
         val a = account()

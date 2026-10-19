@@ -283,6 +283,7 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
         var cause: Throwable? = t
         repeat(8) {
             when (cause) {
+                is MailLoginFailure -> return "${cause.stage}登录未通过（${cause.host}），请核对服务器、用户名及密码或授权码"
                 is AuthenticationFailedException -> return "登录失败，请检查授权码及邮箱的 IMAP/SMTP 设置"
                 is SSLException -> return "安全连接验证失败，请检查服务器地址与证书"
                 is android.database.sqlite.SQLiteException -> return "本地存储不可用，请检查可用空间后重试"

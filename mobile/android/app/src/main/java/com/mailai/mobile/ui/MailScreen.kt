@@ -834,129 +834,112 @@ private fun AddAccount(vm: MailViewModel, back: () -> Unit) {
             mutableStateOf(editing?.smtp?.security != Security.STARTTLS)
         }
     var validation by remember { mutableStateOf("") }
-    var advanced by rememberSaveable { mutableStateOf(false) }
+    var advanced by rememberSaveable(editing?.id) { mutableStateOf(false) }
+    var custom by
+        rememberSaveable(editing?.id) {
+            mutableStateOf(editing != null && AccountSetup.profile(editing.email) == null)
+        }
+    var visiblePassword by remember { mutableStateOf(false) }
+    val keyboard = LocalSoftwareKeyboardController.current
+    val profile = AccountSetup.profile(email)
+    val hasAddress = email.contains('@') && AccountSetup.domain(email).contains('.')
+    val showServers = custom || (hasAddress && profile == null)
+    val canSubmit = hasAddress && password.isNotBlank() && imap.isNotBlank() && smtp.isNotBlank()
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Nav(
             if (vm.accounts.isNotEmpty()) "邮箱" else "MailAI",
             back,
             !vm.busy && vm.accounts.isNotEmpty(),
-        ) {
-            TextButton(onClick = { vm.go("settings") }, enabled = !vm.busy) { Text("通知与更新") }
-        }
-        Heading(if (editing == null) "添加邮箱" else "更新邮箱登录", "手机直接连接邮箱，电脑关机也能使用")
+        ) {}
+        Heading(if (editing == null) "添加邮箱" else "更新邮箱登录", "连接你的邮箱，随时收发")
         Column(
             Modifier.padding(horizontal = 22.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(
-                "在邮箱网页设置中开启 IMAP/SMTP，使用授权码登录。需要 OAuth 的账户暂不支持。",
-                fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            FlowRow {
-                TextButton(
-                    onClick = {
-                        imap = "imap.qq.com"
-                        smtp = "smtp.qq.com"
-                        ip = "993"
-                        sp = "465"
-                        itls = true
-                        stls = true
-                        advanced = false
-                    },
-                    enabled = !vm.busy,
-                ) {
-                    Text("QQ 邮箱")
-                }
-                TextButton(
-                    onClick = {
-                        imap = "imap.163.com"
-                        smtp = "smtp.163.com"
-                        ip = "993"
-                        sp = "465"
-                        itls = true
-                        stls = true
-                        advanced = false
-                    },
-                    enabled = !vm.busy,
-                ) {
-                    Text("163 邮箱")
-                }
-                TextButton(onClick = { advanced = true }, enabled = !vm.busy) { Text("其他邮箱") }
-            }
             FormField(
                 "邮箱地址",
                 email,
-                { email = it },
+                { next ->
+                    if (AccountSetup.domain(next) != AccountSetup.domain(email)) {
+                        val detected = AccountSetup.profile(next)
+                        username = ""
+                        imap = detected?.imap.orEmpty()
+                        smtp = detected?.smtp.orEmpty()
+                        ip = "993"
+                        sp = "465"
+                        itls = true
+                        stls = true
+                        custom = false
+                        validation = ""
+                    }
+                    email = next
+                },
                 !vm.busy && editing == null,
                 KeyboardType.Email,
             )
             TextField(
                 value = password,
-                onValueChange = { password = it },
-                label = { Text("授权码 / 密码", fontSize = 14.sp) },
+                onValueChange = {
+                    password = it
+                    validation = ""
+                },
+                label = { Text("密码或授权码", fontSize = 14.sp) },
                 singleLine = true,
                 enabled = !vm.busy,
                 colors = paperFields(),
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation =
+                    if (visiblePassword) androidx.compose.ui.text.input.VisualTransformation.None
+                    else PasswordVisualTransformation(),
+                trailingIcon = {
+                    TextButton(
+                        onClick = { visiblePassword = !visiblePassword },
+                        enabled = !vm.busy,
+                    ) {
+                        Text(if (visiblePassword) "隐藏" else "显示", fontSize = 12.sp)
+                    }
+                },
                 keyboardOptions =
                     KeyboardOptions(
                         keyboardType = KeyboardType.Password,
                         imeAction = ImeAction.Done,
                     ),
+                keyboardActions = KeyboardActions(onDone = { keyboard?.hide() }),
                 modifier = Modifier.fillMaxWidth(),
             )
-            TextButton(onClick = { advanced = !advanced }, enabled = !vm.busy) {
-                Text(if (advanced) "收起服务器设置" else "服务器与发件人设置")
-            }
-            if (!advanced && imap.isNotBlank())
+            if (profile != null && !custom) {
                 Text(
-                    "加密连接 · $imap",
-                    fontSize = 12.sp,
+                    "已匹配${profile.label}",
+                    fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-            AnimatedVisibility(advanced) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    FormField("发件人名称", name, { name = it }, !vm.busy)
-                    FormField("登录用户名", username, { username = it }, !vm.busy)
-                    Text(
-                        "留空使用邮箱地址",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        "收信服务器",
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(top = 14.dp),
-                    )
-                    FormField("IMAP 地址", imap, { imap = it }, !vm.busy)
-                    FormField("IMAP 端口", ip, { ip = it }, !vm.busy, KeyboardType.Number)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(
-                            checked = itls,
-                            onCheckedChange = {
-                                itls = it
-                                ip = if (it) "993" else "143"
-                            },
-                            enabled = !vm.busy,
-                        )
-                        Text(if (itls) "TLS 加密连接" else "STARTTLS（必须升级加密）", fontSize = 13.sp)
-                    }
-                    Text("发信服务器", fontWeight = FontWeight.Medium)
-                    FormField("SMTP 地址", smtp, { smtp = it }, !vm.busy)
-                    FormField("SMTP 端口", sp, { sp = it }, !vm.busy, KeyboardType.Number)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(
-                            checked = stls,
-                            onCheckedChange = {
-                                stls = it
-                                sp = if (it) "465" else "587"
-                            },
-                            enabled = !vm.busy,
-                        )
-                        Text(if (stls) "TLS 加密连接" else "STARTTLS（必须升级加密）", fontSize = 13.sp)
-                    }
-                }
+                TextButton(onClick = { custom = true }, enabled = !vm.busy) { Text("修改服务器") }
+            }
+            if (showServers) {
+                Text(
+                    "请填写邮箱服务商提供的服务器地址",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                FormField(
+                    "收信服务器",
+                    imap,
+                    {
+                        imap = it
+                        validation = ""
+                    },
+                    !vm.busy,
+                    KeyboardType.Uri,
+                )
+                FormField(
+                    "发信服务器",
+                    smtp,
+                    {
+                        smtp = it
+                        validation = ""
+                    },
+                    !vm.busy,
+                    KeyboardType.Uri,
+                )
             }
             if (validation.isNotBlank())
                 Text(
@@ -966,23 +949,19 @@ private fun AddAccount(vm: MailViewModel, back: () -> Unit) {
                 )
             Button(
                 onClick = {
+                    keyboard?.hide()
                     val inPort = ip.toIntOrNull()
                     val outPort = sp.toIntOrNull()
                     if (
-                        email.isBlank() ||
-                            imap.isBlank() ||
-                            smtp.isBlank() ||
-                            password.isBlank() ||
-                            inPort == null ||
+                        inPort == null ||
                             outPort == null ||
                             inPort !in 1..65535 ||
                             outPort !in 1..65535
                     ) {
-                        validation = "请完整填写邮箱、授权码、服务器及有效端口"
-                        if (imap.isBlank() || smtp.isBlank()) advanced = true
+                        validation = "请在高级设置中填写有效端口（1–65535）"
+                        advanced = true
                     } else {
-                        validation = ""
-                        vm.add(
+                        val account =
                             Account(
                                 id = editing?.id ?: UUID.randomUUID().toString(),
                                 email = email.trim(),
@@ -1000,22 +979,68 @@ private fun AddAccount(vm: MailViewModel, back: () -> Unit) {
                                         outPort,
                                         if (stls) Security.TLS else Security.STARTTLS,
                                     ),
-                            ),
-                            password,
-                        )
+                            )
+                        try {
+                            AccountSetup.requireMatchingProvider(account)
+                            validation = ""
+                            vm.add(account, password)
+                        } catch (e: IllegalArgumentException) {
+                            validation = e.message.orEmpty()
+                            custom = true
+                        }
                     }
                 },
-                enabled = !vm.busy,
+                enabled = !vm.busy && canSubmit,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                 shape = RoundedCornerShape(14.dp),
             ) {
-                Text(if (vm.busy) "正在验证…" else if (editing == null) "验证并添加" else "验证并更新")
+                Text(if (vm.busy) "正在连接…" else if (editing == null) "连接邮箱" else "保存并连接")
             }
             Text(
-                "授权码经 Android Keystore 加密后保存到手机。服务器必须通过 TLS 证书验证。",
+                if (!hasAddress) "填写邮箱地址后，继续完成连接。"
+                else if (profile != null && !custom) "请先在邮箱网页开启 IMAP/SMTP，并使用客户端授权码。"
+                else "默认使用加密连接。如果公司提供了专用端口或登录名，可在高级设置中修改。",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            TextButton(onClick = { advanced = !advanced }, enabled = !vm.busy) {
+                Text(if (advanced) "收起高级设置" else "高级设置")
+            }
+            AnimatedVisibility(advanced) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    FormField("发件人名称（选填）", name, { name = it }, !vm.busy)
+                    FormField("登录用户名（默认邮箱地址）", username, { username = it }, !vm.busy)
+                    FormField("IMAP 端口", ip, { ip = it }, !vm.busy, KeyboardType.Number)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = itls,
+                            onCheckedChange = {
+                                itls = it
+                                ip = if (it) "993" else "143"
+                            },
+                            enabled = !vm.busy,
+                        )
+                        Text(if (itls) "收信 · TLS" else "收信 · STARTTLS", fontSize = 13.sp)
+                    }
+                    FormField("SMTP 端口", sp, { sp = it }, !vm.busy, KeyboardType.Number)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = stls,
+                            onCheckedChange = {
+                                stls = it
+                                sp = if (it) "465" else "587"
+                            },
+                            enabled = !vm.busy,
+                        )
+                        Text(if (stls) "发信 · TLS" else "发信 · STARTTLS", fontSize = 13.sp)
+                    }
+                    Text(
+                        "只支持 IMAP/SMTP；需要 OAuth 的邮箱暂不支持。",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
             Spacer(Modifier.height(24.dp))
         }
     }

@@ -10,6 +10,9 @@ import javax.mail.*
 import javax.mail.internet.InternetAddress
 import javax.net.ssl.SSLSocketFactory
 
+class MailLoginFailure(val stage: String, val host: String, cause: AuthenticationFailedException) :
+    Exception("$stage 验证失败", cause)
+
 class MailTransport
 internal constructor(
     private val resolve: (String) -> InetAddress = NetworkPolicy::resolve,
@@ -77,11 +80,15 @@ internal constructor(
 
     fun verify(a: Account, password: String, op: Operation, status: (String) -> Unit) {
         status("正在验证收信服务器…")
-        imap(a, password, op) {
-            it.getFolder("INBOX").let { f ->
-                f.open(Folder.READ_ONLY)
-                f.close(false)
+        try {
+            imap(a, password, op) {
+                it.getFolder("INBOX").let { f ->
+                    f.open(Folder.READ_ONLY)
+                    f.close(false)
+                }
             }
+        } catch (e: AuthenticationFailedException) {
+            throw MailLoginFailure("收信", a.imap.host, e)
         }
         op.check()
         status("正在验证发信服务器…")
@@ -95,6 +102,8 @@ internal constructor(
                 password,
             )
             op.check()
+        } catch (e: AuthenticationFailedException) {
+            throw MailLoginFailure("发信", a.smtp.host, e)
         } finally {
             runCatching { transport.close() }
         }

@@ -54,43 +54,47 @@ class InteractionTest {
     }
 
     @Test
-    fun accountChoicesWrapAndFormRemainsReachableWithKeyboard() {
+    fun accountAutoDetectsProviderAndNeverReusesItForEnterpriseAddress() {
         val (scenario, vm) = launch()
         try {
             scenario.onActivity { vm.go("add") }
-            for (label in listOf("QQ 邮箱", "163 邮箱", "其他邮箱")) {
-                val node = compose.onNodeWithText(label).performScrollTo().assertIsDisplayed()
-                val layouts = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
-                node.performSemanticsAction(
-                    androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult
-                ) {
-                    it(layouts)
-                }
-                assertTrue(
-                    "$label must not overflow: ${layouts.map { "${it.size}, w=${it.multiParagraph.width}, line=${it.getLineRight(0)}, h=${it.didOverflowHeight}" }}",
-                    layouts.isNotEmpty() &&
-                        layouts.none {
-                            it.didOverflowHeight ||
-                                (0 until it.lineCount).any { line ->
-                                    it.getLineRight(line) > it.size.width + 1f ||
-                                        it.isLineEllipsized(line)
-                                }
-                        },
-                )
-            }
-            compose.onNodeWithText("QQ 邮箱").performScrollTo().performClick()
+            compose.onNodeWithText("QQ 邮箱").assertDoesNotExist()
+            compose.onNodeWithText("IMAP 端口").assertDoesNotExist()
+            compose.onNodeWithText("连接邮箱").assertIsNotEnabled()
             compose
                 .onNodeWithText("邮箱地址")
                 .performScrollTo()
                 .performClick()
-                .performTextInput("new@example.test")
+                .performTextInput("new@qq.com")
+            compose.onNodeWithText("已匹配QQ / Foxmail 邮箱").assertExists()
             compose.onNodeWithText("邮箱地址").performImeAction()
-            compose.onNodeWithText("授权码 / 密码").assertIsFocused().performTextInput("synthetic-only")
-            capture("account-keyboard")
-            compose.onNodeWithText("授权码 / 密码").performImeAction()
-            compose.onNodeWithText("验证并添加").performScrollTo().assertIsDisplayed()
-            // Do not connect to a real service with these synthetic credentials.
-            capture("account-actions")
+            compose.onNodeWithText("密码或授权码").assertIsFocused().performTextInput("synthetic-only")
+            compose.onNodeWithText("密码或授权码").performImeAction()
+            compose.onNodeWithText("连接邮箱").performScrollTo().assertIsEnabled()
+            compose
+                .onNodeWithText("邮箱地址")
+                .performScrollTo()
+                .performTextReplacement("new@company.example")
+            compose.onNodeWithText("邮箱地址").performImeAction()
+            compose.onNodeWithText("密码或授权码").performImeAction()
+            compose.onNodeWithText("已匹配QQ / Foxmail 邮箱").assertDoesNotExist()
+            compose.onNodeWithText("连接邮箱").performScrollTo().assertIsNotEnabled()
+            compose.onNodeWithText("imap.qq.com").assertDoesNotExist()
+            compose
+                .onNodeWithText("收信服务器")
+                .performScrollTo()
+                .performTextInput("imap.company.example")
+            compose
+                .onNodeWithText("发信服务器")
+                .performScrollTo()
+                .performTextInput("smtp.company.example")
+            compose.onNodeWithText("发信服务器").performImeAction()
+            device.pressBack()
+            compose.onNodeWithText("连接邮箱").performScrollTo().assertIsEnabled().assertIsDisplayed()
+            capture("account-simple-enterprise")
+            compose.onNodeWithText("高级设置").performScrollTo().performClick()
+            compose.onNodeWithText("IMAP 端口").performScrollTo().assertExists()
+            // These synthetic credentials are never submitted to any real server.
         } finally {
             scenario.close()
         }

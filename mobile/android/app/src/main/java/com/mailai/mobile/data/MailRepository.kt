@@ -44,6 +44,7 @@ class MailRepository(
             require(accounts.all().none { it.email.equals(a.email, true) && it.id != a.id }) {
                 "这个邮箱已经添加"
             }
+            AccountSetup.requireMatchingProvider(a)
             transport.verify(a, password, op, status)
             op.check()
             status("正在安全保存账户…")
