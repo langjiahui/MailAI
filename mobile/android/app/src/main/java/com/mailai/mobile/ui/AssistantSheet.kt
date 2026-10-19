@@ -6,6 +6,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -438,13 +440,24 @@ private fun AssistantSettingsForm(a: AssistantController) {
     var consent by remember(providerId, endpoint) { mutableStateOf(false) }
     var advanced by
         remember(providerId, a.endpoint) {
-            mutableStateOf(a.endpoint.isNotBlank() && a.endpoint != provider.endpoint)
+            mutableStateOf(
+                providerId == initialProvider.id &&
+                    a.endpoint.isNotBlank() &&
+                    a.endpoint != provider.endpoint
+            )
         }
     var manualModel by
         remember(providerId, a.model) { mutableStateOf(provider.models.none { it.id == model }) }
     var removing by remember { mutableStateOf(false) }
     var testedForm by remember { mutableStateOf("") }
     val form = fingerprint("$providerId\n$endpoint\n$model\n$key\n$privateNetwork")
+    val testStatus = remember { BringIntoViewRequester() }
+    LaunchedEffect(a.verificationMessage, testedForm == form) {
+        if (testedForm == form && a.verificationMessage.isNotBlank()) {
+            withFrameNanos {}
+            testStatus.bringIntoView()
+        }
+    }
     LaunchedEffect(a.loading) { if (!a.loading && !a.failed) key = "" }
     Text("接入模型服务", fontSize = 17.sp, fontWeight = FontWeight.Medium)
     Text(
@@ -584,6 +597,15 @@ private fun AssistantSettingsForm(a: AssistantController) {
                 if (a.failed) MaterialTheme.colorScheme.error
                 else MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    if (testedForm == form && a.verificationMessage.isNotBlank())
+        Text(
+            a.verificationMessage,
+            fontSize = 13.sp,
+            color =
+                if (a.verificationFailed) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.primary,
+            modifier = Modifier.bringIntoViewRequester(testStatus).testTag("xiaoyou-test-status"),
+        )
     OutlinedButton(
         onClick = {
             testedForm = form
@@ -602,15 +624,6 @@ private fun AssistantSettingsForm(a: AssistantController) {
         ) {
             Text("取消测试")
         }
-    if (testedForm == form && a.verificationMessage.isNotBlank())
-        Text(
-            a.verificationMessage,
-            fontSize = 13.sp,
-            color =
-                if (a.verificationFailed) MaterialTheme.colorScheme.error
-                else MaterialTheme.colorScheme.primary,
-            modifier = Modifier.testTag("xiaoyou-test-status"),
-        )
     Text(
         "测试仅发送一句测试文字，不包含邮件，可能产生少量服务费用。保存配置不会自动联网。",
         fontSize = 12.sp,

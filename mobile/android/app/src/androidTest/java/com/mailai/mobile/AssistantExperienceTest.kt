@@ -332,6 +332,7 @@ class AssistantExperienceTest {
             assertTrue(vm.assistant.verificationMessage.contains("API Key"))
             assertFalse(vm.assistant.testing)
             assertEquals(config, AssistantSettings(context).read())
+            compose.onNodeWithTag("xiaoyou-test-status").assertIsDisplayed()
             capture("09-probe-validation")
         } finally {
             scenario.close()
