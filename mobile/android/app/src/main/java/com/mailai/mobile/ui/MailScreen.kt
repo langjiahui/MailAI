@@ -643,7 +643,6 @@ private fun Reader(vm: MailViewModel, back: () -> Unit) {
     val readingScroll = rememberSaveable(m.key, saver = ScrollState.Saver) { ScrollState(0) }
     var details by remember(m.key) { mutableStateOf(false) }
     var attachmentList by remember(m.key) { mutableStateOf(false) }
-    var original by rememberSaveable(m.key) { mutableStateOf(true) }
     var link by remember { mutableStateOf<String?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
     val sender = remember(m.sender) { MailAddresses.sender(m.sender) }
@@ -677,8 +676,12 @@ private fun Reader(vm: MailViewModel, back: () -> Unit) {
     link?.let { url ->
         AlertDialog(
             onDismissRequest = { link = null },
-            title = { Text("打开链接？") },
-            text = { SelectionContainer { Text(url) } },
+            title = { Text("打开链接？", fontSize = 18.sp) },
+            text = {
+                Column(Modifier.heightIn(max = 180.dp).verticalScroll(rememberScrollState())) {
+                    SelectionContainer { Text(url, fontSize = 14.sp, lineHeight = 22.sp) }
+                }
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -705,10 +708,6 @@ private fun Reader(vm: MailViewModel, back: () -> Unit) {
         Nav(boxName(vm.folder), back, !vm.busy) {
             if (vm.canRetry && (vm.error || vm.status.startsWith("已取消")))
                 TextButton(onClick = vm::retry, enabled = !vm.busy) { Text("重试读取") }
-            if (m.html != null)
-                TextButton(onClick = { original = !original }) {
-                    Text(if (original) "文本" else "原版")
-                }
             TextButton(onClick = { details = true }) { Text("详情") }
         }
         BoxWithConstraints(Modifier.weight(1f)) {
@@ -764,7 +763,7 @@ private fun Reader(vm: MailViewModel, back: () -> Unit) {
                     }
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                if (m.html != null && original) {
+                if (m.html != null) {
                     HtmlMailBody(vm, m, Modifier.fillMaxWidth().weight(1f), onLink = { link = it })
                 } else
                     Column(

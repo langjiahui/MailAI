@@ -5,6 +5,7 @@ import android.net.Uri
 import android.webkit.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -196,7 +197,7 @@ internal fun HtmlMailBody(
                 ) {
                     Text("重新显示原邮件")
                 }
-                Text(mail.body.orEmpty(), fontSize = 16.sp)
+                SelectionContainer { Text(mail.body.orEmpty(), fontSize = 16.sp) }
             }
         } else
             key(mail.key, mail.html, mail.attachments.map { it.local }, revision) {
@@ -206,6 +207,7 @@ internal fun HtmlMailBody(
                     factory = {
                         val initialScroll = scroll
                         WebView(it).apply {
+                            isLongClickable = true
                             settings.javaScriptEnabled = false
                             settings.domStorageEnabled = false
                             settings.allowFileAccess = false

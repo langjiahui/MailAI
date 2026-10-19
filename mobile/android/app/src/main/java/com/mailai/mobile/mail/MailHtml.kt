@@ -58,12 +58,13 @@ object MailHtml {
         // URL resources in CSS remain subject to CSP; rewrite normal url() images to the same
         // image-only handler. Remove imports (no third-party CSS or JavaScript can be executed).
         fun css(value: String): String =
-            value.replace(Regex("(?is)@import[^;]*;?"), "").replace(
-                Regex("(?is)url\\(\\s*(['\"]?)(.*?)\\1\\s*\\)")
-            ) { match ->
-                val target = image(match.groupValues[2])
-                if (target.isEmpty()) "none" else "url('$target')"
-            }
+            value
+                .replace(Regex("(?is)@import[^;]*;?"), "")
+                .replace(Regex("(?i)(^|(?<=[;{]))\\s*(?:-webkit-)?user-select\\s*:[^;}]*"), "")
+                .replace(Regex("(?is)url\\(\\s*(['\"]?)(.*?)\\1\\s*\\)")) { match ->
+                    val target = image(match.groupValues[2])
+                    if (target.isEmpty()) "none" else "url('$target')"
+                }
         doc.select("style").forEach { it.html(css(it.data())) }
         doc.select("[style]").forEach { it.attr("style", css(it.attr("style"))) }
         doc.head().prependElement("meta").attr("charset", "utf-8")
@@ -81,7 +82,7 @@ object MailHtml {
         doc.head()
             .prependElement("style")
             .text(
-                "html{overflow-wrap:anywhere}body{margin:12px;font-family:system-ui,sans-serif}img{max-width:100%;height:auto}pre{white-space:pre-wrap}"
+                "html{overflow-wrap:anywhere}body{margin:12px;font-family:system-ui,sans-serif;-webkit-user-select:text;user-select:text}img{max-width:100%;height:auto}pre{white-space:pre-wrap}"
             )
         return Document(doc.outerHtml(), images)
     }

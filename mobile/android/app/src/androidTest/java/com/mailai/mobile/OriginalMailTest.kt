@@ -58,7 +58,7 @@ class OriginalMailTest {
                     "\"${MimeUtility.encodeText("联系人$it","UTF-8","B")}\" <person$it@example.test>"
                 }
         val html =
-            """<!doctype html><html><head><style>body{font-family:Arial;color:#253027;background:white}h2{font-size:22px;color:#334a3b}table{width:100%;border-collapse:collapse}td,th{border:1px solid #bdcbbb;padding:10px}th{background:#e7efe2;text-align:left}</style></head><body>
+            """<!doctype html><html><head><style>body{font-family:Arial;color:#253027;background:white;user-select:none;-webkit-user-select:none}h2{font-size:22px;color:#334a3b}table{width:100%;border-collapse:collapse}td,th{border:1px solid #bdcbbb;padding:10px}th{background:#e7efe2;text-align:left}</style></head><body>
             <h2>项目状态 · 原始排版</h2><p>请确认以下信息，<b style="color:#a54a22">周五前反馈</b>。</p><table><tr><th>事项</th><th>状态</th></tr><tr><td>接口联调</td><td>已完成</td></tr><tr><td>上线计划</td><td>待确认</td></tr></table><p>内嵌图片：</p><img alt="项目标识" src="cid:brand" width="240" height="80"><p><a href="https://example.test/details">查看详情</a></p><script>document.body.innerText='SCRIPT_EXECUTED'</script></body></html>"""
         MailStore(context, account.id).use {
             it.writableDatabase.delete("messages", null, null)
@@ -184,9 +184,113 @@ class OriginalMailTest {
             compose.onNodeWithText("联系人1").performClick()
             compose.onNodeWithText("联系人1").assertIsDisplayed()
             compose.onNodeWithText("完成").performClick()
-            compose.onNodeWithText("文本").performClick()
-            compose.onNodeWithText("项目状态 · 原始排版\n接口联调：已完成\n上线计划：待确认").assertExists()
+            compose.onNodeWithText("文本").assertDoesNotExist()
+            compose.onNodeWithText("原版").assertDoesNotExist()
+            compose.onNodeWithTag("html-body").assertIsDisplayed()
             assertNotNull(vm.selected?.html)
+        } finally {
+            cleanup(scenario)
+        }
+    }
+
+    @Test
+    fun originalBodyLongPressCopiesActualTextAndLinksKeepTheirNormalAction() {
+        val (scenario, vm) = launch()
+        try {
+            compose.onNodeWithText("多人收件人与原版邮件").performClick()
+            compose.onNodeWithText("文本").assertDoesNotExist()
+            compose.waitUntil(10000) {
+                compose.onAllNodesWithTag("html-body").fetchSemanticsNodes().isNotEmpty()
+            }
+            var target: androidx.test.uiautomator.UiObject2? = null
+            for (attempt in 0..6) {
+                target = device.wait(Until.findObject(By.textContains("周五前反馈")), 1000)
+                if ((target?.visibleBounds?.height() ?: 0) > 12) break
+                scenario.onActivity {
+                    web(it.window.decorView)
+                        ?.scrollBy(0, (120 * context.resources.displayMetrics.density).toInt())
+                }
+                device.waitForIdle(500)
+            }
+            requireNotNull(target).longClick()
+            capture("body-selection-menu")
+            val copy =
+                requireNotNull(
+                    device.wait(
+                        Until.findObject(By.text(java.util.regex.Pattern.compile("(?i)copy|复制"))),
+                        5000,
+                    )
+                )
+            copy.click()
+            var copied = ""
+            compose.waitUntil(5000) {
+                copied =
+                    context
+                        .getSystemService(android.content.ClipboardManager::class.java)
+                        .primaryClip
+                        ?.takeIf { it.itemCount > 0 }
+                        ?.getItemAt(0)
+                        ?.text
+                        ?.toString()
+                        ?.trim()
+                        .orEmpty()
+                copied.isNotBlank()
+            }
+            assertTrue(
+                "Long press must copy the selected mail body",
+                copied.isNotBlank() && "请确认以下信息，周五前反馈。".contains(copied),
+            )
+            device.findObject(By.res("com.android.systemui", "dismiss_button"))?.click()
+            scenario.onActivity { web(it.window.decorView)?.scrollTo(0, 100000) }
+            val link = requireNotNull(device.wait(Until.findObject(By.text("查看详情")), 5000))
+            link.click()
+            compose.waitUntil(5000) {
+                runCatching { compose.onNodeWithText("打开链接？").assertIsDisplayed() }.isSuccess
+            }
+            capture("body-link-action")
+            compose.onNodeWithText("打开链接？").assertIsDisplayed()
+            compose.onNodeWithText("https://example.test/details").assertExists()
+            compose.onNodeWithText("取消").performClick()
+            compose.onNodeWithTag("html-body").assertIsDisplayed()
+            assertEquals("reader", vm.page)
+        } finally {
+            cleanup(scenario)
+        }
+    }
+
+    @Test
+    fun plainBodyLongPressCopiesWithoutShowingAModeSwitch() {
+        val (scenario, vm) = launch()
+        val body = "MailAI plain text selection"
+        try {
+            val cached = vm.mails.single { it.key == "INBOX:1:71" }
+            scenario.onActivity { vm.read(cached.copy(html = null, body = body)) }
+            compose.onNodeWithText("文本").assertDoesNotExist()
+            compose.onNodeWithTag("html-body").assertDoesNotExist()
+            compose.onNodeWithText(body).performTouchInput { longClick(center) }
+            val copy =
+                requireNotNull(
+                    device.wait(
+                        Until.findObject(By.text(java.util.regex.Pattern.compile("(?i)copy|复制"))),
+                        5000,
+                    )
+                )
+            copy.click()
+            var copied = ""
+            compose.waitUntil(5000) {
+                copied =
+                    context
+                        .getSystemService(android.content.ClipboardManager::class.java)
+                        .primaryClip
+                        ?.takeIf { it.itemCount > 0 }
+                        ?.getItemAt(0)
+                        ?.text
+                        ?.toString()
+                        ?.trim()
+                        .orEmpty()
+                copied.isNotBlank() && body.contains(copied)
+            }
+            assertTrue(body.contains(copied))
         } finally {
             cleanup(scenario)
         }

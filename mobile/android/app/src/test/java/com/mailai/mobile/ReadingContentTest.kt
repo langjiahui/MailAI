@@ -72,6 +72,20 @@ class ReadingContentTest {
     }
 
     @Test
+    fun senderCannotDisableBodySelectionWhileOriginalAppearanceIsKept() {
+        val html =
+            "<style>p{color:#a54a22;user-select:none!important;font-size:18px}</style><p style='-webkit-user-select: none; background:#fff'>可以选中复制</p>"
+        val rendered = MailHtml.prepare(html).html
+        assertFalse(rendered.contains("user-select:none"))
+        assertFalse(rendered.contains("user-select: none"))
+        assertTrue(rendered.contains("user-select:text"))
+        assertTrue(rendered.contains("color:#a54a22"))
+        assertTrue(rendered.contains("font-size:18px"))
+        assertTrue(rendered.contains("background:#fff"))
+        assertTrue(rendered.contains("可以选中复制"))
+    }
+
+    @Test
     fun inlineHtmlFilenameDoesNotTurnBodyIntoAnAttachment() {
         val message =
             MimeMessage(Session.getInstance(Properties())).apply {
