@@ -1,8 +1,8 @@
 # MailAI Android
 
-当前 Android 正式版本：**1.0.0**（versionCode **2100101**），Android 10+。
+当前 Android 正式版本：**1.0.1**（versionCode **2100102**），Android 10+。
 
-[下载 APK](https://github.com/langjiahui/MailAI/releases/download/android-v1.0.0/MailAI-Android-1.0.0.apk) · [发布说明](https://github.com/langjiahui/MailAI/releases/tag/android-v1.0.0)
+[下载 APK](https://github.com/langjiahui/MailAI/releases/download/android-v1.0.1/MailAI-Android-1.0.1.apk) · [发布说明](https://github.com/langjiahui/MailAI/releases/tag/android-v1.0.1)
 
 Kotlin + Jetpack Compose 原生邮件客户端，软件名称为 **MailAI**。手机通过 IMAP/SMTP 独立收发，电脑关机也能工作，不依赖桌面服务或 Google Play 服务。
 
@@ -13,6 +13,10 @@ Kotlin + Jetpack Compose 原生邮件客户端，软件名称为 **MailAI**。�
 - 原邮件 HTML 版式、颜色、表格与内嵌图片，支持缩放与文本切换。旧文本缓存保留，联网时可补读原版。普通附件下载、打开与分享，发送附件保存私有副本。
 - 当前邮箱的往来通讯录支持搜索、新建与写信选择。手机联系人通过系统选取单个邮箱，不要求读取整个手机通讯录。写信地址默认折叠、可展开编辑/移除，去重后单封最多 50 位收件人。
 - 本地草稿和附件自动保存、离开确认、发送前确认、保存失败重试。SMTP 提交后确认丢失时保留结果待确认，禁止直接重发，网络恢复不自动重发。
+
+## 本次更新：邮件详情
+
+点“详情”从底部展开宽面板，主题与完整时间独立展示，发件人、收件人和抄送分组排列；姓名、邮箱分出层次。联系人操作默认收起，点某一位在原地展开复制/保存，复制后就地反馈。多人名单可滚动，长主题和长邮箱自然换行，完成、下滑或系统返回可关闭，回到原邮件阅读位置。
 
 ## 界面与反馈
 
@@ -26,7 +30,7 @@ Kotlin + Jetpack Compose 原生邮件客户端，软件名称为 **MailAI**。�
 
 正式客户端每日检查 GitHub 正式 Android 通道，可自动在不限流量网络下载；手动下载确认当前流量，支持进度、取消与重试。下载后核验 SHA-256、大小、包名、版本和相同签名，再交给系统安装器。
 
-**已安装 2.10.0 的用户可通过应用内更新或下载本页 APK 覆盖安装，不卸载。** 可见版本改为 1.0.0，内部安装序号由 2100100 升至 2100101，功能与数据不回退。beta 用户首次进入正式通道需手动覆盖安装。 旧 beta 客户端只认识 beta 清单，无法识别正式清单；后续正式版本可使用应用内更新。
+**已安装 1.0.0 或历史 2.10.0 的用户可通过应用内更新或下载本页 APK 覆盖安装，不卸载。** 安卓版使用独立的 1.0.x 版本，内部安装序号继续递增（本版 2100102），功能与数据不回退。beta 用户首次进入正式通道需手动覆盖安装。 旧 beta 客户端只认识 beta 清单，无法识别正式清单；后续正式版本可使用应用内更新。
 
 ## 数据与边界
 

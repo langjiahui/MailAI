@@ -1,9 +1,14 @@
 package com.mailai.mobile.ui
 
+import android.content.ClipData
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -15,6 +20,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -22,6 +35,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mailai.mobile.data.*
 import com.mailai.mobile.mail.*
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 internal fun peopleSummary(mail: MailItem, ownEmail: String): String {
     val people =
@@ -33,62 +51,227 @@ internal fun peopleSummary(mail: MailItem, ownEmail: String): String {
     return if (people.size > 1) "发给$first · 共 ${people.size} 人" else "发给$first"
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun MailPeopleDialog(vm: MailViewModel, mail: MailItem, close: () -> Unit) {
     val groups =
-        listOf(
-            "发件人" to MailAddresses.parse(mail.sender),
-            "收件人" to MailAddresses.parse(mail.recipients),
-            "抄送" to MailAddresses.parse(mail.cc),
-        )
-    AlertDialog(
+        remember(mail.sender, mail.recipients, mail.cc) {
+            listOf(
+                    "发件人" to MailAddresses.parse(mail.sender),
+                    "收件人" to MailAddresses.parse(mail.recipients),
+                    "抄送" to MailAddresses.parse(mail.cc),
+                )
+                .filter { it.second.isNotEmpty() }
+        }
+    val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val listState = rememberLazyListState()
+    var expandedKey by remember(mail.key) { mutableStateOf<String?>(null) }
+    val height = LocalConfiguration.current.screenHeightDp.dp * .74f
+    ModalBottomSheet(
         onDismissRequest = close,
-        title = { Text("邮件详情") },
-        text = {
-            LazyColumn(Modifier.fillMaxWidth().heightIn(max = 440.dp)) {
-                item {
-                    Text(mail.subject, fontSize = 15.sp)
-                    Spacer(Modifier.height(12.dp))
-                }
-                groups.forEach { (label, people) ->
-                    if (people.isNotEmpty()) {
-                        item {
+        sheetState = state,
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
+    ) {
+        Column(Modifier.fillMaxWidth().heightIn(max = height).testTag("mail-details-sheet")) {
+            Row(
+                Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "邮件详情",
+                    Modifier.weight(1f),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                TextButton(onClick = close) { Text("完成", fontSize = 14.sp) }
+            }
+            Box(Modifier.weight(1f, fill = false)) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxWidth().testTag("mail-details-list"),
+                    contentPadding = PaddingValues(bottom = 24.dp),
+                ) {
+                    item(key = "subject") {
+                        Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
                             Text(
-                                "$label · ${people.size} 人",
-                                Modifier.padding(top = 12.dp, bottom = 8.dp),
+                                "主题",
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
+                            SelectionContainer {
+                                Text(
+                                    mail.subject,
+                                    Modifier.padding(top = 6.dp),
+                                    fontSize = 16.sp,
+                                    lineHeight = 24.sp,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                            }
+                            if (mail.date > 0)
+                                Text(
+                                    SimpleDateFormat("yyyy年M月d日 HH:mm", Locale.getDefault())
+                                        .format(Date(mail.date)),
+                                    Modifier.padding(top = 8.dp),
+                                    fontSize = 12.sp,
+                                    lineHeight = 18.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                        }
+                        HorizontalDivider(
+                            Modifier.padding(horizontal = 20.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant,
+                        )
+                    }
+                    groups.forEach { (label, people) ->
+                        item(key = "group-$label") {
+                            Row(
+                                Modifier.fillMaxWidth()
+                                    .padding(
+                                        start = 20.dp,
+                                        end = 20.dp,
+                                        top = 20.dp,
+                                        bottom = 4.dp,
+                                    ),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    label,
+                                    Modifier.weight(1f),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(
+                                    "${people.size} 人",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                         items(people, key = { label + it.email.lowercase() }) { contact ->
-                            Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-                                SelectionContainer {
-                                    Column {
-                                        Text(contact.label, fontSize = 14.sp)
-                                        if (contact.name.isNotBlank())
-                                            Text(contact.email, fontSize = 12.sp)
-                                    }
-                                }
-                                if (
-                                    vm.contacts.none {
-                                        it.email.equals(contact.email, true) &&
-                                            it.name == contact.name
-                                    }
-                                )
-                                    TextButton(
-                                        onClick = { vm.saveContact(contact) },
-                                        enabled = !vm.busy,
+                            val key = label + contact.email.lowercase(Locale.ROOT)
+                            val expanded = expandedKey == key
+                            Column(Modifier.fillMaxWidth()) {
+                                Row(
+                                    Modifier.fillMaxWidth()
+                                        .clickable { expandedKey = if (expanded) null else key }
+                                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = MaterialTheme.colorScheme.surfaceVariant,
                                     ) {
-                                        Text("存入通讯录", fontSize = 12.sp)
+                                        Box(
+                                            Modifier.size(34.dp),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Text(
+                                                contact.label.take(1),
+                                                fontSize = 14.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
                                     }
+                                    Column(Modifier.weight(1f)) {
+                                        Text(
+                                            contact.label,
+                                            fontSize = 15.sp,
+                                            lineHeight = 21.sp,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                        )
+                                        if (contact.name.isNotBlank())
+                                            Text(
+                                                contact.email,
+                                                Modifier.padding(top = 3.dp),
+                                                fontSize = 12.sp,
+                                                lineHeight = 18.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                    }
+                                    Text(
+                                        if (expanded) "⌄" else "›",
+                                        fontSize = 19.sp,
+                                        color = MaterialTheme.colorScheme.outline,
+                                    )
+                                }
+                                AnimatedVisibility(
+                                    visible = expanded,
+                                    enter = expandVertically(tween(180)) + fadeIn(tween(120)),
+                                    exit = shrinkVertically(tween(150)) + fadeOut(tween(100)),
+                                ) {
+                                    MailPersonActions(vm, contact)
+                                }
                             }
                         }
                     }
                 }
             }
-        },
-        confirmButton = { TextButton(onClick = close) { Text("完成") } },
-    )
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MailPersonActions(vm: MailViewModel, contact: MailContact) {
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
+    var copied by remember(contact.email) { mutableStateOf(false) }
+    var attempted by remember(contact.email) { mutableStateOf(false) }
+    val saved = vm.contacts.any { it.email.equals(contact.email, true) && it.name == contact.name }
+    LaunchedEffect(copied) {
+        if (copied) {
+            delay(2200)
+            copied = false
+        }
+    }
+    Column(Modifier.fillMaxWidth().padding(start = 66.dp, end = 20.dp, bottom = 12.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TextButton(
+                onClick = {
+                    scope.launch {
+                        clipboard.setClipEntry(
+                            ClipEntry(ClipData.newPlainText("邮箱", contact.email))
+                        )
+                        copied = true
+                    }
+                }
+            ) {
+                Text(
+                    if (copied) "已复制邮箱" else "复制邮箱",
+                    Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                    fontSize = 12.sp,
+                )
+            }
+            if (!saved && !contact.email.equals(vm.account?.email, true))
+                TextButton(
+                    onClick = {
+                        attempted = true
+                        vm.saveContact(contact)
+                    },
+                    enabled = !vm.busy,
+                ) {
+                    Text(if (vm.busy) "保存中…" else "存入通讯录", fontSize = 12.sp)
+                }
+        }
+        if (saved)
+            Text(
+                "已在通讯录",
+                Modifier.padding(start = 12.dp),
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        if (attempted && vm.error)
+            Text(
+                vm.status,
+                Modifier.padding(top = 8.dp),
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.error,
+            )
+    }
 }
 
 @Composable

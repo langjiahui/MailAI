@@ -160,15 +160,66 @@ class OriginalMailTest {
             compose.onNodeWithText("说明.pdf").assertExists()
             compose.onNodeWithText("完成").performClick()
             compose.onNodeWithText("详情").performClick()
-            compose.onNodeWithText("收件人 · 36 人").performScrollTo().assertExists()
-            compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("联系人1"))
+            compose.onNodeWithTag("mail-details-sheet").assertIsDisplayed()
+            compose.onNodeWithTag("mail-details-list").performScrollToNode(hasText("收件人"))
+            compose.onNodeWithTag("mail-details-list").performScrollToNode(hasText("联系人1"))
             compose.onNodeWithText("联系人1").assertExists()
             compose.onNodeWithText("person1@example.test").assertExists()
             capture("people-decoded-details")
+            compose.onNodeWithText("存入通讯录").assertDoesNotExist()
+            compose.onNodeWithText("联系人1").performClick()
+            capture("person-actions")
+            compose.onNodeWithText("复制邮箱").performScrollTo().performClick()
+            compose.onNodeWithText("已复制邮箱").assertExists()
+            compose.onNodeWithText("已在通讯录").assertExists()
+            assertEquals(
+                "person1@example.test",
+                context
+                    .getSystemService(android.content.ClipboardManager::class.java)
+                    .primaryClip!!
+                    .getItemAt(0)
+                    .text
+                    .toString(),
+            )
+            compose.onNodeWithText("联系人1").performClick()
+            compose.onNodeWithText("联系人1").assertIsDisplayed()
             compose.onNodeWithText("完成").performClick()
             compose.onNodeWithText("文本").performClick()
             compose.onNodeWithText("项目状态 · 原始排版\n接口联调：已完成\n上线计划：待确认").assertExists()
             assertNotNull(vm.selected?.html)
+        } finally {
+            cleanup(scenario)
+        }
+    }
+
+    @Test
+    fun detailsSheetKeepsLongSubjectCcAndLastRecipientReachableAndDismissesBackToMail() {
+        val (scenario, vm) = launch()
+        val subject = "关于跨团队项目推进、接口联调与上线准备事项的完整说明，请保留所有工作信息并在会议前确认安排"
+        val cc = "抄送同事 <very.long.department.address.for.copy@example.test>"
+        try {
+            val cached = vm.mails.single { it.key == "INBOX:1:71" }
+            scenario.onActivity { vm.read(cached.copy(subject = subject, cc = cc)) }
+            compose.onNodeWithText("详情").performClick()
+            compose.onNodeWithTag("mail-details-sheet").assertIsDisplayed()
+            compose
+                .onNode(hasText(subject) and hasAnyAncestor(hasTestTag("mail-details-sheet")))
+                .assertExists()
+            compose.onNodeWithTag("mail-details-list").performScrollToNode(hasText("联系人35"))
+            compose.onNodeWithText("person35@example.test").assertIsDisplayed()
+            compose.onNodeWithTag("mail-details-list").performScrollToNode(hasText("抄送同事"))
+            compose
+                .onNodeWithText("very.long.department.address.for.copy@example.test")
+                .assertIsDisplayed()
+            capture("details-long-address-cc")
+            compose.onNodeWithTag("mail-details-list").performScrollToIndex(0)
+            capture("details-long-subject")
+            device.pressBack()
+            compose.waitUntil(5000) {
+                compose.onAllNodesWithTag("mail-details-sheet").fetchSemanticsNodes().isEmpty()
+            }
+            compose.onNodeWithText("回复").assertIsDisplayed()
+            assertEquals("reader", vm.page)
         } finally {
             cleanup(scenario)
         }
