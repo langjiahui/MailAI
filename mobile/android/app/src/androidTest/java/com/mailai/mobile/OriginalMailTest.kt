@@ -42,6 +42,8 @@ class OriginalMailTest {
         )
 
     private fun launch(): Pair<ActivityScenario<MainActivity>, MailViewModel> {
+        context.getSystemService(android.content.ClipboardManager::class.java).clearPrimaryClip()
+        assertTrue(device.wait(Until.gone(By.res("com.android.systemui", "clipboard_ui")), 10000))
         assertEquals("MailAI", context.applicationInfo.loadLabel(context.packageManager).toString())
         AccountStore(context).put(account, "synthetic-test-secret")
         val dir = File(context.filesDir, "accounts/${account.id}").apply { mkdirs() }
@@ -146,6 +148,18 @@ class OriginalMailTest {
                     runCatching { compose.onNodeWithTag("html-body").assertIsDisplayed() }.isSuccess
             }
             compose.onNodeWithTag("html-body").assertIsDisplayed()
+            compose.waitUntil(10000) {
+                var ready = false
+                scenario.onActivity { activity ->
+                    ready =
+                        web(activity.window.decorView)?.let {
+                            it.contentHeight > 0 && it.progress == 100
+                        } == true
+                }
+                ready
+            }
+            scenario.onActivity { web(it.window.decorView)?.scrollTo(0, 0) }
+            scenario.onActivity { vm.dismissStatus() }
             capture("rendering-check")
             assertNotNull(device.wait(Until.findObject(By.textContains("项目状态")), 8000))
             assertFalse(device.hasObject(By.textContains("SCRIPT_EXECUTED")))
@@ -194,7 +208,7 @@ class OriginalMailTest {
     }
 
     @Test
-    fun originalBodyLongPressCopiesActualTextAndLinksKeepTheirNormalAction() {
+    fun originalBodyLongPressCopiesActualText() {
         val (scenario, vm) = launch()
         try {
             compose.onNodeWithText("多人收件人与原版邮件").performClick()
@@ -243,17 +257,41 @@ class OriginalMailTest {
                 "Long press must copy the selected mail body",
                 copied.isNotBlank() && "请确认以下信息，周五前反馈。".contains(copied),
             )
-            device
-                .wait(Until.findObject(By.res("com.android.systemui", "dismiss_button")), 2500)
-                ?.click()
+            assertEquals("reader", vm.page)
+        } finally {
+            cleanup(scenario)
+        }
+    }
+
+    @Test
+    fun mailLinkOpensNormallyAndCancellingKeepsTheOriginalMessage() {
+        val (scenario, vm) = launch()
+        try {
+            context
+                .getSystemService(android.content.ClipboardManager::class.java)
+                .clearPrimaryClip()
+            assertTrue(
+                device.wait(Until.gone(By.res("com.android.systemui", "clipboard_ui")), 10000)
+            )
+            compose.onNodeWithText("多人收件人与原版邮件").performClick()
+            compose.waitUntil(10000) {
+                var ready = false
+                scenario.onActivity { activity ->
+                    ready =
+                        web(activity.window.decorView)?.let {
+                            it.contentHeight > 0 && it.progress == 100
+                        } == true
+                }
+                ready
+            }
             scenario.onActivity { web(it.window.decorView)?.scrollTo(0, 100000) }
+            device.waitForIdle(700)
             val link = requireNotNull(device.wait(Until.findObject(By.text("查看详情")), 5000))
             link.click()
             compose.waitUntil(5000) {
                 runCatching { compose.onNodeWithText("打开链接？").assertIsDisplayed() }.isSuccess
             }
             capture("body-link-action")
-            compose.onNodeWithText("打开链接？").assertIsDisplayed()
             compose.onNodeWithText("https://example.test/details").assertExists()
             compose.onNodeWithText("取消").performClick()
             compose.onNodeWithTag("html-body").assertIsDisplayed()
@@ -458,6 +496,18 @@ class OriginalMailTest {
                     runCatching { compose.onNodeWithTag("html-body").assertIsDisplayed() }.isSuccess
             }
             compose.onNodeWithTag("html-body").assertIsDisplayed()
+            compose.waitUntil(10000) {
+                var ready = false
+                scenario.onActivity { activity ->
+                    ready =
+                        web(activity.window.decorView)?.let {
+                            it.contentHeight > 0 && it.progress == 100
+                        } == true
+                }
+                ready
+            }
+            scenario.onActivity { web(it.window.decorView)?.scrollTo(0, 0) }
+            scenario.onActivity { vm.dismissStatus() }
             capture("rendering-check")
             compose.waitUntil(8000) {
                 var rendered = false
