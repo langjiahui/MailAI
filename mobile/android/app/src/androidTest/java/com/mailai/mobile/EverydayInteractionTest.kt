@@ -105,7 +105,7 @@ class EverydayInteractionTest {
             scenario.recreate()
             confirmSave(vm, "reader")
             compose.onNodeWithText(mail.subject).assertIsDisplayed()
-            compose.onNodeWithText(mail.body!!).assertIsDisplayed()
+            compose.onNodeWithText(mail.body!!).performScrollTo().assertIsDisplayed()
             MailStore(context, account.id).use {
                 assertTrue(it.drafts().any { d -> d.body == "时间可以，周五见。" })
             }
@@ -122,13 +122,17 @@ class EverydayInteractionTest {
             val other = Draft(id = "everyday-other", subject = "另一封草稿", body = "必须保留")
             MailStore(context, account.id).use { it.save(other) }
             scenario.onActivity { vm.go("drafts") }
+            compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(draft.subject))
             compose.onNodeWithText(draft.subject).performClick()
             compose.onNodeWithTag("compose-body").performScrollTo().performTextInput("明天补齐。")
             compose.waitUntil(10000) { vm.saveStatus == "草稿已保存在此设备" }
             confirmSave(vm, "drafts")
-            compose.onNodeWithText("草稿与发送记录").assertExists()
+            compose.onNodeWithText("‹  邮箱").assertIsDisplayed()
+            assertEquals("drafts", vm.page)
+            compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(draft.subject))
             compose.onNodeWithText(draft.subject).assertExists()
             capture("draft-return-records")
+            compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(draft.subject))
             compose.onNodeWithText(draft.subject).performClick()
             compose.onNodeWithText("‹  返回").performClick()
             compose.onNodeWithText("放弃草稿").performClick()
@@ -148,13 +152,16 @@ class EverydayInteractionTest {
         try {
             compose.onNodeWithTag("mail-search").performClick().performTextInput("没有这个主题")
             compose.onNodeWithTag("mail-search").performImeAction()
-            compose.onNodeWithText("没有匹配的邮件").assertExists()
+            compose.onNodeWithTag("inbox-list").performScrollToNode(hasText("没有匹配的邮件"))
+            compose.onNodeWithText("没有匹配的邮件", useUnmergedTree = true).assertIsDisplayed()
             capture("search-empty")
             compose.onNodeWithText("清除").performClick()
             compose.onNodeWithText(mail.subject).assertExists()
             compose.onNodeWithText("未读").performClick()
-            compose.onNodeWithText("暂无未读邮件").assertExists()
-            compose.onNodeWithText("查看全部邮件").performScrollTo().performClick()
+            compose.onNodeWithTag("inbox-list").performScrollToNode(hasText("暂无未读邮件"))
+            compose.onNodeWithText("暂无未读邮件", useUnmergedTree = true).assertIsDisplayed()
+            compose.onNodeWithTag("inbox-list").performScrollToNode(hasText("查看全部邮件"))
+            compose.onNodeWithText("查看全部邮件").performClick()
             compose.onNodeWithText(mail.subject).assertExists()
             assertFalse(vm.unreadOnly)
             assertEquals("", vm.query)
