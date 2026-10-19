@@ -197,6 +197,14 @@ object MailNotifications {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
         val preview = AppPreferences(context).previews
+        val existing =
+            context
+                .getSystemService(NotificationManager::class.java)
+                .activeNotifications
+                .firstOrNull { it.tag == "mail.${account.id}" && it.id == 1 }
+        val newBatch =
+            existing != null &&
+                existing.notification.extras.getString("mailai.messageKey") != latest.key
         val notification =
             NotificationCompat.Builder(context, CHANNEL)
                 .setSmallIcon(R.drawable.ic_notification)
@@ -205,8 +213,9 @@ object MailNotifications {
                 .setSubText(if (mails.size > 1) "${mails.size} 封新邮件" else "")
                 .setContentIntent(pending)
                 .setAutoCancel(true)
-                // Retrying after process death updates the existing card without another alert.
-                .setOnlyAlertOnce(true)
+                // Retry the same batch silently, but a genuinely newer mail may alert again.
+                .setOnlyAlertOnce(!newBatch)
+                .addExtras(android.os.Bundle().apply { putString("mailai.messageKey", latest.key) })
                 .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
                 .setCategory(NotificationCompat.CATEGORY_EMAIL)
                 .setPublicVersion(

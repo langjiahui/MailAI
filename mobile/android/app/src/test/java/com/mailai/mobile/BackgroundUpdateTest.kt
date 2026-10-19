@@ -166,6 +166,11 @@ class BackgroundUpdateTest {
         val second = MailNotifications.mailIntent(context, account, mail(3).key)
         assertNotEquals(first.data, second.data)
         assertEquals(mail(2).key, first.getStringExtra("messageKey"))
+        assertTrue(MailNotifications.show(context, account, listOf(mail(3))))
+        assertEquals(1, manager.activeNotifications.size)
+        val newer = manager.activeNotifications.single().notification
+        assertEquals(0, newer.flags and android.app.Notification.FLAG_ONLY_ALERT_ONCE)
+        assertEquals(mail(3).key, newer.extras.getString("mailai.messageKey"))
     }
 
     @Test
