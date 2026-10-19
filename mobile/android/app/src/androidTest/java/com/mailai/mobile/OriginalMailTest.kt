@@ -236,7 +236,16 @@ class OriginalMailTest {
         val (scenario, _) = launch()
         try {
             compose.onNodeWithText("多人收件人与原版邮件").performClick()
-            compose.waitUntil(10000) { device.hasObject(By.textContains("项目状态")) }
+            compose.waitUntil(10000) {
+                var ready = false
+                scenario.onActivity { activity ->
+                    ready =
+                        web(activity.window.decorView)?.let {
+                            it.contentHeight > 0 && it.progress == 100
+                        } == true
+                }
+                ready
+            }
             scenario.onActivity {
                 requireNotNull(web(it.window.decorView)).loadUrl(MailHtml.ORIGIN + "unavailable")
             }
@@ -245,7 +254,16 @@ class OriginalMailTest {
             }
             compose.onNodeWithText("项目状态 · 原始排版\n接口联调：已完成\n上线计划：待确认").assertExists()
             compose.onNodeWithText("重新显示原邮件").performScrollTo().performClick()
-            compose.waitUntil(10000) { device.hasObject(By.textContains("项目状态")) }
+            compose.waitUntil(10000) {
+                var ready = false
+                scenario.onActivity { activity ->
+                    ready =
+                        web(activity.window.decorView)?.let {
+                            it.contentHeight > 0 && it.progress == 100
+                        } == true
+                }
+                ready
+            }
             compose.onNodeWithTag("html-body").assertIsDisplayed()
         } finally {
             cleanup(scenario)
