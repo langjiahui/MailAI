@@ -178,7 +178,7 @@ class FeedbackRefinementTest {
         val (scenario, vm) = launch()
         try {
             compose.onNodeWithTag("mail-search").performTextInput("更早邮件关键词")
-            compose.onNodeWithText("搜索整个收件箱").performClick()
+            compose.onNodeWithText("搜索整个收件箱").performScrollTo().assertIsDisplayed().performClick()
             compose.waitUntil(10000) {
                 !vm.busy && vm.matchingServerSearch() && vm.serverSearchFailure.isNotBlank()
             }
