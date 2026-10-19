@@ -863,7 +863,7 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
         run("正在保存联系人…", false) { _, _ ->
             val address = contact.address()
             require(MimeCodec.addresses(address).size == 1) { "请填写一个有效邮箱地址" }
-            withContext(Dispatchers.IO) { repo.store(a).rememberContacts(address) }
+            withContext(Dispatchers.IO) { repo.store(a).saveContact(contact) }
             loadCache()
             status = "联系人已保存"
         }

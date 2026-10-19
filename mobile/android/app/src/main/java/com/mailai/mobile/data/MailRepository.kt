@@ -24,7 +24,12 @@ class MailRepository(
     private val syncLocks = ConcurrentHashMap<String, Mutex>()
 
     fun store(a: Account): MailStore =
-        stores.computeIfAbsent(a.id) { MailStore(context, a.id).apply { recoverInterrupted() } }
+        stores.computeIfAbsent(a.id) {
+            MailStore(context, a.id).apply {
+                recoverInterrupted()
+                initializeContacts()
+            }
+        }
 
     fun accountDir(a: Account) =
         File(context.filesDir, "accounts/${UUID.fromString(a.id)}").apply { mkdirs() }

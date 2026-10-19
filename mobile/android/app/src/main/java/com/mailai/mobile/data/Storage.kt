@@ -269,7 +269,7 @@ class AccountStore(context: Context, private val cipher: SecretCipher = DeviceCi
 
 /** One database per account. No destructive migration or fallback-to-empty on errors. */
 class MailStore(context: Context, id: String) :
-    SQLiteOpenHelper(context, "mail-${java.util.UUID.fromString(id)}.db", null, 3) {
+    SQLiteOpenHelper(context, "mail-${java.util.UUID.fromString(id)}.db", null, 4) {
     override fun onCreate(db: SQLiteDatabase) {
         createNotificationTables(db)
         createContacts(db)
@@ -283,68 +283,27 @@ class MailStore(context: Context, id: String) :
 
     override fun onUpgrade(db: SQLiteDatabase, old: Int, new: Int) {
         if (old < 2) createNotificationTables(db)
-        if (old < 3) createContacts(db)
-        check(new == 3) { "需要受支持的数据库迁移" }
+        if (old < 3) createContacts(db) else if (old < 4) ContactLearning.migrateV3(db)
+        check(new == 4) { "需要受支持的数据库迁移" }
     }
 
-    private fun createContacts(db: SQLiteDatabase) {
-        db.execSQL(
-            "CREATE TABLE IF NOT EXISTS contacts (email TEXT PRIMARY KEY COLLATE NOCASE, name TEXT NOT NULL, updated INTEGER NOT NULL)"
-        )
-    }
+    private fun createContacts(db: SQLiteDatabase) = ContactLearning.create(db)
 
-    @Synchronized
-    fun rememberContacts(raw: String) {
-        com.mailai.mobile.mail.MailAddresses.parse(raw).forEach { contact ->
-            val values =
-                ContentValues().apply {
-                    put("email", contact.email)
-                    put("name", contact.name)
-                    put("updated", System.currentTimeMillis())
-                }
-            val inserted =
-                writableDatabase.insertWithOnConflict(
-                    "contacts",
-                    null,
-                    values,
-                    SQLiteDatabase.CONFLICT_IGNORE,
-                )
-            if (inserted == -1L) {
-                values.remove("email")
-                if (contact.name.isBlank()) values.remove("name")
-                writableDatabase.update(
-                    "contacts",
-                    values,
-                    "email=? COLLATE NOCASE",
-                    arrayOf(contact.email),
-                )
-            }
-        }
-    }
+    /** Run once during account/mail initialization, before refreshing any cached mail window. */
+    @Synchronized fun initializeContacts() = ContactLearning.initialize(writableDatabase)
 
     @Synchronized
-    fun contacts(): List<com.mailai.mobile.mail.MailContact> {
-        // Backfill older caches lazily, without dropping or rewriting their mail payloads.
-        if (android.database.DatabaseUtils.queryNumEntries(readableDatabase, "contacts") == 0L) {
-            val db = writableDatabase
-            val ownsTransaction = !db.inTransaction()
-            if (ownsTransaction) db.beginTransaction()
-            try {
-                readableDatabase
-                    .rawQuery("SELECT payload FROM messages ORDER BY date DESC LIMIT 500", null)
-                    .use { c ->
-                        while (c.moveToNext()) mailFrom(JSONObject(c.getString(0))).let {
-                            rememberContacts(it.sender + "," + it.recipients + "," + it.cc)
-                        }
-                    }
-                drafts().forEach { rememberContacts(it.to) }
-                if (ownsTransaction) db.setTransactionSuccessful()
-            } finally {
-                if (ownsTransaction) db.endTransaction()
-            }
-        }
-        return readableDatabase
-            .rawQuery("SELECT email,name FROM contacts ORDER BY updated DESC LIMIT 1000", null)
+    fun rememberContacts(raw: String, observedAt: Long = System.currentTimeMillis()) =
+        ContactLearning.remember(writableDatabase, listOf(raw), observedAt)
+
+    @Synchronized
+    fun saveContact(contact: com.mailai.mobile.mail.MailContact) =
+        ContactLearning.saveManual(writableDatabase, contact)
+
+    @Synchronized
+    fun contacts(): List<com.mailai.mobile.mail.MailContact> =
+        readableDatabase
+            .rawQuery("SELECT email,name FROM contacts ORDER BY updated DESC,email", null)
             .use { c ->
                 buildList {
                     while (c.moveToNext()) add(
@@ -352,7 +311,6 @@ class MailStore(context: Context, id: String) :
                     )
                 }
             }
-    }
 
     private fun createNotificationTables(db: SQLiteDatabase) {
         db.execSQL(
@@ -456,7 +414,7 @@ class MailStore(context: Context, id: String) :
 
     @Synchronized
     fun put(m: MailItem) {
-        rememberContacts(m.sender + "," + m.recipients + "," + m.cc)
+        ContactLearning.remember(writableDatabase, listOf(m.sender, m.recipients, m.cc), m.date)
         val existingStar =
             readableDatabase
                 .rawQuery("SELECT payload FROM messages WHERE key=?", arrayOf(m.key))
@@ -546,7 +504,7 @@ class MailStore(context: Context, id: String) :
                 "邮件已进入发送流程，不能覆盖"
             }
             writeDraft(d.copy(updated = System.currentTimeMillis()))
-            rememberContacts(listOf(d.to, d.cc, d.bcc).filter { it.isNotBlank() }.joinToString(","))
+            ContactLearning.remember(db, listOf(d.to, d.cc, d.bcc), d.updated)
             db.setTransactionSuccessful()
         } finally {
             db.endTransaction()
@@ -565,6 +523,7 @@ class MailStore(context: Context, id: String) :
                 "这封邮件已在处理中，请勿重复发送"
             }
             writeDraft(d.copy(state = SendState.CONNECTING, updated = System.currentTimeMillis()))
+            ContactLearning.remember(db, listOf(d.to, d.cc, d.bcc), d.updated)
             db.setTransactionSuccessful()
         } finally {
             db.endTransaction()

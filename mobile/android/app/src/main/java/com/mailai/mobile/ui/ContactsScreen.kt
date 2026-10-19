@@ -38,6 +38,7 @@ import com.mailai.mobile.mail.*
 @Composable
 internal fun ContactsScreen(vm: MailViewModel) {
     var adding by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<MailContact?>(null) }
     var query by rememberSaveable { mutableStateOf("") }
     Column(Modifier.fillMaxSize()) {
         PageHeader("通讯录", { vm.go("boxes") }) {
@@ -71,7 +72,7 @@ internal fun ContactsScreen(vm: MailViewModel) {
                 }
             items(filtered, key = { it.email.lowercase() }) { contact ->
                 MailCard(Modifier.padding(horizontal = 16.dp, vertical = 2.dp)) {
-                    ContactRow(contact) {
+                    ContactRow(contact, edit = { editing = contact }) {
                         vm.compose()
                         vm.addRecipients(listOf(contact))
                     }
@@ -79,11 +80,16 @@ internal fun ContactsScreen(vm: MailViewModel) {
             }
         }
     }
-    if (adding) AddContactDialog(vm) { adding = false }
+    if (adding || editing != null)
+        AddContactDialog(vm, editing) {
+            adding = false
+            editing = null
+        }
 }
 
 @Composable
-private fun ContactRow(contact: MailContact, action: () -> Unit) {
+private fun ContactRow(contact: MailContact, edit: () -> Unit, action: () -> Unit) {
+    var menu by remember { mutableStateOf(false) }
     Row(
         Modifier.fillMaxWidth()
             .clickable(onClick = action)
@@ -101,18 +107,36 @@ private fun ContactRow(contact: MailContact, action: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
         }
-        Text("写信", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
+        Box {
+            IconButton(onClick = { menu = true }) { MailIcon(MailGlyph.More, "联系人操作") }
+            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                DropdownMenuItem(
+                    text = { Text("编辑联系人") },
+                    onClick = {
+                        menu = false
+                        edit()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text("写信") },
+                    onClick = {
+                        menu = false
+                        action()
+                    },
+                )
+            }
+        }
     }
 }
 
 @Composable
-internal fun AddContactDialog(vm: MailViewModel, close: () -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
+internal fun AddContactDialog(vm: MailViewModel, contact: MailContact? = null, close: () -> Unit) {
+    var name by remember { mutableStateOf(contact?.name.orEmpty()) }
+    var email by remember { mutableStateOf(contact?.email.orEmpty()) }
     var error by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = close,
-        title = { Text("新建联系人") },
+        title = { Text(if (contact == null) "新建联系人" else "编辑联系人") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
@@ -129,6 +153,7 @@ internal fun AddContactDialog(vm: MailViewModel, close: () -> Unit) {
                         error = ""
                     },
                     label = { Text("邮箱地址") },
+                    enabled = contact == null,
                     singleLine = true,
                     shape = RoundedCornerShape(14.dp),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),

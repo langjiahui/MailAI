@@ -1,14 +1,14 @@
 # MailAI Android
 
-当前 Android 正式版本：**1.2.0**（versionCode **2100104**），Android 10+。
+当前 Android 正式版本：**1.3.0**（versionCode **2100108**），Android 10+。
 
-[下载 APK](https://github.com/langjiahui/MailAI/releases/download/android-v1.2.0/MailAI-Android-1.2.0.apk) · [发布说明](https://github.com/langjiahui/MailAI/releases/tag/android-v1.2.0)
+[下载 APK](https://github.com/langjiahui/MailAI/releases/download/android-v1.3.0/MailAI-Android-1.3.0.apk) · [发布说明](https://github.com/langjiahui/MailAI/releases/tag/android-v1.3.0)
 
 Kotlin + Jetpack Compose 原生邮件客户端，软件名称为 **MailAI**。手机通过 IMAP/SMTP 独立收发，电脑关机也能工作，不依赖桌面服务或 Google Play 服务。
 
-## 开发目标：1.3.0 小邮
+## 1.3.0 小邮与后台收信
 
-正式下载仍为上方 1.2.0。当前源码开发版本 **1.3.0**（versionCode **2100107**），新增按需小邮：阅读页提炼要点、预览并起草回复，写信页润色正文或选中文字。使用自己的 HTTPS Chat Completions 兼容模型服务，手机独立连接；配置与 API Key 加密保存，不内置服务凭据。
+本次新增按需小邮：阅读页提炼要点、预览并起草回复，写信页润色正文或选中文字。使用自己的 HTTPS Chat Completions 兼容模型服务，手机独立连接；配置与 API Key 加密保存，不内置服务凭据。
 
 模型配置统一在“账号与设置 → 小邮与模型服务”，面板不常驻设置入口。小邮面板沿用原角色，静态待机，只有处理中／完成时的有限表情过渡。无小邮后台心跳、定时自动分析或常驻服务；锁屏或退后台停止生成，旋转不重复请求，已有文字保留为未完成结果。缓存相同结果，按账号与正文版本隔离。采用后才保存草稿，润色保护新输入并可在本次编辑中撤回；邮件发送仍需确认。
 
@@ -17,6 +17,8 @@ Kotlin + Jetpack Compose 原生邮件客户端，软件名称为 **MailAI**。�
 此阶段尚不包含自然语言整箱检索、语音、提醒、养成商店或跨端同步。模型真实服务和实体机能耗需现场验收；本地协议／设备验证与截图另行记录。详见 [小邮融合与能耗方案](../../docs/Android小邮融合与能耗方案-2026-10-19.md)。
 
 ## 邮件与通讯录
+
+1.3.0 在账号初始化时从本地各文件夹缓存和草稿补齐往来联系人，之后增量学习，无需整箱下载或反复扫描。姓名解码、有效中文姓名与新旧优先级一致，支持编辑备注且自动学习不覆盖人工备注；数据库 v3 自动迁移至 v4，保留原邮件、草稿、附件及通知游标。
 
 - 多邮箱、公网与内网 IMAP/SMTP、TLS / 强制 STARTTLS；QQ/Foxmail、163、126 按完整域名匹配，其他域名生成待确认的可修改建议。验证成功后才保存凭据；不自动提交输入的密码。
 - 收件箱、真实文件夹、未读筛选、本地搜索、分批加载、已读同步、中文发送和回复。多人收件人默认折叠；详情分别展示解码后的发件人、收件人、抄送姓名与邮箱。
@@ -66,7 +68,7 @@ Kotlin + Jetpack Compose 原生邮件客户端，软件名称为 **MailAI**。�
 
 正式客户端每日检查 GitHub 正式 Android 通道，可自动在不限流量网络下载；手动下载确认当前流量，支持进度、取消与重试。下载后核验 SHA-256、大小、包名、版本和相同签名，再交给系统安装器。
 
-**已安装 1.0.0、1.0.1、1.1.0 或历史 2.10.0 的用户可通过应用内更新或下载本页 APK 覆盖安装，不卸载。** 安卓版使用独立的版本线，内部安装序号继续递增（本版 2100104），功能与数据不回退。beta 用户首次进入正式通道需手动覆盖安装。 旧 beta 客户端只认识 beta 清单，无法识别正式清单；后续正式版本可使用应用内更新。
+**已安装 1.0.0、1.0.1、1.1.0、1.2.0 或历史 2.10.0 的用户可通过应用内更新或下载本页 APK 覆盖安装，不卸载。** 安卓版使用独立的版本线，内部安装序号继续递增（本版 2100108），功能与数据不回退。beta 用户首次进入正式通道需手动覆盖安装。 旧 beta 客户端只认识 beta 清单，无法识别正式清单；后续正式版本可使用应用内更新。
 
 ## 数据与边界
 
@@ -79,7 +81,7 @@ Kotlin + Jetpack Compose 原生邮件客户端，软件名称为 **MailAI**。�
 
 ## 版本与构建
 
-Android 与 Web/桌面完全独立，Android 从 **1.0.0** 起步，只按安卓版自己的变更升级。本目录 `VERSION` 记录可见产品版本，`VERSION_CODE` 记录持续递增的安装序号；历史共用编号 2.10.0 与 beta 发布保留，不重写。正式使用 `android-v<版本>`、不标 Pre-release，保留桌面 Latest；根 VERSION 继续表示桌面版本。分级与发布规则见 [CONTRIBUTING](../../CONTRIBUTING.md#版本号与发布规则)，本次判断与验收见 [RELEASE.md](RELEASE.md)。数据 v1/v2→v3 自动兼容迁移，不删除缓存或草稿。
+Android 与 Web/桌面完全独立，Android 从 **1.0.0** 起步，只按安卓版自己的变更升级。本目录 `VERSION` 记录可见产品版本，`VERSION_CODE` 记录持续递增的安装序号；历史共用编号 2.10.0 与 beta 发布保留，不重写。正式使用 `android-v<版本>`、不标 Pre-release，保留桌面 Latest；根 VERSION 继续表示桌面版本。分级与发布规则见 [CONTRIBUTING](../../CONTRIBUTING.md#版本号与发布规则)，本次判断与验收见 [RELEASE.md](RELEASE.md)。数据 v1/v2/v3→v4 自动兼容迁移，不删除缓存或草稿。
 
 JDK 17、Gradle 8.11.1、AGP 8.9.2、Kotlin 2.1.20、Compose BOM 2025.04.01、compile/target SDK 35。
 

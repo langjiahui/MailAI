@@ -102,12 +102,14 @@ class ContactStorageTest {
             )
             .use {
                 it.execSQL("DROP TABLE contacts")
+                it.execSQL("DROP TABLE contact_learning")
                 it.version = 2
             }
         MailStore(context, id).use {
-            assertEquals(3, it.readableDatabase.version)
+            assertEquals(4, it.readableDatabase.version)
             assertEquals(draft.body, it.draft(draft.id)?.body)
             assertEquals(message, it.messages("INBOX").single())
+            it.initializeContacts()
             assertTrue(it.contacts().any { c -> c.email == "lin@example.test" })
         }
     }

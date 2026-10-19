@@ -100,7 +100,7 @@ class BackgroundUpdateTest {
             assertEquals(draft.body, it.draft(draft.id)?.body)
             it.recordArrivals(1, listOf(mail(1)))
             assertTrue(it.pendingArrivals().isEmpty())
-            assertEquals(3, it.readableDatabase.version)
+            assertEquals(4, it.readableDatabase.version)
         }
     }
 
