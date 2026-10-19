@@ -647,7 +647,10 @@ private fun Reader(vm: MailViewModel, back: () -> Unit) {
     var link by remember { mutableStateOf<String?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
     val sender = remember(m.sender) { MailAddresses.sender(m.sender) }
-    val files = m.attachments.filter { it.contentId.isBlank() || it.local.isBlank() }
+    val files =
+        m.attachments.filter {
+            it.contentId.isBlank() || !it.type.startsWith("image/", true) || it.local.isBlank()
+        }
     if (details) MailPeopleDialog(vm, m) { details = false }
     if (attachmentList)
         AlertDialog(

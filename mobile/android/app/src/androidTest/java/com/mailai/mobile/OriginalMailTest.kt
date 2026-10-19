@@ -45,6 +45,7 @@ class OriginalMailTest {
         assertEquals("MailAI", context.applicationInfo.loadLabel(context.packageManager).toString())
         AccountStore(context).put(account, "synthetic-test-secret")
         val dir = File(context.filesDir, "accounts/${account.id}").apply { mkdirs() }
+        File(dir, "document-fixture").writeText("%PDF-synthetic-fixture")
         val image = File(dir, "inline-fixture")
         Bitmap.createBitmap(120, 40, Bitmap.Config.ARGB_8888).apply {
             eraseColor(Color.rgb(51, 74, 59))
@@ -83,7 +84,15 @@ class OriginalMailTest {
                             image.length(),
                             "inline-fixture",
                             "brand",
-                        )
+                        ),
+                        Attachment(
+                            "2",
+                            "说明.pdf",
+                            "application/pdf",
+                            22,
+                            "document-fixture",
+                            "document",
+                        ),
                     ),
                     html = html,
                 )
@@ -147,6 +156,9 @@ class OriginalMailTest {
                 assertFalse(renderer.settings.allowContentAccess)
             }
             capture("reader-original-collapsed")
+            compose.onNodeWithText("附件 1").assertIsDisplayed().performClick()
+            compose.onNodeWithText("说明.pdf").assertExists()
+            compose.onNodeWithText("完成").performClick()
             compose.onNodeWithText("详情").performClick()
             compose.onNodeWithText("收件人 · 36 人").performScrollTo().assertExists()
             compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("联系人1"))
