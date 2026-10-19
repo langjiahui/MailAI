@@ -47,6 +47,7 @@ internal fun ContactAvatar(name: String) {
             Text(
                 name.trim().take(1).uppercase().ifBlank { "邮" },
                 fontSize = 18.sp,
+                lineHeight = 20.sp,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
         }
@@ -110,6 +111,7 @@ internal fun FileLabel(name: String, size: Long, modifier: Modifier = Modifier) 
                 Text(
                     name.substringAfterLast('.', "FILE").uppercase().take(4),
                     fontSize = 10.sp,
+                    lineHeight = 12.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
