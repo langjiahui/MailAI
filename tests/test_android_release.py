@@ -171,6 +171,7 @@ class AndroidReleaseTest(unittest.TestCase):
             source = Path(temp)
             (source / 'mobile/android').mkdir(parents=True)
             (source / 'mobile/android/README.md').write_text('当前 Android 正式版本：1.2.0')
+            (source / 'README.md').write_text('Android 正式版本：1.2.0')
             with patch.object(r, 'metadata', return_value=info), \
                     patch.object(r, 'remote_baseline', return_value=([], None)), \
                     patch.object(r, 'inspect_apk') as inspect:
