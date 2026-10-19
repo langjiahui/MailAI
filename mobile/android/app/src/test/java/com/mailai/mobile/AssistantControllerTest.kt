@@ -185,4 +185,48 @@ class AssistantControllerTest {
             scope.cancel()
         }
     }
+
+    @Test
+    fun nextRequestWaitsForCancelledConnectionCleanupInsteadOfOverlapping() {
+        val active = AtomicInteger()
+        val peak = AtomicInteger()
+        val calls = AtomicInteger()
+        val (a, scope, _) =
+            rig { _, _, op, progress ->
+                val n = active.incrementAndGet()
+                peak.updateAndGet { maxOf(it, n) }
+                try {
+                    if (calls.incrementAndGet() == 1) {
+                        progress("旧任务")
+                        try {
+                            while (true) {
+                                op.check()
+                                Thread.sleep(5)
+                            }
+                        } finally {
+                            Thread.sleep(100)
+                        }
+                    }
+                    progress("新任务结果")
+                    "新任务结果"
+                } finally {
+                    active.decrementAndGet()
+                }
+            }
+        try {
+            a.open(source)
+            waitFor { !a.loading }
+            a.start(AssistantTask.SUMMARY)
+            waitFor { a.text.isNotBlank() }
+            a.open(source.copy(sourceId = "next", text = "新邮件"))
+            a.start(AssistantTask.SUMMARY)
+            waitFor { a.complete && !a.generating }
+            assertEquals("新任务结果", a.text)
+            assertEquals(1, peak.get())
+            assertEquals(2, calls.get())
+        } finally {
+            a.dispose()
+            scope.cancel()
+        }
+    }
 }

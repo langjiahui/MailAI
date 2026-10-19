@@ -67,6 +67,7 @@ internal class AssistantController(
     private var config: AssistantConfig? = null
     private var loaded = false
     private var job: Job? = null
+    private var generationJob: Job? = null
     private var operation: AssistantCall? = null
     private var revision = 0L
     val busy
@@ -182,6 +183,7 @@ internal class AssistantController(
         job =
             scope.launch {
                 try {
+                    generationJob?.join()
                     withContext(Dispatchers.IO) { settings.clear() }
                     config = null
                     publishSettings()
@@ -237,6 +239,7 @@ internal class AssistantController(
                 return
             }
         val key = source.cacheKey(c, value, instruction)
+        val previous = generationJob
         val epoch = ++revision
         val latest = AtomicReference("")
         val call = AssistantCall()
@@ -258,6 +261,9 @@ internal class AssistantController(
                 var saved = false
                 var finished = false
                 try {
+                    // A cancelled previous request must finish cleanup before a new one starts.
+                    // This also prevents its late cache write from replacing the next result.
+                    previous?.join()
                     val prior = withContext(Dispatchers.IO) { cache.get(key) }
                     if (!fresh && prior?.complete == true) {
                         text = prior.text
@@ -342,6 +348,7 @@ internal class AssistantController(
                     }
                 }
             }
+        generationJob = job
     }
 
     fun stop() {
