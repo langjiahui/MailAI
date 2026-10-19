@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 from .update_transport import open_public
 from .update_mirror import valid_mirror
+from . import update_routing
 
 log = logging.getLogger(__name__)
 MAX_BYTES = 500 * 1024 * 1024
@@ -27,7 +28,10 @@ def download(asset: dict, target: Path, progress=None, fallback=None):
     if not same or (part.exists() and part.stat().st_size > size):
         part.unlink(missing_ok=True)
     meta.write_text(json.dumps(identity), encoding='utf-8')
-    urls = [asset['mirror_url']] * 3 + [asset['url']] * 2
+    selected = (asset.get('preferred_source', 'atomgit') if part.exists() and part.stat().st_size == size
+                else update_routing.download_source(asset))
+    first, second = (asset['mirror_url'], asset['url']) if selected == 'atomgit' else (asset['url'], asset['mirror_url'])
+    urls = [first, second, first, second, first]
     try:
         for attempt in range(6):
             if attempt == 5:

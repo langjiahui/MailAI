@@ -41,6 +41,12 @@ class Response(io.BytesIO):
 
 
 class MirrorTest(unittest.TestCase):
+    def setUp(self):
+        route = patch.object(resume.update_routing, 'download_source', return_value='atomgit')
+        route.start(); self.addCleanup(route.stop)
+        with updater.update_routing._lock:
+            updater.update_routing._recent.clear()
+
     def test_signature_rejects_tampering_and_wrong_key(self):
         envelope = signed(copy.deepcopy(MANIFEST))
         with patch.object(trust, 'PUBLIC_KEY', PUBLIC):
@@ -66,14 +72,15 @@ class MirrorTest(unittest.TestCase):
         with patch.object(updater,'FROZEN',True),patch.dict(os.environ,{'MAILAI_APP_VERSION':'2.9.6','MAILAI_UPDATE_MANIFEST_URL':updater.DEFAULT_MANIFEST_URL}), \
                 patch.object(mirror,'discover',return_value={**MANIFEST,'assets':{'macos-arm64':ASSET}}), \
                 patch.object(updater,'device_key',return_value='macos-arm64'),patch.object(updater,'_read_manifest',side_effect=AssertionError('GitHub must not be contacted')):
-            self.assertEqual(updater.check(force=True)['asset'],ASSET)
+            self.assertEqual(updater.check(force=True)['asset'],{**ASSET,'preferred_source':'atomgit'})
         with patch.object(updater,'FROZEN',True),patch.dict(os.environ,{'MAILAI_UPDATE_MANIFEST_URL':'https://updates.example.test/latest.json'}), \
                 patch.object(mirror,'discover',side_effect=AssertionError('Custom source must not switch')),patch.object(updater,'_read_manifest',return_value=MANIFEST):
             updater.check(force=True)
 
     def test_stale_mirror_does_not_hide_newer_backup_or_fail_when_backup_is_offline(self):
-        older={**MANIFEST,'version':'2.9.5'}
+        older=json.loads(json.dumps(MANIFEST).replace(TAG,'v2.9.5').replace(TAG[1:],'2.9.5'))
         for backup in (MANIFEST,ValueError('offline')):
+            with updater.update_routing._lock:updater.update_routing._recent.clear()
             with patch.object(updater,'FROZEN',True),patch.dict(os.environ,{'MAILAI_APP_VERSION':'2.9.6','MAILAI_UPDATE_MANIFEST_URL':updater.DEFAULT_MANIFEST_URL}), \
                     patch.object(mirror,'discover',return_value=older),patch.object(updater,'_read_manifest',**({'side_effect':backup} if isinstance(backup,Exception) else {'return_value':backup})):
                 result=updater.check(force=True)
@@ -94,6 +101,20 @@ class MirrorTest(unittest.TestCase):
             self.assertNotIn('Range',requests[0][1]);self.assertEqual(requests[1][1]['Range'],'bytes=8-')
             self.assertFalse(target.with_suffix('.pkg.part').exists())
             self.assertFalse(target.with_suffix('.pkg.part.json').exists())
+
+    def test_overseas_preference_starts_github_then_resumes_from_domestic(self):
+        requests=[]
+        @contextmanager
+        def open_mock(url,**kwargs):
+            requests.append((url,kwargs['headers']))
+            if len(requests)==1:yield Response(DATA[:8],headers={'Content-Length':str(len(DATA))})
+            else:yield Response(DATA[8:],206,{'Content-Length':str(len(DATA)-8),'Content-Range':f'bytes 8-{len(DATA)-1}/{len(DATA)}'})
+        with tempfile.TemporaryDirectory() as folder,patch.object(resume.update_routing,'download_source',return_value='github'), \
+                patch.object(resume,'open_public',side_effect=open_mock),patch.object(resume.time,'sleep'):
+            target=Path(folder)/'MailAI.pkg';resume.download({**ASSET,'preferred_source':'github'},target)
+            self.assertEqual(target.read_bytes(),DATA)
+            self.assertEqual([item[0] for item in requests],[ASSET['url'],ASSET['mirror_url']])
+            self.assertEqual(requests[1][1]['Range'],'bytes=8-')
 
     def seed(self,target,data,identity=None):
         part=target.with_suffix('.pkg.part');part.write_bytes(data)
@@ -133,7 +154,7 @@ class MirrorTest(unittest.TestCase):
             target=Path(folder)/'MailAI.pkg';fallback={**ASSET,'url':'https://api.github.com/repos/langjiahui/MailAI/releases/assets/123'}
             with self.assertRaises(OSError):resume.download(ASSET,target,fallback=lambda asset:fallback)
             self.assertEqual(target.with_suffix('.pkg.part').read_bytes(),DATA[:8])
-            self.assertEqual(urls,[ASSET['mirror_url']]*3+[ASSET['url']]*2+[fallback['url']])
+            self.assertEqual(urls,[ASSET['mirror_url'],ASSET['url'],ASSET['mirror_url'],ASSET['url'],ASSET['mirror_url'],fallback['url']])
 
     def test_old_identity_is_discarded_and_complete_part_reused_without_network(self):
         with tempfile.TemporaryDirectory() as folder,patch.object(resume,'open_public',side_effect=AssertionError('No network')):

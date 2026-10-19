@@ -1,5 +1,6 @@
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "updateRoute.verification": ["更新清单校验失败，已停止更新", "The update manifest could not be verified. The update has been stopped"],
   "updateMirror.address": ["更新地址无效", "Invalid update address"],
   "updateMirror.privateAddress": ["更新地址指向本机、内网或保留地址", "The update address points to a local, private or reserved network"],
   "updateMirror.redirectLimit": ["更新下载重定向过多", "Too many update download redirects"],

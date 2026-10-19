@@ -21,7 +21,7 @@ from pathlib import Path
 import certifi
 
 from .paths import APP_DIR, FROZEN, USER_DIR
-from . import update_mirror, update_resume
+from . import update_mirror, update_resume, update_routing
 
 log = logging.getLogger(__name__)
 
@@ -219,6 +219,8 @@ def evaluate_manifest(manifest: dict, *, device: str | None = None) -> dict:
             if not update_mirror.valid_mirror(mirror_url, url):
                 raise ValueError("国内下载地址不属于官方仓库")
             asset['mirror_url'] = mirror_url
+            if raw_asset.get('preferred_source') in {'atomgit', 'github'}:
+                asset['preferred_source'] = raw_asset['preferred_source']
         if raw_asset.get("api_url"):
             api_url = str(raw_asset["api_url"])
             if not re.fullmatch(re.escape(GITHUB_API_URL) + r"/assets/[1-9][0-9]*", api_url):
@@ -254,21 +256,7 @@ def check(*, force: bool = False) -> dict:
             return dict(cached)
     manifest_url = os.getenv("MAILAI_UPDATE_MANIFEST_URL", DEFAULT_MANIFEST_URL).strip()
     if manifest_url == DEFAULT_MANIFEST_URL:
-        try:
-            manifest = update_mirror.discover()
-            # A reachable mirror may lag after an interrupted publishing job.
-            # Keep its valid result if GitHub is unreachable, but do not conceal
-            # a newer official release when the backup source is available.
-            if _version_tuple(str(manifest.get('version') or '')) <= _version_tuple(current_version()):
-                try:
-                    backup = _read_manifest(manifest_url)
-                    if _version_tuple(str(backup.get('version') or '')) > _version_tuple(str(manifest['version'])):
-                        manifest = backup
-                except (OSError, http.client.HTTPException, ValueError, TypeError):
-                    log.info("官方备用源暂时不可用，保留已验证的国内版本信息")
-        except (OSError, http.client.HTTPException, ValueError, TypeError) as exc:
-            log.warning("国内更新源暂时不可用，检查官方备用源：%s", type(exc).__name__)
-            manifest = _read_manifest(manifest_url)
+        manifest = update_routing.discover(lambda: _read_manifest(manifest_url), current_version())
     else:
         manifest = _read_manifest(manifest_url)
     result = evaluate_manifest(manifest)
