@@ -7,6 +7,7 @@ from email.utils import getaddresses
 from fastapi import HTTPException
 
 from .. import config, db, pipeline, system_settings
+from ..parser import _decode_hdr
 from ..security import campaigns
 
 
@@ -63,7 +64,7 @@ def mail_connection_detail(exc: Exception) -> str:
 
 def resolved_contact_name(address: str, current_name: str, names: dict[str, dict]) -> tuple[str, str]:
     normalized_address = str(address or "").strip().casefold()
-    current = str(current_name or "").strip().strip('"').strip()
+    current = _decode_hdr(current_name).strip().strip('"').strip()
     current_key = current.casefold()
     local_part = normalized_address.partition("@")[0]
     weak_placeholder = bool(current_key) and current_key in {normalized_address, local_part}
@@ -73,7 +74,7 @@ def resolved_contact_name(address: str, current_name: str, names: dict[str, dict
     if match.get("name") and (
         match.get("source") == "manual" or not current or "@" in current or weak_placeholder
     ):
-        return str(match["name"]), str(match.get("source") or "history")
+        return _decode_hdr(match["name"]), str(match.get("source") or "history")
     return current, "message" if current else ""
 
 

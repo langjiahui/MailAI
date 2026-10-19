@@ -196,6 +196,8 @@ def api_delete_draft(draft_id: int):
 @router.get("/api/mail/sent")
 def api_sent_messages(limit: int = 500):
     local = db.list_sent_messages(limit)
+    for row in local:
+        row.update(smtp_client.recipient_fields_for_display(row))
     # Keep the local SMTP receipt, but hide it when its server copy was deleted.
     with db.conn() as c:
         removed = {str(r[0]).strip().casefold() for r in c.execute(
@@ -224,6 +226,8 @@ def api_sent_message(record_id: int):
     row = db.get_sent_message(record_id)
     if not row:
         raise HTTPException(404, "发送记录不存在")
+    row.update(smtp_client.recipient_fields_for_display(row))
+    annotate_list_identities([row])
     return row
 
 
