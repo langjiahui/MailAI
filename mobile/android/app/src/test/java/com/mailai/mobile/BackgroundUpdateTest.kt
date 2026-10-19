@@ -100,7 +100,7 @@ class BackgroundUpdateTest {
             assertEquals(draft.body, it.draft(draft.id)?.body)
             it.recordArrivals(1, listOf(mail(1)))
             assertTrue(it.pendingArrivals().isEmpty())
-            assertEquals(2, it.readableDatabase.version)
+            assertEquals(3, it.readableDatabase.version)
         }
     }
 
@@ -245,6 +245,28 @@ class BackgroundUpdateTest {
             }
         assertThrows(IllegalArgumentException::class.java) {
             UpdatePolicy.manifest(manifest(), tag, JSONArray())
+        }
+    }
+
+    @Test
+    fun formalAndroidManifestUsesStableVersionAndMatchingImmutableAsset() {
+        val tag = "android-v2.10.0"
+        val c =
+            UpdateCandidate(
+                "2.10.0",
+                2100100,
+                "$RELEASE_PREFIX$tag/MailAI-Android-2.10.0.apk",
+                "a".repeat(64),
+                1234,
+                "正式版",
+                "https://github.com/langjiahui/MailAI/releases/tag/$tag",
+            )
+        val assets =
+            JSONArray().put(JSONObject().put("browser_download_url", c.url).put("size", c.size))
+        val manifest = c.json().put("schema", 1).put("applicationId", BuildConfig.APPLICATION_ID)
+        assertEquals(c, UpdatePolicy.manifest(manifest, tag, assets))
+        assertThrows(IllegalArgumentException::class.java) {
+            UpdatePolicy.manifest(manifest, "android-v2.10.0-beta.10", assets)
         }
     }
 

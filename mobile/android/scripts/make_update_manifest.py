@@ -14,7 +14,7 @@ parser.add_argument('--output', type=Path, required=True)
 args = parser.parse_args()
 root = Path(__file__).resolve().parents[1]
 version = (root / 'VERSION').read_text().strip()
-assert re.fullmatch(r'\d+\.\d+\.\d+-beta\.\d+', version)
+assert re.fullmatch(r'\d+\.\d+\.\d+(?:-beta\.\d+)?', version)
 bin_dir = args.sdk / 'build-tools/35.0.0'
 subprocess.run([str(bin_dir / 'apksigner'), 'verify', '--verbose', str(args.apk)], check=True)
 info = subprocess.check_output([str(bin_dir / 'aapt'), 'dump', 'badging', str(args.apk)], text=True)
@@ -25,7 +25,7 @@ tag = f'android-v{version}'
 manifest = dict(schema=1, applicationId=package[1], version=version, code=int(package[2]),
     url=f'https://github.com/langjiahui/MailAI/releases/download/{tag}/{args.apk.name}',
     sha256=hashlib.file_digest(args.apk.open('rb'), 'sha256').hexdigest(), size=args.apk.stat().st_size,
-    notes='优化日常操作：回复保存后回到原邮件，编辑旧草稿后返回列表；搜索与未读空状态可一键恢复；普通完成提示自动收起，失败重试和发送待确认持续保留',
+    notes='MailAI 安卓正式版：姓名正确解码，多人收件人默认折叠；通讯录与手机联系人选择；按原邮件显示 HTML、表格、内嵌与外部图片；提示改为自动消失的浮动气泡，不挤占内容',
     page=f'https://github.com/langjiahui/MailAI/releases/tag/{tag}')
 args.output.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
 print(f'Update manifest ready: {version} / {manifest["code"]}')

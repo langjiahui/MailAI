@@ -132,11 +132,17 @@ internal constructor(
             m.replyTo
                 ?.joinToString { (it as? InternetAddress)?.address ?: it.toString() }
                 .orEmpty(),
-            m.allRecipients?.joinToString().orEmpty(),
+            MailAddresses.display(
+                m.getRecipients(Message.RecipientType.TO)?.joinToString().orEmpty()
+            ),
             m.subject ?: "（无主题）",
             (m.sentDate ?: m.receivedDate)?.time ?: 0L,
             !m.isSet(Flags.Flag.SEEN),
             messageId = m.getHeader("Message-ID")?.firstOrNull().orEmpty(),
+            cc =
+                MailAddresses.display(
+                    m.getRecipients(Message.RecipientType.CC)?.joinToString().orEmpty()
+                ),
         )
     }
 
@@ -194,11 +200,40 @@ internal constructor(
             }
         }
 
-    fun read(a: Account, password: String, item: MailItem, op: Operation): MailItem =
+    fun read(
+        a: Account,
+        password: String,
+        item: MailItem,
+        op: Operation,
+        inline: ((Attachment, Part) -> Attachment)? = null,
+    ): MailItem =
         existing(a, password, item, op) { m ->
-            val (body, files) = MimeCodec.read(m)
+            val content = MimeCodec.content(m)
+            val files =
+                content.files.map { file ->
+                    if (
+                        inline != null &&
+                            file.contentId.isNotBlank() &&
+                            file.type.startsWith("image/") &&
+                            content.html != null
+                    ) {
+                        try {
+                            inline(file, MimeCodec.part(m, file.part))
+                        } catch (e: java.util.concurrent.CancellationException) {
+                            throw e
+                        } catch (_: Exception) {
+                            file
+                        }
+                    } else file
+                }
             op.check()
-            item.copy(body = body, attachments = files)
+            envelope(m.folder as IMAPFolder, m)
+                .copy(
+                    body = content.text,
+                    attachments = files,
+                    html = content.html,
+                    contentVersion = 1,
+                )
         }
 
     fun seen(a: Account, password: String, item: MailItem, op: Operation) =

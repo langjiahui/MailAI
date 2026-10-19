@@ -71,6 +71,8 @@ pytest 通过 `tests/test_offline_suite.py` 以子进程方式逐个运行脚本
 
 Android 测试版本独立记录在 `mobile/android/VERSION` 与对应 README，使用 `android-v<版本>` 标签及 GitHub Pre-release，固定分发签名与递增的 versionCode。以最近正式版本和该测试通道的变更按上述分级规则确定目标版本，再追加 `-beta.N`；不改写已有标签/附件，不替换桌面 Latest。根目录 VERSION 继续代表当前桌面正式版本，正式全平台发布时按完整变化同步统一版本。Android 发布仍需执行现有门禁和移动端测试，更新清单与 APK 元数据必须一致。
 
+安卓版可独立发布正式版本，继续使用 `mobile/android/VERSION`、`android-v<版本>` 和固定签名递增 versionCode；正式包名称为 MailAI，不含“预览”。正式 Android Release 不标 Pre-release，使用 `latest=false` 保留桌面下载入口；根 VERSION 仍表示桌面版本，只有全平台统一发布时同步。安卓版首次正式版本应检查从最近正式版本以来的完整变更，不将测试序号视为产品功能版本。旧测试客户端不识别无 beta 后缀清单时，首次正式版通过下载 APK 覆盖安装；之后正式客户端只订阅正式 Android 发布。
+
 ## 分支与 PR 规范
 
 - 从 `main` 切分支，命名：`feat/xxx`、`fix/xxx`、`docs/xxx`、`chore/xxx`

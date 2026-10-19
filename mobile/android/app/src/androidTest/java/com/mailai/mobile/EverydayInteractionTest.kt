@@ -213,14 +213,14 @@ class EverydayInteractionTest {
     }
 
     @Test
-    fun successFeedbackExpiresWhileFailureKeepsRetry() {
+    fun floatingFeedbackExpiresWhileFailureKeepsRetryAction() {
         val (scenario, vm) = launch()
         try {
             // Local connection failure should remain available beyond the success timeout.
             scenario.onActivity { vm.refresh() }
             compose.waitUntil(10000) { !vm.busy && vm.error }
             compose.mainClock.advanceTimeBy(4500)
-            compose.onNodeWithText("重试").assertExists()
+            compose.onNodeWithText("重试同步").assertExists()
             assertTrue(vm.status.isNotBlank())
             scenario.onActivity {
                 vm.dismissStatus()

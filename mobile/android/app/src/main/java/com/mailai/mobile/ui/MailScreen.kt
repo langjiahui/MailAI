@@ -25,6 +25,8 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
@@ -48,9 +50,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import com.mailai.mobile.R
 import com.mailai.mobile.data.*
+import com.mailai.mobile.mail.MailAddresses
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlinx.coroutines.delay
 
 private val Light =
     lightColorScheme(
@@ -112,19 +114,6 @@ fun MailScreen(vm: MailViewModel, open: (Account, Attachment, Boolean) -> Unit) 
             focus.clearFocus()
             keyboard?.hide()
         }
-        // Only routine success feedback expires; recovery and uncertain-send messages stay.
-        LaunchedEffect(vm.status, vm.busy, vm.error, vm.page) {
-            val message = vm.status
-            if (
-                !vm.busy &&
-                    !vm.error &&
-                    listOf("邮件已更新", "邮箱已添加，邮件已更新", "草稿已保存", "草稿已移除", "附件已添加")
-                        .any(message::startsWith)
-            ) {
-                delay(4000)
-                if (vm.status == message && !vm.busy && !vm.error) vm.dismissStatus()
-            }
-        }
         val lifecycle = LocalLifecycleOwner.current.lifecycle
         LaunchedEffect(vm, lifecycle) {
             lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -156,7 +145,8 @@ fun MailScreen(vm: MailViewModel, open: (Account, Attachment, Boolean) -> Unit) 
                     else leave = true
                 "reader" -> vm.go("inbox")
                 "drafts",
-                "settings" -> vm.go(if (vm.accounts.isEmpty()) "add" else "boxes")
+                "settings",
+                "contacts" -> vm.go(if (vm.accounts.isEmpty()) "add" else "boxes")
                 "inbox" -> vm.go("boxes")
                 "add" -> if (vm.accounts.isNotEmpty()) vm.go("boxes")
                 else -> vm.go("inbox")
@@ -164,84 +154,81 @@ fun MailScreen(vm: MailViewModel, open: (Account, Attachment, Boolean) -> Unit) 
         }
         BackHandler(enabled = vm.page != "inbox" || vm.busy) { back() }
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            Column(Modifier.safeDrawingPadding().imePadding().fillMaxSize()) {
-                if (vm.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-                else Spacer(Modifier.height(4.dp))
-                if (vm.ready && !vm.online)
-                    Text(
-                        "当前离线 · 可以阅读缓存、继续写草稿",
-                        Modifier.fillMaxWidth()
-                            .padding(horizontal = 18.dp, vertical = 8.dp)
-                            .semantics { liveRegion = LiveRegionMode.Polite },
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                AnimatedVisibility(
-                    visible = vm.status.isNotBlank(),
-                    enter = expandVertically(tween(180)) + fadeIn(tween(140)),
-                    exit = shrinkVertically(tween(160)) + fadeOut(tween(100)),
-                ) {
-                    OperationStatus(vm)
-                }
-                if (!vm.ready)
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("正在读取此设备上的邮箱…")
-                    }
-                else
-                    AnimatedContent(
-                        vm.page,
-                        modifier = Modifier.weight(1f).fillMaxWidth(),
-                        transitionSpec = {
-                            val forward = pageDepth(targetState) > pageDepth(initialState)
-                            val entering =
-                                tween<androidx.compose.ui.unit.IntOffset>(
-                                    240,
-                                    easing = FastOutSlowInEasing,
-                                )
-                            val leaving =
-                                tween<androidx.compose.ui.unit.IntOffset>(
-                                    200,
-                                    easing = FastOutSlowInEasing,
-                                )
-                            val incoming =
-                                if (targetState == "compose")
-                                    slideInVertically(entering) { it / 12 }
-                                else
-                                    slideInHorizontally(entering) {
-                                        if (forward) it / 10 else -it / 16
+            Box(Modifier.safeDrawingPadding().imePadding().fillMaxSize()) {
+                Column(Modifier.fillMaxSize()) {
+                    if (!vm.ready)
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("正在读取此设备上的邮箱…")
+                        }
+                    else
+                        AnimatedContent(
+                            vm.page,
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                            transitionSpec = {
+                                val forward = pageDepth(targetState) > pageDepth(initialState)
+                                val entering =
+                                    tween<androidx.compose.ui.unit.IntOffset>(
+                                        240,
+                                        easing = FastOutSlowInEasing,
+                                    )
+                                val leaving =
+                                    tween<androidx.compose.ui.unit.IntOffset>(
+                                        200,
+                                        easing = FastOutSlowInEasing,
+                                    )
+                                val incoming =
+                                    if (targetState == "compose")
+                                        slideInVertically(entering) { it / 12 }
+                                    else
+                                        slideInHorizontally(entering) {
+                                            if (forward) it / 10 else -it / 16
+                                        }
+                                val outgoing =
+                                    if (initialState == "compose")
+                                        slideOutVertically(leaving) { it / 12 }
+                                    else
+                                        slideOutHorizontally(leaving) {
+                                            if (forward) -it / 16 else it / 10
+                                        }
+                                ((incoming + fadeIn(tween(180), initialAlpha = .96f)) togetherWith
+                                        (outgoing + fadeOut(tween(80))))
+                                    .using(SizeTransform(clip = false) { _, _ -> snap() })
+                            },
+                            label = "页面切换",
+                        ) { page ->
+                            // Each page owns its scroll state. Outgoing content fills the same
+                            // frame;
+                            // navigation actions are guarded against duplicate routes in the view
+                            // model.
+                            Box(
+                                Modifier.fillMaxSize()
+                                    .background(MaterialTheme.colorScheme.background)
+                            ) {
+                                pageStates.SaveableStateProvider(page) {
+                                    when (page) {
+                                        "add" -> AddAccount(vm, ::back)
+                                        "boxes" -> Mailboxes(vm)
+                                        "reader" -> Reader(vm, ::back)
+                                        "compose" -> Composer(vm, ::back) { confirmSend = true }
+                                        "drafts" -> Drafts(vm)
+                                        "settings" -> PreferencesScreen(vm)
+                                        "contacts" -> ContactsScreen(vm)
+                                        else -> Inbox(vm, inboxList)
                                     }
-                            val outgoing =
-                                if (initialState == "compose")
-                                    slideOutVertically(leaving) { it / 12 }
-                                else
-                                    slideOutHorizontally(leaving) {
-                                        if (forward) -it / 16 else it / 10
-                                    }
-                            ((incoming + fadeIn(tween(180), initialAlpha = .96f)) togetherWith
-                                    (outgoing + fadeOut(tween(80))))
-                                .using(SizeTransform(clip = false) { _, _ -> snap() })
-                        },
-                        label = "页面切换",
-                    ) { page ->
-                        // Each page owns its scroll state. Outgoing content fills the same frame;
-                        // navigation actions are guarded against duplicate routes in the view
-                        // model.
-                        Box(
-                            Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
-                        ) {
-                            pageStates.SaveableStateProvider(page) {
-                                when (page) {
-                                    "add" -> AddAccount(vm, ::back)
-                                    "boxes" -> Mailboxes(vm)
-                                    "reader" -> Reader(vm, ::back)
-                                    "compose" -> Composer(vm, ::back) { confirmSend = true }
-                                    "drafts" -> Drafts(vm)
-                                    "settings" -> PreferencesScreen(vm)
-                                    else -> Inbox(vm, inboxList)
                                 }
                             }
                         }
-                    }
+                }
+                if (vm.busy)
+                    LinearProgressIndicator(
+                        Modifier.fillMaxWidth().height(2.dp).align(Alignment.TopCenter)
+                    )
+                OperationBubble(
+                    vm,
+                    Modifier.align(Alignment.BottomCenter)
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 82.dp),
+                )
             }
         }
         if (leave)
@@ -331,80 +318,6 @@ fun MailScreen(vm: MailViewModel, open: (Account, Attachment, Boolean) -> Unit) 
 }
 
 @Composable
-@OptIn(ExperimentalLayoutApi::class)
-private fun OperationStatus(vm: MailViewModel) {
-    var clipped by remember(vm.status) { mutableStateOf(false) }
-    var details by remember { mutableStateOf(false) }
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        shape = RoundedCornerShape(12.dp),
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-    ) {
-        if (!vm.error && vm.operationHint.isBlank() && !vm.status.startsWith("已取消")) {
-            Row(
-                Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    vm.status,
-                    Modifier.weight(1f).padding(vertical = 10.dp).semantics {
-                        liveRegion = LiveRegionMode.Polite
-                    },
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (vm.busy && vm.cancellable)
-                    TextButton(onClick = vm::cancel) { Text("取消", fontSize = 12.sp) }
-                else if (!vm.busy)
-                    TextButton(onClick = vm::dismissStatus) { Text("关闭", fontSize = 12.sp) }
-            }
-        } else
-            Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                Text(
-                    vm.status,
-                    Modifier.padding(top = 10.dp).semantics { liveRegion = LiveRegionMode.Polite },
-                    fontSize = 13.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    onTextLayout = {
-                        clipped =
-                            it.didOverflowHeight || (0 until it.lineCount).any(it::isLineEllipsized)
-                    },
-                    color =
-                        if (vm.error) MaterialTheme.colorScheme.error
-                        else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (vm.operationHint.isNotBlank())
-                    Text(
-                        vm.operationHint,
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier =
-                            Modifier.padding(top = 6.dp).semantics {
-                                liveRegion = LiveRegionMode.Polite
-                            },
-                    )
-                FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    if (clipped) TextButton(onClick = { details = true }) { Text("详情") }
-                    if (vm.busy && vm.cancellable) TextButton(onClick = vm::cancel) { Text("取消") }
-                    else if (!vm.busy) {
-                        if (vm.canRetry && (vm.error || vm.status.startsWith("已取消")))
-                            TextButton(onClick = vm::retry) { Text("重试") }
-                        TextButton(onClick = vm::dismissStatus) { Text("关闭") }
-                    }
-                }
-            }
-    }
-    if (details)
-        AlertDialog(
-            onDismissRequest = { details = false },
-            title = { Text(if (vm.error) "操作未完成" else "操作状态") },
-            text = { Text(vm.status, Modifier.verticalScroll(rememberScrollState())) },
-            confirmButton = { TextButton(onClick = { details = false }) { Text("返回") } },
-        )
-}
-
-@Composable
 private fun Heading(title: String, sub: String = "") {
     Column(Modifier.padding(horizontal = 22.dp, vertical = 10.dp)) {
         Text(title, fontSize = 26.sp, fontWeight = FontWeight.SemiBold)
@@ -462,7 +375,7 @@ private fun Inbox(vm: MailViewModel, listState: LazyListState) {
     Column(Modifier.fillMaxSize()) {
         Nav("邮箱", { vm.go("boxes") }, !vm.busy) {
             TextButton(onClick = { vm.refresh() }, enabled = !vm.busy && vm.account != null) {
-                Text("刷新")
+                Text(if (vm.canRetry && (vm.error || vm.status.startsWith("已取消"))) "重试同步" else "刷新")
             }
         }
         val list =
@@ -559,7 +472,7 @@ private fun Inbox(vm: MailViewModel, listState: LazyListState) {
                             Spacer(Modifier.width(6.dp))
                         }
                         Text(
-                            mail.sender.substringBefore(" <"),
+                            MailAddresses.sender(mail.sender).label,
                             Modifier.weight(1f).padding(end = 10.dp),
                             fontWeight =
                                 if (mail.unread) FontWeight.SemiBold else FontWeight.Medium,
@@ -710,6 +623,8 @@ private fun Mailboxes(vm: MailViewModel) {
             }
         }
         Spacer(Modifier.height(16.dp))
+        MailCard { MenuRow("通讯录", "往来联系人与手机通讯录", onClick = { vm.go("contacts") }) }
+        Spacer(Modifier.height(16.dp))
         MailCard { MenuRow("通知与更新", onClick = { vm.go("settings") }) }
         Text(
             "邮件与草稿保存在这台设备",
@@ -725,105 +640,179 @@ private fun Reader(vm: MailViewModel, back: () -> Unit) {
     var lastMail by remember { mutableStateOf(vm.selected) }
     val m = vm.selected ?: lastMail ?: return
     SideEffect { if (vm.selected != null) lastMail = vm.selected }
-    var details by remember(m.key) { mutableStateOf(false) }
     val readingScroll = rememberSaveable(m.key, saver = ScrollState.Saver) { ScrollState(0) }
-    if (details)
+    var details by remember(m.key) { mutableStateOf(false) }
+    var attachmentList by remember(m.key) { mutableStateOf(false) }
+    var original by rememberSaveable(m.key) { mutableStateOf(true) }
+    var link by remember { mutableStateOf<String?>(null) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val sender = remember(m.sender) { MailAddresses.sender(m.sender) }
+    val files = m.attachments.filter { it.contentId.isBlank() || it.local.isBlank() }
+    if (details) MailPeopleDialog(vm, m) { details = false }
+    if (attachmentList)
         AlertDialog(
-            onDismissRequest = { details = false },
-            title = { Text("邮件详情") },
+            onDismissRequest = { attachmentList = false },
+            title = { Text("附件 · ${files.size}") },
             text = {
-                SelectionContainer {
-                    Column(Modifier.verticalScroll(rememberScrollState())) {
-                        Text("发件人")
-                        Text(m.sender)
-                        Spacer(Modifier.height(16.dp))
-                        Text("收件人")
-                        Text(m.recipients)
-                        Spacer(Modifier.height(16.dp))
-                        Text(date(m.date))
-                    }
-                }
-            },
-            confirmButton = { TextButton(onClick = { details = false }) { Text("完成") } },
-        )
-    Column(Modifier.fillMaxSize()) {
-        Nav("${boxName(vm.folder)}", back, !vm.busy) {
-            TextButton(onClick = { details = true }, enabled = !vm.busy) { Text("详情") }
-        }
-        Column(Modifier.weight(1f).verticalScroll(readingScroll).padding(horizontal = 22.dp)) {
-            Text(
-                m.subject,
-                fontSize = 25.sp,
-                lineHeight = 35.sp,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.padding(top = 14.dp, bottom = 24.dp),
-            )
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                ContactAvatar(m.sender.substringBefore(" <"))
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        m.sender.substringBefore(" <"),
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 15.sp,
-                    )
-                    Text(
-                        "发给 ${m.recipients}",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        date(m.date),
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            HorizontalDivider(
-                Modifier.padding(top = 20.dp, bottom = 22.dp),
-                color = MaterialTheme.colorScheme.outlineVariant,
-            )
-            SelectionContainer {
-                Text(
-                    m.body ?: if (vm.busy) "正在读取正文…" else "正文未下载，请联网后重试。",
-                    fontSize = 16.sp,
-                    lineHeight = 29.sp,
-                )
-            }
-            if (m.body != null)
-                Text(
-                    "文本阅读 · 未加载远程图片",
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(vertical = 18.dp),
-                )
-            m.attachments.forEach { file ->
-                MailCard(Modifier.padding(vertical = 5.dp)) {
-                    Row(
-                        Modifier.fillMaxWidth()
-                            .clickable(enabled = !vm.busy) { vm.download(file) }
-                            .padding(start = 14.dp, end = 6.dp, top = 10.dp, bottom = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        FileLabel(file.name, file.size, Modifier.weight(1f))
-                        TextButton(onClick = { vm.download(file) }, enabled = !vm.busy) {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    files.forEach { file ->
+                        TextButton(
+                            onClick = {
+                                attachmentList = false
+                                vm.download(file)
+                            },
+                            enabled = !vm.busy,
+                        ) {
+                            FileLabel(file.name, file.size, Modifier.weight(1f))
                             Text(if (file.local.isBlank()) "下载" else "打开")
                         }
                     }
                 }
-            }
-            Spacer(Modifier.height(24.dp))
+            },
+            confirmButton = { TextButton(onClick = { attachmentList = false }) { Text("完成") } },
+        )
+    link?.let { url ->
+        AlertDialog(
+            onDismissRequest = { link = null },
+            title = { Text("打开链接？") },
+            text = { SelectionContainer { Text(url) } },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        link = null
+                        try {
+                            context.startActivity(
+                                android.content.Intent(
+                                    android.content.Intent.ACTION_VIEW,
+                                    android.net.Uri.parse(url),
+                                )
+                            )
+                        } catch (_: android.content.ActivityNotFoundException) {
+                            vm.showMessage("没有可打开此链接的应用", true)
+                        }
+                    }
+                ) {
+                    Text("打开")
+                }
+            },
+            dismissButton = { TextButton(onClick = { link = null }) { Text("取消") } },
+        )
+    }
+    Column(Modifier.fillMaxSize()) {
+        Nav(boxName(vm.folder), back, !vm.busy) {
+            if (vm.canRetry && (vm.error || vm.status.startsWith("已取消")))
+                TextButton(onClick = vm::retry, enabled = !vm.busy) { Text("重试读取") }
+            if (m.html != null)
+                TextButton(onClick = { original = !original }) {
+                    Text(if (original) "文本" else "原版")
+                }
+            TextButton(onClick = { details = true }) { Text("详情") }
         }
-        Row(Modifier.fillMaxWidth().padding(18.dp), horizontalArrangement = Arrangement.End) {
+        BoxWithConstraints(Modifier.weight(1f)) {
+            val compactHeader = androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.5f
+            val headerHeight = maxHeight * .45f
+            Column(Modifier.fillMaxSize()) {
+                Column(
+                    Modifier.fillMaxWidth()
+                        .heightIn(max = headerHeight)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 22.dp)
+                ) {
+                    Text(
+                        m.subject,
+                        Modifier.padding(top = 8.dp, bottom = if (compactHeader) 10.dp else 16.dp)
+                            .clickable { details = true },
+                        fontSize = if (compactHeader) 20.sp else 24.sp,
+                        lineHeight = if (compactHeader) 26.sp else 32.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = if (compactHeader) 1 else 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Row(
+                        Modifier.fillMaxWidth()
+                            .clickable { details = true }
+                            .padding(bottom = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        ContactAvatar(sender.label)
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                sender.label,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                peopleSummary(m, vm.account?.email.orEmpty()) + "  ›",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            if (!compactHeader)
+                                Text(
+                                    date(m.date),
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                        }
+                    }
+                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                if (m.html != null && original) {
+                    HtmlMailBody(vm, m, Modifier.fillMaxWidth().weight(1f), onLink = { link = it })
+                } else
+                    Column(
+                        Modifier.fillMaxWidth()
+                            .weight(1f)
+                            .verticalScroll(readingScroll)
+                            .padding(horizontal = 22.dp, vertical = 18.dp)
+                    ) {
+                        SelectionContainer {
+                            Text(
+                                m.body ?: if (vm.busy) "正在读取正文…" else "正文未下载，请联网后重试。",
+                                fontSize = 16.sp,
+                                lineHeight = 28.sp,
+                            )
+                        }
+                        if (m.contentVersion == 0 && vm.online && !vm.busy)
+                            TextButton(onClick = { vm.fetchBody(true) }) { Text("重新读取原邮件") }
+                        files.forEach { file ->
+                            MailCard(Modifier.padding(top = 12.dp)) {
+                                Row(
+                                    Modifier.fillMaxWidth()
+                                        .clickable(enabled = !vm.busy) { vm.download(file) }
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    FileLabel(file.name, file.size, Modifier.weight(1f))
+                                    Text(
+                                        if (file.local.isBlank()) "下载" else "打开",
+                                        fontSize = 13.sp,
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                            }
+                        }
+                    }
+            }
+        }
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (m.html != null && files.isNotEmpty())
+                TextButton(onClick = { attachmentList = true }) { Text("附件 ${files.size}") }
             Button(
                 onClick = { vm.compose(true) },
                 enabled = !vm.busy,
                 shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
+                modifier = Modifier.weight(1f).heightIn(min = 50.dp),
             ) {
-                Text("回复", Modifier.padding(horizontal = 16.dp))
+                Text("回复")
             }
         }
     }
@@ -836,6 +825,7 @@ private fun Composer(vm: MailViewModel, back: () -> Unit, send: () -> Unit) {
     SideEffect { if (vm.draft != null) lastDraft = vm.draft }
     val editorScroll = rememberSaveable(d.id, saver = ScrollState.Saver) { ScrollState(0) }
     val focus = LocalFocusManager.current
+    val subjectRequester = remember { FocusRequester() }
     val bodyRequester = remember { BringIntoViewRequester() }
     var bodyFocused by remember { mutableStateOf(false) }
     val editable = !vm.busy && d.state in setOf(SendState.DRAFT, SendState.FAILED)
@@ -895,23 +885,7 @@ private fun Composer(vm: MailViewModel, back: () -> Unit, send: () -> Unit) {
                     )
                 }
                 Spacer(Modifier.height(8.dp))
-                TextField(
-                    value = d.to,
-                    onValueChange = { vm.update(d.copy(to = it)) },
-                    label = { Text("收件人") },
-                    singleLine = true,
-                    readOnly = !editable,
-                    keyboardOptions =
-                        KeyboardOptions(
-                            keyboardType = KeyboardType.Email,
-                            imeAction = ImeAction.Next,
-                        ),
-                    keyboardActions =
-                        KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Next) }),
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = headerFields(),
-                    shape = RoundedCornerShape(14.dp),
-                )
+                RecipientEditor(vm, d, editable) { subjectRequester.requestFocus() }
                 Spacer(Modifier.height(8.dp))
                 TextField(
                     value = d.subject,
@@ -922,7 +896,7 @@ private fun Composer(vm: MailViewModel, back: () -> Unit, send: () -> Unit) {
                         KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Next) }),
                     singleLine = true,
                     readOnly = !editable,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().focusRequester(subjectRequester),
                     colors = headerFields(),
                     shape = RoundedCornerShape(14.dp),
                 )

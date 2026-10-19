@@ -27,6 +27,7 @@ internal fun attachmentsJson(items: List<Attachment>) =
                     .put("type", it.type)
                     .put("size", it.size)
                     .put("local", it.local)
+                    .put("contentId", it.contentId)
             )
         }
     }
@@ -40,6 +41,7 @@ internal fun attachments(a: JSONArray): List<Attachment> =
                 it.getString("type"),
                 it.getLong("size"),
                 it.getString("local"),
+                it.optString("contentId"),
             )
         }
     }
@@ -84,6 +86,9 @@ internal fun mailJson(m: MailItem) =
         .put("body", m.body ?: JSONObject.NULL)
         .put("files", attachmentsJson(m.attachments))
         .put("messageId", m.messageId)
+        .put("html", m.html ?: JSONObject.NULL)
+        .put("cc", m.cc)
+        .put("contentVersion", m.contentVersion)
 
 internal fun mailFrom(j: JSONObject) =
     MailItem(
@@ -100,6 +105,9 @@ internal fun mailFrom(j: JSONObject) =
         if (j.isNull("body")) null else j.getString("body"),
         attachments(j.getJSONArray("files")),
         j.getString("messageId"),
+        if (j.isNull("html")) null else j.optString("html").takeIf { it.isNotBlank() },
+        j.optString("cc"),
+        j.optInt("contentVersion", 0),
     )
 
 interface SecretCipher {
@@ -225,9 +233,10 @@ class AccountStore(context: Context, private val cipher: SecretCipher = DeviceCi
 
 /** One database per account. No destructive migration or fallback-to-empty on errors. */
 class MailStore(context: Context, id: String) :
-    SQLiteOpenHelper(context, "mail-${java.util.UUID.fromString(id)}.db", null, 2) {
+    SQLiteOpenHelper(context, "mail-${java.util.UUID.fromString(id)}.db", null, 3) {
     override fun onCreate(db: SQLiteDatabase) {
         createNotificationTables(db)
+        createContacts(db)
         db.execSQL(
             "CREATE TABLE messages (key TEXT PRIMARY KEY, folder TEXT NOT NULL, date INTEGER NOT NULL, payload TEXT NOT NULL)"
         )
@@ -238,7 +247,75 @@ class MailStore(context: Context, id: String) :
 
     override fun onUpgrade(db: SQLiteDatabase, old: Int, new: Int) {
         if (old < 2) createNotificationTables(db)
-        check(new == 2) { "需要受支持的数据库迁移" }
+        if (old < 3) createContacts(db)
+        check(new == 3) { "需要受支持的数据库迁移" }
+    }
+
+    private fun createContacts(db: SQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS contacts (email TEXT PRIMARY KEY COLLATE NOCASE, name TEXT NOT NULL, updated INTEGER NOT NULL)"
+        )
+    }
+
+    @Synchronized
+    fun rememberContacts(raw: String) {
+        com.mailai.mobile.mail.MailAddresses.parse(raw).forEach { contact ->
+            val values =
+                ContentValues().apply {
+                    put("email", contact.email)
+                    put("name", contact.name)
+                    put("updated", System.currentTimeMillis())
+                }
+            val inserted =
+                writableDatabase.insertWithOnConflict(
+                    "contacts",
+                    null,
+                    values,
+                    SQLiteDatabase.CONFLICT_IGNORE,
+                )
+            if (inserted == -1L) {
+                values.remove("email")
+                if (contact.name.isBlank()) values.remove("name")
+                writableDatabase.update(
+                    "contacts",
+                    values,
+                    "email=? COLLATE NOCASE",
+                    arrayOf(contact.email),
+                )
+            }
+        }
+    }
+
+    @Synchronized
+    fun contacts(): List<com.mailai.mobile.mail.MailContact> {
+        // Backfill older caches lazily, without dropping or rewriting their mail payloads.
+        if (android.database.DatabaseUtils.queryNumEntries(readableDatabase, "contacts") == 0L) {
+            val db = writableDatabase
+            val ownsTransaction = !db.inTransaction()
+            if (ownsTransaction) db.beginTransaction()
+            try {
+                readableDatabase
+                    .rawQuery("SELECT payload FROM messages ORDER BY date DESC LIMIT 500", null)
+                    .use { c ->
+                        while (c.moveToNext()) mailFrom(JSONObject(c.getString(0))).let {
+                            rememberContacts(it.sender + "," + it.recipients + "," + it.cc)
+                        }
+                    }
+                drafts().forEach { rememberContacts(it.to) }
+                if (ownsTransaction) db.setTransactionSuccessful()
+            } finally {
+                if (ownsTransaction) db.endTransaction()
+            }
+        }
+        return readableDatabase
+            .rawQuery("SELECT email,name FROM contacts ORDER BY updated DESC LIMIT 1000", null)
+            .use { c ->
+                buildList {
+                    while (c.moveToNext()) add(
+                        com.mailai.mobile.mail.MailContact(c.getString(0), c.getString(1))
+                    )
+                }
+            }
     }
 
     private fun createNotificationTables(db: SQLiteDatabase) {
@@ -337,6 +414,7 @@ class MailStore(context: Context, id: String) :
 
     @Synchronized
     fun put(m: MailItem) {
+        rememberContacts(m.sender + "," + m.recipients + "," + m.cc)
         writableDatabase
             .insertWithOnConflict(
                 "messages",
@@ -364,7 +442,12 @@ class MailStore(context: Context, id: String) :
                 val old = previous[m.key]
                 put(
                     if (old?.validity == validity)
-                        m.copy(body = old.body, attachments = old.attachments)
+                        m.copy(
+                            body = old.body,
+                            attachments = old.attachments,
+                            html = old.html,
+                            contentVersion = old.contentVersion,
+                        )
                     else m
                 )
             }
@@ -394,6 +477,7 @@ class MailStore(context: Context, id: String) :
                 "邮件已进入发送流程，不能覆盖"
             }
             writeDraft(d.copy(updated = System.currentTimeMillis()))
+            rememberContacts(d.to)
             db.setTransactionSuccessful()
         } finally {
             db.endTransaction()

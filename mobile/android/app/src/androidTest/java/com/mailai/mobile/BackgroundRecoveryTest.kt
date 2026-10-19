@@ -96,7 +96,7 @@ class BackgroundRecoveryTest {
             assertEquals(draft.id, vm.draft?.id)
             assertEquals("断网时继续写下的最后一行", vm.draft?.body)
             assertEquals("离线附件原文", vm.repo.file(account, file.local).readText())
-            compose.onNodeWithText("当前离线 · 可以阅读缓存、继续写草稿").assertIsDisplayed()
+            compose.onNodeWithText("当前离线 · 可以阅读缓存、继续写草稿").assertDoesNotExist()
             scenario.onActivity {
                 vm.send()
                 vm.send()

@@ -75,26 +75,43 @@ object MimeCodec {
         return bytes.toString(encoding)
     }
 
-    fun read(root: Part): Pair<String, List<Attachment>> {
+    data class Content(val text: String, val html: String?, val files: List<Attachment>)
+
+    fun read(root: Part): Pair<String, List<Attachment>> = content(root).let { it.text to it.files }
+
+    fun content(root: Part): Content {
         val files = mutableListOf<Attachment>()
         var parts = 0
         var textSize = 0
-        fun walk(p: Part, path: String, depth: Int): String {
+        data class Body(val plain: String = "", val html: String? = null)
+        fun walk(p: Part, path: String, depth: Int): Body {
             require(depth < 20 && ++parts <= 200) { "邮件结构过于复杂" }
+            val cid =
+                p.getHeader("Content-ID")
+                    ?.firstOrNull()
+                    ?.trim()
+                    ?.removeSurrounding("<", ">")
+                    .orEmpty()
             if (
                 p.disposition.equals(Part.ATTACHMENT, true) ||
-                    p.fileName != null ||
-                    p.isMimeType("message/rfc822")
+                    (p.fileName != null &&
+                        !p.isMimeType("text/html") &&
+                        !p.isMimeType("text/plain")) ||
+                    p.isMimeType("message/rfc822") ||
+                    (cid.isNotBlank() && p.isMimeType("image/*"))
             ) {
                 files +=
                     Attachment(
                         path,
-                        fileName(p.fileName),
-                        runCatching { ContentType(p.contentType).baseType }
+                        fileName(p.fileName ?: if (cid.isNotBlank()) "内嵌图片" else null),
+                        runCatching {
+                                ContentType(p.contentType).baseType.lowercase(java.util.Locale.ROOT)
+                            }
                             .getOrDefault("application/octet-stream"),
                         p.size.toLong(),
+                        contentId = cid,
                     )
-                return ""
+                return Body()
             }
             if (p.isMimeType("multipart/*")) {
                 val mp = p.content as Multipart
@@ -103,27 +120,53 @@ object MimeCodec {
                         walk(mp.getBodyPart(i), if (path.isBlank()) "$i" else "$path.$i", depth + 1)
                     }
                 return if (p.isMimeType("multipart/alternative"))
-                    values.firstOrNull { it.isNotBlank() }.orEmpty()
-                else values.filter(String::isNotBlank).joinToString("\n\n")
+                    Body(
+                        values.firstOrNull { it.plain.isNotBlank() }?.plain.orEmpty(),
+                        values.lastOrNull { it.html != null }?.html,
+                    )
+                else
+                    Body(
+                        values.map { it.plain }.filter(String::isNotBlank).joinToString("\n\n"),
+                        if (values.any { it.html != null })
+                            values
+                                .map {
+                                    it.html
+                                        ?: if (it.plain.isBlank()) ""
+                                        else
+                                            "<div style='white-space:pre-wrap'>${org.jsoup.nodes.Entities.escape(it.plain)}</div>"
+                                }
+                                .filter(String::isNotBlank)
+                                .joinToString("<br><br>")
+                        else null,
+                    )
             }
             if (p.isMimeType("text/plain") || p.isMimeType("text/html")) {
                 val value = text(p)
                 textSize += value.length
-                require(textSize <= MAX_TEXT_BYTES)
-                return if (p.isMimeType("text/html"))
-                    Jsoup.parse(value)
-                        .apply {
-                            select("script,style,iframe,object,form").remove()
-                            select("br").append("\\n")
-                            select("p,div,li").prepend("\\n")
-                        }
-                        .text()
-                        .replace("\\n", "\n")
-                else value
+                require(textSize <= MAX_TEXT_BYTES) { "正文超过 2 MB，请使用其他客户端查看" }
+                return if (p.isMimeType("text/html")) Body(html = value) else Body(plain = value)
             }
-            return ""
+            return Body()
         }
-        return walk(root, "", 0).ifBlank { "这封邮件没有可显示的文本正文。" } to files
+        val result = walk(root, "", 0)
+        val plain =
+            result.plain
+                .ifBlank {
+                    result.html
+                        ?.let {
+                            Jsoup.parse(it)
+                                .apply {
+                                    select("script,style,iframe,object,form").remove()
+                                    select("br").append("\\n")
+                                    select("p,div,li,tr").prepend("\\n")
+                                }
+                                .text()
+                                .replace("\\n", "\n")
+                        }
+                        .orEmpty()
+                }
+                .ifBlank { "这封邮件没有可显示的文本正文。" }
+        return Content(plain, result.html, files)
     }
 
     fun part(root: Part, path: String): Part {

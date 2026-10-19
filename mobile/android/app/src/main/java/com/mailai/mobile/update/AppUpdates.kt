@@ -110,7 +110,7 @@ internal object UpdatePolicy {
         val candidate = UpdateCandidate.from(j)
         require(
             tag == "android-v${candidate.version}" &&
-                tag.matches(Regex("android-v[0-9]+\\.[0-9]+\\.[0-9]+-beta\\.[0-9]+"))
+                tag.matches(Regex("android-v[0-9]+\\.[0-9]+\\.[0-9]+(?:-beta\\.[0-9]+)?"))
         )
         require(
             candidate.code > 0 &&
@@ -300,6 +300,11 @@ class AppUpdates(private val context: Context) {
                     val release = releases.getJSONObject(i)
                     val tag = release.optString("tag_name")
                     if (release.optBoolean("draft") || !tag.startsWith("android-v")) continue
+                    if (
+                        !BuildConfig.VERSION_NAME.contains("-beta.") &&
+                            release.optBoolean("prerelease")
+                    )
+                        continue
                     val assets = release.getJSONArray("assets")
                     val manifest =
                         (0 until assets.length())
@@ -326,7 +331,7 @@ class AppUpdates(private val context: Context) {
                         checking = false,
                         checkedAt = now,
                         ready = best?.let { apk(it).isFile } == true,
-                        message = if (best == null) "已是当前测试通道的最新版本" else "发现新版本 ${best.version}",
+                        message = if (best == null) "已是最新版本" else "发现新版本 ${best.version}",
                         failed = false,
                     )
                 if (best != null && best.code != previous.candidate?.code)

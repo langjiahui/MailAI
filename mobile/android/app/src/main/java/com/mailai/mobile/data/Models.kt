@@ -28,6 +28,7 @@ data class Attachment(
     val type: String,
     val size: Long = -1,
     val local: String = "",
+    val contentId: String = "",
 )
 
 data class MailItem(
@@ -44,6 +45,9 @@ data class MailItem(
     val body: String? = null,
     val attachments: List<Attachment> = emptyList(),
     val messageId: String = "",
+    val html: String? = null,
+    val cc: String = "",
+    val contentVersion: Int = 1,
 )
 
 enum class SendState {

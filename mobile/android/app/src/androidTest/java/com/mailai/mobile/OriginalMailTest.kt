@@ -1,0 +1,311 @@
+package com.mailai.mobile
+
+import android.graphics.Bitmap
+import android.graphics.Color
+import android.view.View
+import android.view.ViewGroup
+import android.webkit.WebView
+import androidx.compose.ui.test.*
+import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.lifecycle.ViewModelProvider
+import androidx.test.core.app.ActivityScenario
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.By
+import androidx.test.uiautomator.UiDevice
+import androidx.test.uiautomator.Until
+import com.mailai.mobile.data.*
+import com.mailai.mobile.mail.*
+import com.mailai.mobile.ui.MailViewModel
+import java.io.File
+import javax.mail.internet.MimeUtility
+import org.junit.Assert.*
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+@RunWith(AndroidJUnit4::class)
+class OriginalMailTest {
+    @get:Rule val compose = createEmptyComposeRule()
+    private val context
+        get() = InstrumentationRegistry.getInstrumentation().targetContext
+
+    private val device
+        get() = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+
+    private val account =
+        Account(
+            id = "23b057cd-65b1-437f-abf9-5d29fa101a01",
+            email = "fixture@example.test",
+            imap = Server("127.0.0.1", 993),
+            smtp = Server("127.0.0.1", 465),
+        )
+
+    private fun launch(): Pair<ActivityScenario<MainActivity>, MailViewModel> {
+        assertEquals("MailAI", context.applicationInfo.loadLabel(context.packageManager).toString())
+        AccountStore(context).put(account, "synthetic-test-secret")
+        val dir = File(context.filesDir, "accounts/${account.id}").apply { mkdirs() }
+        val image = File(dir, "inline-fixture")
+        Bitmap.createBitmap(120, 40, Bitmap.Config.ARGB_8888).apply {
+            eraseColor(Color.rgb(51, 74, 59))
+            image.outputStream().use { compress(Bitmap.CompressFormat.PNG, 100, it) }
+            recycle()
+        }
+        val people =
+            "我 <${account.email}>," +
+                (1..35).joinToString(",") {
+                    "\"${MimeUtility.encodeText("联系人$it","UTF-8","B")}\" <person$it@example.test>"
+                }
+        val html =
+            """<!doctype html><html><head><style>body{font-family:Arial;color:#253027;background:white}h2{font-size:22px;color:#334a3b}table{width:100%;border-collapse:collapse}td,th{border:1px solid #bdcbbb;padding:10px}th{background:#e7efe2;text-align:left}</style></head><body>
+            <h2>项目状态 · 原始排版</h2><p>请确认以下信息，<b style="color:#a54a22">周五前反馈</b>。</p><table><tr><th>事项</th><th>状态</th></tr><tr><td>接口联调</td><td>已完成</td></tr><tr><td>上线计划</td><td>待确认</td></tr></table><p>内嵌图片：</p><img alt="项目标识" src="cid:brand" width="240" height="80"><p><a href="https://example.test/details">查看详情</a></p><script>document.body.innerText='SCRIPT_EXECUTED'</script></body></html>"""
+        MailStore(context, account.id).use {
+            it.writableDatabase.delete("messages", null, null)
+            it.writableDatabase.delete("drafts", null, null)
+            it.put(
+                MailItem(
+                    "INBOX:1:71",
+                    "INBOX",
+                    1,
+                    71,
+                    "\"${MimeUtility.encodeText("研发通知","UTF-8","B")}\" <notice@example.test>",
+                    "notice@example.test",
+                    people,
+                    "多人收件人与原版邮件",
+                    System.currentTimeMillis(),
+                    false,
+                    "项目状态 · 原始排版\n接口联调：已完成\n上线计划：待确认",
+                    listOf(
+                        Attachment(
+                            "1",
+                            "标识.png",
+                            "image/png",
+                            image.length(),
+                            "inline-fixture",
+                            "brand",
+                        )
+                    ),
+                    html = html,
+                )
+            )
+        }
+        val scenario = ActivityScenario.launch(MainActivity::class.java)
+        lateinit var vm: MailViewModel
+        scenario.onActivity { vm = ViewModelProvider(it)[MailViewModel::class.java] }
+        compose.waitUntil(15000) { vm.ready && !vm.busy }
+        scenario.onActivity {
+            vm.dismissStatus()
+            vm.go("inbox")
+        }
+        return scenario to vm
+    }
+
+    private fun capture(name: String) {
+        compose.waitForIdle()
+        device.waitForIdle(1000)
+        val dir = File(context.getExternalFilesDir(null), "original-mail-checks").apply { mkdirs() }
+        assertTrue(device.takeScreenshot(File(dir, "$name.png")))
+    }
+
+    private fun cleanup(scenario: ActivityScenario<MainActivity>) {
+        scenario.close()
+        MailStore(context, account.id).use {
+            it.writableDatabase.delete("messages", null, null)
+            it.writableDatabase.delete("drafts", null, null)
+        }
+    }
+
+    private fun web(view: View): WebView? {
+        if (view is WebView) return view
+        if (view is ViewGroup)
+            for (i in 0 until view.childCount) web(view.getChildAt(i))?.let {
+                return it
+            }
+        return null
+    }
+
+    @Test
+    fun encodedRecipientsCollapseAndOriginalHtmlRendersWithoutScripts() {
+        val (scenario, vm) = launch()
+        try {
+            compose.onNodeWithText("多人收件人与原版邮件").performClick()
+            compose.onNodeWithText("研发通知").assertExists()
+            compose.onNodeWithText("发给我 · 共 36 人  ›").assertExists()
+            compose.onNodeWithText("回复").assertIsDisplayed()
+            compose.waitUntil(10000) {
+                compose.onAllNodesWithTag("html-body").fetchSemanticsNodes().isNotEmpty() &&
+                    runCatching { compose.onNodeWithTag("html-body").assertIsDisplayed() }.isSuccess
+            }
+            compose.onNodeWithTag("html-body").assertIsDisplayed()
+            capture("rendering-check")
+            assertNotNull(device.wait(Until.findObject(By.textContains("项目状态")), 8000))
+            assertFalse(device.hasObject(By.textContains("SCRIPT_EXECUTED")))
+            scenario.onActivity {
+                val renderer = requireNotNull(web(it.window.decorView))
+                assertFalse(renderer.settings.javaScriptEnabled)
+                assertFalse(renderer.settings.allowFileAccess)
+                assertFalse(renderer.settings.allowContentAccess)
+            }
+            capture("reader-original-collapsed")
+            compose.onNodeWithText("详情").performClick()
+            compose.onNodeWithText("收件人 · 36 人").performScrollTo().assertExists()
+            compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("联系人1"))
+            compose.onNodeWithText("联系人1").assertExists()
+            compose.onNodeWithText("person1@example.test").assertExists()
+            capture("people-decoded-details")
+            compose.onNodeWithText("完成").performClick()
+            compose.onNodeWithText("文本").performClick()
+            compose.onNodeWithText("项目状态 · 原始排版\n接口联调：已完成\n上线计划：待确认").assertExists()
+            assertNotNull(vm.selected?.html)
+        } finally {
+            cleanup(scenario)
+        }
+    }
+
+    @Test
+    fun contactPickerAddsDecodedRecipientAndKeepsItFolded() {
+        val (scenario, vm) = launch()
+        try {
+            scenario.onActivity { vm.go("contacts") }
+            compose.onNodeWithText("通讯录").assertExists()
+            capture("address-book")
+            scenario.onActivity {
+                vm.go("inbox")
+                vm.compose()
+            }
+            compose.onNodeWithText("通讯录").performScrollTo().performClick()
+            compose.onNodeWithText("搜索姓名或邮箱").performTextInput("person1@example.test")
+            compose.onNodeWithText("联系人1").performClick()
+            compose.onNodeWithText("添加所选 1 位").performClick()
+            compose.waitUntil(10000) { vm.draft?.to?.contains("person1@example.test") == true }
+            compose.onNodeWithText("联系人1").assertExists()
+            compose.onNodeWithText("1 人 ›").assertExists()
+            capture("composer-selected-contact")
+            assertFalse(vm.draft!!.to.contains("=?"))
+        } finally {
+            cleanup(scenario)
+        }
+    }
+
+    @Test
+    fun newContactPersistsAndCanBeSelectedAfterRecreation() {
+        val (scenario, vm) = launch()
+        try {
+            scenario.onActivity { vm.go("contacts") }
+            compose.onNodeWithText("新建联系人").performClick()
+            compose.onNodeWithText("姓名（选填）").performTextInput("测试同事")
+            compose.onNodeWithText("邮箱地址").performTextInput("colleague@example.test")
+            compose.onNodeWithText("保存联系人").performClick()
+            compose.waitUntil(10000) {
+                !vm.busy &&
+                    vm.contacts.any { it.email == "colleague@example.test" && it.name == "测试同事" }
+            }
+            scenario.recreate()
+            compose.onNodeWithText("搜索联系人").performTextInput("colleague@example.test")
+            compose.onNodeWithTag("contacts-list").performScrollToNode(hasText("测试同事"))
+            capture("new-contact-before-write")
+            compose.onNodeWithText("测试同事").assertIsDisplayed().performClick()
+            capture("new-contact-after-write")
+            compose.waitUntil(10000) { vm.draft?.to?.contains("colleague@example.test") == true }
+            assertEquals("测试同事", MailAddresses.parse(vm.draft!!.to).single().name)
+        } finally {
+            cleanup(scenario)
+        }
+    }
+
+    @Test
+    fun floatingBubbleDoesNotMoveContentAndDisappears() {
+        val (scenario, vm) = launch()
+        try {
+            val before = compose.onNodeWithTag("inbox-list").getUnclippedBoundsInRoot()
+            scenario.onActivity { vm.showMessage("联系人已保存") }
+            compose.onNodeWithTag("operation-bubble").assertIsDisplayed()
+            val after = compose.onNodeWithTag("inbox-list").getUnclippedBoundsInRoot()
+            assertEquals(before.top.value, after.top.value, 0.1f)
+            assertEquals(before.bottom.value, after.bottom.value, 0.1f)
+            capture("floating-bubble-no-layout-shift")
+            compose.mainClock.advanceTimeBy(5000)
+            compose.onNodeWithTag("operation-bubble").assertDoesNotExist()
+        } finally {
+            cleanup(scenario)
+        }
+    }
+
+    @Test
+    fun rendererFailureKeepsTextAndCanRetryOriginal() {
+        val (scenario, _) = launch()
+        try {
+            compose.onNodeWithText("多人收件人与原版邮件").performClick()
+            compose.waitUntil(10000) { device.hasObject(By.textContains("项目状态")) }
+            scenario.onActivity {
+                requireNotNull(web(it.window.decorView)).loadUrl(MailHtml.ORIGIN + "unavailable")
+            }
+            compose.waitUntil(10000) {
+                compose.onAllNodesWithText("原版暂时无法显示，已保留文本正文").fetchSemanticsNodes().isNotEmpty()
+            }
+            compose.onNodeWithText("项目状态 · 原始排版\n接口联调：已完成\n上线计划：待确认").assertExists()
+            compose.onNodeWithText("重新显示原邮件").performScrollTo().performClick()
+            compose.waitUntil(10000) { device.hasObject(By.textContains("项目状态")) }
+            compose.onNodeWithTag("html-body").assertIsDisplayed()
+        } finally {
+            cleanup(scenario)
+        }
+    }
+
+    @Test
+    fun inlineImageAndHtmlRemainAvailableOffline() {
+        val (scenario, vm) = launch()
+        try {
+            device.executeShellCommand("svc wifi disable")
+            device.executeShellCommand("svc data disable")
+            compose.waitUntil(10000) { !vm.online }
+            compose.onNodeWithText("多人收件人与原版邮件").performClick()
+            compose.waitUntil(10000) {
+                compose.onAllNodesWithTag("html-body").fetchSemanticsNodes().isNotEmpty() &&
+                    runCatching { compose.onNodeWithTag("html-body").assertIsDisplayed() }.isSuccess
+            }
+            compose.onNodeWithTag("html-body").assertIsDisplayed()
+            capture("rendering-check")
+            compose.waitUntil(8000) {
+                var rendered = false
+                scenario.onActivity { activity ->
+                    web(activity.window.decorView)?.let {
+                        rendered = it.contentHeight > 300 && it.progress == 100
+                    }
+                }
+                rendered
+            }
+            scenario.onActivity { web(it.window.decorView)?.scrollTo(0, 100000) }
+            capture("offline-image-pixels")
+            val bitmap =
+                android.graphics.BitmapFactory.decodeFile(
+                    File(
+                            context.getExternalFilesDir(null),
+                            "original-mail-checks/offline-image-pixels.png",
+                        )
+                        .path
+                )
+            val bounds = compose.onNodeWithTag("html-body").getUnclippedBoundsInRoot()
+            val density = context.resources.displayMetrics.density
+            var green = 0
+            for (y in
+                (bounds.top.value * density).toInt().coerceAtLeast(0) until
+                    (bounds.bottom.value * density).toInt().coerceAtMost(bitmap.height) step
+                    4) for (x in
+                (bounds.left.value * density).toInt().coerceAtLeast(0) until
+                    (bounds.right.value * density).toInt().coerceAtMost(bitmap.width) step
+                    4) {
+                if (bitmap.getPixel(x, y) == Color.rgb(51, 74, 59)) green++
+            }
+            bitmap.recycle()
+            assertTrue("The cached inline image must actually render offline", green > 1000)
+            assertFalse(vm.busy)
+            assertTrue(File(context.filesDir, "accounts/${account.id}/inline-fixture").isFile)
+            capture("original-html-offline")
+        } finally {
+            device.executeShellCommand("svc wifi enable")
+            device.executeShellCommand("svc data enable")
+            cleanup(scenario)
+        }
+    }
+}

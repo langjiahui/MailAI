@@ -59,6 +59,9 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
     var selected by mutableStateOf<MailItem?>(null)
         private set
 
+    var contacts by mutableStateOf<List<MailContact>>(emptyList())
+        private set
+
     var draft by mutableStateOf<Draft?>(null)
         private set
 
@@ -142,7 +145,11 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
                 ready = true
                 // Restoring a composer must never reconnect SMTP or submit a saved draft.
                 if (account != null && page == "inbox" && online) refresh()
-                else if (page == "reader" && selected?.body == null) fetchBody()
+                else if (
+                    page == "reader" &&
+                        (selected?.body == null || (selected?.contentVersion == 0 && online))
+                )
+                    fetchBody()
             } catch (t: Throwable) {
                 status = "无法读取本地数据，请勿卸载应用。"
                 error = true
@@ -282,11 +289,16 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
         val currentFolder = folder
         val result =
             withContext(Dispatchers.IO) {
-                repo.store(a).messages(currentFolder) to repo.store(a).drafts()
+                Triple(
+                    repo.store(a).messages(currentFolder),
+                    repo.store(a).drafts(),
+                    repo.store(a).contacts(),
+                )
             }
         if (account?.id == a.id && folder == currentFolder) {
             mails = result.first
             drafts = result.second
+            contacts = result.third.filterNot { it.email.equals(a.email, true) }
         }
     }
 
@@ -481,21 +493,23 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
         fetchBody()
     }
 
-    fun fetchBody() {
+    fun fetchBody(force: Boolean = false) {
         val a = account ?: return
         val item = selected ?: return
         // Cached, already-read mail needs no network operation or transient loading banner.
-        if (item.body != null && (!item.unread || !online)) {
+        if (
+            !force && item.body != null && ((!item.unread && item.contentVersion >= 1) || !online)
+        ) {
             dismissStatus()
             return
         }
         run(
-            if (item.body == null) "正在读取正文…" else "正在更新已读状态…",
-            again = { fetchBody() },
+            if (item.body == null || force || item.contentVersion == 0) "正在读取原邮件…" else "正在更新已读状态…",
+            again = { fetchBody(force) },
             network = true,
         ) { token, progress ->
-            if (item.body == null) requireOnline()
-            val loaded = repo.read(a, item, token)
+            if (item.body == null || force || item.contentVersion == 0) requireOnline()
+            val loaded = repo.read(a, item, token, force)
             token.check()
             selected = loaded
             try {
@@ -514,6 +528,34 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
         }
     }
 
+    fun showMessage(value: String, failed: Boolean = false) {
+        if (busy) return
+        status = value
+        error = failed
+        retry = null
+    }
+
+    fun saveContact(contact: MailContact) {
+        val a = account ?: return
+        run("正在保存联系人…", false) { _, _ ->
+            val address = contact.address()
+            require(MimeCodec.addresses(address).size == 1) { "请填写一个有效邮箱地址" }
+            withContext(Dispatchers.IO) { repo.store(a).rememberContacts(address) }
+            loadCache()
+            status = "联系人已保存"
+        }
+    }
+
+    fun addRecipients(selected: List<MailContact>) {
+        val d = draft ?: return
+        try {
+            update(d.copy(to = MailAddresses.add(d.to, selected)))
+        } catch (e: IllegalArgumentException) {
+            status = e.message.orEmpty()
+            error = true
+        }
+    }
+
     fun compose(reply: Boolean = false) {
         if (busy || page == "compose") return
         dismissStatus()
@@ -528,7 +570,10 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
                     replyId = m.messageId,
                 )
             else Draft()
-        setComposerOrigin(if (reply && page == "reader") "reader" else "inbox")
+        setComposerOrigin(
+            if (reply && page == "reader") "reader"
+            else if (page == "contacts") "contacts" else "inbox"
+        )
         draft = d
         page = "compose"
         save(d, a)

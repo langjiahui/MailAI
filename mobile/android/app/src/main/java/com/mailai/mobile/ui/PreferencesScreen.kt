@@ -261,7 +261,7 @@ internal fun PreferencesScreen(vm: MailViewModel) {
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                SettingToggle("自动检查更新", "每天检查 GitHub 测试通道", autoCheck) {
+                SettingToggle("自动检查更新", "每天检查 GitHub 正式版本", autoCheck) {
                     prefs.autoCheck = it
                     BackgroundSchedule.configure(context)
                 }
@@ -349,7 +349,7 @@ internal fun PreferencesScreen(vm: MailViewModel) {
                     )
             }
             Text(
-                "测试通道 · 安装包经过完整性、版本及签名验证",
+                "MailAI 正式版 · 安装包经过完整性、版本及签名验证",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

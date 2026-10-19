@@ -19,7 +19,7 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 
 ## Android 开发预览
 
-安卓独立客户端 **2.10.0-beta.9** 已提供邮箱收发、附件、草稿、后台邮件通知与应用内更新，本轮优化回复返回、草稿编辑、搜索恢复与完成反馈：[下载 Android 测试 APK](https://github.com/langjiahui/MailAI/releases/download/android-v2.10.0-beta.9/MailAI-Android-2.10.0-beta.9.apk)。手机独立运行，后台为系统周期调度，更新安装需系统确认。[源码、使用边界与验收说明](mobile/android/README.md)。真实邮箱与目标手机兼容性仍需验收；桌面稳定版下载见下方。
+安卓独立客户端 **2.10.0 正式版**：原邮件 HTML 排版、内嵌图片、通讯录、折叠收件人、浮动提示，以及邮箱收发、附件、草稿、后台通知和应用更新。[下载 Android APK](https://github.com/langjiahui/MailAI/releases/download/android-v2.10.0/MailAI-Android-2.10.0.apk)。beta.9 首次进入正式版请直接覆盖安装，不卸载；此后使用正式通道更新。[源码、使用范围与验收](mobile/android/README.md)。桌面稳定版下载见下方。
 
 ## 下载 MailAI
 

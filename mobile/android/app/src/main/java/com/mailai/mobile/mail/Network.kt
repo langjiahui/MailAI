@@ -86,7 +86,7 @@ object NetworkPolicy {
             "请填写有效的服务器域名"
         }
         val addresses = InetAddress.getAllByName(host)
-        require(addresses.isNotEmpty() && addresses.all(::isPublic)) { "当前预览版只支持公网邮箱服务器" }
+        require(addresses.isNotEmpty() && addresses.all(::isPublic)) { "当前只支持公网邮箱服务器" }
         return addresses.first()
     }
 }

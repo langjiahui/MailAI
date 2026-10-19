@@ -97,16 +97,76 @@ class MailRepository(
             db.acknowledgeArrivals(pending.map { it.key })
     }
 
-    suspend fun read(a: Account, item: MailItem, op: Operation) =
+    suspend fun read(a: Account, item: MailItem, op: Operation, force: Boolean = false) =
         withContext(Dispatchers.IO) {
-            val loaded =
-                if (item.body != null) item
-                else
-                    transport.read(a, accounts.password(a.id), item, op).also {
+            if (!force && item.body != null && item.contentVersion >= 1) item
+            else {
+                var inlineBytes = 0L
+                transport
+                    .read(a, accounts.password(a.id), item, op) { attachment, part ->
+                        val cached =
+                            item.attachments.firstOrNull {
+                                it.part == attachment.part &&
+                                    it.name == attachment.name &&
+                                    it.local.isNotBlank()
+                            }
+                        if (cached != null && file(a, cached.local).isFile)
+                            return@read attachment.copy(
+                                local = cached.local,
+                                size = file(a, cached.local).length(),
+                            )
+                        require(inlineBytes < 8L * 1024 * 1024) { "内嵌图片较多，可单独下载" }
+                        val token = UUID.randomUUID().toString()
+                        val pending = file(a, "$token.part")
+                        val dest = file(a, token)
+                        try {
+                            val size =
+                                part.inputStream.use { input ->
+                                    pending.outputStream().use { output ->
+                                        MimeCodec.copyBounded(
+                                            input,
+                                            output,
+                                            minOf(3L * 1024 * 1024, 8L * 1024 * 1024 - inlineBytes),
+                                            op,
+                                        )
+                                    }
+                                }
+                            op.check()
+                            check(pending.renameTo(dest))
+                            inlineBytes += size
+                            attachment.copy(size = size, local = token)
+                        } finally {
+                            pending.delete()
+                        }
+                    }
+                    .let { loaded ->
+                        loaded.copy(
+                            attachments =
+                                loaded.attachments.map { fresh ->
+                                    val cached =
+                                        item.attachments.firstOrNull {
+                                            it.part == fresh.part &&
+                                                it.name == fresh.name &&
+                                                it.local.isNotBlank()
+                                        }
+                                    if (
+                                        fresh.local.isBlank() &&
+                                            cached != null &&
+                                            file(a, cached.local).isFile
+                                    )
+                                        fresh.copy(
+                                            local = cached.local,
+                                            size = file(a, cached.local).length(),
+                                        )
+                                    else fresh
+                                }
+                        )
+                    }
+                    .also {
                         op.check()
                         store(a).put(it)
                     }
-            loaded
+            }
         }
 
     suspend fun seen(a: Account, item: MailItem, op: Operation) =
