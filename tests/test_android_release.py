@@ -156,6 +156,28 @@ class AndroidReleaseTest(unittest.TestCase):
                     r.publish(output, Path('/synthetic-sdk'))
             gh.assert_not_called()
 
+    def test_unfinished_release_notes_cannot_be_published(self):
+        info = dict(version='1.3.0', code=2100107, tag='android-v1.3.0', notes='本地开发与验收目标')
+        with tempfile.TemporaryDirectory() as temp, patch.object(r, 'metadata', return_value=info), \
+                patch.object(r, 'remote_baseline', return_value=([], None)), \
+                patch.object(r, 'inspect_apk') as inspect:
+            with self.assertRaisesRegex(ValueError, 'development targets'):
+                r.package(Path(temp), Path('/synthetic-sdk'), Path(temp) / 'out', True)
+            inspect.assert_not_called()
+
+    def test_formal_readme_must_be_updated_before_publication(self):
+        info = dict(version='1.3.0', code=2100107, tag='android-v1.3.0', notes='正式发布说明')
+        with tempfile.TemporaryDirectory() as temp:
+            source = Path(temp)
+            (source / 'mobile/android').mkdir(parents=True)
+            (source / 'mobile/android/README.md').write_text('当前 Android 正式版本：1.2.0')
+            with patch.object(r, 'metadata', return_value=info), \
+                    patch.object(r, 'remote_baseline', return_value=([], None)), \
+                    patch.object(r, 'inspect_apk') as inspect:
+                with self.assertRaisesRegex(ValueError, 'formal version'):
+                    r.package(source, Path('/synthetic-sdk'), source / 'out', True)
+                inspect.assert_not_called()
+
     def test_fixed_signer_must_match(self):
         output = 'Signer #1 certificate SHA-256 digest: ' + '0' * 64
         with patch.object(r, 'run', return_value=output), self.assertRaisesRegex(ValueError, 'signer mismatch'):
