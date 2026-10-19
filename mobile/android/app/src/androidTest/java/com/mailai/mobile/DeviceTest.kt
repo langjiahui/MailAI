@@ -171,6 +171,28 @@ class DeviceTest {
             }
             compose.onNodeWithText("回复").assertExists()
         } finally {
+            // Notification / launcher delivery replaces Activity.intent. Restore only the
+            // fixture metadata so ActivityScenario can match lifecycle events during teardown.
+            InstrumentationRegistry.getInstrumentation().runOnMainSync {
+                val monitor =
+                    androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
+                listOf(
+                        androidx.test.runner.lifecycle.Stage.RESUMED,
+                        androidx.test.runner.lifecycle.Stage.STARTED,
+                        androidx.test.runner.lifecycle.Stage.PAUSED,
+                        androidx.test.runner.lifecycle.Stage.STOPPED,
+                    )
+                    .flatMap { monitor.getActivitiesInStage(it) }
+                    .filterIsInstance<MainActivity>()
+                    .forEach {
+                        it.intent =
+                            com.mailai.mobile.background.MailNotifications.mailIntent(
+                                context,
+                                a,
+                                m.key,
+                            )
+                    }
+            }
             scenario.close()
             manager.cancel("mail.${a.id}", 1)
         }
