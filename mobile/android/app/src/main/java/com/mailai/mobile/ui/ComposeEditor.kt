@@ -58,6 +58,7 @@ internal fun ComposeEditor(vm: MailViewModel, back: () -> Unit, send: () -> Unit
     val compact =
         LocalConfiguration.current.screenWidthDp < 360 || LocalDensity.current.fontScale > 1.3f
     val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    val shortKeyboard = imeVisible && LocalConfiguration.current.screenHeightDp < 480
     val paper = colors.surface
     val wash = colors.background
     Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(wash, paper)))) {
@@ -79,7 +80,22 @@ internal fun ComposeEditor(vm: MailViewModel, back: () -> Unit, send: () -> Unit
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
             )
-            if (!compact)
+            if (shortKeyboard) {
+                IconButton(
+                    onClick = { picker.launch(arrayOf("image/*")) },
+                    enabled = editable,
+                    modifier = Modifier.size(48.dp).testTag("compose-photo"),
+                ) {
+                    ComposeIcon(R.drawable.ic_compose_photo, "添加图片")
+                }
+                IconButton(
+                    onClick = { picker.launch(arrayOf("*/*")) },
+                    enabled = editable,
+                    modifier = Modifier.size(48.dp).testTag("compose-attachment"),
+                ) {
+                    ComposeIcon(R.drawable.ic_compose_attach, "添加附件，合计 25 MB 内")
+                }
+            } else if (!compact)
                 IconButton(onClick = { picker.launch(arrayOf("*/*")) }, enabled = editable) {
                     ComposeIcon(R.drawable.ic_compose_attach, "添加附件")
                 }
@@ -99,10 +115,12 @@ internal fun ComposeEditor(vm: MailViewModel, back: () -> Unit, send: () -> Unit
             // The editor has its own text scroll; the page can still reveal all header fields on
             // IME.
             val editorHeight =
-                (maxHeight * .56f).coerceIn(
-                    minOf(112.dp, (maxHeight - 56.dp).coerceAtLeast(64.dp)),
-                    640.dp,
-                )
+                if (shortKeyboard) (maxHeight - 52.dp).coerceIn(48.dp, 240.dp)
+                else
+                    (maxHeight * .56f).coerceIn(
+                        minOf(112.dp, (maxHeight - 56.dp).coerceAtLeast(64.dp)),
+                        640.dp,
+                    )
             Column(
                 Modifier.fillMaxSize().verticalScroll(scroll).padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -228,64 +246,80 @@ internal fun ComposeEditor(vm: MailViewModel, back: () -> Unit, send: () -> Unit
                     TextButton(onClick = vm::retrySave, enabled = !vm.busy) { Text("重试保存") }
                 }
             }
-        Row(
-            Modifier.fillMaxWidth().background(paper).padding(horizontal = 12.dp, vertical = 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (compact && imeVisible) {
-                IconButton(
-                    onClick = { picker.launch(arrayOf("image/*")) },
-                    enabled = editable,
-                    modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("compose-photo"),
-                ) {
-                    ComposeIcon(R.drawable.ic_compose_photo, "添加图片")
+        if (!shortKeyboard)
+            Row(
+                Modifier.fillMaxWidth()
+                    .background(paper)
+                    .padding(horizontal = 12.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (compact && imeVisible) {
+                    IconButton(
+                        onClick = { picker.launch(arrayOf("image/*")) },
+                        enabled = editable,
+                        modifier =
+                            Modifier.weight(1f).heightIn(min = 48.dp).testTag("compose-photo"),
+                    ) {
+                        ComposeIcon(R.drawable.ic_compose_photo, "添加图片")
+                    }
+                    IconButton(
+                        onClick = { picker.launch(arrayOf("*/*")) },
+                        enabled = editable,
+                        modifier =
+                            Modifier.weight(1f).heightIn(min = 48.dp).testTag("compose-attachment"),
+                    ) {
+                        ComposeIcon(R.drawable.ic_compose_attach, "添加附件，合计 25 MB 内")
+                    }
+                } else {
+                    TextButton(
+                        onClick = { picker.launch(arrayOf("image/*")) },
+                        enabled = editable,
+                        modifier =
+                            (if (compact) Modifier.weight(1f) else Modifier)
+                                .heightIn(min = 48.dp)
+                                .testTag("compose-photo"),
+                    ) {
+                        ComposeIcon(R.drawable.ic_compose_photo, null, Modifier.size(21.dp))
+                        Spacer(Modifier.width(7.dp))
+                        Text(
+                            "图片",
+                            fontSize = 13.sp,
+                            lineHeight = 18.sp,
+                            maxLines = 1,
+                            softWrap = false,
+                        )
+                    }
+                    TextButton(
+                        onClick = { picker.launch(arrayOf("*/*")) },
+                        enabled = editable,
+                        modifier =
+                            (if (compact) Modifier.weight(1f) else Modifier)
+                                .heightIn(min = 48.dp)
+                                .testTag("compose-attachment")
+                                .semantics { contentDescription = "附件，合计 25 MB 内" },
+                    ) {
+                        ComposeIcon(R.drawable.ic_compose_attach, null, Modifier.size(21.dp))
+                        Spacer(Modifier.width(7.dp))
+                        Text(
+                            "附件",
+                            fontSize = 13.sp,
+                            lineHeight = 18.sp,
+                            maxLines = 1,
+                            softWrap = false,
+                        )
+                    }
                 }
-                IconButton(
-                    onClick = { picker.launch(arrayOf("*/*")) },
-                    enabled = editable,
-                    modifier =
-                        Modifier.weight(1f).heightIn(min = 48.dp).testTag("compose-attachment"),
-                ) {
-                    ComposeIcon(R.drawable.ic_compose_attach, "添加附件，合计 25 MB 内")
-                }
-            } else {
-                TextButton(
-                    onClick = { picker.launch(arrayOf("image/*")) },
-                    enabled = editable,
-                    modifier =
-                        (if (compact) Modifier.weight(1f) else Modifier)
-                            .heightIn(min = 48.dp)
-                            .testTag("compose-photo"),
-                ) {
-                    ComposeIcon(R.drawable.ic_compose_photo, null, Modifier.size(21.dp))
-                    Spacer(Modifier.width(7.dp))
-                    Text("图片", fontSize = 13.sp, lineHeight = 18.sp, maxLines = 1, softWrap = false)
-                }
-                TextButton(
-                    onClick = { picker.launch(arrayOf("*/*")) },
-                    enabled = editable,
-                    modifier =
-                        (if (compact) Modifier.weight(1f) else Modifier)
-                            .heightIn(min = 48.dp)
-                            .testTag("compose-attachment")
-                            .semantics { contentDescription = "附件，合计 25 MB 内" },
-                ) {
-                    ComposeIcon(R.drawable.ic_compose_attach, null, Modifier.size(21.dp))
-                    Spacer(Modifier.width(7.dp))
-                    Text("附件", fontSize = 13.sp, lineHeight = 18.sp, maxLines = 1, softWrap = false)
-                }
+                if (!compact)
+                    Text(
+                        "合计 25 MB 内",
+                        Modifier.weight(1f).padding(end = 4.dp),
+                        fontSize = 11.sp,
+                        color = colors.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.End,
+                    )
             }
-            if (!compact)
-                Text(
-                    "合计 25 MB 内",
-                    Modifier.weight(1f).padding(end = 4.dp),
-                    fontSize = 11.sp,
-                    color = colors.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.End,
-                )
-        }
     }
 }
 

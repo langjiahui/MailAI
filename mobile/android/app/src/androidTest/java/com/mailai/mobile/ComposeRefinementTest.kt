@@ -104,7 +104,9 @@ class ComposeRefinementTest {
                 .performClick()
                 .performTextInput("你好，团队。请确认周五安排。")
             compose.onNodeWithTag("compose-body").performTextInputSelection(TextRange(0, 2))
-            compose.onNodeWithContentDescription("加粗").performScrollTo().performClick()
+            compose.onNodeWithContentDescription("加粗").performScrollTo()
+            device.waitForIdle(1000)
+            compose.onNodeWithContentDescription("加粗").performClick()
             compose.waitUntil(5000) {
                 vm.draft!!.styles.any {
                     it.kind == BodyStyleKind.BOLD && it.start == 0 && it.end == 2
@@ -157,9 +159,13 @@ class ComposeRefinementTest {
             compose.waitUntil(15000) { vm.account?.id == account.id && !vm.busy && vm.error }
             scenario.onActivity { vm.compose() }
             compose.onNodeWithTag("compose-body").performScrollTo().performClick()
-            compose.onNodeWithContentDescription("加粗").performScrollTo().performClick()
+            compose.onNodeWithContentDescription("加粗").performScrollTo()
+            device.waitForIdle(1000)
+            compose.onNodeWithContentDescription("加粗").performClick()
             compose.onNodeWithTag("compose-body").performTextInput("会议")
-            compose.onNodeWithContentDescription("加粗").performScrollTo().performClick()
+            compose.onNodeWithContentDescription("加粗").performScrollTo()
+            device.waitForIdle(1000)
+            compose.onNodeWithContentDescription("加粗").performClick()
             compose.onNodeWithTag("compose-body").performTextInput("安排")
             compose.waitUntil(5000) { vm.draft!!.body == "会议安排" }
             assertEquals(listOf(BodyStyle(0, 2, BodyStyleKind.BOLD)), vm.draft!!.styles)

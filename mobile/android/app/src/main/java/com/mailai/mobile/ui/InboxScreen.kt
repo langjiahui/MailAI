@@ -83,6 +83,7 @@ internal fun RefinedInbox(vm: MailViewModel, listState: LazyListState) {
     val haptic = LocalHapticFeedback.current
     var moreOpen by remember { mutableStateOf(false) }
     val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    val shortScreen = LocalConfiguration.current.screenHeightDp < 480
     val filtered =
         remember(vm.mails, vm.query, vm.unreadOnly, vm.filter) {
             vm.mails.filter {
@@ -122,7 +123,12 @@ internal fun RefinedInbox(vm: MailViewModel, listState: LazyListState) {
                 ) {
                     InboxIcon(InboxGlyph.Back, ink)
                     Spacer(Modifier.width(6.dp))
-                    Text("邮箱", color = ink, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                    Text(
+                        if (shortScreen) boxName(vm.folder) else "邮箱",
+                        color = ink,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 16.sp,
+                    )
                 }
                 Spacer(Modifier.weight(1f))
                 val retry = vm.canRetry && (vm.error || vm.status.startsWith("已取消"))
@@ -178,7 +184,7 @@ internal fun RefinedInbox(vm: MailViewModel, listState: LazyListState) {
                     PaddingValues(bottom = if (keyboardVisible) 24.dp else composeHeight.dp + 40.dp),
             ) {
                 // Keep the focused search visible when the IME leaves a short viewport.
-                if (!keyboardVisible)
+                if (!keyboardVisible && !shortScreen)
                     item(key = "heading") {
                         Column(
                             Modifier.fillMaxWidth()

@@ -88,7 +88,9 @@ class InboxRefinementTest {
             }
             compose.onNodeWithText("MailAI").assertDoesNotExist()
             compose.onNodeWithTag("inbox-compose").assertIsDisplayed().assertIsEnabled()
-            compose.onNodeWithTag("inbox-list").performScrollToIndex(2)
+            compose
+                .onNodeWithTag("inbox-list")
+                .performScrollToNode(hasTestTag("inbox-mail-INBOX:1:1"))
             device.waitForIdle(1000)
             compose
                 .onNode(

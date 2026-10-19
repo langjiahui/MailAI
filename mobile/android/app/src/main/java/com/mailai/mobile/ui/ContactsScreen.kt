@@ -210,6 +210,10 @@ internal fun ContactPicker(
             MailSystemBars()
             val focus = LocalFocusManager.current
             val keyboard = LocalSoftwareKeyboardController.current
+            LaunchedEffect(Unit) {
+                focus.clearFocus()
+                keyboard?.hide()
+            }
             val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
             Column(
                 Modifier.fillMaxSize().safeDrawingPadding().imePadding().testTag("contact-picker")

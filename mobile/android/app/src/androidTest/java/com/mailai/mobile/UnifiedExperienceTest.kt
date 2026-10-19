@@ -87,12 +87,17 @@ class UnifiedExperienceTest {
             if (dark) brightness < 100 else brightness > 190,
         )
         // Check real system navigation pixels on every page, not only the settings page.
-        val navigation = bitmap.getPixel(3, bitmap.height - 3)
+        val sideNavigation = bitmap.width > bitmap.height
+        val navigation =
+            if (sideNavigation) bitmap.getPixel(bitmap.width - 3, bitmap.height / 2)
+            else bitmap.getPixel(3, bitmap.height - 3)
         val lightNavigation = Color.red(navigation) > 170
         var contrasting = 0
         val barHeight = (40 * context.resources.displayMetrics.density).toInt()
-        for (y in bitmap.height - barHeight until bitmap.height step 2) {
-            for (x in 0 until bitmap.width step 2) {
+        val scanTop = if (sideNavigation) 0 else bitmap.height - barHeight
+        val scanLeft = if (sideNavigation) bitmap.width - barHeight else 0
+        for (y in scanTop until bitmap.height step 2) {
+            for (x in scanLeft until bitmap.width step 2) {
                 val color = bitmap.getPixel(x, y)
                 if (
                     if (lightNavigation)
@@ -181,6 +186,7 @@ class UnifiedExperienceTest {
             device.pressBack()
             compose.onNodeWithText("抄送 / 密送").performScrollTo().performClick()
             compose.onNodeWithContentDescription("抄送 通讯录").performScrollTo().performClick()
+            compose.onNodeWithTag("contact-picker-list").performScrollToNode(hasText("联调组"))
             compose.onNode(hasText("联调组") and isToggleable()).performClick()
             compose.onNodeWithText("确定 (1)").performClick()
             assertEquals(
@@ -190,6 +196,7 @@ class UnifiedExperienceTest {
             assertEquals("to@example.test", vm.draft!!.to)
             assertEquals("", vm.draft!!.bcc)
             compose.onNodeWithContentDescription("密送 通讯录").performScrollTo().performClick()
+            compose.onNodeWithTag("contact-picker-list").performScrollToNode(hasText("陈予"))
             compose.onNode(hasText("陈予") and isToggleable()).performClick()
             compose.onNodeWithText("确定 (1)").performClick()
             assertEquals(
