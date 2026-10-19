@@ -57,6 +57,7 @@ TESTS = (
     'test_portable_backup.py',
     'test_mail_import.py',
     'test_release_hardening.py',
+    'test_android_release.py',
     'test_document_preview.py', 'test_spreadsheet_preview.py', 'test_attachment_preview.py', 'test_inline_attachments.py', 'test_multimodal.py', 'test_server_folder_preference.py',
     'test_assistant_attachments.py',
     'test_assistant_images.py',
