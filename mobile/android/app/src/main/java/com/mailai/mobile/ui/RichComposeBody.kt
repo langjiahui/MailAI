@@ -10,11 +10,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -55,6 +57,7 @@ internal fun RichComposeBody(
     notice: (String) -> Unit,
 ) {
     val dark = isSystemInDarkTheme()
+    val glyphScale = LocalDensity.current.fontScale
     var savedStart by rememberSaveable(draft.id) { mutableIntStateOf(0) }
     var savedEnd by rememberSaveable(draft.id) { mutableIntStateOf(0) }
     var editor by
@@ -175,7 +178,8 @@ internal fun RichComposeBody(
                 .background(composerFieldColor().copy(alpha = .65f), RoundedCornerShape(14.dp))
                 .horizontalScroll(rememberScrollState())
                 .padding(horizontal = 4.dp)
-                .testTag("compose-formatting")
+                .testTag("compose-formatting"),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(
                 onClick = {
@@ -185,7 +189,7 @@ internal fun RichComposeBody(
                 enabled = editable && undo.isNotEmpty(),
                 modifier = Modifier.semantics { contentDescription = "撤销" },
             ) {
-                Text("↶", fontSize = 24.sp)
+                Text("↶", fontSize = (24f / glyphScale).sp, lineHeight = (28f / glyphScale).sp)
             }
             IconButton(
                 onClick = {
@@ -195,7 +199,7 @@ internal fun RichComposeBody(
                 enabled = editable && redo.isNotEmpty(),
                 modifier = Modifier.semantics { contentDescription = "重做" },
             ) {
-                Text("↷", fontSize = 24.sp)
+                Text("↷", fontSize = (24f / glyphScale).sp, lineHeight = (28f / glyphScale).sp)
             }
             Box {
                 TextButton(
@@ -231,7 +235,8 @@ internal fun RichComposeBody(
                     ) {
                         Text(
                             label,
-                            fontSize = 20.sp,
+                            fontSize = (20f / glyphScale).sp,
+                            lineHeight = (24f / glyphScale).sp,
                             fontWeight =
                                 if (kind == BodyStyleKind.BOLD) FontWeight.Bold
                                 else FontWeight.Normal,

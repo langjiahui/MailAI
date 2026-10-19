@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
@@ -70,7 +71,9 @@ internal fun RefinedInbox(vm: MailViewModel, listState: LazyListState) {
         LocalConfiguration.current.screenWidthDp < 360 || LocalDensity.current.fontScale > 1.3f
     val focus = LocalFocusManager.current
     val density = LocalDensity.current
-    var composeHeight by rememberSaveable { mutableFloatStateOf(64f) }
+    val composeDiameter =
+        maxOf(64f, 44f + 16f * density.fontScale, 16f + 24f * density.fontScale).dp
+    var composeHeight by rememberSaveable { mutableFloatStateOf(composeDiameter.value) }
     val haptic = LocalHapticFeedback.current
     var moreOpen by remember { mutableStateOf(false) }
     val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
@@ -159,28 +162,30 @@ internal fun RefinedInbox(vm: MailViewModel, listState: LazyListState) {
                 contentPadding =
                     PaddingValues(bottom = if (keyboardVisible) 24.dp else composeHeight.dp + 40.dp),
             ) {
-                item(key = "heading") {
-                    Column(
-                        Modifier.fillMaxWidth()
-                            .padding(horizontal = 22.dp)
-                            .padding(top = 12.dp, bottom = 18.dp)
-                    ) {
-                        Text(
-                            if (vm.folder.equals("INBOX", true)) "收件箱" else vm.folder,
-                            fontSize = 30.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = ink,
-                        )
-                        Text(
-                            vm.account?.email ?: "添加邮箱后即可收发邮件",
-                            Modifier.padding(top = 3.dp),
-                            color = secondary,
-                            fontSize = 14.sp,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                // Keep the focused search visible when the IME leaves a short viewport.
+                if (!keyboardVisible)
+                    item(key = "heading") {
+                        Column(
+                            Modifier.fillMaxWidth()
+                                .padding(horizontal = 22.dp)
+                                .padding(top = 12.dp, bottom = 18.dp)
+                        ) {
+                            Text(
+                                if (vm.folder.equals("INBOX", true)) "收件箱" else vm.folder,
+                                fontSize = 30.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = ink,
+                            )
+                            Text(
+                                vm.account?.email ?: "添加邮箱后即可收发邮件",
+                                Modifier.padding(top = 3.dp),
+                                color = secondary,
+                                fontSize = 14.sp,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
-                }
                 item(key = "search") {
                     InboxSearch(
                         vm.query,
@@ -279,18 +284,19 @@ internal fun RefinedInbox(vm: MailViewModel, listState: LazyListState) {
                 modifier =
                     Modifier.align(Alignment.BottomEnd)
                         .padding(20.dp)
-                        .sizeIn(minWidth = 64.dp, minHeight = 64.dp)
+                        .size(composeDiameter)
                         .onSizeChanged { composeHeight = with(density) { it.height.toDp().value } }
                         .testTag("inbox-compose")
                         .semantics { contentDescription = if (vm.busy) "同步完成后可写信" else "写信" },
-                shape = RoundedCornerShape(50),
-                shadowElevation = 6.dp,
+                shape = CircleShape,
+                shadowElevation = 4.dp,
                 color = if (!vm.busy && vm.account != null) Color(0xFF237553) else mint,
                 contentColor = if (!vm.busy && vm.account != null) Color.White else secondary,
             ) {
                 Column(
-                    Modifier.padding(14.dp),
+                    Modifier.fillMaxSize().padding(8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
                 ) {
                     InboxIcon(
                         InboxGlyph.Compose,
@@ -299,6 +305,7 @@ internal fun RefinedInbox(vm: MailViewModel, listState: LazyListState) {
                     Text(
                         "写信",
                         fontSize = 12.sp,
+                        lineHeight = 16.sp,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         softWrap = false,
@@ -667,11 +674,11 @@ private fun InboxIcon(
                 else Modifier.semantics { contentDescription = description }
             )
     ) {
-        scale(
-            size.width / 24f,
-            size.height / 24f,
-            pivot = androidx.compose.ui.geometry.Offset.Zero,
-        ) {
+        val unit = minOf(size.width, size.height) / 24f
+        withTransform({
+            translate((size.width - unit * 24f) / 2f, (size.height - unit * 24f) / 2f)
+            scale(unit, unit, pivot = androidx.compose.ui.geometry.Offset.Zero)
+        }) {
             val stroke = Stroke(1.8f, cap = StrokeCap.Round, join = StrokeJoin.Round)
             val path = Path()
             when (glyph) {

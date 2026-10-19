@@ -88,9 +88,29 @@ class InboxRefinementTest {
             }
             compose.onNodeWithText("MailAI").assertDoesNotExist()
             compose.onNodeWithTag("inbox-compose").assertIsDisplayed().assertIsEnabled()
-            compose.onAllNodesWithContentDescription("标记星标（此设备）").onFirst().performClick()
-            compose.waitUntil(5000) { vm.mails.first().starred }
+            compose.onNodeWithTag("inbox-list").performScrollToIndex(2)
+            device.waitForIdle(1000)
+            compose
+                .onNode(
+                    hasContentDescription("标记星标（此设备）") and
+                        hasAnyAncestor(hasTestTag("inbox-mail-INBOX:1:1")),
+                    useUnmergedTree = true,
+                )
+                .performClick()
+            compose.waitUntil(5000) { vm.mails.single { it.key == "INBOX:1:1" }.starred }
+            compose.onNodeWithTag("inbox-list").performScrollToIndex(0)
             assertEquals("inbox", vm.page)
+            val button = compose.onNodeWithTag("inbox-compose").getUnclippedBoundsInRoot()
+            assertEquals(
+                "Floating compose must stay circular",
+                (button.right - button.left).value,
+                (button.bottom - button.top).value,
+                .5f,
+            )
+            assertTrue(
+                "Floating action remains touchable",
+                (button.right - button.left).value >= 48f,
+            )
             capture("01-inbox")
             compose.onNodeWithTag("inbox-filter").performClick()
             capture("02-filter")
@@ -101,6 +121,7 @@ class InboxRefinementTest {
             compose.onNodeWithTag("inbox-filter").performClick()
             compose.onNodeWithTag("filter-all").performClick()
             compose.onNodeWithTag("mail-search").performClick().performTextInput("项目沟通 14")
+            compose.onNodeWithTag("mail-search").assertIsDisplayed()
             capture("03-keyboard")
             compose.onNodeWithTag("inbox-compose").assertDoesNotExist()
             compose.onNodeWithTag("mail-search").performImeAction()

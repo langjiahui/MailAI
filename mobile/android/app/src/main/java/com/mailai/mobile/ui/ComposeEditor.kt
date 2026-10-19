@@ -21,6 +21,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -57,6 +59,8 @@ internal fun ComposeEditor(vm: MailViewModel, back: () -> Unit, send: () -> Unit
             if (uri != null) vm.attach(uri)
         }
     val colors = MaterialTheme.colorScheme
+    val compact =
+        LocalConfiguration.current.screenWidthDp < 360 || LocalDensity.current.fontScale > 1.3f
     val paper = if (isSystemInDarkTheme()) Color(0xFF171E25) else Color.White
     val wash = if (isSystemInDarkTheme()) Color(0xFF1C2731) else Color(0xFFF3F8FC)
     Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(wash, paper)))) {
@@ -73,14 +77,15 @@ internal fun ComposeEditor(vm: MailViewModel, back: () -> Unit, send: () -> Unit
             }
             Text(
                 "写信",
-                Modifier.weight(1f),
+                Modifier.weight(1f).testTag("compose-title"),
                 fontSize = 20.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
             )
-            IconButton(onClick = { picker.launch(arrayOf("*/*")) }, enabled = editable) {
-                ComposeIcon(R.drawable.ic_compose_attach, "添加附件")
-            }
+            if (!compact)
+                IconButton(onClick = { picker.launch(arrayOf("*/*")) }, enabled = editable) {
+                    ComposeIcon(R.drawable.ic_compose_attach, "添加附件")
+                }
             Button(
                 onClick = send,
                 enabled = editable,
@@ -90,13 +95,17 @@ internal fun ComposeEditor(vm: MailViewModel, back: () -> Unit, send: () -> Unit
             ) {
                 ComposeIcon(R.drawable.ic_compose_send, null, Modifier.size(19.dp))
                 Spacer(Modifier.width(7.dp))
-                Text("发送", maxLines = 1)
+                Text("发送", fontSize = 14.sp, lineHeight = 20.sp, maxLines = 1, softWrap = false)
             }
         }
         BoxWithConstraints(Modifier.weight(1f)) {
             // The editor has its own text scroll; the page can still reveal all header fields on
             // IME.
-            val editorHeight = (maxHeight - 190.dp).coerceIn(112.dp, 720.dp)
+            val editorHeight =
+                (maxHeight * .56f).coerceIn(
+                    minOf(112.dp, (maxHeight - 56.dp).coerceAtLeast(64.dp)),
+                    640.dp,
+                )
             LaunchedEffect(draft.body, editorHeight, bodyFocused) {
                 if (bodyFocused) {
                     withFrameNanos {}
@@ -134,7 +143,7 @@ internal fun ComposeEditor(vm: MailViewModel, back: () -> Unit, send: () -> Unit
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("主题", Modifier.widthIn(min = 48.dp), fontSize = 15.sp)
+                    Text("主题", Modifier.width(composerLabelWidth()), fontSize = 15.sp)
                     TextField(
                         value = draft.subject,
                         onValueChange = { vm.update(draft.copy(subject = it)) },
@@ -225,25 +234,41 @@ internal fun ComposeEditor(vm: MailViewModel, back: () -> Unit, send: () -> Unit
             Modifier.fillMaxWidth().background(paper).padding(horizontal = 12.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = { picker.launch(arrayOf("image/*")) }, enabled = editable) {
+            TextButton(
+                onClick = { picker.launch(arrayOf("image/*")) },
+                enabled = editable,
+                modifier =
+                    (if (compact) Modifier.weight(1f) else Modifier)
+                        .heightIn(min = 48.dp)
+                        .testTag("compose-photo"),
+            ) {
                 ComposeIcon(R.drawable.ic_compose_photo, null, Modifier.size(21.dp))
                 Spacer(Modifier.width(7.dp))
-                Text("图片", fontSize = 13.sp)
+                Text("图片", fontSize = 13.sp, lineHeight = 18.sp, maxLines = 1, softWrap = false)
             }
-            TextButton(onClick = { picker.launch(arrayOf("*/*")) }, enabled = editable) {
+            TextButton(
+                onClick = { picker.launch(arrayOf("*/*")) },
+                enabled = editable,
+                modifier =
+                    (if (compact) Modifier.weight(1f) else Modifier)
+                        .heightIn(min = 48.dp)
+                        .testTag("compose-attachment")
+                        .semantics { contentDescription = "附件，合计 25 MB 内" },
+            ) {
                 ComposeIcon(R.drawable.ic_compose_attach, null, Modifier.size(21.dp))
                 Spacer(Modifier.width(7.dp))
-                Text("附件", fontSize = 13.sp)
+                Text("附件", fontSize = 13.sp, lineHeight = 18.sp, maxLines = 1, softWrap = false)
             }
-            Text(
-                "合计 25 MB 内",
-                Modifier.weight(1f).padding(end = 4.dp),
-                fontSize = 11.sp,
-                color = colors.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.End,
-            )
+            if (!compact)
+                Text(
+                    "合计 25 MB 内",
+                    Modifier.weight(1f).padding(end = 4.dp),
+                    fontSize = 11.sp,
+                    color = colors.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.End,
+                )
         }
     }
 }
@@ -272,3 +297,5 @@ private fun composePaperColors() =
 @Composable
 internal fun composerFieldColor() =
     if (isSystemInDarkTheme()) Color(0xFF222E37) else Color(0xFFF0F5F8)
+
+@Composable internal fun composerLabelWidth() = maxOf(56f, 48f * LocalDensity.current.fontScale).dp

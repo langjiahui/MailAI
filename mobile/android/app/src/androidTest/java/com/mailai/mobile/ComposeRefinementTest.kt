@@ -34,9 +34,40 @@ class ComposeRefinementTest {
             smtp = Server("127.0.0.1", 465),
         )
 
+    private fun assertControlProportions() {
+        val root = compose.onRoot().getUnclippedBoundsInRoot()
+        val send =
+            compose.onNodeWithTag("compose-send").assertIsDisplayed().getUnclippedBoundsInRoot()
+        val title = compose.onNodeWithTag("compose-title").getUnclippedBoundsInRoot()
+        assertTrue(
+            "Send must remain a horizontal button",
+            (send.right - send.left) >= (send.bottom - send.top),
+        )
+        assertTrue(
+            "Send stays within the viewport",
+            send.right <= root.right && send.left >= root.left,
+        )
+        assertTrue("Title must not overlap send", title.right <= send.left)
+        val photo =
+            compose.onNodeWithTag("compose-photo").assertIsDisplayed().getUnclippedBoundsInRoot()
+        val attachment =
+            compose
+                .onNodeWithTag("compose-attachment")
+                .assertIsDisplayed()
+                .getUnclippedBoundsInRoot()
+        assertTrue("Bottom actions must not overlap", photo.right <= attachment.left)
+        listOf(send, photo, attachment).forEach {
+            assertTrue(
+                "Touch targets remain at least 48dp: $it",
+                (it.right - it.left).value >= 47.5f && (it.bottom - it.top).value >= 47.5f,
+            )
+        }
+    }
+
     private fun capture(name: String) {
         compose.waitForIdle()
         device.waitForIdle(1000)
+        assertControlProportions()
         val dir = File(context.getExternalFilesDir(null), "compose-refinement").apply { mkdirs() }
         assertTrue(device.takeScreenshot(File(dir, "$name.png")))
     }

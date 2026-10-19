@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
@@ -290,6 +291,8 @@ internal fun RecipientEditor(
             "bcc" -> draft.bcc
             else -> draft.to
         }
+    val compact =
+        LocalConfiguration.current.screenWidthDp < 360 || LocalDensity.current.fontScale > 1.3f
     val label =
         when (field) {
             "cc" -> "抄送"
@@ -319,7 +322,7 @@ internal fun RecipientEditor(
         }
     }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, Modifier.padding(end = 10.dp), fontSize = 15.sp)
+        Text(label, Modifier.width(composerLabelWidth()), fontSize = 15.sp)
         if (editing || !valid || people.isEmpty()) {
             OutlinedTextField(
                 value = raw,
@@ -361,26 +364,49 @@ internal fun RecipientEditor(
                 shape = RoundedCornerShape(18.dp),
                 color = composerFieldColor(),
             ) {
-                Row(
+                Column(
                     Modifier.fillMaxWidth()
                         .clickable { details = true }
                         .heightIn(min = 56.dp)
                         .padding(horizontal = 14.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalArrangement = Arrangement.Center,
                 ) {
-                    Text(
-                        people.take(2).joinToString("、") { it.label },
-                        Modifier.weight(1f),
-                        fontSize = 15.sp,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        if (people.size > 2) "等 ${people.size} 人 ›" else "${people.size} 人 ›",
-                        Modifier.padding(start = 6.dp),
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
+                    val count =
+                        if (people.size > 2) "等 ${people.size} 人 ›" else "${people.size} 人 ›"
+                    if (compact) {
+                        Text(
+                            people.take(1).joinToString { it.label },
+                            fontSize = 15.sp,
+                            lineHeight = 20.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            count,
+                            Modifier.padding(top = 3.dp),
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    } else
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                people.take(2).joinToString("、") { it.label },
+                                Modifier.weight(1f),
+                                fontSize = 15.sp,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                count,
+                                Modifier.padding(start = 6.dp),
+                                fontSize = 12.sp,
+                                maxLines = 1,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
                 }
             }
         }
