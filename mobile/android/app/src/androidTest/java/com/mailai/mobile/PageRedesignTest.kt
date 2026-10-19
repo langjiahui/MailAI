@@ -178,6 +178,9 @@ class PageRedesignTest {
             scenario.onActivity { vm.compose() }
             val before = vm.draft!!.to
             compose.onNodeWithContentDescription("通讯录").performScrollTo().performClick()
+            // Search the intended contact; a large-font viewport need not show its sorted row.
+            compose.onNodeWithTag("contact-search").performTextInput("林安")
+            compose.onNodeWithTag("contact-search").performImeAction()
             compose.onNode(hasText("林安") and isToggleable()).performClick()
             compose.onNodeWithText("确定 (1)").assertIsDisplayed()
             capture("04-contact-picker")

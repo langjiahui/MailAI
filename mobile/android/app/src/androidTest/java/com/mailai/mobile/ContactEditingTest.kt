@@ -41,8 +41,13 @@ class ContactEditingTest {
             }
             scenario.onActivity { vm.go("contacts") }
             compose.onNode(hasSetTextAction() and hasText("搜索联系人")).performTextInput("manual-edit")
+            compose.onNode(hasSetTextAction() and hasText("manual-edit")).performImeAction()
             compose.onNodeWithText("林海").assertExists()
-            compose.onNodeWithContentDescription("联系人操作").performClick()
+            compose
+                .onNodeWithContentDescription("联系人操作")
+                .performScrollTo()
+                .assertIsDisplayed()
+                .performClick()
             compose.onNodeWithText("编辑联系人").performClick()
             compose.onNodeWithText("姓名（选填）").performTextReplacement("林老师")
             compose.onNodeWithText("邮箱地址").assertIsNotEnabled()
