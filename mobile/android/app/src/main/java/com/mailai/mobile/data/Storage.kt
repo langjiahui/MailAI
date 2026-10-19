@@ -274,6 +274,10 @@ class MailStore(context: Context, id: String) :
                             SQLiteDatabase.CONFLICT_IGNORE,
                         )
                     }
+            // Mail read on another device while notifications were blocked is no longer pending.
+            incoming
+                .filter { !it.unread }
+                .forEach { db.delete("arrival_pending", "key=?", arrayOf(it.key)) }
             val high =
                 maxOf(
                     incoming.maxOfOrNull { it.uid } ?: 0L,
@@ -302,8 +306,15 @@ class MailStore(context: Context, id: String) :
         }
 
     @Synchronized
-    fun acknowledgeArrivals() {
-        writableDatabase.delete("arrival_pending", null, null)
+    fun acknowledgeArrivals(keys: List<String> = pendingArrivals().map { it.key }) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            keys.forEach { db.delete("arrival_pending", "key=?", arrayOf(it)) }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
     }
 
     @Synchronized

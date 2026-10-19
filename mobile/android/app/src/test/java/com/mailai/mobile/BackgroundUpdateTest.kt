@@ -118,6 +118,78 @@ class BackgroundUpdateTest {
     }
 
     @Test
+    fun blockedNotificationsKeepQueueAndAcknowledgementCannotEraseNewArrivals() {
+        val account =
+            Account(
+                email = "pending@example.test",
+                imap = Server("imap.example.test"),
+                smtp = Server("smtp.example.test", 465),
+            )
+        val repo = MailRepository(context)
+        val db = repo.store(account)
+        AppPreferences(context).background = true
+        MailNotifications.channels(context)
+        org.robolectric.Shadows.shadowOf(
+                context.getSystemService(android.app.NotificationManager::class.java)
+            )
+            .setNotificationsEnabled(false)
+        db.recordArrivals(1, listOf(mail(1)))
+        db.recordArrivals(1, listOf(mail(2)))
+        runBlocking { repo.deliverPending(account) }
+        assertEquals(listOf(2L), db.pendingArrivals().map { it.uid })
+        val snapshot = db.pendingArrivals().map { it.key }
+        db.recordArrivals(1, listOf(mail(2), mail(3)))
+        db.acknowledgeArrivals(snapshot)
+        assertEquals(listOf(3L), db.pendingArrivals().map { it.uid })
+        db.recordArrivals(1, listOf(mail(3, unread = false)))
+        assertTrue(db.pendingArrivals().isEmpty())
+    }
+
+    @Test
+    fun retryUsesOneSilentUpdatingCardAndUniqueMessageIntent() {
+        val account =
+            Account(
+                email = "notice@example.test",
+                imap = Server("imap.example.test"),
+                smtp = Server("smtp.example.test", 465),
+            )
+        MailNotifications.channels(context)
+        val manager = context.getSystemService(android.app.NotificationManager::class.java)
+        org.robolectric.Shadows.shadowOf(manager).setNotificationsEnabled(true)
+        assertTrue(MailNotifications.show(context, account, listOf(mail(2))))
+        assertTrue(MailNotifications.show(context, account, listOf(mail(2))))
+        assertEquals(1, manager.activeNotifications.size)
+        val n = manager.activeNotifications.single().notification
+        assertTrue(n.flags and android.app.Notification.FLAG_ONLY_ALERT_ONCE != 0)
+        assertEquals("解锁后查看", n.publicVersion.extras.getString(android.app.Notification.EXTRA_TEXT))
+        val first = MailNotifications.mailIntent(context, account, mail(2).key)
+        val second = MailNotifications.mailIntent(context, account, mail(3).key)
+        assertNotEquals(first.data, second.data)
+        assertEquals(mail(2).key, first.getStringExtra("messageKey"))
+    }
+
+    @Test
+    fun backgroundNetworkDoesNotDependOnSystemProbeValidation() {
+        val request = requireNotNull(BackgroundSchedule.mailConstraints().requiredNetworkRequest)
+        assertTrue(request.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET))
+        assertFalse(request.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED))
+    }
+
+    @Test
+    fun catchUpChecksOnlyStaleFailedOrClockResetAccounts() {
+        val prefs = AppPreferences(context)
+        prefs.interval = 15
+        assertTrue(prefs.needsSync("new"))
+        prefs.syncResult("recent", true)
+        val now = prefs.data.getLong("sync.recent.time", 0)
+        assertFalse(prefs.needsSync("recent", now + 60_000))
+        assertTrue(prefs.needsSync("recent", now + 900_000))
+        assertTrue(prefs.needsSync("recent", now - 1))
+        prefs.syncResult("recent", false)
+        assertTrue(prefs.needsSync("recent"))
+    }
+
+    @Test
     fun updateUrlsRejectPrivateTargetsCredentialsAndLookalikeHosts() {
         UpdatePolicy.requireUrl(
             "https://api.github.com/repos/langjiahui/MailAI/releases?per_page=30"

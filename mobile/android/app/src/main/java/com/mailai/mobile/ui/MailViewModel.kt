@@ -93,6 +93,7 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
         get() = retry != null
 
     private val saves = Mutex()
+    private val notificationRoutes = Mutex()
     private var latestSave: Job? = null
 
     init {
@@ -202,27 +203,66 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
         }
     }
 
-    fun openNotification(accountId: String?, settings: Boolean) {
+    fun openNotification(accountId: String?, settings: Boolean, messageKey: String? = null) {
         viewModelScope.launch {
-            snapshotFlow { ready }.first { it }
-            // A notification never interrupts SMTP or drops edits from an open composer.
-            job?.join()
-            latestSave?.join()
-            if (page == "compose") {
-                val a = account
-                val d = draft
-                if (a != null && d != null && d.state in setOf(SendState.DRAFT, SendState.FAILED)) {
-                    try {
-                        saves.withLock { withContext(Dispatchers.IO) { repo.store(a).save(d) } }
-                    } catch (_: Exception) {
-                        status = "草稿尚未保存，请先保留当前内容"
+            notificationRoutes.withLock {
+                snapshotFlow { ready }.first { it }
+                // A notification never interrupts SMTP or drops edits from an open composer.
+                job?.join()
+                latestSave?.join()
+                if (page == "compose") {
+                    val a = account
+                    val d = draft
+                    if (
+                        a != null &&
+                            d != null &&
+                            d.state in setOf(SendState.DRAFT, SendState.FAILED)
+                    ) {
+                        try {
+                            saves.withLock { withContext(Dispatchers.IO) { repo.store(a).save(d) } }
+                        } catch (_: Exception) {
+                            status = "草稿尚未保存，请先保留当前内容"
+                            error = true
+                            return@withLock
+                        }
+                    }
+                }
+                if (settings) go("settings")
+                else {
+                    val target = accounts.find { it.id == accountId }
+                    if (target == null) {
+                        status = "此通知对应的邮箱已不可用，请在邮箱列表中确认"
                         error = true
-                        return@launch
+                        return@withLock
+                    }
+                    account = target
+                    folder = "INBOX"
+                    query = ""
+                    unreadOnly = false
+                    selected = null
+                    limit = 50
+                    folders = listOf("INBOX")
+                    page = "inbox"
+                    dismissStatus()
+                    try {
+                        loadCache()
+                        if (messageKey == null) {
+                            refresh() // Compatibility with notifications posted by older versions.
+                        } else {
+                            val item = mails.find { it.key == messageKey }
+                            if (item != null) read(item)
+                            else {
+                                status = "这封邮件已移出本地列表，可能已移动或删除；请刷新邮箱确认"
+                                error = true
+                                retry = { refresh() }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        status = message(e)
+                        error = true
                     }
                 }
             }
-            if (settings) go("settings")
-            else accounts.find { it.id == accountId }?.let { choose(it) }
         }
     }
 

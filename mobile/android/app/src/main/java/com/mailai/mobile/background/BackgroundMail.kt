@@ -55,6 +55,14 @@ class AppPreferences(context: Context) {
             data.edit().putBoolean("autoDownload", value).apply()
         }
 
+    fun needsSync(id: String, now: Long = System.currentTimeMillis()): Boolean {
+        val time = data.getLong("sync.$id.time", 0)
+        return !data.getBoolean("sync.$id.ok", false) ||
+            time == 0L ||
+            now < time ||
+            now - time >= TimeUnit.MINUTES.toMillis(interval.toLong())
+    }
+
     fun syncResult(id: String, ok: Boolean) {
         data
             .edit()
@@ -65,6 +73,31 @@ class AppPreferences(context: Context) {
 }
 
 object BackgroundSchedule {
+    // Mail servers may be reachable even when the OS connectivity probe is blocked.
+    // Keep a real network constraint and let the TLS mail connection determine reachability.
+    fun mailConstraints(): Constraints =
+        Constraints.Builder()
+            .setRequiredNetworkRequest(
+                android.net.NetworkRequest.Builder()
+                    .addCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    .build(),
+                NetworkType.CONNECTED,
+            )
+            .build()
+
+    /** A durable, network-constrained catch-up after returning from sleep or system settings. */
+    fun catchUp(context: Context) {
+        if (!AppPreferences(context).background) return
+        val request =
+            OneTimeWorkRequestBuilder<MailSyncWorker>()
+                .setInputData(workDataOf("catchUp" to true))
+                .setConstraints(mailConstraints())
+                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 1, TimeUnit.MINUTES)
+                .build()
+        WorkManager.getInstance(context)
+            .enqueueUniqueWork("mail-catch-up", ExistingWorkPolicy.KEEP, request)
+    }
+
     fun configure(context: Context) {
         val prefs = AppPreferences(context)
         val manager = WorkManager.getInstance(context)
@@ -74,14 +107,15 @@ object BackgroundSchedule {
                         prefs.interval.toLong(),
                         TimeUnit.MINUTES,
                     )
-                    .setConstraints(
-                        Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
-                    )
+                    .setConstraints(mailConstraints())
                     .setInitialDelay(15, TimeUnit.MINUTES)
                     .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 1, TimeUnit.MINUTES)
                     .build()
             manager.enqueueUniquePeriodicWork("mail-sync", ExistingPeriodicWorkPolicy.UPDATE, work)
-        } else manager.cancelUniqueWork("mail-sync")
+        } else {
+            manager.cancelUniqueWork("mail-sync")
+            manager.cancelUniqueWork("mail-catch-up")
+        }
         if (prefs.autoCheck) {
             val work =
                 PeriodicWorkRequestBuilder<UpdateCheckWorker>(24, TimeUnit.HOURS)
@@ -134,16 +168,27 @@ object MailNotifications {
                 ?.importance != NotificationManager.IMPORTANCE_NONE
     }
 
-    fun show(context: Context, account: Account, mails: List<MailItem>) {
-        if (mails.isEmpty() || !allowed(context)) return
+    fun mailIntent(context: Context, account: Account, key: String): Intent =
+        Intent(context, MainActivity::class.java).apply {
+            action = "com.mailai.OPEN_MAIL"
+            data =
+                android.net.Uri.Builder()
+                    .scheme("mailai")
+                    .authority("mail")
+                    .appendPath(account.id)
+                    .appendPath(key)
+                    .build()
+            putExtra("accountId", account.id)
+            putExtra("messageKey", key)
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        }
+
+    /** Only acknowledge the durable queue after Android accepts the notification. */
+    fun show(context: Context, account: Account, mails: List<MailItem>): Boolean {
+        if (mails.isEmpty()) return true
+        if (!allowed(context)) return false
         val latest = mails.maxBy { it.uid }
-        val intent =
-            Intent(context, MainActivity::class.java).apply {
-                action = "com.mailai.OPEN_MAIL"
-                data = android.net.Uri.parse("mailai://inbox/${account.id}")
-                putExtra("accountId", account.id)
-                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            }
+        val intent = mailIntent(context, account, latest.key)
         val pending =
             PendingIntent.getActivity(
                 context,
@@ -156,10 +201,12 @@ object MailNotifications {
             NotificationCompat.Builder(context, CHANNEL)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(if (preview) latest.sender else "MailAI · 有新邮件")
-                .setContentText(if (preview) latest.subject else "轻点查看收件箱")
+                .setContentText(if (preview) latest.subject else "轻点查看最新邮件")
                 .setSubText(if (mails.size > 1) "${mails.size} 封新邮件" else "")
                 .setContentIntent(pending)
                 .setAutoCancel(true)
+                // Retrying after process death updates the existing card without another alert.
+                .setOnlyAlertOnce(true)
                 .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
                 .setCategory(NotificationCompat.CATEGORY_EMAIL)
                 .setPublicVersion(
@@ -170,10 +217,11 @@ object MailNotifications {
                         .build()
                 )
                 .build()
-        try {
+        return try {
             NotificationManagerCompat.from(context).notify("mail.${account.id}", 1, notification)
+            true
         } catch (_: SecurityException) {
-            /* Permission may be revoked between check and post. */
+            false // Permission may be revoked between check and post; keep the queue.
         }
     }
 
@@ -220,8 +268,13 @@ class MailSyncWorker(context: Context, params: WorkerParameters) :
                 for (account in repo.initialize()) {
                     if (!prefs.background || isStopped) break
                     try {
-                        repo.sync(account, "INBOX", 50, operation)
-                        prefs.syncResult(account.id, true)
+                        repo.deliverPending(account)
+                        if (
+                            !inputData.getBoolean("catchUp", false) || prefs.needsSync(account.id)
+                        ) {
+                            repo.sync(account, "INBOX", 50, operation)
+                            prefs.syncResult(account.id, true)
+                        }
                     } catch (e: CancellationException) {
                         throw e
                     } catch (_: Exception) {

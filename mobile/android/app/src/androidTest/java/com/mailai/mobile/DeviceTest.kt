@@ -92,7 +92,7 @@ class DeviceTest {
     }
 
     @Test
-    fun notificationIsPrivateAndOpensCorrectAccount() {
+    fun notificationIsPrivateAndOpensExactMail() {
         val a =
             Account(
                 id = "23b057cd-65b1-437f-abf9-5d29fa101a01",
@@ -121,8 +121,10 @@ class DeviceTest {
                 a.email,
                 "不能显示的主题",
                 1,
-                true,
+                false,
+                "通知点击应当直接展示这封邮件的正文",
             )
+        MailStore(context, a.id).use { it.put(m) }
         com.mailai.mobile.background.MailNotifications.show(context, a, listOf(m))
         val manager = context.getSystemService(android.app.NotificationManager::class.java)
         compose.waitUntil(5000) { manager.activeNotifications.any { it.tag == "mail.${a.id}" } }
@@ -132,17 +134,17 @@ class DeviceTest {
         assertEquals(android.app.Notification.VISIBILITY_PRIVATE, notice.visibility)
         val scenario =
             ActivityScenario.launch<MainActivity>(
-                android.content
-                    .Intent(context, MainActivity::class.java)
-                    .setAction("com.mailai.OPEN_MAIL")
-                    .setData(android.net.Uri.parse("mailai://inbox/${a.id}"))
-                    .putExtra("accountId", a.id)
+                com.mailai.mobile.background.MailNotifications.mailIntent(context, a, m.key)
             )
         try {
             compose.waitUntil(15000) {
-                compose.onAllNodesWithText("写信").fetchSemanticsNodes().isNotEmpty()
+                compose.onAllNodesWithText("回复").fetchSemanticsNodes().isNotEmpty()
             }
-            compose.onNodeWithText("‹  邮箱").performClick()
+            scenario.onActivity {
+                androidx.lifecycle
+                    .ViewModelProvider(it)[com.mailai.mobile.ui.MailViewModel::class.java]
+                    .go("boxes")
+            }
             compose.onNodeWithText("通知与更新").performScrollTo().performClick()
             compose.waitUntil(15000) {
                 compose.onAllNodesWithText("按你的节奏，保持连接").fetchSemanticsNodes().isNotEmpty()
@@ -162,9 +164,12 @@ class DeviceTest {
             assertNotNull(row)
             row.click()
             compose.waitUntil(15000) {
-                compose.onAllNodesWithText(a.email).fetchSemanticsNodes().isNotEmpty()
+                compose
+                    .onAllNodesWithText(requireNotNull(m.body))
+                    .fetchSemanticsNodes()
+                    .isNotEmpty()
             }
-            compose.onNodeWithText("写信").assertExists()
+            compose.onNodeWithText("回复").assertExists()
         } finally {
             scenario.close()
             manager.cancel("mail.${a.id}", 1)

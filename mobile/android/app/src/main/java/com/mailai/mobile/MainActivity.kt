@@ -26,6 +26,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         model.resumeCache()
+        com.mailai.mobile.background.BackgroundSchedule.catchUp(this)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -37,7 +38,11 @@ class MainActivity : ComponentActivity() {
     private fun route(intent: Intent?) {
         if (intent?.action == "com.mailai.OPEN_UPDATES") model.openNotification(null, true)
         else if (intent?.action == "com.mailai.OPEN_MAIL")
-            model.openNotification(intent.getStringExtra("accountId"), false)
+            model.openNotification(
+                intent.getStringExtra("accountId"),
+                false,
+                intent.getStringExtra("messageKey"),
+            )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

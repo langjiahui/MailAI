@@ -76,13 +76,25 @@ class MailRepository(
                     db.replaceWindow(folder, validity, messages)
                     if (folder.equals("INBOX", true)) {
                         db.recordArrivals(validity, messages)
-                        if (AppPreferences(context).background)
-                            MailNotifications.show(context, a, db.pendingArrivals())
-                        db.acknowledgeArrivals()
+                        deliverPendingLocked(a)
                         AppPreferences(context).syncResult(a.id, true)
                     }
                 }
         }
+
+    suspend fun deliverPending(a: Account) =
+        withContext(Dispatchers.IO) {
+            syncLocks.computeIfAbsent(a.id) { Mutex() }.withLock { deliverPendingLocked(a) }
+        }
+
+    private fun deliverPendingLocked(a: Account) {
+        val db = store(a)
+        val pending = db.pendingArrivals()
+        // Explicitly disabling background mail discards its alerts, unlike system permission
+        // denial.
+        if (!AppPreferences(context).background || MailNotifications.show(context, a, pending))
+            db.acknowledgeArrivals(pending.map { it.key })
+    }
 
     suspend fun read(a: Account, item: MailItem, op: Operation) =
         withContext(Dispatchers.IO) {

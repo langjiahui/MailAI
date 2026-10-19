@@ -75,6 +75,7 @@ internal fun PreferencesScreen(vm: MailViewModel) {
     val permission =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
             revision++
+            BackgroundSchedule.catchUp(context)
         }
     fun notificationSettings() {
         context.startActivity(
@@ -145,6 +146,7 @@ internal fun PreferencesScreen(vm: MailViewModel) {
                 SettingToggle("后台收信", "应用离开前台后，继续定期收取邮件", background) {
                     prefs.background = it
                     BackgroundSchedule.configure(context)
+                    if (it) BackgroundSchedule.catchUp(context)
                 }
                 if (background) {
                     Text(
@@ -186,7 +188,38 @@ internal fun PreferencesScreen(vm: MailViewModel) {
                         }
                     }
                     TextButton(onClick = ::notificationSettings) { Text("通知声音与系统设置") }
-                    SettingToggle("显示邮件预览", "通知中显示发件人和主题，锁屏时隐藏", previews) { value ->
+                    val power = context.getSystemService(android.os.PowerManager::class.java)
+                    val saving = remember(revision) { power.isPowerSaveMode }
+                    val optimized =
+                        remember(revision) {
+                            !power.isIgnoringBatteryOptimizations(context.packageName)
+                        }
+                    Text(
+                        if (saving) "省电模式已开启 · 后台检查可能延迟"
+                        else if (optimized) "系统正在优化电池使用 · 长时间锁屏可能延迟收信"
+                        else "已允许后台电池使用 · 实际收信时间仍由系统调度",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    TextButton(
+                        onClick = {
+                            try {
+                                context.startActivity(
+                                    Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                                )
+                            } catch (_: android.content.ActivityNotFoundException) {
+                                context.startActivity(
+                                    Intent(
+                                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                        Uri.parse("package:${context.packageName}"),
+                                    )
+                                )
+                            }
+                        }
+                    ) {
+                        Text("后台电池设置")
+                    }
+                    SettingToggle("显示邮件预览", "通知中显示发件人与主题；锁屏遵循系统隐私设置", previews) { value ->
                         prefs.previews = value
                         if (!value)
                             vm.accounts.forEach { account ->
@@ -195,7 +228,7 @@ internal fun PreferencesScreen(vm: MailViewModel) {
                             }
                     }
                     Text(
-                        "省电模式可能延后收信；系统“强行停止”后，需再次打开应用才能恢复。",
+                        "锁屏或深度省电时，检查可能延后；返回应用会补查。系统“强行停止”后，需再次打开应用才能恢复。",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
