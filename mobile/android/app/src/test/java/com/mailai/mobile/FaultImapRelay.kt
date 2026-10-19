@@ -35,6 +35,7 @@ class FaultImapRelay(private val upstream: Int, private val rejectSearch: Boolea
     @Volatile private var bytesToDeliver = 0
     val interruptions = AtomicInteger()
     val fetches = AtomicInteger()
+    val connections = AtomicInteger()
 
     fun interruptResponseTo(fragment: String, afterBytes: Int = 64) {
         bytesToDeliver = afterBytes
@@ -50,6 +51,7 @@ class FaultImapRelay(private val upstream: Int, private val rejectSearch: Boolea
                     } catch (_: Exception) {
                         break
                     }
+                connections.incrementAndGet()
                 sockets += client
                 thread(isDaemon = true) {
                     runCatching {

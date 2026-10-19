@@ -108,6 +108,7 @@ class BackgroundHealthTest {
             coroutineScope { List(4) { async(Dispatchers.IO) { check() } }.awaitAll() }
             val fetches = relay.fetches.get()
             assertTrue(fetches > 0)
+            assertEquals(1, relay.connections.get())
             assertEquals(1, repo.store(a).messages("INBOX").size)
             assertNull(repo.store(a).messages("INBOX").single().body)
             assertEquals(draft.body, repo.store(a).draft(draft.id)?.body)
@@ -116,6 +117,7 @@ class BackgroundHealthTest {
             assertEquals(fetches, relay.fetches.get())
             check(true)
             assertTrue(relay.fetches.get() > fetches)
+            assertEquals(2, relay.connections.get())
             val beforeDisable = relay.fetches.get()
             prefs.background = false
             check(true)
