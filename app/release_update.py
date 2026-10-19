@@ -268,8 +268,8 @@ def _download(asset: dict, target: Path, progress=None) -> None:
                          speed_bps=0, message="安装包已下载并校验通过")
             return
     # The installer is tens of MB from a release CDN: a single dropped connection
-    # should not fail the whole update. Retry transient network errors only;
-    # size/hash mismatches are deterministic and fall through immediately.
+    # should not fail the whole update. Short responses are interrupted downloads;
+    # complete files with a wrong hash must still stop immediately.
     download_asset = asset
     for attempt in range(3):
         try:
@@ -304,9 +304,10 @@ def _download_fresh(asset: dict, target: Path, progress=None) -> None:
     try:
         with urllib.request.urlopen(request, context=_ssl_context(), timeout=30) as response, temporary.open("wb") as output:
             declared = int(response.headers.get("Content-Length") or 0)
-            if declared > DOWNLOAD_MAX_BYTES:
+            manifest_size = int(asset.get("size") or 0)
+            if max(declared, manifest_size) > DOWNLOAD_MAX_BYTES:
                 raise ValueError("安装包超过允许大小")
-            expected = declared or int(asset.get("size") or 0)
+            expected = manifest_size or declared
             if progress:
                 progress(phase="downloading", downloaded=0, total=expected, speed_bps=0,
                          message="正在下载安装包")
@@ -323,10 +324,18 @@ def _download_fresh(asset: dict, target: Path, progress=None) -> None:
                     elapsed = max(0.001, time.monotonic() - started_at)
                     progress(phase="downloading", downloaded=total, total=expected,
                              speed_bps=int(total / elapsed), message="正在下载安装包")
+        if total < max(declared, manifest_size):
+            # read(size) can return EOF silently even when Content-Length or the
+            # release manifest promised more bytes. Retry with the pinned hash.
+            raise OSError(f"安装包下载不完整：已收到 {total} 字节，预期 {max(declared, manifest_size)} 字节")
+        if manifest_size and total != manifest_size:
+            raise ValueError("安装包大小与更新清单不一致，已停止更新")
         if progress:
             progress(phase="verifying", downloaded=total, total=expected or total,
                      speed_bps=0, message="下载完成，正在校验安装包")
         if digest.hexdigest() != asset["sha256"]:
+            log.error("安装包 SHA-256 不匹配：下载 %d 字节，预期 %s，实际 %s",
+                      total, asset["sha256"], digest.hexdigest())
             raise ValueError("安装包 SHA-256 校验失败，已停止更新")
         temporary.replace(target)
         if progress:

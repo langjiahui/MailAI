@@ -71,6 +71,8 @@ const MAILAI_UI_COPY = {
   "update.invalidDigest": ["官方安装包信息或 SHA-256 校验值无效", "The official installer metadata or SHA-256 checksum is invalid."],
   "update.missingAssets": ["官方发布缺少可校验的安装包", "The official release has no verifiable installer."],
   "update.fallbackMismatch": ["备用下载的安装包与更新清单不一致，已停止更新", "The fallback installer does not match the update manifest. Updating has stopped."],
+  "update.incompleteDownload": ["安装包下载不完整：已收到 {1} 字节，预期 {3} 字节", "The installer download is incomplete: received {1} bytes, expected {3} bytes."],
+  "update.sizeMismatch": ["安装包大小与更新清单不一致，已停止更新", "The installer size does not match the update manifest. Updating has stopped."],
   "update.invalidFallback": ["备用下载地址不属于官方仓库", "The fallback download address is outside the official repository."],
   "update.downloadInterrupted": ["安装包下载多次中断，请重试或从发布页手动下载", "The installer download was repeatedly interrupted. Retry or download manually from the release page."],
   "update.checking": ["正在检查更新…", "Checking for updates…"],
