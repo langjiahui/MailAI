@@ -38,7 +38,10 @@ class ComposeRefinementTest {
         val root = compose.onRoot().getUnclippedBoundsInRoot()
         val send =
             compose.onNodeWithTag("compose-send").assertIsDisplayed().getUnclippedBoundsInRoot()
-        val title = compose.onNodeWithTag("compose-title").getUnclippedBoundsInRoot()
+        val title =
+            if (compose.onAllNodesWithTag("compose-title").fetchSemanticsNodes().isNotEmpty())
+                compose.onNodeWithTag("compose-title").getUnclippedBoundsInRoot()
+            else null
         assertTrue(
             "Send must remain a horizontal button",
             (send.right - send.left) >= (send.bottom - send.top),
@@ -47,7 +50,7 @@ class ComposeRefinementTest {
             "Send stays within the viewport",
             send.right <= root.right && send.left >= root.left,
         )
-        assertTrue("Title must not overlap send", title.right <= send.left)
+        assertTrue("Title must not overlap send", title == null || title.right <= send.left)
         val photo =
             compose.onNodeWithTag("compose-photo").assertIsDisplayed().getUnclippedBoundsInRoot()
         val attachment =

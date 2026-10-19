@@ -55,6 +55,8 @@ internal fun RichComposeBody(
     focused: (Boolean) -> Unit,
     change: (Draft) -> Unit,
     notice: (String) -> Unit,
+    leadingControls: (@Composable () -> Unit)? = null,
+    trailingControls: (@Composable () -> Unit)? = null,
 ) {
     val dark = MaterialTheme.colorScheme.background.luminance() < .5f
     val glyphScale = LocalDensity.current.fontScale
@@ -173,137 +175,147 @@ internal fun RichComposeBody(
             if (editor.text == draft.body) editor.composition else null,
         )
     Column {
-        Row(
-            Modifier.fillMaxWidth()
-                .background(composerFieldColor().copy(alpha = .65f), RoundedCornerShape(14.dp))
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 4.dp)
-                .testTag("compose-formatting"),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(
-                onClick = {
-                    redo.add(snapshot())
-                    restore(undo.removeAt(undo.lastIndex))
-                },
-                enabled = editable && undo.isNotEmpty(),
-                modifier = Modifier.semantics { contentDescription = "撤销" },
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            leadingControls?.invoke()
+            Row(
+                Modifier.weight(1f)
+                    .background(composerFieldColor().copy(alpha = .65f), RoundedCornerShape(14.dp))
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 4.dp)
+                    .testTag("compose-formatting"),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("↶", fontSize = (24f / glyphScale).sp, lineHeight = (28f / glyphScale).sp)
-            }
-            IconButton(
-                onClick = {
-                    undo.add(snapshot())
-                    restore(redo.removeAt(redo.lastIndex))
-                },
-                enabled = editable && redo.isNotEmpty(),
-                modifier = Modifier.semantics { contentDescription = "重做" },
-            ) {
-                Text("↷", fontSize = (24f / glyphScale).sp, lineHeight = (28f / glyphScale).sp)
-            }
-            Box {
-                TextButton(
-                    onClick = { sizeMenu = true },
-                    enabled = editable,
-                    modifier = Modifier.semantics { contentDescription = "字号" },
+                IconButton(
+                    onClick = {
+                        redo.add(snapshot())
+                        restore(undo.removeAt(undo.lastIndex))
+                    },
+                    enabled = editable && undo.isNotEmpty(),
+                    modifier = Modifier.semantics { contentDescription = "撤销" },
                 ) {
-                    Text("${active(BodyStyleKind.SIZE) ?: "16"}⌄")
+                    Text("↶", fontSize = (24f / glyphScale).sp, lineHeight = (28f / glyphScale).sp)
                 }
-                DropdownMenu(sizeMenu, { sizeMenu = false }) {
-                    listOf("14", "16", "18", "20").forEach { size ->
-                        DropdownMenuItem(
-                            text = { Text("$size 号") },
-                            onClick = {
-                                format(BodyStyleKind.SIZE, size)
-                                sizeMenu = false
-                            },
-                        )
+                IconButton(
+                    onClick = {
+                        undo.add(snapshot())
+                        restore(redo.removeAt(redo.lastIndex))
+                    },
+                    enabled = editable && redo.isNotEmpty(),
+                    modifier = Modifier.semantics { contentDescription = "重做" },
+                ) {
+                    Text("↷", fontSize = (24f / glyphScale).sp, lineHeight = (28f / glyphScale).sp)
+                }
+                Box {
+                    TextButton(
+                        onClick = { sizeMenu = true },
+                        enabled = editable,
+                        modifier = Modifier.semantics { contentDescription = "字号" },
+                    ) {
+                        Text("${active(BodyStyleKind.SIZE) ?: "16"}⌄")
+                    }
+                    DropdownMenu(sizeMenu, { sizeMenu = false }) {
+                        listOf("14", "16", "18", "20").forEach { size ->
+                            DropdownMenuItem(
+                                text = { Text("$size 号") },
+                                onClick = {
+                                    format(BodyStyleKind.SIZE, size)
+                                    sizeMenu = false
+                                },
+                            )
+                        }
                     }
                 }
-            }
-            listOf(
-                    Triple(BodyStyleKind.BOLD, "B", "加粗"),
-                    Triple(BodyStyleKind.ITALIC, "I", "斜体"),
-                    Triple(BodyStyleKind.UNDERLINE, "U", "下划线"),
-                )
-                .forEach { (kind, label, description) ->
-                    IconToggleButton(
-                        checked = active(kind) != null,
-                        onCheckedChange = { format(kind) },
+                listOf(
+                        Triple(BodyStyleKind.BOLD, "B", "加粗"),
+                        Triple(BodyStyleKind.ITALIC, "I", "斜体"),
+                        Triple(BodyStyleKind.UNDERLINE, "U", "下划线"),
+                    )
+                    .forEach { (kind, label, description) ->
+                        IconToggleButton(
+                            checked = active(kind) != null,
+                            onCheckedChange = { format(kind) },
+                            enabled = editable,
+                            modifier = Modifier.semantics { contentDescription = description },
+                        ) {
+                            Text(
+                                label,
+                                fontSize = (20f / glyphScale).sp,
+                                lineHeight = (24f / glyphScale).sp,
+                                fontWeight =
+                                    if (kind == BodyStyleKind.BOLD) FontWeight.Bold
+                                    else FontWeight.Normal,
+                                fontStyle =
+                                    if (kind == BodyStyleKind.ITALIC) FontStyle.Italic
+                                    else FontStyle.Normal,
+                                textDecoration =
+                                    if (kind == BodyStyleKind.UNDERLINE) TextDecoration.Underline
+                                    else null,
+                            )
+                        }
+                    }
+                Box {
+                    TextButton(
+                        onClick = { colorMenu = true },
                         enabled = editable,
-                        modifier = Modifier.semantics { contentDescription = description },
+                        modifier = Modifier.semantics { contentDescription = "文字颜色" },
                     ) {
                         Text(
-                            label,
-                            fontSize = (20f / glyphScale).sp,
-                            lineHeight = (24f / glyphScale).sp,
-                            fontWeight =
-                                if (kind == BodyStyleKind.BOLD) FontWeight.Bold
-                                else FontWeight.Normal,
-                            fontStyle =
-                                if (kind == BodyStyleKind.ITALIC) FontStyle.Italic
-                                else FontStyle.Normal,
-                            textDecoration =
-                                if (kind == BodyStyleKind.UNDERLINE) TextDecoration.Underline
-                                else null,
+                            "A⌄",
+                            color =
+                                active(BodyStyleKind.COLOR)?.let { editorColor(it, dark) }
+                                    ?: MaterialTheme.colorScheme.primary,
                         )
                     }
-                }
-            Box {
-                TextButton(
-                    onClick = { colorMenu = true },
-                    enabled = editable,
-                    modifier = Modifier.semantics { contentDescription = "文字颜色" },
-                ) {
-                    Text(
-                        "A⌄",
-                        color =
-                            active(BodyStyleKind.COLOR)?.let { editorColor(it, dark) }
-                                ?: MaterialTheme.colorScheme.primary,
-                    )
-                }
-                DropdownMenu(colorMenu, { colorMenu = false }) {
-                    RichBody.colors.zip(listOf("森林绿", "墨黑", "砖红")).forEach { (color, label) ->
-                        DropdownMenuItem(
-                            text = { Text(label, color = editorColor(color, dark)) },
-                            onClick = {
-                                format(BodyStyleKind.COLOR, color)
-                                colorMenu = false
-                            },
-                        )
-                    }
-                }
-            }
-            TextButton(
-                onClick = {
-                    linkText = draft.body.substring(selection.min, selection.max)
-                    linkUrl = "https://"
-                    linkError = ""
-                    linkDialog = true
-                },
-                enabled = editable,
-            ) {
-                Text("链接")
-            }
-            TextButton(
-                onClick = {
-                    if (selection.collapsed) {
-                        pending = BodyStyleKind.entries.associateWith { null }
-                        notice("后续输入使用默认格式")
-                    } else {
-                        rememberUndo()
-                        var styles = draft.styles
-                        BodyStyleKind.entries.forEach {
-                            styles =
-                                RichBody.clear(draft.body, styles, selection.min, selection.max, it)
+                    DropdownMenu(colorMenu, { colorMenu = false }) {
+                        RichBody.colors.zip(listOf("森林绿", "墨黑", "砖红")).forEach { (color, label) ->
+                            DropdownMenuItem(
+                                text = { Text(label, color = editorColor(color, dark)) },
+                                onClick = {
+                                    format(BodyStyleKind.COLOR, color)
+                                    colorMenu = false
+                                },
+                            )
                         }
-                        change(draft.copy(styles = styles))
                     }
-                },
-                enabled = editable,
-            ) {
-                Text("清除格式")
+                }
+                TextButton(
+                    onClick = {
+                        linkText = draft.body.substring(selection.min, selection.max)
+                        linkUrl = "https://"
+                        linkError = ""
+                        linkDialog = true
+                    },
+                    enabled = editable,
+                ) {
+                    Text("链接")
+                }
+                TextButton(
+                    onClick = {
+                        if (selection.collapsed) {
+                            pending = BodyStyleKind.entries.associateWith { null }
+                            notice("后续输入使用默认格式")
+                        } else {
+                            rememberUndo()
+                            var styles = draft.styles
+                            BodyStyleKind.entries.forEach {
+                                styles =
+                                    RichBody.clear(
+                                        draft.body,
+                                        styles,
+                                        selection.min,
+                                        selection.max,
+                                        it,
+                                    )
+                            }
+                            change(draft.copy(styles = styles))
+                        }
+                    },
+                    enabled = editable,
+                ) {
+                    Text("清除格式")
+                }
             }
+            trailingControls?.invoke()
         }
         TextField(
             value = display,

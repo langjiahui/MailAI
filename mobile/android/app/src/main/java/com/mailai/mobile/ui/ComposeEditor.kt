@@ -59,58 +59,61 @@ internal fun ComposeEditor(vm: MailViewModel, back: () -> Unit, send: () -> Unit
         LocalConfiguration.current.screenWidthDp < 360 || LocalDensity.current.fontScale > 1.3f
     val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     val shortKeyboard = imeVisible && LocalConfiguration.current.screenHeightDp < 480
+    val shortEditing = shortKeyboard && bodyFocused
     val paper = colors.surface
     val wash = colors.background
     Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(wash, paper)))) {
-        Row(
-            Modifier.fillMaxWidth().padding(start = 4.dp, end = 16.dp, top = 4.dp, bottom = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(
-                onClick = back,
-                enabled = !vm.busy,
-                modifier = Modifier.testTag("compose-back"),
+        if (!shortEditing)
+            Row(
+                Modifier.fillMaxWidth()
+                    .padding(start = 4.dp, end = 16.dp, top = 4.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                ComposeIcon(R.drawable.ic_compose_back, "返回")
-            }
-            Text(
-                "写信",
-                Modifier.weight(1f).testTag("compose-title"),
-                fontSize = 20.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-            )
-            if (shortKeyboard) {
                 IconButton(
-                    onClick = { picker.launch(arrayOf("image/*")) },
-                    enabled = editable,
-                    modifier = Modifier.size(48.dp).testTag("compose-photo"),
+                    onClick = back,
+                    enabled = !vm.busy,
+                    modifier = Modifier.testTag("compose-back"),
                 ) {
-                    ComposeIcon(R.drawable.ic_compose_photo, "添加图片")
+                    ComposeIcon(R.drawable.ic_compose_back, "返回")
                 }
-                IconButton(
-                    onClick = { picker.launch(arrayOf("*/*")) },
+                Text(
+                    "写信",
+                    Modifier.weight(1f).testTag("compose-title"),
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                )
+                if (shortKeyboard) {
+                    IconButton(
+                        onClick = { picker.launch(arrayOf("image/*")) },
+                        enabled = editable,
+                        modifier = Modifier.size(48.dp).testTag("compose-photo"),
+                    ) {
+                        ComposeIcon(R.drawable.ic_compose_photo, "添加图片")
+                    }
+                    IconButton(
+                        onClick = { picker.launch(arrayOf("*/*")) },
+                        enabled = editable,
+                        modifier = Modifier.size(48.dp).testTag("compose-attachment"),
+                    ) {
+                        ComposeIcon(R.drawable.ic_compose_attach, "添加附件，合计 25 MB 内")
+                    }
+                } else if (!compact)
+                    IconButton(onClick = { picker.launch(arrayOf("*/*")) }, enabled = editable) {
+                        ComposeIcon(R.drawable.ic_compose_attach, "添加附件")
+                    }
+                Button(
+                    onClick = send,
                     enabled = editable,
-                    modifier = Modifier.size(48.dp).testTag("compose-attachment"),
+                    shape = RoundedCornerShape(50),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+                    modifier = Modifier.heightIn(min = 48.dp).testTag("compose-send"),
                 ) {
-                    ComposeIcon(R.drawable.ic_compose_attach, "添加附件，合计 25 MB 内")
+                    ComposeIcon(R.drawable.ic_compose_send, null, Modifier.size(19.dp))
+                    Spacer(Modifier.width(7.dp))
+                    Text("发送", fontSize = 14.sp, lineHeight = 20.sp, maxLines = 1, softWrap = false)
                 }
-            } else if (!compact)
-                IconButton(onClick = { picker.launch(arrayOf("*/*")) }, enabled = editable) {
-                    ComposeIcon(R.drawable.ic_compose_attach, "添加附件")
-                }
-            Button(
-                onClick = send,
-                enabled = editable,
-                shape = RoundedCornerShape(50),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
-                modifier = Modifier.heightIn(min = 48.dp).testTag("compose-send"),
-            ) {
-                ComposeIcon(R.drawable.ic_compose_send, null, Modifier.size(19.dp))
-                Spacer(Modifier.width(7.dp))
-                Text("发送", fontSize = 14.sp, lineHeight = 20.sp, maxLines = 1, softWrap = false)
             }
-        }
         BoxWithConstraints(Modifier.weight(1f)) {
             // The editor has its own text scroll; the page can still reveal all header fields on
             // IME.
@@ -217,9 +220,50 @@ internal fun ComposeEditor(vm: MailViewModel, back: () -> Unit, send: () -> Unit
                                     vm.update(it.copy(body = edited.body, styles = edited.styles))
                                 }
                         },
-                    ) {
-                        vm.showMessage(it)
-                    }
+                        notice = { vm.showMessage(it) },
+                        leadingControls =
+                            if (shortEditing)
+                                ({
+                                    IconButton(
+                                        onClick = back,
+                                        enabled = !vm.busy,
+                                        modifier = Modifier.size(48.dp).testTag("compose-back"),
+                                    ) {
+                                        ComposeIcon(R.drawable.ic_compose_back, "返回")
+                                    }
+                                    IconButton(
+                                        onClick = { picker.launch(arrayOf("image/*")) },
+                                        enabled = editable,
+                                        modifier = Modifier.size(48.dp).testTag("compose-photo"),
+                                    ) {
+                                        ComposeIcon(R.drawable.ic_compose_photo, "添加图片")
+                                    }
+                                    IconButton(
+                                        onClick = { picker.launch(arrayOf("*/*")) },
+                                        enabled = editable,
+                                        modifier =
+                                            Modifier.size(48.dp).testTag("compose-attachment"),
+                                    ) {
+                                        ComposeIcon(R.drawable.ic_compose_attach, "添加附件，合计 25 MB 内")
+                                    }
+                                })
+                            else null,
+                        trailingControls =
+                            if (shortEditing)
+                                ({
+                                    Button(
+                                        onClick = send,
+                                        enabled = editable,
+                                        shape = RoundedCornerShape(50),
+                                        contentPadding = PaddingValues(horizontal = 12.dp),
+                                        modifier =
+                                            Modifier.heightIn(min = 48.dp).testTag("compose-send"),
+                                    ) {
+                                        Text("发送", fontSize = 14.sp, maxLines = 1, softWrap = false)
+                                    }
+                                })
+                            else null,
+                    )
                 }
                 Spacer(Modifier.height(2.dp))
             }

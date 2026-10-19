@@ -90,7 +90,9 @@ class InboxRefinementTest {
             compose.onNodeWithTag("inbox-compose").assertIsDisplayed().assertIsEnabled()
             compose
                 .onNodeWithTag("inbox-list")
-                .performScrollToNode(hasTestTag("inbox-mail-INBOX:1:1"))
+                .performScrollToIndex(
+                    if (context.resources.configuration.screenHeightDp < 480) 1 else 2
+                )
             device.waitForIdle(1000)
             compose
                 .onNode(
