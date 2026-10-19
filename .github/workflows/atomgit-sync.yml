@@ -31,7 +31,7 @@ jobs:
           [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
       - uses: actions/checkout@v5
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-python@v6
@@ -44,7 +44,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag }}
         run: |
-          test "v$(cat VERSION)" = "$RELEASE_TAG"
+          test "v$(git show "$RELEASE_TAG:VERSION" | tr -d '\r\n')" = "$RELEASE_TAG"
           gh release view "$RELEASE_TAG" --json isDraft,isPrerelease --jq 'if .isDraft or .isPrerelease then error("Release is not official") else "Official release" end'
           gh release download "$RELEASE_TAG" --dir release-assets
           gh release view "$RELEASE_TAG" --json body --jq .body > release-notes.md
@@ -52,6 +52,7 @@ jobs:
         env:
           ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_TOKEN }}
           RELEASE_TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           test -n "$ATOMGIT_TOKEN" || { echo "Missing AtomGit sync token" >&2; exit 1; }
           ASKPASS_PATH="$RUNNER_TEMP/mailai-atomgit-askpass"
@@ -64,9 +65,15 @@ jobs:
           SH
           chmod 700 "$ASKPASS_PATH"
           export GIT_ASKPASS="$ASKPASS_PATH" GIT_TERMINAL_PROMPT=0
+          RELEASE_SHA=$(git rev-parse "${RELEASE_TAG}^{}")
+          LATEST_TAG=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)
+          SOURCE_REFS=("refs/tags/$RELEASE_TAG")
+          if [ "$LATEST_TAG" = "$RELEASE_TAG" ]; then
+            SOURCE_REFS=("$RELEASE_SHA:refs/heads/main" "${SOURCE_REFS[@]}")
+          fi
           pushed=false
           for attempt in 1 2 3; do
-            if timeout 180 git -c credential.helper= push https://atomgit.com/langjiahui2011/MailAI.git "HEAD:refs/heads/main" "refs/tags/$RELEASE_TAG"; then
+            if timeout 180 git -c credential.helper= push https://atomgit.com/langjiahui2011/MailAI.git "${SOURCE_REFS[@]}"; then
               pushed=true
               break
             fi
@@ -77,5 +84,6 @@ jobs:
       - name: Upload and anonymously verify complete domestic release
         env:
           ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_TOKEN }}
+          ATOMGIT_UPLOAD_EDGE_IP: ${{ vars.ATOMGIT_UPLOAD_EDGE_IP }}
           RELEASE_TAG: ${{ inputs.tag }}
         run: python scripts/sync_atomgit_release.py --tag "$RELEASE_TAG" --assets release-assets --notes release-notes.md

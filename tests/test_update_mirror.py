@@ -58,14 +58,14 @@ class MirrorTest(unittest.TestCase):
             with self.assertRaises(ValueError): trust.verify(invalid)
 
     def test_domestic_discovery_needs_no_github_and_binds_urls(self):
-        with patch.object(mirror, 'read_json', side_effect=[{'tag_name': TAG}, signed(MANIFEST)]) as read, \
+        with patch.object(mirror, 'read_json', side_effect=[signed(MANIFEST)]) as read, \
                 patch.object(trust, 'PUBLIC_KEY', PUBLIC):
             result = mirror.discover()
         self.assertEqual(result['assets']['macos-arm64'], ASSET)
-        self.assertTrue(all(call.args[0].startswith(mirror.ATOM_API) for call in read.call_args_list))
+        self.assertTrue(all(call.args[0].startswith(mirror.STATIC_MANIFEST_URL) for call in read.call_args_list))
         for change in ({'version':'2.9.0'}, {'release_url':'https://other.example.test'},
                        {'assets': {**MANIFEST['assets'], 'macos-arm64': {**MANIFEST['assets']['macos-arm64'], 'url':'https://other.example.test/a.pkg'}}}):
-            with patch.object(mirror,'read_json',side_effect=[{'tag_name':TAG},signed({**MANIFEST,**change})]),patch.object(trust,'PUBLIC_KEY',PUBLIC):
+            with patch.object(mirror,'read_json',side_effect=[signed({**MANIFEST,**change})]),patch.object(trust,'PUBLIC_KEY',PUBLIC):
                 with self.assertRaises(ValueError):mirror.discover()
 
     def test_check_uses_domestic_and_custom_source_stays_custom(self):
@@ -190,6 +190,40 @@ class MirrorTest(unittest.TestCase):
                 connection._create_connection(('updates.example.test',443),10)
                 self.assertEqual(connect.call_args.args[0],('8.8.8.8',443))
 
+    def test_publisher_edge_keeps_tls_hostname_and_blocks_private_override(self):
+        from unittest.mock import MagicMock
+        connection=MagicMock();response=connection.getresponse.return_value;response.status=200
+        with patch.object(transport,'_public_target',return_value=('file.gitcode.com',['1.1.1.1'])), \
+                patch.object(transport.http.client,'HTTPSConnection',return_value=connection) as ctor:
+            with transport.open_public('https://file.gitcode.com/object',connect_ip='8.8.8.8'):pass
+            self.assertEqual(ctor.call_args.args[0],'file.gitcode.com')
+            self.assertTrue(ctor.call_args.kwargs['context'].check_hostname)
+            with patch.object(transport.socket,'create_connection') as connect:
+                connection._create_connection(('file.gitcode.com',443),10)
+                self.assertEqual(connect.call_args.args[0],('8.8.8.8',443))
+            connection.request.reset_mock()
+            with self.assertRaises(ValueError):
+                with transport.open_public('https://file.gitcode.com/object',connect_ip='127.0.0.1'):pass
+            connection.request.assert_not_called()
+
+    def test_failed_upload_edge_retries_default_dns_without_credentials_in_storage(self):
+        calls=[]
+        @contextmanager
+        def open_mock(url,**kwargs):
+            calls.append(kwargs)
+            self.assertNotIn('Authorization',kwargs['headers'])
+            if kwargs.get('connect_ip'):raise OSError('edge unavailable')
+            yield Response(b'')
+        def api_mock(path,*args,**kwargs):
+            if '/upload_url?' in path:return {'url':'https://file.gitcode.com/upload?signature=synthetic','headers':{'Content-Type':'application/octet-stream'}}
+            return {'assets':[]}
+        with tempfile.TemporaryDirectory() as folder,patch.dict(os.environ,{'ATOMGIT_UPLOAD_EDGE_IP':'8.8.8.8'}), \
+                patch.object(syncer,'api',side_effect=api_mock),patch.object(syncer,'open_public',side_effect=open_mock), \
+                patch.object(syncer,'matches',return_value=True),patch.object(syncer.time,'sleep'):
+            path=Path(folder)/'release-note.txt';path.write_bytes(b'public release')
+            syncer.upload(TAG,path,'synthetic-token')
+        self.assertEqual([item.get('connect_ip') for item in calls],['8.8.8.8',None])
+
     def test_mirror_publishes_metadata_last_and_rejects_bad_source_before_upload(self):
         with tempfile.TemporaryDirectory() as folder,patch.object(trust,'PUBLIC_KEY',PUBLIC):
             root=Path(folder)
@@ -201,15 +235,29 @@ class MirrorTest(unittest.TestCase):
                 events.append((method,path))
                 return {'tag_name':TAG,'prerelease':False,'assets':[]}
             def upload_mock(tag,path,token):events.append(('upload',path.name))
-            with patch.object(syncer,'api',side_effect=api_mock),patch.object(syncer,'upload',side_effect=upload_mock):
+            with patch.object(syncer,'api',side_effect=api_mock),patch.object(syncer,'upload',side_effect=upload_mock),patch.object(syncer,'publish_channel',side_effect=lambda *args:events.append(('channel','latest.signed.json'))):
                 syncer.sync(TAG,root,'synthetic-token','notes')
             uploads=[name for kind,name in events if kind=='upload']
             self.assertEqual(uploads[-2:],['latest.json','latest.signed.json'])
             self.assertLess(events.index(('upload','latest.signed.json')),events.index(('PATCH','/releases/'+TAG)))
+            self.assertLess(events.index(('PATCH','/releases/'+TAG)),events.index(('channel','latest.signed.json')))
             (root/mirror.NAMES['macos-arm64']).write_bytes(DATA[:8])
             with patch.object(syncer,'api',side_effect=AssertionError('Must reject before API')):
                 with self.assertRaises(ValueError):syncer.sync(TAG,root,'synthetic-token','notes')
                 with self.assertRaises(ValueError):syncer.upload(TAG,root/mirror.NAMES['macos-arm64'],'synthetic-token')
+
+    def test_historical_mirror_does_not_replace_latest_or_channel(self):
+        with tempfile.TemporaryDirectory() as folder,patch.object(trust,'PUBLIC_KEY',PUBLIC):
+            root=Path(folder)
+            for name in mirror.NAMES.values():(root/name).write_bytes(DATA)
+            (root/'latest.json').write_text(json.dumps(MANIFEST))
+            (root/'latest.signed.json').write_text(json.dumps(signed(MANIFEST)))
+            def api_mock(path,*args,**kwargs):
+                return {'tag_name':'v2.11.0' if 'latest?' in path else TAG,'prerelease':False,'assets':[]}
+            with patch.object(syncer,'api',side_effect=api_mock) as api,patch.object(syncer,'upload'),patch.object(syncer,'publish_channel') as channel:
+                syncer.sync(TAG,root,'synthetic-token','notes')
+            channel.assert_not_called()
+            self.assertFalse(any(len(call.args)>2 and call.args[2]=='PATCH' for call in api.call_args_list))
 
     def test_mirror_retry_does_not_overwrite_existing_attachment(self):
         with tempfile.TemporaryDirectory() as folder:

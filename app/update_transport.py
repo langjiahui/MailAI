@@ -22,7 +22,7 @@ def _public_target(url):
 
 
 @contextmanager
-def open_public(url: str, *, headers=None, timeout=15, method='GET', body=None, allow_redirects=True):
+def open_public(url: str, *, headers=None, timeout=15, method='GET', body=None, allow_redirects=True, connect_ip=None):
     connection = None
     response = None
     try:
@@ -33,7 +33,11 @@ def open_public(url: str, *, headers=None, timeout=15, method='GET', body=None, 
             hostname, addresses = _public_target(url)
             connection = http.client.HTTPSConnection(hostname, 443, timeout=timeout,
                 context=ssl.create_default_context(cafile=certifi.where()))
-            selected = addresses[0]
+            selected = connect_ip or addresses[0]
+            if not ipaddress.ip_address(selected).is_global:
+                raise ValueError('更新地址指向本机、内网或保留地址')
+            if method == 'PUT':
+                connection.blocksize = 256 * 1024
             connection._create_connection = lambda _address, connect_timeout, source_address=None: socket.create_connection(
                 (selected, 443), connect_timeout, source_address)
             path = parsed.path or '/'

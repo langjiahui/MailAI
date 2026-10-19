@@ -97,7 +97,7 @@ class RoutingTest(unittest.TestCase):
         def open_mock(url,**kwargs):
             self.assertEqual(kwargs['headers']['Range'],'bytes=0-65535')
             self.assertNotIn('Authorization',kwargs['headers'])
-            if url.startswith(mirror.ATOM_API):release.wait(.08)
+            if url.startswith(mirror.ATOM_RELEASES):release.wait(.08)
             yield Response()
         item={**manifest()['assets']['macos-arm64'],'mirror_url':mirror.attachment('v2.10.0',mirror.NAMES['macos-arm64']),'preferred_source':'atomgit'}
         try:

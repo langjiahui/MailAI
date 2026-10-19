@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.update_mirror import ATOM_API, attachment, NAMES
 from app.update_transport import open_public
 from app.update_trust import verify
+from scripts.publish_update_channel import publish as publish_channel, version as version_tuple
 
 
 def digest(path):
@@ -108,8 +109,10 @@ def upload(tag, path, token):
             if any(name.lower() in {'authorization', 'cookie', 'proxy-authorization'} for name in headers):
                 raise ValueError('Unexpected storage credential header')
             headers['Content-Length'] = str(path.stat().st_size)
+            edge = os.getenv('ATOMGIT_UPLOAD_EDGE_IP', '').strip() if attempt % 2 == 0 and parsed.hostname == 'file.gitcode.com' else ''
+            print('Uploading: ' + path.name + ' via ' + parsed.hostname + (' (verified TLS edge)' if edge else ''), flush=True)
             with path.open('rb') as source:
-                with open_public(url, method='PUT', body=source, headers=headers, allow_redirects=False, timeout=180) as response:
+                with open_public(url, method='PUT', body=source, headers=headers, allow_redirects=False, timeout=180, connect_ip=edge or None) as response:
                     response.read(1024 * 1024)
             if not matches(tag, path):
                 raise OSError('Domestic attachment verification failed')
@@ -152,10 +155,20 @@ def sync(tag, assets, token, notes):
     files = sorted(p for p in assets.iterdir() if p.is_file() and p.name not in {'latest.json', 'latest.signed.json'})
     for path in files + [assets / 'latest.json', assets / 'latest.signed.json']:
         upload(tag, path, token)
+    try:
+        current_latest = api('/releases/latest?type=latest', token)
+    except urllib.error.HTTPError as exc:
+        if exc.code != 404:
+            raise
+        current_latest = None
+    if current_latest and version_tuple(str(current_latest.get('tag_name') or '').removeprefix('v')) > version_tuple(tag.removeprefix('v')):
+        print('Historical release verified; newer domestic channel preserved', flush=True)
+        return
     api(endpoint, token, 'PATCH', {'name': 'MailAI ' + tag.removeprefix('v'), 'body': notes, 'release_status': 'latest'})
     published = api('/releases/latest?type=latest', token)
     if published.get('tag_name') != tag or published.get('prerelease'):
         raise ValueError('Domestic release promotion failed')
+    publish_channel(assets / 'latest.signed.json', token)
     print('Domestic release published and verified: ' + tag, flush=True)
 
 

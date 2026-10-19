@@ -89,6 +89,7 @@ TESTS = (
     'test_update_connection.py',
     'test_update_mirror.py',
     'test_update_routing.py',
+    'test_update_channel.py',
     'test_inno_setup_discovery.py',
     'test_runtime_logging.py',
     'test_isolated_startup.py',

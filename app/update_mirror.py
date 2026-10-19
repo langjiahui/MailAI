@@ -8,17 +8,18 @@ from .update_trust import verify
 ATOM_REPOSITORY = 'langjiahui2011/MailAI'
 ATOM_API = 'https://api.atomgit.com/api/v5/repos/' + ATOM_REPOSITORY
 ATOM_RELEASES = 'https://atomgit.com/' + ATOM_REPOSITORY + '/releases'
+STATIC_MANIFEST_URL = 'https://raw.atomgit.com/' + ATOM_REPOSITORY + '/raw/updates/latest.signed.json'
 GITHUB_RELEASES = 'https://github.com/langjiahui/MailAI/releases'
 NAMES = {'windows-x64': 'MailAI-Windows-x64-Setup.exe', 'macos-arm64': 'MailAI-macOS-arm64.pkg',
          'linux-x64': 'MailAI-Linux-x64.AppImage'}
 
 
 def attachment(tag: str, name: str) -> str:
-    return f'{ATOM_API}/releases/{quote(tag, safe="")}/attach_files/{quote(name, safe="")}/download'
+    return f'{ATOM_RELEASES}/download/{quote(tag, safe="")}/{quote(name, safe="")}'
 
 
 def read_json(url: str) -> dict:
-    with open_public(url, headers={'Accept': 'application/json'}, timeout=6) as response:
+    with open_public(url, headers={'Accept': 'application/json', 'Cache-Control': 'no-cache'}, timeout=6) as response:
         raw = response.read(1024 * 1024 + 1)
         declared = int(response.headers.get('Content-Length') or 0)
     if len(raw) > 1024 * 1024:
@@ -32,12 +33,14 @@ def read_json(url: str) -> dict:
 
 
 def discover() -> dict:
-    release = read_json(ATOM_API + '/releases/latest?type=latest')
-    tag = str(release.get('tag_name') or '')
-    if not re.fullmatch(r'v\d+\.\d+\.\d+', tag) or release.get('prerelease'):
-        raise ValueError('国内更新版本尚未正式发布')
-    manifest = verify(read_json(attachment(tag, 'latest.signed.json')))
-    if manifest.get('version') != tag[1:] or manifest.get('release_url') != GITHUB_RELEASES + '/tag/' + tag:
+    # Public raw files and website downloads remain reachable when the platform's
+    # shared anonymous API identity hits its global quota. No token in clients.
+    manifest = verify(read_json(STATIC_MANIFEST_URL))
+    version = str(manifest.get('version') or '')
+    if not re.fullmatch(r'\d+\.\d+\.\d+', version):
+        raise ValueError('国内更新清单版本不一致')
+    tag = 'v' + version
+    if manifest.get('release_url') != GITHUB_RELEASES + '/tag/' + tag:
         raise ValueError('国内更新清单版本不一致')
     assets = manifest.get('assets')
     if not isinstance(assets, dict):
@@ -55,4 +58,7 @@ def discover() -> dict:
 
 def valid_mirror(url: str, original: str) -> bool:
     match = re.fullmatch(re.escape(GITHUB_RELEASES) + r'/download/(v\d+\.\d+\.\d+)/([^/]+)', original)
-    return bool(match and match[2] in NAMES.values() and url == attachment(match[1], match[2]))
+    if not match or match[2] not in NAMES.values():
+        return False
+    legacy = f'{ATOM_API}/releases/{quote(match[1], safe="")}/attach_files/{quote(match[2], safe="")}/download'
+    return url in {attachment(match[1], match[2]), legacy}
