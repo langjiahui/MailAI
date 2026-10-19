@@ -231,4 +231,78 @@ class AssistantControllerTest {
             scope.cancel()
         }
     }
+
+    @Test
+    fun connectionProbeUsesNoMailDoesNotSaveAndRejectsDuplicateActions() {
+        val calls = AtomicInteger()
+        val (a, scope, cache) =
+            rig { _, messages, _, _ ->
+                calls.incrementAndGet()
+                assertEquals(1, messages.length())
+                assertEquals("请只回复 OK。", messages.getJSONObject(0).getString("content"))
+                assertFalse(messages.toString().contains(source.text))
+                Thread.sleep(40)
+                "OK"
+            }
+        try {
+            a.open(source)
+            waitFor { !a.loading }
+            val endpoint = AssistantProviders.get("deepseek").endpoint
+            a.testSettings(endpoint, "deepseek-flash", "synthetic-new-key", false, true, "deepseek")
+            a.testSettings(endpoint, "deepseek-flash", "synthetic-new-key", false, true, "deepseek")
+            a.start(AssistantTask.SUMMARY)
+            waitFor { !a.testing }
+            assertEquals(1, calls.get())
+            assertTrue(a.verificationMessage.contains("连接成功"))
+            assertEquals(config, AssistantSettings(context, cipher).read())
+            assertEquals("", a.text)
+            assertNull(cache.get(source.cacheKey(config, AssistantTask.SUMMARY, "")))
+            a.saveSettings("https://model.example.test/v1/", config.model, "", false, true)
+            waitFor { !a.loading }
+            assertFalse(a.failed)
+            assertEquals(config, AssistantSettings(context, cipher).read())
+        } finally {
+            a.dispose()
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun failedOrCancelledProbePreservesTheSavedConfigurationAndNeverRestarts() {
+        val calls = AtomicInteger()
+        val (a, scope, _) =
+            rig { _, _, op, _ ->
+                if (calls.incrementAndGet() == 1)
+                    throw AssistantFailure("Kimi Code 未开放当前客户端（HTTP 403）")
+                while (true) {
+                    op.check()
+                    Thread.sleep(5)
+                }
+                @Suppress("UNREACHABLE_CODE") ""
+            }
+        try {
+            a.open(source)
+            waitFor { !a.loading }
+            a.testSettings(config.endpoint, config.model, "", false, true)
+            waitFor { !a.testing }
+            assertTrue(a.verificationFailed)
+            assertTrue(a.verificationMessage.contains("HTTP 403"))
+            a.testSettings(config.endpoint, config.model, "", false, true)
+            waitFor { calls.get() == 2 }
+            a.background()
+            waitFor { !a.testing }
+            assertFalse(a.verificationFailed)
+            assertTrue(a.verificationMessage.contains("已取消"))
+            assertEquals(config, AssistantSettings(context, cipher).read())
+            a.open(source)
+            waitFor { !a.loading }
+            assertEquals(2, calls.get())
+            a.testSettings("https://other.example.test/v1", config.model, "", false, true)
+            assertTrue(a.verificationFailed)
+            assertEquals(2, calls.get())
+        } finally {
+            a.dispose()
+            scope.cancel()
+        }
+    }
 }

@@ -223,6 +223,7 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
 
     internal fun closeAssistantSettings() {
         if (assistant.loading) return
+        assistant.stop()
         page = assistantSettingsOrigin.takeIf { it != "assistant-settings" } ?: "settings"
     }
 

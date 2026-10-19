@@ -252,6 +252,8 @@ class AssistantExperienceTest {
             compose.waitUntil(10000) { !vm.assistant.loading }
             compose.onNodeWithText("前往设置").performScrollTo().performClick()
             compose.waitUntil(5000) { vm.page == "assistant-settings" }
+            compose.onNodeWithTag("xiaoyou-provider").performScrollTo().performClick()
+            compose.onNodeWithTag("xiaoyou-provider-other").performScrollTo().performClick()
             compose
                 .onNodeWithTag("xiaoyou-endpoint")
                 .performScrollTo()
@@ -268,6 +270,69 @@ class AssistantExperienceTest {
             compose.onNodeWithTag("xiaoyou-open").performClick()
             compose.onNodeWithText("提炼要点", substring = false).assertExists()
             compose.onAllNodesWithText("前往设置").assertCountEquals(0)
+        } finally {
+            scenario.close()
+        }
+    }
+
+    @Test
+    fun presetSetupNeedsOnlyTheKeyAndKeepsAdvancedFieldsCollapsed() {
+        val (scenario, vm) = launch()
+        try {
+            AssistantSettings(context).clear()
+            scenario.onActivity { vm.openAssistantSettings() }
+            compose.waitUntil(10000) { !vm.assistant.loading }
+            compose.onNodeWithTag("xiaoyou-endpoint").assertDoesNotExist()
+            compose.onNodeWithTag("xiaoyou-model").assertDoesNotExist()
+            compose
+                .onNodeWithTag("xiaoyou-key")
+                .performScrollTo()
+                .performTextInput("synthetic-deepseek-key")
+            device.pressBack()
+            compose.onNodeWithTag("xiaoyou-consent").performScrollTo().performClick()
+            compose.onNodeWithTag("xiaoyou-save-settings").performScrollTo().performClick()
+            compose.waitUntil(10000) { vm.assistant.configured && !vm.assistant.loading }
+            assertFalse(vm.assistant.failed)
+            val saved = AssistantSettings(context).read()!!
+            assertEquals(AssistantProviders.get("deepseek").endpoint, saved.endpoint)
+            assertEquals("deepseek-flash", saved.model)
+            assertEquals("synthetic-deepseek-key", saved.key)
+            assertEquals("deepseek", saved.provider)
+            capture("07-preset-setup")
+        } finally {
+            scenario.close()
+        }
+    }
+
+    @Test
+    fun changingProviderClearsTypedKeyAndProbeValidationDoesNotReplaceTheSavedConfig() {
+        val (scenario, vm) = launch()
+        try {
+            scenario.onActivity { vm.openAssistantSettings() }
+            compose.waitUntil(10000) { !vm.assistant.loading }
+            compose
+                .onNodeWithTag("xiaoyou-key")
+                .performScrollTo()
+                .performTextInput("must-not-cross-provider")
+            device.pressBack()
+            compose.onNodeWithTag("xiaoyou-provider").performScrollTo().performClick()
+            capture("08-provider-menu")
+            compose.onNodeWithTag("xiaoyou-provider-kimi_code").performScrollTo().performClick()
+            compose
+                .onNodeWithTag("xiaoyou-key")
+                .assert(
+                    SemanticsMatcher.expectValue(
+                        androidx.compose.ui.semantics.SemanticsProperties.EditableText,
+                        androidx.compose.ui.text.AnnotatedString(""),
+                    )
+                )
+            compose.onNodeWithTag("xiaoyou-consent").performScrollTo().performClick()
+            compose.onNodeWithTag("xiaoyou-test-settings").performScrollTo().performClick()
+            compose.waitUntil(5000) { vm.assistant.verificationFailed }
+            assertTrue(vm.assistant.verificationMessage.contains("API Key"))
+            assertFalse(vm.assistant.testing)
+            assertEquals(config, AssistantSettings(context).read())
+            capture("09-probe-validation")
         } finally {
             scenario.close()
         }

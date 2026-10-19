@@ -268,4 +268,131 @@ class AssistantTest {
         assertFalse(e.message!!.contains("secret-server-details"))
         client.dispatcher.executorService.shutdown()
     }
+
+    @Test
+    fun providerAddressesNormalizeWithoutWeakeningEndpointValidation() {
+        assertEquals(
+            "https://gateway.example.test/openapi/v1/chat/completions",
+            AssistantProviders.completionEndpoint("https://gateway.example.test/openapi"),
+        )
+        assertEquals(
+            config.endpoint,
+            AssistantProviders.completionEndpoint("https://model.example.test/v1"),
+        )
+        assertEquals(config.endpoint, AssistantProviders.completionEndpoint(config.endpoint + "/"))
+        for (bad in
+            listOf(
+                "http://model.example.test/v1",
+                "https://key@model.example.test/v1",
+                "https://model.example.test/v1?key=secret",
+            )) assertThrows(IllegalArgumentException::class.java) {
+            AssistantProviders.completionEndpoint(bad)
+        }
+        assertNull(
+            AssistantProviders.detect("https://api.deepseek.com.attacker.test/v1/chat/completions")
+        )
+        assertNull(AssistantProviders.detect("https://api.deepseek.com/proxy/v1/chat/completions"))
+        val store = AssistantSettings(context, cipher)
+        val old =
+            JSONObject()
+                .put("endpoint", config.endpoint)
+                .put("model", config.model)
+                .put("key", config.key)
+                .put("private", false)
+        java.io
+            .File(context.filesDir, "assistant-settings.json")
+            .writeText(cipher.encrypt(old.toString()))
+        assertEquals(config, store.read())
+        store.save(config.copy(provider = "other"))
+        assertEquals("other", store.read()!!.provider)
+    }
+
+    @Test
+    fun officialProviderParametersAreAdaptedOnTheActualRequestWithoutLeakingTheKey() {
+        val cases =
+            listOf(
+                "deepseek" to "deepseek-flash",
+                "kimi" to "kimi-k2.6",
+                "kimi" to "kimi-k3",
+                "kimi_code" to "kimi-for-coding",
+                "other" to "qwen3-custom",
+            )
+        val client =
+            OkHttpClient.Builder()
+                .addInterceptor { chain ->
+                    val request = chain.request()
+                    assertTrue(request.header("User-Agent")!!.startsWith("MailAI-Android/"))
+                    val buffer = Buffer()
+                    request.body!!.writeTo(buffer)
+                    val body = JSONObject(buffer.readUtf8())
+                    assertFalse(body.toString().contains("fixture-key"))
+                    when (body.getString("model")) {
+                        "deepseek-flash",
+                        "kimi-k2.6" ->
+                            assertEquals(
+                                "disabled",
+                                body.getJSONObject("thinking").getString("type"),
+                            )
+                        "kimi-k3" -> {
+                            assertFalse(body.has("max_tokens"))
+                            assertEquals(1600, body.getInt("max_completion_tokens"))
+                            assertEquals("low", body.getString("reasoning_effort"))
+                        }
+                        "kimi-for-coding" -> assertEquals("low", body.getString("reasoning_effort"))
+                        else -> {
+                            assertFalse(body.has("thinking"))
+                            assertFalse(body.has("reasoning_effort"))
+                        }
+                    }
+                    Response.Builder()
+                        .request(request)
+                        .protocol(Protocol.HTTP_1_1)
+                        .code(200)
+                        .message("OK")
+                        .body(
+                            """{"choices":[{"finish_reason":"stop","message":{"content":"OK"}}]}"""
+                                .toResponseBody()
+                        )
+                        .build()
+                }
+                .build()
+        try {
+            for ((id, model) in cases) {
+                val endpoint = AssistantProviders.get(id).endpoint.ifBlank { config.endpoint }
+                assertEquals(
+                    "OK",
+                    AssistantClient(null, client).generate(
+                        config.copy(endpoint = endpoint, model = model),
+                        org.json.JSONArray(),
+                        AssistantCall(),
+                    ) {},
+                )
+            }
+        } finally {
+            client.dispatcher.executorService.shutdown()
+        }
+    }
+
+    @Test
+    fun serviceErrorsExplainCodingRestrictionsWithoutEchoingServerSecrets() {
+        val coding = config.copy(endpoint = AssistantProviders.get("kimi_code").endpoint)
+        val raw =
+            """{"error":{"type":"access_terminated_error","message":"Only available for Coding Agents fixture-key sensitive-mail"}}"""
+        val failure = AssistantServiceErrors.message(coding, 403, raw)
+        assertTrue(failure.contains("客户端"))
+        assertTrue(failure.contains("HTTP 403"))
+        assertTrue(failure.contains("开放平台"))
+        assertFalse(failure.contains("fixture-key"))
+        assertFalse(failure.contains("sensitive-mail"))
+        assertTrue(AssistantServiceErrors.message(config, 400, "").contains("参数不兼容"))
+        assertTrue(AssistantServiceErrors.message(config, 404, "").contains("未找到"))
+        assertTrue(
+            AssistantServiceErrors.message(
+                    config,
+                    403,
+                    """{"error":{"code":"insufficient_balance"}}""",
+                )
+                .contains("额度不足")
+        )
+    }
 }

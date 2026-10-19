@@ -22,6 +22,7 @@ internal data class AssistantConfig(
     val model: String = "",
     val key: String = "",
     val privateNetwork: Boolean = false,
+    val provider: String = "",
 ) {
     fun url(): HttpUrl {
         val u = endpoint.toHttpUrlOrNull()
@@ -76,6 +77,7 @@ internal class AssistantSettings(
             j.getString("model"),
             j.getString("key"),
             j.optBoolean("private"),
+            j.optString("provider"),
         )
     }
 
@@ -90,6 +92,7 @@ internal class AssistantSettings(
                         .put("model", c.model)
                         .put("key", c.key)
                         .put("private", c.privateNetwork)
+                        .put("provider", c.provider)
                         .toString()
                 )
                 .toByteArray()

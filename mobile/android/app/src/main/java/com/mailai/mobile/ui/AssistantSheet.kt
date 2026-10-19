@@ -372,47 +372,146 @@ private fun assistantFieldColors() =
         disabledIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
     )
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AssistantChoice(
+    label: String,
+    value: String,
+    options: List<Pair<String, String>>,
+    tag: String,
+    enabled: Boolean,
+    choose: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(expanded, { if (enabled) expanded = !expanded }) {
+        TextField(
+            value,
+            {},
+            readOnly = true,
+            label = { Text(label) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+            modifier = Modifier.fillMaxWidth().menuAnchor().testTag(tag),
+            enabled = enabled,
+            shape = RoundedCornerShape(14.dp),
+            colors = assistantFieldColors(),
+        )
+        ExposedDropdownMenu(
+            expanded && enabled,
+            { expanded = false },
+            modifier = Modifier.heightIn(max = 300.dp),
+        ) {
+            options.forEach { (id, title) ->
+                DropdownMenuItem(
+                    text = { Text(title) },
+                    onClick = {
+                        expanded = false
+                        choose(id)
+                    },
+                    modifier = Modifier.testTag("$tag-$id"),
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun AssistantSettingsForm(a: AssistantController) {
-    var endpoint by remember(a.endpoint) { mutableStateOf(a.endpoint) }
-    var model by remember(a.model) { mutableStateOf(a.model) }
+    val initialProvider =
+        AssistantProviders.get(
+            a.provider.ifBlank {
+                AssistantProviders.detect(a.endpoint)?.id
+                    ?: if (a.endpoint.isBlank()) "deepseek" else "other"
+            }
+        )
+    var providerId by
+        remember(a.endpoint, a.model, a.provider) { mutableStateOf(initialProvider.id) }
+    val provider = AssistantProviders.get(providerId)
+    var endpoint by
+        remember(a.endpoint) { mutableStateOf(a.endpoint.ifBlank { initialProvider.endpoint }) }
+    var model by
+        remember(a.model, a.endpoint) {
+            mutableStateOf(a.model.ifBlank { initialProvider.models.firstOrNull()?.id.orEmpty() })
+        }
     // Secrets deliberately never use rememberSaveable / saved instance state.
     var key by remember { mutableStateOf("") }
     var privateNetwork by remember(a.privateNetwork) { mutableStateOf(a.privateNetwork) }
-    var consent by remember { mutableStateOf(false) }
+    var consent by remember(providerId, endpoint) { mutableStateOf(false) }
+    var advanced by
+        remember(providerId, a.endpoint) {
+            mutableStateOf(a.endpoint.isNotBlank() && a.endpoint != provider.endpoint)
+        }
+    var manualModel by
+        remember(providerId, a.model) { mutableStateOf(provider.models.none { it.id == model }) }
     var removing by remember { mutableStateOf(false) }
+    var testedForm by remember { mutableStateOf("") }
+    val form = fingerprint("$providerId\n$endpoint\n$model\n$key\n$privateNetwork")
     LaunchedEffect(a.loading) { if (!a.loading && !a.failed) key = "" }
     Text("接入模型服务", fontSize = 17.sp, fontWeight = FontWeight.Medium)
     Text(
-        "使用你自己的兼容接口与 API Key。手机直接连接，服务可能按使用量计费。",
+        "选好服务，填入 API Key 就能开始。模型已默认选好，也可以自行更换。",
         fontSize = 13.sp,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    TextField(
-        endpoint,
-        { endpoint = it.take(2048) },
-        label = { Text("HTTPS 对话接口地址") },
-        placeholder = { Text("https://服务地址/v1/chat/completions") },
-        modifier = Modifier.fillMaxWidth().testTag("xiaoyou-endpoint"),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-        enabled = !a.busy,
-        shape = RoundedCornerShape(14.dp),
-        colors = assistantFieldColors(),
-    )
-    TextField(
-        model,
-        { model = it.take(128) },
-        label = { Text("模型名称") },
-        modifier = Modifier.fillMaxWidth().testTag("xiaoyou-model"),
-        singleLine = true,
-        enabled = !a.busy,
-        shape = RoundedCornerShape(14.dp),
-        colors = assistantFieldColors(),
-    )
+    AssistantChoice(
+        "模型服务商",
+        provider.name,
+        AssistantProviders.all.map { it.id to it.name },
+        "xiaoyou-provider",
+        !a.busy,
+    ) { id ->
+        if (id != providerId) {
+            a.settingsEdited()
+            providerId = id
+            val next = AssistantProviders.get(id)
+            endpoint = next.endpoint
+            model = next.models.firstOrNull()?.id.orEmpty()
+            privateNetwork = false
+            key = ""
+            testedForm = ""
+        }
+    }
+    if (provider.models.isNotEmpty()) {
+        AssistantChoice(
+            "模型",
+            if (manualModel) "手动填写模型"
+            else provider.models.firstOrNull { it.id == model }?.name.orEmpty(),
+            provider.models.map { it.id to it.name } + ("manual" to "手动填写模型"),
+            "xiaoyou-model-choice",
+            !a.busy,
+        ) { id ->
+            a.settingsEdited()
+            manualModel = id == "manual"
+            if (!manualModel) model = id
+        }
+    }
+    if (provider.models.isEmpty() || manualModel)
+        TextField(
+            model,
+            {
+                a.settingsEdited()
+                model = it.take(128)
+            },
+            label = { Text("模型名称") },
+            placeholder = { Text("例如：服务商提供的模型 ID") },
+            modifier = Modifier.fillMaxWidth().testTag("xiaoyou-model"),
+            singleLine = true,
+            enabled = !a.busy,
+            shape = RoundedCornerShape(14.dp),
+            colors = assistantFieldColors(),
+        )
     TextField(
         key,
-        { key = it.take(8192) },
-        label = { Text(if (a.configured) "API Key（留空保留原值）" else "API Key") },
+        {
+            a.settingsEdited()
+            key = it.take(8192)
+        },
+        label = {
+            Text(
+                if (a.configured && endpoint.trimEnd('/') == a.endpoint.trimEnd('/'))
+                    "API Key（留空保留原值）"
+                else "API Key"
+            )
+        },
         visualTransformation = PasswordVisualTransformation(),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
         singleLine = true,
@@ -421,20 +520,57 @@ private fun AssistantSettingsForm(a: AssistantController) {
         shape = RoundedCornerShape(14.dp),
         colors = assistantFieldColors(),
     )
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Checkbox(privateNetwork, { privateNetwork = it }, enabled = !a.busy)
-        Text("这是我配置的企业内网模型服务", fontSize = 14.sp, modifier = Modifier.weight(1f))
-    }
-    if (privateNetwork)
+    if (providerId == "kimi_code")
         Text(
-            "使用可见 VPN 或公司 Wi-Fi，继续校验证书。",
+            "Kimi Code 使用编程订阅 Key，可能限制客户端。邮件应用建议选择 Kimi 开放平台，两类 Key 不能混用。",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    if (provider.preset)
+        TextButton(onClick = { advanced = !advanced }, enabled = !a.busy) {
+            Text(if (advanced) "收起高级设置" else "高级设置")
+        }
+    if (!provider.preset || advanced) {
+        TextField(
+            endpoint,
+            {
+                a.settingsEdited()
+                endpoint = it.take(2048)
+            },
+            label = { Text("API 地址") },
+            placeholder = { Text("https://api.example.com/v1") },
+            supportingText = { Text("基础地址或完整 /chat/completions 地址均可") },
+            modifier = Modifier.fillMaxWidth().testTag("xiaoyou-endpoint"),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+            enabled = !a.busy,
+            shape = RoundedCornerShape(14.dp),
+            colors = assistantFieldColors(),
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(
+                privateNetwork,
+                {
+                    a.settingsEdited()
+                    privateNetwork = it
+                },
+                enabled = !a.busy,
+            )
+            Text("这是我配置的企业内网模型服务", fontSize = 14.sp, modifier = Modifier.weight(1f))
+        }
+        if (privateNetwork)
+            Text(
+                "使用可见 VPN 或公司 Wi-Fi，继续校验证书。",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+    }
     Row(verticalAlignment = Alignment.CenterVertically) {
         Checkbox(
             consent,
-            { consent = it },
+            {
+                a.settingsEdited()
+                consent = it
+            },
             enabled = !a.busy,
             modifier = Modifier.testTag("xiaoyou-consent"),
         )
@@ -448,8 +584,40 @@ private fun AssistantSettingsForm(a: AssistantController) {
                 if (a.failed) MaterialTheme.colorScheme.error
                 else MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    OutlinedButton(
+        onClick = {
+            testedForm = form
+            a.testSettings(endpoint, model, key, privateNetwork, consent, providerId)
+        },
+        enabled = !a.busy,
+        modifier = Modifier.fillMaxWidth().testTag("xiaoyou-test-settings"),
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Text(if (a.testing) "正在测试连接…" else "测试连接")
+    }
+    if (a.testing)
+        TextButton(
+            onClick = a::stop,
+            modifier = Modifier.fillMaxWidth().testTag("xiaoyou-cancel-test"),
+        ) {
+            Text("取消测试")
+        }
+    if (testedForm == form && a.verificationMessage.isNotBlank())
+        Text(
+            a.verificationMessage,
+            fontSize = 13.sp,
+            color =
+                if (a.verificationFailed) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.primary,
+            modifier = Modifier.testTag("xiaoyou-test-status"),
+        )
+    Text(
+        "测试仅发送一句测试文字，不包含邮件，可能产生少量服务费用。保存配置不会自动联网。",
+        fontSize = 12.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
     Button(
-        onClick = { a.saveSettings(endpoint, model, key, privateNetwork, consent) },
+        onClick = { a.saveSettings(endpoint, model, key, privateNetwork, consent, providerId) },
         enabled = !a.busy,
         modifier = Modifier.fillMaxWidth().testTag("xiaoyou-save-settings"),
         shape = RoundedCornerShape(16.dp),

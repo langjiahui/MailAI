@@ -1,6 +1,7 @@
 package com.mailai.mobile.assistant
 
 import android.content.Context
+import com.mailai.mobile.BuildConfig
 import com.mailai.mobile.mail.MailNetworks
 import com.mailai.mobile.mail.NetworkPolicy
 import com.mailai.mobile.mail.Operation
@@ -100,18 +101,13 @@ internal class AssistantClient(
                 )
         }
         val client = builder.build()
-        val body =
-            JSONObject()
-                .put("model", config.model)
-                .put("messages", messages)
-                .put("stream", true)
-                .put("max_tokens", 1600)
-                .toString()
+        val body = AssistantProviders.request(config, messages).toString()
         val request =
             Request.Builder()
                 .url(url)
                 .header("Authorization", "Bearer ${config.key}")
                 .header("Accept", "text/event-stream, application/json")
+                .header("User-Agent", "MailAI-Android/${BuildConfig.VERSION_NAME}")
                 .post(body.toRequestBody("application/json; charset=utf-8".toMediaType()))
                 .build()
         operation.check()
@@ -120,17 +116,13 @@ internal class AssistantClient(
         try {
             call.execute().use { response ->
                 operation.check()
-                if (!response.isSuccessful)
+                if (!response.isSuccessful) {
+                    val detail = response.peekBody(4096).string()
+                    operation.check()
                     throw AssistantFailure(
-                        when (response.code) {
-                            401,
-                            403 -> "模型服务未接受 API Key，请检查配置与权限"
-                            429 -> "模型服务暂时限流或额度不足，请稍后重试"
-                            in 300..399 -> "模型接口发生跳转，请填写最终 HTTPS 接口地址"
-                            in 500..599 -> "模型服务暂时不可用，原邮件和草稿未改动"
-                            else -> "模型服务未接受请求，请检查接口地址、模型名称与服务额度"
-                        }
+                        AssistantServiceErrors.message(config, response.code, detail)
                     )
+                }
                 val source = response.body?.source() ?: throw AssistantFailure("服务没有返回内容")
                 return if (
                     response.header("Content-Type").orEmpty().contains("text/event-stream", true)

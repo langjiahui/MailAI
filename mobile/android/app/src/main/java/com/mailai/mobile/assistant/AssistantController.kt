@@ -7,6 +7,8 @@ import java.net.UnknownHostException
 import java.util.concurrent.atomic.AtomicReference
 import javax.net.ssl.SSLException
 import kotlinx.coroutines.*
+import org.json.JSONArray
+import org.json.JSONObject
 
 /** All asynchronous work is finite and user initiated. No idle ticker or background job. */
 internal class AssistantController(
@@ -64,14 +66,28 @@ internal class AssistantController(
     var configured by mutableStateOf(false)
         private set
 
+    var provider by mutableStateOf("")
+        private set
+
     private var config: AssistantConfig? = null
     private var loaded = false
     private var job: Job? = null
     private var generationJob: Job? = null
     private var operation: AssistantCall? = null
+    private var probeOperation: AssistantCall? = null
+    private var probeJob: Job? = null
+    var testing by mutableStateOf(false)
+        private set
+
+    var verificationMessage by mutableStateOf("")
+        private set
+
+    var verificationFailed by mutableStateOf(false)
+        private set
+
     private var revision = 0L
     val busy
-        get() = loading || generating || applying
+        get() = loading || generating || applying || testing
 
     fun open(value: AssistantContext) {
         if (applying) return
@@ -113,6 +129,9 @@ internal class AssistantController(
 
     private fun publishSettings() {
         endpoint = config?.endpoint.orEmpty()
+        provider =
+            config?.provider?.takeIf { it.isNotBlank() }
+                ?: AssistantProviders.detect(endpoint)?.id.orEmpty()
         model = config?.model.orEmpty()
         privateNetwork = config?.privateNetwork ?: false
         configured = config != null
@@ -125,36 +144,68 @@ internal class AssistantController(
         loadSettings()
     }
 
-    fun saveSettings(
+    fun settingsEdited() {
+        if (busy) return
+        message = ""
+        failed = false
+        verificationMessage = ""
+        verificationFailed = false
+    }
+
+    private fun settingsValue(
         endpoint: String,
         model: String,
         key: String,
         privateNetwork: Boolean,
         consent: Boolean,
-    ) {
-        if (busy) return
+        provider: String = "",
+    ): AssistantConfig? {
         if (!consent) {
             message = "请确认当前操作所需文字将发送至你配置的模型服务"
             failed = true
-            return
+            return null
         }
         // Never transfer the old key to a newly entered endpoint implicitly.
+        val normalized =
+            try {
+                AssistantProviders.completionEndpoint(endpoint)
+            } catch (e: IllegalArgumentException) {
+                message = e.message.orEmpty()
+                failed = true
+                return null
+            }
         val value =
             AssistantConfig(
-                endpoint.trim(),
+                normalized,
                 model.trim(),
-                key.ifBlank {
-                    if (endpoint.trim() == config?.endpoint) config?.key.orEmpty() else ""
+                key.trim().ifBlank {
+                    if (normalized == config?.endpoint) config?.key.orEmpty() else ""
                 },
                 privateNetwork,
+                provider,
             )
         try {
             value.validate()
         } catch (e: IllegalArgumentException) {
             message = e.message.orEmpty()
             failed = true
-            return
+            return null
         }
+        return value
+    }
+
+    fun saveSettings(
+        endpoint: String,
+        model: String,
+        key: String,
+        privateNetwork: Boolean,
+        consent: Boolean,
+        provider: String = "",
+    ) {
+        if (busy) return
+        val value = settingsValue(endpoint, model, key, privateNetwork, consent, provider) ?: return
+        verificationMessage = ""
+        verificationFailed = false
         loading = true
         job =
             scope.launch {
@@ -173,6 +224,62 @@ internal class AssistantController(
                     failed = true
                 } finally {
                     loading = false
+                }
+            }
+    }
+
+    fun testSettings(
+        endpoint: String,
+        model: String,
+        key: String,
+        privateNetwork: Boolean,
+        consent: Boolean,
+        provider: String = "",
+    ) {
+        if (busy) return
+        val value = settingsValue(endpoint, model, key, privateNetwork, consent, provider)
+        if (value == null) {
+            verificationMessage = message
+            verificationFailed = true
+            message = ""
+            failed = false
+            return
+        }
+        message = ""
+        failed = false
+        testing = true
+        verificationMessage = "正在测试连接，可随时取消…"
+        verificationFailed = false
+        val operation = AssistantCall()
+        probeOperation = operation
+        probeJob =
+            scope.launch {
+                try {
+                    generationJob?.join()
+                    val answer =
+                        withContext(Dispatchers.IO) {
+                            transport.generate(
+                                value,
+                                JSONArray()
+                                    .put(
+                                        JSONObject().put("role", "user").put("content", "请只回复 OK。")
+                                    ),
+                                operation,
+                            ) {}
+                        }
+                    operation.check()
+                    check(answer.isNotBlank())
+                    verificationMessage = "连接成功，模型已返回文字；尚未保存更改"
+                } catch (_: CancellationException) {
+                    verificationMessage = "测试已取消，原配置保留"
+                } catch (e: Exception) {
+                    verificationMessage = failure(e)
+                    verificationFailed = true
+                } finally {
+                    withContext(NonCancellable) {
+                        testing = false
+                        probeOperation = null
+                    }
                 }
             }
     }
@@ -352,6 +459,11 @@ internal class AssistantController(
     }
 
     fun stop() {
+        if (testing) {
+            verificationMessage = "正在取消测试…"
+            probeOperation?.cancel()
+            probeJob?.cancel()
+        }
         if (generating) {
             stopping = true
             message = "正在停止，已有文字会保留…"
@@ -392,6 +504,8 @@ internal class AssistantController(
     }
 
     fun dispose() {
+        probeOperation?.cancel()
+        probeJob?.cancel()
         operation?.cancel()
         job?.cancel()
         job?.invokeOnCompletion { cache.close() } ?: cache.close()
