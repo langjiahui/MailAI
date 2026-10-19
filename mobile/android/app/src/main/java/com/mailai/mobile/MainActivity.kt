@@ -19,6 +19,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
+        if (!isChangingConfigurations) model.assistantBackground()
         model.onBackground()
         super.onStop()
     }

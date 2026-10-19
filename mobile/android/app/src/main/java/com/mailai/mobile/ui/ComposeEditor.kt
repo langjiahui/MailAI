@@ -221,6 +221,8 @@ internal fun ComposeEditor(vm: MailViewModel, back: () -> Unit, send: () -> Unit
                                 }
                         },
                         notice = { vm.showMessage(it) },
+                        polish = { start, end -> vm.openAssistant(start, end) },
+                        undoAssistant = if (vm.canUndoAssistant) ({ vm.undoAssistant() }) else null,
                         leadingControls =
                             if (shortEditing)
                                 ({

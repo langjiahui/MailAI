@@ -140,12 +140,12 @@ class PageRedesignTest {
         try {
             compose.onNodeWithText(mail.subject).performClick()
             capture("03-reader")
-            compose.onNodeWithContentDescription("添加星标").performClick()
+            compose.toggleReaderStar("添加星标")
             compose.waitUntil(5000) { mail.key in vm.stars }
             scenario.recreate()
             scenario.onActivity { vm = ViewModelProvider(it)[MailViewModel::class.java] }
             compose.waitUntil(15000) { vm.ready && !vm.busy }
-            compose.onNodeWithContentDescription("取消星标").assertExists()
+            compose.assertReaderStar("取消星标")
             compose.onNodeWithText("回复全部").performClick()
             assertEquals(
                 setOf("sender@example.test", "lin@example.test", "chen@example.test"),

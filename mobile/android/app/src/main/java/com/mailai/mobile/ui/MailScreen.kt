@@ -155,6 +155,7 @@ fun MailScreen(vm: MailViewModel, open: (Account, Attachment, Boolean) -> Unit) 
                         vm.go("drafts")
                     else leave = true
                 "reader" -> vm.go(vm.readerOrigin)
+                "assistant-settings" -> vm.closeAssistantSettings()
                 "search" -> {
                     vm.query = ""
                     vm.go("inbox")
@@ -227,6 +228,7 @@ fun MailScreen(vm: MailViewModel, open: (Account, Attachment, Boolean) -> Unit) 
                                         "compose" -> Composer(vm, ::back) { confirmSend = true }
                                         "drafts" -> Drafts(vm)
                                         "settings" -> PreferencesScreen(vm)
+                                        "assistant-settings" -> AssistantSettingsScreen(vm)
                                         "contacts" -> ContactsScreen(vm)
                                         "search" -> SearchScreen(vm)
                                         else -> RefinedInbox(vm, inboxList)
@@ -295,6 +297,7 @@ fun MailScreen(vm: MailViewModel, open: (Account, Attachment, Boolean) -> Unit) 
                     }
                 }
             }
+        AssistantSheet(vm)
         if (confirmSend)
             AlertDialog(
                 onDismissRequest = { confirmSend = false },
@@ -625,15 +628,17 @@ private fun Reader(vm: MailViewModel, back: () -> Unit) {
     val reading = remember { ReadingPreferences(context) }
     Column(Modifier.fillMaxSize()) {
         PageHeader("邮件详情", back) {
-            IconButton(onClick = { vm.toggleStar(m) }) {
-                MailIcon(
-                    MailGlyph.Star,
-                    if (m.key in vm.stars) "取消星标" else "添加星标",
-                    tint =
-                        if (m.key in vm.stars) Color(0xFFD58C12)
-                        else MaterialTheme.colorScheme.onSurface,
-                )
-            }
+            XiaoyouButton(vm)
+            if (androidx.compose.ui.platform.LocalDensity.current.fontScale <= 1.5f)
+                IconButton(onClick = { vm.toggleStar(m) }) {
+                    MailIcon(
+                        MailGlyph.Star,
+                        if (m.key in vm.stars) "取消星标" else "添加星标",
+                        tint =
+                            if (m.key in vm.stars) Color(0xFFD58C12)
+                            else MaterialTheme.colorScheme.onSurface,
+                    )
+                }
             IconButton(onClick = { details = true }) {
                 MailIcon(MailGlyph.More, "详情", tint = MaterialTheme.colorScheme.onSurface)
             }
@@ -1293,6 +1298,7 @@ private fun pageDepth(page: String): Int =
         "reader",
         "search" -> 2
         "compose" -> 3
+        "assistant-settings" -> 4
         else -> 0
     }
 

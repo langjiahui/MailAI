@@ -90,6 +90,13 @@ internal fun MailPeopleDialog(vm: MailViewModel, mail: MailItem, close: () -> Un
                 )
                 TextButton(onClick = close) { Text("完成", fontSize = 14.sp) }
             }
+            TextButton(
+                onClick = { vm.toggleStar(mail) },
+                enabled = !vm.busy,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(if (mail.key in vm.stars) "取消星标" else "添加星标")
+            }
             Box(Modifier.weight(1f, fill = false)) {
                 LazyColumn(
                     state = listState,

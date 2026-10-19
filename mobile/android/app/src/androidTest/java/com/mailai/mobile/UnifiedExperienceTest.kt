@@ -166,13 +166,13 @@ class UnifiedExperienceTest {
         val (scenario, vm) = launch()
         try {
             compose.onNodeWithText(mail.subject).performClick()
-            compose.onNodeWithContentDescription("添加星标").performClick()
+            compose.toggleReaderStar("添加星标")
             compose.waitUntil(5000) { mail.key in vm.stars }
             compose.onNodeWithContentDescription("返回").performClick()
             compose.onNodeWithTag("inbox-filter").performClick()
             compose.onNodeWithTag("filter-starred").performClick()
             compose.onNodeWithText(mail.subject).performClick()
-            compose.onNodeWithContentDescription("取消星标").performClick()
+            compose.toggleReaderStar("取消星标")
             compose.waitUntil(5000) { mail.key !in vm.stars }
             compose.onNodeWithContentDescription("返回").performClick()
             compose.onNodeWithText("暂无星标邮件").assertExists()

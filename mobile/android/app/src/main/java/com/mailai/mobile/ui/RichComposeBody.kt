@@ -55,6 +55,8 @@ internal fun RichComposeBody(
     focused: (Boolean) -> Unit,
     change: (Draft) -> Unit,
     notice: (String) -> Unit,
+    polish: (Int, Int) -> Unit = { _, _ -> },
+    undoAssistant: (() -> Unit)? = null,
     leadingControls: (@Composable () -> Unit)? = null,
     trailingControls: (@Composable () -> Unit)? = null,
 ) {
@@ -185,6 +187,20 @@ internal fun RichComposeBody(
                     .testTag("compose-formatting"),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                TextButton(
+                    onClick = {
+                        polish(
+                            if (selection.collapsed) 0 else selection.min,
+                            if (selection.collapsed) draft.body.length else selection.max,
+                        )
+                    },
+                    enabled = editable && draft.body.isNotBlank(),
+                    modifier = Modifier.testTag("xiaoyou-polish"),
+                ) {
+                    Text("润色")
+                }
+                if (undoAssistant != null)
+                    TextButton(onClick = undoAssistant, enabled = editable) { Text("撤回润色") }
                 IconButton(
                     onClick = {
                         redo.add(snapshot())

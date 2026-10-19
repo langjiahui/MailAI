@@ -131,6 +131,7 @@ internal fun RefinedInbox(vm: MailViewModel, listState: LazyListState) {
                     )
                 }
                 Spacer(Modifier.weight(1f))
+                XiaoyouButton(vm)
                 val retry = vm.canRetry && (vm.error || vm.status.startsWith("已取消"))
                 IconButton(
                     onClick = {

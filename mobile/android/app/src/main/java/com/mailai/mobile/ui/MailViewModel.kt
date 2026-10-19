@@ -7,6 +7,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.mailai.mobile.MailApplication
+import com.mailai.mobile.assistant.*
 import com.mailai.mobile.data.*
 import com.mailai.mobile.mail.*
 import java.net.SocketTimeoutException
@@ -110,6 +111,21 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
         get() = retry != null
 
     private val saves = Mutex()
+    private val assistantState = lazy { AssistantController(app, viewModelScope) }
+    internal val assistant
+        get() = assistantState.value
+
+    private var assistantUndo by mutableStateOf<Pair<Draft, Draft>?>(null)
+    internal val canUndoAssistant
+        get() =
+            assistantUndo?.let { (before, after) ->
+                draft?.id == after.id &&
+                    draft?.body == after.body &&
+                    draft?.styles == after.styles &&
+                    page == "compose" &&
+                    draft?.state in setOf(SendState.DRAFT, SendState.FAILED)
+            } ?: false
+
     private val notificationRoutes = Mutex()
     private var latestSave: Job? = null
     private var composerOrigin = savedState.get<String>("composerOrigin") ?: "inbox"
@@ -195,6 +211,140 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
             save(d, a)
     }
 
+    private var assistantSettingsOrigin = "settings"
+
+    internal fun openAssistantSettings() {
+        if (busy || page == "assistant-settings" || assistant.busy) return
+        assistantSettingsOrigin = page
+        assistant.navigation()
+        assistant.prepareSettings()
+        page = "assistant-settings"
+    }
+
+    internal fun closeAssistantSettings() {
+        if (assistant.loading) return
+        page = assistantSettingsOrigin.takeIf { it != "assistant-settings" } ?: "settings"
+    }
+
+    internal fun assistantBackground() {
+        if (assistantState.isInitialized()) assistant.background()
+    }
+
+    internal fun openAssistant(start: Int? = null, end: Int? = null) {
+        if (busy) return
+        val a = account
+        if (a == null) {
+            assistant.open(AssistantContext("", "此设备", "", "", ""))
+            return
+        }
+        val d =
+            draft?.takeIf {
+                page == "compose" && it.state in setOf(SendState.DRAFT, SendState.FAILED)
+            }
+        val m = selected?.takeIf { page == "reader" }
+        val text = d?.body ?: m?.body.orEmpty()
+        assistant.open(
+            AssistantContext(
+                a.id,
+                a.email,
+                d?.id ?: m?.key.orEmpty(),
+                d?.subject ?: m?.subject.orEmpty(),
+                text,
+                d,
+                if (d != null) start?.coerceIn(0, text.length) ?: 0 else 0,
+                if (d != null)
+                    end?.coerceIn(start?.coerceIn(0, text.length) ?: 0, text.length) ?: text.length
+                else text.length,
+            )
+        )
+    }
+
+    internal fun adoptAssistant() {
+        if (busy || assistant.busy || !assistant.complete || assistant.text.isBlank()) return
+        val source = assistant.source ?: return
+        val a = account ?: return
+        val result = assistant.text
+        val task = assistant.task ?: return
+        if (a.id != source.accountId) {
+            assistant.adoptionFailed("邮箱已切换，请回到原邮箱重新打开小邮")
+            return
+        }
+        val before = draft
+        val next =
+            try {
+                when (task) {
+                    AssistantTask.POLISH ->
+                        AssistantDraftEdits.polish(requireNotNull(before), source, result)
+                    AssistantTask.REPLY -> {
+                        val m = requireNotNull(selected)
+                        check(
+                            page == "reader" &&
+                                m.key == source.sourceId &&
+                                AssistantContext(a.id, a.email, m.key, m.subject, m.body.orEmpty())
+                                    .sourceVersion == source.sourceVersion
+                        ) {
+                            "原邮件已变化，请重新生成回复"
+                        }
+                        val signature =
+                            ReadingPreferences(getApplication())
+                                .signature(a.id)
+                                .takeIf { it.isNotBlank() }
+                                ?.let { "\n\n$it" }
+                                .orEmpty()
+                        Draft(
+                            to = replyRecipients(m, a.email, false),
+                            subject =
+                                if (m.subject.startsWith("Re:", true)) m.subject
+                                else "Re: ${m.subject}",
+                            body = result + signature,
+                            replyId = m.messageId,
+                        )
+                    }
+                    else -> return
+                }
+            } catch (e: Exception) {
+                assistant.adoptionFailed(e.message ?: "草稿已变化，请重新生成；当前内容保留")
+                return
+            }
+        assistant.applying(true)
+        run("正在保存小邮草稿…", false) { _, _ ->
+            try {
+                latestSave?.join()
+                saves.withLock { withContext(Dispatchers.IO) { repo.store(a).save(next) } }
+                if (task == AssistantTask.REPLY) setComposerOrigin("reader")
+                assistantUndo =
+                    if (task == AssistantTask.POLISH && before != null) before to next else null
+                draft = next
+                page = "compose"
+                saveStatus = "草稿已保存在此设备"
+                assistant.applied()
+                try {
+                    loadCache()
+                } catch (_: Exception) {}
+                status = if (task == AssistantTask.POLISH) "润色已保存，可在编辑工具条撤回" else "回复已保存为草稿，请核对后发送"
+            } catch (e: Exception) {
+                assistant.adoptionFailed("未能保存这份文字，请重试；原稿与候选结果保留")
+                throw e
+            }
+        }
+    }
+
+    internal fun undoAssistant() {
+        if (busy || !canUndoAssistant) return
+        val a = account ?: return
+        val (before, _) = assistantUndo ?: return
+        val current = draft ?: return
+        val restored = current.copy(body = before.body, styles = before.styles)
+        run("正在恢复润色前正文…", false) { _, _ ->
+            latestSave?.join()
+            saves.withLock { withContext(Dispatchers.IO) { repo.store(a).save(restored) } }
+            draft = restored
+            assistantUndo = null
+            saveStatus = "草稿已保存在此设备"
+            status = "已恢复润色前正文"
+        }
+    }
+
     private fun draftStatus(d: Draft) =
         when (d.state) {
             SendState.UNCERTAIN,
@@ -259,6 +409,7 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
                         }
                     }
                 }
+                if (assistantState.isInitialized()) assistant.navigation()
                 if (settings) {
                     updatesRequested = true
                     go("settings")
@@ -440,6 +591,7 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
 
     fun editAccount(a: Account) {
         if (busy) return
+        if (assistantState.isInitialized()) assistant.navigation()
         editingAccount = a
         page = "add"
     }
@@ -452,6 +604,7 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
             if (!cancellable) return
             cancel()
         }
+        if (assistantState.isInitialized()) assistant.navigation()
         page = target
         if (target == "drafts")
             viewModelScope.launch {
@@ -462,6 +615,7 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
 
     fun choose(a: Account, box: String = "INBOX") {
         if (busy) return
+        if (assistantState.isInitialized()) assistant.navigation()
         if (a.id == account?.id && box == folder) {
             filter = MailFilter.ALL
             unreadOnly = false
@@ -640,6 +794,7 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
 
     fun read(item: MailItem) {
         if (busy || (page == "reader" && selected?.key == item.key)) return
+        if (assistantState.isInitialized()) assistant.navigation()
         readerOrigin = if (page == "search") "search" else "inbox"
         savedState["readerOrigin"] = readerOrigin
         selected = item
@@ -986,6 +1141,7 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
     }
 
     override fun onCleared() {
+        if (assistantState.isInitialized()) assistant.dispose()
         connection.close()
         op?.cancel()
         super.onCleared()

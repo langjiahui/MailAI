@@ -187,6 +187,8 @@ internal fun PreferencesScreen(vm: MailViewModel) {
                     }
                 }
             }
+            SectionCaption("小邮")
+            MailCard { MenuRow("小邮与模型服务", "按需提炼、回复与润色；无后台自动分析") { vm.openAssistantSettings() } }
             SectionCaption("邮件设置")
             MailCard {
                 Box(Modifier.padding(horizontal = 16.dp)) {
