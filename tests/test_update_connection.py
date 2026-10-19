@@ -38,6 +38,7 @@ def dropped():
 class UpdateConnectionTest(unittest.TestCase):
     def test_tls_eof_uses_official_metadata_and_caches_success(self):
         with patch.dict(os.environ, {'MAILAI_APP_VERSION':'2.8.18','MAILAI_UPDATE_MANIFEST_URL':updater.DEFAULT_MANIFEST_URL}), \
+             patch.object(updater.update_routing,'discover',side_effect=lambda loader, _version: loader()), \
              patch.object(updater,'FROZEN',True),patch.object(updater,'device_key',return_value='macos-arm64'), \
              patch.object(updater,'_cache',{'checked_at':0,'result':None}),patch.object(updater.time,'sleep'), \
              patch.object(updater.urllib.request,'urlopen',side_effect=[dropped(),Response(json.dumps(RELEASE).encode())]) as request:
@@ -97,6 +98,52 @@ class UpdateConnectionTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'不一致'):updater._download(asset,target)
             self.assertFalse(target.exists())
             self.assertEqual(request.call_count,2)
+
+    def test_short_download_retries_official_transport_before_hash_check(self):
+        asset = {'url': URL, 'sha256': SHA, 'size': len(PAYLOAD)}
+        for declared in (str(len(PAYLOAD)), '5', None):
+            with self.subTest(content_length=declared), tempfile.TemporaryDirectory() as folder:
+                short = Response(PAYLOAD[:5])
+                short.headers = {'Content-Length': declared} if declared else {}
+                progress = []
+                with patch.object(updater.time, 'sleep'), patch.object(
+                    updater.urllib.request, 'urlopen', side_effect=[
+                        short, Response(json.dumps(RELEASE).encode()), Response(PAYLOAD)
+                    ]
+                ) as request:
+                    target = Path(folder) / 'MailAI.pkg'
+                    updater._download(asset, target, progress=lambda **s: progress.append(s))
+                self.assertEqual(target.read_bytes(), PAYLOAD)
+                self.assertEqual([call.args[0].full_url for call in request.call_args_list],
+                                 [URL, updater.GITHUB_API_URL + '/tags/v2.8.19', API])
+                self.assertEqual(progress[-1]['phase'], 'verified')
+                self.assertFalse(target.with_suffix('.pkg.part').exists())
+
+    def test_complete_corrupt_download_stops_without_retry(self):
+        asset = {'url': URL, 'sha256': SHA, 'size': len(PAYLOAD)}
+        with tempfile.TemporaryDirectory() as folder, patch.object(
+            updater.urllib.request, 'urlopen', return_value=Response(b'x' * len(PAYLOAD))
+        ) as request:
+            target = Path(folder) / 'MailAI.pkg'
+            with self.assertRaisesRegex(ValueError, 'SHA-256'):
+                updater._download(asset, target)
+            self.assertEqual(request.call_count, 1)
+            self.assertFalse(target.exists())
+            self.assertFalse(target.with_suffix('.pkg.part').exists())
+
+    def test_custom_short_download_exhausts_retries_and_keeps_existing_file(self):
+        asset = {'url': 'https://updates.example.test/MailAI.pkg', 'sha256': SHA, 'size': len(PAYLOAD)}
+        with tempfile.TemporaryDirectory() as folder, patch.object(updater.time, 'sleep'), patch.object(
+            updater.urllib.request, 'urlopen', side_effect=lambda *a, **k: Response(PAYLOAD[:5])
+        ) as request:
+            target = Path(folder) / 'MailAI.pkg'
+            target.write_bytes(b'previous installer')
+            with self.assertRaisesRegex(ValueError, '下载多次中断'):
+                updater._download(asset, target)
+            self.assertEqual(request.call_count, 3)
+            self.assertTrue(all(call.args[0].full_url == asset['url'] for call in request.call_args_list))
+            self.assertEqual(target.read_bytes(), b'previous installer')
+            self.assertFalse(target.with_suffix('.pkg.part').exists())
 
 
 if __name__=='__main__':unittest.main()

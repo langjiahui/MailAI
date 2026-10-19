@@ -1,0 +1,89 @@
+name: Sync official release to AtomGit
+on:
+  workflow_call:
+    secrets:
+      ATOMGIT_TOKEN:
+        required: true
+    inputs:
+      tag:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing official desktop release tag
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: atomgit-release-mirror
+  cancel-in-progress: false
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Validate desktop tag
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install mirror verification dependencies
+        run: python -m pip install 'cryptography>=44,<47' certifi
+      - name: Download published bytes and release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          test "v$(git show "$RELEASE_TAG:VERSION" | tr -d '\r\n')" = "$RELEASE_TAG"
+          gh release view "$RELEASE_TAG" --json isDraft,isPrerelease --jq 'if .isDraft or .isPrerelease then error("Release is not official") else "Official release" end'
+          gh release download "$RELEASE_TAG" --dir release-assets
+          gh release view "$RELEASE_TAG" --json body --jq .body > release-notes.md
+      - name: Synchronize exact source and tag
+        env:
+          ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_TOKEN }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test -n "$ATOMGIT_TOKEN" || { echo "Missing AtomGit sync token" >&2; exit 1; }
+          ASKPASS_PATH="$RUNNER_TEMP/mailai-atomgit-askpass"
+          cat > "$ASKPASS_PATH" <<'SH'
+          #!/bin/sh
+          case "$1" in
+            *Username*) printf '%s' 'langjiahui2011' ;;
+            *) printf '%s' "$ATOMGIT_TOKEN" ;;
+          esac
+          SH
+          chmod 700 "$ASKPASS_PATH"
+          export GIT_ASKPASS="$ASKPASS_PATH" GIT_TERMINAL_PROMPT=0
+          RELEASE_SHA=$(git rev-parse "${RELEASE_TAG}^{}")
+          LATEST_TAG=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)
+          SOURCE_REFS=("refs/tags/$RELEASE_TAG")
+          if [ "$LATEST_TAG" = "$RELEASE_TAG" ]; then
+            SOURCE_REFS=("$RELEASE_SHA:refs/heads/main" "${SOURCE_REFS[@]}")
+          fi
+          pushed=false
+          for attempt in 1 2 3; do
+            if timeout 180 git -c credential.helper= push https://atomgit.com/langjiahui2011/MailAI.git "${SOURCE_REFS[@]}"; then
+              pushed=true
+              break
+            fi
+            sleep $((attempt * 3))
+          done
+          test "$pushed" = true
+          rm -f "$ASKPASS_PATH"
+      - name: Upload and anonymously verify complete domestic release
+        env:
+          ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_TOKEN }}
+          ATOMGIT_UPLOAD_EDGE_IP: ${{ vars.ATOMGIT_UPLOAD_EDGE_IP }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python scripts/sync_atomgit_release.py --tag "$RELEASE_TAG" --assets release-assets --notes release-notes.md

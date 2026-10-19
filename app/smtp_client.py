@@ -5,6 +5,7 @@ import hashlib
 import smtplib
 import ssl
 import certifi
+from email.errors import HeaderParseError
 from email.header import decode_header
 from email.message import EmailMessage
 from email.utils import formataddr, formatdate, getaddresses, make_msgid
@@ -143,9 +144,16 @@ def recipient_fields_for_display(normalized: dict) -> dict[str, str]:
         values = []
         for encoded_name, address in getaddresses([str(normalized.get(key) or "")]):
             parts = []
-            for value, charset in decode_header(encoded_name or ""):
+            try:
+                fragments = decode_header(encoded_name or "")
+            except HeaderParseError:
+                fragments = [(encoded_name or "", None)]
+            for value, charset in fragments:
                 if isinstance(value, bytes):
-                    parts.append(value.decode(charset or "utf-8", "replace"))
+                    try:
+                        parts.append(value.decode(charset or "utf-8", "replace"))
+                    except LookupError:
+                        parts.append(value.decode("utf-8", "replace"))
                 else:
                     parts.append(value)
             name = "".join(parts).strip().replace("\r", " ").replace("\n", " ")
