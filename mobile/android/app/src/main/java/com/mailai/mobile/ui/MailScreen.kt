@@ -28,7 +28,9 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -41,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
+import com.mailai.mobile.R
 import com.mailai.mobile.data.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -843,25 +846,48 @@ private fun AddAccount(vm: MailViewModel, back: () -> Unit) {
     val keyboard = LocalSoftwareKeyboardController.current
     val profile = AccountSetup.profile(email)
     val hasAddress = email.contains('@') && AccountSetup.domain(email).contains('.')
-    val showServers = custom || (hasAddress && profile == null)
+    val showServers = custom
     val canSubmit = hasAddress && password.isNotBlank() && imap.isNotBlank() && smtp.isNotBlank()
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Nav(
-            if (vm.accounts.isNotEmpty()) "邮箱" else "MailAI",
-            back,
-            !vm.busy && vm.accounts.isNotEmpty(),
-        ) {}
-        Heading(if (editing == null) "添加邮箱" else "更新邮箱登录", "连接你的邮箱，随时收发")
+        if (vm.accounts.isNotEmpty()) {
+            Nav(
+                if (vm.accounts.isNotEmpty()) "邮箱" else "MailAI",
+                back,
+                !vm.busy && vm.accounts.isNotEmpty(),
+            ) {}
+        }
         Column(
-            Modifier.padding(horizontal = 22.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            Modifier.padding(horizontal = 24.dp).padding(top = 8.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            FormField(
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Image(
+                    painterResource(R.drawable.mailai_brand),
+                    contentDescription = null,
+                    modifier = Modifier.size(44.dp),
+                )
+                Text("MailAI", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+            }
+            Text(
+                if (editing == null) "连接你的邮箱" else "更新邮箱登录",
+                fontSize = 27.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text("收发邮件，从这里开始", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Column(
+            Modifier.padding(horizontal = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            AccountField(
                 "邮箱地址",
                 email,
                 { next ->
                     if (AccountSetup.domain(next) != AccountSetup.domain(email)) {
-                        val detected = AccountSetup.profile(next)
+                        val detected = AccountSetup.suggested(next)
                         username = ""
                         imap = detected?.imap.orEmpty()
                         smtp = detected?.smtp.orEmpty()
@@ -877,19 +903,15 @@ private fun AddAccount(vm: MailViewModel, back: () -> Unit) {
                 !vm.busy && editing == null,
                 KeyboardType.Email,
             )
-            TextField(
+            AccountField(
+                title = "密码或授权码",
                 value = password,
-                onValueChange = {
+                change = {
                     password = it
                     validation = ""
                 },
-                label = { Text("密码或授权码", fontSize = 14.sp) },
-                singleLine = true,
                 enabled = !vm.busy,
-                colors = paperFields(),
-                visualTransformation =
-                    if (visiblePassword) androidx.compose.ui.text.input.VisualTransformation.None
-                    else PasswordVisualTransformation(),
+                password = !visiblePassword,
                 trailingIcon = {
                     TextButton(
                         onClick = { visiblePassword = !visiblePassword },
@@ -898,48 +920,69 @@ private fun AddAccount(vm: MailViewModel, back: () -> Unit) {
                         Text(if (visiblePassword) "隐藏" else "显示", fontSize = 12.sp)
                     }
                 },
-                keyboardOptions =
-                    KeyboardOptions(
-                        keyboardType = KeyboardType.Password,
-                        imeAction = ImeAction.Done,
-                    ),
-                keyboardActions = KeyboardActions(onDone = { keyboard?.hide() }),
-                modifier = Modifier.fillMaxWidth(),
+                keyboard = KeyboardType.Password,
+                done = true,
             )
-            if (profile != null && !custom) {
-                Text(
-                    "已匹配${profile.label}",
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                TextButton(onClick = { custom = true }, enabled = !vm.busy) { Text("修改服务器") }
+            if (hasAddress && imap.isNotBlank() && smtp.isNotBlank()) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .55f),
+                    shape = RoundedCornerShape(14.dp),
+                ) {
+                    Column(
+                        Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                if (profile != null) profile.label else "收发服务器",
+                                modifier = Modifier.weight(1f),
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            TextButton(onClick = { custom = !custom }, enabled = !vm.busy) {
+                                Text(if (custom) "收起" else "修改", fontSize = 12.sp)
+                            }
+                        }
+                        if (!showServers) {
+                            Text(imap, fontSize = 13.sp)
+                            Text(smtp, fontSize = 13.sp)
+                            if (profile == null && editing == null)
+                                Text(
+                                    "按邮箱域名填入，连接前请确认",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                        }
+                    }
+                }
             }
-            if (showServers) {
-                Text(
-                    "请填写邮箱服务商提供的服务器地址",
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                FormField(
-                    "收信服务器",
-                    imap,
-                    {
-                        imap = it
-                        validation = ""
-                    },
-                    !vm.busy,
-                    KeyboardType.Uri,
-                )
-                FormField(
-                    "发信服务器",
-                    smtp,
-                    {
-                        smtp = it
-                        validation = ""
-                    },
-                    !vm.busy,
-                    KeyboardType.Uri,
-                )
+            AnimatedVisibility(showServers || (hasAddress && (imap.isBlank() || smtp.isBlank()))) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    AccountField(
+                        "收信服务器",
+                        imap,
+                        {
+                            imap = it
+                            validation = ""
+                        },
+                        !vm.busy,
+                        KeyboardType.Uri,
+                    )
+                    AccountField(
+                        "发信服务器",
+                        smtp,
+                        {
+                            smtp = it
+                            validation = ""
+                        },
+                        !vm.busy,
+                        KeyboardType.Uri,
+                        done = true,
+                    )
+                }
             }
             if (validation.isNotBlank())
                 Text(
@@ -994,12 +1037,23 @@ private fun AddAccount(vm: MailViewModel, back: () -> Unit) {
                 modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                 shape = RoundedCornerShape(14.dp),
             ) {
-                Text(if (vm.busy) "正在连接…" else if (editing == null) "连接邮箱" else "保存并连接")
+                if (vm.busy) {
+                    CircularProgressIndicator(
+                        Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
+                Text(
+                    if (vm.busy) "正在连接…" else if (editing == null) "连接邮箱" else "保存并连接",
+                    fontSize = 15.sp,
+                )
             }
             Text(
-                if (!hasAddress) "填写邮箱地址后，继续完成连接。"
+                if (!hasAddress) "密码仅加密保存在这台设备上"
                 else if (profile != null && !custom) "请先在邮箱网页开启 IMAP/SMTP，并使用客户端授权码。"
-                else "默认使用加密连接。如果公司提供了专用端口或登录名，可在高级设置中修改。",
+                else "使用加密连接；专用端口或登录名可在高级设置中修改",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -1008,9 +1062,9 @@ private fun AddAccount(vm: MailViewModel, back: () -> Unit) {
             }
             AnimatedVisibility(advanced) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    FormField("发件人名称（选填）", name, { name = it }, !vm.busy)
-                    FormField("登录用户名（默认邮箱地址）", username, { username = it }, !vm.busy)
-                    FormField("IMAP 端口", ip, { ip = it }, !vm.busy, KeyboardType.Number)
+                    AccountField("发件人名称（选填）", name, { name = it }, !vm.busy)
+                    AccountField("登录用户名（默认邮箱地址）", username, { username = it }, !vm.busy)
+                    AccountField("IMAP 端口", ip, { ip = it }, !vm.busy, KeyboardType.Number)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(
                             checked = itls,
@@ -1022,7 +1076,7 @@ private fun AddAccount(vm: MailViewModel, back: () -> Unit) {
                         )
                         Text(if (itls) "收信 · TLS" else "收信 · STARTTLS", fontSize = 13.sp)
                     }
-                    FormField("SMTP 端口", sp, { sp = it }, !vm.busy, KeyboardType.Number)
+                    AccountField("SMTP 端口", sp, { sp = it }, !vm.busy, KeyboardType.Number)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(
                             checked = stls,
@@ -1043,6 +1097,66 @@ private fun AddAccount(vm: MailViewModel, back: () -> Unit) {
             }
             Spacer(Modifier.height(24.dp))
         }
+    }
+}
+
+@Composable
+private fun AccountField(
+    title: String,
+    value: String,
+    change: (String) -> Unit,
+    enabled: Boolean,
+    keyboard: KeyboardType = KeyboardType.Text,
+    password: Boolean = false,
+    done: Boolean = false,
+    trailingIcon: (@Composable () -> Unit)? = null,
+) {
+    val focus = LocalFocusManager.current
+    val ime = LocalSoftwareKeyboardController.current
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            title,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        OutlinedTextField(
+            value = value,
+            onValueChange = change,
+            enabled = enabled,
+            singleLine = true,
+            textStyle = LocalTextStyle.current.copy(fontSize = 16.sp),
+            shape = RoundedCornerShape(14.dp),
+            colors =
+                OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor =
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .35f),
+                    disabledContainerColor =
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .25f),
+                    focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = .65f),
+                    unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = .12f),
+                    disabledBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = .08f),
+                ),
+            visualTransformation =
+                if (password) PasswordVisualTransformation()
+                else androidx.compose.ui.text.input.VisualTransformation.None,
+            trailingIcon = trailingIcon,
+            keyboardOptions =
+                KeyboardOptions(
+                    keyboardType = keyboard,
+                    imeAction = if (done) ImeAction.Done else ImeAction.Next,
+                ),
+            keyboardActions =
+                KeyboardActions(
+                    onNext = { focus.moveFocus(FocusDirection.Next) },
+                    onDone = { ime?.hide() },
+                ),
+            modifier =
+                Modifier.fillMaxWidth().heightIn(min = 54.dp).semantics {
+                    contentDescription = title
+                },
+        )
     }
 }
 

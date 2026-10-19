@@ -25,7 +25,7 @@ tag = f'android-v{version}'
 manifest = dict(schema=1, applicationId=package[1], version=version, code=int(package[2]),
     url=f'https://github.com/langjiahui/MailAI/releases/download/{tag}/{args.apk.name}',
     sha256=hashlib.file_digest(args.apk.open('rb'), 'sha256').hexdigest(), size=args.apk.stat().st_size,
-    notes='简化添加邮箱：按地址匹配常见邮箱，企业邮箱仅补收发地址；清除旧服务商配置并拦截错配，支持密码显示与分阶段登录提示。',
+    notes='重新打磨邮箱连接页：紧凑圆角输入框、清晰焦点与等待反馈；沿用原版玻璃 M 图标；企业收发地址按域名填入并可确认修改。',
     page=f'https://github.com/langjiahui/MailAI/releases/tag/{tag}')
 args.output.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
 print(f'Update manifest ready: {version} / {manifest["code"]}')

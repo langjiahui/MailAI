@@ -1,8 +1,8 @@
 # MailAI Android 测试版
 
-当前 Android 版本：**2.10.0-beta.6**（versionCode **2100006**），最低 Android 10。
+当前 Android 版本：**2.10.0-beta.7**（versionCode **2100007**），最低 Android 10。
 
-[下载安装包](https://github.com/langjiahui/MailAI/releases/download/android-v2.10.0-beta.6/MailAI-Android-2.10.0-beta.6.apk) · [发布说明](https://github.com/langjiahui/MailAI/releases/tag/android-v2.10.0-beta.6)
+[下载安装包](https://github.com/langjiahui/MailAI/releases/download/android-v2.10.0-beta.7/MailAI-Android-2.10.0-beta.7.apk) · [发布说明](https://github.com/langjiahui/MailAI/releases/tag/android-v2.10.0-beta.7)
 
 Kotlin + Jetpack Compose 原生客户端。手机直接通过 IMAP/SMTP 连接邮箱，电脑关机后仍可工作，不需要桌面服务或 Google Play 服务。设计遵循简洁图形、原生按压反馈、清楚的等待与恢复状态。
 
@@ -62,11 +62,17 @@ python3 scripts/build_distribution.py  # 使用仓库外的固定签名配置
 
 每次发布先核对最近正式版本和 Android 测试版本，按 CONTRIBUTING 判断版本变化，保持 Android VERSION、README、标签与 APK 元数据一致。运行仓库既有门禁及 Android 测试；固定签名构建，生成 `mailai-android-update.json` 与 SHA256SUMS，发布为 GitHub **Pre-release**，不替换桌面 Latest 或历史安装包。具体记录见 [本次发布说明](RELEASE.md)。
 
+## beta.7 输入界面与品牌修订
+
+添加邮箱页采用紧凑圆角输入框，静态小标签、柔和浅底和聚焦边框，取消旧的贯穿横线；密码显示与隐藏仍可操作，连接时展示等待指示。原版玻璃折叠 M 已接入桌面、自适应图标和启动画面，页面使用同一源图，通知使用同一几何的单色 M。图标源文件与重建脚本在 `brand/app-icon.svg` 和 `scripts/prepare_icons.cjs`。
+
+常见服务商仍按精确域名匹配；其他有效域名自动填入 `imap.<域名>` 与 `smtp.<域名>`，明确标为按域名生成、待用户确认，支持展开修改。这是地址建议，不是 DNS 自动发现或验证成功；不会输入密码后自动连接。实际点击连接后继续执行公网地址及 TLS 证书校验，不存入个人邮箱或企业凭据。
+
 ## beta.6 添加邮箱交互修订
 
 先填邮箱地址与密码，常见邮箱自动匹配；企业或自定义邮箱仅展开收信、发信地址。换域名时清除旧服务商地址和登录名，避免将公司邮箱凭据提交到之前选择的 QQ/163 服务器；已知服务商地址与邮箱域名不匹配时在联网前拦截。端口、加密与发件人名称收进高级设置，默认 TLS 993/465。
 
-连接按钮前置，填完必要内容才可用；支持密码显示与隐藏，键盘完成会收起；失败提示区分收信和发信登录阶段。自动匹配只覆盖明确支持的公共服务商，不猜测企业邮箱地址，不把个人企业配置写入公共安装包。
+连接按钮前置，填完必要内容才可用；支持密码显示与隐藏，键盘完成会收起；失败提示区分收信和发信登录阶段。beta.6 的自动匹配只覆盖明确支持的公共服务商；beta.7 增加明确标记的域名地址建议，不把个人企业配置写入公共安装包。
 
 ## beta.5 后台通知修订
 
@@ -84,7 +90,7 @@ python3 scripts/build_distribution.py  # 使用仓库外的固定签名配置
 
 ## 验收
 
-- JVM：41 项通过，包含 TLS/STARTTLS、中文附件往返、错误证书/域名、发送确认丢失、账号隔离、草稿重开、v1→v2 无损迁移、通知基准/去重/重启、更新清单安全和取消阻塞操作。
+- JVM：42 项通过，包含 TLS/STARTTLS、中文附件往返、错误证书/域名、发送确认丢失、账号隔离、草稿重开、v1→v2 无损迁移、通知基准/去重/重启、更新清单安全和取消阻塞操作。
 - Android 15 AOSP ARM64：15 项设备测试，覆盖 Keystore、附件副本、草稿恢复、真实系统通知栏点击与隐私、偏好恢复/检查反馈、后台任务失败保留草稿，以及窄屏/大字号、真实键盘焦点与长正文可见性、快速取消与重试。以本次发布验收记录为最终执行结果。
 - 项目既有离线发布门禁：244/244 通过（项目 `.venv-build` 环境）。
 - 实体机、真实邮箱、厂商后台保活仍需测试；不把模拟器验收等同所有设备稳定性。

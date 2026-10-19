@@ -16,6 +16,24 @@ class AccountSetupTest {
     }
 
     @Test
+    fun unknownDomainsGetClearlyUnconfirmedEditableSuggestions() {
+        val proposal = requireNotNull(AccountSetup.suggested("user@company.example"))
+        assertEquals("imap.company.example", proposal.imap)
+        assertEquals("smtp.company.example", proposal.smtp)
+        assertEquals("服务器地址待确认", proposal.label)
+        assertEquals(AccountSetup.profile("a@qq.com"), AccountSetup.suggested("a@qq.com"))
+        listOf(
+                "a@",
+                "a@company",
+                "a@bad..example",
+                "a@evil.example/path",
+                "a@-bad.example",
+                "a@bad_.example",
+            )
+            .forEach { assertNull(it, AccountSetup.suggested(it)) }
+    }
+
+    @Test
     fun wrongPresetIsRejectedBeforeCredentialSubmission() {
         val account =
             Account(

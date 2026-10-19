@@ -1,6 +1,6 @@
 package com.mailai.mobile.data
 
-/** Known public providers only; never guess an enterprise endpoint for a credential submission. */
+/** Public provider profiles and clearly labelled, editable enterprise address suggestions. */
 data class MailProfile(
     val label: String,
     val domains: Set<String>,
@@ -25,6 +25,21 @@ object AccountSetup {
         email.trim().substringAfterLast('@', "").lowercase(java.util.Locale.ROOT)
 
     fun profile(email: String) = profiles.firstOrNull { domain(email) in it.domains }
+
+    /** Suggestions are visible to the user and are never submitted without tapping Connect. */
+    fun suggested(email: String): MailProfile? {
+        profile(email)?.let {
+            return it
+        }
+        val domain = domain(email)
+        if (
+            !domain.matches(
+                Regex("[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+")
+            ) || domain.length > 190 || domain.split('.').any { it.length > 63 }
+        )
+            return null
+        return MailProfile("服务器地址待确认", setOf(domain), "imap.$domain", "smtp.$domain")
+    }
 
     fun requireMatchingProvider(account: Account) {
         val domain = domain(account.email)
