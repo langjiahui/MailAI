@@ -1,5 +1,8 @@
 """Create the update manifest from verified release assets."""
 import argparse
+import base64
+import os
+import sys
 import hashlib
 import json
 from datetime import datetime, timezone
@@ -65,6 +68,17 @@ def main():
         "assets": assets,
     }
     args.output.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    signing_key = os.getenv('UPDATE_SIGNING_KEY', '').strip()
+    if signing_key:
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+        from app.update_trust import canonical, verify
+        key = Ed25519PrivateKey.from_private_bytes(base64.b64decode(signing_key, validate=True))
+        envelope = {'algorithm': 'ed25519', 'manifest': manifest,
+                    'signature': base64.b64encode(key.sign(canonical(manifest))).decode()}
+        verify(envelope)
+        args.output.with_name('latest.signed.json').write_text(
+            json.dumps(envelope, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     if args.notes_output:
         args.notes_output.write_text(release_body(version, notes), encoding="utf-8")
 

@@ -1579,6 +1579,27 @@ if (typeof document !== 'undefined') {
 /* ---- i18n-catalog.js ---- */
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "updateMirror.address": ["更新地址无效", "Invalid update address"],
+  "updateMirror.privateAddress": ["更新地址指向本机、内网或保留地址", "The update address points to a local, private or reserved network"],
+  "updateMirror.redirectLimit": ["更新下载重定向过多", "Too many update download redirects"],
+  "updateMirror.https": ["更新地址必须使用 HTTPS", "Update addresses must use HTTPS"],
+  "updateMirror.httpStatus": ["更新服务器返回 HTTP {1}", "The update server returned HTTP {1}"],
+  "updateMirror.redirect": ["更新下载重定向无效", "Invalid update download redirect"],
+  "updateMirror.repository": ["国内下载地址不属于官方仓库", "The domestic download address does not belong to the official repository"],
+  "updateMirror.manifestIncomplete": ["更新清单下载不完整", "The update manifest download is incomplete"],
+  "updateMirror.notPublished": ["国内更新版本尚未正式发布", "The domestic update has not been officially released"],
+  "updateMirror.version": ["国内更新清单版本不一致", "The domestic update manifest version does not match"],
+  "updateMirror.missingAsset": ["国内更新清单缺少安装包", "The domestic update manifest is missing an installer"],
+  "updateMirror.assetAddress": ["国内更新安装包地址无效", "Invalid domestic installer address"],
+  "updateMirror.assetSize": ["国内更新安装包大小无效", "Invalid domestic installer size"],
+  "updateMirror.assetInfo": ["国内更新安装包信息无效", "Invalid domestic installer information"],
+  "updateMirror.incomplete": ["安装包下载不完整", "The installer download is incomplete"],
+  "updateMirror.range": ["安装包断点续传范围无效，已停止更新", "Invalid installer resume range. The update has been stopped"],
+  "updateMirror.response": ["安装包下载响应无效", "Invalid installer download response"],
+  "updateMirror.shortSize": ["安装包下载大小不完整", "The downloaded installer size is incomplete"],
+  "updateMirror.retained": ["安装包下载多次中断，已保留下载进度，请重试", "The installer download was interrupted repeatedly. Progress was saved; please try again"],
+  "updateMirror.signature": ["更新清单签名校验失败", "The update manifest signature could not be verified"],
+
   "searchLoop.openMail": ["打开邮件", "Open message"],
   "searchLoop.openingMail": ["打开中…", "Opening…"],
   "searchLoop.showDetails": ["展开邮件信息", "Expand mail details"],

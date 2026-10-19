@@ -246,8 +246,16 @@ jobs:
           pattern: release-*
           path: release-assets
           merge-multiple: true
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install release signature dependencies
+        run: python -m pip install 'cryptography>=44,<47' certifi
       - name: Create device update manifest
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
         run: |
+          test -n "$UPDATE_SIGNING_KEY" || { echo "Missing update signing key" >&2; exit 1; }
           python scripts/create_release_manifest.py \
             --version "$GITHUB_REF_NAME" \
             --repository "$GITHUB_REPOSITORY" \
@@ -263,3 +271,11 @@ jobs:
             --title "MailAI ${GITHUB_REF_NAME#v}" \
             --notes-file release-notes.md \
             --latest
+
+  domestic-mirror:
+    needs: publish
+    uses: ./.github/workflows/atomgit-sync.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets:
+      ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_TOKEN }}

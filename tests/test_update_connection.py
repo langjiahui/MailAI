@@ -38,6 +38,7 @@ def dropped():
 class UpdateConnectionTest(unittest.TestCase):
     def test_tls_eof_uses_official_metadata_and_caches_success(self):
         with patch.dict(os.environ, {'MAILAI_APP_VERSION':'2.8.18','MAILAI_UPDATE_MANIFEST_URL':updater.DEFAULT_MANIFEST_URL}), \
+             patch.object(updater.update_mirror,'discover',side_effect=OSError('offline')), \
              patch.object(updater,'FROZEN',True),patch.object(updater,'device_key',return_value='macos-arm64'), \
              patch.object(updater,'_cache',{'checked_at':0,'result':None}),patch.object(updater.time,'sleep'), \
              patch.object(updater.urllib.request,'urlopen',side_effect=[dropped(),Response(json.dumps(RELEASE).encode())]) as request:

@@ -21,6 +21,7 @@ from pathlib import Path
 import certifi
 
 from .paths import APP_DIR, FROZEN, USER_DIR
+from . import update_mirror, update_resume
 
 log = logging.getLogger(__name__)
 
@@ -213,6 +214,11 @@ def evaluate_manifest(manifest: dict, *, device: str | None = None) -> dict:
         if expected_suffix and not urllib.parse.urlparse(url).path.lower().endswith(expected_suffix):
             raise ValueError(f"{device} 安装包格式不正确")
         asset = {"url": url, "sha256": digest, "size": int(raw_asset.get("size") or 0)}
+        if raw_asset.get("mirror_url"):
+            mirror_url = str(raw_asset['mirror_url'])
+            if not update_mirror.valid_mirror(mirror_url, url):
+                raise ValueError("国内下载地址不属于官方仓库")
+            asset['mirror_url'] = mirror_url
         if raw_asset.get("api_url"):
             api_url = str(raw_asset["api_url"])
             if not re.fullmatch(re.escape(GITHUB_API_URL) + r"/assets/[1-9][0-9]*", api_url):
@@ -247,7 +253,25 @@ def check(*, force: bool = False) -> dict:
         if not force and isinstance(cached, dict) and now - float(_cache.get("checked_at") or 0) < _CACHE_SECONDS:
             return dict(cached)
     manifest_url = os.getenv("MAILAI_UPDATE_MANIFEST_URL", DEFAULT_MANIFEST_URL).strip()
-    result = evaluate_manifest(_read_manifest(manifest_url))
+    if manifest_url == DEFAULT_MANIFEST_URL:
+        try:
+            manifest = update_mirror.discover()
+            # A reachable mirror may lag after an interrupted publishing job.
+            # Keep its valid result if GitHub is unreachable, but do not conceal
+            # a newer official release when the backup source is available.
+            if _version_tuple(str(manifest.get('version') or '')) <= _version_tuple(current_version()):
+                try:
+                    backup = _read_manifest(manifest_url)
+                    if _version_tuple(str(backup.get('version') or '')) > _version_tuple(str(manifest['version'])):
+                        manifest = backup
+                except (OSError, http.client.HTTPException, ValueError, TypeError):
+                    log.info("官方备用源暂时不可用，保留已验证的国内版本信息")
+        except (OSError, http.client.HTTPException, ValueError, TypeError) as exc:
+            log.warning("国内更新源暂时不可用，检查官方备用源：%s", type(exc).__name__)
+            manifest = _read_manifest(manifest_url)
+    else:
+        manifest = _read_manifest(manifest_url)
+    result = evaluate_manifest(manifest)
     with _lock:
         _cache.update(checked_at=now, result=dict(result))
     return result
@@ -267,6 +291,8 @@ def _download(asset: dict, target: Path, progress=None) -> None:
                 progress(phase="verified", downloaded=total, total=total,
                          speed_bps=0, message="安装包已下载并校验通过")
             return
+    if asset.get('mirror_url'):
+        return update_resume.download(asset, target, progress, fallback=_github_download_fallback)
     # The installer is tens of MB from a release CDN: a single dropped connection
     # should not fail the whole update. Short responses are interrupted downloads;
     # complete files with a wrong hash must still stop immediately.
