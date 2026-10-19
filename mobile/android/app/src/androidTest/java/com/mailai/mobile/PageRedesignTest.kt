@@ -220,24 +220,54 @@ class PageRedesignTest {
             compose.waitUntil(15000) { vm.ready && !vm.busy }
             assertEquals(20, ReadingPreferences(context).bodySize)
             assertEquals("dark", ReadingPreferences(context).theme)
-            capture("07-settings-dark")
-            val screenshot =
-                android.graphics.BitmapFactory.decodeFile(
-                    File(context.getExternalFilesDir(null), "redesign-checks/07-settings-dark.png")
-                        .path
-                )
-            try {
-                for (y in listOf(5, screenshot.height - 5)) {
-                    val pixel = screenshot.getPixel(5, y)
-                    assertTrue(
-                        "System bar background must follow the in-app dark theme",
-                        android.graphics.Color.red(pixel) < 80 &&
-                            android.graphics.Color.green(pixel) < 80 &&
-                            android.graphics.Color.blue(pixel) < 80,
+            scenario.onActivity { activity ->
+                val controller =
+                    androidx.core.view.WindowCompat.getInsetsController(
+                        activity.window,
+                        activity.window.decorView,
                     )
+                assertFalse(
+                    "Dark theme must clear the native light-status flag",
+                    controller.isAppearanceLightStatusBars,
+                )
+            }
+            // System UI tints animate independently of the Compose test clock.
+            // Require the native controls to settle into a readable dark appearance.
+            compose.waitUntil(4000) {
+                val file =
+                    File(context.getExternalFilesDir(null), "redesign-checks/07-settings-dark.png")
+                device.takeScreenshot(file)
+                val screenshot = android.graphics.BitmapFactory.decodeFile(file.path)
+                try {
+                    val status = screenshot.getPixel(5, 5)
+                    val darkStatus =
+                        android.graphics.Color.red(status) < 80 &&
+                            android.graphics.Color.green(status) < 80 &&
+                            android.graphics.Color.blue(status) < 80
+                    val navigation = screenshot.getPixel(5, screenshot.height - 5)
+                    val lightNavigation = android.graphics.Color.red(navigation) > 170
+                    var contrastPixels = 0
+                    val barHeight = (40 * context.resources.displayMetrics.density).toInt()
+                    for (y in
+                        screenshot.height - barHeight until screenshot.height step 2) for (x in
+                        0 until screenshot.width step 2) {
+                        val color = screenshot.getPixel(x, y)
+                        if (
+                            if (lightNavigation)
+                                android.graphics.Color.red(color) < 100 &&
+                                    android.graphics.Color.green(color) < 100 &&
+                                    android.graphics.Color.blue(color) < 100
+                            else
+                                android.graphics.Color.red(color) > 170 &&
+                                    android.graphics.Color.green(color) > 170 &&
+                                    android.graphics.Color.blue(color) > 170
+                        )
+                            contrastPixels++
+                    }
+                    darkStatus && contrastPixels > 30
+                } finally {
+                    screenshot.recycle()
                 }
-            } finally {
-                screenshot.recycle()
             }
             scenario.onActivity {
                 vm = ViewModelProvider(it)[MailViewModel::class.java]
