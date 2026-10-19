@@ -97,6 +97,7 @@ internal fun AssistantSheet(vm: MailViewModel) {
         sheetState = sheet,
         containerColor = MaterialTheme.colorScheme.surface,
         dragHandle = null,
+        contentWindowInsets = { WindowInsets.safeDrawing },
     ) {
         Column(
             Modifier.fillMaxWidth().heightIn(max = maxHeight).imePadding().testTag("xiaoyou-sheet")

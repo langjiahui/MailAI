@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import com.mailai.mobile.assistant.*
 import com.mailai.mobile.data.*
@@ -91,6 +92,13 @@ class AssistantExperienceTest {
     private fun capture(name: String) {
         compose.waitForIdle()
         device.waitForIdle(500)
+        if (name.substringBefore('-') in setOf("00", "01", "02", "04", "05")) {
+            val close = requireNotNull(device.findObject(By.text("关闭")))
+            val statusBar = context.resources.getIdentifier("status_bar_height", "dimen", "android")
+            val safeTop =
+                if (statusBar == 0) 0 else context.resources.getDimensionPixelSize(statusBar)
+            assertTrue("小邮关闭按钮不能被系统状态栏遮挡", close.visibleBounds.top >= safeTop)
+        }
         val dir = File(context.getExternalFilesDir(null), "xiaoyou-checks").apply { mkdirs() }
         assertTrue(device.takeScreenshot(File(dir, "$name.png")))
     }
