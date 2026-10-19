@@ -124,8 +124,12 @@ class IntranetNetworkTest {
             install(0, ConnectivityManager.TYPE_MOBILE, NetworkCapabilities.TRANSPORT_CELLULAR)
         val monitor = ConnectionMonitor(context)
         try {
-            assertTrue(monitor.online.value)
+            // A pre-registration snapshot must not pin stale networks as permanently online.
+            assertFalse(monitor.online.value)
             val callback = shadowOf(manager).networkCallbacks.single()
+            callback.onAvailable(wifi)
+            callback.onAvailable(mobile)
+            assertTrue(monitor.online.value)
             callback.onLost(wifi)
             assertTrue(monitor.online.value)
             callback.onLost(mobile)

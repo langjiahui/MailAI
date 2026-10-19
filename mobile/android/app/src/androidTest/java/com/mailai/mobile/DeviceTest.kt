@@ -266,13 +266,17 @@ class DeviceTest {
             compose.onNodeWithText("收到，周五前我会确认。").assertExists()
             compose.onNode(hasText("‹  返回") or hasContentDescription("返回")).performClick()
             compose.onNodeWithText("保存并返回").performClick()
+            compose.waitUntil(10000) { vm.page == "reader" && !vm.busy }
             compose.onNodeWithText("回复").assertExists()
             compose.onNodeWithContentDescription("返回").performClick()
-            compose.waitUntil(10000) {
-                compose.onAllNodesWithContentDescription("返回").fetchSemanticsNodes().isNotEmpty()
-            }
+            compose.waitUntil(10000) { vm.page == "inbox" && !vm.busy }
             compose.onNodeWithContentDescription("返回").performClick()
-            compose.onNodeWithText("草稿与发送记录").performClick()
+            compose.waitUntil(10000) { vm.page == "boxes" && !vm.busy }
+            compose.onNodeWithText("草稿与发送记录").performScrollTo().assertIsDisplayed().performClick()
+            compose.waitUntil(10000) { vm.page == "drafts" }
+            compose.waitUntil(10000) {
+                compose.onAllNodesWithText("Re: 周末出发的行程安排").fetchSemanticsNodes().isNotEmpty()
+            }
             compose.onNodeWithText("Re: 周末出发的行程安排").performClick()
             compose.onNodeWithText("收到，周五前我会确认。").assertExists()
             assertFalse(

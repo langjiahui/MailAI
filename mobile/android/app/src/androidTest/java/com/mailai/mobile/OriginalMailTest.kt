@@ -382,7 +382,12 @@ class OriginalMailTest {
                             bounds.bottom.coerceAtMost(bitmap.height)) for (x in
                         bounds.left.coerceAtLeast(0) until
                             bounds.right.coerceAtMost(bitmap.width)) {
-                        if (bitmap.getPixel(x, y) and 0xffffff == 0x0000ff) {
+                        val pixel = bitmap.getPixel(x, y)
+                        if (
+                            android.graphics.Color.blue(pixel) > 150 &&
+                                android.graphics.Color.red(pixel) < 80 &&
+                                android.graphics.Color.green(pixel) < 80
+                        ) {
                             left = minOf(left, x)
                             right = maxOf(right, x)
                             top = minOf(top, y)

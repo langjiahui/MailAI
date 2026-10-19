@@ -11,13 +11,10 @@ import kotlinx.coroutines.flow.asStateFlow
 internal class ConnectionMonitor(context: Context) : AutoCloseable {
     private val manager = context.getSystemService(ConnectivityManager::class.java)
 
-    private val networks =
-        java.util.concurrent.ConcurrentHashMap.newKeySet<Network>().apply {
-            (listOfNotNull(manager.activeNetwork) + manager.allNetworks).forEach {
-                if (manager.getNetworkCapabilities(it) != null) add(it)
-            }
-        }
-    private val mutable = MutableStateFlow(networks.isNotEmpty())
+    // Seed from callback delivery, not allNetworks: a network lost between snapshot and
+    // registration never generates onLost for this listener and would remain falsely online.
+    private val networks = java.util.concurrent.ConcurrentHashMap.newKeySet<Network>()
+    private val mutable = MutableStateFlow(false)
     val online = mutable.asStateFlow()
     private val callback =
         object : ConnectivityManager.NetworkCallback() {
