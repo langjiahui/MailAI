@@ -37,6 +37,9 @@ internal class AssistantController(
     var generating by mutableStateOf(false)
         private set
 
+    var stopping by mutableStateOf(false)
+        private set
+
     var loading by mutableStateOf(false)
         private set
 
@@ -75,6 +78,7 @@ internal class AssistantController(
             stop()
             revision++
             generating = false
+            stopping = false
             operation = null
             source = value
             task = null
@@ -242,6 +246,7 @@ internal class AssistantController(
         complete = false
         latest.set("")
         generating = true
+        stopping = false
         message = "正在${value.label}…"
         failed = false
         job =
@@ -326,6 +331,7 @@ internal class AssistantController(
                         if (epoch == revision) {
                             if (!complete && latest.get().isNotBlank()) text = latest.get()
                             generating = false
+                            stopping = false
                             operation = null
                             if (persistenceFailed) {
                                 message = "候选未能保存到此设备，请先复制保留；原稿未改动"
@@ -339,6 +345,10 @@ internal class AssistantController(
     }
 
     fun stop() {
+        if (generating) {
+            stopping = true
+            message = "正在停止，已有文字会保留…"
+        }
         operation?.cancel()
         if (generating) job?.cancel()
     }

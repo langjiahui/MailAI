@@ -107,7 +107,9 @@ class AssistantControllerTest {
             a.start(AssistantTask.SUMMARY)
             waitFor { a.text.isNotBlank() }
             a.background()
+            assertTrue(a.stopping)
             waitFor { !a.generating }
+            assertFalse(a.stopping)
             assertFalse(a.complete)
             assertEquals("已经接收的一部分", a.text)
             val persisted = cache.get(source.cacheKey(config, AssistantTask.SUMMARY, ""))

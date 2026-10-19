@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mailai.mobile.R
 import com.mailai.mobile.assistant.*
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun XiaoyouButton(vm: MailViewModel) {
@@ -73,6 +74,18 @@ internal fun AssistantSheet(vm: MailViewModel) {
     val source = a.source ?: return
     val maxHeight = (LocalConfiguration.current.screenHeightDp.dp - 32.dp).coerceAtLeast(200.dp)
     val focus = LocalFocusManager.current
+    val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val panelScope = rememberCoroutineScope()
+    var closing by remember { mutableStateOf(false) }
+    fun leave(action: () -> Unit) {
+        if (closing) return
+        closing = true
+        a.stop()
+        panelScope.launch {
+            sheet.hide()
+            action()
+        }
+    }
     var addInstruction by rememberSaveable(source.sourceId) { mutableStateOf(false) }
     val choose = !a.generating && a.text.isBlank()
     fun start(task: AssistantTask) {
@@ -81,7 +94,7 @@ internal fun AssistantSheet(vm: MailViewModel) {
     }
     ModalBottomSheet(
         onDismissRequest = { a.close() },
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        sheetState = sheet,
         containerColor = MaterialTheme.colorScheme.surface,
         dragHandle = null,
     ) {
@@ -99,7 +112,10 @@ internal fun AssistantSheet(vm: MailViewModel) {
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
-                TextButton(onClick = { a.close() }, enabled = !a.loading && !a.applying) {
+                TextButton(
+                    onClick = { leave { a.close() } },
+                    enabled = !a.loading && !a.applying && !closing,
+                ) {
                     Text("关闭")
                 }
             }
@@ -135,7 +151,7 @@ internal fun AssistantSheet(vm: MailViewModel) {
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Button(
-                            onClick = { vm.openAssistantSettings() },
+                            onClick = { leave { vm.openAssistantSettings() } },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(16.dp),
                         ) {
@@ -240,10 +256,11 @@ internal fun AssistantSheet(vm: MailViewModel) {
                 if (a.generating)
                     OutlinedButton(
                         onClick = a::stop,
+                        enabled = !a.stopping,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                         shape = RoundedCornerShape(16.dp),
                     ) {
-                        Text("停止生成")
+                        Text(if (a.stopping) "正在停止…" else "停止生成")
                     }
                 if (!a.complete && !a.busy && a.task != null)
                     TextButton(
