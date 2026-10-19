@@ -70,11 +70,12 @@ def remote_releases():
     return [r for page in pages for r in page]
 
 
-def require_tag_source(tag, commit):
+def require_tag_source(tag, commit, required=False):
     result = subprocess.run(['gh', 'api', f'repos/{REPO}/git/ref/tags/{tag}'],
                             capture_output=True, text=True)
     if result.returncode:
         require('404' in result.stderr, 'Unable to resolve existing release tag')
+        require(not required, 'Published release tag is missing')
         return
     value = json.loads(result.stdout)['object']
     for _ in range(4):
@@ -183,7 +184,7 @@ def verify_public(output, sdk):
     release = json.loads(gh('api', f'repos/{REPO}/releases/tags/{tag}'))
     require(not release['draft'] and not release['prerelease'], 'Release not public/formal')
     evidence = json.loads((output / 'verification.json').read_text())
-    require_tag_source(tag, evidence['sourceCommit'])
+    require_tag_source(tag, evidence['sourceCommit'], required=True)
     assets = {a['name']: a for a in release['assets']}
     apk_name = Path(expected['url']).name
     require(apk_name in assets and MANIFEST in assets, 'Release assets incomplete')
@@ -210,14 +211,25 @@ def publish(output, sdk):
     require(hashlib.sha256(apk.read_bytes()).hexdigest() == value['sha256'], 'Artifact changed')
     tag = f"android-v{value['version']}"
     require_tag_source(tag, evidence['sourceCommit'])
-    existing = next((r for r in remote_releases() if r['tag_name'] == tag), None)
+    releases = remote_releases()
+    existing = next((r for r in releases if r['tag_name'] == tag), None)
     if existing:
         if not existing['draft']:
             # Retry only verifies the existing publication. It can never overwrite it.
             verify_public(output, sdk)
             return
         require(existing['target_commitish'] == evidence['sourceCommit'], 'Draft source mismatch')
-    else:
+    # Recheck after the build: another formal release may have advanced the baseline.
+    formal = [r for r in releases if not r['draft'] and not r.get('prerelease') and
+              r['tag_name'].startswith('android-v') and
+              VERSION.fullmatch(r['tag_name'].removeprefix('android-v'))]
+    latest = max(formal, key=lambda r: r['published_at'], default=None)
+    baseline = evidence.get('baseline')
+    require((latest is None and baseline is None) or
+            (latest is not None and baseline is not None and
+             latest['tag_name'] == 'android-v' + baseline['version']),
+            'Release baseline advanced during build; prepare a fresh classified release')
+    if not existing:
         gh('release', 'create', tag, '--repo', REPO, '--draft', '--latest=false',
            '--target', evidence['sourceCommit'], '--title', f"MailAI Android {value['version']}",
            '--notes-file', str(output / 'RELEASE.md'))

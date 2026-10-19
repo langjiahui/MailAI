@@ -6,6 +6,7 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
+from types import SimpleNamespace
 
 spec = importlib.util.spec_from_file_location('android_release', Path(__file__).parents[1] / 'scripts/android_release.py')
 r = importlib.util.module_from_spec(spec)
@@ -126,6 +127,32 @@ class AndroidReleaseTest(unittest.TestCase):
             with patch.object(r, 'inspect_apk'), patch.object(r, 'require_tag_source'), \
                     patch.object(r, 'remote_releases', return_value=[draft]), patch.object(r, 'gh') as gh:
                 with self.assertRaisesRegex(ValueError, 'refusing overwrite'):
+                    r.publish(output, Path('/synthetic-sdk'))
+            gh.assert_not_called()
+
+    def test_missing_public_tag_is_not_a_success(self):
+        result = SimpleNamespace(returncode=1, stdout='', stderr='HTTP 404')
+        with patch.object(r.subprocess, 'run', return_value=result):
+            r.require_tag_source('android-v1.3.0', 'a' * 40)
+            with self.assertRaisesRegex(ValueError, 'missing'):
+                r.require_tag_source('android-v1.3.0', 'a' * 40, required=True)
+
+    def test_existing_tag_cannot_point_at_another_source(self):
+        result = SimpleNamespace(returncode=0, stderr='', stdout=json.dumps(
+            dict(object=dict(type='commit', sha='b' * 40))))
+        with patch.object(r.subprocess, 'run', return_value=result):
+            with self.assertRaisesRegex(ValueError, 'different source'):
+                r.require_tag_source('android-v1.3.0', 'a' * 40)
+
+    def test_baseline_advanced_during_build_prevents_publication(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp)
+            self.fixture(output)
+            latest = dict(tag_name='android-v1.2.1', draft=False, prerelease=False,
+                          published_at='2026-10-19T00:00:00Z')
+            with patch.object(r, 'inspect_apk'), patch.object(r, 'require_tag_source'), \
+                    patch.object(r, 'remote_releases', return_value=[latest]), patch.object(r, 'gh') as gh:
+                with self.assertRaisesRegex(ValueError, 'baseline advanced'):
                     r.publish(output, Path('/synthetic-sdk'))
             gh.assert_not_called()
 
