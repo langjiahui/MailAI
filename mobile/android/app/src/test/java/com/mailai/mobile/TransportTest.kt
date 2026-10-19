@@ -136,6 +136,39 @@ class TransportTest {
     }
 
     @Test
+    fun formattedMailReachesCcAndBccWithoutExposingBccOnTheWire() {
+        server.setUser("cc@example.test", "cc@example.test", "test-password")
+        server.setUser("hidden@example.test", "hidden@example.test", "test-password")
+        val op = Operation()
+        try {
+            val draft =
+                Draft(
+                    to = "receiver@example.test",
+                    cc = "cc@example.test",
+                    bcc = "hidden@example.test",
+                    body = "中文格式正文",
+                    styles = listOf(BodyStyle(0, 2, BodyStyleKind.BOLD)),
+                )
+            var submissions = 0
+            transport().send(account(), "test-password", draft, { error("No files") }, op) {
+                submissions++
+            }
+            assertTrue(server.waitForIncomingEmail(5000, 3))
+            assertEquals(1, submissions)
+            assertEquals(3, server.receivedMessages.size)
+            server.receivedMessages.forEach { mail ->
+                assertNull(mail.getHeader("Bcc"))
+                val content = MimeCodec.content(mail)
+                assertEquals(draft.body, content.text.trim())
+                assertTrue(content.html!!.contains("font-weight:bold"))
+                assertEquals(draft.messageId, mail.messageID)
+            }
+        } finally {
+            op.release()
+        }
+    }
+
+    @Test
     fun encryptedChineseMailAndAttachmentRoundTrip() {
         val client = transport()
         val a = account()
@@ -166,7 +199,9 @@ class TransportTest {
             assertEquals(1, list.size)
             assertEquals("中文主题", list.single().subject)
             assertTrue(list.single().unread)
-            val loaded = client.read(receiver, "test-password", list.single(), op)
+            val loaded =
+                client.read(receiver, "test-password", list.single().copy(starred = true), op)
+            assertTrue(loaded.starred)
             assertTrue(loaded.body!!.contains("中文正文"))
             assertEquals(1, loaded.attachments.size)
             assertTrue(

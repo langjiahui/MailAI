@@ -42,6 +42,11 @@ class InteractionTest {
         lateinit var vm: MailViewModel
         scenario.onActivity { vm = ViewModelProvider(it)[MailViewModel::class.java] }
         compose.waitUntil(15000) { vm.ready && !vm.busy }
+        scenario.onActivity {
+            vm.dismissStatus()
+            vm.choose(fixture)
+        }
+        compose.waitUntil(15000) { vm.account?.id == fixture.id && !vm.busy && vm.error }
         return scenario to vm
     }
 
@@ -108,18 +113,56 @@ class InteractionTest {
     }
 
     @Test
+    fun composerPreviewAndRecipientDetailsPreserveTheDraft() {
+        val (scenario, vm) = launch()
+        try {
+            scenario.onActivity {
+                vm.compose()
+                vm.update(
+                    vm.draft!!.copy(
+                        to = (1..8).joinToString { "联系人$it <person$it@example.test>" },
+                        subject = "周五项目沟通安排",
+                        body = "你好，林安：\n\n时间没问题，我会提前看完材料。\n\n周五见。",
+                        attachments =
+                            listOf(
+                                Attachment(
+                                    "compose-fixture",
+                                    "项目沟通材料.pdf",
+                                    "application/pdf",
+                                    327680,
+                                )
+                            ),
+                    )
+                )
+            }
+            compose.waitUntil(10000) { vm.saveStatus == "草稿已保存在此设备" }
+            compose.onNodeWithText("等 8 人 ›").assertIsDisplayed()
+            compose.onNodeWithText("项目沟通材料.pdf").performScrollTo().assertIsDisplayed()
+            capture("compose-reference-layout")
+            compose.onNodeWithText("等 8 人 ›").performScrollTo().performClick()
+            compose.onNodeWithText("收件人 · 8 人").assertIsDisplayed()
+            compose.onNodeWithText("完成").performClick()
+            assertEquals(8, com.mailai.mobile.mail.MailAddresses.parse(vm.draft!!.to).size)
+            assertTrue(vm.draft!!.body.contains("周五见"))
+            assertEquals(1, vm.draft!!.attachments.size)
+        } finally {
+            scenario.close()
+        }
+    }
+
+    @Test
     fun composerKeepsSendReachableAboveKeyboardAndRetainsLongDraft() {
         val (scenario, vm) = launch()
         try {
             scenario.onActivity { vm.compose() }
             compose
-                .onNodeWithText("收件人")
+                .onNodeWithTag("compose-recipient")
                 .performScrollTo()
                 .performClick()
                 .performTextInput("recipient@example.test")
-            compose.onNodeWithText("收件人").performImeAction()
-            compose.onNodeWithText("主题").assertIsFocused().performTextInput("窄屏与键盘测试")
-            compose.onNodeWithText("主题").performImeAction()
+            compose.onNodeWithTag("compose-recipient").performImeAction()
+            compose.onNodeWithTag("compose-subject").assertIsFocused().performTextInput("窄屏与键盘测试")
+            compose.onNodeWithTag("compose-subject").performImeAction()
             val body = (1..12).joinToString("\n") { "第 $it 行：输入内容和附件必须保留。" }
             compose.onNodeWithTag("compose-body").assertIsFocused().performTextInput(body)
             compose.waitUntil(10000) { vm.draft?.body == body && vm.saveStatus == "草稿已保存在此设备" }
@@ -142,6 +185,13 @@ class InteractionTest {
                     .end,
             )
             capture("composer-keyboard")
+            val sendBounds =
+                device.findObject(androidx.test.uiautomator.By.text("发送")).visibleBounds
+            assertTrue(
+                "Send must stay in the physical viewport: $sendBounds",
+                sendBounds.top > 0 && !sendBounds.isEmpty,
+            )
+
             var keyboardTop = 0
             scenario.onActivity {
                 val decor = it.window.decorView
@@ -160,9 +210,9 @@ class InteractionTest {
             )
             device.pressBack() // IME dismissal must not trigger the leave-composer dialog.
             compose.onNodeWithTag("compose-body").assertExists()
-            compose.onNodeWithText("‹  返回").performClick()
+            compose.onNodeWithTag("compose-back").performClick()
             compose.onNodeWithText("继续编辑").assertIsDisplayed().performClick()
-            compose.onNodeWithText("‹  返回").performClick()
+            compose.onNodeWithTag("compose-back").performClick()
             compose.onNodeWithText("保存并返回").assertIsDisplayed().performClick()
             compose.waitUntil(10000) { !vm.busy && vm.page == "inbox" }
             MailStore(context, fixture.id).use { store ->

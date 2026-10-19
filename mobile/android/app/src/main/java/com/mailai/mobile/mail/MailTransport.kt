@@ -233,6 +233,7 @@ internal constructor(
                     attachments = files,
                     html = content.html,
                     contentVersion = 1,
+                    starred = item.starred,
                 )
         }
 

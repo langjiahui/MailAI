@@ -158,7 +158,7 @@ internal fun AddContactDialog(vm: MailViewModel, close: () -> Unit) {
 }
 
 @Composable
-internal fun ContactPicker(vm: MailViewModel, selectedRaw: String, close: () -> Unit) {
+internal fun ContactPicker(vm: MailViewModel, selectedRaw: String, field: String = "to", close: () -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
     var selected by rememberSaveable { mutableStateOf(emptyList<String>()) }
     val context = LocalContext.current
@@ -188,7 +188,7 @@ internal fun ContactPicker(vm: MailViewModel, selectedRaw: String, close: () -> 
                                     val email = c.getString(0).orEmpty()
                                     val name = c.getString(1).orEmpty()
                                     require(MimeCodec.addresses(email).size == 1)
-                                    if (vm.addRecipients(listOf(MailContact(email, name)))) close()
+                                    if (vm.addRecipients(listOf(MailContact(email, name)), field)) close()
                                 }
                             }
                     }

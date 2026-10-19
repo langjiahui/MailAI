@@ -20,11 +20,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -275,74 +277,95 @@ private fun MailPersonActions(vm: MailViewModel, contact: MailContact) {
 }
 
 @Composable
-internal fun RecipientEditor(vm: MailViewModel, draft: Draft, editable: Boolean, next: () -> Unit) {
-    var editing by remember(draft.id) { mutableStateOf(draft.to.isBlank()) }
+internal fun RecipientEditor(
+    vm: MailViewModel,
+    draft: Draft,
+    editable: Boolean,
+    field: String = "to",
+    next: () -> Unit,
+) {
+    val raw =
+        when (field) {
+            "cc" -> draft.cc
+            "bcc" -> draft.bcc
+            else -> draft.to
+        }
+    val label =
+        when (field) {
+            "cc" -> "抄送"
+            "bcc" -> "密送"
+            else -> "收件人"
+        }
+    fun change(value: String) {
+        vm.update(
+            when (field) {
+                "cc" -> draft.copy(cc = value)
+                "bcc" -> draft.copy(bcc = value)
+                else -> draft.copy(to = value)
+            }
+        )
+    }
+    var editing by remember(draft.id) { mutableStateOf(raw.isBlank()) }
     var picking by remember { mutableStateOf(false) }
     var details by remember { mutableStateOf(false) }
     val requester = remember { FocusRequester() }
     var requestFocus by remember { mutableStateOf(false) }
-    val people = remember(draft.to) { MailAddresses.parse(draft.to) }
-    val valid = remember(draft.to) { runCatching { MimeCodec.addresses(draft.to) }.isSuccess }
+    val people = remember(raw) { MailAddresses.parse(raw) }
+    val valid = remember(raw) { runCatching { MimeCodec.addresses(raw) }.isSuccess }
     LaunchedEffect(editing, requestFocus) {
         if (editing && requestFocus) {
             requester.requestFocus()
             requestFocus = false
         }
     }
-    if (editing || !valid || people.isEmpty()) {
-        TextField(
-            value = draft.to,
-            onValueChange = { vm.update(draft.copy(to = it)) },
-            label = { Text("收件人") },
-            readOnly = !editable,
-            minLines = 1,
-            maxLines = 5,
-            trailingIcon = {
-                TextButton(onClick = { picking = true }, enabled = editable) {
-                    Text("通讯录", fontSize = 12.sp)
-                }
-            },
-            keyboardOptions =
-                KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
-            keyboardActions =
-                KeyboardActions(
-                    onNext = {
-                        next()
-                        if (valid) editing = false
-                    }
-                ),
-            modifier =
-                Modifier.fillMaxWidth().focusRequester(requester).onFocusChanged {
-                    if (!it.isFocused && valid) editing = false
-                },
-            shape = RoundedCornerShape(14.dp),
-            colors =
-                TextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
-                    unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
-                ),
-        )
-    } else {
-        Surface(
-            shape = RoundedCornerShape(14.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant,
-        ) {
-            Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, bottom = 8.dp)) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "收件人",
-                        Modifier.weight(1f),
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    TextButton(onClick = { picking = true }, enabled = editable) {
-                        Text("通讯录", fontSize = 12.sp)
-                    }
-                }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, Modifier.padding(end = 10.dp), fontSize = 15.sp)
+        if (editing || !valid || people.isEmpty()) {
+            OutlinedTextField(
+                value = raw,
+                onValueChange = ::change,
+                placeholder = { Text("输入邮箱地址", fontSize = 14.sp) },
+                readOnly = !editable,
+                minLines = 1,
+                maxLines = 3,
+                keyboardOptions =
+                    KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+                keyboardActions =
+                    KeyboardActions(
+                        onNext = {
+                            next()
+                            if (valid) editing = false
+                        }
+                    ),
+                modifier =
+                    Modifier.weight(1f)
+                        .focusRequester(requester)
+                        .testTag(if (field == "to") "compose-recipient" else "compose-$field")
+                        .semantics { contentDescription = label }
+                        .onFocusChanged { if (!it.isFocused && valid) editing = false },
+                shape = RoundedCornerShape(18.dp),
+                textStyle = LocalTextStyle.current.copy(fontSize = 15.sp),
+                colors =
+                    OutlinedTextFieldDefaults.colors(
+                        unfocusedBorderColor = Color.Transparent,
+                        focusedBorderColor = Color.Transparent,
+                        disabledBorderColor = Color.Transparent,
+                        focusedContainerColor = composerFieldColor(),
+                        unfocusedContainerColor = composerFieldColor(),
+                        disabledContainerColor = composerFieldColor(),
+                    ),
+            )
+        } else {
+            Surface(
+                modifier = Modifier.weight(1f).testTag("compose-recipient-summary-$field"),
+                shape = RoundedCornerShape(18.dp),
+                color = composerFieldColor(),
+            ) {
                 Row(
-                    Modifier.fillMaxWidth().clickable { details = true }.heightIn(min = 40.dp),
+                    Modifier.fillMaxWidth()
+                        .clickable { details = true }
+                        .heightIn(min = 56.dp)
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
@@ -354,23 +377,29 @@ internal fun RecipientEditor(vm: MailViewModel, draft: Draft, editable: Boolean,
                     )
                     Text(
                         if (people.size > 2) "等 ${people.size} 人 ›" else "${people.size} 人 ›",
-                        Modifier.padding(start = 8.dp),
+                        Modifier.padding(start = 6.dp),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.primary,
                     )
                 }
             }
         }
+        IconButton(onClick = { picking = true }, enabled = editable) {
+            ComposeIcon(
+                com.mailai.mobile.R.drawable.ic_compose_contacts,
+                if (field == "to") "通讯录" else "$label 通讯录",
+            )
+        }
     }
     if (picking)
-        ContactPicker(vm, draft.to) {
+        ContactPicker(vm, raw, field) {
             picking = false
             editing = false
         }
     if (details)
         AlertDialog(
             onDismissRequest = { details = false },
-            title = { Text("收件人 · ${people.size} 人") },
+            title = { Text("$label · ${people.size} 人") },
             text = {
                 LazyColumn(Modifier.heightIn(max = 360.dp)) {
                     items(people, key = { it.email.lowercase() }) { contact ->
@@ -385,15 +414,10 @@ internal fun RecipientEditor(vm: MailViewModel, draft: Draft, editable: Boolean,
                             if (editable)
                                 TextButton(
                                     onClick = {
-                                        vm.update(
-                                            draft.copy(
-                                                to =
-                                                    people
-                                                        .filterNot {
-                                                            it.email.equals(contact.email, true)
-                                                        }
-                                                        .joinToString { it.address() }
-                                            )
+                                        change(
+                                            people
+                                                .filterNot { it.email.equals(contact.email, true) }
+                                                .joinToString { it.address() }
                                         )
                                     }
                                 ) {

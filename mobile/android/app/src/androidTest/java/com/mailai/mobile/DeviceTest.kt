@@ -247,13 +247,13 @@ class DeviceTest {
                 compose.onAllNodesWithText("回复").fetchSemanticsNodes().isNotEmpty()
             }
             compose.onNodeWithText("回复").assertIsEnabled().performClick()
-            compose.onNodeWithText("写下想说的话…").performTextInput("收到，周五前我会确认。")
+            compose.onNodeWithTag("compose-body").performScrollTo().performTextInput("收到，周五前我会确认。")
             compose.waitUntil(10000) {
                 MailStore(context, a.id).use { it.drafts().any { d -> d.body == "收到，周五前我会确认。" } }
             }
             scenario.recreate()
             compose.onNodeWithText("收到，周五前我会确认。").assertExists()
-            compose.onNodeWithText("‹  返回").performClick()
+            compose.onNode(hasText("‹  返回") or hasContentDescription("返回")).performClick()
             compose.onNodeWithText("保存并返回").performClick()
             compose.onNodeWithText("回复").assertExists()
             compose.onNodeWithContentDescription("返回").performClick()

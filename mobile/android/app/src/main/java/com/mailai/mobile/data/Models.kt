@@ -48,6 +48,7 @@ data class MailItem(
     val html: String? = null,
     val cc: String = "",
     val contentVersion: Int = 1,
+    val starred: Boolean = false,
 )
 
 enum class SendState {
@@ -69,6 +70,9 @@ data class Draft(
     val messageId: String = "<${UUID.randomUUID()}@mailai.local>",
     val replyId: String = "",
     val updated: Long = System.currentTimeMillis(),
+    val cc: String = "",
+    val bcc: String = "",
+    val styles: List<BodyStyle> = emptyList(),
 )
 
 const val MAX_ATTACHMENT_BYTES = 25L * 1024 * 1024

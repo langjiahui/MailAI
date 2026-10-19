@@ -509,6 +509,34 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
         }
     }
 
+    var starPending by mutableStateOf<Set<String>>(emptySet())
+        private set
+
+    fun toggleStar(item: MailItem) {
+        val a = account ?: return
+        if (busy || item.key in starPending) return
+        starPending = starPending + item.key
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    repo.store(a).setStarred(item.folder, item.key, !item.starred)
+                }
+                if (account?.id == a.id) {
+                    mails =
+                        mails.map {
+                            if (it.key == item.key) it.copy(starred = !item.starred) else it
+                        }
+                    if (selected?.key == item.key)
+                        selected = selected?.copy(starred = !item.starred)
+                }
+            } catch (_: Exception) {
+                showMessage("星标未保存，请重试", true)
+            } finally {
+                starPending = starPending - item.key
+            }
+        }
+    }
+
     fun read(item: MailItem) {
         if (busy || (page == "reader" && selected?.key == item.key)) return
         readerOrigin = if (page == "search") "search" else "inbox"
@@ -571,10 +599,25 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
         }
     }
 
-    fun addRecipients(selected: List<MailContact>): Boolean {
+    fun addRecipients(selected: List<MailContact>, field: String = "to"): Boolean {
         val d = draft ?: return false
         try {
-            update(d.copy(to = MailAddresses.add(d.to, selected)))
+            val next =
+                when (field) {
+                    "cc" -> d.copy(cc = MailAddresses.add(d.cc, selected))
+                    "bcc" -> d.copy(bcc = MailAddresses.add(d.bcc, selected))
+                    else -> d.copy(to = MailAddresses.add(d.to, selected))
+                }
+            require(
+                (MailAddresses.parse(next.to) +
+                        MailAddresses.parse(next.cc) +
+                        MailAddresses.parse(next.bcc))
+                    .distinctBy { it.email.lowercase() }
+                    .size <= 50
+            ) {
+                "收件人、抄送和密送合计最多 50 人"
+            }
+            update(next)
             return true
         } catch (e: IllegalArgumentException) {
             status = e.message.orEmpty()
@@ -799,7 +842,7 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
         val a = account ?: return
         val d = draft ?: return
         try {
-            MimeCodec.addresses(d.to)
+            MimeCodec.recipients(d)
             require(d.body.isNotBlank() || d.attachments.isNotEmpty()) { "请填写正文或添加附件" }
         } catch (t: Exception) {
             retry = null

@@ -57,6 +57,22 @@ internal fun draftJson(d: Draft) =
         .put("messageId", d.messageId)
         .put("replyId", d.replyId)
         .put("updated", d.updated)
+        .put("cc", d.cc)
+        .put("bcc", d.bcc)
+        .put(
+            "styles",
+            JSONArray().apply {
+                d.styles.forEach {
+                    put(
+                        JSONObject()
+                            .put("start", it.start)
+                            .put("end", it.end)
+                            .put("kind", it.kind.name)
+                            .put("value", it.value)
+                    )
+                }
+            },
+        )
 
 internal fun draftFrom(j: JSONObject) =
     Draft(
@@ -69,6 +85,24 @@ internal fun draftFrom(j: JSONObject) =
         j.getString("messageId"),
         j.getString("replyId"),
         j.getLong("updated"),
+        j.optString("cc"),
+        j.optString("bcc"),
+        (0 until (j.optJSONArray("styles")?.length() ?: 0))
+            .mapNotNull { i ->
+                runCatching {
+                        j.getJSONArray("styles").getJSONObject(i).let {
+                            BodyStyle(
+                                it.getInt("start"),
+                                it.getInt("end"),
+                                BodyStyleKind.valueOf(it.getString("kind")),
+                                it.optString("value"),
+                            )
+                        }
+                    }
+                    .getOrNull()
+            }
+            .filter { RichBody.valid(it, j.getString("body").length) }
+            .take(512),
     )
 
 internal fun mailJson(m: MailItem) =
@@ -89,6 +123,7 @@ internal fun mailJson(m: MailItem) =
         .put("html", m.html ?: JSONObject.NULL)
         .put("cc", m.cc)
         .put("contentVersion", m.contentVersion)
+        .put("starred", m.starred)
 
 internal fun mailFrom(j: JSONObject) =
     MailItem(
@@ -108,6 +143,7 @@ internal fun mailFrom(j: JSONObject) =
         if (j.isNull("html")) null else j.optString("html").takeIf { it.isNotBlank() },
         j.optString("cc"),
         j.optInt("contentVersion", 0),
+        j.optBoolean("starred", false),
     )
 
 interface SecretCipher {
@@ -436,6 +472,13 @@ class MailStore(context: Context, id: String) :
             .also { check(it != -1L) }
     }
 
+    /** A local flag, separate from server read state and scoped to this account + UIDVALIDITY. */
+    @Synchronized
+    fun setStarred(folder: String, key: String, value: Boolean) {
+        val current = messages(folder).firstOrNull { it.key == key } ?: error("邮件已不在本地列表，请刷新后重试")
+        put(current.copy(starred = value))
+    }
+
     @Synchronized
     fun replaceWindow(folder: String, validity: Long, incoming: List<MailItem>) {
         val db = writableDatabase
@@ -453,6 +496,7 @@ class MailStore(context: Context, id: String) :
                             attachments = old.attachments,
                             html = old.html,
                             contentVersion = old.contentVersion,
+                            starred = old.starred,
                         )
                     else m
                 )
@@ -483,7 +527,7 @@ class MailStore(context: Context, id: String) :
                 "邮件已进入发送流程，不能覆盖"
             }
             writeDraft(d.copy(updated = System.currentTimeMillis()))
-            rememberContacts(d.to)
+            rememberContacts(listOf(d.to, d.cc, d.bcc).filter { it.isNotBlank() }.joinToString(","))
             db.setTransactionSuccessful()
         } finally {
             db.endTransaction()

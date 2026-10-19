@@ -144,7 +144,7 @@ class DesignNavigationTest {
             compose.onNodeWithText("发送").assertIsDisplayed()
             capture("05-compose-keyboard")
             device.pressBack()
-            compose.onNodeWithText("‹  返回").performClick()
+            compose.onNode(hasText("‹  返回") or hasContentDescription("返回")).performClick()
             compose.onNodeWithText("保存并返回").performClick()
             compose.waitUntil(10000) { vm.page == "reader" && !vm.busy }
             compose.onNodeWithContentDescription("返回").performClick()
@@ -155,7 +155,7 @@ class DesignNavigationTest {
             scenario.onActivity { vm.openDraft(vm.drafts.single { it.id == "design-uncertain" }) }
             compose.onNodeWithText("发送").assertIsNotEnabled()
             assertEquals(SendState.UNCERTAIN, vm.draft?.state)
-            compose.onNodeWithText("‹  返回").performClick()
+            compose.onNode(hasText("‹  返回") or hasContentDescription("返回")).performClick()
             compose.waitUntil(10000) { vm.page == "drafts" }
             compose.onNodeWithContentDescription("返回").performClick()
             compose.onNodeWithText("账号与设置").performScrollTo().performClick()
@@ -197,7 +197,7 @@ class DesignNavigationTest {
             }
             compose.waitUntil(10000) { vm.saveStatus == "草稿已保存在此设备" }
             scenario.recreate()
-            compose.onNodeWithText("写邮件").assertExists()
+            compose.onNodeWithText("写信").assertExists()
             compose.onNodeWithText("发送").assertIsDisplayed()
         } finally {
             compose.mainClock.autoAdvance = true

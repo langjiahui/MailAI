@@ -177,6 +177,29 @@ object MimeCodec {
         }
     }
 
+    /**
+     * Validate all envelopes together, including optional fields; no Bcc header goes on the wire.
+     */
+    fun recipients(draft: Draft): List<Pair<Message.RecipientType, Array<InternetAddress>>> {
+        val groups =
+            listOf(
+                Message.RecipientType.TO to draft.to,
+                Message.RecipientType.CC to draft.cc,
+                Message.RecipientType.BCC to draft.bcc,
+            )
+        val seen = mutableSetOf<String>()
+        val parsed =
+            groups.map { (type, raw) ->
+                type to
+                    (if (raw.isBlank() && type != Message.RecipientType.TO) emptyArray()
+                        else addresses(raw))
+                        .filter { seen.add(it.address.lowercase(java.util.Locale.ROOT)) }
+                        .toTypedArray()
+            }
+        require(seen.size <= 50) { "收件人、抄送和密送合计最多 50 人" }
+        return parsed
+    }
+
     fun outgoing(
         session: Session,
         account: Account,
@@ -185,6 +208,26 @@ object MimeCodec {
     ): MimeMessage {
         require(draft.subject.none { it == '\r' || it == '\n' })
         require(draft.body.isNotBlank() || draft.attachments.isNotEmpty()) { "请填写正文或添加附件" }
+        val targets = recipients(draft)
+        val html = RichBody.html(draft.body, draft.styles)
+        require(
+            draft.body.toByteArray(Charsets.UTF_8).size <= MAX_TEXT_BYTES &&
+                (html == null || html.toByteArray(Charsets.UTF_8).size <= MAX_TEXT_BYTES)
+        ) {
+            "正文超过 2 MB，请精简后发送"
+        }
+        fun bodyPart() =
+            MimeBodyPart().apply {
+                if (html == null) setText(draft.body, "UTF-8")
+                else {
+                    val alternative = MimeMultipart("alternative")
+                    alternative.addBodyPart(MimeBodyPart().apply { setText(draft.body, "UTF-8") })
+                    alternative.addBodyPart(
+                        MimeBodyPart().apply { setContent(html, "text/html; charset=UTF-8") }
+                    )
+                    setContent(alternative)
+                }
+            }
         return object : MimeMessage(session) {
                 override fun updateMessageID() {
                     setHeader("Message-ID", draft.messageId)
@@ -194,7 +237,9 @@ object MimeCodec {
                 setFrom(
                     InternetAddress(account.email, account.name.ifBlank { account.email }, "UTF-8")
                 )
-                setRecipients(Message.RecipientType.TO, addresses(draft.to))
+                targets.forEach { (type, recipients) ->
+                    if (recipients.isNotEmpty()) setRecipients(type, recipients)
+                }
                 setSubject(draft.subject, "UTF-8")
                 sentDate = java.util.Date()
                 if (
@@ -205,10 +250,15 @@ object MimeCodec {
                     setHeader("In-Reply-To", draft.replyId)
                     setHeader("References", draft.replyId)
                 }
-                if (draft.attachments.isEmpty()) setText(draft.body, "UTF-8")
-                else {
+                if (draft.attachments.isEmpty()) {
+                    if (html == null) setText(draft.body, "UTF-8")
+                    else {
+                        val body = bodyPart()
+                        setContent(body.content, body.contentType)
+                    }
+                } else {
                     val mixed = MimeMultipart("mixed")
-                    mixed.addBodyPart(MimeBodyPart().apply { setText(draft.body, "UTF-8") })
+                    mixed.addBodyPart(bodyPart())
                     require(
                         draft.attachments.sumOf { file(it.local).length() } <= MAX_ATTACHMENT_BYTES
                     ) {

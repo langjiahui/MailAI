@@ -89,7 +89,7 @@ class EverydayInteractionTest {
             vm.page == "compose" &&
                 compose.onAllNodesWithText("保存并返回").fetchSemanticsNodes().isEmpty()
         )
-            compose.onNodeWithText("‹  返回").performClick()
+            compose.onNode(hasText("‹  返回") or hasContentDescription("返回")).performClick()
         compose.onNodeWithText("保存并返回").performClick()
         compose.waitUntil(10000) { vm.page == destination && !vm.busy }
     }
@@ -134,7 +134,7 @@ class EverydayInteractionTest {
             capture("draft-return-records")
             compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(draft.subject))
             compose.onNodeWithText(draft.subject).performClick()
-            compose.onNodeWithText("‹  返回").performClick()
+            compose.onNode(hasText("‹  返回") or hasContentDescription("返回")).performClick()
             compose.onNodeWithText("放弃草稿").performClick()
             compose.waitUntil(10000) { !vm.busy && vm.page == "drafts" }
             MailStore(context, account.id).use {
@@ -160,7 +160,8 @@ class EverydayInteractionTest {
             capture("search-empty")
             compose.onNodeWithText("查看全部邮件").performClick()
             compose.onNodeWithText(mail.subject).assertExists()
-            compose.onNodeWithText("未读").performClick()
+            compose.onNodeWithTag("inbox-filter").performClick()
+            compose.onNodeWithTag("filter-unread").performClick()
             compose.onNodeWithTag("inbox-list").performScrollToNode(hasText("暂无未读邮件"))
             compose.onNodeWithText("暂无未读邮件", useUnmergedTree = true).assertIsDisplayed()
             compose.onNodeWithTag("inbox-list").performScrollToNode(hasText("查看全部邮件"))
@@ -230,7 +231,7 @@ class EverydayInteractionTest {
                 vm.compose()
             }
             compose.waitUntil(10000) { vm.saveStatus == "草稿已保存在此设备" }
-            compose.onNodeWithText("‹  返回").performClick()
+            compose.onNode(hasText("‹  返回") or hasContentDescription("返回")).performClick()
             compose.onNodeWithText("保存并返回").performClick()
             compose.waitUntil(10000) { vm.page == "inbox" && !vm.busy }
             compose.mainClock.advanceTimeBy(4500)

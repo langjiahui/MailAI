@@ -1,8 +1,6 @@
 package com.mailai.mobile.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.snap
@@ -12,8 +10,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -25,14 +21,10 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
@@ -236,7 +228,7 @@ fun MailScreen(vm: MailViewModel, open: (Account, Attachment, Boolean) -> Unit) 
                                         "settings" -> PreferencesScreen(vm)
                                         "contacts" -> ContactsScreen(vm)
                                         "search" -> SearchScreen(vm)
-                                        else -> Inbox(vm, inboxList)
+                                        else -> RefinedInbox(vm, inboxList)
                                     }
                                 }
                             }
@@ -292,6 +284,8 @@ fun MailScreen(vm: MailViewModel, open: (Account, Attachment, Boolean) -> Unit) 
                         Text("发件人：${vm.account?.email}")
                         Spacer(Modifier.height(12.dp))
                         Text("收件人：${vm.draft?.to}")
+                        vm.draft?.cc?.takeIf { it.isNotBlank() }?.let { Text("抄送：$it") }
+                        vm.draft?.bcc?.takeIf { it.isNotBlank() }?.let { Text("密送：$it（其他收件人不可见）") }
                         Text("附件：${vm.draft?.attachments?.size ?: 0} 个")
                     }
                 },
@@ -404,140 +398,6 @@ private fun boxName(value: String) =
         "spam" -> "垃圾邮件"
         else -> value
     }
-
-@Composable
-private fun Inbox(vm: MailViewModel, listState: LazyListState) {
-    var previousFilter by rememberSaveable { mutableStateOf(vm.filter) }
-    var previousUnread by rememberSaveable { mutableStateOf(vm.unreadOnly) }
-    LaunchedEffect(vm.filter, vm.unreadOnly) {
-        if (previousFilter != vm.filter || previousUnread != vm.unreadOnly) {
-            previousFilter = vm.filter
-            previousUnread = vm.unreadOnly
-            listState.scrollToItem(0)
-        }
-    }
-    Column(Modifier.fillMaxSize()) {
-        PageHeader(
-            if (vm.filter == MailFilter.ALL) boxName(vm.folder) else vm.filter.title,
-            { vm.go("boxes") },
-        ) {
-            IconButton(onClick = { vm.refresh() }, enabled = !vm.busy && vm.account != null) {
-                MailIcon(MailGlyph.Refresh, if (vm.canRetry && vm.error) "重试同步" else "刷新")
-            }
-        }
-        Text(
-            vm.account?.email.orEmpty(),
-            Modifier.padding(horizontal = 20.dp, vertical = 2.dp),
-            fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        val list =
-            vm.mails.filter {
-                (!vm.unreadOnly || it.unread) &&
-                    when (vm.filter) {
-                        MailFilter.STARRED -> it.key in vm.stars
-                        MailFilter.ATTACHMENTS -> it.visibleAttachments().isNotEmpty()
-                        else -> true
-                    }
-            }
-        LazyColumn(
-            Modifier.weight(1f).testTag("inbox-list"),
-            state = listState,
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-        ) {
-            item(key = "heading") {
-                Row(
-                    Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    listOf("全部", "未读").forEachIndexed { i, label ->
-                        FilterChip(
-                            selected = vm.unreadOnly == (i == 1),
-                            onClick = { vm.unreadOnly = i == 1 },
-                            label = { Text(label) },
-                            border = null,
-                            shape = RoundedCornerShape(24.dp),
-                        )
-                    }
-                }
-            }
-            if (list.isEmpty())
-                item {
-                    Empty(
-                        when {
-                            vm.unreadOnly -> "暂无未读邮件"
-                            vm.filter == MailFilter.STARRED -> "暂无星标邮件"
-                            vm.filter == MailFilter.ATTACHMENTS -> "暂无附件邮件"
-                            vm.busy -> "正在收取邮件…"
-                            else -> "暂无邮件"
-                        },
-                        if (vm.filter == MailFilter.STARRED) "点击邮件旁的星标，即可在这里找到。"
-                        else "可查看全部邮件或刷新收信；离线时已有缓存仍可阅读。",
-                    )
-                    if (vm.unreadOnly || vm.filter != MailFilter.ALL)
-                        TextButton(
-                            onClick = { vm.openFilter(MailFilter.ALL) },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text("查看全部邮件")
-                        }
-                }
-            items(list, key = { it.key }) { mail ->
-                Surface(color = MaterialTheme.colorScheme.surface) { MessageRow(vm, mail) }
-                HorizontalDivider(
-                    Modifier.padding(start = 68.dp, end = 12.dp),
-                    color = MaterialTheme.colorScheme.outlineVariant,
-                )
-            }
-            if (vm.mails.size >= vm.limit)
-                item {
-                    TextButton(
-                        onClick = { vm.refresh(true) },
-                        enabled = !vm.busy,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("加载更早邮件")
-                    }
-                }
-        }
-        Row(
-            Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Surface(
-                onClick = { vm.go("search") },
-                shape = RoundedCornerShape(28.dp),
-                color = MaterialTheme.colorScheme.surface,
-                modifier = Modifier.weight(1f).testTag("open-search"),
-            ) {
-                Row(
-                    Modifier.heightIn(min = 52.dp).padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    MailIcon(MailGlyph.Search)
-                    Text(
-                        "搜索本地邮件",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            Button(
-                onClick = { vm.compose() },
-                enabled = !vm.busy && vm.account != null,
-                shape = RoundedCornerShape(28.dp),
-                contentPadding = PaddingValues(horizontal = 20.dp),
-                modifier = Modifier.heightIn(min = 52.dp),
-            ) {
-                Text("写信")
-            }
-        }
-    }
-}
 
 @Composable
 private fun Mailboxes(vm: MailViewModel) {
@@ -945,125 +805,7 @@ private fun Reader(vm: MailViewModel, back: () -> Unit) {
 
 @Composable
 private fun Composer(vm: MailViewModel, back: () -> Unit, send: () -> Unit) {
-    var lastDraft by remember { mutableStateOf(vm.draft) }
-    val d = vm.draft ?: lastDraft ?: return
-    SideEffect { if (vm.draft != null) lastDraft = vm.draft }
-    val editorScroll = rememberSaveable(d.id, saver = ScrollState.Saver) { ScrollState(0) }
-    val focus = LocalFocusManager.current
-    val subjectRequester = remember { FocusRequester() }
-    val bodyRequester = remember { BringIntoViewRequester() }
-    var bodyFocused by remember { mutableStateOf(false) }
-    val editable = !vm.busy && d.state in setOf(SendState.DRAFT, SendState.FAILED)
-    val picker =
-        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-            if (uri != null) vm.attach(uri)
-        }
-    Column(Modifier.fillMaxSize()) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TextButton(onClick = back, enabled = !vm.busy) { Text("‹  返回") }
-            Text("写邮件", Modifier.weight(1f), fontSize = 18.sp, fontWeight = FontWeight.Medium)
-            Button(
-                onClick = send,
-                enabled = editable,
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.heightIn(min = 48.dp),
-            ) {
-                Text("发送")
-            }
-        }
-        BoxWithConstraints(Modifier.weight(1f)) {
-            val editorHeight = (maxHeight * 0.7f).coerceAtLeast(96.dp)
-            LaunchedEffect(d.body, editorHeight, bodyFocused) {
-                if (bodyFocused) {
-                    withFrameNanos {}
-                    bodyRequester.bringIntoView()
-                }
-            }
-            Column(
-                Modifier.fillMaxSize().verticalScroll(editorScroll).padding(horizontal = 22.dp)
-            ) {
-                Text(
-                    vm.saveStatus,
-                    Modifier.fillMaxWidth().padding(vertical = 10.dp).semantics {
-                        liveRegion = LiveRegionMode.Polite
-                    },
-                    fontSize = 12.sp,
-                    color =
-                        if (vm.saveStatus.contains("失败") || d.state == SendState.UNCERTAIN)
-                            MaterialTheme.colorScheme.error
-                        else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (vm.saveStatus.startsWith("保存失败"))
-                    TextButton(onClick = vm::retrySave, enabled = !vm.busy) { Text("重试保存") }
-                Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    shape = RoundedCornerShape(14.dp),
-                ) {
-                    Text(
-                        "发件人  ${vm.account?.email}",
-                        Modifier.fillMaxWidth().padding(16.dp),
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
-                RecipientEditor(vm, d, editable) { subjectRequester.requestFocus() }
-                Spacer(Modifier.height(8.dp))
-                TextField(
-                    value = d.subject,
-                    onValueChange = { vm.update(d.copy(subject = it)) },
-                    label = { Text("主题") },
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    keyboardActions =
-                        KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Next) }),
-                    singleLine = true,
-                    readOnly = !editable,
-                    modifier = Modifier.fillMaxWidth().focusRequester(subjectRequester),
-                    colors = headerFields(),
-                    shape = RoundedCornerShape(14.dp),
-                )
-                Spacer(Modifier.height(8.dp))
-                TextField(
-                    value = d.body,
-                    onValueChange = { vm.update(d.copy(body = it)) },
-                    placeholder = { Text("写下想说的话…") },
-                    readOnly = !editable,
-                    minLines = 3,
-                    textStyle = LocalTextStyle.current.copy(fontSize = 16.sp, lineHeight = 28.sp),
-                    modifier =
-                        Modifier.fillMaxWidth()
-                            .heightIn(max = editorHeight)
-                            .bringIntoViewRequester(bodyRequester)
-                            .onFocusChanged { bodyFocused = it.isFocused }
-                            .testTag("compose-body"),
-                    colors = paperFields(),
-                )
-                d.attachments.forEach { attachment ->
-                    MailCard(Modifier.padding(vertical = 4.dp)) {
-                        Row(
-                            Modifier.fillMaxWidth().padding(start = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            FileLabel(attachment.name, attachment.size, Modifier.weight(1f))
-                            TextButton(
-                                onClick = {
-                                    vm.update(d.copy(attachments = d.attachments - attachment))
-                                },
-                                enabled = editable,
-                            ) {
-                                Text("移除", fontSize = 12.sp)
-                            }
-                        }
-                    }
-                }
-                if (editable)
-                    TextButton(onClick = { picker.launch(arrayOf("*/*")) }) { Text("添加附件") }
-            }
-        }
-    }
+    ComposeEditor(vm, back, send)
 }
 
 @Composable
@@ -1074,17 +816,6 @@ private fun paperFields() =
         disabledContainerColor = Color.Transparent,
         unfocusedIndicatorColor = Color.Transparent,
         focusedIndicatorColor = Color.Transparent,
-        disabledIndicatorColor = Color.Transparent,
-    )
-
-@Composable
-private fun headerFields() =
-    TextFieldDefaults.colors(
-        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-        focusedIndicatorColor = Color.Transparent,
-        unfocusedIndicatorColor = Color.Transparent,
         disabledIndicatorColor = Color.Transparent,
     )
 
@@ -1544,7 +1275,7 @@ private fun pageDepth(page: String): Int =
         else -> 0
     }
 
-private fun listDate(value: Long): String {
+internal fun listDate(value: Long): String {
     if (value == 0L) return ""
     val today =
         Calendar.getInstance()
