@@ -37,7 +37,9 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun route(intent: Intent?) {
-        if (intent?.action == "com.mailai.OPEN_UPDATES") model.openNotification(null, true)
+        if (intent?.action == "com.mailai.OPEN_BACKGROUND")
+            model.openNotification(null, true, backgroundSettings = true)
+        else if (intent?.action == "com.mailai.OPEN_UPDATES") model.openNotification(null, true)
         else if (intent?.action == "com.mailai.OPEN_MAIL")
             model.openNotification(
                 intent.getStringExtra("accountId"),

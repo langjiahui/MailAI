@@ -39,6 +39,12 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
     var account by mutableStateOf<Account?>(null)
         private set
 
+    var backgroundRequested by mutableStateOf(false)
+
+    fun consumeBackgroundRequest() {
+        backgroundRequested = false
+    }
+
     var updatesRequested by mutableStateOf(false)
         private set
 
@@ -386,7 +392,12 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
         }
     }
 
-    fun openNotification(accountId: String?, settings: Boolean, messageKey: String? = null) {
+    fun openNotification(
+        accountId: String?,
+        settings: Boolean,
+        messageKey: String? = null,
+        backgroundSettings: Boolean = false,
+    ) {
         viewModelScope.launch {
             notificationRoutes.withLock {
                 snapshotFlow { ready }.first { it }
@@ -412,7 +423,7 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
                 }
                 if (assistantState.isInitialized()) assistant.navigation()
                 if (settings) {
-                    updatesRequested = true
+                    if (backgroundSettings) backgroundRequested = true else updatesRequested = true
                     go("settings")
                 } else {
                     val target = accounts.find { it.id == accountId }

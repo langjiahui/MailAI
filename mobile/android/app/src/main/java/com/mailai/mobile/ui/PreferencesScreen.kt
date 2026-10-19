@@ -1,13 +1,9 @@
 package com.mailai.mobile.ui
 
-import android.Manifest
 import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
-import android.os.Build
 import android.provider.Settings
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -54,6 +50,12 @@ internal fun PreferencesScreen(vm: MailViewModel) {
     var originalColors by remember { mutableStateOf(reading.originalColors) }
     var option by rememberSaveable { mutableStateOf("") }
     var showNotifications by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(vm.backgroundRequested) {
+        if (vm.backgroundRequested) {
+            showNotifications = true
+            vm.consumeBackgroundRequest()
+        }
+    }
     var showUpdates by rememberSaveable { mutableStateOf(vm.updatesRequested) }
     LaunchedEffect(vm.updatesRequested) {
         if (vm.updatesRequested) {
@@ -107,17 +109,6 @@ internal fun PreferencesScreen(vm: MailViewModel) {
     val previews = remember(revision) { prefs.previews }
     val autoCheck = remember(revision) { prefs.autoCheck }
     val autoDownload = remember(revision) { prefs.autoDownload }
-    val permission =
-        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
-            revision++
-            BackgroundSchedule.catchUp(context)
-        }
-    fun notificationSettings() {
-        context.startActivity(
-            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-        )
-    }
     fun install() {
         if (!context.packageManager.canRequestPackageInstalls()) {
             installMessage = "请允许 MailAI 安装更新；返回后再次点击安装。"
@@ -420,128 +411,9 @@ internal fun PreferencesScreen(vm: MailViewModel) {
             }
         }
     if (showNotifications) {
-        AlertDialog(
-            onDismissRequest = { showNotifications = false },
-            title = { Text("通知与后台运行", fontSize = 18.sp) },
-            text = {
-                Column(Modifier.heightIn(max = 440.dp).verticalScroll(rememberScrollState())) {
-                    SettingsCard("邮件通知") {
-                        SettingToggle("后台收信", "应用离开前台后，继续定期收取邮件", background) {
-                            prefs.background = it
-                            BackgroundSchedule.configure(context)
-                            if (it) BackgroundSchedule.catchUp(context)
-                        }
-                        if (background) {
-                            Text(
-                                "检查间隔",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 13.sp,
-                            )
-                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                listOf(15, 30, 60).forEach { value ->
-                                    FilterChip(
-                                        selected = interval == value,
-                                        onClick = {
-                                            prefs.interval = value
-                                            BackgroundSchedule.configure(context)
-                                        },
-                                        label = { Text(if (value == 60) "1 小时" else "$value 分钟") },
-                                    )
-                                }
-                            }
-                            Text(
-                                if (notificationEnabled) "系统通知已开启" else "系统通知未开启，后台收信仍会继续",
-                                fontSize = 13.sp,
-                            )
-                            if (!notificationEnabled) {
-                                Button(
-                                    onClick = {
-                                        if (
-                                            Build.VERSION.SDK_INT >= 33 &&
-                                                androidx.core.content.ContextCompat
-                                                    .checkSelfPermission(
-                                                        context,
-                                                        Manifest.permission.POST_NOTIFICATIONS,
-                                                    ) !=
-                                                    android.content.pm.PackageManager
-                                                        .PERMISSION_GRANTED
-                                        )
-                                            permission.launch(
-                                                Manifest.permission.POST_NOTIFICATIONS
-                                            )
-                                        else notificationSettings()
-                                    }
-                                ) {
-                                    Text("开启邮件通知")
-                                }
-                            }
-                            TextButton(onClick = ::notificationSettings) { Text("通知声音与系统设置") }
-                            val power =
-                                context.getSystemService(android.os.PowerManager::class.java)
-                            val saving = remember(revision) { power.isPowerSaveMode }
-                            val optimized =
-                                remember(revision) {
-                                    !power.isIgnoringBatteryOptimizations(context.packageName)
-                                }
-                            Text(
-                                if (saving) "省电模式已开启 · 后台检查可能延迟"
-                                else if (optimized) "系统正在优化电池使用 · 长时间锁屏可能延迟收信"
-                                else "已允许后台电池使用 · 实际收信时间仍由系统调度",
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            TextButton(
-                                onClick = {
-                                    try {
-                                        context.startActivity(
-                                            Intent(
-                                                Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS
-                                            )
-                                        )
-                                    } catch (_: android.content.ActivityNotFoundException) {
-                                        context.startActivity(
-                                            Intent(
-                                                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                                Uri.parse("package:${context.packageName}"),
-                                            )
-                                        )
-                                    }
-                                }
-                            ) {
-                                Text("后台电池设置")
-                            }
-                            SettingToggle("显示邮件预览", "通知中显示发件人与主题；锁屏遵循系统隐私设置", previews) { value ->
-                                prefs.previews = value
-                                if (!value)
-                                    vm.accounts.forEach { account ->
-                                        androidx.core.app.NotificationManagerCompat.from(context)
-                                            .cancel("mail.${account.id}", 1)
-                                    }
-                            }
-                            Text(
-                                "锁屏或深度省电时，检查可能延后；返回应用会补查。系统“强行停止”后，需再次打开应用才能恢复。",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-
-                    vm.accounts.forEach { account ->
-                        val time = prefs.data.getLong("sync.${account.id}.time", 0)
-                        val ok = prefs.data.getBoolean("sync.${account.id}.ok", true)
-                        Text(account.email, Modifier.padding(top = 12.dp), fontSize = 13.sp)
-                        Text(
-                            if (time == 0L) "等待首次同步"
-                            else "${stamp(time)} · ${if(ok) "已更新" else "连接未成功，稍后重试"}",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            },
-            confirmButton = { TextButton(onClick = { showNotifications = false }) { Text("完成") } },
-        )
+        BackgroundSettingsSheet(vm.accounts, onDismiss = { showNotifications = false })
     }
+
     if (option.isNotBlank())
         AlertDialog(
             onDismissRequest = { if (!clearing) option = "" },

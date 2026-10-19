@@ -55,12 +55,18 @@ class AppPreferences(context: Context) {
             data.edit().putBoolean("autoDownload", value).apply()
         }
 
+    var notificationPrompted: Boolean
+        get() = data.getBoolean("notificationPrompted", false)
+        set(value) {
+            data.edit().putBoolean("notificationPrompted", value).apply()
+        }
+
     fun needsSync(id: String, now: Long = System.currentTimeMillis()): Boolean {
         val time = data.getLong("sync.$id.time", 0)
-        return !data.getBoolean("sync.$id.ok", false) ||
-            time == 0L ||
-            now < time ||
-            now - time >= TimeUnit.MINUTES.toMillis(interval.toLong())
+        val wait =
+            if (data.getBoolean("sync.$id.ok", false)) TimeUnit.MINUTES.toMillis(interval.toLong())
+            else TimeUnit.MINUTES.toMillis(1)
+        return time == 0L || now < time || now - time >= wait
     }
 
     fun syncResult(id: String, ok: Boolean) {
@@ -84,11 +90,11 @@ object BackgroundSchedule {
             .build()
 
     /** A durable, network-constrained catch-up after returning from sleep or system settings. */
-    fun catchUp(context: Context) {
+    fun catchUp(context: Context, force: Boolean = false) {
         if (!AppPreferences(context).background) return
         val request =
             OneTimeWorkRequestBuilder<MailSyncWorker>()
-                .setInputData(workDataOf("catchUp" to true))
+                .setInputData(workDataOf("catchUp" to true, "force" to force))
                 .setConstraints(mailConstraints())
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 1, TimeUnit.MINUTES)
                 .build()
@@ -232,6 +238,42 @@ object MailNotifications {
         }
     }
 
+    /** Same channel as real mail, with a separate ID and no message queue side effects. */
+    fun test(context: Context): Boolean {
+        if (!allowed(context)) return false
+        val intent =
+            Intent(context, MainActivity::class.java).apply {
+                action = "com.mailai.OPEN_BACKGROUND"
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            }
+        val pending =
+            PendingIntent.getActivity(
+                context,
+                3,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        return try {
+            NotificationManagerCompat.from(context)
+                .notify(
+                    "mail-test",
+                    3,
+                    NotificationCompat.Builder(context, CHANNEL)
+                        .setSmallIcon(R.drawable.ic_notification)
+                        .setContentTitle("MailAI · 通知测试")
+                        .setContentText("看到这条通知，说明系统允许显示邮件提醒")
+                        .setContentIntent(pending)
+                        .setAutoCancel(true)
+                        .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+                        .setCategory(NotificationCompat.CATEGORY_EMAIL)
+                        .build(),
+                )
+            true
+        } catch (_: SecurityException) {
+            false
+        }
+    }
+
     fun update(context: Context, ready: Boolean) {
         if (!allowed(context, UPDATES)) return
         val intent =
@@ -276,17 +318,16 @@ class MailSyncWorker(context: Context, params: WorkerParameters) :
                     if (!prefs.background || isStopped) break
                     try {
                         repo.deliverPending(account)
-                        if (
-                            !inputData.getBoolean("catchUp", false) || prefs.needsSync(account.id)
-                        ) {
-                            repo.sync(account, "INBOX", 50, operation)
-                            prefs.syncResult(account.id, true)
-                        }
+                        repo.syncBackground(
+                            account,
+                            operation,
+                            inputData.getBoolean("force", false),
+                        )
                     } catch (e: CancellationException) {
                         throw e
                     } catch (_: Exception) {
                         failed = true
-                        prefs.syncResult(account.id, false)
+                        // syncBackground records network failures while holding its account lock.
                     }
                 }
                 if (failed && runAttemptCount < 3) Result.retry() else Result.success()

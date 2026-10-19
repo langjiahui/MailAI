@@ -67,23 +67,56 @@ class MailRepository(
         withContext(Dispatchers.IO) {
             syncLocks
                 .computeIfAbsent(a.id) { Mutex() }
+                .withLock { syncLocked(a, folder, limit, op) }
+        }
+
+    private fun syncLocked(a: Account, folder: String, limit: Int, op: Operation) {
+        op.check()
+        val (validity, messages) =
+            transport.sync(
+                a,
+                accounts.password(a.id),
+                folder,
+                maxOf(limit, store(a).messages(folder).size),
+                op,
+            )
+        op.check()
+        val db = store(a)
+        db.replaceWindow(folder, validity, messages)
+        if (folder.equals("INBOX", true)) {
+            db.recordArrivals(validity, messages)
+            deliverPendingLocked(a)
+            AppPreferences(context).syncResult(a.id, true)
+        }
+    }
+
+    /** Foreground refresh and all workers share this lock: one successful check satisfies both. */
+    suspend fun syncBackground(a: Account, op: Operation, force: Boolean = false) =
+        withContext(Dispatchers.IO) {
+            syncLocks
+                .computeIfAbsent(a.id) { Mutex() }
                 .withLock {
-                    op.check()
-                    val (validity, messages) =
-                        transport.sync(
-                            a,
-                            accounts.password(a.id),
-                            folder,
-                            maxOf(limit, store(a).messages(folder).size),
-                            op,
+                    val prefs = AppPreferences(context)
+                    if (!prefs.background || (!force && !prefs.needsSync(a.id))) return@withLock
+                    val health = com.mailai.mobile.background.BackgroundHealth(context)
+                    health.started(a.id)
+                    try {
+                        syncLocked(a, "INBOX", 50, op)
+                        health.finished(a.id)
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        health.finished(a.id, "interrupted")
+                        throw e
+                    } catch (e: Exception) {
+                        if (op.isCancelled) {
+                            health.finished(a.id, "interrupted")
+                            throw kotlinx.coroutines.CancellationException("后台检查已取消", e)
+                        }
+                        prefs.syncResult(a.id, false)
+                        health.finished(
+                            a.id,
+                            com.mailai.mobile.background.BackgroundHealth.failure(e),
                         )
-                    op.check()
-                    val db = store(a)
-                    db.replaceWindow(folder, validity, messages)
-                    if (folder.equals("INBOX", true)) {
-                        db.recordArrivals(validity, messages)
-                        deliverPendingLocked(a)
-                        AppPreferences(context).syncResult(a.id, true)
+                        throw e
                     }
                 }
         }

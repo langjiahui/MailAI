@@ -191,7 +191,9 @@ class BackgroundUpdateTest {
         assertTrue(prefs.needsSync("recent", now + 900_000))
         assertTrue(prefs.needsSync("recent", now - 1))
         prefs.syncResult("recent", false)
-        assertTrue(prefs.needsSync("recent"))
+        val failed = prefs.data.getLong("sync.recent.time", 0)
+        assertFalse(prefs.needsSync("recent", failed + 59_999))
+        assertTrue(prefs.needsSync("recent", failed + 60_000))
     }
 
     @Test

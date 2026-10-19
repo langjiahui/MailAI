@@ -117,6 +117,7 @@ fun MailScreen(vm: MailViewModel, open: (Account, Attachment, Boolean) -> Unit) 
         }
     MaterialTheme(colorScheme = if (dark) Dark else Light) {
         MailSystemBars()
+        NotificationPermissionEffect(vm)
         val view = LocalView.current
         val focus = LocalFocusManager.current
         val keyboard = LocalSoftwareKeyboardController.current
