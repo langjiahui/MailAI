@@ -11,7 +11,8 @@ import javax.net.ssl.SSLContext
 import kotlin.concurrent.thread
 
 /** Test-only TLS frontend to a local IMAP fixture, with deterministic mid-response failure. */
-class FaultImapRelay(private val upstream: Int) : Closeable {
+class FaultImapRelay(private val upstream: Int, private val rejectSearch: Boolean = false) :
+    Closeable {
     private val sockets = CopyOnWriteArrayList<Socket>()
     private val ssl =
         SSLContext.getInstance("TLS").apply {
@@ -33,6 +34,7 @@ class FaultImapRelay(private val upstream: Int) : Closeable {
     @Volatile private var command: String? = null
     @Volatile private var bytesToDeliver = 0
     val interruptions = AtomicInteger()
+    val fetches = AtomicInteger()
 
     fun interruptResponseTo(fragment: String, afterBytes: Int = 64) {
         bytesToDeliver = afterBytes
@@ -84,6 +86,18 @@ class FaultImapRelay(private val upstream: Int) : Closeable {
                             val output = backend.getOutputStream()
                             while (true) {
                                 val line = input.readLine() ?: break
+                                if (line.contains(" FETCH ", true)) fetches.incrementAndGet()
+                                if (rejectSearch && line.contains(" SEARCH ", true)) {
+                                    client.getOutputStream().apply {
+                                        write(
+                                            (line.substringBefore(' ') +
+                                                    " NO SEARCH is unavailable\r\n")
+                                                .toByteArray()
+                                        )
+                                        flush()
+                                    }
+                                    continue
+                                }
                                 val match = command
                                 if (match != null && line.contains(match, true)) {
                                     command = null

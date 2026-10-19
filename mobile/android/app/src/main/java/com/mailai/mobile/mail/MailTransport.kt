@@ -13,14 +13,25 @@ import javax.net.ssl.SSLSocketFactory
 class MailLoginFailure(val stage: String, val host: String, cause: AuthenticationFailedException) :
     Exception("$stage 验证失败", cause)
 
+class MailSearchFailure(cause: MessagingException) : MessagingException("服务器搜索未完成", cause)
+
 class MailTransport
 internal constructor(
-    private val resolve: (String) -> InetAddress = NetworkPolicy::resolve,
+    private val resolve: (String) -> InetAddress = { NetworkPolicy.resolveMail(it) },
     private val tls: SSLSocketFactory = SSLSocketFactory.getDefault() as SSLSocketFactory,
+    private val routes: (() -> MailRoute)? = null,
 ) {
+    companion object {
+        fun onDevice(context: android.content.Context): MailTransport {
+            val networks = MailNetworks(context.applicationContext)
+            return MailTransport(routes = networks::route)
+        }
+    }
+
     private fun session(server: Server, protocol: String, op: Operation): Session {
         require(server.port in 1..65535)
-        val address = resolve(server.host)
+        val route = routes?.invoke() ?: MailRoute(resolve) {}
+        val address = route.resolve(server.host)
         op.check()
         val p =
             Properties().apply {
@@ -45,10 +56,10 @@ internal constructor(
                 setProperty("mailai.connectHost", address.hostAddress)
                 setProperty("mail.$protocol.ssl.protocols", "TLSv1.2 TLSv1.3")
                 setProperty("mail.$protocol.socketFactory.fallback", "false")
-                put("mail.$protocol.socketFactory", PinnedSocketFactory(address, op))
+                put("mail.$protocol.socketFactory", PinnedSocketFactory(address, op, route.bind))
                 put(
                     "mail.$protocol.ssl.socketFactory",
-                    PinnedTlsFactory(server.host, address, op, tls),
+                    PinnedTlsFactory(server.host, address, op, tls, route.bind),
                 )
                 setProperty("mail.smtp.auth", "true")
                 setProperty("mail.smtp.sendpartial", "false")
@@ -144,6 +155,79 @@ internal constructor(
                     m.getRecipients(Message.RecipientType.CC)?.joinToString().orEmpty()
                 ),
         )
+    }
+
+    data class SearchPage(val total: Int, val messages: List<MailItem>)
+
+    /** IMAP SEARCH runs on the whole folder; only the newest bounded matches are fetched. */
+    fun search(
+        a: Account,
+        password: String,
+        folder: String,
+        query: String,
+        limit: Int,
+        op: Operation,
+    ): SearchPage {
+        val q = query.trim()
+        require(q.isNotBlank() && q.length <= 128 && q.none { it.isISOControl() }) {
+            "关键词需为 1–128 个字符"
+        }
+        require(limit in 1..500) { "搜索显示数量超出范围" }
+        return imap(a, password, op) { store ->
+            val f = store.getFolder(folder) as IMAPFolder
+            try {
+                f.open(Folder.READ_ONLY)
+                val terms =
+                    arrayOf<javax.mail.search.SearchTerm>(
+                        javax.mail.search.FromStringTerm(q),
+                        javax.mail.search.SubjectTerm(q),
+                        javax.mail.search.BodyTerm(q),
+                        javax.mail.search.RecipientStringTerm(Message.RecipientType.TO, q),
+                        javax.mail.search.RecipientStringTerm(Message.RecipientType.CC, q),
+                    )
+                // IMAPFolder.search silently falls back to downloading all messages when
+                // SEARCH fails. Execute only the server command; preserve an explicit failure.
+                val sequence =
+                    try {
+                        f.doCommand { protocol ->
+                            (protocol as com.sun.mail.imap.protocol.IMAPProtocol).search(
+                                javax.mail.search.OrTerm(terms)
+                            )
+                        } as IntArray
+                    } catch (e: MessagingException) {
+                        if (
+                            e.cause is com.sun.mail.iap.CommandFailedException ||
+                                e.cause is com.sun.mail.iap.BadCommandException ||
+                                e.cause is javax.mail.search.SearchException
+                        )
+                            throw MailSearchFailure(e)
+                        throw e
+                    }
+                val matched = sequence.map { f.getMessage(it) }
+                op.check()
+                val window =
+                    matched.sortedByDescending { it.messageNumber }.take(limit).toTypedArray()
+                if (window.isNotEmpty())
+                    f.fetch(
+                        window,
+                        FetchProfile().apply {
+                            add(FetchProfile.Item.ENVELOPE)
+                            add(FetchProfile.Item.FLAGS)
+                            add(UIDFolder.FetchProfileItem.UID)
+                            add("Message-ID")
+                        },
+                    )
+                SearchPage(
+                    matched.size,
+                    window.map {
+                        op.check()
+                        envelope(f, it)
+                    },
+                )
+            } finally {
+                runCatching { f.close(false) }
+            }
+        }
     }
 
     fun sync(

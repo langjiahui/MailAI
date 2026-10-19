@@ -97,6 +97,82 @@ class TransportTest {
     private fun transport() = MailTransport({ InetAddress.getByName("127.0.0.1") }, trusted)
 
     @Test
+    fun rejectedServerSearchNeverFallsBackToDownloadingMailboxBodies() {
+        val plain = GreenMail(ServerSetup(0, "127.0.0.1", "imap"))
+        plain.start()
+        val relay = FaultImapRelay(plain.imap.port, true)
+        val op = Operation()
+        try {
+            val user = plain.setUser("search@example.test", "search@example.test", "test-password")
+            user.deliver(
+                javax.mail.internet
+                    .MimeMessage(javax.mail.Session.getInstance(java.util.Properties()))
+                    .apply {
+                        setFrom("sender@example.test")
+                        setRecipients(javax.mail.Message.RecipientType.TO, "search@example.test")
+                        subject = "Cached"
+                        setText("server body must not be downloaded")
+                        saveChanges()
+                    }
+            )
+            val a = account("search@example.test").copy(imap = Server("localhost", relay.port))
+            assertThrows(javax.mail.MessagingException::class.java) {
+                transport().search(a, "test-password", "INBOX", "Cached", 50, op)
+            }
+            assertEquals(0, relay.fetches.get())
+        } finally {
+            op.release()
+            relay.close()
+            plain.stop()
+        }
+    }
+
+    @Test
+    fun serverSearchFindsOlderChineseBodyAndPaginatesWithoutMarkingRead() {
+        val user = server.setUser("search@example.test", "search@example.test", "test-password")
+        for (i in 1..64) {
+            val message =
+                javax.mail.internet
+                    .MimeMessage(javax.mail.Session.getInstance(java.util.Properties()))
+                    .apply {
+                        setFrom(
+                            javax.mail.internet.InternetAddress(
+                                "sender@example.test",
+                                "方君",
+                                "UTF-8",
+                            )
+                        )
+                        setRecipients(javax.mail.Message.RecipientType.TO, "search@example.test")
+                        setSubject("检索分页 $i", "UTF-8")
+                        setText(if (i == 1) "只在最早邮件中的特定正文" else "普通正文", "UTF-8")
+                        saveChanges()
+                    }
+            user.deliver(message)
+        }
+        val a = account("search@example.test")
+        val op = Operation()
+        try {
+            val latest = transport().sync(a, "test-password", "INBOX", 50, op).second
+            assertFalse(latest.any { it.subject == "检索分页 1" })
+            val older = transport().search(a, "test-password", "INBOX", "特定正文", 50, op)
+            assertEquals(1, older.total)
+            assertEquals("检索分页 1", older.messages.single().subject)
+            val first = transport().search(a, "test-password", "INBOX", "检索分页", 50, op)
+            val more = transport().search(a, "test-password", "INBOX", "检索分页", 100, op)
+            assertEquals(64, first.total)
+            assertEquals(50, first.messages.size)
+            assertEquals(64, more.messages.size)
+            assertEquals(64, more.messages.map { it.key }.distinct().size)
+            assertTrue(more.messages.all { it.unread })
+            assertThrows(IllegalArgumentException::class.java) {
+                transport().search(a, "test-password", "INBOX", "x\r\nBAD", 50, op)
+            }
+        } finally {
+            op.release()
+        }
+    }
+
+    @Test
     fun loginFailureIdentifiesReceivingStageWithoutExposingSecret() {
         val op = Operation()
         try {

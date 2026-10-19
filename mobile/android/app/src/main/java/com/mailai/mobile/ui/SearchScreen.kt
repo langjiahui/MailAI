@@ -183,7 +183,10 @@ internal fun SearchScreen(vm: MailViewModel) {
                 )
         }
     val loading = result.first != query || result.second !== source
-    val matches = if (loading) emptyList() else result.third
+    val localMatches = if (loading) emptyList() else result.third
+    val remote = if (vm.matchingServerSearch()) vm.serverSearchResults else emptyList()
+    val matches = (remote + localMatches).distinctBy { it.key }
+    val remoteActive = vm.matchingServerSearch()
     fun close() {
         keyboard?.hide()
         vm.query = ""
@@ -191,16 +194,23 @@ internal fun SearchScreen(vm: MailViewModel) {
     }
     Column(Modifier.fillMaxSize().testTag("search-page")) {
         PageHeader("搜索结果", ::close) {
-            IconButton(onClick = { vm.refresh() }, enabled = !vm.busy) {
+            IconButton(
+                onClick = { if (query.isNotBlank()) vm.searchServer() else vm.refresh() },
+                enabled = !vm.busy,
+            ) {
                 MailIcon(MailGlyph.Refresh, "刷新")
             }
         }
         SearchInput(
             vm.query,
-            { vm.query = it },
-            "搜索本地邮件",
+            vm::changeSearchQuery,
+            "搜索邮件",
             Modifier.padding(horizontal = 16.dp, vertical = 6.dp).testTag("mail-search"),
             ::close,
+            {
+                keyboard?.hide()
+                vm.searchServer()
+            },
         )
         Row(
             Modifier.horizontalScroll(rememberScrollState())
@@ -223,6 +233,39 @@ internal fun SearchScreen(vm: MailViewModel) {
                 )
             }
         }
+        if (query.isNotBlank())
+            Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 4.dp)) {
+                Text(
+                    if (remoteActive && vm.serverSearchFailure.isNotBlank()) vm.serverSearchFailure
+                    else if (vm.serverSearchLoading) "正在搜索整个${boxName(vm.folder)}…"
+                    else if (remoteActive) "服务器匹配 ${vm.serverSearchTotal} 封，已显示 ${remote.size} 封"
+                    else "当前为本机结果，可继续搜索整个文件夹",
+                    fontSize = 12.sp,
+                    color =
+                        if (remoteActive && vm.serverSearchFailure.isNotBlank())
+                            MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    if (vm.serverSearchLoading) TextButton(onClick = vm::cancel) { Text("取消搜索") }
+                    else
+                        TextButton(
+                            onClick = {
+                                keyboard?.hide()
+                                vm.searchServer()
+                            },
+                            enabled = !vm.busy,
+                        ) {
+                            Text(
+                                if (remoteActive && vm.serverSearchFailure.isNotBlank()) "重试"
+                                else "搜索服务器",
+                                fontSize = 12.sp,
+                            )
+                        }
+                }
+            }
         if (loading) LinearProgressIndicator(Modifier.fillMaxWidth().height(2.dp))
         else Spacer(Modifier.height(2.dp))
         LazyColumn(
@@ -231,10 +274,20 @@ internal fun SearchScreen(vm: MailViewModel) {
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (query.isBlank()) item { SearchEmpty("查找邮件", "输入发件人、主题、正文或附件名称。搜索范围为当前文件夹已缓存的邮件。") }
+            if (query.isBlank())
+                item { SearchEmpty("查找邮件", "输入发件人、邮箱、主题或正文；本机立即查找，联网可搜索整个文件夹。附件名称在已缓存内容中查找。") }
             else if (!loading && matches.isEmpty())
                 item {
-                    SearchEmpty("没有匹配的邮件", "搜索范围是此设备已缓存的邮件，可换个关键词或刷新收信。")
+                    SearchEmpty(
+                        if (vm.serverSearchLoading) "正在查找邮件" else "没有匹配的邮件",
+                        if (
+                            remoteActive &&
+                                vm.serverSearchFailure.isBlank() &&
+                                !vm.serverSearchLoading
+                        )
+                            "整个文件夹未找到匹配，试试姓名、邮箱或主题关键词。"
+                        else "本机未找到，可搜索服务器上的更早邮件。",
+                    )
                     TextButton(onClick = ::close, modifier = Modifier.fillMaxWidth()) {
                         Text("查看全部邮件")
                     }
@@ -245,7 +298,7 @@ internal fun SearchScreen(vm: MailViewModel) {
                         "主题" to matches.filter { it.matches(query, SearchScope.SUBJECT) },
                         "发件人" to matches.filter { it.matches(query, SearchScope.SENDER) },
                         "附件" to matches.filter { it.matches(query, SearchScope.ATTACHMENTS) },
-                        "正文" to
+                        "正文与其他匹配" to
                             matches.filter { m ->
                                 SearchScope.entries
                                     .filterNot { it == SearchScope.ALL }
@@ -267,7 +320,7 @@ internal fun SearchScreen(vm: MailViewModel) {
                                         fontSize = 13.sp,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
-                                    if (title != "正文" && list.size > 3)
+                                    if (title != "正文与其他匹配" && list.size > 3)
                                         TextButton(
                                             onClick = {
                                                 scope =
@@ -277,7 +330,7 @@ internal fun SearchScreen(vm: MailViewModel) {
                                             Text("查看全部", fontSize = 12.sp)
                                         }
                                 }
-                                (if (title == "正文") list else list.take(3)).forEachIndexed {
+                                (if (title == "正文与其他匹配") list else list.take(3)).forEachIndexed {
                                     index,
                                     mail ->
                                     if (index > 0)
@@ -295,6 +348,21 @@ internal fun SearchScreen(vm: MailViewModel) {
                 if (list.isEmpty() && !loading) item { SearchEmpty("此分类没有匹配结果", "试试其他分类或换个关键词。") }
                 items(list, key = { it.key }) { mail -> MailCard { MessageRow(vm, mail, query) } }
             }
+            if (
+                remoteActive &&
+                    remote.size < vm.serverSearchTotal &&
+                    remote.size < 500 &&
+                    !vm.serverSearchLoading
+            )
+                item(key = "server-more") {
+                    TextButton(
+                        onClick = { vm.searchServer(true) },
+                        enabled = !vm.busy,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("加载更多匹配邮件")
+                    }
+                }
         }
     }
 }

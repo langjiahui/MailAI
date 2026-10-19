@@ -12,6 +12,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -167,7 +169,11 @@ internal fun HtmlMailBody(
 ) {
     val context = LocalContext.current
     val account = vm.account ?: return
-    val document = remember(mail.html) { MailHtml.prepare(mail.html.orEmpty()) }
+    val dark =
+        MaterialTheme.colorScheme.background.luminance() < .5f &&
+            !ReadingPreferences(context).originalColors
+    val paper = MaterialTheme.colorScheme.surface.toArgb()
+    val document = remember(mail.html, dark) { MailHtml.prepare(mail.html.orEmpty(), dark) }
     val loader =
         remember(mail.key, account.id) {
             MailImageLoader(File(context.cacheDir, "mail-images"), account.id + mail.key)
@@ -200,13 +206,14 @@ internal fun HtmlMailBody(
                 SelectionContainer { Text(mail.body.orEmpty(), fontSize = 16.sp) }
             }
         } else
-            key(mail.key, mail.html, mail.attachments.map { it.local }, revision) {
+            key(mail.key, mail.html, mail.attachments.map { it.local }, revision, dark) {
                 AndroidView(
                     modifier =
                         Modifier.fillMaxWidth().weight(1f).clipToBounds().testTag("html-body"),
                     factory = {
                         val initialScroll = scroll
                         WebView(it).apply {
+                            setBackgroundColor(paper)
                             isLongClickable = true
                             isHorizontalScrollBarEnabled = false
                             isVerticalScrollBarEnabled = false

@@ -11,39 +11,37 @@ import kotlinx.coroutines.flow.asStateFlow
 internal class ConnectionMonitor(context: Context) : AutoCloseable {
     private val manager = context.getSystemService(ConnectivityManager::class.java)
 
-    private fun available(): Boolean =
-        manager
-            .getNetworkCapabilities(manager.activeNetwork)
-            ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
-
-    private val mutable = MutableStateFlow(available())
+    private val networks =
+        java.util.concurrent.ConcurrentHashMap.newKeySet<Network>().apply {
+            (listOfNotNull(manager.activeNetwork) + manager.allNetworks).forEach {
+                if (manager.getNetworkCapabilities(it) != null) add(it)
+            }
+        }
+    private val mutable = MutableStateFlow(networks.isNotEmpty())
     val online = mutable.asStateFlow()
-    @Volatile private var current = manager.activeNetwork
     private val callback =
         object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
-                current = network
+                networks.add(network)
+                mutable.value = true
             }
 
             override fun onLost(network: Network) {
-                if (current == network) {
-                    current = null
-                    mutable.value = false
-                }
+                networks.remove(network)
+                mutable.value = networks.isNotEmpty()
             }
 
             override fun onCapabilitiesChanged(
                 network: Network,
                 capabilities: NetworkCapabilities,
             ) {
-                if (current == network)
-                    mutable.value =
-                        capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                networks.add(network)
+                mutable.value = true
             }
         }
 
     init {
-        manager.registerDefaultNetworkCallback(callback)
+        manager.registerNetworkCallback(com.mailai.mobile.mail.MailNetworks.request(), callback)
     }
 
     override fun close() {

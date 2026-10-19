@@ -248,34 +248,53 @@ fun MailScreen(vm: MailViewModel, open: (Account, Attachment, Boolean) -> Unit) 
             }
         }
         if (leave)
-            AlertDialog(
-                onDismissRequest = { leave = false },
-                title = { Text("保留这封草稿？") },
-                text = { Text("草稿与附件保存在这台手机，离线也可以继续编辑。") },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            leave = false
-                            vm.saveAndLeave()
-                        }
+            androidx.compose.ui.window.Dialog(onDismissRequest = { leave = false }) {
+                Surface(
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 0.dp,
+                ) {
+                    Column(
+                        Modifier.fillMaxWidth()
+                            .heightIn(max = 540.dp)
+                            .verticalScroll(rememberScrollState())
+                            .padding(22.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Text("保存并返回")
-                    }
-                },
-                dismissButton = {
-                    Column(horizontalAlignment = Alignment.End) {
+                        Text("保留这封草稿？", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "正文和附件会保存在这台手机，稍后可继续编辑。",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Button(
+                            onClick = {
+                                leave = false
+                                vm.saveAndLeave()
+                            },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                            shape = RoundedCornerShape(14.dp),
+                        ) {
+                            Text("保存并返回")
+                        }
+                        TextButton(
+                            onClick = { leave = false },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                        ) {
+                            Text("继续编辑")
+                        }
                         TextButton(
                             onClick = {
                                 leave = false
                                 vm.discard()
-                            }
+                            },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                         ) {
-                            Text("放弃草稿")
+                            Text("放弃草稿", color = MaterialTheme.colorScheme.error)
                         }
-                        TextButton(onClick = { leave = false }) { Text("继续编辑") }
                     }
-                },
-            )
+                }
+            }
         if (confirmSend)
             AlertDialog(
                 onDismissRequest = { confirmSend = false },

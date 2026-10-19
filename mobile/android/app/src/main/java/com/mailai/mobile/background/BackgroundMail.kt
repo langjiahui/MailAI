@@ -78,9 +78,7 @@ object BackgroundSchedule {
     fun mailConstraints(): Constraints =
         Constraints.Builder()
             .setRequiredNetworkRequest(
-                android.net.NetworkRequest.Builder()
-                    .addCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                    .build(),
+                com.mailai.mobile.mail.MailNetworks.request(),
                 NetworkType.CONNECTED,
             )
             .build()

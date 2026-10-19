@@ -9,6 +9,25 @@ import org.junit.Test
 
 class ReadingContentTest {
     @Test
+    fun darkMailChangesOnlyNeutralColorsAndKeepsSourceMarkupAndPictures() {
+        val source =
+            """<style>p{color:rgb(0, 0, 0);background-color:white}</style><table bgcolor="#ffffff"><tr><td style="background:#fefefe;color:#222">正文</td></tr></table><b style="color:#c00000">重点</b><img src="cid:logo"><p>签名</p>"""
+        val light = MailHtml.prepare(source)
+        val dark = MailHtml.prepare(source, true)
+        val doc = org.jsoup.Jsoup.parse(dark.html)
+        assertEquals("#1d2722", doc.selectFirst("table")!!.attr("bgcolor"))
+        assertEquals("background:#1d2722;color:#eceee7", doc.selectFirst("td")!!.attr("style"))
+        assertTrue(
+            doc.select("style").any { it.data().contains("color:#eceee7;background-color:#1d2722") }
+        )
+        assertEquals("color:#c00000", doc.selectFirst("b")!!.attr("style"))
+        assertEquals(light.images, dark.images)
+        assertEquals(1, doc.select("table").size)
+        assertTrue(light.html.contains("#ffffff"))
+        assertTrue(dark.html.contains("user-select:text"))
+    }
+
+    @Test
     fun desktopWidthMailKeepsTableContentAndConfinesItsOverflow() {
         val html =
             "<div style='width:1200px'><table width='1200'><tr><td style='color:#a54a22'>完整内容</td><td><table><tr><td>嵌套表格</td></tr></table></td></tr></table></div>"

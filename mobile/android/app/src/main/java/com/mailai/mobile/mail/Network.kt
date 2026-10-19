@@ -76,29 +76,64 @@ object NetworkPolicy {
         // ranges.
     }
 
-    fun resolve(host: String): InetAddress {
+    private fun addresses(
+        host: String,
+        lookup: (String) -> Array<InetAddress>,
+    ): Array<InetAddress> {
         require(
             host.isNotBlank() &&
                 !host.contains('/') &&
                 !host.contains('@') &&
                 host.none { it.isWhitespace() }
         ) {
-            "请填写有效的服务器域名"
+            "请填写有效的服务器地址"
         }
-        val addresses = InetAddress.getAllByName(host)
-        require(addresses.isNotEmpty() && addresses.all(::isPublic)) { "当前只支持公网邮箱服务器" }
+        return lookup(host).also { require(it.isNotEmpty()) { "服务器地址没有可用的解析结果" } }
+    }
+
+    /** Mail endpoints are explicitly configured by the user, unlike URLs in incoming mail. */
+    fun isMailServer(ip: InetAddress): Boolean {
+        if (
+            ip.isAnyLocalAddress ||
+                ip.isLoopbackAddress ||
+                ip.isLinkLocalAddress ||
+                ip.isMulticastAddress
+        )
+            return false
+        val b = ip.address.map { it.toInt() and 255 }
+        return if (b.size == 4) b[0] in 1..223 && b[0] != 127
+        else isPublic(ip) || (b[0] and 0xfe) == 0xfc // Corporate IPv6 ULA.
+    }
+
+    fun resolveMail(
+        host: String,
+        lookup: (String) -> Array<InetAddress> = InetAddress::getAllByName,
+    ): InetAddress {
+        val addresses = addresses(host, lookup)
+        require(addresses.all(::isMailServer)) { "邮箱服务器解析到不可用地址，请检查服务器设置" }
+        return addresses.firstOrNull { it is Inet4Address } ?: addresses.first()
+    }
+
+    /** Remote images and update URLs retain the public-only policy. */
+    fun resolve(host: String): InetAddress {
+        val addresses = addresses(host, InetAddress::getAllByName)
+        require(addresses.all(::isPublic)) { "外部资源仅支持公网地址" }
         return addresses.first()
     }
 }
 
 /** Pin the validated DNS result, retaining the original TLS hostname for identity checks. */
-internal class PinnedSocketFactory(private val address: InetAddress, private val op: Operation) :
-    SocketFactory() {
+internal class PinnedSocketFactory(
+    private val address: InetAddress,
+    private val op: Operation,
+    private val bindNetwork: (Socket) -> Unit = {},
+) : SocketFactory() {
     override fun createSocket(): Socket =
         op.track(
             object : Socket() {
                 override fun connect(endpoint: SocketAddress, timeout: Int) {
                     op.check()
+                    bindNetwork(this)
                     super.connect(
                         InetSocketAddress(address, (endpoint as InetSocketAddress).port),
                         timeout,
@@ -112,6 +147,7 @@ internal class PinnedSocketFactory(private val address: InetAddress, private val
     private fun connect(port: Int, local: InetAddress? = null, localPort: Int = 0): Socket {
         op.check()
         val s = op.track(Socket())
+        bindNetwork(s)
         if (local != null) s.bind(InetSocketAddress(local, localPort))
         s.connect(InetSocketAddress(address, port), 15000)
         s.soTimeout = 20000
@@ -134,6 +170,7 @@ internal class PinnedTlsFactory(
     private val address: InetAddress,
     private val op: Operation,
     private val delegate: SSLSocketFactory,
+    private val bindNetwork: (Socket) -> Unit = {},
 ) : SSLSocketFactory() {
     override fun getDefaultCipherSuites() = delegate.defaultCipherSuites
 
@@ -152,6 +189,7 @@ internal class PinnedTlsFactory(
 
     private fun connect(port: Int): Socket {
         val raw = op.track(Socket())
+        bindNetwork(raw)
         raw.connect(InetSocketAddress(address, port), 15000)
         raw.soTimeout = 20000
         return createSocket(raw, host, port, true)

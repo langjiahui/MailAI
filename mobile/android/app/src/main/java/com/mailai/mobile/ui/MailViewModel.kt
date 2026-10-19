@@ -340,13 +340,14 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
         var cause: Throwable? = t
         repeat(8) {
             when (cause) {
+                is MailSearchFailure -> return "服务器未完成检索，可换用邮箱地址或主题关键词后重试；本机结果仍可用"
                 is MailLoginFailure -> return "${cause.stage}登录未通过（${cause.host}），请核对服务器、用户名及密码或授权码"
                 is AuthenticationFailedException -> return "登录失败，请检查授权码及邮箱的 IMAP/SMTP 设置"
                 is SSLException -> return "安全连接验证失败，请检查服务器地址与证书"
                 is android.database.sqlite.SQLiteException -> return "本地存储不可用，请检查可用空间后重试"
-                is SocketTimeoutException -> return "连接超时，请检查网络后重试"
+                is SocketTimeoutException -> return "连接服务器超时，请检查当前网络是否允许邮箱端口后重试"
                 is UnknownHostException ->
-                    return if (online) "无法连接服务器，请检查网络和服务器地址" else "网络已断开，联网后可重试"
+                    return if (online) "无法解析邮箱服务器，请检查 Wi-Fi、VPN 与服务器地址" else "网络已断开，联网后可重试"
             }
             cause = cause?.cause
         }
@@ -539,10 +540,16 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
         viewModelScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    repo.store(a).setStarred(item.folder, item.key, value)
+                    val store = repo.store(a)
+                    if (store.messages(item.folder).none { it.key == item.key }) store.put(item)
+                    store.setStarred(item.folder, item.key, value)
                 }
                 if (account?.id == a.id) {
                     stars = if (value) stars + item.key else stars - item.key
+                    serverSearchResults =
+                        serverSearchResults.map {
+                            if (it.key == item.key) it.copy(starred = value) else it
+                        }
                     mails = mails.map { if (it.key == item.key) it.copy(starred = value) else it }
                     if (selected?.key == item.key) selected = selected?.copy(starred = value)
                     _feedback.tryEmit(Unit)
@@ -554,6 +561,82 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
             }
         }
     }
+
+    var serverSearchQuery by mutableStateOf("")
+        private set
+
+    var serverSearchResults by mutableStateOf<List<MailItem>>(emptyList())
+        private set
+
+    var serverSearchTotal by mutableIntStateOf(0)
+        private set
+
+    var serverSearchLoading by mutableStateOf(false)
+        private set
+
+    var serverSearchFailure by mutableStateOf("")
+        private set
+
+    private var serverSearchLimit = 50
+    private var serverSearchAccount = ""
+    private var serverSearchFolder = ""
+
+    fun changeSearchQuery(value: String) {
+        if (query == value) return
+        query = value
+        if (serverSearchLoading) cancel()
+    }
+
+    fun searchServer(more: Boolean = false) {
+        if (busy) return
+        val a = account ?: return
+        val q = query.trim()
+        if (q.isBlank()) return
+        val box = folder
+        val same =
+            serverSearchQuery == q && serverSearchAccount == a.id && serverSearchFolder == box
+        val count = if (more && same) (serverSearchLimit + 50).coerceAtMost(500) else 50
+        serverSearchQuery = q
+        serverSearchAccount = a.id
+        serverSearchFolder = box
+        serverSearchLimit = count
+        serverSearchFailure = ""
+        if (!same) {
+            serverSearchResults = emptyList()
+            serverSearchTotal = 0
+        }
+        run("正在搜索整个文件夹…", again = { searchServer(more) }, network = true) { token, _ ->
+            serverSearchLoading = true
+            try {
+                requireOnline()
+                val found = repo.search(a, box, q, count, token)
+                token.check()
+                if (account?.id == a.id && folder == box && query.trim() == q) {
+                    val cached = mails.associateBy { it.key }
+                    serverSearchResults =
+                        found.messages.map { m ->
+                            cached[m.key]?.takeIf { it.validity == m.validity } ?: m
+                        }
+                    serverSearchTotal = found.total
+                    status = "服务器搜索完成"
+                }
+            } catch (e: CancellationException) {
+                serverSearchFailure = "搜索已取消，可重试；已有结果保留"
+                throw e
+            } catch (e: Exception) {
+                serverSearchFailure = message(e)
+                throw e
+            } finally {
+                serverSearchLoading = false
+            }
+        }
+    }
+
+    fun matchingServerSearch(): Boolean =
+        serverSearchQuery == query.trim() &&
+            serverSearchAccount == account?.id &&
+            serverSearchFolder == folder &&
+            serverSearchQuery.isNotBlank()
 
     fun read(item: MailItem) {
         if (busy || (page == "reader" && selected?.key == item.key)) return
@@ -583,6 +666,8 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
             val loaded = repo.read(a, item, token, force)
             token.check()
             selected = loaded
+            serverSearchResults =
+                serverSearchResults.map { if (it.key == loaded.key) loaded else it }
             try {
                 if (loaded.unread && online) {
                     repo.seen(a, loaded, token)

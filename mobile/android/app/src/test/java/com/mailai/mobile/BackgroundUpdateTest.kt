@@ -176,7 +176,7 @@ class BackgroundUpdateTest {
     @Test
     fun backgroundNetworkDoesNotDependOnSystemProbeValidation() {
         val request = requireNotNull(BackgroundSchedule.mailConstraints().requiredNetworkRequest)
-        assertTrue(request.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET))
+        assertFalse(request.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET))
         assertFalse(request.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED))
     }
 

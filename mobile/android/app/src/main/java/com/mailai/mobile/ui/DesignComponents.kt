@@ -242,6 +242,7 @@ internal fun SearchInput(
     hint: String,
     modifier: Modifier = Modifier,
     cancel: (() -> Unit)? = null,
+    submit: (() -> Unit)? = null,
 ) {
     TextField(
         value = value,
@@ -259,7 +260,12 @@ internal fun SearchInput(
         },
         singleLine = true,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        keyboardActions = KeyboardActions(onSearch = { defaultKeyboardAction(ImeAction.Done) }),
+        keyboardActions =
+            KeyboardActions(
+                onSearch = {
+                    if (submit != null) submit() else defaultKeyboardAction(ImeAction.Done)
+                }
+            ),
         shape = RoundedCornerShape(28.dp),
         modifier = modifier.fillMaxWidth(),
         colors =

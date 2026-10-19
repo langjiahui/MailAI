@@ -48,8 +48,15 @@ internal fun OperationBubble(vm: MailViewModel, modifier: Modifier = Modifier) {
             offline = false
         }
     }
+    val inlineSearch =
+        vm.page == "search" &&
+            vm.matchingServerSearch() &&
+            (vm.serverSearchLoading ||
+                vm.status == vm.serverSearchFailure ||
+                vm.status == "服务器搜索完成" ||
+                (vm.status.startsWith("已取消") && vm.serverSearchFailure.startsWith("搜索已取消")))
     AnimatedVisibility(
-        visible = visible || offline,
+        visible = (visible || offline) && !inlineSearch,
         modifier = modifier.widthIn(max = 560.dp),
         enter = fadeIn(tween(140)) + slideInVertically(tween(180)) { it / 4 },
         exit = fadeOut(tween(140)),

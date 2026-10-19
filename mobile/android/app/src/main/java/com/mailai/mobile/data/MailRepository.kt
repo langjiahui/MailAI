@@ -17,7 +17,7 @@ import kotlinx.coroutines.withContext
 class MailRepository(
     private val context: Context,
     val accounts: AccountStore = AccountStore(context),
-    private val transport: MailTransport = MailTransport(),
+    private val transport: MailTransport = MailTransport.onDevice(context),
 ) {
     private val stores = ConcurrentHashMap<String, MailStore>()
 
@@ -33,6 +33,11 @@ class MailRepository(
         require(name.matches(Regex("[a-zA-Z0-9.-]+")) && !name.contains(".."))
         return File(accountDir(a), name)
     }
+
+    suspend fun search(a: Account, folder: String, query: String, limit: Int, op: Operation) =
+        withContext(Dispatchers.IO) {
+            transport.search(a, accounts.password(a.id), folder, query, limit, op)
+        }
 
     suspend fun initialize(): List<Account> =
         withContext(Dispatchers.IO) { accounts.all().also { list -> list.forEach(::store) } }

@@ -9,7 +9,7 @@ object MailHtml {
 
     data class Document(val html: String, val images: Map<String, String>)
 
-    fun prepare(raw: String): Document {
+    fun prepare(raw: String, dark: Boolean = false): Document {
         val doc = Jsoup.parse(raw)
         doc.select(
                 "script,iframe,frame,frameset,object,embed,form,input,button,textarea,select,link,base,meta,audio,video,source,svg,math"
@@ -67,6 +67,7 @@ object MailHtml {
                 }
         doc.select("style").forEach { it.html(css(it.data())) }
         doc.select("[style]").forEach { it.attr("style", css(it.attr("style"))) }
+        if (dark) adaptNeutralColors(doc)
         doc.head().prependElement("meta").attr("charset", "utf-8")
         doc.head()
             .appendElement("meta")
@@ -106,7 +107,52 @@ object MailHtml {
                 """
                     .trimIndent()
             )
+        if (dark)
+            doc.head()
+                .appendElement("style")
+                .attr("data-mailai-theme", "dark")
+                .text(
+                    "html,body{background:#1d2722!important;color:#eceee7!important;color-scheme:dark}a{color:#9cdbbc}blockquote{border-color:#526157!important}"
+                )
         return Document(doc.outerHtml(), images)
+    }
+
+    // Only neutral light backgrounds and neutral dark text change. Brand colors, pictures,
+    // spacing, tables and the stored source stay intact; this is a rendering-only adaptation.
+    private fun adaptNeutralColors(doc: org.jsoup.nodes.Document) {
+        fun neutral(value: String, background: Boolean): String {
+            val clean = value.trim().lowercase().removeSuffix("!important").trim()
+            val rgb =
+                when {
+                    clean == "white" -> listOf(255, 255, 255)
+                    clean == "black" -> listOf(0, 0, 0)
+                    clean.matches(Regex("#[0-9a-f]{3}")) -> clean.drop(1).map { "$it$it".toInt(16) }
+                    clean.matches(Regex("#[0-9a-f]{6}")) ->
+                        clean.drop(1).chunked(2).map { it.toInt(16) }
+                    clean.matches(Regex("rgb\\(\\s*\\d+\\s*,\\s*\\d+\\s*,\\s*\\d+\\s*\\)")) ->
+                        Regex("\\d+").findAll(clean).map { it.value.toInt() }.toList()
+                    else -> return value
+                }
+            if (rgb.max() - rgb.min() > 24) return value
+            val level = rgb.average()
+            val mapped =
+                if (background && level >= 180) "#1d2722"
+                else if (!background && level <= 120) (if (level < 75) "#eceee7" else "#abb2a6")
+                else return value
+            return mapped + if (value.contains("!important", true)) "!important" else ""
+        }
+        fun css(value: String) =
+            Regex("(?i)(?<![\\w-])(background-color|background|color)\\s*:\\s*([^;{}]+)").replace(
+                value
+            ) { m ->
+                m.groupValues[1] +
+                    ":" +
+                    neutral(m.groupValues[2], m.groupValues[1].startsWith("background", true))
+            }
+        doc.select("style").forEach { it.html(css(it.data())) }
+        doc.select("[style]").forEach { it.attr("style", css(it.attr("style"))) }
+        doc.select("[bgcolor]").forEach { it.attr("bgcolor", neutral(it.attr("bgcolor"), true)) }
+        doc.select("[color]").forEach { it.attr("color", neutral(it.attr("color"), false)) }
     }
 
     fun httpsImage(value: String): Boolean =

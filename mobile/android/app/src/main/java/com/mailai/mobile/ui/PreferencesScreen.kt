@@ -51,6 +51,7 @@ internal fun PreferencesScreen(vm: MailViewModel) {
     val context = LocalContext.current
     val prefs = remember { AppPreferences(context) }
     val reading = remember { ReadingPreferences(context) }
+    var originalColors by remember { mutableStateOf(reading.originalColors) }
     var option by rememberSaveable { mutableStateOf("") }
     var showNotifications by rememberSaveable { mutableStateOf(false) }
     var showUpdates by rememberSaveable { mutableStateOf(vm.updatesRequested) }
@@ -226,6 +227,13 @@ internal fun PreferencesScreen(vm: MailViewModel) {
                 SettingsDivider()
                 MenuRow("正文字号", "邮件原排版按比例缩放", "${reading.bodySize}", icon = MailGlyph.Font) {
                     option = "font"
+                }
+                SettingsDivider()
+                Box(Modifier.padding(horizontal = 16.dp)) {
+                    SettingToggle("保留邮件原始配色", "关闭时，正文中性色跟随深浅外观；图片与强调色保留", originalColors) {
+                        originalColors = it
+                        reading.originalColors = it
+                    }
                 }
                 SettingsDivider()
                 MenuRow("通知与后台运行", "声音、预览、省电设置与最近收信", icon = MailGlyph.Bell) {

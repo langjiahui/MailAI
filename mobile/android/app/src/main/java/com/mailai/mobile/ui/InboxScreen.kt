@@ -212,18 +212,22 @@ internal fun RefinedInbox(vm: MailViewModel, listState: LazyListState) {
                 item(key = "search") {
                     InboxSearch(
                         vm.query,
-                        { vm.query = it },
+                        vm::changeSearchQuery,
                         if (vm.unreadOnly && vm.filter == MailFilter.ALL) MailFilter.UNREAD
                         else vm.filter,
                         mapOf(
-                            MailFilter.ALL to vm.mails.size,
+                            MailFilter.ALL to
+                                (if (vm.query.isNotBlank()) filtered.size else vm.mails.size),
                             MailFilter.UNREAD to vm.mails.count { it.unread },
                             MailFilter.STARRED to vm.mails.count { it.starred },
                             MailFilter.ATTACHMENTS to
                                 vm.mails.count { it.visibleAttachments().isNotEmpty() },
                         ),
                         vm::openFilter,
-                        { vm.go("search") },
+                        {
+                            vm.go("search")
+                            if (vm.query.isNotBlank()) vm.searchServer()
+                        },
                         compact,
                         paper,
                         ink,
@@ -265,6 +269,18 @@ internal fun RefinedInbox(vm: MailViewModel, listState: LazyListState) {
                                 color = secondary,
                                 fontSize = 14.sp,
                             )
+                            if (vm.query.isNotBlank())
+                                TextButton(
+                                    onClick = {
+                                        focus.clearFocus()
+                                        vm.go("search")
+                                        vm.searchServer()
+                                    },
+                                    enabled = !vm.busy,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text("搜索整个${boxName(vm.folder)}")
+                                }
                             if (searching)
                                 TextButton(
                                     onClick = {
@@ -294,7 +310,7 @@ internal fun RefinedInbox(vm: MailViewModel, listState: LazyListState) {
                         vm.read(mail)
                     }
                 }
-                if (vm.mails.size >= vm.limit)
+                if (vm.query.isBlank() && vm.mails.size >= vm.limit)
                     item(key = "older") {
                         TextButton(
                             onClick = { vm.refresh(true) },

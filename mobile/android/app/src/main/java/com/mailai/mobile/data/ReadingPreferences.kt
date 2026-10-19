@@ -12,6 +12,12 @@ class ReadingPreferences(context: Context) {
             data.edit().putString("theme", value).apply()
         }
 
+    var originalColors: Boolean
+        get() = data.getBoolean("originalColors", false)
+        set(value) {
+            data.edit().putBoolean("originalColors", value).apply()
+        }
+
     var bodySize: Int
         get() = data.getInt("bodySize", 16).coerceIn(14, 20)
         set(value) {
