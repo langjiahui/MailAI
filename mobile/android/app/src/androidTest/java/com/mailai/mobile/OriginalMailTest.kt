@@ -199,6 +199,9 @@ class OriginalMailTest {
         try {
             compose.onNodeWithText("多人收件人与原版邮件").performClick()
             compose.onNodeWithText("文本").assertDoesNotExist()
+            context
+                .getSystemService(android.content.ClipboardManager::class.java)
+                .clearPrimaryClip()
             compose.waitUntil(10000) {
                 compose.onAllNodesWithTag("html-body").fetchSemanticsNodes().isNotEmpty()
             }
@@ -240,7 +243,9 @@ class OriginalMailTest {
                 "Long press must copy the selected mail body",
                 copied.isNotBlank() && "请确认以下信息，周五前反馈。".contains(copied),
             )
-            device.findObject(By.res("com.android.systemui", "dismiss_button"))?.click()
+            device
+                .wait(Until.findObject(By.res("com.android.systemui", "dismiss_button")), 2500)
+                ?.click()
             scenario.onActivity { web(it.window.decorView)?.scrollTo(0, 100000) }
             val link = requireNotNull(device.wait(Until.findObject(By.text("查看详情")), 5000))
             link.click()
@@ -267,6 +272,9 @@ class OriginalMailTest {
             scenario.onActivity { vm.read(cached.copy(html = null, body = body)) }
             compose.onNodeWithText("文本").assertDoesNotExist()
             compose.onNodeWithTag("html-body").assertDoesNotExist()
+            context
+                .getSystemService(android.content.ClipboardManager::class.java)
+                .clearPrimaryClip()
             compose.onNodeWithText(body).performTouchInput { longClick(center) }
             val copy =
                 requireNotNull(
