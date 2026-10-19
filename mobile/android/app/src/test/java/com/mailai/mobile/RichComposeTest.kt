@@ -189,6 +189,13 @@ class RichComposeTest {
         }
         MailStore(context, id).use {
             assertTrue(it.messages("INBOX").single().starred)
+            // A concurrent body/read/attachment result was captured before the star change.
+            it.put(mail.copy(unread = true, body = "已补读的正文"))
+            assertTrue(it.messages("INBOX").single().starred)
+            it.setStarred("INBOX", mail.key, false)
+            it.put(mail.copy(starred = true))
+            assertFalse(it.messages("INBOX").single().starred)
+            it.setStarred("INBOX", mail.key, true)
             it.replaceWindow("INBOX", 1, listOf(mail))
             assertTrue(it.messages("INBOX").single().starred)
             it.replaceWindow("INBOX", 2, listOf(mail.copy(key = "INBOX:2:1", validity = 2)))

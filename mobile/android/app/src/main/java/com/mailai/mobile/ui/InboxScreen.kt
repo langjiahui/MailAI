@@ -5,7 +5,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -47,26 +46,33 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mailai.mobile.data.MailItem
 import com.mailai.mobile.mail.MailAddresses
+import com.mailai.mobile.mail.MailFilter
+import com.mailai.mobile.mail.visibleAttachments
 import java.util.Locale
 
 /** Inbox-only presentation. Mail, drafts and the reader keep their existing data paths. */
 @Composable
 internal fun RefinedInbox(vm: MailViewModel, listState: LazyListState) {
     var previousQuery by rememberSaveable { mutableStateOf(vm.query) }
+    var previousFilter by rememberSaveable { mutableStateOf(vm.filter) }
     var previousUnread by rememberSaveable { mutableStateOf(vm.unreadOnly) }
-    LaunchedEffect(vm.query, vm.unreadOnly) {
-        if (previousQuery != vm.query || previousUnread != vm.unreadOnly) {
+    LaunchedEffect(vm.query, vm.unreadOnly, vm.filter) {
+        if (
+            previousQuery != vm.query ||
+                previousUnread != vm.unreadOnly ||
+                previousFilter != vm.filter
+        ) {
             previousQuery = vm.query
             previousUnread = vm.unreadOnly
+            previousFilter = vm.filter
             listState.scrollToItem(0)
         }
     }
-    val dark = isSystemInDarkTheme()
-    val ink = if (dark) Color(0xFFEAF0F7) else Color(0xFF122338)
-    val secondary = if (dark) Color(0xFFADB7C2) else Color(0xFF7A8491)
-    val paper = if (dark) Color(0xFF171E25) else Color.White
-    val green = if (dark) Color(0xFF9CDBBC) else Color(0xFF176648)
-    val mint = if (dark) Color(0xFF243E34) else Color(0xFFE3F4EB)
+    val ink = MaterialTheme.colorScheme.onSurface
+    val secondary = MaterialTheme.colorScheme.onSurfaceVariant
+    val paper = MaterialTheme.colorScheme.surface
+    val green = MaterialTheme.colorScheme.primary
+    val mint = MaterialTheme.colorScheme.primaryContainer
     val compact =
         LocalConfiguration.current.screenWidthDp < 360 || LocalDensity.current.fontScale > 1.3f
     val focus = LocalFocusManager.current
@@ -78,9 +84,14 @@ internal fun RefinedInbox(vm: MailViewModel, listState: LazyListState) {
     var moreOpen by remember { mutableStateOf(false) }
     val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     val filtered =
-        remember(vm.mails, vm.query, vm.unreadOnly) {
+        remember(vm.mails, vm.query, vm.unreadOnly, vm.filter) {
             vm.mails.filter {
                 (!vm.unreadOnly || it.unread) &&
+                    (when (vm.filter) {
+                        MailFilter.STARRED -> it.starred
+                        MailFilter.ATTACHMENTS -> it.visibleAttachments().isNotEmpty()
+                        else -> true
+                    }) &&
                     (vm.query.isBlank() ||
                         (MailAddresses.sender(it.sender).label +
                                 it.sender +
@@ -94,7 +105,7 @@ internal fun RefinedInbox(vm: MailViewModel, listState: LazyListState) {
         Modifier.fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    listOf(if (dark) Color(0xFF1C2731) else Color(0xFFF1F8FD), paper),
+                    listOf(MaterialTheme.colorScheme.background, paper),
                     endY = with(LocalDensity.current) { 350.dp.toPx() },
                 )
             )
@@ -104,7 +115,11 @@ internal fun RefinedInbox(vm: MailViewModel, listState: LazyListState) {
                 Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = { vm.go("boxes") }, enabled = !vm.busy) {
+                TextButton(
+                    onClick = { vm.go("boxes") },
+                    enabled = !vm.busy,
+                    modifier = Modifier.semantics { contentDescription = "返回" },
+                ) {
                     InboxIcon(InboxGlyph.Back, ink)
                     Spacer(Modifier.width(6.dp))
                     Text("邮箱", color = ink, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
@@ -171,7 +186,9 @@ internal fun RefinedInbox(vm: MailViewModel, listState: LazyListState) {
                                 .padding(top = 12.dp, bottom = 18.dp)
                         ) {
                             Text(
-                                if (vm.folder.equals("INBOX", true)) "收件箱" else vm.folder,
+                                if (vm.filter !in listOf(MailFilter.ALL, MailFilter.UNREAD))
+                                    vm.filter.title
+                                else boxName(vm.folder),
                                 fontSize = 30.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = ink,
@@ -190,10 +207,17 @@ internal fun RefinedInbox(vm: MailViewModel, listState: LazyListState) {
                     InboxSearch(
                         vm.query,
                         { vm.query = it },
-                        vm.unreadOnly,
-                        vm.mails.size,
-                        vm.mails.count { it.unread },
-                        { vm.unreadOnly = it },
+                        if (vm.unreadOnly && vm.filter == MailFilter.ALL) MailFilter.UNREAD
+                        else vm.filter,
+                        mapOf(
+                            MailFilter.ALL to vm.mails.size,
+                            MailFilter.UNREAD to vm.mails.count { it.unread },
+                            MailFilter.STARRED to vm.mails.count { it.starred },
+                            MailFilter.ATTACHMENTS to
+                                vm.mails.count { it.visibleAttachments().isNotEmpty() },
+                        ),
+                        vm::openFilter,
+                        { vm.go("search") },
                         compact,
                         paper,
                         ink,
@@ -209,11 +233,16 @@ internal fun RefinedInbox(vm: MailViewModel, listState: LazyListState) {
                             Modifier.fillMaxWidth().padding(28.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
-                            val searching = vm.query.isNotBlank() || vm.unreadOnly
+                            val searching =
+                                vm.query.isNotBlank() ||
+                                    vm.unreadOnly ||
+                                    vm.filter != MailFilter.ALL
                             Text(
                                 when {
                                     vm.query.isNotBlank() -> "没有匹配的邮件"
                                     vm.unreadOnly -> "暂无未读邮件"
+                                    vm.filter == MailFilter.STARRED -> "暂无星标邮件"
+                                    vm.filter == MailFilter.ATTACHMENTS -> "暂无附件邮件"
                                     vm.busy -> "正在收取邮件…"
                                     else -> "暂无邮件"
                                 },
@@ -233,8 +262,7 @@ internal fun RefinedInbox(vm: MailViewModel, listState: LazyListState) {
                             if (searching)
                                 TextButton(
                                     onClick = {
-                                        vm.query = ""
-                                        vm.unreadOnly = false
+                                        vm.openFilter(MailFilter.ALL)
                                         focus.clearFocus()
                                     }
                                 ) {
@@ -290,8 +318,10 @@ internal fun RefinedInbox(vm: MailViewModel, listState: LazyListState) {
                         .semantics { contentDescription = if (vm.busy) "同步完成后可写信" else "写信" },
                 shape = CircleShape,
                 shadowElevation = 4.dp,
-                color = if (!vm.busy && vm.account != null) Color(0xFF237553) else mint,
-                contentColor = if (!vm.busy && vm.account != null) Color.White else secondary,
+                color = if (!vm.busy && vm.account != null) green else mint,
+                contentColor =
+                    if (!vm.busy && vm.account != null) MaterialTheme.colorScheme.onPrimary
+                    else secondary,
             ) {
                 Column(
                     Modifier.fillMaxSize().padding(8.dp),
@@ -300,7 +330,8 @@ internal fun RefinedInbox(vm: MailViewModel, listState: LazyListState) {
                 ) {
                     InboxIcon(
                         InboxGlyph.Compose,
-                        if (!vm.busy && vm.account != null) Color.White else secondary,
+                        if (!vm.busy && vm.account != null) MaterialTheme.colorScheme.onPrimary
+                        else secondary,
                     )
                     Text(
                         "写信",
@@ -320,10 +351,10 @@ internal fun RefinedInbox(vm: MailViewModel, listState: LazyListState) {
 private fun InboxSearch(
     query: String,
     onQuery: (String) -> Unit,
-    unread: Boolean,
-    total: Int,
-    unreadCount: Int,
-    onFilter: (Boolean) -> Unit,
+    filter: MailFilter,
+    counts: Map<MailFilter, Int>,
+    onFilter: (MailFilter) -> Unit,
+    onSearch: () -> Unit,
     compact: Boolean,
     paper: Color,
     ink: Color,
@@ -342,11 +373,9 @@ private fun InboxSearch(
     ) {
         Column(Modifier.padding(6.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                InboxIcon(
-                    InboxGlyph.Search,
-                    secondary,
-                    modifier = Modifier.padding(start = 12.dp, end = 10.dp),
-                )
+                IconButton(onClick = onSearch, modifier = Modifier.testTag("open-search")) {
+                    InboxIcon(InboxGlyph.Search, secondary, "分类搜索")
+                }
                 BasicTextField(
                     query,
                     onQuery,
@@ -358,7 +387,13 @@ private fun InboxSearch(
                     textStyle = TextStyle(color = ink, fontSize = 14.sp),
                     cursorBrush = SolidColor(green),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { focus.clearFocus() }),
+                    keyboardActions =
+                        KeyboardActions(
+                            onSearch = {
+                                focus.clearFocus()
+                                onSearch()
+                            }
+                        ),
                     decorationBox = { field ->
                         Box(contentAlignment = Alignment.CenterStart) {
                             if (query.isEmpty())
@@ -380,9 +415,8 @@ private fun InboxSearch(
                 if (!compact) {
                     Box(Modifier.width(1.dp).height(22.dp).background(secondary.copy(alpha = .16f)))
                     InboxFilter(
-                        unread,
-                        total,
-                        unreadCount,
+                        filter,
+                        counts,
                         expanded,
                         { expanded = it },
                         {
@@ -399,9 +433,8 @@ private fun InboxSearch(
             if (compact) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     InboxFilter(
-                        unread,
-                        total,
-                        unreadCount,
+                        filter,
+                        counts,
                         expanded,
                         { expanded = it },
                         {
@@ -421,12 +454,11 @@ private fun InboxSearch(
 
 @Composable
 private fun InboxFilter(
-    unread: Boolean,
-    total: Int,
-    unreadCount: Int,
+    filter: MailFilter,
+    counts: Map<MailFilter, Int>,
     expanded: Boolean,
     onExpanded: (Boolean) -> Unit,
-    onFilter: (Boolean) -> Unit,
+    onFilter: (MailFilter) -> Unit,
     paper: Color,
     ink: Color,
     green: Color,
@@ -439,8 +471,7 @@ private fun InboxFilter(
             shape = RoundedCornerShape(24.dp),
             modifier =
                 Modifier.testTag("inbox-filter").semantics {
-                    contentDescription =
-                        "筛选邮件，${if (unread) "未读" else "全部"} ${if (unread) unreadCount else total} 封，当前已缓存"
+                    contentDescription = "筛选邮件，${filter.title} ${counts[filter] ?: 0} 封，当前已缓存"
                 },
         ) {
             Row(
@@ -448,12 +479,13 @@ private fun InboxFilter(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Text(if (unread) "未读" else "全部", color = green, fontSize = 14.sp)
                 Text(
-                    (if (unread) unreadCount else total).toString(),
+                    if (filter == MailFilter.STARRED) "星标"
+                    else if (filter == MailFilter.ATTACHMENTS) "附件" else filter.title,
                     color = green,
                     fontSize = 14.sp,
                 )
+                Text((counts[filter] ?: 0).toString(), color = green, fontSize = 14.sp)
                 InboxIcon(InboxGlyph.Down, green, modifier = Modifier.size(18.dp))
             }
         }
@@ -463,8 +495,9 @@ private fun InboxFilter(
             shape = RoundedCornerShape(20.dp),
             containerColor = paper,
         ) {
-            listOf(false to total, true to unreadCount).forEach { (onlyUnread, count) ->
-                val selected = onlyUnread == unread
+            MailFilter.entries.forEach { item ->
+                val count = counts[item] ?: 0
+                val selected = item == filter
                 val fill by
                     animateColorAsState(
                         if (selected) mint else Color.Transparent,
@@ -477,19 +510,19 @@ private fun InboxFilter(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(24.dp),
                         ) {
-                            Text(if (onlyUnread) "未读" else "全部")
+                            Text(item.title)
                             Text(count.toString())
                         }
                     },
                     onClick = {
-                        onFilter(onlyUnread)
+                        onFilter(item)
                         onExpanded(false)
                     },
                     modifier =
                         Modifier.padding(horizontal = 6.dp)
                             .clip(RoundedCornerShape(14.dp))
                             .background(fill)
-                            .testTag(if (onlyUnread) "filter-unread" else "filter-all"),
+                            .testTag("filter-${item.name.lowercase(Locale.ROOT)}"),
                     leadingIcon = {
                         if (selected) InboxIcon(InboxGlyph.Check, green)
                         else Spacer(Modifier.size(24.dp))
@@ -574,7 +607,7 @@ private fun InboxMailRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (mail.attachments.isNotEmpty())
+                if (mail.visibleAttachments().isNotEmpty())
                     Row(
                         Modifier.padding(end = 40.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -582,7 +615,7 @@ private fun InboxMailRow(
                     ) {
                         InboxIcon(InboxGlyph.Attachment, secondary, modifier = Modifier.size(16.dp))
                         Text(
-                            "${mail.attachments.size} 个附件",
+                            "${mail.visibleAttachments().size} 个附件",
                             color = secondary,
                             fontSize = 12.sp,
                             lineHeight = 16.sp,
@@ -612,36 +645,7 @@ private fun InboxMailRow(
 
 @Composable
 private fun InboxAvatar(label: String, key: String, compact: Boolean) {
-    val palettes =
-        listOf(
-            Color(0xFF4591FE) to Color(0xFF3479DE),
-            Color(0xFF9A77F5) to Color(0xFF7959D2),
-            Color(0xFFFFB53D) to Color(0xFFF59B23),
-            Color(0xFF4AB6B0) to Color(0xFF2F918F),
-        )
-    val (start, end) =
-        palettes[(key.lowercase(Locale.ROOT).hashCode() and Int.MAX_VALUE) % palettes.size]
-    val initial =
-        remember(label) {
-            val name = label.trim().trim('"', '\'').ifBlank { "邮" }
-            String(Character.toChars(name.codePointAt(0))).uppercase(Locale.ROOT)
-        }
-    val fontScale = LocalDensity.current.fontScale
-    val initialSize = (if (compact) 17f else 21f) * minOf(fontScale, 1.25f) / fontScale
-    Box(
-        Modifier.size(if (compact) 36.dp else 44.dp)
-            .clip(CircleShape)
-            .background(Brush.linearGradient(listOf(start, end))),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            initial,
-            color = Color.White,
-            fontSize = initialSize.sp,
-            fontWeight = FontWeight.Medium,
-            maxLines = 1,
-        )
-    }
+    ContactAvatar(label, if (compact) 36.dp else 44.dp)
 }
 
 /** Small native strokes; no decorative AI glyphs or extra icon dependency. */

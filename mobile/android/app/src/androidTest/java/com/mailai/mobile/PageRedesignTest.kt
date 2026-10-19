@@ -79,6 +79,10 @@ class PageRedesignTest {
         lateinit var vm: MailViewModel
         scenario.onActivity { vm = ViewModelProvider(it)[MailViewModel::class.java] }
         compose.waitUntil(15000) { vm.ready && !vm.busy }
+        if (vm.account?.id != account.id) {
+            scenario.onActivity { vm.choose(account) }
+            compose.waitUntil(15000) { vm.account?.id == account.id && !vm.busy }
+        }
         scenario.onActivity {
             vm.dismissStatus()
             vm.go("inbox")
@@ -173,13 +177,15 @@ class PageRedesignTest {
         try {
             scenario.onActivity { vm.compose() }
             val before = vm.draft!!.to
-            compose.onNodeWithText("通讯录").performScrollTo().performClick()
+            compose.onNodeWithContentDescription("通讯录").performScrollTo().performClick()
             compose.onNode(hasText("林安") and isToggleable()).performClick()
             compose.onNodeWithText("确定 (1)").assertIsDisplayed()
             capture("04-contact-picker")
-            compose.onNodeWithContentDescription("返回").performClick()
+            compose
+                .onNode(hasContentDescription("返回") and hasAnyAncestor(isDialog()))
+                .performClick()
             assertEquals(before, vm.draft!!.to)
-            compose.onNodeWithText("通讯录").performScrollTo().performClick()
+            compose.onNodeWithContentDescription("通讯录").performScrollTo().performClick()
             compose.onNodeWithTag("contact-search").performTextInput("林安")
             compose.onNodeWithTag("contact-search").performImeAction()
             compose.onNode(hasText("林安") and isToggleable()).performClick()

@@ -102,6 +102,10 @@ class DesignNavigationTest {
         lateinit var vm: MailViewModel
         scenario.onActivity { vm = ViewModelProvider(it)[MailViewModel::class.java] }
         compose.waitUntil(15000) { vm.ready && !vm.busy }
+        if (vm.account?.id != account.id) {
+            scenario.onActivity { vm.choose(account) }
+            compose.waitUntil(15000) { vm.account?.id == account.id && !vm.busy }
+        }
         scenario.onActivity {
             vm.dismissStatus()
             vm.go("inbox")

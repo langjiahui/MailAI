@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
@@ -67,7 +68,7 @@ private val Light =
         surfaceContainerLow = Color(0xFFF1F6F9),
         surfaceTint = Color(0xFF005D46),
         onSurface = Color(0xFF14243B),
-        onSurfaceVariant = Color(0xFF748194),
+        onSurfaceVariant = Color(0xFF627287),
         outlineVariant = Color(0xFFE8EEF3),
     )
 private val Dark =
@@ -382,7 +383,7 @@ private fun date(value: Long) =
     if (value == 0L) ""
     else SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(Date(value))
 
-private fun boxName(value: String) =
+internal fun boxName(value: String) =
     when (value.lowercase(Locale.ROOT)) {
         "inbox" -> "收件箱"
         "sent",
@@ -822,10 +823,15 @@ private fun paperFields() =
 @Composable
 private fun Drafts(vm: MailViewModel) {
     Column(Modifier.fillMaxSize()) {
-        Nav("邮箱", { vm.go("boxes") }, !vm.busy)
+        PageHeader("草稿与发送记录", { vm.go("boxes") })
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
-                Heading("草稿与发送记录", vm.account?.email.orEmpty())
+                Text(
+                    vm.account?.email.orEmpty(),
+                    Modifier.padding(horizontal = 22.dp),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 Text(
                     "继续编辑草稿，或查看此设备的发送状态",
                     Modifier.padding(horizontal = 22.dp, vertical = 4.dp),
@@ -932,11 +938,7 @@ private fun AddAccount(vm: MailViewModel, back: () -> Unit) {
     val canSubmit = hasAddress && password.isNotBlank() && imap.isNotBlank() && smtp.isNotBlank()
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         if (vm.accounts.isNotEmpty()) {
-            Nav(
-                if (vm.accounts.isNotEmpty()) "邮箱" else "MailAI",
-                back,
-                !vm.busy && vm.accounts.isNotEmpty(),
-            ) {}
+            PageHeader(if (editing == null) "添加邮箱" else "邮箱登录设置", back)
         }
         Column(
             Modifier.padding(horizontal = 24.dp).padding(top = 8.dp, bottom = 24.dp),

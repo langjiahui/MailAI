@@ -61,6 +61,10 @@ class EverydayInteractionTest {
         lateinit var vm: MailViewModel
         scenario.onActivity { vm = ViewModelProvider(it)[MailViewModel::class.java] }
         compose.waitUntil(15000) { vm.ready && !vm.busy }
+        if (vm.account?.id != account.id) {
+            scenario.onActivity { vm.choose(account) }
+            compose.waitUntil(15000) { vm.account?.id == account.id && !vm.busy }
+        }
         scenario.onActivity {
             vm.dismissStatus()
             vm.go("inbox")
@@ -127,7 +131,7 @@ class EverydayInteractionTest {
             compose.onNodeWithTag("compose-body").performScrollTo().performTextInput("明天补齐。")
             compose.waitUntil(10000) { vm.saveStatus == "草稿已保存在此设备" }
             confirmSave(vm, "drafts")
-            compose.onNodeWithText("‹  邮箱").assertIsDisplayed()
+            compose.onNodeWithContentDescription("返回").assertIsDisplayed()
             assertEquals("drafts", vm.page)
             compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(draft.subject))
             compose.onNodeWithText(draft.subject).assertExists()

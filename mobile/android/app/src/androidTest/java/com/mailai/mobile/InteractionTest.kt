@@ -42,6 +42,10 @@ class InteractionTest {
         lateinit var vm: MailViewModel
         scenario.onActivity { vm = ViewModelProvider(it)[MailViewModel::class.java] }
         compose.waitUntil(15000) { vm.ready && !vm.busy }
+        if (vm.account?.id != fixture.id) {
+            scenario.onActivity { vm.choose(fixture) }
+            compose.waitUntil(15000) { vm.account?.id == fixture.id && !vm.busy }
+        }
         scenario.onActivity {
             vm.dismissStatus()
             vm.choose(fixture)

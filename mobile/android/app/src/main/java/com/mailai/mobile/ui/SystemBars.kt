@@ -42,15 +42,15 @@ internal fun MailSystemBars() {
                 )
         if (dialog == null) (activity as? ComponentActivity)?.enableEdgeToEdge(style, style)
         val window = dialog ?: activity?.window
+        val overlayHost = window?.decorView ?: view
         val navigation = if (systemDark) 0xff131a17.toInt() else 0xfff3f8fb.toInt()
         val protection =
             object : Drawable() {
                 val paint = Paint()
 
                 override fun draw(canvas: Canvas) {
-                    canvas.drawColor(background)
                     val bars =
-                        ViewCompat.getRootWindowInsets(view)
+                        ViewCompat.getRootWindowInsets(overlayHost)
                             ?.getInsets(WindowInsetsCompat.Type.tappableElement()) ?: return
                     paint.color = navigation
                     if (bars.bottom > 0)
@@ -85,18 +85,22 @@ internal fun MailSystemBars() {
 
                 @Deprecated("Deprecated in Android") override fun getOpacity() = PixelFormat.OPAQUE
             }
-        window?.setBackgroundDrawable(protection)
+        window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(background))
+        // The full-screen Compose Surface paints over Window.background, including the
+        // inset area. Paint the native-button protection above that Surface instead.
+        overlayHost.overlay.add(protection)
         window?.isNavigationBarContrastEnforced = false
         fun appearance() {
             if (window == null) return
             val bars =
-                ViewCompat.getRootWindowInsets(view)
+                ViewCompat.getRootWindowInsets(overlayHost)
                     ?.getInsets(WindowInsetsCompat.Type.tappableElement())
             val buttons = bars != null && (bars.bottom > 0 || bars.left > 0 || bars.right > 0)
             WindowCompat.getInsetsController(window, view).apply {
                 isAppearanceLightStatusBars = !dark
                 isAppearanceLightNavigationBars = !(if (buttons) systemDark else dark)
             }
+            protection.setBounds(0, 0, overlayHost.width, overlayHost.height)
             protection.invalidateSelf()
         }
         appearance()
@@ -109,6 +113,7 @@ internal fun MailSystemBars() {
         observer.addOnWindowFocusChangeListener(focus)
         observer.addOnGlobalLayoutListener(layout)
         onDispose {
+            overlayHost.overlay.remove(protection)
             if (observer.isAlive) {
                 observer.removeOnWindowFocusChangeListener(focus)
                 observer.removeOnGlobalLayoutListener(layout)

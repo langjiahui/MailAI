@@ -104,6 +104,10 @@ class OriginalMailTest {
         lateinit var vm: MailViewModel
         scenario.onActivity { vm = ViewModelProvider(it)[MailViewModel::class.java] }
         compose.waitUntil(15000) { vm.ready && !vm.busy }
+        if (vm.account?.id != account.id) {
+            scenario.onActivity { vm.choose(account) }
+            compose.waitUntil(15000) { vm.account?.id == account.id && !vm.busy }
+        }
         scenario.onActivity {
             vm.dismissStatus()
             vm.go("inbox")
@@ -355,6 +359,11 @@ class OriginalMailTest {
                 // WebView may paint a link before exposing its virtual accessibility node.
                 // Tap the real blue link pixels inside the renderer, then require the real dialog.
                 capture("link-painted")
+                // Header/attachment measurement can finish after the WebView reports loaded.
+                // Use the renderer's current clipped rectangle, not its first layout bounds.
+                scenario.onActivity { activity ->
+                    requireNotNull(web(activity.window.decorView)).getGlobalVisibleRect(bounds)
+                }
                 val bitmap =
                     android.graphics.BitmapFactory.decodeFile(
                         File(
@@ -487,7 +496,7 @@ class OriginalMailTest {
                 vm.go("inbox")
                 vm.compose()
             }
-            compose.onNodeWithText("通讯录").performScrollTo().performClick()
+            compose.onNodeWithContentDescription("通讯录").performScrollTo().performClick()
             compose.onNodeWithTag("contact-search").performTextInput("person1@example.test")
             compose.onNodeWithText("联系人1").performClick()
             compose.onNodeWithText("确定 (1)").performClick()

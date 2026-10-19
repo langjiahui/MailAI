@@ -4,10 +4,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -47,7 +44,6 @@ internal fun ComposeEditor(vm: MailViewModel, back: () -> Unit, send: () -> Unit
     val scroll = rememberSaveable(draft.id, saver = ScrollState.Saver) { ScrollState(0) }
     val subjectFocus = remember { FocusRequester() }
     val bodyFocus = remember { FocusRequester() }
-    val bodyPosition = remember { BringIntoViewRequester() }
     var bodyFocused by remember { mutableStateOf(false) }
     var showCopies by
         rememberSaveable(draft.id) {
@@ -61,8 +57,9 @@ internal fun ComposeEditor(vm: MailViewModel, back: () -> Unit, send: () -> Unit
     val colors = MaterialTheme.colorScheme
     val compact =
         LocalConfiguration.current.screenWidthDp < 360 || LocalDensity.current.fontScale > 1.3f
-    val paper = if (isSystemInDarkTheme()) Color(0xFF171E25) else Color.White
-    val wash = if (isSystemInDarkTheme()) Color(0xFF1C2731) else Color(0xFFF3F8FC)
+    val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    val paper = colors.surface
+    val wash = colors.background
     Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(wash, paper)))) {
         Row(
             Modifier.fillMaxWidth().padding(start = 4.dp, end = 16.dp, top = 4.dp, bottom = 4.dp),
@@ -106,12 +103,6 @@ internal fun ComposeEditor(vm: MailViewModel, back: () -> Unit, send: () -> Unit
                     minOf(112.dp, (maxHeight - 56.dp).coerceAtLeast(64.dp)),
                     640.dp,
                 )
-            LaunchedEffect(draft.body, editorHeight, bodyFocused) {
-                if (bodyFocused) {
-                    withFrameNanos {}
-                    bodyPosition.bringIntoView()
-                }
-            }
             Column(
                 Modifier.fillMaxSize().verticalScroll(scroll).padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -146,7 +137,11 @@ internal fun ComposeEditor(vm: MailViewModel, back: () -> Unit, send: () -> Unit
                     Text("主题", Modifier.width(composerLabelWidth()), fontSize = 15.sp)
                     TextField(
                         value = draft.subject,
-                        onValueChange = { vm.update(draft.copy(subject = it)) },
+                        onValueChange = { value ->
+                            vm.draft
+                                ?.takeIf { it.id == draft.id }
+                                ?.let { vm.update(it.copy(subject = value)) }
+                        },
                         placeholder = { Text("请输入邮件主题", fontSize = 15.sp) },
                         readOnly = !editable,
                         singleLine = true,
@@ -190,18 +185,20 @@ internal fun ComposeEditor(vm: MailViewModel, back: () -> Unit, send: () -> Unit
                         }
                     }
                 }
-                Surface(
-                    shape = RoundedCornerShape(18.dp),
-                    color = paper,
-                    modifier = Modifier.bringIntoViewRequester(bodyPosition),
-                ) {
+                Surface(shape = RoundedCornerShape(18.dp), color = paper) {
                     RichComposeBody(
                         draft,
                         editable,
                         editorHeight,
                         bodyFocus,
                         { bodyFocused = it },
-                        vm::update,
+                        { edited ->
+                            vm.draft
+                                ?.takeIf { it.id == draft.id }
+                                ?.let {
+                                    vm.update(it.copy(body = edited.body, styles = edited.styles))
+                                }
+                        },
                     ) {
                         vm.showMessage(it)
                     }
@@ -211,53 +208,72 @@ internal fun ComposeEditor(vm: MailViewModel, back: () -> Unit, send: () -> Unit
         }
         // Persistent save failures remain actionable; success stays quiet and compact.
         val saveFailed = vm.saveStatus.contains("失败") || draft.state == SendState.UNCERTAIN
-        Row(
-            Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                vm.saveStatus,
-                Modifier.weight(1f).padding(vertical = 6.dp).semantics {
-                    liveRegion = LiveRegionMode.Polite
-                },
-                fontSize = 11.sp,
-                lineHeight = 15.sp,
-                color = if (saveFailed) colors.error else colors.onSurfaceVariant,
-                maxLines = if (saveFailed) 3 else 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (vm.saveStatus.startsWith("保存失败")) {
-                TextButton(onClick = vm::retrySave, enabled = !vm.busy) { Text("重试保存") }
+        if (!imeVisible || saveFailed)
+            Row(
+                Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    vm.saveStatus,
+                    Modifier.weight(1f).padding(vertical = 6.dp).semantics {
+                        liveRegion = LiveRegionMode.Polite
+                    },
+                    fontSize = 11.sp,
+                    lineHeight = 15.sp,
+                    color = if (saveFailed) colors.error else colors.onSurfaceVariant,
+                    maxLines = if (saveFailed) 3 else 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (vm.saveStatus.startsWith("保存失败")) {
+                    TextButton(onClick = vm::retrySave, enabled = !vm.busy) { Text("重试保存") }
+                }
             }
-        }
         Row(
             Modifier.fillMaxWidth().background(paper).padding(horizontal = 12.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(
-                onClick = { picker.launch(arrayOf("image/*")) },
-                enabled = editable,
-                modifier =
-                    (if (compact) Modifier.weight(1f) else Modifier)
-                        .heightIn(min = 48.dp)
-                        .testTag("compose-photo"),
-            ) {
-                ComposeIcon(R.drawable.ic_compose_photo, null, Modifier.size(21.dp))
-                Spacer(Modifier.width(7.dp))
-                Text("图片", fontSize = 13.sp, lineHeight = 18.sp, maxLines = 1, softWrap = false)
-            }
-            TextButton(
-                onClick = { picker.launch(arrayOf("*/*")) },
-                enabled = editable,
-                modifier =
-                    (if (compact) Modifier.weight(1f) else Modifier)
-                        .heightIn(min = 48.dp)
-                        .testTag("compose-attachment")
-                        .semantics { contentDescription = "附件，合计 25 MB 内" },
-            ) {
-                ComposeIcon(R.drawable.ic_compose_attach, null, Modifier.size(21.dp))
-                Spacer(Modifier.width(7.dp))
-                Text("附件", fontSize = 13.sp, lineHeight = 18.sp, maxLines = 1, softWrap = false)
+            if (compact && imeVisible) {
+                IconButton(
+                    onClick = { picker.launch(arrayOf("image/*")) },
+                    enabled = editable,
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("compose-photo"),
+                ) {
+                    ComposeIcon(R.drawable.ic_compose_photo, "添加图片")
+                }
+                IconButton(
+                    onClick = { picker.launch(arrayOf("*/*")) },
+                    enabled = editable,
+                    modifier =
+                        Modifier.weight(1f).heightIn(min = 48.dp).testTag("compose-attachment"),
+                ) {
+                    ComposeIcon(R.drawable.ic_compose_attach, "添加附件，合计 25 MB 内")
+                }
+            } else {
+                TextButton(
+                    onClick = { picker.launch(arrayOf("image/*")) },
+                    enabled = editable,
+                    modifier =
+                        (if (compact) Modifier.weight(1f) else Modifier)
+                            .heightIn(min = 48.dp)
+                            .testTag("compose-photo"),
+                ) {
+                    ComposeIcon(R.drawable.ic_compose_photo, null, Modifier.size(21.dp))
+                    Spacer(Modifier.width(7.dp))
+                    Text("图片", fontSize = 13.sp, lineHeight = 18.sp, maxLines = 1, softWrap = false)
+                }
+                TextButton(
+                    onClick = { picker.launch(arrayOf("*/*")) },
+                    enabled = editable,
+                    modifier =
+                        (if (compact) Modifier.weight(1f) else Modifier)
+                            .heightIn(min = 48.dp)
+                            .testTag("compose-attachment")
+                            .semantics { contentDescription = "附件，合计 25 MB 内" },
+                ) {
+                    ComposeIcon(R.drawable.ic_compose_attach, null, Modifier.size(21.dp))
+                    Spacer(Modifier.width(7.dp))
+                    Text("附件", fontSize = 13.sp, lineHeight = 18.sp, maxLines = 1, softWrap = false)
+                }
             }
             if (!compact)
                 Text(
@@ -294,8 +310,6 @@ private fun composePaperColors() =
     )
 
 /** Soft fills separate editable areas without drawing a grid around the content. */
-@Composable
-internal fun composerFieldColor() =
-    if (isSystemInDarkTheme()) Color(0xFF222E37) else Color(0xFFF0F5F8)
+@Composable internal fun composerFieldColor() = MaterialTheme.colorScheme.surfaceVariant
 
 @Composable internal fun composerLabelWidth() = maxOf(56f, 48f * LocalDensity.current.fontScale).dp

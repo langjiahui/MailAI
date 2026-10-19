@@ -12,6 +12,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -19,6 +21,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mailai.mobile.R
+import java.util.Locale
 
 @Composable
 internal fun MailCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
@@ -45,13 +48,17 @@ internal fun Brand() {
 @Composable
 internal fun ContactAvatar(name: String, size: androidx.compose.ui.unit.Dp = 40.dp) {
     val palette = listOf(Color(0xFF4288F5), Color(0xFF8A67DF), Color(0xFFF3A13B), Color(0xFF329675))
-    val color = palette[(name.hashCode() and Int.MAX_VALUE) % palette.size]
+    val label = name.trim().trim('"', '\'').ifBlank { "邮" }
+    val color = palette[(label.lowercase(Locale.ROOT).hashCode() and Int.MAX_VALUE) % palette.size]
+    val scale = LocalDensity.current.fontScale
+    val initialSize = (size.value * .44f * minOf(scale, 1.25f) / scale).sp
     Surface(shape = CircleShape, color = color) {
         Box(Modifier.size(size), contentAlignment = Alignment.Center) {
             Text(
-                name.trim().take(1).uppercase().ifBlank { "邮" },
-                fontSize = 18.sp,
-                lineHeight = 20.sp,
+                String(Character.toChars(label.codePointAt(0))).uppercase(Locale.ROOT),
+                fontSize = initialSize,
+                lineHeight = initialSize * 1.15f,
+                maxLines = 1,
                 color = Color.White,
             )
         }
@@ -119,14 +126,16 @@ internal fun MenuRow(
 @Composable
 internal fun FileLabel(name: String, size: Long, modifier: Modifier = Modifier) {
     val extension = name.substringAfterLast('.', "FILE").uppercase().take(4)
+    val dark = MaterialTheme.colorScheme.surface.luminance() < .5f
+    val scale = LocalDensity.current.fontScale
     val badge =
         when (extension) {
-            "PDF" -> Color(0xFFCF4B4B)
+            "PDF" -> if (dark) Color(0xFFFF9C9C) else Color(0xFFB83333)
             "XLS",
             "XLSX",
-            "CSV" -> Color(0xFF23825D)
+            "CSV" -> if (dark) Color(0xFF83DAB1) else Color(0xFF176947)
             "DOC",
-            "DOCX" -> Color(0xFF3778C3)
+            "DOCX" -> if (dark) Color(0xFF9CC8FF) else Color(0xFF2463A5)
             else -> MaterialTheme.colorScheme.primary
         }
     Row(
@@ -138,8 +147,9 @@ internal fun FileLabel(name: String, size: Long, modifier: Modifier = Modifier) 
             Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
                 Text(
                     extension,
-                    fontSize = 10.sp,
-                    lineHeight = 12.sp,
+                    fontSize = (10f / scale).sp,
+                    lineHeight = (12f / scale).sp,
+                    maxLines = 1,
                     fontWeight = FontWeight.Medium,
                     color = badge,
                 )

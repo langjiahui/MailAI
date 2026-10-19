@@ -125,8 +125,10 @@ class InboxRefinementTest {
             capture("03-keyboard")
             compose.onNodeWithTag("inbox-compose").assertDoesNotExist()
             compose.onNodeWithTag("mail-search").performImeAction()
-            compose.onNodeWithTag("inbox-mail-INBOX:1:14").assertIsDisplayed()
-            compose.onNodeWithContentDescription("清除").performClick()
+            compose
+                .onNode(hasText("项目沟通 14") and hasAnyAncestor(hasTestTag("search-results")))
+                .assertIsDisplayed()
+            compose.onNodeWithText("取消").performClick()
             assertEquals("", vm.query)
             compose.onNodeWithTag("inbox-list").performScrollToIndex(15)
             val last = compose.onNodeWithTag("inbox-mail-INBOX:1:14").getUnclippedBoundsInRoot()
@@ -138,7 +140,7 @@ class InboxRefinementTest {
             capture("04-list-bottom")
             compose.onNodeWithTag("inbox-mail-INBOX:1:14").performClick()
             compose.waitUntil(10000) { vm.page == "reader" && !vm.busy }
-            compose.onNodeWithText("‹  收件箱").performClick()
+            compose.onNodeWithContentDescription("返回").performClick()
             compose.onNodeWithTag("inbox-mail-INBOX:1:14").assertIsDisplayed()
             val after = compose.onNodeWithTag("inbox-mail-INBOX:1:14").getUnclippedBoundsInRoot()
             assertEquals(last.top.value, after.top.value, 1f)

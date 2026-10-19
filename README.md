@@ -17,9 +17,9 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 
 上一版更新：v2.8.22：新增邮件多标签：支持单封和多封邮件手动添加、移除标签，按发件人、主题和正文自动打标，规则可先测试匹配再保存，并可应用到历史邮件和导入邮件。标签筛选可与 AI 分类、搜索和风险条件叠加；按邮箱隔离数据，修复并发修改覆盖、保存后刷新失败及批量部分失败重试问题，完善中英文、深浅色、长名称和窄窗口交互。
 
-## Android 开发预览
+## Android
 
-安卓独立客户端 **1.0.1 正式版**：[下载 Android APK](https://github.com/langjiahui/MailAI/releases/download/android-v1.0.1/MailAI-Android-1.0.1.apk)。**1.1.0 正在开发，尚未发布**：按五页设计稿统一阅读、搜索、收件人选择、邮箱文件夹与设置，保留原邮件选字复制，补充星标、回复全部、转发及阅读偏好。Android 与 Web/桌面各自维护版本；历史安装覆盖升级保留数据。[源码、使用范围与验收](mobile/android/README.md)。桌面稳定版下载见下方。
+安卓独立客户端 **1.1.0 正式版**：[下载 Android APK](https://github.com/langjiahui/MailAI/releases/download/android-v1.1.0/MailAI-Android-1.1.0.apk)。统一收件箱、写信、阅读、搜索、收件人选择、文件夹与设置；补充抄送/密送、富文本、星标、回复全部、转发及阅读偏好，完善主题、窄屏、键盘和草稿连续性。Android 与 Web/桌面各自维护版本；历史安装覆盖升级保留数据。[源码、使用范围与验收](mobile/android/README.md)。桌面稳定版下载见下方。
 
 ## 下载 MailAI
 

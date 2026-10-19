@@ -69,6 +69,9 @@ class NotificationRecoveryTest {
             account.id,
             true,
         ) // Catch-up can deliver locally without a test SMTP/IMAP server.
+        // Other synthetic accounts may exist from earlier cases; this case tests local
+        // delivery, not network authentication against their deliberately closed ports.
+        AccountStore(context).all().forEach { prefs.syncResult(it.id, true) }
         MailNotifications.channels(context)
         InstrumentationRegistry.getInstrumentation()
             .uiAutomation
@@ -180,6 +183,10 @@ class NotificationRecoveryTest {
         try {
             scenario.onActivity { vm = ViewModelProvider(it)[MailViewModel::class.java] }
             compose.waitUntil(15000) { vm.ready && !vm.busy }
+            if (vm.account?.id != account.id) {
+                scenario.onActivity { vm.choose(account) }
+                compose.waitUntil(15000) { vm.account?.id == account.id && !vm.busy }
+            }
             val draft = Draft(body = "通知到来时正在编辑")
             repo.store(account).save(draft)
             scenario.onActivity {

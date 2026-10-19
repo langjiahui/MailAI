@@ -1,4 +1,6 @@
-# 写信与收件箱优化交付
+# Android 1.1.0 整体交互验收
+
+原收件箱/写信与阅读/搜索/设置两组改动已整合在 `codex/android-unified-release`，统一使用应用主题，完成跨页联系人、星标、草稿与搜索连接检查。本次按用户最新指示统一发布，版本范围和验收以 [RELEASE.md](RELEASE.md) 与发布附件 verification.json 为准。下方保留此前独立分支的实现与检查记录，其中“未发布”描述的是当时状态。
 
 本变更在独立分支 `codex/android-compose-inbox-finish` 完成，基于 Android 1.0.1 提交 `4b1adb3`，整合原写信与收件箱工作区的未完成界面。未修改原工作区、主线程阅读页分支、Web/桌面代码或历史发布。
 

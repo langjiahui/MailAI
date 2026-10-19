@@ -3,7 +3,6 @@ package com.mailai.mobile.ui
 import android.os.SystemClock
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,6 +15,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
@@ -56,7 +56,7 @@ internal fun RichComposeBody(
     change: (Draft) -> Unit,
     notice: (String) -> Unit,
 ) {
-    val dark = isSystemInDarkTheme()
+    val dark = MaterialTheme.colorScheme.background.luminance() < .5f
     val glyphScale = LocalDensity.current.fontScale
     var savedStart by rememberSaveable(draft.id) { mutableIntStateOf(0) }
     var savedEnd by rememberSaveable(draft.id) { mutableIntStateOf(0) }
@@ -156,7 +156,7 @@ internal fun RichComposeBody(
                                 BodyStyleKind.COLOR -> SpanStyle(color = editorColor(s.value, dark))
                                 BodyStyleKind.LINK ->
                                     SpanStyle(
-                                        color = Color(0xFF176648),
+                                        color = editorColor("#176648", dark),
                                         textDecoration = TextDecoration.Underline,
                                     )
                             },

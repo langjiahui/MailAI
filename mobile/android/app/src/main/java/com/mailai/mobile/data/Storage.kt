@@ -457,6 +457,14 @@ class MailStore(context: Context, id: String) :
     @Synchronized
     fun put(m: MailItem) {
         rememberContacts(m.sender + "," + m.recipients + "," + m.cc)
+        val existingStar =
+            readableDatabase
+                .rawQuery("SELECT payload FROM messages WHERE key=?", arrayOf(m.key))
+                .use {
+                    if (it.moveToFirst()) JSONObject(it.getString(0)).optBoolean("starred", false)
+                    else m.starred
+                }
+        val persisted = m.copy(starred = existingStar)
         writableDatabase
             .insertWithOnConflict(
                 "messages",
@@ -465,7 +473,7 @@ class MailStore(context: Context, id: String) :
                     put("key", m.key)
                     put("folder", m.folder)
                     put("date", m.date)
-                    put("payload", mailJson(m).toString())
+                    put("payload", mailJson(persisted).toString())
                 },
                 SQLiteDatabase.CONFLICT_REPLACE,
             )
@@ -476,7 +484,18 @@ class MailStore(context: Context, id: String) :
     @Synchronized
     fun setStarred(folder: String, key: String, value: Boolean) {
         val current = messages(folder).firstOrNull { it.key == key } ?: error("邮件已不在本地列表，请刷新后重试")
-        put(current.copy(starred = value))
+        check(
+            writableDatabase.update(
+                "messages",
+                ContentValues().apply {
+                    put("payload", mailJson(current.copy(starred = value)).toString())
+                },
+                "key=? AND folder=?",
+                arrayOf(key, folder),
+            ) == 1
+        ) {
+            "星标未保存，请重试"
+        }
     }
 
     @Synchronized

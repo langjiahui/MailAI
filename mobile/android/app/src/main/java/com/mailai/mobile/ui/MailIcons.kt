@@ -10,7 +10,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -57,11 +57,11 @@ internal fun MailIcon(
     tint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
 ) {
     Canvas(modifier.semantics { if (description != null) contentDescription = description }) {
-        scale(
-            size.width / 24f,
-            size.height / 24f,
-            pivot = androidx.compose.ui.geometry.Offset.Zero,
-        ) {
+        val factor = minOf(size.width, size.height) / 24f
+        withTransform({
+            translate((size.width - 24f * factor) / 2f, (size.height - 24f * factor) / 2f)
+            scale(factor, factor, androidx.compose.ui.geometry.Offset.Zero)
+        }) {
             fun path(vararg points: Pair<Float, Float>) {
                 val p = Path()
                 points.forEachIndexed { i, (x, y) ->

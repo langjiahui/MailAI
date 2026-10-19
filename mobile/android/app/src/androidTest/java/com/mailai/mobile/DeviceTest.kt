@@ -238,6 +238,17 @@ class DeviceTest {
             )
         }
         val scenario = ActivityScenario.launch(MainActivity::class.java)
+        lateinit var vm: com.mailai.mobile.ui.MailViewModel
+        scenario.onActivity {
+            vm =
+                androidx.lifecycle
+                    .ViewModelProvider(it)[com.mailai.mobile.ui.MailViewModel::class.java]
+        }
+        compose.waitUntil(15000) { vm.ready && !vm.busy }
+        if (vm.account?.id != a.id) {
+            scenario.onActivity { vm.choose(a) }
+            compose.waitUntil(15000) { vm.account?.id == a.id && !vm.busy }
+        }
         try {
             compose.waitUntil(15000) {
                 compose.onAllNodesWithText("周末出发的行程安排").fetchSemanticsNodes().isNotEmpty()

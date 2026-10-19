@@ -306,8 +306,18 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
         val currentFolder = folder
         val result =
             withContext(Dispatchers.IO) {
+                val store = repo.store(a)
+                val legacy = ReadingPreferences(getApplication())
+                // One-time import of stars created by earlier development builds.
+                store
+                    .messages(currentFolder)
+                    .filter { it.key in legacy.stars(a.id) }
+                    .forEach {
+                        store.setStarred(currentFolder, it.key, true)
+                        legacy.star(a.id, it.key, false)
+                    }
                 Triple(
-                    repo.store(a).messages(currentFolder),
+                    store.messages(currentFolder),
                     repo.store(a).drafts(),
                     repo.store(a).contacts() to repo.store(a).cachedFolders(),
                 )
@@ -315,7 +325,12 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
         if (account?.id == a.id && folder == currentFolder) {
             mails = result.first
             drafts = result.second
-            stars = ReadingPreferences(getApplication()).stars(a.id)
+            stars = mails.filter { it.starred }.map { it.key }.toSet()
+            selected?.let { current ->
+                mails
+                    .find { it.key == current.key }
+                    ?.let { cached -> selected = current.copy(starred = cached.starred) }
+            }
             folders = (folders + result.third.second + currentFolder).distinct()
             contacts = result.third.first.filterNot { it.email.equals(a.email, true) }
         }
@@ -464,18 +479,22 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
         selected = null
         filter = MailFilter.ALL
         page = "inbox"
-        viewModelScope.launch {
-            loadCache()
-            refresh()
-        }
+        // Mark the account transition busy before reading its cache. A fast tap must not
+        // start composing against an account whose delayed refresh is about to take over.
+        refresh(localFirst = true)
     }
 
-    fun refresh(more: Boolean = false) {
+    fun refresh(more: Boolean = false, localFirst: Boolean = false) {
+        if (busy) return
         val a = account ?: return
         if (more) limit += 50
         val box = folder
         val count = limit
-        run("正在同步邮件…", again = { refresh() }, network = true) { token, progress ->
+        run("正在同步邮件…", again = { refresh(localFirst = localFirst) }, network = true) {
+            token,
+            progress ->
+            if (localFirst) loadCache()
+            token.check()
             requireOnline()
             repo.sync(a, box, count, token)
             token.check()
@@ -515,19 +534,18 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
     fun toggleStar(item: MailItem) {
         val a = account ?: return
         if (busy || item.key in starPending) return
+        val value = item.key !in stars
         starPending = starPending + item.key
         viewModelScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    repo.store(a).setStarred(item.folder, item.key, !item.starred)
+                    repo.store(a).setStarred(item.folder, item.key, value)
                 }
                 if (account?.id == a.id) {
-                    mails =
-                        mails.map {
-                            if (it.key == item.key) it.copy(starred = !item.starred) else it
-                        }
-                    if (selected?.key == item.key)
-                        selected = selected?.copy(starred = !item.starred)
+                    stars = if (value) stars + item.key else stars - item.key
+                    mails = mails.map { if (it.key == item.key) it.copy(starred = value) else it }
+                    if (selected?.key == item.key) selected = selected?.copy(starred = value)
+                    _feedback.tryEmit(Unit)
                 }
             } catch (_: Exception) {
                 showMessage("星标未保存，请重试", true)
@@ -623,27 +641,6 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
             status = e.message.orEmpty()
             error = true
             return false
-        }
-    }
-
-    private val starWrites = mutableSetOf<String>()
-
-    fun toggleStar(mail: MailItem) {
-        val a = account ?: return
-        if (!starWrites.add(a.id + mail.key)) return
-        val value = mail.key !in stars
-        viewModelScope.launch {
-            try {
-                withContext(Dispatchers.IO) {
-                    ReadingPreferences(getApplication()).star(a.id, mail.key, value)
-                }
-                if (account?.id == a.id) stars = if (value) stars + mail.key else stars - mail.key
-                _feedback.tryEmit(Unit)
-            } catch (_: Exception) {
-                showMessage("星标未能保存，请重试", true)
-            } finally {
-                starWrites.remove(a.id + mail.key)
-            }
         }
     }
 

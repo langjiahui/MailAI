@@ -300,11 +300,12 @@ internal fun RecipientEditor(
             else -> "收件人"
         }
     fun change(value: String) {
+        val current = vm.draft?.takeIf { it.id == draft.id } ?: return
         vm.update(
             when (field) {
-                "cc" -> draft.copy(cc = value)
-                "bcc" -> draft.copy(bcc = value)
-                else -> draft.copy(to = value)
+                "cc" -> current.copy(cc = value)
+                "bcc" -> current.copy(bcc = value)
+                else -> current.copy(to = value)
             }
         )
     }

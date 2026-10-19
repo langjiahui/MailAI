@@ -158,7 +158,12 @@ internal fun AddContactDialog(vm: MailViewModel, close: () -> Unit) {
 }
 
 @Composable
-internal fun ContactPicker(vm: MailViewModel, selectedRaw: String, field: String = "to", close: () -> Unit) {
+internal fun ContactPicker(
+    vm: MailViewModel,
+    selectedRaw: String,
+    field: String = "to",
+    close: () -> Unit,
+) {
     var query by rememberSaveable { mutableStateOf("") }
     var selected by rememberSaveable { mutableStateOf(emptyList<String>()) }
     val context = LocalContext.current
@@ -188,7 +193,8 @@ internal fun ContactPicker(vm: MailViewModel, selectedRaw: String, field: String
                                     val email = c.getString(0).orEmpty()
                                     val name = c.getString(1).orEmpty()
                                     require(MimeCodec.addresses(email).size == 1)
-                                    if (vm.addRecipients(listOf(MailContact(email, name)), field)) close()
+                                    if (vm.addRecipients(listOf(MailContact(email, name)), field))
+                                        close()
                                 }
                             }
                     }
@@ -208,12 +214,20 @@ internal fun ContactPicker(vm: MailViewModel, selectedRaw: String, field: String
             Column(
                 Modifier.fillMaxSize().safeDrawingPadding().imePadding().testTag("contact-picker")
             ) {
-                PageHeader(if (LocalDensity.current.fontScale > 1.5f) "收件人" else "选择收件人", close) {
+                PageHeader(
+                    when (field) {
+                        "cc" -> "选择抄送"
+                        "bcc" -> "选择密送"
+                        else -> if (LocalDensity.current.fontScale > 1.5f) "收件人" else "选择收件人"
+                    },
+                    close,
+                ) {
                     Button(
                         onClick = {
                             if (
                                 vm.addRecipients(
-                                    vm.contacts.filter { it.email.lowercase() in selected }
+                                    vm.contacts.filter { it.email.lowercase() in selected },
+                                    field,
                                 )
                             )
                                 close()
