@@ -387,6 +387,7 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
     }
 
     fun go(target: String) {
+        if (target == page) return
         if (!busy) dismissStatus()
         if (target == "add") editingAccount = null
         if (busy) {
@@ -403,6 +404,11 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
 
     fun choose(a: Account, box: String = "INBOX") {
         if (busy) return
+        if (a.id == account?.id && box == folder) {
+            go("inbox")
+            if (online) refresh()
+            return
+        }
         account = a
         folder = box
         limit = 50
@@ -458,6 +464,7 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
     }
 
     fun read(item: MailItem) {
+        if (busy || (page == "reader" && selected?.key == item.key)) return
         selected = item
         page = "reader"
         fetchBody()
@@ -466,6 +473,11 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
     fun fetchBody() {
         val a = account ?: return
         val item = selected ?: return
+        // Cached, already-read mail needs no network operation or transient loading banner.
+        if (item.body != null && (!item.unread || !online)) {
+            dismissStatus()
+            return
+        }
         run(
             if (item.body == null) "正在读取正文…" else "正在更新已读状态…",
             again = { fetchBody() },
@@ -492,7 +504,7 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
     }
 
     fun compose(reply: Boolean = false) {
-        if (busy) return
+        if (busy || page == "compose") return
         dismissStatus()
         val a = account ?: return
         val m = selected

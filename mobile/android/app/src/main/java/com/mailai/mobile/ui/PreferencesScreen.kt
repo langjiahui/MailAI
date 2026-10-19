@@ -11,7 +11,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -132,13 +131,13 @@ internal fun PreferencesScreen(vm: MailViewModel) {
         }
         Column(
             Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 22.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Column {
-                Text("通知与更新", fontSize = 28.sp, fontWeight = FontWeight.Medium)
+                Text("通知与更新", fontSize = 26.sp, fontWeight = FontWeight.Medium)
                 Text(
                     "按你的节奏，保持连接",
-                    Modifier.padding(top = 8.dp),
+                    Modifier.padding(top = 6.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -378,12 +377,12 @@ internal fun PreferencesScreen(vm: MailViewModel) {
 
 @Composable
 private fun SettingsCard(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+    MailCard {
         Column(
-            Modifier.fillMaxWidth().padding(18.dp),
+            Modifier.fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(title, fontSize = 17.sp, fontWeight = FontWeight.Medium)
+            Text(title, fontSize = 16.sp, fontWeight = FontWeight.Medium)
             content()
         }
     }
@@ -398,7 +397,7 @@ private fun SettingToggle(
 ) {
     Row(
         Modifier.fillMaxWidth()
-            .heightIn(min = 64.dp)
+            .heightIn(min = 56.dp)
             .toggleable(value, role = Role.Switch, onValueChange = change),
         verticalAlignment = Alignment.CenterVertically,
     ) {
