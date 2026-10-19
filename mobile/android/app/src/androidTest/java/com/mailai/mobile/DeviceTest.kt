@@ -93,6 +93,13 @@ class DeviceTest {
 
     @Test
     fun notificationIsPrivateAndOpensExactMail() {
+        // This case exercises an already-posted notification. Keep other synthetic accounts'
+        // workers from replacing its generic private title while the system shade is open.
+        val prefs = com.mailai.mobile.background.AppPreferences(context)
+        val wasBackground = prefs.background
+        prefs.background = false
+        androidx.work.WorkManager.getInstance(context).cancelAllWork().result.get()
+        context.getSystemService(android.app.NotificationManager::class.java).cancelAll()
         val a =
             Account(
                 id = "23b057cd-65b1-437f-abf9-5d29fa101a01",
@@ -195,6 +202,8 @@ class DeviceTest {
             }
             scenario.close()
             manager.cancel("mail.${a.id}", 1)
+            prefs.background = wasBackground
+            com.mailai.mobile.background.BackgroundSchedule.configure(context)
         }
     }
 
