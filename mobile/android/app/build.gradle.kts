@@ -11,7 +11,7 @@ android {
         applicationId = "com.mailai.mobile"
         minSdk = 29
         targetSdk = 35
-        versionCode = providers.gradleProperty("androidVersionCode").orElse("2100008").get().toInt()
+        versionCode = providers.gradleProperty("androidVersionCode").orElse("2100009").get().toInt()
         versionName = providers.gradleProperty("androidVersionName").orElse(rootProject.file("VERSION").readText().trim()).get()
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

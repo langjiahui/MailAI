@@ -1,8 +1,8 @@
 # MailAI Android 测试版
 
-当前 Android 版本：**2.10.0-beta.8**（versionCode **2100008**），最低 Android 10。
+当前 Android 版本：**2.10.0-beta.9**（versionCode **2100009**），最低 Android 10。
 
-[下载安装包](https://github.com/langjiahui/MailAI/releases/download/android-v2.10.0-beta.8/MailAI-Android-2.10.0-beta.8.apk) · [发布说明](https://github.com/langjiahui/MailAI/releases/tag/android-v2.10.0-beta.8)
+[下载安装包](https://github.com/langjiahui/MailAI/releases/download/android-v2.10.0-beta.9/MailAI-Android-2.10.0-beta.9.apk) · [发布说明](https://github.com/langjiahui/MailAI/releases/tag/android-v2.10.0-beta.9)
 
 Kotlin + Jetpack Compose 原生客户端。手机直接通过 IMAP/SMTP 连接邮箱，电脑关机后仍可工作，不需要桌面服务或 Google Play 服务。设计遵循简洁图形、原生按压反馈、清楚的等待与恢复状态。
 
@@ -62,6 +62,13 @@ python3 scripts/build_distribution.py  # 使用仓库外的固定签名配置
 
 每次发布先核对最近正式版本和 Android 测试版本，按 CONTRIBUTING 判断版本变化，保持 Android VERSION、README、标签与 APK 元数据一致。运行仓库既有门禁及 Android 测试；固定签名构建，生成 `mailai-android-update.json` 与 SHA256SUMS，发布为 GitHub **Pre-release**，不替换桌面 Latest 或历史安装包。具体记录见 [本次发布说明](RELEASE.md)。
 
+## beta.9 日常操作路径优化
+
+- 回复时保存或放弃草稿后回到原邮件；从草稿记录进入编辑时回到草稿列表。恢复写信状态时保留来源标识，原邮件已不在本地缓存则回到收件箱，避免空白阅读页。
+- 搜索框提供清除入口；无匹配邮件与无未读邮件分别说明，并可一键恢复全部邮件。变更搜索或筛选后回到列表开头，普通阅读返回仍保留位置。
+- 同步成功、草稿保存/移除、附件添加等普通完成提示在 4 秒后自动收起；失败、取消、发送结果待确认等需要处理的状态持续保留。
+- 保留原有发送确认、自动保存、失败重试与不确定发送保护，不自动重发邮件。
+
 ## beta.8 七页界面与页面过渡
 
 按确认的七页设计调整邮箱连接、邮箱总览、收件箱、阅读、写信、草稿与发送记录、通知与更新。内容页不设独占一行的品牌 Logo；邮箱总览沿用原版玻璃 M。统一柔和底色、紧凑分组卡片、输入框、附件块和主要操作。
@@ -95,7 +102,7 @@ python3 scripts/build_distribution.py  # 使用仓库外的固定签名配置
 ## 验收
 
 - JVM：42 项通过，包含 TLS/STARTTLS、中文附件往返、错误证书/域名、发送确认丢失、账号隔离、草稿重开、v1→v2 无损迁移、通知基准/去重/重启、更新清单安全和取消阻塞操作。
-- Android 15 AOSP ARM64：17 项设备测试，覆盖 Keystore、附件副本、草稿恢复、真实系统通知栏点击与隐私、偏好恢复/检查反馈、后台任务失败保留草稿，以及窄屏/大字号、真实键盘焦点与长正文可见性、快速取消与重试。新增七页原生截图、转场中间帧、返回列表位置和连续导航回归；以本次发布验收记录为最终执行结果。
+- Android 15 AOSP ARM64：22 项设备测试，覆盖 Keystore、附件副本、草稿恢复、真实系统通知栏点击与隐私、偏好恢复/检查反馈、后台任务失败保留草稿，以及窄屏/大字号、真实键盘焦点与长正文可见性、快速取消与重试。新增七页原生截图、转场中间帧、返回列表位置和连续导航回归；以本次发布验收记录为最终执行结果。
 - 项目既有离线发布门禁：244/244 通过（项目 `.venv-build` 环境）。
 - 实体机、真实邮箱、厂商后台保活仍需测试；不把模拟器验收等同所有设备稳定性。
 

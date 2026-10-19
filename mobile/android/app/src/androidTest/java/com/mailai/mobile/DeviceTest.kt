@@ -250,6 +250,8 @@ class DeviceTest {
             compose.onNodeWithText("收到，周五前我会确认。").assertExists()
             compose.onNodeWithText("‹  返回").performClick()
             compose.onNodeWithText("保存并返回").performClick()
+            compose.onNodeWithText("回复").assertExists()
+            compose.onNodeWithText("‹  收件箱").performClick()
             compose.waitUntil(10000) {
                 compose.onAllNodesWithText("‹  邮箱").fetchSemanticsNodes().isNotEmpty()
             }

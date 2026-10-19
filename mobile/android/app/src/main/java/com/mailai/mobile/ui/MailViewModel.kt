@@ -95,6 +95,15 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
     private val saves = Mutex()
     private val notificationRoutes = Mutex()
     private var latestSave: Job? = null
+    private var composerOrigin = savedState.get<String>("composerOrigin") ?: "inbox"
+
+    private fun setComposerOrigin(value: String) {
+        composerOrigin = value
+        savedState["composerOrigin"] = value
+    }
+
+    private fun composerDestination() =
+        if (composerOrigin == "reader" && selected == null) "inbox" else composerOrigin
 
     init {
         viewModelScope.launch { connection.online.collect { online = it } }
@@ -118,6 +127,8 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
                                 }
                             if (restored != null) {
                                 draft = restored
+                                if (composerOrigin == "reader")
+                                    selected = mails.find { it.key == location.getOrNull(4) }
                                 page = "compose"
                                 saveStatus = draftStatus(restored)
                             }
@@ -517,12 +528,15 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
                     replyId = m.messageId,
                 )
             else Draft()
+        setComposerOrigin(if (reply && page == "reader") "reader" else "inbox")
         draft = d
         page = "compose"
         save(d, a)
     }
 
     fun openDraft(d: Draft) {
+        if (busy) return
+        setComposerOrigin("drafts")
         dismissStatus()
         draft = d
         page = "compose"
@@ -586,7 +600,7 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
             saves.withLock { withContext(Dispatchers.IO) { repo.store(a).save(d) } }
             saveStatus = "草稿已保存在此设备"
             loadCache()
-            page = "inbox"
+            page = composerDestination()
             status = "草稿已保存，可从邮箱 → 草稿继续编辑"
             _feedback.tryEmit(Unit)
         }
@@ -599,7 +613,7 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
             latestSave?.join()
             saves.withLock { withContext(Dispatchers.IO) { repo.store(a).discard(d.id) } }
             draft = null
-            page = "inbox"
+            page = composerDestination()
             loadCache()
             status = "草稿已移除"
         }

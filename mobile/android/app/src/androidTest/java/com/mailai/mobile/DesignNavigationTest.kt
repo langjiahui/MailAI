@@ -146,7 +146,8 @@ class DesignNavigationTest {
             device.pressBack()
             compose.onNodeWithText("‹  返回").performClick()
             compose.onNodeWithText("保存并返回").performClick()
-            compose.waitUntil(10000) { vm.page == "inbox" && !vm.busy }
+            compose.waitUntil(10000) { vm.page == "reader" && !vm.busy }
+            compose.onNodeWithText("‹  收件箱").performClick()
             compose.onNodeWithText("‹  邮箱").performClick()
             capture("02-mailboxes")
             compose.onNodeWithText("草稿与发送记录").performScrollTo().performClick()

@@ -50,6 +50,7 @@ import com.mailai.mobile.R
 import com.mailai.mobile.data.*
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlinx.coroutines.delay
 
 private val Light =
     lightColorScheme(
@@ -110,6 +111,19 @@ fun MailScreen(vm: MailViewModel, open: (Account, Attachment, Boolean) -> Unit) 
             // Keep actions and feedback visible when a submitted form starts network work.
             focus.clearFocus()
             keyboard?.hide()
+        }
+        // Only routine success feedback expires; recovery and uncertain-send messages stay.
+        LaunchedEffect(vm.status, vm.busy, vm.error, vm.page) {
+            val message = vm.status
+            if (
+                !vm.busy &&
+                    !vm.error &&
+                    listOf("邮件已更新", "邮箱已添加，邮件已更新", "草稿已保存", "草稿已移除", "附件已添加")
+                        .any(message::startsWith)
+            ) {
+                delay(4000)
+                if (vm.status == message && !vm.busy && !vm.error) vm.dismissStatus()
+            }
         }
         val lifecycle = LocalLifecycleOwner.current.lifecycle
         LaunchedEffect(vm, lifecycle) {
@@ -436,6 +450,15 @@ private fun boxName(value: String) = if (value.equals("INBOX", true)) "收件箱
 
 @Composable
 private fun Inbox(vm: MailViewModel, listState: LazyListState) {
+    var previousQuery by rememberSaveable { mutableStateOf(vm.query) }
+    var previousUnread by rememberSaveable { mutableStateOf(vm.unreadOnly) }
+    LaunchedEffect(vm.query, vm.unreadOnly) {
+        if (previousQuery != vm.query || previousUnread != vm.unreadOnly) {
+            previousQuery = vm.query
+            previousUnread = vm.unreadOnly
+            listState.scrollToItem(0)
+        }
+    }
     Column(Modifier.fillMaxSize()) {
         Nav("邮箱", { vm.go("boxes") }, !vm.busy) {
             TextButton(onClick = { vm.refresh() }, enabled = !vm.busy && vm.account != null) {
@@ -495,10 +518,34 @@ private fun Inbox(vm: MailViewModel, listState: LazyListState) {
             }
             if (list.isEmpty())
                 item {
+                    val filtered = vm.query.isNotBlank() || vm.unreadOnly
                     Empty(
-                        if (vm.busy) "正在收取邮件…" else "暂无邮件",
-                        if (vm.query.isNotBlank()) "没有匹配的本地邮件" else "点击刷新收取邮件；离线时仍可查看已有缓存。",
+                        when {
+                            vm.query.isNotBlank() -> "没有匹配的邮件"
+                            vm.unreadOnly -> "暂无未读邮件"
+                            vm.busy -> "正在收取邮件…"
+                            else -> "暂无邮件"
+                        },
+                        when {
+                            vm.query.isNotBlank() -> "搜索范围是此设备已缓存的邮件"
+                            vm.unreadOnly -> "可以查看全部邮件，或刷新检查新邮件。"
+                            else -> "点击刷新收取邮件；离线时仍可查看已有缓存。"
+                        },
                     )
+                    if (filtered)
+                        TextButton(
+                            onClick = {
+                                vm.query = ""
+                                vm.unreadOnly = false
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("查看全部邮件")
+                        }
+                    else if (!vm.busy && vm.account == null)
+                        TextButton(onClick = { vm.go("add") }, modifier = Modifier.fillMaxWidth()) {
+                            Text("添加邮箱")
+                        }
                 }
             items(list, key = { it.key }) { mail ->
                 Column(
@@ -583,7 +630,11 @@ private fun Inbox(vm: MailViewModel, listState: LazyListState) {
                 keyboardActions =
                     KeyboardActions(onSearch = { defaultKeyboardAction(ImeAction.Done) }),
                 singleLine = true,
-                modifier = Modifier.weight(1f),
+                trailingIcon =
+                    if (vm.query.isNotEmpty()) {
+                        { TextButton(onClick = { vm.query = "" }) { Text("清除", fontSize = 12.sp) } }
+                    } else null,
+                modifier = Modifier.weight(1f).testTag("mail-search"),
                 shape = RoundedCornerShape(14.dp),
                 colors =
                     TextFieldDefaults.colors(
