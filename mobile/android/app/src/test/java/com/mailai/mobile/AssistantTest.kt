@@ -303,6 +303,11 @@ class AssistantTest {
             .File(context.filesDir, "assistant-settings.json")
             .writeText(cipher.encrypt(old.toString()))
         assertEquals(config, store.read())
+        old.put("endpoint", "https://api.kimi.com/coding/v1")
+        java.io
+            .File(context.filesDir, "assistant-settings.json")
+            .writeText(cipher.encrypt(old.toString()))
+        assertEquals(AssistantProviders.get("kimi_code").endpoint, store.read()!!.endpoint)
         store.save(config.copy(provider = "other"))
         assertEquals("other", store.read()!!.provider)
     }
@@ -338,7 +343,14 @@ class AssistantTest {
                             assertEquals(1600, body.getInt("max_completion_tokens"))
                             assertEquals("low", body.getString("reasoning_effort"))
                         }
-                        "kimi-for-coding" -> assertEquals("low", body.getString("reasoning_effort"))
+                        "kimi-for-coding" -> {
+                            assertEquals(4096, body.getInt("max_tokens"))
+                            assertFalse(body.has("temperature"))
+                            assertFalse(body.has("reasoning_effort"))
+                            assertTrue(
+                                body.getJSONObject("stream_options").getBoolean("include_usage")
+                            )
+                        }
                         else -> {
                             assertFalse(body.has("thinking"))
                             assertFalse(body.has("reasoning_effort"))
@@ -394,5 +406,69 @@ class AssistantTest {
                 )
                 .contains("额度不足")
         )
+    }
+
+    @Test
+    fun kimiCodeActualRequestMatchesTheWebContractIncludingLegacyBaseAddresses() {
+        val fixture =
+            JSONObject(
+                javaClass.classLoader!!
+                    .getResourceAsStream("kimi-code-web-contract.json")!!
+                    .bufferedReader()
+                    .readText()
+            )
+        val expected = fixture.getJSONObject("body")
+        val client =
+            OkHttpClient.Builder()
+                .addInterceptor { chain ->
+                    val request = chain.request()
+                    assertEquals(fixture.getString("endpoint"), request.url.toString())
+                    assertEquals("text/event-stream", request.header("Accept"))
+                    val buffer = Buffer()
+                    request.body!!.writeTo(buffer)
+                    val actual = JSONObject(buffer.readUtf8())
+                    assertEquals(
+                        expected.keys().asSequence().toSet(),
+                        actual.keys().asSequence().toSet(),
+                    )
+                    for (name in expected.keys()) assertEquals(
+                        name,
+                        expected.get(name).toString(),
+                        actual.get(name).toString(),
+                    )
+                    Response.Builder()
+                        .request(request)
+                        .protocol(Protocol.HTTP_1_1)
+                        .code(200)
+                        .message("OK")
+                        .body(
+                            """{"choices":[{"finish_reason":"stop","message":{"content":[{"type":"reasoning","text":"hidden"},{"type":"output_text","text":"OK"}]}}]}"""
+                                .toResponseBody()
+                        )
+                        .build()
+                }
+                .build()
+        try {
+            assertEquals(
+                "OK",
+                AssistantClient(null, client).generate(
+                    config.copy(
+                        endpoint = "https://api.kimi.com/coding/v1",
+                        model = "kimi-for-coding",
+                    ),
+                    expected.getJSONArray("messages"),
+                    AssistantCall(),
+                ) {},
+            )
+            val packet =
+                """data: {"choices":[{"message":{"content":[{"type":"reasoning","text":"hidden"},{"type":"text","text":"可见文字"}]},"finish_reason":"stop"}]}""" +
+                    "\n\ndata: [DONE]\n\n"
+            assertEquals(
+                "可见文字",
+                AssistantStream.read(Buffer().writeUtf8(packet), AssistantCall()) {},
+            )
+        } finally {
+            client.dispatcher.executorService.shutdown()
+        }
     }
 }

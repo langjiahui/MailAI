@@ -55,7 +55,9 @@ internal object AssistantProviders {
     fun get(id: String) = all.firstOrNull { it.id == id } ?: all.first { it.id == "other" }
 
     fun detect(endpoint: String): AssistantProvider? =
-        all.firstOrNull { it.preset && it.endpoint == endpoint.trim().trimEnd('/') }
+        all.firstOrNull {
+            it.preset && it.endpoint == runCatching { completionEndpoint(endpoint) }.getOrNull()
+        }
 
     fun completionEndpoint(value: String): String {
         val url = AssistantConfig(endpoint = value.trim()).url()
@@ -81,8 +83,19 @@ internal object AssistantProviders {
                 .put("model", config.model)
                 .put("messages", messages)
                 .put("stream", true)
-                .put("max_tokens", 1600)
-        when (detect(config.endpoint)?.id) {
+                .put(
+                    "max_tokens",
+                    if (
+                        detect(config.endpoint)?.id == "kimi_code" ||
+                            config.model.startsWith("kimi-for-coding")
+                    )
+                        4096
+                    else 1600,
+                )
+        val provider = detect(config.endpoint)?.id
+        if (provider in setOf("deepseek", "kimi", "kimi_code"))
+            body.put("stream_options", JSONObject().put("include_usage", true))
+        when (provider) {
             "deepseek" -> body.put("thinking", JSONObject().put("type", "disabled"))
             "kimi" ->
                 if (config.model.startsWith("kimi-k2.")) {
@@ -91,7 +104,8 @@ internal object AssistantProviders {
                     body.remove("max_tokens")
                     body.put("max_completion_tokens", 1600).put("reasoning_effort", "low")
                 }
-            "kimi_code" -> body.put("reasoning_effort", "low")
+            // Match Web: no temperature / reasoning_effort override for the coding subscription.
+            "kimi_code" -> Unit
         }
         return body
     }

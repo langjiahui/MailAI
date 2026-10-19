@@ -522,7 +522,7 @@ private fun AssistantSettingsForm(a: AssistantController) {
     )
     if (providerId == "kimi_code")
         Text(
-            "Kimi Code 使用编程订阅 Key，可能限制客户端。邮件应用建议选择 Kimi 开放平台，两类 Key 不能混用。",
+            "这里使用 Kimi Code 编程订阅 Key，与 Kimi 开放平台 Key 不通用。",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

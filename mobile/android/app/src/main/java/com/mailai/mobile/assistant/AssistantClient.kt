@@ -11,6 +11,7 @@ import java.net.InetAddress
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import okhttp3.*
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import okio.BufferedSource
@@ -59,7 +60,7 @@ internal class AssistantClient(
         progress: (String) -> Unit,
     ): String {
         config.validate()
-        val url = config.url()
+        val url = AssistantProviders.completionEndpoint(config.endpoint).toHttpUrl()
         val builder =
             (testClient ?: OkHttpClient())
                 .newBuilder()
@@ -67,7 +68,10 @@ internal class AssistantClient(
                 .followSslRedirects(false)
                 .retryOnConnectionFailure(false)
                 .connectTimeout(15, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(
+                    if (AssistantProviders.detect(config.endpoint)?.id == "kimi_code") 90 else 30,
+                    TimeUnit.SECONDS,
+                )
                 .callTimeout(90, TimeUnit.SECONDS)
                 .connectionPool(ConnectionPool(0, 1, TimeUnit.SECONDS))
         val pin = Operation()
@@ -106,7 +110,7 @@ internal class AssistantClient(
             Request.Builder()
                 .url(url)
                 .header("Authorization", "Bearer ${config.key}")
-                .header("Accept", "text/event-stream, application/json")
+                .header("Accept", "text/event-stream")
                 .header("User-Agent", "MailAI-Android/${BuildConfig.VERSION_NAME}")
                 .post(body.toRequestBody("application/json; charset=utf-8".toMediaType()))
                 .build()
@@ -133,7 +137,8 @@ internal class AssistantClient(
                     val choice = JSONObject(raw).optJSONArray("choices")?.optJSONObject(0)
                     if (choice?.optString("finish_reason") != "stop")
                         throw AssistantFailure("结果未完整返回，请重试；原稿未改动")
-                    val text = choice.optJSONObject("message")?.optString("content").orEmpty()
+                    val text =
+                        AssistantContent.text(choice.optJSONObject("message")?.opt("content"))
                     if (text.isBlank() || text.length > 32000)
                         throw AssistantFailure("服务未返回可用文字，请重试")
                     progress(text)
@@ -183,8 +188,8 @@ internal object AssistantStream {
             val choice = j.optJSONArray("choices")?.optJSONObject(0) ?: return
             val delta = choice.optJSONObject("delta")
             if (delta?.has("tool_calls") == true) throw AssistantFailure("此任务只支持文字结果，请检查模型配置")
-            val content = delta?.opt("content")
-            if (content is String) text.append(content)
+            val content = delta?.opt("content") ?: choice.optJSONObject("message")?.opt("content")
+            text.append(AssistantContent.text(content))
             if (text.length > 32000) throw AssistantFailure("结果较长，已停止；请缩小处理范围")
             when (choice.optString("finish_reason")) {
                 "stop" -> stopped = true
@@ -219,4 +224,25 @@ internal object AssistantStream {
         progress(text.toString())
         return text.toString()
     }
+}
+
+/** Match Web content_text: typed reasoning blocks are metadata, never visible result text. */
+internal object AssistantContent {
+    fun text(value: Any?): String =
+        when (value) {
+            is String -> value
+            is JSONArray ->
+                buildString {
+                    for (i in 0 until value.length()) {
+                        val block = value.optJSONObject(i) ?: continue
+                        if (block.optString("type", "text") in setOf("text", "output_text"))
+                            append(
+                                block.opt("text") as? String
+                                    ?: block.opt("content") as? String
+                                    ?: ""
+                            )
+                    }
+                }
+            else -> ""
+        }
 }

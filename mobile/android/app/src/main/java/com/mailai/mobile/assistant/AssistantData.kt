@@ -73,7 +73,7 @@ internal class AssistantSettings(
                 cipher.decrypt(file.openRead().use { it.readBytes().toString(Charsets.UTF_8) })
             )
         return AssistantConfig(
-            j.getString("endpoint"),
+            AssistantProviders.completionEndpoint(j.getString("endpoint")),
             j.getString("model"),
             j.getString("key"),
             j.optBoolean("private"),

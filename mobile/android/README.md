@@ -85,4 +85,4 @@ python3 scripts/build_distribution.py
 
 源码分为 data、mail、ui、background、update；JVM 测试检查协议、MIME、联系人、HTML、存储迁移和更新策略；设备测试覆盖实际 HTML 渲染、联系人选择、气泡布局、草稿、网络、通知、升级和键盘。测试仅使用合成数据，最终数量与结果见发布附件 verification.json。
 
-小邮模型设置提供 DeepSeek、Kimi、Kimi Code、自部署、通用 API 预设和模型选择；默认地址／模型自动填好。测试连接仅由用户点击触发，支持取消，不带邮件正文，不自动替换已保存配置；保存本身不代表连接已通过。Kimi Code 订阅受服务商客户端权限限制，产品集成建议使用 Kimi 开放平台 Key。
+小邮模型设置提供 DeepSeek、Kimi、Kimi Code、自部署、通用 API 预设和模型选择；默认地址／模型自动填好。测试连接仅由用户点击触发，支持取消，不带邮件正文，不自动替换已保存配置；保存本身不代表连接已通过。Kimi Code 与 Web 使用同样的接口路径、输出预算和流式参数；两种 Kimi 服务的 Key 不通用。
