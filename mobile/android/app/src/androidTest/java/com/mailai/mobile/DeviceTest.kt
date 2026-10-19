@@ -145,9 +145,9 @@ class DeviceTest {
                     .ViewModelProvider(it)[com.mailai.mobile.ui.MailViewModel::class.java]
                     .go("boxes")
             }
-            compose.onNodeWithText("通知与更新").performScrollTo().performClick()
+            compose.onNodeWithText("账号与设置").performScrollTo().performClick()
             compose.waitUntil(15000) {
-                compose.onAllNodesWithText("按你的节奏，保持连接").fetchSemanticsNodes().isNotEmpty()
+                compose.onAllNodesWithText("账号与设置").fetchSemanticsNodes().isNotEmpty()
             }
             val device =
                 androidx.test.uiautomator.UiDevice.getInstance(
@@ -185,12 +185,17 @@ class DeviceTest {
         val scenario = ActivityScenario.launch<MainActivity>(intent)
         try {
             compose.waitUntil(15000) {
-                compose.onAllNodesWithText("按你的节奏，保持连接").fetchSemanticsNodes().isNotEmpty()
+                compose.onAllNodesWithText("账号与设置").fetchSemanticsNodes().isNotEmpty()
             }
-            compose.onNodeWithText("30 分钟").performScrollTo().performClick()
+            compose.onNodeWithText("完成").performClick()
+            compose.onNodeWithText("邮件同步频率").performScrollTo().performClick()
+            compose.onNode(hasText("30 分钟") and isSelectable()).performClick()
             assertEquals(30, com.mailai.mobile.background.AppPreferences(context).interval)
             scenario.recreate()
-            compose.onNodeWithText("30 分钟").assertIsSelected()
+            compose.onNodeWithText("邮件同步频率").performScrollTo().performClick()
+            compose.onNode(hasText("30 分钟") and isSelected()).assertExists()
+            compose.onNodeWithText("完成").performClick()
+            compose.onNodeWithText("应用更新").performScrollTo().performClick()
             compose.onNodeWithText("检查更新").performScrollTo().performClick()
             compose.waitUntil(10000) {
                 compose.onAllNodesWithText("正在检查更新…").fetchSemanticsNodes().isNotEmpty()
@@ -251,11 +256,11 @@ class DeviceTest {
             compose.onNodeWithText("‹  返回").performClick()
             compose.onNodeWithText("保存并返回").performClick()
             compose.onNodeWithText("回复").assertExists()
-            compose.onNodeWithText("‹  收件箱").performClick()
+            compose.onNodeWithContentDescription("返回").performClick()
             compose.waitUntil(10000) {
-                compose.onAllNodesWithText("‹  邮箱").fetchSemanticsNodes().isNotEmpty()
+                compose.onAllNodesWithContentDescription("返回").fetchSemanticsNodes().isNotEmpty()
             }
-            compose.onNodeWithText("‹  邮箱").performClick()
+            compose.onNodeWithContentDescription("返回").performClick()
             compose.onNodeWithText("草稿与发送记录").performClick()
             compose.onNodeWithText("Re: 周末出发的行程安排").performClick()
             compose.onNodeWithText("收到，周五前我会确认。").assertExists()

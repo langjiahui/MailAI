@@ -150,12 +150,15 @@ class EverydayInteractionTest {
     fun emptySearchAndUnreadFilterHaveOneTapRecovery() {
         val (scenario, vm) = launch()
         try {
-            compose.onNodeWithTag("mail-search").performClick().performTextInput("没有这个主题")
+            compose.onNodeWithTag("open-search").performClick()
+            compose.onNodeWithTag("mail-search").performTextInput("没有这个主题")
             compose.onNodeWithTag("mail-search").performImeAction()
-            compose.onNodeWithTag("inbox-list").performScrollToNode(hasText("没有匹配的邮件"))
+            compose.waitUntil(5000) {
+                compose.onAllNodesWithText("没有匹配的邮件").fetchSemanticsNodes().isNotEmpty()
+            }
             compose.onNodeWithText("没有匹配的邮件", useUnmergedTree = true).assertIsDisplayed()
             capture("search-empty")
-            compose.onNodeWithText("清除").performClick()
+            compose.onNodeWithText("查看全部邮件").performClick()
             compose.onNodeWithText(mail.subject).assertExists()
             compose.onNodeWithText("未读").performClick()
             compose.onNodeWithTag("inbox-list").performScrollToNode(hasText("暂无未读邮件"))
@@ -220,7 +223,7 @@ class EverydayInteractionTest {
             scenario.onActivity { vm.refresh() }
             compose.waitUntil(10000) { !vm.busy && vm.error }
             compose.mainClock.advanceTimeBy(4500)
-            compose.onNodeWithText("重试同步").assertExists()
+            compose.onNodeWithContentDescription("重试同步").assertExists()
             assertTrue(vm.status.isNotBlank())
             scenario.onActivity {
                 vm.dismissStatus()

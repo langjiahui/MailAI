@@ -177,7 +177,7 @@ internal fun HtmlMailBody(
     var loading by remember(mail.key) { mutableStateOf(true) }
     var scroll by rememberSaveable(mail.key) { mutableIntStateOf(0) }
     var revision by remember(mail.key) { mutableIntStateOf(0) }
-    val fontScale = LocalDensity.current.fontScale
+    val fontScale = LocalDensity.current.fontScale * ReadingPreferences(context).bodySize / 16f
     Column(modifier) {
         if (loading) LinearProgressIndicator(Modifier.fillMaxWidth().height(2.dp))
         else Spacer(Modifier.height(2.dp))
@@ -208,6 +208,10 @@ internal fun HtmlMailBody(
                         val initialScroll = scroll
                         WebView(it).apply {
                             isLongClickable = true
+                            isHorizontalScrollBarEnabled = false
+                            isVerticalScrollBarEnabled = false
+                            importantForAccessibility =
+                                android.view.View.IMPORTANT_FOR_ACCESSIBILITY_YES
                             settings.javaScriptEnabled = false
                             settings.domStorageEnabled = false
                             settings.allowFileAccess = false

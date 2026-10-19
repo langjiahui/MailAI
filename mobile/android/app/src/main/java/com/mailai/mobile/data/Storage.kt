@@ -402,6 +402,12 @@ class MailStore(context: Context, id: String) :
     }
 
     @Synchronized
+    fun cachedFolders(): List<String> =
+        readableDatabase
+            .rawQuery("SELECT DISTINCT folder FROM messages ORDER BY folder", null)
+            .use { c -> buildList { while (c.moveToNext()) add(c.getString(0)) } }
+
+    @Synchronized
     fun messages(folder: String) =
         readableDatabase
             .rawQuery(

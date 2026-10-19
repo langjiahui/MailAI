@@ -161,7 +161,49 @@ class OriginalMailTest {
             scenario.onActivity { web(it.window.decorView)?.scrollTo(0, 0) }
             scenario.onActivity { vm.dismissStatus() }
             capture("rendering-check")
-            assertNotNull(device.wait(Until.findObject(By.textContains("项目状态")), 8000))
+            // WebView's virtual accessibility tree can arrive after its first painted frame.
+            // Verify the actual original heading pixels, not a cached UiAutomator node.
+            val bounds = android.graphics.Rect()
+            scenario.onActivity { activity ->
+                val renderer = requireNotNull(web(activity.window.decorView))
+                val location = IntArray(2)
+                renderer.getLocationOnScreen(location)
+                bounds.set(
+                    location[0],
+                    location[1],
+                    location[0] + renderer.width,
+                    location[1] +
+                        minOf(
+                            renderer.height,
+                            (120 * context.resources.displayMetrics.density).toInt(),
+                        ),
+                )
+            }
+            val rendered =
+                android.graphics.BitmapFactory.decodeFile(
+                    File(
+                            context.getExternalFilesDir(null),
+                            "original-mail-checks/rendering-check.png",
+                        )
+                        .path
+                )
+            try {
+                var headingPixels = 0
+                for (y in
+                    bounds.top.coerceAtLeast(0) until
+                        bounds.bottom.coerceAtMost(rendered.height)) for (x in
+                    bounds.left.coerceAtLeast(0) until
+                        bounds.right.coerceAtMost(rendered.width)) if (
+                    rendered.getPixel(x, y) and 0xffffff == 0x334a3b
+                )
+                    headingPixels++
+                assertTrue(
+                    "Original green heading must be painted inside the mail renderer",
+                    headingPixels > 100,
+                )
+            } finally {
+                rendered.recycle()
+            }
             assertFalse(device.hasObject(By.textContains("SCRIPT_EXECUTED")))
             scenario.onActivity {
                 val renderer = requireNotNull(web(it.window.decorView))
@@ -171,9 +213,11 @@ class OriginalMailTest {
             }
             capture("reader-original-collapsed")
             compose.onNodeWithText("附件 1").assertIsDisplayed().performClick()
-            compose.onNodeWithText("说明.pdf").assertExists()
+            compose
+                .onNode(hasText("说明.pdf") and hasAnyAncestor(hasTestTag("attachment-sheet")))
+                .assertExists()
             compose.onNodeWithText("完成").performClick()
-            compose.onNodeWithText("详情").performClick()
+            compose.onNodeWithContentDescription("详情").performClick()
             compose.onNodeWithTag("mail-details-sheet").assertIsDisplayed()
             compose.onNodeWithTag("mail-details-list").performScrollToNode(hasText("收件人"))
             compose.onNodeWithTag("mail-details-list").performScrollToNode(hasText("联系人1"))
@@ -284,10 +328,67 @@ class OriginalMailTest {
                 }
                 ready
             }
-            scenario.onActivity { web(it.window.decorView)?.scrollTo(0, 100000) }
-            device.waitForIdle(700)
-            val link = requireNotNull(device.wait(Until.findObject(By.text("查看详情")), 5000))
-            link.click()
+            val bounds = android.graphics.Rect()
+            scenario.onActivity { activity ->
+                val renderer = requireNotNull(web(activity.window.decorView))
+                renderer.pageDown(true)
+                val xy = IntArray(2)
+                renderer.getLocationOnScreen(xy)
+                bounds.set(xy[0], xy[1], xy[0] + renderer.width, xy[1] + renderer.height)
+            }
+            var target: androidx.test.uiautomator.UiObject2? = null
+            for (attempt in 0..5) {
+                device.waitForIdle(500)
+                target =
+                    device.findObject(By.text("查看详情")) ?: device.findObject(By.descContains("查看详情"))
+                if ((target?.visibleBounds?.height() ?: 0) > 8) break
+                device.swipe(
+                    bounds.centerX(),
+                    bounds.top + bounds.height() * 3 / 4,
+                    bounds.centerX(),
+                    bounds.top + bounds.height() / 4,
+                    24,
+                )
+            }
+            if (target != null) target.click()
+            else {
+                // WebView may paint a link before exposing its virtual accessibility node.
+                // Tap the real blue link pixels inside the renderer, then require the real dialog.
+                capture("link-painted")
+                val bitmap =
+                    android.graphics.BitmapFactory.decodeFile(
+                        File(
+                                context.getExternalFilesDir(null),
+                                "original-mail-checks/link-painted.png",
+                            )
+                            .path
+                    )
+                try {
+                    var left = bitmap.width
+                    var top = bitmap.height
+                    var right = 0
+                    var bottom = 0
+                    for (y in
+                        bounds.top.coerceAtLeast(0) until
+                            bounds.bottom.coerceAtMost(bitmap.height)) for (x in
+                        bounds.left.coerceAtLeast(0) until
+                            bounds.right.coerceAtMost(bitmap.width)) {
+                        if (bitmap.getPixel(x, y) and 0xffffff == 0x0000ff) {
+                            left = minOf(left, x)
+                            right = maxOf(right, x)
+                            top = minOf(top, y)
+                            bottom = maxOf(bottom, y)
+                        }
+                    }
+                    assertTrue(
+                        "The original HTML link must be visible",
+                        right > left && bottom > top,
+                    )
+                    assertTrue(device.click((left + right) / 2, (top + bottom) / 2))
+                } finally {
+                    bitmap.recycle()
+                }
+            }
             compose.waitUntil(5000) {
                 runCatching { compose.onNodeWithText("打开链接？").assertIsDisplayed() }.isSuccess
             }
@@ -350,7 +451,7 @@ class OriginalMailTest {
         try {
             val cached = vm.mails.single { it.key == "INBOX:1:71" }
             scenario.onActivity { vm.read(cached.copy(subject = subject, cc = cc)) }
-            compose.onNodeWithText("详情").performClick()
+            compose.onNodeWithContentDescription("详情").performClick()
             compose.onNodeWithTag("mail-details-sheet").assertIsDisplayed()
             compose
                 .onNode(hasText(subject) and hasAnyAncestor(hasTestTag("mail-details-sheet")))
@@ -387,9 +488,9 @@ class OriginalMailTest {
                 vm.compose()
             }
             compose.onNodeWithText("通讯录").performScrollTo().performClick()
-            compose.onNodeWithText("搜索姓名或邮箱").performTextInput("person1@example.test")
+            compose.onNodeWithTag("contact-search").performTextInput("person1@example.test")
             compose.onNodeWithText("联系人1").performClick()
-            compose.onNodeWithText("添加所选 1 位").performClick()
+            compose.onNodeWithText("确定 (1)").performClick()
             compose.waitUntil(10000) { vm.draft?.to?.contains("person1@example.test") == true }
             compose.onNodeWithText("联系人1").assertExists()
             compose.onNodeWithText("1 人 ›").assertExists()

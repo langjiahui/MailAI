@@ -84,6 +84,28 @@ object MailHtml {
             .text(
                 "html{overflow-wrap:anywhere}body{margin:12px;font-family:system-ui,sans-serif;-webkit-user-select:text;user-select:text}img{max-width:100%;height:auto}pre{white-space:pre-wrap}"
             )
+        // Fixed-width desktop mail must not make the entire reading pane pan horizontally.
+        // Keep table markup intact and confine unavoidable overflow to that table's own region.
+        doc.select("table")
+            .filter { table -> table.parents().none { it.tagName() == "table" } }
+            .forEach { it.wrap("<div data-mailai-table-scroll='true'></div>") }
+        doc.head()
+            .appendElement("style")
+            .attr("data-mailai-mobile", "true")
+            .text(
+                """
+                html{box-sizing:border-box;width:100%;overflow-wrap:anywhere}
+                body{box-sizing:border-box;width:auto!important;min-width:0!important;max-width:100%!important;margin:0!important;padding:16px!important;overflow-wrap:anywhere}
+                div,p,section,article,center,blockquote,span{box-sizing:border-box;min-width:0!important;max-width:100%!important}
+                table{max-width:100%!important;min-width:0!important}
+                td,th{overflow-wrap:break-word}
+                img{max-width:100%!important;height:auto!important}
+                pre{white-space:pre-wrap!important;overflow-wrap:anywhere}
+                [data-mailai-table-scroll]{display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;overflow-x:auto!important;scrollbar-width:none;overscroll-behavior-x:contain}
+                ::-webkit-scrollbar{display:none;width:0;height:0}
+                """
+                    .trimIndent()
+            )
         return Document(doc.outerHtml(), images)
     }
 

@@ -10,13 +10,17 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.liveRegion
@@ -32,16 +36,45 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mailai.mobile.BuildConfig
 import com.mailai.mobile.MailApplication
 import com.mailai.mobile.background.*
+import com.mailai.mobile.data.ReadingPreferences
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 internal fun PreferencesScreen(vm: MailViewModel) {
     val context = LocalContext.current
     val prefs = remember { AppPreferences(context) }
+    val reading = remember { ReadingPreferences(context) }
+    var option by rememberSaveable { mutableStateOf("") }
+    var showNotifications by rememberSaveable { mutableStateOf(false) }
+    var showUpdates by rememberSaveable { mutableStateOf(vm.updatesRequested) }
+    LaunchedEffect(vm.updatesRequested) {
+        if (vm.updatesRequested) {
+            showUpdates = true
+            vm.consumeUpdateRequest()
+        }
+    }
+    var signature by
+        rememberSaveable(vm.account?.id) {
+            mutableStateOf(reading.signature(vm.account?.id.orEmpty()))
+        }
+    var cacheRevision by remember { mutableIntStateOf(0) }
+    var clearing by remember { mutableStateOf(false) }
+    val cacheSize by
+        produceState(0L, cacheRevision) {
+            value =
+                withContext(Dispatchers.IO) {
+                    File(context.cacheDir, "mail-images").listFiles().orEmpty().sumOf {
+                        if (it.isFile) it.length() else 0
+                    }
+                }
+        }
     val updates = (context.applicationContext as MailApplication).updates
     val state by updates.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
@@ -53,6 +86,7 @@ internal fun PreferencesScreen(vm: MailViewModel) {
     DisposableEffect(owner, prefs) {
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> revision++ }
         prefs.data.registerOnSharedPreferenceChangeListener(listener)
+        reading.data.registerOnSharedPreferenceChangeListener(listener)
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 revision++
@@ -62,6 +96,7 @@ internal fun PreferencesScreen(vm: MailViewModel) {
         owner.lifecycle.addObserver(observer)
         onDispose {
             prefs.data.unregisterOnSharedPreferenceChangeListener(listener)
+            reading.data.unregisterOnSharedPreferenceChangeListener(listener)
             owner.lifecycle.removeObserver(observer)
         }
     }
@@ -121,241 +156,495 @@ internal fun PreferencesScreen(vm: MailViewModel) {
         }
     }
     Column(Modifier.fillMaxSize()) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TextButton(onClick = { vm.go(if (vm.accounts.isEmpty()) "add" else "boxes") }) {
-                Text("‹ 返回")
-            }
-        }
+        PageHeader("账号与设置", { vm.go(if (vm.accounts.isEmpty()) "add" else "boxes") })
         Column(
-            Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 22.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            Modifier.weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
+                .testTag("preferences-list")
         ) {
-            Column {
-                Text("通知与更新", fontSize = 26.sp, fontWeight = FontWeight.Medium)
-                Text(
-                    "按你的节奏，保持连接",
-                    Modifier.padding(top = 6.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            SettingsCard("邮件通知") {
-                SettingToggle("后台收信", "应用离开前台后，继续定期收取邮件", background) {
-                    prefs.background = it
-                    BackgroundSchedule.configure(context)
-                    if (it) BackgroundSchedule.catchUp(context)
-                }
-                if (background) {
-                    Text(
-                        "检查间隔",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 13.sp,
-                    )
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(15, 30, 60).forEach { value ->
-                            FilterChip(
-                                selected = interval == value,
-                                onClick = {
-                                    prefs.interval = value
-                                    BackgroundSchedule.configure(context)
-                                },
-                                label = { Text(if (value == 60) "1 小时" else "$value 分钟") },
-                            )
-                        }
-                    }
-                    Text(
-                        if (notificationEnabled) "系统通知已开启" else "系统通知未开启，后台收信仍会继续",
-                        fontSize = 13.sp,
-                    )
-                    if (!notificationEnabled) {
-                        Button(
-                            onClick = {
-                                if (
-                                    Build.VERSION.SDK_INT >= 33 &&
-                                        androidx.core.content.ContextCompat.checkSelfPermission(
-                                            context,
-                                            Manifest.permission.POST_NOTIFICATIONS,
-                                        ) != android.content.pm.PackageManager.PERMISSION_GRANTED
-                                )
-                                    permission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                else notificationSettings()
-                            }
-                        ) {
-                            Text("开启邮件通知")
-                        }
-                    }
-                    TextButton(onClick = ::notificationSettings) { Text("通知声音与系统设置") }
-                    val power = context.getSystemService(android.os.PowerManager::class.java)
-                    val saving = remember(revision) { power.isPowerSaveMode }
-                    val optimized =
-                        remember(revision) {
-                            !power.isIgnoringBatteryOptimizations(context.packageName)
-                        }
-                    Text(
-                        if (saving) "省电模式已开启 · 后台检查可能延迟"
-                        else if (optimized) "系统正在优化电池使用 · 长时间锁屏可能延迟收信"
-                        else "已允许后台电池使用 · 实际收信时间仍由系统调度",
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    TextButton(
-                        onClick = {
-                            try {
-                                context.startActivity(
-                                    Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-                                )
-                            } catch (_: android.content.ActivityNotFoundException) {
-                                context.startActivity(
-                                    Intent(
-                                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                        Uri.parse("package:${context.packageName}"),
-                                    )
-                                )
-                            }
-                        }
+            vm.account?.let { account ->
+                MailCard {
+                    Row(
+                        Modifier.fillMaxWidth().padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Text("后台电池设置")
-                    }
-                    SettingToggle("显示邮件预览", "通知中显示发件人与主题；锁屏遵循系统隐私设置", previews) { value ->
-                        prefs.previews = value
-                        if (!value)
-                            vm.accounts.forEach { account ->
-                                androidx.core.app.NotificationManagerCompat.from(context)
-                                    .cancel("mail.${account.id}", 1)
-                            }
-                    }
-                    Text(
-                        "锁屏或深度省电时，检查可能延后；返回应用会补查。系统“强行停止”后，需再次打开应用才能恢复。",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            if (vm.accounts.isNotEmpty())
-                SettingsCard("最近收信") {
-                    vm.accounts.forEach { account ->
-                        val time =
-                            remember(revision) { prefs.data.getLong("sync.${account.id}.time", 0) }
-                        val ok =
-                            remember(revision) {
-                                prefs.data.getBoolean("sync.${account.id}.ok", true)
-                            }
-                        Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-                            Text(account.name.ifBlank { account.email }, fontSize = 14.sp)
+                        ContactAvatar(account.name.ifBlank { account.email }, 44.dp)
+                        Column(Modifier.weight(1f)) {
+                            Text(account.email, fontSize = 15.sp, fontWeight = FontWeight.Medium)
                             Text(
-                                if (time == 0L) "等待首次同步"
-                                else "${stamp(time)} · ${if (ok) "已更新" else "连接未成功，稍后重试"}",
+                                account.name.ifBlank { "当前邮箱" },
+                                Modifier.padding(top = 4.dp),
                                 fontSize = 12.sp,
-                                color =
-                                    if (ok) MaterialTheme.colorScheme.onSurfaceVariant
-                                    else MaterialTheme.colorScheme.error,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
+                        }
+                        IconButton(onClick = { vm.editAccount(account) }, enabled = !vm.busy) {
+                            MailIcon(MailGlyph.Chevron, "登录设置", Modifier.size(18.dp))
                         }
                     }
                 }
-            SettingsCard("应用更新") {
-                Text(
-                    "当前版本 ${BuildConfig.VERSION_NAME}",
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                SettingToggle("自动检查更新", "每天检查 GitHub 正式版本", autoCheck) {
-                    prefs.autoCheck = it
-                    BackgroundSchedule.configure(context)
-                }
-                SettingToggle("Wi-Fi 自动下载", "下载完成后提醒，由你确认安装", autoDownload) {
-                    prefs.autoDownload = it
-                    BackgroundSchedule.configure(context)
-                    if (it) updates.download(true)
-                }
-                if (state.checking) LinearProgressIndicator(Modifier.fillMaxWidth())
-                if (state.downloading) {
-                    LinearProgressIndicator(
-                        progress = { state.progress },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Text("${(state.progress * 100).toInt()}%", fontSize = 13.sp)
-                }
-                if (state.message.isNotBlank())
-                    Text(
-                        state.message,
-                        Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                        fontSize = 14.sp,
-                        color =
-                            if (state.failed) MaterialTheme.colorScheme.error
-                            else MaterialTheme.colorScheme.onSurface,
-                    )
-                if (state.checkedAt > 0)
-                    Text(
-                        "上次检查 ${stamp(state.checkedAt)}",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                state.candidate?.let { candidate ->
-                    Text("新版本 ${candidate.version}", fontWeight = FontWeight.Medium)
-                    Text(candidate.notes, fontSize = 14.sp)
-                    Text(
-                        "安装包约 ${candidate.size / 1024 / 1024} MB · 安装会保留邮箱和草稿",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    if (state.ready) {
-                        Button(
-                            onClick = ::install,
-                            enabled = !installing,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(if (installing) "正在验证…" else "安装更新")
-                        }
-                        TextButton(onClick = { updates.download() }, enabled = !state.downloading) {
-                            Text("重新验证安装包")
-                        }
-                    } else if (!state.downloading)
-                        Button(
-                            onClick = { showMobileDownload = true },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(if (state.failed) "重新下载" else "下载更新")
-                        }
-                    TextButton(
-                        onClick = {
-                            context.startActivity(
-                                Intent(Intent.ACTION_VIEW, Uri.parse(candidate.page))
-                            )
-                        }
+            }
+            SectionCaption("邮件设置")
+            MailCard {
+                Box(Modifier.padding(horizontal = 16.dp)) {
+                    SettingToggle(
+                        "新邮件通知",
+                        if (notificationEnabled) "后台定期收信并提醒" else "系统通知未开启，点击下方设置",
+                        background,
+                        MailGlyph.Bell,
                     ) {
-                        Text("查看 GitHub 发布说明")
+                        prefs.background = it
+                        BackgroundSchedule.configure(context)
+                        if (it) {
+                            BackgroundSchedule.catchUp(context)
+                            if (!notificationEnabled) showNotifications = true
+                        }
                     }
                 }
-                if (
-                    state.downloading ||
-                        state.message.startsWith("等待 Wi-Fi") ||
-                        state.message == "正在准备下载…"
-                )
-                    TextButton(onClick = updates::cancelDownload) { Text("取消下载") }
-                TextButton(
-                    onClick = updates::checkNow,
-                    enabled = !state.checking && !state.downloading,
+                SettingsDivider()
+                MenuRow(
+                    "邮件同步频率",
+                    "系统省电时可能延后",
+                    if (interval == 60) "1 小时" else "$interval 分钟",
+                    icon = MailGlyph.Refresh,
                 ) {
-                    Text(if (state.failed && state.candidate == null) "重试检查" else "检查更新")
+                    option = "interval"
                 }
-                if (installMessage.isNotBlank())
-                    Text(
-                        installMessage,
-                        fontSize = 13.sp,
-                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                    )
+                SettingsDivider()
+                MenuRow(
+                    "默认签名",
+                    "仅用于此邮箱的新建、回复与转发",
+                    if (reading.signature(vm.account?.id.orEmpty()).isBlank()) "未设置" else "已设置",
+                    enabled = vm.account != null,
+                    icon = MailGlyph.Pen,
+                ) {
+                    signature = reading.signature(vm.account?.id.orEmpty())
+                    option = "signature"
+                }
+                SettingsDivider()
+                MenuRow("正文字号", "邮件原排版按比例缩放", "${reading.bodySize}", icon = MailGlyph.Font) {
+                    option = "font"
+                }
+                SettingsDivider()
+                MenuRow("通知与后台运行", "声音、预览、省电设置与最近收信", icon = MailGlyph.Bell) {
+                    showNotifications = true
+                }
+            }
+            SectionCaption("通用")
+            MailCard {
+                MenuRow(
+                    "外观",
+                    count =
+                        when (reading.theme) {
+                            "dark" -> "深色"
+                            "light" -> "浅色"
+                            else -> "跟随系统"
+                        },
+                    icon = MailGlyph.Moon,
+                ) {
+                    option = "theme"
+                }
+                SettingsDivider()
+                Box(Modifier.padding(horizontal = 16.dp)) {
+                    SettingToggle("Wi-Fi 自动下载更新", "下载后由你确认安装", autoDownload, MailGlyph.Wifi) {
+                        prefs.autoDownload = it
+                        BackgroundSchedule.configure(context)
+                        if (it) updates.download(true)
+                    }
+                }
+                SettingsDivider()
+                MenuRow("安全与隐私", "设备存储、链接与通知隐私", icon = MailGlyph.Shield) { option = "privacy" }
+                SettingsDivider()
+                MenuRow(
+                    "清理图片缓存",
+                    "不删除邮件、附件或草稿",
+                    fileSize(cacheSize),
+                    icon = MailGlyph.Trash,
+                    enabled = !clearing,
+                ) {
+                    option = "cache"
+                }
+            }
+            SectionCaption("关于与帮助")
+            MailCard {
+                MenuRow("版本号", "当前应用版本", BuildConfig.VERSION_NAME, icon = MailGlyph.Info) {
+                    showUpdates = !showUpdates
+                }
+                SettingsDivider()
+                MenuRow(
+                    "应用更新",
+                    if (state.failed) state.message
+                    else if (state.ready) "更新已下载，等待安装" else "检查版本与管理下载",
+                    icon = MailGlyph.Download,
+                ) {
+                    showUpdates = !showUpdates
+                }
             }
             Text(
-                "MailAI 正式版 · 安装包经过完整性、版本及签名验证",
-                fontSize = 12.sp,
+                "MailAI · 邮件与草稿保存在这台设备",
+                Modifier.padding(vertical = 22.dp).align(Alignment.CenterHorizontally),
+                fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(Modifier.height(12.dp))
         }
     }
+    if (showUpdates)
+        ModalBottomSheet(
+            onDismissRequest = { showUpdates = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = MaterialTheme.colorScheme.surface,
+        ) {
+            Row(
+                Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "应用更新",
+                    Modifier.weight(1f),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                TextButton(onClick = { showUpdates = false }) { Text("完成") }
+            }
+            Column(
+                Modifier.fillMaxWidth().heightIn(max = 480.dp).verticalScroll(rememberScrollState())
+            ) {
+                SettingsCard("更新详情") {
+                    Text(
+                        "当前版本 ${BuildConfig.VERSION_NAME}",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    SettingToggle("自动检查更新", "每天检查 GitHub 正式版本", autoCheck) {
+                        prefs.autoCheck = it
+                        BackgroundSchedule.configure(context)
+                    }
+                    SettingToggle("Wi-Fi 自动下载", "下载完成后提醒，由你确认安装", autoDownload) {
+                        prefs.autoDownload = it
+                        BackgroundSchedule.configure(context)
+                        if (it) updates.download(true)
+                    }
+                    if (state.checking) LinearProgressIndicator(Modifier.fillMaxWidth())
+                    if (state.downloading) {
+                        LinearProgressIndicator(
+                            progress = { state.progress },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Text("${(state.progress * 100).toInt()}%", fontSize = 13.sp)
+                    }
+                    if (state.message.isNotBlank())
+                        Text(
+                            state.message,
+                            Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                            fontSize = 14.sp,
+                            color =
+                                if (state.failed) MaterialTheme.colorScheme.error
+                                else MaterialTheme.colorScheme.onSurface,
+                        )
+                    if (state.checkedAt > 0)
+                        Text(
+                            "上次检查 ${stamp(state.checkedAt)}",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    state.candidate?.let { candidate ->
+                        Text("新版本 ${candidate.version}", fontWeight = FontWeight.Medium)
+                        Text(candidate.notes, fontSize = 14.sp)
+                        Text(
+                            "安装包约 ${candidate.size / 1024 / 1024} MB · 安装会保留邮箱和草稿",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        if (state.ready) {
+                            Button(
+                                onClick = ::install,
+                                enabled = !installing,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(if (installing) "正在验证…" else "安装更新")
+                            }
+                            TextButton(
+                                onClick = { updates.download() },
+                                enabled = !state.downloading,
+                            ) {
+                                Text("重新验证安装包")
+                            }
+                        } else if (!state.downloading)
+                            Button(
+                                onClick = { showMobileDownload = true },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(if (state.failed) "重新下载" else "下载更新")
+                            }
+                        TextButton(
+                            onClick = {
+                                context.startActivity(
+                                    Intent(Intent.ACTION_VIEW, Uri.parse(candidate.page))
+                                )
+                            }
+                        ) {
+                            Text("查看 GitHub 发布说明")
+                        }
+                    }
+                    if (
+                        state.downloading ||
+                            state.message.startsWith("等待 Wi-Fi") ||
+                            state.message == "正在准备下载…"
+                    )
+                        TextButton(onClick = updates::cancelDownload) { Text("取消下载") }
+                    TextButton(
+                        onClick = updates::checkNow,
+                        enabled = !state.checking && !state.downloading,
+                    ) {
+                        Text(if (state.failed && state.candidate == null) "重试检查" else "检查更新")
+                    }
+                    if (installMessage.isNotBlank())
+                        Text(
+                            installMessage,
+                            fontSize = 13.sp,
+                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                        )
+                }
+            }
+        }
+    if (showNotifications) {
+        AlertDialog(
+            onDismissRequest = { showNotifications = false },
+            title = { Text("通知与后台运行", fontSize = 18.sp) },
+            text = {
+                Column(Modifier.heightIn(max = 440.dp).verticalScroll(rememberScrollState())) {
+                    SettingsCard("邮件通知") {
+                        SettingToggle("后台收信", "应用离开前台后，继续定期收取邮件", background) {
+                            prefs.background = it
+                            BackgroundSchedule.configure(context)
+                            if (it) BackgroundSchedule.catchUp(context)
+                        }
+                        if (background) {
+                            Text(
+                                "检查间隔",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 13.sp,
+                            )
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                listOf(15, 30, 60).forEach { value ->
+                                    FilterChip(
+                                        selected = interval == value,
+                                        onClick = {
+                                            prefs.interval = value
+                                            BackgroundSchedule.configure(context)
+                                        },
+                                        label = { Text(if (value == 60) "1 小时" else "$value 分钟") },
+                                    )
+                                }
+                            }
+                            Text(
+                                if (notificationEnabled) "系统通知已开启" else "系统通知未开启，后台收信仍会继续",
+                                fontSize = 13.sp,
+                            )
+                            if (!notificationEnabled) {
+                                Button(
+                                    onClick = {
+                                        if (
+                                            Build.VERSION.SDK_INT >= 33 &&
+                                                androidx.core.content.ContextCompat
+                                                    .checkSelfPermission(
+                                                        context,
+                                                        Manifest.permission.POST_NOTIFICATIONS,
+                                                    ) !=
+                                                    android.content.pm.PackageManager
+                                                        .PERMISSION_GRANTED
+                                        )
+                                            permission.launch(
+                                                Manifest.permission.POST_NOTIFICATIONS
+                                            )
+                                        else notificationSettings()
+                                    }
+                                ) {
+                                    Text("开启邮件通知")
+                                }
+                            }
+                            TextButton(onClick = ::notificationSettings) { Text("通知声音与系统设置") }
+                            val power =
+                                context.getSystemService(android.os.PowerManager::class.java)
+                            val saving = remember(revision) { power.isPowerSaveMode }
+                            val optimized =
+                                remember(revision) {
+                                    !power.isIgnoringBatteryOptimizations(context.packageName)
+                                }
+                            Text(
+                                if (saving) "省电模式已开启 · 后台检查可能延迟"
+                                else if (optimized) "系统正在优化电池使用 · 长时间锁屏可能延迟收信"
+                                else "已允许后台电池使用 · 实际收信时间仍由系统调度",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            TextButton(
+                                onClick = {
+                                    try {
+                                        context.startActivity(
+                                            Intent(
+                                                Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS
+                                            )
+                                        )
+                                    } catch (_: android.content.ActivityNotFoundException) {
+                                        context.startActivity(
+                                            Intent(
+                                                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                                Uri.parse("package:${context.packageName}"),
+                                            )
+                                        )
+                                    }
+                                }
+                            ) {
+                                Text("后台电池设置")
+                            }
+                            SettingToggle("显示邮件预览", "通知中显示发件人与主题；锁屏遵循系统隐私设置", previews) { value ->
+                                prefs.previews = value
+                                if (!value)
+                                    vm.accounts.forEach { account ->
+                                        androidx.core.app.NotificationManagerCompat.from(context)
+                                            .cancel("mail.${account.id}", 1)
+                                    }
+                            }
+                            Text(
+                                "锁屏或深度省电时，检查可能延后；返回应用会补查。系统“强行停止”后，需再次打开应用才能恢复。",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+
+                    vm.accounts.forEach { account ->
+                        val time = prefs.data.getLong("sync.${account.id}.time", 0)
+                        val ok = prefs.data.getBoolean("sync.${account.id}.ok", true)
+                        Text(account.email, Modifier.padding(top = 12.dp), fontSize = 13.sp)
+                        Text(
+                            if (time == 0L) "等待首次同步"
+                            else "${stamp(time)} · ${if(ok) "已更新" else "连接未成功，稍后重试"}",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showNotifications = false }) { Text("完成") } },
+        )
+    }
+    if (option.isNotBlank())
+        AlertDialog(
+            onDismissRequest = { if (!clearing) option = "" },
+            title = {
+                Text(
+                    when (option) {
+                        "interval" -> "邮件同步频率"
+                        "font" -> "正文字号"
+                        "theme" -> "外观"
+                        "signature" -> "默认签名"
+                        "cache" -> "清理图片缓存？"
+                        else -> "安全与隐私"
+                    },
+                    fontSize = 18.sp,
+                )
+            },
+            text = {
+                Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
+                    when (option) {
+                        "interval" ->
+                            listOf(15, 30, 60).forEach { value ->
+                                PreferenceChoice(
+                                    if (value == 60) "1 小时" else "$value 分钟",
+                                    interval == value,
+                                ) {
+                                    prefs.interval = value
+                                    BackgroundSchedule.configure(context)
+                                    option = ""
+                                }
+                            }
+                        "font" ->
+                            listOf(14, 16, 18, 20).forEach { value ->
+                                PreferenceChoice("${value} 号", reading.bodySize == value) {
+                                    reading.bodySize = value
+                                    option = ""
+                                }
+                            }
+                        "theme" ->
+                            listOf("system" to "跟随系统", "light" to "浅色", "dark" to "深色").forEach {
+                                (value, label) ->
+                                PreferenceChoice(label, reading.theme == value) {
+                                    reading.theme = value
+                                    option = ""
+                                }
+                            }
+                        "signature" ->
+                            TextField(
+                                signature,
+                                { signature = it.take(2000) },
+                                placeholder = { Text("写下你的邮件签名") },
+                                minLines = 3,
+                                maxLines = 6,
+                                shape = RoundedCornerShape(14.dp),
+                                modifier = Modifier.fillMaxWidth().testTag("signature-editor"),
+                            )
+                        "cache" ->
+                            Text(
+                                "将清理 ${fileSize(cacheSize)} 的远程图片缓存。邮件正文、内嵌图、下载的附件和草稿都会保留；远程图片之后需联网重新加载。",
+                                fontSize = 14.sp,
+                            )
+                        else ->
+                            Text(
+                                "邮箱凭据由 Android 密钥库保护。邮件、附件、草稿和通讯录存储在本机。邮件脚本不执行，外部链接确认后再打开。\n\n可在“通知与后台运行”中关闭邮件预览，减少锁屏信息展示。",
+                                fontSize = 14.sp,
+                            )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        when (option) {
+                            "signature" -> {
+                                vm.account?.let { reading.signature(it.id, signature.trim()) }
+                                vm.showMessage("签名已保存")
+                                option = ""
+                            }
+                            "cache" -> {
+                                clearing = true
+                                scope.launch {
+                                    val success =
+                                        withContext(Dispatchers.IO) {
+                                            File(context.cacheDir, "mail-images")
+                                                .listFiles()
+                                                .orEmpty()
+                                                .all { !it.isFile || it.delete() }
+                                        }
+                                    clearing = false
+                                    cacheRevision++
+                                    option = ""
+                                    vm.showMessage(
+                                        if (success) "图片缓存已清理" else "部分图片缓存未能清理，请重试",
+                                        !success,
+                                    )
+                                }
+                            }
+                            else -> option = ""
+                        }
+                    },
+                    enabled = !clearing,
+                ) {
+                    Text(
+                        if (clearing) "正在清理…"
+                        else if (option == "signature") "保存"
+                        else if (option == "cache") "清理" else "完成"
+                    )
+                }
+            },
+            dismissButton = {
+                if (option in listOf("signature", "cache"))
+                    TextButton(onClick = { option = "" }, enabled = !clearing) { Text("取消") }
+            },
+        )
     if (showMobileDownload)
         AlertDialog(
             onDismissRequest = { showMobileDownload = false },
@@ -393,6 +682,7 @@ private fun SettingToggle(
     title: String,
     detail: String,
     value: Boolean,
+    icon: MailGlyph? = null,
     change: (Boolean) -> Unit,
 ) {
     Row(
@@ -401,6 +691,10 @@ private fun SettingToggle(
             .toggleable(value, role = Role.Switch, onValueChange = change),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (icon != null) {
+            MailIcon(icon)
+            Spacer(Modifier.width(14.dp))
+        }
         Column(Modifier.weight(1f).padding(end = 12.dp)) {
             Text(title, fontSize = 15.sp)
             Text(detail, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -411,3 +705,25 @@ private fun SettingToggle(
 
 private fun stamp(time: Long) =
     SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(Date(time))
+
+@Composable
+private fun SettingsDivider() =
+    HorizontalDivider(
+        Modifier.padding(start = 54.dp, end = 16.dp),
+        color = MaterialTheme.colorScheme.outlineVariant,
+    )
+
+@Composable
+private fun PreferenceChoice(title: String, selected: Boolean, click: () -> Unit) {
+    androidx.compose.material3.Surface(color = androidx.compose.ui.graphics.Color.Transparent) {
+        Row(
+            Modifier.fillMaxWidth()
+                .heightIn(min = 52.dp)
+                .selectable(selected, role = Role.RadioButton, onClick = click),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(title, Modifier.weight(1f), fontSize = 15.sp)
+            RadioButton(selected, onClick = null)
+        }
+    }
+}

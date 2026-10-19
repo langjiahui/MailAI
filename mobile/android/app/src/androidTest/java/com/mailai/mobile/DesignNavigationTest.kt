@@ -147,8 +147,8 @@ class DesignNavigationTest {
             compose.onNodeWithText("‹  返回").performClick()
             compose.onNodeWithText("保存并返回").performClick()
             compose.waitUntil(10000) { vm.page == "reader" && !vm.busy }
-            compose.onNodeWithText("‹  收件箱").performClick()
-            compose.onNodeWithText("‹  邮箱").performClick()
+            compose.onNodeWithContentDescription("返回").performClick()
+            compose.onNodeWithContentDescription("返回").performClick()
             capture("02-mailboxes")
             compose.onNodeWithText("草稿与发送记录").performScrollTo().performClick()
             capture("06-drafts")
@@ -157,8 +157,8 @@ class DesignNavigationTest {
             assertEquals(SendState.UNCERTAIN, vm.draft?.state)
             compose.onNodeWithText("‹  返回").performClick()
             compose.waitUntil(10000) { vm.page == "drafts" }
-            compose.onNodeWithText("‹  邮箱").performClick()
-            compose.onNodeWithText("通知与更新").performScrollTo().performClick()
+            compose.onNodeWithContentDescription("返回").performClick()
+            compose.onNodeWithText("账号与设置").performScrollTo().performClick()
             capture("07-settings")
             compose.onNodeWithText("应用更新").performScrollTo().assertIsDisplayed()
             capture("07-settings-updates")
@@ -185,7 +185,7 @@ class DesignNavigationTest {
             capture("transition-reader-midpoint")
             compose.mainClock.advanceTimeBy(400)
             compose.mainClock.autoAdvance = true
-            compose.onNodeWithText("‹  收件箱").performClick()
+            compose.onNodeWithContentDescription("返回").performClick()
             val after = compose.onNodeWithText(subject).getUnclippedBoundsInRoot().top.value
             assertEquals("Returning from mail must preserve exact list position", before, after, 1f)
             // Repeated navigation callbacks cannot replace a newly created draft.

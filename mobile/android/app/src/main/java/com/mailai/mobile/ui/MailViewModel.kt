@@ -38,6 +38,13 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
     var account by mutableStateOf<Account?>(null)
         private set
 
+    var updatesRequested by mutableStateOf(false)
+        private set
+
+    fun consumeUpdateRequest() {
+        updatesRequested = false
+    }
+
     var page by mutableStateOf("inbox")
         private set
 
@@ -85,6 +92,13 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
 
     var availableFile by mutableStateOf<Pair<Account, Attachment>?>(null)
     var limit by mutableIntStateOf(50)
+        private set
+
+    internal var filter by mutableStateOf(MailFilter.ALL)
+    var stars by mutableStateOf<Set<String>>(emptySet())
+        private set
+
+    var readerOrigin = savedState.get<String>("readerOrigin") ?: "inbox"
         private set
 
     var unreadOnly by mutableStateOf(false)
@@ -245,8 +259,10 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
                         }
                     }
                 }
-                if (settings) go("settings")
-                else {
+                if (settings) {
+                    updatesRequested = true
+                    go("settings")
+                } else {
                     val target = accounts.find { it.id == accountId }
                     if (target == null) {
                         status = "此通知对应的邮箱已不可用，请在邮箱列表中确认"
@@ -256,6 +272,7 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
                     account = target
                     folder = "INBOX"
                     query = ""
+                    filter = MailFilter.ALL
                     unreadOnly = false
                     selected = null
                     limit = 50
@@ -292,13 +309,15 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
                 Triple(
                     repo.store(a).messages(currentFolder),
                     repo.store(a).drafts(),
-                    repo.store(a).contacts(),
+                    repo.store(a).contacts() to repo.store(a).cachedFolders(),
                 )
             }
         if (account?.id == a.id && folder == currentFolder) {
             mails = result.first
             drafts = result.second
-            contacts = result.third.filterNot { it.email.equals(a.email, true) }
+            stars = ReadingPreferences(getApplication()).stars(a.id)
+            folders = (folders + result.third.second + currentFolder).distinct()
+            contacts = result.third.first.filterNot { it.email.equals(a.email, true) }
         }
     }
 
@@ -428,6 +447,9 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
     fun choose(a: Account, box: String = "INBOX") {
         if (busy) return
         if (a.id == account?.id && box == folder) {
+            filter = MailFilter.ALL
+            unreadOnly = false
+            query = ""
             go("inbox")
             if (online) refresh()
             return
@@ -440,6 +462,7 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
         mails = emptyList()
         folders = listOf("INBOX")
         selected = null
+        filter = MailFilter.ALL
         page = "inbox"
         viewModelScope.launch {
             loadCache()
@@ -488,6 +511,8 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
 
     fun read(item: MailItem) {
         if (busy || (page == "reader" && selected?.key == item.key)) return
+        readerOrigin = if (page == "search") "search" else "inbox"
+        savedState["readerOrigin"] = readerOrigin
         selected = item
         page = "reader"
         fetchBody()
@@ -546,32 +571,99 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
         }
     }
 
-    fun addRecipients(selected: List<MailContact>) {
-        val d = draft ?: return
+    fun addRecipients(selected: List<MailContact>): Boolean {
+        val d = draft ?: return false
         try {
             update(d.copy(to = MailAddresses.add(d.to, selected)))
+            return true
         } catch (e: IllegalArgumentException) {
             status = e.message.orEmpty()
             error = true
+            return false
         }
     }
 
-    fun compose(reply: Boolean = false) {
+    private val starWrites = mutableSetOf<String>()
+
+    fun toggleStar(mail: MailItem) {
+        val a = account ?: return
+        if (!starWrites.add(a.id + mail.key)) return
+        val value = mail.key !in stars
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    ReadingPreferences(getApplication()).star(a.id, mail.key, value)
+                }
+                if (account?.id == a.id) stars = if (value) stars + mail.key else stars - mail.key
+                _feedback.tryEmit(Unit)
+            } catch (_: Exception) {
+                showMessage("星标未能保存，请重试", true)
+            } finally {
+                starWrites.remove(a.id + mail.key)
+            }
+        }
+    }
+
+    internal fun openFilter(value: MailFilter) {
+        filter = value
+        unreadOnly = value == MailFilter.UNREAD
+        query = ""
+        go("inbox")
+    }
+
+    fun compose(reply: Boolean = false, replyAll: Boolean = false, forward: Boolean = false) {
         if (busy || page == "compose") return
         dismissStatus()
         val a = account ?: return
         val m = selected
+        if (
+            forward &&
+                m != null &&
+                m.attachments.any { it.local.isBlank() || !repo.file(a, it.local).isFile }
+        ) {
+            showMessage("请先下载原邮件的全部附件，再转发，避免遗漏附件", true)
+            return
+        }
+        if (
+            forward &&
+                m != null &&
+                m.attachments.sumOf { it.size.coerceAtLeast(0) } > MAX_ATTACHMENT_BYTES
+        ) {
+            showMessage("原邮件附件超过 25 MB，请新建邮件并选择要发送的附件", true)
+            return
+        }
+        val signature =
+            ReadingPreferences(getApplication())
+                .signature(a.id)
+                .takeIf { it.isNotBlank() }
+                ?.let { "\n\n$it" }
+                .orEmpty()
         val d =
-            if (reply && m != null)
-                Draft(
-                    to = m.replyTo,
-                    subject =
-                        if (m.subject.startsWith("Re:", true)) m.subject else "Re: ${m.subject}",
-                    replyId = m.messageId,
-                )
-            else Draft()
+            try {
+                if (forward && m != null)
+                    Draft(
+                        subject =
+                            if (m.subject.startsWith("Fwd:", true)) m.subject
+                            else "Fwd: ${m.subject}",
+                        body = signature + quotedForward(m),
+                        attachments = m.attachments.map { it.copy(contentId = "") },
+                    )
+                else if (reply && m != null)
+                    Draft(
+                        to = replyRecipients(m, a.email, replyAll),
+                        body = signature,
+                        subject =
+                            if (m.subject.startsWith("Re:", true)) m.subject
+                            else "Re: ${m.subject}",
+                        replyId = m.messageId,
+                    )
+                else Draft(body = signature)
+            } catch (e: IllegalArgumentException) {
+                showMessage(e.message.orEmpty(), true)
+                return
+            }
         setComposerOrigin(
-            if (reply && page == "reader") "reader"
+            if ((reply || forward) && page == "reader") "reader"
             else if (page == "contacts") "contacts" else "inbox"
         )
         draft = d

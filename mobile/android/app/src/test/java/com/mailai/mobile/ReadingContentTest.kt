@@ -9,6 +9,21 @@ import org.junit.Test
 
 class ReadingContentTest {
     @Test
+    fun desktopWidthMailKeepsTableContentAndConfinesItsOverflow() {
+        val html =
+            "<div style='width:1200px'><table width='1200'><tr><td style='color:#a54a22'>完整内容</td><td><table><tr><td>嵌套表格</td></tr></table></td></tr></table></div>"
+        val rendered = org.jsoup.Jsoup.parse(MailHtml.prepare(html).html)
+        assertEquals(2, rendered.select("table").size)
+        assertEquals(1, rendered.select("[data-mailai-table-scroll]").size)
+        assertEquals("1200", rendered.selectFirst("table")!!.attr("width"))
+        assertTrue(rendered.text().contains("完整内容"))
+        assertEquals("color:#a54a22", rendered.selectFirst("td")!!.attr("style"))
+        assertTrue(
+            rendered.selectFirst("style[data-mailai-mobile]")!!.data().contains("overflow-x:auto")
+        )
+    }
+
+    @Test
     fun encodedPeopleBecomeNamesAndAddressesWithoutQuotes() {
         val name = MimeUtility.encodeText("林安", "UTF-8", "B")
         val raw =
