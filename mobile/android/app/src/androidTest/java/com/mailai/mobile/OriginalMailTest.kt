@@ -619,29 +619,43 @@ class OriginalMailTest {
                 }
                 rendered
             }
-            scenario.onActivity { web(it.window.decorView)?.scrollTo(0, 100000) }
-            capture("offline-image-pixels")
-            val bitmap =
-                android.graphics.BitmapFactory.decodeFile(
-                    File(
-                            context.getExternalFilesDir(null),
-                            "original-mail-checks/offline-image-pixels.png",
-                        )
-                        .path
-                )
+            compose.waitUntil(6000) {
+                compose.onAllNodesWithTag("operation-bubble").fetchSemanticsNodes().isEmpty()
+            }
+            scenario.onActivity { web(it.window.decorView)?.pageDown(true) }
             val bounds = compose.onNodeWithTag("html-body").getUnclippedBoundsInRoot()
             val density = context.resources.displayMetrics.density
             var green = 0
-            for (y in
-                (bounds.top.value * density).toInt().coerceAtLeast(0) until
-                    (bounds.bottom.value * density).toInt().coerceAtMost(bitmap.height) step
-                    4) for (x in
-                (bounds.left.value * density).toInt().coerceAtLeast(0) until
-                    (bounds.right.value * density).toInt().coerceAtMost(bitmap.width) step
-                    4) {
-                if (bitmap.getPixel(x, y) == Color.rgb(51, 74, 59)) green++
+            for (attempt in 0..6) {
+                capture("offline-image-pixels")
+                val bitmap =
+                    android.graphics.BitmapFactory.decodeFile(
+                        File(
+                                context.getExternalFilesDir(null),
+                                "original-mail-checks/offline-image-pixels.png",
+                            )
+                            .path
+                    )
+                green = 0
+                try {
+                    for (y in
+                        (bounds.top.value * density).toInt().coerceAtLeast(0) until
+                            (bounds.bottom.value * density).toInt().coerceAtMost(bitmap.height) step
+                            4) for (x in
+                        (bounds.left.value * density).toInt().coerceAtLeast(0) until
+                            (bounds.right.value * density).toInt().coerceAtMost(bitmap.width) step
+                            4) if (bitmap.getPixel(x, y) == Color.rgb(51, 74, 59)) green++
+                } finally {
+                    bitmap.recycle()
+                }
+                if (green > 1000) break
+                scenario.onActivity {
+                    web(it.window.decorView)?.let { renderer ->
+                        renderer.scrollBy(0, -maxOf(1, renderer.height / 3))
+                    }
+                }
+                device.waitForIdle(500)
             }
-            bitmap.recycle()
             assertTrue("The cached inline image must actually render offline", green > 1000)
             assertFalse(vm.busy)
             assertTrue(File(context.filesDir, "accounts/${account.id}/inline-fixture").isFile)

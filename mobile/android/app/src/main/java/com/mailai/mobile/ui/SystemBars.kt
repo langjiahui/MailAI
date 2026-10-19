@@ -10,6 +10,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
@@ -18,8 +19,9 @@ import androidx.core.view.WindowCompat
 @Composable
 internal fun MailSystemBars() {
     val view = LocalView.current
+    val background = MaterialTheme.colorScheme.background.toArgb()
     val dark = MaterialTheme.colorScheme.background.luminance() < .4f
-    DisposableEffect(view, dark) {
+    DisposableEffect(view, dark, background) {
         val dialog = (view.parent as? DialogWindowProvider)?.window
         val activity = view.context.activity()
         val style =
@@ -32,6 +34,8 @@ internal fun MailSystemBars() {
         if (dialog == null) (activity as? ComponentActivity)?.enableEdgeToEdge(style, style)
         val window = dialog ?: activity?.window
         if (window != null) {
+            window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(background))
+            window.decorView.setBackgroundColor(background)
             window.isNavigationBarContrastEnforced = false
             WindowCompat.getInsetsController(window, view).apply {
                 isAppearanceLightStatusBars = !dark

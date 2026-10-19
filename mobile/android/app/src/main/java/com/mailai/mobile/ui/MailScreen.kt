@@ -777,7 +777,10 @@ private fun Reader(vm: MailViewModel, back: () -> Unit) {
                         Row(
                             Modifier.fillMaxWidth()
                                 .clickable { details = true }
-                                .padding(top = 14.dp, bottom = 10.dp),
+                                .padding(
+                                    top = if (compactHeader) 8.dp else 14.dp,
+                                    bottom = if (compactHeader) 6.dp else 10.dp,
+                                ),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
@@ -787,7 +790,8 @@ private fun Reader(vm: MailViewModel, back: () -> Unit) {
                                     Text(
                                         sender.label,
                                         Modifier.weight(1f),
-                                        fontSize = 15.sp,
+                                        fontSize = if (compactHeader) 14.sp else 15.sp,
+                                        lineHeight = if (compactHeader) 18.sp else 20.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
@@ -800,9 +804,12 @@ private fun Reader(vm: MailViewModel, back: () -> Unit) {
                                         )
                                 }
                                 Text(
-                                    sender.email,
+                                    if (compactHeader)
+                                        peopleSummary(m, vm.account?.email.orEmpty()) + "  ›"
+                                    else sender.email,
                                     Modifier.padding(top = 3.dp),
-                                    fontSize = 12.sp,
+                                    fontSize = if (compactHeader) 11.sp else 12.sp,
+                                    lineHeight = if (compactHeader) 14.sp else 18.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
@@ -810,23 +817,27 @@ private fun Reader(vm: MailViewModel, back: () -> Unit) {
                             }
                             MailIcon(MailGlyph.Expand, modifier = Modifier.size(18.dp))
                         }
-                        Text(
-                            peopleSummary(m, vm.account?.email.orEmpty()) + "  ›",
-                            Modifier.fillMaxWidth()
-                                .clickable { details = true }
-                                .padding(bottom = 10.dp),
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        if (!compactHeader)
+                            Text(
+                                peopleSummary(m, vm.account?.email.orEmpty()) + "  ›",
+                                Modifier.fillMaxWidth()
+                                    .clickable { details = true }
+                                    .padding(bottom = 10.dp),
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         Text(
                             m.subject,
                             Modifier.clickable { details = true }
-                                .padding(top = 12.dp, bottom = 8.dp),
-                            fontSize = if (compactHeader) 18.sp else 20.sp,
-                            lineHeight = if (compactHeader) 24.sp else 28.sp,
+                                .padding(
+                                    top = if (compactHeader) 8.dp else 12.dp,
+                                    bottom = if (compactHeader) 6.dp else 8.dp,
+                                ),
+                            fontSize = if (compactHeader) 16.sp else 20.sp,
+                            lineHeight = if (compactHeader) 20.sp else 28.sp,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = if (compactHeader) 1 else 2,
                             overflow = TextOverflow.Ellipsis,

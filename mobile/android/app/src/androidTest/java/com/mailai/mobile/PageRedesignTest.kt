@@ -221,6 +221,24 @@ class PageRedesignTest {
             assertEquals(20, ReadingPreferences(context).bodySize)
             assertEquals("dark", ReadingPreferences(context).theme)
             capture("07-settings-dark")
+            val screenshot =
+                android.graphics.BitmapFactory.decodeFile(
+                    File(context.getExternalFilesDir(null), "redesign-checks/07-settings-dark.png")
+                        .path
+                )
+            try {
+                for (y in listOf(5, screenshot.height - 5)) {
+                    val pixel = screenshot.getPixel(5, y)
+                    assertTrue(
+                        "System bar background must follow the in-app dark theme",
+                        android.graphics.Color.red(pixel) < 80 &&
+                            android.graphics.Color.green(pixel) < 80 &&
+                            android.graphics.Color.blue(pixel) < 80,
+                    )
+                }
+            } finally {
+                screenshot.recycle()
+            }
             scenario.onActivity {
                 vm = ViewModelProvider(it)[MailViewModel::class.java]
                 vm.go("inbox")
