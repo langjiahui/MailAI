@@ -74,7 +74,8 @@ def main():
     if lock.exists():
         resolved.parent.mkdir(parents=True, exist_ok=True); shutil.copy2(lock, resolved)
     derived = ROOT / "build/DerivedData"
-    run("xcodebuild", "-project", "MailAI.xcodeproj", "-scheme", "MailAI", "-configuration", "Release",
+    frozen = ["-onlyUsePackageVersionsFromResolvedFile"] if lock.exists() else []
+    run("xcodebuild", *frozen, "-project", "MailAI.xcodeproj", "-scheme", "MailAI", "-configuration", "Release",
         "-destination", "generic/platform=iOS", "-derivedDataPath", str(derived),
         "CODE_SIGNING_ALLOWED=NO", "CODE_SIGNING_REQUIRED=NO", "CODE_SIGN_IDENTITY=",
         f"CURRENT_PROJECT_VERSION={build}", f"MARKETING_VERSION={version}", "build")
