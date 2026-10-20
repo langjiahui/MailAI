@@ -1,9 +1,6 @@
 package com.mailai.mobile.ui
 
-import android.content.Intent
 import android.content.SharedPreferences
-import android.net.Uri
-import android.provider.Settings
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -17,14 +14,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.FileProvider
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -34,9 +27,6 @@ import com.mailai.mobile.MailApplication
 import com.mailai.mobile.background.*
 import com.mailai.mobile.data.ReadingPreferences
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -82,9 +72,6 @@ internal fun PreferencesScreen(vm: MailViewModel) {
     val state by updates.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var revision by remember { mutableIntStateOf(0) }
-    var installing by remember { mutableStateOf(false) }
-    var installMessage by remember { mutableStateOf("") }
-    var showMobileDownload by remember { mutableStateOf(false) }
     val owner = LocalLifecycleOwner.current
     DisposableEffect(owner, prefs) {
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> revision++ }
@@ -93,7 +80,6 @@ internal fun PreferencesScreen(vm: MailViewModel) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 revision++
-                installing = false
             }
         }
         owner.lifecycle.addObserver(observer)
@@ -107,46 +93,6 @@ internal fun PreferencesScreen(vm: MailViewModel) {
     val background = remember(revision) { prefs.background }
     val interval = remember(revision) { prefs.interval }
     val previews = remember(revision) { prefs.previews }
-    val autoCheck = remember(revision) { prefs.autoCheck }
-    val autoDownload = remember(revision) { prefs.autoDownload }
-    fun install() {
-        if (!context.packageManager.canRequestPackageInstalls()) {
-            installMessage = "请允许 MailAI 安装更新；返回后再次点击安装。"
-            context.startActivity(
-                Intent(
-                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                    Uri.parse("package:${context.packageName}"),
-                )
-            )
-            return
-        }
-        installing = true
-        installMessage = "正在核对更新签名…"
-        scope.launch {
-            try {
-                val apk = updates.verifiedApk()
-                val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", apk)
-                context.startActivity(
-                    Intent(Intent.ACTION_VIEW)
-                        .setDataAndType(uri, "application/vnd.android.package-archive")
-                        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        .apply {
-                            clipData =
-                                android.content.ClipData.newUri(
-                                    context.contentResolver,
-                                    "MailAI 更新",
-                                    uri,
-                                )
-                        }
-                )
-                installMessage = "请在系统页面确认安装；取消后可再次安装。"
-            } catch (_: Exception) {
-                installMessage = "无法安装，请重新下载更新后再试。"
-            } finally {
-                installing = false
-            }
-        }
-    }
     Column(Modifier.fillMaxSize()) {
         PageHeader("账号与设置", { vm.go(if (vm.accounts.isEmpty()) "add" else "boxes") })
         Column(
@@ -248,14 +194,6 @@ internal fun PreferencesScreen(vm: MailViewModel) {
                     option = "theme"
                 }
                 SettingsDivider()
-                Box(Modifier.padding(horizontal = 16.dp)) {
-                    SettingToggle("Wi-Fi 自动下载更新", "下载后由你确认安装", autoDownload, MailGlyph.Wifi) {
-                        prefs.autoDownload = it
-                        BackgroundSchedule.configure(context)
-                        if (it) updates.download(true)
-                    }
-                }
-                SettingsDivider()
                 MenuRow("安全与隐私", "设备存储、链接与通知隐私", icon = MailGlyph.Shield) { option = "privacy" }
                 SettingsDivider()
                 MenuRow(
@@ -291,107 +229,7 @@ internal fun PreferencesScreen(vm: MailViewModel) {
             )
         }
     }
-    if (showUpdates)
-        MailBottomSheet(title = "应用更新", onDismiss = { showUpdates = false }) {
-            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
-                SettingsCard("更新详情") {
-                    Text(
-                        "当前版本 ${BuildConfig.VERSION_NAME}",
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    SettingToggle("自动检查更新", "每天检查 GitHub 正式版本", autoCheck) {
-                        prefs.autoCheck = it
-                        BackgroundSchedule.configure(context)
-                    }
-                    SettingToggle("Wi-Fi 自动下载", "下载完成后提醒，由你确认安装", autoDownload) {
-                        prefs.autoDownload = it
-                        BackgroundSchedule.configure(context)
-                        if (it) updates.download(true)
-                    }
-                    if (state.checking) LinearProgressIndicator(Modifier.fillMaxWidth())
-                    if (state.downloading) {
-                        LinearProgressIndicator(
-                            progress = { state.progress },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Text("${(state.progress * 100).toInt()}%", fontSize = 13.sp)
-                    }
-                    if (state.message.isNotBlank())
-                        Text(
-                            state.message,
-                            Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                            fontSize = 14.sp,
-                            color =
-                                if (state.failed) MaterialTheme.colorScheme.error
-                                else MaterialTheme.colorScheme.onSurface,
-                        )
-                    if (state.checkedAt > 0)
-                        Text(
-                            "上次检查 ${stamp(state.checkedAt)}",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    state.candidate?.let { candidate ->
-                        Text("新版本 ${candidate.version}", fontWeight = FontWeight.Medium)
-                        Text(candidate.notes, fontSize = 14.sp)
-                        Text(
-                            "安装包约 ${candidate.size / 1024 / 1024} MB · 安装会保留邮箱和草稿",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        if (state.ready) {
-                            Button(
-                                onClick = ::install,
-                                enabled = !installing,
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Text(if (installing) "正在验证…" else "安装更新")
-                            }
-                            TextButton(
-                                onClick = { updates.download() },
-                                enabled = !state.downloading,
-                            ) {
-                                Text("重新验证安装包")
-                            }
-                        } else if (!state.downloading)
-                            Button(
-                                onClick = { showMobileDownload = true },
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Text(if (state.failed) "重新下载" else "下载更新")
-                            }
-                        TextButton(
-                            onClick = {
-                                context.startActivity(
-                                    Intent(Intent.ACTION_VIEW, Uri.parse(candidate.page))
-                                )
-                            }
-                        ) {
-                            Text("查看 GitHub 发布说明")
-                        }
-                    }
-                    if (
-                        state.downloading ||
-                            state.message.startsWith("等待 Wi-Fi") ||
-                            state.message == "正在准备下载…"
-                    )
-                        TextButton(onClick = updates::cancelDownload) { Text("取消下载") }
-                    TextButton(
-                        onClick = updates::checkNow,
-                        enabled = !state.checking && !state.downloading,
-                    ) {
-                        Text(if (state.failed && state.candidate == null) "重试检查" else "检查更新")
-                    }
-                    if (installMessage.isNotBlank())
-                        Text(
-                            installMessage,
-                            fontSize = 13.sp,
-                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                        )
-                }
-            }
-        }
+    if (showUpdates) AppUpdateSheet(updates, prefs, onDismiss = { showUpdates = false })
     if (showNotifications) {
         BackgroundSettingsSheet(vm.accounts, onDismiss = { showNotifications = false })
     }
@@ -509,36 +347,6 @@ internal fun PreferencesScreen(vm: MailViewModel) {
                     TextButton(onClick = { option = "" }, enabled = !clearing) { Text("取消") }
             },
         )
-    if (showMobileDownload)
-        AlertDialog(
-            onDismissRequest = { showMobileDownload = false },
-            title = { Text("下载这次更新？") },
-            text = { Text("立即下载会使用当前网络，包括移动数据。你也可以开启 Wi-Fi 自动下载。") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showMobileDownload = false
-                        updates.download()
-                    }
-                ) {
-                    Text("立即下载")
-                }
-            },
-            dismissButton = { TextButton(onClick = { showMobileDownload = false }) { Text("稍后") } },
-        )
-}
-
-@Composable
-private fun SettingsCard(title: String, content: @Composable ColumnScope.() -> Unit) {
-    MailCard {
-        Column(
-            Modifier.fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(title, fontSize = 16.sp, fontWeight = FontWeight.Medium)
-            content()
-        }
-    }
 }
 
 @Composable
@@ -566,9 +374,6 @@ private fun SettingToggle(
         Switch(checked = value, onCheckedChange = null)
     }
 }
-
-private fun stamp(time: Long) =
-    SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(Date(time))
 
 @Composable
 private fun SettingsDivider() =

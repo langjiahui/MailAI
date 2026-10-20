@@ -11,9 +11,13 @@ import com.mailai.mobile.background.cancellableIo
 import com.mailai.mobile.mail.NetworkPolicy
 import java.io.File
 import java.io.IOException
+import java.net.SocketTimeoutException
 import java.net.URI
+import java.net.UnknownHostException
 import java.security.MessageDigest
+import java.util.UUID
 import java.util.concurrent.TimeUnit
+import javax.net.ssl.SSLException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -72,7 +76,37 @@ data class UpdateState(
     val message: String = "",
     val failed: Boolean = false,
     val checkedAt: Long = 0,
+    val queued: Boolean = false,
+    val waitingForWifi: Boolean = false,
+    val verifying: Boolean = false,
+    val automatic: Boolean = false,
+    val failureStage: UpdateFailureStage? = null,
 )
+
+enum class UpdateFailureStage {
+    CHECK,
+    DOWNLOAD,
+    VERIFY,
+}
+
+internal class UpdateHttpException(val status: Int) : IOException("HTTP $status")
+
+internal class UpdateValidationException(val explanation: String) : IOException(explanation)
+
+internal fun updateFailureMessage(error: Exception, stage: UpdateFailureStage): String =
+    when {
+        error is UpdateValidationException -> error.explanation
+        error is SocketTimeoutException -> "连接超时，请换个网络后重试"
+        error is UnknownHostException -> "无法连接更新服务，请检查网络后重试"
+        error is SSLException -> "无法建立安全连接，请换个网络后重试"
+        error is UpdateHttpException && error.status in listOf(403, 429) -> "更新服务暂时限制访问，请稍后重试"
+        error is UpdateHttpException -> "更新服务暂时不可用，请稍后重试"
+        error.message.orEmpty().contains("ENOSPC") ||
+            error.message.orEmpty().contains("No space left") -> "手机空间不足，请释放空间后重试"
+        stage == UpdateFailureStage.VERIFY -> "安装包未通过验证，已阻止安装，请重新下载"
+        stage == UpdateFailureStage.CHECK && error !is IOException -> "更新信息暂时无法确认，请稍后重试"
+        else -> "网络连接中断，请检查网络后重试"
+    }
 
 /** URL allowlist is applied on every redirect; DNS answers are validated and used by OkHttp. */
 internal object UpdatePolicy {
@@ -190,7 +224,7 @@ internal class UpdateHttp(clientOverride: OkHttpClient? = null) {
                 if (!response.isSuccessful) {
                     val code = response.code
                     response.close()
-                    throw IOException("HTTP $code")
+                    throw UpdateHttpException(code)
                 }
                 return response
             }
@@ -220,7 +254,9 @@ internal class UpdateHttp(clientOverride: OkHttpClient? = null) {
 class AppUpdates(private val context: Context) {
     private val prefs = context.getSharedPreferences("mailai.updates", Context.MODE_PRIVATE)
     private val checkMutex = Mutex()
-
+    private val requestLock = Any()
+    @Volatile private var checkHttp: UpdateHttp? = null
+    @Volatile private var downloadHttp: UpdateHttp? = null
     private val directory = File(context.filesDir, "updates").apply { mkdirs() }
 
     private fun cached(): UpdateCandidate? =
@@ -235,29 +271,99 @@ class AppUpdates(private val context: Context) {
                 candidate = initial,
                 ready = initial?.let { apk(it).isFile } == true,
                 checkedAt = prefs.getLong("checkedAt", 0),
+                queued = initial != null && prefs.contains("downloadRequest"),
+                waitingForWifi =
+                    initial != null &&
+                        prefs.contains("downloadRequest") &&
+                        prefs.getBoolean("wifiOnly", false),
+                automatic = prefs.getBoolean("wifiOnly", false),
             )
         )
     val state = mutable.asStateFlow()
 
+    init {
+        if (initial == null) prefs.edit().remove("downloadRequest").commit()
+    }
+
+    private fun current(key: String, id: String) =
+        synchronized(requestLock) { prefs.getString(key, null) == id }
+
+    private fun begin(key: String): String =
+        synchronized(requestLock) {
+            UUID.randomUUID().toString().also { prefs.edit().putString(key, it).commit() }
+        }
+
+    private fun finish(key: String, id: String) =
+        synchronized(requestLock) {
+            if (prefs.getString(key, null) == id) prefs.edit().remove(key).commit()
+        }
+
+    private fun publish(key: String, id: String, change: (UpdateState) -> UpdateState) =
+        synchronized(requestLock) { if (prefs.getString(key, null) == id) mutable.update(change) }
+
+    private fun ensureCurrent(key: String, id: String, http: UpdateHttp) {
+        http.check()
+        if (!current(key, id)) throw CancellationException("更新操作已取消")
+    }
+
     fun apk(c: UpdateCandidate) = File(directory, "mailai-${c.code}.apk")
 
     fun checkNow() {
-        if (state.value.checking || state.value.downloading) return
-        mutable.value = mutable.value.copy(message = "正在检查更新…", failed = false, checking = true)
+        if (state.value.checking || state.value.downloading || state.value.queued) return
+        val id = begin("checkRequest")
+        mutable.update {
+            it.copy(message = "正在检查更新…", failed = false, failureStage = null, checking = true)
+        }
         WorkManager.getInstance(context)
             .enqueueUniqueWork(
                 "update-check-now",
-                ExistingWorkPolicy.KEEP,
-                OneTimeWorkRequestBuilder<UpdateCheckWorker>().build(),
+                ExistingWorkPolicy.REPLACE,
+                OneTimeWorkRequestBuilder<UpdateCheckWorker>()
+                    .setInputData(workDataOf("request" to id))
+                    .build(),
             )
     }
 
-    fun download(automatic: Boolean = false) {
-        val c = state.value.candidate ?: return
-        if (state.value.downloading || (automatic && state.value.ready)) return
-        val work =
+    fun cancelCheck() {
+        synchronized(requestLock) { prefs.edit().remove("checkRequest").commit() }
+        checkHttp?.cancel()
+        WorkManager.getInstance(context).cancelUniqueWork("update-check-now")
+        mutable.update {
+            it.copy(checking = false, failed = false, failureStage = null, message = "检查已取消")
+        }
+    }
+
+    fun download(automatic: Boolean = false, replaceQueued: Boolean = false) {
+        val c = state.value.candidate?.takeIf { it.code > BuildConfig.VERSION_CODE } ?: return
+        if (
+            state.value.checking ||
+                state.value.downloading ||
+                (state.value.queued && !replaceQueued) ||
+                (automatic && state.value.ready)
+        )
+            return
+        val id = begin("downloadRequest")
+        prefs.edit().putBoolean("wifiOnly", automatic).commit()
+        mutable.update {
+            it.copy(
+                queued = true,
+                waitingForWifi = automatic,
+                automatic = automatic,
+                ready = false,
+                message = if (automatic) "连接 Wi-Fi 后自动下载" else "等待网络，连接后开始下载",
+                failed = false,
+                failureStage = null,
+                verifying = false,
+                progress = 0f,
+            )
+        }
+        val manager = WorkManager.getInstance(context)
+        manager.cancelUniqueWork("update-auto-download") // Retire the previous duplicate queue.
+        manager.enqueueUniqueWork(
+            "update-download",
+            ExistingWorkPolicy.REPLACE,
             OneTimeWorkRequestBuilder<UpdateDownloadWorker>()
-                .setInputData(workDataOf("code" to c.code))
+                .setInputData(workDataOf("code" to c.code, "request" to id))
                 .setConstraints(
                     Constraints.Builder()
                         .setRequiredNetworkType(
@@ -265,46 +371,69 @@ class AppUpdates(private val context: Context) {
                         )
                         .build()
                 )
-                .build()
-        mutable.update { current ->
-            if (current.downloading) current
-            else
-                current.copy(
-                    message = if (automatic) "等待 Wi-Fi 下载更新" else "正在准备下载…",
-                    failed = false,
-                )
-        }
-        WorkManager.getInstance(context)
-            .enqueueUniqueWork(
-                if (automatic) "update-auto-download" else "update-download",
-                ExistingWorkPolicy.KEEP,
-                work,
-            )
+                .build(),
+        )
     }
 
     fun cancelDownload() {
+        synchronized(requestLock) { prefs.edit().remove("downloadRequest").commit() }
+        downloadHttp?.cancel()
         val manager = WorkManager.getInstance(context)
         manager.cancelUniqueWork("update-download")
         manager.cancelUniqueWork("update-auto-download")
-        mutable.value =
-            mutable.value.copy(downloading = false, message = "下载已取消，可稍后重试", failed = false)
+        mutable.update {
+            it.copy(
+                downloading = false,
+                queued = false,
+                waitingForWifi = false,
+                verifying = false,
+                failed = false,
+                failureStage = null,
+                message = "下载已取消，可稍后重试",
+            )
+        }
     }
 
-    internal suspend fun check(http: UpdateHttp): Boolean =
+    internal suspend fun check(http: UpdateHttp, requestId: String? = null): Boolean =
         checkMutex.withLock {
-            mutable.value = state.value.copy(checking = true, message = "正在检查更新…", failed = false)
+            if (
+                requestId == null &&
+                    (state.value.checking || state.value.downloading || state.value.queued)
+            )
+                return@withLock true
+            val id = requestId ?: begin("checkRequest")
+            if (!current("checkRequest", id)) return@withLock true
+            checkHttp = http
+            publish("checkRequest", id) {
+                it.copy(checking = true, message = "正在检查更新…", failed = false, failureStage = null)
+            }
             try {
                 val releases = JSONArray(http.json(RELEASES))
+                val eligible =
+                    (0 until releases.length())
+                        .map { releases.getJSONObject(it) }
+                        .filter {
+                            !it.optBoolean("draft") &&
+                                it.optString("tag_name").startsWith("android-v") &&
+                                (BuildConfig.VERSION_NAME.contains("-beta.") ||
+                                    !it.optBoolean("prerelease"))
+                        }
+                // Product policy requires monotonically increasing install codes on publication.
+                // Real GitHub feeds provide publication dates: consult the newest manifest once,
+                // rather than letting an old/deleted historical asset block a fresh update.
+                val dated =
+                    eligible.isNotEmpty() &&
+                        eligible.all {
+                            it.optString("published_at")
+                                .matches(Regex("[0-9]{4}-[0-9]{2}-[0-9]{2}T.*Z"))
+                        }
+                val ordered =
+                    if (dated) eligible.sortedByDescending { it.optString("published_at") }
+                    else eligible
                 var best: UpdateCandidate? = null
-                for (i in 0 until releases.length()) {
-                    val release = releases.getJSONObject(i)
-                    val tag = release.optString("tag_name")
-                    if (release.optBoolean("draft") || !tag.startsWith("android-v")) continue
-                    if (
-                        !BuildConfig.VERSION_NAME.contains("-beta.") &&
-                            release.optBoolean("prerelease")
-                    )
-                        continue
+                for (release in ordered) {
+                    ensureCurrent("checkRequest", id, http)
+                    val tag = release.getString("tag_name")
                     val assets = release.getJSONArray("assets")
                     val manifest =
                         (0 until assets.length())
@@ -316,147 +445,207 @@ class AppUpdates(private val context: Context) {
                     val c = UpdatePolicy.manifest(JSONObject(http.json(url)), tag, assets)
                     if (c.code > BuildConfig.VERSION_CODE && (best == null || c.code > best.code))
                         best = c
+                    if (dated) break
                 }
-                http.check()
+                ensureCurrent("checkRequest", id, http)
                 val now = System.currentTimeMillis()
-                prefs
-                    .edit()
-                    .putLong("checkedAt", now)
-                    .putString("candidate", best?.json()?.toString())
-                    .commit()
                 val previous = state.value
-                mutable.value =
-                    previous.copy(
-                        candidate = best,
-                        checking = false,
-                        checkedAt = now,
-                        ready = best?.let { apk(it).isFile } == true,
-                        message = if (best == null) "已是最新版本" else "发现新版本 ${best.version}",
-                        failed = false,
-                    )
+                synchronized(requestLock) {
+                    ensureCurrent("checkRequest", id, http)
+                    prefs
+                        .edit()
+                        .putLong("checkedAt", now)
+                        .putString("candidate", best?.json()?.toString())
+                        .commit()
+                    mutable.update {
+                        it.copy(
+                            candidate = best,
+                            checking = false,
+                            checkedAt = now,
+                            ready = best?.let { c -> apk(c).isFile } == true,
+                            message = if (best == null) "已是最新版本" else "发现新版本 ${best!!.version}",
+                            failed = false,
+                            failureStage = null,
+                        )
+                    }
+                }
                 if (best != null && best.code != previous.candidate?.code)
                     MailNotifications.update(context, false)
                 if (best != null && AppPreferences(context).autoDownload) download(true)
                 true
-            } catch (e: CancellationException) {
-                mutable.value = state.value.copy(checking = false)
-                throw e
-            } catch (_: Exception) {
-                if (http.isCancelled) {
-                    mutable.value =
-                        state.value.copy(checking = false, message = "检查已取消", failed = false)
+            } catch (e: Exception) {
+                if (
+                    e is CancellationException || http.isCancelled || !current("checkRequest", id)
+                ) {
+                    publish("checkRequest", id) {
+                        it.copy(checking = false, failed = false, message = "检查已取消")
+                    }
                     throw CancellationException("检查已取消")
                 }
-                mutable.value =
-                    state.value.copy(checking = false, message = "暂时无法检查更新，请检查网络后重试", failed = true)
+                publish("checkRequest", id) {
+                    it.copy(
+                        checking = false,
+                        message = updateFailureMessage(e, UpdateFailureStage.CHECK),
+                        failed = true,
+                        failureStage = UpdateFailureStage.CHECK,
+                    )
+                }
                 false
+            } finally {
+                finish("checkRequest", id)
+                if (checkHttp === http) checkHttp = null
             }
         }
 
-    internal suspend fun fetch(code: Long, http: UpdateHttp): Boolean =
+    internal suspend fun fetch(code: Long, http: UpdateHttp, requestId: String? = null): Boolean =
         checkMutex.withLock {
             http.check()
             val c = state.value.candidate?.takeIf { it.code == code } ?: return@withLock true
+            val id = requestId ?: begin("downloadRequest")
+            if (!current("downloadRequest", id)) return@withLock true
             val pending = File(directory, "mailai-$code.part")
-            mutable.value =
-                state.value.copy(
+            var stage = UpdateFailureStage.DOWNLOAD
+            var resumeQueuedWork = false
+            downloadHttp = http
+            publish("downloadRequest", id) {
+                it.copy(
                     downloading = true,
+                    queued = false,
+                    waitingForWifi = false,
+                    verifying = false,
                     progress = 0f,
                     failed = false,
+                    failureStage = null,
                     message = "正在下载更新…",
                 )
+            }
             try {
                 val validCached = apk(c).isFile && runCatching { verify(c) }.isSuccess
                 if (!validCached) {
                     apk(c).delete()
                     http.response(c.url).use { response ->
                         val body = requireNotNull(response.body)
-                        require(body.contentLength() == -1L || body.contentLength() == c.size) {
-                            "安装包大小不匹配"
-                        }
+                        if (body.contentLength() != -1L && body.contentLength() != c.size)
+                            throw UpdateValidationException("下载文件大小不符，请重新下载")
                         body.byteStream().use { input ->
                             pending.outputStream().use { output ->
                                 val buffer = ByteArray(32768)
                                 var count = 0L
                                 var last = 0L
                                 while (true) {
-                                    http.check()
+                                    ensureCurrent("downloadRequest", id, http)
                                     val n = input.read(buffer)
                                     if (n < 0) break
                                     count += n
-                                    require(count <= c.size && count <= MAX_APK)
+                                    if (count > c.size || count > MAX_APK)
+                                        throw UpdateValidationException("下载文件大小不符，请重新下载")
                                     output.write(buffer, 0, n)
                                     val now = System.nanoTime()
                                     if (now - last > 150_000_000) {
                                         last = now
-                                        mutable.value =
-                                            state.value.copy(progress = count.toFloat() / c.size)
+                                        publish("downloadRequest", id) {
+                                            it.copy(progress = count.toFloat() / c.size)
+                                        }
                                     }
                                 }
-                                require(count == c.size) { "安装包下载不完整" }
+                                if (count != c.size) throw UpdateValidationException("下载未完成，请重新下载")
                                 output.fd.sync()
                             }
                         }
                     }
-                    http.check()
-                    mutable.value = state.value.copy(message = "正在验证安装包…", progress = 1f)
+                    ensureCurrent("downloadRequest", id, http)
+                    stage = UpdateFailureStage.VERIFY
+                    publish("downloadRequest", id) {
+                        it.copy(message = "正在验证安装包…", progress = 1f, verifying = true)
+                    }
                     verifyFile(pending, c)
-                    http.check()
+                    ensureCurrent("downloadRequest", id, http)
                     check(pending.renameTo(apk(c)))
                 }
-                mutable.value =
-                    state.value.copy(
+                ensureCurrent("downloadRequest", id, http)
+                publish("downloadRequest", id) {
+                    it.copy(
                         downloading = false,
+                        queued = false,
+                        verifying = false,
                         ready = true,
                         progress = 1f,
                         message = "更新已准备好，点击安装",
+                        failed = false,
+                        failureStage = null,
                     )
+                }
                 MailNotifications.update(context, true)
                 directory
                     .listFiles()
                     ?.filter { it.name.endsWith(".apk") && it != apk(c) }
                     ?.forEach { it.delete() }
                 true
-            } catch (e: CancellationException) {
-                mutable.value = state.value.copy(downloading = false, message = "下载已取消")
-                throw e
-            } catch (_: Exception) {
-                // Call.cancel() closes a blocked socket with IOException, not
-                // CancellationException.
-                if (http.isCancelled) {
-                    mutable.value =
-                        state.value.copy(
+            } catch (e: Exception) {
+                if (
+                    e is CancellationException ||
+                        http.isCancelled ||
+                        !current("downloadRequest", id)
+                ) {
+                    // A constraint stop (for example Wi-Fi loss) is rescheduled by WorkManager.
+                    // Retain that request token; only an explicit user cancellation removes it.
+                    resumeQueuedWork = requestId != null && current("downloadRequest", id)
+                    publish("downloadRequest", id) {
+                        it.copy(
                             downloading = false,
-                            message = "下载已取消，可稍后重试",
+                            queued = resumeQueuedWork,
+                            waitingForWifi = resumeQueuedWork && it.automatic,
+                            verifying = false,
                             failed = false,
+                            message = if (resumeQueuedWork) "网络恢复后将重新下载" else "下载已取消，可稍后重试",
                         )
-                    throw CancellationException("下载已取消")
+                    }
+                    throw CancellationException("下载已暂停或取消")
                 }
-                mutable.value =
-                    state.value.copy(
+                publish("downloadRequest", id) {
+                    it.copy(
                         downloading = false,
+                        queued = false,
+                        verifying = false,
                         ready = false,
-                        message = "下载或验证失败，请重试",
+                        message = updateFailureMessage(e, stage),
                         failed = true,
+                        failureStage = stage,
                     )
+                }
                 apk(c).delete()
                 false
             } finally {
                 pending.delete()
+                if (!resumeQueuedWork) finish("downloadRequest", id)
+                if (downloadHttp === http) downloadHttp = null
             }
         }
 
     suspend fun verifiedApk(): File =
         withContext(Dispatchers.IO) {
             val c = requireNotNull(state.value.candidate) { "请先检查更新" }
-            verify(c)
-            apk(c)
+            try {
+                verify(c)
+                apk(c)
+            } catch (e: Exception) {
+                apk(c).delete()
+                mutable.update {
+                    it.copy(
+                        ready = false,
+                        failed = true,
+                        failureStage = UpdateFailureStage.VERIFY,
+                        message = updateFailureMessage(e, UpdateFailureStage.VERIFY),
+                    )
+                }
+                throw e
+            }
         }
 
     private fun verify(c: UpdateCandidate) = verifyFile(apk(c), c)
 
     private fun verifyFile(file: File, c: UpdateCandidate) {
-        require(file.length() == c.size)
+        if (file.length() != c.size) throw UpdateValidationException("安装包不完整，请重新下载")
         val digest = MessageDigest.getInstance("SHA-256")
         file.inputStream().use { input ->
             val buffer = ByteArray(32768)
@@ -466,7 +655,8 @@ class AppUpdates(private val context: Context) {
                 digest.update(buffer, 0, n)
             }
         }
-        require(digest.digest().joinToString("") { "%02x".format(it) } == c.sha256) { "安装包校验失败" }
+        if (digest.digest().joinToString("") { "%02x".format(it) } != c.sha256)
+            throw UpdateValidationException("安装包校验失败，已阻止安装，请重新下载")
         @Suppress("DEPRECATION")
         val archive =
             requireNotNull(
@@ -509,7 +699,12 @@ class UpdateCheckWorker(context: Context, params: WorkerParameters) :
 
     override suspend fun doWork(): Result =
         cancellableIo(http::cancel) {
-            if ((applicationContext as MailApplication).updates.check(http)) Result.success()
+            if (
+                (applicationContext as MailApplication)
+                    .updates
+                    .check(http, inputData.getString("request"))
+            )
+                Result.success()
             else Result.failure()
         }
 }
@@ -523,7 +718,7 @@ class UpdateDownloadWorker(context: Context, params: WorkerParameters) :
             if (
                 (applicationContext as MailApplication)
                     .updates
-                    .fetch(inputData.getLong("code", -1), http)
+                    .fetch(inputData.getLong("code", -1), http, inputData.getString("request"))
             )
                 Result.success()
             else Result.failure()

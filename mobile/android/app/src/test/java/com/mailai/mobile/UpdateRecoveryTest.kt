@@ -130,6 +130,77 @@ class UpdateRecoveryTest {
         assertTrue(updates.check(http))
         assertNull(updates.state.value.candidate)
         assertEquals("已是最新版本", updates.state.value.message)
+        // A fresh dated feed must not fetch broken/deleted historical manifests.
+        releases.put(next.first)
+        legacy.first.put("published_at", "2026-01-01T00:00:00Z")
+        current.first.put("published_at", "2026-01-02T00:00:00Z")
+        next.first.put("published_at", "2026-01-03T00:00:00Z")
+        var manifests = 0
+        val freshHttp =
+            UpdateHttp(
+                OkHttpClient.Builder()
+                    .addInterceptor {
+                        val url = it.request().url.toString()
+                        val body =
+                            if (url == RELEASES) releases.toString()
+                            else {
+                                manifests++
+                                check(url.contains("android-v1.0.1/")) {
+                                    "Historical manifest must not block latest check"
+                                }
+                                next.second.toString()
+                            }
+                        Response.Builder()
+                            .request(it.request())
+                            .protocol(Protocol.HTTP_1_1)
+                            .code(200)
+                            .message("OK")
+                            .body(body.toResponseBody())
+                            .build()
+                    }
+                    .build()
+            )
+        assertTrue(updates.check(freshHttp))
+        assertEquals(1, manifests)
+        assertEquals("1.0.1", updates.state.value.candidate!!.version)
+    }
+
+    @Test
+    fun staleCancelledRequestCannotStartOrOverwriteANewRequest() = runBlocking {
+        val (updates, c) = updates()
+        context
+            .getSharedPreferences("mailai.updates", Context.MODE_PRIVATE)
+            .edit()
+            .putString("downloadRequest", "new-request")
+            .commit()
+        val http =
+            UpdateHttp(
+                OkHttpClient.Builder()
+                    .addInterceptor { error("A stale work request must never reach the network") }
+                    .build()
+            )
+        assertTrue(updates.fetch(c.code, http, "cancelled-request"))
+        assertFalse(updates.state.value.downloading)
+        assertEquals(
+            "new-request",
+            context
+                .getSharedPreferences("mailai.updates", Context.MODE_PRIVATE)
+                .getString("downloadRequest", null),
+        )
+    }
+
+    @Test
+    fun failedFreshCheckRetainsCachedCandidateButMarksItAsCheckFailure() = runBlocking {
+        val (updates, candidate) = updates()
+        val http =
+            UpdateHttp(
+                OkHttpClient.Builder().addInterceptor { throw IOException("offline") }.build()
+            )
+        assertFalse(updates.check(http))
+        assertEquals(candidate, updates.state.value.candidate)
+        assertEquals(UpdateFailureStage.CHECK, updates.state.value.failureStage)
+        assertTrue(updates.state.value.failed)
+        assertFalse(updates.state.value.checking)
     }
 
     @Test
@@ -164,6 +235,53 @@ class UpdateRecoveryTest {
         assertFalse(updates.state.value.downloading)
         assertTrue(updates.state.value.message.contains("已取消"))
         assertFalse(updates.apk(c).exists())
+    }
+
+    @Test
+    fun aWorkConstraintStopRetainsTheRequestForNetworkRecovery() = runBlocking {
+        val (updates, c) = updates()
+        val preferences = context.getSharedPreferences("mailai.updates", Context.MODE_PRIVATE)
+        preferences.edit().putString("downloadRequest", "resumable-request").commit()
+        val entered = CountDownLatch(1)
+        val finish = CountDownLatch(1)
+        val http =
+            UpdateHttp(
+                OkHttpClient.Builder()
+                    .addInterceptor {
+                        entered.countDown()
+                        check(finish.await(5, TimeUnit.SECONDS))
+                        throw IOException("socket closed")
+                    }
+                    .build()
+            )
+        val job =
+            launch(Dispatchers.IO) {
+                try {
+                    updates.fetch(c.code, http, "resumable-request")
+                    fail("Expected cancellation")
+                } catch (_: CancellationException) {}
+            }
+        withContext(Dispatchers.IO) { assertTrue(entered.await(5, TimeUnit.SECONDS)) }
+        http.cancel()
+        finish.countDown()
+        job.join()
+        assertTrue(updates.state.value.queued)
+        assertFalse(updates.state.value.failed)
+        assertEquals("resumable-request", preferences.getString("downloadRequest", null))
+        var resumed = false
+        val next =
+            UpdateHttp(
+                OkHttpClient.Builder()
+                    .addInterceptor {
+                        resumed = true
+                        throw IOException("offline")
+                    }
+                    .build()
+            )
+        assertFalse(updates.fetch(c.code, next, "resumable-request"))
+        assertTrue(resumed)
+        assertFalse(updates.state.value.queued)
+        assertFalse(preferences.contains("downloadRequest"))
     }
 
     @Test

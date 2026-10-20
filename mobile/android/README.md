@@ -1,10 +1,18 @@
 # MailAI Android
 
-当前 Android 正式版本：**1.3.1**（versionCode **2100109**），Android 10+。
+当前 Android 正式版本：**1.3.2**（versionCode **2100110**），Android 10+。
 
-[下载 APK](https://github.com/langjiahui/MailAI/releases/download/android-v1.3.1/MailAI-Android-1.3.1.apk) · [发布说明](https://github.com/langjiahui/MailAI/releases/tag/android-v1.3.1)
+[下载 APK](https://github.com/langjiahui/MailAI/releases/download/android-v1.3.2/MailAI-Android-1.3.2.apk) · [发布说明](https://github.com/langjiahui/MailAI/releases/tag/android-v1.3.2)
 
 Kotlin + Jetpack Compose 原生邮件客户端，软件名称为 **MailAI**。手机通过 IMAP/SMTP 独立收发，电脑关机也能工作，不依赖桌面服务或 Google Play 服务。
+
+## 1.3.2 更新体验修复
+
+下载、重试与安装按钮固定在面板底部；更新内容默认显示关键条目，自动检查与 Wi-Fi 下载设置折叠收纳。区分当前安装版本、缓存的更新信息及最新检查结果；失败原因优先显示，检查、下载、验证失败分别提供对应重试操作。
+
+支持取消检查与下载，旧任务不能覆盖新任务状态。Wi-Fi 条件变化导致系统暂停时保留任务，网络恢复后重新下载；主动取消后不自动重启。使用计费网络下载前确认流量，授权安装后继续进入系统安装页面。保留安装包大小、SHA-256、包名、版本及固定签名验证，覆盖安装保留邮件和草稿。
+
+验证普通屏幕、窄屏 200% 字号、深色主题、长说明和设置展开后的底部按钮可见性。不新增周期任务，不改变邮箱协议、数据库或 Web/桌面版本。
 
 ## 1.3.1 底部面板与交互修复
 
