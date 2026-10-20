@@ -227,12 +227,14 @@ class DeviceTest {
             compose.onNode(hasText("30 分钟") and isSelected()).assertExists()
             compose.onNodeWithText("完成").performClick()
             compose.onNodeWithText("应用更新").performScrollTo().performClick()
-            compose.onNodeWithText("检查更新").performScrollTo().performClick()
+            compose.waitForIdle()
+            scenario.onActivity { (it.application as MailApplication).updates.cancelCheck() }
+            compose.onNodeWithText("检查更新").assertIsDisplayed().performClick()
             compose.waitUntil(10000) {
                 compose.onAllNodesWithText("正在检查更新…").fetchSemanticsNodes().isNotEmpty()
             }
         } finally {
-            androidx.work.WorkManager.getInstance(context).cancelUniqueWork("update-check-now")
+            (context.applicationContext as MailApplication).updates.cancelCheck()
             scenario.close()
         }
     }

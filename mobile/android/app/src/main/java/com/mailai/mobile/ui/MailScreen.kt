@@ -47,7 +47,7 @@ import com.mailai.mobile.mail.*
 import java.text.SimpleDateFormat
 import java.util.*
 
-private val Light =
+internal val Light =
     lightColorScheme(
         primary = Color(0xFF005D46),
         onPrimary = Color.White,
@@ -71,7 +71,7 @@ private val Light =
         onSurfaceVariant = Color(0xFF627287),
         outlineVariant = Color(0xFFE8EEF3),
     )
-private val Dark =
+internal val Dark =
     darkColorScheme(
         primary = Color(0xFFC5D4BD),
         onPrimary = Color(0xFF20271D),
