@@ -113,29 +113,10 @@ internal fun BackgroundSettingsSheet(accounts: List<Account>, onDismiss: () -> U
     fun open(destination: String) {
         if (!BackgroundAccess.open(context, destination)) feedback("系统设置暂时打不开，请从手机设置进入 MailAI 应用信息")
     }
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        contentWindowInsets = { WindowInsets.safeDrawing },
-        containerColor = MaterialTheme.colorScheme.surface,
-        dragHandle = null,
-    ) {
-        Column(Modifier.fillMaxWidth().fillMaxHeight(.94f).testTag("background-settings")) {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    "后台收信",
-                    Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                TextButton(onClick = onDismiss) { Text("完成") }
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+    MailBottomSheet(title = "后台收信", onDismiss = onDismiss) {
+        Column(Modifier.fillMaxWidth().testTag("background-settings")) {
             Column(
-                Modifier.weight(1f)
+                Modifier.weight(1f, fill = false)
                     .clipToBounds()
                     .verticalScroll(rememberScrollState())
                     .padding(20.dp),

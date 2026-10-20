@@ -66,30 +66,10 @@ internal fun MailPeopleDialog(vm: MailViewModel, mail: MailItem, close: () -> Un
                 )
                 .filter { it.second.isNotEmpty() }
         }
-    val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val listState = rememberLazyListState()
     var expandedKey by remember(mail.key) { mutableStateOf<String?>(null) }
-    val height = LocalConfiguration.current.screenHeightDp.dp * .74f
-    ModalBottomSheet(
-        onDismissRequest = close,
-        sheetState = state,
-        containerColor = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
-    ) {
-        Column(Modifier.fillMaxWidth().heightIn(max = height).testTag("mail-details-sheet")) {
-            Row(
-                Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    "邮件详情",
-                    Modifier.weight(1f),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                TextButton(onClick = close) { Text("完成", fontSize = 14.sp) }
-            }
+    MailBottomSheet(title = "邮件详情", onDismiss = close) {
+        Column(Modifier.fillMaxWidth().testTag("mail-details-sheet")) {
             TextButton(
                 onClick = { vm.toggleStar(mail) },
                 enabled = !vm.busy,

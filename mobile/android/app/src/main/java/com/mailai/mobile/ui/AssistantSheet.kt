@@ -19,7 +19,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
@@ -74,9 +73,8 @@ internal fun AssistantSheet(vm: MailViewModel) {
     val a = vm.assistant
     if (!a.visible) return
     val source = a.source ?: return
-    val maxHeight = (LocalConfiguration.current.screenHeightDp.dp - 32.dp).coerceAtLeast(200.dp)
     val focus = LocalFocusManager.current
-    val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheet = rememberModalBottomSheetState()
     val panelScope = rememberCoroutineScope()
     var closing by remember { mutableStateOf(false) }
     fun leave(action: () -> Unit) {
@@ -84,8 +82,12 @@ internal fun AssistantSheet(vm: MailViewModel) {
         closing = true
         a.stop()
         panelScope.launch {
-            sheet.hide()
-            action()
+            try {
+                sheet.hide()
+                if (!sheet.isVisible) action()
+            } finally {
+                closing = false
+            }
         }
     }
     var addInstruction by rememberSaveable(source.sourceId) { mutableStateOf(false) }
@@ -94,34 +96,16 @@ internal fun AssistantSheet(vm: MailViewModel) {
         focus.clearFocus()
         a.start(task)
     }
-    ModalBottomSheet(
-        onDismissRequest = { a.close() },
+    MailBottomSheet(
+        title = "小邮",
+        onDismiss = { a.close() },
         sheetState = sheet,
-        containerColor = MaterialTheme.colorScheme.surface,
-        dragHandle = null,
-        contentWindowInsets = { WindowInsets.safeDrawing },
+        closeLabel = "关闭",
+        closeEnabled = !a.loading && !a.applying && !closing,
+        onClose = { leave { a.close() } },
+        leading = { XiaoyouFace(a) },
     ) {
-        Column(
-            Modifier.fillMaxWidth().heightIn(max = maxHeight).imePadding().testTag("xiaoyou-sheet")
-        ) {
-            Row(
-                Modifier.fillMaxWidth().padding(start = 20.dp, top = 12.dp, end = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                XiaoyouFace(a)
-                Text(
-                    "小邮",
-                    Modifier.weight(1f).padding(start = 8.dp),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                TextButton(
-                    onClick = { leave { a.close() } },
-                    enabled = !a.loading && !a.applying && !closing,
-                ) {
-                    Text("关闭")
-                }
-            }
+        Column(Modifier.fillMaxWidth().testTag("xiaoyou-sheet")) {
             Column(
                 Modifier.weight(1f, fill = false)
                     .verticalScroll(rememberScrollState())

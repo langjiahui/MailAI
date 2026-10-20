@@ -113,6 +113,8 @@ class BackgroundExperienceTest {
             db.recordArrivals(1, listOf(mail(901)))
             assertEquals(1, db.pendingArrivals().size)
             assertTrue(MailNotifications.test(context))
+            // NotificationManager posts asynchronously across the system-service boundary.
+            compose.waitUntil(5000) { notices.activeNotifications.any { it.tag == "mail-test" } }
             val notification =
                 notices.activeNotifications.single { it.tag == "mail-test" }.notification
             assertEquals(MailNotifications.CHANNEL, notification.channelId)

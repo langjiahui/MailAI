@@ -547,24 +547,8 @@ private fun Reader(vm: MailViewModel, back: () -> Unit) {
         }
     if (details) MailPeopleDialog(vm, m) { details = false }
     if (attachmentList)
-        ModalBottomSheet(
-            onDismissRequest = { attachmentList = false },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            containerColor = MaterialTheme.colorScheme.surface,
-        ) {
-            Column(Modifier.fillMaxWidth().heightIn(max = 420.dp).testTag("attachment-sheet")) {
-                Row(
-                    Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        "附件 · ${files.size}",
-                        Modifier.weight(1f),
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    TextButton(onClick = { attachmentList = false }) { Text("完成") }
-                }
+        MailBottomSheet(title = "附件 · ${files.size}", onDismiss = { attachmentList = false }) {
+            Column(Modifier.fillMaxWidth().testTag("attachment-sheet")) {
                 LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)) {
                     items(files, key = { it.part }) { file ->
                         Surface(
