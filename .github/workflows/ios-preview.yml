@@ -55,9 +55,11 @@ jobs:
           openssl req -newkey rsa:2048 -nodes -keyout build/fixture-server-key.pem -out build/fixture.csr -subj '/CN=localhost'
           printf 'subjectAltName=DNS:localhost,IP:127.0.0.1\nbasicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=serverAuth\nsubjectKeyIdentifier=hash\nauthorityKeyIdentifier=keyid,issuer\n' > build/fixture.ext
           openssl x509 -req -in build/fixture.csr -CA build/fixture-ca.pem -CAkey build/fixture-key.pem -CAcreateserial -out build/fixture-server.pem -days 2 -extfile build/fixture.ext
-          # NIOSSL's Security.framework validation in the simulator also uses host trustd.
+          # Trust the synthetic fixture in both host and simulator trust stores.
           sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain build/fixture-ca.pem
-          security verify-cert -c build/fixture-server.pem -c build/fixture-ca.pem -p ssl -s localhost
+          openssl x509 -in build/fixture-ca.pem -text -noout
+          openssl x509 -in build/fixture-server.pem -text -noout
+          security verify-cert -c build/fixture-server.pem -r build/fixture-ca.pem -p ssl -n localhost
           xcrun simctl keychain "$device" add-root-cert build/fixture-ca.pem
           xcrun simctl shutdown "$device"
           xcrun simctl boot "$device"
