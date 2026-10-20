@@ -97,6 +97,37 @@ class TransportTest {
     private fun transport() = MailTransport({ InetAddress.getByName("127.0.0.1") }, trusted)
 
     @Test
+    fun mislabeledHeadersRemainReadableAcrossImapSyncAndBodyRead() {
+        val user = server.setUser("encoding@example.test", "encoding@example.test", "test-password")
+        val name = "测试镕, 项目"
+        val payload =
+            java.util.Base64.getEncoder()
+                .encodeToString(name.toByteArray(java.nio.charset.Charset.forName("GBK")))
+        val word = "=?UTF-8?B?$payload?="
+        val raw =
+            "From: $word <sender@example.test>\r\nTo: $word <encoding@example.test>\r\nCc: $word <cc@example.test>\r\nSubject: $word\r\nContent-Type: text/plain; charset=gb2312\r\nContent-Transfer-Encoding: base64\r\n\r\n$payload"
+        user.deliver(
+            javax.mail.internet.MimeMessage(
+                javax.mail.Session.getInstance(java.util.Properties()),
+                raw.byteInputStream(Charsets.US_ASCII),
+            )
+        )
+        val a = account("encoding@example.test")
+        val op = Operation()
+        try {
+            val item = transport().sync(a, "test-password", "INBOX", 50, op).second.single()
+            assertEquals(name, item.subject)
+            assertEquals(name, MailAddresses.sender(item.sender).name)
+            assertEquals(name, MailAddresses.parse(item.recipients).single().name)
+            assertEquals(name, MailAddresses.parse(item.cc).single().name)
+            assertTrue(item.unread)
+            assertEquals(name, transport().read(a, "test-password", item, op).body)
+        } finally {
+            op.release()
+        }
+    }
+
+    @Test
     fun rejectedServerSearchNeverFallsBackToDownloadingMailboxBodies() {
         val plain = GreenMail(ServerSetup(0, "127.0.0.1", "imap"))
         plain.start()

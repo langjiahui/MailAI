@@ -1,7 +1,6 @@
 package com.mailai.mobile.mail
 
 import javax.mail.internet.InternetAddress
-import javax.mail.internet.MimeUtility
 
 /** Decode display names at both the network and cache boundary (old caches contain raw headers). */
 data class MailContact(val email: String, val name: String = "") {
@@ -14,8 +13,7 @@ data class MailContact(val email: String, val name: String = "") {
 
 object MailAddresses {
     fun decode(value: String): String =
-        runCatching { MimeUtility.decodeText(value) }
-            .getOrDefault(value)
+        MailHeaderCodec.decode(value)
             .replace(Regex("[\\r\\n]+[\\t ]*"), " ")
             .trim()
             .removeSurrounding("\"")
@@ -25,7 +23,10 @@ object MailAddresses {
         fun expand(a: InternetAddress): List<InternetAddress> =
             if (a.isGroup) runCatching { a.getGroup(false).toList() }.getOrDefault(emptyList())
             else listOf(a)
-        return runCatching { InternetAddress.parseHeader(raw, false).flatMap(::expand) }
+        return runCatching {
+                InternetAddress.parseHeader(MailHeaderCodec.normalizeWords(raw), false)
+                    .flatMap(::expand)
+            }
             .getOrDefault(emptyList())
             .mapNotNull { address ->
                 val email = address.address?.trim().orEmpty()

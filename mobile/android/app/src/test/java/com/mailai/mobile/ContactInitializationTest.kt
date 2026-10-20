@@ -6,6 +6,7 @@ import android.database.sqlite.SQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
 import com.mailai.mobile.data.*
 import com.mailai.mobile.mail.MailContact
+import java.util.Base64
 import java.util.UUID
 import javax.mail.internet.MimeUtility
 import kotlinx.coroutines.runBlocking
@@ -46,6 +47,40 @@ class ContactInitializationTest {
             "INSERT INTO messages VALUES(?,?,?,?)",
             arrayOf<Any>(item.key, item.folder, item.date, mailJson(item).toString()),
         )
+    }
+
+    @Test
+    fun encodingUpgradeRelearnsDamagedAutomaticNamesOnceAndProtectsManualNotes() {
+        MailStore(context, UUID.randomUUID().toString()).use { store ->
+            val db = store.writableDatabase
+            val encoded =
+                "=?UTF-8?B?${Base64.getEncoder().encodeToString("测试镕".toByteArray(java.nio.charset.Charset.forName("GBK")))}?="
+            val cached = mail().copy(recipients = "$encoded <person@example.test>")
+            insertRaw(db, cached)
+            db.execSQL("INSERT INTO contacts VALUES('person@example.test','测试�F',100,0,100)")
+            db.execSQL("INSERT INTO contacts VALUES('lost@example.test','无法�恢复',100,0,100)")
+            db.execSQL("INSERT INTO contact_learning VALUES(1,1)")
+            store.saveContact(MailContact("manual@example.test", "保留�备注"))
+            store.initializeContacts()
+            val contacts = store.contacts().associateBy { it.email }
+            assertEquals("测试镕", contacts.getValue("person@example.test").name)
+            assertEquals("", contacts.getValue("lost@example.test").name)
+            assertEquals("保留�备注", contacts.getValue("manual@example.test").name)
+            assertEquals(cached, store.messages("INBOX").single())
+            assertEquals(
+                2L,
+                DatabaseUtils.longForQuery(
+                    db,
+                    "SELECT version FROM contact_learning WHERE id=1",
+                    null,
+                ),
+            )
+            store.rememberContacts("新乱码� <person@example.test>", 1000)
+            assertEquals("测试镕", store.contacts().single { it.email == "person@example.test" }.name)
+            // Version 2 initialization is idempotent and never scans payloads at each launch.
+            db.execSQL("INSERT INTO messages VALUES('invalid','INBOX',900,'invalid-json')")
+            store.initializeContacts()
+        }
     }
 
     @Test

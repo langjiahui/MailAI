@@ -12,7 +12,7 @@ import org.jsoup.Jsoup
 
 object MimeCodec {
     fun fileName(raw: String?): String =
-        runCatching { MimeUtility.decodeText(raw ?: "附件") }
+        runCatching { MailHeaderCodec.decode(raw ?: "附件") }
             .getOrDefault("附件")
             .replace(Regex("[\\\\/\\p{Cntrl}]"), "_")
             .trim()
@@ -66,13 +66,9 @@ object MimeCodec {
             }
         require(bytes.size <= MAX_TEXT_BYTES) { "正文超过 2 MB，请使用其他客户端查看" }
         val encoding =
-            runCatching {
-                    java.nio.charset.Charset.forName(
-                        ContentType(part.contentType).getParameter("charset") ?: "UTF-8"
-                    )
-                }
-                .getOrDefault(Charsets.UTF_8)
-        return bytes.toString(encoding)
+            runCatching { ContentType(part.contentType).getParameter("charset") ?: "UTF-8" }
+                .getOrDefault("UTF-8")
+        return MailHeaderCodec.decodeBytes(bytes, encoding)
     }
 
     data class Content(val text: String, val html: String?, val files: List<Attachment>)

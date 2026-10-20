@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.database.sqlite.SQLiteDatabase
 import com.mailai.mobile.mail.MailAddresses
 import com.mailai.mobile.mail.MailContact
+import com.mailai.mobile.mail.MailHeaderCodec
 import com.mailai.mobile.mail.MimeCodec
 import java.util.Locale
 import org.json.JSONObject
@@ -52,9 +53,26 @@ internal object ContactLearning {
         transaction(db) {
             val done =
                 db.rawQuery("SELECT version FROM contact_learning WHERE id=1", null).use {
-                    it.moveToFirst() && it.getInt(0) >= 1
+                    it.moveToFirst() && it.getInt(0) >= 2
                 }
             if (!done) {
+                // Old automatic names may already contain replacement characters. Only
+                // their provenance permits clearing them; manual names remain authoritative.
+                db.rawQuery("SELECT email,name FROM contacts WHERE manual=0", null).use { rows ->
+                    while (rows.moveToNext()) {
+                        if (MailHeaderCodec.damaged(rows.getString(1))) {
+                            db.update(
+                                "contacts",
+                                ContentValues().apply {
+                                    put("name", "")
+                                    put("name_date", 0)
+                                },
+                                "email=? COLLATE NOCASE",
+                                arrayOf(rows.getString(0)),
+                            )
+                        }
+                    }
+                }
                 // All cached folders, including sent mail, even when the address book is nonempty.
                 // Stream one payload at a time; no arbitrary 500-mail cutoff or UI-time rescan.
                 db.rawQuery("SELECT payload,date FROM messages ORDER BY date,key", null).use { rows
@@ -87,7 +105,7 @@ internal object ContactLearning {
                         )
                     }
                 }
-                db.execSQL("INSERT OR REPLACE INTO contact_learning(id,version) VALUES(1,1)")
+                db.execSQL("INSERT OR REPLACE INTO contact_learning(id,version) VALUES(1,2)")
             }
         }
 
@@ -126,6 +144,7 @@ internal object ContactLearning {
                         val replace =
                             incoming.isNotBlank() &&
                                 (old.isBlank() ||
+                                    MailHeaderCodec.damaged(old) ||
                                     (chinese(incoming) && !chinese(old)) ||
                                     (chinese(incoming) == chinese(old) && date >= oldDate))
                         val name = if (replace) incoming else old
@@ -170,6 +189,7 @@ internal object ContactLearning {
         return name
             .takeUnless {
                 it.isBlank() ||
+                    MailHeaderCodec.damaged(it) ||
                     '@' in it ||
                     it.equals(contact.email.substringBefore('@'), true) ||
                     it.contains("=?") ||

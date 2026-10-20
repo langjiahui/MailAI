@@ -137,22 +137,24 @@ internal constructor(
             folder.fullName,
             validity,
             uid,
-            m.from
-                ?.joinToString { (it as? InternetAddress)?.toUnicodeString() ?: it.toString() }
-                .orEmpty(),
+            MailAddresses.display(
+                m.getHeader("From")?.joinToString(", ") ?: m.from?.joinToString().orEmpty()
+            ),
             m.replyTo
                 ?.joinToString { (it as? InternetAddress)?.address ?: it.toString() }
                 .orEmpty(),
             MailAddresses.display(
-                m.getRecipients(Message.RecipientType.TO)?.joinToString().orEmpty()
+                m.getHeader("To")?.joinToString(", ")
+                    ?: m.getRecipients(Message.RecipientType.TO)?.joinToString().orEmpty()
             ),
-            m.subject ?: "（无主题）",
+            MailHeaderCodec.decode(m.getHeader("Subject")?.firstOrNull() ?: "（无主题）"),
             (m.sentDate ?: m.receivedDate)?.time ?: 0L,
             !m.isSet(Flags.Flag.SEEN),
             messageId = m.getHeader("Message-ID")?.firstOrNull().orEmpty(),
             cc =
                 MailAddresses.display(
-                    m.getRecipients(Message.RecipientType.CC)?.joinToString().orEmpty()
+                    m.getHeader("Cc")?.joinToString(", ")
+                        ?: m.getRecipients(Message.RecipientType.CC)?.joinToString().orEmpty()
                 ),
         )
     }
@@ -215,6 +217,10 @@ internal constructor(
                             add(FetchProfile.Item.FLAGS)
                             add(UIDFolder.FetchProfileItem.UID)
                             add("Message-ID")
+                            add("Subject")
+                            add("From")
+                            add("To")
+                            add("Cc")
                         },
                     )
                 SearchPage(
@@ -252,6 +258,10 @@ internal constructor(
                         add(FetchProfile.Item.FLAGS)
                         add(UIDFolder.FetchProfileItem.UID)
                         add("Message-ID")
+                        add("Subject")
+                        add("From")
+                        add("To")
+                        add("Cc")
                     },
                 )
                 f.uidValidity to
