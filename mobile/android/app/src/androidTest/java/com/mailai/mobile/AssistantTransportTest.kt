@@ -16,7 +16,7 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** Native HTTPS/SSE with the existing test-only certificate, never a real model service. */
+/** Native HTTP and HTTPS/SSE with synthetic data, never a real model service. */
 @RunWith(AndroidJUnit4::class)
 class AssistantTransportTest {
     private fun fixture(): Pair<SSLContext, X509TrustManager> {
@@ -45,10 +45,12 @@ class AssistantTransportTest {
         response: String,
         verify: (String, String) -> Unit,
         awaitClientClose: Boolean = false,
+        secure: Boolean = true,
         execute: (AssistantClient, AssistantConfig, AssistantCall) -> Unit,
     ) {
         val (ssl, trust) = fixture()
-        val server = ssl.serverSocketFactory.createServerSocket() as SSLServerSocket
+        val server =
+            if (secure) ssl.serverSocketFactory.createServerSocket() else java.net.ServerSocket()
         server.bind(InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0))
         server.soTimeout = 10000
         val executor = Executors.newSingleThreadExecutor()
@@ -64,7 +66,7 @@ class AssistantTransportTest {
                 .build()
         val done =
             executor.submit {
-                (server.accept() as SSLSocket).use { socket ->
+                server.accept().use { socket ->
                     socket.soTimeout = 10000
                     val input = socket.inputStream.buffered()
                     val bytes = java.io.ByteArrayOutputStream()
@@ -104,9 +106,10 @@ class AssistantTransportTest {
             execute(
                 AssistantClient(null, client),
                 AssistantConfig(
-                    "https://localhost:${server.localPort}/v1/chat/completions",
+                    "${if (secure) "https" else "http"}://localhost:${server.localPort}/v1/chat/completions",
                     "fixture-model",
                     "synthetic-test-key",
+                    privateNetwork = !secure,
                 ),
                 AssistantCall(),
             )
@@ -116,6 +119,37 @@ class AssistantTransportTest {
             executor.shutdownNow()
             client.dispatcher.executorService.shutdown()
             client.connectionPool.evictAll()
+        }
+    }
+
+    @Test
+    fun nativeHttpUsesTheInstalledAppPolicyForBothCorporateModelIds() {
+        for (model in listOf("Qwen2.5-72B", "Kimi-K2.6")) {
+            val json =
+                "{\"choices\":[{\"message\":{\"content\":\"OK\"},\"finish_reason\":\"stop\"}]}"
+            val response =
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: ${json.toByteArray().size}\r\nConnection: close\r\n\r\n$json"
+            serve(
+                response,
+                { headers, body ->
+                    assertTrue(headers.startsWith("POST /v1/chat/completions HTTP/1.1"))
+                    assertTrue(headers.contains("Authorization: Bearer synthetic-test-key"))
+                    assertEquals(model, JSONObject(body).getString("model"))
+                    assertFalse(JSONObject(body).has("thinking"))
+                },
+                secure = false,
+            ) { client, config, call ->
+                assertEquals(
+                    "OK",
+                    client.generate(
+                        config.copy(model = model),
+                        org.json
+                            .JSONArray()
+                            .put(JSONObject().put("role", "user").put("content", "只回复 OK")),
+                        call,
+                    ) {},
+                )
+            }
         }
     }
 

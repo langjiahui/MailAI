@@ -489,7 +489,7 @@ private fun AssistantSettingsForm(a: AssistantController) {
                 model = it.take(128)
             },
             label = { Text("模型名称") },
-            placeholder = { Text("例如：服务商提供的模型 ID") },
+            placeholder = { Text("例如：Qwen2.5-72B 或 Kimi-K2.6") },
             modifier = Modifier.fillMaxWidth().testTag("xiaoyou-model"),
             singleLine = true,
             enabled = !a.busy,
@@ -536,7 +536,7 @@ private fun AssistantSettingsForm(a: AssistantController) {
             },
             label = { Text("API 地址") },
             placeholder = { Text("https://api.example.com/v1") },
-            supportingText = { Text("基础地址或完整 /chat/completions 地址均可") },
+            supportingText = { Text("支持基础地址或完整 /chat/completions 地址；HTTP 须勾选企业内网服务") },
             modifier = Modifier.fillMaxWidth().testTag("xiaoyou-endpoint"),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
             enabled = !a.busy,
@@ -551,12 +551,13 @@ private fun AssistantSettingsForm(a: AssistantController) {
                     privateNetwork = it
                 },
                 enabled = !a.busy,
+                modifier = Modifier.testTag("xiaoyou-private-network"),
             )
             Text("这是我配置的企业内网模型服务", fontSize = 14.sp, modifier = Modifier.weight(1f))
         }
         if (privateNetwork)
             Text(
-                "使用可见 VPN 或公司 Wi-Fi，继续校验证书。",
+                "使用可见 VPN 或公司 Wi-Fi。HTTPS 校验证书；HTTP 仅限内网，密钥与文字以明文传输，请确认公司网络可信。",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

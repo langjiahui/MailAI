@@ -1,0 +1,71 @@
+name: Sync Android release to AtomGit
+on:
+  workflow_call:
+    secrets:
+      ATOMGIT_TOKEN:
+        required: true
+    inputs:
+      tag:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing formal Android release tag
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: atomgit-release-mirror
+  cancel-in-progress: false
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install 'cryptography>=44,<47' certifi
+      - name: Read the complete formal Android release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_TAG: ${{ inputs.tag }}
+        run: |
+          tag="$REQUESTED_TAG"
+          if [ -z "$tag" ]; then
+            tag=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=30" --jq '[.[] | select((.tag_name | startswith("android-v")) and (.draft | not) and (.prerelease | not))] | sort_by(.published_at) | last | .tag_name')
+          fi
+          [[ "$tag" =~ ^android-v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test "android-v$(git show "$tag:mobile/android/VERSION" | tr -d '\r\n')" = "$tag"
+          gh release view "$tag" --json isDraft,isPrerelease --jq 'if .isDraft or .isPrerelease then error("Not formal") else "Formal Android release" end'
+          gh release download "$tag" --dir release-assets
+          gh release view "$tag" --json body --jq .body > release-notes.md
+          echo "RELEASE_TAG=$tag" >> "$GITHUB_ENV"
+      - name: Synchronize the immutable Android source tag
+        env:
+          ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_TOKEN }}
+        run: |
+          test -n "$ATOMGIT_TOKEN"
+          helper="$RUNNER_TEMP/android-atomgit-askpass"
+          cat > "$helper" <<'SH'
+          #!/bin/sh
+          case "$1" in
+            *Username*) printf '%s' 'langjiahui2011' ;;
+            *) printf '%s' "$ATOMGIT_TOKEN" ;;
+          esac
+          SH
+          chmod 700 "$helper"
+          export GIT_ASKPASS="$helper" GIT_TERMINAL_PROMPT=0
+          git -c credential.helper= push https://atomgit.com/langjiahui2011/MailAI.git "refs/tags/$RELEASE_TAG"
+          rm -f "$helper"
+      - name: Mirror and verify APK, signature and Android channel
+        env:
+          ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_TOKEN }}
+          ATOMGIT_UPLOAD_EDGE_IP: ${{ vars.ATOMGIT_UPLOAD_EDGE_IP }}
+        run: python scripts/sync_android_atomgit_release.py --tag "$RELEASE_TAG" --assets release-assets --notes release-notes.md

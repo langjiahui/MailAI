@@ -42,6 +42,7 @@ data class UpdateCandidate(
     val size: Long,
     val notes: String,
     val page: String,
+    val mirrorUrl: String = "",
 ) {
     fun json(): JSONObject =
         JSONObject()
@@ -52,6 +53,7 @@ data class UpdateCandidate(
             .put("size", size)
             .put("notes", notes)
             .put("page", page)
+            .put("mirrorUrl", mirrorUrl)
 
     companion object {
         fun from(j: JSONObject) =
@@ -63,6 +65,7 @@ data class UpdateCandidate(
                 j.getLong("size"),
                 j.getString("notes"),
                 j.getString("page"),
+                j.optString("mirrorUrl"),
             )
     }
 }
@@ -125,6 +128,10 @@ internal object UpdatePolicy {
                     "github.com",
                     "release-assets.githubusercontent.com",
                     "objects.githubusercontent.com",
+                    "raw.atomgit.com",
+                    "atomgit.com",
+                    "file.gitcode.com",
+                    "file-cdn.gitcode.com",
                 )
         ) {
             "更新地址不受信任"
@@ -132,6 +139,11 @@ internal object UpdatePolicy {
         when (u.host) {
             "api.github.com" -> require(u.path.startsWith("/repos/langjiahui/MailAI/releases"))
             "github.com" -> require(value.startsWith(RELEASE_PREFIX))
+            "raw.atomgit.com" -> require(value == DOMESTIC_MANIFEST)
+            "atomgit.com" ->
+                require(
+                    value.startsWith("${DOMESTIC_RELEASES}download/android-v") && u.rawQuery == null
+                )
         }
     }
 
@@ -394,7 +406,11 @@ class AppUpdates(private val context: Context) {
         }
     }
 
-    internal suspend fun check(http: UpdateHttp, requestId: String? = null): Boolean =
+    internal suspend fun check(
+        http: UpdateHttp,
+        requestId: String? = null,
+        channelVerifier: (String) -> UpdateCandidate = DomesticUpdates::discover,
+    ): Boolean =
         checkMutex.withLock {
             if (
                 requestId == null &&
@@ -408,7 +424,15 @@ class AppUpdates(private val context: Context) {
                 it.copy(checking = true, message = "正在检查更新…", failed = false, failureStage = null)
             }
             try {
-                val releases = JSONArray(http.json(RELEASES))
+                var domestic: UpdateCandidate? = null
+                val releases =
+                    try {
+                        JSONArray(http.json(RELEASES))
+                    } catch (e: Exception) {
+                        ensureCurrent("checkRequest", id, http)
+                        domestic = channelVerifier(http.json(DOMESTIC_MANIFEST))
+                        JSONArray()
+                    }
                 val eligible =
                     (0 until releases.length())
                         .map { releases.getJSONObject(it) }
@@ -430,22 +454,38 @@ class AppUpdates(private val context: Context) {
                 val ordered =
                     if (dated) eligible.sortedByDescending { it.optString("published_at") }
                     else eligible
-                var best: UpdateCandidate? = null
-                for (release in ordered) {
+                var best: UpdateCandidate? = domestic?.takeIf { it.code > BuildConfig.VERSION_CODE }
+                try {
+                    for (release in ordered) {
+                        ensureCurrent("checkRequest", id, http)
+                        val tag = release.getString("tag_name")
+                        val assets = release.getJSONArray("assets")
+                        val manifest =
+                            (0 until assets.length())
+                                .map { assets.getJSONObject(it) }
+                                .find { it.optString("name") == "mailai-android-update.json" }
+                                ?: continue
+                        val url = manifest.getString("browser_download_url")
+                        require(url == "$RELEASE_PREFIX$tag/mailai-android-update.json")
+                        val original =
+                            UpdatePolicy.manifest(JSONObject(http.json(url)), tag, assets)
+                        val c =
+                            original.copy(
+                                mirrorUrl =
+                                    runCatching { DomesticUpdates.mirror(original) }
+                                        .getOrDefault("")
+                            )
+                        if (
+                            c.code > BuildConfig.VERSION_CODE &&
+                                (best == null || c.code > best.code)
+                        )
+                            best = c
+                        if (dated) break
+                    }
+                } catch (e: Exception) {
                     ensureCurrent("checkRequest", id, http)
-                    val tag = release.getString("tag_name")
-                    val assets = release.getJSONArray("assets")
-                    val manifest =
-                        (0 until assets.length())
-                            .map { assets.getJSONObject(it) }
-                            .find { it.optString("name") == "mailai-android-update.json" }
-                            ?: continue
-                    val url = manifest.getString("browser_download_url")
-                    require(url == "$RELEASE_PREFIX$tag/mailai-android-update.json")
-                    val c = UpdatePolicy.manifest(JSONObject(http.json(url)), tag, assets)
-                    if (c.code > BuildConfig.VERSION_CODE && (best == null || c.code > best.code))
-                        best = c
-                    if (dated) break
+                    domestic = channelVerifier(http.json(DOMESTIC_MANIFEST))
+                    best = domestic?.takeIf { it.code > BuildConfig.VERSION_CODE }
                 }
                 ensureCurrent("checkRequest", id, http)
                 val now = System.currentTimeMillis()
@@ -456,6 +496,7 @@ class AppUpdates(private val context: Context) {
                         .edit()
                         .putLong("checkedAt", now)
                         .putString("candidate", best?.json()?.toString())
+                        .putBoolean("preferDomestic", domestic != null)
                         .commit()
                     mutable.update {
                         it.copy(
@@ -523,36 +564,55 @@ class AppUpdates(private val context: Context) {
                 val validCached = apk(c).isFile && runCatching { verify(c) }.isSuccess
                 if (!validCached) {
                     apk(c).delete()
-                    http.response(c.url).use { response ->
-                        val body = requireNotNull(response.body)
-                        if (body.contentLength() != -1L && body.contentLength() != c.size)
-                            throw UpdateValidationException("下载文件大小不符，请重新下载")
-                        body.byteStream().use { input ->
-                            pending.outputStream().use { output ->
-                                val buffer = ByteArray(32768)
-                                var count = 0L
-                                var last = 0L
-                                while (true) {
-                                    ensureCurrent("downloadRequest", id, http)
-                                    val n = input.read(buffer)
-                                    if (n < 0) break
-                                    count += n
-                                    if (count > c.size || count > MAX_APK)
-                                        throw UpdateValidationException("下载文件大小不符，请重新下载")
-                                    output.write(buffer, 0, n)
-                                    val now = System.nanoTime()
-                                    if (now - last > 150_000_000) {
-                                        last = now
-                                        publish("downloadRequest", id) {
-                                            it.copy(progress = count.toFloat() / c.size)
+                    require(c.mirrorUrl.isBlank() || c.mirrorUrl == DomesticUpdates.mirror(c))
+                    val urls =
+                        (if (domesticCandidate(c)) listOf(c.mirrorUrl, c.url)
+                            else listOf(c.url, c.mirrorUrl))
+                            .filter { it.isNotBlank() }
+                            .distinct()
+                    var received = false
+                    for ((index, downloadUrl) in urls.withIndex()) {
+                        try {
+                            http.response(downloadUrl).use { response ->
+                                val body = requireNotNull(response.body)
+                                if (body.contentLength() != -1L && body.contentLength() != c.size)
+                                    throw UpdateValidationException("下载文件大小不符，请重新下载")
+                                body.byteStream().use { input ->
+                                    pending.outputStream().use { output ->
+                                        val buffer = ByteArray(32768)
+                                        var count = 0L
+                                        var last = 0L
+                                        while (true) {
+                                            ensureCurrent("downloadRequest", id, http)
+                                            val n = input.read(buffer)
+                                            if (n < 0) break
+                                            count += n
+                                            if (count > c.size || count > MAX_APK)
+                                                throw UpdateValidationException("下载文件大小不符，请重新下载")
+                                            output.write(buffer, 0, n)
+                                            val now = System.nanoTime()
+                                            if (now - last > 150_000_000) {
+                                                last = now
+                                                publish("downloadRequest", id) {
+                                                    it.copy(progress = count.toFloat() / c.size)
+                                                }
+                                            }
                                         }
+                                        if (count != c.size)
+                                            throw UpdateValidationException("下载未完成，请重新下载")
+                                        output.fd.sync()
                                     }
                                 }
-                                if (count != c.size) throw UpdateValidationException("下载未完成，请重新下载")
-                                output.fd.sync()
                             }
+                            received = true
+                            break
+                        } catch (e: Exception) {
+                            ensureCurrent("downloadRequest", id, http)
+                            if (index == urls.lastIndex || e is UpdateValidationException) throw e
+                            pending.delete()
                         }
                     }
+                    check(received)
                     ensureCurrent("downloadRequest", id, http)
                     stage = UpdateFailureStage.VERIFY
                     publish("downloadRequest", id) {
@@ -643,6 +703,9 @@ class AppUpdates(private val context: Context) {
         }
 
     private fun verify(c: UpdateCandidate) = verifyFile(apk(c), c)
+
+    private fun domesticCandidate(c: UpdateCandidate): Boolean =
+        c.mirrorUrl.isNotBlank() && prefs.getBoolean("preferDomestic", false)
 
     private fun verifyFile(file: File, c: UpdateCandidate) {
         if (file.length() != c.size) throw UpdateValidationException("安装包不完整，请重新下载")

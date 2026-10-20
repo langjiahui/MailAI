@@ -6,7 +6,9 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.util.AtomicFile
 import com.mailai.mobile.data.*
+import com.mailai.mobile.mail.NetworkPolicy
 import java.io.File
+import java.net.InetAddress
 import java.security.MessageDigest
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -28,16 +30,37 @@ internal data class AssistantConfig(
         val u = endpoint.toHttpUrlOrNull()
         require(
             u != null &&
-                u.isHttps &&
+                (u.isHttps || privateNetwork) &&
                 u.username.isEmpty() &&
                 u.password.isEmpty() &&
                 u.query == null &&
                 u.fragment == null &&
                 endpoint.length <= 2048
         ) {
-            "请填写完整的 HTTPS 对话接口地址，不包含密码、查询参数或片段"
+            "请填写 HTTPS 接口地址；HTTP 须勾选企业内网服务。地址不能包含账号、查询参数或片段"
         }
         return requireNotNull(u)
+    }
+
+    /** Validate before opening a socket; HTTP credentials may only reach corporate ranges. */
+    fun validateAddress(address: InetAddress) {
+        require(
+            if (privateNetwork) NetworkPolicy.isMailServer(address)
+            else NetworkPolicy.isPublic(address)
+        ) {
+            "模型地址不可用；内网服务须明确勾选企业内网选项"
+        }
+        if (!url().isHttps) {
+            val b = address.address.map { it.toInt() and 255 }
+            val corporate =
+                if (b.size == 4)
+                    b[0] == 10 ||
+                        (b[0] == 172 && b[1] in 16..31) ||
+                        (b[0] == 192 && b[1] == 168) ||
+                        (b[0] == 100 && b[1] in 64..127)
+                else (b[0] and 0xfe) == 0xfc
+            require(corporate) { "HTTP 模型接口仅支持企业内网地址，公网服务请使用 HTTPS" }
+        }
     }
 
     fun validate() {
@@ -73,7 +96,7 @@ internal class AssistantSettings(
                 cipher.decrypt(file.openRead().use { it.readBytes().toString(Charsets.UTF_8) })
             )
         return AssistantConfig(
-            AssistantProviders.completionEndpoint(j.getString("endpoint")),
+            AssistantProviders.completionEndpoint(j.getString("endpoint"), j.optBoolean("private")),
             j.getString("model"),
             j.getString("key"),
             j.optBoolean("private"),
@@ -222,7 +245,7 @@ internal object AssistantPrompts {
         val action =
             when (task) {
                 AssistantTask.SUMMARY ->
-                    "用简体中文提炼最多 5 条要点。保留原文中的日期、事项和责任人，缺失信息写未说明。明确区分原文与推断。不要替用户承诺行动。"
+                    "用简体中文只输出最多 5 条原文明确的要点，总计不超过 5 条。保留原文中的日期、事项、责任人和金额，不增加推断或建议。原文缺失的必要信息写未说明，不为凑数添加条目。不要替用户承诺行动。"
                 AssistantTask.REPLY ->
                     "起草一份简短、礼貌的回复正文，只输出可以放入邮件的正文。不要编造承诺、日期、完成情况、收件人、附件或签名。不输出邮件主题。"
                 AssistantTask.POLISH -> "润色用户提供的文字，只输出润色后的正文。保持原意、事实、数字、日期和承诺，不添加未说明的事实、附件或签名。"

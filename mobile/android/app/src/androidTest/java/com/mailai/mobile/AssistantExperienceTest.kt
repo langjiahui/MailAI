@@ -305,6 +305,51 @@ class AssistantExperienceTest {
     }
 
     @Test
+    fun corporateHttpSetupRequiresTheVisibleIntranetOptionAndPersistsTheModelId() {
+        val (scenario, vm) = launch()
+        try {
+            scenario.onActivity { vm.openAssistantSettings() }
+            compose.waitUntil(10000) { !vm.assistant.loading }
+            compose.onNodeWithTag("xiaoyou-provider").performScrollTo().performClick()
+            compose.onNodeWithTag("xiaoyou-provider-custom").performScrollTo().performClick()
+            compose
+                .onNodeWithTag("xiaoyou-endpoint")
+                .performScrollTo()
+                .performTextInput("http://10.42.0.8:80/v1/chat/completions")
+            compose.onNodeWithTag("xiaoyou-model").performScrollTo().performTextInput("Qwen2.5-72B")
+            compose
+                .onNodeWithTag("xiaoyou-key")
+                .performScrollTo()
+                .performTextInput("synthetic-corporate-key")
+            device.pressBack()
+            compose.onNodeWithTag("xiaoyou-consent").performScrollTo().performClick()
+            compose.onNodeWithTag("xiaoyou-save-settings").performScrollTo().performClick()
+            compose.waitUntil(5000) { vm.assistant.failed }
+            assertEquals(config, AssistantSettings(context).read())
+            compose
+                .onNodeWithTag("xiaoyou-private-network")
+                .performScrollTo()
+                .assertIsOff()
+                .performClick()
+            compose.onNodeWithTag("xiaoyou-save-settings").performScrollTo().performClick()
+            compose.waitUntil(10000) { !vm.assistant.loading && !vm.assistant.failed }
+            val saved = AssistantSettings(context).read()!!
+            assertEquals("http://10.42.0.8/v1/chat/completions", saved.endpoint)
+            assertEquals("Qwen2.5-72B", saved.model)
+            assertEquals("custom", saved.provider)
+            assertTrue(saved.privateNetwork)
+            assertFalse(
+                File(context.filesDir, "assistant-settings.json")
+                    .readText()
+                    .contains("synthetic-corporate-key")
+            )
+            capture("10-corporate-http-setup")
+        } finally {
+            scenario.close()
+        }
+    }
+
+    @Test
     fun changingProviderClearsTypedKeyAndProbeValidationDoesNotReplaceTheSavedConfig() {
         val (scenario, vm) = launch()
         try {
