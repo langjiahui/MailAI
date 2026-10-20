@@ -5,14 +5,13 @@ import hashlib
 import smtplib
 import ssl
 import certifi
-from email.errors import HeaderParseError
-from email.header import decode_header
 from email.message import EmailMessage
 from email.utils import formataddr, formatdate, getaddresses, make_msgid
 
 from imapclient import IMAPClient
 
 from . import config
+from .mail_headers import decode_header_text
 
 
 def _credentials() -> tuple[str, str]:
@@ -143,20 +142,7 @@ def recipient_fields_for_display(normalized: dict) -> dict[str, str]:
     for key in ("to_addr", "cc_addr", "bcc_addr"):
         values = []
         for encoded_name, address in getaddresses([str(normalized.get(key) or "")]):
-            parts = []
-            try:
-                fragments = decode_header(encoded_name or "")
-            except HeaderParseError:
-                fragments = [(encoded_name or "", None)]
-            for value, charset in fragments:
-                if isinstance(value, bytes):
-                    try:
-                        parts.append(value.decode(charset or "utf-8", "replace"))
-                    except LookupError:
-                        parts.append(value.decode("utf-8", "replace"))
-                else:
-                    parts.append(value)
-            name = "".join(parts).strip().replace("\r", " ").replace("\n", " ")
+            name = decode_header_text(encoded_name).strip().replace("\r", " ").replace("\n", " ")
             if name:
                 escaped = name.replace("\\", "\\\\").replace('"', '\\"')
                 label = f'"{escaped}"' if re.search(r'[,;"<>，；():@\[\]\\]', name) else name

@@ -8,6 +8,7 @@ from fastapi import HTTPException
 
 from .. import config, db, pipeline, system_settings
 from ..parser import _decode_hdr
+from ..mail_headers import damaged_display_name
 from ..security import campaigns
 
 
@@ -73,6 +74,7 @@ def resolved_contact_name(address: str, current_name: str, names: dict[str, dict
     # fills missing/placeholder names and never replaces a meaningful message name.
     if match.get("name") and (
         match.get("source") == "manual" or not current or "@" in current or weak_placeholder
+        or (damaged_display_name(current) and not damaged_display_name(match["name"]))
     ):
         return _decode_hdr(match["name"]), str(match.get("source") or "history")
     return current, "message" if current else ""

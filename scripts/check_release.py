@@ -100,6 +100,7 @@ TESTS = (
     'test_async_seen_sync.py',
     'test_folder_sync.py', 'test_spam_folder_routing.py',
     'test_encoding_safety.py',
+    'test_header_encoding.py',
     'test_html_style_summary.py',
     'test_release_encoding.py',
     'test_finding_presentation.py',

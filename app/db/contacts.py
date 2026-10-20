@@ -4,6 +4,7 @@ from datetime import datetime
 from email.utils import getaddresses
 
 from .. import config
+from ..mail_headers import damaged_display_name, decode_header_text
 from .core import conn, _columns_of
 
 
@@ -52,12 +53,15 @@ def _recipient_header_display_names(c) -> dict[str, str]:
             pairs = {}
         if not isinstance(pairs, dict):
             pairs = {}
-        if not pairs:
-            pairs = recipient_names_from_raw_path(row["raw_path"] or "")
+        if not pairs or any(damaged_display_name(name) for name in pairs.values()):
+            recovered = recipient_names_from_raw_path(row["raw_path"] or "")
+            for address, name in recovered.items():
+                if (not pairs.get(address) or damaged_display_name(pairs[address])) and not damaged_display_name(name):
+                    pairs[address] = name
         for address, name in pairs.items():
             address = str(address or "").strip().casefold()
-            name = str(name or "").strip()
-            if not address or not name:
+            name = decode_header_text(name).strip()
+            if not address or not name or damaged_display_name(name):
                 continue
             # Prefer a Chinese display name over an older username-like alias.
             if address not in names or (any('\u3400' <= char <= '\u9fff' for char in name)
@@ -83,12 +87,12 @@ def contact_display_names(addresses, *, connection=None) -> dict[str, dict]:
     scores: dict[str, int] = {}
 
     def useful(name: str, address: str) -> str:
-        value = str(name or "").strip(' \t\r\n"')[:160]
-        return "" if _contact_name_is_placeholder(value, address) else value
+        value = decode_header_text(name).strip(' \t\r\n"')[:160]
+        return "" if _contact_name_is_placeholder(value, address) or damaged_display_name(value) else value
 
     def remember(address: str, name: str, source: str, base_score: int, *, allow_placeholder: bool = False):
         address = str(address or "").strip().casefold()
-        name = str(name or "").strip(' \t\r\n"')[:160] if allow_placeholder else useful(name, address)
+        name = decode_header_text(name).strip(' \t\r\n"')[:160] if allow_placeholder else useful(name, address)
         if not name or address not in wanted:
             return
         chinese = any('\u3400' <= char <= '\u9fff' for char in name)
@@ -106,7 +110,7 @@ def contact_display_names(addresses, *, connection=None) -> dict[str, dict]:
             batch = values[start:start + 400]
             marks = ",".join("?" for _ in batch)
             rows = c.execute(
-                f"SELECT lower(from_addr) AS email,from_name,date,id FROM emails "
+                f"SELECT lower(from_addr) AS email,from_name,raw_path,date,id FROM emails "
                 f"WHERE remote_missing=0 AND lower(from_addr) IN ({marks}) "
                 "AND trim(coalesce(from_name,''))<>'' "
                 "ORDER BY datetime(COALESCE(NULLIF(date,''),created_at)) DESC,id DESC",
@@ -114,7 +118,11 @@ def contact_display_names(addresses, *, connection=None) -> dict[str, dict]:
             ).fetchall()
             for row in rows:
                 address = str(row["email"] or "").casefold()
-                remember(address, row["from_name"], "history", 40)
+                name = row["from_name"]
+                if damaged_display_name(name):
+                    from ..parser import sender_name_from_raw_path
+                    name = sender_name_from_raw_path(row["raw_path"] or "", address) or name
+                remember(address, name, "history", 40)
             saved = c.execute(
                 f"SELECT lower(email) AS email,name,source,hidden FROM contacts "
                 f"WHERE lower(email) IN ({marks})",
@@ -166,7 +174,8 @@ def search_contacts(query: str = "", limit: int = 20, favorites_only: bool = Fal
             "favorite": False, "manual": False, "count": 0, "last_contact": "",
         })
         item["count"] += 1
-        if name and not item["name"] and not _contact_name_is_placeholder(name, address):
+        name = decode_header_text(name)
+        if name and not damaged_display_name(name) and not item["name"] and not _contact_name_is_placeholder(name, address):
             item["name"] = name.strip(' "')
         if contact_date and contact_date > item["last_contact"]:
             item["last_contact"] = contact_date

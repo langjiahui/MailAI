@@ -1,6 +1,5 @@
 """邮件解析：正文提取、URL/附件元数据、认证头、敏感信息打码。"""
 import base64
-import email.utils
 from email import policy
 from email.parser import BytesParser
 import html as html_mod
@@ -8,13 +7,13 @@ from html.parser import HTMLParser
 import os
 import re
 import hashlib
-from email.header import decode_header
 from functools import lru_cache
 from urllib.parse import unquote
 
 import mailparser
 
 from . import config
+from .mail_headers import address_header_pairs, decode_header_text
 
 _URL_RE = re.compile(r'https?://[^\s<>"\'\]\)）】]+', re.I)
 _HREF_RE = re.compile(r'href=["\'](https?://[^"\']+)["\']', re.I)
@@ -317,21 +316,13 @@ def redact(text: str) -> str:
 
 def _decode_hdr(value) -> str:
     """解码 RFC2047 编码的邮件头（中文显示名等）。"""
-    if not value:
-        return ""
-    out = []
-    try:
-        for txt, charset in decode_header(str(value)):
-            out.append(txt.decode(charset or "utf-8", "ignore") if isinstance(txt, bytes) else txt)
-    except Exception:
-        return str(value)
-    return "".join(out)
+    return decode_header_text(value)
 
 
-def _addr_of(value) -> str:
+def _addr_of(message, field: str) -> str:
     """从地址头提取纯邮箱地址。"""
-    _, addr = email.utils.parseaddr(_decode_hdr(value))
-    return (addr or "").lower()
+    pairs = address_header_pairs(message, field)
+    return (pairs[0][1] or "").lower() if pairs else ""
 
 
 def _first_msgid(value: str) -> str:
@@ -355,17 +346,16 @@ def recipient_header_names(message) -> dict[str, str]:
     """Return exact address/display-name pairs carried by recipient headers."""
     result = {}
     for field in ("To", "Cc", "Bcc"):
-        for name, address in email.utils.getaddresses([_decode_hdr(message.get(field, ""))]):
+        for name, address in address_header_pairs(message, field):
             address = (address or "").strip().casefold()
-            name = (name or "").strip(' \t\r\n"')
+            name = (name or "").strip()
             if address and name and "@" not in name and name.casefold() != address:
                 result[address] = name[:160]
     return result
 
 
-@lru_cache(maxsize=8192)
-def _cached_recipient_names(path: str, mtime_ns: int, size: int) -> dict[str, str]:
-    # Keyed by file identity so newly synchronized/replaced raw mail is reparsed.
+def _read_raw_headers(path: str):
+    """Read at most one MiB of headers, never a message body or attachment."""
     with open(path, "rb") as source:
         lines, remaining = [], 1024 * 1024
         while remaining:
@@ -376,8 +366,13 @@ def _cached_recipient_names(path: str, mtime_ns: int, size: int) -> dict[str, st
             remaining -= len(line)
             if line in (b'\n', b'\r\n'):
                 break
-    message = BytesParser(policy=policy.default).parsebytes(b''.join(lines), headersonly=True)
-    return recipient_header_names(message)
+    return BytesParser(policy=policy.default).parsebytes(b''.join(lines), headersonly=True)
+
+
+@lru_cache(maxsize=8192)
+def _cached_recipient_names(path: str, mtime_ns: int, size: int) -> dict[str, str]:
+    # Keyed by file identity so newly synchronized/replaced raw mail is reparsed.
+    return recipient_header_names(_read_raw_headers(path))
 
 
 def recipient_names_from_raw_path(path: str) -> dict[str, str]:
@@ -391,23 +386,31 @@ def recipient_names_from_raw_path(path: str) -> dict[str, str]:
         return {}
 
 
+@lru_cache(maxsize=8192)
+def _cached_sender_name(path: str, mtime_ns: int, size: int) -> tuple[str, str]:
+    pairs = address_header_pairs(_read_raw_headers(path), "From")
+    return pairs[0] if pairs else ("", "")
+
+
+def sender_name_from_raw_path(path: str, address: str) -> str:
+    """Recover a damaged historical sender without changing stored mail."""
+    if not path:
+        return ""
+    try:
+        stat = os.stat(path)
+        name, sender = _cached_sender_name(os.path.abspath(path), stat.st_mtime_ns, stat.st_size)
+        return name if sender.strip().casefold() == address.strip().casefold() else ""
+    except (OSError, ValueError):
+        return ""
+
+
 def cc_from_raw_path(path: str) -> str | None:
     """Recover Cc for older records from a bounded local header block."""
     if not path:
         return None
     try:
-        with open(path, 'rb') as source:
-            lines, remaining = [], 1024 * 1024
-            while remaining:
-                line = source.readline(remaining)
-                if not line:
-                    break
-                lines.append(line)
-                remaining -= len(line)
-                if line in (b'\n', b'\r\n'):
-                    break
-        msg = BytesParser(policy=policy.default).parsebytes(b''.join(lines), headersonly=True)
-        return ', '.join(a for _, a in email.utils.getaddresses([_decode_hdr(v) for v in msg.get_all('Cc', [])]) if a)
+        msg = _read_raw_headers(path)
+        return ', '.join(a for _, a in address_header_pairs(msg, 'Cc') if a)
     except (OSError, ValueError):
         return None
 
@@ -419,14 +422,14 @@ def parse_message(uid: int, raw: bytes, save_raw: bool = True, folder: str = "IN
 
     # 地址头用 stdlib 解码+解析，对编码/多值鲁棒
     from_name, from_addr = "", ""
-    pairs = email.utils.getaddresses([_decode_hdr(msg.get("From", ""))])
+    pairs = address_header_pairs(msg, "From")
     if pairs:
         from_name, from_addr = pairs[0][0] or "", (pairs[0][1] or "").lower()
-    to_pairs = email.utils.getaddresses([_decode_hdr(msg.get("To", ""))])
+    to_pairs = address_header_pairs(msg, "To")
     to_addr = ", ".join(a for _, a in to_pairs if a)
 
     headers = {}
-    for k, v in msg.items():
+    for k, v in msg.raw_items():
         key = k.lower()
         val = _decode_hdr(v)
         headers[key] = f"{headers[key]}; {val}" if key in headers else val
@@ -451,11 +454,11 @@ def parse_message(uid: int, raw: bytes, save_raw: bool = True, folder: str = "IN
         "in_reply_to": _first_msgid(msg.get("In-Reply-To", "")),
         "references_header": msg.get("References", "").strip(),
         "thread_id": _thread_id(msg),
-        "subject": _decode_hdr(mail.subject or "") or "(无主题)",
+        "subject": next((_decode_hdr(v) for k, v in msg.raw_items() if k.lower() == "subject"), "") or "(无主题)",
         "from_addr": from_addr,
         "from_name": from_name,
         "to_addr": to_addr,
-        "cc_addr": ', '.join(a for _, a in email.utils.getaddresses([_decode_hdr(v) for v in msg.get_all('Cc', [])]) if a),
+        "cc_addr": ', '.join(a for _, a in address_header_pairs(msg, 'Cc') if a),
         "recipient_names": recipient_header_names(msg),
         "date": date_str,
         "snippet": re.sub(r"\s+", " ", body_text)[:200],
@@ -466,8 +469,8 @@ def parse_message(uid: int, raw: bytes, save_raw: bool = True, folder: str = "IN
         "attachments": attachments,
         "headers": headers,
         "auth_raw": auth_raw,
-        "reply_to": _addr_of(msg.get("Reply-To", "")),
-        "return_path": _addr_of(msg.get("Return-Path", "")),
+        "reply_to": _addr_of(msg, "Reply-To"),
+        "return_path": _addr_of(msg, "Return-Path"),
         "list_unsubscribe": headers.get("list-unsubscribe", ""),
         "precedence": headers.get("precedence", ""),
         "raw_path": raw_path,
