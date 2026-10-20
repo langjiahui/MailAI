@@ -1,0 +1,60 @@
+name: iOS native build
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/ios-native-release]
+    paths: ['mobile/ios/**', '.github/workflows/ios-preview.yml']
+permissions:
+  contents: read
+concurrency:
+  group: ios-native-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select newest installed Xcode
+        shell: python
+        run: |
+          from pathlib import Path
+          import plistlib, subprocess
+          apps = list(Path('/Applications').glob('Xcode*.app'))
+          def version(path):
+              data = plistlib.loads((path/'Contents/Info.plist').read_bytes())
+              return tuple(int(x) for x in data['CFBundleShortVersionString'].split('.') if x.isdigit())
+          selected = max(apps, key=version)
+          subprocess.run(['sudo','xcode-select','-s',str(selected/'Contents/Developer')],check=True)
+          subprocess.run(['xcodebuild','-version'],check=True)
+      - name: Install project generator
+        run: brew install xcodegen
+      - name: Offline mail and persistence tests
+        working-directory: mobile/ios
+        run: swift test
+      - name: Build arm64 device IPA
+        working-directory: mobile/ios
+        run: python3 scripts/build.py
+      - name: Launch and account form on simulator
+        working-directory: mobile/ios
+        shell: bash
+        run: |
+          device=$(python3 - <<'PY'
+          import json, subprocess
+          devices=json.loads(subprocess.check_output(['xcrun','simctl','list','devices','available','--json']))['devices']
+          print(next(d['udid'] for key, values in sorted(devices.items(), reverse=True) if 'iOS' in key for d in values if d['name'].startswith('iPhone')))
+          PY
+          )
+          xcodebuild -project MailAI.xcodeproj -scheme MailAI -destination "id=$device" -resultBundlePath build/UITests.xcresult CODE_SIGNING_ALLOWED=NO test
+          xcrun simctl io "$device" screenshot build/ios-simulator.png
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: MailAI-iOS-acceptance
+          path: |
+            mobile/ios/build/distribution/*
+            mobile/ios/build/Dependencies.resolved
+            mobile/ios/build/ios-simulator.png
+            mobile/ios/build/UITests.xcresult
+          if-no-files-found: error
+          retention-days: 14
