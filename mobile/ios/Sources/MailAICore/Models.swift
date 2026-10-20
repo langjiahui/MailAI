@@ -43,7 +43,7 @@ public struct MailAccount: Codable, Identifiable, Equatable, Sendable {
         case "icloud.com", "me.com", "mac.com":
             imapHost = "imap.mail.me.com"; smtpHost = "smtp.mail.me.com"
             smtpPort = 587; smtpSecurity = .startTLS
-        default: break
+        default: imapHost = ""; smtpHost = ""
         }
         username = email.trimmingCharacters(in: .whitespacesAndNewlines)
     }
@@ -98,7 +98,12 @@ public enum MailValidation {
               !host.hasPrefix("127."), !host.hasPrefix("169.254."),
               !["0.0.0.0", "::", "::1"].contains(host),
               !host.lowercased().hasPrefix("fe80:") else {
-            throw MailFailure.invalid("请填写邮箱服务器主机名或内网 IP，不能使用网址、回环或链路本地地址。")
+            throw MailFailure.invalid("请填写邮箱服务器域名，不能使用网址、回环或链路本地地址。")
+        }
+        // SwiftMail's TLS adapter omits hostname validation for IP literals.
+        // Require a DNS name so fullVerification always checks the configured server identity.
+        guard !host.contains(":"), !host.allSatisfy({ $0.isNumber || $0 == "." }) else {
+            throw MailFailure.invalid("请使用与服务器证书匹配的域名；内网 IP 请改用对应的内网域名。")
         }
     }
 }

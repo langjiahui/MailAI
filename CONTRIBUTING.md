@@ -77,6 +77,12 @@ Android 独立版本从 **1.0.0** 开始。已发布的 `android-v2.10.0` 与此
 
 Android 正式发布不标 Pre-release，使用 `latest=false` 保留 Web/桌面下载入口；测试发布在 Android 自己的目标版本后追加 `-beta.N`，标 Pre-release。正式客户端只订阅正式 Android 发布。更新清单附件名固定为 `mailai-android-update.json`，清单与 APK 元数据必须一致，执行现有门禁及移动端测试。旧 beta 客户端首次进入正式通道需手动覆盖安装。
 
+### iOS 独立版本
+
+iOS 从 `1.0.0` 建立第三条独立产品版本线，产品版本在 `mobile/ios/VERSION`，本地内部构建号在 `mobile/ios/BUILD_NUMBER`，同步 `project.yml`、iOS README、构建清单与 IPA 元数据。测试发布使用 `ios-v<版本>-beta.N`，正式发布使用 `ios-v<版本>`；均保留 Web/桌面的 Latest 入口。后续仅以 iOS 自己最近正式发布为分级基准，不沿用 Android 或根 VERSION。
+
+执行根发布门禁、iOS 核心测试、模拟器测试及 arm64 真机构建。未签名 IPA 必须明确标记待签名，不能宣称可直接安装或已完成正式签名发布；正式版还需目标设备安装验收。签名证书、私钥、描述文件、密码与 UDID 不进入源码或公开发布附件。
+
 ## 分支与 PR 规范
 
 - 从 `main` 切分支，命名：`feat/xxx`、`fix/xxx`、`docs/xxx`、`chore/xxx`

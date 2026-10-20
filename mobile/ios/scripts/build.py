@@ -50,7 +50,7 @@ def package(app, output, version, build):
                 archive.write(path, Path("Payload") / app.name / path.relative_to(app))
     digest = hashlib.sha256(ipa.read_bytes()).hexdigest()
     ipa.with_suffix(".ipa.sha256").write_text(f"{digest}  {ipa.name}\n")
-    manifest = {"platform": "ios", "version": version, "build": build,
+    manifest = {"platform": "ios", "channel": "beta", "version": version, "build": build,
                 "bundle_id": "com.mailai.ios", "minimum_ios": "18.0", "architecture": "arm64",
                 "signing": "unsigned-requires-device-signing", "installable_directly": False,
                 "file": ipa.name, "size": ipa.stat().st_size, "sha256": digest,

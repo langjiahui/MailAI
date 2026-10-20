@@ -29,6 +29,7 @@ public protocol MailService: Sendable {
     public private(set) var draft = MailDraft()
     public private(set) var busy = false
     public private(set) var sending = false
+    public private(set) var draftSaveFailed = false
     public private(set) var lastRefresh: Date?
     public var error: String?
     @ObservationIgnored private let vault: CredentialStorage
@@ -59,6 +60,7 @@ public protocol MailService: Sendable {
         }
         let entry = AccountCredential(account: account, password: password)
         try await service.validate(entry)
+        try Task.checkCancellation()
         let updated = credentials + [entry]
         try vault.save(updated)
         credentials = updated; accounts = updated.map(\.account)
@@ -67,8 +69,9 @@ public protocol MailService: Sendable {
     }
     public func selectAccount(_ id: UUID) throws {
         guard !sending else { throw MailFailure.invalid("请等待当前邮件发送结束后切换账号。") }
+        if draftSaveFailed { try saveDraft() }
         guard credentials.contains(where: { $0.account.id == id }) else { throw MailFailure.missingPassword }
-        cancelRefresh(); selectedID = id; folder = "INBOX"; limit = 50; draft = MailDraft()
+        cancelRefresh(); selectedID = id; folder = "INBOX"; limit = 50; draft = MailDraft(); draftSaveFailed = false
         folders = try files.read([MailFolder].self, account: id, key: "folders") ?? [.init(name: "INBOX")]
         try loadCache()
         draft = try files.read(MailDraft.self, account: id, key: "draft") ?? MailDraft()
@@ -123,19 +126,25 @@ public protocol MailService: Sendable {
     }
     public func updateDraft(_ update: (inout MailDraft) -> Void) {
         guard !sending, draft.state == .editing, let id = selectedID else { return }
-        var next = draft; update(&next)
-        do { try files.write(next, account: id, key: "draft"); draft = next }
-        catch { self.error = "草稿保存失败，请保留编辑页面并重试。" }
+        var next = draft; update(&next); draft = next
+        do { try files.write(next, account: id, key: "draft"); draftSaveFailed = false }
+        catch { draftSaveFailed = true; self.error = "草稿保存失败，输入仍保留在当前页面，请重试保存。" }
+    }
+    public func saveDraft() throws {
+        guard let id = selectedID else { return }
+        try files.write(draft, account: id, key: "draft")
+        draftSaveFailed = false
     }
     public func newDraft(replyingTo summary: MailSummary? = nil) throws {
         guard !sending, let id = selectedID else { return }
+        guard draft.state != .uncertain, draft.state != .submitting else { throw MailFailure.uncertainSend }
         var next = MailDraft()
         if let summary {
             next.to = summary.replyAddress
             next.subject = summary.subject.lowercased().hasPrefix("re:") ? summary.subject : "Re: " + summary.subject
             next.inReplyTo = summary.messageID
         }
-        try files.write(next, account: id, key: "draft"); draft = next
+        try files.write(next, account: id, key: "draft"); draft = next; draftSaveFailed = false
     }
     public func resolveUncertain() throws {
         guard draft.state == .uncertain, let id = selectedID else { return }
@@ -150,7 +159,7 @@ public protocol MailService: Sendable {
         var submitted = draft; submitted.state = .submitting
         // Persist BEFORE SMTP; interrupted submissions must never look retryable on restart.
         try files.write(submitted, account: id, key: "draft")
-        draft = submitted; sending = true
+        draft = submitted; draftSaveFailed = false; sending = true
         defer { sending = false }
         do {
             try await service.send(entry, draft: submitted)

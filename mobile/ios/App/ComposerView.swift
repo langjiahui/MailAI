@@ -26,7 +26,12 @@ struct ComposerView: View {
                 Section {
                     switch store.draft.state {
                     case .editing:
-                        Label("草稿自动保存在本机", systemImage: "checkmark.circle").font(.footnote).foregroundStyle(.secondary)
+                        if store.draftSaveFailed {
+                            Label("草稿尚未保存，请保留当前页面", systemImage: "exclamationmark.triangle").foregroundStyle(.red)
+                            Button("重试保存") { do { try store.saveDraft() } catch { self.error = "保存失败，请检查设备存储后重试。" } }
+                        } else {
+                            Label("草稿自动保存在本机", systemImage: "checkmark.circle").font(.footnote).foregroundStyle(.secondary)
+                        }
                     case .submitting:
                         HStack { ProgressView(); Text("正在提交邮件，请等待服务器确认…") }
                     case .uncertain:
@@ -42,7 +47,12 @@ struct ComposerView: View {
                 if let error { Section { Text(error).foregroundStyle(.red).font(.footnote) } }
             }.navigationTitle("写邮件").navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("完成") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("完成") {
+                        do { try store.saveDraft(); dismiss() }
+                        catch { self.error = "草稿保存失败，请保留当前页面并重试。" }
+                    }.disabled(store.sending)
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("发送", systemImage: "paperplane.fill") {
                         do { _ = try store.draft.validateForSending(); confirmSend = true }
@@ -50,7 +60,7 @@ struct ComposerView: View {
                     }.disabled(store.draft.state != .editing || store.sending)
                 }
             }
-            .interactiveDismissDisabled(store.sending)
+            .interactiveDismissDisabled(store.sending || store.draftSaveFailed)
             .confirmationDialog("发送给 \(store.draft.to)？", isPresented: $confirmSend, titleVisibility: .visible) {
                 Button("确认发送") {
                     error = nil

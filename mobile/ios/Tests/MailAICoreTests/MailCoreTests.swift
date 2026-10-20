@@ -61,12 +61,13 @@ private actor MockMailService: MailService {
     }
     func testServerValidationAndExactProviderMatching() throws {
         var a = account(); a.email = "a@qq.com.evil.example"; a.suggestServers()
-        XCTAssertEqual(a.imapHost, "imap.example.com")
+        XCTAssertEqual(a.imapHost, "")
         a.email = "a@qq.com"; a.suggestServers(); XCTAssertEqual(a.imapHost, "imap.qq.com")
         for host in ["localhost", "127.0.0.1", "169.254.1.1", "::1", "https://imap.example.com", "a@example.com"] {
             a.imapHost = host; XCTAssertThrowsError(try a.validated(), host)
         }
-        a.imapHost = "10.42.0.8"; XCTAssertNoThrow(try a.validated())
+        a.imapHost = "10.42.0.8"; XCTAssertThrowsError(try a.validated())
+        a.imapHost = "imap.corp.example"; XCTAssertNoThrow(try a.validated())
     }
     func testNoSMTPSubmissionDuringAccountValidation() async throws {
         let (_, _, service, _) = try await setup()
@@ -125,5 +126,17 @@ private actor MockMailService: MailService {
         let a = MailSummary(uid: 1, validity: 10, folder: "INBOX", subject: "", sender: "", replyAddress: "", date: nil, unread: false)
         try files.write(MailBody(text: "离线邮件", html: nil), account: store.selectedID!, key: "body:" + a.id)
         let body = try await store.body(for: a); XCTAssertEqual(body.text, "离线邮件")
+    }
+    func testStorageFailureKeepsUnsavedDraftInMemoryAndCanRetry() async throws {
+        let (store, _, _, _) = try await setup()
+        let directory = self.directory!
+        try FileManager.default.removeItem(at: directory)
+        try Data("synthetic storage fault".utf8).write(to: directory)
+        store.updateDraft { $0.text = "保存失败时仍保留的新输入" }
+        XCTAssertTrue(store.draftSaveFailed)
+        XCTAssertEqual(store.draft.text, "保存失败时仍保留的新输入")
+        try FileManager.default.removeItem(at: directory)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try store.saveDraft(); XCTAssertFalse(store.draftSaveFailed)
     }
 }

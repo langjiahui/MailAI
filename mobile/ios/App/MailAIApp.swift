@@ -44,7 +44,7 @@ struct InboxView: View {
                 if store.accounts.isEmpty {
                     VStack(spacing: 24) {
                         Spacer()
-                        Image(systemName: "envelope.badge.shield.half.filled").font(.system(size: 64)).foregroundStyle(.tint)
+                        Image(systemName: "envelope.fill").font(.system(size: 64)).foregroundStyle(.tint)
                         VStack(spacing: 10) {
                             Text("邮件，随身而行").font(.largeTitle.bold())
                             Text("在 iPhone 上独立收发邮件\n账号与邮件留在你的设备上")
@@ -54,7 +54,7 @@ struct InboxView: View {
                             .buttonStyle(.borderedProminent).controlSize(.large).accessibilityIdentifier("add-account")
                         Text("支持 IMAP / SMTP · TLS 加密连接").font(.footnote).foregroundStyle(.secondary)
                         Spacer()
-                        Text("MailAI · iOS 1.0.0").font(.caption).foregroundStyle(.tertiary).padding(.bottom, 24)
+                        Text("MailAI · iOS 1.0.0 测试版").font(.caption).foregroundStyle(.tertiary).padding(.bottom, 24)
                     }.padding(24)
                 } else {
                     List {
@@ -153,9 +153,10 @@ struct SettingsView: View {
                     Text("邮件正文不加载外部图片或脚本。发送成功代表 SMTP 服务器接受，不保证送达；本版不自动写入服务器已发送文件夹。")
                 }.font(.footnote).foregroundStyle(.secondary)
                 Section("版本") {
+                    LabeledContent("发布通道", value: "测试版 · 设备签名安装")
                     LabeledContent("MailAI iOS", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0")
                     LabeledContent("构建", value: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1")
-                    NavigationLink("开源许可") { ScrollView { Text((try? String(contentsOf: Bundle.main.url(forResource: "Licenses", withExtension: "txt")!, encoding: .utf8)) ?? "MailAI — Apache 2.0\nSwiftMail — BSD 2-Clause\nSwiftNIO / SwiftNIOSSL — Apache 2.0").font(.caption).textSelection(.enabled).padding() }.navigationTitle("开源许可") }
+                    NavigationLink("开源许可") { ScrollView { Text(licenseText).font(.caption).textSelection(.enabled).padding() }.navigationTitle("开源许可") }
                 }
             }.navigationTitle("账号与设置").toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } } }
             .confirmationDialog("移除账号及这台设备上的邮件缓存、草稿？服务器邮件会保留。", isPresented: $confirmRemoval, titleVisibility: .visible) {
@@ -164,5 +165,10 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+    private var licenseText: String {
+        guard let url = Bundle.main.url(forResource: "Licenses", withExtension: "txt"),
+              let text = try? String(contentsOf: url, encoding: .utf8) else { return "无法读取许可文件。" }
+        return text
     }
 }

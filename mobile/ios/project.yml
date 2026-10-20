@@ -23,8 +23,7 @@ targets:
   MailAI:
     type: application
     platform: iOS
-    sources: [App]
-    resources: [Resources]
+    sources: [App, Resources]
     dependencies:
       - package: MailAICore
       - package: SwiftMail
@@ -55,10 +54,21 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.mailai.ios.uitests
         GENERATE_INFOPLIST_FILE: YES
+  MailAITransportTests:
+    type: bundle.unit-testing
+    platform: iOS
+    sources: [TransportTests]
+    dependencies:
+      - target: MailAI
+      - package: MailAICore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.mailai.ios.transporttests
+        GENERATE_INFOPLIST_FILE: YES
 schemes:
   MailAI:
     build:
       targets:
         MailAI: all
     test:
-      targets: [MailAIUITests]
+      targets: [MailAIUITests, MailAITransportTests]

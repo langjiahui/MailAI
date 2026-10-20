@@ -2,7 +2,9 @@ name: iOS native build
 on:
   workflow_dispatch:
   push:
-    branches: [codex/ios-native-release]
+    branches: [main, codex/ios-native-release]
+    paths: ['mobile/ios/**', '.github/workflows/ios-preview.yml']
+  pull_request:
     paths: ['mobile/ios/**', '.github/workflows/ios-preview.yml']
 permissions:
   contents: read
@@ -45,6 +47,16 @@ jobs:
           print(next(d['udid'] for key, values in sorted(devices.items(), reverse=True) if 'iOS' in key for d in values if d['name'].startswith('iPhone')))
           PY
           )
+          xcrun simctl boot "$device" || true
+          xcrun simctl bootstatus "$device" -b
+          openssl req -x509 -newkey rsa:2048 -nodes -days 2 -keyout build/fixture-key.pem -out build/fixture-ca.pem -subj '/CN=MailAI Synthetic Test CA' -addext 'basicConstraints=critical,CA:TRUE'
+          openssl req -newkey rsa:2048 -nodes -keyout build/fixture-server-key.pem -out build/fixture.csr -subj '/CN=localhost'
+          printf 'subjectAltName=DNS:localhost,IP:127.0.0.1\nbasicConstraints=CA:FALSE\nextendedKeyUsage=serverAuth\n' > build/fixture.ext
+          openssl x509 -req -in build/fixture.csr -CA build/fixture-ca.pem -CAkey build/fixture-key.pem -CAcreateserial -out build/fixture-server.pem -days 2 -extfile build/fixture.ext
+          xcrun simctl keychain "$device" add-root-cert build/fixture-ca.pem
+          python3 scripts/protocol_fixture.py --cert build/fixture-server.pem --key build/fixture-server-key.pem > build/fixture.log 2>&1 &
+          fixture_pid=$!
+          trap 'kill "$fixture_pid" 2>/dev/null || true; rm -f build/fixture*.pem build/fixture.csr build/fixture.ext build/fixture-ca.srl' EXIT
           xcodebuild -project MailAI.xcodeproj -scheme MailAI -destination "id=$device" -resultBundlePath build/UITests.xcresult CODE_SIGNING_ALLOWED=NO test
           xcrun simctl io "$device" screenshot build/ios-simulator.png
       - uses: actions/upload-artifact@v4
