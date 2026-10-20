@@ -55,6 +55,7 @@ class DomesticUpdateTest {
     @Test
     fun domesticResourcesCannotUseHttpPrivateHostsOrAnotherRepository() {
         UpdatePolicy.requireUrl(DOMESTIC_MANIFEST)
+        UpdatePolicy.requireUrl("https://file-cdn.gitcode.com/synthetic.apk?signature=synthetic")
         UpdatePolicy.requireUrl(verify(envelope).mirrorUrl)
         for (url in
             listOf(

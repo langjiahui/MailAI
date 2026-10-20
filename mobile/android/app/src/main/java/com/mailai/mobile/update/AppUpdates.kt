@@ -131,6 +131,7 @@ internal object UpdatePolicy {
                     "raw.atomgit.com",
                     "atomgit.com",
                     "file.gitcode.com",
+                    "file-cdn.gitcode.com",
                 )
         ) {
             "更新地址不受信任"
