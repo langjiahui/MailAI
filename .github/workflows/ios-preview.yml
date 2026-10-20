@@ -15,6 +15,8 @@ jobs:
   build:
     runs-on: macos-15
     timeout-minutes: 60
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - name: Select newest installed Xcode
@@ -59,6 +61,12 @@ jobs:
           trap 'kill "$fixture_pid" 2>/dev/null || true; rm -f build/fixture*.pem build/fixture.csr build/fixture.ext build/fixture-ca.srl' EXIT
           xcodebuild -project MailAI.xcodeproj -scheme MailAI -destination "id=$device" -resultBundlePath build/UITests.xcresult CODE_SIGNING_ALLOWED=NO test
           xcrun xcresulttool export attachments --path build/UITests.xcresult --output-path build/screenshots
+      - name: Stage a private release draft for artifact verification
+        if: github.event_name == 'push' && github.ref == 'refs/heads/codex/ios-native-release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "ios-preview-${GITHUB_RUN_ID}" --draft --prerelease --target "$GITHUB_SHA" --title 'MailAI iOS 1.0.0 beta.1（待签名测试包）' --notes-file 'docs/发布-iOS-1.0.0-beta.1-2026-10-20.md' mobile/ios/build/distribution/*
       - uses: actions/upload-artifact@v4
         if: always()
         with:
