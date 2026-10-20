@@ -292,26 +292,8 @@ internal fun PreferencesScreen(vm: MailViewModel) {
         }
     }
     if (showUpdates)
-        ModalBottomSheet(
-            onDismissRequest = { showUpdates = false },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            containerColor = MaterialTheme.colorScheme.surface,
-        ) {
-            Row(
-                Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    "应用更新",
-                    Modifier.weight(1f),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                TextButton(onClick = { showUpdates = false }) { Text("完成") }
-            }
-            Column(
-                Modifier.fillMaxWidth().heightIn(max = 480.dp).verticalScroll(rememberScrollState())
-            ) {
+        MailBottomSheet(title = "应用更新", onDismiss = { showUpdates = false }) {
+            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
                 SettingsCard("更新详情") {
                     Text(
                         "当前版本 ${BuildConfig.VERSION_NAME}",

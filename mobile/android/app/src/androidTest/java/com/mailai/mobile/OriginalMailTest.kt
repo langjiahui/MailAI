@@ -479,6 +479,14 @@ class OriginalMailTest {
             capture("details-long-address-cc")
             compose.onNodeWithTag("mail-details-list").performScrollToIndex(0)
             capture("details-long-subject")
+            val handle = compose.onNodeWithTag("mail-sheet-handle", useUnmergedTree = true)
+            val expandedTop = handle.getUnclippedBoundsInRoot().top
+            // Long panels now expose a compact anchor: Back first collapses it, then
+            // dismisses it. Explicit "完成" still dismisses in one action.
+            device.pressBack()
+            compose.waitForIdle()
+            compose.onNodeWithTag("mail-details-sheet").assertExists()
+            assertTrue(handle.getUnclippedBoundsInRoot().top > expandedTop)
             device.pressBack()
             compose.waitUntil(5000) {
                 compose.onAllNodesWithTag("mail-details-sheet").fetchSemanticsNodes().isEmpty()
