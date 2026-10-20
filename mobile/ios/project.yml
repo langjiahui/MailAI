@@ -55,7 +55,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.mailai.ios.uitests
         GENERATE_INFOPLIST_FILE: YES
   MailAITransportTests:
-    type: bundle.unit-testing
+    type: bundle.unit-test
     platform: iOS
     sources: [TransportTests]
     dependencies:
