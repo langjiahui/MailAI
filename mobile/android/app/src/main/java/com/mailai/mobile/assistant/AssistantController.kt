@@ -168,7 +168,7 @@ internal class AssistantController(
         // Never transfer the old key to a newly entered endpoint implicitly.
         val normalized =
             try {
-                AssistantProviders.completionEndpoint(endpoint)
+                AssistantProviders.completionEndpoint(endpoint, privateNetwork)
             } catch (e: IllegalArgumentException) {
                 message = e.message.orEmpty()
                 failed = true

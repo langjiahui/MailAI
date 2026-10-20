@@ -11,3 +11,5 @@ https://repo.maven.apache.org/maven2/com/sun/mail/android-activation/1.6.7/andro
 jsoup 1.21.1 (Jonathan Hedley and contributors): MIT, see jsoup-LICENSE.txt.
 
 No test servers, test certificates or test credentials are included in the application.
+
+EdDSA-Java 0.3.0 (str4d and contributors): CC0 1.0 Universal, https://github.com/str4d/ed25519-java . Used for pinned update signature verification on Android 10 and later.

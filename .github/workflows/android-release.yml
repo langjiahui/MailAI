@@ -98,6 +98,12 @@ jobs:
           args=()
           if [ "$FORMAL" = true ]; then args+=(--formal); fi
           python tooling/scripts/android_release.py package --source source --sdk "$ANDROID_HOME" --output android-release-assets "${args[@]}"
+      - name: Sign the independent Android update channel
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: |
+          python -m pip install 'cryptography>=44,<47' certifi
+          python tooling/scripts/sign_android_update.py android-release-assets
       - uses: actions/upload-artifact@v4
         with:
           name: Android-signed-acceptance
@@ -139,3 +145,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python scripts/android_release.py publish --sdk "$ANDROID_HOME" --output android-release-assets
+
+  domestic-mirror:
+    if: inputs.publish || startsWith(github.ref, 'refs/tags/android-v')
+    needs: publish
+    uses: ./.github/workflows/android-atomgit-sync.yml
+    with:
+      tag: ${{ startsWith(github.ref, 'refs/tags/android-v') && github.ref_name || '' }}
+    secrets:
+      ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_TOKEN }}

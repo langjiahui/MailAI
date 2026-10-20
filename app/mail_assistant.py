@@ -30,8 +30,10 @@ _AMOUNT_QUESTION_WORDS = ('金额', '合计', '加起来', '总计', '账单', '
 
 
 def _assistant_request_limits() -> tuple[int, int]:
-    """Reasoning-first coding models need room before they emit visible text."""
-    if config.LLM_PROVIDER == 'kimi_code' or str(config.LLM_MODEL).lower().startswith('kimi-for-coding'):
+    """Reasoning models need room before they emit visible text, including corporate gateways."""
+    model_id = str(config.LLM_MODEL).lower()
+    if (config.LLM_PROVIDER == 'kimi_code' or model_id.startswith('kimi-for-coding') or
+            config.LLM_PROVIDER in ('custom', 'other') and model_id.startswith('kimi-k2.')):
         return 4096, 90
     return 1600, 60
 

@@ -29,8 +29,8 @@ class ChannelTest(unittest.TestCase):
         for value in [patch.object(channel,'REPOSITORY',str(self.repository)),patch.object(trust,'PUBLIC_KEY',PUBLIC),patch.object(channel,'read_json',side_effect=lambda url:json.loads(self.raw()))]:
             value.start();self.addCleanup(value.stop)
 
-    def raw(self):
-        return subprocess.check_output(['git','--git-dir='+str(self.repository),'show','refs/heads/updates:latest.signed.json'])
+    def raw(self, filename='latest.signed.json'):
+        return subprocess.check_output(['git','--git-dir='+str(self.repository),'show','refs/heads/updates:'+filename])
 
     def write(self,version,notes='verified update'):
         path=self.root/('manifest-'+version+'.json');path.write_text(json.dumps(envelope(version,notes))+'\n');return path
@@ -65,6 +65,16 @@ class ChannelTest(unittest.TestCase):
         self.assertEqual(read.call_args.args[0],mirror.STATIC_MANIFEST_URL)
         self.assertTrue(all(item['mirror_url'].startswith(mirror.ATOM_RELEASES+'/download/') for item in result['assets'].values()))
         self.assertNotIn('api.atomgit.com',json.dumps(result))
+
+    def test_android_pointer_never_replaces_desktop_and_has_its_own_version_order(self):
+        channel.publish(self.write('2.10.3'),'synthetic-token')
+        desktop=self.raw()
+        with patch.object(channel,'read_json',side_effect=lambda url:json.loads(self.raw(url.rsplit('/',1)[1]))):
+            channel.publish(self.write('1.4.0'),'synthetic-token',filename='android-latest.signed.json')
+            android=self.raw('android-latest.signed.json')
+            channel.publish(self.write('1.3.3'),'synthetic-token',filename='android-latest.signed.json')
+            self.assertEqual(self.raw('android-latest.signed.json'),android)
+        self.assertEqual(self.raw(),desktop)
 
 
 if __name__=='__main__':unittest.main()

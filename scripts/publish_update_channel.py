@@ -21,7 +21,9 @@ def version(value):
     return tuple(map(int,value.split('.')))
 
 
-def publish(path: Path, token: str):
+def publish(path: Path, token: str, filename='latest.signed.json'):
+    if filename not in ('latest.signed.json', 'android-latest.signed.json'):
+        raise ValueError('Invalid official update channel')
     raw = path.read_bytes()
     envelope = json.loads(raw)
     manifest = verify(envelope)
@@ -47,7 +49,11 @@ def publish(path: Path, token: str):
         if current:
             git('fetch','--depth=1',REPOSITORY,'refs/heads/'+BRANCH)
             git('checkout','-B',BRANCH,'FETCH_HEAD')
-            previous_raw = (checkout/'latest.signed.json').read_bytes()
+            previous_path = checkout/filename
+            previous_raw = previous_path.read_bytes() if previous_path.exists() else None
+        else:
+            previous_raw = None
+        if previous_raw is not None:
             previous = verify(json.loads(previous_raw))
             prior_version = version(previous.get('version'))
             if prior_version > incoming:
@@ -57,20 +63,20 @@ def publish(path: Path, token: str):
                 if previous_raw != raw:
                     raise ValueError('Static channel conflicts with immutable release bytes')
                 print('Static channel is already current',flush=True)
-                verify_public(manifest)
+                verify_public(manifest, filename)
                 return
-        (checkout/'latest.signed.json').write_bytes(raw)
-        git('add','latest.signed.json')
+        (checkout/filename).write_bytes(raw)
+        git('add',filename)
         git('commit','-m','Publish verified update manifest v'+manifest['version'])
         # No force: concurrent/newer channel updates must never be overwritten.
         git('push',REPOSITORY,'HEAD:refs/heads/'+BRANCH)
-    verify_public(manifest)
+    verify_public(manifest, filename)
 
 
-def verify_public(manifest):
+def verify_public(manifest, filename='latest.signed.json'):
     for attempt in range(13):
         try:
-            received = read_json(STATIC_MANIFEST_URL)
+            received = read_json(STATIC_MANIFEST_URL.rsplit('/', 1)[0] + '/' + filename)
             if verify(received) != manifest:
                 raise OSError('Static channel has not refreshed yet')
             print('Static channel anonymously verified: v'+manifest['version'],flush=True)

@@ -1,0 +1,19 @@
+{
+  "public_key": "D1oEC+4uLf2fxjxIjl6fiNzafAq7Z2nqhpggk4udHW8=",
+  "envelope": {
+    "algorithm": "ed25519",
+    "manifest": {
+      "schema": 1,
+      "applicationId": "com.mailai.mobile.dev",
+      "version": "9.0.0",
+      "code": 2109999,
+      "url": "https://github.com/langjiahui/MailAI/releases/download/android-v9.0.0/MailAI-Android-9.0.0.apk",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "size": 1024,
+      "notes": "仅用于离线签名测试",
+      "page": "https://github.com/langjiahui/MailAI/releases/tag/android-v9.0.0"
+    },
+    "payload": "eyJhcHBsaWNhdGlvbklkIjoiY29tLm1haWxhaS5tb2JpbGUuZGV2IiwiY29kZSI6MjEwOTk5OSwibm90ZXMiOiLku4XnlKjkuo7nprvnur/nrb7lkI3mtYvor5UiLCJwYWdlIjoiaHR0cHM6Ly9naXRodWIuY29tL2xhbmdqaWFodWkvTWFpbEFJL3JlbGVhc2VzL3RhZy9hbmRyb2lkLXY5LjAuMCIsInNjaGVtYSI6MSwic2hhMjU2IjoiYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYSIsInNpemUiOjEwMjQsInVybCI6Imh0dHBzOi8vZ2l0aHViLmNvbS9sYW5namlhaHVpL01haWxBSS9yZWxlYXNlcy9kb3dubG9hZC9hbmRyb2lkLXY5LjAuMC9NYWlsQUktQW5kcm9pZC05LjAuMC5hcGsiLCJ2ZXJzaW9uIjoiOS4wLjAifQ==",
+    "signature": "yChzN174EFrKnidnQzmY9duqySUxzlkmgnNk8F6SsxxPiQ7wJUFCyO70ZKfjdCn7GUPbqslhUrI0U7BvYVGGBw=="
+  }
+}

@@ -59,8 +59,8 @@ internal object AssistantProviders {
             it.preset && it.endpoint == runCatching { completionEndpoint(endpoint) }.getOrNull()
         }
 
-    fun completionEndpoint(value: String): String {
-        val url = AssistantConfig(endpoint = value.trim()).url()
+    fun completionEndpoint(value: String, privateNetwork: Boolean = false): String {
+        val url = AssistantConfig(endpoint = value.trim(), privateNetwork = privateNetwork).url()
         val path = url.encodedPath.trimEnd('/')
         return url.newBuilder()
             .encodedPath(
@@ -78,6 +78,8 @@ internal object AssistantProviders {
      * Only exact official endpoints get provider-specific fields; arbitrary gateways stay generic.
      */
     fun request(config: AssistantConfig, messages: JSONArray): JSONObject {
+        val modelId = config.model.lowercase()
+        val provider = detect(config.endpoint)?.id
         val body =
             JSONObject()
                 .put("model", config.model)
@@ -86,13 +88,13 @@ internal object AssistantProviders {
                 .put(
                     "max_tokens",
                     if (
-                        detect(config.endpoint)?.id == "kimi_code" ||
-                            config.model.startsWith("kimi-for-coding")
+                        provider == "kimi_code" ||
+                            modelId.startsWith("kimi-for-coding") ||
+                            (provider == null && modelId.startsWith("kimi-k2."))
                     )
                         4096
                     else 1600,
                 )
-        val provider = detect(config.endpoint)?.id
         if (provider in setOf("deepseek", "kimi", "kimi_code"))
             body.put("stream_options", JSONObject().put("include_usage", true))
         when (provider) {
@@ -149,7 +151,7 @@ internal object AssistantServiceErrors {
             code == 404 || "model_not_found" in detail || "invalid_model" in detail ->
                 "接口或模型未找到$status，请核对服务商和模型；自定义服务请展开高级设置"
             code == 400 || code == 422 -> "模型与请求参数不兼容$status，请更换预设模型或核对自定义模型名称"
-            code in 300..399 -> "模型接口发生跳转$status，请填写最终 HTTPS 接口地址"
+            code in 300..399 -> "模型接口发生跳转$status，请填写最终接口地址；HTTP 仅限企业内网"
             code in 500..599 -> "模型服务暂时不可用$status，原邮件和草稿未改动"
             else -> "模型服务未接受请求$status，请在模型设置中测试连接"
         }

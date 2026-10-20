@@ -3,7 +3,6 @@ package com.mailai.mobile.assistant
 import android.content.Context
 import com.mailai.mobile.BuildConfig
 import com.mailai.mobile.mail.MailNetworks
-import com.mailai.mobile.mail.NetworkPolicy
 import com.mailai.mobile.mail.Operation
 import com.mailai.mobile.mail.PinnedSocketFactory
 import java.io.IOException
@@ -60,7 +59,9 @@ internal class AssistantClient(
         progress: (String) -> Unit,
     ): String {
         config.validate()
-        val url = AssistantProviders.completionEndpoint(config.endpoint).toHttpUrl()
+        val url =
+            AssistantProviders.completionEndpoint(config.endpoint, config.privateNetwork)
+                .toHttpUrl()
         val builder =
             (testClient ?: OkHttpClient())
                 .newBuilder()
@@ -79,6 +80,7 @@ internal class AssistantClient(
             if (config.privateNetwork) {
                 val route = MailNetworks(requireNotNull(context)).route()
                 val address = route.resolve(url.host)
+                config.validateAddress(address)
                 builder.dns(
                     object : Dns {
                         override fun lookup(hostname: String): List<InetAddress> {
@@ -94,11 +96,8 @@ internal class AssistantClient(
                         override fun lookup(hostname: String): List<InetAddress> {
                             require(hostname == url.host)
                             val addresses = InetAddress.getAllByName(hostname)
-                            require(
-                                addresses.isNotEmpty() && addresses.all(NetworkPolicy::isPublic)
-                            ) {
-                                "模型地址解析到内网，请核对地址或明确启用企业内网服务"
-                            }
+                            require(addresses.isNotEmpty()) { "模型地址没有可用的解析结果" }
+                            addresses.forEach(config::validateAddress)
                             return addresses.toList()
                         }
                     }
@@ -168,6 +167,9 @@ private fun BufferedSource.readUtf8LineStrictOrAll(limit: Long): String {
 }
 
 internal object AssistantStream {
+    // Reasoning-heavy gateways repeat SSE metadata per token, even for a short final answer.
+    private const val MAX_STREAM_BYTES = 4L * 1024 * 1024
+
     fun read(source: BufferedSource, operation: AssistantCall, progress: (String) -> Unit): String {
         val text = StringBuilder()
         val event = StringBuilder()
@@ -187,7 +189,13 @@ internal object AssistantStream {
             if (j.has("error")) throw AssistantFailure("模型服务中断了生成，已有文字已保留")
             val choice = j.optJSONArray("choices")?.optJSONObject(0) ?: return
             val delta = choice.optJSONObject("delta")
-            if (delta?.has("tool_calls") == true) throw AssistantFailure("此任务只支持文字结果，请检查模型配置")
+            val toolCalls = delta?.opt("tool_calls")
+            if (
+                toolCalls != null &&
+                    toolCalls != JSONObject.NULL &&
+                    (toolCalls !is JSONArray || toolCalls.length() > 0)
+            )
+                throw AssistantFailure("此任务只支持文字结果，请检查模型配置")
             val content = delta?.opt("content") ?: choice.optJSONObject("message")?.opt("content")
             text.append(AssistantContent.text(content))
             if (text.length > 32000) throw AssistantFailure("结果较长，已停止；请缩小处理范围")
@@ -210,8 +218,8 @@ internal object AssistantStream {
                 break
             }
             val line = source.readUtf8LineStrict(16384)
-            total += line.length + 1
-            if (total > 256000) throw AssistantFailure("服务响应过大，已停止接收")
+            total += line.toByteArray(Charsets.UTF_8).size + 1
+            if (total > MAX_STREAM_BYTES) throw AssistantFailure("服务响应过大，已停止接收")
             if (line.isEmpty()) consume()
             else if (line.startsWith("data:")) {
                 if (event.isNotEmpty()) event.append('\n')

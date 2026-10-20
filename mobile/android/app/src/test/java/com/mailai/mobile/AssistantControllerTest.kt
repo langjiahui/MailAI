@@ -268,6 +268,55 @@ class AssistantControllerTest {
     }
 
     @Test
+    fun corporateHttpCanBeTestedSavedAndEditedWithoutMovingTheOldKey() {
+        val calls = AtomicInteger()
+        val (a, scope, _) =
+            rig { c, _, _, _ ->
+                calls.incrementAndGet()
+                assertEquals("http://10.42.0.8/v1/chat/completions", c.endpoint)
+                assertEquals("Kimi-K2.6", c.model)
+                assertTrue(c.privateNetwork)
+                assertEquals("synthetic-corporate-key", c.key)
+                "OK"
+            }
+        try {
+            a.open(source)
+            waitFor { !a.loading }
+            val endpoint = "http://10.42.0.8:80/v1"
+            a.testSettings(endpoint, "Kimi-K2.6", "synthetic-corporate-key", false, true, "custom")
+            assertTrue(a.verificationFailed)
+            assertEquals(0, calls.get())
+            a.testSettings(endpoint, "Kimi-K2.6", "synthetic-corporate-key", true, true, "custom")
+            waitFor { !a.testing }
+            assertFalse(a.verificationFailed)
+            assertEquals(1, calls.get())
+            assertEquals(config, AssistantSettings(context, cipher).read())
+            a.saveSettings(endpoint, "Kimi-K2.6", "synthetic-corporate-key", true, true, "custom")
+            waitFor { !a.loading }
+            assertFalse(a.failed)
+            a.saveSettings(
+                "http://10.42.0.8/v1/chat/completions",
+                "Qwen2.5-72B",
+                "",
+                true,
+                true,
+                "custom",
+            )
+            waitFor { !a.loading }
+            assertFalse(a.failed)
+            val saved = AssistantSettings(context, cipher).read()!!
+            assertEquals("Qwen2.5-72B", saved.model)
+            assertEquals("synthetic-corporate-key", saved.key)
+            a.saveSettings("http://10.42.0.9/v1", "Qwen2.5-72B", "", true, true, "custom")
+            assertTrue(a.failed)
+            assertEquals(saved, AssistantSettings(context, cipher).read())
+        } finally {
+            a.dispose()
+            scope.cancel()
+        }
+    }
+
+    @Test
     fun failedOrCancelledProbePreservesTheSavedConfigurationAndNeverRestarts() {
         val calls = AtomicInteger()
         val (a, scope, _) =

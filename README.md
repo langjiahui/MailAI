@@ -5,9 +5,11 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v2.10.2**
+当前版本：**v2.10.3**
 
-本次更新：修复部分中文联系人姓名因邮件头实际采用 GBK／GB18030、却声明为 GB2312 或 UTF-8 而显示乱码的问题；统一收件、已发送和联系人姓名解码，兼容未知编码、混合中文与编码片段，并修复姓名含逗号或引号时的收件人及回复地址解析。已有乱码优先从本地原始邮件头或完整历史姓名恢复显示，保留人工维护的姓名；不改写原始邮件，也不猜测缺失字符。
+本次更新：修复小邮接入自部署 Kimi K2 系列时，推理占满原输出额度而无法返回正文的问题；仅为自部署／通用 API 的对应模型预留推理额度，保持模型 ID 大小写原样发送，不添加厂商专用参数。DeepSeek、官方 Kimi、Kimi Code、Ollama 和其他模型沿用原请求方式。
+
+上次更新（v2.10.2）：修复部分中文联系人姓名因邮件头实际采用 GBK／GB18030、却声明为 GB2312 或 UTF-8 而显示乱码的问题；统一收件、已发送和联系人姓名解码，兼容未知编码、混合中文与编码片段，并修复姓名含逗号或引号时的收件人及回复地址解析。已有乱码优先从本地原始邮件头或完整历史姓名恢复显示，保留人工维护的姓名；不改写原始邮件，也不猜测缺失字符。
 
 上次更新（v2.10.1）：修复 AtomGit 共用匿名 API 触发平台限流时国内更新不可用的问题：客户端改读已签名静态清单，使用公开网页安装包入口，保留网络自动选路、跨源断点续传、固定公钥验签和完整文件校验。发布后自动推进独立更新通道，拒绝版本回退和同版本内容覆盖，并改善海外云构建上传国内仓库的线路与失败重试。
 
@@ -29,7 +31,7 @@ MailAI 是一款**本地运行、AI 驱动**的邮件安全与效率助手。它
 
 ## Android
 
-安卓独立客户端 **1.3.3 正式版**：[下载 Android APK](https://github.com/langjiahui/MailAI/releases/download/android-v1.3.3/MailAI-Android-1.3.3.apk)。本次修复中文姓名、主题、附件名与正文的编码兼容问题，完善姓名含标点时的地址解析，并从缓存重新补齐已有自动联系人，保留手工备注。支持固定签名覆盖升级并保留邮件、草稿与附件。Android 与 Web/桌面各自维护版本。[源码、使用范围与验收](mobile/android/README.md)。桌面稳定版下载见下方。
+安卓独立客户端 **1.4.0 正式版**：[下载 Android APK](https://github.com/langjiahui/MailAI/releases/download/android-v1.4.0/MailAI-Android-1.4.0.apk) · [国内 APK](https://atomgit.com/langjiahui2011/MailAI/releases/download/android-v1.4.0/MailAI-Android-1.4.0.apk)。新增独立的国内签名更新清单与安装包镜像，GitHub 不可达时仍可检查与下载更新；安装包字节及固定签名一致。修复小邮企业内网 HTTP 接口、Qwen 空工具调用字段及 Kimi 推理输出兼容问题。覆盖升级保留邮件、草稿和附件。Android 与 Web／桌面各自维护版本。[源码、使用范围与验收](mobile/android/README.md)。
 
 ## 下载 MailAI
 

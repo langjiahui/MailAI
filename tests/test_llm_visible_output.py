@@ -14,6 +14,16 @@ from app.llm.providers import adapt_body
 
 
 class VisibleOutputTests(unittest.TestCase):
+    def test_corporate_kimi_has_room_for_reasoning_without_changing_model_id(self):
+        from app.mail_assistant import _assistant_request_limits
+        for provider in ('custom', 'other'):
+            with patch.object(config, 'LLM_PROVIDER', provider), patch.object(config, 'LLM_MODEL', 'Kimi-K2.6'):
+                self.assertEqual(_assistant_request_limits(), (4096, 90))
+                self.assertEqual(adapt_body({'model': config.LLM_MODEL, 'max_tokens': 4096}, provider, {}),
+                                 {'model': 'Kimi-K2.6', 'max_tokens': 4096})
+        with patch.object(config, 'LLM_PROVIDER', 'custom'), patch.object(config, 'LLM_MODEL', 'Qwen2.5-72B'):
+            self.assertEqual(_assistant_request_limits(), (1600, 60))
+
     def test_qwen_request_default_and_explicit_override(self):
         body = {'model': 'Qwen3.6-35B', 'messages': [], 'stream': True}
         self.assertEqual(adapt_body(dict(body), 'custom', {})['chat_template_kwargs'], {'enable_thinking': False})

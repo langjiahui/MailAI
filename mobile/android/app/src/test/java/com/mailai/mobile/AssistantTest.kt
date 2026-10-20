@@ -87,6 +87,177 @@ class AssistantTest {
     }
 
     @Test
+    fun corporateHttpRequiresOptInAndSurvivesEncryptedSettingsReload() {
+        val endpoint = "http://10.42.0.8/v1/chat/completions"
+        for (input in listOf("http://10.42.0.8:80", "http://10.42.0.8:80/v1/", "$endpoint/")) {
+            assertEquals(endpoint, AssistantProviders.completionEndpoint(input, true))
+            assertThrows(IllegalArgumentException::class.java) {
+                AssistantProviders.completionEndpoint(input)
+            }
+        }
+        val store = AssistantSettings(context, cipher)
+        for (model in listOf("Qwen2.5-72B", "Kimi-K2.6")) {
+            val corporate =
+                config.copy(
+                    endpoint = endpoint,
+                    model = model,
+                    privateNetwork = true,
+                    provider = "custom",
+                )
+            store.save(corporate)
+            assertEquals(corporate, store.read())
+            assertNull(AssistantProviders.detect(endpoint))
+        }
+        for (bad in
+            listOf(
+                "http://key@10.42.0.8/v1",
+                "http://10.42.0.8/v1?key=secret",
+                "http://10.42.0.8/v1#secret",
+            )) {
+            assertThrows(IllegalArgumentException::class.java) {
+                AssistantProviders.completionEndpoint(bad, true)
+            }
+        }
+    }
+
+    @Test
+    fun existingOfficialProviderRequestBudgetsAndOptionsRemainUnchanged() {
+        for ((provider, model) in
+            listOf(
+                "deepseek" to "deepseek-flash",
+                "kimi" to "kimi-k2.6",
+                "kimi" to "kimi-k3",
+                "kimi_code" to "kimi-for-coding",
+                "kimi_code" to "k3-256k",
+            )) {
+            val body =
+                AssistantProviders.request(
+                    config.copy(
+                        endpoint = AssistantProviders.get(provider).endpoint,
+                        model = model,
+                    ),
+                    org.json.JSONArray(),
+                )
+            assertEquals(model, body.getString("model"))
+            assertTrue(body.getBoolean("stream"))
+            assertTrue(body.getJSONObject("stream_options").getBoolean("include_usage"))
+            if (model == "kimi-k3") {
+                assertFalse(body.has("max_tokens"))
+                assertEquals(1600, body.getInt("max_completion_tokens"))
+                assertEquals("low", body.getString("reasoning_effort"))
+            } else
+                assertEquals(if (provider == "kimi_code") 4096 else 1600, body.getInt("max_tokens"))
+            if (provider == "deepseek" || model == "kimi-k2.6")
+                assertEquals("disabled", body.getJSONObject("thinking").getString("type"))
+            else assertFalse(body.has("thinking"))
+            assertFalse(body.has("temperature"))
+        }
+    }
+
+    @Test
+    fun corporateHttpCannotSendCredentialsToPublicOrSpecialAddresses() {
+        val corporate =
+            config.copy(endpoint = "http://gateway.example.test/v1", privateNetwork = true)
+        for (ip in listOf("10.42.0.8", "172.16.0.8", "192.168.1.8", "100.64.0.8", "fd12::8")) {
+            corporate.validateAddress(java.net.InetAddress.getByName(ip))
+        }
+        for (ip in
+            listOf(
+                "8.8.8.8",
+                "127.0.0.1",
+                "0.0.0.0",
+                "169.254.169.254",
+                "224.0.0.1",
+                "198.18.0.1",
+                "::1",
+                "fe80::1",
+                "2001:4860:4860::8888",
+            )) {
+            assertThrows(IllegalArgumentException::class.java) {
+                corporate.validateAddress(java.net.InetAddress.getByName(ip))
+            }
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            config.validateAddress(java.net.InetAddress.getByName("10.42.0.8"))
+        }
+        // Existing HTTPS configurations still support public services and opt-in intranets.
+        config.validateAddress(java.net.InetAddress.getByName("8.8.8.8"))
+        config
+            .copy(privateNetwork = true)
+            .validateAddress(java.net.InetAddress.getByName("10.42.0.8"))
+    }
+
+    @Test
+    fun corporateModelsUseGenericRequestsAndAcceptStreamOrJsonResponses() {
+        for ((model, stream) in listOf("Qwen2.5-72B" to true, "Kimi-K2.6" to false)) {
+            val corporate =
+                config.copy(
+                    endpoint = "http://10.42.0.8:80/v1",
+                    model = model,
+                    privateNetwork = true,
+                    provider = "custom",
+                )
+            val calls = AtomicInteger()
+            val client =
+                OkHttpClient.Builder()
+                    .addInterceptor { chain ->
+                        calls.incrementAndGet()
+                        assertEquals(
+                            "http://10.42.0.8/v1/chat/completions",
+                            chain.request().url.toString(),
+                        )
+                        assertEquals("Bearer fixture-key", chain.request().header("Authorization"))
+                        val buffer = Buffer()
+                        chain.request().body!!.writeTo(buffer)
+                        val body = JSONObject(buffer.readUtf8())
+                        assertEquals(model, body.getString("model"))
+                        assertTrue(body.getBoolean("stream"))
+                        assertEquals(
+                            if (model == "Kimi-K2.6") 4096 else 1600,
+                            body.getInt("max_tokens"),
+                        )
+                        for (field in
+                            listOf(
+                                "thinking",
+                                "stream_options",
+                                "reasoning_effort",
+                                "chat_template_kwargs",
+                            )) assertFalse(body.has(field))
+                        Response.Builder()
+                            .request(chain.request())
+                            .protocol(Protocol.HTTP_1_1)
+                            .code(200)
+                            .message("OK")
+                            .header(
+                                "Content-Type",
+                                if (stream) "text/event-stream" else "application/json",
+                            )
+                            .body(
+                                (if (stream) packet("OK", "stop") + "data: [DONE]\n\n"
+                                    else
+                                        "{\"choices\":[{\"message\":{\"content\":\"OK\"},\"finish_reason\":\"stop\"}]}")
+                                    .toResponseBody()
+                            )
+                            .build()
+                    }
+                    .build()
+            try {
+                assertEquals(
+                    "OK",
+                    AssistantClient(null, client).generate(
+                        corporate,
+                        AssistantPrompts.messages(source, AssistantTask.SUMMARY, ""),
+                        AssistantCall(),
+                    ) {},
+                )
+                assertEquals(1, calls.get())
+            } finally {
+                client.dispatcher.executorService.shutdown()
+            }
+        }
+    }
+
+    @Test
     fun cacheIdentityIncludesAccountSourceVersionSelectionSettingsAndInstruction() {
         val base = source.cacheKey(config, AssistantTask.SUMMARY, "")
         for (other in
@@ -213,12 +384,48 @@ class AssistantTest {
     }
 
     @Test
+    fun reasoningHeavyStreamCanFinishWithoutShowingItsMetadata() {
+        val raw = Buffer()
+        val reasoning =
+            "data: {\"choices\":[{\"delta\":{\"reasoning_content\":\"${"x".repeat(180)}\"}}]}\n\n"
+        repeat(1800) { raw.writeUtf8(reasoning) }
+        assertTrue(raw.size > 256000)
+        raw.writeUtf8(packet("核对完成，预算尚待审批。", "stop") + "data: [DONE]\n\n")
+        val updates = mutableListOf<String>()
+        assertEquals("核对完成，预算尚待审批。", AssistantStream.read(raw, AssistantCall(), updates::add))
+        assertTrue(updates.all { it == "核对完成，预算尚待审批。" })
+    }
+
+    @Test
+    fun excessiveReasoningTrafficStillHasABoundedResponseLimit() {
+        val raw = Buffer()
+        repeat(5000) { raw.writeUtf8(":" + "x".repeat(1000) + "\n\n") }
+        raw.writeUtf8(packet("不得作为完整结果", "stop"))
+        val failure =
+            assertThrows(AssistantFailure::class.java) {
+                AssistantStream.read(raw, AssistantCall()) {
+                    fail("Oversized metadata must not yield a result")
+                }
+            }
+        assertTrue(failure.message!!.contains("服务响应过大"))
+    }
+
+    @Test
+    fun nullableAndEmptyToolCallMetadataStillAllowsOrdinaryText() {
+        for (metadata in listOf("null", "[]")) {
+            val raw =
+                "data: {\"choices\":[{\"delta\":{\"content\":\"中文正文\",\"reasoning_content\":null,\"tool_calls\":$metadata},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n"
+            assertEquals("中文正文", AssistantStream.read(Buffer().writeUtf8(raw), AssistantCall()) {})
+        }
+    }
+
+    @Test
     fun truncatedLimitedAndToolResponsesAreNeverCompleteCandidates() {
         for (raw in
             listOf(
                 packet("只有半段"),
                 packet("达到上限", "length"),
-                "data: {\"choices\":[{\"delta\":{\"tool_calls\":[]}}]}\n\n",
+                "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"name\":\"unexpected\"}}]}}]}\n\n",
                 "data: {\"error\":{\"message\":\"secret\"}}\n\n",
             )) {
             assertThrows(AssistantFailure::class.java) {

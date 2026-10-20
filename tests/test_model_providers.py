@@ -21,6 +21,8 @@ def main():
         ('https://gateway.test/openapi/', 'https://gateway.test/openapi/v1/chat/completions'),
         ('https://api.moonshot.cn/v1/', 'https://api.moonshot.cn/v1/chat/completions'),
         ('https://gateway.test/compatible-mode/v1', 'https://gateway.test/compatible-mode/v1/chat/completions'),
+        ('http://10.42.0.8:80/v1', 'http://10.42.0.8:80/v1/chat/completions'),
+        ('http://10.42.0.8:80/v1/chat/completions', 'http://10.42.0.8:80/v1/chat/completions'),
         ('https://gateway.test/api/v4/chat/completions', 'https://gateway.test/api/v4/chat/completions')]:
         assert completion_url(address) == expected
     for bad in ('file:///tmp/key', 'https://user:secret@gateway.test', 'https://gateway.test?key=secret'):
@@ -42,6 +44,19 @@ def main():
             assert not rejected['ok'] and '重新填写' in rejected['message']
             http.assert_not_called()
         response = {'choices': [{'message': {'content': 'OK'}, 'finish_reason': 'stop'}]}
+        for corporate_model in ('Qwen2.5-72B', 'Kimi-K2.6'):
+            corporate = dict(provider='custom', base_url='http://10.42.0.8:80/v1/chat/completions',
+                             model=corporate_model, api_key='synthetic-corporate-key',
+                             extra_params={}, multimodal_enabled=False)
+            with patch.object(client.urllib.request, 'urlopen', return_value=io.BytesIO(json.dumps(response).encode())) as http:
+                assert system_settings.test_model(corporate)['ok']
+                req = http.call_args.args[0]
+                body = json.loads(req.data)
+                assert req.full_url == corporate['base_url']
+                assert req.get_header('Authorization') == 'Bearer synthetic-corporate-key'
+                assert body['model'] == corporate_model
+                assert 'thinking' not in body and 'chat_template_kwargs' not in body
+        assert config.LLM_BASE_URL == 'https://old.test' and config.LLM_API_KEY == 'old-test-key'
         with patch.object(client.urllib.request, 'urlopen', return_value=io.BytesIO(json.dumps(response).encode())) as http:
             assert system_settings.test_model(draft)['ok']
             req = http.call_args.args[0]
