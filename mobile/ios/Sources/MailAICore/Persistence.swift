@@ -42,8 +42,11 @@ public struct AccountCredential: Codable, Sendable {
         guard status == errSecSuccess else { throw keychainError(status) }
     }
     private func keychainError(_ status: OSStatus) -> Error {
-        NSError(domain: NSOSStatusErrorDomain, code: Int(status), userInfo: [
-            NSLocalizedDescriptionKey: "钥匙串暂时不可用（\(status)），请解锁设备后重试。"
+        let message = status == errSecMissingEntitlement
+            ? "应用签名缺少钥匙串权限，请使用匹配的证书和描述文件重新签名安装。"
+            : "钥匙串暂时不可用，请解锁设备后重试。"
+        return NSError(domain: NSOSStatusErrorDomain, code: Int(status), userInfo: [
+            NSLocalizedDescriptionKey: message
         ])
     }
 }
