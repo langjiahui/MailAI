@@ -80,6 +80,7 @@ const port=Number(process.env.MAILAI_EVOLUTION_FIXTURE_PORT||18857);
   await page.locator('.pet-journal-body').evaluate(n=>n.scrollTop=0);await page.waitForTimeout(300);
   fs.mkdirSync('output/xiaoyou-evolution',{recursive:true});
   await page.bringToFront();
+  await page.evaluate(()=>document.body.classList.remove('companion-still'));
   await hero.scrollIntoViewIfNeeded();
   await page.waitForFunction(()=>document.querySelector('.pet-hero-portrait .mail-companion').dataset.rewardVisible==='true');
   // The reward and rig observers publish independently after tab scrolling.
