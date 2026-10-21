@@ -21,6 +21,17 @@ const port = Number(process.env.MAILAI_ENERGY_FIXTURE_PORT || 18831);
     browser=await(process.env.MAILAI_BROWSER==='webkit'?webkit:chromium).launch({headless:true});
     const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
     page.on('pageerror',error=>errors.push(error.message));
+    const reducedMotion=async value=>{
+      // MediaQueryList notifications are asynchronous in WebKit. Wait for the
+      // event before fast-forwarding timers, so application listeners have run.
+      await page.evaluate(value=>{
+        const query=matchMedia('(prefers-reduced-motion: reduce)');
+        window.energyMediaApplied=query.matches===(value==='reduce');
+        if(!energyMediaApplied) query.addEventListener('change',()=>{energyMediaApplied=true;},{once:true});
+      },value);
+      await page.emulateMedia({reducedMotion:value});
+      await page.waitForFunction(()=>energyMediaApplied);
+    };
     await page.goto(`http://127.0.0.1:${port}`);
     await page.locator('#app-preloader').waitFor({state:'detached'});
     await page.evaluate(()=>{
@@ -66,7 +77,7 @@ const port = Number(process.env.MAILAI_ENERGY_FIXTURE_PORT || 18831);
     await page.evaluate(()=>mailaiEnergy.nativeVisibility(3,false));await idle();
     await page.evaluate(()=>mailaiEnergy.nativeVisibility(4,true));await idle();
     await page.evaluate(()=>mailaiCompanionMotion.wake());
-    await page.emulateMedia({reducedMotion:'reduce'});await idle();
+    await reducedMotion('reduce');await idle();
     const heartbeats=[];
     page.on('request',request=>{if(new URL(request.url()).pathname==='/api/companion/heartbeat')heartbeats.push(request.postDataJSON());});
     await page.evaluate(async()=>{
@@ -100,7 +111,7 @@ const port = Number(process.env.MAILAI_ENERGY_FIXTURE_PORT || 18831);
         if(running.length) ambientClips.push({clips:running.map(svg=>svg.dataset.motionClip),at:performance.now()});
       }).observe(document.body,{subtree:true,attributes:true,attributeFilter:['data-motion-active']});
     });
-    await page.emulateMedia({reducedMotion:'no-preference'});
+    await reducedMotion('no-preference');
     await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
     await page.clock.runFor(11501);
     assert.equal(await page.locator('#assistant-orb .mail-companion').getAttribute('data-motion-kind'),'ambient');
@@ -132,7 +143,7 @@ const port = Number(process.env.MAILAI_ENERGY_FIXTURE_PORT || 18831);
       await page.clock.runFor(14000);
     }
     assert((await page.evaluate(()=>ambientClips)).every(event=>['breathe','tilt'].includes(event.clips[0])),'Ongoing input must defer large gestures');
-    await page.emulateMedia({reducedMotion:'reduce'});
+    await reducedMotion('reduce');
     await page.evaluate(()=>{ambientClips.length=0;});
     await page.clock.runFor(120000);
     assert.equal(await page.evaluate(()=>ambientClips.length),0,'Reduced motion must disable ambient scheduling');
@@ -144,7 +155,7 @@ const port = Number(process.env.MAILAI_ENERGY_FIXTURE_PORT || 18831);
     const motionClip=()=>page.locator('#assistant-orb .mail-companion').getAttribute('data-motion-clip');
     await setStyle('ranger');
     await page.evaluate(()=>{ambientClips.length=0;});
-    await page.emulateMedia({reducedMotion:'no-preference'});
+    await reducedMotion('no-preference');
     await page.clock.runFor(90000);
     const rangerClips=await page.evaluate(()=>ambientClips.map(event=>event.clips[0]));
     assert(rangerClips.includes('nod') && rangerClips.includes('alert'),`Ranger needs its own micro gestures: ${JSON.stringify(rangerClips)}`);
