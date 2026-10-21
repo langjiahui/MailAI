@@ -49,9 +49,11 @@ async function pageAt(url) {
     'mailai.preferences.theme.v1':'dark', 'mailai-language':'en',
     'mailai.attachments.view.v1':'list','mailai-density':'compact','mailai-font-scale':'1.2',
     'mailai-companion-motion':'off','mailai-assistant-floating':'true',
+    'mailai-companion-sound':'on','mailai-companion-chatter':'off',
     'mailai-assistant-layout-v1':'{"width":400}',
     'mailai.workspace.paneSizes.v1':'{"sidebar":250,"list":420}',
     'mailai.assistant.dockWidth.v1':'548',
+    'mailai-companion-position-v1':'{"version":1,"x":0,"y":0.6,"dock":"left"}',
     'mailai.preferences.showServerFolders.v1':'true',
     'mailai-browsing-account':'test-account', 'alias:test-account':'Work',
     'collapsed:test-account':'1', 'mailai-secretary-focus:test-account':'decision',
@@ -83,7 +85,7 @@ async function pageAt(url) {
     try { localStorage.setItem('mailai.preferences.theme.v1','light'); return false; } catch (_) { return true; }
   }),true,'a failed disk save must not be reported as successful');
   assert.equal(await page.evaluate(() => localStorage.getItem('mailai.preferences.theme.v1')),'dark');
-  console.log('PASS disk persistence: 14 preferences, fresh browser + server + port, reset, origin protection');
+  console.log(`PASS disk persistence: ${Object.keys(values).length} preferences, fresh browser + server + port, reset, origin protection`);
 })().catch(error => {console.error(error);process.exitCode=1;}).finally(async () => {
   if (browser) await browser.close();
   await stop();

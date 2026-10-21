@@ -439,3 +439,37 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_COMMENTS: "false"
+
+  xiaoyou-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      MAILAI_FIXTURE_PYTHON: python
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - run: python -m pip install -r requirements.txt
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium webkit
+      - name: Verify companion growth, fitting room, placement and finite reactions
+        run: |
+          mkdir -p output/xiaoyou-evolution
+          node tests/test_companion_position_browser.cjs
+          node tests/test_companion_wardrobe_browser.cjs
+          node tests/test_assistant_portrait_browser.cjs
+          node tests/test_companion_life_browser.cjs
+          MAILAI_BROWSER=webkit node tests/test_companion_life_browser.cjs
+          node tests/test_companion_evolution_browser.cjs
+          MAILAI_BROWSER=webkit node tests/test_companion_evolution_browser.cjs
+          node tests/test_companion_theme_transparency_browser.cjs
+          MAILAI_BROWSER=webkit node tests/test_companion_theme_transparency_browser.cjs
+      - uses: actions/upload-artifact@v5
+        if: failure()
+        with:
+          name: xiaoyou-browser-evidence
+          path: output/

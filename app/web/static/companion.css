@@ -25,7 +25,7 @@ html[data-theme="dark"] .compose-edge-tools .compose-ai-main.compose-perch .comp
   align-self:end; margin-top:-8px; border-bottom:2px solid #71a68e;
 }
 .compose-perch-art .mail-companion { overflow:visible; transform-origin:50% 100%; animation:perch-peek 6s ease-in-out infinite; }
-.compose-perch-art .mail-companion :is(.companion-foot-left,.companion-foot-right,.growth-cape) { display:none; }
+.compose-perch-art .mail-companion :is(.companion-foot-left,.companion-foot-right,.companion-tail) { display:none; }
 .compose-perch-art .companion-bag,.compose-perch-art .companion-shadow,
 .compose-perch-art .companion-arm-left,.compose-perch-art .companion-wave { display:none; }
 .perch-paw { position:absolute; bottom:-4px; width:13px; height:9px; background:#b5ddc5; border:1.5px solid #649f80; border-radius:6px; box-shadow:0 2px 2px #254b3a18; }
@@ -46,6 +46,12 @@ html[data-theme="dark"] .compose-ai-tools .compose-perch:hover { background:#305
 .mail-assistant { right:20px; bottom:16px; }
 .mail-assistant .assistant-orb,.mail-assistant .assistant-orb:hover { display:grid; place-items:center; width:72px; height:80px; padding:0; border:0; background:transparent; border-radius:22px; box-shadow:none; backdrop-filter:none; transform:none; cursor:pointer; }
 .mail-assistant .assistant-orb:focus-visible { outline:2px solid #418666; outline-offset:3px; }
+.mail-assistant .assistant-orb { touch-action:none; user-select:none; -webkit-user-select:none; }
+body.companion-dragging,body.companion-dragging .mail-assistant .assistant-orb { cursor:grabbing; user-select:none; -webkit-user-select:none; }
+body.companion-dragging #assistant-orb .mail-companion * { animation-play-state:paused!important; }
+body.companion-dragging #assistant-orb :is(.companion-caption,.companion-life-bubble) { visibility:hidden; }
+.mail-assistant[data-pet-edge-x="left"] :is(.companion-caption,.companion-life-bubble,.assistant-nudge) { left:0; right:auto; }
+.mail-assistant[data-pet-edge-y="top"] :is(.companion-caption,.companion-life-bubble,.assistant-nudge) { top:calc(100% + 8px); bottom:auto; }
 .companion-art { display:block; width:80px; height:80px; pointer-events:none; }
 .mail-companion { display:block; width:100%; height:100%; overflow:visible; }
 .companion-figure { transform-origin:56px 99px;  }
@@ -90,3 +96,64 @@ body.companion-working .compose-perch .mail-companion { animation:none; transfor
 .companion-still .companion-gaze { transform:none; }
 @media(prefers-reduced-motion:reduce) { .mail-companion * { animation:none!important; transition:none!important; } .companion-gaze { transform:none; } }
 @media(max-width:760px) { .mail-assistant { right:12px; bottom:10px; } .mail-assistant .assistant-orb,.mail-assistant .assistant-orb:hover { width:60px; height:66px; } .companion-art { width:66px; height:66px; } .mail-assistant .assistant-nudge { bottom:76px; } }
+
+/* Expressive face, kept inside the existing costume and theme rig. */
+.companion-grin { display:none; }
+.mail-companion[data-expression="joy"] .companion-grin { display:block; }
+.mail-companion[data-expression="joy"] :is(.companion-smile,.companion-eyes) { display:none; }
+.mail-companion[data-expression="joy"] .companion-happy-eyes { display:block; }
+.mail-companion[data-expression="focus"] .companion-eyes { transform:scaleY(.8); }
+.mail-companion[data-expression="curious"] .companion-smile { transform:rotate(-7deg); transform-origin:56px 61px; }
+/* A bounded, event-driven message. Never covers mail or captures input. */
+.companion-life-bubble { position:absolute; right:4px; bottom:calc(100% + 8px); width:max-content; max-width:min(240px,70vw); padding:11px 14px; border:1px solid var(--pet-line,#d2e4d9); border-radius:16px 16px 4px 16px; background:var(--pet-paper,#fffefa); color:var(--pet-ink,#2d493b); box-shadow:0 6px 20px #18392b18; font-size:12px; line-height:1.6; pointer-events:none; z-index:5; }
+.companion-life-bubble[hidden] { display:none; }
+.assistant-orb:has(.companion-life-bubble:not([hidden])) .companion-caption { visibility:hidden; }
+html[data-theme="dark"] .companion-life-bubble { background:#243a32; border-color:#456253; color:#e3f2e9; }
+body.companion-paused .companion-life-bubble { display:none; }
+
+/* The resting rig uses real toe/wing/body/tail contact points at the viewport
+   edge. The letter and hand share their shoulder even in hanging poses. */
+.companion-dock-free { transform-origin:31px 63px; }
+.companion-dock-carry { transform-origin:84px 66px; }
+.companion-dock-tail { transform-origin:81px 84px; }
+body[data-pet-style="ranger"] .companion-dock-tail { transform-origin:calc(56px + 28px * var(--evo-fish-width)) 85px; }
+.mail-assistant :is(.companion-facing,.companion-dock-free,.companion-dock-carry,.companion-dock-tail) { transition:transform .18s ease-out; }
+.mail-assistant.companion-dock-measuring * { transition:none!important; }
+.mail-assistant[data-pet-dock] #assistant-orb :is(.companion-figure,.companion-torso) { transform:none!important; }
+.mail-assistant[data-pet-dock] #assistant-orb .companion-shadow { opacity:0; }
+.mail-assistant[data-pet-dock="left"] #assistant-orb .companion-facing { transform:rotate(12deg); transform-origin:56px 96px; }
+.mail-assistant[data-pet-dock="left"] #assistant-orb .companion-dock-free { transform:rotate(32deg); }
+.mail-assistant[data-pet-dock="left"] #assistant-orb .companion-arm-left { transform:none!important; }
+.mail-assistant[data-pet-dock="left"] #assistant-orb .companion-dock-carry { transform:rotate(-5deg); }
+.mail-assistant[data-pet-dock="left"] #assistant-orb { --dock-look-x:2px; }
+.mail-assistant[data-pet-dock="right"] #assistant-orb .companion-facing { transform:rotate(-12deg); transform-origin:56px 96px; }
+.mail-assistant[data-pet-dock="right"] #assistant-orb .companion-dock-free { transform:rotate(-16deg); }
+.mail-assistant[data-pet-dock="right"] #assistant-orb .companion-dock-carry { transform:rotate(-8deg); }
+.mail-assistant[data-pet-dock="right"] #assistant-orb .companion-dock-tail { transform:rotate(-70deg); }
+.mail-assistant[data-pet-dock="right"] #assistant-orb { --dock-look-x:-2px; }
+.mail-assistant[data-pet-dock="bottom"] #assistant-orb .companion-facing { transform:translateY(4px); }
+.mail-assistant[data-pet-dock="bottom"] #assistant-orb .companion-dock-free { transform:rotate(-20deg); }
+.mail-assistant[data-pet-dock="bottom"] #assistant-orb .companion-dock-carry { transform:rotate(8deg); }
+.mail-assistant[data-pet-dock="bottom"] #assistant-orb :is(.companion-foot-left,.companion-foot-right) { transform:none!important; }
+.mail-assistant[data-pet-dock="bottom"] #assistant-orb { --dock-look-y:-1px; }
+/* A compact feather fan bears the weight. The body leans away from the
+   contact point so the complete head and crest fit below the top edge. */
+.mail-assistant .companion-facing { transform-origin:56px 96px; }
+.companion-edge-grip { opacity:0; transform-origin:31px 63px; }
+.mail-assistant[data-pet-dock="top"] #assistant-orb .companion-facing { transform:rotate(36deg); }
+.mail-assistant[data-pet-dock="top"] #assistant-orb .companion-dock-free { transform:none; }
+.mail-assistant[data-pet-dock="top"] #assistant-orb .companion-dock-carry { transform:rotate(10deg); }
+.mail-assistant[data-pet-dock="top"] #assistant-orb .companion-dock-tail { transform:rotate(12deg); }
+.mail-assistant[data-pet-dock="top"] #assistant-orb :is(.companion-arm-left,.companion-carry,.companion-foot-left,.companion-foot-right) { transform:none!important; }
+.mail-assistant[data-pet-dock="top"] #assistant-orb .companion-rest-wing { opacity:0; }
+.mail-assistant[data-pet-dock="top"] #assistant-orb .companion-edge-grip { opacity:1; }
+.mail-assistant[data-pet-dock="top"] #assistant-orb { --dock-look-x:-1px; --dock-look-y:2px; }
+body.companion-dragging #assistant-orb :is(.companion-figure,.companion-torso) { transform:none!important; }
+.mail-assistant .companion-gaze { transform:translate(calc(var(--look-x,0px) + var(--dock-look-x,0px)),calc(var(--look-y,0px) + var(--dock-look-y,0px))); }
+.companion-edge-contact { display:none; position:fixed; pointer-events:none; border-radius:50%; background:var(--pet-outline,#729ab7); opacity:.28; }
+.mail-assistant[data-pet-dock] .companion-edge-contact { display:block; }
+body.assistant-visible .companion-edge-contact,body.companion-dragging .companion-edge-contact { display:none; }
+.companion-still .mail-assistant :is(.companion-facing,.companion-dock-free,.companion-dock-carry,.companion-dock-tail) { transition:none; }
+@media(prefers-reduced-motion:reduce) {
+  .mail-assistant :is(.companion-facing,.companion-dock-free,.companion-dock-carry,.companion-dock-tail) { transition:none; }
+}

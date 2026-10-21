@@ -25,7 +25,9 @@ assistant-images.js
 assistant-attachments.js
 assistant-document-reply.js
 companion.js
+companion-position.js
 companion-motion.js
+companion-life.js
 reward-theme-bridge.js
 brand.js
 companion-growth.js

@@ -144,10 +144,10 @@ html[data-theme][data-reward-theme] body :is(.mail-assistant .assistant-orb,.com
 }
 /* Themes tint the default pet only. Owned pet palettes always take priority. */
 html[data-reward-theme] body[data-pet-palette="mint"] { --pet-body:var(--reward-pet); --pet-outline:var(--reward-pet-outline); }
-html[data-reward-theme] body :is(.companion-arm-left,.companion-arm-right,.companion-wave path) { fill:var(--pet-body); stroke:var(--pet-outline); }
-html[data-reward-theme] body :is(.companion-foot-left,.companion-foot-right,.growth-leaf,.companion-leaves path) { fill:var(--pet-outline); }
+/* Creature feather paints keep their volume; palette tint comes from --pet-body. */
+
 html[data-reward-theme] body .companion-eyes rect { fill:var(--reward-pet-ink); }
-html[data-reward-theme] body :is(.companion-happy-eyes,.companion-smile) { stroke:var(--reward-pet-ink); }
+html[data-reward-theme] body .companion-happy-eyes { stroke:var(--reward-pet-ink); }
 html[data-theme][data-reward-theme] body .pet-journal {
   --pet-ink:var(--reward-ink); --pet-muted:var(--reward-muted); --pet-line:var(--reward-line);
   --pet-paper:var(--reward-surface); --pet-tint:var(--reward-soft); --pet-accent:var(--reward-accent);

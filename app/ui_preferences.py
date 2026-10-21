@@ -12,9 +12,11 @@ KEYS = {
     "mailai.preferences.theme.v1", "mailai.preferences.showServerFolders.v1",
     "mailai.attachments.view.v1",
     "mailai-language", "mailai-density", "mailai-font-scale",
-    "mailai-companion-motion", "mailai-assistant-floating",
+    "mailai-companion-motion", "mailai-companion-sound", "mailai-companion-chatter",
+    "mailai-assistant-floating",
     "mailai-assistant-layout-v1", "mailai.workspace.paneSizes.v1",
     "mailai.assistant.dockWidth.v1",
+    "mailai-companion-position-v1",
     "mailai-browsing-account", "mailai.onboarding.v2",
 }
 

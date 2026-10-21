@@ -1579,6 +1579,77 @@ if (typeof document !== 'undefined') {
 /* ---- i18n-catalog.js ---- */
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "pet.wardrobeEmpty": ["衣橱还空着，先试试喜欢的装扮吧。", "Your wardrobe is ready for its first favorite. Try a look."],
+  "pet.filter.owned": ["我的收藏", "My collection"],
+  "pet.filter.effect": ["光效", "Effects"],
+  "pet.filter.palette": ["配色", "Palettes"],
+  "pet.filter.accessory": ["装扮", "Outfits"],
+  "pet.filter.all": ["全部补给", "All rewards"],
+  "pet.shopFilter": ["筛选补给", "Filter rewards"],
+  "pet.allGrownHint": ["回看每个阶段的模样，继续搭配你喜欢的装扮。", "Revisit every stage and keep finding your favorite looks."],
+  "pet.allGrown": ["已经长成独一无二的伙伴", "A fully grown companion"],
+  "pet.nextLookHint": ["再积累 {0} 成长，迎接新的形态和专属动作。现在就能提前试穿。", "{0} more growth brings a new form and signature move. Preview it now."],
+  "pet.nextLook": ["下一站 · {0}", "Next stop · {0}"],
+  "pet.collectionExplore": ["试穿看看", "Try this look"],
+  "pet.collection.star.tag": ["珍珠轻甲 · 流光羽片", "PEARL ARMOR · LUMINOUS WINGS"],
+  "pet.collection.star": ["星海远行", "Star voyager"],
+  "pet.collection.cloud.tag": ["清透镜片 · 轻盈羽翼", "CLEAR LENSES · LIGHT FEATHERS"],
+  "pet.collection.cloud": ["云游探险", "Cloud explorer"],
+  "pet.collection.post.tag": ["柔软织物 · 暖金细节", "SOFT FABRIC · WARM GOLD"],
+  "pet.collection.post": ["日常信使", "Everyday post"],
+  "pet.collectionCount": ["已收藏装扮", "collected rewards"],
+  "pet.boutiqueHint": ["圆润的小信使，也有自己的风格。先试穿，再看看它动起来的样子。", "A little messenger with a style of its own. Try a look and see it come to life."],
+  "pet.boutiqueTitle": ["为下一段旅程，挑件喜欢的", "A little something for the next journey"],
+  "pet.boutiqueEyebrow": ["小邮 · 旅行衣橱", "XIAOYOU · TRAVEL WARDROBE"],
+  "pet.tryStage": ["预览形态与动作", "Preview form & moves"],
+  "pet.try.signature": ["阶段专属动作", "Stage signature"],
+  "pet.try.travel": ["跑动 / 游动", "Move around"],
+  "pet.try.greet": ["打个招呼", "Say hello"],
+  "pet.fittingStage": ["成长形态试穿", "Try a growth stage"],
+  "pet.life.natureIntro": ["小雀渐丰羽 · 相伴成凤凰", "A little sparrow grows into a phoenix"],
+  "pet.life.rangerIntro": ["小鱼逐星海 · 化翼为鲲鹏", "A little fish grows into a starry Kunpeng"],
+  "pet.life.rangerHelloReply": ["摆摆鱼鳍，收到你的招呼啦！", "A little fin wave — hello back!"],
+  "pet.life.rangerIdle0": ["信带好啦，陪你游向下一站。", "Letter packed. Let’s swim to our next stop."],
+  "pet.life.rangerIdle1": ["星海很大，我们慢慢游。", "The star sea is vast. Let’s take our time."],
+  "pet.life.rangerIdle2": ["收好小鱼鳍，歇一会儿。", "Fins tucked in. Time for a little rest."],
+  "pet.life.rangerStage1": ["Ⅰ · 鱼鳍招呼：摆摆小鳍，认识新伙伴", "Ⅰ · First hello: a little fin wave"],
+  "pet.life.rangerStage2": ["Ⅱ · 逐浪游弋：轻摆尾巴，游向你", "Ⅱ · A gentle tail swish to swim toward you"],
+  "pet.life.rangerStage3": ["Ⅲ · 水中送信：托起信封，轻快出发", "Ⅲ · Carry a little letter through the water"],
+  "pet.life.rangerStage4": ["Ⅳ · 泡泡庆祝：轻轻跃起，分享喜悦", "Ⅳ · A buoyant leap to share the joy"],
+  "pet.life.rangerStage5": ["Ⅴ · 跃水试飞：展翼跃起，轻轻落下", "Ⅴ · A first winged leap and gentle landing"],
+  "pet.life.rangerStage6": ["Ⅵ · 星翼滑翔：沿着星海轻轻巡游", "Ⅵ · Glide gently across the star sea"],
+  "pet.life.rangerStage7": ["Ⅶ · 鲲鹏巡星：振翼升空，游向星海", "Ⅶ · Kunpeng flight: spread wings toward the stars"],
+
+  "pet.life.saveFailed": ["设置未能保存，仍使用原来的偏好。", "The setting could not be saved. Your previous preference is still active."],
+  "pet.life.title": ["小邮的陪伴时刻", "A moment with XiaoYou"],
+  "pet.life.rhythm": ["短暂活泼，安心休息", "A little motion, plenty of rest"],
+  "pet.life.intro": ["拍个招呼，看看小邮今天的招牌动作。", "Say hello or try XiaoYou’s signature move."],
+  "pet.life.hello": ["打个招呼", "Say hello"],
+  "pet.life.signature": ["招牌动作", "Signature move"],
+  "pet.life.helloReply": ["收到你的招呼啦！今天也一起把事情理顺吧。", "Hello back! Let’s make today a little easier."],
+  "pet.life.soundOn": ["轻提示音 · 开", "Soft sound · On"],
+  "pet.life.soundOff": ["轻提示音 · 关", "Soft sound · Off"],
+  "pet.life.soundEnabled": ["叮咚，这是我的声音。只在互动、完成和成长时轻轻回应。", "That’s my sound! A soft note for interactions, completion and growth."],
+  "pet.life.soundDisabled": ["好，我用动作和表情陪着你。", "I’ll keep you company with gestures and expressions."],
+  "pet.life.soundUnavailable": ["当前环境暂时无法播放声音，动作和文字回应仍可使用。", "Sound is unavailable here. Gestures and text still work."],
+  "pet.life.chatter": ["偶尔说句话", "Occasional little messages"],
+  "pet.life.energy": ["提示音默认关闭；动作之间会休息，写作时更安静，离开窗口即暂停。", "Sound starts off. Gestures take breaks, stay subtle while typing, and pause when you leave the window."],
+  "pet.life.still": ["我在这里。你已选择减少动态效果，心意用文字送到。", "I’m here. With reduced motion enabled, my greeting comes in words."],
+  "pet.life.busy": ["我正专心帮你处理，忙完再一起玩。", "I’m helping with something. Let’s play when it’s done."],
+  "pet.life.idle0": ["伸个懒腰，再陪你看下一封。", "A little stretch, then on to the next message."],
+  "pet.life.idle1": ["信封包准备好了，随时可以出发。", "My mailbag is ready whenever you are."],
+  "pet.life.idle2": ["不用着急，我陪你慢慢理顺。", "Take your time. We’ll sort it out together."],
+  "pet.life.done": ["整理好了，一起看看吧。", "All ready. Let’s take a look."],
+  "pet.life.evolved": ["我又长大了一点，还学会了新的招牌动作！", "I’ve grown—and learned a new signature move!"],
+  "pet.life.goal": ["今天的小目标完成了，和你一起进步真好。", "A daily goal completed. It’s good to grow together."],
+  "pet.life.stage1": ["Ⅰ · 初见招呼：挥挥小翅膀，认识新伙伴", "Ⅰ · First hello: a little wing wave"],
+  "pet.life.stage2": ["Ⅱ · 雀跃两步：轻轻跳向你", "Ⅱ · Two little hops toward you"],
+  "pet.life.stage3": ["Ⅲ · 送信时刻：捧起信封，送上心意", "Ⅲ · Special delivery: a letter for you"],
+  "pet.life.stage4": ["Ⅳ · 开心庆祝：为一起完成的事雀跃", "Ⅳ · A happy hop for our progress"],
+  "pet.life.stage5": ["Ⅴ · 乘风远行：舒展羽翼，轻轻滑翔", "Ⅴ · Spread feathered wings for a gentle glide"],
+  "pet.life.stage6": ["Ⅵ · 低头致意：感谢一路相伴", "Ⅵ · A little bow to thank you for your company"],
+  "pet.life.stage7": ["Ⅶ · 凤凰展翼：轻跃起舞，舒展凤羽", "Ⅶ · Phoenix dance: a leap and a sweep of feathers"],
+
   "updateRoute.verification": ["更新清单校验失败，已停止更新", "The update manifest could not be verified. The update has been stopped"],
   "updateMirror.address": ["更新地址无效", "Invalid update address"],
   "updateMirror.privateAddress": ["更新地址指向本机、内网或保留地址", "The update address points to a local, private or reserved network"],
@@ -15663,66 +15734,21 @@ const MAILAI_UI_COPY = {
     "只计前台活跃时间，超过 90 秒未操作即暂停。邮件阅读满 8 秒计为认真阅读，同一封每天奖励一次；帮助主题展开并阅读 8 秒获得学习奖励。进度条显示今日奖励上限，次数与时间仍继续统计。",
     "Only active foreground time counts; timers pause after 90 seconds without input. Read an email for 8 seconds to earn one reading reward per email per day. Keep a help topic open for 8 seconds to earn learning rewards. Progress bars show daily reward limits; activity totals continue counting."
   ],
-  "pet.journeyNote": [
-    "成长度来自日常积累，也可以兑换成长莓补充。每次进化都保留小邮熟悉的样子，再增加新的细节。",
-    "Earn growth through everyday activity or redeem growth berries. Each evolution adds new details to XiaoYou’s familiar appearance."
-  ],
-  "pet.stage1": [
-    "初见嫩芽",
-    "Little sprout"
-  ],
-  "pet.stage2": [
-    "萌芽信使",
-    "Budding messenger"
-  ],
-  "pet.stage3": [
-    "花苞伙伴",
-    "Blossom buddy"
-  ],
-  "pet.stage4": [
-    "星章邮差",
-    "Star courier"
-  ],
-  "pet.stage5": [
-    "远行使者",
-    "Voyaging messenger"
-  ],
-  "pet.stage6": [
-    "极光守护",
-    "Aurora guardian"
-  ],
-  "pet.stage7": [
-    "星河小邮",
-    "Starlight XiaoYou"
-  ],
-  "pet.stageHint1": [
-    "一封信，一点成长，从今天开始相伴。",
-    "One email, a little growth. Start your journey today."
-  ],
-  "pet.stageHint2": [
-    "头顶长出新的叶片，慢慢熟悉你的工作节奏。",
-    "A new leaf appears as XiaoYou learns your work rhythm."
-  ],
-  "pet.stageHint3": [
-    "嫩芽开出小花，学习与阅读让陪伴更丰富。",
-    "A little flower blooms through reading and learning."
-  ],
-  "pet.stageHint4": [
-    "戴上星章，解锁闪光特效与更丰富的装扮。",
-    "Earn a star badge and unlock sparkles and more outfits."
-  ],
-  "pet.stageHint5": [
-    "披上远行披风，还可以兑换信使小翅膀。",
-    "Gain a travel cape and unlock messenger wings."
-  ],
-  "pet.stageHint6": [
-    "脚边亮起极光光环，让每一天的成长可见。",
-    "An aurora halo lights up each day of growth."
-  ],
-  "pet.stageHint7": [
-    "星光围绕身边，记录你们长久的共同成长。",
-    "Starlight surrounds XiaoYou, marking your journey together."
-  ],
+  "pet.journeyNote": ["七个成长阶段，保留熟悉的脸，逐渐长出新的羽翼与尾羽。成长来自日常积累，切换路线时共享进度。", "Seven growth stages keep the familiar face while wings and tails develop. Everyday activity builds progress, shared across both routes."],
+  "pet.stage1": ["小邮雀", "Little mailbird"],
+  "pet.stage2": ["初羽小雀", "First-feather sparrow"],
+  "pet.stage3": ["青羽信使", "Blue-feather courier"],
+  "pet.stage4": ["灵羽伙伴", "Spirit-feather friend"],
+  "pet.stage5": ["乘风青鸾", "Wind-riding Luan"],
+  "pet.stage6": ["曦羽凤雏", "Dawn phoenix chick"],
+  "pet.stage7": ["青羽凤凰", "Azure phoenix"],
+  "pet.stageHint1": ["一封小信，两只小翅膀，从今天开始相伴。", "A little letter and two little wings. Our journey starts today."],
+  "pet.stageHint2": ["长出第一根冠羽，学会轻快地向你跳来。", "The first crest feather appears, with a cheerful little hop."],
+  "pet.stageHint3": ["青羽渐丰，带着小信封熟悉你的工作节奏。", "Blue feathers grow as your little courier learns your rhythm."],
+  "pet.stageHint4": ["冠羽与短尾悄悄长大，分享每一次小小的进步。", "A second crest feather and a short tail mark each little milestone."],
+  "pet.stageHint5": ["翼羽舒展，长出轻盈尾羽，学会乘风滑翔。", "Flight feathers and a flowing tail bring the first gentle glide."],
+  "pet.stageHint6": ["冠羽渐成，羽尖染上晨光，安静守护你的每一天。", "A full crest and dawn-tinted feather tips accompany every day."],
+  "pet.stageHint7": ["小雀长成青羽凤凰；平时收翼，庆祝时展翼起舞。", "The sparrow becomes an azure phoenix: wings tucked at rest, spread in celebration."],
   "pet.streakNote": [
     "每天第一次有效活动 +10 成长 / +5 邮票；每连续 7 天额外 +30 成长 / +20 邮票。中断只重置连续天数，已获得的成长、积分和道具一直保留。",
     "Your first activity each day gives +10 growth / +5 stamps. Every 7 consecutive days adds +30 growth / +20 stamps. Missing a day only resets your streak; growth, stamps and items are kept."
@@ -15748,7 +15774,7 @@ const MAILAI_UI_COPY = {
     "{0} stamps available"
   ],
   "pet.reset.palette": [
-    "恢复薄荷色",
+    "恢复初始配色",
     "Mint palette"
   ],
   "pet.reset.accessory": [
@@ -15819,10 +15845,7 @@ const MAILAI_UI_COPY = {
     "星环轨迹",
     "Star orbit"
   ],
-  "pet.item.wings": [
-    "信使小翅膀",
-    "Messenger wings"
-  ],
+  "pet.item.wings": ["晴羽信使翼", "Sunlit messenger wings"],
   "pet.item.aurora": [
     "极光涟漪",
     "Aurora ripples"
@@ -15835,22 +15858,10 @@ const MAILAI_UI_COPY = {
     "围巾尾端随微风轻摆，陪你读完每一封信。",
     "A cozy scarf with a tail that sways in a gentle breeze."
   ],
-  "pet.itemHint.sky": [
-    "换上轻盈的晴空配色。",
-    "A soft blue palette inspired by clear skies."
-  ],
-  "pet.itemHint.peach": [
-    "换上柔和的蜜桃配色。",
-    "A gentle peach palette."
-  ],
-  "pet.itemHint.cap": [
-    "专属信使帽，开始认真送信。",
-    "A special cap for a dedicated messenger."
-  ],
-  "pet.itemHint.satchel": [
-    "给熟悉的邮包装点金色细节。",
-    "Golden details for a familiar mailbag."
-  ],
+  "pet.itemHint.sky": ["清透晴蓝羽色与奶白肚皮，像把一小片晴天带在身边。", "Clear sky-blue feathers and a creamy belly bring a little sunshine along."],
+  "pet.itemHint.peach": ["蜜桃玫瑰色的翅尖和尾鳍，衬着软软的奶白脸颊。", "Peach-rose wings and tail fins frame a soft ivory face."],
+  "pet.itemHint.cap": ["圆润帽檐与小信封徽章，轻轻点头就准备出发。", "A rounded brim and tiny envelope badge, ready for a nod and a new delivery."],
+  "pet.itemHint.satchel": ["蜂蜜金翻盖、邮票封签与一掠微光，和抱信动作一起轻摆。", "A honey-gold flap, postage seal and passing glint move with the held letter."],
   "pet.itemHint.sparkles": [
     "星星错落闪烁、缓缓上浮，身边掠过一束星光。",
     "Staggered stars twinkle and drift as a comet passes by."
@@ -15859,10 +15870,7 @@ const MAILAI_UI_COPY = {
     "光点绕过身后、掠过身前，倾斜星环带出细腻的光轨。",
     "A satellite slips behind and in front of XiaoYou along a fine, tilted light trail."
   ],
-  "pet.itemHint.wings": [
-    "羽翼短促扇动后自然舒展，层叠羽片随动作轻轻回弹。",
-    "Layered feathers follow a gentle wingbeat and settle with a soft rebound."
-  ],
+  "pet.itemHint.wings": ["奶白羽根渐变晴蓝与暖金羽尖，短促扇动后舒展回稳。", "Cream roots blend into sky blue and warm gold tips, settling after a gentle wingbeat."],
   "pet.itemHint.aurora": [
     "三层极光涟漪逐圈扩散，薄薄的光幕随风流动。",
     "Three aurora rings expand beneath a gently flowing light veil."
@@ -15878,7 +15886,7 @@ const MAILAI_UI_COPY = {
   "pet.previewPlay": ["播放预览", "Play preview"],
   "pet.previewPause": ["暂停预览", "Pause preview"],
   "pet.previewing": ["正在预览：{0}", "Previewing: {0}"],
-  "pet.previewSafe": ["兑换前先看效果，预览不消耗邮票，当前装扮保持不变。", "Try the look before redeeming. Previewing uses no stamps and keeps your current outfit."],
+  "pet.previewSafe": ["试穿、切换成长形态和试玩动作都不消耗邮票，也不会改变当前装扮。", "Trying outfits, growth stages and moves uses no stamps and leaves your equipped look unchanged."],
   "pet.previewStatic": ["轻动效已关闭或系统已启用减少动态效果，当前显示静态预览。", "Companion motion is off or your system requests reduced motion. A static preview is shown."],
   "pet.shopNote": [
     "永久装扮兑换后自动穿戴，同类配饰或特效一次穿戴一个。花费邮票不会扣除成长度。轻动效开关和系统减少动态效果设置同时适用于成长特效。",
@@ -16029,14 +16037,8 @@ const MAILAI_UI_COPY = {
   "pet.itemHint.theme_monochrome": ["黑白与石墨灰，清晰安静的工作台；小邮换上银灰色调。", "A clean workspace in black, white and graphite; XiaoYou adopts soft silver tones."],
   "pet.item.theme_baowu": ["宝武蓝", "Baowu blue"],
   "pet.itemHint.theme_baowu": ["深蓝、钢蓝与清透浅蓝，沉稳有力量；小邮换上钢蓝色调。", "Deep blue, steel blue and airy light blue; XiaoYou adopts coordinated steel-blue tones."],
-  "pet.style.nature": [
-    "可爱 · 自然信使",
-    "Cute · Nature messenger"
-  ],
-  "pet.style.ranger": [
-    "帅气 · 星际先锋",
-    "Cool · Space ranger"
-  ],
+  "pet.style.nature": ["自然 · 小邮雀", "Nature · Little mailbird"],
+  "pet.style.ranger": ["星海 · 小邮鱼", "Star sea · Little mailfish"],
   "pet.styleFree": [
     "两条路线免费切换 · 成长共享",
     "Switch freely between both styles · Shared progress"
@@ -16045,109 +16047,52 @@ const MAILAI_UI_COPY = {
     "形象路线已切换，成长和道具继续保留。",
     "Character style updated. Progress and items are kept."
   ],
-  "pet.rangerStage1": [
-    "初见先锋",
-    "Young ranger"
-  ],
-  "pet.rangerStage2": [
-    "见习信使",
-    "Cadet courier"
-  ],
-  "pet.rangerStage3": [
-    "战术伙伴",
-    "Tactical buddy"
-  ],
-  "pet.rangerStage4": [
-    "电光邮差",
-    "Electric courier"
-  ],
-  "pet.rangerStage5": [
-    "深空使者",
-    "Deep-space messenger"
-  ],
-  "pet.rangerStage6": [
-    "星际守卫",
-    "Space guardian"
-  ],
-  "pet.rangerStage7": [
-    "星河领航",
-    "Starlight captain"
-  ],
-  "pet.rangerHint1": [
-    "利落短发、硬朗眉眼与沉稳配色，开始并肩成长。",
-    "Swept short hair, confident brows and cool tones. Start growing side by side."
-  ],
-  "pet.rangerHint2": [
-    "戴上先锋耳机与能量发饰，解锁战术外套。",
-    "Gain ranger earpieces and an energy hair badge. Unlock a tactical jacket."
-  ],
-  "pet.rangerHint3": [
-    "点亮能量徽章，准备迎接新的挑战。",
-    "Light up an energy badge and prepare for new challenges."
-  ],
-  "pet.rangerHint4": [
-    "装备电光护目镜，还可兑换装甲与电光特效。",
-    "Gain a luminous visor and unlock armor and electric effects."
-  ],
-  "pet.rangerHint5": [
-    "披上深空披风，解锁锋利的机甲翼。",
-    "Gain a deep-space cape and unlock angular mech wings."
-  ],
-  "pet.rangerHint6": [
-    "脚边浮现能量光环，守护你的每一天。",
-    "An energy halo marks every day by your side."
-  ],
-  "pet.rangerHint7": [
-    "星光与能量围绕，成为并肩工作的领航伙伴。",
-    "Starlight and energy surround your trusted captain."
-  ],
-  "pet.item.midnight": [
-    "深空蓝",
-    "Midnight blue"
-  ],
+  "pet.rangerStage1": ["小邮鱼", "Little mailfish"],
+  "pet.rangerStage2": ["逐浪小鱼", "Wave-chasing fish"],
+  "pet.rangerStage3": ["云游小鲲", "Cloud-roaming Kun"],
+  "pet.rangerStage4": ["星翼伙伴", "Star-wing friend"],
+  "pet.rangerStage5": ["凌空小鲲", "Skyward Kun"],
+  "pet.rangerStage6": ["巡星灵鲲", "Star-roaming Kun"],
+  "pet.rangerStage7": ["星海鲲鹏", "Star-sea Kunpeng"],
+  "pet.rangerHint1": ["一封小信，一条小尾巴，从小小水域开始出发。", "A little letter and a tiny tail begin a journey from a small pond."],
+  "pet.rangerHint2": ["长出小背鳍，摆尾逐浪，慢慢熟悉你的节奏。", "A small dorsal fin appears as playful tail swishes find your rhythm."],
+  "pet.rangerHint3": ["小鱼渐渐长成小鲲，带着信件游向更远的地方。", "The little fish becomes a young Kun, carrying letters farther."],
+  "pet.rangerHint4": ["鱼鳍萌出星翼，第一次感受到天空的轻盈。", "The first star wings bring a hint of the open sky."],
+  "pet.rangerHint5": ["鱼尾舒展成鲲尾，张开小翼，试着跃出水面。", "A broad Kun tail and growing wings bring the first skyward leap."],
+  "pet.rangerHint6": ["星翼渐丰，轻轻掠过星海，再回到你身边。", "Fuller star wings glide across the star sea and back to you."],
+  "pet.rangerHint7": ["小鱼化作星海鲲鹏；平时收翼游弋，庆祝时振翼巡星。", "The fish becomes a star-sea Kunpeng: quiet swimming at rest, soaring in celebration."],
+  "pet.item.midnight": ["星夜蓝", "Starlit blue"],
   "pet.item.jacket": [
-    "战术外套",
-    "Tactical jacket"
+    "云游披肩",
+    "Wanderer capelet"
   ],
   "pet.item.visor": [
-    "电光护目镜",
-    "Electric visor"
+    "晴空护目镜",
+    "Clear-sky goggles"
   ],
   "pet.item.armor": [
-    "先锋装甲",
-    "Ranger armor"
+    "星羽轻甲",
+    "Starfeather armor"
   ],
   "pet.item.lightning": [
     "电光脉冲",
     "Electric pulse"
   ],
   "pet.item.mech_wings": [
-    "机甲翼",
-    "Mech wings"
+    "星羽机甲翼",
+    "Starfeather mech wings"
   ],
-  "pet.itemHint.midnight": [
-    "冷峻的深空配色，帅气又沉稳。",
-    "A cool, confident deep-space palette."
-  ],
-  "pet.itemHint.jacket": [
-    "利落的战术领口与硬朗线条。",
-    "A sharp tactical collar and structured silhouette."
-  ],
+  "pet.itemHint.midnight": ["雾蓝与浅紫交融，像安静星夜，保留明亮温柔的脸庞。", "Misty blue meets soft lilac, keeping the little face bright and gentle."],
+  "pet.itemHint.jacket": ["薄荷与云蓝短披肩，暖金信封扣，留出圆肚皮和抱信的位置。", "A mint or cloud-blue capelet with a golden letter clasp leaves room for the round belly and letter."],
   "pet.itemHint.visor": [
-    "透明能量镜片，亮起冰蓝电光。",
-    "Transparent energy lenses with icy blue highlights."
+    "奶白圆弧镜框、浅蓝透光镜片与暖金鼻桥，陪小邮轻装飞行。",
+    "Cream rounded frames, clear sky-blue lenses and a warm gold bridge for little adventures."
   ],
-  "pet.itemHint.armor": [
-    "肩甲与胸甲搭配，点亮能量核心。",
-    "Shoulder and chest plates with a glowing energy core."
-  ],
-  "pet.itemHint.lightning": [
-    "身边出现冰蓝电弧与能量轨迹。",
-    "Icy blue arcs and energy trails surround XiaoYou."
-  ],
+  "pet.itemHint.armor": ["圆弧珍珠白胸甲与香槟金接缝，小星徽轻缓亮起。", "Rounded pearl plates and champagne seams surround a softly glowing star badge."],
+  "pet.itemHint.lightning": ["圆润冰蓝能量弧缓缓流动，亮起后慢慢退去，轻快不刺眼。", "Rounded icy-blue energy arcs flow and softly fade, without harsh flashes."],
   "pet.itemHint.mech_wings": [
-    "铰链带动机甲翼分段展开、锁定再收拢，能量沿翼面充盈。",
-    "Hinged panels unfold, lock into place and retract as energy charges the wings."
+    "舒展的羽片由翼根依次展开，翼尖轻轻回落，再沿身体收拢。",
+    "Layered feathers unfold from the shoulders, then gently settle and fold alongside the body."
   ],
   "pet.error.style": [
     "形象路线无效",
@@ -32071,85 +32016,190 @@ document.getElementById('task-center-list').addEventListener('click', async even
   }
   // Mirrored local rigs keep the shoulder fixed while distal feathers and panels lag.
   const featherWing = side => `<g transform="${side === 'right' ? 'translate(112 0) scale(-1 1)' : ''}"><g class="pet-reward-motion pet-wing-${side}">
-    <path d="M33 61C24 47 15 39 9 43C4 48 8 67 18 74L34 77Z" fill="#C5DAE7" stroke="#7CA5BD" stroke-width="1"/>
+    <path d="M34 62C23 52 10 44 9 49c-2 12 11 24 27 26Z" fill="url(#pet-messenger-feather)"/>
     <g class="pet-reward-motion pet-feather-fan">
-      <path d="M28 62C18 56 12 43 9 42C3 48 7 61 19 70Z" fill="#F7FBFD" stroke="#9BBECE" stroke-width=".65"/>
-      <path d="M29 65C18 63 8 51 6 53C5 63 13 71 24 74Z" fill="#EAF3F8" stroke="#9BBECE" stroke-width=".65"/>
-      <path d="M31 69C20 70 12 62 10 65C13 75 24 80 34 76Z" fill="#D9EAF3" stroke="#9BBECE" stroke-width=".65"/>
-      <path d="M25 63 10 47M27 68 10 57M29 73 15 69" stroke="#B4CEDD" stroke-width=".7" stroke-linecap="round"/>
+      <path d="M34 70C22 63 2 63-1 68c-3 9 18 15 37 8Z" fill="url(#pet-messenger-feather)"/>
+      <path d="M33 66C20 55-9 45-10 52c-2 13 24 24 46 23Z" fill="url(#pet-messenger-feather)"/>
+      <path d="M34 62C25 47-10 26-14 34c-5 13 24 35 48 37Z" fill="url(#pet-messenger-feather)"/>
+      <path d="M30 64Q10 53 1 43" stroke="#FFFDF1" stroke-width="1.1" opacity=".7"/>
     </g>
-    <path d="M32 59Q20 51 18 56Q21 67 33 71Z" fill="#F1F7FB" stroke="#8BAFC5" stroke-width=".7"/>
-    <path d="M29 59 24 57" stroke="white" stroke-width="1.5" stroke-linecap="round" opacity=".8"/>
+    <path d="M32 62q-10-6-11-1 1 7 13 10Z" fill="var(--pet-body)"/><path d="M32 62q-10-6-11-1 1 7 13 10Z" fill="url(#pet-feather-light)"/>
   </g></g>`;
-  const mechWing = side => `<g transform="${side === 'right' ? 'translate(112 0) scale(-1 1)' : ''}"><g class="pet-reward-motion pet-mech-${side}">
-    <path d="m32 62-12-15-5 5 8 21 10 4Z" fill="#28465C" stroke="#20394D" stroke-width="1"/>
+  const mechWing = side => `<g transform="${side === 'right' ? 'translate(112 0) scale(-1 1)' : ''}"><g transform="translate(0 -6)"><g class="pet-reward-motion pet-mech-${side}">
+    <path d="M35 65Q26 60 20 65q-2 8 15 11Z" fill="url(#pet-metal)"/>
     <g class="pet-reward-motion pet-mech-panel">
-      <path d="m21 51-13-16-1 27 11 10 7-8Z" fill="#507A96" stroke="#28495F" stroke-width="1"/>
-      <path d="m10 40 10 13-3 11-7-6Z" fill="#7097AD"/>
-      <path d="m8 35 2 5 10 13 1-2Z" fill="#A5C6D6"/>
-      <path d="m10 60 7 5 1 7-11-10Z" fill="#304F65"/>
-      <path d="m11 45 7 10-2 7" stroke="#89E2E9" stroke-opacity=".25" stroke-width="2.5"/>
-      <path class="pet-reward-motion pet-mech-charge" d="m11 45 7 10-2 7" pathLength="100" stroke="#B6F7FA" stroke-width="1.2" stroke-linecap="round"/>
-      <circle class="pet-reward-motion pet-mech-led" cx="12" cy="58" r="1.2" fill="#BAF9F6"/>
+      <g class="pet-reward-motion pet-mech-feather pet-mech-feather-lower">
+        <path d="M29 69C17 66 7 65 4 69c-4 7 11 15 26 9Z" fill="url(#pet-metal)" stroke="#ABC4D8" stroke-width=".5"/>
+        <path d="M8 70q8 5 18 5" fill="none" stroke="#EDF7FD" stroke-width="1" stroke-linecap="round"/>
+      </g>
+      <g class="pet-reward-motion pet-mech-feather pet-mech-feather-middle">
+        <path d="M30 65C17 57 3 52-2 56c-6 7 10 21 31 20Z" fill="url(#pet-pearl)" stroke="#A8C4DB" stroke-width=".5"/>
+        <path d="M2 60q10 4 24 11-16-1-24-11Z" fill="url(#pet-glass)" opacity=".65"/>
+      </g>
+      <g class="pet-reward-motion pet-mech-feather pet-mech-feather-upper">
+        <path d="M31 65C20 52 3 42-6 41c-11-1-4 14 8 23 9 7 19 10 29 10Z" fill="url(#pet-pearl)" stroke="#A6C1D5" stroke-width=".55"/>
+        <path d="M-5 45C4 47 17 56 27 67 13 64 1 56-5 45Z" fill="url(#pet-glass)" opacity=".75"/>
+        <path d="M-5 44Q9 47 25 63" fill="none" stroke="#FFFCF0" stroke-width="1.1" stroke-linecap="round"/>
+        <path class="pet-reward-motion pet-mech-charge" d="M1 50q12 6 23 16" pathLength="100" fill="none" stroke="#F0FBFF" stroke-width="1" stroke-linecap="round"/>
+        <path d="M-7 43q-2 3 1 7" fill="none" stroke="#E5BD81" stroke-width="1.6" stroke-linecap="round"/>
+      </g>
     </g>
-    <circle cx="24" cy="61" r="3.2" fill="#243F54" stroke="#89B7CC" stroke-width=".8"/><circle cx="24" cy="61" r="1.2" fill="#A7D8E3"/>
-  </g></g>`;
+    <path d="M32 64q-10-5-14 0 2 9 15 11Z" fill="url(#pet-pearl)" stroke="#B7CEDD" stroke-width=".45"/>
+    <circle cx="27" cy="68" r="2.5" fill="url(#pet-metal)" stroke="#E4BF8A" stroke-width=".85"/>
+    <circle class="pet-reward-motion pet-mech-led" cx="27" cy="68" r="1.1" fill="#F2FCFF"/>
+  </g></g></g>`;
   // Both halves share the same dash timeline. The rear half sits behind the body.
   const orbit = rear => `<g class="growth-orbit pet-orbit-${rear ? 'rear' : 'front'}"><g transform="rotate(-22 56 65)">
     <ellipse class="pet-orbit-track" cx="56" cy="65" rx="50" ry="20" stroke="#8BB6D2" stroke-width=".65" opacity=".4"/>
     <ellipse class="pet-reward-motion pet-orbit-stream pet-orbit-halo" cx="56" cy="65" rx="50" ry="20" pathLength="100" stroke="#93DDF3" stroke-width="5" stroke-opacity=".12"/>
-    <ellipse class="pet-reward-motion pet-orbit-stream" cx="56" cy="65" rx="50" ry="20" pathLength="100" stroke="#B8E6F7" stroke-width="1.3"/>
-    <ellipse class="pet-reward-motion pet-orbit-stream pet-orbit-satellite" cx="56" cy="65" rx="50" ry="20" pathLength="100" stroke="#FFF3CA" stroke-width="3"/>
+    <ellipse class="pet-reward-motion pet-orbit-stream" cx="56" cy="65" rx="50" ry="20" pathLength="100" stroke="#A7D6ED" stroke-width="1.65"/>
+    <ellipse class="pet-reward-motion pet-orbit-stream pet-orbit-satellite" cx="56" cy="65" rx="50" ry="20" pathLength="100" stroke="#F4D594" stroke-width="3.8"/>
   </g></g>`;
+  // Shared, static paint servers: no textures, blur filters or render loop.
+  const paints = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  paints.setAttribute('aria-hidden', 'true');
+  paints.setAttribute('width', '0'); paints.setAttribute('height', '0');
+  paints.id = 'companion-creature-paints';
+  paints.style.cssText = 'position:absolute;pointer-events:none;overflow:hidden';
+  paints.innerHTML = `<defs>
+    <radialGradient id="pet-ivory" cx="36%" cy="32%" r="74%"><stop stop-color="#FFFEFB"/><stop offset=".48" stop-color="#FFFCF5"/><stop offset=".76" stop-color="#EDF1EF"/><stop offset="1" stop-color="#BBD1E1"/></radialGradient>
+    <linearGradient id="pet-coat" x1="0" y1="0" x2=".12" y2="1"><stop stop-color="#FFFEFB"/><stop offset=".45" stop-color="#FFFCF5"/><stop offset=".65" stop-color="#FFFCF5" stop-opacity=".98"/><stop offset=".83" stop-color="#F1F6F8" stop-opacity=".55"/><stop offset="1" stop-color="#EDF6FC" stop-opacity=".18"/></linearGradient>
+    <radialGradient id="pet-volume" cx="37%" cy="30%" r="72%"><stop stop-color="#FFFFFF" stop-opacity=".3"/><stop offset=".45" stop-color="#FFFFFF" stop-opacity="0"/><stop offset=".72" stop-color="#96AABE" stop-opacity=".06"/><stop offset=".88" stop-color="#728DA7" stop-opacity=".14"/><stop offset="1" stop-color="#557D9C" stop-opacity=".26"/></radialGradient>
+    <radialGradient id="pet-blue" cx="32%" cy="20%" r="85%"><stop stop-color="#D8EEFF"/><stop offset=".46" stop-color="#AED6FA"/><stop offset=".8" stop-color="#8AB8E4"/><stop offset="1" stop-color="#739BCB"/></radialGradient>
+    <radialGradient id="pet-feather-light" cx="30%" cy="15%" r="88%"><stop stop-color="#FFFFFF" stop-opacity=".62"/><stop offset=".4" stop-color="#FFFFFF" stop-opacity=".08"/><stop offset=".7" stop-color="#5D91C0" stop-opacity=".12"/><stop offset="1" stop-color="#467BAB" stop-opacity=".34"/></radialGradient>
+    <linearGradient id="pet-gold" x1="0" y1="1" x2=".7" y2="0"><stop stop-color="#9FCBF0"/><stop offset=".42" stop-color="#BDDFF4"/><stop offset=".78" stop-color="#FFF1CE"/><stop offset="1" stop-color="#F5D18D"/></linearGradient>
+    <linearGradient id="pet-starlight" x1=".7" y1="1" x2=".1" y2="0"><stop stop-color="#E3F3FF"/><stop offset=".44" stop-color="#BBDDF9"/><stop offset=".8" stop-color="#ABC3F4"/><stop offset="1" stop-color="#AAA5E3"/></linearGradient>
+    <radialGradient id="pet-peng-feather" cx="70%" cy="80%" r="87%"><stop stop-color="#FFFEF7"/><stop offset=".42" stop-color="#F6F6F5"/><stop offset=".68" stop-color="#C4DCF7"/><stop offset="1" stop-color="#B4ADEB"/></radialGradient>
+    <radialGradient id="pet-glint"><stop stop-color="#FFFFFF" stop-opacity=".24"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></radialGradient>
+    <linearGradient id="pet-messenger-feather" x1="0" y1="0" x2=".7" y2="1"><stop stop-color="#F8DCA3"/><stop offset=".22" stop-color="#FFF7DC"/><stop offset=".55" stop-color="#D6EBF8"/><stop offset="1" stop-color="#97BCDF"/></linearGradient><linearGradient id="pet-aurora-silk" x1="0" y1="0" x2="1" y2=".3"><stop stop-color="#8EDBC6"/><stop offset=".5" stop-color="#BDD6F5"/><stop offset="1" stop-color="#C8ADEB"/></linearGradient><radialGradient id="pet-berry-jam" cx="30%" cy="20%" r="90%"><stop stop-color="#FFD2D7"/><stop offset=".5" stop-color="#E7A1B0"/><stop offset="1" stop-color="#C97991"/></radialGradient><radialGradient id="pet-pearl" cx="30%" cy="20%" r="90%"><stop stop-color="#FFFEF6"/><stop offset=".48" stop-color="#E3EEF8"/><stop offset="1" stop-color="#9BBEDC"/></radialGradient>
+    <linearGradient id="pet-metal" x1="0" y1="0" x2=".7" y2="1"><stop stop-color="#EDF7FE"/><stop offset=".5" stop-color="#C4DCEE"/><stop offset="1" stop-color="#9EB6D4"/></linearGradient>
+    <radialGradient id="pet-joint" cx="30%" cy="20%" r="80%"><stop stop-color="#A4C6DB"/><stop offset="1" stop-color="#6B8FAC"/></radialGradient>
+    <linearGradient id="pet-glass" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#C2E7FA"/><stop offset=".55" stop-color="#99C3E5"/><stop offset="1" stop-color="#879FCB"/></linearGradient>
+    <linearGradient id="pet-visor-lens" x1="0" y1="0" x2=".25" y2="1"><stop stop-color="#AFDDEE" stop-opacity=".26"/><stop offset=".5" stop-color="#D5F0F7" stop-opacity=".06"/><stop offset="1" stop-color="#99C6DC" stop-opacity=".2"/></linearGradient>
+    <linearGradient id="pet-satchel" x1="0" y1="0" x2=".7" y2="1"><stop stop-color="#FBE8BE"/><stop offset=".6" stop-color="#E7C994"/><stop offset="1" stop-color="#CEAE79"/></linearGradient>
+    <linearGradient id="pet-peach" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#FFD3AC"/><stop offset="1" stop-color="#EC9D79"/></linearGradient>
+    <linearGradient id="pet-eye" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#183F54"/><stop offset="1" stop-color="#346C80"/></linearGradient>
+    <radialGradient id="pet-blush"><stop stop-color="#FFC7B6" stop-opacity=".8"/><stop offset=".65" stop-color="#FFD0BF" stop-opacity=".65"/><stop offset="1" stop-color="#FFD0BF" stop-opacity="0"/></radialGradient>
+    <radialGradient id="pet-ground"><stop stop-color="#63869E"/><stop offset=".55" stop-color="#63869E" stop-opacity=".45"/><stop offset="1" stop-color="#63869E" stop-opacity="0"/></radialGradient>
+    <linearGradient id="pet-letter" x1="0" y1="0" x2=".3" y2="1"><stop stop-color="#FFFCF0"/><stop offset="1" stop-color="#F3E7C9"/></linearGradient>
+  </defs>`;
+  document.body.appendChild(paints);
+  const babyWing = `<path d="M25 59C17 60 10 72 12 79q2 4 6-1-1 7 5 3 8-5 9-15 0-8-7-7Z" fill="var(--pet-body)"/><path d="M25 59C17 60 10 72 12 79q2 4 6-1-1 7 5 3 8-5 9-15 0-8-7-7Z" fill="url(#pet-feather-light)"/>`;
+  // Rounded, overlapping feathers stay readable at toolbar scale. The wing rig
+  // sits behind the body, so the small front flipper can keep holding the letter.
+  const naturalFlightWing = route => {
+    const fill = route === 'nature' ? 'pet-blue' : 'pet-peng-feather';
+    const feathers = ['M35 70C23 65 3 63 3 70c1 10 17 12 33 7Z', 'M35 65C20 58-5 49-4 58c2 13 20 20 40 17Z', 'M35 60C20 49-9 36-8 45c2 14 21 26 44 27Z', 'M36 58C26 44-3 24-7 30c-6 10 15 29 40 38Z'];
+    return feathers.map(d=>`<path d="${d}" fill="url(#${fill})"/>${route === 'nature' ? `<path class="evolution-gold" d="${d}" fill="url(#pet-gold)"/>` : ''}<path d="${d}" fill="url(#pet-feather-light)" opacity=".35"/>`).join('');
+  };
+  // Fins grow from a soft paddle into a lateral feather fan, with a broad root
+  // buried in the body. Each silhouette keeps the same shoulder/contact point.
+  const fishFinSurface = (d,fill='var(--pet-body)') => `<path d="${d}" fill="${fill}"/><path d="${d}" fill="url(#pet-feather-light)"/>`;
+  const fishFlipper = [
+    ['baby','M31 63C25 60 17 66 16 73c-1 4 3 8 7 8 7 0 12-10 8-18Z'],
+    ['growing','M31 63C25 60 20 63 17 67c-4 5-5 12 0 15 5 3 12-1 15-7 2-4 2-9-1-12Z'],
+    ['flowing','M31 63C25 60 20 63 17 68c-4 6-6 13-2 17 5 5 13-1 17-8 3-5 3-10-1-14Z'],
+    ['feather','M31 63C24 60 19 65 17 70c-3 5-6 13-3 16 2 2 4 0 6-2 0 4 3 4 6 1 6-5 11-16 5-22Z'],
+  ].map(([phase,d])=>`<g class="evolution-flipper-${phase}">${fishFinSurface(d)}</g>`).join('');
+  const fishFlightWing = `<g class="evolution-peng-bud">${fishFinSurface('M36 65C23 61 1 45-4 51c-5 9 11 23 28 25l13 0Z','url(#pet-peng-feather)')}${fishFinSurface('M36 72C23 68 5 61 4 68c-1 9 14 15 33 11Z','url(#pet-peng-feather)')}</g><g class="evolution-peng-fan">${[
+    ['base','M36 70C24 68 10 64 9 70c-1 8 14 13 28 8Z'],
+    ['middle','M36 65C22 60 3 50 0 56c-3 11 16 22 37 19Z'],
+    ['outer','M36 61C24 53 2 33-5 39c-7 10 14 29 41 33Z'],
+    ['tip','M36 59C24 47-2 25-10 31c-8 12 17 30 46 37Z'],
+  ].map(([layer,d])=>`<g class="evolution-peng-${layer}">${fishFinSurface(d,'url(#pet-peng-feather)')}</g>`).join('')}</g>`;
+  const creatureFlightWing = side => `<g class="companion-flight-${side}"><g transform="${side === 'right' ? 'translate(112 0) scale(-1 1)' : ''}"><g class="companion-nature-only"><g class="evolution-wing-grown">${naturalFlightWing('nature')}</g></g><g class="companion-ranger-only"><g class="evolution-peng-wing">${fishFlightWing}</g></g></g></g>`;
   const art = `<svg class="mail-companion" viewBox="0 0 112 112" fill="none" aria-hidden="true">
-    <ellipse class="companion-shadow" cx="56" cy="102" rx="27" ry="4" fill="#254B3A" opacity=".12"/>
+    <ellipse class="companion-shadow" cx="56" cy="102" rx="30" ry="4.5" fill="url(#pet-ground)" opacity=".16"/>
     ${orbit(true)}
     <g class="companion-figure">
-      <path class="companion-foot-left" d="M37 88 34 98Q35 102 44 100L48 88" fill="#35745A"/>
-      <path class="companion-foot-right" d="M64 89 67 99Q72 102 79 98L75 86" fill="#35745A"/>
-      <path class="growth-cape" d="M29 64 20 96Q56 111 92 96L83 64Z" fill="#719EC0" stroke="#477A9E"/>
+      <g class="companion-facing">
+      <g class="companion-foot-left companion-nature-only" fill="url(#pet-peach)"><ellipse cx="40" cy="98" rx="2.2" ry="3"/><ellipse cx="43.5" cy="98.5" rx="2.3" ry="3"/><ellipse cx="46.5" cy="98" rx="2" ry="2.6"/></g>
+      <g class="companion-foot-right companion-nature-only" fill="url(#pet-peach)"><ellipse cx="66" cy="98" rx="2.1" ry="2.7"/><ellipse cx="69.5" cy="98.5" rx="2.3" ry="3"/><ellipse cx="73" cy="98" rx="2.1" ry="3"/></g>
       <g class="companion-torso">
-      <g class="growth-wings">${featherWing('left')}${featherWing('right')}</g>
-      <g class="growth-mech-wings">${mechWing('left')}${mechWing('right')}</g>
-      <path class="companion-arm-left" d="M26 62Q13 61 16 75Q20 79 29 71" fill="#91C9AC" stroke="#599C7B" stroke-width="1.3"/>
-      <g class="companion-wave"><path d="M84 60Q99 54 99 64Q99 71 86 76" fill="#91C9AC" stroke="#599C7B" stroke-width="1.3"/></g>
-      <path class="growth-body" d="M25 52C25 27 38 20 56 20S87 29 87 53L85 76Q83 95 57 96Q29 96 26 79Z" fill="#B5DDC5" stroke="#649F80" stroke-width="1.4"/>
-      <path class="pet-reward-motion pet-palette-shine" d="M30 46Q31 26 53 25" stroke="#E8F5ED" stroke-width="4" stroke-linecap="round"/>
-      <g class="companion-leaves">
-      <path d="M48 22Q41 12 34 15Q33 25 48 27" fill="#398564"/>
-      <path d="M48 23Q52 8 66 12Q64 24 48 27" fill="#5AA584"/>
+        <g class="companion-dock-tail"><g class="companion-heading"><g class="companion-tail">
+          <g class="companion-nature-only">
+            <g class="evolution-tail-bud"><path d="M78 86q13-10 17-4 1 7-17 12Z" fill="var(--pet-body)"/><path d="M78 86q13-10 17-4 1 7-17 12Z" fill="url(#pet-feather-light)"/></g>
+            <g class="evolution-tail-long"><path d="M75 91C90 96 101 94 109 88c10-8 11 0 4 6-11 7-26 6-38 1Z" fill="url(#pet-gold)"/><path d="M74 90C89 91 97 86 104 77c7-11 13-6 7 4-8 14-23 17-37 13Z" fill="url(#pet-gold)"/><path d="M75 90C86 86 90 77 94 69c5-10 11-7 8 3-5 16-17 23-27 22Z" fill="url(#pet-gold)"/></g>
+            <path class="evolution-tail-curl" d="M78 93c20 2 29-7 30-17 1-9-5-12-7-8-2 4 4 6 4 2 3 6-5 8-7 2-3-9 7-14 13-7 10 14-5 35-33 30Z" fill="url(#pet-gold)"/>
+          </g>
+          <g class="companion-ranger-only"><g class="evolution-fish-tail">
+            <g class="evolution-fish-young"><path d="M76 79C86 78 91 87 99 81c-5-4-5-13-1-14 4-1 6 6 5 10 5-7 11-8 11-4 0 7-6 12-12 11-5 10-15 13-26 8Z" fill="var(--pet-body)"/><path d="M76 79C86 78 91 87 99 81c-5-4-5-13-1-14 4-1 6 6 5 10 5-7 11-8 11-4 0 7-6 12-12 11-5 10-15 13-26 8Z" fill="url(#pet-feather-light)"/></g>
+            <g class="evolution-fish-mature"><path d="M76 79C86 78 91 87 99 80c-6-6-5-16-1-17 6-1 8 9 6 14 7-9 16-12 16-6 0 10-8 16-16 14-6 11-17 13-28 7Z" fill="var(--pet-body)"/><path d="M76 79C86 78 91 87 99 80c-6-6-5-16-1-17 6-1 8 9 6 14 7-9 16-12 16-6 0 10-8 16-16 14-6 11-17 13-28 7Z" fill="url(#pet-feather-light)"/></g>
+          </g></g>
+        </g>
+        </g></g>
+        ${creatureFlightWing('left')}${creatureFlightWing('right')}
+        <g class="growth-wings">${featherWing('left')}${featherWing('right')}</g>
+        <g class="growth-mech-wings">${mechWing('left')}${mechWing('right')}</g>
+          <g class="growth-body">
+            <g class="companion-nature-only">
+              <path d="M16 65C16 42 33 25 55 25c25 0 41 17 41 40 0 22-17 33-41 33-25 0-39-12-39-33Z"/>
+              <path class="companion-face" d="M16 65C16 42 33 25 55 25c25 0 41 17 41 40 0 22-17 33-41 33-25 0-39-12-39-33Z" fill="url(#pet-coat)"/>
+              <path d="M16 65C16 42 33 25 55 25c25 0 41 17 41 40 0 22-17 33-41 33-25 0-39-12-39-33Z" fill="url(#pet-volume)"/>
+            </g>
+            <g class="companion-ranger-only evolution-fish-body">
+              <path d="M18 65C18 42 34 27 54 27c23-1 37 17 37 39 0 19-10 31-35 31-25 0-39-10-38-32Z"/>
+              <path d="M18 65C18 42 34 27 54 27c23-1 37 17 37 39 0 19-10 31-35 31-25 0-39-10-38-32Z" fill="url(#pet-feather-light)"/>
+              <path class="ranger-face" d="M18 65C19 47 29 35 46 35c20-1 32 14 35 32 2 13-1 21-6 25-6 4-12 5-19 5-25 0-39-10-38-32Z" fill="url(#pet-ivory)"/>
+            </g>
+          </g>
+          <ellipse class="pet-reward-motion pet-palette-shine" cx="46" cy="41" rx="19" ry="12" fill="url(#pet-glint)"/>
+          <g class="companion-leaves companion-nature-only evolution-crest">
+            <g class="evolution-crest-one"><path d="M58 25C60 18 66 12 72 13c5 2-5 11-14 12Z" fill="var(--pet-body)"/><path d="M58 25C60 18 66 12 72 13c5 2-5 11-14 12Z" fill="url(#pet-feather-light)"/></g>
+            <path class="evolution-crest-two" d="M60 25C64 16 76 11 79 15c1 6-11 12-19 10Z" fill="url(#pet-gold)"/>
+            <g class="evolution-crest-three"><path d="M61 26C70 21 80 15 84 20c3 6-10 12-23 6Z" fill="var(--pet-body)"/><path d="M61 26C70 21 80 15 84 20c3 6-10 12-23 6Z" fill="url(#pet-feather-light)"/></g>
+          </g>
+          <g class="companion-ranger-only evolution-fish-fin">${fishFinSurface('M62 31C64 27 69 23 72 25c2 2 0 5-1 8Z')}</g>
+          <path class="companion-ranger-only evolution-star-mark" d="m55 32 1.2 3.5L60 37l-3.8 1.2L55 42l-1.2-3.8L50 37l3.8-1.5Z" fill="url(#pet-gold)"/>
+          <g class="growth-cap"><path d="M31 32C29 24 39 18 52 19c14 0 24 6 23 13-10 5-33 7-44 0Z" fill="var(--pet-cloth)"/><path d="M31 32C29 24 39 18 52 19c14 0 24 6 23 13-10 5-33 7-44 0Z" fill="url(#pet-feather-light)"/><path d="M29 32q23 4 47-2 8 3 5 6-12 6-27 3-14-1-25-4Z" fill="var(--pet-cloth-edge)"/><path class="pet-reward-motion pet-cap-shine" d="M47 24h12v8H47Zm0 0 6 4 6-4" fill="#FFF2D5" stroke="#FFF9E9" stroke-width=".4" stroke-linejoin="round"/></g>
+        <g class="companion-look"><g class="companion-head">
+          <g class="companion-gaze">
+            <g class="companion-eyes" fill="url(#pet-eye)"><ellipse cx="43" cy="54" rx="3.4" ry="4.8"/><ellipse cx="67" cy="54" rx="3.4" ry="4.8"/><g fill="white"><circle cx="42" cy="52.3" r="1.1"/><circle cx="66" cy="52.3" r="1.1"/><circle cx="44.2" cy="56" r=".55" opacity=".35"/><circle cx="68.2" cy="56" r=".55" opacity=".35"/></g></g>
+            <g class="companion-happy-eyes" stroke="#2B5365" stroke-width="1.8" stroke-linecap="round"><path d="M39 55q4-5 8 0m16 0q4-5 8 0"/></g>
+            <g class="companion-smile"><g class="companion-nature-only"><path d="M50.5 59q4.5-4 9 0-1 6-4.5 6t-4.5-6Z" fill="url(#pet-peach)"/><path d="M51.5 59.5q3.5 2 7 0" stroke="#E19B75" stroke-width=".6"/></g><path class="companion-ranger-only" d="M50 60q5 4 10 0-1 5-5 5t-5-5Z" fill="#C46F58" stroke="none"/></g>
+            <g class="companion-grin"><path d="M50 60q5 2 10 0-1 7-5 7t-5-7Z" fill="#B87766"/><path d="M52 64.5q3-2 6 0-3 4-6 0" fill="#F3B698"/><path class="companion-nature-only" d="M50 59q5-3 10 0-5 3-10 0Z" fill="url(#pet-peach)"/></g>
+            <ellipse class="companion-cheek" cx="35" cy="63" rx="5" ry="3.5" fill="url(#pet-blush)"/><ellipse class="companion-cheek" cx="76" cy="63" rx="5" ry="3.5" fill="url(#pet-blush)"/>
+          </g>
+          <g class="growth-visor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M24 50q4-2 9-1v6q-5 0-8 2Z M75 49q5-1 9 1l-1 7q-4-2-8-2Z" fill="var(--pet-cloth-edge)"/>
+            <path d="M25 51q4-1 7-1M77 50l6 1" fill="none" stroke="#F9F6E9" stroke-width=".65" opacity=".8"/>
+            <path d="M50 49q4-5 8 0" fill="none" stroke="#AABCC6" stroke-width="3"/>
+            <path d="M50 48.7q4-4 8 0" fill="none" stroke="#F1DFB9" stroke-width="1.8"/>
+            ${[0,24].map(x => `<g transform="translate(${x} 0)">
+              <path d="M35 44q7-2 13 1 5 2 3 9-2 7-9 7t-10-7q-2-7 3-10Z" fill="url(#pet-visor-lens)" stroke="#8EAEBE" stroke-width="2.8"/>
+              <path d="M35 44q7-2 13 1 5 2 3 9-2 7-9 7t-10-7q-2-7 3-10Z" fill="none" stroke="url(#pet-pearl)" stroke-width="1.9"/>
+              <path d="M34 45q6-3 14 1" fill="none" stroke="#FFF7DF" stroke-width="1"/>
+              <path d="M34 55q1 4 5 5" fill="none" stroke="#DFEFF5" stroke-width=".65"/>
+              <path d="m35 48 1.6 3" fill="none" stroke="#FFFFFF" stroke-width="1.3" opacity=".6"/>
+            </g>`).join('')}
+            <path d="M30 49v5M78 49v5" fill="none" stroke="#D8B783" stroke-width="2"/>
+            <circle cx="30" cy="50.5" r=".65" fill="#FFF7DF"/><circle cx="78" cy="50.5" r=".65" fill="#FFF7DF"/>
+            <path class="pet-reward-motion pet-visor-scan" d="m36 46 2 4m22-4 2 4" fill="none" stroke="#FFFFFF" stroke-width="1.2"/>
+          </g>
+        </g>
+        </g>
+        <g class="growth-jacket"><path d="M28 69q7 3 13 1l8 8-3 17q-14 2-23-8 4-9 5-18Z M69 70q7 2 14-1 1 10 6 18-9 9-25 8l-2-17Z" fill="var(--pet-cloth)"/><path d="M28 69q7 3 13 1l8 8-3 17q-14 2-23-8 4-9 5-18Z M69 70q7 2 14-1 1 10 6 18-9 9-25 8l-2-17Z" fill="url(#pet-feather-light)"/><path class="pet-reward-motion pet-jacket-trace" d="m40 71 8 7-3 15m25-22-7 7 3 15" fill="none" stroke="#FFF2D5" stroke-width="1"/><path d="M47 77q8 3 16 0" stroke="#D5B984" stroke-width=".8"/><rect x="50" y="75" width="9" height="6" rx="1.8" fill="#FFF0CC" stroke="#D9BC88" stroke-width=".5"/><path d="m51 76 3.5 2.5L58 76" fill="none" stroke="#B79E73" stroke-width=".65"/></g>
+        <g class="growth-armor">
+          <path d="M38 72q17 6 34 0l-2 16q-4 8-15 9-12-2-16-10Z" fill="url(#pet-metal)" stroke="#B5CDDC" stroke-width=".5"/>
+          <path d="M41 73q14 6 28 0l-3 14q-4 7-11 8-8-2-12-8Z" fill="url(#pet-pearl)"/>
+          <path d="M31 67q8-3 15 5-5 7-16 7-4-5 1-12Z M68 72q7-8 15-5 5 7 1 12-11 0-16-7Z" fill="url(#pet-pearl)" stroke="#B3CBDD" stroke-width=".5"/>
+          <path d="M31 73q6 3 12 0-3 7-11 8-3-3-1-8Z M71 73q6 3 12 0 2 5-1 8-8-1-11-8Z" fill="url(#pet-metal)"/>
+          <path d="M32 68q5-1 10 3M72 71q5-4 10-3" fill="none" stroke="#FFFEF4" stroke-width="1.1" stroke-linecap="round"/>
+          <path d="M43 74q6 5 12 7 7-2 13-7M46 89q4 5 9 6" fill="none" stroke="#DAC79F" stroke-width=".65" stroke-linecap="round"/>
+          <path d="M44 80q4 3 9 4l-2 7q-6-3-7-11Z" fill="url(#pet-glass)" opacity=".65"/>
+          <g class="pet-reward-motion pet-armor-core"><circle cx="39" cy="78" r="4" fill="url(#pet-glass)" stroke="#F6E8C7" stroke-width=".75"/><path d="m39 75 1 2 2 .9-2 .9-1 2-1-2-2-.9 2-.9Z" fill="#FFFDF3"/><circle class="pet-reward-motion pet-core-ring" cx="39" cy="78" r="4.8" fill="none" stroke="#D3E7EE" stroke-width=".5" pathLength="100"/></g>
+        </g>
+        <g class="growth-scarf"><g class="pet-reward-motion pet-scarf-tail"><path d="M34 76q2 6-3 13 3 5 9 5 8-8 4-17Z" fill="#E9B895"/><g class="pet-reward-motion pet-scarf-tip"><path d="m32 88 10 3-2 5q-8-1-10-5Z" fill="#DCA686"/><path d="m33 91 5 2" stroke="#FCE3C4" stroke-width=".8"/></g></g><path d="M28 69q26 9 55 0l-1 7q-25 10-52 0Z" fill="url(#pet-peach)"/><path d="M30 70q25 8 51 0" stroke="#FFE4CC" stroke-width="1"/><path d="M32 74q19 6 39 1" fill="none" stroke="#FFF6E5" stroke-width=".6" stroke-dasharray="1.2 2"/><path d="M34 73q-4 4 1 7l7-1q3-5-1-7Z" fill="#EDBE9C"/></g>
+        <g class="companion-dock-free"><g class="companion-arm-left"><g class="companion-rest-wing"><g class="companion-nature-only">${babyWing}</g><g class="companion-ranger-only">${fishFlipper}</g></g><g class="companion-edge-grip"><path d="M31 63C21 64 8 56 7 48C5 43 8 40 12 41C11 37 16 35 20 39C22 35 27 38 26 43C30 40 34 44 31 49C28 54 37 57 35 61Q34 64 31 63Z" fill="var(--pet-body)"/><path d="M31 63C21 64 8 56 7 48C5 43 8 40 12 41C11 37 16 35 20 39C22 35 27 38 26 43C30 40 34 44 31 49C28 54 37 57 35 61Q34 64 31 63Z" fill="url(#pet-feather-light)"/><path d="M13 43q3 5 7 7M23 43q1 4 4 6" stroke="#EAF6FF" stroke-width=".8" stroke-linecap="round" opacity=".7"/></g></g>
+        </g>
+        <g class="companion-dock-carry"><g class="companion-carry">
+          <g class="companion-bag"><g transform="rotate(8 67 79)"><rect x="56" y="69" width="24" height="22" rx="3.3" fill="url(#pet-letter)" stroke="#E4D7B7" stroke-width=".35"/><path d="m57 71 11 9 11-9" stroke="#DDCBA2" stroke-width=".8" stroke-linejoin="round"/><path class="growth-satchel-details" d="M57 70h22v9q-10 6-22 0Z" fill="url(#pet-satchel)" stroke="#CDAE78" stroke-width=".45"/><path class="growth-satchel-details" d="M66 78h4v5h-4Z" fill="#FFF0C7" stroke="#BA9C68" stroke-width=".45"/><path class="growth-satchel-details" d="M60 83h5v5h-5Z" fill="#F8E4BA" stroke="#CCAB77" stroke-width=".6" stroke-dasharray=".8 .8"/><path class="pet-reward-motion pet-satchel-glint" d="m58 70 9 18m-4-18 9 18" stroke="#FFFDF2" stroke-width="1" stroke-linecap="round"/></g></g>
+          <g class="companion-wave"><g class="companion-nature-only"><path d="M82 65C89 62 95 69 92 77c-2 7-9 10-16 9-5-1-6-4-2-6-3-1-1-4 3-5 6-1 8-5 5-10Z" fill="var(--pet-body)"/><path d="M82 65C89 62 95 69 92 77c-2 7-9 10-16 9-5-1-6-4-2-6-3-1-1-4 3-5 6-1 8-5 5-10Z" fill="url(#pet-feather-light)"/></g><g class="companion-ranger-only"><path d="M82 65C89 62 95 69 92 77c-2 7-9 10-16 9-6-1-6-6-1-9 7-2 10-6 7-12Z" fill="var(--pet-body)"/><path d="M82 65C89 62 95 69 92 77c-2 7-9 10-16 9-6-1-6-6-1-9 7-2 10-6 7-12Z" fill="url(#pet-feather-light)"/></g></g>
+        </g></g>
       </g>
-      <g class="growth-leaf" fill="#65AD89"><path d="M60 21Q69 10 78 18Q77 28 62 26Z"/></g>
-      <g class="growth-flower"><path d="M55 19v-7" stroke="#599C7B" stroke-width="2"/><g fill="#EDAFBD"><circle cx="55" cy="9" r="4"/><circle cx="51" cy="12" r="4"/><circle cx="59" cy="12" r="4"/></g><circle cx="55" cy="12" r="2.6" fill="#F9D889"/></g>
-      <g class="companion-head">
-      <rect x="33" y="35" width="47" height="39" rx="17" fill="#F6FBF6"/>
-      <g class="growth-ranger-hair" stroke-linejoin="round">
-        <path class="ranger-hair-crown" d="M31 36Q28 29 38 25l-1-6 11 3 13-9 1 7 12-2-2 7q12 3 9 13L70 35 42 35Z"/>
-        <path class="ranger-hair-fringe" d="M31 34q10-8 23-5 14-6 26 3l-2 13-4-8q-8-4-14-1l-8 5-3-5-7 4-5-4-2 10-4-4Z"/>
-        <path class="ranger-hair-shine" d="m40 28 8 1 10-6m1 7q7-3 13 0" fill="none" stroke-width="1.8" stroke-linecap="round"/>
-      </g>
-      <g class="growth-ranger-crest" fill="#446780" stroke="#264C67" stroke-width="1.2"><path d="M30 36h4v13h-4q-4-6 0-13ZM79 36h4q4 7 0 13h-4Z"/><path d="M30 40v5M83 40v5" stroke="#8AE4E8" stroke-width="2" stroke-linecap="round"/><path d="m69 29 6 2-2 6-5-3Z" fill="#83D5E3"/></g>
-      <g class="growth-cap"><path d="M33 30Q33 12 56 13Q76 14 77 30Z" fill="#719EC0" stroke="#477A9E"/><path d="M29 30h53" stroke="#477A9E" stroke-width="4" stroke-linecap="round"/><path class="pet-reward-motion pet-cap-shine" d="m50 21 6 4 6-4" stroke="#FFF5D9" stroke-width="2"/></g>
-      <g class="companion-gaze">
-        <g class="companion-eyes"><rect x="43" y="48" width="5" height="9" rx="2.5" fill="#285640"/><rect x="65" y="48" width="5" height="9" rx="2.5" fill="#285640"/></g>
-        <g class="companion-happy-eyes" stroke="#285640" stroke-width="2.7" stroke-linecap="round"><path d="M42 53q3-5 6 0M64 53q3-5 6 0"/></g>
-        <path class="growth-ranger-brows" d="m41 43 9 3m12 0 9-3" stroke="#264C67" stroke-width="2.5" stroke-linecap="round"/>
-        <path class="companion-smile" d="M53 60q3.5 3 7 0" stroke="#52836A" stroke-width="1.8" stroke-linecap="round"/>
-        <ellipse cx="40" cy="60" rx="4" ry="2.2" fill="#E9B9A5" opacity=".55"/><ellipse cx="73" cy="60" rx="4" ry="2.2" fill="#E9B9A5" opacity=".55"/>
-      </g>
-      <g class="growth-visor"><path d="M36 46h41l-3 12H40Z" fill="#64D9E3" fill-opacity=".25" stroke="#285875" stroke-width="2"/><path class="pet-reward-motion pet-visor-scan" d="m40 48 4 8m0-8 4 8" stroke="#D0FAFF" stroke-width="1.3"/><path d="m42 47 8 0" stroke="#C1FAFF" stroke-opacity=".35" stroke-width=".7"/></g>
-      </g>
-      <path class="growth-ranger-collar" d="m31 72 7-5 7 7 11 5 11-5 7-7 7 5-7 7-7-1-11 6-11-6-7 1Z" fill="#446780" stroke="#264C67" stroke-width="1.2"/>
-      <path class="growth-ranger-badge" d="m38 79 5 5-5 5-5-5Z" fill="#83D5E3" stroke="#417C9D"/>
-      <g class="growth-jacket" fill="#41607B" stroke="#294459" stroke-width="1.4"><path d="m28 72 10-5 7 9 11 4 11-4 7-9 10 5-4 16-23 7-24-7Z"/><path class="pet-reward-motion pet-jacket-trace" d="m38 70 7 10 11 4 11-4 7-10" fill="none" stroke="#8FB7D0"/><path d="M56 84v10" stroke="#294459" stroke-width="2"/></g>
-      <g class="growth-armor" fill="#587C93" stroke="#2C4E65" stroke-width="1.5"><path d="m26 72 10-5 8 5 12 4 12-4 8-5 10 5-6 12-9-4-3 12-12 6-12-6-3-12-9 4Z"/><path d="m45 80 11 4 11-4-3 11-8 3-8-3Z" fill="#304D67"/><g class="pet-reward-motion pet-armor-core"><circle cx="38" cy="83" r="5" fill="#9DE9EE" fill-opacity=".15" stroke="#80BACA" stroke-width=".6"/><path d="m36 79 6 0-4 4h3l-6 5 2-5h-3Z" fill="#B4F2F1" stroke="none"/><circle class="pet-reward-motion pet-core-ring" cx="38" cy="83" r="6" fill="none" stroke="#A8E5EC" stroke-width=".65" pathLength="100"/></g></g>
-      <g class="growth-scarf" fill="#EDAE87" stroke="#C88360"><path d="M32 68q24 10 48 0l-1 8q-23 9-46 0Z"/><g class="pet-reward-motion pet-scarf-tail"><path d="m34 76 10 2-2 18-12-4Z"/><path d="m34 78 4 1-3 12-4-1Z" fill="#F6C3A0" stroke="none"/><g class="pet-reward-motion pet-scarf-tip"><path d="m31 88 12 4-1 5-12-4Z" fill="#D79571"/><path d="m32 91 7 2" stroke="#F7CFAD" stroke-width=".8"/></g></g></g>
-      <path class="growth-medal" d="m39 77 2 4 4 .5-3 3 .5 4-3.5-2-3.5 2 .5-4-3-3 4-.5Z" fill="#F3CE72" stroke="#B99E65"/>
-      <path d="M32 71 77 89" stroke="#528A6C" stroke-width="3"/>
-      <g class="companion-bag"><g transform="rotate(12 65 82)"><rect x="51" y="73" width="30" height="20" rx="5" fill="#FFF5D9" stroke="#B99E65" stroke-width="1.3"/><path d="m54 77 12 8 12-8" stroke="#B99E65" stroke-width="1.5" stroke-linejoin="round"/><path class="pet-reward-motion pet-satchel-glint" d="m55 75 9 15m-5-15 9 15" stroke="#FFF9DE" stroke-width="1.2" stroke-linecap="round"/></g></g>
       </g>
     </g>
-    <g class="growth-stars" fill="#E7BE64">
+    <g class="growth-stars" fill="#DDA956">
       <g class="pet-reward-motion pet-star"><circle cx="17" cy="33" r="6" fill="currentColor" opacity=".1"/><path d="m17 27 1.4 4.6L23 33l-4.6 1.4L17 39l-1.4-4.6L11 33l4.6-1.4Z"/><path class="pet-reward-motion pet-star-ray" d="M17 24v18M8 33h18" stroke="currentColor" stroke-width=".5"/><circle cx="17" cy="33" r=".9" fill="#FFFAE8"/></g>
       <g class="pet-reward-motion pet-star"><circle cx="96" cy="78" r="5" fill="currentColor" opacity=".1"/><path d="m96 73 1.2 3.8L101 78l-3.8 1.2L96 83l-1.2-3.8L91 78l3.8-1.2Z"/><circle cx="96" cy="78" r=".7" fill="#FFFAE8"/></g>
       <circle class="pet-reward-motion pet-star pet-stardust" cx="87" cy="12" r="1.3"/><circle class="pet-reward-motion pet-star pet-stardust" cx="15" cy="78" r="1"/>
@@ -32157,15 +32207,15 @@ document.getElementById('task-center-list').addEventListener('click', async even
       <circle class="pet-reward-motion pet-star pet-stardust" cx="101" cy="49" r=".8"/><circle class="pet-reward-motion pet-star pet-stardust" cx="34" cy="9" r=".9"/>
     </g>
     ${orbit(false)}
-    <g class="growth-berry pet-reward-motion pet-berry-float"><path d="M88 65q-8-9-10 0q-1 9 10 13q11-4 10-13q-2-9-10 0Z" fill="#E899A8" stroke="#B4687C"/><path d="M88 63q-4-8 3-9q4 6-3 9Z" fill="#5AA584"/><circle cx="84" cy="69" r="1" fill="#FFF5D9"/><circle cx="90" cy="72" r="1" fill="#FFF5D9"/></g>
+    <g class="growth-berry pet-reward-motion pet-berry-float"><path d="M88 65q-8-9-10 0q-1 9 10 13q11-4 10-13q-2-9-10 0Z" fill="url(#pet-berry-jam)" stroke="#CF8C9D" stroke-width=".6"/><path d="M88 63q-9-3-6-7 6-1 6 7Zm0 0q-4-8 3-9 4 6-3 9Z" fill="#5AA584"/><circle cx="84" cy="69" r="1" fill="#FFF5D9"/><circle cx="90" cy="72" r="1" fill="#FFF5D9"/></g>
     <g class="growth-lightning" fill="none" stroke="#76DDF2" stroke-linecap="round" stroke-linejoin="round">
-      <g class="pet-reward-motion pet-bolt"><path d="m13 39-3 9 6 3-5 7 5 5" stroke-width="3" stroke-opacity=".16"/><path d="m13 39-3 9 6 3-5 7 5 5" pathLength="100" stroke="#C8F7FF" stroke-width="1.1"/><path class="pet-reward-motion pet-bolt-branch" d="m16 51 5 3-1 5" pathLength="100" stroke-width=".7"/></g>
-      <g class="pet-reward-motion pet-bolt"><path d="m99 66-4 8 5 4-5 8 4 5" stroke-width="3" stroke-opacity=".16"/><path d="m99 66-4 8 5 4-5 8 4 5" pathLength="100" stroke="#C8F7FF" stroke-width="1.1"/><path class="pet-reward-motion pet-bolt-branch" d="m95 86-5 1-2 4" pathLength="100" stroke-width=".7"/></g>
+      <g class="pet-reward-motion pet-bolt"><path d="M13 39q-7 8 1 12t2 12" stroke-width="3" stroke-opacity=".16"/><path d="M13 39q-7 8 1 12t2 12" pathLength="100" stroke="#8FC2E1" stroke-width="1.4"/><path class="pet-reward-motion pet-bolt-branch" d="m16 51 5 3-1 5" pathLength="100" stroke-width=".7"/></g>
+      <g class="pet-reward-motion pet-bolt"><path d="M99 66q-8 8-1 13t1 12" stroke-width="3" stroke-opacity=".16"/><path d="M99 66q-8 8-1 13t1 12" pathLength="100" stroke="#8FC2E1" stroke-width="1.4"/><path class="pet-reward-motion pet-bolt-branch" d="m95 86-5 1-2 4" pathLength="100" stroke-width=".7"/></g>
       <path class="pet-reward-motion pet-energy-stream" d="M22 99q34 16 68 0" stroke="#83BCE5" stroke-width=".8" pathLength="100"/>
     </g>
     <g class="growth-aura" fill="none">
-      <path class="pet-reward-motion pet-aurora-veil" d="M18 95Q27 58 35 87Q49 71 59 90Q74 60 83 90Q91 75 96 96Q57 104 18 95Z" fill="#83CBBB" opacity=".14"/>
-      <path class="pet-reward-motion pet-aurora-ribbon" d="M24 95Q29 69 39 92Q55 79 66 94Q80 73 89 97" stroke="#C3B4E9" stroke-width="2.8" stroke-opacity=".18"/>
+      <path class="pet-reward-motion pet-aurora-veil" d="M18 95Q27 58 35 87Q49 71 59 90Q74 60 83 90Q91 75 96 96Q57 104 18 95Z" fill="url(#pet-aurora-silk)" opacity=".24"/>
+      <path class="pet-reward-motion pet-aurora-ribbon" d="M24 95Q29 69 39 92Q55 79 66 94Q80 73 89 97" stroke="url(#pet-aurora-silk)" stroke-width="3.6" stroke-opacity=".35"/>
       <ellipse class="pet-reward-motion pet-aurora-ripple" cx="56" cy="99" rx="39" ry="7" stroke="#BAA9DF" stroke-width="1.1"/>
       <ellipse class="pet-reward-motion pet-aurora-ripple" cx="56" cy="99" rx="39" ry="7" stroke="#8FDAC5" stroke-width=".7"/>
       <ellipse class="pet-reward-motion pet-aurora-ripple" cx="56" cy="99" rx="39" ry="7" stroke="#C9E2F4" stroke-width=".5"/>
@@ -32179,19 +32229,25 @@ document.getElementById('task-center-list').addEventListener('click', async even
     host.classList.add('companion-avatar');
     host.innerHTML = art;
     if (host.classList.contains('preloader-companion')) {
-      const torso = host.querySelector('.companion-torso');
-      const arm = host.querySelector('.companion-wave');
       host.classList.add('introducing');
-      torso.appendChild(arm);
       startup.dataset.introUntil = String(performance.now() + 1850);
-      // Let the greeting arm stay in front until the character turns to walk.
+      // Greet with the free wing; the letter and holding wing stay in one rig.
       setTimeout(() => {
         if (!host.isConnected) return;
         host.classList.remove('introducing');
-        torso.insertBefore(arm, torso.firstChild);
       }, 1500);
     }
   });
+  // New conversations clone the welcome template after initial artwork setup.
+  // Observe only transcript children, never the streamed message subtree.
+  new MutationObserver(() => {
+    const host = document.querySelector('.assistant-welcome-portrait');
+    if (host && !host.querySelector('.mail-companion')) {
+      host.classList.add('companion-avatar');
+      host.innerHTML = art;
+    }
+    document.dispatchEvent(new Event('mailai:assistant-portrait'));
+  }).observe(document.getElementById('assistant-messages'), {childList:true});
   const root = document.getElementById('mail-assistant');
   const orb = document.getElementById('assistant-orb');
   // Each actual model request owns its finish callback. Overlapping requests
@@ -32295,29 +32351,280 @@ document.getElementById('task-center-list').addEventListener('click', async even
 })();
 
 ;
+/* ---- companion-position.js ---- */
+/* Free placement for the floating pet; save once on release, never per frame. */
+(() => {
+  const root=document.getElementById('mail-assistant'),orb=document.getElementById('assistant-orb');
+  if(!root || !orb)return;
+  const key='mailai-companion-position-v1';
+  let preferred=null,drag=null,suppressClick=false,settleTimer=0,snapAnimations=[],releaseAnimations=[],releaseTimer=0;
+  const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+  const contact=document.createElement('span');contact.className='companion-edge-contact';contact.setAttribute('aria-hidden','true');root.append(contact);
+  const poseNodes=[...orb.querySelectorAll('.companion-facing,.companion-dock-free,.companion-dock-carry,.companion-dock-tail')];
+  const stopSnap=()=>{
+    clearTimeout(settleTimer);snapAnimations.forEach(a=>a.cancel());snapAnimations=[];
+    root.classList.remove('companion-snapping');
+  };
+  const stopRelease=()=>{
+    clearTimeout(releaseTimer);releaseAnimations.forEach(a=>a.cancel());releaseAnimations=[];
+    root.classList.remove('companion-releasing');
+  };
+  const canAnimate=()=>!reduced.matches && !document.body.classList.contains('companion-still');
+  const undock=()=>{
+    const edge=root.dataset.petDock;
+    const from=poseNodes.map(n=>getComputedStyle(n).transform);
+    stopSnap();stopRelease();root.classList.add('companion-dock-measuring');
+    delete root.dataset.petDock;document.body.classList.add('companion-dragging');
+    const to=poseNodes.map(n=>getComputedStyle(n).transform);
+    root.classList.remove('companion-dock-measuring');
+    if(!edge || !canAnimate())return;
+    root.classList.add('companion-releasing');
+    poseNodes.forEach((n,i)=>{
+      const body=n.classList.contains('companion-facing');
+      // The shoulder releases first. The torso follows a beat later, while
+      // root placement continues to track the pointer without spring lag.
+      const start=edge==='top' && n.classList.contains('companion-dock-free')?'rotate(105deg)':from[i];
+      releaseAnimations.push(n.animate([
+        {transform:start,offset:0},{transform:start,offset:body?.16:0.04,easing:'cubic-bezier(.2,.65,.3,1)'},
+        {transform:to[i],offset:body?1:.8},{transform:to[i],offset:1}
+      ],{duration:380}));
+    });
+    if(edge==='top') {
+      const grip=orb.querySelector('.companion-edge-grip'),wing=orb.querySelector('.companion-rest-wing');
+      // Counter the free-wing rotation at the first frame, then uncurl and
+      // blend into its resting silhouette. Both remain rooted at the shoulder.
+      releaseAnimations.push(grip.animate([
+        {opacity:1,transform:'rotate(-105deg)'},{opacity:0,transform:'rotate(-65deg)'}
+      ],{duration:160}));
+      releaseAnimations.push(wing.animate([{opacity:0},{opacity:1}],{duration:180}));
+    }
+    releaseTimer=setTimeout(stopRelease,400);
+  };
+  const contactPoint=()=>{
+    const fish=document.body.dataset.petStyle==='ranger',edge=root.dataset.petDock;
+    let selector='.companion-facing',x=56,y=101.5;
+    if(edge==='left') {selector='.companion-arm-left';x=fish?17:12;y=fish?77:79;}
+    if(edge==='right') {selector=fish?'.evolution-fish-body':'.companion-torso';x=fish?91:96;y=fish?66:65;}
+    if(edge==='bottom' && fish) {selector='.evolution-fish-body';y=97;}
+    if(edge==='top') {selector='.companion-arm-left';x=9;y=41;}
+    return new DOMPoint(x,y).matrixTransform(orb.querySelector(selector).getScreenCTM());
+  };
+  const edges=['left','right','top','bottom'];
+  const valid=value=>value?.version===1 && Number.isFinite(value.x) && Number.isFinite(value.y) &&
+    value.x>=0 && value.x<=1 && value.y>=0 && value.y<=1 && (!value.dock || edges.includes(value.dock));
+  try { const value=JSON.parse(localStorage.getItem(key));if(valid(value))preferred=value; } catch (_) {}
+  const geometry=()=>{
+    const scale=parseFloat(getComputedStyle(document.body).zoom)||1;
+    const box=orb.getBoundingClientRect(),margin=16;
+    return {scale,box,minX:margin,minY:margin,
+      spanX:Math.max(0,innerWidth-box.width-margin*2),spanY:Math.max(0,innerHeight-box.height-margin*2)};
+  };
+  const place=(x,y,g=geometry())=>{
+    // While pulling away from an edge, keep the grabbed point under the mouse
+    // instead of jumping immediately to the normal 16 px free-placement margin.
+    x=Math.max(drag?-g.box.width*.5:g.minX,Math.min(drag?innerWidth-g.box.width*.5:g.minX+g.spanX,x));
+    y=Math.max(drag?-g.box.height*.5:g.minY,Math.min(drag?innerHeight-g.box.height*.5:g.minY+g.spanY,y));
+    root.style.left=`${x/g.scale}px`;root.style.top=`${y/g.scale}px`;
+    root.style.right='auto';root.style.bottom='auto';
+    root.dataset.petEdgeX=x+g.box.width/2<innerWidth/2?'left':'right';
+    root.dataset.petEdgeY=y<120?'top':'bottom';
+    return {version:1,x:g.spanX?Math.max(0,Math.min(1,(x-g.minX)/g.spanX)):0,y:g.spanY?Math.max(0,Math.min(1,(y-g.minY)/g.spanY)):0};
+  };
+  const restore=(animate=false)=>{
+    const from=orb.getBoundingClientRect();
+    const fromPoses=poseNodes.map(n=>getComputedStyle(n).transform);
+    const wingNodes=[orb.querySelector('.companion-edge-grip'),orb.querySelector('.companion-rest-wing')];
+    const fromWings=wingNodes.map(n=>getComputedStyle(n).opacity);
+    stopSnap();if(!animate || preferred?.dock)stopRelease();root.classList.add('companion-dock-measuring');
+    if(preferred) {
+      const g=geometry(),x=preferred.dock==='left'?0:preferred.dock==='right'?1:preferred.x;
+      const y=preferred.dock==='top'?0:preferred.dock==='bottom'?1:preferred.y;
+      place(g.minX+x*g.spanX,g.minY+y*g.spanY,g);
+      if(preferred.dock) {
+        root.dataset.petDock=preferred.dock;
+        const point=contactPoint(),box=orb.getBoundingClientRect(),edge=preferred.dock;
+        // Align actual anatomy with the viewport, not the transparent SVG or
+        // button box. A small amount of transparent box may sit offscreen.
+        let dx=edge==='left'?.75-point.x:edge==='right'?innerWidth-.75-point.x:0;
+        if(edge==='top') {
+          // Leaning moves the head sideways. Preserve its full silhouette
+          // near either corner without changing the saved preferred location.
+          const head=orb.querySelector('.growth-body').getBoundingClientRect();
+          if(head.left<6)dx=6-head.left;
+          else if(head.right>innerWidth-6)dx=innerWidth-6-head.right;
+        }
+        const dy=edge==='top'?.75-point.y:edge==='bottom'?innerHeight-.75-point.y:0;
+        root.style.left=`${(box.left+dx)/g.scale}px`;root.style.top=`${(box.top+dy)/g.scale}px`;
+        const touch=contactPoint(),vertical=edge==='left'||edge==='right';
+        contact.style.width=`${(vertical?2:24)/g.scale}px`;contact.style.height=`${(vertical?20:2)/g.scale}px`;
+        contact.style.left=`${(vertical?(edge==='left'?0:innerWidth-2):touch.x-12)/g.scale}px`;
+        contact.style.top=`${(vertical?touch.y-10:(edge==='top'?0:innerHeight-2))/g.scale}px`;
+      } else delete root.dataset.petDock;
+    } else {
+      for(const name of ['left','top','right','bottom'])root.style.removeProperty(name);
+      delete root.dataset.petEdgeX;delete root.dataset.petEdgeY;delete root.dataset.petDock;
+    }
+    const to=orb.getBoundingClientRect(),toPoses=poseNodes.map(n=>getComputedStyle(n).transform);
+    root.classList.remove('companion-dock-measuring');
+    if(animate && preferred?.dock && !reduced.matches && !document.body.classList.contains('companion-still')) {
+      const scale=geometry().scale,edge=preferred.dock;
+      const recoilX=edge==='left'?1:edge==='right'?-1:0,recoilY=edge==='top'?1:edge==='bottom'?-1:0;
+      const position=(x,y)=>({left:`${x/scale}px`,top:`${y/scale}px`});
+      root.classList.add('companion-snapping');
+      snapAnimations.push(root.animate([
+        {...position(from.x,from.y),offset:0,easing:'cubic-bezier(.25,.7,.3,1)'},
+        {...position(to.x,to.y),offset:.68,easing:'ease-out'},
+        {...position(to.x+recoilX,to.y+recoilY),offset:.82,easing:'ease-in-out'},
+        {...position(to.x,to.y),offset:1}
+      ],{duration:440}));
+      poseNodes.forEach((n,i)=>snapAnimations.push(n.animate([
+        {transform:fromPoses[i],offset:0,easing:'cubic-bezier(.25,.7,.3,1)'},
+        {transform:toPoses[i],offset:.58},{transform:toPoses[i],offset:1}
+      ],{duration:440})));
+      wingNodes.forEach((n,i)=>snapAnimations.push(n.animate([{opacity:fromWings[i]},{opacity:getComputedStyle(n).opacity,offset:.58},{opacity:getComputedStyle(n).opacity}],{duration:440})));
+      snapAnimations.push(contact.animate([{opacity:0,offset:0},{opacity:0,offset:.6},{opacity:.28,offset:.8},{opacity:.28,offset:1}],{duration:440}));
+      settleTimer=setTimeout(stopSnap,460);
+    }
+  };
+  const finish=commit=>{
+    if(!drag)return;
+    const previous=drag;drag=null;
+    document.body.classList.remove('companion-dragging');
+    if(orb.hasPointerCapture(previous.id))orb.releasePointerCapture(previous.id);
+    if(!previous.moved)return;
+    suppressClick=true;
+    if(commit) {
+      const g=geometry(),position={...previous.position};
+      const distances=[position.x*g.spanX,(1-position.x)*g.spanX,position.y*g.spanY,(1-position.y)*g.spanY];
+      const nearest=Math.min(...distances);
+      if(nearest<=32) {
+        position.dock=edges[distances.indexOf(nearest)];
+        if(position.dock==='left')position.x=0;
+        if(position.dock==='right')position.x=1;
+        if(position.dock==='top')position.y=0;
+        if(position.dock==='bottom')position.y=1;
+      }
+      try { localStorage.setItem(key,JSON.stringify(position));preferred=position; }
+      catch (_) { restore();return; } // The local preference adapter reports disk errors.
+      restore(true);
+    } else restore();
+  };
+  orb.addEventListener('pointerdown',event=>{
+    if(event.button!==0 || !event.isPrimary || drag || document.body.classList.contains('assistant-visible'))return;
+    suppressClick=false;
+    const box=orb.getBoundingClientRect();
+    if(snapAnimations.length) {
+      const scale=geometry().scale;stopSnap();
+      root.style.left=`${box.left/scale}px`;root.style.top=`${box.top/scale}px`;
+    }
+    drag={id:event.pointerId,x:event.clientX,y:event.clientY,left:box.left,top:box.top,moved:false};
+    orb.setPointerCapture(event.pointerId);
+  });
+  orb.addEventListener('pointermove',event=>{
+    if(!drag || event.pointerId!==drag.id)return;
+    const dx=event.clientX-drag.x,dy=event.clientY-drag.y;
+    if(!drag.moved && Math.hypot(dx,dy)<5)return;
+    event.preventDefault();
+    if(!drag.moved) {
+      drag.moved=true;undock();
+    }
+    drag.position=place(drag.left+dx,drag.top+dy);
+  });
+  orb.addEventListener('pointerup',event=>{if(event.pointerId===drag?.id)finish(true);});
+  orb.addEventListener('pointercancel',event=>{if(event.pointerId===drag?.id)finish(false);});
+  orb.addEventListener('lostpointercapture',event=>{if(event.pointerId===drag?.id)finish(false);});
+  orb.addEventListener('dragstart',event=>event.preventDefault());
+  // Capture phase precedes the existing click-to-open handler. A drag never
+  // opens the assistant, while mouse clicks and keyboard activation still do.
+  orb.addEventListener('click',event=>{
+    if(suppressClick && event.detail!==0) {event.preventDefault();event.stopImmediatePropagation();suppressClick=false;}
+  },true);
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape' && drag) {event.preventDefault();event.stopPropagation();finish(false);}
+  },true);
+  window.addEventListener('blur',()=>{finish(false);if(snapAnimations.length || releaseAnimations.length)restore();});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){finish(false);if(snapAnimations.length || releaseAnimations.length)restore();}});
+  document.addEventListener('mailai:foreground-changed',event=>{if(event.detail?.visible===false){finish(false);if(snapAnimations.length || releaseAnimations.length)restore();}});
+  window.addEventListener('resize',()=>{finish(false);restore();});
+  // A font-scale change updates CSS zoom without a window resize. The button
+  // observer adjusts placement only when its rendered size changes.
+  new ResizeObserver(()=>{if(!drag)restore();}).observe(orb);
+  new MutationObserver(()=>{if(!drag)restore();}).observe(document.body,{attributes:true,attributeFilter:['style']});
+  new MutationObserver(()=>{if(!drag)restore();}).observe(document.body,{attributes:true,attributeFilter:['data-pet-style','data-pet-stage']});
+  reduced.addEventListener('change',()=>{if(reduced.matches && (snapAnimations.length || releaseAnimations.length))restore();});
+  restore();
+})();
+
+;
 /* ---- companion-motion.js ---- */
 /* Brief reactions and sparse ambient gestures, suspended outside the foreground. */
 (() => {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const root = document.getElementById('mail-assistant');
   const orb = document.getElementById('assistant-orb');
-  const names = ['figure','torso','head','foot-left','foot-right','arm-left','wave','leaves','bag','shadow'];
+  const names = ['figure','heading','look','torso','head','foot-left','foot-right','arm-left','carry','leaves','shadow','tail','flight-left','flight-right'];
   // x, y, rotation, horizontal scale, vertical scale, in SVG coordinates.
   const neutral = [0,0,0,1,1];
   const pose = (x=0,y=0,r=0,sx=1,sy=1) => [x,y,r,sx,sy];
   const profiles = {
-    nature: {micro:['breathe','tilt'],gestures:['peek','stretch','think'],reactions:{}},
-    ranger: {micro:['nod','alert'],gestures:['survey','ready','step'],
-      reactions:{peek:'survey',greet:'salute',work:'rangerWork',happy:'victory'}},
+    nature: {micro:['breathe','tilt'],gestures:['peek','stretch','step'],reactions:{}},
+    ranger: {micro:['nod','alert'],gestures:['survey','ready','swim'],
+      reactions:{peek:'survey',greet:'finWave',work:'rangerWork',happy:'bubbleJoy'}},
   };
   const style = () => Object.hasOwn(profiles,document.body.dataset.petStyle) ? document.body.dataset.petStyle : 'nature';
   const clips = {
+    dispatch: {duration:2100,frames:[
+      [0,{}], [.2,{torso:pose(0,-1),head:pose(0,2,5),wave:pose(-2,0,-24)}],
+      [.42,{head:pose(2,1,3),wave:pose(-3,-1,-38),bag:pose(0,-2,-12)}],
+      [.65,{head:pose(0,-2,-3),wave:pose(0,-3,-68),'arm-left':pose(0,0,10)}],
+      [.8,{wave:pose(0,-3,-68),torso:pose(0,-1)}], [1,{}],
+    ]},
+    launch: {duration:2400,frames:[
+      [0,{}], [.16,{figure:pose(0,2,0,1.02,.96),head:pose(0,1,3)}],
+      [.36,{figure:pose(0,-8),wave:pose(0,-1,-25),'arm-left':pose(0,-1,25),'foot-left':pose(-1,-2,-8),'foot-right':pose(1,-2,8),shadow:pose(0,0,0,.65,.75)}],
+      [.62,{figure:pose(0,-8),head:pose(2,-1,4),wave:pose(0,-1,-35),'arm-left':pose(0,-1,35),shadow:pose(0,0,0,.65,.75)}],
+      [.82,{figure:pose(0,2,0,1.04,.94),head:pose(0,1,2)}], [1,{}],
+    ]},
+    guard: {duration:1900,frames:[
+      [0,{}], [.2,{torso:pose(0,-1),head:pose(0,-1,-2),wave:pose(-3,-1,-40),'arm-left':pose(2,0,35)}],
+      [.46,{torso:pose(0,-1),head:pose(0,2,5),wave:pose(-3,-1,-40),'arm-left':pose(2,0,35)}],
+      [.7,{head:pose(0,-1,-2),wave:pose(-2,-3,-50)}], [1,{}],
+    ]},
+    beacon: {duration:2500,frames:[
+      [0,{}], [.18,{figure:pose(0,1,-3),wave:pose(-2,0,-20)}],
+      [.38,{figure:pose(0,-4,-4),wave:pose(0,-4,-85),'arm-left':pose(0,0,18),head:pose(0,-2,-5),shadow:pose(0,0,0,.8,.9)}],
+      [.64,{figure:pose(0,-4,-4),wave:pose(0,-4,-85),'arm-left':pose(0,0,18),head:pose(0,-2,-5),shadow:pose(0,0,0,.8,.9)}],
+      [.8,{figure:pose(0,1,0,1.02,.98),wave:pose(-1,-2,-42)}], [1,{}],
+    ]},
+    deliver: {duration:2200,frames:[
+      [0,{}], [.18,{figure:pose(0,2,-4,1.04,.94),head:pose(-2,1,-8)}],
+      [.4,{figure:pose(0,-4,4),head:pose(2,-1,6),wave:pose(-2,-3,-60),'arm-left':pose(0,-2,28),bag:pose(0,-4,-16)}],
+      [.62,{figure:pose(0,-2,2),wave:pose(-2,-3,-38),head:pose(1,0,-4)}],
+      [.8,{figure:pose(0,1,0,1.04,.96),wave:pose(0,0,-18)}], [1,{}],
+    ]},
+    glide: {duration:2600,frames:[
+      [0,{}], [.16,{figure:pose(0,3,0,1.06,.92)}],
+      [.35,{figure:pose(-5,-7,-10),'flight-left':pose(0,0,-16),'flight-right':pose(0,0,16),'arm-left':pose(0,0,12),'foot-left':pose(-1,-2,-18),'foot-right':pose(1,-2,16),shadow:pose(0,0,0,.72,.8)}],
+      [.61,{figure:pose(5,-6,10),head:pose(1,-1,4),'flight-left':pose(0,0,8),'flight-right':pose(0,0,-8),'arm-left':pose(0,0,8),shadow:pose(0,0,0,.76,.8)}],
+      [.82,{figure:pose(0,2,0,1.06,.93)}], [1,{}],
+    ]},
+    bow: {duration:2100,frames:[
+      [0,{}], [.2,{head:pose(0,-2,-3),wave:pose(-2,-2,-40)}],
+      [.46,{figure:pose(0,2,0,1.04,.95),head:pose(0,4,9),torso:pose(0,1,5),wave:pose(-3,0,-28)}],
+      [.66,{head:pose(0,4,9),torso:pose(0,1,5)}], [.84,{head:pose(0,-1,-3)}], [1,{}],
+    ]},
+    star: {duration:2700,frames:[
+      [0,{}], [.15,{figure:pose(0,3,-5,1.07,.91)}],
+      [.33,{figure:pose(-3,-7,-12),wave:pose(0,-2,-68),'arm-left':pose(0,-2,48),head:pose(-1,-2,-5),shadow:pose(0,0,0,.7,.8)}],
+      [.53,{figure:pose(3,-5,12),wave:pose(0,-2,-48),'arm-left':pose(0,-2,68),head:pose(1,-2,5)}],
+      [.7,{figure:pose(0,2,0,1.08,.92)}], [.85,{wave:pose(0,-1,-42),head:pose(0,-1,-4)}], [1,{}],
+    ]},
     nod: {duration:1400,frames:[
-      [0,{}], [.3,{head:pose(0,1.3,2),torso:pose(0,.3)}],
-      [.58,{head:pose(0,-.4,-1)}], [1,{}],
+      [0,{}], [.3,{head:pose(0,2.6,5),torso:pose(0,.8)}],
+      [.58,{head:pose(0,-1,-3),wave:pose(0,0,-8)}], [1,{}],
     ]},
     alert: {duration:1800,frames:[
-      [0,{}], [.3,{head:pose(1,-.5,2)}], [.62,{head:pose(-.7,-.3,-2)}], [1,{}],
+      [0,{}], [.3,{head:pose(2,-1,5),torso:pose(.5,0,2)}], [.62,{head:pose(-1.8,-.6,-5)}], [1,{}],
     ]},
     survey: {duration:2000,frames:[
       [0,{}], [.2,{head:pose(2,-1,4),torso:pose(.5,0,1)}],
@@ -32346,11 +32653,11 @@ document.getElementById('task-center-list').addEventListener('click', async even
       [.82,{wave:pose(0,0,-12)}], [1,{}],
     ]},
     breathe: {duration:1900,frames:[
-      [0,{}], [.45,{torso:pose(0,-.5,0,1.008,1.012),head:pose(0,-.7,-1)}], [1,{}],
+      [0,{}], [.45,{torso:pose(0,-1.4,0,1.025,1.035),head:pose(0,-1.6,-3),wave:pose(0,0,-9)}], [1,{}],
     ]},
     tilt: {duration:1800,frames:[
-      [0,{}], [.35,{head:pose(.5,-.5,3),torso:pose(0,0,1)}],
-      [.65,{head:pose(.5,-.5,3)}], [1,{}],
+      [0,{}], [.35,{head:pose(1.5,-1,8),torso:pose(0,0,3),wave:pose(0,0,-12)}],
+      [.65,{head:pose(1.5,-1,8)}], [1,{}],
     ]},
     work: {duration:1800,frames:[
       [0,{}], [.18,{torso:pose(0,1,-2),head:pose(0,1,-5),wave:pose(0,0,-12)}],
@@ -32364,14 +32671,6 @@ document.getElementById('task-center-list').addEventListener('click', async even
       [.5,{torso:pose(-2,0,-5),head:pose(-3,-1,-7)}],
       [.65,{head:pose(2,0,5),torso:pose(0,0,2)}],
       [.84,{head:pose(0,0,-2),torso:pose(0,0,-1)}], [1,{}],
-    ]},
-    step: {duration:1800,frames:[
-      [0,{}], [.12,{figure:pose(0,1,-2,1.03,.96),head:pose(-2,0,-4)}],
-      [.27,{figure:pose(-3,-2,-4),torso:pose(0,0,-3),'foot-left':pose(-2,-5,-20),'foot-right':pose(2,1,6),'arm-left':pose(0,0,-17),wave:pose(0,0,18)}],
-      [.4,{figure:pose(-4,1,0,1.04,.96),'foot-left':pose(-1,0,-3),'foot-right':pose(1,0,3)}],
-      [.58,{figure:pose(-1,-2,3),'foot-left':pose(-1,1,-5),'foot-right':pose(2,-5,20),'arm-left':pose(0,0,14),wave:pose(0,0,-15)}],
-      [.73,{figure:pose(1,1,1,1.025,.975),'foot-right':pose(1,0,3)}],
-      [.87,{figure:pose(0,-.5,-1)}], [1,{}],
     ]},
     stretch: {duration:2300,frames:[
       [0,{}], [.16,{figure:pose(0,2,0,1.05,.94),head:pose(0,1,2)}],
@@ -32404,19 +32703,110 @@ document.getElementById('task-center-list').addEventListener('click', async even
       [.87,{figure:pose(0,-.5,.5)}], [1,{}],
     ]},
   };
+  // Fish locomotion and the two final forms use the same bounded scheduler.
+  Object.assign(clips, {
+    finWave:{duration:1700,frames:[
+      [0,{}],[.2,{figure:pose(0,-2,-3),wave:pose(0,-1,-28),tail:pose(0,0,12)}],
+      [.4,{figure:pose(0,-2,-3),wave:pose(0,0,-8),tail:pose(0,0,-9)}],
+      [.6,{figure:pose(0,-1,2),wave:pose(0,-1,-35),tail:pose(0,0,12)}],[1,{}],
+    ]},
+    bubbleJoy:{duration:1800,frames:[
+      [0,{}],[.18,{figure:pose(0,2,0,1.04,.95)}],
+      [.4,{figure:pose(0,-6,-5),wave:pose(0,0,-30),'arm-left':pose(0,0,30),tail:pose(0,0,18),shadow:pose(0,0,0,.75,.8)}],
+      [.65,{figure:pose(0,-3,5),tail:pose(0,0,-14)}],[1,{}],
+    ]},
+    dive:{duration:2500,frames:[
+      [0,{}],[.2,{figure:pose(-3,2,-10),tail:pose(0,0,18)}],
+      [.43,{figure:pose(0,-7,8),tail:pose(0,0,-15),'flight-left':pose(0,0,-10),'flight-right':pose(0,0,10),shadow:pose(0,0,0,.7,.8)}],
+      [.68,{figure:pose(4,-3,5),tail:pose(0,0,12),'flight-left':pose(0,0,-6),'flight-right':pose(0,0,6)}],[1,{}],
+    ]},
+    soar:{duration:2600,frames:[
+      [0,{}],[.18,{figure:pose(0,2,0,1.03,.96)}],
+      [.38,{figure:pose(-4,-6,-6),'flight-left':pose(0,0,-16),'flight-right':pose(0,0,16),tail:pose(0,0,-10),shadow:pose(0,0,0,.7,.8)}],
+      [.65,{figure:pose(4,-6,6),'flight-left':pose(0,0,-8),'flight-right':pose(0,0,8),tail:pose(0,0,10)}],[1,{}],
+    ]},
+    phoenix:{duration:2900,frames:[
+      [0,{}],[.16,{figure:pose(0,3,0,1.05,.94)}],
+      [.34,{figure:pose(-2,-7,-4),'flight-left':pose(0,0,-18),'flight-right':pose(0,0,18),'arm-left':pose(0,0,12),wave:pose(0,0,-6),tail:pose(0,0,-12),leaves:pose(0,0,-7),shadow:pose(0,0,0,.65,.8)}],
+      [.5,{figure:pose(0,-7,0),'flight-left':pose(0,0,12),'flight-right':pose(0,0,-12),tail:pose(0,0,7)}],
+      [.67,{figure:pose(2,-6,4),'flight-left':pose(0,0,-16),'flight-right':pose(0,0,16),tail:pose(0,0,12)}],
+      [.85,{figure:pose(0,1,0,1.03,.97),'arm-left':pose(0,0,20),wave:pose(0,0,-20)}],[1,{}],
+    ]},
+    kunpeng:{duration:3000,frames:[
+      [0,{}],[.17,{figure:pose(-2,2,-3,1.03,.97),tail:pose(0,0,15)}],
+      [.35,{figure:pose(-3,-7,-6),'flight-left':pose(0,0,-18),'flight-right':pose(0,0,18),wave:pose(0,0,-20),tail:pose(0,0,-12),shadow:pose(0,0,0,.65,.8)}],
+      [.53,{figure:pose(0,-8,0),'flight-left':pose(0,0,-10),'flight-right':pose(0,0,10),tail:pose(0,0,12)}],
+      [.72,{figure:pose(4,-5,6),'flight-left':pose(0,0,-18),'flight-right':pose(0,0,18),tail:pose(0,0,-10)}],
+      [.87,{figure:pose(0,1,0,1.03,.97)}],[1,{}],
+    ]},
+  });
+  // Compile smooth travel curves once. Playback stays browser-driven: no frame
+  // callback or repeated easing that brakes at every intermediate keyframe.
+  const smooth = t => { t=Math.max(0,Math.min(1,t)); return t*t*t*(t*(t*6-15)+10); };
+  const headingAt = t => 1-2*smooth((t-.30)/.14)+2*smooth((t-.72)/.14);
+  // Body weight follows the look, with the tail projection settling last.
+  // A rigid shoulder/hip turn carries the chest, wings and letter together.
+  const turnWeight = t => {
+    for(const [start,direction] of [[.285,1],[.705,-1]]) {
+      const u=(t-start)/.15;
+      if(u>0 && u<1)return direction*Math.sin(Math.PI*u)**2;
+    }
+    return 0;
+  };
+  const travelFrames = swimming => Array.from({length:101},(_,i)=>{
+    const t=i/100;
+    const legs=[[0,.30,0,-6,1],[.44,.72,-6,6,1],[.86,1,6,0,.5]];
+    const leg=legs.find(([a,b])=>t>=a && t<=b);
+    let x=t<.44?-6:6, y=0, lean=0, swing=0, left=neutral, right=neutral, tail=0;
+    if(leg) {
+      const [a,b,from,to,cycles]=leg, u=(t-a)/(b-a), direction=Math.sign(to-from);
+      const envelope=Math.sin(Math.PI*u)**2, phase=u*Math.PI*2*cycles;
+      x=from+(to-from)*smooth(u);
+      if(swimming) {
+        y=-1.7*envelope*envelope;
+        lean=direction*2.2*envelope;
+        tail=8*Math.sin(phase-.45)*envelope;
+        swing=6*Math.sin(phase)*envelope;
+      } else {
+        const stride=Math.sin(phase), lift=2.6*envelope;
+        y=-.9*Math.sin(phase)**2*envelope;
+        lean=direction*2*envelope;
+        left=pose(-direction*1.5*Math.cos(phase)*envelope,-lift*Math.max(0,stride)**2,-7*stride*envelope);
+        right=pose(direction*1.5*Math.cos(phase)*envelope,-lift*Math.max(0,-stride)**2,7*stride*envelope);
+        swing=-7*stride*envelope;
+      }
+    }
+    const heading=headingAt(t), look=headingAt(Math.min(1,t+.035));
+    const weight=turnWeight(t), bodyHeading=headingAt(Math.min(1,t+.015));
+    const active=smooth(t/.08)*(1-smooth((t-.92)/.08));
+    const roll=(swimming?3.8:4.8)*weight-1.1*bodyHeading*active;
+    // Pivot at the hips so the shoulder line, chest and attached objects follow
+    // the new direction without flattening the body or sliding the shoulders.
+    const torso=pose(.45*weight-.35*bodyHeading*active,
+      (swimming?-.65:.45)*Math.abs(weight),roll);
+    if(!swimming && !leg) {
+      // Keep the supporting foot planted; the other heel follows the weight.
+      left=pose(0,-.7*Math.max(0,weight),-2*Math.max(0,weight));
+      right=pose(0,.7*Math.min(0,weight),-2*Math.min(0,weight));
+    }
+    return [t,{heading,look,figure:pose(x,y,lean),torso,
+      'foot-left':left,'foot-right':right,
+      'arm-left':pose(0,0,swing-roll*.45),tail:pose(0,0,tail)}];
+  });
+  clips.step={duration:3200,directional:true,frames:travelFrames(false)};
+  clips.march={duration:3000,directional:true,frames:clips.step.frames};
+  clips.swim={duration:3600,directional:true,frames:travelFrames(true)};
   // The startup mascot has its own strictly horizontal hand-off. Excluding it
   // here prevents the ambient character clips from adding vertical movement.
-  const rigs = [...document.querySelectorAll('.mail-companion')].filter(svg => !svg.closest('.app-preloader')).map(svg => ({
-    svg, parts:Object.fromEntries(names.map(name=>[name,svg.querySelector(`.companion-${name}`)])),
-    animations:[],timer:0,mode:'',style:'',intersecting:false,lastMicro:'',lastGesture:'',
-  }));
-  const enabled = () => !document.hidden && !reduced.matches && !document.body.classList.contains('companion-still') && !document.body.classList.contains('companion-paused');
-  const visible = rig => rig.intersecting &&
+  const rigs = [];
+  const enabled = () => !document.hidden && !reduced.matches && !document.body.classList.contains('companion-still') && !document.body.classList.contains('companion-paused') && !document.body.classList.contains('companion-dragging');
+  const visible = rig => rig.svg.isConnected && rig.intersecting &&
+    (!document.querySelector('dialog[open]') || !!rig.svg.closest('dialog[open]')) &&
     !(orb.contains(rig.svg) && document.body.classList.contains('assistant-visible')) &&
     rig.svg.getClientRects().length && getComputedStyle(rig.svg).visibility !== 'hidden';
   let awakeUntil = 0, awakeTimer = 0, ambientTimer = 0;
   const randomDelay = (min,max) => min + Math.random() * (max-min);
-  let gestureAt = performance.now() + randomDelay(40000,70000);
+  let gestureAt = performance.now() + randomDelay(22000,34000);
   let activityAt = performance.now();
   // Reading, typing and scrolling postpone larger gestures, without a per-frame loop.
   for (const type of ['pointerdown','keydown','input','scroll']) {
@@ -32427,14 +32817,23 @@ document.getElementById('task-center-list').addEventListener('click', async even
     return choices[Math.floor(Math.random()*choices.length)];
   };
   const stop = rig => {
+    // Preserve continuous turn progress on interruption, including a partly
+    // occluded tail and a face already looking toward the next direction.
+    for(const part of ['heading','look']) {
+      const node=rig.parts[part], value=getComputedStyle(node).transform;
+      node.style.transform=value;
+    }
     clearTimeout(rig.timer);
     rig.animations.forEach(anim=>anim.cancel()); rig.animations=[];
     delete rig.svg.dataset.motionKind;
     delete rig.svg.dataset.motionClip;
+    delete rig.svg.dataset.expression;
     if (rig.svg.dataset.motionActive !== 'false') rig.svg.dataset.motionActive = 'false';
   };
   const transform = p => `translate(${p[0]}px,${p[1]}px) rotate(${p[2]}deg) scale(${p[3]},${p[4]})`;
   const play = (rig,name) => {
+    // A direct reaction may share a task with a style change; observe its new route now.
+    rig.style=style();
     const start=Object.fromEntries(names.map(part=>[part,getComputedStyle(rig.parts[part]).transform]));
     stop(rig);
     if(!enabled() || !visible(rig)) return;
@@ -32443,23 +32842,79 @@ document.getElementById('task-center-list').addEventListener('click', async even
     rig.svg.dataset.motionClip = clipName;
     rig.svg.dataset.motionActive = 'true';
     const clip=clips[clipName];
+    const finStage=Math.max(1,Math.min(7,Number(rig.stage || document.body.dataset.petStage || 1)));
+    rig.svg.dataset.expression = ['greet','salute','happy','victory','deliver','glide','star','bow','beacon','finWave','bubbleJoy','phoenix','kunpeng','soar'].includes(clipName) ? 'joy' : ['work','rangerWork','think','dispatch','guard'].includes(clipName) ? 'focus' : 'curious';
     for(const part of names) {
+      if(getComputedStyle(rig.parts[part]).display==='none') continue;
+      if(['heading','look'].includes(part) && !clip.directional) continue;
+      if(part.startsWith('flight-') && Number(rig.stage || document.body.dataset.petStage || 1)<4) continue;
       // Accessories lag the body's turn and rebound after it settles.
       const keys=clip.frames.map(([offset,frame],index)=>{
         let value=frame[part] || neutral;
-        if(part==='bag' || part==='leaves') {
+        if(part==='heading') value=pose(0,0,0,frame.heading,1);
+        if(part==='look') value=pose(-2.8*frame.look,0,0);
+        if(clip.directional && part==='shadow') value=pose((frame.figure?.[0] || 0)*.7,0,0,1,1);
+        // The round body stays rigid; only the face nods inside its silhouette.
+        if(['figure','torso','head'].includes(part)) {
+          value=[...value];
+          value[3]=value[4]=Math.sqrt(value[3]*value[4]);
+          if(part==='head') {
+            value[0]=Math.max(-1.5,Math.min(1.5,value[0]));
+            value[1]=Math.max(-1.5,Math.min(1.5,value[1]));
+            value[2]=Math.max(-4,Math.min(4,value[2]));
+          }
+        }
+        // The free wing greets. The holding wing and letter are children of
+        // one shoulder rig, so interruption and settling cannot split the grip.
+        if(part==='arm-left' && !frame[part] && frame.wave) {
+          value=pose(0,frame.wave[1]*.35,Math.max(-28,Math.min(38,-frame.wave[2])));
+        }
+        if(part==='arm-left') {
+          // The free wing also pivots at its shoulder instead of sliding off it.
+          value=pose(0,0,Math.max(-28,Math.min(38,value[2])));
+          // Longer fins need a smaller stroke: the tip travels farther without
+          // making the shoulder jerk or pulling the front fin off the body.
+          if(rig.style==='ranger') value[2]*=1-(finStage-1)*.045;
+        }
+        if(part.startsWith('flight-') && rig.style==='ranger') {
+          const stroke=finStage===4 ? .62 : finStage===5 ? .78 : .9;
+          value=pose(0,0,value[2]*stroke);
+        }
+        if(part==='carry') {
+          // Never translate a shoulder away from the body. Small rotations lift
+          // the letter as a unit; the torso supplies travel, bounce and turns.
+          const angle=frame.bag ? frame.bag[2]*.45 : (frame.torso?.[2] || 0)*-.35;
+          value=pose(0,0,Math.max(-8,Math.min(5,angle)));
+        }
+        if((part==='leaves' || part==='tail') && !frame[part]) {
           const previous=clip.frames[Math.max(0,index-1)][1];
           const turn=(previous.figure?.[2] || 0)+(previous.torso?.[2] || 0);
-          value=index===clip.frames.length-1 ? neutral : pose(0,0,-turn*(part==='leaves'?1.8:1.4));
+          value=index===clip.frames.length-1 ? neutral : pose(0,0,-turn*(part==='leaves' ? .35 : .8));
         }
-        return {offset,transform:transform(value),easing:'cubic-bezier(.22,.65,.3,1)'};
+        if(part==='tail' && rig.style==='ranger') {
+          // A continuous tailstock stays buried in the body as the flukes sway.
+          // Translation or large whole-tail swings would expose the root seam.
+          value=pose(0,0,Math.max(-10,Math.min(10,value[2])));
+        }
+        return {offset,transform:transform(value),easing:clip.directional?'linear':'cubic-bezier(.22,.65,.3,1)'};
       });
       // Leave stationary parts alone; retain interrupted parts until they settle.
       if((start[part]==='none' || start[part]==='matrix(1, 0, 0, 1, 0, 0)') &&
         keys.every(key=>key.transform===transform(neutral))) continue;
-      // Preserve the actual pose when interrupted, avoiding snaps on hover/state changes.
+      // Blend an interrupted pose into the first 240 ms; preserving only the
+      // first dense sample would produce a visible one-frame orientation snap.
+      if(clip.directional) {
+        const initial=new DOMMatrixReadOnly(start[part]);
+        keys.forEach(key=>{
+          const amount=smooth(key.offset/.08);
+          if(amount>=1)return;
+          const target=new DOMMatrixReadOnly(key.transform);
+          key.transform=`matrix(${['a','b','c','d','e','f'].map(k=>initial[k]+(target[k]-initial[k])*amount).join(',')})`;
+        });
+      }
       keys[0].transform=start[part];
-      const anim=rig.parts[part].animate(keys,{duration:clip.duration,fill:'none',iterations:name==='work'?Infinity:1});
+      // Save orientation at the end before releasing its browser animation.
+      const anim=rig.parts[part].animate(keys,{duration:clip.duration,fill:['heading','look'].includes(part)?'forwards':'none',iterations:name==='work'?Infinity:1});
       rig.animations.push(anim);
     }
     if(rig.mode==='ambient') {
@@ -32474,11 +32929,13 @@ document.getElementById('task-center-list').addEventListener('click', async even
       if(rig.mode==='ambient') {
         stop(rig);rig.mode='off';refresh();
       } else {
-        rig.animations.forEach(anim=>anim.cancel());rig.animations=[];
+        // Keep the state priority until it expires, but release every animation.
+        stop(rig);
+        if(rig.mode==='manual') {rig.mode='off';refresh();}
       }
     },clip.duration+25);
   };
-  const idleRigs = () => enabled() ? rigs.filter(rig=>visible(rig) && rig.mode==='off') : [];
+  const idleRigs = () => enabled() ? rigs.filter(rig=>!rig.welcome && visible(rig) && rig.mode==='off') : [];
   const scheduleAmbient = () => {
     // One timer and one performing mascot. A foreground return starts a fresh wait.
     if(!idleRigs().length || rigs.some(rig=>rig.mode!=='off')) {
@@ -32488,27 +32945,37 @@ document.getElementById('task-center-list').addEventListener('click', async even
     ambientTimer=setTimeout(()=>{
       ambientTimer=0;
       const candidates=idleRigs();
-      const rig=candidates.find(item=>item.svg.closest('.compose-perch')) || candidates[0];
+      const rig=candidates.find(item=>item.svg.closest('.pet-hero-portrait,.compose-perch')) || candidates[0];
       if(!rig) return;
       const now=performance.now();
       // Keep the writing portrait subtle, and avoid large gestures during input.
       const large=now>=gestureAt && now-activityAt>=15000 && !rig.svg.closest('.compose-perch');
       const profile=profiles[style()];
       const name=large ? choose(profile.gestures,rig.lastGesture) : choose(profile.micro,rig.lastMicro);
-      if(large) {rig.lastGesture=name;gestureAt=now+randomDelay(40000,70000);}
+      if(large) {rig.lastGesture=name;gestureAt=now+randomDelay(22000,34000);}
       else rig.lastMicro=name;
       rig.mode='ambient';play(rig,name);
+      if(large) document.dispatchEvent(new CustomEvent('mailai:companion-idle',{detail:{svg:rig.svg}}));
     },randomDelay(8000,15000));
   };
   const refresh = () => {
     rigs.forEach(rig=>{
       const nextStyle=style(), changed=rig.style!==nextStyle;
       rig.style=nextStyle;
+      // The welcome portrait is event-driven: one greeting per opening, then
+      // no ambient timer, background work loop or shared wake reaction.
+      if(rig.welcomePending && (!enabled() || performance.now()>rig.welcomePending)) rig.welcomePending=0;
+      if(rig.welcomePending && visible(rig)) {
+        rig.welcomePending=0;rig.reactedAt=performance.now();
+        rig.mode='manual';play(rig,'greet');return;
+      }
       let mode='off';
       if(!enabled() || !visible(rig)) mode='off';
+      else if(rig.welcome) mode=rig.mode==='manual' && !changed ? 'manual' : 'off';
       else if(document.body.classList.contains('companion-working') || rig.svg.closest('.state-thinking,.compose-ai-panel.is-thinking')) mode='work';
       else if(rig.svg.closest('.companion-finished')) mode='happy';
       else if(performance.now() < awakeUntil) mode='peek';
+      else if(rig.mode==='manual' && !changed) mode='manual';
       else if(rig.mode==='ambient' && !changed) mode='ambient';
       if(mode===rig.mode && !changed) return;
       rig.mode=mode;
@@ -32524,19 +32991,54 @@ document.getElementById('task-center-list').addEventListener('click', async even
     awakeTimer = setTimeout(() => { awakeUntil = 0; refresh(); }, 3500);
     refresh();
   };
-  window.mailaiCompanionMotion = {wake};
+  const signature = (stage=Number(document.body.dataset.petStage)||1) =>
+    (style()==='ranger' ? ['finWave','swim','dispatch','bubbleJoy','dive','soar','kunpeng'] : ['greet','step','deliver','happy','glide','bow','phoenix'])[Math.max(0,Math.min(6,stage-1))];
+  const react = (name='greet', target) => {
+    if(!enabled()) return false;
+    const rig=rigs.find(item=>visible(item) && (!target || target.contains(item.svg)) && item.svg.closest('.pet-hero-portrait')) ||
+      rigs.find(item=>visible(item) && (!target || target.contains(item.svg)));
+    if(!rig || rig.mode==='work' || document.body.classList.contains('companion-working')) return false;
+    const clip=name==='signature' ? signature() : name;
+    if(!clips[clip]) return false;
+    awakeUntil=0;clearTimeout(awakeTimer);clearTimeout(ambientTimer);ambientTimer=0;
+    rig.mode='manual';play(rig,clip);return true;
+  };
+  // A single disposable fitting-room rig reuses the actual creature clips.
+  // It never joins ambient scheduling or changes the saved growth stage.
+  let previewRig=null;
+  const stopPreview=svg=>{
+    if(!previewRig || (svg && previewRig.svg!==svg))return;
+    stop(previewRig);
+    delete previewRig.svg.dataset.motionActive;
+    previewRig=null;
+  };
+  const preview=(svg,stage,name='signature')=>{
+    stopPreview();
+    if(!enabled() || !svg?.isConnected || svg.dataset.rewardVisible!=='true')return false;
+    const clip=name==='signature'?signature(stage):name==='travel'?(style()==='ranger'?'swim':'march'):name;
+    if(!clips[profiles[style()].reactions[clip] || clip])return false;
+    previewRig={svg,stage,parts:Object.fromEntries(names.map(part=>[part,svg.querySelector(`.companion-${part}`)])),animations:[],timer:0,mode:'preview',intersecting:true};
+    play(previewRig,clip);
+    const current=previewRig;
+    setTimeout(()=>{if(previewRig===current && current.animations.length===0)stopPreview();},clips[profiles[style()].reactions[clip] || clip].duration+40);
+    return true;
+  };
+  window.mailaiCompanionMotion = {wake,react,signature,preview,stopPreview,scan:()=>scan()};
   let greetingAt=-Infinity;
   const greet=event=>{
-    const rig=rigs.find(item=>item.svg.closest('.companion-art,.assistant-mini,.compose-perch')?.contains(event.target));
+    const rig=rigs.find(item=>item.svg.closest('#assistant-orb,.assistant-mini,.compose-perch,.assistant-welcome-portrait')?.contains(event.target));
+    if(rig?.welcome) {
+      if(!enabled() || !visible(rig) || rig.mode!=='off' || performance.now()-rig.reactedAt<3000) return;
+      rig.welcomePending=0;rig.reactedAt=performance.now();
+      rig.mode='manual';play(rig,style()==='ranger'?'nod':'tilt');return;
+    }
     if(!rig || !enabled() || !visible(rig) || rig.mode==='work' || rig.mode==='happy' || performance.now()-greetingAt<2200) return;
     greetingAt=performance.now();wake();play(rig,'greet');
   };
-  for (const rig of rigs) {
-    const host = rig.svg.closest('.companion-art,.assistant-mini,.compose-perch');
-    host?.addEventListener('pointerenter',greet);
-    host?.addEventListener('focusin',greet);
-    stop(rig);
-  }
+  // The artwork intentionally ignores pointer events. Listen on its actual
+  // button as well so a real mouse/keyboard greeting works, not just SVG events.
+  orb.addEventListener('pointerenter',greet);
+  orb.addEventListener('focusin',greet);
   // The launcher still occupies a rectangle when its opacity is zero. Combine
   // actual viewport intersection with the chat state before running any rig.
   const intersection = new IntersectionObserver(entries => {
@@ -32546,17 +33048,37 @@ document.getElementById('task-center-list').addEventListener('click', async even
     }
     refresh();
   });
-  rigs.forEach(rig=>intersection.observe(rig.svg));
+  function scan() {
+    for(let i=rigs.length-1;i>=0;i--) if(!rigs[i].svg.isConnected) {
+      stop(rigs[i]);intersection.unobserve(rigs[i].svg);rigs.splice(i,1);
+    }
+    document.querySelectorAll('.companion-art .mail-companion,.assistant-mini .mail-companion,.compose-perch .mail-companion,.pet-hero-portrait .mail-companion').forEach(svg=>{
+      if(svg.closest('.app-preloader') || rigs.some(rig=>rig.svg===svg)) return;
+      const rig={svg,parts:Object.fromEntries(names.map(name=>[name,svg.querySelector(`.companion-${name}`)])),animations:[],timer:0,mode:'off',style:'',intersecting:false,lastMicro:'',lastGesture:''};
+      rig.welcome=!!svg.closest('.assistant-welcome-portrait');
+      rig.reactedAt=-Infinity;
+      rig.welcomePending=rig.welcome && enabled() && document.body.classList.contains('assistant-visible') && !svg.closest('.secretary-show-briefing') ? performance.now()+2000 : 0;
+      rigs.push(rig);stop(rig);intersection.observe(svg);
+      const host=svg.closest('.companion-art,.assistant-mini,.compose-perch');
+      host?.addEventListener('pointerenter',greet);host?.addEventListener('focusin',greet);
+    });
+    refresh();
+  }
   let chatOpen = document.body.classList.contains('assistant-visible');
   const sync = () => {
     const open = document.body.classList.contains('assistant-visible');
     const opened = open && !chatOpen;
     chatOpen = open;
     if (!enabled()) {
+      stopPreview();
       clearTimeout(awakeTimer); awakeTimer = 0; awakeUntil = 0;
-      gestureAt=performance.now()+randomDelay(40000,70000);
+      gestureAt=performance.now()+randomDelay(22000,34000);
     }
-    if (opened) wake();
+    for(const rig of rigs) if(rig.welcome) {
+      if(!open || !enabled() || rig.svg.closest('.secretary-show-briefing')) rig.welcomePending=0;
+      else if(opened) rig.welcomePending=performance.now()+2000;
+    }
+    if (opened && !rigs.some(rig=>rig.welcome)) wake();
     refresh();
   };
   const observer=new MutationObserver(sync);
@@ -32567,7 +33089,156 @@ document.getElementById('task-center-list').addEventListener('click', async even
   document.addEventListener('visibilitychange',sync);
   document.addEventListener('mailai:foreground-changed',sync);
   window.addEventListener('resize',refresh);
+  document.addEventListener('mailai:companion-journal',scan);
+  document.addEventListener('mailai:assistant-portrait',scan);
+  scan();
   sync();
+})();
+
+;
+/* ---- companion-life.js ---- */
+/* Local personality: bounded reactions and opt-in, disposable audio. No polling. */
+(() => {
+  const t = key => mailaiT(`pet.life.${key}`) || MAILAI_UI_COPY[`pet.life.${key}`]?.[0] || '';
+  const ranger = () => document.body.dataset.petStyle === 'ranger';
+  const stored = (key, fallback) => { try { return localStorage.getItem(key) ?? fallback; } catch (_) { return fallback; } };
+  const soundKey = 'mailai-companion-sound', chatterKey = 'mailai-companion-chatter';
+  let sound = stored(soundKey,'off') === 'on', chatter = stored(chatterKey,'on') !== 'off';
+  let bubbleTimer = 0, lastSpoken = -Infinity, lastSound = -Infinity, audio = null, audioTimer = 0;
+  let line = '', idleLine = 0, lastInteraction = -Infinity;
+  let reactionEpoch = 0;
+  const orb = document.getElementById('assistant-orb');
+  const root = document.getElementById('mail-assistant');
+  const bubble = document.createElement('span');
+  bubble.className = 'companion-life-bubble'; bubble.hidden = true;
+  // The launcher's accessible name already describes its function. Ambient
+  // copy is decorative; deliberate interactions use the journal's live status.
+  bubble.setAttribute('aria-hidden','true'); orb.append(bubble);
+  const foreground = () => !document.hidden && !document.body.classList.contains('companion-paused');
+  const dismiss = () => { clearTimeout(bubbleTimer); bubbleTimer=0; bubble.hidden=true; };
+  const silence = () => {
+    clearTimeout(audioTimer); audioTimer=0;
+    const previous=audio; audio=null;
+    if(previous && previous.state!=='closed') void previous.close().catch(()=>{});
+  };
+  function say(key, deliberate=false) {
+    if(!foreground()) return;
+    const status=document.querySelector('#companion-growth-dialog[open] [data-pet-life-status]');
+    if(deliberate && status) { status.textContent=t(key); return; }
+    if(!chatter || document.querySelector('dialog[open],.assistant-nudge:not(.hidden)') || document.body.classList.contains('assistant-visible') ||
+       root.matches('.state-thinking,.state-warn,.state-danger') || document.body.classList.contains('companion-working') ||
+       getComputedStyle(orb).visibility==='hidden' || !orb.getClientRects().length || performance.now()-lastSpoken<90000) return;
+    line=key;lastSpoken=performance.now();bubble.textContent=t(key);bubble.hidden=false;
+    clearTimeout(bubbleTimer);bubbleTimer=setTimeout(dismiss,4800);
+  }
+  async function chime(kind='hello', deliberate=false) {
+    if(!sound || !foreground() || audio || (!deliberate && performance.now()-lastSound<15000)) return false;
+    const Audio=window.AudioContext || window.webkitAudioContext;
+    if(!Audio) return false;
+    let context;
+    try {
+      context=new Audio();audio=context;lastSound=performance.now();
+      // Closing even a suspended context bounds the device lifetime.
+      audioTimer=setTimeout(silence,1300);
+      await context.resume();
+      if(audio!==context || !foreground() || !sound || context.state!=='running') return false;
+      const notes=kind==='evolved' ? [523.25,659.25,783.99] : kind==='done' ? [659.25,783.99] : [523.25,659.25];
+      notes.forEach((frequency,index)=>{
+        const start=context.currentTime+index*.12, gain=context.createGain(), oscillator=context.createOscillator();
+        oscillator.type=ranger() ? 'triangle' : 'sine';oscillator.frequency.value=frequency*(ranger() ? .75 : 1);
+        gain.gain.setValueAtTime(0,start);gain.gain.linearRampToValueAtTime(ranger() ? .025 : .035,start+.018);
+        gain.gain.exponentialRampToValueAtTime(.0001,start+.19);
+        oscillator.connect(gain);gain.connect(context.destination);oscillator.start(start);oscillator.stop(start+.21);
+        oscillator.onended=()=>{oscillator.disconnect();gain.disconnect();};
+      });
+      return true;
+    } catch (_) { if(audio===context) silence(); return false; }
+  }
+  const motionAllowed = () => !matchMedia('(prefers-reduced-motion: reduce)').matches && !document.body.classList.contains('companion-still');
+  const afterLayout = callback => {
+    const epoch=++reactionEpoch;
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      if(epoch===reactionEpoch && foreground()) callback();
+    }));
+  };
+  function controls() {
+    return `<section class="pet-life" aria-label="${esc(t('title'))}"><div class="pet-life-heading"><b>${esc(t('title'))}</b><span>${esc(t('rhythm'))}</span></div><p class="pet-life-status" data-pet-life-status role="status" aria-live="polite">${esc(t('intro'))}</p><div class="pet-life-actions"><button type="button" data-pet-life-action="hello">${esc(t('hello'))}</button><button type="button" data-pet-life-action="signature">${esc(t('signature'))}</button><button type="button" data-pet-life-action="sound" aria-pressed="${sound}">${esc(t(sound?'soundOn':'soundOff'))}</button></div><label class="pet-life-preference"><input type="checkbox" data-pet-life-chatter ${chatter?'checked':''}>${esc(t('chatter'))}</label><small>${esc(t('energy'))}</small></section>`;
+  }
+  function syncControls() {
+    const button=document.querySelector('[data-pet-life-action="sound"]');
+    if(button) {button.textContent=t(sound?'soundOn':'soundOff');button.setAttribute('aria-pressed',String(sound));}
+    const checkbox=document.querySelector('[data-pet-life-chatter]');if(checkbox)checkbox.checked=chatter;
+  }
+  function save(key,value) {
+    try {localStorage.setItem(key,value?'on':'off');return true;}
+    catch (_) {say('saveFailed',true);return false;}
+  }
+  document.addEventListener('click', event=>{
+    const button=event.target.closest('[data-pet-life-action]');
+    if(!button || !foreground()) return;
+    const action=button.dataset.petLifeAction;
+    if(action==='sound') {
+      if(!save(soundKey,!sound)) return;
+      sound=!sound;syncControls();
+      say(sound?'soundEnabled':'soundDisabled',true);
+      if(sound) void chime('hello',true).then(played=>{if(!played && sound && foreground()) say('soundUnavailable',true);});
+      else silence();
+      return;
+    }
+    if(performance.now()-lastInteraction<1800) return;
+    lastInteraction=performance.now();
+    const stage=Math.max(1,Math.min(7,Number(document.body.dataset.petStage)||1));
+    if(!motionAllowed()) {say('still',true);return;}
+    if(document.body.classList.contains('companion-working')) {say('busy',true);return;}
+    const portrait=document.querySelector('.pet-hero-portrait');
+    portrait?.scrollIntoView({block:'nearest',behavior:'instant'});
+    // Let visibility observers see the newly revealed portrait before playing.
+    // Audio is unlocked directly by the click, within the browser's gesture.
+    void chime('hello',true);
+    afterLayout(()=>{
+      if(!portrait?.isConnected || !portrait.closest('dialog[open]')) return;
+      window.mailaiCompanionMotion?.react(action==='signature'?'signature':'greet',portrait);
+      say(action==='signature'?`${ranger()?'rangerStage':'stage'}${stage}`:ranger()?'rangerHelloReply':'helloReply',true);
+    });
+  });
+  document.addEventListener('change',event=>{
+    if(!event.target.matches('[data-pet-life-chatter]')) return;
+    if(save(chatterKey,event.target.checked)) chatter=event.target.checked;
+    syncControls();if(!chatter)dismiss();
+  });
+  // All automatic feedback comes from existing app state, never a new timer.
+  document.addEventListener('mailai:companion-idle',event=>{
+    if(event.detail?.svg.closest('#assistant-orb')) say(`${ranger()?'rangerIdle':'idle'}${idleLine++%3}`);
+  });
+  document.addEventListener('mailai:companion-milestone',event=>{
+    dismiss();
+    afterLayout(()=>window.mailaiCompanionMotion?.react(event.detail?.evolved?'signature':'happy'));
+    say(event.detail?.evolved?'evolved':'goal',true);
+    void chime(event.detail?.evolved?'evolved':'done');
+  });
+  let finished=false;
+  new MutationObserver(()=>{
+    const now=root.classList.contains('companion-finished');
+    if(now && !finished) {say('done');void chime('done');}
+    finished=now;
+    if(document.body.classList.contains('companion-working') || root.matches('.state-thinking,.state-warn,.state-danger')) dismiss();
+  }).observe(root,{attributes:true,attributeFilter:['class']});
+  const pause=()=>{if(!foreground()) {++reactionEpoch;dismiss();silence();}};
+  new MutationObserver(()=>{
+    pause();
+    if(document.body.classList.contains('assistant-visible') || document.body.classList.contains('companion-working')) dismiss();
+  }).observe(document.body,{attributes:true,attributeFilter:['class']});
+  document.addEventListener('visibilitychange',pause);
+  document.addEventListener('mailai:foreground-changed',pause);
+  window.addEventListener('pagehide',()=>{dismiss();silence();});
+  document.addEventListener('mailai:companion-journal',()=>{++reactionEpoch;dismiss();silence();});
+  document.addEventListener('mailai:language-changed',()=>{syncControls();if(!bubble.hidden)bubble.textContent=t(line);});
+  window.addEventListener('storage',event=>{
+    if(event.key!==soundKey && event.key!==chatterKey && event.key!==null) return;
+    sound=stored(soundKey,'off')==='on';chatter=stored(chatterKey,'on')!=='off';
+    if(!sound)silence();if(!chatter)dismiss();syncControls();
+  });
+  window.mailaiCompanionLife={controls};
 })();
 
 ;
@@ -32675,7 +33346,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
   }
   let css='';
   for (const sheet of document.styleSheets) {
-    if (!sheet.href?.includes('/static/') || /(?:reward-themes|reward-theme-details|control-theme|settings-polish|home-dialog-polish|brand|date-time-picker|companion(?:-growth)?)\.css/.test(sheet.href)) continue;
+    if (!sheet.href?.includes('/static/') || /(?:reward-themes|reward-theme-details|control-theme|settings-polish|home-dialog-polish|brand|date-time-picker|companion(?:-growth|-colors)?)\.css/.test(sheet.href)) continue;
     try { css+=bridge(sheet.cssRules); } catch (_) { /* A non-local stylesheet is outside the workspace. */ }
   }
   const style=document.createElement('style');
@@ -32754,7 +33425,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
   let busy = false, tickBusy = false, pending = null, clicks = 0, lastClick = 0;
   let lastInput = performance.now(), lastSample = performance.now(), reading = null;
   let lastRefresh = 0, refreshAccount = '', purchaseIntent = null, feedback = null, renderKey = '';
-  let previewItem = 'sparkles', previewPlaying = true, previewOpen = false;
+  let previewItem = 'sparkles', previewPlaying = true, previewOpen = false, previewStage = null, shopFilter = 'all';
   let giftDraft = '', giftPreview = null, giftError = '', giftErrorKey = '', giftBusy = false;
   let giftPending = '', giftFileName = '', giftReadRevision = 0, giftOperation = '';
   const cleanGiftCode = code => String(code).replace(/\s+/g,'').replace(/^\uFEFF+/,'');
@@ -32778,7 +33449,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
   const previewNote = () => motionAllowed() ? tab === 'gifts' ? 'giftPreviewSafe' : 'previewSafe' : 'previewStatic';
   const motionHosts = new Set();
   const motionVisibility = new IntersectionObserver(entries => {
-    for (const entry of entries) entry.target.dataset.rewardVisible = String(entry.isIntersecting);
+    for (const entry of entries) { entry.target.dataset.rewardVisible = String(entry.isIntersecting); if(!entry.isIntersecting)window.mailaiCompanionMotion?.stopPreview(entry.target); }
   });
   function watchRewardMotion() {
     for (const svg of motionHosts) if (!svg.isConnected) { motionVisibility.unobserve(svg); motionHosts.delete(svg); }
@@ -32790,6 +33461,8 @@ document.getElementById('task-center-list').addEventListener('click', async even
     }
   }
   function updatePreviewMotion() {
+    if(!previewPlaying || !motionAllowed())window.mailaiCompanionMotion?.stopPreview();
+    dialog?.querySelectorAll('[data-pet-try-action]').forEach(n=>n.disabled=!motionAllowed());
     const art = dialog?.querySelector('.pet-live-art');
     const button = dialog?.querySelector('[data-pet-preview-play]');
     if (art) art.dataset.previewPlaying = String(previewPlaying && motionAllowed());
@@ -32875,8 +33548,9 @@ document.getElementById('task-center-list').addEventListener('click', async even
       // A preference change in another window must also discard buffered activity.
       clicks = 0; pending = null; learning.clear(); lastSample = 0;
     }
-    let notice = '';
+    let notice = '', milestone = null;
     if (previous && result.stage > previous.stage) {
+      milestone = {evolved:true};
       const unlocked = result.items.filter(item=>item.stage > previous.stage && item.stage <= result.stage).length;
       notice = t('evolved',stageName(result.stage),unlocked);
       feedback = {copy:notice,until:Date.now()+20000};
@@ -32885,9 +33559,11 @@ document.getElementById('task-center-list').addEventListener('click', async even
       const goals = result.quests.filter(q=>q.complete && (result.day !== previous.day || !previous.quests.some(old=>old.id === q.id && old.complete)));
       if (goals.length) notice = t('goalsCompleted',goals.map(q=>t(`quest.${q.id}`)).join(' · '));
       else if (result.xp > previous.xp || result.earned > previous.earned) notice = t('earnedNow',Math.max(0,result.xp-previous.xp),Math.max(0,result.earned-previous.earned));
+      if (goals.length) milestone = {evolved:false};
       if (goals.length) feedback = {copy:notice,until:Date.now()+20000};
     }
     paint();
+    if (milestone) document.dispatchEvent(new CustomEvent('mailai:companion-milestone',{detail:milestone}));
     if (notice && dialog?.open) message(notice);
     return true;
   }
@@ -32937,9 +33613,16 @@ document.getElementById('task-center-list').addEventListener('click', async even
         return;
       }
       if (button.hasAttribute('data-pet-retry')) return refresh();
+      if (button.dataset.petShopFilter) { shopFilter=button.dataset.petShopFilter; renderKey='';render();dialog.querySelector(`[data-pet-shop-filter="${shopFilter}"]`)?.focus({preventScroll:true});return; }
+      if (button.dataset.petTryStage) { tab='shop';previewStage=Number(button.dataset.petTryStage);previewOpen=true;renderKey='';render();selectPreview(previewItem,true);return; }
+      if (button.dataset.petTryAction) {
+        previewPlaying=true;updatePreviewMotion();
+        window.mailaiCompanionMotion?.preview(dialog.querySelector('.pet-live-art svg'),previewStage || state.stage,button.dataset.petTryAction);return;
+      }
+      if (button.dataset.petCollection) return selectPreview(button.dataset.petCollection,true);
       if (button.dataset.petPreview) return selectPreview(button.dataset.petPreview, true);
       if (button.hasAttribute('data-pet-preview-close')) {
-        previewOpen = false;
+        previewOpen = false;window.mailaiCompanionMotion?.stopPreview();
         dialog.querySelector('.pet-live-preview').hidden = true; message('');
         dialog.querySelector(`[data-pet-preview="${previewItem}"]`)?.focus();
         return;
@@ -33035,12 +33718,13 @@ document.getElementById('task-center-list').addEventListener('click', async even
         }
         return;
       }
+      if (event.target.matches('[data-pet-preview-stage]')) { previewStage=Number(event.target.value);selectPreview(previewItem);dialog.querySelector('[data-pet-preview-stage]')?.focus();return; }
       if (event.target.matches('[data-pet-preview-select]')) selectPreview(event.target.value);
     });
-    dialog.addEventListener('close', () => { if (returnFocus?.isConnected) returnFocus.focus({preventScroll:true}); });
+    dialog.addEventListener('close', () => { window.mailaiCompanionMotion?.stopPreview(); document.dispatchEvent(new Event('mailai:companion-journal')); if (returnFocus?.isConnected) returnFocus.focus({preventScroll:true}); });
   }
   function visitOutfits(items) {
-    tab = 'shop'; render();
+    shopFilter = 'all'; renderKey = ''; tab = 'shop'; render();
     const cards = items.map(item=>dialog.querySelector(`[data-pet-item="${CSS.escape(item)}"]`)).filter(Boolean);
     for (const card of cards) { card.setAttribute('data-gift-focus','true'); card.tabIndex = -1; }
     const card = cards[0];
@@ -33098,21 +33782,27 @@ document.getElementById('task-center-list').addEventListener('click', async even
     checkAccount(); ensureDialog(); returnFocus = document.activeElement;
     if (!dialog.open) dialog.showModal();
     render();
+    document.dispatchEvent(new Event('mailai:companion-journal'));
     await refresh();
   }
-  function avatar(extra = '') { return `<div class="pet-portrait ${extra}">${window.mailaiCompanionArt || ''}</div>`; }
+  function avatar(extra = '', stage = null) {
+    let art = window.mailaiCompanionArt || '';
+    if (stage !== null) art = art.replace('<svg ', `<svg data-evolution-stage="${stage}" `);
+    return `<div class="pet-portrait ${extra}">${art}</div>`;
+  }
   function previewView() {
     const items = state.items.filter(item => item.slot !== 'theme' && (tab !== 'gifts' || giftPreview?.items.some(gift=>gift.id===item.id)));
     if (!items.length) return '';
     const item = items.find(item => item.id === previewItem) || items[0];
     previewItem = item.id;
-    return `<div class="pet-live-art pet-item-art" data-item-preview="${item.id}" data-preview-playing="${previewPlaying && motionAllowed()}">${avatar()}</div><div class="pet-preview-copy"><div class="pet-preview-heading"><h4 id="pet-preview-title">${label(`item.${item.id}`)}</h4><div class="pet-preview-tools"><small>${label('previewTitle')}</small><button type="button" data-pet-preview-close title="${label('previewClose')}" aria-label="${label('previewClose')}">×</button></div></div><p>${label(`itemHint.${item.id}`)}</p><div class="pet-preview-controls"><select data-pet-preview-select aria-label="${label('previewChoose')}">${items.map(entry => `<option value="${entry.id}" ${entry.id === item.id ? 'selected' : ''}>${label(`item.${entry.id}`)}</option>`).join('')}</select><button type="button" data-pet-preview-play aria-pressed="${previewPlaying && motionAllowed()}" ${!motionAllowed() ? 'disabled' : ''}>${label(previewPlaying && motionAllowed() ? 'previewPause' : 'previewPlay')}</button></div><p class="pet-preview-footnote" data-pet-motion-note>${label(previewNote())}</p></div>`;
+    return `<div class="pet-live-art pet-item-art" data-item-preview="${item.id}" data-preview-playing="${previewPlaying && motionAllowed()}">${avatar('',previewStage || state.stage)}<span class="pet-fitting-stage">${esc(stageName(previewStage || state.stage))}</span></div><div class="pet-preview-copy"><div class="pet-preview-heading"><h4 id="pet-preview-title">${label(`item.${item.id}`)}</h4><div class="pet-preview-tools"><small>${label('previewTitle')}</small><button type="button" data-pet-preview-close title="${label('previewClose')}" aria-label="${label('previewClose')}">×</button></div></div><p>${label(`itemHint.${item.id}`)}</p><div class="pet-preview-controls"><select data-pet-preview-select aria-label="${label('previewChoose')}">${items.map(entry => `<option value="${entry.id}" ${entry.id === item.id ? 'selected' : ''}>${label(`item.${entry.id}`)}</option>`).join('')}</select><button type="button" data-pet-preview-play aria-pressed="${previewPlaying && motionAllowed()}" ${!motionAllowed() ? 'disabled' : ''}>${label(previewPlaying && motionAllowed() ? 'previewPause' : 'previewPlay')}</button></div><div class="pet-fitting-controls"><label>${label('fittingStage')}<select data-pet-preview-stage>${state.stages.map((_,i)=>`<option value="${i+1}" ${(previewStage || state.stage)===i+1?'selected':''}>${numerals[i]} · ${esc(stageName(i+1))}</option>`).join('')}</select></label><div class="pet-fitting-actions">${['greet','travel','signature'].map(action=>`<button type="button" data-pet-try-action="${action}" ${!motionAllowed()?'disabled':''}>${label('try.'+action)}</button>`).join('')}</div></div><p class="pet-preview-footnote" data-pet-motion-note>${label(previewNote())}</p></div>`;
   }
   function selectPreview(item, scroll = false) {
     if (!state?.items.some(entry => entry.id === item && entry.slot !== 'theme')) return;
     const host = dialog?.querySelector('.pet-live-preview');
     if (!host) return;
     const focused = document.activeElement?.matches('[data-pet-preview-select]');
+    window.mailaiCompanionMotion?.stopPreview();
     previewItem = item; previewPlaying = true; previewOpen = true; host.hidden = false; host.innerHTML = previewView();
     watchRewardMotion();
     if (focused) host.querySelector('[data-pet-preview-select]').focus({preventScroll:true});
@@ -33132,19 +33822,24 @@ document.getElementById('task-center-list').addEventListener('click', async even
   function journeyView() {
     return `<p class="pet-note">${label('journeyNote')}</p><div class="pet-journey">${state.stages.map((floor,index) => {
       const stage = index+1, unlocked = state.stage >= stage;
-      return `<article class="${unlocked ? 'is-unlocked' : ''} ${state.stage === stage ? 'is-current' : ''}"><span class="pet-stage-number">${numerals[index]}</span><div><b>${esc(stageName(stage))}</b><p>${stageHint(stage)}</p><small>${label('threshold',floor)}${state.stage === stage ? ' · '+label('current') : unlocked ? ' · '+label('unlocked') : ''}</small></div></article>`;
+      return `<article class="${unlocked ? 'is-unlocked' : ''} ${state.stage === stage ? 'is-current' : ''}"><span class="pet-stage-number">${numerals[index]}</span>${avatar('pet-evolution-preview',stage)}<div><b>${esc(stageName(stage))}</b><p>${stageHint(stage)}</p><p class="pet-stage-ability">${label('life.'+(state.style === 'ranger' ? 'rangerStage' : 'stage')+stage)}</p><div class="pet-unlock-list">${state.items.filter(item=>item.stage===stage&&item.slot!=='consumable').map(item=>`<span>${label('item.'+item.id)}</span>`).join('')}</div><button type="button" data-pet-try-stage="${stage}">${label('tryStage')}</button><small>${label('threshold',floor)}${state.stage === stage ? ' · '+label('current') : unlocked ? ' · '+label('unlocked') : ''}</small></div></article>`;
     }).join('')}</div><p class="pet-note">${label('streakNote')}</p>`;
+  }
+  function collectionView() {
+    const collections=[['post','cap','scarf','satchel'],['cloud','wings','jacket','visor'],['star','mech_wings','armor','orbit']];
+    const next=Math.min(7,state.stage+1),remaining=Math.max(0,state.stages[next-1]-state.xp);
+    return `<section class="pet-boutique-intro"><div><small>${label('boutiqueEyebrow')}</small><h3>${label('boutiqueTitle')}</h3><p>${label('boutiqueHint')}</p></div><div class="pet-collection-progress"><b>${state.items.filter(i=>i.owned&&i.slot!=='consumable').length} / ${state.items.filter(i=>i.slot!=='consumable').length}</b><span>${label('collectionCount')}</span></div></section><div class="pet-collections">${collections.map(([name,hero,...pieces])=>`<article><div class="pet-item-art" data-item-preview="${hero}">${avatar('',Math.max(state.stage,state.items.find(i=>i.id===hero).stage))}</div><small>${label('collection.'+name+'.tag')}</small><h4>${label('collection.'+name)}</h4><p>${[hero,...pieces].map(id=>label('item.'+id)).join(' · ')}</p><button type="button" data-pet-collection="${hero}">${label('collectionExplore')}</button></article>`).join('')}</div><div class="pet-next-reward"><div><b>${state.stage<7?label('nextLook',stageName(next)):label('allGrown')}</b><p>${state.stage<7?label('nextLookHint',remaining):label('allGrownHint')}</p></div><button type="button" data-pet-try-stage="${next}">${label('tryStage')}</button></div>`;
   }
   function shopView() {
     const s = state;
-    return `${themeShopView()}<section class="pet-live-preview" aria-labelledby="pet-preview-title" ${previewOpen ? '' : 'hidden'}>${previewView()}</section><div class="pet-section-title"><h3>${label('shopTitle')}</h3><span>${label('balance',s.stamps)}</span></div><div class="pet-reset-outfit">${['palette','accessory','effect'].map(slot=>`<button type="button" data-pet-slot="${slot}" ${!s.equipped[slot] || busy ? 'disabled' : ''}>${label(`reset.${slot}`)}</button>`).join('')}</div><div class="pet-shop">${s.items.filter(item=>item.slot !== 'theme').map(item => {
+    return `${collectionView()}<section class="pet-live-preview" aria-labelledby="pet-preview-title" ${previewOpen ? '' : 'hidden'}>${previewView()}</section><div class="pet-section-title"><h3>${label('shopTitle')}</h3><span>${label('balance',s.stamps)}</span></div><div class="pet-reset-outfit">${['palette','accessory','effect'].map(slot=>`<button type="button" data-pet-slot="${slot}" ${!s.equipped[slot] || busy ? 'disabled' : ''}>${label(`reset.${slot}`)}</button>`).join('')}</div><div class="pet-shop-filters" role="group" aria-label="${label('shopFilter')}">${['all','accessory','palette','effect','owned'].map(filter=>`<button type="button" data-pet-shop-filter="${filter}" aria-pressed="${shopFilter===filter}">${label('filter.'+filter)}</button>`).join('')}</div><div class="pet-shop">${s.items.filter(item=>item.slot !== 'theme' && (shopFilter==='all'||shopFilter==='owned'&&item.owned||item.slot===shopFilter)).map(item => {
       const locked = !item.owned && s.stage < item.stage, equipped = s.equipped[item.slot] === item.id;
       const depleted = item.id === 'berry' && s.berry_today >= 3;
       const unavailable = locked || (!item.owned && s.stamps < item.cost) || depleted || busy || (!!purchaseIntent && !item.owned);
       const action = item.owned ? `data-pet-slot="${item.slot}" data-pet-equip="${item.id}"` : `data-pet-buy="${item.id}"`;
       const caption = equipped ? t('wearing') : item.owned ? t('wear') : depleted ? t('berryLimit') : locked ? t('stageRequired',stageName(item.stage)) : t(item.id === 'berry' ? 'feedPrice' : 'buyPrice',item.cost);
-      return `<article data-pet-item="${item.id}" class="pet-shop-item ${locked ? 'is-locked' : ''}"><button type="button" class="pet-preview-icon" data-pet-preview="${item.id}" title="${label('previewIcon',t(`item.${item.id}`))}" aria-label="${label('previewIcon',t(`item.${item.id}`))}"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.5 12s3.2-6 9.5-6 9.5 6 9.5 6-3.2 6-9.5 6S2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.5"/></svg></button><div class="pet-item-art" data-item-preview="${item.id}" aria-hidden="true">${avatar()}</div><div class="pet-item-copy"><b>${label(`item.${item.id}`)}</b><p>${label(`itemHint.${item.id}`)}</p><small>${item.owned ? label('owned') : label('itemRequirement',item.cost,stageName(item.stage))}</small></div><button type="button" ${action} ${unavailable || equipped ? 'disabled' : ''}>${esc(caption)}</button></article>`;
-    }).join('')}</div><p class="pet-note">${label('shopNote')}</p>`;
+      return `<article data-pet-item="${item.id}" class="pet-shop-item ${locked ? 'is-locked' : ''} ${equipped?'is-equipped':''}"><button type="button" class="pet-preview-icon" data-pet-preview="${item.id}" title="${label('previewIcon',t(`item.${item.id}`))}" aria-label="${label('previewIcon',t(`item.${item.id}`))}"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.5 12s3.2-6 9.5-6 9.5 6 9.5 6-3.2 6-9.5 6S2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.5"/></svg></button><div class="pet-item-art" data-item-preview="${item.id}" aria-hidden="true">${avatar('',Math.max(s.stage,item.stage))}<span class="pet-item-stage">${numerals[item.stage-1]}</span></div><div class="pet-item-copy"><b>${label(`item.${item.id}`)}</b><p>${label(`itemHint.${item.id}`)}</p><small>${item.owned ? label('owned') : label('itemRequirement',item.cost,stageName(item.stage))}</small></div><button type="button" ${action} ${unavailable || equipped ? 'disabled' : ''}>${esc(caption)}</button></article>`;
+    }).join('')}</div>${shopFilter==='owned'&&!s.items.some(item=>item.owned&&item.slot!=='theme')?`<p class="pet-empty">${label('wardrobeEmpty')}</p>`:''}<p class="pet-note">${label('shopNote')}</p>${themeShopView()}`;
   }
   function themeShopView() {
     const s = state;
@@ -33166,6 +33861,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
     pref.textContent = t(state?.enabled ? 'pause' : 'resume'); pref.disabled = !state || busy;
     const host = dialog.querySelector('.pet-journal-body');
     if (!state) {
+      window.mailaiCompanionMotion?.stopPreview();
       host.innerHTML = `<p class="pet-empty">${label(account ? 'loading' : 'login')}</p><button type="button" data-pet-retry>${label('retry')}</button>`;
       return;
     }
@@ -33175,12 +33871,14 @@ document.getElementById('task-center-list').addEventListener('click', async even
     const focus = document.activeElement;
     const giftSelection = focus?.matches('[data-pet-gift-code],[data-pet-claim-code]') ? [focus.selectionStart,focus.selectionEnd] : null;
     const identityOpen = host.querySelector('.pet-gift-identity')?.open;
-    const focusKey = focus?.closest('.pet-journal') ? Object.entries(focus.dataset).find(([key])=>['petTab','petBuy','petEquip','petSlot','petStyle','petGiftCode','petGiftPreview','petGiftClaim','petGiftWear','petGiftCopy','petGiftReconcile','petGiftOutfits','petClaimCode','petPreviewSelect','petPreviewPlay','petPreviewClose'].includes(key)) : null;
+    const focusKey = focus?.closest('.pet-journal') ? Object.entries(focus.dataset).find(([key])=>['petLifeAction','petLifeChatter','petTab','petBuy','petEquip','petSlot','petStyle','petGiftCode','petGiftPreview','petGiftClaim','petGiftWear','petGiftCopy','petGiftReconcile','petGiftOutfits','petClaimCode','petPreviewSelect','petPreviewPlay','petPreviewClose','petPreviewStage','petTryAction','petShopFilter','petTryStage','petCollection'].includes(key)) : null;
     const scroll = host.scrollTop;
     const next = state.next_stage_xp;
     const progress = next ? (state.xp-state.stage_floor)/(next-state.stage_floor)*100 : 100;
+    window.mailaiCompanionMotion?.stopPreview();
     host.innerHTML = `${purchaseIntent ? `<div class="pet-pending" role="status"><span>${label('purchasePending',t(`item.${purchaseIntent.item}`))}</span><button type="button" data-pet-reconcile ${busy ? 'disabled' : ''}>${label('reconcile')}</button></div>` : ''}${feedback && Date.now()<feedback.until ? `<p class="pet-milestone" role="status">${esc(feedback.copy)}</p>` : ''}<section class="pet-hero">${avatar('pet-hero-portrait')}<div class="pet-hero-copy"><span class="pet-eyebrow">${label('heroEyebrow')}</span><h3>${esc(stageName(state.stage))} <small>${label('level',state.stage)}</small></h3><p>${stageHint(state.stage)}</p><div class="pet-growth-label"><b>${label('growth')} ${state.xp.toLocaleString()}</b><span>${next ? label('next',next-state.xp) : label('maxStage')}</span></div><progress max="100" value="${progress}" aria-label="${label('growth')}"></progress></div></section>
-    <div class="pet-style-choice"><span>${label('styleChoice')}</span>${['nature','ranger'].map(style=>`<button type="button" data-pet-style="${style}" aria-pressed="${state.style === style}" ${state.style === style || busy ? 'disabled' : ''}>${label(`style.${style}`)}</button>`).join('')}<small>${label('styleFree')}</small></div>
+    ${window.mailaiCompanionLife?.controls() || ''}
+    <div class="pet-style-choice"><span>${label('styleChoice')}</span>${['nature','ranger'].map(style=>`<button type="button" data-pet-style="${style}" aria-pressed="${state.style === style}" ${state.style === style || busy ? 'disabled' : ''}><b>${label(`style.${style}`)}</b><em>${label(`life.${style}Intro`)}</em></button>`).join('')}<small>${label('styleFree')}</small></div>
     <div class="pet-stats"><article><strong>${state.stamps.toLocaleString()}</strong><span>${label('stamps')}</span></article><article><strong>${state.streak}<small>${label('days')}</small></strong><span>${label('streak')}</span></article><article><strong>${state.earned.toLocaleString()}</strong><span>${label('earned')}</span></article></div>
     ${!state.enabled ? `<p class="pet-paused">${label('paused')}</p>` : ''}<nav class="pet-tabs" aria-label="${label('tabs')}">${['today','journey','shop','gifts','history'].map(name=>`<button type="button" data-pet-tab="${name}" aria-pressed="${tab === name}" aria-label="${label(name)}"><span class="pet-tab-label">${label(name)}</span><span class="pet-tab-short" aria-hidden="true">${label(`tab.${name}`)}</span></button>`).join('')}</nav><section class="pet-tab-content">${({today:todayView,journey:journeyView,shop:shopView,gifts:giftsView,history:historyView})[tab]()}</section>`;
     const accountNote = document.createElement('div');
@@ -33188,6 +33886,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
     accountNote.innerHTML = `<span>${label('clientOwner')}</span><small>${label('clientStorage')}</small>`;
     host.prepend(accountNote);
     watchRewardMotion();
+    window.mailaiCompanionMotion?.scan();
     if (identityOpen) { const identity = host.querySelector('.pet-gift-identity'); if (identity) identity.open = true; }
     host.scrollTop = scroll;
     if (focusKey && focus?.isConnected === false) {
@@ -33288,6 +33987,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
   new MutationObserver(checkAccount).observe(document.getElementById('account-mailbox-nav'),{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
   window.mailaiEnergy.register('companion-growth',tick,10000);
   motionPreference.addEventListener('change', updatePreviewMotion);
+  document.addEventListener('mailai:assistant-portrait',watchRewardMotion);
   new MutationObserver(updatePreviewMotion).observe(document.body,{attributes:true,attributeFilter:['class']});
   watchRewardMotion();
   checkAccount();
