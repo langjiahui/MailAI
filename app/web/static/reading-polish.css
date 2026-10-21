@@ -1,13 +1,32 @@
 /* Shared reading-workspace treatment; loaded after legacy component themes. */
 :root {
-  --desk-canvas:#f3f5f4; --desk-surface:#fff; --desk-muted-surface:#f7f8f8;
-  --desk-line:#e2e7e4; --desk-ink:#26342e; --desk-muted:#64736b;
-  --desk-hover:#eef2ef; --desk-selected:#e7f0eb; --desk-accent:#34775b;
+  --desk-canvas:#f1f3f5; --desk-surface:#ffffff; --desk-muted-surface:#f5f7f9;
+  --desk-line:#d9dfe5; --desk-ink:#20272e; --desk-muted:#52606c;
+  --desk-hover:#e9eef1; --desk-selected:#e2eee7; --desk-accent:#2e7357;
 }
 html[data-theme="dark"] {
-  --desk-canvas:#141817; --desk-surface:#1b211e; --desk-muted-surface:#181e1b;
-  --desk-line:#303a34; --desk-ink:#e4ebe7; --desk-muted:#a4b2a9;
-  --desk-hover:#242e28; --desk-selected:#293c31; --desk-accent:#8ac5a5;
+  --desk-canvas:#151a1e; --desk-surface:#1c2227; --desk-muted-surface:#171d22;
+  --desk-line:#333e47; --desk-ink:#edf1f5; --desk-muted:#b4bfc9;
+  --desk-hover:#273139; --desk-selected:#283e33; --desk-accent:#8ac5a5;
+}
+/* The default workspace uses neutral paper and ink. Reward palettes own their
+ * tokens; read state is expressed by weight and the unread dot, not faded text. */
+html[data-theme]:not([data-reward-theme]) {
+  --text:var(--desk-ink); --muted:var(--desk-muted);
+}
+html[data-theme]:not([data-reward-theme]) body #email-list .email-item :is(.sender-name,.email-subject),
+html[data-theme]:not([data-reward-theme]) body :is(.reading-subject,.meta-fields) {
+  color:var(--desk-ink)!important;
+}
+html[data-theme]:not([data-reward-theme]) body :is(.sender-contact-link small,.meta-recipient-address),
+html[data-theme]:not([data-reward-theme]) body .sidebar .nav-item:not(.active) {
+  color:var(--desk-muted)!important;
+}
+html[data-theme]:not([data-reward-theme]) body .rich-email-frame {
+  background:var(--desk-surface)!important;
+}
+html[data-theme]:not([data-reward-theme]) body #app .sidebar .nav-item .count {
+  color:var(--desk-muted)!important; background:var(--desk-muted-surface)!important;
 }
 /* Paging controls keep a readable label and count on both themes. */
 html[data-theme] body :is(.email-render-more,.todo-render-more) {
@@ -141,7 +160,7 @@ html[data-theme] body .global-search input:focus {
   box-shadow:0 0 0 3px color-mix(in srgb,var(--desk-accent) 11%,transparent)!important;
 }
 html[data-theme] body .global-search:focus-within .search-icon { color:var(--desk-accent); }
-html[data-theme] body .global-search input::placeholder { color:var(--desk-muted); opacity:.82; }
+html[data-theme] body .global-search input::placeholder { color:var(--desk-muted); opacity:1; }
 @media(max-width:1440px) {
   html[data-theme] body .topbar .global-search { margin-left:0; }
 }

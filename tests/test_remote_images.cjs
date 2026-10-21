@@ -89,12 +89,12 @@ const frame = {contentDocument:{body:mailBody, documentElement:{setAttribute(){}
   getComputedStyle(node) { return {backgroundColor:cssColor(node.style.getPropertyValue('background-color')), color:cssColor(node.style.getPropertyValue('color'))}; },
 }}};
 context.applyRichEmailFrameTheme(frame, 'dark');
-assert.equal(whitePanel.style.getPropertyValue('background-color'), '#16271f');
-assert.equal(whitePanel.style.getPropertyValue('color'), '#e4eee8');
+assert.equal(whitePanel.style.getPropertyValue('background-color'), '#1c2227');
+assert.equal(whitePanel.style.getPropertyValue('color'), '#edf1f5');
 assert.equal(paleText.style.getPropertyValue('color'), 'rgb(223, 236, 228)');
 assert.equal(logo.style.getPropertyValue('background-color'), 'rgb(255, 255, 255)');
 context.applyRichEmailFrameTheme(frame, 'dark');
-assert.equal(whitePanel.style.getPropertyValue('background-color'), '#16271f', 'Repeated theme application remains stable');
+assert.equal(whitePanel.style.getPropertyValue('background-color'), '#1c2227', 'Repeated theme application remains stable');
 context.applyRichEmailFrameTheme(frame, 'light');
 assert.equal(whitePanel.style.getPropertyValue('background-color'), 'rgb(255, 255, 255)');
 assert.equal(whitePanel.style.getPropertyValue('color'), 'rgb(0, 0, 0)');
