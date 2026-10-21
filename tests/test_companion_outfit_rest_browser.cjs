@@ -36,22 +36,28 @@ walk(tree);assert(clips.size>20,'Discover the complete gesture library');
   await page.waitForFunction(()=>document.body.dataset.petStage);
   await page.evaluate(()=>mailaiEnergy.reschedule('companion-growth',3600000));
   await page.clock.install();await page.clock.runFor(5000);
-  const snapshot=selector=>page.evaluate(selector=>{
-   const svg=document.querySelector(selector);
-   return [...svg.querySelectorAll('.companion-figure,.companion-heading,.companion-look,.companion-torso,.companion-head,.companion-tail,.companion-carry,.companion-arm-left,.companion-foot-left,.companion-foot-right,.companion-eyes,.companion-flight-left,.companion-flight-right,.pet-reward-motion')].map(node=>{
+  await page.evaluate(()=>{
+   window.ciRestSnapshot=svg=>[...svg.querySelectorAll('.companion-figure,.companion-heading,.companion-look,.companion-torso,.companion-head,.companion-tail,.companion-carry,.companion-arm-left,.companion-foot-left,.companion-foot-right,.companion-eyes,.companion-flight-left,.companion-flight-right,.pet-reward-motion')].map(node=>{
     const css=getComputedStyle(node),matrix=new DOMMatrixReadOnly(css.transform);
     return {part:node.getAttribute('class'),matrix:[matrix.a,matrix.b,matrix.c,matrix.d,matrix.e,matrix.f].map(n=>Math.abs(n)<.0001?0:Number(n.toFixed(4))),opacity:Number(css.opacity)};
    });
-  },selector);
+  });
+  const snapshot=selector=>page.evaluate(selector=>ciRestSnapshot(document.querySelector(selector)),selector);
   const idle=async(selector,baseline,label)=>{
-   assert.equal(await page.locator(selector).getAttribute('data-motion-active'),'false',label+' ends');
-   assert.deepEqual(await snapshot(selector),baseline,label+' restores every body/outfit part');
-   assert(await page.locator(selector).evaluate(svg=>[...svg.querySelectorAll(':is(.growth-stars,.growth-orbit,.growth-aura,.growth-lightning) .pet-reward-motion')].every(n=>Number(getComputedStyle(n).opacity)===0)),label+' lets transient effects fade away');
-   // Theme changes may still be fading a body's fill in real browser time.
-   // They must finish too; virtual gesture timers do not advance CSS transitions.
-   await page.waitForFunction(selector=>document.querySelector(selector).getAnimations({subtree:true}).every(a=>a.playState!=='running'),selector,{timeout:1500});
-   const running=await page.locator(selector).evaluate(svg=>svg.getAnimations({subtree:true}).filter(a=>a.playState==='running').map(a=>({name:a.animationName||a.constructor.name,part:a.effect.target.getAttribute('class'),duration:a.effect.getTiming().duration,iterations:a.effect.getTiming().iterations})));
-   assert.deepEqual(running,[],label+' releases all animation work: '+JSON.stringify(running));
+   // Read the complete idle pose atomically. A sparse ambient nod may begin
+   // between separate protocol calls on a loaded runner; it is allowed after
+   // the rest interval, but must never masquerade as an unfinished reaction.
+   // Theme fill transitions also finish in real browser time, not virtual time.
+   const ready=await page.waitForFunction(selector=>{
+    const svg=document.querySelector(selector);
+    if(svg.dataset.motionActive!=='false'||svg.getAnimations({subtree:true}).some(a=>a.playState==='running'))return false;
+    return {active:svg.dataset.motionActive,pose:ciRestSnapshot(svg),effects:[...svg.querySelectorAll(':is(.growth-stars,.growth-orbit,.growth-aura,.growth-lightning) .pet-reward-motion')].map(n=>Number(getComputedStyle(n).opacity)),running:svg.getAnimations({subtree:true}).filter(a=>a.playState==='running').length};
+   },selector,{timeout:3000});
+   const rest=await ready.jsonValue();
+   assert.equal(rest.active,'false',label+' ends');
+   assert.deepEqual(rest.pose,baseline,label+' restores every body/outfit part');
+   assert(rest.effects.every(value=>value===0),label+' lets transient effects fade away');
+   assert.equal(rest.running,0,label+' releases all animation work');
   };
   let checked=0;
   async function gesture(selector,name,label=name){
