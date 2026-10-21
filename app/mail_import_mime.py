@@ -67,7 +67,7 @@ def project(path):
             # need separate import, rather than silently losing their contents.
             binary = msg.get_content_maintype() != 'text' or msg.get_filename() or msg.get_content_disposition() == 'attachment'
             if not binary or msg.get_content_maintype() == 'message':
-                budget += end - start
+                budget += end - body
                 if budget > TEXT_BUDGET:
                     raise ValueError('邮件正文或嵌套邮件超过 8 MB，请单独导出嵌套邮件后重试')
                 return data[start:end]

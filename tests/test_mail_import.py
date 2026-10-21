@@ -478,6 +478,13 @@ def test_large_message_projection_and_retry():
                 assert scan(again)['duplicates'] == 1
             with patch('app.mail_import_mime.TEXT_BUDGET', 20):
                 raises(project, source)
+            text = root / 'text-budget.eml'
+            content = b'Content-Type: text/plain\r\n\r\nText body'
+            text.write_bytes(content)
+            with patch('app.mail_import_mime.TEXT_BUDGET', len(content)):
+                assert project(text)[0] == content, 'Headers count once against the text budget'
+            with patch('app.mail_import_mime.TEXT_BUDGET', len(content) - 1):
+                raises(project, text)
 
 
 if __name__ == '__main__':
