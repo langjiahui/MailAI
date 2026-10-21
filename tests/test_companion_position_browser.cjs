@@ -139,13 +139,16 @@ const key='mailai-companion-position-v1';
    assert(await facing.evaluate(n=>new DOMMatrix(getComputedStyle(n).transform).a>.75),'Top peek leans gently without inversion');
    assert.equal(await orb.locator('.companion-edge-grip').evaluate(n=>getComputedStyle(n).opacity),'1');
    const topBox=await box();
+   await orb.evaluate(n=>n.addEventListener('pointerdown',event=>{window.positionPointerId=event.pointerId;},{once:true}));
    await page.mouse.move(topBox.x+topBox.width/2,Math.max(4,topBox.y+topBox.height/2));await page.mouse.down();
    await page.mouse.move(topBox.x+topBox.width/2+60,topBox.y+topBox.height/2+180);
    assert(await root.evaluate(n=>n.classList.contains('companion-releasing')),'Pull starts finite release');
-   const active=await facing.evaluate(n=>{const a=n.getAnimations().find(a=>a.effect.getTiming().duration===380);a.pause();a.currentTime=0;const first=getComputedStyle(n).transform;a.currentTime=160;const middle=getComputedStyle(n).transform;a.currentTime=380;const last=getComputedStyle(n).transform;a.currentTime=80;a.play();return {first,middle,last};});
+   // Release and inspect in one browser task. CI transport must not consume the
+   // 400ms recovery between sampling its frames and checking the pointer-up.
+   const active=await facing.evaluate(n=>{const a=n.getAnimations().find(a=>a.effect.getTiming().duration===380);a.pause();a.currentTime=0;const first=getComputedStyle(n).transform;a.currentTime=160;const middle=getComputedStyle(n).transform;a.currentTime=380;const last=getComputedStyle(n).transform;a.currentTime=80;a.play();document.getElementById('assistant-orb').dispatchEvent(new PointerEvent('pointerup',{pointerId:positionPointerId,bubbles:true}));return {first,middle,last,releasing:document.getElementById('mail-assistant').classList.contains('companion-releasing')};});
    assert.notEqual(active.first,active.middle);assert.notEqual(active.middle,active.last);
    await page.mouse.up();
-   assert(await root.evaluate(n=>n.classList.contains('companion-releasing')),'Quick release preserves the recovery');
+   assert(active.releasing,'Quick release preserves the recovery');
    await page.waitForFunction(()=>!document.querySelector('.companion-releasing'));
    assert.equal(await facing.evaluate(n=>n.getAnimations().filter(a=>a.effect.getTiming().duration===380).length),0,'Recovery objects are cleaned up');
    assert.equal(await orb.locator('.companion-edge-grip').evaluate(n=>getComputedStyle(n).opacity),'0');

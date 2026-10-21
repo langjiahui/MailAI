@@ -64,9 +64,9 @@ const {chromium,webkit}=require('playwright');
   await fillCode(codes.another);await verify.click();await dialog.locator('[data-pet-gift-claim]').waitFor({state:'visible'});
   assert(await dialog.locator('[data-pet-gift-claim]').isDisabled(),'Another voucher cannot replace an unresolved claim');
   assert.equal(await page.evaluate(()=>localStorage.getItem('mailai-companion-gift-pending')),codes.campaign);
-  // Settle background reads before intentional navigation; WebKit can report
-  // a fetch canceled by document teardown as an access-control page error.
-  await page.unroute('**/api/companion/gifts/claim');await page.waitForLoadState('networkidle');await page.reload();await page.locator('#app-preloader').waitFor({state:'detached'});
+  // Stop periodic reads before draining them: networkidle alone leaves a race
+  // where a new poll starts during teardown and WebKit reports an abort error.
+  await page.unroute('**/api/companion/gifts/claim');await page.evaluate(()=>mailaiEnergy.pause());await page.waitForLoadState('networkidle');await page.reload();await page.locator('#app-preloader').waitFor({state:'detached'});
   await page.evaluate(()=>mailaiPet.open());await dialog.locator('[data-pet-tab="gifts"]').click();
   assert.equal(await input.inputValue(),codes.campaign);
   await dialog.locator('[data-pet-gift-reconcile]').click();await dialog.locator('[data-pet-gift-wear]').waitFor({state:'visible'});
@@ -78,7 +78,7 @@ const {chromium,webkit}=require('playwright');
   await dialog.locator('.pet-journal-body').evaluate(n=>n.scrollTop=n.scrollHeight);await page.screenshot({path:'/tmp/mailai-gift-claim.png'});
   // A definite rejection must release a stale pending voucher instead of blocking all future gifts.
   await page.evaluate(code=>localStorage.setItem('mailai-companion-gift-pending',code),codes.expired);
-  await page.waitForLoadState('networkidle');await page.reload();await page.locator('#app-preloader').waitFor({state:'detached'});
+  await page.evaluate(()=>mailaiEnergy.pause());await page.waitForLoadState('networkidle');await page.reload();await page.locator('#app-preloader').waitFor({state:'detached'});
   await page.evaluate(()=>mailaiPet.open());await dialog.locator('[data-pet-tab="gifts"]').click();
   await dialog.locator('[data-pet-gift-reconcile]').click();
   await page.waitForFunction(()=>/领取期限|deadline/.test(document.querySelector('[data-pet-gift-error]')?.textContent||''));
