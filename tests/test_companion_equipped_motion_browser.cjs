@@ -29,8 +29,12 @@ async function checkMotion(page, hosts, part, context) {
     throw new Error(`${context}: ${JSON.stringify(state)}`,{cause:error});
   }
   const sample=()=>page.evaluate(selectors=>{
-    // Wake and sample in one browser task so CI transport cannot consume the finite reaction.
-    mailaiCompanionMotion.wake();
+    // Start a fresh finite reaction and sample in the same browser task. A wake
+    // preserves an active clip, which may already be on its final frame.
+    for (const selector of selectors) {
+      const svg=document.querySelector(selector).closest(".mail-companion");
+      if (!mailaiCompanionMotion.react("peek",svg)) throw new Error(`Cannot react: ${selector}`);
+    }
     return selectors.map(selector=>{
     const node=document.querySelector(selector), css=getComputedStyle(node);
     const animation=node.getAnimations().find(a=>a.animationName===css.animationName);
