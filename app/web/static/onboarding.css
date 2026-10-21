@@ -1,8 +1,16 @@
 .onboarding-overlay { overflow:auto; padding:24px; }
-.onboarding-card { max-height:calc(calc(100dvh / var(--fz,1)) - 48px); overflow:auto; }
+.onboarding-card { max-height:calc(calc(100dvh / var(--fz,1)) - 48px); overflow-y:auto; overflow-x:hidden; }
 .onboarding-card .onboarding-help p { font-size:12px; line-height:1.8; color:var(--muted); }
 .onboarding-card label,.onboarding-card h2 { color:var(--text); }
 .onboarding-card>p,.onboarding-card>small { color:var(--muted); }
+.onboarding-card .onboarding-advanced .host-row { grid-template-columns:minmax(0,1fr) minmax(76px,100px); gap:10px; }
+.onboarding-card .onboarding-advanced .host-row + .host-row { margin-top:14px; }
+.onboarding-card .onboarding-advanced label { min-width:0; }
+.onboarding-card .onboarding-advanced .checks { display:flex; flex-wrap:wrap; gap:8px 24px; margin:14px 0 4px; }
+.onboarding-card label.check-row { display:flex; align-items:center; gap:8px; min-height:36px; font-weight:500; cursor:pointer; }
+.onboarding-card .check-row input[type="checkbox"] { flex:0 0 16px; width:16px; height:16px; min-height:0; margin:0; padding:0; accent-color:var(--primary-deep); }
+.onboarding-card .check-row input:focus-visible { outline:2px solid var(--primary); outline-offset:3px; }
+@media(max-width:420px) { .onboarding-card { padding:24px 20px; } }
 .start-card { position:fixed; bottom:24px; left:24px; z-index:100; width:340px; max-width:calc(calc(100vw / var(--fz,1)) - 48px); padding:20px; border:1px solid var(--border); border-radius:18px; background:var(--glass,#fff); color:var(--text); box-shadow:0 12px 40px #0002; backdrop-filter:blur(20px); }
 .start-card h3 { margin:8px 0; font-size:18px; }
 .start-card p,.start-card small { color:var(--muted); line-height:1.7; font-size:12px; }

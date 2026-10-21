@@ -20,7 +20,7 @@
   let busy = false, tickBusy = false, pending = null, clicks = 0, lastClick = 0;
   let lastInput = performance.now(), lastSample = performance.now(), reading = null;
   let lastRefresh = 0, refreshAccount = '', purchaseIntent = null, feedback = null, renderKey = '';
-  let previewItem = 'sparkles', previewPlaying = true, previewOpen = false;
+  let previewItem = 'sparkles', previewPlaying = true, previewOpen = false, previewStage = null, shopFilter = 'all';
   let giftDraft = '', giftPreview = null, giftError = '', giftErrorKey = '', giftBusy = false;
   let giftPending = '', giftFileName = '', giftReadRevision = 0, giftOperation = '';
   const cleanGiftCode = code => String(code).replace(/\s+/g,'').replace(/^\uFEFF+/,'');
@@ -44,7 +44,7 @@
   const previewNote = () => motionAllowed() ? tab === 'gifts' ? 'giftPreviewSafe' : 'previewSafe' : 'previewStatic';
   const motionHosts = new Set();
   const motionVisibility = new IntersectionObserver(entries => {
-    for (const entry of entries) entry.target.dataset.rewardVisible = String(entry.isIntersecting);
+    for (const entry of entries) { entry.target.dataset.rewardVisible = String(entry.isIntersecting); if(!entry.isIntersecting)window.mailaiCompanionMotion?.stopPreview(entry.target); }
   });
   function watchRewardMotion() {
     for (const svg of motionHosts) if (!svg.isConnected) { motionVisibility.unobserve(svg); motionHosts.delete(svg); }
@@ -56,6 +56,8 @@
     }
   }
   function updatePreviewMotion() {
+    if(!previewPlaying || !motionAllowed())window.mailaiCompanionMotion?.stopPreview();
+    dialog?.querySelectorAll('[data-pet-try-action]').forEach(n=>n.disabled=!motionAllowed());
     const art = dialog?.querySelector('.pet-live-art');
     const button = dialog?.querySelector('[data-pet-preview-play]');
     if (art) art.dataset.previewPlaying = String(previewPlaying && motionAllowed());
@@ -141,8 +143,9 @@
       // A preference change in another window must also discard buffered activity.
       clicks = 0; pending = null; learning.clear(); lastSample = 0;
     }
-    let notice = '';
+    let notice = '', milestone = null;
     if (previous && result.stage > previous.stage) {
+      milestone = {evolved:true};
       const unlocked = result.items.filter(item=>item.stage > previous.stage && item.stage <= result.stage).length;
       notice = t('evolved',stageName(result.stage),unlocked);
       feedback = {copy:notice,until:Date.now()+20000};
@@ -151,9 +154,11 @@
       const goals = result.quests.filter(q=>q.complete && (result.day !== previous.day || !previous.quests.some(old=>old.id === q.id && old.complete)));
       if (goals.length) notice = t('goalsCompleted',goals.map(q=>t(`quest.${q.id}`)).join(' · '));
       else if (result.xp > previous.xp || result.earned > previous.earned) notice = t('earnedNow',Math.max(0,result.xp-previous.xp),Math.max(0,result.earned-previous.earned));
+      if (goals.length) milestone = {evolved:false};
       if (goals.length) feedback = {copy:notice,until:Date.now()+20000};
     }
     paint();
+    if (milestone) document.dispatchEvent(new CustomEvent('mailai:companion-milestone',{detail:milestone}));
     if (notice && dialog?.open) message(notice);
     return true;
   }
@@ -203,9 +208,16 @@
         return;
       }
       if (button.hasAttribute('data-pet-retry')) return refresh();
+      if (button.dataset.petShopFilter) { shopFilter=button.dataset.petShopFilter; renderKey='';render();dialog.querySelector(`[data-pet-shop-filter="${shopFilter}"]`)?.focus({preventScroll:true});return; }
+      if (button.dataset.petTryStage) { tab='shop';previewStage=Number(button.dataset.petTryStage);previewOpen=true;renderKey='';render();selectPreview(previewItem,true);return; }
+      if (button.dataset.petTryAction) {
+        previewPlaying=true;updatePreviewMotion();
+        window.mailaiCompanionMotion?.preview(dialog.querySelector('.pet-live-art svg'),previewStage || state.stage,button.dataset.petTryAction);return;
+      }
+      if (button.dataset.petCollection) return selectPreview(button.dataset.petCollection,true);
       if (button.dataset.petPreview) return selectPreview(button.dataset.petPreview, true);
       if (button.hasAttribute('data-pet-preview-close')) {
-        previewOpen = false;
+        previewOpen = false;window.mailaiCompanionMotion?.stopPreview();
         dialog.querySelector('.pet-live-preview').hidden = true; message('');
         dialog.querySelector(`[data-pet-preview="${previewItem}"]`)?.focus();
         return;
@@ -301,12 +313,13 @@
         }
         return;
       }
+      if (event.target.matches('[data-pet-preview-stage]')) { previewStage=Number(event.target.value);selectPreview(previewItem);dialog.querySelector('[data-pet-preview-stage]')?.focus();return; }
       if (event.target.matches('[data-pet-preview-select]')) selectPreview(event.target.value);
     });
-    dialog.addEventListener('close', () => { if (returnFocus?.isConnected) returnFocus.focus({preventScroll:true}); });
+    dialog.addEventListener('close', () => { window.mailaiCompanionMotion?.stopPreview(); document.dispatchEvent(new Event('mailai:companion-journal')); if (returnFocus?.isConnected) returnFocus.focus({preventScroll:true}); });
   }
   function visitOutfits(items) {
-    tab = 'shop'; render();
+    shopFilter = 'all'; renderKey = ''; tab = 'shop'; render();
     const cards = items.map(item=>dialog.querySelector(`[data-pet-item="${CSS.escape(item)}"]`)).filter(Boolean);
     for (const card of cards) { card.setAttribute('data-gift-focus','true'); card.tabIndex = -1; }
     const card = cards[0];
@@ -364,21 +377,27 @@
     checkAccount(); ensureDialog(); returnFocus = document.activeElement;
     if (!dialog.open) dialog.showModal();
     render();
+    document.dispatchEvent(new Event('mailai:companion-journal'));
     await refresh();
   }
-  function avatar(extra = '') { return `<div class="pet-portrait ${extra}">${window.mailaiCompanionArt || ''}</div>`; }
+  function avatar(extra = '', stage = null) {
+    let art = window.mailaiCompanionArt || '';
+    if (stage !== null) art = art.replace('<svg ', `<svg data-evolution-stage="${stage}" `);
+    return `<div class="pet-portrait ${extra}">${art}</div>`;
+  }
   function previewView() {
     const items = state.items.filter(item => item.slot !== 'theme' && (tab !== 'gifts' || giftPreview?.items.some(gift=>gift.id===item.id)));
     if (!items.length) return '';
     const item = items.find(item => item.id === previewItem) || items[0];
     previewItem = item.id;
-    return `<div class="pet-live-art pet-item-art" data-item-preview="${item.id}" data-preview-playing="${previewPlaying && motionAllowed()}">${avatar()}</div><div class="pet-preview-copy"><div class="pet-preview-heading"><h4 id="pet-preview-title">${label(`item.${item.id}`)}</h4><div class="pet-preview-tools"><small>${label('previewTitle')}</small><button type="button" data-pet-preview-close title="${label('previewClose')}" aria-label="${label('previewClose')}">×</button></div></div><p>${label(`itemHint.${item.id}`)}</p><div class="pet-preview-controls"><select data-pet-preview-select aria-label="${label('previewChoose')}">${items.map(entry => `<option value="${entry.id}" ${entry.id === item.id ? 'selected' : ''}>${label(`item.${entry.id}`)}</option>`).join('')}</select><button type="button" data-pet-preview-play aria-pressed="${previewPlaying && motionAllowed()}" ${!motionAllowed() ? 'disabled' : ''}>${label(previewPlaying && motionAllowed() ? 'previewPause' : 'previewPlay')}</button></div><p class="pet-preview-footnote" data-pet-motion-note>${label(previewNote())}</p></div>`;
+    return `<div class="pet-live-art pet-item-art" data-item-preview="${item.id}" data-preview-playing="${previewPlaying && motionAllowed()}">${avatar('',previewStage || state.stage)}<span class="pet-fitting-stage">${esc(stageName(previewStage || state.stage))}</span></div><div class="pet-preview-copy"><div class="pet-preview-heading"><h4 id="pet-preview-title">${label(`item.${item.id}`)}</h4><div class="pet-preview-tools"><small>${label('previewTitle')}</small><button type="button" data-pet-preview-close title="${label('previewClose')}" aria-label="${label('previewClose')}">×</button></div></div><p>${label(`itemHint.${item.id}`)}</p><div class="pet-preview-controls"><select data-pet-preview-select aria-label="${label('previewChoose')}">${items.map(entry => `<option value="${entry.id}" ${entry.id === item.id ? 'selected' : ''}>${label(`item.${entry.id}`)}</option>`).join('')}</select><button type="button" data-pet-preview-play aria-pressed="${previewPlaying && motionAllowed()}" ${!motionAllowed() ? 'disabled' : ''}>${label(previewPlaying && motionAllowed() ? 'previewPause' : 'previewPlay')}</button></div><div class="pet-fitting-controls"><label>${label('fittingStage')}<select data-pet-preview-stage>${state.stages.map((_,i)=>`<option value="${i+1}" ${(previewStage || state.stage)===i+1?'selected':''}>${numerals[i]} · ${esc(stageName(i+1))}</option>`).join('')}</select></label><div class="pet-fitting-actions">${['greet','travel','signature'].map(action=>`<button type="button" data-pet-try-action="${action}" ${!motionAllowed()?'disabled':''}>${label('try.'+action)}</button>`).join('')}</div></div><p class="pet-preview-footnote" data-pet-motion-note>${label(previewNote())}</p></div>`;
   }
   function selectPreview(item, scroll = false) {
     if (!state?.items.some(entry => entry.id === item && entry.slot !== 'theme')) return;
     const host = dialog?.querySelector('.pet-live-preview');
     if (!host) return;
     const focused = document.activeElement?.matches('[data-pet-preview-select]');
+    window.mailaiCompanionMotion?.stopPreview();
     previewItem = item; previewPlaying = true; previewOpen = true; host.hidden = false; host.innerHTML = previewView();
     watchRewardMotion();
     if (focused) host.querySelector('[data-pet-preview-select]').focus({preventScroll:true});
@@ -398,19 +417,24 @@
   function journeyView() {
     return `<p class="pet-note">${label('journeyNote')}</p><div class="pet-journey">${state.stages.map((floor,index) => {
       const stage = index+1, unlocked = state.stage >= stage;
-      return `<article class="${unlocked ? 'is-unlocked' : ''} ${state.stage === stage ? 'is-current' : ''}"><span class="pet-stage-number">${numerals[index]}</span><div><b>${esc(stageName(stage))}</b><p>${stageHint(stage)}</p><small>${label('threshold',floor)}${state.stage === stage ? ' · '+label('current') : unlocked ? ' · '+label('unlocked') : ''}</small></div></article>`;
+      return `<article class="${unlocked ? 'is-unlocked' : ''} ${state.stage === stage ? 'is-current' : ''}"><span class="pet-stage-number">${numerals[index]}</span>${avatar('pet-evolution-preview',stage)}<div><b>${esc(stageName(stage))}</b><p>${stageHint(stage)}</p><p class="pet-stage-ability">${label('life.'+(state.style === 'ranger' ? 'rangerStage' : 'stage')+stage)}</p><div class="pet-unlock-list">${state.items.filter(item=>item.stage===stage&&item.slot!=='consumable').map(item=>`<span>${label('item.'+item.id)}</span>`).join('')}</div><button type="button" data-pet-try-stage="${stage}">${label('tryStage')}</button><small>${label('threshold',floor)}${state.stage === stage ? ' · '+label('current') : unlocked ? ' · '+label('unlocked') : ''}</small></div></article>`;
     }).join('')}</div><p class="pet-note">${label('streakNote')}</p>`;
+  }
+  function collectionView() {
+    const collections=[['post','cap','scarf','satchel'],['cloud','wings','jacket','visor'],['star','mech_wings','armor','orbit']];
+    const next=Math.min(7,state.stage+1),remaining=Math.max(0,state.stages[next-1]-state.xp);
+    return `<section class="pet-boutique-intro"><div><small>${label('boutiqueEyebrow')}</small><h3>${label('boutiqueTitle')}</h3><p>${label('boutiqueHint')}</p></div><div class="pet-collection-progress"><b>${state.items.filter(i=>i.owned&&i.slot!=='consumable').length} / ${state.items.filter(i=>i.slot!=='consumable').length}</b><span>${label('collectionCount')}</span></div></section><div class="pet-collections">${collections.map(([name,hero,...pieces])=>`<article><div class="pet-item-art" data-item-preview="${hero}">${avatar('',Math.max(state.stage,state.items.find(i=>i.id===hero).stage))}</div><small>${label('collection.'+name+'.tag')}</small><h4>${label('collection.'+name)}</h4><p>${[hero,...pieces].map(id=>label('item.'+id)).join(' · ')}</p><button type="button" data-pet-collection="${hero}">${label('collectionExplore')}</button></article>`).join('')}</div><div class="pet-next-reward"><div><b>${state.stage<7?label('nextLook',stageName(next)):label('allGrown')}</b><p>${state.stage<7?label('nextLookHint',remaining):label('allGrownHint')}</p></div><button type="button" data-pet-try-stage="${next}">${label('tryStage')}</button></div>`;
   }
   function shopView() {
     const s = state;
-    return `${themeShopView()}<section class="pet-live-preview" aria-labelledby="pet-preview-title" ${previewOpen ? '' : 'hidden'}>${previewView()}</section><div class="pet-section-title"><h3>${label('shopTitle')}</h3><span>${label('balance',s.stamps)}</span></div><div class="pet-reset-outfit">${['palette','accessory','effect'].map(slot=>`<button type="button" data-pet-slot="${slot}" ${!s.equipped[slot] || busy ? 'disabled' : ''}>${label(`reset.${slot}`)}</button>`).join('')}</div><div class="pet-shop">${s.items.filter(item=>item.slot !== 'theme').map(item => {
+    return `${collectionView()}<section class="pet-live-preview" aria-labelledby="pet-preview-title" ${previewOpen ? '' : 'hidden'}>${previewView()}</section><div class="pet-section-title"><h3>${label('shopTitle')}</h3><span>${label('balance',s.stamps)}</span></div><div class="pet-reset-outfit">${['palette','accessory','effect'].map(slot=>`<button type="button" data-pet-slot="${slot}" ${!s.equipped[slot] || busy ? 'disabled' : ''}>${label(`reset.${slot}`)}</button>`).join('')}</div><div class="pet-shop-filters" role="group" aria-label="${label('shopFilter')}">${['all','accessory','palette','effect','owned'].map(filter=>`<button type="button" data-pet-shop-filter="${filter}" aria-pressed="${shopFilter===filter}">${label('filter.'+filter)}</button>`).join('')}</div><div class="pet-shop">${s.items.filter(item=>item.slot !== 'theme' && (shopFilter==='all'||shopFilter==='owned'&&item.owned||item.slot===shopFilter)).map(item => {
       const locked = !item.owned && s.stage < item.stage, equipped = s.equipped[item.slot] === item.id;
       const depleted = item.id === 'berry' && s.berry_today >= 3;
       const unavailable = locked || (!item.owned && s.stamps < item.cost) || depleted || busy || (!!purchaseIntent && !item.owned);
       const action = item.owned ? `data-pet-slot="${item.slot}" data-pet-equip="${item.id}"` : `data-pet-buy="${item.id}"`;
       const caption = equipped ? t('wearing') : item.owned ? t('wear') : depleted ? t('berryLimit') : locked ? t('stageRequired',stageName(item.stage)) : t(item.id === 'berry' ? 'feedPrice' : 'buyPrice',item.cost);
-      return `<article data-pet-item="${item.id}" class="pet-shop-item ${locked ? 'is-locked' : ''}"><button type="button" class="pet-preview-icon" data-pet-preview="${item.id}" title="${label('previewIcon',t(`item.${item.id}`))}" aria-label="${label('previewIcon',t(`item.${item.id}`))}"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.5 12s3.2-6 9.5-6 9.5 6 9.5 6-3.2 6-9.5 6S2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.5"/></svg></button><div class="pet-item-art" data-item-preview="${item.id}" aria-hidden="true">${avatar()}</div><div class="pet-item-copy"><b>${label(`item.${item.id}`)}</b><p>${label(`itemHint.${item.id}`)}</p><small>${item.owned ? label('owned') : label('itemRequirement',item.cost,stageName(item.stage))}</small></div><button type="button" ${action} ${unavailable || equipped ? 'disabled' : ''}>${esc(caption)}</button></article>`;
-    }).join('')}</div><p class="pet-note">${label('shopNote')}</p>`;
+      return `<article data-pet-item="${item.id}" class="pet-shop-item ${locked ? 'is-locked' : ''} ${equipped?'is-equipped':''}"><button type="button" class="pet-preview-icon" data-pet-preview="${item.id}" title="${label('previewIcon',t(`item.${item.id}`))}" aria-label="${label('previewIcon',t(`item.${item.id}`))}"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.5 12s3.2-6 9.5-6 9.5 6 9.5 6-3.2 6-9.5 6S2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.5"/></svg></button><div class="pet-item-art" data-item-preview="${item.id}" aria-hidden="true">${avatar('',Math.max(s.stage,item.stage))}<span class="pet-item-stage">${numerals[item.stage-1]}</span></div><div class="pet-item-copy"><b>${label(`item.${item.id}`)}</b><p>${label(`itemHint.${item.id}`)}</p><small>${item.owned ? label('owned') : label('itemRequirement',item.cost,stageName(item.stage))}</small></div><button type="button" ${action} ${unavailable || equipped ? 'disabled' : ''}>${esc(caption)}</button></article>`;
+    }).join('')}</div>${shopFilter==='owned'&&!s.items.some(item=>item.owned&&item.slot!=='theme')?`<p class="pet-empty">${label('wardrobeEmpty')}</p>`:''}<p class="pet-note">${label('shopNote')}</p>${themeShopView()}`;
   }
   function themeShopView() {
     const s = state;
@@ -432,6 +456,7 @@
     pref.textContent = t(state?.enabled ? 'pause' : 'resume'); pref.disabled = !state || busy;
     const host = dialog.querySelector('.pet-journal-body');
     if (!state) {
+      window.mailaiCompanionMotion?.stopPreview();
       host.innerHTML = `<p class="pet-empty">${label(account ? 'loading' : 'login')}</p><button type="button" data-pet-retry>${label('retry')}</button>`;
       return;
     }
@@ -441,19 +466,25 @@
     const focus = document.activeElement;
     const giftSelection = focus?.matches('[data-pet-gift-code],[data-pet-claim-code]') ? [focus.selectionStart,focus.selectionEnd] : null;
     const identityOpen = host.querySelector('.pet-gift-identity')?.open;
-    const focusKey = focus?.closest('.pet-journal') ? Object.entries(focus.dataset).find(([key])=>['petTab','petBuy','petEquip','petSlot','petStyle','petGiftCode','petGiftPreview','petGiftClaim','petGiftWear','petGiftCopy','petGiftReconcile','petGiftOutfits','petClaimCode','petPreviewSelect','petPreviewPlay','petPreviewClose'].includes(key)) : null;
+    const focusKey = focus?.closest('.pet-journal') ? Object.entries(focus.dataset).find(([key])=>['petLifeAction','petLifeChatter','petTab','petBuy','petEquip','petSlot','petStyle','petGiftCode','petGiftPreview','petGiftClaim','petGiftWear','petGiftCopy','petGiftReconcile','petGiftOutfits','petClaimCode','petPreviewSelect','petPreviewPlay','petPreviewClose','petPreviewStage','petTryAction','petShopFilter','petTryStage','petCollection'].includes(key)) : null;
     const scroll = host.scrollTop;
+    // Progress, receipts and tab updates must not replace the live animation rig.
+    const portrait = host.querySelector('.pet-hero-portrait');
     const next = state.next_stage_xp;
     const progress = next ? (state.xp-state.stage_floor)/(next-state.stage_floor)*100 : 100;
+    window.mailaiCompanionMotion?.stopPreview();
     host.innerHTML = `${purchaseIntent ? `<div class="pet-pending" role="status"><span>${label('purchasePending',t(`item.${purchaseIntent.item}`))}</span><button type="button" data-pet-reconcile ${busy ? 'disabled' : ''}>${label('reconcile')}</button></div>` : ''}${feedback && Date.now()<feedback.until ? `<p class="pet-milestone" role="status">${esc(feedback.copy)}</p>` : ''}<section class="pet-hero">${avatar('pet-hero-portrait')}<div class="pet-hero-copy"><span class="pet-eyebrow">${label('heroEyebrow')}</span><h3>${esc(stageName(state.stage))} <small>${label('level',state.stage)}</small></h3><p>${stageHint(state.stage)}</p><div class="pet-growth-label"><b>${label('growth')} ${state.xp.toLocaleString()}</b><span>${next ? label('next',next-state.xp) : label('maxStage')}</span></div><progress max="100" value="${progress}" aria-label="${label('growth')}"></progress></div></section>
-    <div class="pet-style-choice"><span>${label('styleChoice')}</span>${['nature','ranger'].map(style=>`<button type="button" data-pet-style="${style}" aria-pressed="${state.style === style}" ${state.style === style || busy ? 'disabled' : ''}>${label(`style.${style}`)}</button>`).join('')}<small>${label('styleFree')}</small></div>
+    ${window.mailaiCompanionLife?.controls() || ''}
+    <div class="pet-style-choice"><span>${label('styleChoice')}</span>${['nature','ranger'].map(style=>`<button type="button" data-pet-style="${style}" aria-pressed="${state.style === style}" ${state.style === style || busy ? 'disabled' : ''}><b>${label(`style.${style}`)}</b><em>${label(`life.${style}Intro`)}</em></button>`).join('')}<small>${label('styleFree')}</small></div>
     <div class="pet-stats"><article><strong>${state.stamps.toLocaleString()}</strong><span>${label('stamps')}</span></article><article><strong>${state.streak}<small>${label('days')}</small></strong><span>${label('streak')}</span></article><article><strong>${state.earned.toLocaleString()}</strong><span>${label('earned')}</span></article></div>
     ${!state.enabled ? `<p class="pet-paused">${label('paused')}</p>` : ''}<nav class="pet-tabs" aria-label="${label('tabs')}">${['today','journey','shop','gifts','history'].map(name=>`<button type="button" data-pet-tab="${name}" aria-pressed="${tab === name}" aria-label="${label(name)}"><span class="pet-tab-label">${label(name)}</span><span class="pet-tab-short" aria-hidden="true">${label(`tab.${name}`)}</span></button>`).join('')}</nav><section class="pet-tab-content">${({today:todayView,journey:journeyView,shop:shopView,gifts:giftsView,history:historyView})[tab]()}</section>`;
+    if (portrait?.querySelector('.mail-companion')) host.querySelector('.pet-hero-portrait')?.replaceWith(portrait);
     const accountNote = document.createElement('div');
     accountNote.className = 'pet-client-note';
     accountNote.innerHTML = `<span>${label('clientOwner')}</span><small>${label('clientStorage')}</small>`;
     host.prepend(accountNote);
     watchRewardMotion();
+    window.mailaiCompanionMotion?.scan();
     if (identityOpen) { const identity = host.querySelector('.pet-gift-identity'); if (identity) identity.open = true; }
     host.scrollTop = scroll;
     if (focusKey && focus?.isConnected === false) {
@@ -554,6 +585,7 @@
   new MutationObserver(checkAccount).observe(document.getElementById('account-mailbox-nav'),{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
   window.mailaiEnergy.register('companion-growth',tick,10000);
   motionPreference.addEventListener('change', updatePreviewMotion);
+  document.addEventListener('mailai:assistant-portrait',watchRewardMotion);
   new MutationObserver(updatePreviewMotion).observe(document.body,{attributes:true,attributeFilter:['class']});
   watchRewardMotion();
   checkAccount();

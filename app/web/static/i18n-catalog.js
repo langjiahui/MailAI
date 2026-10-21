@@ -1,5 +1,139 @@
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "mailImport.adviceMissing": ["请确认源文件仍在原位置且可读取，云盘文件需先下载到本机。若暂存文件已丢失，请重新选择原文件建立新批次；已导入邮件会自动去重。", "Make sure source files are still in their original location and readable. Download cloud files first. If staged files are missing, select the originals in a new batch; existing messages will be deduplicated."],
+  "mailImport.fileMissing": ["找不到源文件或暂存文件，可能已移动或被清理", "The source or staged file was not found. It may have been moved or removed."],
+  "mailImport.filePermission": ["没有读取文件或写入暂存目录的权限", "Permission denied when reading the file or writing to temporary storage."],
+  "mailImport.fileSpace": ["磁盘剩余空间不足，无法保存邮件文件", "Not enough free disk space to save the mail file."],
+  "mailImport.fileIO": ["文件读取或保存失败，请检查磁盘空间和访问权限", "Could not read or save the file. Check disk space and access permissions."],
+  "mailImport.skipFile": ["跳过此文件，继续添加", "Skip this file and continue"],
+  "mailImport.failedFile": ["失败文件：{0}。可以重试，或单独跳过后先添加其他文件。", "Failed file: {0}. Retry it, or skip it and add the other files first."],
+  "mailImport.skippedCount": ["已单独跳过 {0} 个文件，扫描后的问题清单会保留记录，方便之后补导。", "Skipped {0} files. The scan issue report will keep their details for later import."],
+  "mailImport.allSkipped": ["没有可新增的邮件，已单独跳过 {0} 个文件。请查看下方原因和处理建议，修复后另行补导。", "No new mail to import; {0} files were skipped. Review the reasons and suggestions below, then import the repaired files separately."],
+  "mailImport.invalidSkip": ["跳过的文件信息无效，请重新选择文件", "Invalid file information for skipping. Please select the files again."],
+  "mailImport.waitSkip": ["请先等待当前文件添加结束，再跳过失败文件", "Wait for the current file transfer to finish before skipping it."],
+  "mailImport.skipWrite": ["无法保存跳过记录，请检查磁盘空间后重试", "Could not save the skip record. Check disk space and try again."],
+  "mailImport.skippedReason": ["已单独跳过此文件，可修复后另行导入", "This file was skipped. You can repair it and import it separately."],
+  "mailImport.skippedReasonDetail": ["已单独跳过此文件，可修复后另行导入：{0}", "This file was skipped. Repair it and import it separately: {0}"],
+  "mailImport.adviceLabel": ["处理建议：", "Suggested action: "],
+  "mailImport.advice0": ["单封邮件需小于等于 64 MB，MBOX 需小于等于 1 GB，每批不超过 10 GB。请在原客户端分批导出；单封超大邮件可保留原件后，另存较小副本再导入。", "Each message must be at most 64 MB, each MBOX at most 1 GB, and each batch at most 10 GB. Export smaller batches from the original client. For a large individual message, keep the original and export a smaller copy."],
+  "mailImport.advice1": ["此文件没有邮件内容。请在原客户端打开邮件，下载完整正文和附件后重新导出；确认文件大小不为 0，再单独导入。", "This file has no mail content. Open the message in the original client, download its full body and attachments, and export it again. Check that the file is not empty before importing it separately."],
+  "mailImport.advice2": ["请检查 MailAI 数据目录所在磁盘的剩余空间和写入权限，并确认源文件可读取。处理后重试；已成功导入的邮件会保留。", "Check free space and write permissions on the disk containing MailAI data, and make sure the source file is readable. Retry after resolving the issue. Successfully imported mail will be kept."],
+  "mailImport.advice3": ["请确认 MailAI 服务仍在运行，源文件未被移动或删除；云盘文件需先下载到本机。可点击继续添加重试，仍失败时先跳过，稍后单独导入。", "Make sure the MailAI service is running and source files have not been moved or deleted. Download cloud files to this device first. Retry with Continue adding, or skip the file and import it separately later."],
+  "mailImport.advice4": ["恢复任务时请选择原批次文件并保持原顺序。若已修改文件，请新建导入批次；已有邮件会自动去重。", "To resume, select the original batch in the original order. If files have changed, start a new batch; existing messages will be deduplicated."],
+  "mailImport.advice5": ["请将文件复制到本机普通目录，缩短文件名及目录层级，避免特殊路径字符后重新选择。", "Copy the files to a normal local directory, shorten names and directory paths, and avoid special path characters before selecting them again."],
+  "mailImport.advice6": ["请先核对本机已有的同一邮件，补齐原文和附件后再试；系统会跳过无法确认内容的同标识邮件，避免误建重复记录。", "Check the existing message and restore its original body and attachments before retrying. Matching identifiers with unverifiable content are skipped to prevent duplicates."],
+  "mailImport.advice7": ["请用原邮件客户端打开此文件并确认正文和附件完整，再重新导出为 EML 或 MBOX；不要仅修改文件扩展名。可先导入其他文件，修复后将此文件单独补导。", "Open this file in the original email client and verify that its body and attachments are complete, then export it again as EML or MBOX. Do not just rename the extension. Import other files first and add the repaired file later."],
+  "mailView.resizeColumn": ["调整列宽", "Resize column"],
+  "mailView.resizeHint": ["拖动调整列宽，双击恢复默认；也可使用左右方向键", "Drag to resize, double-click to reset, or use the left/right arrow keys"],
+  "mailView.title": ["邮件列表显示方式", "Mail list view"],
+  "mailView.hint": ["选择日常阅读或按列快速浏览，设置会保存在这台设备。", "Choose everyday reading or a column-based overview. Saved on this device."],
+  "mailView.cards": ["摘要列表（现有）", "Summary list (current)"],
+  "mailView.cardsHint": ["保留现有布局，显示摘要与标签", "Current layout with summaries and tags"],
+  "mailView.table": ["经典表格", "Classic table"],
+  "mailView.tableHint": ["字段按列对齐，右侧阅读，可拖动调整列宽", "Aligned columns with adjustable widths and reading on the right"],
+  "mailView.state": ["状态", "Status"],
+  "mailView.attachment": ["附件", "Files"],
+  "mailView.sender": ["发件人", "Sender"],
+  "mailView.recipient": ["收件人", "Recipient"],
+  "mailView.subject": ["主题", "Subject"],
+  "mailView.date": ["日期", "Date"],
+  "mailView.sortDate": ["切换日期排序", "Toggle date order"],
+  "mailView.noSubject": ["无主题", "No subject"],
+
+  "mailImport.localOnlyTarget": ["本地邮件只能移入 MailAI 收件箱或本地归档，不会上传到服务器", "Local mail can only move to the MailAI inbox or local archive. It will not be uploaded."],
+  "mailImport.localUnavailable": ["邮件不存在、不是本地邮件或正在处理，请刷新后重试", "This message is missing, is not local, or is being processed. Refresh and try again."],
+  "mailImport.localChanged": ["邮件位置或状态已变化，请手动处理", "The message location or status has changed. Please organize it manually."],
+  "mailImport.orderChanged": ["文件添加顺序不一致，请重新选择原批次文件后继续", "The file order has changed. Select the original batch to continue."],
+  "mailImport.orderRetry": ["文件添加顺序不一致，请重试", "The file order is inconsistent. Please try again."],
+  "mailImport.batchChanged": ["所选文件与此批次已添加的文件不一致，请选择原批次文件或重新开始", "The selected files differ from this batch. Select the original files or start a new batch."],
+  "mailImport.interrupted": ["文件传输中断，已添加的文件已保留，请继续添加", "Transfer interrupted. Saved files have been kept. Continue adding files."],
+  "mailImport.separateMove": ["请分别选择本地邮件和服务器邮件移动，避免误改服务器文件夹", "Select local and server messages separately to avoid unintended server changes."],
+  "mailImport.localInbox": ["收件箱（仅本机）", "Inbox (local only)"],
+  "mailImport.localSelection": ["本地邮件仅在本机整理，不上传服务器；请与服务器邮件分开选择", "Local mail stays on this device. Select it separately from server messages."],
+  "mailImport.localHint": ["仅在 MailAI 本地整理，不上传服务器", "Organize locally in MailAI without uploading to the server"],
+  "mailImport.mixedHint": ["请分别选择本地邮件和服务器邮件；本地邮件可使用收藏", "Select local and server messages separately. Local messages support favorites."],
+  "mailImport.moved": ["已在本机移动 {0} 封邮件，未上传服务器", "Moved {0} messages locally without uploading to the server"],
+  "mailImport.localInboxBadge": ["仅本机 · 收件箱", "Local only · Inbox"],
+  "mailImport.location": ["导入后在「本地归档」中查看，默认已读；可移到 MailAI 收件箱，仅在本机整理。", "Imported mail appears in Local archive and is marked as read. You can move it to the MailAI inbox without uploading it."],
+  "mailImport.transferError": ["文件传输中断。已添加的文件已保留，请点击「继续添加」；若文件已移动，请重新选择原文件。", "File transfer interrupted. Saved files have been kept. Choose Continue adding; if files were moved, select the originals again."],
+  "mailImport.kept": ["已保留 {0} / {1} 个文件。{2}", "Saved {0} / {1} files. {2}"],
+  "mailImport.continueHint": ["点击「继续添加」接着传输。", "Choose Continue adding to resume the transfer."],
+  "mailImport.reselectHint": ["请选择原批次文件继续，已添加的文件会校验复用。", "Select the original batch to continue. Previously saved files will be verified and reused."],
+  "mailImport.copyHint": ["正在复制到本机工作目录。中断可继续；关闭软件后可重选原批次文件恢复。", "Copying to local storage. You can resume interruptions or reselect the original batch after restarting."],
+  "mailImport.continue": ["继续添加", "Continue adding"],
+  "mailImport.reselectCount": ["请选回原批次的 {0} 个邮件文件，已添加的文件会校验复用。", "Select the original {0} mail files. Previously saved files will be verified and reused."],
+  "mailImport.stopped": ["已停止添加，已添加的文件已保留。点击「继续添加」即可接着传输。", "Stopped adding files. Saved files have been kept. Choose Continue adding to resume."],
+  "pet.wardrobeEmpty": ["衣橱还空着，先试试喜欢的装扮吧。", "Your wardrobe is ready for its first favorite. Try a look."],
+  "pet.filter.owned": ["我的收藏", "My collection"],
+  "pet.filter.effect": ["光效", "Effects"],
+  "pet.filter.palette": ["配色", "Palettes"],
+  "pet.filter.accessory": ["装扮", "Outfits"],
+  "pet.filter.all": ["全部补给", "All rewards"],
+  "pet.shopFilter": ["筛选补给", "Filter rewards"],
+  "pet.allGrownHint": ["回看每个阶段的模样，继续搭配你喜欢的装扮。", "Revisit every stage and keep finding your favorite looks."],
+  "pet.allGrown": ["已经长成独一无二的伙伴", "A fully grown companion"],
+  "pet.nextLookHint": ["再积累 {0} 成长，迎接新的形态和专属动作。现在就能提前试穿。", "{0} more growth brings a new form and signature move. Preview it now."],
+  "pet.nextLook": ["下一站 · {0}", "Next stop · {0}"],
+  "pet.collectionExplore": ["试穿看看", "Try this look"],
+  "pet.collection.star.tag": ["珍珠轻甲 · 流光羽片", "PEARL ARMOR · LUMINOUS WINGS"],
+  "pet.collection.star": ["星海远行", "Star voyager"],
+  "pet.collection.cloud.tag": ["清透镜片 · 轻盈羽翼", "CLEAR LENSES · LIGHT FEATHERS"],
+  "pet.collection.cloud": ["云游探险", "Cloud explorer"],
+  "pet.collection.post.tag": ["柔软织物 · 暖金细节", "SOFT FABRIC · WARM GOLD"],
+  "pet.collection.post": ["日常信使", "Everyday post"],
+  "pet.collectionCount": ["已收藏装扮", "collected rewards"],
+  "pet.boutiqueHint": ["圆润的小信使，也有自己的风格。先试穿，再看看它动起来的样子。", "A little messenger with a style of its own. Try a look and see it come to life."],
+  "pet.boutiqueTitle": ["为下一段旅程，挑件喜欢的", "A little something for the next journey"],
+  "pet.boutiqueEyebrow": ["小邮 · 旅行衣橱", "XIAOYOU · TRAVEL WARDROBE"],
+  "pet.tryStage": ["预览形态与动作", "Preview form & moves"],
+  "pet.try.signature": ["阶段专属动作", "Stage signature"],
+  "pet.try.travel": ["跑动 / 游动", "Move around"],
+  "pet.try.greet": ["打个招呼", "Say hello"],
+  "pet.fittingStage": ["成长形态试穿", "Try a growth stage"],
+  "pet.life.natureIntro": ["小雀渐丰羽 · 相伴成凤凰", "A little sparrow grows into a phoenix"],
+  "pet.life.rangerIntro": ["小鱼逐星海 · 化翼为鲲鹏", "A little fish grows into a starry Kunpeng"],
+  "pet.life.rangerHelloReply": ["摆摆鱼鳍，收到你的招呼啦！", "A little fin wave — hello back!"],
+  "pet.life.rangerIdle0": ["信带好啦，陪你游向下一站。", "Letter packed. Let’s swim to our next stop."],
+  "pet.life.rangerIdle1": ["星海很大，我们慢慢游。", "The star sea is vast. Let’s take our time."],
+  "pet.life.rangerIdle2": ["收好小鱼鳍，歇一会儿。", "Fins tucked in. Time for a little rest."],
+  "pet.life.rangerStage1": ["Ⅰ · 鱼鳍招呼：摆摆小鳍，认识新伙伴", "Ⅰ · First hello: a little fin wave"],
+  "pet.life.rangerStage2": ["Ⅱ · 逐浪游弋：轻摆尾巴，游向你", "Ⅱ · A gentle tail swish to swim toward you"],
+  "pet.life.rangerStage3": ["Ⅲ · 水中送信：托起信封，轻快出发", "Ⅲ · Carry a little letter through the water"],
+  "pet.life.rangerStage4": ["Ⅳ · 泡泡庆祝：轻轻跃起，分享喜悦", "Ⅳ · A buoyant leap to share the joy"],
+  "pet.life.rangerStage5": ["Ⅴ · 跃水试飞：展翼跃起，轻轻落下", "Ⅴ · A first winged leap and gentle landing"],
+  "pet.life.rangerStage6": ["Ⅵ · 星翼滑翔：沿着星海轻轻巡游", "Ⅵ · Glide gently across the star sea"],
+  "pet.life.rangerStage7": ["Ⅶ · 鲲鹏巡星：振翼升空，游向星海", "Ⅶ · Kunpeng flight: spread wings toward the stars"],
+
+  "pet.life.saveFailed": ["设置未能保存，仍使用原来的偏好。", "The setting could not be saved. Your previous preference is still active."],
+  "pet.life.title": ["小邮的陪伴时刻", "A moment with XiaoYou"],
+  "pet.life.rhythm": ["短暂活泼，安心休息", "A little motion, plenty of rest"],
+  "pet.life.intro": ["拍个招呼，看看小邮今天的招牌动作。", "Say hello or try XiaoYou’s signature move."],
+  "pet.life.hello": ["打个招呼", "Say hello"],
+  "pet.life.signature": ["招牌动作", "Signature move"],
+  "pet.life.helloReply": ["收到你的招呼啦！今天也一起把事情理顺吧。", "Hello back! Let’s make today a little easier."],
+  "pet.life.soundOn": ["轻提示音 · 开", "Soft sound · On"],
+  "pet.life.soundOff": ["轻提示音 · 关", "Soft sound · Off"],
+  "pet.life.soundEnabled": ["叮咚，这是我的声音。只在互动、完成和成长时轻轻回应。", "That’s my sound! A soft note for interactions, completion and growth."],
+  "pet.life.soundDisabled": ["好，我用动作和表情陪着你。", "I’ll keep you company with gestures and expressions."],
+  "pet.life.soundUnavailable": ["当前环境暂时无法播放声音，动作和文字回应仍可使用。", "Sound is unavailable here. Gestures and text still work."],
+  "pet.life.chatter": ["偶尔说句话", "Occasional little messages"],
+  "pet.life.energy": ["提示音默认关闭；动作之间会休息，写作时更安静，离开窗口即暂停。", "Sound starts off. Gestures take breaks, stay subtle while typing, and pause when you leave the window."],
+  "pet.life.still": ["我在这里。你已选择减少动态效果，心意用文字送到。", "I’m here. With reduced motion enabled, my greeting comes in words."],
+  "pet.life.busy": ["我正专心帮你处理，忙完再一起玩。", "I’m helping with something. Let’s play when it’s done."],
+  "pet.life.idle0": ["伸个懒腰，再陪你看下一封。", "A little stretch, then on to the next message."],
+  "pet.life.idle1": ["信封包准备好了，随时可以出发。", "My mailbag is ready whenever you are."],
+  "pet.life.idle2": ["不用着急，我陪你慢慢理顺。", "Take your time. We’ll sort it out together."],
+  "pet.life.done": ["整理好了，一起看看吧。", "All ready. Let’s take a look."],
+  "pet.life.evolved": ["我又长大了一点，还学会了新的招牌动作！", "I’ve grown—and learned a new signature move!"],
+  "pet.life.goal": ["今天的小目标完成了，和你一起进步真好。", "A daily goal completed. It’s good to grow together."],
+  "pet.life.stage1": ["Ⅰ · 初见招呼：挥挥小翅膀，认识新伙伴", "Ⅰ · First hello: a little wing wave"],
+  "pet.life.stage2": ["Ⅱ · 雀跃两步：轻轻跳向你", "Ⅱ · Two little hops toward you"],
+  "pet.life.stage3": ["Ⅲ · 送信时刻：捧起信封，送上心意", "Ⅲ · Special delivery: a letter for you"],
+  "pet.life.stage4": ["Ⅳ · 开心庆祝：为一起完成的事雀跃", "Ⅳ · A happy hop for our progress"],
+  "pet.life.stage5": ["Ⅴ · 乘风远行：舒展羽翼，轻轻滑翔", "Ⅴ · Spread feathered wings for a gentle glide"],
+  "pet.life.stage6": ["Ⅵ · 低头致意：感谢一路相伴", "Ⅵ · A little bow to thank you for your company"],
+  "pet.life.stage7": ["Ⅶ · 凤凰展翼：轻跃起舞，舒展凤羽", "Ⅶ · Phoenix dance: a leap and a sweep of feathers"],
+
   "updateRoute.verification": ["更新清单校验失败，已停止更新", "The update manifest could not be verified. The update has been stopped"],
   "updateMirror.address": ["更新地址无效", "Invalid update address"],
   "updateMirror.privateAddress": ["更新地址指向本机、内网或保留地址", "The update address points to a local, private or reserved network"],
@@ -14084,66 +14218,21 @@ const MAILAI_UI_COPY = {
     "只计前台活跃时间，超过 90 秒未操作即暂停。邮件阅读满 8 秒计为认真阅读，同一封每天奖励一次；帮助主题展开并阅读 8 秒获得学习奖励。进度条显示今日奖励上限，次数与时间仍继续统计。",
     "Only active foreground time counts; timers pause after 90 seconds without input. Read an email for 8 seconds to earn one reading reward per email per day. Keep a help topic open for 8 seconds to earn learning rewards. Progress bars show daily reward limits; activity totals continue counting."
   ],
-  "pet.journeyNote": [
-    "成长度来自日常积累，也可以兑换成长莓补充。每次进化都保留小邮熟悉的样子，再增加新的细节。",
-    "Earn growth through everyday activity or redeem growth berries. Each evolution adds new details to XiaoYou’s familiar appearance."
-  ],
-  "pet.stage1": [
-    "初见嫩芽",
-    "Little sprout"
-  ],
-  "pet.stage2": [
-    "萌芽信使",
-    "Budding messenger"
-  ],
-  "pet.stage3": [
-    "花苞伙伴",
-    "Blossom buddy"
-  ],
-  "pet.stage4": [
-    "星章邮差",
-    "Star courier"
-  ],
-  "pet.stage5": [
-    "远行使者",
-    "Voyaging messenger"
-  ],
-  "pet.stage6": [
-    "极光守护",
-    "Aurora guardian"
-  ],
-  "pet.stage7": [
-    "星河小邮",
-    "Starlight XiaoYou"
-  ],
-  "pet.stageHint1": [
-    "一封信，一点成长，从今天开始相伴。",
-    "One email, a little growth. Start your journey today."
-  ],
-  "pet.stageHint2": [
-    "头顶长出新的叶片，慢慢熟悉你的工作节奏。",
-    "A new leaf appears as XiaoYou learns your work rhythm."
-  ],
-  "pet.stageHint3": [
-    "嫩芽开出小花，学习与阅读让陪伴更丰富。",
-    "A little flower blooms through reading and learning."
-  ],
-  "pet.stageHint4": [
-    "戴上星章，解锁闪光特效与更丰富的装扮。",
-    "Earn a star badge and unlock sparkles and more outfits."
-  ],
-  "pet.stageHint5": [
-    "披上远行披风，还可以兑换信使小翅膀。",
-    "Gain a travel cape and unlock messenger wings."
-  ],
-  "pet.stageHint6": [
-    "脚边亮起极光光环，让每一天的成长可见。",
-    "An aurora halo lights up each day of growth."
-  ],
-  "pet.stageHint7": [
-    "星光围绕身边，记录你们长久的共同成长。",
-    "Starlight surrounds XiaoYou, marking your journey together."
-  ],
+  "pet.journeyNote": ["七个成长阶段，保留熟悉的脸，逐渐长出新的羽翼与尾羽。成长来自日常积累，切换路线时共享进度。", "Seven growth stages keep the familiar face while wings and tails develop. Everyday activity builds progress, shared across both routes."],
+  "pet.stage1": ["小邮雀", "Little mailbird"],
+  "pet.stage2": ["初羽小雀", "First-feather sparrow"],
+  "pet.stage3": ["青羽信使", "Blue-feather courier"],
+  "pet.stage4": ["灵羽伙伴", "Spirit-feather friend"],
+  "pet.stage5": ["乘风青鸾", "Wind-riding Luan"],
+  "pet.stage6": ["曦羽凤雏", "Dawn phoenix chick"],
+  "pet.stage7": ["青羽凤凰", "Azure phoenix"],
+  "pet.stageHint1": ["一封小信，两只小翅膀，从今天开始相伴。", "A little letter and two little wings. Our journey starts today."],
+  "pet.stageHint2": ["长出第一根冠羽，学会轻快地向你跳来。", "The first crest feather appears, with a cheerful little hop."],
+  "pet.stageHint3": ["青羽渐丰，带着小信封熟悉你的工作节奏。", "Blue feathers grow as your little courier learns your rhythm."],
+  "pet.stageHint4": ["冠羽与短尾悄悄长大，分享每一次小小的进步。", "A second crest feather and a short tail mark each little milestone."],
+  "pet.stageHint5": ["翼羽舒展，长出轻盈尾羽，学会乘风滑翔。", "Flight feathers and a flowing tail bring the first gentle glide."],
+  "pet.stageHint6": ["冠羽渐成，羽尖染上晨光，安静守护你的每一天。", "A full crest and dawn-tinted feather tips accompany every day."],
+  "pet.stageHint7": ["小雀长成青羽凤凰；平时收翼，庆祝时展翼起舞。", "The sparrow becomes an azure phoenix: wings tucked at rest, spread in celebration."],
   "pet.streakNote": [
     "每天第一次有效活动 +10 成长 / +5 邮票；每连续 7 天额外 +30 成长 / +20 邮票。中断只重置连续天数，已获得的成长、积分和道具一直保留。",
     "Your first activity each day gives +10 growth / +5 stamps. Every 7 consecutive days adds +30 growth / +20 stamps. Missing a day only resets your streak; growth, stamps and items are kept."
@@ -14169,7 +14258,7 @@ const MAILAI_UI_COPY = {
     "{0} stamps available"
   ],
   "pet.reset.palette": [
-    "恢复薄荷色",
+    "恢复初始配色",
     "Mint palette"
   ],
   "pet.reset.accessory": [
@@ -14240,10 +14329,7 @@ const MAILAI_UI_COPY = {
     "星环轨迹",
     "Star orbit"
   ],
-  "pet.item.wings": [
-    "信使小翅膀",
-    "Messenger wings"
-  ],
+  "pet.item.wings": ["晴羽信使翼", "Sunlit messenger wings"],
   "pet.item.aurora": [
     "极光涟漪",
     "Aurora ripples"
@@ -14256,22 +14342,10 @@ const MAILAI_UI_COPY = {
     "围巾尾端随微风轻摆，陪你读完每一封信。",
     "A cozy scarf with a tail that sways in a gentle breeze."
   ],
-  "pet.itemHint.sky": [
-    "换上轻盈的晴空配色。",
-    "A soft blue palette inspired by clear skies."
-  ],
-  "pet.itemHint.peach": [
-    "换上柔和的蜜桃配色。",
-    "A gentle peach palette."
-  ],
-  "pet.itemHint.cap": [
-    "专属信使帽，开始认真送信。",
-    "A special cap for a dedicated messenger."
-  ],
-  "pet.itemHint.satchel": [
-    "给熟悉的邮包装点金色细节。",
-    "Golden details for a familiar mailbag."
-  ],
+  "pet.itemHint.sky": ["清透晴蓝羽色与奶白肚皮，像把一小片晴天带在身边。", "Clear sky-blue feathers and a creamy belly bring a little sunshine along."],
+  "pet.itemHint.peach": ["蜜桃玫瑰色的翅尖和尾鳍，衬着软软的奶白脸颊。", "Peach-rose wings and tail fins frame a soft ivory face."],
+  "pet.itemHint.cap": ["圆润帽檐与小信封徽章，轻轻点头就准备出发。", "A rounded brim and tiny envelope badge, ready for a nod and a new delivery."],
+  "pet.itemHint.satchel": ["蜂蜜金翻盖、邮票封签与一掠微光，和抱信动作一起轻摆。", "A honey-gold flap, postage seal and passing glint move with the held letter."],
   "pet.itemHint.sparkles": [
     "星星错落闪烁、缓缓上浮，身边掠过一束星光。",
     "Staggered stars twinkle and drift as a comet passes by."
@@ -14280,10 +14354,7 @@ const MAILAI_UI_COPY = {
     "光点绕过身后、掠过身前，倾斜星环带出细腻的光轨。",
     "A satellite slips behind and in front of XiaoYou along a fine, tilted light trail."
   ],
-  "pet.itemHint.wings": [
-    "羽翼短促扇动后自然舒展，层叠羽片随动作轻轻回弹。",
-    "Layered feathers follow a gentle wingbeat and settle with a soft rebound."
-  ],
+  "pet.itemHint.wings": ["奶白羽根渐变晴蓝与暖金羽尖，短促扇动后舒展回稳。", "Cream roots blend into sky blue and warm gold tips, settling after a gentle wingbeat."],
   "pet.itemHint.aurora": [
     "三层极光涟漪逐圈扩散，薄薄的光幕随风流动。",
     "Three aurora rings expand beneath a gently flowing light veil."
@@ -14299,7 +14370,7 @@ const MAILAI_UI_COPY = {
   "pet.previewPlay": ["播放预览", "Play preview"],
   "pet.previewPause": ["暂停预览", "Pause preview"],
   "pet.previewing": ["正在预览：{0}", "Previewing: {0}"],
-  "pet.previewSafe": ["兑换前先看效果，预览不消耗邮票，当前装扮保持不变。", "Try the look before redeeming. Previewing uses no stamps and keeps your current outfit."],
+  "pet.previewSafe": ["试穿、切换成长形态和试玩动作都不消耗邮票，也不会改变当前装扮。", "Trying outfits, growth stages and moves uses no stamps and leaves your equipped look unchanged."],
   "pet.previewStatic": ["轻动效已关闭或系统已启用减少动态效果，当前显示静态预览。", "Companion motion is off or your system requests reduced motion. A static preview is shown."],
   "pet.shopNote": [
     "永久装扮兑换后自动穿戴，同类配饰或特效一次穿戴一个。花费邮票不会扣除成长度。轻动效开关和系统减少动态效果设置同时适用于成长特效。",
@@ -14450,14 +14521,8 @@ const MAILAI_UI_COPY = {
   "pet.itemHint.theme_monochrome": ["黑白与石墨灰，清晰安静的工作台；小邮换上银灰色调。", "A clean workspace in black, white and graphite; XiaoYou adopts soft silver tones."],
   "pet.item.theme_baowu": ["宝武蓝", "Baowu blue"],
   "pet.itemHint.theme_baowu": ["深蓝、钢蓝与清透浅蓝，沉稳有力量；小邮换上钢蓝色调。", "Deep blue, steel blue and airy light blue; XiaoYou adopts coordinated steel-blue tones."],
-  "pet.style.nature": [
-    "可爱 · 自然信使",
-    "Cute · Nature messenger"
-  ],
-  "pet.style.ranger": [
-    "帅气 · 星际先锋",
-    "Cool · Space ranger"
-  ],
+  "pet.style.nature": ["自然 · 小邮雀", "Nature · Little mailbird"],
+  "pet.style.ranger": ["星海 · 小邮鱼", "Star sea · Little mailfish"],
   "pet.styleFree": [
     "两条路线免费切换 · 成长共享",
     "Switch freely between both styles · Shared progress"
@@ -14466,109 +14531,52 @@ const MAILAI_UI_COPY = {
     "形象路线已切换，成长和道具继续保留。",
     "Character style updated. Progress and items are kept."
   ],
-  "pet.rangerStage1": [
-    "初见先锋",
-    "Young ranger"
-  ],
-  "pet.rangerStage2": [
-    "见习信使",
-    "Cadet courier"
-  ],
-  "pet.rangerStage3": [
-    "战术伙伴",
-    "Tactical buddy"
-  ],
-  "pet.rangerStage4": [
-    "电光邮差",
-    "Electric courier"
-  ],
-  "pet.rangerStage5": [
-    "深空使者",
-    "Deep-space messenger"
-  ],
-  "pet.rangerStage6": [
-    "星际守卫",
-    "Space guardian"
-  ],
-  "pet.rangerStage7": [
-    "星河领航",
-    "Starlight captain"
-  ],
-  "pet.rangerHint1": [
-    "利落短发、硬朗眉眼与沉稳配色，开始并肩成长。",
-    "Swept short hair, confident brows and cool tones. Start growing side by side."
-  ],
-  "pet.rangerHint2": [
-    "戴上先锋耳机与能量发饰，解锁战术外套。",
-    "Gain ranger earpieces and an energy hair badge. Unlock a tactical jacket."
-  ],
-  "pet.rangerHint3": [
-    "点亮能量徽章，准备迎接新的挑战。",
-    "Light up an energy badge and prepare for new challenges."
-  ],
-  "pet.rangerHint4": [
-    "装备电光护目镜，还可兑换装甲与电光特效。",
-    "Gain a luminous visor and unlock armor and electric effects."
-  ],
-  "pet.rangerHint5": [
-    "披上深空披风，解锁锋利的机甲翼。",
-    "Gain a deep-space cape and unlock angular mech wings."
-  ],
-  "pet.rangerHint6": [
-    "脚边浮现能量光环，守护你的每一天。",
-    "An energy halo marks every day by your side."
-  ],
-  "pet.rangerHint7": [
-    "星光与能量围绕，成为并肩工作的领航伙伴。",
-    "Starlight and energy surround your trusted captain."
-  ],
-  "pet.item.midnight": [
-    "深空蓝",
-    "Midnight blue"
-  ],
+  "pet.rangerStage1": ["小邮鱼", "Little mailfish"],
+  "pet.rangerStage2": ["逐浪小鱼", "Wave-chasing fish"],
+  "pet.rangerStage3": ["云游小鲲", "Cloud-roaming Kun"],
+  "pet.rangerStage4": ["星翼伙伴", "Star-wing friend"],
+  "pet.rangerStage5": ["凌空小鲲", "Skyward Kun"],
+  "pet.rangerStage6": ["巡星灵鲲", "Star-roaming Kun"],
+  "pet.rangerStage7": ["星海鲲鹏", "Star-sea Kunpeng"],
+  "pet.rangerHint1": ["一封小信，一条小尾巴，从小小水域开始出发。", "A little letter and a tiny tail begin a journey from a small pond."],
+  "pet.rangerHint2": ["长出小背鳍，摆尾逐浪，慢慢熟悉你的节奏。", "A small dorsal fin appears as playful tail swishes find your rhythm."],
+  "pet.rangerHint3": ["小鱼渐渐长成小鲲，带着信件游向更远的地方。", "The little fish becomes a young Kun, carrying letters farther."],
+  "pet.rangerHint4": ["鱼鳍萌出星翼，第一次感受到天空的轻盈。", "The first star wings bring a hint of the open sky."],
+  "pet.rangerHint5": ["鱼尾舒展成鲲尾，张开小翼，试着跃出水面。", "A broad Kun tail and growing wings bring the first skyward leap."],
+  "pet.rangerHint6": ["星翼渐丰，轻轻掠过星海，再回到你身边。", "Fuller star wings glide across the star sea and back to you."],
+  "pet.rangerHint7": ["小鱼化作星海鲲鹏；平时收翼游弋，庆祝时振翼巡星。", "The fish becomes a star-sea Kunpeng: quiet swimming at rest, soaring in celebration."],
+  "pet.item.midnight": ["星夜蓝", "Starlit blue"],
   "pet.item.jacket": [
-    "战术外套",
-    "Tactical jacket"
+    "云游披肩",
+    "Wanderer capelet"
   ],
   "pet.item.visor": [
-    "电光护目镜",
-    "Electric visor"
+    "晴空护目镜",
+    "Clear-sky goggles"
   ],
   "pet.item.armor": [
-    "先锋装甲",
-    "Ranger armor"
+    "星羽轻甲",
+    "Starfeather armor"
   ],
   "pet.item.lightning": [
     "电光脉冲",
     "Electric pulse"
   ],
   "pet.item.mech_wings": [
-    "机甲翼",
-    "Mech wings"
+    "星羽机甲翼",
+    "Starfeather mech wings"
   ],
-  "pet.itemHint.midnight": [
-    "冷峻的深空配色，帅气又沉稳。",
-    "A cool, confident deep-space palette."
-  ],
-  "pet.itemHint.jacket": [
-    "利落的战术领口与硬朗线条。",
-    "A sharp tactical collar and structured silhouette."
-  ],
+  "pet.itemHint.midnight": ["雾蓝与浅紫交融，像安静星夜，保留明亮温柔的脸庞。", "Misty blue meets soft lilac, keeping the little face bright and gentle."],
+  "pet.itemHint.jacket": ["薄荷与云蓝短披肩，暖金信封扣，留出圆肚皮和抱信的位置。", "A mint or cloud-blue capelet with a golden letter clasp leaves room for the round belly and letter."],
   "pet.itemHint.visor": [
-    "透明能量镜片，亮起冰蓝电光。",
-    "Transparent energy lenses with icy blue highlights."
+    "奶白圆弧镜框、浅蓝透光镜片与暖金鼻桥，陪小邮轻装飞行。",
+    "Cream rounded frames, clear sky-blue lenses and a warm gold bridge for little adventures."
   ],
-  "pet.itemHint.armor": [
-    "肩甲与胸甲搭配，点亮能量核心。",
-    "Shoulder and chest plates with a glowing energy core."
-  ],
-  "pet.itemHint.lightning": [
-    "身边出现冰蓝电弧与能量轨迹。",
-    "Icy blue arcs and energy trails surround XiaoYou."
-  ],
+  "pet.itemHint.armor": ["圆弧珍珠白胸甲与香槟金接缝，小星徽轻缓亮起。", "Rounded pearl plates and champagne seams surround a softly glowing star badge."],
+  "pet.itemHint.lightning": ["圆润冰蓝能量弧缓缓流动，亮起后慢慢退去，轻快不刺眼。", "Rounded icy-blue energy arcs flow and softly fade, without harsh flashes."],
   "pet.itemHint.mech_wings": [
-    "铰链带动机甲翼分段展开、锁定再收拢，能量沿翼面充盈。",
-    "Hinged panels unfold, lock into place and retract as energy charges the wings."
+    "舒展的羽片由翼根依次展开，翼尖轻轻回落，再沿身体收拢。",
+    "Layered feathers unfold from the shoulders, then gently settle and fold alongside the body."
   ],
   "pet.error.style": [
     "形象路线无效",

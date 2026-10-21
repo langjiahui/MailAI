@@ -103,6 +103,12 @@ def api_move_email(email_id: int, target: str):
         raise HTTPException(404, "邮件不存在")
     if not target or target == row["folder"]:
         raise HTTPException(400, "目标文件夹无效")
+    if row.get('is_local_archive'):
+        from ...local_mail import move
+        try:
+            return move([email_id], target)
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
     if row.get('is_local_archive') or row.get('cleanup_hold'):
         raise HTTPException(409, '仅本地保留或正在清理的邮件不能执行服务器操作，可使用本地收藏')
     try:
@@ -135,6 +141,14 @@ def api_bulk_email_action(payload: BulkMailRequest):
         raise HTTPException(400, "不支持的批量操作")
     rows = [db.get_email(email_id) for email_id in ids]
     rows = [row for row in rows if row]
+    if payload.action == 'move' and any(row.get('is_local_archive') for row in rows):
+        if not all(row.get('is_local_archive') for row in rows):
+            raise HTTPException(409, '请分别选择本地邮件和服务器邮件移动，避免误改服务器文件夹')
+        from ...local_mail import move
+        try:
+            return move(ids, payload.target)
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
     if payload.action != 'read' and any(row.get('cleanup_hold') or
             (row.get('is_local_archive') and payload.action not in ('trash', 'cancel_trash')) for row in rows):
         raise HTTPException(409, '所选邮件包含仅本地保留或正在清理的邮件，不能执行服务器操作')

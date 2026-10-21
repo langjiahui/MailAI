@@ -56,7 +56,7 @@ const port=Number(process.env.MAILAI_TRANSPARENT_FIXTURE_PORT||18797);
      await transparent('#btn-compose-ai');await transparent('.compose-ai-avatar');
      assert(await page.locator('.compose-ai-avatar .mail-companion').isVisible(),'Writing avatar is retained');
      const fill=await page.locator('.compose-ai-avatar .growth-body').evaluate(n=>getComputedStyle(n).fill);
-     assert.equal(fill,'rgb(178, 215, 237)','Equipped sky palette remains above workspace theme');
+     assert.equal(fill,mode==='dark'?'rgb(131, 181, 212)':'rgb(141, 196, 229)','Equipped sky hue remains above workspace theme, with softer night lighting');
      await page.screenshot({path:`/tmp/mailai-pet-${reward}-${mode}-compose.png`});
      await page.evaluate(()=>closeCompose());
      await page.locator('#assistant-orb').press('Escape');

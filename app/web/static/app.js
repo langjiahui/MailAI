@@ -3213,11 +3213,11 @@ async function loadData({includeAncillary = true, silent = false} = {}) {
   if (!silent && listNode && !listNode.querySelector('.email-item')) listNode.innerHTML = skeletonRows();
   try {
     const mailPath = unified
-      ? `/api/system/mail/unified-inbox?days=${days}&limit=1000`
+      ? `/api/system/mail/unified-inbox?days=${days === 9999 ? 365000 : days}&limit=1000`
       : currentFilter.status === 'local_archive' ? '/api/emails?days=365000&status=local_archive'
       : currentFilter.status === 'favorites' ? '/api/emails?days=365000&status=favorites'
       : currentFilter.status === 'trash' ? '/api/emails?days=365000&status=trash'
-      : (folder ? `/api/emails?days=9999&folder=${encodeURIComponent(folder)}` : '/api/emails?days=' + days);
+      : (folder ? `/api/emails?days=9999&folder=${encodeURIComponent(folder)}` : '/api/emails?days=' + (days === 9999 ? 365000 : days));
     const draftsRevision = draftListRevision;
     const tagCatalog = typeof window !== 'undefined' ? window.mailaiRefreshTags?.(accountId) : null;
     const requests = [loadMailPages(mailPath, isCurrent)];
@@ -3918,12 +3918,12 @@ function renderSpecialMailbox({silent = false} = {}) {
 // ===== 渲染邮件列表 =====
 function mailListSignature(emails) {
   return JSON.stringify({
-    context:[specialMailbox, unifiedMailbox, mailRenderLimit, selectedEmailId, selectedEmailAccountId, [...selectedMailIds].sort((a,b)=>a-b)],
+    context:[document.body.dataset.mailListView, currentFilter.sort, specialMailbox, unifiedMailbox, mailRenderLimit, selectedEmailId, selectedEmailAccountId, [...selectedMailIds].sort((a,b)=>a-b)],
     rows:emails.slice(0, mailRenderLimit).map(e => [
       e.id, e._account_id, e._account_user, e._kind, e.status, e.direction, e.is_read,
       e.is_favorite, e.is_starred, e.score, e.verdict, e.feedback, e.reviewed,
       e.pending_action, e.pending_error, e.recommended_status, e.counterpart_name,
-      e.counterpart_addr, e.counterpart_count, e.from_name, e.from_addr, e.date,
+      e.counterpart_addr, e.counterpart_count, e.from_name, e.from_addr, e.to_addr, e.cc_addr, e.bcc_addr, e.date,
       e.subject, e.summary, e.snippet, e.category, e.priority, JSON.stringify(e.tags || []),
       e.handle_state, e.snoozed_until, e.followup_at, e.focus_override, e._conversationCount,
       (e.attachments || []).length,
@@ -3978,7 +3978,7 @@ function renderEmailList(emails, {silent = false} = {}) {
     groups.get(group.key).items.push(e);
   });
 
-  container.innerHTML = [...groups.values()].map(group => {
+  container.innerHTML = mailTableHeader() + [...groups.values()].map(group => {
     const items = group.items;
     return `
       <div class="email-group">
@@ -4111,6 +4111,7 @@ function renderEmailItem(e, idx = 0) {
     ? "<span class=\"mail-direction-label\"><span data-i18n=\"ui.c7378a8741ff\">发给</span></span>" : '';
   const moreRecipients = outgoing && Number(e.counterpart_count || 0) > 1
     ? `<span class="recipient-more"><span data-i18n="ui.97521ee87be0">等 ${Number(e.counterpart_count)} 人</span></span>` : '';
+  if (document.body.dataset.mailListView === 'table') return renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, outgoing});
   return `
     <div class="email-item ${selected} ${bulkSelected} ${e.status} ${outgoing ? 'outgoing-mail' : ''} ${unread ? 'unread' : ''} risk-${risk.class}" data-id="${e.id}" data-account-id="${esc(e._account_id || '')}" data-read-state="${outgoing ? 'not-applicable' : unread ? 'unread' : 'read'}" tabindex="0" aria-selected="${bulkSelected ? 'true' : 'false'}" style="animation-delay:${Math.min(idx, 12) * 0.035}s">
       <div class="email-row-top">
@@ -4441,6 +4442,25 @@ function ensureMailContextMenu() {
   return menu;
 }
 
+function localMailSelection() {
+  const rows = [...selectedMailIds].map(id => allEmails.find(row => Number(row.id) === Number(id)));
+  return {any:rows.some(row => row?.is_local_archive), all:rows.length > 0 && rows.every(row => row?.is_local_archive)};
+}
+
+function availableMailMoveFolders() {
+  const local = localMailSelection();
+  if (local.all) return [{name:'__local_inbox__', label:mailaiText('收件箱（仅本机）')}, {name:'__local_archive__', label:mailaiText('本地归档')}];
+  if (local.any) return [];
+  return mailboxFolders.filter(folder => folder.selectable !== false);
+}
+
+function renderMailMoveFolders() {
+  const select = document.getElementById('bulk-folder');
+  if (!select) return;
+  const html = `<option value="">${mailaiText('移动到…')}</option>` + availableMailMoveFolders().map(folder => `<option value="${esc(folder.name)}">${esc(folder.label || folder.name)}</option>`).join('');
+  if (select._optionsHtml !== html) { select.innerHTML = html; select._optionsHtml = html; }
+}
+
 function showMailContextMenu(x, y, id) {
   const menu = ensureMailContextMenu();
   const row = allEmails.find(item => Number(item.id) === Number(id)) || {};
@@ -4448,8 +4468,8 @@ function showMailContextMenu(x, y, id) {
   const localSelection = Boolean(row.is_local_archive) || [...selectedMailIds].some(selected => allEmails.find(item => Number(item.id) === Number(selected))?.is_local_archive);
   const inTrash = currentFilter.status === 'trash' || row.status === 'trash';
   const pendingTrash = row.pending_action || (inTrash && [...selectedMailIds].some(id => allEmails.find(e => Number(e.id) === Number(id))?.pending_action));
-  const folderOptions = mailboxFolders.filter(folder => folder.selectable !== false).map(folder =>
-    `<button type="button" role="menuitem" data-context-folder="${esc(folder.name)}">${mailContextIcon('<path d="M3.5 6h5l1.5 2h6.5v8h-13z"/>')}<span>${esc(folder.name)}</span></button>`
+  const folderOptions = availableMailMoveFolders().map(folder =>
+    `<button type="button" role="menuitem" data-context-folder="${esc(folder.name)}">${mailContextIcon('<path d="M3.5 6h5l1.5 2h6.5v8h-13z"/>')}<span>${esc(folder.label || folder.name)}</span></button>`
   ).join('');
   const readStateActions = count > 1
     ? `<button type="button" role="menuitem" data-context-action="read">${mailContextIcon('<path d="M3.5 5.5h13v9h-13zM4.5 7l5.5 4 5.5-4"/>')}<span><span data-i18n="ui.1b4bc8cfe06c">标记为已读</span></span></button>
@@ -4461,7 +4481,7 @@ function showMailContextMenu(x, y, id) {
   const list=document.getElementById('email-list');
   menu._listScrollTop=list.scrollTop;menu._listScrollLeft=list.scrollLeft;
   menu.innerHTML = `
-    <div class="mail-context-summary">${count > 1 ? mailaiTemplate`已选 ${count} 封邮件` : mailaiText('邮件操作')}<small>${localSelection ? mailaiText('包含本地归档；可在阅读窗口收藏，不能移动到服务器') : count > 1 ? mailaiText('以下操作将应用到所选邮件') : mailaiText('右键快捷操作')}</small></div>
+    <div class="mail-context-summary">${count > 1 ? mailaiTemplate`已选 ${count} 封邮件` : mailaiText('邮件操作')}<small>${localSelection ? mailaiText('本地邮件仅在本机整理，不上传服务器；请与服务器邮件分开选择') : count > 1 ? mailaiText('以下操作将应用到所选邮件') : mailaiText('右键快捷操作')}</small></div>
     ${count === 1 ? `
       <button type="button" role="menuitem" data-context-action="open">${mailContextIcon('<path d="M3.5 5.5h13v9h-13zM5 7l5 4 5-4"/>')}<span><span data-i18n="ui.5507fbd6970f">打开邮件</span></span><kbd>↵</kbd></button>
       <button type="button" role="menuitem" data-context-action="reply">${mailContextIcon('<path d="M8 5 3.5 9 8 13M4 9h6c3.5 0 5.5 1.8 6.5 5"/>')}<span><span data-i18n="ui.cf945e21ddef">回复</span></span></button>
@@ -4472,7 +4492,7 @@ function showMailContextMenu(x, y, id) {
     ${readStateActions}
     <button type="button" role="menuitem" data-context-action="star" ${localSelection ? mailaiText('disabled title="星标需要同步服务器，本地归档请使用收藏"') : ''}>${mailContextIcon('<path d="m10 3 2.1 4.2 4.7.7-3.4 3.3.8 4.7-4.2-2.2-4.2 2.2.8-4.7-3.4-3.3 4.7-.7z"/>')}<span><span data-i18n="ui.e817525bedb9">添加星标</span></span></button>
     <div class="mail-context-separator"></div>
-    <button type="button" role="menuitem" data-context-action="folders" aria-expanded="false" aria-controls="mail-context-folders" ${localSelection ? mailaiText('disabled title="本地归档不会上传到服务器"') : ''}>${mailContextIcon('<path d="M3.5 6h5l1.5 2h6.5v8h-13z"/>')}<span><span data-i18n="ui.711c5507708d">移动到文件夹</span></span><b>›</b></button>
+    <button type="button" role="menuitem" data-context-action="folders" aria-expanded="false" aria-controls="mail-context-folders" ${localSelection && !localMailSelection().all ? 'disabled' : ''}>${mailContextIcon('<path d="M3.5 6h5l1.5 2h6.5v8h-13z"/>')}<span><span data-i18n="ui.711c5507708d">移动到文件夹</span></span><b>›</b></button>
     <div id="mail-context-folders" class="mail-context-folders hidden" role="group" aria-label="${esc(mailaiText('移动到文件夹'))}">${folderOptions || "<small><span data-i18n=\"ui.aefd65f9a2a4\">暂无可用文件夹</span></small>"}</div>
     ${!inTrash ? `<button type="button" class="danger" role="menuitem" data-context-action="trash">${mailContextIcon('<path d="M4 6h12M7 6V4h6v2M6 8l.7 8h6.6l.7-8M8.5 9.5v4M11.5 9.5v4"/>')}<span><span data-i18n="ui.0beae53e661c">移入已删除</span></span></button>` : "<button type=\"button\" class=\"danger\" role=\"menuitem\" data-context-action=\"purge\"><span><span data-i18n=\"ui.4ee7d3299549\">彻底删除…</span></span></button>"}
     <div class="mail-context-separator"></div>
@@ -4487,10 +4507,11 @@ function showMailContextMenu(x, y, id) {
 function updateBulkToolbar() {
   const toolbar = document.getElementById('bulk-toolbar');
   const localSelection = [...selectedMailIds].some(id => allEmails.find(item => Number(item.id) === Number(id))?.is_local_archive);
+  renderMailMoveFolders();
   for (const control of [toolbar.querySelector('[data-bulk-action="star"]'), document.getElementById('bulk-folder')]) {
     if (!control) continue;
-    control.disabled = bulkOperationActive || localSelection;
-    mailaiBindUI(control, "title", () => (localSelection ? mailaiText('所选邮件包含本地归档，不能执行服务器操作；可在阅读窗口收藏') : control.id === 'bulk-folder' ? mailaiText('移动所选邮件') : mailaiText('添加星标')));
+    control.disabled = bulkOperationActive || (localSelection && (control.id !== 'bulk-folder' || !localMailSelection().all));
+    mailaiBindUI(control, "title", () => (localSelection ? (control.id === 'bulk-folder' && localMailSelection().all ? mailaiText('仅在 MailAI 本地整理，不上传服务器') : mailaiText('请分别选择本地邮件和服务器邮件；本地邮件可使用收藏')) : control.id === 'bulk-folder' ? mailaiText('移动所选邮件') : mailaiText('添加星标')));
   }
   const trashView = currentFilter.status === 'trash' && !unifiedMailbox && !specialMailbox;
   toolbar.querySelector('[data-bulk-action="purge"]')?.classList.toggle('hidden', !trashView);
@@ -4585,11 +4606,13 @@ async function runBulkAction(action, target = '') {
   if (unifiedMailbox) return toast(mailaiText('请先选择具体邮箱，再批量处理邮件'), 'warn');
   if (bulkOperationActive || !selectedMailIds.size) return;
   if (action === 'trash' && (currentFilter.status === 'trash' || [...selectedMailIds].some(id => allEmails.find(e => Number(e.id) === Number(id))?.status === 'trash'))) return toast(mailaiText('邮件已在已删除中，请使用恢复操作'), 'warn');
+  const localMove = action === 'move' && localMailSelection().all;
+  const targetLabel = action === 'move' ? (availableMailMoveFolders().find(folder => folder.name === target)?.label || target) : target;
   const payload = {ids:[...selectedMailIds], action:action === 'unread' ? 'read' : action,
                    value:action === 'unread' ? false : true, target};
   const count = selectedMailIds.size;
   const actionLabel = action === 'read' ? mailaiText('正在标为已读') : action === 'unread' ? mailaiText('正在标为未读') :
-    action === 'star' ? mailaiText('正在添加星标') : action === 'trash' ? mailaiText('正在移入垃圾箱') : mailaiTemplate`正在移动到“${target}”`;
+    action === 'star' ? mailaiText('正在添加星标') : action === 'trash' ? mailaiText('正在移入垃圾箱') : mailaiTemplate`正在移动到“${targetLabel}”`;
   setBulkOperationState(true, actionLabel, count);
   const accountId = activeMailAccount()?.id;
   const undoCollector = [];
@@ -4621,7 +4644,7 @@ async function runBulkAction(action, target = '') {
       ? mailaiTemplate`已移入已删除 ${result.completed} 封，可在那里取消删除；稍后同步服务器`
       : action === 'read' || action === 'unread'
         ? mailaiTemplate`已标记 ${result.completed} 封邮件，服务器将在后台同步`
-        : action === 'move' ? mailaiTemplate`服务器已移动 ${result.completed} 封邮件，本地状态已更新` : mailaiTemplate`已处理 ${result.completed} 封邮件`;
+        : action === 'move' ? (localMove ? mailaiTemplate`已在本机移动 ${result.completed} 封邮件，未上传服务器` : mailaiTemplate`服务器已移动 ${result.completed} 封邮件，本地状态已更新`) : mailaiTemplate`已处理 ${result.completed} 封邮件`;
     toast(`${completedText}${result.failed.length ? mailaiTemplate`，失败 ${result.failed.length} 封` : ''}`, result.failed.length ? 'warn' : 'success');
     selectedMailIds = new Set(result.failed.map(item => item.id)); mailSelectionExplicit = !!selectedMailIds.size; selectionAnchorId = null; await loadData();
     if (result.failed.length && typeof showOperationFailures === 'function') showOperationFailures(result.failed, async () => {
@@ -6573,7 +6596,7 @@ function renderReadingPane(e) {
           </div>
           <div class="meta-badges">
             <time class="reading-message-time" title="${esc(e.date || '')}"><span class="meta-label" data-i18n="read.time">${mailaiT('read.time') || '时间：'}</span><span class="reading-date-text">${fmtDate(e.date)}</span></time>
-            ${e.is_local_archive ? `<span class="tag" title="此邮件仅保存在本机" data-i18n-title="ui.7bfc5091b329"><span data-i18n="ui.d7e7b551d372">本地归档${e.folder?.startsWith('LOCAL_IMPORT/') ? ' · ' + esc(e.folder.slice('LOCAL_IMPORT/'.length)) : ''}</span></span>` : ''}
+            ${e.is_local_archive ? `<span class="tag" title="此邮件仅保存在本机" data-i18n-title="ui.7bfc5091b329"><span>${e.status === 'inbox' ? mailaiText('仅本机 · 收件箱') : mailaiText('本地归档')}${e.folder?.startsWith('LOCAL_IMPORT/') ? ' · ' + esc(e.folder.slice('LOCAL_IMPORT/'.length)) : ''}</span></span>` : ''}
             ${e.category ? `<span class="tag mail-category">${esc(mailCategoryLabel(e.category))}</span>` : ''}
             ${e.priority ? `<span class="tag mail-priority tag-priority-${e.priority}">${esc(mailPriorityLabel(e.priority))}</span>` : ''}
             <span data-reading-mail-tags>${window.mailaiMailTagChips?.(e, 2) || ''}</span>
@@ -7572,8 +7595,7 @@ async function loadMailboxFolders({quiet = false} = {}) {
     if (accountId !== activeMailAccount()?.id) return false;
     mailboxFolders = folders;
     mailboxFoldersAccountId = accountId;
-    const select = document.getElementById('bulk-folder');
-    select.innerHTML = "<option value=\"\" data-i18n=\"ui.0bee1672c6d4\">移动到…</option>" + mailboxFolders.filter(folder => folder.selectable !== false).map(folder => `<option value="${esc(folder.name)}">${esc(folder.name)}</option>`).join('');
+    renderMailMoveFolders();
     const protectedNames = new Set([mailboxFolders.find(folder => (folder.flags || []).some(flag => /inbox/i.test(flag)))?.name || 'INBOX']);
     const host = document.getElementById('server-folder-nav');
     host.innerHTML = mailboxFolders.filter(folder => folder.selectable !== false && !protectedNames.has(folder.name)).map(folder => `<button type="button" class="nav-item" data-server-folder="${esc(folder.name)}" title="共 ${Number(folder.messages || 0)} 封，未读 ${Number(folder.unseen || 0)} 封；点击同步" data-i18n-title="ui.42df419f8be1">
@@ -7584,7 +7606,7 @@ async function loadMailboxFolders({quiet = false} = {}) {
     if (accountId === activeMailAccount()?.id) {
       // Retain this account's last successful folder snapshot during outages.
       if (!mailboxFolders.length) {
-        document.getElementById('bulk-folder').innerHTML = "<option value=\"\" data-i18n=\"ui.0bee1672c6d4\">移动到…</option>";
+        renderMailMoveFolders();
         document.getElementById('server-folder-nav').innerHTML = "<small><span data-i18n=\"ui.f4b33cf3512c\">文件夹暂时无法读取</span></small>";
       }
       if (!quiet) toast(mailaiText('服务器文件夹读取失败，将显示本地邮件记录：') + mailaiSystemMessage(error.message), 'warn');
@@ -10057,9 +10079,17 @@ function hideAppPreloader() {
 const PANE_SIZE_KEY = 'mailai.workspace.paneSizes.v1';
 const PANE_DEFAULTS = {sidebar: 226, list: 405};
 
+function paneSizePreferenceKey() {
+  return document.body.dataset.mailListView === 'table' ? 'mailai.workspace.tablePaneSizes.v1' : PANE_SIZE_KEY;
+}
+
+function currentPaneDefaults() {
+  return {...PANE_DEFAULTS, list:document.body.dataset.mailListView === 'table' ? 720 : PANE_DEFAULTS.list};
+}
+
 function readPaneSizes() {
-  try { return {...PANE_DEFAULTS, ...JSON.parse(localStorage.getItem(PANE_SIZE_KEY) || '{}')}; }
-  catch (_) { return {...PANE_DEFAULTS}; }
+  try { return {...currentPaneDefaults(), ...JSON.parse(localStorage.getItem(paneSizePreferenceKey()) || '{}')}; }
+  catch (_) { return currentPaneDefaults(); }
 }
 
 function constrainPaneSizes(input) {
@@ -10082,12 +10112,13 @@ function applyPaneSizes(sizes, persist = false) {
   layout.style.setProperty('--list-width', value.list + 'px');
   document.querySelector('[data-resizer="sidebar"]')?.setAttribute('aria-valuenow', value.sidebar);
   document.querySelector('[data-resizer="list"]')?.setAttribute('aria-valuenow', value.list);
-  if (persist) localStorage.setItem(PANE_SIZE_KEY, JSON.stringify(value));
+  if (persist) localStorage.setItem(paneSizePreferenceKey(), JSON.stringify(value));
   return value;
 }
 
 function initPaneResizers() {
-  let sizes = applyPaneSizes(readPaneSizes());
+  let preferredSizes = readPaneSizes();
+  let sizes = applyPaneSizes(preferredSizes);
   document.querySelectorAll('.pane-resizer').forEach(handle => {
     const kind = handle.dataset.resizer;
     handle.setAttribute('aria-valuemin', kind === 'sidebar' ? '180' : '300');
@@ -10107,19 +10138,22 @@ function initPaneResizers() {
         handle.removeEventListener('pointermove', move);
         handle.classList.remove('dragging'); document.body.classList.remove('pane-resizing');
         sizes = applyPaneSizes(sizes, true);
+        preferredSizes = {...sizes};
       };
       handle.addEventListener('pointermove', move);
       handle.addEventListener('pointerup', end, {once:true});
       handle.addEventListener('pointercancel', end, {once:true});
     });
-    handle.addEventListener('dblclick', () => { sizes = applyPaneSizes(PANE_DEFAULTS, true); toast(mailaiText('已恢复默认栏宽'), 'success'); });
+    handle.addEventListener('dblclick', () => { preferredSizes = currentPaneDefaults(); sizes = applyPaneSizes(preferredSizes, true); toast(mailaiText('已恢复默认栏宽'), 'success'); });
     handle.addEventListener('keydown', event => {
       if (!['ArrowLeft','ArrowRight'].includes(event.key)) return;
       event.preventDefault();
       sizes = applyPaneSizes({...sizes, [kind]:sizes[kind] + (event.key === 'ArrowRight' ? 16 : -16)}, true);
+      preferredSizes = {...sizes};
     });
   });
-  window.addEventListener('resize', () => { sizes = applyPaneSizes(sizes); });
+  window.addEventListener('mailai:list-view-changed', () => { preferredSizes = readPaneSizes(); sizes = applyPaneSizes(preferredSizes); });
+  window.addEventListener('resize', () => { sizes = applyPaneSizes(preferredSizes); });
 }
 
 initPaneResizers();

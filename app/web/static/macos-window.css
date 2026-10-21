@@ -200,7 +200,7 @@ html:is(.desktop-native-window,.integrated-workspace) .topbar .nav-work-cluster 
  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .global-actions { gap:4px; }
  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .nav-work-cluster .nav-action { padding-inline:7px; }
 }
-@container mac-header (max-width:900px) {
+@container mac-header (max-width:1040px) {
  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .nav-work-cluster .nav-action {
   width:32px; min-width:32px; padding:0!important; gap:0;
  }
@@ -278,4 +278,12 @@ html.macos-native-window.macos-native-fullscreen .topbar .logo img { width:24px;
    width:96px; min-width:96px; flex-basis:96px;
   }
  }
+}
+
+/* Preserve every action at tablet widths with enlarged interface text. */
+@container mac-header (max-width:720px) {
+ html.integrated-workspace:not(.desktop-native-window)[data-theme] body .topbar .brand {
+  width:24px; min-width:24px; flex-basis:24px;
+ }
+ html.integrated-workspace:not(.desktop-native-window) .topbar .brand-copy { display:none!important; }
 }

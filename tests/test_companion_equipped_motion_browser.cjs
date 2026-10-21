@@ -18,12 +18,24 @@ const rewards=[
 async function checkMotion(page, hosts, part, context) {
   await page.evaluate(()=>mailaiCompanionMotion.wake());
   const selectors=hosts.map(host=>`${host} .mail-companion ${part}`);
-  await page.waitForFunction(selectors=>selectors.every(selector=>{
+  try { await page.waitForFunction(selectors=>{
+    mailaiCompanionMotion.wake();
+    return selectors.every(selector=>{
     const node=document.querySelector(selector);
     const svg=node?.closest('.mail-companion');
     return svg?.dataset.rewardVisible==='true' && svg.dataset.motionActive==='true' && getComputedStyle(node).visibility==='visible';
-  }),selectors);
-  const sample=()=>page.evaluate(selectors=>selectors.map(selector=>{
+  });},selectors); } catch(error) {
+    const state=await page.evaluate(selectors=>({body:document.body.className,dialogs:[...document.querySelectorAll("dialog[open]")].map(n=>n.id),nodes:selectors.map(selector=>{const n=document.querySelector(selector),svg=n?.closest(".mail-companion");return {selector,svg:svg?.dataset,box:svg?.getBoundingClientRect().toJSON(),visibility:n&&getComputedStyle(n).visibility};})}),selectors);
+    throw new Error(`${context}: ${JSON.stringify(state)}`,{cause:error});
+  }
+  const sample=()=>page.evaluate(selectors=>{
+    // Start a fresh finite reaction and sample in the same browser task. A wake
+    // preserves an active clip, which may already be on its final frame.
+    for (const selector of selectors) {
+      const svg=document.querySelector(selector).closest(".mail-companion");
+      if (!mailaiCompanionMotion.react("peek",svg)) throw new Error(`Cannot react: ${selector}`);
+    }
+    return selectors.map(selector=>{
     const node=document.querySelector(selector), css=getComputedStyle(node);
     const animation=node.getAnimations().find(a=>a.animationName===css.animationName);
     let visible=!!node.getClientRects().length, hidden=[];
@@ -32,7 +44,7 @@ async function checkMotion(page, hosts, part, context) {
       if(style.display==='none'||style.visibility==='hidden'){visible=false;hidden.push(`${ancestor.tagName}.${ancestor.getAttribute('class')}: ${style.display}/${style.visibility}`);}
     }
     return {name:css.animationName,play:css.animationPlayState,time:animation?.currentTime,visible,hidden};
-  }),selectors);
+  });},selectors);
   const first=await sample();
   for(let i=0;i<selectors.length;i++) {
     const label=`${context}: ${selectors[i]}`;
@@ -104,6 +116,7 @@ async function checkMotion(page, hosts, part, context) {
       }
       await page.locator('#assistant-orb').click();
       await page.locator('#assistant-panel').waitFor({state:'visible'});
+      await page.evaluate(()=>appendAssistantMessage('user','合成装扮测试'));
       for(const [slot,item,part] of rewards) {
         await mutate('equip',{slot,item});
         await checkMotion(page,['#assistant-panel .assistant-mini'],part,`chat ${style}/${item}`);

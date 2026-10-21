@@ -1,0 +1,102 @@
+/* Character materials follow the workspace, while purchased palettes retain
+   their hue. Shared SVG paints inherit only theme lighting, never an item preview. */
+body {
+ --pet-auto-body:#B1D2DA; --pet-auto-fish:#A9CEE8; --pet-edge:#789DAE;
+ --pet-fabric:#9ABEB2; --pet-fabric-edge:#6E958A;
+ --pet-porcelain:#FFFEF9; --pet-cream:#FBF8EF; --pet-pearl-shade:#E4ECEA; --pet-face-shade:#B7CEDA;
+ --pet-feather-top:#D6EBF4; --pet-feather-mid:#B0D2E6; --pet-feather-low:#8EB8CF; --pet-feather-deep:#729CB9;
+ --pet-gold-soft:#FFF0D0; --pet-gold-tip:#EBC88B; --pet-violet:#B5B4DD;
+ --pet-metal-top:#EBF3F4; --pet-metal-mid:#C5D9DE; --pet-metal-low:#98B5C2;
+ --pet-eye-top:#1D3D4C; --pet-eye-low:#386476; --pet-paper-top:#FFF9E9; --pet-paper-low:#EDDFC0;
+ --pet-sky:#8DC4E5; --pet-sky-edge:#7199B4;
+ --pet-peach:#E5B1BB; --pet-peach-edge:#B88595;
+ --pet-night:#A7B1D4; --pet-night-edge:#7E8BAE;
+}
+html[data-reward-theme="theme_monochrome"] body {
+ --pet-auto-body:#BEC9CE; --pet-auto-fish:#B0C1CE; --pet-edge:#82949F;
+ --pet-fabric:#ADB9B6; --pet-fabric-edge:#7C908B;
+ --pet-feather-top:#E5ECEE; --pet-feather-mid:#C8D5DA; --pet-feather-low:#A6BCC6; --pet-feather-deep:#8B9EAF;
+ --pet-gold-soft:#F6EBD6; --pet-gold-tip:#D9C49C; --pet-violet:#B3B6CC;
+ --pet-metal-top:#EFF1EF; --pet-metal-mid:#D3DBDC; --pet-metal-low:#A2B2BB;
+ --pet-eye-top:#303C46; --pet-eye-low:#526574;
+}
+html[data-reward-theme="theme_baowu"] body {
+ --pet-auto-body:#9EC9E7; --pet-auto-fish:#94BFE3; --pet-edge:#6993B6;
+ --pet-fabric:#A0BED7; --pet-fabric-edge:#7395B3;
+ --pet-feather-top:#DDEFFA; --pet-feather-mid:#B8D7EE; --pet-feather-low:#92BBDF; --pet-feather-deep:#729BC5;
+ --pet-gold-soft:#FFF0D2; --pet-gold-tip:#E6C48F; --pet-violet:#ACBADD;
+ --pet-metal-top:#ECF4FA; --pet-metal-mid:#C5DAEC; --pet-metal-low:#95B3CF;
+ --pet-eye-top:#1C3D59; --pet-eye-low:#346888;
+}
+/* Night materials stay pearly and readable, with softer highlights rather than
+   an overall brightness filter that would muddy eyes and redeemed colors. */
+html[data-theme="dark"] body {
+ --pet-auto-body:#97BBC6; --pet-auto-fish:#8EB5D2; --pet-edge:#7796A6;
+ --pet-fabric:#89AEA2; --pet-fabric-edge:#66897F;
+ --pet-porcelain:#E1E9E8; --pet-cream:#D8E2DF; --pet-pearl-shade:#C4D3D3; --pet-face-shade:#9EB8C6;
+ --pet-feather-top:#C5DBE5; --pet-feather-mid:#A3C3D6; --pet-feather-low:#81A8C0; --pet-feather-deep:#668CA9;
+ --pet-gold-soft:#E6D9BB; --pet-gold-tip:#CAB080; --pet-violet:#A0A3C9;
+ --pet-metal-top:#CEDFE3; --pet-metal-mid:#AEC6D0; --pet-metal-low:#86A3B5;
+ --pet-paper-top:#E7DFC8; --pet-paper-low:#CDBE9B;
+ --pet-sky:#83B5D4; --pet-sky-edge:#6C91AA;
+ --pet-peach:#CCA0AD; --pet-peach-edge:#A47D8C;
+ --pet-night:#99A4C8; --pet-night-edge:#7785A8;
+}
+html[data-theme="dark"][data-reward-theme="theme_monochrome"] body {
+ --pet-auto-body:#ADBCC3; --pet-auto-fish:#A2B5C5; --pet-edge:#8195A2;
+ --pet-fabric:#99ABA8; --pet-fabric-edge:#728985;
+ --pet-feather-top:#D3DFE1; --pet-feather-mid:#B8C8CE; --pet-feather-low:#97ADB9; --pet-feather-deep:#7F94A4;
+ --pet-gold-soft:#E1D8C3; --pet-gold-tip:#C1B18F; --pet-violet:#A4ABC1;
+ --pet-metal-top:#D9E1E0; --pet-metal-mid:#BDCACC; --pet-metal-low:#95A9B3;
+}
+html[data-theme="dark"][data-reward-theme="theme_baowu"] body {
+ --pet-auto-body:#91B8D7; --pet-auto-fish:#88B0D3; --pet-edge:#7194B5;
+ --pet-fabric:#91AEC8; --pet-fabric-edge:#6E8CA9;
+ --pet-feather-top:#CDDFED; --pet-feather-mid:#ACC9E0; --pet-feather-low:#88ACCD; --pet-feather-deep:#6B8FB5;
+ --pet-metal-top:#D4E2ED; --pet-metal-mid:#B3CADD; --pet-metal-low:#8AA6C3;
+}
+.mail-companion { --pet-body:var(--pet-auto-body); --pet-outline:var(--pet-edge); --pet-cloth:var(--pet-fabric); --pet-cloth-edge:var(--pet-fabric-edge); }
+body[data-pet-style="ranger"] .mail-companion { --pet-body:var(--pet-auto-fish); }
+/* Scope these values to each SVG so shelf previews never inherit the currently
+   equipped palette. Preview, fitted and floating versions use identical colors. */
+body[data-pet-palette="sky"] .mail-companion,
+.pet-item-art[data-item-preview="sky"] .mail-companion { --pet-body:var(--pet-sky); --pet-outline:var(--pet-sky-edge); --pet-cloth:color-mix(in srgb,var(--pet-body) 55%,var(--pet-fabric)); --pet-cloth-edge:color-mix(in srgb,var(--pet-outline) 65%,var(--pet-fabric-edge)); }
+body[data-pet-palette="peach"] .mail-companion,
+.pet-item-art[data-item-preview="peach"] .mail-companion { --pet-body:var(--pet-peach); --pet-outline:var(--pet-peach-edge); --pet-cloth:color-mix(in srgb,var(--pet-body) 55%,var(--pet-fabric)); --pet-cloth-edge:color-mix(in srgb,var(--pet-outline) 65%,var(--pet-fabric-edge)); }
+body[data-pet-palette="midnight"] .mail-companion,
+.pet-item-art[data-item-preview="midnight"] .mail-companion { --pet-body:var(--pet-night); --pet-outline:var(--pet-night-edge); --pet-cloth:color-mix(in srgb,var(--pet-body) 55%,var(--pet-fabric)); --pet-cloth-edge:color-mix(in srgb,var(--pet-outline) 65%,var(--pet-fabric-edge)); }
+.pet-theme-preview[data-theme-preview] .mail-companion { --pet-body:var(--preview-pet); --pet-outline:var(--preview-outline); }
+/* A fine material edge helps the cream silhouette on white, without a sticker
+   outline, rectangular tile, glow, filter or additional animation. */
+.mail-companion .growth-body>g>path:first-child { stroke:var(--pet-outline); stroke-width:.4; stroke-opacity:.55; }
+#pet-ivory stop:nth-child(1),#pet-coat stop:nth-child(1) { stop-color:var(--pet-porcelain); }
+#pet-ivory stop:nth-child(2),#pet-coat stop:nth-child(2),#pet-coat stop:nth-child(3) { stop-color:var(--pet-cream); }
+#pet-ivory stop:nth-child(3),#pet-coat stop:nth-child(4) { stop-color:var(--pet-pearl-shade); }
+#pet-ivory stop:nth-child(4),#pet-coat stop:nth-child(5) { stop-color:var(--pet-face-shade); }
+#pet-blue stop:nth-child(1) { stop-color:var(--pet-feather-top); }
+#pet-blue stop:nth-child(2) { stop-color:var(--pet-feather-mid); }
+#pet-blue stop:nth-child(3) { stop-color:var(--pet-feather-low); }
+#pet-blue stop:nth-child(4) { stop-color:var(--pet-feather-deep); }
+#pet-gold stop:nth-child(1) { stop-color:var(--pet-feather-low); }
+#pet-gold stop:nth-child(2) { stop-color:var(--pet-feather-mid); }
+#pet-gold stop:nth-child(3),#pet-messenger-feather stop:nth-child(2) { stop-color:var(--pet-gold-soft); }
+#pet-gold stop:nth-child(4),#pet-messenger-feather stop:nth-child(1) { stop-color:var(--pet-gold-tip); }
+#pet-starlight stop:nth-child(1),#pet-messenger-feather stop:nth-child(3) { stop-color:var(--pet-feather-top); }
+#pet-starlight stop:nth-child(2) { stop-color:var(--pet-feather-mid); }
+#pet-starlight stop:nth-child(3),#pet-messenger-feather stop:nth-child(4) { stop-color:var(--pet-feather-low); }
+#pet-starlight stop:nth-child(4),#pet-peng-feather stop:nth-child(4) { stop-color:var(--pet-violet); }
+#pet-peng-feather stop:nth-child(1) { stop-color:var(--pet-porcelain); }
+#pet-peng-feather stop:nth-child(2) { stop-color:var(--pet-pearl-shade); }
+#pet-peng-feather stop:nth-child(3) { stop-color:var(--pet-feather-mid); }
+#pet-metal stop:nth-child(1),#pet-pearl stop:nth-child(1) { stop-color:var(--pet-metal-top); }
+#pet-metal stop:nth-child(2),#pet-pearl stop:nth-child(2) { stop-color:var(--pet-metal-mid); }
+#pet-metal stop:nth-child(3),#pet-pearl stop:nth-child(3) { stop-color:var(--pet-metal-low); }
+#pet-glass stop:nth-child(1) { stop-color:var(--pet-feather-top); }
+#pet-glass stop:nth-child(2) { stop-color:var(--pet-feather-mid); }
+#pet-glass stop:nth-child(3) { stop-color:var(--pet-feather-deep); }
+#pet-eye stop:nth-child(1) { stop-color:var(--pet-eye-top); }
+#pet-eye stop:nth-child(2) { stop-color:var(--pet-eye-low); }
+#pet-letter stop:nth-child(1) { stop-color:var(--pet-paper-top); }
+#pet-letter stop:nth-child(2) { stop-color:var(--pet-paper-low); }
+html[data-theme="dark"] #pet-feather-light stop:first-child { stop-opacity:.38; }
+html[data-theme="dark"] #pet-glint stop:first-child { stop-opacity:.12; }

@@ -74,7 +74,11 @@ const {chromium, webkit} = require('playwright');
     await checkFrames();
     assert(await page.locator('.preloader-companion').evaluate(el => el.classList.contains('introducing')),
       'XiaoYou should begin with an entrance and greeting, not a walking loop');
-    assert.equal(await mascot.locator('.companion-wave').evaluate(el => getComputedStyle(el).animationName), 'startup-welcome');
+    assert.equal(await mascot.locator('.companion-arm-left').evaluate(el => getComputedStyle(el).animationName), 'startup-welcome');
+    assert.equal(await mascot.locator('.companion-wave').evaluate(el => getComputedStyle(el).animationName), 'none',
+      'The occupied wing must not greet independently of the letter');
+    assert(await mascot.evaluate(svg => svg.querySelector('.companion-carry').contains(svg.querySelector('.companion-wave')) && svg.querySelector('.companion-carry').contains(svg.querySelector('.companion-bag'))),
+      'Startup must preserve the shared holding rig');
     await page.waitForTimeout(700);
     await page.screenshot({path:path.resolve(__dirname,'../build/preloader-welcome.png')});
     await page.waitForTimeout(1200);
@@ -84,6 +88,27 @@ const {chromium, webkit} = require('playwright');
       await page.waitForTimeout(90);
     }
     assert(new Set(poses).size>1, 'walking should start after the welcome finishes');
+    // A turn must never squeeze the new round body or detach its holding wing.
+    for(const style of ['nature','ranger']) {
+      await page.evaluate(style=>document.body.dataset.petStyle=style,style);
+      for(let phase=0;phase<4;phase++) {
+        const shape=await mascot.evaluate(svg=>{
+          const matrix=selector=>new DOMMatrixReadOnly(getComputedStyle(svg.querySelector(selector)).transform);
+          const ratios=['.companion-figure','.companion-facing','.companion-head','.companion-torso'].map(selector=>{
+            const m=matrix(selector);return Math.hypot(m.a,m.b)/Math.hypot(m.c,m.d);
+          });
+          return {ratios,facing:Math.sign(matrix('.companion-heading').a),bodyFacing:Math.sign(matrix('.companion-facing').a),carry:getComputedStyle(svg.querySelector('.companion-wave')).transform,
+            letter:getComputedStyle(svg.querySelector('.companion-bag')).transform};
+        });
+        assert.equal(shape.facing,-1,'Rightward hand-off keeps the tail behind the pet');
+        assert.equal(shape.bodyFacing,1,'Startup turns without mirroring the body and holding hand');
+        assert(shape.ratios.every(r=>Math.abs(r-1)<.001),`${style}: walking keeps body and face proportions`);
+        assert.equal(shape.carry,shape.letter,`${style}: letter and holding wing move together`);
+        await page.waitForTimeout(85);
+      }
+      await page.screenshot({path:path.resolve(__dirname,`../build/preloader-${style}-rigid-walk.png`)});
+    }
+    await page.evaluate(()=>document.body.dataset.petStyle='nature');
     assert.equal((await page.locator('.preloader-status span').textContent()).trim(), '正在初始化邮件工作台');
     assert((await page.locator('.preloader-brand').boundingBox()).width < 150, 'brand signature must stay compact');
     assert.match(appSource, /app\.preloaderLoading.*正在载入邮箱数据/s,
@@ -145,7 +170,7 @@ const {chromium, webkit} = require('playwright');
       el.getAnimations({subtree:true}).map(animation => animation.effect?.target?.getAttribute?.('class') || ''));
     assert(walkingParts.some(value => value.includes('companion-foot-left')),
       'the hand-off should include a walking foot cycle');
-    assert(walkingParts.some(value => value.includes('companion-bag')),
+    assert(walkingParts.some(value => value.includes('companion-carry')),
       'the envelope bag should follow through during the walk');
     // Inspect exact terminal keyframes while the overlay is still alive.
     // A wall-clock sample 55 ms before removal races on shared CI runners.

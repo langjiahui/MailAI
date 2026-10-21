@@ -21,6 +21,17 @@ const port = Number(process.env.MAILAI_ENERGY_FIXTURE_PORT || 18831);
     browser=await(process.env.MAILAI_BROWSER==='webkit'?webkit:chromium).launch({headless:true});
     const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
     page.on('pageerror',error=>errors.push(error.message));
+    const reducedMotion=async value=>{
+      // MediaQueryList notifications are asynchronous in WebKit. Wait for the
+      // event before fast-forwarding timers, so application listeners have run.
+      await page.evaluate(value=>{
+        const query=matchMedia('(prefers-reduced-motion: reduce)');
+        window.energyMediaApplied=query.matches===(value==='reduce');
+        if(!energyMediaApplied) query.addEventListener('change',()=>{energyMediaApplied=true;},{once:true});
+      },value);
+      await page.emulateMedia({reducedMotion:value});
+      await page.waitForFunction(()=>energyMediaApplied);
+    };
     await page.goto(`http://127.0.0.1:${port}`);
     await page.locator('#app-preloader').waitFor({state:'detached'});
     await page.evaluate(()=>{
@@ -34,10 +45,16 @@ const port = Number(process.env.MAILAI_ENERGY_FIXTURE_PORT || 18831);
     await page.evaluate(()=>selectEmail(1));await awake('#assistant-orb .mail-companion');
     assert.equal(await page.locator('#assistant-orb .pet-mech-left').evaluate(n=>getComputedStyle(n).animationPlayState),'running');
     await idle(); // The finite response must settle without further interaction.
+    // A second interaction must work even while the previous wake window remains open.
+    await page.evaluate(()=>mailaiCompanionMotion.wake());
+    await awake('#assistant-orb .mail-companion');
+    await idle();
     await page.waitForTimeout(4500);await idle(); // Ambient motion waits at least eight seconds.
     // Refreshing the same selected mail is not a new read intent.
     await page.evaluate(()=>selectEmail(1));await idle();
-    await page.evaluate(()=>openAssistant());await awake('#assistant-panel .mail-companion');
+    await page.evaluate(()=>openAssistant());await awake('#assistant-panel .assistant-welcome-portrait .mail-companion');
+    // Welcome is event-driven; model-work checks use the actual conversation header.
+    await page.evaluate(()=>appendAssistantMessage('user','合成能耗测试'));
     assert.equal(await page.locator('#assistant-orb .mail-companion').getAttribute('data-motion-active'),'false','Opacity-hidden launcher must stop its JS animations too');
     await page.evaluate(()=>window.dispatchEvent(new Event('blur')));await idle();
     assert(await page.evaluate(()=>document.body.classList.contains('companion-paused')));
@@ -60,7 +77,7 @@ const port = Number(process.env.MAILAI_ENERGY_FIXTURE_PORT || 18831);
     await page.evaluate(()=>mailaiEnergy.nativeVisibility(3,false));await idle();
     await page.evaluate(()=>mailaiEnergy.nativeVisibility(4,true));await idle();
     await page.evaluate(()=>mailaiCompanionMotion.wake());
-    await page.emulateMedia({reducedMotion:'reduce'});await idle();
+    await reducedMotion('reduce');await idle();
     const heartbeats=[];
     page.on('request',request=>{if(new URL(request.url()).pathname==='/api/companion/heartbeat')heartbeats.push(request.postDataJSON());});
     await page.evaluate(async()=>{
@@ -94,7 +111,7 @@ const port = Number(process.env.MAILAI_ENERGY_FIXTURE_PORT || 18831);
         if(running.length) ambientClips.push({clips:running.map(svg=>svg.dataset.motionClip),at:performance.now()});
       }).observe(document.body,{subtree:true,attributes:true,attributeFilter:['data-motion-active']});
     });
-    await page.emulateMedia({reducedMotion:'no-preference'});
+    await reducedMotion('no-preference');
     await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
     await page.clock.runFor(11501);
     assert.equal(await page.locator('#assistant-orb .mail-companion').getAttribute('data-motion-kind'),'ambient');
@@ -126,26 +143,26 @@ const port = Number(process.env.MAILAI_ENERGY_FIXTURE_PORT || 18831);
       await page.clock.runFor(14000);
     }
     assert((await page.evaluate(()=>ambientClips)).every(event=>['breathe','tilt'].includes(event.clips[0])),'Ongoing input must defer large gestures');
-    await page.emulateMedia({reducedMotion:'reduce'});
+    await reducedMotion('reduce');
     await page.evaluate(()=>{ambientClips.length=0;});
     await page.clock.runFor(120000);
     assert.equal(await page.evaluate(()=>ambientClips.length),0,'Reduced motion must disable ambient scheduling');
     // Both saved skins have distinct idle, greeting, working and completion clips.
-    const setStyle=style=>page.evaluate(async style=>{
+    const setStyle=async style=>{ await page.evaluate(async style=>{
       await api('/api/companion/style',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({style})});
       await mailaiPet.refresh();
-    },style);
+    },style); await page.waitForFunction(style=>document.body.dataset.petStyle===style,style); };
     const motionClip=()=>page.locator('#assistant-orb .mail-companion').getAttribute('data-motion-clip');
     await setStyle('ranger');
     await page.evaluate(()=>{ambientClips.length=0;});
-    await page.emulateMedia({reducedMotion:'no-preference'});
+    await reducedMotion('no-preference');
     await page.clock.runFor(90000);
     const rangerClips=await page.evaluate(()=>ambientClips.map(event=>event.clips[0]));
-    assert(rangerClips.includes('nod') && rangerClips.includes('alert'),'Ranger needs its own micro gestures');
-    assert(rangerClips.some(name=>['survey','ready','step'].includes(name)),'Ranger needs its own idle gestures');
-    assert(rangerClips.every(name=>['nod','alert','survey','ready','step'].includes(name)),'Ranger must not borrow nature gestures');
+    assert(rangerClips.includes('nod') && rangerClips.includes('alert'),`Ranger needs its own micro gestures: ${JSON.stringify(rangerClips)}`);
+    assert(rangerClips.some(name=>['survey','ready','swim'].includes(name)),'Ranger needs its own idle gestures');
+    assert(rangerClips.every(name=>['nod','alert','survey','ready','swim'].includes(name)),'Ranger must not borrow nature gestures');
     await page.evaluate(()=>document.querySelector('#assistant-orb .companion-art').dispatchEvent(new Event('pointerenter')));
-    assert.equal(await motionClip(),'salute');
+    assert.equal(await motionClip(),'finWave');
     await page.evaluate(()=>window.finishSkinWork=mailaiCompanionWork.begin());
     assert.equal(await motionClip(),'rangerWork');
     await setStyle('nature');
@@ -155,7 +172,7 @@ const port = Number(process.env.MAILAI_ENERGY_FIXTURE_PORT || 18831);
     await page.evaluate(()=>finishSkinWork());
     await page.evaluate(()=>{const root=document.getElementById('mail-assistant');root.dataset.answerComplete='true';root.classList.add('state-thinking');});
     await page.evaluate(()=>document.getElementById('mail-assistant').classList.remove('state-thinking'));
-    assert.equal(await motionClip(),'victory');
+    assert.equal(await motionClip(),'bubbleJoy');
     await setStyle('nature');
     assert.equal(await motionClip(),'happy','Completion feedback follows the new skin');
     await page.evaluate(()=>document.getElementById('mail-assistant').classList.remove('companion-finished'));

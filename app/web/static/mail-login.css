@@ -61,6 +61,7 @@ html[data-theme="light"] .mail-login-dialog { --surface:#fff; --surface-soft:#f4
 .mail-login-admin form p { margin:0; }
 .mail-login-admin button { justify-self:start; }
 .mail-login-credential-guide { grid-column:1 / -1; display:grid; gap:12px; margin:0 0 22px; padding:16px 0; border-top:1px solid var(--border); border-bottom:1px solid var(--border); background:transparent; }
+.onboarding-card .mail-login-credential-guide { margin:0; padding:12px 0; }
 .mail-login-guide-actions { display:flex; align-items:flex-start; gap:12px; justify-content:space-between; }
 .mail-login-guide-actions details { min-width:0; flex:1; }
 .mail-login-guide-actions>a { flex:none; padding-top:1px; text-decoration:none; }
@@ -73,8 +74,11 @@ html[data-theme="light"] .mail-login-dialog { --surface:#fff; --surface-soft:#f4
 .mail-login-credential-guide a, .mail-login-dialog a { color:var(--primary-deep); font-size:12px; }
 .mail-login-credential-error { color:var(--danger-deep); font-size:12px; line-height:1.7; margin:12px 0 0; }
 .mail-login-credential-error[hidden] { display:none; }
-.mail-login-password-wrap { position:relative; display:flex; align-items:center; }
-.mail-login-password-wrap input { padding-right:48px!important; }
+.mail-login-password-wrap { position:relative; display:flex; align-items:center; width:100%; min-width:0; }
+.mail-login-password-wrap input { flex:1 1 auto; width:100%; min-width:0; box-sizing:border-box; padding-right:48px!important; }
+/* WebView2 supplies its own reveal control; keep only the accessible app button. */
+.mail-login-password-wrap input::-ms-reveal,
+.mail-login-password-wrap input::-ms-clear { display:none; }
 .mail-login-password-toggle { position:absolute; top:50%; right:5px; transform:translateY(-50%); display:grid; place-items:center; width:34px; height:34px; padding:0; border:0; border-radius:7px; color:var(--muted); background:transparent; cursor:pointer; }
 .mail-login-password-toggle:hover { background:var(--primary-soft); color:var(--primary-deep); }
 .mail-login-password-toggle svg { width:18px; height:18px; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; fill:none; }

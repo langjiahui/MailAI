@@ -7,6 +7,7 @@ const source = fs.readFileSync(path.join(__dirname,'../app/web/static/app.js'),'
 const start = source.indexOf('function specialMailboxRows()');
 const end = source.indexOf('// ===== 阅读区 =====', start);
 const ctx = {
+  document:{body:{dataset:{}}}, activeMailAccount:()=>({user:'owner@example.test'}),
   currentFilter:{status:''}, specialMailbox:'sent', currentServerFolder:'', unifiedMailbox:false,
   serverFolderForRole:()=>null, selectedEmailId:null, selectedMailIds:new Set(),
   getRiskLabel:()=>({class:'normal',text:'正常'}), getDomain:value=>String(value).split('@')[1] || '',
@@ -36,3 +37,13 @@ assert.match(ctx.renderEmailItem({...base,_account_id:'work'}),/class="email-ite
 assert.doesNotMatch(ctx.renderEmailItem({...base,_account_id:'personal'}),/class="email-item selected/,
   'Rerendering a unified inbox must not highlight another account’s matching local ID');
 console.log('Unified inbox selection stays scoped to the opened account');
+
+// The table keeps real sender/recipient columns even for local sent adapters.
+vm.runInContext(fs.readFileSync(path.join(__dirname,'../app/web/static/mail-list-view.js'),'utf8').split('(() => {')[0],ctx);
+ctx.document.body.dataset.mailListView='table';
+html=ctx.renderEmailItem(sent);
+assert.match(html,/mail-table-sender[^>]*>owner@example.test/);
+assert.match(html,/mail-table-recipient[^>]*>receiver@example.test/);
+assert.match(html,/data-read-state="not-applicable"/);
+assert.doesNotMatch(html,/class="email-item[^"]*\bunread\b/);
+console.log('Classic table preserves sent-mail identity and read state');

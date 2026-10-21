@@ -8,8 +8,11 @@ html[data-theme] body #assistant-panel .assistant-head {
  background:transparent!important; border-bottom:0;
 }
 html[data-theme] body #assistant-panel .assistant-head .assistant-mini {
- width:32px; height:32px; flex:0 0 32px;
+ width:48px; height:44px; flex:0 0 48px;
+ overflow:visible;
 }
+/* Exactly one portrait: the welcome stage yields to the compact header in chat/briefing. */
+#assistant-panel:not(.secretary-show-briefing):has(.assistant-welcome) .assistant-head .assistant-mini { display:none; }
 #assistant-panel .assistant-title .eyebrow { display:none; }
 #assistant-panel .assistant-title h2 { font-size:15px; }
 #assistant-panel .assistant-head-actions { gap:2px; }
@@ -97,7 +100,23 @@ html[data-theme] body #assistant-panel .assistant-sources .source-index {
 }
 #assistant-panel .assistant-sources .source-copy small { color:var(--desk-muted)!important; }
 #assistant-panel .assistant-sources .source-open { color:var(--desk-muted)!important; }
-#assistant-panel .assistant-welcome { margin:clamp(16px,5vh,48px) auto auto; padding:0 0 20px; max-width:400px; }
+#assistant-panel .assistant-welcome { margin:clamp(4px,1.5vh,16px) auto auto; padding:0 0 20px; max-width:400px; }
+/* The welcome portrait shares the equipped rig; its quiet backdrop stays still. */
+#assistant-panel .assistant-welcome-portrait {
+ position:relative; isolation:isolate; width:160px; height:140px; margin:0 auto 12px;
+ pointer-events:auto; overflow:visible;
+}
+#assistant-panel .assistant-welcome-portrait::before {
+ content:""; position:absolute; z-index:-1; inset:5px -28px -2px; border-radius:50%;
+ background:radial-gradient(ellipse at 50% 65%,color-mix(in srgb,var(--desk-accent) 9%,transparent),transparent 70%);
+ pointer-events:none;
+}
+#assistant-panel .assistant-welcome-portrait .mail-companion { overflow:visible; }
+#assistant-panel .assistant-welcome h3,#assistant-panel .assistant-welcome>p { text-align:center; }
+@media(max-height:740px) {
+ #assistant-panel .assistant-welcome-portrait { width:116px; height:98px; margin-bottom:6px; }
+ #assistant-panel .assistant-welcome { margin-top:0; }
+}
 #assistant-panel .assistant-welcome-eyebrow { display:none; }
 #assistant-panel .assistant-welcome h3 { margin:0 0 8px; font-size:20px; line-height:1.4; }
 #assistant-panel .assistant-welcome>p { margin:0 0 20px; max-width:none; color:var(--desk-muted); }
@@ -139,7 +158,8 @@ html.integrated-workspace body:is(.assistant-split,.assistant-docked) #assistant
 }
 @media(max-width:520px) {
  #assistant-panel .assistant-messages { padding-inline:14px; }
- #assistant-panel .assistant-welcome { margin-top:18px; }
+ #assistant-panel .assistant-welcome { margin-top:2px; }
+ #assistant-panel .assistant-welcome-portrait { width:124px; height:108px; margin-bottom:8px; }
  html[data-theme] body #assistant-panel .assistant-head { padding-inline:10px; gap:6px; }
  html[data-theme] body #assistant-panel #assistant-reading-back { max-width:78px; }
 }

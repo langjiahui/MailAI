@@ -39,7 +39,7 @@ const {chromium, webkit} = require('playwright');
               const cards = [...panel.querySelectorAll(selectors)].filter(n=>n.getClientRects().length);
               const escaped = cards.filter(n=>{const r=n.getBoundingClientRect();return r.left<bounds.left-2 || r.right>bounds.right+2 || n.scrollWidth>n.clientWidth+2;}).map(n=>({class:n.className,scroll:n.scrollWidth,client:n.clientWidth,left:n.getBoundingClientRect().left,right:n.getBoundingClientRect().right}));
               const close=document.querySelector('#btn-close-system').getBoundingClientRect();
-              return {overflow:panel.scrollWidth>panel.clientWidth+2,escaped,bounds:{left:bounds.left,right:bounds.right},close:{top:close.top,bottom:close.bottom,right:close.right},pageOverflow:document.documentElement.scrollWidth>innerWidth+1};
+              return {overflow:panel.scrollWidth>panel.clientWidth+2,escaped,bounds:{left:bounds.left,right:bounds.right},close:{top:close.top,bottom:close.bottom,right:close.right},pageOverflow:document.documentElement.scrollWidth>innerWidth+1,overflowing:[...document.body.querySelectorAll("*")].filter(n=>n.getClientRects().length && n.getBoundingClientRect().right>innerWidth+1).slice(0,12).map(n=>({tag:n.tagName,id:n.id,cls:n.className,right:n.getBoundingClientRect().right}))};
             });
             assert(!geometry.overflow && !geometry.pageOverflow && !geometry.escaped.length,JSON.stringify({context,geometry}));
             assert(geometry.close.top>=0 && geometry.close.bottom<=1000 && geometry.close.right<=width+1,JSON.stringify({context,geometry}));

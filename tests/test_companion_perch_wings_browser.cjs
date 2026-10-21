@@ -49,7 +49,7 @@ const port = Number(process.env.MAILAI_PERCH_FIXTURE_PORT || 18813);
             const clip=svg.querySelector('#mailai-perch-body-clip rect');
             return {clipped,cutoff:Number(clip.getAttribute('y'))+Number(clip.getAttribute('height')),
               bodyClipped:svg.querySelector('.growth-body').closest('.companion-perch-body')?.hasAttribute('clip-path'),
-              lowerBodyHidden:['.companion-foot-left','.companion-foot-right','.growth-cape'].every(selector=>getComputedStyle(svg.querySelector(selector)).display==='none'),
+              lowerBodyHidden:['.companion-foot-left','.companion-foot-right','.companion-tail'].every(selector=>getComputedStyle(svg.querySelector(selector)).display==='none'),
               inside:wingBox.left>=card.left&&wingBox.right<=card.right&&wingBox.top>=card.top&&wingBox.bottom<=card.bottom};
           },{part,phase});
           assert.deepEqual(check.clipped,[],`${style}/${mode}/${phase}: wings must not inherit portrait clipping`);

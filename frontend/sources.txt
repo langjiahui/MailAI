@@ -13,6 +13,7 @@ conversation-progress.js
 mail-library.js
 server-cleanup.js
 workspace.js
+mail-list-view.js
 assistant-divider.js
 assistant-scroll.js
 assistant-search.js
@@ -25,7 +26,9 @@ assistant-images.js
 assistant-attachments.js
 assistant-document-reply.js
 companion.js
+companion-position.js
 companion-motion.js
+companion-life.js
 reward-theme-bridge.js
 brand.js
 companion-growth.js

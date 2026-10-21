@@ -1,20 +1,12 @@
-/* Natural evolution and owned equipment reuse XiaoYou's existing vector rig. */
+/* Shared journal, inventory and reward motion. Creature anatomy is defined below. */
 body { --pet-body:#b5ddc5; --pet-outline:#649f80; }
-body[data-pet-stage="3"],body[data-pet-stage="4"] { --pet-body:#a8d9c0; }
-body[data-pet-stage="5"],body[data-pet-stage="6"],body[data-pet-stage="7"] { --pet-body:#98d2bc; }
 body[data-pet-palette="sky"] { --pet-body:#b2d7ed; --pet-outline:#729ab7; }
 body[data-pet-palette="peach"] { --pet-body:#f1cab9; --pet-outline:#c18e7d; }
 .growth-body { fill:var(--pet-body); stroke:var(--pet-outline); transition:fill .4s; }
-.growth-leaf,.growth-flower,.growth-medal,.growth-cape,.growth-wings,.growth-cap,.growth-scarf,.growth-stars,.growth-orbit,.growth-aura { display:none; }
-body[data-pet-stage]:not([data-pet-stage="1"]) .growth-leaf { display:block; }
-body[data-pet-stage="3"] .growth-flower,body[data-pet-stage="4"] .growth-flower,body[data-pet-stage="5"] .growth-flower,body[data-pet-stage="6"] .growth-flower,body[data-pet-stage="7"] .growth-flower { display:block; }
-body[data-pet-stage="4"] .growth-medal,body[data-pet-stage="5"] .growth-medal,body[data-pet-stage="6"] .growth-medal,body[data-pet-stage="7"] .growth-medal { display:block; }
-body[data-pet-stage="5"] .growth-cape,body[data-pet-stage="6"] .growth-cape,body[data-pet-stage="7"] .growth-cape { display:block; }
-body[data-pet-stage="6"] .growth-aura,body[data-pet-stage="7"] .growth-aura { display:block; }
-body[data-pet-stage="7"] .growth-stars { display:block; }
+.growth-wings,.growth-cap,.growth-scarf,.growth-stars,.growth-orbit,.growth-aura { display:none; }
 body[data-pet-accessory="scarf"] .growth-scarf,body[data-pet-accessory="cap"] .growth-cap,body[data-pet-accessory="wings"] .growth-wings { display:block; }
-body[data-pet-accessory="cap"] .mail-companion .companion-leaves,body[data-pet-accessory="cap"] .growth-leaf,body[data-pet-accessory="cap"] .growth-flower { visibility:hidden; }
-body[data-pet-accessory="satchel"] .companion-bag rect { fill:#f0d8a0; stroke:#927642; stroke-width:2; }
+body[data-pet-accessory="cap"] .mail-companion .companion-leaves { visibility:hidden; }
+body[data-pet-accessory="satchel"] .companion-bag rect { fill:url(#pet-satchel); stroke:#C3A577; stroke-width:.55; }
 body[data-pet-effect="sparkles"] .growth-stars,body[data-pet-effect="orbit"] .growth-orbit,body[data-pet-effect="aurora"] .growth-aura { display:block; }
 .companion-level { display:inline-block; margin-left:6px; font-weight:650; white-space:nowrap; }
 .companion-level::before { content:'·'; margin-right:6px; font-weight:400; }
@@ -99,12 +91,12 @@ body[data-pet-effect="sparkles"] .growth-stars,body[data-pet-effect="orbit"] .gr
 .pet-item-art .growth-body { fill:#b5ddc5; stroke:#649f80; }
 .pet-item-art[data-item-preview="sky"] .growth-body { fill:#b2d7ed; stroke:#729ab7; }
 .pet-item-art[data-item-preview="peach"] .growth-body { fill:#f1cab9; stroke:#c18e7d; }
-.pet-item-art .growth-scarf,.pet-item-art .growth-cap,.pet-item-art .growth-wings,.pet-item-art .growth-stars,.pet-item-art .growth-orbit,.pet-item-art .growth-aura,.pet-item-art .growth-cape { display:none!important; }
+.pet-item-art .growth-scarf,.pet-item-art .growth-cap,.pet-item-art .growth-wings,.pet-item-art .growth-stars,.pet-item-art .growth-orbit,.pet-item-art .growth-aura { display:none!important; }
 .pet-item-art[data-item-preview="scarf"] .growth-scarf,.pet-item-art[data-item-preview="cap"] .growth-cap,.pet-item-art[data-item-preview="wings"] .growth-wings,.pet-item-art[data-item-preview="sparkles"] .growth-stars,.pet-item-art[data-item-preview="orbit"] .growth-orbit,.pet-item-art[data-item-preview="aurora"] .growth-aura { display:block!important; }
-.pet-item-art .companion-leaves,.pet-item-art .growth-leaf,.pet-item-art .growth-flower { visibility:visible!important; }
-.pet-item-art[data-item-preview="cap"] .companion-leaves,.pet-item-art[data-item-preview="cap"] .growth-leaf,.pet-item-art[data-item-preview="cap"] .growth-flower { visibility:hidden!important; }
-.pet-item-art[data-item-preview] .companion-bag rect { fill:#FFF5D9; stroke:#B99E65; stroke-width:1.3; }
-.pet-item-art[data-item-preview="satchel"] .companion-bag rect { fill:#f0d8a0; stroke:#927642; stroke-width:2; }
+.pet-item-art .companion-leaves { visibility:visible!important; }
+.pet-item-art[data-item-preview="cap"] .companion-leaves { visibility:hidden!important; }
+.pet-item-art[data-item-preview] .companion-bag rect { fill:url(#pet-letter); stroke:#E4D7B7; stroke-width:.35; }
+.pet-item-art[data-item-preview="satchel"] .companion-bag rect { fill:url(#pet-satchel); stroke:#C3A577; stroke-width:.55; }
 .pet-item-art[data-item-preview="berry"] { background:radial-gradient(circle at 30% 40%,#f6d9e0,transparent 60%),var(--pet-tint); }
 .pet-history article { display:flex; justify-content:space-between; padding:13px 0; border-bottom:1px solid var(--pet-line); font-size:12px; }
 .pet-empty { text-align:center; color:var(--pet-muted); padding:35px 10px; font-size:13px; }
@@ -130,32 +122,15 @@ html[data-theme="dark"] .companion-growth-launch>span:nth-child(2) { color:#9bb9
   .pet-activities { gap:12px; }
   .pet-shop { gap:9px; }
 }
-/* A free masculine ranger route shares progress with the nature messenger. */
-.growth-berry,.growth-ranger-hair,.growth-ranger-collar,.growth-ranger-badge,.growth-ranger-crest,.growth-ranger-brows,.growth-jacket,.growth-armor,.growth-visor,.growth-mech-wings,.growth-lightning { display:none; }
-.growth-ranger-hair { --pet-hair:#30485f; --pet-hair-edge:#20384c; --pet-hair-shine:#7098b2; }
-.ranger-hair-crown,.ranger-hair-fringe { fill:var(--pet-hair); stroke:var(--pet-hair-edge); stroke-width:1.2; }
-.ranger-hair-shine { stroke:var(--pet-hair-shine); }
-html[data-reward-theme="theme_monochrome"] .growth-ranger-hair { --pet-hair:#414853; --pet-hair-edge:#2a3038; --pet-hair-shine:#939ca8; }
-html[data-reward-theme="theme_baowu"] .growth-ranger-hair { --pet-hair:#244d78; --pet-hair-edge:#173653; --pet-hair-shine:#639ac7; }
+/* Legacy inventory IDs remain valid for both new creature routes. */
+.growth-berry,.growth-jacket,.growth-armor,.growth-visor,.growth-mech-wings,.growth-lightning { display:none; }
 /* Each card previews its own theme, even while the other theme is equipped. */
-.pet-theme-preview[data-theme-preview="theme_monochrome"] .growth-ranger-hair { --pet-hair:#414853; --pet-hair-edge:#2a3038; --pet-hair-shine:#939ca8; }
-.pet-theme-preview[data-theme-preview="theme_baowu"] .growth-ranger-hair { --pet-hair:#244d78; --pet-hair-edge:#173653; --pet-hair-shine:#639ac7; }
-body[data-pet-style="ranger"] { --pet-body:#accbd9; --pet-outline:#62889f; }
-body[data-pet-style="ranger"]:where([data-pet-stage="5"],[data-pet-stage="6"],[data-pet-stage="7"]) { --pet-body:#8bb5cc; }
-body[data-pet-style="ranger"] .growth-ranger-hair,body[data-pet-style="ranger"] .growth-ranger-brows,body[data-pet-style="ranger"] .growth-ranger-collar { display:block; }
-body[data-pet-style="ranger"]:not([data-pet-stage="1"]) .growth-ranger-crest { display:block; }
-body[data-pet-style="ranger"] .companion-leaves,body[data-pet-style="ranger"] .growth-leaf,body[data-pet-style="ranger"] .growth-flower { visibility:hidden; }
-body[data-pet-style="ranger"] .growth-cape { fill:#304D67; stroke:#6BA6CD; stroke-width:2; }
 body[data-pet-style="ranger"] .growth-stars { fill:#81DDED; }
-body[data-pet-style="ranger"][data-pet-stage="4"] .growth-visor,body[data-pet-style="ranger"][data-pet-stage="5"] .growth-visor,body[data-pet-style="ranger"][data-pet-stage="6"] .growth-visor,body[data-pet-style="ranger"][data-pet-stage="7"] .growth-visor { display:block; }
-body[data-pet-style="ranger"] .growth-medal { fill:#83D5E3; stroke:#417C9D; }
 body[data-pet-palette="sky"] { --pet-body:#b2d7ed; --pet-outline:#729ab7; }
 body[data-pet-palette="peach"] { --pet-body:#f1cab9; --pet-outline:#c18e7d; }
 body[data-pet-palette="midnight"] { --pet-body:#6a8eac; --pet-outline:#365773; }
 body[data-pet-accessory="jacket"] .growth-jacket,body[data-pet-accessory="visor"] .growth-visor,body[data-pet-accessory="armor"] .growth-armor,body[data-pet-accessory="mech_wings"] .growth-mech-wings { display:block; }
 body[data-pet-accessory="armor"] .growth-jacket { display:none; }
-/* The armor's energy badge occupies the same shoulder as the evolution medal. */
-body[data-pet-accessory="armor"] .growth-medal { display:none; }
 body[data-pet-effect="lightning"] .growth-lightning { display:block; }
 .pet-style-choice { display:flex; align-items:center; gap:7px; margin-top:13px; flex-wrap:wrap; }
 .pet-style-choice>span { margin-right:3px; color:var(--pet-muted); font-size:11px; }
@@ -165,16 +140,8 @@ body[data-pet-effect="lightning"] .growth-lightning { display:block; }
 .pet-item-art[data-item-preview="midnight"] .growth-body { fill:#6a8eac; stroke:#365773; }
 .pet-item-art .growth-jacket,.pet-item-art .growth-armor,.pet-item-art .growth-visor,.pet-item-art .growth-mech-wings,.pet-item-art .growth-lightning { display:none!important; }
 .pet-item-art[data-item-preview="jacket"] .growth-jacket,.pet-item-art[data-item-preview="visor"] .growth-visor,.pet-item-art[data-item-preview="armor"] .growth-armor,.pet-item-art[data-item-preview="mech_wings"] .growth-mech-wings,.pet-item-art[data-item-preview="lightning"] .growth-lightning { display:block!important; }
-.pet-item-art[data-item-preview="armor"] .growth-medal { display:none!important; }
-body[data-pet-style="ranger"] .pet-item-art .companion-leaves,body[data-pet-style="ranger"] .pet-item-art .growth-leaf,body[data-pet-style="ranger"] .pet-item-art .growth-flower { visibility:hidden!important; }
 
-body[data-pet-style="ranger"]:not([data-pet-stage="1"]):not([data-pet-stage="2"]) .growth-ranger-badge { display:block; }
-body[data-pet-accessory="cap"] .growth-ranger-crest { visibility:hidden; }
-body[data-pet-accessory="cap"] .ranger-hair-crown { visibility:hidden; }
-.pet-item-art .growth-ranger-crest { visibility:visible!important; }
-.pet-item-art .ranger-hair-crown { visibility:visible!important; }
-.pet-item-art[data-item-preview="cap"] .growth-ranger-crest { visibility:hidden!important; }
-.pet-item-art[data-item-preview="cap"] .ranger-hair-crown { visibility:hidden!important; }
+
 .pet-item-art[data-item-preview="berry"] .growth-berry { display:block; }
 .pet-pending { display:flex; align-items:center; gap:12px; justify-content:space-between; padding:12px 14px; margin-bottom:14px; border:1px solid var(--pet-line); border-radius:12px; background:var(--pet-tint); font-size:11px; line-height:1.7; }
 .pet-pending button { flex:none; color:var(--pet-accent); background:var(--pet-paper); border:1px solid var(--pet-line); border-radius:8px; padding:7px 10px; font-size:11px; }
@@ -193,11 +160,17 @@ body[data-pet-accessory="cap"] .ranger-hair-crown { visibility:hidden; }
 .pet-wing-left { --pet-clip:pet-feather-left; --pet-duration:4.8s; transform-origin:31px 65px; }
 .pet-wing-right { --pet-clip:pet-feather-right; --pet-duration:4.8s; transform-origin:31px 65px; }
 .pet-feather-fan { --pet-clip:pet-feather-follow; --pet-duration:4.8s; --pet-delay:.09s; transform-origin:27px 65px; }
-.pet-mech-left { --pet-clip:pet-mech-left; --pet-duration:7.6s; transform-origin:30px 64px; }
-.pet-mech-right { --pet-clip:pet-mech-right; --pet-duration:7.6s; transform-origin:30px 64px; }
-.pet-mech-panel { --pet-clip:pet-panel-deploy; --pet-duration:7.6s; --pet-delay:.16s; transform-origin:24px 61px; }
-.pet-mech-charge { --pet-clip:pet-mech-power; --pet-duration:7.6s; --pet-delay:.16s; stroke-dasharray:20 80; }
-.pet-mech-led { --pet-clip:pet-mech-indicator; --pet-duration:7.6s; --pet-delay:.16s; }
+/* Shoulder leads a broad feather fan; distal plates settle last. Shared clock
+   avoids delay drift when short interactions pause and resume the rig. */
+.pet-mech-left { --pet-clip:pet-mech-left; --pet-duration:2.8s; transform-origin:30px 68px; }
+.pet-mech-right { --pet-clip:pet-mech-right; --pet-duration:2.8s; transform-origin:30px 68px; }
+.pet-mech-panel { --pet-clip:pet-panel-deploy; --pet-duration:2.8s; transform-origin:27px 68px; }
+.pet-mech-feather { --pet-duration:2.8s; transform-origin:27px 70px; }
+.pet-mech-feather-upper { --pet-clip:pet-mech-primary; }
+.pet-mech-feather-middle { --pet-clip:pet-mech-secondary; }
+.pet-mech-feather-lower { --pet-clip:pet-mech-coverts; }
+.pet-mech-charge { --pet-clip:pet-mech-power; --pet-duration:2.8s; stroke-dasharray:20 80; }
+.pet-mech-led { --pet-clip:pet-mech-indicator; --pet-duration:2.8s; }
 .growth-stars { color:#E7BE64; }
 body[data-pet-style="ranger"] .growth-stars { color:#81DDED; }
 html[data-reward-theme="theme_monochrome"] body .growth-stars { color:#8e96a5; }
@@ -231,10 +204,10 @@ html[data-reward-theme="theme_baowu"] body .growth-stars { color:#54b2ee; }
 .pet-scarf-tip { --pet-clip:pet-cloth-follow; --pet-duration:6.2s; --pet-delay:.18s; transform-origin:37px 90px; }
 .pet-cap-shine { --pet-clip:pet-charge; --pet-duration:8s; stroke-dasharray:3 19; }
 .pet-satchel-glint { --pet-clip:pet-bag-shine; --pet-duration:8s; opacity:.15; }
-.pet-visor-scan { --pet-clip:pet-visor-sweep; --pet-duration:7.8s; opacity:.3; }
+.pet-visor-scan { --pet-clip:pet-visor-sweep; --pet-duration:2.8s; opacity:.18; }
 .pet-jacket-trace { --pet-charge-lap:-38; --pet-clip:pet-charge; --pet-duration:8.6s; stroke-dasharray:5 33; }
-.pet-armor-core { --pet-clip:pet-core; --pet-duration:5.8s; transform-origin:38px 83px; }
-.pet-core-ring { --pet-clip:pet-core-orbit; --pet-duration:11.6s; stroke-dasharray:10 15; transform-origin:38px 83px; animation-timing-function:linear; }
+.pet-armor-core { --pet-clip:pet-core; --pet-duration:5.8s; transform-origin:39px 78px; }
+.pet-core-ring { --pet-clip:pet-core-orbit; --pet-duration:11.6s; stroke-dasharray:10 15; transform-origin:39px 78px; animation-timing-function:linear; }
 .pet-palette-shine { --pet-clip:pet-shimmer; --pet-duration:9s; }
 .pet-berry-float { --pet-clip:pet-berry-bob; --pet-duration:5.6s; transform-origin:88px 69px; }
 body[data-pet-accessory="wings"] .mail-companion:not(.pet-preview-svg) .growth-wings .pet-reward-motion,
@@ -245,10 +218,9 @@ body[data-pet-accessory="satchel"] .mail-companion:not(.pet-preview-svg) .compan
 body[data-pet-accessory="visor"] .mail-companion:not(.pet-preview-svg) .growth-visor .pet-reward-motion,
 body[data-pet-accessory="jacket"] .mail-companion:not(.pet-preview-svg) .growth-jacket .pet-reward-motion,
 body[data-pet-accessory="armor"] .mail-companion:not(.pet-preview-svg) .growth-armor .pet-reward-motion,
-body[data-pet-style="ranger"]:is([data-pet-stage="4"],[data-pet-stage="5"],[data-pet-stage="6"],[data-pet-stage="7"]) .mail-companion:not(.pet-preview-svg) .growth-visor .pet-reward-motion,
-body:is([data-pet-effect="sparkles"],[data-pet-stage="7"]) .mail-companion:not(.pet-preview-svg) .growth-stars .pet-reward-motion,
+body[data-pet-effect="sparkles"] .mail-companion:not(.pet-preview-svg) .growth-stars .pet-reward-motion,
 body[data-pet-effect="orbit"] .mail-companion:not(.pet-preview-svg) .growth-orbit .pet-reward-motion,
-body:is([data-pet-effect="aurora"],[data-pet-stage="6"],[data-pet-stage="7"]) .mail-companion:not(.pet-preview-svg) .growth-aura .pet-reward-motion,
+body[data-pet-effect="aurora"] .mail-companion:not(.pet-preview-svg) .growth-aura .pet-reward-motion,
 body[data-pet-effect="lightning"] .mail-companion:not(.pet-preview-svg) .growth-lightning .pet-reward-motion,
 body[data-pet-palette]:not([data-pet-palette="mint"]) .mail-companion:not(.pet-preview-svg) .pet-palette-shine,
 .pet-item-art[data-item-preview="wings"] .growth-wings .pet-reward-motion,
@@ -284,9 +256,12 @@ body[data-pet-palette]:not([data-pet-palette="mint"]) .mail-companion:not(.pet-p
   55%,85% { transform:rotate(-2deg) scaleX(.96); }
 }
 @keyframes pet-feather-follow { 0%,55%,100% { transform:rotate(0); } 10% { transform:rotate(5deg); } 20% { transform:rotate(-11deg) scaleY(.92); } 29% { transform:rotate(8deg); } 38% { transform:rotate(-6deg); } 47% { transform:rotate(2deg); } }
-@keyframes pet-mech-left { 0%,100% { transform:rotate(8deg) scaleX(.92); } 12% { transform:rotate(10deg) scaleX(.9); } 30% { transform:rotate(-13deg) scaleX(1); } 37%,65% { transform:rotate(-10deg) scaleX(1); } 85% { transform:rotate(9deg) scaleX(.92); } }
-@keyframes pet-mech-right { 0%,100% { transform:rotate(8deg) scaleX(.92); } 12% { transform:rotate(10deg) scaleX(.9); } 30% { transform:rotate(-13deg) scaleX(1); } 37%,65% { transform:rotate(-10deg) scaleX(1); } 85% { transform:rotate(9deg) scaleX(.92); } }
-@keyframes pet-panel-deploy { 0%,100% { transform:rotate(14deg); } 16% { transform:rotate(14deg); } 34% { transform:rotate(-9deg); } 41%,63% { transform:rotate(-6deg); } 84% { transform:rotate(15deg); } 91% { transform:rotate(14deg); } }
+@keyframes pet-mech-left { 0%,100% { transform:rotate(-80deg); } 9% { transform:rotate(-82deg); } 32%,46% { transform:rotate(3deg); } 76% { transform:rotate(-72deg); } 90% { transform:rotate(-81deg); } }
+@keyframes pet-mech-right { 0%,100% { transform:rotate(-80deg); } 9% { transform:rotate(-82deg); } 32%,46% { transform:rotate(3deg); } 76% { transform:rotate(-72deg); } 90% { transform:rotate(-81deg); } }
+@keyframes pet-panel-deploy { 0%,100% { transform:rotate(-12deg); } 14% { transform:rotate(-12deg); } 39%,49% { transform:rotate(3deg); } 80% { transform:rotate(-10deg); } 94% { transform:rotate(-12deg); } }
+@keyframes pet-mech-primary { 0%,100% { transform:rotate(-5deg); } 19% { transform:rotate(-5deg); } 43%,50% { transform:rotate(5deg); } 72% { transform:rotate(-4deg); } 91% { transform:rotate(-5deg); } }
+@keyframes pet-mech-secondary { 0%,100% { transform:rotate(8deg); } 15% { transform:rotate(8deg); } 38%,48% { transform:rotate(-3deg); } 75% { transform:rotate(7deg); } 92% { transform:rotate(8deg); } }
+@keyframes pet-mech-coverts { 0%,100% { transform:rotate(12deg); } 12% { transform:rotate(12deg); } 34%,47% { transform:rotate(-8deg); } 78% { transform:rotate(11deg); } 94% { transform:rotate(12deg); } }
 @keyframes pet-mech-power { 0%,22%,78%,100% { opacity:.1; stroke-dashoffset:100; } 32% { opacity:.9; } 68% { opacity:.9; stroke-dashoffset:-100; } }
 @keyframes pet-mech-indicator { 0%,22%,85%,100% { opacity:.25; } 35%,65% { opacity:1; } }
 @keyframes pet-charge { 0%,64%,100% { opacity:.3; stroke-dashoffset:0; } 72% { opacity:.8; } 88% { opacity:.8; stroke-dashoffset:var(--pet-charge-lap,-22); } 96% { opacity:.3; stroke-dashoffset:var(--pet-charge-lap,-22); } }
@@ -303,12 +278,12 @@ body[data-pet-palette]:not([data-pet-palette="mint"]) .mail-companion:not(.pet-p
 @keyframes pet-scarf-breeze { 0%,100% { transform:rotate(-2deg); } 22% { transform:rotate(6deg); } 38% { transform:rotate(-4deg); } 51% { transform:rotate(2deg); } 72% { transform:rotate(-1deg); } }
 @keyframes pet-cloth-follow { 0%,100% { transform:rotate(1deg); } 27% { transform:rotate(-7deg); } 44% { transform:rotate(5deg); } 60% { transform:rotate(-2deg); } 80% { transform:rotate(1deg); } }
 @keyframes pet-bag-shine { 0%,60%,100% { transform:translateX(-1px); opacity:0; } 68% { opacity:.65; } 82% { transform:translateX(8px); opacity:.55; } 90% { transform:translateX(8px); opacity:0; } }
-@keyframes pet-visor-sweep { 0%,50%,100% { transform:translateX(0); opacity:.08; } 60% { opacity:.65; } 78% { transform:translateX(24px); opacity:.6; } 86% { transform:translateX(24px); opacity:.08; } }
+@keyframes pet-visor-sweep { 0%,12%,100% { transform:translateX(0); opacity:.08; } 30% { opacity:.55; } 52% { transform:translateX(1.2px); opacity:.35; } 68%,90% { transform:translateX(1.2px); opacity:.08; } }
 @keyframes pet-core { 0%,100% { opacity:.65; transform:scale(.985); } 32% { opacity:.95; transform:scale(1.025); } 55% { opacity:.7; transform:scale(1); } }
 @keyframes pet-core-orbit { to { transform:rotate(360deg); } }
 @keyframes pet-shimmer { 0%,52%,100% { opacity:.7; } 68% { opacity:1; } 85% { opacity:.75; } }
 @keyframes pet-berry-bob { 0%,100% { transform:translateY(1px) rotate(-2deg); } 34% { transform:translateY(-2px) rotate(2deg); } 64% { transform:translateY(-.5px) rotate(-1deg); } }
-.pet-live-preview { border:1px solid var(--pet-line); border-radius:18px; overflow:hidden; margin:20px 0; background:var(--pet-paper); }
+.pet-live-preview { scroll-margin-top:66px; border:1px solid var(--pet-line); border-radius:18px; overflow:hidden; margin:20px 0; background:var(--pet-paper); }
 .pet-live-art { height:250px; margin:0; background:radial-gradient(ellipse at 50% 75%,color-mix(in srgb,var(--pet-accent) 15%,transparent),transparent 64%),var(--pet-tint); }
 .pet-live-art .pet-portrait { width:220px; height:220px; }
 .pet-live-art .growth-body { fill:var(--pet-body); stroke:var(--pet-outline); }
@@ -462,3 +437,226 @@ body.assistant-visible #assistant-orb .mail-companion * { animation-play-state:p
   .pet-hero h3 { overflow-wrap:anywhere; }
   .pet-journal-footer { gap:8px; }
 }
+
+/* A small interaction deck makes personality discoverable without grinding. */
+.pet-life { margin-top:12px; padding:15px 17px; border:1px solid var(--pet-line); border-radius:16px; background:var(--pet-paper); }
+.pet-life-heading { display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:5px 12px; }
+.pet-life-heading b { font-size:12px; }
+.pet-life-heading span,.pet-life>small { font-size:10px; color:var(--pet-muted); }
+.pet-life-status { min-height:2.8em; font-size:12px; line-height:1.6; color:var(--pet-ink); margin:10px 0; }
+.pet-life-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.pet-life-actions button { border:1px solid var(--pet-line); border-radius:10px; padding:8px 12px; background:var(--pet-tint); color:var(--pet-ink); font-size:11px; }
+.pet-life-actions button:hover,.pet-life-actions button[aria-pressed="true"] { border-color:var(--pet-accent); }
+.pet-life-preference { display:flex; align-items:center; gap:7px; margin:12px 0 7px; font-size:11px; cursor:pointer; }
+.pet-life-preference input { width:15px; height:15px; accent-color:var(--pet-accent); }
+.pet-life>small { display:block; line-height:1.7; }
+.pet-journey .pet-stage-ability { color:var(--pet-accent); font-size:11px; }
+@media(max-width:480px) { .pet-life { padding:12px; } .pet-life-actions button { flex:1 1 auto; } }
+
+/* Two small creatures share the rig and inventory, not the same silhouette. */
+.companion-ranger-only { display:none; }
+body[data-pet-style="ranger"] .companion-ranger-only { display:block; }
+body[data-pet-style="ranger"] .companion-nature-only { display:none; }
+body { --pet-body:#B5D6ED; --pet-outline:#8BAEC5; }
+body[data-pet-style="ranger"] { --pet-body:#B3D4F3; --pet-outline:#8BAAC8; }
+body[data-pet-palette="sky"] { --pet-body:#b2d7ed; --pet-outline:#729ab7; }
+body[data-pet-palette="peach"] { --pet-body:#f1cab9; --pet-outline:#c18e7d; }
+body[data-pet-palette="midnight"] { --pet-body:#6a8eac; --pet-outline:#365773; }
+.growth-body { stroke:none; }
+.mail-companion .growth-body>g { stroke:none; }
+.pet-item-art .growth-body { fill:var(--pet-body); stroke:none; }
+.pet-item-art[data-item-preview="sky"] { --pet-body:#b2d7ed; }
+.pet-item-art[data-item-preview="peach"] { --pet-body:#f1cab9; }
+.pet-item-art[data-item-preview="midnight"] { --pet-body:#6a8eac; }
+.companion-cheek { opacity:1; }
+.companion-smile { stroke:none; }
+.companion-shadow { fill:url(#pet-ground); opacity:.16; }
+.companion-facing { transform-origin:56px 75px; }
+.companion-heading { transform-origin:56px 85px; }
+.companion-look { transform-origin:55px 56px; }
+.companion-head { transform-origin:55px 56px; }
+.companion-arm-left { transform-origin:31px 63px; }
+.companion-carry { transform-origin:84px 66px; }
+.companion-leaves { transform-origin:59px 25px; }
+.companion-eyes { transform-origin:55px 54px; }
+.companion-tail { transform-origin:81px 84px; }
+body[data-pet-style="ranger"] .companion-tail { transform-origin:calc(56px + 28px * var(--evo-fish-width)) 85px; }
+.companion-flight-left { transform-origin:35px 73px; }
+.companion-flight-right { transform-origin:77px 73px; }
+
+body[data-pet-style="ranger"] .pet-hero { background:radial-gradient(ellipse at 10% 30%,#BCD9F144,transparent 60%),var(--pet-tint); }
+.pet-style-choice button { display:flex; flex:1 1 200px; flex-direction:column; align-items:flex-start; gap:5px; padding:12px 14px; text-align:left; }
+.pet-style-choice button b { font-size:12px; font-weight:650; }
+.pet-style-choice button em { font-size:10px; font-style:normal; line-height:1.6; opacity:.85; }
+.pet-style-choice>span { flex-basis:100%; margin:0 0 2px; }
+
+/* All seven stages work on live avatars and isolated journey thumbnails.
+ * These are static shape changes; growth adds no idle animation loops. */
+body,.mail-companion[data-evolution-stage] {
+  --evo-first:none; --evo-second:none; --evo-third:none; --evo-tuft-scale:1;
+  --evo-tail-bud:none; --evo-tail-long:none; --evo-tail-curl:none;
+  --evo-wing-young:block; --evo-wing-grown:none; --evo-gold:none; --evo-wing-size:.88;
+  --evo-fish-fin:none; --evo-fish-young:block; --evo-fish-mature:none;
+  --evo-peng:none; --evo-peng-scale:.65; --evo-star:none; --evo-fish-width:1;
+  --fin-baby:block; --fin-growing:none; --fin-flowing:none; --fin-feather:none;
+  --fin-bud:block; --fin-fan:none; --fin-tip:none; --fin-dorsal-scale:.65;
+}
+body[data-pet-stage="2"],.mail-companion[data-evolution-stage="2"] { --evo-first:block; --evo-tuft-scale:.65; --evo-fish-fin:block; }
+body[data-pet-stage="3"],.mail-companion[data-evolution-stage="3"] { --evo-first:block; --evo-fish-fin:block; --evo-tail-bud:block; --evo-fish-width:1.04; }
+body[data-pet-stage="4"],.mail-companion[data-evolution-stage="4"] { --evo-wing-grown:block; --evo-wing-size:.66; --evo-first:block; --evo-second:block; --evo-tail-bud:block; --evo-fish-fin:block; --evo-peng:block; --evo-fish-width:1.04; }
+body[data-pet-stage="5"],.mail-companion[data-evolution-stage="5"] { --evo-first:block; --evo-second:block; --evo-tail-long:block; --evo-wing-young:none; --evo-wing-grown:block; --evo-fish-mature:block; --evo-fish-young:none; --evo-peng:block; --evo-peng-scale:.85; --evo-fish-width:1.04; }
+body[data-pet-stage="6"],.mail-companion[data-evolution-stage="6"] { --evo-first:block; --evo-second:block; --evo-third:block; --evo-tail-long:block; --evo-wing-young:none; --evo-wing-grown:block; --evo-gold:block; --evo-fish-mature:block; --evo-fish-young:none; --evo-peng:block; --evo-peng-scale:1; --evo-fish-width:1.04; }
+body[data-pet-stage="7"],.mail-companion[data-evolution-stage="7"] { --evo-first:block; --evo-second:block; --evo-third:block; --evo-tail-long:block; --evo-tail-curl:block; --evo-wing-size:1; --evo-wing-young:none; --evo-wing-grown:block; --evo-gold:block; --evo-fish-mature:block; --evo-fish-young:none; --evo-peng:block; --evo-peng-scale:1; --evo-star:block; --evo-fish-width:1.07; }
+body[data-pet-stage="2"],.mail-companion[data-evolution-stage="2"] { --fin-baby:none; --fin-growing:block; }
+body[data-pet-stage="3"],.mail-companion[data-evolution-stage="3"] { --fin-baby:none; --fin-flowing:block; --fin-dorsal-scale:.85; }
+body[data-pet-stage="4"],.mail-companion[data-evolution-stage="4"] { --fin-baby:none; --fin-flowing:block; --fin-dorsal-scale:1; --evo-peng-scale:.86; }
+body[data-pet-stage="5"],.mail-companion[data-evolution-stage="5"] { --fin-baby:none; --fin-feather:block; --fin-bud:none; --fin-fan:block; --evo-peng-scale:.88; }
+body[data-pet-stage="6"],.mail-companion[data-evolution-stage="6"] { --fin-baby:none; --fin-feather:block; --fin-bud:none; --fin-fan:block; --fin-tip:block; --evo-peng-scale:.92; }
+body[data-pet-stage="7"],.mail-companion[data-evolution-stage="7"] { --fin-baby:none; --fin-feather:block; --fin-bud:none; --fin-fan:block; --fin-tip:block; }
+.evolution-flipper-baby { display:var(--fin-baby); }
+.evolution-flipper-growing { display:var(--fin-growing); }
+.evolution-flipper-flowing { display:var(--fin-flowing); }
+.evolution-flipper-feather { display:var(--fin-feather); }
+.evolution-peng-bud { display:var(--fin-bud); }
+.evolution-peng-fan { display:var(--fin-fan); }
+.evolution-peng-tip { display:var(--fin-tip); }
+.evolution-fish-fin { transform:scale(var(--fin-dorsal-scale)); transform-origin:69px 32px; }
+.evolution-crest-one { display:var(--evo-first); transform:scale(var(--evo-tuft-scale)); transform-origin:59px 25px; }
+.evolution-crest-two { display:var(--evo-second); }
+.evolution-crest-three { display:var(--evo-third); }
+.evolution-tail-bud { display:var(--evo-tail-bud); }
+.evolution-tail-long { display:var(--evo-tail-long); }
+.evolution-tail-curl { display:var(--evo-tail-curl); }
+.evolution-wing-young { display:var(--evo-wing-young); }
+.evolution-wing-grown { display:var(--evo-wing-grown); }
+.evolution-gold { display:var(--evo-gold); }
+body .mail-companion .evolution-fish-fin { display:var(--evo-fish-fin); }
+body:not([data-pet-style="ranger"]) .mail-companion .evolution-fish-fin { display:none; }
+.evolution-fish-young { display:var(--evo-fish-young); }
+.evolution-fish-mature { display:var(--evo-fish-mature); }
+.evolution-peng-wing { display:var(--evo-peng); transform:scale(var(--evo-peng-scale)); transform-origin:35px 73px; }
+body .mail-companion .evolution-star-mark { display:var(--evo-star); }
+body:not([data-pet-style="ranger"]) .mail-companion .evolution-star-mark { display:none; }
+/* Costume wings replace the fish's extra flight wings to avoid stacking pairs. */
+body:is([data-pet-accessory="wings"],[data-pet-accessory="mech_wings"]) :is(.evolution-peng-wing,.evolution-wing-grown) { visibility:hidden; }
+.pet-item-art :is(.evolution-peng-wing,.evolution-wing-grown) { visibility:visible!important; }
+.pet-item-art:is([data-item-preview="wings"],[data-item-preview="mech_wings"]) :is(.evolution-peng-wing,.evolution-wing-grown) { visibility:hidden!important; }
+/* Soft, fitted pieces share the creature's head/torso anchors. */
+body { --pet-cloth:#AAC8B9; --pet-cloth-edge:#85A99B; }
+body[data-pet-style="ranger"] { --pet-cloth:#BCCEEA; --pet-cloth-edge:#8EA8CD; }
+.growth-cap { transform:rotate(-7deg); transform-origin:53px 29px; }
+body[data-pet-style="ranger"] .growth-cap { transform:translate(-2px,3px) rotate(-7deg); }
+body[data-pet-style="ranger"] .growth-visor { translate:-3px 2px; }
+.growth-scarf,.growth-jacket,.growth-armor { transform:none; stroke:none; }
+body[data-pet-style="ranger"] :is(.growth-scarf,.growth-jacket,.growth-armor) { translate:0 1px; }
+.growth-satchel-details { display:none; }
+body[data-pet-accessory="satchel"] .growth-satchel-details { display:block; }
+.pet-item-art .growth-satchel-details { display:none!important; }
+.pet-item-art[data-item-preview="satchel"] .growth-satchel-details { display:block!important; }
+.pet-journey .pet-evolution-preview { width:70px; height:70px; flex:none; }
+.pet-evolution-preview .mail-companion * { animation:none!important; }
+.pet-evolution-preview :is(.growth-cap,.growth-scarf,.growth-jacket,.growth-armor,.growth-visor,.growth-wings,.growth-mech-wings,.growth-stars,.growth-orbit,.growth-aura,.growth-lightning,.growth-satchel-details) { display:none!important; }
+.pet-evolution-preview .companion-leaves,.pet-evolution-preview :is(.evolution-peng-wing,.evolution-wing-grown) { visibility:visible!important; }
+.pet-evolution-preview .companion-bag rect { fill:url(#pet-letter); stroke:#E4D7B7; stroke-width:.35; }
+@media(max-width:600px) { .pet-journey .pet-evolution-preview { width:56px; height:56px; } .pet-journey article { gap:9px; padding:10px; } }
+
+.evolution-wing-grown { transform:scale(var(--evo-wing-size)); transform-origin:35px 73px; }
+
+.evolution-fish-body { transform:scaleX(var(--evo-fish-width)); transform-origin:56px 75px; }
+.compose-perch-art .perch-paw { background:#B9D9EE; border-color:#92B5CC; border-radius:50%; }
+
+body[data-pet-style="ranger"] .companion-gaze { translate:-3px 2px; }
+
+/* Body and tail share growth proportions; a broad root overlaps behind the body. */
+.evolution-fish-tail { transform:scaleX(var(--evo-fish-width)); transform-origin:56px 75px; }
+
+/* The final flight keeps the bright eyes from the concept rather than a squint. */
+.mail-companion:is([data-motion-clip="phoenix"],[data-motion-clip="kunpeng"])[data-expression="joy"] .companion-eyes { display:block; }
+.mail-companion:is([data-motion-clip="phoenix"],[data-motion-clip="kunpeng"])[data-expression="joy"] .companion-happy-eyes { display:none; }
+body[data-pet-style="ranger"] .companion-smile>path { stroke:none; }
+
+/* A collected wardrobe: clear silhouettes first, restrained materials second. */
+body[data-pet-palette="sky"],.pet-item-art[data-item-preview="sky"],.pet-live-art[data-item-preview="sky"] { --pet-body:#88C5ED; --pet-outline:#719DBF; }
+body[data-pet-palette="peach"],.pet-item-art[data-item-preview="peach"],.pet-live-art[data-item-preview="peach"] { --pet-body:#EDB5C0; --pet-outline:#BB8D9D; }
+body[data-pet-palette="midnight"],.pet-item-art[data-item-preview="midnight"],.pet-live-art[data-item-preview="midnight"] { --pet-body:#A5B0DC; --pet-outline:#7B8FB4; }
+.pet-item-art:is([data-item-preview="sky"],[data-item-preview="peach"],[data-item-preview="midnight"]) .growth-body { fill:var(--pet-body); }
+body { --pet-cloth:#9EC8BC; --pet-cloth-edge:#709E92; }
+body[data-pet-style="ranger"] { --pet-cloth:#ACC0DD; --pet-cloth-edge:#819BBD; }
+.pet-boutique-intro { scroll-margin-top:66px; display:flex; align-items:center; gap:20px; justify-content:space-between; margin:0 0 18px; }
+.pet-boutique-intro small { font-size:10px; letter-spacing:1.4px; color:var(--pet-accent); }
+.pet-boutique-intro h3 { font-size:22px; margin:7px 0; }
+.pet-boutique-intro p { margin:0; max-width:420px; color:var(--pet-muted); font-size:12px; line-height:1.8; }
+.pet-collection-progress { flex:none; display:grid; gap:6px; text-align:right; }
+.pet-collection-progress b { font-size:21px; font-variant-numeric:tabular-nums; }
+.pet-collection-progress span { font-size:10px; color:var(--pet-muted); }
+.pet-collections { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-bottom:16px; }
+.pet-collections article { min-width:0; padding:0 12px 13px; border:1px solid var(--pet-line); border-radius:16px; overflow:hidden; background:var(--pet-paper); }
+.pet-collections .pet-item-art { height:146px; margin:0 -12px 12px; background:radial-gradient(ellipse at 50% 35%,#E2EFE3AA,transparent 70%),var(--pet-tint); }
+.pet-collections article:nth-child(2) .pet-item-art { background:radial-gradient(ellipse at 50% 35%,#D5E9F4AA,transparent 70%),var(--pet-tint); }
+.pet-collections article:nth-child(3) .pet-item-art { background:radial-gradient(ellipse at 50% 35%,#DFDCF3AA,transparent 70%),var(--pet-tint); }
+.pet-collections .pet-portrait { width:124px; height:124px; }
+.pet-collections small { color:var(--pet-muted); font-size:9px; }
+.pet-collections h4 { font-size:14px; margin:4px 0 7px; }
+.pet-collections p { min-height:32px; font-size:10px; line-height:1.65; color:var(--pet-muted); margin:0 0 10px; }
+.pet-collections button,.pet-next-reward button,.pet-journey [data-pet-try-stage] { color:var(--pet-accent); border:1px solid var(--pet-line); background:var(--pet-tint); border-radius:8px; padding:7px 10px; font-size:11px; }
+.pet-next-reward { display:flex; align-items:center; justify-content:space-between; gap:15px; padding:14px 16px; border:1px solid var(--pet-line); border-radius:13px; background:var(--pet-tint); margin-bottom:24px; }
+.pet-next-reward b { font-size:12px; }
+.pet-next-reward p { color:var(--pet-muted); font-size:11px; line-height:1.6; margin:5px 0 0; }
+.pet-next-reward button { flex:none; background:var(--pet-paper); }
+.pet-shop-filters { display:flex; flex-wrap:wrap; gap:7px; margin:0 0 14px; }
+.pet-shop-filters button { font-size:11px; padding:7px 12px; border:1px solid var(--pet-line); border-radius:20px; background:transparent; color:var(--pet-muted); }
+.pet-shop-filters button[aria-pressed="true"] { background:var(--pet-accent); border-color:var(--pet-accent); color:var(--pet-paper); }
+.pet-shop-item .pet-item-art { position:relative; height:155px; background:radial-gradient(ellipse at 50% 40%,color-mix(in srgb,var(--pet-body) 27%,transparent),transparent 70%),var(--pet-tint); }
+.pet-shop-item .pet-portrait { width:126px; height:126px; }
+.pet-shop-item.is-locked { opacity:1; }
+.pet-shop-item.is-equipped { border-color:var(--pet-accent); }
+.pet-item-stage { position:absolute; left:12px; top:12px; font-size:10px; color:var(--pet-muted); border:1px solid var(--pet-line); border-radius:6px; padding:3px 6px; background:var(--pet-paper); }
+.pet-shop-item .pet-item-copy p { min-height:36px; }
+.pet-theme-shop { margin-top:28px; }
+.pet-live-art { position:relative; height:280px; }
+.pet-fitting-stage { position:absolute; bottom:9px; left:50%; transform:translateX(-50%); white-space:nowrap; color:var(--pet-muted); font-size:11px; }
+.pet-fitting-controls { display:flex; flex-wrap:wrap; align-items:end; gap:12px; padding-top:12px; margin-top:10px; border-top:1px solid var(--pet-line); }
+.pet-fitting-controls label { display:grid; gap:6px; font-size:10px; color:var(--pet-muted); }
+.pet-fitting-controls select { max-width:100%; border:1px solid var(--pet-line); border-radius:8px; color:var(--pet-ink); background:var(--pet-paper); padding:7px; font-size:11px; }
+.pet-fitting-actions { display:flex; flex-wrap:wrap; gap:6px; }
+.pet-fitting-actions button { border:1px solid var(--pet-line); border-radius:8px; padding:8px 10px; font-size:11px; color:var(--pet-accent); background:var(--pet-tint); }
+.pet-unlock-list { display:flex; flex-wrap:wrap; gap:5px; margin:8px 0; }
+.pet-unlock-list span { font-size:9px; border-radius:5px; padding:3px 6px; background:var(--pet-tint); color:var(--pet-muted); border:1px solid var(--pet-line); }
+.pet-journey [data-pet-try-stage] { margin:0 9px 6px 0; }
+/* Softer cloth follow-through, a deliberate optical sweep and a resting interval. */
+.pet-scarf-tail,.pet-scarf-tip { --pet-duration:7.2s; }
+.pet-visor-scan { --pet-duration:5.6s; }
+.pet-armor-core { --pet-duration:6.4s; }
+.pet-cap-shine { --pet-duration:9s; }
+.pet-satchel-glint { --pet-duration:8.8s; }
+.pet-palette-shine { --pet-duration:10.2s; }
+@keyframes pet-scarf-breeze { 0%,52%,100% { transform:rotate(-2deg); } 12% { transform:rotate(9deg); } 25% { transform:rotate(-5deg); } 37% { transform:rotate(3deg); } }
+@keyframes pet-visor-sweep { 0%,14%,75%,100% { transform:translateX(0); opacity:.12; } 30% { opacity:.7; } 49% { transform:translateX(2px); opacity:.35; } 64% { transform:translateX(2px); opacity:.12; } }
+@keyframes pet-core { 0%,65%,100% { opacity:.65; transform:scale(1); } 20% { opacity:1; transform:scale(1.07); } 38% { opacity:.8; transform:scale(1.02); } }
+@keyframes pet-energy { 0%,45%,100% { opacity:.16; } 62% { opacity:.72; } 78% { opacity:.5; } 92% { opacity:.16; } }
+@keyframes pet-berry-bob { 0%,70%,100% { transform:translateY(1px) rotate(-3deg); } 23% { transform:translateY(-3px) rotate(4deg); } 43% { transform:translateY(0) rotate(-2deg); } 57% { transform:translateY(-1px) rotate(1deg); } }
+@media(max-width:600px) {
+ .pet-boutique-intro { align-items:start; gap:10px; }
+ .pet-boutique-intro h3 { font-size:19px; }
+ .pet-collection-progress b { font-size:17px; }
+ .pet-collections { gap:7px; }
+ .pet-collections article { padding:0 7px 10px; }
+ .pet-collections .pet-item-art { height:100px; margin:0 -7px 9px; }
+ .pet-collections .pet-portrait { width:78px; height:78px; }
+ .pet-collections p { display:none; }
+ .pet-collections h4 { font-size:12px; }
+ .pet-collections button { padding:6px; font-size:10px; }
+ .pet-shop-item .pet-portrait { width:105px; height:105px; }
+ .pet-shop-item .pet-item-art { height:128px; }
+ .pet-next-reward { padding:12px; }
+ .pet-live-art { height:250px; }
+}
+
+/* Static shelves show a readable phase; only explicit hover/preview plays it. */
+.pet-item-art[data-item-preview="mech_wings"]:not(.pet-live-art) .growth-mech-wings .pet-reward-motion { --pet-delay:-1.1s; }
+.pet-item-art[data-item-preview="wings"]:not(.pet-live-art) .growth-wings .pet-reward-motion { --pet-delay:-1.3s; }
+.pet-item-art[data-item-preview="lightning"]:not(.pet-live-art) .pet-bolt { --pet-delay:-4.6s; }
+.pet-item-art[data-item-preview="aurora"]:not(.pet-live-art) .pet-aurora-ripple { --pet-delay:-1.5s; }
+.pet-item-art[data-item-preview="aurora"]:not(.pet-live-art) .pet-aurora-ripple:nth-of-type(2) { --pet-delay:-3.1s; }
+.pet-item-art[data-item-preview="aurora"]:not(.pet-live-art) .pet-aurora-ripple:nth-of-type(3) { --pet-delay:-4.5s; }
+body[data-pet-style="ranger"] .growth-stars { fill:#7CB8D9; color:#7CB8D9; }

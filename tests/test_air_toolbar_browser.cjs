@@ -32,8 +32,8 @@ const fs=require('node:fs');
       assert(Math.abs(geometry.header.height-52)<1,detail);
       for(const button of geometry.buttons)assert(button.left>=0&&button.right<=width+1&&button.bottom<=53,detail);
       for(let n=1;n<geometry.buttons.length;n++)assert(geometry.buttons[n-1].right<=geometry.buttons[n].left+1,detail);
-      if(geometry.usable>900)assert(geometry.labels.every(l=>l.width>10&&l.display!=='none'&&l.clip==='none'),detail);
-      if(geometry.usable<=900&&geometry.usable>720){
+      if(geometry.usable>1040)assert(geometry.labels.every(l=>l.width>10&&l.display!=='none'&&l.clip==='none'),detail);
+      if(geometry.usable<=1040&&geometry.usable>720){
        assert(geometry.labels[0].width>10,detail);
        assert(geometry.labels.slice(1).every(l=>l.width<=1.5),detail);
       }

@@ -12,8 +12,8 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve,ms));
   const root = fs.mkdtempSync(path.join(os.tmpdir(),'mailai-import-browser-'));
   try {
     const page = await browser.newPage({viewport:{width:1440,height:1000},reducedMotion:'reduce'});
-    const errors=[]; page.on('pageerror', e=>errors.push(e.message));
-    await page.goto('http://127.0.0.1:18795/');
+    const errors=[]; page.on('pageerror', e=>{errors.push(e.message); console.error('Browser error:',e.message);});
+    await page.goto(process.env.MAILAI_FIXTURE_URL || 'http://127.0.0.1:18795/');
     await page.locator('#app-preloader').waitFor({state:'detached'});
     await page.waitForFunction(()=>Boolean(window.mailaiMailImport && _systemConfig?.accounts?.length));
     const accounts = await page.evaluate(()=>_systemConfig.accounts.map(a=>({id:a.id,user:a.user})));
@@ -97,7 +97,7 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve,ms));
     await importedRow.click({button:'right'});
     await page.locator('#mail-context-menu').waitFor({state:'visible'});
     assert.equal(await page.locator('[data-context-action=star]').isDisabled(),true);
-    assert.equal(await page.locator('[data-context-action=folders]').isDisabled(),true);
+    assert.equal(await page.locator('[data-context-action=folders]').isDisabled(),false);
     await page.keyboard.press('Escape');
     await importedRow.click();
     await page.locator('#reading-content .meta-badges .tag').filter({hasText:'本地归档'}).waitFor();
@@ -123,6 +123,22 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve,ms));
     await trashRow.waitFor({state:'hidden'});
     await page.evaluate(id=>openAccountMailbox(id,'local_archive'),target.id);
     await page.waitForFunction(value=>allEmails.filter(e=>e.subject.includes(value)).length===2,'历史导入-'+stamp);
+    // Local inbox placement must work offline and retain very old messages.
+    await importedRow.click({button:'right'});
+    await page.locator('[data-context-action=folders]').click();
+    await page.locator('[data-context-folder="__local_inbox__"]').click();
+    await page.waitForFunction(()=>!bulkOperationActive);
+    await page.evaluate(id=>openAccountMailbox(id,'inbox'),target.id);
+    const localInboxRow=page.locator('.email-item').filter({hasText:'历史导入-'+stamp});
+    await localInboxRow.waitFor();
+    assert.equal(await localInboxRow.count(),1);
+    await localInboxRow.click({button:'right'});
+    assert.equal(await page.locator('[data-context-action=star]').isDisabled(),true);
+    await page.keyboard.press('Escape');
+    await page.locator('#bulk-folder').selectOption('__local_archive__');
+    await localInboxRow.waitFor({state:'hidden'});
+    await page.evaluate(id=>openAccountMailbox(id,'local_archive'),target.id);
+    await page.waitForFunction(value=>allEmails.filter(e=>e.subject.includes(value)).length===2,'历史导入-'+stamp);
     // Repeated export: all duplicates, with a clear explanation and disabled apply.
     await page.evaluate(()=>window.mailaiMailImport.open());
     await dialog.locator('#mail-import-files').setInputFiles({name:'same.eml',mimeType:'message/rfc822',buffer:raw('one')});
@@ -143,10 +159,87 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve,ms));
     });
     await action.click();
     try { await page.waitForFunction(()=>document.querySelector('[data-import-error]').textContent.includes('磁盘空间不足')); } catch(e) { console.error('Upload interruption state',thisUpload,await dialog.textContent()); throw e; }
-    assert.equal(await action.isDisabled(),true);
-    assert.match(await dialog.locator('[data-import-status]').textContent(),/1 \/ 2.*重新选择/);
+    assert.equal(await action.isEnabled(),true);
+    assert.match(await dialog.locator('[data-import-status]').textContent(),/1 \/ 2.*继续添加/);
+    await page.unroute('**/api/mail/client-imports/*/files?*');
+    // A committed upload with a lost response is retried safely, not counted twice.
+    let lostResponse=true;
+    const resumedIndices=[];
+    await page.route('**/api/mail/client-imports/*/files?*',async route=>{
+      resumedIndices.push(new URL(route.request().url()).searchParams.get('index'));
+      if (lostResponse) { lostResponse=false; await route.fetch(); await route.abort('failed'); }
+      else await route.continue();
+    });
+    await action.click();
+    await page.waitForFunction(()=>document.querySelector('[data-import-action]').textContent==='导入缺少的 2 封邮件');
+    assert.deepEqual(resumedIndices,['1','1'],'Keep confirmed prefix; safely retry lost response');
+    assert.equal(await dialog.locator('[data-count=found]').textContent(),'2');
     await page.unroute('**/api/mail/client-imports/*/files?*');
     await dialog.locator('[data-import-reset]').click(); await page.waitForFunction(()=>document.querySelector('[data-import-select]').hidden===false && document.querySelector('[data-import-action]').textContent==='扫描并去重');
+    // Reload the page after a persistent network error, then recover the saved batch.
+    const resumeUploadLabel='传输断点-'+stamp;
+    const resumeFiles=[{name:'saved.eml',mimeType:'message/rfc822',buffer:raw('saved')},
+      {name:'remaining.eml',mimeType:'message/rfc822',buffer:raw('remaining')}];
+    await dialog.locator('#mail-import-label').fill(resumeUploadLabel);
+    await dialog.locator('#mail-import-files').setInputFiles(resumeFiles);
+    await page.route('**/api/mail/client-imports/*/files?*',async route=>{
+      if (new URL(route.request().url()).searchParams.get('index')==='1') await route.abort('failed');
+      else await route.continue();
+    });
+    await action.click();
+    await page.waitForFunction(()=>document.querySelector('[data-import-error]').textContent.includes('文件传输中断'));
+    assert.match(await dialog.locator('[data-import-status]').textContent(),/1 \/ 2/);
+    assert.equal(await action.isEnabled(),true);
+    await page.unroute('**/api/mail/client-imports/*/files?*');
+    await page.reload();
+    await page.waitForFunction(()=>Boolean(window.mailaiMailImport && _systemConfig?.accounts?.length));
+    await page.evaluate(id=>window.mailaiMailImport.open(id),target.id);
+    await dialog.locator('[data-import-history] summary').click();
+    await dialog.locator('[data-import-job]').filter({hasText:resumeUploadLabel}).click();
+    await page.waitForFunction(()=>document.querySelector('[data-import-action]').textContent==='继续添加');
+    assert.equal(await action.isDisabled(),true);
+    await dialog.locator('#mail-import-files').setInputFiles(resumeFiles);
+    await action.click();
+    await page.waitForFunction(()=>document.querySelector('[data-import-action]').textContent==='导入缺少的 2 封邮件');
+    assert.equal(await dialog.locator('[data-count=found]').textContent(),'2');
+    await dialog.locator('[data-import-reset]').click();
+    await page.waitForFunction(()=>document.querySelector('[data-import-action]').textContent==='扫描并去重');
+    // One bad file can be skipped without losing either healthy neighbor.
+    await dialog.locator('#mail-import-files').setInputFiles([
+      {name:'healthy-first.eml',mimeType:'message/rfc822',buffer:raw('skip-a')},
+      {name:'empty.eml',mimeType:'message/rfc822',buffer:Buffer.alloc(0)},
+      {name:'healthy-last.eml',mimeType:'message/rfc822',buffer:raw('skip-b')}
+    ]);
+    await action.click();
+    const skip=dialog.locator('[data-import-skip]');
+    await skip.waitFor({state:'visible'});
+    assert.match(await dialog.locator('[data-import-error]').textContent(),/为空/);
+    assert.match(await dialog.locator('[data-import-failed-file]').textContent(),/empty.eml/);
+    assert.match(await dialog.locator('[data-import-retry-help]').textContent(),/重新导出.*不为 0/);
+    await skip.click();
+    await page.waitForFunction(()=>document.querySelector('[data-import-action]').textContent==='导入缺少的 2 封邮件');
+    assert.equal(await dialog.locator('[data-count=failed]').textContent(),'1');
+    assert.match(await dialog.locator('[data-import-skipped]').textContent(),/已单独跳过 1 个文件/);
+    await dialog.locator('[data-import-errors] summary').click();
+    assert.match(await dialog.locator('[data-import-errors] > div').textContent(),/empty.eml.*已单独跳过.*处理建议：.*不为 0/s);
+    const skippedDownload=page.waitForEvent('download');
+    await dialog.locator('[data-import-report]').click();
+    const skippedCsv=fs.readFileSync(await (await skippedDownload).path(),'utf8');
+    assert.match(skippedCsv,/处理建议/);
+    assert.match(skippedCsv,/已跳过,empty.eml/);
+    await action.click();
+    await page.waitForFunction(()=>document.querySelector('[data-import-action]').textContent==='查看导入邮件');
+    assert.match(await dialog.locator('[data-import-summary]').textContent(),/已新增 2 封.*1 项未能导入/);
+    await dialog.locator('[data-import-reset]').click();
+    await page.waitForFunction(()=>document.querySelector('[data-import-action]').textContent==='扫描并去重');
+    // An all-skipped batch must not offer an empty successful import.
+    await dialog.locator('#mail-import-files').setInputFiles({name:'only-empty.eml',mimeType:'message/rfc822',buffer:Buffer.alloc(0)});
+    await action.click(); await skip.waitFor({state:'visible'}); await skip.click();
+    await page.waitForFunction(()=>document.querySelector('[data-import-action]').textContent==='导入缺少的 0 封邮件');
+    assert.equal(await action.isDisabled(),true);
+    assert.match(await dialog.locator('[data-import-summary]').textContent(),/已单独跳过 1 个文件.*另行补导/);
+    await dialog.locator('[data-import-reset]').click();
+    await page.waitForFunction(()=>document.querySelector('[data-import-action]').textContent==='扫描并去重');
     // Only corrupt files must explain re-export, never claim they already exist.
     await dialog.locator('#mail-import-files').setInputFiles(Array.from({length:40},(_,i)=>({name:`broken-${i}.eml`,mimeType:'message/rfc822',buffer:Buffer.from('broken')})));
     await action.click();
@@ -156,6 +249,16 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve,ms));
     await dialog.locator('[data-import-errors] summary').click();
     assert.match(await dialog.locator('[data-import-issues-note]').textContent(),/40 项.*前 30 项/);
     assert.equal(await dialog.locator('[data-import-errors] > div > p').count(),30);
+    await page.evaluate(()=>setI18nLanguage('en'));
+    assert.doesNotMatch(await dialog.locator('[data-import-errors]').innerText(),/[\u3400-\u9fff]/,'Import reasons and actionable advice must translate, including expanded rows');
+    for(const width of [390,720,1440]) for(const mode of ['light','dark']) {
+      await page.setViewportSize({width,height:800});
+      await page.evaluate(mode=>applyTheme(mode),mode);
+      const fit=await dialog.evaluate(n=>{const r=n.getBoundingClientRect(),f=n.querySelector('footer').getBoundingClientRect();return {left:r.left,right:r.right,footer:f.bottom,overflow:n.scrollWidth>n.clientWidth+1};});
+      assert(fit.left>=0 && fit.right<=width+1 && fit.footer<=801 && !fit.overflow,JSON.stringify({width,mode,fit}));
+    }
+    await page.setViewportSize({width:1440,height:1000});
+    await page.evaluate(()=>{setI18nLanguage('zh-CN');applyTheme('light');});
     const fullDownload=page.waitForEvent('download');
     await dialog.locator('[data-import-report]').click();
     const csv=fs.readFileSync(await (await fullDownload).path(),'utf8');

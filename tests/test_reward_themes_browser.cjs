@@ -86,7 +86,8 @@ const {chromium,webkit} = require('playwright');
           });
           assert.equal(colors.bg,mode==='light'?'rgb(255, 255, 255)':theme==='theme_monochrome'?'rgb(23, 23, 23)':'rgb(22, 24, 26)');
           assert(colors.button>=4.5 && colors.text>=4.5,JSON.stringify({theme,style,mode,colors}));
-          assert.equal(colors.pet,theme === 'theme_monochrome' ? 'rgb(208, 210, 214)' : 'rgb(149, 198, 231)');
+          const petColors={theme_monochrome:{light:['rgb(190, 201, 206)','rgb(176, 193, 206)'],dark:['rgb(173, 188, 195)','rgb(162, 181, 197)']},theme_baowu:{light:['rgb(158, 201, 231)','rgb(148, 191, 227)'],dark:['rgb(145, 184, 215)','rgb(136, 176, 211)']}};
+          assert.equal(colors.pet,petColors[theme][mode][style==='ranger'?1:0]);
           await page.keyboard.press('Escape');
           await page.evaluate(()=>hideSystemView(true));
           const owner=await page.evaluate(()=>activeMailAccount().id);
@@ -158,7 +159,7 @@ const {chromium,webkit} = require('playwright');
     // Individual pet palettes take priority; skin does not replace gear or XP.
     await dialog.locator('[data-pet-buy="sky"]').click();
     await page.waitForFunction(()=>document.body.dataset.petPalette === 'sky');
-    assert.equal(await dialog.locator('.pet-hero .growth-body').evaluate(node=>getComputedStyle(node).fill),'rgb(178, 215, 237)');
+    assert.equal(await dialog.locator('.pet-hero .growth-body').evaluate(node=>getComputedStyle(node).fill),'rgb(131, 181, 212)');
     const balance=(await page.evaluate(()=>api('/api/companion/growth'))).stamps;
     await dialog.locator('.pet-themes-title [data-pet-slot="theme"]').click();
     await page.waitForFunction(()=>!document.documentElement.dataset.rewardTheme);
