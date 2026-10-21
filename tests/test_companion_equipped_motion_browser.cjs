@@ -18,11 +18,14 @@ const rewards=[
 async function checkMotion(page, hosts, part, context) {
   await page.evaluate(()=>mailaiCompanionMotion.wake());
   const selectors=hosts.map(host=>`${host} .mail-companion ${part}`);
-  await page.waitForFunction(selectors=>selectors.every(selector=>{
+  try { await page.waitForFunction(selectors=>selectors.every(selector=>{
     const node=document.querySelector(selector);
     const svg=node?.closest('.mail-companion');
     return svg?.dataset.rewardVisible==='true' && svg.dataset.motionActive==='true' && getComputedStyle(node).visibility==='visible';
-  }),selectors);
+  }),selectors); } catch(error) {
+    const state=await page.evaluate(selectors=>({body:document.body.className,dialogs:[...document.querySelectorAll("dialog[open]")].map(n=>n.id),nodes:selectors.map(selector=>{const n=document.querySelector(selector),svg=n?.closest(".mail-companion");return {selector,svg:svg?.dataset,box:svg?.getBoundingClientRect().toJSON(),visibility:n&&getComputedStyle(n).visibility};})}),selectors);
+    throw new Error(`${context}: ${JSON.stringify(state)}`,{cause:error});
+  }
   const sample=()=>page.evaluate(selectors=>selectors.map(selector=>{
     const node=document.querySelector(selector), css=getComputedStyle(node);
     const animation=node.getAnimations().find(a=>a.animationName===css.animationName);

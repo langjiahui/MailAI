@@ -249,6 +249,16 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve,ms));
     await dialog.locator('[data-import-errors] summary').click();
     assert.match(await dialog.locator('[data-import-issues-note]').textContent(),/40 项.*前 30 项/);
     assert.equal(await dialog.locator('[data-import-errors] > div > p').count(),30);
+    await page.evaluate(()=>setI18nLanguage('en'));
+    assert.doesNotMatch(await dialog.locator('[data-import-errors]').innerText(),/[\u3400-\u9fff]/,'Import reasons and actionable advice must translate, including expanded rows');
+    for(const width of [390,720,1440]) for(const mode of ['light','dark']) {
+      await page.setViewportSize({width,height:800});
+      await page.evaluate(mode=>applyTheme(mode),mode);
+      const fit=await dialog.evaluate(n=>{const r=n.getBoundingClientRect(),f=n.querySelector('footer').getBoundingClientRect();return {left:r.left,right:r.right,footer:f.bottom,overflow:n.scrollWidth>n.clientWidth+1};});
+      assert(fit.left>=0 && fit.right<=width+1 && fit.footer<=801 && !fit.overflow,JSON.stringify({width,mode,fit}));
+    }
+    await page.setViewportSize({width:1440,height:1000});
+    await page.evaluate(()=>{setI18nLanguage('zh-CN');applyTheme('light');});
     const fullDownload=page.waitForEvent('download');
     await dialog.locator('[data-import-report]').click();
     const csv=fs.readFileSync(await (await fullDownload).path(),'utf8');

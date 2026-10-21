@@ -38528,6 +38528,10 @@ function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, o
   };
   document.getElementById('btn-import-client-mail').onclick = () => open();
   document.getElementById('btn-account-import-mail').onclick = () => open(selectedManagedAccountId || activeMailAccount()?.id);
+  document.addEventListener('mailai:language-changed', () => {
+    renderedSamples = renderedIssues = renderedFolders = '';
+    if (dialog.open) paint();
+  });
   window.mailaiMailImport = {open};
 })();
 

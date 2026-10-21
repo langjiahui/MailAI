@@ -49,7 +49,7 @@ body[data-mail-list-view="table"] #email-list .email-group + .email-group { padd
 .mail-table-column-resizer:hover::after,.mail-table-column-resizer:focus-visible::after { opacity:.6; }
 .mail-table-column-resizer:focus-visible { outline:1px solid var(--desk-accent,var(--primary)); outline-offset:2px; }
 body.mail-column-resizing { cursor:col-resize; user-select:none; }
-#system-view .mail-list-view-settings small { display:block; margin-top:4px; }
+html[data-theme] body #system-view .mail-list-view-settings small { display:block; margin-top:4px; color:var(--settings-muted)!important; }
 
 .mail-table-heading:last-child { border-right:0; }
 .mail-table-date-short { display:none; }

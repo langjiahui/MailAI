@@ -200,7 +200,7 @@ html:is(.desktop-native-window,.integrated-workspace) .topbar .nav-work-cluster 
  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .global-actions { gap:4px; }
  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .nav-work-cluster .nav-action { padding-inline:7px; }
 }
-@container mac-header (max-width:900px) {
+@container mac-header (max-width:1040px) {
  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .nav-work-cluster .nav-action {
   width:32px; min-width:32px; padding:0!important; gap:0;
  }

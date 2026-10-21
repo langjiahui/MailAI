@@ -158,7 +158,10 @@ const port=Number(process.env.MAILAI_EVOLUTION_FIXTURE_PORT||18857);
   }
   // The tail must meet actual filled body geometry at every growth scale,
   // including both extremes of swimming and flight, not just share an origin.
-  const tailErrors=await hero.evaluate(svg=>{
+  const tailErrors=await page.evaluate(()=>{
+   // Growth refresh may replace the hero between locator resolution and evaluation.
+   const svg=document.querySelector('.pet-hero-portrait .mail-companion');
+   if(!svg?.isConnected)throw Error('Growth hero must be mounted for geometry checks');
    document.body.dataset.petStyle='ranger';
    const errors=[],root=new DOMPoint(84,85);
    for(let stage=1;stage<=7;stage++) {

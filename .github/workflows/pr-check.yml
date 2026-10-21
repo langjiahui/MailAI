@@ -460,13 +460,13 @@ jobs:
       - name: Verify companion growth, fitting room, placement and finite reactions
         run: |
           mkdir -p output/xiaoyou-evolution
+          node tests/test_companion_evolution_browser.cjs
+          MAILAI_BROWSER=webkit node tests/test_companion_evolution_browser.cjs
           node tests/test_companion_position_browser.cjs
           node tests/test_companion_wardrobe_browser.cjs
           node tests/test_assistant_portrait_browser.cjs
           node tests/test_companion_life_browser.cjs
           MAILAI_BROWSER=webkit node tests/test_companion_life_browser.cjs
-          node tests/test_companion_evolution_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_companion_evolution_browser.cjs
           node tests/test_companion_theme_transparency_browser.cjs
           MAILAI_BROWSER=webkit node tests/test_companion_theme_transparency_browser.cjs
       - uses: actions/upload-artifact@v5
