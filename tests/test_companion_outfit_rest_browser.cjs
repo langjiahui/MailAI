@@ -59,15 +59,21 @@ walk(tree);assert(clips.size>20,'Discover the complete gesture library');
    // have begun while the preceding host/style was being opened.
    await page.evaluate(()=>window.dispatchEvent(new Event('blur')));
    await page.waitForFunction(selector=>document.querySelector(selector).dataset.motionActive==='false',selector);
+   await page.bringToFront();
+   await page.locator(selector).scrollIntoViewIfNeeded();
+   await page.waitForFunction(selector=>document.querySelector(selector).dataset.rewardVisible==='true',selector);
    await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
    const baseline=await snapshot(selector);
-   const duration=await page.evaluate(({selector,name})=>{
+   // Both visibility observers must have committed after a host opens. A
+   // deliberate reaction may start only then; no ambient work is forced on.
+   const started=await page.waitForFunction(({selector,name})=>{
     const svg=document.querySelector(selector);
-    if(!mailaiCompanionMotion.react(name,svg))throw Error('Gesture did not start: '+name);
+    if(!mailaiCompanionMotion.react(name,svg))return false;
     const motions=svg.getAnimations({subtree:true});
     for(const motion of motions){motion.pause();motion.currentTime=Number(motion.effect.getTiming().duration)*.43;}
     return Math.max(0,...motions.filter(a=>!a.animationName).map(a=>Number(a.effect.getTiming().duration)));
-   },{selector,name});
+   },{selector,name},{timeout:3000});
+   const duration=await started.jsonValue();
    assert(duration>0,name+' has actual motion');
    await page.clock.runFor(duration+30);
    assert.equal(await page.locator(selector).getAttribute('data-motion-clip'),'settle',label+' has a landing: '+JSON.stringify(await page.evaluate(selector=>({svg:{...document.querySelector(selector).dataset},style:document.body.dataset.petStyle,body:document.body.className}),selector)));

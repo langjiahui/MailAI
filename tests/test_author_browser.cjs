@@ -3,6 +3,7 @@ const {chromium} = require('playwright');
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
+const {reducedMotion}=require('./helpers/media.cjs');
 const root = path.resolve(__dirname, '../app/web/static');
 (async () => {
   const browser = await chromium.launch({headless:true, args:['--enable-unsafe-swiftshader'], ...(process.env.MAILAI_TEST_BROWSER_CHANNEL ? {channel:process.env.MAILAI_TEST_BROWSER_CHANNEL} : {})});
@@ -129,8 +130,8 @@ const root = path.resolve(__dirname, '../app/web/static');
     await page.waitForTimeout(200);
     assert.equal(await page.evaluate(()=>window.authorDraws),hiddenDraws,'hidden panels must stop GPU rendering');
     await page.locator('[data-system-tab="about"]').click();
-    await page.emulateMedia({reducedMotion:'reduce'});
-    await page.waitForTimeout(200);
+    await reducedMotion(page,'reduce');
+    await page.waitForFunction(()=>document.querySelector('[data-author-logo]').getAttribute('aria-pressed')==='false');
     assert.equal(await logo.getAttribute('aria-pressed'),'false','reduced motion must stop playback');
     await page.setViewportSize({width:390,height:844});
     await page.waitForTimeout(450);

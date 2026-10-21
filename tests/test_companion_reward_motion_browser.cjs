@@ -85,11 +85,13 @@ const {chromium,webkit} = require('playwright');
     const running=await preview.locator('.pet-star').first().evaluate(n=>getComputedStyle(n).animationPlayState);
     assert.equal(running,'running');
     const originalAppearance=await page.evaluate(()=>({petStyle:document.body.dataset.petStyle,petAccessory:document.body.dataset.petAccessory,petEffect:document.body.dataset.petEffect}));
+    await dialog.locator('.pet-hero-portrait').scrollIntoViewIfNeeded();
+    await page.waitForFunction(()=>document.querySelector('.pet-hero-portrait .mail-companion').dataset.rewardVisible==='true');
     for(const style of ['nature','ranger']) {
       for(const [slot,item,part] of [['petAccessory','wings','.pet-wing-left'],['petAccessory','mech_wings','.pet-mech-left'],['petEffect','sparkles','.pet-star'],['petEffect','orbit','.pet-orbit-stream'],['petEffect','aurora','.pet-aurora-ripple'],['petEffect','lightning','.pet-bolt']]) {
         await page.evaluate(({style,slot,item})=>{document.body.dataset.petStyle=style;document.body.dataset[slot]=item;},{style,slot,item});
-        await page.evaluate(()=>mailaiCompanionMotion.wake());
-        const node=page.locator('#assistant-orb .mail-companion '+part).first();
+        assert(await page.evaluate(()=>mailaiCompanionMotion.react('peek',document.querySelector('.pet-hero-portrait'))),'Visible equipped creature starts a finite reaction');
+        const node=dialog.locator('.pet-hero-portrait .mail-companion '+part).first();
         assert.notEqual(await node.evaluate(n=>getComputedStyle(n).animationName),'none',`${style}/${item} must animate when equipped on the real companion`);
       }
     }

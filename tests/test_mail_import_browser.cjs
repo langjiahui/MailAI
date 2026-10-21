@@ -293,7 +293,9 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve,ms));
     await dialog.locator('[data-import-reset]').click();
     await page.waitForFunction(()=>document.querySelector('[data-import-select]').hidden===false && document.querySelector('[data-import-action]').textContent==='扫描并去重');
     // Oversized files never transfer or block their healthy neighbors.
-    const hugePath=path.join(root,'超长文件名'.repeat(20)+'.eml');
+    // Stay below Linux's 255-byte filename limit while still exercising a
+    // long CJK label in the narrow dialog (80 glyphs / 244 UTF-8 bytes).
+    const hugePath=path.join(root,'超长文件名'.repeat(16)+'.eml');
     const hugeFd=fs.openSync(hugePath,'w');fs.ftruncateSync(hugeFd,65*1024*1024);fs.closeSync(hugeFd);
     const healthyPath=path.join(root,'auto-skip-healthy.eml');fs.writeFileSync(healthyPath,raw('auto-skip'));
     await dialog.locator('[data-import-large]').uncheck();
