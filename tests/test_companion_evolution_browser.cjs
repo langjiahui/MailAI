@@ -75,7 +75,8 @@ const port=Number(process.env.MAILAI_EVOLUTION_FIXTURE_PORT||18857);
   // Check actual world-space joints through gestures and interruptions, rather
   // than merely comparing two independent CSS animation declarations.
   for(const style of ['nature','ranger']) {
-   const checks=await hero.evaluate((svg,style)=>{
+   const checks=await page.evaluate(style=>{
+    const svg=document.querySelector('.pet-hero-portrait .mail-companion');
     Object.assign(document.body.dataset,{petStyle:style,petStage:'3'});
     document.body.classList.remove('companion-still');
     const body=svg.querySelector('.companion-torso'),carry=svg.querySelector('.companion-carry');
@@ -104,9 +105,10 @@ const port=Number(process.env.MAILAI_EVOLUTION_FIXTURE_PORT||18857);
   // Turning is continuous: the face leads, the tail passes behind the body,
   // and the letter remains in the same hand without an instantaneous mirror.
   for(const [style,clip] of [['nature','march'],['nature','step'],['ranger','swim']]) {
-   const checks=await hero.evaluate((svg,{style,clip})=>{
+   const checks=await page.evaluate(({style,clip})=>{
+    const svg=document.querySelector('.pet-hero-portrait .mail-companion');
     Object.assign(document.body.dataset,{petStyle:style,petStage:'3'});
-    mailaiCompanionMotion.react(clip,svg.parentElement);
+    if(!mailaiCompanionMotion.react(clip,svg.parentElement)) throw Error('Visible travel rig must start');
     const motions=svg.getAnimations({subtree:true}).filter(a=>!(a instanceof CSSAnimation)&&!(a instanceof CSSTransition));
     motions.forEach(a=>a.pause());
     const matrix=selector=>new DOMMatrixReadOnly(getComputedStyle(svg.querySelector(selector)).transform);
@@ -199,7 +201,8 @@ const port=Number(process.env.MAILAI_EVOLUTION_FIXTURE_PORT||18857);
    const before=await hero.locator(part).evaluate(n=>getComputedStyle(n).transform);
    await page.waitForTimeout(1050);
    assert.notEqual(await hero.locator(part).evaluate(n=>getComputedStyle(n).transform),before);
-   const pose=await hero.evaluate(svg=>{
+   const pose=await page.evaluate(()=>{
+    const svg=document.querySelector('.pet-hero-portrait .mail-companion');
     const torso=new DOMMatrixReadOnly(getComputedStyle(svg.querySelector('.companion-torso')).transform);
     const figure=new DOMMatrixReadOnly(getComputedStyle(svg.querySelector('.companion-figure')).transform);
     return {ratios:[torso,figure].map(m=>Math.hypot(m.a,m.b)/Math.hypot(m.c,m.d)),

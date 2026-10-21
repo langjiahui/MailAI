@@ -279,3 +279,11 @@ html.macos-native-window.macos-native-fullscreen .topbar .logo img { width:24px;
   }
  }
 }
+
+/* Preserve every action at tablet widths with enlarged interface text. */
+@container mac-header (max-width:720px) {
+ html.integrated-workspace:not(.desktop-native-window)[data-theme] body .topbar .brand {
+  width:24px; min-width:24px; flex-basis:24px;
+ }
+ html.integrated-workspace:not(.desktop-native-window) .topbar .brand-copy { display:none!important; }
+}

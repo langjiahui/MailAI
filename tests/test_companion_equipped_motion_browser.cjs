@@ -18,15 +18,20 @@ const rewards=[
 async function checkMotion(page, hosts, part, context) {
   await page.evaluate(()=>mailaiCompanionMotion.wake());
   const selectors=hosts.map(host=>`${host} .mail-companion ${part}`);
-  try { await page.waitForFunction(selectors=>selectors.every(selector=>{
+  try { await page.waitForFunction(selectors=>{
+    mailaiCompanionMotion.wake();
+    return selectors.every(selector=>{
     const node=document.querySelector(selector);
     const svg=node?.closest('.mail-companion');
     return svg?.dataset.rewardVisible==='true' && svg.dataset.motionActive==='true' && getComputedStyle(node).visibility==='visible';
-  }),selectors); } catch(error) {
+  });},selectors); } catch(error) {
     const state=await page.evaluate(selectors=>({body:document.body.className,dialogs:[...document.querySelectorAll("dialog[open]")].map(n=>n.id),nodes:selectors.map(selector=>{const n=document.querySelector(selector),svg=n?.closest(".mail-companion");return {selector,svg:svg?.dataset,box:svg?.getBoundingClientRect().toJSON(),visibility:n&&getComputedStyle(n).visibility};})}),selectors);
     throw new Error(`${context}: ${JSON.stringify(state)}`,{cause:error});
   }
-  const sample=()=>page.evaluate(selectors=>selectors.map(selector=>{
+  const sample=()=>page.evaluate(selectors=>{
+    // Wake and sample in one browser task so CI transport cannot consume the finite reaction.
+    mailaiCompanionMotion.wake();
+    return selectors.map(selector=>{
     const node=document.querySelector(selector), css=getComputedStyle(node);
     const animation=node.getAnimations().find(a=>a.animationName===css.animationName);
     let visible=!!node.getClientRects().length, hidden=[];
@@ -35,7 +40,7 @@ async function checkMotion(page, hosts, part, context) {
       if(style.display==='none'||style.visibility==='hidden'){visible=false;hidden.push(`${ancestor.tagName}.${ancestor.getAttribute('class')}: ${style.display}/${style.visibility}`);}
     }
     return {name:css.animationName,play:css.animationPlayState,time:animation?.currentTime,visible,hidden};
-  }),selectors);
+  });},selectors);
   const first=await sample();
   for(let i=0;i<selectors.length;i++) {
     const label=`${context}: ${selectors[i]}`;
