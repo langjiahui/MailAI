@@ -1,6 +1,7 @@
 """Offline checks for device-only iOS packaging, independent versions, and immutable artifacts."""
 import importlib.util
 import json
+import os
 from pathlib import Path
 import plistlib
 import tempfile
@@ -49,7 +50,14 @@ class IOSReleaseTest(unittest.TestCase):
             self.assertEqual(manifest['signing'], 'unsigned-requires-device-signing')
             with zipfile.ZipFile(output / manifest['file']) as ipa:
                 self.assertIn('Payload/MailAI.app/MailAI', ipa.namelist())
-                self.assertTrue((ipa.getinfo('Payload/MailAI.app/MailAI').external_attr >> 16) & 0o111)
+                # Windows chmod exposes read/write flags, not Unix execution
+                # bits. Packaging must preserve the actual source permissions
+                # on every host; POSIX fixtures must still carry an executable.
+                source_mode = (app / 'MailAI').stat().st_mode & 0o777
+                if os.name != 'nt':
+                    self.assertEqual(source_mode, 0o755)
+                archived_mode = (ipa.getinfo('Payload/MailAI.app/MailAI').external_attr >> 16) & 0o777
+                self.assertEqual(archived_mode, source_mode)
             with patch.object(build.subprocess, 'check_output', return_value='arm64'), self.assertRaisesRegex(SystemExit, 'overwrite'):
                 build.package(app, output, '1.0.0', '1')
 

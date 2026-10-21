@@ -171,10 +171,11 @@ jobs:
           node tests/test_i18n_coverage.cjs
       - name: Install import test dependencies
         run: python -m pip install -r requirements-test.txt
-      - name: Verify exported mail imports with LF and CRLF
+      - name: Verify portable mail imports and release metadata
         run: |
           python tests/test_mail_import.py
           python tests/test_mail_navigation.py
+          python tests/test_ios_release.py
     needs: plan
     timeout-minutes: 20
     if: ${{ needs.plan.outputs.reuse != 'true' }}
