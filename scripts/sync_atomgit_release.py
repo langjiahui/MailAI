@@ -131,7 +131,7 @@ def upload(tag, path, token):
             time.sleep(3 * (attempt + 1))
 
 
-def sync(tag, assets, token, notes):
+def sync(tag, assets, token, notes, *, publish_pointer=True):
     manifest = json.loads((assets / 'latest.json').read_text(encoding='utf-8'))
     signed = verify(json.loads((assets / 'latest.signed.json').read_text(encoding='utf-8')))
     if signed != manifest or manifest.get('version') != tag.removeprefix('v'):
@@ -168,7 +168,8 @@ def sync(tag, assets, token, notes):
     published = api('/releases/latest?type=latest', token)
     if published.get('tag_name') != tag or published.get('prerelease'):
         raise ValueError('Domestic release promotion failed')
-    publish_channel(assets / 'latest.signed.json', token)
+    if publish_pointer:
+        publish_channel(assets / 'latest.signed.json', token)
     print('Domestic release published and verified: ' + tag, flush=True)
 
 
@@ -177,9 +178,12 @@ def main():
     parser.add_argument('--tag', required=True)
     parser.add_argument('--assets', type=Path, required=True)
     parser.add_argument('--notes', type=Path, required=True)
+    parser.add_argument('--skip-channel', action='store_true',
+                        help='Verify/promote attachments now; publish the static channel in a separate step')
     args = parser.parse_args()
     try:
-        sync(args.tag, args.assets, os.environ['ATOMGIT_TOKEN'], args.notes.read_text(encoding='utf-8'))
+        sync(args.tag, args.assets, os.environ['ATOMGIT_TOKEN'], args.notes.read_text(encoding='utf-8'),
+             publish_pointer=not args.skip_channel)
     except Exception as exc:
         # Never include exception URLs: signed storage query strings are credentials.
         print('AtomGit synchronization failed: ' + type(exc).__name__, file=sys.stderr)

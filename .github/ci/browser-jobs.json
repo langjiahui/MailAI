@@ -1,0 +1,73 @@
+{
+  "browser_matrix": {
+    "suite": [
+      "startup",
+      "workspace",
+      "search",
+      "compose-library",
+      "mail-settings",
+      "dates-motion",
+      "labels",
+      "assistant-search"
+    ]
+  },
+  "growth_matrix": {
+    "suite": [
+      "growth-journal",
+      "growth-outfits",
+      "growth-themes",
+      "growth-gifts"
+    ]
+  },
+  "responsive_matrix": {
+    "include": [
+      {
+        "browser": "chromium",
+        "suite": "responsive-settings",
+        "shard": ""
+      },
+      {
+        "browser": "chromium",
+        "suite": "responsive-dialogs",
+        "shard": "1/3"
+      },
+      {
+        "browser": "chromium",
+        "suite": "responsive-dialogs",
+        "shard": "2/3"
+      },
+      {
+        "browser": "chromium",
+        "suite": "responsive-dialogs",
+        "shard": "3/3"
+      },
+      {
+        "browser": "webkit",
+        "suite": "responsive-settings",
+        "shard": ""
+      },
+      {
+        "browser": "webkit",
+        "suite": "responsive-dialogs",
+        "shard": "1/3"
+      },
+      {
+        "browser": "webkit",
+        "suite": "responsive-dialogs",
+        "shard": "2/3"
+      },
+      {
+        "browser": "webkit",
+        "suite": "responsive-dialogs",
+        "shard": "3/3"
+      }
+    ]
+  },
+  "xiaoyou_matrix": {
+    "suite": [
+      "xiaoyou-anatomy",
+      "xiaoyou-wardrobe",
+      "xiaoyou-life"
+    ]
+  }
+}

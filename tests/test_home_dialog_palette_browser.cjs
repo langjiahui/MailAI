@@ -1,7 +1,8 @@
 // Isolated workspace fixture. Change only the rendered palette, never real account settings.
 const assert=require('node:assert/strict');
 const {chromium,webkit}=require('playwright');
-const cases=require('./helpers/home-dialog-cases.cjs');
+const {partition}=require('./helpers/ci-shard.cjs');
+const cases=partition(require('./helpers/home-dialog-cases.cjs'));
 (async()=>{
  const browser=await(process.env.MAILAI_BROWSER==='webkit'?webkit:chromium).launch({headless:true});
  const errors=[];let checked=0;

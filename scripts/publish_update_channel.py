@@ -1,4 +1,5 @@
 """Publish a signed static pointer after anonymous installer verification."""
+import argparse
 import json
 import os
 from pathlib import Path
@@ -7,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from urllib.error import HTTPError
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from app.update_mirror import STATIC_MANIFEST_URL, read_json
 from app.update_trust import verify
@@ -81,7 +83,23 @@ def verify_public(manifest, filename='latest.signed.json'):
                 raise OSError('Static channel has not refreshed yet')
             print('Static channel anonymously verified: v'+manifest['version'],flush=True)
             return
-        except OSError:
+        except OSError as exc:
+            if isinstance(exc, HTTPError) and 400 <= exc.code < 500 and exc.code not in {404, 408, 429}:
+                # An access denial is not CDN propagation. Fail promptly without
+                # blocking the already published application or leaking URLs.
+                print(f'Static update endpoint returned HTTP {exc.code}; release attachments remain verified.', flush=True)
+                raise
             if attempt==12:raise
             print('Waiting for static channel CDN refresh',flush=True)
             time.sleep(30)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--manifest', type=Path, required=True)
+    args = parser.parse_args()
+    try:
+        publish(args.manifest, os.environ['ATOMGIT_TOKEN'])
+    except Exception as exc:
+        print('Static update channel verification failed: ' + type(exc).__name__, file=sys.stderr)
+        sys.exit(1)
