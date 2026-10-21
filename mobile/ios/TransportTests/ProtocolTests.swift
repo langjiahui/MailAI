@@ -1,8 +1,22 @@
 import XCTest
 import MailAICore
+import Security
 @testable import MailAI
 
 final class ProtocolTests: XCTestCase {
+    @MainActor func testSystemKeychainRoundTripOnSignedSimulator() throws {
+        let service = "com.mailai.ios.tests." + UUID().uuidString
+        let vault = KeychainVault(service: service)
+        defer { SecItemDelete([kSecClass: kSecClassGenericPassword, kSecAttrService: service] as CFDictionary) }
+        XCTAssertTrue(try vault.load().isEmpty)
+        let entry = credential()
+        try vault.save([entry])
+        let restored = try vault.load()
+        XCTAssertEqual(restored.first?.account, entry.account)
+        XCTAssertEqual(restored.first?.password, "synthetic-password")
+        try vault.save([])
+        XCTAssertTrue(try vault.load().isEmpty)
+    }
     private func credential() -> AccountCredential {
         var account = MailAccount(); account.email = "demo@example.com"; account.username = account.email
         account.imapHost = "localhost"; account.imapPort = 1993

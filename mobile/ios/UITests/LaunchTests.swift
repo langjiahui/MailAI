@@ -5,6 +5,7 @@ final class LaunchTests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
         XCTAssertTrue(app.buttons["add-account"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.alerts["操作提示"].exists, "Startup must not hide a Keychain failure")
         attach("welcome")
         app.buttons["add-account"].tap()
         XCTAssertTrue(app.textFields["email"].waitForExistence(timeout: 5))

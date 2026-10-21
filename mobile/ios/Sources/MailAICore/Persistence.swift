@@ -14,8 +14,8 @@ public struct AccountCredential: Codable, Sendable {
 }
 
 @MainActor public final class KeychainVault: CredentialStorage {
-    private let service = "com.mailai.ios.accounts.v1"
-    public init() {}
+    private let service: String
+    public init(service: String = "com.mailai.ios.accounts.v1") { self.service = service }
     private var query: [String: Any] {
         [kSecClass as String: kSecClassGenericPassword,
          kSecAttrService as String: service, kSecAttrAccount as String: "accounts"]
