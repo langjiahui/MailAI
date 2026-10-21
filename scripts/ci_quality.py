@@ -141,7 +141,7 @@ def summary(message):
 
 def plan(api):
     source = None
-    # PRs always run the full matrix. Only a protected-main push can reuse it.
+    # PRs always run the full matrix. Only a main-branch push can reuse it.
     if os.getenv('GITHUB_EVENT_NAME') == 'push' and os.getenv('GITHUB_REF') == 'refs/heads/main':
         try:
             source = find_evidence(api, git('rev-parse', 'HEAD^{tree}'),

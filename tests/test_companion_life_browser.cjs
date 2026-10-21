@@ -3,6 +3,7 @@ const assert=require('node:assert/strict');
 const {spawn}=require('node:child_process');
 const {once}=require('node:events');
 const {chromium,webkit}=require('playwright');
+const {reducedMotion}=require('./helpers/media.cjs');
 const port=Number(process.env.MAILAI_LIFE_FIXTURE_PORT||18843);
 require('node:fs').mkdirSync('output/xiaoyou-upgrade',{recursive:true});
 (async()=>{
@@ -23,6 +24,7 @@ require('node:fs').mkdirSync('output/xiaoyou-upgrade',{recursive:true});
     const page=await browser.newPage({viewport:{width:1280,height:1000}}),errors=[];
     page.on('pageerror',error=>errors.push(error.message));
     await page.addInitScript(()=>{
+      localStorage.setItem('mailai.onboarding.v2',JSON.stringify({deferred:true,mailboxDone:true,aiDone:true}));
       window.audioContexts=[];window.audioNotes=[];
       const Audio=window.AudioContext||window.webkitAudioContext;
       window.AudioContext=class extends Audio {
@@ -88,13 +90,13 @@ require('node:fs').mkdirSync('output/xiaoyou-upgrade',{recursive:true});
     await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
     await page.waitForTimeout(1900);
     // Reduced motion keeps feedback readable and prevents animation/sound demos.
-    await page.emulateMedia({reducedMotion:'reduce'});
+    await reducedMotion(page,'reduce');
     const audioCount=await page.evaluate(()=>audioContexts.length);
     await page.locator('[data-pet-life-action="signature"]').click();
     assert.equal(await hero.getAttribute('data-motion-active'),'false');
     assert.match(await page.locator('[data-pet-life-status]').textContent(),/减少动态效果/);
     assert.equal(await page.evaluate(()=>audioContexts.length),audioCount);
-    await page.emulateMedia({reducedMotion:'no-preference'});
+    await reducedMotion(page,'no-preference');
     await page.waitForTimeout(1900);
     await page.evaluate(()=>window.lifeWork=mailaiCompanionWork.begin());
     await page.locator('[data-pet-life-action="hello"]').click();
@@ -130,9 +132,16 @@ require('node:fs').mkdirSync('output/xiaoyou-upgrade',{recursive:true});
     await page.waitForFunction(()=>document.querySelector('#assistant-orb .mail-companion').dataset.motionClip==='greet');
     await page.evaluate(()=>mailaiPet.open());
     await page.locator('[data-pet-life-chatter]').check();
+    // The journal's close handler discards old bubbles. Await that handler
+    // before requesting a fresh idle message, not just the visual dismissal.
+    await page.evaluate(()=>{window.lifeJournalClosed=new Promise(resolve=>document.getElementById('companion-growth-dialog').addEventListener('close',resolve,{once:true}));});
     await page.keyboard.press('Escape');
+    await page.evaluate(()=>lifeJournalClosed);
     await page.evaluate(()=>document.dispatchEvent(new CustomEvent('mailai:companion-idle',{detail:{svg:document.querySelector('#assistant-orb .mail-companion')}})));
-    assert.equal(await page.locator('.companion-life-bubble').isVisible(),true);
+    const bubbleState=await page.evaluate(()=>({body:document.body.className,root:document.getElementById('mail-assistant').className,
+      dialogs:[...document.querySelectorAll('dialog[open]')].map(n=>n.id),nudge:!!document.querySelector('.assistant-nudge:not(.hidden)'),
+      bubble:document.querySelector('.companion-life-bubble').hidden}));
+    assert.equal(await page.locator('.companion-life-bubble').isVisible(),true,JSON.stringify(bubbleState));
     const bubbleCopy=await page.locator('.companion-life-bubble').textContent();
     await page.evaluate(()=>document.dispatchEvent(new CustomEvent('mailai:companion-idle',{detail:{svg:document.querySelector('#assistant-orb .mail-companion')}})));
     assert.equal(await page.locator('.companion-life-bubble').textContent(),bubbleCopy,'Automatic chatter is rate limited');

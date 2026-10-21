@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -213,6 +214,29 @@ class PartitionTest(unittest.TestCase):
         ci_browser.stop(process)
         self.assertIsNotNone(process.poll())
         ci_browser.stop(process)
+
+    @unittest.skipUnless(os.name=='posix','Linux/macOS process groups')
+    def test_cleanup_kills_children_after_the_leader_exits(self):
+        source = '''import os, signal, time
+if os.fork() == 0:
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    print("child ready", flush=True)
+time.sleep(60)
+'''
+        process = subprocess.Popen([sys.executable, '-c', source], start_new_session=True,
+                                   stdout=subprocess.PIPE, text=True)
+        try:
+            self.assertEqual(process.stdout.readline().strip(), 'child ready')
+            ci_browser.stop(process)
+            # EOF requires the TERM-resistant child to close its inherited pipe.
+            process.communicate(timeout=2)
+            self.assertIsNotNone(process.returncode)
+        finally:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            process.communicate(timeout=5)
 
 
 class MirrorTriggerTest(unittest.TestCase):

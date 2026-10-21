@@ -23,11 +23,14 @@ def stop(process):
         try:
             process.wait(timeout=5)
         except subprocess.TimeoutExpired:
-            try:
-                os.killpg(process.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-            process.wait(timeout=5)
+            pass
+    # The leader may exit on TERM while a browser or fixture child survives.
+    # Always clear the group, even when the leader has already been reaped.
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    process.wait(timeout=5)
 
 
 def start_fixture(spec, env, stack, log_dir, phase):
