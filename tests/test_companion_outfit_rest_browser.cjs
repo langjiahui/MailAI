@@ -35,7 +35,13 @@ walk(tree);assert(clips.size>20,'Discover the complete gesture library');
   await page.goto(base);await page.locator('#app-preloader').waitFor({state:'detached'});
   await page.waitForFunction(()=>document.body.dataset.petStage);
   await page.evaluate(()=>mailaiEnergy.reschedule('companion-growth',3600000));
-  await page.clock.install();await page.clock.runFor(5000);
+  // Freeze virtual time between browser protocol calls. Under CI load a
+  // 445ms landing can otherwise finish before its assertion reaches the page.
+  // Only runFor advances timers; the real-frame continuity suite is separate.
+  const clockStart=new Date('2026-10-21T12:00:00Z');
+  await page.clock.install({time:clockStart});
+  await page.clock.pauseAt(new Date(clockStart.getTime()+1000));
+  await page.clock.runFor(5000);
   await page.evaluate(()=>{
    window.ciRestSnapshot=svg=>[...svg.querySelectorAll('.companion-figure,.companion-heading,.companion-look,.companion-torso,.companion-head,.companion-tail,.companion-carry,.companion-arm-left,.companion-foot-left,.companion-foot-right,.companion-eyes,.companion-flight-left,.companion-flight-right,.pet-reward-motion')].map(node=>{
     const css=getComputedStyle(node),matrix=new DOMMatrixReadOnly(css.transform);
