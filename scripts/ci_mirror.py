@@ -21,7 +21,7 @@ def resolve(event_name, event, repository, api):
         tag, expected = run['head_branch'], run['head_sha']
     else:
         tag = event.get('inputs', {}).get('tag') or os.getenv('REQUESTED_TAG', '')
-    if not re.fullmatch(r'v\d+\.\d+\.\d+', tag):
+    if not re.fullmatch(r'v[0-9]+\.[0-9]+\.[0-9]+', tag):
         raise ValueError('Invalid desktop release tag')
     release = api('releases/tags/' + tag)
     if release['draft'] or release['prerelease'] or release['tag_name'] != tag:

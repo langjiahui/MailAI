@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from scripts import ci_browser, ci_mirror, ci_quality as quality
 
-NOW = datetime(2026, 10, 21, tzinfo=timezone.utc)
+NOW = datetime.now(timezone.utc)
 REPO = 'example/mailai'
 TREE, SHA, HEAD = 'a' * 40, 'b' * 40, 'c' * 40
 
