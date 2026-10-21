@@ -1,7 +1,8 @@
 // Use MAILAI_REWARD_MOTION_FIXTURE=1 tests/workspace_preview.py. All accounts are temporary.
 const assert=require('node:assert/strict'),fs=require('node:fs');
 const {chromium,webkit}=require('playwright');
-const cases=require('./helpers/home-dialog-cases.cjs');
+const {partition}=require('./helpers/ci-shard.cjs');
+const cases=partition(require('./helpers/home-dialog-cases.cjs'));
 (async()=>{
  const engine=process.env.MAILAI_BROWSER==='webkit'?webkit:chromium;
  const browser=await engine.launch({headless:true});const errors=[];let checked=0;

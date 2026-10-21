@@ -7,6 +7,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+from urllib.error import HTTPError
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from app import update_trust as trust,update_mirror as mirror
@@ -75,6 +76,17 @@ class ChannelTest(unittest.TestCase):
             channel.publish(self.write('1.3.3'),'synthetic-token',filename='android-latest.signed.json')
             self.assertEqual(self.raw('android-latest.signed.json'),android)
         self.assertEqual(self.raw(),desktop)
+
+    def test_access_denials_fail_promptly_but_transient_errors_still_retry(self):
+        value=envelope('3.0.0')
+        for code in [401,403,410]:
+            with patch.object(channel,'read_json',side_effect=HTTPError('https://example.test',code,'denied',{},None)) as read,patch.object(channel.time,'sleep') as sleep:
+                with self.assertRaises(HTTPError):channel.verify_public(value['manifest'])
+                self.assertEqual(read.call_count,1);sleep.assert_not_called()
+        for code in [404,429,503]:
+            with patch.object(channel,'read_json',side_effect=[HTTPError('https://example.test',code,'temporary',{},None),value]) as read,patch.object(channel.time,'sleep') as sleep:
+                channel.verify_public(value['manifest'])
+                self.assertEqual(read.call_count,2);sleep.assert_called_once_with(30)
 
 
 if __name__=='__main__':unittest.main()

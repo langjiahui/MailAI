@@ -14,6 +14,11 @@ on:
         description: Existing official desktop release tag
         required: true
         type: string
+  workflow_run:
+    workflows:
+      - Publish MailAI release
+    types:
+      - completed
 permissions:
   contents: read
 concurrency:
@@ -24,16 +29,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - name: Validate desktop tag
-        env:
-          RELEASE_TAG: ${{ inputs.tag }}
-        run: |
-          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
       - uses: actions/checkout@v5
         with:
-          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
+      - name: Resolve and validate the existing official release
+        id: target
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_TAG: ${{ inputs.tag }}
+        run: python3 scripts/ci_mirror.py
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -42,7 +47,7 @@ jobs:
       - name: Download published bytes and release notes
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ steps.target.outputs.tag }}
         run: |
           test "v$(git show "$RELEASE_TAG:VERSION" | tr -d '\r\n')" = "$RELEASE_TAG"
           gh release view "$RELEASE_TAG" --json isDraft,isPrerelease --jq 'if .isDraft or .isPrerelease then error("Release is not official") else "Official release" end'
@@ -51,7 +56,7 @@ jobs:
       - name: Synchronize exact source and tag
         env:
           ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_TOKEN }}
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ steps.target.outputs.tag }}
           GH_TOKEN: ${{ github.token }}
         run: |
           test -n "$ATOMGIT_TOKEN" || { echo "Missing AtomGit sync token" >&2; exit 1; }
@@ -85,5 +90,30 @@ jobs:
         env:
           ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_TOKEN }}
           ATOMGIT_UPLOAD_EDGE_IP: ${{ vars.ATOMGIT_UPLOAD_EDGE_IP }}
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ steps.target.outputs.tag }}
         run: python scripts/sync_atomgit_release.py --tag "$RELEASE_TAG" --assets release-assets --notes release-notes.md
+          --skip-channel
+        id: assets
+      - name: Publish and verify the independent static update channel
+        id: channel
+        env:
+          ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_TOKEN }}
+        run: python scripts/publish_update_channel.py --manifest release-assets/latest.signed.json
+      - name: Report mirror status independently of the official release
+        if: ${{ always() }}
+        env:
+          RELEASE_TAG: ${{ steps.target.outputs.tag }}
+          ASSETS_RESULT: ${{ steps.assets.outcome }}
+          CHANNEL_RESULT: ${{ steps.channel.outcome }}
+        run: |-
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ## Domestic mirror: $RELEASE_TAG
+
+          - Official GitHub release: https://github.com/$GITHUB_REPOSITORY/releases/tag/$RELEASE_TAG
+          - Domestic attachment verification: $ASSETS_RESULT
+          - Static update channel: $CHANNEL_RESULT
+
+          Mirror failures are retried in this workflow; they do not rebuild or republish the official application.
+          EOF
+    if: ${{ github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event
+      == 'push' && startsWith(github.event.workflow_run.head_branch, 'v')) }}

@@ -1,14 +1,33 @@
 name: PR quality gate
-
 on:
-  pull_request:
+  pull_request: null
   push:
-    branches: [main]
-
+    branches:
+      - main
 permissions:
   contents: read
-
+  actions: read
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      reuse: ${{ steps.plan.outputs.reuse }}
+      source_run: ${{ steps.plan.outputs.source_run }}
+      browser_matrix: ${{ steps.plan.outputs.browser_matrix }}
+      growth_matrix: ${{ steps.plan.outputs.growth_matrix }}
+      responsive_matrix: ${{ steps.plan.outputs.responsive_matrix }}
+      xiaoyou_matrix: ${{ steps.plan.outputs.xiaoyou_matrix }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Find successful verification for the identical source tree
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/ci_quality.py plan
   native-notifications-windows:
     runs-on: windows-latest
     timeout-minutes: 10
@@ -16,15 +35,19 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: requirements*.txt
       - name: Install notification test dependencies
-        run: python -m pip install -r requirements-test.txt "winrt-runtime>=3.2,<4" "winrt-Windows.Data.Xml.Dom>=3.2,<4" "winrt-Windows.Foundation>=3.2,<4" "winrt-Windows.Foundation.Collections>=3.2,<4" "winrt-Windows.UI.Notifications>=3.2,<4"
+        run: python -m pip install -r requirements-test.txt "winrt-runtime>=3.2,<4" "winrt-Windows.Data.Xml.Dom>=3.2,<4"
+          "winrt-Windows.Foundation>=3.2,<4" "winrt-Windows.Foundation.Collections>=3.2,<4" "winrt-Windows.UI.Notifications>=3.2,<4"
       - name: Verify native projection and account-bound notification callbacks
         env:
-          PYTHONUTF8: "1"
-          PYTHONFAULTHANDLER: "1"
+          PYTHONUTF8: '1'
+          PYTHONFAULTHANDLER: '1'
         run: python -u -m unittest discover -s tests -p test_mail_notifications.py -v
-
+    needs: plan
+    if: ${{ needs.plan.outputs.reuse != 'true' }}
   native-scrollbar-macos:
     runs-on: macos-14
     timeout-minutes: 10
@@ -32,9 +55,12 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: requirements*.txt
       - name: Install native WebKit test dependencies
-        run: python -m pip install -r requirements-test.txt pyobjc-core==12.2.2 pyobjc-framework-Cocoa==12.2.2 pyobjc-framework-WebKit==12.2.2 pyobjc-framework-UserNotifications==12.2.2
+        run: python -m pip install -r requirements-test.txt pyobjc-core==12.2.2 pyobjc-framework-Cocoa==12.2.2 pyobjc-framework-WebKit==12.2.2
+          pyobjc-framework-UserNotifications==12.2.2
       - name: Verify native menus and modern notifications
         run: |
           python tests/test_macos_menu.py
@@ -43,216 +69,102 @@ jobs:
         run: |
           python tests/test_settings_scrollbar_webkit.py
           python tests/test_reader_scrollbar_webkit.py
-
+    needs: plan
+    if: ${{ needs.plan.outputs.reuse != 'true' }}
   release-gate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
-
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: requirements*.txt
       - uses: actions/setup-node@v5
         with:
-          node-version: "22"
-
+          node-version: '22'
       - name: Install Python dependencies
         run: python -m pip install -r requirements-test.txt
-
       - name: Install frontend check dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
-
       - name: Run offline release gate
         run: python scripts/check_release.py
-
+    needs: plan
+    timeout-minutes: 20
+    if: ${{ needs.plan.outputs.reuse != 'true' }}
   browser-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-
-      - uses: actions/setup-python@v6
+      - uses: ./.github/actions/browser-environment
+      - name: Run isolated browser group
+        env:
+          MAILAI_FIXTURE_PYTHON: python
+          TEST_SUITE: ${{ matrix.suite }}
+        run: python scripts/ci_browser.py "$TEST_SUITE"
+      - uses: actions/upload-artifact@v5
+        if: ${{ !cancelled() }}
         with:
-          python-version: "3.13"
-
-      - uses: actions/setup-node@v5
-        with:
-          node-version: "22"
-          cache: npm
-
-      - name: Install Python dependencies
-        run: python -m pip install -r requirements.txt
-
-      - name: Install Playwright package
-        run: npm ci
-
-      - name: Install browser runtime
-        run: npx playwright install --with-deps chromium webkit
-
-      - name: Verify startup animation and preference persistence
-        run: |
-          node tests/test_preloader_browser.cjs
-          node tests/test_brand_browser.cjs
-          node tests/test_author_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_brand_browser.cjs
-          node tests/test_macos_startup_browser.cjs
-          MAILAI_DESKTOP_SHELL=windows node tests/test_macos_startup_browser.cjs
-          node tests/test_ui_preferences_restart.cjs "$(which python)"
-
-      - name: Start isolated fixture server
-        run: |
-          python tests/workspace_preview.py &
-          for i in $(seq 1 30); do
-            curl -sf http://127.0.0.1:18795/api/health > /dev/null && exit 0
-            sleep 1
-          done
-          echo "fixture server did not start" >&2
-          exit 1
-
-      - name: Run prepublish browser checks
-        run: |
-          node tests/test_update_check_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_update_check_browser.cjs
-          node tests/prepublish_browser.cjs
-          node tests/test_list_header_browser.cjs
-          node tests/test_macos_workspace_browser.cjs
-          node tests/test_reading_original_browser.cjs
-          node tests/test_reader_search_browser.cjs
-          node tests/test_air_toolbar_browser.cjs
-          MAILAI_DESKTOP_SHELL=windows node tests/test_macos_workspace_browser.cjs
-          node tests/test_interaction_consistency_browser.cjs
-          node tests/test_connection_lifecycle_browser.cjs
-          node tests/test_task_notices_browser.cjs
-          node tests/test_mail_notification_navigation_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_mail_notification_navigation_browser.cjs
-          node tests/test_task_center_closure_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_task_center_closure_browser.cjs
-          node tests/test_advanced_search_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_advanced_search_browser.cjs
-          node tests/test_search_query_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_search_query_browser.cjs
-          node tests/test_search_handoff_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_search_handoff_browser.cjs
-          node tests/test_search_scope_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_search_scope_browser.cjs
-          node tests/test_attachment_open_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_attachment_open_browser.cjs
-          node tests/test_attachment_library_ui.cjs
-          node tests/test_attachment_content_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_attachment_content_browser.cjs
-          node tests/test_experience_polish_browser.cjs
-          node tests/test_reading_more_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_reading_more_browser.cjs
-          node tests/test_compose_ai_sections_browser.cjs
-          node tests/test_onboarding_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_onboarding_browser.cjs
-          MAILAI_TEST_URL=http://127.0.0.1:18795/ node tests/test_native_menu_browser.cjs
-          MAILAI_TEST_URL=http://127.0.0.1:18795/ MAILAI_BROWSER=webkit node tests/test_native_menu_browser.cjs
-          node tests/test_compose_ai_typing_browser.cjs
-          node tests/test_mailbox_transition_browser.cjs
-          node tests/test_selection_glass_browser.cjs
-          node tests/test_signature_images_browser.cjs
-          node tests/test_productivity_motion_browser.cjs
-          node tests/test_mail_import_browser.cjs
-          MAILAI_TEST_URL=http://127.0.0.1:18795/ node tests/test_mail_list_view_browser.cjs
-          node tests/test_mail_login_browser.cjs
-          node tests/test_dark_tools_browser.cjs
-          node tests/test_contact_filters_browser.cjs
-          node tests/test_i18n_browser.cjs
-          node tests/test_date_time_controls_browser.cjs
-          node tests/test_date_time_boundaries_browser.cjs
-          node tests/test_date_time_workflows_browser.cjs
-          node tests/test_keychain_unlock_browser.cjs
-          node tests/test_diagnostics_layout_browser.cjs
-          node tests/test_companion_working_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_companion_working_browser.cjs
-          node tests/test_energy_motion_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_energy_motion_browser.cjs
-          node tests/test_companion_perch_wings_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_companion_perch_wings_browser.cjs
-          node tests/test_reward_theme_selects_browser.cjs
-          node tests/test_digest_recovery_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_digest_recovery_browser.cjs
-
-      - name: Verify mail labels and batch failure recovery
-        shell: bash
-        run: |
-          MAILAI_FIXTURE_PORT=18805 python tests/workspace_preview.py > fixture-labels-basic.log 2>&1 &
-          basic_pid=$!
-          MAILAI_TAG_FIXTURE=1 MAILAI_FIXTURE_PORT=18806 python tests/workspace_preview.py > fixture-labels.log 2>&1 &
-          fixture_pid=$!
-          trap 'kill "$basic_pid" "$fixture_pid" 2>/dev/null || true' EXIT
-          ready=0
-          for i in $(seq 1 30); do
-            if curl -sf http://127.0.0.1:18805/api/health > /dev/null && curl -sf http://127.0.0.1:18806/api/health > /dev/null; then ready=1; break; fi
-            sleep 1
-          done
-          test "$ready" = 1 || { cat fixture-labels-basic.log fixture-labels.log; exit 1; }
-          MAILAI_TEST_URL=http://127.0.0.1:18805/ node tests/test_mail_tags_browser.cjs
-          MAILAI_TEST_URL=http://127.0.0.1:18805/ MAILAI_BROWSER=webkit node tests/test_mail_tags_browser.cjs
-          node tests/test_mail_tags_edges_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_mail_tags_edges_browser.cjs
-
-      - name: Verify guided AI search and result follow-through
-        shell: bash
-        run: |
-          MAILAI_SEARCH_FIXTURE=1 MAILAI_FIXTURE_PORT=18796 python tests/workspace_preview.py > fixture-search.log 2>&1 &
-          fixture_pid=$!
-          trap 'kill "$fixture_pid" 2>/dev/null || true' EXIT
-          ready=0
-          for i in $(seq 1 30); do
-            if curl -sf http://127.0.0.1:18796/api/health > /dev/null; then ready=1; break; fi
-            sleep 1
-          done
-          test "$ready" = 1 || { cat fixture-search.log; exit 1; }
-          MAILAI_FIXTURE_URL=http://127.0.0.1:18796 node tests/test_assistant_search_loop_browser.cjs
-          MAILAI_FIXTURE_URL=http://127.0.0.1:18796 MAILAI_BROWSER=webkit node tests/test_assistant_search_loop_browser.cjs
-
+          name: browser-test-${{ strategy.job-index }}-evidence
+          path: |-
+            build/ci/
+            output/
+            build/*preview/
+            build/*.png
+          if-no-files-found: ignore
+          retention-days: 7
+    needs: plan
+    timeout-minutes: 20
+    if: ${{ needs.plan.outputs.reuse != 'true' }}
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix: ${{ fromJSON(needs.plan.outputs.browser_matrix) }}
   interaction-continuity-browser:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
+      max-parallel: 4
       matrix:
-        browser: [chromium, webkit]
+        browser:
+          - chromium
+          - webkit
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: ./.github/actions/browser-environment
         with:
-          python-version: "3.13"
-      - uses: actions/setup-node@v5
-        with:
-          node-version: "22"
-          cache: npm
-      - name: Install interaction test dependencies
-        run: |
-          python -m pip install -r requirements.txt
-          npm ci
-          npx playwright install --with-deps ${{ matrix.browser }}
-      - name: Verify delayed actions with an isolated mailbox fixture
-        shell: bash
+          browsers: ${{ matrix.browser }}
+      - name: Run isolated browser group
         env:
-          MAILAI_BROWSER: ${{ matrix.browser }}
-        run: |
-          python tests/workspace_preview.py > fixture-interaction.log 2>&1 &
-          fixture_pid=$!
-          trap 'kill "$fixture_pid" 2>/dev/null || true; wait "$fixture_pid" 2>/dev/null || true' EXIT
-          ready=0
-          for i in $(seq 1 30); do
-            if curl -sf http://127.0.0.1:18795/api/health > /dev/null; then ready=1; break; fi
-            sleep 1
-          done
-          if [ "$ready" != 1 ]; then cat fixture-interaction.log; exit 1; fi
-          node tests/test_interaction_continuity_browser.cjs
-
+          MAILAI_FIXTURE_PYTHON: python
+          TEST_BROWSER: ${{ matrix.browser }}
+        run: python scripts/ci_browser.py interaction --browser "$TEST_BROWSER"
+      - uses: actions/upload-artifact@v5
+        if: ${{ !cancelled() }}
+        with:
+          name: interaction-continuity-browser-${{ strategy.job-index }}-evidence
+          path: |-
+            build/ci/
+            output/
+            build/*preview/
+            build/*.png
+          if-no-files-found: ignore
+          retention-days: 7
+    needs: plan
+    timeout-minutes: 20
+    if: ${{ needs.plan.outputs.reuse != 'true' }}
   mail-import-windows:
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: requirements*.txt
       - uses: actions/setup-node@v5
         with:
-          node-version: "22"
+          node-version: '22'
       - name: Verify localization coverage on Windows checkout
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
@@ -263,184 +175,115 @@ jobs:
         run: |
           python tests/test_mail_import.py
           python tests/test_mail_navigation.py
-
+    needs: plan
+    timeout-minutes: 20
+    if: ${{ needs.plan.outputs.reuse != 'true' }}
   growth-theme-browser:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: ./.github/actions/browser-environment
+      - name: Run isolated browser group
+        env:
+          MAILAI_FIXTURE_PYTHON: python
+          TEST_SUITE: ${{ matrix.suite }}
+        run: python scripts/ci_browser.py "$TEST_SUITE"
+      - uses: actions/upload-artifact@v5
+        if: ${{ !cancelled() }}
         with:
-          python-version: "3.13"
-      - uses: actions/setup-node@v5
-        with:
-          node-version: "22"
-          cache: npm
-      - name: Install isolated browser test dependencies
-        run: |
-          python -m pip install -r requirements.txt
-          npm ci
-          npx playwright install --with-deps chromium webkit
-      - name: Verify growth, recovery, themes and themed surfaces
-        shell: bash
-        run: |
-          fixture_pid=""
-          stop_fixture() {
-            if [ -n "$fixture_pid" ]; then
-              kill "$fixture_pid" 2>/dev/null || true
-              wait "$fixture_pid" 2>/dev/null || true
-              fixture_pid=""
-            fi
-          }
-          trap stop_fixture EXIT
-          start_fixture() {
-            MAILAI_GIFT_FIXTURE="${1:-0}" MAILAI_GROWTH_FIXTURE="${2:-1}" python tests/workspace_preview.py > fixture-growth.log 2>&1 &
-            fixture_pid=$!
-            for i in $(seq 1 30); do
-              curl -sf http://127.0.0.1:18795/api/health > /dev/null && return 0
-              sleep 1
-            done
-            cat fixture-growth.log
-            return 1
-          }
-          start_fixture
-          node tests/test_companion_growth_browser.cjs
-          node tests/test_companion_growth_recovery_browser.cjs
-          node tests/test_companion_reward_motion_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_companion_reward_motion_browser.cjs
-          node tests/test_companion_equipped_motion_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_companion_equipped_motion_browser.cjs
-          stop_fixture
-          start_fixture
-          node tests/test_reward_themes_browser.cjs
-          node tests/test_reward_theme_surfaces_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_reward_theme_surfaces_browser.cjs
-          node tests/test_toolbar_hover_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_toolbar_hover_browser.cjs
-          node tests/test_bulk_toolbar_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_bulk_toolbar_browser.cjs
-          node tests/test_evidence_compose_theme_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_evidence_compose_theme_browser.cjs
-          node tests/test_correspondence_theme_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_correspondence_theme_browser.cjs
-          node tests/test_maintenance_theme_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_maintenance_theme_browser.cjs
-          node tests/test_companion_theme_transparency_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_companion_theme_transparency_browser.cjs
-          stop_fixture
-          start_fixture 1 0
-          node tests/test_companion_gifts_browser.cjs
-          stop_fixture
-          start_fixture 1 0
-          MAILAI_BROWSER=webkit node tests/test_companion_gifts_browser.cjs
-          node tests/test_companion_gift_issuer_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_companion_gift_issuer_browser.cjs
-
+          name: growth-theme-browser-${{ strategy.job-index }}-evidence
+          path: |-
+            build/ci/
+            output/
+            build/*preview/
+            build/*.png
+          if-no-files-found: ignore
+          retention-days: 7
+    needs: plan
+    timeout-minutes: 20
+    if: ${{ needs.plan.outputs.reuse != 'true' }}
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.plan.outputs.growth_matrix) }}
   responsive-ui-browser:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        browser: [chromium, webkit]
+      max-parallel: 8
+      matrix: ${{ fromJSON(needs.plan.outputs.responsive_matrix) }}
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: ./.github/actions/browser-environment
         with:
-          python-version: "3.13"
-      - uses: actions/setup-node@v5
-        with:
-          node-version: "22"
-          cache: npm
-      - name: Install responsive UI test dependencies
-        run: |
-          python -m pip install -r requirements.txt
-          npm ci
-          npx playwright install --with-deps ${{ matrix.browser }}
-      - name: Verify settings, homepage and dialogs in both languages and all palettes
-        shell: bash
+          browsers: ${{ matrix.browser }}
+      - name: Run isolated browser group
         env:
-          MAILAI_BROWSER: ${{ matrix.browser }}
-        run: |
-          MAILAI_REWARD_MOTION_FIXTURE=1 python tests/workspace_preview.py > fixture-responsive.log 2>&1 &
-          fixture_pid=$!
-          trap 'kill "$fixture_pid" 2>/dev/null || true; wait "$fixture_pid" 2>/dev/null || true' EXIT
-          ready=0
-          for i in $(seq 1 30); do
-            if curl -sf http://127.0.0.1:18795/api/health > /dev/null; then ready=1; break; fi
-            sleep 1
-          done
-          if [ "$ready" != 1 ]; then cat fixture-responsive.log; exit 1; fi
-          node tests/test_settings_responsive_browser.cjs
-          node tests/test_settings_navigation_scroll_browser.cjs
-          node tests/test_about_overview_browser.cjs
-          node tests/test_home_dialog_responsive_browser.cjs
-          node tests/test_home_dialog_palette_browser.cjs
-          node tests/test_overlay_interactions_browser.cjs
-          node tests/test_date_time_workflows_browser.cjs
-
+          MAILAI_FIXTURE_PYTHON: python
+          TEST_SUITE: ${{ matrix.suite }}
+          TEST_BROWSER: ${{ matrix.browser }}
+          TEST_SHARD: ${{ matrix.shard }}
+        run: python scripts/ci_browser.py "$TEST_SUITE" --browser "$TEST_BROWSER" --shard "$TEST_SHARD"
+      - uses: actions/upload-artifact@v5
+        if: ${{ !cancelled() }}
+        with:
+          name: responsive-ui-browser-${{ strategy.job-index }}-evidence
+          path: |-
+            build/ci/
+            output/
+            build/*preview/
+            build/*.png
+          if-no-files-found: ignore
+          retention-days: 7
+    needs: plan
+    timeout-minutes: 20
+    if: ${{ needs.plan.outputs.reuse != 'true' }}
   assistant-workspace-browser:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
+      max-parallel: 4
       matrix:
-        browser: [chromium, webkit]
+        browser:
+          - chromium
+          - webkit
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: ./.github/actions/browser-environment
         with:
-          python-version: "3.13"
-      - uses: actions/setup-node@v5
-        with:
-          node-version: "22"
-          cache: npm
-      - name: Install isolated interaction test dependencies
-        run: |
-          python -m pip install -r requirements.txt
-          npm ci
-          npx playwright install --with-deps ${{ matrix.browser }}
-      - name: Verify assistant workspace and commands
+          browsers: ${{ matrix.browser }}
+      - name: Run isolated browser group
         env:
-          MAILAI_BROWSER: ${{ matrix.browser }}
-        shell: bash
-        run: |
-          mkdir -p build
-          MAILAI_SEARCH_FIXTURE=1 python tests/workspace_preview.py > fixture-assistant.log 2>&1 &
-          fixture_pid=$!
-          trap 'kill "$fixture_pid" 2>/dev/null || true' EXIT
-          ready=0
-          for i in $(seq 1 30); do
-            if curl -sf http://127.0.0.1:18795/api/health > /dev/null; then ready=1; break; fi
-            sleep 1
-          done
-          test "$ready" = 1 || { cat fixture-assistant.log; exit 1; }
-          node tests/test_assistant_divider_browser.cjs
-          node tests/test_assistant_interactions_browser.cjs
-          node tests/test_candidate_details_browser.cjs
-          node tests/test_keyboard_refinement_browser.cjs
-          node tests/test_assistant_search_loop_browser.cjs
-          node tests/test_command_palette_browser.cjs
-          node tests/test_assistant_ui_matrix_browser.cjs
+          MAILAI_FIXTURE_PYTHON: python
+          TEST_BROWSER: ${{ matrix.browser }}
+        run: python scripts/ci_browser.py assistant-workspace --browser "$TEST_BROWSER"
       - uses: actions/upload-artifact@v5
-        if: failure()
+        if: ${{ !cancelled() }}
         with:
-          name: assistant-workspace-${{ matrix.browser }}
-          path: |
+          name: assistant-workspace-browser-${{ strategy.job-index }}-evidence
+          path: |-
+            build/ci/
+            output/
+            build/*preview/
             build/*.png
-            fixture-assistant.log
-
+          if-no-files-found: ignore
+          retention-days: 7
+    needs: plan
+    if: ${{ needs.plan.outputs.reuse != 'true' }}
   secret-scan:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-
       - name: Scan for committed credentials
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_ENABLE_COMMENTS: "false"
-
+          GITLEAKS_ENABLE_COMMENTS: 'false'
+    needs: plan
+    timeout-minutes: 20
   xiaoyou-browser:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -448,29 +291,60 @@ jobs:
       MAILAI_FIXTURE_PYTHON: python
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.13'
-      - uses: actions/setup-node@v5
-        with:
-          node-version: '22'
-      - run: python -m pip install -r requirements.txt
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium webkit
-      - name: Verify companion growth, fitting room, placement and finite reactions
-        run: |
-          mkdir -p output/xiaoyou-evolution
-          node tests/test_companion_evolution_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_companion_evolution_browser.cjs
-          node tests/test_companion_position_browser.cjs
-          node tests/test_companion_wardrobe_browser.cjs
-          node tests/test_assistant_portrait_browser.cjs
-          node tests/test_companion_life_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_companion_life_browser.cjs
-          node tests/test_companion_theme_transparency_browser.cjs
-          MAILAI_BROWSER=webkit node tests/test_companion_theme_transparency_browser.cjs
+      - uses: ./.github/actions/browser-environment
+      - name: Run isolated browser group
+        env:
+          MAILAI_FIXTURE_PYTHON: python
+          TEST_SUITE: ${{ matrix.suite }}
+        run: python scripts/ci_browser.py "$TEST_SUITE"
       - uses: actions/upload-artifact@v5
-        if: failure()
+        if: ${{ !cancelled() }}
         with:
-          name: xiaoyou-browser-evidence
-          path: output/
+          name: xiaoyou-browser-${{ strategy.job-index }}-evidence
+          path: |-
+            build/ci/
+            output/
+            build/*preview/
+            build/*.png
+          if-no-files-found: ignore
+          retention-days: 7
+    needs: plan
+    if: ${{ needs.plan.outputs.reuse != 'true' }}
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.plan.outputs.xiaoyou_matrix) }}
+  quality-gate:
+    name: Quality gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: ${{ always() }}
+    needs:
+      - plan
+      - native-notifications-windows
+      - native-scrollbar-macos
+      - release-gate
+      - browser-test
+      - interaction-continuity-browser
+      - mail-import-windows
+      - growth-theme-browser
+      - responsive-ui-browser
+      - assistant-workspace-browser
+      - secret-scan
+      - xiaoyou-browser
+    steps:
+      - uses: actions/checkout@v5
+      - name: Require every job or validate the reused full verification
+        id: record
+        env:
+          GH_TOKEN: ${{ github.token }}
+          QUALITY_NEEDS: ${{ toJSON(needs) }}
+          QUALITY_SOURCE_RUN: ${{ needs.plan.outputs.source_run }}
+        run: python3 scripts/ci_quality.py record
+      - uses: actions/upload-artifact@v5
+        with:
+          name: quality-evidence-v1-${{ steps.record.outputs.tree }}
+          path: build/quality-evidence/quality.json
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true

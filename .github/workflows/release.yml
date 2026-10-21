@@ -9,6 +9,10 @@ permissions:
   contents: write
   actions: read
 
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   metadata:
     runs-on: ubuntu-latest
@@ -20,25 +24,6 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           test "$(tr -d '\r\n' < VERSION)" = "$version"
           grep -F "当前版本：**v${version}**" README.md
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.13"
-      - uses: actions/setup-node@v5
-        with:
-          node-version: "22"
-      - name: Verify startup animation and preference persistence
-        run: |
-          python -m pip install -r requirements.txt
-          npm ci
-          npx playwright install --with-deps chromium webkit
-          node tests/test_preloader_browser.cjs
-          node tests/test_macos_startup_browser.cjs
-          MAILAI_DESKTOP_SHELL=windows node tests/test_macos_startup_browser.cjs
-          node tests/test_ui_preferences_restart.cjs "$(which python)"
-          node tests/test_date_time_controls_browser.cjs
-          node tests/test_date_time_boundaries_browser.cjs
-          node tests/test_connection_lifecycle_browser.cjs
-
   windows-x64:
     needs: metadata
     runs-on: windows-2022
@@ -218,23 +203,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
-      - name: Require the quality gate for the exact release commit
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Scan the release commit history for credentials
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: "false"
+      - name: Require successful verification for the complete release source tree
         env:
           GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          for attempt in $(seq 1 60); do
-            state=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow pr-check.yml --event push --commit "$GITHUB_SHA" --limit 1 --json status,conclusion --jq '.[0] | if . == null then "pending" elif .status == "completed" then .conclusion else .status end')
-            if [ "$state" = "success" ]; then exit 0; fi
-            case "$state" in
-              failure|cancelled|timed_out|action_required|startup_failure)
-                echo "Release quality gate ended with $state" >&2; exit 1 ;;
-            esac
-            echo "Waiting for release quality gate: $state"
-            sleep 30
-          done
-          echo "Release quality gate did not complete within 30 minutes" >&2
-          exit 1
+        run: python3 scripts/ci_quality.py wait --commit "$GITHUB_SHA"
 
   publish:
     needs: [windows-x64, macos-arm64, linux-x64, quality]
@@ -271,11 +251,3 @@ jobs:
             --title "MailAI ${GITHUB_REF_NAME#v}" \
             --notes-file release-notes.md \
             --latest
-
-  domestic-mirror:
-    needs: publish
-    uses: ./.github/workflows/atomgit-sync.yml
-    with:
-      tag: ${{ github.ref_name }}
-    secrets:
-      ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_TOKEN }}

@@ -1,0 +1,500 @@
+[
+  {
+    "file": "tests/test_preloader_browser.cjs"
+  },
+  {
+    "file": "tests/test_brand_browser.cjs"
+  },
+  {
+    "file": "tests/test_author_browser.cjs"
+  },
+  {
+    "file": "tests/test_brand_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_macos_startup_browser.cjs"
+  },
+  {
+    "file": "tests/test_macos_startup_browser.cjs",
+    "env": {
+      "MAILAI_DESKTOP_SHELL": "windows"
+    }
+  },
+  {
+    "file": "tests/test_ui_preferences_restart.cjs",
+    "args": [
+      "{python}"
+    ]
+  },
+  {
+    "file": "tests/test_update_check_browser.cjs"
+  },
+  {
+    "file": "tests/test_update_check_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/prepublish_browser.cjs"
+  },
+  {
+    "file": "tests/test_list_header_browser.cjs"
+  },
+  {
+    "file": "tests/test_macos_workspace_browser.cjs"
+  },
+  {
+    "file": "tests/test_reading_original_browser.cjs"
+  },
+  {
+    "file": "tests/test_reader_search_browser.cjs"
+  },
+  {
+    "file": "tests/test_air_toolbar_browser.cjs"
+  },
+  {
+    "file": "tests/test_macos_workspace_browser.cjs",
+    "env": {
+      "MAILAI_DESKTOP_SHELL": "windows"
+    }
+  },
+  {
+    "file": "tests/test_interaction_consistency_browser.cjs"
+  },
+  {
+    "file": "tests/test_connection_lifecycle_browser.cjs"
+  },
+  {
+    "file": "tests/test_task_notices_browser.cjs"
+  },
+  {
+    "file": "tests/test_mail_notification_navigation_browser.cjs"
+  },
+  {
+    "file": "tests/test_mail_notification_navigation_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_task_center_closure_browser.cjs"
+  },
+  {
+    "file": "tests/test_task_center_closure_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_advanced_search_browser.cjs"
+  },
+  {
+    "file": "tests/test_advanced_search_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_search_query_browser.cjs"
+  },
+  {
+    "file": "tests/test_search_query_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_search_handoff_browser.cjs"
+  },
+  {
+    "file": "tests/test_search_handoff_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_search_scope_browser.cjs"
+  },
+  {
+    "file": "tests/test_search_scope_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_attachment_open_browser.cjs"
+  },
+  {
+    "file": "tests/test_attachment_open_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_attachment_library_ui.cjs"
+  },
+  {
+    "file": "tests/test_attachment_content_browser.cjs"
+  },
+  {
+    "file": "tests/test_attachment_content_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_experience_polish_browser.cjs"
+  },
+  {
+    "file": "tests/test_reading_more_browser.cjs"
+  },
+  {
+    "file": "tests/test_reading_more_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_compose_ai_sections_browser.cjs"
+  },
+  {
+    "file": "tests/test_onboarding_browser.cjs"
+  },
+  {
+    "file": "tests/test_onboarding_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_native_menu_browser.cjs",
+    "env": {
+      "MAILAI_TEST_URL": "http://127.0.0.1:18795/"
+    }
+  },
+  {
+    "file": "tests/test_native_menu_browser.cjs",
+    "env": {
+      "MAILAI_TEST_URL": "http://127.0.0.1:18795/",
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_compose_ai_typing_browser.cjs"
+  },
+  {
+    "file": "tests/test_mailbox_transition_browser.cjs"
+  },
+  {
+    "file": "tests/test_selection_glass_browser.cjs"
+  },
+  {
+    "file": "tests/test_signature_images_browser.cjs"
+  },
+  {
+    "file": "tests/test_productivity_motion_browser.cjs"
+  },
+  {
+    "file": "tests/test_mail_import_browser.cjs"
+  },
+  {
+    "file": "tests/test_mail_list_view_browser.cjs",
+    "env": {
+      "MAILAI_TEST_URL": "http://127.0.0.1:18795/"
+    }
+  },
+  {
+    "file": "tests/test_mail_login_browser.cjs"
+  },
+  {
+    "file": "tests/test_dark_tools_browser.cjs"
+  },
+  {
+    "file": "tests/test_contact_filters_browser.cjs"
+  },
+  {
+    "file": "tests/test_i18n_browser.cjs"
+  },
+  {
+    "file": "tests/test_date_time_controls_browser.cjs"
+  },
+  {
+    "file": "tests/test_date_time_boundaries_browser.cjs"
+  },
+  {
+    "file": "tests/test_date_time_workflows_browser.cjs"
+  },
+  {
+    "file": "tests/test_keychain_unlock_browser.cjs"
+  },
+  {
+    "file": "tests/test_diagnostics_layout_browser.cjs"
+  },
+  {
+    "file": "tests/test_companion_working_browser.cjs"
+  },
+  {
+    "file": "tests/test_companion_working_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_energy_motion_browser.cjs"
+  },
+  {
+    "file": "tests/test_energy_motion_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_companion_perch_wings_browser.cjs"
+  },
+  {
+    "file": "tests/test_companion_perch_wings_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_reward_theme_selects_browser.cjs"
+  },
+  {
+    "file": "tests/test_digest_recovery_browser.cjs"
+  },
+  {
+    "file": "tests/test_digest_recovery_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_mail_tags_browser.cjs",
+    "env": {
+      "MAILAI_TEST_URL": "http://127.0.0.1:18805/"
+    }
+  },
+  {
+    "file": "tests/test_mail_tags_browser.cjs",
+    "env": {
+      "MAILAI_TEST_URL": "http://127.0.0.1:18805/",
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_mail_tags_edges_browser.cjs"
+  },
+  {
+    "file": "tests/test_mail_tags_edges_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_assistant_search_loop_browser.cjs",
+    "env": {
+      "MAILAI_FIXTURE_URL": "http://127.0.0.1:18796"
+    }
+  },
+  {
+    "file": "tests/test_assistant_search_loop_browser.cjs",
+    "env": {
+      "MAILAI_FIXTURE_URL": "http://127.0.0.1:18796",
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_companion_growth_browser.cjs"
+  },
+  {
+    "file": "tests/test_companion_growth_recovery_browser.cjs"
+  },
+  {
+    "file": "tests/test_companion_reward_motion_browser.cjs"
+  },
+  {
+    "file": "tests/test_companion_reward_motion_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_companion_equipped_motion_browser.cjs"
+  },
+  {
+    "file": "tests/test_companion_equipped_motion_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_reward_themes_browser.cjs"
+  },
+  {
+    "file": "tests/test_reward_theme_surfaces_browser.cjs"
+  },
+  {
+    "file": "tests/test_reward_theme_surfaces_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_toolbar_hover_browser.cjs"
+  },
+  {
+    "file": "tests/test_toolbar_hover_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_bulk_toolbar_browser.cjs"
+  },
+  {
+    "file": "tests/test_bulk_toolbar_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_evidence_compose_theme_browser.cjs"
+  },
+  {
+    "file": "tests/test_evidence_compose_theme_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_correspondence_theme_browser.cjs"
+  },
+  {
+    "file": "tests/test_correspondence_theme_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_maintenance_theme_browser.cjs"
+  },
+  {
+    "file": "tests/test_maintenance_theme_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_companion_theme_transparency_browser.cjs"
+  },
+  {
+    "file": "tests/test_companion_theme_transparency_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_companion_gifts_browser.cjs"
+  },
+  {
+    "file": "tests/test_companion_gifts_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_companion_gift_issuer_browser.cjs"
+  },
+  {
+    "file": "tests/test_companion_gift_issuer_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_settings_responsive_browser.cjs"
+  },
+  {
+    "file": "tests/test_settings_navigation_scroll_browser.cjs"
+  },
+  {
+    "file": "tests/test_about_overview_browser.cjs"
+  },
+  {
+    "file": "tests/test_home_dialog_responsive_browser.cjs"
+  },
+  {
+    "file": "tests/test_home_dialog_palette_browser.cjs"
+  },
+  {
+    "file": "tests/test_overlay_interactions_browser.cjs"
+  },
+  {
+    "file": "tests/test_date_time_workflows_browser.cjs"
+  },
+  {
+    "file": "tests/test_interaction_continuity_browser.cjs"
+  },
+  {
+    "file": "tests/test_assistant_divider_browser.cjs"
+  },
+  {
+    "file": "tests/test_assistant_interactions_browser.cjs"
+  },
+  {
+    "file": "tests/test_candidate_details_browser.cjs"
+  },
+  {
+    "file": "tests/test_keyboard_refinement_browser.cjs"
+  },
+  {
+    "file": "tests/test_assistant_search_loop_browser.cjs"
+  },
+  {
+    "file": "tests/test_command_palette_browser.cjs"
+  },
+  {
+    "file": "tests/test_assistant_ui_matrix_browser.cjs"
+  },
+  {
+    "file": "tests/test_companion_evolution_browser.cjs"
+  },
+  {
+    "file": "tests/test_companion_evolution_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_companion_position_browser.cjs"
+  },
+  {
+    "file": "tests/test_companion_wardrobe_browser.cjs"
+  },
+  {
+    "file": "tests/test_assistant_portrait_browser.cjs"
+  },
+  {
+    "file": "tests/test_companion_life_browser.cjs"
+  },
+  {
+    "file": "tests/test_companion_life_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_companion_theme_transparency_browser.cjs"
+  },
+  {
+    "file": "tests/test_companion_theme_transparency_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  }
+]
