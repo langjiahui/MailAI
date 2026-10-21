@@ -30,6 +30,35 @@ const {chromium,webkit}=require('playwright');
     assert.equal(await page.locator('.body-section .body-format-actions').count(),0);
     assert(await page.locator('.body-section>.section-title').innerText().then(s=>!s.includes('HTML')));
     assert.deepEqual(await frame.locator('body').evaluate(n=>[...n.children].filter(el=>!el.hasAttribute('data-mailai-copy-image')).map(el=>el.tagName)),['P','DIV','BLOCKQUOTE']);
+    // Main copy stays distinct from secondary copy, with no separate green
+    // canvas inside the script-disabled HTML frame.
+    const readability=await page.evaluate(()=>{
+      const color=value=>{
+        const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
+        ctx.fillStyle=value;ctx.fillRect(0,0,1,1);return [...ctx.getImageData(0,0,1,1).data].slice(0,3);
+      };
+      const luminance=value=>color(value).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4;}).reduce((s,v,i)=>s+v*[.2126,.7152,.0722][i],0);
+      const ratio=(a,b)=>{a=luminance(a);b=luminance(b);return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);};
+      const style=s=>getComputedStyle(document.querySelector(s));
+      const paper=style('.body-section .email-body').backgroundColor;
+      const doc=document.querySelector('#rich-email-body iframe').contentDocument;
+      const rows=[['.reading-subject',paper,7],['.meta-fields',paper,7],['.meta-label',paper,4.5],
+        ['.sender-contact-link small',paper,4.5],['.email-preview',style('.list-pane').backgroundColor,4.5]];
+      return {paper,framePaper:doc.defaultView.getComputedStyle(doc.documentElement).backgroundColor,
+        frameContrast:ratio(doc.defaultView.getComputedStyle(doc.body).color,paper),
+        rows:rows.map(([s,b,min])=>({selector:s,min,contrast:ratio(style(s).color,b)}))};
+    });
+    assert.equal(readability.framePaper,readability.paper,JSON.stringify(readability));
+    assert(readability.frameContrast>=7,JSON.stringify(readability));
+    for(const row of readability.rows)assert(row.contrast>=row.min,JSON.stringify(row));
+    // Switching an already mounted frame updates its paper and restores the
+    // theme without replacing sender content or the frame itself.
+    await page.evaluate(theme=>{
+      const node=document.querySelector('#rich-email-body iframe');window.readabilityFrame=node;
+      applyTheme(theme==='dark'?'light':'dark');applyTheme(theme);
+    },theme);
+    assert(await page.evaluate(()=>readabilityFrame===document.querySelector('#rich-email-body iframe')));
+    assert.equal(await frame.locator('#current-message').innerText(),'当前正文 Current message');
     // Source-mail drawers use the same complete HTML display and no format badge.
     await page.evaluate(()=>{document.querySelector('#digest-email-body').innerHTML=renderDigestEmailDetail(originalReadingSample);mountDigestRichEmailBody(originalReadingSample);});
     await page.waitForFunction(()=>document.querySelector('#digest-rich-email-body iframe')?.contentDocument?.querySelector('.gmail_signature'));

@@ -5,15 +5,15 @@ html:is(.desktop-native-window,.integrated-workspace) {
  --workspace-list-inset:14px;
  --mac-control-inset:calc(108px / var(--fz,1));
  --mac-brand-width:max(62px,calc(var(--mac-sidebar-width) - var(--mac-control-inset) + var(--workspace-list-inset) - 8px));
- --workspace-chrome:#f1f4f2; --workspace-toolbar-end:#fcfdfc; --workspace-search:#fff;
+ --workspace-chrome:var(--desk-canvas); --workspace-toolbar-end:var(--desk-surface); --workspace-search:var(--desk-surface);
  --workspace-toolbar:linear-gradient(90deg,var(--workspace-chrome) 0 var(--workspace-reading-left,36%),var(--workspace-toolbar-end) 100%);
- --mac-rail:var(--workspace-chrome); --mac-canvas:#fff; --mac-list:var(--workspace-chrome);
- --mac-separator:rgba(47,63,55,.09); --mac-selected:#e5eee9;
+ --mac-rail:var(--workspace-chrome); --mac-canvas:var(--desk-surface); --mac-list:var(--workspace-chrome);
+ --mac-separator:var(--desk-line); --mac-selected:var(--desk-selected);
 }
 html:is(.desktop-native-window,.integrated-workspace)[data-theme="dark"] {
- --workspace-chrome:#202623; --workspace-toolbar-end:#1b201d; --workspace-search:#2b342e;
- --mac-canvas:#181c1a;
- --mac-separator:rgba(205,220,212,.09); --mac-selected:#2c3b32;
+ --workspace-chrome:var(--desk-canvas); --workspace-toolbar-end:var(--desk-surface); --workspace-search:var(--desk-hover);
+ --mac-canvas:var(--desk-surface);
+ --mac-separator:var(--desk-line); --mac-selected:var(--desk-selected);
 }
 /* Browsers share the workspace without reserving native window controls. */
 html.integrated-workspace:not(.desktop-native-window) {

@@ -6189,11 +6189,11 @@ function richEmailDocument(html, allowRemote = true, composePreview = false) {
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:${allowRemote ? ' http: https:' : ''}; style-src 'unsafe-inline'; font-src data:;">
     <style>
       :root{color-scheme:light}*{box-sizing:border-box}html,body{margin:0;padding:0;overflow:hidden;background:transparent;color:#252d29}
-      body{padding:6px 4px 18px;font:14px/1.65 Arial,'PingFang SC','Microsoft YaHei',sans-serif;overflow-wrap:anywhere}
+      body{padding:6px 4px 18px;font:15px/1.8 -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow-wrap:anywhere}
       img{max-width:100%;height:auto}table{max-width:100%;border-collapse:collapse}a{color:#28705a;text-decoration:none}
       blockquote{margin:16px 0;padding-left:14px;border-left:3px solid #d9dfdb;color:#66736c}pre{white-space:pre-wrap}
-      html[data-mailai-theme="dark"]{color-scheme:dark;background:#16271f}
-      html[data-mailai-theme="dark"] body{color:#e4eee8;background:#16271f!important}
+      html[data-mailai-theme="dark"]{color-scheme:dark;background:#1c2227}
+      html[data-mailai-theme="dark"] body{color:#edf1f5;background:#1c2227!important}
       html[data-mailai-theme="dark"] body a{color:#8ddfb2}
       html[data-mailai-theme="dark"] body blockquote{color:#b5c8bc;border-color:#486354}
       ${composePreview ? 'html,body{min-height:100%;overflow:auto;background:#fff!important}body{max-width:760px;margin:0 auto;padding:30px 34px 48px;color:#26352d;font:15px/1.8 Arial,"PingFang SC","Microsoft YaHei",sans-serif}blockquote{color:#64766b}' : ''}
@@ -6215,6 +6215,23 @@ function richEmailLuminance(rgb) {
   return .2126 * channels[0] + .7152 * channels[1] + .0722 * channels[2];
 }
 
+function richEmailBasePalette(theme) {
+  const root = globalThis.document?.documentElement;
+  const style = root?.dataset?.theme === theme ? globalThis.getComputedStyle?.(root) : null;
+  const token = (name, fallback) => {
+    const value = style?.getPropertyValue(name).trim();
+    return /^#[\da-f]{6}$/i.test(value || '') ? value : fallback;
+  };
+  const dark = theme === 'dark';
+  return {
+    paper:token('--desk-surface', dark ? '#1c2227' : '#ffffff'),
+    ink:token('--desk-ink', dark ? '#edf1f5' : '#20272e'),
+    muted:token('--desk-muted', dark ? '#b4bfc9' : '#52606c'),
+    link:token('--desk-accent', dark ? '#8ac5a5' : '#2e7357'),
+    line:token('--desk-line', dark ? '#333e47' : '#d9dfe5'),
+  };
+}
+
 function restoreRichEmailThemeOverrides(frame) {
   for (const item of frame._mailThemeOverrides || []) {
     if (!item.node?.isConnected) continue;
@@ -6229,6 +6246,14 @@ function applyRichEmailFrameTheme(frame, theme = document.documentElement.datase
   if (!doc?.body) return;
   restoreRichEmailThemeOverrides(frame);
   doc.documentElement.setAttribute('data-mailai-theme', theme === 'dark' ? 'dark' : 'light');
+  const basePalette = richEmailBasePalette(theme);
+  // The frame shares the workspace paper, including when switched while mounted.
+  // Light-mode sender backgrounds, inline colors and images remain original.
+  if (doc.createElement && doc.head) {
+    let sheet = doc.getElementById('mailai-reader-theme');
+    if (!sheet) { sheet=doc.createElement('style');sheet.id='mailai-reader-theme';doc.head.append(sheet); }
+    sheet.textContent=`html[data-mailai-theme]{background:${basePalette.paper}}html[data-mailai-theme] body{color:${basePalette.ink}}html[data-mailai-theme="dark"] body{background:${basePalette.paper}!important}html[data-mailai-theme] body a{color:${basePalette.link}}html[data-mailai-theme] body blockquote{color:${basePalette.muted};border-color:${basePalette.line}}`;
+  }
   const rewardRoot=globalThis.document?.documentElement;
   const rewardStyle=rewardRoot?.dataset?.rewardTheme && globalThis.getComputedStyle?.(rewardRoot);
   const rewardColor=name=>{
@@ -6244,7 +6269,7 @@ function applyRichEmailFrameTheme(frame, theme = document.documentElement.datase
     rewardSheet.textContent=`html[data-mailai-theme],html[data-mailai-theme] body{background:${paper}!important;color:${ink}}html[data-mailai-theme] body a{color:${link}${linkDecoration}}html[data-mailai-theme] body blockquote{color:${ink};border-color:${line || paper}}`;
   } else rewardSheet?.remove();
   if (theme !== 'dark') return;
-  const darkPaper=paper || '#16271f',darkInk=ink || '#e4eee8',darkLink=link || '#8ddfb2';
+  const darkPaper=paper || basePalette.paper,darkInk=ink || basePalette.ink,darkLink=link || basePalette.link;
   const darkPaperRgb=[1,3,5].map(index=>parseInt(darkPaper.slice(index,index+2),16));
   const overrides = frame._mailThemeOverrides = [];
   const override = (node, property, value) => {

@@ -1,13 +1,13 @@
 /* A moving selection surface; labels and icons stay crisp above the material. */
 html[data-theme="light"] {
-  --selection-glass-fill:linear-gradient(115deg,rgba(255,255,255,.77),rgba(215,239,225,.67));
-  --selection-glass-edge:rgba(255,255,255,.92);
+  --selection-glass-fill:linear-gradient(115deg,#e4efe8,#dceae2);
+  --selection-glass-edge:rgba(255,255,255,.4);
   --selection-glass-rim:rgba(55,126,91,.22);
   --selection-glass-shadow:rgba(42,95,69,.13);
 }
 html[data-theme="dark"] {
-  --selection-glass-fill:linear-gradient(115deg,rgba(70,101,80,.67),rgba(36,67,48,.7));
-  --selection-glass-edge:rgba(220,249,228,.29);
+  --selection-glass-fill:linear-gradient(115deg,#2b4235,#243a2f);
+  --selection-glass-edge:rgba(147,191,163,.2);
   --selection-glass-rim:rgba(125,197,149,.33);
   --selection-glass-shadow:rgba(0,0,0,.25);
 }
@@ -32,6 +32,11 @@ html[data-theme] body .selection-glass-plate {
 }
 html[data-theme] body .selection-glass-plate[hidden] { display:none!important; }
 html[data-theme] body #email-list .selection-glass-plate { border-radius:9px; }
+/* Opaque default selections need no backdrop sampling while they move. */
+html[data-theme]:not([data-reward-theme]) body .selection-glass-plate {
+  -webkit-backdrop-filter:none;
+  backdrop-filter:none;
+}
 
 html[data-theme] body .sidebar.glass-selection-ready
   :is(#folder-nav .nav-item.active,#account-mailbox-nav .nav-item.active,
