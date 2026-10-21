@@ -11,6 +11,13 @@ async function run(engine){
   const handle=p.locator('#assistant-dock-divider'),panel=p.locator('#assistant-panel');
   const value=()=>handle.getAttribute('aria-valuenow').then(Number);
   async function settle(){await p.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));}
+  async function navigate(action){
+   // Finish the delayed startup workflow read on every document, then drain
+   // periodic reads before teardown so WebKit cannot report an aborted fetch.
+   if(p.url()!=='about:blank'){await p.evaluate(()=>mailaiEnergy.pause());await p.waitForLoadState('networkidle');}
+   const workflow=p.waitForResponse(response=>new URL(response.url()).pathname==='/api/productivity/workflow');
+   await action();await workflow;
+  }
   async function reading(){
    await p.locator('#app-preloader').waitFor({state:'hidden'});
    await p.locator('#email-list .email-item').first().waitFor();
@@ -31,10 +38,10 @@ async function run(engine){
    assert(Math.abs((result.divider.left+result.divider.right)/2-result.panel.left)<2,JSON.stringify(result));
    return result;
   }
-  await p.goto((process.env.MAILAI_FIXTURE_URL||'http://127.0.0.1:18795')+'/?shell=macos');
+  await navigate(()=>p.goto((process.env.MAILAI_FIXTURE_URL||'http://127.0.0.1:18795')+'/?shell=macos'));
   await p.locator('#app-preloader').waitFor({state:'hidden'});await p.locator('#email-list .email-item').first().waitFor();
   assert(await p.evaluate(()=>_systemConfig.accounts.every(a=>a.user.endsWith('@example.test'))));
-  await p.evaluate(k=>{localStorage.removeItem(k);setI18nLanguage(I18N_DEFAULT_LANG);},key);await p.reload();await reading();
+  await p.evaluate(k=>{localStorage.removeItem(k);setI18nLanguage(I18N_DEFAULT_LANG);},key);await navigate(()=>p.reload());await reading();
   assert.equal(await value(),420);await geometry();
   await p.evaluate(()=>{
    const r=document.querySelector('.reading-pane');document.getElementById('reading-content').insertAdjacentHTML('beforeend','<div style="height:4000px">Fixture reading continuation</div>');r.scrollTop=250;
@@ -54,7 +61,7 @@ async function run(engine){
   await p.keyboard.press('End');assert.equal(await value(),Number(await handle.getAttribute('aria-valuemax')));
   await p.keyboard.press('Enter');assert.equal(await value(),420);assert.equal(await p.evaluate(k=>localStorage.getItem(k),key),null);
   await p.keyboard.press('ArrowLeft');assert.equal(await value(),436);
-  await p.reload();await reading();assert.equal(await value(),436,'Width survives a reload');
+  await navigate(()=>p.reload());await reading();assert.equal(await value(),436,'Width survives a reload');
   const resetBox=await handle.boundingBox();await p.mouse.dblclick(resetBox.x+6,resetBox.y+120);await settle();assert.equal(await value(),420);
   // Clamp to the available space without replacing the wider saved preference.
   await handle.focus();await p.keyboard.press('End');const preferred=await p.evaluate(k=>localStorage.getItem(k),key);
