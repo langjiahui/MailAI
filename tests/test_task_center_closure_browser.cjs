@@ -91,7 +91,9 @@ const engine = process.env.MAILAI_BROWSER === 'webkit' ? webkit : chromium;
   await page.waitForFunction(()=>document.getElementById('reading-content').textContent.includes('部分收件人被拒绝'));
   await page.evaluate(()=>openTaskCenter());
   await page.locator('[data-outbox-refused]').click();
-  await page.waitForFunction(()=>document.body.classList.contains('compose-open'));
+  // An existing draft may still be saving as the replacement opens. Wait for
+  // the requested draft, not merely the old composer's visible state.
+  await page.waitForFunction(()=>document.body.classList.contains('compose-open') && document.getElementById('compose-subject').value==='partial closure');
   assert.equal(await page.locator('#compose-to').inputValue(),'');
   assert.equal(await page.locator('#compose-cc').inputValue(),'blocked@example.test');
   assert.equal(await page.locator('#compose-bcc').inputValue(),'private@example.test');
