@@ -292,6 +292,35 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve,ms));
     await page.waitForFunction(()=>document.querySelector('[data-import-action]').textContent==='导入缺少的 2500 封邮件',null,{timeout:60000});
     await dialog.locator('[data-import-reset]').click();
     await page.waitForFunction(()=>document.querySelector('[data-import-select]').hidden===false && document.querySelector('[data-import-action]').textContent==='扫描并去重');
+    // Oversized files never transfer or block their healthy neighbors.
+    // Stay below Linux's 255-byte filename limit while still exercising a
+    // long CJK label in the narrow dialog (80 glyphs / 244 UTF-8 bytes).
+    const hugePath=path.join(root,'超长文件名'.repeat(16)+'.eml');
+    const hugeFd=fs.openSync(hugePath,'w');fs.ftruncateSync(hugeFd,65*1024*1024);fs.closeSync(hugeFd);
+    const healthyPath=path.join(root,'auto-skip-healthy.eml');fs.writeFileSync(healthyPath,raw('auto-skip'));
+    await dialog.locator('[data-import-large]').uncheck();
+    await dialog.locator('#mail-import-files').setInputFiles([hugePath,healthyPath]);
+    const uploadsBefore=uploads;
+    await action.click();
+    await page.waitForFunction(()=>document.querySelector('[data-import-action]').textContent==='导入缺少的 1 封邮件');
+    assert.equal(uploads-uploadsBefore,1,'Oversized file should be skipped before any upload');
+    assert.equal(await dialog.locator('[data-count=failed]').textContent(),'1');
+    await dialog.locator('[data-import-errors] summary').click();
+    assert.match(await dialog.locator('[data-import-errors]').textContent(),/65.*MB.*64.*MB/);
+    await action.click();
+    await page.waitForFunction(()=>document.querySelector('[data-import-action]').textContent==='查看导入邮件');
+    await dialog.locator('[data-import-retry-files]').click();
+    await page.waitForFunction(()=>document.querySelector('[data-import-selected]').textContent.includes('已选择 1 个邮件文件'));
+    assert.match(await dialog.locator('[data-import-selected]').textContent(),/已选择 1 个邮件文件/);
+    assert.equal(await dialog.locator('[data-import-large]').isChecked(),true);
+    assert.equal(await dialog.locator('#mail-import-label').isEnabled(),true);
+    await page.evaluate(()=>setI18nLanguage('en'));
+    assert.match(await dialog.locator('.mail-import-large').textContent(),/Large-message mode/);
+    await page.setViewportSize({width:390,height:780});
+    const englishLayout=await dialog.evaluate(n=>({scroll:n.scrollWidth,client:n.clientWidth,bottom:n.querySelector('footer').getBoundingClientRect().bottom}));
+    assert(englishLayout.scroll<=englishLayout.client+1 && englishLayout.bottom<=780,JSON.stringify(englishLayout));
+    await page.evaluate(()=>setI18nLanguage('zh-CN'));
+    await page.setViewportSize({width:1440,height:1000});
     // Dark mode hover/focus and compact view must remain readable and usable.
     await page.evaluate(()=>document.documentElement.dataset.theme='dark');
     await dialog.locator('#mail-import-files').setInputFiles({name:'fresh.eml',mimeType:'message/rfc822',buffer:raw('fresh')});

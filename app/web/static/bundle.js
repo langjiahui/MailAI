@@ -1579,6 +1579,26 @@ if (typeof document !== 'undefined') {
 /* ---- i18n-catalog.js ---- */
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "mailImport.preflight": ["有 {0} 个文件超过当前上限，将跳过并保留重试记录。", "{0} files exceed the current limit. They will be skipped and recorded for retry."],
+  "mailImport.largeMode": ["大邮件模式（单封最多 256 MB）", "Large-message mode (up to 256 MB each)"],
+  "mailImport.limitNote": ["默认单封 64 MB。超限文件会自动跳过，其他文件继续；大邮件的附件分块处理，原件完整保留。", "The default is 64 MB per message. Oversized files are skipped while others continue. Large attachments are processed in chunks; originals are preserved."],
+  "mailImport.retryFiles": ["仅重试问题文件", "Retry problem files only"],
+  "mailImport.autoSkip": ["超限文件会自动跳过，不影响其他邮件。完成后可仅重试问题文件。", "Oversized files are skipped without blocking other mail. Retry only problem files after finishing."],
+  "mailImport.fileLimit": ["文件大小 {0}，超过当前 {1} 限制", "File size {0} exceeds the current {1} limit"],
+  "mailImport.batchFull": ["本批累计超过 10 GB，已留待下一批导入", "This batch exceeds 10 GB. File reserved for a later batch."],
+  "mailImport.reselectProblems": ["请重新选择问题清单中的文件，已有邮件会自动去重。", "Select files from the issue report again. Existing messages will be deduplicated."],
+  "mailImport.waitRetry": ["请先等待扫描或导入完成，再重试问题文件", "Wait for scanning or importing to finish before retrying problem files"],
+  "mailImport.messageLimit": ["邮件大小 {1} MB，超过当前 {3} MB 限制", "Message size {1} MB exceeds the current {3} MB limit"],
+  "mailImport.messageLimitAtLeast": ["邮件大小至少 {1} MB，超过当前 {3} MB 限制", "Message size is at least {1} MB, exceeding the current {3} MB limit"],
+  "mailImport.largeLimit": ["单封邮件超过 256 MB，请单独处理此邮件", "This message exceeds 256 MB. Handle it separately."],
+  "mailImport.mimeDepth": ["邮件 MIME 层级或分段过多，请单独检查此邮件", "This message has too many MIME levels or parts. Check it separately."],
+  "mailImport.mimeHeader": ["邮件头过大或不完整，请重新导出此邮件", "The mail headers are too large or incomplete. Export this message again."],
+  "mailImport.mimeBudget": ["邮件头和正文超过 8 MB，请单独检查此邮件", "Headers and body exceed 8 MB. Check this message separately."],
+  "mailImport.mimeBoundary": ["邮件 MIME 边界无效，请重新导出此邮件", "Invalid MIME boundary. Export this message again."],
+  "mailImport.mimeIncomplete": ["邮件 MIME 内容不完整，请重新导出此邮件", "Incomplete MIME content. Export this message again."],
+  "mailImport.mimeText": ["邮件正文或嵌套邮件超过 8 MB，请单独导出嵌套邮件后重试", "The body or embedded mail exceeds 8 MB. Export embedded messages separately and retry."],
+  "mailImport.mimeEncoding": ["大邮件附件编码不受支持，请重新导出为标准 EML", "Unsupported encoding in a large attachment. Export as standard EML again."],
+
   "mailImport.adviceMissing": ["请确认源文件仍在原位置且可读取，云盘文件需先下载到本机。若暂存文件已丢失，请重新选择原文件建立新批次；已导入邮件会自动去重。", "Make sure source files are still in their original location and readable. Download cloud files first. If staged files are missing, select the originals in a new batch; existing messages will be deduplicated."],
   "mailImport.fileMissing": ["找不到源文件或暂存文件，可能已移动或被清理", "The source or staged file was not found. It may have been moved or removed."],
   "mailImport.filePermission": ["没有读取文件或写入暂存目录的权限", "Permission denied when reading the file or writing to temporary storage."],
@@ -1594,7 +1614,7 @@ const MAILAI_UI_COPY = {
   "mailImport.skippedReason": ["已单独跳过此文件，可修复后另行导入", "This file was skipped. You can repair it and import it separately."],
   "mailImport.skippedReasonDetail": ["已单独跳过此文件，可修复后另行导入：{0}", "This file was skipped. Repair it and import it separately: {0}"],
   "mailImport.adviceLabel": ["处理建议：", "Suggested action: "],
-  "mailImport.advice0": ["单封邮件需小于等于 64 MB，MBOX 需小于等于 1 GB，每批不超过 10 GB。请在原客户端分批导出；单封超大邮件可保留原件后，另存较小副本再导入。", "Each message must be at most 64 MB, each MBOX at most 1 GB, and each batch at most 10 GB. Export smaller batches from the original client. For a large individual message, keep the original and export a smaller copy."],
+  "mailImport.advice0": ["64–256 MB 的邮件可开启大邮件模式后单独重试。单个 MBOX 最多 1 GB，每批最多 10 GB；超出时请分批导出。超过 256 MB 的单封邮件请保留原件，另存较小副本后导入。", "For 64–256 MB messages, enable large-message mode and retry them separately. Each MBOX may be up to 1 GB and each batch up to 10 GB; split larger exports. For messages over 256 MB, keep the original and import a smaller copy."],
   "mailImport.advice1": ["此文件没有邮件内容。请在原客户端打开邮件，下载完整正文和附件后重新导出；确认文件大小不为 0，再单独导入。", "This file has no mail content. Open the message in the original client, download its full body and attachments, and export it again. Check that the file is not empty before importing it separately."],
   "mailImport.advice2": ["请检查 MailAI 数据目录所在磁盘的剩余空间和写入权限，并确认源文件可读取。处理后重试；已成功导入的邮件会保留。", "Check free space and write permissions on the disk containing MailAI data, and make sure the source file is readable. Retry after resolving the issue. Successfully imported mail will be kept."],
   "mailImport.advice3": ["请确认 MailAI 服务仍在运行，源文件未被移动或删除；云盘文件需先下载到本机。可点击继续添加重试，仍失败时先跳过，稍后单独导入。", "Make sure the MailAI service is running and source files have not been moved or deleted. Download cloud files to this device first. Retry with Continue adding, or skip the file and import it separately later."],
@@ -11245,8 +11265,8 @@ const MAILAI_UI_COPY = {
     "Choose export directory"
   ],
   "ui.df468f0acffe": [
-    "单个文件最多 1 GB；单封邮件最多 64 MB；每批最多 10 GB。",
-    "Up to 1 GB per file, 64 MB per email, and 10 GB per batch."
+    "单个文件最多 1 GB；默认单封邮件最多 64 MB；每批最多 10 GB。",
+    "Up to 1 GB per file, 64 MB per email by default, and 10 GB per batch."
   ],
   "ui.5b676bd12914": [
     "导入进度",
@@ -15849,9 +15869,12 @@ const MAILAI_UI_COPY = {
     "Remove effect"
   ],
   "pet.wearing": [
-    "正在穿戴",
+    "已穿戴",
     "Equipped"
   ],
+  "pet.remove": ["卸下", "Remove"],
+  "pet.equipping": ["穿戴中…", "Equipping…"],
+  "pet.removing": ["卸下中…", "Removing…"],
   "pet.wear": [
     "穿戴",
     "Equip"
@@ -18336,7 +18359,7 @@ const MAILAI_I18N_CHINESE = {
   "ui.737c928009f0": "可以一次选择多封邮件，也可以选择整个导出目录。",
   "ui.bfe1dea0b951": "选择邮件文件",
   "ui.046b6f007bf0": "选择导出目录",
-  "ui.df468f0acffe": "单个文件最多 1 GB；单封邮件最多 64 MB；每批最多 10 GB。",
+  "ui.df468f0acffe": "单个文件最多 1 GB；默认单封邮件最多 64 MB；每批最多 10 GB。",
   "ui.5b676bd12914": "导入进度",
   "ui.36689263737d": "识别邮件",
   "ui.b2d9abb23920": "待新增",
@@ -33083,7 +33106,7 @@ function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, o
     const choices=items.filter(name=>name!==last);
     return choices[Math.floor(Math.random()*choices.length)];
   };
-  const stop = rig => {
+  const stop = (rig,rest=false) => {
     // Preserve continuous turn progress on interruption, including a partly
     // occluded tail and a face already looking toward the next direction.
     for(const part of ['heading','look']) {
@@ -33091,24 +33114,77 @@ function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, o
       node.style.transform=value;
     }
     clearTimeout(rig.timer);
+    rig.finite=false;rig.settling=false;
     rig.animations.forEach(anim=>anim.cancel()); rig.animations=[];
+    if(rest) for(const part of ['heading','look']) rig.parts[part].style.removeProperty('transform');
     delete rig.svg.dataset.motionKind;
     delete rig.svg.dataset.motionClip;
     delete rig.svg.dataset.expression;
     if (rig.svg.dataset.motionActive !== 'false') rig.svg.dataset.motionActive = 'false';
   };
   const transform = p => `translate(${p[0]}px,${p[1]}px) rotate(${p[2]}deg) scale(${p[3]},${p[4]})`;
+  const motionKeys = new Map();
+  // Match velocity across poses without overshooting a shoulder or grip limit.
+  // These bounded samples are cached; the browser still drives every frame.
+  const fluidKeys = (keys,duration) => {
+    const spans=keys.slice(1).map((key,i)=>key.offset-keys[i].offset);
+    const slopes=neutral.map((_,axis)=>{
+      const speeds=spans.map((span,i)=>(keys[i+1].value[axis]-keys[i].value[axis])/span);
+      return keys.map((_,i)=>{
+        if(i===0 || i===keys.length-1 || speeds[i-1]*speeds[i]<=0)return 0;
+        const a=2*spans[i]+spans[i-1], b=spans[i]+2*spans[i-1];
+        return (a+b)/(a/speeds[i-1]+b/speeds[i]);
+      });
+    });
+    const count=Math.ceil(duration/30);
+    const offsets=[...new Set([...keys.map(key=>key.offset),...Array.from({length:count+1},(_,i)=>i/count)])].sort((a,b)=>a-b);
+    let segment=0;
+    return offsets.map(offset=>{
+      while(segment<keys.length-2 && offset>keys[segment+1].offset)segment++;
+      const h=spans[segment], t=(offset-keys[segment].offset)/h, t2=t*t, t3=t2*t;
+      const value=neutral.map((_,axis)=>(2*t3-3*t2+1)*keys[segment].value[axis]+
+        (t3-2*t2+t)*h*slopes[axis][segment]+(-2*t3+3*t2)*keys[segment+1].value[axis]+
+        (t3-t2)*h*slopes[axis][segment+1]);
+      return {offset,transform:transform(value.map(n=>Math.round(n*1e6)/1e6)),easing:'linear'};
+    });
+  };
+  // A visible reaction has a landing, not a hard cancel. All body parts share
+  // one bounded release; the holding wing and letter remain on their carry rig.
+  const settle = rig => {
+    const priority=['peek','happy'].includes(rig.mode) ? rig.mode : 'off';
+    const outfit=[...rig.svg.querySelectorAll('.pet-reward-motion')].filter(node=>node.getClientRects().length);
+    const parts=[...new Set([...Object.values(rig.parts),rig.svg.querySelector('.companion-eyes'),...outfit])].filter(Boolean);
+    const poseOf=node=>{const css=getComputedStyle(node);return {transform:css.transform,opacity:css.opacity};};
+    const starts=parts.map(poseOf);
+    const expression=rig.svg.dataset.expression;
+    // Outfit loops have their own clocks. Release them with the body instead
+    // of freezing a wing, scarf or effect at an arbitrary CSS animation frame.
+    rig.svg.dataset.outfitRest='true';
+    stop(rig,true);rig.mode='settling';rig.settling=true;
+    rig.svg.dataset.motionActive='true';rig.svg.dataset.motionKind='reaction';
+    rig.svg.dataset.motionClip='settle';
+    if(expression)rig.svg.dataset.expression=expression;
+    parts.forEach((node,index)=>{
+      const target=poseOf(node);
+      if(starts[index].transform===target.transform && starts[index].opacity===target.opacity)return;
+      rig.animations.push(node.animate([starts[index],target],
+        {duration:420,easing:'cubic-bezier(.22,.65,.3,1)',fill:'none'}));
+    });
+    rig.timer=setTimeout(()=>{stop(rig,true);rig.mode=priority;refresh();},445);
+  };
   const play = (rig,name) => {
     // A direct reaction may share a task with a style change; observe its new route now.
     rig.style=style();
     const start=Object.fromEntries(names.map(part=>[part,getComputedStyle(rig.parts[part]).transform]));
     stop(rig);
     if(!enabled() || !visible(rig)) return;
+    delete rig.svg.dataset.outfitRest;
     rig.svg.dataset.motionKind = rig.mode === 'ambient' ? 'ambient' : 'reaction';
     const clipName=profiles[style()].reactions[name] || name;
     rig.svg.dataset.motionClip = clipName;
     rig.svg.dataset.motionActive = 'true';
     const clip=clips[clipName];
+    rig.finite=name!=='work';
     const finStage=Math.max(1,Math.min(7,Number(rig.stage || document.body.dataset.petStage || 1)));
     rig.svg.dataset.expression = ['greet','salute','happy','victory','deliver','glide','star','bow','beacon','finWave','bubbleJoy','phoenix','kunpeng','soar'].includes(clipName) ? 'joy' : ['work','rangerWork','think','dispatch','guard'].includes(clipName) ? 'focus' : 'curious';
     for(const part of names) {
@@ -33116,73 +33192,96 @@ function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, o
       if(['heading','look'].includes(part) && !clip.directional) continue;
       if(part.startsWith('flight-') && Number(rig.stage || document.body.dataset.petStage || 1)<4) continue;
       // Accessories lag the body's turn and rebound after it settles.
-      const keys=clip.frames.map(([offset,frame],index)=>{
-        let value=frame[part] || neutral;
-        if(part==='heading') value=pose(0,0,0,frame.heading,1);
-        if(part==='look') value=pose(-2.8*frame.look,0,0);
-        if(clip.directional && part==='shadow') value=pose((frame.figure?.[0] || 0)*.7,0,0,1,1);
-        // The round body stays rigid; only the face nods inside its silhouette.
-        if(['figure','torso','head'].includes(part)) {
-          value=[...value];
-          value[3]=value[4]=Math.sqrt(value[3]*value[4]);
-          if(part==='head') {
-            value[0]=Math.max(-1.5,Math.min(1.5,value[0]));
-            value[1]=Math.max(-1.5,Math.min(1.5,value[1]));
-            value[2]=Math.max(-4,Math.min(4,value[2]));
+      const cacheKey=`${clipName}:${rig.style}:${finStage}:${part}`;
+      let keys=motionKeys.get(cacheKey);
+      if(!keys) {
+        const poses=clip.frames.map(([offset,frame],index)=>{
+          let value=frame[part] || neutral;
+          if(part==='heading') value=pose(0,0,0,frame.heading,1);
+          if(part==='look') value=pose(-2.8*frame.look,0,0);
+          if(clip.directional && part==='shadow') value=pose((frame.figure?.[0] || 0)*.7,0,0,1,1);
+          // The round body stays rigid; only the face nods inside its silhouette.
+          if(['figure','torso','head'].includes(part)) {
+            value=[...value];
+            value[3]=value[4]=Math.sqrt(value[3]*value[4]);
+            if(part==='head') {
+              value[0]=Math.max(-1.5,Math.min(1.5,value[0]));
+              value[1]=Math.max(-1.5,Math.min(1.5,value[1]));
+              value[2]=Math.max(-4,Math.min(4,value[2]));
+            }
           }
-        }
-        // The free wing greets. The holding wing and letter are children of
-        // one shoulder rig, so interruption and settling cannot split the grip.
-        if(part==='arm-left' && !frame[part] && frame.wave) {
-          value=pose(0,frame.wave[1]*.35,Math.max(-28,Math.min(38,-frame.wave[2])));
-        }
-        if(part==='arm-left') {
-          // The free wing also pivots at its shoulder instead of sliding off it.
-          value=pose(0,0,Math.max(-28,Math.min(38,value[2])));
-          // Longer fins need a smaller stroke: the tip travels farther without
-          // making the shoulder jerk or pulling the front fin off the body.
-          if(rig.style==='ranger') value[2]*=1-(finStage-1)*.045;
-        }
-        if(part.startsWith('flight-') && rig.style==='ranger') {
-          const stroke=finStage===4 ? .62 : finStage===5 ? .78 : .9;
-          value=pose(0,0,value[2]*stroke);
-        }
-        if(part==='carry') {
-          // Never translate a shoulder away from the body. Small rotations lift
-          // the letter as a unit; the torso supplies travel, bounce and turns.
-          const angle=frame.bag ? frame.bag[2]*.45 : (frame.torso?.[2] || 0)*-.35;
-          value=pose(0,0,Math.max(-8,Math.min(5,angle)));
-        }
-        if((part==='leaves' || part==='tail') && !frame[part]) {
-          const previous=clip.frames[Math.max(0,index-1)][1];
-          const turn=(previous.figure?.[2] || 0)+(previous.torso?.[2] || 0);
-          value=index===clip.frames.length-1 ? neutral : pose(0,0,-turn*(part==='leaves' ? .35 : .8));
-        }
-        if(part==='tail' && rig.style==='ranger') {
-          // A continuous tailstock stays buried in the body as the flukes sway.
-          // Translation or large whole-tail swings would expose the root seam.
-          value=pose(0,0,Math.max(-10,Math.min(10,value[2])));
-        }
-        return {offset,transform:transform(value),easing:clip.directional?'linear':'cubic-bezier(.22,.65,.3,1)'};
-      });
+          // The free wing greets. The holding wing and letter are children of
+          // one shoulder rig, so interruption and settling cannot split the grip.
+          if(part==='arm-left' && !frame[part] && frame.wave) {
+            value=pose(0,frame.wave[1]*.35,Math.max(-28,Math.min(38,-frame.wave[2])));
+          }
+          if(part==='arm-left') {
+            // The free wing also pivots at its shoulder instead of sliding off it.
+            value=pose(0,0,Math.max(-28,Math.min(38,value[2])));
+            // Longer fins need a smaller stroke: the tip travels farther without
+            // making the shoulder jerk or pulling the front fin off the body.
+            if(rig.style==='ranger') value[2]*=1-(finStage-1)*.045;
+          }
+          if(part.startsWith('flight-') && rig.style==='ranger') {
+            const stroke=finStage===4 ? .62 : finStage===5 ? .78 : .9;
+            value=pose(0,0,value[2]*stroke);
+          }
+          if(part==='carry') {
+            // Never translate a shoulder away from the body. Small rotations lift
+            // the letter as a unit; the torso supplies travel, bounce and turns.
+            const angle=frame.bag ? frame.bag[2]*.45 : (frame.torso?.[2] || 0)*-.35;
+            value=pose(0,0,Math.max(-8,Math.min(5,angle)));
+          }
+          if((part==='leaves' || part==='tail') && !frame[part]) {
+            const previous=clip.frames[Math.max(0,index-1)][1];
+            const turn=(previous.figure?.[2] || 0)+(previous.torso?.[2] || 0);
+            value=index===clip.frames.length-1 ? neutral : pose(0,0,-turn*(part==='leaves' ? .35 : .8));
+          }
+          if(part==='tail' && rig.style==='ranger') {
+            // A continuous tailstock stays buried in the body as the flukes sway.
+            // Translation or large whole-tail swings would expose the root seam.
+            value=pose(0,0,Math.max(-10,Math.min(10,value[2])));
+          }
+          return {offset,value};
+        });
+        keys=clip.directional ? poses.map(({offset,value})=>({offset,transform:transform(value),easing:'linear'})) : fluidKeys(poses,clip.duration);
+        // Keep the shared cache small when trying many stages and outfits.
+        if(motionKeys.size>=96)motionKeys.delete(motionKeys.keys().next().value);
+        motionKeys.set(cacheKey,keys);
+      }
       // Leave stationary parts alone; retain interrupted parts until they settle.
       if((start[part]==='none' || start[part]==='matrix(1, 0, 0, 1, 0, 0)') &&
         keys.every(key=>key.transform===transform(neutral))) continue;
-      // Blend an interrupted pose into the first 240 ms; preserving only the
-      // first dense sample would produce a visible one-frame orientation snap.
-      if(clip.directional) {
+      // Each playback owns its keys: interrupted poses must not enter the cache.
+      keys=keys.map(key=>({...key}));
+      let entryKeys=null,entryDuration=0;
+      // Blend an interrupted pose through the first part of any clip; replacing
+      // only its first dense sample would cause a one-frame jump on interaction.
+      if(clip.directional || (start[part]!=='none' && start[part]!=='matrix(1, 0, 0, 1, 0, 0)')) {
         const initial=new DOMMatrixReadOnly(start[part]);
-        keys.forEach(key=>{
-          const amount=smooth(key.offset/.08);
+        let blendKeys=keys,blendEnd=.08;
+        if(name==='work') {
+          // Enter a work loop once. Baking an interrupted pose into its repeating
+          // keys would snap back to that pose at the start of every cycle.
+          const end=keys.findIndex(key=>key.offset>=.08);
+          blendKeys=keys.slice(0,end+1).map(key=>({...key}));
+          blendEnd=blendKeys.at(-1).offset;
+          entryDuration=blendEnd*clip.duration;
+          entryKeys=blendKeys;
+        }
+        blendKeys.forEach(key=>{
+          const amount=smooth(key.offset/blendEnd);
           if(amount>=1)return;
           const target=new DOMMatrixReadOnly(key.transform);
           key.transform=`matrix(${['a','b','c','d','e','f'].map(k=>initial[k]+(target[k]-initial[k])*amount).join(',')})`;
         });
+        if(entryKeys)entryKeys.forEach(key=>{key.offset/=blendEnd;});
       }
-      keys[0].transform=start[part];
+      if(name!=='work')keys[0].transform=start[part];
       // Save orientation at the end before releasing its browser animation.
       const anim=rig.parts[part].animate(keys,{duration:clip.duration,fill:['heading','look'].includes(part)?'forwards':'none',iterations:name==='work'?Infinity:1});
       rig.animations.push(anim);
+      if(entryKeys)rig.animations.push(rig.parts[part].animate(entryKeys,{duration:entryDuration,fill:'none'}));
     }
     if(rig.mode==='ambient') {
       const eyes=rig.svg.querySelector('.companion-eyes');
@@ -33193,12 +33292,16 @@ function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, o
       ],{duration:clip.duration,fill:'none'}));
     }
     if(name!=='work')rig.timer=setTimeout(()=>{
+      if(rig.mode!=='ambient' && rig.mode!=='preview' && enabled() && visible(rig)) {
+        settle(rig);return;
+      }
       if(rig.mode==='ambient') {
-        stop(rig);rig.mode='off';refresh();
+        stop(rig,true);rig.mode='off';refresh();
       } else {
         // Keep the state priority until it expires, but release every animation.
-        stop(rig);
-        if(rig.mode==='manual') {rig.mode='off';refresh();}
+        stop(rig,true);
+        if(rig.mode==='manual' || (rig.mode==='peek' && performance.now()>=awakeUntil)) rig.mode='off';
+        refresh();
       }
     },clip.duration+25);
   };
@@ -33245,8 +33348,14 @@ function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, o
       else if(rig.mode==='manual' && !changed) mode='manual';
       else if(rig.mode==='ambient' && !changed) mode='ambient';
       if(mode===rig.mode && !changed) return;
+      if(mode==='off' && enabled() && visible(rig) && !changed) {
+        // State expiry must not cut a wave, swim or landing in half. Hidden,
+        // reduced-motion and background states still cancel immediately.
+        if(rig.settling || (rig.finite && rig.svg.dataset.motionActive==='true')) return;
+        if(rig.svg.dataset.motionActive==='true') {settle(rig);return;}
+      }
       rig.mode=mode;
-      if(mode==='off') {stop(rig);return;}
+      if(mode==='off') {stop(rig,true);return;}
       play(rig,mode);
     });
     scheduleAmbient();
@@ -33302,7 +33411,8 @@ function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, o
       rig.welcomePending=0;rig.reactedAt=performance.now();
       rig.mode='manual';play(rig,style()==='ranger'?'nod':'tilt');return;
     }
-    if(!rig || !enabled() || !visible(rig) || rig.mode==='work' || rig.mode==='happy' || performance.now()-greetingAt<2200) return;
+    if(!rig || !enabled() || !visible(rig) || rig.mode==='work' || rig.mode==='happy' ||
+      (rig.mode==='manual' && rig.finite && rig.svg.dataset.motionActive==='true') || performance.now()-greetingAt<2200) return;
     greetingAt=performance.now();wake();play(rig,'greet');
   };
   // The artwork intentionally ignores pointer events. Listen on its actual
@@ -33693,6 +33803,7 @@ function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, o
   const post = body => ({method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
   let state = null, account = '', revision = 0, tab = 'today', dialog, returnFocus;
   let busy = false, tickBusy = false, pending = null, clicks = 0, lastClick = 0;
+  let outfitPending = null;
   let lastInput = performance.now(), lastSample = performance.now(), reading = null;
   let lastRefresh = 0, refreshAccount = '', purchaseIntent = null, feedback = null, renderKey = '';
   let previewItem = 'sparkles', previewPlaying = true, previewOpen = false, previewStage = null, shopFilter = 'all';
@@ -33937,7 +34048,11 @@ function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, o
         path = 'equip'; payload = {slot:button.dataset.petSlot, item:button.dataset.petEquip || ''}; notice = t(payload.slot === 'theme' ? payload.item ? 'themeApplied' : 'themeRestored' : 'equipped');
       } else return;
       busy = true; button.disabled = true; button.setAttribute('aria-busy', 'true');
-      const id = account, rev = ++revision;
+      if (path === 'equip' && payload.slot !== 'theme') {
+        outfitPending = {id:button.dataset.petItemAction || '', item:payload.item};
+        renderKey = ''; render();
+      }
+      const id = account, rev = ++revision, actionItem = button.dataset.petItemAction;
       try {
         const result = await request(path, {...post(payload), accountId:id});
         if (path === 'purchase') saveIntent(id,null);
@@ -33950,8 +34065,13 @@ function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, o
         if (id === account && id === owner() && dialog.open) message(path === 'purchase' && purchaseIntent ? t('purchaseUncertain') : mailaiSystemMessage(error.message), true);
       } finally {
         busy = false;
+        outfitPending = null;
         renderKey = '';
-        if (dialog.open && id === account && id === owner()) render();
+        if (dialog.open && id === account && id === owner()) {
+          render();
+          if (actionItem && [document.body,dialog].includes(document.activeElement))
+            dialog.querySelector(`[data-pet-item-action="${CSS.escape(actionItem)}"]`)?.focus({preventScroll:true});
+        }
         if (button.isConnected) { button.disabled = false; button.removeAttribute('aria-busy'); }
         if (id !== account) void refresh();
       }
@@ -34106,9 +34226,10 @@ function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, o
       const locked = !item.owned && s.stage < item.stage, equipped = s.equipped[item.slot] === item.id;
       const depleted = item.id === 'berry' && s.berry_today >= 3;
       const unavailable = locked || (!item.owned && s.stamps < item.cost) || depleted || busy || (!!purchaseIntent && !item.owned);
-      const action = item.owned ? `data-pet-slot="${item.slot}" data-pet-equip="${item.id}"` : `data-pet-buy="${item.id}"`;
-      const caption = equipped ? t('wearing') : item.owned ? t('wear') : depleted ? t('berryLimit') : locked ? t('stageRequired',stageName(item.stage)) : t(item.id === 'berry' ? 'feedPrice' : 'buyPrice',item.cost);
-      return `<article data-pet-item="${item.id}" class="pet-shop-item ${locked ? 'is-locked' : ''} ${equipped?'is-equipped':''}"><button type="button" class="pet-preview-icon" data-pet-preview="${item.id}" title="${label('previewIcon',t(`item.${item.id}`))}" aria-label="${label('previewIcon',t(`item.${item.id}`))}"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.5 12s3.2-6 9.5-6 9.5 6 9.5 6-3.2 6-9.5 6S2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.5"/></svg></button><div class="pet-item-art" data-item-preview="${item.id}" aria-hidden="true">${avatar('',Math.max(s.stage,item.stage))}<span class="pet-item-stage">${numerals[item.stage-1]}</span></div><div class="pet-item-copy"><b>${label(`item.${item.id}`)}</b><p>${label(`itemHint.${item.id}`)}</p><small>${item.owned ? label('owned') : label('itemRequirement',item.cost,stageName(item.stage))}</small></div><button type="button" ${action} ${unavailable || equipped ? 'disabled' : ''}>${esc(caption)}</button></article>`;
+      const actionBusy = outfitPending?.id === item.id;
+      const action = item.owned ? `data-pet-item-action="${item.id}" data-pet-slot="${item.slot}" data-pet-equip="${equipped ? '' : item.id}"` : `data-pet-buy="${item.id}"`;
+      const caption = actionBusy ? t(outfitPending.item ? 'equipping' : 'removing') : equipped ? t('remove') : item.owned ? t('wear') : depleted ? t('berryLimit') : locked ? t('stageRequired',stageName(item.stage)) : t(item.id === 'berry' ? 'feedPrice' : 'buyPrice',item.cost);
+      return `<article data-pet-item="${item.id}" class="pet-shop-item ${locked ? 'is-locked' : ''} ${equipped?'is-equipped':''}"><button type="button" class="pet-preview-icon" data-pet-preview="${item.id}" title="${label('previewIcon',t(`item.${item.id}`))}" aria-label="${label('previewIcon',t(`item.${item.id}`))}"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.5 12s3.2-6 9.5-6 9.5 6 9.5 6-3.2 6-9.5 6S2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.5"/></svg></button><div class="pet-item-art" data-item-preview="${item.id}" aria-hidden="true">${avatar('',Math.max(s.stage,item.stage))}<span class="pet-item-stage">${numerals[item.stage-1]}</span></div><div class="pet-item-copy"><b>${label(`item.${item.id}`)}</b><p>${label(`itemHint.${item.id}`)}</p><small>${equipped ? '<span class="pet-equipped-status">✓ '+label('wearing')+'</span>' : item.owned ? label('owned') : label('itemRequirement',item.cost,stageName(item.stage))}</small></div><button type="button" ${action} ${actionBusy ? 'aria-busy="true"' : ''} ${unavailable ? 'disabled' : ''}>${esc(caption)}</button></article>`;
     }).join('')}</div>${shopFilter==='owned'&&!s.items.some(item=>item.owned&&item.slot!=='theme')?`<p class="pet-empty">${label('wardrobeEmpty')}</p>`:''}<p class="pet-note">${label('shopNote')}</p>${themeShopView()}`;
   }
   function themeShopView() {
@@ -34135,13 +34256,13 @@ function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, o
       host.innerHTML = `<p class="pet-empty">${label(account ? 'loading' : 'login')}</p><button type="button" data-pet-retry>${label('retry')}</button>`;
       return;
     }
-    const key = JSON.stringify([state.items.map(item=>[item.id,item.owned]),state.gifts,tab === 'gifts' ? [giftDraft,giftPreview,giftError,giftErrorKey,giftBusy,giftPending,giftFileName] : null,tab,state.style,state.xp,state.stamps,state.earned,state.streak,state.enabled,state.equipped,state.berry_today,state.day,purchaseIntent,busy,feedback && Date.now()<feedback.until ? feedback.copy : '',tab === 'today' ? state.today : tab === 'history' ? [state.history,state.purchases] : null]);
+    const key = JSON.stringify([state.items.map(item=>[item.id,item.owned]),state.gifts,tab === 'gifts' ? [giftDraft,giftPreview,giftError,giftErrorKey,giftBusy,giftPending,giftFileName] : null,tab,state.style,state.xp,state.stamps,state.earned,state.streak,state.enabled,state.equipped,state.berry_today,state.day,purchaseIntent,busy,outfitPending,feedback && Date.now()<feedback.until ? feedback.copy : '',tab === 'today' ? state.today : tab === 'history' ? [state.history,state.purchases] : null]);
     if (key === renderKey) return;
     renderKey = key;
     const focus = document.activeElement;
     const giftSelection = focus?.matches('[data-pet-gift-code],[data-pet-claim-code]') ? [focus.selectionStart,focus.selectionEnd] : null;
     const identityOpen = host.querySelector('.pet-gift-identity')?.open;
-    const focusKey = focus?.closest('.pet-journal') ? Object.entries(focus.dataset).find(([key])=>['petLifeAction','petLifeChatter','petTab','petBuy','petEquip','petSlot','petStyle','petGiftCode','petGiftPreview','petGiftClaim','petGiftWear','petGiftCopy','petGiftReconcile','petGiftOutfits','petClaimCode','petPreviewSelect','petPreviewPlay','petPreviewClose','petPreviewStage','petTryAction','petShopFilter','petTryStage','petCollection'].includes(key)) : null;
+    const focusKey = focus?.closest('.pet-journal') ? Object.entries(focus.dataset).find(([key])=>['petLifeAction','petLifeChatter','petTab','petBuy','petItemAction','petEquip','petSlot','petStyle','petGiftCode','petGiftPreview','petGiftClaim','petGiftWear','petGiftCopy','petGiftReconcile','petGiftOutfits','petClaimCode','petPreviewSelect','petPreviewPlay','petPreviewClose','petPreviewStage','petTryAction','petShopFilter','petTryStage','petCollection'].includes(key)) : null;
     const scroll = host.scrollTop;
     // Progress, receipts and tab updates must not replace the live animation rig.
     const portrait = host.querySelector('.pet-hero-portrait');
@@ -38267,17 +38388,24 @@ function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, o
       <div class="mail-import-options"><label><span data-i18n="ui.3bd43bd793d1">导入到哪个邮箱？</span><select id="mail-import-account"></select></label><label><span data-i18n="ui.ffab51e77800">归档名称</span><input id="mail-import-label" value="Foxmail 导入" maxlength="80"></label></div>
       <p class="mail-import-location"><span data-i18n="mailImport.location">导入后在「本地归档」中查看，默认已读；可移到 MailAI 收件箱，仅在本机整理。</span></p>
       <section data-import-select><details class="mail-import-help"><summary><span data-i18n="ui.ca48255d93ad">如何从 Foxmail 导出邮件？</span></summary><ol><li><span data-i18n="ui.81cda90241df">在 Foxmail 中进入收件箱、已发送等文件夹，选中要迁移的邮件，选择「导出邮件」。</span></li><li><span data-i18n="ui.34ed41f26457">把每个文件夹的邮件分别导出，放在同一个总目录下。这样可保留文件夹名称。</span></li><li><span data-i18n="ui.b9c4156320e0">回到这里选择导出的文件或总目录。附件须在 Foxmail 中下载完整后再导出。</span></li></ol><p><span data-i18n="ui.0f7bb2368cf9">支持 EML、MBOX 邮件文件，也适用于其他客户端导出的同类文件。Foxmail 的 Storage、.fox 数据库请先通过 Foxmail 导出。</span></p></details>
-      <div class="mail-import-file-box"><b><span data-i18n="ui.fee481c85284">选择 Foxmail 导出的邮件</span></b><p><span data-i18n="ui.737c928009f0">可以一次选择多封邮件，也可以选择整个导出目录。</span></p><div><button type="button" data-import-files><span data-i18n="ui.bfe1dea0b951">选择邮件文件</span></button><button type="button" data-import-folder><span data-i18n="ui.046b6f007bf0">选择导出目录</span></button></div><small><span data-i18n="ui.df468f0acffe">单个文件最多 1 GB；单封邮件最多 64 MB；每批最多 10 GB。</span></small></div>
+      <div class="mail-import-file-box"><b><span data-i18n="ui.fee481c85284">选择 Foxmail 导出的邮件</span></b><p><span data-i18n="ui.737c928009f0">可以一次选择多封邮件，也可以选择整个导出目录。</span></p><div><button type="button" data-import-files><span data-i18n="ui.bfe1dea0b951">选择邮件文件</span></button><button type="button" data-import-folder><span data-i18n="ui.046b6f007bf0">选择导出目录</span></button></div><small><span data-i18n="ui.df468f0acffe">单个文件最多 1 GB；默认单封邮件最多 64 MB；每批最多 10 GB。</span></small></div>
+      <label class="mail-import-large"><input type="checkbox" data-import-large><span data-i18n="mailImport.largeMode">大邮件模式（单封最多 256 MB）</span></label><p class="mail-import-limit-note" data-i18n="mailImport.limitNote">默认单封 64 MB。超限文件会自动跳过，其他文件继续；大邮件的附件分块处理，原件完整保留。</p>
       <input type="file" id="mail-import-files" accept=".eml,.mbox" multiple hidden><input type="file" id="mail-import-folder" webkitdirectory multiple hidden>
       <div data-import-selected aria-live="polite"></div></section>
       <section class="mail-import-progress" data-import-progress hidden><p data-import-status role="status" aria-live="polite"></p><progress aria-label="导入进度" data-i18n-aria="ui.5b676bd12914"></progress><small data-import-progress-note></small><small data-import-current hidden></small><div class="mail-import-live" data-import-live hidden></div></section>
       <section data-import-result hidden><div class="mail-import-counts"><div><small><span data-i18n="ui.36689263737d">识别邮件</span></small><b data-count="found">0</b></div><div><small><span data-i18n="ui.b2d9abb23920">待新增</span></small><b data-count="new">0</b></div><div><small><span data-i18n="ui.b83bf31b01f2">重复跳过</span></small><b data-count="duplicates">0</b></div><div><small><span data-i18n="ui.751d82db8361">无法导入</span></small><b data-count="failed">0</b></div></div><p class="mail-import-result-message" data-import-summary></p><details class="mail-import-folders" data-import-folders hidden><summary><span data-i18n="ui.8b9f60b1b5e1">邮件将放在哪些文件夹？</span></summary><p><span data-i18n="ui.8026d5ac9274">在「本地归档」中按以下文件夹保留。本表是扫描时预计新增的数量。</span></p><ul></ul><small></small></details><div data-import-samples></div></section><details data-import-errors hidden><summary><span data-i18n="ui.90d83999bd64">查看需要检查的文件</span></summary><p data-import-issues-note></p><div></div><button type="button" data-import-report><span data-i18n="ui.c9630d09a5f2">下载完整问题清单</span></button></details>
       <p data-import-error role="alert"></p><p data-import-failed-file hidden></p><p data-import-retry-help hidden></p><p data-import-skipped hidden></p><section class="mail-import-history" data-import-history></section>
-    </div><footer><button type="button" data-import-reset hidden><span data-i18n="ui.9b904c0e2faf">重新选择</span></button><button type="button" data-import-skip hidden><span data-i18n="mailImport.skipFile">跳过此文件，继续添加</span></button><button type="button" data-import-pause hidden><span data-i18n="ui.8d12fc0d4eb2">暂停</span></button><span></span><button type="button" data-import-close><span data-i18n="ui.3fd47edce45b">关闭</span></button><button type="button" class="primary-action" data-import-action disabled><span data-i18n="ui.afcd60d848dc">扫描并去重</span></button></footer>`;
+    </div><footer><button type="button" data-import-reset hidden><span data-i18n="ui.9b904c0e2faf">重新选择</span></button><button type="button" data-import-skip hidden><span data-i18n="mailImport.skipFile">跳过此文件，继续添加</span></button><button type="button" data-import-retry-files hidden><span data-i18n="mailImport.retryFiles">仅重试问题文件</span></button><button type="button" data-import-pause hidden><span data-i18n="ui.8d12fc0d4eb2">暂停</span></button><span></span><button type="button" data-import-close><span data-i18n="ui.3fd47edce45b">关闭</span></button><button type="button" class="primary-action" data-import-action disabled><span data-i18n="ui.afcd60d848dc">扫描并去重</span></button></footer>`;
   document.body.append(dialog);
   const $ = selector => dialog.querySelector(selector);
   let files = [], job = null, accountId = '', uploading = false, controller = null, inFlight = false;
   let renderedSamples = '', renderedIssues = '', renderedFolders = '';
+  const sessionFiles = new Map();
+  function rememberFiles() {
+    if (!job || !files.length) return;
+    sessionFiles.set(accountId + ':' + job.token, files.slice());
+    if (sessionFiles.size > 10) sessionFiles.delete(sessionFiles.keys().next().value);
+  }
   let timer = 0, generation = 0, pendingDone = null, returnFocus = null, uploadCursor = 0, failedUpload = null;
   const canResumeUpload = () => job?.state === 'collecting' && job.phase === 'upload';
   const fileName = file => file.webkitRelativePath ? file.webkitRelativePath.split('/').slice(1).join('/') : file.name;
@@ -38290,7 +38418,7 @@ function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, o
     if (!working && pendingDone) { pendingDone(); pendingDone = null; }
   }
   function uploadAdvice(reason) {
-    if (/64\s*MB|1\s*GB|10\s*GB|超过.*封|超过.*文件/i.test(reason)) return mailaiText("单封邮件需小于等于 64 MB，MBOX 需小于等于 1 GB，每批不超过 10 GB。请在原客户端分批导出；单封超大邮件可保留原件后，另存较小副本再导入。");
+    if (/64\s*MB|256\s*MB|超过当前|1\s*GB|10\s*GB|超过.*封|超过.*文件/i.test(reason)) return mailaiText("64–256 MB 的邮件可开启大邮件模式后单独重试。单个 MBOX 最多 1 GB，每批最多 10 GB；超出时请分批导出。超过 256 MB 的单封邮件请保留原件，另存较小副本后导入。");
     if (/为空|空文件/i.test(reason)) return mailaiText("此文件没有邮件内容。请在原客户端打开邮件，下载完整正文和附件后重新导出；确认文件大小不为 0，再单独导入。");
     if (/找不到|不存在|读取失败/i.test(reason)) return mailaiText("请确认源文件仍在原位置且可读取，云盘文件需先下载到本机。若暂存文件已丢失，请重新选择原文件建立新批次；已导入邮件会自动去重。");
     if (/磁盘|权限|暂存|保存|写入/i.test(reason)) return mailaiText("请检查 MailAI 数据目录所在磁盘的剩余空间和写入权限，并确认源文件可读取。处理后重试；已成功导入的邮件会保留。");
@@ -38312,6 +38440,10 @@ function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, o
     dialog.querySelectorAll('[data-step]').forEach(n => { n.classList.toggle('active', n.dataset.step === step); if (n.dataset.step === step) n.setAttribute('aria-current','step'); else n.removeAttribute('aria-current'); });
     $('#mail-import-account').disabled = Boolean(job) || busy();
     $('#mail-import-label').disabled = Boolean(job) || busy();
+    $('[data-import-large]').disabled = Boolean(job) || busy();
+    if (job) $('[data-import-large]').checked = Boolean(job.large_messages);
+    $('[data-import-retry-files]').hidden = !job?.failed || !(state === 'completed' || state === 'ready' && !job.new) || !files.length;
+    $('[data-import-retry-files]').disabled = working;
     $('[data-import-files]').disabled = busy(); $('[data-import-folder]').disabled = busy();
     dialog.querySelectorAll('[data-import-job]').forEach(n => n.disabled = busy());
     $('[data-import-select]').hidden = Boolean(job) && (!canResumeUpload() || working);
@@ -38356,7 +38488,7 @@ function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, o
     $('[data-import-errors]').hidden = !issues.length;
     const issueKey = JSON.stringify(issues);
     if (renderedIssues !== issueKey) {
-      $('[data-import-errors] > div').innerHTML = issues.map(row=>`<p><b>${esc(row.file)}</b><br>${esc(mailaiSystemMessage(row.reason))}${row.advice ? `<br><small>${esc(mailaiText('处理建议：'))}${esc(mailaiText(row.advice))}</small>` : ''}</p>`).join('');
+      $('[data-import-errors] > div').innerHTML = issues.map(row=>`<p><b class="mail-import-filename" title="${esc(row.file)}">${esc(row.file)}</b><br>${esc(mailaiSystemMessage(row.reason))}${row.advice ? `<br><small>${esc(mailaiText('处理建议：'))}${esc(mailaiText(row.advice))}</small>` : ''}</p>`).join('');
       renderedIssues = issueKey;
     }
     const issueCount = job?.issue_count ?? issues.length;
@@ -38385,9 +38517,13 @@ function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, o
     const bytes = files.reduce((sum, file) => sum + file.size, 0);
     const error = canResumeUpload() && files.length !== job.expected_files ? mailaiTemplate`请选回原批次的 ${job.expected_files} 个邮件文件，已添加的文件会校验复用。` : files.length > 20000 ? mailaiText('一批最多选择 20000 个文件，请分批选择。') : '';
     mailaiBindUI($('[data-import-error]'), "textContent", () => (error || (files.length ? labelError() : '') || (!files.length ? mailaiText('未找到邮件文件，请先从 Foxmail 导出为 EML 或 MBOX。') : '')));
-    $('[data-import-selected]').innerHTML = files.length ? `<p><b><span data-i18n="ui.e49d139a999a">已选择 ${files.length} 个邮件文件</span></b> · ${formatFileSize(bytes)}${ignored ? mailaiTemplate` · 跳过 ${ignored} 个非邮件文件` : ''}</p><ul>${files.slice(0,5).map(file=>`<li>${esc(file.webkitRelativePath || file.name)}</li>`).join('')}</ul>` : '';
+    $('[data-import-selected]').innerHTML = files.length ? `<p><b><span data-i18n="ui.e49d139a999a">已选择 ${files.length} 个邮件文件</span></b> · ${formatFileSize(bytes)}${ignored ? mailaiTemplate` · 跳过 ${ignored} 个非邮件文件` : ''}</p><ul>${files.slice(0,5).map(file=>`<li><span class="mail-import-filename" title="${esc(file.webkitRelativePath || file.name)}">${esc(file.webkitRelativePath || file.name)}</span><small>${esc(formatFileSize(file.size))}</small></li>`).join('')}</ul>` : '';
     if (error) files = [];
-    if (files.length) $('.mail-import-help').open = false;
+    if (files.length) { $('.mail-import-help').open = false; rememberFiles(); }
+    $('[data-import-selected]').insertAdjacentHTML('beforeend', files.length ? `<p>${esc(mailaiText('超限文件会自动跳过，不影响其他邮件。完成后可仅重试问题文件。'))}</p>` : '');
+    const limit = (job?.large_messages || !job && $('[data-import-large]').checked ? 256 : 64) * 1024**2;
+    const oversized = files.filter(file => file.size > (/\.eml$/i.test(file.name) ? limit : 1024**3)).length;
+    if (oversized) $('[data-import-selected]').insertAdjacentHTML('beforeend', `<p class="mail-import-preflight">${esc(mailaiTemplate`有 ${oversized} 个文件超过当前上限，将跳过并保留重试记录。`)}</p>`);
     paint();
   }
   async function listHistory(version = generation) {
@@ -38438,6 +38574,7 @@ function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, o
   dialog.addEventListener('cancel', event=>{event.preventDefault();close();});
   $('#mail-import-account').onchange = () => { accountId = $('#mail-import-account').value; generation++; paint(); listHistory(); };
   $('#mail-import-label').oninput = () => { $('[data-import-error]').textContent = labelError(); paint(); };
+  $('[data-import-large]').onchange = () => { if (!busy() && !job) selected(); };
   $('[data-import-files]').onclick = () => $('#mail-import-files').click();
   $('[data-import-folder]').onclick = () => $('#mail-import-folder').click();
   for (const selector of ['#mail-import-files','#mail-import-folder']) $(selector).onchange=event=>{if (busy() || (job && !canResumeUpload())) return; files=Array.from(event.target.files || []); uploadCursor = 0; failedUpload = null; selected();};
@@ -38445,7 +38582,7 @@ function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, o
     const n = event.target.closest('[data-import-job]'); if (!n || busy()) return;
     const version = ++generation; inFlight = true; paint();
     try { const result = await request('/' + n.dataset.importJob); if (version !== generation) return;
-      job = result; files = []; uploadCursor = 0; failedUpload = null; renderedSamples = renderedIssues = renderedFolders = ''; $('#mail-import-label').value = job.label;
+      job = result; files = sessionFiles.get(accountId + ':' + job.token) || []; uploadCursor = 0; failedUpload = null; renderedSamples = renderedIssues = renderedFolders = ''; $('#mail-import-label').value = job.label;
     } catch (error) { $('[data-import-error]').textContent = mailaiSystemMessage(error.message); }
     finally { inFlight = false; paint(); poll(); }
   };
@@ -38507,6 +38644,22 @@ function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, o
     }
     if (resume && version === generation) $('[data-import-action]').click();
   };
+  $('[data-import-retry-files]').onclick = async () => {
+    if (busy() || !job || !files.length) return;
+    inFlight = true; paint();
+    try {
+      const names = new Set(await request('/' + job.token + '/retry-files'));
+      const retryFiles = files.filter(file => names.has(fileName(file)));
+      if (!retryFiles.length) throw new Error(mailaiText('请重新选择问题清单中的文件，已有邮件会自动去重。'));
+      // Keep the original batch and report in history; retry only these Files.
+      files = retryFiles; job = null; uploadCursor = 0; failedUpload = null;
+      renderedSamples = renderedIssues = renderedFolders = '';
+      $('[data-import-error]').textContent = '';
+      $('[data-import-large]').checked = files.some(file => /\.eml$/i.test(file.name) && file.size > 64 * 1024**2 && file.size <= 256 * 1024**2);
+      selected();
+    } catch (error) { $('[data-import-error]').textContent = transferError(error); }
+    finally { inFlight = false; paint(); }
+  };
   $('[data-import-action]').onclick = async () => {
     if (busy() || $('[data-import-action]').disabled) return;
     $('[data-import-error]').textContent = '';
@@ -38518,13 +38671,23 @@ function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, o
         const target = accountId; inFlight = false; await close(); hideSystemView(true); await openAccountMailbox(target, 'local_archive'); return;
       }
       if (!job) {
-        job = await request('', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({label:$('#mail-import-label').value.trim(),expected_files:files.length})});
-        uploadCursor = 0; failedUpload = null;
+        job = await request('', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({label:$('#mail-import-label').value.trim(),expected_files:files.length,large_messages:$('[data-import-large]').checked})});
+        uploadCursor = 0; failedUpload = null; rememberFiles();
       }
       if (canResumeUpload() && files.length && uploadCursor < files.length) {
         uploading = true; controller = new AbortController(); paint();
         for (let i=uploadCursor; i<files.length; i++) {
           const file = files[i];
+          const limit = /\.eml$/i.test(file.name) ? (job.large_messages ? 256 : 64) * 1024**2 : 1024**3;
+          const remaining = 10 * 1024**3 - job.bytes;
+          // Preflight avoids transferring oversized files just to reject them.
+          // Saved ordinals must still be replayed/verified by the server.
+          if (i >= job.files && (file.size > limit || file.size > remaining)) {
+            const reason = file.size > limit ? mailaiCopySource(mailaiTemplate`文件大小 ${formatFileSize(file.size)}，超过当前 ${formatFileSize(limit)} 限制`) : mailaiCopySource(mailaiText('本批累计超过 10 GB，已留待下一批导入'));
+            job = await request('/' + job.token + '/skip-file', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({index:i,name:fileName(file),reason}),signal:controller.signal});
+            uploadCursor = i + 1; job.processed = uploadCursor; paint();
+            continue;
+          }
           // Stable ordinals make retries safe even if the server saved a file
           // but its response never reached this browser.
           for (let attempt=0; ; attempt++) {

@@ -79,6 +79,13 @@ const port=Number(process.env.MAILAI_EVOLUTION_FIXTURE_PORT||18857);
   await page.locator('[data-pet-tab="today"]').click();
   await page.locator('.pet-journal-body').evaluate(n=>n.scrollTop=0);await page.waitForTimeout(300);
   fs.mkdirSync('output/xiaoyou-evolution',{recursive:true});
+  await page.bringToFront();
+  await page.evaluate(()=>document.body.classList.remove('companion-still'));
+  await hero.scrollIntoViewIfNeeded();
+  await page.waitForFunction(()=>document.querySelector('.pet-hero-portrait .mail-companion').dataset.rewardVisible==='true');
+  // The reward and rig observers publish independently after tab scrolling.
+  // Wait for the explicit reaction to start before synchronously sampling joints.
+  await page.waitForFunction(()=>mailaiCompanionMotion.react('greet',document.querySelector('.pet-hero-portrait')));
   // Check actual world-space joints through gestures and interruptions, rather
   // than merely comparing two independent CSS animation declarations.
   for(const style of ['nature','ranger']) {
@@ -92,7 +99,7 @@ const port=Number(process.env.MAILAI_EVOLUTION_FIXTURE_PORT||18857);
     const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
     const errors=[];
     for(const clip of ['greet','dispatch','deliver','step','stretch','happy','glide','star','guard','beacon','think','bow','swim','phoenix','kunpeng']) {
-     if(!mailaiCompanionMotion.react(clip,svg.parentElement)) {errors.push(`${clip}: did not play`);continue;}
+     if(!mailaiCompanionMotion.react(clip,svg.parentElement)) {errors.push(`${clip}: did not play (${document.body.className}; ${JSON.stringify(svg.dataset)})`);continue;}
      for(const phase of [0,.12,.3,.5,.72,.96]) {
       for(const a of svg.getAnimations({subtree:true})) {
        if(a instanceof CSSAnimation || a instanceof CSSTransition)continue;

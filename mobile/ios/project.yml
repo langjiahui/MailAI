@@ -1,0 +1,74 @@
+name: MailAI
+options:
+  bundleIdPrefix: com.mailai
+  deploymentTarget:
+    iOS: '18.0'
+packages:
+  MailAICore:
+    path: .
+  SwiftMail:
+    url: https://github.com/Cocoanetics/SwiftMail
+    revision: 88c45cbd31b347b373f7c87e197be63eb95efbc2
+  SwiftLog:
+    url: https://github.com/apple/swift-log.git
+    from: 1.11.0
+settings:
+  base:
+    SWIFT_VERSION: '5.0'
+    MARKETING_VERSION: '1.0.0'
+    CURRENT_PROJECT_VERSION: '1'
+    DEVELOPMENT_LANGUAGE: zh-Hans
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+targets:
+  MailAI:
+    type: application
+    platform: iOS
+    sources: [App, Resources]
+    dependencies:
+      - package: MailAICore
+      - package: SwiftMail
+      - package: SwiftLog
+        product: Logging
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.mailai.ios
+        TARGETED_DEVICE_FAMILY: '1,2'
+        SUPPORTS_MACCATALYST: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: MailAI
+        INFOPLIST_KEY_NSHumanReadableCopyright: Copyright © MailAI contributors
+        INFOPLIST_KEY_NSLocalNetworkUsageDescription: 仅在连接你填写的内网邮箱服务器时访问本地网络。
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+  MailAIUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: MailAI
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.mailai.ios.uitests
+        GENERATE_INFOPLIST_FILE: YES
+  MailAITransportTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [TransportTests]
+    dependencies:
+      - target: MailAI
+      - package: MailAICore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.mailai.ios.transporttests
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  MailAI:
+    build:
+      targets:
+        MailAI: all
+    test:
+      targets: [MailAIUITests, MailAITransportTests]

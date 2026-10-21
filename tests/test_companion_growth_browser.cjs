@@ -34,6 +34,13 @@ const {chromium} = require('playwright');
     assert.match(await dialog.locator('.pet-milestone').textContent(),/新解锁/);
     await dialog.locator('[data-pet-buy="sparkles"]').click();
     await page.waitForFunction(()=>document.body.dataset.petEffect === 'sparkles');
+    // Equipped effects rest between finite interactions; only a visible reaction
+    // should start their clocks. Background launchers stay quiet behind a dialog.
+    await dialog.locator('.pet-hero').scrollIntoViewIfNeeded();
+    await page.waitForFunction(()=>document.querySelector('.pet-hero .mail-companion').dataset.rewardVisible==='true');
+    await page.waitForFunction(()=>document.querySelector('.pet-hero .mail-companion').dataset.motionActive==='false',null,{timeout:4000});
+    assert.equal(await dialog.locator('.pet-hero .pet-star').first().evaluate(n=>getComputedStyle(n).animationName),'none');
+    assert(await page.evaluate(()=>mailaiCompanionMotion.react('star',document.querySelector('.pet-hero-portrait'))));
     assert.equal(await dialog.locator('.pet-hero .pet-star').first().evaluate(n=>getComputedStyle(n).animationName),'pet-starlight');
     await page.emulateMedia({reducedMotion:'reduce'});
     await page.waitForFunction(()=>{const star=document.querySelector('.pet-hero .pet-star');return star && getComputedStyle(star).animationName==='none';});

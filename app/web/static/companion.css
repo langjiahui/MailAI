@@ -24,15 +24,18 @@ html[data-theme="dark"] .compose-edge-tools .compose-ai-main.compose-perch .comp
   position:relative; display:block; grid-row:1 / -1; width:64px; height:48px;
   align-self:end; margin-top:-8px; border-bottom:2px solid #71a68e;
 }
-.compose-perch-art .mail-companion { overflow:visible; transform-origin:50% 100%; animation:perch-peek 6s ease-in-out infinite; }
+.compose-perch-art .mail-companion { overflow:visible; transform-origin:50% 100%; animation:none; }
 .compose-perch-art .mail-companion :is(.companion-foot-left,.companion-foot-right,.companion-tail) { display:none; }
 .compose-perch-art .companion-bag,.compose-perch-art .companion-shadow,
 .compose-perch-art .companion-arm-left,.compose-perch-art .companion-wave { display:none; }
 .perch-paw { position:absolute; bottom:-4px; width:13px; height:9px; background:#b5ddc5; border:1.5px solid #649f80; border-radius:6px; box-shadow:0 2px 2px #254b3a18; }
 .perch-paw-left { left:10px; } .perch-paw-right { right:10px; }
+.compose-edge-tools .perch-paw { width:11px; height:7px; border-radius:50%; }
+.compose-edge-tools .perch-paw-left { left:17px; }
+.compose-edge-tools .perch-paw-right { right:17px; }
 .compose-ai-tools .compose-perch:hover,.compose-ai-tools .compose-perch.active { background:#dcefe4; color:#245a43; border-color:#498468; box-shadow:0 4px 14px #254b3a16; }
 .compose-ai-tools .compose-perch:hover small,.compose-ai-tools .compose-perch.active small { color:#46765f; }
-.compose-perch:hover .mail-companion,.compose-perch:focus-visible .mail-companion { animation:none; transform:translateY(-2px) rotate(-4deg); }
+.compose-perch:hover .mail-companion,.compose-perch:focus-visible .mail-companion { animation:none; transform:none; }
 .compose-perch:active .mail-companion { transform:translateY(1px) scale(.96); }
 .compose-perch:focus-visible { outline:2px solid #438e6d; outline-offset:3px; }
 .compose-perch.active .companion-eyes { display:none; }

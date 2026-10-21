@@ -1,5 +1,25 @@
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "mailImport.preflight": ["有 {0} 个文件超过当前上限，将跳过并保留重试记录。", "{0} files exceed the current limit. They will be skipped and recorded for retry."],
+  "mailImport.largeMode": ["大邮件模式（单封最多 256 MB）", "Large-message mode (up to 256 MB each)"],
+  "mailImport.limitNote": ["默认单封 64 MB。超限文件会自动跳过，其他文件继续；大邮件的附件分块处理，原件完整保留。", "The default is 64 MB per message. Oversized files are skipped while others continue. Large attachments are processed in chunks; originals are preserved."],
+  "mailImport.retryFiles": ["仅重试问题文件", "Retry problem files only"],
+  "mailImport.autoSkip": ["超限文件会自动跳过，不影响其他邮件。完成后可仅重试问题文件。", "Oversized files are skipped without blocking other mail. Retry only problem files after finishing."],
+  "mailImport.fileLimit": ["文件大小 {0}，超过当前 {1} 限制", "File size {0} exceeds the current {1} limit"],
+  "mailImport.batchFull": ["本批累计超过 10 GB，已留待下一批导入", "This batch exceeds 10 GB. File reserved for a later batch."],
+  "mailImport.reselectProblems": ["请重新选择问题清单中的文件，已有邮件会自动去重。", "Select files from the issue report again. Existing messages will be deduplicated."],
+  "mailImport.waitRetry": ["请先等待扫描或导入完成，再重试问题文件", "Wait for scanning or importing to finish before retrying problem files"],
+  "mailImport.messageLimit": ["邮件大小 {1} MB，超过当前 {3} MB 限制", "Message size {1} MB exceeds the current {3} MB limit"],
+  "mailImport.messageLimitAtLeast": ["邮件大小至少 {1} MB，超过当前 {3} MB 限制", "Message size is at least {1} MB, exceeding the current {3} MB limit"],
+  "mailImport.largeLimit": ["单封邮件超过 256 MB，请单独处理此邮件", "This message exceeds 256 MB. Handle it separately."],
+  "mailImport.mimeDepth": ["邮件 MIME 层级或分段过多，请单独检查此邮件", "This message has too many MIME levels or parts. Check it separately."],
+  "mailImport.mimeHeader": ["邮件头过大或不完整，请重新导出此邮件", "The mail headers are too large or incomplete. Export this message again."],
+  "mailImport.mimeBudget": ["邮件头和正文超过 8 MB，请单独检查此邮件", "Headers and body exceed 8 MB. Check this message separately."],
+  "mailImport.mimeBoundary": ["邮件 MIME 边界无效，请重新导出此邮件", "Invalid MIME boundary. Export this message again."],
+  "mailImport.mimeIncomplete": ["邮件 MIME 内容不完整，请重新导出此邮件", "Incomplete MIME content. Export this message again."],
+  "mailImport.mimeText": ["邮件正文或嵌套邮件超过 8 MB，请单独导出嵌套邮件后重试", "The body or embedded mail exceeds 8 MB. Export embedded messages separately and retry."],
+  "mailImport.mimeEncoding": ["大邮件附件编码不受支持，请重新导出为标准 EML", "Unsupported encoding in a large attachment. Export as standard EML again."],
+
   "mailImport.adviceMissing": ["请确认源文件仍在原位置且可读取，云盘文件需先下载到本机。若暂存文件已丢失，请重新选择原文件建立新批次；已导入邮件会自动去重。", "Make sure source files are still in their original location and readable. Download cloud files first. If staged files are missing, select the originals in a new batch; existing messages will be deduplicated."],
   "mailImport.fileMissing": ["找不到源文件或暂存文件，可能已移动或被清理", "The source or staged file was not found. It may have been moved or removed."],
   "mailImport.filePermission": ["没有读取文件或写入暂存目录的权限", "Permission denied when reading the file or writing to temporary storage."],
@@ -15,7 +35,7 @@ const MAILAI_UI_COPY = {
   "mailImport.skippedReason": ["已单独跳过此文件，可修复后另行导入", "This file was skipped. You can repair it and import it separately."],
   "mailImport.skippedReasonDetail": ["已单独跳过此文件，可修复后另行导入：{0}", "This file was skipped. Repair it and import it separately: {0}"],
   "mailImport.adviceLabel": ["处理建议：", "Suggested action: "],
-  "mailImport.advice0": ["单封邮件需小于等于 64 MB，MBOX 需小于等于 1 GB，每批不超过 10 GB。请在原客户端分批导出；单封超大邮件可保留原件后，另存较小副本再导入。", "Each message must be at most 64 MB, each MBOX at most 1 GB, and each batch at most 10 GB. Export smaller batches from the original client. For a large individual message, keep the original and export a smaller copy."],
+  "mailImport.advice0": ["64–256 MB 的邮件可开启大邮件模式后单独重试。单个 MBOX 最多 1 GB，每批最多 10 GB；超出时请分批导出。超过 256 MB 的单封邮件请保留原件，另存较小副本后导入。", "For 64–256 MB messages, enable large-message mode and retry them separately. Each MBOX may be up to 1 GB and each batch up to 10 GB; split larger exports. For messages over 256 MB, keep the original and import a smaller copy."],
   "mailImport.advice1": ["此文件没有邮件内容。请在原客户端打开邮件，下载完整正文和附件后重新导出；确认文件大小不为 0，再单独导入。", "This file has no mail content. Open the message in the original client, download its full body and attachments, and export it again. Check that the file is not empty before importing it separately."],
   "mailImport.advice2": ["请检查 MailAI 数据目录所在磁盘的剩余空间和写入权限，并确认源文件可读取。处理后重试；已成功导入的邮件会保留。", "Check free space and write permissions on the disk containing MailAI data, and make sure the source file is readable. Retry after resolving the issue. Successfully imported mail will be kept."],
   "mailImport.advice3": ["请确认 MailAI 服务仍在运行，源文件未被移动或删除；云盘文件需先下载到本机。可点击继续添加重试，仍失败时先跳过，稍后单独导入。", "Make sure the MailAI service is running and source files have not been moved or deleted. Download cloud files to this device first. Retry with Continue adding, or skip the file and import it separately later."],
@@ -9666,8 +9686,8 @@ const MAILAI_UI_COPY = {
     "Choose export directory"
   ],
   "ui.df468f0acffe": [
-    "单个文件最多 1 GB；单封邮件最多 64 MB；每批最多 10 GB。",
-    "Up to 1 GB per file, 64 MB per email, and 10 GB per batch."
+    "单个文件最多 1 GB；默认单封邮件最多 64 MB；每批最多 10 GB。",
+    "Up to 1 GB per file, 64 MB per email by default, and 10 GB per batch."
   ],
   "ui.5b676bd12914": [
     "导入进度",
@@ -14270,9 +14290,12 @@ const MAILAI_UI_COPY = {
     "Remove effect"
   ],
   "pet.wearing": [
-    "正在穿戴",
+    "已穿戴",
     "Equipped"
   ],
+  "pet.remove": ["卸下", "Remove"],
+  "pet.equipping": ["穿戴中…", "Equipping…"],
+  "pet.removing": ["卸下中…", "Removing…"],
   "pet.wear": [
     "穿戴",
     "Equip"
@@ -16757,7 +16780,7 @@ const MAILAI_I18N_CHINESE = {
   "ui.737c928009f0": "可以一次选择多封邮件，也可以选择整个导出目录。",
   "ui.bfe1dea0b951": "选择邮件文件",
   "ui.046b6f007bf0": "选择导出目录",
-  "ui.df468f0acffe": "单个文件最多 1 GB；单封邮件最多 64 MB；每批最多 10 GB。",
+  "ui.df468f0acffe": "单个文件最多 1 GB；默认单封邮件最多 64 MB；每批最多 10 GB。",
   "ui.5b676bd12914": "导入进度",
   "ui.36689263737d": "识别邮件",
   "ui.b2d9abb23920": "待新增",

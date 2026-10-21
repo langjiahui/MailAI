@@ -48,7 +48,9 @@ require('node:fs').mkdirSync('output/xiaoyou-upgrade',{recursive:true});
     const pose=()=>hero.locator('.companion-figure').evaluate(el=>getComputedStyle(el).transform);
     const first=await pose();await page.waitForTimeout(450);assert.notEqual(await pose(),first,'Signature really moves');
     assert.equal(await hero.locator('.companion-grin').evaluate(el=>getComputedStyle(el).display),'block');
-    await page.waitForTimeout(1900);
+    // Deliver lasts 2200ms, followed by a bounded 445ms landing. Wait for the
+    // observable idle state rather than asserting during that new landing.
+    await page.waitForFunction(()=>document.querySelector('.pet-hero-portrait .mail-companion').dataset.motionActive==='false',null,{timeout:3000});
     assert.equal(await hero.getAttribute('data-motion-active'),'false','Signature finishes and releases the rig');
     assert.equal(await page.evaluate(()=>audioContexts.length),0,'No audio device is opened by default');
     const after=await page.evaluate(()=>api('/api/companion/growth'));

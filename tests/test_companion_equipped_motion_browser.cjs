@@ -99,6 +99,63 @@ async function checkMotion(page, hosts, part, context) {
       assert(saved.items.find(reward=>reward.id===item).owned);
       assert.equal(saved.stamps,before.stamps-cost,'Purchase deducts the displayed cost once');
     }
+    // Equipped is a completed state; the same card must remain usable to remove it.
+    const outfitAction=id=>page.locator(`.pet-shop [data-pet-item-action="${id}"]`);
+    const outfitStatus=id=>page.locator(`[data-pet-item="${id}"] .pet-equipped-status`);
+    for(const id of ['mech_wings','lightning','midnight']) {
+      assert.equal(await outfitAction(id).textContent(),'卸下');
+      assert(await outfitAction(id).isEnabled());
+      assert.equal(await outfitStatus(id).textContent(),'✓ 已穿戴');
+    }
+    let releaseEquip, equipCalls=0;
+    const heldEquip=new Promise(resolve=>{releaseEquip=resolve;});
+    await page.route('**/api/companion/equip',async route=>{equipCalls++;await heldEquip;await route.continue();});
+    await outfitAction('lightning').click();
+    await page.waitForFunction(()=>document.querySelector('[data-pet-item-action="lightning"]')?.getAttribute('aria-busy')==='true');
+    assert.equal(await outfitAction('lightning').textContent(),'卸下中…');
+    assert(await outfitAction('mech_wings').isDisabled(),'Other mutations pause only while a request is pending');
+    await page.evaluate(()=>document.querySelector('[data-pet-item-action="lightning"]').dispatchEvent(new MouseEvent('click',{bubbles:true})));
+    await page.evaluate(()=>setI18nLanguage('en'));
+    assert.equal(await outfitAction('lightning').textContent(),'Removing…');
+    releaseEquip();
+    await page.waitForFunction(()=>document.body.dataset.petEffect==='none' && !document.querySelector('[data-pet-item-action="lightning"]')?.disabled);
+    assert.equal(equipCalls,1,'Repeated activation cannot submit twice');
+    await page.unroute('**/api/companion/equip');
+    assert.equal(await outfitAction('lightning').textContent(),'Equip');
+    assert.equal(await outfitStatus('lightning').count(),0);
+    assert.equal(await page.locator('.pet-shop [aria-busy="true"]').count(),0);
+    assert.equal(await page.evaluate(()=>document.body.dataset.petAccessory),'mech_wings','Removing effects preserves accessories');
+    await page.route('**/api/companion/equip',r=>r.fulfill({status:500,json:{detail:'Fixture equip failure'}}));
+    await outfitAction('lightning').click();
+    await page.waitForFunction(()=>document.querySelector('[data-pet-message]')?.classList.contains('is-error') && !document.querySelector('[data-pet-item-action="lightning"]')?.disabled);
+    assert.equal(await page.evaluate(()=>document.body.dataset.petEffect),'none');
+    assert.equal(await outfitAction('lightning').getAttribute('aria-busy'),null);
+    await page.unroute('**/api/companion/equip');
+    await outfitAction('lightning').click();
+    await page.waitForFunction(()=>document.body.dataset.petEffect==='lightning' && !document.querySelector('[data-pet-item-action="lightning"]')?.disabled);
+    assert.equal(await outfitStatus('lightning').textContent(),'✓ Equipped');
+    for(const [slot,id,fallback] of [['accessory','mech_wings','none'],['effect','lightning','none'],['palette','midnight','mint']]) {
+      await outfitAction(id).focus();await page.keyboard.press('Enter');
+      await page.waitForFunction(({slot,fallback,id})=>document.body.dataset[`pet${slot[0].toUpperCase()+slot.slice(1)}`]===fallback && !document.querySelector(`[data-pet-item-action="${id}"]`)?.disabled,{slot,fallback,id});
+      assert.equal(await outfitAction(id).textContent(),'Equip');
+      await page.keyboard.press('Enter');
+      await page.waitForFunction(({slot,id})=>document.body.dataset[`pet${slot[0].toUpperCase()+slot.slice(1)}`]===id && !document.querySelector(`[data-pet-item-action="${id}"]`)?.disabled,{slot,id});
+      assert.equal(await outfitAction(id).textContent(),'Remove');
+    }
+    for(const language of ['zh-CN','en']) for(const theme of ['', 'theme_monochrome','theme_baowu']) for(const mode of ['light','dark']) for(const width of [390,1440]) {
+      await page.setViewportSize({width,height:1000});
+      await page.evaluate(({language,theme,mode})=>{
+        setI18nLanguage(language);applyTheme(mode);
+        if(theme)document.documentElement.dataset.rewardTheme=theme;else delete document.documentElement.dataset.rewardTheme;
+      },{language,theme,mode});
+      assert.equal(await outfitStatus('lightning').textContent(),language==='en'?'✓ Equipped':'✓ 已穿戴');
+      assert.equal(await outfitAction('lightning').textContent(),language==='en'?'Remove':'卸下');
+      const clipped=await page.locator('.pet-shop [data-pet-item-action]').evaluateAll(nodes=>nodes.filter(n=>n.scrollWidth>n.clientWidth+1 || n.getBoundingClientRect().right>innerWidth+1).map(n=>n.dataset.petItemAction));
+      assert.deepEqual(clipped,[],JSON.stringify({language,theme,mode,width,clipped}));
+    }
+    await page.evaluate(()=>{setI18nLanguage('zh-CN');applyTheme('dark');});
+    await page.locator('[data-pet-item="lightning"]').screenshot({path:`/tmp/mailai-outfit-state-${process.env.MAILAI_BROWSER||'chromium'}.png`});
+    assert.equal((await page.evaluate(()=>api('/api/companion/growth'))).stamps,before.stamps-cost,'Wearing and removing never spend stamps');
     await page.keyboard.press('Escape');
     await page.reload();
     await page.locator('#app-preloader').waitFor({state:'detached'});
@@ -147,7 +204,7 @@ async function checkMotion(page, hosts, part, context) {
     await page.waitForFunction(()=>document.querySelector('#compose-ai-panel .mail-companion').dataset.rewardVisible==='false');
     assert.equal(await page.locator('#compose-ai-panel .pet-orbit-stream').first().evaluate(n=>getComputedStyle(n).animationPlayState),'paused');
     assert.deepEqual(errors,[]);
-    console.log('Equipped rewards: 15 real purchases, correct costs, reload persistence, both routes, 90 running animations across floating/chat/writing avatars, unwear and hidden pause passed');
+    console.log('Equipped rewards: 15 real purchases, correct costs, reload persistence, both routes, 90 running animations across floating/chat/writing avatars, equipped labels, card removal, pending states, duplicate protection, failure retry, keyboard, 24 localized layouts, unwear and hidden pause passed');
   } finally {
     if(browser)await browser.close();
     const stopped=once(fixture,'exit');fixture.kill('SIGTERM');

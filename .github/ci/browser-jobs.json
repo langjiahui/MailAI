@@ -67,7 +67,8 @@
     "suite": [
       "xiaoyou-anatomy",
       "xiaoyou-wardrobe",
-      "xiaoyou-life"
+      "xiaoyou-life",
+      "xiaoyou-rest"
     ]
   }
 }

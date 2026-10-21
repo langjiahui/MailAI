@@ -209,13 +209,13 @@ def test_invalid_inputs_and_forwarded_identity():
         assert result['state'] == 'ready' and result['new'] == result['failed'] == 1
         # A partial raw write cannot leave a row or an orphan .eml.
         failure = imp.create()['token']; raw = message('failed-write'); upload(failure,'fail.eml',raw); scan(failure)
-        original_write = Path.write_bytes
-        def bad_write(path,data):
+        original_copy = imp.shutil.copyfile
+        def bad_copy(source,path):
             if path.parent.name == 'client-import':
-                original_write(path,b'partial'); raise OSError('disk full')
-            return original_write(path,data)
+                path.write_bytes(b'partial'); raise OSError('disk full')
+            return original_copy(source,path)
         before = count()
-        with patch.object(Path,'write_bytes',bad_write): assert apply(failure)['state'] == 'failed'
+        with patch.object(imp.shutil,'copyfile',bad_copy): assert apply(failure)['state'] == 'failed'
         assert count() == before
         with db.conn() as c: referenced = {r[0] for r in c.execute("SELECT raw_path FROM emails WHERE raw_path != ''")}
         assert {str(p) for p in Path(config.RAW_DIR,'client-import').glob('*.eml')} == referenced
@@ -427,6 +427,66 @@ def test_skip_failed_sources_and_guidance():
         assert '找不到' in issue['reason'] and '新批次' in issue['advice']
 
 
+def test_large_message_projection_and_retry():
+    from app.mail_import_mime import project
+    from app.web.routes.mail_import import api_mail_import_upload
+    import base64
+    import quopri
+    payload = bytes(range(256)) * 4096
+    for encoding, encoded in [('base64', base64.encodebytes(payload)),
+                              ('quoted-printable', quopri.encodestring(payload)), ('binary', payload)]:
+        raw = (b'From: old@example.test\r\nTo: work@example.test\r\nSubject: Large mail\r\n'
+               b'Message-ID: <large-' + encoding.encode() + b'>\r\nMIME-Version: 1.0\r\n'
+               b'Content-Type: multipart/mixed; boundary="large-test"\r\n\r\n'
+               b'--large-test\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nHello\r\n'
+               b'--large-test\r\nContent-Type: application/octet-stream\r\n'
+               b'Content-Disposition: attachment; filename="original.bin"\r\n'
+               b'Content-Transfer-Encoding: ' + encoding.encode() + b'\r\n\r\n' + encoded +
+               b'\r\n--large-test--\r\n')
+        expected = imp.signature(raw)
+        with fixture() as (root, account), account('work'):
+            source = root / 'large.eml'; source.write_bytes(raw)
+            projected, replacements, _ = project(source)
+            assert len(projected) < 2048 and len(replacements) == 1
+            assert next(iter(replacements.values()))['size'] == len(payload)
+            with patch.object(imp, 'MAX_MESSAGE_SIZE', 2048):
+                assert imp.signature(source) == expected, 'Streaming fingerprints must match ordinary parsing'
+                parsed = imp._parse_exported(source)
+                assert parsed['attachments'][0]['size'] == len(payload)
+                assert parsed['body_text'].strip() == 'Hello'
+                normal = imp.create(expected_files=2)['token']
+                upload(normal, 'large.eml', raw)
+                upload(normal, 'healthy.eml', message('healthy-large-neighbor', attachment=False))
+                review = scan(normal)
+                assert review['failed'] == review['new'] == 1, review
+                assert '超过当前' in review['errors'][0]['reason']
+                assert apply(normal)['imported'] == 1
+                assert imp.retry_files(normal) == ['large.eml']
+                large = imp.create(expected_files=1, large_messages=True)['token']
+                class Request:
+                    async def stream(self):
+                        for i in range(0,len(raw),65536): yield raw[i:i+65536]
+                asyncio.run(api_mail_import_upload(large, Request(), 'large.eml', 0))
+                assert scan(large)['new'] == 1
+                result = apply(large)
+                assert result['state'] == 'completed' and result['imported'] == 1, result
+                with db.conn() as c:
+                    saved = c.execute('SELECT raw_path,attachments FROM emails WHERE message_id=?', (expected[2],)).fetchone()
+                assert Path(saved['raw_path']).read_bytes() == raw, 'Original MIME must remain byte exact'
+                assert parser.extract_attachment(saved['raw_path'],0)['payload'] == payload
+                again = imp.create(large_messages=True)['token']; upload(again,'again.eml',raw)
+                assert scan(again)['duplicates'] == 1
+            with patch('app.mail_import_mime.TEXT_BUDGET', 20):
+                raises(project, source)
+            text = root / 'text-budget.eml'
+            content = b'Content-Type: text/plain\r\n\r\nText body'
+            text.write_bytes(content)
+            with patch('app.mail_import_mime.TEXT_BUDGET', len(content)):
+                assert project(text)[0] == content, 'Headers count once against the text budget'
+            with patch('app.mail_import_mime.TEXT_BUDGET', len(content) - 1):
+                raises(project, text)
+
+
 if __name__ == '__main__':
     # mailbox.add(bytes) replaces LF with os.linesep without stripping CR.
     # Use streams for valid exports and exercise Windows CRLF on every runner.
@@ -440,4 +500,5 @@ if __name__ == '__main__':
     test_upload_receipts_and_resume()
     test_skip_failed_sources_and_guidance()
     test_local_inbox_organizing_without_server()
+    test_large_message_projection_and_retry()
     print('Client mail import: MIME/attachments, dedup, account isolation, pause/retry, concurrent sync and invalid inputs passed')

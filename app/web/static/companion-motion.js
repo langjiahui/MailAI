@@ -257,7 +257,7 @@
     const choices=items.filter(name=>name!==last);
     return choices[Math.floor(Math.random()*choices.length)];
   };
-  const stop = rig => {
+  const stop = (rig,rest=false) => {
     // Preserve continuous turn progress on interruption, including a partly
     // occluded tail and a face already looking toward the next direction.
     for(const part of ['heading','look']) {
@@ -265,24 +265,77 @@
       node.style.transform=value;
     }
     clearTimeout(rig.timer);
+    rig.finite=false;rig.settling=false;
     rig.animations.forEach(anim=>anim.cancel()); rig.animations=[];
+    if(rest) for(const part of ['heading','look']) rig.parts[part].style.removeProperty('transform');
     delete rig.svg.dataset.motionKind;
     delete rig.svg.dataset.motionClip;
     delete rig.svg.dataset.expression;
     if (rig.svg.dataset.motionActive !== 'false') rig.svg.dataset.motionActive = 'false';
   };
   const transform = p => `translate(${p[0]}px,${p[1]}px) rotate(${p[2]}deg) scale(${p[3]},${p[4]})`;
+  const motionKeys = new Map();
+  // Match velocity across poses without overshooting a shoulder or grip limit.
+  // These bounded samples are cached; the browser still drives every frame.
+  const fluidKeys = (keys,duration) => {
+    const spans=keys.slice(1).map((key,i)=>key.offset-keys[i].offset);
+    const slopes=neutral.map((_,axis)=>{
+      const speeds=spans.map((span,i)=>(keys[i+1].value[axis]-keys[i].value[axis])/span);
+      return keys.map((_,i)=>{
+        if(i===0 || i===keys.length-1 || speeds[i-1]*speeds[i]<=0)return 0;
+        const a=2*spans[i]+spans[i-1], b=spans[i]+2*spans[i-1];
+        return (a+b)/(a/speeds[i-1]+b/speeds[i]);
+      });
+    });
+    const count=Math.ceil(duration/30);
+    const offsets=[...new Set([...keys.map(key=>key.offset),...Array.from({length:count+1},(_,i)=>i/count)])].sort((a,b)=>a-b);
+    let segment=0;
+    return offsets.map(offset=>{
+      while(segment<keys.length-2 && offset>keys[segment+1].offset)segment++;
+      const h=spans[segment], t=(offset-keys[segment].offset)/h, t2=t*t, t3=t2*t;
+      const value=neutral.map((_,axis)=>(2*t3-3*t2+1)*keys[segment].value[axis]+
+        (t3-2*t2+t)*h*slopes[axis][segment]+(-2*t3+3*t2)*keys[segment+1].value[axis]+
+        (t3-t2)*h*slopes[axis][segment+1]);
+      return {offset,transform:transform(value.map(n=>Math.round(n*1e6)/1e6)),easing:'linear'};
+    });
+  };
+  // A visible reaction has a landing, not a hard cancel. All body parts share
+  // one bounded release; the holding wing and letter remain on their carry rig.
+  const settle = rig => {
+    const priority=['peek','happy'].includes(rig.mode) ? rig.mode : 'off';
+    const outfit=[...rig.svg.querySelectorAll('.pet-reward-motion')].filter(node=>node.getClientRects().length);
+    const parts=[...new Set([...Object.values(rig.parts),rig.svg.querySelector('.companion-eyes'),...outfit])].filter(Boolean);
+    const poseOf=node=>{const css=getComputedStyle(node);return {transform:css.transform,opacity:css.opacity};};
+    const starts=parts.map(poseOf);
+    const expression=rig.svg.dataset.expression;
+    // Outfit loops have their own clocks. Release them with the body instead
+    // of freezing a wing, scarf or effect at an arbitrary CSS animation frame.
+    rig.svg.dataset.outfitRest='true';
+    stop(rig,true);rig.mode='settling';rig.settling=true;
+    rig.svg.dataset.motionActive='true';rig.svg.dataset.motionKind='reaction';
+    rig.svg.dataset.motionClip='settle';
+    if(expression)rig.svg.dataset.expression=expression;
+    parts.forEach((node,index)=>{
+      const target=poseOf(node);
+      if(starts[index].transform===target.transform && starts[index].opacity===target.opacity)return;
+      rig.animations.push(node.animate([starts[index],target],
+        {duration:420,easing:'cubic-bezier(.22,.65,.3,1)',fill:'none'}));
+    });
+    rig.timer=setTimeout(()=>{stop(rig,true);rig.mode=priority;refresh();},445);
+  };
   const play = (rig,name) => {
     // A direct reaction may share a task with a style change; observe its new route now.
     rig.style=style();
     const start=Object.fromEntries(names.map(part=>[part,getComputedStyle(rig.parts[part]).transform]));
     stop(rig);
     if(!enabled() || !visible(rig)) return;
+    delete rig.svg.dataset.outfitRest;
     rig.svg.dataset.motionKind = rig.mode === 'ambient' ? 'ambient' : 'reaction';
     const clipName=profiles[style()].reactions[name] || name;
     rig.svg.dataset.motionClip = clipName;
     rig.svg.dataset.motionActive = 'true';
     const clip=clips[clipName];
+    rig.finite=name!=='work';
     const finStage=Math.max(1,Math.min(7,Number(rig.stage || document.body.dataset.petStage || 1)));
     rig.svg.dataset.expression = ['greet','salute','happy','victory','deliver','glide','star','bow','beacon','finWave','bubbleJoy','phoenix','kunpeng','soar'].includes(clipName) ? 'joy' : ['work','rangerWork','think','dispatch','guard'].includes(clipName) ? 'focus' : 'curious';
     for(const part of names) {
@@ -290,73 +343,96 @@
       if(['heading','look'].includes(part) && !clip.directional) continue;
       if(part.startsWith('flight-') && Number(rig.stage || document.body.dataset.petStage || 1)<4) continue;
       // Accessories lag the body's turn and rebound after it settles.
-      const keys=clip.frames.map(([offset,frame],index)=>{
-        let value=frame[part] || neutral;
-        if(part==='heading') value=pose(0,0,0,frame.heading,1);
-        if(part==='look') value=pose(-2.8*frame.look,0,0);
-        if(clip.directional && part==='shadow') value=pose((frame.figure?.[0] || 0)*.7,0,0,1,1);
-        // The round body stays rigid; only the face nods inside its silhouette.
-        if(['figure','torso','head'].includes(part)) {
-          value=[...value];
-          value[3]=value[4]=Math.sqrt(value[3]*value[4]);
-          if(part==='head') {
-            value[0]=Math.max(-1.5,Math.min(1.5,value[0]));
-            value[1]=Math.max(-1.5,Math.min(1.5,value[1]));
-            value[2]=Math.max(-4,Math.min(4,value[2]));
+      const cacheKey=`${clipName}:${rig.style}:${finStage}:${part}`;
+      let keys=motionKeys.get(cacheKey);
+      if(!keys) {
+        const poses=clip.frames.map(([offset,frame],index)=>{
+          let value=frame[part] || neutral;
+          if(part==='heading') value=pose(0,0,0,frame.heading,1);
+          if(part==='look') value=pose(-2.8*frame.look,0,0);
+          if(clip.directional && part==='shadow') value=pose((frame.figure?.[0] || 0)*.7,0,0,1,1);
+          // The round body stays rigid; only the face nods inside its silhouette.
+          if(['figure','torso','head'].includes(part)) {
+            value=[...value];
+            value[3]=value[4]=Math.sqrt(value[3]*value[4]);
+            if(part==='head') {
+              value[0]=Math.max(-1.5,Math.min(1.5,value[0]));
+              value[1]=Math.max(-1.5,Math.min(1.5,value[1]));
+              value[2]=Math.max(-4,Math.min(4,value[2]));
+            }
           }
-        }
-        // The free wing greets. The holding wing and letter are children of
-        // one shoulder rig, so interruption and settling cannot split the grip.
-        if(part==='arm-left' && !frame[part] && frame.wave) {
-          value=pose(0,frame.wave[1]*.35,Math.max(-28,Math.min(38,-frame.wave[2])));
-        }
-        if(part==='arm-left') {
-          // The free wing also pivots at its shoulder instead of sliding off it.
-          value=pose(0,0,Math.max(-28,Math.min(38,value[2])));
-          // Longer fins need a smaller stroke: the tip travels farther without
-          // making the shoulder jerk or pulling the front fin off the body.
-          if(rig.style==='ranger') value[2]*=1-(finStage-1)*.045;
-        }
-        if(part.startsWith('flight-') && rig.style==='ranger') {
-          const stroke=finStage===4 ? .62 : finStage===5 ? .78 : .9;
-          value=pose(0,0,value[2]*stroke);
-        }
-        if(part==='carry') {
-          // Never translate a shoulder away from the body. Small rotations lift
-          // the letter as a unit; the torso supplies travel, bounce and turns.
-          const angle=frame.bag ? frame.bag[2]*.45 : (frame.torso?.[2] || 0)*-.35;
-          value=pose(0,0,Math.max(-8,Math.min(5,angle)));
-        }
-        if((part==='leaves' || part==='tail') && !frame[part]) {
-          const previous=clip.frames[Math.max(0,index-1)][1];
-          const turn=(previous.figure?.[2] || 0)+(previous.torso?.[2] || 0);
-          value=index===clip.frames.length-1 ? neutral : pose(0,0,-turn*(part==='leaves' ? .35 : .8));
-        }
-        if(part==='tail' && rig.style==='ranger') {
-          // A continuous tailstock stays buried in the body as the flukes sway.
-          // Translation or large whole-tail swings would expose the root seam.
-          value=pose(0,0,Math.max(-10,Math.min(10,value[2])));
-        }
-        return {offset,transform:transform(value),easing:clip.directional?'linear':'cubic-bezier(.22,.65,.3,1)'};
-      });
+          // The free wing greets. The holding wing and letter are children of
+          // one shoulder rig, so interruption and settling cannot split the grip.
+          if(part==='arm-left' && !frame[part] && frame.wave) {
+            value=pose(0,frame.wave[1]*.35,Math.max(-28,Math.min(38,-frame.wave[2])));
+          }
+          if(part==='arm-left') {
+            // The free wing also pivots at its shoulder instead of sliding off it.
+            value=pose(0,0,Math.max(-28,Math.min(38,value[2])));
+            // Longer fins need a smaller stroke: the tip travels farther without
+            // making the shoulder jerk or pulling the front fin off the body.
+            if(rig.style==='ranger') value[2]*=1-(finStage-1)*.045;
+          }
+          if(part.startsWith('flight-') && rig.style==='ranger') {
+            const stroke=finStage===4 ? .62 : finStage===5 ? .78 : .9;
+            value=pose(0,0,value[2]*stroke);
+          }
+          if(part==='carry') {
+            // Never translate a shoulder away from the body. Small rotations lift
+            // the letter as a unit; the torso supplies travel, bounce and turns.
+            const angle=frame.bag ? frame.bag[2]*.45 : (frame.torso?.[2] || 0)*-.35;
+            value=pose(0,0,Math.max(-8,Math.min(5,angle)));
+          }
+          if((part==='leaves' || part==='tail') && !frame[part]) {
+            const previous=clip.frames[Math.max(0,index-1)][1];
+            const turn=(previous.figure?.[2] || 0)+(previous.torso?.[2] || 0);
+            value=index===clip.frames.length-1 ? neutral : pose(0,0,-turn*(part==='leaves' ? .35 : .8));
+          }
+          if(part==='tail' && rig.style==='ranger') {
+            // A continuous tailstock stays buried in the body as the flukes sway.
+            // Translation or large whole-tail swings would expose the root seam.
+            value=pose(0,0,Math.max(-10,Math.min(10,value[2])));
+          }
+          return {offset,value};
+        });
+        keys=clip.directional ? poses.map(({offset,value})=>({offset,transform:transform(value),easing:'linear'})) : fluidKeys(poses,clip.duration);
+        // Keep the shared cache small when trying many stages and outfits.
+        if(motionKeys.size>=96)motionKeys.delete(motionKeys.keys().next().value);
+        motionKeys.set(cacheKey,keys);
+      }
       // Leave stationary parts alone; retain interrupted parts until they settle.
       if((start[part]==='none' || start[part]==='matrix(1, 0, 0, 1, 0, 0)') &&
         keys.every(key=>key.transform===transform(neutral))) continue;
-      // Blend an interrupted pose into the first 240 ms; preserving only the
-      // first dense sample would produce a visible one-frame orientation snap.
-      if(clip.directional) {
+      // Each playback owns its keys: interrupted poses must not enter the cache.
+      keys=keys.map(key=>({...key}));
+      let entryKeys=null,entryDuration=0;
+      // Blend an interrupted pose through the first part of any clip; replacing
+      // only its first dense sample would cause a one-frame jump on interaction.
+      if(clip.directional || (start[part]!=='none' && start[part]!=='matrix(1, 0, 0, 1, 0, 0)')) {
         const initial=new DOMMatrixReadOnly(start[part]);
-        keys.forEach(key=>{
-          const amount=smooth(key.offset/.08);
+        let blendKeys=keys,blendEnd=.08;
+        if(name==='work') {
+          // Enter a work loop once. Baking an interrupted pose into its repeating
+          // keys would snap back to that pose at the start of every cycle.
+          const end=keys.findIndex(key=>key.offset>=.08);
+          blendKeys=keys.slice(0,end+1).map(key=>({...key}));
+          blendEnd=blendKeys.at(-1).offset;
+          entryDuration=blendEnd*clip.duration;
+          entryKeys=blendKeys;
+        }
+        blendKeys.forEach(key=>{
+          const amount=smooth(key.offset/blendEnd);
           if(amount>=1)return;
           const target=new DOMMatrixReadOnly(key.transform);
           key.transform=`matrix(${['a','b','c','d','e','f'].map(k=>initial[k]+(target[k]-initial[k])*amount).join(',')})`;
         });
+        if(entryKeys)entryKeys.forEach(key=>{key.offset/=blendEnd;});
       }
-      keys[0].transform=start[part];
+      if(name!=='work')keys[0].transform=start[part];
       // Save orientation at the end before releasing its browser animation.
       const anim=rig.parts[part].animate(keys,{duration:clip.duration,fill:['heading','look'].includes(part)?'forwards':'none',iterations:name==='work'?Infinity:1});
       rig.animations.push(anim);
+      if(entryKeys)rig.animations.push(rig.parts[part].animate(entryKeys,{duration:entryDuration,fill:'none'}));
     }
     if(rig.mode==='ambient') {
       const eyes=rig.svg.querySelector('.companion-eyes');
@@ -367,12 +443,16 @@
       ],{duration:clip.duration,fill:'none'}));
     }
     if(name!=='work')rig.timer=setTimeout(()=>{
+      if(rig.mode!=='ambient' && rig.mode!=='preview' && enabled() && visible(rig)) {
+        settle(rig);return;
+      }
       if(rig.mode==='ambient') {
-        stop(rig);rig.mode='off';refresh();
+        stop(rig,true);rig.mode='off';refresh();
       } else {
         // Keep the state priority until it expires, but release every animation.
-        stop(rig);
-        if(rig.mode==='manual') {rig.mode='off';refresh();}
+        stop(rig,true);
+        if(rig.mode==='manual' || (rig.mode==='peek' && performance.now()>=awakeUntil)) rig.mode='off';
+        refresh();
       }
     },clip.duration+25);
   };
@@ -419,8 +499,14 @@
       else if(rig.mode==='manual' && !changed) mode='manual';
       else if(rig.mode==='ambient' && !changed) mode='ambient';
       if(mode===rig.mode && !changed) return;
+      if(mode==='off' && enabled() && visible(rig) && !changed) {
+        // State expiry must not cut a wave, swim or landing in half. Hidden,
+        // reduced-motion and background states still cancel immediately.
+        if(rig.settling || (rig.finite && rig.svg.dataset.motionActive==='true')) return;
+        if(rig.svg.dataset.motionActive==='true') {settle(rig);return;}
+      }
       rig.mode=mode;
-      if(mode==='off') {stop(rig);return;}
+      if(mode==='off') {stop(rig,true);return;}
       play(rig,mode);
     });
     scheduleAmbient();
@@ -476,7 +562,8 @@
       rig.welcomePending=0;rig.reactedAt=performance.now();
       rig.mode='manual';play(rig,style()==='ranger'?'nod':'tilt');return;
     }
-    if(!rig || !enabled() || !visible(rig) || rig.mode==='work' || rig.mode==='happy' || performance.now()-greetingAt<2200) return;
+    if(!rig || !enabled() || !visible(rig) || rig.mode==='work' || rig.mode==='happy' ||
+      (rig.mode==='manual' && rig.finite && rig.svg.dataset.motionActive==='true') || performance.now()-greetingAt<2200) return;
     greetingAt=performance.now();wake();play(rig,'greet');
   };
   // The artwork intentionally ignores pointer events. Listen on its actual
