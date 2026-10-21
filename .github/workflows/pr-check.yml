@@ -154,6 +154,7 @@ jobs:
           node tests/test_signature_images_browser.cjs
           node tests/test_productivity_motion_browser.cjs
           node tests/test_mail_import_browser.cjs
+          MAILAI_TEST_URL=http://127.0.0.1:18795/ node tests/test_mail_list_view_browser.cjs
           node tests/test_mail_login_browser.cjs
           node tests/test_dark_tools_browser.cjs
           node tests/test_contact_filters_browser.cjs

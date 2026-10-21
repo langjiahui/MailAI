@@ -104,6 +104,7 @@ async function checkMotion(page, hosts, part, context) {
       }
       await page.locator('#assistant-orb').click();
       await page.locator('#assistant-panel').waitFor({state:'visible'});
+      await page.evaluate(()=>appendAssistantMessage('user','合成装扮测试'));
       for(const [slot,item,part] of rewards) {
         await mutate('equip',{slot,item});
         await checkMotion(page,['#assistant-panel .assistant-mini'],part,`chat ${style}/${item}`);

@@ -126,8 +126,10 @@ function describeMailUndo(path, body, result, accountId) {
   const query = new URLSearchParams(path.split('?')[1] || '');
   const action = payload.action || path.split('?')[0].split('/').at(-1);
   const value = payload.value !== false && query.get('value') !== 'false';
+  const moveTarget = payload.target || result.folder || query.get('target');
+  const moveLabel = result.local_only ? (moveTarget === '__local_archive__' ? mailaiText('本地归档') : mailaiText('收件箱（仅本机）')) : moveTarget;
   const label = {read:value ? mailaiText('标为已读') : mailaiText('标为未读'), star:value ? mailaiText('添加星标') : mailaiText('取消星标'),
-    get trash() { return mailaiText('移入已删除'); }, move:mailaiTemplate`移动到“${payload.target || result.folder || query.get('target') || mailaiText('目标文件夹')}”`}[action] || mailaiText('邮件操作');
+    get trash() { return mailaiText('移入已删除'); }, move:mailaiTemplate`移动到“${moveLabel || mailaiText('目标文件夹')}”`}[action] || mailaiText('邮件操作');
   const account = typeof _systemConfig !== 'undefined' ? _systemConfig?.accounts?.find(item => item.id === accountId) : null;
   return {label, count:Math.max(0, (result.completed ?? 1) - (result.reconciled || 0)), accountLabel:account?.user || accountId || mailaiText('当前邮箱')};
 }
@@ -604,7 +606,7 @@ async function loadWorkspacePreferences() {
 }
 
 function syncPreferenceChoices() {
-  for (const [name,id] of [['theme-mode-choice','theme-mode'],['workspace-density-choice','workspace-density'],['font-size-choice','font-size'],['notification-mode','notification-preference'],['interface-language-choice','interface-language']]) {
+  for (const [name,id] of [['theme-mode-choice','theme-mode'],['workspace-density-choice','workspace-density'],['mail-list-view-choice','mail-list-view'],['font-size-choice','font-size'],['notification-mode','notification-preference'],['interface-language-choice','interface-language']]) {
     document.querySelectorAll(`input[name="${name}"]`).forEach(input => { input.checked = input.value === document.getElementById(id).value; });
   }
 }
@@ -922,6 +924,16 @@ function initializeWorkspace() {
     else applySidebarFilter(key === 'days');
     updateFilterChips();
   };
+  const mailView = document.getElementById('mail-list-view');
+  mailView.value = localStorage.getItem('mailai-mail-list-view') === 'table' ? 'table' : 'cards';
+  document.body.dataset.mailListView = mailView.value;
+  mailView.onchange = () => {
+    localStorage.setItem('mailai-mail-list-view', mailView.value);
+    document.body.dataset.mailListView = mailView.value;
+    window.dispatchEvent(new Event('mailai:list-view-changed'));
+    syncPreferenceChoices();
+    applyFilters({silent:true});
+  };
   const density = document.getElementById('workspace-density'); density.value = localStorage.getItem('mailai-density') || 'comfortable';
   document.body.dataset.density = density.value;
   density.onchange = () => { document.body.dataset.density = density.value; localStorage.setItem('mailai-density', density.value); syncPreferenceChoices(); };
@@ -945,7 +957,7 @@ function initializeWorkspace() {
     applyTheme(mode);
     toast(mode === 'system' ? mailaiText('已改为跟随系统主题') : mailaiTemplate`已切换为${mode === 'dark' ? mailaiText('暗色') : mailaiText('浅色')}主题`, 'success');
   };
-  for (const [name,id] of [['theme-mode-choice','theme-mode'],['workspace-density-choice','workspace-density'],['font-size-choice','font-size'],['notification-mode','notification-preference'],['interface-language-choice','interface-language']]) {
+  for (const [name,id] of [['theme-mode-choice','theme-mode'],['workspace-density-choice','workspace-density'],['mail-list-view-choice','mail-list-view'],['font-size-choice','font-size'],['notification-mode','notification-preference'],['interface-language-choice','interface-language']]) {
     document.querySelectorAll(`input[name="${name}"]`).forEach(input => input.onchange = () => {
       const control = document.getElementById(id); control.value = input.value;
       if (typeof control.onchange === 'function') control.onchange({target:control}); else control.dispatchEvent(new Event('change'));

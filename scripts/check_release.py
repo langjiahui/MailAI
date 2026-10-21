@@ -189,6 +189,7 @@ def main():
                  [node, '--check', str(ROOT / 'app/web/static/companion-motion.js')],
                  [node, '--check', str(ROOT / 'app/web/static/companion-position.js')],
                  [node, '--check', str(ROOT / 'app/web/static/companion-life.js')],
+                 [node, '--check', str(ROOT / 'app/web/static/mail-list-view.js')],
                  [node, '--check', str(ROOT / 'app/web/static/companion-growth.js')],
                  [node, '--check', str(ROOT / 'app/web/static/energy-ui.js')],
                  [node, str(ROOT / 'tests/test_energy_ui.cjs')],

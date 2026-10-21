@@ -1579,6 +1579,69 @@ if (typeof document !== 'undefined') {
 /* ---- i18n-catalog.js ---- */
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "mailImport.adviceMissing": ["请确认源文件仍在原位置且可读取，云盘文件需先下载到本机。若暂存文件已丢失，请重新选择原文件建立新批次；已导入邮件会自动去重。", "Make sure source files are still in their original location and readable. Download cloud files first. If staged files are missing, select the originals in a new batch; existing messages will be deduplicated."],
+  "mailImport.fileMissing": ["找不到源文件或暂存文件，可能已移动或被清理", "The source or staged file was not found. It may have been moved or removed."],
+  "mailImport.filePermission": ["没有读取文件或写入暂存目录的权限", "Permission denied when reading the file or writing to temporary storage."],
+  "mailImport.fileSpace": ["磁盘剩余空间不足，无法保存邮件文件", "Not enough free disk space to save the mail file."],
+  "mailImport.fileIO": ["文件读取或保存失败，请检查磁盘空间和访问权限", "Could not read or save the file. Check disk space and access permissions."],
+  "mailImport.skipFile": ["跳过此文件，继续添加", "Skip this file and continue"],
+  "mailImport.failedFile": ["失败文件：{0}。可以重试，或单独跳过后先添加其他文件。", "Failed file: {0}. Retry it, or skip it and add the other files first."],
+  "mailImport.skippedCount": ["已单独跳过 {0} 个文件，扫描后的问题清单会保留记录，方便之后补导。", "Skipped {0} files. The scan issue report will keep their details for later import."],
+  "mailImport.allSkipped": ["没有可新增的邮件，已单独跳过 {0} 个文件。请查看下方原因和处理建议，修复后另行补导。", "No new mail to import; {0} files were skipped. Review the reasons and suggestions below, then import the repaired files separately."],
+  "mailImport.invalidSkip": ["跳过的文件信息无效，请重新选择文件", "Invalid file information for skipping. Please select the files again."],
+  "mailImport.waitSkip": ["请先等待当前文件添加结束，再跳过失败文件", "Wait for the current file transfer to finish before skipping it."],
+  "mailImport.skipWrite": ["无法保存跳过记录，请检查磁盘空间后重试", "Could not save the skip record. Check disk space and try again."],
+  "mailImport.skippedReason": ["已单独跳过此文件，可修复后另行导入", "This file was skipped. You can repair it and import it separately."],
+  "mailImport.skippedReasonDetail": ["已单独跳过此文件，可修复后另行导入：{0}", "This file was skipped. Repair it and import it separately: {0}"],
+  "mailImport.adviceLabel": ["处理建议：", "Suggested action: "],
+  "mailImport.advice0": ["单封邮件需小于等于 64 MB，MBOX 需小于等于 1 GB，每批不超过 10 GB。请在原客户端分批导出；单封超大邮件可保留原件后，另存较小副本再导入。", "Each message must be at most 64 MB, each MBOX at most 1 GB, and each batch at most 10 GB. Export smaller batches from the original client. For a large individual message, keep the original and export a smaller copy."],
+  "mailImport.advice1": ["此文件没有邮件内容。请在原客户端打开邮件，下载完整正文和附件后重新导出；确认文件大小不为 0，再单独导入。", "This file has no mail content. Open the message in the original client, download its full body and attachments, and export it again. Check that the file is not empty before importing it separately."],
+  "mailImport.advice2": ["请检查 MailAI 数据目录所在磁盘的剩余空间和写入权限，并确认源文件可读取。处理后重试；已成功导入的邮件会保留。", "Check free space and write permissions on the disk containing MailAI data, and make sure the source file is readable. Retry after resolving the issue. Successfully imported mail will be kept."],
+  "mailImport.advice3": ["请确认 MailAI 服务仍在运行，源文件未被移动或删除；云盘文件需先下载到本机。可点击继续添加重试，仍失败时先跳过，稍后单独导入。", "Make sure the MailAI service is running and source files have not been moved or deleted. Download cloud files to this device first. Retry with Continue adding, or skip the file and import it separately later."],
+  "mailImport.advice4": ["恢复任务时请选择原批次文件并保持原顺序。若已修改文件，请新建导入批次；已有邮件会自动去重。", "To resume, select the original batch in the original order. If files have changed, start a new batch; existing messages will be deduplicated."],
+  "mailImport.advice5": ["请将文件复制到本机普通目录，缩短文件名及目录层级，避免特殊路径字符后重新选择。", "Copy the files to a normal local directory, shorten names and directory paths, and avoid special path characters before selecting them again."],
+  "mailImport.advice6": ["请先核对本机已有的同一邮件，补齐原文和附件后再试；系统会跳过无法确认内容的同标识邮件，避免误建重复记录。", "Check the existing message and restore its original body and attachments before retrying. Matching identifiers with unverifiable content are skipped to prevent duplicates."],
+  "mailImport.advice7": ["请用原邮件客户端打开此文件并确认正文和附件完整，再重新导出为 EML 或 MBOX；不要仅修改文件扩展名。可先导入其他文件，修复后将此文件单独补导。", "Open this file in the original email client and verify that its body and attachments are complete, then export it again as EML or MBOX. Do not just rename the extension. Import other files first and add the repaired file later."],
+  "mailView.resizeColumn": ["调整列宽", "Resize column"],
+  "mailView.resizeHint": ["拖动调整列宽，双击恢复默认；也可使用左右方向键", "Drag to resize, double-click to reset, or use the left/right arrow keys"],
+  "mailView.title": ["邮件列表显示方式", "Mail list view"],
+  "mailView.hint": ["选择日常阅读或按列快速浏览，设置会保存在这台设备。", "Choose everyday reading or a column-based overview. Saved on this device."],
+  "mailView.cards": ["摘要列表（现有）", "Summary list (current)"],
+  "mailView.cardsHint": ["保留现有布局，显示摘要与标签", "Current layout with summaries and tags"],
+  "mailView.table": ["经典表格", "Classic table"],
+  "mailView.tableHint": ["字段按列对齐，右侧阅读，可拖动调整列宽", "Aligned columns with adjustable widths and reading on the right"],
+  "mailView.state": ["状态", "Status"],
+  "mailView.attachment": ["附件", "Files"],
+  "mailView.sender": ["发件人", "Sender"],
+  "mailView.recipient": ["收件人", "Recipient"],
+  "mailView.subject": ["主题", "Subject"],
+  "mailView.date": ["日期", "Date"],
+  "mailView.sortDate": ["切换日期排序", "Toggle date order"],
+  "mailView.noSubject": ["无主题", "No subject"],
+
+  "mailImport.localOnlyTarget": ["本地邮件只能移入 MailAI 收件箱或本地归档，不会上传到服务器", "Local mail can only move to the MailAI inbox or local archive. It will not be uploaded."],
+  "mailImport.localUnavailable": ["邮件不存在、不是本地邮件或正在处理，请刷新后重试", "This message is missing, is not local, or is being processed. Refresh and try again."],
+  "mailImport.localChanged": ["邮件位置或状态已变化，请手动处理", "The message location or status has changed. Please organize it manually."],
+  "mailImport.orderChanged": ["文件添加顺序不一致，请重新选择原批次文件后继续", "The file order has changed. Select the original batch to continue."],
+  "mailImport.orderRetry": ["文件添加顺序不一致，请重试", "The file order is inconsistent. Please try again."],
+  "mailImport.batchChanged": ["所选文件与此批次已添加的文件不一致，请选择原批次文件或重新开始", "The selected files differ from this batch. Select the original files or start a new batch."],
+  "mailImport.interrupted": ["文件传输中断，已添加的文件已保留，请继续添加", "Transfer interrupted. Saved files have been kept. Continue adding files."],
+  "mailImport.separateMove": ["请分别选择本地邮件和服务器邮件移动，避免误改服务器文件夹", "Select local and server messages separately to avoid unintended server changes."],
+  "mailImport.localInbox": ["收件箱（仅本机）", "Inbox (local only)"],
+  "mailImport.localSelection": ["本地邮件仅在本机整理，不上传服务器；请与服务器邮件分开选择", "Local mail stays on this device. Select it separately from server messages."],
+  "mailImport.localHint": ["仅在 MailAI 本地整理，不上传服务器", "Organize locally in MailAI without uploading to the server"],
+  "mailImport.mixedHint": ["请分别选择本地邮件和服务器邮件；本地邮件可使用收藏", "Select local and server messages separately. Local messages support favorites."],
+  "mailImport.moved": ["已在本机移动 {0} 封邮件，未上传服务器", "Moved {0} messages locally without uploading to the server"],
+  "mailImport.localInboxBadge": ["仅本机 · 收件箱", "Local only · Inbox"],
+  "mailImport.location": ["导入后在「本地归档」中查看，默认已读；可移到 MailAI 收件箱，仅在本机整理。", "Imported mail appears in Local archive and is marked as read. You can move it to the MailAI inbox without uploading it."],
+  "mailImport.transferError": ["文件传输中断。已添加的文件已保留，请点击「继续添加」；若文件已移动，请重新选择原文件。", "File transfer interrupted. Saved files have been kept. Choose Continue adding; if files were moved, select the originals again."],
+  "mailImport.kept": ["已保留 {0} / {1} 个文件。{2}", "Saved {0} / {1} files. {2}"],
+  "mailImport.continueHint": ["点击「继续添加」接着传输。", "Choose Continue adding to resume the transfer."],
+  "mailImport.reselectHint": ["请选择原批次文件继续，已添加的文件会校验复用。", "Select the original batch to continue. Previously saved files will be verified and reused."],
+  "mailImport.copyHint": ["正在复制到本机工作目录。中断可继续；关闭软件后可重选原批次文件恢复。", "Copying to local storage. You can resume interruptions or reselect the original batch after restarting."],
+  "mailImport.continue": ["继续添加", "Continue adding"],
+  "mailImport.reselectCount": ["请选回原批次的 {0} 个邮件文件，已添加的文件会校验复用。", "Select the original {0} mail files. Previously saved files will be verified and reused."],
+  "mailImport.stopped": ["已停止添加，已添加的文件已保留。点击「继续添加」即可接着传输。", "Stopped adding files. Saved files have been kept. Choose Continue adding to resume."],
   "pet.wardrobeEmpty": ["衣橱还空着，先试试喜欢的装扮吧。", "Your wardrobe is ready for its first favorite. Try a look."],
   "pet.filter.owned": ["我的收藏", "My collection"],
   "pet.filter.effect": ["光效", "Effects"],
@@ -22054,11 +22117,11 @@ async function loadData({includeAncillary = true, silent = false} = {}) {
   if (!silent && listNode && !listNode.querySelector('.email-item')) listNode.innerHTML = skeletonRows();
   try {
     const mailPath = unified
-      ? `/api/system/mail/unified-inbox?days=${days}&limit=1000`
+      ? `/api/system/mail/unified-inbox?days=${days === 9999 ? 365000 : days}&limit=1000`
       : currentFilter.status === 'local_archive' ? '/api/emails?days=365000&status=local_archive'
       : currentFilter.status === 'favorites' ? '/api/emails?days=365000&status=favorites'
       : currentFilter.status === 'trash' ? '/api/emails?days=365000&status=trash'
-      : (folder ? `/api/emails?days=9999&folder=${encodeURIComponent(folder)}` : '/api/emails?days=' + days);
+      : (folder ? `/api/emails?days=9999&folder=${encodeURIComponent(folder)}` : '/api/emails?days=' + (days === 9999 ? 365000 : days));
     const draftsRevision = draftListRevision;
     const tagCatalog = typeof window !== 'undefined' ? window.mailaiRefreshTags?.(accountId) : null;
     const requests = [loadMailPages(mailPath, isCurrent)];
@@ -22759,12 +22822,12 @@ function renderSpecialMailbox({silent = false} = {}) {
 // ===== 渲染邮件列表 =====
 function mailListSignature(emails) {
   return JSON.stringify({
-    context:[specialMailbox, unifiedMailbox, mailRenderLimit, selectedEmailId, selectedEmailAccountId, [...selectedMailIds].sort((a,b)=>a-b)],
+    context:[document.body.dataset.mailListView, currentFilter.sort, specialMailbox, unifiedMailbox, mailRenderLimit, selectedEmailId, selectedEmailAccountId, [...selectedMailIds].sort((a,b)=>a-b)],
     rows:emails.slice(0, mailRenderLimit).map(e => [
       e.id, e._account_id, e._account_user, e._kind, e.status, e.direction, e.is_read,
       e.is_favorite, e.is_starred, e.score, e.verdict, e.feedback, e.reviewed,
       e.pending_action, e.pending_error, e.recommended_status, e.counterpart_name,
-      e.counterpart_addr, e.counterpart_count, e.from_name, e.from_addr, e.date,
+      e.counterpart_addr, e.counterpart_count, e.from_name, e.from_addr, e.to_addr, e.cc_addr, e.bcc_addr, e.date,
       e.subject, e.summary, e.snippet, e.category, e.priority, JSON.stringify(e.tags || []),
       e.handle_state, e.snoozed_until, e.followup_at, e.focus_override, e._conversationCount,
       (e.attachments || []).length,
@@ -22819,7 +22882,7 @@ function renderEmailList(emails, {silent = false} = {}) {
     groups.get(group.key).items.push(e);
   });
 
-  container.innerHTML = [...groups.values()].map(group => {
+  container.innerHTML = mailTableHeader() + [...groups.values()].map(group => {
     const items = group.items;
     return `
       <div class="email-group">
@@ -22952,6 +23015,7 @@ function renderEmailItem(e, idx = 0) {
     ? "<span class=\"mail-direction-label\"><span data-i18n=\"ui.c7378a8741ff\">发给</span></span>" : '';
   const moreRecipients = outgoing && Number(e.counterpart_count || 0) > 1
     ? `<span class="recipient-more"><span data-i18n="ui.97521ee87be0">等 ${Number(e.counterpart_count)} 人</span></span>` : '';
+  if (document.body.dataset.mailListView === 'table') return renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, outgoing});
   return `
     <div class="email-item ${selected} ${bulkSelected} ${e.status} ${outgoing ? 'outgoing-mail' : ''} ${unread ? 'unread' : ''} risk-${risk.class}" data-id="${e.id}" data-account-id="${esc(e._account_id || '')}" data-read-state="${outgoing ? 'not-applicable' : unread ? 'unread' : 'read'}" tabindex="0" aria-selected="${bulkSelected ? 'true' : 'false'}" style="animation-delay:${Math.min(idx, 12) * 0.035}s">
       <div class="email-row-top">
@@ -23282,6 +23346,25 @@ function ensureMailContextMenu() {
   return menu;
 }
 
+function localMailSelection() {
+  const rows = [...selectedMailIds].map(id => allEmails.find(row => Number(row.id) === Number(id)));
+  return {any:rows.some(row => row?.is_local_archive), all:rows.length > 0 && rows.every(row => row?.is_local_archive)};
+}
+
+function availableMailMoveFolders() {
+  const local = localMailSelection();
+  if (local.all) return [{name:'__local_inbox__', label:mailaiText('收件箱（仅本机）')}, {name:'__local_archive__', label:mailaiText('本地归档')}];
+  if (local.any) return [];
+  return mailboxFolders.filter(folder => folder.selectable !== false);
+}
+
+function renderMailMoveFolders() {
+  const select = document.getElementById('bulk-folder');
+  if (!select) return;
+  const html = `<option value="">${mailaiText('移动到…')}</option>` + availableMailMoveFolders().map(folder => `<option value="${esc(folder.name)}">${esc(folder.label || folder.name)}</option>`).join('');
+  if (select._optionsHtml !== html) { select.innerHTML = html; select._optionsHtml = html; }
+}
+
 function showMailContextMenu(x, y, id) {
   const menu = ensureMailContextMenu();
   const row = allEmails.find(item => Number(item.id) === Number(id)) || {};
@@ -23289,8 +23372,8 @@ function showMailContextMenu(x, y, id) {
   const localSelection = Boolean(row.is_local_archive) || [...selectedMailIds].some(selected => allEmails.find(item => Number(item.id) === Number(selected))?.is_local_archive);
   const inTrash = currentFilter.status === 'trash' || row.status === 'trash';
   const pendingTrash = row.pending_action || (inTrash && [...selectedMailIds].some(id => allEmails.find(e => Number(e.id) === Number(id))?.pending_action));
-  const folderOptions = mailboxFolders.filter(folder => folder.selectable !== false).map(folder =>
-    `<button type="button" role="menuitem" data-context-folder="${esc(folder.name)}">${mailContextIcon('<path d="M3.5 6h5l1.5 2h6.5v8h-13z"/>')}<span>${esc(folder.name)}</span></button>`
+  const folderOptions = availableMailMoveFolders().map(folder =>
+    `<button type="button" role="menuitem" data-context-folder="${esc(folder.name)}">${mailContextIcon('<path d="M3.5 6h5l1.5 2h6.5v8h-13z"/>')}<span>${esc(folder.label || folder.name)}</span></button>`
   ).join('');
   const readStateActions = count > 1
     ? `<button type="button" role="menuitem" data-context-action="read">${mailContextIcon('<path d="M3.5 5.5h13v9h-13zM4.5 7l5.5 4 5.5-4"/>')}<span><span data-i18n="ui.1b4bc8cfe06c">标记为已读</span></span></button>
@@ -23302,7 +23385,7 @@ function showMailContextMenu(x, y, id) {
   const list=document.getElementById('email-list');
   menu._listScrollTop=list.scrollTop;menu._listScrollLeft=list.scrollLeft;
   menu.innerHTML = `
-    <div class="mail-context-summary">${count > 1 ? mailaiTemplate`已选 ${count} 封邮件` : mailaiText('邮件操作')}<small>${localSelection ? mailaiText('包含本地归档；可在阅读窗口收藏，不能移动到服务器') : count > 1 ? mailaiText('以下操作将应用到所选邮件') : mailaiText('右键快捷操作')}</small></div>
+    <div class="mail-context-summary">${count > 1 ? mailaiTemplate`已选 ${count} 封邮件` : mailaiText('邮件操作')}<small>${localSelection ? mailaiText('本地邮件仅在本机整理，不上传服务器；请与服务器邮件分开选择') : count > 1 ? mailaiText('以下操作将应用到所选邮件') : mailaiText('右键快捷操作')}</small></div>
     ${count === 1 ? `
       <button type="button" role="menuitem" data-context-action="open">${mailContextIcon('<path d="M3.5 5.5h13v9h-13zM5 7l5 4 5-4"/>')}<span><span data-i18n="ui.5507fbd6970f">打开邮件</span></span><kbd>↵</kbd></button>
       <button type="button" role="menuitem" data-context-action="reply">${mailContextIcon('<path d="M8 5 3.5 9 8 13M4 9h6c3.5 0 5.5 1.8 6.5 5"/>')}<span><span data-i18n="ui.cf945e21ddef">回复</span></span></button>
@@ -23313,7 +23396,7 @@ function showMailContextMenu(x, y, id) {
     ${readStateActions}
     <button type="button" role="menuitem" data-context-action="star" ${localSelection ? mailaiText('disabled title="星标需要同步服务器，本地归档请使用收藏"') : ''}>${mailContextIcon('<path d="m10 3 2.1 4.2 4.7.7-3.4 3.3.8 4.7-4.2-2.2-4.2 2.2.8-4.7-3.4-3.3 4.7-.7z"/>')}<span><span data-i18n="ui.e817525bedb9">添加星标</span></span></button>
     <div class="mail-context-separator"></div>
-    <button type="button" role="menuitem" data-context-action="folders" aria-expanded="false" aria-controls="mail-context-folders" ${localSelection ? mailaiText('disabled title="本地归档不会上传到服务器"') : ''}>${mailContextIcon('<path d="M3.5 6h5l1.5 2h6.5v8h-13z"/>')}<span><span data-i18n="ui.711c5507708d">移动到文件夹</span></span><b>›</b></button>
+    <button type="button" role="menuitem" data-context-action="folders" aria-expanded="false" aria-controls="mail-context-folders" ${localSelection && !localMailSelection().all ? 'disabled' : ''}>${mailContextIcon('<path d="M3.5 6h5l1.5 2h6.5v8h-13z"/>')}<span><span data-i18n="ui.711c5507708d">移动到文件夹</span></span><b>›</b></button>
     <div id="mail-context-folders" class="mail-context-folders hidden" role="group" aria-label="${esc(mailaiText('移动到文件夹'))}">${folderOptions || "<small><span data-i18n=\"ui.aefd65f9a2a4\">暂无可用文件夹</span></small>"}</div>
     ${!inTrash ? `<button type="button" class="danger" role="menuitem" data-context-action="trash">${mailContextIcon('<path d="M4 6h12M7 6V4h6v2M6 8l.7 8h6.6l.7-8M8.5 9.5v4M11.5 9.5v4"/>')}<span><span data-i18n="ui.0beae53e661c">移入已删除</span></span></button>` : "<button type=\"button\" class=\"danger\" role=\"menuitem\" data-context-action=\"purge\"><span><span data-i18n=\"ui.4ee7d3299549\">彻底删除…</span></span></button>"}
     <div class="mail-context-separator"></div>
@@ -23328,10 +23411,11 @@ function showMailContextMenu(x, y, id) {
 function updateBulkToolbar() {
   const toolbar = document.getElementById('bulk-toolbar');
   const localSelection = [...selectedMailIds].some(id => allEmails.find(item => Number(item.id) === Number(id))?.is_local_archive);
+  renderMailMoveFolders();
   for (const control of [toolbar.querySelector('[data-bulk-action="star"]'), document.getElementById('bulk-folder')]) {
     if (!control) continue;
-    control.disabled = bulkOperationActive || localSelection;
-    mailaiBindUI(control, "title", () => (localSelection ? mailaiText('所选邮件包含本地归档，不能执行服务器操作；可在阅读窗口收藏') : control.id === 'bulk-folder' ? mailaiText('移动所选邮件') : mailaiText('添加星标')));
+    control.disabled = bulkOperationActive || (localSelection && (control.id !== 'bulk-folder' || !localMailSelection().all));
+    mailaiBindUI(control, "title", () => (localSelection ? (control.id === 'bulk-folder' && localMailSelection().all ? mailaiText('仅在 MailAI 本地整理，不上传服务器') : mailaiText('请分别选择本地邮件和服务器邮件；本地邮件可使用收藏')) : control.id === 'bulk-folder' ? mailaiText('移动所选邮件') : mailaiText('添加星标')));
   }
   const trashView = currentFilter.status === 'trash' && !unifiedMailbox && !specialMailbox;
   toolbar.querySelector('[data-bulk-action="purge"]')?.classList.toggle('hidden', !trashView);
@@ -23426,11 +23510,13 @@ async function runBulkAction(action, target = '') {
   if (unifiedMailbox) return toast(mailaiText('请先选择具体邮箱，再批量处理邮件'), 'warn');
   if (bulkOperationActive || !selectedMailIds.size) return;
   if (action === 'trash' && (currentFilter.status === 'trash' || [...selectedMailIds].some(id => allEmails.find(e => Number(e.id) === Number(id))?.status === 'trash'))) return toast(mailaiText('邮件已在已删除中，请使用恢复操作'), 'warn');
+  const localMove = action === 'move' && localMailSelection().all;
+  const targetLabel = action === 'move' ? (availableMailMoveFolders().find(folder => folder.name === target)?.label || target) : target;
   const payload = {ids:[...selectedMailIds], action:action === 'unread' ? 'read' : action,
                    value:action === 'unread' ? false : true, target};
   const count = selectedMailIds.size;
   const actionLabel = action === 'read' ? mailaiText('正在标为已读') : action === 'unread' ? mailaiText('正在标为未读') :
-    action === 'star' ? mailaiText('正在添加星标') : action === 'trash' ? mailaiText('正在移入垃圾箱') : mailaiTemplate`正在移动到“${target}”`;
+    action === 'star' ? mailaiText('正在添加星标') : action === 'trash' ? mailaiText('正在移入垃圾箱') : mailaiTemplate`正在移动到“${targetLabel}”`;
   setBulkOperationState(true, actionLabel, count);
   const accountId = activeMailAccount()?.id;
   const undoCollector = [];
@@ -23462,7 +23548,7 @@ async function runBulkAction(action, target = '') {
       ? mailaiTemplate`已移入已删除 ${result.completed} 封，可在那里取消删除；稍后同步服务器`
       : action === 'read' || action === 'unread'
         ? mailaiTemplate`已标记 ${result.completed} 封邮件，服务器将在后台同步`
-        : action === 'move' ? mailaiTemplate`服务器已移动 ${result.completed} 封邮件，本地状态已更新` : mailaiTemplate`已处理 ${result.completed} 封邮件`;
+        : action === 'move' ? (localMove ? mailaiTemplate`已在本机移动 ${result.completed} 封邮件，未上传服务器` : mailaiTemplate`服务器已移动 ${result.completed} 封邮件，本地状态已更新`) : mailaiTemplate`已处理 ${result.completed} 封邮件`;
     toast(`${completedText}${result.failed.length ? mailaiTemplate`，失败 ${result.failed.length} 封` : ''}`, result.failed.length ? 'warn' : 'success');
     selectedMailIds = new Set(result.failed.map(item => item.id)); mailSelectionExplicit = !!selectedMailIds.size; selectionAnchorId = null; await loadData();
     if (result.failed.length && typeof showOperationFailures === 'function') showOperationFailures(result.failed, async () => {
@@ -25414,7 +25500,7 @@ function renderReadingPane(e) {
           </div>
           <div class="meta-badges">
             <time class="reading-message-time" title="${esc(e.date || '')}"><span class="meta-label" data-i18n="read.time">${mailaiT('read.time') || '时间：'}</span><span class="reading-date-text">${fmtDate(e.date)}</span></time>
-            ${e.is_local_archive ? `<span class="tag" title="此邮件仅保存在本机" data-i18n-title="ui.7bfc5091b329"><span data-i18n="ui.d7e7b551d372">本地归档${e.folder?.startsWith('LOCAL_IMPORT/') ? ' · ' + esc(e.folder.slice('LOCAL_IMPORT/'.length)) : ''}</span></span>` : ''}
+            ${e.is_local_archive ? `<span class="tag" title="此邮件仅保存在本机" data-i18n-title="ui.7bfc5091b329"><span>${e.status === 'inbox' ? mailaiText('仅本机 · 收件箱') : mailaiText('本地归档')}${e.folder?.startsWith('LOCAL_IMPORT/') ? ' · ' + esc(e.folder.slice('LOCAL_IMPORT/'.length)) : ''}</span></span>` : ''}
             ${e.category ? `<span class="tag mail-category">${esc(mailCategoryLabel(e.category))}</span>` : ''}
             ${e.priority ? `<span class="tag mail-priority tag-priority-${e.priority}">${esc(mailPriorityLabel(e.priority))}</span>` : ''}
             <span data-reading-mail-tags>${window.mailaiMailTagChips?.(e, 2) || ''}</span>
@@ -26413,8 +26499,7 @@ async function loadMailboxFolders({quiet = false} = {}) {
     if (accountId !== activeMailAccount()?.id) return false;
     mailboxFolders = folders;
     mailboxFoldersAccountId = accountId;
-    const select = document.getElementById('bulk-folder');
-    select.innerHTML = "<option value=\"\" data-i18n=\"ui.0bee1672c6d4\">移动到…</option>" + mailboxFolders.filter(folder => folder.selectable !== false).map(folder => `<option value="${esc(folder.name)}">${esc(folder.name)}</option>`).join('');
+    renderMailMoveFolders();
     const protectedNames = new Set([mailboxFolders.find(folder => (folder.flags || []).some(flag => /inbox/i.test(flag)))?.name || 'INBOX']);
     const host = document.getElementById('server-folder-nav');
     host.innerHTML = mailboxFolders.filter(folder => folder.selectable !== false && !protectedNames.has(folder.name)).map(folder => `<button type="button" class="nav-item" data-server-folder="${esc(folder.name)}" title="共 ${Number(folder.messages || 0)} 封，未读 ${Number(folder.unseen || 0)} 封；点击同步" data-i18n-title="ui.42df419f8be1">
@@ -26425,7 +26510,7 @@ async function loadMailboxFolders({quiet = false} = {}) {
     if (accountId === activeMailAccount()?.id) {
       // Retain this account's last successful folder snapshot during outages.
       if (!mailboxFolders.length) {
-        document.getElementById('bulk-folder').innerHTML = "<option value=\"\" data-i18n=\"ui.0bee1672c6d4\">移动到…</option>";
+        renderMailMoveFolders();
         document.getElementById('server-folder-nav').innerHTML = "<small><span data-i18n=\"ui.f4b33cf3512c\">文件夹暂时无法读取</span></small>";
       }
       if (!quiet) toast(mailaiText('服务器文件夹读取失败，将显示本地邮件记录：') + mailaiSystemMessage(error.message), 'warn');
@@ -28898,9 +28983,17 @@ function hideAppPreloader() {
 const PANE_SIZE_KEY = 'mailai.workspace.paneSizes.v1';
 const PANE_DEFAULTS = {sidebar: 226, list: 405};
 
+function paneSizePreferenceKey() {
+  return document.body.dataset.mailListView === 'table' ? 'mailai.workspace.tablePaneSizes.v1' : PANE_SIZE_KEY;
+}
+
+function currentPaneDefaults() {
+  return {...PANE_DEFAULTS, list:document.body.dataset.mailListView === 'table' ? 720 : PANE_DEFAULTS.list};
+}
+
 function readPaneSizes() {
-  try { return {...PANE_DEFAULTS, ...JSON.parse(localStorage.getItem(PANE_SIZE_KEY) || '{}')}; }
-  catch (_) { return {...PANE_DEFAULTS}; }
+  try { return {...currentPaneDefaults(), ...JSON.parse(localStorage.getItem(paneSizePreferenceKey()) || '{}')}; }
+  catch (_) { return currentPaneDefaults(); }
 }
 
 function constrainPaneSizes(input) {
@@ -28923,12 +29016,13 @@ function applyPaneSizes(sizes, persist = false) {
   layout.style.setProperty('--list-width', value.list + 'px');
   document.querySelector('[data-resizer="sidebar"]')?.setAttribute('aria-valuenow', value.sidebar);
   document.querySelector('[data-resizer="list"]')?.setAttribute('aria-valuenow', value.list);
-  if (persist) localStorage.setItem(PANE_SIZE_KEY, JSON.stringify(value));
+  if (persist) localStorage.setItem(paneSizePreferenceKey(), JSON.stringify(value));
   return value;
 }
 
 function initPaneResizers() {
-  let sizes = applyPaneSizes(readPaneSizes());
+  let preferredSizes = readPaneSizes();
+  let sizes = applyPaneSizes(preferredSizes);
   document.querySelectorAll('.pane-resizer').forEach(handle => {
     const kind = handle.dataset.resizer;
     handle.setAttribute('aria-valuemin', kind === 'sidebar' ? '180' : '300');
@@ -28948,19 +29042,22 @@ function initPaneResizers() {
         handle.removeEventListener('pointermove', move);
         handle.classList.remove('dragging'); document.body.classList.remove('pane-resizing');
         sizes = applyPaneSizes(sizes, true);
+        preferredSizes = {...sizes};
       };
       handle.addEventListener('pointermove', move);
       handle.addEventListener('pointerup', end, {once:true});
       handle.addEventListener('pointercancel', end, {once:true});
     });
-    handle.addEventListener('dblclick', () => { sizes = applyPaneSizes(PANE_DEFAULTS, true); toast(mailaiText('已恢复默认栏宽'), 'success'); });
+    handle.addEventListener('dblclick', () => { preferredSizes = currentPaneDefaults(); sizes = applyPaneSizes(preferredSizes, true); toast(mailaiText('已恢复默认栏宽'), 'success'); });
     handle.addEventListener('keydown', event => {
       if (!['ArrowLeft','ArrowRight'].includes(event.key)) return;
       event.preventDefault();
       sizes = applyPaneSizes({...sizes, [kind]:sizes[kind] + (event.key === 'ArrowRight' ? 16 : -16)}, true);
+      preferredSizes = {...sizes};
     });
   });
-  window.addEventListener('resize', () => { sizes = applyPaneSizes(sizes); });
+  window.addEventListener('mailai:list-view-changed', () => { preferredSizes = readPaneSizes(); sizes = applyPaneSizes(preferredSizes); });
+  window.addEventListener('resize', () => { sizes = applyPaneSizes(preferredSizes); });
 }
 
 initPaneResizers();
@@ -29582,8 +29679,10 @@ function describeMailUndo(path, body, result, accountId) {
   const query = new URLSearchParams(path.split('?')[1] || '');
   const action = payload.action || path.split('?')[0].split('/').at(-1);
   const value = payload.value !== false && query.get('value') !== 'false';
+  const moveTarget = payload.target || result.folder || query.get('target');
+  const moveLabel = result.local_only ? (moveTarget === '__local_archive__' ? mailaiText('本地归档') : mailaiText('收件箱（仅本机）')) : moveTarget;
   const label = {read:value ? mailaiText('标为已读') : mailaiText('标为未读'), star:value ? mailaiText('添加星标') : mailaiText('取消星标'),
-    get trash() { return mailaiText('移入已删除'); }, move:mailaiTemplate`移动到“${payload.target || result.folder || query.get('target') || mailaiText('目标文件夹')}”`}[action] || mailaiText('邮件操作');
+    get trash() { return mailaiText('移入已删除'); }, move:mailaiTemplate`移动到“${moveLabel || mailaiText('目标文件夹')}”`}[action] || mailaiText('邮件操作');
   const account = typeof _systemConfig !== 'undefined' ? _systemConfig?.accounts?.find(item => item.id === accountId) : null;
   return {label, count:Math.max(0, (result.completed ?? 1) - (result.reconciled || 0)), accountLabel:account?.user || accountId || mailaiText('当前邮箱')};
 }
@@ -30060,7 +30159,7 @@ async function loadWorkspacePreferences() {
 }
 
 function syncPreferenceChoices() {
-  for (const [name,id] of [['theme-mode-choice','theme-mode'],['workspace-density-choice','workspace-density'],['font-size-choice','font-size'],['notification-mode','notification-preference'],['interface-language-choice','interface-language']]) {
+  for (const [name,id] of [['theme-mode-choice','theme-mode'],['workspace-density-choice','workspace-density'],['mail-list-view-choice','mail-list-view'],['font-size-choice','font-size'],['notification-mode','notification-preference'],['interface-language-choice','interface-language']]) {
     document.querySelectorAll(`input[name="${name}"]`).forEach(input => { input.checked = input.value === document.getElementById(id).value; });
   }
 }
@@ -30378,6 +30477,16 @@ function initializeWorkspace() {
     else applySidebarFilter(key === 'days');
     updateFilterChips();
   };
+  const mailView = document.getElementById('mail-list-view');
+  mailView.value = localStorage.getItem('mailai-mail-list-view') === 'table' ? 'table' : 'cards';
+  document.body.dataset.mailListView = mailView.value;
+  mailView.onchange = () => {
+    localStorage.setItem('mailai-mail-list-view', mailView.value);
+    document.body.dataset.mailListView = mailView.value;
+    window.dispatchEvent(new Event('mailai:list-view-changed'));
+    syncPreferenceChoices();
+    applyFilters({silent:true});
+  };
   const density = document.getElementById('workspace-density'); density.value = localStorage.getItem('mailai-density') || 'comfortable';
   document.body.dataset.density = density.value;
   density.onchange = () => { document.body.dataset.density = density.value; localStorage.setItem('mailai-density', density.value); syncPreferenceChoices(); };
@@ -30401,7 +30510,7 @@ function initializeWorkspace() {
     applyTheme(mode);
     toast(mode === 'system' ? mailaiText('已改为跟随系统主题') : mailaiTemplate`已切换为${mode === 'dark' ? mailaiText('暗色') : mailaiText('浅色')}主题`, 'success');
   };
-  for (const [name,id] of [['theme-mode-choice','theme-mode'],['workspace-density-choice','workspace-density'],['font-size-choice','font-size'],['notification-mode','notification-preference'],['interface-language-choice','interface-language']]) {
+  for (const [name,id] of [['theme-mode-choice','theme-mode'],['workspace-density-choice','workspace-density'],['mail-list-view-choice','mail-list-view'],['font-size-choice','font-size'],['notification-mode','notification-preference'],['interface-language-choice','interface-language']]) {
     document.querySelectorAll(`input[name="${name}"]`).forEach(input => input.onchange = () => {
       const control = document.getElementById(id); control.value = input.value;
       if (typeof control.onchange === 'function') control.onchange({target:control}); else control.dispatchEvent(new Event('change'));
@@ -30657,6 +30766,139 @@ document.getElementById('task-center-list').addEventListener('click', async even
     if (accountId === taskCenterScope()) { await refreshTaskCenter(); toast(mailaiText('已暂停，可在已暂停列表恢复'),'info'); }
   } catch(error) { toast(mailaiSystemMessage(error.message),'error'); } finally { taskCenterPendingActions.delete(key); updateTaskCenterPending(host, taskCenterScope()); }
 });
+
+;
+/* ---- mail-list-view.js ---- */
+// A presentation preference only: filtering, selection and reading share the existing list.
+function mailTableHeader() {
+  if (document.body.dataset.mailListView !== 'table') return '';
+  const ascending = currentFilter.sort === 'date-asc';
+  const keys = ['sender','recipient','subject','date'];
+  const labels = {sender:mailaiText('发件人'),recipient:mailaiText('收件人'),subject:mailaiText('主题'),date:mailaiText('日期')};
+  return `<div class="mail-table-header">${keys.map((key,index) => `<div class="mail-table-heading">
+    ${key === 'date' ? `<button type="button" data-table-date-sort title="${esc(mailaiText('切换日期排序'))}" aria-label="${esc(mailaiText('切换日期排序'))}"><span data-i18n="mailView.date">${esc(mailaiText('日期'))}</span><span aria-hidden="true">${currentFilter.sort === 'score-desc' ? '↕' : ascending ? '↑' : '↓'}</span></button>` : `<span data-i18n="mailView.${key}" title="${esc(labels[key])}">${esc(labels[key])}</span>`}
+    ${index < 3 ? `<i class="mail-table-column-resizer" data-mail-column="${index}" tabindex="0" role="separator" aria-orientation="vertical" aria-label="${esc(mailaiText('调整列宽') + ' · ' + labels[key])}" title="${esc(mailaiText('拖动调整列宽，双击恢复默认；也可使用左右方向键'))}"></i>` : ''}
+  </div>`).join('')}</div>`;
+}
+
+function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, outgoing}) {
+  // Local draft/sent adapters use from_addr for the counterpart, not the real sender.
+  const senderAddress = e._kind ? (e._account_user || activeMailAccount()?.user || '') : e.from_addr || '';
+  const sender = e._kind ? senderAddress : e.from_name || senderAddress || mailaiText('未知联系人');
+  const recipients = e.to_addr || e.cc_addr || e.bcc_addr || '';
+  const date = new Date(e.date || e.created_at || '');
+  const dateText = Number.isFinite(date.getTime())
+    ? `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')} ${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}` : '—';
+  const pending = e.pending_action ? (e.pending_error ? mailaiText('后台重试中') : mailaiText('正在同步删除')) : '';
+  const chips = [e._account_user, ...(e.tags || []).map(tag => tag.name), e.category ? mailCategoryLabel(e.category) : '', e.priority ? mailPriorityLabel(e.priority) : '', pending].filter(Boolean).join(' · ');
+  return `<div class="email-item mail-table-item ${selected} ${bulkSelected} ${unread ? 'unread' : ''} ${outgoing ? 'outgoing-mail' : ''} risk-${risk.class}"
+    data-id="${e.id}" data-account-id="${esc(e._account_id || '')}" data-read-state="${outgoing ? 'not-applicable' : unread ? 'unread' : 'read'}" tabindex="0" aria-selected="${bulkSelected ? 'true' : 'false'}">
+    <span class="mail-table-sender" title="${esc(senderAddress && sender !== senderAddress ? `${sender} <${senderAddress}>` : sender)}">${esc(sender)}</span>
+    <span class="mail-table-recipient" title="${esc(recipients)}">${esc(recipients || '—')}</span>
+    <span class="mail-table-subject" title="${esc([e.subject, chips, e.summary || e.snippet].filter(Boolean).join('\n'))}"><span>${esc(e.subject || mailaiText('无主题'))}</span>${e._conversationCount > 1 ? `<small> ${Number(e._conversationCount)}</small>` : ''}</span>
+    <time class="mail-table-date" title="${esc(dateText)}"><span class="mail-table-date-full">${dateText}</span><span class="mail-table-date-short">${dateText.length>5?dateText.slice(5):dateText}</span></time>
+    ${currentFilter.search && e.search_match ? `<div class="mail-table-match">${renderSearchPreview(e)}</div>` : ''}
+  </div>`;
+}
+
+(() => {
+  document.body.dataset.mailListView = localStorage.getItem('mailai-mail-list-view') === 'table' ? 'table' : 'cards';
+  window.dispatchEvent(new Event('mailai:list-view-changed'));
+  const list = document.getElementById('email-list');
+  const columnKey = 'mailai-mail-table-columns';
+  let savedColumns = null, columnFrame;
+  const applyColumns = widths => {
+    list.style.setProperty('--mail-table-custom-columns', widths.map(width => `minmax(0,${width}fr)`).join(' '));
+  };
+  try {
+    const saved = JSON.parse(localStorage.getItem(columnKey));
+    if (Array.isArray(saved) && [4,6].includes(saved.length) && saved.every(n => typeof n === 'number' && Number.isFinite(n) && n > 0 && n < 10000)) savedColumns = saved.length === 6 ? saved.slice(2) : saved;
+  } catch (_) {}
+  const columnWidths = () => {
+    const zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
+    return [...list.querySelectorAll('.mail-table-heading')].map(node => node.getBoundingClientRect().width / zoom);
+  };
+  const measure = document.createElement('canvas').getContext('2d');
+  const minimumWidths = () => [...list.querySelectorAll('.mail-table-heading')].map((node,index) => {
+    const label=node.querySelector('span'), style=getComputedStyle(label);
+    measure.font=style.font || `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+    return Math.ceil(measure.measureText(label.textContent).width)+16+(index===3?20:0);
+  });
+  const fitColumns = () => {
+    const header=list.querySelector('.mail-table-header');
+    if (!header || !header.getClientRects().length) return;
+    const style=getComputedStyle(header), available=header.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight);
+    const minimum=minimumWidths(), totalMin=minimum.reduce((a,b)=>a+b,0);
+    if (available <= totalMin) {applyColumns(minimum); return;}
+    let desired;
+    if (savedColumns) {
+      const total=savedColumns.reduce((a,b)=>a+b,0);
+      desired=savedColumns.map((width,index)=>Math.max(0,width/total*available-minimum[index]));
+    } else {
+      // Reserve a readable date and give the subject most of the remaining room.
+      desired=[.2,.2,.6,0];
+      const dateExtra=Math.min(available*.19,132)-minimum[3];
+      minimum[3]+=Math.max(0,Math.min(dateExtra,available-totalMin));
+    }
+    const free=available-minimum.reduce((a,b)=>a+b,0), total=desired.reduce((a,b)=>a+b,0);
+    applyColumns(minimum.map((width,index)=>width+free*(total?desired[index]/total:index===2?1:0)));
+  };
+  const scheduleColumns = () => {cancelAnimationFrame(columnFrame); columnFrame=requestAnimationFrame(fitColumns);};
+  new ResizeObserver(scheduleColumns).observe(list);
+  new MutationObserver(scheduleColumns).observe(list,{childList:true});
+  document.addEventListener('mailai:language-changed',scheduleColumns);
+  scheduleColumns();
+  const resizedColumns = (start,index,delta) => {
+    const widths = [...start], pair = widths[index] + widths[index+1], minimum=minimumWidths();
+    const leftMin=Math.min(minimum[index],pair/2), rightMin=Math.min(minimum[index+1],pair/2);
+    widths[index] = Math.max(leftMin, Math.min(pair-rightMin, start[index]+delta));
+    widths[index+1] = pair-widths[index];
+    return widths;
+  };
+  list.addEventListener('pointerdown', event => {
+    const handle = event.target.closest('[data-mail-column]');
+    if (!handle || event.button !== 0) return;
+    event.preventDefault();
+    handle.focus({preventScroll:true});
+    const index = Number(handle.dataset.mailColumn), start = columnWidths(), startX = event.clientX;
+    let widths = start;
+    handle.setPointerCapture(event.pointerId);
+    document.body.classList.add('mail-column-resizing');
+    const zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
+    const move = event => { widths = resizedColumns(start,index,(event.clientX-startX)/zoom); applyColumns(widths); };
+    const end = event => {
+      handle.removeEventListener('pointermove',move);
+      handle.removeEventListener('pointerup',end);
+      handle.removeEventListener('pointercancel',end);
+      handle.removeEventListener('lostpointercapture',end);
+      document.body.classList.remove('mail-column-resizing');
+      if (event.type === 'pointercancel') {applyColumns(start); return;}
+      savedColumns=widths; localStorage.setItem(columnKey,JSON.stringify(widths));
+    };
+    handle.addEventListener('pointermove',move);
+    handle.addEventListener('pointerup',end);
+    handle.addEventListener('pointercancel',end);
+    handle.addEventListener('lostpointercapture',end);
+  });
+  list.addEventListener('keydown', event => {
+    const handle=event.target.closest('[data-mail-column]');
+    if (!handle || !['ArrowLeft','ArrowRight'].includes(event.key)) return;
+    event.preventDefault();
+    const widths=resizedColumns(columnWidths(),Number(handle.dataset.mailColumn),event.key==='ArrowRight'?12:-12);
+    savedColumns=widths; localStorage.setItem(columnKey,JSON.stringify(widths)); applyColumns(widths);
+  });
+  list.addEventListener('dblclick',event => {
+    if (!event.target.closest('[data-mail-column]')) return;
+    localStorage.removeItem(columnKey); savedColumns=null; fitColumns();
+  });
+  list.addEventListener('click', event => {
+    if (!event.target.closest('[data-table-date-sort]')) return;
+    const sort = document.getElementById('list-sort');
+    sort.value = currentFilter.sort === 'date-desc' ? 'date-asc' : 'date-desc';
+    sort.dispatchEvent(new Event('change'));
+    document.querySelector('[data-table-date-sort]')?.focus({preventScroll:true});
+  });
+})();
 
 ;
 /* ---- assistant-divider.js ---- */
@@ -37992,26 +38234,40 @@ document.getElementById('task-center-list').addEventListener('click', async even
     <ol class="mail-import-steps" aria-label="导入步骤" data-i18n-aria="ui.4936fcb3bd29"><li data-step="select"><span>1</span><span data-i18n="ui.822fb37dba29">选择文件</span></li><li data-step="review"><span>2</span><span data-i18n="ui.729cd4b71e0a">核对结果</span></li><li data-step="apply"><span>3</span><b data-import-final-step><span data-i18n="ui.a2614ead6041">导入邮件</span></b></li></ol>
     <div class="mail-import-body">
       <div class="mail-import-options"><label><span data-i18n="ui.3bd43bd793d1">导入到哪个邮箱？</span><select id="mail-import-account"></select></label><label><span data-i18n="ui.ffab51e77800">归档名称</span><input id="mail-import-label" value="Foxmail 导入" maxlength="80"></label></div>
-      <p class="mail-import-location"><span data-i18n="ui.dec88b398ad1">导入后在左侧此邮箱的「本地归档」中查看，默认标为已读。</span></p>
+      <p class="mail-import-location"><span data-i18n="mailImport.location">导入后在「本地归档」中查看，默认已读；可移到 MailAI 收件箱，仅在本机整理。</span></p>
       <section data-import-select><details class="mail-import-help"><summary><span data-i18n="ui.ca48255d93ad">如何从 Foxmail 导出邮件？</span></summary><ol><li><span data-i18n="ui.81cda90241df">在 Foxmail 中进入收件箱、已发送等文件夹，选中要迁移的邮件，选择「导出邮件」。</span></li><li><span data-i18n="ui.34ed41f26457">把每个文件夹的邮件分别导出，放在同一个总目录下。这样可保留文件夹名称。</span></li><li><span data-i18n="ui.b9c4156320e0">回到这里选择导出的文件或总目录。附件须在 Foxmail 中下载完整后再导出。</span></li></ol><p><span data-i18n="ui.0f7bb2368cf9">支持 EML、MBOX 邮件文件，也适用于其他客户端导出的同类文件。Foxmail 的 Storage、.fox 数据库请先通过 Foxmail 导出。</span></p></details>
       <div class="mail-import-file-box"><b><span data-i18n="ui.fee481c85284">选择 Foxmail 导出的邮件</span></b><p><span data-i18n="ui.737c928009f0">可以一次选择多封邮件，也可以选择整个导出目录。</span></p><div><button type="button" data-import-files><span data-i18n="ui.bfe1dea0b951">选择邮件文件</span></button><button type="button" data-import-folder><span data-i18n="ui.046b6f007bf0">选择导出目录</span></button></div><small><span data-i18n="ui.df468f0acffe">单个文件最多 1 GB；单封邮件最多 64 MB；每批最多 10 GB。</span></small></div>
       <input type="file" id="mail-import-files" accept=".eml,.mbox" multiple hidden><input type="file" id="mail-import-folder" webkitdirectory multiple hidden>
       <div data-import-selected aria-live="polite"></div></section>
       <section class="mail-import-progress" data-import-progress hidden><p data-import-status role="status" aria-live="polite"></p><progress aria-label="导入进度" data-i18n-aria="ui.5b676bd12914"></progress><small data-import-progress-note></small><small data-import-current hidden></small><div class="mail-import-live" data-import-live hidden></div></section>
       <section data-import-result hidden><div class="mail-import-counts"><div><small><span data-i18n="ui.36689263737d">识别邮件</span></small><b data-count="found">0</b></div><div><small><span data-i18n="ui.b2d9abb23920">待新增</span></small><b data-count="new">0</b></div><div><small><span data-i18n="ui.b83bf31b01f2">重复跳过</span></small><b data-count="duplicates">0</b></div><div><small><span data-i18n="ui.751d82db8361">无法导入</span></small><b data-count="failed">0</b></div></div><p class="mail-import-result-message" data-import-summary></p><details class="mail-import-folders" data-import-folders hidden><summary><span data-i18n="ui.8b9f60b1b5e1">邮件将放在哪些文件夹？</span></summary><p><span data-i18n="ui.8026d5ac9274">在「本地归档」中按以下文件夹保留。本表是扫描时预计新增的数量。</span></p><ul></ul><small></small></details><div data-import-samples></div></section><details data-import-errors hidden><summary><span data-i18n="ui.90d83999bd64">查看需要检查的文件</span></summary><p data-import-issues-note></p><div></div><button type="button" data-import-report><span data-i18n="ui.c9630d09a5f2">下载完整问题清单</span></button></details>
-      <p data-import-error role="alert"></p><section class="mail-import-history" data-import-history></section>
-    </div><footer><button type="button" data-import-reset hidden><span data-i18n="ui.9b904c0e2faf">重新选择</span></button><button type="button" data-import-pause hidden><span data-i18n="ui.8d12fc0d4eb2">暂停</span></button><span></span><button type="button" data-import-close><span data-i18n="ui.3fd47edce45b">关闭</span></button><button type="button" class="primary-action" data-import-action disabled><span data-i18n="ui.afcd60d848dc">扫描并去重</span></button></footer>`;
+      <p data-import-error role="alert"></p><p data-import-failed-file hidden></p><p data-import-retry-help hidden></p><p data-import-skipped hidden></p><section class="mail-import-history" data-import-history></section>
+    </div><footer><button type="button" data-import-reset hidden><span data-i18n="ui.9b904c0e2faf">重新选择</span></button><button type="button" data-import-skip hidden><span data-i18n="mailImport.skipFile">跳过此文件，继续添加</span></button><button type="button" data-import-pause hidden><span data-i18n="ui.8d12fc0d4eb2">暂停</span></button><span></span><button type="button" data-import-close><span data-i18n="ui.3fd47edce45b">关闭</span></button><button type="button" class="primary-action" data-import-action disabled><span data-i18n="ui.afcd60d848dc">扫描并去重</span></button></footer>`;
   document.body.append(dialog);
   const $ = selector => dialog.querySelector(selector);
   let files = [], job = null, accountId = '', uploading = false, controller = null, inFlight = false;
   let renderedSamples = '', renderedIssues = '', renderedFolders = '';
-  let timer = 0, generation = 0, pendingDone = null, returnFocus = null;
+  let timer = 0, generation = 0, pendingDone = null, returnFocus = null, uploadCursor = 0, failedUpload = null;
+  const canResumeUpload = () => job?.state === 'collecting' && job.phase === 'upload';
+  const fileName = file => file.webkitRelativePath ? file.webkitRelativePath.split('/').slice(1).join('/') : file.name;
+  const transferError = error => error instanceof TypeError ? mailaiText('文件传输中断。已添加的文件已保留，请点击「继续添加」；若文件已移动，请重新选择原文件。') : mailaiSystemMessage(error.message);
   const busy = () => inFlight || uploading || ['scanning', 'importing', 'uploading'].includes(job?.state);
   const request = (path, options = {}) => api('/api/mail/client-imports' + path, {accountId, ...options});
   const post = path => request(path, {method:'POST'});
   function setPending(working) {
     if (working && !pendingDone) pendingDone = window.mailaiMotion?.pending($('[data-import-status]')) || (() => {});
     if (!working && pendingDone) { pendingDone(); pendingDone = null; }
+  }
+  function uploadAdvice(reason) {
+    if (/64\s*MB|1\s*GB|10\s*GB|超过.*封|超过.*文件/i.test(reason)) return mailaiText("单封邮件需小于等于 64 MB，MBOX 需小于等于 1 GB，每批不超过 10 GB。请在原客户端分批导出；单封超大邮件可保留原件后，另存较小副本再导入。");
+    if (/为空|空文件/i.test(reason)) return mailaiText("此文件没有邮件内容。请在原客户端打开邮件，下载完整正文和附件后重新导出；确认文件大小不为 0，再单独导入。");
+    if (/找不到|不存在|读取失败/i.test(reason)) return mailaiText("请确认源文件仍在原位置且可读取，云盘文件需先下载到本机。若暂存文件已丢失，请重新选择原文件建立新批次；已导入邮件会自动去重。");
+    if (/磁盘|权限|暂存|保存|写入/i.test(reason)) return mailaiText("请检查 MailAI 数据目录所在磁盘的剩余空间和写入权限，并确认源文件可读取。处理后重试；已成功导入的邮件会保留。");
+    if (/传输|连接|fetch|network|中断/i.test(reason)) return mailaiText("请确认 MailAI 服务仍在运行，源文件未被移动或删除；云盘文件需先下载到本机。可点击继续添加重试，仍失败时先跳过，稍后单独导入。");
+    if (/顺序|不一致|变化/i.test(reason)) return mailaiText("恢复任务时请选择原批次文件并保持原顺序。若已修改文件，请新建导入批次；已有邮件会自动去重。");
+    if (/路径/i.test(reason)) return mailaiText("请将文件复制到本机普通目录，缩短文件名及目录层级，避免特殊路径字符后重新选择。");
+    if (/原文不完整|同标识/i.test(reason)) return mailaiText("请先核对本机已有的同一邮件，补齐原文和附件后再试；系统会跳过无法确认内容的同标识邮件，避免误建重复记录。");
+    return mailaiText("请用原邮件客户端打开此文件并确认正文和附件完整，再重新导出为 EML 或 MBOX；不要仅修改文件扩展名。可先导入其他文件，修复后将此文件单独补导。");
   }
   function labelError() {
     const name = $('#mail-import-label').value.trim();
@@ -38027,15 +38283,15 @@ document.getElementById('task-center-list').addEventListener('click', async even
     $('#mail-import-label').disabled = Boolean(job) || busy();
     $('[data-import-files]').disabled = busy(); $('[data-import-folder]').disabled = busy();
     dialog.querySelectorAll('[data-import-job]').forEach(n => n.disabled = busy());
-    $('[data-import-select]').hidden = Boolean(job);
+    $('[data-import-select]').hidden = Boolean(job) && (!canResumeUpload() || working);
     $('[data-import-progress]').hidden = !job;
-    mailaiBindUI($('[data-import-status]'), "textContent", () => (uploading ? mailaiTemplate`正在添加文件：${job?.processed || 0} / ${files.length}` : state === 'paused' ? mailaiTemplate`${job.phase === 'import' ? mailaiText('导入') : mailaiText('扫描')}已暂停。点击「继续」恢复。` : mailaiSystemMessage(job?.error) || (job?.state === 'collecting' && job.expected_files && job.files !== job.expected_files ? mailaiTemplate`文件添加未完成（${job.files} / ${job.expected_files}）。请点击「重新选择」添加整批文件。` : mailaiSystemMessage(job?.message)) || mailaiText('文件已添加，点击继续扫描')));
+    mailaiBindUI($('[data-import-status]'), "textContent", () => (uploading ? mailaiTemplate`正在添加文件：${job?.processed || 0} / ${files.length}` : state === 'paused' ? mailaiTemplate`${job.phase === 'import' ? mailaiText('导入') : mailaiText('扫描')}已暂停。点击「继续」恢复。` : mailaiSystemMessage(job?.error) || (job?.state === 'collecting' && job.expected_files && job.files !== job.expected_files ? mailaiTemplate`已保留 ${job.files - (job.skipped_files || 0)} / ${job.expected_files} 个文件。${files.length ? mailaiText('点击「继续添加」接着传输。') : mailaiText('请选择原批次文件继续，已添加的文件会校验复用。')}` : mailaiSystemMessage(job?.message)) || mailaiText('文件已添加，点击继续扫描')));
     setPending(working);
     const progress = $('progress');
-    const total = uploading ? files.length : job?.total || 0;
+    const total = job?.phase === 'upload' ? job.expected_files : job?.total || 0;
     progress.max = Math.max(total, 1);
-    if (total) progress.value = job?.processed || 0; else progress.removeAttribute('value');
-    mailaiBindUI($('[data-import-progress-note]'), "textContent", () => (uploading ? mailaiText('正在复制到本机工作目录。停止后可重新选择文件。') : state === 'importing' ? mailaiText('可暂停或关闭窗口。关闭后会在后台继续导入。') : state === 'scanning' ? mailaiText('扫描只核对邮件，尚未导入。关闭窗口后会继续扫描。') : ['paused','failed'].includes(state) ? (job.phase === 'import' ? mailaiText('已成功导入的邮件会保留，继续时会自动跳过。') : mailaiText('继续后会重新扫描整批文件，扫描不会修改已有邮件。')) : ''));
+    if (total) progress.value = job?.phase === 'upload' ? (uploading ? uploadCursor : job.files) : job?.processed || 0; else progress.removeAttribute('value');
+    mailaiBindUI($('[data-import-progress-note]'), "textContent", () => (uploading ? mailaiText('正在复制到本机工作目录。中断可继续；关闭软件后可重选原批次文件恢复。') : state === 'importing' ? mailaiText('可暂停或关闭窗口。关闭后会在后台继续导入。') : state === 'scanning' ? mailaiText('扫描只核对邮件，尚未导入。关闭窗口后会继续扫描。') : ['paused','failed'].includes(state) ? (job.phase === 'import' ? mailaiText('已成功导入的邮件会保留，继续时会自动跳过。') : mailaiText('继续后会重新扫描整批文件，扫描不会修改已有邮件。')) : ''));
     const current = $('[data-import-current]');
     current.hidden = !job?.current_source || job?.phase === 'upload';
     mailaiBindUI(current, "textContent", () => (job?.current_source ? mailaiTemplate`当前文件：${job.current_source}${job.phase === 'scan' && job.source_total ? mailaiTemplate` · 已扫描 ${Number(job.source_processed || 0).toLocaleString(currentI18nLanguage())} / ${Number(job.source_total).toLocaleString(currentI18nLanguage())} 封` : ''}` : ''));
@@ -38048,7 +38304,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
       const imported = Number(job.imported || 0);
       $('[data-count="new"]').textContent = state === 'completed' || job.phase === 'import' ? imported.toLocaleString(currentI18nLanguage()) : Number(job.new || 0).toLocaleString(currentI18nLanguage());
       mailaiBindUI($('[data-count="new"]').previousElementSibling, "textContent", () => (job.phase === 'import' ? mailaiText('已新增') : mailaiText('待新增')));
-      mailaiBindUI($('[data-import-summary]'), "textContent", () => (state === 'completed' ? mailaiTemplate`已新增 ${imported} 封，跳过重复 ${job.duplicates} 封${job.failed ? mailaiTemplate`，${job.failed} 项未能导入` : ''}。在「本地归档」中查看。` : !job.new ? (job.failed ? mailaiTemplate`没有可新增的邮件，${job.failed} 项无法识别。请查看下方原因，重新导出后再选择。` : job.errors?.length ? mailaiText('没有可确认新增的邮件。部分已有邮件原文不完整，请展开文件说明，重新同步后再导入。') : mailaiText('没有需要新增的邮件。已有邮件会保留，无需再次导入。')) : mailaiTemplate`预计新增 ${job.new} 封邮件；重复项会自动跳过，原有邮件不会被覆盖。`));
+      mailaiBindUI($('[data-import-summary]'), "textContent", () => (state === 'completed' ? mailaiTemplate`已新增 ${imported} 封，跳过重复 ${job.duplicates} 封${job.failed ? mailaiTemplate`，${job.failed} 项未能导入` : ''}。在「本地归档」中查看。` : !job.new ? (job.skipped_files ? mailaiTemplate`没有可新增的邮件，已单独跳过 ${job.skipped_files} 个文件。请查看下方原因和处理建议，修复后另行补导。` : job.failed ? mailaiTemplate`没有可新增的邮件，${job.failed} 项无法识别。请查看下方原因，重新导出后再选择。` : job.errors?.length ? mailaiText('没有可确认新增的邮件。部分已有邮件原文不完整，请展开文件说明，重新同步后再导入。') : mailaiText('没有需要新增的邮件。已有邮件会保留，无需再次导入。')) : mailaiTemplate`预计新增 ${job.new} 封邮件；重复项会自动跳过，原有邮件不会被覆盖。`));
       const sampleKey = JSON.stringify(job.samples || []);
       if (renderedSamples !== sampleKey) {
         const wasOpen = $('[data-import-samples] details')?.open;
@@ -38069,7 +38325,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
     $('[data-import-errors]').hidden = !issues.length;
     const issueKey = JSON.stringify(issues);
     if (renderedIssues !== issueKey) {
-      $('[data-import-errors] > div').innerHTML = issues.map(row=>`<p><b>${esc(row.file)}</b><br>${esc(row.reason)}</p>`).join('');
+      $('[data-import-errors] > div').innerHTML = issues.map(row=>`<p><b>${esc(row.file)}</b><br>${esc(mailaiSystemMessage(row.reason))}${row.advice ? `<br><small>${esc(mailaiText('处理建议：'))}${esc(mailaiText(row.advice))}</small>` : ''}</p>`).join('');
       renderedIssues = issueKey;
     }
     const issueCount = job?.issue_count ?? issues.length;
@@ -38079,16 +38335,24 @@ document.getElementById('task-center-list').addEventListener('click', async even
     $('[data-import-reset]').disabled = working;
     const pause = $('[data-import-pause]'); pause.hidden = !uploading && !['scanning','importing'].includes(state);
     pause.disabled = !uploading && (inFlight || Boolean(job?.cancel)); mailaiBindUI(pause, "textContent", () => (uploading ? mailaiText('停止添加') : job?.cancel ? mailaiText('正在暂停…') : mailaiText('暂停')));
+    const skip = $('[data-import-skip]');
+    skip.hidden = !failedUpload || !canResumeUpload();
+    skip.disabled = working;
+    $('[data-import-failed-file]').hidden = !failedUpload;
+    mailaiBindUI($('[data-import-failed-file]'), 'textContent', () => failedUpload ? mailaiTemplate`失败文件：${failedUpload.name}。可以重试，或单独跳过后先添加其他文件。` : '');
+    $('[data-import-retry-help]').hidden = !failedUpload;
+    mailaiBindUI($('[data-import-retry-help]'), 'textContent', () => failedUpload ? uploadAdvice(failedUpload.reason) : '');
+    $('[data-import-skipped]').hidden = !job?.skipped_files;
+    mailaiBindUI($('[data-import-skipped]'), 'textContent', () => job?.skipped_files ? mailaiTemplate`已单独跳过 ${job.skipped_files} 个文件，扫描后的问题清单会保留记录，方便之后补导。` : '');
     const action = $('[data-import-action]');
-    mailaiBindUI(action, "textContent", () => (inFlight && !uploading ? mailaiText('请稍候…') : state === 'completed' ? mailaiText('查看导入邮件') : ['paused','failed'].includes(state) ? mailaiText('继续') : state === 'ready' ? mailaiTemplate`导入缺少的 ${job.new} 封邮件` : mailaiText('扫描并去重')));
-    action.disabled = working || (state === 'collecting' && (!job.files || job.expected_files && job.files !== job.expected_files)) || (!job ? !files.length || !accountId || Boolean(labelError()) : state === 'ready' ? !job.new : !['completed','paused','failed','collecting'].includes(state));
+    mailaiBindUI(action, "textContent", () => (inFlight && !uploading ? mailaiText('请稍候…') : state === 'completed' ? mailaiText('查看导入邮件') : ['paused','failed'].includes(state) ? mailaiText('继续') : state === 'ready' ? mailaiTemplate`导入缺少的 ${job.new} 封邮件` : canResumeUpload() && job.files < job.expected_files ? mailaiText('继续添加') : mailaiText('扫描并去重')));
+    action.disabled = working || (state === 'collecting' && job.files !== job.expected_files && files.length !== job.expected_files) || (!job ? !files.length || !accountId || Boolean(labelError()) : state === 'ready' ? !job.new : !['completed','paused','failed','collecting'].includes(state));
   }
   function selected() {
     const ignored = files.filter(n => !/\.(eml|mbox)$/i.test(n.name)).length;
     files = files.filter(n => /\.(eml|mbox)$/i.test(n.name));
     const bytes = files.reduce((sum, file) => sum + file.size, 0);
-    const tooLarge = files.find(file => file.size > (/\.eml$/i.test(file.name) ? 64 * 1024**2 : 1024**3));
-    const error = tooLarge ? mailaiTemplate`${tooLarge.name} 超过 ${/\.eml$/i.test(tooLarge.name) ? mailaiText('单封邮件 64 MB') : mailaiText('单个文件 1 GB')} 的限制，请在 Foxmail 中检查后重新导出。` : bytes > 10 * 1024**3 ? mailaiText('所选文件超过 10 GB，请分批选择。') : files.length > 20000 ? mailaiText('一批最多选择 20000 个文件，请分批选择。') : '';
+    const error = canResumeUpload() && files.length !== job.expected_files ? mailaiTemplate`请选回原批次的 ${job.expected_files} 个邮件文件，已添加的文件会校验复用。` : files.length > 20000 ? mailaiText('一批最多选择 20000 个文件，请分批选择。') : '';
     mailaiBindUI($('[data-import-error]'), "textContent", () => (error || (files.length ? labelError() : '') || (!files.length ? mailaiText('未找到邮件文件，请先从 Foxmail 导出为 EML 或 MBOX。') : '')));
     $('[data-import-selected]').innerHTML = files.length ? `<p><b><span data-i18n="ui.e49d139a999a">已选择 ${files.length} 个邮件文件</span></b> · ${formatFileSize(bytes)}${ignored ? mailaiTemplate` · 跳过 ${ignored} 个非邮件文件` : ''}</p><ul>${files.slice(0,5).map(file=>`<li>${esc(file.webkitRelativePath || file.name)}</li>`).join('')}</ul>` : '';
     if (error) files = [];
@@ -38118,7 +38382,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
   }
   async function open(id = '') {
     if (dialog.open) return;
-    generation++; clearTimeout(timer); job = null; files = []; uploading = false; inFlight = false;
+    generation++; clearTimeout(timer); job = null; files = []; uploadCursor = 0; failedUpload = null; uploading = false; inFlight = false;
     renderedSamples = renderedIssues = renderedFolders = '';
     $('[data-import-errors]').open = false; $('[data-import-folders]').open = false;
     accountId = id || activeMailAccount()?.id || '';
@@ -38145,12 +38409,12 @@ document.getElementById('task-center-list').addEventListener('click', async even
   $('#mail-import-label').oninput = () => { $('[data-import-error]').textContent = labelError(); paint(); };
   $('[data-import-files]').onclick = () => $('#mail-import-files').click();
   $('[data-import-folder]').onclick = () => $('#mail-import-folder').click();
-  for (const selector of ['#mail-import-files','#mail-import-folder']) $(selector).onchange=event=>{if (busy() || job) return; files=Array.from(event.target.files || []);selected();};
+  for (const selector of ['#mail-import-files','#mail-import-folder']) $(selector).onchange=event=>{if (busy() || (job && !canResumeUpload())) return; files=Array.from(event.target.files || []); uploadCursor = 0; failedUpload = null; selected();};
   $('[data-import-history]').onclick = async event => {
     const n = event.target.closest('[data-import-job]'); if (!n || busy()) return;
     const version = ++generation; inFlight = true; paint();
     try { const result = await request('/' + n.dataset.importJob); if (version !== generation) return;
-      job = result; renderedSamples = renderedIssues = renderedFolders = ''; $('#mail-import-label').value = job.label;
+      job = result; files = []; uploadCursor = 0; failedUpload = null; renderedSamples = renderedIssues = renderedFolders = ''; $('#mail-import-label').value = job.label;
     } catch (error) { $('[data-import-error]').textContent = mailaiSystemMessage(error.message); }
     finally { inFlight = false; paint(); poll(); }
   };
@@ -38158,8 +38422,9 @@ document.getElementById('task-center-list').addEventListener('click', async even
     if (busy()) return;
     inFlight = true; paint();
     try { if (job && job.state !== 'completed') await request('/' + job.token, {method:'DELETE'});
-      job = null; files = []; generation++; clearTimeout(timer); setPending(false);
+      job = null; files = []; uploadCursor = 0; failedUpload = null; generation++; clearTimeout(timer); setPending(false);
       $('#mail-import-files').value = ''; $('#mail-import-folder').value = '';
+      $('[data-import-errors]').open = false; $('[data-import-folders]').open = false;
       $('[data-import-selected]').replaceChildren(); $('[data-import-error]').textContent = ''; paint(); listHistory();
     } catch (error) { $('[data-import-error]').textContent = mailaiSystemMessage(error.message); }
     finally { inFlight = false; paint(); poll(); }
@@ -38192,6 +38457,25 @@ document.getElementById('task-center-list').addEventListener('click', async even
       if (version === generation) { inFlight = false; paint(); poll(); }
     }
   };
+  $('[data-import-skip]').onclick = async () => {
+    if (busy() || !failedUpload || !canResumeUpload()) return;
+    const failed = failedUpload, version = generation;
+    let resume = false;
+    inFlight = true; paint();
+    try {
+      job = await request('/' + job.token + '/skip-file', {method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({index:failed.index, name:failed.name, reason:failed.reason.slice(0,500)})});
+      if (version !== generation) return;
+      uploadCursor = failed.index + 1; failedUpload = null;
+      $('[data-import-error]').textContent = '';
+      resume = true;
+    } catch (error) {
+      if (version === generation) $('[data-import-error]').textContent = transferError(error);
+    } finally {
+      if (version === generation) { inFlight = false; paint(); }
+    }
+    if (resume && version === generation) $('[data-import-action]').click();
+  };
   $('[data-import-action]').onclick = async () => {
     if (busy() || $('[data-import-action]').disabled) return;
     $('[data-import-error]').textContent = '';
@@ -38204,13 +38488,30 @@ document.getElementById('task-center-list').addEventListener('click', async even
       }
       if (!job) {
         job = await request('', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({label:$('#mail-import-label').value.trim(),expected_files:files.length})});
+        uploadCursor = 0; failedUpload = null;
+      }
+      if (canResumeUpload() && files.length && uploadCursor < files.length) {
         uploading = true; controller = new AbortController(); paint();
-        for (let i=0; i<files.length; i++) {
+        for (let i=uploadCursor; i<files.length; i++) {
           const file = files[i];
-          let name = file.webkitRelativePath || file.name;
-          if (file.webkitRelativePath) name = name.split('/').slice(1).join('/');
-          job = await request('/' + job.token + '/files?name=' + encodeURIComponent(name), {method:'PUT',headers:{'Content-Type':'application/octet-stream'},body:file,signal:controller.signal});
-          job.processed = i + 1; paint();
+          // Stable ordinals make retries safe even if the server saved a file
+          // but its response never reached this browser.
+          for (let attempt=0; ; attempt++) {
+            try {
+              job = await request('/' + job.token + '/files?index=' + i + '&name=' + encodeURIComponent(fileName(file)), {method:'PUT',headers:{'Content-Type':'application/octet-stream'},body:file,signal:controller.signal});
+              break;
+            } catch (error) {
+              if (controller.signal.aborted || attempt >= 2 || !(error instanceof TypeError)) {
+                if (!controller.signal.aborted) failedUpload = {index:i, name:fileName(file), reason:error instanceof TypeError ? mailaiCopySource(mailaiText('文件传输中断，已添加的文件已保留，请继续添加')) : String(error.message)};
+                throw error;
+              }
+              await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+              if (controller.signal.aborted) throw new DOMException('Stopped', 'AbortError');
+            }
+          }
+          failedUpload = null; uploadCursor = i + 1;
+          job.processed = uploadCursor;
+          if (i % 10 === 0 || uploadCursor === files.length) paint();
         }
         uploading = false; controller = null;
       }
@@ -38220,7 +38521,7 @@ document.getElementById('task-center-list').addEventListener('click', async even
       uploading = false; controller = null; setPending(false);
       if (version === generation) {
         if (job) { try { job = await request('/' + job.token); } catch (_) {} }
-        mailaiBindUI($('[data-import-error]'), "textContent", () => (error.name === 'AbortError' ? mailaiText('已停止添加。点击「重新选择」后可重新添加整批文件。') : mailaiSystemMessage(error.message)));
+        mailaiBindUI($('[data-import-error]'), "textContent", () => (error.name === 'AbortError' ? mailaiText('已停止添加，已添加的文件已保留。点击「继续添加」即可接着传输。') : transferError(error)));
         paint();
       }
     } finally { if (version === generation) { inFlight = false; paint(); poll(); } }

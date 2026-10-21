@@ -7,14 +7,25 @@ from pathlib import Path
 import AppKit
 import Foundation
 import WebKit
+from webview.platforms import cocoa
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.mail_navigation import navigation_delegate
+from app.desktop import restore_native_context_menu
 
 
 def main():
     AppKit.NSApplication.sharedApplication()
     config = WebKit.WKWebViewConfiguration.alloc().init()
-    view = WebKit.WKWebView.alloc().initWithFrame_configuration_(((0, 0), (900, 700)), config)
+    host = cocoa.BrowserView.WebKitHost
+    restore_native_context_menu(host)
+    view = host.alloc().initWithFrame_configuration_(((0, 0), (900, 700)), config)
+    # Attach a responder chain without showing or focusing a test window.
+    window = AppKit.NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
+        ((-5000, -5000), (900, 700)), AppKit.NSWindowStyleMaskTitled,
+        AppKit.NSBackingStoreBuffered, False,
+    )
+    window.setReleasedWhenClosed_(False)
+    window.setContentView_(view)
     calls = []
     mail_routes = []
     def route_link(target):
@@ -92,7 +103,49 @@ def main():
     assert len(calls) == before
     assert '邮件正文' in evaluate("document.querySelector('iframe').contentDocument.body.innerText")
     assert evaluate('calls.length') == 0, 'email scripts must remain disabled'
-    print('Native WKWebView: web links open externally, mailto opens MailAI compose, body preserved, scripts blocked')
+
+    # The production pywebview host must keep the system's text/edit commands,
+    # rather than clearing them and leaving only macOS Services.
+    menu = AppKit.NSMenu.alloc().init()
+    copy_item = menu.addItemWithTitle_action_keyEquivalent_('Copy', 'copy:', 'c')
+    select_item = menu.addItemWithTitle_action_keyEquivalent_('Select All', 'selectAll:', 'a')
+    assert not cocoa._state['debug']
+    view.performSelector_withObject_withObject_('willOpenMenu:withEvent:', menu, None)
+    assert menu.numberOfItems() == 2 and menu.itemAtIndex_(0) is copy_item
+    assert menu.itemAtIndex_(1) is select_item and cocoa.BrowserView.WebKitHost is host
+
+    selected = evaluate("const mail=document.querySelector('iframe');mail.contentWindow.focus();mail.contentWindow.getSelection().selectAllChildren(mail.contentDocument.querySelector('p'));mail.contentWindow.getSelection().toString()")
+    assert selected == '邮件正文'
+    window.makeFirstResponder_(view)
+    board = AppKit.NSPasteboard.generalPasteboard()
+    saved = []
+    for original in board.pasteboardItems() or []:
+        item = AppKit.NSPasteboardItem.alloc().init()
+        for kind in original.types():
+            data = original.dataForType_(kind)
+            if data is not None:
+                item.setData_forType_(data, kind)
+        saved.append(item)
+    written = None
+    try:
+        view.copy_(None)
+        written = board.changeCount()
+        spin_until(lambda: board.stringForType_(AppKit.NSPasteboardTypeString) == selected)
+        event = AppKit.NSEvent.keyEventWithType_location_modifierFlags_timestamp_windowNumber_context_characters_charactersIgnoringModifiers_isARepeat_keyCode_(
+            AppKit.NSKeyDown, (0, 0), AppKit.NSCommandKeyMask, 0,
+            window.windowNumber(), None, 'c', 'c', False, 8,
+        )
+        view.keyDown_(event)
+        written = board.changeCount()
+        assert board.stringForType_(AppKit.NSPasteboardTypeString) == selected
+    finally:
+        # Restore the user's clipboard unless another app changed it meanwhile.
+        if written is not None and board.changeCount() == written:
+            board.clearContents()
+            if saved:
+                board.writeObjects_(saved)
+        window.close()
+    print('Native WKWebView: links/mailto, selected HTML mail text, native Copy/Cmd+C, context menu retained and scripts blocked')
 
 
 if __name__ == '__main__':

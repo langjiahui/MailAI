@@ -177,7 +177,7 @@ const port=Number(process.env.MAILAI_EVOLUTION_FIXTURE_PORT||18857);
       const torso=svg.querySelector('.companion-torso'),heading=svg.querySelector('.companion-heading');
       const projected=root.matrixTransform(torso.getCTM().inverse().multiply(body.getCTM())).matrixTransform(heading.getCTM()).matrixTransform(body.getCTM().inverse());
       if(Math.hypot(joint.x-projected.x,joint.y-projected.y)>.02)errors.push(`${stage}/${clip}/${phase}: tail root drift`);
-      if(!body.isPointInFill(joint)||!tail.isPointInFill(root))errors.push(`${stage}/${clip}/${phase}: root outside body or tail`);
+      if(!body.isPointInFill(joint)||!tail.isPointInFill(root))errors.push(`${stage}/${clip}/${phase}: root outside body or tail ${JSON.stringify({joint:{x:joint.x,y:joint.y},body:body.isPointInFill(joint),tail:tail.isPointInFill(root),bodyStyle:getComputedStyle(body).fill,tailStyle:getComputedStyle(tail).fill,bodyBox:body.getBBox(),tailBox:tail.getBBox(),heading:getComputedStyle(heading).transform})}`);
       let overlap=0;
       for(const x of [80,82,84,86])for(const y of [82,84,86,88,90]) {
        const p=new DOMPoint(x,y);

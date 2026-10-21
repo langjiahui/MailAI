@@ -25,6 +25,25 @@ log = logging.getLogger(__name__)
 _runtime: "DesktopRuntime | None" = None
 
 
+def restore_native_context_menu(host_class) -> None:
+    """Keep WebKit's selection/edit menu in non-debug desktop windows."""
+    import objc
+
+    def will_open_menu(self, menu, event):
+        # pywebview clears this menu when debug=False, removing Copy along with
+        # the browser actions. WebKit already supplies the right native commands
+        # for selected mail text, links and editable fields. Developer extras
+        # remain disabled by the window configuration.
+        return None
+
+    # Replace only the callback. Subclassing/replacing WebKitHost would break
+    # the backend's super(BrowserView.WebKitHost, self) calls in keyboard/drag code.
+    original = host_class.willOpenMenu_withEvent_
+    host_class.willOpenMenu_withEvent_ = objc.selector(
+        will_open_menu, selector=b"willOpenMenu:withEvent:", signature=original.signature,
+    )
+
+
 def desktop_asset_path(filename: str = "mailai-mark.png") -> Path:
     """Resolve a checked-in desktop asset in source and frozen builds."""
     base = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))
@@ -728,6 +747,8 @@ def run_macos_window(asgi_app, preferred_port: int = 0,
         from .macos_menu import install_menu_factory
         native_menu = install_menu_factory(runtime, cocoa)
         from .mail_navigation import navigation_delegate
+
+        restore_native_context_menu(cocoa.BrowserView.WebKitHost)
 
         def open_mail_link(url):
             from urllib.parse import urlsplit

@@ -36,10 +36,10 @@ const {chromium} = require('playwright');
     await page.waitForFunction(()=>document.body.dataset.petEffect === 'sparkles');
     assert.equal(await dialog.locator('.pet-hero .pet-star').first().evaluate(n=>getComputedStyle(n).animationName),'pet-starlight');
     await page.emulateMedia({reducedMotion:'reduce'});
-    assert.equal(await dialog.locator('.pet-hero .pet-star').first().evaluate(n=>getComputedStyle(n).animationName),'none');
+    await page.waitForFunction(()=>{const star=document.querySelector('.pet-hero .pet-star');return star && getComputedStyle(star).animationName==='none';});
     await page.emulateMedia({reducedMotion:'no-preference'});
     await page.evaluate(()=>document.body.classList.add('companion-still'));
-    assert.equal(await dialog.locator('.pet-hero .pet-star').first().evaluate(n=>getComputedStyle(n).animationName),'none');
+    await page.waitForFunction(()=>{const star=document.querySelector('.pet-hero .pet-star');return star && getComputedStyle(star).animationName==='none';});
     await page.evaluate(()=>document.body.classList.remove('companion-still'));
     await dialog.locator('.pet-journal-body').evaluate(n=>n.scrollTop=0);
     await page.waitForTimeout(350);
@@ -136,7 +136,7 @@ const {chromium} = require('playwright');
       } finally { Object.assign(body,saved); }
       return results;
     });
-    for (const row of paletteMatrix) assert.equal(row.fill,{sky:'rgb(178, 215, 237)',peach:'rgb(241, 202, 185)',midnight:'rgb(106, 142, 172)'}[row.palette],JSON.stringify(row));
+    for (const row of paletteMatrix) assert.equal(row.fill,{sky:'rgb(141, 196, 229)',peach:'rgb(229, 177, 187)',midnight:'rgb(167, 177, 212)'}[row.palette],JSON.stringify(row));
     const previews = await page.evaluate(()=>{
       const body=document.body.dataset,saved=body.petAccessory;
       try {
@@ -161,7 +161,7 @@ const {chromium} = require('playwright');
     await page.evaluate(()=>setI18nLanguage('en'));
     await page.waitForFunction(()=>document.querySelector('#pet-journal-title')?.textContent === 'Growth journal');
     await dialog.locator('[data-pet-tab="shop"]').click();
-    assert.match(await dialog.textContent(),/Messenger wings/);
+    assert.match(await dialog.textContent(),/Sunlit messenger wings/);
     assert(!/[\u3400-\u9fff]/.test(await dialog.textContent()));
     await page.screenshot({path:'/tmp/mailai-pet-english.png'});
     await page.setViewportSize({width:390,height:844});

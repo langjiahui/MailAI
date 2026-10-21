@@ -1,0 +1,90 @@
+// Run against workspace_preview.py, never a real mailbox.
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const {chromium, webkit} = require('playwright');
+(async () => {
+  const engine = process.env.MAILAI_BROWSER === 'webkit' ? webkit : chromium;
+  const browser = await engine.launch({headless:true});
+  try {
+    const page = await browser.newPage({viewport:{width:1440,height:1000},reducedMotion:'reduce'});
+    const errors=[]; page.on('pageerror',error=>errors.push(error.message));
+    await page.goto(process.env.MAILAI_TEST_URL || 'http://127.0.0.1:18797/');
+    await page.locator('#app-preloader').waitFor({state:'detached'});
+    await page.evaluate(()=>setI18nLanguage('zh-CN'));
+    await page.locator('.sidebar-account-folders [data-account-action="inbox"]').first().click();
+    await page.locator('.email-item').first().waitFor();
+    const setView=async value=>{
+      await page.evaluate(()=>showSystemView('preferences'));
+      await page.locator(`input[name="mail-list-view-choice"][value="${value}"]`).check();
+      await page.locator('#btn-close-system').click();
+    };
+    await setView('cards');
+    assert.equal(await page.locator('.mail-table-header').count(),0);
+    await page.locator('.email-item[data-id="1"]').click();
+    await page.locator('#reading-content:not(.hidden)').waitFor();
+    const selected = await page.evaluate(()=>selectedEmailId);
+    await setView('table');
+    assert.equal(await page.evaluate(()=>selectedEmailId),selected,'View switches retain the open message');
+    assert.equal(await page.locator('.mail-table-item').count(),12);
+    assert.match(await page.locator('.mail-table-recipient').first().textContent(),/@example.test/);
+    assert.equal(await page.locator('.mail-table-heading').count(),4);
+    assert.equal(await page.locator('.mail-table-state,.mail-table-attachment,.table-warning').count(),0);
+    await page.locator('[data-table-date-sort]').click();
+    assert.equal(await page.locator('#list-sort').inputValue(),'date-asc');
+    await page.locator('[data-table-date-sort]').click();
+    assert.equal(await page.locator('#list-sort').inputValue(),'date-desc');
+    await page.locator('.mail-table-item').first().focus();
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await page.locator('.mail-table-item').nth(1).evaluate(n=>n===document.activeElement),true);
+    await page.keyboard.press(' ');
+    assert.equal(await page.locator('.mail-table-item.bulk-selected').count(),2);
+    await page.locator('#bulk-cancel').click();
+    const beforeWidth=await page.locator('.mail-table-heading').nth(0).evaluate(n=>n.getBoundingClientRect().width);
+    const handle=page.locator('[data-mail-column="0"]');
+    assert.equal(await handle.getAttribute('aria-label'),'调整列宽 · 发件人');
+    assert.match(await handle.getAttribute('title'),/拖动调整列宽/);
+    const box=await handle.boundingBox();
+    await page.mouse.move(box.x+box.width/2,box.y+box.height/2); await page.mouse.down();
+    await page.mouse.move(box.x+box.width/2+24,box.y+box.height/2,{steps:5}); await page.mouse.up();
+    const afterWidth=await page.locator('.mail-table-heading').nth(0).evaluate(n=>n.getBoundingClientRect().width);
+    assert(afterWidth>beforeWidth+15,'Dragging grows sender and shrinks recipient without horizontal overflow');
+    await handle.focus(); await page.keyboard.press('ArrowLeft');
+    const columns=await page.evaluate(()=>localStorage.getItem('mailai-mail-table-columns'));
+    assert(columns,'Column sizes are persisted');
+    await page.reload();
+    await page.locator('#app-preloader').waitFor({state:'detached'});
+    await page.locator('.mail-table-header').waitFor();
+    assert.equal(await page.evaluate(()=>localStorage.getItem('mailai-mail-table-columns')),columns);
+    assert.equal(await page.evaluate(()=>document.body.dataset.mailListView),'table');
+    await page.locator('[data-mail-column="0"]').dblclick();
+    await page.locator('[data-resizer="list"]').dblclick();
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    const defaults=await page.locator('.mail-table-heading').evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().width));
+    assert(defaults[2]>defaults[0]&&defaults[2]>defaults[1],'The subject gets most of the default column space');
+    fs.mkdirSync('output/mail-list-view',{recursive:true});
+    for (const mode of ['light','dark']) for (const language of ['zh-CN','en']) for (const width of [1440,1024,900,768,390]) {
+      await page.setViewportSize({width,height:1000});
+      await page.evaluate(({mode,language})=>{applyTheme(mode);setI18nLanguage(language);},{mode,language});
+      await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+      const geometry=await page.evaluate(()=>{
+        const header=document.querySelector('.mail-table-header'),row=document.querySelector('.mail-table-item');
+        const h=[...header.children].map(n=>n.getBoundingClientRect().left),r=[...row.children].slice(0,4).map(n=>n.getBoundingClientRect().left);
+        const list=document.querySelector('.list-pane').getBoundingClientRect(),read=document.querySelector('.reading-pane').getBoundingClientRect();
+        const clippedHeadings=[...header.querySelectorAll('.mail-table-heading > span,.mail-table-heading button > span:first-child')].filter(n=>n.scrollWidth>n.clientWidth+1).map(n=>n.textContent);
+        return {clippedHeadings,aligned:h.every((x,i)=>Math.abs(x-r[i])<2),overflow:document.documentElement.scrollWidth>innerWidth+1,listRight:list.right,readingLeft:read.left,listOverflow:document.querySelector('#email-list').scrollWidth>document.querySelector('#email-list').clientWidth+1};
+      });
+      assert(geometry.aligned&&!geometry.overflow&&!geometry.listOverflow&&!geometry.clippedHeadings.length,JSON.stringify({width,mode,language,geometry}));
+      if(width>820)assert(geometry.readingLeft>=geometry.listRight-1,JSON.stringify(geometry));
+      if([1440,900].includes(width)&&language==='zh-CN')await page.screenshot({path:`output/mail-list-view/${mode}-${width}-${process.env.MAILAI_BROWSER||'chromium'}.png`});
+    }
+    await page.setViewportSize({width:1440,height:1000});
+    await page.evaluate(()=>{setI18nLanguage('zh-CN');applyTheme('light');showSystemView('preferences');});
+    await page.locator('.mail-list-view-settings').screenshot({path:`output/mail-list-view/settings-${process.env.MAILAI_BROWSER||'chromium'}.png`});
+    await page.locator('#btn-close-system').click();
+    await setView('cards');
+    assert.equal(await page.locator('.mail-table-header').count(),0);
+    assert(await page.locator('.email-subject').count()>0);
+    assert.deepEqual(errors,[]);
+    console.log('PASS mail views: settings, shared selection/reading, date sorting, keyboard, reload, 20 responsive/language/theme cases');
+  } finally {await browser.close();}
+})().catch(error=>{console.error(error);process.exitCode=1;});

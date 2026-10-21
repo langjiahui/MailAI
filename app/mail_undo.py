@@ -25,6 +25,9 @@ def restore(token):
         if not c.execute('SELECT changes()').fetchone()[0]:
             raise ValueError('撤销正在执行')
         operation = json.loads(row['payload'])
+    if operation['action'] == 'local_move':
+        from .local_mail import restore as restore_local
+        return restore_local(operation['before'], operation['after'])
     if operation['action'] == 'trash_pending':
         failed = []
         for before, after in zip(operation['before'], operation['after']):

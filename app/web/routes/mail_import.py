@@ -1,4 +1,6 @@
 """Local-only exported mail import endpoints (raw, bounded streaming uploads)."""
+import hashlib
+
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
@@ -12,6 +14,12 @@ router = APIRouter()
 class ImportRequest(BaseModel):
     label: str = Field(default='Foxmail 导入', max_length=80)
     expected_files: int = Field(ge=1, le=importer.MAX_FILES)
+
+
+class SkipFileRequest(BaseModel):
+    index: int = Field(ge=0, lt=importer.MAX_FILES)
+    name: str = Field(min_length=1, max_length=4096)
+    reason: str = Field(default='', max_length=500)
 
 
 def call(function, *args):
@@ -47,11 +55,15 @@ def api_mail_import_report(token: str):
 
 
 @router.put('/api/mail/client-imports/{token}/files')
-async def api_mail_import_upload(token: str, request: Request, name: str):
-    key, path, name = call(importer.begin_upload, token, name)
+async def api_mail_import_upload(token: str, request: Request, name: str, index: int | None = None):
+    skipped = call(importer.skipped_upload, token, index, name)
+    if skipped is not None:
+        return skipped
+    key, path, name = call(importer.begin_upload, token, name, index)
     succeeded = False
     try:
         size = 0
+        digest = hashlib.sha256()
         limit = importer.MAX_MESSAGE_SIZE if path.suffix == '.eml' else importer.MAX_SOURCE_SIZE
         with path.open('wb') as output:
             async for chunk in request.stream():
@@ -59,19 +71,28 @@ async def api_mail_import_upload(token: str, request: Request, name: str):
                 if size > limit:
                     raise ValueError('单封邮件超过 64 MB，请在 Foxmail 中单独检查' if path.suffix == '.eml' else '单个文件超过 1 GB，请在 Foxmail 中分批导出')
                 output.write(chunk)
-        result = importer.finish_upload(token, key, name, size)
+                digest.update(chunk)
+        result = importer.finish_upload(token, key, name, size, index, digest.hexdigest())
         succeeded = True
         return result
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     except ClientDisconnect as exc:
-        raise HTTPException(400, '文件添加已停止，请重新选择整批文件') from exc
+        raise HTTPException(400, '文件传输中断，已添加的文件已保留，请继续添加') from exc
     except OSError as exc:
-        raise HTTPException(507, '文件暂存失败，请检查磁盘空间和文件访问权限') from exc
+        raise HTTPException(507, importer.file_error(exc)) from exc
     finally:
         if not succeeded:
             path.unlink(missing_ok=True)
         importer.end_upload(token)
+
+
+@router.post('/api/mail/client-imports/{token}/skip-file')
+def api_mail_import_skip_file(token: str, payload: SkipFileRequest):
+    try:
+        return call(importer.skip_upload, token, payload.index, payload.name, payload.reason)
+    except OSError as exc:
+        raise HTTPException(507, '无法保存跳过记录，请检查磁盘空间后重试') from exc
 
 
 @router.post('/api/mail/client-imports/{token}/scan')

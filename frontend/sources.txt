@@ -13,6 +13,7 @@ conversation-progress.js
 mail-library.js
 server-cleanup.js
 workspace.js
+mail-list-view.js
 assistant-divider.js
 assistant-scroll.js
 assistant-search.js

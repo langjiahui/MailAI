@@ -280,6 +280,153 @@ def test_duplicate_progress_and_complete_reports():
             assert list(csv.DictReader(stream))[0]['类型']=='请核对'
 
 
+def test_upload_receipts_and_resume():
+    from app.web.routes.mail_import import api_mail_import_upload
+    from fastapi import HTTPException
+    class Request:
+        def __init__(self, raw): self.raw = raw
+        async def stream(self):
+            yield self.raw[:32]
+            yield self.raw[32:]
+    with fixture() as (_, account), account('work'):
+        token = imp.create(expected_files=2)['token']
+        raw = message('receipt-one')
+        # The response is lost after commit: retrying the same ordinal is a no-op.
+        first = asyncio.run(api_mail_import_upload(token, Request(raw), 'one.eml', 0))
+        again = asyncio.run(api_mail_import_upload(token, Request(raw), 'one.eml', 0))
+        assert first['files'] == again['files'] == 1
+        assert again['bytes'] == len(raw)
+        assert len(list((imp._path(token)/'sources').glob('*.eml'))) == 1
+        # Also recover old app batches, which did not write content receipts.
+        meta = imp._path(token)/'sources'/'00000000.json'
+        import json
+        value = json.loads(meta.read_text()); del value['digest']; meta.write_text(json.dumps(value))
+        assert asyncio.run(api_mail_import_upload(token, Request(raw), 'one.eml', 0))['files'] == 1
+        for name, data in [('other.eml', raw), ('one.eml', message('changed'))]:
+            try: asyncio.run(api_mail_import_upload(token, Request(data), name, 0))
+            except HTTPException as exc: assert exc.status_code == 400
+            else: raise AssertionError('Changed batch accepted')
+        assert imp.status(token)['files'] == 1
+        asyncio.run(api_mail_import_upload(token, Request(message('receipt-two')), 'two.eml', 1))
+        assert scan(token)['new'] == 2
+        assert apply(token)['imported'] == 2
+        with db.conn() as c:
+            plan = str([tuple(row) for row in c.execute('EXPLAIN QUERY PLAN SELECT MIN(uid) FROM emails')])
+            assert 'idx_client_email_uid' in plan, plan
+            plan = str([tuple(row) for row in c.execute('EXPLAIN QUERY PLAN SELECT id FROM emails WHERE remote_missing=0 AND message_id=?', ('x',))])
+            assert 'idx_client_email_message' in plan, plan
+
+
+def test_local_inbox_organizing_without_server():
+    from fastapi import HTTPException
+    from app.web.routes import mail_actions
+    from app.web.schemas import BulkMailRequest
+    from app import mail_undo
+    with fixture() as (_, account), account('work'):
+        token = imp.create()['token']
+        upload(token, 'one.eml', message('local-move-one'))
+        upload(token, 'two.eml', message('local-move-two'))
+        scan(token); apply(token)
+        originals = db.list_emails(status='local_archive', days=365000)
+        ids = [row['id'] for row in originals]
+        with patch.object(mail_actions, 'current_server', side_effect=AssertionError('Must never connect to server')), patch.object(mail_undo, 'MailClient', side_effect=AssertionError('Undo must remain offline')):
+            result = mail_actions.api_bulk_email_action(BulkMailRequest(ids=ids, action='move', target='__local_inbox__'))
+            assert result['local_only'] and result['completed'] == 2 and result['undo_token']
+            assert len(db.list_emails(status='inbox', days=365000)) == 2
+            assert not db.list_emails(status='local_archive', days=365000)
+            for original in originals:
+                row = db.get_email(original['id'])
+                for key in ('uid','folder','raw_path','attachments','is_local_archive','is_read','notification_sent'):
+                    assert row[key] == original[key], key
+                assert db.reconcile_folder(row['folder'], []) == 0
+                assert parser.extract_attachment(row['raw_path'],0)['payload']
+            assert mail_undo.restore(result['undo_token'])['ok']
+            assert len(db.list_emails(status='local_archive', days=365000)) == 2
+            single = mail_actions.api_move_email(ids[0], '__local_inbox__')
+            assert single['local_only']
+            mail_actions.api_move_email(ids[0], '__local_archive__')
+            assert not mail_undo.restore(single['undo_token'])['ok'], 'Undo must protect a later move'
+            for target in ('Sent', '__invalid__'):
+                try: mail_actions.api_move_email(ids[0], target)
+                except HTTPException as exc: assert exc.status_code == 409
+                else: raise AssertionError('Local mail moved to server folder')
+            with db.conn() as c:
+                c.execute("UPDATE emails SET cleanup_hold='purging' WHERE id=?", (ids[0],))
+            assert not mail_actions.api_move_email(ids[0], '__local_inbox__')['ok']
+            with db.conn() as c: c.execute("UPDATE emails SET cleanup_hold='' WHERE id=?", (ids[0],))
+            with account('personal'):
+                assert not db.list_emails(status='inbox',days=365000)
+            remote = db.upsert_email(dict(uid=700,folder='INBOX',message_id='<server-only>',status='inbox'))
+            try: mail_actions.api_bulk_email_action(BulkMailRequest(ids=[ids[0],remote],action='move',target='__local_inbox__'))
+            except HTTPException as exc: assert exc.status_code == 409
+            else: raise AssertionError('Mixed local and server move accepted')
+
+
+def test_skip_failed_sources_and_guidance():
+    from app.web.routes.mail_import import api_mail_import_upload, api_mail_import_skip_file, SkipFileRequest
+    from fastapi import HTTPException
+    class EmptyRequest:
+        async def stream(self): yield b''
+    class NeverRead:
+        async def stream(self):
+            raise AssertionError('Skipped source must not be read again')
+            yield b''
+    with fixture() as (_, account), account('work'):
+        token = imp.create('部分成功', expected_files=3)['token']
+        upload(token, 'one.eml', message('skip-first'))
+        try: asyncio.run(api_mail_import_upload(token, EmptyRequest(), 'empty.eml', 1))
+        except HTTPException as exc: reason = exc.detail
+        else: raise AssertionError('Empty upload accepted')
+        payload = SkipFileRequest(index=1, name='empty.eml', reason=reason)
+        skipped = api_mail_import_skip_file(token, payload)
+        assert skipped['files'] == 2 and skipped['skipped_files'] == 1
+        # A lost skip response and a reopened batch cannot multiply skips.
+        again = api_mail_import_skip_file(token, payload)
+        assert again['files'] == 2 and again['skipped_files'] == 1 and again['bytes'] == skipped['bytes']
+        replay = asyncio.run(api_mail_import_upload(token, NeverRead(), 'empty.eml', 1))
+        assert replay['skipped_files'] == 1
+        raises(imp.skip_upload, token, 1, 'different.eml', reason)
+        raises(imp.skip_upload, token, 3, 'wrong-order.eml', reason)
+        imp._active.add(str(imp._path(token)))
+        try: raises(imp.skip_upload, token, 2, 'busy.eml', reason)
+        finally: imp._active.discard(str(imp._path(token)))
+        with account('personal'): raises(imp.skip_upload, token, 2, 'wrong-account.eml', reason)
+        upload(token, 'three.eml', message('skip-third'))
+        result = scan(token)
+        assert (result['found'],result['new'],result['failed'],result['skipped_files']) == (2,2,1,1)
+        assert result['errors'][0]['file'] == 'empty.eml' and '不为 0' in result['errors'][0]['advice']
+        result = apply(token)
+        assert result['state'] == 'completed' and result['imported'] == 2 and count() == 2
+        with open(imp.report(token), encoding='utf-8-sig', newline='') as report:
+            issues = list(csv.DictReader(report))
+        assert len(issues) == 1 and issues[0]['类型'] == '已跳过'
+        assert '为空' in issues[0]['原因'] and '重新导出' in issues[0]['处理建议']
+        # A skip after a lost success response preserves the successfully saved file.
+        saved = imp.create(expected_files=1)['token']; upload(saved,'saved.eml',message('saved'))
+        assert imp.skip_upload(saved,0,'saved.eml','connection lost').get('skipped_files',0) == 0
+        assert scan(saved)['new'] == 1
+        # All skipped is an explicit zero-mail result, not an import success.
+        empty = imp.create(expected_files=2)['token']
+        imp.skip_upload(empty,0,'huge.eml','单封邮件超过 64 MB，请在 Foxmail 中单独检查')
+        imp.skip_upload(empty,1,'offline.eml','文件传输中断')
+        result=scan(empty)
+        assert result['new'] == 0 and result['failed'] == 2 and result['issue_count'] == 2
+        assert '分批导出' in result['errors'][0]['advice'] and '云盘' in result['errors'][1]['advice']
+        invalid = imp.create()['token']; upload(invalid,'invalid.eml',b'not mail')
+        issue = scan(invalid)['errors'][0]
+        assert '64 MB' not in issue['reason'], 'Malformed mail must not be mislabeled as oversized'
+        assert '扩展名' in issue['advice']
+        # A skipped file can be repaired and imported later in a new batch.
+        repaired = imp.create()['token']; upload(repaired,'empty.eml',message('repaired-later'))
+        assert scan(repaired)['new'] == 1 and apply(repaired)['imported'] == 1
+        # Lost staging is a filesystem problem, not a malformed-email diagnosis.
+        missing = imp.create()['token']; upload(missing,'missing.eml',message('missing-later'))
+        source = next(imp._sources(missing,imp._read(missing)))
+        (imp._path(missing)/'sources'/source['key']).unlink()
+        issue = scan(missing)['errors'][0]
+        assert '找不到' in issue['reason'] and '新批次' in issue['advice']
+
+
 if __name__ == '__main__':
     # mailbox.add(bytes) replaces LF with os.linesep without stripping CR.
     # Use streams for valid exports and exercise Windows CRLF on every runner.
@@ -290,4 +437,7 @@ if __name__ == '__main__':
     test_interruption_retry_and_live_dedup()
     test_invalid_inputs_and_forwarded_identity()
     test_upload_disconnect_and_limits()
+    test_upload_receipts_and_resume()
+    test_skip_failed_sources_and_guidance()
+    test_local_inbox_organizing_without_server()
     print('Client mail import: MIME/attachments, dedup, account isolation, pause/retry, concurrent sync and invalid inputs passed')

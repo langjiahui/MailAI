@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import csv
+import errno
 import json
 import logging
 import mailbox
@@ -127,7 +128,7 @@ def report(token):
         try:
             with partial.open('w', encoding='utf-8-sig', newline='') as output:
                 writer = csv.writer(output)
-                writer.writerow(['阶段', '类型', '文件或邮件', '原因', '归档名称'])
+                writer.writerow(['阶段', '类型', '文件或邮件', '原因', '归档名称', '处理建议'])
                 for phase, label in (('scan', '扫描'), ('import', '导入')):
                     path = _path(token) / (phase + '-issues.jsonl')
                     if not path.exists():
@@ -135,16 +136,48 @@ def report(token):
                     with path.open(encoding='utf-8') as source:
                         for line in source:
                             issue = json.loads(line)
-                            writer.writerow([label, '请核对' if issue.get('kind') == 'warning' else '未导入',
-                                             cell(issue['file']), cell(issue['reason']), cell(job['label'])])
+                            kind = '请核对' if issue.get('kind') == 'warning' else '已跳过' if issue.get('kind') == 'skipped' else '未导入'
+                            writer.writerow([label, kind, cell(issue['file']), cell(issue['reason']), cell(job['label']),
+                                             cell(issue.get('advice') or failure_advice(issue['reason']))])
             os.replace(partial, target)
         finally:
             partial.unlink(missing_ok=True)
         return str(target)
 
 
+def failure_advice(reason):
+    """Actionable help, also included in exported reports for later re-import."""
+    if re.search(r'64\s*MB|1\s*GB|10\s*GB|超过.*封|超过.*文件', reason, re.I):
+        return '单封邮件需小于等于 64 MB，MBOX 需小于等于 1 GB，每批不超过 10 GB。请在原客户端分批导出；单封超大邮件可保留原件后，另存较小副本再导入。'
+    if re.search(r'为空|空文件', reason):
+        return '此文件没有邮件内容。请在原客户端打开邮件，下载完整正文和附件后重新导出；确认文件大小不为 0，再单独导入。'
+    if re.search(r'找不到|不存在|读取失败', reason):
+        return '请确认源文件仍在原位置且可读取，云盘文件需先下载到本机。若暂存文件已丢失，请重新选择原文件建立新批次；已导入邮件会自动去重。'
+    if re.search(r'磁盘|权限|暂存|保存|写入', reason):
+        return '请检查 MailAI 数据目录所在磁盘的剩余空间和写入权限，并确认源文件可读取。处理后重试；已成功导入的邮件会保留。'
+    if re.search(r'传输|连接|fetch|network|中断', reason, re.I):
+        return '请确认 MailAI 服务仍在运行，源文件未被移动或删除；云盘文件需先下载到本机。可点击继续添加重试，仍失败时先跳过，稍后单独导入。'
+    if re.search(r'顺序|不一致|变化', reason):
+        return '恢复任务时请选择原批次文件并保持原顺序。若已修改文件，请新建导入批次；已有邮件会自动去重。'
+    if re.search(r'路径', reason):
+        return '请将文件复制到本机普通目录，缩短文件名及目录层级，避免特殊路径字符后重新选择。'
+    if re.search(r'原文不完整|同标识', reason):
+        return '请先核对本机已有的同一邮件，补齐原文和附件后再试；系统会跳过无法确认内容的同标识邮件，避免误建重复记录。'
+    return '请用原邮件客户端打开此文件并确认正文和附件完整，再重新导出为 EML 或 MBOX；不要仅修改文件扩展名。可先导入其他文件，修复后将此文件单独补导。'
+
+
+def file_error(exc):
+    if isinstance(exc, FileNotFoundError):
+        return '找不到源文件或暂存文件，可能已移动或被清理'
+    if isinstance(exc, PermissionError):
+        return '没有读取文件或写入暂存目录的权限'
+    if exc.errno == errno.ENOSPC:
+        return '磁盘剩余空间不足，无法保存邮件文件'
+    return '文件读取或保存失败，请检查磁盘空间和访问权限'
+
+
 def _record_issue(stream, preview, file, reason, kind='failed'):
-    issue = dict(file=file, reason=reason, kind=kind)
+    issue = dict(file=file, reason=reason, kind=kind, advice=failure_advice(reason))
     stream.write(json.dumps(issue, ensure_ascii=False) + '\n')
     stream.flush()
     if len(preview) < 30:
@@ -174,7 +207,7 @@ def create(label='Foxmail 导入', expected_files=0):
         return _public(job)
 
 
-def begin_upload(token, name):
+def begin_upload(token, name, index=None):
     path = PurePosixPath(str(name).replace('\\', '/'))
     if (not str(name) or len(str(name)) > 1024 or path.is_absolute() or
             '..' in path.parts or any(':' in p or '\x00' in p for p in path.parts)):
@@ -185,7 +218,9 @@ def begin_upload(token, name):
         job = _read(token)
         if job['state'] != 'collecting':
             raise ValueError('当前任务不能添加文件，请先完成或重新选择')
-        if job['files'] >= MAX_FILES:
+        if index is not None and not 0 <= index <= job['files']:
+            raise ValueError('文件添加顺序不一致，请重新选择原批次文件后继续')
+        if job['files'] >= MAX_FILES and (index is None or index == job['files']):
             raise ValueError('一批最多添加 20000 个文件，请分批导入')
         key = uuid.uuid4().hex + path.suffix.lower()
         _active.add(str(_path(token)))
@@ -193,17 +228,42 @@ def begin_upload(token, name):
         return key, _path(token) / 'sources' / key, str(path)
 
 
-def finish_upload(token, key, name, size):
+def finish_upload(token, key, name, size, index=None, digest=None):
     with _lock:
         job = _read(token)
         if not size:
             raise ValueError('文件为空，请在 Foxmail 中重新导出后再选择')
+        index = job['files'] if index is None else index
+        source_path = _path(token) / 'sources' / key
+        if digest is None:
+            with source_path.open('rb') as stream:
+                hasher = hashlib.sha256()
+                for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+                    hasher.update(chunk)
+                digest = hasher.hexdigest()
+        meta = _path(token) / 'sources' / f'{index:08d}.json'
+        if index < job['files']:
+            previous = json.loads(meta.read_text('utf-8'))
+            previous_digest = previous.get('digest')
+            if not previous_digest:  # Batches created before resumable uploads.
+                with (_path(token) / 'sources' / previous['key']).open('rb') as stream:
+                    hasher = hashlib.sha256()
+                    for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+                        hasher.update(chunk)
+                    previous_digest = hasher.hexdigest()
+            if (previous['name'], previous['size'], previous_digest) != (name, size, digest):
+                raise ValueError('所选文件与此批次已添加的文件不一致，请选择原批次文件或重新开始')
+            source_path.unlink(missing_ok=True)
+            job.update(state='collecting')
+            _write(job)
+            return _public(job)
+        if index != job['files']:
+            raise ValueError('文件添加顺序不一致，请重试')
         if size > MAX_SOURCE_SIZE or job['bytes'] + size > MAX_TOTAL_SIZE:
             raise ValueError('超过大小限制：单个文件 1 GB，每批 10 GB')
         # Store each source separately: progress updates must stay constant-size
         # even for a directory containing thousands of individual EML files.
-        meta = _path(token) / 'sources' / f"{job['files']:08d}.json"
-        meta.write_text(json.dumps(dict(key=key, name=name, size=size), ensure_ascii=False), 'utf-8')
+        meta.write_text(json.dumps(dict(key=key, name=name, size=size, digest=digest), ensure_ascii=False), 'utf-8')
         job.update(files=job['files'] + 1, bytes=job['bytes'] + size, state='collecting')
         _write(job)
         return _public(job)
@@ -214,6 +274,49 @@ def end_upload(token):
         _active.discard(str(_path(token)))
         if _read(token)['state'] == 'uploading':
             _update(token, state='collecting')
+
+
+def skipped_upload(token, index, name):
+    """Replay a skipped ordinal without reading the failed source again."""
+    if index is None:
+        return None
+    with _lock:
+        job = _read(token)
+        if job['state'] != 'collecting' or not 0 <= index < job['files']:
+            return None
+        source = json.loads((_path(token) / 'sources' / f'{index:08d}.json').read_text('utf-8'))
+        if source.get('skipped'):
+            if source['name'] != str(name).replace('\\', '/'):
+                raise ValueError('所选文件与此批次已添加的文件不一致，请选择原批次文件或重新开始')
+            return _public(job)
+    return None
+
+
+def skip_upload(token, index, name, reason=''):
+    """Persist a user-approved skip at a stable ordinal; retries are idempotent."""
+    name = str(name).replace('\\', '/')
+    if not name or len(name) > 4096 or not 0 <= index < MAX_FILES:
+        raise ValueError('跳过的文件信息无效，请重新选择文件')
+    with _lock:
+        job = _read(token)
+        if job['state'] != 'collecting' or job['phase'] != 'upload' or str(_path(token)) in _active:
+            raise ValueError('请先等待当前文件添加结束，再跳过失败文件')
+        if index > job['files'] or (job['expected_files'] and index >= job['expected_files']):
+            raise ValueError('文件添加顺序不一致，请重试')
+        meta = _path(token) / 'sources' / f'{index:08d}.json'
+        if index < job['files']:
+            previous = json.loads(meta.read_text('utf-8'))
+            if previous['name'] != name:
+                raise ValueError('所选文件与此批次已添加的文件不一致，请选择原批次文件或重新开始')
+            # A lost upload response may have looked like a failure. Keep that
+            # successfully saved file instead of turning it into a skipped one.
+            return _public(job)
+        issue = dict(name=name, skipped=True, reason=str(reason)[:500], size=0)
+        meta.write_text(json.dumps(issue, ensure_ascii=False), 'utf-8')
+        job.update(files=job['files'] + 1, skipped_files=job.get('skipped_files', 0) + 1,
+                   error='', updated_at=time.time())
+        _write(job)
+        return _public(job)
 
 
 def _check(token):
@@ -289,8 +392,10 @@ def signature(raw):
 
     A reused Message-ID with changed body/attachments is deliberately not merged.
     """
-    if not raw or len(raw) > MAX_MESSAGE_SIZE:
-        raise ValueError('单封邮件为空或超过 64 MB，请在 Foxmail 中单独检查')
+    if not raw:
+        raise ValueError('文件为空，请在 Foxmail 中重新导出后再选择')
+    if len(raw) > MAX_MESSAGE_SIZE:
+        raise ValueError('单封邮件超过 64 MB，请在 Foxmail 中单独检查')
     msg = BytesParser(policy=policy.default).parsebytes(raw)
     if not msg.keys() or not any(msg.get(k) for k in ('From', 'To', 'Subject', 'Message-ID')):
         raise ValueError('未找到有效邮件内容，请重新从 Foxmail 导出')
@@ -325,6 +430,11 @@ def _table(c):
         size INTEGER, mtime INTEGER, batch_token TEXT DEFAULT '')''')
     c.execute('CREATE INDEX IF NOT EXISTS idx_client_digest ON mail_client_fingerprints(digest)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_client_raw_digest ON mail_client_fingerprints(raw_digest)')
+    # Both lookups run for every imported mail. Without these indexes a large
+    # import repeatedly scans the growing emails table (quadratic work).
+    c.execute('CREATE INDEX IF NOT EXISTS idx_client_email_uid ON emails(uid)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_client_email_message ON emails(message_id) WHERE remote_missing=0')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_client_batch ON mail_client_fingerprints(batch_token)')
 
 
 def _existing(token):
@@ -409,8 +519,19 @@ def scan(token):
             (directory / 'scan-issues.jsonl').open('w', encoding='utf-8') as issues:
         for index, source in enumerate(_sources(token, job)):
             _check(token)
-            _update(token, processed=index, current_source=source['name'], source_processed=0,
-                    source_total=0, message=f"正在读取文件 {index + 1} / {job['files']}")
+            if source.get('skipped'):
+                counters['failed'] += 1
+                issue_count += 1
+                reason = '已单独跳过此文件，可修复后另行导入'
+                if source.get('reason'):
+                    reason += '：' + source['reason']
+                _record_issue(issues, errors, source['name'], reason, 'skipped')
+                _update(token, **counters, errors=errors, issue_count=issue_count,
+                        processed=index + 1, current_source=source['name'])
+                continue
+            if index % 25 == 0 or source['key'].endswith('.mbox'):
+                _update(token, processed=index, current_source=source['name'], source_processed=0,
+                        source_total=0, message=f"正在读取文件 {index + 1} / {job['files']}")
             source_processed = source_total = 0
             try:
                 for name, raw, source_total in _messages(source, directory):
@@ -449,22 +570,24 @@ def scan(token):
                             counters['new'] += 1
                             if len(samples) < 20:
                                 samples.append({k: str(item[k])[:1024] for k in ('folder', 'subject', 'date', 'from_addr')})
-                    except (ValueError, UnicodeError, KeyError, TypeError):
+                    except (ValueError, UnicodeError, KeyError, TypeError) as exc:
                         counters['failed'] += 1
                         issue_count += 1
-                        _record_issue(issues, errors, name, '邮件格式不完整或单封超过 64 MB，请重新导出此邮件')
+                        reason = str(exc) if isinstance(exc, ValueError) and not isinstance(exc, UnicodeError) else '邮件内容无法解析，请重新导出此邮件'
+                        _record_issue(issues, errors, name, reason)
                     # Duplicates also advance the visible MBOX heartbeat.
-                    if source_processed == 1 or source_processed % 25 == 0:
+                    if (source_processed == 1 and index % 25 == 0) or source_processed % 25 == 0:
                         _update(token, **counters, errors=errors, issue_count=issue_count,
                                 source_processed=source_processed, source_total=source_total,
                                 message=f"正在扫描文件 {index + 1} / {job['files']} · 已识别 {counters['found']} 封")
             except (OSError, ValueError) as exc:
                 counters['failed'] += 1
                 issue_count += 1
-                _record_issue(issues, errors, source['name'], str(exc) if isinstance(exc, ValueError) else '文件读取失败，请重新选择')
-            _update(token, **counters, samples=samples, errors=errors, issue_count=issue_count,
-                    processed=index + 1, source_processed=source_processed, source_total=source_total,
-                    message=f"正在扫描文件 {index + 1} / {job['files']} · 已识别 {counters['found']} 封")
+                _record_issue(issues, errors, source['name'], str(exc) if isinstance(exc, ValueError) else file_error(exc))
+            if index % 25 == 0 or index + 1 == job['files'] or source['key'].endswith('.mbox'):
+                _update(token, **counters, samples=samples, errors=errors, issue_count=issue_count,
+                        processed=index + 1, source_processed=source_processed, source_total=source_total,
+                        message=f"正在扫描文件 {index + 1} / {job['files']} · 已识别 {counters['found']} 封")
     _check(token)
     if not counters['new']:
         shutil.rmtree(directory / 'sources', ignore_errors=True)
@@ -495,7 +618,7 @@ def _insert(token, item, raw):
                 return 'owned' if duplicate['batch_token'] == token else 'duplicate'
             # Sync may have downloaded a matching mail after the preview/index.
             candidates = c.execute('''SELECT e.id,e.raw_path FROM emails e LEFT JOIN mail_client_fingerprints f ON f.email_id=e.id
-                WHERE e.remote_missing=0 AND COALESCE(e.message_id,'')=? AND f.email_id IS NULL''', (item['message_id'],)).fetchall()
+                WHERE e.remote_missing=0 AND e.message_id=? AND f.email_id IS NULL''', (item['message_id'],)).fetchall() if item['message_id'] else []
             for row in candidates:
                 try:
                     with open(row['raw_path'] or '', 'rb') as stream:
@@ -550,10 +673,11 @@ def execute(token):
                     raise ValueError('文件内容发生变化，请重新选择')
                 result = _insert(token, item, raw)
                 imported += int(result == 'imported'); duplicates += int(result == 'duplicate')
-            except (OSError, ValueError, UnicodeError):
+            except (OSError, ValueError, UnicodeError) as exc:
                 failed += 1
                 issue_count += 1
-                _record_issue(issues, errors, item.get('source') or item['subject'], '此邮件未导入，请检查文件和磁盘空间后重试')
+                reason = file_error(exc) if isinstance(exc, OSError) else '邮件内容无法解析，请重新导出此邮件' if isinstance(exc, UnicodeError) else str(exc)
+                _record_issue(issues, errors, item.get('source') or item['subject'], reason)
             _update(token, imported=imported, duplicates=duplicates, failed=failed, errors=errors,
                     issue_count=issue_count, current_source=item.get('source') or item['subject'], processed=i + 1,
                     message=f"正在导入：{i + 1} / {job['new']} · 已新增 {imported} 封")

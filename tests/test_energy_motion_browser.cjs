@@ -37,7 +37,9 @@ const port = Number(process.env.MAILAI_ENERGY_FIXTURE_PORT || 18831);
     await page.waitForTimeout(4500);await idle(); // Ambient motion waits at least eight seconds.
     // Refreshing the same selected mail is not a new read intent.
     await page.evaluate(()=>selectEmail(1));await idle();
-    await page.evaluate(()=>openAssistant());await awake('#assistant-panel .mail-companion');
+    await page.evaluate(()=>openAssistant());await awake('#assistant-panel .assistant-welcome-portrait .mail-companion');
+    // Welcome is event-driven; model-work checks use the actual conversation header.
+    await page.evaluate(()=>appendAssistantMessage('user','合成能耗测试'));
     assert.equal(await page.locator('#assistant-orb .mail-companion').getAttribute('data-motion-active'),'false','Opacity-hidden launcher must stop its JS animations too');
     await page.evaluate(()=>window.dispatchEvent(new Event('blur')));await idle();
     assert(await page.evaluate(()=>document.body.classList.contains('companion-paused')));
