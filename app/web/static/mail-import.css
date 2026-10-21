@@ -71,3 +71,16 @@ html[data-theme=dark] [data-import-error] { color:#efb1a5; }
 .mail-import-dialog [hidden] { display:none!important; }
 @media(max-width:600px) { .mail-import-options { grid-template-columns:1fr; } .mail-import-counts { grid-template-columns:repeat(2,1fr); } .mail-import-body { padding:16px; } .mail-import-dialog header { padding:16px; } .mail-import-steps { padding:12px 16px; gap:8px; font-size:12px; } .mail-import-dialog footer { padding:12px 16px; } }
 @media(prefers-reduced-motion:reduce) { .mail-import-dialog button { transition:none; } }
+
+/* Keep long export paths readable without stretching narrow dialogs. */
+.mail-import-dialog .mail-import-filename { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; }
+.mail-import-dialog [data-import-selected] li { display:flex; align-items:baseline; gap:12px; min-width:0; }
+.mail-import-dialog [data-import-selected] li .mail-import-filename { flex:1; min-width:0; }
+.mail-import-dialog [data-import-selected] li small { flex-shrink:0; }
+.mail-import-dialog .mail-import-large { display:flex; align-items:center; gap:8px; margin:12px 0 4px; }
+.mail-import-dialog .mail-import-large input { width:auto; flex-shrink:0; }
+.mail-import-dialog .mail-import-limit-note { font-size:12px; line-height:1.6; color:var(--desk-muted); }
+.mail-import-dialog [data-import-errors] p { overflow-wrap:anywhere; }
+.mail-import-dialog footer { flex-wrap:wrap; }
+
+.mail-import-dialog .mail-import-preflight { padding:8px 10px; border-radius:8px; background:var(--desk-muted-surface); color:var(--desk-ink); }

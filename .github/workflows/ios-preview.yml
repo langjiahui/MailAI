@@ -1,0 +1,83 @@
+name: iOS native build
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/ios-native-release]
+    paths: ['mobile/ios/**', '.github/workflows/ios-preview.yml']
+  pull_request:
+    paths: ['mobile/ios/**', '.github/workflows/ios-preview.yml']
+permissions:
+  contents: read
+concurrency:
+  group: ios-native-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select newest installed Xcode
+        shell: python
+        run: |
+          from pathlib import Path
+          import plistlib, subprocess
+          apps = list(Path('/Applications').glob('Xcode*.app'))
+          def version(path):
+              data = plistlib.loads((path/'Contents/Info.plist').read_bytes())
+              return tuple(int(x) for x in data['CFBundleShortVersionString'].split('.') if x.isdigit())
+          selected = max(apps, key=version)
+          subprocess.run(['sudo','xcode-select','-s',str(selected/'Contents/Developer')],check=True)
+          subprocess.run(['xcodebuild','-version'],check=True)
+      - name: Install project generator
+        run: brew install xcodegen
+      - name: Offline mail and persistence tests
+        working-directory: mobile/ios
+        run: swift test
+      - name: Build arm64 device IPA
+        working-directory: mobile/ios
+        run: python3 scripts/build.py
+      - name: Launch and account form on simulator
+        working-directory: mobile/ios
+        shell: bash
+        run: |
+          device=$(python3 - <<'PY'
+          import json, subprocess
+          devices=json.loads(subprocess.check_output(['xcrun','simctl','list','devices','available','--json']))['devices']
+          print(next(d['udid'] for key, values in sorted(devices.items(), reverse=True) if 'iOS' in key for d in values if d['name'].startswith('iPhone')))
+          PY
+          )
+          xcrun simctl boot "$device" || true
+          xcrun simctl bootstatus "$device" -b
+          python3 scripts/prepare_protocol_tls.py
+          # Trust the synthetic fixture in both host and simulator trust stores.
+          sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain build/fixture-ca.pem
+          xcrun simctl keychain "$device" add-root-cert build/fixture-ca.pem
+          xcrun simctl shutdown "$device"
+          xcrun simctl boot "$device"
+          xcrun simctl bootstatus "$device" -b
+          cat build/fixture-server.pem build/fixture-ca.pem > build/fixture-chain.pem
+          python3 scripts/protocol_fixture.py --cert build/fixture-chain.pem --key build/fixture-server-key.pem > build/fixture.log 2>&1 &
+          fixture_pid=$!
+          trap 'kill "$fixture_pid" 2>/dev/null || true; rm -f build/fixture*.pem build/fixture.csr build/fixture.ext build/fixture-ca.srl build/fixture-ca.cnf' EXIT
+          xcodebuild -project MailAI.xcodeproj -scheme MailAI -destination "id=$device" -parallel-testing-enabled NO -resultBundlePath build/UITests.xcresult CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- test
+          xcrun xcresulttool export attachments --path build/UITests.xcresult --output-path build/screenshots
+      - name: Stage a private release draft for artifact verification
+        if: github.event_name == 'push' && github.ref == 'refs/heads/codex/ios-native-release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "ios-preview-${GITHUB_RUN_ID}" --draft --prerelease --target "$GITHUB_SHA" --title 'MailAI iOS 1.0.0 beta.1（待签名测试包）' --notes-file 'docs/发布-iOS-1.0.0-beta.1-2026-10-20.md' mobile/ios/build/distribution/*
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: MailAI-iOS-acceptance
+          path: |
+            mobile/ios/build/distribution/*
+            mobile/ios/build/Dependencies.resolved
+            mobile/ios/build/screenshots/
+            mobile/ios/build/UITests.xcresult
+          if-no-files-found: error
+          retention-days: 14

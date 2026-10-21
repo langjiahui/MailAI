@@ -32,6 +32,8 @@ const port = Number(process.env.MAILAI_PERCH_FIXTURE_PORT || 18813);
     await page.evaluate(()=>openCompose());
     for(const [style,item,part] of [['nature','wings','.growth-wings'],['ranger','mech_wings','.growth-mech-wings']]) {
       await mutate('style',{style});await mutate('equip',{slot:'accessory',item});
+      // Live wings release their CSS loops at rest; inspect a real interaction.
+      await page.evaluate(()=>mailaiCompanionMotion.react('greet',document.getElementById('btn-compose-ai')));
       await page.waitForFunction(part=>document.querySelector('#btn-compose-ai '+part+' .pet-reward-motion').getAnimations().length>0,part);
       for(const mode of ['light','dark']) {
         await page.evaluate(mode=>applyTheme(mode),mode);

@@ -152,7 +152,7 @@ body[data-pet-effect="lightning"] .growth-lightning { display:block; }
 .pet-history article time,.pet-history article>span { color:var(--pet-muted); font-size:10px; }
 
 /* Reward motion uses independent parts; only visible equipment and the selected preview run. */
-.pet-reward-motion { animation-duration:var(--pet-duration,3s); animation-delay:var(--pet-delay,0s); animation-timing-function:ease-in-out; animation-iteration-count:infinite; animation-play-state:paused; }
+.pet-reward-motion { --pet-rest-transform:none; animation-duration:var(--pet-duration,3s); animation-delay:var(--pet-delay,0s); animation-timing-function:ease-in-out; animation-iteration-count:infinite; animation-play-state:paused; }
 .mail-companion[data-reward-visible="true"][data-motion-active="true"]:not(.pet-preview-svg) .pet-reward-motion,
 .pet-shop-item:is(:hover,:focus-within) .mail-companion[data-reward-visible="true"] .pet-reward-motion,
 .pet-live-art[data-preview-playing="true"] .mail-companion[data-reward-visible="true"] .pet-reward-motion { animation-play-state:running; }
@@ -328,8 +328,23 @@ body.assistant-visible #assistant-orb .mail-companion * { animation-play-state:p
 .mail-companion[data-motion-kind="ambient"] *,
 .mail-companion[data-motion-active="false"],
 .mail-companion[data-motion-active="false"] * { animation-play-state:paused!important; }
+/* Live mascots rest in a designed pose. Explicit fitting-room pause retains
+ * its selected frame; hidden/live idle rigs release their CSS animation work. */
+.mail-companion:not(.pet-preview-svg):is([data-motion-active="false"],[data-motion-kind="ambient"],[data-outfit-rest="true"]) .pet-reward-motion {
+  animation:none!important; animation-play-state:paused!important; transform:var(--pet-rest-transform,none);
+}
+.mail-companion:not(.pet-preview-svg):is([data-motion-active="false"],[data-motion-kind="ambient"],[data-outfit-rest="true"]) :is(.growth-stars,.growth-orbit,.growth-aura,.growth-lightning) .pet-reward-motion { opacity:0; }
+.pet-wing-left,.pet-wing-right { --pet-rest-transform:rotate(-10deg) scale(.7,.76); }
+.pet-mech-left,.pet-mech-right { --pet-rest-transform:rotate(-10deg) scale(.66,.72); }
+.pet-mech-panel { --pet-rest-transform:rotate(-8deg); }
+.compose-perch-art :is(.pet-wing-left,.pet-wing-right,.pet-mech-left,.pet-mech-right) {
+  --pet-rest-transform:rotate(6deg) scale(.46,.52);
+}
+.compose-perch-art :is(.companion-flight-left,.companion-flight-right) { scale:.55; }
+.compose-perch-art :is(.growth-stars,.growth-orbit,.growth-aura,.growth-lightning) { clip-path:url(#mailai-perch-body-clip); }
 /* Finish blinks with open eyes instead of freezing a CSS blink half closed. */
 .mail-companion[data-motion-kind="ambient"] .companion-eyes,
+.mail-companion[data-outfit-rest="true"] .companion-eyes,
 .mail-companion[data-motion-active="false"] .companion-eyes { animation:none; }
 
 /* Signed gifts use the same theme tokens and outfit art as the stamp shop. */
@@ -610,6 +625,7 @@ body[data-pet-style="ranger"] { --pet-cloth:#ACC0DD; --pet-cloth-edge:#819BBD; }
 .pet-shop-item .pet-portrait { width:126px; height:126px; }
 .pet-shop-item.is-locked { opacity:1; }
 .pet-shop-item.is-equipped { border-color:var(--pet-accent); }
+.pet-shop-item .pet-equipped-status { color:var(--pet-ink); font-weight:650; }
 .pet-item-stage { position:absolute; left:12px; top:12px; font-size:10px; color:var(--pet-muted); border:1px solid var(--pet-line); border-radius:6px; padding:3px 6px; background:var(--pet-paper); }
 .pet-shop-item .pet-item-copy p { min-height:36px; }
 .pet-theme-shop { margin-top:28px; }

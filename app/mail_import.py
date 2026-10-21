@@ -24,6 +24,7 @@ from .account_guard import start_account_thread
 log = logging.getLogger(__name__)
 MAX_SOURCE_SIZE = 1024**3
 MAX_MESSAGE_SIZE = 64 * 1024**2
+MAX_LARGE_MESSAGE_SIZE = 256 * 1024**2
 MAX_TOTAL_SIZE = 10 * 1024**3
 MAX_FILES = 20_000
 MAX_MESSAGES = 200_000
@@ -145,10 +146,28 @@ def report(token):
         return str(target)
 
 
+def retry_files(token):
+    """All failed source names, including issues beyond the 30-row preview."""
+    with _lock:
+        job = _read(token)
+        if str(_path(token)) in _active or job['state'] not in ('ready', 'completed', 'failed'):
+            raise ValueError('请先等待扫描或导入完成，再重试问题文件')
+        names = set()
+        for phase in ('scan', 'import'):
+            path = _path(token) / (phase + '-issues.jsonl')
+            if path.exists():
+                with path.open(encoding='utf-8') as stream:
+                    for line in stream:
+                        issue = json.loads(line)
+                        if issue.get('kind') != 'warning':
+                            names.add(re.sub(r' · 第 \d+ 封$', '', issue['file']))
+        return sorted(names)
+
+
 def failure_advice(reason):
     """Actionable help, also included in exported reports for later re-import."""
-    if re.search(r'64\s*MB|1\s*GB|10\s*GB|超过.*封|超过.*文件', reason, re.I):
-        return '单封邮件需小于等于 64 MB，MBOX 需小于等于 1 GB，每批不超过 10 GB。请在原客户端分批导出；单封超大邮件可保留原件后，另存较小副本再导入。'
+    if re.search(r'64\s*MB|256\s*MB|超过当前|1\s*GB|10\s*GB|超过.*封|超过.*文件', reason, re.I):
+        return '64–256 MB 的邮件可开启大邮件模式后单独重试。单个 MBOX 最多 1 GB，每批最多 10 GB；超出时请分批导出。超过 256 MB 的单封邮件请保留原件，另存较小副本后导入。'
     if re.search(r'为空|空文件', reason):
         return '此文件没有邮件内容。请在原客户端打开邮件，下载完整正文和附件后重新导出；确认文件大小不为 0，再单独导入。'
     if re.search(r'找不到|不存在|读取失败', reason):
@@ -184,7 +203,7 @@ def _record_issue(stream, preview, file, reason, kind='failed'):
         preview.append(issue)
 
 
-def create(label='Foxmail 导入', expected_files=0):
+def create(label='Foxmail 导入', expected_files=0, large_messages=False):
     label = str(label).strip()
     if not label or len(label) > 80 or any(ch in label for ch in '/\\\x00'):
         raise ValueError('请输入不超过 80 字的归档名称，不要包含斜杠')
@@ -199,6 +218,7 @@ def create(label='Foxmail 导入', expected_files=0):
         (directory / 'sources').mkdir(parents=True, mode=0o700)
         (directory / 'messages').mkdir(mode=0o700)
         job = dict(token=token, label=label, state='collecting', phase='upload',
+                   large_messages=bool(large_messages),
                    created_at=time.time(), updated_at=time.time(), bytes=0,
                    files=0, expected_files=expected_files, processed=0, total=0, found=0, new=0, duplicates=0,
                    imported=0, failed=0, errors=[], samples=[], issue_count=0, folders=[],
@@ -387,11 +407,20 @@ def _run(token, phase):
                 _update(token, **outcome)
 
 
-def signature(raw):
+def signature(raw, streamed=None):
     """Ignore transport headers/line endings, but retain identity and all MIME parts.
 
     A reused Message-ID with changed body/attachments is deliberately not merged.
     """
+    if isinstance(raw, Path):
+        if raw.stat().st_size > MAX_LARGE_MESSAGE_SIZE:
+            raise ValueError('单封邮件超过 256 MB，请单独处理此邮件')
+        if raw.stat().st_size > MAX_MESSAGE_SIZE:
+            from .mail_import_mime import project
+            projected, replacements, raw_digest = project(raw)
+            _, digest, message_id = signature(projected, replacements)
+            return raw_digest, digest, message_id
+        raw = raw.read_bytes()
     if not raw:
         raise ValueError('文件为空，请在 Foxmail 中重新导出后再选择')
     if len(raw) > MAX_MESSAGE_SIZE:
@@ -419,7 +448,7 @@ def signature(raw):
         parts.append([part.get_content_type(), clean(part.get_filename()),
                       clean(part.get('Content-ID')), part.get_content_disposition(),
                       [clean(part.get(k)) for k in ('Message-ID', 'From', 'To', 'Date', 'Subject')],
-                      hashlib.sha256(payload).hexdigest()])
+                      (streamed or {}).get(part.get('X-MailAI-Stream-Part'), {}).get('digest') or hashlib.sha256(payload).hexdigest()])
     digest = hashlib.sha256(json.dumps([headers, parts], ensure_ascii=False, separators=(',', ':')).encode()).hexdigest()
     return hashlib.sha256(raw).hexdigest(), digest, clean(msg.get('Message-ID'))
 
@@ -448,11 +477,11 @@ def _existing(token):
         path = row['raw_path'] or ''
         try:
             stat = os.stat(path)
-            if stat.st_size > MAX_MESSAGE_SIZE:
+            if stat.st_size > MAX_LARGE_MESSAGE_SIZE:
                 raise ValueError('oversized')
             cache = cached.get(row['id'])
             if not cache or (cache['raw_path'], cache['size'], cache['mtime']) != (path, stat.st_size, stat.st_mtime_ns):
-                raw_digest, digest, _ = signature(Path(path).read_bytes())
+                raw_digest, digest, _ = signature(Path(path))
                 cache = dict(raw_digest=raw_digest, digest=digest)
                 with db.conn() as c:
                     c.execute('''INSERT INTO mail_client_fingerprints(email_id,raw_digest,digest,raw_path,size,mtime)
@@ -472,19 +501,21 @@ def _existing(token):
 def _messages(source, directory):
     path = directory / 'sources' / source['key']
     if path.suffix == '.eml':
-        with path.open('rb') as stream:
-            yield source['name'], stream.read(MAX_MESSAGE_SIZE + 1), 1
+        yield source['name'], path, 1
     else:
         box = mailbox.mbox(str(path), create=False)
+        scratch = directory / 'mbox-message.part'
         try:
             if len(box) > MAX_MESSAGES:
                 raise ValueError('邮件文件包含超过 200000 封邮件，请在 Foxmail 中分批导出')
             if not len(box):
                 raise ValueError('邮件文件中没有找到邮件，请重新导出')
             for i, key in enumerate(box.iterkeys()):
-                with box.get_file(key) as stream:
-                    yield f"{source['name']} · 第 {i + 1} 封", stream.read(MAX_MESSAGE_SIZE + 1), len(box)
+                with box.get_file(key) as stream, scratch.open('wb') as output:
+                    shutil.copyfileobj(stream, output, 1024 * 1024)
+                yield f"{source['name']} · 第 {i + 1} 封", scratch, len(box)
         finally:
+            scratch.unlink(missing_ok=True)
             box.close()
 
 
@@ -495,8 +526,22 @@ def _sources(token, job):
 
 def _parse_exported(raw):
     try:
+        if isinstance(raw, Path):
+            if raw.stat().st_size > MAX_MESSAGE_SIZE:
+                from .mail_import_mime import project
+                projected, replacements, _ = project(raw)
+                parsed = parser.parse_message(0, projected, save_raw=False)
+                # Unique placeholder payloads preserve attachment ordering even
+                # when forwarded mails contain identical filenames.
+                visible = parser._visible_attachments(projected)
+                for attachment, original in zip(parsed['attachments'], visible):
+                    marker = parser._attachment_payload(original).decode('ascii', errors='replace')
+                    if marker in replacements:
+                        attachment['size'] = replacements[marker]['size']
+                return parsed
+            raw = raw.read_bytes()
         return parser.parse_message(0, raw, save_raw=False)
-    except (MemoryError, OSError):
+    except (MemoryError, OSError, ValueError):
         raise
     except Exception as exc:
         # A malformed MIME record must not stop all other exported messages.
@@ -541,6 +586,9 @@ def scan(token):
                     if counters['found'] > MAX_MESSAGES:
                         raise SourceLimit('一批最多导入 200000 封邮件，请点击「重新选择」并分批导入。')
                     try:
+                        limit = MAX_LARGE_MESSAGE_SIZE if job.get('large_messages') else MAX_MESSAGE_SIZE
+                        if raw.stat().st_size > limit:
+                            raise ValueError(f"邮件大小 {raw.stat().st_size / 1024**2:.1f} MB，超过当前 {limit // 1024**2} MB 限制")
                         raw_digest, digest, message_id = signature(raw)
                         duplicate = (raw_digest in raw_set or digest in digest_set or raw_digest in seen_raw or
                                      digest in seen_digest or (message_id and message_id in unknown_ids))
@@ -553,7 +601,7 @@ def scan(token):
                             parsed = _parse_exported(raw)
                             key = f"{counters['new']:08d}.eml"
                             try:
-                                (directory / 'messages' / key).write_bytes(raw)
+                                shutil.copyfile(raw, directory / 'messages' / key)
                             except OSError as exc:
                                 raise RuntimeError('暂存邮件失败，请检查磁盘空间') from exc
                             folder = str(PurePosixPath(source['name']).parent)
@@ -608,7 +656,7 @@ def _insert(token, item, raw):
     target = directory / (uuid.uuid4().hex + '.eml')
     # Copy before the transaction; failure cannot leave a row with missing content.
     try:
-        target.write_bytes(raw)
+        shutil.copyfile(raw, target) if isinstance(raw, Path) else target.write_bytes(raw)
         with db.conn() as c:
             c.execute('BEGIN IMMEDIATE')
             duplicate = c.execute('''SELECT f.batch_token FROM mail_client_fingerprints f JOIN emails e ON e.id=f.email_id
@@ -621,8 +669,7 @@ def _insert(token, item, raw):
                 WHERE e.remote_missing=0 AND e.message_id=? AND f.email_id IS NULL''', (item['message_id'],)).fetchall() if item['message_id'] else []
             for row in candidates:
                 try:
-                    with open(row['raw_path'] or '', 'rb') as stream:
-                        digest = signature(stream.read(MAX_MESSAGE_SIZE + 1))[1]
+                    digest = signature(Path(row['raw_path'] or ''))[1]
                     if digest == item['digest']:
                         return 'duplicate'
                 except (OSError, ValueError, UnicodeError):
@@ -668,7 +715,7 @@ def execute(token):
             _check(token)
             item = json.loads(line)
             try:
-                raw = (_path(token) / 'messages' / item['key']).read_bytes()
+                raw = _path(token) / 'messages' / item['key']
                 if signature(raw)[:2] != (item['raw_digest'], item['digest']):
                     raise ValueError('文件内容发生变化，请重新选择')
                 result = _insert(token, item, raw)

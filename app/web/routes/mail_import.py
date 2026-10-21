@@ -14,6 +14,7 @@ router = APIRouter()
 class ImportRequest(BaseModel):
     label: str = Field(default='Foxmail 导入', max_length=80)
     expected_files: int = Field(ge=1, le=importer.MAX_FILES)
+    large_messages: bool = False
 
 
 class SkipFileRequest(BaseModel):
@@ -36,7 +37,7 @@ def api_mail_import_history():
 
 @router.post('/api/mail/client-imports')
 def api_mail_import_create(payload: ImportRequest):
-    return call(importer.create, payload.label, payload.expected_files)
+    return call(importer.create, payload.label, payload.expected_files, payload.large_messages)
 
 
 @router.get('/api/mail/client-imports/{token}')
@@ -64,12 +65,14 @@ async def api_mail_import_upload(token: str, request: Request, name: str, index:
     try:
         size = 0
         digest = hashlib.sha256()
-        limit = importer.MAX_MESSAGE_SIZE if path.suffix == '.eml' else importer.MAX_SOURCE_SIZE
+        job = importer.status(token)
+        message_limit = importer.MAX_LARGE_MESSAGE_SIZE if job.get('large_messages') else importer.MAX_MESSAGE_SIZE
+        limit = message_limit if path.suffix == '.eml' else importer.MAX_SOURCE_SIZE
         with path.open('wb') as output:
             async for chunk in request.stream():
                 size += len(chunk)
                 if size > limit:
-                    raise ValueError('单封邮件超过 64 MB，请在 Foxmail 中单独检查' if path.suffix == '.eml' else '单个文件超过 1 GB，请在 Foxmail 中分批导出')
+                    raise ValueError(f'邮件大小至少 {size / 1024**2:.1f} MB，超过当前 {limit // 1024**2} MB 限制')
                 output.write(chunk)
                 digest.update(chunk)
         result = importer.finish_upload(token, key, name, size, index, digest.hexdigest())
@@ -113,3 +116,8 @@ def api_mail_import_pause(token: str):
 @router.delete('/api/mail/client-imports/{token}')
 def api_mail_import_discard(token: str):
     return call(importer.discard, token)
+
+
+@router.get('/api/mail/client-imports/{token}/retry-files')
+def api_mail_import_retry_files(token: str):
+    return call(importer.retry_files, token)

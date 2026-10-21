@@ -731,5 +731,30 @@
         }
       ]
     }
+  ],
+  "xiaoyou-rest": [
+    {
+      "fixtures": [],
+      "tests": [
+        {
+          "file": "tests/test_companion_outfit_rest_browser.cjs"
+        },
+        {
+          "file": "tests/test_companion_outfit_rest_browser.cjs",
+          "env": {
+            "MAILAI_BROWSER": "webkit"
+          }
+        },
+        {
+          "file": "tests/test_companion_settle_browser.cjs"
+        },
+        {
+          "file": "tests/test_companion_settle_browser.cjs",
+          "env": {
+            "MAILAI_BROWSER": "webkit"
+          }
+        }
+      ]
+    }
   ]
 }

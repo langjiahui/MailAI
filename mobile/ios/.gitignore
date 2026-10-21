@@ -1,0 +1,9 @@
+.build/
+.swiftpm/
+build/
+MailAI.xcodeproj/
+*.xcarchive/
+*.ipa
+*.p12
+*.mobileprovision
+signing/
