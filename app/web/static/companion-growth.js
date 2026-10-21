@@ -468,6 +468,8 @@
     const identityOpen = host.querySelector('.pet-gift-identity')?.open;
     const focusKey = focus?.closest('.pet-journal') ? Object.entries(focus.dataset).find(([key])=>['petLifeAction','petLifeChatter','petTab','petBuy','petEquip','petSlot','petStyle','petGiftCode','petGiftPreview','petGiftClaim','petGiftWear','petGiftCopy','petGiftReconcile','petGiftOutfits','petClaimCode','petPreviewSelect','petPreviewPlay','petPreviewClose','petPreviewStage','petTryAction','petShopFilter','petTryStage','petCollection'].includes(key)) : null;
     const scroll = host.scrollTop;
+    // Progress, receipts and tab updates must not replace the live animation rig.
+    const portrait = host.querySelector('.pet-hero-portrait');
     const next = state.next_stage_xp;
     const progress = next ? (state.xp-state.stage_floor)/(next-state.stage_floor)*100 : 100;
     window.mailaiCompanionMotion?.stopPreview();
@@ -476,6 +478,7 @@
     <div class="pet-style-choice"><span>${label('styleChoice')}</span>${['nature','ranger'].map(style=>`<button type="button" data-pet-style="${style}" aria-pressed="${state.style === style}" ${state.style === style || busy ? 'disabled' : ''}><b>${label(`style.${style}`)}</b><em>${label(`life.${style}Intro`)}</em></button>`).join('')}<small>${label('styleFree')}</small></div>
     <div class="pet-stats"><article><strong>${state.stamps.toLocaleString()}</strong><span>${label('stamps')}</span></article><article><strong>${state.streak}<small>${label('days')}</small></strong><span>${label('streak')}</span></article><article><strong>${state.earned.toLocaleString()}</strong><span>${label('earned')}</span></article></div>
     ${!state.enabled ? `<p class="pet-paused">${label('paused')}</p>` : ''}<nav class="pet-tabs" aria-label="${label('tabs')}">${['today','journey','shop','gifts','history'].map(name=>`<button type="button" data-pet-tab="${name}" aria-pressed="${tab === name}" aria-label="${label(name)}"><span class="pet-tab-label">${label(name)}</span><span class="pet-tab-short" aria-hidden="true">${label(`tab.${name}`)}</span></button>`).join('')}</nav><section class="pet-tab-content">${({today:todayView,journey:journeyView,shop:shopView,gifts:giftsView,history:historyView})[tab]()}</section>`;
+    if (portrait?.querySelector('.mail-companion')) host.querySelector('.pet-hero-portrait')?.replaceWith(portrait);
     const accountNote = document.createElement('div');
     accountNote.className = 'pet-client-note';
     accountNote.innerHTML = `<span>${label('clientOwner')}</span><small>${label('clientStorage')}</small>`;

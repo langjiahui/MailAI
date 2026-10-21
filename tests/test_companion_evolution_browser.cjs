@@ -20,7 +20,14 @@ const port=Number(process.env.MAILAI_EVOLUTION_FIXTURE_PORT||18857);
   const page=await browser.newPage({viewport:{width:1280,height:1000},deviceScaleFactor:2});const errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   await page.goto(`http://127.0.0.1:${port}`);await page.locator('#app-preloader').waitFor({state:'detached'});
-  await page.evaluate(()=>{mailaiPet.open();document.body.classList.add('companion-still');});
+  await page.evaluate(async()=>{await mailaiPet.open();document.body.classList.add('companion-still');
+   const svg=document.querySelector('.pet-hero-portrait .mail-companion');
+   await api('/api/companion/preferences',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:false})});
+   await mailaiPet.refresh();
+   if(svg!==document.querySelector('.pet-hero-portrait .mail-companion'))throw Error('Growth refresh replaced the live portrait');
+   // The anatomy matrix controls stages directly; persistence/heartbeats have dedicated tests.
+   mailaiEnergy.reschedule('companion-growth',120000);
+  });
   await page.locator('.pet-hero-portrait').waitFor();await page.waitForTimeout(300);
   const hero=page.locator('.pet-hero-portrait .mail-companion');
   const has=selector=>hero.locator(selector).first().evaluate(n=>n.getBoundingClientRect().width>0&&getComputedStyle(n).visibility!=='hidden');

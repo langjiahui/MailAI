@@ -427,6 +427,9 @@
   };
   const wake = () => {
     if (!enabled()) return;
+    // A new interaction can arrive after a finite peek ends but before its
+    // wake window expires. Restart only on this explicit wake, never in idle.
+    for(const rig of rigs) if(rig.mode==='peek' && rig.svg.dataset.motionActive==='false') rig.mode='off';
     awakeUntil = performance.now() + 3500;
     clearTimeout(awakeTimer);
     awakeTimer = setTimeout(() => { awakeUntil = 0; refresh(); }, 3500);

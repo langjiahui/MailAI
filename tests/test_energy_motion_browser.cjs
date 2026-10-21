@@ -34,6 +34,10 @@ const port = Number(process.env.MAILAI_ENERGY_FIXTURE_PORT || 18831);
     await page.evaluate(()=>selectEmail(1));await awake('#assistant-orb .mail-companion');
     assert.equal(await page.locator('#assistant-orb .pet-mech-left').evaluate(n=>getComputedStyle(n).animationPlayState),'running');
     await idle(); // The finite response must settle without further interaction.
+    // A second interaction must work even while the previous wake window remains open.
+    await page.evaluate(()=>mailaiCompanionMotion.wake());
+    await awake('#assistant-orb .mail-companion');
+    await idle();
     await page.waitForTimeout(4500);await idle(); // Ambient motion waits at least eight seconds.
     // Refreshing the same selected mail is not a new read intent.
     await page.evaluate(()=>selectEmail(1));await idle();
@@ -133,17 +137,17 @@ const port = Number(process.env.MAILAI_ENERGY_FIXTURE_PORT || 18831);
     await page.clock.runFor(120000);
     assert.equal(await page.evaluate(()=>ambientClips.length),0,'Reduced motion must disable ambient scheduling');
     // Both saved skins have distinct idle, greeting, working and completion clips.
-    const setStyle=style=>page.evaluate(async style=>{
+    const setStyle=async style=>{ await page.evaluate(async style=>{
       await api('/api/companion/style',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({style})});
       await mailaiPet.refresh();
-    },style);
+    },style); await page.waitForFunction(style=>document.body.dataset.petStyle===style,style); };
     const motionClip=()=>page.locator('#assistant-orb .mail-companion').getAttribute('data-motion-clip');
     await setStyle('ranger');
     await page.evaluate(()=>{ambientClips.length=0;});
     await page.emulateMedia({reducedMotion:'no-preference'});
     await page.clock.runFor(90000);
     const rangerClips=await page.evaluate(()=>ambientClips.map(event=>event.clips[0]));
-    assert(rangerClips.includes('nod') && rangerClips.includes('alert'),'Ranger needs its own micro gestures');
+    assert(rangerClips.includes('nod') && rangerClips.includes('alert'),`Ranger needs its own micro gestures: ${JSON.stringify(rangerClips)}`);
     assert(rangerClips.some(name=>['survey','ready','swim'].includes(name)),'Ranger needs its own idle gestures');
     assert(rangerClips.every(name=>['nod','alert','survey','ready','swim'].includes(name)),'Ranger must not borrow nature gestures');
     await page.evaluate(()=>document.querySelector('#assistant-orb .companion-art').dispatchEvent(new Event('pointerenter')));
