@@ -1,3 +1,4 @@
+// CI impact selection probe: a comment-only test change.
 // Run only against the synthetic MAILAI_TODO_GROUP_FIXTURE fixture.
 const assert = require('node:assert/strict');
 const {chromium,webkit} = require('playwright');
