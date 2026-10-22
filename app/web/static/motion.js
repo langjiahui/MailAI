@@ -9,6 +9,15 @@
   }
   window.mailaiMotion = {
     reveal,
+    leave(node) {
+      if (!node?.isConnected || reduce() || !node.animate || document.hidden) return Promise.resolve();
+      const height=node.getBoundingClientRect().height/(parseFloat(getComputedStyle(document.body).zoom)||1);
+      const animation=node.animate([
+        {height:height+'px',opacity:1,paddingTop:getComputedStyle(node).paddingTop,paddingBottom:getComputedStyle(node).paddingBottom,overflow:'hidden'},
+        {height:'0px',opacity:0,paddingTop:'0px',paddingBottom:'0px',overflow:'hidden'},
+      ],{duration:160,easing:'cubic-bezier(.2,.8,.2,1)'});
+      return animation.finished.catch(()=>{}).finally(()=>animation.cancel());
+    },
     pending(node) {
       if (!node) return () => {};
       const previous = pending.get(node);
@@ -35,7 +44,7 @@
     doc.addEventListener('click', event => {
       const summary = event.target.closest?.('summary');
       const details = summary?.parentElement;
-      if (!details?.matches('.compose-extra-recipients,.message-recipients details,.assistant-sources,.mail-reading-fold,details[data-mailai-fold],.directory-editor-details,.directory-sheet details,.directory-review-row,.directory-pending-preview,.productivity-help,.diagnostic-help')) return;
+      if (!details?.matches('.compose-extra-recipients,.message-recipients details,.assistant-sources,.mail-reading-fold,details[data-mailai-fold],.directory-editor-details,.directory-sheet details,.directory-review-row,.directory-pending-preview,.productivity-help,.diagnostic-help,.todo-group-details,.todo-sources-more')) return;
       if (event.target.closest('a,button,input,select,textarea') || !details.animate) return;
       const previous = running.get(details);
       const opening = previous ? !previous.opening : !details.open;
@@ -50,6 +59,7 @@
       const height = previous?.height ?? details.style.height;
       details.style.height = height;
       details.open = opening;
+      if (details.matches('.todo-group-details')) window.mailaiSizeTodoTitles?.();
       const end = details.offsetHeight;
       details.open = true;
       details.style.overflow = 'hidden';

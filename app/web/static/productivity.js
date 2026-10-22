@@ -292,7 +292,7 @@
     entry(document.querySelector(".attachment-center-tools"), mailaiText("查找文件内容"), () => attachments(attachmentCenterAccountId));
     entry(document.querySelector(".attachment-center-tools"), mailaiText("已分享文件"), () => shares(attachmentCenterAccountId));
     entry(document.querySelector(".task-account-picker"), mailaiText("发信跟进"), () => followups(taskCenterScope()));
-    entry(document.querySelector(".todo-center-tools"), mailaiText("日历文件"), () => calendar(todoCenterAccountId));
+    entry(document.getElementById("todo-extra-actions"), mailaiText("日历文件"), () => calendar(todoCenterAccountId));
     const filter = document.getElementById("btn-filter-panel");
     document.querySelector(".list-sort").prepend(filter);
     const task = document.getElementById("btn-task-center");

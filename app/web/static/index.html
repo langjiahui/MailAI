@@ -43,7 +43,7 @@
   <link rel="stylesheet" href="/static/interaction-recovery.css?v=keyboard-navigation-20261017">
   <link rel="stylesheet" href="/static/dashboard-polish.css?v=4">
   <link rel="stylesheet" href="/static/digest-polish.css?v=1">
-  <link rel="stylesheet" href="/static/experience-polish.css?v=85af118a9baa">
+  <link rel="stylesheet" href="/static/experience-polish.css?v=5390e83178fa">
   <link rel="stylesheet" href="/static/page-polish.css?v=i18n-20261010">
   <link rel="stylesheet" href="/static/macos-window.css?v=758439776e9b">
   <link rel="stylesheet" href="/static/windows-window.css?v=3">
@@ -76,6 +76,7 @@
   <link rel="stylesheet" href="/static/assistant-divider.css?v=1a5111637e30">
   <link rel="stylesheet" href="/static/mail-filter-panel.css?v=3a5b855c7ae5">
   <link rel="stylesheet" href="/static/mail-list-view.css?v=d76036e8e3fc">
+  <link rel="stylesheet" href="/static/todo-center.css?v=c023a515e938">
 </head>
 <body>
   <div id="app-preloader" class="app-preloader" role="status" aria-live="polite">
@@ -787,6 +788,7 @@
 
       <!-- 右侧阅读区 -->
       <div class="reading-pane" id="reading-pane" tabindex="-1" aria-label="邮件阅读区" data-i18n-aria="ui.41f7255629f7">
+        <div id="todo-source-return" class="hidden"><button type="button" id="todo-source-back"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16 10H4m5-5-5 5 5 5"/></svg><span data-i18n="todo.ui.return">返回待办</span></button><span data-i18n="todo.ui.returnHint">核对来源后，继续处理刚才的事项</span></div>
         <div class="reading-empty" id="reading-empty">
           <div class="reading-start">
             <svg class="reading-start-art" viewBox="0 0 240 174" aria-hidden="true" focusable="false">
@@ -865,17 +867,17 @@
     <div id="todo-center" class="attachment-center hidden">
       <div class="attachment-center-backdrop"></div>
       <section class="attachment-center-card todo-center-card" role="dialog" aria-modal="true" aria-labelledby="todo-center-title">
-        <header><div><span class="eyebrow" data-i18n="todo.eyebrow">从邮件中识别，可人工校正</span><h2 id="todo-center-title" data-i18n="todo.title">待办中心</h2><small id="todo-account-label" class="tool-account-label"></small></div><button id="btn-close-todos" class="btn-ghost" data-i18n-aria="dlg.close">✕</button></header>
+        <header><div><h2 id="todo-center-title" data-i18n="todo.title">待办中心</h2><small id="todo-account-label" class="tool-account-label"></small><p id="todo-center-summary" role="status" aria-live="polite"></p></div><button id="btn-close-todos" class="btn-ghost" data-i18n-aria="dlg.close">✕</button></header>
         <div class="todo-center-tools">
-          <label class="todo-show-done"><input id="todo-show-done" type="checkbox"> <span data-i18n="todo.showDone">显示已完成</span></label>
-          <div class="todo-batch-actions">
-            <label class="todo-select-all"><input id="todo-select-all" type="checkbox"> <span data-i18n="todo.selectAll">全选</span></label>
-            <button id="todo-complete-selected" type="button" disabled data-i18n="todo.completeSelected">完成所选</button>
-            <button id="todo-complete-all" type="button" data-i18n="todo.completeAll">全部完成</button>
-            <span id="todo-count"></span>
-          </div>
+          <details id="todo-options" class="todo-options"><summary><span data-i18n="todo.ui.options">更多</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg></summary><div id="todo-extra-actions"><label class="todo-show-done"><input id="todo-show-done" type="checkbox"> <span data-i18n="todo.showDone">显示已完成</span></label></div></details>
         </div>
         <div id="todo-list" class="todo-center-list"></div>
+          <div class="todo-batch-actions">
+            <label class="todo-select-all"><input id="todo-select-all" type="checkbox"> <span data-i18n="todo.ui.selectView">全选当前视图</span></label>
+            <span id="todo-count"></span>
+            <button id="todo-complete-selected" type="button" disabled data-i18n="todo.completeSelected">完成所选</button>
+            <button id="todo-complete-all" type="button" data-i18n="todo.completeAll">全部完成</button>
+          </div>
       </section>
     </div>
 
@@ -1244,7 +1246,7 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=a5688a699a1b"></script>
+  <script src="/static/bundle.js?v=52adec5648e3"></script>
   <script src="/static/settings-scroll.js?v=5"></script>
   <script type="module" src="/static/author-logo.js?v=5"></script>
 </body>

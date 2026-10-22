@@ -4,10 +4,13 @@ const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const app = fs.readFileSync('app/web/static/app.js','utf8');
 const workspace = fs.readFileSync('app/web/static/workspace.js','utf8');
-const slice = (source, start, end) => source.slice(source.indexOf(start), source.indexOf(end,source.indexOf(start)));
+const slice = (source, start, end) => {
+  const first=source.indexOf(start),last=source.indexOf(end,first);
+  assert(first>=0&&last>first,'Test function boundaries exist');return source.slice(first,last);
+};
 const deferred = () => { let resolve, reject; const promise=new Promise((a,b)=>{resolve=a;reject=b;}); return {promise,resolve,reject}; };
 (async()=>{
-  const nodes={'todo-list':{},'todo-center':{classList:{add(){}}}};
+  const nodes={'todo-list':{},'todo-center':{classList:{add(){}}},'btn-todos':{focus(){}}};
   let request=deferred(), renders=0;
   const calls=[];
   const c=vm.createContext(i18nContext({document:{querySelector:()=>null,getElementById:id=>nodes[id],body:{classList:{remove(){}}}},
@@ -15,7 +18,7 @@ const deferred = () => { let resolve, reject; const promise=new Promise((a,b)=>{
     updateTodoBatchToolbar(){},renderTodoCenter:()=>renders++,setTimeout,updateSidebar(){},toast(){},window:{mailaiTasksChanged(){}},selectedTodoIds:new Set()}));
   vm.runInContext("let todoCenterLoading=false, todoBatchBusy=false, todoReturnFocus; const todoEdits=new Map(); const todoEditKey=(id,accountId)=>accountId+':'+id; let todoCenterAccountId='a', todoCenterRevision=0, todoCenterRows=[];"+
     slice(app,'async function loadTodoCenter()', 'async function saveTodoItem(')+
-    slice(app,'async function setTodoBatchStatus(', 'async function openTodoCenter()'),c);
+    slice(app,'async function setTodoBatchStatus(', 'async function openTodoCenter('),c);
   const first=c.loadTodoCenter(); const old=request;
   vm.runInContext("todoCenterAccountId='b'",c); request=deferred();
   const second=c.loadTodoCenter(); request.resolve([{id:1,title:'B'}]); await second;
