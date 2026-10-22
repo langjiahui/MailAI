@@ -59,10 +59,11 @@ html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[d
 }
 html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .reading-header .reading-header-inner .reading-actions .reading-mail-group button.reading-primary-action {
   background:var(--reward-reply-fill,var(--reward-selected))!important;
-  color:var(--reward-reply-ink,var(--reward-accent))!important;
+  color:var(--reward-reply-ink,var(--reward-ink))!important;
 }
 html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .reading-header .reading-header-inner .reading-actions .reading-mail-group button.reading-primary-action:hover:not(:disabled) {
   background:var(--reward-reply-hover,color-mix(in srgb,var(--reward-selected) 90%,var(--reward-accent)))!important;
+  color:var(--reward-reply-ink,var(--reward-ink))!important;
 }
 html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .reading-header .reading-actions :is(button[aria-pressed="true"],button[aria-expanded="true"]) {
   background:var(--reward-selected)!important;

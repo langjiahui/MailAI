@@ -3222,7 +3222,7 @@ body:has(#app-preloader) .layout { opacity:0; }
 body:has(#app-preloader.leaving) .layout { opacity:1; transition:opacity .28s ease .24s; }
 body:has(#app-preloader) #reading-empty { opacity:0; visibility:hidden; pointer-events:none; }
 #reading-empty { transition:opacity .24s ease; }
-body:has(#app-preloader:not(.handoff-active)) #assistant-orb { opacity:0; pointer-events:none; }
+body:has(#app-preloader:not(.handoff-active):not(.leaving)) #assistant-orb { opacity:0; pointer-events:none; }
 .preloader-workspace {
   position:absolute;
   inset:0;

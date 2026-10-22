@@ -103,7 +103,7 @@ const {chromium,webkit} = require('playwright');
             }),selected:rewardThemeContrast(getComputedStyle(document.querySelector('.email-item.selected .email-subject')).color,expected.selected)};
           });
           for(const panel of panels.rows) {
-            assert.equal(panel.bg,panels.expected[['.sidebar','.list-pane','.global-search'].includes(panel.selector)?'soft':'surface'],JSON.stringify({theme,mode,panel}));
+            assert.equal(panel.bg,panels.expected[['.sidebar','.list-pane','.topbar','.global-search'].includes(panel.selector)?'soft':'surface'],JSON.stringify({theme,mode,panel}));
             assert(panel.contrast>=4.5,JSON.stringify({theme,mode,panel}));
           }
           assert(panels.selected>=4.5,`${theme}/${mode} selected row contrast`);
@@ -116,14 +116,14 @@ const {chromium,webkit} = require('playwright');
           assert.equal(material[1].background,panels.expected.selected,'Selected fill must be opaque');
           assert.equal(material[1].shadow,'none','Selection must remain flat and quiet');
           await page.emulateMedia({contrast:'more'});
-          await page.waitForFunction(()=>getComputedStyle(document.querySelector('#email-list .selection-glass-plate')).boxShadow.includes('inset'));
+          await page.waitForFunction(()=>{const plate=document.querySelector('#email-list .selection-glass-plate');return plate&&getComputedStyle(plate).outlineStyle==='solid'&&parseFloat(getComputedStyle(plate).outlineWidth)>=1;});
           const edgeContrast=await page.evaluate(()=>{
             const css=getComputedStyle(document.querySelector('#email-list .selection-glass-plate'));
-            return rewardThemeContrast(css.borderLeftColor,css.backgroundColor);
+            return rewardThemeContrast(css.outlineColor,css.backgroundColor);
           });
           assert(edgeContrast>=3,'Increased contrast must restore a clear selection boundary');
           await page.emulateMedia({contrast:'no-preference'});
-          await page.waitForFunction(()=>getComputedStyle(document.querySelector('#email-list .selection-glass-plate')).boxShadow==='none');
+          await page.waitForFunction(()=>{const plate=document.querySelector('#email-list .selection-glass-plate');return plate&&getComputedStyle(plate).boxShadow==='none';});
           const hover=page.locator('.email-item:not(.selected)').first();await hover.hover();
           const hovered=await hover.evaluate(n=>getComputedStyle(n).backgroundColor);
           assert.notEqual(hovered,panels.expected.surface,'Hover must remain visible on the pure canvas');
