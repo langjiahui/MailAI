@@ -333,7 +333,17 @@ body.assistant-visible #assistant-orb .mail-companion * { animation-play-state:p
 .mail-companion:not(.pet-preview-svg):is([data-motion-active="false"],[data-motion-kind="ambient"],[data-outfit-rest="true"]) .pet-reward-motion {
   animation:none!important; animation-play-state:paused!important; transform:var(--pet-rest-transform,none);
 }
-.mail-companion:not(.pet-preview-svg):is([data-motion-active="false"],[data-motion-kind="ambient"],[data-outfit-rest="true"]) :is(.growth-stars,.growth-orbit,.growth-aura,.growth-lightning) .pet-reward-motion { opacity:0; }
+/* Equipped effects keep an identifiable still appearance after their motion
+ * settles. Only transient trails disappear; idle costumes need no animation. */
+.mail-companion:not(.pet-preview-svg):is([data-motion-active="false"],[data-motion-kind="ambient"],[data-outfit-rest="true"]) :is(.growth-stars,.growth-orbit,.growth-aura,.growth-lightning) .pet-reward-motion { opacity:var(--pet-rest-opacity,.6); }
+.pet-star-ray { --pet-rest-opacity:.25; }
+.pet-star-trail { --pet-rest-opacity:0; }
+.pet-aurora-veil { --pet-rest-opacity:.28; }
+.pet-aurora-ribbon { --pet-rest-opacity:.6; }
+.pet-aurora-ripple { --pet-rest-opacity:.65; --pet-rest-transform:scale(.72,.65); }
+.pet-aurora-ripple:nth-of-type(2) { --pet-rest-opacity:.55; --pet-rest-transform:scale(.9,.9); }
+.pet-aurora-ripple:nth-of-type(3) { --pet-rest-opacity:.45; --pet-rest-transform:scale(1.07,1.18); }
+.pet-bolt-branch { --pet-rest-opacity:.4; }
 .pet-wing-left,.pet-wing-right { --pet-rest-transform:rotate(-10deg) scale(.7,.76); }
 .pet-mech-left,.pet-mech-right { --pet-rest-transform:rotate(-10deg) scale(.66,.72); }
 .pet-mech-panel { --pet-rest-transform:rotate(-8deg); }

@@ -18,7 +18,27 @@ const key='mailai-companion-position-v1';
    browser=await engine.launch();
    const page=await browser.newPage({viewport:{width:1280,height:900},reducedMotion:'reduce'}),errors=[];
    page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.dismiss());
-   await page.goto(`http://127.0.0.1:${port}`);
+   await page.addInitScript(()=>{
+    window.nativeWindowDrags=0;
+    window.pywebview={api:{
+     set_window_theme:async()=>({ok:true}),
+     set_window_drag_region:async(...args)=>{window.nativeDragRegion=args;return {ok:true};}
+    }};
+    window.nativeDragHit=(x,y)=>{
+     if(!window.nativeDragRegion||y<0||y>52||document.documentElement.classList.contains('macos-native-fullscreen'))return false;
+     const [, , ,gaps,excluded=[]]=nativeDragRegion;
+     if(excluded.some(([left,right])=>x>=left&&x<right))return false;
+     return gaps.some(([left,right])=>x>=left&&x<right)||(x>104&&y<=5);
+    };
+    // Model Cocoa's overlay: if it accepts the initial press, WebKit never
+    // receives pointerdown and cannot capture a subsequent pet drag.
+    document.addEventListener('pointerdown',event=>{
+     if(nativeDragHit(event.clientX,event.clientY)){
+      nativeWindowDrags++;event.preventDefault();event.stopImmediatePropagation();
+     }
+    },true);
+   });
+   await page.goto(`http://127.0.0.1:${port}/?shell=macos`);
    await page.locator('#app-preloader').waitFor({state:'hidden'});
    await page.evaluate(k=>localStorage.removeItem(k),key);await page.reload();await page.locator('#app-preloader').waitFor({state:'hidden'});
    const orb=page.locator('#assistant-orb'),root=page.locator('#mail-assistant');
@@ -71,6 +91,19 @@ const key='mailai-companion-position-v1';
     b=await box();assert.equal(await root.getAttribute('data-pet-dock'),edge);
     assert.equal(JSON.parse(await saved()).dock,edge);
     assert(b.x+b.width>20&&b.y+b.height>20&&b.x<1260&&b.y<880,'Dock keeps a visible drag target');
+    if(edge==='top') {
+     await page.waitForFunction(()=>nativeDragRegion?.[4]?.length===1);
+     const native=await page.evaluate(()=>{
+      const r=document.getElementById('assistant-orb').getBoundingClientRect(),[, , ,gaps,excluded]=nativeDragRegion;
+      const x=(r.left+r.right)/2;
+      return {covered:excluded.some(([left,right])=>left<=Math.max(0,r.left)&&right>=Math.min(innerWidth,r.right)),
+       overlaps:gaps.some(([left,right])=>left<r.right&&right>r.left),
+       topHit:nativeDragHit(x,2),bodyHit:nativeDragHit(x,Math.max(0,r.top+r.height/2)),
+       neighboringTopHit:nativeDragHit(excluded[0][1]+8,2)};
+     });
+     assert(native.covered&&!native.overlaps&&!native.topHit&&!native.bodyHit,'Native titlebar must yield the complete pet hit area: '+JSON.stringify(native));
+     assert(native.neighboringTopHit,'Empty titlebar beside the pet still drags the window');
+    }
     poses.add(await orb.locator('.companion-facing').evaluate(n=>getComputedStyle(n).transform));
     for(const style of ['nature','ranger']) {
      await page.evaluate(style=>document.body.dataset.petStyle=style,style);await settled();
@@ -119,6 +152,7 @@ const key='mailai-companion-position-v1';
    assert.equal(poses.size,4,'Four distinct, rigid dock silhouettes');
    await page.reload();await page.locator('#app-preloader').waitFor({state:'hidden'});await settled();
    assert.equal(await root.getAttribute('data-pet-dock'),'bottom','Dock survives reload');
+   await page.waitForFunction(()=>nativeDragRegion?.[4]?.length===0);
    // Full-motion docking approaches, makes contact, then settles and releases
    // all temporary animations. Reduced motion used above must stay immediate.
    await page.emulateMedia({reducedMotion:'no-preference'});
@@ -152,6 +186,7 @@ const key='mailai-companion-position-v1';
    await page.waitForFunction(()=>!document.querySelector('.companion-releasing'));
    assert.equal(await facing.evaluate(n=>n.getAnimations().filter(a=>a.effect.getTiming().duration===380).length),0,'Recovery objects are cleaned up');
    assert.equal(await orb.locator('.companion-edge-grip').evaluate(n=>getComputedStyle(n).opacity),'0');
+   assert.equal(await page.evaluate(()=>nativeWindowDrags),0,'Pet drags must never start native window dragging');
    await page.emulateMedia({reducedMotion:'reduce'});await settled();
    const beforeFailure=await saved(),beforeBox=await box();
    fs.writeFileSync(faultFile,'/api/ui-preferences');
@@ -159,11 +194,12 @@ const key='mailai-companion-position-v1';
    assert(Math.abs((await box()).x-beforeBox.x)<2,'Failed save restores the saved placement');
    fs.writeFileSync(faultFile,'');
    await orb.focus();await page.keyboard.press('Enter');assert(await isOpen(),'Keyboard activation still opens chat');
+   await page.waitForFunction(()=>nativeDragRegion?.[4]?.length===0);
    await page.evaluate(()=>closeAssistant());await page.waitForTimeout(350);
    await page.evaluate(k=>localStorage.setItem(k,'{"version":1,"x":null,"y":-400}'),key);await page.reload();await page.locator('#app-preloader').waitFor({state:'hidden'});await settled();
    b=await box();assert(b.x>=0&&b.y>=0&&b.x+b.width<=1280&&b.y+b.height<=900,'Invalid stored position uses the default');
    assert.deepEqual(errors,[]);
-   console.log(`PASS ${engine.name()}: free placement, one release save, reload, click/keyboard, cancel, boundary, zoom, four attached dock poses, resize and save failure`);
+   console.log(`PASS ${engine.name()}: free placement, native titlebar exclusion, top-strip arbitration, one release save, reload, click/keyboard, cancel, boundary, zoom, four attached dock poses, resize and save failure`);
    await browser.close();browser=null;
   }
  } finally {fs.rmSync(faultFile,{force:true});if(browser)await browser.close();const done=once(fixture,'exit');fixture.kill('SIGTERM');await done;}

@@ -8672,6 +8672,7 @@ function renderBackupItem(item, index) {
 }
 async function loadBackups() {
   const accountId = activeMailAccount()?.id;
+  window.refreshCleanupAutomation?.(accountId);
   const host = document.getElementById('backup-list');
   try {
     const [localItems, portableItems] = await Promise.all([api('/api/system/backups', {accountId}), api('/api/system/portable-backups', {accountId})]);

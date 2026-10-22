@@ -523,5 +523,14 @@
     "env": {
       "MAILAI_BROWSER": "webkit"
     }
+  },
+  {
+    "file": "tests/test_server_cleanup_browser.cjs"
+  },
+  {
+    "file": "tests/test_server_cleanup_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
   }
 ]

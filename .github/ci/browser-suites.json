@@ -765,5 +765,40 @@
         }
       ]
     }
+  ],
+  "server-cleanup": [
+    {
+      "fixtures": [
+        {
+          "port": 18795,
+          "env": {
+            "MAILAI_CLEANUP_FIXTURE": "1"
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "tests/test_server_cleanup_browser.cjs"
+        }
+      ]
+    },
+    {
+      "fixtures": [
+        {
+          "port": 18795,
+          "env": {
+            "MAILAI_CLEANUP_FIXTURE": "1"
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "tests/test_server_cleanup_browser.cjs",
+          "env": {
+            "MAILAI_BROWSER": "webkit"
+          }
+        }
+      ]
+    }
   ]
 }

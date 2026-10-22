@@ -64,6 +64,31 @@ async function checkMotion(page, hosts, part, context) {
     throw new Error(`${context} must actually advance: before=${JSON.stringify(first)}, after=${JSON.stringify(await sample())}`,{cause:error});
   }
 }
+async function checkRestEffect(page, host, part, context) {
+  // An owned item must remain visible after the finite interaction ends.
+  // Blur releases the rig immediately, without waiting through ambient timers.
+  await page.evaluate(()=>window.dispatchEvent(new Event('blur')));
+  const sample=()=>page.locator(`${host} .mail-companion`).evaluate((svg,part)=>{
+    const node=svg.querySelector(part);
+    let opacity=1,visible=true;
+    for(let parent=node;parent instanceof Element;parent=parent.parentElement){
+      const css=getComputedStyle(parent);opacity*=Number(css.opacity);
+      if(css.display==='none'||css.visibility==='hidden')visible=false;
+    }
+    return {visible,opacity,name:getComputedStyle(node).animationName,
+      ripples:[...svg.querySelectorAll('.pet-aurora-ripple')].map(n=>getComputedStyle(n).transform)};
+  },part);
+  const still=await sample();
+  assert(still.visible&&still.opacity>.1,`${context}: equipped effect must remain visible at rest: ${JSON.stringify(still)}`);
+  assert.equal(still.name,'none',`${context}: static appearance must not require animation`);
+  if(part==='.pet-aurora-ripple')assert.equal(new Set(still.ripples).size,3,'Three aurora rings keep distinct static sizes');
+  await page.emulateMedia({reducedMotion:'reduce'});
+  const reduced=await sample();
+  assert(reduced.visible&&reduced.opacity>.1,`${context}: reduced motion keeps the equipped appearance`);
+  assert.equal(reduced.name,'none');
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+}
 (async()=>{
   const fixture=spawn(process.env.MAILAI_FIXTURE_PYTHON||'python3',['tests/workspace_preview.py'],{
     env:{...process.env,MAILAI_REWARD_MOTION_FIXTURE:'1',MAILAI_FIXTURE_PORT:String(port)},stdio:['ignore','pipe','pipe'],
@@ -170,6 +195,7 @@ async function checkMotion(page, hosts, part, context) {
       for(const [slot,item,part] of rewards) {
         await mutate('equip',{slot,item});
         await checkMotion(page,['#assistant-orb'],part,`floating ${style}/${item}`);
+        if(slot==='effect')await checkRestEffect(page,'#assistant-orb',part,`floating ${style}/${item}`);
       }
       await page.locator('#assistant-orb').click();
       await page.locator('#assistant-panel').waitFor({state:'visible'});
@@ -177,6 +203,7 @@ async function checkMotion(page, hosts, part, context) {
       for(const [slot,item,part] of rewards) {
         await mutate('equip',{slot,item});
         await checkMotion(page,['#assistant-panel .assistant-mini'],part,`chat ${style}/${item}`);
+        if(slot==='effect')await checkRestEffect(page,'#assistant-panel .assistant-mini',part,`chat ${style}/${item}`);
       }
       assert.equal(await page.locator('#assistant-orb .pet-palette-shine').evaluate(n=>getComputedStyle(n).animationPlayState),'paused','Collapsed orb must pause while the chat is shown');
       await page.locator('#assistant-close').click();
@@ -190,6 +217,7 @@ async function checkMotion(page, hosts, part, context) {
       for(const [slot,item,part] of rewards) {
         await mutate('equip',{slot,item});
         await checkMotion(page,['#compose-ai-panel .assistant-mini'],part,`writing ${style}/${item}`);
+        if(slot==='effect')await checkRestEffect(page,'#compose-ai-panel .assistant-mini',part,`writing ${style}/${item}`);
       }
     }
     await mutate('equip',{slot:'accessory',item:'armor'});

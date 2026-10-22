@@ -570,9 +570,10 @@
             </div>
           </section>
           <section class="diagnostic-card server-cleanup-card">
-            <div class="maintenance-card-head"><span class="connection-icon"><svg viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="6" rx="2"/><rect x="3" y="11" width="14" height="6" rx="2"/><path d="M6 6h.01M6 14h.01M11 6h3M11 14h3"/></svg></span><div class="maintenance-card-copy"><h3 data-i18n="maint.cleanupTitle">清理服务器邮件</h3><p data-i18n="maint.cleanupCopy">释放邮箱服务器空间，保留本机的完整邮件。</p></div><span class="maintenance-badge caution" data-i18n="maint.cleanupBadge">仅手动执行</span></div>
+            <div class="maintenance-card-head"><span class="connection-icon"><svg viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="6" rx="2"/><rect x="3" y="11" width="14" height="6" rx="2"/><path d="M6 6h.01M6 14h.01M11 6h3M11 14h3"/></svg></span><div class="maintenance-card-copy"><h3 data-i18n="maint.cleanupTitle">清理服务器邮件</h3><p data-i18n="maint.cleanupCopy">释放邮箱服务器空间，保留本机的完整邮件。</p></div><span id="cleanup-mode-badge" class="maintenance-badge" data-i18n="cleanupAuto.off">自动清理已关闭</span></div>
             <ol class="maintenance-cleanup-steps"><li><span>1</span><div><b data-i18n="maint.step1">选择范围，先看预览</b><small data-i18n="maint.step1Hint">按日期筛选，默认保留收藏和星标邮件</small></div></li><li><span>2</span><div><b data-i18n="maint.step2">确认后，先备份再清理</b><small data-i18n="maint.step2Hint">核对邮件列表，输入邮箱地址确认操作</small></div></li><li><span>3</span><div><b data-i18n="maint.step3">旧邮件仍可在本机查看</b><small data-i18n="maint.step3Hint">邮件和附件保留在原来的收件箱等文件夹中</small></div></li></ol>
-            <div class="maintenance-cleanup-footer"><div class="maintenance-cleanup-note" data-i18n="maint.cleanupNote">清理后，网页版及其他设备可能无法再查看这些邮件。</div><div class="maintenance-card-actions"><span data-i18n="maint.cleanupNoAuto">不会自动清理</span><button id="btn-server-cleanup" type="button" class="action-btn action-secondary"><span data-i18n="maint.cleanupBtn">选择清理范围 </span><span aria-hidden="true">→</span></button></div></div>
+            <div class="maintenance-cleanup-footer"><div class="maintenance-cleanup-note" data-i18n="maint.cleanupNote">清理后，网页版及其他设备可能无法再查看这些邮件。</div><div class="maintenance-card-actions"><button id="btn-cleanup-automation" type="button" class="action-btn action-secondary" data-i18n="cleanupAuto.settings">自动清理设置</button><button id="btn-server-cleanup" type="button" class="action-btn action-secondary"><span data-i18n="maint.cleanupBtn">选择清理范围 </span><span aria-hidden="true">→</span></button></div></div>
+            <p id="cleanup-auto-summary" class="maintenance-migration-note" aria-live="polite"></p>
             <div id="server-cleanup-history" aria-live="polite"></div>
           </section>
         </div>
@@ -1228,7 +1229,7 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=0a781aa596ff"></script>
+  <script src="/static/bundle.js?v=9640b46f3d18"></script>
   <script src="/static/settings-scroll.js?v=5"></script>
   <script type="module" src="/static/author-logo.js?v=5"></script>
 </body>

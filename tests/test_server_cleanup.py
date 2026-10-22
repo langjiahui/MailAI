@@ -8,7 +8,7 @@ from email.message import EmailMessage
 from pathlib import Path
 from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from app import config, db, parser, server_cleanup, pipeline, system_settings
+from app import config, db, parser, server_cleanup, pipeline, system_settings, automatic_server_cleanup as automatic
 from app.web import server
 
 
@@ -165,5 +165,126 @@ class CleanupTests(unittest.TestCase):
         with self.assertRaises(ValueError): server_cleanup.preview('INBOX',date.today().isoformat())
         preview=self.preview();server.api_set_email_favorite(1,True)
         self.assertEqual(self.execute(preview['token'])['status'],'failed'); self.assertFalse(self.mail.mutations)
+
+    def enable_automatic(self, **values):
+        return automatic.save_settings(True, days=30, confirmation=config.IMAP_USER,
+                                       acknowledge=True, **values)
+
+    def make_automatic_due(self):
+        policy=automatic.get_settings()
+        policy['next_run']=(datetime.now()-timedelta(days=1)).isoformat()
+        automatic._save(policy)
+
+    def test_automatic_default_off_and_validated_opt_in(self):
+        self.assertFalse(automatic.get_settings()['enabled'])
+        with patch.object(server_cleanup,'MailClient') as client:
+            automatic._run_account();client.assert_not_called()
+        for values in ({'confirmation':config.IMAP_USER}, {'acknowledge':True,'confirmation':'wrong'},
+                       {'acknowledge':True,'confirmation':config.IMAP_USER,'days':0},
+                       {'acknowledge':True,'confirmation':config.IMAP_USER,'interval_days':2},
+                       {'acknowledge':True,'confirmation':config.IMAP_USER,'folder':'missing'}):
+            with self.assertRaises(ValueError): automatic.save_settings(True,**values)
+        self.mail.supported=False
+        with self.assertRaises(ValueError): self.enable_automatic()
+        self.assertFalse(automatic.get_settings()['enabled']);self.assertFalse(self.mail.mutations)
+
+    def test_automatic_due_runs_once_and_preserves_complete_local_mail(self):
+        self.enable_automatic()
+        automatic._run_account();self.assertFalse(self.mail.mutations)
+        self.make_automatic_due();automatic._run_account()
+        policy=automatic.get_settings()
+        self.assertEqual(policy['status'],'scheduled')
+        self.assertGreater(datetime.fromisoformat(policy['next_run']),datetime.now())
+        self.assertEqual(self.mail.mutations,[('flags',[1]),('expunge',[1])])
+        row=db.get_email(1)
+        self.assertEqual(row['folder'],'INBOX');self.assertEqual(row['status'],'inbox')
+        self.assertEqual(Path(row['raw_path']).read_bytes(),self.raw[1])
+        self.assertTrue(parser.extract_attachment(row['raw_path'],0)['payload'])
+        record=server_cleanup.history()[0]
+        self.assertEqual(record['source'],'automatic');self.assertEqual(record['status'],'completed')
+        self.assertTrue(Path(system_settings.backup_path(record['backup'])).is_file())
+        automatic._run_account();self.assertEqual(len(self.mail.mutations),2)
+        self.assertEqual(set(self.mail.raw),{2,3,4,5})
+
+    def test_automatic_weekly_disable_does_not_contact_server(self):
+        policy=self.enable_automatic(interval_days=7)
+        self.assertGreater(datetime.fromisoformat(policy['next_run']),datetime.now()+timedelta(days=6))
+        self.make_automatic_due()
+        with patch.object(server_cleanup,'MailClient') as client:
+            automatic.save_settings(False)
+            automatic._run_account();client.assert_not_called()
+        self.assertEqual(automatic.get_settings()['status'],'disabled')
+
+    def test_automatic_backup_failure_pauses_without_deletion_or_retry(self):
+        self.enable_automatic();self.make_automatic_due()
+        with patch.object(system_settings,'create_backup',side_effect=OSError('disk full')):
+            automatic._run_account()
+        self.assertEqual(automatic.get_settings()['status'],'paused')
+        self.assertIn('disk full',automatic.get_settings()['last_error']);self.assertFalse(self.mail.mutations)
+        with patch.object(server_cleanup,'MailClient') as client:
+            automatic._run_account();client.assert_not_called()
+
+    def test_automatic_preview_disconnect_pauses_instead_of_skipping_every_message(self):
+        self.enable_automatic();self.make_automatic_due()
+        with patch.object(self.mail,'fetch',side_effect=OSError('preview connection dropped')):
+            automatic._run_account()
+        self.assertEqual(automatic.get_settings()['status'],'paused')
+        self.assertIn('preview connection dropped',automatic.get_settings()['last_error'])
+        self.assertFalse(self.mail.mutations)
+
+    def test_automatic_disconnect_and_restart_do_not_replay(self):
+        self.enable_automatic();self.make_automatic_due();self.mail.raise_expunge=True
+        automatic._run_account()
+        self.assertEqual(automatic.get_settings()['status'],'paused')
+        self.assertEqual(server_cleanup.history()[0]['status'],'attention')
+        count=len(self.mail.mutations)
+        automatic._run_account();self.assertEqual(len(self.mail.mutations),count)
+        self.mail.raise_expunge=False
+        self.enable_automatic();self.make_automatic_due();automatic._run_account()
+        self.assertEqual(len(self.mail.mutations),count)  # Uncertain UID remains held.
+        policy=automatic.get_settings();policy['status']='running';automatic._save(policy)
+        with patch.object(server_cleanup,'MailClient') as client:
+            automatic._run_account();client.assert_not_called()
+        self.assertEqual(automatic.get_settings()['status'],'paused')
+
+    def test_automatic_preview_requires_current_rule_and_cannot_execute_manually(self):
+        policy=self.enable_automatic();policy['status']='running';automatic._save(policy)
+        plan=server_cleanup.preview('INBOX',self.cutoff,automation_id=policy['revision'])
+        with self.assertRaises(ValueError): server_cleanup.execute(plan['token'],config.IMAP_USER,True)
+        automatic.save_settings(False)
+        with self.assertRaises(ValueError): server_cleanup._execute(plan['token'],automatic=True)
+        with self.assertRaises(ValueError): server_cleanup._execute(self.preview()['token'],automatic=True)
+        self.assertFalse(self.mail.mutations)
+
+    def test_automatic_scan_passes_protected_or_missing_mail(self):
+        with db.conn() as c:
+            c.execute('UPDATE emails SET is_favorite=1 WHERE id=1')
+        msg=EmailMessage();msg['Subject']='eligible after protected mail';msg.set_content('retained')
+        raw=msg.as_bytes();self.mail.raw[6]=raw;self.mail.flags[6]=[]
+        db.upsert_email({**parser.parse_message(6,raw,folder='INBOX'),'date':self.old,'folder':'INBOX','status':'inbox'})
+        self.enable_automatic();self.make_automatic_due()
+        with patch.object(server_cleanup,'MAX_ITEMS',1): automatic._run_account()
+        self.assertEqual(self.mail.mutations,[('flags',[6]),('expunge',[6])])
+        self.assertEqual(automatic.get_settings()['status'],'scheduled')
+
+    def test_automatic_scheduler_account_isolation_and_busy_guard(self):
+        from app.account_context import use
+        from app.account_guard import guard
+        self.enable_automatic();self.make_automatic_due()
+        other_path=self.temp.name+'/other.db'
+        with use(dict(ACCOUNT_ID='other',DB_PATH=other_path)):
+            db.init_db();self.assertFalse(automatic.get_settings()['enabled'])
+        accounts={'first':dict(db_path=config.DB_PATH),'other':dict(db_path=other_path)}
+        values=dict(ACCOUNT_ID='first',DB_PATH=config.DB_PATH,RAW_DIR=config.RAW_DIR,
+                    IMAP_HOST=config.IMAP_HOST,IMAP_USER=config.IMAP_USER)
+        with patch.object(system_settings,'_load_registry',return_value={'accounts':accounts}), patch.object(automatic,'snapshot',return_value=values) as snap:
+            self.assertTrue(guard.acquire())
+            try: automatic.run_due()
+            finally: guard.release()
+            snap.assert_not_called();self.assertFalse(self.mail.mutations)
+            automatic.run_due();snap.assert_called_once_with('first')
+        self.assertEqual(self.mail.mutations,[('flags',[1]),('expunge',[1])])
+        with use(dict(ACCOUNT_ID='other',DB_PATH=other_path)):
+            self.assertFalse(automatic.get_settings()['enabled']);self.assertEqual(server_cleanup.history(),[])
 
 if __name__=='__main__': unittest.main()
