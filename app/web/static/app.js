@@ -8438,6 +8438,12 @@ document.querySelectorAll('[data-about-target]').forEach(button => {
 document.getElementById('btn-check-update')?.addEventListener('click', () => checkForAppUpdate(true));
 document.getElementById('btn-continue-update')?.addEventListener('click', () => { if (availableAppUpdate) showAppUpdate(availableAppUpdate); });
 document.getElementById('companion-update')?.addEventListener('click', () => { if (availableAppUpdate) showAppUpdate(availableAppUpdate); });
+// Native close events are queued. Persist the user's intent during cancel or
+// form submission, before a simultaneous automatic check can reopen the dialog.
+document.getElementById('update-dialog')?.addEventListener('cancel', deferAppUpdate);
+document.querySelector('#update-dialog form')?.addEventListener('submit', event => {
+  if (event.submitter?.value === 'cancel') deferAppUpdate();
+});
 document.getElementById('update-dialog')?.addEventListener('close', deferAppUpdate);
 document.getElementById('btn-share-app')?.addEventListener('click', openAppShare);
 document.getElementById('btn-copy-share-app')?.addEventListener('click', copyAppShareUrl);

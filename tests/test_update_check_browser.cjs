@@ -55,7 +55,10 @@ const {chromium,webkit}=require('playwright');
   available=true;await button.click();await page.locator('#update-dialog').waitFor({state:'visible'});
   assert.match(await page.locator('#update-dialog-title').innerText(),/2.8.18.*2.8.19/);
   assert.equal(await status.getAttribute('data-update-state'),'available');
+  // Simulate a delayed close notification: cancel must persist intent synchronously.
+  await page.evaluate(()=>document.getElementById('update-dialog').addEventListener('close', event=>event.stopImmediatePropagation(),{capture:true,once:true}));
   await page.keyboard.press('Escape');assert(!await button.isDisabled());
+  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('mailai-update-deferred')).version),'2.8.19');
   // Defer before download: a quiet interval suppresses automatic prompts, not the manual entry.
   await page.evaluate(()=>checkForAppUpdate(false));
   assert(!await page.locator('#update-dialog').isVisible());
