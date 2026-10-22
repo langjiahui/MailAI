@@ -2,9 +2,10 @@ name: Android build
 on:
   workflow_dispatch:
   pull_request:
-    paths: ['mobile/android/**', 'VERSION', '.github/workflows/android-preview.yml']
+    paths: ['mobile/android/**', '!mobile/android/**/*.md', '.github/workflows/android-preview.yml', '.github/workflows/android-release.yml', 'scripts/android_release.py', 'scripts/sign_android_update.py']
   push:
-    paths: ['mobile/android/**', 'VERSION', '.github/workflows/android-preview.yml']
+    branches: ['**']
+    paths: ['mobile/android/**', '!mobile/android/**/*.md', '.github/workflows/android-preview.yml', '.github/workflows/android-release.yml', 'scripts/android_release.py', 'scripts/sign_android_update.py']
 permissions:
   contents: read
 concurrency:

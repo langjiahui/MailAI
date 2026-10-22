@@ -36,130 +36,6 @@
       ]
     }
   ],
-  "mail-settings": [
-    {
-      "fixtures": [
-        {
-          "port": 18795,
-          "env": {}
-        }
-      ],
-      "tests": [
-        {
-          "file": "tests/test_update_check_browser.cjs"
-        },
-        {
-          "file": "tests/test_update_check_browser.cjs",
-          "env": {
-            "MAILAI_BROWSER": "webkit"
-          }
-        },
-        {
-          "file": "tests/test_connection_lifecycle_browser.cjs"
-        },
-        {
-          "file": "tests/test_task_notices_browser.cjs"
-        },
-        {
-          "file": "tests/test_mail_notification_navigation_browser.cjs"
-        },
-        {
-          "file": "tests/test_mail_notification_navigation_browser.cjs",
-          "env": {
-            "MAILAI_BROWSER": "webkit"
-          }
-        },
-        {
-          "file": "tests/test_task_center_closure_browser.cjs"
-        },
-        {
-          "file": "tests/test_task_center_closure_browser.cjs",
-          "env": {
-            "MAILAI_BROWSER": "webkit"
-          }
-        },
-        {
-          "file": "tests/test_experience_polish_browser.cjs"
-        },
-        {
-          "file": "tests/test_onboarding_browser.cjs"
-        },
-        {
-          "file": "tests/test_onboarding_browser.cjs",
-          "env": {
-            "MAILAI_BROWSER": "webkit"
-          }
-        },
-        {
-          "file": "tests/test_native_menu_browser.cjs",
-          "env": {
-            "MAILAI_TEST_URL": "http://127.0.0.1:18795/"
-          }
-        },
-        {
-          "file": "tests/test_native_menu_browser.cjs",
-          "env": {
-            "MAILAI_TEST_URL": "http://127.0.0.1:18795/",
-            "MAILAI_BROWSER": "webkit"
-          }
-        },
-        {
-          "file": "tests/test_mailbox_transition_browser.cjs"
-        },
-        {
-          "file": "tests/test_mail_import_browser.cjs"
-        },
-        {
-          "file": "tests/test_mail_list_view_browser.cjs",
-          "env": {
-            "MAILAI_TEST_URL": "http://127.0.0.1:18795/"
-          }
-        },
-        {
-          "file": "tests/test_mail_login_browser.cjs"
-        },
-        {
-          "file": "tests/test_dark_tools_browser.cjs"
-        },
-        {
-          "file": "tests/test_contact_filters_browser.cjs"
-        },
-        {
-          "file": "tests/test_i18n_browser.cjs"
-        },
-        {
-          "file": "tests/test_mail_recovery_browser.cjs"
-        },
-        {
-          "file": "tests/test_mail_recovery_browser.cjs",
-          "env": {
-            "MAILAI_BROWSER": "webkit"
-          }
-        }
-      ]
-    },
-    {
-      "fixtures": [
-        {
-          "port": 18795,
-          "env": {
-            "MAILAI_TODO_GROUP_FIXTURE": "1"
-          }
-        }
-      ],
-      "tests": [
-        {
-          "file": "tests/test_todo_groups_browser.cjs"
-        },
-        {
-          "file": "tests/test_todo_groups_browser.cjs",
-          "env": {
-            "MAILAI_BROWSER": "webkit"
-          }
-        }
-      ]
-    }
-  ],
   "workspace": [
     {
       "fixtures": [
@@ -871,6 +747,180 @@
       "tests": [
         {
           "file": "tests/test_server_cleanup_browser.cjs",
+          "env": {
+            "MAILAI_BROWSER": "webkit"
+          }
+        }
+      ]
+    }
+  ],
+  "mail-updates": [
+    {
+      "fixtures": [
+        {
+          "port": 18795,
+          "env": {}
+        }
+      ],
+      "tests": [
+        {
+          "file": "tests/test_update_check_browser.cjs"
+        },
+        {
+          "file": "tests/test_update_check_browser.cjs",
+          "env": {
+            "MAILAI_BROWSER": "webkit"
+          }
+        },
+        {
+          "file": "tests/test_connection_lifecycle_browser.cjs"
+        }
+      ]
+    }
+  ],
+  "task-workspace": [
+    {
+      "fixtures": [
+        {
+          "port": 18795,
+          "env": {}
+        }
+      ],
+      "tests": [
+        {
+          "file": "tests/test_task_notices_browser.cjs"
+        },
+        {
+          "file": "tests/test_mail_notification_navigation_browser.cjs"
+        },
+        {
+          "file": "tests/test_mail_notification_navigation_browser.cjs",
+          "env": {
+            "MAILAI_BROWSER": "webkit"
+          }
+        },
+        {
+          "file": "tests/test_task_center_closure_browser.cjs"
+        },
+        {
+          "file": "tests/test_task_center_closure_browser.cjs",
+          "env": {
+            "MAILAI_BROWSER": "webkit"
+          }
+        },
+        {
+          "file": "tests/test_experience_polish_browser.cjs"
+        }
+      ]
+    }
+  ],
+  "mail-navigation": [
+    {
+      "fixtures": [
+        {
+          "port": 18795,
+          "env": {}
+        }
+      ],
+      "tests": [
+        {
+          "file": "tests/test_onboarding_browser.cjs"
+        },
+        {
+          "file": "tests/test_onboarding_browser.cjs",
+          "env": {
+            "MAILAI_BROWSER": "webkit"
+          }
+        },
+        {
+          "file": "tests/test_native_menu_browser.cjs",
+          "env": {
+            "MAILAI_TEST_URL": "http://127.0.0.1:18795/"
+          }
+        },
+        {
+          "file": "tests/test_native_menu_browser.cjs",
+          "env": {
+            "MAILAI_TEST_URL": "http://127.0.0.1:18795/",
+            "MAILAI_BROWSER": "webkit"
+          }
+        },
+        {
+          "file": "tests/test_mailbox_transition_browser.cjs"
+        }
+      ]
+    }
+  ],
+  "mail-import": [
+    {
+      "fixtures": [
+        {
+          "port": 18795,
+          "env": {}
+        }
+      ],
+      "tests": [
+        {
+          "file": "tests/test_mail_import_browser.cjs"
+        },
+        {
+          "file": "tests/test_mail_list_view_browser.cjs",
+          "env": {
+            "MAILAI_TEST_URL": "http://127.0.0.1:18795/"
+          }
+        },
+        {
+          "file": "tests/test_mail_recovery_browser.cjs"
+        },
+        {
+          "file": "tests/test_mail_recovery_browser.cjs",
+          "env": {
+            "MAILAI_BROWSER": "webkit"
+          }
+        }
+      ]
+    }
+  ],
+  "mail-appearance": [
+    {
+      "fixtures": [
+        {
+          "port": 18795,
+          "env": {}
+        }
+      ],
+      "tests": [
+        {
+          "file": "tests/test_mail_login_browser.cjs"
+        },
+        {
+          "file": "tests/test_dark_tools_browser.cjs"
+        },
+        {
+          "file": "tests/test_contact_filters_browser.cjs"
+        },
+        {
+          "file": "tests/test_i18n_browser.cjs"
+        }
+      ]
+    }
+  ],
+  "todos": [
+    {
+      "fixtures": [
+        {
+          "port": 18795,
+          "env": {
+            "MAILAI_TODO_GROUP_FIXTURE": "1"
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "tests/test_todo_groups_browser.cjs"
+        },
+        {
+          "file": "tests/test_todo_groups_browser.cjs",
           "env": {
             "MAILAI_BROWSER": "webkit"
           }

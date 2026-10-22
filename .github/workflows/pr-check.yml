@@ -2,8 +2,8 @@ name: PR quality gate
 on:
   pull_request: null
   push:
-    branches:
-      - main
+    branches: [main]
+  workflow_dispatch:
 permissions:
   contents: read
   actions: read
@@ -17,17 +17,29 @@ jobs:
     outputs:
       reuse: ${{ steps.plan.outputs.reuse }}
       source_run: ${{ steps.plan.outputs.source_run }}
+      mode: ${{ steps.plan.outputs.mode }}
+      checks: ${{ steps.plan.outputs.checks }}
       browser_matrix: ${{ steps.plan.outputs.browser_matrix }}
-      growth_matrix: ${{ steps.plan.outputs.growth_matrix }}
-      responsive_matrix: ${{ steps.plan.outputs.responsive_matrix }}
-      xiaoyou_matrix: ${{ steps.plan.outputs.xiaoyou_matrix }}
+      browser_image: ${{ steps.plan.outputs.browser_image }}
+      browser_version: ${{ steps.plan.outputs.browser_version }}
+      browser_parallel: ${{ steps.plan.outputs.browser_parallel }}
     steps:
       - uses: actions/checkout@v5
-      - name: Find successful verification for the identical source tree
+        with:
+          fetch-depth: 0
+      - name: Select impact checks or verified release evidence
         id: plan
         env:
           GH_TOKEN: ${{ github.token }}
+          CI_BROWSER_PARALLEL: ${{ vars.CI_BROWSER_PARALLEL || '12' }}
         run: python3 scripts/ci_quality.py plan
+      - uses: actions/upload-artifact@v5
+        with:
+          name: validation-plan
+          path: build/ci/plan.json
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true
   native-notifications-windows:
     runs-on: windows-latest
     timeout-minutes: 10
@@ -47,7 +59,7 @@ jobs:
           PYTHONFAULTHANDLER: '1'
         run: python -u -m unittest discover -s tests -p test_mail_notifications.py -v
     needs: plan
-    if: ${{ needs.plan.outputs.reuse != 'true' }}
+    if: ${{ fromJSON(needs.plan.outputs.checks)['native-notifications-windows'] }}
   native-scrollbar-macos:
     runs-on: macos-14
     timeout-minutes: 10
@@ -70,7 +82,7 @@ jobs:
           python tests/test_settings_scrollbar_webkit.py
           python tests/test_reader_scrollbar_webkit.py
     needs: plan
-    if: ${{ needs.plan.outputs.reuse != 'true' }}
+    if: ${{ fromJSON(needs.plan.outputs.checks)['native-scrollbar-macos'] }}
   release-gate:
     runs-on: ubuntu-latest
     steps:
@@ -91,68 +103,7 @@ jobs:
         run: python scripts/check_release.py
     needs: plan
     timeout-minutes: 20
-    if: ${{ needs.plan.outputs.reuse != 'true' }}
-  browser-test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: ./.github/actions/browser-environment
-      - name: Run isolated browser group
-        env:
-          MAILAI_FIXTURE_PYTHON: python
-          TEST_SUITE: ${{ matrix.suite }}
-        run: python scripts/ci_browser.py "$TEST_SUITE"
-      - uses: actions/upload-artifact@v5
-        if: ${{ !cancelled() }}
-        with:
-          name: browser-test-${{ strategy.job-index }}-evidence
-          path: |-
-            build/ci/
-            output/
-            build/*preview/
-            build/*.png
-          if-no-files-found: ignore
-          retention-days: 7
-    needs: plan
-    timeout-minutes: 20
-    if: ${{ needs.plan.outputs.reuse != 'true' }}
-    strategy:
-      fail-fast: false
-      max-parallel: 6
-      matrix: ${{ fromJSON(needs.plan.outputs.browser_matrix) }}
-  interaction-continuity-browser:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      max-parallel: 4
-      matrix:
-        browser:
-          - chromium
-          - webkit
-    steps:
-      - uses: actions/checkout@v5
-      - uses: ./.github/actions/browser-environment
-        with:
-          browsers: ${{ matrix.browser }}
-      - name: Run isolated browser group
-        env:
-          MAILAI_FIXTURE_PYTHON: python
-          TEST_BROWSER: ${{ matrix.browser }}
-        run: python scripts/ci_browser.py interaction --browser "$TEST_BROWSER"
-      - uses: actions/upload-artifact@v5
-        if: ${{ !cancelled() }}
-        with:
-          name: interaction-continuity-browser-${{ strategy.job-index }}-evidence
-          path: |-
-            build/ci/
-            output/
-            build/*preview/
-            build/*.png
-          if-no-files-found: ignore
-          retention-days: 7
-    needs: plan
-    timeout-minutes: 20
-    if: ${{ needs.plan.outputs.reuse != 'true' }}
+    if: ${{ fromJSON(needs.plan.outputs.checks)['release-gate'] }}
   mail-import-windows:
     runs-on: windows-2022
     env:
@@ -182,46 +133,25 @@ jobs:
           python tests/test_ios_release.py
     needs: plan
     timeout-minutes: 20
-    if: ${{ needs.plan.outputs.reuse != 'true' }}
-  growth-theme-browser:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: ./.github/actions/browser-environment
-      - name: Run isolated browser group
-        env:
-          MAILAI_FIXTURE_PYTHON: python
-          TEST_SUITE: ${{ matrix.suite }}
-        run: python scripts/ci_browser.py "$TEST_SUITE"
-      - uses: actions/upload-artifact@v5
-        if: ${{ !cancelled() }}
-        with:
-          name: growth-theme-browser-${{ strategy.job-index }}-evidence
-          path: |-
-            build/ci/
-            output/
-            build/*preview/
-            build/*.png
-          if-no-files-found: ignore
-          retention-days: 7
+    if: ${{ fromJSON(needs.plan.outputs.checks)['mail-import-windows'] }}
+  browser-test:
+    name: browser-test (${{ matrix.suite }}, ${{ matrix.browser }}, ${{ matrix.shard }})
     needs: plan
-    timeout-minutes: 20
-    if: ${{ needs.plan.outputs.reuse != 'true' }}
-    strategy:
-      fail-fast: false
-      max-parallel: 4
-      matrix: ${{ fromJSON(needs.plan.outputs.growth_matrix) }}
-  responsive-ui-browser:
+    if: ${{ fromJSON(needs.plan.outputs.checks)['browser-test'] }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: ${{ needs.plan.outputs.browser_image }}
+      options: --ipc=host
+    env:
+      CI_BROWSER_IMAGE_VERSION: ${{ needs.plan.outputs.browser_version }}
     strategy:
       fail-fast: false
-      max-parallel: 8
-      matrix: ${{ fromJSON(needs.plan.outputs.responsive_matrix) }}
+      max-parallel: ${{ fromJSON(needs.plan.outputs.browser_parallel) }}
+      matrix: ${{ fromJSON(needs.plan.outputs.browser_matrix) }}
     steps:
       - uses: actions/checkout@v5
       - uses: ./.github/actions/browser-environment
-        with:
-          browsers: ${{ matrix.browser }}
       - name: Run isolated browser group
         env:
           MAILAI_FIXTURE_PYTHON: python
@@ -232,7 +162,8 @@ jobs:
       - uses: actions/upload-artifact@v5
         if: ${{ !cancelled() }}
         with:
-          name: responsive-ui-browser-${{ strategy.job-index }}-evidence
+          name: browser-${{ strategy.job-index }}-evidence
+          overwrite: true
           path: |-
             build/ci/
             output/
@@ -240,42 +171,6 @@ jobs:
             build/*.png
           if-no-files-found: ignore
           retention-days: 7
-    needs: plan
-    timeout-minutes: 20
-    if: ${{ needs.plan.outputs.reuse != 'true' }}
-  assistant-workspace-browser:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      max-parallel: 4
-      matrix:
-        browser:
-          - chromium
-          - webkit
-    steps:
-      - uses: actions/checkout@v5
-      - uses: ./.github/actions/browser-environment
-        with:
-          browsers: ${{ matrix.browser }}
-      - name: Run isolated browser group
-        env:
-          MAILAI_FIXTURE_PYTHON: python
-          TEST_BROWSER: ${{ matrix.browser }}
-        run: python scripts/ci_browser.py assistant-workspace --browser "$TEST_BROWSER"
-      - uses: actions/upload-artifact@v5
-        if: ${{ !cancelled() }}
-        with:
-          name: assistant-workspace-browser-${{ strategy.job-index }}-evidence
-          path: |-
-            build/ci/
-            output/
-            build/*preview/
-            build/*.png
-          if-no-files-found: ignore
-          retention-days: 7
-    needs: plan
-    if: ${{ needs.plan.outputs.reuse != 'true' }}
   secret-scan:
     runs-on: ubuntu-latest
     steps:
@@ -289,36 +184,6 @@ jobs:
           GITLEAKS_ENABLE_COMMENTS: 'false'
     needs: plan
     timeout-minutes: 20
-  xiaoyou-browser:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    env:
-      MAILAI_FIXTURE_PYTHON: python
-    steps:
-      - uses: actions/checkout@v5
-      - uses: ./.github/actions/browser-environment
-      - name: Run isolated browser group
-        env:
-          MAILAI_FIXTURE_PYTHON: python
-          TEST_SUITE: ${{ matrix.suite }}
-        run: python scripts/ci_browser.py "$TEST_SUITE"
-      - uses: actions/upload-artifact@v5
-        if: ${{ !cancelled() }}
-        with:
-          name: xiaoyou-browser-${{ strategy.job-index }}-evidence
-          path: |-
-            build/ci/
-            output/
-            build/*preview/
-            build/*.png
-          if-no-files-found: ignore
-          retention-days: 7
-    needs: plan
-    if: ${{ needs.plan.outputs.reuse != 'true' }}
-    strategy:
-      fail-fast: false
-      max-parallel: 4
-      matrix: ${{ fromJSON(needs.plan.outputs.xiaoyou_matrix) }}
   quality-gate:
     name: Quality gate
     runs-on: ubuntu-latest
@@ -330,25 +195,22 @@ jobs:
       - native-scrollbar-macos
       - release-gate
       - browser-test
-      - interaction-continuity-browser
       - mail-import-windows
-      - growth-theme-browser
-      - responsive-ui-browser
-      - assistant-workspace-browser
       - secret-scan
-      - xiaoyou-browser
     steps:
       - uses: actions/checkout@v5
-      - name: Require every job or validate the reused full verification
+      - name: Validate every selected job and distinguish release evidence
         id: record
         env:
           GH_TOKEN: ${{ github.token }}
           QUALITY_NEEDS: ${{ toJSON(needs) }}
           QUALITY_SOURCE_RUN: ${{ needs.plan.outputs.source_run }}
+          QUALITY_MODE: ${{ needs.plan.outputs.mode }}
+          QUALITY_CHECKS: ${{ needs.plan.outputs.checks }}
         run: python3 scripts/ci_quality.py record
       - uses: actions/upload-artifact@v5
         with:
-          name: quality-evidence-v1-${{ steps.record.outputs.tree }}
+          name: ${{ steps.record.outputs.artifact }}-${{ steps.record.outputs.tree }}
           path: build/quality-evidence/quality.json
           if-no-files-found: error
           retention-days: 7

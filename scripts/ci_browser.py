@@ -12,6 +12,7 @@ import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
 SUITES = ROOT / '.github/ci/browser-suites.json'
+ALIASES = ROOT / '.github/ci/browser-aliases.json'
 
 
 def stop(process):
@@ -55,7 +56,9 @@ def start_fixture(spec, env, stack, log_dir, phase):
 
 
 def run(suite, browser='', shard=''):
-    phases = json.loads(SUITES.read_text())[suite]
+    suites = json.loads(SUITES.read_text())
+    aliases = json.loads(ALIASES.read_text())
+    phases = [phase for name in aliases.get(suite, [suite]) for phase in suites[name]]
     env = {**os.environ, 'MAILAI_FIXTURE_PYTHON': sys.executable}
     if browser:
         env['MAILAI_BROWSER'] = browser
@@ -99,7 +102,7 @@ def run(suite, browser='', shard=''):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('suite', choices=json.loads(SUITES.read_text()))
+    parser.add_argument('suite', choices=[*json.loads(SUITES.read_text()), *json.loads(ALIASES.read_text())])
     parser.add_argument('--browser', choices=['', 'chromium', 'webkit'], default='')
     parser.add_argument('--shard', default='')
     args = parser.parse_args()

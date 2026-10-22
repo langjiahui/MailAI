@@ -1,4 +1,4 @@
-"""Reuse successful quality evidence only for the identical complete Git tree.
+"""Layer development checks; reuse full evidence only for the identical Git tree.
 
 GitHub's artifact/run APIs are the trust boundary. No PR-supplied artifact is
 executed, and failed, expired, foreign-repository or incomplete evidence is never
@@ -15,16 +15,21 @@ import subprocess
 import time
 import zipfile
 
+if __package__:
+    from . import ci_plan
+else:
+    import ci_plan
+
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = '.github/workflows/pr-check.yml'
-ARTIFACT = 'quality-evidence-v1'
+ARTIFACT = 'quality-evidence-v2'
+QUICK_ARTIFACT = 'quick-evidence-v2'
 MAX_AGE = timedelta(days=7)
-CHECKS = (
-    'native-notifications-windows', 'native-scrollbar-macos', 'release-gate',
-    'browser-test', 'interaction-continuity-browser', 'mail-import-windows',
-    'growth-theme-browser', 'responsive-ui-browser', 'assistant-workspace-browser',
-    'secret-scan', 'xiaoyou-browser',
-)
+CHECKS = ci_plan.CHECKS
+
+
+def coverage_digest():
+    return ci_plan.select([], force_full=True)['coverage']
 
 
 def git(*args):
@@ -64,7 +69,7 @@ def validate_run(run, repository, now):
             or run.get('path') != WORKFLOW
             or run.get('repository', {}).get('full_name') != repository
             or run.get('head_repository', {}).get('full_name') != repository
-            or run.get('event') not in {'pull_request', 'push'}
+            or run.get('event') not in {'pull_request', 'push', 'workflow_dispatch'}
             or (run['event'] == 'push' and run.get('head_branch') != 'main')):
         raise ValueError('Untrusted or unsuccessful quality run')
     for key in ('created_at', 'updated_at'):
@@ -75,14 +80,15 @@ def validate_run(run, repository, now):
 
 def validate_full(api, run, proof, tree, now):
     validate_run(run, api.repository, now)
-    if (proof.get('schema') != 1 or proof.get('mode') != 'full'
+    if (proof.get('schema') != 2 or proof.get('mode') != 'full'
             or proof.get('repository') != api.repository
             or proof.get('run_id') != run['id']
             or proof.get('run_attempt') != run['run_attempt']
             or proof.get('source_sha') != run['head_sha']
             or proof.get('event') != run['event']
             or proof.get('tree') != tree
-            or proof.get('checks') != {name: 'success' for name in CHECKS}):
+            or proof.get('checks') != {name: 'success' for name in CHECKS}
+            or proof.get('coverage') != coverage_digest()):
         raise ValueError('Quality evidence does not cover this source')
     tested = proof.get('tested_sha', '')
     if not re.fullmatch(r'[a-f0-9]{40}', tested):
@@ -141,24 +147,68 @@ def summary(message):
 
 def plan(api):
     source = None
-    # PRs always run the full matrix. Only a main-branch push can reuse it.
-    if os.getenv('GITHUB_EVENT_NAME') == 'push' and os.getenv('GITHUB_REF') == 'refs/heads/main':
+    event_name = os.getenv('GITHUB_EVENT_NAME')
+    main_push = event_name == 'push' and os.getenv('GITHUB_REF') == 'refs/heads/main'
+    # Integration is full unless the exact tree was already fully verified.
+    if main_push:
         try:
             source = find_evidence(api, git('rev-parse', 'HEAD^{tree}'),
                                    exclude=int(os.environ['GITHUB_RUN_ID']))
         except (OSError, ValueError, KeyError, subprocess.SubprocessError):
             summary('Evidence lookup unavailable; running the complete quality gate.')
+    force_full = main_push or event_name != 'pull_request'
+    paths = []
+    if event_name == 'pull_request':
+        try:
+            event = json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text())
+            pr = event['pull_request']
+            force_full = any(label['name'] == 'release-candidate' for label in pr.get('labels', []))
+            paths = ci_plan.changed_files(pr['base']['sha'])
+        except (OSError, ValueError, KeyError, subprocess.SubprocessError):
+            force_full = True
+            summary('Impact comparison unavailable; running the complete quality gate.')
+    selected = ci_plan.select(paths, force_full=force_full)
+    if source:
+        selected['mode'] = 'reuse'
+        selected['checks'] = {name: name == 'secret-scan' for name in CHECKS}
+        selected['matrix'] = []
+    image = ci_plan.browser_image()
+    parallel = int(os.getenv('CI_BROWSER_PARALLEL') or '12')
+    if not 1 <= parallel <= 16:
+        raise ValueError('CI_BROWSER_PARALLEL must be between 1 and 16')
     emit_output('reuse', bool(source))
     emit_output('source_run', source or '')
-    for name, matrix in json.loads((ROOT / '.github/ci/browser-jobs.json').read_text()).items():
-        emit_output(name, json.dumps(matrix, separators=(',', ':')))
+    emit_output('mode', selected['mode'])
+    emit_output('checks', json.dumps(selected['checks'], separators=(',', ':')))
+    # Keep a syntactically valid matrix even when the entire job is skipped.
+    emit_output('browser_matrix', json.dumps({'include': selected['matrix'] or ci_plan.full_matrix()}, separators=(',', ':')))
+    emit_output('browser_image', image['image'])
+    emit_output('browser_version', image['playwright'])
+    emit_output('browser_parallel', parallel)
+    summary(f"Validation mode: **{selected['mode']}**; browser jobs: {len(selected['matrix'])}. "
+            + '; '.join(selected['reasons']))
+    target = ROOT / 'build/ci/plan.json'
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(selected, indent=2) + '\n')
 
 
 def record(api, needs, source=None):
     if set(needs) != {'plan', *CHECKS} or needs['plan']['result'] != 'success':
         raise ValueError('Missing quality jobs or failed plan')
     results = {name: needs[name]['result'] for name in CHECKS}
-    expected = {name: ('success' if name == 'secret-scan' or not source else 'skipped') for name in CHECKS}
+    mode = os.getenv('QUALITY_MODE', 'reuse' if source else 'full')
+    required = json.loads(os.getenv('QUALITY_CHECKS') or json.dumps({name: True for name in CHECKS}))
+    if mode not in {'quick', 'full', 'reuse'} or set(required) != set(CHECKS) or any(type(v) is not bool for v in required.values()):
+        raise ValueError('Invalid validation plan')
+    if mode == 'full' and not all(required.values()):
+        raise ValueError('Full verification cannot omit a check')
+    if mode == 'quick' and (not required['release-gate'] or not required['secret-scan'] or source):
+        raise ValueError('Quick checks require the offline gate and fresh credential scan')
+    if (mode == 'reuse') != bool(source):
+        raise ValueError('Reuse requires a verified full source run')
+    if mode == 'reuse':
+        required = {name: name == 'secret-scan' for name in CHECKS}
+    expected = {name: 'success' if required[name] else 'skipped' for name in CHECKS}
     if results != expected:
         raise ValueError('Quality jobs failed, were canceled or unexpectedly skipped: ' + json.dumps(results))
     tree = git('rev-parse', 'HEAD^{tree}')
@@ -167,21 +217,23 @@ def record(api, needs, source=None):
         validate_full(api, run, api.evidence(run, tree), tree, datetime.now(timezone.utc))
     event = json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text())
     proof = {
-        'schema': 1, 'repository': api.repository,
+        'schema': 2, 'repository': api.repository,
         'run_id': int(os.environ['GITHUB_RUN_ID']),
         'run_attempt': int(os.environ['GITHUB_RUN_ATTEMPT']),
         'event': os.environ['GITHUB_EVENT_NAME'],
         'source_sha': event.get('pull_request', {}).get('head', {}).get('sha') or os.environ['GITHUB_SHA'],
         'tested_sha': git('rev-parse', 'HEAD'), 'tree': tree,
-        'mode': 'reuse' if source else 'full', 'source_run': source,
-        'checks': results,
+        'mode': mode, 'source_run': source,
+        'checks': results, 'coverage': coverage_digest(),
     }
     target = ROOT / 'build/quality-evidence/quality.json'
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(proof, indent=2) + '\n')
     emit_output('tree', tree)
+    emit_output('artifact', QUICK_ARTIFACT if mode == 'quick' else ARTIFACT)
     link = f'https://github.com/{api.repository}/actions/runs/{source}' if source else 'this run'
-    summary(f'Quality gate passed for tree `{tree}`. Full verification: {link}.')
+    summary(f'Quality gate passed for tree `{tree}`; mode: **{mode}**. '
+            + (f'Full verification: {link}.' if mode != 'quick' else 'Development checks are not release evidence.'))
 
 
 def wait_for_release(api, commit, timeout=1800):
