@@ -78,6 +78,7 @@ TESTS = (
     'test_draft_thread.py', 'test_draft_lifecycle.py', 'test_folder_safety.py', 'test_sync_retry.py', 'test_system_settings.py',
     'test_email_identity.py',
     'test_assistant_routing.py',
+    'test_assistant_context.py',
     'test_send_outcome.py',
     'test_desktop_shell.py',
     'test_advanced_search.py',

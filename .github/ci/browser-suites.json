@@ -414,6 +414,53 @@
           }
         }
       ]
+    },
+    {
+      "fixtures": [
+        {
+          "port": 18797,
+          "env": {
+            "MAILAI_SEARCH_FIXTURE": "1"
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "tests/test_assistant_flow_browser.cjs",
+          "env": {
+            "MAILAI_TEST_URL": "http://127.0.0.1:18797/"
+          }
+        },
+        {
+          "file": "tests/test_assistant_flow_browser.cjs",
+          "env": {
+            "MAILAI_TEST_URL": "http://127.0.0.1:18797/",
+            "MAILAI_BROWSER": "webkit"
+          }
+        }
+      ]
+    },
+    {
+      "fixtures": [
+        {
+          "port": 18797,
+          "env": {}
+        }
+      ],
+      "tests": [
+        {
+          "file": "tests/test_reading_start_browser.cjs",
+          "env": {
+            "MAILAI_TEST_URL": "http://127.0.0.1:18797/"
+          }
+        },
+        {
+          "file": "tests/test_docked_mail_list_resize_browser.cjs",
+          "env": {
+            "MAILAI_FIXTURE_URL": "http://127.0.0.1:18797/"
+          }
+        }
+      ]
     }
   ],
   "growth-journal": [

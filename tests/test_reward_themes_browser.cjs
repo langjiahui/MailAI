@@ -6,7 +6,7 @@ const {chromium,webkit} = require('playwright');
   try {
     const page=await browser.newPage({viewport:{width:1440,height:960}}), errors=[];
     page.on('pageerror',error=>errors.push(error.message));
-    await page.goto('http://127.0.0.1:18795/');
+    await page.goto(process.env.MAILAI_TEST_URL || 'http://127.0.0.1:18795/');
     await page.locator('#app-preloader').waitFor({state:'detached'});
     await page.waitForFunction(()=>!!document.body.dataset.petStage);
     await page.emulateMedia({reducedMotion:'reduce'});
@@ -82,9 +82,10 @@ const {chromium,webkit} = require('playwright');
           await page.evaluate(mode=>applyTheme(mode),mode);
           const colors=await page.evaluate(()=>{
             const body=getComputedStyle(document.body),button=getComputedStyle(document.querySelector('#btn-compose'));
-            return {bg:body.backgroundColor,button:rewardThemeContrast(button.color,button.backgroundColor),text:rewardThemeContrast(body.color,body.backgroundColor),pet:getComputedStyle(document.querySelector('.pet-hero .growth-body')).fill};
+            const sample=document.createElement('span');sample.style.color='var(--reward-canvas)';document.body.append(sample);const expectedCanvas=getComputedStyle(sample).color;sample.remove();
+            return {bg:body.backgroundColor,expectedCanvas,button:rewardThemeContrast(button.color,button.backgroundColor),text:rewardThemeContrast(body.color,body.backgroundColor),pet:getComputedStyle(document.querySelector('.pet-hero .growth-body')).fill};
           });
-          assert.equal(colors.bg,mode==='light'?'rgb(255, 255, 255)':theme==='theme_monochrome'?'rgb(23, 23, 23)':'rgb(22, 24, 26)');
+          assert.equal(colors.bg,colors.expectedCanvas,'Workspace uses the equipped theme canvas');
           assert(colors.button>=4.5 && colors.text>=4.5,JSON.stringify({theme,style,mode,colors}));
           const petColors={theme_monochrome:{light:['rgb(190, 201, 206)','rgb(176, 193, 206)'],dark:['rgb(173, 188, 195)','rgb(162, 181, 197)']},theme_baowu:{light:['rgb(158, 201, 231)','rgb(148, 191, 227)'],dark:['rgb(145, 184, 215)','rgb(136, 176, 211)']}};
           assert.equal(colors.pet,petColors[theme][mode][style==='ranger'?1:0]);
@@ -102,7 +103,7 @@ const {chromium,webkit} = require('playwright');
             }),selected:rewardThemeContrast(getComputedStyle(document.querySelector('.email-item.selected .email-subject')).color,expected.selected)};
           });
           for(const panel of panels.rows) {
-            assert.equal(panel.bg,panels.expected[['.sidebar','.list-pane','.global-search'].includes(panel.selector)?'soft':'surface'],JSON.stringify({theme,mode,panel}));
+            assert.equal(panel.bg,panels.expected[['.sidebar','.list-pane','.topbar','.global-search'].includes(panel.selector)?'soft':'surface'],JSON.stringify({theme,mode,panel}));
             assert(panel.contrast>=4.5,JSON.stringify({theme,mode,panel}));
           }
           assert(panels.selected>=4.5,`${theme}/${mode} selected row contrast`);
@@ -115,14 +116,14 @@ const {chromium,webkit} = require('playwright');
           assert.equal(material[1].background,panels.expected.selected,'Selected fill must be opaque');
           assert.equal(material[1].shadow,'none','Selection must remain flat and quiet');
           await page.emulateMedia({contrast:'more'});
-          await page.waitForFunction(()=>getComputedStyle(document.querySelector('#email-list .selection-glass-plate')).boxShadow.includes('inset'));
+          await page.waitForFunction(()=>{const plate=document.querySelector('#email-list .selection-glass-plate');return plate&&getComputedStyle(plate).outlineStyle==='solid'&&parseFloat(getComputedStyle(plate).outlineWidth)>=1;});
           const edgeContrast=await page.evaluate(()=>{
             const css=getComputedStyle(document.querySelector('#email-list .selection-glass-plate'));
-            return rewardThemeContrast(css.borderLeftColor,css.backgroundColor);
+            return rewardThemeContrast(css.outlineColor,css.backgroundColor);
           });
           assert(edgeContrast>=3,'Increased contrast must restore a clear selection boundary');
           await page.emulateMedia({contrast:'no-preference'});
-          await page.waitForFunction(()=>getComputedStyle(document.querySelector('#email-list .selection-glass-plate')).boxShadow==='none');
+          await page.waitForFunction(()=>{const plate=document.querySelector('#email-list .selection-glass-plate');return plate&&getComputedStyle(plate).boxShadow==='none';});
           const hover=page.locator('.email-item:not(.selected)').first();await hover.hover();
           const hovered=await hover.evaluate(n=>getComputedStyle(n).backgroundColor);
           assert.notEqual(hovered,panels.expected.surface,'Hover must remain visible on the pure canvas');

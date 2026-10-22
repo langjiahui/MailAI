@@ -6,7 +6,7 @@ html:is(.desktop-native-window,.integrated-workspace) {
  --mac-control-inset:calc(108px / var(--fz,1));
  --mac-brand-width:max(62px,calc(var(--mac-sidebar-width) - var(--mac-control-inset) + var(--workspace-list-inset) - 8px));
  --workspace-chrome:var(--desk-canvas); --workspace-toolbar-end:var(--desk-surface); --workspace-search:var(--desk-surface);
- --workspace-toolbar:linear-gradient(90deg,var(--workspace-chrome) 0 var(--workspace-reading-left,36%),var(--workspace-toolbar-end) 100%);
+ --workspace-toolbar:var(--workspace-chrome);
  --mac-rail:var(--workspace-chrome); --mac-canvas:var(--desk-surface); --mac-list:var(--workspace-chrome);
  --mac-separator:var(--desk-line); --mac-selected:var(--desk-selected);
 }
@@ -107,6 +107,9 @@ html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .layout>.
 html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .layout>.reading-pane {
  border:0!important; border-radius:0!important; box-shadow:none!important; background:var(--mac-canvas)!important;
 }
+html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .layout>.reading-pane :is(.reading-header,.reading-header-inner) {
+ background:var(--mac-canvas)!important;
+}
 html:is(.desktop-native-window,.integrated-workspace) .pane-resizer { flex-basis:8px; width:8px; min-width:8px; background:var(--mac-canvas); }
 html:is(.desktop-native-window,.integrated-workspace) .pane-resizer::before { background:transparent; }
 html:is(.desktop-native-window,.integrated-workspace) .pane-resizer[data-resizer="sidebar"] { background:var(--mac-list); }
@@ -130,14 +133,16 @@ html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .topbar .
 @media(max-width:1024px) {
  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .layout>.sidebar { border-radius:12px!important; border:1px solid var(--mac-separator)!important; }
 }
-/* Navigation and list are a continuous surface directly beneath the toolbar. */
+/* The toolbar and navigation form a single shell around the reading surface. */
 @media(min-width:1025px) {
  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .layout { background:var(--mac-list); }
  html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .layout>.sidebar { border-radius:0!important; }
+ html:is(.desktop-native-window,.integrated-workspace)[data-theme] body .layout>.reading-pane { border-top-left-radius:20px!important; }
 }
 
 /* Startup is the same workspace beneath a temporary loading layer. */
 html:is(.desktop-native-window,.integrated-workspace)[data-theme] .app-preloader::before {
+ transition:opacity .28s ease .24s;
  background:
   var(--workspace-toolbar) top / 100% var(--startup-header-height,calc(52px / var(--fz,1))) no-repeat,
   linear-gradient(to right,var(--mac-rail) 0 var(--startup-rail-right,var(--mac-rail-width)),var(--mac-list) var(--startup-rail-right,var(--mac-rail-width)) var(--startup-list-right,var(--startup-rail-right,var(--mac-rail-width))),var(--mac-canvas) var(--startup-list-right,var(--startup-rail-right,var(--mac-rail-width))) 100%)!important;
@@ -145,7 +150,7 @@ html:is(.desktop-native-window,.integrated-workspace)[data-theme] .app-preloader
 html:is(.desktop-native-window,.integrated-workspace)[data-theme] .preloader-workspace {
  mask-image:none; -webkit-mask-image:none; animation:none;
  color:var(--mac-separator);
- transition:opacity .95s cubic-bezier(.22,.7,.2,1) .12s;
+ transition:opacity .2s ease;
 }
 html:is(.desktop-native-window,.integrated-workspace)[data-theme] .preloader-frame {
  border:0; background:var(--mac-canvas);
@@ -163,7 +168,8 @@ html:is(.desktop-native-window,.integrated-workspace) .preloader-status span { c
 html:is(.desktop-native-window,.integrated-workspace) .preloader-status small { color:var(--muted); }
 @media(prefers-reduced-motion:reduce) {
  html:is(.desktop-native-window,.integrated-workspace) .app-preloader::before,
- html:is(.desktop-native-window,.integrated-workspace) .preloader-workspace { transition:opacity .15s ease; }
+ html:is(.desktop-native-window,.integrated-workspace) .preloader-workspace { transition:none; }
+ body:has(#app-preloader.leaving) .layout,#reading-empty { transition:none; }
 }
 
 html:is(.desktop-native-window,.integrated-workspace)[data-theme] body #account-mailbox-nav .sidebar-account {

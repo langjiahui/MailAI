@@ -87,6 +87,10 @@ def detect_proposal(question: str, email_ids: list[int] | None = None) -> dict |
     question = (question or "").strip()
     if not question:
         return None
+    if re.search(r'(?:不要|不需要|不用|先别|先不|暂不)(?:帮我)?(?:创建|新建|添加|标记|回复|发送)|只(?:需|要)?(?:分析|总结|梳理|列出|提炼|整理)', question):
+        return None
+    if re.search(r'(?:是否|要不要|该不该|需不需要|需要|用不用|应该).{0,10}(?:回复|答复|创建|标记)|(?:怎么|如何)(?:创建|新建|添加)', question):
+        return None
     ids = [int(i) for i in (email_ids or []) if isinstance(i, int) or str(i).isdigit()]
 
     wants_document_reply = requests_document_reply(question)
@@ -114,7 +118,9 @@ def detect_proposal(question: str, email_ids: list[int] | None = None) -> dict |
                 "requires_confirmation": True}
 
     if _MARK_READ_TRIGGER.search(question):
-        if re.search(r"(全部|所有|这些|都)", question):
+        if ids:
+            targets = ids[:_MAX_MARK_READ]
+        elif re.search(r"(全部|所有|这些|都)", question):
             with db.conn() as c:
                 targets = [r[0] for r in c.execute(
                     "SELECT id FROM emails WHERE remote_missing=0 AND is_read=0 "

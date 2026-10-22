@@ -39,8 +39,8 @@ const key='mailai-companion-position-v1';
     },true);
    });
    await page.goto(`http://127.0.0.1:${port}/?shell=macos`);
-   await page.locator('#app-preloader').waitFor({state:'hidden'});
-   await page.evaluate(k=>localStorage.removeItem(k),key);await page.reload();await page.locator('#app-preloader').waitFor({state:'hidden'});
+   await page.locator('#app-preloader').waitFor({state:'detached'});
+   await page.evaluate(k=>localStorage.removeItem(k),key);await page.reload();await page.locator('#app-preloader').waitFor({state:'detached'});
    const orb=page.locator('#assistant-orb'),root=page.locator('#mail-assistant');
    const box=()=>orb.boundingBox();
    const saved=()=>page.evaluate(k=>localStorage.getItem(k),key);
@@ -55,7 +55,7 @@ const key='mailai-companion-position-v1';
    const moved=await box();assert(Math.abs(moved.x-initial.x+380)<2&&Math.abs(moved.y-initial.y+230)<2,JSON.stringify({initial,moved}));
    assert.equal(writes,1);assert.equal(await isOpen(),false,'Dragging must not open chat');
    const preference=await saved();assert.equal(JSON.parse(preference).version,1);
-   await page.reload();await page.locator('#app-preloader').waitFor({state:'hidden'});await settled();
+   await page.reload();await page.locator('#app-preloader').waitFor({state:'detached'});await settled();
    const restored=await box();assert(Math.abs(restored.x-moved.x)<2&&Math.abs(restored.y-moved.y)<2,'Restores exact position at the same viewport');
    // Small mouse jitter is a click, not a drag.
    await begin(2,1);await page.mouse.up();assert(await isOpen());
@@ -150,7 +150,7 @@ const key='mailai-companion-position-v1';
    }
    const returnBottom=await box();await begin(550-returnBottom.x,900-returnBottom.height-38-returnBottom.y);await page.mouse.up();await settled();
    assert.equal(poses.size,4,'Four distinct, rigid dock silhouettes');
-   await page.reload();await page.locator('#app-preloader').waitFor({state:'hidden'});await settled();
+   await page.reload();await page.locator('#app-preloader').waitFor({state:'detached'});await settled();
    assert.equal(await root.getAttribute('data-pet-dock'),'bottom','Dock survives reload');
    await page.waitForFunction(()=>nativeDragRegion?.[4]?.length===0);
    // Full-motion docking approaches, makes contact, then settles and releases
@@ -196,7 +196,7 @@ const key='mailai-companion-position-v1';
    await orb.focus();await page.keyboard.press('Enter');assert(await isOpen(),'Keyboard activation still opens chat');
    await page.waitForFunction(()=>nativeDragRegion?.[4]?.length===0);
    await page.evaluate(()=>closeAssistant());await page.waitForTimeout(350);
-   await page.evaluate(k=>localStorage.setItem(k,'{"version":1,"x":null,"y":-400}'),key);await page.reload();await page.locator('#app-preloader').waitFor({state:'hidden'});await settled();
+   await page.evaluate(k=>localStorage.setItem(k,'{"version":1,"x":null,"y":-400}'),key);await page.reload();await page.locator('#app-preloader').waitFor({state:'detached'});await settled();
    b=await box();assert(b.x>=0&&b.y>=0&&b.x+b.width<=1280&&b.y+b.height<=900,'Invalid stored position uses the default');
    assert.deepEqual(errors,[]);
    console.log(`PASS ${engine.name()}: free placement, native titlebar exclusion, top-strip arbitration, one release save, reload, click/keyboard, cancel, boundary, zoom, four attached dock poses, resize and save failure`);

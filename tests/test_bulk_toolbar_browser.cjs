@@ -6,7 +6,7 @@ const {chromium,webkit}=require('playwright');
   try {
     const page=await browser.newPage({viewport:{width:1600,height:1000},reducedMotion:'reduce'});
     await page.addInitScript(()=>localStorage.setItem('mailai.onboarding.v2',JSON.stringify({mailboxDone:true,aiDone:true,deferred:true})));
-    await page.goto('http://127.0.0.1:18795/?shell=macos');
+    await page.goto((process.env.MAILAI_TEST_URL||'http://127.0.0.1:18795')+'/?shell=macos');
     await page.locator('#app-preloader').waitFor({state:'detached'});
     await page.locator('.sidebar-account-folders [data-account-action="inbox"]').first().click();
     await page.locator('.email-item').first().click();
@@ -14,6 +14,9 @@ const {chromium,webkit}=require('playwright');
     await page.locator('#bulk-toolbar').waitFor({state:'visible'});
     const toolbar=page.locator('#bulk-toolbar');
     assert.match(await page.locator('#bulk-count').textContent(),/3/);
+    assert.notEqual(await page.locator('.reading-selection-sheet[data-depth="0"]').evaluate(n=>getComputedStyle(n).boxShadow),'none','Selection preview retains its paper depth');
+    assert.equal(await page.locator('.reading-selection-sheet:visible').count(),3,'Selected messages retain their layered preview');
+    assert.equal(await page.locator('.email-item.bulk-selected .mail-sender-avatar').first().evaluate(n=>getComputedStyle(n,'::after').content),'"✓"','Selected rows have an explicit check');
     await page.evaluate(async()=>{
       for(const item of ['theme_monochrome','theme_baowu'])await api('/api/companion/purchase',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({item,token:crypto.randomUUID()})});
       await mailaiPet.refresh();

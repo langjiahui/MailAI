@@ -482,6 +482,8 @@ def _run_migrations(c):
               'WHERE notification_sent=0 AND notification_retry_at>0')
     if 'alert_email_ids' not in _columns_of(c, 'assistant_conversations'):
         c.execute("ALTER TABLE assistant_conversations ADD COLUMN alert_email_ids TEXT DEFAULT '[]'")
+    if 'open_email_id' not in _columns_of(c, 'assistant_conversations'):
+        c.execute('ALTER TABLE assistant_conversations ADD COLUMN open_email_id INTEGER')
     if 'uid_validity' not in _columns_of(c, 'sync_state'):
         c.execute('ALTER TABLE sync_state ADD COLUMN uid_validity INTEGER DEFAULT 0')
     if "source_draft_email_id" not in _columns_of(c, "drafts"):

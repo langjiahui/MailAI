@@ -278,7 +278,6 @@ body.assistant-home .assistant-quick,body.assistant-home .assistant-context-row 
 body.assistant-home .assistant-form { margin-left:max(24px,calc((100% - 680px)/2)); margin-right:max(24px,calc((100% - 680px)/2)); }
 body.assistant-docked .layout { margin-right:434px; }
 body.assistant-docked #assistant-panel { top:var(--assistant-dock-top,116px)!important; }
-body.assistant-docked .layout>.list-pane { width:355px; flex-basis:355px; }
 @media(max-width:760px) { body:not(.assistant-floating) #assistant-panel { inset:8px!important; width:calc(calc(100vw / var(--fz,1)) - 16px)!important; min-height:0; } }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms!important; transition-duration:.01ms!important; scroll-behavior:auto!important; } }
 .hidden { display:none!important; }

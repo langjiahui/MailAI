@@ -30,9 +30,10 @@ async function run(engine){
    const result=await p.evaluate(()=>{
     const rect=n=>{const r=n.getBoundingClientRect();return {left:r.left,right:r.right,width:r.width,top:r.top,bottom:r.bottom}};
     const h=document.getElementById('assistant-dock-divider');
-    return {panel:rect(document.getElementById('assistant-panel')),reading:rect(document.querySelector('.reading-pane')),divider:rect(h),zoom:parseFloat(getComputedStyle(document.body).zoom)||1,overflow:document.documentElement.scrollWidth>innerWidth+1,value:Number(h.getAttribute('aria-valuenow'))};
+    return {panel:rect(document.getElementById('assistant-panel')),reading:rect(document.querySelector('.reading-pane')),divider:rect(h),zoom:parseFloat(getComputedStyle(document.body).zoom)||1,viewport:innerWidth,overflow:document.documentElement.scrollWidth>innerWidth+1,value:Number(h.getAttribute('aria-valuenow'))};
    });
    assert(!result.overflow,JSON.stringify(result));
+   assert(Math.abs(result.panel.right-result.viewport)<1.5,'Docked assistant must reach the window edge: '+JSON.stringify(result));
    assert(result.reading.width/result.zoom>=439,JSON.stringify(result));
    assert(Math.abs(result.reading.right-result.panel.left)<2,JSON.stringify(result));
    assert(Math.abs(result.panel.width/result.zoom-result.value)<2,JSON.stringify(result));
@@ -66,6 +67,26 @@ async function run(engine){
 
   await p.evaluate(k=>{localStorage.removeItem(k);setI18nLanguage(I18N_DEFAULT_LANG);},key);await navigate(()=>p.reload());await reading();
   assert.equal(await value(),420);await geometry();
+  // A quiet seam keeps the workspace boundary visible; intent reveals the grip.
+  const paints=()=>handle.evaluate(n=>['::before','::after'].map(pseudo=>getComputedStyle(n,pseudo).backgroundColor));
+  await p.mouse.move(10,10);
+  const restingPaint=await paints();
+  assert.notEqual(restingPaint[0],'rgba(0, 0, 0, 0)','Assistant boundary stays visible at rest');
+  assert.equal(restingPaint[1],'rgba(0, 0, 0, 0)','Resize grip stays quiet at rest');
+  assert.equal(await handle.evaluate(n=>getComputedStyle(n,'::before').width),'1px');
+  assert.equal(await panel.evaluate(n=>getComputedStyle(n,'::before').content),'none');
+  await panel.evaluate(n=>{
+    const root=document.documentElement,original=root.getAttribute('data-reward-theme');
+    try{
+      for(const theme of ['', 'theme_monochrome', 'theme_baowu']){
+        if(theme)root.dataset.rewardTheme=theme;else root.removeAttribute('data-reward-theme');
+        if(getComputedStyle(n).boxShadow!=='none')throw Error('Docked assistant must not cast a permanent divider shadow: '+theme);
+      }
+    }finally{if(original===null)root.removeAttribute('data-reward-theme');else root.setAttribute('data-reward-theme',original);}
+  });
+  await handle.hover();await p.waitForTimeout(150);
+  assert((await paints()).every(color=>color!=='rgba(0, 0, 0, 0)'),'Hover reveals the resize boundary');
+  assert.notEqual((await paints())[0],restingPaint[0],'Hover strengthens the boundary');
   await p.evaluate(()=>{
    const r=document.querySelector('.reading-pane');document.getElementById('reading-content').insertAdjacentHTML('beforeend','<div style="height:4000px">Fixture reading continuation</div>');r.scrollTop=250;
    const m=document.getElementById('assistant-messages');m.insertAdjacentHTML('beforeend','<div class="assistant-message" style="height:3000px">Fixture conversation continuation</div>');mailaiAssistantScroll.restore(200);
@@ -79,6 +100,7 @@ async function run(engine){
   const cancelBox=await handle.boundingBox();await p.mouse.move(cancelBox.x+6,cancelBox.y+90);await p.mouse.down();await p.mouse.move(cancelBox.x-60,cancelBox.y+90);await p.keyboard.press('Escape');await p.mouse.up();
   assert.equal(await value(),516);assert.equal(await p.evaluate(()=>document.body.classList.contains('assistant-width-adjusting')),false);
   await handle.focus();await p.keyboard.press('ArrowRight');assert.equal(await value(),500);
+  assert(await handle.evaluate(n=>n.matches(':focus-visible')),'Keyboard resizing retains a visible focus indicator');
   await p.keyboard.press('Shift+ArrowLeft');assert.equal(await value(),548);
   await p.keyboard.press('Home');assert.equal(await value(),320);
   await p.keyboard.press('End');assert.equal(await value(),Number(await handle.getAttribute('aria-valuemax')));

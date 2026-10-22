@@ -21,12 +21,16 @@ _VALUE_NAMES = {
 }
 _FIELD_NAMES = '|'.join(sorted(_FIELDS, key=len, reverse=True))
 _DATES = r'(?:今天|昨天|前天|本周|这周|上周|本月|这个月|上个月|上月|今年|去年|(?:最近|过去|近)\s*\d{1,4}\s*天)'
+_UNREAD = r'(?:未读|尚未阅读|还没读|没读过)'
+_ATTACHMENT = r'(?:(?:带有|含有|包含|有|带|含)附件)'
 
 
 def expand_natural_query(query, *, today=None):
     today = today or date.today()
     original = str(query or '').strip()
-    prefix = re.match(r'^(?:请)?(?:帮我|给我)?(?:查询一下|查找一下|搜索一下|查一下|找一下|搜一下|找到|找出|查到|查出|查找|搜索|查询|检索|找|搜)\s*', original)
+    prefix = re.match(r'^(?:请)?(?:帮我|给我)?(?:只|仅)?(?:查询一下|查找一下|搜索一下|查看一下|筛选一下|看一下|查一下|找一下|搜一下|看看|找到|找出|查到|查出|查看|显示|列出|筛选|筛出|查找|搜索|查询|检索|找|搜|看)\s*', original)
+    if not prefix:
+        prefix = re.match(r'^(?:please\s+)?(?:show|find|list|display|filter)(?:\s+me)?\s+', original, re.I)
     text = original[prefix.end():] if prefix else original
     source = text
     protected = []
@@ -35,7 +39,12 @@ def expand_natural_query(query, *, today=None):
         return f'\ue000{len(protected)-1}\ue001'
     text = re.sub(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'', hide, text)
     # Separators count only before a recognised clause, never inside quotes.
-    starts = '(?:' + _FIELD_NAMES + '|' + _DATES + r'|有附件|带附件|含附件|未读|尚未阅读)'
+    starts = '(?:' + _FIELD_NAMES + '|' + _DATES + '|' + _ATTACHMENT + '|' + _UNREAD + ')'
+    text = re.sub(r'^(?:所有|全部)(?=\s*' + starts + ')', '', text).lstrip()
+    # Split only adjacent, explicitly named conditions, not arbitrary prose.
+    text = re.sub(r'(?<!\S)(' + _DATES + r')(?:的)?(?=' + _UNREAD + '|' + _ATTACHMENT + ')', r'\1 ', text)
+    text = re.sub(r'(?<!\S)(' + _UNREAD + r')(?:的)?(?=' + _ATTACHMENT + ')', r'\1 ', text)
+    text = re.sub(r'(?<!\S)(' + _ATTACHMENT + r')(?:的)?(?=' + _UNREAD + ')', r'\1 ', text)
     text = re.sub(r'(?:并且|而且|同时|以及|且)(?=\s*' + starts + ')', ' ', text)
     text = re.sub(r'[，；;,](?=\s*' + starts + ')', ' ', text)
     pattern = r'(?<!\S)(' + _FIELD_NAMES + r')\s*(?:是|为|包含|含有|[:：])\s*([^\s，；;,]+)'
@@ -53,8 +62,12 @@ def expand_natural_query(query, *, today=None):
     text = re.sub(r'(?<!\S)(?:来自)([^\s，；;,]+?)(?:的邮件)?(?=\s|$)', lambda m:'from:'+shlex.quote(m[1]), text)
     text = re.sub(r'(?<!\S)([^\s，；;,]+?)(?:发来的|发的|发送的)(?:邮件)?(?=\s|$)', lambda m:'from:'+shlex.quote(m[1]), text)
     text = re.sub(r'(?<!\S)(?:发给|发送给|寄给)([^\s，；;,]+?)(?:的邮件)?(?=\s|$)', lambda m:'to:'+shlex.quote(m[1]), text)
-    text = re.sub(r'(?<!\S)(?:有附件|带附件|含附件)(?:的邮件)?(?!\S)', 'has:attachment', text)
-    text = re.sub(r'(?<!\S)(?:未读|尚未阅读)(?:的?邮件)?(?!\S)', 'is:unread', text)
+    text = re.sub(r'(?<!\S)' + _ATTACHMENT + r'(?:的?(?:邮件|信件))?(?!\S)', 'has:attachment', text)
+    text = re.sub(r'(?<!\S)' + _UNREAD + r'(?:的?(?:邮件|信件))?(?!\S)', 'is:unread', text)
+    # English equivalents use the same hard filters, with no model request.
+    text = re.sub(r'\band\s+(?=(?:unread|with\s+attachments)\b)', '', text, flags=re.I)
+    text = re.sub(r'(?<!\S)(?:all\s+)?unread(?:\s+(?:e-?mails?|mails?|messages?))?(?!\S)', 'is:unread', text, flags=re.I)
+    text = re.sub(r'(?<!\S)(?:e-?mails?\s+)?with\s+attachments(?!\S)', 'has:attachment', text, flags=re.I)
     def period(match):
         label = match[1]
         end = today

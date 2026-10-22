@@ -6,7 +6,7 @@ const {chromium,webkit}=require('playwright');
  try{
   const page=await browser.newPage({viewport:{width:1440,height:960},reducedMotion:'reduce'});
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
-  await page.goto('http://127.0.0.1:18795');
+  await page.goto(process.env.MAILAI_TEST_URL || 'http://127.0.0.1:18795');
   await page.locator('#app-preloader').waitFor({state:'hidden'});
   await page.locator('.email-item').first().waitFor();
   const account=await page.evaluate(()=>activeMailAccount().id);
@@ -19,6 +19,20 @@ const {chromium,webkit}=require('playwright');
    assert.equal(await page.locator('#email-list .email-item').count(),count,text);
    assert(await page.locator('#search-error').isHidden(),text);
   }
+  await page.locator('#email-list .email-item').first().click();
+  await page.locator('#reading-content .reading-header').waitFor();
+  await search('查看未读邮件',11);
+  assert.match(await page.locator('[data-remove-search-token=unread]').innerText(),/未读/);
+  assert.equal(await page.locator('[data-remove-search-token=text]').count(),0,'Command words are not leftover keyword restrictions');
+  await search('查看本周未读且带附件的邮件',1);
+  for(const key of ['unread','has_attachment','after','before'])assert(await page.locator(`[data-remove-search-token=${key}]`).isVisible());
+  await search('"查看未读邮件"',0);
+  assert.equal(await page.locator('[data-remove-search-token=unread]').count(),0,'Quoted text stays literal');
+  await search('只看未读',11);
+  await page.locator('[data-remove-search-token=unread]').click();
+  await page.waitForFunction(()=>mailSearchState.phase==='done');
+  assert.equal(await input.inputValue(),'');
+  assert.equal(await page.locator('#email-list .email-item').count(),12);
   await search('发件人是项目同事',12);
   assert.match(await page.locator('[data-remove-search-token=sender]').innerText(),/项目同事/);
   await page.locator('#email-list .email-item').first().click();
@@ -74,6 +88,15 @@ const {chromium,webkit}=require('playwright');
   await input.fill('from:"未闭合');await page.waitForFunction(()=>mailSearchState.phase==='error');
   assert(await page.locator('#search-error').isVisible());
   await search('采购',12);
+  // Even after search handoff, product questions do not become mailbox queries.
+  await page.evaluate(()=>{_systemConfig.model={..._systemConfig.model,available:true,verified:true};assistantSearchMode=true;openAssistant();});
+  await page.evaluate(()=>askAssistant('你是一个什么东西？你能做什么？'));
+  await page.waitForFunction(()=>!assistantController&&document.getElementById('mail-assistant').dataset.answerComplete==='true');
+  const answer=await page.locator('#assistant-messages .assistant-message.bot').last().innerText();
+  assert.match(answer,/我是小邮/);assert.match(answer,/找邮件/);assert.match(answer,/回复草稿/);
+  assert.doesNotMatch(answer,/暂时没找到|匹配的内容/);
+  assert.equal(await page.locator('.assistant-search-result').count(),0);
+  assert.equal(await page.evaluate(()=>assistantSearchMode),false,'Product help exits stale search mode');
   assert.deepEqual(errors,[]);
   console.log('PASS natural variants, combined conditions, removable tags, advanced form handoff, exact identity, account scope, sent/draft opening, stale interpretation cancellation and error recovery');
  }finally{await browser.close();}

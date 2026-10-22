@@ -1,13 +1,13 @@
 /* Shared reading-workspace treatment; loaded after legacy component themes. */
 :root {
-  --desk-canvas:#f1f3f5; --desk-surface:#ffffff; --desk-muted-surface:#f5f7f9;
-  --desk-line:#d9dfe5; --desk-ink:#20272e; --desk-muted:#52606c;
-  --desk-hover:#e9eef1; --desk-selected:#e2eee7; --desk-accent:#2e7357;
+  --desk-canvas:#eef4f0; --desk-surface:#f8fbf9; --desk-muted-surface:#eff5f1;
+  --desk-line:#d7e3da; --desk-ink:#25382e; --desk-muted:#53685c;
+  --desk-hover:#edf5ef; --desk-selected:#ddeee4; --desk-accent:#2e7357;
 }
 html[data-theme="dark"] {
-  --desk-canvas:#151a1e; --desk-surface:#1c2227; --desk-muted-surface:#171d22;
-  --desk-line:#333e47; --desk-ink:#edf1f5; --desk-muted:#b4bfc9;
-  --desk-hover:#273139; --desk-selected:#283e33; --desk-accent:#8ac5a5;
+  --desk-canvas:#18251f; --desk-surface:#1a2822; --desk-muted-surface:#1d2e24;
+  --desk-line:#354a3e; --desk-ink:#e4efe8; --desk-muted:#b2c4b8;
+  --desk-hover:#263d2f; --desk-selected:#304d3c; --desk-accent:#94c8a8;
 }
 /* The default workspace uses neutral paper and ink. Reward palettes own their
  * tokens; read state is expressed by weight and the unread dot, not faded text. */
@@ -569,4 +569,39 @@ html[data-theme] body .reading-header .reading-header-inner .reading-actions :is
 }
 @media(prefers-reduced-motion:reduce) {
   html[data-theme] body .reading-header .reading-header-inner .reading-actions :is(button,summary) { transition:none; }
+}
+
+/* An open reading desk: a small scene, a clear next step, and ample space. */
+html[data-theme] body #reading-empty {
+  gap:0; min-height:340px; padding:32px 22px; box-sizing:border-box;
+}
+#reading-empty .reading-start { display:flex; flex-direction:column; align-items:center; width:100%; max-width:420px; }
+#reading-empty .reading-start-art { width:220px; max-width:70%; height:auto; flex-shrink:0; margin-bottom:22px; overflow:visible; }
+#reading-empty .reading-art-ground { fill:var(--desk-hover); }
+#reading-empty .reading-art-back { fill:var(--desk-selected); stroke:var(--desk-line); stroke-width:1; }
+#reading-empty .reading-art-paper { fill:var(--desk-surface); stroke:var(--desk-line); stroke-width:1.5; }
+#reading-empty .reading-art-stamp { fill:var(--desk-accent); }
+#reading-empty .reading-art-rule { fill:none; stroke:var(--desk-muted); stroke-width:2.5; stroke-linecap:round; opacity:.45; }
+#reading-empty .reading-art-envelope { fill:var(--desk-selected); stroke:var(--desk-muted); stroke-width:1.2; }
+#reading-empty .reading-art-fold { fill:none; stroke:var(--desk-muted); stroke-width:1.2; stroke-linecap:round; stroke-linejoin:round; }
+#reading-empty .reading-art-spark { fill:none; stroke:var(--desk-accent); stroke-width:2; stroke-linecap:round; }
+#reading-empty .reading-art-dot { fill:var(--desk-muted); opacity:.35; }
+html[data-theme] body #reading-empty .reading-start-copy h2 { margin:0; color:var(--desk-ink)!important; font-size:22px; font-weight:650; line-height:1.4; letter-spacing:-.025em; }
+html[data-theme] body #reading-empty .reading-start-copy p { max-width:340px; margin:10px auto 0; color:var(--desk-muted)!important; font-size:13px; line-height:1.8; text-wrap:pretty; }
+#reading-empty .reading-start-actions { display:flex; justify-content:center; flex-wrap:wrap; gap:10px; margin-top:24px; }
+html[data-theme] body #reading-empty .reading-start-actions button {
+  display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:38px; padding:8px 14px;
+  border:0!important; border-radius:9px; font:inherit; font-size:12px; font-weight:550; line-height:1.5;
+  color:var(--desk-ink)!important; background:var(--desk-hover)!important; box-shadow:none!important; cursor:pointer;
+}
+html[data-theme] body #reading-empty #reading-start-first { background:var(--desk-accent)!important; color:var(--reward-on-accent,var(--desk-surface))!important; }
+#reading-empty .reading-start-actions button svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+html[data-theme] body #reading-empty .reading-start-actions button:hover:not(:disabled) { filter:brightness(.94); }
+html[data-theme] body #reading-empty .reading-start-actions button:focus-visible { outline:2px solid var(--desk-accent); outline-offset:3px; }
+html[data-theme] body #reading-empty .reading-start-actions button:disabled { opacity:.4; cursor:default; }
+@media(pointer:coarse) { html[data-theme] body #reading-empty .reading-start-actions button { min-height:44px; } }
+@media(max-height:600px) {
+  html[data-theme] body #reading-empty { min-height:300px; padding-block:24px; }
+  #reading-empty .reading-start-art { width:160px; margin-bottom:14px; }
+  #reading-empty .reading-start-actions { margin-top:18px; }
 }

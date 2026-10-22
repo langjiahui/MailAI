@@ -14,6 +14,7 @@ const ctx = {
   esc:value=>String(value ?? ''), fmtDate:()=>'', needsRiskAttention:()=>false,
 };
 vm.createContext(i18nContext(ctx)); vm.runInContext(source.slice(start,end),ctx);
+vm.runInContext(fs.readFileSync(path.join(__dirname,'../app/web/static/mail-list-view.js'),'utf8').split('(() => {')[0],ctx);
 ctx.sentMessages=[{id:1,to_addr:'receiver@example.test',subject:'已发送',status:'sent',is_read:0}];
 ctx.savedDrafts=[];
 const sent=ctx.specialMailboxRows()[0];
@@ -39,7 +40,6 @@ assert.doesNotMatch(ctx.renderEmailItem({...base,_account_id:'personal'}),/class
 console.log('Unified inbox selection stays scoped to the opened account');
 
 // The table keeps real sender/recipient columns even for local sent adapters.
-vm.runInContext(fs.readFileSync(path.join(__dirname,'../app/web/static/mail-list-view.js'),'utf8').split('(() => {')[0],ctx);
 ctx.document.body.dataset.mailListView='table';
 html=ctx.renderEmailItem(sent);
 assert.match(html,/mail-table-sender[^>]*>owner@example.test/);

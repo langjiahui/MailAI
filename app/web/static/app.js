@@ -991,7 +991,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
     if (emailImages.length) { images = emailImages; inlineImageCount = images.length; }
   }
   const imageScope = inlineImageCount ? mailaiTemplate`邮件内嵌图片 ${inlineImageCount} 张 · ` : images.length ? mailaiTemplate`${images.length} 张图片 · ` : '';
-  const scope = `${account?.user || mailaiText('当前邮箱')} · ${attachments.length ? attachments.length+mailaiText(' 个附件 · ') : ''}${imageScope}${emailIds ? (emailIds.length ? mailaiText('所选范围 ') + emailIds.length + mailaiText(' 封') : mailaiText('未附邮件')) : mailaiText('全部已同步邮件')}`;
+  let scope = `${account?.user || mailaiText('当前邮箱')} · ${attachments.length ? attachments.length+mailaiText(' 个附件 · ') : ''}${imageScope}${emailIds ? (emailIds.length ? mailaiText('所选范围 ') + emailIds.length + mailaiText(' 封') : mailaiText('未附邮件')) : mailaiText('全部已同步邮件')}`;
   const scopeKey = JSON.stringify([account?.id, mode, emailIds, searchMode]);
   if (assistantScopeKey && assistantScopeKey !== scopeKey) resetAssistantConversation();
   assistantScopeKey = scopeKey; assistantLastQuestion = question;
@@ -1045,7 +1045,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
   try {
     const response = await fetch('/api/assistant/ask-stream', {method:'POST', signal:controller.signal,
       headers:{'Content-Type':'application/json', 'X-MailAI-Account':account?.id || ''},
-      body:JSON.stringify({question, history:assistantHistory.slice(0, -1).slice(-6), conversation_id:assistantConversationId, email_ids:emailIds, scope_label:scope, images, attachments, alert_context:alertContext, search_mode:searchMode, ...searchRequest})});
+      body:JSON.stringify({question, history:assistantHistory.slice(0, -1).slice(-6), conversation_id:assistantConversationId, email_ids:emailIds, open_email_id:selectedEmailId>0&&(!selectedEmailAccountId||selectedEmailAccountId===account?.id)?Number(selectedEmailId):null, scope_label:scope, images, attachments, alert_context:alertContext, search_mode:searchMode, ...searchRequest})});
     if (!response.ok || !response.body) {const detail=await response.json().catch(()=>({}));throw new Error(typeof detail.detail==='string'?detail.detail:mailaiTemplate`请求未完成（${response.status}），请检查图片格式、大小和模型连接`);}
     const reader = response.body.getReader(); const decoder = new TextDecoder();
     let pending = '';
@@ -1070,6 +1070,24 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
         }, 120);
       }
       else if (event.type === 'status') {
+        if (['context','mailbox','search'].includes(event.intent)) {
+          const ids = Array.isArray(event.email_ids) ? event.email_ids : null;
+          assistantSearchMode = event.intent === 'search';
+          assistantPinnedScope = ids?.length ? ids : null;
+          assistantLastScope = ids;
+          assistantLastSearchRequest = null;
+          mode = ids?.length ? 'selected' : 'account';
+          document.getElementById('assistant-scope').value = mode;
+          assistantScopeKey = JSON.stringify([account?.id, mode, assistantPinnedScope, assistantSearchMode]);
+          scope = `${account?.user || mailaiText('当前邮箱')} · ${ids ? (ids.length ? mailaiText('所选范围 ') + ids.length + mailaiText(' 封') : mailaiText('未附邮件')) : mailaiText('全部已同步邮件')}`;
+          document.getElementById('assistant-scope-note').textContent = scope;
+          updateAssistantScopeControl();
+        }
+        if (event.intent === 'help') {
+          assistantSearchMode = false;
+          assistantLastSearchRequest = null;
+          assistantScopeKey = JSON.stringify([account?.id, mode, emailIds, false]);
+        }
         if (!answer.trim()) {
           const [statusTitle, statusDetail] = assistantStreamStatusCopy(event, emailIds);
           bubble.classList.add('assistant-progress-bubble');
@@ -1095,7 +1113,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
     document.getElementById('mail-assistant').dataset.answerComplete = 'true';
     paint();
     bubble.insertAdjacentHTML('beforeend', assistantSourcesHtml(sources, account?.id || ''));
-    if (searchMode && searchMeta) window.mailaiAssistantSearch?.complete(thinking,searchMeta,sources);
+    if (searchMeta) window.mailaiAssistantSearch?.complete(thinking,searchMeta,sources);
     if (pendingAction) renderAssistantActionCard(bubble, pendingAction, account);
     assistantHistory.push({role:'assistant', content:validAnswer()});
   } catch (error) {
@@ -1104,7 +1122,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
     bubble.insertAdjacentHTML('beforeend', assistantSourcesHtml(sources, account?.id || ''));
     bubble.insertAdjacentHTML('beforeend', `<p class="operation-note">${controller.signal.aborted ? mailaiText('已停止，已生成内容保留。') : esc(mailaiSystemMessage(error.message) || mailaiText('分析中断，已生成内容保留。可以重试。'))}</p>`);
     document.getElementById('assistant-retry').classList.remove('hidden');
-    if (searchMode) window.mailaiAssistantSearch?.failed(thinking);
+    if (assistantSearchMode) window.mailaiAssistantSearch?.failed(thinking);
   } finally {
     finishCompanionWork?.();
     clearTimeout(paintTimer);
@@ -4122,8 +4140,10 @@ function renderEmailItem(e, idx = 0) {
   const moreRecipients = outgoing && Number(e.counterpart_count || 0) > 1
     ? `<span class="recipient-more"><span data-i18n="ui.97521ee87be0">等 ${Number(e.counterpart_count)} 人</span></span>` : '';
   if (document.body.dataset.mailListView === 'table') return renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, outgoing});
+  const date=mailCardDate(e.date || e.created_at);
   return `
     <div class="email-item ${selected} ${bulkSelected} ${e.status} ${outgoing ? 'outgoing-mail' : ''} ${unread ? 'unread' : ''} risk-${risk.class}" data-id="${e.id}" data-account-id="${esc(e._account_id || '')}" data-read-state="${outgoing ? 'not-applicable' : unread ? 'unread' : 'read'}" tabindex="0" aria-selected="${bulkSelected ? 'true' : 'false'}" style="animation-delay:${Math.min(idx, 12) * 0.035}s">
+      ${mailSenderAvatar(counterparty,counterpartyAddr)}
       <div class="email-row-top">
         <div class="email-sender">
           ${unread ? "<span class=\"unread-marker\" title=\"未读邮件\" aria-label=\"未读\" data-i18n-title=\"ui.ef3356ba548c\" data-i18n-aria=\"ui.4d0680f9efae\"></span>" : ''}
@@ -4134,7 +4154,8 @@ function renderEmailItem(e, idx = 0) {
         <div class="email-meta">
           <span class="mail-state-icons">${e.is_favorite ? "<span class=\"mail-state-star\" title=\"已收藏\" data-i18n-title=\"ui.471dd4d7f869\">★</span>" : ''}${e.is_starred ? "<span class=\"mail-state-star\" title=\"已加星标\" data-i18n-title=\"ui.0cd7bd093269\">★</span>" : ''}</span>
           ${e._kind === 'draft' ? "<span class=\"risk-badge normal\"><span data-i18n=\"ui.2a2fd29bd27a\">草稿</span></span>" : e._kind === 'sent' ? `<span class="risk-badge ${['failed','unknown'].includes(e.status) ? 'high' : 'normal'}">${({get failed() { return mailaiText('失败'); },get unknown() { return mailaiText('待确认'); },get sending() { return mailaiText('发送中'); },get sent() { return mailaiText('已发送'); },get accepted() { return mailaiText('已接受'); }})[e.status] || mailaiText('待确认')}</span>` : `<span class="risk-badge ${risk.class}">${risk.class === 'danger' ? '<i class="risk-alert-dot" aria-hidden="true">!</i>' : ''}${risk.text} ${e.score}</span>`}${e.pending_action ? `<span class="tag">${e.pending_action === 'trash_local' ? mailaiText('已在本地删除') : e.pending_error ? mailaiText('后台重试中') : e.pending_action === 'trash' ? mailaiText('待同步删除 · 可取消') : mailaiText('正在同步删除')}</span>` : ''}
-          <span class="email-date">${fmtDate(e.date)}</span>
+          ${hasAtt ? `<span class="mail-list-attachment tag-attachment" title="${esc(mailaiT('list.tagAttachment') || '附件')}" aria-label="${esc(mailaiT('list.tagAttachment') || '附件')}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7 10 5-5a3 3 0 0 1 4 4l-7 7a4.5 4.5 0 0 1-6-6l7-7m-5 9 7-7"/></svg></span>` : ''}
+          <time class="email-date" ${date.iso?`datetime="${date.iso}"`:''} title="${esc(date.title)}">${esc(date.text)}</time>
         </div>
       </div>
       <div class="email-subject">${esc(e.subject)}</div>
@@ -4146,7 +4167,6 @@ function renderEmailItem(e, idx = 0) {
         ${typeof window !== 'undefined' ? window.mailaiMailTagChips?.(e, 3) || '' : ''}
         ${e.category ? `<span class="tag mail-category">${esc(mailCategoryLabel(e.category))}</span>` : ''}
         ${e.priority ? `<span class="tag mail-priority tag-priority-${e.priority}">${esc(mailPriorityLabel(e.priority))}</span>` : ''}
-        ${hasAtt ? `<span class="tag tag-attachment" title="${mailaiT('list.tagAttachment') || '附件'}" aria-label="${mailaiT('list.tagAttachment') || '附件'}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7 10 5-5a3 3 0 0 1 4 4l-7 7a4.5 4.5 0 0 1-6-6l7-7m-5 9 7-7"/></svg></span>` : ''}
         ${e.status === 'quarantine' ? "<span class=\"tag tag-danger\"><span data-i18n=\"ui.0603e9908fa2\">已隔离</span></span>" : ''}
         ${e.status === 'spam' ? "<span class=\"tag tag-warn\"><span data-i18n=\"ui.73c996531fe0\">垃圾邮件</span></span>" : ''}
         ${e.status === 'inbox' && needsRiskAttention(e) && e.recommended_status === 'quarantine' ? "<span class=\"tag tag-danger\"><span data-i18n=\"ui.87c999a1a97b\">待确认隔离</span></span>" : ''}
@@ -6665,24 +6685,9 @@ function renderFindings(items) {
   }).join('');
 }
 
-function renderReadingPane(e) {
-  removeSecurityFlyout();
-  document.body.classList.remove('security-flyout-open');
-  // 防御性处理：后端 JSON 字段在某些旧数据/异常场景下可能是字符串
-  const parseArr = (v) => {
-    if (Array.isArray(v)) return v;
-    if (typeof v === 'string') { try { return JSON.parse(v); } catch { return []; } }
-    return [];
-  };
-  e.findings = parseArr(e.findings);
-  e.llm_reasons = parseArr(e.llm_reasons);
-  e.attachments = parseArr(e.attachments);
-  e.url_chain = parseArr(e.url_chain);
-  e.attachment_analysis = parseArr(e.attachment_analysis);
-
+function renderSecurityAnalysis(e) {
   const risk = getRiskLabel(e.score, e.verdict, e);
   const riskScore = Number(e.score || 0);
-  const riskNeedsAttention = needsRiskAttention(e);
   const gauge = buildRiskGauge(riskScore, risk);
   const riskSummary = risk.class === 'danger'
     ? mailaiText('检测到高风险信号，请勿直接点击链接或打开可疑附件。')
@@ -6714,6 +6719,49 @@ function renderReadingPane(e) {
       </div>
     </div>` : '';
 
+  return `
+      <div class="security-flyout-head">
+        <div><span class="eyebrow">${mailaiT('read.verdictEyebrow') || '智能研判'}</span><h3>${mailaiT('read.verdictTitle') || '安全结果与证据'}</h3></div>
+        <button type="button" aria-label="关闭智能研判明细" onclick="toggleSecurityAnalysis(false)" data-i18n-aria="ui.b98557168a2a">✕</button>
+      </div>
+      <div class="security-flyout-result security-${risk.class}">
+        ${gauge}
+        <div><span>${mailaiT('read.verdictCurrent') || '当前结论'}</span><h4>${esc(risk.text)}</h4><p>${esc(riskSummary)}</p></div>
+      </div>
+      <div class="security-analysis-grid">
+        ${evidenceDimensions}
+        <div class="reading-section insight-section">
+          <div class="section-title"><span>${mailaiT('read.findings') || '具体发现'}</span><small>${(mailaiT('read.findingsScore') || '累计风险分 {n}').replace('{n}', riskScore)}</small></div>
+          <ul class="findings">${findings}</ul>
+        </div>
+        ${llmReasons}
+        ${renderSenderProfile(e.sender_profile)}
+        ${renderCampaignInsight(e.campaign)}
+        ${renderThreadContext(e.thread_context)}
+        ${renderUrlChains(e.url_chain)}
+        ${renderAttachmentAnalysis(e.attachment_analysis)}
+      </div>
+  `;
+}
+
+function renderReadingPane(e) {
+  removeSecurityFlyout();
+  document.body.classList.remove('security-flyout-open');
+  // 防御性处理：后端 JSON 字段在某些旧数据/异常场景下可能是字符串
+  const parseArr = (v) => {
+    if (Array.isArray(v)) return v;
+    if (typeof v === 'string') { try { return JSON.parse(v); } catch { return []; } }
+    return [];
+  };
+  e.findings = parseArr(e.findings);
+  e.llm_reasons = parseArr(e.llm_reasons);
+  e.attachments = parseArr(e.attachments);
+  e.url_chain = parseArr(e.url_chain);
+  e.attachment_analysis = parseArr(e.attachment_analysis);
+
+  const risk = getRiskLabel(e.score, e.verdict, e);
+  const riskScore = Number(e.score || 0);
+  const riskNeedsAttention = needsRiskAttention(e);
   const attachments = (e.attachments || []).length ? `
     <div class="reading-section">
       <div class="section-title"><span data-i18n="ui.f552e66b6dfe">📎 附件（${e.attachments.length}）</span></div>
@@ -6807,27 +6855,7 @@ function renderReadingPane(e) {
 
     <button type="button" class="security-flyout-backdrop hidden" aria-label="关闭智能研判明细" onclick="toggleSecurityAnalysis(false)" data-i18n-aria="ui.b98557168a2a"></button>
     <aside id="security-analysis-panel" class="security-flyout hidden" aria-label="智能研判明细" tabindex="-1" data-i18n-aria="ui.221a2189fbae">
-      <div class="security-flyout-head">
-        <div><span class="eyebrow">${mailaiT('read.verdictEyebrow') || '智能研判'}</span><h3>${mailaiT('read.verdictTitle') || '安全结果与证据'}</h3></div>
-        <button type="button" aria-label="关闭智能研判明细" onclick="toggleSecurityAnalysis(false)" data-i18n-aria="ui.b98557168a2a">✕</button>
-      </div>
-      <div class="security-flyout-result security-${risk.class}">
-        ${gauge}
-        <div><span>${mailaiT('read.verdictCurrent') || '当前结论'}</span><h4>${esc(risk.text)}</h4><p>${esc(riskSummary)}</p></div>
-      </div>
-      <div class="security-analysis-grid">
-        ${evidenceDimensions}
-        <div class="reading-section insight-section">
-          <div class="section-title"><span>${mailaiT('read.findings') || '具体发现'}</span><small>${(mailaiT('read.findingsScore') || '累计风险分 {n}').replace('{n}', riskScore)}</small></div>
-          <ul class="findings">${findings}</ul>
-        </div>
-        ${llmReasons}
-        ${renderSenderProfile(e.sender_profile)}
-        ${renderCampaignInsight(e.campaign)}
-        ${renderThreadContext(e.thread_context)}
-        ${renderUrlChains(e.url_chain)}
-        ${renderAttachmentAnalysis(e.attachment_analysis)}
-      </div>
+      ${renderSecurityAnalysis(e)}
     </aside>
 
     <div class="reading-workspace">
@@ -6863,12 +6891,34 @@ function renderReadingPane(e) {
   });
   const securityBackdrop = readingContent.querySelector('.security-flyout-backdrop');
   const securityFlyout = readingContent.querySelector('.security-flyout');
-  if (securityBackdrop && securityFlyout) document.body.append(securityBackdrop, securityFlyout);
+  if (securityBackdrop && securityFlyout) {
+    securityAnalysisEmail = e;
+    document.body.append(securityBackdrop, securityFlyout);
+    applyI18n(securityFlyout);
+  }
   mountRichEmailBody(e);
   loadConversationProgress();
 }
 
+let securityAnalysisEmail = null;
+
+function refreshSecurityAnalysisLanguage() {
+  const panel = document.getElementById('security-analysis-panel');
+  if (!panel || !securityAnalysisEmail) return;
+  const grid = panel.querySelector('.security-analysis-grid');
+  const scrollTop = grid?.scrollTop || 0;
+  const focusSelector = 'button,a,[tabindex]';
+  const focusIndex = [...panel.querySelectorAll(focusSelector)].indexOf(document.activeElement);
+  // Rebuild only application-owned analysis UI from the original mail data.
+  // Keep the panel itself, its open state, and the message body/iframe intact.
+  panel.innerHTML = renderSecurityAnalysis(securityAnalysisEmail);
+  applyI18n(panel);
+  if (focusIndex >= 0) panel.querySelectorAll(focusSelector)[focusIndex]?.focus({preventScroll:true});
+  panel.querySelector('.security-analysis-grid').scrollTop = scrollTop;
+}
+
 function removeSecurityFlyout() {
+  securityAnalysisEmail = null;
   document.body.classList.remove('security-flyout-open');
   document.querySelectorAll('body > .security-flyout, body > .security-flyout-backdrop').forEach(element => element.remove());
 }
@@ -6907,8 +6957,8 @@ function renderSenderProfile(prof) {
         <div><span class="info-label"><span data-i18n="ui.f28362666fee">首次出现</span></span>${fmtDate(prof.first_seen)}</div>
         <div><span class="info-label"><span data-i18n="ui.16b33414b941">历史邮件</span></span><span data-i18n="ui.0f9682f4fe65">${prof.message_count || 0} 封</span></div>
         <div><span class="info-label"><span data-i18n="ui.00ac6ab3be8f">常见时段</span></span>${commonHours.join(', ') || '-'}</div>
-        <div><span class="info-label"><span data-i18n="ui.feb5472bc2bd">常见分类</span></span>${categories.join(', ') || '-'}</div>
-        <div><span class="info-label"><span data-i18n="ui.dfe5931e2554">附件类型</span></span>${attTypes.join(', ') || '-'}</div>
+        <div><span class="info-label"><span data-i18n="ui.feb5472bc2bd">常见分类</span></span>${esc(categories.map(mailCategoryLabel).join(', ') || '-')}</div>
+        <div><span class="info-label"><span data-i18n="ui.dfe5931e2554">附件类型</span></span>${esc(attTypes.join(', ') || '-')}</div>
       </div>
     </div>
   `;
@@ -8753,6 +8803,7 @@ document.addEventListener('mailai:language-changed', () => {
   try { applyFilters(); updateFacetScopeLabels(); } catch (_) {}
   try { renderSidebarAccounts(); } catch (_) {}
   try { addReadingActions(true); } catch (_) {}
+  try { refreshSecurityAnalysisLanguage(); } catch (_) {}
   try { if (_dashboardData) renderDashboard(_dashboardData); } catch (_) {}
   try { refreshRulesLanguage(); } catch (_) {}
   try { loadSemanticStatus(); } catch (_) {}
@@ -9919,7 +9970,7 @@ document.getElementById('btn-rollback-auto').addEventListener('click', async () 
 let assistantAlertTimer = null;
 function setAppPreloaderCopy(key, fallback, hintKey, hintFallback) {
   const preloader = document.getElementById('app-preloader');
-  if (!preloader) return;
+  if (!preloader || preloader.dataset.handoff === 'running') return;
   const title = preloader.querySelector('.preloader-status span');
   const hint = preloader.querySelector('.preloader-status small');
   if (title) { title.dataset.i18n = key; mailaiBindUI(title, "textContent", () => (mailaiT(key) || fallback)); }

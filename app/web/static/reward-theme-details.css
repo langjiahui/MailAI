@@ -57,12 +57,13 @@ html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[d
   color:var(--reward-ink)!important;
   border-color:var(--reward-line)!important;
 }
-html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .reading-header .reading-actions button.reading-primary-action {
-  background:var(--reward-selected)!important;
-  color:var(--reward-accent)!important;
+html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .reading-header .reading-header-inner .reading-actions .reading-mail-group button.reading-primary-action {
+  background:var(--reward-reply-fill,var(--reward-selected))!important;
+  color:var(--reward-reply-ink,var(--reward-ink))!important;
 }
-html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .reading-header .reading-actions button.reading-primary-action:hover:not(:disabled) {
-  background:color-mix(in srgb,var(--reward-selected) 90%,var(--reward-accent))!important;
+html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .reading-header .reading-header-inner .reading-actions .reading-mail-group button.reading-primary-action:hover:not(:disabled) {
+  background:var(--reward-reply-hover,color-mix(in srgb,var(--reward-selected) 90%,var(--reward-accent)))!important;
+  color:var(--reward-reply-ink,var(--reward-ink))!important;
 }
 html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .reading-header .reading-actions :is(button[aria-pressed="true"],button[aria-expanded="true"]) {
   background:var(--reward-selected)!important;
@@ -72,7 +73,8 @@ html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[d
   outline:2px solid var(--reward-accent)!important;
   outline-offset:2px;
 }
-html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body :is(.top-menu-popover,.reading-more-panel,.contact-filter-popover,.contact-editor-card,.contact-tags-card,.datetime-panel,#assistant-panel) {
+html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body:not(.assistant-home):not(.assistant-split):not(.assistant-docked) #assistant-panel,
+html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body :is(.top-menu-popover,.reading-more-panel,.contact-filter-popover,.contact-editor-card,.contact-tags-card,.datetime-panel) {
   border-color:var(--reward-line)!important;
   box-shadow:var(--reward-popup-shadow)!important;
 }

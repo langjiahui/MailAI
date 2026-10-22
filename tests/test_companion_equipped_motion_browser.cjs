@@ -126,11 +126,11 @@ async function checkRestEffect(page, host, part, context) {
     }
     // Equipped is a completed state; the same card must remain usable to remove it.
     const outfitAction=id=>page.locator(`.pet-shop [data-pet-item-action="${id}"]`);
-    const outfitStatus=id=>page.locator(`[data-pet-item="${id}"] .pet-equipped-status`);
+    const outfitStatus=id=>page.locator(`[data-pet-item="${id}"] .pet-status-equipped`);
     for(const id of ['mech_wings','lightning','midnight']) {
       assert.equal(await outfitAction(id).textContent(),'卸下');
       assert(await outfitAction(id).isEnabled());
-      assert.equal(await outfitStatus(id).textContent(),'✓ 已穿戴');
+      assert.equal(await outfitStatus(id).textContent(),'✓ 穿戴中');
     }
     let releaseEquip, equipCalls=0;
     const heldEquip=new Promise(resolve=>{releaseEquip=resolve;});
@@ -173,7 +173,7 @@ async function checkRestEffect(page, host, part, context) {
         setI18nLanguage(language);applyTheme(mode);
         if(theme)document.documentElement.dataset.rewardTheme=theme;else delete document.documentElement.dataset.rewardTheme;
       },{language,theme,mode});
-      assert.equal(await outfitStatus('lightning').textContent(),language==='en'?'✓ Equipped':'✓ 已穿戴');
+      assert.equal(await outfitStatus('lightning').textContent(),language==='en'?'✓ Equipped':'✓ 穿戴中');
       assert.equal(await outfitAction('lightning').textContent(),language==='en'?'Remove':'卸下');
       const clipped=await page.locator('.pet-shop [data-pet-item-action]').evaluateAll(nodes=>nodes.filter(n=>n.scrollWidth>n.clientWidth+1 || n.getBoundingClientRect().right>innerWidth+1).map(n=>n.dataset.petItemAction));
       assert.deepEqual(clipped,[],JSON.stringify({language,theme,mode,width,clipped}));
