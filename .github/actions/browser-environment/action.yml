@@ -20,6 +20,14 @@ runs:
       with:
         path: ~/.cache/ms-playwright
         key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ inputs.browsers }}-${{ hashFiles('package-lock.json') }}
+    - name: Bound stalled system dependency downloads
+      shell: bash
+      run: |
+        sudo tee /etc/apt/apt.conf.d/99mailai-ci-network > /dev/null <<'APT'
+        Acquire::Retries "2";
+        Acquire::http::Timeout "15";
+        Acquire::https::Timeout "15";
+        APT
     - name: Install dependencies and required system libraries
       shell: bash
       env:
