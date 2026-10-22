@@ -120,7 +120,7 @@ const {chromium,webkit}=require('playwright');
   }
   task=ready();await page.evaluate(()=>refreshAppUpdateTask());
   await page.locator('#update-dialog-notes').focus();await page.keyboard.press('End');
-  assert(await page.locator('#update-dialog-notes').evaluate(n=>n.scrollTop>0),'Release notes support keyboard scrolling');
+  await page.waitForFunction(()=>document.getElementById('update-dialog-notes').scrollTop>0,null,{timeout:3000});
   await install.scrollIntoViewIfNeeded();
   const dialogBox=await page.locator('#update-dialog').boundingBox(),installBox=await install.boundingBox();
   assert(dialogBox.x>=0 && dialogBox.x+dialogBox.width<=391);assert(installBox.x>=0 && installBox.x+installBox.width<=391 && installBox.y+installBox.height<=721);
