@@ -12,7 +12,7 @@ const cases=partition(require('./helpers/home-dialog-cases.cjs'));
  p.on('pageerror',e=>errors.push(e.message));
  await p.route('**/api/ui-preferences.js',r=>r.fulfill({contentType:'text/javascript',body:'/* isolated UI state */'}));
  await p.addInitScript(()=>localStorage.setItem('mailai.onboarding.v2',JSON.stringify({deferred:true,mailboxDone:true,aiDone:true})));
- await p.goto('http://127.0.0.1:18795/?shell=macos');await p.locator('#app-preloader').waitFor({state:'detached'});await p.evaluate(()=>initialLoad);
+ await p.goto((process.env.MAILAI_TEST_URL || 'http://127.0.0.1:18795/')+'?shell=macos');await p.locator('#app-preloader').waitFor({state:'detached'});await p.evaluate(()=>initialLoad);
  assert(await p.evaluate(()=>_systemConfig.accounts.every(a=>a.user.endsWith('@example.test'))));
  await p.evaluate(async()=>{for(const item of ['theme_monochrome','theme_baowu'])await api('/api/companion/purchase',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({item,token:crypto.randomUUID()})});await mailaiPet.refresh()});
  const widths=[[390,844,1],[720,844,1.25],[900,640,1.25],[1512,1000,1],[2560,1080,1]];

@@ -28,6 +28,7 @@ html[data-theme] body #todo-batch-toggle[aria-pressed=true] { color:var(--desk-a
 #todo-center summary::-webkit-details-marker { display:none; }
 #todo-center .todo-options[open]>summary { background:var(--desk-hover); color:var(--desk-ink); }
 #todo-center svg { width:16px; height:16px; flex:none; fill:none; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
+#todo-center .todo-options:not([open])>#todo-extra-actions { display:none; }
 #todo-extra-actions { position:absolute; right:0; top:calc(100% + 6px); z-index:6; min-width:180px; padding:6px; border:1px solid var(--desk-line); border-radius:12px; background:var(--desk-surface); color:var(--desk-ink); box-shadow:0 8px 24px #0002; }
 html[data-theme] body #todo-extra-actions :is(label,button) { display:flex; align-items:center; gap:9px; width:100%; margin:0; min-height:38px; padding:8px 10px; box-sizing:border-box; border:0; border-radius:7px; background:transparent; color:var(--desk-ink); font-size:12px; cursor:pointer; text-align:left; white-space:nowrap; }
 html[data-theme] body #todo-extra-actions :is(label,button):hover { background:var(--desk-hover); }
