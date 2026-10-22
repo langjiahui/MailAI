@@ -1,7 +1,6 @@
-"""Explicit, preview-bound server deletion with verified durable local archives.
+"""Preview-bound deletion with durable local copies and precise UID EXPUNGE.
 
-No scheduler calls this module. A single-use account-local preview and a typed
-confirmation are required. Never issue a mailbox-wide EXPUNGE.
+Manual runs require typed confirmation; scheduled runs require a saved policy.
 """
 import hashlib
 import json
@@ -60,7 +59,7 @@ def _verify_remote(mail, row, raw, include_favorites):
         raise ValueError('本地原文与服务器内容不一致，已停止清理')
 
 
-def preview(folder, before_date, include_favorites=False, offset=0):
+def preview(folder, before_date, include_favorites=False, offset=0, *, automation_id=''):
     if not config.IMAP_USER or not isinstance(offset, int) or not 0 <= offset <= 10000000:
         raise ValueError('邮箱或分页参数无效')
     try:
@@ -88,7 +87,12 @@ def preview(folder, before_date, include_favorites=False, offset=0):
                 raw = _raw(row)
                 if total_bytes + len(raw) > MAX_BATCH_BYTES:
                     raise ValueError('超过单次 100 MB 限制，请分批清理')
-                _verify_remote(mail, row, raw, include_favorites)
+                try:
+                    _verify_remote(mail, row, raw, include_favorites)
+                except OSError as exc:
+                    if automation_id:
+                        raise RuntimeError(str(exc)) from exc  # Pause the rule on a dropped connection.
+                    raise
                 total_bytes += len(raw)
                 items.append({'id': row['id'], 'uid': row['uid'], 'subject': row['subject'] or '（无主题）',
                               'date': row['date'], 'from_addr': row['from_addr'], 'size': len(raw), 'hash': _digest(raw)})
@@ -99,6 +103,8 @@ def preview(folder, before_date, include_favorites=False, offset=0):
     payload = {'account': config.IMAP_USER, 'host': config.IMAP_HOST, 'folder': folder,
                'before_date': cutoff.isoformat(), 'include_favorites': include_favorites,
                'uidvalidity': validity, 'items': items}
+    if automation_id:
+        payload['automation_id'] = automation_id
     with db.conn() as c:
         c.execute("DELETE FROM server_cleanup_jobs WHERE status='preview' AND expires_at<?", (now.isoformat(),))
         c.execute('INSERT INTO server_cleanup_jobs(token,payload,status,created_at,expires_at) VALUES(?,?,?,?,?)',
@@ -135,6 +141,10 @@ def _save_result(token, result):
 def execute(token, confirmation, acknowledge):
     if not config.IMAP_USER or acknowledge is not True or confirmation.strip().lower() != config.IMAP_USER.strip().lower():
         raise ValueError('请勾选风险确认，并输入当前邮箱地址')
+    return _execute(token)
+
+
+def _execute(token, *, automatic=False):
     with db.conn() as c:
         job = c.execute('SELECT * FROM server_cleanup_jobs WHERE token=?', (token,)).fetchone()
         if not job:
@@ -142,6 +152,16 @@ def execute(token, confirmation, acknowledge):
         if job['status'] != 'preview':
             return {**json.loads(job['result'] or '{}'), 'status': job['status'], 'already_used': True}
         payload = json.loads(job['payload'])
+        if automatic:
+            from .automatic_server_cleanup import get_settings
+            policy = get_settings()
+            if (not policy['enabled'] or policy['status'] != 'running'
+                    or not payload.get('automation_id') or payload['automation_id'] != policy['revision']
+                    or payload['folder'] != policy['folder'] or payload['include_favorites']
+                    or payload['before_date'] != (date.today() - timedelta(days=policy['days'])).isoformat()):
+                raise ValueError('自动清理规则已变化，请重新设置')
+        elif payload.get('automation_id'):
+            raise ValueError('自动清理预览不能用于手动执行')
         if payload['account'] != config.IMAP_USER or payload['host'] != config.IMAP_HOST or job['expires_at'] < datetime.now().isoformat():
             raise ValueError('预览已过期或邮箱已变化，请重新预览')
         if not payload['items']:
@@ -149,7 +169,8 @@ def execute(token, confirmation, acknowledge):
         updated = c.execute("UPDATE server_cleanup_jobs SET status='running' WHERE token=? AND status='preview'", (token,))
         if updated.rowcount != 1:
             raise ValueError('此清理已开始，请勿重复操作')
-    result = {'status': 'running', 'completed': 0, 'preserved': 0, 'backup': '', 'errors': [], 'items': []}
+    result = {'status': 'running', 'source': 'automatic' if automatic else 'manual',
+              'completed': 0, 'preserved': 0, 'backup': '', 'errors': [], 'items': []}
     prepared = []
     try:
         with MailClient() as mail:
@@ -185,7 +206,9 @@ def execute(token, confirmation, acknowledge):
                 # The local record remains visible in its original mailbox.
                 state['status'] = 'deleted'
                 result['completed'] += 1
-                db.add_audit_log(row['id'], 'server_cleanup', actor='user', reason='用户确认清理服务器，本地邮件原位保留', meta={'local_id': state['local_id'], 'backup': result['backup'], 'token': token})
+                db.add_audit_log(row['id'], 'server_cleanup', actor='automatic' if automatic else 'user',
+                                 reason='按已授权规则自动清理服务器，本地邮件原位保留' if automatic else '用户确认清理服务器，本地邮件原位保留',
+                                 meta={'local_id': state['local_id'], 'backup': result['backup'], 'token': token})
                 _save_result(token, result)
         result['status'] = 'completed'
     except Exception as exc:

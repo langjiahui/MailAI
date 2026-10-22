@@ -3,6 +3,7 @@
   if (document.documentElement.classList.contains('windows-native-window')) return;
   let revision = 0;
   let pending = Promise.resolve();
+  let dragRevision = 0, pendingDrag = Promise.resolve(), lastDragRegion = '';
   let regionFrame;
   function updateDragRegion() {
     cancelAnimationFrame(regionFrame);
@@ -22,8 +23,20 @@
       if (rect?.width) {
         // Native drag/double-click applies to empty header space, never controls.
         const occupied = [...header.querySelectorAll('.global-search,button,input,select,a,[role=button]')]
-          .map(el => el.getBoundingClientRect()).filter(r => r.width && r.height)
-          .sort((a,b) => a.left - b.left);
+          .map(el => el.getBoundingClientRect()).filter(r => r.width && r.height);
+        // The floating pet lives outside the header DOM, but can be docked over
+        // its native hit layer. Exclude its button even in the top 5px drag strip.
+        const excluded = [], pet = document.getElementById('assistant-orb');
+        if (pet) {
+          const box = pet.getBoundingClientRect(), style = getComputedStyle(pet);
+          const topbar = header.getBoundingClientRect();
+          if (box.width && box.height && style.visibility !== 'hidden' && style.pointerEvents !== 'none'
+              && box.bottom > topbar.top && box.top < topbar.bottom) {
+            const left = Math.max(0, box.left - 4), right = Math.min(innerWidth, box.right + 4);
+            if (right > left) { excluded.push([left, right]); occupied.push({left, right}); }
+          }
+        }
+        occupied.sort((a,b) => a.left - b.left);
         const gaps = [];
         let edge = 108; // Native traffic lights use physical points, independent of font zoom.
         for (const r of occupied) {
@@ -31,7 +44,15 @@
           edge = Math.max(edge, r.right);
         }
         if (edge < innerWidth) gaps.push([edge, innerWidth]);
-        window.pywebview?.api?.set_window_drag_region?.(rect.left, rect.right, innerWidth, gaps)?.catch(() => {});
+        const method = window.pywebview?.api?.set_window_drag_region;
+        const region = [rect.left, rect.right, innerWidth, gaps, excluded], signature = JSON.stringify(region);
+        if (method && signature !== lastDragRegion) {
+          const token = ++dragRevision; lastDragRegion = signature;
+          // Native bridge calls can finish out of order during a drag. Apply
+          // only the latest queued geometry after the previous call settles.
+          pendingDrag = pendingDrag.catch(() => {}).then(() => token === dragRevision ? method(...region) : null)
+            .catch(() => { if (token === dragRevision) lastDragRegion = ''; });
+        }
       }
     });
   }
@@ -39,6 +60,11 @@
   if (header) new ResizeObserver(updateDragRegion).observe(header);
   const sidebar = document.querySelector('.layout > .sidebar');
   if (sidebar) new ResizeObserver(updateDragRegion).observe(sidebar);
+  const petRoot = document.getElementById('mail-assistant'), pet = document.getElementById('assistant-orb');
+  if (petRoot) new MutationObserver(updateDragRegion).observe(petRoot, {attributes:true, attributeFilter:['style','class','data-pet-dock']});
+  if (pet) new ResizeObserver(updateDragRegion).observe(pet);
+  // Font zoom and opening/closing chat also change the pet's native hit target.
+  new MutationObserver(updateDragRegion).observe(document.body, {attributes:true, attributeFilter:['class','style']});
   window.addEventListener('resize', updateDragRegion);
   updateDragRegion();
   window.addEventListener('mailai:native-fullscreen', event => {

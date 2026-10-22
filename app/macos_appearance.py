@@ -22,6 +22,10 @@ def install_unified_titlebar(window):
                 # The web layout reports non-interactive header regions.
                 # Search, menus and native traffic lights receive their own events.
                 if 0 <= local.y <= bounds.height and 0 <= local.x <= bounds.width:
+                    # Floating controls can overlap the titlebar, including its
+                    # narrow top drag strip. Give WebKit their events first.
+                    if any(start <= local.x < end for start, end in getattr(self, 'excluded_regions', [])):
+                        return None
                     left, right = getattr(self, 'brand_region', (0, 0))
                     regions = getattr(self, 'drag_regions', [(left, right)])
                     if any(start <= local.x < end for start, end in regions) or (local.x > 104 and local.y >= bounds.height - 5):
@@ -123,12 +127,13 @@ def toggle_maximized(window):
     window.setFrame_display_animate_(target, True, True)
 
 
-def update_drag_region(window, left, right, viewport_width, gaps=None):
+def update_drag_region(window, left, right, viewport_width, gaps=None, excluded=None):
     drag = getattr(window, '_mailai_drag_view', None)
     if drag is not None:
         scale = window.contentView().bounds().size.width / viewport_width
         drag.brand_region = (left * scale, right * scale)
         drag.drag_regions = [(start * scale, end * scale) for start, end in gaps] if gaps is not None else [drag.brand_region]
+        drag.excluded_regions = [(start * scale, end * scale) for start, end in (excluded or [])]
 
 
 def apply_window_appearance(window, theme, mode='system'):

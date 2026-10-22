@@ -132,6 +132,41 @@ with patch('app.desktop.sys.platform', 'darwin'):
         assert api.set_window_drag_region(110, 220, 1200, [[110, 230], [700, 800]]) == {'ok': True}
         runtime._call_after_safely.call_args.args[1]()
         update.assert_called_once_with(runtime.window.native,110,220,1200,[[110,230],[700,800]])
+    for excluded in ('bad', [[1]], [[200, 100]], [[0, 1300]], [[0, float('nan')]], [[0, 1]] * 33):
+        assert api.set_window_drag_region(110, 220, 1200, [], excluded) == {'ok': False}
+    with patch('app.macos_appearance.update_drag_region') as update:
+        assert api.set_window_drag_region(110, 220, 1200, [[700, 1000]], [[720, 800]]) == {'ok': True}
+        runtime._call_after_safely.call_args.args[1]()
+        update.assert_called_once_with(runtime.window.native,110,220,1200,[[700,1000]],[[720,800]])
+
+# A top-docked pet receives events before both native drag paths. Points beside
+# it still move/maximize the window, and exclusions use native display points.
+drag.window = lambda: native
+drag.superview = lambda: None
+drag.convertPoint_fromView_ = lambda point, view: point
+drag.bounds = lambda: types.SimpleNamespace(size=types.SimpleNamespace(width=900, height=52))
+native.contentView().bounds.return_value.size.width = 900
+update_drag_region(native, 110, 220, 1200, [[108, 250], [700, 1000]], [[720, 800]])
+assert drag.excluded_regions == [(540, 600)]
+point = lambda x,y: types.SimpleNamespace(x=x,y=y)
+assert drag.hitTest_(point(560, 20)) is None
+assert drag.hitTest_(point(560, 51)) is None, 'The native top strip must not steal pet dragging'
+assert drag.hitTest_(point(650, 20)) is drag
+assert drag.hitTest_(point(650, 51)) is drag
+assert drag.hitTest_(point(300, 20)) is None, 'Search still receives its events'
+assert drag.hitTest_(point(70, 51)) is None, 'Native traffic lights remain reachable'
+update_drag_region(native, 110, 220, 1200, [[108, 250], [700, 1000]], [])
+assert drag.hitTest_(point(560, 20)) is drag, 'Moving the pet away restores window dragging'
+native.styleMask.return_value = 16384
+assert drag.hitTest_(point(650, 20)) is None
+native.styleMask.return_value = 15
+mouse = Mock();mouse.clickCount.return_value = 1
+drag.mouseDown_(mouse)
+native.performWindowDragWithEvent_.assert_called_once_with(mouse)
+with patch.object(chrome, 'toggle_maximized') as maximize:
+    mouse.clickCount.return_value = 2
+    drag.mouseDown_(mouse);maximize.assert_called_once_with(native)
+print('Top-docked pet exclusions, scaled native hit tests, drag strip, restored gaps and double-click passed')
 
 def rect(x,y,w,h):
     return types.SimpleNamespace(origin=types.SimpleNamespace(x=x,y=y),size=types.SimpleNamespace(width=w,height=h))

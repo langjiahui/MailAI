@@ -57,12 +57,13 @@ walk(tree);assert(clips.size>20,'Discover the complete gesture library');
    const ready=await page.waitForFunction(selector=>{
     const svg=document.querySelector(selector);
     if(svg.dataset.motionActive!=='false'||svg.getAnimations({subtree:true}).some(a=>a.playState==='running'))return false;
-    return {active:svg.dataset.motionActive,pose:ciRestSnapshot(svg),effects:[...svg.querySelectorAll(':is(.growth-stars,.growth-orbit,.growth-aura,.growth-lightning) .pet-reward-motion')].map(n=>Number(getComputedStyle(n).opacity)),running:svg.getAnimations({subtree:true}).filter(a=>a.playState==='running').length};
+    return {active:svg.dataset.motionActive,pose:ciRestSnapshot(svg),effects:[...svg.querySelectorAll('.growth-aura .pet-reward-motion')].map(n=>Number(getComputedStyle(n).opacity)),trail:Number(getComputedStyle(svg.querySelector('.pet-star-trail')).opacity),running:svg.getAnimations({subtree:true}).filter(a=>a.playState==='running').length};
    },selector,{timeout:3000});
    const rest=await ready.jsonValue();
    assert.equal(rest.active,'false',label+' ends');
    assert.deepEqual(rest.pose,baseline,label+' restores every body/outfit part');
-   assert(rest.effects.every(value=>value===0),label+' lets transient effects fade away');
+   assert(rest.effects.every(value=>value>0),label+' keeps equipped aurora visible at rest');
+   assert.equal(rest.trail,0,label+' lets the transient comet trail fade away');
    assert.equal(rest.running,0,label+' releases all animation work');
   };
   let checked=0;

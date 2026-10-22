@@ -240,6 +240,15 @@ class CleanupExecuteRequest(BaseModel):
     acknowledge: bool = False
 
 
+class CleanupAutomationRequest(BaseModel):
+    enabled: bool
+    folder: str = Field(default='INBOX', min_length=1, max_length=1024)
+    days: int = 90
+    interval_days: int = 1
+    confirmation: str = ''
+    acknowledge: bool = False
+
+
 class PortableExportRequest(BaseModel):
     include_raw: bool = True
     password: str = Field(default="", max_length=1024)

@@ -11,7 +11,7 @@ from ... import config, db, mail_assistant, mail_providers, pipeline, release_up
 from ...account_guard import start_account_thread
 from ..helpers import (annotate_list_identity, complete_mailbox_initialization,
                        mail_connection_detail)
-from ..schemas import (AccountSwitchRequest, CleanupExecuteRequest, CleanupPreviewRequest,
+from ..schemas import (AccountSwitchRequest, CleanupAutomationRequest, CleanupExecuteRequest, CleanupPreviewRequest,
                        MailAccountUpdateRequest, MailLoginRequest, MailLogoutRequest,
                        ModelConfigRequest, PortableExportRequest, PortableImportRequest,
                        PreferencesRequest)
@@ -204,6 +204,23 @@ def api_cleanup_execute(payload: CleanupExecuteRequest):
 def api_cleanup_history():
     from ... import server_cleanup
     return server_cleanup.history()
+
+
+@router.get('/api/system/server-cleanup/automation')
+def api_cleanup_automation():
+    from ...automatic_server_cleanup import get_settings
+    return get_settings()
+
+
+@router.post('/api/system/server-cleanup/automation')
+def api_save_cleanup_automation(payload: CleanupAutomationRequest):
+    from ...automatic_server_cleanup import save_settings
+    try:
+        return save_settings(**payload.model_dump())
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+    except Exception as exc:
+        raise HTTPException(502, f'自动清理设置保存失败：{exc}')
 
 
 @router.get("/api/system/backups")

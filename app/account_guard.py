@@ -173,7 +173,7 @@ class AccountGuardMiddleware:
             '/api/system/portable-backups/restore',
             "/api/system/server-cleanup/execute",
             "/api/system/mail/login", "/api/system/mail/logout", "/api/system/mail/switch"
-        } or (path.startswith("/api/system/backups/") and path.endswith("/restore"))
+        } or (path == '/api/system/server-cleanup/automation' and scope.get('method') == 'POST') or (path.startswith("/api/system/backups/") and path.endswith("/restore"))
         if not guard.acquire(exclusive):
             from starlette.responses import JSONResponse
             response = JSONResponse({"detail": "邮箱仍有操作或对话正在进行，请完成后重试切换或恢复。"}, status_code=409)
