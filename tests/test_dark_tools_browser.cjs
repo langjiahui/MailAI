@@ -43,7 +43,7 @@ async function contrast(locator, minimum = 4.5) {
       {email:'colleague@example.test',name:'项目同事',company:'示例公司',count:12,favorite:true},
       {email:'customer@example.test',name:'示例客户',count:1,favorite:false},
     ])}));
-    await page.goto('http://127.0.0.1:18795/');
+    await page.goto(process.env.MAILAI_TEST_URL || 'http://127.0.0.1:18795/');
     await page.locator('#app-preloader').waitFor({state:'detached'});
     await page.evaluate(() => setI18nLanguage('zh-CN'));
     await page.evaluate(async () => { document.documentElement.dataset.theme = 'dark'; await openContactCenter(); });
@@ -136,6 +136,7 @@ async function contrast(locator, minimum = 4.5) {
     await attachmentEntries.first().hover();
     await page.locator('#attachment-center .attachment-center-card').screenshot({path:'/tmp/mailai-dark-attachments-after.png'});
     await page.evaluate(async () => { closeAttachmentCenter(); await openTodoCenter(); });
+    await page.locator('#todo-options>summary').click();
     const calendar = page.locator('#todo-center .productivity-panel-entry');
     await contrast(calendar);
     await calendar.hover();
@@ -149,6 +150,7 @@ async function contrast(locator, minimum = 4.5) {
     assert(await calendar.evaluate(n => n.matches(':focus-visible') && getComputedStyle(n).outlineStyle === 'solid'));
     await contrast(calendar);
     await page.locator('#todo-center .todo-center-card').screenshot({path:'/tmp/mailai-dark-todos-after.png'});
+    await page.locator('#todo-options>summary').click();
     // Paging controls are only rendered after a list reaches its display limit.
     await page.evaluate(() => {
       const seed = {status:'open',title:'Synthetic contrast check',deadline:'',email_id:1,...todoCenterRows[0]};

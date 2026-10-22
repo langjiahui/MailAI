@@ -175,3 +175,89 @@ html[data-theme="dark"] body #contact-center .contact-star:is(.active,:hover) { 
     max-height:calc((100dvh - 16px) / var(--fz,1))!important;
   }
 }
+
+/* The update sheet is one continuous surface. Its sticky actions use a soft
+   fade only when content passes underneath, instead of a second footer panel. */
+html[data-theme][data-theme] body #update-dialog {
+  --update-warning-ink:#80561f;
+  color:var(--desk-ink)!important;
+  background:var(--desk-surface)!important;
+}
+html[data-theme="dark"][data-theme] body #update-dialog { --update-warning-ink:#ddbd8e; }
+html[data-theme][data-theme] body #update-dialog header {
+  align-items:flex-start; background:transparent!important;
+}
+html[data-theme][data-theme] body #update-dialog header h3 {
+  color:var(--desk-ink)!important; font-size:20px; line-height:1.4;
+}
+html[data-theme][data-theme] body #update-dialog header small,
+html[data-theme][data-theme] body #update-dialog #update-dialog-device {
+  color:var(--desk-muted)!important; font-size:12px; line-height:1.65;
+}
+html[data-theme][data-theme] body #update-dialog header>button {
+  display:grid; place-items:center; flex:none; width:30px; height:30px;
+  padding:0; border:0!important; border-radius:8px;
+  background:transparent!important; color:var(--desk-muted)!important;
+}
+html[data-theme][data-theme] body #update-dialog header>button:hover { background:var(--desk-hover)!important; }
+html[data-theme][data-theme] body #update-dialog .update-dialog-release { margin:18px 0; }
+html[data-theme][data-theme] body #update-dialog .update-dialog-release>small {
+  color:var(--desk-muted)!important; font-size:11px; font-weight:600;
+}
+html[data-theme][data-theme] body #update-dialog .update-dialog-notes {
+  max-height:min(180px,calc(26dvh / var(--fz,1)));
+  padding:0 4px 0 0; border:0!important; border-radius:0;
+  background:transparent!important; color:var(--desk-ink)!important;
+  font-size:12px; line-height:1.85; overflow-wrap:anywhere;
+}
+html[data-theme][data-theme] body #update-dialog .update-download-progress {
+  gap:8px; margin:16px 0; padding:12px 14px;
+  border:0!important; border-radius:12px; box-shadow:none!important;
+  background:var(--desk-muted-surface)!important; color:var(--desk-ink)!important;
+}
+html[data-theme][data-theme] body #update-dialog .update-download-progress strong { color:var(--desk-ink)!important; }
+html[data-theme][data-theme] body #update-dialog .update-download-progress span {
+  color:var(--desk-ink)!important; font-weight:600;
+}
+html[data-theme][data-theme] body #update-dialog .update-download-progress>small { color:var(--desk-muted)!important; }
+html[data-theme][data-theme] body #update-dialog .update-progress-track {
+  height:5px; background:color-mix(in srgb,var(--desk-ink) 10%,transparent)!important;
+}
+html[data-theme][data-theme] body #update-dialog .update-progress-track b {
+  background:var(--desk-accent)!important; box-shadow:none!important;
+}
+html[data-theme][data-theme] body #update-dialog .update-dialog-warning {
+  margin:12px 0 0; padding:9px 11px; border:0!important; border-radius:9px;
+  color:var(--update-warning-ink)!important;
+  background:color-mix(in srgb,var(--update-warning-ink) 7%,var(--desk-surface))!important;
+  font-size:11px; line-height:1.65; overflow-wrap:anywhere;
+}
+html[data-theme][data-theme] body #update-dialog .update-dialog-warning:empty { display:none; }
+html[data-theme][data-theme] body #update-dialog .update-dialog-next-step {
+  margin:10px 0 0; color:var(--desk-muted)!important; font-size:11px; line-height:1.7;
+}
+html[data-theme][data-theme] body #update-dialog footer {
+  position:sticky; bottom:0; z-index:1; gap:8px; margin-top:18px; padding:0;
+  border:0!important; background:var(--desk-surface)!important; box-shadow:none!important;
+}
+html[data-theme][data-theme] body #update-dialog footer::before {
+  content:""; position:absolute; inset:-16px 0 auto; height:16px; pointer-events:none;
+  background:linear-gradient(to bottom,transparent,var(--desk-surface));
+}
+html[data-theme][data-theme] body #update-dialog footer>button {
+  min-height:38px; padding:9px 16px; border:0!important; border-radius:9px;
+  box-shadow:none!important; font:inherit; font-size:12px; font-weight:600; line-height:1.5;
+}
+html[data-theme][data-theme] body #update-dialog #btn-defer-update {
+  background:transparent!important; color:var(--desk-ink)!important;
+}
+html[data-theme][data-theme] body #update-dialog #btn-defer-update:hover { background:var(--desk-hover)!important; }
+html[data-theme][data-theme] body #update-dialog #btn-install-update:disabled {
+  --control-accent:var(--desk-muted-surface); --control-on-accent:var(--desk-muted);
+  opacity:1; cursor:default;
+}
+@media(max-width:480px) {
+  html[data-theme][data-theme] body #update-dialog footer>button {
+    flex:1 1 0; min-width:0; padding-inline:10px; white-space:normal;
+  }
+}

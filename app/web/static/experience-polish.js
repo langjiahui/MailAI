@@ -41,20 +41,28 @@
     }
   };
   window.mailaiTodoTab=next=>{
+    const changed=next!==view&&!todo.classList.contains('hidden');
     view=next;const reminders=next==='reminders';
     todo.dataset.todoView=next;
     list.classList.toggle('hidden',reminders);todo.querySelector('.todo-center-tools').classList.toggle('hidden',reminders);
     tabs.querySelectorAll('[data-todo-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.todoView===next)));
     noticeButton.setAttribute('aria-pressed',String(reminders));
-    if(!reminders)renderTodoCenter();
+    if(!reminders){renderTodoCenter();if(changed)window.mailaiMotion?.reveal(list);}
   };
   tabs.addEventListener('click',e=>{const b=e.target.closest('button[data-todo-view]');if(!b)return;document.getElementById('task-notices').close();window.mailaiTodoTab(b.dataset.todoView)});
   const tools=todo.querySelector('.todo-center-tools');
   const batch=document.createElement('button');batch.type='button';batch.id='todo-batch-toggle';mailaiBindUI(batch, "textContent", () => (mailaiText('批量管理')));batch.setAttribute('aria-pressed','false');tools.append(batch);
   batch.onclick=()=>{
     const enabled=todo.dataset.batch!=='true';todo.dataset.batch=String(enabled);batch.setAttribute('aria-pressed',String(enabled));mailaiBindUI(batch, "textContent", () => (enabled?mailaiText('退出批量'):mailaiText('批量管理')));
-    if(!enabled){selectedTodoIds.clear();renderTodoCenter()}
+    if(!enabled)selectedTodoIds.clear();
+    renderTodoCenter();
   };
+  const options=document.getElementById('todo-options');
+  document.addEventListener('pointerdown',event=>{if(!options.contains(event.target))options.open=false;});
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&options.open){event.preventDefault();event.stopPropagation();options.open=false;options.querySelector('summary').focus();}
+  },true);
+  document.getElementById('todo-extra-actions').addEventListener('click',event=>{if(event.target.closest('button'))options.open=false;});
   mailaiBindUI(document.getElementById('todo-complete-all'), "textContent", () => (mailaiText('完成当前视图')));
   document.getElementById('todo-complete-all').removeAttribute('data-i18n');
 

@@ -88,7 +88,7 @@ html[data-theme] body #correspondence-drawer .correspondence-meta small {
   font-size:11px; color:var(--correspondence-muted)!important;
 }
 html[data-theme] body #correspondence-drawer .correspondence-meta time { flex:0 0 auto; font-size:10.5px; color:var(--correspondence-muted)!important; }
-html[data-theme] body #correspondence-drawer :is(.correspondence-heading-icon,.correspondence-direction,.correspondence-side em) {
+html[data-theme][data-theme] body #correspondence-drawer :is(.correspondence-heading-icon,.correspondence-empty>span,.correspondence-direction,.correspondence-side em) {
   color:var(--desk-accent)!important; background:var(--desk-selected)!important;
 }
 #correspondence-drawer .correspondence-direction { flex:0 0 auto; min-height:20px; padding:2px 6px; border-radius:5px; font-size:10px; }
@@ -105,7 +105,20 @@ html[data-theme] body #correspondence-drawer .correspondence-check input:focus-v
 html[data-theme] body #correspondence-drawer :is(.correspondence-loading b,.correspondence-empty h4,.correspondence-processing strong) { color:var(--desk-ink)!important; }
 html[data-theme] body #correspondence-drawer :is(.correspondence-loading,.correspondence-loading small,.correspondence-empty,.correspondence-processing small) { color:var(--desk-muted)!important; }
 html[data-theme] body #correspondence-drawer .correspondence-processing { inset:0; color:var(--desk-ink)!important; background:color-mix(in srgb,var(--desk-surface) 95%,transparent)!important; }
-#correspondence-drawer .correspondence-result { margin-top:14px; }
+html[data-theme][data-theme] body #correspondence-drawer :is(.correspondence-processing-spinner,.correspondence-loading>span) {
+  border-color:var(--desk-line)!important; border-top-color:var(--desk-accent)!important;
+}
+html[data-theme][data-theme] body #correspondence-drawer .correspondence-processing>i { background:var(--desk-line)!important; }
+html[data-theme][data-theme] body #correspondence-drawer .correspondence-processing>i>span {
+  background:linear-gradient(90deg,var(--desk-selected),var(--desk-accent))!important;
+}
+/* A result is supporting copy, not a filled primary action. */
+html[data-theme][data-theme] body #correspondence-drawer .correspondence-result {
+  margin-top:14px; padding:10px 13px; border:1px solid var(--desk-line)!important;
+  background:color-mix(in srgb,var(--desk-accent) 5%,var(--desk-surface))!important;
+  color:var(--desk-ink)!important; box-shadow:none!important;
+  text-align:left; max-width:360px; line-height:1.7;
+}
 @media(max-width:560px) {
   #correspondence-drawer .correspondence-header { padding:18px 14px; }
   #correspondence-drawer .correspondence-body { padding-inline:10px; }

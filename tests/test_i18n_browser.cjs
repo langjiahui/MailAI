@@ -87,6 +87,7 @@ const han=/[\u3400-\u9fff]/;
     await page.locator('#attachment-center .productivity-panel-entry').first().click();await audit('#productivity-dialog');
     await page.evaluate(()=>document.querySelector('#productivity-dialog').close());await page.locator('#btn-close-attachments').click();
     await page.evaluate(()=>openTodoCenter());
+    await page.locator('#todo-options>summary').click();
     await page.locator('#todo-center .productivity-panel-entry').first().click();await audit('#productivity-dialog');
     await page.evaluate(()=>document.querySelector('#productivity-dialog').close());
     await page.locator('#btn-task-notices').click();await page.locator('#notice-capability').filter({hasText:/\S/}).waitFor();await audit('#task-notices');
