@@ -3216,6 +3216,13 @@ html[data-theme="dark"] .diagnostic-item .diagnostic-action{background:#294d39;c
 }
 .app-preloader.leaving { visibility: hidden; pointer-events: none; }
 .app-preloader.leaving::before { opacity: 0; }
+/* Keep content measurable without painting it through the startup layer.
+   The empty state waits until the central brand has finished docking. */
+body:has(#app-preloader) .layout { opacity:0; }
+body:has(#app-preloader.leaving) .layout { opacity:1; transition:opacity .28s ease .24s; }
+body:has(#app-preloader) #reading-empty { opacity:0; visibility:hidden; pointer-events:none; }
+#reading-empty { transition:opacity .24s ease; }
+body:has(#app-preloader:not(.handoff-active)) #assistant-orb { opacity:0; pointer-events:none; }
 .preloader-workspace {
   position:absolute;
   inset:0;
@@ -3340,7 +3347,7 @@ body:has(#onboarding-overlay:not(.hidden)) .preloader-workspace { display:none; 
   opacity:0;
 }
 .app-preloader.completion-confirmed .preloader-status::before { animation:startup-confirm .6s ease-out both; }
-.app-preloader.completion-confirmed.leaving .preloader-status { animation:startup-confirm-status .65s ease both; }
+.app-preloader.completion-confirmed.leaving .preloader-status { animation:startup-confirm-status .24s ease both; }
 @keyframes startup-confirm { from { opacity:0; transform:scale(.8); } 35%,100% { opacity:1; transform:scale(1); } }
 @keyframes startup-confirm-status { 0%,55% { opacity:1; } 100% { opacity:0; } }
 @media(prefers-reduced-motion:reduce) {

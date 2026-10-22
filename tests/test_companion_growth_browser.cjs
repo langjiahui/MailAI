@@ -25,15 +25,48 @@ const {chromium} = require('playwright');
     const bought = await page.evaluate(()=>api('/api/companion/growth'));
     assert.equal(bought.stamps,before.stamps-80);
     assert.equal(bought.xp,before.xp);
+    assert.equal(await page.evaluate(()=>document.activeElement?.dataset.petItemAction),'scarf','Card redemption keeps keyboard focus on the newly owned outfit');
+    assert.match(await dialog.locator('.pet-shop-receipt:visible').textContent(),new RegExp(`80.*${bought.stamps}`),'Receipt shows the actual purchase cost and remaining balance');
     assert.equal(await dialog.locator('.pet-hero .growth-scarf').evaluate(n=>getComputedStyle(n).display),'block');
-    await dialog.locator('[data-pet-buy="sky"]').click();
+    // Try-on, purchase and free outfit changes all work in the fitting room.
+    await dialog.locator('[data-pet-preview="scarf"]').click();
+    const preview=dialog.locator('.pet-live-preview');
+    assert.match(await preview.locator('.pet-preview-purchase').textContent(),/已拥有|穿戴中/);
+    await preview.locator('[data-pet-preview-action="scarf"]').click();
+    await page.waitForFunction(()=>document.body.dataset.petAccessory==='none');
+    assert.equal((await page.evaluate(()=>api('/api/companion/growth'))).stamps,bought.stamps,'Removing an owned outfit is free');
+    assert.match(await preview.locator('.pet-shop-receipt').textContent(),/已取下.*不花费/);
+    await preview.locator('[data-pet-preview-action="scarf"]').click();
+    await page.waitForFunction(()=>document.body.dataset.petAccessory==='scarf');
+    assert.equal((await page.evaluate(()=>api('/api/companion/growth'))).stamps,bought.stamps,'Re-equipping an owned outfit is free');
+    await preview.locator('[data-pet-preview-select]').selectOption('sky');
+    await preview.locator('[data-pet-preview-action="sky"]').click();
     await page.waitForFunction(()=>document.body.dataset.petPalette === 'sky');
+    const skyBought=await page.evaluate(()=>api('/api/companion/growth'));
+    assert.match(await preview.locator('.pet-shop-receipt').textContent(),new RegExp(String(skyBought.stamps)));
+    await page.evaluate(()=>setI18nLanguage('en'));
+    assert.match(await preview.locator('.pet-shop-receipt').textContent(),/Redemption confirmed:/);
+    assert(!/[\u3400-\u9fff]/.test(await preview.textContent()));
+    await page.evaluate(()=>setI18nLanguage('zh-CN'));
+    await preview.locator('[data-pet-preview-select]').selectOption('scarf');
+    assert.equal(await dialog.locator('.pet-shop-receipt:visible').count(),1);
+    await preview.locator('[data-pet-preview-select]').selectOption('sky');
+    assert.equal(await dialog.locator('.pet-shop-receipt:visible').count(),1,'Selecting the receipt item does not duplicate the result');
+    await preview.locator('[data-pet-preview-close]').click();
+    assert.equal(await dialog.locator('.pet-shop-receipt:visible').count(),1,'Closing try-on keeps the result visible in the shop');
+    await dialog.locator('[data-pet-preview="sky"]').click();
+    await preview.locator('[data-pet-receipt-close]').click();
+    assert.equal(await dialog.locator('.pet-shop-receipt').count(),0);
     await dialog.locator('[data-pet-buy="berry"]').click();
     await page.waitForFunction(()=>document.body.dataset.petStage === '4');
     assert.match(await dialog.textContent(),/灵羽伙伴/);
     assert.match(await dialog.locator('.pet-milestone').textContent(),/新解锁/);
+    await dialog.locator('[data-pet-shop-filter="available"]').click();
     await dialog.locator('[data-pet-buy="sparkles"]').click();
     await page.waitForFunction(()=>document.body.dataset.petEffect === 'sparkles');
+    assert.equal(await dialog.locator('[data-pet-item="sparkles"]').count(),0,'Redeemed items leave the ready-to-redeem shelf');
+    assert.equal(await page.evaluate(()=>document.activeElement?.dataset.petShopFilter),'available','When the purchased card disappears, focus returns to its filter');
+    await dialog.locator('[data-pet-shop-filter="all"]').click();
     // Equipped effects rest between finite interactions; only a visible reaction
     // should start their clocks. Background launchers stay quiet behind a dialog.
     // Purchase completion replaces the hero section, while the journal body
@@ -58,6 +91,7 @@ const {chromium} = require('playwright');
     await dialog.locator('[data-pet-buy="peach"]').click();
     await page.waitForFunction(()=>document.querySelector('[data-pet-message]')?.classList.contains('is-error'));
     assert.equal(await page.evaluate(()=>document.body.dataset.petPalette),'sky');
+    assert.equal(await dialog.locator('.pet-shop-receipt').count(),0,'Failed purchase never leaves a success receipt');
     await page.unroute('**/api/companion/purchase');
     // Pause survives reload and suppresses counters.
     await dialog.locator('[data-pet-enabled]').click();

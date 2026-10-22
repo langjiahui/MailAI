@@ -23,15 +23,15 @@
     })();
   </script>
   <link rel="icon" type="image/svg+xml" href="/static/assets/mailai-mark.svg?v=glass-green-baowu-1" />
-  <link rel="stylesheet" href="/static/style.css?v=1b89fc47e145" />
-  <link rel="stylesheet" href="/static/workspace.css?v=87d4e83bb79b" />
+  <link rel="stylesheet" href="/static/style.css?v=3c07b8bf1303" />
+  <link rel="stylesheet" href="/static/workspace.css?v=bf318687c447" />
   <link rel="stylesheet" href="/static/companion.css?v=8cac175c3246" />
-  <link rel="stylesheet" href="/static/companion-growth.css?v=2dd91db1e0df" />
+  <link rel="stylesheet" href="/static/companion-growth.css?v=be64b08702fa" />
   <link rel="stylesheet" href="/static/theme.css?v=account-remove-20261010" />
   <link rel="stylesheet" href="/static/attachment-preview.css?v=native-open-20261015">
   <link rel="stylesheet" href="/static/onboarding.css?v=credential-layout-4">
   <link rel="stylesheet" href="/static/select-ui.css?v=theme-select-20261012">
-  <link rel="stylesheet" href="/static/reading-polish.css?v=c4e0a8b3c995">
+  <link rel="stylesheet" href="/static/reading-polish.css?v=4d27ba938a61">
   <link rel="stylesheet" href="/static/dialog-polish.css?v=compose-separators-20261013">
   <link rel="stylesheet" href="/static/glass-material.css?v=2">
   <link rel="stylesheet" href="/static/motion.css?v=3">
@@ -39,21 +39,21 @@
   <link rel="stylesheet" href="/static/settings-layout.css?v=3">
   <link rel="stylesheet" href="/static/remote-control.css?v=4">
   <link rel="stylesheet" href="/static/special-reading.css?v=1">
-  <link rel="stylesheet" href="/static/list-header-polish.css?v=10">
+  <link rel="stylesheet" href="/static/list-header-polish.css?v=9862dfa708ed">
   <link rel="stylesheet" href="/static/interaction-recovery.css?v=keyboard-navigation-20261017">
   <link rel="stylesheet" href="/static/dashboard-polish.css?v=4">
   <link rel="stylesheet" href="/static/digest-polish.css?v=1">
   <link rel="stylesheet" href="/static/experience-polish.css?v=more-menu-20261016">
   <link rel="stylesheet" href="/static/page-polish.css?v=i18n-20261010">
-  <link rel="stylesheet" href="/static/macos-window.css?v=613449c059ca">
+  <link rel="stylesheet" href="/static/macos-window.css?v=758439776e9b">
   <link rel="stylesheet" href="/static/windows-window.css?v=3">
-  <link rel="stylesheet" href="/static/assistant-polish.css?v=portrait-20261021">
+  <link rel="stylesheet" href="/static/assistant-polish.css?v=797f4b311f3c">
   <link rel="stylesheet" href="/static/assistant-search.css?v=preview-cards-20261017">
   <link rel="stylesheet" href="/static/list-controls-polish.css?v=5">
   <link rel="stylesheet" href="/static/tab-transitions.css?v=2">
   <link rel="stylesheet" href="/static/author.css?v=7">
   <link rel="stylesheet" href="/static/input-scroll-polish.css?v=1">
-  <link rel="stylesheet" href="/static/selection-glass.css?v=2fb44c960f9a">
+  <link rel="stylesheet" href="/static/selection-glass.css?v=422d4875e8b0">
   <link rel="stylesheet" href="/static/contact-directory.css?v=filter-motion-20261013">
   <link rel="stylesheet" href="/static/contact-filters.css?v=2">
   <link rel="stylesheet" href="/static/productivity.css?v=theme-badge-20261016">
@@ -64,17 +64,17 @@
   <link rel="stylesheet" href="/static/maintenance-layout.css?v=palette-surfaces-5">
   <link rel="stylesheet" href="/static/model-service.css?v=2">
   <link rel="stylesheet" href="/static/help-center.css?v=2">
-  <link rel="stylesheet" href="/static/reward-themes.css?v=natural-surfaces-20261013">
-  <link rel="stylesheet" href="/static/control-theme.css?v=security-menu-20261014">
+  <link rel="stylesheet" href="/static/reward-themes.css?v=4db3b59d0ef7">
+  <link rel="stylesheet" href="/static/control-theme.css?v=8a7245334150">
   <link rel="stylesheet" href="/static/date-time-picker.css?v=boundaries-20261013">
-  <link rel="stylesheet" href="/static/reward-theme-details.css?v=more-menu-20261016">
+  <link rel="stylesheet" href="/static/reward-theme-details.css?v=5e91a41d919a">
   <link rel="stylesheet" href="/static/companion-colors.css?v=theme-materials-20261021">
   <link rel="stylesheet" href="/static/brand.css?v=glass-green-baowu-1">
   <link rel="stylesheet" href="/static/settings-polish.css?v=7">
   <link rel="stylesheet" href="/static/home-dialog-polish.css?v=1">
   <link rel="stylesheet" href="/static/command-palette.css?v=2">
-  <link rel="stylesheet" href="/static/assistant-divider.css?v=1">
-  <link rel="stylesheet" href="/static/mail-list-view.css?v=4">
+  <link rel="stylesheet" href="/static/assistant-divider.css?v=1a5111637e30">
+  <link rel="stylesheet" href="/static/mail-list-view.css?v=d76036e8e3fc">
 </head>
 <body>
   <div id="app-preloader" class="app-preloader" role="status" aria-live="polite">
@@ -787,8 +787,22 @@
       <!-- 右侧阅读区 -->
       <div class="reading-pane" id="reading-pane" tabindex="-1" aria-label="邮件阅读区" data-i18n-aria="ui.41f7255629f7">
         <div class="reading-empty" id="reading-empty">
-          <div class="empty-icon" aria-hidden="true"><svg viewBox="0 0 72 72"><rect x="12" y="18" width="48" height="36" rx="10"/><path d="m17 25 19 14 19-14"/><path d="m17 49 13-12M55 49 42 37"/></svg></div>
-          <div class="empty-text"><strong data-i18n="read.emptyTitle">选择一封邮件开始阅读</strong><small data-i18n="read.emptyHint">摘要、安全结果与正文会在这里显示</small></div>
+          <div class="reading-start">
+            <svg class="reading-start-art" viewBox="0 0 240 174" aria-hidden="true" focusable="false">
+              <ellipse class="reading-art-ground" cx="120" cy="154" rx="86" ry="8"/>
+              <g transform="rotate(-12 93 85)"><rect class="reading-art-back" x="47" y="33" width="89" height="109" rx="9"/><path class="reading-art-rule" d="M64 56h42M64 69h54M64 82h36"/></g>
+              <g transform="rotate(8 143 79)"><rect class="reading-art-paper" x="99" y="22" width="87" height="112" rx="9"/><rect class="reading-art-stamp" x="114" y="38" width="20" height="20" rx="5"/><path class="reading-art-rule" d="M145 43h23M145 52h16M115 74h53M115 85h42"/></g>
+              <rect class="reading-art-envelope" x="65" y="91" width="111" height="63" rx="9"/>
+              <path class="reading-art-fold" d="m70 98 45 31a10 10 0 0 0 11 0l45-31M70 148l32-28m69 28-32-28"/>
+              <path class="reading-art-spark" d="M198 58v14m-7-7h14M41 98v8m-4-4h8"/>
+              <circle class="reading-art-dot" cx="69" cy="20" r="3"/><circle class="reading-art-dot" cx="195" cy="131" r="3"/>
+            </svg>
+            <div class="reading-start-copy"><h2 data-i18n="read.startTitle">从一封邮件开始</h2><p data-i18n="read.startHint">阅读正文、查看附件，也可以让小邮帮你梳理重点。</p></div>
+            <div class="reading-start-actions">
+              <button type="button" id="reading-start-first" disabled><span data-i18n="read.startFirst">阅读第一封</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12m-5-5 5 5-5 5"/></svg></button>
+              <button type="button" id="reading-start-assistant"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 3 2 5 5 2-5 2-2 5-2-5-5-2 5-2Z"/></svg><span data-i18n="read.startAssistant">问问小邮</span></button>
+            </div>
+          </div>
         </div>
         <div class="reading-content hidden" id="reading-content">
           <!-- 动态渲染 -->
@@ -1229,7 +1243,7 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=9640b46f3d18"></script>
+  <script src="/static/bundle.js?v=c3d622a4dc03"></script>
   <script src="/static/settings-scroll.js?v=5"></script>
   <script type="module" src="/static/author-logo.js?v=5"></script>
 </body>

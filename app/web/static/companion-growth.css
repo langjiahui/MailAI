@@ -686,3 +686,176 @@ body[data-pet-style="ranger"] { --pet-cloth:#ACC0DD; --pet-cloth-edge:#819BBD; }
 .pet-item-art[data-item-preview="aurora"]:not(.pet-live-art) .pet-aurora-ripple:nth-of-type(2) { --pet-delay:-3.1s; }
 .pet-item-art[data-item-preview="aurora"]:not(.pet-live-art) .pet-aurora-ripple:nth-of-type(3) { --pet-delay:-4.5s; }
 body[data-pet-style="ranger"] .growth-stars { fill:#7CB8D9; color:#7CB8D9; }
+
+/* Dressing keeps the current look, balance and next action together. */
+.pet-journal[data-pet-view="shop"] .pet-life,
+.pet-journal[data-pet-view="shop"] .pet-stats,
+.pet-journal[data-pet-view="shop"] .pet-client-note>small { display:none; }
+.pet-journal[data-pet-view="shop"] .pet-client-note { margin-bottom:10px; }
+.pet-journal[data-pet-view="shop"] .pet-hero { gap:14px; padding:12px 16px; }
+.pet-journal[data-pet-view="shop"] .pet-hero-portrait { width:76px; height:76px; }
+.pet-journal[data-pet-view="shop"] .pet-hero h3 { font-size:19px; margin:4px 0 7px; }
+.pet-journal[data-pet-view="shop"] .pet-hero p,
+.pet-journal[data-pet-view="shop"] .pet-style-choice em { display:none; }
+.pet-journal[data-pet-view="shop"] .pet-style-choice { margin:12px 0; gap:6px; }
+.pet-journal[data-pet-view="shop"] .pet-style-choice button { padding:7px 10px; }
+.pet-journal[data-pet-view="shop"] .pet-tab-content { padding-top:20px; }
+.pet-wardrobe-overview { padding:20px; border:1px solid var(--pet-line); border-radius:16px; background:var(--pet-tint); }
+.pet-wardrobe-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+.pet-wardrobe-heading>div:first-child { min-width:0; }
+.pet-wardrobe-heading small { color:var(--pet-muted); font-size:10px; letter-spacing:1.2px; }
+.pet-wardrobe-heading h3 { margin:7px 0; font-size:21px; letter-spacing:-.4px; }
+.pet-wardrobe-heading p { margin:0; font-size:12px; line-height:1.7; color:var(--pet-muted); }
+.pet-shop-wallet { flex:none; text-align:right; display:grid; gap:3px; }
+.pet-shop-wallet b { font-size:28px; font-weight:700; font-variant-numeric:tabular-nums; line-height:1.15; color:var(--pet-accent); }
+.pet-shop-wallet>span { font-size:11px; color:var(--pet-muted); }
+.pet-wearing-slots { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); margin-top:18px; padding-top:16px; border-top:1px solid var(--pet-line); gap:14px; }
+.pet-wearing-slots>div { min-width:0; display:grid; gap:7px; }
+.pet-wearing-slots small { color:var(--pet-muted); font-size:10px; }
+.pet-wearing-slots strong { font-size:12px; font-weight:600; overflow-wrap:anywhere; }
+.pet-wardrobe-meta { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-top:16px; }
+.pet-wardrobe-meta>span { font-size:10px; color:var(--pet-muted); }
+.pet-wardrobe-meta .pet-reset-outfit { margin:0; gap:5px; }
+.pet-wardrobe-meta .pet-reset-outfit button { font-size:10px; padding:5px 7px; background:var(--pet-paper); }
+.pet-shop-toolbar { margin-top:24px; }
+.pet-shop-toolbar .pet-section-title { margin-bottom:12px; }
+.pet-shop-filters { gap:6px; }
+.pet-shop-filters button { display:inline-flex; align-items:center; gap:6px; padding:8px 10px; }
+.pet-shop-filters button>span { font-size:10px; font-variant-numeric:tabular-nums; opacity:.7; }
+.pet-item-title { display:flex; align-items:flex-start; flex-wrap:wrap; gap:7px; }
+.pet-item-title>b { margin-right:auto; }
+.pet-item-status { flex:none; max-width:100%; padding:3px 6px; border-radius:5px; font-size:9px; line-height:1.4; background:var(--pet-tint); color:var(--pet-muted); }
+.pet-status-equipped,.pet-status-available { color:var(--pet-accent); }
+.pet-status-equipped { border:1px solid var(--pet-line); font-weight:600; }
+.pet-item-price { display:flex; flex-direction:column; gap:5px; padding-top:11px; margin-top:11px; border-top:1px solid var(--pet-line); }
+.pet-item-price>strong { font-size:12px; font-weight:600; }
+.pet-shop-item .pet-item-price>small { font-size:10px; line-height:1.6; }
+.pet-shop-item .pet-item-copy p { min-height:38px; }
+.pet-shop-item>.pet-preview-icon { z-index:2; }
+.pet-shop-item[data-item-state="available"]>button[data-pet-buy] { background:var(--pet-accent); color:var(--pet-paper); border-color:var(--pet-accent); }
+.pet-shop-item[data-item-state="equipped"] { box-shadow:inset 0 0 0 1px var(--pet-accent); }
+.pet-shop-item>button:disabled { opacity:1; color:var(--pet-muted); background:var(--pet-tint); border-style:dashed; }
+.pet-shop-item>.pet-preview-icon:disabled { border-style:solid; }
+.pet-preview-purchase { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; border-top:1px solid var(--pet-line); margin-top:15px; padding-top:15px; }
+.pet-preview-purchase>div { display:grid; gap:5px; flex:1; min-width:130px; }
+.pet-preview-purchase span { color:var(--pet-ink); font-size:12px; font-weight:600; }
+.pet-preview-purchase small { color:var(--pet-muted); font-size:11px; line-height:1.6; }
+.pet-preview-purchase button { border:1px solid var(--pet-accent); border-radius:9px; padding:10px 14px; background:var(--pet-accent); color:var(--pet-paper); font-size:12px; }
+.pet-preview-purchase button:disabled { opacity:1; border-color:var(--pet-line); background:var(--pet-tint); color:var(--pet-muted); }
+.pet-collection-discovery { margin-top:24px; padding:15px; border:1px solid var(--pet-line); border-radius:14px; }
+.pet-collection-discovery>summary { display:flex; justify-content:space-between; align-items:center; gap:12px; cursor:pointer; list-style:none; }
+.pet-collection-discovery>summary::-webkit-details-marker { display:none; }
+.pet-collection-discovery>summary>span:first-child { display:grid; gap:5px; }
+.pet-collection-discovery>summary b { font-size:12px; }
+.pet-collection-discovery>summary small { font-size:11px; line-height:1.6; color:var(--pet-muted); }
+.pet-collection-discovery[open]>.pet-collections { margin-top:18px; }
+.pet-collection-discovery .pet-next-reward { margin:0; }
+.pet-shop-empty { padding:30px 20px; text-align:center; border:1px dashed var(--pet-line); border-radius:14px; }
+.pet-shop-empty b { font-size:13px; }
+.pet-shop-empty p { color:var(--pet-muted); font-size:12px; line-height:1.7; }
+.pet-shop-empty button { border:1px solid var(--pet-line); border-radius:8px; background:var(--pet-tint); color:var(--pet-accent); padding:8px 12px; font-size:12px; }
+@media(max-width:600px) {
+ .pet-wardrobe-overview { padding:15px; }
+ .pet-wardrobe-heading h3 { font-size:18px; }
+ .pet-shop-wallet b { font-size:24px; }
+ .pet-wearing-slots { gap:8px; }
+ .pet-wearing-slots strong { font-size:11px; }
+ .pet-item-title { flex-direction:column; gap:5px; }
+ .pet-item-status { font-size:9px; }
+ .pet-shop-item { padding:0 10px 10px; }
+ .pet-shop-item .pet-item-art { margin-left:-10px; margin-right:-10px; }
+ .pet-shop-item .pet-item-price>small { min-height:32px; }
+ .pet-collection-discovery { padding:12px; }
+ .pet-preview-purchase button { width:100%; }
+}
+
+/* Fitting room resolves one item per slot; shelf cards stay isolated. */
+.pet-live-art.pet-item-art[data-fitting-accessory] :is(.growth-scarf,.growth-cap,.growth-wings,.growth-jacket,.growth-armor,.growth-visor,.growth-mech-wings,.growth-satchel-details),
+.pet-live-art.pet-item-art[data-fitting-effect] :is(.growth-stars,.growth-orbit,.growth-aura,.growth-lightning) { display:none!important; }
+.pet-live-art.pet-item-art[data-fitting-accessory="scarf"] .growth-scarf { display:block!important; }
+.pet-live-art.pet-item-art[data-fitting-accessory="cap"] .growth-cap { display:block!important; }
+.pet-live-art.pet-item-art[data-fitting-accessory="wings"] .growth-wings { display:block!important; }
+.pet-live-art.pet-item-art[data-fitting-accessory="jacket"] .growth-jacket { display:block!important; }
+.pet-live-art.pet-item-art[data-fitting-accessory="armor"] .growth-armor { display:block!important; }
+.pet-live-art.pet-item-art[data-fitting-accessory="visor"] .growth-visor { display:block!important; }
+.pet-live-art.pet-item-art[data-fitting-accessory="mech_wings"] .growth-mech-wings { display:block!important; }
+.pet-live-art.pet-item-art[data-fitting-accessory="satchel"] .growth-satchel-details { display:block!important; }
+.pet-live-art.pet-item-art[data-fitting-effect="sparkles"] .growth-stars { display:block!important; }
+.pet-live-art.pet-item-art[data-fitting-effect="orbit"] .growth-orbit { display:block!important; }
+.pet-live-art.pet-item-art[data-fitting-effect="aurora"] .growth-aura { display:block!important; }
+.pet-live-art.pet-item-art[data-fitting-effect="lightning"] .growth-lightning { display:block!important; }
+.pet-live-art.pet-item-art[data-fitting-accessory] .companion-leaves { visibility:visible!important; }
+.pet-live-art.pet-item-art[data-fitting-accessory="cap"] .companion-leaves { visibility:hidden!important; }
+.pet-live-art.pet-item-art[data-fitting-accessory] :is(.evolution-peng-wing,.evolution-wing-grown) { visibility:visible!important; }
+.pet-live-art.pet-item-art:is([data-fitting-accessory="wings"],[data-fitting-accessory="mech_wings"]) :is(.evolution-peng-wing,.evolution-wing-grown) { visibility:hidden!important; }
+.pet-live-art.pet-item-art[data-fitting-accessory] .companion-bag rect { fill:url(#pet-letter); stroke:#E4D7B7; stroke-width:.35; }
+.pet-live-art.pet-item-art[data-fitting-accessory="satchel"] .companion-bag rect { fill:url(#pet-satchel); stroke:#C3A577; stroke-width:.55; }
+.pet-live-art.pet-item-art[data-fitting-palette] .mail-companion { --pet-body:var(--pet-auto-body); --pet-outline:var(--pet-edge); --pet-cloth:var(--pet-fabric); --pet-cloth-edge:var(--pet-fabric-edge); }
+body[data-pet-style="ranger"] .pet-live-art[data-fitting-palette=""] .mail-companion { --pet-body:var(--pet-auto-fish); }
+body .pet-live-art.pet-item-art[data-fitting-palette="sky"] .mail-companion { --pet-body:var(--pet-sky); --pet-outline:var(--pet-sky-edge); --pet-cloth:color-mix(in srgb,var(--pet-body) 55%,var(--pet-fabric)); --pet-cloth-edge:color-mix(in srgb,var(--pet-outline) 65%,var(--pet-fabric-edge)); }
+body .pet-live-art.pet-item-art[data-fitting-palette="peach"] .mail-companion { --pet-body:var(--pet-peach); --pet-outline:var(--pet-peach-edge); --pet-cloth:color-mix(in srgb,var(--pet-body) 55%,var(--pet-fabric)); --pet-cloth-edge:color-mix(in srgb,var(--pet-outline) 65%,var(--pet-fabric-edge)); }
+body .pet-live-art.pet-item-art[data-fitting-palette="midnight"] .mail-companion { --pet-body:var(--pet-night); --pet-outline:var(--pet-night-edge); --pet-cloth:color-mix(in srgb,var(--pet-body) 55%,var(--pet-fabric)); --pet-cloth-edge:color-mix(in srgb,var(--pet-outline) 65%,var(--pet-fabric-edge)); }
+@media(prefers-reduced-motion:no-preference) {
+ body:not(.companion-still) .pet-live-art[data-fitting-accessory="scarf"] .growth-scarf .pet-reward-motion { animation-name:var(--pet-clip); }
+ body:not(.companion-still) .pet-live-art[data-fitting-accessory="cap"] .growth-cap .pet-reward-motion { animation-name:var(--pet-clip); }
+ body:not(.companion-still) .pet-live-art[data-fitting-accessory="wings"] .growth-wings .pet-reward-motion { animation-name:var(--pet-clip); }
+ body:not(.companion-still) .pet-live-art[data-fitting-accessory="jacket"] .growth-jacket .pet-reward-motion { animation-name:var(--pet-clip); }
+ body:not(.companion-still) .pet-live-art[data-fitting-accessory="armor"] .growth-armor .pet-reward-motion { animation-name:var(--pet-clip); }
+ body:not(.companion-still) .pet-live-art[data-fitting-accessory="visor"] .growth-visor .pet-reward-motion { animation-name:var(--pet-clip); }
+ body:not(.companion-still) .pet-live-art[data-fitting-accessory="mech_wings"] .growth-mech-wings .pet-reward-motion { animation-name:var(--pet-clip); }
+ body:not(.companion-still) .pet-live-art[data-fitting-accessory="satchel"] .companion-bag .pet-reward-motion { animation-name:var(--pet-clip); }
+ body:not(.companion-still) .pet-live-art[data-fitting-effect="sparkles"] .growth-stars .pet-reward-motion { animation-name:var(--pet-clip); }
+ body:not(.companion-still) .pet-live-art[data-fitting-effect="orbit"] .growth-orbit .pet-reward-motion { animation-name:var(--pet-clip); }
+ body:not(.companion-still) .pet-live-art[data-fitting-effect="aurora"] .growth-aura .pet-reward-motion { animation-name:var(--pet-clip); }
+ body:not(.companion-still) .pet-live-art[data-fitting-effect="lightning"] .growth-lightning .pet-reward-motion { animation-name:var(--pet-clip); }
+}
+.pet-fitting-mode { display:flex; gap:4px; padding:4px; margin-top:14px; border:1px solid var(--pet-line); border-radius:10px; background:var(--pet-tint); }
+.pet-fitting-mode button { flex:1; min-width:0; padding:8px 10px; border:0; border-radius:7px; font-size:11px; color:var(--pet-muted); background:transparent; }
+.pet-fitting-mode button[aria-pressed="true"] { background:var(--pet-paper); color:var(--pet-accent); box-shadow:0 1px 5px #152f2310; font-weight:650; }
+.pet-preview-copy .pet-fitting-context { margin:8px 0 14px; font-size:10px; line-height:1.6; color:var(--pet-muted); }
+.pet-fitting-requirements { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin-top:14px; }
+.pet-fitting-requirements>div { display:grid; align-content:start; gap:7px; padding:12px; background:var(--pet-tint); border:1px solid var(--pet-line); border-radius:11px; overflow-wrap:anywhere; }
+.pet-fitting-requirements small,.pet-fitting-requirements span { font-size:10px; color:var(--pet-muted); line-height:1.5; }
+.pet-fitting-requirements b { font-size:12px; font-weight:600; }
+.pet-fitting-requirements [data-ready="true"] b { color:var(--pet-accent); }
+.pet-shop-receipt { display:flex; align-items:start; gap:10px; margin-top:14px; padding:12px; border:1px solid var(--pet-line); border-radius:11px; background:var(--pet-tint); color:var(--pet-ink); }
+.pet-shop-receipt>span { color:var(--pet-accent); font-weight:700; }
+.pet-shop-receipt p { flex:1; margin:0; font-size:11px; line-height:1.7; overflow-wrap:anywhere; }
+.pet-shop-receipt button { flex:none; border:0; background:transparent; color:var(--pet-muted); border-radius:5px; padding:0 4px; font-size:17px; }
+@media(max-width:600px) {
+ .pet-fitting-mode button { padding:8px 5px; }
+ .pet-fitting-requirements>div { padding:10px; }
+}
+
+@media(min-width:800px) {
+ .pet-live-preview:not([hidden]) { display:grid; grid-template-columns:minmax(0,.72fr) minmax(0,1fr); align-items:stretch; }
+ .pet-live-preview .pet-live-art { height:100%; min-height:360px; border-right:1px solid var(--pet-line); }
+ .pet-live-preview .pet-preview-copy { min-width:0; }
+ .pet-live-preview .pet-live-art .pet-portrait { width:190px; height:190px; }
+ .pet-live-preview .pet-fitting-stage { bottom:22px; }
+}
+/* Make the reward artwork the try-on target, leaving redemption a separate action. */
+.pet-shop-item .pet-tryon-hit { position:absolute; inset:0; display:flex; align-items:flex-end; justify-content:flex-end; width:100%; height:100%; margin:0; padding:10px; border:0; border-radius:0; color:var(--pet-accent); background:transparent; }
+.pet-tryon-hit>span { border:1px solid var(--pet-line); border-radius:20px; padding:5px 10px; background:var(--pet-paper); font-size:10px; line-height:1.4; }
+.pet-shop-item .pet-tryon-hit:hover>span { border-color:var(--pet-accent); }
+.pet-shop-item .pet-tryon-hit:focus-visible { outline-offset:-4px; }
+.pet-fitting-extras { margin-top:12px; border-top:1px solid var(--pet-line); }
+.pet-fitting-extras>summary { padding:12px 0; cursor:pointer; font-size:11px; color:var(--pet-muted); }
+.pet-fitting-extras .pet-fitting-controls { margin:0; padding:0 0 9px; border:0; }
+.pet-fitting-stage-notice { display:flex; align-items:center; flex-wrap:wrap; gap:7px; margin-top:7px; }
+.pet-fitting-stage-notice span { font-size:10px; color:var(--pet-muted); line-height:1.6; }
+.pet-fitting-stage-notice button { border:1px solid var(--pet-line); padding:7px 10px; border-radius:8px; font-size:10px; color:var(--pet-accent); background:var(--pet-tint); }
+.pet-preview-copy .pet-earn-link { display:block; width:100%; margin-top:9px; padding:10px 5px; border:0; border-radius:8px; background:transparent; color:var(--pet-accent); font-size:11px; line-height:1.6; text-align:center; }
+.pet-earn-link:hover { text-decoration:underline; }
+.pet-earn-return { display:flex; align-items:center; flex-wrap:wrap; gap:12px; padding:14px; margin-bottom:20px; border:1px solid var(--pet-line); border-radius:12px; background:var(--pet-tint); scroll-margin-top:65px; }
+.pet-earn-return>div { flex:1; min-width:170px; }
+.pet-earn-return b { font-size:12px; }
+.pet-earn-return p { margin:6px 0 0; color:var(--pet-muted); font-size:11px; line-height:1.7; }
+.pet-earn-return button { border:1px solid var(--pet-line); border-radius:9px; padding:9px 12px; color:var(--pet-accent); background:var(--pet-paper); font-size:11px; }
+
+@media(max-width:600px) {
+ .pet-live-preview .pet-live-art { height:178px; }
+ .pet-live-preview .pet-live-art .pet-portrait { width:164px; height:164px; }
+ .pet-live-preview .pet-fitting-stage { bottom:7px; font-size:10px; }
+ .pet-live-preview .pet-preview-copy { padding:12px; }
+}

@@ -1,12 +1,12 @@
 /* A moving selection surface; labels and icons stay crisp above the material. */
 html[data-theme="light"] {
-  --selection-glass-fill:linear-gradient(115deg,#e4efe8,#dceae2);
+  --selection-glass-fill:linear-gradient(115deg,#e2f0e7,#d9ecdf);
   --selection-glass-edge:rgba(255,255,255,.4);
   --selection-glass-rim:rgba(55,126,91,.22);
   --selection-glass-shadow:rgba(42,95,69,.13);
 }
 html[data-theme="dark"] {
-  --selection-glass-fill:linear-gradient(115deg,#2b4235,#243a2f);
+  --selection-glass-fill:linear-gradient(115deg,#304d3c,#2c4637);
   --selection-glass-edge:rgba(147,191,163,.2);
   --selection-glass-rim:rgba(125,197,149,.33);
   --selection-glass-shadow:rgba(0,0,0,.25);

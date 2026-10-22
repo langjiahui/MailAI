@@ -150,8 +150,8 @@ html[data-theme] body .list-workspace-tools {
 /* Keep the history controls as a quiet part of the list pane, without rules
    between the loaded count and each action. */
 html[data-theme] body .list-pane .list-footer {
-  min-height:44px;
-  padding:6px 12px;
+  min-height:32px;
+  padding:3px 12px;
   gap:7px;
   flex-wrap:nowrap;
   justify-content:space-between;
@@ -163,7 +163,7 @@ html[data-theme] body .list-footer .fetch-hint {
   display:inline-flex;
   flex:0 1 auto;
   align-items:center;
-  min-height:28px;
+  min-height:22px;
   padding:0 9px;
   border-radius:999px;
   color:var(--desk-accent)!important;
@@ -187,8 +187,8 @@ html[data-theme] body .list-footer .fetch-actions {
   gap:4px;
 }
 html[data-theme] body .list-footer .fetch-actions > button {
-  height:28px!important;
-  min-height:28px!important;
+  height:24px!important;
+  min-height:24px!important;
   margin:0;
   padding:0 7px!important;
   border:0!important;
@@ -263,3 +263,9 @@ html[data-theme] body .list-workspace-tools { display:flex; flex-wrap:wrap; alig
 .list-workspace-tools #filter-chips:empty { flex-basis:0; min-width:0; padding:0; }
 .list-workspace-tools #filter-chips:has(>button:nth-child(3)) { flex-basis:100%; order:3; }
 .list-workspace-tools #btn-task-center { flex:0 1 auto; min-width:0; max-width:100%; margin-left:auto; white-space:normal; text-align:left; }
+
+/* Keep touch controls usable while the desktop status strip stays compact. */
+@media(pointer:coarse) {
+ html[data-theme] body .list-pane .list-footer { min-height:44px; }
+ html[data-theme] body .list-footer .fetch-actions>button { height:36px!important; min-height:36px!important; }
+}

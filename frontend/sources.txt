@@ -9,6 +9,7 @@ attachment-preview.js
 interaction-core.js
 energy-ui.js
 app.js
+reading-start.js
 conversation-progress.js
 mail-library.js
 server-cleanup.js

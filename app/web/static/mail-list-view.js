@@ -30,6 +30,25 @@ function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, o
   </div>`;
 }
 
+// Decorative, local-only identity marks; the same address keeps the same tone.
+function mailSenderAvatar(name, address) {
+  const identity=String(address || name || '').trim().toLowerCase();
+  let hash=0;
+  for (const char of identity) hash=(Math.imul(hash,31)+char.codePointAt(0))|0;
+  const initial=String(name || address || '').match(/[\p{L}\p{N}]/u)?.[0]?.toLocaleUpperCase() || '·';
+  return `<span class="mail-sender-avatar" data-avatar-tone="${(hash>>>0)%6}" aria-hidden="true">${esc(initial)}</span>`;
+}
+
+function mailCardDate(value, now = new Date()) {
+  const date=new Date(value || '');
+  if (!Number.isFinite(date.getTime())) return {text:'—',title:String(value || ''),iso:''};
+  const yesterday=new Date(now.getFullYear(),now.getMonth(),now.getDate()-1);
+  const recent=date.toDateString()===now.toDateString() || date.toDateString()===yesterday.toDateString();
+  const options=recent ? {hour:'2-digit',minute:'2-digit',hourCycle:'h23'} : {month:'short',day:'numeric',...(date.getFullYear()!==now.getFullYear()?{year:'numeric'}:{})};
+  const language=currentI18nLanguage();
+  return {text:new Intl.DateTimeFormat(language,options).format(date),title:new Intl.DateTimeFormat(language,{dateStyle:'full',timeStyle:'short'}).format(date),iso:date.toISOString()};
+}
+
 (() => {
   document.body.dataset.mailListView = localStorage.getItem('mailai-mail-list-view') === 'table' ? 'table' : 'cards';
   window.dispatchEvent(new Event('mailai:list-view-changed'));

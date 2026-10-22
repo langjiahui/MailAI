@@ -18,7 +18,7 @@
     const fixed=[...layout.children].filter(node=>node!==pane&&node.getClientRects().length);
     const reserved=fixed.reduce((sum,node)=>sum+node.getBoundingClientRect().width/zoom,0)
       +(parseFloat(style.columnGap)||0)*fixed.length+(parseFloat(style.paddingLeft)||0)+(parseFloat(style.paddingRight)||0);
-    limits.max=Math.max(240,Math.min(720,Math.floor(innerWidth/zoom-box.left/zoom-14-reserved-440)));
+    limits.max=Math.max(240,Math.min(720,Math.floor(innerWidth/zoom-box.left/zoom-reserved-440)));
     limits.min=Math.min(320,limits.max);
     effective=Math.round(Math.max(limits.min,Math.min(limits.max,preferred)));
     const readingTop=pane.scrollTop,messages=document.getElementById('assistant-messages');

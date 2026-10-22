@@ -32,6 +32,10 @@ const {chromium, webkit} = require('playwright');
     const preloader = page.locator('#app-preloader');
     const mascot = page.locator('.preloader-companion .mail-companion');
     assert(await preloader.isVisible(), 'preloader should be visible before initial data resolves');
+    assert.equal(await page.locator('.layout').evaluate(el=>getComputedStyle(el).opacity),'0',
+      'loaded rows must not show through the startup skeleton');
+    assert.equal(await page.locator('#reading-empty').evaluate(el=>getComputedStyle(el).visibility),'hidden',
+      'startup copy must not overlap the reading empty state');
     assert.equal(await mascot.count(), 1, 'startup should reuse the XiaoYou vector rig');
     assert.equal(await page.locator('.preloader-route-line path').count(), 1,
       'the mail route must be a single continuous curve');
@@ -150,6 +154,18 @@ const {chromium, webkit} = require('playwright');
 
     const before = await page.locator('.preloader-companion').boundingBox();
     const target = await page.locator('#assistant-orb .companion-art').boundingBox();
+    await page.evaluate(()=>{
+      window.startupPaintSamples=[];
+      const sample=()=>{
+        const loader=document.getElementById('app-preloader');if(!loader)return;
+        startupPaintSamples.push({
+          skeleton:Number(getComputedStyle(loader.querySelector('.preloader-workspace')).opacity),
+          workspace:Number(getComputedStyle(document.querySelector('.layout')).opacity),
+          empty:getComputedStyle(document.getElementById('reading-empty')).visibility,
+        });
+        requestAnimationFrame(sample);
+      };sample();
+    });
     await page.evaluate(() => hideAppPreloader());
     await page.waitForTimeout(150);
     assert(await preloader.evaluate(el => el.classList.contains('completion-confirmed')));
@@ -187,6 +203,12 @@ const {chromium, webkit} = require('playwright');
     });
     assert(brandOpacity > .95, 'the startup brand should cross-fade into the real topbar brand');
     await preloader.waitFor({state:'detached'});
+    const samples=await page.evaluate(()=>startupPaintSamples);
+    assert(samples.length>2,'handoff must be sampled across rendering frames');
+    assert(samples.every(s=>s.empty==='hidden'),'empty state waits for the startup mark to leave');
+    assert(samples.every(s=>s.skeleton<.05||s.workspace<.05),'skeleton rows and real rows must not paint over each other');
+    assert.equal(await page.locator('.layout').evaluate(el=>getComputedStyle(el).opacity),'1');
+    assert.equal(await page.locator('#reading-empty').evaluate(el=>getComputedStyle(el).visibility),'visible');
 
     // CSS zoom changes visual coordinates; verify the logo's actual pieces,
     // not just the opacity of its parent, before the cross-fade completes.

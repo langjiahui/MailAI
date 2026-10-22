@@ -211,6 +211,7 @@ class AssistantRequest(BaseModel):
     history: list[dict] = Field(default_factory=list)
     conversation_id: int | None = None
     email_ids: list[int] | None = None
+    open_email_id: int | None = Field(default=None, ge=1)
     scope_label: str = ''
     alert_context: bool = False
     search_mode: bool = False

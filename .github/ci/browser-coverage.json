@@ -532,5 +532,30 @@
     "env": {
       "MAILAI_BROWSER": "webkit"
     }
+  },
+  {
+    "file": "tests/test_assistant_flow_browser.cjs",
+    "env": {
+      "MAILAI_TEST_URL": "http://127.0.0.1:18797/"
+    }
+  },
+  {
+    "file": "tests/test_assistant_flow_browser.cjs",
+    "env": {
+      "MAILAI_TEST_URL": "http://127.0.0.1:18797/",
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_reading_start_browser.cjs",
+    "env": {
+      "MAILAI_TEST_URL": "http://127.0.0.1:18797/"
+    }
+  },
+  {
+    "file": "tests/test_docked_mail_list_resize_browser.cjs",
+    "env": {
+      "MAILAI_FIXTURE_URL": "http://127.0.0.1:18797/"
+    }
   }
 ]

@@ -157,13 +157,13 @@ html[data-theme][data-theme][data-theme] body #bulk-toolbar {
   --bulk-danger:#a83f36;
   position:relative; inset:auto; flex-shrink:0;
   height:auto;
-  min-height:48px;
-  padding:8px 12px;
+  min-height:0;
+  padding:6px 12px 10px;
   grid-template-columns:minmax(0,1fr) auto;
-  gap:6px 10px;
-  background:var(--desk-surface)!important;
+  gap:4px 10px;
+  background:var(--mail-list-surface,var(--desk-muted-surface))!important;
   color:var(--desk-ink)!important;
-  border-bottom:1px solid var(--desk-line)!important;
+  border:0!important;
   box-shadow:none!important;
 }
 html[data-theme][data-theme][data-theme] body #bulk-toolbar:not(.hidden) { display:grid; }
@@ -176,10 +176,10 @@ html[data-theme][data-theme][data-theme] body #bulk-toolbar #bulk-count {
   font-size:12px; font-weight:650;
 }
 html[data-theme][data-theme][data-theme] body #bulk-toolbar #bulk-count::before {
-  flex:0 0 20px; width:20px; height:20px;
-  background:var(--desk-selected)!important;
-  color:var(--desk-ink)!important;
-  border:1px solid var(--desk-line)!important;
+  flex:0 0 18px; width:18px; height:18px;
+  background:var(--desk-accent)!important;
+  color:var(--reward-on-accent,var(--desk-surface))!important;
+  border:0!important;
   box-shadow:none!important;
 }
 html[data-theme][data-theme][data-theme] body #bulk-toolbar .bulk-actions {
@@ -187,8 +187,8 @@ html[data-theme][data-theme][data-theme] body #bulk-toolbar .bulk-actions {
   gap:4px; min-width:0; align-items:center;
 }
 html[data-theme][data-theme][data-theme] body #bulk-toolbar button {
-  flex:0 0 32px; width:32px!important; min-width:32px!important;
-  height:32px!important; min-height:32px!important; padding:0;
+  flex:0 0 30px; width:30px!important; min-width:30px!important;
+  height:30px!important; min-height:30px!important; padding:0;
   border:1px solid transparent!important; border-radius:7px;
   background:transparent!important;
   color:var(--desk-ink)!important;
@@ -211,8 +211,8 @@ html[data-theme][data-theme][data-theme] body #bulk-toolbar button.bulk-trash:ho
 }
 html[data-theme][data-theme][data-theme] body #bulk-toolbar #bulk-folder {
   flex:1 1 100px; width:auto; min-width:80px; max-width:none;
-  height:32px; min-height:32px; margin:0 0 0 auto; padding:0 28px 0 10px;
-  border:1px solid var(--desk-line)!important; border-radius:7px;
+  height:30px; min-height:30px; margin:0 0 0 auto; padding:0 28px 0 10px;
+  border:0!important; border-radius:7px;
   background-color:var(--desk-muted-surface)!important;
   background-image:var(--select-arrow)!important;
   color:var(--desk-ink)!important; box-shadow:none!important;
@@ -225,7 +225,8 @@ html[data-theme][data-theme][data-theme] body #bulk-toolbar #bulk-folder:hover:n
 html[data-theme][data-theme][data-theme] body #bulk-toolbar #bulk-cancel {
   grid-column:2; grid-row:1;
   width:auto!important; min-width:44px!important; padding:0 9px;
-  border-color:var(--desk-line)!important;
+  border-color:transparent!important;
+  background:var(--desk-hover)!important;
   font-size:12px;
 }
 html[data-theme][data-theme][data-theme] body #bulk-toolbar :is(button,select):focus-visible {
@@ -260,7 +261,20 @@ html[data-theme][data-theme][data-theme] body #bulk-toolbar.busy::after { displa
 @media(prefers-reduced-motion:reduce) {
   html[data-theme][data-theme][data-theme] body #bulk-toolbar :is(button,select) { transition:none!important; }
 }
-/* The selection preview keeps its paper stack without accent-colored outlines. */
+@container mail-list-pane (min-width:340px) and (max-width:559px) {
+  html[data-theme][data-theme][data-theme] body #bulk-toolbar .bulk-actions [data-bulk-action="read"],
+  html[data-theme][data-theme][data-theme] body #bulk-toolbar .bulk-actions [data-bulk-action="unread"] { flex-basis:auto; width:auto!important; padding-inline:6px; gap:5px; }
+  html[data-theme][data-theme][data-theme] body #bulk-toolbar .bulk-actions :is([data-bulk-action="read"],[data-bulk-action="unread"]) span { display:inline; font-size:11px; }
+}
+@container mail-list-pane (max-width:280px) {
+  html[data-theme][data-theme][data-theme] body #bulk-toolbar .bulk-actions { flex-wrap:wrap; }
+  html[data-theme][data-theme][data-theme] body #bulk-toolbar #bulk-folder { flex-basis:100%; margin-left:0; }
+}
+@media(pointer:coarse) {
+  html[data-theme][data-theme][data-theme] body #bulk-toolbar button { height:40px!important; min-height:40px!important; }
+  html[data-theme][data-theme][data-theme] body #bulk-toolbar #bulk-folder { height:40px; min-height:40px; }
+}
+/* Selection is explicit; the preview retains its layered paper treatment. */
 html[data-theme][data-theme][data-theme] body #email-list .email-item.bulk-selected {
   background:var(--desk-selected)!important;
   border-color:var(--desk-line)!important;
@@ -269,7 +283,21 @@ html[data-theme][data-theme][data-theme] body #email-list .email-item.bulk-selec
 html[data-theme][data-theme][data-theme] body #email-list .email-item.bulk-selected:hover {
   background:color-mix(in srgb,var(--desk-selected) 95%,var(--desk-ink))!important;
 }
+html[data-theme][data-theme][data-theme] body #email-list .bulk-selected .mail-sender-avatar::after {
+  content:'\2713'; position:absolute; right:-2px; bottom:-2px; display:grid; place-items:center;
+  width:14px; height:14px; border:2px solid var(--desk-selected); border-radius:50%;
+  background:var(--desk-accent); color:var(--reward-on-accent,var(--desk-surface)); font-size:9px; line-height:1;
+}
 html[data-theme][data-theme][data-theme] body .reading-selection-stack { background:var(--desk-muted-surface)!important; }
+.reading-selection-stack .reading-selection-stack-heading { align-items:center; flex-wrap:wrap; gap:8px 16px; }
+html[data-theme] body .reading-selection-stack-heading strong,
+html[data-theme] body .reading-selection-stack-heading strong span { font-size:15px; font-weight:650; color:var(--desk-ink)!important; }
+html[data-theme] body .reading-selection-stack-heading>span,
+html[data-theme] body .reading-selection-stack-heading>span span,
+html[data-theme] body .reading-selection-stack-inner>p { color:var(--desk-muted)!important; }
+html[data-theme] body .reading-selection-sheet-head b,
+html[data-theme] body .reading-selection-sheet-content :is(h3,.reading-selection-sheet-preview) { color:var(--desk-ink)!important; }
+html[data-theme] body .reading-selection-sheet-head :is(small,time) { color:var(--desk-muted)!important; }
 html[data-theme][data-theme][data-theme] body .reading-selection-sheet {
   background:var(--desk-surface)!important;
   border-color:var(--desk-line)!important;

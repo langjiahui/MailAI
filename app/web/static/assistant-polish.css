@@ -147,14 +147,16 @@ html[data-theme] body #assistant-panel .assistant-composer .assistant-form {
 html.integrated-workspace body:is(.assistant-split,.assistant-docked,.assistant-home) #assistant-panel {
  border:0!important; border-radius:0!important; box-shadow:none!important;
 }
-/* A single fading seam separates the reading and assistant workspaces. */
+/* The resize control owns the subtle seam between adjacent workspaces. */
 html.integrated-workspace body:is(.assistant-split,.assistant-docked) #assistant-panel {
  bottom:0!important; max-height:none;
 }
 html.integrated-workspace body:is(.assistant-split,.assistant-docked) #assistant-panel::before {
- content:""; position:absolute; z-index:2; left:0; top:18px; bottom:0; width:1px;
- background:linear-gradient(to bottom,transparent,color-mix(in srgb,var(--desk-muted) 24%,transparent) 16%,color-mix(in srgb,var(--desk-muted) 32%,transparent) 50%,color-mix(in srgb,var(--desk-muted) 24%,transparent) 84%,transparent);
- pointer-events:none;
+ content:none;
+}
+/* The assistant can occupy the reading surface before a mail is opened. */
+@media(min-width:1025px) {
+ html.integrated-workspace body.assistant-home #assistant-panel { border-top-left-radius:20px!important; }
 }
 @media(max-width:520px) {
  #assistant-panel .assistant-messages { padding-inline:14px; }

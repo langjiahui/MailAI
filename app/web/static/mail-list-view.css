@@ -61,3 +61,122 @@ html[data-theme] body #system-view .mail-list-view-settings small { display:bloc
 html[data-theme] body[data-mail-list-view="table"] #email-list .group-title { color:var(--desk-muted,var(--muted)); font-size:10px; font-weight:600; }
 html[data-theme] body[data-mail-list-view="table"] #email-list .group-count { margin:0; padding:0; background:none; color:var(--desk-muted,var(--muted)); font-size:10px; font-weight:400; opacity:.7; }
 body[data-mail-list-view="table"] #email-list .group-count::before { content:"·"; margin-right:7px; opacity:.65; }
+
+/* The card list is a reading queue: identity, subject, then supporting detail. */
+html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-item {
+  min-height:96px; margin:0 6px 4px!important; padding:13px 12px 13px 64px!important;
+  border-radius:8px!important; transition:background-color .15s; overflow:hidden;
+}
+html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-row-top { gap:8px; margin-bottom:5px; min-height:18px; }
+html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-sender { flex:1; min-width:32px; }
+html[data-theme] body:not([data-mail-list-view="table"]) #email-list .sender-name { color:var(--desk-ink,var(--text)); font-size:13px; line-height:1.4; font-weight:550; }
+html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-meta { min-width:0; max-width:65%; gap:6px; }
+html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-date { flex:none; font-variant-numeric:tabular-nums; white-space:nowrap; font-size:11px; }
+html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-subject { margin-bottom:4px; font-size:13px; line-height:1.55; font-weight:500; color:var(--desk-ink,var(--text)); }
+html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-item.unread :is(.sender-name,.email-subject) { font-weight:650; }
+html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-preview { margin-bottom:0; font-size:12px; line-height:1.55; }
+html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-tags { margin-top:7px; gap:4px; }
+html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-tags:not(:has(>*)) { display:none; }
+html[data-theme] body:not([data-mail-list-view="table"]) #email-list .group-header { justify-content:space-between; gap:12px; margin:0 6px; padding:12px; border:0!important; background:var(--mail-list-surface)!important; backdrop-filter:none; }
+html[data-theme] body:not([data-mail-list-view="table"]) #email-list :is(.group-title,.group-count) { padding:0; background:transparent; border:0; color:var(--desk-muted,var(--muted)); font-size:11px; line-height:1.5; }
+html[data-theme] body:not([data-mail-list-view="table"]) #email-list .group-title { font-weight:600; }
+html[data-theme] body:not([data-mail-list-view="table"]) #email-list .group-count { font-weight:500; }
+/* Date headings and a little breathing room group the queue without rules. */
+html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-group { border:0!important; padding-bottom:0; }
+html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-group + .email-group { padding-top:12px; }
+.mail-sender-avatar { --avatar-hue:155; position:absolute; left:12px; top:14px; display:grid; place-items:center; width:38px; height:38px; border-radius:50%; background:hsl(var(--avatar-hue) 38% 91%); color:hsl(var(--avatar-hue) 35% 31%); font-size:15px; font-weight:650; line-height:1; user-select:none; }
+.mail-sender-avatar[data-avatar-tone="1"] { --avatar-hue:210; }
+.mail-sender-avatar[data-avatar-tone="2"] { --avatar-hue:32; }
+.mail-sender-avatar[data-avatar-tone="3"] { --avatar-hue:255; }
+.mail-sender-avatar[data-avatar-tone="4"] { --avatar-hue:350; }
+.mail-sender-avatar[data-avatar-tone="5"] { --avatar-hue:185; }
+html[data-theme="dark"] .mail-sender-avatar { background:hsl(var(--avatar-hue) 22% 25%); color:hsl(var(--avatar-hue) 40% 79%); }
+.mail-list-attachment { display:inline-flex; flex:none; color:var(--desk-muted,var(--muted)); }
+.mail-list-attachment svg { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+html[data-theme] body:not([data-mail-list-view="table"])[data-density="compact"] #email-list .email-item { min-height:68px; padding:10px 11px 10px 56px!important; }
+body[data-density="compact"] .mail-sender-avatar { left:11px; top:12px; width:32px; height:32px; font-size:13px; }
+body[data-density="compact"] .mail-list-attachment { display:inline-flex; }
+@media(prefers-reduced-motion:reduce) { html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-item { transition:none; } }
+@media(forced-colors:active) { .mail-sender-avatar { border:1px solid CanvasText; color:CanvasText; background:Canvas; } }
+/* One continuous list surface, from the heading down to the paging controls. */
+html[data-theme] body .list-pane { --mail-list-surface:var(--mac-list,var(--desk-canvas,var(--surface))); }
+html[data-theme] body .list-pane :is(#email-list,.list-header,.list-workspace-tools,.list-footer),
+html[data-theme] body:not([data-mail-list-view="table"]) #email-list .group-header { background:var(--mail-list-surface)!important; }
+html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-meta { flex-wrap:wrap; justify-content:flex-end; }
+html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-meta>.tag { max-width:100%; white-space:normal; text-align:right; }
+
+/* Identity colors follow the theme; monochrome uses neutral gray initials. */
+#email-list .mail-sender-avatar { --mail-avatar-saturation:38%; --mail-avatar-lightness:91%; --mail-avatar-ink-saturation:35%; --mail-avatar-ink-lightness:31%; }
+#email-list .mail-sender-avatar[data-avatar-tone="0"] { --avatar-hue:155; }
+#email-list .mail-sender-avatar[data-avatar-tone="1"] { --avatar-hue:210; }
+#email-list .mail-sender-avatar[data-avatar-tone="2"] { --avatar-hue:25; }
+#email-list .mail-sender-avatar[data-avatar-tone="3"] { --avatar-hue:245; }
+#email-list .mail-sender-avatar[data-avatar-tone="4"] { --avatar-hue:40; }
+#email-list .mail-sender-avatar[data-avatar-tone="5"] { --avatar-hue:185; }
+html[data-theme="dark"] #email-list .mail-sender-avatar { --mail-avatar-saturation:22%; --mail-avatar-lightness:25%; --mail-avatar-ink-saturation:40%; --mail-avatar-ink-lightness:79%; }
+/* Soft graphite identities with occasional ink accents, never a colored tint. */
+html[data-reward-theme="theme_monochrome"] #email-list .mail-sender-avatar { --mail-avatar-saturation:0%; --mail-avatar-ink-saturation:0%; --mail-avatar-lightness:18%; --mail-avatar-ink-lightness:100%; }
+html[data-reward-theme="theme_monochrome"] #email-list .mail-sender-avatar[data-avatar-tone="1"] { --mail-avatar-lightness:92%; --mail-avatar-ink-lightness:28%; }
+html[data-reward-theme="theme_monochrome"] #email-list .mail-sender-avatar[data-avatar-tone="2"] { --mail-avatar-lightness:88%; --mail-avatar-ink-lightness:28%; }
+html[data-reward-theme="theme_monochrome"] #email-list .mail-sender-avatar[data-avatar-tone="3"] { --mail-avatar-lightness:28%; --mail-avatar-ink-lightness:100%; }
+html[data-reward-theme="theme_monochrome"] #email-list .mail-sender-avatar[data-avatar-tone="4"] { --mail-avatar-lightness:96%; --mail-avatar-ink-lightness:30%; }
+html[data-reward-theme="theme_monochrome"] #email-list .mail-sender-avatar[data-avatar-tone="5"] { --mail-avatar-lightness:84%; --mail-avatar-ink-lightness:26%; }
+html[data-theme="dark"][data-reward-theme="theme_monochrome"] #email-list .mail-sender-avatar { --mail-avatar-saturation:0%; --mail-avatar-ink-saturation:0%; --mail-avatar-lightness:82%; --mail-avatar-ink-lightness:12%; }
+html[data-theme="dark"][data-reward-theme="theme_monochrome"] #email-list .mail-sender-avatar[data-avatar-tone="1"] { --mail-avatar-lightness:24%; --mail-avatar-ink-lightness:90%; }
+html[data-theme="dark"][data-reward-theme="theme_monochrome"] #email-list .mail-sender-avatar[data-avatar-tone="2"] { --mail-avatar-lightness:29%; --mail-avatar-ink-lightness:94%; }
+html[data-theme="dark"][data-reward-theme="theme_monochrome"] #email-list .mail-sender-avatar[data-avatar-tone="3"] { --mail-avatar-lightness:65%; --mail-avatar-ink-lightness:12%; }
+html[data-theme="dark"][data-reward-theme="theme_monochrome"] #email-list .mail-sender-avatar[data-avatar-tone="4"] { --mail-avatar-lightness:18%; --mail-avatar-ink-lightness:88%; }
+html[data-theme="dark"][data-reward-theme="theme_monochrome"] #email-list .mail-sender-avatar[data-avatar-tone="5"] { --mail-avatar-lightness:32%; --mail-avatar-ink-lightness:96%; }
+html[data-reward-theme="theme_baowu"] #email-list .mail-sender-avatar { --avatar-hue:210; }
+html[data-reward-theme="theme_baowu"] #email-list .mail-sender-avatar[data-avatar-tone="1"] { --avatar-hue:205; }
+html[data-reward-theme="theme_baowu"] #email-list .mail-sender-avatar[data-avatar-tone="2"] { --avatar-hue:25; }
+html[data-reward-theme="theme_baowu"] #email-list .mail-sender-avatar[data-avatar-tone="3"] { --avatar-hue:195; }
+html[data-reward-theme="theme_baowu"] #email-list .mail-sender-avatar[data-avatar-tone="4"] { --avatar-hue:40; }
+html[data-reward-theme="theme_baowu"] #email-list .mail-sender-avatar[data-avatar-tone="5"] { --avatar-hue:175; }
+html[data-theme] #email-list .mail-sender-avatar {
+  background:hsl(var(--avatar-hue) var(--mail-avatar-saturation) var(--mail-avatar-lightness))!important;
+  color:hsl(var(--avatar-hue) var(--mail-avatar-ink-saturation) var(--mail-avatar-ink-lightness))!important;
+}
+/* Status stays semantic in every palette, including monochrome. */
+#email-list {
+  --mail-warning-ink:#865017; --mail-warning-paper:#fff3da;
+  --mail-danger-ink:#a4383d; --mail-danger-paper:#ffebed; --mail-danger-on-ink:#fff;
+}
+html[data-theme="dark"] #email-list {
+  --mail-warning-ink:#f2d08a; --mail-warning-paper:#362c1d;
+  --mail-danger-ink:#f4b1b5; --mail-danger-paper:#382427; --mail-danger-on-ink:#241a1b;
+}
+html[data-theme] body #email-list .risk-badge.warn {
+  background:var(--mail-warning-paper)!important; color:var(--mail-warning-ink)!important;
+}
+html[data-theme] body #email-list .risk-badge.danger {
+  background:var(--mail-danger-paper)!important; color:var(--mail-danger-ink)!important;
+}
+html[data-theme] body #email-list .risk-alert-dot {
+  background:var(--mail-danger-ink)!important; color:var(--mail-danger-on-ink)!important; box-shadow:none!important;
+}
+html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-item:hover:not(.selected):not(.bulk-selected) {
+  background:var(--desk-hover)!important;
+}
+html[data-theme] body #email-list .email-item:focus-visible {
+  outline:2px solid var(--desk-accent); outline-offset:-3px;
+}
+html[data-theme] body #email-list .mail-list-attachment { color:var(--desk-muted)!important; }
+@media(forced-colors:active) {
+ html[data-theme] #email-list .mail-sender-avatar { background:Canvas!important; color:CanvasText!important; border:1px solid CanvasText; }
+ html[data-theme] body #email-list .risk-badge:is(.warn,.danger) { background:Canvas!important; color:CanvasText!important; border:1px solid CanvasText; }
+ html[data-theme] body #email-list .email-item:focus-visible { outline-color:Highlight; }
+}
+
+/* Mail selection is a flat highlight within the list, without a raised frame. */
+html[data-theme] body #email-list .selection-glass-plate {
+ background:var(--desk-selected)!important;
+ border:0!important; border-radius:8px!important; box-shadow:none!important;
+ -webkit-backdrop-filter:none!important; backdrop-filter:none!important;
+}
+@media(prefers-contrast:more) {
+ html[data-theme] body #email-list .selection-glass-plate { outline:1px solid var(--desk-accent); outline-offset:-1px; }
+}
+@media(forced-colors:active) {
+ html[data-theme] body #email-list .selection-glass-plate { background:Canvas!important; outline:1px solid Highlight; outline-offset:-1px; }
+}

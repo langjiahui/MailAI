@@ -6,7 +6,7 @@ const {chromium,webkit} = require('playwright');
   try {
     const page=await browser.newPage({viewport:{width:1440,height:960}}), errors=[];
     page.on('pageerror',error=>errors.push(error.message));
-    await page.goto('http://127.0.0.1:18795/');
+    await page.goto(process.env.MAILAI_TEST_URL || 'http://127.0.0.1:18795/');
     await page.locator('#app-preloader').waitFor({state:'detached'});
     await page.waitForFunction(()=>!!document.body.dataset.petStage);
     await page.emulateMedia({reducedMotion:'reduce'});
@@ -82,9 +82,10 @@ const {chromium,webkit} = require('playwright');
           await page.evaluate(mode=>applyTheme(mode),mode);
           const colors=await page.evaluate(()=>{
             const body=getComputedStyle(document.body),button=getComputedStyle(document.querySelector('#btn-compose'));
-            return {bg:body.backgroundColor,button:rewardThemeContrast(button.color,button.backgroundColor),text:rewardThemeContrast(body.color,body.backgroundColor),pet:getComputedStyle(document.querySelector('.pet-hero .growth-body')).fill};
+            const sample=document.createElement('span');sample.style.color='var(--reward-canvas)';document.body.append(sample);const expectedCanvas=getComputedStyle(sample).color;sample.remove();
+            return {bg:body.backgroundColor,expectedCanvas,button:rewardThemeContrast(button.color,button.backgroundColor),text:rewardThemeContrast(body.color,body.backgroundColor),pet:getComputedStyle(document.querySelector('.pet-hero .growth-body')).fill};
           });
-          assert.equal(colors.bg,mode==='light'?'rgb(255, 255, 255)':theme==='theme_monochrome'?'rgb(23, 23, 23)':'rgb(22, 24, 26)');
+          assert.equal(colors.bg,colors.expectedCanvas,'Workspace uses the equipped theme canvas');
           assert(colors.button>=4.5 && colors.text>=4.5,JSON.stringify({theme,style,mode,colors}));
           const petColors={theme_monochrome:{light:['rgb(190, 201, 206)','rgb(176, 193, 206)'],dark:['rgb(173, 188, 195)','rgb(162, 181, 197)']},theme_baowu:{light:['rgb(158, 201, 231)','rgb(148, 191, 227)'],dark:['rgb(145, 184, 215)','rgb(136, 176, 211)']}};
           assert.equal(colors.pet,petColors[theme][mode][style==='ranger'?1:0]);

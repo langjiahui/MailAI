@@ -100,7 +100,8 @@ def api_assistant_alerts_seen(payload: dict | None = None):
 
 @router.post("/api/assistant/ask")
 def api_assistant_ask(payload: AssistantRequest):
-    from ... import assistant_vision, assistant_attachments
+    from ... import assistant_vision, assistant_attachments, assistant_context
+    payload, context = assistant_context.resolve(payload)
     images = prepare_assistant_images(payload)
     materials = prepare_assistant_materials(payload, images)
     search_context = _search_context(payload)
@@ -108,6 +109,7 @@ def api_assistant_ask(payload: AssistantRequest):
         conversation_id = payload.conversation_id
         if not conversation_id or not db.assistant_conversation_exists(conversation_id):
             conversation_id = db.create_assistant_conversation(payload.question.strip()[:36] or "新对话")
+        assistant_context.remember_open_email(conversation_id, payload.open_email_id)
         db.add_assistant_message(conversation_id, "user", assistant_attachments.history_text(assistant_vision.history_text(payload.question, images),materials), images=images)
         db.set_assistant_alert_context(conversation_id, payload.email_ids if payload.alert_context else [])
         result = mail_assistant.ask(payload.question, payload.history, payload.email_ids, **({'images': images} if images else {}), **({'materials':materials} if materials else {}), **({'search_mode':True} if payload.search_mode else {}), **({'search_context':search_context} if search_context else {}))
@@ -129,13 +131,15 @@ def api_assistant_ask(payload: AssistantRequest):
 
 @router.post("/api/assistant/ask-stream")
 def api_assistant_ask_stream(payload: AssistantRequest):
-    from ... import assistant_vision, assistant_attachments
+    from ... import assistant_vision, assistant_attachments, assistant_context
+    payload, context = assistant_context.resolve(payload)
     images = prepare_assistant_images(payload)
     materials = prepare_assistant_materials(payload, images)
     search_context = _search_context(payload)
     conversation_id = payload.conversation_id
     if not conversation_id or not db.assistant_conversation_exists(conversation_id):
         conversation_id = db.create_assistant_conversation(payload.question.strip()[:36] or "新对话")
+    assistant_context.remember_open_email(conversation_id, payload.open_email_id)
     db.add_assistant_message(conversation_id, "user", assistant_attachments.history_text(assistant_vision.history_text(payload.question, images),materials), images=images)
     db.set_assistant_alert_context(conversation_id, payload.email_ids if payload.alert_context else [])
 
@@ -145,6 +149,9 @@ def api_assistant_ask_stream(payload: AssistantRequest):
         try:
             yield json.dumps({"type": "meta", "conversation_id": conversation_id}, ensure_ascii=False) + "\n"
             yield json.dumps({'type': 'scope', 'label': payload.scope_label or config.IMAP_USER}, ensure_ascii=False) + '\n'
+            if context:
+                yield json.dumps({'type':'status', 'state':'understanding', **context,
+                                  'message':'正在衔接邮件上下文…', 'message_en':'Connecting the mail context…'},ensure_ascii=False)+'\n'
             for event, value in mail_assistant.ask_stream(payload.question, payload.history, payload.email_ids, **({'images': images} if images else {}), **({'materials':materials} if materials else {}), **({'search_mode':True} if payload.search_mode else {}), **({'search_context':search_context} if search_context else {})):
                 if event == 'search':
                     from ... import assistant_search

@@ -33,6 +33,26 @@ def main():
     assert assistant._direct_answer('请问怎么用？')
     assert assistant._direct_answer('ERP系统怎么用？') is None
     assert assistant._direct_answer('这个项目支持哪些接口？') is None
+    for question in ('你是一个什么东西？你能做什么？', '你好，你是谁？能干什么？',
+                     '请问你能帮我做什么？', '你是做什么的？怎么用？', 'Who are you? What can you do?'):
+        assert assistant._direct_answer(question) == assistant.CAPABILITY_ANSWER, question
+        with patch.object(assistant, '_sources', side_effect=AssertionError('Help must not search mail')), \
+             patch.object(assistant, '_search_result', side_effect=AssertionError('Help must leave search mode')), \
+             patch.object(assistant.assistant_actions, 'detect_proposal', side_effect=AssertionError('Help must not propose writes')), \
+             patch.object(assistant.client, 'chat_completion', side_effect=AssertionError('Help needs no model')):
+            for search_mode in (False, True):
+                result = assistant.ask(question, email_ids=[744], search_mode=search_mode)
+                assert result == {'answer':assistant.CAPABILITY_ANSWER,'sources':[]}
+                events = list(assistant.ask_stream(question, email_ids=[744], search_mode=search_mode))
+                assert ''.join(value for kind,value in events if kind=='delta') == assistant.CAPABILITY_ANSWER
+                assert ('sources',[]) in events
+                assert not any(kind in {'action','search'} or kind=='status' and value['state']=='searching' for kind,value in events)
+            context = {'action':'', 'criteria':{'sender':'姜超'}, 'root_question':'找合同'}
+            assert assistant.ask(question,search_mode=True,search_context=context)['answer']==assistant.CAPABILITY_ANSWER
+            assert any(kind=='status' and value.get('intent')=='help' for kind,value in assistant.ask_stream(question,search_mode=True,search_context=context))
+    for question in ('邮件里写的“你能做什么”是什么意思？', '你是谁？总结这封邮件',
+                     '发件人问你能做什么', '"你能做什么"', '这个附件怎么用？'):
+        assert assistant._direct_answer(question) is None, question
     with patch.object(assistant.db, 'list_todos', return_value=[]) as todos:
         for question in ('这封钓鱼邮件怎么处理？', 'ERP项目任务是什么？', '证书过期怎么处理？'):
             assert assistant._todo_answer(question) is None
@@ -57,6 +77,7 @@ def main():
          patch.object(assistant.db, 'search_emails') as search:
         assert assistant.retrieve('优先级高的邮件') == [high]
         assert assistant.retrieve('总结最近的重要邮件') == [high]
+        assert assistant.retrieve('找重要邮件') == [high]
         search.assert_not_called()
         assert all(call.args == (2,) for call in get.call_args_list)
     assert '暂时没找到' in assistant._empty_answer('找王老师的邮件')
@@ -66,7 +87,9 @@ def main():
     with patch.object(assistant.config, 'LLM_PROVIDER', 'deepseek'), patch.object(assistant.config, 'LLM_MODEL', 'deepseek-chat'):
         assert assistant._assistant_request_limits() == (1600, 60)
     assert '先直接给出是否一致及差额' in assistant._question_instruction('明细加起来确实是账单金额吗？')
-    assert not assistant._question_instruction('总结这封邮件')
+    assert '不超过3条重点' in assistant._question_instruction('总结这封邮件')
+    assert '尚未创建为待办' in assistant._fallback_answer('列成待办', [named], model_configured=False)
+    assert '未明确' in assistant._question_instruction('那我需要做什么？')
     # 公司内部模型模式保留邮件原文，且不再固定截断在旧的 1800 字位置。
     private_row = {**named, 'body_text': '说明' * 1000 + '联系电话13812345678',
                    'summary': '', 'snippet': '', 'score': 0, 'verdict': 'clean'}
