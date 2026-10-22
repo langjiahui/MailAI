@@ -17,10 +17,12 @@ runs:
         node-version: '22'
         cache: npm
     - uses: actions/cache@v4
+      if: ${{ env.CI_BROWSER_IMAGE_VERSION == '' }}
       with:
         path: ~/.cache/ms-playwright
         key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ inputs.browsers }}-${{ hashFiles('package-lock.json') }}
     - name: Bound stalled system dependency downloads
+      if: ${{ env.CI_BROWSER_IMAGE_VERSION == '' }}
       shell: bash
       run: |
         sudo tee /etc/apt/apt.conf.d/99mailai-ci-network > /dev/null <<'APT'
@@ -28,12 +30,33 @@ runs:
         Acquire::http::Timeout "15";
         Acquire::https::Timeout "15";
         APT
-    - name: Install dependencies and required system libraries
+    - name: Install project dependencies
+      shell: bash
+      run: |
+        python -m pip install -r requirements.txt
+        npm ci --no-audit --no-fund
+    - name: Validate preinstalled browser runtimes
+      if: ${{ env.CI_BROWSER_IMAGE_VERSION != '' }}
+      shell: bash
+      run: |
+        node - <<'JS'
+        const assert = require('node:assert/strict');
+        const fs = require('node:fs');
+        assert.equal(require('playwright/package.json').version, process.env.CI_BROWSER_IMAGE_VERSION);
+        const playwright = require('playwright');
+        (async () => {
+          for (const name of ['chromium', 'webkit']) {
+            assert(fs.existsSync(playwright[name].executablePath()), name + ' runtime missing');
+            const browser = await playwright[name].launch({headless:true});
+            await browser.close();
+          }
+        })().catch(error => { console.error(error); process.exitCode = 1; });
+        JS
+    - name: Install browsers on non-container runners
+      if: ${{ env.CI_BROWSER_IMAGE_VERSION == '' }}
       shell: bash
       env:
         PLAYWRIGHT_BROWSERS: ${{ inputs.browsers }}
       run: |
-        python -m pip install -r requirements.txt
-        npm ci --no-audit --no-fund
         read -r -a browsers <<< "$PLAYWRIGHT_BROWSERS"
         npx playwright install --with-deps "${browsers[@]}"

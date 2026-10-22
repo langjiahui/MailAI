@@ -16,7 +16,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from scripts import ci_browser, ci_mirror, ci_quality as quality
+from scripts import ci_browser, ci_mirror, ci_plan, ci_quality as quality
 
 NOW = datetime.now(timezone.utc)
 REPO = 'example/mailai'
@@ -31,8 +31,9 @@ def run_record():
 
 
 def evidence():
-    return dict(schema=1, repository=REPO, run_id=42, run_attempt=1, source_sha=HEAD,
+    return dict(schema=2, repository=REPO, run_id=42, run_attempt=1, source_sha=HEAD,
                 tested_sha=SHA, tree=TREE, event='pull_request', mode='full',
+                coverage=quality.coverage_digest(),
                 checks={name: 'success' for name in quality.CHECKS})
 
 
@@ -68,7 +69,7 @@ class EvidenceTest(unittest.TestCase):
     def test_untrusted_failed_stale_and_other_workflow_runs_are_rejected(self):
         variants = [
             {'conclusion': 'failure'}, {'conclusion': 'cancelled'}, {'status': 'in_progress'},
-            {'path': '.github/workflows/other.yml'}, {'event': 'workflow_dispatch'},
+            {'path': '.github/workflows/other.yml'}, {'event': 'pull_request_target'},
             {'event': 'push', 'head_branch': 'codex/unchecked'},
             {'repository': {'full_name': 'other/repo'}},
             {'head_repository': {'full_name': 'fork/repo'}},
@@ -84,7 +85,8 @@ class EvidenceTest(unittest.TestCase):
     def test_evidence_cannot_substitute_a_different_tree_run_or_attempt(self):
         for changes in [dict(tree='d'*40), dict(run_id=99), dict(run_attempt=2),
                         dict(source_sha='d'*40), dict(tested_sha='invalid'), dict(repository='fork/repo'),
-                        dict(mode='reuse'), dict(event='push'), dict(schema=2),
+                        dict(mode='reuse'), dict(mode='quick'), dict(event='push'), dict(schema=1),
+                        dict(coverage='0'*64),
                         dict(checks={}), dict(checks={name:'skipped' for name in quality.CHECKS})]:
             with self.subTest(changes=changes):
                 api = FakeGitHub(); api.proof.update(changes)
@@ -121,7 +123,7 @@ class EvidenceTest(unittest.TestCase):
         for state in ['failure','cancelled','skipped']:
             bad=deepcopy(needs);bad['browser-test']['result']=state
             with self.subTest(state=state),self.assertRaises(ValueError):quality.record(FakeGitHub(),bad)
-        bad=deepcopy(needs);del bad['responsive-ui-browser']
+        bad=deepcopy(needs);del bad['browser-test']
         with self.assertRaises(ValueError):quality.record(FakeGitHub(),bad)
 
     def test_successful_full_and_reused_records_bind_the_actual_checkout(self):
@@ -159,7 +161,7 @@ class EvidenceTest(unittest.TestCase):
         with patch.object(quality,'git',return_value=HEAD),self.assertRaises(ValueError):
             quality.wait_for_release(api,SHA,timeout=0)
 
-    def test_pr_plan_always_runs_full_matrix_and_lookup_errors_do_not_skip(self):
+    def test_unreadable_impact_and_lookup_errors_fall_back_to_full_checks(self):
         env={'GITHUB_EVENT_NAME':'pull_request','GITHUB_REF':'refs/pull/1/merge'}
         with patch.dict(os.environ,env),patch.object(quality,'find_evidence') as lookup,patch.object(quality,'emit_output') as output:
             quality.plan(FakeGitHub());lookup.assert_not_called()
@@ -168,6 +170,111 @@ class EvidenceTest(unittest.TestCase):
         with patch.dict(os.environ,env),patch.object(quality,'find_evidence',side_effect=OSError('API unavailable')),patch.object(quality,'emit_output') as output:
             quality.plan(FakeGitHub())
             self.assertIn(unittest.mock.call('reuse',False),output.call_args_list)
+
+    def test_manual_full_verification_is_bound_to_its_exact_checkout(self):
+        api=FakeGitHub()
+        api.run.update(event='workflow_dispatch',head_sha=SHA)
+        api.proof.update(event='workflow_dispatch',source_sha=SHA)
+        self.assertEqual(quality.find_evidence(api,TREE,now=NOW),42)
+        api.proof['mode']='quick'
+        self.assertIsNone(quality.find_evidence(api,TREE,now=NOW))
+
+    def test_pr_plan_emits_only_the_selected_jobs_and_dispatch_is_full(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);event=root/'event.json'
+            event.write_text(json.dumps({'pull_request':{'base':{'sha':SHA},'labels':[]}}))
+            env={'GITHUB_EVENT_NAME':'pull_request','GITHUB_EVENT_PATH':str(event)}
+            with patch.dict(os.environ,env),patch.object(quality,'ROOT',root),patch.object(ci_plan,'changed_files',return_value=['app/web/static/todo-center.css']),patch.object(quality,'emit_output') as output,patch.object(quality,'summary'):
+                quality.plan(FakeGitHub())
+            values={call.args[0]:call.args[1] for call in output.call_args_list}
+            self.assertEqual(values['mode'],'quick')
+            self.assertTrue(json.loads(values['checks'])['browser-test'])
+            self.assertFalse(json.loads(values['checks'])['native-scrollbar-macos'])
+            self.assertLess(len(json.loads(values['browser_matrix'])['include']),len(ci_plan.full_matrix()))
+            with patch.dict(os.environ,{**env,'GITHUB_EVENT_NAME':'workflow_dispatch'}),patch.object(quality,'ROOT',root),patch.object(quality,'emit_output') as output,patch.object(quality,'summary'):
+                quality.plan(FakeGitHub())
+            values={call.args[0]:call.args[1] for call in output.call_args_list}
+            self.assertEqual(values['mode'],'full')
+            self.assertTrue(all(json.loads(values['checks']).values()))
+            self.assertEqual(json.loads(values['browser_matrix'])['include'],ci_plan.full_matrix())
+
+    def test_quick_checks_cannot_be_reused_or_hide_a_failed_selected_job(self):
+        required={name:name in {'release-gate','secret-scan','browser-test'} for name in quality.CHECKS}
+        needs={'plan':{'result':'success'},**{name:{'result':'success' if selected else 'skipped'} for name,selected in required.items()}}
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);event=root/'event.json';event.write_text(json.dumps({'pull_request':{'head':{'sha':HEAD}}}))
+            env={'GITHUB_EVENT_PATH':str(event),'GITHUB_EVENT_NAME':'pull_request',
+                 'GITHUB_RUN_ID':'99','GITHUB_RUN_ATTEMPT':'1','GITHUB_SHA':SHA,
+                 'QUALITY_MODE':'quick','QUALITY_CHECKS':json.dumps(required)}
+            with patch.dict(os.environ,env),patch.object(quality,'ROOT',root),patch.object(quality,'git',side_effect=[TREE,SHA]),patch.object(quality,'summary'),patch.object(quality,'emit_output') as output:
+                quality.record(FakeGitHub(),needs)
+                self.assertIn(unittest.mock.call('artifact',quality.QUICK_ARTIFACT),output.call_args_list)
+            proof=json.loads((root/'build/quality-evidence/quality.json').read_text())
+            self.assertEqual(proof['mode'],'quick')
+            api=FakeGitHub();api.proof=proof
+            self.assertIsNone(quality.find_evidence(api,TREE,now=NOW))
+            bad=deepcopy(needs);bad['browser-test']['result']='failure'
+            with patch.dict(os.environ,env),self.assertRaises(ValueError):quality.record(FakeGitHub(),bad)
+            with patch.dict(os.environ,{**env,'QUALITY_MODE':'full'}),self.assertRaises(ValueError):quality.record(FakeGitHub(),needs)
+
+
+class ImpactPlanTest(unittest.TestCase):
+    def test_todo_changes_include_both_browsers_and_cross_page_interactions(self):
+        result=ci_plan.select(['app/web/static/todo-center.css'])
+        self.assertEqual(result['mode'],'quick')
+        suites={row['suite'] for row in result['matrix']}
+        self.assertTrue({'todos','task-workspace','dates-motion','interaction','responsive-dialogs'}<=suites)
+        self.assertNotIn('server-cleanup',suites)
+        self.assertFalse(result['checks']['native-notifications-windows'])
+        for suite in ['interaction','responsive-dialogs']:
+            self.assertEqual({row['browser'] for row in result['matrix'] if row['suite']==suite},{'chromium','webkit'})
+
+    def test_unknown_common_dependency_and_release_changes_are_full(self):
+        for path in ['app/web/static/app.js','app/web/static/theme.css','app/new_unknown.py',
+                     'tests/helpers/new_helper.cjs','.github/workflows/pr-check.yml',
+                     'scripts/ci_plan.py','package-lock.json','requirements.txt','VERSION']:
+            with self.subTest(path=path):
+                result=ci_plan.select([path])
+                self.assertEqual(result['mode'],'full')
+                self.assertTrue(all(result['checks'].values()))
+                self.assertEqual(result['matrix'],ci_plan.full_matrix())
+
+    def test_docs_and_mobile_keep_basics_without_unrelated_web_tests(self):
+        for paths in [['docs/usage.md'],['mobile/android/app/build.gradle.kts'],[]]:
+            result=ci_plan.select(paths)
+            self.assertEqual(result['mode'],'quick')
+            self.assertEqual(result['matrix'],[])
+            self.assertTrue(result['checks']['release-gate'])
+            self.assertTrue(result['checks']['secret-scan'])
+
+    def test_browser_test_changes_schedule_every_containing_suite(self):
+        result=ci_plan.select(['tests/test_date_time_workflows_browser.cjs'])
+        self.assertEqual({row['suite'] for row in result['matrix']},{'dates-motion','responsive-settings'})
+
+    def test_generated_outputs_require_attributable_source_changes(self):
+        self.assertEqual(ci_plan.select(['app/web/static/bundle.js'])['mode'],'full')
+        result=ci_plan.select(['app/web/static/bundle.js','app/web/static/index.html','app/web/static/todo-groups.js'])
+        self.assertEqual(result['mode'],'quick')
+
+    def test_explicit_release_validation_has_complete_coverage(self):
+        result=ci_plan.select(['docs/usage.md'],force_full=True)
+        self.assertEqual(result['mode'],'full')
+        self.assertTrue(all(result['checks'].values()))
+        self.assertEqual(result['matrix'],ci_plan.full_matrix())
+
+    def test_immutable_diff_base_and_paths_are_required(self):
+        for base in ['main','HEAD','-a','a'*39]:
+            with self.assertRaises(ValueError):ci_plan.changed_files(base)
+        for path in ['../app.py','/app.py','bad\npath']:
+            with self.assertRaises(ValueError):ci_plan.select([path])
+
+    def test_image_is_immutable_and_matches_the_lockfile(self):
+        self.assertRegex(ci_plan.browser_image()['image'],r'@sha256:[a-f0-9]{64}$')
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'.github/ci').mkdir(parents=True)
+            (root/'package-lock.json').write_text(json.dumps({'packages':{'node_modules/playwright':{'version':'1.0.0'}}}))
+            (root/'.github/ci/browser-image.json').write_text(json.dumps(ci_plan.browser_image()))
+            with self.assertRaises(ValueError):ci_plan.browser_image(root)
 
 
 class PartitionTest(unittest.TestCase):
