@@ -1,8 +1,10 @@
 """Official domestic release discovery, verified without GitHub connectivity."""
 import json
+import http.client
+import logging
 import re
 from urllib.parse import quote
-from .update_transport import open_public
+from .update_transport import open_public, connection_diagnostic
 from .update_trust import verify
 
 ATOM_REPOSITORY = 'langjiahui2011/MailAI'
@@ -12,6 +14,7 @@ STATIC_MANIFEST_URL = 'https://raw.atomgit.com/' + ATOM_REPOSITORY + '/raw/updat
 GITHUB_RELEASES = 'https://github.com/langjiahui/MailAI/releases'
 NAMES = {'windows-x64': 'MailAI-Windows-x64-Setup.exe', 'macos-arm64': 'MailAI-macOS-arm64.pkg',
          'linux-x64': 'MailAI-Linux-x64.AppImage'}
+log = logging.getLogger(__name__)
 
 
 def attachment(tag: str, name: str) -> str:
@@ -19,7 +22,7 @@ def attachment(tag: str, name: str) -> str:
 
 
 def read_json(url: str) -> dict:
-    with open_public(url, headers={'Accept': 'application/json', 'Cache-Control': 'no-cache'}, timeout=6) as response:
+    with open_public(url, headers={'Accept': 'application/json', 'Cache-Control': 'no-cache'}, timeout=3) as response:
         raw = response.read(1024 * 1024 + 1)
         declared = int(response.headers.get('Content-Length') or 0)
     if len(raw) > 1024 * 1024:
@@ -32,10 +35,24 @@ def read_json(url: str) -> dict:
     return result
 
 
+def read_channel(filename='latest.signed.json') -> dict:
+    if filename not in {'latest.signed.json', 'android-latest.signed.json'}:
+        raise ValueError('Invalid official update channel')
+    # AtomGit's /raw/<ref> preview route can reject an existing public file
+    # with 403 while its documented raw-file API serves the exact same bytes.
+    # Keep the independent raw route first to avoid shared anonymous API quotas.
+    url = STATIC_MANIFEST_URL.rsplit('/', 1)[0] + '/' + filename
+    try:
+        envelope = read_json(url)
+    except (OSError, http.client.HTTPException) as exc:
+        log.info('国内静态更新入口不可用（%s），检查同仓库文件接口', connection_diagnostic(exc))
+        envelope = read_json(ATOM_API + '/raw/' + filename + '?ref=updates')
+    # Content/signature failures stop here; they never trigger another source.
+    return verify(envelope)
+
+
 def discover() -> dict:
-    # Public raw files and website downloads remain reachable when the platform's
-    # shared anonymous API identity hits its global quota. No token in clients.
-    manifest = verify(read_json(STATIC_MANIFEST_URL))
+    manifest = read_channel()
     version = str(manifest.get('version') or '')
     if not re.fullmatch(r'\d+\.\d+\.\d+', version):
         raise ValueError('国内更新清单版本不一致')

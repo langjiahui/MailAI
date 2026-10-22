@@ -137,6 +137,27 @@
           }
         }
       ]
+    },
+    {
+      "fixtures": [
+        {
+          "port": 18795,
+          "env": {
+            "MAILAI_TODO_GROUP_FIXTURE": "1"
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "tests/test_todo_groups_browser.cjs"
+        },
+        {
+          "file": "tests/test_todo_groups_browser.cjs",
+          "env": {
+            "MAILAI_BROWSER": "webkit"
+          }
+        }
+      ]
     }
   ],
   "workspace": [
@@ -174,6 +195,15 @@
         },
         {
           "file": "tests/test_interaction_consistency_browser.cjs"
+        },
+        {
+          "file": "tests/test_filter_drawer_browser.cjs"
+        },
+        {
+          "file": "tests/test_filter_drawer_browser.cjs",
+          "env": {
+            "MAILAI_BROWSER": "webkit"
+          }
         }
       ]
     }

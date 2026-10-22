@@ -27,7 +27,7 @@ class ChannelTest(unittest.TestCase):
         self.folder=tempfile.TemporaryDirectory();self.addCleanup(self.folder.cleanup)
         self.root=Path(self.folder.name);self.repository=self.root/'remote.git'
         subprocess.run(['git','init','--bare',str(self.repository)],check=True,capture_output=True)
-        for value in [patch.object(channel,'REPOSITORY',str(self.repository)),patch.object(trust,'PUBLIC_KEY',PUBLIC),patch.object(channel,'read_json',side_effect=lambda url:json.loads(self.raw()))]:
+        for value in [patch.object(channel,'REPOSITORY',str(self.repository)),patch.object(trust,'PUBLIC_KEY',PUBLIC),patch.object(mirror,'read_json',side_effect=lambda url:json.loads(self.raw()))]:
             value.start();self.addCleanup(value.stop)
 
     def raw(self, filename='latest.signed.json'):
@@ -70,7 +70,7 @@ class ChannelTest(unittest.TestCase):
     def test_android_pointer_never_replaces_desktop_and_has_its_own_version_order(self):
         channel.publish(self.write('2.10.3'),'synthetic-token')
         desktop=self.raw()
-        with patch.object(channel,'read_json',side_effect=lambda url:json.loads(self.raw(url.rsplit('/',1)[1]))):
+        with patch.object(mirror,'read_json',side_effect=lambda url:json.loads(self.raw(url.rsplit('/',1)[1]))):
             channel.publish(self.write('1.4.0'),'synthetic-token',filename='android-latest.signed.json')
             android=self.raw('android-latest.signed.json')
             channel.publish(self.write('1.3.3'),'synthetic-token',filename='android-latest.signed.json')
@@ -80,11 +80,11 @@ class ChannelTest(unittest.TestCase):
     def test_access_denials_fail_promptly_but_transient_errors_still_retry(self):
         value=envelope('3.0.0')
         for code in [401,403,410]:
-            with patch.object(channel,'read_json',side_effect=HTTPError('https://example.test',code,'denied',{},None)) as read,patch.object(channel.time,'sleep') as sleep:
+            with patch.object(channel,'read_channel',side_effect=HTTPError('https://example.test',code,'denied',{},None)) as read,patch.object(channel.time,'sleep') as sleep:
                 with self.assertRaises(HTTPError):channel.verify_public(value['manifest'])
                 self.assertEqual(read.call_count,1);sleep.assert_not_called()
         for code in [404,429,503]:
-            with patch.object(channel,'read_json',side_effect=[HTTPError('https://example.test',code,'temporary',{},None),value]) as read,patch.object(channel.time,'sleep') as sleep:
+            with patch.object(channel,'read_channel',side_effect=[HTTPError('https://example.test',code,'temporary',{},None),value['manifest']]) as read,patch.object(channel.time,'sleep') as sleep:
                 channel.verify_public(value['manifest'])
                 self.assertEqual(read.call_count,2);sleep.assert_called_once_with(30)
 

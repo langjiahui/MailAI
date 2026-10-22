@@ -10,7 +10,7 @@ import tempfile
 import time
 from urllib.error import HTTPError
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from app.update_mirror import STATIC_MANIFEST_URL, read_json
+from app.update_mirror import read_channel
 from app.update_trust import verify
 
 REPOSITORY = 'https://atomgit.com/langjiahui2011/MailAI.git'
@@ -78,8 +78,7 @@ def publish(path: Path, token: str, filename='latest.signed.json'):
 def verify_public(manifest, filename='latest.signed.json'):
     for attempt in range(13):
         try:
-            received = read_json(STATIC_MANIFEST_URL.rsplit('/', 1)[0] + '/' + filename)
-            if verify(received) != manifest:
+            if read_channel(filename) != manifest:
                 raise OSError('Static channel has not refreshed yet')
             print('Static channel anonymously verified: v'+manifest['version'],flush=True)
             return

@@ -43,7 +43,7 @@
   <link rel="stylesheet" href="/static/interaction-recovery.css?v=keyboard-navigation-20261017">
   <link rel="stylesheet" href="/static/dashboard-polish.css?v=4">
   <link rel="stylesheet" href="/static/digest-polish.css?v=1">
-  <link rel="stylesheet" href="/static/experience-polish.css?v=more-menu-20261016">
+  <link rel="stylesheet" href="/static/experience-polish.css?v=85af118a9baa">
   <link rel="stylesheet" href="/static/page-polish.css?v=i18n-20261010">
   <link rel="stylesheet" href="/static/macos-window.css?v=758439776e9b">
   <link rel="stylesheet" href="/static/windows-window.css?v=3">
@@ -72,8 +72,9 @@
   <link rel="stylesheet" href="/static/brand.css?v=glass-green-baowu-1">
   <link rel="stylesheet" href="/static/settings-polish.css?v=7">
   <link rel="stylesheet" href="/static/home-dialog-polish.css?v=1">
-  <link rel="stylesheet" href="/static/command-palette.css?v=2">
+  <link rel="stylesheet" href="/static/command-palette.css?v=8c960b147483">
   <link rel="stylesheet" href="/static/assistant-divider.css?v=1a5111637e30">
+  <link rel="stylesheet" href="/static/mail-filter-panel.css?v=3a5b855c7ae5">
   <link rel="stylesheet" href="/static/mail-list-view.css?v=d76036e8e3fc">
 </head>
 <body>
@@ -719,14 +720,14 @@
         </section>
 
         <section class="nav-group mail-filter-group">
-          <div class="filter-heading"><div><b data-i18n="filter.title">筛选条件</b><small data-i18n="filter.titleHint">组合条件会同时生效</small></div><span id="filter-active-count" class="hidden">0</span></div>
+          <div class="filter-heading"><div><b data-i18n="filter.title">筛选邮件</b><small data-i18n="filter.titleHint">组合条件会同时生效</small></div><span id="filter-active-count" class="hidden">0</span></div>
           <div class="filter-form">
-            <fieldset class="filter-block"><legend><b data-i18n="filter.days">收件时间</b><small data-i18n="filter.daysHint">按邮件实际收到的时间</small></legend><div id="filter-days" class="filter-segments" role="group" aria-label="收件时间" data-i18n-aria="filter.days"><button type="button" data-value="1">24h</button><button type="button" data-value="7" data-i18n="filter.7d">7 天</button><button type="button" data-value="30" data-i18n="filter.30d">30 天</button><button type="button" class="active" data-value="9999" aria-pressed="true" data-i18n="filter.all">全部</button></div></fieldset>
+            <fieldset class="filter-block"><legend><b data-i18n="filter.days">收件时间</b><small data-i18n="filter.daysHint">按邮件实际收到的时间</small></legend><div id="filter-days" class="filter-segments" role="group" aria-label="收件时间" data-i18n-aria="filter.days"><button type="button" data-value="1" data-i18n="filter.24h">24 小时</button><button type="button" data-value="7" data-i18n="filter.7d">7 天</button><button type="button" data-value="30" data-i18n="filter.30d">30 天</button><button type="button" class="active" data-value="9999" aria-pressed="true" data-i18n="filter.all">全部</button></div></fieldset>
             <fieldset class="filter-block"><legend><b data-i18n="filter.priority">重要程度</b><small data-i18n="filter.priorityHint">由 MailAI 判断处理紧急程度</small></legend><div id="filter-priority" class="filter-segments priority-segments" role="group" aria-label="重要程度" data-i18n-aria="filter.priority"><button type="button" class="active" data-value="" aria-pressed="true" data-i18n="filter.any">不限</button><button type="button" data-value="高" data-i18n="filter.high">高</button><button type="button" data-value="中" data-i18n="filter.medium">中</button><button type="button" data-value="低" data-i18n="filter.low">低</button></div></fieldset>
             <label class="filter-select-row" for="filter-domain"><span><b data-i18n="filter.domain">发件人域名</b><small data-i18n="filter.domainHint">发件邮箱中 @ 后面的部分</small></span><select id="filter-domain"><option value="" data-i18n="filter.anyDomain">不限域名</option></select></label>
             <label class="filter-switch-row" for="filter-unread"><span><b data-i18n="filter.unread">仅看未读</b><small data-i18n="filter.unreadHint">只显示尚未阅读的收件邮件</small></span><span class="switch"><input type="checkbox" id="filter-unread"><i></i></span></label>
             <label class="filter-switch-row" for="filter-attachments"><span><b data-i18n="filter.attachments">包含附件</b><small data-i18n="filter.attachmentsHint">只显示带附件的邮件</small></span><span class="switch"><input type="checkbox" id="filter-attachments"><i></i></span></label>
-            <button id="btn-reset-filter" class="filter-clear-button" type="button" disabled><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 6h8.5l-2-2M13.5 6l-2 2M15 10a5.5 5.5 0 1 1-1.6-3.9"/></svg><span data-i18n="filter.clear">全部清除</span></button>
+            <button id="btn-reset-filter" class="filter-clear-button" type="button" disabled><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 6h8.5l-2-2M13.5 6l-2 2M15 10a5.5 5.5 0 1 1-1.6-3.9"/></svg><span data-i18n="filter.reset">重置</span></button>
           </div>
         </section>
       </aside>
@@ -1243,7 +1244,7 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=c3d622a4dc03"></script>
+  <script src="/static/bundle.js?v=a5688a699a1b"></script>
   <script src="/static/settings-scroll.js?v=5"></script>
   <script type="module" src="/static/author-logo.js?v=5"></script>
 </body>

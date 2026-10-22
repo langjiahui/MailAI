@@ -1,0 +1,179 @@
+/* Inline filters: one quiet surface, compact rows, persistent selected chips. */
+html[data-theme] body #workspace-filters {
+  margin:4px 12px 10px;
+  border:0!important;
+  border-radius:14px;
+  background:var(--desk-surface)!important;
+  box-shadow:0 3px 18px color-mix(in srgb,var(--desk-ink) 5%,transparent)!important;
+  max-height:max(180px,calc(100% - 190px));
+}
+html[data-theme] body #workspace-filters .filter-panel-header {
+  gap:4px;
+  padding:10px 12px 6px 16px;
+  border:0;
+  background:transparent;
+}
+html[data-theme] body #workspace-filters .filter-heading { justify-content:flex-start; }
+html[data-theme] body #workspace-filters .filter-heading b { font-size:13px; }
+#workspace-filters #filter-active-count { display:none!important; }
+html[data-theme] body #workspace-filters .filter-panel-header>button {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:30px;
+  padding:5px 7px;
+  border:0!important;
+  border-radius:8px;
+  background:transparent!important;
+  box-shadow:none!important;
+  color:var(--desk-muted)!important;
+  cursor:pointer;
+  font-size:11px;
+}
+html[data-theme] body #workspace-filters .filter-clear-button svg { display:none; }
+html[data-theme] body #workspace-filters .filter-panel-header>button:hover:not(:disabled) {
+  color:var(--desk-ink)!important;
+  background:var(--desk-hover)!important;
+}
+#btn-collapse-filters svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+#workspace-filters .filter-panel-selection { flex:none; padding:0 16px; }
+#workspace-filters .filter-panel-selection:has(#filter-chips:empty) { display:none; }
+#workspace-filters #filter-chips { margin:2px 0 8px; gap:5px; max-height:72px; overflow:auto; }
+html[data-theme] body #filter-chips button {
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-width:0;
+  max-width:100%;
+  min-height:25px;
+  padding:4px 8px;
+  border:0!important;
+  border-radius:8px;
+  color:var(--desk-accent)!important;
+  background:var(--desk-selected)!important;
+  box-shadow:none!important;
+  font-size:11px;
+  line-height:1.4;
+  text-align:left;
+  cursor:pointer;
+}
+html[data-theme] body #filter-chips button:hover { filter:brightness(.96); }
+html[data-theme] body #filter-chips button:focus-visible { outline:2px solid var(--desk-accent); outline-offset:-2px; }
+html[data-theme] body #workspace-filters .filter-panel-content { padding:4px 16px 8px; }
+html[data-theme] body #workspace-filters .filter-form {
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+html[data-theme] body #workspace-filters :is(.filter-block,.filter-select-row,.filter-switch-row) {
+  min-width:0;
+  min-height:34px;
+  margin:0;
+  padding:0;
+  border:0!important;
+}
+/* Keep helper copy available to assistive technology and hover tooltips. */
+html[data-theme] body #workspace-filters :is(legend,.filter-select-row,.filter-switch-row) small { display:none!important; }
+html[data-theme] body #workspace-filters :is(legend,.filter-select-row,.filter-switch-row) b {
+  color:var(--desk-ink)!important;
+  font-size:12px;
+  font-weight:550;
+  line-height:1.5;
+}
+/* Native fieldsets have a separate content box in WebKit; position the legend
+   beside the options without relying on fieldset grid participation. */
+html[data-theme] body #workspace-filters .filter-block { position:relative; display:block; padding-left:96px; }
+#workspace-filters .filter-block legend { position:absolute; top:50%; left:0; transform:translateY(-50%); width:88px; margin:0; padding:0; }
+html[data-theme] body #workspace-filters .filter-segments {
+  min-width:0;
+  width:100%;
+  gap:2px;
+  padding:2px;
+  border:0!important;
+  border-radius:9px;
+  background:var(--desk-muted-surface)!important;
+}
+html[data-theme] body #workspace-filters .filter-segments button {
+  min-height:30px;
+  padding:4px 2px;
+  border:0;
+  color:var(--desk-muted)!important;
+  font-size:10.5px;
+  line-height:1.4;
+  white-space:nowrap;
+}
+html[data-theme] body #workspace-filters .filter-segments button.active { color:var(--desk-accent)!important; }
+html[data-theme] body #workspace-filters :is(#filter-days,#filter-priority)::before { box-shadow:none; }
+html[data-theme] body #workspace-filters :is(#filter-domain,#productivity-workflow-filter) {
+  flex:0 1 148px;
+  width:148px;
+  max-width:56%;
+  min-height:34px;
+  padding:6px 28px 6px 10px;
+  border:0!important;
+  border-radius:9px;
+  color:var(--desk-ink)!important;
+  background-color:var(--desk-muted-surface)!important;
+  box-shadow:none!important;
+  font-size:11px;
+}
+#workspace-filters .filter-switch-row .switch { width:32px; height:20px; }
+#workspace-filters .filter-switch-row .switch i::after { width:14px; height:14px; top:3px; left:3px; }
+#workspace-filters .filter-switch-row .switch input:checked+i::after { transform:translateX(12px); }
+.filter-panel-footer {
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  flex:none;
+  min-height:38px;
+  padding:9px 16px 11px;
+  color:var(--desk-muted);
+  font-size:10.5px;
+  line-height:1.4;
+}
+.filter-panel-footer::before { content:""; position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg,transparent,var(--desk-line) 15%,var(--desk-line) 85%,transparent); }
+.filter-instant { display:inline-flex; align-items:center; gap:6px; }
+.filter-instant i { width:5px; height:5px; flex:none; border-radius:50%; background:var(--desk-accent); opacity:.8; }
+html[data-theme] body .list-pane.filters-open>.list-workspace-tools { display:none!important; }
+html[data-theme] body .list-workspace-tools #filter-chips { flex:1 1 120px; order:0; max-height:66px; padding:0; }
+html[data-theme] body .list-workspace-tools #filter-chips-clear { flex:none; margin-left:auto; padding:4px; min-height:26px; background:transparent!important; color:var(--desk-muted)!important; font-size:10.5px; }
+html[data-theme] body .list-workspace-tools #filter-chips-clear.hidden { display:none!important; }
+#filter-result-summary { flex:none; color:var(--desk-muted); font-size:10.5px; white-space:nowrap; }
+html[data-theme] body .list-sort #btn-filter-panel { display:inline-flex; align-items:center; gap:5px; min-height:32px; padding:5px 8px; }
+#btn-filter-panel svg { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; }
+.filter-trigger-count { font-size:10px; font-weight:650; font-variant-numeric:tabular-nums; }
+html[data-theme] body .list-sort #btn-filter-panel:has(.filter-trigger-count:not([hidden])) { color:var(--desk-accent); background:var(--desk-selected); }
+@container mail-list-pane (max-width:370px) {
+  html[data-theme] body #workspace-filters .filter-block { padding-left:80px; }
+  #workspace-filters .filter-block legend { width:76px; }
+  html[data-theme] body #workspace-filters .filter-segments button { font-size:10px; }
+  html[data-theme] body #workspace-filters :is(.filter-panel-content,.filter-panel-selection) { padding-inline:12px; }
+}
+@container mail-list-pane (max-width:300px) {
+  html[data-theme] body #workspace-filters .filter-block { padding-left:0; }
+  #workspace-filters .filter-block legend { position:static; transform:none; width:auto; margin-bottom:5px; }
+  html[data-theme] body #workspace-filters .filter-panel-header { padding-left:12px; }
+}
+html[data-theme][lang="en"] body #workspace-filters .filter-block { padding-left:0; }
+html[lang="en"] #workspace-filters .filter-block legend { position:static; transform:none; width:auto; margin-bottom:5px; }
+@media(pointer:coarse) {
+  html[data-theme] body #workspace-filters :is(.filter-select-row,.filter-switch-row),
+  html[data-theme] body #workspace-filters .filter-segments button { min-height:36px; }
+}
+
+#filter-chips-clear::before { content:none; }
+#workspace-filters .filter-switch-row:has(input:focus-visible) .switch i { outline:2px solid var(--desk-accent); outline-offset:3px; }
+
+html[data-theme] body #workspace-filters .filter-form>.hidden { display:none!important; }
+
+/* Keep the thumb distinct when legacy reward colors map white onto a dark surface. */
+html[data-theme] body #workspace-filters .switch i {
+  background:color-mix(in srgb,var(--desk-muted) 38%,var(--desk-surface))!important;
+  box-shadow:inset 0 0 0 1px var(--desk-line)!important;
+}
+html[data-theme] body #workspace-filters .switch i::after { background:var(--desk-surface)!important; }
+html[data-theme="dark"] body #workspace-filters .switch i::after { background:var(--desk-ink)!important; }
+html[data-theme] body #workspace-filters .switch input:checked+i { background:var(--desk-accent)!important; box-shadow:none!important; }
+html[data-theme] body #workspace-filters .switch input:checked+i::after { background:var(--reward-on-accent,var(--desk-surface))!important; }

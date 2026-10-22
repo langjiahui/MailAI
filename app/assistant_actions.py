@@ -158,7 +158,7 @@ def _execute_create_todo(params: dict) -> dict:
         email_id = int(email_id)
         if not db.get_email(email_id):
             raise ValueError("关联邮件不存在")
-    db.add_todos(email_id, [{"title": title, "deadline": deadline}])
+    db.add_todos(email_id, [{"title": title, "deadline": deadline}], user_edited=True)
     db.add_audit_log(email_id, action="assistant_create_todo", actor="assistant_confirmed",
                      reason=f"用户确认助手建议：创建待办「{title}」")
     return {"ok": True, "title": title, "deadline": deadline}

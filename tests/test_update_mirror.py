@@ -13,6 +13,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+from urllib.error import HTTPError
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app import update_mirror as mirror, update_resume as resume, update_trust as trust, update_transport as transport
@@ -69,6 +70,41 @@ class MirrorTest(unittest.TestCase):
                        {'assets': {**MANIFEST['assets'], 'macos-arm64': {**MANIFEST['assets']['macos-arm64'], 'url':'https://other.example.test/a.pkg'}}}):
             with patch.object(mirror,'read_json',side_effect=[signed({**MANIFEST,**change})]),patch.object(trust,'PUBLIC_KEY',PUBLIC):
                 with self.assertRaises(ValueError):mirror.discover()
+
+    def test_raw_access_denial_uses_same_public_file_api_and_verifies_signature(self):
+        for error in [HTTPError(mirror.STATIC_MANIFEST_URL, code, 'unavailable', {}, None)
+                      for code in (401, 403, 404, 429, 503)] + [TimeoutError(), OSError('short response')]:
+            with self.subTest(error=type(error).__name__, code=getattr(error, 'code', None)), \
+                    patch.object(mirror, 'read_json', side_effect=[error, signed(MANIFEST)]) as read, \
+                    patch.object(trust, 'PUBLIC_KEY', PUBLIC):
+                result = mirror.discover()
+            self.assertEqual(result['assets']['macos-arm64'], ASSET)
+            self.assertEqual([call.args[0] for call in read.call_args_list], [
+                mirror.STATIC_MANIFEST_URL, mirror.ATOM_API + '/raw/latest.signed.json?ref=updates'])
+
+    def test_channel_never_falls_back_after_invalid_content_or_signature(self):
+        invalid = signed(copy.deepcopy(MANIFEST))
+        invalid['manifest']['version'] = '99.0.0'
+        for outcome in [ValueError('invalid JSON'), invalid]:
+            with patch.object(mirror, 'read_json', side_effect=[outcome]) as read, \
+                    patch.object(trust, 'PUBLIC_KEY', PUBLIC):
+                with self.assertRaises(ValueError): mirror.discover()
+                self.assertEqual(read.call_count, 1)
+        for outcome in [invalid, HTTPError('https://example.test', 403, 'denied', {}, None)]:
+            with patch.object(mirror, 'read_json', side_effect=[OSError('raw denied'), outcome]) as read, \
+                    patch.object(trust, 'PUBLIC_KEY', PUBLIC):
+                with self.assertRaises((ValueError, HTTPError)): mirror.discover()
+                self.assertEqual(read.call_count, 2)
+
+    def test_channel_fallback_keeps_android_pointer_separate_and_rejects_paths(self):
+        with patch.object(mirror, 'read_json', side_effect=[OSError('raw denied'), signed(MANIFEST)]) as read, \
+                patch.object(trust, 'PUBLIC_KEY', PUBLIC):
+            mirror.read_channel('android-latest.signed.json')
+            self.assertEqual(read.call_args.args[0], mirror.ATOM_API + '/raw/android-latest.signed.json?ref=updates')
+        for filename in ('../latest.signed.json', 'latest.json', 'latest.signed.json?ref=main'):
+            with patch.object(mirror, 'read_json') as read:
+                with self.assertRaises(ValueError): mirror.read_channel(filename)
+                read.assert_not_called()
 
     def test_check_uses_domestic_and_custom_source_stays_custom(self):
         with patch.object(updater,'FROZEN',True),patch.dict(os.environ,{'MAILAI_APP_VERSION':'2.9.6','MAILAI_UPDATE_MANIFEST_URL':updater.DEFAULT_MANIFEST_URL}), \

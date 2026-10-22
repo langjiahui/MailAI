@@ -43,6 +43,15 @@ def main():
                 db.finish_sent_message(progress_sent, ok=True, message_id='<progress-sent@example.test>')
             db.save_contact('colleague@example.test','项目同事','示例公司','采购负责人',True)
             db.add_todos(1,[{'title':'确认合同交期','deadline':datetime.now().date().isoformat()}])
+            if os.environ.get('MAILAI_TODO_GROUP_FIXTURE') == '1':
+                for offset, subject in enumerate(('部门秋季出行安排通知', '请以此邮件为准！部门秋季出行安排通知')):
+                    email_id = db.upsert_email(dict(uid=900+offset,subject=subject,
+                        from_addr='team@example.test',to_addr=user,status='inbox',
+                        date=(datetime.now()+timedelta(minutes=offset)).isoformat(),
+                        body_text='请核对附件中的安排，明天 8:30 集合，8:50 出发。携带雨具和防滑鞋。'))
+                    db.add_todos(email_id,[{'title':title,'deadline':(datetime.now()+timedelta(days=1)).date().isoformat()}
+                        for title in (['核对附件中的出行信息','8:30 集合，8:50 出发','携带雨具和防滑鞋']
+                                      if offset == 0 else ['核对更新后的附件安排','明早 8:30 到指定地点集合'])])
             from email.message import EmailMessage
             message=EmailMessage();message['From']='colleague@example.test';message['To']=user;message['Subject']='采购合同交期确认';message.set_content('请结合附件确认交付安排。')
             csv='事项,负责人,交付日\n确认排期,项目组,周五\n'.encode('utf-8')

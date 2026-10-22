@@ -15,7 +15,7 @@ from . import update_proxy
 _OFFICIAL_HOSTS = frozenset({
     'github.com', 'api.github.com', 'objects.githubusercontent.com',
     'release-assets.githubusercontent.com', 'github-releases.githubusercontent.com',
-    'atomgit.com', 'raw.atomgit.com', 'file-cdn.gitcode.com',
+    'atomgit.com', 'raw.atomgit.com', 'api.atomgit.com', 'file-cdn.gitcode.com',
 })
 _FAKE_IP_RANGE = ipaddress.ip_network('198.18.0.0/15')
 

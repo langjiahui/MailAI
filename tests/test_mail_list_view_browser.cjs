@@ -177,9 +177,14 @@ const {chromium, webkit} = require('playwright');
     assert.equal(await page.evaluate(()=>document.body.dataset.mailListView),'table');
     await page.locator('[data-mail-column="0"]').dblclick();
     await page.locator('[data-resizer="list"]').dblclick();
-    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    // Pane resizing schedules a column fit through ResizeObserver and rAF.
+    // Wait for its resulting geometry, including on a busy CI renderer.
+    await page.waitForFunction(()=>{
+      const widths=[...document.querySelectorAll('.mail-table-heading')].map(n=>n.getBoundingClientRect().width);
+      return widths.length===4&&widths[2]>widths[0]&&widths[2]>widths[1];
+    });
     const defaults=await page.locator('.mail-table-heading').evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().width));
-    assert(defaults[2]>defaults[0]&&defaults[2]>defaults[1],'The subject gets most of the default column space');
+    assert(defaults[2]>defaults[0]&&defaults[2]>defaults[1],`The subject gets most of the default column space: ${JSON.stringify(defaults)}`);
     fs.mkdirSync('output/mail-list-view',{recursive:true});
     for (const theme of ['', 'theme_monochrome','theme_baowu']) for (const scale of [1,1.25]) for (const mode of ['light','dark']) for (const language of ['zh-CN','en']) for (const width of [1440,1024,900,768,390]) {
       await page.setViewportSize({width,height:1000});
