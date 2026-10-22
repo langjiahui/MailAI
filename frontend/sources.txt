@@ -20,6 +20,7 @@ assistant-scroll.js
 assistant-search.js
 secretary.js
 task-planner.js
+todo-groups.js
 task-notices.js
 energy-reminders.js
 experience-polish.js

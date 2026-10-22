@@ -65,6 +65,7 @@ TESTS = (
     'test_assistant_attachments.py',
     'test_assistant_images.py',
     'test_task_planner.py',
+    'test_todo_grouping.py',
     'test_task_notifications.py',
     'test_secretary.py',
     'test_sync_attention_state.py',

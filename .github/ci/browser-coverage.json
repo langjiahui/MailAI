@@ -557,5 +557,23 @@
     "env": {
       "MAILAI_FIXTURE_URL": "http://127.0.0.1:18797/"
     }
+  },
+  {
+    "file": "tests/test_todo_groups_browser.cjs"
+  },
+  {
+    "file": "tests/test_todo_groups_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
+  },
+  {
+    "file": "tests/test_filter_drawer_browser.cjs"
+  },
+  {
+    "file": "tests/test_filter_drawer_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
   }
 ]

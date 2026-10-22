@@ -304,6 +304,8 @@
     document.querySelector(".nav-system-cluster").prepend(task);
     const workflow = document.createElement('label');
     workflow.className = 'filter-select-row';
+    workflow.setAttribute('data-i18n-title', 'ui.a934c3c3dadb');
+    workflow.setAttribute('title', mailaiText('按重要程度或处理标记筛选'));
     workflow.innerHTML = "<span><b><span data-i18n=\"ui.932ea885da06\">邮件范围</span></b><small><span data-i18n=\"ui.a934c3c3dadb\">按重要程度或处理标记筛选</span></small></span><select id=\"productivity-workflow-filter\"><option value=\"all\" data-i18n=\"ui.fe595850aebb\">全部邮件</option><option value=\"focus\" data-i18n=\"ui.17cf368141bb\">重点邮件</option><option value=\"reply\" data-i18n=\"ui.e54bd4a29208\">待回复</option><option value=\"waiting\" data-i18n=\"ui.cb6833fbc011\">等待对方</option><option value=\"later\" data-i18n=\"ui.bf639a51feec\">稍后处理</option><option value=\"done\" data-i18n=\"ui.59f6c8369293\">已处理</option></select>";
     document.querySelector('.filter-form').prepend(workflow);
     const select = workflow.querySelector('select');
@@ -358,13 +360,7 @@
     const filters = document.querySelector(".mail-filter-group");
     if (filters) {
       filters.classList.add("productivity-filters");
-      const heading = filters.querySelector(".filter-heading");
-      const close = document.createElement("button");
-      close.type = "button";
-      close.className = "productivity-filter-collapse";
-      mailaiBindUI(close, "textContent", () => (mailaiText("收起")));
-      close.onclick = () => document.getElementById("btn-filter-panel").click();
-      heading.append(close);
+
     }
   }
   function getCriteria() {

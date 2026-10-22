@@ -6,7 +6,7 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException
 
 from ... import db, system_settings
-from ..schemas import TodoBulkStatusRequest, TodoUpdateRequest
+from ..schemas import TodoBulkStatusRequest, TodoUpdateRequest, TodoGroupReminderRequest
 
 log = logging.getLogger(__name__)
 router = APIRouter()
@@ -14,7 +14,17 @@ router = APIRouter()
 
 @router.get("/api/todos")
 def api_todos(include_done: bool = False):
-    return db.list_todos(include_done)
+    from ...todo_grouping import annotate
+    return annotate(db.list_todos(include_done))
+
+
+@router.post('/api/todos/group/reminder')
+def api_todo_group_reminder(payload: TodoGroupReminderRequest):
+    from ...task_planner import save_group_reminder
+    try:
+        return {'ok': True, 'updated': save_group_reminder(payload.ids, payload.remind_at)}
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
 
 
 @router.post("/api/todos/bulk/status")

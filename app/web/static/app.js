@@ -157,6 +157,7 @@ function updateFilterSummary() {
   if (badge) { badge.textContent = active; badge.classList.toggle('hidden', !active); }
   const clear = document.getElementById('btn-reset-filter');
   if (clear) clear.disabled = active === 0;
+  window.updateFilterChips?.();
 }
 
 function lastRecipientSeparatorIndex(value) {
@@ -8136,9 +8137,13 @@ function renderTodoCenter() {
   const now = localDateKey();
   const openCount = rows.filter(item => item.status !== 'done').length;
   animateCountText(document.getElementById('todo-count'), openCount, n => (mailaiT('todo.openCount') || '{n} 项未完成').replace('{n}', n));
+  const groups = window.mailaiTodoGroups ? window.mailaiTodoGroups(rows) : rows.map(item=>({key:String(item.id),rows:[item]}));
   const visibleRows = rows.slice(0, todoRenderLimit);
+  const renderedIds = new Set(visibleRows.map(item=>item.id));
+  const visibleGroups = groups.filter(group=>group.rows.some(item=>renderedIds.has(item.id)))
+    .map(group=>({...group,visibleRows:group.rows.filter(item=>renderedIds.has(item.id))}));
   const host = document.getElementById('todo-list');
-  const html = rows.length ? visibleRows.map(item => {
+  const renderRow = item => {
     const date = String(item.deadline || '').slice(0, 10);
     const sourceDate = item.email_date || item.email_indexed_at || item.created_at || '';
     const overdue = item.status !== 'done' && date && date < now;
@@ -8152,13 +8157,14 @@ function renderTodoCenter() {
       </div>
       <div class="todo-plan-actions"><button type="button" class="todo-status-action todo-complete-action" data-todo-toggle="${item.id}">${item.status === 'done' ? mailaiText('恢复待办') : "<span aria-hidden=\"true\">✓</span> <span data-i18n=\"ui.c0b3fbff51cc\">完成</span>"}</button><button type="button" class="todo-status-action todo-arrange-action" data-todo-plan="${item.id}"><span data-i18n="ui.49a49a3748ec">安排提醒</span></button></div>
     </article>`;
-  }).join('') + (rows.length > visibleRows.length ? `
+  };
+  const html = rows.length ? (window.mailaiTodoGroupHTML ? window.mailaiTodoGroupHTML(visibleGroups,renderRow) : visibleRows.map(renderRow).join('')) + (rows.length > visibleRows.length ? `
     <button type="button" class="todo-render-more" data-todo-render-more>
       ${mailaiT('todo.showMore') || '显示更多待办'} <small>${(mailaiT('todo.showMoreCount') || '还有 {n} 项').replace('{n}', rows.length - visibleRows.length)}</small>
     </button>` : '') : (window.mailaiTodoEmpty?.() || `<div class="attachment-empty">${mailaiT('todo.empty') || '暂无待办事项'}</div>`);
-  mailaiPatchRows(host, html, 'data-todo-id', article => {
-    const edit = todoEdits.get(todoEditKey(article.dataset.todoId));
-    return edit && edit.state !== 'saved';
+  mailaiPatchRows(host, html, window.mailaiTodoGroupHTML ? 'data-todo-group-key' : 'data-todo-id', group => {
+    const articles = group.matches('[data-todo-id]') ? [group] : [...group.querySelectorAll('[data-todo-id]')];
+    return articles.some(article => { const edit = todoEdits.get(todoEditKey(article.dataset.todoId)); return edit && edit.state !== 'saved'; });
   });
   host.querySelectorAll('[data-todo-id]').forEach(article => {
     const edit = todoEdits.get(todoEditKey(article.dataset.todoId));
@@ -8172,6 +8178,7 @@ function renderTodoCenter() {
   });
   updateTodoBatchToolbar(rows);
   window.mailaiTodoCounts?.();
+  window.mailaiTodoGroupOverview?.(groups,rows);
 }
 
 let selectedTodoIds = new Set();

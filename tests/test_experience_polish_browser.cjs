@@ -2,7 +2,7 @@
 const {chromium}=require('playwright');const assert=require('node:assert/strict');
 (async()=>{const browser=await chromium.launch();try{
  const p=await browser.newPage({viewport:{width:1512,height:950},reducedMotion:'reduce'});const errors=[];p.on('pageerror',e=>errors.push(e.message));
- await p.goto('http://127.0.0.1:18795');await p.locator('.email-item').first().waitFor();await p.locator('#app-preloader').waitFor({state:'hidden'});
+ await p.goto(process.env.MAILAI_TEST_URL || 'http://127.0.0.1:18795');await p.locator('.email-item').first().waitFor();await p.locator('#app-preloader').waitFor({state:'hidden'});
  assert(await p.evaluate(()=>activeMailAccount().user.endsWith('@example.test')));
  // Failed remote COPY can be paused without claiming remote success.
  let paused=false;const writes=[];let releasePendingRead;
@@ -47,7 +47,7 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
  for(const width of [760,390]) {await p.setViewportSize({width,height:900});await p.evaluate(()=>document.documentElement.dataset.theme='dark');await p.waitForTimeout(80);await p.screenshot({path:'build/experience-tasks-'+width+'.png'});assert(await p.locator('#todo-list').evaluate(g=>[...g.querySelectorAll('.todo-center-item')].every(c=>{const r=c.getBoundingClientRect();return [...c.querySelectorAll('.todo-title-input,.todo-time-meta,.todo-plan-actions')].every(n=>{const b=n.getBoundingClientRect();return b.right<=r.right+1&&b.bottom<=r.bottom+1&&b.left>=r.left-1})})),'task containment '+width);}
  await p.screenshot({path:'build/experience-tasks-narrow.png'});
  await p.locator('button[data-todo-view=later]').click();await p.locator('[data-todo-empty-all]').click();assert.equal(await p.locator('#todo-list [data-todo-id]').count(),3);
- await p.setViewportSize({width:1280,height:800});await p.evaluate(()=>{document.documentElement.style.setProperty('--fz','1.5');document.body.style.zoom='1.5';const base=todoCenterRows[0];todoCenterRows=Array.from({length:60},(_,i)=>({...base,id:1000+i,title:'较长任务：跨部门评审材料的准备、核对与反馈安排'}));renderTodoCenter()});
+ await p.setViewportSize({width:1280,height:800});await p.evaluate(()=>{document.documentElement.style.setProperty('--fz','1.5');document.body.style.zoom='1.5';const base=todoCenterRows[0];todoCenterRows=Array.from({length:60},(_,i)=>({...base,id:1000+i,email_id:1000+i,group_key:undefined,title:'较长任务：跨部门评审材料的准备、核对与反馈安排'}));renderTodoCenter()});
  assert(await p.locator('#todo-list').evaluate(n=>n.scrollHeight>n.clientHeight),'long list must scroll');
  await p.locator('.todo-complete-action').last().scrollIntoViewIfNeeded();assert(await p.locator('.todo-complete-action').last().evaluate(n=>{const r=n.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight}));
  assert(await p.locator('.todo-center-card').evaluate(n=>{const r=n.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight+1}),'zoomed panel within viewport');

@@ -3,6 +3,36 @@ from datetime import datetime
 from . import db
 
 
+def save_group_reminder(todo_ids, remind_at):
+    """Atomically schedule the selected open subtasks in the current account."""
+    ids = sorted(set(todo_ids))
+    if not ids or len(ids) > 200 or any(type(value) is not int or value <= 0 for value in ids):
+        raise ValueError('请选择 1–200 项待办')
+    if remind_at:
+        try:
+            when = datetime.fromisoformat(remind_at)
+            if when.tzinfo:
+                when = when.astimezone().replace(tzinfo=None)
+            if when <= datetime.now():
+                raise ValueError()
+            remind_at = when.isoformat(timespec='seconds')
+        except ValueError:
+            raise ValueError('请选择将来的提醒时间')
+    with db.conn() as c:
+        c.execute('BEGIN IMMEDIATE')
+        slots = ','.join('?' for _ in ids)
+        rows = c.execute(f'SELECT id,status FROM todos WHERE id IN ({slots})', ids).fetchall()
+        if len(rows) != len(ids) or any(row['status'] != 'open' for row in rows):
+            raise ValueError('待办状态已变化，请刷新后重新选择')
+        c.execute(f'UPDATE todos SET remind_at=?,user_edited=1 WHERE id IN ({slots})', (remind_at or None, *ids))
+        if remind_at:
+            from .task_notifications import ensure_delivery_table
+            ensure_delivery_table(c)
+            c.executemany('INSERT OR REPLACE INTO task_notice_delivery(todo_id,remind_at,sent,retry_after) VALUES(?,?,0,?)',
+                          [(value, remind_at, datetime.now().isoformat()) for value in ids])
+    return len(ids)
+
+
 def save(email_id=None, todo_id=None, **fields):
     allowed = {'title', 'deadline', 'stage', 'kind', 'remind_at'}
     fields = {k: v for k, v in fields.items() if k in allowed and v is not None}

@@ -139,6 +139,11 @@ class TodoBulkStatusRequest(BaseModel):
     status: str = "done"
 
 
+class TodoGroupReminderRequest(BaseModel):
+    ids: list[int] = Field(min_length=1, max_length=200)
+    remind_at: str = Field(max_length=40)
+
+
 class ModelConfigRequest(BaseModel):
     provider: str = "custom"
     extra_params: dict | None = None

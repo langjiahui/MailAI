@@ -34,7 +34,7 @@ def _string_list(value, name: str) -> list[str]:
 def _cache_key(kind: str, email: dict, context: str = "") -> str:
     """Stable per-account cache key; model/prompt changes invalidate old results."""
     payload = {
-        "version": _CACHE_VERSION,
+        "version": "work-actions-v4" if kind == "work" else _CACHE_VERSION,
         "kind": kind,
         "model": config.LLM_MODEL,
         "message_id": email.get("message_id") or "",

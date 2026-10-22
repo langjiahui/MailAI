@@ -461,17 +461,28 @@ async function refreshTaskCenter({lightweight = false} = {}) {
 }
 
 function updateFilterChips() {
+  const chipHost = document.getElementById('filter-chips');
+  if (!chipHost) return;
   const parsed = window.mailaiGetSearchInterpretation?.();
-  const labels = {mailTags:currentFilter.mailTags?.length ? currentFilter.mailTags.join(currentFilter.mailTagMode === 'all' ? ' + ' : ' / ') : '', workflow:window.mailaiWorkflowFilterLabel?.() || '', unread:currentFilter.unread ? mailaiText('未读邮件') : '', days:currentFilter.days !== 9999 ? mailaiTemplate`近 ${currentFilter.days} 天` : '', priority:currentFilter.priority ? mailaiTemplate`${currentFilter.priority}重要程度` : '', domain:currentFilter.domain, attachments:currentFilter.attachments ? mailaiText('含附件') : '', search:currentFilter.search, category:currentFilter.category, verdict:currentFilter.verdict ? ({get clean() { return mailaiText('正常'); }, get suspicious() { return mailaiText('可疑'); }, get phishing() { return mailaiText('高风险'); }})[currentFilter.verdict] : ''};
+  const labels = {mailTags:currentFilter.mailTags?.length ? currentFilter.mailTags.join(currentFilter.mailTagMode === 'all' ? ' + ' : ' / ') : '', workflow:window.mailaiWorkflowFilterLabel?.() || '', unread:currentFilter.unread ? mailaiText('未读邮件') : '', days:currentFilter.days !== 9999 ? mailaiTemplate`近 ${currentFilter.days} 天` : '', priority:currentFilter.priority ? (mailaiT('filter.priorityChip') || '{value}优先级').replace('{value}', ({高:mailaiT('filter.high'),中:mailaiT('filter.medium'),低:mailaiT('filter.low')})[currentFilter.priority] || currentFilter.priority) : '', domain:currentFilter.domain, attachments:currentFilter.attachments ? mailaiText('含附件') : '', search:currentFilter.search, category:currentFilter.category, verdict:currentFilter.verdict ? ({get clean() { return mailaiText('正常'); }, get suspicious() { return mailaiText('可疑'); }, get phishing() { return mailaiText('高风险'); }, get unreviewed() { return mailaiT('risk.unreviewed'); }})[currentFilter.verdict] : ''};
   if (parsed?.structured) labels.search = '';
   const tokenNames = {sender:mailaiText('发件人'),recipient:mailaiText('收件人 / 抄送'),subject:mailaiText('主题'),filename:mailaiText('附件名称或类型'),after:mailaiText('开始日期'),before:mailaiText('结束日期'),mailbox:mailaiText('邮件范围'),state:mailaiText('处理状态'),category:mailaiText('AI 分类'),has_attachment:mailaiText('有附件'),unread:mailaiText('仅未读'),text:mailaiText('关键词')};
   const scopes = {all:mailaiText('全部正常邮件（含发件、草稿）'),inbox:mailaiText('收件箱'),sent:mailaiText('已发送'),drafts:mailaiText('草稿'),trash:mailaiText('已删除'),spam:mailaiText('垃圾邮件'),quarantine:mailaiText('隔离区')};
   const conditions = parsed?.structured ? parsed.tokens.map(token => {
     const value = token.field === 'mailbox' ? scopes[token.value] || token.value : token.value;
     const label = token.value === true ? tokenNames[token.field] : `${tokenNames[token.field]}: ${value}`;
-    return `<button type="button" data-remove-search-token="${token.field}" title="${esc(label)}"><span class="filter-chip-label">${esc(label)}</span><span class="filter-chip-close" aria-hidden="true">×</span></button>`;
+    return `<button type="button" data-remove-search-token="${token.field}" title="${esc(label)}" aria-label="${esc((mailaiT('filter.remove') || '移除筛选：{value}').replace('{value}', label))}"><span class="filter-chip-label">${esc(label)}</span><span class="filter-chip-close" aria-hidden="true">×</span></button>`;
   }).join('') : '';
-  document.getElementById('filter-chips').innerHTML = Object.entries(labels).filter(([,value]) => value).map(([key,value]) => `<button type="button" data-remove-filter="${key}" title="${esc(value)}" aria-label="移除筛选：${esc(value)}" data-i18n-aria="ui.f398b052d41d"><span class="filter-chip-label">${esc(value)}</span><span class="filter-chip-close" aria-hidden="true">×</span></button>`).join('') + conditions;
+  const focusedChip = chipHost.contains(document.activeElement) ? document.activeElement.closest('button') : null;
+  const focusedIndex = focusedChip ? [...chipHost.children].indexOf(focusedChip) : -1;
+  chipHost.innerHTML = Object.entries(labels).filter(([,value]) => value).map(([key,value]) => `<button type="button" data-remove-filter="${key}" title="${esc(value)}" aria-label="${esc((mailaiT('filter.remove') || '移除筛选：{value}').replace('{value}', value))}"><span class="filter-chip-label">${esc(value)}</span><span class="filter-chip-close" aria-hidden="true">×</span></button>`).join('') + conditions;
+  const count = chipHost.childElementCount;
+  if (focusedIndex >= 0) (chipHost.children[Math.min(focusedIndex, count - 1)] || document.getElementById('btn-filter-panel'))?.focus({preventScroll:true});
+  const triggerCount = document.querySelector('#btn-filter-panel .filter-trigger-count');
+  if (triggerCount) { triggerCount.textContent = count; triggerCount.hidden = count === 0; }
+  mailaiBindUI(document.getElementById('btn-filter-panel'), '@aria-label', () => count ? (mailaiT('filter.selected') || '筛选，已选 {count} 项').replace('{count}', count) : mailaiT('filter.toggle'));
+  document.getElementById('filter-chips-clear')?.classList.toggle('hidden', count === 0);
+  document.getElementById('filter-result-summary')?.classList.toggle('hidden', count === 0);
 }
 
 let semanticPollTimer = null;
@@ -874,8 +885,48 @@ function initializeWorkspace() {
   const filterBody = document.createElement('div');
   filterBody.className = 'filter-panel-content';
   filterBody.append(filters.querySelector('.filter-form'));
-  filters.append(filterHeader, filterBody);
+  const filterSelection = document.createElement('div');
+  filterSelection.className = 'filter-panel-selection';
+  const filterFooter = document.createElement('div');
+  filterFooter.className = 'filter-panel-footer';
+  filterFooter.innerHTML = '<span class="filter-instant"><i aria-hidden="true"></i><span data-i18n="filter.instant">自动应用</span></span><span id="filter-result-count" role="status" aria-live="polite" aria-atomic="true"></span>';
+  filters.append(filterHeader, filterSelection, filterBody, filterFooter);
   const filterButton = document.getElementById('btn-filter-panel');
+  filterButton.removeAttribute('data-i18n');
+  filterButton.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h5m4 0h5M3 10h9m4 0h1M3 15h1m4 0h9"/><circle cx="10" cy="5" r="2"/><circle cx="14" cy="10" r="2"/><circle cx="6" cy="15" r="2"/></svg><span data-i18n="filter.toggle">筛选</span><span class="filter-trigger-count" hidden aria-hidden="true"></span>';
+  const filterClose = document.createElement('button');
+  filterClose.type = 'button'; filterClose.id = 'btn-collapse-filters';
+  filterClose.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 12 5-5 5 5"/></svg>';
+  filterClose.setAttribute('data-i18n-aria', 'filter.collapse');
+  filterClose.setAttribute('aria-label', mailaiT('filter.collapse'));
+  filterClose.setAttribute('data-i18n-title', 'filter.collapse');
+  filterClose.setAttribute('title', mailaiT('filter.collapse'));
+  filterHeader.append(filterClose);
+  filterClose.onclick = () => { filterButton.click(); filterButton.focus({preventScroll:true}); };
+  const filterTools = document.querySelector('.list-workspace-tools');
+  const chipHost = document.getElementById('filter-chips');
+  filterTools.insertAdjacentHTML('beforeend', '<button type="button" id="filter-chips-clear" class="hidden" data-i18n="filter.resetShort">清除</button><span id="filter-result-summary" class="hidden" role="status" aria-live="polite" aria-atomic="true"></span>');
+  document.getElementById('filter-chips-clear').onclick = () => document.getElementById('btn-reset-filter').click();
+  const updateFilterResult = () => {
+    const text = document.getElementById('list-count').textContent;
+    document.getElementById('filter-result-count').textContent = text;
+    document.getElementById('filter-result-summary').textContent = text;
+  };
+  new MutationObserver(updateFilterResult).observe(document.getElementById('list-count'), {childList:true, characterData:true, subtree:true});
+  updateFilterResult();
+  filters.querySelectorAll('.filter-block,.filter-select-row,.filter-switch-row').forEach(row => {
+    const hint = row.querySelector('small');
+    if (!hint) return;
+    hint.id ||= 'filter-hint-' + (row.querySelector('input,select,[role="group"]')?.id || 'scope');
+    row.querySelector('input,select,[role="group"]')?.setAttribute('aria-describedby', hint.id);
+    const hintKey = hint.dataset.i18n || hint.querySelector('[data-i18n]')?.dataset.i18n;
+    if (hintKey) mailaiBindUI(row, 'title', () => mailaiT(hintKey));
+  });
+  filters.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && filterButton.getAttribute('aria-expanded') === 'true') {
+      event.preventDefault(); event.stopPropagation(); filterButton.click();
+    }
+  });
   let filterOpen = false, filterAnimation = null, filterContentAnimation = null;
   filterButton.onclick = () => {
     const opening = !filterOpen;
@@ -886,6 +937,10 @@ function initializeWorkspace() {
     filterAnimation?.cancel(); filterContentAnimation?.cancel();
     filterOpen = opening;
     filterButton.setAttribute('aria-expanded', String(opening));
+    if (!opening && filters.contains(document.activeElement)) filterButton.focus({preventScroll:true});
+    document.querySelector('.list-pane').classList.toggle('filters-open', opening);
+    if (opening) filterSelection.append(chipHost);
+    else filterTools.prepend(chipHost);
     if (opening) { filters.classList.remove('hidden'); filters.inert = false; filters.setAttribute('aria-hidden', 'false'); }
     else { filters.inert = true; filters.setAttribute('aria-hidden', 'true'); }
     filters.style.height = 'auto'; filters.style.opacity = '1';

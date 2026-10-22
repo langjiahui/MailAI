@@ -6,7 +6,7 @@ const root = path.resolve(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'app/web/static/index.html'), 'utf8');
 const js = fs.readFileSync(path.join(root, 'app/web/static/app.js'), 'utf8');
 
-assert.match(html, /筛选条件[\s\S]*收件时间[\s\S]*重要程度[\s\S]*由 MailAI 判断处理紧急程度/);
+assert.match(html, /筛选邮件[\s\S]*收件时间[\s\S]*重要程度[\s\S]*由 MailAI 判断处理紧急程度/);
 assert.match(html, /发件人域名[\s\S]*发件邮箱中 @ 后面的部分/);
 assert.match(html, /id="filter-days"[\s\S]*class="active" data-value="9999"/, 'All time must be the visible default');
 assert.match(js, /days:\s*9999/, 'All time must be the state default');
