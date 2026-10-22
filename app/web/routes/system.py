@@ -51,6 +51,16 @@ def api_system_update_install():
         raise HTTPException(409, f"更新失败：{exc}")
 
 
+@router.post("/api/system/update/download")
+def api_system_update_download():
+    return release_update.start_install(download_only=True)
+
+
+@router.post("/api/system/update/install/ready")
+def api_system_update_install_ready(version: str = ""):
+    return release_update.start_install(prepared_only=True, expected_version=version)
+
+
 @router.get("/api/system/update/install/status")
 def api_system_update_install_status():
     return release_update.install_status()

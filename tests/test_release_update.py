@@ -7,6 +7,7 @@ import ssl
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import urllib.error
 import plistlib
@@ -326,7 +327,93 @@ def main():
         state = release_update.install_status()
         assert state["status"] == "completed" and state["phase"] == "launched"
         assert state["version"] == "1.1.0"
-    print("PASS release update device selection, version gate and checksum")
+    verify_deferred_update_flow()
+    print("PASS release update device selection, version gate, deferred download and explicit verified installation")
+
+
+def verify_deferred_update_flow():
+    payload = b"isolated verified installer"
+    release = {"current_version": "1.0.0", "available": True, "installable": True,
+               "latest_version": "1.1.0", "device": "macos-arm64",
+               "asset": {"url": "https://downloads.example.test/MailAI.pkg",
+                         "sha256": hashlib.sha256(payload).hexdigest(), "size": len(payload)}}
+    idle = {"status": "idle", "phase": "idle", "running": False, "downloaded": 0,
+            "total": 0, "percent": 0, "speed_bps": 0, "message": "", "error": ""}
+    with tempfile.TemporaryDirectory() as folder, patch.object(release_update, "USER_DIR", Path(folder)), \
+            patch.object(release_update, "current_version", return_value="1.0.0"), \
+            patch.object(release_update, "device_key", return_value="macos-arm64"), \
+            patch.object(release_update, "check", return_value=release) as check, \
+            patch.object(release_update.sys, "platform", "darwin"), \
+            patch.object(release_update.subprocess, "run") as launch, \
+            patch.object(release_update.subprocess, "Popen") as windows_launch, \
+            patch.dict(release_update._install_state, idle, clear=True):
+        entered, finish = threading.Event(), threading.Event()
+        original_download = release_update._download
+        def held_download(*args, **kwargs):
+            entered.set()
+            assert finish.wait(2), "background download did not get released"
+            return original_download(*args, **kwargs)
+        with patch.object(release_update, "_download", side_effect=held_download) as download, \
+                patch.object(release_update.urllib.request, "urlopen", return_value=Response(payload)):
+            try:
+                started = release_update.start_install(download_only=True)
+                assert started["running"] and started["action"] == "download"
+                assert entered.wait(2)
+                assert release_update.start_install(download_only=True)["already_running"]
+                assert release_update.start_install(prepared_only=True)["already_running"]
+            finally:
+                finish.set()
+            deadline = time.monotonic() + 2
+            while release_update._install_guard.locked() and time.monotonic() < deadline:
+                time.sleep(.01)
+            state = release_update.install_status()
+            assert state["phase"] == "ready" and not state["running"], state
+            assert state["version"] == "1.1.0" and state["percent"] == 100
+            assert download.call_count == 1
+        launch.assert_not_called()
+        windows_launch.assert_not_called()
+        assert not (Path(folder) / "updates/install-pending.json").exists()
+        # App restart recovers the prepared update without network or auto-launch.
+        release_update._install_state.clear()
+        release_update._install_state.update(idle)
+        restored = release_update.install_status()
+        assert restored["phase"] == "ready" and restored["release"] == release
+        check.assert_called_once_with(force=True)
+        with patch.object(release_update.urllib.request, "urlopen", side_effect=AssertionError("do not download on install")):
+            try:
+                release_update.download_and_launch(prepared_only=True, expected_version="1.2.0")
+            except ValueError as exc:
+                assert "更新信息已变化" in str(exc)
+            else:
+                raise AssertionError("installed a different version from the user's confirmation")
+            launch.assert_not_called()
+            installed = release_update.download_and_launch(prepared_only=True, expected_version="1.1.0")
+            assert installed["phase"] == "installer_opened"
+            launch.assert_called_once()
+            # Same-size corruption cannot bypass re-verification on the later install click.
+            launch.reset_mock()
+            target = Path(folder) / "updates/MailAI-1.1.0-macos-arm64.pkg"
+            target.write_bytes(b"x" * len(payload))
+            try:
+                release_update.download_and_launch(prepared_only=True, expected_version="1.1.0")
+            except ValueError as exc:
+                assert "校验失败" in str(exc)
+            else:
+                raise AssertionError("tampered prepared installer accepted")
+            launch.assert_not_called()
+            assert release_update._read_ready_update() is None
+        # Invalid metadata, missing files, and an already installed version are not ready.
+        checkpoint = release_update._ready_update_path()
+        for bad in ('null', '[]', '{invalid', '{"version":"../../evil"}'):
+            checkpoint.write_text(bad, encoding="utf-8")
+            assert release_update.install_status()["phase"] == "idle"
+        release_update._remember_ready_update(release)
+        target.unlink()
+        assert release_update.install_status()["phase"] == "idle"
+        target.write_bytes(payload)
+        with patch.object(release_update, "current_version", return_value="1.1.0"):
+            assert release_update.install_status()["phase"] == "idle"
+        assert not checkpoint.exists()
 
 
 if __name__ == "__main__":

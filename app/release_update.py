@@ -360,7 +360,7 @@ def _download_fresh(asset: dict, target: Path, progress=None) -> None:
             temporary.unlink()
 
 
-def download_and_launch(progress=None) -> dict:
+def download_and_launch(progress=None, *, download_only=False, prepared_only=False, expected_version=None) -> dict:
     if progress:
         progress(phase="checking", downloaded=0, total=0, speed_bps=0,
                  message="正在确认最新版本")
@@ -374,7 +374,32 @@ def download_and_launch(progress=None) -> dict:
     update_dir = USER_DIR / "updates"
     update_dir.mkdir(parents=True, exist_ok=True)
     target = update_dir / f"MailAI-{result['latest_version']}-{result['device']}{suffix}"
-    _download(asset, target, progress=progress)
+    if progress:
+        progress(phase="checking", version=result["latest_version"], release=result,
+                 message="正在确认最新版本")
+    if prepared_only:
+        # A later click authorizes this prepared package only. A newly published
+        # release must be downloaded and confirmed separately, never silently installed.
+        ready = _read_ready_update()
+        if (not ready or ready.get("version") != result["latest_version"]
+                or ready["release"].get("device") != result["device"]
+                or (expected_version and expected_version != result["latest_version"])):
+            raise ValueError("更新信息已变化，请重新检查并下载更新。")
+        if not target.is_file():
+            raise ValueError("安装包已移除，请重新下载更新。")
+        if progress:
+            progress(phase="verifying", message="正在校验安装包")
+        digest = hashlib.sha256()
+        with target.open("rb") as source:
+            for chunk in iter(lambda: source.read(1024 * 1024), b""):
+                digest.update(chunk)
+        if ((asset.get("size") and target.stat().st_size != int(asset["size"]))
+                or digest.hexdigest() != asset["sha256"]):
+            _ready_update_path().unlink(missing_ok=True)
+            raise ValueError("安装包校验失败，请重新下载更新。")
+    else:
+        _download(asset, target, progress=progress)
+    _remember_ready_update(result)
     # Old installers are never reusable — prune them so the folder cannot pile up.
     for stale in update_dir.glob("MailAI-*"):
         if stale != target and stale.suffix.lower() in {".pkg", ".exe"} and stale.is_file():
@@ -382,6 +407,9 @@ def download_and_launch(progress=None) -> dict:
                 stale.unlink()
             except OSError:
                 log.warning("无法清理旧安装包 %s", stale)
+    if download_only:
+        return {"ok": True, "version": result["latest_version"], "release": result,
+                "phase": "ready", "message": "安装包已就绪，点击立即安装后才会启动安装器。"}
     if progress:
         progress(phase="launching", downloaded=int(asset.get("size") or 0),
                  total=int(asset.get("size") or 0), speed_bps=0, message="正在启动安装程序")
@@ -495,18 +523,69 @@ def _set_install_state(**values) -> dict:
         return dict(_install_state)
 
 
+def _ready_update_path() -> Path:
+    return USER_DIR / "updates" / "ready-update.json"
+
+
+def _remember_ready_update(release: dict) -> None:
+    path = _ready_update_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if not release["asset"].get("size"):
+        suffix = ".exe" if release["device"] == "windows-x64" else ".pkg"
+        target = path.parent / f"MailAI-{release['latest_version']}-{release['device']}{suffix}"
+        release = {**release, "asset": {**release["asset"], "size": target.stat().st_size}}
+    temporary = path.with_suffix(".tmp")
+    temporary.write_text(json.dumps({"version": release["latest_version"], "release": release}), encoding="utf-8")
+    temporary.replace(path)
+
+
+def _read_ready_update() -> dict | None:
+    # This checkpoint is display/recovery metadata, never authority to execute.
+    # Installation always refreshes the signed manifest and rehashes the file.
+    try:
+        saved = json.loads(_ready_update_path().read_text(encoding="utf-8"))
+        release = saved["release"]
+        version = saved["version"]
+        if _version_tuple(version) <= _version_tuple(current_version()):
+            _ready_update_path().unlink(missing_ok=True)
+            return None
+        device = release["device"]
+        if (device != device_key() or device not in {"windows-x64", "macos-arm64"}
+                or release.get("latest_version") != version or not re.fullmatch(r"[0-9.]+", version)):
+            return None
+        size = int(release["asset"]["size"])
+        if not 0 < size <= DOWNLOAD_MAX_BYTES:
+            return None
+        suffix = ".exe" if device == "windows-x64" else ".pkg"
+        target = USER_DIR / "updates" / f"MailAI-{version}-{device}{suffix}"
+        if target.is_file() and target.stat().st_size == size:
+            return saved
+    except (OSError, ValueError, TypeError, KeyError, AttributeError):
+        pass
+    return None
+
+
 def install_status() -> dict:
     with _install_state_lock:
-        return dict(_install_state)
+        state = dict(_install_state)
+    if state["status"] == "idle":
+        ready = _read_ready_update()
+        if ready:
+            size = int(ready["release"]["asset"]["size"])
+            return {**state, **ready, "status": "completed", "phase": "ready", "percent": 100,
+                    "downloaded": size, "total": size, "action": "download",
+                    "message": "安装包已就绪，点击立即安装后才会启动安装器。"}
+    return state
 
 
-def start_install() -> dict:
-    """Start a single update download so the UI can poll live progress."""
+def start_install(*, download_only=False, prepared_only=False, expected_version=None) -> dict:
+    """A shared guard covers background download and explicit installer handoff."""
     if not _install_guard.acquire(blocking=False):
         return {**install_status(), "ok": True, "already_running": True}
     _set_install_state(
         status="running", phase="queued", running=True, downloaded=0, total=0,
         percent=0, speed_bps=0, message="正在准备更新", error="",
+        action="download" if download_only else "install", version="", release=None,
     )
 
     def report(**values):
@@ -514,7 +593,11 @@ def start_install() -> dict:
 
     def run():
         try:
-            result = download_and_launch(progress=report)
+            if download_only or prepared_only:
+                result = download_and_launch(progress=report, download_only=download_only,
+                                             prepared_only=prepared_only, expected_version=expected_version)
+            else:
+                result = download_and_launch(progress=report)
             _set_install_state(
                 status="completed", phase=result.get("phase") or "launched", running=False, speed_bps=0,
                 message=result.get("message") or "安装器已启动", error="",

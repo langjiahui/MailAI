@@ -26,7 +26,7 @@
     if(!foreground()) return;
     const status=document.querySelector('#companion-growth-dialog[open] [data-pet-life-status]');
     if(deliberate && status) { status.textContent=t(key); return; }
-    if(!chatter || document.querySelector('dialog[open],.assistant-nudge:not(.hidden)') || document.body.classList.contains('assistant-visible') ||
+    if(!chatter || document.querySelector('dialog[open],.assistant-nudge:not(.hidden),#companion-update:not([hidden])') || document.body.classList.contains('assistant-visible') ||
        root.matches('.state-thinking,.state-warn,.state-danger') || document.body.classList.contains('companion-working') ||
        getComputedStyle(orb).visibility==='hidden' || !orb.getClientRects().length || performance.now()-lastSpoken<90000) return;
     line=key;lastSpoken=performance.now();bubble.textContent=t(key);bubble.hidden=false;

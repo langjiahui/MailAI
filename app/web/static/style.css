@@ -2992,8 +2992,12 @@ body { font-size: 13px; background: var(--bg); }
 .update-download-progress span { color:var(--primary); font-size:11px; font-weight:800; font-variant-numeric:tabular-nums; }
 .update-download-progress > small { color:var(--muted); font-size:10px; }
 .update-progress-track { position:relative; display:block; height:9px; overflow:hidden; border-radius:999px; background:rgba(64,104,84,.13); }
-.update-progress-track b { position:absolute; inset:0 auto 0 0; width:0; overflow:hidden; border-radius:inherit; background:linear-gradient(90deg,#347b5f,#55ad82,#347b5f); background-size:200% 100%; box-shadow:0 0 12px rgba(65,151,111,.32); transition:width .28s ease; animation:update-progress-flow 1.25s linear infinite; }
-.update-progress-track b::after { content:''; position:absolute; inset:0; background:linear-gradient(105deg,transparent 20%,rgba(255,255,255,.6) 48%,transparent 76%); transform:translateX(-100%); animation:update-progress-glint 1.35s ease-in-out infinite; }
+.update-progress-track b { position:absolute; inset:0 auto 0 0; width:0; overflow:hidden; border-radius:inherit; background:linear-gradient(90deg,#347b5f,#55ad82,#347b5f); background-size:200% 100%; box-shadow:0 0 12px rgba(65,151,111,.32); transition:width .28s ease; animation:update-progress-flow 1.25s linear infinite; animation-play-state:paused; }
+.update-progress-track b::after { content:''; position:absolute; inset:0; background:linear-gradient(105deg,transparent 20%,rgba(255,255,255,.6) 48%,transparent 76%); transform:translateX(-100%); animation:update-progress-glint 1.35s ease-in-out infinite; animation-play-state:paused; }
+.update-download-progress.running .update-progress-track b,.update-download-progress.running .update-progress-track b::after { animation-play-state:running; }
+.update-dialog-next-step { margin:12px 0 0; color:var(--muted); font-size:12px; line-height:1.6; }
+.update-dialog:not([open]) .update-progress-track b,.update-dialog:not([open]) .update-progress-track b::after,
+body.companion-paused .update-progress-track b,body.companion-paused .update-progress-track b::after { animation-play-state:paused!important; }
 .update-download-progress.indeterminate .update-progress-track b { animation:update-progress-slide 1.15s ease-in-out infinite; }
 .update-download-progress.verifying .update-progress-track b,.update-download-progress.complete .update-progress-track b { width:100%!important; }
 .update-download-progress.complete { border-color:rgba(45,136,92,.28); background:rgba(220,242,229,.8); }
@@ -5483,3 +5487,44 @@ input, select, textarea, [contenteditable] {
 /* 滚动条：向品牌绿靠一点，hover 略深 */
 ::-webkit-scrollbar-thumb { background: #c3d2ca; }
 ::-webkit-scrollbar-thumb:hover { background: #a4bcb0; }
+
+@media (max-width:480px) { .update-dialog form { padding:18px; } .update-dialog footer { gap:8px; flex-wrap:wrap; } .update-dialog footer button { flex:1 1 auto; padding:8px 12px; } }
+
+/* A separate, compact update action keeps the pet's mail-assistant click intact. */
+.companion-update {
+  position:absolute; z-index:6; right:8px; bottom:calc(100% + 10px);
+  display:flex; align-items:center; gap:7px; width:max-content;
+  max-width:min(236px,calc(100vw / var(--fz,1) / 2 - 20px));
+  min-height:38px; padding:9px 12px 12px; overflow:hidden;
+  border:1px solid var(--border); border-radius:13px 13px 4px 13px;
+  background:var(--surface); color:var(--text); box-shadow:0 4px 16px #00000014;
+  font:inherit; font-size:11px; line-height:1.5; text-align:left; cursor:pointer;
+}
+.companion-update[hidden] { display:none; }
+.companion-update:hover { border-color:var(--primary); }
+.companion-update:focus-visible { outline:2px solid var(--primary); outline-offset:3px; }
+.companion-update svg { flex:none; width:18px; height:18px; fill:none; stroke:var(--primary); stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+.companion-update > span:last-of-type { margin-left:auto; color:var(--primary); }
+.companion-update > i { position:absolute; inset:auto 0 0; height:3px; background:var(--surface-soft); }
+.companion-update > i > b { display:block; height:100%; background:var(--primary); transition:width .3s ease; }
+.companion-update[data-phase="failed"] > i > b { background:var(--warning); }
+.companion-update[data-phase="ready"] { border-color:var(--primary); }
+.companion-update[data-phase="downloading"] .companion-update-arrow { animation:update-pet-download 2.4s ease-in-out infinite; }
+@keyframes update-pet-download { 0%,65%,100% { transform:translateY(0); } 35% { transform:translateY(2px); } }
+.mail-assistant[data-pet-edge-x="left"] .companion-update { right:auto; left:8px; border-radius:13px 13px 13px 4px; }
+.mail-assistant[data-pet-edge-y="top"] .companion-update { bottom:auto; top:calc(100% + 10px); }
+.mail-assistant:has(.companion-update:not([hidden])) :is(.companion-caption,.companion-life-bubble) { visibility:hidden; }
+/* Mail risk nudges retain their priority and the update entry remains in About. */
+.mail-assistant:has(.assistant-nudge:not(.hidden)) .companion-update,
+body.assistant-visible .companion-update,body.companion-dragging .companion-update { visibility:hidden; pointer-events:none; }
+body.companion-paused .companion-update-arrow,body.companion-still .companion-update-arrow { animation:none!important; }
+@media(prefers-reduced-motion:reduce) { .companion-update-arrow { animation:none!important; } .companion-update > i > b { transition:none; } }
+#btn-preferences { position:relative; }
+.app-update-indicator { position:absolute; right:4px; top:4px; width:6px; height:6px; border-radius:50%; background:var(--primary); pointer-events:none; }
+
+/* Keep update decisions legible above the dimmed mailbox. */
+html[data-theme] body #update-dialog { background:var(--desk-surface,var(--surface))!important; backdrop-filter:none!important; }
+
+/* Keep defer/install reachable while long release notes scroll on small windows. */
+.update-dialog footer { position:sticky; bottom:0; z-index:1; padding:12px 0; border-top:1px solid var(--border); }
+html[data-theme] body #update-dialog footer { background:var(--desk-surface,var(--surface))!important; }

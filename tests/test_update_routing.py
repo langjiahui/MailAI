@@ -91,6 +91,20 @@ class RoutingTest(unittest.TestCase):
             result=routing.discover(offline,'2.9.6')
         self.assertEqual(result['version'],'2.11.0')
 
+    def test_unreachable_sources_report_safe_individual_causes(self):
+        import ssl
+        import urllib.error
+        denied = urllib.error.HTTPError('https://example.test/?token=synthetic-secret', 403, 'denied', {}, None)
+        try:
+            with patch.object(mirror, 'discover', side_effect=ssl.SSLCertVerificationError(1, 'untrusted')):
+                with self.assertRaises(OSError) as error:
+                    routing.discover(lambda: (_ for _ in ()).throw(denied), '2.9.6')
+            self.assertIn('国内源：安全证书验证失败', str(error.exception))
+            self.assertIn('GitHub：HTTP 403', str(error.exception))
+            self.assertNotIn('synthetic-secret', str(error.exception))
+        finally:
+            denied.close()
+
     def test_cdn_sample_chooses_actual_download_speed_not_metadata_source(self):
         release=threading.Event()
         @contextmanager

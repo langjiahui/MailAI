@@ -1579,6 +1579,55 @@ if (typeof document !== 'undefined') {
 /* ---- i18n-catalog.js ---- */
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "updateFlow.unsignedWarning": ["当前版本未配置代码签名，安装时系统可能显示安全警告。", "This version is not code-signed. Your system may show a security warning during installation."],
+  "updateFlow.sourceConnection": ["无法连接更新服务。国内源：{0}；GitHub：{1}", "Could not connect to update services. China mirror: {0}; GitHub: {1}"],
+  "updateFlow.sourceValidation": ["更新清单校验失败，已停止更新。国内源：{0}；GitHub：{1}", "Update manifest verification failed; update stopped. China mirror: {0}; GitHub: {1}"],
+  "updateFlow.checkError": ["检查更新失败：{0}", "Update check failed: {0}"],
+  "updateFlow.updateError": ["更新失败：{0}", "Update failed: {0}"],
+  "updateFlow.connectionTimeout": ["连接超时", "Connection timed out"],
+  "updateFlow.connectionFailed": ["连接失败", "Connection failed"],
+  "updateFlow.dnsFailed": ["域名解析失败", "DNS lookup failed"],
+  "updateFlow.manifestFailed": ["更新清单校验失败", "Update manifest verification failed"],
+  "updateFlow.certificateFailed": ["安全证书验证失败，请检查系统日期及公司受信任证书", "Certificate verification failed. Check the system date and trusted company certificates"],
+  "updateFlow.dnsReserved": ["DNS 返回内网或保留地址，请检查 VPN 的 DNS 配置", "DNS returned a private or reserved address. Check the VPN DNS settings"],
+  "updateFlow.pacUnavailable": ["无法读取 Windows 自动代理配置", "Could not read Windows automatic proxy settings"],
+  "updateFlow.pacFailed": ["Windows 自动代理解析失败（错误 {1}），请检查代理或 PAC 配置", "Windows automatic proxy lookup failed (error {1}). Check the proxy or PAC settings"],
+  "updateFlow.proxyInvalid": ["更新代理配置无效，请检查系统代理设置", "Invalid update proxy configuration. Check system proxy settings"],
+  "updateFlow.proxyType": ["更新连接需要 HTTP CONNECT 代理，请检查系统 HTTPS 代理端口", "Updates require an HTTP CONNECT proxy. Check the system HTTPS proxy port"],
+  "updateFlow.proxyPort": ["更新代理端口无效，请检查系统代理设置", "Invalid update proxy port. Check system proxy settings"],
+  "updateFlow.proxyAuth": ["更新代理需要身份验证，请检查系统代理的登录或认证设置", "The update proxy requires authentication. Check its sign-in or authentication settings"],
+  "updateFlow.verified": ["安装包已下载并校验通过", "Installer downloaded and verified"],
+  "updateFlow.close": ["关闭更新窗口", "Close update window"],
+  "updateFlow.downloading": ["下载中 {0}%", "Downloading {0}%"],
+  "updateFlow.working": ["正在处理…", "Working…"],
+  "updateFlow.install": ["立即安装", "Install now"],
+  "updateFlow.download": ["下载更新", "Download update"],
+  "updateFlow.retry": ["重试下载", "Retry download"],
+  "updateFlow.background": ["后台下载", "Download in background"],
+  "updateFlow.laterInstall": ["稍后安装", "Install later"],
+  "updateFlow.return": ["返回使用", "Back to MailAI"],
+  "updateFlow.later": ["稍后", "Later"],
+  "updateFlow.readyHint": ["安装包已就绪，点击立即安装后才会启动安装器。", "The update is ready. The installer opens only when you choose Install now."],
+  "updateFlow.openedHint": ["请在系统安装器中继续；如果已取消，可重新打开安装器。", "Continue in the system installer. If you canceled, you can open it again."],
+  "updateFlow.installHint": ["正在打开系统安装器，可先返回邮件，按系统提示继续安装。", "Opening the system installer. You can return to mail and follow the system prompts to install."],
+  "updateFlow.downloadHint": ["关闭窗口后会继续后台下载，不影响收发邮件，也不会自动安装。可点击小邮旁的进度提示，或从设置 → 关于继续。", "Closing this window keeps the download running without interrupting mail or installing automatically. Click the progress badge beside XiaoYou, or continue from Settings → About."],
+  "updateFlow.viewProgress": ["查看下载进度", "View download progress"],
+  "updateFlow.continueInstall": ["继续安装", "Continue installation"],
+  "updateFlow.continue": ["继续更新", "Continue update"],
+  "updateFlow.readyStatus": ["{0} 已下载，等待你确认安装。", "{0} is downloaded and waiting for your confirmation to install."],
+  "updateFlow.downloadStatus": ["后台下载中 {0}%，可以继续使用邮件。", "Downloading in the background: {0}%. You can keep using mail."],
+  "updateFlow.openedStatus": ["系统安装器已打开，请按提示继续安装。", "The system installer is open. Follow its prompts to continue."],
+  "updateFlow.ready": ["更新已就绪", "Update ready"],
+  "updateFlow.readyNotice": ["更新已下载，可点击小邮提示或从设置 → 关于安装。", "Update downloaded. Click XiaoYou’s badge or go to Settings → About to install."],
+  "updateFlow.petReady": ["更新已就绪 · 点击安装", "Update ready · Install"],
+  "updateFlow.petFailed": ["更新中断 · 点击重试", "Update interrupted · Retry"],
+  "updateFlow.petDownloading": ["更新下载中 {0}%", "Downloading update {0}%"],
+  "updateFlow.petInstalling": ["正在准备安装…", "Preparing to install…"],
+  "updateFlow.petOpened": ["安装器已打开 · 查看", "Installer opened · View"],
+  "updateFlow.openUpdate": ["打开应用更新", "Open app update"],
+  "updateFlow.changed": ["更新信息已变化，请重新检查并下载更新。", "Update information has changed. Check again and download the update."],
+  "updateFlow.missing": ["安装包已移除，请重新下载更新。", "The installer was removed. Download the update again."],
+  "updateFlow.corrupt": ["安装包校验失败，请重新下载更新。", "Installer verification failed. Download the update again."],
   "mailImport.preflight": ["有 {0} 个文件超过当前上限，将跳过并保留重试记录。", "{0} files exceed the current limit. They will be skipped and recorded for retry."],
   "mailImport.largeMode": ["大邮件模式（单封最多 256 MB）", "Large-message mode (up to 256 MB each)"],
   "mailImport.limitNote": ["默认单封 64 MB。超限文件会自动跳过，其他文件继续；大邮件的附件分块处理，原件完整保留。", "The default is 64 MB per message. Oversized files are skipped while others continue. Large attachments are processed in chunks; originals are preserved."],
@@ -24572,6 +24621,10 @@ function selectSystemTab(name) {
 let availableAppUpdate = null;
 let appUpdateCheckRevision = 0;
 let appUpdateInstalling = false;
+let appUpdateTask = {status:'idle', phase:'idle', running:false};
+let appUpdateMonitor = null;
+let appUpdateStatusRevision = 0;
+let appUpdateLastCheck = null;
 const MAILAI_SHARE_URL = 'https://github.com/langjiahui/MailAI/releases/latest';
 
 function openAppShare() {
@@ -24648,25 +24701,147 @@ function renderAppVersion(result) {
   else mailaiBindUI(status, "textContent", () => (mailaiText('当前已是最新版本。')));
 }
 
-function showAppUpdate(result) {
-  availableAppUpdate = result;
-  const dialog = document.getElementById('update-dialog');
-  if (!dialog || dialog.open) return;
+function appUpdateMessage(value) {
+  const source = String(value ?? '');
+  const parts = source.match(/^(检查更新失败：|更新失败：)?(无法连接更新服务。|更新清单校验失败，已停止更新。)国内源：(.+)；GitHub：(.+)$/);
+  if (!parts) return mailaiSystemMessage(source);
+  const message = updateFlowText(parts[2].startsWith(MAILAI_UI_COPY['updateFlow.manifestFailed'][0]) ? 'sourceValidation' : 'sourceConnection',
+    mailaiSystemMessage(parts[3]), mailaiSystemMessage(parts[4]));
+  return parts[1] ? updateFlowText(parts[1] === MAILAI_UI_COPY['updateFlow.checkError'][0].split('{')[0] ? 'checkError' : 'updateError', message) : message;
+}
+
+function updateFlowText(name, ...values) {
+  const key = `updateFlow.${name}`;
+  return (mailaiT(key) || MAILAI_UI_COPY[key]?.[0] || name).replace(/\{(\d+)\}/g, (_, i) => String(values[i] ?? ''));
+}
+
+function renderAppUpdateDialog() {
+  const result = availableAppUpdate;
+  if (!result) return;
   const title = document.getElementById('update-dialog-title');
   title.removeAttribute('data-i18n');
   mailaiBindUI(title, 'textContent', () => `${result.current_version} → ${result.latest_version}`);
   mailaiBindUI(document.getElementById('update-dialog-device'), "textContent", () => (mailaiTemplate`已为这台设备匹配 ${appDeviceName(result.device)} 安装包。`));
   mailaiBindUI(document.getElementById('update-dialog-notes-title'), "textContent", () => (mailaiTemplate`${result.latest_version} 版本发布说明`));
   mailaiBindUI(document.getElementById('update-dialog-notes'), "textContent", () => (result.notes || mailaiText('本版本暂未提供发布说明。')));
-  document.getElementById('update-dialog-warning').textContent = result.unsigned_warning || '';
+  mailaiBindUI(document.getElementById('update-dialog-warning'), 'textContent', () => appUpdateMessage(result.unsigned_warning));
+}
+
+function renderAppUpdateControls() {
+  const phase = appUpdateTask.phase, running = appUpdateTask.running || appUpdateInstalling;
+  const ready = phase === 'ready', opened = ['installer_opened','launched'].includes(phase);
   const install = document.getElementById('btn-install-update');
-  install.disabled = !result.installable;
-  mailaiBindUI(install, "textContent", () => (result.installable ? mailaiText('下载并安装') : mailaiText('当前运行方式无法自动安装')));
-  appUpdateInstalling = false;
-  const progress = document.getElementById('update-download-progress');
-  progress?.classList.add('hidden');
-  progress?.classList.remove('indeterminate', 'verifying', 'complete');
-  dialog.showModal();
+  const later = document.getElementById('btn-defer-update');
+  if (install) {
+    install.removeAttribute('data-i18n');
+    install.disabled = running || !availableAppUpdate?.installable;
+    mailaiBindUI(install, 'textContent', () => running
+      ? phase === 'downloading' ? updateFlowText('downloading', appUpdateTask.percent || 0) : updateFlowText('working')
+      : ready ? updateFlowText('install') : opened ? mailaiText('重新打开安装器')
+      : phase === 'failed' ? updateFlowText('retry') : updateFlowText('download'));
+  }
+  if (later) {
+    later.removeAttribute('data-i18n');
+    mailaiBindUI(later, 'textContent', () => running && appUpdateTask.action === 'download' ? updateFlowText('background')
+      : ready ? updateFlowText('laterInstall') : opened || running ? updateFlowText('return') : updateFlowText('later'));
+  }
+  const hint = document.getElementById('update-dialog-next-step');
+  if (hint) mailaiBindUI(hint, 'textContent', () => ready ? updateFlowText('readyHint')
+    : opened ? updateFlowText('openedHint') : running && appUpdateTask.action === 'install' ? updateFlowText('installHint') : updateFlowText('downloadHint'));
+  const resume = document.getElementById('btn-continue-update');
+  const pending = !!availableAppUpdate?.available;
+  if (resume) {
+    resume.classList.toggle('hidden', !pending);
+    resume.removeAttribute('data-i18n');
+    mailaiBindUI(resume, 'textContent', () => appUpdateTask.running ? updateFlowText('viewProgress')
+      : ready || opened ? updateFlowText('continueInstall') : updateFlowText('continue'));
+  }
+  const check = document.getElementById('btn-check-update');
+  check?.classList.toggle('action-primary', !pending);
+  check?.classList.toggle('action-secondary', pending);
+  renderCompanionUpdate();
+  const status = document.getElementById('app-update-status');
+  if (status && pending && phase !== 'idle') {
+    status.dataset.updateState = phase === 'failed' ? 'error' : 'available';
+    mailaiBindUI(status, 'textContent', () => ready ? updateFlowText('readyStatus', availableAppUpdate.latest_version)
+      : appUpdateTask.running && appUpdateTask.action === 'download' ? updateFlowText('downloadStatus', appUpdateTask.percent || 0)
+      : opened ? updateFlowText('openedStatus') : appUpdateMessage(appUpdateTask.error || appUpdateTask.message) || updateFlowText('working'));
+  }
+}
+
+function renderCompanionUpdate() {
+  const chip = document.getElementById('companion-update');
+  if (!chip) return;
+  const phase = appUpdateTask.phase;
+  const running = !!appUpdateTask.running;
+  const ready = phase === 'ready', failed = phase === 'failed';
+  const pending = !!availableAppUpdate?.available;
+  const shown = pending && phase !== 'idle' && !document.getElementById('update-dialog')?.open;
+  const wasHidden = chip.hidden, previousPhase = chip.dataset.phase;
+  chip.hidden = !shown;
+  chip.dataset.phase = running ? 'downloading' : phase;
+  // The mascot keeps its normal assistant action; only this small badge opens updates.
+  const label = () => ready ? updateFlowText('petReady') : failed ? updateFlowText('petFailed')
+    : running && appUpdateTask.action === 'download' ? updateFlowText('petDownloading', appUpdateTask.percent || 0)
+    : running ? updateFlowText('petInstalling') : updateFlowText('petOpened');
+  mailaiBindUI(document.getElementById('companion-update-copy'), 'textContent', label);
+  mailaiBindUI(chip, '@aria-label', () => `${label()} · ${updateFlowText('openUpdate')}`);
+  mailaiBindUI(chip, 'title', () => updateFlowText(ready ? 'readyHint' : ['installer_opened','launched'].includes(phase) ? 'openedHint' : 'downloadHint'));
+  const meter = document.getElementById('companion-update-fill');
+  if (meter) meter.style.width = `${ready ? 100 : Math.min(100, Math.max(0, Number(appUpdateTask.percent) || 0))}%`;
+  document.getElementById('app-update-indicator')?.classList.toggle('hidden', !pending || phase === 'idle');
+  if (shown && !document.hidden && (wasHidden || previousPhase !== chip.dataset.phase)) {
+    window.mailaiCompanionMotion?.react(ready ? 'happy' : 'greet', document.getElementById('assistant-orb'));
+  }
+}
+
+function applyAppUpdateTask(state) {
+  if (!state || (state.updated_at && appUpdateTask.updated_at > state.updated_at)) return;
+  // A ready package for an older release is not an install action for a newer one.
+  if (!state.running && appUpdateLastCheck && (!appUpdateLastCheck.available ||
+      (state.version && state.version !== appUpdateLastCheck.latest_version))) {
+    state = {status:'idle', phase:'idle', running:false, updated_at:state.updated_at};
+    availableAppUpdate = appUpdateLastCheck.available ? appUpdateLastCheck : null;
+  }
+  appUpdateTask = state;
+  if (state.release && (state.running || !availableAppUpdate)) {
+    availableAppUpdate = state.release;
+    renderAppUpdateDialog();
+  }
+  if (state.phase !== 'idle') renderUpdateProgress(state);
+  else document.getElementById('update-download-progress')?.classList.add('hidden');
+  renderAppUpdateControls();
+}
+
+async function refreshAppUpdateTask() {
+  const revision = ++appUpdateStatusRevision;
+  const state = await api('/api/system/update/install/status');
+  if (revision === appUpdateStatusRevision) applyAppUpdateTask(state);
+  return appUpdateTask;
+}
+
+function showAppUpdate(result) {
+  availableAppUpdate = result;
+  const dialog = document.getElementById('update-dialog');
+  if (!dialog) return;
+  renderAppUpdateDialog();
+  renderAppUpdateControls();
+  if (!dialog.open) dialog.showModal();
+  renderCompanionUpdate();
+  // Opening a dialog must neither reset a live task nor start another download.
+  void refreshAppUpdateTask().then(state => {
+    if (state.running) void monitorAppUpdateInstall().catch(() => {});
+  }).catch(() => {});
+}
+
+function deferAppUpdate() {
+  if (!availableAppUpdate) return;
+  try { localStorage.setItem('mailai-update-deferred', JSON.stringify({version:availableAppUpdate.latest_version, until:Date.now()+24*60*60*1000})); } catch (_) {}
+  renderAppUpdateControls();
+}
+
+function appUpdateWasDeferred(version) {
+  try { const saved=JSON.parse(localStorage.getItem('mailai-update-deferred') || 'null'); return saved?.version===version && saved.until>Date.now(); } catch (_) { return false; }
 }
 
 function formatUpdateBytes(value) {
@@ -24688,14 +24863,16 @@ function renderUpdateProgress(state) {
     get verifying() { return mailaiText('正在校验安装包'); }, get verified() { return mailaiText('校验完成'); }, get launching() { return mailaiText('正在启动安装程序'); },
     get installing() { return mailaiText('等待授权并安装'); }, get installed() { return mailaiText('安装完成'); }, get launched() { return mailaiText('安装程序已启动'); }, get failed() { return mailaiText('更新未完成'); },
     get installer_opened() { return mailaiText('macOS 安装器已打开'); },
+    get ready() { return updateFlowText('ready'); },
   };
   box.classList.remove('hidden');
+  box.classList.toggle('running', !!state.running);
   box.classList.toggle('indeterminate', !total && state.running);
   box.classList.toggle('verifying', phase === 'verifying' || phase === 'verified');
-  box.classList.toggle('complete', phase === 'launched' || phase === 'installed' || phase === 'installer_opened');
+  box.classList.toggle('complete', phase === 'ready' || phase === 'launched' || phase === 'installed' || phase === 'installer_opened');
   box.setAttribute('aria-valuenow', String(percent));
-  mailaiBindUI(document.getElementById('update-progress-label'), "textContent", () => (labels[phase] || mailaiSystemMessage(state.message) || mailaiText('正在更新')));
-  mailaiBindUI(document.getElementById('update-progress-percent'), "textContent", () => (total ? `${percent}%` : mailaiText('连接中')));
+  mailaiBindUI(document.getElementById('update-progress-label'), "textContent", () => (labels[phase] || appUpdateMessage(state.message) || mailaiText('正在更新')));
+  mailaiBindUI(document.getElementById('update-progress-percent'), "textContent", () => (total ? `${percent}%` : state.running ? mailaiText('连接中') : ''));
   document.getElementById('update-progress-fill').style.width = `${total ? percent : 36}%`;
   mailaiBindUI(document.getElementById('update-progress-detail'), 'textContent', () => {
     let detail = state.message || '';
@@ -24705,29 +24882,31 @@ function renderUpdateProgress(state) {
       detail = `${formatUpdateBytes(downloaded)} / ${formatUpdateBytes(total)}`;
       if (state.speed_bps) detail += mailaiTemplate` · ${formatUpdateBytes(state.speed_bps)}/秒`;
     } else if (phase === 'verifying') detail = mailaiText('正在核对 SHA-256，确保安装包完整且未被篡改…');
+    else if (phase === 'ready') detail = `${formatUpdateBytes(total)} · ${mailaiText('安装包已下载并校验通过')}`;
     else if (phase === 'installing') detail = mailaiText('请在 macOS 弹出的授权窗口中确认；安装完成后 MailAI 会重新打开。');
     else if (phase === 'installed') detail = mailaiText('安装完成，正在重新打开 MailAI。');
     else if (phase === 'launched') detail = mailaiText('请按系统提示完成安装；完成后将尝试自动打开 MailAI。');
     else if (phase === 'installer_opened') detail = mailaiText('安装包已下载并校验。请在 macOS 安装器中继续安装；取消安装不会更改当前版本。');
-    return mailaiSystemMessage(detail);
+    return appUpdateMessage(detail);
   });
-  const button = document.getElementById('btn-install-update');
-  if (button && appUpdateInstalling) mailaiBindUI(button, "textContent", () => (phase === 'downloading' && total ? mailaiTemplate`下载中 ${percent}%` : (labels[phase] || mailaiText('正在更新…'))));
 }
 
 function waitForUpdateProgress() {
-  return new Promise(resolve => setTimeout(resolve, 400));
+  const visible = document.getElementById('update-dialog')?.open;
+  return new Promise(resolve => setTimeout(resolve, document.hidden ? 10000 : visible ? 400 : 2500));
 }
 
-async function monitorAppUpdateInstall() {
-  while (appUpdateInstalling) {
-    await waitForUpdateProgress();
-    const state = await api('/api/system/update/install/status');
-    renderUpdateProgress(state);
-    if (state.status === 'failed') throw new Error(state.error || mailaiText('更新未完成'));
-    if (state.status === 'completed') return state;
-  }
-  return null;
+function monitorAppUpdateInstall() {
+  if (appUpdateMonitor) return appUpdateMonitor;
+  appUpdateMonitor = (async () => {
+    while (appUpdateTask.running) {
+      await waitForUpdateProgress();
+      const state = await refreshAppUpdateTask();
+      if (!state.running) return state;
+    }
+    return appUpdateTask;
+  })().finally(() => { appUpdateMonitor = null; });
+  return appUpdateMonitor;
 }
 
 async function checkForAppUpdate(manual = false) {
@@ -24742,17 +24921,30 @@ async function checkForAppUpdate(manual = false) {
   try {
     const result = await api(`/api/system/update${manual ? '?force=true' : ''}`, {timeoutMs:35000});
     if (revision !== appUpdateCheckRevision) return result;
+    appUpdateLastCheck = result;
+    availableAppUpdate = result.available ? result : null;
     renderAppVersion(result);
-    if (result.available) showAppUpdate(result);
-    else if (manual) toast(mailaiSystemMessage(result.message) || (result.supported ? mailaiText('当前已是最新版本') : mailaiText('当前设备暂无对应安装包')), result.development ? 'info' : 'success');
+    try { await refreshAppUpdateTask(); } catch (_) {}
+    if (revision !== appUpdateCheckRevision) return result;
+    if (appUpdateTask.running) void monitorAppUpdateInstall().catch(() => {});
+    if (result.available && (manual || (!appUpdateWasDeferred(result.latest_version) && appUpdateTask.phase === 'idle'))) showAppUpdate(result);
+    else if (result.available) renderAppUpdateControls();
+    else if (manual) toast(appUpdateMessage(result.message) || (result.supported ? mailaiText('当前已是最新版本') : mailaiText('当前设备暂无对应安装包')), result.development ? 'info' : 'success');
     return result;
   } catch (error) {
     if (revision !== appUpdateCheckRevision) return;
-    if (status) {
+    // Discovery may be offline while a previously accepted download is still
+    // running, or a verified package is already waiting on disk.
+    try {
+      const state = await refreshAppUpdateTask();
+      if (state.running) void monitorAppUpdateInstall().catch(() => {});
+    } catch (_) {}
+    if (revision !== appUpdateCheckRevision) return;
+    if (status && appUpdateTask.phase === 'idle') {
       status.dataset.updateState = 'error';
       mailaiBindUI(status, 'textContent', () => mailaiText(MAILAI_UI_COPY['update.checkFailed'][0]));
     }
-    if (manual) toast(mailaiSystemMessage(error.message), 'warn');
+    if (manual) toast(appUpdateMessage(error.message), 'warn');
   } finally {
     if (manual && button) setLoading(button, false);
   }
@@ -24760,31 +24952,39 @@ async function checkForAppUpdate(manual = false) {
 
 async function installAppUpdate(event) {
   event.preventDefault();
-  const button = document.getElementById('btn-install-update');
-  if (appUpdateInstalling) return;
+  if (appUpdateInstalling || appUpdateTask.running || !availableAppUpdate?.installable) return;
+  const prepared = ['ready','installer_opened','launched'].includes(appUpdateTask.phase);
+  const version = availableAppUpdate.latest_version;
+  let accepted = false;
   appUpdateInstalling = true;
-  let installerOpened = false;
-  setLoading(button, true, mailaiText('正在准备更新…'));
+  appUpdateTask = {status:'running', phase:'queued', running:true, action:prepared ? 'install' : 'download', percent:0};
+  renderAppUpdateControls();
   try {
-    const started = await api('/api/system/update/install', {method:'POST'});
-    renderUpdateProgress(started);
+    const started = await api(prepared ? `/api/system/update/install/ready?version=${encodeURIComponent(version)}` : '/api/system/update/download', {method:'POST'});
+    accepted = true;
+    applyAppUpdateTask(started);
     const result = await monitorAppUpdateInstall();
-    if (result) {
-      installerOpened = result.phase === 'installer_opened';
-      if (result.phase !== 'installer_opened') {
-        await new Promise(resolve => setTimeout(resolve, 700));
-        document.getElementById('update-dialog').close();
-      }
-      toast(mailaiSystemMessage(result.message) || mailaiText('更新已完成'), result.phase === 'installer_opened' ? 'info' : 'success');
+    if (result.status === 'failed') throw new Error(result.error || mailaiText('更新未完成'));
+    if (result.phase === 'ready') {
+      toast(updateFlowText('readyNotice'), 'success');
+    } else if (result.status === 'completed') {
+      if (result.phase !== 'installer_opened') document.getElementById('update-dialog').close();
+      toast(appUpdateMessage(result.message) || mailaiText('更新已完成'), result.phase === 'installer_opened' ? 'info' : 'success');
     }
   } catch (error) {
-    toast(mailaiSystemMessage(error.message), 'error');
+    // A failed POST may still have reached the server. Recover its real state
+    // before allowing retry; the shared backend guard also prevents duplicates.
+    if (!accepted) {
+      let recovered = null;
+      try { recovered = await refreshAppUpdateTask(); } catch (_) {}
+      if (!recovered || recovered.phase === 'idle') {
+        applyAppUpdateTask({status:'failed', phase:'failed', running:false, action:prepared ? 'install' : 'download', error:error.message});
+      } else if (recovered.running) void monitorAppUpdateInstall().catch(() => {});
+    }
+    toast(appUpdateMessage(error.message), 'error');
   } finally {
     appUpdateInstalling = false;
-    setLoading(button, false);
-    if (installerOpened) {
-      mailaiBindUI(button, 'textContent', () => mailaiText('重新打开安装器'));
-    }
+    renderAppUpdateControls();
   }
 }
 
@@ -24796,11 +24996,11 @@ async function showInterruptedAppUpdateOutcome() {
     try { outcome = await api('/api/system/update/install/outcome'); }
     catch (_) { return; }
     if (outcome.status === 'success') {
-      toast(mailaiSystemMessage(outcome.message) || mailaiText('MailAI 已更新'), 'success');
+      toast(appUpdateMessage(outcome.message) || mailaiText('MailAI 已更新'), 'success');
       return;
     }
     if (outcome.status === 'failed') {
-      toast(mailaiSystemMessage(outcome.message) || mailaiText('更新未完成'), 'error');
+      toast(appUpdateMessage(outcome.message) || mailaiText('更新未完成'), 'error');
       return;
     }
     if (!outcome.pending) return;
@@ -27212,6 +27412,15 @@ document.querySelectorAll('[data-about-target]').forEach(button => {
   });
 });
 document.getElementById('btn-check-update')?.addEventListener('click', () => checkForAppUpdate(true));
+document.getElementById('btn-continue-update')?.addEventListener('click', () => { if (availableAppUpdate) showAppUpdate(availableAppUpdate); });
+document.getElementById('companion-update')?.addEventListener('click', () => { if (availableAppUpdate) showAppUpdate(availableAppUpdate); });
+// Native close events are queued. Persist the user's intent during cancel or
+// form submission, before a simultaneous automatic check can reopen the dialog.
+document.getElementById('update-dialog')?.addEventListener('cancel', deferAppUpdate);
+document.querySelector('#update-dialog form')?.addEventListener('submit', event => {
+  if (event.submitter?.value === 'cancel') deferAppUpdate();
+});
+document.getElementById('update-dialog')?.addEventListener('close', deferAppUpdate);
 document.getElementById('btn-share-app')?.addEventListener('click', openAppShare);
 document.getElementById('btn-copy-share-app')?.addEventListener('click', copyAppShareUrl);
 document.getElementById('btn-native-share-app')?.addEventListener('click', shareAppWithSystem);
@@ -33505,7 +33714,7 @@ function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, o
     if(!foreground()) return;
     const status=document.querySelector('#companion-growth-dialog[open] [data-pet-life-status]');
     if(deliberate && status) { status.textContent=t(key); return; }
-    if(!chatter || document.querySelector('dialog[open],.assistant-nudge:not(.hidden)') || document.body.classList.contains('assistant-visible') ||
+    if(!chatter || document.querySelector('dialog[open],.assistant-nudge:not(.hidden),#companion-update:not([hidden])') || document.body.classList.contains('assistant-visible') ||
        root.matches('.state-thinking,.state-warn,.state-danger') || document.body.classList.contains('companion-working') ||
        getComputedStyle(orb).visibility==='hidden' || !orb.getClientRects().length || performance.now()-lastSpoken<90000) return;
     line=key;lastSpoken=performance.now();bubble.textContent=t(key);bubble.hidden=false;

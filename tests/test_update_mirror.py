@@ -6,6 +6,8 @@ import hashlib
 import io
 import json
 import os
+import ssl
+import socket
 from pathlib import Path
 import sys
 import tempfile
@@ -267,6 +269,248 @@ class MirrorTest(unittest.TestCase):
             with patch.object(syncer,'api',return_value={'assets':[{'name':path.name}]}) as api,patch.object(syncer,'matches',return_value=True):
                 syncer.upload(TAG,path,'synthetic-token')
                 self.assertEqual(api.call_count,1)
+
+
+class UpdateNetworkTest(unittest.TestCase):
+    """Exercise the real transport boundaries, including the reported VPN case."""
+    def setUp(self):
+        # Never depend on the developer/CI machine's real proxy or DNS settings.
+        self.proxy = patch.object(transport.update_proxy, 'proxy_for', return_value=None)
+        self.proxy.start()
+        self.addCleanup(self.proxy.stop)
+
+    def dns(self, *addresses):
+        return patch.object(transport.socket, 'getaddrinfo',
+                            return_value=[(0, 0, 0, '', (value, 443)) for value in addresses])
+
+    def connection(self, payload=DATA):
+        from unittest.mock import MagicMock
+        connection = MagicMock()
+        connection.getresponse.return_value = Response(payload)
+        return connection
+
+    def test_official_fake_ip_keeps_origin_tls_and_pins_vpn_address(self):
+        connection = self.connection()
+        with self.dns('198.18.0.8'), patch.object(transport.http.client, 'HTTPSConnection', return_value=connection) as ctor:
+            with transport.open_public(ASSET['mirror_url']) as response:
+                self.assertEqual(response.read(), DATA)
+            self.assertEqual(ctor.call_args.args[0], 'atomgit.com')
+            context = ctor.call_args.kwargs['context']
+            self.assertTrue(context.check_hostname)
+            self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
+            with patch.object(transport.socket, 'create_connection') as connect:
+                connection._create_connection(('atomgit.com', 443), 5)
+                self.assertEqual(connect.call_args.args[0], ('198.18.0.8', 443))
+
+    def test_fake_ip_exception_never_allows_arbitrary_private_or_other_hosts(self):
+        from unittest.mock import MagicMock
+        for hostname, address in [('atomgit.com', '127.0.0.1'), ('atomgit.com', '10.0.0.1'),
+                                  ('atomgit.com', '169.254.169.254'), ('atomgit.com', '::1'),
+                                  ('updates.example.test', '198.18.0.8'),
+                                  ('atomgit.com.example.test', '198.18.0.8')]:
+            with self.subTest(hostname=hostname, address=address), self.dns(address), \
+                    patch.object(transport.http.client, 'HTTPSConnection', MagicMock()) as ctor:
+                with self.assertRaises(ValueError):
+                    with transport.open_public('https://' + hostname + '/package'): pass
+                ctor.assert_not_called()
+        with self.dns('198.18.0.8'):
+            for method in ['PUT', 'POST', 'DELETE']:
+                with self.assertRaises(ValueError):
+                    with transport.open_public(ASSET['mirror_url'], method=method): pass
+
+    def test_proxy_connect_uses_origin_domain_without_local_dns_or_auth_leak(self):
+        connection = self.connection()
+        credentials = {'Proxy-Authorization': 'Basic c3ludGhldGljOnNlY3JldA=='}
+        with patch.object(transport.update_proxy, 'proxy_for', return_value=('127.0.0.1', 7890, credentials)), \
+                patch.object(transport.socket, 'getaddrinfo', side_effect=AssertionError('Proxy resolves origin')), \
+                patch.object(transport.http.client, 'HTTPSConnection', return_value=connection) as ctor:
+            with transport.open_public(ASSET['mirror_url'], headers={'Proxy-Authorization': 'must-not-leak'}): pass
+            self.assertEqual(ctor.call_args.args, ('127.0.0.1', 7890))
+            connection.set_tunnel.assert_called_once_with('atomgit.com', 443, headers=credentials)
+            self.assertNotIn('Proxy-Authorization', connection.request.call_args.kwargs['headers'])
+            self.assertTrue(ctor.call_args.kwargs['context'].check_hostname)
+
+    def test_proxy_does_not_bypass_private_redirect_validation(self):
+        connection = self.connection()
+        response = connection.getresponse.return_value
+        response.status = 302
+        response.getheader = lambda name: 'https://127.0.0.1/private'
+        with patch.object(transport.update_proxy, 'proxy_for', return_value=('127.0.0.1', 7890, {})) as proxy, \
+                self.dns('127.0.0.1'), patch.object(transport.http.client, 'HTTPSConnection', return_value=connection) as ctor:
+            with self.assertRaises(ValueError):
+                with transport.open_public(ASSET['mirror_url']): pass
+            self.assertEqual(ctor.call_count, 1)
+            self.assertEqual(proxy.call_count, 1)
+
+    def test_connect_tls_verifies_origin_hostname_instead_of_proxy(self):
+        from unittest.mock import MagicMock
+        context = MagicMock()
+        with patch.object(transport.update_proxy, 'proxy_for', return_value=('127.0.0.1', 7890, {})), \
+                patch.object(transport, 'ssl_context', return_value=context), \
+                patch.object(transport.http.client.HTTPConnection, 'connect'):
+            connection = transport._connection(ASSET['mirror_url'], 'GET', 4, None)
+            connection.sock = MagicMock()
+            connection.connect()
+            self.assertEqual(context.wrap_socket.call_args.kwargs['server_hostname'], 'atomgit.com')
+            connection.close()
+
+    def test_proxy_authentication_failure_has_actionable_error(self):
+        connection = self.connection()
+        connection.request.side_effect = OSError('Tunnel connection failed: 407 Proxy Authentication Required')
+        with patch.object(transport.update_proxy, 'proxy_for', return_value=('127.0.0.1', 7890, {})), \
+                patch.object(transport.http.client, 'HTTPSConnection', return_value=connection):
+            with self.assertRaisesRegex(transport.update_proxy.ProxyConfigurationError, '身份验证'):
+                with transport.open_public(ASSET['mirror_url']): pass
+
+    def test_redirect_reselects_proxy_and_strips_origin_secrets(self):
+        first, second = self.connection(), self.connection()
+        first.getresponse.return_value.status = 302
+        first.getresponse.return_value.getheader = lambda name: 'https://file-cdn.gitcode.com/package'
+        with patch.object(transport.update_proxy, 'proxy_for', return_value=('127.0.0.1', 7890, {})) as proxy, \
+                patch.object(transport.http.client, 'HTTPSConnection', side_effect=[first, second]):
+            with transport.open_public(ASSET['mirror_url'], headers={'Authorization': 'synthetic-secret',
+                                      'Cookie': 'synthetic-cookie', 'Range': 'bytes=8-'}): pass
+            self.assertEqual(proxy.call_count, 2)
+            second.set_tunnel.assert_called_once_with('file-cdn.gitcode.com', 443, headers={})
+            forwarded = second.request.call_args.kwargs['headers']
+            self.assertNotIn('Authorization', forwarded)
+            self.assertNotIn('Cookie', forwarded)
+            self.assertEqual(forwarded['Range'], 'bytes=8-')
+
+    def test_multiple_public_addresses_retry_only_validated_addresses(self):
+        connection = self.connection()
+        with self.dns('1.1.1.1', '8.8.8.8'), \
+                patch.object(transport.http.client, 'HTTPSConnection', return_value=connection):
+            with transport.open_public(ASSET['mirror_url']): pass
+            with patch.object(transport.socket, 'create_connection', side_effect=[OSError('unreachable'), 'socket']) as connect:
+                self.assertEqual(connection._create_connection(('atomgit.com', 443), 5), 'socket')
+                self.assertEqual([call.args[0] for call in connect.call_args_list], [('1.1.1.1', 443), ('8.8.8.8', 443)])
+
+    def test_system_and_bundled_roots_both_loaded_without_disabling_verification(self):
+        with patch.object(transport.ssl, 'create_default_context') as create:
+            context = transport.ssl_context()
+            create.assert_called_once_with()
+            context.load_verify_locations.assert_called_once_with(cafile=transport.certifi.where())
+
+    def test_invalid_tls_certificate_is_never_ignored_for_vpn_or_proxy(self):
+        connection = self.connection()
+        connection.request.side_effect = ssl.SSLCertVerificationError(1, 'untrusted synthetic certificate')
+        with self.dns('198.18.0.8'), patch.object(transport.http.client, 'HTTPSConnection', return_value=connection):
+            with self.assertRaises(ssl.SSLCertVerificationError):
+                with transport.open_public(ASSET['mirror_url']): pass
+        connection.close.assert_called()
+
+    def test_source_diagnostics_are_specific_and_do_not_expose_urls_or_secrets(self):
+        import urllib.error
+        self.assertIn('证书', transport.connection_diagnostic(ssl.SSLCertVerificationError(1, 'private detail')))
+        self.assertIn('DNS', transport.connection_diagnostic(transport._NonPublicTarget('atomgit.com', ['10.0.0.1'])))
+        self.assertIn('解析', transport.connection_diagnostic(socket.gaierror('synthetic error')))
+        self.assertEqual(transport.connection_diagnostic(TimeoutError('synthetic')), '连接超时')
+        error = urllib.error.HTTPError('https://synthetic:secret@example.test/?token=secret', 403, 'secret', {}, None)
+        try:
+            self.assertEqual(transport.connection_diagnostic(error), 'HTTP 403')
+        finally:
+            error.close()
+
+    def test_vpn_download_still_verifies_complete_package_hash(self):
+        connection = self.connection()
+        with tempfile.TemporaryDirectory() as folder, self.dns('198.18.0.8'), \
+                patch.object(transport.http.client, 'HTTPSConnection', return_value=connection), \
+                patch.object(resume.update_routing, 'download_source', return_value='atomgit'):
+            target = Path(folder) / 'MailAI.pkg'
+            resume.download(ASSET, target)
+            self.assertEqual(target.read_bytes(), DATA)
+            connection.getresponse.return_value = Response(b'x' * len(DATA))
+            target.unlink()
+            with self.assertRaisesRegex(ValueError, 'SHA-256'):
+                resume.download(ASSET, target)
+            self.assertFalse(target.exists())
+
+
+class UpdateProxyTest(unittest.TestCase):
+    def setUp(self):
+        from app import update_proxy
+        self.module = update_proxy
+        bypass = patch.object(update_proxy.urllib.request, 'proxy_bypass', return_value=False)
+        bypass.start(); self.addCleanup(bypass.stop)
+
+    def test_environment_proxy_precedes_system_and_credentials_stay_in_connect(self):
+        with patch.object(self.module.urllib.request, 'getproxies_environment',
+                          return_value={'https': 'http://synthetic:p%40ss@127.0.0.1:7890'}), \
+                patch.object(self.module, '_windows_pac', side_effect=AssertionError('Environment wins')):
+            host, port, headers = self.module.proxy_for(ASSET['mirror_url'], 5)
+            self.assertEqual((host, port), ('127.0.0.1', 7890))
+            self.assertEqual(base64.b64decode(headers['Proxy-Authorization'][6:]), b'synthetic:p@ss')
+
+    def test_bypass_and_pac_direct_are_respected(self):
+        with patch.object(self.module.urllib.request, 'proxy_bypass', return_value=True):
+            self.assertIsNone(self.module.proxy_for(ASSET['mirror_url'], 5))
+        with patch.object(self.module.sys, 'platform', 'win32'), \
+                patch.object(self.module.urllib.request, 'getproxies_environment', return_value={}), \
+                patch.object(self.module, '_windows_pac', return_value=''), \
+                patch.object(self.module.urllib.request, 'getproxies', side_effect=AssertionError('DIRECT wins')):
+            self.assertIsNone(self.module.proxy_for(ASSET['mirror_url'], 5))
+
+    def test_windows_pac_and_static_proxy_and_no_proxy_only_environment(self):
+        with patch.object(self.module.sys, 'platform', 'win32'), \
+                patch.object(self.module.urllib.request, 'getproxies_environment', return_value={'no': 'localhost'}):
+            with patch.object(self.module, '_windows_pac', return_value='http=unused:80;https=127.0.0.1:7890'):
+                self.assertEqual(self.module.proxy_for(ASSET['mirror_url'], 5), ('127.0.0.1', 7890, {}))
+            with patch.object(self.module, '_windows_pac', return_value=None), \
+                    patch.object(self.module.urllib.request, 'getproxies_registry',
+                                 return_value={'https': 'http://127.0.0.1:8080'}, create=True), \
+                    patch.object(self.module.urllib.request, 'getproxies', side_effect=AssertionError('NO_PROXY must not hide registry')):
+                self.assertEqual(self.module.proxy_for(ASSET['mirror_url'], 5), ('127.0.0.1', 8080, {}))
+
+    def test_invalid_proxy_is_actionable_without_exposing_credentials(self):
+        for value in ['socks5://synthetic:secret@127.0.0.1:7890', 'http://synthetic:secret@proxy.test:bad',
+                      'http://synthetic:secret@proxy.test:0', 'http://[invalid']:
+            with patch.object(self.module.urllib.request, 'getproxies_environment', return_value={'https': value}):
+                with self.assertRaises(OSError) as error:
+                    self.module.proxy_for(ASSET['mirror_url'], 5)
+                self.assertNotIn('secret', str(error.exception))
+
+    def test_native_windows_pac_result_timeouts_cleanup_and_wpad_fallback(self):
+        import ctypes
+        from unittest.mock import MagicMock
+        # Model the native API's out parameters and ownership on all CI OSes.
+        for has_pac, success, answer in [(True, True, 'https=127.0.0.1:7890'),
+                                          (True, True, ''), (False, False, ''), (True, False, '')]:
+            with self.subTest(has_pac=has_pac, success=success, answer=answer):
+                winhttp, kernel = MagicMock(), MagicMock()
+                pac_buffer = ctypes.create_unicode_buffer('https://pac.example.test/config.pac')
+                proxy_buffer = ctypes.create_unicode_buffer(answer)
+                allocated = []
+
+                def config(pointer):
+                    pointer._obj.auto = True
+                    if has_pac:
+                        pointer._obj.pac = ctypes.cast(pac_buffer, ctypes.c_void_p).value
+                        allocated.append(pointer._obj.pac)
+                    return True
+
+                def resolve(session, url, options, result):
+                    self.assertEqual(url, ASSET['mirror_url'])
+                    self.assertFalse(options._obj.auto_login)
+                    self.assertEqual(options._obj.flags, 2 if has_pac else 1)
+                    if success and answer:
+                        result._obj.proxy = ctypes.cast(proxy_buffer, ctypes.c_void_p).value
+                        allocated.append(result._obj.proxy)
+                    return success
+
+                winhttp.WinHttpGetIEProxyConfigForCurrentUser.side_effect = config
+                winhttp.WinHttpGetProxyForUrl.side_effect = resolve
+                winhttp.WinHttpOpen.return_value = 123
+                with patch.object(ctypes, 'WinDLL', side_effect=[winhttp, kernel], create=True), \
+                        patch.object(ctypes, 'get_last_error', return_value=12180, create=True):
+                    if has_pac and not success:
+                        with self.assertRaisesRegex(self.module.ProxyConfigurationError, '12180'):
+                            self.module._windows_pac(ASSET['mirror_url'], 4)
+                    else:
+                        self.assertEqual(self.module._windows_pac(ASSET['mirror_url'], 4), answer if success else None)
+                winhttp.WinHttpSetTimeouts.assert_called_once_with(123, 4000, 4000, 4000, 4000)
+                winhttp.WinHttpCloseHandle.assert_called_once_with(123)
+                self.assertEqual([call.args[0] for call in kernel.GlobalFree.call_args_list], allocated)
 
 
 if __name__=='__main__':unittest.main()
