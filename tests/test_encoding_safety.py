@@ -24,6 +24,19 @@ def gb2312_mail() -> bytes:
 
 
 def main():
+    # A single GBK extension character is valid source data, not a missing glyph.
+    # The old rich-body path used email.get_content() which replaced it under gb2312.
+    html = '<html><body><p>导游：林珺，联系电话见附件。</p></body></html>'
+    rich_raw = b'From: sender@example.test\r\nTo: user@example.test\r\nSubject: Example\r\nContent-Type: text/html; charset=gb2312\r\nContent-Transfer-Encoding: 8bit\r\n\r\n' + html.encode('gbk')
+    rich = parser.parse_message(2, rich_raw, save_raw=False)
+    assert rich['body_html'] == html and '珺' in rich['body_text']
+    with tempfile.TemporaryDirectory() as temp:
+        path = Path(temp) / 'rich.eml'; path.write_bytes(rich_raw)
+        assert parser.extract_rich_body(str(path), 2) == html
+        assert path.read_bytes() == rich_raw
+    # Literal replacement characters already in the original cannot be recovered by guessing.
+    damaged = rich_raw.split(b'\r\n\r\n')[0].replace(b'gb2312',b'utf-8') + b'\r\n\r\n' + '<p>联系：林�，请查原件。</p>'.encode()
+    assert '�' in parser.parse_message(3, damaged, save_raw=False)['body_html']
     raw = gb2312_mail()
     parsed = parser.parse_message(1, raw, save_raw=False)
     assert parsed["body_text"].startswith("大家好")
@@ -57,6 +70,14 @@ def main():
                 ],
                 "raw_path": raw_path,
             })
+            # Historical cached HTML is recovered at read time, even for a single bad character.
+            from app.web.routes.mail_read import api_email_detail
+            rich_path = Path(raw_dir) / '2.eml'; rich_path.write_bytes(rich_raw)
+            rich_id = db.upsert_email({'uid':2, 'folder':'INBOX','subject':'Example', 'from_addr':'sender@example.test',
+                'body_text':'导游：林珺，联系电话见附件。','body_html':html.replace('珺','�'), 'raw_path':str(rich_path)})
+            recovered = api_email_detail(rich_id)
+            assert recovered['body_html'] == html and not recovered['body_encoding_warning']
+            assert rich_path.read_bytes() == rich_raw
             result = pipeline.repair_mojibake_bodies()
             assert result["updated"] == 1
             repaired = db.get_email(email_id)

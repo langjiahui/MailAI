@@ -54,7 +54,7 @@ TESTS = (
     'test_live_diagnostics.py', 'test_diagnostics_progress.py',
     'test_optimization_guards.py', 'test_interaction_fixes.py', 'test_pinyin_search.py', 'test_search_index_cost.py',
     'test_resource_safety.py',
-    'test_mail_arrival_lifecycle.py', 'test_mail_fetch_resilience.py', 'test_dock_unread_sync.py',
+    'test_mail_arrival_lifecycle.py', 'test_mail_fetch_resilience.py', 'test_mail_recovery.py', 'test_dock_unread_sync.py',
     'test_maturity_hardening.py', 'test_automatic_backup.py',
     'test_portable_backup.py',
     'test_mail_import.py',

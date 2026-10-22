@@ -22,6 +22,7 @@ async function run(engine){
    await p.locator('#app-preloader').waitFor({state:'hidden'});
    await p.locator('#email-list .email-item').first().waitFor();
    assert(await p.evaluate(()=>_systemConfig.accounts.every(a=>a.user.endsWith('@example.test'))));
+
    await p.locator('#email-list .email-item').first().click();await p.waitForFunction(()=>!!selectedEmailDetail);
    await p.evaluate(()=>openAssistant());await handle.waitFor();await settle();
   }
@@ -41,6 +42,28 @@ async function run(engine){
   await navigate(()=>p.goto((process.env.MAILAI_FIXTURE_URL||'http://127.0.0.1:18795')+'/?shell=macos'));
   await p.locator('#app-preloader').waitFor({state:'hidden'});await p.locator('#email-list .email-item').first().waitFor();
   assert(await p.evaluate(()=>_systemConfig.accounts.every(a=>a.user.endsWith('@example.test'))));
+  // Native font restoration can leave --fz and the effective body zoom out of
+  // step for a frame (or on an older webview). Welcome controls must still fit.
+  await p.evaluate(()=>{openAssistant();renderAssistantWelcome();});
+  for(const [width,height,zoom,font] of [[2048,1188,1,.85],[1440,900,.85,1],[1440,640,1.25,1.25],[1280,720,.95,.95],[1920,1080,1.1,1.1]]){
+    await p.setViewportSize({width,height});
+    await p.evaluate(({zoom,font})=>{document.body.style.zoom=zoom;document.documentElement.style.setProperty('--fz',font);updateAssistantPlacement();},{zoom,font});
+    await settle();
+    const bounds=await p.evaluate(()=>{
+      const rect=node=>{const r=node.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom};};
+      return {panel:rect(document.getElementById('assistant-panel')),pane:rect(document.querySelector('.reading-pane')),close:rect(document.getElementById('assistant-close')),input:rect(document.getElementById('assistant-input')),home:document.body.classList.contains('assistant-home')};
+    });
+    for(const name of ['panel','close','input']){
+      const r=bounds[name];assert(r.left>=-1&&r.right<=width+1&&r.top>=-1&&r.bottom<=height+1,JSON.stringify({engine:engine.name(),width,height,zoom,font,name,bounds}));
+    }
+    if(bounds.home){assert(Math.abs(bounds.panel.left-bounds.pane.left)<2);assert(Math.abs(bounds.panel.right-bounds.pane.right)<2);}
+    await p.locator('#assistant-input').fill('Synthetic draft survives resize');
+  }
+  assert.equal(await p.locator('#assistant-input').inputValue(),'Synthetic draft survives resize');
+  await p.locator('#assistant-input').fill('');
+  await p.evaluate(()=>{document.body.style.zoom='1';document.documentElement.style.setProperty('--fz','1');closeAssistant();});
+  await p.setViewportSize({width:1440,height:1000});await settle();
+
   await p.evaluate(k=>{localStorage.removeItem(k);setI18nLanguage(I18N_DEFAULT_LANG);},key);await navigate(()=>p.reload());await reading();
   assert.equal(await value(),420);await geometry();
   await p.evaluate(()=>{

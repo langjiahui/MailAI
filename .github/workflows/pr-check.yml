@@ -177,6 +177,7 @@ jobs:
       - name: Verify portable mail imports and release metadata
         run: |
           python tests/test_mail_import.py
+          python tests/test_mail_recovery.py
           python tests/test_mail_navigation.py
           python tests/test_ios_release.py
     needs: plan

@@ -15,6 +15,7 @@ class ImportRequest(BaseModel):
     label: str = Field(default='Foxmail 导入', max_length=80)
     expected_files: int = Field(ge=1, le=importer.MAX_FILES)
     large_messages: bool = False
+    destination: str = Field(default='local_archive', max_length=20)
 
 
 class SkipFileRequest(BaseModel):
@@ -37,7 +38,7 @@ def api_mail_import_history():
 
 @router.post('/api/mail/client-imports')
 def api_mail_import_create(payload: ImportRequest):
-    return call(importer.create, payload.label, payload.expected_files, payload.large_messages)
+    return call(importer.create, payload.label, payload.expected_files, payload.large_messages, payload.destination)
 
 
 @router.get('/api/mail/client-imports/{token}')
@@ -121,3 +122,13 @@ def api_mail_import_discard(token: str):
 @router.get('/api/mail/client-imports/{token}/retry-files')
 def api_mail_import_retry_files(token: str):
     return call(importer.retry_files, token)
+
+
+@router.get('/api/mail/client-imports/{token}/issues')
+def api_mail_import_issues(token: str, offset: int = 0, limit: int = 30):
+    return call(importer.issues, token, max(0, offset), max(1, min(limit, 100)))
+
+
+@router.post('/api/mail/client-imports/{token}/organize')
+def api_mail_import_organize(token: str):
+    return call(importer.organize, token)

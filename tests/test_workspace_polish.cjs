@@ -37,7 +37,7 @@ const ctx = {
     querySelector:selector => selector === '#assistant-scope-picker summary' ? scopeSummary : selector === '.layout' ? {getClientRects:()=>[{}],getBoundingClientRect:()=>({top:100})} : {getBoundingClientRect:()=>({left:650,top:100,width:700,height:780})},
   },
   assistantPinnedScope:null, selectedEmailId:null, selectedEmailDetail:null,
-  allEmails:[{id:7,subject:'合同确认'}], activeMailAccount:()=>({user:'work@example.test'}), innerWidth:1440,
+  allEmails:[{id:7,subject:'合同确认'}], activeMailAccount:()=>({user:'work@example.test'}), innerWidth:1440, innerHeight:900,
 };
 vm.createContext(i18nContext(ctx)); vm.runInContext(source, ctx);
 ctx.updateAssistantScopeControl(); assert.equal(nodes['assistant-scope-label'].textContent,'当前邮箱');

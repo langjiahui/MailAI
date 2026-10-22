@@ -487,6 +487,46 @@ def test_large_message_projection_and_retry():
                 raises(project, text)
 
 
+def test_folder_placement_counts_and_history_recovery():
+    from app.web.routes.mail_read import api_mailbox_counts
+    from app.web.routes.compose import api_sent_messages
+    with fixture() as (root, account), account('work'):
+        token = imp.create('位置核对', destination='auto')['token']
+        for i, folder in enumerate(('收件箱', '已发送', '项目资料')):
+            upload(token, folder + '/mail.eml', message('placement-' + str(i)))
+        upload(token, 'broken.eml', b'not a message')
+        job = scan(token)
+        assert {row['destination'] for row in job['folders']} == {'inbox','sent','local_archive'}
+        assert apply(token)['imported'] == 3
+        counts = api_mailbox_counts()
+        assert counts['all'] == 3 and counts['local'] == {'inbox':1, 'sent':1, 'local_archive':1}, counts
+        assert len(api_sent_messages()) == 1, 'Imported sent mail must be readable in Sent'
+        assert imp.retry_files(token) == ['broken.eml']
+        assert imp.issues(token)['items'][0]['source'] == 'broken.eml'
+        assert imp.issues(token, 1)['items'] == []
+        # Old imports are explicitly recoverable without reuploading; user moves survive.
+        old = imp.create('旧批次')['token']
+        upload(old, '收件箱/a.eml', message('old-inbox'))
+        upload(old, '已发送/b.eml', message('old-sent'))
+        upload(old, '收件箱/c.eml', message('user-moved'))
+        scan(old); apply(old)
+        with db.conn() as c:
+            moved = c.execute("SELECT id FROM emails WHERE message_id='<user-moved>'").fetchone()[0]
+            c.execute("UPDATE emails SET status='trash' WHERE id=?", (moved,))
+        assert imp.organize(old)['organized'] == 2
+        assert imp.organize(old)['organized'] == 0, 'Organizing twice cannot move mail again'
+        assert db.get_email(moved)['status'] == 'trash'
+        counts = api_mailbox_counts()
+        assert counts['totals']['inbox'] == 2 and counts['totals']['sent'] == 2
+        with account('personal'):
+            raises(imp.organize, old)
+            raises(imp.issues, token)
+            assert api_mailbox_counts()['all'] == 0
+        assert imp.destination_for('Project/sent invoices') == 'local_archive'
+        assert imp.destination_for('Export/Sent Items/2025') == 'sent'
+        raises(imp.create, 'Invalid', 1, False, 'trash')
+
+
 if __name__ == '__main__':
     # mailbox.add(bytes) replaces LF with os.linesep without stripping CR.
     # Use streams for valid exports and exercise Windows CRLF on every runner.
@@ -500,5 +540,6 @@ if __name__ == '__main__':
     test_upload_receipts_and_resume()
     test_skip_failed_sources_and_guidance()
     test_local_inbox_organizing_without_server()
+    test_folder_placement_counts_and_history_recovery()
     test_large_message_projection_and_retry()
     print('Client mail import: MIME/attachments, dedup, account isolation, pause/retry, concurrent sync and invalid inputs passed')

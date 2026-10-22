@@ -50,6 +50,7 @@ diagnostics-progress.js
 contact-directory.js
 contact-filters.js
 mail-import.js
+mail-recovery.js
 task-activity.js
 help-center.js
 date-time-picker.js

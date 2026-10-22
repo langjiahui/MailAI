@@ -514,5 +514,14 @@
     "env": {
       "MAILAI_BROWSER": "webkit"
     }
+  },
+  {
+    "file": "tests/test_mail_recovery_browser.cjs"
+  },
+  {
+    "file": "tests/test_mail_recovery_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
   }
 ]

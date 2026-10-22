@@ -43,6 +43,7 @@ let savedComposeRange = null;
 let specialMailbox = '';
 let currentServerFolder = '';
 let sentMessages = [];
+let mailboxLocalCounts = null;
 let savedDrafts = [];
 let composeContext = {mode: 'compose', reply_to_email_id: null, in_reply_to: '', references: '', original_text: ''};
 let composeAttachments = [];
@@ -3220,11 +3221,12 @@ async function loadData({includeAncillary = true, silent = false} = {}) {
       : (folder ? `/api/emails?days=9999&folder=${encodeURIComponent(folder)}` : '/api/emails?days=' + (days === 9999 ? 365000 : days));
     const draftsRevision = draftListRevision;
     const tagCatalog = typeof window !== 'undefined' ? window.mailaiRefreshTags?.(accountId) : null;
-    const requests = [loadMailPages(mailPath, isCurrent)];
+    const requests = [loadMailPages(mailPath, isCurrent), api('/api/mailbox/counts').catch(() => null)];
     if (includeAncillary) requests.push(api('/api/todos'), api('/api/mail/sent'), api('/api/drafts'));
-    const [emails, todos, sent, drafts] = await Promise.all(requests);
+    const [emails, localCounts, todos, sent, drafts] = await Promise.all(requests);
     if (!isCurrent() || !emails) return null;
     allEmails = emails;
+    mailboxLocalCounts = unified ? null : localCounts;
     if (includeAncillary) {
       allTodos = todos;
       sentMessages = sent;
@@ -3295,22 +3297,30 @@ function updateSidebar() {
     trash: allEmails.filter(e => e.status === 'trash').length,
     sent: sentMessages.length,
     drafts: savedDrafts.length,
+    local_archive: mailboxLocalCounts?.totals?.local_archive || 0,
   };
+  if (mailboxLocalCounts) {
+    counts.all = mailboxLocalCounts.all;
+    for (const key of ['inbox', 'quarantine', 'spam', 'trash']) counts[key] = mailboxLocalCounts.totals[key] || 0;
+    counts.sent = Math.max(counts.sent, mailboxLocalCounts.totals.sent || 0);
+  }
   const serverCounts = serverMailboxCounts();
   if (serverCounts) {
     for (const key of ['all', 'inbox', 'sent', 'drafts', 'quarantine', 'spam', 'trash']) {
-      counts[key] = Math.max(counts[key] || 0, serverCounts[key] || 0);
+      const local = mailboxLocalCounts?.local || {};
+      const extra = key === 'all' ? Object.values(local).reduce((sum, n) => sum + n, 0) : Number(local[key] || 0);
+      counts[key] = Math.max(counts[key] || 0, (serverCounts[key] || 0) + extra);
     }
     // Junk is a real server mailbox. Its badge must describe that mailbox,
     // not a larger historical count of locally classified messages.
-    if (serverFolderForRole('spam')) counts.spam = serverCounts.spam;
-    if (serverFolderForRole('quarantine')) counts.quarantine = serverCounts.quarantine;
+    if (serverFolderForRole('spam')) counts.spam = serverCounts.spam + Number(mailboxLocalCounts?.local?.spam || 0);
+    if (serverFolderForRole('quarantine')) counts.quarantine = serverCounts.quarantine + Number(mailboxLocalCounts?.local?.quarantine || 0);
   }
   for (const [k, v] of Object.entries(counts)) {
     const el = document.getElementById('count-' + k);
     if (el) {
       el.textContent = v;
-      if (serverCounts && Object.hasOwn(serverCounts, k)) mailaiBindUI(el, "title", () => (mailaiTemplate`服务器共 ${serverCounts[k]} 封`));
+      if (serverCounts && Object.hasOwn(serverCounts, k)) mailaiBindUI(el, "title", () => (mailaiTemplate`服务器共 ${serverCounts[k]} 封` + (mailboxLocalCounts?.local?.[k] ? ' · ' + mailaiTemplate`本机导入 ${mailboxLocalCounts.local[k]} 封` : '')));
     }
   }
 
@@ -4449,7 +4459,7 @@ function localMailSelection() {
 
 function availableMailMoveFolders() {
   const local = localMailSelection();
-  if (local.all) return [{name:'__local_inbox__', label:mailaiText('收件箱（仅本机）')}, {name:'__local_archive__', label:mailaiText('本地归档')}];
+  if (local.all) return [{name:'__local_sent__', label:mailaiText('已发送（仅本机）')}, {name:'__local_inbox__', label:mailaiText('收件箱（仅本机）')}, {name:'__local_archive__', label:mailaiText('本地归档')}];
   if (local.any) return [];
   return mailboxFolders.filter(folder => folder.selectable !== false);
 }
@@ -5405,8 +5415,8 @@ function renderSidebarAccounts() {
         <button type="button" class="sidebar-account-head" data-account-action="inbox" data-account-id="${esc(account.id)}" title="查看 ${esc(account.user)} 的收件箱" data-i18n-title="ui.81208a9b139f">
           <span class="sidebar-account-avatar">${esc(accountMark(account))}</span><span class="sidebar-account-identity"><b>${esc(localStorage.getItem('alias:' + account.id) || account.user.split('@')[0])}</b><small>${esc(account.user.split('@')[1] || (mailaiT('acct.stateReady') || '已连接'))}</small></span>
         </button>
-        ${statusVisible ? `<span class="account-sync-state ${syncing ? 'running' : 'warning'}" title="${esc(syncDetail)}">${syncing ? '<i class="account-sync-spinner" aria-hidden="true"></i>' : ''}${esc(status)}</span>` : ''}
-        <details class="account-menu"><summary aria-label="管理 ${esc(account.user)}" title="${mailaiT('side.accountOptions') || '邮箱选项'}" data-i18n-aria="ui.01040917d2fe">⋯</summary><div><button type="button" data-account-alias="${esc(account.id)}">${mailaiT('side.renameAccount') || '修改显示名称'}</button><button type="button" data-account-manage="${esc(account.id)}">${mailaiT('side.manageAccount') || '管理此邮箱'}</button></div></details>
+        ${statusVisible ? `<button type="button" data-account-recovery="${esc(account.id)}" class="account-sync-state ${syncing ? 'running' : 'warning'}" title="${esc(syncDetail)}">${syncing ? '<i class="account-sync-spinner" aria-hidden="true"></i>' : ''}${esc(status)}</button>` : ''}
+        <details class="account-menu"><summary aria-label="管理 ${esc(account.user)}" title="${mailaiT('side.accountOptions') || '邮箱选项'}" data-i18n-aria="ui.01040917d2fe">⋯</summary><div><button type="button" data-account-recovery="${esc(account.id)}">${esc(mailaiText('同步与问题邮件'))}</button><button type="button" data-account-alias="${esc(account.id)}">${mailaiT('side.renameAccount') || '修改显示名称'}</button><button type="button" data-account-manage="${esc(account.id)}">${mailaiT('side.manageAccount') || '管理此邮箱'}</button></div></details>
         </div>
         <div class="sidebar-account-folders">${[['favorites', mailaiT('side.favorites') || '我的收藏','m10 2 2.4 5 5.6.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.6-.8Z'],['inbox', mailaiT('side.inbox') || '收件箱','M3 13v4h14v-4M10 3v9m-3-3 3 3 3-3'],['sent', mailaiT('side.sent') || '已发送','m3 9 14-6-5 14-3-6-6-2Zm6 2 8-8'],['drafts', mailaiT('side.drafts') || '草稿箱','M5 2h7l4 4v12H5zM12 2v5h4M8 11h5M8 14h4'],['local_archive', mailaiText('本地归档'),'M3 4h14v4H3zM4 8v9h12V8M8 11h4'],['trash', mailaiT('side.trash') || '已删除','M4 6h12M7 6V3h6v3M6 8l1 9h6l1-9']].map(([action,label,path]) => `<button type="button" class="${selectedAccount && (action === 'local_archive' ? currentFilter.status === 'local_archive' : action === 'favorites' ? currentFilter.status === 'favorites' : action === 'trash' ? currentFilter.status === 'trash' || Boolean(currentServerFolder && currentServerFolder === serverFolderForRole('trash')?.name) : action === 'inbox' ? currentFilter.status === 'inbox' && !specialMailbox && !currentServerFolder : specialMailbox === action) ? 'active' : ''}" data-account-action="${action}" data-account-id="${esc(account.id)}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="${path}"/></svg><span>${label}</span>${action === 'inbox' && Number(account.unread) ? `<em title="未读邮件" data-i18n-title="ui.ef3356ba548c">${Number(account.unread)}</em>` : ''}</button>`).join('')}</div>
       </section>`;
@@ -6772,6 +6782,7 @@ function renderReadingPane(e) {
           </div>
           <div class="meta-badges">
             <time class="reading-message-time" title="${esc(e.date || '')}"><span class="meta-label" data-i18n="read.time">${mailaiT('read.time') || '时间：'}</span><span class="reading-date-text">${fmtDate(e.date)}</span></time>
+            ${e.body_encoding_warning ? `<span class="tag" role="status">${esc(mailaiText('原始正文含无法还原的字符，请核对原件或联系发件人重新发送。'))}</span>` : ''}
             ${e.is_local_archive ? `<span class="tag" title="此邮件仅保存在本机" data-i18n-title="ui.7bfc5091b329"><span>${e.status === 'inbox' ? mailaiText('仅本机 · 收件箱') : mailaiText('本地归档')}${e.folder?.startsWith('LOCAL_IMPORT/') ? ' · ' + esc(e.folder.slice('LOCAL_IMPORT/'.length)) : ''}</span></span>` : ''}
             ${e.category ? `<span class="tag mail-category">${esc(mailCategoryLabel(e.category))}</span>` : ''}
             ${e.priority ? `<span class="tag mail-priority tag-priority-${e.priority}">${esc(mailPriorityLabel(e.priority))}</span>` : ''}
@@ -8943,7 +8954,7 @@ document.getElementById('btn-confirm-logout').addEventListener('click', async ()
     await loadSystemConfig();
     if (targetWasActive) {
       ++mailLoadRevision;
-      allEmails = []; allTodos = []; sentMessages = []; savedDrafts = [];
+      allEmails = []; allTodos = []; sentMessages = []; savedDrafts = []; mailboxLocalCounts = null;
       resetReadingPane(); updateSidebar(); applyFilters();
     }
     selectSystemTab('account');

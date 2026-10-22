@@ -126,6 +126,15 @@
         },
         {
           "file": "tests/test_i18n_browser.cjs"
+        },
+        {
+          "file": "tests/test_mail_recovery_browser.cjs"
+        },
+        {
+          "file": "tests/test_mail_recovery_browser.cjs",
+          "env": {
+            "MAILAI_BROWSER": "webkit"
+          }
         }
       ]
     }

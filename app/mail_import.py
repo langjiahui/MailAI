@@ -203,7 +203,65 @@ def _record_issue(stream, preview, file, reason, kind='failed'):
         preview.append(issue)
 
 
-def create(label='Foxmail 导入', expected_files=0, large_messages=False):
+def destination_for(folder, destination='auto'):
+    if destination != 'auto':
+        return destination
+    # Match entire path components, never substrings such as 'sent invoices'.
+    for component in reversed(PurePosixPath(folder).parts):
+        component = component.strip().casefold()
+        if component in ('inbox', '收件箱', '收件匣'):
+            return 'inbox'
+        if component in ('sent', 'sent items', 'sent messages', '已发送', '已发送邮件', '已发邮件', '发件箱', '寄件備份'):
+            return 'sent'
+    return 'local_archive'
+
+
+def issues(token, offset=0, limit=30):
+    with _lock:
+        _read(token)
+        rows, total = [], 0
+        for phase in ('scan', 'import'):
+            path = _path(token) / (phase + '-issues.jsonl')
+            if not path.exists():
+                continue
+            with path.open(encoding='utf-8') as stream:
+                for line in stream:
+                    row = json.loads(line)
+                    if offset <= total < offset + limit:
+                        row['source'] = re.sub(r' · 第 \d+ 封$', '', row['file'])
+                        rows.append(row)
+                    total += 1
+        return dict(items=rows, total=total)
+
+
+def organize(token):
+    # Explicit repair of a previous batch. User-moved/deleted mail is untouched.
+    with _lock:
+        job = _read(token)
+        if job['state'] != 'completed' or str(_path(token)) in _active:
+            raise ValueError('请先等待导入完成，再整理文件夹')
+        changed = 0
+        prefix = 'LOCAL_IMPORT/' + job['label'] + '/'
+        with db.conn() as c:
+            c.execute('BEGIN IMMEDIATE')
+            rows = c.execute('''SELECT e.id,e.folder FROM emails e JOIN mail_client_fingerprints f ON f.email_id=e.id
+                WHERE f.batch_token=? AND e.is_local_archive=1 AND e.remote_missing=0
+                AND e.status='local_archive' AND e.pending_action='' AND e.cleanup_hold='' ''', (token,)).fetchall()
+            for row in rows:
+                if not row['folder'].startswith(prefix):
+                    continue
+                target = destination_for(row['folder'][len(prefix):])
+                if target != 'local_archive':
+                    c.execute('UPDATE emails SET status=? WHERE id=?', (target, row['id']))
+                    changed += 1
+        db.add_audit_log(None, 'client_import_organize', actor='user', reason='按导出文件夹整理本地邮件', meta={'token':token, 'changed':changed})
+        folders = [{**row, 'destination':destination_for(row['name'])} for row in job.get('folders', [])]
+        return _public(_update(token, destination='auto', organized=changed, folders=folders))
+
+
+def create(label='Foxmail 导入', expected_files=0, large_messages=False, destination='local_archive'):
+    if destination not in ('auto', 'inbox', 'sent', 'local_archive'):
+        raise ValueError('请选择有效的导入位置')
     label = str(label).strip()
     if not label or len(label) > 80 or any(ch in label for ch in '/\\\x00'):
         raise ValueError('请输入不超过 80 字的归档名称，不要包含斜杠')
@@ -218,7 +276,7 @@ def create(label='Foxmail 导入', expected_files=0, large_messages=False):
         (directory / 'sources').mkdir(parents=True, mode=0o700)
         (directory / 'messages').mkdir(mode=0o700)
         job = dict(token=token, label=label, state='collecting', phase='upload',
-                   large_messages=bool(large_messages),
+                   large_messages=bool(large_messages), destination=destination,
                    created_at=time.time(), updated_at=time.time(), bytes=0,
                    files=0, expected_files=expected_files, processed=0, total=0, found=0, new=0, duplicates=0,
                    imported=0, failed=0, errors=[], samples=[], issue_count=0, folders=[],
@@ -643,7 +701,7 @@ def scan(token):
     folders = sorted(folder_counts.items(), key=lambda item: (-item[1], item[0]))
     return dict(state='ready', scan_failed=counters['failed'], scan_duplicates=counters['duplicates'],
                 scan_errors=errors, scan_issue_count=issue_count, issue_count=issue_count,
-                folders=[dict(name=name, count=count) for name, count in folders[:30]], folder_count=len(folders),
+                folders=[dict(name=name, count=count, destination=destination_for(name, job.get('destination', 'local_archive'))) for name, count in folders[:30]], folder_count=len(folders),
                 current_source='', message='扫描完成，请核对结果后开始导入')
 
 
@@ -679,7 +737,7 @@ def _insert(token, item, raw):
             record = {k: parsed[k] for k in ('message_id','in_reply_to','references_header','thread_id','subject','from_addr','from_name','to_addr','cc_addr','recipient_names','date','snippet','body_text','body_html','urls','attachments')}
             for key in ('recipient_names', 'urls', 'attachments'):
                 record[key] = json.dumps(record[key], ensure_ascii=False)
-            record.update(uid=uid, folder=folder, status='local_archive', is_local_archive=1,
+            record.update(uid=uid, folder=folder, status=destination_for(item['folder'], job.get('destination', 'local_archive')), is_local_archive=1,
                           is_read=1, arrival_kind='history', notification_sent=1, processing_complete=1,
                           raw_path=str(target), created_at=time.strftime('%Y-%m-%dT%H:%M:%S'),
                           action_mode='observe', action_reason='从其他邮件客户端导入，仅保存在本机',
@@ -741,4 +799,4 @@ def execute(token):
     return dict(state='failed' if retry else 'completed',
                 current_source='',
                 error='部分邮件未能写入。请检查磁盘空间，再点击继续重试；已导入邮件会保留。' if retry else '',
-                message='导入完成。旧邮件已保存在此邮箱的「本地归档」中。')
+                message='导入完成。旧邮件已保存在此邮箱的本地文件夹中。')

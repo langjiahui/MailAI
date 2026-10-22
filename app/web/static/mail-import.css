@@ -84,3 +84,21 @@ html[data-theme=dark] [data-import-error] { color:#efb1a5; }
 .mail-import-dialog footer { flex-wrap:wrap; }
 
 .mail-import-dialog .mail-import-preflight { padding:8px 10px; border-radius:8px; background:var(--desk-muted-surface); color:var(--desk-ink); }
+
+.mail-import-destination { display:grid; gap:8px; margin:12px 0; font-weight:600; }
+.mail-import-destination select { width:100%; min-width:0; padding:10px; border:1px solid var(--desk-line); border-radius:10px; background:var(--desk-muted-surface); color:var(--desk-ink); }
+.mail-import-counts [data-import-show-issues] { font-size:12px; padding:5px 0; color:var(--desk-accent); text-align:left; }
+#mail-import-dialog [data-import-errors] p { overflow-wrap:anywhere; }
+#mail-import-dialog [data-import-errors] button { margin-top:8px; }
+
+.mail-import-dialog [data-import-errors] .mail-import-filename { white-space:normal; overflow-wrap:anywhere; }
+
+#mail-recovery-dialog .mail-recovery-actions { display:flex; flex-wrap:wrap; gap:8px; }
+#mail-recovery-dialog .mail-recovery-item { padding:14px; margin:12px 0; border:1px solid var(--desk-line); border-radius:10px; overflow-wrap:anywhere; }
+#mail-recovery-dialog .mail-recovery-item h3 { margin:0; font-size:15px; }
+#mail-recovery-dialog .mail-recovery-item p { margin:6px 0; }
+#mail-recovery-dialog .mail-recovery-item div { display:flex; flex-wrap:wrap; gap:8px; }
+#mail-recovery-dialog [data-recovery-error], #mail-recovery-dialog [data-recovery-task] { overflow-wrap:anywhere; }
+#mail-recovery-dialog [data-recovery-task] progress { width:100%; }
+.sidebar-account-heading button.account-sync-state { cursor:pointer; font:inherit; font-size:10px; border:1px solid transparent; }
+.sidebar-account-heading button.account-sync-state:hover { border-color:var(--desk-accent); }

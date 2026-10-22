@@ -1047,3 +1047,10 @@ html[data-theme="dark"] .progress-risk { color:#e4b094; }
 .progress-date-pair { display:flex; flex-wrap:wrap; gap:8px 20px; margin:9px 0; }
 .progress-changes blockquote { margin:8px 0; line-height:1.7; }
 .progress-changes article>button { margin-left:8px; }
+
+/* Constrain measured welcome panels even while native zoom/preferences settle. */
+body.assistant-home #assistant-panel {
+  box-sizing:border-box;
+  max-width:calc(var(--assistant-viewport-width) - var(--assistant-home-left))!important;
+  max-height:calc(var(--assistant-viewport-height) - var(--assistant-home-top))!important;
+}
