@@ -751,8 +751,20 @@ function updateAssistantPlacement() {
   const layout = document.querySelector('.layout');
   const reading = !document.getElementById('reading-content').classList.contains('hidden');
   const workspaceVisible = layout.getClientRects().length > 0;
-  const scale = Number.parseFloat(getComputedStyle(document.body).getPropertyValue('--fz')) || 1;
-  const width = innerWidth / scale;
+  // Use the rendered zoom, not just the saved font preference. During native
+  // preference restoration those values can differ and push the fixed panel offscreen.
+  const bodyStyle = getComputedStyle(document.body);
+  const scale = Number.parseFloat(bodyStyle.zoom) ||
+    (layout.offsetWidth ? layout.getBoundingClientRect().width / layout.offsetWidth : 0) ||
+    Number.parseFloat(bodyStyle.getPropertyValue('--fz')) || 1;
+  const panel = document.getElementById('assistant-panel');
+  const viewport = window.visualViewport;
+  const viewportLeft = viewport?.offsetLeft || 0, viewportTop = viewport?.offsetTop || 0;
+  const viewportRight = viewportLeft + Math.min(innerWidth, viewport?.width || innerWidth);
+  const viewportBottom = viewportTop + Math.min(innerHeight, viewport?.height || innerHeight);
+  panel.style.setProperty('--assistant-viewport-width', `${viewportRight / scale}px`);
+  panel.style.setProperty('--assistant-viewport-height', `${viewportBottom / scale}px`);
+  const width = (viewportRight - viewportLeft) / scale;
   const home = visible && !floating && workspaceVisible && !reading && width > 1024;
   const docked = visible && !floating && workspaceVisible && reading && width >= 1600;
   const split = visible && !floating && workspaceVisible && reading && width >= 1024 && width < 1600;
@@ -774,8 +786,11 @@ function updateAssistantPlacement() {
   if (docked || split) document.getElementById('assistant-panel').style.setProperty('--assistant-dock-top', `${layout.getBoundingClientRect().top / scale}px`);
   if (home) {
     const rect = pane.getBoundingClientRect();
-    const panel = document.getElementById('assistant-panel');
-    for (const [key,value] of Object.entries({left:rect.left,top:rect.top,width:rect.width,height:rect.height})) {
+    const left = Math.max(viewportLeft, Math.min(rect.left, viewportRight));
+    const top = Math.max(viewportTop, Math.min(rect.top, viewportBottom));
+    const width = Math.max(0, Math.min(rect.right ?? rect.left + rect.width, viewportRight) - left);
+    const height = Math.max(0, Math.min(rect.bottom ?? rect.top + rect.height, viewportBottom) - top);
+    for (const [key,value] of Object.entries({left,top,width,height})) {
       panel.style.setProperty('--assistant-home-' + key, `${value / scale}px`);
     }
   }
@@ -829,6 +844,8 @@ function initializeAssistantPolish() {
   observer.observe(document.getElementById('reading-content'), {attributes:true,attributeFilter:['class']});
   new MutationObserver(updateAssistantScopeControl).observe(document.getElementById('reading-content'), {childList:true});
   new ResizeObserver(updateAssistantPlacement).observe(document.querySelector('.reading-pane'));
+  window.visualViewport?.addEventListener('resize', updateAssistantPlacement);
+  window.visualViewport?.addEventListener('scroll', updateAssistantPlacement);
   window.addEventListener('resize', updateAssistantPlacement);
   updateAssistantPlacement(); updateAssistantScopeControl();
 }
