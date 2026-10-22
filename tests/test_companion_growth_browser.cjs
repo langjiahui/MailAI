@@ -36,7 +36,9 @@ const {chromium} = require('playwright');
     await page.waitForFunction(()=>document.body.dataset.petEffect === 'sparkles');
     // Equipped effects rest between finite interactions; only a visible reaction
     // should start their clocks. Background launchers stay quiet behind a dialog.
-    await dialog.locator('.pet-hero').scrollIntoViewIfNeeded();
+    // Purchase completion replaces the hero section, while the journal body
+    // remains mounted. Scroll that stable owner before checking the live rig.
+    await dialog.locator('.pet-journal-body').evaluate(n=>n.scrollTop=0);
     await page.waitForFunction(()=>document.querySelector('.pet-hero .mail-companion').dataset.rewardVisible==='true');
     await page.waitForFunction(()=>document.querySelector('.pet-hero .mail-companion').dataset.motionActive==='false',null,{timeout:4000});
     assert.equal(await dialog.locator('.pet-hero .pet-star').first().evaluate(n=>getComputedStyle(n).animationName),'none');
