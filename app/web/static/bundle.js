@@ -1579,6 +1579,7 @@ if (typeof document !== 'undefined') {
 /* ---- i18n-catalog.js ---- */
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "updateFlow.unsignedWarning": ["当前版本未配置代码签名，安装时系统可能显示安全警告。", "This version is not code-signed. Your system may show a security warning during installation."],
   "updateFlow.sourceConnection": ["无法连接更新服务。国内源：{0}；GitHub：{1}", "Could not connect to update services. China mirror: {0}; GitHub: {1}"],
   "updateFlow.sourceValidation": ["更新清单校验失败，已停止更新。国内源：{0}；GitHub：{1}", "Update manifest verification failed; update stopped. China mirror: {0}; GitHub: {1}"],
   "updateFlow.checkError": ["检查更新失败：{0}", "Update check failed: {0}"],

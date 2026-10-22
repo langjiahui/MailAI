@@ -8,7 +8,7 @@ const {chromium,webkit}=require('playwright');
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   let failed=false,available=false,hold=null,installable=false;
   let task={status:'idle',phase:'idle',running:false},downloads=0,installs=0,statusCalls=0;
-  const ready=()=>({status:'completed',phase:'ready',running:false,action:'download',version:'2.8.19',total:100,downloaded:100,percent:100,release:{current_version:'2.8.18',latest_version:'2.8.19',device:'macos-arm64',supported:true,available:true,installable:true}});
+  const ready=()=>({status:'completed',phase:'ready',running:false,action:'download',version:'2.8.19',total:100,downloaded:100,percent:100,release:{current_version:'2.8.18',latest_version:'2.8.19',device:'macos-arm64',supported:true,available:true,installable:true,notes:'Isolated update fixture. No actual installation.\n'.repeat(35),unsigned_warning:'当前版本未配置代码签名，安装时系统可能显示安全警告。'}});
   await page.route('**/api/system/update/install/status',route=>{statusCalls++;return route.fulfill({json:task});});
   await page.route('**/api/system/update/download',route=>{
    downloads++;task={...ready(),status:'running',phase:'downloading',running:true,downloaded:23,percent:23};
@@ -23,7 +23,7 @@ const {chromium,webkit}=require('playwright');
    if(hold){const wait=hold;hold=null;await wait;return route.fulfill({status:502,json:{detail:'stale check failed'}});}
    if(failed)return route.fulfill({status:502,json:{detail:failed==='sources'?'检查更新失败：无法连接更新服务。国内源：安全证书验证失败，请检查系统日期及公司受信任证书；GitHub：HTTP 403':'连接更新服务中断，请重试或点击“查看发布页”手动下载'}});
    return route.fulfill({json:{current_version:'2.8.18',latest_version:available?'2.8.19':'2.8.18',
-    device:'macos-arm64',supported:true,available,installable,notes:'Isolated update fixture. No actual installation.',
+    device:'macos-arm64',supported:true,available,installable,notes:'Isolated update fixture. No actual installation.\n'.repeat(35),unsigned_warning:'当前版本未配置代码签名，安装时系统可能显示安全警告。',
     release_url:'https://github.com/langjiahui/MailAI/releases/tag/v2.8.19'}});
   });
   await page.route('**/api/ui-preferences.js',route=>route.fulfill({contentType:'text/javascript',body:''}));
@@ -63,6 +63,7 @@ const {chromium,webkit}=require('playwright');
   installable=true;await button.click();
   const install=page.locator('#btn-install-update'),later=page.locator('#btn-defer-update'),chip=page.locator('#companion-update');
   assert.equal(await install.innerText(),'Download update');
+  assert.match(await page.locator('#update-dialog-warning').innerText(),/not code-signed/);
   await page.evaluate(()=>setI18nLanguage('zh-CN'));
   await install.click();
   await page.waitForFunction(()=>document.getElementById('btn-install-update').textContent==='下载中 23%');
@@ -89,15 +90,15 @@ const {chromium,webkit}=require('playwright');
   // The badge adapts to edge placement and large text on narrow light/dark screens.
   for(const width of [390,1360]) {
    await page.setViewportSize({width,height:950});
-   for(const theme of ['light','dark']) {
-    await page.evaluate(theme=>{document.documentElement.dataset.theme=theme;document.body.style.zoom='1.2';document.documentElement.style.setProperty('--fz','1.2');},theme);
+   for(const theme of ['light','dark']) for(const palette of ['', 'theme_monochrome','theme_baowu']) {
+    await page.evaluate(({theme,palette})=>{document.documentElement.dataset.theme=theme;document.documentElement.dataset.rewardTheme=palette;document.body.style.zoom='1.2';document.documentElement.style.setProperty('--fz','1.2');},{theme,palette});
     for(const edge of ['top','left','right','bottom']) {
      await page.evaluate(edge=>{const pet=document.getElementById('mail-assistant');pet.dataset.petEdgeX=edge==='left'?'left':'right';pet.dataset.petEdgeY=edge==='top'?'top':'bottom';Object.assign(pet.style,{left:edge==='left'?'0':'auto',right:edge==='left'?'auto':'0',top:edge==='top'?'0':'auto',bottom:edge==='top'?'auto':'12px'});},edge);
      const box=await chip.boundingBox();assert(box && box.x>=-1 && box.x+box.width<=width+1 && box.y>=-1 && box.y+box.height<=951,JSON.stringify({width,theme,edge,box}));
     }
    }
   }
-  await page.evaluate(()=>{document.body.style.zoom='';document.documentElement.style.setProperty('--fz','1');const pet=document.getElementById('mail-assistant');pet.removeAttribute('style');pet.dataset.petEdgeX='right';pet.dataset.petEdgeY='bottom';});
+  await page.evaluate(()=>{document.body.style.zoom='';document.documentElement.style.setProperty('--fz','1');delete document.documentElement.dataset.rewardTheme;const pet=document.getElementById('mail-assistant');pet.removeAttribute('style');pet.dataset.petEdgeX='right';pet.dataset.petEdgeY='bottom';});
   await page.setViewportSize({width:1360,height:950});
   // Disabling pet motion preserves the usable, static update action.
   await page.emulateMedia({reducedMotion:'no-preference'});
@@ -111,6 +112,15 @@ const {chromium,webkit}=require('playwright');
   assert.equal(await install.innerText(),'Install now');assert.equal(await later.innerText(),'Install later');
   await page.setViewportSize({width:390,height:720});
   await page.evaluate(()=>{document.body.style.zoom='1.2';document.documentElement.style.setProperty('--fz','1.2');});
+  // Long notes must not push the defer/install controls below the visible window.
+  for(const phase of ['downloading','ready','failed']) {
+   task={...ready(),phase,status:phase==='failed'?'failed':phase==='ready'?'completed':'running',running:phase==='downloading',error:phase==='failed'?'安装包下载多次中断，请重试或从发布页手动下载':''};
+   await page.evaluate(state=>applyAppUpdateTask(state),task);
+   const before=await install.boundingBox();assert(before.y>=0 && before.y+before.height<=721,JSON.stringify({phase,before}));
+  }
+  task=ready();await page.evaluate(()=>refreshAppUpdateTask());
+  await page.locator('#update-dialog-notes').focus();await page.keyboard.press('End');
+  assert(await page.locator('#update-dialog-notes').evaluate(n=>n.scrollTop>0),'Release notes support keyboard scrolling');
   await install.scrollIntoViewIfNeeded();
   const dialogBox=await page.locator('#update-dialog').boundingBox(),installBox=await install.boundingBox();
   assert(dialogBox.x>=0 && dialogBox.x+dialogBox.width<=391);assert(installBox.x>=0 && installBox.x+installBox.width<=391 && installBox.y+installBox.height<=721);

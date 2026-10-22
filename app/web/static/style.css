@@ -5524,3 +5524,7 @@ body.companion-paused .companion-update-arrow,body.companion-still .companion-up
 
 /* Keep update decisions legible above the dimmed mailbox. */
 html[data-theme] body #update-dialog { background:var(--desk-surface,var(--surface))!important; backdrop-filter:none!important; }
+
+/* Keep defer/install reachable while long release notes scroll on small windows. */
+.update-dialog footer { position:sticky; bottom:0; z-index:1; padding:12px 0; border-top:1px solid var(--border); }
+html[data-theme] body #update-dialog footer { background:var(--desk-surface,var(--surface))!important; }
