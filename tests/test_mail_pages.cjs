@@ -28,7 +28,8 @@ assert.notEqual(
 assert.equal(groupContext.mailDateGroup('', referenceNow).label, '未知时间');
 assert.match(source, /function syncSelectedEmailVisual\(/, 'Selected mail must have one centralized visual state');
 assert.match(source, /async function revealEmailFromSource\(/, 'Source links must reveal and emphasize their mail item');
-assert.match(source, /await revealEmailFromSource\(Number\(source\.dataset\.todoEmail\)\)/, 'Todo source links must use the source-navigation flow');
+assert.match(source, /emailId:Number\(source\.dataset\.todoEmail\)/, 'Todo navigation captures the selected source before asynchronous work');
+assert.match(source, /await revealEmailFromSource\(context\.emailId\)/, 'Todo source links must use the source-navigation flow');
 assert.match(source, /async function refreshMailboxIfChanged\(/, 'Background delivery must refresh the mailbox automatically');
 assert.match(source, /window\.mailaiMailboxUpdated = \(\) => refreshMailboxIfChanged\(true\)/, 'Native delivery signal must trigger an immediate refresh');
 assert.match(source, /new_high_risk_count/, 'Assistant alerts must distinguish high-risk mail from suspicious mail');

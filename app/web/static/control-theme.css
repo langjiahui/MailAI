@@ -1,6 +1,25 @@
 /* Filled actions use one foreground/background pair, including their children.
  * This final layer also wins over the generated legacy reward-theme bridge. */
 :root { --control-accent:var(--desk-accent); --control-on-accent:#fff; }
+/* Routine feedback stays quiet; warning and error palettes retain their meaning. */
+html[data-theme] body #toast:is(.success,.info),
+html[data-theme] body #workspace-notice {
+  color:var(--desk-ink)!important;
+  background:var(--desk-surface)!important; border:1px solid var(--desk-line)!important;
+  box-shadow:0 8px 28px #0002!important;
+}
+html[data-theme="dark"] body #toast:is(.success,.info),
+html[data-theme="dark"] body #workspace-notice { box-shadow:0 8px 28px #0004!important; }
+html[data-theme] body #toast:is(.success,.info) .toast-icon {
+  color:var(--desk-accent)!important; background:var(--desk-selected)!important;
+}
+html[data-theme] body #workspace-notice button {
+  color:var(--desk-ink)!important; background:var(--desk-selected)!important;
+  border-color:var(--desk-line)!important; box-shadow:none!important;
+}
+html[data-theme] body #workspace-notice button:last-child { background:transparent!important; border-color:transparent!important; color:var(--desk-muted)!important; }
+html[data-theme] body #workspace-notice button:hover { background:var(--desk-hover)!important; color:var(--desk-ink)!important; }
+html[data-theme] body #workspace-notice button:focus-visible { outline:2px solid var(--desk-accent); outline-offset:3px; }
 /* Security navigation is a quiet surface menu. Its open trigger anchors the
  * panel; a separate accent diamond adds no information and breaks the theme. */
 html[data-theme][data-theme][data-theme] body #app .nav-security-menu .top-menu-popover {

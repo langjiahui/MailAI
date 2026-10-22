@@ -8110,6 +8110,7 @@ let todoCenterRevision = 0;
 let todoCenterLoading = false;
 let todoBatchBusy = false;
 let todoReturnFocus;
+let todoSourceReturn = null;
 const todoEdits = new Map();
 function todoEditKey(id, accountId = todoCenterAccountId) { return accountId + ':' + id; }
 function paintTodoSave(article, edit) {
@@ -8136,6 +8137,13 @@ function renderTodoCenter() {
   selectedTodoIds = new Set([...selectedTodoIds].filter(id => visibleIds.has(id)));
   const now = localDateKey();
   const openCount = rows.filter(item => item.status !== 'done').length;
+  const allOpen = todoCenterRows.filter(item => item.status !== 'done');
+  const overdueCount = allOpen.filter(item => String(item.deadline || '').slice(0,10) && String(item.deadline).slice(0,10) < now).length;
+  const todayCount = allOpen.filter(item=>String(item.deadline || '').slice(0,10) === now).length;
+  document.getElementById('todo-center-summary').textContent = overdueCount
+    ? mailaiTemplate`${allOpen.length} 项待办 · ${overdueCount} 项已逾期`
+    : todayCount ? mailaiTemplate`${allOpen.length} 项待办 · ${todayCount} 项今天截止`
+    : allOpen.length ? mailaiTemplate`${allOpen.length} 项待办` : mailaiText('待办已处理完，新的安排从邮件开始。');
   animateCountText(document.getElementById('todo-count'), openCount, n => (mailaiT('todo.openCount') || '{n} 项未完成').replace('{n}', n));
   const groups = window.mailaiTodoGroups ? window.mailaiTodoGroups(rows) : rows.map(item=>({key:String(item.id),rows:[item]}));
   const visibleRows = rows.slice(0, todoRenderLimit);
@@ -8143,19 +8151,20 @@ function renderTodoCenter() {
   const visibleGroups = groups.filter(group=>group.rows.some(item=>renderedIds.has(item.id)))
     .map(group=>({...group,visibleRows:group.rows.filter(item=>renderedIds.has(item.id))}));
   const host = document.getElementById('todo-list');
-  const renderRow = item => {
+  const renderRow = (item, context = {}) => {
     const date = String(item.deadline || '').slice(0, 10);
     const sourceDate = item.email_date || item.email_indexed_at || item.created_at || '';
     const overdue = item.status !== 'done' && date && date < now;
     const dateLabel = date === now ? mailaiText('今天') : date.startsWith(now.slice(0,4)) ? mailaiTemplate`${Number(date.slice(5,7))}月${Number(date.slice(8,10))}日` : date;
-    const reminder = item.remind_at && item.status !== 'done' ? (new Date(item.remind_at).getTime() <= Date.now() ? mailaiText('提醒已到期') : mailaiText('提醒 ') + fmtDate(item.remind_at)) : '';
+    const reminder = (!context.sharedReminder || item.remind_at !== context.sharedReminder) && item.remind_at && item.status !== 'done' ? (new Date(item.remind_at).getTime() <= Date.now() ? mailaiText('提醒已到期') : mailaiText('提醒 ') + fmtDate(item.remind_at)) : '';
     return `<article class="todo-center-item ${item.status === 'done' ? 'done' : ''} ${overdue ? 'overdue' : ''}" data-todo-id="${item.id}">
       <label class="todo-select" title="选择此待办" data-i18n-title="ui.3e92834e2cf6"><input type="checkbox" aria-label="选择待办：${esc(item.title)}" data-todo-select="${item.id}" ${selectedTodoIds.has(item.id) ? 'checked' : ''} ${item.status === 'done' ? 'disabled' : ''} data-i18n-aria="ui.76e5f02ab646"><span></span></label>
-      <div class="todo-main"><textarea rows="2" class="todo-title-input" aria-label="待办标题" title="点击修改任务标题" data-i18n-title="ui.4a3dd238b908" data-i18n-aria="ui.d1f7f1e2d4a6">${esc(item.title)}</textarea><input type="date" hidden value="${esc(date)}" aria-label="截止日期" data-i18n-aria="ui.31802424217f">
-        <div class="todo-time-meta"><button type="button" data-todo-plan="${item.id}" title="${date ? mailaiText('调整截止时间：') + esc(date) : mailaiText('设置截止时间与提醒')}" class="todo-time-chip ${overdue ? 'overdue' : ''}">${date ? (overdue ? mailaiText('逾期 · ') : item.stage === 'waiting' ? mailaiText('跟进 · ') : mailaiText('截止 · ')) + esc(dateLabel) : mailaiText('设置截止时间')}</button>${reminder ? `<button type="button" class="todo-reminder-chip" data-todo-plan="${item.id}">${esc(reminder)}</button>` : "<span class=\"todo-no-reminder\"><span data-i18n=\"ui.b3276d5f0e30\">未开启提醒</span></span>"}${item.status === 'done' ? "<span class=\"todo-done-label\"><span data-i18n=\"ui.f28461bb49c8\">已完成</span></span>" : ''}</div>
-        <div class="todo-source-meta"><span><span data-i18n="ui.bfff80455b50">来自邮件</span></span><button type="button" class="todo-source" data-todo-email="${item.email_id}" title="${esc(item.email_subject || '')}">${esc(item.email_subject || mailaiText('查看来源邮件'))}</button><time datetime="${esc(sourceDate)}">${esc(fmtDate(sourceDate))}</time></div>
+      <button type="button" class="todo-status-action todo-complete-action" data-todo-toggle="${item.id}" title="${esc(item.status === 'done' ? mailaiText('恢复待办') : mailaiText('完成待办'))}" aria-label="${esc(item.status === 'done' ? mailaiText('恢复待办') : mailaiText('完成待办'))} · ${esc(item.title)}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 10 3.5 3.5L15 7"/></svg><span class="todo-action-label">${item.status === 'done' ? mailaiText('恢复待办') : mailaiText('完成')}</span></button>
+      <div class="todo-main"><textarea rows="1" class="todo-title-input" aria-label="待办标题" title="点击修改任务标题" data-i18n-title="ui.4a3dd238b908" data-i18n-aria="ui.d1f7f1e2d4a6">${esc(item.title)}</textarea><input type="date" hidden value="${esc(date)}" aria-label="截止日期" data-i18n-aria="ui.31802424217f">
+        <div class="todo-time-meta">${context.grouped ? '' : `<button type="button" data-todo-plan="${item.id}" title="${date ? mailaiText('调整截止时间：') + esc(date) : mailaiText('设置截止时间与提醒')}" class="todo-time-chip ${overdue ? 'overdue' : ''}">${date ? (overdue ? mailaiText('逾期 · ') : item.stage === 'waiting' ? mailaiText('跟进 · ') : mailaiText('截止 · ')) + esc(dateLabel) : mailaiText('设置截止时间')}</button>`}${reminder ? `<button type="button" class="todo-reminder-chip" data-todo-plan="${item.id}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8a5 5 0 0 1 10 0v4l2 2H3l2-2ZM8 17h4"/></svg>${esc(reminder)}</button>` : ''}${item.status === 'done' ? "<span class=\"todo-done-label\"><span data-i18n=\"ui.f28461bb49c8\">已完成</span></span>" : ''}</div>
+        <div class="todo-source-meta"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="m3 5 7 6 7-6"/></svg><button type="button" class="todo-source" data-todo-email="${item.email_id}" title="${esc(item.email_subject || '')}">${esc(context.grouped ? (item.email_id === context.latestEmailId ? mailaiText('最新邮件') : mailaiText('较早邮件')) : item.email_subject || mailaiText('查看来源邮件'))}</button>${context.grouped ? '' : `<time datetime="${esc(sourceDate)}">${esc(fmtDate(sourceDate))}</time>`}</div>
       </div>
-      <div class="todo-plan-actions"><button type="button" class="todo-status-action todo-complete-action" data-todo-toggle="${item.id}">${item.status === 'done' ? mailaiText('恢复待办') : "<span aria-hidden=\"true\">✓</span> <span data-i18n=\"ui.c0b3fbff51cc\">完成</span>"}</button><button type="button" class="todo-status-action todo-arrange-action" data-todo-plan="${item.id}"><span data-i18n="ui.49a49a3748ec">安排提醒</span></button></div>
+      <div class="todo-plan-actions"><button type="button" class="todo-status-action todo-arrange-action" data-todo-plan="${item.id}" title="${esc(mailaiText('设置截止时间与提醒'))}"><span data-i18n="ui.49a49a3748ec">安排提醒</span><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="5" width="14" height="12" rx="2"/><path d="M6 3v4m8-4v4M3 9h14m-9 3h.01M12 12h.01"/></svg></button></div>
     </article>`;
   };
   const html = rows.length ? (window.mailaiTodoGroupHTML ? window.mailaiTodoGroupHTML(visibleGroups,renderRow) : visibleRows.map(renderRow).join('')) + (rows.length > visibleRows.length ? `
@@ -8179,6 +8188,7 @@ function renderTodoCenter() {
   updateTodoBatchToolbar(rows);
   window.mailaiTodoCounts?.();
   window.mailaiTodoGroupOverview?.(groups,rows);
+  window.mailaiSizeTodoTitles?.();
 }
 
 let selectedTodoIds = new Set();
@@ -8227,17 +8237,26 @@ async function setTodoBatchStatus(ids, status = 'done') {
   toast(mailaiTemplate`已更新 ${updated} 项待办`, 'success');
 }
 
-async function openTodoCenter() {
-  todoReturnFocus = document.activeElement;
-  window.mailaiTodoTab?.('all');
+async function openTodoCenter(options = {}) {
+  const resume = options.resume && todoSourceReturn?.accountId === activeMailAccount()?.id ? todoSourceReturn : null;
+  todoSourceReturn = null;
+  document.getElementById('todo-source-return').classList.add('hidden');
+  todoReturnFocus = resume ? document.getElementById('btn-todos') : document.activeElement;
+  window.mailaiTodoTab?.(resume?.view || 'all');
   closeAssistant();
   document.getElementById('todo-center').classList.remove('hidden');
   document.body.classList.add('modal-open');
   todoCenterAccountId = activeMailAccount()?.id;
   document.getElementById('todo-account-label').textContent = activeMailAccount()?.user || '';
   todoCenterLoading = false;
-  selectedTodoIds.clear(); todoRenderLimit = 160; todoCenterRows = []; renderTodoCenter();
+  selectedTodoIds.clear(); todoRenderLimit = resume?.limit || 160; todoCenterRows = []; renderTodoCenter();
   await loadTodoCenter();
+  if(resume && todoCenterAccountId === resume.accountId && !document.getElementById('todo-center').classList.contains('hidden')) {
+    const list=document.getElementById('todo-list');list.scrollTop=resume.scroll;
+    const row=[...list.querySelectorAll('[data-todo-id]')].find(node=>Number(node.dataset.todoId)===resume.taskId);
+    const group=[...list.querySelectorAll('[data-todo-group-key]')].find(node=>node.dataset.todoGroupKey===resume.groupKey);
+    (row?.querySelector('[data-todo-email]') || group?.querySelector('.todo-group-details>summary') || document.querySelector('#todo-center [data-todo-view][aria-pressed=true]'))?.focus({preventScroll:true});
+  }
 }
 async function loadTodoCenter() {
   const accountId = todoCenterAccountId, revision = ++todoCenterRevision;
@@ -8249,7 +8268,12 @@ async function loadTodoCenter() {
     todoCenterLoading = false; todoCenterRows = rows; renderTodoCenter();
   } catch (error) { if (revision === todoCenterRevision) { todoCenterLoading = false; updateTodoBatchToolbar(); const host = document.getElementById('todo-list'); host.querySelector('.todo-refresh-error')?.remove(); if (!todoCenterRows.length) host.replaceChildren(); host.insertAdjacentHTML('afterbegin', `<div class="todo-refresh-error" role="status"><span data-i18n="ui.c89e2064daba">暂时无法更新，已保留当前内容。${esc(mailaiSystemMessage(error.message))}</span> <button data-todo-retry><span data-i18n="ui.b8784c8dd563">重试</span></button></div>`); } }
 }
-function closeTodoCenter() { document.getElementById('task-notices')?.close(); ++todoCenterRevision; todoCenterLoading = false; document.getElementById('todo-center').classList.add('hidden'); document.body.classList.remove('modal-open'); if (todoReturnFocus?.isConnected) todoReturnFocus.focus({preventScroll:true}); }
+function closeTodoCenter() {
+  document.getElementById('task-notices')?.close();++todoCenterRevision;todoCenterLoading=false;
+  document.getElementById('todo-center').classList.add('hidden');document.body.classList.remove('modal-open');
+  const target=todoReturnFocus?.isConnected&&todoReturnFocus!==document.body&&todoReturnFocus.getClientRects().length ? todoReturnFocus : document.getElementById('btn-todos');
+  target?.focus({preventScroll:true});
+}
 async function flushTodoEdits(ids) {
   const accountId = todoCenterAccountId;
   for (const id of ids) {
@@ -8453,9 +8477,22 @@ document.getElementById('todo-list').addEventListener('click', async event => {
     if (item && !toggle.disabled) {
       if (!(await flushTodoEdits([item.id]))) return;
       toggle.disabled = true;
-      try { await api(`/api/todos/${item.id}/${item.status === 'done' ? 'reopen' : 'done'}`, {accountId,method:'POST'}); item.status = item.status === 'done' ? 'open' : 'done'; if (revision === todoCenterRevision) renderTodoCenter(); window.mailaiTasksChanged?.(accountId); }
+      toggle.setAttribute('aria-busy','true');
+      const actions = [...document.querySelectorAll('#todo-list .todo-complete-action')].filter(node => node.getClientRects().length);
+      const actionIndex = actions.indexOf(toggle);
+      try {
+        await api(`/api/todos/${item.id}/${item.status === 'done' ? 'reopen' : 'done'}`, {accountId,method:'POST'});
+        if (item.status !== 'done' && !document.getElementById('todo-show-done').checked && revision === todoCenterRevision) await window.mailaiMotion?.leave(toggle.closest('[data-todo-id]'));
+        item.status = item.status === 'done' ? 'open' : 'done';
+        if (revision === todoCenterRevision) {
+          renderTodoCenter();
+          const remaining = [...document.querySelectorAll('#todo-list .todo-complete-action')].filter(node => node.getClientRects().length);
+          (remaining.find(node => Number(node.dataset.todoToggle) === item.id) || remaining[Math.min(Math.max(0,actionIndex),remaining.length-1)] || document.querySelector('#todo-center [data-todo-view][aria-pressed=true]'))?.focus({preventScroll:true});
+        }
+        window.mailaiTasksChanged?.(accountId);
+      }
       catch (error) { toast(mailaiText('更新失败：') + mailaiSystemMessage(error.message), 'error'); }
-      finally { toggle.disabled = false; }
+      finally { toggle.disabled = false;toggle.removeAttribute('aria-busy'); }
     }
     return;
   }
@@ -8465,8 +8502,25 @@ document.getElementById('todo-list').addEventListener('click', async event => {
     return;
   }
   const source = event.target.closest('[data-todo-email]');
-  if (source) { closeTodoCenter(); if (accountId !== activeMailAccount()?.id) await openAccountMailbox(accountId, 'inbox'); await revealEmailFromSource(Number(source.dataset.todoEmail)); }
+  if (source) {
+    const list=document.getElementById('todo-list');
+    if(!(await flushTodoEdits([...list.querySelectorAll('[data-todo-id]')].map(node=>Number(node.dataset.todoId)))) || accountId !== todoCenterAccountId)return;
+    const context={accountId,emailId:Number(source.dataset.todoEmail),view:document.getElementById('todo-center').dataset.todoView || 'all',scroll:list.scrollTop,limit:todoRenderLimit,taskId:Number(source.closest('[data-todo-id]')?.dataset.todoId),groupKey:source.closest('[data-todo-group-key]')?.dataset.todoGroupKey};
+    closeTodoCenter();
+    if (accountId !== activeMailAccount()?.id) await openAccountMailbox(accountId, 'inbox');
+    await revealEmailFromSource(context.emailId);
+    if(accountId === activeMailAccount()?.id && selectedEmailId === context.emailId) {todoSourceReturn=context;document.getElementById('todo-source-return').classList.remove('hidden');}
+  }
 });
+document.getElementById('todo-source-back').addEventListener('click',()=>{
+  if(todoSourceReturn?.accountId!==activeMailAccount()?.id)return;
+  openTodoCenter({resume:true});
+});
+new MutationObserver(()=>{
+  const valid=todoSourceReturn && todoSourceReturn.accountId===activeMailAccount()?.id && todoSourceReturn.emailId===selectedEmailId;
+  document.getElementById('todo-source-return').classList.toggle('hidden',!valid);
+  if(!valid)todoSourceReturn=null;
+}).observe(document.getElementById('reading-content'),{childList:true});
 document.getElementById('btn-preferences').addEventListener('click', () => showSystemView('preferences'));
 document.getElementById('btn-toggle-fetch').addEventListener('click', () => {
   const overlay = document.getElementById('fetch-overlay');
