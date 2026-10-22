@@ -21,7 +21,7 @@ const {chromium,webkit}=require('playwright');
   });
   await page.route(/\/api\/system\/update(?:\?.*)?$/,async route=>{
    if(hold){const wait=hold;hold=null;await wait;return route.fulfill({status:502,json:{detail:'stale check failed'}});}
-   if(failed)return route.fulfill({status:502,json:{detail:'连接更新服务中断，请重试或点击“查看发布页”手动下载'}});
+   if(failed)return route.fulfill({status:502,json:{detail:failed==='sources'?'检查更新失败：无法连接更新服务。国内源：安全证书验证失败，请检查系统日期及公司受信任证书；GitHub：HTTP 403':'连接更新服务中断，请重试或点击“查看发布页”手动下载'}});
    return route.fulfill({json:{current_version:'2.8.18',latest_version:available?'2.8.19':'2.8.18',
     device:'macos-arm64',supported:true,available,installable,notes:'Isolated update fixture. No actual installation.',
     release_url:'https://github.com/langjiahui/MailAI/releases/tag/v2.8.19'}});
@@ -40,6 +40,9 @@ const {chromium,webkit}=require('playwright');
   assert(!/最新/.test(await status.innerText()),'Failure must clear a stale latest-version claim');
   assert.equal(await page.locator('#app-release-link').getAttribute('href'),'https://github.com/langjiahui/MailAI/releases/tag/v2.8.19');
   await page.evaluate(()=>setI18nLanguage('en'));assert.match(await status.innerText(),/Check incomplete/);
+  failed='sources';await button.click();
+  await page.waitForFunction(()=>document.querySelector('#toast .toast-message')?.textContent.includes('China mirror'));
+  const diagnostic=await page.locator('#toast').innerText();assert.match(diagnostic,/Certificate verification failed/);assert.match(diagnostic,/HTTP 403/);assert(!/[\u3400-\u9fff]/.test(diagnostic),diagnostic);
   failed=false;await button.click();await page.waitForFunction(()=>document.getElementById('app-update-status').dataset.updateState==='latest');
   assert.match(await status.innerText(),/latest/);
   // A delayed older failure cannot replace a successful newer check.

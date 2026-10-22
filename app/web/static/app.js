@@ -5725,6 +5725,15 @@ function renderAppVersion(result) {
   else mailaiBindUI(status, "textContent", () => (mailaiText('当前已是最新版本。')));
 }
 
+function appUpdateMessage(value) {
+  const source = String(value ?? '');
+  const parts = source.match(/^(检查更新失败：|更新失败：)?(无法连接更新服务。|更新清单校验失败，已停止更新。)国内源：(.+)；GitHub：(.+)$/);
+  if (!parts) return mailaiSystemMessage(source);
+  const message = updateFlowText(parts[2].startsWith(MAILAI_UI_COPY['updateFlow.manifestFailed'][0]) ? 'sourceValidation' : 'sourceConnection',
+    mailaiSystemMessage(parts[3]), mailaiSystemMessage(parts[4]));
+  return parts[1] ? updateFlowText(parts[1] === MAILAI_UI_COPY['updateFlow.checkError'][0].split('{')[0] ? 'checkError' : 'updateError', message) : message;
+}
+
 function updateFlowText(name, ...values) {
   const key = `updateFlow.${name}`;
   return (mailaiT(key) || MAILAI_UI_COPY[key]?.[0] || name).replace(/\{(\d+)\}/g, (_, i) => String(values[i] ?? ''));
@@ -5739,7 +5748,7 @@ function renderAppUpdateDialog() {
   mailaiBindUI(document.getElementById('update-dialog-device'), "textContent", () => (mailaiTemplate`已为这台设备匹配 ${appDeviceName(result.device)} 安装包。`));
   mailaiBindUI(document.getElementById('update-dialog-notes-title'), "textContent", () => (mailaiTemplate`${result.latest_version} 版本发布说明`));
   mailaiBindUI(document.getElementById('update-dialog-notes'), "textContent", () => (result.notes || mailaiText('本版本暂未提供发布说明。')));
-  document.getElementById('update-dialog-warning').textContent = result.unsigned_warning || '';
+  mailaiBindUI(document.getElementById('update-dialog-warning'), 'textContent', () => appUpdateMessage(result.unsigned_warning));
 }
 
 function renderAppUpdateControls() {
@@ -5780,7 +5789,7 @@ function renderAppUpdateControls() {
     status.dataset.updateState = phase === 'failed' ? 'error' : 'available';
     mailaiBindUI(status, 'textContent', () => ready ? updateFlowText('readyStatus', availableAppUpdate.latest_version)
       : appUpdateTask.running && appUpdateTask.action === 'download' ? updateFlowText('downloadStatus', appUpdateTask.percent || 0)
-      : opened ? updateFlowText('openedStatus') : mailaiSystemMessage(appUpdateTask.error || appUpdateTask.message) || updateFlowText('working'));
+      : opened ? updateFlowText('openedStatus') : appUpdateMessage(appUpdateTask.error || appUpdateTask.message) || updateFlowText('working'));
   }
 }
 
@@ -5886,7 +5895,7 @@ function renderUpdateProgress(state) {
   box.classList.toggle('verifying', phase === 'verifying' || phase === 'verified');
   box.classList.toggle('complete', phase === 'ready' || phase === 'launched' || phase === 'installed' || phase === 'installer_opened');
   box.setAttribute('aria-valuenow', String(percent));
-  mailaiBindUI(document.getElementById('update-progress-label'), "textContent", () => (labels[phase] || mailaiSystemMessage(state.message) || mailaiText('正在更新')));
+  mailaiBindUI(document.getElementById('update-progress-label'), "textContent", () => (labels[phase] || appUpdateMessage(state.message) || mailaiText('正在更新')));
   mailaiBindUI(document.getElementById('update-progress-percent'), "textContent", () => (total ? `${percent}%` : state.running ? mailaiText('连接中') : ''));
   document.getElementById('update-progress-fill').style.width = `${total ? percent : 36}%`;
   mailaiBindUI(document.getElementById('update-progress-detail'), 'textContent', () => {
@@ -5902,7 +5911,7 @@ function renderUpdateProgress(state) {
     else if (phase === 'installed') detail = mailaiText('安装完成，正在重新打开 MailAI。');
     else if (phase === 'launched') detail = mailaiText('请按系统提示完成安装；完成后将尝试自动打开 MailAI。');
     else if (phase === 'installer_opened') detail = mailaiText('安装包已下载并校验。请在 macOS 安装器中继续安装；取消安装不会更改当前版本。');
-    return mailaiSystemMessage(detail);
+    return appUpdateMessage(detail);
   });
 }
 
@@ -5944,7 +5953,7 @@ async function checkForAppUpdate(manual = false) {
     if (appUpdateTask.running) void monitorAppUpdateInstall().catch(() => {});
     if (result.available && (manual || (!appUpdateWasDeferred(result.latest_version) && appUpdateTask.phase === 'idle'))) showAppUpdate(result);
     else if (result.available) renderAppUpdateControls();
-    else if (manual) toast(mailaiSystemMessage(result.message) || (result.supported ? mailaiText('当前已是最新版本') : mailaiText('当前设备暂无对应安装包')), result.development ? 'info' : 'success');
+    else if (manual) toast(appUpdateMessage(result.message) || (result.supported ? mailaiText('当前已是最新版本') : mailaiText('当前设备暂无对应安装包')), result.development ? 'info' : 'success');
     return result;
   } catch (error) {
     if (revision !== appUpdateCheckRevision) return;
@@ -5959,7 +5968,7 @@ async function checkForAppUpdate(manual = false) {
       status.dataset.updateState = 'error';
       mailaiBindUI(status, 'textContent', () => mailaiText(MAILAI_UI_COPY['update.checkFailed'][0]));
     }
-    if (manual) toast(mailaiSystemMessage(error.message), 'warn');
+    if (manual) toast(appUpdateMessage(error.message), 'warn');
   } finally {
     if (manual && button) setLoading(button, false);
   }
@@ -5984,7 +5993,7 @@ async function installAppUpdate(event) {
       toast(updateFlowText('readyNotice'), 'success');
     } else if (result.status === 'completed') {
       if (result.phase !== 'installer_opened') document.getElementById('update-dialog').close();
-      toast(mailaiSystemMessage(result.message) || mailaiText('更新已完成'), result.phase === 'installer_opened' ? 'info' : 'success');
+      toast(appUpdateMessage(result.message) || mailaiText('更新已完成'), result.phase === 'installer_opened' ? 'info' : 'success');
     }
   } catch (error) {
     // A failed POST may still have reached the server. Recover its real state
@@ -5996,7 +6005,7 @@ async function installAppUpdate(event) {
         applyAppUpdateTask({status:'failed', phase:'failed', running:false, action:prepared ? 'install' : 'download', error:error.message});
       } else if (recovered.running) void monitorAppUpdateInstall().catch(() => {});
     }
-    toast(mailaiSystemMessage(error.message), 'error');
+    toast(appUpdateMessage(error.message), 'error');
   } finally {
     appUpdateInstalling = false;
     renderAppUpdateControls();
@@ -6011,11 +6020,11 @@ async function showInterruptedAppUpdateOutcome() {
     try { outcome = await api('/api/system/update/install/outcome'); }
     catch (_) { return; }
     if (outcome.status === 'success') {
-      toast(mailaiSystemMessage(outcome.message) || mailaiText('MailAI 已更新'), 'success');
+      toast(appUpdateMessage(outcome.message) || mailaiText('MailAI 已更新'), 'success');
       return;
     }
     if (outcome.status === 'failed') {
-      toast(mailaiSystemMessage(outcome.message) || mailaiText('更新未完成'), 'error');
+      toast(appUpdateMessage(outcome.message) || mailaiText('更新未完成'), 'error');
       return;
     }
     if (!outcome.pending) return;

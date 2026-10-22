@@ -33,7 +33,7 @@ const ctx = {
 ctx.window = ctx;
 vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(path.join(__dirname,'../app/web/static/i18n-catalog.js'),'utf8'),ctx);
-vm.runInContext(source.slice(source.indexOf('function updateFlowText('),source.indexOf('async function loadSystemConfig(')),ctx);
+vm.runInContext(source.slice(source.indexOf('function appUpdateMessage('),source.indexOf('async function loadSystemConfig(')),ctx);
 const click = {preventDefault(){}};
 (async()=>{
   // Closing/reopening while downloading never resets progress or starts another request.

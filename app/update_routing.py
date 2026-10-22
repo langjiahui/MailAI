@@ -7,7 +7,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 from . import update_mirror
-from .update_transport import open_public
+from .update_transport import open_public, connection_diagnostic
 
 log = logging.getLogger(__name__)
 DISCOVERY_TIMEOUT = 8.0
@@ -119,9 +119,15 @@ def discover(github_loader, installed_version):
             break
         threading.Event().wait(min(.02, max(0, deadline - now)))
     if not candidates:
-        if any(isinstance(attempt.error, ValueError) for attempt in attempts.values()):
-            raise ValueError('更新清单校验失败，已停止更新')
-        raise OSError('无法连接更新服务，请稍后重试或点击“查看发布页”手动下载')
+        reasons = {source: connection_diagnostic(attempt.error) if attempt.done.is_set() else '连接超时'
+                   for source, attempt in attempts.items()}
+        failures = '；'.join(
+            ('国内源' if source == 'atomgit' else 'GitHub') + '：' + reason
+            for source, reason in reasons.items())
+        log.warning('更新检查各源失败：%s', failures)
+        if '更新清单校验失败' in reasons.values():
+            raise ValueError('更新清单校验失败，已停止更新。' + failures)
+        raise OSError('无法连接更新服务。' + failures)
     source, (manifest, _elapsed) = max(candidates.items(),
         key=lambda pair: (_version(pair[1][0]['version']), -pair[1][1]))
     log.info('更新清单自动选路：%s', source)
