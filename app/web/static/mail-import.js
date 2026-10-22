@@ -7,21 +7,30 @@
     <ol class="mail-import-steps" aria-label="导入步骤" data-i18n-aria="ui.4936fcb3bd29"><li data-step="select"><span>1</span><span data-i18n="ui.822fb37dba29">选择文件</span></li><li data-step="review"><span>2</span><span data-i18n="ui.729cd4b71e0a">核对结果</span></li><li data-step="apply"><span>3</span><b data-import-final-step><span data-i18n="ui.a2614ead6041">导入邮件</span></b></li></ol>
     <div class="mail-import-body">
       <div class="mail-import-options"><label><span data-i18n="ui.3bd43bd793d1">导入到哪个邮箱？</span><select id="mail-import-account"></select></label><label><span data-i18n="ui.ffab51e77800">归档名称</span><input id="mail-import-label" value="Foxmail 导入" maxlength="80"></label></div>
-      <p class="mail-import-location"><span data-i18n="mailImport.location">导入后在「本地归档」中查看，默认已读；可移到 MailAI 收件箱，仅在本机整理。</span></p>
+      <label class="mail-import-destination"><span data-i18n="importFix.destination">导入位置</span><select data-import-destination><option value="auto" data-i18n="importFix.auto">按源文件夹识别（收件箱 / 已发送）</option><option value="local_archive" data-i18n="ui.488cceb67ead">本地归档</option><option value="inbox" data-i18n="importFix.inbox">收件箱（仅本机）</option><option value="sent" data-i18n="importFix.sent">已发送（仅本机）</option></select></label><p class="mail-import-location"><span data-i18n="mailImport.location">自动识别收件箱和已发送目录，其余放入本地归档。默认已读，仅在本机保存，不上传到服务器。</span></p>
       <section data-import-select><details class="mail-import-help"><summary><span data-i18n="ui.ca48255d93ad">如何从 Foxmail 导出邮件？</span></summary><ol><li><span data-i18n="ui.81cda90241df">在 Foxmail 中进入收件箱、已发送等文件夹，选中要迁移的邮件，选择「导出邮件」。</span></li><li><span data-i18n="ui.34ed41f26457">把每个文件夹的邮件分别导出，放在同一个总目录下。这样可保留文件夹名称。</span></li><li><span data-i18n="ui.b9c4156320e0">回到这里选择导出的文件或总目录。附件须在 Foxmail 中下载完整后再导出。</span></li></ol><p><span data-i18n="ui.0f7bb2368cf9">支持 EML、MBOX 邮件文件，也适用于其他客户端导出的同类文件。Foxmail 的 Storage、.fox 数据库请先通过 Foxmail 导出。</span></p></details>
       <div class="mail-import-file-box"><b><span data-i18n="ui.fee481c85284">选择 Foxmail 导出的邮件</span></b><p><span data-i18n="ui.737c928009f0">可以一次选择多封邮件，也可以选择整个导出目录。</span></p><div><button type="button" data-import-files><span data-i18n="ui.bfe1dea0b951">选择邮件文件</span></button><button type="button" data-import-folder><span data-i18n="ui.046b6f007bf0">选择导出目录</span></button></div><small><span data-i18n="ui.df468f0acffe">单个文件最多 1 GB；默认单封邮件最多 64 MB；每批最多 10 GB。</span></small></div>
       <label class="mail-import-large"><input type="checkbox" data-import-large><span data-i18n="mailImport.largeMode">大邮件模式（单封最多 256 MB）</span></label><p class="mail-import-limit-note" data-i18n="mailImport.limitNote">默认单封 64 MB。超限文件会自动跳过，其他文件继续；大邮件的附件分块处理，原件完整保留。</p>
       <input type="file" id="mail-import-files" accept=".eml,.mbox" multiple hidden><input type="file" id="mail-import-folder" webkitdirectory multiple hidden>
       <div data-import-selected aria-live="polite"></div></section>
       <section class="mail-import-progress" data-import-progress hidden><p data-import-status role="status" aria-live="polite"></p><progress aria-label="导入进度" data-i18n-aria="ui.5b676bd12914"></progress><small data-import-progress-note></small><small data-import-current hidden></small><div class="mail-import-live" data-import-live hidden></div></section>
-      <section data-import-result hidden><div class="mail-import-counts"><div><small><span data-i18n="ui.36689263737d">识别邮件</span></small><b data-count="found">0</b></div><div><small><span data-i18n="ui.b2d9abb23920">待新增</span></small><b data-count="new">0</b></div><div><small><span data-i18n="ui.b83bf31b01f2">重复跳过</span></small><b data-count="duplicates">0</b></div><div><small><span data-i18n="ui.751d82db8361">无法导入</span></small><b data-count="failed">0</b></div></div><p class="mail-import-result-message" data-import-summary></p><details class="mail-import-folders" data-import-folders hidden><summary><span data-i18n="ui.8b9f60b1b5e1">邮件将放在哪些文件夹？</span></summary><p><span data-i18n="ui.8026d5ac9274">在「本地归档」中按以下文件夹保留。本表是扫描时预计新增的数量。</span></p><ul></ul><small></small></details><div data-import-samples></div></section><details data-import-errors hidden><summary><span data-i18n="ui.90d83999bd64">查看需要检查的文件</span></summary><p data-import-issues-note></p><div></div><button type="button" data-import-report><span data-i18n="ui.c9630d09a5f2">下载完整问题清单</span></button></details>
-      <p data-import-error role="alert"></p><p data-import-failed-file hidden></p><p data-import-retry-help hidden></p><p data-import-skipped hidden></p><section class="mail-import-history" data-import-history></section>
-    </div><footer><button type="button" data-import-reset hidden><span data-i18n="ui.9b904c0e2faf">重新选择</span></button><button type="button" data-import-skip hidden><span data-i18n="mailImport.skipFile">跳过此文件，继续添加</span></button><button type="button" data-import-retry-files hidden><span data-i18n="mailImport.retryFiles">仅重试问题文件</span></button><button type="button" data-import-pause hidden><span data-i18n="ui.8d12fc0d4eb2">暂停</span></button><span></span><button type="button" data-import-close><span data-i18n="ui.3fd47edce45b">关闭</span></button><button type="button" class="primary-action" data-import-action disabled><span data-i18n="ui.afcd60d848dc">扫描并去重</span></button></footer>`;
+      <section data-import-result hidden><div class="mail-import-counts"><div><small><span data-i18n="ui.36689263737d">识别邮件</span></small><b data-count="found">0</b></div><div><small><span data-i18n="ui.b2d9abb23920">待新增</span></small><b data-count="new">0</b></div><div><small><span data-i18n="ui.b83bf31b01f2">重复跳过</span></small><b data-count="duplicates">0</b></div><div><small><span data-i18n="ui.751d82db8361">无法导入</span></small><b data-count="failed">0</b><button type="button" data-import-show-issues hidden><span data-i18n="importFix.viewIssues">查看原因与重试</span></button></div></div><p class="mail-import-result-message" data-import-summary></p><details class="mail-import-folders" data-import-folders hidden><summary><span data-i18n="ui.8b9f60b1b5e1">邮件将放在哪些文件夹？</span></summary><p><span data-i18n="ui.8026d5ac9274">以下为源文件夹与预计新增数量；实际位置取决于上方的导入位置。</span></p><ul></ul><small></small></details><div data-import-samples></div></section><details data-import-errors hidden><summary><span data-i18n="ui.90d83999bd64">查看需要检查的文件</span></summary><p data-import-issues-note></p><div></div><button type="button" data-import-more-issues hidden><span data-i18n="importFix.moreIssues">查看更多问题</span></button><button type="button" data-import-report><span data-i18n="ui.c9630d09a5f2">下载完整问题清单</span></button></details>
+      <input type="file" data-import-reselect accept=".eml,.mbox" multiple hidden><p data-import-error role="alert"></p><p data-import-failed-file hidden></p><p data-import-retry-help hidden></p><p data-import-skipped hidden></p><section class="mail-import-history" data-import-history></section>
+    </div><footer><button type="button" data-import-organize hidden><span data-i18n="importFix.organize">按源文件夹归位</span></button><button type="button" data-import-reset hidden><span data-i18n="ui.9b904c0e2faf">重新选择</span></button><button type="button" data-import-skip hidden><span data-i18n="mailImport.skipFile">跳过此文件，继续添加</span></button><button type="button" data-import-retry-files hidden><span data-i18n="mailImport.retryFiles">仅重试问题文件</span></button><button type="button" data-import-pause hidden><span data-i18n="ui.8d12fc0d4eb2">暂停</span></button><span></span><button type="button" data-import-close><span data-i18n="ui.3fd47edce45b">关闭</span></button><button type="button" class="primary-action" data-import-action disabled><span data-i18n="ui.afcd60d848dc">扫描并去重</span></button></footer>`;
   document.body.append(dialog);
   const $ = selector => dialog.querySelector(selector);
   let files = [], job = null, accountId = '', uploading = false, controller = null, inFlight = false;
   let renderedSamples = '', renderedIssues = '', renderedFolders = '';
   const sessionFiles = new Map();
+  let retryTargets = [], issuesOpenToken = '', refreshedToken = '';
+  const destinationLabel = value => ({auto:mailaiText('按源文件夹识别'), inbox:mailaiText('收件箱（仅本机）'), sent:mailaiText('已发送（仅本机）'), local_archive:mailaiText('本地归档')}[value] || mailaiText('本地归档'));
+  function sourceName(issue) { return issue.source || issue.file.replace(/ · 第 \d+ 封$/, ''); }
+  async function refreshImported() {
+    if (!job?.imported) return;
+    const target = accountId;
+    await loadSystemConfig();
+    if (target === activeMailAccount()?.id) await loadData({silent:true});
+  }
   function rememberFiles() {
     if (!job || !files.length) return;
     sessionFiles.set(accountId + ':' + job.token, files.slice());
@@ -29,7 +38,8 @@
   }
   let timer = 0, generation = 0, pendingDone = null, returnFocus = null, uploadCursor = 0, failedUpload = null;
   const canResumeUpload = () => job?.state === 'collecting' && job.phase === 'upload';
-  const fileName = file => file.webkitRelativePath ? file.webkitRelativePath.split('/').slice(1).join('/') : file.name;
+  const retryFileNames = new WeakMap();
+  const fileName = file => retryFileNames.get(file) || (file.webkitRelativePath ? file.webkitRelativePath.split('/').slice(1).join('/') : file.name);
   const transferError = error => error instanceof TypeError ? mailaiText('文件传输中断。已添加的文件已保留，请点击「继续添加」；若文件已移动，请重新选择原文件。') : mailaiSystemMessage(error.message);
   const busy = () => inFlight || uploading || ['scanning', 'importing', 'uploading'].includes(job?.state);
   const request = (path, options = {}) => api('/api/mail/client-imports' + path, {accountId, ...options});
@@ -61,9 +71,13 @@
     dialog.querySelectorAll('[data-step]').forEach(n => { n.classList.toggle('active', n.dataset.step === step); if (n.dataset.step === step) n.setAttribute('aria-current','step'); else n.removeAttribute('aria-current'); });
     $('#mail-import-account').disabled = Boolean(job) || busy();
     $('#mail-import-label').disabled = Boolean(job) || busy();
+    $('[data-import-destination]').disabled = Boolean(job) || busy();
+    if (job) $('[data-import-destination]').value = job.destination || 'local_archive';
+    $('[data-import-organize]').hidden = state !== 'completed' || (job.destination || 'local_archive') !== 'local_archive' || !(job.folders || []).some(row => /(?:^|\/)(?:inbox|sent(?: items| messages)?|收件箱|已发送|已发送邮件|已发邮件|发件箱)(?:$|\/)/i.test(row.name));
+    $('[data-import-organize]').disabled = working;
     $('[data-import-large]').disabled = Boolean(job) || busy();
     if (job) $('[data-import-large]').checked = Boolean(job.large_messages);
-    $('[data-import-retry-files]').hidden = !job?.failed || !(state === 'completed' || state === 'ready' && !job.new) || !files.length;
+    $('[data-import-retry-files]').hidden = !job?.failed || !(state === 'completed' || state === 'ready' && !job.new);
     $('[data-import-retry-files]').disabled = working;
     $('[data-import-files]').disabled = busy(); $('[data-import-folder]').disabled = busy();
     dialog.querySelectorAll('[data-import-job]').forEach(n => n.disabled = busy());
@@ -88,7 +102,7 @@
       const imported = Number(job.imported || 0);
       $('[data-count="new"]').textContent = state === 'completed' || job.phase === 'import' ? imported.toLocaleString(currentI18nLanguage()) : Number(job.new || 0).toLocaleString(currentI18nLanguage());
       mailaiBindUI($('[data-count="new"]').previousElementSibling, "textContent", () => (job.phase === 'import' ? mailaiText('已新增') : mailaiText('待新增')));
-      mailaiBindUI($('[data-import-summary]'), "textContent", () => (state === 'completed' ? mailaiTemplate`已新增 ${imported} 封，跳过重复 ${job.duplicates} 封${job.failed ? mailaiTemplate`，${job.failed} 项未能导入` : ''}。在「本地归档」中查看。` : !job.new ? (job.skipped_files ? mailaiTemplate`没有可新增的邮件，已单独跳过 ${job.skipped_files} 个文件。请查看下方原因和处理建议，修复后另行补导。` : job.failed ? mailaiTemplate`没有可新增的邮件，${job.failed} 项无法识别。请查看下方原因，重新导出后再选择。` : job.errors?.length ? mailaiText('没有可确认新增的邮件。部分已有邮件原文不完整，请展开文件说明，重新同步后再导入。') : mailaiText('没有需要新增的邮件。已有邮件会保留，无需再次导入。')) : mailaiTemplate`预计新增 ${job.new} 封邮件；重复项会自动跳过，原有邮件不会被覆盖。`));
+      mailaiBindUI($('[data-import-summary]'), "textContent", () => (state === 'completed' ? mailaiTemplate`已新增 ${imported} 封，跳过重复 ${job.duplicates} 封${job.failed ? mailaiTemplate`，${job.failed} 项未能导入` : ''}。` + mailaiTemplate`导入位置：${destinationLabel(job.destination || 'local_archive')}。` : !job.new ? (job.skipped_files ? mailaiTemplate`没有可新增的邮件，已单独跳过 ${job.skipped_files} 个文件。请查看下方原因和处理建议，修复后另行补导。` : job.failed ? mailaiTemplate`没有可新增的邮件，${job.failed} 项无法识别。请查看下方原因，重新导出后再选择。` : job.errors?.length ? mailaiText('没有可确认新增的邮件。部分已有邮件原文不完整，请展开文件说明，重新同步后再导入。') : mailaiText('没有需要新增的邮件。已有邮件会保留，无需再次导入。')) : mailaiTemplate`预计新增 ${job.new} 封邮件；重复项会自动跳过，原有邮件不会被覆盖。`));
       const sampleKey = JSON.stringify(job.samples || []);
       if (renderedSamples !== sampleKey) {
         const wasOpen = $('[data-import-samples] details')?.open;
@@ -100,21 +114,30 @@
       const folderKey = JSON.stringify([job.label, folders]);
       $('[data-import-folders]').hidden = !folders.length;
       if (renderedFolders !== folderKey) {
-        $('[data-import-folders] ul').innerHTML = folders.map(row=>`<li><span>${esc(job.label)}${row.name ? ' / ' + esc(row.name) : mailaiText(' / 未分文件夹')}</span><b><span data-i18n="ui.13d9598b4990">${Number(row.count).toLocaleString(currentI18nLanguage())} 封</span></b></li>`).join('');
+        $('[data-import-folders] ul').innerHTML = folders.map(row=>`<li><span>${esc(job.label)}${row.name ? ' / ' + esc(row.name) : mailaiText(' / 未分文件夹')} → ${esc(destinationLabel(row.destination || job.destination || 'local_archive'))}</span><b><span data-i18n="ui.13d9598b4990">${Number(row.count).toLocaleString(currentI18nLanguage())} 封</span></b></li>`).join('');
         mailaiBindUI($('[data-import-folders] small'), "textContent", () => (job.folder_count > folders.length ? mailaiTemplate`共 ${job.folder_count} 个文件夹，这里显示前 ${folders.length} 个。` : ''));
         renderedFolders = folderKey;
       }
     }
     const issues = job?.errors || [];
     $('[data-import-errors]').hidden = !issues.length;
+    $('[data-import-show-issues]').hidden = !issues.length;
+    $('[data-import-show-issues]').disabled = working;
+    if (issues.length && ['ready','completed','failed'].includes(state) && issuesOpenToken !== job.token) {
+      $('[data-import-errors]').open = true;
+      issuesOpenToken = job.token;
+    }
+    $('[data-import-more-issues]').hidden = (job?.issue_count || 0) <= issues.length;
+    $('[data-import-more-issues]').disabled = working;
     const issueKey = JSON.stringify(issues);
     if (renderedIssues !== issueKey) {
-      $('[data-import-errors] > div').innerHTML = issues.map(row=>`<p><b class="mail-import-filename" title="${esc(row.file)}">${esc(row.file)}</b><br>${esc(mailaiSystemMessage(row.reason))}${row.advice ? `<br><small>${esc(mailaiText('处理建议：'))}${esc(mailaiText(row.advice))}</small>` : ''}</p>`).join('');
+      $('[data-import-errors] > div').innerHTML = issues.map(row=>`<p><b class="mail-import-filename" title="${esc(row.file)}">${esc(row.file)}</b><br>${esc(mailaiSystemMessage(row.reason))}${row.advice ? `<br><small>${esc(mailaiText('处理建议：'))}${esc(mailaiText(row.advice))}</small>` : ''}${row.kind === 'warning' ? '' : `<br><button type="button" data-import-retry-one="${esc(sourceName(row))}">${esc(mailaiText('重试此文件'))}</button>`}</p>`).join('');
       renderedIssues = issueKey;
     }
     const issueCount = job?.issue_count ?? issues.length;
     mailaiBindUI($('[data-import-issues-note]'), "textContent", () => (issueCount > issues.length ? mailaiTemplate`共有 ${issueCount} 项需要检查，这里显示前 ${issues.length} 项。下载清单可查看全部文件和处理建议。` : mailaiText('每项都附有原因和处理建议。可下载清单，逐项重新导出或重试。')));
     $('[data-import-report]').disabled = working || !issueCount;
+    dialog.querySelectorAll('[data-import-retry-one]').forEach(n => n.disabled = working);
     $('[data-import-reset]').hidden = !job;
     $('[data-import-reset]').disabled = working;
     const pause = $('[data-import-pause]'); pause.hidden = !uploading && !['scanning','importing'].includes(state);
@@ -151,7 +174,7 @@
     try {
       const rows = (await request('')).filter(row=>row.files);
       if (version !== generation || !dialog.open) return;
-      $('[data-import-history]').innerHTML = rows.length ? `<details><summary><span data-i18n="ui.707aadea85c0">最近导入记录 · ${rows.length}</span></summary>${rows.map(row=>`<button type="button" data-import-job="${esc(row.token)}"><span>${esc(row.label)}<small><span data-i18n="ui.3d402f1680c6">${new Date(row.created_at * 1000).toLocaleString(currentI18nLanguage())} · ${row.files} 个文件</span></small></span><b>${esc({get collecting() { return mailaiText('待扫描'); },get scanning() { return mailaiText('扫描中'); },get ready() { return mailaiText('待确认'); },get importing() { return mailaiText('导入中'); },completed:mailaiTemplate`新增 ${row.imported} 封`,get paused() { return mailaiText('已暂停'); },get failed() { return mailaiText('待重试'); }}[row.state] || mailaiText('待重新选择'))}</b></button>`).join('')}</details>` : '';
+      $('[data-import-history]').innerHTML = rows.length ? `<details><summary><span data-i18n="ui.707aadea85c0">最近导入记录 · ${rows.length}</span></summary>${rows.map(row=>`<button type="button" data-import-job="${esc(row.token)}"><span>${esc(row.label)}<small><span data-i18n="ui.3d402f1680c6">${new Date(row.created_at * 1000).toLocaleString(currentI18nLanguage())} · ${row.files} 个文件</span></small></span><b>${esc({get collecting() { return mailaiText('待扫描'); },get scanning() { return mailaiText('扫描中'); },get ready() { return mailaiText('待确认'); },get importing() { return mailaiText('导入中'); },completed:mailaiTemplate`新增 ${row.imported} 封`,get paused() { return mailaiText('已暂停'); },get failed() { return mailaiText('待重试'); }}[row.state] || mailaiText('待重新选择'))}${row.failed ? ' · ' + esc(mailaiTemplate`${row.failed} 项未导入`) : ''}</b></button>`).join('')}</details>` : '';
     } catch (error) { if (version === generation) $('[data-import-error]').textContent = mailaiSystemMessage(error.message); }
   }
   function poll() {
@@ -163,7 +186,7 @@
         const result = await request('/' + token);
         if (version !== generation || job?.token !== token || !dialog.open) return;
         job = result; $('[data-import-error]').textContent = ''; paint();
-        if (job.state === 'completed') { listHistory(version); }
+        if (job.state === 'completed') { listHistory(version); if (refreshedToken !== job.token) { refreshedToken = job.token; void refreshImported(); } }
       } catch (error) { if (version === generation) mailaiBindUI($('[data-import-error]'), "textContent", () => (mailaiTemplate`${mailaiSystemMessage(error.message)}。恢复连接后会继续读取进度。`)); }
       if (version === generation) poll();
     }, 800);
@@ -180,6 +203,8 @@
     $('#mail-import-account').value = accountId;
     accountId = $('#mail-import-account').value;
     $('#mail-import-label').value = mailaiText('Foxmail 导入');
+    $('[data-import-destination]').value = 'auto';
+    retryTargets = []; issuesOpenToken = '';
     $('#mail-import-files').value = ''; $('#mail-import-folder').value = '';
     $('[data-import-selected]').replaceChildren(); $('[data-import-history]').replaceChildren();
     mailaiBindUI($('[data-import-error]'), "textContent", () => (accountId ? '' : mailaiText('请先在「设置 → 邮箱账号」添加邮箱，再导入旧邮件。')));
@@ -189,6 +214,7 @@
     if (inFlight && !uploading) { mailaiBindUI($('[data-import-error]'), "textContent", () => (mailaiText('正在提交操作，请稍候再关闭窗口。'))); return; }
     if (uploading) { mailaiBindUI($('[data-import-error]'), "textContent", () => (mailaiText('正在添加文件。请先点击「停止添加」，再关闭窗口。'))); return; }
     clearTimeout(timer); generation++; setPending(false); dialog.close();
+    void refreshImported();
     returnFocus?.focus({preventScroll:true});
   }
   dialog.querySelectorAll('[data-import-close]').forEach(n=>n.onclick=close);
@@ -203,7 +229,7 @@
     const n = event.target.closest('[data-import-job]'); if (!n || busy()) return;
     const version = ++generation; inFlight = true; paint();
     try { const result = await request('/' + n.dataset.importJob); if (version !== generation) return;
-      job = result; files = sessionFiles.get(accountId + ':' + job.token) || []; uploadCursor = 0; failedUpload = null; renderedSamples = renderedIssues = renderedFolders = ''; $('#mail-import-label').value = job.label;
+      retryTargets = []; job = result; files = sessionFiles.get(accountId + ':' + job.token) || []; uploadCursor = 0; failedUpload = null; renderedSamples = renderedIssues = renderedFolders = ''; $('#mail-import-label').value = job.label;
     } catch (error) { $('[data-import-error]').textContent = mailaiSystemMessage(error.message); }
     finally { inFlight = false; paint(); poll(); }
   };
@@ -211,7 +237,7 @@
     if (busy()) return;
     inFlight = true; paint();
     try { if (job && job.state !== 'completed') await request('/' + job.token, {method:'DELETE'});
-      job = null; files = []; uploadCursor = 0; failedUpload = null; generation++; clearTimeout(timer); setPending(false);
+      job = null; files = []; retryTargets = []; uploadCursor = 0; failedUpload = null; generation++; clearTimeout(timer); setPending(false);
       $('#mail-import-files').value = ''; $('#mail-import-folder').value = '';
       $('[data-import-errors]').open = false; $('[data-import-folders]').open = false;
       $('[data-import-selected]').replaceChildren(); $('[data-import-error]').textContent = ''; paint(); listHistory();
@@ -265,19 +291,72 @@
     }
     if (resume && version === generation) $('[data-import-action]').click();
   };
-  $('[data-import-retry-files]').onclick = async () => {
-    if (busy() || !job || !files.length) return;
+  function prepareRetry(selectedFiles) {
+    const destination = job?.destination || $('[data-import-destination]').value;
+    files = selectedFiles; job = null; uploadCursor = 0; failedUpload = null;
+    renderedSamples = renderedIssues = renderedFolders = '';
+    $('[data-import-errors]').open = false;
+    $('[data-import-destination]').value = destination;
+    $('[data-import-large]').checked = files.some(file => /\.eml$/i.test(file.name) && file.size > 64 * 1024**2 && file.size <= 256 * 1024**2);
+    retryTargets = []; selected();
+  }
+  async function retrySources(names) {
+    if (busy() || !job) return;
+    const version = generation;
     inFlight = true; paint();
     try {
-      const names = new Set(await request('/' + job.token + '/retry-files'));
-      const retryFiles = files.filter(file => names.has(fileName(file)));
-      if (!retryFiles.length) throw new Error(mailaiText('请重新选择问题清单中的文件，已有邮件会自动去重。'));
-      // Keep the original batch and report in history; retry only these Files.
-      files = retryFiles; job = null; uploadCursor = 0; failedUpload = null;
-      renderedSamples = renderedIssues = renderedFolders = '';
-      $('[data-import-error]').textContent = '';
-      $('[data-import-large]').checked = files.some(file => /\.eml$/i.test(file.name) && file.size > 64 * 1024**2 && file.size <= 256 * 1024**2);
-      selected();
+      const targets = names || await request('/' + job.token + '/retry-files');
+      if (version !== generation) return;
+      const found = files.filter(file => targets.includes(fileName(file)));
+      if (!names && found.length && new Set(found.map(fileName)).size === targets.length) prepareRetry(found);
+      else {
+        retryTargets = targets;
+        $('[data-import-error]').textContent = mailaiText('请选择问题清单中的原文件或重新导出的副本；只会添加匹配的问题文件，已导入邮件会自动去重。');
+        $('[data-import-reselect]').value = '';
+        $('[data-import-reselect]').click();
+      }
+    } catch (error) { $('[data-import-error]').textContent = transferError(error); }
+    finally { inFlight = false; paint(); }
+  }
+  $('[data-import-reselect]').onchange = event => {
+    if (busy() || !job || !retryTargets.length) return;
+    const selected = Array.from(event.target.files || []);
+    const matched = selected.filter(file => {
+      const exact = retryTargets.find(name => name === fileName(file));
+      const matches = retryTargets.filter(name => name.split('/').pop() === file.name);
+      const source = exact || (matches.length === 1 ? matches[0] : '');
+      if (source) retryFileNames.set(file, source);
+      return Boolean(source);
+    });
+    if (!matched.length) { $('[data-import-error]').textContent = mailaiText('没有匹配的问题文件，请按清单中的文件名重新选择。'); return; }
+    prepareRetry(matched);
+  };
+  $('[data-import-retry-files]').onclick = () => retrySources();
+  $('[data-import-errors] > div').onclick = event => {
+    const node = event.target.closest('[data-import-retry-one]');
+    if (node) void retrySources([node.dataset.importRetryOne]);
+  };
+  $('[data-import-show-issues]').onclick = () => {
+    $('[data-import-errors]').open = true;
+    $('[data-import-errors]').scrollIntoView({block:'nearest'});
+    $('[data-import-errors] summary').focus();
+  };
+  $('[data-import-more-issues]').onclick = async () => {
+    if (busy() || !job) return;
+    inFlight = true; paint();
+    try {
+      const result = await request('/' + job.token + '/issues?offset=' + job.errors.length);
+      job.errors.push(...result.items); job.issue_count = result.total;
+    } catch (error) { $('[data-import-error]').textContent = transferError(error); }
+    finally { inFlight = false; paint(); }
+  };
+  $('[data-import-organize]').onclick = async () => {
+    if (busy() || !job) return;
+    inFlight = true; paint();
+    try {
+      job = await post('/' + job.token + '/organize');
+      renderedFolders = '';
+      await refreshImported(); await listHistory();
     } catch (error) { $('[data-import-error]').textContent = transferError(error); }
     finally { inFlight = false; paint(); }
   };
@@ -289,10 +368,10 @@
     inFlight = true; paint();
     try {
       if (job?.state === 'completed') {
-        const target = accountId; inFlight = false; await close(); hideSystemView(true); await openAccountMailbox(target, 'local_archive'); return;
+        const target = accountId; inFlight = false; await close(); hideSystemView(true); await openAccountMailbox(target, job.destination === 'inbox' || job.destination === 'sent' ? job.destination : job.destination === 'auto' ? 'all' : 'local_archive'); if (job.destination === 'auto' || job.destination === 'inbox') { currentFilter.days = 9999; await loadData({silent:true}); } return;
       }
       if (!job) {
-        job = await request('', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({label:$('#mail-import-label').value.trim(),expected_files:files.length,large_messages:$('[data-import-large]').checked})});
+        job = await request('', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({label:$('#mail-import-label').value.trim(),expected_files:files.length,large_messages:$('[data-import-large]').checked,destination:$('[data-import-destination]').value})});
         uploadCursor = 0; failedUpload = null; rememberFiles();
       }
       if (canResumeUpload() && files.length && uploadCursor < files.length) {

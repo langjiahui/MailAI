@@ -261,17 +261,36 @@ def extract_attachment(raw_path: str, index: int) -> dict | None:
         return None
 
 
+def _reading_message(raw_path):
+    if os.path.getsize(raw_path) > 16 * 1024**2:
+        from .mail_import_mime import project
+        projected, _, _ = project(raw_path)
+        return BytesParser(policy=policy.default).parsebytes(projected)
+    with open(raw_path, 'rb') as source:
+        return BytesParser(policy=policy.default).parse(source)
+
+
+def extract_plain_body(raw_path):
+    if not raw_path or not os.path.isfile(raw_path):
+        return ''
+    try:
+        message = _reading_message(raw_path)
+        part = message.get_body(preferencelist=('plain',))
+        return _decoded_text_part(part) if part else ''
+    except Exception:
+        return ''
+
+
 def extract_rich_body(raw_path: str, email_id: int) -> str:
     """从原始 MIME 恢复 HTML 正文，并把 cid 内嵌资源改写为受控本地地址。"""
     if not raw_path or not os.path.exists(raw_path):
         return ""
     try:
-        with open(raw_path, "rb") as f:
-            msg = BytesParser(policy=policy.default).parse(f)
+        msg = _reading_message(raw_path)
         part = msg.get_body(preferencelist=("html",))
         if not part:
             return ""
-        content = part.get_content()
+        content = _decoded_text_part(part)
         cid_map = {}
         inline_index = 0
         for item in msg.walk():

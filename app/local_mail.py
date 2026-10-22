@@ -1,7 +1,7 @@
 """Organize local copies without changing their source identity or using IMAP."""
 from . import db
 
-TARGETS = {'__local_inbox__': 'inbox', '__local_archive__': 'local_archive', 'INBOX': 'inbox'}
+TARGETS = {'__local_inbox__': 'inbox', '__local_archive__': 'local_archive', '__local_sent__': 'sent', 'INBOX': 'inbox'}
 STATE_FIELDS = ('id', 'uid', 'folder', 'status', 'is_local_archive', 'remote_missing',
                 'pending_action', 'cleanup_hold')
 
@@ -12,7 +12,7 @@ def snapshot(row):
 
 def move(ids, target):
     if target not in TARGETS:
-        raise ValueError('本地邮件只能移入 MailAI 收件箱或本地归档，不会上传到服务器')
+        raise ValueError('本地邮件只能移入 MailAI 收件箱、已发送或本地归档，不会上传到服务器')
     before, after, failed = [], [], []
     with db.conn() as c:
         c.execute('BEGIN IMMEDIATE')

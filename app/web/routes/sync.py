@@ -133,3 +133,37 @@ def api_fetch_status():
 def api_cancel_fetch():
     pipeline.cancel_fetch()
     return {"ok": True, "msg": "已请求取消拉取"}
+
+
+from pydantic import BaseModel, Field
+
+
+class MailRecoveryRequest(BaseModel):
+    folder: str = Field(min_length=1, max_length=1024)
+    uid: int = Field(gt=0)
+
+
+@router.get('/api/mail/sync-issues')
+def api_sync_issues(offset: int = 0, limit: int = 30):
+    from ... import mail_recovery
+    return mail_recovery.overview(max(0, offset), max(1, min(limit, 100)))
+
+
+@router.post('/api/mail/sync-issues/inspect')
+def api_sync_issue_inspect(payload: MailRecoveryRequest):
+    from ... import mail_recovery
+    try:
+        return mail_recovery.inspect(payload.folder, payload.uid)
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(502, '无法读取邮件信息，请检查邮箱连接后重试') from exc
+
+
+@router.post('/api/mail/sync-issues/retry')
+def api_sync_issue_retry(payload: MailRecoveryRequest):
+    from ... import mail_recovery
+    try:
+        return mail_recovery.start(payload.folder, payload.uid)
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc

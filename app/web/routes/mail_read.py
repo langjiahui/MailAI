@@ -88,6 +88,26 @@ def api_attachments(limit: int = 500, offset: int = 0, q: str = "", kind: str = 
     return db.list_attachments(max(1, min(limit, 1000)), max(0, offset), q[:200], kind)
 
 
+@router.get('/api/mailbox/counts')
+def api_mailbox_counts():
+    with db.conn() as c:
+        rows = c.execute("SELECT status,is_local_archive,COUNT(*) AS n FROM emails WHERE remote_missing=0 GROUP BY status,is_local_archive").fetchall()
+        totals, local = {}, {}
+        for row in rows:
+            key = row['status']
+            totals[key] = totals.get(key, 0) + row['n']
+            if row['is_local_archive']:
+                local[key] = local.get(key, 0) + row['n']
+        all_count = sum(totals.values())
+        receipts = c.execute("""SELECT COUNT(*) FROM sent_messages s
+            WHERE trim(COALESCE(s.message_id,''))='' OR lower(trim(s.message_id)) NOT IN (
+                SELECT lower(trim(message_id)) FROM emails WHERE trim(COALESCE(message_id,''))<>''
+                AND (status='trash' OR pending_action='trash' OR (remote_missing=0 AND status='sent')))
+            """).fetchone()[0]
+        totals['sent'] = totals.get('sent', 0) + receipts
+        return dict(totals=totals, local=local, all=all_count)
+
+
 @router.get("/api/emails/{email_id}")
 def api_email_detail(email_id: int):
     row = db.get_email(email_id)
@@ -114,7 +134,22 @@ def api_email_detail(email_id: int):
     row["campaign"] = campaigns.for_email(email_id, campaign_groups(90)) if (
         row.get("verdict") in ("phishing", "suspicious") or int(row.get("score") or 0) >= 30
     ) else None
-    row["body_html"] = row.get("body_html") or extract_rich_body(row.get("raw_path"), email_id)
+    cached_html = row.get("body_html") or ""
+    from ...parser import looks_corrupted
+    if not cached_html or "\ufffd" in cached_html or looks_corrupted(cached_html):
+        recovered = extract_rich_body(row.get("raw_path"), email_id)
+        if recovered and (not cached_html or
+                recovered.count("\ufffd") < cached_html.count("\ufffd") or
+                looks_corrupted(cached_html) and not looks_corrupted(recovered)):
+            cached_html = recovered
+    row["body_html"] = cached_html
+    body_text = row.get('body_text') or ''
+    if "\ufffd" in body_text or looks_corrupted(body_text):
+        from ...parser import extract_plain_body
+        recovered_text = extract_plain_body(row.get('raw_path'))
+        if recovered_text and not looks_corrupted(recovered_text) and recovered_text.count("\ufffd") < body_text.count("\ufffd"):
+            row['body_text'] = recovered_text
+    row["body_encoding_warning"] = "\ufffd" in cached_html or "\ufffd" in (row.get('body_text') or '')
     row["quote_html"] = safe_quote_html(row["body_html"]) if row["body_html"] else ""
     row["has_rich_body"] = bool(row["body_html"])
     row["has_remote_images"] = bool(re.search(r'<img[^>]+src=["\']https?://', row["body_html"], re.I))
