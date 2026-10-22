@@ -10,8 +10,14 @@ runs:
     - uses: actions/setup-python@v6
       with:
         python-version: '3.13'
-        cache: pip
+        # Hosted Python pip scripts embed host paths; use python -m pip in containers.
+        cache: ${{ env.CI_BROWSER_IMAGE_VERSION == '' && 'pip' || '' }}
         cache-dependency-path: requirements*.txt
+    - uses: actions/cache@v4
+      if: ${{ env.CI_BROWSER_IMAGE_VERSION != '' }}
+      with:
+        path: ~/.cache/pip
+        key: pip-container-${{ runner.os }}-${{ runner.arch }}-3.13-${{ hashFiles('requirements*.txt') }}
     - uses: actions/setup-node@v5
       with:
         node-version: '22'
