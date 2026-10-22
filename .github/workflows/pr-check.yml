@@ -163,6 +163,7 @@ jobs:
         if: ${{ !cancelled() }}
         with:
           name: browser-${{ strategy.job-index }}-evidence
+          overwrite: true
           path: |-
             build/ci/
             output/
