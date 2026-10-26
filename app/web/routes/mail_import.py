@@ -1,4 +1,5 @@
 """Local-only exported mail import endpoints (raw, bounded streaming uploads)."""
+import asyncio
 import hashlib
 
 from fastapi import APIRouter, HTTPException, Request
@@ -9,6 +10,7 @@ from starlette.requests import ClientDisconnect
 from ... import mail_import as importer
 
 router = APIRouter()
+UPLOAD_IDLE_SECONDS = 20
 
 
 class ImportRequest(BaseModel):
@@ -16,6 +18,7 @@ class ImportRequest(BaseModel):
     expected_files: int = Field(ge=1, le=importer.MAX_FILES)
     large_messages: bool = False
     destination: str = Field(default='local_archive', max_length=20)
+    auto_import: bool = False
 
 
 class SkipFileRequest(BaseModel):
@@ -38,7 +41,7 @@ def api_mail_import_history():
 
 @router.post('/api/mail/client-imports')
 def api_mail_import_create(payload: ImportRequest):
-    return call(importer.create, payload.label, payload.expected_files, payload.large_messages, payload.destination)
+    return call(importer.create, payload.label, payload.expected_files, payload.large_messages, payload.destination, payload.auto_import)
 
 
 @router.get('/api/mail/client-imports/{token}')
@@ -66,14 +69,31 @@ async def api_mail_import_upload(token: str, request: Request, name: str, index:
     try:
         size = 0
         digest = hashlib.sha256()
+        limit = importer.MAX_LARGE_MESSAGE_SIZE if path.suffix == '.eml' else importer.MAX_SOURCE_SIZE
         job = importer.status(token)
-        message_limit = importer.MAX_LARGE_MESSAGE_SIZE if job.get('large_messages') else importer.MAX_MESSAGE_SIZE
-        limit = message_limit if path.suffix == '.eml' else importer.MAX_SOURCE_SIZE
+        declared = request.headers.get('content-length', '') if hasattr(request, 'headers') else ''
+        if declared.isdigit():
+            if int(declared) > limit:
+                raise ValueError(f'文件大小超过 {limit // 1024**2} MB，请在原客户端分开导出')
+            # Reserve a scan copy for all collected sources. Upload copies are
+            # released before final originals are saved, keeping peak use down.
+            replay = index is not None and index < job['files']
+            needed = max(job['bytes'], int(declared)) if replay else job['bytes'] + int(declared) * 2
+            importer.ensure_space(path.parent, needed)
+        checkpoint = 0
         with path.open('wb') as output:
-            async for chunk in request.stream():
+            stream = request.stream().__aiter__()
+            while True:
+                try:
+                    chunk = await asyncio.wait_for(anext(stream), timeout=UPLOAD_IDLE_SECONDS)
+                except StopAsyncIteration:
+                    break
                 size += len(chunk)
                 if size > limit:
                     raise ValueError(f'邮件大小至少 {size / 1024**2:.1f} MB，超过当前 {limit // 1024**2} MB 限制')
+                if size >= checkpoint:
+                    importer.ensure_space(path.parent, len(chunk))
+                    checkpoint = size + 4 * 1024**2
                 output.write(chunk)
                 digest.update(chunk)
         result = importer.finish_upload(token, key, name, size, index, digest.hexdigest())
@@ -82,7 +102,9 @@ async def api_mail_import_upload(token: str, request: Request, name: str, index:
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     except ClientDisconnect as exc:
-        raise HTTPException(400, '文件传输中断，已添加的文件已保留，请继续添加') from exc
+        raise HTTPException(408, '文件传输中断，已添加的文件已保留，请继续添加') from exc
+    except TimeoutError as exc:
+        raise HTTPException(408, '文件传输长时间没有进展，已保存的文件会保留，请继续添加。') from exc
     except OSError as exc:
         raise HTTPException(507, importer.file_error(exc)) from exc
     finally:

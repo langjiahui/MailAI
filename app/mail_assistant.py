@@ -626,7 +626,7 @@ def _search_result(question, history=None, search_context=None):
     terms = list(dict.fromkeys([*terms[:4],*pairs,*terms[4:]]))[:12]
     criteria.update(terms=[],text='',query='')
     with db.conn() as c:
-        condition, args, _, _ = productivity.search_conditions(criteria)
+        condition, args, _, _ = productivity.search_conditions(criteria, connection=c)
         condition = 'remote_missing=0 AND ' + condition
         if excluded:
             condition += ' AND id NOT IN (' + ','.join('?' for _ in excluded) + ')'

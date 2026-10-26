@@ -88,6 +88,40 @@ const {chromium,webkit}=require('playwright');
   await input.fill('from:"未闭合');await page.waitForFunction(()=>mailSearchState.phase==='error');
   assert(await page.locator('#search-error').isVisible());
   await search('采购',12);
+  // Seed synthetic exported mail through the real local import API. The old
+  // inbound message has no display name; only a prior recipient header knows it.
+  const token=await page.evaluate(async ()=>{
+   const nonce=Date.now();
+   const json=body=>({method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+   let job=await api('/api/mail/client-imports',json({label:'发件人检索回归',expected_files:3,destination:'auto',auto_import:true}));
+   const messages=[
+    ['收件箱/old.eml',`From: lookup@example.test\r\nTo: ${activeMailAccount().user}\r\nSubject: Historical sender lookup\r\nDate: Fri, 01 Jan 1993 09:30:00 +0800\r\nMessage-ID: <sender-old-${nonce}@example.test>\r\n\r\nHistorical message.`],
+    ['已发送/history.eml',`From: ${activeMailAccount().user}\r\nTo: 顾清禾 <lookup@example.test>\r\nSubject: Earlier correspondence\r\nDate: Fri, 01 Jan 1993 10:30:00 +0800\r\nMessage-ID: <sender-names-${nonce}@example.test>\r\n\r\nReply.`],
+    ['收件箱/other.eml',`From: other@example.test\r\nTo: ${activeMailAccount().user}\r\nSubject: 顾清禾的项目\r\nDate: Fri, 01 Jan 1993 11:30:00 +0800\r\nMessage-ID: <sender-other-${nonce}@example.test>\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nThis message is from somebody else.`]
+   ];
+   for(let index=0;index<messages.length;index++){
+    const [name,body]=messages[index];
+    await api('/api/mail/client-imports/'+job.token+'/files?index='+index+'&name='+encodeURIComponent(name),{method:'PUT',headers:{'Content-Type':'application/octet-stream'},body});
+   }
+   await api('/api/mail/client-imports/'+job.token+'/scan',{method:'POST'});
+   return job.token;
+  });
+  await page.waitForFunction(async token=>(await api('/api/mail/client-imports/'+token)).state==='completed',token);
+  for(const query of ['发件人是顾清禾','发件人是顾清禾。','发件人是：顾清禾','查询，发件人是顾清禾的所有邮件。','发件人是“顾清禾”','from:guqinghe','来自顾清禾的全部邮件。','发件人是“顾清禾 <lookup@example.test>”']){
+   await search(query,1);
+   assert.match(await page.locator('#email-list .sender-name').innerText(),/顾清禾/);
+  }
+  await search('顾清禾',2,'A name keyword includes both sender-alias and subject matches');
+  await search('发件人是“顾清禾。”',0);
+  await page.evaluate(()=>api('/api/mail/contacts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'lookup@example.test',name:'采购顾老师'})}));
+  await search('采购顾老师',1);
+  await search('from:caigougulaoshi',1);
+  const otherAccount=await page.evaluate(id=>_systemConfig.accounts.find(row=>row.id!==id).id,account);
+  await page.evaluate(id=>openAccountMailbox(id,'inbox'),otherAccount);
+  await search('发件人是采购顾老师',0,'Aliases stay within their account');
+  await page.evaluate(()=>openUnifiedInbox());
+  await search('发件人是顾清禾',1,'All-time unified search includes 1993 mail');
+  await page.evaluate(id=>openAccountMailbox(id,'inbox'),account);
   // Even after search handoff, product questions do not become mailbox queries.
   await page.evaluate(()=>{_systemConfig.model={..._systemConfig.model,available:true,verified:true};assistantSearchMode=true;openAssistant();});
   await page.evaluate(()=>askAssistant('你是一个什么东西？你能做什么？'));

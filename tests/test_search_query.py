@@ -14,6 +14,18 @@ from app.search_query import expand_natural_query, interpret_query
 def main():
     cases = {
         '发件人是方君': {'sender':'方君'},
+        '查询，发件人是方君。': {'sender':'方君'},
+        '发件人是：方君': {'sender':'方君'},
+        '发件人为：方君的所有邮件。': {'sender':'方君'},
+        '发件人是方君的全部邮件': {'sender':'方君'},
+        '发件人是方君的历史信件': {'sender':'方君'},
+        '发件人是方君，谢谢。': {'sender':'方君'},
+        '发件人是“方君”': {'sender':'方君'},
+        '发件人是‘方君的邮件’': {'sender':'方君的邮件'},
+        '来自方君的所有邮件。': {'sender':'方君'},
+        '方君发来的所有邮件。': {'sender':'方君'},
+        '发给李明的所有邮件。': {'recipient':'李明'},
+        '发件人是“方君。”': {'sender':'方君。'},
         '找到发件人是方君的邮件': {'sender':'方君'},
         '请帮我找出发件人是方君的邮件': {'sender':'方君'},
         '查询一下发件人为方君的邮件': {'sender':'方君'},
@@ -70,6 +82,7 @@ def main():
     for query in ['没有附件','不是方君','未读懂合同',"O'Reilly",'项目合同','搜索引擎','查看未读邮件教程','不查看未读邮件','只看合同','show unreadable emails','"查看未读邮件"']:
         assert not interpret_query(query)['structured'], query
     assert interpret_query('查看未读邮件 合同')['criteria']['terms'] == ['合同']
+    assert not interpret_query('“发件人是方君”')['structured']
     quoted = interpret_query('"发件人是方君"')
     assert not quoted['structured'] and quoted['criteria']['terms'] == ['发件人是方君']
     assert interpret_query('subject:"昨天 有附件"')['criteria']['subject'] == '昨天 有附件'

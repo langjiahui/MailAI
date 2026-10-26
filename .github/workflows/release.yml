@@ -34,9 +34,12 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements*.txt
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
+          cache: npm
       - name: Install Inno Setup
         shell: pwsh
         run: choco install innosetup --no-progress -y
@@ -95,9 +98,12 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements*.txt
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
+          cache: npm
       - name: Build Linux AppImage
         shell: bash
         run: |
@@ -123,9 +129,12 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements*.txt
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
+          cache: npm
       - name: Import macOS signing certificate
         shell: bash
         env:

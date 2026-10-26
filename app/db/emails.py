@@ -181,8 +181,11 @@ def list_emails(status=None, verdict=None, days=7, limit=1000, folder=None, offs
     columns = ('id,thread_id,status,priority,from_addr,subject,date,verdict,score,feedback,reviewed,arrival_kind,created_at,pending_action,processing_complete'
                if metadata_only else EMAIL_LIST_COLUMNS if list_view else '*')
     visibility = "(pending_action IN ('trash','trash_copying','trash_copied','trash_locating','trash_local') OR (remote_missing=0 AND status='trash'))" if status == 'trash' else 'remote_missing=0'
-    sql = f"SELECT {columns} FROM emails WHERE {visibility} AND datetime(COALESCE(NULLIF(date,''),created_at)) >= datetime('now','localtime', ?)"
-    args = [f"-{days} days"]
+    sql = f"SELECT {columns} FROM emails WHERE {visibility}"
+    args = []
+    if days != 9999:
+        sql += " AND datetime(COALESCE(NULLIF(date,''),created_at)) >= datetime('now','localtime', ?)"
+        args.append(f"-{days} days")
     if status == "favorites":
         sql += " AND is_favorite=1"
     elif status and status != "trash":
@@ -259,7 +262,7 @@ def search_emails(terms: list[str], limit: int = 200, offset: int = 0,
         from ..mail_search import predicate
         if criteria:
             from ..productivity import search_conditions
-            condition, args, _, _ = search_conditions(criteria)
+            condition, args, _, _ = search_conditions(criteria, connection=c)
             mailbox = criteria.get('mailbox')
             if mailbox and mailbox != 'all':
                 condition += ' AND status=?'

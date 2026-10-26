@@ -350,16 +350,18 @@ def list_unified_inbox(days: int = 9999, limit: int = 1000, offset: int = 0, q: 
                 if criteria:
                     from .productivity import search_conditions
                     register(connection)
-                    condition, search_args, _, _ = search_conditions(criteria)
+                    condition, search_args, _, _ = search_conditions(criteria, connection=connection)
                     if criteria.get('mailbox', 'all') not in {'all','inbox'}:
                         condition += ' AND 0=1'
                 else:
                     condition, search_args = predicate(connection, terms)
+                time_condition = " AND datetime(COALESCE(NULLIF(date,''),created_at)) >= datetime('now','localtime', ?)" if bounded_days < 9999 else ''
+                time_args = [f'-{bounded_days} days'] if time_condition else []
                 account_rows = connection.execute(
                     f"SELECT {db.EMAIL_LIST_COLUMNS}{',body_text' if q.strip() else ''} FROM emails WHERE remote_missing=0 AND status='inbox' "
-                    "AND datetime(COALESCE(NULLIF(date,''),created_at)) >= datetime('now','localtime', ?) "
+                    + time_condition + ' '
                     f"AND {condition} ORDER BY date DESC,id DESC LIMIT ?",
-                    [f"-{bounded_days} days", *search_args, bounded_limit + offset],
+                    [*time_args, *search_args, bounded_limit + offset],
                 ).fetchall()
                 decoded_rows = db._decode_rows(account_rows, connection=connection)
                 if q.strip():

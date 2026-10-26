@@ -3,6 +3,61 @@ FIELDS = ('subject', 'from_addr', 'from_name', 'summary', 'snippet', 'body_text'
 PINYIN_FIELDS = ('subject', 'from_name')
 
 
+def sender_alias_addresses(connection, terms):
+    """Match the names users see, including names learned from other headers.
+
+    Resolve once per query using this account's connection. Do not rewrite mail
+    headers or recompute body pinyin while looking up a sender's local aliases.
+    """
+    import re
+    import unicodedata
+    from .db.contacts import _recipient_header_display_names, contact_display_names
+    from .mail_headers import damaged_display_name, decode_header_text
+    from .pinyin_search import aliases
+
+    def clean(value):
+        value = unicodedata.normalize('NFKC', decode_header_text(value or '')).casefold()
+        value = re.sub(r'[\u200b-\u200d\ufeff]', '', value)
+        value = re.sub(r'\s+', ' ', value).strip()
+        return re.sub(r'(?<=[\u3400-\u9fff]) (?=[\u3400-\u9fff])', '', value)
+
+    needles = [clean(term) for term in terms]
+    for index, needle in enumerate(needles):
+        # Pasting a displayed "Name <address>" identifies the exact address;
+        # that string is not stored as one field in the email table.
+        address = re.fullmatch(r'.*?[<(]([^\s<>(),;]+@[^\s<>(),;]+)[>)]', needle)
+        if address:
+            needles[index] = address[1]
+    matches = [set() for _ in needles]
+    if not any(needles):
+        return matches
+    saved = list(connection.execute('SELECT email,name,hidden FROM contacts'))
+    hidden = {str(row['email'] or '').strip().casefold() for row in saved if row['hidden']}
+    pairs = [(address, name) for address, name in _recipient_header_display_names(connection).items()
+             if address not in hidden]
+    pairs.extend((row['email'], row['name']) for row in saved if not row['hidden'])
+    senders = list(connection.execute(
+        "SELECT DISTINCT from_addr,from_name FROM emails WHERE trim(coalesce(from_addr,''))<>''"))
+    pairs.extend((row['from_addr'], row['from_name']) for row in senders)
+    damaged = {row['from_addr'] for row in senders if damaged_display_name(row['from_name'])}
+    if damaged:
+        # Reuse the same bounded header recovery used by mailbox display.
+        recovered = contact_display_names(damaged, connection=connection)
+        pairs.extend((address, value['name']) for address, value in recovered.items())
+    latin = any(needle and needle.isascii() for needle in needles)
+    for address, name in pairs:
+        address = str(address or '').strip().casefold()
+        if not address:
+            continue
+        name = clean(name)
+        phonetic = aliases(name) if latin else ''
+        for index, needle in enumerate(needles):
+            if needle and (needle in address or needle in name or
+                           needle in phonetic or needle.replace(' ', '') in phonetic.replace(' ', '')):
+                matches[index].add(address)
+    return matches
+
+
 def register(connection):
     from .pinyin_search import aliases, body_aliases
     try:
@@ -71,17 +126,24 @@ def predicate(connection, terms):
     if not cleaned:
         return '1=1', []
     args = [f'%{term}%' for term in cleaned]
+    import json
+    # Keep FTS candidates indexed; alias hits add email IDs through a separate
+    # subquery instead of turning every full-text search into a row callback.
+    alias_addresses = set().union(*sender_alias_addresses(connection, cleaned))
+    extra = ''
+    if alias_addresses:
+        extra = " OR id IN (SELECT id FROM emails WHERE lower(trim(from_addr)) IN (SELECT value FROM json_each(?)))"
     if indexed(connection, cleaned):
         candidates = ' UNION '.join('SELECT rowid FROM email_search WHERE text LIKE ?' for _ in cleaned)
-        return f'id IN ({candidates})', args
+        return f'(id IN ({candidates}){extra})', args + ([json.dumps(sorted(alias_addresses))] if extra else [])
     # Unmigrated accounts and SQLite without trigram support retain a literal
     # scan. A term containing Chinese cannot match ASCII-only pinyin aliases,
     # so do not transliterate every body on this fallback path either.
     import re
-    return '(' + ' OR '.join(
+    return '((' + ' OR '.join(
         expression(include_pinyin=not re.search(r'[\u3400-\u9fff]', term)) + ' LIKE ?'
         for term in cleaned
-    ) + ')', args
+    ) + ')' + extra + ')', args + ([json.dumps(sorted(alias_addresses))] if extra else [])
 
 
 def match_preview(message, terms):

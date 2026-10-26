@@ -3030,7 +3030,7 @@ async function api(path, opts = {}) {
       else if (/^\/api\/(?:mail\/(?:folders|sync|send)|emails\/\d+\/(?:move|star|feedback)|drafts\/\d+)/.test(path)) window.mailaiServiceFailed?.('mail',accountId);
     }
     const failure = new Error(message || `HTTP ${res.status}`);
-    if (path.startsWith('/api/companion/')) failure.status = res.status;
+    failure.status = res.status;
     throw failure;
   }
   const data = await res.json();
