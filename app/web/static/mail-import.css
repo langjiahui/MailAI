@@ -102,3 +102,19 @@ html[data-theme=dark] [data-import-error] { color:#efb1a5; }
 #mail-recovery-dialog [data-recovery-task] progress { width:100%; }
 .sidebar-account-heading button.account-sync-state { cursor:pointer; font:inherit; font-size:10px; border:1px solid transparent; }
 .sidebar-account-heading button.account-sync-state:hover { border-color:var(--desk-accent); }
+
+/* Keep the common path short; secondary choices stay available on demand. */
+.mail-import-dialog { width:min(680px,calc(100vw / var(--fz,1) - 32px)); }
+.mail-import-account { display:grid; gap:7px; font-size:13px; }
+.mail-import-account select { width:100%; min-width:0; box-sizing:border-box; min-height:40px; padding:8px 10px; border:1px solid var(--desk-line); border-radius:8px; background:var(--desk-muted-surface); color:var(--desk-ink); font:inherit; }
+.mail-import-advanced { margin:10px 0 16px; font-size:12px; color:var(--desk-muted); }
+.mail-import-advanced[open] { padding:12px; border:1px solid var(--desk-line); border-radius:10px; }
+.mail-import-advanced .mail-import-options { margin-top:12px; grid-template-columns:1fr 1.2fr; }
+.mail-import-file-box { padding:24px 16px; }
+.mail-import-help { margin:12px 0 0; padding:0; border:0; font-size:12px; }
+.mail-import-limits { margin:8px 0 0; font-size:12px; color:var(--desk-muted); }
+.mail-import-limits p { margin:8px 0; }
+.mail-import-dialog .mail-import-options :is(input,select) { min-width:0; }
+.mail-import-dialog [data-import-error]:empty { display:none; }
+.mail-import-dialog .mail-import-counts b { font-variant-numeric:tabular-nums; }
+@media(max-width:600px) { .mail-import-advanced .mail-import-options { grid-template-columns:1fr; } }

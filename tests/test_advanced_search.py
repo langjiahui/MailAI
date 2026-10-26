@@ -60,4 +60,62 @@ def main():
             assert response['items'] and response['criteria']['sender']=='方君' and not response['failed_accounts']
         print('PASS names/address/pinyin/contact aliases, recipients, AND/literal matching, inclusive dates, server/local scopes, HTML text, syntax conflicts and saved account scope')
 
-if __name__=='__main__': main()
+
+def test_visible_sender_aliases_and_history():
+    from app import mail_assistant, system_settings
+    from app.web.routes.mail_read import api_search_emails, api_emails
+    from app.search_query import interpret_query
+    with tempfile.TemporaryDirectory() as folder:
+        account = {'ACCOUNT_ID':'sender-repro', 'DB_PATH':str(Path(folder)/'mail.db'), 'IMAP_USER':'me@example.test'}
+        with use(account):
+            db.init_db()
+            incoming = db.upsert_email(dict(uid=1,folder='INBOX',status='inbox',from_addr='lookup@example.test',
+                from_name='lookup',subject='姓名来自往来记录',date='1993-01-01T09:00:00'))
+            db.upsert_email(dict(uid=2,folder='Sent',status='sent',from_addr='me@example.test',
+                to_addr='lookup@example.test',recipient_names={'lookup@example.test':'顾清禾'},
+                subject='先前的往来',date='2026-10-26T10:00:00'))
+            other = db.upsert_email(dict(uid=3,folder='INBOX',status='inbox',from_addr='other@example.test',
+                from_name='另一位同事',subject='顾清禾的项目',date='2026-10-26T09:00:00'))
+            raw = Path(folder) / 'recovered-name.eml'
+            raw.write_bytes('From: 王修远 <recovered@example.test>\r\nTo: me@example.test\r\nSubject: recovered\r\n\r\nbody'.encode('utf-8'))
+            repaired = db.upsert_email(dict(uid=4,folder='INBOX',status='inbox',from_addr='recovered@example.test',
+                from_name='\ufffd',raw_path=str(raw),subject='姓名从旧原文恢复',date='2026-10-26T09:00:00'))
+            assert next(row for row in api_emails(status='inbox',days=9999,tag=[]) if row['id']==incoming)['from_name']=='顾清禾'
+            def ids(query, **kwargs):
+                return {row['id'] for row in api_search_emails(q=query,status='inbox',tag=[],**kwargs)}
+            for query in ['发件人是顾清禾','发件人是：顾清禾。','查询发件人是顾清禾的所有邮件',
+                          'from:guqinghe','from:gqh','发件人是“顾清禾 <lookup@example.test>”',
+                          '发件人是顾清禾（lookup@example.test）']:
+                assert ids(query)=={incoming}, query
+                assert [row['id'] for row in productivity.search({'query':query,'mailbox':'inbox'})['items']]==[incoming]
+                with patch.object(mail_assistant,'_ai_search_plan',side_effect=AssertionError('A sender filter needs no model')):
+                    assert [row['id'] for row in mail_assistant._search_sources(query)]==[incoming]
+            assert ids('顾清禾')=={incoming,other}, 'Alias hits must join existing subject/body hits'
+            assert ids('发件人是王修远')=={repaired}, 'Recovered visible names must also be searchable'
+            assert ids('发件人是顾清禾',folder='Projects')==set(), 'Keep the selected folder'
+            assert ids('发件人是顾清禾 开始日期是2026-10-01')==set(), 'Keep explicit dates'
+            assert ids('发件人是“顾清禾。”')==set(), 'Quoted punctuation stays literal'
+            db.save_contact('lookup@example.test','采购顾老师')
+            for query in ['采购顾老师','from:caigougulaoshi','from:cggls']:
+                assert ids(query)=={incoming}, query
+            db.save_contact('lookup@example.test','新姓名')
+            assert not ids('采购顾老师'), 'Renaming a manual contact must invalidate its old alias immediately'
+            assert ids('新姓名')=={incoming}
+            registry={'accounts':{'sender-repro':{'db_path':account['DB_PATH'],'user':'me@example.test'}}}
+            with patch.object(system_settings,'_load_registry',return_value=registry):
+                assert {row['id'] for row in system_settings.list_unified_inbox(q='发件人是顾清禾')}=={incoming}
+                assert system_settings.list_unified_inbox(q='发件人是顾清禾',days=7)==[]
+            assert incoming not in {row['id'] for row in db.list_emails(status='inbox',days=7)}
+            assert incoming in {row['id'] for row in db.list_emails(status='inbox',days=9999)}
+            # No search operation rewrites sender headers to a learned/manual alias.
+            assert db.get_email(incoming)['from_name']=='lookup'
+        with use({**account,'ACCOUNT_ID':'other','DB_PATH':str(Path(folder)/'other.db')}):
+            db.init_db()
+            db.upsert_email(dict(uid=1,from_addr='lookup@example.test',from_name='lookup',subject='another account'))
+            assert not api_search_emails(q='发件人是顾清禾',status='inbox',tag=[])
+    print('PASS displayed/historical/manual aliases, pinyin, literal fields, hard scopes, 1993 mail, all-time sentinel and account isolation')
+
+
+if __name__=='__main__':
+    main()
+    test_visible_sender_aliases_and_history()

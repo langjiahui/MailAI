@@ -35,9 +35,14 @@ def expand_natural_query(query, *, today=None):
     source = text
     protected = []
     def hide(match):
-        protected.append(match[0])
+        value = match[0]
+        if value[0] in '“‘':
+            value = json.dumps(value[1:-1], ensure_ascii=False)
+        protected.append(value)
         return f'\ue000{len(protected)-1}\ue001'
-    text = re.sub(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'', hide, text)
+    text = re.sub(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|“[^”]*”|‘[^’]*’', hide, text)
+    if re.search(r'(?:发件人|发送人|寄件人|收件人|接收人)', text):
+        text = re.sub(r'[，,]\s*(?:谢谢(?:你|您)?|麻烦了)[。！？!?]*$', '', text)
     # Separators count only before a recognised clause, never inside quotes.
     starts = '(?:' + _FIELD_NAMES + '|' + _DATES + '|' + _ATTACHMENT + '|' + _UNREAD + ')'
     text = re.sub(r'^(?:所有|全部)(?=\s*' + starts + ')', '', text).lstrip()
@@ -47,21 +52,24 @@ def expand_natural_query(query, *, today=None):
     text = re.sub(r'(?<!\S)(' + _ATTACHMENT + r')(?:的)?(?=' + _UNREAD + ')', r'\1 ', text)
     text = re.sub(r'(?:并且|而且|同时|以及|且)(?=\s*' + starts + ')', ' ', text)
     text = re.sub(r'[，；;,](?=\s*' + starts + ')', ' ', text)
-    pattern = r'(?<!\S)(' + _FIELD_NAMES + r')\s*(?:是|为|包含|含有|[:：])\s*([^\s，；;,]+)'
+    pattern = r'(?<!\S)(' + _FIELD_NAMES + r')\s*(?:是|为|包含|含有|[:：])\s*[:：]?\s*([^\s，；;,]+)'
+    def person_value(value):
+        value = value.rstrip('。！？!?')
+        return re.sub(r'的(?:所有|全部|历史)?(?:邮件|信件)$', '', value)
     def replace(match):
         value = match[2].strip('，；;,')
         operator = _FIELDS[match[1]]
         # Mail is the object of the command, not part of a sender/recipient.
         # Quoted values were protected above and stay literal.
-        if operator in {'from', 'to'} and value.endswith('的邮件'):
-            value = value[:-3]
+        if operator in {'from', 'to'}:
+            value = person_value(value)
         value = {name:key for key,name in _VALUE_NAMES.get(operator,{}).items()}.get(value,value)
         return operator + ':' + shlex.quote(value)
     text = re.sub(pattern, replace, text)
     # These clauses name the role explicitly; an isolated name stays a keyword.
-    text = re.sub(r'(?<!\S)(?:来自)([^\s，；;,]+?)(?:的邮件)?(?=\s|$)', lambda m:'from:'+shlex.quote(m[1]), text)
-    text = re.sub(r'(?<!\S)([^\s，；;,]+?)(?:发来的|发的|发送的)(?:邮件)?(?=\s|$)', lambda m:'from:'+shlex.quote(m[1]), text)
-    text = re.sub(r'(?<!\S)(?:发给|发送给|寄给)([^\s，；;,]+?)(?:的邮件)?(?=\s|$)', lambda m:'to:'+shlex.quote(m[1]), text)
+    text = re.sub(r'(?<!\S)(?:来自)([^\s，；;,]+?)(?=\s|$)', lambda m:'from:'+shlex.quote(person_value(m[1])), text)
+    text = re.sub(r'(?<!\S)([^\s，；;,]+?)(?:发来的|发的|发送的)(?:(?:所有|全部|历史)?(?:邮件|信件))?[。！？!?]*(?=\s|$)', lambda m:'from:'+shlex.quote(person_value(m[1])), text)
+    text = re.sub(r'(?<!\S)(?:发给|发送给|寄给)([^\s，；;,]+?)(?=\s|$)', lambda m:'to:'+shlex.quote(person_value(m[1])), text)
     text = re.sub(r'(?<!\S)' + _ATTACHMENT + r'(?:的?(?:邮件|信件))?(?!\S)', 'has:attachment', text)
     text = re.sub(r'(?<!\S)' + _UNREAD + r'(?:的?(?:邮件|信件))?(?!\S)', 'is:unread', text)
     # English equivalents use the same hard filters, with no model request.
@@ -132,8 +140,8 @@ def interpret_query(query):
             operator = names[field]
             value = _VALUE_NAMES.get(operator,{}).get(value,value)
             text = str(value)
-            if (re.search(r'''[\s，；;,:"'\\]''', text)
-                    or (field in {'sender', 'recipient'} and text.endswith('的邮件'))):
+            if (re.search(r'''[\s，；;,:。！？!?“”‘’"'\\]''', text)
+                    or (field in {'sender', 'recipient'} and re.search(r'的(?:所有|全部|历史)?(?:邮件|信件)$', text))):
                 text = json.dumps(text,ensure_ascii=False)
             token['display'] = display_fields[field] + text
         elif field == 'text':

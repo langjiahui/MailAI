@@ -198,11 +198,24 @@ def _search_excerpt(value, terms):
     return ('…' if start else '') + text[start:end] + ('…' if end < len(text) else '')
 
 
-def search_conditions(criteria, *, kind='email', date_expr="COALESCE(NULLIF(date,''),created_at)", body_col='body_text', att_col='attachments'):
+def search_conditions(criteria, *, kind='email', date_expr="COALESCE(NULLIF(date,''),created_at)", body_col='body_text', att_col='attachments', connection=None):
     """Shared SQL conditions for form search and interpreted mailbox search."""
     condition, args = '1=1', []
     after, before = criteria.get('after') or '', criteria.get('before') or ''
     state = criteria.get('state') or ''
+    alias_matches = {}
+    if connection is not None and kind in {'email', 'sent'}:
+        from .mail_search import sender_alias_addresses
+        values = list(dict.fromkeys([value for value in [criteria.get('sender'), *criteria.get('terms', [])] if value]))
+        if values:
+            alias_matches = dict(zip(values, sender_alias_addresses(connection, values)))
+
+    def alias_clause(value):
+        addresses = alias_matches.get(value)
+        if not addresses:
+            return ''
+        args.append(json.dumps(sorted(addresses)))
+        return " OR lower(trim(from_addr)) IN (SELECT value FROM json_each(?))"
     if kind == "email" and criteria.get("category"):
         condition += " AND category=?"
         args.append(str(criteria["category"])[:100])
@@ -238,18 +251,17 @@ def search_conditions(criteria, *, kind='email', date_expr="COALESCE(NULLIF(date
                 args.extend(sender_args)
                 if kind in {'email', 'sent'} and str(criteria[key]).isascii():
                     expression += f"||' '||mailai_pinyin({sender_name})"
-            condition += (
-                f" AND lower(coalesce({expression},'')) LIKE ? ESCAPE '\\'"
-            )
             args.append("%" + _like(str(criteria[key])[:250].lower()) + "%")
+            extra = alias_clause(criteria[key]) if key == 'sender' else ''
+            condition += f" AND (lower(coalesce({expression},'')) LIKE ? ESCAPE '\\'{extra})"
     visible_body = body_col if kind == 'email' else f'mailai_visible_text({body_col})'
     for token in criteria.get('terms', []):
         expression = f"coalesce(subject,'')||' '||{recipient}||' '||coalesce({visible_body},'')||' '||{sender}"
         args.extend(sender_args)
         if kind == 'email':
             expression += "||' '||coalesce(summary,'')||' '||coalesce(snippet,'')"
-        condition += f" AND lower({expression}) LIKE ? ESCAPE '\\'"
         args.append("%" + _like(token.lower()) + "%")
+        condition += f" AND (lower({expression}) LIKE ? ESCAPE '\\'{alias_clause(token)})"
     if criteria.get("has_attachment"):
         condition += f" AND json_array_length(CASE WHEN json_valid({att_col}) THEN {att_col} ELSE '[]' END)>0"
     for date, op in ((after, ">="), (before, "<=")):
@@ -323,7 +335,7 @@ def search(criteria, *, offset=0, limit=50, mailbox_rows=False):
                 criteria.get("unread") or state or criteria.get("category")
             ):
                 continue
-            extra, values, sender_name, visible_body = search_conditions(criteria, kind=kind, date_expr=date_expr, body_col=body_col, att_col=att_col)
+            extra, values, sender_name, visible_body = search_conditions(criteria, kind=kind, date_expr=date_expr, body_col=body_col, att_col=att_col, connection=c)
             condition += ' AND ' + extra
             args.extend(values)
             fields = (

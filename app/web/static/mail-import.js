@@ -4,19 +4,18 @@
   dialog.id = 'mail-import-dialog'; dialog.className = 'mail-import-dialog';
   dialog.setAttribute('aria-labelledby', 'mail-import-title');
   dialog.innerHTML = `<header><div><h2 id="mail-import-title"><span data-i18n="ui.ab20177968ee">导入 Foxmail 邮件</span></h2><p><span data-i18n="ui.42b74f6b3e4b">把旧邮件补到 MailAI 本地，原邮件和邮箱服务器保持不变。</span></p></div><button type="button" data-import-close aria-label="关闭导入窗口" data-i18n-aria="ui.d20b0bd83630">×</button></header>
-    <ol class="mail-import-steps" aria-label="导入步骤" data-i18n-aria="ui.4936fcb3bd29"><li data-step="select"><span>1</span><span data-i18n="ui.822fb37dba29">选择文件</span></li><li data-step="review"><span>2</span><span data-i18n="ui.729cd4b71e0a">核对结果</span></li><li data-step="apply"><span>3</span><b data-import-final-step><span data-i18n="ui.a2614ead6041">导入邮件</span></b></li></ol>
+    <ol class="mail-import-steps" aria-label="导入步骤" data-i18n-aria="ui.4936fcb3bd29"><li data-step="select"><span>1</span><span data-i18n="ui.822fb37dba29">选择文件</span></li><li data-step="apply"><span>2</span><span data-i18n="mailImport.autoStep">自动整理并导入</span></li><li data-step="done"><span>3</span><span data-i18n="mailImport.doneStep">查看结果</span></li></ol>
     <div class="mail-import-body">
-      <div class="mail-import-options"><label><span data-i18n="ui.3bd43bd793d1">导入到哪个邮箱？</span><select id="mail-import-account"></select></label><label><span data-i18n="ui.ffab51e77800">归档名称</span><input id="mail-import-label" value="Foxmail 导入" maxlength="80"></label></div>
-      <label class="mail-import-destination"><span data-i18n="importFix.destination">导入位置</span><select data-import-destination><option value="auto" data-i18n="importFix.auto">按源文件夹识别（收件箱 / 已发送）</option><option value="local_archive" data-i18n="ui.488cceb67ead">本地归档</option><option value="inbox" data-i18n="importFix.inbox">收件箱（仅本机）</option><option value="sent" data-i18n="importFix.sent">已发送（仅本机）</option></select></label><p class="mail-import-location"><span data-i18n="mailImport.location">自动识别收件箱和已发送目录，其余放入本地归档。默认已读，仅在本机保存，不上传到服务器。</span></p>
-      <section data-import-select><details class="mail-import-help"><summary><span data-i18n="ui.ca48255d93ad">如何从 Foxmail 导出邮件？</span></summary><ol><li><span data-i18n="ui.81cda90241df">在 Foxmail 中进入收件箱、已发送等文件夹，选中要迁移的邮件，选择「导出邮件」。</span></li><li><span data-i18n="ui.34ed41f26457">把每个文件夹的邮件分别导出，放在同一个总目录下。这样可保留文件夹名称。</span></li><li><span data-i18n="ui.b9c4156320e0">回到这里选择导出的文件或总目录。附件须在 Foxmail 中下载完整后再导出。</span></li></ol><p><span data-i18n="ui.0f7bb2368cf9">支持 EML、MBOX 邮件文件，也适用于其他客户端导出的同类文件。Foxmail 的 Storage、.fox 数据库请先通过 Foxmail 导出。</span></p></details>
-      <div class="mail-import-file-box"><b><span data-i18n="ui.fee481c85284">选择 Foxmail 导出的邮件</span></b><p><span data-i18n="ui.737c928009f0">可以一次选择多封邮件，也可以选择整个导出目录。</span></p><div><button type="button" data-import-files><span data-i18n="ui.bfe1dea0b951">选择邮件文件</span></button><button type="button" data-import-folder><span data-i18n="ui.046b6f007bf0">选择导出目录</span></button></div><small><span data-i18n="ui.df468f0acffe">单个文件最多 1 GB；默认单封邮件最多 64 MB；每批最多 10 GB。</span></small></div>
-      <label class="mail-import-large"><input type="checkbox" data-import-large><span data-i18n="mailImport.largeMode">大邮件模式（单封最多 256 MB）</span></label><p class="mail-import-limit-note" data-i18n="mailImport.limitNote">默认单封 64 MB。超限文件会自动跳过，其他文件继续；大邮件的附件分块处理，原件完整保留。</p>
+      <div class="mail-import-account"><label for="mail-import-account" data-i18n="ui.3bd43bd793d1">导入到哪个邮箱？</label><select id="mail-import-account"></select></div>
+      <details class="mail-import-advanced"><summary data-i18n="mailImport.options">更多设置</summary><div class="mail-import-options"><label><span data-i18n="ui.ffab51e77800">归档名称</span><input id="mail-import-label" value="Foxmail 导入" maxlength="80"></label><label><span data-i18n="importFix.destination">导入位置</span><select data-import-destination><option value="auto" data-i18n="importFix.auto">按源文件夹识别（收件箱 / 已发送）</option><option value="local_archive" data-i18n="ui.488cceb67ead">本地归档</option><option value="inbox" data-i18n="importFix.inbox">收件箱（仅本机）</option><option value="sent" data-i18n="importFix.sent">已发送（仅本机）</option></select></label></div><p class="mail-import-location" data-i18n="mailImport.location">自动识别收件箱和已发送目录，其余放入本地归档。默认已读，仅在本机保存，不上传到服务器。</p></details>
+      <section data-import-select>
+      <div class="mail-import-file-box"><b><span data-i18n="ui.fee481c85284">选择 Foxmail 导出的邮件</span></b><p><span data-i18n="ui.737c928009f0">可以一次选择多封邮件，也可以选择整个导出目录。</span></p><div><button type="button" data-import-files><span data-i18n="ui.bfe1dea0b951">选择邮件文件</span></button><button type="button" class="primary-action" data-import-folder><span data-i18n="ui.046b6f007bf0">选择导出目录</span></button></div><small data-i18n="mailImport.automatic">自动去重、识别文件夹和处理大附件，无需调整模式。</small></div>
       <input type="file" id="mail-import-files" accept=".eml,.mbox" multiple hidden><input type="file" id="mail-import-folder" webkitdirectory multiple hidden>
-      <div data-import-selected aria-live="polite"></div></section>
+      <div data-import-selected aria-live="polite"></div><details class="mail-import-help"><summary><span data-i18n="ui.ca48255d93ad">如何从 Foxmail 导出邮件？</span></summary><ol><li><span data-i18n="ui.81cda90241df">在 Foxmail 中进入收件箱、已发送等文件夹，选中要迁移的邮件，选择「导出邮件」。</span></li><li><span data-i18n="ui.34ed41f26457">把每个文件夹的邮件分别导出，放在同一个总目录下。这样可保留文件夹名称。</span></li><li><span data-i18n="ui.b9c4156320e0">回到这里选择导出的文件或总目录。附件须在 Foxmail 中下载完整后再导出。</span></li></ol><p><span data-i18n="ui.0f7bb2368cf9">支持 EML、MBOX 邮件文件，也适用于其他客户端导出的同类文件。Foxmail 的 Storage、.fox 数据库请先通过 Foxmail 导出。</span></p></details><details class="mail-import-limits"><summary data-i18n="mailImport.formats">支持格式与大小</summary><p data-i18n="mailImport.limits">支持 EML、MBOX。单封邮件最多 256 MB，单个 MBOX 最多 10 GB；总大小根据本机可用空间处理，每次最多 20,000 个文件、200,000 封邮件。超限或损坏文件会单独记录，其他邮件继续导入。</p></details></section>
       <section class="mail-import-progress" data-import-progress hidden><p data-import-status role="status" aria-live="polite"></p><progress aria-label="导入进度" data-i18n-aria="ui.5b676bd12914"></progress><small data-import-progress-note></small><small data-import-current hidden></small><div class="mail-import-live" data-import-live hidden></div></section>
-      <section data-import-result hidden><div class="mail-import-counts"><div><small><span data-i18n="ui.36689263737d">识别邮件</span></small><b data-count="found">0</b></div><div><small><span data-i18n="ui.b2d9abb23920">待新增</span></small><b data-count="new">0</b></div><div><small><span data-i18n="ui.b83bf31b01f2">重复跳过</span></small><b data-count="duplicates">0</b></div><div><small><span data-i18n="ui.751d82db8361">无法导入</span></small><b data-count="failed">0</b><button type="button" data-import-show-issues hidden><span data-i18n="importFix.viewIssues">查看原因与重试</span></button></div></div><p class="mail-import-result-message" data-import-summary></p><details class="mail-import-folders" data-import-folders hidden><summary><span data-i18n="ui.8b9f60b1b5e1">邮件将放在哪些文件夹？</span></summary><p><span data-i18n="ui.8026d5ac9274">以下为源文件夹与预计新增数量；实际位置取决于上方的导入位置。</span></p><ul></ul><small></small></details><div data-import-samples></div></section><details data-import-errors hidden><summary><span data-i18n="ui.90d83999bd64">查看需要检查的文件</span></summary><p data-import-issues-note></p><div></div><button type="button" data-import-more-issues hidden><span data-i18n="importFix.moreIssues">查看更多问题</span></button><button type="button" data-import-report><span data-i18n="ui.c9630d09a5f2">下载完整问题清单</span></button></details>
+      <section data-import-result hidden><div class="mail-import-counts"><div><small><span data-i18n="ui.36689263737d">识别邮件</span></small><b data-count="found">0</b></div><div><small><span data-i18n="ui.b2d9abb23920">待新增</span></small><b data-count="new">0</b></div><div><small><span data-i18n="ui.b83bf31b01f2">重复跳过</span></small><b data-count="duplicates">0</b></div><div><small><span data-i18n="ui.751d82db8361">无法导入</span></small><b data-count="failed">0</b><button type="button" data-import-show-issues hidden><span data-i18n="importFix.viewIssues">查看原因与重试</span></button></div></div><p class="mail-import-result-message" data-import-summary></p><details class="mail-import-folders" data-import-folders hidden><summary><span data-i18n="mailImport.folderSummary">文件夹与导入位置</span></summary><p><span data-i18n="mailImport.folderNote">保留源文件夹名称，以下显示整理后的导入位置。</span></p><ul></ul><small></small></details><div data-import-samples></div></section><details data-import-errors hidden><summary><span data-i18n="ui.90d83999bd64">查看需要检查的文件</span></summary><p data-import-issues-note></p><div></div><button type="button" data-import-more-issues hidden><span data-i18n="importFix.moreIssues">查看更多问题</span></button><button type="button" data-import-report><span data-i18n="ui.c9630d09a5f2">下载完整问题清单</span></button></details>
       <input type="file" data-import-reselect accept=".eml,.mbox" multiple hidden><p data-import-error role="alert"></p><p data-import-failed-file hidden></p><p data-import-retry-help hidden></p><p data-import-skipped hidden></p><section class="mail-import-history" data-import-history></section>
-    </div><footer><button type="button" data-import-organize hidden><span data-i18n="importFix.organize">按源文件夹归位</span></button><button type="button" data-import-reset hidden><span data-i18n="ui.9b904c0e2faf">重新选择</span></button><button type="button" data-import-skip hidden><span data-i18n="mailImport.skipFile">跳过此文件，继续添加</span></button><button type="button" data-import-retry-files hidden><span data-i18n="mailImport.retryFiles">仅重试问题文件</span></button><button type="button" data-import-pause hidden><span data-i18n="ui.8d12fc0d4eb2">暂停</span></button><span></span><button type="button" data-import-close><span data-i18n="ui.3fd47edce45b">关闭</span></button><button type="button" class="primary-action" data-import-action disabled><span data-i18n="ui.afcd60d848dc">扫描并去重</span></button></footer>`;
+    </div><footer><button type="button" data-import-organize hidden><span data-i18n="importFix.organize">按源文件夹归位</span></button><button type="button" data-import-reset hidden><span data-i18n="ui.9b904c0e2faf">重新选择</span></button><button type="button" data-import-skip hidden><span data-i18n="mailImport.skipFile">跳过此文件，继续添加</span></button><button type="button" data-import-retry-files hidden><span data-i18n="mailImport.retryFiles">仅重试问题文件</span></button><button type="button" data-import-pause hidden><span data-i18n="ui.8d12fc0d4eb2">暂停</span></button><span></span><button type="button" data-import-close><span data-i18n="ui.3fd47edce45b">关闭</span></button><button type="button" class="primary-action" data-import-action disabled><span data-i18n="mailImport.start">开始导入</span></button></footer>`;
   document.body.append(dialog);
   const $ = selector => dialog.querySelector(selector);
   let files = [], job = null, accountId = '', uploading = false, controller = null, inFlight = false;
@@ -39,17 +38,99 @@
   let timer = 0, generation = 0, pendingDone = null, returnFocus = null, uploadCursor = 0, failedUpload = null;
   const canResumeUpload = () => job?.state === 'collecting' && job.phase === 'upload';
   const retryFileNames = new WeakMap();
-  const fileName = file => retryFileNames.get(file) || (file.webkitRelativePath ? file.webkitRelativePath.split('/').slice(1).join('/') : file.name);
+  const fileName = file => {
+    if (retryFileNames.has(file)) return retryFileNames.get(file);
+    if (!file.webkitRelativePath) return file.name;
+    const parts = file.webkitRelativePath.split('/');
+    // Selecting Inbox or Sent itself must retain its identity, just like
+    // selecting the parent export directory containing those folders.
+    const namedFolder = /^(inbox|sent(?: items| messages)?|收件箱|收件匣|已发送|已发送邮件|已发邮件|发件箱|寄件備份)$/i.test(parts[0].trim());
+    return (namedFolder ? parts : parts.slice(1)).join('/');
+  };
   const transferError = error => error instanceof TypeError ? mailaiText('文件传输中断。已添加的文件已保留，请点击「继续添加」；若文件已移动，请重新选择原文件。') : mailaiSystemMessage(error.message);
   const busy = () => inFlight || uploading || ['scanning', 'importing', 'uploading'].includes(job?.state);
   const request = (path, options = {}) => api('/api/mail/client-imports' + path, {accountId, ...options});
   const post = path => request(path, {method:'POST'});
+  const UPLOAD_IDLE_MS = 30000;
+  let transfer = null;
+  function paintUpload() {
+    if (!uploading) return;
+    mailaiBindUI($('[data-import-status]'), 'textContent', () => mailaiTemplate`正在添加文件：${uploadCursor} / ${files.length}`);
+    const current = $('[data-import-current]');
+    current.hidden = !transfer;
+    if (!transfer) return;
+    mailaiBindUI(current, 'textContent', () => mailaiTemplate`当前文件：${transfer.name}`);
+    mailaiBindUI($('[data-import-progress-note]'), 'textContent', () => transfer.retrying
+      ? mailaiTemplate`传输暂时没有响应，正在核对已保存进度并自动重试（${transfer.attempt} / 2）。`
+      : transfer.sent >= transfer.size
+        ? mailaiTemplate`已传输 ${formatFileSize(transfer.size)}，正在确认文件已保存。`
+        : mailaiTemplate`当前文件已传输 ${formatFileSize(transfer.sent)} / ${formatFileSize(transfer.size)}。`);
+    $('progress').value = uploadCursor + Math.min(.99, transfer.sent / Math.max(transfer.size, 1));
+  }
+  function uploadFile(file, index, signal) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      let watchdog = 0, timeoutError = null, sent = -1, received = -1, settled = false;
+      const finish = (error, result) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(watchdog);
+        signal.removeEventListener('abort', stop);
+        xhr.onload = xhr.onerror = xhr.onabort = xhr.onprogress = xhr.onreadystatechange = null;
+        xhr.upload.onprogress = xhr.upload.onload = null;
+        error ? reject(error) : resolve(result);
+      };
+      const stop = () => { xhr.abort(); finish(new DOMException('Stopped', 'AbortError')); };
+      function onUploadStalled() {
+        timeoutError = new Error(mailaiText('文件传输长时间没有进展，已保存的文件会保留，请继续添加。'));
+        timeoutError.retryable = true;
+        xhr.abort();
+        finish(timeoutError);
+      }
+      const heartbeat = () => { clearTimeout(watchdog); watchdog = setTimeout(onUploadStalled, UPLOAD_IDLE_MS); };
+      if (signal.aborted) { finish(new DOMException('Stopped', 'AbortError')); return; }
+      xhr.open('PUT', API + '/api/mail/client-imports/' + job.token + '/files?index=' + index + '&name=' + encodeURIComponent(fileName(file)));
+      xhr.responseType = 'json';
+      xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+      xhr.setRequestHeader('X-MailAI-Account', accountId);
+      xhr.upload.onprogress = event => {
+        if (event.loaded <= sent) return;
+        sent = event.loaded; heartbeat();
+        transfer.sent = Math.min(file.size, event.loaded); paintUpload();
+      };
+      xhr.upload.onload = () => { heartbeat(); transfer.sent = file.size; paintUpload(); };
+      xhr.onreadystatechange = () => { if (xhr.readyState === 2) heartbeat(); };
+      xhr.onprogress = event => { if (event.loaded > received) { received = event.loaded; heartbeat(); } };
+      xhr.onload = () => {
+        window.mailaiConnectionRestored?.();
+        if (xhr.status >= 200 && xhr.status < 300 && xhr.response?.token) { finish(null, xhr.response); return; }
+        const error = new Error(xhr.response?.detail || 'HTTP ' + xhr.status);
+        error.status = xhr.status; finish(error);
+      };
+      xhr.onerror = () => { window.mailaiConnectionFailed?.(); finish(new TypeError('Upload failed')); };
+      xhr.onabort = () => finish(timeoutError || new DOMException('Stopped', 'AbortError'));
+      signal.addEventListener('abort', stop, {once:true});
+      heartbeat();
+      try { xhr.send(file); } catch (error) { finish(error); }
+    });
+  }
+  async function awaitUploadRelease(signal) {
+    // Aborting a request can race the server's stream cleanup. Do not start
+    // another writer until the old one has released the job.
+    for (let attempt=0; attempt<10; attempt++) {
+      if (signal.aborted) throw new DOMException('Stopped', 'AbortError');
+      job = await request('/' + job.token, {signal, timeoutMs:5000});
+      if (job.state !== 'uploading') return;
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    throw new Error(mailaiText('文件仍在结束传输，请稍候再继续添加；已保存的文件会保留。'));
+  }
   function setPending(working) {
     if (working && !pendingDone) pendingDone = window.mailaiMotion?.pending($('[data-import-status]')) || (() => {});
     if (!working && pendingDone) { pendingDone(); pendingDone = null; }
   }
   function uploadAdvice(reason) {
-    if (/64\s*MB|256\s*MB|超过当前|1\s*GB|10\s*GB|超过.*封|超过.*文件/i.test(reason)) return mailaiText("64–256 MB 的邮件可开启大邮件模式后单独重试。单个 MBOX 最多 1 GB，每批最多 10 GB；超出时请分批导出。超过 256 MB 的单封邮件请保留原件，另存较小副本后导入。");
+    if (/256\s*MB|超过当前|10\s*GB|超过.*封|超过.*文件/i.test(reason)) return mailaiText('大附件已自动分块处理。单封邮件最多 256 MB，单个 MBOX 最多 10 GB；超过时请在原客户端分开导出，保留完整原件，再补导对应文件。');
     if (/为空|空文件/i.test(reason)) return mailaiText("此文件没有邮件内容。请在原客户端打开邮件，下载完整正文和附件后重新导出；确认文件大小不为 0，再单独导入。");
     if (/找不到|不存在|读取失败/i.test(reason)) return mailaiText("请确认源文件仍在原位置且可读取，云盘文件需先下载到本机。若暂存文件已丢失，请重新选择原文件建立新批次；已导入邮件会自动去重。");
     if (/磁盘|权限|暂存|保存|写入/i.test(reason)) return mailaiText("请检查 MailAI 数据目录所在磁盘的剩余空间和写入权限，并确认源文件可读取。处理后重试；已成功导入的邮件会保留。");
@@ -66,8 +147,7 @@
   function paint() {
     const working = busy(), state = job?.state;
     const reviewed = ['ready','importing','completed'].includes(state) || (['paused','failed'].includes(state) && job.phase === 'import');
-    const step = !job || job.phase === 'upload' || job.phase === 'scan' && !reviewed ? 'select' : job.phase === 'import' ? 'apply' : 'review';
-    mailaiBindUI($('[data-import-final-step]'), "textContent", () => (state === 'completed' ? mailaiText('导入完成') : mailaiText('导入邮件')));
+    const step = !job ? 'select' : state === 'completed' || state === 'ready' && !job.new ? 'done' : 'apply';
     dialog.querySelectorAll('[data-step]').forEach(n => { n.classList.toggle('active', n.dataset.step === step); if (n.dataset.step === step) n.setAttribute('aria-current','step'); else n.removeAttribute('aria-current'); });
     $('#mail-import-account').disabled = Boolean(job) || busy();
     $('#mail-import-label').disabled = Boolean(job) || busy();
@@ -75,8 +155,6 @@
     if (job) $('[data-import-destination]').value = job.destination || 'local_archive';
     $('[data-import-organize]').hidden = state !== 'completed' || (job.destination || 'local_archive') !== 'local_archive' || !(job.folders || []).some(row => /(?:^|\/)(?:inbox|sent(?: items| messages)?|收件箱|已发送|已发送邮件|已发邮件|发件箱)(?:$|\/)/i.test(row.name));
     $('[data-import-organize]').disabled = working;
-    $('[data-import-large]').disabled = Boolean(job) || busy();
-    if (job) $('[data-import-large]').checked = Boolean(job.large_messages);
     $('[data-import-retry-files]').hidden = !job?.failed || !(state === 'completed' || state === 'ready' && !job.new);
     $('[data-import-retry-files]').disabled = working;
     $('[data-import-files]').disabled = busy(); $('[data-import-folder]').disabled = busy();
@@ -89,7 +167,7 @@
     const total = job?.phase === 'upload' ? job.expected_files : job?.total || 0;
     progress.max = Math.max(total, 1);
     if (total) progress.value = job?.phase === 'upload' ? (uploading ? uploadCursor : job.files) : job?.processed || 0; else progress.removeAttribute('value');
-    mailaiBindUI($('[data-import-progress-note]'), "textContent", () => (uploading ? mailaiText('正在复制到本机工作目录。中断可继续；关闭软件后可重选原批次文件恢复。') : state === 'importing' ? mailaiText('可暂停或关闭窗口。关闭后会在后台继续导入。') : state === 'scanning' ? mailaiText('扫描只核对邮件，尚未导入。关闭窗口后会继续扫描。') : ['paused','failed'].includes(state) ? (job.phase === 'import' ? mailaiText('已成功导入的邮件会保留，继续时会自动跳过。') : mailaiText('继续后会重新扫描整批文件，扫描不会修改已有邮件。')) : ''));
+    mailaiBindUI($('[data-import-progress-note]'), "textContent", () => (uploading ? mailaiText('正在复制到本机工作目录。中断可继续；关闭软件后可重选原批次文件恢复。') : state === 'importing' ? mailaiText('可暂停或关闭窗口。关闭后会在后台继续导入。') : state === 'scanning' ? (job.auto_import ? mailaiText('正在自动去重和整理，随后直接导入。关闭窗口后会在后台继续。') : mailaiText('扫描只核对邮件，尚未导入。关闭窗口后会继续扫描。')) : ['paused','failed'].includes(state) ? (job.phase === 'import' ? mailaiText('已成功导入的邮件会保留，继续时会自动跳过。') : mailaiText('继续后会重新扫描整批文件，扫描不会修改已有邮件。')) : ''));
     const current = $('[data-import-current]');
     current.hidden = !job?.current_source || job?.phase === 'upload';
     mailaiBindUI(current, "textContent", () => (job?.current_source ? mailaiTemplate`当前文件：${job.current_source}${job.phase === 'scan' && job.source_total ? mailaiTemplate` · 已扫描 ${Number(job.source_processed || 0).toLocaleString(currentI18nLanguage())} / ${Number(job.source_total).toLocaleString(currentI18nLanguage())} 封` : ''}` : ''));
@@ -102,11 +180,11 @@
       const imported = Number(job.imported || 0);
       $('[data-count="new"]').textContent = state === 'completed' || job.phase === 'import' ? imported.toLocaleString(currentI18nLanguage()) : Number(job.new || 0).toLocaleString(currentI18nLanguage());
       mailaiBindUI($('[data-count="new"]').previousElementSibling, "textContent", () => (job.phase === 'import' ? mailaiText('已新增') : mailaiText('待新增')));
-      mailaiBindUI($('[data-import-summary]'), "textContent", () => (state === 'completed' ? mailaiTemplate`已新增 ${imported} 封，跳过重复 ${job.duplicates} 封${job.failed ? mailaiTemplate`，${job.failed} 项未能导入` : ''}。` + mailaiTemplate`导入位置：${destinationLabel(job.destination || 'local_archive')}。` : !job.new ? (job.skipped_files ? mailaiTemplate`没有可新增的邮件，已单独跳过 ${job.skipped_files} 个文件。请查看下方原因和处理建议，修复后另行补导。` : job.failed ? mailaiTemplate`没有可新增的邮件，${job.failed} 项无法识别。请查看下方原因，重新导出后再选择。` : job.errors?.length ? mailaiText('没有可确认新增的邮件。部分已有邮件原文不完整，请展开文件说明，重新同步后再导入。') : mailaiText('没有需要新增的邮件。已有邮件会保留，无需再次导入。')) : mailaiTemplate`预计新增 ${job.new} 封邮件；重复项会自动跳过，原有邮件不会被覆盖。`));
+      mailaiBindUI($('[data-import-summary]'), "textContent", () => (state === 'completed' && !job.new ? (job.failed ? mailaiTemplate`没有可导入的邮件，${job.failed} 项需要重新导出。可查看原因后仅重试问题文件。` : job.errors?.length ? mailaiText('没有可确认新增的邮件。部分已有邮件原文不完整，请展开文件说明，重新同步后再导入。') : mailaiText('没有需要新增的邮件。已有邮件会保留，无需再次导入。')) : state === 'completed' ? mailaiTemplate`已新增 ${imported} 封，跳过重复 ${job.duplicates} 封${job.failed ? mailaiTemplate`，${job.failed} 项未能导入` : ''}。` + mailaiTemplate`导入位置：${destinationLabel(job.destination || 'local_archive')}。` : !job.new ? (job.skipped_files ? mailaiTemplate`没有可新增的邮件，已单独跳过 ${job.skipped_files} 个文件。请查看下方原因和处理建议，修复后另行补导。` : job.failed ? mailaiTemplate`没有可新增的邮件，${job.failed} 项无法识别。请查看下方原因，重新导出后再选择。` : job.errors?.length ? mailaiText('没有可确认新增的邮件。部分已有邮件原文不完整，请展开文件说明，重新同步后再导入。') : mailaiText('没有需要新增的邮件。已有邮件会保留，无需再次导入。')) : mailaiTemplate`预计新增 ${job.new} 封邮件；重复项会自动跳过，原有邮件不会被覆盖。`));
       const sampleKey = JSON.stringify(job.samples || []);
       if (renderedSamples !== sampleKey) {
         const wasOpen = $('[data-import-samples] details')?.open;
-        $('[data-import-samples]').innerHTML = (job.samples || []).length ? `<details><summary><span data-i18n="ui.4763e4c7a5ee">预览前 ${(job.samples || []).length} 封待新增邮件</span></summary><div class="mail-import-samples">${job.samples.map(row=>`<article><b>${esc(row.subject)}</b><small>${esc(row.from_addr)} · ${esc(row.date || mailaiText('日期未记录'))}${row.folder ? ` · ${esc(row.folder)}` : ''}</small></article>`).join('')}</div></details>` : '';
+        $('[data-import-samples]').innerHTML = (job.samples || []).length ? `<details><summary><span data-i18n="mailImport.sampleSummary">查看前 ${(job.samples || []).length} 封邮件示例</span></summary><div class="mail-import-samples">${job.samples.map(row=>`<article><b>${esc(row.subject)}</b><small>${esc(row.from_addr)} · ${esc(row.date || mailaiText('日期未记录'))}${row.folder ? ` · ${esc(row.folder)}` : ''}</small></article>`).join('')}</div></details>` : '';
         if (wasOpen && $('[data-import-samples] details')) $('[data-import-samples] details').open = true;
         renderedSamples = sampleKey;
       }
@@ -123,7 +201,7 @@
     $('[data-import-errors]').hidden = !issues.length;
     $('[data-import-show-issues]').hidden = !issues.length;
     $('[data-import-show-issues]').disabled = working;
-    if (issues.length && ['ready','completed','failed'].includes(state) && issuesOpenToken !== job.token) {
+    if (issues.length && ['ready','completed','failed'].includes(state) && !job.imported && !job.new && issuesOpenToken !== job.token) {
       $('[data-import-errors]').open = true;
       issuesOpenToken = job.token;
     }
@@ -152,21 +230,22 @@
     $('[data-import-skipped]').hidden = !job?.skipped_files;
     mailaiBindUI($('[data-import-skipped]'), 'textContent', () => job?.skipped_files ? mailaiTemplate`已单独跳过 ${job.skipped_files} 个文件，扫描后的问题清单会保留记录，方便之后补导。` : '');
     const action = $('[data-import-action]');
-    mailaiBindUI(action, "textContent", () => (inFlight && !uploading ? mailaiText('请稍候…') : state === 'completed' ? mailaiText('查看导入邮件') : ['paused','failed'].includes(state) ? mailaiText('继续') : state === 'ready' ? mailaiTemplate`导入缺少的 ${job.new} 封邮件` : canResumeUpload() && job.files < job.expected_files ? mailaiText('继续添加') : mailaiText('扫描并去重')));
+    mailaiBindUI(action, "textContent", () => (inFlight && !uploading ? mailaiText('请稍候…') : state === 'completed' ? (job.imported || job.duplicates ? mailaiText('查看导入邮件') : mailaiText('重新选择')) : ['paused','failed'].includes(state) ? mailaiText('继续') : state === 'ready' ? mailaiTemplate`导入缺少的 ${job.new} 封邮件` : canResumeUpload() && job.files < job.expected_files ? mailaiText('继续添加') : mailaiText('开始导入')));
     action.disabled = working || (state === 'collecting' && job.files !== job.expected_files && files.length !== job.expected_files) || (!job ? !files.length || !accountId || Boolean(labelError()) : state === 'ready' ? !job.new : !['completed','paused','failed','collecting'].includes(state));
+    paintUpload();
   }
   function selected() {
     const ignored = files.filter(n => !/\.(eml|mbox)$/i.test(n.name)).length;
     files = files.filter(n => /\.(eml|mbox)$/i.test(n.name));
+    if (!job || job.auto_import) files.sort((a,b) => fileName(a).localeCompare(fileName(b), 'en'));
     const bytes = files.reduce((sum, file) => sum + file.size, 0);
     const error = canResumeUpload() && files.length !== job.expected_files ? mailaiTemplate`请选回原批次的 ${job.expected_files} 个邮件文件，已添加的文件会校验复用。` : files.length > 20000 ? mailaiText('一批最多选择 20000 个文件，请分批选择。') : '';
     mailaiBindUI($('[data-import-error]'), "textContent", () => (error || (files.length ? labelError() : '') || (!files.length ? mailaiText('未找到邮件文件，请先从 Foxmail 导出为 EML 或 MBOX。') : '')));
     $('[data-import-selected]').innerHTML = files.length ? `<p><b><span data-i18n="ui.e49d139a999a">已选择 ${files.length} 个邮件文件</span></b> · ${formatFileSize(bytes)}${ignored ? mailaiTemplate` · 跳过 ${ignored} 个非邮件文件` : ''}</p><ul>${files.slice(0,5).map(file=>`<li><span class="mail-import-filename" title="${esc(file.webkitRelativePath || file.name)}">${esc(file.webkitRelativePath || file.name)}</span><small>${esc(formatFileSize(file.size))}</small></li>`).join('')}</ul>` : '';
     if (error) files = [];
     if (files.length) { $('.mail-import-help').open = false; rememberFiles(); }
-    $('[data-import-selected]').insertAdjacentHTML('beforeend', files.length ? `<p>${esc(mailaiText('超限文件会自动跳过，不影响其他邮件。完成后可仅重试问题文件。'))}</p>` : '');
-    const limit = (job?.large_messages || !job && $('[data-import-large]').checked ? 256 : 64) * 1024**2;
-    const oversized = files.filter(file => file.size > (/\.eml$/i.test(file.name) ? limit : 1024**3)).length;
+    const limit = 256 * 1024**2;
+    const oversized = files.filter(file => file.size > (/\.eml$/i.test(file.name) ? limit : 10 * 1024**3)).length;
     if (oversized) $('[data-import-selected]').insertAdjacentHTML('beforeend', `<p class="mail-import-preflight">${esc(mailaiTemplate`有 ${oversized} 个文件超过当前上限，将跳过并保留重试记录。`)}</p>`);
     paint();
   }
@@ -204,6 +283,7 @@
     accountId = $('#mail-import-account').value;
     $('#mail-import-label').value = mailaiText('Foxmail 导入');
     $('[data-import-destination]').value = 'auto';
+    $('.mail-import-advanced').open = false;
     retryTargets = []; issuesOpenToken = '';
     $('#mail-import-files').value = ''; $('#mail-import-folder').value = '';
     $('[data-import-selected]').replaceChildren(); $('[data-import-history]').replaceChildren();
@@ -221,7 +301,6 @@
   dialog.addEventListener('cancel', event=>{event.preventDefault();close();});
   $('#mail-import-account').onchange = () => { accountId = $('#mail-import-account').value; generation++; paint(); listHistory(); };
   $('#mail-import-label').oninput = () => { $('[data-import-error]').textContent = labelError(); paint(); };
-  $('[data-import-large]').onchange = () => { if (!busy() && !job) selected(); };
   $('[data-import-files]').onclick = () => $('#mail-import-files').click();
   $('[data-import-folder]').onclick = () => $('#mail-import-folder').click();
   for (const selector of ['#mail-import-files','#mail-import-folder']) $(selector).onchange=event=>{if (busy() || (job && !canResumeUpload())) return; files=Array.from(event.target.files || []); uploadCursor = 0; failedUpload = null; selected();};
@@ -297,7 +376,6 @@
     renderedSamples = renderedIssues = renderedFolders = '';
     $('[data-import-errors]').open = false;
     $('[data-import-destination]').value = destination;
-    $('[data-import-large]').checked = files.some(file => /\.eml$/i.test(file.name) && file.size > 64 * 1024**2 && file.size <= 256 * 1024**2);
     retryTargets = []; selected();
   }
   async function retrySources(names) {
@@ -367,23 +445,23 @@
     // Lock before awaiting creation: a second click cannot create another batch.
     inFlight = true; paint();
     try {
+      if (job?.state === 'completed' && !job.imported && !job.duplicates) { inFlight = false; await $('[data-import-reset]').onclick(); return; }
       if (job?.state === 'completed') {
         const target = accountId; inFlight = false; await close(); hideSystemView(true); await openAccountMailbox(target, job.destination === 'inbox' || job.destination === 'sent' ? job.destination : job.destination === 'auto' ? 'all' : 'local_archive'); if (job.destination === 'auto' || job.destination === 'inbox') { currentFilter.days = 9999; await loadData({silent:true}); } return;
       }
       if (!job) {
-        job = await request('', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({label:$('#mail-import-label').value.trim(),expected_files:files.length,large_messages:$('[data-import-large]').checked,destination:$('[data-import-destination]').value})});
+        job = await request('', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({label:$('#mail-import-label').value.trim(),expected_files:files.length,auto_import:true,destination:$('[data-import-destination]').value})});
         uploadCursor = 0; failedUpload = null; rememberFiles();
       }
       if (canResumeUpload() && files.length && uploadCursor < files.length) {
         uploading = true; controller = new AbortController(); paint();
         for (let i=uploadCursor; i<files.length; i++) {
           const file = files[i];
-          const limit = /\.eml$/i.test(file.name) ? (job.large_messages ? 256 : 64) * 1024**2 : 1024**3;
-          const remaining = 10 * 1024**3 - job.bytes;
+          const limit = /\.eml$/i.test(file.name) ? 256 * 1024**2 : 10 * 1024**3;
           // Preflight avoids transferring oversized files just to reject them.
           // Saved ordinals must still be replayed/verified by the server.
-          if (i >= job.files && (file.size > limit || file.size > remaining)) {
-            const reason = file.size > limit ? mailaiCopySource(mailaiTemplate`文件大小 ${formatFileSize(file.size)}，超过当前 ${formatFileSize(limit)} 限制`) : mailaiCopySource(mailaiText('本批累计超过 10 GB，已留待下一批导入'));
+          if (i >= job.files && (file.size > limit || !file.size)) {
+            const reason = !file.size ? mailaiCopySource(mailaiText('文件为空，请在 Foxmail 中重新导出后再选择')) : mailaiCopySource(mailaiTemplate`文件大小 ${formatFileSize(file.size)}，超过当前 ${formatFileSize(limit)} 限制`);
             job = await request('/' + job.token + '/skip-file', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({index:i,name:fileName(file),reason}),signal:controller.signal});
             uploadCursor = i + 1; job.processed = uploadCursor; paint();
             continue;
@@ -392,27 +470,36 @@
           // but its response never reached this browser.
           for (let attempt=0; ; attempt++) {
             try {
-              job = await request('/' + job.token + '/files?index=' + i + '&name=' + encodeURIComponent(fileName(file)), {method:'PUT',headers:{'Content-Type':'application/octet-stream'},body:file,signal:controller.signal});
+              transfer = {name:fileName(file), size:file.size, sent:0, attempt, retrying:false};
+              paintUpload();
+              job = await uploadFile(file, i, controller.signal);
               break;
             } catch (error) {
-              if (controller.signal.aborted || attempt >= 2 || !(error instanceof TypeError)) {
+              if (!controller.signal.aborted && error.status === 400) {
+                job = await request('/' + job.token + '/skip-file', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({index:i,name:fileName(file),reason:String(error.message).slice(0,500)}),signal:controller.signal});
+                break;
+              }
+              if (controller.signal.aborted || attempt >= 2 || !(error.retryable || error instanceof TypeError || [408,502,503,504].includes(error.status))) {
                 if (!controller.signal.aborted) failedUpload = {index:i, name:fileName(file), reason:error instanceof TypeError ? mailaiCopySource(mailaiText('文件传输中断，已添加的文件已保留，请继续添加')) : String(error.message)};
                 throw error;
               }
+              transfer.retrying = true; transfer.attempt = attempt + 1; paintUpload();
+              await awaitUploadRelease(controller.signal);
               await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
               if (controller.signal.aborted) throw new DOMException('Stopped', 'AbortError');
             }
           }
-          failedUpload = null; uploadCursor = i + 1;
+          failedUpload = null; uploadCursor = i + 1; transfer = null;
           job.processed = uploadCursor;
+          paintUpload();
           if (i % 10 === 0 || uploadCursor === files.length) paint();
         }
-        uploading = false; controller = null;
+        uploading = false; controller = null; transfer = null;
       }
       job = await post('/' + job.token + (job.state === 'ready' || job.phase === 'import' ? '/apply' : '/scan'));
       if (version === generation) { paint(); poll(); }
     } catch (error) {
-      uploading = false; controller = null; setPending(false);
+      uploading = false; controller = null; transfer = null; setPending(false);
       if (version === generation) {
         if (job) { try { job = await request('/' + job.token); } catch (_) {} }
         mailaiBindUI($('[data-import-error]'), "textContent", () => (error.name === 'AbortError' ? mailaiText('已停止添加，已添加的文件已保留。点击「继续添加」即可接着传输。') : transferError(error)));

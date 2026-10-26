@@ -22,10 +22,10 @@ from . import config, db, parser
 from .account_guard import start_account_thread
 
 log = logging.getLogger(__name__)
-MAX_SOURCE_SIZE = 1024**3
-MAX_MESSAGE_SIZE = 64 * 1024**2
+MAX_SOURCE_SIZE = 10 * 1024**3  # MBOX is streamed; this is not a per-message limit.
+MAX_MESSAGE_SIZE = 64 * 1024**2  # Eager parsing threshold, not an import limit.
 MAX_LARGE_MESSAGE_SIZE = 256 * 1024**2
-MAX_TOTAL_SIZE = 10 * 1024**3
+DISK_RESERVE = 64 * 1024**2
 MAX_FILES = 20_000
 MAX_MESSAGES = 200_000
 _lock = threading.RLock()
@@ -92,7 +92,10 @@ def _update(token, **fields):
 
 
 def _public(job):
-    return {k: v for k, v in job.items() if k != 'sources'}
+    result = {k: v for k, v in job.items() if k != 'sources'}
+    # Old batches may contain advice for the retired large-message switch.
+    result['errors'] = [{**row, 'advice':failure_advice(row['reason'])} for row in job.get('errors', [])]
+    return result
 
 
 def status(token):
@@ -139,7 +142,7 @@ def report(token):
                             issue = json.loads(line)
                             kind = '请核对' if issue.get('kind') == 'warning' else '已跳过' if issue.get('kind') == 'skipped' else '未导入'
                             writer.writerow([label, kind, cell(issue['file']), cell(issue['reason']), cell(job['label']),
-                                             cell(issue.get('advice') or failure_advice(issue['reason']))])
+                                             cell(failure_advice(issue['reason']))])
             os.replace(partial, target)
         finally:
             partial.unlink(missing_ok=True)
@@ -167,7 +170,7 @@ def retry_files(token):
 def failure_advice(reason):
     """Actionable help, also included in exported reports for later re-import."""
     if re.search(r'64\s*MB|256\s*MB|超过当前|1\s*GB|10\s*GB|超过.*封|超过.*文件', reason, re.I):
-        return '64–256 MB 的邮件可开启大邮件模式后单独重试。单个 MBOX 最多 1 GB，每批最多 10 GB；超出时请分批导出。超过 256 MB 的单封邮件请保留原件，另存较小副本后导入。'
+        return '大附件已自动分块处理。单封邮件最多 256 MB，单个 MBOX 最多 10 GB；超过时请在原客户端分开导出，保留完整原件，再补导对应文件。'
     if re.search(r'为空|空文件', reason):
         return '此文件没有邮件内容。请在原客户端打开邮件，下载完整正文和附件后重新导出；确认文件大小不为 0，再单独导入。'
     if re.search(r'找不到|不存在|读取失败', reason):
@@ -229,6 +232,7 @@ def issues(token, offset=0, limit=30):
                     row = json.loads(line)
                     if offset <= total < offset + limit:
                         row['source'] = re.sub(r' · 第 \d+ 封$', '', row['file'])
+                        row['advice'] = failure_advice(row['reason'])
                         rows.append(row)
                     total += 1
         return dict(items=rows, total=total)
@@ -259,7 +263,7 @@ def organize(token):
         return _public(_update(token, destination='auto', organized=changed, folders=folders))
 
 
-def create(label='Foxmail 导入', expected_files=0, large_messages=False, destination='local_archive'):
+def create(label='Foxmail 导入', expected_files=0, large_messages=False, destination='local_archive', auto_import=False):
     if destination not in ('auto', 'inbox', 'sent', 'local_archive'):
         raise ValueError('请选择有效的导入位置')
     label = str(label).strip()
@@ -276,13 +280,20 @@ def create(label='Foxmail 导入', expected_files=0, large_messages=False, desti
         (directory / 'sources').mkdir(parents=True, mode=0o700)
         (directory / 'messages').mkdir(mode=0o700)
         job = dict(token=token, label=label, state='collecting', phase='upload',
-                   large_messages=bool(large_messages), destination=destination,
+                   # Accept the legacy option, but sizing is automatic now.
+                   large_messages=True, destination=destination, auto_import=bool(auto_import),
                    created_at=time.time(), updated_at=time.time(), bytes=0,
                    files=0, expected_files=expected_files, processed=0, total=0, found=0, new=0, duplicates=0,
                    imported=0, failed=0, errors=[], samples=[], issue_count=0, folders=[],
                    current_source='', source_processed=0, source_total=0, cancel=False, error='')
         _write(job)
         return _public(job)
+
+
+def ensure_space(directory, size=0):
+    """Reserve room for staging and the final original, before copying data."""
+    if shutil.disk_usage(directory).free < size + DISK_RESERVE:
+        raise OSError(errno.ENOSPC, '磁盘剩余空间不足')
 
 
 def begin_upload(token, name, index=None):
@@ -300,6 +311,8 @@ def begin_upload(token, name, index=None):
             raise ValueError('文件添加顺序不一致，请重新选择原批次文件后继续')
         if job['files'] >= MAX_FILES and (index is None or index == job['files']):
             raise ValueError('一批最多添加 20000 个文件，请分批导入')
+        if job['expected_files'] and job['files'] >= job['expected_files'] and (index is None or index == job['files']):
+            raise ValueError('所选文件与此批次已添加的文件不一致，请选择原批次文件或重新开始')
         key = uuid.uuid4().hex + path.suffix.lower()
         _active.add(str(_path(token)))
         _update(token, state='uploading')
@@ -337,8 +350,9 @@ def finish_upload(token, key, name, size, index=None, digest=None):
             return _public(job)
         if index != job['files']:
             raise ValueError('文件添加顺序不一致，请重试')
-        if size > MAX_SOURCE_SIZE or job['bytes'] + size > MAX_TOTAL_SIZE:
-            raise ValueError('超过大小限制：单个文件 1 GB，每批 10 GB')
+        limit = MAX_LARGE_MESSAGE_SIZE if source_path.suffix == '.eml' else MAX_SOURCE_SIZE
+        if size > limit:
+            raise ValueError(f'文件大小超过 {limit // 1024**2} MB，请在原客户端分开导出')
         # Store each source separately: progress updates must stay constant-size
         # even for a directory containing thousands of individual EML files.
         meta.write_text(json.dumps(dict(key=key, name=name, size=size, digest=digest), ensure_ascii=False), 'utf-8')
@@ -450,11 +464,28 @@ def start(token, phase):
 def _run(token, phase):
     outcome = None
     try:
-        outcome = (scan if phase == 'scan' else execute)(token)
+        if phase == 'scan':
+            outcome = scan(token)
+            if _read(token).get('auto_import'):
+                # Persist the continuation before cleanup. Reopening the UI or
+                # restarting the app will resume from the saved import plan.
+                with _lock:
+                    _check(token)
+                    _update(token, **{**outcome, 'phase':'import', 'state':'importing', 'error':''})
+                phase = 'import'
+        if phase == 'import':
+            _check(token)
+            # The plan and staged originals are sufficient for safe retries.
+            # Release upload copies before producing final originals so peak
+            # space is two copies rather than three.
+            shutil.rmtree(_path(token) / 'sources', ignore_errors=True)
+            outcome = execute(token)
     except Paused:
         outcome = dict(state='paused', error='')
     except SourceLimit as exc:
         outcome = dict(state='failed', error=str(exc))
+    except OSError as exc:
+        outcome = dict(state='failed', error=file_error(exc))
     except Exception:
         log.exception('Client mail import failed')
         outcome = dict(state='failed', error='导入暂时停止。请检查磁盘空间和文件是否可读，再点击继续。')
@@ -570,7 +601,18 @@ def _messages(source, directory):
                 raise ValueError('邮件文件中没有找到邮件，请重新导出')
             for i, key in enumerate(box.iterkeys()):
                 with box.get_file(key) as stream, scratch.open('wb') as output:
-                    shutil.copyfileobj(stream, output, 1024 * 1024)
+                    # Do not spool a multi-GB single message just to discover
+                    # that it exceeds the per-message bound. The next message
+                    # remains readable and pause requests stay responsive.
+                    remaining = MAX_LARGE_MESSAGE_SIZE + 1
+                    while remaining:
+                        _check(directory.name)
+                        chunk = stream.read(min(1024 * 1024, remaining))
+                        if not chunk:
+                            break
+                        ensure_space(directory, len(chunk))
+                        output.write(chunk)
+                        remaining -= len(chunk)
                 yield f"{source['name']} · 第 {i + 1} 封", scratch, len(box)
         finally:
             scratch.unlink(missing_ok=True)
@@ -644,7 +686,7 @@ def scan(token):
                     if counters['found'] > MAX_MESSAGES:
                         raise SourceLimit('一批最多导入 200000 封邮件，请点击「重新选择」并分批导入。')
                     try:
-                        limit = MAX_LARGE_MESSAGE_SIZE if job.get('large_messages') else MAX_MESSAGE_SIZE
+                        limit = MAX_LARGE_MESSAGE_SIZE
                         if raw.stat().st_size > limit:
                             raise ValueError(f"邮件大小 {raw.stat().st_size / 1024**2:.1f} MB，超过当前 {limit // 1024**2} MB 限制")
                         raw_digest, digest, message_id = signature(raw)
@@ -659,12 +701,17 @@ def scan(token):
                             parsed = _parse_exported(raw)
                             key = f"{counters['new']:08d}.eml"
                             try:
+                                ensure_space(directory, raw.stat().st_size)
                                 shutil.copyfile(raw, directory / 'messages' / key)
                             except OSError as exc:
+                                if exc.errno == errno.ENOSPC:
+                                    raise
                                 raise RuntimeError('暂存邮件失败，请检查磁盘空间') from exc
                             folder = str(PurePosixPath(source['name']).parent)
+                            if source['key'].endswith('.mbox'):
+                                folder = str(PurePosixPath(folder) / PurePosixPath(source['name']).stem)
                             if folder == '.':
-                                folder = PurePosixPath(source['name']).stem if source['key'].endswith('.mbox') else ''
+                                folder = ''
                             item = dict(key=key, raw_digest=raw_digest, digest=digest, message_id=message_id,
                                         folder=folder, source=name, subject=parsed['subject'], date=parsed['date'], from_addr=parsed['from_addr'])
                             try:
@@ -687,6 +734,8 @@ def scan(token):
                                 source_processed=source_processed, source_total=source_total,
                                 message=f"正在扫描文件 {index + 1} / {job['files']} · 已识别 {counters['found']} 封")
             except (OSError, ValueError) as exc:
+                if isinstance(exc, OSError) and exc.errno == errno.ENOSPC:
+                    raise
                 counters['failed'] += 1
                 issue_count += 1
                 _record_issue(issues, errors, source['name'], str(exc) if isinstance(exc, ValueError) else file_error(exc))
@@ -714,6 +763,7 @@ def _insert(token, item, raw):
     target = directory / (uuid.uuid4().hex + '.eml')
     # Copy before the transaction; failure cannot leave a row with missing content.
     try:
+        ensure_space(directory, raw.stat().st_size if isinstance(raw, Path) else len(raw))
         shutil.copyfile(raw, target) if isinstance(raw, Path) else target.write_bytes(raw)
         with db.conn() as c:
             c.execute('BEGIN IMMEDIATE')
@@ -779,6 +829,8 @@ def execute(token):
                 result = _insert(token, item, raw)
                 imported += int(result == 'imported'); duplicates += int(result == 'duplicate')
             except (OSError, ValueError, UnicodeError) as exc:
+                if isinstance(exc, OSError) and exc.errno == errno.ENOSPC:
+                    raise
                 failed += 1
                 issue_count += 1
                 reason = file_error(exc) if isinstance(exc, OSError) else '邮件内容无法解析，请重新导出此邮件' if isinstance(exc, UnicodeError) else str(exc)

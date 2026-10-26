@@ -123,7 +123,8 @@ class Coordinator:
                  sleep=time.sleep, emit=None):
         self.api = api
         self.clock, self.sleep, self.interval = clock, sleep, interval
-        self.deadline = clock() + timeout
+        self.started = clock()
+        self.deadline = self.started + timeout
         self.emit = emit or (lambda stage, **data: print(json.dumps(
             {'time': datetime.now(timezone.utc).isoformat(timespec='seconds'),
              'stage': stage, **data}, ensure_ascii=False), flush=True))
@@ -244,6 +245,11 @@ class Coordinator:
                 self.pause(workflow)
                 continue
             if run['conclusion'] == 'success':
+                created = datetime.fromisoformat(run['created_at'].replace('Z', '+00:00'))
+                updated = datetime.fromisoformat(run['updated_at'].replace('Z', '+00:00'))
+                self.emit('workflow-complete', workflow=workflow, run=run['id'],
+                          attempt=run['run_attempt'],
+                          seconds=max(0, round((updated - created).total_seconds())))
                 return run
             if (run['conclusion'] == 'failure' and run['run_attempt'] == 1
                     and (retry_guard is None or retry_guard())):
@@ -368,7 +374,8 @@ class Coordinator:
             if read_channel() != manifest:
                 raise ValueError('Domestic update channel differs from the official signed manifest')
         self.emit('complete', version=plan['version'], merged_sha=merged, source_run=source,
-                  url=manifest['release_url'], mirror='verified')
+                  url=manifest['release_url'], mirror='verified',
+                  elapsed_seconds=round(self.clock() - self.started))
 
 
 def main(argv=None):

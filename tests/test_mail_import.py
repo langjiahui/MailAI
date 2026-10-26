@@ -233,9 +233,9 @@ def test_upload_disconnect_and_limits():
     with fixture() as (_, account), account('work'):
         token = imp.create(expected_files=1)['token']
         for request, limit in ((Request([b'partial'], True), 1024), (Request([b'x'*33]), 32)):
-            with patch.object(imp, 'MAX_MESSAGE_SIZE', limit):
+            with patch.object(imp, 'MAX_LARGE_MESSAGE_SIZE', limit):
                 try: asyncio.run(api_mail_import_upload(token, request, 'old.eml'))
-                except HTTPException as exc: assert exc.status_code == 400
+                except HTTPException as exc: assert exc.status_code == (408 if request.disconnect else 400)
                 else: raise AssertionError('Invalid upload accepted')
             job = imp.status(token)
             assert job['state'] == 'collecting' and job['files'] == job['bytes'] == 0
@@ -244,6 +244,35 @@ def test_upload_disconnect_and_limits():
         result = asyncio.run(api_mail_import_upload(token, Request([raw[:100], raw[100:]]), '收件箱/old.eml'))
         assert result['files'] == 1 and result['bytes'] == len(raw)
         assert scan(token)['new'] == 1 and apply(token)['imported'] == 1
+
+
+def test_upload_idle_timeout_and_progress():
+    from fastapi import HTTPException
+    from app.web.routes import mail_import as route
+    class SlowRequest:
+        def __init__(self, raw, delay): self.raw, self.delay = raw, delay
+        async def stream(self):
+            for offset in range(0, len(self.raw), 32):
+                yield self.raw[offset:offset + 32]
+                await asyncio.sleep(self.delay)
+    with fixture() as (_, account), account('work'):
+        token = imp.create(expected_files=2)['token']
+        first = message('before-stall', attachment=False)
+        upload(token, 'first.eml', first)
+        remaining = message('after-stall', attachment=False)
+        with patch.object(route, 'UPLOAD_IDLE_SECONDS', .02):
+            try: asyncio.run(route.api_mail_import_upload(token, SlowRequest(remaining, .1), 'second.eml', 1))
+            except HTTPException as exc: assert exc.status_code == 408
+            else: raise AssertionError('Idle stream must be bounded')
+        job = imp.status(token)
+        assert job['state'] == 'collecting' and job['files'] == 1 and job['bytes'] == len(first)
+        assert str(imp._path(token)) not in imp._active
+        assert len(list((imp._path(token) / 'sources').glob('*.eml'))) == 1
+        # A slow but advancing upload can outlive the idle interval many times.
+        with patch.object(route, 'UPLOAD_IDLE_SECONDS', .04):
+            job = asyncio.run(route.api_mail_import_upload(token, SlowRequest(remaining, .01), 'second.eml', 1))
+        assert job['files'] == 2 and scan(token)['new'] == 2
+        assert apply(token)['imported'] == 2
 
 
 def test_duplicate_progress_and_complete_reports():
@@ -284,7 +313,7 @@ def test_upload_receipts_and_resume():
     from app.web.routes.mail_import import api_mail_import_upload
     from fastapi import HTTPException
     class Request:
-        def __init__(self, raw): self.raw = raw
+        def __init__(self, raw): self.raw, self.headers = raw, {'content-length':str(len(raw))}
         async def stream(self):
             yield self.raw[:32]
             yield self.raw[32:]
@@ -297,6 +326,11 @@ def test_upload_receipts_and_resume():
         assert first['files'] == again['files'] == 1
         assert again['bytes'] == len(raw)
         assert len(list((imp._path(token)/'sources').glob('*.eml'))) == 1
+        # Replaying a lost receipt must not demand room for two more permanent
+        # copies of a file that is already part of the collected batch.
+        from types import SimpleNamespace
+        with patch.object(imp.shutil, 'disk_usage', return_value=SimpleNamespace(free=imp.DISK_RESERVE + len(raw) * 2)):
+            assert asyncio.run(api_mail_import_upload(token, Request(raw), 'one.eml', 0))['files'] == 1
         # Also recover old app batches, which did not write content receipts.
         meta = imp._path(token)/'sources'/'00000000.json'
         import json
@@ -411,7 +445,7 @@ def test_skip_failed_sources_and_guidance():
         imp.skip_upload(empty,1,'offline.eml','文件传输中断')
         result=scan(empty)
         assert result['new'] == 0 and result['failed'] == 2 and result['issue_count'] == 2
-        assert '分批导出' in result['errors'][0]['advice'] and '云盘' in result['errors'][1]['advice']
+        assert '分开导出' in result['errors'][0]['advice'] and '云盘' in result['errors'][1]['advice']
         invalid = imp.create()['token']; upload(invalid,'invalid.eml',b'not mail')
         issue = scan(invalid)['errors'][0]
         assert '64 MB' not in issue['reason'], 'Malformed mail must not be mislabeled as oversized'
@@ -454,15 +488,9 @@ def test_large_message_projection_and_retry():
                 parsed = imp._parse_exported(source)
                 assert parsed['attachments'][0]['size'] == len(payload)
                 assert parsed['body_text'].strip() == 'Hello'
-                normal = imp.create(expected_files=2)['token']
-                upload(normal, 'large.eml', raw)
-                upload(normal, 'healthy.eml', message('healthy-large-neighbor', attachment=False))
-                review = scan(normal)
-                assert review['failed'] == review['new'] == 1, review
-                assert '超过当前' in review['errors'][0]['reason']
-                assert apply(normal)['imported'] == 1
-                assert imp.retry_files(normal) == ['large.eml']
-                large = imp.create(expected_files=1, large_messages=True)['token']
+                large = imp.create(expected_files=1)['token']
+                assert imp.status(large)['large_messages'], 'Large attachments must work without a user mode'
+                imp._update(large, large_messages=False)  # Resume a job from before automatic sizing.
                 class Request:
                     async def stream(self):
                         for i in range(0,len(raw),65536): yield raw[i:i+65536]
@@ -527,6 +555,89 @@ def test_folder_placement_counts_and_history_recovery():
         raises(imp.create, 'Invalid', 1, False, 'trash')
 
 
+def test_automatic_import_and_space_recovery():
+    from app.web.routes.mail_import import api_mail_import_upload
+    from fastapi import HTTPException
+    import errno
+    with fixture() as (_, account), account('work'):
+        token = imp.create('自动整理', expected_files=3, destination='auto', auto_import=True)['token']
+        upload(token, '收件箱/one.eml', message('auto-inbox'))
+        upload(token, '收件箱/same.eml', message('auto-inbox'))
+        upload(token, 'broken.eml', b'not an email')
+        result = scan(token)
+        assert result['state'] == 'completed' and result['imported'] == result['failed'] == result['duplicates'] == 1, result
+        assert len(db.list_emails(status='inbox', days=365000)) == 1
+        assert result['auto_import'] and result['phase'] == 'import'
+        with account('personal'): raises(imp.status, token)
+        duplicate = imp.create(auto_import=True)['token']
+        upload(duplicate, 'same.eml', message('auto-inbox'))
+        result = scan(duplicate)
+        assert result['state'] == 'completed' and result['imported'] == 0 and result['duplicates'] == 1
+        broken = imp.create(auto_import=True)['token']; upload(broken, 'broken.eml', b'broken')
+        result = scan(broken)
+        assert result['state'] == 'completed' and result['failed'] == 1 and result['imported'] == 0
+        # Pause at the scan/import boundary must leave a resumable, persisted job.
+        paused = imp.create(auto_import=True)['token']; upload(paused, 'pause.eml', message('auto-pause'))
+        original_scan = imp.scan
+        def pause_at_boundary(token):
+            outcome = original_scan(token)
+            imp._update(token, cancel=True)
+            return outcome
+        with patch.object(imp, 'scan', side_effect=pause_at_boundary): result = scan(paused)
+        assert result['state'] == 'paused' and result['imported'] == 0
+        assert scan(paused)['state'] == 'completed'
+        # A stale old small-message flag must not disable the automatic path.
+        assert imp.create(large_messages=False)['large_messages']
+        # Disk shortage preserves the receipt prefix and removes the partial file.
+        space = imp.create(expected_files=2)['token']
+        class Request:
+            headers = {'content-length':'100'}
+            async def stream(self): yield message('space')
+        with patch.object(imp, 'ensure_space', side_effect=OSError(errno.ENOSPC, 'full')):
+            try: asyncio.run(api_mail_import_upload(space, Request(), 'space.eml', 0))
+            except HTTPException as exc: assert exc.status_code == 507 and '磁盘' in exc.detail
+            else: raise AssertionError('Low disk space must stop the upload')
+        assert imp.status(space)['files'] == 0 and imp.status(space)['state'] == 'collecting'
+        assert not list((imp._path(space) / 'sources').iterdir())
+        asyncio.run(api_mail_import_upload(space, Request(), 'space.eml', 0))
+        # Total batch size no longer rejects otherwise valid individual sources.
+        imp._update(space, bytes=11 * 1024**3)
+        upload(space, 'second.eml', message('space-second'))
+        assert imp.status(space)['bytes'] > 11 * 1024**3
+        scan(space)
+        with patch.object(imp, 'ensure_space', side_effect=OSError(errno.ENOSPC, 'full')):
+            stopped = apply(space)
+        assert stopped['state'] == 'failed' and stopped['phase'] == 'import' and '磁盘' in stopped['error']
+        assert apply(space)['imported'] == 2, 'Freeing disk space resumes all pending originals'
+        # Historical jobs must not refer users to a switch that no longer exists.
+        import json
+        legacy = imp.create()['token']
+        issue = dict(file='old.eml', reason='单封邮件超过 64 MB', advice='开启大邮件模式')
+        imp._update(legacy, errors=[issue])
+        (imp._path(legacy) / 'scan-issues.jsonl').write_text(json.dumps(issue) + '\n')
+        assert '256 MB' in imp.status(legacy)['errors'][0]['advice']
+        assert '开启' not in imp.issues(legacy)['items'][0]['advice']
+        assert '开启大邮件模式' not in Path(imp.report(legacy)).read_text('utf-8-sig')
+
+
+def test_nested_mbox_placement():
+    with fixture() as (root, account), account('work'):
+        path = root / 'sent.mbox'; box = mailbox.mbox(path)
+        box.add(BytesIO(message('nested-sent'))); box.close()
+        token = imp.create(destination='auto', auto_import=True)['token']
+        upload(token, '历史/已发送.mbox', path.read_bytes())
+        assert scan(token)['state'] == 'completed'
+        assert len(db.list_emails(status='sent', days=365000)) == 1
+        oversized = root / 'oversized.mbox'; box = mailbox.mbox(oversized)
+        box.add(BytesIO(message('too-large', body='x' * 9000, attachment=False)))
+        box.add(BytesIO(message('healthy-after-large', attachment=False))); box.close()
+        token = imp.create(auto_import=True)['token']
+        upload(token, 'mixed.mbox', oversized.read_bytes())
+        with patch.object(imp, 'MAX_LARGE_MESSAGE_SIZE', 4096):
+            result = scan(token)
+        assert result['state'] == 'completed' and result['imported'] == result['failed'] == 1
+
+
 if __name__ == '__main__':
     # mailbox.add(bytes) replaces LF with os.linesep without stripping CR.
     # Use streams for valid exports and exercise Windows CRLF on every runner.
@@ -537,9 +648,12 @@ if __name__ == '__main__':
     test_interruption_retry_and_live_dedup()
     test_invalid_inputs_and_forwarded_identity()
     test_upload_disconnect_and_limits()
+    test_upload_idle_timeout_and_progress()
     test_upload_receipts_and_resume()
     test_skip_failed_sources_and_guidance()
     test_local_inbox_organizing_without_server()
     test_folder_placement_counts_and_history_recovery()
     test_large_message_projection_and_retry()
+    test_automatic_import_and_space_recovery()
+    test_nested_mbox_placement()
     print('Client mail import: MIME/attachments, dedup, account isolation, pause/retry, concurrent sync and invalid inputs passed')
