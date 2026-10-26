@@ -290,6 +290,8 @@ const MAILAI_UI_COPY = {
   "mailView.resizeHint": ["拖动调整列宽，双击恢复默认；也可使用左右方向键", "Drag to resize, double-click to reset, or use the left/right arrow keys"],
   "mailView.title": ["邮件列表显示方式", "Mail list view"],
   "mailView.hint": ["选择日常阅读或按列快速浏览，设置会保存在这台设备。", "Choose everyday reading or a column-based overview. Saved on this device."],
+  "mailView.showAvatars": ["显示邮件列表头像", "Show mail list avatars"],
+  "mailView.avatarsHint": ["在摘要列表中显示联系人头像，关闭后可留出更多文字空间。", "Show contact avatars in the summary list. Turn off to leave more room for text."],
   "mailView.cards": ["摘要列表（现有）", "Summary list (current)"],
   "mailView.cardsHint": ["保留现有布局，显示摘要与标签", "Current layout with summaries and tags"],
   "mailView.table": ["经典表格", "Classic table"],

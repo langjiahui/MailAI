@@ -3,7 +3,10 @@
    while all working controls follow the active workspace palette. */
 html[data-theme] body #system-view:not(.hidden) {
   --settings-muted:color-mix(in srgb,var(--desk-muted) 88%,var(--desk-ink));
-  grid-template-columns:192px minmax(0,1800px); grid-template-rows:auto minmax(0,1fr);
+  --settings-nav-selected:var(--desk-accent);
+  --settings-nav-on-selected:var(--reward-on-accent,#fff);
+  --settings-nav-edge:transparent;
+  grid-template-columns:208px minmax(0,1800px); grid-template-rows:auto minmax(0,1fr);
   justify-content:center; gap:24px 28px; padding:26px clamp(20px,calc(2.5vw / var(--fz,1)),64px) 12px;
   background:var(--desk-canvas); color:var(--desk-ink);
 }
@@ -13,22 +16,34 @@ html[data-theme] body #system-view>.system-header {
 html[data-theme] body #system-view>.system-header h2 { font-size:25px; letter-spacing:-.025em; }
 html[data-theme] body #system-view>.system-header p { color:var(--settings-muted); line-height:1.6; }
 html[data-theme] body #system-view>.system-header #btn-close-system { min-height:38px; padding:9px 14px; border-radius:10px; }
-/* A restrained tonal selection keeps navigation free of decorative markers. */
-html[data-theme] body #system-view>.system-tabs { gap:3px; padding:4px 0; }
-html[data-theme] body #system-view>.system-tabs button {
-  position:relative; display:flex; align-items:center; gap:11px; min-height:42px;
-  padding:10px 14px; line-height:1.5; border:0!important; border-radius:8px;
+/* Palette pairs keep the complete rounded selection readable on every canvas.
+   Dark themes use a quiet surface rather than a luminous accent block. */
+html[data-theme="dark"] body #system-view:not(.hidden) {
+  --settings-nav-selected:var(--desk-selected);
+  --settings-nav-on-selected:var(--desk-accent);
+  --settings-nav-edge:color-mix(in srgb,var(--desk-accent) 36%,var(--desk-selected));
+}
+html[data-theme] body #system-view>#system-tabs {
+  gap:6px; padding:4px; max-height:100%; min-height:0; overflow-y:auto;
+  background:transparent!important; border:0!important; box-shadow:none!important;
+  scrollbar-width:thin; scrollbar-color:var(--desk-line) transparent;
+}
+html[data-theme] body #system-view>#system-tabs button {
+  position:relative; display:flex; align-items:center; flex-shrink:0; gap:12px; min-height:48px;
+  padding:12px 14px; line-height:1.5; border:0!important; border-radius:12px;
   outline:0!important; box-shadow:none!important; background:transparent!important;
-  color:var(--settings-muted)!important; font-size:12.5px; font-weight:500;
+  color:var(--settings-muted)!important; font-size:13px; font-weight:500;
   white-space:normal; transition:background-color .16s ease,color .16s ease;
 }
-html[data-theme] body #system-view>.system-tabs button:hover { background:var(--desk-hover)!important; color:var(--desk-ink)!important; }
-html[data-theme] body #system-view>.system-tabs button.active {
-  color:var(--desk-ink)!important; background:color-mix(in srgb,var(--desk-selected) 72%,var(--desk-canvas))!important; font-weight:600;
+html[data-theme] body #system-view>#system-tabs button:hover { background:var(--desk-hover)!important; color:var(--desk-ink)!important; }
+html[data-theme] body #system-view>#system-tabs button.active {
+  color:var(--settings-nav-on-selected)!important; background:var(--settings-nav-selected)!important; font-weight:650;
+  outline:1px solid var(--settings-nav-edge)!important; outline-offset:-1px;
 }
-html[data-theme] body #system-view>.system-tabs button:focus-visible { outline:2px solid var(--desk-accent)!important; outline-offset:2px; }
+html[data-theme] body #system-view>#system-tabs [data-system-tab="guide"] { margin-top:20px; }
+html[data-theme] body #system-view>#system-tabs button:focus-visible { outline:2px solid var(--desk-accent)!important; outline-offset:2px; }
 #system-tabs button::before {
-  content:""; width:17px; height:17px; flex:none; background:currentColor;
+  content:""; width:20px; height:20px; flex:none; background:currentColor;
   -webkit-mask:var(--settings-icon) center/contain no-repeat; mask:var(--settings-icon) center/contain no-repeat;
 }
 #system-tabs [data-system-tab="preferences"] { --settings-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M3 5h14M3 10h14M3 15h14'/%3E%3Cpath d='M7 3v4m6 1v4m-7 1v4' stroke-width='3'/%3E%3C/svg%3E"); }
@@ -58,7 +73,7 @@ html[data-theme] body #system-view>.system-panel.scrollbar-visible::-webkit-scro
   html[data-theme] body #system-view>.system-panel { scrollbar-color:auto!important; scrollbar-width:thin!important; padding-right:8px; }
   html[data-theme] body #system-view>.system-panel::-webkit-scrollbar { display:block; }
   html[data-theme] body #system-view>.system-panel::-webkit-scrollbar-thumb { background:CanvasText!important; }
-  html[data-theme] body #system-view>.system-tabs button.active { outline:1px solid Highlight!important; outline-offset:-1px; }
+  html[data-theme] body #system-view>#system-tabs button.active { outline:1px solid Highlight!important; outline-offset:-1px; }
 }
 html[data-theme] body #system-view .settings-page-intro {
   display:flex; align-items:center; justify-content:space-between; gap:12px 20px;
@@ -228,9 +243,10 @@ html[data-theme] body #system-view .app-update-actions .action-secondary:hover {
 @media(max-width:1100px) {
   html[data-theme] body #system-view:not(.hidden) { grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto minmax(0,1fr); gap:16px; padding:20px 16px 10px 20px; }
   html[data-theme] body #system-view>.system-header { grid-template-columns:minmax(0,1fr) auto; padding-bottom:16px; }
-  html[data-theme] body #system-view>.system-tabs { grid-column:1; grid-row:2; flex-direction:row; padding:2px 2px 6px; overflow-x:auto; scrollbar-width:none; }
-  html[data-theme] body #system-view>.system-tabs button { flex:none; white-space:nowrap; min-height:40px; padding:8px 12px; }
-  html[data-theme] body #system-view>.system-tabs::-webkit-scrollbar { display:none; }
+  html[data-theme] body #system-view>#system-tabs { grid-column:1; grid-row:2; flex-direction:row; padding:2px 2px 6px; overflow-x:auto; scrollbar-width:none; }
+  html[data-theme] body #system-view>#system-tabs button { flex:none; white-space:nowrap; min-height:40px; padding:8px 12px; }
+  html[data-theme] body #system-view>#system-tabs [data-system-tab="guide"] { margin-top:0; margin-inline-start:12px; }
+  html[data-theme] body #system-view>#system-tabs::-webkit-scrollbar { display:none; }
   html[data-theme] body #system-view>.system-panel { grid-column:1; grid-row:3; }
 }
 @media(max-width:520px) {
@@ -238,7 +254,7 @@ html[data-theme] body #system-view .app-update-actions .action-secondary:hover {
   html[data-theme] body #system-view>.system-header { gap:10px; }
   html[data-theme] body #system-view>.system-header h2 { font-size:22px; }
   html[data-theme] body #system-view>.system-header #btn-close-system { max-width:112px; white-space:normal; }
-  html[data-theme] body #system-view>.system-tabs button { gap:7px; }
+  html[data-theme] body #system-view>#system-tabs button { gap:7px; }
   #system-view .settings-page-intro h3 { font-size:18px; }
 }
 @media(prefers-reduced-motion:reduce) { #system-view :is(button,label,.switch i,.switch i::after) { transition:none!important; } }
