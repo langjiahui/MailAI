@@ -16,7 +16,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from scripts import ci_browser, ci_mirror, ci_plan, ci_quality as quality
+from scripts import ci_browser, ci_browser_timings, ci_mirror, ci_plan, ci_quality as quality
 
 NOW = datetime.now(timezone.utc)
 REPO = 'example/mailai'
@@ -196,7 +196,7 @@ class EvidenceTest(unittest.TestCase):
             values={call.args[0]:call.args[1] for call in output.call_args_list}
             self.assertEqual(values['mode'],'full')
             self.assertTrue(all(json.loads(values['checks']).values()))
-            self.assertEqual(json.loads(values['browser_matrix'])['include'],ci_plan.full_matrix())
+            self.assertEqual(json.loads(values['browser_matrix'])['include'],ci_plan.schedule(ci_plan.full_matrix()))
 
     def test_quick_checks_cannot_be_reused_or_hide_a_failed_selected_job(self):
         required={name:name in {'release-gate','secret-scan','browser-test'} for name in quality.CHECKS}
@@ -275,6 +275,56 @@ class ImpactPlanTest(unittest.TestCase):
             (root/'package-lock.json').write_text(json.dumps({'packages':{'node_modules/playwright':{'version':'1.0.0'}}}))
             (root/'.github/ci/browser-image.json').write_text(json.dumps(ci_plan.browser_image()))
             with self.assertRaises(ValueError):ci_plan.browser_image(root)
+
+
+class SchedulingTest(unittest.TestCase):
+    def test_long_groups_start_first_without_changing_any_matrix_entry(self):
+        matrix=ci_plan.full_matrix()
+        ordered=ci_plan.schedule(matrix)
+        self.assertCountEqual(ordered,matrix)
+        history=json.loads((ROOT/'.github/ci/browser-timings.json').read_text())
+        weights={ci_plan.matrix_key(row):row['seconds'] for row in history['jobs']}
+        self.assertEqual([weights[ci_plan.matrix_key(row)] for row in ordered],
+                         sorted(weights.values(),reverse=True))
+        self.assertNotEqual(ordered,matrix)
+        selected=ci_plan.select(['app/web/static/todo-center.css'])['matrix']
+        self.assertCountEqual(ci_plan.schedule(selected),selected)
+
+    def test_new_groups_and_ties_are_preserved_and_bad_history_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'.github/ci').mkdir(parents=True)
+            path=root/'.github/ci/browser-timings.json'
+            matrix=[dict(suite=name,browser='',shard='') for name in ['known','new','other']]
+            self.assertEqual(ci_plan.schedule(matrix,root),matrix)
+            known=dict(matrix[0],seconds=60)
+            path.write_text(json.dumps({'schema':1,'jobs':[known]}))
+            self.assertEqual(ci_plan.schedule(matrix,root),matrix)
+            for jobs in [[known,known],[dict(known,seconds=-1)],[dict(known,seconds=True)]]:
+                path.write_text(json.dumps({'schema':1,'jobs':jobs}))
+                with self.assertRaises(ValueError):ci_plan.schedule(matrix,root)
+
+    def test_history_requires_all_successful_groups_from_the_same_repository(self):
+        api=FakeGitHub();run=run_record()
+        matrix=ci_plan.full_matrix()
+        jobs=[dict(name=f'browser-test ({r["suite"]}, {r["browser"]}, {r["shard"]})',
+                   conclusion='success',started_at=NOW.isoformat(),
+                   completed_at=(NOW+timedelta(seconds=60)).isoformat()) for r in matrix]
+        def get(path):
+            return {'jobs':jobs} if '/jobs?' in path else run
+        api.get=get
+        result=ci_browser_timings.collect(api,42)
+        self.assertEqual(len(result['jobs']),len(matrix))
+        self.assertEqual(result['source']['run_id'],42)
+        for change in ['missing','failed','foreign','wrong-workflow','duplicate']:
+            current=deepcopy(jobs);record=deepcopy(run)
+            if change=='missing':current.pop()
+            if change=='failed':current[0]['conclusion']='failure'
+            if change=='foreign':record['head_repository']={'full_name':'fork/repo'}
+            if change=='wrong-workflow':record['path']='.github/workflows/other.yml'
+            if change=='duplicate':current.append(current[0])
+            with patch.object(api,'get',side_effect=lambda path: {'jobs':current} if '/jobs?' in path else record):
+                with self.subTest(change=change),self.assertRaises(ValueError):
+                    ci_browser_timings.collect(api,42)
 
 
 class PartitionTest(unittest.TestCase):

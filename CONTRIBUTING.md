@@ -85,6 +85,36 @@ python scripts/ci_browser.py responsive-dialogs --browser webkit --shard 2/3
 
 旧的 `python scripts/ci_browser.py mail-settings` 入口仍顺序执行拆分后的全部六组，便于兼容既有复跑习惯。同一 PR／主分支的新提交取消旧质量检查；正式标签的构建发布仍按标签串行，避免中断附件上传。
 
+### 一条命令衔接正式发布
+
+先按下文版本规则定稿候选 PR、根 VERSION、README 和发布记录；版本分类由发布者根据本次完整变更选择。候选必须来自本仓库、面向 main、包含最新主分支并已结束草稿状态。以下 PR 编号和目标版本是示例，使用时替换为本次候选。
+
+```bash
+# 默认只读，展示基准版本、目标版本、固定的 head/tree 和已有标签。
+python scripts/release_desktop.py --pr 123 --version 3.6.1 --change-type patch
+
+# 核对计划后执行；可用 --head 加上评审过的完整提交 SHA。
+python scripts/release_desktop.py --pr 123 --version 3.6.1 --change-type patch --execute
+```
+
+脚本使用本机 `gh auth login` 的已登录身份，需要仓库合并、Actions 重试和新建标签权限。只在本地运行；默认 Actions `GITHUB_TOKEN` 创建的标签不会继续触发构建，参见 [GitHub 工作流触发规则](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows)。需要可用的网络或命令行代理，以及项目 Python 依赖。
+
+执行会固定启动时的候选提交，每 15 秒检查状态，自动衔接 full 验证、合并、主分支检查、创建全新正式标签、三平台安装包发布和国内镜像。成功的 quick 或过期／缺失的 full 记录会触发一次新的完整验证；正式发布仍只接受原始 full 的完全相同 Git 树。失败工作流仅重试失败任务一次；再次失败、取消、候选提交改变、主分支推进、版本记录不一致或标签冲突都会停止。合并后的树也必须与被验证的候选一致。脚本不会修改源码、自动猜测版本分类或移动已有标签。
+
+超时或网络中断后，可用同一候选、版本和 `--head` 重跑。脚本重新读取远端状态，已合并的 PR 和指向同一合并提交的标签继续使用；正式附件已公开时，不自动重试可能改动这些附件的发布任务。最后检查签名清单、三平台附件大小和 SHA-256，以及国内匿名更新清单。输出 JSON 行日志，包含 UTC 时间、当前阶段、源码、运行 ID 和重试状态；默认总等待上限两小时，可用 `--timeout` 调整。
+
+### 按历史耗时安排浏览器任务
+
+34 个浏览器组沿用原有全量矩阵、断言和并发上限；调度只将预计耗时较长的组提前启动，减少长组集中在末尾的等待。`.github/ci/browser-timings.json` 保存最近成功运行的观测数据，计划附件同时记录覆盖矩阵与实际启动顺序。完整验证凭证的覆盖指纹仍按原始矩阵计算，不因任务顺序变化而改变。
+
+在完整质量检查成功后，可显式刷新耗时数据，并随代码审查提交：
+
+```bash
+python scripts/ci_browser_timings.py --repository langjiahui/MailAI --run 40269577336
+```
+
+刷新只接受本仓库成功的质量工作流，并要求完整浏览器矩阵全部通过。新增组缺少历史时保留在矩阵中，历史中已经移除的组不会被重新加入。工具链调整本身不要求另发应用安装包，后续产品发布仍按实际变更分级。
+
 国内镜像在正式发布成功后由独立工作流自动同步，单独展示安装包和静态更新入口的校验状态。失败不会把已成功的正式发布标成失败，也不重新构建、覆盖或改号已有安装包。可单独重试：
 
 ```bash

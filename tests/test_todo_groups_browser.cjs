@@ -160,6 +160,15 @@ const engine = process.env.MAILAI_BROWSER === 'webkit' ? webkit : chromium;
   await page.evaluate(async other=>{closeTodoCenter();await openAccountMailbox(other,'inbox');await openTodoCenter();},other);
   assert.equal(await page.evaluate(()=>todoCenterRows.filter(row=>row.email_subject.includes('秋季出行')&&row.status==='open').length),5);
   // A single large group must obey the same row budget as an ungrouped list.
+  // Give this independent stress fixture a fresh page, after the theme, zoom
+  // and account round trips above. Keep real pointer input in both engines;
+  // accumulated WebKit page state must not decide whether this case passes.
+  await page.close();
+  page=await browser.newPage({viewport:{width:1440,height:1000},reducedMotion:'reduce'});
+  page.on('pageerror',e=>errors.push(e.message));
+  await page.goto(process.env.MAILAI_TEST_URL || 'http://127.0.0.1:18795/');
+  await page.locator('#app-preloader').waitFor({state:'detached'});
+  await page.evaluate(()=>openTodoCenter());
   const savedRows=await page.evaluate(()=>todoCenterRows);
   await page.evaluate(()=>{
    const seed=todoCenterRows.find(row=>row.status==='open');
@@ -170,7 +179,16 @@ const engine = process.env.MAILAI_BROWSER === 'webkit' ? webkit : chromium;
   assert.equal(await page.locator('.todo-group').count(),1);
   assert.match(await page.locator('.todo-group-meta').innerText(),/1000/);
   assert(await page.locator('.todo-group-sources button').count()<=161);
-  await page.locator('[data-todo-render-more]').click();
+  try {
+   await page.locator('[data-todo-render-more]').click();
+  } catch(error) {
+   console.error('Large-group pointer state',await page.evaluate(()=>({
+    limit:todoRenderLimit,rows:document.querySelectorAll('#todo-list [data-todo-id]').length,
+    active:document.activeElement?.outerHTML.slice(0,500),
+    more:document.querySelector('[data-todo-render-more]')?.outerHTML,
+   })));
+   throw error;
+  }
   assert.equal(await page.locator('#todo-list [data-todo-id]').count(),320);
   assert(await page.locator('.todo-group-sources button').count()<=321);
   await page.evaluate(rows=>{todoCenterRows=rows;todoRenderLimit=160;renderTodoCenter();},savedRows);

@@ -1,0 +1,215 @@
+{
+  "schema": 1,
+  "source": {
+    "repository": "langjiahui/MailAI",
+    "run_id": 40269577336,
+    "run_attempt": 2,
+    "head_sha": "c67dcae66b186eef58a4cb892d5a714ff51ecb76"
+  },
+  "jobs": [
+    {
+      "suite": "assistant-search",
+      "browser": "",
+      "shard": "",
+      "seconds": 228
+    },
+    {
+      "suite": "assistant-workspace",
+      "browser": "chromium",
+      "shard": "",
+      "seconds": 405
+    },
+    {
+      "suite": "assistant-workspace",
+      "browser": "webkit",
+      "shard": "",
+      "seconds": 240
+    },
+    {
+      "suite": "compose-library",
+      "browser": "",
+      "shard": "",
+      "seconds": 238
+    },
+    {
+      "suite": "dates-motion",
+      "browser": "",
+      "shard": "",
+      "seconds": 343
+    },
+    {
+      "suite": "growth-gifts",
+      "browser": "",
+      "shard": "",
+      "seconds": 212
+    },
+    {
+      "suite": "growth-journal",
+      "browser": "",
+      "shard": "",
+      "seconds": 183
+    },
+    {
+      "suite": "growth-outfits",
+      "browser": "",
+      "shard": "",
+      "seconds": 499
+    },
+    {
+      "suite": "growth-themes",
+      "browser": "",
+      "shard": "",
+      "seconds": 459
+    },
+    {
+      "suite": "interaction",
+      "browser": "chromium",
+      "shard": "",
+      "seconds": 69
+    },
+    {
+      "suite": "interaction",
+      "browser": "webkit",
+      "shard": "",
+      "seconds": 77
+    },
+    {
+      "suite": "labels",
+      "browser": "",
+      "shard": "",
+      "seconds": 237
+    },
+    {
+      "suite": "mail-appearance",
+      "browser": "",
+      "shard": "",
+      "seconds": 129
+    },
+    {
+      "suite": "mail-import",
+      "browser": "",
+      "shard": "",
+      "seconds": 218
+    },
+    {
+      "suite": "mail-navigation",
+      "browser": "",
+      "shard": "",
+      "seconds": 109
+    },
+    {
+      "suite": "mail-updates",
+      "browser": "",
+      "shard": "",
+      "seconds": 103
+    },
+    {
+      "suite": "responsive-dialogs",
+      "browser": "chromium",
+      "shard": "1/3",
+      "seconds": 591
+    },
+    {
+      "suite": "responsive-dialogs",
+      "browser": "chromium",
+      "shard": "2/3",
+      "seconds": 488
+    },
+    {
+      "suite": "responsive-dialogs",
+      "browser": "chromium",
+      "shard": "3/3",
+      "seconds": 428
+    },
+    {
+      "suite": "responsive-dialogs",
+      "browser": "webkit",
+      "shard": "1/3",
+      "seconds": 395
+    },
+    {
+      "suite": "responsive-dialogs",
+      "browser": "webkit",
+      "shard": "2/3",
+      "seconds": 322
+    },
+    {
+      "suite": "responsive-dialogs",
+      "browser": "webkit",
+      "shard": "3/3",
+      "seconds": 527
+    },
+    {
+      "suite": "responsive-settings",
+      "browser": "chromium",
+      "shard": "",
+      "seconds": 299
+    },
+    {
+      "suite": "responsive-settings",
+      "browser": "webkit",
+      "shard": "",
+      "seconds": 225
+    },
+    {
+      "suite": "search",
+      "browser": "",
+      "shard": "",
+      "seconds": 156
+    },
+    {
+      "suite": "server-cleanup",
+      "browser": "",
+      "shard": "",
+      "seconds": 110
+    },
+    {
+      "suite": "startup",
+      "browser": "",
+      "shard": "",
+      "seconds": 176
+    },
+    {
+      "suite": "task-workspace",
+      "browser": "",
+      "shard": "",
+      "seconds": 100
+    },
+    {
+      "suite": "todos",
+      "browser": "",
+      "shard": "",
+      "seconds": 178
+    },
+    {
+      "suite": "workspace",
+      "browser": "",
+      "shard": "",
+      "seconds": 341
+    },
+    {
+      "suite": "xiaoyou-anatomy",
+      "browser": "",
+      "shard": "",
+      "seconds": 162
+    },
+    {
+      "suite": "xiaoyou-life",
+      "browser": "",
+      "shard": "",
+      "seconds": 128
+    },
+    {
+      "suite": "xiaoyou-rest",
+      "browser": "",
+      "shard": "",
+      "seconds": 163
+    },
+    {
+      "suite": "xiaoyou-wardrobe",
+      "browser": "",
+      "shard": "",
+      "seconds": 209
+    }
+  ]
+}

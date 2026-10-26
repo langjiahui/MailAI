@@ -56,6 +56,30 @@ def full_matrix(root=ROOT):
     return result
 
 
+def matrix_key(row):
+    return (row['suite'], row.get('browser', ''), row.get('shard', ''))
+
+
+def schedule(matrix, root=ROOT):
+    """Start long groups first; history changes order, never membership/coverage."""
+    path = root / '.github/ci/browser-timings.json'
+    if not path.exists():
+        return list(matrix)
+    data = json.loads(path.read_text())
+    if data.get('schema') != 1 or not isinstance(data.get('jobs'), list):
+        raise ValueError('Invalid browser timing history')
+    durations = {}
+    for row in data['jobs']:
+        key, seconds = matrix_key(row), row['seconds']
+        if key in durations or type(seconds) is not int or not 0 < seconds <= 7200:
+            raise ValueError('Invalid or duplicate browser duration')
+        durations[key] = seconds
+    # New groups have no history yet. Retain them with a conservative estimate;
+    # old history may also contain retired names, which cannot add jobs back.
+    fallback = max(durations.values(), default=1)
+    return sorted(matrix, key=lambda row: -durations.get(matrix_key(row), fallback))
+
+
 def browser_image(root=ROOT):
     config = json.loads((root / '.github/ci/browser-image.json').read_text())
     lock = json.loads((root / 'package-lock.json').read_text())
