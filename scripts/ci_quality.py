@@ -181,7 +181,8 @@ def plan(api):
     emit_output('mode', selected['mode'])
     emit_output('checks', json.dumps(selected['checks'], separators=(',', ':')))
     # Keep a syntactically valid matrix even when the entire job is skipped.
-    emit_output('browser_matrix', json.dumps({'include': selected['matrix'] or ci_plan.full_matrix()}, separators=(',', ':')))
+    ordered = ci_plan.schedule(selected['matrix'] or ci_plan.full_matrix())
+    emit_output('browser_matrix', json.dumps({'include': ordered}, separators=(',', ':')))
     emit_output('browser_image', image['image'])
     emit_output('browser_version', image['playwright'])
     emit_output('browser_parallel', parallel)
@@ -189,6 +190,7 @@ def plan(api):
             + '; '.join(selected['reasons']))
     target = ROOT / 'build/ci/plan.json'
     target.parent.mkdir(parents=True, exist_ok=True)
+    selected['schedule'] = ordered if selected['matrix'] else []
     target.write_text(json.dumps(selected, indent=2) + '\n')
 
 
