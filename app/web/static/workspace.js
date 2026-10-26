@@ -1006,6 +1006,14 @@ function initializeWorkspace() {
     syncPreferenceChoices();
     applyFilters({silent:true});
   };
+  const mailAvatars = document.getElementById('show-mail-list-avatars');
+  mailAvatars.checked = localStorage.getItem('mailai-mail-list-avatars') !== 'false';
+  document.body.dataset.mailListAvatars = String(mailAvatars.checked);
+  mailAvatars.onchange = () => {
+    try { localStorage.setItem('mailai-mail-list-avatars', String(mailAvatars.checked)); }
+    catch (_) { mailAvatars.checked = document.body.dataset.mailListAvatars !== 'false'; return; }
+    document.body.dataset.mailListAvatars = String(mailAvatars.checked);
+  };
   const density = document.getElementById('workspace-density'); density.value = localStorage.getItem('mailai-density') || 'comfortable';
   document.body.dataset.density = density.value;
   density.onchange = () => { document.body.dataset.density = density.value; localStorage.setItem('mailai-density', density.value); syncPreferenceChoices(); };

@@ -6,7 +6,7 @@ const {chromium,webkit}=require('playwright');
  try{
  const page=await browser.newPage({viewport:{width:1512,height:1000},reducedMotion:'reduce'}),errors=[];
  page.on('pageerror',e=>errors.push(e.message));
- await page.goto('http://127.0.0.1:18795/?shell=macos');await page.locator('#app-preloader').waitFor({state:'detached'});
+ await page.goto(process.env.MAILAI_TEST_URL || 'http://127.0.0.1:18795/?shell=macos');await page.locator('#app-preloader').waitFor({state:'detached'});
  await page.evaluate(()=>initialLoad);
  assert(await page.evaluate(()=>_systemConfig.accounts.every(a=>a.user.endsWith('@example.test'))));
  await page.evaluate(async()=>{for(const item of ['theme_monochrome','theme_baowu'])await api('/api/companion/purchase',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({item,token:crypto.randomUUID()})});await mailaiPet.refresh();showSystemView('maintenance');});
@@ -16,9 +16,20 @@ const {chromium,webkit}=require('playwright');
   await page.evaluate(async({theme,mode,language})=>{await api('/api/companion/equip',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slot:'theme',item:theme})});await mailaiPet.refresh();applyTheme(mode);setI18nLanguage(language);selectSystemTab('maintenance');window.dispatchEvent(new Event('blur'));},{theme,mode,language});
   const state=await page.evaluate(()=>{
    const panel=document.querySelector('[data-system-panel="maintenance"]'),nav=document.getElementById('system-tabs');
-   return{bad:[...nav.querySelectorAll('button')].filter(n=>getComputedStyle(n).borderTopWidth!=='0px'||getComputedStyle(n).boxShadow!=='none').map(n=>n.dataset.systemTab),active:nav.querySelector('[aria-current="page"]').dataset.systemTab,indicator:getComputedStyle(nav.querySelector('.active'),'::after').content,overflow:document.documentElement.scrollWidth>innerWidth+1,nativeWidth:getComputedStyle(panel).scrollbarWidth,gutter:panel.offsetWidth-panel.clientWidth,color:getComputedStyle(panel).scrollbarColor,thumb:getComputedStyle(panel,'::-webkit-scrollbar-thumb').backgroundColor};
+   const canvas=document.createElement('canvas');canvas.width=canvas.height=1;const ctx=canvas.getContext('2d');
+   const paint=color=>{ctx.fillStyle=color;ctx.fillRect(0,0,1,1);};
+   const luminance=()=>{const c=[...ctx.getImageData(0,0,1,1).data].slice(0,3).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4;});return c[0]*.2126+c[1]*.7152+c[2]*.0722;};
+   const contrast=[...nav.querySelectorAll('button')].map(button=>{
+    ctx.clearRect(0,0,1,1);paint('#fff');const ancestors=[];for(let n=button;n;n=n.parentElement)ancestors.unshift(n);
+    ancestors.forEach(n=>paint(getComputedStyle(n).backgroundColor));const bg=luminance();
+    paint(getComputedStyle(button).color);const fg=luminance();
+    return{tab:button.dataset.systemTab,ratio:(Math.max(bg,fg)+.05)/(Math.min(bg,fg)+.05)};
+   });
+   return{contrast,bad:[...nav.querySelectorAll('button')].filter(n=>getComputedStyle(n).borderTopWidth!=='0px'||getComputedStyle(n).boxShadow!=='none').map(n=>n.dataset.systemTab),active:nav.querySelector('[aria-current="page"]').dataset.systemTab,indicator:getComputedStyle(nav.querySelector('.active'),'::after').content,background:getComputedStyle(nav).backgroundColor,overflow:document.documentElement.scrollWidth>innerWidth+1,nativeWidth:getComputedStyle(panel).scrollbarWidth,gutter:panel.offsetWidth-panel.clientWidth,color:getComputedStyle(panel).scrollbarColor,thumb:getComputedStyle(panel,'::-webkit-scrollbar-thumb').backgroundColor};
   });
   assert.deepEqual(state.bad,[],JSON.stringify({theme,mode,language,width,state}));assert.equal(state.active,'maintenance');assert.equal(state.indicator,'none');assert(!state.overflow);
+  assert.deepEqual(state.contrast.filter(n=>n.ratio<4.5),[],JSON.stringify({theme,mode,language,width,state}));
+  assert.equal(state.background,'rgba(0, 0, 0, 0)','Navigation remains open to the theme canvas');
   // A transparent computed color can still paint a gray native WKWebView thumb.
   assert.equal(state.nativeWidth,'none',JSON.stringify({theme,mode,language,width,state}));
   assert.equal(state.gutter,0,'Idle removes the native scrollbar itself');
@@ -26,6 +37,14 @@ const {chromium,webkit}=require('playwright');
   if(state.color)assert.equal(state.color,'rgba(0, 0, 0, 0) rgba(0, 0, 0, 0)');
   if(state.thumb)assert.equal(state.thumb,'rgba(0, 0, 0, 0)');
   if((theme==='theme_monochrome'&&mode==='light'&&language==='zh-CN'&&width===1512)||(theme==='theme_baowu'&&mode==='dark'&&language==='en'&&[390,2560].includes(width)))await page.screenshot({path:`${out}/${theme}-${mode}-${language}-${width}-${process.env.MAILAI_BROWSER||'chromium'}.png`});checked++;
+  if(language==='zh-CN'&&width===1512){
+   for(const tab of ['preferences','account','ai','remote','maintenance','guide','about']){
+    await page.evaluate(tab=>selectSystemTab(tab),tab);
+    assert.equal(await page.locator('#system-tabs').evaluate(n=>getComputedStyle(n).backgroundColor),'rgba(0, 0, 0, 0)',`${theme} ${mode} ${tab}: no enclosing navigation surface`);
+   }
+   await page.evaluate(()=>selectSystemTab('preferences'));
+   await page.screenshot({path:`${out}/navigation-${theme||'default'}-${mode}-${process.env.MAILAI_BROWSER||'chromium'}.png`});
+  }
  }
  await page.setViewportSize({width:1512,height:760});await page.evaluate(()=>{selectSystemTab('maintenance');setI18nLanguage('zh-CN');window.dispatchEvent(new Event('blur'));});
  const panel=page.locator('[data-system-panel="maintenance"]');await panel.evaluate(n=>{n.scrollTop=0});await page.waitForFunction(()=>!document.querySelector('[data-system-panel="maintenance"]').classList.contains('scrollbar-visible'));

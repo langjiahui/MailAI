@@ -96,6 +96,9 @@ html[data-theme="dark"] .mail-sender-avatar { background:hsl(var(--avatar-hue) 2
 html[data-theme] body:not([data-mail-list-view="table"])[data-density="compact"] #email-list .email-item { min-height:68px; padding:10px 11px 10px 56px!important; }
 body[data-density="compact"] .mail-sender-avatar { left:11px; top:12px; width:32px; height:32px; font-size:13px; }
 body[data-density="compact"] .mail-list-attachment { display:inline-flex; }
+body[data-mail-list-avatars="false"] #email-list .mail-sender-avatar { display:none; }
+html[data-theme] body:not([data-mail-list-view="table"])[data-mail-list-avatars="false"] #email-list .email-item { padding-left:12px!important; }
+html[data-theme] body:not([data-mail-list-view="table"])[data-mail-list-avatars="false"][data-density="compact"] #email-list .email-item { padding-left:11px!important; }
 @media(prefers-reduced-motion:reduce) { html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-item { transition:none; } }
 @media(forced-colors:active) { .mail-sender-avatar { border:1px solid CanvasText; color:CanvasText; background:Canvas; } }
 /* One continuous list surface, from the heading down to the paging controls. */

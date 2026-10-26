@@ -47,6 +47,7 @@ async function pageAt(url) {
 (async () => {
   const values = {
     'mailai.preferences.theme.v1':'dark', 'mailai-language':'en',
+    'mailai-mail-list-avatars':'false',
     'mailai.attachments.view.v1':'list','mailai-density':'compact','mailai-mail-list-view':'table','mailai-mail-table-columns':'[120,120,250,150]','mailai.workspace.tablePaneSizes.v1':'{"sidebar":226,"list":700}','mailai-font-scale':'1.2',
     'mailai-companion-motion':'off','mailai-assistant-floating':'true',
     'mailai-companion-sound':'on','mailai-companion-chatter':'off',
