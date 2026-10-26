@@ -396,6 +396,28 @@ time.sleep(60)
             process.communicate(timeout=5)
 
 
+class ImportWaitTest(unittest.TestCase):
+    def test_background_import_waits_for_real_completion_and_rejects_failures(self):
+        script = r'''
+const assert = require('node:assert/strict');
+const {waitForImport} = require('./tests/helpers/import-job.cjs');
+(async () => {
+  let calls = 0, pauses = 0;
+  const page = {
+    evaluate: async () => ++calls < 3 ? {state:'importing',imported:calls} : {state:'completed',imported:3},
+    waitForTimeout: async () => pauses++,
+  };
+  assert.equal((await waitForImport(page,'fixture')).imported,3);
+  assert.equal(calls,3);assert.equal(pauses,2);
+  page.evaluate = async () => ({state:'failed',error:'disk full'});
+  await assert.rejects(waitForImport(page,'fixture'),/disk full/);
+  page.evaluate = async () => ({state:'importing',imported:1});
+  await assert.rejects(waitForImport(page,'fixture',0),/Import did not complete/);
+})().catch(error => {console.error(error);process.exitCode=1});
+'''
+        subprocess.run(['node', '-e', script], cwd=ROOT, check=True, timeout=10)
+
+
 class MirrorTriggerTest(unittest.TestCase):
     def event(self):
         return {'workflow_run':{'conclusion':'success','event':'push','path':'.github/workflows/release.yml',

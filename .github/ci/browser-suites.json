@@ -101,16 +101,46 @@
           "env": {
             "MAILAI_BROWSER": "webkit"
           }
-        },
+        }
+      ]
+    },
+    {
+      "fixtures": [
+        {
+          "port": 18795,
+          "env": {}
+        }
+      ],
+      "tests": [
         {
           "file": "tests/test_search_query_browser.cjs"
-        },
+        }
+      ]
+    },
+    {
+      "fixtures": [
+        {
+          "port": 18795,
+          "env": {}
+        }
+      ],
+      "tests": [
         {
           "file": "tests/test_search_query_browser.cjs",
           "env": {
             "MAILAI_BROWSER": "webkit"
           }
-        },
+        }
+      ]
+    },
+    {
+      "fixtures": [
+        {
+          "port": 18795,
+          "env": {}
+        }
+      ],
+      "tests": [
         {
           "file": "tests/test_search_handoff_browser.cjs"
         },

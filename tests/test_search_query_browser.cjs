@@ -1,6 +1,7 @@
 // Run against tests/workspace_preview.py; never connects to a live mailbox.
 const assert=require('node:assert/strict');
 const {chromium,webkit}=require('playwright');
+const {waitForImport}=require('./helpers/import-job.cjs');
 (async()=>{
  const browser=await (process.env.MAILAI_BROWSER==='webkit'?webkit:chromium).launch();
  try{
@@ -106,7 +107,8 @@ const {chromium,webkit}=require('playwright');
    await api('/api/mail/client-imports/'+job.token+'/scan',{method:'POST'});
    return job.token;
   });
-  await page.waitForFunction(async token=>(await api('/api/mail/client-imports/'+token)).state==='completed',token);
+  const imported=await waitForImport(page,token);
+  assert.equal(imported.imported,3,'All three synthetic originals must be ready before searching');
   for(const query of ['发件人是顾清禾','发件人是顾清禾。','发件人是：顾清禾','查询，发件人是顾清禾的所有邮件。','发件人是“顾清禾”','from:guqinghe','来自顾清禾的全部邮件。','发件人是“顾清禾 <lookup@example.test>”']){
    await search(query,1);
    assert.match(await page.locator('#email-list .sender-name').innerText(),/顾清禾/);
