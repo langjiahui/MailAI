@@ -97,7 +97,7 @@ struct AccountView: View {
                             .font(.footnote).foregroundStyle(.secondary)
                     } label: {
                         Text("高级设置（可选）")
-                    }.accessibilityIdentifier("advanced-settings")
+                    }
                 }.disabled(testing)
             }
             .textInputAutocapitalization(.never).autocorrectionDisabled()

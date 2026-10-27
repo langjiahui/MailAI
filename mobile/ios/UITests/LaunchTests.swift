@@ -36,7 +36,7 @@ final class LaunchTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["provider-status"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.staticTexts["provider-status"].label.contains("默认"))
         XCTAssertFalse(app.textFields["imap-host"].exists)
-        app.buttons["advanced-settings"].tap()
+        app.buttons["高级设置（可选）"].tap()
         let host = app.textFields["imap-host"]
         XCTAssertTrue(host.waitForExistence(timeout: 3))
         XCTAssertEqual(host.value as? String, "imap.corp.example")
