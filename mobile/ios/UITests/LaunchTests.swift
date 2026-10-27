@@ -27,6 +27,7 @@ final class LaunchTests: XCTestCase {
         app.buttons["取消"].firstMatch.tap()
         XCTAssertTrue(app.buttons["add-account"].waitForExistence(timeout: 5))
         app.buttons["add-account"].tap()
+        XCTAssertTrue(app.textFields["email"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.textFields["email"].value as? String, "邮箱地址")
         XCTAssertFalse(app.buttons["validate-account"].isEnabled)
     }
