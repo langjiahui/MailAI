@@ -36,16 +36,13 @@ public struct MailAccount: Codable, Identifiable, Equatable, Sendable {
     public init(id: UUID = UUID()) { self.id = id }
 
     public mutating func suggestServers() {
-        let domain = email.split(separator: "@").last.map(String.init)?.lowercased() ?? ""
-        switch domain {
-        case "qq.com", "foxmail.com": imapHost = "imap.qq.com"; smtpHost = "smtp.qq.com"
-        case "163.com", "126.com": imapHost = "imap.\(domain)"; smtpHost = "smtp.\(domain)"
-        case "icloud.com", "me.com", "mac.com":
-            imapHost = "imap.mail.me.com"; smtpHost = "smtp.mail.me.com"
-            smtpPort = 587; smtpSecurity = .startTLS
-        default: imapHost = ""; smtpHost = ""
-        }
         username = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        imapPort = 993; imapSecurity = .tls; smtpPort = 465; smtpSecurity = .tls
+        let provider = MailProvider.match(email: email)
+        let domain = AccountSetup.suggestedDomain(email: email)
+        imapHost = provider?.imapHost ?? domain.map { "imap.\($0)" } ?? ""
+        smtpHost = provider?.smtpHost ?? domain.map { "smtp.\($0)" } ?? ""
+        if let provider { smtpPort = provider.smtpPort; smtpSecurity = provider.smtpSecurity }
     }
 
     public func validated() throws -> Self {

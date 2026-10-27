@@ -61,7 +61,7 @@ private actor MockMailService: MailService {
     }
     func testServerValidationAndExactProviderMatching() throws {
         var a = account(); a.email = "a@qq.com.evil.example"; a.suggestServers()
-        XCTAssertEqual(a.imapHost, "")
+        XCTAssertEqual(a.imapHost, "imap.qq.com.evil.example")
         a.email = "a@qq.com"; a.suggestServers(); XCTAssertEqual(a.imapHost, "imap.qq.com")
         for host in ["localhost", "127.0.0.1", "169.254.1.1", "::1", "https://imap.example.com", "a@example.com"] {
             a.imapHost = host; XCTAssertThrowsError(try a.validated(), host)
