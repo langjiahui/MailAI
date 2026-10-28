@@ -11,6 +11,10 @@ import Logging
         LoggingSystem.bootstrap { _ in SwiftLogNoOpLogHandler() }
         BackgroundMail.shared.register()
         #if DEBUG
+        if CommandLine.arguments.contains("--ui-storage-error") {
+            _startupError = State(initialValue: "无法打开本地存储，请重试。现有数据会保留。")
+            return
+        }
         if CommandLine.arguments.contains("--ui-fixture") {
             do { _store = State(initialValue: try DebugPreview.store()) } catch { _startupError = State(initialValue: "界面验收数据不可用") }
             return
@@ -26,7 +30,11 @@ import Logging
                     if store.accounts.isEmpty { WelcomeView(store: store) }
                     else { InboxView(store: store) }
                 }
-                else { ContentUnavailableView("存储暂不可用", systemImage: "externaldrive.badge.exclamationmark", description: Text(startupError ?? "请重试")) }
+                else {
+                    ContentUnavailableView { Label("存储暂不可用", systemImage: "externaldrive.badge.exclamationmark") } description: { Text(startupError ?? "请重试，现有数据会保留。") } actions: {
+                        Button("重试") { retryStorage() }.buttonStyle(.borderedProminent)
+                    }
+                }
             }.tint(MailTheme.blue)
                 .preferredColorScheme(appearance == "system" ? nil : (appearance == "dark" ? .dark : .light))
                 .onChange(of: scenePhase) { _, phase in
@@ -35,6 +43,15 @@ import Logging
                 }
         }
     }
+    private func retryStorage() {
+        do {
+            #if DEBUG
+            if CommandLine.arguments.contains("--ui-fixture") { store = try DebugPreview.store(); startupError = nil; return }
+            #endif
+            store = MailStore(vault: KeychainVault(), files: try MailFiles(), service: NativeMailService()); startupError = nil
+        } catch { startupError = "仍无法打开本地存储。请稍后重试，现有数据会保留。" }
+    }
+
 }
 /// Keep first-run setup independent of inbox navigation and tab selection.
 struct WelcomeView: View {
@@ -163,7 +180,7 @@ struct InboxView: View {
                                     HStack(spacing: 8) {
                                         if selecting {
                                             Button { if selection.contains(message.id) { selection.remove(message.id) } else { selection.insert(message.id) } } label: {
-                                                Image(systemName: selection.contains(message.id) ? "checkmark.circle.fill" : "circle").font(.title3)
+                                                Image(systemName: selection.contains(message.id) ? "checkmark.circle.fill" : "circle").font(.title3).frame(width: 44, height: 44)
                                             }.buttonStyle(.plain).accessibilityLabel("选择邮件")
                                             MailRow(summary: message).contentShape(Rectangle()).onTapGesture { if selection.contains(message.id) { selection.remove(message.id) } else { selection.insert(message.id) } }
                                         } else {
@@ -273,7 +290,7 @@ struct InboxView: View {
     }
     private func filterChip(_ title: String, value: String) -> some View {
         Button { filter = value; selection = [] } label: {
-            Text(title).font(.subheadline.weight(filter == value ? .semibold : .regular)).frame(maxWidth: .infinity, minHeight: 36)
+            Text(title).font(.subheadline.weight(filter == value ? .semibold : .regular)).frame(maxWidth: .infinity, minHeight: 44)
                 .foregroundStyle(filter == value ? MailTheme.blue : MailTheme.secondary)
                 .background(filter == value ? MailTheme.blue.opacity(0.12) : MailTheme.canvas, in: RoundedRectangle(cornerRadius: 10))
         }.accessibilityAddTraits(filter == value ? .isSelected : [])

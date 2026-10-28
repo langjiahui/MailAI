@@ -90,7 +90,7 @@ struct ReaderView: View {
                     SenderAvatar(name: summary.senderName ?? summary.sender, size: 40)
                     VStack(alignment: .leading, spacing: 4) {
                         Text(summary.senderName?.isEmpty == false ? summary.senderName! : summary.sender).font(.subheadline.weight(.semibold)).textSelection(.enabled)
-                        Button { details.toggle() } label: { HStack(spacing: 4) { Text("发送至 " + (bodyContent?.recipients ?? summary.recipients ?? []).map { $0.name.isEmpty ? $0.email : $0.name }.joined(separator: "、")).lineLimit(details ? nil : 1); Image(systemName: details ? "chevron.up" : "chevron.down").font(.caption2) }.font(.caption).foregroundStyle(MailTheme.secondary).frame(minHeight: 32) }.accessibilityLabel("邮件详细信息")
+                        Button { details.toggle() } label: { HStack(spacing: 4) { Text("发送至 " + (bodyContent?.recipients ?? summary.recipients ?? []).map { $0.name.isEmpty ? $0.email : $0.name }.joined(separator: "、")).lineLimit(details ? nil : 1); Image(systemName: details ? "chevron.up" : "chevron.down").font(.caption2) }.font(.caption).foregroundStyle(MailTheme.secondary).frame(minHeight: 44) }.accessibilityLabel("邮件详细信息")
                     }
                     Spacer(minLength: 4)
                     if let date = summary.date { Text(date.formatted(date: .abbreviated, time: .shortened)).font(.caption2).foregroundStyle(MailTheme.secondary).multilineTextAlignment(.trailing) }

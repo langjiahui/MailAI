@@ -146,12 +146,62 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["team@example.com"].waitForExistence(timeout: 5))
         attach("redesign-draft-recipients")
     }
+    func testStorageFailureOffersRetryWithoutDeletingData() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-fixture", "--ui-storage-error"]; app.launch()
+        XCTAssertTrue(app.buttons["重试"].waitForExistence(timeout: 5)); attach("redesign-storage-error")
+        app.buttons["重试"].tap()
+        XCTAssertTrue(app.buttons["compose-mail"].waitForExistence(timeout: 5))
+    }
+    func testSecondarySettingsAndConfirmationSurfaces() {
+        let app = launch()
+        app.tabBars.buttons["设置"].tap()
+        app.buttons.containing(.staticText, identifier: "测试邮箱").firstMatch.tap()
+        XCTAssertTrue(app.buttons["移除此邮箱"].waitForExistence(timeout: 5)); attach("redesign-account-detail")
+        app.buttons["移除此邮箱"].tap(); attach("redesign-remove-account-confirmation")
+        app.buttons["取消"].firstMatch.tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["小邮与模型服务"].tap()
+        XCTAssertTrue(app.secureTextFields["API Key"].waitForExistence(timeout: 5)); attach("redesign-model-settings")
+        app.swipeUp(); app.buttons["清除模型配置"].tap(); attach("redesign-clear-model-confirmation")
+        app.buttons["取消"].firstMatch.tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["后台收信与通知"].tap()
+        XCTAssertTrue(app.buttons["申请通知权限"].waitForExistence(timeout: 5)); attach("redesign-background-settings")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["关于 MailAI"].tap(); attach("redesign-about")
+        app.buttons["隐私与数据"].tap()
+        XCTAssertTrue(app.staticTexts["保存在你的设备"].waitForExistence(timeout: 5)); attach("redesign-privacy")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["开源许可"].tap()
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'Apache'")).firstMatch.waitForExistence(timeout: 5)); attach("redesign-licenses")
+    }
+    func testSearchFailureKeepsLocalResultsAndRecentQuery() {
+        let app = launch()
+        app.buttons["搜索邮件"].tap()
+        let search = app.searchFields.firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 5)); search.tap(); search.typeText("sender")
+        XCTAssertTrue(app.staticTexts["项目资料确认与下一步安排"].waitForExistence(timeout: 5)); attach("redesign-local-search")
+        app.swipeUp()
+        app.buttons["搜索服务器整个当前文件夹"].tap()
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '服务器搜索失败'")).firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["项目资料确认与下一步安排"].exists); attach("redesign-search-failure-cache")
+        app.buttons["完成"].firstMatch.tap()
+        app.buttons["搜索邮件"].tap()
+        XCTAssertTrue(app.buttons["清空最近搜索"].waitForExistence(timeout: 5)); attach("redesign-recent-search")
+    }
     func testLargeTextKeepsComposeAndNavigationReachable() {
         let app = launch(dark: true, large: true)
         XCTAssertTrue(app.buttons["compose-mail"].isHittable)
         app.buttons["compose-mail"].tap()
         XCTAssertTrue(app.buttons["关闭"].waitForExistence(timeout: 5)); XCTAssertTrue(app.buttons["send-mail"].exists)
         attach("blue-compose-accessibility-dark")
+        let body = app.textViews["compose-body-editor"]
+        XCTAssertTrue(body.waitForExistence(timeout: 5)); body.tap(); body.typeText("Synthetic accessibility draft")
+        XCTAssertTrue(app.buttons["添加文件"].isHittable)
+        XCTAssertTrue(app.buttons["收起键盘"].isHittable)
+        attach("redesign-compose-accessibility-keyboard")
+        app.buttons["收起键盘"].tap()
+        XCTAssertTrue(app.buttons["关闭"].isHittable)
     }
     private func attach(_ name: String) {
         let value = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); value.name = name; value.lifetime = .keepAlways; add(value)

@@ -32,7 +32,7 @@ struct AccountView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Image(systemName: "envelope.badge.shield.half.filled").font(.system(size: 32)).foregroundStyle(MailTheme.blue)
+                    Image(systemName: "lock.shield").font(.system(size: 32)).foregroundStyle(MailTheme.blue)
                     Text(editingAccount == nil ? "连接你的邮箱" : "登录与发信偏好").font(.title2.bold())
                     Text("收发设置自动填写，连接成功后即可使用。").font(.subheadline).foregroundStyle(MailTheme.secondary)
                 }.padding(.top, 12)

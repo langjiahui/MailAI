@@ -7,6 +7,7 @@ import QuickLook
 struct ComposerView: View {
     @Bindable var store: MailStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var confirmSend = false
     @State private var confirmExit = false
     @State private var confirmRetry = false
@@ -175,17 +176,16 @@ struct ComposerView: View {
         return String(store.draft.text.dropLast(quote.count))
     }
     private var composerTools: some View {
-        HStack(spacing: 20) {
-            Button { importDraftID = store.draft.id; importing = true } label: { Image(systemName: "paperclip").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("添加文件")
-            PhotosPicker(selection: $photo, matching: .images) { Image(systemName: "photo").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("照片")
+        HStack(spacing: 0) {
+            Button { importDraftID = store.draft.id; importing = true } label: { Image(systemName: "paperclip").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("添加文件").frame(maxWidth: .infinity)
+            PhotosPicker(selection: $photo, matching: .images) { Image(systemName: "photo").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("照片").frame(maxWidth: .infinity)
             Menu {
                 Button("加粗", systemImage: "bold") { editor.format(.bold) }
                 Button("斜体", systemImage: "italic") { editor.format(.italic) }
                 Button("下划线", systemImage: "underline") { editor.format(.underline) }
-            } label: { Text("Aa").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("文字格式")
-            Button { assistantOriginal = store.draft.text; assistantDraftID = store.draft.id; assistant = true } label: { Label("小邮", systemImage: "sparkles").frame(minHeight: 44) }.disabled(store.draft.text.isEmpty)
-            Spacer(minLength: 0)
-            Button { editor.dismissKeyboard() } label: { Image(systemName: "keyboard.chevron.compact.down").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("收起键盘")
+            } label: { Text("Aa").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("文字格式").frame(maxWidth: .infinity)
+            Button { assistantOriginal = store.draft.text; assistantDraftID = store.draft.id; assistant = true } label: { Group { if dynamicTypeSize.isAccessibilitySize { Image(systemName: "sparkles") } else { Label("小邮", systemImage: "sparkles") } }.frame(minHeight: 44) }.accessibilityLabel("小邮润色").disabled(store.draft.text.isEmpty).frame(maxWidth: .infinity)
+            Button { editor.dismissKeyboard() } label: { Image(systemName: "keyboard.chevron.compact.down").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("收起键盘").frame(maxWidth: .infinity)
         }.font(.callout).padding(.horizontal, 8).background(MailTheme.surface).overlay(alignment: .top) { Divider() }.disabled(!editable)
     }
     private func attachmentRow(_ item: MailAttachment) -> some View {
@@ -264,7 +264,7 @@ struct RecipientEntry: View {
             ForEach(chips, id: \.self) { email in
                 HStack(spacing: 4) {
                     Text(email).lineLimit(1).truncationMode(.middle)
-                    Button { chips.removeAll { $0 == email }; persist() } label: { Image(systemName: "xmark").font(.caption).frame(minWidth: 28, minHeight: 36) }.accessibilityLabel("移除收件人 \(email)")
+                    Button { chips.removeAll { $0 == email }; persist() } label: { Image(systemName: "xmark").font(.caption).frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("移除收件人 \(email)")
                 }.font(.subheadline).padding(.leading, 8).foregroundStyle(MailTheme.blue).background(MailTheme.blue.opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
             }
             TextField(chips.isEmpty ? "填写邮箱" : "添加", text: $input).font(.subheadline).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled().focused($focused).submitLabel(.done)
