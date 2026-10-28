@@ -22,7 +22,10 @@ import Logging
     var body: some Scene {
         WindowGroup {
             Group {
-                if let store { InboxView(store: store) }
+                if let store {
+                    if store.accounts.isEmpty { WelcomeView(store: store) }
+                    else { InboxView(store: store) }
+                }
                 else { ContentUnavailableView("存储暂不可用", systemImage: "externaldrive.badge.exclamationmark", description: Text(startupError ?? "请重试")) }
             }.tint(MailTheme.blue)
                 .preferredColorScheme(appearance == "system" ? nil : (appearance == "dark" ? .dark : .light))
@@ -33,6 +36,32 @@ import Logging
         }
     }
 }
+/// First-run screen has its own presentation host, separate from the inbox's
+/// navigation, tab, and bottom-bar overlays. Keep it alive until dismissal ends.
+struct WelcomeView: View {
+    let store: MailStore
+    @State private var addingAccount = false
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 22) {
+                Spacer(minLength: 24)
+                Image(systemName: "envelope.open.fill").font(.system(size: 64)).foregroundStyle(MailTheme.blue)
+                Text("邮件，随身而行").font(.largeTitle.bold())
+                Text("连接你的邮箱，开始轻松处理邮件。\n账号与邮件保存在你的设备上。")
+                    .foregroundStyle(.secondary).multilineTextAlignment(.center)
+                Button("添加邮箱", systemImage: "plus") { addingAccount = true }
+                    .buttonStyle(.borderedProminent).controlSize(.large).accessibilityIdentifier("add-account")
+                Spacer(minLength: 24)
+            }.padding(24).frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(MailTheme.canvas).navigationTitle("MailAI")
+        }
+        .sheet(isPresented: $addingAccount) { AccountView(store: store) }
+        .alert("操作提示", isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) {
+            Button("知道了") { store.error = nil }
+        } message: { Text(store.error ?? "") }
+    }
+}
+
 struct InboxView: View {
     @Bindable var store: MailStore
     @State private var addingAccount = false
@@ -53,19 +82,13 @@ struct InboxView: View {
         store.messages.filter { filter == "unread" ? $0.unread : filter == "flagged" ? $0.isFlagged == true : filter == "attachments" ? $0.hasAttachments == true : true }
     }
     var body: some View {
-        Group {
-            if store.accounts.isEmpty {
-                NavigationStack { mailContent }
-            } else {
-                TabView(selection: $tab) {
-                    NavigationStack { mailContent }
-                        .tabItem { Label("邮件", systemImage: "envelope") }.tag(0)
-                    NavigationStack { ContactsView(store: store) }
-                        .tabItem { Label("通讯录", systemImage: "person.crop.rectangle") }.tag(1)
-                    NavigationStack { SettingsView(store: store, addingAccount: $addingAccount) }
-                        .tabItem { Label("设置", systemImage: "gearshape") }.tag(2)
-                }
-            }
+        TabView(selection: $tab) {
+            NavigationStack { mailContent }
+                .tabItem { Label("邮件", systemImage: "envelope") }.tag(0)
+            NavigationStack { ContactsView(store: store) }
+                .tabItem { Label("通讯录", systemImage: "person.crop.rectangle") }.tag(1)
+            NavigationStack { SettingsView(store: store, addingAccount: $addingAccount) }
+                .tabItem { Label("设置", systemImage: "gearshape") }.tag(2)
         }
         .sheet(isPresented: $addingAccount) { AccountView(store: store) }
         .sheet(isPresented: $composing) { ComposerView(store: store) }

@@ -5,8 +5,10 @@ final class LaunchTests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.buttons["add-account"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.alerts["操作提示"].exists, "Startup must not hide a Keychain failure")
-        app.buttons["add-account"].tap()
-        XCTAssertTrue(app.textFields["email"].waitForExistence(timeout: 5))
+        let add = app.buttons["add-account"]
+        XCTAssertTrue(add.isHittable, "First-run add button must be tappable")
+        add.tap()
+        XCTAssertTrue(app.textFields["email"].waitForExistence(timeout: 10))
     }
     func testOnboardingAndAccountForm() {
         let app = XCUIApplication(); openAccountForm(app)
@@ -36,6 +38,19 @@ final class LaunchTests: XCTestCase {
         XCTAssertTrue(app.textFields["email"].waitForExistence(timeout: 10))
         XCTAssertEqual(app.textFields["email"].value as? String, "邮箱地址")
         XCTAssertFalse(app.buttons["validate-account"].isEnabled)
+        // Repeat with an active keyboard; no input or stale sheet may survive cancellation.
+        for _ in 0..<2 {
+            app.textFields["email"].tap()
+            app.textFields["email"].typeText("repeat@example.com")
+            app.buttons["取消"].firstMatch.tap()
+            expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: app.textFields["email"])
+            waitForExpectations(timeout: 10)
+            expectation(for: NSPredicate(format: "hittable == true"), evaluatedWith: add)
+            waitForExpectations(timeout: 10)
+            add.tap()
+            XCTAssertTrue(app.textFields["email"].waitForExistence(timeout: 10))
+            XCTAssertEqual(app.textFields["email"].value as? String, "邮箱地址")
+        }
     }
     func testUnknownDomainPrefillsDefaultsInsideOptionalSettings() {
         let app = XCUIApplication(); openAccountForm(app)
