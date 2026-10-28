@@ -25,9 +25,15 @@ final class LaunchTests: XCTestCase {
         XCTAssertFalse(app.staticTexts["正在验证并添加…"].exists)
         attach("account-simple-qq")
         app.buttons["取消"].firstMatch.tap()
-        XCTAssertTrue(app.buttons["add-account"].waitForExistence(timeout: 5))
-        app.buttons["add-account"].tap()
-        XCTAssertTrue(app.textFields["email"].waitForExistence(timeout: 5))
+        let formDismissed = NSPredicate(format: "exists == false")
+        expectation(for: formDismissed, evaluatedWith: app.textFields["email"])
+        waitForExpectations(timeout: 10)
+        let add = app.buttons["add-account"]
+        XCTAssertTrue(add.waitForExistence(timeout: 10))
+        expectation(for: NSPredicate(format: "hittable == true"), evaluatedWith: add)
+        waitForExpectations(timeout: 10)
+        add.tap()
+        XCTAssertTrue(app.textFields["email"].waitForExistence(timeout: 10))
         XCTAssertEqual(app.textFields["email"].value as? String, "邮箱地址")
         XCTAssertFalse(app.buttons["validate-account"].isEnabled)
     }
