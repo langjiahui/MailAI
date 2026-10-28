@@ -91,9 +91,10 @@ struct DraftsView: View {
             }.background(MailTheme.surface).navigationTitle("草稿与发送记录").navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } } }
                 .sheet(isPresented: $composing) { ComposerView(store: store) }
-                .confirmationDialog("删除“\(deleting?.subject.isEmpty == false ? deleting!.subject : "无主题")”？", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
+                .alert("删除“\(deleting?.subject.isEmpty == false ? deleting!.subject : "无主题")”？", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
                     Button(deleting?.state == .editing ? "删除草稿" : "删除本机发送记录", role: .destructive) { if let deleting { do { try store.discardDraft(deleting.id) } catch { store.error = error.localizedDescription } }; deleting = nil }
-                }
+                    Button("取消", role: .cancel) { deleting = nil }
+                } message: { Text("只删除此设备上的本机记录，无法撤销。服务器邮件会保留。") }
         }
     }
     private func state(_ draft: MailDraft) -> String {

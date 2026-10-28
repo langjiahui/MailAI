@@ -104,7 +104,7 @@ struct AssistantSettingsView: View {
                 if let status { Text(status).font(.footnote).textSelection(.enabled) }
             }.listRowBackground(MailTheme.surface)
         }.scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("小邮与模型服务").navigationBarTitleDisplayMode(.inline).toolbar(.hidden, for: .tabBar)
-            .confirmationDialog("清除本机模型配置？", isPresented: $confirmClear, titleVisibility: .visible) {
+            .alert("清除本机模型配置？", isPresented: $confirmClear) {
                 Button("清除配置", role: .destructive) { do { try AssistantVault.remove(); configuration = AssistantConfiguration(); status = "已清除" } catch { status = error.localizedDescription } }
                 Button("取消", role: .cancel) {}
             } message: { Text("服务地址、模型名称、API Key 和授权状态将从本机移除，邮箱与草稿保留。") }

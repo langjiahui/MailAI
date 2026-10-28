@@ -94,8 +94,9 @@ struct ReaderView: View {
             }.onDisappear { if adoptedReply { adoptedReply = false; composing = true } }
         }
         .quickLookPreview($previewURL)
-        .confirmationDialog("用 Safari 打开外部链接？", isPresented: Binding(get: { externalURL != nil }, set: { if !$0 { externalURL = nil } }), titleVisibility: .visible) {
+        .alert("用 Safari 打开外部链接？", isPresented: Binding(get: { externalURL != nil }, set: { if !$0 { externalURL = nil } })) {
             if let url = externalURL { Button("打开链接") { openURL(url); externalURL = nil } }
+            Button("取消", role: .cancel) { externalURL = nil }
         } message: { Text(externalURL?.host ?? "") }
     }
     private var messageHeader: some View {

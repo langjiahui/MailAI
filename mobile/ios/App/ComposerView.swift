@@ -63,9 +63,10 @@ struct ComposerView: View {
                         Button(store.draft.state == .editing ? "放弃草稿" : "删除本机发送记录", role: .destructive) { do { try store.discardDraft(store.draft.id); dismiss() } catch { self.error = error.localizedDescription } }
                     }
                 }
-                .confirmationDialog("仅在确认上一封没有送达后继续，避免重复发送。", isPresented: $confirmRetry, titleVisibility: .visible) {
+                .alert("确认邮件未送达？", isPresented: $confirmRetry) {
                     Button("确认未送达，解除发送锁定") { do { try store.resolveUncertain() } catch { self.error = error.localizedDescription } }
-                }
+                    Button("保留记录", role: .cancel) {}
+                } message: { Text("请先核对收件方或服务器。已发送文件夹没有副本，并不代表未送达。只有确认上一封未送达后再解除锁定，避免重复发送。") }
                 .fileImporter(isPresented: $importing, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
                     do { guard store.draft.id == importDraftID, editable else { throw MailFailure.invalid("草稿已改变，文件未添加。") }; for url in try result.get() { try importFile(url) } } catch { self.error = "部分文件未添加：\(error.localizedDescription)" }
                 }
@@ -129,7 +130,7 @@ struct ComposerView: View {
                                 draft.text = text + quote
                                 draft.html = htmlWithQuote(html, quote: quote)
                             }
-                        }.frame(minHeight: 320).accessibilityIdentifier("compose-body")
+                        }.frame(minHeight: 320)
                     }
                     if let quotedText {
                         DisclosureGroup("原邮件 · 点击展开", isExpanded: $quotedExpanded) {

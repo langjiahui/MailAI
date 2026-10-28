@@ -260,15 +260,14 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertTrue(link.waitForExistence(timeout: 10)); attach("redesign-html-reader")
         link.tap()
         XCTAssertTrue(app.buttons["打开链接"].waitForExistence(timeout: 5)); attach("redesign-external-link-confirmation")
-        let cancel = app.buttons["Cancel"].firstMatch.exists ? app.buttons["Cancel"].firstMatch : app.buttons["取消"].firstMatch
-        cancel.tap()
+        dialogCancel(app).tap()
         app.buttons["更多邮件操作"].tap(); app.buttons["查看纯文本"].tap()
         XCTAssertFalse(app.webViews.firstMatch.exists); attach("redesign-plain-reader")
     }
     func testConversationExpandsActualMessages() {
         let app = launch(extra: ["--ui-threads"])
         app.buttons["更多邮件操作"].tap(); app.buttons["按会话显示"].tap()
-        app.buttons.containing(.staticText, identifier: "项目资料确认与下一步安排").firstMatch.tap()
+        app.buttons.matching(NSPredicate(format: "label CONTAINS '2 封' AND label CONTAINS '未读'")).firstMatch.tap()
         let reply = app.staticTexts["Re: 项目资料确认与下一步安排"].firstMatch
         XCTAssertTrue(reply.waitForExistence(timeout: 5)); attach("redesign-conversation-list")
         reply.tap()
@@ -304,7 +303,8 @@ final class WorkspaceTests: XCTestCase {
         let app = launch()
         app.tabBars.buttons["设置"].tap(); app.buttons["后台收信与通知"].tap()
         app.buttons["申请通知权限"].tap()
-        let alert = app.alerts.firstMatch
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let alert = springboard.alerts.firstMatch
         XCTAssertTrue(alert.waitForExistence(timeout: 5)); attach("redesign-system-notification-permission")
         let deny = alert.buttons["Don’t Allow"].exists ? alert.buttons["Don’t Allow"] : (alert.buttons["Don't Allow"].exists ? alert.buttons["Don't Allow"] : alert.buttons["不允许"])
         XCTAssertTrue(deny.exists); deny.tap()
@@ -356,7 +356,7 @@ final class WorkspaceTests: XCTestCase {
         app.buttons["已读"].firstMatch.tap()
         XCTAssertTrue(app.buttons["撤销"].waitForExistence(timeout: 5)); attach("redesign-mail-undo")
         app.buttons["撤销"].tap()
-        app.staticTexts["项目资料确认与下一步安排"].firstMatch.press(forDuration: 1.2)
+        app.cells.containing(.staticText, identifier: "项目资料确认与下一步安排").firstMatch.press(forDuration: 1.2)
         XCTAssertTrue(app.buttons["标为已读"].waitForExistence(timeout: 5)); attach("redesign-mail-context-menu")
     }
     func testForwardDoesNotCarryAnyOriginalRecipient() {
@@ -389,7 +389,7 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertFalse(app.buttons["关闭"].isEnabled); XCTAssertFalse(app.buttons["send-mail"].exists && app.buttons["send-mail"].isEnabled)
         app.swipeUp(); attach("redesign-submitting")
         expectation(for: NSPredicate(format: "enabled == true"), evaluatedWith: app.buttons["send-mail"])
-        waitForExpectations(timeout: 10)
+        waitForExpectations(timeout: 20)
         XCTAssertTrue((app.textViews["compose-body-editor"].value as? String)?.contains("用于设计验收") == true)
     }
     func testAssistantFailureAndCancellationNeverExposePartialResult() {

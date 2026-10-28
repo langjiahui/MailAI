@@ -40,7 +40,7 @@ import MailAICore
                 recipients: [.init(name: "测试用户", email: "demo@example.com"), .init(name: "协作人", email: "team@example.com")]), markedRead: true)
         }
         func send(_ credential: AccountCredential, draft: MailDraft) async throws {
-            if CommandLine.arguments.contains("--ui-send-slow") { try await Task.sleep(for: .seconds(4)) }
+            if CommandLine.arguments.contains("--ui-send-slow") { try await Task.sleep(for: .seconds(12)) }
             throw SubmissionFailure(uncertain: false)
         }
         func attachment(_ credential: AccountCredential, summary: MailSummary, attachment: MailAttachment) async throws -> Data {

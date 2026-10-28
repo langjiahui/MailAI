@@ -70,7 +70,7 @@ struct AccountDetailView: View {
             }
         }.scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("邮箱设置").navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .tabBar)
-            .confirmationDialog("移除 \(account?.email ?? "此邮箱")？", isPresented: $confirmRemoval, titleVisibility: .visible) {
+            .alert("移除 \(account?.email ?? "此邮箱")？", isPresented: $confirmRemoval) {
                 Button("移除此邮箱", role: .destructive) { do { try store.removeAccount(accountID); dismiss() } catch { self.error = error.localizedDescription } }
                 Button("取消", role: .cancel) {}
             } message: { Text("会删除此设备上的账号、邮件缓存、附件与草稿。服务器邮件会保留。") }
