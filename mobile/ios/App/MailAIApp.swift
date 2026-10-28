@@ -244,7 +244,7 @@ struct InboxView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationTitle(unified ? "所有收件箱" : (store.folders.first { $0.name == store.folder }?.title ?? "MailAI"))
-        .toolbar(selecting ? .hidden : .visible, for: .tabBar)
+        .toolbar(selecting ? .hidden : .automatic, for: .tabBar)
         .toolbar {
             if !store.accounts.isEmpty {
                 ToolbarItem(placement: .topBarLeading) {

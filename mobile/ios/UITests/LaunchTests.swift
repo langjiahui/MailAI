@@ -104,6 +104,7 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertTrue(message.waitForExistence(timeout: 5)); attach("blue-inbox-light")
         message.tap()
         XCTAssertTrue(app.buttons["回复全部"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.tabBars.firstMatch.exists, "Reading must hide the top-level tabs")
         XCTAssertTrue(app.staticTexts["附件（1）"].exists || app.buttons["附件（1）"].exists)
         app.buttons["邮件详细信息"].tap(); attach("redesign-reader-address-details")
         attach("blue-reader-light")
@@ -220,6 +221,10 @@ final class WorkspaceTests: XCTestCase {
         app.buttons["取消"].firstMatch.tap()
         XCTAssertEqual(body.value as? String, "Synthetic unsent draft")
         XCTAssertFalse(app.buttons["send-mail"].isEnabled)
+    }
+    private func dialogCancel(_ app: XCUIApplication) -> XCUIElement {
+        let english = app.buttons["Cancel"].firstMatch
+        return english.waitForExistence(timeout: 2) ? english : app.buttons["取消"].firstMatch
     }
     private func cancelSystemPicker(_ app: XCUIApplication, screenshot: String) {
         let english = app.buttons["Cancel"].firstMatch
@@ -413,14 +418,16 @@ final class WorkspaceTests: XCTestCase {
         app.buttons.containing(.staticText, identifier: "测试邮箱").firstMatch.tap()
         XCTAssertTrue(app.buttons["移除此邮箱"].waitForExistence(timeout: 5)); attach("redesign-account-detail")
         app.buttons["移除此邮箱"].tap()
-        XCTAssertTrue(app.buttons["取消"].firstMatch.waitForExistence(timeout: 5)); attach("redesign-remove-account-confirmation")
-        app.buttons["取消"].firstMatch.tap()
+        let cancelRemoval = dialogCancel(app)
+        XCTAssertTrue(cancelRemoval.waitForExistence(timeout: 5)); attach("redesign-remove-account-confirmation")
+        cancelRemoval.tap()
         app.navigationBars.buttons.element(boundBy: 0).tap()
         app.buttons["小邮与模型服务"].tap()
         XCTAssertTrue(app.secureTextFields["API Key"].waitForExistence(timeout: 5)); attach("redesign-model-settings")
         app.swipeUp(); app.buttons["清除模型配置"].tap()
-        XCTAssertTrue(app.buttons["取消"].firstMatch.waitForExistence(timeout: 5)); attach("redesign-clear-model-confirmation")
-        app.buttons["取消"].firstMatch.tap()
+        let cancelClear = dialogCancel(app)
+        XCTAssertTrue(cancelClear.waitForExistence(timeout: 5)); attach("redesign-clear-model-confirmation")
+        cancelClear.tap()
         app.navigationBars.buttons.element(boundBy: 0).tap()
         app.buttons["后台收信与通知"].tap()
         XCTAssertTrue(app.buttons["申请通知权限"].waitForExistence(timeout: 5)); attach("redesign-background-settings")
