@@ -29,6 +29,7 @@ struct ReaderView: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("mail.readerSize") private var readerSize = 17.0
+    @ScaledMetric(relativeTo: .body) private var scaledBody = 17.0
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -52,7 +53,7 @@ struct ReaderView: View {
                 Button { assistant = true } label: { HStack { Label("小邮 · 提炼要点", systemImage: "sparkles"); Spacer(); Image(systemName: "chevron.right").font(.caption) }.font(.subheadline).padding(12).frame(minHeight: 48).background(MailTheme.blue.opacity(0.08), in: RoundedRectangle(cornerRadius: 12)) }.disabled(bodyContent == nil).accessibilityLabel("小邮助手")
                 if let bodyContent {
                     if let html = bodyContent.html, !plainText {
-                        SafeMailHTML(html: html, externalURL: $externalURL, fontSize: readerSize, contentHeight: $htmlHeight).frame(height: htmlHeight)
+                        SafeMailHTML(html: html, externalURL: $externalURL, fontSize: readerSize * scaledBody / 17, contentHeight: $htmlHeight).frame(height: htmlHeight)
                     } else {
                         Text(bodyContent.text.isEmpty ? "这封邮件没有纯文本正文，可切换原版查看。" : bodyContent.text)
                             .font(.system(size: readerSize, relativeTo: .body)).lineSpacing(6).frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled)
@@ -195,9 +196,13 @@ struct SafeMailHTML: UIViewRepresentable {
         let view = WKWebView(frame: .zero, configuration: configuration)
         view.navigationDelegate = context.coordinator
         view.isOpaque = false; view.backgroundColor = .systemBackground
-        context.coordinator.observation = view.scrollView.observe(\.contentSize, options: [.new]) { scroll, _ in
+        context.coordinator.observation = view.scrollView.observe(\.contentSize, options: [.new]) { [weak coordinator = context.coordinator] scroll, _ in
             let height = min(30000, max(200, scroll.contentSize.height))
-            DispatchQueue.main.async { if abs(context.coordinator.height.wrappedValue - height) > 1 { context.coordinator.height.wrappedValue = height }; scroll.isScrollEnabled = scroll.contentSize.height > 30000 }
+            DispatchQueue.main.async { [weak coordinator, weak scroll] in
+                guard let coordinator, let scroll else { return }
+                if abs(coordinator.height.wrappedValue - height) > 1 { coordinator.height.wrappedValue = height }
+                scroll.isScrollEnabled = scroll.contentSize.height > 30000
+            }
         }
         load(view, coordinator: context.coordinator)
         return view

@@ -152,9 +152,9 @@ struct MailSearchView: View {
         }
     }
     private func search() {
-        task?.cancel(); let input = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !input.isEmpty else { return }
-        query = input; remember(input); working = true; error = nil
+        task?.cancel(); let input = query
+        guard !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        remember(input); working = true; error = nil; completedQuery = ""
         task = Task {
             do { let found = try await store.search(input, limit: limit); try Task.checkCancellation(); results = found; total = store.searchTotal; completedQuery = input }
             catch { if !Task.isCancelled { self.error = "服务器搜索失败，已保留本机结果。可重试或缩小关键词。" } }
@@ -220,9 +220,9 @@ struct ContactEditor: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("邮箱", text: $contact.email).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
-                TextField("姓名", text: $contact.name)
-                TextField("备注", text: $contact.note)
+                VStack(alignment: .leading, spacing: 8) { Text("邮箱地址").font(.subheadline.weight(.medium)); TextField("邮箱地址", text: $contact.email).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled() }
+                VStack(alignment: .leading, spacing: 8) { Text("姓名").font(.subheadline.weight(.medium)); TextField("选填", text: $contact.name) }
+                VStack(alignment: .leading, spacing: 8) { Text("备注").font(.subheadline.weight(.medium)); TextField("补充联系信息（选填）", text: $contact.note, axis: .vertical) }
                 if let error { Text(error).foregroundStyle(.red) }
                 Button("写邮件") { dismiss(); compose(contact.email) }.disabled(!MailValidation.isAddress(contact.email))
             }.scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle(originalEmail.isEmpty ? "新建联系人" : "编辑联系人").navigationBarTitleDisplayMode(.inline).toolbar {
@@ -238,6 +238,7 @@ struct ContactDetail: View {
     let compose: (String) -> Void
     @State private var editing = false
     @State private var updated: MailContact?
+    @State private var pendingCompose: String?
     private var contact: MailContact { let current = updated ?? initial; return store.contacts.first { $0.email == current.email } ?? current }
     var body: some View {
         List {
@@ -248,7 +249,7 @@ struct ContactDetail: View {
             Section("备注") { Text(contact.note.isEmpty ? "暂无备注" : contact.note).textSelection(.enabled) }
         }.scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("联系人").navigationBarTitleDisplayMode(.inline).toolbar(.hidden, for: .tabBar)
             .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("编辑") { editing = true } } }
-            .sheet(isPresented: $editing) { ContactEditor(store: store, contact: contact, saved: { updated = $0 }, compose: compose) }
+            .sheet(isPresented: $editing, onDismiss: { if let email = pendingCompose { pendingCompose = nil; compose(email) } }) { ContactEditor(store: store, contact: contact, saved: { updated = $0 }, compose: { pendingCompose = $0 }) }
     }
 }
 struct PhoneContactPicker: UIViewControllerRepresentable {

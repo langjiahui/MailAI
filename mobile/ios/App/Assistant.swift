@@ -89,7 +89,7 @@ struct AssistantSettingsView: View {
                 Button("测试连接") {
                     working = true; status = nil
                     var testConfiguration = configuration; testConfiguration.consent = true
-                    task = Task { do { _ = try await AssistantAPI.generate(configuration: testConfiguration, instruction: "请简短回复连接正常", text: "连接测试，不包含邮件数据。"); status = "连接正常" } catch { if !Task.isCancelled { status = error.localizedDescription } }; working = false }
+                    task = Task { do { _ = try await AssistantAPI.generate(configuration: testConfiguration, instruction: "请简短回复连接正常", text: "连接测试，不包含邮件数据。"); try Task.checkCancellation(); status = "连接正常" } catch { if !Task.isCancelled { status = error.localizedDescription } }; if !Task.isCancelled { working = false } }
                 }.disabled(working)
                 if working { Button("取消") { task?.cancel(); working = false } }
                 Button("清除模型配置", role: .destructive) { confirmClear = true }.disabled(working)
@@ -149,7 +149,7 @@ struct AssistantPanel: View {
                             }.buttonStyle(.borderedProminent)
                         }
                     }
-                }.padding(20)
+                }.padding(20).onAppear { do { configuration = try AssistantVault.load() } catch { status = error.localizedDescription } }
             }.background(MailTheme.surface).navigationTitle("小邮").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } } }
         }.sheet(isPresented: $previewScope) {
             NavigationStack {

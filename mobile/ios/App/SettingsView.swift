@@ -21,7 +21,7 @@ struct SettingsView: View {
                 Button("添加邮箱", systemImage: "plus.circle") { addingAccount = true }.frame(minHeight: 44)
             }
             Section("偏好设置") {
-                NavigationLink { AppearanceSettingsView() } label: { settingsRow("外观与阅读", symbol: "circle.lefthalf.filled", detail: "宝武蓝 · 蓝白") }
+                NavigationLink { AppearanceSettingsView() } label: { settingsRow("外观与阅读", symbol: "circle.lefthalf.filled", detail: "宝武蓝 · 蓝白") }.accessibilityIdentifier("appearance-settings")
                 NavigationLink { AssistantSettingsView() } label: { settingsRow("小邮与模型服务", symbol: "sparkles") }
                 NavigationLink { BackgroundSettingsView() } label: { settingsRow("后台收信与通知", symbol: "bell") }
             }

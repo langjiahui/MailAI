@@ -102,6 +102,8 @@ struct InboxView: View {
             Button("知道了") { store.error = nil }
         } message: { Text(store.error ?? "") }
         .task { store.refresh() }
+        .onChange(of: store.selectedID) { _, _ in selection = []; selecting = false }
+        .onChange(of: store.folder) { _, _ in selection = []; selecting = false }
         .onChange(of: unified) { _, value in if value { unifiedMessages = (try? store.cachedInbox()) ?? [] } }
         .onChange(of: store.lastRefresh) { _, _ in if unified { unifiedMessages = (try? store.cachedInbox()) ?? [] } }
     }
@@ -163,7 +165,7 @@ struct InboxView: View {
                                             Button { if selection.contains(message.id) { selection.remove(message.id) } else { selection.insert(message.id) } } label: {
                                                 Image(systemName: selection.contains(message.id) ? "checkmark.circle.fill" : "circle").font(.title3)
                                             }.buttonStyle(.plain).accessibilityLabel("选择邮件")
-                                            MailRow(summary: message)
+                                            MailRow(summary: message).contentShape(Rectangle()).onTapGesture { if selection.contains(message.id) { selection.remove(message.id) } else { selection.insert(message.id) } }
                                         } else {
                                             NavigationLink { ReaderView(store: store, summary: message) } label: { MailRow(summary: message) }
                                         }

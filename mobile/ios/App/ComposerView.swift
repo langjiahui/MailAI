@@ -58,11 +58,11 @@ struct ComposerView: View {
                     }
                     ZStack(alignment: .topLeading) {
                         if editingText.isEmpty { Text("填写邮件正文").foregroundStyle(.tertiary).padding(.top, 12).padding(.leading, 5).allowsHitTesting(false) }
-                        RichComposerEditor(text: editingText, html: quotedText == nil ? store.draft.html : nil, editable: editable, commands: editor) { text, html in
+                        RichComposerEditor(text: editingText, html: editingHTML, editable: editable, commands: editor) { text, html in
                             store.updateDraft { draft in
                                 let quote = quotedText ?? ""
                                 draft.text = text + quote
-                                draft.html = quote.isEmpty ? html : nil
+                                draft.html = htmlWithQuote(html, quote: quote)
                             }
                         }.frame(minHeight: 320).accessibilityIdentifier("compose-body")
                     }
@@ -150,6 +150,20 @@ struct ComposerView: View {
             }
             Button("写一封新邮件") { do { try store.newDraft() } catch { self.error = error.localizedDescription } }
         }
+    }
+    private static let quoteHTMLMarker = "<!--MailAI-quoted-original-->"
+    private var editingHTML: String? {
+        guard quotedText != nil else { return store.draft.html }
+        guard let html = store.draft.html, let marker = html.range(of: Self.quoteHTMLMarker) else { return nil }
+        return String(html[..<marker.lowerBound]) + "</body></html>"
+    }
+    private func htmlWithQuote(_ html: String?, quote: String) -> String? {
+        guard !quote.isEmpty else { return html }
+        guard var html else { return nil }
+        let suffix = "</body></html>"
+        if html.hasSuffix(suffix) { html.removeLast(suffix.count) }
+        let escaped = quote.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "<", with: "&lt;").replacingOccurrences(of: ">", with: "&gt;").replacingOccurrences(of: "\n", with: "<br>")
+        return html + Self.quoteHTMLMarker + "<blockquote>" + escaped + "</blockquote>" + suffix
     }
     private var quotedText: String? {
         guard store.draft.inReplyTo != nil || store.draft.subject.lowercased().hasPrefix("fwd:") else { return nil }
