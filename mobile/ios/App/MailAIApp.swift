@@ -53,13 +53,19 @@ struct InboxView: View {
         store.messages.filter { filter == "unread" ? $0.unread : filter == "flagged" ? $0.isFlagged == true : filter == "attachments" ? $0.hasAttachments == true : true }
     }
     var body: some View {
-        TabView(selection: $tab) {
-            NavigationStack { mailContent }
-                .tabItem { Label("邮件", systemImage: "envelope") }.tag(0)
-            NavigationStack { ContactsView(store: store) }
-                .tabItem { Label("通讯录", systemImage: "person.crop.rectangle") }.tag(1)
-            NavigationStack { SettingsView(store: store, addingAccount: $addingAccount) }
-                .tabItem { Label("设置", systemImage: "gearshape") }.tag(2)
+        Group {
+            if store.accounts.isEmpty {
+                NavigationStack { mailContent }
+            } else {
+                TabView(selection: $tab) {
+                    NavigationStack { mailContent }
+                        .tabItem { Label("邮件", systemImage: "envelope") }.tag(0)
+                    NavigationStack { ContactsView(store: store) }
+                        .tabItem { Label("通讯录", systemImage: "person.crop.rectangle") }.tag(1)
+                    NavigationStack { SettingsView(store: store, addingAccount: $addingAccount) }
+                        .tabItem { Label("设置", systemImage: "gearshape") }.tag(2)
+                }
+            }
         }
         .sheet(isPresented: $addingAccount) { AccountView(store: store) }
         .sheet(isPresented: $composing) { ComposerView(store: store) }
