@@ -43,8 +43,7 @@ struct RichComposerEditor: UIViewRepresentable {
         view.font = .preferredFont(forTextStyle: .body); view.adjustsFontForContentSizeCategory = true
         view.backgroundColor = .clear; view.textColor = .label; view.tintColor = UIColor(MailTheme.blue); view.allowsEditingTextAttributes = true
         view.accessibilityIdentifier = "compose-body-editor"
-        if let html, let data = html.data(using: .utf8), let attributed = try? NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.html], documentAttributes: nil) { view.attributedText = attributed }
-        else { view.text = text }
+        applyContent(to: view)
         view.isEditable = editable
         view.isScrollEnabled = false
         view.textContainerInset = UIEdgeInsets(top: 12, left: 0, bottom: 12, right: 0)
@@ -56,7 +55,22 @@ struct RichComposerEditor: UIViewRepresentable {
         view.isEditable = editable
         commands?.view = view
         context.coordinator.changed = changed
-        if view.text != text { view.text = text; view.font = .preferredFont(forTextStyle: .body); view.textColor = .label }
+        if view.text != text { applyContent(to: view) }
+    }
+    private func applyContent(to view: UITextView) {
+        if let html, let data = html.data(using: .utf8), let parsed = try? NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.html], documentAttributes: nil) {
+            let attributed = NSMutableAttributedString(attributedString: parsed)
+            let preferred = UIFont.preferredFont(forTextStyle: .body)
+            parsed.enumerateAttributes(in: NSRange(location: 0, length: parsed.length)) { attributes, range, _ in
+                let traits = (attributes[.font] as? UIFont)?.fontDescriptor.symbolicTraits.intersection([.traitBold, .traitItalic]) ?? []
+                let descriptor = preferred.fontDescriptor.withSymbolicTraits(traits) ?? preferred.fontDescriptor
+                attributed.addAttributes([.font: UIFont(descriptor: descriptor, size: preferred.pointSize), .foregroundColor: UIColor.label], range: range)
+            }
+            if parsed.string.hasPrefix(text), parsed.string.dropFirst(text.count).allSatisfy({ $0.isWhitespace }), attributed.length > text.utf16.count {
+                attributed.deleteCharacters(in: NSRange(location: text.utf16.count, length: attributed.length - text.utf16.count))
+            }
+            view.attributedText = attributed
+        } else { view.text = text; view.font = .preferredFont(forTextStyle: .body); view.textColor = .label }
     }
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
         guard let width = proposal.width, width > 0 else { return nil }

@@ -446,6 +446,24 @@ final class WorkspaceTests: XCTestCase {
             app.terminate()
         }
     }
+    func testPolishingKeepsQuotedMailAndCanRestoreDraft() {
+        let app = launch(extra: ["--ui-assistant"])
+        app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap(); app.buttons["回复全部"].tap()
+        let body = app.textViews["compose-body-editor"]
+        XCTAssertTrue(body.waitForExistence(timeout: 5)); body.tap(); body.typeText("Synthetic current draft")
+        app.buttons["收起键盘"].tap(); app.buttons["小邮润色"].tap(); app.buttons["润色"].tap()
+        XCTAssertTrue(app.staticTexts["Synthetic current draft"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '请于周五前确认测试材料'")).firstMatch.exists)
+        app.buttons["开始处理"].tap()
+        XCTAssertTrue(app.buttons["采用到正文"].waitForExistence(timeout: 10)); app.buttons["采用到正文"].tap()
+        XCTAssertEqual(body.value as? String, "synthetic model response")
+        app.swipeUp(); app.buttons["原邮件 · 点击展开"].tap()
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '请于周五前确认测试材料'")).firstMatch.waitForExistence(timeout: 5))
+        attach("redesign-polish-retains-original-mail")
+        app.swipeUp(); app.buttons["撤回润色"].tap()
+        XCTAssertEqual(body.value as? String, "Synthetic current draft")
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '请于周五前确认测试材料'")).firstMatch.exists)
+    }
     func testStorageFailureOffersRetryWithoutDeletingData() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-fixture", "--ui-storage-error"]; app.launch()
         XCTAssertTrue(app.buttons["重试"].waitForExistence(timeout: 5)); attach("redesign-storage-error")

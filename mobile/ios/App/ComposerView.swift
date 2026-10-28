@@ -22,6 +22,10 @@ struct ComposerView: View {
     @State private var assistant = false
     @State private var assistantOriginal = ""
     @State private var assistantDraftID = ""
+    @State private var assistantFullDraft = ""
+    @State private var assistantQuote = ""
+    @State private var undoHTML: String?
+    @State private var undoDraftID = ""
     @State private var undoText: String?
     @State private var adoptedText: String?
     @State private var error: String?
@@ -71,8 +75,8 @@ struct ComposerView: View {
                             Text(quotedText).font(.subheadline).foregroundStyle(MailTheme.secondary).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 12)
                         }.font(.subheadline).padding(.vertical, 12)
                     }
-                    if let undoText, store.draft.text == adoptedText {
-                        Button("撤回润色") { store.updateDraft { $0.text = undoText; $0.html = nil }; self.undoText = nil; adoptedText = nil }.font(.subheadline).frame(minHeight: 44)
+                    if let undoText, store.draft.id == undoDraftID, store.draft.text == adoptedText {
+                        Button("撤回润色") { store.updateDraft { $0.text = undoText; $0.html = undoHTML }; self.undoText = nil; undoHTML = nil; adoptedText = nil }.font(.subheadline).frame(minHeight: 44)
                     }
                     VStack(alignment: .leading, spacing: 8) { status }.padding(.vertical, 16)
                     if let error { MailNotice(text: error, critical: true).padding(.bottom, 12) }
@@ -124,8 +128,10 @@ struct ComposerView: View {
                     for email in emails { switch recipientTarget { case "cc": store.updateDraft { $0.cc = append(email, to: $0.cc) }; case "bcc": store.updateDraft { $0.bcc = append(email, to: $0.bcc) }; default: store.updateDraft { $0.to = append(email, to: $0.to) } } }
                 } }
                 .sheet(isPresented: $assistant) { AssistantPanel(text: assistantOriginal, composing: true) { output in
-                    guard editable, store.draft.id == assistantDraftID, store.draft.text == assistantOriginal else { return false }
-                    undoText = assistantOriginal; adoptedText = output; store.updateDraft { $0.text = output; $0.html = nil }; return true
+                    guard editable, store.draft.id == assistantDraftID, store.draft.text == assistantFullDraft else { return false }
+                    undoText = assistantFullDraft; undoHTML = store.draft.html; undoDraftID = store.draft.id
+                    adoptedText = output + assistantQuote
+                    store.updateDraft { $0.text = output + assistantQuote; $0.html = nil }; return true
                 } }
                 .quickLookPreview($previewURL)
                 .onDisappear { photoTask?.cancel() }
@@ -187,7 +193,7 @@ struct ComposerView: View {
                 Button("斜体", systemImage: "italic") { editor.format(.italic) }
                 Button("下划线", systemImage: "underline") { editor.format(.underline) }
             } label: { Text("Aa").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("文字格式").frame(maxWidth: .infinity)
-            Button { assistantOriginal = store.draft.text; assistantDraftID = store.draft.id; assistant = true } label: { Group { if dynamicTypeSize.isAccessibilitySize { Image(systemName: "sparkles") } else { Label("小邮", systemImage: "sparkles") } }.frame(minHeight: 44) }.accessibilityLabel("小邮润色").disabled(store.draft.text.isEmpty).frame(maxWidth: .infinity)
+            Button { assistantOriginal = editingText; assistantFullDraft = store.draft.text; assistantQuote = quotedText ?? ""; assistantDraftID = store.draft.id; assistant = true } label: { Group { if dynamicTypeSize.isAccessibilitySize { Image(systemName: "sparkles") } else { Label("小邮", systemImage: "sparkles") } }.frame(minHeight: 44) }.accessibilityLabel("小邮润色").disabled(store.draft.text.isEmpty).frame(maxWidth: .infinity)
             Button { editor.dismissKeyboard() } label: { Image(systemName: "keyboard.chevron.compact.down").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("收起键盘").frame(maxWidth: .infinity)
         }.font(.callout).dynamicTypeSize(...DynamicTypeSize.xxxLarge).padding(.horizontal, 8).background(MailTheme.surface).overlay(alignment: .top) { Divider() }.disabled(!editable)
     }

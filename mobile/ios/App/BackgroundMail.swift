@@ -76,6 +76,9 @@ struct BackgroundSettingsView: View {
     @AppStorage("mail.background") private var enabled = false
     @AppStorage("mail.backgroundStatus") private var status = "尚无后台检查记录"
     @State private var permission = "正在读取…"
+    @State private var permissionDenied = false
+    @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
     var body: some View {
         Form {
             Section {
@@ -86,6 +89,9 @@ struct BackgroundSettingsView: View {
             }.listRowBackground(MailTheme.surface)
             Section("通知") {
                 LabeledContent("系统通知权限", value: permission)
+                if permissionDenied {
+                    Button("打开系统通知设置", systemImage: "arrow.up.right.square") { if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) } }
+                }
                 Button("申请通知权限") { Task { do { _ = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]); await readPermission() } catch { permission = "申请未完成" } } }
                 Text("仅在后台检查发现新邮件且系统允许通知时提醒。首次检查建立基线，不批量提醒历史邮件。").font(.footnote).foregroundStyle(.secondary)
             }.listRowBackground(MailTheme.surface)
@@ -95,9 +101,11 @@ struct BackgroundSettingsView: View {
                 Button("重新提交调度请求") { BackgroundMail.shared.schedule() }.disabled(!enabled)
             }.listRowBackground(MailTheme.surface)
         }.scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("后台收信与通知").navigationBarTitleDisplayMode(.inline).toolbar(.hidden, for: .tabBar).task { await readPermission() }
+            .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await readPermission() } } }
     }
     private func readPermission() async {
         let value = await UNUserNotificationCenter.current().notificationSettings()
+        permissionDenied = value.authorizationStatus == .denied
         switch value.authorizationStatus { case .authorized, .provisional, .ephemeral: permission = "已允许"; case .denied: permission = "已关闭，可在系统设置开启"; default: permission = "尚未申请" }
     }
 }
