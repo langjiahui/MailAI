@@ -6,6 +6,7 @@ final class LaunchTests: XCTestCase {
         // including cancellation. Never save the synthetic test credential.
         let saveSheet = app.sheets["Save Password?"]
         if saveSheet.waitForExistence(timeout: 3) {
+            attach("system-password-save-offer")
             let notNow = saveSheet.buttons["Not Now"]
             XCTAssertTrue(notNow.waitForExistence(timeout: 3))
             notNow.tap()
@@ -199,6 +200,28 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertTrue(app.buttons["send-mail"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.textViews["compose-body-editor"].value as? String, "synthetic model response")
         attach("redesign-ai-editable-reply")
+    }
+    func testNativePickersKeepUnsentDraftIntact() {
+        let app = launch()
+        app.buttons["compose-mail"].tap()
+        let body = app.textViews["compose-body-editor"]
+        body.tap(); body.typeText("Synthetic unsent draft")
+        app.buttons["收起键盘"].tap()
+        app.buttons["添加文件"].tap(); cancelSystemPicker(app, screenshot: "redesign-system-files")
+        XCTAssertEqual(body.value as? String, "Synthetic unsent draft")
+        app.buttons["照片"].tap(); cancelSystemPicker(app, screenshot: "redesign-system-photos")
+        XCTAssertEqual(body.value as? String, "Synthetic unsent draft")
+        app.buttons["选择收件人"].tap(); app.buttons["从手机联系人选择"].tap()
+        cancelSystemPicker(app, screenshot: "redesign-system-contacts")
+        app.buttons["取消"].firstMatch.tap()
+        XCTAssertEqual(body.value as? String, "Synthetic unsent draft")
+        XCTAssertFalse(app.buttons["send-mail"].isEnabled)
+    }
+    private func cancelSystemPicker(_ app: XCUIApplication, screenshot: String) {
+        let english = app.buttons["Cancel"].firstMatch
+        let cancel = english.waitForExistence(timeout: 5) ? english : app.buttons["取消"].firstMatch
+        XCTAssertTrue(cancel.waitForExistence(timeout: 5)); XCTAssertTrue(cancel.isHittable)
+        attach(screenshot); cancel.tap()
     }
     func testStorageFailureOffersRetryWithoutDeletingData() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-fixture", "--ui-storage-error"]; app.launch()
