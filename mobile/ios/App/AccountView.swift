@@ -113,9 +113,9 @@ struct AccountView: View {
             .textInputAutocapitalization(.never).autocorrectionDisabled()
             .onAppear { if let editingAccount { setup = AccountSetup(account: editingAccount) } }
             .navigationTitle(editingAccount == nil ? "添加邮箱" : "编辑邮箱").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("取消") { cancelValidation(); dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("取消") { focused = nil; cancelValidation(); dismiss() } } }
             .interactiveDismissDisabled(testing)
-            .onDisappear { cancelValidation(); password = "" }
+            .onDisappear { focused = nil; cancelValidation(); password = "" }
         }
     }
 
