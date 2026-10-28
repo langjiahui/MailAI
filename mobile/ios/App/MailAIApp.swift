@@ -43,17 +43,20 @@ struct WelcomeView: View {
     @State private var addingAccount = false
     var body: some View {
         NavigationStack {
-            VStack(spacing: 22) {
-                Image(systemName: "envelope.open.fill").font(.system(size: 64)).foregroundStyle(MailTheme.blue)
-                Text("邮件，随身而行").font(.largeTitle.bold())
-                Text("连接你的邮箱，开始轻松处理邮件。\n账号与邮件保存在你的设备上。")
-                    .foregroundStyle(.secondary).multilineTextAlignment(.center)
-                Button("添加邮箱", systemImage: "plus") { addingAccount = true }
-                    .buttonStyle(.borderedProminent).controlSize(.large).accessibilityIdentifier("add-account")
-                Spacer(minLength: 24)
-            }.padding(24).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .background(MailTheme.canvas).navigationTitle("MailAI")
-                .navigationDestination(isPresented: $addingAccount) { AccountView(store: store) }
+            if addingAccount {
+                AccountView(store: store, onClose: { addingAccount = false })
+            } else {
+                VStack(spacing: 22) {
+                    Image(systemName: "envelope.open.fill").font(.system(size: 64)).foregroundStyle(MailTheme.blue)
+                    Text("邮件，随身而行").font(.largeTitle.bold())
+                    Text("连接你的邮箱，开始轻松处理邮件。\n账号与邮件保存在你的设备上。")
+                        .foregroundStyle(.secondary).multilineTextAlignment(.center)
+                    Button("添加邮箱", systemImage: "plus") { addingAccount = true }
+                        .buttonStyle(.borderedProminent).controlSize(.large).accessibilityIdentifier("add-account")
+                    Spacer(minLength: 24)
+                }.padding(24).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .background(MailTheme.canvas).navigationTitle("MailAI")
+            }
         }
         .alert("操作提示", isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) {
             Button("知道了") { store.error = nil }

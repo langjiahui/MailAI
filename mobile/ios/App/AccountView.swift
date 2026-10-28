@@ -4,6 +4,7 @@ import MailAICore
 struct AccountView: View {
     let store: MailStore
     var editingAccount: MailAccount? = nil
+    var onClose: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var setup = AccountSetup()
     @State private var password = ""
@@ -113,11 +114,14 @@ struct AccountView: View {
             .onAppear { if let editingAccount { setup = AccountSetup(account: editingAccount) } }
             .navigationTitle(editingAccount == nil ? "添加邮箱" : "编辑邮箱").navigationBarTitleDisplayMode(.inline)
             .navigationBarBackButtonHidden(true)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("取消") { focused = nil; cancelValidation(); dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("取消") { focused = nil; cancelValidation(); close() } } }
             .interactiveDismissDisabled(testing)
             .onDisappear { focused = nil; cancelValidation(); password = "" }
     }
 
+    private func close() {
+        if let onClose { onClose() } else { dismiss() }
+    }
     private func cancelValidation() {
         requestID = UUID(); task?.cancel(); task = nil; testing = false
     }
@@ -143,7 +147,7 @@ struct AccountView: View {
                 if editingAccount == nil { try await store.addAccount(account, password: credential) }
                 else { try await store.updateAccount(account, password: credential.isEmpty ? nil : credential) }
                 guard requestID == id, !Task.isCancelled else { return }
-                password = ""; dismiss()
+                password = ""; close()
             } catch {
                 guard requestID == id, !Task.isCancelled else { return }
                 if setup.provider == nil { advanced = true }
