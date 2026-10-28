@@ -3,8 +3,17 @@
   if (document.documentElement.classList.contains('windows-native-window')) return;
   let revision = 0;
   let pending = Promise.resolve();
-  let dragRevision = 0, pendingDrag = Promise.resolve(), lastDragRegion = '';
-  let regionFrame;
+  let dragRevision = 0, pendingDrag = Promise.resolve(), lastDragRegion = '', queuedDragRegion = '';
+  let regionFrame, dragRetryTimer, dragRetries = 0;
+  const dragRetryDelays = [150, 500, 1500];
+  function retryDragRegion(token) {
+    if (token !== dragRevision || dragRetryTimer || dragRetries >= dragRetryDelays.length) return;
+    // Re-measure on retry: the window/font layout may have changed meanwhile.
+    dragRetryTimer = setTimeout(() => {
+      dragRetryTimer = undefined;
+      updateDragRegion();
+    }, dragRetryDelays[dragRetries++]);
+  }
   function updateDragRegion() {
     cancelAnimationFrame(regionFrame);
     regionFrame = requestAnimationFrame(() => {
@@ -20,7 +29,7 @@
       }
       if (!document.documentElement.classList.contains('macos-native-window')) return;
       const rect = document.querySelector('.topbar .brand')?.getBoundingClientRect();
-      if (rect?.width) {
+      if (header && rect?.width && innerWidth > 0) {
         // Native drag/double-click applies to empty header space, never controls.
         const occupied = [...header.querySelectorAll('.global-search,button,input,select,a,[role=button]')]
           .map(el => el.getBoundingClientRect()).filter(r => r.width && r.height);
@@ -46,18 +55,36 @@
         if (edge < innerWidth) gaps.push([edge, innerWidth]);
         const method = window.pywebview?.api?.set_window_drag_region;
         const region = [rect.left, rect.right, innerWidth, gaps, excluded], signature = JSON.stringify(region);
-        if (method && signature !== lastDragRegion) {
-          const token = ++dragRevision; lastDragRegion = signature;
+        if (method && signature !== queuedDragRegion && (signature !== lastDragRegion || queuedDragRegion)) {
+          if (dragRetryTimer) {
+            clearTimeout(dragRetryTimer); dragRetryTimer = undefined;
+          }
+          const token = ++dragRevision; queuedDragRegion = signature;
           // Native bridge calls can finish out of order during a drag. Apply
           // only the latest queued geometry after the previous call settles.
-          pendingDrag = pendingDrag.catch(() => {}).then(() => token === dragRevision ? method(...region) : null)
-            .catch(() => { if (token === dragRevision) lastDragRegion = ''; });
+          pendingDrag = pendingDrag.catch(() => {}).then(async () => {
+            if (token !== dragRevision) return;
+            lastDragRegion = '';
+            let result;
+            try { result = await method(...region); } catch (_) { /* Retry a transient bridge failure. */ }
+            if (token !== dragRevision) return;
+            queuedDragRegion = '';
+            if (result?.ok === true) {
+              lastDragRegion = signature;
+              dragRetries = 0;
+            } else retryDragRegion(token);
+          });
         }
       }
     });
   }
   const header = document.querySelector('.topbar');
-  if (header) new ResizeObserver(updateDragRegion).observe(header);
+  if (header) {
+    const observer = new ResizeObserver(updateDragRegion);
+    observer.observe(header);
+    // The toolbar can keep its size while fonts or command labels move its gaps.
+    for (const node of header.querySelectorAll('.brand,.global-search,.global-actions')) observer.observe(node);
+  }
   const sidebar = document.querySelector('.layout > .sidebar');
   if (sidebar) new ResizeObserver(updateDragRegion).observe(sidebar);
   const petRoot = document.getElementById('mail-assistant'), pet = document.getElementById('assistant-orb');
@@ -66,6 +93,8 @@
   // Font zoom and opening/closing chat also change the pet's native hit target.
   new MutationObserver(updateDragRegion).observe(document.body, {attributes:true, attributeFilter:['class','style']});
   window.addEventListener('resize', updateDragRegion);
+  window.addEventListener('focus', updateDragRegion);
+  document.fonts?.ready.then(updateDragRegion);
   updateDragRegion();
   window.addEventListener('mailai:native-fullscreen', event => {
     const root = document.documentElement;
@@ -88,7 +117,13 @@
       }
     } catch (_) { /* A missing/older desktop bridge keeps the standard web canvas. */ }
   }
-  window.addEventListener('pywebviewready', syncNativeTheme);
+  window.addEventListener('pywebviewready', () => {
+    // Geometry must recover even if the separate theme bridge is unavailable.
+    lastDragRegion = ''; queuedDragRegion = ''; ++dragRevision; dragRetries = 0;
+    clearTimeout(dragRetryTimer); dragRetryTimer = undefined;
+    updateDragRegion();
+    syncNativeTheme();
+  });
   document.addEventListener('mailai:themechange', syncNativeTheme);
   syncNativeTheme();
 })();

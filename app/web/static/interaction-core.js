@@ -45,6 +45,7 @@
   window.mailaiPatchRows = (host, html, keyAttribute, preserve = () => false) => {
     const template = document.createElement('template'); template.innerHTML = html;
     const existing = new Map([...host.children].filter(n => n.hasAttribute(keyAttribute)).map(n => [n.getAttribute(keyAttribute), n]));
+    const actions = new Map([...host.children].filter(n => n.hasAttribute('data-patch-action')).map(n => [n.dataset.patchAction, n]));
     const focused = document.activeElement;
     const focusRow = focused?.closest('[' + keyAttribute + ']');
     const controls = 'button,input,select,textarea,a[href]';
@@ -53,6 +54,16 @@
     const selection = (focused?.tagName === 'TEXTAREA' || (focused?.tagName === 'INPUT' && focused.type === 'text')) ? [focused.selectionStart,focused.selectionEnd] : null;
     const scroll = []; for (let n = host; n; n = n.parentElement) if (n.scrollHeight > n.clientHeight) scroll.push([n,n.scrollTop]);
     const desired = [...template.content.children].map(next => {
+      // Keep an activating paging button attached while replacing surrounding
+      // rows. WebKit can otherwise leave pointer activation unfinished after
+      // the click handler removes its own target from the document.
+      const action = actions.get(next.dataset.patchAction);
+      if (action && action.tagName === next.tagName) {
+        for (const attr of [...action.attributes]) if (!next.hasAttribute(attr.name)) action.removeAttribute(attr.name);
+        for (const attr of next.attributes) action.setAttribute(attr.name, attr.value);
+        action.replaceChildren(...next.childNodes);
+        return action;
+      }
       const old = existing.get(next.getAttribute(keyAttribute));
       if (!old) return next;
       if (old.outerHTML === next.outerHTML || preserve(old)) return old;

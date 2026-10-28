@@ -28,6 +28,17 @@ const browserType=require('playwright')[process.env.MAILAI_BROWSER || 'chromium'
   const dialog=page.locator('#mail-recovery-dialog');await dialog.waitFor({state:'visible'});
   assert.equal(await dialog.locator('[data-recovery-account]').inputValue(),target.id);
   assert.match(await dialog.locator('[data-recovery-sync]').textContent(),/同步失败/);
+  // Temporary disconnections recover automatically; expired credentials get an
+  // explicit account repair action instead of the same generic failure label.
+  for (const [kind,label] of [['connection','自动重连中'],['credentials','需要重新登录']]) {
+   await page.evaluate(({id,kind})=>{const account=_systemConfig.accounts.find(row=>row.id===id);account.sync_issue_kind=kind;renderSidebarAccounts();},{id:target.id,kind});
+   assert.equal(await page.locator(`.account-sync-state[data-account-recovery="${target.id}"]`).textContent(),label);
+   sync.issue_kind=kind;
+   await dialog.locator('[data-recovery-refresh]').click();
+   await page.waitForFunction(kind=>kind==='credentials' ? document.querySelector('[data-recovery-manage]').textContent==='重新连接邮箱' : document.querySelector('[data-recovery-sync]').textContent.includes('正在重新连接'),kind);
+  }
+  sync.issue_kind='unknown';
+  await dialog.locator('[data-recovery-refresh]').click();
   await dialog.locator('[data-recovery-inspect="0"]').click();
   await page.waitForFunction(()=>document.querySelector('.mail-recovery-item h3')?.textContent.includes('合成大邮件'));
   assert.equal(await dialog.locator('.mail-recovery-item img').count(),0,'Untrusted message titles must remain text');
@@ -45,6 +56,7 @@ const browserType=require('playwright')[process.env.MAILAI_BROWSER || 'chromium'
   await page.evaluate(id=>window.mailaiMailRecovery.open(id),target.id);
   await dialog.locator('[data-recovery-open]').waitFor({state:'visible'});
   assert.match(await dialog.locator('[data-recovery-task]').textContent(),/问题记录已移除/);
+  assert(!/同步失败|正在重新连接/.test(await dialog.locator('[data-recovery-sync]').textContent()),'A successful sync must clear the cached error');
   task={running:false,error:'补下载未完成，请检查邮箱连接后重试；问题记录已保留'};
   items=[{folder:'INBOX',uid:81,size:257*1024**2,error:'超过自动下载限制'}];
   await dialog.locator('[data-recovery-refresh]').click();

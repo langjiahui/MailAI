@@ -1,5 +1,11 @@
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "mailRecovery.historyFailure": ["历史大邮件下载失败：{0}", "Large historical message download failed: {0}"],
+  "mailRecovery.autoLimits": ["大邮件会自动分段下载，单封最多 256 MB。失败会保留问题记录并重试；下载仅保存本机副本，不修改服务器邮件。", "Large messages are downloaded automatically in chunks, up to 256 MB each. Failed downloads remain queued for retry. Only local copies are saved; server messages are unchanged."],
+  "mailRecovery.signIn": ["邮箱登录已失效，请重新登录或更新授权码。", "Mailbox sign-in has expired. Sign in again or update the app password."],
+  "mailRecovery.tooLarge": ["邮件超过 256 MB，请在原邮箱下载原件", "This message exceeds 256 MB. Download the original from your mailbox."],
+  "mailRecovery.tooLargeCount": ["{0} 封邮件超过 256 MB，请在原邮箱下载原件", "{0} messages exceed 256 MB. Download the originals from your mailbox."],
+  "mailRecovery.progress": ["正在分段下载大邮件：{0} / {1} MB", "Downloading a large message in chunks: {0} / {1} MB"],
   "mailImport.uploadRetrying": ["传输暂时没有响应，正在核对已保存进度并自动重试（{0} / 2）。", "The transfer stopped responding. Checking saved progress and retrying automatically ({0} / 2)."],
   "mailImport.uploadCurrent": ["当前文件：{0}", "Current file: {0}"],
   "mailImport.uploadSaving": ["已传输 {0}，正在确认文件已保存。", "Transferred {0}. Confirming the file was saved."],

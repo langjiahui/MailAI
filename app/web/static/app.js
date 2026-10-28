@@ -5298,7 +5298,12 @@ function accountSyncLabel(account) {
   }
   if (account.sync_status === 'interrupted') return mailaiText('上次同步中断');
   if (Number(account.sync_deferred_count) > 0) return mailaiTemplate`${account.sync_deferred_count} 封待重试`;
-  if (account.sync_error) return mailaiText('同步失败');
+  if (account.sync_error) {
+    if (account.sync_issue_kind === 'credentials') return mailaiText('需要重新登录');
+    if (account.sync_issue_kind === 'connection') return mailaiText('自动重连中');
+    if (account.sync_issue_kind === 'certificate') return mailaiText('检查连接');
+    return mailaiText('同步失败');
+  }
   if (account.sync_status === 'canceled') return mailaiText('同步已暂停');
   if (Number(account.sync_oversized_count) > 0) return mailaiTemplate`${account.sync_oversized_count} 封超大邮件未下载`;
   if (Number(account.oversized_mail_count) > 0) return mailaiTemplate`${account.oversized_mail_count} 封超大邮件未下载`;
@@ -5402,7 +5407,7 @@ function renderSidebarAccounts() {
   const syncButton = document.getElementById('btn-poll');
   if (syncButton) {
     const syncHint = currentPaused ? mailaiText('自动收信已暂停；点击可手动同步') : mailaiText('立即从服务器拉取邮件');
-    const oversizedHint = oversizedCount ? mailaiTemplate`${oversizedCount} 封邮件超过 50 MB 未下载，可在其他邮件客户端查看或下载` : '';
+    const oversizedHint = oversizedCount ? mailaiTemplate`${oversizedCount} 封邮件超过 256 MB，请在原邮箱下载原件` : '';
     const deferredHint = deferredCount ? mailaiTemplate`${deferredCount} 封邮件待重试；点击同步立即重试` : '';
     syncButton.title = [syncHint, deferredHint, oversizedHint].filter(Boolean).join('；');
     mailaiBindUI(syncButton, "@aria-label", () => ([currentPaused ? mailaiText('手动同步（自动收信已暂停）') : mailaiText('同步邮件'), deferredHint, oversizedHint].filter(Boolean).join('；')));
@@ -5426,7 +5431,7 @@ function renderSidebarAccounts() {
       const status = accountSyncLabel(account);
       const statusVisible = Boolean(status) && (syncing || account.auto_sync_paused || mailaiSystemMessage(account.sync_error) || Number(account.sync_deferred_count) > 0 || Number(account.sync_oversized_count) > 0 || Number(account.oversized_mail_count) > 0 || !account.credential_available || ['interrupted','canceled'].includes(account.sync_status));
       const accountOversizedCount = Math.max(Number(account.oversized_mail_count || 0), Number(account.sync_oversized_count || 0));
-      const oversizedDetail = accountOversizedCount > 0 ? mailaiTemplate`${accountOversizedCount} 封邮件超过 50 MB，未下载；可在其他邮件客户端查看或下载` : '';
+      const oversizedDetail = accountOversizedCount > 0 ? mailaiTemplate`${accountOversizedCount} 封邮件超过 256 MB，请在原邮箱下载原件` : '';
       const retryAt = account.sync_next_retry_at ? new Date(Number(account.sync_next_retry_at) * 1000).toLocaleTimeString(currentI18nLanguage(), {hour:'2-digit',minute:'2-digit'}) : '';
       const deferredDetail = Number(account.sync_deferred_count) > 0 ? mailaiTemplate`${account.sync_deferred_count} 封邮件待重试${account.sync_deferred_detail?.uid ? mailaiTemplate`（邮件编号 ${account.sync_deferred_detail.uid}：${mailaiSystemMessage(account.sync_deferred_detail.error) || mailaiText('下载失败')}）` : ''}；${retryAt ? mailaiTemplate`预计 ${retryAt} 自动重试，` : ''}点击顶部「同步」可立即重试` : '';
       const syncDetail = [mailaiSystemMessage(account.sync_error) || oversizedDetail || mailaiSystemMessage(account.sync_message) || account.user, deferredDetail, syncing ? mailaiTemplate`已用时 ${account.sync_elapsed_seconds || 0} 秒；距上次进度更新 ${account.sync_quiet_seconds || 0} 秒` : '', account.sync_status === 'interrupted' ? mailaiText('当前没有同步任务，点击顶部「同步」重新检查') : ''].filter(Boolean).join(' · ');
@@ -8168,7 +8173,7 @@ function renderTodoCenter() {
     </article>`;
   };
   const html = rows.length ? (window.mailaiTodoGroupHTML ? window.mailaiTodoGroupHTML(visibleGroups,renderRow) : visibleRows.map(renderRow).join('')) + (rows.length > visibleRows.length ? `
-    <button type="button" class="todo-render-more" data-todo-render-more>
+    <button type="button" class="todo-render-more" data-todo-render-more data-patch-action="todo-more">
       ${mailaiT('todo.showMore') || '显示更多待办'} <small>${(mailaiT('todo.showMoreCount') || '还有 {n} 项').replace('{n}', rows.length - visibleRows.length)}</small>
     </button>` : '') : (window.mailaiTodoEmpty?.() || `<div class="attachment-empty">${mailaiT('todo.empty') || '暂无待办事项'}</div>`);
   mailaiPatchRows(host, html, window.mailaiTodoGroupHTML ? 'data-todo-group-key' : 'data-todo-id', group => {
@@ -8498,7 +8503,9 @@ document.getElementById('todo-list').addEventListener('click', async event => {
   }
   if (event.target.closest('[data-todo-render-more]')) {
     todoRenderLimit += 160;
-    renderTodoCenter();
+    // Finish pointer activation before replacing a large group and restoring
+    // its scroll position. Linux WebKit can otherwise stall dispatching click.
+    setTimeout(renderTodoCenter, 0);
     return;
   }
   const source = event.target.closest('[data-todo-email]');

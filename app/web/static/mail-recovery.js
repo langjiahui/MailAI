@@ -3,7 +3,7 @@
   const dialog = document.createElement('dialog');
   dialog.id = 'mail-recovery-dialog'; dialog.className = 'mail-import-dialog';
   dialog.setAttribute('aria-labelledby','mail-recovery-title');
-  dialog.innerHTML = `<header><div><h2 id="mail-recovery-title">${esc(mailaiText('同步与问题邮件'))}</h2><p>${esc(mailaiText('查看原因、定位邮件并重试，不影响其他邮箱。'))}</p></div><button type="button" data-recovery-close aria-label="${esc(mailaiText('关闭'))}">×</button></header><div class="mail-import-body"><label class="mail-import-destination"><span>${esc(mailaiText('查看邮箱'))}</span><select data-recovery-account></select></label><p data-recovery-sync role="status"></p><p data-recovery-error role="alert"></p><div class="mail-recovery-actions"><button type="button" data-recovery-poll>${esc(mailaiText('重新同步此邮箱'))}</button><button type="button" data-recovery-full>${esc(mailaiText('完整同步所有文件夹'))}</button><button type="button" data-recovery-manage>${esc(mailaiText('管理此邮箱'))}</button></div><p>${esc(mailaiText('自动下载上限为 50 MB；可手动补下载单封最多 256 MB 的邮件。下载原件和附件仅保存在本机，不修改服务器邮件。'))}</p><section data-recovery-task role="status" aria-live="polite"></section><div data-recovery-items></div><button type="button" data-recovery-more hidden>${esc(mailaiText('查看更多问题'))}</button></div><footer><span></span><button type="button" data-recovery-refresh>${esc(mailaiText('刷新状态'))}</button><button type="button" data-recovery-close>${esc(mailaiText('关闭'))}</button></footer>`;
+  dialog.innerHTML = `<header><div><h2 id="mail-recovery-title">${esc(mailaiText('同步与问题邮件'))}</h2><p>${esc(mailaiText('查看原因、定位邮件并重试，不影响其他邮箱。'))}</p></div><button type="button" data-recovery-close aria-label="${esc(mailaiText('关闭'))}">×</button></header><div class="mail-import-body"><label class="mail-import-destination"><span>${esc(mailaiText('查看邮箱'))}</span><select data-recovery-account></select></label><p data-recovery-sync role="status"></p><p data-recovery-error role="alert"></p><div class="mail-recovery-actions"><button type="button" data-recovery-poll>${esc(mailaiText('重新同步此邮箱'))}</button><button type="button" data-recovery-full>${esc(mailaiText('完整同步所有文件夹'))}</button><button type="button" data-recovery-manage>${esc(mailaiText('管理此邮箱'))}</button></div><p>${esc(mailaiText('大邮件会自动分段下载，单封最多 256 MB。失败会保留问题记录并重试；下载仅保存本机副本，不修改服务器邮件。'))}</p><section data-recovery-task role="status" aria-live="polite"></section><div data-recovery-items></div><button type="button" data-recovery-more hidden>${esc(mailaiText('查看更多问题'))}</button></div><footer><span></span><button type="button" data-recovery-refresh>${esc(mailaiText('刷新状态'))}</button><button type="button" data-recovery-close>${esc(mailaiText('关闭'))}</button></footer>`;
   document.body.append(dialog);
   dialog.querySelectorAll('h2,header p,label > span,button,.mail-import-body > p:not([data-recovery-sync]):not([data-recovery-error])').forEach(node=>{
     const value=node.textContent;
@@ -19,8 +19,12 @@
     const task = state?.task || {}, sync = state?.sync || {};
     const account = _systemConfig?.accounts?.find(row=>row.id===accountId);
     $('[data-recovery-account]').disabled = working;
-    const syncError = sync.error || account?.sync_error;
+    const syncError = Object.prototype.hasOwnProperty.call(sync, 'error') ? sync.error : account?.sync_error;
+    const issue = sync.issue_kind || account?.sync_issue_kind;
+    $('[data-recovery-manage]').textContent = issue === 'credentials' ? mailaiText('重新连接邮箱') : mailaiText('管理此邮箱');
     $('[data-recovery-sync]').textContent = sync.running ? mailaiSystemMessage(sync.message) || mailaiText('正在同步，请稍候…') : syncError ? mailaiText('同步失败：') + mailaiSystemMessage(syncError) : mailaiSystemMessage(sync.message) || mailaiText('当前没有正在运行的同步任务。');
+    if (!sync.running && syncError && issue === 'connection') $('[data-recovery-sync]').textContent = mailaiText('正在重新连接，状态会自动更新。');
+    if (!sync.running && syncError && issue === 'credentials') $('[data-recovery-sync]').textContent = mailaiText('邮箱登录已失效，请重新登录或更新授权码。');
     for (const selector of ['[data-recovery-poll]','[data-recovery-full]']) $(selector).disabled = working || Boolean(task.running) || Boolean(sync.running);
     $('[data-recovery-refresh]').disabled = working;
     $('[data-recovery-task]').replaceChildren();
@@ -66,8 +70,9 @@
       }
       if(version!==generation || !dialog.open)return;
       const finished=state?.task?.running && !result.task?.running && result.task?.email_id;
+      const syncFinished=state?.sync?.running && !result.sync?.running || state?.sync?.error && !result.sync?.error;
       state=result;rows=more?[...rows,...result.items]:result.items;paint();
-      if(finished) {await loadSystemConfig(); if(activeMailAccount()?.id===accountId)await loadData({silent:true});}
+      if(finished || syncFinished) {await loadSystemConfig(); if(activeMailAccount()?.id===accountId)await loadData({silent:true});}
     } catch(error) {if(version===generation)$('[data-recovery-error]').textContent=mailaiSystemMessage(error.message);}
     finally {if(version===generation)poll();}
   }

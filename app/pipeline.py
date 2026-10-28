@@ -557,14 +557,19 @@ def poll_once() -> dict:
                     db.set_last_uid(config.INBOX_FOLDER, uid)
                     continue
                 try:
-                    if isinstance(raw, Exception):
-                        raise raw
-                    if raw is None:
-                        raise RuntimeError(f'邮件 {uid} 正文暂未返回，将在下次同步重试')
-                    _set_fetch_state(True, operation="poll", total=len(messages),
-                                     processed=idx,
-                                     message=f"正在处理第 {idx}/{len(messages)} 封...", persist=False)
-                    r = process_message(mail, uid, raw)
+                    from .mail_recovery import recover_large, MAX_MANUAL_BYTES
+                    if isinstance(raw, OversizedMessageError) and raw.size <= MAX_MANUAL_BYTES:
+                        r = recover_large(mail, config.INBOX_FOLDER, uid, raw.size)
+                        result['large_recovered'] = True
+                    else:
+                        if isinstance(raw, Exception):
+                            raise raw
+                        if raw is None:
+                            raise RuntimeError(f'邮件 {uid} 正文暂未返回，将在下次同步重试')
+                        _set_fetch_state(True, operation="poll", total=len(messages),
+                                         processed=idx,
+                                         message=f"正在处理第 {idx}/{len(messages)} 封...", persist=False)
+                        r = process_message(mail, uid, raw)
                     result['fetched'] += 1
                     if r["status"] == "quarantine":
                         result["quarantined"] += 1
@@ -576,14 +581,16 @@ def poll_once() -> dict:
                     else:
                         result["errors"] += 1
                     db.defer_mail_fetch(config.INBOX_FOLDER, uid, str(exc),
-                                        size=exc.size if isinstance(exc, OversizedMessageError) else 0,
+                                        size=raw.size if isinstance(raw, OversizedMessageError) else 0,
                                         retry_after=86400 if isinstance(exc, OversizedMessageError) else None)
                 db.set_last_uid(config.INBOX_FOLDER, uid)
         summary = db.mail_fetch_retry_summary(config.INBOX_FOLDER)
+        if result.get('large_recovered'):
+            db.set_runtime_setting('oversized_mail_count', str(summary.get('oversized', 0)))
         deferred = summary['count'] - summary.get('oversized', 0)
         result['deferred'] = deferred
         final_error = f"{deferred} 封邮件暂未完成，已安排单独重试；其他邮件继续同步" if deferred else ""
-        final_message = final_error or (f"完成；{summary['oversized']} 封超大邮件未自动下载" if summary.get('oversized')
+        final_message = final_error or (f"完成；{summary['oversized']} 封邮件超过 256 MB，需在原邮箱下载" if summary.get('oversized')
                                         else f"完成，共处理 {result['fetched']} 封")
         _set_fetch_state(False, operation="poll", total=len(messages),
                          processed=len(messages), error=final_error,
@@ -685,9 +692,20 @@ def fetch_all(batch: int = 50, continue_with_folders: bool = False) -> dict:
                     size_item = sizes.get(uid, {})
                     raw_size = int(size_item.get(b"RFC822.SIZE") or size_item.get("RFC822.SIZE") or 0)
                     if raw_size > 50 * 1024 * 1024:
+                        from .mail_recovery import recover_large, MAX_MANUAL_BYTES
                         processed += 1
-                        result["oversized"] += 1
-                        log.warning("历史邮件超过 50MB，未下载 uid=%s size=%s", uid, raw_size)
+                        if raw_size > MAX_MANUAL_BYTES:
+                            result["oversized"] += 1
+                            db.defer_mail_fetch(config.INBOX_FOLDER, uid,
+                                '邮件超过 256 MB，请在原邮箱下载原件', size=raw_size, retry_after=86400)
+                        else:
+                            try:
+                                recover_large(mail, config.INBOX_FOLDER, uid, raw_size, history=True)
+                                result["fetched"] += 1
+                            except Exception as exc:
+                                result["errors"] += 1
+                                db.defer_mail_fetch(config.INBOX_FOLDER, uid, '历史大邮件下载失败：' + str(exc), size=raw_size)
+                                log.exception("大邮件分段下载失败 uid=%s", uid)
                         continue
                     mail.select_folder(config.INBOX_FOLDER, readonly=True)
                     data = mail.client.fetch([uid], ["BODY.PEEK[]"])
@@ -714,7 +732,7 @@ def fetch_all(batch: int = 50, continue_with_folders: bool = False) -> dict:
                 mail.select_folder(config.INBOX_FOLDER, readonly=True)
                 db.reconcile_folder(config.INBOX_FOLDER, list(mail.client.search(['ALL'])))
         final_error = f"仍有 {result['errors']} 封处理失败，可点击继续同步重试" if result["errors"] else ""
-        warning = f"{result['oversized']} 封邮件超过 50 MB，未下载；可在其他邮件客户端查看或下载" if result["oversized"] else ""
+        warning = f"{result['oversized']} 封邮件超过 256 MB，请在原邮箱下载原件" if result["oversized"] else ""
         result["warning"] = warning
         db.set_runtime_setting("oversized_mail_count", str(result["oversized"]))
         final_message = "；".join(part for part in (final_error, warning) if part)
