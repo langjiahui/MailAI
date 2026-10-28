@@ -9,6 +9,7 @@ import XCTest
 private actor FeatureService: MailService {
     var sent = 0; var archived = 0; var archiveFails = true
     var actions: [MailAction] = []
+    var actedUIDs: [UInt32] = []
     func validate(_ credential: AccountCredential) async throws {}
     func folders(_ credential: AccountCredential) async throws -> [MailFolder] { [.init(name: "INBOX"), .init(name: "Archive")] }
     func summaries(_ credential: AccountCredential, folder: String, limit: Int) async throws -> [MailSummary] { [Self.item(folder: folder)] }
@@ -16,9 +17,10 @@ private actor FeatureService: MailService {
     func read(_ credential: AccountCredential, summary: MailSummary) async throws -> ReadResult { .init(body: .init(text: "synthetic", html: nil), markedRead: true) }
     func send(_ credential: AccountCredential, draft: MailDraft) async throws { XCTAssertEqual(draft.attachments.first?.data, Data("synthetic".utf8)); sent += 1 }
     func archiveSent(_ credential: AccountCredential, draft: MailDraft) async throws { archived += 1; if archiveFails { throw MailFailure.invalid("synthetic archive fault") } }
-    func perform(_ credential: AccountCredential, summaries: [MailSummary], action: MailAction) async throws { actions.append(action) }
+    func perform(_ credential: AccountCredential, summaries: [MailSummary], action: MailAction) async throws { actions.append(action); actedUIDs += summaries.map(\.uid) }
     func attachment(_ credential: AccountCredential, summary: MailSummary, attachment: MailAttachment) async throws -> Data { Data("synthetic".utf8) }
     func recordedActions() -> [MailAction] { actions }
+    func recordedUIDs() -> [UInt32] { actedUIDs }
     func move(_ credential: AccountCredential, summaries: [MailSummary], to folder: String) async throws -> [MailSummary]? {
         actions.append(.move(folder)); return summaries.map { $0.relocated(uid: $0.uid + 100, validity: 20, folder: folder) }
     }
@@ -131,6 +133,7 @@ private actor FeatureService: MailService {
         try await store.undoLastAction(); store.cancelRefresh()
         let actions = await service.recordedActions()
         XCTAssertEqual(actions, [.move("Archive"), .move("INBOX")])
+        let undoUIDs = await service.recordedUIDs(); XCTAssertEqual(undoUIDs, [107])
     }
     func testAttachmentNamesCannotEscapePreviewDirectory() {
         XCTAssertEqual(MailAttachment.safeName("..\\..\\file.txt"), "file.txt")

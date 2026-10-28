@@ -48,7 +48,9 @@ final class ProtocolTests: XCTestCase {
         XCTAssertEqual(found.total, 1); XCTAssertEqual(found.messages.first?.uid, 7)
         try await service.perform(entry, summaries: [message], action: .flagged(true))
         try await service.perform(entry, summaries: [message], action: .read(false))
-        try await service.perform(entry, summaries: [message], action: .move("Archive"))
+        let moved = try await service.move(entry, summaries: [message], to: "Archive")
+        XCTAssertEqual(moved?.first?.uid, 9); XCTAssertEqual(moved?.first?.folder, "Archive")
+        XCTAssertEqual(moved?.first?.validity, 10)
         var draft = MailDraft(); draft.to = "recipient@example.com"; draft.cc = "copy@example.com"; draft.bcc = "blind@example.com"
         draft.subject = "synthetic cc bcc"; draft.text = "synthetic attachment submission"
         draft.attachments = [.init(name: "synthetic.txt", mimeType: "text/plain", data: bytes)]

@@ -124,6 +124,7 @@ async def model_http(reader, writer):
             await write(writer, 'HTTP/1.1 302 Found\r\nLocation: https://localhost:18443/leak/chat/completions\r\nContent-Length: 0\r\nConnection: close\r\n\r\n')
             return
         payload = json.loads(content) if content else {}
+        if path.startswith('/leak/'): payload = {'model': 'fixture'}
         if payload.get('model') != 'fixture':
             await write(writer, 'HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n'); return
         result = {'choices': [{'finish_reason': 'length' if path.startswith('/incomplete/') else 'stop', 'message': {'content': 'synthetic model response'}}]}
