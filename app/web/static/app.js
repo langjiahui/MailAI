@@ -8173,7 +8173,7 @@ function renderTodoCenter() {
     </article>`;
   };
   const html = rows.length ? (window.mailaiTodoGroupHTML ? window.mailaiTodoGroupHTML(visibleGroups,renderRow) : visibleRows.map(renderRow).join('')) + (rows.length > visibleRows.length ? `
-    <button type="button" class="todo-render-more" data-todo-render-more>
+    <button type="button" class="todo-render-more" data-todo-render-more data-patch-action="todo-more">
       ${mailaiT('todo.showMore') || '显示更多待办'} <small>${(mailaiT('todo.showMoreCount') || '还有 {n} 项').replace('{n}', rows.length - visibleRows.length)}</small>
     </button>` : '') : (window.mailaiTodoEmpty?.() || `<div class="attachment-empty">${mailaiT('todo.empty') || '暂无待办事项'}</div>`);
   mailaiPatchRows(host, html, window.mailaiTodoGroupHTML ? 'data-todo-group-key' : 'data-todo-id', group => {

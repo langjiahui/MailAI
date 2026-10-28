@@ -179,6 +179,7 @@ const engine = process.env.MAILAI_BROWSER === 'webkit' ? webkit : chromium;
   assert.equal(await page.locator('.todo-group').count(),1);
   assert.match(await page.locator('.todo-group-meta').innerText(),/1000/);
   assert(await page.locator('.todo-group-sources button').count()<=161);
+  const moreButton=await page.locator('[data-todo-render-more]').elementHandle();
   try {
    await page.locator('[data-todo-render-more]').click();
   } catch(error) {
@@ -190,6 +191,7 @@ const engine = process.env.MAILAI_BROWSER === 'webkit' ? webkit : chromium;
    throw error;
   }
   assert.equal(await page.locator('#todo-list [data-todo-id]').count(),320);
+  assert(await moreButton.evaluate(node=>node.isConnected && node===document.querySelector('[data-todo-render-more]')),'Paging keeps the activated button attached and focused');
   assert(await page.locator('.todo-group-sources button').count()<=321);
   await page.evaluate(rows=>{todoCenterRows=rows;todoRenderLimit=160;renderTodoCenter();},savedRows);
   assert.deepEqual(errors,[]);

@@ -19050,6 +19050,7 @@ function mailaiLabelHTML(label) {
   window.mailaiPatchRows = (host, html, keyAttribute, preserve = () => false) => {
     const template = document.createElement('template'); template.innerHTML = html;
     const existing = new Map([...host.children].filter(n => n.hasAttribute(keyAttribute)).map(n => [n.getAttribute(keyAttribute), n]));
+    const actions = new Map([...host.children].filter(n => n.hasAttribute('data-patch-action')).map(n => [n.dataset.patchAction, n]));
     const focused = document.activeElement;
     const focusRow = focused?.closest('[' + keyAttribute + ']');
     const controls = 'button,input,select,textarea,a[href]';
@@ -19058,6 +19059,16 @@ function mailaiLabelHTML(label) {
     const selection = (focused?.tagName === 'TEXTAREA' || (focused?.tagName === 'INPUT' && focused.type === 'text')) ? [focused.selectionStart,focused.selectionEnd] : null;
     const scroll = []; for (let n = host; n; n = n.parentElement) if (n.scrollHeight > n.clientHeight) scroll.push([n,n.scrollTop]);
     const desired = [...template.content.children].map(next => {
+      // Keep an activating paging button attached while replacing surrounding
+      // rows. WebKit can otherwise leave pointer activation unfinished after
+      // the click handler removes its own target from the document.
+      const action = actions.get(next.dataset.patchAction);
+      if (action && action.tagName === next.tagName) {
+        for (const attr of [...action.attributes]) if (!next.hasAttribute(attr.name)) action.removeAttribute(attr.name);
+        for (const attr of next.attributes) action.setAttribute(attr.name, attr.value);
+        action.replaceChildren(...next.childNodes);
+        return action;
+      }
       const old = existing.get(next.getAttribute(keyAttribute));
       if (!old) return next;
       if (old.outerHTML === next.outerHTML || preserve(old)) return old;
@@ -27389,7 +27400,7 @@ function renderTodoCenter() {
     </article>`;
   };
   const html = rows.length ? (window.mailaiTodoGroupHTML ? window.mailaiTodoGroupHTML(visibleGroups,renderRow) : visibleRows.map(renderRow).join('')) + (rows.length > visibleRows.length ? `
-    <button type="button" class="todo-render-more" data-todo-render-more>
+    <button type="button" class="todo-render-more" data-todo-render-more data-patch-action="todo-more">
       ${mailaiT('todo.showMore') || '显示更多待办'} <small>${(mailaiT('todo.showMoreCount') || '还有 {n} 项').replace('{n}', rows.length - visibleRows.length)}</small>
     </button>` : '') : (window.mailaiTodoEmpty?.() || `<div class="attachment-empty">${mailaiT('todo.empty') || '暂无待办事项'}</div>`);
   mailaiPatchRows(host, html, window.mailaiTodoGroupHTML ? 'data-todo-group-key' : 'data-todo-id', group => {
