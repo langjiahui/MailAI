@@ -8503,7 +8503,9 @@ document.getElementById('todo-list').addEventListener('click', async event => {
   }
   if (event.target.closest('[data-todo-render-more]')) {
     todoRenderLimit += 160;
-    renderTodoCenter();
+    // Finish pointer activation before replacing a large group and restoring
+    // its scroll position. Linux WebKit can otherwise stall dispatching click.
+    requestAnimationFrame(() => requestAnimationFrame(renderTodoCenter));
     return;
   }
   const source = event.target.closest('[data-todo-email]');

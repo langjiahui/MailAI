@@ -190,6 +190,7 @@ const engine = process.env.MAILAI_BROWSER === 'webkit' ? webkit : chromium;
    })));
    throw error;
   }
+  await page.waitForFunction(()=>document.querySelectorAll('#todo-list [data-todo-id]').length===320);
   assert.equal(await page.locator('#todo-list [data-todo-id]').count(),320);
   assert(await moreButton.evaluate(node=>node.isConnected && node===document.querySelector('[data-todo-render-more]')),'Paging keeps the activated button attached and focused');
   assert(await page.locator('.todo-group-sources button').count()<=321);
