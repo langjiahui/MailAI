@@ -18,13 +18,8 @@ struct ComposerView: View {
     @State private var importDraftID = ""
     @State private var photo: PhotosPickerItem?
     @State private var previewURL: URL?
-    @State private var picking = false
-    @State private var recipientTarget = "to"
-    @State private var assistant = false
-    @State private var assistantOriginal = ""
-    @State private var assistantDraftID = ""
-    @State private var assistantFullDraft = ""
-    @State private var assistantQuote = ""
+    @State private var recipientRequest: RecipientSelectionRequest?
+    @State private var polishRequest: DraftPolishRequest?
     @State private var undoHTML: String?
     @State private var undoDraftID = ""
     @State private var undoText: String?
@@ -86,14 +81,15 @@ struct ComposerView: View {
                         if !Task.isCancelled { photo = nil }
                     }
                 }
-                .sheet(isPresented: $picking) { RecipientPicker(store: store) { emails in
-                    for email in emails { switch recipientTarget { case "cc": store.updateDraft { $0.cc = append(email, to: $0.cc) }; case "bcc": store.updateDraft { $0.bcc = append(email, to: $0.bcc) }; default: store.updateDraft { $0.to = append(email, to: $0.to) } } }
+                .sheet(item: $recipientRequest) { request in RecipientPicker(store: store) { emails in
+                    guard editable, store.draft.id == request.draftID else { return }
+                    for email in emails { switch request.target { case "cc": store.updateDraft { $0.cc = append(email, to: $0.cc) }; case "bcc": store.updateDraft { $0.bcc = append(email, to: $0.bcc) }; default: store.updateDraft { $0.to = append(email, to: $0.to) } } }
                 } }
-                .sheet(isPresented: $assistant) { AssistantPanel(text: assistantOriginal, composing: true) { output in
-                    guard editable, store.draft.id == assistantDraftID, store.draft.text == assistantFullDraft else { return false }
-                    undoText = assistantFullDraft; undoHTML = store.draft.html; undoDraftID = store.draft.id
-                    adoptedText = output + assistantQuote
-                    store.updateDraft { $0.text = output + assistantQuote; $0.html = nil }; return true
+                .sheet(item: $polishRequest) { request in AssistantPanel(text: request.text, composing: true) { output in
+                    guard editable, store.draft.id == request.draftID, store.draft.text == request.fullText else { return false }
+                    undoText = request.fullText; undoHTML = store.draft.html; undoDraftID = store.draft.id
+                    adoptedText = output + request.quote
+                    store.updateDraft { $0.text = output + request.quote; $0.html = nil }; return true
                 } }
                 .quickLookPreview($previewURL)
                 .onDisappear { photoTask?.cancel() }
@@ -234,7 +230,7 @@ struct ComposerView: View {
                 Button("斜体", systemImage: "italic") { editor.format(.italic) }
                 Button("下划线", systemImage: "underline") { editor.format(.underline) }
             } label: { Text("Aa").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("文字格式").frame(maxWidth: .infinity)
-            Button { assistantOriginal = editingText; assistantFullDraft = store.draft.text; assistantQuote = quotedText ?? ""; assistantDraftID = store.draft.id; assistant = true } label: { Group { if dynamicTypeSize.isAccessibilitySize { Image(systemName: "sparkles") } else { Label("小邮", systemImage: "sparkles") } }.frame(minHeight: 44) }.accessibilityLabel("小邮润色").disabled(store.draft.text.isEmpty).frame(maxWidth: .infinity)
+            Button { polishRequest = DraftPolishRequest(draftID: store.draft.id, text: editingText, fullText: store.draft.text, quote: quotedText ?? "") } label: { Group { if dynamicTypeSize.isAccessibilitySize { Image(systemName: "sparkles") } else { Label("小邮", systemImage: "sparkles") } }.frame(minHeight: 44) }.accessibilityLabel("小邮润色").disabled(store.draft.text.isEmpty).frame(maxWidth: .infinity)
             Button { editor.dismissKeyboard() } label: { Image(systemName: "keyboard.chevron.compact.down").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("收起键盘").frame(maxWidth: .infinity)
         }.font(.callout).dynamicTypeSize(...DynamicTypeSize.xxxLarge).padding(.horizontal, 8).background(MailTheme.surface).overlay(alignment: .top) { Divider() }.disabled(!editable)
     }
@@ -250,7 +246,7 @@ struct ComposerView: View {
     private func fieldLabel(_ title: String) -> some View { Text(title).font(.subheadline).foregroundStyle(MailTheme.secondary).fixedSize(horizontal: true, vertical: false) }
     private var subjectField: some View { TextField("填写主题", text: field(\.subject), axis: .vertical).accessibilityIdentifier("compose-subject") }
     private func recipientButton(_ title: String, target: String) -> some View {
-        Button { editor.dismissKeyboard(); recipientTarget = target; picking = true } label: { Image(systemName: "person.crop.circle.badge.plus").font(.body).frame(width: 44, height: 44) }.accessibilityLabel("选择\(title)")
+        Button { editor.dismissKeyboard(); recipientRequest = RecipientSelectionRequest(draftID: store.draft.id, target: target) } label: { Image(systemName: "person.crop.circle.badge.plus").font(.body).frame(width: 44, height: 44) }.accessibilityLabel("选择\(title)")
     }
     @ViewBuilder private func address(_ title: String, target: String, binding: Binding<String>) -> some View {
         if dynamicTypeSize.isAccessibilitySize {
@@ -277,6 +273,18 @@ struct ComposerView: View {
         guard info.isRegularFile == true, (info.fileSize ?? Int.max) <= MailAttachment.singleLimit else { throw MailFailure.invalid("文件不可读或超过 15 MB。") }
         try store.addAttachment(name: url.lastPathComponent, mimeType: info.contentType?.preferredMIMEType ?? "application/octet-stream", data: Data(contentsOf: url))
     }
+}
+private struct RecipientSelectionRequest: Identifiable {
+    let id = UUID()
+    let draftID: String
+    let target: String
+}
+private struct DraftPolishRequest: Identifiable {
+    let id = UUID()
+    let draftID: String
+    let text: String
+    let fullText: String
+    let quote: String
 }
 struct RecipientPicker: View {
     let store: MailStore; let selected: ([String]) -> Void

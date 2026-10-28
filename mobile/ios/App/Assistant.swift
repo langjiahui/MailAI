@@ -112,6 +112,11 @@ struct AssistantSettingsView: View {
             .onDisappear { task?.cancel() }
     }
 }
+private struct AssistantScopeRequest: Identifiable {
+    let id = UUID()
+    let title: String
+    let instruction: String
+}
 struct AssistantPanel: View {
     let text: String
     var composing = false
@@ -125,9 +130,7 @@ struct AssistantPanel: View {
     @State private var task: Task<Void, Never>?
     @State private var configuration: AssistantConfiguration?
     @State private var purpose = ""
-    @State private var pendingInstruction = ""
-    @State private var pendingTitle = ""
-    @State private var previewScope = false
+    @State private var scopeRequest: AssistantScopeRequest?
     @State private var comparison = false
     var body: some View {
         NavigationStack {
@@ -173,7 +176,7 @@ struct AssistantPanel: View {
             }.background(MailTheme.surface).navigationTitle("小邮").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } } }
         }.presentationDetents(composing || dynamicTypeSize.isAccessibilitySize ? [.large] : [.medium, .large])
         .presentationDragIndicator(.visible)
-        .sheet(isPresented: $previewScope) {
+        .sheet(item: $scopeRequest) { request in
             NavigationStack {
                 List {
                     Section("接收服务") { Text(configuration?.endpoint ?? "").font(.subheadline).textSelection(.enabled); Text(configuration?.model ?? "").font(.caption).foregroundStyle(MailTheme.secondary) }.listRowBackground(MailTheme.surface)
@@ -181,8 +184,8 @@ struct AssistantPanel: View {
                     Section { MailNotice(text: "只发送以上文字，不包含附件或其他邮件。", symbol: "lock.shield") }.listRowBackground(MailTheme.surface)
                 }.scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("确认处理范围").navigationBarTitleDisplayMode(.inline)
                     .toolbar {
-                        ToolbarItem(placement: .cancellationAction) { Button("取消") { previewScope = false } }
-                        ToolbarItem(placement: .confirmationAction) { Button("开始处理") { previewScope = false; generate() } }
+                        ToolbarItem(placement: .cancellationAction) { Button("取消") { scopeRequest = nil } }
+                        ToolbarItem(placement: .confirmationAction) { Button("开始处理") { scopeRequest = nil; generate(request) } }
                     }
             }
         }
@@ -192,15 +195,15 @@ struct AssistantPanel: View {
     }
     private func action(_ title: String, _ instruction: String) -> some View {
         let labels = ["提炼要点": "总结", "提取待办": "待办", "翻译中文": "翻译", "起草回复": "回复"]
-        return Button { pendingInstruction = instruction; pendingTitle = title; previewScope = true } label: {
+        return Button { scopeRequest = AssistantScopeRequest(title: title, instruction: instruction) } label: {
             Text(labels[title] ?? title).font(.subheadline.weight(.medium)).frame(maxWidth: .infinity, minHeight: 44)
                 .background(purpose == title ? MailTheme.blue.opacity(0.12) : MailTheme.canvas, in: RoundedRectangle(cornerRadius: 10))
         }.buttonStyle(.plain).foregroundStyle(MailTheme.blue).accessibilityLabel(title).disabled(working)
     }
-    private func generate() {
+    private func generate(_ request: AssistantScopeRequest) {
         guard let configuration, configuration.consent else { return }
-        task?.cancel(); result = ""; status = nil; comparison = false; purpose = pendingTitle; working = true
-        let instruction = pendingInstruction
+        task?.cancel(); result = ""; status = nil; comparison = false; purpose = request.title; working = true
+        let instruction = request.instruction
         task = Task {
             do { let output = try await AssistantAPI.generate(configuration: configuration, instruction: instruction, text: text); try Task.checkCancellation(); result = output }
             catch { if !Task.isCancelled { status = error.localizedDescription } }

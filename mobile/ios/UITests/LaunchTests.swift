@@ -155,6 +155,20 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["team@example.com"].waitForExistence(timeout: 5))
         attach("redesign-draft-recipients")
     }
+    func testCopyRecipientPickerKeepsItsTargetOnFirstOpen() {
+        let app = launch()
+        app.buttons["compose-mail"].tap()
+        let to = app.textFields["compose-to-input"]
+        to.tap(); to.typeText("recipient@example.com\n")
+        app.buttons["抄送 / 密送"].tap(); app.buttons["选择抄送"].tap()
+        XCTAssertTrue(app.buttons["recipient-team@example.com"].waitForExistence(timeout: 5))
+        app.buttons["recipient-team@example.com"].tap(); app.buttons["完成（1）"].tap()
+        let cc = app.descendants(matching: .any).matching(identifier: "compose-cc").firstMatch
+        let recipients = app.descendants(matching: .any).matching(identifier: "compose-to").firstMatch
+        XCTAssertEqual(cc.value as? String, "team@example.com")
+        XCTAssertEqual(recipients.value as? String, "recipient@example.com")
+        attach("redesign-cc-recipient-target")
+    }
     func testValidationFailureKeepsFormAndCanBeCancelled() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-fixture", "--ui-empty-accounts", "--ui-account-failure"]
         app.launch(); app.buttons["add-account"].tap()
