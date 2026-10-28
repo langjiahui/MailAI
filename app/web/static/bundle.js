@@ -27732,7 +27732,7 @@ document.getElementById('todo-list').addEventListener('click', async event => {
     todoRenderLimit += 160;
     // Finish pointer activation before replacing a large group and restoring
     // its scroll position. Linux WebKit can otherwise stall dispatching click.
-    requestAnimationFrame(() => requestAnimationFrame(renderTodoCenter));
+    setTimeout(renderTodoCenter, 0);
     return;
   }
   const source = event.target.closest('[data-todo-email]');
@@ -32553,10 +32553,12 @@ function mailCardDate(value, now = new Date()) {
   };
   // One-line titles grow with their content in engines without field-sizing.
   window.mailaiSizeTodoTitles = () => {
-    for(const input of list.querySelectorAll('.todo-title-input')) {
-      if(!input.getClientRects().length)continue;
-      input.style.height='0px';input.style.height=Math.min(120,input.scrollHeight)+'px';
-    }
+    const inputs=[...list.querySelectorAll('.todo-title-input')].filter(input=>input.getClientRects().length);
+    // Batch writes and reads: alternating them forces a full group layout for
+    // every title and can stall pointer/resize delivery on large WebKit lists.
+    inputs.forEach(input=>{input.style.height='0px';});
+    const heights=inputs.map(input=>Math.min(120,input.scrollHeight));
+    inputs.forEach((input,index)=>{input.style.height=heights[index]+'px';});
   };
   list.addEventListener('input',event=>{if(event.target.matches('.todo-title-input'))window.mailaiSizeTodoTitles();});
   list.addEventListener('toggle',()=>window.mailaiSizeTodoTitles(),true);

@@ -8505,7 +8505,7 @@ document.getElementById('todo-list').addEventListener('click', async event => {
     todoRenderLimit += 160;
     // Finish pointer activation before replacing a large group and restoring
     // its scroll position. Linux WebKit can otherwise stall dispatching click.
-    requestAnimationFrame(() => requestAnimationFrame(renderTodoCenter));
+    setTimeout(renderTodoCenter, 0);
     return;
   }
   const source = event.target.closest('[data-todo-email]');
