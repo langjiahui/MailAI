@@ -36,10 +36,10 @@ struct ComposerView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     VStack(spacing: 0) {
-                        HStack(alignment: .firstTextBaseline, spacing: 12) {
-                            Text("发件人").font(.subheadline).foregroundStyle(MailTheme.secondary).frame(width: 56, alignment: .leading)
-                            Text(store.selected?.email ?? "").font(.subheadline).textSelection(.enabled); Spacer(minLength: 0)
-                        }.frame(minHeight: 48)
+                        ViewThatFits(in: .horizontal) {
+                            HStack(spacing: 12) { fieldLabel("发件人"); Text(store.selected?.email ?? "").font(.subheadline).lineLimit(1).fixedSize(); Spacer(minLength: 0) }.frame(minHeight: 48)
+                            VStack(alignment: .leading, spacing: 8) { fieldLabel("发件人"); Text(store.selected?.email ?? "").font(.subheadline).textSelection(.enabled) }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 12)
+                        }
                         Divider()
                         address("收件人", target: "to", binding: field(\.to))
                         if copies || !store.draft.cc.isEmpty || !store.draft.bcc.isEmpty {
@@ -48,10 +48,9 @@ struct ComposerView: View {
                         }
                         Button(copies ? "收起抄送与密送" : "抄送 / 密送") { copies.toggle() }.font(.caption).frame(maxWidth: .infinity, minHeight: 36, alignment: .trailing)
                         Divider()
-                        HStack(spacing: 12) {
-                            Text("主题").font(.subheadline).foregroundStyle(MailTheme.secondary).frame(width: 56, alignment: .leading)
-                            TextField("填写主题", text: field(\.subject), axis: .vertical).accessibilityIdentifier("compose-subject")
-                        }.frame(minHeight: 52)
+                        if dynamicTypeSize.isAccessibilitySize {
+                            VStack(alignment: .leading, spacing: 8) { fieldLabel("主题"); subjectField }.padding(.vertical, 12)
+                        } else { HStack(spacing: 12) { fieldLabel("主题").frame(width: 56, alignment: .leading); subjectField }.frame(minHeight: 52) }
                         Divider()
                     }.disabled(!editable)
                     if !store.draft.attachments.isEmpty {
@@ -190,7 +189,7 @@ struct ComposerView: View {
             } label: { Text("Aa").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("文字格式").frame(maxWidth: .infinity)
             Button { assistantOriginal = store.draft.text; assistantDraftID = store.draft.id; assistant = true } label: { Group { if dynamicTypeSize.isAccessibilitySize { Image(systemName: "sparkles") } else { Label("小邮", systemImage: "sparkles") } }.frame(minHeight: 44) }.accessibilityLabel("小邮润色").disabled(store.draft.text.isEmpty).frame(maxWidth: .infinity)
             Button { editor.dismissKeyboard() } label: { Image(systemName: "keyboard.chevron.compact.down").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("收起键盘").frame(maxWidth: .infinity)
-        }.font(.callout).padding(.horizontal, 8).background(MailTheme.surface).overlay(alignment: .top) { Divider() }.disabled(!editable)
+        }.font(.callout).dynamicTypeSize(...DynamicTypeSize.xxxLarge).padding(.horizontal, 8).background(MailTheme.surface).overlay(alignment: .top) { Divider() }.disabled(!editable)
     }
     private func attachmentRow(_ item: MailAttachment) -> some View {
         HStack(spacing: 12) {
@@ -201,12 +200,24 @@ struct ComposerView: View {
             if editable { Button { store.updateDraft { $0.attachments.removeAll { $0.id == item.id } } } label: { Image(systemName: "xmark").frame(width: 44, height: 44) }.accessibilityLabel("移除附件 \(item.name)") }
         }.padding(.leading, 12).background(MailTheme.canvas, in: RoundedRectangle(cornerRadius: 10))
     }
-    private func address(_ title: String, target: String, binding: Binding<String>) -> some View {
-        HStack(alignment: .top, spacing: 8) {
-            Text(title).font(.subheadline).foregroundStyle(MailTheme.secondary).frame(width: 56, alignment: .leading).padding(.top, 14)
-            RecipientEntry(value: binding, identifier: "compose-" + target).padding(.vertical, 6)
-            Button { editor.dismissKeyboard(); recipientTarget = target; picking = true } label: { Image(systemName: "person.crop.circle.badge.plus").frame(width: 44, height: 44) }.accessibilityLabel("选择\(title)")
-        }.frame(minHeight: 48)
+    private func fieldLabel(_ title: String) -> some View { Text(title).font(.subheadline).foregroundStyle(MailTheme.secondary).fixedSize(horizontal: true, vertical: false) }
+    private var subjectField: some View { TextField("填写主题", text: field(\.subject), axis: .vertical).accessibilityIdentifier("compose-subject") }
+    private func recipientButton(_ title: String, target: String) -> some View {
+        Button { editor.dismissKeyboard(); recipientTarget = target; picking = true } label: { Image(systemName: "person.crop.circle.badge.plus").font(.body).frame(width: 44, height: 44) }.accessibilityLabel("选择\(title)")
+    }
+    @ViewBuilder private func address(_ title: String, target: String, binding: Binding<String>) -> some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack { fieldLabel(title); Spacer(); recipientButton(title, target: target) }
+                RecipientEntry(value: binding, identifier: "compose-" + target)
+            }.padding(.vertical, 8)
+        } else {
+            HStack(alignment: .top, spacing: 8) {
+                fieldLabel(title).frame(width: 56, alignment: .leading).padding(.top, 14)
+                RecipientEntry(value: binding, identifier: "compose-" + target).padding(.vertical, 6)
+                recipientButton(title, target: target)
+            }.frame(minHeight: 48)
+        }
     }
     private func append(_ email: String, to current: String) -> String {
         let all = [store.draft.to, store.draft.cc, store.draft.bcc].joined(separator: ",").lowercased().split(whereSeparator: { ",;，；".contains($0) }).map { $0.trimmingCharacters(in: .whitespaces) }
@@ -229,7 +240,7 @@ struct RecipientPicker: View {
     @State private var phoneAddresses: [MailAddress] = []
     private var addresses: [MailAddress] {
         var seen = Set<String>()
-        return (phoneAddresses + store.contacts.map { MailAddress(name: $0.title, email: $0.email) }).filter { seen.insert($0.email.lowercased()).inserted }
+        return (phoneAddresses + store.contacts.map { MailAddress(name: $0.name.isEmpty ? $0.title : $0.name, email: $0.email) }).filter { seen.insert($0.email.lowercased()).inserted }
     }
     var body: some View {
         NavigationStack {
@@ -243,7 +254,7 @@ struct RecipientPicker: View {
                                 VStack(alignment: .leading, spacing: 4) { Text(address.name.isEmpty ? address.email : address.name).foregroundStyle(MailTheme.ink); Text(address.email).font(.caption).foregroundStyle(MailTheme.secondary) }
                                 Spacer(); Image(systemName: chosen.contains(address.email) ? "checkmark.circle.fill" : "circle").font(.title3)
                             }.frame(minHeight: 48)
-                        }.accessibilityValue(chosen.contains(address.email) ? "已选择" : "未选择")
+                        }.accessibilityIdentifier("recipient-" + address.email).accessibilityValue(chosen.contains(address.email) ? "已选择" : "未选择").listRowBackground(MailTheme.surface)
                     }
                 }
             }.listStyle(.plain).searchable(text: $query, prompt: "姓名或邮箱").navigationTitle("选择联系人").navigationBarTitleDisplayMode(.inline)

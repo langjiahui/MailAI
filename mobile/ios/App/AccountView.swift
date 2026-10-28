@@ -104,19 +104,19 @@ struct AccountView: View {
     private var advancedSettings: some View {
         Form {
             Section("登录") {
-                if editingAccount == nil { TextField("发件人显示名称（选填）", text: field(\.displayName)) }
+                if editingAccount == nil { LabeledContent("显示名称") { TextField("选填", text: field(\.displayName)) } }
                 LabeledContent("用户名") { TextField("登录用户名", text: field(\.username)).keyboardType(.emailAddress).accessibilityIdentifier("login-username") }
-            }
+            }.listRowBackground(MailTheme.surface)
             Section("收信 · IMAP") {
                 LabeledContent("服务器") { TextField("IMAP 服务器", text: server(\.imapHost)).keyboardType(.URL).accessibilityIdentifier("imap-host") }
                 LabeledContent("端口") { TextField("993", value: server(\.imapPort), format: .number.grouping(.never)).keyboardType(.numberPad).accessibilityIdentifier("imap-port") }
                 Picker("加密", selection: server(\.imapSecurity)) { ForEach(TransportSecurity.allCases) { Text($0.title).tag($0) } }
-            }
+            }.listRowBackground(MailTheme.surface)
             Section("发信 · SMTP") {
                 LabeledContent("服务器") { TextField("SMTP 服务器", text: server(\.smtpHost)).keyboardType(.URL).accessibilityIdentifier("smtp-host") }
                 LabeledContent("端口") { TextField("465", value: server(\.smtpPort), format: .number.grouping(.never)).keyboardType(.numberPad).accessibilityIdentifier("smtp-port") }
                 Picker("加密", selection: server(\.smtpSecurity)) { ForEach(TransportSecurity.allCases) { Text($0.title).tag($0) } }
-            }
+            }.listRowBackground(MailTheme.surface)
             Section {
                 if setup.manualServers { Button("恢复自动服务器设置") { setup.restoreAutomaticServers(); error = nil } }
                 Text("使用服务商提供的服务器域名与加密设置。默认地址需要通过连接验证后才能使用。").font(.footnote).foregroundStyle(MailTheme.secondary)

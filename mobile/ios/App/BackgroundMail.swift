@@ -83,17 +83,17 @@ struct BackgroundSettingsView: View {
                     .onChange(of: enabled) { _, value in if value { BackgroundMail.shared.schedule() } else { BackgroundMail.shared.stop(); status = "后台收信已关闭" } }
                 Text("由 iOS 决定运行时机，不能保证即时提醒。").font(.footnote).foregroundStyle(.secondary)
                 DisclosureGroup("了解后台收信") { Text("系统不能保证固定刷新间隔。锁屏时钥匙串可能不可用；打开应用后会继续同步。新邮件可能在下一次系统刷新或打开应用后才出现。").font(.footnote).foregroundStyle(.secondary).padding(.vertical, 8) }
-            }
+            }.listRowBackground(MailTheme.surface)
             Section("通知") {
                 LabeledContent("系统通知权限", value: permission)
                 Button("申请通知权限") { Task { do { _ = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]); await readPermission() } catch { permission = "申请未完成" } } }
                 Text("仅在后台检查发现新邮件且系统允许通知时提醒。首次检查建立基线，不批量提醒历史邮件。").font(.footnote).foregroundStyle(.secondary)
-            }
+            }.listRowBackground(MailTheme.surface)
             Section("最近后台结果") {
                 Text(status)
                 if let date = UserDefaults.standard.object(forKey: "mail.backgroundDate") as? Date { Text(date.formatted()).font(.caption).foregroundStyle(.secondary) }
                 Button("重新提交调度请求") { BackgroundMail.shared.schedule() }.disabled(!enabled)
-            }
+            }.listRowBackground(MailTheme.surface)
         }.scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("后台收信与通知").navigationBarTitleDisplayMode(.inline).toolbar(.hidden, for: .tabBar).task { await readPermission() }
     }
     private func readPermission() async {

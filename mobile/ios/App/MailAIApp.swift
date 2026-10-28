@@ -62,16 +62,17 @@ struct WelcomeView: View {
             if addingAccount {
                 AccountView(store: store, onClose: { addingAccount = false })
             } else {
-                VStack(spacing: 22) {
-                    Spacer(minLength: 32)
-                    Image(systemName: "envelope.open.fill").font(.system(size: 56)).foregroundStyle(MailTheme.blue)
-                    Text("把邮箱，放进口袋").font(.system(.title, design: .default, weight: .bold))
-                    Text("连接你的邮箱，开始轻松处理邮件。\n账号与邮件保存在你的设备上。")
-                        .foregroundStyle(.secondary).multilineTextAlignment(.center)
+                ScrollView {
+                    VStack(spacing: 20) {
+                        Image(systemName: "envelope.open.fill").font(.system(size: 56)).foregroundStyle(MailTheme.blue)
+                        Text("把邮箱，放进口袋").font(.title.bold())
+                        Text("连接你的邮箱，开始轻松处理邮件。\n账号与邮件保存在你的设备上。")
+                            .foregroundStyle(MailTheme.secondary).multilineTextAlignment(.center)
+                    }.padding(24).frame(maxWidth: .infinity).padding(.top, 64)
+                }.safeAreaInset(edge: .bottom) {
                     Button("添加邮箱", systemImage: "plus") { addingAccount = true }
-                        .buttonStyle(MailPrimaryButton()).accessibilityIdentifier("add-account")
-                    Spacer(minLength: 24)
-                }.padding(24).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        .buttonStyle(MailPrimaryButton()).accessibilityIdentifier("add-account").padding(24).background(MailTheme.surface)
+                }
                     .background(MailTheme.surface).navigationTitle("MailAI").navigationBarTitleDisplayMode(.inline)
             }
         }
@@ -221,7 +222,7 @@ struct InboxView: View {
                             if (unified ? unifiedMessages.isEmpty : filtered.isEmpty) {
                                 ContentUnavailableView("暂无邮件", systemImage: "tray", description: Text("下拉刷新，或切换文件夹与筛选条件。"))
                             }
-                        }
+                        }.listRowBackground(MailTheme.surface)
                         if !unified && store.messages.count >= 50 {
                             Button("加载更多") { store.refresh(more: true) }.disabled(store.busy)
                         }

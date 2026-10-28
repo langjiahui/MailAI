@@ -16,6 +16,19 @@ enum MailTheme {
     static let secondary = adaptive(0x667585, 0xA0B0C0)
     static let separator = adaptive(0xE6ECF2, 0x2A3948)
 }
+struct MailSearchField: View {
+    @Binding var text: String
+    var prompt: String
+    var submitted: () -> Void = {}
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass").foregroundStyle(MailTheme.secondary)
+            TextField(prompt, text: $text).textInputAutocapitalization(.never).autocorrectionDisabled().submitLabel(.search)
+                .onSubmit(submitted).accessibilityIdentifier("mail-search-input")
+            if !text.isEmpty { Button { text = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(MailTheme.secondary).frame(width: 44, height: 44) }.accessibilityLabel("清空搜索") }
+        }.padding(.leading, 12).padding(.trailing, text.isEmpty ? 12 : 0).frame(minHeight: 44).background(MailTheme.canvas, in: RoundedRectangle(cornerRadius: 12))
+    }
+}
 struct SenderAvatar: View {
     let name: String
     var size: CGFloat = 36

@@ -19,12 +19,12 @@ struct SettingsView: View {
                     }
                 }
                 Button("添加邮箱", systemImage: "plus.circle") { addingAccount = true }.frame(minHeight: 44)
-            }
+            }.listRowBackground(MailTheme.surface)
             Section("偏好设置") {
                 NavigationLink { AppearanceSettingsView() } label: { settingsRow("外观与阅读", symbol: "circle.lefthalf.filled", detail: "宝武蓝 · 蓝白") }.accessibilityIdentifier("appearance-settings")
                 NavigationLink { AssistantSettingsView() } label: { settingsRow("小邮与模型服务", symbol: "sparkles") }
                 NavigationLink { BackgroundSettingsView() } label: { settingsRow("后台收信与通知", symbol: "bell") }
-            }
+            }.listRowBackground(MailTheme.surface)
             Section {
                 NavigationLink { AboutView() } label: { settingsRow("关于 MailAI", symbol: "info.circle") }
             }
@@ -62,7 +62,7 @@ struct AccountDetailView: View {
                     Button("移除此邮箱", role: .destructive) { confirmRemoval = true }.disabled(store.sending || store.operating)
                 }
                 if let error { MailNotice(text: error, critical: true) }
-            }
+            }.listRowBackground(MailTheme.surface)
         }.scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("邮箱设置").navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .tabBar)
             .confirmationDialog("移除 \(account?.email ?? "此邮箱")？", isPresented: $confirmRemoval, titleVisibility: .visible) {
@@ -79,7 +79,7 @@ struct AppearanceSettingsView: View {
         Form {
             Section("显示模式") {
                 Picker("显示模式", selection: $appearance) { Text("跟随系统").tag("system"); Text("浅色").tag("light"); Text("深色").tag("dark") }.pickerStyle(.inline).labelsHidden()
-            }
+            }.listRowBackground(MailTheme.surface)
             Section("主题") {
                 HStack { Circle().fill(MailTheme.blue).frame(width: 24, height: 24); Text("宝武蓝 · 蓝白"); Spacer(); Image(systemName: "checkmark").foregroundStyle(MailTheme.blue) }
                     .accessibilityElement(children: .ignore).accessibilityLabel("主题").accessibilityValue("宝武蓝 · 蓝白").accessibilityIdentifier("theme-setting")
@@ -88,11 +88,11 @@ struct AppearanceSettingsView: View {
                     Text("颜色随系统切换，阅读保持清晰。留出空间，专注每一封邮件。")
                         .font(.system(size: readerSize * scaledBody / 17)).lineSpacing(5)
                 }.padding(.vertical, 8)
-            }
+            }.listRowBackground(MailTheme.surface)
             Section {
                 LabeledContent("字号", value: "\(Int(readerSize)) pt")
                 Slider(value: $readerSize, in: 14...26, step: 1).accessibilityLabel("正文字号")
-            } header: { Text("邮件正文字号") } footer: { Text("界面文字跟随系统动态字号；此项调整邮件正文。") }
+            } header: { Text("邮件正文字号") } footer: { Text("界面文字跟随系统动态字号；此项调整邮件正文。") }.listRowBackground(MailTheme.surface)
         }.scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("外观与阅读").navigationBarTitleDisplayMode(.inline).toolbar(.hidden, for: .tabBar)
     }
 }
@@ -107,11 +107,11 @@ struct AboutView: View {
                 }.frame(maxWidth: .infinity).padding(.vertical, 16)
                 LabeledContent("版本", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0")
                 LabeledContent("构建", value: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1")
-            }
+            }.listRowBackground(MailTheme.surface)
             Section {
                 NavigationLink("隐私与数据") { PrivacyView() }
                 NavigationLink("开源许可") { ScrollView { Text(licenseText).font(.footnote).textSelection(.enabled).padding(16) }.navigationTitle("开源许可").navigationBarTitleDisplayMode(.inline) }
-            }
+            }.listRowBackground(MailTheme.surface)
         }.scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("关于 MailAI").navigationBarTitleDisplayMode(.inline).toolbar(.hidden, for: .tabBar)
     }
     private var licenseText: String {

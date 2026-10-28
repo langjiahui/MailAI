@@ -102,7 +102,7 @@ struct AssistantSettingsView: View {
                 if working { Button("取消") { task?.cancel(); working = false } }
                 Button("清除模型配置", role: .destructive) { confirmClear = true }.disabled(working)
                 if let status { Text(status).font(.footnote).textSelection(.enabled) }
-            }
+            }.listRowBackground(MailTheme.surface)
         }.scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("小邮与模型服务").navigationBarTitleDisplayMode(.inline).toolbar(.hidden, for: .tabBar)
             .confirmationDialog("清除本机模型配置？", isPresented: $confirmClear, titleVisibility: .visible) {
                 Button("清除配置", role: .destructive) { do { try AssistantVault.remove(); configuration = AssistantConfiguration(); status = "已清除" } catch { status = error.localizedDescription } }
