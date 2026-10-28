@@ -1,9 +1,27 @@
 import XCTest
 import MailAICore
 import Security
+import UIKit
 @testable import MailAI
 
 final class ProtocolTests: XCTestCase {
+    @MainActor func testComposerFormattingPreservesTextAndEscapesHTML() {
+        let view = UITextView()
+        view.attributedText = NSAttributedString(string: "A<B & C", attributes: [.font: UIFont.systemFont(ofSize: 17)])
+        view.selectedRange = NSRange(location: 0, length: 3)
+        let commands = ComposerEditorCommands(); commands.view = view
+        var outputText = "", outputHTML: String?
+        let coordinator = RichComposerEditor.Coordinator { text, html in outputText = text; outputHTML = html }
+        commands.changed = { coordinator.textViewDidChange(view) }
+        commands.format(.bold)
+        XCTAssertEqual(outputText, "A<B & C")
+        XCTAssertTrue(outputHTML?.contains("<strong>A&lt;B</strong>") == true)
+        XCTAssertTrue(outputHTML?.contains("&amp;") == true)
+        commands.format(.underline)
+        XCTAssertTrue(outputHTML?.contains("<u><strong>A&lt;B</strong></u>") == true)
+        let attributes = view.textStorage.attributes(at: 4, effectiveRange: nil)
+        XCTAssertFalse((attributes[.font] as? UIFont)?.fontDescriptor.symbolicTraits.contains(.traitBold) == true)
+    }
     @MainActor func testSystemKeychainRoundTripOnSignedSimulator() throws {
         let service = "com.mailai.ios.tests." + UUID().uuidString
         let vault = KeychainVault(service: service)

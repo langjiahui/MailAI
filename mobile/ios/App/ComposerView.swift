@@ -91,6 +91,7 @@ struct ComposerView: View {
                 .interactiveDismissDisabled(store.sending || store.draftSaveFailed || !store.draft.isEmpty)
                 .confirmationDialog("发送这封邮件？", isPresented: $confirmSend, titleVisibility: .visible) {
                     Button("确认发送") { Task { do { try await store.send() } catch { self.error = error.localizedDescription } } }
+                    Button("取消", role: .cancel) {}
                 } message: { Text("发件人：\(store.selected?.email ?? "")\n收件人：\(store.draft.to)\n抄送：\(store.draft.cc.isEmpty ? "无" : store.draft.cc)\n密送：\(store.draft.bcc.isEmpty ? "无" : store.draft.bcc)\n\(store.draft.subject)\n附件：\(store.draft.attachments.count) 个") }
                 .confirmationDialog("离开写信？", isPresented: $confirmExit, titleVisibility: .visible) {
                     Button("保存并返回") { do { try store.saveDraft(); dismiss() } catch { self.error = error.localizedDescription } }

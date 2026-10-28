@@ -266,6 +266,58 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertTrue(app.buttons["展开会话邮件：设计团队"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["回复全部"].exists)
     }
+    func testAttachmentPreviewAndNativeShare() {
+        let app = launch(extra: ["--ui-pdf"])
+        app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap()
+        app.staticTexts["合成项目方案.pdf"].tap()
+        let englishShare = app.buttons["Share"].firstMatch
+        let share = englishShare.waitForExistence(timeout: 5) ? englishShare : (app.buttons["共享"].firstMatch.exists ? app.buttons["共享"].firstMatch : app.buttons["分享"].firstMatch)
+        XCTAssertTrue(share.waitForExistence(timeout: 5)); attach("redesign-quicklook-pdf")
+        share.tap(); attach("redesign-system-share")
+    }
+    func testAttachmentCancellationAndFailureKeepBody() {
+        var app = launch(extra: ["--ui-attachment-slow"])
+        app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap()
+        app.staticTexts["测试说明.txt"].tap()
+        XCTAssertTrue(app.buttons["取消下载"].waitForExistence(timeout: 3)); attach("redesign-attachment-progress")
+        app.buttons["取消下载"].tap()
+        XCTAssertTrue(app.buttons["回复全部"].exists)
+        app.terminate()
+        app = launch(extra: ["--ui-attachment-failure"])
+        app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap(); app.staticTexts["测试说明.txt"].tap()
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '合成附件下载失败'")).firstMatch.waitForExistence(timeout: 5)); attach("redesign-attachment-failure")
+        XCTAssertTrue(app.buttons["回复全部"].exists)
+    }
+    func testNativeNotificationPermissionIsUserTriggered() {
+        let app = launch()
+        app.tabBars.buttons["设置"].tap(); app.buttons["后台收信与通知"].tap()
+        app.buttons["申请通知权限"].tap()
+        let alert = app.alerts.firstMatch
+        XCTAssertTrue(alert.waitForExistence(timeout: 5)); attach("redesign-system-notification-permission")
+        let deny = alert.buttons["Don’t Allow"].exists ? alert.buttons["Don’t Allow"] : (alert.buttons["Don't Allow"].exists ? alert.buttons["Don't Allow"] : alert.buttons["不允许"])
+        XCTAssertTrue(deny.exists); deny.tap()
+    }
+    func testDraftAttachmentsFormatAndDecisionDialogs() {
+        let app = launch(extra: ["--ui-records"])
+        app.buttons["更多邮件操作"].tap(); app.buttons["草稿与发送记录"].tap()
+        app.buttons.containing(.staticText, identifier: "合成待办草稿").firstMatch.tap()
+        XCTAssertTrue(app.buttons["移除附件 合成附件.txt"].waitForExistence(timeout: 5)); attach("redesign-composer-attachment")
+        app.buttons["移除附件 合成附件.txt"].tap()
+        XCTAssertFalse(app.staticTexts["合成附件.txt"].exists)
+        app.buttons["文字格式"].tap(); attach("redesign-format-menu"); app.buttons["加粗"].tap()
+        app.textViews["compose-body-editor"].typeText("Bold "); attach("redesign-formatted-composer")
+        app.buttons["收起键盘"].tap()
+        app.buttons["send-mail"].tap()
+        XCTAssertTrue(app.buttons["确认发送"].waitForExistence(timeout: 5)); attach("redesign-send-confirmation")
+        app.buttons["取消"].firstMatch.tap()
+        app.buttons["关闭"].tap(); attach("redesign-exit-draft-confirmation")
+        app.buttons["继续编辑"].tap()
+        XCTAssertTrue(app.buttons["send-mail"].exists)
+        app.buttons["关闭"].tap(); app.buttons["保存并返回"].tap()
+        app.cells.containing(.staticText, identifier: "合成待办草稿").firstMatch.swipeLeft()
+        app.buttons["删除"].firstMatch.tap(); attach("redesign-delete-draft-confirmation")
+        app.buttons["Cancel"].firstMatch.exists ? app.buttons["Cancel"].firstMatch.tap() : app.buttons["取消"].firstMatch.tap()
+    }
     func testStorageFailureOffersRetryWithoutDeletingData() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-fixture", "--ui-storage-error"]; app.launch()
         XCTAssertTrue(app.buttons["重试"].waitForExistence(timeout: 5)); attach("redesign-storage-error")

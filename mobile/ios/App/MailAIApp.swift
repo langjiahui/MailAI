@@ -97,9 +97,11 @@ struct InboxView: View {
     @State private var unified = false
     @State private var unifiedMessages: [LocatedMessage] = []
     @State private var tab = 0
-    private var filtered: [MailSummary] {
-        store.messages.filter { filter == "unread" ? $0.unread : filter == "flagged" ? $0.isFlagged == true : filter == "attachments" ? $0.hasAttachments == true : true }
+    private func matches(_ message: MailSummary) -> Bool {
+        switch filter { case "unread": return message.unread; case "flagged": return message.isFlagged == true; case "attachments": return message.hasAttachments == true; default: return true }
     }
+    private var filtered: [MailSummary] { store.messages.filter(matches) }
+    private var threads: [MailThread] { MailThread.group(store.messages).filter { $0.messages.contains(where: matches) } }
     var body: some View {
         TabView(selection: $tab) {
             NavigationStack { mailContent }
@@ -165,7 +167,7 @@ struct InboxView: View {
                                     }
                                 }
                             } else if grouped {
-                                ForEach(MailThread.group(filtered)) { thread in
+                                ForEach(threads) { thread in
                                     if thread.messages.count == 1, let message = thread.messages.first {
                                         NavigationLink { ReaderView(store: store, summary: message, thread: thread.messages) } label: { MailRow(summary: message) }
                                     } else {
