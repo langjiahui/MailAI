@@ -141,6 +141,8 @@ struct ContactsView: View {
     let store: MailStore
     @State private var query = ""
     @State private var editing: MailContact?
+    @State private var pendingRecipient: String?
+    @State private var pendingPhone: MailAddress?
     @State private var picking = false
     @State private var composing = false
     var body: some View {
@@ -157,8 +159,12 @@ struct ContactsView: View {
             .toolbar { ToolbarItem(placement: .topBarTrailing) {
                 Menu { Button("新建联系人") { editing = MailContact(email: "") }; Button("从手机联系人选择") { picking = true } } label: { Image(systemName: "plus") }.disabled(store.selectedID == nil)
             } }
-            .sheet(item: $editing) { contact in ContactEditor(store: store, contact: contact, compose: compose) }
-            .sheet(isPresented: $picking) { PhoneContactPicker { address in editing = MailContact(email: address.email, name: address.name) } }
+            .sheet(item: $editing, onDismiss: {
+                if let email = pendingRecipient { pendingRecipient = nil; compose(email) }
+            }) { contact in ContactEditor(store: store, contact: contact) { pendingRecipient = $0 } }
+            .sheet(isPresented: $picking, onDismiss: {
+                if let address = pendingPhone { pendingPhone = nil; editing = MailContact(email: address.email, name: address.name) }
+            }) { PhoneContactPicker { address in pendingPhone = address; picking = false } }
             .sheet(isPresented: $composing) { ComposerView(store: store) }
     }
     private func compose(_ email: String) {

@@ -63,7 +63,13 @@ jobs:
           fixture_pid=$!
           trap 'kill "$fixture_pid" 2>/dev/null || true; rm -f build/fixture*.pem build/fixture.csr build/fixture.ext build/fixture-ca.srl build/fixture-ca.cnf' EXIT
           xcodebuild -project MailAI.xcodeproj -scheme MailAI -destination "id=$device" -parallel-testing-enabled NO -resultBundlePath build/UITests.xcresult CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- test
-          xcrun xcresulttool export attachments --path build/UITests.xcresult --output-path build/screenshots
+      - name: Export simulator screenshots
+        if: always()
+        working-directory: mobile/ios
+        run: |
+          if [ -d build/UITests.xcresult ]; then
+            xcrun xcresulttool export attachments --path build/UITests.xcresult --output-path build/screenshots
+          fi
       - name: Stage a private release draft for artifact verification
         if: github.event_name == 'push' && github.ref == 'refs/heads/codex/ios-native-release'
         env:

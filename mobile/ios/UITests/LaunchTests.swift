@@ -84,7 +84,8 @@ final class WorkspaceTests: XCTestCase {
         app.tabBars.buttons["通讯录"].tap()
         XCTAssertTrue(app.staticTexts["项目组"].waitForExistence(timeout: 5)); attach("blue-contacts-dark")
         app.tabBars.buttons["设置"].tap()
-        XCTAssertTrue(app.staticTexts["宝武蓝 · 蓝白"].waitForExistence(timeout: 5)); attach("blue-settings-dark")
+        let theme = app.descendants(matching: .any).matching(identifier: "theme-setting").firstMatch
+        XCTAssertTrue(theme.waitForExistence(timeout: 5)); XCTAssertEqual(theme.value as? String, "宝武蓝 · 蓝白"); attach("blue-settings-dark")
         app.swipeUp()
         app.buttons["小邮与模型服务"].tap()
         XCTAssertTrue(app.secureTextFields["API Key"].waitForExistence(timeout: 5))

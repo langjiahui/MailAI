@@ -84,16 +84,20 @@ struct ReaderView: View {
                     Button(currentFlag ? "取消星标" : "添加星标") { Task { do { try await store.perform(.flagged(!currentFlag), on: [summary]) } catch { self.error = "标记失败，请刷新核对。" } } }
                 } label: { Image(systemName: "ellipsis.circle") }.accessibilityLabel("更多邮件操作")
             }
-            ToolbarItemGroup(placement: .bottomBar) {
-                Button("回复", systemImage: "arrowshape.turn.up.left") { compose(.reply) }.disabled(bodyContent == nil || store.sending)
-                Spacer()
-                Button("回复全部", systemImage: "arrowshape.turn.up.left.2") { compose(.replyAll) }.disabled(bodyContent == nil || store.sending)
-                Spacer()
+        }
+        .toolbar(.hidden, for: .tabBar)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            HStack(spacing: 10) {
+                Button { compose(.reply) } label: { Label("回复", systemImage: "arrowshape.turn.up.left").frame(maxWidth: .infinity, minHeight: 44) }
+                    .disabled(bodyContent == nil || store.sending)
+                Button { compose(.replyAll) } label: { Label("回复全部", systemImage: "arrowshape.turn.up.left.2").frame(maxWidth: .infinity, minHeight: 44) }
+                    .disabled(bodyContent == nil || store.sending)
                 Menu {
                     Button("转发正文") { compose(.forward) }
                     if bodyContent?.attachments?.isEmpty == false { Button("转发正文与全部附件") { forwardWithAttachments() } }
-                } label: { Label("转发", systemImage: "arrowshape.turn.up.right") }.disabled(bodyContent == nil || store.sending || downloading)
-            }
+                } label: { Label("转发", systemImage: "arrowshape.turn.up.right").frame(maxWidth: .infinity, minHeight: 44) }
+                    .disabled(bodyContent == nil || store.sending || downloading)
+            }.font(.callout).buttonStyle(.borderless).padding(.horizontal, 12).padding(.vertical, 8).background(.regularMaterial)
         }
         .task(id: retry) { load() }
         .onDisappear { readTask?.cancel(); downloadTask?.cancel() }

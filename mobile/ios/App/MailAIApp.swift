@@ -170,6 +170,7 @@ struct InboxView: View {
             }
         }
         .navigationTitle(unified ? "所有收件箱" : (store.folders.first { $0.name == store.folder }?.title ?? "MailAI"))
+        .toolbar(.visible, for: .tabBar)
         .toolbar {
             if !store.accounts.isEmpty {
                 ToolbarItem(placement: .topBarLeading) {
@@ -186,30 +187,36 @@ struct InboxView: View {
                         }
                     } label: { Image(systemName: "ellipsis.circle") }.accessibilityLabel("更多邮件操作")
                 }
-                ToolbarItemGroup(placement: .bottomBar) {
-                    if selecting {
-                        Text("已选 \(selection.count) 封").font(.caption)
-                        Spacer()
-                        Menu("标记", systemImage: "checkmark.circle") {
-                            Button("标为已读") { run(.read(true), chosen) }
-                            Button("标为未读") { run(.read(false), chosen) }
-                            Button("添加星标") { run(.flagged(true), chosen) }
-                        }.disabled(selection.isEmpty)
-                        Button("移动", systemImage: "folder") { moving = chosen; showMove = true }.disabled(selection.isEmpty)
-                    } else {
-                        Text(store.selected?.email ?? "").font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                        Spacer()
-                        Button("写邮件", systemImage: "square.and.pencil") { do { try store.newDraft(); composing = true } catch { store.error = error.localizedDescription } }
-                            .accessibilityIdentifier("compose-mail").disabled(store.sending)
-                    }
-                }
+
             }
         }
-        .safeAreaInset(edge: .bottom) {
-            if store.undoID != nil {
-                HStack { Text(store.undoTitle).font(.subheadline); Spacer(); Button("撤销") { Task { do { try await store.undoLastAction() } catch { store.error = "撤销未完成，请刷新核对。" } } } }
-                    .padding().background(.regularMaterial)
-                    .task(id: store.undoID) { do { try await Task.sleep(for: .seconds(8)); store.clearUndo() } catch {} }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if !store.accounts.isEmpty {
+                VStack(spacing: 0) {
+                    if store.undoID != nil {
+                        HStack { Text(store.undoTitle).font(.subheadline); Spacer(); Button("撤销") { Task { do { try await store.undoLastAction() } catch { store.error = "撤销未完成，请刷新核对。" } } } }
+                            .padding(.horizontal).padding(.vertical, 10)
+                            .task(id: store.undoID) { do { try await Task.sleep(for: .seconds(8)); store.clearUndo() } catch {} }
+                    }
+                    HStack(spacing: 12) {
+                        if selecting {
+                            Text("已选 \(selection.count) 封").font(.caption)
+                            Spacer()
+                            Menu("标记", systemImage: "checkmark.circle") {
+                                Button("标为已读") { run(.read(true), chosen) }
+                                Button("标为未读") { run(.read(false), chosen) }
+                                Button("添加星标") { run(.flagged(true), chosen) }
+                            }.disabled(selection.isEmpty)
+                            Button("移动", systemImage: "folder") { moving = chosen; showMove = true }.disabled(selection.isEmpty)
+                        } else {
+                            Text(store.selected?.email ?? "").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                            Spacer(minLength: 8)
+                            Button { do { try store.newDraft(); composing = true } catch { store.error = error.localizedDescription } } label: {
+                                Label("写邮件", systemImage: "square.and.pencil").font(.callout.weight(.semibold)).padding(.vertical, 5)
+                            }.buttonStyle(.borderedProminent).accessibilityIdentifier("compose-mail").disabled(store.sending)
+                        }
+                    }.frame(minHeight: 48).padding(.horizontal).padding(.vertical, 8)
+                }.background(.regularMaterial)
             }
         }
         .disabled(store.operating)

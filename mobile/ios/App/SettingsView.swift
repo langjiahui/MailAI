@@ -23,6 +23,7 @@ struct SettingsView: View {
             Section("外观与阅读") {
                 Picker("显示模式", selection: $appearance) { Text("跟随系统").tag("system"); Text("浅色").tag("light"); Text("深色").tag("dark") }
                 LabeledContent("主题", value: "宝武蓝 · 蓝白")
+                    .accessibilityElement(children: .ignore).accessibilityLabel("主题").accessibilityValue("宝武蓝 · 蓝白").accessibilityIdentifier("theme-setting")
                 VStack(alignment: .leading) { Text("正文字号 \(Int(readerSize))"); Slider(value: $readerSize, in: 14...26, step: 1).accessibilityLabel("正文字号") }
             }
             Section("小邮与同步") {
@@ -33,7 +34,7 @@ struct SettingsView: View {
             Section("隐私与使用说明") {
                 Text("邮箱密码与模型密钥保存在本机钥匙串。邮件和附件缓存保存在此设备；小邮仅在你主动调用时将选定文字发往所配置的模型服务。")
                 Text("邮件正文默认不加载远程图片或脚本。搜索先展示缓存，服务器搜索覆盖整个当前文件夹；列表数量表示已加载数量。")
-                Text("后台刷新由 iOS 调度，不能保证即时提醒。当前版本不提供 APNs 服务端推送或 Google/Microsoft 网页授权登录。")
+                Text("后台刷新由 iOS 调度，不能保证即时提醒。当前版本不提供即时推送提醒或 Google/Microsoft 网页授权登录。")
             }.font(.footnote).foregroundStyle(.secondary)
             Section("关于") {
                 LabeledContent("MailAI iOS", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0")

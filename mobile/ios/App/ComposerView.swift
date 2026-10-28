@@ -81,6 +81,10 @@ struct ComposerView: View {
                 .scrollContentBackground(.hidden).background(MailTheme.canvas)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("关闭") { confirmExit = true }.disabled(store.sending) }
+                    ToolbarItemGroup(placement: .keyboard) {
+                        Spacer()
+                        Button("收起键盘") { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
+                    }
                     ToolbarItem(placement: .confirmationAction) {
                         Button("发送", systemImage: "paperplane.fill") { do { _ = try store.draft.validateForSending(); confirmSend = true } catch { self.error = error.localizedDescription } }.disabled(!editable).accessibilityIdentifier("send-mail")
                     }
