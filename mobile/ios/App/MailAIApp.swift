@@ -46,15 +46,16 @@ struct WelcomeView: View {
                 AccountView(store: store, onClose: { addingAccount = false })
             } else {
                 VStack(spacing: 22) {
-                    Image(systemName: "envelope.open.fill").font(.system(size: 64)).foregroundStyle(MailTheme.blue)
-                    Text("邮件，随身而行").font(.largeTitle.bold())
+                    Spacer(minLength: 32)
+                    Image(systemName: "envelope.open.fill").font(.system(size: 56)).foregroundStyle(MailTheme.blue)
+                    Text("把邮箱，放进口袋").font(.system(.title, design: .default, weight: .bold))
                     Text("连接你的邮箱，开始轻松处理邮件。\n账号与邮件保存在你的设备上。")
                         .foregroundStyle(.secondary).multilineTextAlignment(.center)
                     Button("添加邮箱", systemImage: "plus") { addingAccount = true }
-                        .buttonStyle(.borderedProminent).controlSize(.large).accessibilityIdentifier("add-account")
+                        .buttonStyle(MailPrimaryButton()).accessibilityIdentifier("add-account")
                     Spacer(minLength: 24)
                 }.padding(24).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    .background(MailTheme.canvas).navigationTitle("MailAI")
+                    .background(MailTheme.surface).navigationTitle("MailAI").navigationBarTitleDisplayMode(.inline)
             }
         }
         .alert("操作提示", isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) {
@@ -120,9 +121,15 @@ struct InboxView: View {
             } else {
                 VStack(spacing: 0) {
                     if !unified {
-                        Picker("筛选", selection: $filter) {
-                            Text("全部").tag("all"); Text("未读").tag("unread"); Text("星标").tag("flagged"); Text("附件").tag("attachments")
-                        }.pickerStyle(.segmented).padding(.horizontal).padding(.vertical, 8)
+                        Button { searching = true } label: {
+                            HStack(spacing: 8) { Image(systemName: "magnifyingglass"); Text("搜索当前邮箱"); Spacer() }
+                                .font(.subheadline).foregroundStyle(MailTheme.secondary).padding(.horizontal, 12).frame(minHeight: 44)
+                                .background(MailTheme.canvas, in: RoundedRectangle(cornerRadius: 12))
+                        }.accessibilityLabel("搜索邮件").padding(.horizontal, 16).padding(.top, 8)
+                        HStack(spacing: 8) {
+                            filterChip("全部", value: "all"); filterChip("未读", value: "unread")
+                            filterChip("星标", value: "flagged"); filterChip("附件", value: "attachments")
+                        }.padding(.horizontal, 16).padding(.vertical, 8)
                     }
                     List {
                         Section {
@@ -191,23 +198,32 @@ struct InboxView: View {
                                 Text("\(unified ? unifiedMessages.count : store.messages.count) 封已加载")
                             }.font(.caption).foregroundStyle(.secondary)
                         }.listRowBackground(Color.clear)
-                    }.listStyle(.plain).scrollContentBackground(.hidden)
+                    }.listStyle(.plain).scrollContentBackground(.hidden).safeAreaPadding(.bottom, selecting ? 0 : 76)
                         .refreshable {
                             if unified { do { try await store.refreshAllInboxes(); unifiedMessages = try store.cachedInbox() } catch { store.error = "部分邮箱同步失败，已保留缓存。" } }
                             else { store.refresh() }
                         }
-                }.background(MailTheme.canvas)
+                }.background(MailTheme.surface)
             }
         }
+        .navigationBarTitleDisplayMode(.inline)
         .navigationTitle(unified ? "所有收件箱" : (store.folders.first { $0.name == store.folder }?.title ?? "MailAI"))
-        .toolbar(.visible, for: .tabBar)
+        .toolbar(selecting ? .hidden : .visible, for: .tabBar)
         .toolbar {
             if !store.accounts.isEmpty {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button { mailboxes = true } label: { Image(systemName: "tray.2") }.accessibilityLabel("邮箱与文件夹")
+                    Button { mailboxes = true } label: { SenderAvatar(name: store.selected?.displayName.isEmpty == false ? store.selected!.displayName : (store.selected?.email ?? "M")) }.accessibilityLabel("邮箱与文件夹")
+                }
+                ToolbarItem(placement: .principal) {
+                    Button { mailboxes = true } label: {
+                        VStack(spacing: 2) {
+                            HStack(spacing: 4) { Text(selecting ? "已选 \(selection.count) 封" : (unified ? "所有收件箱" : (store.folders.first { $0.name == store.folder }?.title ?? "收件箱"))).font(.headline); Image(systemName: "chevron.down").font(.caption2) }
+                            if !selecting { Text(unified ? "汇集各邮箱的本机邮件" : (store.selected?.email ?? "")).font(.caption2).foregroundStyle(MailTheme.secondary).lineLimit(1) }
+                        }.foregroundStyle(MailTheme.ink)
+                    }.accessibilityLabel("切换邮箱与文件夹")
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    if !unified { Button { searching = true } label: { Image(systemName: "magnifyingglass") }.accessibilityLabel("搜索邮件") }
+                    if selecting { Button("完成") { selecting = false; selection = [] } }
                     Menu {
                         Button("草稿与发送记录") { showingDrafts = true }
                         Button("添加邮箱") { addingAccount = true }
@@ -228,9 +244,9 @@ struct InboxView: View {
                             .padding(.horizontal).padding(.vertical, 10)
                             .task(id: store.undoID) { do { try await Task.sleep(for: .seconds(8)); store.clearUndo() } catch {} }
                     }
-                    HStack(spacing: 12) {
-                        if selecting {
-                            Text("已选 \(selection.count) 封").font(.caption)
+                    if selecting {
+                        HStack(spacing: 16) {
+                            Button(selection.count == filtered.count ? "取消全选" : "全选") { selection = selection.count == filtered.count ? [] : Set(filtered.map(\.id)) }
                             Spacer()
                             Menu("标记", systemImage: "checkmark.circle") {
                                 Button("标为已读") { run(.read(true), chosen) }
@@ -238,18 +254,27 @@ struct InboxView: View {
                                 Button("添加星标") { run(.flagged(true), chosen) }
                             }.disabled(selection.isEmpty)
                             Button("移动", systemImage: "folder") { moving = chosen; showMove = true }.disabled(selection.isEmpty)
-                        } else {
-                            Text(store.selected?.email ?? "").font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                            Spacer(minLength: 8)
-                            Button { do { try store.newDraft(); composing = true } catch { store.error = error.localizedDescription } } label: {
-                                Label("写邮件", systemImage: "square.and.pencil").font(.callout.weight(.semibold)).padding(.vertical, 5)
-                            }.buttonStyle(.borderedProminent).accessibilityIdentifier("compose-mail").disabled(store.sending)
-                        }
-                    }.frame(minHeight: 48).padding(.horizontal).padding(.vertical, 8)
+                        }.frame(minHeight: 52).padding(.horizontal, 16)
+                    }
                 }.background(.regularMaterial)
             }
         }
+        .overlay(alignment: .bottomTrailing) {
+            if !selecting && !store.accounts.isEmpty {
+                Button { do { try store.newDraft(); composing = true } catch { store.error = error.localizedDescription } } label: {
+                    Label("写邮件", systemImage: "square.and.pencil").font(.callout.weight(.semibold)).padding(.horizontal, 18).frame(minHeight: 50)
+                }.buttonStyle(.borderedProminent).buttonBorderShape(.roundedRectangle(radius: 18))
+                    .accessibilityIdentifier("compose-mail").disabled(store.sending).padding(16)
+            }
+        }
         .disabled(store.operating)
+    }
+    private func filterChip(_ title: String, value: String) -> some View {
+        Button { filter = value; selection = [] } label: {
+            Text(title).font(.subheadline.weight(filter == value ? .semibold : .regular)).frame(maxWidth: .infinity, minHeight: 36)
+                .foregroundStyle(filter == value ? MailTheme.blue : MailTheme.secondary)
+                .background(filter == value ? MailTheme.blue.opacity(0.12) : MailTheme.canvas, in: RoundedRectangle(cornerRadius: 10))
+        }.accessibilityAddTraits(filter == value ? .isSelected : [])
     }
     private var chosen: [MailSummary] { store.messages.filter { selection.contains($0.id) } }
     private func run(_ action: MailAction, _ items: [MailSummary]) {
@@ -266,23 +291,22 @@ struct MailRow: View {
     var account: String? = nil
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            SenderAvatar(name: summary.senderName ?? summary.sender)
-            VStack(alignment: .leading, spacing: 5) {
+            Circle().fill(summary.unread ? MailTheme.blue : .clear).frame(width: 7, height: 7).padding(.top, 6).accessibilityLabel(summary.unread ? "未读" : "")
+            VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(summary.senderName?.isEmpty == false ? summary.senderName! : summary.sender).font(.subheadline.weight(summary.unread ? .semibold : .regular)).lineLimit(1)
                     Spacer(minLength: 8)
-                    if let date = summary.date { Text(date, format: .dateTime.month().day()).font(.caption2).foregroundStyle(.secondary) }
+                    if let date = summary.date { Text(Calendar.current.isDateInToday(date) ? date.formatted(date: .omitted, time: .shortened) : date.formatted(.dateTime.month().day())).font(.caption2).foregroundStyle(.secondary) }
                 }
-                Text(summary.subject).font(.body.weight(summary.unread ? .medium : .regular)).lineLimit(2)
-                if let preview = summary.preview, !preview.isEmpty { Text(preview).font(.subheadline).foregroundStyle(.secondary).lineLimit(2) }
+                Text(summary.subject.isEmpty ? "（无主题）" : summary.subject).font(.subheadline.weight(summary.unread ? .semibold : .regular)).lineLimit(1)
+                if let preview = summary.preview, !preview.isEmpty { Text(preview).font(.subheadline).foregroundStyle(MailTheme.secondary).lineLimit(1) }
                 HStack(spacing: 7) {
-                    if summary.unread { Circle().fill(MailTheme.blue).frame(width: 6, height: 6).accessibilityLabel("未读") }
                     if summary.isFlagged == true { Image(systemName: "star.fill").foregroundStyle(.orange) }
                     if summary.hasAttachments == true { Image(systemName: "paperclip") }
                     if let account { Text(account).lineLimit(1) }
                 }.font(.caption2).foregroundStyle(.secondary)
             }
-        }.padding(.vertical, 8)
+        }.padding(.vertical, 7).foregroundStyle(MailTheme.ink)
     }
 }
 struct UnifiedReaderView: View {

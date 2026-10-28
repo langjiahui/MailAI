@@ -26,7 +26,15 @@ import MailAICore
     nonisolated static func messages(folder: String) -> [MailSummary] {
         var item = MailSummary(uid: 7, validity: 10, folder: folder, subject: "项目资料确认与下一步安排", sender: "测试联系人 <sender@example.com>", replyAddress: "sender@example.com", date: Date(timeIntervalSince1970: 1793102400), unread: true, messageID: "<ui-synthetic@example.com>")
         item.senderName = "测试联系人"; item.preview = "请核对附件并确认下一步安排。仅用于界面验收。"; item.hasAttachments = true
-        return [item]
+        let titles = ["移动端设计评审", "合同修订版本", "会议纪要与行动项", "十月报销说明", "版本计划确认"]
+        let senders = ["设计团队", "协作联系人", "项目组", "财务部", "产品团队"]
+        var result = [item]
+        for index in titles.indices {
+            var extra = MailSummary(uid: UInt32(8 + index), validity: 10, folder: folder, subject: titles[index], sender: senders[index] + " <team@example.com>", replyAddress: "team@example.com", date: Date(timeIntervalSince1970: 1793102000 - Double(index * 3600)), unread: index == 1, messageID: "<ui-\(index)@example.com>")
+            extra.senderName = senders[index]; extra.preview = "仅用于界面验收的合成内容，请确认下一步安排。"; extra.isFlagged = index == 0; extra.hasAttachments = index == 1
+            result.append(extra)
+        }
+        return result
     }
     static func store() throws -> MailStore {
         var account = MailAccount(); account.email = "demo@example.com"; account.displayName = "测试邮箱"; account.suggestServers()

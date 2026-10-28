@@ -93,7 +93,7 @@ struct BackgroundSettingsView: View {
                 if let date = UserDefaults.standard.object(forKey: "mail.backgroundDate") as? Date { Text(date.formatted()).font(.caption).foregroundStyle(.secondary) }
                 Button("重新提交调度请求") { BackgroundMail.shared.schedule() }.disabled(!enabled)
             }
-        }.navigationTitle("后台收信与通知").task { await readPermission() }
+        }.scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("后台收信与通知").navigationBarTitleDisplayMode(.inline).toolbar(.hidden, for: .tabBar).task { await readPermission() }
     }
     private func readPermission() async {
         let value = await UNUserNotificationCenter.current().notificationSettings()

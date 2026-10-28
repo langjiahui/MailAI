@@ -24,75 +24,73 @@ struct ComposerView: View {
     @State private var undoText: String?
     @State private var adoptedText: String?
     @State private var error: String?
+    @State private var quotedExpanded = false
+    @State private var editor = ComposerEditorCommands()
     private var editable: Bool { store.draft.state == .editing && !store.sending }
     private func field(_ keyPath: WritableKeyPath<MailDraft, String>) -> Binding<String> {
         Binding(get: { store.draft[keyPath: keyPath] }, set: { value in store.updateDraft { $0[keyPath: keyPath] = value } })
     }
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    LabeledContent("发件人", value: store.selected?.email ?? "")
-                    address("收件人", target: "to", binding: field(\.to))
-                    if copies || !store.draft.cc.isEmpty || !store.draft.bcc.isEmpty {
-                        address("抄送", target: "cc", binding: field(\.cc))
-                        address("密送", target: "bcc", binding: field(\.bcc))
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    VStack(spacing: 0) {
+                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                            Text("发件人").font(.subheadline).foregroundStyle(MailTheme.secondary).frame(width: 56, alignment: .leading)
+                            Text(store.selected?.email ?? "").font(.subheadline).textSelection(.enabled); Spacer(minLength: 0)
+                        }.frame(minHeight: 48)
+                        Divider()
+                        address("收件人", target: "to", binding: field(\.to))
+                        if copies || !store.draft.cc.isEmpty || !store.draft.bcc.isEmpty {
+                            Divider(); address("抄送", target: "cc", binding: field(\.cc))
+                            Divider(); address("密送", target: "bcc", binding: field(\.bcc))
+                        }
+                        Button(copies ? "收起抄送与密送" : "抄送 / 密送") { copies.toggle() }.font(.caption).frame(maxWidth: .infinity, minHeight: 36, alignment: .trailing)
+                        Divider()
+                        HStack(spacing: 12) {
+                            Text("主题").font(.subheadline).foregroundStyle(MailTheme.secondary).frame(width: 56, alignment: .leading)
+                            TextField("填写主题", text: field(\.subject), axis: .vertical).accessibilityIdentifier("compose-subject")
+                        }.frame(minHeight: 52)
+                        Divider()
+                    }.disabled(!editable)
+                    if !store.draft.attachments.isEmpty {
+                        VStack(spacing: 8) { ForEach(store.draft.attachments) { attachmentRow($0) } }.padding(.vertical, 12)
                     }
-                    Button(copies ? "收起抄送与密送" : "添加抄送／密送") { copies.toggle() }.font(.caption)
-                    TextField("主题", text: field(\.subject)).accessibilityIdentifier("compose-subject")
-                }.disabled(!editable)
-                Section("正文") {
-                    RichComposerEditor(text: store.draft.text, html: store.draft.html, editable: editable) { text, html in
-                        store.updateDraft { $0.text = text; $0.html = html }
-                    }.frame(minHeight: 280).accessibilityIdentifier("compose-body")
-                    if editable {
-                        HStack {
-                            Button("小邮润色", systemImage: "sparkles") { assistantOriginal = store.draft.text; assistantDraftID = store.draft.id; assistant = true }.disabled(store.draft.text.isEmpty)
-                            Spacer()
-                            if let undoText, store.draft.text == adoptedText {
-                                Button("撤回润色") { store.updateDraft { $0.text = undoText; $0.html = nil }; self.undoText = nil; adoptedText = nil }
+                    ZStack(alignment: .topLeading) {
+                        if editingText.isEmpty { Text("填写邮件正文").foregroundStyle(.tertiary).padding(.top, 12).padding(.leading, 5).allowsHitTesting(false) }
+                        RichComposerEditor(text: editingText, html: quotedText == nil ? store.draft.html : nil, editable: editable, commands: editor) { text, html in
+                            store.updateDraft { draft in
+                                let quote = quotedText ?? ""
+                                draft.text = text + quote
+                                draft.html = quote.isEmpty ? html : nil
                             }
-                        }.font(.subheadline)
-                        Text("长按选中文字可使用系统格式菜单，支持加粗、斜体与下划线。").font(.caption).foregroundStyle(.secondary)
+                        }.frame(minHeight: 320).accessibilityIdentifier("compose-body")
                     }
-                }
-                Section("附件 \(store.draft.attachments.count)/20") {
-                    ForEach(store.draft.attachments) { item in
-                        HStack {
-                            Button { Task { do { previewURL = try previewFile(name: item.name, data: await store.attachmentData(item)) } catch { self.error = error.localizedDescription } } } label: {
-                                Label { VStack(alignment: .leading) { Text(item.name).lineLimit(2); Text(ByteCountFormatter.string(fromByteCount: Int64(item.size), countStyle: .file)).font(.caption).foregroundStyle(.secondary) } } icon: { Image(systemName: "doc") }
-                            }.buttonStyle(.plain)
-                            Spacer()
-                            if editable { Button { store.updateDraft { $0.attachments.removeAll { $0.id == item.id } } } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.borderless).accessibilityLabel("移除附件 \(item.name)") }
-                        }
+                    if let quotedText {
+                        DisclosureGroup("原邮件 · 点击展开", isExpanded: $quotedExpanded) {
+                            Text(quotedText).font(.subheadline).foregroundStyle(MailTheme.secondary).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 12)
+                        }.font(.subheadline).padding(.vertical, 12)
                     }
-                    if editable {
-                        HStack {
-                            Button("添加文件", systemImage: "paperclip") { importDraftID = store.draft.id; importing = true }
-                            Spacer()
-                            PhotosPicker(selection: $photo, matching: .images) { Label("照片", systemImage: "photo") }
-                        }
-                        Text("单个 15 MB、合计 25 MB。附件先保存到本机，发送前会核对完整性。").font(.caption).foregroundStyle(.secondary)
+                    if let undoText, store.draft.text == adoptedText {
+                        Button("撤回润色") { store.updateDraft { $0.text = undoText; $0.html = nil }; self.undoText = nil; adoptedText = nil }.font(.subheadline).frame(minHeight: 44)
                     }
-                }
-                Section { status }
-                if let error { Section { Text(error).foregroundStyle(.red).font(.footnote).textSelection(.enabled) } }
-            }.navigationTitle("写邮件").navigationBarTitleDisplayMode(.inline)
-                .scrollContentBackground(.hidden).background(MailTheme.canvas)
+                    VStack(alignment: .leading, spacing: 8) { status }.padding(.vertical, 16)
+                    if let error { MailNotice(text: error).padding(.bottom, 12) }
+                }.padding(.horizontal, 16)
+            }.scrollDismissesKeyboard(.interactively)
+            .navigationTitle("写邮件").navigationBarTitleDisplayMode(.inline)
+                .background(MailTheme.surface)
+                .safeAreaInset(edge: .bottom, spacing: 0) { composerTools }
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("关闭") { confirmExit = true }.disabled(store.sending) }
-                    ToolbarItemGroup(placement: .keyboard) {
-                        Spacer()
-                        Button("收起键盘") { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
-                    }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("发送", systemImage: "paperplane.fill") { do { _ = try store.draft.validateForSending(); confirmSend = true } catch { self.error = error.localizedDescription } }.disabled(!editable).accessibilityIdentifier("send-mail")
+                        Button("发送", systemImage: "paperplane.fill") { do { _ = try store.draft.validateForSending(); confirmSend = true } catch { self.error = error.localizedDescription } }.disabled(!editable || (try? store.draft.validateForSending()) == nil).accessibilityIdentifier("send-mail")
                     }
                 }
-                .interactiveDismissDisabled(store.sending || store.draftSaveFailed)
+                .interactiveDismissDisabled(store.sending || store.draftSaveFailed || !store.draft.isEmpty)
                 .confirmationDialog("发送这封邮件？", isPresented: $confirmSend, titleVisibility: .visible) {
                     Button("确认发送") { Task { do { try await store.send() } catch { self.error = error.localizedDescription } } }
-                } message: { Text("收件人：\(store.draft.to)\n抄送：\(store.draft.cc.isEmpty ? "无" : store.draft.cc)\n密送：\(store.draft.bcc.isEmpty ? "无" : store.draft.bcc)\n\(store.draft.subject)") }
+                } message: { Text("收件人：\(store.draft.to)\n抄送：\(store.draft.cc.isEmpty ? "无" : store.draft.cc)\n密送：\(store.draft.bcc.isEmpty ? "无" : store.draft.bcc)\n\(store.draft.subject)\n附件：\(store.draft.attachments.count) 个") }
                 .confirmationDialog("离开写信？", isPresented: $confirmExit, titleVisibility: .visible) {
                     Button("保存并返回") { do { try store.saveDraft(); dismiss() } catch { self.error = error.localizedDescription } }
                     Button("继续编辑", role: .cancel) {}
@@ -121,8 +119,8 @@ struct ComposerView: View {
                         if !Task.isCancelled { photo = nil }
                     }
                 }
-                .sheet(isPresented: $picking) { RecipientPicker(store: store) { email in
-                    switch recipientTarget { case "cc": store.updateDraft { $0.cc = append(email, to: $0.cc) }; case "bcc": store.updateDraft { $0.bcc = append(email, to: $0.bcc) }; default: store.updateDraft { $0.to = append(email, to: $0.to) } }
+                .sheet(isPresented: $picking) { RecipientPicker(store: store) { emails in
+                    for email in emails { switch recipientTarget { case "cc": store.updateDraft { $0.cc = append(email, to: $0.cc) }; case "bcc": store.updateDraft { $0.bcc = append(email, to: $0.bcc) }; default: store.updateDraft { $0.to = append(email, to: $0.to) } } }
                 } }
                 .sheet(isPresented: $assistant) { AssistantPanel(text: assistantOriginal, composing: true) { output in
                     guard editable, store.draft.id == assistantDraftID, store.draft.text == assistantOriginal else { return false }
@@ -153,11 +151,44 @@ struct ComposerView: View {
             Button("写一封新邮件") { do { try store.newDraft() } catch { self.error = error.localizedDescription } }
         }
     }
+    private var quotedText: String? {
+        guard store.draft.inReplyTo != nil || store.draft.subject.lowercased().hasPrefix("fwd:") else { return nil }
+        guard let range = store.draft.text.range(of: "\n\n—— 原邮件 ——\n") else { return nil }
+        return String(store.draft.text[range.lowerBound...])
+    }
+    private var editingText: String {
+        guard let quote = quotedText else { return store.draft.text }
+        return String(store.draft.text.dropLast(quote.count))
+    }
+    private var composerTools: some View {
+        HStack(spacing: 20) {
+            Button { importDraftID = store.draft.id; importing = true } label: { Image(systemName: "paperclip").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("添加文件")
+            PhotosPicker(selection: $photo, matching: .images) { Image(systemName: "photo").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("照片")
+            Menu {
+                Button("加粗", systemImage: "bold") { editor.format(.bold) }
+                Button("斜体", systemImage: "italic") { editor.format(.italic) }
+                Button("下划线", systemImage: "underline") { editor.format(.underline) }
+            } label: { Text("Aa").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("文字格式")
+            Button { assistantOriginal = store.draft.text; assistantDraftID = store.draft.id; assistant = true } label: { Label("小邮", systemImage: "sparkles").frame(minHeight: 44) }.disabled(store.draft.text.isEmpty)
+            Spacer(minLength: 0)
+            Button { editor.dismissKeyboard() } label: { Image(systemName: "keyboard.chevron.compact.down").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("收起键盘")
+        }.font(.callout).padding(.horizontal, 8).background(MailTheme.surface).overlay(alignment: .top) { Divider() }.disabled(!editable)
+    }
+    private func attachmentRow(_ item: MailAttachment) -> some View {
+        HStack(spacing: 12) {
+            Button { Task { do { previewURL = try previewFile(name: item.name, data: await store.attachmentData(item)) } catch { self.error = error.localizedDescription } } } label: {
+                Label { VStack(alignment: .leading, spacing: 3) { Text(item.name).lineLimit(1); Text(ByteCountFormatter.string(fromByteCount: Int64(item.size), countStyle: .file)).font(.caption).foregroundStyle(MailTheme.secondary) } } icon: { Image(systemName: "doc.text").font(.title3) }
+            }.buttonStyle(.plain)
+            Spacer()
+            if editable { Button { store.updateDraft { $0.attachments.removeAll { $0.id == item.id } } } label: { Image(systemName: "xmark").frame(width: 44, height: 44) }.accessibilityLabel("移除附件 \(item.name)") }
+        }.padding(.leading, 12).background(MailTheme.canvas, in: RoundedRectangle(cornerRadius: 10))
+    }
     private func address(_ title: String, target: String, binding: Binding<String>) -> some View {
-        HStack(alignment: .top) {
-            TextField(title, text: binding, axis: .vertical).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled().accessibilityIdentifier("compose-" + target)
-            Button { recipientTarget = target; picking = true } label: { Image(systemName: "person.crop.circle.badge.plus") }.buttonStyle(.borderless).accessibilityLabel("选择\(title)")
-        }
+        HStack(alignment: .top, spacing: 8) {
+            Text(title).font(.subheadline).foregroundStyle(MailTheme.secondary).frame(width: 56, alignment: .leading).padding(.top, 14)
+            RecipientEntry(value: binding, identifier: "compose-" + target).padding(.vertical, 6)
+            Button { editor.dismissKeyboard(); recipientTarget = target; picking = true } label: { Image(systemName: "person.crop.circle.badge.plus").frame(width: 44, height: 44) }.accessibilityLabel("选择\(title)")
+        }.frame(minHeight: 48)
     }
     private func append(_ email: String, to current: String) -> String {
         let all = [store.draft.to, store.draft.cc, store.draft.bcc].joined(separator: ",").lowercased().split(whereSeparator: { ",;，；".contains($0) }).map { $0.trimmingCharacters(in: .whitespaces) }
@@ -172,20 +203,93 @@ struct ComposerView: View {
     }
 }
 struct RecipientPicker: View {
-    let store: MailStore; let selected: (String) -> Void
+    let store: MailStore; let selected: ([String]) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
     @State private var phone = false
+    @State private var chosen = Set<String>()
+    @State private var phoneAddresses: [MailAddress] = []
+    private var addresses: [MailAddress] {
+        var seen = Set<String>()
+        return (phoneAddresses + store.contacts.map { MailAddress(name: $0.title, email: $0.email) }).filter { seen.insert($0.email.lowercased()).inserted }
+    }
     var body: some View {
         NavigationStack {
             List {
-                Button("从手机联系人选择") { phone = true }
-                ForEach(store.contacts.filter { query.isEmpty || ($0.title + $0.email).localizedCaseInsensitiveContains(query) }) { contact in
-                    Button { selected(contact.email); dismiss() } label: { VStack(alignment: .leading) { Text(contact.title); Text(contact.email).font(.caption).foregroundStyle(.secondary) } }
+                Button("从手机联系人选择", systemImage: "person.crop.circle") { phone = true }
+                Section("最近联系人") {
+                    ForEach(addresses.filter { query.isEmpty || ($0.name + $0.email).localizedCaseInsensitiveContains(query) }, id: \.email) { address in
+                        Button { if chosen.contains(address.email) { chosen.remove(address.email) } else { chosen.insert(address.email) } } label: {
+                            HStack(spacing: 12) {
+                                SenderAvatar(name: address.name.isEmpty ? address.email : address.name)
+                                VStack(alignment: .leading, spacing: 4) { Text(address.name.isEmpty ? address.email : address.name).foregroundStyle(MailTheme.ink); Text(address.email).font(.caption).foregroundStyle(MailTheme.secondary) }
+                                Spacer(); Image(systemName: chosen.contains(address.email) ? "checkmark.circle.fill" : "circle").font(.title3)
+                            }.frame(minHeight: 48)
+                        }.accessibilityValue(chosen.contains(address.email) ? "已选择" : "未选择")
+                    }
                 }
-            }.searchable(text: $query, prompt: "搜索往来联系人").navigationTitle("选择联系人")
-                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } } }
-                .sheet(isPresented: $phone) { PhoneContactPicker { address in selected(address.email); dismiss() } }
+            }.listStyle(.plain).searchable(text: $query, prompt: "姓名或邮箱").navigationTitle("选择联系人").navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
+                    ToolbarItem(placement: .confirmationAction) { Button("完成（\(chosen.count)）") { selected(addresses.filter { chosen.contains($0.email) }.map(\.email)); dismiss() }.disabled(chosen.isEmpty) }
+                }
+                .sheet(isPresented: $phone) { PhoneContactPicker { address in phoneAddresses.append(address); chosen.insert(address.email); phone = false } }
         }
+    }
+}
+/// Every keystroke remains in the draft. Chips commit only on submit, separator or focus loss.
+struct RecipientEntry: View {
+    @Binding var value: String
+    let identifier: String
+    @State private var chips: [String] = []
+    @State private var input = ""
+    @FocusState private var focused: Bool
+    private var serialized: String { (chips + (input.isEmpty ? [] : [input])).joined(separator: ", ") }
+    var body: some View {
+        RecipientFlow(spacing: 6) {
+            ForEach(chips, id: \.self) { email in
+                HStack(spacing: 4) {
+                    Text(email).lineLimit(1).truncationMode(.middle)
+                    Button { chips.removeAll { $0 == email }; persist() } label: { Image(systemName: "xmark").font(.caption).frame(minWidth: 28, minHeight: 36) }.accessibilityLabel("移除收件人 \(email)")
+                }.font(.subheadline).padding(.leading, 8).foregroundStyle(MailTheme.blue).background(MailTheme.blue.opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
+            }
+            TextField(chips.isEmpty ? "填写邮箱" : "添加", text: $input).font(.subheadline).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled().focused($focused).submitLabel(.done)
+                .frame(minWidth: 90, minHeight: 36).accessibilityIdentifier(identifier + "-input")
+                .onSubmit { commit() }
+                .onChange(of: input) { _, newValue in if newValue.last.map({ ",;，；".contains($0) }) == true { commit() } else { persist() } }
+                .onChange(of: focused) { _, active in if !active { commit() } }
+        }.accessibilityElement(children: .contain).accessibilityIdentifier(identifier).accessibilityValue(value)
+            .onAppear { load() }.onChange(of: value) { _, newValue in if newValue != serialized { load() } }
+    }
+    private func persist() { if value != serialized { value = serialized } }
+    private func load() {
+        let parts = value.split(whereSeparator: { ",;，；".contains($0) }).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        chips = []; var remaining: [String] = []
+        for part in parts { if MailValidation.isAddress(part) { if !chips.contains(part) { chips.append(part) } } else { remaining.append(part) } }
+        input = remaining.joined(separator: ", ")
+    }
+    private func commit() {
+        let parts = input.split(whereSeparator: { ",;，；".contains($0) }).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        var remaining: [String] = []
+        for part in parts { if MailValidation.isAddress(part) { if !chips.contains(where: { $0.lowercased() == part.lowercased() }) { chips.append(part) } } else { remaining.append(part) } }
+        input = remaining.joined(separator: ", "); persist()
+    }
+}
+struct RecipientFlow: Layout {
+    var spacing: CGFloat = 6
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize { arrange(width: proposal.width ?? 260, subviews: subviews).size }
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let layout = arrange(width: bounds.width, subviews: subviews)
+        for (index, point) in layout.positions.enumerated() { subviews[index].place(at: CGPoint(x: bounds.minX + point.x, y: bounds.minY + point.y), proposal: ProposedViewSize(width: min(subviews[index].sizeThatFits(.unspecified).width, bounds.width), height: nil)) }
+    }
+    private func arrange(width: CGFloat, subviews: Subviews) -> (size: CGSize, positions: [CGPoint]) {
+        let width = max(1, width); var x: CGFloat = 0; var y: CGFloat = 0; var height: CGFloat = 0; var positions: [CGPoint] = []
+        for view in subviews {
+            let size = view.sizeThatFits(ProposedViewSize(width: width, height: nil))
+            let itemWidth = min(size.width, width)
+            if x > 0 && x + itemWidth > width { y += height + spacing; x = 0; height = 0 }
+            positions.append(CGPoint(x: x, y: y)); x += itemWidth + spacing; height = max(height, size.height)
+        }
+        return (CGSize(width: width, height: y + height), positions)
     }
 }

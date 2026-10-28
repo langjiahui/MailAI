@@ -407,12 +407,21 @@ public extension MailService {
         }
     }
     public func removeSelectedAccount() throws {
-        guard !sending, let id = selectedID else { return }
+        guard let id = selectedID else { return }
+        try removeAccount(id)
+    }
+    public func removeAccount(_ id: UUID) throws {
+        guard !sending, !operating else { throw MailFailure.invalid("请等待当前操作完成后再移除邮箱。") }
+        guard accounts.contains(where: { $0.id == id }) else { return }
+        let removingSelected = selectedID == id
         let updated = credentials.filter { $0.account.id != id }
         try vault.save(updated)
-        cancelRefresh(); credentials = updated; accounts = updated.map(\.account)
-        selectedID = nil; messages = []; folders = [.init(name: "INBOX")]; draft = MailDraft(); drafts = []; contacts = []
+        if removingSelected { cancelRefresh() }
+        credentials = updated; accounts = updated.map(\.account)
         try files.remove(account: id)
+        guard removingSelected else { return }
+        clearUndo()
+        selectedID = nil; messages = []; folders = [.init(name: "INBOX")]; draft = MailDraft(); drafts = []; contacts = []
         if let first = accounts.first { try selectAccount(first.id); refresh() }
     }
 }

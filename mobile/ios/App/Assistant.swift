@@ -7,11 +7,11 @@ struct AssistantConfiguration: Codable {
     var model = ""
     var key = ""
     var consent = false
-    func url() throws -> URL {
+    func url(requiringConsent: Bool = true) throws -> URL {
         guard let base = URL(string: endpoint.trimmingCharacters(in: .whitespacesAndNewlines)),
               base.scheme?.lowercased() == "https", base.host != nil, base.user == nil, base.password == nil,
               base.fragment == nil, base.query == nil, !MailValidation.hasControl(endpoint), !model.isEmpty, model.count <= 200,
-              !key.isEmpty, !MailValidation.hasControl(key), consent else {
+              !key.isEmpty, !MailValidation.hasControl(key), (!requiringConsent || consent) else {
             throw MailFailure.invalid("请填写 HTTPS 服务地址、模型名称与密钥，并确认文字发送范围。")
         }
         if base.path.hasSuffix("/chat/completions") { return base }
@@ -28,7 +28,7 @@ enum AssistantVault {
         return try JSONDecoder().decode(AssistantConfiguration.self, from: data)
     }
     static func save(_ configuration: AssistantConfiguration) throws {
-        _ = try configuration.url()
+        _ = try configuration.url(requiringConsent: false)
         let values: [String: Any] = [kSecValueData as String: try JSONEncoder().encode(configuration), kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly]
         var status = SecItemUpdate(query as CFDictionary, values as CFDictionary)
         if status == errSecItemNotFound { status = SecItemAdd(query.merging(values) { _, new in new } as CFDictionary, nil) }
@@ -73,12 +73,13 @@ struct AssistantSettingsView: View {
     @State private var status: String?
     @State private var working = false
     @State private var task: Task<Void, Never>?
+    @State private var confirmClear = false
     var body: some View {
         Form {
             Section("模型服务") {
-                TextField("HTTPS 基础地址（包含 /v1）", text: $configuration.endpoint).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
-                TextField("模型名称", text: $configuration.model).textInputAutocapitalization(.never).autocorrectionDisabled()
-                SecureField("API Key", text: $configuration.key).textInputAutocapitalization(.never).autocorrectionDisabled()
+                VStack(alignment: .leading, spacing: 8) { Text("服务地址").font(.subheadline.weight(.medium)); TextField("HTTPS 基础地址（包含 /v1）", text: $configuration.endpoint).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled() }
+                VStack(alignment: .leading, spacing: 8) { Text("模型名称").font(.subheadline.weight(.medium)); TextField("模型名称", text: $configuration.model).textInputAutocapitalization(.never).autocorrectionDisabled() }
+                VStack(alignment: .leading, spacing: 8) { Text("API Key").font(.subheadline.weight(.medium)); SecureField("API Key", text: $configuration.key).textInputAutocapitalization(.never).autocorrectionDisabled() }
                 Text("支持 Chat Completions 兼容服务。可填写基础地址或完整 /chat/completions 地址；密钥只存本机钥匙串。").font(.footnote).foregroundStyle(.secondary)
             }.disabled(working)
             Section {
@@ -87,13 +88,17 @@ struct AssistantSettingsView: View {
                 Button("保存配置") { do { try AssistantVault.save(configuration); status = "配置已保存" } catch { status = error.localizedDescription } }.disabled(working)
                 Button("测试连接") {
                     working = true; status = nil
-                    task = Task { do { _ = try await AssistantAPI.generate(configuration: configuration, instruction: "请简短回复连接正常", text: "连接测试，不包含邮件数据。"); status = "连接正常" } catch { if !Task.isCancelled { status = error.localizedDescription } }; working = false }
+                    var testConfiguration = configuration; testConfiguration.consent = true
+                    task = Task { do { _ = try await AssistantAPI.generate(configuration: testConfiguration, instruction: "请简短回复连接正常", text: "连接测试，不包含邮件数据。"); status = "连接正常" } catch { if !Task.isCancelled { status = error.localizedDescription } }; working = false }
                 }.disabled(working)
                 if working { Button("取消") { task?.cancel(); working = false } }
-                Button("清除模型配置", role: .destructive) { do { try AssistantVault.remove(); configuration = AssistantConfiguration(); status = "已清除" } catch { status = error.localizedDescription } }.disabled(working)
+                Button("清除模型配置", role: .destructive) { confirmClear = true }.disabled(working)
                 if let status { Text(status).font(.footnote).textSelection(.enabled) }
             }
-        }.navigationTitle("小邮与模型服务")
+        }.scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("小邮与模型服务").navigationBarTitleDisplayMode(.inline).toolbar(.hidden, for: .tabBar)
+            .confirmationDialog("清除本机模型配置？", isPresented: $confirmClear, titleVisibility: .visible) {
+                Button("清除配置", role: .destructive) { do { try AssistantVault.remove(); configuration = AssistantConfiguration(); status = "已清除" } catch { status = error.localizedDescription } }
+            } message: { Text("服务地址、模型名称、API Key 和授权状态将从本机移除，邮箱与草稿保留。") }
             .task { do { configuration = try AssistantVault.load() } catch { status = error.localizedDescription } }
             .onDisappear { task?.cancel() }
     }
@@ -110,6 +115,10 @@ struct AssistantPanel: View {
     @State private var task: Task<Void, Never>?
     @State private var configuration: AssistantConfiguration?
     @State private var purpose = ""
+    @State private var pendingInstruction = ""
+    @State private var pendingTitle = ""
+    @State private var previewScope = false
+    @State private var comparison = false
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -117,7 +126,8 @@ struct AssistantPanel: View {
                     Label("小邮", systemImage: "sparkles").font(.title2.bold()).foregroundStyle(MailTheme.blue)
                     Text("仅处理当前邮件文字，结果由你确认后采用。").foregroundStyle(.secondary)
                     if configuration?.consent != true {
-                        Text("请先在“设置 → 小邮与模型服务”配置并授权模型服务。")
+                        MailNotice(text: "请先配置并授权模型服务，再处理当前邮件。", symbol: "lock.shield")
+                        NavigationLink("配置小邮与模型服务") { AssistantSettingsView() }
                     } else {
                         if composing { action("润色", "保持事实和原意，润色下面的邮件正文，只返回可直接使用的正文。") }
                         else {
@@ -131,7 +141,8 @@ struct AssistantPanel: View {
                         Text(purpose).font(.headline)
                         Text(result).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
                             .padding().background(MailTheme.blue.opacity(0.06), in: RoundedRectangle(cornerRadius: 16))
-                        ShareLink(item: result) { Label("复制或分享", systemImage: "square.and.arrow.up") }
+                        DisclosureGroup("查看原文对照", isExpanded: $comparison) { Text(text).font(.subheadline).foregroundStyle(MailTheme.secondary).textSelection(.enabled).padding(.vertical, 12) }
+                        HStack { Button("复制结果", systemImage: "doc.on.doc") { UIPasteboard.general.string = result; status = "已复制" }; Spacer(); ShareLink(item: result) { Label("分享", systemImage: "square.and.arrow.up") } }
                         if let adopt, composing || purpose == "起草回复" {
                             Button(composing ? "采用到正文" : "创建回复草稿") {
                                 if adopt(result) { dismiss() } else { status = "原邮件或草稿已改变，请关闭后重新生成。" }
@@ -139,20 +150,36 @@ struct AssistantPanel: View {
                         }
                     }
                 }.padding(20)
-            }.background(MailTheme.canvas).toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } } }
-        }.task { do { configuration = try AssistantVault.load() } catch { status = error.localizedDescription } }
+            }.background(MailTheme.surface).navigationTitle("小邮").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } } }
+        }.sheet(isPresented: $previewScope) {
+            NavigationStack {
+                List {
+                    Section("接收服务") { Text(configuration?.endpoint ?? "").font(.subheadline).textSelection(.enabled); Text(configuration?.model ?? "").font(.caption).foregroundStyle(MailTheme.secondary) }
+                    Section("本次发送范围 · \(text.count) 字") { Text(text).font(.subheadline).textSelection(.enabled) }
+                    Section { MailNotice(text: "只发送以上文字，不包含附件或其他邮件。", symbol: "lock.shield") }
+                }.navigationTitle("确认处理范围").navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) { Button("取消") { previewScope = false } }
+                        ToolbarItem(placement: .confirmationAction) { Button("开始处理") { previewScope = false; generate() } }
+                    }
+            }
+        }
+        .task { do { configuration = try AssistantVault.load() } catch { status = error.localizedDescription } }
             .onDisappear { task?.cancel() }
             .onChange(of: phase) { _, value in if value != .active { task?.cancel(); working = false; if result.isEmpty { status = "处理已暂停，请回到前台后重试。" } } }
     }
     private func action(_ title: String, _ instruction: String) -> some View {
-        Button(title) {
-            guard let configuration else { return }
-            task?.cancel(); result = ""; status = nil; purpose = title; working = true
-            task = Task {
-                do { let output = try await AssistantAPI.generate(configuration: configuration, instruction: instruction, text: text); try Task.checkCancellation(); result = output }
-                catch { if !Task.isCancelled { status = error.localizedDescription } }
-                if !Task.isCancelled { working = false }
-            }
-        }.buttonStyle(.bordered).disabled(working)
+        Button(title) { pendingInstruction = instruction; pendingTitle = title; previewScope = true }
+            .buttonStyle(.bordered).disabled(working)
+    }
+    private func generate() {
+        guard let configuration, configuration.consent else { return }
+        task?.cancel(); result = ""; status = nil; purpose = pendingTitle; working = true
+        let instruction = pendingInstruction
+        task = Task {
+            do { let output = try await AssistantAPI.generate(configuration: configuration, instruction: instruction, text: text); try Task.checkCancellation(); result = output }
+            catch { if !Task.isCancelled { status = error.localizedDescription } }
+            if !Task.isCancelled { working = false }
+        }
     }
 }

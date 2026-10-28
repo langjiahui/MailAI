@@ -154,6 +154,30 @@ private actor FeatureService: MailService {
         XCTAssertFalse(store.contacts.contains { $0.email == "first@example.com" })
         XCTAssertEqual(Set(store.contacts.map(\.email)), Set(["changed@example.com", "other@example.com"]))
     }
+    func testRemovingAnotherAccountPreservesActiveDraftAndContacts() async throws {
+        let (store, vault, service, files) = try await setup()
+        let first = try XCTUnwrap(store.selectedID)
+        var second = MailAccount(); second.email = "second@example.com"; second.suggestServers()
+        try await store.addAccount(second, password: "synthetic"); store.cancelRefresh()
+        try store.selectAccount(first)
+        store.updateDraft { $0.to = "keep@example.com"; $0.text = "保留的草稿" }
+        let draftID = store.draft.id
+        try store.saveContact(.init(email: "keep@example.com", note: "保留联系人"))
+        try store.removeAccount(second.id)
+        XCTAssertEqual(store.selectedID, first); XCTAssertEqual(store.draft.id, draftID)
+        XCTAssertEqual(store.draft.text, "保留的草稿"); XCTAssertEqual(store.contacts.first?.note, "保留联系人")
+        let restored = MailStore(vault: vault, files: files, service: service)
+        XCTAssertEqual(restored.accounts.map(\.id), [first]); XCTAssertEqual(restored.draft.text, "保留的草稿")
+    }
+    func testForwardStartsWithNoInheritedRecipients() async throws {
+        let (store, _, _, _) = try await setup()
+        store.updateDraft { $0.to = "old@example.com"; $0.cc = "cc@example.com"; $0.bcc = "bcc@example.com"; $0.text = "旧草稿" }
+        let original = store.draft.id
+        try store.compose(mode: .forward, summary: FeatureService.item(), body: MailBody(text: "需要转发的原文", html: nil, recipients: [.init(email: "old@example.com")]))
+        XCTAssertTrue(store.draft.to.isEmpty); XCTAssertTrue(store.draft.cc.isEmpty); XCTAssertTrue(store.draft.bcc.isEmpty)
+        XCTAssertTrue(store.draft.text.contains("需要转发的原文")); XCTAssertThrowsError(try store.draft.validateForSending())
+        XCTAssertTrue(store.drafts.contains { $0.id == original && $0.bcc == "bcc@example.com" })
+    }
     func testAttachmentNamesCannotEscapePreviewDirectory() {
         XCTAssertEqual(MailAttachment.safeName("..\\..\\file.txt"), "file.txt")
         XCTAssertFalse(MailAttachment.safeName("x\r\ny.txt").contains("\n"))

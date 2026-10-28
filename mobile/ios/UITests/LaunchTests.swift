@@ -73,6 +73,7 @@ final class LaunchTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["provider-status"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.staticTexts["provider-status"].label.contains("默认"))
         XCTAssertFalse(app.textFields["imap-host"].exists)
+        app.swipeUp()
         app.buttons["高级设置（可选）"].tap()
         let host = app.textFields["imap-host"]
         XCTAssertTrue(host.waitForExistence(timeout: 3))
@@ -120,11 +121,30 @@ final class WorkspaceTests: XCTestCase {
         app.tabBars.buttons["通讯录"].tap()
         XCTAssertTrue(app.staticTexts["项目组"].waitForExistence(timeout: 5)); attach("blue-contacts-dark")
         app.tabBars.buttons["设置"].tap()
+        app.buttons["外观与阅读"].tap()
         let theme = app.descendants(matching: .any).matching(identifier: "theme-setting").firstMatch
         XCTAssertTrue(theme.waitForExistence(timeout: 5)); XCTAssertEqual(theme.value as? String, "宝武蓝 · 蓝白"); attach("blue-settings-dark")
-        app.swipeUp()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
         app.buttons["小邮与模型服务"].tap()
         XCTAssertTrue(app.secureTextFields["API Key"].waitForExistence(timeout: 5))
+    }
+    func testRecipientSelectionRequiresDoneAndPersistsDraft() {
+        let app = launch()
+        app.buttons["compose-mail"].tap()
+        app.buttons["选择收件人"].tap()
+        app.buttons.containing(.staticText, identifier: "协作联系人").firstMatch.tap()
+        app.buttons["取消"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["send-mail"].exists)
+        XCTAssertFalse(app.buttons["send-mail"].isEnabled)
+        app.buttons["选择收件人"].tap()
+        app.buttons.containing(.staticText, identifier: "协作联系人").firstMatch.tap()
+        app.buttons["完成（1）"].tap()
+        let recipient = app.descendants(matching: .any).matching(identifier: "compose-to").firstMatch
+        XCTAssertTrue((recipient.value as? String)?.contains("team@example.com") == true)
+        app.buttons["关闭"].tap(); app.buttons["保存并返回"].tap()
+        app.buttons["更多邮件操作"].tap(); app.buttons["草稿与发送记录"].tap()
+        XCTAssertTrue(app.staticTexts["team@example.com"].waitForExistence(timeout: 5))
+        attach("redesign-draft-recipients")
     }
     func testLargeTextKeepsComposeAndNavigationReachable() {
         let app = launch(dark: true, large: true)
