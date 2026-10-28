@@ -178,7 +178,10 @@ struct ComposerView: View {
     }
     private var composerTools: some View {
         HStack(spacing: 0) {
-            Button { importDraftID = store.draft.id; importing = true } label: { Image(systemName: "paperclip").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("添加文件").frame(maxWidth: .infinity)
+            Menu {
+                Button("选择文件", systemImage: "doc") { importDraftID = store.draft.id; importing = true }
+                PhotosPicker(selection: $photo, matching: .images) { Label("从照片选择", systemImage: "photo") }
+            } label: { Image(systemName: "paperclip").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("添加附件").frame(maxWidth: .infinity)
             PhotosPicker(selection: $photo, matching: .images) { Image(systemName: "photo").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("照片").frame(maxWidth: .infinity)
             Menu {
                 Button("加粗", systemImage: "bold") { editor.format(.bold) }

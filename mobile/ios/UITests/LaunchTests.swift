@@ -114,7 +114,7 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertTrue((to.value as? String)?.contains("sender@example.com") == true)
         XCTAssertTrue((cc.value as? String)?.contains("team@example.com") == true)
         attach("blue-compose-light")
-        app.swipeUp(); XCTAssertTrue(app.buttons["添加文件"].waitForExistence(timeout: 5))
+        app.swipeUp(); XCTAssertTrue(app.buttons["添加附件"].waitForExistence(timeout: 5))
         app.buttons["关闭"].tap(); app.buttons["保存并返回"].tap()
         XCTAssertTrue(app.buttons["回复全部"].waitForExistence(timeout: 5))
     }
@@ -208,7 +208,8 @@ final class WorkspaceTests: XCTestCase {
         let body = app.textViews["compose-body-editor"]
         body.tap(); body.typeText("Synthetic unsent draft")
         app.buttons["收起键盘"].tap()
-        app.buttons["添加文件"].tap(); cancelSystemPicker(app, screenshot: "redesign-system-files")
+        app.buttons["添加附件"].tap(); attach("redesign-attachment-source-menu")
+        app.buttons["选择文件"].tap(); cancelSystemPicker(app, screenshot: "redesign-system-files")
         XCTAssertEqual(body.value as? String, "Synthetic unsent draft")
         app.buttons["照片"].tap(); cancelSystemPicker(app, screenshot: "redesign-system-photos")
         XCTAssertEqual(body.value as? String, "Synthetic unsent draft")
@@ -411,7 +412,7 @@ final class WorkspaceTests: XCTestCase {
         attach("blue-compose-accessibility-dark")
         let body = app.textViews["compose-body-editor"]
         XCTAssertTrue(body.waitForExistence(timeout: 5)); body.tap(); body.typeText("Synthetic accessibility draft")
-        XCTAssertTrue(app.buttons["添加文件"].isHittable)
+        XCTAssertTrue(app.buttons["添加附件"].isHittable)
         XCTAssertTrue(app.buttons["收起键盘"].isHittable)
         attach("redesign-compose-accessibility-keyboard")
         app.buttons["收起键盘"].tap()
