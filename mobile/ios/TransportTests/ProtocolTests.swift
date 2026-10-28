@@ -72,6 +72,8 @@ final class ProtocolTests: XCTestCase {
         configuration.endpoint = "http://localhost:18443/v1"; XCTAssertThrowsError(try configuration.url())
         configuration.endpoint = "https://user:password@example.test/v1"; XCTAssertThrowsError(try configuration.url())
         configuration.endpoint = "https://example.test/v1"; configuration.consent = false; XCTAssertThrowsError(try configuration.url())
+        XCTAssertEqual(try configuration.url(requiringConsent: false).absoluteString, "https://example.test/v1/chat/completions")
+        XCTAssertFalse(configuration.consent)
     }
     func testSMTPAcceptsSyntheticMessage() async throws {
         var draft = MailDraft(); draft.to = "recipient@example.com"; draft.subject = "synthetic 测试"; draft.text = "synthetic 中文正文"

@@ -33,52 +33,8 @@ struct ReaderView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                Text(summary.subject.isEmpty ? "（无主题）" : summary.subject).font(.system(.title2, design: .default, weight: .bold)).textSelection(.enabled)
-                HStack(alignment: .top, spacing: 12) {
-                    SenderAvatar(name: summary.senderName ?? summary.sender, size: 40)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(summary.senderName?.isEmpty == false ? summary.senderName! : summary.sender).font(.subheadline.weight(.semibold)).textSelection(.enabled)
-                        Button { details.toggle() } label: { HStack(spacing: 4) { Text("发送至 " + (bodyContent?.recipients ?? summary.recipients ?? []).map { $0.name.isEmpty ? $0.email : $0.name }.joined(separator: "、")).lineLimit(details ? nil : 1); Image(systemName: details ? "chevron.up" : "chevron.down").font(.caption2) }.font(.caption).foregroundStyle(MailTheme.secondary).frame(minHeight: 32) }.accessibilityLabel("邮件详细信息")
-                    }
-                    Spacer(minLength: 4)
-                    if let date = summary.date { Text(date.formatted(date: .abbreviated, time: .shortened)).font(.caption2).foregroundStyle(MailTheme.secondary).multilineTextAlignment(.trailing) }
-                }
-                if details {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("发件人：" + summary.sender)
-                        Text("收件人：" + (bodyContent?.recipients ?? summary.recipients ?? []).map { $0.name.isEmpty ? $0.email : $0.name + " <" + $0.email + ">" }.joined(separator: "; "))
-                        if let cc = bodyContent?.carbonCopies ?? summary.carbonCopies, !cc.isEmpty { Text("抄送：" + cc.map(\.email).joined(separator: "; ")) }
-                    }.font(.footnote).foregroundStyle(MailTheme.secondary).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
-                }
-                Button { assistant = true } label: { HStack { Label("小邮 · 提炼要点", systemImage: "sparkles"); Spacer(); Image(systemName: "chevron.right").font(.caption) }.font(.subheadline).padding(12).frame(minHeight: 48).background(MailTheme.blue.opacity(0.08), in: RoundedRectangle(cornerRadius: 12)) }.disabled(bodyContent == nil).accessibilityLabel("小邮助手")
-                if let bodyContent {
-                    if let html = bodyContent.html, !plainText {
-                        SafeMailHTML(html: html, externalURL: $externalURL, fontSize: readerSize * scaledBody / 17, contentHeight: $htmlHeight).frame(height: htmlHeight)
-                    } else {
-                        Text(bodyContent.text.isEmpty ? "这封邮件没有纯文本正文，可切换原版查看。" : bodyContent.text)
-                            .font(.system(size: readerSize, relativeTo: .body)).lineSpacing(6).frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled)
-                    }
-                    if let attachments = bodyContent.attachments, !attachments.isEmpty {
-                        DisclosureGroup("附件（\(attachments.count)）", isExpanded: $attachmentsExpanded) {
-                            VStack(spacing: 8) {
-                                ForEach(attachments) { item in
-                                    Button { download(item) } label: {
-                                        HStack(spacing: 12) {
-                                            Image(systemName: "doc.text").font(.title3)
-                                            VStack(alignment: .leading, spacing: 4) { Text(item.name).font(.subheadline).foregroundStyle(MailTheme.ink).lineLimit(2); Text(ByteCountFormatter.string(fromByteCount: Int64(item.size), countStyle: .file)).font(.caption).foregroundStyle(MailTheme.secondary) }
-                                            Spacer(); Image(systemName: "arrow.down.circle")
-                                        }.padding(12).frame(minHeight: 56).background(MailTheme.canvas, in: RoundedRectangle(cornerRadius: 12))
-                                    }.disabled(downloading)
-                                }
-                            }.padding(.top, 12)
-                        }.font(.subheadline).padding(.top, 8)
-                    }
-                    if bodyContent.attachments == nil { MailNotice(text: "附件信息等待联网更新，已缓存正文仍可阅读。", symbol: "wifi.slash") }
-                } else if let error {
-                    ContentUnavailableView { Label("暂时无法阅读", systemImage: "wifi.exclamationmark") } description: { Text(error) } actions: { Button("重试") { retry += 1 } }
-                } else { ProgressView("加载正文…").frame(maxWidth: .infinity, minHeight: 220) }
-                if downloading { HStack { ProgressView(); Text("正在下载附件…"); Spacer(); Button("取消") { downloadTask?.cancel(); downloading = false } }.font(.footnote) }
-                if bodyContent != nil, let error { MailNotice(text: error) }
+                messageHeader
+                messageContents
             }.padding(16)
         }.background(MailTheme.surface)
         .navigationTitle("邮件").navigationBarTitleDisplayMode(.inline)
@@ -126,6 +82,58 @@ struct ReaderView: View {
         .confirmationDialog("用 Safari 打开外部链接？", isPresented: Binding(get: { externalURL != nil }, set: { if !$0 { externalURL = nil } }), titleVisibility: .visible) {
             if let url = externalURL { Button("打开链接") { openURL(url); externalURL = nil } }
         } message: { Text(externalURL?.host ?? "") }
+    }
+    private var messageHeader: some View {
+        VStack(alignment: .leading, spacing: 20) {
+                Text(summary.subject.isEmpty ? "（无主题）" : summary.subject).font(.system(.title2, design: .default, weight: .bold)).textSelection(.enabled)
+                HStack(alignment: .top, spacing: 12) {
+                    SenderAvatar(name: summary.senderName ?? summary.sender, size: 40)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(summary.senderName?.isEmpty == false ? summary.senderName! : summary.sender).font(.subheadline.weight(.semibold)).textSelection(.enabled)
+                        Button { details.toggle() } label: { HStack(spacing: 4) { Text("发送至 " + (bodyContent?.recipients ?? summary.recipients ?? []).map { $0.name.isEmpty ? $0.email : $0.name }.joined(separator: "、")).lineLimit(details ? nil : 1); Image(systemName: details ? "chevron.up" : "chevron.down").font(.caption2) }.font(.caption).foregroundStyle(MailTheme.secondary).frame(minHeight: 32) }.accessibilityLabel("邮件详细信息")
+                    }
+                    Spacer(minLength: 4)
+                    if let date = summary.date { Text(date.formatted(date: .abbreviated, time: .shortened)).font(.caption2).foregroundStyle(MailTheme.secondary).multilineTextAlignment(.trailing) }
+                }
+                if details {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("发件人：" + summary.sender)
+                        Text("收件人：" + (bodyContent?.recipients ?? summary.recipients ?? []).map { $0.name.isEmpty ? $0.email : $0.name + " <" + $0.email + ">" }.joined(separator: "; "))
+                        if let cc = bodyContent?.carbonCopies ?? summary.carbonCopies, !cc.isEmpty { Text("抄送：" + cc.map(\.email).joined(separator: "; ")) }
+                    }.font(.footnote).foregroundStyle(MailTheme.secondary).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+                }
+                Button { assistant = true } label: { HStack { Label("小邮 · 提炼要点", systemImage: "sparkles"); Spacer(); Image(systemName: "chevron.right").font(.caption) }.font(.subheadline).padding(12).frame(minHeight: 48).background(MailTheme.blue.opacity(0.08), in: RoundedRectangle(cornerRadius: 12)) }.disabled(bodyContent == nil).accessibilityLabel("小邮助手")
+        }
+    }
+    @ViewBuilder private var messageContents: some View {
+                if let bodyContent {
+                    if let html = bodyContent.html, !plainText {
+                        SafeMailHTML(html: html, externalURL: $externalURL, fontSize: readerSize * scaledBody / 17, contentHeight: $htmlHeight).frame(height: htmlHeight)
+                    } else {
+                        Text(bodyContent.text.isEmpty ? "这封邮件没有纯文本正文，可切换原版查看。" : bodyContent.text)
+                            .font(.system(size: readerSize * scaledBody / 17)).lineSpacing(6).frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled)
+                    }
+                    if let attachments = bodyContent.attachments, !attachments.isEmpty {
+                        DisclosureGroup("附件（\(attachments.count)）", isExpanded: $attachmentsExpanded) {
+                            VStack(spacing: 8) {
+                                ForEach(attachments) { item in
+                                    Button { download(item) } label: {
+                                        HStack(spacing: 12) {
+                                            Image(systemName: "doc.text").font(.title3)
+                                            VStack(alignment: .leading, spacing: 4) { Text(item.name).font(.subheadline).foregroundStyle(MailTheme.ink).lineLimit(2); Text(ByteCountFormatter.string(fromByteCount: Int64(item.size), countStyle: .file)).font(.caption).foregroundStyle(MailTheme.secondary) }
+                                            Spacer(); Image(systemName: "arrow.down.circle")
+                                        }.padding(12).frame(minHeight: 56).background(MailTheme.canvas, in: RoundedRectangle(cornerRadius: 12))
+                                    }.disabled(downloading)
+                                }
+                            }.padding(.top, 12)
+                        }.font(.subheadline).padding(.top, 8)
+                    }
+                    if bodyContent.attachments == nil { MailNotice(text: "附件信息等待联网更新，已缓存正文仍可阅读。", symbol: "wifi.slash") }
+                } else if let error {
+                    ContentUnavailableView { Label("暂时无法阅读", systemImage: "wifi.exclamationmark") } description: { Text(error) } actions: { Button("重试") { retry += 1 } }
+                } else { ProgressView("加载正文…").frame(maxWidth: .infinity, minHeight: 220) }
+                if downloading { HStack { ProgressView(); Text("正在下载附件…"); Spacer(); Button("取消") { downloadTask?.cancel(); downloading = false } }.font(.footnote) }
+                if bodyContent != nil, let error { MailNotice(text: error) }
     }
     private func archive() {
         guard store.selectedID == ownerID else { return }

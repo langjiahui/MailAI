@@ -73,6 +73,7 @@ struct AccountDetailView: View {
 struct AppearanceSettingsView: View {
     @AppStorage("mail.appearance") private var appearance = "system"
     @AppStorage("mail.readerSize") private var readerSize = 17.0
+    @ScaledMetric(relativeTo: .body) private var scaledBody = 17.0
     var body: some View {
         Form {
             Section("显示模式") {
@@ -84,7 +85,7 @@ struct AppearanceSettingsView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("项目资料与本周安排").font(.headline)
                     Text("颜色随系统切换，阅读保持清晰。留出空间，专注每一封邮件。")
-                        .font(.system(size: readerSize, relativeTo: .body)).lineSpacing(5)
+                        .font(.system(size: readerSize * scaledBody / 17)).lineSpacing(5)
                 }.padding(.vertical, 8)
             }
             Section("邮件正文字号") {
