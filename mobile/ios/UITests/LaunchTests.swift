@@ -105,6 +105,7 @@ final class WorkspaceTests: XCTestCase {
         message.tap()
         XCTAssertTrue(app.buttons["回复全部"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["附件（1）"].exists || app.buttons["附件（1）"].exists)
+        app.buttons["邮件详细信息"].tap(); attach("redesign-reader-address-details")
         attach("blue-reader-light")
         app.buttons["回复全部"].tap()
         let to = app.descendants(matching: .any).matching(identifier: "compose-to").firstMatch
@@ -121,7 +122,7 @@ final class WorkspaceTests: XCTestCase {
         let app = launch(dark: true)
         app.tabBars.buttons["通讯录"].tap()
         XCTAssertTrue(app.staticTexts["项目组"].waitForExistence(timeout: 5)); attach("blue-contacts-dark")
-        app.tabBars.buttons["设置"].tap()
+        app.tabBars.buttons["设置"].tap(); attach("redesign-settings-home-dark")
         app.buttons["appearance-settings"].tap()
         let theme = app.descendants(matching: .any).matching(identifier: "theme-setting").firstMatch
         XCTAssertTrue(theme.waitForExistence(timeout: 5)); XCTAssertEqual(theme.value as? String, "宝武蓝 · 蓝白"); attach("blue-settings-dark")
@@ -317,6 +318,47 @@ final class WorkspaceTests: XCTestCase {
         app.cells.containing(.staticText, identifier: "合成待办草稿").firstMatch.swipeLeft()
         app.buttons["删除"].firstMatch.tap(); attach("redesign-delete-draft-confirmation")
         app.buttons["Cancel"].firstMatch.exists ? app.buttons["Cancel"].firstMatch.tap() : app.buttons["取消"].firstMatch.tap()
+    }
+    func testContactMenusDetailAndEditingKeepAccountScope() {
+        let app = launch()
+        app.tabBars.buttons["通讯录"].tap()
+        app.buttons["联系人操作"].tap(); attach("redesign-contact-add-menu")
+        app.buttons["新建联系人"].tap()
+        XCTAssertFalse(app.buttons["保存"].isEnabled)
+        app.textFields["contact-email"].tap(); app.textFields["contact-email"].typeText("audit@example.com")
+        XCTAssertTrue(app.buttons["保存"].isEnabled); attach("redesign-new-contact")
+        app.buttons["取消"].firstMatch.tap()
+        XCTAssertFalse(app.staticTexts["audit@example.com"].exists)
+        app.cells.containing(.staticText, identifier: "协作联系人").firstMatch.tap()
+        XCTAssertTrue(app.buttons["编辑"].waitForExistence(timeout: 5)); attach("redesign-contact-detail")
+        app.buttons["编辑"].tap()
+        XCTAssertEqual(app.textFields["contact-email"].value as? String, "team@example.com"); attach("redesign-contact-editor")
+        app.buttons["取消"].firstMatch.tap()
+        app.buttons["写邮件"].tap()
+        let to = app.descendants(matching: .any).matching(identifier: "compose-to").firstMatch
+        XCTAssertTrue((to.value as? String)?.contains("team@example.com") == true)
+    }
+    func testReadFlagUndoAndLongPressMenu() {
+        let app = launch()
+        let cell = app.cells.containing(.staticText, identifier: "项目资料确认与下一步安排").firstMatch
+        cell.swipeRight(); attach("redesign-mail-swipe-actions")
+        app.buttons["已读"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["撤销"].waitForExistence(timeout: 5)); attach("redesign-mail-undo")
+        app.buttons["撤销"].tap()
+        app.staticTexts["项目资料确认与下一步安排"].firstMatch.press(forDuration: 1.2)
+        XCTAssertTrue(app.buttons["标为已读"].waitForExistence(timeout: 5)); attach("redesign-mail-context-menu")
+    }
+    func testForwardDoesNotCarryAnyOriginalRecipient() {
+        let app = launch()
+        app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap()
+        app.buttons["转发"].tap(); attach("redesign-forward-source-menu")
+        app.buttons["转发正文"].tap()
+        XCTAssertTrue(app.buttons["send-mail"].waitForExistence(timeout: 5)); XCTAssertFalse(app.buttons["send-mail"].isEnabled)
+        let to = app.descendants(matching: .any).matching(identifier: "compose-to").firstMatch
+        XCTAssertEqual(to.value as? String, "")
+        app.buttons["抄送 / 密送"].tap()
+        for field in ["compose-cc", "compose-bcc"] { XCTAssertEqual(app.descendants(matching: .any).matching(identifier: field).firstMatch.value as? String, "") }
+        attach("redesign-forward-empty-recipients")
     }
     func testStorageFailureOffersRetryWithoutDeletingData() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-fixture", "--ui-storage-error"]; app.launch()

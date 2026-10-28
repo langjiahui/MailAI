@@ -191,7 +191,7 @@ struct ContactsView: View {
             }
         }.listStyle(.plain).scrollContentBackground(.hidden).background(MailTheme.surface).navigationTitle("通讯录").navigationBarTitleDisplayMode(.inline).searchable(text: $query, prompt: "姓名、备注或邮箱")
             .toolbar { ToolbarItem(placement: .topBarTrailing) {
-                Menu { Button("新建联系人") { editing = MailContact(email: "") }; Button("从手机联系人选择") { picking = true } } label: { Image(systemName: "plus") }.disabled(store.selectedID == nil)
+                Menu { Button("新建联系人") { editing = MailContact(email: "") }; Button("从手机联系人选择") { picking = true } } label: { Image(systemName: "plus") }.accessibilityLabel("联系人操作").disabled(store.selectedID == nil)
             } }
             .sheet(item: $editing, onDismiss: {
                 if let email = pendingRecipient { pendingRecipient = nil; compose(email) }
@@ -220,9 +220,9 @@ struct ContactEditor: View {
     var body: some View {
         NavigationStack {
             Form {
-                VStack(alignment: .leading, spacing: 8) { Text("邮箱地址").font(.subheadline.weight(.medium)); TextField("邮箱地址", text: $contact.email).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled() }
-                VStack(alignment: .leading, spacing: 8) { Text("姓名").font(.subheadline.weight(.medium)); TextField("选填", text: $contact.name) }
-                VStack(alignment: .leading, spacing: 8) { Text("备注").font(.subheadline.weight(.medium)); TextField("补充联系信息（选填）", text: $contact.note, axis: .vertical) }
+                VStack(alignment: .leading, spacing: 8) { Text("邮箱地址").font(.subheadline.weight(.medium)); TextField("邮箱地址", text: $contact.email).accessibilityIdentifier("contact-email").keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled() }
+                VStack(alignment: .leading, spacing: 8) { Text("姓名").font(.subheadline.weight(.medium)); TextField("选填", text: $contact.name).accessibilityIdentifier("contact-name") }
+                VStack(alignment: .leading, spacing: 8) { Text("备注").font(.subheadline.weight(.medium)); TextField("补充联系信息（选填）", text: $contact.note, axis: .vertical).accessibilityIdentifier("contact-note") }
                 if let error { Text(error).foregroundStyle(.red) }
                 Button("写邮件") { dismiss(); compose(contact.email) }.disabled(!MailValidation.isAddress(contact.email))
             }.scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle(originalEmail.isEmpty ? "新建联系人" : "编辑联系人").navigationBarTitleDisplayMode(.inline).toolbar {
