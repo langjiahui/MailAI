@@ -18,7 +18,7 @@ import MailAICore
     private struct Service: MailService {
         func validate(_ credential: AccountCredential) async throws {
             if CommandLine.arguments.contains("--ui-account-failure") {
-                try await Task.sleep(for: .seconds(2))
+                try await Task.sleep(for: .seconds(12))
                 throw MailFailure.invalid("收信连接未完成，请检查密码／授权码或服务器设置。")
             }
         }

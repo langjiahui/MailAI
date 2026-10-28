@@ -180,7 +180,7 @@ final class WorkspaceTests: XCTestCase {
         app.buttons["取消验证"].tap()
         XCTAssertTrue(app.buttons["validate-account"].isEnabled)
         app.buttons["validate-account"].tap()
-        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "account-error").firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "account-error").firstMatch.waitForExistence(timeout: 20))
         XCTAssertEqual(app.textFields["email"].value as? String, "audit@example.com"); attach("redesign-account-validation-failure")
     }
     func testReadFailurePreservesBackNavigation() {
@@ -309,8 +309,10 @@ final class WorkspaceTests: XCTestCase {
         let share = englishShare.waitForExistence(timeout: 5) ? englishShare : (app.buttons["共享"].firstMatch.exists ? app.buttons["共享"].firstMatch : app.buttons["分享"].firstMatch)
         XCTAssertTrue(share.waitForExistence(timeout: 5)); attach("redesign-quicklook-pdf")
         share.tap()
-        let copyAction = app.buttons.matching(NSPredicate(format: "label IN %@", ["Copy", "拷贝", "复制"])).firstMatch
-        XCTAssertTrue(copyAction.waitForExistence(timeout: 5)); attach("redesign-system-share")
+        let copyAction = app.cells.matching(NSPredicate(format: "label IN %@", ["Copy", "拷贝", "复制"])).firstMatch
+        XCTAssertTrue(copyAction.waitForExistence(timeout: 5)); XCTAssertTrue(copyAction.isHittable)
+        XCTAssertTrue(app.cells.matching(NSPredicate(format: "label IN %@", ["Save to Files", "存储到文件", "保存到文件"])).firstMatch.exists)
+        attach("redesign-system-share")
     }
     func testAttachmentCancellationAndFailureKeepBody() {
         var app = launch(extra: ["--ui-attachment-slow"])
