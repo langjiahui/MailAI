@@ -118,6 +118,7 @@ struct AssistantPanel: View {
     var adopt: ((String) -> Bool)?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var phase
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var result = ""
     @State private var status: String?
     @State private var working = false
@@ -132,7 +133,7 @@ struct AssistantPanel: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    Label("小邮", systemImage: "sparkles").font(.title2.bold()).foregroundStyle(MailTheme.blue)
+                    Label(composing ? "润色当前正文" : "仅当前邮件", systemImage: "sparkles").font(.subheadline.weight(.medium)).foregroundStyle(MailTheme.blue)
                     Text("仅处理当前邮件文字，结果由你确认后采用。").foregroundStyle(.secondary)
                     if configuration?.consent != true {
                         MailNotice(text: "请先配置并授权模型服务，再处理当前邮件。", symbol: "lock.shield")
@@ -140,27 +141,39 @@ struct AssistantPanel: View {
                     } else {
                         if composing { action("润色", "保持事实和原意，润色下面的邮件正文，只返回可直接使用的正文。") }
                         else {
-                            HStack { action("提炼要点", "用简洁中文提炼邮件要点，保留关键数字、时间和条件。"); action("提取待办", "提取明确的行动、负责人和截止时间，缺失信息标明未说明，不要猜测。") }
-                            HStack { action("翻译中文", "将邮件文字翻译为简体中文，保留姓名、地址和数字。"); action("起草回复", "为这封邮件起草礼貌、简明的中文回复正文。未确定的信息用待确认标注，不作承诺。") }
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: dynamicTypeSize.isAccessibilitySize ? 120 : 64), spacing: 8)], spacing: 8) {
+                                action("提炼要点", "用简洁中文提炼邮件要点，保留关键数字、时间和条件。")
+                                action("提取待办", "提取明确的行动、负责人和截止时间，缺失信息标明未说明，不要猜测。")
+                                action("翻译中文", "将邮件文字翻译为简体中文，保留姓名、地址和数字。")
+                                action("起草回复", "为这封邮件起草礼貌、简明的中文回复正文。未确定的信息用待确认标注，不作承诺。")
+                            }
                         }
                     }
                     if working { HStack { ProgressView(); Text("正在处理…"); Spacer(); Button("取消") { task?.cancel(); working = false; status = "已取消，结果未采用。" } } }
                     if let status { Text(status).font(.footnote).foregroundStyle(.secondary) }
                     if !result.isEmpty {
                         Text(purpose).font(.headline)
-                        Text(result).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
-                            .padding().background(MailTheme.blue.opacity(0.06), in: RoundedRectangle(cornerRadius: 16))
-                        DisclosureGroup("查看原文对照", isExpanded: $comparison) { Text(text).font(.subheadline).foregroundStyle(MailTheme.secondary).textSelection(.enabled).padding(.vertical, 12) }
+                        if composing {
+                            Picker("润色对照", selection: $comparison) { Text("建议").tag(false); Text("原文").tag(true) }.pickerStyle(.segmented)
+                            Text(comparison ? text : result).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(16).background(MailTheme.canvas, in: RoundedRectangle(cornerRadius: 12))
+                        } else {
+                            Text(result).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(16).background(MailTheme.blue.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+                            DisclosureGroup("查看原文对照", isExpanded: $comparison) { Text(text).font(.subheadline).foregroundStyle(MailTheme.secondary).textSelection(.enabled).padding(.vertical, 12) }
+                        }
                         HStack { Button("复制结果", systemImage: "doc.on.doc") { UIPasteboard.general.string = result; status = "已复制" }; Spacer(); ShareLink(item: result) { Label("分享", systemImage: "square.and.arrow.up") } }
                         if let adopt, composing || purpose == "起草回复" {
                             Button(composing ? "采用到正文" : "创建回复草稿") {
                                 if adopt(result) { dismiss() } else { status = "原邮件或草稿已改变，请关闭后重新生成。" }
-                            }.buttonStyle(.borderedProminent)
+                            }.buttonStyle(MailPrimaryButton()).disabled(working || (composing && comparison))
                         }
                     }
                 }.padding(20).onAppear { do { configuration = try AssistantVault.load() } catch { status = error.localizedDescription } }
             }.background(MailTheme.surface).navigationTitle("小邮").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } } }
-        }.sheet(isPresented: $previewScope) {
+        }.presentationDetents(composing || dynamicTypeSize.isAccessibilitySize ? [.large] : [.medium, .large])
+        .presentationDragIndicator(.visible)
+        .sheet(isPresented: $previewScope) {
             NavigationStack {
                 List {
                     Section("接收服务") { Text(configuration?.endpoint ?? "").font(.subheadline).textSelection(.enabled); Text(configuration?.model ?? "").font(.caption).foregroundStyle(MailTheme.secondary) }
@@ -178,12 +191,15 @@ struct AssistantPanel: View {
             .onChange(of: phase) { _, value in if value != .active { task?.cancel(); working = false; if result.isEmpty { status = "处理已暂停，请回到前台后重试。" } } }
     }
     private func action(_ title: String, _ instruction: String) -> some View {
-        Button(title) { pendingInstruction = instruction; pendingTitle = title; previewScope = true }
-            .buttonStyle(.bordered).disabled(working)
+        let labels = ["提炼要点": "总结", "提取待办": "待办", "翻译中文": "翻译", "起草回复": "回复"]
+        return Button { pendingInstruction = instruction; pendingTitle = title; previewScope = true } label: {
+            Text(labels[title] ?? title).font(.subheadline.weight(.medium)).frame(maxWidth: .infinity, minHeight: 44)
+                .background(purpose == title ? MailTheme.blue.opacity(0.12) : MailTheme.canvas, in: RoundedRectangle(cornerRadius: 10))
+        }.buttonStyle(.plain).foregroundStyle(MailTheme.blue).accessibilityLabel(title).disabled(working)
     }
     private func generate() {
         guard let configuration, configuration.consent else { return }
-        task?.cancel(); result = ""; status = nil; purpose = pendingTitle; working = true
+        task?.cancel(); result = ""; status = nil; comparison = false; purpose = pendingTitle; working = true
         let instruction = pendingInstruction
         task = Task {
             do { let output = try await AssistantAPI.generate(configuration: configuration, instruction: instruction, text: text); try Task.checkCancellation(); result = output }
