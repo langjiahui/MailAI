@@ -26,8 +26,7 @@ struct AccountView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
+        Form {
                 Section {
                     TextField("邮箱地址", text: email).keyboardType(.emailAddress).textContentType(.username)
                         .focused($focused, equals: .email).submitLabel(.next)
@@ -113,10 +112,10 @@ struct AccountView: View {
             .textInputAutocapitalization(.never).autocorrectionDisabled()
             .onAppear { if let editingAccount { setup = AccountSetup(account: editingAccount) } }
             .navigationTitle(editingAccount == nil ? "添加邮箱" : "编辑邮箱").navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("取消") { focused = nil; cancelValidation(); dismiss() } } }
             .interactiveDismissDisabled(testing)
             .onDisappear { focused = nil; cancelValidation(); password = "" }
-        }
     }
 
     private func cancelValidation() {

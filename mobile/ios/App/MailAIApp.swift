@@ -53,8 +53,8 @@ struct WelcomeView: View {
                 Spacer(minLength: 24)
             }.padding(24).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .background(MailTheme.canvas).navigationTitle("MailAI")
+                .navigationDestination(isPresented: $addingAccount) { AccountView(store: store) }
         }
-        .sheet(isPresented: $addingAccount) { AccountView(store: store) }
         .alert("操作提示", isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) {
             Button("知道了") { store.error = nil }
         } message: { Text(store.error ?? "") }
@@ -89,7 +89,7 @@ struct InboxView: View {
             NavigationStack { SettingsView(store: store, addingAccount: $addingAccount) }
                 .tabItem { Label("设置", systemImage: "gearshape") }.tag(2)
         }
-        .sheet(isPresented: $addingAccount) { AccountView(store: store) }
+        .sheet(isPresented: $addingAccount) { NavigationStack { AccountView(store: store) } }
         .sheet(isPresented: $composing) { ComposerView(store: store) }
         .sheet(isPresented: $showingDrafts) { DraftsView(store: store) }
         .sheet(isPresented: $searching) { MailSearchView(store: store) }
