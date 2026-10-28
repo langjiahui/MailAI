@@ -55,6 +55,7 @@ public struct AccountSetup: Sendable {
         return domain
     }
     public init() {}
+    public init(account: MailAccount) { self.account = account; manualServers = true }
 
     public mutating func updateEmail(_ email: String) {
         let old = account.email.trimmingCharacters(in: .whitespacesAndNewlines)

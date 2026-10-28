@@ -81,6 +81,17 @@ public final class MailFiles {
         try data.write(to: url(account: account, key: key), options: .atomic)
         #endif
     }
+    public func writeData(_ data: Data, account: UUID, key: String) throws {
+        #if os(iOS)
+        try data.write(to: url(account: account, key: key).appendingPathExtension("bin"), options: [.atomic, .completeFileProtection])
+        #else
+        try data.write(to: url(account: account, key: key).appendingPathExtension("bin"), options: .atomic)
+        #endif
+    }
+    public func readData(account: UUID, key: String) throws -> Data? {
+        let path = try url(account: account, key: key).appendingPathExtension("bin")
+        return FileManager.default.fileExists(atPath: path.path) ? try Data(contentsOf: path) : nil
+    }
     public func remove(account: UUID) throws {
         let directory = root.appendingPathComponent(account.uuidString)
         if FileManager.default.fileExists(atPath: directory.path) { try FileManager.default.removeItem(at: directory) }

@@ -1,74 +1,158 @@
 import SwiftUI
 import WebKit
+import QuickLook
 import MailAICore
 
 struct ReaderView: View {
     let store: MailStore
     let summary: MailSummary
+    @State private var ownerID: UUID?
+    @State private var adoptedReply = false
+    init(store: MailStore, summary: MailSummary) { self.store = store; self.summary = summary; _ownerID = State(initialValue: store.selectedID) }
     @State private var bodyContent: MailBody?
     @State private var error: String?
     @State private var plainText = false
+    @State private var details = false
     @State private var composing = false
-    @State private var confirmReplace = false
     @State private var retry = 0
     @State private var externalURL: URL?
+    @State private var previewURL: URL?
+    @State private var downloading = false
+    @State private var assistant = false
+    @State private var moving = false
+    @State private var readTask: Task<Void, Never>?
+    @State private var downloadTask: Task<Void, Never>?
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
-    @State private var readTask: Task<Void, Never>?
+    @AppStorage("mail.readerSize") private var readerSize = 17.0
     var body: some View {
         VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 12) {
                 Text(summary.subject).font(.title2.bold()).textSelection(.enabled)
-                Text(summary.sender).font(.subheadline).textSelection(.enabled)
-                if let date = summary.date { Text(date.formatted()).font(.caption).foregroundStyle(.secondary) }
-            }.frame(maxWidth: .infinity, alignment: .leading).padding()
+                HStack(alignment: .top, spacing: 12) {
+                    SenderAvatar(name: summary.senderName ?? summary.sender)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(summary.sender).font(.subheadline).textSelection(.enabled)
+                        if let date = summary.date { Text(date.formatted()).font(.caption).foregroundStyle(.secondary) }
+                    }
+                    Spacer()
+                    Button { details.toggle() } label: { Image(systemName: details ? "chevron.up.circle" : "chevron.down.circle") }.accessibilityLabel("邮件详细信息")
+                }
+                if details {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("发件人：" + summary.sender)
+                            Text("收件人：" + (bodyContent?.recipients ?? summary.recipients ?? []).map { $0.name.isEmpty ? $0.email : $0.name + " <" + $0.email + ">" }.joined(separator: "; "))
+                            if let cc = bodyContent?.carbonCopies ?? summary.carbonCopies, !cc.isEmpty { Text("抄送：" + cc.map(\.email).joined(separator: "; ")) }
+                        }.font(.caption).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+                    }.frame(maxHeight: 120)
+                }
+            }.padding(18).background(MailTheme.surface)
             Divider()
             if let bodyContent {
                 if let html = bodyContent.html, !plainText { SafeMailHTML(html: html, externalURL: $externalURL) }
                 else {
-                    ScrollView { Text(bodyContent.text.isEmpty ? "这封邮件没有纯文本正文。可切换原版查看 HTML 正文。" : bodyContent.text)
-                        .frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled).padding() }
+                    ScrollView { Text(bodyContent.text.isEmpty ? "这封邮件没有纯文本正文，可切换原版查看。" : bodyContent.text)
+                        .font(.system(size: readerSize)).frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled).padding(18) }
+                }
+                if let attachments = bodyContent.attachments, !attachments.isEmpty {
+                    DisclosureGroup("附件（\(attachments.count)）") {
+                        ScrollView {
+                            VStack(spacing: 8) {
+                                ForEach(attachments) { item in
+                                    Button { download(item) } label: {
+                                        HStack { Image(systemName: "doc"); Text(item.name).lineLimit(2); Spacer(); Text(ByteCountFormatter.string(fromByteCount: Int64(item.size), countStyle: .file)).font(.caption).foregroundStyle(.secondary); Image(systemName: "arrow.down.circle") }
+                                    }.disabled(downloading)
+                                }
+                            }
+                        }.frame(maxHeight: 150)
+                    }.padding().background(MailTheme.canvas)
                 }
             } else if let error {
-                ContentUnavailableView { Label("暂时无法阅读", systemImage: "wifi.exclamationmark") }
-                    description: { Text(error) } actions: { Button("重试") { retry += 1 } }
+                ContentUnavailableView { Label("暂时无法阅读", systemImage: "wifi.exclamationmark") } description: { Text(error) } actions: { Button("重试") { retry += 1 } }
             } else { Spacer(); ProgressView("加载正文…"); Spacer() }
-        }
+            if downloading { HStack { ProgressView(); Text("正在下载附件…"); Spacer(); Button("取消") { downloadTask?.cancel(); downloading = false } }.font(.footnote).padding() }
+            if bodyContent != nil, let error { Text(error).font(.footnote).foregroundStyle(.red).padding(.horizontal) }
+        }.background(MailTheme.surface)
         .navigationTitle("邮件").navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
-                if bodyContent?.html != nil { Button(plainText ? "原版" : "纯文本") { plainText.toggle() } }
-                Button("回复", systemImage: "arrowshape.turn.up.left") {
-                    if !store.draft.isEmpty && store.draft.state != .sent { confirmReplace = true }
-                    else { startReply() }
-                }.disabled(store.sending || !MailValidation.isAddress(summary.replyAddress))
+                Button { assistant = true } label: { Image(systemName: "sparkles") }.accessibilityLabel("小邮助手").disabled(bodyContent == nil)
+                Menu {
+                    if bodyContent?.html != nil { Button(plainText ? "查看原版" : "查看纯文本") { plainText.toggle() } }
+                    Button("移动到…") { moving = true }
+                    Button(summary.isFlagged == true ? "取消星标" : "添加星标") { Task { do { try await store.perform(.flagged(summary.isFlagged != true), on: [summary]) } catch { self.error = "标记失败，请刷新核对。" } } }
+                } label: { Image(systemName: "ellipsis.circle") }.accessibilityLabel("更多邮件操作")
+            }
+            ToolbarItemGroup(placement: .bottomBar) {
+                Button("回复", systemImage: "arrowshape.turn.up.left") { compose(.reply) }.disabled(bodyContent == nil || store.sending)
+                Spacer()
+                Button("回复全部", systemImage: "arrowshape.turn.up.left.2") { compose(.replyAll) }.disabled(bodyContent == nil || store.sending)
+                Spacer()
+                Menu {
+                    Button("转发正文") { compose(.forward) }
+                    if bodyContent?.attachments?.isEmpty == false { Button("转发正文与全部附件") { forwardWithAttachments() } }
+                } label: { Label("转发", systemImage: "arrowshape.turn.up.right") }.disabled(bodyContent == nil || store.sending || downloading)
             }
         }
         .task(id: retry) { load() }
-        .onDisappear { readTask?.cancel() }
-        .onChange(of: scenePhase) { _, phase in if phase != .active { readTask?.cancel() } }
+        .onDisappear { readTask?.cancel(); downloadTask?.cancel() }
+        .onChange(of: store.selectedID) { _, id in if id != ownerID { readTask?.cancel(); downloadTask?.cancel(); bodyContent = nil; error = "邮箱已切换，请返回列表重新打开这封邮件。" } }
+        .onChange(of: scenePhase) { _, phase in if phase != .active { readTask?.cancel(); downloadTask?.cancel() } }
         .sheet(isPresented: $composing) { ComposerView(store: store) }
-        .confirmationDialog("保留当前草稿，还是用这封邮件的新回复替换它？", isPresented: $confirmReplace, titleVisibility: .visible) {
-            Button("打开已有草稿") { composing = true }
-            if store.draft.state == .editing { Button("替换为新回复", role: .destructive) { startReply() } }
+        .sheet(isPresented: $moving) { MovePicker(store: store, items: [summary]) }
+        .sheet(isPresented: $assistant) {
+            AssistantPanel(text: summary.subject + "\n" + (bodyContent?.text ?? "")) { output in
+                guard let bodyContent, !store.sending else { return false }
+                do { try store.compose(mode: .reply, summary: summary, body: bodyContent); store.updateDraft { $0.text = output; $0.html = nil }; adoptedReply = true; return true }
+                catch { self.error = error.localizedDescription; return false }
+            }.onDisappear { if adoptedReply { adoptedReply = false; composing = true } }
         }
+        .quickLookPreview($previewURL)
         .confirmationDialog("用 Safari 打开外部链接？", isPresented: Binding(get: { externalURL != nil }, set: { if !$0 { externalURL = nil } }), titleVisibility: .visible) {
             if let url = externalURL { Button("打开链接") { openURL(url); externalURL = nil } }
         } message: { Text(externalURL?.host ?? "") }
     }
     private func load() {
-        error = nil
-        readTask?.cancel()
+        error = nil; readTask?.cancel()
         readTask = Task {
-            do { let result = try await store.body(for: summary); try Task.checkCancellation(); bodyContent = result }
-            catch { if !Task.isCancelled { self.error = (error as? MailFailure)?.localizedDescription ?? "请检查网络后重试。已缓存的邮件可离线阅读。" } }
+            do { let result = try await store.body(for: summary); try Task.checkCancellation(); guard store.selectedID == ownerID else { throw CancellationError() }; bodyContent = result }
+            catch { if !Task.isCancelled { self.error = (error as? MailFailure)?.localizedDescription ?? "请检查网络后重试，已缓存的正文可离线阅读。" } }
         }
     }
-    private func startReply() {
-        do { try store.newDraft(replyingTo: summary); composing = true } catch { store.error = error.localizedDescription }
+    private func compose(_ mode: DraftMode) {
+        guard let bodyContent else { return }
+        do { try store.compose(mode: mode, summary: summary, body: bodyContent); composing = true }
+        catch { error = error.localizedDescription }
+    }
+    private func download(_ item: MailAttachment) {
+        downloading = true; error = nil
+        downloadTask = Task {
+            do { let data = try await store.attachmentData(item, summary: summary); try Task.checkCancellation(); previewURL = try previewFile(name: item.name, data: data) }
+            catch { if !Task.isCancelled { self.error = error.localizedDescription } }
+            if !Task.isCancelled { downloading = false }
+        }
+    }
+    private func forwardWithAttachments() {
+        guard let bodyContent else { return }; downloading = true; error = nil
+        downloadTask = Task {
+            do {
+                let items = bodyContent.attachments ?? []
+                guard items.count <= 20 else { throw MailFailure.invalid("附件超过 20 个，可选择仅转发正文并手动添加需要的附件。") }
+                var loaded: [(MailAttachment, Data)] = []; var total = 0
+                for item in items {
+                    let data = try await store.attachmentData(item, summary: summary); try Task.checkCancellation()
+                    total += data.count; guard total <= MailAttachment.totalLimit else { throw MailFailure.invalid("附件合计超过 25 MB，请选择转发正文并手动添加附件。") }
+                    loaded.append((item, data))
+                }
+                try store.compose(mode: .forward, summary: summary, body: bodyContent)
+                for (item, data) in loaded { try store.addAttachment(name: item.name, mimeType: item.mimeType, data: data) }
+                composing = true
+            } catch { if !Task.isCancelled { self.error = error.localizedDescription } }
+            if !Task.isCancelled { downloading = false }
+        }
     }
 }
-
 struct SafeMailHTML: UIViewRepresentable {
     let html: String
     @Binding var externalURL: URL?

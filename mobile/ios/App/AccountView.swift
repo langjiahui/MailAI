@@ -3,6 +3,7 @@ import MailAICore
 
 struct AccountView: View {
     let store: MailStore
+    var editingAccount: MailAccount? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var setup = AccountSetup()
     @State private var password = ""
@@ -58,15 +59,24 @@ struct AccountView: View {
                     Button(action: connect) {
                         HStack {
                             if testing { ProgressView() }
-                            Text(testing ? "正在验证并添加…" : "添加邮箱").frame(maxWidth: .infinity)
+                            Text(testing ? "正在验证…" : (editingAccount == nil ? "添加邮箱" : "验证并保存")).frame(maxWidth: .infinity)
                         }
-                    }.disabled(testing || setup.account.email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || password.isEmpty)
+                    }.disabled(testing || setup.account.email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (password.isEmpty && editingAccount == nil))
                         .accessibilityIdentifier("validate-account")
                     if testing { Button("取消验证", role: .cancel) { cancelValidation() } }
                 } footer: {
                     Text("点击添加后才会验证收发连接；成功后凭据保存在本机钥匙串，不发送测试邮件。")
                 }
 
+                if editingAccount != nil {
+                    Section("发信偏好") {
+                        TextField("发件人签名", text: Binding(get: { setup.account.signature ?? "" }, set: { setup.set(\.signature, $0) }), axis: .vertical)
+                        Toggle("保存已发送副本", isOn: Binding(get: { setup.account.shouldSaveSentCopy }, set: { setup.set(\.saveSentCopy, $0) }))
+                        TextField("已发送文件夹（留空自动识别）", text: Binding(get: { setup.account.sentFolder ?? "" }, set: { setup.set(\.sentFolder, $0.isEmpty ? nil : $0) }))
+                        Text("Gmail、Outlook 通常由服务商自动保存。其他邮箱默认由本机存档，按邮件标识去重；存档失败不会重复发送邮件。").font(.footnote).foregroundStyle(.secondary)
+                        if password.isEmpty { Text("不修改密码可留空，保存时会验证原有凭据。").font(.footnote).foregroundStyle(.secondary) }
+                    }
+                }
                 Section {
                     DisclosureGroup(isExpanded: $advanced) {
                         TextField("发件人显示名称（选填）", text: field(\.displayName))
@@ -101,7 +111,8 @@ struct AccountView: View {
                 }.disabled(testing)
             }
             .textInputAutocapitalization(.never).autocorrectionDisabled()
-            .navigationTitle("添加邮箱").navigationBarTitleDisplayMode(.inline)
+            .onAppear { if let editingAccount { setup = AccountSetup(account: editingAccount) } }
+            .navigationTitle(editingAccount == nil ? "添加邮箱" : "编辑邮箱").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("取消") { cancelValidation(); dismiss() } } }
             .interactiveDismissDisabled(testing)
             .onDisappear { cancelValidation(); password = "" }
@@ -118,7 +129,7 @@ struct AccountView: View {
             guard MailValidation.isAddress(setup.account.email.trimmingCharacters(in: .whitespacesAndNewlines)) else {
                 throw MailFailure.invalid("请填写完整的邮箱地址。")
             }
-            guard !password.isEmpty else { throw MailFailure.invalid("请填写密码或邮箱授权码。") }
+            guard !password.isEmpty || editingAccount != nil else { throw MailFailure.invalid("请填写密码或邮箱授权码。") }
             account = try setup.preparedAccount()
         } catch {
             self.error = error.localizedDescription
@@ -130,7 +141,8 @@ struct AccountView: View {
         let credential = password
         task = Task {
             do {
-                try await store.addAccount(account, password: credential)
+                if editingAccount == nil { try await store.addAccount(account, password: credential) }
+                else { try await store.updateAccount(account, password: credential.isEmpty ? nil : credential) }
                 guard requestID == id, !Task.isCancelled else { return }
                 password = ""; dismiss()
             } catch {

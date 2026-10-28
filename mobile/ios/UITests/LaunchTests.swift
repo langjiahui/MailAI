@@ -52,3 +52,49 @@ final class LaunchTests: XCTestCase {
         attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
     }
 }
+
+final class WorkspaceTests: XCTestCase {
+    private func launch(dark: Bool = false, large: Bool = false) -> XCUIApplication {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-fixture"]
+        if dark { app.launchArguments.append("--ui-dark") }
+        if large { app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] }
+        app.launch(); XCTAssertTrue(app.buttons["compose-mail"].waitForExistence(timeout: 10)); return app
+    }
+    func testMailboxReadingReplyAndComposer() {
+        let app = launch()
+        let message = app.staticTexts["项目资料确认与下一步安排"].firstMatch
+        XCTAssertTrue(message.waitForExistence(timeout: 5)); attach("blue-inbox-light")
+        message.tap()
+        XCTAssertTrue(app.buttons["回复全部"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["附件（1）"].exists || app.buttons["附件（1）"].exists)
+        attach("blue-reader-light")
+        app.buttons["回复全部"].tap()
+        XCTAssertTrue(app.textFields["compose-to"].waitForExistence(timeout: 5))
+        XCTAssertTrue((app.textFields["compose-to"].value as? String)?.contains("sender@example.com") == true)
+        XCTAssertTrue((app.textFields["compose-cc"].value as? String)?.contains("team@example.com") == true)
+        XCTAssertTrue(app.buttons["添加文件"].exists)
+        attach("blue-compose-light")
+        app.buttons["关闭"].tap(); app.buttons["保存并返回"].tap()
+        XCTAssertTrue(app.buttons["回复全部"].waitForExistence(timeout: 5))
+    }
+    func testContactsAndSettingsInDarkMode() {
+        let app = launch(dark: true)
+        app.tabBars.buttons["通讯录"].tap()
+        XCTAssertTrue(app.staticTexts["项目组"].waitForExistence(timeout: 5)); attach("blue-contacts-dark")
+        app.tabBars.buttons["设置"].tap()
+        XCTAssertTrue(app.staticTexts["宝武蓝 · 蓝白"].waitForExistence(timeout: 5)); attach("blue-settings-dark")
+        app.swipeUp()
+        app.buttons["小邮与模型服务"].tap()
+        XCTAssertTrue(app.secureTextFields["API Key"].waitForExistence(timeout: 5))
+    }
+    func testLargeTextKeepsComposeAndNavigationReachable() {
+        let app = launch(dark: true, large: true)
+        XCTAssertTrue(app.buttons["compose-mail"].isHittable)
+        app.buttons["compose-mail"].tap()
+        XCTAssertTrue(app.buttons["关闭"].waitForExistence(timeout: 5)); XCTAssertTrue(app.buttons["send-mail"].exists)
+        attach("blue-compose-accessibility-dark")
+    }
+    private func attach(_ name: String) {
+        let value = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); value.name = name; value.lifetime = .keepAlways; add(value)
+    }
+}
