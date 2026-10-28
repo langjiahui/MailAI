@@ -223,6 +223,36 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertTrue(cancel.waitForExistence(timeout: 5)); XCTAssertTrue(cancel.isHittable)
         attach(screenshot); cancel.tap()
     }
+    func testMailboxFiltersSelectionAndMovePicker() {
+        let app = launch()
+        app.buttons["星标"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["移动端设计评审"].waitForExistence(timeout: 5)); attach("redesign-flagged-filter")
+        XCTAssertFalse(app.staticTexts["项目资料确认与下一步安排"].exists)
+        app.buttons["全部"].firstMatch.tap()
+        app.buttons["更多邮件操作"].tap(); attach("redesign-inbox-menu")
+        app.buttons["选择邮件"].tap()
+        app.buttons["选择邮件"].firstMatch.tap()
+        XCTAssertFalse(app.tabBars.firstMatch.exists); attach("redesign-bulk-selection")
+        app.buttons["移动"].tap()
+        XCTAssertTrue(app.buttons["取消"].waitForExistence(timeout: 5)); attach("redesign-move-picker")
+        app.buttons["取消"].tap(); app.buttons["完成"].firstMatch.tap()
+        app.buttons["邮箱与文件夹"].tap()
+        XCTAssertTrue(app.buttons["所有收件箱"].waitForExistence(timeout: 5)); attach("redesign-mailboxes")
+        app.buttons["所有收件箱"].tap()
+        XCTAssertTrue(app.staticTexts["项目资料确认与下一步安排"].waitForExistence(timeout: 5)); attach("redesign-unified-inbox")
+    }
+    func testHTMLModeAndExternalLinkConfirmation() {
+        let app = launch(extra: ["--ui-html"])
+        app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap()
+        let link = app.webViews.links["测试外部链接"]
+        XCTAssertTrue(link.waitForExistence(timeout: 10)); attach("redesign-html-reader")
+        link.tap()
+        XCTAssertTrue(app.buttons["打开链接"].waitForExistence(timeout: 5)); attach("redesign-external-link-confirmation")
+        let cancel = app.buttons["Cancel"].firstMatch.exists ? app.buttons["Cancel"].firstMatch : app.buttons["取消"].firstMatch
+        cancel.tap()
+        app.buttons["更多邮件操作"].tap(); app.buttons["查看纯文本"].tap()
+        XCTAssertFalse(app.webViews.firstMatch.exists); attach("redesign-plain-reader")
+    }
     func testStorageFailureOffersRetryWithoutDeletingData() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-fixture", "--ui-storage-error"]; app.launch()
         XCTAssertTrue(app.buttons["重试"].waitForExistence(timeout: 5)); attach("redesign-storage-error")

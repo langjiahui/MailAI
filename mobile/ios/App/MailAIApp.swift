@@ -115,7 +115,7 @@ struct InboxView: View {
         .sheet(isPresented: $searching) { MailSearchView(store: store) }
         .sheet(isPresented: $mailboxes) { MailboxesView(store: store, unified: $unified) }
         .sheet(isPresented: $showMove) { MovePicker(store: store, items: moving) }
-        .alert("操作提示", isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) {
+        .alert("操作提示", isPresented: Binding(get: { store.error != nil && tab != 0 }, set: { if !$0 { store.error = nil } })) {
             Button("知道了") { store.error = nil }
         } message: { Text(store.error ?? "") }
         .task { store.refresh() }
@@ -149,6 +149,12 @@ struct InboxView: View {
                             filterChip("全部", value: "all"); filterChip("未读", value: "unread")
                             filterChip("星标", value: "flagged"); filterChip("附件", value: "attachments")
                         }.padding(.horizontal, 16).padding(.vertical, 8)
+                    }
+                    if let error = store.error {
+                        HStack(alignment: .top, spacing: 4) {
+                            MailNotice(text: error, symbol: "wifi.exclamationmark")
+                            Button { store.error = nil } label: { Image(systemName: "xmark").frame(width: 44, height: 44) }.accessibilityLabel("关闭状态提示")
+                        }.padding(.horizontal, 16).padding(.bottom, 8)
                     }
                     List {
                         Section {
