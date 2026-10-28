@@ -163,6 +163,10 @@ struct ComposerView: View {
                     if let date = store.draft.updatedAt { resultField("时间", value: date.formatted(date: .abbreviated, time: .shortened)) }
                     resultField("附件", value: "\(store.draft.attachments.count) 个 · " + ByteCountFormatter.string(fromByteCount: Int64(store.draft.attachments.reduce(0) { $0 + $1.size }), countStyle: .file))
                 }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(MailTheme.canvas, in: RoundedRectangle(cornerRadius: 12))
+                DisclosureGroup("查看邮件内容") {
+                    Text(store.draft.text).font(.body).lineSpacing(5).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 12)
+                    ForEach(store.draft.attachments) { item in attachmentRow(item) }
+                }.font(.subheadline)
                 VStack(alignment: .leading, spacing: 16) { status }
                 if let error { MailNotice(text: error, critical: true) }
                 Button("返回邮件") { dismiss() }.frame(maxWidth: .infinity, minHeight: 48).buttonStyle(.bordered)
