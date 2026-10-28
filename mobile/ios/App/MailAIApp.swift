@@ -84,6 +84,7 @@ struct WelcomeView: View {
 
 struct InboxView: View {
     @Bindable var store: MailStore
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var addingAccount = false
     @State private var composing = false
     @State private var mailboxes = false
@@ -91,8 +92,7 @@ struct InboxView: View {
     @State private var showingDrafts = false
     @State private var selecting = false
     @State private var selection = Set<String>()
-    @State private var moving: [MailSummary] = []
-    @State private var showMove = false
+    @State private var moveRequest: MailMoveRequest?
     @State private var filter = "all"
     @State private var grouped = false
     @State private var unified = false
@@ -117,7 +117,7 @@ struct InboxView: View {
         .sheet(isPresented: $showingDrafts) { DraftsView(store: store) }
         .sheet(isPresented: $searching) { MailSearchView(store: store) }
         .sheet(isPresented: $mailboxes) { MailboxesView(store: store, unified: $unified) }
-        .sheet(isPresented: $showMove) { MovePicker(store: store, items: moving) }
+        .sheet(item: $moveRequest) { request in MovePicker(store: store, items: request.items) }
         .alert("操作提示", isPresented: Binding(get: { store.error != nil && tab != 0 }, set: { if !$0 { store.error = nil } })) {
             Button("知道了") { store.error = nil }
         } message: { Text(store.error ?? "") }
@@ -156,9 +156,10 @@ struct InboxView: View {
                                 .font(.subheadline).foregroundStyle(MailTheme.secondary).padding(.horizontal, 12).frame(minHeight: 44)
                                 .background(MailTheme.canvas, in: RoundedRectangle(cornerRadius: 12))
                         }.accessibilityLabel("搜索邮件").padding(.horizontal, 16).padding(.top, 8)
-                        HStack(spacing: 8) {
-                            filterChip("全部", value: "all"); filterChip("未读", value: "unread")
-                            filterChip("星标", value: "flagged"); filterChip("附件", value: "attachments")
+                        Group {
+                            if dynamicTypeSize.isAccessibilitySize {
+                                ScrollView(.horizontal, showsIndicators: false) { filterControls.fixedSize(horizontal: true, vertical: false) }
+                            } else { filterControls }
                         }.padding(.horizontal, 16).padding(.vertical, 8)
                     }
                     if let error = store.error {
@@ -215,7 +216,7 @@ struct InboxView: View {
                                     .contextMenu {
                                         Button(message.unread ? "标为已读" : "标为未读") { run(.read(message.unread), [message]) }
                                         Button(message.isFlagged == true ? "取消星标" : "添加星标") { run(.flagged(message.isFlagged != true), [message]) }
-                                        Button("移动到…") { moving = [message]; showMove = true }
+                                        Button("移动到…") { moveRequest = MailMoveRequest(items: [message]) }
                                     }
                                 }
                             }
@@ -276,8 +277,8 @@ struct InboxView: View {
             if !store.accounts.isEmpty {
                 VStack(spacing: 0) {
                     if store.undoID != nil {
-                        HStack { Text(store.undoTitle).font(.subheadline); Spacer(); Button("撤销") { Task { do { try await store.undoLastAction() } catch { store.error = "撤销未完成，请刷新核对。" } } } }
-                            .padding(.horizontal).padding(.vertical, 10)
+                        HStack { Text(store.undoTitle).font(.subheadline); Spacer(); Button("撤销") { Task { do { try await store.undoLastAction() } catch { store.error = "撤销未完成，请刷新核对。" } } }.frame(minWidth: 44, minHeight: 44) }
+                            .padding(.horizontal).padding(.vertical, 10).frame(minHeight: 64)
                             .task(id: store.undoID) { do { try await Task.sleep(for: .seconds(8)); store.clearUndo() } catch {} }
                     }
                     if selecting {
@@ -289,7 +290,7 @@ struct InboxView: View {
                                 Button("标为未读") { run(.read(false), chosen) }
                                 Button("添加星标") { run(.flagged(true), chosen) }
                             }.disabled(selection.isEmpty)
-                            Button("移动", systemImage: "folder") { moving = chosen; showMove = true }.disabled(selection.isEmpty)
+                            Button("移动", systemImage: "folder") { moveRequest = MailMoveRequest(items: chosen) }.disabled(selection.isEmpty)
                         }.frame(minHeight: 52).padding(.horizontal, 16)
                     }
                 }.background(.regularMaterial)
@@ -298,16 +299,22 @@ struct InboxView: View {
         .overlay(alignment: .bottomTrailing) {
             if !selecting && !store.accounts.isEmpty {
                 Button { do { try store.newDraft(); composing = true } catch { store.error = error.localizedDescription } } label: {
-                    Label("写邮件", systemImage: "square.and.pencil").font(.callout.weight(.semibold)).padding(.horizontal, 18).frame(minHeight: 50)
+                    Label("写邮件", systemImage: "square.and.pencil").font(.callout.weight(.semibold)).dynamicTypeSize(...DynamicTypeSize.xxxLarge).padding(.horizontal, 18).frame(minHeight: 50)
                 }.buttonStyle(.borderedProminent).buttonBorderShape(.roundedRectangle(radius: 18))
-                    .accessibilityIdentifier("compose-mail").disabled(store.sending).padding(16)
+                    .accessibilityIdentifier("compose-mail").disabled(store.sending).padding(16).padding(.bottom, store.undoID == nil ? 0 : 64)
             }
         }
         .disabled(store.operating)
     }
+    private var filterControls: some View {
+        HStack(spacing: 8) {
+            filterChip("全部", value: "all"); filterChip("未读", value: "unread")
+            filterChip("星标", value: "flagged"); filterChip("附件", value: "attachments")
+        }
+    }
     private func filterChip(_ title: String, value: String) -> some View {
         Button { filter = value; selection = [] } label: {
-            Text(title).font(.subheadline.weight(filter == value ? .semibold : .regular)).frame(maxWidth: .infinity, minHeight: 44)
+            Text(title).font(.subheadline.weight(filter == value ? .semibold : .regular)).lineLimit(1).padding(.horizontal, dynamicTypeSize.isAccessibilitySize ? 14 : 0).frame(maxWidth: .infinity, minHeight: 44)
                 .foregroundStyle(filter == value ? MailTheme.blue : MailTheme.secondary)
                 .background(filter == value ? MailTheme.blue.opacity(0.12) : MailTheme.canvas, in: RoundedRectangle(cornerRadius: 10))
         }.accessibilityAddTraits(filter == value ? .isSelected : [])
@@ -319,10 +326,11 @@ struct InboxView: View {
     private func moveToRole(_ role: String, _ items: [MailSummary]) {
         let configured = role == "trash" ? store.selected?.trashFolder : store.selected?.archiveFolder
         if let target = configured ?? store.folders.first(where: { $0.role == role || (role == "trash" ? $0.title == "废纸篓" : $0.title == "归档") })?.name { run(.move(target), items) }
-        else { moving = items; showMove = true }
+        else { moveRequest = MailMoveRequest(items: items) }
     }
 }
 struct MailRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let summary: MailSummary
     var account: String? = nil
     var keyword = ""
@@ -338,12 +346,17 @@ struct MailRow: View {
         HStack(alignment: .top, spacing: 12) {
             Circle().fill(summary.unread ? MailTheme.blue : .clear).frame(width: 7, height: 7).padding(.top, 6).accessibilityLabel(summary.unread ? "未读" : "")
             VStack(alignment: .leading, spacing: 4) {
-                HStack(alignment: .firstTextBaseline) {
-                    matched(summary.senderName?.isEmpty == false ? summary.senderName! : summary.sender).font(.subheadline.weight(summary.unread ? .semibold : .regular)).lineLimit(1)
-                    Spacer(minLength: 8)
-                    if let date = summary.date { Text(Calendar.current.isDateInToday(date) ? date.formatted(date: .omitted, time: .shortened) : date.formatted(.dateTime.month().day())).font(.caption2).foregroundStyle(.secondary) }
+                if dynamicTypeSize.isAccessibilitySize {
+                    matched(summary.senderName?.isEmpty == false ? summary.senderName! : summary.sender).font(.subheadline.weight(summary.unread ? .semibold : .regular))
+                    if let date = summary.date { Text(date.formatted(date: .abbreviated, time: .shortened)).font(.caption2).foregroundStyle(MailTheme.secondary) }
+                } else {
+                    HStack(alignment: .firstTextBaseline) {
+                        matched(summary.senderName?.isEmpty == false ? summary.senderName! : summary.sender).font(.subheadline.weight(summary.unread ? .semibold : .regular)).lineLimit(1)
+                        Spacer(minLength: 8)
+                        if let date = summary.date { Text(Calendar.current.isDateInToday(date) ? date.formatted(date: .omitted, time: .shortened) : date.formatted(.dateTime.month().day())).font(.caption2).foregroundStyle(.secondary) }
+                    }
                 }
-                matched(summary.subject.isEmpty ? "（无主题）" : summary.subject).font(.subheadline.weight(summary.unread ? .semibold : .regular)).lineLimit(1)
+                matched(summary.subject.isEmpty ? "（无主题）" : summary.subject).font(.subheadline.weight(summary.unread ? .semibold : .regular)).lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                 if let preview = summary.preview, !preview.isEmpty { matched(preview).font(.subheadline).foregroundStyle(MailTheme.secondary).lineLimit(1) }
                 HStack(spacing: 7) {
                     if summary.isFlagged == true { Image(systemName: "star.fill").foregroundStyle(.orange) }

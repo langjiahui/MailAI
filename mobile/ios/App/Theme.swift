@@ -34,7 +34,7 @@ struct SenderAvatar: View {
     var size: CGFloat = 36
     var body: some View {
         Text(String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(1)).uppercased())
-            .font(.system(.subheadline, design: .rounded, weight: .semibold)).foregroundStyle(MailTheme.blue)
+            .font(.system(.subheadline, design: .rounded, weight: .semibold)).dynamicTypeSize(...DynamicTypeSize.xxxLarge).foregroundStyle(MailTheme.blue)
             .frame(width: size, height: size).background(MailTheme.blue.opacity(0.10), in: Circle())
             .accessibilityHidden(true)
     }
@@ -53,7 +53,7 @@ struct MailNotice: View {
 struct SettingsIcon: View {
     let symbol: String
     var body: some View {
-        Image(systemName: symbol).font(.body).foregroundStyle(MailTheme.blue)
+        Image(systemName: symbol).font(.body).dynamicTypeSize(...DynamicTypeSize.xxxLarge).foregroundStyle(MailTheme.blue)
             .frame(width: 32, height: 32).background(MailTheme.blue.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
             .accessibilityHidden(true)
     }

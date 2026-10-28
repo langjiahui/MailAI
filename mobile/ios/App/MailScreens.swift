@@ -11,7 +11,7 @@ struct MailboxesView: View {
             List {
                 Section {
                     Button { unified = true; dismiss() } label: { Label("所有收件箱", systemImage: "tray.2.fill") }
-                }
+                }.listRowBackground(MailTheme.surface)
                 Section("邮箱") {
                     ForEach(store.accounts) { account in
                         Button {
@@ -21,17 +21,21 @@ struct MailboxesView: View {
                             HStack { SenderAvatar(name: account.displayName.isEmpty ? account.email : account.displayName); Text(account.email).foregroundStyle(.primary); Spacer(); if store.selectedID == account.id && !unified { Image(systemName: "checkmark") } }
                         }
                     }
-                }
+                }.listRowBackground(MailTheme.surface)
                 Section("当前邮箱文件夹") {
                     ForEach(store.folders, id: \.name) { folder in
                         Button { do { try store.selectFolder(folder.name); unified = false; dismiss() } catch { store.error = error.localizedDescription } } label: {
                             HStack { Label(folder.title, systemImage: folder.symbol); Spacer(); if !unified && store.folder == folder.name { Image(systemName: "checkmark") } }
                         }
                     }
-                }
-            }.listStyle(.insetGrouped).scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("邮箱与文件夹").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } } }
+                }.listRowBackground(MailTheme.surface)
+            }.listRowBackground(MailTheme.surface).listStyle(.insetGrouped).scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("邮箱与文件夹").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } } }
         }
     }
+}
+struct MailMoveRequest: Identifiable {
+    let id = UUID()
+    let items: [MailSummary]
 }
 struct MovePicker: View {
     let store: MailStore; let items: [MailSummary]
@@ -42,7 +46,7 @@ struct MovePicker: View {
         NavigationStack {
             List {
                 if let error { Text(error).foregroundStyle(.red) }
-                ForEach(store.folders.filter { $0.name != items.first?.folder }, id: \.name) { folder in
+                ForEach(store.folders, id: \.name) { folder in
                     Button {
                         working = true
                         Task {
@@ -50,7 +54,7 @@ struct MovePicker: View {
                             catch { self.error = "移动未完成，请关闭后刷新核对。为避免重复移动，不会自动重试。" }
                             working = false
                         }
-                    } label: { Label(folder.title, systemImage: folder.symbol) }.disabled(working)
+                    } label: { HStack { Label(folder.title, systemImage: folder.symbol); Spacer(); if folder.name == items.first?.folder { Text("当前位置").font(.caption).foregroundStyle(MailTheme.secondary) } } }.disabled(working || items.isEmpty || folder.name == items.first?.folder).listRowBackground(MailTheme.surface)
                 }
             }.listStyle(.insetGrouped).scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("移动 \(items.count) 封邮件").navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() }.disabled(working) } }
@@ -122,6 +126,7 @@ struct MailSearchView: View {
             VStack(spacing: 0) {
                 MailSearchField(text: $query, prompt: "搜索当前文件夹", submitted: { limit = 50; search() }).padding(.horizontal, 16).padding(.vertical, 8)
                 List {
+                Group {
                 Section { Text((store.selected?.email ?? "") + " · " + (store.folders.first { $0.name == store.folder }?.title ?? store.folder)).font(.caption).foregroundStyle(MailTheme.secondary) }
                 if !query.isEmpty {
                     Section(completedQuery == query ? "服务器匹配 \(total) 封 · 已显示 \(results.count) 封" : "本机缓存匹配") {
@@ -144,8 +149,9 @@ struct MailSearchView: View {
                     } else { ContentUnavailableView("搜索邮件", systemImage: "magnifyingglass", description: Text("先搜索本机缓存，再继续搜索服务器当前文件夹。")) }
                 }
                 if let error { Text(error).foregroundStyle(.red); Button("重试") { search() } }
+                }.listRowBackground(MailTheme.surface)
                 }.listStyle(.plain).scrollContentBackground(.hidden)
-            }.background(MailTheme.surface).navigationTitle("搜索").navigationBarTitleDisplayMode(.inline)
+            }.listRowBackground(MailTheme.surface).scrollContentBackground(.hidden).background(MailTheme.surface).navigationTitle("搜索").navigationBarTitleDisplayMode(.inline)
                 .onChange(of: query) { _, _ in task?.cancel(); working = false; error = nil }
                 .overlay { if working { ProgressView("正在搜索…").padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16)) } }
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } } }
@@ -188,7 +194,7 @@ struct ContactsView: View {
             Section(store.selected?.email ?? "往来联系人") {
                 ForEach(store.contacts.filter { query.isEmpty || ($0.email + $0.name + $0.note).localizedCaseInsensitiveContains(query) }.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }) { contact in
                     NavigationLink { ContactDetail(store: store, initial: contact, compose: compose) } label: {
-                        HStack { SenderAvatar(name: contact.title); VStack(alignment: .leading) { Text(contact.name.isEmpty ? contact.title : contact.name).foregroundStyle(.primary); Text(contact.email).font(.caption).foregroundStyle(.secondary); if !contact.note.isEmpty { Text(contact.note).font(.caption).foregroundStyle(MailTheme.secondary).lineLimit(1) } }; Spacer() }
+                        HStack { SenderAvatar(name: contact.name.isEmpty ? contact.title : contact.name); VStack(alignment: .leading) { Text(contact.name.isEmpty ? contact.title : contact.name).foregroundStyle(.primary); Text(contact.email).font(.caption).foregroundStyle(.secondary); if !contact.note.isEmpty { Text(contact.note).font(.caption).foregroundStyle(MailTheme.secondary).lineLimit(1) } }; Spacer() }
                     }.accessibilityIdentifier("contact-" + contact.email).contextMenu { Button("写邮件") { compose(contact.email) } }
                 }
                 if store.contacts.isEmpty { ContentUnavailableView("暂无联系人", systemImage: "person.crop.rectangle", description: Text("添加联系人，或从往来邮件中积累。")) }
@@ -248,10 +254,10 @@ struct ContactDetail: View {
     var body: some View {
         List {
             Section {
-                VStack(spacing: 10) { SenderAvatar(name: contact.title, size: 64); Text(contact.name.isEmpty ? contact.title : contact.name).font(.title2.bold()); Text(contact.email).foregroundStyle(MailTheme.secondary).textSelection(.enabled) }.frame(maxWidth: .infinity).padding(.vertical, 24)
+                VStack(spacing: 10) { SenderAvatar(name: contact.name.isEmpty ? contact.title : contact.name, size: 64); Text(contact.name.isEmpty ? contact.title : contact.name).font(.title2.bold()); Text(contact.email).foregroundStyle(MailTheme.secondary).textSelection(.enabled) }.frame(maxWidth: .infinity).padding(.vertical, 24)
                 Button("写邮件", systemImage: "square.and.pencil") { compose(contact.email) }.frame(maxWidth: .infinity, minHeight: 44)
             }.listRowBackground(MailTheme.surface)
-            Section("备注") { Text(contact.note.isEmpty ? "暂无备注" : contact.note).textSelection(.enabled) }
+            Section("备注") { Text(contact.note.isEmpty ? "暂无备注" : contact.note).textSelection(.enabled) }.listRowBackground(MailTheme.surface)
         }.scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("联系人").navigationBarTitleDisplayMode(.inline).toolbar(.hidden, for: .tabBar)
             .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("编辑") { editing = true } } }
             .sheet(isPresented: $editing, onDismiss: { if let email = pendingCompose { pendingCompose = nil; compose(email) } }) { ContactEditor(store: store, contact: contact, saved: { updated = $0 }, compose: { pendingCompose = $0 }) }

@@ -27,7 +27,7 @@ struct SettingsView: View {
             }.listRowBackground(MailTheme.surface)
             Section {
                 NavigationLink { AboutView() } label: { settingsRow("关于 MailAI", symbol: "info.circle") }
-            }
+            }.listRowBackground(MailTheme.surface)
         }.listStyle(.insetGrouped).scrollContentBackground(.hidden).background(MailTheme.canvas)
             .navigationTitle("设置").navigationBarTitleDisplayMode(.inline)
     }
@@ -65,7 +65,7 @@ struct AccountDetailView: View {
                 }.listRowBackground(MailTheme.surface)
                 Section {
                     Button("移除此邮箱", role: .destructive) { confirmRemoval = true }.disabled(store.sending || store.operating)
-                }
+                }.listRowBackground(MailTheme.surface)
                 if let error { MailNotice(text: error, critical: true) }
             }
         }.scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("邮箱设置").navigationBarTitleDisplayMode(.inline)
@@ -130,10 +130,10 @@ struct AboutView: View {
 struct PrivacyView: View {
     var body: some View {
         List {
-            Section("保存在你的设备") { Text("邮箱密码与模型密钥保存在本机钥匙串。邮件、附件缓存和草稿保存在此设备。移除邮箱会清除此邮箱的本机数据，服务器邮件保留。") }
-            Section("由你决定何时使用小邮") { Text("只有主动调用并确认范围后，选定文字才发送给你配置的模型服务。不自动整箱上传，不上传附件，不在后台自动分析。") }
-            Section("安全阅读") { Text("邮件正文不加载远程图片或脚本，外部 HTTPS 链接确认后用 Safari 打开。收发连接验证服务器证书。") }
-            Section("搜索与同步") { Text("搜索先匹配当前账号和文件夹的本机缓存，再由你继续搜索服务器当前文件夹。后台刷新由 iOS 调度，不能保证即时提醒。") }
+            Section("保存在你的设备") { Text("邮箱密码与模型密钥保存在本机钥匙串。邮件、附件缓存和草稿保存在此设备。移除邮箱会清除此邮箱的本机数据，服务器邮件保留。") }.listRowBackground(MailTheme.surface)
+            Section("由你决定何时使用小邮") { Text("只有主动调用并确认范围后，选定文字才发送给你配置的模型服务。不自动整箱上传，不上传附件，不在后台自动分析。") }.listRowBackground(MailTheme.surface)
+            Section("安全阅读") { Text("邮件正文不加载远程图片或脚本，外部 HTTPS 链接确认后用 Safari 打开。收发连接验证服务器证书。") }.listRowBackground(MailTheme.surface)
+            Section("搜索与同步") { Text("搜索先匹配当前账号和文件夹的本机缓存，再由你继续搜索服务器当前文件夹。后台刷新由 iOS 调度，不能保证即时提醒。") }.listRowBackground(MailTheme.surface)
         }.scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("隐私与数据").navigationBarTitleDisplayMode(.inline)
     }
 }

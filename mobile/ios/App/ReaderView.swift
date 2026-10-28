@@ -33,6 +33,7 @@ struct ReaderView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @AppStorage("mail.readerSize") private var readerSize = 17.0
     @ScaledMetric(relativeTo: .body) private var scaledBody = 17.0
     var body: some View {
@@ -65,14 +66,14 @@ struct ReaderView: View {
         .toolbar(.hidden, for: .tabBar)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             HStack(spacing: 10) {
-                Button { compose(.reply) } label: { Label("回复", systemImage: "arrowshape.turn.up.left").frame(maxWidth: .infinity, minHeight: 44) }
+                Button { compose(.reply) } label: { replyActionLabel("回复", symbol: "arrowshape.turn.up.left").frame(maxWidth: .infinity, minHeight: 44) }
                     .disabled(bodyContent == nil || store.sending)
-                Button { compose(.replyAll) } label: { Label("回复全部", systemImage: "arrowshape.turn.up.left.2").frame(maxWidth: .infinity, minHeight: 44) }
+                Button { compose(.replyAll) } label: { replyActionLabel("回复全部", symbol: "arrowshape.turn.up.left.2").frame(maxWidth: .infinity, minHeight: 44) }
                     .disabled(bodyContent == nil || store.sending)
                 Menu {
                     Button("转发正文") { compose(.forward) }
                     if bodyContent?.attachments?.isEmpty == false { Button("转发正文与全部附件") { forwardWithAttachments() } }
-                } label: { Label("转发", systemImage: "arrowshape.turn.up.right").frame(maxWidth: .infinity, minHeight: 44) }
+                } label: { replyActionLabel("转发", symbol: "arrowshape.turn.up.right").frame(maxWidth: .infinity, minHeight: 44) }
                     .disabled(bodyContent == nil || store.sending || downloading)
             }.font(.callout).buttonStyle(.borderless).padding(.horizontal, 12).padding(.vertical, 8).background(MailTheme.surface).overlay(alignment: .top) { Divider() }
         }
@@ -99,19 +100,25 @@ struct ReaderView: View {
             Button("取消", role: .cancel) { externalURL = nil }
         } message: { Text(externalURL?.host ?? "") }
     }
+    @ViewBuilder private func replyActionLabel(_ title: String, symbol: String) -> some View {
+        if dynamicTypeSize.isAccessibilitySize { Image(systemName: symbol).font(.title3).dynamicTypeSize(...DynamicTypeSize.xxxLarge).accessibilityLabel(title) }
+        else { Label(title, systemImage: symbol) }
+    }
     private var messageHeader: some View {
         VStack(alignment: .leading, spacing: 20) {
                 HStack(alignment: .top, spacing: 12) {
                     SenderAvatar(name: summary.senderName ?? summary.sender, size: 40)
                     VStack(alignment: .leading, spacing: 4) {
                         Text(summary.senderName?.isEmpty == false ? summary.senderName! : summary.sender).font(.subheadline.weight(.semibold)).textSelection(.enabled)
-                        Button { details.toggle() } label: { HStack(spacing: 4) { Text("发送至 " + (bodyContent?.recipients ?? summary.recipients ?? []).map { $0.name.isEmpty ? $0.email : $0.name }.joined(separator: "、")).lineLimit(details ? nil : 1); Image(systemName: details ? "chevron.up" : "chevron.down").font(.caption2) }.font(.caption).foregroundStyle(MailTheme.secondary).frame(minHeight: 44) }.accessibilityLabel("邮件详细信息")
+                        if dynamicTypeSize.isAccessibilitySize, let date = summary.date { Text(date.formatted()).font(.caption2).foregroundStyle(MailTheme.secondary) }
+                        Button { details.toggle() } label: { HStack(spacing: 4) { Text("发送至 " + (bodyContent?.recipients ?? summary.recipients ?? []).map { $0.name.isEmpty ? $0.email : $0.name }.joined(separator: "、")).lineLimit(2).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true); Image(systemName: details ? "chevron.up" : "chevron.down").font(.caption2) }.font(.caption).foregroundStyle(MailTheme.secondary).frame(minHeight: 44, alignment: .leading) }.buttonStyle(.plain).accessibilityLabel("邮件详细信息")
                     }
                     Spacer(minLength: 4)
-                    if let date = summary.date { Text(date.formatted(date: .abbreviated, time: .shortened)).font(.caption2).foregroundStyle(MailTheme.secondary).multilineTextAlignment(.trailing) }
+                    if !dynamicTypeSize.isAccessibilitySize, let date = summary.date { Text(date.formatted(date: .omitted, time: .shortened)).font(.caption2).foregroundStyle(MailTheme.secondary).fixedSize().accessibilityLabel(date.formatted()) }
                 }
                 if details {
                     VStack(alignment: .leading, spacing: 8) {
+                        if let date = summary.date { Text("时间：" + date.formatted()) }
                         Text("发件人：" + summary.sender)
                         Text("收件人：" + (bodyContent?.recipients ?? summary.recipients ?? []).map { $0.name.isEmpty ? $0.email : $0.name + " <" + $0.email + ">" }.joined(separator: "; "))
                         if let cc = bodyContent?.carbonCopies ?? summary.carbonCopies, !cc.isEmpty { Text("抄送：" + cc.map(\.email).joined(separator: "; ")) }

@@ -89,7 +89,7 @@ struct AssistantSettingsView: View {
                 VStack(alignment: .leading, spacing: 8) { Text("模型名称").font(.subheadline.weight(.medium)); TextField("模型名称", text: $configuration.model).textInputAutocapitalization(.never).autocorrectionDisabled() }
                 VStack(alignment: .leading, spacing: 8) { Text("API Key").font(.subheadline.weight(.medium)); SecureField("API Key", text: $configuration.key).textInputAutocapitalization(.never).autocorrectionDisabled() }
                 Text("支持 Chat Completions 兼容服务。可填写基础地址或完整 /chat/completions 地址；密钥只存本机钥匙串。").font(.footnote).foregroundStyle(.secondary)
-            }.disabled(working)
+            }.disabled(working).listRowBackground(MailTheme.surface)
             Section {
                 Toggle("允许主动调用时发送选定的邮件文字", isOn: $configuration.consent)
                 Text("接收方为上方配置的模型服务。正文、主题或你选定的文字会发送过去；不自动上传整箱邮件或附件，不后台自动分析。").font(.footnote).foregroundStyle(.secondary)
@@ -176,10 +176,10 @@ struct AssistantPanel: View {
         .sheet(isPresented: $previewScope) {
             NavigationStack {
                 List {
-                    Section("接收服务") { Text(configuration?.endpoint ?? "").font(.subheadline).textSelection(.enabled); Text(configuration?.model ?? "").font(.caption).foregroundStyle(MailTheme.secondary) }
-                    Section("本次发送范围 · \(text.count) 字") { Text(text).font(.subheadline).textSelection(.enabled) }
-                    Section { MailNotice(text: "只发送以上文字，不包含附件或其他邮件。", symbol: "lock.shield") }
-                }.navigationTitle("确认处理范围").navigationBarTitleDisplayMode(.inline)
+                    Section("接收服务") { Text(configuration?.endpoint ?? "").font(.subheadline).textSelection(.enabled); Text(configuration?.model ?? "").font(.caption).foregroundStyle(MailTheme.secondary) }.listRowBackground(MailTheme.surface)
+                    Section("本次发送范围 · \(text.count) 字") { Text(text).font(.subheadline).textSelection(.enabled) }.listRowBackground(MailTheme.surface)
+                    Section { MailNotice(text: "只发送以上文字，不包含附件或其他邮件。", symbol: "lock.shield") }.listRowBackground(MailTheme.surface)
+                }.scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("确认处理范围").navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) { Button("取消") { previewScope = false } }
                         ToolbarItem(placement: .confirmationAction) { Button("开始处理") { previewScope = false; generate() } }

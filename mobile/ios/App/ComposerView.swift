@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import MailAICore
 import UniformTypeIdentifiers
 import PhotosUI
@@ -48,15 +49,15 @@ struct ComposerView: View {
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("关闭") { confirmExit = true }.disabled(store.sending) }
                     ToolbarItem(placement: .confirmationAction) {
-                        if !showingResult { Button("发送", systemImage: "paperplane.fill") { do { _ = try store.draft.validateForSending(); confirmSend = true } catch { self.error = error.localizedDescription } }.disabled(!editable || (try? store.draft.validateForSending()) == nil).accessibilityIdentifier("send-mail") }
+                        if !showingResult { Button("发送") { do { _ = try store.draft.validateForSending(); confirmSend = true } catch { self.error = error.localizedDescription } }.disabled(!editable || (try? store.draft.validateForSending()) == nil).accessibilityIdentifier("send-mail") }
                     }
                 }
                 .interactiveDismissDisabled(store.sending || store.draftSaveFailed || !store.draft.isEmpty)
-                .confirmationDialog("发送这封邮件？", isPresented: $confirmSend, titleVisibility: .visible) {
+                .alert("发送这封邮件？", isPresented: $confirmSend) {
                     Button("确认发送") { Task { do { try await store.send() } catch { self.error = error.localizedDescription } } }
                     Button("取消", role: .cancel) {}
                 } message: { Text("发件人：\(store.selected?.email ?? "")\n收件人：\(store.draft.to)\n抄送：\(store.draft.cc.isEmpty ? "无" : store.draft.cc)\n密送：\(store.draft.bcc.isEmpty ? "无" : store.draft.bcc)\n\(store.draft.subject)\n附件：\(store.draft.attachments.count) 个") }
-                .confirmationDialog("离开写信？", isPresented: $confirmExit, titleVisibility: .visible) {
+                .alert("离开写信？", isPresented: $confirmExit) {
                     Button("保存并返回") { do { try store.saveDraft(); dismiss() } catch { self.error = error.localizedDescription } }
                     Button(store.draft.state == .editing ? "继续编辑" : "继续查看", role: .cancel) {}
                     if store.draft.state == .editing || store.draft.state == .sent {
@@ -112,7 +113,9 @@ struct ComposerView: View {
                             Divider(); address("抄送", target: "cc", binding: field(\.cc))
                             Divider(); address("密送", target: "bcc", binding: field(\.bcc))
                         }
-                        Button(copies ? "收起抄送与密送" : "抄送 / 密送") { copies.toggle() }.font(.caption).frame(maxWidth: .infinity, minHeight: 36, alignment: .trailing)
+                        if store.draft.cc.isEmpty && store.draft.bcc.isEmpty {
+                            Button(copies ? "收起抄送与密送" : "抄送 / 密送") { copies.toggle() }.font(.caption).frame(maxWidth: .infinity, minHeight: 44, alignment: .trailing)
+                        }
                         Divider()
                         if dynamicTypeSize.isAccessibilitySize {
                             VStack(alignment: .leading, spacing: 8) { fieldLabel("主题"); subjectField }.padding(.vertical, 12)
@@ -253,12 +256,12 @@ struct ComposerView: View {
         if dynamicTypeSize.isAccessibilitySize {
             VStack(alignment: .leading, spacing: 4) {
                 HStack { fieldLabel(title); Spacer(); recipientButton(title, target: target) }
-                RecipientEntry(value: binding, identifier: "compose-" + target)
+                RecipientEntry(value: binding, identifier: "compose-" + target, contacts: store.contacts)
             }.padding(.vertical, 8)
         } else {
             HStack(alignment: .top, spacing: 8) {
                 fieldLabel(title).frame(width: 56, alignment: .leading).padding(.top, 14)
-                RecipientEntry(value: binding, identifier: "compose-" + target).padding(.vertical, 6)
+                RecipientEntry(value: binding, identifier: "compose-" + target, contacts: store.contacts).padding(.vertical, 6)
                 recipientButton(title, target: target)
             }.frame(minHeight: 48)
         }
@@ -316,6 +319,7 @@ struct RecipientPicker: View {
 struct RecipientEntry: View {
     @Binding var value: String
     let identifier: String
+    var contacts: [MailContact] = []
     @State private var chips: [String] = []
     @State private var input = ""
     @FocusState private var focused: Bool
@@ -324,7 +328,8 @@ struct RecipientEntry: View {
         RecipientFlow(spacing: 6) {
             ForEach(chips, id: \.self) { email in
                 HStack(spacing: 4) {
-                    Text(email).lineLimit(1).truncationMode(.middle)
+                    Text(recipientName(email)).lineLimit(1).truncationMode(.middle).accessibilityLabel(recipientName(email) == email ? email : recipientName(email) + "，" + email)
+                        .contextMenu { Button("复制邮箱地址", systemImage: "doc.on.doc") { UIPasteboard.general.string = email } }
                     Button { chips.removeAll { $0 == email }; persist() } label: { Image(systemName: "xmark").font(.caption).frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("移除收件人 \(email)")
                 }.font(.subheadline).padding(.leading, 8).foregroundStyle(MailTheme.blue).background(MailTheme.blue.opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
             }
@@ -335,6 +340,10 @@ struct RecipientEntry: View {
                 .onChange(of: focused) { _, active in if !active { commit() } }
         }.accessibilityElement(children: .contain).accessibilityIdentifier(identifier).accessibilityValue(value)
             .onAppear { load() }.onChange(of: value) { _, newValue in if newValue != serialized { load() } }
+    }
+    private func recipientName(_ email: String) -> String {
+        let name = contacts.first { $0.email.caseInsensitiveCompare(email) == .orderedSame }?.name.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return name.isEmpty ? email : name
     }
     private func persist() { if value != serialized { value = serialized } }
     private func load() {
@@ -355,16 +364,20 @@ struct RecipientFlow: Layout {
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize { arrange(width: proposal.width ?? 260, subviews: subviews).size }
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         let layout = arrange(width: bounds.width, subviews: subviews)
-        for (index, point) in layout.positions.enumerated() { subviews[index].place(at: CGPoint(x: bounds.minX + point.x, y: bounds.minY + point.y), proposal: ProposedViewSize(width: min(subviews[index].sizeThatFits(.unspecified).width, bounds.width), height: nil)) }
-    }
-    private func arrange(width: CGFloat, subviews: Subviews) -> (size: CGSize, positions: [CGPoint]) {
-        let width = max(1, width); var x: CGFloat = 0; var y: CGFloat = 0; var height: CGFloat = 0; var positions: [CGPoint] = []
-        for view in subviews {
-            let size = view.sizeThatFits(ProposedViewSize(width: width, height: nil))
-            let itemWidth = min(size.width, width)
-            if x > 0 && x + itemWidth > width { y += height + spacing; x = 0; height = 0 }
-            positions.append(CGPoint(x: x, y: y)); x += itemWidth + spacing; height = max(height, size.height)
+        for (index, point) in layout.positions.enumerated() {
+            subviews[index].place(at: CGPoint(x: bounds.minX + point.x, y: bounds.minY + point.y), proposal: ProposedViewSize(layout.sizes[index]))
         }
-        return (CGSize(width: width, height: y + height), positions)
+    }
+    private func arrange(width: CGFloat, subviews: Subviews) -> (size: CGSize, positions: [CGPoint], sizes: [CGSize]) {
+        let width = max(1, width); var x: CGFloat = 0; var y: CGFloat = 0; var height: CGFloat = 0
+        var positions: [CGPoint] = []; var sizes: [CGSize] = []
+        for view in subviews {
+            let itemWidth = min(view.sizeThatFits(.unspecified).width, width)
+            let size = view.sizeThatFits(ProposedViewSize(width: itemWidth, height: nil))
+            if x > 0 && x + itemWidth > width { y += height + spacing; x = 0; height = 0 }
+            positions.append(CGPoint(x: x, y: y)); sizes.append(CGSize(width: itemWidth, height: size.height))
+            x += itemWidth + spacing; height = max(height, size.height)
+        }
+        return (CGSize(width: width, height: y + height), positions, sizes)
     }
 }

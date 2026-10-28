@@ -86,6 +86,7 @@ final class LaunchTests: XCTestCase {
         // No Validate tap: no credentials leave the simulator.
     }
     private func attach(_ name: String) {
+        Thread.sleep(forTimeInterval: 0.5)
         let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
     }
@@ -246,7 +247,11 @@ final class WorkspaceTests: XCTestCase {
         app.buttons["选择邮件"].firstMatch.tap()
         XCTAssertFalse(app.tabBars.firstMatch.exists); attach("redesign-bulk-selection")
         app.buttons["移动"].tap()
-        XCTAssertTrue(app.buttons["取消"].waitForExistence(timeout: 5)); attach("redesign-move-picker")
+        XCTAssertTrue(app.buttons["取消"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["移动 1 封邮件"].exists)
+        let currentFolder = app.buttons.containing(.staticText, identifier: "当前位置").firstMatch
+        XCTAssertTrue(currentFolder.exists); XCTAssertFalse(currentFolder.isEnabled)
+        attach("redesign-move-picker")
         app.buttons["取消"].tap(); app.buttons["完成"].firstMatch.tap()
         app.buttons["邮箱与文件夹"].tap()
         XCTAssertTrue(app.buttons["所有收件箱"].waitForExistence(timeout: 5)); attach("redesign-mailboxes")
@@ -354,7 +359,9 @@ final class WorkspaceTests: XCTestCase {
         let cell = app.cells.containing(.staticText, identifier: "项目资料确认与下一步安排").firstMatch
         cell.swipeRight(); attach("redesign-mail-swipe-actions")
         app.buttons["已读"].firstMatch.tap()
-        XCTAssertTrue(app.buttons["撤销"].waitForExistence(timeout: 5)); attach("redesign-mail-undo")
+        XCTAssertTrue(app.buttons["撤销"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["撤销"].frame.intersects(app.buttons["compose-mail"].frame))
+        attach("redesign-mail-undo")
         app.buttons["撤销"].tap()
         app.cells.containing(.staticText, identifier: "项目资料确认与下一步安排").firstMatch.press(forDuration: 1.2)
         XCTAssertTrue(app.buttons["标为已读"].waitForExistence(timeout: 5)); attach("redesign-mail-context-menu")
@@ -412,6 +419,7 @@ final class WorkspaceTests: XCTestCase {
     func testPageTourInDarkAndAccessibilitySizes() {
         for (dark, large, variant) in [(true, false, "dark"), (true, true, "dark-large"), (false, true, "light-large")] {
             let app = launch(dark: dark, large: large, extra: ["--ui-assistant"])
+            if large { XCTAssertLessThan(app.buttons["全部"].firstMatch.frame.height, 100) }
             attach("tour-" + variant + "-inbox")
             app.buttons["邮箱与文件夹"].tap(); attach("tour-" + variant + "-mailboxes")
             app.buttons["完成"].firstMatch.tap()
@@ -419,7 +427,9 @@ final class WorkspaceTests: XCTestCase {
             XCTAssertTrue(app.textFields["mail-search-input"].waitForExistence(timeout: 5)); attach("tour-" + variant + "-search")
             app.buttons["完成"].firstMatch.tap()
             app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap()
-            XCTAssertTrue(app.buttons["回复全部"].waitForExistence(timeout: 5)); attach("tour-" + variant + "-reader")
+            XCTAssertTrue(app.buttons["回复全部"].waitForExistence(timeout: 5))
+            if large { XCTAssertLessThan(app.buttons["回复全部"].frame.height, 80); XCTAssertTrue(app.buttons["回复全部"].isHittable) }
+            attach("tour-" + variant + "-reader")
             app.buttons["小邮助手"].tap(); attach("tour-" + variant + "-assistant")
             app.buttons["提炼要点"].tap()
             XCTAssertTrue(app.buttons["开始处理"].waitForExistence(timeout: 5)); attach("tour-" + variant + "-scope")

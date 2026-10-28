@@ -121,7 +121,7 @@ struct AccountView: View {
             Section {
                 if setup.manualServers { Button("恢复自动服务器设置") { setup.restoreAutomaticServers(); error = nil } }
                 Text("使用服务商提供的服务器域名与加密设置。默认地址需要通过连接验证后才能使用。").font(.footnote).foregroundStyle(MailTheme.secondary)
-            }
+            }.listRowBackground(MailTheme.surface)
         }.textInputAutocapitalization(.never).autocorrectionDisabled().multilineTextAlignment(.trailing)
             .scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("高级设置").navigationBarTitleDisplayMode(.inline)
     }
