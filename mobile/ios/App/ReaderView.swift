@@ -5,11 +5,15 @@ import MailAICore
 
 struct ReaderView: View {
     let store: MailStore
-    let summary: MailSummary
+    @State private var summary: MailSummary
+    let thread: [MailSummary]
     @State private var ownerID: UUID?
     @State private var adoptedReply = false
     @State private var localFlag: Bool?
-    init(store: MailStore, summary: MailSummary) { self.store = store; self.summary = summary; _ownerID = State(initialValue: store.selectedID) }
+    init(store: MailStore, summary: MailSummary, thread: [MailSummary] = []) {
+        self.store = store; _summary = State(initialValue: summary); self.thread = thread
+        _ownerID = State(initialValue: store.selectedID)
+    }
     @State private var bodyContent: MailBody?
     @State private var error: String?
     @State private var plainText = false
@@ -21,6 +25,7 @@ struct ReaderView: View {
     @State private var externalURL: URL?
     @State private var previewURL: URL?
     @State private var downloading = false
+    @State private var downloadingID: String?
     @State private var assistant = false
     @State private var moving = false
     @State private var readTask: Task<Void, Never>?
@@ -33,14 +38,20 @@ struct ReaderView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                messageHeader
-                messageContents
+                Text((thread.first ?? summary).subject.isEmpty ? "（无主题）" : (thread.first ?? summary).subject).font(.title2.bold()).textSelection(.enabled)
+                if thread.count > 1 {
+                    ForEach(thread.sorted { ($0.date ?? .distantPast) < ($1.date ?? .distantPast) }) { item in
+                        if item.id == summary.id { messageHeader; messageContents }
+                        else { collapsedMessage(item) }
+                    }
+                } else { messageHeader; messageContents }
             }.padding(16)
         }.background(MailTheme.surface)
         .navigationTitle("邮件").navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
-                Button { archive() } label: { Image(systemName: "archivebox") }.accessibilityLabel("归档邮件").disabled(store.operating || store.selectedID != ownerID)
+                Button { moveToRole("trash") } label: { Image(systemName: "trash") }.accessibilityLabel("移到废纸篓").disabled(store.operating || store.selectedID != ownerID)
+                Button { moveToRole("archive") } label: { Image(systemName: "archivebox") }.accessibilityLabel("归档邮件").disabled(store.operating || store.selectedID != ownerID)
                 Menu {
                     if bodyContent?.html != nil { Button(plainText ? "查看原版" : "查看纯文本") { plainText.toggle() } }
                     Button("移动到…") { moving = true }
@@ -67,8 +78,12 @@ struct ReaderView: View {
         }
         .task(id: retry) { load() }
         .onDisappear { readTask?.cancel(); downloadTask?.cancel() }
+        .onChange(of: summary.id) { _, _ in
+            readTask?.cancel(); downloadTask?.cancel(); downloading = false; downloadingID = nil
+            bodyContent = nil; error = nil; details = false; htmlHeight = 260; localFlag = nil; load()
+        }
         .onChange(of: store.selectedID) { _, id in if id != ownerID { readTask?.cancel(); downloadTask?.cancel(); bodyContent = nil; error = "邮箱已切换，请返回列表重新打开这封邮件。" } }
-        .onChange(of: scenePhase) { _, phase in if phase != .active { readTask?.cancel(); downloadTask?.cancel(); downloading = false } else if bodyContent == nil { load() } }
+        .onChange(of: scenePhase) { _, phase in if phase != .active { readTask?.cancel(); downloadTask?.cancel(); downloading = false; downloadingID = nil } else if bodyContent == nil { load() } }
         .sheet(isPresented: $composing) { ComposerView(store: store) }
         .sheet(isPresented: $moving) { MovePicker(store: store, items: [summary]) }
         .sheet(isPresented: $assistant) {
@@ -85,7 +100,6 @@ struct ReaderView: View {
     }
     private var messageHeader: some View {
         VStack(alignment: .leading, spacing: 20) {
-                Text(summary.subject.isEmpty ? "（无主题）" : summary.subject).font(.system(.title2, design: .default, weight: .bold)).textSelection(.enabled)
                 HStack(alignment: .top, spacing: 12) {
                     SenderAvatar(name: summary.senderName ?? summary.sender, size: 40)
                     VStack(alignment: .leading, spacing: 4) {
@@ -121,9 +135,10 @@ struct ReaderView: View {
                                         HStack(spacing: 12) {
                                             Image(systemName: "doc.text").font(.title3)
                                             VStack(alignment: .leading, spacing: 4) { Text(item.name).font(.subheadline).foregroundStyle(MailTheme.ink).lineLimit(2); Text(ByteCountFormatter.string(fromByteCount: Int64(item.size), countStyle: .file)).font(.caption).foregroundStyle(MailTheme.secondary) }
-                                            Spacer(); Image(systemName: "arrow.down.circle")
+                                            Spacer(); if downloadingID == item.id { ProgressView().controlSize(.small) } else { Image(systemName: "arrow.down.circle") }
                                         }.padding(12).frame(minHeight: 56).background(MailTheme.canvas, in: RoundedRectangle(cornerRadius: 12))
                                     }.disabled(downloading)
+                                    if downloadingID == item.id { Button("取消下载") { downloadTask?.cancel(); downloading = false; downloadingID = nil }.font(.footnote).frame(minHeight: 44) }
                                 }
                             }.padding(.top, 12)
                         }.font(.subheadline).padding(.top, 8)
@@ -132,13 +147,26 @@ struct ReaderView: View {
                 } else if let error {
                     ContentUnavailableView { Label("暂时无法阅读", systemImage: "wifi.exclamationmark") } description: { Text(error) } actions: { Button("重试") { retry += 1 } }
                 } else { ProgressView("加载正文…").frame(maxWidth: .infinity, minHeight: 220) }
-                if downloading { HStack { ProgressView(); Text("正在下载附件…"); Spacer(); Button("取消") { downloadTask?.cancel(); downloading = false } }.font(.footnote) }
+                if downloading && downloadingID == nil { HStack { ProgressView(); Text("正在下载附件…"); Spacer(); Button("取消") { downloadTask?.cancel(); downloading = false } }.font(.footnote) }
                 if bodyContent != nil, let error { MailNotice(text: error, critical: true) }
     }
-    private func archive() {
+    private func collapsedMessage(_ item: MailSummary) -> some View {
+        Button { summary = item } label: {
+            HStack(alignment: .top, spacing: 12) {
+                SenderAvatar(name: item.senderName ?? item.sender, size: 40)
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack { Text(item.senderName ?? item.sender).font(.subheadline.weight(.semibold)).foregroundStyle(MailTheme.ink); Spacer(); if let date = item.date { Text(date.formatted(date: .abbreviated, time: .shortened)).font(.caption2).foregroundStyle(MailTheme.secondary) } }
+                    Text(item.preview ?? item.subject).font(.subheadline).foregroundStyle(MailTheme.secondary).lineLimit(1)
+                }
+                Image(systemName: "chevron.down").font(.caption).padding(.top, 4)
+            }.padding(.vertical, 12).frame(minHeight: 64).overlay(alignment: .bottom) { Divider() }
+        }.buttonStyle(.plain).accessibilityLabel("展开会话邮件：" + (item.senderName ?? item.sender))
+    }
+    private func moveToRole(_ role: String) {
         guard store.selectedID == ownerID else { return }
-        guard let target = store.selected?.archiveFolder ?? store.folders.first(where: { $0.role == "archive" || $0.title == "归档" })?.name else { moving = true; return }
-        Task { do { try await store.perform(.move(target), on: [summary]); dismiss() } catch { self.error = "归档未完成，请刷新核对服务器状态。" } }
+        let configured = role == "trash" ? store.selected?.trashFolder : store.selected?.archiveFolder
+        guard let target = configured ?? store.folders.first(where: { $0.role == role || $0.title == (role == "trash" ? "废纸篓" : "归档") })?.name else { moving = true; return }
+        Task { do { try await store.perform(.move(target), on: [summary]); dismiss() } catch { self.error = "操作未完成，请刷新核对服务器状态。" } }
     }
     private var currentFlag: Bool { localFlag ?? store.messages.first(where: { $0.id == summary.id })?.isFlagged ?? summary.isFlagged ?? false }
     private func load() {
@@ -164,11 +192,11 @@ struct ReaderView: View {
         catch { self.error = error.localizedDescription }
     }
     private func download(_ item: MailAttachment) {
-        downloading = true; error = nil
+        downloading = true; downloadingID = item.id; error = nil
         downloadTask = Task {
             do { let data = try await store.attachmentData(item, summary: summary); try Task.checkCancellation(); previewURL = try previewFile(name: item.name, data: data) }
             catch { if !Task.isCancelled { self.error = error.localizedDescription } }
-            if !Task.isCancelled { downloading = false }
+            if !Task.isCancelled { downloading = false; downloadingID = nil }
         }
     }
     private func forwardWithAttachments() {

@@ -167,11 +167,11 @@ struct InboxView: View {
                             } else if grouped {
                                 ForEach(MailThread.group(filtered)) { thread in
                                     if thread.messages.count == 1, let message = thread.messages.first {
-                                        NavigationLink { ReaderView(store: store, summary: message) } label: { MailRow(summary: message) }
+                                        NavigationLink { ReaderView(store: store, summary: message, thread: thread.messages) } label: { MailRow(summary: message) }
                                     } else {
                                         DisclosureGroup {
                                             ForEach(thread.messages) { message in
-                                                NavigationLink { ReaderView(store: store, summary: message) } label: { MailRow(summary: message) }
+                                                NavigationLink { ReaderView(store: store, summary: message, thread: thread.messages) } label: { MailRow(summary: message) }
                                             }
                                         } label: {
                                             VStack(alignment: .leading, spacing: 4) {

@@ -253,6 +253,19 @@ final class WorkspaceTests: XCTestCase {
         app.buttons["更多邮件操作"].tap(); app.buttons["查看纯文本"].tap()
         XCTAssertFalse(app.webViews.firstMatch.exists); attach("redesign-plain-reader")
     }
+    func testConversationExpandsActualMessages() {
+        let app = launch(extra: ["--ui-threads"])
+        app.buttons["更多邮件操作"].tap(); app.buttons["按会话显示"].tap()
+        app.buttons.containing(.staticText, identifier: "项目资料确认与下一步安排").firstMatch.tap()
+        let reply = app.staticTexts["Re: 项目资料确认与下一步安排"].firstMatch
+        XCTAssertTrue(reply.waitForExistence(timeout: 5)); attach("redesign-conversation-list")
+        reply.tap()
+        let older = app.buttons["展开会话邮件：测试联系人"]
+        XCTAssertTrue(older.waitForExistence(timeout: 5)); attach("redesign-conversation-reader")
+        older.tap()
+        XCTAssertTrue(app.buttons["展开会话邮件：设计团队"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["回复全部"].exists)
+    }
     func testStorageFailureOffersRetryWithoutDeletingData() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-fixture", "--ui-storage-error"]; app.launch()
         XCTAssertTrue(app.buttons["重试"].waitForExistence(timeout: 5)); attach("redesign-storage-error")

@@ -48,6 +48,9 @@ import MailAICore
             extra.senderName = senders[index]; extra.preview = "仅用于界面验收的合成内容，请确认下一步安排。"; extra.isFlagged = index == 0; extra.hasAttachments = index == 1
             result.append(extra)
         }
+        if CommandLine.arguments.contains("--ui-threads"), result.count > 1 {
+            result[1].parentMessageID = item.messageID; result[1].subject = "Re: " + item.subject
+        }
         return result
     }
     static func store() throws -> MailStore {
