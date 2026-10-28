@@ -135,6 +135,25 @@ private actor FeatureService: MailService {
         XCTAssertEqual(actions, [.move("Archive"), .move("INBOX")])
         let undoUIDs = await service.recordedUIDs(); XCTAssertEqual(undoUIDs, [107])
     }
+    func testLegacyBodyRemainsReadableAndCanAcquireAttachmentMetadata() async throws {
+        struct LegacyBody: Encodable { let text: String; let html: String? }
+        let (store, _, _, files) = try await setup()
+        let summary = FeatureService.item()
+        try files.write(LegacyBody(text: "旧正文", html: nil), account: store.selectedID!, key: "body:" + summary.id)
+        let cached = try await store.body(for: summary)
+        XCTAssertEqual(cached.text, "旧正文"); XCTAssertNil(cached.attachments)
+        let upgraded = try await store.body(for: summary, refreshMetadata: true)
+        XCTAssertEqual(upgraded.text, "synthetic"); XCTAssertEqual(upgraded.attachments, [])
+        let reread = try await store.body(for: summary); XCTAssertEqual(reread.attachments, [])
+    }
+    func testEditingContactEmailReplacesOnlyThatContact() async throws {
+        let (store, _, _, _) = try await setup()
+        try store.saveContact(.init(email: "first@example.com", note: "保留备注"))
+        try store.saveContact(.init(email: "other@example.com", note: "其他联系人"))
+        try store.saveContact(.init(email: "changed@example.com", note: "保留备注"), replacingEmail: "first@example.com")
+        XCTAssertFalse(store.contacts.contains { $0.email == "first@example.com" })
+        XCTAssertEqual(Set(store.contacts.map(\.email)), Set(["changed@example.com", "other@example.com"]))
+    }
     func testAttachmentNamesCannotEscapePreviewDirectory() {
         XCTAssertEqual(MailAttachment.safeName("..\\..\\file.txt"), "file.txt")
         XCTAssertFalse(MailAttachment.safeName("x\r\ny.txt").contains("\n"))

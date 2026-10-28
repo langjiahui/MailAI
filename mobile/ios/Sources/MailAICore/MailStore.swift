@@ -139,9 +139,9 @@ public extension MailService {
             if generation == token { busy = false }
         }
     }
-    public func body(for summary: MailSummary) async throws -> MailBody {
+    public func body(for summary: MailSummary, refreshMetadata: Bool = false) async throws -> MailBody {
         let entry = try credential()
-        if let cached = try files.read(MailBody.self, account: entry.account.id, key: "body:" + summary.id) { return cached }
+        if let cached = try files.read(MailBody.self, account: entry.account.id, key: "body:" + summary.id), !refreshMetadata || cached.attachments != nil { return cached }
         let result = try await service.read(entry, summary: summary)
         try Task.checkCancellation()
         try files.write(result.body, account: entry.account.id, key: "body:" + summary.id)
@@ -376,11 +376,12 @@ public extension MailService {
         var next = credentials; next[index] = entry; try vault.save(next)
         credentials = next; accounts = next.map(\.account)
     }
-    public func saveContact(_ contact: MailContact) throws {
+    public func saveContact(_ contact: MailContact, replacingEmail: String? = nil) throws {
         guard let id = selectedID, MailValidation.isAddress(contact.email), !MailValidation.hasControl(contact.name), !MailValidation.hasControl(contact.note) else { throw MailFailure.invalid("请填写有效的联系人邮箱。") }
         var edited = contact; edited.manuallyEdited = true
-        contacts.removeAll { $0.id == edited.id }; contacts.append(edited)
-        try files.write(contacts, account: id, key: "contacts")
+        var updated = contacts.filter { $0.id != edited.id && $0.id != replacingEmail?.lowercased() }
+        updated.append(edited)
+        try files.write(updated, account: id, key: "contacts"); contacts = updated
     }
     private func learnContacts(_ addresses: [String]) throws {
         guard let id = selectedID else { return }

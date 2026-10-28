@@ -125,6 +125,7 @@ struct MailSearchView: View {
                 .onChange(of: query) { _, _ in task?.cancel(); working = false; error = nil }
                 .overlay { if working { ProgressView("正在搜索…").padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16)) } }
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } } }
+                .onAppear { if !completedQuery.isEmpty && completedQuery == query { search() } }
                 .onDisappear { task?.cancel() }
         }
     }
@@ -175,7 +176,11 @@ struct ContactsView: View {
 struct ContactEditor: View {
     let store: MailStore
     @State var contact: MailContact
+    let originalEmail: String
     let compose: (String) -> Void
+    init(store: MailStore, contact: MailContact, compose: @escaping (String) -> Void) {
+        self.store = store; _contact = State(initialValue: contact); originalEmail = contact.email; self.compose = compose
+    }
     @Environment(\.dismiss) private var dismiss
     @State private var error: String?
     var body: some View {
@@ -188,7 +193,7 @@ struct ContactEditor: View {
                 Button("写邮件") { dismiss(); compose(contact.email) }.disabled(!MailValidation.isAddress(contact.email))
             }.navigationTitle("联系人").toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("保存") { do { try store.saveContact(contact); dismiss() } catch { self.error = error.localizedDescription } } }
+                ToolbarItem(placement: .confirmationAction) { Button("保存") { do { try store.saveContact(contact, replacingEmail: originalEmail); dismiss() } catch { self.error = error.localizedDescription } } }
             }
         }
     }

@@ -35,7 +35,7 @@ import MailAICore
                 guard store.error == nil, !store.accounts.isEmpty else { throw MailFailure.missingPassword }
                 try await store.refreshAllInboxes(); try Task.checkCancellation()
                 let inbox = try store.cachedInbox()
-                await notify(inbox)
+                await notify(inbox); try Task.checkCancellation()
                 UserDefaults.standard.set(Date(), forKey: "mail.backgroundDate")
                 UserDefaults.standard.set("后台检查成功", forKey: "mail.backgroundStatus")
                 success = true

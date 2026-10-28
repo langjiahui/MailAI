@@ -8,6 +8,7 @@ struct ReaderView: View {
     let summary: MailSummary
     @State private var ownerID: UUID?
     @State private var adoptedReply = false
+    @State private var localFlag: Bool?
     init(store: MailStore, summary: MailSummary) { self.store = store; self.summary = summary; _ownerID = State(initialValue: store.selectedID) }
     @State private var bodyContent: MailBody?
     @State private var error: String?
@@ -71,6 +72,7 @@ struct ReaderView: View {
             } else if let error {
                 ContentUnavailableView { Label("暂时无法阅读", systemImage: "wifi.exclamationmark") } description: { Text(error) } actions: { Button("重试") { retry += 1 } }
             } else { Spacer(); ProgressView("加载正文…"); Spacer() }
+            if bodyContent != nil && bodyContent?.attachments == nil { Text("附件信息等待联网更新，已缓存的正文仍可阅读。").font(.caption).foregroundStyle(.secondary).padding(.horizontal) }
             if downloading { HStack { ProgressView(); Text("正在下载附件…"); Spacer(); Button("取消") { downloadTask?.cancel(); downloading = false } }.font(.footnote).padding() }
             if bodyContent != nil, let error { Text(error).font(.footnote).foregroundStyle(.red).padding(.horizontal) }
         }.background(MailTheme.surface)
@@ -81,7 +83,10 @@ struct ReaderView: View {
                 Menu {
                     if bodyContent?.html != nil { Button(plainText ? "查看原版" : "查看纯文本") { plainText.toggle() } }
                     Button("移动到…") { moving = true }
-                    Button(currentFlag ? "取消星标" : "添加星标") { Task { do { try await store.perform(.flagged(!currentFlag), on: [summary]) } catch { self.error = "标记失败，请刷新核对。" } } }
+                    Button(currentFlag ? "取消星标" : "添加星标") {
+                        let next = !currentFlag
+                        Task { do { try await store.perform(.flagged(next), on: [summary]); localFlag = next } catch { self.error = "标记失败，请刷新核对。" } }
+                    }
                 } label: { Image(systemName: "ellipsis.circle") }.accessibilityLabel("更多邮件操作")
             }
         }
@@ -117,11 +122,21 @@ struct ReaderView: View {
             if let url = externalURL { Button("打开链接") { openURL(url); externalURL = nil } }
         } message: { Text(externalURL?.host ?? "") }
     }
-    private var currentFlag: Bool { store.messages.first(where: { $0.id == summary.id })?.isFlagged ?? summary.isFlagged ?? false }
+    private var currentFlag: Bool { localFlag ?? store.messages.first(where: { $0.id == summary.id })?.isFlagged ?? summary.isFlagged ?? false }
     private func load() {
         error = nil; readTask?.cancel()
         readTask = Task {
-            do { let result = try await store.body(for: summary); try Task.checkCancellation(); guard store.selectedID == ownerID else { throw CancellationError() }; bodyContent = result; try? await store.markReadIfNeeded(summary) }
+            do {
+                let result = try await store.body(for: summary); try Task.checkCancellation()
+                guard store.selectedID == ownerID else { throw CancellationError() }
+                bodyContent = result
+                if result.attachments == nil {
+                    if let upgraded = try? await store.body(for: summary, refreshMetadata: true) {
+                        try Task.checkCancellation(); guard store.selectedID == ownerID else { throw CancellationError() }
+                        bodyContent = upgraded
+                    }
+                } else { try? await store.markReadIfNeeded(summary) }
+            }
             catch { if !Task.isCancelled { self.error = (error as? MailFailure)?.localizedDescription ?? "请检查网络后重试，已缓存的正文可离线阅读。" } }
         }
     }
