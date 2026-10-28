@@ -133,7 +133,7 @@ struct ReaderView: View {
                     ContentUnavailableView { Label("暂时无法阅读", systemImage: "wifi.exclamationmark") } description: { Text(error) } actions: { Button("重试") { retry += 1 } }
                 } else { ProgressView("加载正文…").frame(maxWidth: .infinity, minHeight: 220) }
                 if downloading { HStack { ProgressView(); Text("正在下载附件…"); Spacer(); Button("取消") { downloadTask?.cancel(); downloading = false } }.font(.footnote) }
-                if bodyContent != nil, let error { MailNotice(text: error) }
+                if bodyContent != nil, let error { MailNotice(text: error, critical: true) }
     }
     private func archive() {
         guard store.selectedID == ownerID else { return }

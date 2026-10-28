@@ -308,17 +308,26 @@ struct InboxView: View {
 struct MailRow: View {
     let summary: MailSummary
     var account: String? = nil
+    var keyword = ""
+    private func matched(_ value: String) -> Text {
+        var text = AttributedString(value)
+        if !keyword.isEmpty, let range = text.range(of: keyword, options: [.caseInsensitive, .diacriticInsensitive]) {
+            text[range].backgroundColor = MailTheme.blue.opacity(0.12)
+            text[range].foregroundColor = MailTheme.blue
+        }
+        return Text(text)
+    }
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Circle().fill(summary.unread ? MailTheme.blue : .clear).frame(width: 7, height: 7).padding(.top, 6).accessibilityLabel(summary.unread ? "未读" : "")
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(summary.senderName?.isEmpty == false ? summary.senderName! : summary.sender).font(.subheadline.weight(summary.unread ? .semibold : .regular)).lineLimit(1)
+                    matched(summary.senderName?.isEmpty == false ? summary.senderName! : summary.sender).font(.subheadline.weight(summary.unread ? .semibold : .regular)).lineLimit(1)
                     Spacer(minLength: 8)
                     if let date = summary.date { Text(Calendar.current.isDateInToday(date) ? date.formatted(date: .omitted, time: .shortened) : date.formatted(.dateTime.month().day())).font(.caption2).foregroundStyle(.secondary) }
                 }
-                Text(summary.subject.isEmpty ? "（无主题）" : summary.subject).font(.subheadline.weight(summary.unread ? .semibold : .regular)).lineLimit(1)
-                if let preview = summary.preview, !preview.isEmpty { Text(preview).font(.subheadline).foregroundStyle(MailTheme.secondary).lineLimit(1) }
+                matched(summary.subject.isEmpty ? "（无主题）" : summary.subject).font(.subheadline.weight(summary.unread ? .semibold : .regular)).lineLimit(1)
+                if let preview = summary.preview, !preview.isEmpty { matched(preview).font(.subheadline).foregroundStyle(MailTheme.secondary).lineLimit(1) }
                 HStack(spacing: 7) {
                     if summary.isFlagged == true { Image(systemName: "star.fill").foregroundStyle(.orange) }
                     if summary.hasAttachments == true { Image(systemName: "paperclip") }

@@ -61,7 +61,7 @@ struct AccountDetailView: View {
                 Section {
                     Button("移除此邮箱", role: .destructive) { confirmRemoval = true }.disabled(store.sending || store.operating)
                 }
-                if let error { MailNotice(text: error) }
+                if let error { MailNotice(text: error, critical: true) }
             }
         }.scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("邮箱设置").navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .tabBar)

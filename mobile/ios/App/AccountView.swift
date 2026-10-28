@@ -65,7 +65,7 @@ struct AccountView: View {
                     if let provider = setup.provider { Text(provider.passwordHint).font(.footnote).foregroundStyle(MailTheme.secondary) }
                     if editingAccount != nil { Text("不修改密码可留空，保存时验证已有凭据。").font(.footnote).foregroundStyle(MailTheme.secondary) }
                 }.disabled(testing)
-                if let error { MailNotice(text: error, symbol: "exclamationmark.triangle").accessibilityIdentifier("account-error") }
+                if let error { MailNotice(text: error, symbol: "exclamationmark.triangle", critical: true).accessibilityIdentifier("account-error") }
                 VStack(spacing: 12) {
                     Button(action: connect) {
                         HStack(spacing: 8) { if testing { ProgressView().tint(.white) }; Text(testing ? "正在验证…" : (editingAccount == nil ? "验证并添加" : "验证并保存")) }

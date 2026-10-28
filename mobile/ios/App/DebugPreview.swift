@@ -10,16 +10,30 @@ import MailAICore
         func save(_ values: [AccountCredential]) throws { credentials = values }
     }
     private struct Service: MailService {
-        func validate(_ credential: AccountCredential) async throws {}
+        func validate(_ credential: AccountCredential) async throws {
+            if CommandLine.arguments.contains("--ui-account-failure") {
+                try await Task.sleep(for: .seconds(2))
+                throw MailFailure.invalid("收信连接未完成，请检查密码／授权码或服务器设置。")
+            }
+        }
         func folders(_ credential: AccountCredential) async throws -> [MailFolder] { [.init(name: "INBOX"), .init(name: "Archive"), .init(name: "Sent")] }
-        func summaries(_ credential: AccountCredential, folder: String, limit: Int) async throws -> [MailSummary] { DebugPreview.messages(folder: folder) }
+        func summaries(_ credential: AccountCredential, folder: String, limit: Int) async throws -> [MailSummary] {
+            if CommandLine.arguments.contains("--ui-offline") { throw MailFailure.invalid("合成离线状态") }
+            return CommandLine.arguments.contains("--ui-empty-inbox") ? [] : DebugPreview.messages(folder: folder)
+        }
         func read(_ credential: AccountCredential, summary: MailSummary) async throws -> ReadResult {
-            .init(body: .init(text: "这是一封用于界面验收的合成邮件。\n请于周五前确认测试材料。", html: nil,
+            if CommandLine.arguments.contains("--ui-read-failure") { throw MailFailure.invalid("合成正文读取失败，可重试。") }
+            let html: String? = CommandLine.arguments.contains("--ui-html") ? "<p>这是一封合成 HTML 邮件。</p><p><a href='https://example.com'>测试外部链接</a></p>" : nil
+            return .init(body: .init(text: "这是一封用于界面验收的合成邮件。\n请于周五前确认测试材料。", html: html,
                 attachments: [.init(id: "2", name: "测试说明.txt", mimeType: "text/plain", size: 9)],
                 recipients: [.init(name: "测试用户", email: "demo@example.com"), .init(name: "协作人", email: "team@example.com")]), markedRead: true)
         }
         func send(_ credential: AccountCredential, draft: MailDraft) async throws { throw SubmissionFailure(uncertain: false) }
-        func attachment(_ credential: AccountCredential, summary: MailSummary, attachment: MailAttachment) async throws -> Data { Data("synthetic".utf8) }
+        func attachment(_ credential: AccountCredential, summary: MailSummary, attachment: MailAttachment) async throws -> Data {
+            if CommandLine.arguments.contains("--ui-attachment-slow") { try await Task.sleep(for: .seconds(4)) }
+            if CommandLine.arguments.contains("--ui-attachment-failure") { throw MailFailure.invalid("合成附件下载失败，正文保留。") }
+            return Data("synthetic".utf8)
+        }
         func perform(_ credential: AccountCredential, summaries: [MailSummary], action: MailAction) async throws {}
         func archiveSent(_ credential: AccountCredential, draft: MailDraft) async throws {}
     }
@@ -39,10 +53,16 @@ import MailAICore
     static func store() throws -> MailStore {
         var account = MailAccount(); account.email = "demo@example.com"; account.displayName = "测试邮箱"; account.suggestServers()
         let files = try MailFiles(root: FileManager.default.temporaryDirectory.appendingPathComponent("MailAI-UI-" + UUID().uuidString))
-        try files.write(messages(folder: "INBOX"), account: account.id, key: "list:INBOX")
+        try files.write(CommandLine.arguments.contains("--ui-empty-inbox") ? [] : messages(folder: "INBOX"), account: account.id, key: "list:INBOX")
         try files.write([MailContact(email: "team@example.com", name: "协作联系人", note: "项目组")], account: account.id, key: "contacts")
+        if CommandLine.arguments.contains("--ui-records") {
+            var editing = MailDraft(); editing.to = "draft@example.com"; editing.subject = "合成待办草稿"; editing.text = "用于设计验收的草稿正文。"
+            var unknown = MailDraft(); unknown.to = "unknown@example.com"; unknown.subject = "合成待确认记录"; unknown.text = "发送结果需要核对。"; unknown.state = .uncertain
+            var sent = MailDraft(); sent.to = "sent@example.com"; sent.subject = "合成副本待存档"; sent.text = "服务器已接受的合成内容。"; sent.state = .sent; sent.sentCopyPending = true
+            try files.write([editing, unknown, sent], account: account.id, key: "drafts-v2")
+        }
         UserDefaults.standard.set(CommandLine.arguments.contains("--ui-dark") ? "dark" : "light", forKey: "mail.appearance")
-        return MailStore(vault: Vault([.init(account: account, password: "synthetic-ui-only")]), files: files, service: Service())
+        return MailStore(vault: Vault(CommandLine.arguments.contains("--ui-empty-accounts") ? [] : [.init(account: account, password: "synthetic-ui-only")]), files: files, service: Service())
     }
 }
 #endif

@@ -76,7 +76,7 @@ struct ComposerView: View {
                         Button("撤回润色") { store.updateDraft { $0.text = undoText; $0.html = nil }; self.undoText = nil; adoptedText = nil }.font(.subheadline).frame(minHeight: 44)
                     }
                     VStack(alignment: .leading, spacing: 8) { status }.padding(.vertical, 16)
-                    if let error { MailNotice(text: error).padding(.bottom, 12) }
+                    if let error { MailNotice(text: error, critical: true).padding(.bottom, 12) }
                 }.padding(.horizontal, 16)
             }.scrollDismissesKeyboard(.interactively)
             .navigationTitle("写邮件").navigationBarTitleDisplayMode(.inline)
@@ -91,12 +91,12 @@ struct ComposerView: View {
                 .interactiveDismissDisabled(store.sending || store.draftSaveFailed || !store.draft.isEmpty)
                 .confirmationDialog("发送这封邮件？", isPresented: $confirmSend, titleVisibility: .visible) {
                     Button("确认发送") { Task { do { try await store.send() } catch { self.error = error.localizedDescription } } }
-                } message: { Text("收件人：\(store.draft.to)\n抄送：\(store.draft.cc.isEmpty ? "无" : store.draft.cc)\n密送：\(store.draft.bcc.isEmpty ? "无" : store.draft.bcc)\n\(store.draft.subject)\n附件：\(store.draft.attachments.count) 个") }
+                } message: { Text("发件人：\(store.selected?.email ?? "")\n收件人：\(store.draft.to)\n抄送：\(store.draft.cc.isEmpty ? "无" : store.draft.cc)\n密送：\(store.draft.bcc.isEmpty ? "无" : store.draft.bcc)\n\(store.draft.subject)\n附件：\(store.draft.attachments.count) 个") }
                 .confirmationDialog("离开写信？", isPresented: $confirmExit, titleVisibility: .visible) {
                     Button("保存并返回") { do { try store.saveDraft(); dismiss() } catch { self.error = error.localizedDescription } }
-                    Button("继续编辑", role: .cancel) {}
+                    Button(store.draft.state == .editing ? "继续编辑" : "继续查看", role: .cancel) {}
                     if store.draft.state == .editing || store.draft.state == .sent {
-                        Button("放弃本地草稿／记录", role: .destructive) { do { try store.discardDraft(store.draft.id); dismiss() } catch { self.error = error.localizedDescription } }
+                        Button(store.draft.state == .editing ? "放弃草稿" : "删除本机发送记录", role: .destructive) { do { try store.discardDraft(store.draft.id); dismiss() } catch { self.error = error.localizedDescription } }
                     }
                 }
                 .confirmationDialog("仅在确认上一封没有送达后继续，避免重复发送。", isPresented: $confirmRetry, titleVisibility: .visible) {

@@ -21,6 +21,12 @@ struct AssistantConfiguration: Codable {
 enum AssistantVault {
     private static let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "com.mailai.ios.assistant", kSecAttrAccount as String: "configuration"]
     static func load() throws -> AssistantConfiguration {
+        #if DEBUG
+        if CommandLine.arguments.contains("--ui-fixture"), CommandLine.arguments.contains("--ui-assistant") {
+            var fixture = AssistantConfiguration(); fixture.endpoint = "https://localhost:18443/v1"; fixture.model = "fixture"; fixture.key = "fixture"; fixture.consent = true
+            return fixture
+        }
+        #endif
         var request = query; request[kSecReturnData as String] = true; request[kSecMatchLimit as String] = kSecMatchLimitOne
         var result: CFTypeRef?; let status = SecItemCopyMatching(request as CFDictionary, &result)
         if status == errSecItemNotFound { return AssistantConfiguration() }

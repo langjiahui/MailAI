@@ -29,10 +29,11 @@ struct SenderAvatar: View {
 struct MailNotice: View {
     let text: String
     var symbol = "exclamationmark.circle"
+    var critical = false
     var body: some View {
-        Label(text, systemImage: symbol).font(.footnote).foregroundStyle(MailTheme.secondary)
+        Label(text, systemImage: symbol).font(.footnote).foregroundStyle(critical ? Color.red : MailTheme.secondary)
             .frame(maxWidth: .infinity, alignment: .leading).padding(12)
-            .background(MailTheme.blue.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+            .background((critical ? Color.red : MailTheme.blue).opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
             .accessibilityElement(children: .combine)
     }
 }

@@ -91,8 +91,8 @@ final class LaunchTests: XCTestCase {
 }
 
 final class WorkspaceTests: XCTestCase {
-    private func launch(dark: Bool = false, large: Bool = false) -> XCUIApplication {
-        let app = XCUIApplication(); app.launchArguments = ["--ui-fixture"]
+    private func launch(dark: Bool = false, large: Bool = false, extra: [String] = []) -> XCUIApplication {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-fixture"] + extra
         if dark { app.launchArguments.append("--ui-dark") }
         if large { app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] }
         app.launch(); XCTAssertTrue(app.buttons["compose-mail"].waitForExistence(timeout: 10)); return app
@@ -145,6 +145,60 @@ final class WorkspaceTests: XCTestCase {
         app.buttons["更多邮件操作"].tap(); app.buttons["草稿与发送记录"].tap()
         XCTAssertTrue(app.staticTexts["team@example.com"].waitForExistence(timeout: 5))
         attach("redesign-draft-recipients")
+    }
+    func testValidationFailureKeepsFormAndCanBeCancelled() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-fixture", "--ui-empty-accounts", "--ui-account-failure"]
+        app.launch(); app.buttons["add-account"].tap()
+        app.textFields["email"].tap(); app.textFields["email"].typeText("audit@example.com")
+        app.secureTextFields["password"].tap(); app.secureTextFields["password"].typeText("synthetic-never-networked")
+        app.swipeUp(); app.buttons["validate-account"].tap()
+        XCTAssertTrue(app.buttons["取消验证"].waitForExistence(timeout: 2)); attach("redesign-account-validation-progress")
+        app.buttons["取消验证"].tap()
+        XCTAssertTrue(app.buttons["validate-account"].isEnabled)
+        app.buttons["validate-account"].tap()
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "account-error").firstMatch.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.textFields["email"].value as? String, "audit@example.com"); attach("redesign-account-validation-failure")
+    }
+    func testReadFailurePreservesBackNavigation() {
+        let app = launch(extra: ["--ui-read-failure"])
+        app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["重试"].waitForExistence(timeout: 5)); attach("redesign-read-failure")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.buttons["compose-mail"].waitForExistence(timeout: 5))
+    }
+    func testUnknownSendAndPendingCopyRemainDistinct() {
+        let app = launch(extra: ["--ui-records"])
+        app.buttons["更多邮件操作"].tap(); app.buttons["草稿与发送记录"].tap()
+        XCTAssertTrue(app.staticTexts["合成待办草稿"].waitForExistence(timeout: 5)); attach("redesign-drafts-list")
+        app.segmentedControls.buttons["发送记录"].tap(); attach("redesign-send-records")
+        app.buttons.containing(.staticText, identifier: "合成待确认记录").firstMatch.tap()
+        XCTAssertFalse(app.buttons["send-mail"].isEnabled)
+        app.swipeUp()
+        XCTAssertTrue(app.buttons["已确认未送达，继续编辑"].waitForExistence(timeout: 5)); attach("redesign-unknown-send")
+        app.buttons["关闭"].tap(); app.buttons["保存并返回"].tap()
+        app.buttons.containing(.staticText, identifier: "合成副本待存档").firstMatch.tap(); app.swipeUp()
+        XCTAssertTrue(app.buttons["重试保存副本"].waitForExistence(timeout: 5)); attach("redesign-pending-sent-copy")
+        XCTAssertFalse(app.buttons["send-mail"].isEnabled)
+        app.buttons["重试保存副本"].tap()
+        expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: app.buttons["重试保存副本"])
+        waitForExpectations(timeout: 5)
+    }
+    func testAssistantRequiresScopeAndSummaryCannotBeAdoptedAsReply() {
+        let app = launch(extra: ["--ui-assistant"])
+        app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap()
+        app.buttons["小邮助手"].tap()
+        app.buttons["提炼要点"].tap()
+        XCTAssertTrue(app.buttons["开始处理"].waitForExistence(timeout: 5)); attach("redesign-ai-scope-confirmation")
+        app.buttons["开始处理"].tap()
+        XCTAssertTrue(app.staticTexts["synthetic model response"].waitForExistence(timeout: 10)); attach("redesign-ai-summary-result")
+        XCTAssertFalse(app.buttons["创建回复草稿"].exists)
+        app.buttons["查看原文对照"].tap(); attach("redesign-ai-original-comparison")
+        app.buttons["起草回复"].tap(); app.buttons["开始处理"].tap()
+        XCTAssertTrue(app.buttons["创建回复草稿"].waitForExistence(timeout: 10))
+        app.buttons["创建回复草稿"].tap()
+        XCTAssertTrue(app.buttons["send-mail"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.textViews["compose-body-editor"].value as? String, "synthetic model response")
+        attach("redesign-ai-editable-reply")
     }
     func testStorageFailureOffersRetryWithoutDeletingData() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-fixture", "--ui-storage-error"]; app.launch()

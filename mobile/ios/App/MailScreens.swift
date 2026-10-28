@@ -92,7 +92,7 @@ struct DraftsView: View {
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } } }
                 .sheet(isPresented: $composing) { ComposerView(store: store) }
                 .confirmationDialog("删除“\(deleting?.subject.isEmpty == false ? deleting!.subject : "无主题")”？", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
-                    Button("删除本机记录", role: .destructive) { if let deleting { do { try store.discardDraft(deleting.id) } catch { store.error = error.localizedDescription } }; deleting = nil }
+                    Button(deleting?.state == .editing ? "删除草稿" : "删除本机发送记录", role: .destructive) { if let deleting { do { try store.discardDraft(deleting.id) } catch { store.error = error.localizedDescription } }; deleting = nil }
                 }
         }
     }
@@ -126,7 +126,7 @@ struct MailSearchView: View {
                             ContentUnavailableView("没有匹配的邮件", systemImage: "magnifyingglass", description: Text(completedQuery == query ? "试试更短的关键词。" : "可继续搜索服务器当前文件夹。"))
                         }
                         ForEach(completedQuery == query ? results : local) { message in
-                            NavigationLink { ReaderView(store: store, summary: message) } label: { MailRow(summary: message) }
+                            NavigationLink { ReaderView(store: store, summary: message) } label: { MailRow(summary: message, keyword: query) }
                         }
                     }
                     if completedQuery != query { Button("搜索服务器整个当前文件夹") { limit = 50; search() }.disabled(working) }
