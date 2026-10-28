@@ -50,6 +50,11 @@ import MailAICore
             return Data("synthetic".utf8)
         }
         func perform(_ credential: AccountCredential, summaries: [MailSummary], action: MailAction) async throws {}
+        func search(_ credential: AccountCredential, folder: String, query: String, limit: Int) async throws -> MailSearchResult {
+            guard CommandLine.arguments.contains("--ui-server-search") else { throw MailFailure.invalid("合成服务器搜索失败") }
+            let matches = DebugPreview.messages(folder: folder).filter { ($0.subject + $0.sender + ($0.preview ?? "")).localizedCaseInsensitiveContains(query) }
+            return MailSearchResult(messages: Array(matches.prefix(limit)), total: matches.count)
+        }
         func archiveSent(_ credential: AccountCredential, draft: MailDraft) async throws {}
     }
     nonisolated static func messages(folder: String) -> [MailSummary] {

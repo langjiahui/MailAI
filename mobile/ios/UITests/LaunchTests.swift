@@ -464,6 +464,31 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertEqual(body.value as? String, "Synthetic current draft")
         XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '请于周五前确认测试材料'")).firstMatch.exists)
     }
+    func testEmptyInboxOfflineAndServerSearchSource() {
+        var app = launch(extra: ["--ui-empty-inbox"])
+        XCTAssertTrue(app.staticTexts["暂无邮件"].waitForExistence(timeout: 5)); attach("redesign-empty-inbox")
+        XCTAssertTrue(app.buttons["compose-mail"].isHittable)
+        app.terminate()
+        app = launch(extra: ["--ui-offline"])
+        XCTAssertTrue(app.buttons["关闭状态提示"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["项目资料确认与下一步安排"].exists); attach("redesign-offline-cache")
+        app.buttons["关闭状态提示"].tap(); app.terminate()
+        app = launch(extra: ["--ui-server-search"])
+        app.buttons["搜索邮件"].tap()
+        let search = app.textFields["mail-search-input"]
+        search.tap(); search.typeText("sender")
+        app.buttons["搜索服务器整个当前文件夹"].tap()
+        XCTAssertTrue(app.staticTexts["服务器匹配 1 封 · 已显示 1 封"].waitForExistence(timeout: 5)); attach("redesign-server-search-results")
+        XCTAssertFalse(app.staticTexts["本机缓存匹配"].exists)
+        search.tap(); search.typeText("-no-match")
+        XCTAssertTrue(app.staticTexts["没有匹配的邮件"].waitForExistence(timeout: 5)); attach("redesign-search-no-results")
+    }
+    func testUnconfiguredAssistantDoesNotOfferUploadActions() {
+        let app = launch()
+        app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap(); app.buttons["小邮助手"].tap()
+        XCTAssertTrue(app.buttons["配置小邮与模型服务"].waitForExistence(timeout: 5)); attach("redesign-ai-unconfigured")
+        XCTAssertFalse(app.buttons["提炼要点"].exists); XCTAssertFalse(app.buttons["开始处理"].exists)
+    }
     func testStorageFailureOffersRetryWithoutDeletingData() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-fixture", "--ui-storage-error"]; app.launch()
         XCTAssertTrue(app.buttons["重试"].waitForExistence(timeout: 5)); attach("redesign-storage-error")

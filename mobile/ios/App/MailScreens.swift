@@ -133,6 +133,7 @@ struct MailSearchView: View {
                     }
                     if completedQuery != query { Button("搜索服务器整个当前文件夹") { limit = 50; search() }.disabled(working) }
                     if completedQuery == query && results.count < total && limit < 500 { Button("加载更多结果") { limit += 50; search() }.disabled(working) }
+                    if completedQuery == query && results.count < total && limit >= 500 { Text("已展示前500条结果，请缩短关键词或添加更具体的条件。").font(.footnote).foregroundStyle(MailTheme.secondary) }
                 } else {
                     if !recent.isEmpty {
                         Section {
