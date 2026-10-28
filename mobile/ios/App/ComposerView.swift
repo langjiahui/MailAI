@@ -31,64 +31,24 @@ struct ComposerView: View {
     @State private var error: String?
     @State private var quotedExpanded = false
     @State private var editor = ComposerEditorCommands()
+    private var showingResult: Bool { store.draft.state == .sent || store.draft.state == .uncertain }
     private var editable: Bool { store.draft.state == .editing && !store.sending }
     private func field(_ keyPath: WritableKeyPath<MailDraft, String>) -> Binding<String> {
         Binding(get: { store.draft[keyPath: keyPath] }, set: { value in store.updateDraft { $0[keyPath: keyPath] = value } })
     }
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    VStack(spacing: 0) {
-                        ViewThatFits(in: .horizontal) {
-                            HStack(spacing: 12) { fieldLabel("发件人"); Text(store.selected?.email ?? "").font(.subheadline).lineLimit(1).fixedSize(); Spacer(minLength: 0) }.frame(minHeight: 48)
-                            VStack(alignment: .leading, spacing: 8) { fieldLabel("发件人"); Text(store.selected?.email ?? "").font(.subheadline).textSelection(.enabled) }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 12)
-                        }
-                        Divider()
-                        address("收件人", target: "to", binding: field(\.to))
-                        if copies || !store.draft.cc.isEmpty || !store.draft.bcc.isEmpty {
-                            Divider(); address("抄送", target: "cc", binding: field(\.cc))
-                            Divider(); address("密送", target: "bcc", binding: field(\.bcc))
-                        }
-                        Button(copies ? "收起抄送与密送" : "抄送 / 密送") { copies.toggle() }.font(.caption).frame(maxWidth: .infinity, minHeight: 36, alignment: .trailing)
-                        Divider()
-                        if dynamicTypeSize.isAccessibilitySize {
-                            VStack(alignment: .leading, spacing: 8) { fieldLabel("主题"); subjectField }.padding(.vertical, 12)
-                        } else { HStack(spacing: 12) { fieldLabel("主题").frame(width: 56, alignment: .leading); subjectField }.frame(minHeight: 52) }
-                        Divider()
-                    }.disabled(!editable)
-                    if !store.draft.attachments.isEmpty {
-                        VStack(spacing: 8) { ForEach(store.draft.attachments) { attachmentRow($0) } }.padding(.vertical, 12)
-                    }
-                    ZStack(alignment: .topLeading) {
-                        if editingText.isEmpty { Text("填写邮件正文").foregroundStyle(.tertiary).padding(.top, 12).padding(.leading, 5).allowsHitTesting(false) }
-                        RichComposerEditor(text: editingText, html: editingHTML, editable: editable, commands: editor) { text, html in
-                            store.updateDraft { draft in
-                                let quote = quotedText ?? ""
-                                draft.text = text + quote
-                                draft.html = htmlWithQuote(html, quote: quote)
-                            }
-                        }.frame(minHeight: 320).accessibilityIdentifier("compose-body")
-                    }
-                    if let quotedText {
-                        DisclosureGroup("原邮件 · 点击展开", isExpanded: $quotedExpanded) {
-                            Text(quotedText).font(.subheadline).foregroundStyle(MailTheme.secondary).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 12)
-                        }.font(.subheadline).padding(.vertical, 12)
-                    }
-                    if let undoText, store.draft.id == undoDraftID, store.draft.text == adoptedText {
-                        Button("撤回润色") { store.updateDraft { $0.text = undoText; $0.html = undoHTML }; self.undoText = nil; undoHTML = nil; adoptedText = nil }.font(.subheadline).frame(minHeight: 44)
-                    }
-                    VStack(alignment: .leading, spacing: 8) { status }.padding(.vertical, 16)
-                    if let error { MailNotice(text: error, critical: true).padding(.bottom, 12) }
-                }.padding(.horizontal, 16)
-            }.scrollDismissesKeyboard(.interactively)
-            .navigationTitle("写邮件").navigationBarTitleDisplayMode(.inline)
+            Group {
+                if showingResult { submissionResult }
+                else { editorContent }
+            }
+            .navigationTitle(store.draft.state == .sent ? "发送完成" : (store.draft.state == .uncertain ? "发送结果待确认" : "写邮件")).navigationBarTitleDisplayMode(.inline)
                 .background(MailTheme.surface)
-                .safeAreaInset(edge: .bottom, spacing: 0) { composerTools }
+                .safeAreaInset(edge: .bottom, spacing: 0) { if !showingResult { composerTools } }
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("关闭") { confirmExit = true }.disabled(store.sending) }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("发送", systemImage: "paperplane.fill") { do { _ = try store.draft.validateForSending(); confirmSend = true } catch { self.error = error.localizedDescription } }.disabled(!editable || (try? store.draft.validateForSending()) == nil).accessibilityIdentifier("send-mail")
+                        if !showingResult { Button("发送", systemImage: "paperplane.fill") { do { _ = try store.draft.validateForSending(); confirmSend = true } catch { self.error = error.localizedDescription } }.disabled(!editable || (try? store.draft.validateForSending()) == nil).accessibilityIdentifier("send-mail") }
                     }
                 }
                 .interactiveDismissDisabled(store.sending || store.draftSaveFailed || !store.draft.isEmpty)
@@ -137,6 +97,81 @@ struct ComposerView: View {
                 .onDisappear { photoTask?.cancel() }
         }
     }
+    private var editorContent: some View {
+        ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    VStack(spacing: 0) {
+                        ViewThatFits(in: .horizontal) {
+                            HStack(spacing: 12) { fieldLabel("发件人"); Text(store.selected?.email ?? "").font(.subheadline).lineLimit(1).fixedSize(); Spacer(minLength: 0) }.frame(minHeight: 48)
+                            VStack(alignment: .leading, spacing: 8) { fieldLabel("发件人"); Text(store.selected?.email ?? "").font(.subheadline).textSelection(.enabled) }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 12)
+                        }
+                        Divider()
+                        address("收件人", target: "to", binding: field(\.to))
+                        if copies || !store.draft.cc.isEmpty || !store.draft.bcc.isEmpty {
+                            Divider(); address("抄送", target: "cc", binding: field(\.cc))
+                            Divider(); address("密送", target: "bcc", binding: field(\.bcc))
+                        }
+                        Button(copies ? "收起抄送与密送" : "抄送 / 密送") { copies.toggle() }.font(.caption).frame(maxWidth: .infinity, minHeight: 36, alignment: .trailing)
+                        Divider()
+                        if dynamicTypeSize.isAccessibilitySize {
+                            VStack(alignment: .leading, spacing: 8) { fieldLabel("主题"); subjectField }.padding(.vertical, 12)
+                        } else { HStack(spacing: 12) { fieldLabel("主题").frame(width: 56, alignment: .leading); subjectField }.frame(minHeight: 52) }
+                        Divider()
+                    }.disabled(!editable)
+                    if !store.draft.attachments.isEmpty {
+                        VStack(spacing: 8) { ForEach(store.draft.attachments) { attachmentRow($0) } }.padding(.vertical, 12)
+                    }
+                    ZStack(alignment: .topLeading) {
+                        if editingText.isEmpty { Text("填写邮件正文").foregroundStyle(.tertiary).padding(.top, 12).padding(.leading, 5).allowsHitTesting(false) }
+                        RichComposerEditor(text: editingText, html: editingHTML, editable: editable, commands: editor) { text, html in
+                            store.updateDraft { draft in
+                                let quote = quotedText ?? ""
+                                draft.text = text + quote
+                                draft.html = htmlWithQuote(html, quote: quote)
+                            }
+                        }.frame(minHeight: 320).accessibilityIdentifier("compose-body")
+                    }
+                    if let quotedText {
+                        DisclosureGroup("原邮件 · 点击展开", isExpanded: $quotedExpanded) {
+                            Text(quotedText).font(.subheadline).foregroundStyle(MailTheme.secondary).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 12)
+                        }.font(.subheadline).padding(.vertical, 12)
+                    }
+                    if let undoText, store.draft.id == undoDraftID, store.draft.text == adoptedText {
+                        Button("撤回润色") { store.updateDraft { $0.text = undoText; $0.html = undoHTML }; self.undoText = nil; undoHTML = nil; adoptedText = nil }.font(.subheadline).frame(minHeight: 44)
+                    }
+                    VStack(alignment: .leading, spacing: 8) { status }.padding(.vertical, 16)
+                    if let error { MailNotice(text: error, critical: true).padding(.bottom, 12) }
+                }.padding(.horizontal, 16)
+            }.scrollDismissesKeyboard(.interactively)
+    }
+    private var submissionResult: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                VStack(spacing: 16) {
+                    Image(systemName: store.draft.state == .sent ? "checkmark" : "exclamationmark")
+                        .font(.system(size: 32, weight: .semibold)).foregroundStyle(store.draft.state == .sent ? MailTheme.blue : .orange)
+                        .frame(width: 76, height: 76).background((store.draft.state == .sent ? MailTheme.blue : .orange).opacity(0.10), in: Circle())
+                    Text(store.draft.state == .sent ? "服务器已接受邮件" : "发送结果待确认").font(.title2.bold())
+                    Text(store.draft.state == .sent ? "邮件已提交给服务器，尚不代表收件人已阅读或已送达对方。" : "尚未收到明确的服务器结果。请先核对收件方或服务器，避免重复发送。")
+                        .font(.subheadline).foregroundStyle(MailTheme.secondary).multilineTextAlignment(.center)
+                }.frame(maxWidth: .infinity).padding(.top, 24)
+                VStack(alignment: .leading, spacing: 12) {
+                    resultField("收件人", value: store.draft.to)
+                    if !store.draft.cc.isEmpty { resultField("抄送", value: store.draft.cc) }
+                    if !store.draft.bcc.isEmpty { resultField("密送", value: store.draft.bcc) }
+                    resultField("主题", value: store.draft.subject.isEmpty ? "（无主题）" : store.draft.subject)
+                    if let date = store.draft.updatedAt { resultField("时间", value: date.formatted(date: .abbreviated, time: .shortened)) }
+                    resultField("附件", value: "\(store.draft.attachments.count) 个 · " + ByteCountFormatter.string(fromByteCount: Int64(store.draft.attachments.reduce(0) { $0 + $1.size }), countStyle: .file))
+                }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(MailTheme.canvas, in: RoundedRectangle(cornerRadius: 12))
+                VStack(alignment: .leading, spacing: 16) { status }
+                if let error { MailNotice(text: error, critical: true) }
+                Button("返回邮件") { dismiss() }.frame(maxWidth: .infinity, minHeight: 48).buttonStyle(.bordered)
+            }.padding(24)
+        }
+    }
+    private func resultField(_ title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) { Text(title).font(.caption).foregroundStyle(MailTheme.secondary); Text(value).font(.subheadline).textSelection(.enabled) }
+    }
     @ViewBuilder private var status: some View {
         switch store.draft.state {
         case .editing:
@@ -146,14 +181,12 @@ struct ComposerView: View {
             } else { Label("草稿自动保存在本机", systemImage: "checkmark.circle").font(.footnote).foregroundStyle(.secondary) }
         case .submitting: HStack { ProgressView(); Text("正在提交，请等待服务器确认…") }
         case .uncertain:
-            Label("发送结果待确认", systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
             Text("请先核对收件方或服务器已发送邮件。不会自动重发。服务器已发送无副本也不代表未送达。").font(.footnote)
-            Button("已确认未送达，继续编辑") { confirmRetry = true }
+            Button("已确认未送达，继续编辑") { confirmRetry = true }.buttonStyle(.bordered).frame(maxWidth: .infinity, minHeight: 48)
         case .sent:
-            Label("服务器已接受邮件", systemImage: "checkmark.circle.fill").foregroundStyle(MailTheme.blue)
             if store.draft.sentCopyPending == true {
                 Text("已发送副本待保存；重试存档不会重新发送邮件。").font(.footnote)
-                Button("重试保存副本") { Task { do { try await store.retrySentCopy() } catch { self.error = error.localizedDescription } } }.disabled(store.sending)
+                Button("重试保存副本") { Task { do { try await store.retrySentCopy() } catch { self.error = error.localizedDescription } } }.buttonStyle(MailPrimaryButton()).disabled(store.sending)
             }
             Button("写一封新邮件") { do { try store.newDraft() } catch { self.error = error.localizedDescription } }
         }
