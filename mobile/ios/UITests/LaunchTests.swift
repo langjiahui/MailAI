@@ -35,7 +35,9 @@ final class LaunchTests: XCTestCase {
         attach("account-welcome-after-cancel")
         expectation(for: NSPredicate(format: "hittable == true"), evaluatedWith: add)
         waitForExpectations(timeout: 10)
-        add.tap()
+        // XCTest can report hittable but fail its automatic hit point after
+        // navigation. Exercise a real touch at the visible button's center.
+        add.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         XCTAssertTrue(app.textFields["email"].waitForExistence(timeout: 10))
         XCTAssertEqual(app.textFields["email"].value as? String, "邮箱地址")
         XCTAssertFalse(app.buttons["validate-account"].isEnabled)
@@ -48,7 +50,7 @@ final class LaunchTests: XCTestCase {
             waitForExpectations(timeout: 10)
             expectation(for: NSPredicate(format: "hittable == true"), evaluatedWith: add)
             waitForExpectations(timeout: 10)
-            add.tap()
+            add.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
             XCTAssertTrue(app.textFields["email"].waitForExistence(timeout: 10))
             XCTAssertEqual(app.textFields["email"].value as? String, "邮箱地址")
         }
