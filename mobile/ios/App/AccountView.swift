@@ -114,13 +114,19 @@ struct AccountView: View {
             .onAppear { if let editingAccount { setup = AccountSetup(account: editingAccount) } }
             .navigationTitle(editingAccount == nil ? "添加邮箱" : "编辑邮箱").navigationBarTitleDisplayMode(.inline)
             .navigationBarBackButtonHidden(true)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("取消") { focused = nil; cancelValidation(); close() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("取消", action: cancelAndClose) } }
             .interactiveDismissDisabled(testing)
             .onDisappear { focused = nil; cancelValidation(); password = "" }
     }
 
     private func close() {
         if let onClose { onClose() } else { dismiss() }
+    }
+    private func cancelAndClose() {
+        password = ""
+        focused = nil
+        cancelValidation()
+        close()
     }
     private func cancelValidation() {
         requestID = UUID(); task?.cancel(); task = nil; testing = false

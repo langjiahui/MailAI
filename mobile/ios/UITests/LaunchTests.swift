@@ -1,6 +1,18 @@
 import XCTest
 
 final class LaunchTests: XCTestCase {
+    private func declineSystemPasswordSave(_ app: XCUIApplication) {
+        // iOS may offer Passwords storage when a filled login form disappears,
+        // including cancellation. Never save the synthetic test credential.
+        let saveSheet = app.sheets["Save Password?"]
+        if saveSheet.waitForExistence(timeout: 3) {
+            let notNow = saveSheet.buttons["Not Now"]
+            XCTAssertTrue(notNow.waitForExistence(timeout: 3))
+            notNow.tap()
+            expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: saveSheet)
+            waitForExpectations(timeout: 5)
+        }
+    }
     private func openAccountForm(_ app: XCUIApplication) {
         app.launch()
         XCTAssertTrue(app.buttons["add-account"].waitForExistence(timeout: 10))
@@ -30,14 +42,13 @@ final class LaunchTests: XCTestCase {
         let formDismissed = NSPredicate(format: "exists == false")
         expectation(for: formDismissed, evaluatedWith: app.textFields["email"])
         waitForExpectations(timeout: 10)
+        declineSystemPasswordSave(app)
         let add = app.buttons["add-account"]
         XCTAssertTrue(add.waitForExistence(timeout: 10))
         attach("account-welcome-after-cancel")
         expectation(for: NSPredicate(format: "hittable == true"), evaluatedWith: add)
         waitForExpectations(timeout: 10)
-        // XCTest can report hittable but fail its automatic hit point after
-        // navigation. Exercise a real touch at the visible button's center.
-        add.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        add.tap()
         XCTAssertTrue(app.textFields["email"].waitForExistence(timeout: 10))
         XCTAssertEqual(app.textFields["email"].value as? String, "邮箱地址")
         XCTAssertFalse(app.buttons["validate-account"].isEnabled)
@@ -48,9 +59,10 @@ final class LaunchTests: XCTestCase {
             app.buttons["取消"].firstMatch.tap()
             expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: app.textFields["email"])
             waitForExpectations(timeout: 10)
+            declineSystemPasswordSave(app)
             expectation(for: NSPredicate(format: "hittable == true"), evaluatedWith: add)
             waitForExpectations(timeout: 10)
-            add.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            add.tap()
             XCTAssertTrue(app.textFields["email"].waitForExistence(timeout: 10))
             XCTAssertEqual(app.textFields["email"].value as? String, "邮箱地址")
         }

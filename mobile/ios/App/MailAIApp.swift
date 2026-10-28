@@ -36,8 +36,7 @@ import Logging
         }
     }
 }
-/// First-run screen has its own presentation host, separate from the inbox's
-/// navigation, tab, and bottom-bar overlays. Keep it alive until dismissal ends.
+/// Keep first-run setup independent of inbox navigation and tab selection.
 struct WelcomeView: View {
     let store: MailStore
     @State private var addingAccount = false
