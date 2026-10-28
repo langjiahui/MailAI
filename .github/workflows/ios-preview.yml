@@ -46,7 +46,13 @@ jobs:
           device=$(python3 - <<'PY'
           import json, subprocess
           devices=json.loads(subprocess.check_output(['xcrun','simctl','list','devices','available','--json']))['devices']
-          print(next(d['udid'] for key, values in sorted(devices.items(), reverse=True) if 'iOS' in key for d in values if d['name'].startswith('iPhone')))
+          runtime=next(key for key in sorted(devices, reverse=True) if 'iOS' in key)
+          target=next((d['udid'] for d in devices[runtime] if d['name']=='MailAI Acceptance iPhone 15 Pro'), None)
+          if target is None:
+              types=json.loads(subprocess.check_output(['xcrun','simctl','list','devicetypes','--json']))['devicetypes']
+              device_type=next(d['identifier'] for d in types if d['name']=='iPhone 15 Pro')
+              target=subprocess.check_output(['xcrun','simctl','create','MailAI Acceptance iPhone 15 Pro',device_type,runtime],text=True).strip()
+          print(target)
           PY
           )
           xcrun simctl boot "$device" || true
