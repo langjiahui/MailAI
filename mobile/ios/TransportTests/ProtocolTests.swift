@@ -57,6 +57,20 @@ final class ProtocolTests: XCTestCase {
         // Same stable Message-ID must be found rather than APPENDed a second time.
         try await service.archiveSent(entry, draft: draft)
     }
+    func testModelClientUsesHTTPSRejectsRedirectsAndIncompleteResults() async throws {
+        var configuration = AssistantConfiguration(); configuration.endpoint = "https://localhost:18443/v1"
+        configuration.model = "fixture"; configuration.key = "fixture"; configuration.consent = true
+        let output = try await AssistantAPI.generate(configuration: configuration, instruction: "synthetic", text: "synthetic")
+        XCTAssertEqual(output, "synthetic model response")
+        for path in ["redirect", "incomplete"] {
+            configuration.endpoint = "https://localhost:18443/" + path
+            do { _ = try await AssistantAPI.generate(configuration: configuration, instruction: "synthetic", text: "synthetic"); XCTFail("Must reject redirected or incomplete response") }
+            catch { XCTAssertFalse(error.localizedDescription.isEmpty) }
+        }
+        configuration.endpoint = "http://localhost:18443/v1"; XCTAssertThrowsError(try configuration.url())
+        configuration.endpoint = "https://user:password@example.test/v1"; XCTAssertThrowsError(try configuration.url())
+        configuration.endpoint = "https://example.test/v1"; configuration.consent = false; XCTAssertThrowsError(try configuration.url())
+    }
     func testSMTPAcceptsSyntheticMessage() async throws {
         var draft = MailDraft(); draft.to = "recipient@example.com"; draft.subject = "synthetic 测试"; draft.text = "synthetic 中文正文"
         try await NativeMailService().send(credential(), draft: draft)

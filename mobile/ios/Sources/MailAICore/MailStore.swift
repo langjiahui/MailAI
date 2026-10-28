@@ -22,8 +22,12 @@ public protocol MailService: Sendable {
     func perform(_ credential: AccountCredential, summaries: [MailSummary], action: MailAction) async throws
     func search(_ credential: AccountCredential, folder: String, query: String, limit: Int) async throws -> MailSearchResult
     func archiveSent(_ credential: AccountCredential, draft: MailDraft) async throws
+    func move(_ credential: AccountCredential, summaries: [MailSummary], to folder: String) async throws -> [MailSummary]?
 }
 public extension MailService {
+    func move(_ credential: AccountCredential, summaries: [MailSummary], to folder: String) async throws -> [MailSummary]? {
+        try await perform(credential, summaries: summaries, action: .move(folder)); return nil
+    }
     func attachment(_ credential: AccountCredential, summary: MailSummary, attachment: MailAttachment) async throws -> Data { throw MailFailure.invalid("当前服务不支持附件下载。") }
     func perform(_ credential: AccountCredential, summaries: [MailSummary], action: MailAction) async throws { throw MailFailure.invalid("当前服务不支持邮件整理。") }
     func search(_ credential: AccountCredential, folder: String, query: String, limit: Int) async throws -> MailSearchResult { throw MailFailure.invalid("当前服务不支持服务器搜索。") }
@@ -45,6 +49,11 @@ public extension MailService {
     public private(set) var contacts: [MailContact] = []
     public private(set) var operating = false
     public private(set) var searchTotal = 0
+    public private(set) var undoID: UUID?
+    public private(set) var undoTitle = ""
+    @ObservationIgnored private var undoAccount: UUID?
+    @ObservationIgnored private var undoExpiry = Date.distantPast
+    @ObservationIgnored private var undoActions: [(MailAction, [MailSummary])] = []
     public var error: String?
     @ObservationIgnored private let vault: CredentialStorage
     @ObservationIgnored private let files: MailFiles
@@ -85,7 +94,7 @@ public extension MailService {
         guard !sending, !operating else { throw MailFailure.invalid("请等待当前邮件操作结束后切换账号。") }
         if draftSaveFailed { try saveDraft() }
         guard credentials.contains(where: { $0.account.id == id }) else { throw MailFailure.missingPassword }
-        cancelRefresh(); selectedID = id; folder = "INBOX"; limit = 50; draft = MailDraft(); draftSaveFailed = false
+        cancelRefresh(); clearUndo(); selectedID = id; folder = "INBOX"; limit = 50; draft = MailDraft(); draftSaveFailed = false
         folders = try files.read([MailFolder].self, account: id, key: "folders") ?? [.init(name: "INBOX")]
         try loadCache()
         draft = try files.read(MailDraft.self, account: id, key: "draft") ?? MailDraft()
@@ -143,6 +152,14 @@ public extension MailService {
             try files.write(messages, account: entry.account.id, key: "list:" + summary.folder)
         }
         return result.body
+    }
+    public func markReadIfNeeded(_ summary: MailSummary) async throws {
+        let entry = try credential()
+        guard messages.first(where: { $0.id == summary.id })?.unread == true else { return }
+        try await service.perform(entry, summaries: [summary], action: .read(true)); try Task.checkCancellation()
+        guard selectedID == entry.account.id, folder == summary.folder, let index = messages.firstIndex(where: { $0.id == summary.id }) else { return }
+        messages[index].unread = false
+        try files.write(messages, account: entry.account.id, key: "list:" + folder)
     }
     public func updateDraft(_ update: (inout MailDraft) -> Void) {
         guard !sending, draft.state == .editing, selectedID != nil else { return }
@@ -295,7 +312,26 @@ public extension MailService {
         guard !operating, !items.isEmpty else { return }
         let entry = try credential(); cancelRefresh(); operating = true
         defer { operating = false }
-        try await service.perform(entry, summaries: items, action: action)
+        clearUndo()
+        var undo: [(MailAction, [MailSummary])] = []
+        switch action {
+        case .move(let target):
+            if let moved = try await service.move(entry, summaries: items, to: target), let source = items.first?.folder {
+                undo = [(.move(source), moved)]
+            }
+        case .read:
+            try await service.perform(entry, summaries: items, action: action)
+            for read in [true, false] {
+                let previous = items.filter { !$0.unread == read }
+                if !previous.isEmpty { undo.append((.read(read), previous)) }
+            }
+        case .flagged:
+            try await service.perform(entry, summaries: items, action: action)
+            for flagged in [true, false] {
+                let previous = items.filter { ($0.isFlagged ?? false) == flagged }
+                if !previous.isEmpty { undo.append((.flagged(flagged), previous)) }
+            }
+        }
         guard selectedID == entry.account.id else { return }
         let ids = Set(items.map(\.id))
         switch action {
@@ -304,6 +340,18 @@ public extension MailService {
         case .flagged(let value): for index in messages.indices where ids.contains(messages[index].id) { messages[index].isFlagged = value }
         }
         try files.write(messages, account: entry.account.id, key: "list:" + folder)
+        if !undo.isEmpty {
+            undoAccount = entry.account.id; undoActions = undo; undoExpiry = Date(timeIntervalSinceNow: 8)
+            undoTitle = "邮件操作已完成"; undoID = UUID()
+        }
+    }
+    public func clearUndo() { undoID = nil; undoActions = []; undoAccount = nil }
+    public func undoLastAction() async throws {
+        guard !operating, undoExpiry > Date(), undoAccount == selectedID, !undoActions.isEmpty else { clearUndo(); return }
+        let entry = try credential(), actions = undoActions
+        clearUndo(); cancelRefresh(); operating = true
+        defer { operating = false; refresh() }
+        for (action, items) in actions { try await service.perform(entry, summaries: items, action: action) }
     }
     public func search(_ query: String, limit: Int = 50) async throws -> [MailSummary] {
         let entry = try credential(), currentFolder = folder

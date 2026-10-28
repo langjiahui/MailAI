@@ -20,6 +20,7 @@ import MailAICore
         do { try BGTaskScheduler.shared.submit(request) }
         catch { UserDefaults.standard.set("系统暂未接受后台刷新请求，可稍后重试。", forKey: "mail.backgroundStatus") }
     }
+    func cancelRunning() { work?.cancel() }
     func stop() {
         work?.cancel(); work = nil
         BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: Self.identifier)
@@ -49,6 +50,7 @@ import MailAICore
         let center = UNUserNotificationCenter.current()
         let settings = await center.notificationSettings()
         for accountID in Set(messages.map(\.accountID)) {
+            guard !Task.isCancelled else { return }
             let items = messages.filter { $0.accountID == accountID }
             guard let newest = items.max(by: { $0.summary.uid < $1.summary.uid }) else { continue }
             let key = "mail.notificationCursor." + accountID.uuidString

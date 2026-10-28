@@ -69,11 +69,13 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["附件（1）"].exists || app.buttons["附件（1）"].exists)
         attach("blue-reader-light")
         app.buttons["回复全部"].tap()
-        XCTAssertTrue(app.textFields["compose-to"].waitForExistence(timeout: 5))
-        XCTAssertTrue((app.textFields["compose-to"].value as? String)?.contains("sender@example.com") == true)
-        XCTAssertTrue((app.textFields["compose-cc"].value as? String)?.contains("team@example.com") == true)
-        XCTAssertTrue(app.buttons["添加文件"].exists)
+        let to = app.descendants(matching: .any).matching(identifier: "compose-to").firstMatch
+        let cc = app.descendants(matching: .any).matching(identifier: "compose-cc").firstMatch
+        XCTAssertTrue(to.waitForExistence(timeout: 5))
+        XCTAssertTrue((to.value as? String)?.contains("sender@example.com") == true)
+        XCTAssertTrue((cc.value as? String)?.contains("team@example.com") == true)
         attach("blue-compose-light")
+        app.swipeUp(); XCTAssertTrue(app.buttons["添加文件"].waitForExistence(timeout: 5))
         app.buttons["关闭"].tap(); app.buttons["保存并返回"].tap()
         XCTAssertTrue(app.buttons["回复全部"].waitForExistence(timeout: 5))
     }

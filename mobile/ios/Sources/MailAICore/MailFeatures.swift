@@ -55,3 +55,35 @@ public struct MailSearchResult: Sendable {
     public var total: Int
     public init(messages: [MailSummary], total: Int) { self.messages = messages; self.total = total }
 }
+
+/// Uses actual Message-ID / reply references; equal subjects alone never merge mail.
+public struct MailThread: Identifiable, Sendable {
+    public let id: String
+    public var messages: [MailSummary]
+    public static func group(_ items: [MailSummary]) -> [MailThread] {
+        var roots: [String: String] = [:]
+        func root(_ key: String) -> String {
+            var result = key
+            while let parent = roots[result], parent != result { result = parent }
+            return result
+        }
+        let pattern = try? NSRegularExpression(pattern: "<[^>]{1,998}>")
+        var keys: [String: String] = [:]
+        for item in items {
+            let combined = [item.messageID, item.parentMessageID, item.references].compactMap { $0 }.joined(separator: " ")
+            let matches = pattern?.matches(in: combined, range: NSRange(combined.startIndex..., in: combined)) ?? []
+            let identifiers = matches.compactMap { Range($0.range, in: combined).map { String(combined[$0]) } }
+            let first = identifiers.first ?? "local:" + item.id
+            if roots[first] == nil { roots[first] = first }
+            for identifier in identifiers {
+                if roots[identifier] == nil { roots[identifier] = identifier }
+                let source = root(identifier), target = root(first)
+                if source != target { roots[source] = target }
+            }
+            keys[item.id] = first
+        }
+        let grouped = Dictionary(grouping: items) { root(keys[$0.id] ?? "local:" + $0.id) }
+        return grouped.map { MailThread(id: $0.key, messages: $0.value.sorted { $0.uid > $1.uid }) }
+            .sorted { ($0.messages.first?.date ?? .distantPast) > ($1.messages.first?.date ?? .distantPast) }
+    }
+}

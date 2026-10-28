@@ -152,10 +152,17 @@ public struct MailSummary: Codable, Identifiable, Equatable, Sendable {
     public var preview: String?
     public var senderName: String?
     public var references: String?
+    public var parentMessageID: String?
     public var threadKey: String {
         subject.replacingOccurrences(of: "^(?:(?:re|fw|fwd|回复|转发)\\s*[:：]\\s*)+", with: "", options: [.regularExpression, .caseInsensitive]).trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
     public var id: String { "\(folder):\(validity):\(uid)" }
+    public func relocated(uid: UInt32, validity: UInt32, folder: String) -> MailSummary {
+        var next = MailSummary(uid: uid, validity: validity, folder: folder, subject: subject, sender: sender, replyAddress: replyAddress, date: date, unread: unread, messageID: messageID)
+        next.recipients = recipients; next.carbonCopies = carbonCopies; next.isFlagged = isFlagged
+        next.hasAttachments = hasAttachments; next.preview = preview; next.senderName = senderName
+        next.references = references; next.parentMessageID = parentMessageID; return next
+    }
     public init(uid: UInt32, validity: UInt32, folder: String, subject: String, sender: String,
                 replyAddress: String, date: Date?, unread: Bool, messageID: String? = nil) {
         self.uid = uid; self.validity = validity; self.folder = folder; self.subject = subject

@@ -15,7 +15,7 @@ struct RichComposerEditor: UIViewRepresentable {
     func makeUIView(context: Context) -> UITextView {
         let view = PlainPasteTextView(); view.delegate = context.coordinator
         view.font = .preferredFont(forTextStyle: .body); view.adjustsFontForContentSizeCategory = true
-        view.backgroundColor = .clear; view.textColor = .label; view.allowsEditingTextAttributes = true
+        view.backgroundColor = .clear; view.textColor = .label; view.tintColor = UIColor(MailTheme.blue); view.allowsEditingTextAttributes = true
         view.accessibilityIdentifier = "compose-body-editor"
         if let html, let data = html.data(using: .utf8), let attributed = try? NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.html], documentAttributes: nil) { view.attributedText = attributed }
         else { view.text = text }

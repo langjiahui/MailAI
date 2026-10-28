@@ -1,4 +1,5 @@
 """Local TLS IMAP/SMTP fixture. Synthetic data only; never connects to an email provider."""
+import json
 import base64
 import argparse
 import asyncio
@@ -111,12 +112,36 @@ async def smtp(reader, writer):
         writer.close()
 
 
+async def model_http(reader, writer):
+    try:
+        header = await reader.readuntil(b'\r\n\r\n')
+        path = header.split(b' ')[1].decode()
+        match = re.search(rb'Content-Length: (\d+)', header, re.I)
+        length = int(match.group(1)) if match else 0
+        if length > 100000: return
+        content = await reader.readexactly(length)
+        if path.startswith('/redirect/'):
+            await write(writer, 'HTTP/1.1 302 Found\r\nLocation: https://localhost:18443/leak/chat/completions\r\nContent-Length: 0\r\nConnection: close\r\n\r\n')
+            return
+        payload = json.loads(content) if content else {}
+        if payload.get('model') != 'fixture':
+            await write(writer, 'HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n'); return
+        result = {'choices': [{'finish_reason': 'length' if path.startswith('/incomplete/') else 'stop', 'message': {'content': 'synthetic model response'}}]}
+        body = json.dumps(result).encode()
+        await write(writer, f'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {len(body)}\r\nConnection: close\r\n\r\n'.encode() + body)
+    except (ConnectionError, asyncio.IncompleteReadError):
+        pass
+    finally:
+        writer.close()
+
+
 async def main(args):
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.minimum_version = ssl.TLSVersion.TLSv1_2
     context.load_cert_chain(args.cert, args.key)
     servers = [await asyncio.start_server(imap, '127.0.0.1', 1993, ssl=context),
-               await asyncio.start_server(smtp, '127.0.0.1', 1465, ssl=context)]
+               await asyncio.start_server(smtp, '127.0.0.1', 1465, ssl=context),
+               await asyncio.start_server(model_http, '127.0.0.1', 18443, ssl=context)]
     print('Synthetic TLS IMAP/SMTP fixtures ready', flush=True)
     await asyncio.gather(*(server.serve_forever() for server in servers))
 

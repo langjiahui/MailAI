@@ -12,6 +12,8 @@ struct ComposerView: View {
     @State private var confirmRetry = false
     @State private var copies = false
     @State private var importing = false
+    @State private var photoTask: Task<Void, Never>?
+    @State private var importDraftID = ""
     @State private var photo: PhotosPickerItem?
     @State private var previewURL: URL?
     @State private var picking = false
@@ -66,7 +68,7 @@ struct ComposerView: View {
                     }
                     if editable {
                         HStack {
-                            Button("添加文件", systemImage: "paperclip") { importing = true }
+                            Button("添加文件", systemImage: "paperclip") { importDraftID = store.draft.id; importing = true }
                             Spacer()
                             PhotosPicker(selection: $photo, matching: .images) { Label("照片", systemImage: "photo") }
                         }
@@ -98,10 +100,22 @@ struct ComposerView: View {
                     Button("确认未送达，解除发送锁定") { do { try store.resolveUncertain() } catch { self.error = error.localizedDescription } }
                 }
                 .fileImporter(isPresented: $importing, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
-                    do { for url in try result.get() { try importFile(url) } } catch { self.error = "部分文件未添加：\(error.localizedDescription)" }
+                    do { guard store.draft.id == importDraftID, editable else { throw MailFailure.invalid("草稿已改变，文件未添加。") }; for url in try result.get() { try importFile(url) } } catch { self.error = "部分文件未添加：\(error.localizedDescription)" }
                 }
                 .onChange(of: photo) { _, value in
-                    Task { do { if let data = try await value?.loadTransferable(type: Data.self) { try store.addAttachment(name: "照片.\(value?.supportedContentTypes.first?.preferredFilenameExtension ?? "jpg")", mimeType: value?.supportedContentTypes.first?.preferredMIMEType ?? "image/jpeg", data: data) } } catch { self.error = error.localizedDescription }; photo = nil }
+                    guard let value else { return }
+                    let draftID = store.draft.id, accountID = store.selectedID
+                    photoTask?.cancel()
+                    photoTask = Task {
+                        do {
+                            if let data = try await value.loadTransferable(type: Data.self) {
+                                try Task.checkCancellation()
+                                guard store.draft.id == draftID, store.selectedID == accountID, editable else { throw MailFailure.invalid("草稿已改变，照片未添加。") }
+                                try store.addAttachment(name: "照片.\(value.supportedContentTypes.first?.preferredFilenameExtension ?? "jpg")", mimeType: value.supportedContentTypes.first?.preferredMIMEType ?? "image/jpeg", data: data)
+                            }
+                        } catch { if !Task.isCancelled { self.error = error.localizedDescription } }
+                        if !Task.isCancelled { photo = nil }
+                    }
                 }
                 .sheet(isPresented: $picking) { RecipientPicker(store: store) { email in
                     switch recipientTarget { case "cc": store.updateDraft { $0.cc = append(email, to: $0.cc) }; case "bcc": store.updateDraft { $0.bcc = append(email, to: $0.bcc) }; default: store.updateDraft { $0.to = append(email, to: $0.to) } }
@@ -111,6 +125,7 @@ struct ComposerView: View {
                     undoText = assistantOriginal; adoptedText = output; store.updateDraft { $0.text = output; $0.html = nil }; return true
                 } }
                 .quickLookPreview($previewURL)
+                .onDisappear { photoTask?.cancel() }
         }
     }
     @ViewBuilder private var status: some View {

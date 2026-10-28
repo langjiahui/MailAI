@@ -27,7 +27,7 @@ import Logging
             }.tint(MailTheme.blue)
                 .preferredColorScheme(appearance == "system" ? nil : (appearance == "dark" ? .dark : .light))
                 .onChange(of: scenePhase) { _, phase in
-                    if phase == .active { store?.refresh() }
+                    if phase == .active { BackgroundMail.shared.cancelRunning(); store?.refresh() }
                     else { store?.cancelRefresh(); BackgroundMail.shared.schedule() }
                 }
         }
@@ -45,6 +45,7 @@ struct InboxView: View {
     @State private var moving: [MailSummary] = []
     @State private var showMove = false
     @State private var filter = "all"
+    @State private var grouped = false
     @State private var unified = false
     @State private var unifiedMessages: [LocatedMessage] = []
     @State private var tab = 0
@@ -99,6 +100,23 @@ struct InboxView: View {
                                 ForEach(unifiedMessages) { item in
                                     NavigationLink { UnifiedReaderView(store: store, item: item) } label: {
                                         MailRow(summary: item.summary, account: store.accounts.first { $0.id == item.accountID }?.email)
+                                    }
+                                }
+                            } else if grouped {
+                                ForEach(MailThread.group(filtered)) { thread in
+                                    if thread.messages.count == 1, let message = thread.messages.first {
+                                        NavigationLink { ReaderView(store: store, summary: message) } label: { MailRow(summary: message) }
+                                    } else {
+                                        DisclosureGroup {
+                                            ForEach(thread.messages) { message in
+                                                NavigationLink { ReaderView(store: store, summary: message) } label: { MailRow(summary: message) }
+                                            }
+                                        } label: {
+                                            VStack(alignment: .leading, spacing: 4) {
+                                                Text(thread.messages.first?.subject ?? "邮件会话").font(.headline)
+                                                Text("\(thread.messages.count) 封 · \(thread.messages.filter(\.unread).count) 封未读").font(.caption).foregroundStyle(.secondary)
+                                            }.padding(.vertical, 6)
+                                        }
                                     }
                                 }
                             } else {
@@ -162,7 +180,10 @@ struct InboxView: View {
                     Menu {
                         Button("草稿与发送记录") { showingDrafts = true }
                         Button("添加邮箱") { addingAccount = true }
-                        if !unified { Button(selecting ? "完成选择" : "选择邮件") { selecting.toggle(); selection = [] } }
+                        if !unified {
+                            Button(grouped ? "逐封显示" : "按会话显示") { grouped.toggle(); selecting = false; selection = [] }
+                            if !grouped { Button(selecting ? "完成选择" : "选择邮件") { selecting.toggle(); selection = [] } }
+                        }
                     } label: { Image(systemName: "ellipsis.circle") }.accessibilityLabel("更多邮件操作")
                 }
                 ToolbarItemGroup(placement: .bottomBar) {
@@ -182,6 +203,13 @@ struct InboxView: View {
                             .accessibilityIdentifier("compose-mail").disabled(store.sending)
                     }
                 }
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            if store.undoID != nil {
+                HStack { Text(store.undoTitle).font(.subheadline); Spacer(); Button("撤销") { Task { do { try await store.undoLastAction() } catch { store.error = "撤销未完成，请刷新核对。" } } } }
+                    .padding().background(.regularMaterial)
+                    .task(id: store.undoID) { do { try await Task.sleep(for: .seconds(8)); store.clearUndo() } catch {} }
             }
         }
         .disabled(store.operating)

@@ -81,7 +81,7 @@ struct ReaderView: View {
                 Menu {
                     if bodyContent?.html != nil { Button(plainText ? "查看原版" : "查看纯文本") { plainText.toggle() } }
                     Button("移动到…") { moving = true }
-                    Button(summary.isFlagged == true ? "取消星标" : "添加星标") { Task { do { try await store.perform(.flagged(summary.isFlagged != true), on: [summary]) } catch { self.error = "标记失败，请刷新核对。" } } }
+                    Button(currentFlag ? "取消星标" : "添加星标") { Task { do { try await store.perform(.flagged(!currentFlag), on: [summary]) } catch { self.error = "标记失败，请刷新核对。" } } }
                 } label: { Image(systemName: "ellipsis.circle") }.accessibilityLabel("更多邮件操作")
             }
             ToolbarItemGroup(placement: .bottomBar) {
@@ -113,17 +113,18 @@ struct ReaderView: View {
             if let url = externalURL { Button("打开链接") { openURL(url); externalURL = nil } }
         } message: { Text(externalURL?.host ?? "") }
     }
+    private var currentFlag: Bool { store.messages.first(where: { $0.id == summary.id })?.isFlagged ?? summary.isFlagged ?? false }
     private func load() {
         error = nil; readTask?.cancel()
         readTask = Task {
-            do { let result = try await store.body(for: summary); try Task.checkCancellation(); guard store.selectedID == ownerID else { throw CancellationError() }; bodyContent = result }
+            do { let result = try await store.body(for: summary); try Task.checkCancellation(); guard store.selectedID == ownerID else { throw CancellationError() }; bodyContent = result; try? await store.markReadIfNeeded(summary) }
             catch { if !Task.isCancelled { self.error = (error as? MailFailure)?.localizedDescription ?? "请检查网络后重试，已缓存的正文可离线阅读。" } }
         }
     }
     private func compose(_ mode: DraftMode) {
         guard let bodyContent else { return }
         do { try store.compose(mode: mode, summary: summary, body: bodyContent); composing = true }
-        catch { error = error.localizedDescription }
+        catch { self.error = error.localizedDescription }
     }
     private func download(_ item: MailAttachment) {
         downloading = true; error = nil

@@ -117,6 +117,7 @@ struct NativeMailService: MailService {
         value.senderName = info.fromAddresses.mailboxes.first?.name
         value.isFlagged = info.flags.contains(.flagged)
         value.hasAttachments = !Message(header: info, parts: info.parts).attachments.isEmpty
+        value.parentMessageID = info.inReplyTo?.description
         value.references = info.references?.map(\.description).joined(separator: " ")
         return value
     }
@@ -172,6 +173,17 @@ struct NativeMailService: MailService {
             }
         }
     }
+    func move(_ entry: AccountCredential, summaries: [MailSummary], to folder: String) async throws -> [MailSummary]? {
+        guard let first = summaries.first, summaries.allSatisfy({ $0.folder == first.folder && $0.validity == first.validity }), folder != first.folder else { throw MailFailure.changedMailbox }
+        return try await withIMAP(entry) { server in
+            let selection = try await server.selectMailbox(first.folder)
+            guard selection.uidValidity.value == first.validity else { throw MailFailure.changedMailbox }
+            guard let receipt = try await server.move(messages: UIDSet(summaries.map { UID($0.uid) }), to: folder), receipt.mapping.count == summaries.count else { return nil }
+            return receipt.mapping.compactMap { pair in
+                summaries.first(where: { $0.uid == pair.source.value })?.relocated(uid: pair.destination.value, validity: receipt.destinationUIDValidity.value, folder: folder)
+            }
+        }
+    }
     func search(_ entry: AccountCredential, folder: String, query: String, limit: Int) async throws -> MailSearchResult {
         guard !query.isEmpty, query.count <= 256, !MailValidation.hasControl(query) else { throw MailFailure.invalid("请输入 1 至 256 字的搜索内容。") }
         return try await withIMAP(entry) { server in
@@ -191,7 +203,9 @@ struct NativeMailService: MailService {
         let email = try Self.email(entry, draft: draft)
         try await withIMAP(entry) { server in
             _ = try await server.listSpecialUseMailboxes()
-            let target = try entry.account.sentFolder ?? server.sentFolder.name
+            let target: String
+            if let configured = entry.account.sentFolder, !configured.isEmpty { target = configured }
+            else { target = try await server.sentFolder.name }
             _ = try await server.examineMailbox(target)
             let found: ExtendedSearchResult<UID> = try await server.extendedSearch(criteria: [.header("Message-ID", "<\(draft.id)@mailai.local>")])
             if found.all?.toArray().isEmpty == false { return }

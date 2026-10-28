@@ -18,6 +18,10 @@ private actor FeatureService: MailService {
     func archiveSent(_ credential: AccountCredential, draft: MailDraft) async throws { archived += 1; if archiveFails { throw MailFailure.invalid("synthetic archive fault") } }
     func perform(_ credential: AccountCredential, summaries: [MailSummary], action: MailAction) async throws { actions.append(action) }
     func attachment(_ credential: AccountCredential, summary: MailSummary, attachment: MailAttachment) async throws -> Data { Data("synthetic".utf8) }
+    func recordedActions() -> [MailAction] { actions }
+    func move(_ credential: AccountCredential, summaries: [MailSummary], to folder: String) async throws -> [MailSummary]? {
+        actions.append(.move(folder)); return summaries.map { $0.relocated(uid: $0.uid + 100, validity: 20, folder: folder) }
+    }
     func allowArchive() { archiveFails = false }
     func counts() -> (Int, Int) { (sent, archived) }
 }
@@ -102,6 +106,31 @@ private actor FeatureService: MailService {
         XCTAssertEqual(restored.contacts.first?.note, "业务联系人")
         var second = MailAccount(); second.email = "other@example.com"; second.suggestServers()
         try await restored.addAccount(second, password: "synthetic"); restored.cancelRefresh(); XCTAssertTrue(restored.contacts.isEmpty)
+    }
+    func testThreadsUseReplyIdentityInsteadOfMergingEqualSubjects() {
+        var first = FeatureService.item(); first.messageID = "<a@example.com>"
+        var reply = MailSummary(uid: 8, validity: 10, folder: "INBOX", subject: "Re: 合成主题", sender: "A", replyAddress: "a@example.com", date: nil, unread: true, messageID: "<b@example.com>")
+        reply.parentMessageID = "<a@example.com>"
+        let unrelated = MailSummary(uid: 9, validity: 10, folder: "INBOX", subject: first.subject, sender: "B", replyAddress: "b@example.com", date: nil, unread: false, messageID: "<other@example.com>")
+        let threads = MailThread.group([reply, first, unrelated])
+        XCTAssertEqual(threads.count, 2); XCTAssertEqual(threads.map { $0.messages.count }.sorted(), [1, 2])
+    }
+    func testUndoRestoresThePreviousReadFlag() async throws {
+        let (store, _, service, _) = try await setup()
+        try await store.perform(.read(true), on: [FeatureService.item()])
+        XCTAssertNotNil(store.undoID)
+        try await store.undoLastAction(); store.cancelRefresh()
+        let actions = await service.recordedActions()
+        XCTAssertEqual(actions, [.read(true), .read(false)])
+        XCTAssertNil(store.undoID)
+    }
+    func testMoveUndoUsesDestinationUIDsRatherThanStaleSourceUIDs() async throws {
+        let (store, _, service, _) = try await setup()
+        try await store.perform(.move("Archive"), on: [FeatureService.item()])
+        XCTAssertNotNil(store.undoID)
+        try await store.undoLastAction(); store.cancelRefresh()
+        let actions = await service.recordedActions()
+        XCTAssertEqual(actions, [.move("Archive"), .move("INBOX")])
     }
     func testAttachmentNamesCannotEscapePreviewDirectory() {
         XCTAssertEqual(MailAttachment.safeName("..\\..\\file.txt"), "file.txt")
