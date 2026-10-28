@@ -4,6 +4,7 @@ import MailAICore
 struct AccountView: View {
     let store: MailStore
     var editingAccount: MailAccount? = nil
+    var showServerSettingsOnOpen = false
     var onClose: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var setup = AccountSetup()
@@ -90,7 +91,7 @@ struct AccountView: View {
             }.padding(24).frame(maxWidth: 600)
         }.frame(maxWidth: .infinity).background(MailTheme.surface).scrollDismissesKeyboard(.interactively)
             .textInputAutocapitalization(.never).autocorrectionDisabled()
-            .onAppear { if !initialized { if let editingAccount { setup = AccountSetup(account: editingAccount) }; initialized = true } }
+            .onAppear { if !initialized { if let editingAccount { setup = AccountSetup(account: editingAccount) }; initialized = true; if showServerSettingsOnOpen { advanced = true } } }
             .navigationTitle(editingAccount == nil ? "添加邮箱" : "编辑邮箱").navigationBarTitleDisplayMode(.inline)
             .navigationBarBackButtonHidden(true).toolbar(.hidden, for: .tabBar)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("取消", action: cancelAndClose) } }

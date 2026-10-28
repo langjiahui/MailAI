@@ -48,16 +48,21 @@ struct AccountDetailView: View {
     var body: some View {
         List {
             if let account {
-                Section {
-                    VStack(spacing: 8) {
-                        SenderAvatar(name: account.displayName.isEmpty ? account.email : account.displayName, size: 56)
-                        Text(account.displayName.isEmpty ? "邮箱账号" : account.displayName).font(.title3.weight(.semibold))
-                        Text(account.email).font(.subheadline).foregroundStyle(MailTheme.secondary).textSelection(.enabled)
-                    }.frame(maxWidth: .infinity).padding(.vertical, 12)
+                Section("邮箱账号") {
+                    LabeledContent("邮箱类型", value: "IMAP")
+                    LabeledContent("邮箱地址", value: account.email).textSelection(.enabled)
+                    NavigationLink { AccountView(store: store, editingAccount: account) } label: { accountRow("显示名称", value: account.displayName.isEmpty ? "未设置" : account.displayName) }
+                    NavigationLink("修改密码 / 授权码") { AccountView(store: store, editingAccount: account) }
                 }.listRowBackground(MailTheme.surface)
-                Section {
-                    NavigationLink("登录、服务器与发信偏好") { AccountView(store: store, editingAccount: account) }
-                } footer: { Text("密码保持为空时沿用已保存凭据。修改后会重新验证连接。") }.listRowBackground(MailTheme.surface)
+                Section("服务器设置") {
+                    NavigationLink { AccountView(store: store, editingAccount: account, showServerSettingsOnOpen: true) } label: { accountRow("收信服务器", value: account.imapHost) }
+                    NavigationLink { AccountView(store: store, editingAccount: account, showServerSettingsOnOpen: true) } label: { accountRow("发信服务器", value: account.smtpHost) }
+                }.listRowBackground(MailTheme.surface)
+                Section("邮件设置") {
+                    NavigationLink { AccountView(store: store, editingAccount: account) } label: { accountRow("邮件签名", value: account.signature?.isEmpty == false ? account.signature! : "未设置") }
+                    NavigationLink { AccountView(store: store, editingAccount: account) } label: { accountRow("保存已发送副本", value: account.shouldSaveSentCopy ? "已开启" : "已关闭") }
+                    NavigationLink { AccountView(store: store, editingAccount: account) } label: { accountRow("已发送文件夹", value: account.sentFolder?.isEmpty == false ? account.sentFolder! : "自动识别") }
+                }.listRowBackground(MailTheme.surface)
                 Section {
                     Button("移除此邮箱", role: .destructive) { confirmRemoval = true }.disabled(store.sending || store.operating)
                 }
@@ -70,6 +75,10 @@ struct AccountDetailView: View {
                 Button("取消", role: .cancel) {}
             } message: { Text("会删除此设备上的账号、邮件缓存、附件与草稿。服务器邮件会保留。") }
     }
+    private func accountRow(_ title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) { Text(title); Text(value).font(.subheadline).foregroundStyle(MailTheme.secondary).lineLimit(2) }.padding(.vertical, 3)
+    }
+
 }
 struct AppearanceSettingsView: View {
     @AppStorage("mail.appearance") private var appearance = "system"
