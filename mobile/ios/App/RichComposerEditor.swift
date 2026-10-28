@@ -46,6 +46,7 @@ struct RichComposerEditor: UIViewRepresentable {
         if let html, let data = html.data(using: .utf8), let attributed = try? NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.html], documentAttributes: nil) { view.attributedText = attributed }
         else { view.text = text }
         view.isEditable = editable
+        view.isScrollEnabled = false
         view.textContainerInset = UIEdgeInsets(top: 12, left: 0, bottom: 12, right: 0)
         commands?.view = view
         commands?.changed = { [weak view, weak coordinator = context.coordinator] in if let view { coordinator?.textViewDidChange(view) } }
@@ -56,6 +57,12 @@ struct RichComposerEditor: UIViewRepresentable {
         commands?.view = view
         context.coordinator.changed = changed
         if view.text != text { view.text = text; view.font = .preferredFont(forTextStyle: .body); view.textColor = .label }
+    }
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
+        guard let width = proposal.width, width > 0 else { return nil }
+        let height = uiView.sizeThatFits(CGSize(width: width, height: CGFloat.greatestFiniteMagnitude)).height
+        uiView.isScrollEnabled = height > 20000
+        return CGSize(width: width, height: max(320, min(20000, height)))
     }
     final class Coordinator: NSObject, UITextViewDelegate {
         var changed: (String, String?) -> Void

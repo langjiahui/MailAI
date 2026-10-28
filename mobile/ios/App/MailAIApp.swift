@@ -120,7 +120,15 @@ struct InboxView: View {
         .alert("操作提示", isPresented: Binding(get: { store.error != nil && tab != 0 }, set: { if !$0 { store.error = nil } })) {
             Button("知道了") { store.error = nil }
         } message: { Text(store.error ?? "") }
-        .task { store.refresh() }
+        .task {
+            #if DEBUG
+            if CommandLine.arguments.contains("--ui-fixture"), CommandLine.arguments.contains("--ui-save-failure") {
+                do { try store.newDraft(); try DebugPreview.makeStorageReadOnly(); composing = true } catch { store.error = error.localizedDescription }
+                return
+            }
+            #endif
+            store.refresh()
+        }
         .onChange(of: store.selectedID) { _, _ in selection = []; selecting = false }
         .onChange(of: store.folder) { _, _ in selection = []; selecting = false }
         .onChange(of: unified) { _, value in if value { unifiedMessages = (try? store.cachedInbox()) ?? [] } }

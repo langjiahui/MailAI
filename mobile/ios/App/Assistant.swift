@@ -24,6 +24,8 @@ enum AssistantVault {
         #if DEBUG
         if CommandLine.arguments.contains("--ui-fixture"), CommandLine.arguments.contains("--ui-assistant") {
             var fixture = AssistantConfiguration(); fixture.endpoint = "https://localhost:18443/v1"; fixture.model = "fixture"; fixture.key = "fixture"; fixture.consent = true
+            if CommandLine.arguments.contains("--ui-ai-failure") { fixture.endpoint = "https://localhost:18443/incomplete" }
+            if CommandLine.arguments.contains("--ui-ai-slow") { fixture.endpoint = "https://localhost:18443/slow" }
             return fixture
         }
         #endif

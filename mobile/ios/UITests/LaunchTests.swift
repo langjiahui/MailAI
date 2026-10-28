@@ -361,6 +361,44 @@ final class WorkspaceTests: XCTestCase {
         for field in ["compose-cc", "compose-bcc"] { XCTAssertEqual(app.descendants(matching: .any).matching(identifier: field).firstMatch.value as? String, "") }
         attach("redesign-forward-empty-recipients")
     }
+    func testDraftSaveFailureKeepsInputAndBlocksExit() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-fixture", "--ui-save-failure"]; app.launch()
+        let body = app.textViews["compose-body-editor"]
+        XCTAssertTrue(body.waitForExistence(timeout: 5)); body.tap(); body.typeText("Unsaved synthetic text")
+        app.buttons["收起键盘"].tap(); app.swipeUp()
+        XCTAssertTrue(app.buttons["重试保存"].waitForExistence(timeout: 5)); attach("redesign-draft-save-failure")
+        app.buttons["关闭"].tap(); app.buttons["保存并返回"].tap()
+        XCTAssertTrue(app.buttons["关闭"].exists)
+        XCTAssertEqual(body.value as? String, "Unsaved synthetic text")
+    }
+    func testSubmissionDisablesControlsUntilServerResult() {
+        let app = launch(extra: ["--ui-records", "--ui-send-slow"])
+        app.buttons["更多邮件操作"].tap(); app.buttons["草稿与发送记录"].tap()
+        app.buttons.containing(.staticText, identifier: "合成待办草稿").firstMatch.tap()
+        app.buttons["send-mail"].tap(); app.buttons["确认发送"].tap()
+        XCTAssertFalse(app.buttons["关闭"].isEnabled); XCTAssertFalse(app.buttons["send-mail"].isEnabled)
+        app.swipeUp(); attach("redesign-submitting")
+        expectation(for: NSPredicate(format: "enabled == true"), evaluatedWith: app.buttons["send-mail"])
+        waitForExpectations(timeout: 10)
+        XCTAssertTrue((app.textViews["compose-body-editor"].value as? String)?.contains("用于设计验收") == true)
+    }
+    func testAssistantFailureAndCancellationNeverExposePartialResult() {
+        var app = launch(extra: ["--ui-assistant", "--ui-ai-failure"])
+        app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap(); app.buttons["小邮助手"].tap()
+        app.buttons["起草回复"].tap(); app.buttons["开始处理"].tap()
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '未返回完整文字'")).firstMatch.waitForExistence(timeout: 10)); attach("redesign-ai-failure")
+        XCTAssertFalse(app.buttons["创建回复草稿"].exists)
+        app.terminate()
+        app = launch(extra: ["--ui-assistant", "--ui-ai-slow"])
+        app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap(); app.buttons["小邮助手"].tap()
+        app.buttons["起草回复"].tap(); app.buttons["开始处理"].tap()
+        XCTAssertTrue(app.buttons["取消"].firstMatch.waitForExistence(timeout: 3)); attach("redesign-ai-processing")
+        app.buttons["取消"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["已取消，结果未采用。"].waitForExistence(timeout: 5)); attach("redesign-ai-cancelled")
+        let late = expectation(for: NSPredicate(format: "exists == true"), evaluatedWith: app.staticTexts["synthetic model response"])
+        late.isInverted = true; waitForExpectations(timeout: 6)
+        XCTAssertFalse(app.buttons["创建回复草稿"].exists)
+    }
     func testStorageFailureOffersRetryWithoutDeletingData() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-fixture", "--ui-storage-error"]; app.launch()
         XCTAssertTrue(app.buttons["重试"].waitForExistence(timeout: 5)); attach("redesign-storage-error")

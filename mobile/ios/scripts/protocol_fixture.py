@@ -127,6 +127,8 @@ async def model_http(reader, writer):
         if path.startswith('/leak/'): payload = {'model': 'fixture'}
         if payload.get('model') != 'fixture':
             await write(writer, 'HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n'); return
+        if path.startswith('/slow/'):
+            await asyncio.sleep(4)
         result = {'choices': [{'finish_reason': 'length' if path.startswith('/incomplete/') else 'stop', 'message': {'content': 'synthetic model response'}}]}
         body = json.dumps(result).encode()
         await write(writer, f'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {len(body)}\r\nConnection: close\r\n\r\n'.encode() + body)

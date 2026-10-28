@@ -4,6 +4,11 @@ import UIKit
 import MailAICore
 
 @MainActor enum DebugPreview {
+    private static var accountDirectory: URL?
+    static func makeStorageReadOnly() throws {
+        guard let directory = accountDirectory else { throw MailFailure.invalid("合成存储目录不可用") }
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: directory.path)
+    }
     private final class Vault: CredentialStorage {
         var credentials: [AccountCredential]
         init(_ credentials: [AccountCredential]) { self.credentials = credentials }
@@ -34,7 +39,10 @@ import MailAICore
                 attachments: [attachment],
                 recipients: [.init(name: "测试用户", email: "demo@example.com"), .init(name: "协作人", email: "team@example.com")]), markedRead: true)
         }
-        func send(_ credential: AccountCredential, draft: MailDraft) async throws { throw SubmissionFailure(uncertain: false) }
+        func send(_ credential: AccountCredential, draft: MailDraft) async throws {
+            if CommandLine.arguments.contains("--ui-send-slow") { try await Task.sleep(for: .seconds(4)) }
+            throw SubmissionFailure(uncertain: false)
+        }
         func attachment(_ credential: AccountCredential, summary: MailSummary, attachment: MailAttachment) async throws -> Data {
             if CommandLine.arguments.contains("--ui-attachment-slow") { try await Task.sleep(for: .seconds(4)) }
             if CommandLine.arguments.contains("--ui-attachment-failure") { throw MailFailure.invalid("合成附件下载失败，正文保留。") }
@@ -69,7 +77,9 @@ import MailAICore
     }
     static func store() throws -> MailStore {
         var account = MailAccount(); account.email = "demo@example.com"; account.displayName = "测试邮箱"; account.suggestServers()
-        let files = try MailFiles(root: FileManager.default.temporaryDirectory.appendingPathComponent("MailAI-UI-" + UUID().uuidString))
+        let cacheRoot = FileManager.default.temporaryDirectory.appendingPathComponent("MailAI-UI-" + UUID().uuidString)
+        let files = try MailFiles(root: cacheRoot)
+        accountDirectory = cacheRoot.appendingPathComponent(account.id.uuidString)
         try files.write(CommandLine.arguments.contains("--ui-empty-inbox") ? [] : messages(folder: "INBOX"), account: account.id, key: "list:INBOX")
         try files.write([MailContact(email: "team@example.com", name: "协作联系人", note: "项目组")], account: account.id, key: "contacts")
         if CommandLine.arguments.contains("--ui-records") {
