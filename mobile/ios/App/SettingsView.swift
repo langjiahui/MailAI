@@ -89,10 +89,10 @@ struct AppearanceSettingsView: View {
                         .font(.system(size: readerSize * scaledBody / 17)).lineSpacing(5)
                 }.padding(.vertical, 8)
             }
-            Section("邮件正文字号") {
+            Section {
                 LabeledContent("字号", value: "\(Int(readerSize)) pt")
                 Slider(value: $readerSize, in: 14...26, step: 1).accessibilityLabel("正文字号")
-            } footer: { Text("界面文字跟随系统动态字号；此项调整邮件正文。") }
+            } header: { Text("邮件正文字号") } footer: { Text("界面文字跟随系统动态字号；此项调整邮件正文。") }
         }.scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("外观与阅读").navigationBarTitleDisplayMode(.inline).toolbar(.hidden, for: .tabBar)
     }
 }
