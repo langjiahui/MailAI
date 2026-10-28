@@ -16,13 +16,88 @@ _lock = threading.Lock()
 _tasks = {}
 
 
+def discover_legacy(mail):
+    """Turn an old count-only warning into exact, recoverable UID records."""
+    with db.conn() as c:
+        c.execute("UPDATE mail_fetch_retries SET due_at=0,error=? WHERE size>? AND size<=? "
+                  "AND error LIKE ?", ('大邮件等待自动分段下载', 50 * 1024**2, MAX_MANUAL_BYTES,
+                                       '%超过 50 MB%'))
+    count = int(db.get_runtime_settings().get('oversized_mail_count', '0') or 0)
+    if count <= db.mail_fetch_retry_summary(config.INBOX_FOLDER)['oversized']:
+        return
+    folder = config.INBOX_FOLDER
+    mail.select_folder(folder, readonly=True, reset_generation=True)
+    uids = list(mail.client.search(['ALL']))
+    for offset in range(0, len(uids), 100):
+        if pipeline._is_canceled():
+            return
+        batch = uids[offset:offset + 100]
+        sizes = mail.client.fetch(batch, ['RFC822.SIZE'])
+        for uid in batch:
+            item = sizes.get(uid, {})
+            size = int(item.get(b'RFC822.SIZE') or item.get('RFC822.SIZE') or 0)
+            if size > 50 * 1024**2 and not db.already_processed(folder, uid):
+                db.defer_mail_fetch(folder, uid, '历史大邮件等待分段下载', size=size, retry_after=0)
+    db.set_runtime_setting('oversized_mail_count', str(db.mail_fetch_retry_summary(folder)['oversized']))
+
+
+def recover_large(mail, folder, uid, size, *, history=False):
+    """Automatically stream a large message; never move it or mark it read."""
+    if size > MAX_MANUAL_BYTES:
+        raise ValueError('邮件超过 256 MB，请在原邮箱下载原件')
+    row = dict(folder=folder, uid=uid, size=size, uid_validity=db.get_uid_validity(folder))
+    with db.conn() as c:
+        previous = c.execute('SELECT error FROM mail_fetch_retries WHERE folder=? AND uid=?', (folder, uid)).fetchone()
+        history = history or bool(previous and str(previous['error']).startswith('历史大邮件'))
+    Path(config.RAW_DIR).mkdir(parents=True, exist_ok=True)
+    path = Path(config.RAW_DIR) / ('automatic-' + uuid.uuid4().hex + '.eml')
+    try:
+        def progress(received, total):
+            pipeline._set_fetch_state(True, operation='fetch_all' if history else 'poll',
+                message=f'正在分段下载大邮件：{received / 1024**2:.1f} / {total / 1024**2:.1f} MB', persist=False)
+        flags = download(mail, row, path, progress)
+        from .mail_import import _parse_exported
+        from .trash_purge import raw_digest
+        parsed = _parse_exported(path)
+        parsed.update(uid=uid, folder=folder, raw_path=str(path), status='inbox',
+                      arrival_kind='history' if history else 'new', processing_complete=1,
+                      verdict='unreviewed', review_source='large_mail_download', action_mode='observe',
+                      action_reason='大邮件分段保存到本机，未执行服务器操作', _purge_digest=raw_digest(path))
+        existing = db.get_email_by_folder_uid(folder, uid)
+        email_id = existing['id'] if existing else db.upsert_email(parsed)
+        if email_id and not existing:
+            path = None  # Only a committed row can own the downloaded file.
+            db.sync_mail_flags(email_id, is_read=b'\\Seen' in flags or '\\Seen' in flags,
+                               is_starred=b'\\Flagged' in flags or '\\Flagged' in flags)
+            if history:
+                with db.conn() as c:
+                    c.execute('UPDATE emails SET notification_sent=1 WHERE id=?', (email_id,))
+        db.clear_mail_fetch_retry(folder, uid)
+        db.add_audit_log(email_id or None, 'automatic_large_mail_download', actor='system',
+                         reason='大邮件分段下载完成，原邮件与已读状态保持不变')
+        if email_id and not history and not existing:
+            from .mailbox_jobs import notify_new_message
+            notify_new_message(email_id)
+        return {'status': 'inbox' if email_id else 'purged', 'id': email_id}
+    except Exception as exc:
+        if history:
+            raise RuntimeError('历史大邮件下载失败：' + str(exc)) from exc
+        raise
+    finally:
+        if path is not None:
+            path.unlink(missing_ok=True)
+
+
 def overview(offset=0, limit=30):
     with db.conn() as c:
         total = c.execute('SELECT COUNT(*) FROM mail_fetch_retries').fetchone()[0]
         rows = [dict(row) for row in c.execute('SELECT * FROM mail_fetch_retries ORDER BY updated_at DESC,folder,uid LIMIT ? OFFSET ?', (limit, offset))]
     with _lock:
         task = dict(_tasks.get(config.DB_PATH, {}))
-    return dict(items=rows, total=total, task=task, sync=pipeline.get_fetch_state())
+    from .mail_connection import issue_kind
+    sync = pipeline.get_fetch_state()
+    sync['issue_kind'] = issue_kind(sync.get('error'))
+    return dict(items=rows, total=total, task=task, sync=sync)
 
 
 def _entry(folder, uid):

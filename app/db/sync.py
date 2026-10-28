@@ -4,7 +4,7 @@ from datetime import datetime
 
 from .core import conn
 
-MAX_AUTOMATIC_RETRY_BYTES = 50 * 1024 * 1024
+MAX_AUTOMATIC_RETRY_BYTES = 256 * 1024 * 1024
 
 # ---------- durable sync jobs ----------
 
@@ -53,7 +53,7 @@ def defer_mail_fetch(folder: str, uid: int, error: str, *, size: int = 0,
 def due_mail_fetch_retries(folder: str, *, limit: int = 20) -> list[int]:
     with conn() as c:
         return [int(row['uid']) for row in c.execute(
-            "SELECT uid FROM mail_fetch_retries WHERE folder=? AND due_at<=? AND size<? "
+            "SELECT uid FROM mail_fetch_retries WHERE folder=? AND due_at<=? AND size<=? "
             "ORDER BY due_at,uid LIMIT ?",
             (folder, time.time(), MAX_AUTOMATIC_RETRY_BYTES, limit),
         )]
@@ -63,8 +63,8 @@ def mail_fetch_retry_summary(folder: str) -> dict:
     with conn() as c:
         row = c.execute(
             "SELECT COUNT(*) AS count,"
-            "SUM(CASE WHEN size>=? THEN 1 ELSE 0 END) AS oversized,"
-            "MIN(CASE WHEN size<? THEN due_at END) AS next_retry_at "
+            "SUM(CASE WHEN size>? THEN 1 ELSE 0 END) AS oversized,"
+            "MIN(CASE WHEN size<=? THEN due_at END) AS next_retry_at "
             "FROM mail_fetch_retries WHERE folder=?",
             (MAX_AUTOMATIC_RETRY_BYTES, MAX_AUTOMATIC_RETRY_BYTES, folder),
         ).fetchone()
@@ -79,7 +79,7 @@ def clear_mail_fetch_retry(folder: str, uid: int):
 
 def retry_all_mail_fetch_now(folder: str) -> int:
     with conn() as c:
-        result = c.execute("UPDATE mail_fetch_retries SET due_at=0 WHERE folder=? AND size<?",
+        result = c.execute("UPDATE mail_fetch_retries SET due_at=0 WHERE folder=? AND size<=?",
                            (folder, MAX_AUTOMATIC_RETRY_BYTES))
         return result.rowcount
 

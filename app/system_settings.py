@@ -20,6 +20,7 @@ from imapclient import IMAPClient
 
 from . import config, db, credential_store, smtp_client
 from .mail_providers import discover
+from .mail_connection import issue_kind
 from .llm import client as llm_client
 from .llm.providers import KEYLESS_PLACEHOLDER, KEYLESS_PROVIDERS, PRESETS, completion_url, validate_extra
 
@@ -240,13 +241,13 @@ def public_config() -> dict:
                     "SELECT 1 FROM sqlite_master WHERE type='table' AND name='mail_fetch_retries'"
                 ).fetchone()
                 deferred = connection.execute(
-                    "SELECT COUNT(*),MIN(CASE WHEN size<? THEN due_at END),"
-                    "SUM(CASE WHEN size>=? THEN 1 ELSE 0 END) FROM mail_fetch_retries",
-                    (50 * 1024 * 1024, 50 * 1024 * 1024),
+                    "SELECT COUNT(*),MIN(CASE WHEN size<=? THEN due_at END),"
+                    "SUM(CASE WHEN size>? THEN 1 ELSE 0 END) FROM mail_fetch_retries",
+                    (256 * 1024 * 1024, 256 * 1024 * 1024),
                 ).fetchone() if retry_table else (0, None, 0)
                 deferred_first = connection.execute(
-                    "SELECT uid,error,size FROM mail_fetch_retries ORDER BY size>=?,due_at,uid LIMIT 1",
-                    (50 * 1024 * 1024,),
+                    "SELECT uid,error,size FROM mail_fetch_retries ORDER BY size>?,due_at,uid LIMIT 1",
+                    (256 * 1024 * 1024,),
                 ).fetchone() if retry_table else None
             live = pipeline.get_live_fetch_state(path)
             # A persisted running record is a checkpoint, not proof of a live worker.
@@ -261,6 +262,7 @@ def public_config() -> dict:
                     'sync_status': status,
                     'sync_message': live['message'] if live['running'] else '上次同步中断，可重新同步' if status == 'interrupted' else job[1] if job else '',
                     'sync_error': live['error'] if live['running'] else job[2] if job else '',
+                    'sync_issue_kind': issue_kind(live['error'] if live['running'] else job[2] if job else ''),
                     'sync_operation': live['operation'], 'sync_phase': live['phase'],
                     'sync_processed': live['processed'], 'sync_total': live['total'],
                     'sync_elapsed_seconds': live['elapsed_seconds'], 'sync_quiet_seconds': live['quiet_seconds'],
@@ -1045,8 +1047,8 @@ def diagnostics(lang: str = "zh", progress=None) -> dict:
             check_id="mail_retry")
     if deferred['oversized']:
         add(t("超大邮件", "Oversized mail"), "warning",
-            t(f"{deferred['oversized']} 封邮件超过 50 MB，需在其他邮件客户端查看或下载",
-              f"{deferred['oversized']} messages exceed 50 MB; open or download them in another mail client."),
+            t(f"{deferred['oversized']} 封邮件超过 256 MB，需在原邮箱下载原件",
+              f"{deferred['oversized']} messages exceed 256 MB; download the originals from your mailbox."),
             check_id="mail_oversized")
     return {"ok": not any(item["status"] == "fail" for item in checks), "checks": checks,
             "data_dir": os.path.basename(config.DATA_DIR),

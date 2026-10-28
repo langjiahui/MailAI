@@ -1587,6 +1587,12 @@ if (typeof document !== 'undefined') {
 /* ---- i18n-catalog.js ---- */
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "mailRecovery.historyFailure": ["历史大邮件下载失败：{0}", "Large historical message download failed: {0}"],
+  "mailRecovery.autoLimits": ["大邮件会自动分段下载，单封最多 256 MB。失败会保留问题记录并重试；下载仅保存本机副本，不修改服务器邮件。", "Large messages are downloaded automatically in chunks, up to 256 MB each. Failed downloads remain queued for retry. Only local copies are saved; server messages are unchanged."],
+  "mailRecovery.signIn": ["邮箱登录已失效，请重新登录或更新授权码。", "Mailbox sign-in has expired. Sign in again or update the app password."],
+  "mailRecovery.tooLarge": ["邮件超过 256 MB，请在原邮箱下载原件", "This message exceeds 256 MB. Download the original from your mailbox."],
+  "mailRecovery.tooLargeCount": ["{0} 封邮件超过 256 MB，请在原邮箱下载原件", "{0} messages exceed 256 MB. Download the originals from your mailbox."],
+  "mailRecovery.progress": ["正在分段下载大邮件：{0} / {1} MB", "Downloading a large message in chunks: {0} / {1} MB"],
   "mailImport.uploadRetrying": ["传输暂时没有响应，正在核对已保存进度并自动重试（{0} / 2）。", "The transfer stopped responding. Checking saved progress and retrying automatically ({0} / 2)."],
   "mailImport.uploadCurrent": ["当前文件：{0}", "Current file: {0}"],
   "mailImport.uploadSaving": ["已传输 {0}，正在确认文件已保存。", "Transferred {0}. Confirming the file was saved."],
@@ -24508,7 +24514,12 @@ function accountSyncLabel(account) {
   }
   if (account.sync_status === 'interrupted') return mailaiText('上次同步中断');
   if (Number(account.sync_deferred_count) > 0) return mailaiTemplate`${account.sync_deferred_count} 封待重试`;
-  if (account.sync_error) return mailaiText('同步失败');
+  if (account.sync_error) {
+    if (account.sync_issue_kind === 'credentials') return mailaiText('需要重新登录');
+    if (account.sync_issue_kind === 'connection') return mailaiText('自动重连中');
+    if (account.sync_issue_kind === 'certificate') return mailaiText('检查连接');
+    return mailaiText('同步失败');
+  }
   if (account.sync_status === 'canceled') return mailaiText('同步已暂停');
   if (Number(account.sync_oversized_count) > 0) return mailaiTemplate`${account.sync_oversized_count} 封超大邮件未下载`;
   if (Number(account.oversized_mail_count) > 0) return mailaiTemplate`${account.oversized_mail_count} 封超大邮件未下载`;
@@ -24612,7 +24623,7 @@ function renderSidebarAccounts() {
   const syncButton = document.getElementById('btn-poll');
   if (syncButton) {
     const syncHint = currentPaused ? mailaiText('自动收信已暂停；点击可手动同步') : mailaiText('立即从服务器拉取邮件');
-    const oversizedHint = oversizedCount ? mailaiTemplate`${oversizedCount} 封邮件超过 50 MB 未下载，可在其他邮件客户端查看或下载` : '';
+    const oversizedHint = oversizedCount ? mailaiTemplate`${oversizedCount} 封邮件超过 256 MB，请在原邮箱下载原件` : '';
     const deferredHint = deferredCount ? mailaiTemplate`${deferredCount} 封邮件待重试；点击同步立即重试` : '';
     syncButton.title = [syncHint, deferredHint, oversizedHint].filter(Boolean).join('；');
     mailaiBindUI(syncButton, "@aria-label", () => ([currentPaused ? mailaiText('手动同步（自动收信已暂停）') : mailaiText('同步邮件'), deferredHint, oversizedHint].filter(Boolean).join('；')));
@@ -24636,7 +24647,7 @@ function renderSidebarAccounts() {
       const status = accountSyncLabel(account);
       const statusVisible = Boolean(status) && (syncing || account.auto_sync_paused || mailaiSystemMessage(account.sync_error) || Number(account.sync_deferred_count) > 0 || Number(account.sync_oversized_count) > 0 || Number(account.oversized_mail_count) > 0 || !account.credential_available || ['interrupted','canceled'].includes(account.sync_status));
       const accountOversizedCount = Math.max(Number(account.oversized_mail_count || 0), Number(account.sync_oversized_count || 0));
-      const oversizedDetail = accountOversizedCount > 0 ? mailaiTemplate`${accountOversizedCount} 封邮件超过 50 MB，未下载；可在其他邮件客户端查看或下载` : '';
+      const oversizedDetail = accountOversizedCount > 0 ? mailaiTemplate`${accountOversizedCount} 封邮件超过 256 MB，请在原邮箱下载原件` : '';
       const retryAt = account.sync_next_retry_at ? new Date(Number(account.sync_next_retry_at) * 1000).toLocaleTimeString(currentI18nLanguage(), {hour:'2-digit',minute:'2-digit'}) : '';
       const deferredDetail = Number(account.sync_deferred_count) > 0 ? mailaiTemplate`${account.sync_deferred_count} 封邮件待重试${account.sync_deferred_detail?.uid ? mailaiTemplate`（邮件编号 ${account.sync_deferred_detail.uid}：${mailaiSystemMessage(account.sync_deferred_detail.error) || mailaiText('下载失败')}）` : ''}；${retryAt ? mailaiTemplate`预计 ${retryAt} 自动重试，` : ''}点击顶部「同步」可立即重试` : '';
       const syncDetail = [mailaiSystemMessage(account.sync_error) || oversizedDetail || mailaiSystemMessage(account.sync_message) || account.user, deferredDetail, syncing ? mailaiTemplate`已用时 ${account.sync_elapsed_seconds || 0} 秒；距上次进度更新 ${account.sync_quiet_seconds || 0} 秒` : '', account.sync_status === 'interrupted' ? mailaiText('当前没有同步任务，点击顶部「同步」重新检查') : ''].filter(Boolean).join(' · ');
@@ -35856,8 +35867,17 @@ function mailCardDate(value, now = new Date()) {
   if (document.documentElement.classList.contains('windows-native-window')) return;
   let revision = 0;
   let pending = Promise.resolve();
-  let dragRevision = 0, pendingDrag = Promise.resolve(), lastDragRegion = '';
-  let regionFrame;
+  let dragRevision = 0, pendingDrag = Promise.resolve(), lastDragRegion = '', queuedDragRegion = '';
+  let regionFrame, dragRetryTimer, dragRetries = 0;
+  const dragRetryDelays = [150, 500, 1500];
+  function retryDragRegion(token) {
+    if (token !== dragRevision || dragRetryTimer || dragRetries >= dragRetryDelays.length) return;
+    // Re-measure on retry: the window/font layout may have changed meanwhile.
+    dragRetryTimer = setTimeout(() => {
+      dragRetryTimer = undefined;
+      updateDragRegion();
+    }, dragRetryDelays[dragRetries++]);
+  }
   function updateDragRegion() {
     cancelAnimationFrame(regionFrame);
     regionFrame = requestAnimationFrame(() => {
@@ -35873,7 +35893,7 @@ function mailCardDate(value, now = new Date()) {
       }
       if (!document.documentElement.classList.contains('macos-native-window')) return;
       const rect = document.querySelector('.topbar .brand')?.getBoundingClientRect();
-      if (rect?.width) {
+      if (header && rect?.width && innerWidth > 0) {
         // Native drag/double-click applies to empty header space, never controls.
         const occupied = [...header.querySelectorAll('.global-search,button,input,select,a,[role=button]')]
           .map(el => el.getBoundingClientRect()).filter(r => r.width && r.height);
@@ -35899,18 +35919,36 @@ function mailCardDate(value, now = new Date()) {
         if (edge < innerWidth) gaps.push([edge, innerWidth]);
         const method = window.pywebview?.api?.set_window_drag_region;
         const region = [rect.left, rect.right, innerWidth, gaps, excluded], signature = JSON.stringify(region);
-        if (method && signature !== lastDragRegion) {
-          const token = ++dragRevision; lastDragRegion = signature;
+        if (method && signature !== queuedDragRegion && (signature !== lastDragRegion || queuedDragRegion)) {
+          if (dragRetryTimer) {
+            clearTimeout(dragRetryTimer); dragRetryTimer = undefined;
+          }
+          const token = ++dragRevision; queuedDragRegion = signature;
           // Native bridge calls can finish out of order during a drag. Apply
           // only the latest queued geometry after the previous call settles.
-          pendingDrag = pendingDrag.catch(() => {}).then(() => token === dragRevision ? method(...region) : null)
-            .catch(() => { if (token === dragRevision) lastDragRegion = ''; });
+          pendingDrag = pendingDrag.catch(() => {}).then(async () => {
+            if (token !== dragRevision) return;
+            lastDragRegion = '';
+            let result;
+            try { result = await method(...region); } catch (_) { /* Retry a transient bridge failure. */ }
+            if (token !== dragRevision) return;
+            queuedDragRegion = '';
+            if (result?.ok === true) {
+              lastDragRegion = signature;
+              dragRetries = 0;
+            } else retryDragRegion(token);
+          });
         }
       }
     });
   }
   const header = document.querySelector('.topbar');
-  if (header) new ResizeObserver(updateDragRegion).observe(header);
+  if (header) {
+    const observer = new ResizeObserver(updateDragRegion);
+    observer.observe(header);
+    // The toolbar can keep its size while fonts or command labels move its gaps.
+    for (const node of header.querySelectorAll('.brand,.global-search,.global-actions')) observer.observe(node);
+  }
   const sidebar = document.querySelector('.layout > .sidebar');
   if (sidebar) new ResizeObserver(updateDragRegion).observe(sidebar);
   const petRoot = document.getElementById('mail-assistant'), pet = document.getElementById('assistant-orb');
@@ -35919,6 +35957,8 @@ function mailCardDate(value, now = new Date()) {
   // Font zoom and opening/closing chat also change the pet's native hit target.
   new MutationObserver(updateDragRegion).observe(document.body, {attributes:true, attributeFilter:['class','style']});
   window.addEventListener('resize', updateDragRegion);
+  window.addEventListener('focus', updateDragRegion);
+  document.fonts?.ready.then(updateDragRegion);
   updateDragRegion();
   window.addEventListener('mailai:native-fullscreen', event => {
     const root = document.documentElement;
@@ -35941,7 +35981,13 @@ function mailCardDate(value, now = new Date()) {
       }
     } catch (_) { /* A missing/older desktop bridge keeps the standard web canvas. */ }
   }
-  window.addEventListener('pywebviewready', syncNativeTheme);
+  window.addEventListener('pywebviewready', () => {
+    // Geometry must recover even if the separate theme bridge is unavailable.
+    lastDragRegion = ''; queuedDragRegion = ''; ++dragRevision; dragRetries = 0;
+    clearTimeout(dragRetryTimer); dragRetryTimer = undefined;
+    updateDragRegion();
+    syncNativeTheme();
+  });
   document.addEventListener('mailai:themechange', syncNativeTheme);
   syncNativeTheme();
 })();
@@ -39989,7 +40035,7 @@ function mailCardDate(value, now = new Date()) {
   const dialog = document.createElement('dialog');
   dialog.id = 'mail-recovery-dialog'; dialog.className = 'mail-import-dialog';
   dialog.setAttribute('aria-labelledby','mail-recovery-title');
-  dialog.innerHTML = `<header><div><h2 id="mail-recovery-title">${esc(mailaiText('同步与问题邮件'))}</h2><p>${esc(mailaiText('查看原因、定位邮件并重试，不影响其他邮箱。'))}</p></div><button type="button" data-recovery-close aria-label="${esc(mailaiText('关闭'))}">×</button></header><div class="mail-import-body"><label class="mail-import-destination"><span>${esc(mailaiText('查看邮箱'))}</span><select data-recovery-account></select></label><p data-recovery-sync role="status"></p><p data-recovery-error role="alert"></p><div class="mail-recovery-actions"><button type="button" data-recovery-poll>${esc(mailaiText('重新同步此邮箱'))}</button><button type="button" data-recovery-full>${esc(mailaiText('完整同步所有文件夹'))}</button><button type="button" data-recovery-manage>${esc(mailaiText('管理此邮箱'))}</button></div><p>${esc(mailaiText('自动下载上限为 50 MB；可手动补下载单封最多 256 MB 的邮件。下载原件和附件仅保存在本机，不修改服务器邮件。'))}</p><section data-recovery-task role="status" aria-live="polite"></section><div data-recovery-items></div><button type="button" data-recovery-more hidden>${esc(mailaiText('查看更多问题'))}</button></div><footer><span></span><button type="button" data-recovery-refresh>${esc(mailaiText('刷新状态'))}</button><button type="button" data-recovery-close>${esc(mailaiText('关闭'))}</button></footer>`;
+  dialog.innerHTML = `<header><div><h2 id="mail-recovery-title">${esc(mailaiText('同步与问题邮件'))}</h2><p>${esc(mailaiText('查看原因、定位邮件并重试，不影响其他邮箱。'))}</p></div><button type="button" data-recovery-close aria-label="${esc(mailaiText('关闭'))}">×</button></header><div class="mail-import-body"><label class="mail-import-destination"><span>${esc(mailaiText('查看邮箱'))}</span><select data-recovery-account></select></label><p data-recovery-sync role="status"></p><p data-recovery-error role="alert"></p><div class="mail-recovery-actions"><button type="button" data-recovery-poll>${esc(mailaiText('重新同步此邮箱'))}</button><button type="button" data-recovery-full>${esc(mailaiText('完整同步所有文件夹'))}</button><button type="button" data-recovery-manage>${esc(mailaiText('管理此邮箱'))}</button></div><p>${esc(mailaiText('大邮件会自动分段下载，单封最多 256 MB。失败会保留问题记录并重试；下载仅保存本机副本，不修改服务器邮件。'))}</p><section data-recovery-task role="status" aria-live="polite"></section><div data-recovery-items></div><button type="button" data-recovery-more hidden>${esc(mailaiText('查看更多问题'))}</button></div><footer><span></span><button type="button" data-recovery-refresh>${esc(mailaiText('刷新状态'))}</button><button type="button" data-recovery-close>${esc(mailaiText('关闭'))}</button></footer>`;
   document.body.append(dialog);
   dialog.querySelectorAll('h2,header p,label > span,button,.mail-import-body > p:not([data-recovery-sync]):not([data-recovery-error])').forEach(node=>{
     const value=node.textContent;
@@ -40005,8 +40051,12 @@ function mailCardDate(value, now = new Date()) {
     const task = state?.task || {}, sync = state?.sync || {};
     const account = _systemConfig?.accounts?.find(row=>row.id===accountId);
     $('[data-recovery-account]').disabled = working;
-    const syncError = sync.error || account?.sync_error;
+    const syncError = Object.prototype.hasOwnProperty.call(sync, 'error') ? sync.error : account?.sync_error;
+    const issue = sync.issue_kind || account?.sync_issue_kind;
+    $('[data-recovery-manage]').textContent = issue === 'credentials' ? mailaiText('重新连接邮箱') : mailaiText('管理此邮箱');
     $('[data-recovery-sync]').textContent = sync.running ? mailaiSystemMessage(sync.message) || mailaiText('正在同步，请稍候…') : syncError ? mailaiText('同步失败：') + mailaiSystemMessage(syncError) : mailaiSystemMessage(sync.message) || mailaiText('当前没有正在运行的同步任务。');
+    if (!sync.running && syncError && issue === 'connection') $('[data-recovery-sync]').textContent = mailaiText('正在重新连接，状态会自动更新。');
+    if (!sync.running && syncError && issue === 'credentials') $('[data-recovery-sync]').textContent = mailaiText('邮箱登录已失效，请重新登录或更新授权码。');
     for (const selector of ['[data-recovery-poll]','[data-recovery-full]']) $(selector).disabled = working || Boolean(task.running) || Boolean(sync.running);
     $('[data-recovery-refresh]').disabled = working;
     $('[data-recovery-task]').replaceChildren();
@@ -40052,8 +40102,9 @@ function mailCardDate(value, now = new Date()) {
       }
       if(version!==generation || !dialog.open)return;
       const finished=state?.task?.running && !result.task?.running && result.task?.email_id;
+      const syncFinished=state?.sync?.running && !result.sync?.running || state?.sync?.error && !result.sync?.error;
       state=result;rows=more?[...rows,...result.items]:result.items;paint();
-      if(finished) {await loadSystemConfig(); if(activeMailAccount()?.id===accountId)await loadData({silent:true});}
+      if(finished || syncFinished) {await loadSystemConfig(); if(activeMailAccount()?.id===accountId)await loadData({silent:true});}
     } catch(error) {if(version===generation)$('[data-recovery-error]').textContent=mailaiSystemMessage(error.message);}
     finally {if(version===generation)poll();}
   }

@@ -55,7 +55,7 @@ TESTS = (
     'test_live_diagnostics.py', 'test_diagnostics_progress.py',
     'test_optimization_guards.py', 'test_interaction_fixes.py', 'test_pinyin_search.py', 'test_search_index_cost.py',
     'test_resource_safety.py',
-    'test_mail_arrival_lifecycle.py', 'test_mail_fetch_resilience.py', 'test_mail_recovery.py', 'test_dock_unread_sync.py',
+    'test_mail_arrival_lifecycle.py', 'test_mail_fetch_resilience.py', 'test_mail_recovery.py', 'test_mail_auto_recovery.py', 'test_dock_unread_sync.py',
     'test_maturity_hardening.py', 'test_automatic_backup.py',
     'test_portable_backup.py',
     'test_mail_import.py',
@@ -154,6 +154,7 @@ def main():
     commands.append([node, '--check', str(ROOT / 'app/web/static/bundle.js')])
     commands.append([node, '--check', str(ROOT / 'scripts/gift_issuer.js')])
     commands.append([node, str(ROOT / 'tests/test_diagnostics_progress.cjs')])
+    commands.append([node, str(ROOT / 'tests/test_macos_drag_region.cjs')])
     if sys.platform == 'darwin':
         commands.append([sys.executable, str(ROOT / 'tests/test_mail_links_webkit.py')])
         commands.append([sys.executable, str(ROOT / 'tests/test_settings_scrollbar_webkit.py')])

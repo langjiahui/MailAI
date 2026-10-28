@@ -117,19 +117,29 @@ class MailClient:
             ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE
-        self.client = IMAPClient(
-            config.IMAP_HOST, port=config.IMAP_PORT, ssl=config.IMAP_SSL,
-            ssl_context=ssl_context, timeout=30,
-        )
         from .oauth_mail import imap_login
-        try:
-            imap_login(self.client, config.IMAP_USER, config.IMAP_PASSWORD)
-        except Exception:
+        from .mail_connection import issue_kind
+        for attempt in range(3):
+            self.client = None
             try:
-                self.client.logout()
-            except Exception:
-                pass
-            raise
+                self.client = IMAPClient(
+                    config.IMAP_HOST, port=config.IMAP_PORT, ssl=config.IMAP_SSL,
+                    ssl_context=ssl_context, timeout=30,
+                )
+                imap_login(self.client, config.IMAP_USER, config.IMAP_PASSWORD)
+                break
+            except Exception as exc:
+                if self.client is not None:
+                    try:
+                        self.client.logout()
+                    except Exception:
+                        pass
+                kind = issue_kind(exc)
+                if kind == 'credentials':
+                    raise ValueError('邮箱登录已失效，请重新登录或更新授权码。') from exc
+                if attempt == 2 or kind != 'connection':
+                    raise
+                time.sleep(0.5 * (attempt + 1))
         return self
 
     def __exit__(self, *exc):
@@ -610,6 +620,8 @@ class MailClient:
     def fetch_new(self, limit: int | None = None):
         """返回有长度的惰性邮件序列，按 UID 升序；首次只取最近 limit 封。"""
         self.select_folder(config.INBOX_FOLDER, readonly=True, reset_generation=True)
+        from .mail_recovery import discover_legacy
+        discover_legacy(self)
         last = db.get_last_uid(config.INBOX_FOLDER)
         if last:
             uids = self.client.search(["UID", f"{last + 1}:*"])

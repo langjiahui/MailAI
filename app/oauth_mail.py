@@ -210,12 +210,16 @@ def is_oauth(user="", host=""):
 
 def imap_login(client, user, password, *, values=None):
     if values and values.get("oauth_token"):
-        return client.oauth2_login(user, values["oauth_token"])
-    if values is not None:
-        return client.login(user, password)
-    if is_oauth(user):
-        return client.oauth2_login(user, access_token(account_id_for(user)))
-    return client.login(user, password)
+        result = client.oauth2_login(user, values["oauth_token"])
+    elif values is not None:
+        result = client.login(user, password)
+    elif is_oauth(user):
+        result = client.oauth2_login(user, access_token(account_id_for(user)))
+    else:
+        result = client.login(user, password)
+    from .mail_connection import identify
+    identify(client)
+    return result
 
 
 def smtp_login(client, user, password, *, values=None):

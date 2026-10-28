@@ -79,6 +79,11 @@ def main():
         db.clear_mail_fetch_retry('INBOX', 11)
         assert db.mail_fetch_retry_summary('INBOX')['count'] == 0
         db.defer_mail_fetch('INBOX', 14, 'too large', size=51 * 1024 * 1024)
+        assert db.mail_fetch_retry_summary('INBOX')['oversized'] == 0
+        assert db.retry_all_mail_fetch_now('INBOX') == 1
+        assert db.due_mail_fetch_retries('INBOX') == [14]
+        db.clear_mail_fetch_retry('INBOX', 14)
+        db.defer_mail_fetch('INBOX', 15, 'too large', size=257 * 1024 * 1024)
         assert db.mail_fetch_retry_summary('INBOX')['oversized'] == 1
         assert db.retry_all_mail_fetch_now('INBOX') == 0
         assert db.due_mail_fetch_retries('INBOX') == []
