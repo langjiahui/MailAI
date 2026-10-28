@@ -95,7 +95,7 @@ final class WorkspaceTests: XCTestCase {
     private func launch(dark: Bool = false, large: Bool = false, extra: [String] = []) -> XCUIApplication {
         let app = XCUIApplication(); app.launchArguments = ["--ui-fixture"] + extra
         if dark { app.launchArguments.append("--ui-dark") }
-        if large { app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] }
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", large ? "UICTContentSizeCategoryAccessibilityXXXL" : "UICTContentSizeCategoryL"]
         app.launch(); XCTAssertTrue(app.buttons["compose-mail"].waitForExistence(timeout: 10)); return app
     }
     func testMailboxReadingReplyAndComposer() {
@@ -405,6 +405,43 @@ final class WorkspaceTests: XCTestCase {
         let late = expectation(for: NSPredicate(format: "exists == true"), evaluatedWith: app.staticTexts["synthetic model response"])
         late.isInverted = true; waitForExpectations(timeout: 6)
         XCTAssertFalse(app.buttons["创建回复草稿"].exists)
+    }
+    func testPageTourInDarkAndAccessibilitySizes() {
+        for (dark, large, variant) in [(true, false, "dark"), (true, true, "dark-large"), (false, true, "light-large")] {
+            let app = launch(dark: dark, large: large, extra: ["--ui-assistant"])
+            attach("tour-" + variant + "-inbox")
+            app.buttons["邮箱与文件夹"].tap(); attach("tour-" + variant + "-mailboxes")
+            app.buttons["完成"].firstMatch.tap()
+            app.buttons["搜索邮件"].tap()
+            XCTAssertTrue(app.textFields["mail-search-input"].waitForExistence(timeout: 5)); attach("tour-" + variant + "-search")
+            app.buttons["完成"].firstMatch.tap()
+            app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap()
+            XCTAssertTrue(app.buttons["回复全部"].waitForExistence(timeout: 5)); attach("tour-" + variant + "-reader")
+            app.buttons["小邮助手"].tap(); attach("tour-" + variant + "-assistant")
+            app.buttons["提炼要点"].tap()
+            XCTAssertTrue(app.buttons["开始处理"].waitForExistence(timeout: 5)); attach("tour-" + variant + "-scope")
+            app.buttons["取消"].firstMatch.tap(); app.buttons["完成"].firstMatch.tap()
+            app.buttons["回复全部"].tap(); attach("tour-" + variant + "-composer")
+            app.buttons["关闭"].tap(); app.buttons["保存并返回"].tap()
+            app.navigationBars.buttons.element(boundBy: 0).tap()
+            app.tabBars.buttons["通讯录"].tap(); attach("tour-" + variant + "-contacts")
+            app.buttons["contact-team@example.com"].tap(); attach("tour-" + variant + "-contact-detail")
+            app.navigationBars.buttons.element(boundBy: 0).tap()
+            app.tabBars.buttons["设置"].tap(); attach("tour-" + variant + "-settings")
+            app.buttons["appearance-settings"].tap(); attach("tour-" + variant + "-appearance")
+            app.navigationBars.buttons.element(boundBy: 0).tap()
+            app.buttons["小邮与模型服务"].tap(); attach("tour-" + variant + "-model-settings")
+            app.navigationBars.buttons.element(boundBy: 0).tap()
+            app.swipeUp(); app.buttons["后台收信与通知"].tap(); attach("tour-" + variant + "-background")
+            app.navigationBars.buttons.element(boundBy: 0).tap()
+            app.swipeUp(); app.buttons["关于 MailAI"].tap(); attach("tour-" + variant + "-about")
+            app.swipeUp(); app.buttons["隐私与数据"].tap(); attach("tour-" + variant + "-privacy")
+            app.navigationBars.buttons.element(boundBy: 0).tap(); app.navigationBars.buttons.element(boundBy: 0).tap()
+            app.swipeDown(); app.swipeDown(); app.buttons["添加邮箱"].tap()
+            XCTAssertTrue(app.textFields["email"].waitForExistence(timeout: 5)); attach("tour-" + variant + "-account")
+            app.swipeUp(); app.buttons["高级设置（可选）"].tap(); attach("tour-" + variant + "-advanced-account")
+            app.terminate()
+        }
     }
     func testStorageFailureOffersRetryWithoutDeletingData() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-fixture", "--ui-storage-error"]; app.launch()
