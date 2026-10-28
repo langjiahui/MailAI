@@ -54,15 +54,15 @@ struct AccountDetailView: View {
                         Text(account.displayName.isEmpty ? "邮箱账号" : account.displayName).font(.title3.weight(.semibold))
                         Text(account.email).font(.subheadline).foregroundStyle(MailTheme.secondary).textSelection(.enabled)
                     }.frame(maxWidth: .infinity).padding(.vertical, 12)
-                }
+                }.listRowBackground(MailTheme.surface)
                 Section {
                     NavigationLink("登录、服务器与发信偏好") { AccountView(store: store, editingAccount: account) }
-                } footer: { Text("密码保持为空时沿用已保存凭据。修改后会重新验证连接。") }
+                } footer: { Text("密码保持为空时沿用已保存凭据。修改后会重新验证连接。") }.listRowBackground(MailTheme.surface)
                 Section {
                     Button("移除此邮箱", role: .destructive) { confirmRemoval = true }.disabled(store.sending || store.operating)
                 }
                 if let error { MailNotice(text: error, critical: true) }
-            }.listRowBackground(MailTheme.surface)
+            }
         }.scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("邮箱设置").navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .tabBar)
             .confirmationDialog("移除 \(account?.email ?? "此邮箱")？", isPresented: $confirmRemoval, titleVisibility: .visible) {
