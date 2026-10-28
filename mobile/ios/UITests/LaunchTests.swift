@@ -32,6 +32,7 @@ final class LaunchTests: XCTestCase {
         waitForExpectations(timeout: 10)
         let add = app.buttons["add-account"]
         XCTAssertTrue(add.waitForExistence(timeout: 10))
+        attach("account-welcome-after-cancel")
         expectation(for: NSPredicate(format: "hittable == true"), evaluatedWith: add)
         waitForExpectations(timeout: 10)
         add.tap()

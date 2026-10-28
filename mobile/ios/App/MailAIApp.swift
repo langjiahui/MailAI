@@ -44,7 +44,6 @@ struct WelcomeView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 22) {
-                Spacer(minLength: 24)
                 Image(systemName: "envelope.open.fill").font(.system(size: 64)).foregroundStyle(MailTheme.blue)
                 Text("邮件，随身而行").font(.largeTitle.bold())
                 Text("连接你的邮箱，开始轻松处理邮件。\n账号与邮件保存在你的设备上。")
@@ -52,7 +51,7 @@ struct WelcomeView: View {
                 Button("添加邮箱", systemImage: "plus") { addingAccount = true }
                     .buttonStyle(.borderedProminent).controlSize(.large).accessibilityIdentifier("add-account")
                 Spacer(minLength: 24)
-            }.padding(24).frame(maxWidth: .infinity, maxHeight: .infinity)
+            }.padding(24).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .background(MailTheme.canvas).navigationTitle("MailAI")
         }
         .sheet(isPresented: $addingAccount) { AccountView(store: store) }
