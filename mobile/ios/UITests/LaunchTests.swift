@@ -135,6 +135,9 @@ final class WorkspaceTests: XCTestCase {
         let app = launch()
         app.buttons["compose-mail"].tap()
         app.buttons["选择收件人"].tap()
+        let contactSearch = app.textFields["mail-search-input"]
+        XCTAssertTrue(contactSearch.waitForExistence(timeout: 5)); contactSearch.tap(); contactSearch.typeText("team")
+        XCTAssertTrue(app.buttons["取消"].firstMatch.isHittable)
         XCTAssertTrue(app.buttons["recipient-team@example.com"].waitForExistence(timeout: 5))
         app.buttons["recipient-team@example.com"].tap()
         app.buttons["取消"].firstMatch.tap()

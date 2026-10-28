@@ -191,7 +191,8 @@ struct ContactsView: View {
                 }
                 if store.contacts.isEmpty { ContentUnavailableView("暂无联系人", systemImage: "person.crop.rectangle", description: Text("添加联系人，或从往来邮件中积累。")) }
             }.listRowBackground(MailTheme.surface)
-        }.listRowBackground(MailTheme.surface).listStyle(.plain).scrollContentBackground(.hidden).background(MailTheme.surface).navigationTitle("通讯录").navigationBarTitleDisplayMode(.inline).searchable(text: $query, prompt: "姓名、备注或邮箱")
+        }.listRowBackground(MailTheme.surface).listStyle(.plain).scrollContentBackground(.hidden).background(MailTheme.surface).navigationTitle("通讯录").navigationBarTitleDisplayMode(.inline)
+            .safeAreaInset(edge: .top, spacing: 0) { MailSearchField(text: $query, prompt: "姓名、备注或邮箱").padding(.horizontal, 16).padding(.vertical, 8).background(MailTheme.surface) }
             .toolbar { ToolbarItem(placement: .topBarTrailing) {
                 Menu { Button("新建联系人") { editing = MailContact(email: "") }; Button("从手机联系人选择") { picking = true } } label: { Image(systemName: "plus") }.accessibilityLabel("联系人操作").disabled(store.selectedID == nil)
             } }

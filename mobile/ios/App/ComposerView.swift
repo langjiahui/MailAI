@@ -257,7 +257,9 @@ struct RecipientPicker: View {
                         }.accessibilityIdentifier("recipient-" + address.email).accessibilityValue(chosen.contains(address.email) ? "已选择" : "未选择").listRowBackground(MailTheme.surface)
                     }
                 }
-            }.listStyle(.plain).searchable(text: $query, prompt: "姓名或邮箱").navigationTitle("选择联系人").navigationBarTitleDisplayMode(.inline)
+            }.listStyle(.plain).scrollContentBackground(.hidden).background(MailTheme.surface)
+                .safeAreaInset(edge: .top, spacing: 0) { MailSearchField(text: $query, prompt: "姓名或邮箱").padding(.horizontal, 16).padding(.vertical, 8).background(MailTheme.surface) }
+                .navigationTitle("选择联系人").navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
                     ToolbarItem(placement: .confirmationAction) { Button("完成（\(chosen.count)）") { selected(addresses.filter { chosen.contains($0.email) }.map(\.email)); dismiss() }.disabled(chosen.isEmpty) }
