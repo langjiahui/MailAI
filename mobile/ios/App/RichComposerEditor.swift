@@ -58,19 +58,8 @@ struct RichComposerEditor: UIViewRepresentable {
         if view.text != text { applyContent(to: view) }
     }
     private func applyContent(to view: UITextView) {
-        if let html, let data = html.data(using: .utf8), let parsed = try? NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.html], documentAttributes: nil) {
-            let attributed = NSMutableAttributedString(attributedString: parsed)
-            let preferred = UIFont.preferredFont(forTextStyle: .body)
-            parsed.enumerateAttributes(in: NSRange(location: 0, length: parsed.length)) { attributes, range, _ in
-                let traits = (attributes[.font] as? UIFont)?.fontDescriptor.symbolicTraits.intersection([.traitBold, .traitItalic]) ?? []
-                let descriptor = preferred.fontDescriptor.withSymbolicTraits(traits) ?? preferred.fontDescriptor
-                attributed.addAttributes([.font: UIFont(descriptor: descriptor, size: preferred.pointSize), .foregroundColor: UIColor.label], range: range)
-            }
-            if parsed.string.hasPrefix(text), parsed.string.dropFirst(text.count).allSatisfy({ $0.isWhitespace }), attributed.length > text.utf16.count {
-                attributed.deleteCharacters(in: NSRange(location: text.utf16.count, length: attributed.length - text.utf16.count))
-            }
-            view.attributedText = attributed
-        } else { view.text = text; view.font = .preferredFont(forTextStyle: .body); view.textColor = .label }
+        view.attributedText = ComposerAttributedText.restore(text: text, html: html)
+        view.textColor = .label
     }
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
         guard let width = proposal.width, width > 0 else { return nil }
@@ -96,4 +85,54 @@ struct RichComposerEditor: UIViewRepresentable {
             changed(textView.text ?? "", output)
         }
     }
+}
+
+// Draft formatting is produced by this editor. Restore only that small markup
+// vocabulary, without starting a WebKit HTML importer inside a SwiftUI update.
+@MainActor enum ComposerAttributedText {
+    static func restore(text: String, html: String?) -> NSAttributedString {
+        let font = UIFont.preferredFont(forTextStyle: .body)
+        let plain = NSAttributedString(string: text, attributes: [.font: font, .foregroundColor: UIColor.label])
+        guard let html, html.utf8.count <= 4_000_000,
+              html.range(of: "<!DOCTYPE", options: .caseInsensitive) == nil,
+              html.range(of: "<!ENTITY", options: .caseInsensitive) == nil else { return plain }
+        let xml = html.replacingOccurrences(of: "<br\\s*/?>", with: "<br/>", options: [.regularExpression, .caseInsensitive])
+        guard let data = xml.data(using: .utf8) else { return plain }
+        let decoder = ComposerMarkupDecoder()
+        let parser = XMLParser(data: data); parser.delegate = decoder; parser.shouldResolveExternalEntities = false
+        guard parser.parse(), !decoder.invalid, decoder.runs.map(\.text).joined() == text else { return plain }
+        let result = NSMutableAttributedString(string: "")
+        for run in decoder.runs {
+            var traits: UIFontDescriptor.SymbolicTraits = []
+            if run.bold { traits.insert(.traitBold) }; if run.italic { traits.insert(.traitItalic) }
+            let descriptor = font.fontDescriptor.withSymbolicTraits(traits) ?? font.fontDescriptor
+            var attributes: [NSAttributedString.Key: Any] = [.font: UIFont(descriptor: descriptor, size: font.pointSize), .foregroundColor: UIColor.label]
+            if run.underline { attributes[.underlineStyle] = NSUnderlineStyle.single.rawValue }
+            result.append(NSAttributedString(string: run.text, attributes: attributes))
+        }
+        return result
+    }
+}
+private final class ComposerMarkupDecoder: NSObject, XMLParserDelegate {
+    struct Run { let text: String; let bold: Bool; let italic: Bool; let underline: Bool }
+    var runs: [Run] = []
+    var invalid = false
+    private var bold = 0, italic = 0, underline = 0
+    func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?, attributes: [String: String]) {
+        guard attributes.isEmpty else { invalid = true; parser.abortParsing(); return }
+        switch name.lowercased() {
+        case "html", "body": break
+        case "strong": bold += 1
+        case "em": italic += 1
+        case "u": underline += 1
+        case "br": append("\n")
+        default: invalid = true; parser.abortParsing()
+        }
+    }
+    func parser(_ parser: XMLParser, didEndElement name: String, namespaceURI: String?, qualifiedName: String?) {
+        switch name.lowercased() { case "strong": bold -= 1; case "em": italic -= 1; case "u": underline -= 1; default: break }
+    }
+    func parser(_ parser: XMLParser, foundCharacters string: String) { append(string) }
+    func parser(_ parser: XMLParser, resolveExternalEntityName name: String, systemID: String?) -> Data? { invalid = true; return nil }
+    private func append(_ text: String) { runs.append(Run(text: text, bold: bold > 0, italic: italic > 0, underline: underline > 0)) }
 }

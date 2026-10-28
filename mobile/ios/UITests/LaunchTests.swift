@@ -289,7 +289,7 @@ final class WorkspaceTests: XCTestCase {
         app.buttons.matching(NSPredicate(format: "label CONTAINS '2 封' AND label CONTAINS '未读'")).firstMatch.tap()
         let reply = app.staticTexts["Re: 项目资料确认与下一步安排"].firstMatch
         XCTAssertTrue(reply.waitForExistence(timeout: 5)); attach("redesign-conversation-list")
-        reply.tap()
+        app.buttons["thread-message-8"].tap()
         let older = app.buttons["展开会话邮件：测试联系人"]
         XCTAssertTrue(older.waitForExistence(timeout: 5)); attach("redesign-conversation-reader")
         older.tap()
@@ -303,7 +303,9 @@ final class WorkspaceTests: XCTestCase {
         let englishShare = app.buttons["Share"].firstMatch
         let share = englishShare.waitForExistence(timeout: 5) ? englishShare : (app.buttons["共享"].firstMatch.exists ? app.buttons["共享"].firstMatch : app.buttons["分享"].firstMatch)
         XCTAssertTrue(share.waitForExistence(timeout: 5)); attach("redesign-quicklook-pdf")
-        share.tap(); attach("redesign-system-share")
+        share.tap()
+        let copyAction = app.buttons.matching(NSPredicate(format: "label IN %@", ["Copy", "拷贝", "复制"])).firstMatch
+        XCTAssertTrue(copyAction.waitForExistence(timeout: 5)); attach("redesign-system-share")
     }
     func testAttachmentCancellationAndFailureKeepBody() {
         var app = launch(extra: ["--ui-attachment-slow"])
@@ -346,7 +348,8 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertTrue(app.buttons["send-mail"].exists)
         app.buttons["关闭"].tap(); app.buttons["保存并返回"].tap()
         app.cells.containing(.staticText, identifier: "合成待办草稿").firstMatch.swipeLeft()
-        app.buttons["删除"].firstMatch.tap(); attach("redesign-delete-draft-confirmation")
+        app.buttons["删除"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["删除草稿"].waitForExistence(timeout: 5)); attach("redesign-delete-draft-confirmation")
         app.buttons["Cancel"].firstMatch.exists ? app.buttons["Cancel"].firstMatch.tap() : app.buttons["取消"].firstMatch.tap()
     }
     func testContactMenusDetailAndEditingKeepAccountScope() {
@@ -455,6 +458,11 @@ final class WorkspaceTests: XCTestCase {
             app.buttons["contact-team@example.com"].tap(); attach("tour-" + variant + "-contact-detail")
             app.navigationBars.buttons.element(boundBy: 0).tap()
             app.tabBars.buttons["设置"].tap(); attach("tour-" + variant + "-settings")
+            app.buttons.containing(.staticText, identifier: "测试邮箱").firstMatch.tap()
+            XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "account-protocol").firstMatch.waitForExistence(timeout: 5))
+            XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "account-protocol").firstMatch.value as? String, "IMAP"); attach("tour-" + variant + "-account-detail")
+            app.swipeUp(); attach("tour-" + variant + "-account-detail-preferences")
+            app.navigationBars.buttons.element(boundBy: 0).tap()
             app.buttons["appearance-settings"].tap(); attach("tour-" + variant + "-appearance")
             app.navigationBars.buttons.element(boundBy: 0).tap()
             app.buttons["小邮与模型服务"].tap(); attach("tour-" + variant + "-model-settings")
@@ -463,7 +471,12 @@ final class WorkspaceTests: XCTestCase {
             app.navigationBars.buttons.element(boundBy: 0).tap()
             app.swipeUp(); app.buttons["关于 MailAI"].tap(); attach("tour-" + variant + "-about")
             app.swipeUp(); app.buttons["隐私与数据"].tap(); attach("tour-" + variant + "-privacy")
-            app.navigationBars.buttons.element(boundBy: 0).tap(); app.navigationBars.buttons.element(boundBy: 0).tap()
+            app.navigationBars.buttons.element(boundBy: 0).tap()
+            app.buttons["开源许可"].tap()
+            XCTAssertTrue(app.buttons["license-0"].waitForExistence(timeout: 5)); attach("tour-" + variant + "-licenses")
+            app.buttons["license-0"].tap()
+            XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'Apache'")).firstMatch.waitForExistence(timeout: 5)); attach("tour-" + variant + "-license-text")
+            app.navigationBars.buttons.element(boundBy: 0).tap(); app.navigationBars.buttons.element(boundBy: 0).tap(); app.navigationBars.buttons.element(boundBy: 0).tap()
             app.swipeDown(); app.swipeDown(); app.buttons["添加邮箱"].tap()
             XCTAssertTrue(app.textFields["email"].waitForExistence(timeout: 5)); attach("tour-" + variant + "-account")
             app.swipeUp(); app.buttons["高级设置（可选）"].tap(); attach("tour-" + variant + "-advanced-account")
@@ -477,7 +490,8 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertTrue(body.waitForExistence(timeout: 5)); body.tap(); body.typeText("Synthetic current draft")
         app.buttons["收起键盘"].tap(); app.buttons["小邮润色"].tap(); app.buttons["润色"].tap()
         XCTAssertTrue(app.staticTexts["Synthetic current draft"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '请于周五前确认测试材料'")).firstMatch.exists)
+        XCTAssertEqual(app.staticTexts["assistant-scope-text"].label, "Synthetic current draft")
+        XCTAssertFalse(app.staticTexts["assistant-scope-text"].label.contains("请于周五前确认测试材料"))
         app.buttons["开始处理"].tap()
         XCTAssertTrue(app.buttons["采用到正文"].waitForExistence(timeout: 10)); app.buttons["采用到正文"].tap()
         XCTAssertEqual(body.value as? String, "synthetic model response")
@@ -523,7 +537,8 @@ final class WorkspaceTests: XCTestCase {
         let app = launch()
         app.tabBars.buttons["设置"].tap()
         app.buttons.containing(.staticText, identifier: "测试邮箱").firstMatch.tap()
-        XCTAssertTrue(app.staticTexts["IMAP"].waitForExistence(timeout: 5)); attach("redesign-account-detail")
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "account-protocol").firstMatch.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "account-protocol").firstMatch.value as? String, "IMAP"); attach("redesign-account-detail")
         app.swipeUp()
         XCTAssertTrue(app.buttons["移除此邮箱"].waitForExistence(timeout: 5)); app.buttons["移除此邮箱"].tap()
         let cancelRemoval = dialogCancel(app)
@@ -545,7 +560,9 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["保存在你的设备"].waitForExistence(timeout: 5)); attach("redesign-privacy")
         app.navigationBars.buttons.element(boundBy: 0).tap()
         app.buttons["开源许可"].tap()
-        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'Apache'")).firstMatch.waitForExistence(timeout: 5)); attach("redesign-licenses")
+        XCTAssertTrue(app.buttons["license-0"].waitForExistence(timeout: 5)); attach("redesign-licenses")
+        app.buttons["license-0"].tap()
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'Apache'")).firstMatch.waitForExistence(timeout: 5)); attach("redesign-license-text")
     }
     func testSearchFailureKeepsLocalResultsAndRecentQuery() {
         let app = launch()
@@ -577,6 +594,7 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertTrue(app.buttons["关闭"].isHittable)
     }
     private func attach(_ name: String) {
+        Thread.sleep(forTimeInterval: 0.5)
         let value = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); value.name = name; value.lifetime = .keepAlways; add(value)
     }
 }

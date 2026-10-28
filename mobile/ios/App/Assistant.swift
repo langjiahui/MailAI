@@ -152,7 +152,7 @@ struct AssistantPanel: View {
                             }
                         }
                     }
-                    if working { HStack { ProgressView(); Text("正在处理…"); Spacer(); Button("取消") { task?.cancel(); working = false; status = "已取消，结果未采用。" } } }
+                    if working { HStack { ProgressView(); Text("正在处理…"); Spacer(); Button("取消") { task?.cancel(); working = false; status = "已取消，结果未采用。" }.frame(minWidth: 44, minHeight: 44) } }
                     if let status { Text(status).font(.footnote).foregroundStyle(.secondary) }
                     if !result.isEmpty {
                         Text(purpose).font(.headline)
@@ -165,7 +165,7 @@ struct AssistantPanel: View {
                                 .padding(16).background(MailTheme.blue.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
                             DisclosureGroup("查看原文对照", isExpanded: $comparison) { Text(text).font(.subheadline).foregroundStyle(MailTheme.secondary).textSelection(.enabled).padding(.vertical, 12) }
                         }
-                        HStack { Button("复制结果", systemImage: "doc.on.doc") { UIPasteboard.general.string = result; status = "已复制" }; Spacer(); ShareLink(item: result) { Label("分享", systemImage: "square.and.arrow.up") } }
+                        HStack { Button("复制结果", systemImage: "doc.on.doc") { UIPasteboard.general.string = result; status = "已复制" }.frame(minHeight: 44); Spacer(); ShareLink(item: result) { Label("分享", systemImage: "square.and.arrow.up").frame(minHeight: 44) } }
                         if let adopt, composing || purpose == "起草回复" {
                             Button(composing ? "采用到正文" : "创建回复草稿") {
                                 if adopt(result) { dismiss() } else { status = "原邮件或草稿已改变，请关闭后重新生成。" }
@@ -180,7 +180,7 @@ struct AssistantPanel: View {
             NavigationStack {
                 List {
                     Section("接收服务") { Text(configuration?.endpoint ?? "").font(.subheadline).textSelection(.enabled); Text(configuration?.model ?? "").font(.caption).foregroundStyle(MailTheme.secondary) }.listRowBackground(MailTheme.surface)
-                    Section("本次发送范围 · \(text.count) 字") { Text(text).font(.subheadline).textSelection(.enabled) }.listRowBackground(MailTheme.surface)
+                    Section("本次发送范围 · \(text.count) 字") { Text(text).font(.subheadline).textSelection(.enabled).accessibilityIdentifier("assistant-scope-text") }.listRowBackground(MailTheme.surface)
                     Section { MailNotice(text: "只发送以上文字，不包含附件或其他邮件。", symbol: "lock.shield") }.listRowBackground(MailTheme.surface)
                 }.scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("确认处理范围").navigationBarTitleDisplayMode(.inline)
                     .toolbar {

@@ -49,7 +49,7 @@ struct AccountDetailView: View {
         List {
             if let account {
                 Section("邮箱账号") {
-                    LabeledContent("邮箱类型", value: "IMAP")
+                    LabeledContent("邮箱类型", value: "IMAP").accessibilityElement(children: .ignore).accessibilityLabel("邮箱类型").accessibilityValue("IMAP").accessibilityIdentifier("account-protocol")
                     LabeledContent("邮箱地址", value: account.email).textSelection(.enabled)
                     NavigationLink { AccountView(store: store, editingAccount: account) } label: { accountRow("显示名称", value: account.displayName.isEmpty ? "未设置" : account.displayName) }
                     NavigationLink("修改密码 / 授权码") { AccountView(store: store, editingAccount: account) }
@@ -119,13 +119,11 @@ struct AboutView: View {
             }.listRowBackground(MailTheme.surface)
             Section {
                 NavigationLink("隐私与数据") { PrivacyView() }
-                NavigationLink("开源许可") { ScrollView { Text(licenseText).font(.footnote).textSelection(.enabled).padding(16) }.navigationTitle("开源许可").navigationBarTitleDisplayMode(.inline) }
+                NavigationLink("开源许可") { LicensesView() }
             }.listRowBackground(MailTheme.surface)
         }.scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("关于 MailAI").navigationBarTitleDisplayMode(.inline).toolbar(.hidden, for: .tabBar)
     }
-    private var licenseText: String {
-        guard let url = Bundle.main.url(forResource: "Licenses", withExtension: "txt"), let text = try? String(contentsOf: url, encoding: .utf8) else { return "无法读取许可文件。" }; return text
-    }
+
 }
 struct PrivacyView: View {
     var body: some View {

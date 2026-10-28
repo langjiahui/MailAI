@@ -22,6 +22,17 @@ final class ProtocolTests: XCTestCase {
         let attributes = view.textStorage.attributes(at: 4, effectiveRange: nil)
         XCTAssertFalse((attributes[.font] as? UIFont)?.fontDescriptor.symbolicTraits.contains(.traitBold) == true)
     }
+    @MainActor func testDraftMarkupRestoresFormattingWithoutAnHTMLWebView() {
+        let text = "A<B & C\n下一行😀"
+        let rendered = ComposerAttributedText.restore(text: text, html: "<html><body><strong>A&lt;B</strong> &amp; <em><u>C</u></em><br>下一行😀</body></html>")
+        XCTAssertEqual(rendered.string, text)
+        XCTAssertTrue((rendered.attribute(.font, at: 0, effectiveRange: nil) as? UIFont)?.fontDescriptor.symbolicTraits.contains(.traitBold) == true)
+        XCTAssertTrue((rendered.attribute(.font, at: 6, effectiveRange: nil) as? UIFont)?.fontDescriptor.symbolicTraits.contains(.traitItalic) == true)
+        XCTAssertEqual((rendered.attribute(.underlineStyle, at: 6, effectiveRange: nil) as? NSNumber)?.intValue, NSUnderlineStyle.single.rawValue)
+        XCTAssertEqual(ComposerAttributedText.restore(text: text, html: "<html><body>different</body></html>").string, text)
+        let external = "<!DOCTYPE html [<!ENTITY unsafe SYSTEM 'https://example.invalid/'>]><html><body>&unsafe;</body></html>"
+        XCTAssertEqual(ComposerAttributedText.restore(text: text, html: external).string, text)
+    }
     @MainActor func testSystemKeychainRoundTripOnSignedSimulator() throws {
         let service = "com.mailai.ios.tests." + UUID().uuidString
         let vault = KeychainVault(service: service)

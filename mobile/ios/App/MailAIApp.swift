@@ -93,6 +93,7 @@ struct InboxView: View {
     @State private var selecting = false
     @State private var selection = Set<String>()
     @State private var moveRequest: MailMoveRequest?
+    @ScaledMetric(relativeTo: .subheadline) private var undoClearance = 64.0
     @State private var filter = "all"
     @State private var grouped = false
     @State private var unified = false
@@ -183,7 +184,7 @@ struct InboxView: View {
                                     } else {
                                         DisclosureGroup {
                                             ForEach(thread.messages) { message in
-                                                NavigationLink { ReaderView(store: store, summary: message, thread: thread.messages) } label: { MailRow(summary: message) }
+                                                NavigationLink { ReaderView(store: store, summary: message, thread: thread.messages) } label: { MailRow(summary: message) }.accessibilityIdentifier("thread-message-\(message.uid)")
                                             }
                                         } label: {
                                             VStack(alignment: .leading, spacing: 4) {
@@ -301,7 +302,7 @@ struct InboxView: View {
                 Button { do { try store.newDraft(); composing = true } catch { store.error = error.localizedDescription } } label: {
                     Label("写邮件", systemImage: "square.and.pencil").font(.callout.weight(.semibold)).dynamicTypeSize(...DynamicTypeSize.xxxLarge).padding(.horizontal, 18).frame(minHeight: 50)
                 }.buttonStyle(.borderedProminent).buttonBorderShape(.roundedRectangle(radius: 18))
-                    .accessibilityIdentifier("compose-mail").disabled(store.sending).padding(16).padding(.bottom, store.undoID == nil ? 0 : 64)
+                    .accessibilityIdentifier("compose-mail").disabled(store.sending).padding(16).padding(.bottom, store.undoID == nil ? 0 : undoClearance)
             }
         }
         .disabled(store.operating)
