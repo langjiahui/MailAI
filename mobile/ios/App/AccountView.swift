@@ -52,7 +52,11 @@ struct AccountView: View {
                                 else { SecureField("密码 / 授权码", text: $password) }
                             }.textContentType(.password).focused($focused, equals: .password).submitLabel(.go)
                                 .onSubmit { if !testing { connect() } }.accessibilityIdentifier("password")
-                            Button { visiblePassword.toggle() } label: { Image(systemName: visiblePassword ? "eye.slash" : "eye").frame(width: 44, height: 44) }.accessibilityLabel(visiblePassword ? "隐藏密码" : "显示密码")
+                            Button { visiblePassword.toggle() } label: {
+                                Image(systemName: visiblePassword ? "eye.slash" : "eye")
+                                    .dynamicTypeSize(.large ... .xxxLarge)
+                                    .frame(width: 44, height: 44)
+                            }.accessibilityLabel(visiblePassword ? "隐藏密码" : "显示密码")
                         }.padding(.leading, 12).background(MailTheme.canvas, in: RoundedRectangle(cornerRadius: 12))
                     }
                     if setup.manualServers {
