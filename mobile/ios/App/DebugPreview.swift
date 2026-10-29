@@ -29,7 +29,16 @@ import MailAICore
         }
         func read(_ credential: AccountCredential, summary: MailSummary) async throws -> ReadResult {
             if CommandLine.arguments.contains("--ui-read-failure") { throw MailFailure.invalid("合成正文读取失败，可重试。") }
-            let html: String? = CommandLine.arguments.contains("--ui-html") ? "<p>这是一封合成 HTML 邮件。</p><p><a href='https://example.com'>测试外部链接</a></p>" : nil
+            let html: String?
+            if CommandLine.arguments.contains("--ui-html-legacy") {
+                html = """
+                <div style="font-family:Arial;color:#000000"><p><font color="black">企业邮件正文：请确认本周工作安排。</font></p>
+                <table cellspacing="0" cellpadding="8" style="border-collapse:collapse;color:#000000"><tr><td style="border:1px solid #777777">项目</td><td style="border:1px solid #777777">处理时间</td></tr><tr><td style="border:1px solid #777777">资料确认</td><td style="border:1px solid #777777"><span style="color:#ff0000">周五前完成</span></td></tr></table>
+                <p><a href="https://example.com">测试外部链接</a></p></div>
+                """
+            } else {
+                html = CommandLine.arguments.contains("--ui-html") ? "<p>这是一封合成 HTML 邮件。</p><p><a href='https://example.com'>测试外部链接</a></p>" : nil
+            }
             let attachment: MailAttachment
             if CommandLine.arguments.contains("--ui-pdf") {
                 let data = await MainActor.run { DebugPreview.pdfData() }

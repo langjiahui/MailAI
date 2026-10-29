@@ -38,6 +38,8 @@ python3 scripts/build.py
 
 生成 `build/distribution/MailAI-iOS-1.0.0-unsigned.ipa`、SHA-256 和构建清单。该 IPA 是真实 arm64 应用，但**未签名，不能直接安装**。可使用用户已有的设备证书在签名工具中签名安装，详见 [安装说明](INSTALL.md)。CI 还执行模拟器启动与账号表单 UI 测试，保留结果包和截图。
 
+本地正文修复可手动运行 `ios-preview.yml` 并选择 `verification=reader`：构建真机 IPA，执行实际 WebKit 正文配色、深浅色旧式 HTML、外部链接确认和纯文本切换的专项验证，生成对应截图。产物中的 `validation-scope.json` 会明确记录 `reader` 范围，不能作为全量原生验证或正式发布凭证。默认值、PR 和发布分支仍执行 `full`，保留全部原生测试矩阵。
+
 版本：`VERSION` 是 iOS 产品版本，`BUILD_NUMBER` 是本地内部构建号，`project.yml` 必须一致。CI 的内部构建号使用该工作流 run number × 100 + run attempt；重试不递增产品版本。测试标签为 `ios-v1.0.0-beta.N`，正式标签为 `ios-v1.0.0`；iOS 发布不改变 GitHub 的桌面 Latest 入口。正式发版前须通过根发布门禁、iOS 测试、构建与目标设备签名安装验收。
 
 ## 首版版本判断

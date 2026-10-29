@@ -455,6 +455,18 @@ final class WorkspaceTests: XCTestCase {
         app.buttons["更多邮件操作"].tap(); app.buttons["查看纯文本"].tap()
         XCTAssertFalse(app.webViews.firstMatch.exists); attach("redesign-plain-reader")
     }
+    func testLegacyHTMLPaperInBothAppThemes() {
+        for dark in [false, true] {
+            let app = launch(dark: dark, extra: ["--ui-html-legacy"])
+            app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap()
+            let web = app.webViews.firstMatch
+            XCTAssertTrue(web.staticTexts["企业邮件正文：请确认本周工作安排。"].waitForExistence(timeout: 10))
+            XCTAssertTrue(web.staticTexts["资料确认"].exists)
+            XCTAssertTrue(web.staticTexts["周五前完成"].exists)
+            XCTAssertTrue(app.buttons["回复全部"].isHittable)
+            attach(dark ? "reader-legacy-html-dark" : "reader-legacy-html-light")
+        }
+    }
     func testConversationExpandsActualMessages() {
         let app = launch(extra: ["--ui-threads"])
         app.buttons["更多邮件操作"].tap(); app.buttons["按会话显示"].tap()

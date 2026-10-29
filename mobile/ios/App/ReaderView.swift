@@ -131,7 +131,8 @@ struct ReaderView: View {
     @ViewBuilder private var messageContents: some View {
                 if let bodyContent {
                     if let html = bodyContent.html, !plainText {
-                        SafeMailHTML(html: html, externalURL: $externalURL, fontSize: readerSize * scaledBody / 17, contentHeight: $htmlHeight).frame(height: htmlHeight)
+                        SafeMailHTML(html: html, externalURL: $externalURL, fontSize: readerSize * scaledBody / 17, contentHeight: $htmlHeight)
+                            .frame(height: htmlHeight).clipShape(RoundedRectangle(cornerRadius: 12))
                     } else {
                         Text(bodyContent.text.isEmpty ? "这封邮件没有纯文本正文，可切换原版查看。" : bodyContent.text)
                             .font(.system(size: readerSize * scaledBody / 17)).lineSpacing(6).frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled)
@@ -234,13 +235,20 @@ struct SafeMailHTML: UIViewRepresentable {
     var fontSize: Double = 17
     @Binding var contentHeight: CGFloat
     func makeCoordinator() -> Coordinator { Coordinator(externalURL: $externalURL, height: $contentHeight) }
-    func makeUIView(context: Context) -> WKWebView {
+    static func makeMailWebView() -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .nonPersistent()
         configuration.defaultWebpagePreferences.allowsContentJavaScript = false
         let view = WKWebView(frame: .zero, configuration: configuration)
+        view.overrideUserInterfaceStyle = .light
+        view.isOpaque = false
+        view.backgroundColor = .white
+        view.scrollView.backgroundColor = .white
+        return view
+    }
+    func makeUIView(context: Context) -> WKWebView {
+        let view = Self.makeMailWebView()
         view.navigationDelegate = context.coordinator
-        view.isOpaque = false; view.backgroundColor = .systemBackground
         context.coordinator.observation = view.scrollView.observe(\.contentSize, options: [.new]) { [weak coordinator = context.coordinator] scroll, _ in
             let height = min(30000, max(200, scroll.contentSize.height))
             DispatchQueue.main.async { [weak coordinator, weak scroll] in
@@ -257,9 +265,7 @@ struct SafeMailHTML: UIViewRepresentable {
     }
     private func load(_ view: WKWebView, coordinator: Coordinator) {
         coordinator.loadedHTML = html; coordinator.fontSize = fontSize
-        // A restrictive CSP precedes all untrusted markup; subsequent CSPs cannot weaken it.
-        let csp = "default-src 'none'; img-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-src 'none'; font-src 'none'; media-src 'none'; connect-src 'none'"
-        view.loadHTMLString("<!doctype html><html><head><meta http-equiv='Content-Security-Policy' content=\"\(csp)\"><meta name='viewport' content='width=device-width, initial-scale=1'><style>:root{color-scheme:light dark}body{font:\(fontSize)px -apple-system;line-height:1.6;margin:0;overflow-wrap:anywhere}img{max-width:100%;height:auto}table{max-width:100%}</style></head><body>\(html)</body></html>", baseURL: nil)
+        view.loadHTMLString(MailHTMLDocument.render(html, fontSize: fontSize), baseURL: nil)
     }
     final class Coordinator: NSObject, WKNavigationDelegate {
         @Binding var externalURL: URL?
