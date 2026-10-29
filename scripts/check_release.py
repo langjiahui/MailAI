@@ -90,6 +90,7 @@ TESTS = (
     'test_mail_notifications.py',
     'test_brand_assets.py',
     'test_macos_appearance.py',
+    'test_macos_titlebar_native.py',
     'test_mail_navigation.py',
     'test_windows_shell.py', 'test_windows_appearance.py', 'test_windows_upgrade.py', 'test_release_update.py',
     'test_windows_startup_probe.py',

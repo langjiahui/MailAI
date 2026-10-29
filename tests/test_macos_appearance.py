@@ -105,6 +105,8 @@ kit.NSWindowDidEnterFullScreenNotification = 'entered'
 kit.NSWindowWillExitFullScreenNotification = 'exiting'
 kit.NSWindowDidExitFullScreenNotification = 'exit'
 kit.NSWindowWillCloseNotification = 'close'
+kit.NSEvent = Mock()
+kit.NSEventMaskLeftMouseDown = 2
 native = Mock()
 native.styleMask.return_value = 15
 native.contentView().superview().bounds.return_value.size = types.SimpleNamespace(width=1200,height=800)
@@ -122,6 +124,8 @@ with patch.dict(sys.modules, AppKit=kit), patch.object(chrome, '_drag_view_class
     assert 'fullscreen:false' in native.contentView().evaluateJavaScript_completionHandler_.call_args.args[0]
     drag.windowWillClose_(event)
     center.removeObserver_.assert_called_once_with(drag)
+    kit.NSEvent.removeMonitor_.assert_called_once()
+    assert native._mailai_titlebar_monitor is None
 print('Fullscreen toolbar occlusion, restoration and observer cleanup passed')
 
 # Empty header regions are scaled like the brand; malformed bridge data is rejected.
