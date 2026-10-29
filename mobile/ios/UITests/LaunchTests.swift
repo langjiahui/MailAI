@@ -337,11 +337,11 @@ final class WorkspaceTests: XCTestCase {
         app.buttons["选择文件"].tap(); cancelSystemPicker(app, screenshot: "redesign-system-files")
         XCTAssertTrue(body.isHittable)
         XCTAssertEqual(body.value as? String, "Synthetic unsent draft")
-        app.buttons["照片"].tap(); cancelSystemPicker(app, screenshot: "redesign-system-photos")
+        app.buttons["照片"].tap(); cancelSystemPicker(app, screenshot: "redesign-system-photos", photoLibrary: true)
         XCTAssertTrue(body.isHittable)
         XCTAssertEqual(body.value as? String, "Synthetic unsent draft")
         app.buttons["添加附件"].tap(); app.buttons["从照片选择"].tap()
-        cancelSystemPicker(app, screenshot: "reading-space-photos-from-menu")
+        cancelSystemPicker(app, screenshot: "reading-space-photos-from-menu", photoLibrary: true)
         XCTAssertTrue(body.isHittable)
         XCTAssertEqual(body.value as? String, "Synthetic unsent draft")
         app.buttons["选择收件人"].tap(); app.buttons["从手机联系人选择"].tap()
@@ -354,11 +354,20 @@ final class WorkspaceTests: XCTestCase {
         let english = app.buttons["Cancel"].firstMatch
         return english.waitForExistence(timeout: 2) ? english : app.buttons["取消"].firstMatch
     }
-    private func cancelSystemPicker(_ app: XCUIApplication, screenshot: String) {
+    private func cancelSystemPicker(_ app: XCUIApplication, screenshot: String, photoLibrary: Bool = false) {
         let labels = ["Cancel", "取消"]
-        let candidates = app.buttons.matching(NSPredicate(format: "identifier IN %@ OR label IN %@", labels, labels))
-        // Photos first exposes a localized loading controller, then replaces it
-        // with a remote picker. Resolve the current topmost button after capture.
+        var cancellationButtons = app.buttons
+        if photoLibrary {
+            let titles = ["Photos", "照片"]
+            let navigation = app.navigationBars.matching(NSPredicate(format: "identifier IN %@ OR label IN %@", titles, titles)).firstMatch
+            // The loading controller has its own cancel button. Wait for the
+            // remote photo library before querying hittability or taking proof.
+            XCTAssertTrue(navigation.segmentedControls.firstMatch.waitForExistence(timeout: 30), "Photo library must finish loading before cancellation is tested")
+            cancellationButtons = navigation.buttons
+        }
+        let candidates = cancellationButtons.matching(NSPredicate(format: "identifier IN %@ OR label IN %@", labels, labels))
+        // Scope photos to the loaded library so its temporary loading controller
+        // cannot invalidate a cancel element while XCTest resolves hittability.
         func currentCancel() -> XCUIElement? { candidates.allElementsBoundByIndex.last { $0.isHittable } }
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in currentCancel() != nil }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 30), .completed)
