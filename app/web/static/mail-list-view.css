@@ -64,9 +64,12 @@ body[data-mail-list-view="table"] #email-list .group-count::before { content:"·
 
 /* The card list is a reading queue: identity, subject, then supporting detail. */
 html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-item {
-  min-height:96px; margin:0 6px 4px!important; padding:13px 12px 13px 64px!important;
+  --mail-identity-inset:52px;
+  min-height:90px; margin:0 6px 2px!important; padding:10px 12px!important;
   border-radius:8px!important; transition:background-color .15s; overflow:hidden;
 }
+/* Only the identity and subject share the avatar gutter; details use the full row. */
+html[data-theme] body:not([data-mail-list-view="table"]) #email-list :is(.email-row-top,.email-subject) { margin-left:var(--mail-identity-inset); }
 html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-row-top { gap:8px; margin-bottom:5px; min-height:18px; }
 html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-sender { flex:1; min-width:32px; }
 html[data-theme] body:not([data-mail-list-view="table"]) #email-list .sender-name { color:var(--desk-ink,var(--text)); font-size:13px; line-height:1.4; font-weight:550; }
@@ -75,7 +78,10 @@ html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-date
 html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-subject { margin-bottom:4px; font-size:13px; line-height:1.55; font-weight:500; color:var(--desk-ink,var(--text)); }
 html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-item.unread :is(.sender-name,.email-subject) { font-weight:650; }
 html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-preview { margin-bottom:0; font-size:12px; line-height:1.55; }
-html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-tags { margin-top:7px; gap:4px; }
+html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-tags { margin-top:5px; column-gap:6px; row-gap:4px; }
+html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-tags > :is(.tag,.mail-account-tag,.mail-label-chip) { font-size:11.5px; line-height:1.5; font-weight:500; }
+html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-tags > :is(.mail-category,.mail-priority,.mail-account-tag) { color:color-mix(in srgb,var(--desk-muted,var(--muted)) 75%,var(--desk-ink,var(--text)))!important; }
+html[data-theme] body:not([data-mail-list-view="table"]) #email-list .mail-category + .mail-priority::before { margin-right:6px; opacity:.75; }
 html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-tags:not(:has(>*)) { display:none; }
 html[data-theme] body:not([data-mail-list-view="table"]) #email-list .group-header { justify-content:space-between; gap:12px; margin:0 6px; padding:12px; border:0!important; background:var(--mail-list-surface)!important; backdrop-filter:none; }
 html[data-theme] body:not([data-mail-list-view="table"]) #email-list :is(.group-title,.group-count) { padding:0; background:transparent; border:0; color:var(--desk-muted,var(--muted)); font-size:11px; line-height:1.5; }
@@ -84,7 +90,7 @@ html[data-theme] body:not([data-mail-list-view="table"]) #email-list .group-coun
 /* Date headings and a little breathing room group the queue without rules. */
 html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-group { border:0!important; padding-bottom:0; }
 html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-group + .email-group { padding-top:12px; }
-.mail-sender-avatar { --avatar-hue:155; position:absolute; left:12px; top:14px; display:grid; place-items:center; width:38px; height:38px; border-radius:50%; background:hsl(var(--avatar-hue) 38% 91%); color:hsl(var(--avatar-hue) 35% 31%); font-size:15px; font-weight:650; line-height:1; user-select:none; }
+.mail-sender-avatar { --avatar-hue:155; position:absolute; left:12px; top:11px; display:grid; place-items:center; width:38px; height:38px; border-radius:50%; background:hsl(var(--avatar-hue) 38% 91%); color:hsl(var(--avatar-hue) 35% 31%); font-size:15px; font-weight:650; line-height:1; user-select:none; }
 .mail-sender-avatar[data-avatar-tone="1"] { --avatar-hue:210; }
 .mail-sender-avatar[data-avatar-tone="2"] { --avatar-hue:32; }
 .mail-sender-avatar[data-avatar-tone="3"] { --avatar-hue:255; }
@@ -93,11 +99,11 @@ html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-grou
 html[data-theme="dark"] .mail-sender-avatar { background:hsl(var(--avatar-hue) 22% 25%); color:hsl(var(--avatar-hue) 40% 79%); }
 .mail-list-attachment { display:inline-flex; flex:none; color:var(--desk-muted,var(--muted)); }
 .mail-list-attachment svg { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
-html[data-theme] body:not([data-mail-list-view="table"])[data-density="compact"] #email-list .email-item { min-height:68px; padding:10px 11px 10px 56px!important; }
+html[data-theme] body:not([data-mail-list-view="table"])[data-density="compact"] #email-list .email-item { --mail-identity-inset:45px; min-height:68px; padding:10px 11px!important; }
 body[data-density="compact"] .mail-sender-avatar { left:11px; top:12px; width:32px; height:32px; font-size:13px; }
 body[data-density="compact"] .mail-list-attachment { display:inline-flex; }
 body[data-mail-list-avatars="false"] #email-list .mail-sender-avatar { display:none; }
-html[data-theme] body:not([data-mail-list-view="table"])[data-mail-list-avatars="false"] #email-list .email-item { padding-left:12px!important; }
+html[data-theme] body:not([data-mail-list-view="table"])[data-mail-list-avatars="false"] #email-list .email-item { --mail-identity-inset:0px; padding-left:12px!important; }
 html[data-theme] body:not([data-mail-list-view="table"])[data-mail-list-avatars="false"][data-density="compact"] #email-list .email-item { padding-left:11px!important; }
 @media(prefers-reduced-motion:reduce) { html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-item { transition:none; } }
 @media(forced-colors:active) { .mail-sender-avatar { border:1px solid CanvasText; color:CanvasText; background:Canvas; } }
