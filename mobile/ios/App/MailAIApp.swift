@@ -225,6 +225,8 @@ struct InboxView: View {
                                 ContentUnavailableView("暂无邮件", systemImage: "tray", description: Text("下拉刷新，或切换文件夹与筛选条件。"))
                             }
                         }.listRowBackground(MailTheme.surface)
+                            .listRowSeparator(.hidden).listSectionSeparator(.hidden)
+                            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                         if !unified && store.messages.count >= 50 {
                             Button("加载更多") { store.refresh(more: true) }.disabled(store.busy)
                         }
@@ -235,8 +237,8 @@ struct InboxView: View {
                                 Spacer()
                                 Text("\(unified ? unifiedMessages.count : store.messages.count) 封已加载")
                             }.font(.caption).foregroundStyle(.secondary)
-                        }.listRowBackground(Color.clear)
-                    }.listStyle(.plain).scrollContentBackground(.hidden).safeAreaPadding(.bottom, selecting ? 0 : 76)
+                        }.listRowBackground(Color.clear).listRowSeparator(.hidden).listSectionSeparator(.hidden)
+                    }.listStyle(.plain).navigationLinkIndicatorVisibility(.hidden).scrollContentBackground(.hidden).safeAreaPadding(.bottom, selecting ? 0 : 76)
                         .refreshable {
                             if unified { do { try await store.refreshAllInboxes(); unifiedMessages = try store.cachedInbox() } catch { store.error = "部分邮箱同步失败，已保留缓存。" } }
                             else { store.refresh() }
@@ -249,9 +251,7 @@ struct InboxView: View {
         .toolbar(selecting ? .hidden : .automatic, for: .tabBar)
         .toolbar {
             if !store.accounts.isEmpty {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button { mailboxes = true } label: { SenderAvatar(name: store.selected?.displayName.isEmpty == false ? store.selected!.displayName : (store.selected?.email ?? "M")) }.accessibilityLabel("邮箱与文件夹")
-                }
+                accountToolbarItem
                 ToolbarItem(placement: .principal) {
                     Button { mailboxes = true } label: {
                         VStack(spacing: 2) {
@@ -300,12 +300,29 @@ struct InboxView: View {
         .overlay(alignment: .bottomTrailing) {
             if !selecting && !store.accounts.isEmpty {
                 Button { do { try store.newDraft(); composing = true } catch { store.error = error.localizedDescription } } label: {
-                    Label("写邮件", systemImage: "square.and.pencil").font(.callout.weight(.semibold)).dynamicTypeSize(...DynamicTypeSize.xxxLarge).padding(.horizontal, 18).frame(minHeight: 50)
-                }.buttonStyle(.borderedProminent).buttonBorderShape(.roundedRectangle(radius: 18))
+                    Image(systemName: "square.and.pencil").font(.system(size: 21, weight: .semibold))
+                        .foregroundStyle(MailTheme.blue).frame(width: 44, height: 44)
+                        .background(MailTheme.surface, in: Circle())
+                        .overlay(Circle().stroke(MailTheme.separator, lineWidth: 1))
+                        .shadow(color: .black.opacity(0.06), radius: 5, y: 2)
+                }.buttonStyle(.plain).accessibilityLabel("写邮件")
                     .accessibilityIdentifier("compose-mail").disabled(store.sending).padding(16).padding(.bottom, store.undoID == nil ? 0 : undoClearance)
             }
         }
         .disabled(store.operating)
+    }
+    @ToolbarContentBuilder private var accountToolbarItem: some ToolbarContent {
+        if #available(iOS 26.0, *) {
+            ToolbarItem(placement: .topBarLeading) { accountButton }.sharedBackgroundVisibility(.hidden)
+        } else {
+            ToolbarItem(placement: .topBarLeading) { accountButton }
+        }
+    }
+    private var accountButton: some View {
+        Button { mailboxes = true } label: {
+            SenderAvatar(name: store.selected?.displayName.isEmpty == false ? store.selected!.displayName : (store.selected?.email ?? "M"), size: 32)
+                .frame(width: 44, height: 44).contentShape(Circle())
+        }.buttonStyle(.plain).accessibilityLabel("邮箱与文件夹").accessibilityIdentifier("account-avatar")
     }
     private var filterControls: some View {
         HStack(spacing: 8) {
@@ -335,6 +352,16 @@ struct MailRow: View {
     let summary: MailSummary
     var account: String? = nil
     var keyword = ""
+    private var displaySender: String {
+        let name = summary.contactAddresses.first?.name ?? ""
+        return name.isEmpty ? summary.sender : name
+    }
+    private var indicators: some View {
+        HStack(spacing: 6) {
+            if summary.isFlagged == true { Image(systemName: "star.fill").foregroundStyle(.orange).accessibilityLabel("星标") }
+            if summary.hasAttachments == true { Image(systemName: "paperclip").accessibilityLabel("含附件") }
+        }.font(.caption2).dynamicTypeSize(...DynamicTypeSize.xxxLarge).foregroundStyle(MailTheme.secondary)
+    }
     private func matched(_ value: String) -> Text {
         var text = AttributedString(value)
         if !keyword.isEmpty, let range = text.range(of: keyword, options: [.caseInsensitive, .diacriticInsensitive]) {
@@ -344,28 +371,28 @@ struct MailRow: View {
         return Text(text)
     }
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Circle().fill(summary.unread ? MailTheme.blue : .clear).frame(width: 7, height: 7).padding(.top, 6).accessibilityLabel(summary.unread ? "未读" : "")
-            VStack(alignment: .leading, spacing: 4) {
+        HStack(alignment: .top, spacing: 8) {
+            Circle().fill(summary.unread ? MailTheme.blue : .clear).frame(width: 6, height: 6).padding(.top, 6).accessibilityLabel("未读").accessibilityHidden(!summary.unread)
+            VStack(alignment: .leading, spacing: 3) {
                 if dynamicTypeSize.isAccessibilitySize {
-                    matched(summary.senderName?.isEmpty == false ? summary.senderName! : summary.sender).font(.subheadline.weight(summary.unread ? .semibold : .regular))
-                    if let date = summary.date { Text(date.formatted(date: .abbreviated, time: .shortened)).font(.caption2).foregroundStyle(MailTheme.secondary) }
+                    matched(displaySender).font(.subheadline.weight(summary.unread ? .semibold : .regular))
+                    HStack(spacing: 6) {
+                        indicators
+                        if let date = summary.date { Text(date.formatted(date: .abbreviated, time: .shortened)).font(.caption2).foregroundStyle(MailTheme.secondary) }
+                    }
                 } else {
                     HStack(alignment: .firstTextBaseline) {
-                        matched(summary.senderName?.isEmpty == false ? summary.senderName! : summary.sender).font(.subheadline.weight(summary.unread ? .semibold : .regular)).lineLimit(1)
+                        matched(displaySender).font(.subheadline.weight(summary.unread ? .semibold : .regular)).lineLimit(1)
                         Spacer(minLength: 8)
-                        if let date = summary.date { Text(Calendar.current.isDateInToday(date) ? date.formatted(date: .omitted, time: .shortened) : date.formatted(.dateTime.month().day())).font(.caption2).foregroundStyle(.secondary) }
+                        indicators.fixedSize()
+                        if let date = summary.date { Text(Calendar.current.isDateInToday(date) ? date.formatted(date: .omitted, time: .shortened) : date.formatted(.dateTime.month().day())).font(.caption2).foregroundStyle(.secondary).fixedSize() }
                     }
                 }
                 matched(summary.subject.isEmpty ? "（无主题）" : summary.subject).font(.subheadline.weight(summary.unread ? .semibold : .regular)).lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
-                if let preview = summary.preview, !preview.isEmpty { matched(preview).font(.subheadline).foregroundStyle(MailTheme.secondary).lineLimit(1) }
-                HStack(spacing: 7) {
-                    if summary.isFlagged == true { Image(systemName: "star.fill").foregroundStyle(.orange) }
-                    if summary.hasAttachments == true { Image(systemName: "paperclip") }
-                    if let account { Text(account).lineLimit(1) }
-                }.font(.caption2).foregroundStyle(.secondary)
+                if let preview = summary.preview, !preview.isEmpty { matched(preview).font(.caption).foregroundStyle(MailTheme.secondary).lineLimit(1) }
+                if let account { Text(account).font(.caption2).foregroundStyle(MailTheme.secondary).lineLimit(1) }
             }
-        }.padding(.vertical, 7).foregroundStyle(MailTheme.ink)
+        }.padding(.vertical, 10).foregroundStyle(MailTheme.ink)
     }
 }
 struct UnifiedReaderView: View {

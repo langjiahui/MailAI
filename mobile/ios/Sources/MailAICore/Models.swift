@@ -151,6 +151,7 @@ public struct MailSummary: Codable, Identifiable, Equatable, Sendable {
     public var hasAttachments: Bool?
     public var preview: String?
     public var senderName: String?
+    public var senderAddress: String?
     public var references: String?
     public var parentMessageID: String?
     public var threadKey: String {
@@ -160,7 +161,7 @@ public struct MailSummary: Codable, Identifiable, Equatable, Sendable {
     public func relocated(uid: UInt32, validity: UInt32, folder: String) -> MailSummary {
         var next = MailSummary(uid: uid, validity: validity, folder: folder, subject: subject, sender: sender, replyAddress: replyAddress, date: date, unread: unread, messageID: messageID)
         next.recipients = recipients; next.carbonCopies = carbonCopies; next.isFlagged = isFlagged
-        next.hasAttachments = hasAttachments; next.preview = preview; next.senderName = senderName
+        next.hasAttachments = hasAttachments; next.preview = preview; next.senderName = senderName; next.senderAddress = senderAddress
         next.references = references; next.parentMessageID = parentMessageID; return next
     }
     public init(uid: UInt32, validity: UInt32, folder: String, subject: String, sender: String,
@@ -168,6 +169,20 @@ public struct MailSummary: Codable, Identifiable, Equatable, Sendable {
         self.uid = uid; self.validity = validity; self.folder = folder; self.subject = subject
         self.sender = sender; self.replyAddress = replyAddress; self.date = date; self.unread = unread
         self.messageID = messageID
+    }
+    public var contactAddresses: [MailAddress] {
+        let raw = sender.trimmingCharacters(in: .whitespacesAndNewlines)
+        let left = raw.lastIndex(of: "<"), right = raw.lastIndex(of: ">")
+        let headerAddress: String? = {
+            if let left, let right, left < right { return String(raw[raw.index(after: left)..<right]) }
+            return MailValidation.isAddress(raw) ? raw : nil
+        }()
+        let address = senderAddress ?? headerAddress ?? replyAddress
+        let headerName = left.map { String(raw[..<$0]) } ?? (MailValidation.isAddress(raw) ? "" : raw)
+        let name = MailAddress.cleanedName(senderName ?? headerName, email: address)
+        var result = [MailAddress(name: name, email: address)]
+        if replyAddress.caseInsensitiveCompare(address) != .orderedSame { result.append(MailAddress(email: replyAddress)) }
+        return result + (recipients ?? []) + (carbonCopies ?? [])
     }
 }
 

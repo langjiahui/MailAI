@@ -5,6 +5,19 @@ import UIKit
 @testable import MailAI
 
 final class ProtocolTests: XCTestCase {
+    func testModelKeyOnlySetupPreservesLegacyConfigAndClearsKeysOnProviderChange() throws {
+        var value = AssistantConfiguration(); value.key = " synthetic-key\n"
+        XCTAssertEqual(value.normalized().key, "synthetic-key")
+        XCTAssertEqual(try value.normalized().url(requiringConsent: false).absoluteString, "https://api.deepseek.com/v1/chat/completions")
+        value.consent = true; value.selectProvider(.kimi)
+        XCTAssertTrue(value.key.isEmpty); XCTAssertFalse(value.consent)
+        XCTAssertEqual(value.endpoint, "https://api.moonshot.cn/v1"); XCTAssertEqual(value.model, "kimi-k2.6")
+        let legacy = Data(#"{"endpoint":"https://gateway.example.com/v1","model":"my-model","key":"synthetic","consent":true}"#.utf8)
+        let restored = try JSONDecoder().decode(AssistantConfiguration.self, from: legacy)
+        XCTAssertEqual(restored.provider, .custom); XCTAssertEqual(restored.model, "my-model")
+        XCTAssertEqual(restored.key, "synthetic"); XCTAssertTrue(restored.consent)
+        XCTAssertEqual(try restored.url().host, "gateway.example.com")
+    }
     @MainActor func testComposerFormattingPreservesTextAndEscapesHTML() {
         let view = UITextView()
         view.attributedText = NSAttributedString(string: "A<B & C", attributes: [.font: UIFont.systemFont(ofSize: 17)])
@@ -60,6 +73,10 @@ final class ProtocolTests: XCTestCase {
         let messages = try await service.summaries(entry, folder: "INBOX", limit: 50)
         XCTAssertEqual(messages.count, 1); XCTAssertEqual(messages.first?.uid, 7)
         XCTAssertEqual(messages.first?.validity, 10); XCTAssertEqual(messages.first?.replyAddress, "sender@example.com")
+        XCTAssertEqual(messages.first?.senderName, "测试发件人")
+        XCTAssertEqual(messages.first?.senderAddress, "sender@example.com")
+        XCTAssertEqual(messages.first?.recipients?.first?.name, "李四")
+        XCTAssertEqual(messages.first?.carbonCopies?.first?.name, "王五")
         let result = try await service.read(entry, summary: XCTUnwrap(messages.first))
         XCTAssertTrue(result.body.text.contains("Synthetic offline message")); XCTAssertTrue(result.markedRead)
     }

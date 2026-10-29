@@ -124,6 +124,7 @@ final class WorkspaceTests: XCTestCase {
         let app = launch(dark: true)
         app.tabBars.buttons["通讯录"].tap()
         XCTAssertTrue(app.staticTexts["项目组"].waitForExistence(timeout: 5)); attach("blue-contacts-dark")
+        XCTAssertTrue(app.staticTexts["测试联系人"].exists, "Names from cached mail must appear in contacts")
         app.tabBars.buttons["设置"].tap(); attach("redesign-settings-home-dark")
         app.buttons["appearance-settings"].tap()
         let theme = app.descendants(matching: .any).matching(identifier: "theme-setting").firstMatch
@@ -131,6 +132,33 @@ final class WorkspaceTests: XCTestCase {
         app.navigationBars.buttons.element(boundBy: 0).tap()
         app.buttons["小邮与模型服务"].tap()
         XCTAssertTrue(app.secureTextFields["API Key"].waitForExistence(timeout: 5))
+    }
+    func testModelSetupOnlyNeedsKeyForASelectedCloudProvider() {
+        let app = launch(extra: ["--ui-model-setup"])
+        app.tabBars.buttons["设置"].tap(); app.buttons["小邮与模型服务"].tap()
+        XCTAssertTrue(app.secureTextFields["API Key"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.textFields["model-endpoint"].exists)
+        XCTAssertFalse(app.textFields["model-name"].exists)
+        app.secureTextFields["API Key"].tap(); app.secureTextFields["API Key"].typeText("synthetic-not-networked\n")
+        attach("refinement-model-key-only")
+        app.buttons["model-provider"].tap(); app.buttons["Kimi（月之暗面）"].tap()
+        XCTAssertEqual(app.secureTextFields["API Key"].value as? String, "API Key")
+        app.buttons["model-advanced"].tap()
+        XCTAssertEqual(app.textFields["model-endpoint"].value as? String, "https://api.moonshot.cn/v1")
+        XCTAssertEqual(app.textFields["model-name"].value as? String, "kimi-k2.6")
+        attach("refinement-model-preset-advanced")
+    }
+    func testCompactHeaderOnlyInboxKeepsIconActionsAndReadingReachable() {
+        let app = launch(extra: ["--ui-header-only"])
+        let compose = app.buttons["compose-mail"], avatar = app.buttons["account-avatar"]
+        XCTAssertEqual(compose.label, "写邮件")
+        XCTAssertLessThanOrEqual(compose.frame.width, 50); XCTAssertGreaterThanOrEqual(compose.frame.height, 44)
+        XCTAssertTrue(avatar.isHittable); XCTAssertLessThanOrEqual(avatar.frame.width, 50)
+        XCTAssertTrue(app.staticTexts["版本计划确认"].isHittable, "Six header-only messages should fit without excess row whitespace")
+        attach("refinement-inbox-dense-light")
+        avatar.tap(); XCTAssertTrue(app.buttons["完成"].waitForExistence(timeout: 5)); app.buttons["完成"].tap()
+        app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["回复全部"].waitForExistence(timeout: 5))
     }
     func testRecipientSelectionRequiresDoneAndPersistsDraft() {
         let app = launch()

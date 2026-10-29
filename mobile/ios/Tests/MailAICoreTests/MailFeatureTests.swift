@@ -182,4 +182,45 @@ private actor FeatureService: MailService {
         XCTAssertEqual(MailAttachment.safeName("..\\..\\file.txt"), "file.txt")
         XCTAssertFalse(MailAttachment.safeName("x\r\ny.txt").contains("\n"))
     }
+    func testCachedMailBackfillsChineseNamesAndPreservesManualEdits() async throws {
+        let (store, vault, service, files) = try await setup()
+        let account = try XCTUnwrap(store.selectedID)
+        var message = FeatureService.item()
+        message.sender = "\"张三\" <sender@example.com>"; message.senderName = "张三"
+        message.recipients = [.init(name: "李四", email: "li@example.com"), .init(name: "自己", email: "demo@example.com")]
+        message.carbonCopies = [.init(name: "王五", email: "wang@example.com")]
+        try files.write([message], account: account, key: "list:INBOX")
+        try files.write([MailContact(email: "sender@example.com"), .init(email: "li@example.com", name: "手动姓名", note: "保留备注", manuallyEdited: true)], account: account, key: "contacts")
+        let restored = MailStore(vault: vault, files: files, service: service)
+        XCTAssertEqual(restored.contacts.first { $0.email == "sender@example.com" }?.name, "张三")
+        XCTAssertEqual(restored.contacts.first { $0.email == "li@example.com" }?.name, "手动姓名")
+        XCTAssertEqual(restored.contacts.first { $0.email == "li@example.com" }?.note, "保留备注")
+        XCTAssertEqual(restored.contacts.first { $0.email == "wang@example.com" }?.name, "王五")
+        XCTAssertFalse(restored.contacts.contains { $0.email == "demo@example.com" })
+        let reread = MailStore(vault: vault, files: files, service: service)
+        XCTAssertEqual(reread.contacts, restored.contacts)
+    }
+    func testSenderNameDoesNotGetAssignedToDifferentReplyToAddress() {
+        var message = FeatureService.item()
+        message.sender = "\"张三\" <actual@example.com>"; message.senderName = "张三"; message.replyAddress = "reply@example.com"
+        XCTAssertEqual(message.contactAddresses, [.init(name: "张三", email: "actual@example.com"), .init(email: "reply@example.com")])
+        message.senderAddress = "actual@example.com"
+        XCTAssertEqual(message.relocated(uid: 9, validity: 11, folder: "Archive").senderAddress, "actual@example.com")
+    }
+    func testNamesLearnedByFolderAndUnifiedRefreshStayWithTheirAccount() async throws {
+        let (store, _, _, files) = try await setup()
+        let first = try XCTUnwrap(store.selectedID)
+        var cached = FeatureService.item(folder: "Archive"); cached.senderName = "缓存姓名"
+        try files.write([cached], account: first, key: "list:Archive")
+        try store.selectFolder("Archive"); store.cancelRefresh()
+        XCTAssertEqual(store.contacts.first { $0.email == "sender@example.com" }?.name, "缓存姓名")
+        var second = MailAccount(); second.email = "other@example.com"; second.suggestServers()
+        try await store.addAccount(second, password: "synthetic"); store.cancelRefresh()
+        try await store.refreshAllInboxes()
+        let a = try files.read([MailContact].self, account: first, key: "contacts")
+        let b = try files.read([MailContact].self, account: second.id, key: "contacts")
+        XCTAssertEqual(a?.first { $0.email == "sender@example.com" }?.name, "缓存姓名")
+        XCTAssertEqual(b?.first { $0.email == "sender@example.com" }?.name, "Sender")
+        XCTAssertEqual(store.contacts, b)
+    }
 }

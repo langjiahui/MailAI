@@ -71,6 +71,7 @@ import MailAICore
         if CommandLine.arguments.contains("--ui-threads"), result.count > 1 {
             result[1].parentMessageID = item.messageID; result[1].subject = "Re: " + item.subject
         }
+        if CommandLine.arguments.contains("--ui-header-only") { for index in result.indices { result[index].preview = nil } }
         return result
     }
     static func pdfData() -> Data {

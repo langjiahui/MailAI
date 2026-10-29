@@ -103,10 +103,12 @@ public extension MailService {
         drafts = try files.read([MailDraft].self, account: id, key: "drafts-v2") ?? []
         contacts = try files.read([MailContact].self, account: id, key: "contacts") ?? []
         try persistDraft()
-        try learnContacts(messages.flatMap { [$0.replyAddress] })
+        try learnContacts(messages.flatMap(\.contactAddresses), account: id)
     }
     public func selectFolder(_ name: String) throws {
-        cancelRefresh(); folder = name; limit = 50; try loadCache(); refresh()
+        cancelRefresh(); folder = name; limit = 50; try loadCache()
+        if let id = selectedID { try learnContacts(messages.flatMap(\.contactAddresses), account: id) }
+        refresh()
     }
     private func loadCache() throws {
         messages = []; lastRefresh = nil
@@ -132,7 +134,7 @@ public extension MailService {
                 try files.write(list, account: entry.account.id, key: "folders")
                 try files.write(result, account: entry.account.id, key: "list:" + folder)
                 folders = list; messages = result; lastRefresh = Date()
-                try learnContacts(result.flatMap { [$0.replyAddress] + ($0.recipients ?? []).map(\.email) + ($0.carbonCopies ?? []).map(\.email) })
+                try learnContacts(result.flatMap(\.contactAddresses), account: entry.account.id)
             } catch {
                 if generation == token, !Task.isCancelled { self.error = "收信失败，已保留缓存。请检查网络、服务器与授权码后重试。" }
             }
@@ -141,10 +143,14 @@ public extension MailService {
     }
     public func body(for summary: MailSummary, refreshMetadata: Bool = false) async throws -> MailBody {
         let entry = try credential()
-        if let cached = try files.read(MailBody.self, account: entry.account.id, key: "body:" + summary.id), !refreshMetadata || cached.attachments != nil { return cached }
+        if let cached = try files.read(MailBody.self, account: entry.account.id, key: "body:" + summary.id), !refreshMetadata || cached.attachments != nil {
+            try? learnContacts(summary.contactAddresses + (cached.recipients ?? []) + (cached.carbonCopies ?? []), account: entry.account.id)
+            return cached
+        }
         let result = try await service.read(entry, summary: summary)
         try Task.checkCancellation()
         try files.write(result.body, account: entry.account.id, key: "body:" + summary.id)
+        try? learnContacts(summary.contactAddresses + (result.body.recipients ?? []) + (result.body.carbonCopies ?? []), account: entry.account.id)
         if selectedID == entry.account.id, folder == summary.folder, result.markedRead,
            let index = messages.firstIndex(where: { $0.id == summary.id }) {
             messages[index].unread = false
@@ -208,7 +214,7 @@ public extension MailService {
             draft = submitted
             try persistDraft()
             let groups = try submitted.recipientGroups()
-            try? learnContacts(groups.to + groups.cc + groups.bcc)
+            try? learnContacts((groups.to + groups.cc + groups.bcc).map { MailAddress(email: $0) }, account: id)
             if entry.account.shouldSaveSentCopy {
                 do {
                     try await service.archiveSent(entry, draft: try hydrated(submitted, account: id))
@@ -383,12 +389,21 @@ public extension MailService {
         updated.append(edited)
         try files.write(updated, account: id, key: "contacts"); contacts = updated
     }
-    private func learnContacts(_ addresses: [String]) throws {
-        guard let id = selectedID else { return }
-        for address in addresses where MailValidation.isAddress(address) && !contacts.contains(where: { $0.id == address.lowercased() }) {
-            contacts.append(MailContact(email: address))
+    private func learnContacts(_ addresses: [MailAddress], account id: UUID) throws {
+        let original = selectedID == id ? contacts : (try files.read([MailContact].self, account: id, key: "contacts") ?? [])
+        var updated = original
+        let ownAddress = accounts.first { $0.id == id }?.email.lowercased()
+        for address in addresses {
+            let email = address.email.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard MailValidation.isAddress(email), email.lowercased() != ownAddress else { continue }
+            let name = MailAddress.cleanedName(address.name, email: email)
+            if let index = updated.firstIndex(where: { $0.id == email.lowercased() }) {
+                if !updated[index].manuallyEdited, updated[index].name.isEmpty, !name.isEmpty { updated[index].name = name }
+            } else { updated.append(MailContact(email: email, name: name)) }
         }
-        try files.write(contacts, account: id, key: "contacts")
+        guard updated != original else { return }
+        try files.write(updated, account: id, key: "contacts")
+        if selectedID == id { contacts = updated }
     }
     public func cachedInbox() throws -> [LocatedMessage] {
         try accounts.flatMap { account in
@@ -403,6 +418,7 @@ public extension MailService {
             let result = try await service.summaries(entry, folder: "INBOX", limit: 50)
             try Task.checkCancellation()
             try files.write(result, account: entry.account.id, key: "list:INBOX")
+            try learnContacts(result.flatMap(\.contactAddresses), account: entry.account.id)
             if selectedID == entry.account.id, folder == "INBOX" { messages = result; lastRefresh = Date() }
         }
     }

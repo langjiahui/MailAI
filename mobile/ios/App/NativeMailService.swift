@@ -106,7 +106,7 @@ struct NativeMailService: MailService {
         }
     }
     private static func addresses(_ values: [EmailAddress]) -> [MailAddress] {
-        values.map { MailAddress(name: $0.name ?? "", email: $0.address) }
+        values.map { MailAddress(name: $0.name?.decodeMIMEHeader() ?? "", email: $0.address) }
     }
     private static func summary(_ info: MessageInfo, uid: UInt32, validity: UInt32, folder: String) -> MailSummary {
         let reply = (info.replyToAddresses.mailboxes.first ?? info.fromAddresses.mailboxes.first)?.address ?? ""
@@ -114,7 +114,8 @@ struct NativeMailService: MailService {
             subject: info.subject ?? "（无主题）", sender: info.from ?? "未知发件人", replyAddress: reply,
             date: info.internalDate ?? info.date, unread: !info.flags.contains(.seen), messageID: info.messageId?.description)
         value.recipients = addresses(info.toAddresses.mailboxes); value.carbonCopies = addresses(info.ccAddresses.mailboxes)
-        value.senderName = info.fromAddresses.mailboxes.first?.name
+        value.senderName = info.fromAddresses.mailboxes.first?.name?.decodeMIMEHeader()
+        value.senderAddress = info.fromAddresses.mailboxes.first?.address
         value.isFlagged = info.flags.contains(.flagged)
         value.hasAttachments = !Message(header: info, parts: info.parts).attachments.isEmpty
         value.parentMessageID = info.inReplyTo?.description

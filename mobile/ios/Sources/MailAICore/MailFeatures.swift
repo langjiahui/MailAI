@@ -6,6 +6,12 @@ public struct MailAddress: Codable, Equatable, Hashable, Sendable, Identifiable 
     public var id: String { email.lowercased() }
     public var title: String { name.isEmpty ? email : name }
     public init(name: String = "", email: String) { self.name = name; self.email = email }
+    public static func cleanedName(_ value: String, email: String) -> String {
+        var name = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if name.count >= 2, name.first == "\"", name.last == "\"" { name = String(name.dropFirst().dropLast()).trimmingCharacters(in: .whitespacesAndNewlines) }
+        guard !MailValidation.hasControl(name), name.caseInsensitiveCompare(email) != .orderedSame else { return "" }
+        return String(name.prefix(200))
+    }
 }
 public struct MailRecipients: Equatable, Sendable {
     public var to: [String]; public var cc: [String]; public var bcc: [String]

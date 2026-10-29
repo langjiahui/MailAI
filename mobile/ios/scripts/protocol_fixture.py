@@ -11,7 +11,10 @@ from email.parser import BytesParser
 BODY = b"Synthetic offline message.\r\n"
 ATTACHMENT = base64.b64encode(b"synthetic attachment")
 ARCHIVED = set()
-ENVELOPE = '("Tue, 20 Oct 2026 12:00:00 +0000" "Synthetic mail" (("Sender" NIL "sender" "example.com")) NIL NIL ((NIL NIL "demo" "example.com")) NIL NIL NIL "<synthetic@example.com>")'
+SENDER_NAME = '=?UTF-8?B?' + base64.b64encode('测试发件人'.encode()).decode() + '?='
+RECIPIENT_NAME = '=?UTF-8?B?' + base64.b64encode('李四'.encode()).decode() + '?='
+COPY_NAME = '=?UTF-8?B?' + base64.b64encode('王五'.encode()).decode() + '?='
+ENVELOPE = f'("Tue, 20 Oct 2026 12:00:00 +0000" "Synthetic mail" (("{SENDER_NAME}" NIL "sender" "example.com")) NIL NIL (("{RECIPIENT_NAME}" NIL "demo" "example.com")) (("{COPY_NAME}" NIL "team" "example.com")) NIL NIL "<synthetic@example.com>")'
 
 
 async def write(writer, value):
