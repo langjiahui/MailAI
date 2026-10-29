@@ -23,6 +23,7 @@ for stream in (sys.stdout, sys.stderr):
 TESTS = (
     'test_ci_pipeline.py',
     'test_release_desktop.py',
+    'test_release_builds.py',
     'test_android_domestic_release.py',
     'test_credential_store.py',
     'test_keychain_startup.py',

@@ -285,6 +285,22 @@ class Coordinator:
         self.emit('full-verified', source_run=run['id'], tree=plan['tree'])
         return run['id']
 
+    def prepare(self, plan):
+        """Start private native builds before waiting for full verification.
+
+        The dispatch pins the head/version; moving the branch before checkout
+        fails metadata validation. Publication remains restricted to formal tags.
+        """
+        rows = self.runs('release.yml', sha=plan['head'], events={'workflow_dispatch'},
+                         branch=plan['branch'])
+        if not rows:
+            self.write('POST', 'actions/workflows/release.yml/dispatches',
+                       {'ref': plan['branch'], 'inputs': {'candidate_head': plan['head'],
+                                                       'candidate_version': plan['version']}})
+            self.emit('prepare-dispatched', head=plan['head'], version=plan['version'])
+        else:
+            self.emit('prepare-existing', run=rows[0]['id'], status=rows[0]['status'])
+
     def merge(self, plan):
         pr = self.head(plan)
         if not pr.get('merged'):
@@ -350,7 +366,13 @@ class Coordinator:
 
     def execute(self, plan):
         self.ensure_time('release execution')
+        preparing = not self.head(plan).get('merged')
+        if preparing:
+            self.prepare(plan)
         source = self.full(plan)
+        if preparing:
+            self.wait('release.yml', sha=plan['head'], events={'workflow_dispatch'},
+                      branch=plan['branch'], guard=lambda: self.head(plan))
         merged = self.merge(plan)
         self.wait('pr-check.yml', sha=merged, events={'push'}, branch='main',
                   guard=lambda: self.head(plan))

@@ -50,6 +50,7 @@ class FakeGitHub:
         self.main = BASE
         self.merged_tree = TREE
         self.current_run = run(42)
+        self.preparation = run(41, 'release.yml', event='workflow_dispatch')
         self.proof_mode = 'full'
         self.retry_result = 'success'
         self.pr = dict(state='open', draft=False, merged=False, merge_commit_sha=None,
@@ -109,7 +110,8 @@ class FakeGitHub:
                 return {'workflow_runs': [run(44, head=MERGED, branch='main', event='push')]}
             return {'workflow_runs': [self.current_run]}
         if path.startswith('actions/workflows/release.yml/runs?'):
-            return {'workflow_runs': [run(45, 'release.yml', head=MERGED, branch='v3.7.0', event='push')]}
+            return {'workflow_runs': ([self.preparation] if self.preparation else []) +
+                    [run(45, 'release.yml', head=MERGED, branch='v3.7.0', event='push')]}
         if path.startswith('actions/workflows/atomgit-sync.yml/runs?'):
             mirror = run(46, 'atomgit-sync.yml', head=OTHER, branch='main', event='workflow_run')
             mirror['display_title'] = 'Sync AtomGit v3.7.0'
@@ -133,6 +135,9 @@ class FakeGitHub:
 
     def write(self, method, path, payload=None):
         self.writes.append((method, path, payload))
+        if path == 'actions/workflows/release.yml/dispatches':
+            self.preparation = run(41, 'release.yml', event='workflow_dispatch')
+            return None
         if path.endswith('/rerun-failed-jobs'):
             self.current_run.update(run_attempt=2, conclusion=self.retry_result)
             return None
@@ -188,6 +193,24 @@ class CoordinatorTest(unittest.TestCase):
         self.assertEqual(self.api.writes[1][2]['object'], MERGED)
         self.assertEqual(self.api.writes[2][2]['ref'], 'refs/tags/v3.7.0')
         self.assertEqual(self.events[-1][0], 'complete')
+
+    def test_private_build_starts_before_full_wait_and_neither_can_be_bypassed(self):
+        self.api.preparation=None
+        original=self.runner.full
+        def full(plan):
+            self.assertEqual(self.api.writes[0],('POST','actions/workflows/release.yml/dispatches',
+                {'ref':'codex/release','inputs':{'candidate_head':HEAD,'candidate_version':'3.7.0'}}))
+            return original(plan)
+        with patch.object(self.runner,'full',side_effect=full):self.execute(self.plan())
+        self.assertEqual(self.events[-1][0],'complete')
+        self.setUp()
+        self.api.preparation.update(conclusion='cancelled')
+        with self.assertRaises(RuntimeError):self.execute(self.plan())
+        self.assertFalse(any(path.endswith('/merge') or path=='git/refs' for _,path,_ in self.api.writes))
+        self.setUp()
+        with patch.object(self.runner,'full',side_effect=ValueError('Missing full proof')):
+            with self.assertRaises(ValueError):self.execute(self.plan())
+        self.assertFalse(any(path.endswith('/merge') or path=='git/refs' for _,path,_ in self.api.writes))
 
     def test_fork_draft_old_base_wrong_version_and_missing_reason_stop_before_writes(self):
         for case in ['fork', 'draft', 'head', 'version', 'readme', 'reason', 'classification', 'record']:

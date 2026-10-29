@@ -2,40 +2,40 @@
   "schema": 1,
   "source": {
     "repository": "langjiahui/MailAI",
-    "run_id": 40269577336,
-    "run_attempt": 2,
-    "head_sha": "c67dcae66b186eef58a4cb892d5a714ff51ecb76"
+    "run_id": 40825233426,
+    "run_attempt": 1,
+    "head_sha": "1372e0a520fe8104c9484410b2e88631d38858fa"
   },
   "jobs": [
     {
       "suite": "assistant-search",
       "browser": "",
       "shard": "",
-      "seconds": 228
+      "seconds": 188
     },
     {
       "suite": "assistant-workspace",
       "browser": "chromium",
       "shard": "",
-      "seconds": 405
+      "seconds": 408
     },
     {
       "suite": "assistant-workspace",
       "browser": "webkit",
       "shard": "",
-      "seconds": 240
+      "seconds": 273
     },
     {
       "suite": "compose-library",
       "browser": "",
       "shard": "",
-      "seconds": 238
+      "seconds": 278
     },
     {
       "suite": "dates-motion",
       "browser": "",
       "shard": "",
-      "seconds": 343
+      "seconds": 336
     },
     {
       "suite": "growth-gifts",
@@ -47,121 +47,121 @@
       "suite": "growth-journal",
       "browser": "",
       "shard": "",
-      "seconds": 183
+      "seconds": 195
     },
     {
       "suite": "growth-outfits",
       "browser": "",
       "shard": "",
-      "seconds": 499
+      "seconds": 514
     },
     {
       "suite": "growth-themes",
       "browser": "",
       "shard": "",
-      "seconds": 459
+      "seconds": 475
     },
     {
       "suite": "interaction",
       "browser": "chromium",
       "shard": "",
-      "seconds": 69
+      "seconds": 81
     },
     {
       "suite": "interaction",
       "browser": "webkit",
       "shard": "",
-      "seconds": 77
+      "seconds": 70
     },
     {
       "suite": "labels",
       "browser": "",
       "shard": "",
-      "seconds": 237
+      "seconds": 312
     },
     {
       "suite": "mail-appearance",
       "browser": "",
       "shard": "",
-      "seconds": 129
+      "seconds": 162
     },
     {
       "suite": "mail-import",
       "browser": "",
       "shard": "",
-      "seconds": 218
+      "seconds": 255
     },
     {
       "suite": "mail-navigation",
       "browser": "",
       "shard": "",
-      "seconds": 109
+      "seconds": 110
     },
     {
       "suite": "mail-updates",
       "browser": "",
       "shard": "",
-      "seconds": 103
+      "seconds": 107
     },
     {
       "suite": "responsive-dialogs",
       "browser": "chromium",
       "shard": "1/3",
-      "seconds": 591
+      "seconds": 520
     },
     {
       "suite": "responsive-dialogs",
       "browser": "chromium",
       "shard": "2/3",
-      "seconds": 488
+      "seconds": 325
     },
     {
       "suite": "responsive-dialogs",
       "browser": "chromium",
       "shard": "3/3",
-      "seconds": 428
+      "seconds": 357
     },
     {
       "suite": "responsive-dialogs",
       "browser": "webkit",
       "shard": "1/3",
-      "seconds": 395
+      "seconds": 333
     },
     {
       "suite": "responsive-dialogs",
       "browser": "webkit",
       "shard": "2/3",
-      "seconds": 322
+      "seconds": 523
     },
     {
       "suite": "responsive-dialogs",
       "browser": "webkit",
       "shard": "3/3",
-      "seconds": 527
+      "seconds": 566
     },
     {
       "suite": "responsive-settings",
       "browser": "chromium",
       "shard": "",
-      "seconds": 299
+      "seconds": 284
     },
     {
       "suite": "responsive-settings",
       "browser": "webkit",
       "shard": "",
-      "seconds": 225
+      "seconds": 305
     },
     {
       "suite": "search",
       "browser": "",
       "shard": "",
-      "seconds": 156
+      "seconds": 157
     },
     {
       "suite": "server-cleanup",
       "browser": "",
       "shard": "",
-      "seconds": 110
+      "seconds": 103
     },
     {
       "suite": "startup",
@@ -173,25 +173,25 @@
       "suite": "task-workspace",
       "browser": "",
       "shard": "",
-      "seconds": 100
+      "seconds": 130
     },
     {
       "suite": "todos",
       "browser": "",
       "shard": "",
-      "seconds": 178
+      "seconds": 135
     },
     {
       "suite": "workspace",
       "browser": "",
       "shard": "",
-      "seconds": 341
+      "seconds": 360
     },
     {
       "suite": "xiaoyou-anatomy",
       "browser": "",
       "shard": "",
-      "seconds": 162
+      "seconds": 163
     },
     {
       "suite": "xiaoyou-life",
@@ -203,13 +203,13 @@
       "suite": "xiaoyou-rest",
       "browser": "",
       "shard": "",
-      "seconds": 163
+      "seconds": 170
     },
     {
       "suite": "xiaoyou-wardrobe",
       "browser": "",
       "shard": "",
-      "seconds": 209
+      "seconds": 244
     }
   ]
 }
