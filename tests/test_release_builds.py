@@ -128,6 +128,17 @@ class BuildProvenanceTest(unittest.TestCase):
 
 
 class RestoreTest(unittest.TestCase):
+    def test_binary_transport_preserves_escape_bytes_for_archive_digest_verification(self):
+        data=b'PK\x03\x04\x1b[31mbinary installer bytes\x00\xff'
+        def emit(args,**kwargs):
+            self.assertIn('--allow-escape-sequences',args)
+            self.assertNotIn('shell',kwargs)
+            kwargs['stdout'].write(data)
+        with tempfile.TemporaryDirectory() as directory,patch.object(builds.subprocess,'run',side_effect=emit):
+            path=Path(directory)/'artifact.zip'
+            builds.GitHub(REPO).download(10,path)
+            self.assertEqual(path.read_bytes(),data)
+
     def test_exact_installer_and_dmg_bytes_are_restored_and_all_checksums_verified(self):
         api=FakeGitHub()
         with tempfile.TemporaryDirectory() as directory:

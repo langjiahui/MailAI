@@ -43,7 +43,8 @@ class GitHub(ci_quality.GitHub):
 
     def download(self, artifact, path):
         with path.open('wb') as stream:
-            subprocess.run(['gh', 'api', f'repos/{self.repository}/actions/artifacts/{artifact}/zip'],
+            subprocess.run(['gh', 'api', f'repos/{self.repository}/actions/artifacts/{artifact}/zip',
+                            '--allow-escape-sequences'],
                            stdout=stream, check=True, timeout=180)
 
 
