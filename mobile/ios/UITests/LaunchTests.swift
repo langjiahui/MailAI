@@ -335,18 +335,20 @@ final class WorkspaceTests: XCTestCase {
         app.buttons["收起键盘"].tap()
         app.buttons["添加附件"].tap(); attach("redesign-attachment-source-menu")
         app.buttons["选择文件"].tap(); cancelSystemPicker(app, screenshot: "redesign-system-files")
-        XCTAssertTrue(body.isHittable)
+        assertEventuallyHittable(body)
         XCTAssertEqual(body.value as? String, "Synthetic unsent draft")
         app.buttons["照片"].tap(); cancelSystemPicker(app, screenshot: "redesign-system-photos", photoLibrary: true)
-        XCTAssertTrue(body.isHittable)
+        assertEventuallyHittable(body)
         XCTAssertEqual(body.value as? String, "Synthetic unsent draft")
         app.buttons["添加附件"].tap(); app.buttons["从照片选择"].tap()
         cancelSystemPicker(app, screenshot: "reading-space-photos-from-menu", photoLibrary: true)
-        XCTAssertTrue(body.isHittable)
+        assertEventuallyHittable(body)
         XCTAssertEqual(body.value as? String, "Synthetic unsent draft")
         app.buttons["选择收件人"].tap(); app.buttons["从手机联系人选择"].tap()
-        cancelSystemPicker(app, screenshot: "redesign-system-contacts")
+        cancelSystemPicker(app, screenshot: "redesign-system-contacts", contactPicker: true)
+        assertEventuallyHittable(app.buttons["从手机联系人选择"])
         app.buttons["取消"].firstMatch.tap()
+        assertEventuallyHittable(body)
         XCTAssertEqual(body.value as? String, "Synthetic unsent draft")
         XCTAssertFalse(app.buttons["send-mail"].exists && app.buttons["send-mail"].isEnabled)
     }
@@ -354,8 +356,13 @@ final class WorkspaceTests: XCTestCase {
         let english = app.buttons["Cancel"].firstMatch
         return english.waitForExistence(timeout: 2) ? english : app.buttons["取消"].firstMatch
     }
-    private func cancelSystemPicker(_ app: XCUIApplication, screenshot: String, photoLibrary: Bool = false) {
-        let labels = ["Cancel", "取消"]
+    private func assertEventuallyHittable(_ element: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in element.exists && element.isHittable }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 15), .completed, file: file, line: line)
+        XCTAssertTrue(element.isHittable, file: file, line: line)
+    }
+    private func cancelSystemPicker(_ app: XCUIApplication, screenshot: String, photoLibrary: Bool = false, contactPicker: Bool = false) {
+        let labels = ["Cancel", "取消", "Close", "关闭"]
         var cancellationButtons = app.buttons
         if photoLibrary {
             let titles = ["Photos", "照片"]
@@ -363,6 +370,17 @@ final class WorkspaceTests: XCTestCase {
             // The loading controller has its own cancel button. Wait for the
             // remote photo library before querying hittability or taking proof.
             XCTAssertTrue(navigation.segmentedControls.firstMatch.waitForExistence(timeout: 30), "Photo library must finish loading before cancellation is tested")
+            cancellationButtons = navigation.buttons
+        } else if contactPicker {
+            // iOS 26 exposes the native picker's X as Close, while the parent
+            // recipient sheet still has a Cancel button behind the picker.
+            let titles = ["Contacts", "联系人", "通讯录"]
+            let navigation = app.navigationBars.matching(NSPredicate(format: "identifier IN %@ OR label IN %@", titles, titles)).firstMatch
+            guard navigation.waitForExistence(timeout: 30) else {
+                attach(screenshot)
+                XCTFail("Native contacts navigation must finish loading before cancellation is tested")
+                return
+            }
             cancellationButtons = navigation.buttons
         }
         let candidates = cancellationButtons.matching(NSPredicate(format: "identifier IN %@ OR label IN %@", labels, labels))
@@ -372,6 +390,8 @@ final class WorkspaceTests: XCTestCase {
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in currentCancel() != nil }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 30), .completed)
         attach(screenshot)
+        let hierarchy = XCTAttachment(string: app.debugDescription)
+        hierarchy.name = screenshot + "-hierarchy"; hierarchy.lifetime = .keepAlways; add(hierarchy)
         guard let cancel = currentCancel() else { XCTFail("Native picker must offer cancellation"); return }
         XCTAssertTrue(cancel.isHittable); cancel.tap()
     }
@@ -425,13 +445,17 @@ final class WorkspaceTests: XCTestCase {
         let app = launch(extra: ["--ui-pdf"])
         app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap()
         app.staticTexts["合成项目方案.pdf"].tap()
+        // Quick Look first exposes its share button on an empty loading view.
+        // Wait for the actual PDF before interacting with that remote toolbar.
+        let document = app.textViews.matching(NSPredicate(format: "value CONTAINS %@", "仅用于 MailAI 界面验收")).firstMatch
+        XCTAssertTrue(document.waitForExistence(timeout: 30))
         let englishShare = app.buttons["Share"].firstMatch
         let share = englishShare.waitForExistence(timeout: 5) ? englishShare : (app.buttons["共享"].firstMatch.exists ? app.buttons["共享"].firstMatch : app.buttons["分享"].firstMatch)
-        XCTAssertTrue(share.waitForExistence(timeout: 5)); attach("redesign-quicklook-pdf")
+        XCTAssertTrue(share.waitForExistence(timeout: 5)); assertEventuallyHittable(share); attach("redesign-quicklook-pdf")
         share.tap()
         let copyAction = app.cells.matching(NSPredicate(format: "label IN %@", ["Copy", "拷贝", "复制"])).firstMatch
-        XCTAssertTrue(copyAction.waitForExistence(timeout: 5)); XCTAssertTrue(copyAction.isHittable)
-        XCTAssertTrue(app.cells.matching(NSPredicate(format: "label IN %@", ["Save to Files", "存储到文件", "保存到文件"])).firstMatch.exists)
+        XCTAssertTrue(copyAction.waitForExistence(timeout: 15)); XCTAssertTrue(copyAction.isHittable)
+        XCTAssertTrue(app.cells.matching(NSPredicate(format: "label IN %@", ["Save to Files", "存储到文件", "保存到文件"])).firstMatch.waitForExistence(timeout: 15))
         attach("redesign-system-share")
     }
     func testAttachmentCancellationAndFailureKeepBody() {
