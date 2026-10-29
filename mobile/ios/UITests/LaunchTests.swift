@@ -144,7 +144,7 @@ final class WorkspaceTests: XCTestCase {
         attach("refinement-model-key-only")
         app.buttons["model-provider"].tap(); app.buttons["Kimi（月之暗面）"].tap()
         XCTAssertEqual(app.secureTextFields["API Key"].value as? String, "API Key")
-        app.buttons["model-advanced"].tap()
+        app.buttons["高级设置（可选）"].tap()
         XCTAssertEqual(app.textFields["model-endpoint"].value as? String, "https://api.moonshot.cn/v1")
         XCTAssertEqual(app.textFields["model-name"].value as? String, "kimi-k2.6")
         attach("refinement-model-preset-advanced")

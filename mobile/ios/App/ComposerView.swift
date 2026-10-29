@@ -63,8 +63,12 @@ struct ComposerView: View {
                     Button("确认未送达，解除发送锁定") { do { try store.resolveUncertain() } catch { self.error = error.localizedDescription } }
                     Button("保留记录", role: .cancel) {}
                 } message: { Text("请先核对收件方或服务器。已发送文件夹没有副本，并不代表未送达。只有确认上一封未送达后再解除锁定，避免重复发送。") }
-                .fileImporter(isPresented: $importing, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
-                    do { guard store.draft.id == importDraftID, editable else { throw MailFailure.invalid("草稿已改变，文件未添加。") }; for url in try result.get() { try importFile(url) } } catch { self.error = "部分文件未添加：\(error.localizedDescription)" }
+                .sheet(isPresented: $importing) {
+                    DraftFilePicker { urls in
+                        importing = false
+                        guard !urls.isEmpty else { return }
+                        do { guard store.draft.id == importDraftID, editable else { throw MailFailure.invalid("草稿已改变，文件未添加。") }; for url in urls { try importFile(url) } } catch { self.error = "部分文件未添加：\(error.localizedDescription)" }
+                    }
                 }
                 .onChange(of: photo) { _, value in
                     guard let value else { return }
@@ -272,6 +276,25 @@ struct ComposerView: View {
         let info = try url.resourceValues(forKeys: [.fileSizeKey, .contentTypeKey, .isRegularFileKey])
         guard info.isRegularFile == true, (info.fileSize ?? Int.max) <= MailAttachment.singleLimit else { throw MailFailure.invalid("文件不可读或超过 15 MB。") }
         try store.addAttachment(name: url.lastPathComponent, mimeType: info.contentType?.preferredMIMEType ?? "application/octet-stream", data: Data(contentsOf: url))
+    }
+}
+// Keep the document picker in its own presentation. Cancelling it must only
+// close this sheet, never the composer that owns the unsent draft.
+private struct DraftFilePicker: UIViewControllerRepresentable {
+    let selected: ([URL]) -> Void
+    func makeCoordinator() -> Coordinator { Coordinator(selected: selected) }
+    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: false)
+        picker.allowsMultipleSelection = true
+        picker.delegate = context.coordinator
+        return picker
+    }
+    func updateUIViewController(_ controller: UIDocumentPickerViewController, context: Context) {}
+    final class Coordinator: NSObject, UIDocumentPickerDelegate {
+        let selected: ([URL]) -> Void
+        init(selected: @escaping ([URL]) -> Void) { self.selected = selected }
+        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) { selected(urls) }
+        func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) { selected([]) }
     }
 }
 private struct RecipientSelectionRequest: Identifiable {

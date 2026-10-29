@@ -128,7 +128,7 @@ struct AssistantSettingsView: View {
                     VStack(alignment: .leading, spacing: 8) { Text("服务地址").font(.subheadline.weight(.medium)); TextField("HTTPS 基础地址（包含 /v1）", text: Binding(get: { configuration.endpoint }, set: { configuration.endpoint = $0; configuration.providerID = ModelProviderPreset.custom.rawValue })).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled().accessibilityIdentifier("model-endpoint") }
                     VStack(alignment: .leading, spacing: 8) { Text("模型名称").font(.subheadline.weight(.medium)); TextField("模型名称", text: $configuration.model).textInputAutocapitalization(.never).autocorrectionDisabled().accessibilityIdentifier("model-name") }
                     Text("自部署或其他 Chat Completions 兼容服务可在这里填写。请使用 HTTPS 地址。").font(.footnote).foregroundStyle(.secondary)
-                }.accessibilityIdentifier("model-advanced")
+                }
             }.disabled(working).listRowBackground(MailTheme.surface)
             Section {
                 Toggle("允许主动调用时发送选定的邮件文字", isOn: $configuration.consent)
