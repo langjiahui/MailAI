@@ -99,6 +99,70 @@ final class WorkspaceTests: XCTestCase {
         app.launchArguments += ["-UIPreferredContentSizeCategoryName", large ? "UICTContentSizeCategoryAccessibilityXXXL" : "UICTContentSizeCategoryL"]
         app.launch(); XCTAssertTrue(app.buttons["compose-mail"].waitForExistence(timeout: 10)); return app
     }
+    private func openSection(_ title: String, in app: XCUIApplication) {
+        let avatar = app.buttons["account-avatar"]
+        for _ in 0..<8 {
+            if avatar.exists && avatar.isHittable { break }
+            let back = app.navigationBars.buttons.element(boundBy: 0)
+            XCTAssertTrue(back.waitForExistence(timeout: 5)); back.tap()
+        }
+        XCTAssertTrue(avatar.waitForExistence(timeout: 5)); avatar.tap()
+        let entry = app.buttons[title == "通讯录" ? "sidebar-contacts" : "sidebar-settings"]
+        XCTAssertTrue(entry.waitForExistence(timeout: 5)); entry.tap()
+        XCTAssertTrue(app.navigationBars[title].waitForExistence(timeout: 5))
+    }
+    func testInboxControlsScrollAwayAndToolbarActionsStayReachable() {
+        let app = launch(extra: ["--ui-long-inbox"])
+        let header = app.buttons["inbox-search-header"], toolbarSearch = app.buttons["inbox-search-toolbar"]
+        let navigation = app.navigationBars.firstMatch, compose = app.buttons["compose-mail"]
+        XCTAssertFalse(app.tabBars.firstMatch.exists)
+        XCTAssertTrue(header.isHittable); XCTAssertTrue(toolbarSearch.isHittable)
+        XCTAssertLessThanOrEqual(compose.frame.maxY, navigation.frame.maxY + 2)
+        XCTAssertGreaterThanOrEqual(compose.frame.height, 44)
+        attach("reading-space-inbox-light")
+        app.swipeUp(); app.swipeUp()
+        XCTAssertFalse(header.exists && header.isHittable, "Search/filter header must scroll with the mail list")
+        XCTAssertTrue(toolbarSearch.isHittable); XCTAssertTrue(compose.isHittable)
+        attach("reading-space-inbox-scrolled")
+        toolbarSearch.tap()
+        XCTAssertTrue(app.textFields["mail-search-input"].waitForExistence(timeout: 5))
+        app.buttons["完成"].firstMatch.tap()
+        for _ in 0..<6 { if header.exists && header.isHittable { break }; app.swipeDown() }
+        XCTAssertTrue(header.isHittable)
+        app.buttons["inbox-filter"].tap(); app.buttons["未读"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["clear-inbox-filter"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["项目资料确认与下一步安排"].exists)
+        XCTAssertFalse(app.staticTexts["移动端设计评审"].exists)
+        XCTAssertTrue((app.buttons["更多邮件操作"].value as? String)?.contains("未读") == true)
+        attach("reading-space-unread-filter")
+        app.buttons["clear-inbox-filter"].tap()
+        XCTAssertTrue(app.staticTexts["移动端设计评审"].waitForExistence(timeout: 5))
+        app.buttons["inbox-filter"].tap(); app.buttons["附件"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["合同修订版本"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["移动端设计评审"].exists)
+        app.buttons["clear-inbox-filter"].tap()
+    }
+    func testSidebarDestinationsReturnToTheSameMailboxAndFilter() {
+        let app = launch()
+        app.buttons["inbox-filter"].tap(); app.buttons["星标"].firstMatch.tap()
+        app.buttons["account-avatar"].tap()
+        XCTAssertTrue(app.buttons["sidebar-contacts"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["sidebar-settings"].isHittable)
+        attach("reading-space-sidebar-tools")
+        app.buttons["sidebar-contacts"].tap()
+        XCTAssertTrue(app.navigationBars["通讯录"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.tabBars.firstMatch.exists)
+        app.buttons["contact-team@example.com"].tap()
+        XCTAssertTrue(app.buttons["编辑"].waitForExistence(timeout: 5))
+        openSection("设置", in: app)
+        XCTAssertTrue(app.buttons["appearance-settings"].isHittable)
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.buttons["account-avatar"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["移动端设计评审"].exists)
+        XCTAssertFalse(app.staticTexts["项目资料确认与下一步安排"].exists)
+        XCTAssertTrue((app.buttons["更多邮件操作"].value as? String)?.contains("星标") == true)
+        app.buttons["clear-inbox-filter"].tap()
+    }
     func testMailboxReadingReplyAndComposer() {
         let app = launch()
         let message = app.staticTexts["项目资料确认与下一步安排"].firstMatch
@@ -122,10 +186,10 @@ final class WorkspaceTests: XCTestCase {
     }
     func testContactsAndSettingsInDarkMode() {
         let app = launch(dark: true)
-        app.tabBars.buttons["通讯录"].tap()
+        openSection("通讯录", in: app)
         XCTAssertTrue(app.staticTexts["项目组"].waitForExistence(timeout: 5)); attach("blue-contacts-dark")
         XCTAssertTrue(app.staticTexts["测试联系人"].exists, "Names from cached mail must appear in contacts")
-        app.tabBars.buttons["设置"].tap(); attach("redesign-settings-home-dark")
+        openSection("设置", in: app); attach("redesign-settings-home-dark")
         app.buttons["appearance-settings"].tap()
         let theme = app.descendants(matching: .any).matching(identifier: "theme-setting").firstMatch
         XCTAssertTrue(theme.waitForExistence(timeout: 5)); XCTAssertEqual(theme.value as? String, "宝武蓝 · 蓝白"); attach("blue-settings-dark")
@@ -136,7 +200,7 @@ final class WorkspaceTests: XCTestCase {
     }
     func testModelSetupOnlyNeedsKeyForASelectedCloudProvider() {
         let app = launch(extra: ["--ui-model-setup"])
-        app.tabBars.buttons["设置"].tap(); app.buttons["小邮与模型服务"].tap()
+        openSection("设置", in: app); app.buttons["小邮与模型服务"].tap()
         XCTAssertTrue(app.secureTextFields["API Key"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.textFields["model-endpoint"].exists)
         XCTAssertFalse(app.textFields["model-name"].exists)
@@ -286,10 +350,10 @@ final class WorkspaceTests: XCTestCase {
     }
     func testMailboxFiltersSelectionAndMovePicker() {
         let app = launch()
-        app.buttons["星标"].firstMatch.tap()
+        app.buttons["inbox-filter"].tap(); app.buttons["星标"].firstMatch.tap()
         XCTAssertTrue(app.staticTexts["移动端设计评审"].waitForExistence(timeout: 5)); attach("redesign-flagged-filter")
         XCTAssertFalse(app.staticTexts["项目资料确认与下一步安排"].exists)
-        app.buttons["全部"].firstMatch.tap()
+        app.buttons["clear-inbox-filter"].tap()
         app.buttons["更多邮件操作"].tap(); attach("redesign-inbox-menu")
         app.buttons["选择邮件"].tap()
         app.buttons["选择邮件"].firstMatch.tap()
@@ -358,7 +422,7 @@ final class WorkspaceTests: XCTestCase {
     }
     func testNativeNotificationPermissionIsUserTriggered() {
         let app = launch()
-        app.tabBars.buttons["设置"].tap(); app.buttons["后台收信与通知"].tap()
+        openSection("设置", in: app); app.buttons["后台收信与通知"].tap()
         app.buttons["申请通知权限"].tap()
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         let alert = springboard.alerts.firstMatch
@@ -390,7 +454,7 @@ final class WorkspaceTests: XCTestCase {
     }
     func testContactMenusDetailAndEditingKeepAccountScope() {
         let app = launch()
-        app.tabBars.buttons["通讯录"].tap()
+        openSection("通讯录", in: app)
         app.buttons["联系人操作"].tap(); attach("redesign-contact-add-menu")
         app.buttons["新建联系人"].tap()
         XCTAssertFalse(app.buttons["保存"].isEnabled)
@@ -472,7 +536,7 @@ final class WorkspaceTests: XCTestCase {
     func testPageTourInDarkAndAccessibilitySizes() {
         for (dark, large, variant) in [(true, false, "dark"), (true, true, "dark-large"), (false, true, "light-large")] {
             let app = launch(dark: dark, large: large, extra: ["--ui-assistant"])
-            if large { XCTAssertLessThan(app.buttons["全部"].firstMatch.frame.height, 100) }
+            if large { XCTAssertLessThan(app.buttons["inbox-filter"].frame.height, 100) }; XCTAssertFalse(app.tabBars.firstMatch.exists)
             attach("tour-" + variant + "-inbox")
             app.buttons["邮箱与文件夹"].tap(); attach("tour-" + variant + "-mailboxes")
             app.buttons["完成"].firstMatch.tap()
@@ -490,10 +554,10 @@ final class WorkspaceTests: XCTestCase {
             app.buttons["回复全部"].tap(); attach("tour-" + variant + "-composer")
             app.buttons["关闭"].tap(); app.buttons["保存并返回"].tap()
             app.navigationBars.buttons.element(boundBy: 0).tap()
-            app.tabBars.buttons["通讯录"].tap(); attach("tour-" + variant + "-contacts")
+            openSection("通讯录", in: app); attach("tour-" + variant + "-contacts")
             app.buttons["contact-team@example.com"].tap(); attach("tour-" + variant + "-contact-detail")
             app.navigationBars.buttons.element(boundBy: 0).tap()
-            app.tabBars.buttons["设置"].tap(); attach("tour-" + variant + "-settings")
+            openSection("设置", in: app); attach("tour-" + variant + "-settings")
             app.buttons.containing(.staticText, identifier: "测试邮箱").firstMatch.tap()
             XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "account-protocol").firstMatch.waitForExistence(timeout: 5))
             XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "account-protocol").firstMatch.value as? String, "IMAP"); attach("tour-" + variant + "-account-detail")
@@ -574,7 +638,7 @@ final class WorkspaceTests: XCTestCase {
     }
     func testSecondarySettingsAndConfirmationSurfaces() {
         let app = launch()
-        app.tabBars.buttons["设置"].tap()
+        openSection("设置", in: app)
         app.buttons.containing(.staticText, identifier: "测试邮箱").firstMatch.tap()
         XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "account-protocol").firstMatch.waitForExistence(timeout: 5))
         XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "account-protocol").firstMatch.value as? String, "IMAP"); attach("redesign-account-detail")

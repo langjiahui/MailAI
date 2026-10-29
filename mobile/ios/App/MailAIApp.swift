@@ -84,7 +84,6 @@ struct WelcomeView: View {
 
 struct InboxView: View {
     @Bindable var store: MailStore
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var addingAccount = false
     @State private var composing = false
     @State private var mailboxes = false
@@ -93,33 +92,40 @@ struct InboxView: View {
     @State private var selecting = false
     @State private var selection = Set<String>()
     @State private var moveRequest: MailMoveRequest?
-    @ScaledMetric(relativeTo: .subheadline) private var undoClearance = 64.0
+    @State private var destination: InboxDestination?
+    @State private var pendingDestination: InboxDestination?
     @State private var filter = "all"
     @State private var grouped = false
     @State private var unified = false
     @State private var unifiedMessages: [LocatedMessage] = []
-    @State private var tab = 0
     private func matches(_ message: MailSummary) -> Bool {
         switch filter { case "unread": return message.unread; case "flagged": return message.isFlagged == true; case "attachments": return message.hasAttachments == true; default: return true }
     }
     private var filtered: [MailSummary] { store.messages.filter(matches) }
     private var threads: [MailThread] { MailThread.group(store.messages).filter { $0.messages.contains(where: matches) } }
+    private var mailboxTitle: String { unified ? "所有收件箱" : (store.folders.first { $0.name == store.folder }?.title ?? "收件箱") }
+    private var filterTitle: String {
+        switch filter { case "unread": return "未读"; case "flagged": return "星标"; case "attachments": return "附件"; default: return "全部邮件" }
+    }
+    private var unreadCount: Int { unified ? unifiedMessages.filter { $0.summary.unread }.count : store.messages.filter(\.unread).count }
     var body: some View {
-        TabView(selection: $tab) {
-            NavigationStack { mailContent }
-                .tabItem { Label("邮件", systemImage: "envelope") }.tag(0)
-            NavigationStack { ContactsView(store: store) }
-                .tabItem { Label("通讯录", systemImage: "person.crop.rectangle") }.tag(1)
-            NavigationStack { SettingsView(store: store, addingAccount: $addingAccount) }
-                .tabItem { Label("设置", systemImage: "gearshape") }.tag(2)
+        NavigationStack {
+            mailContent.navigationDestination(item: $destination) { destination in
+                switch destination {
+                case .contacts: ContactsView(store: store)
+                case .settings: SettingsView(store: store, addingAccount: $addingAccount)
+                }
+            }
         }
         .sheet(isPresented: $addingAccount) { NavigationStack { AccountView(store: store) } }
         .sheet(isPresented: $composing) { ComposerView(store: store) }
         .sheet(isPresented: $showingDrafts) { DraftsView(store: store) }
         .sheet(isPresented: $searching) { MailSearchView(store: store) }
-        .sheet(isPresented: $mailboxes) { MailboxesView(store: store, unified: $unified) }
+        .sheet(isPresented: $mailboxes, onDismiss: {
+            if let pendingDestination { destination = pendingDestination; self.pendingDestination = nil }
+        }) { MailboxesView(store: store, unified: $unified) { pendingDestination = $0 } }
         .sheet(item: $moveRequest) { request in MovePicker(store: store, items: request.items) }
-        .alert("操作提示", isPresented: Binding(get: { store.error != nil && tab != 0 }, set: { if !$0 { store.error = nil } })) {
+        .alert("操作提示", isPresented: Binding(get: { store.error != nil && destination != nil }, set: { if !$0 { store.error = nil } })) {
             Button("知道了") { store.error = nil }
         } message: { Text(store.error ?? "") }
         .task {
@@ -133,6 +139,7 @@ struct InboxView: View {
         }
         .onChange(of: store.selectedID) { _, _ in selection = []; selecting = false }
         .onChange(of: store.folder) { _, _ in selection = []; selecting = false }
+        .onChange(of: filter) { _, _ in selection = [] }
         .onChange(of: unified) { _, value in if value { unifiedMessages = (try? store.cachedInbox()) ?? [] } }
         .onChange(of: store.lastRefresh) { _, _ in if unified { unifiedMessages = (try? store.cachedInbox()) ?? [] } }
     }
@@ -150,26 +157,19 @@ struct InboxView: View {
                     Spacer()
                 }.padding(24).frame(maxWidth: .infinity).background(MailTheme.canvas)
             } else {
-                VStack(spacing: 0) {
+                List {
                     if !unified {
-                        Button { searching = true } label: {
-                            HStack(spacing: 8) { Image(systemName: "magnifyingglass"); Text("搜索当前邮箱"); Spacer() }
-                                .font(.subheadline).foregroundStyle(MailTheme.secondary).padding(.horizontal, 12).frame(minHeight: 44)
-                                .background(MailTheme.canvas, in: RoundedRectangle(cornerRadius: 12))
-                        }.accessibilityLabel("搜索邮件").padding(.horizontal, 16).padding(.top, 8)
-                        Group {
-                            if dynamicTypeSize.isAccessibilitySize {
-                                ScrollView(.horizontal, showsIndicators: false) { filterControls.fixedSize(horizontal: true, vertical: false) }
-                            } else { filterControls }
-                        }.padding(.horizontal, 16).padding(.vertical, 8)
+                        inboxControls
+                            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                            .listRowSeparator(.hidden).listRowBackground(MailTheme.surface)
                     }
                     if let error = store.error {
                         HStack(alignment: .top, spacing: 4) {
                             MailNotice(text: error, symbol: "wifi.exclamationmark")
                             Button { store.error = nil } label: { Image(systemName: "xmark").frame(width: 44, height: 44) }.accessibilityLabel("关闭状态提示")
-                        }.padding(.horizontal, 16).padding(.bottom, 8)
+                        }.listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 16))
+                            .listRowSeparator(.hidden).listRowBackground(MailTheme.surface)
                     }
-                    List {
                         Section {
                             if unified {
                                 ForEach(unifiedMessages) { item in
@@ -238,40 +238,37 @@ struct InboxView: View {
                                 Text("\(unified ? unifiedMessages.count : store.messages.count) 封已加载")
                             }.font(.caption).foregroundStyle(.secondary)
                         }.listRowBackground(Color.clear).listRowSeparator(.hidden).listSectionSeparator(.hidden)
-                    }.listStyle(.plain).navigationLinkIndicatorVisibility(.hidden).scrollContentBackground(.hidden).safeAreaPadding(.bottom, selecting ? 0 : 76)
+                    }.listStyle(.plain).navigationLinkIndicatorVisibility(.hidden).scrollContentBackground(.hidden).background(MailTheme.surface)
                         .refreshable {
                             if unified { do { try await store.refreshAllInboxes(); unifiedMessages = try store.cachedInbox() } catch { store.error = "部分邮箱同步失败，已保留缓存。" } }
                             else { store.refresh() }
                         }
-                }.background(MailTheme.surface)
             }
         }
         .navigationBarTitleDisplayMode(.inline)
-        .navigationTitle(unified ? "所有收件箱" : (store.folders.first { $0.name == store.folder }?.title ?? "MailAI"))
-        .toolbar(selecting ? .hidden : .automatic, for: .tabBar)
+        .navigationTitle(mailboxTitle)
         .toolbar {
             if !store.accounts.isEmpty {
                 accountToolbarItem
                 ToolbarItem(placement: .principal) {
-                    Button { mailboxes = true } label: {
-                        VStack(spacing: 2) {
-                            HStack(spacing: 4) { Text(selecting ? "已选 \(selection.count) 封" : (unified ? "所有收件箱" : (store.folders.first { $0.name == store.folder }?.title ?? "收件箱"))).font(.headline); Image(systemName: "chevron.down").font(.caption2) }
-                            if !selecting { Text(unified ? "汇集各邮箱的本机邮件" : (store.selected?.email ?? "")).font(.caption2).foregroundStyle(MailTheme.secondary).lineLimit(1) }
-                        }.foregroundStyle(MailTheme.ink)
-                    }.accessibilityLabel("切换邮箱与文件夹")
-                }
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    if selecting { Button("完成") { selecting = false; selection = [] } }
                     Menu {
-                        Button("草稿与发送记录") { showingDrafts = true }
-                        Button("添加邮箱") { addingAccount = true }
+                        Button("邮箱与文件夹", systemImage: "tray.2") { mailboxes = true }
+                        Button("草稿与发送记录", systemImage: "doc") { showingDrafts = true }
+                        Button("添加邮箱", systemImage: "plus") { addingAccount = true }
                         if !unified {
+                            if filter != "all" { Button("显示全部邮件") { filter = "all" } }
                             Button(grouped ? "逐封显示" : "按会话显示") { grouped.toggle(); selecting = false; selection = [] }
                             if !grouped { Button(selecting ? "完成选择" : "选择邮件") { selecting.toggle(); selection = [] } }
                         }
-                    } label: { Image(systemName: "ellipsis.circle") }.accessibilityLabel("更多邮件操作")
+                    } label: {
+                        HStack(spacing: 5) {
+                            Text(selecting ? "已选 \(selection.count) 封" : (filter == "all" || unified ? mailboxTitle : mailboxTitle + " · " + filterTitle)).font(.headline).lineLimit(1)
+                            if !selecting && filter == "all" && unreadCount > 0 { Text(unreadCount, format: .number).font(.caption.weight(.semibold)).foregroundStyle(MailTheme.blue) }
+                            Image(systemName: "chevron.down").font(.caption2)
+                        }.foregroundStyle(MailTheme.ink).dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                    }.accessibilityLabel("更多邮件操作").accessibilityValue(mailboxTitle + "，" + (unified ? "全部邮件" : filterTitle) + "，\(unreadCount) 封未读")
                 }
-
+                trailingToolbarItems
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -297,18 +294,6 @@ struct InboxView: View {
                 }.background(.regularMaterial)
             }
         }
-        .overlay(alignment: .bottomTrailing) {
-            if !selecting && !store.accounts.isEmpty {
-                Button { do { try store.newDraft(); composing = true } catch { store.error = error.localizedDescription } } label: {
-                    Image(systemName: "square.and.pencil").font(.system(size: 21, weight: .semibold))
-                        .foregroundStyle(MailTheme.blue).frame(width: 44, height: 44)
-                        .background(MailTheme.surface, in: Circle())
-                        .overlay(Circle().stroke(MailTheme.separator, lineWidth: 1))
-                        .shadow(color: .black.opacity(0.06), radius: 5, y: 2)
-                }.buttonStyle(.plain).accessibilityLabel("写邮件")
-                    .accessibilityIdentifier("compose-mail").disabled(store.sending).padding(16).padding(.bottom, store.undoID == nil ? 0 : undoClearance)
-            }
-        }
         .disabled(store.operating)
     }
     @ToolbarContentBuilder private var accountToolbarItem: some ToolbarContent {
@@ -324,18 +309,52 @@ struct InboxView: View {
                 .frame(width: 44, height: 44).contentShape(Circle())
         }.buttonStyle(.plain).accessibilityLabel("邮箱与文件夹").accessibilityIdentifier("account-avatar")
     }
-    private var filterControls: some View {
-        HStack(spacing: 8) {
-            filterChip("全部", value: "all"); filterChip("未读", value: "unread")
-            filterChip("星标", value: "flagged"); filterChip("附件", value: "attachments")
+    @ToolbarContentBuilder private var trailingToolbarItems: some ToolbarContent {
+        if selecting {
+            ToolbarItem(placement: .topBarTrailing) { Button("完成") { selecting = false; selection = [] } }
+        } else if #available(iOS 26.0, *) {
+            if !unified { ToolbarItem(placement: .topBarTrailing) { searchButton }.sharedBackgroundVisibility(.hidden) }
+            ToolbarItem(placement: .topBarTrailing) { composeButton }.sharedBackgroundVisibility(.hidden)
+        } else {
+            if !unified { ToolbarItem(placement: .topBarTrailing) { searchButton } }
+            ToolbarItem(placement: .topBarTrailing) { composeButton }
         }
     }
-    private func filterChip(_ title: String, value: String) -> some View {
-        Button { filter = value; selection = [] } label: {
-            Text(title).font(.subheadline.weight(filter == value ? .semibold : .regular)).lineLimit(1).padding(.horizontal, dynamicTypeSize.isAccessibilitySize ? 14 : 0).frame(maxWidth: .infinity, minHeight: 44)
-                .foregroundStyle(filter == value ? MailTheme.blue : MailTheme.secondary)
-                .background(filter == value ? MailTheme.blue.opacity(0.12) : MailTheme.canvas, in: RoundedRectangle(cornerRadius: 10))
-        }.accessibilityAddTraits(filter == value ? .isSelected : [])
+    private var searchButton: some View {
+        Button { searching = true } label: { Image(systemName: "magnifyingglass").font(.system(size: 20)).frame(width: 44, height: 44) }
+            .buttonStyle(.plain).accessibilityLabel("搜索邮件").accessibilityIdentifier("inbox-search-toolbar")
+    }
+    private var composeButton: some View {
+        Button { do { try store.newDraft(); composing = true } catch { store.error = error.localizedDescription } } label: {
+            Image(systemName: "square.and.pencil").font(.system(size: 21, weight: .semibold)).frame(width: 44, height: 44)
+        }.buttonStyle(.plain).accessibilityLabel("写邮件").accessibilityIdentifier("compose-mail").disabled(store.sending)
+    }
+    private var inboxControls: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Button { searching = true } label: {
+                    HStack(spacing: 8) { Image(systemName: "magnifyingglass"); Text("搜索当前邮箱").lineLimit(1); Spacer(minLength: 0) }
+                        .font(.subheadline).foregroundStyle(MailTheme.secondary).padding(.horizontal, 12).frame(minHeight: 44)
+                        .background(MailTheme.canvas, in: RoundedRectangle(cornerRadius: 12))
+                }.buttonStyle(.plain).accessibilityLabel("展开邮箱搜索").accessibilityIdentifier("inbox-search-header")
+                Menu {
+                    Picker("筛选邮件", selection: $filter) {
+                        Text("全部邮件").tag("all"); Text("未读").tag("unread")
+                        Text("星标").tag("flagged"); Text("附件").tag("attachments")
+                    }.pickerStyle(.inline)
+                } label: {
+                    Image(systemName: filter == "all" ? "line.3.horizontal.decrease" : "line.3.horizontal.decrease.circle.fill")
+                        .font(.system(size: 21)).foregroundStyle(MailTheme.blue).frame(width: 44, height: 44)
+                }.buttonStyle(.borderless).accessibilityLabel("筛选邮件").accessibilityValue(filterTitle).accessibilityIdentifier("inbox-filter")
+            }
+            if filter != "all" {
+                Button { filter = "all" } label: {
+                    HStack(spacing: 6) { Text(filterTitle); Image(systemName: "xmark").font(.caption) }
+                        .font(.subheadline).foregroundStyle(MailTheme.blue).padding(.horizontal, 12).frame(minHeight: 44)
+                        .background(MailTheme.blue.opacity(0.1), in: Capsule())
+                }.buttonStyle(.plain).accessibilityLabel("清除筛选：" + filterTitle).accessibilityIdentifier("clear-inbox-filter")
+            }
+        }.disabled(selecting)
     }
     private var chosen: [MailSummary] { store.messages.filter { selection.contains($0.id) } }
     private func run(_ action: MailAction, _ items: [MailSummary]) {

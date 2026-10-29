@@ -2,9 +2,15 @@ import SwiftUI
 import MailAICore
 import ContactsUI
 
+enum InboxDestination: String, Hashable, Identifiable {
+    case contacts, settings
+    var id: String { rawValue }
+}
+
 struct MailboxesView: View {
     let store: MailStore
     @Binding var unified: Bool
+    let openDestination: (InboxDestination) -> Void
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         NavigationStack {
@@ -30,6 +36,12 @@ struct MailboxesView: View {
                     }
                 }.listRowBackground(MailTheme.surface)
             }.listRowBackground(MailTheme.surface).listStyle(.insetGrouped).scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("邮箱与文件夹").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } } }
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    HStack(spacing: 16) {
+                        Button { openDestination(.contacts); dismiss() } label: { Label("通讯录", systemImage: "person.crop.rectangle").frame(maxWidth: .infinity, minHeight: 48) }.accessibilityIdentifier("sidebar-contacts")
+                        Button { openDestination(.settings); dismiss() } label: { Label("设置", systemImage: "gearshape").frame(maxWidth: .infinity, minHeight: 48) }.accessibilityIdentifier("sidebar-settings")
+                    }.font(.subheadline).buttonStyle(.plain).padding(.horizontal, 16).padding(.vertical, 8).background(.regularMaterial)
+                }
         }
     }
 }

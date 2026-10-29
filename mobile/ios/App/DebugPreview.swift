@@ -68,6 +68,15 @@ import MailAICore
             extra.senderName = senders[index]; extra.preview = "仅用于界面验收的合成内容，请确认下一步安排。"; extra.isFlagged = index == 0; extra.hasAttachments = index == 1
             result.append(extra)
         }
+        if CommandLine.arguments.contains("--ui-long-inbox") {
+            for index in 7...36 {
+                var extra = MailSummary(uid: UInt32(100 + index), validity: 10, folder: folder,
+                    subject: "滚动测试邮件 \(index)", sender: "回归测试 <scroll@example.com>", replyAddress: "scroll@example.com",
+                    date: Date(timeIntervalSince1970: 1793000000 - Double(index * 3600)), unread: false, messageID: "<scroll-\(index)@example.com>")
+                extra.senderName = "回归测试"; extra.preview = "用于验证搜索筛选随邮件列表滚动。"
+                result.append(extra)
+            }
+        }
         if CommandLine.arguments.contains("--ui-threads"), result.count > 1 {
             result[1].parentMessageID = item.messageID; result[1].subject = "Re: " + item.subject
         }
