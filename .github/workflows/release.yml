@@ -4,9 +4,19 @@ on:
   push:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+    inputs:
+      candidate_head:
+        description: Frozen same-repository candidate commit (no publication)
+        required: true
+        type: string
+      candidate_version:
+        description: Prepared desktop VERSION (no v prefix)
+        required: true
+        type: string
 
 permissions:
-  contents: write
+  contents: read
   actions: read
 
 concurrency:
@@ -16,19 +26,29 @@ concurrency:
 jobs:
   metadata:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.plan.outputs.version }}
+      tree: ${{ steps.plan.outputs.tree }}
+      reuse: ${{ steps.plan.outputs.reuse }}
+      source_run: ${{ steps.plan.outputs.source_run }}
+      source_attempt: ${{ steps.plan.outputs.source_attempt }}
+      source_artifacts: ${{ steps.plan.outputs.source_artifacts }}
     steps:
       - uses: actions/checkout@v5
-      - name: Verify release version and README
-        shell: bash
-        run: |
-          version="${GITHUB_REF_NAME#v}"
-          test "$(tr -d '\r\n' < VERSION)" = "$version"
-          grep -F "当前版本：**v${version}**" README.md
+      - name: Verify version, frozen source and eligible installer artifacts
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE_HEAD: ${{ inputs.candidate_head }}
+          CANDIDATE_VERSION: ${{ inputs.candidate_version }}
+        run: python3 scripts/ci_release_build.py plan
   windows-x64:
     needs: metadata
+    if: ${{ needs.metadata.outputs.reuse != 'true' }}
     runs-on: windows-2022
     env:
       CI: "1"
+      MAILAI_RELEASE_VERSION: ${{ needs.metadata.outputs.version }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -46,7 +66,7 @@ jobs:
       - name: Build Windows installer
         shell: pwsh
         run: |
-          $version = $env:GITHUB_REF_NAME.TrimStart("v")
+          $version = $env:MAILAI_RELEASE_VERSION
           $version | Set-Content VERSION -NoNewline
           $env:MAILAI_RELEASE_VERSION = $version
           cmd /c scripts\build_windows.bat
@@ -83,6 +103,7 @@ jobs:
       - uses: actions/upload-artifact@v5
         with:
           name: release-windows-x64
+          compression-level: 0
           path: |
             dist/MailAI-Windows-x64-Setup.exe
             dist/MailAI-Windows-x64-Setup.exe.sha256
@@ -90,9 +111,11 @@ jobs:
 
   linux-x64:
     needs: metadata
+    if: ${{ needs.metadata.outputs.reuse != 'true' }}
     runs-on: ubuntu-latest
     env:
       CI: "1"
+      MAILAI_RELEASE_VERSION: ${{ needs.metadata.outputs.version }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -107,13 +130,13 @@ jobs:
       - name: Build Linux AppImage
         shell: bash
         run: |
-          export MAILAI_RELEASE_VERSION="${GITHUB_REF_NAME#v}"
           export MAILAI_BUILD_VERSION="${GITHUB_RUN_NUMBER}"
           printf '%s' "$MAILAI_RELEASE_VERSION" > VERSION
           bash scripts/build_linux_appimage.sh
       - uses: actions/upload-artifact@v5
         with:
           name: release-linux-x64
+          compression-level: 0
           path: |
             dist/MailAI-Linux-x64.AppImage
             dist/MailAI-Linux-x64.AppImage.sha256
@@ -121,9 +144,11 @@ jobs:
 
   macos-arm64:
     needs: metadata
+    if: ${{ needs.metadata.outputs.reuse != 'true' }}
     runs-on: macos-14
     env:
       CI: "1"
+      MAILAI_RELEASE_VERSION: ${{ needs.metadata.outputs.version }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -188,7 +213,6 @@ jobs:
           MAILAI_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
           MAILAI_NOTARY_ISSUER: ${{ secrets.MACOS_NOTARY_ISSUER }}
         run: |
-          export MAILAI_RELEASE_VERSION="${GITHUB_REF_NAME#v}"
           export MAILAI_BUILD_VERSION="${GITHUB_RUN_NUMBER}"
           printf '%s' "$MAILAI_RELEASE_VERSION" > VERSION
           zsh scripts/build_macos.command
@@ -198,6 +222,7 @@ jobs:
       - uses: actions/upload-artifact@v5
         with:
           name: release-macos-arm64
+          compression-level: 0
           path: |
             dist/MailAI-macOS-arm64.pkg
             dist/MailAI-macOS-arm64.pkg.sha256
@@ -226,11 +251,21 @@ jobs:
         run: python3 scripts/ci_quality.py wait --commit "$GITHUB_SHA"
 
   publish:
-    needs: [windows-x64, macos-arm64, linux-x64, quality]
+    needs: [metadata, windows-x64, macos-arm64, linux-x64, quality]
+    # Private preparation never publishes. Both paths still require full proof;
+    # only the native build jobs can be replaced by verified identical artifacts.
+    if: >-
+      ${{ always() && github.event_name == 'push' && needs.metadata.result == 'success' && needs.quality.result == 'success' &&
+      ((needs.metadata.outputs.reuse == 'true' && needs.windows-x64.result == 'skipped' && needs.macos-arm64.result == 'skipped' && needs.linux-x64.result == 'skipped') ||
+      (needs.metadata.outputs.reuse == 'false' && needs.windows-x64.result == 'success' && needs.macos-arm64.result == 'success' && needs.linux-x64.result == 'success')) }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
     steps:
       - uses: actions/checkout@v5
       - uses: actions/download-artifact@v5
+        if: ${{ needs.metadata.outputs.reuse != 'true' }}
         with:
           pattern: release-*
           path: release-assets
@@ -238,6 +273,20 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+      - name: Restore and verify immutable candidate installers
+        if: ${{ needs.metadata.outputs.reuse == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: ${{ needs.metadata.outputs.source_run }}
+          SOURCE_ATTEMPT: ${{ needs.metadata.outputs.source_attempt }}
+          SOURCE_ARTIFACTS: ${{ needs.metadata.outputs.source_artifacts }}
+          RELEASE_TREE: ${{ needs.metadata.outputs.tree }}
+          RELEASE_VERSION: ${{ needs.metadata.outputs.version }}
+        run: >-
+          python scripts/ci_release_build.py restore --run "$SOURCE_RUN" --attempt "$SOURCE_ATTEMPT"
+          --artifacts "$SOURCE_ARTIFACTS" --tree "$RELEASE_TREE" --version "$RELEASE_VERSION" --assets release-assets
+      - name: Verify final platform checksums
+        run: python scripts/ci_release_build.py verify-assets --assets release-assets
       - name: Install release signature dependencies
         run: python -m pip install 'cryptography>=44,<47' certifi
       - name: Create device update manifest
