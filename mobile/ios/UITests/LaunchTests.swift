@@ -382,17 +382,26 @@ final class WorkspaceTests: XCTestCase {
                 return
             }
             cancellationButtons = navigation.buttons
+        } else {
+            // The document picker publishes both a hosting cancellation node
+            // and the actual remote button. Resolve only its native navigation.
+            let navigation = app.navigationBars["FullDocumentManagerViewControllerNavigationBar"]
+            guard navigation.waitForExistence(timeout: 30) else {
+                attach(screenshot)
+                XCTFail("Native document navigation must finish loading before cancellation is tested")
+                return
+            }
+            cancellationButtons = navigation.buttons
         }
-        let candidates = cancellationButtons.matching(NSPredicate(format: "identifier IN %@ OR label IN %@", labels, labels))
-        // Scope photos to the loaded library so its temporary loading controller
-        // cannot invalidate a cancel element while XCTest resolves hittability.
-        func currentCancel() -> XCUIElement? { candidates.allElementsBoundByIndex.last { $0.isHittable } }
-        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in currentCancel() != nil }, object: nil)
+        let cancel = cancellationButtons.matching(NSPredicate(format: "identifier IN %@ OR label IN %@", labels, labels)).firstMatch
+        // Re-resolve the unique native control instead of indexing a combined
+        // app/remote snapshot, whose count can change during presentation.
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in cancel.exists && cancel.isHittable }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 30), .completed)
         attach(screenshot)
         let hierarchy = XCTAttachment(string: app.debugDescription)
         hierarchy.name = screenshot + "-hierarchy"; hierarchy.lifetime = .keepAlways; add(hierarchy)
-        guard let cancel = currentCancel() else { XCTFail("Native picker must offer cancellation"); return }
+        guard cancel.exists else { XCTFail("Native picker must offer cancellation"); return }
         XCTAssertTrue(cancel.isHittable); cancel.tap()
     }
     func testMailboxFiltersSelectionAndMovePicker() {
