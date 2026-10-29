@@ -355,12 +355,16 @@ final class WorkspaceTests: XCTestCase {
         return english.waitForExistence(timeout: 2) ? english : app.buttons["取消"].firstMatch
     }
     private func cancelSystemPicker(_ app: XCUIApplication, screenshot: String) {
-        let english = app.buttons["Cancel"].firstMatch
-        let cancel = english.waitForExistence(timeout: 5) ? english : app.buttons["取消"].firstMatch
-        XCTAssertTrue(cancel.waitForExistence(timeout: 5)); XCTAssertTrue(cancel.isHittable)
-        attach(screenshot); cancel.tap()
-        expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: cancel)
-        waitForExpectations(timeout: 5)
+        let labels = ["Cancel", "取消"]
+        let candidates = app.buttons.matching(NSPredicate(format: "identifier IN %@ OR label IN %@", labels, labels))
+        // Photos first exposes a localized loading controller, then replaces it
+        // with a remote picker. Resolve the current topmost button after capture.
+        func currentCancel() -> XCUIElement? { candidates.allElementsBoundByIndex.last { $0.isHittable } }
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in currentCancel() != nil }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 30), .completed)
+        attach(screenshot)
+        guard let cancel = currentCancel() else { XCTFail("Native picker must offer cancellation"); return }
+        XCTAssertTrue(cancel.isHittable); cancel.tap()
     }
     func testMailboxFiltersSelectionAndMovePicker() {
         let app = launch()
