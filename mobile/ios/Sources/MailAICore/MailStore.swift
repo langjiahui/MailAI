@@ -398,7 +398,7 @@ public extension MailService {
             guard MailValidation.isAddress(email), email.lowercased() != ownAddress else { continue }
             let name = MailAddress.cleanedName(address.name, email: email)
             if let index = updated.firstIndex(where: { $0.id == email.lowercased() }) {
-                if !updated[index].manuallyEdited, updated[index].name.isEmpty, !name.isEmpty { updated[index].name = name }
+                if !updated[index].manuallyEdited, MailAddress.cleanedName(updated[index].name, email: email).isEmpty, !name.isEmpty { updated[index].name = name }
             } else { updated.append(MailContact(email: email, name: name)) }
         }
         guard updated != original else { return }

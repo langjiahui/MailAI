@@ -132,6 +132,7 @@ final class WorkspaceTests: XCTestCase {
         app.navigationBars.buttons.element(boundBy: 0).tap()
         app.buttons["小邮与模型服务"].tap()
         XCTAssertTrue(app.secureTextFields["API Key"].waitForExistence(timeout: 5))
+        attach("refinement-model-key-only-dark")
     }
     func testModelSetupOnlyNeedsKeyForASelectedCloudProvider() {
         let app = launch(extra: ["--ui-model-setup"])
@@ -501,6 +502,9 @@ final class WorkspaceTests: XCTestCase {
             app.buttons["appearance-settings"].tap(); attach("tour-" + variant + "-appearance")
             app.navigationBars.buttons.element(boundBy: 0).tap()
             app.buttons["小邮与模型服务"].tap(); attach("tour-" + variant + "-model-settings")
+            app.buttons["model-provider"].tap(); app.buttons["DeepSeek"].tap()
+            XCTAssertFalse(app.textFields["model-endpoint"].exists)
+            attach("refinement-" + variant + "-model-key-only")
             app.navigationBars.buttons.element(boundBy: 0).tap()
             app.swipeUp(); app.buttons["后台收信与通知"].tap(); attach("tour-" + variant + "-background")
             app.navigationBars.buttons.element(boundBy: 0).tap()

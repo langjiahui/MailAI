@@ -179,7 +179,8 @@ public struct MailSummary: Codable, Identifiable, Equatable, Sendable {
         }()
         let address = senderAddress ?? headerAddress ?? replyAddress
         let headerName = left.map { String(raw[..<$0]) } ?? (MailValidation.isAddress(raw) ? "" : raw)
-        let name = MailAddress.cleanedName(senderName ?? headerName, email: address)
+        let structuredName = MailAddress.cleanedName(senderName ?? "", email: address)
+        let name = structuredName.isEmpty ? MailAddress.cleanedName(headerName, email: address) : structuredName
         var result = [MailAddress(name: name, email: address)]
         if replyAddress.caseInsensitiveCompare(address) != .orderedSame { result.append(MailAddress(email: replyAddress)) }
         return result + (recipients ?? []) + (carbonCopies ?? [])

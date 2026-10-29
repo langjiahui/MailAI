@@ -9,7 +9,8 @@ public struct MailAddress: Codable, Equatable, Hashable, Sendable, Identifiable 
     public static func cleanedName(_ value: String, email: String) -> String {
         var name = value.trimmingCharacters(in: .whitespacesAndNewlines)
         if name.count >= 2, name.first == "\"", name.last == "\"" { name = String(name.dropFirst().dropLast()).trimmingCharacters(in: .whitespacesAndNewlines) }
-        guard !MailValidation.hasControl(name), name.caseInsensitiveCompare(email) != .orderedSame else { return "" }
+        guard !MailValidation.hasControl(name), name.caseInsensitiveCompare(email) != .orderedSame,
+              name.range(of: "=\\?[^?\\s]+\\?[bBqQ]\\?[^?]*\\?=", options: .regularExpression) == nil else { return "" }
         return String(name.prefix(200))
     }
 }

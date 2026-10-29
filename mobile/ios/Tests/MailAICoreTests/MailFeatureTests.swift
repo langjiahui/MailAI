@@ -186,11 +186,11 @@ private actor FeatureService: MailService {
         let (store, vault, service, files) = try await setup()
         let account = try XCTUnwrap(store.selectedID)
         var message = FeatureService.item()
-        message.sender = "\"张三\" <sender@example.com>"; message.senderName = "张三"
+        message.sender = "\"张三\" <sender@example.com>"; message.senderName = "=?UTF-8?B?5byg5LiJ?="
         message.recipients = [.init(name: "李四", email: "li@example.com"), .init(name: "自己", email: "demo@example.com")]
         message.carbonCopies = [.init(name: "王五", email: "wang@example.com")]
         try files.write([message], account: account, key: "list:INBOX")
-        try files.write([MailContact(email: "sender@example.com"), .init(email: "li@example.com", name: "手动姓名", note: "保留备注", manuallyEdited: true)], account: account, key: "contacts")
+        try files.write([MailContact(email: "sender@example.com"), .init(email: "li@example.com", name: "手动姓名", note: "保留备注", manuallyEdited: true), .init(email: "wang@example.com", name: "=?UTF-8?B?546L5LqU?=")], account: account, key: "contacts")
         let restored = MailStore(vault: vault, files: files, service: service)
         XCTAssertEqual(restored.contacts.first { $0.email == "sender@example.com" }?.name, "张三")
         XCTAssertEqual(restored.contacts.first { $0.email == "li@example.com" }?.name, "手动姓名")
