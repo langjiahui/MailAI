@@ -49,6 +49,7 @@ struct ReaderView: View {
             }.padding(16)
         }.background(MailTheme.surface)
         .navigationTitle("邮件").navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button { moveToRole("trash") } label: { Image(systemName: "trash") }.accessibilityLabel("移到废纸篓").disabled(store.operating || store.selectedID != ownerID)

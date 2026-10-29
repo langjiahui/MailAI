@@ -118,18 +118,33 @@ final class WorkspaceTests: XCTestCase {
         let height = (element.frame.height * 1000).rounded() / 1000
         XCTAssertGreaterThanOrEqual(height, 44, file: file, line: line)
     }
+    private func assertBalancedInboxHeader(_ app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+        let avatar = app.buttons["account-avatar"], search = app.buttons["inbox-search-toolbar"], compose = app.buttons["compose-mail"]
+        let title = app.buttons["inbox-title"]
+        for control in [avatar, search, compose] {
+            XCTAssertTrue(control.isHittable, file: file, line: line)
+            XCTAssertEqual(control.frame.width, 44, accuracy: 0.5, file: file, line: line)
+            XCTAssertEqual(control.frame.height, 44, accuracy: 0.5, file: file, line: line)
+            XCTAssertEqual(control.frame.midY, compose.frame.midY, accuracy: 0.5, file: file, line: line)
+        }
+        XCTAssertEqual(title.frame.midX, app.windows.firstMatch.frame.midX, accuracy: 1, file: file, line: line)
+        XCTAssertLessThanOrEqual(avatar.frame.maxX, title.frame.minX, file: file, line: line)
+        XCTAssertLessThanOrEqual(title.frame.maxX, search.frame.minX, file: file, line: line)
+    }
     func testInboxControlsScrollAwayAndToolbarActionsStayReachable() {
         let app = launch(extra: ["--ui-long-inbox"])
         let header = app.buttons["inbox-search-header"], toolbarSearch = app.buttons["inbox-search-toolbar"]
-        let navigation = app.navigationBars.firstMatch, compose = app.buttons["compose-mail"]
+        let navigation = app.descendants(matching: .any).matching(identifier: "inbox-top-bar").firstMatch, compose = app.buttons["compose-mail"]
         XCTAssertFalse(app.tabBars.firstMatch.exists)
         XCTAssertTrue(header.isHittable); XCTAssertTrue(toolbarSearch.isHittable)
         XCTAssertLessThanOrEqual(compose.frame.maxY, navigation.frame.maxY + 2)
         assertMinimumTargetHeight(compose)
+        assertBalancedInboxHeader(app)
         attach("reading-space-inbox-light")
         app.swipeUp(); app.swipeUp()
         XCTAssertFalse(header.exists && header.isHittable, "Search/filter header must scroll with the mail list")
         XCTAssertTrue(toolbarSearch.isHittable); XCTAssertTrue(compose.isHittable)
+        assertBalancedInboxHeader(app)
         attach("reading-space-inbox-scrolled")
         toolbarSearch.tap()
         XCTAssertTrue(app.textFields["mail-search-input"].waitForExistence(timeout: 5))
@@ -141,6 +156,7 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["项目资料确认与下一步安排"].exists)
         XCTAssertFalse(app.staticTexts["移动端设计评审"].exists)
         XCTAssertTrue((app.buttons["更多邮件操作"].value as? String)?.contains("未读") == true)
+        assertBalancedInboxHeader(app)
         attach("reading-space-unread-filter")
         app.buttons["clear-inbox-filter"].tap()
         XCTAssertTrue(app.staticTexts["移动端设计评审"].waitForExistence(timeout: 5))
@@ -227,6 +243,7 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertLessThanOrEqual(compose.frame.width, 50); assertMinimumTargetHeight(compose)
         XCTAssertTrue(avatar.isHittable); XCTAssertLessThanOrEqual(avatar.frame.width, 50)
         XCTAssertTrue(app.staticTexts["版本计划确认"].isHittable, "Six header-only messages should fit without excess row whitespace")
+        assertBalancedInboxHeader(app)
         attach("refinement-inbox-dense-light")
         avatar.tap(); XCTAssertTrue(app.buttons["完成"].waitForExistence(timeout: 5)); app.buttons["完成"].tap()
         app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap()
@@ -615,6 +632,7 @@ final class WorkspaceTests: XCTestCase {
         for (dark, large, variant) in [(true, false, "dark"), (true, true, "dark-large"), (false, true, "light-large")] {
             let app = launch(dark: dark, large: large, extra: ["--ui-assistant"])
             if large { XCTAssertLessThan(app.buttons["inbox-filter"].frame.height, 100) }; XCTAssertFalse(app.tabBars.firstMatch.exists)
+            assertBalancedInboxHeader(app)
             attach("tour-" + variant + "-inbox")
             app.buttons["邮箱与文件夹"].tap(); attach("tour-" + variant + "-mailboxes")
             app.buttons["完成"].firstMatch.tap()
