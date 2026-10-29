@@ -321,12 +321,12 @@ struct InboxView: View {
         }
     }
     private var searchButton: some View {
-        Button { searching = true } label: { Image(systemName: "magnifyingglass").font(.system(size: 20)).frame(width: 44, height: 44) }
+        Button { searching = true } label: { Image(systemName: "magnifyingglass").font(.system(size: 20)).foregroundStyle(MailTheme.blue).frame(width: 44, height: 44) }
             .buttonStyle(.plain).accessibilityLabel("搜索邮件").accessibilityIdentifier("inbox-search-toolbar")
     }
     private var composeButton: some View {
         Button { do { try store.newDraft(); composing = true } catch { store.error = error.localizedDescription } } label: {
-            Image(systemName: "square.and.pencil").font(.system(size: 21, weight: .semibold)).frame(width: 44, height: 44)
+            Image(systemName: "square.and.pencil").font(.system(size: 21, weight: .semibold)).foregroundStyle(MailTheme.blue).frame(width: 44, height: 44)
         }.buttonStyle(.plain).accessibilityLabel("写邮件").accessibilityIdentifier("compose-mail").disabled(store.sending)
     }
     private var inboxControls: some View {

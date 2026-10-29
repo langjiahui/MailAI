@@ -111,6 +111,12 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertTrue(entry.waitForExistence(timeout: 5)); entry.tap()
         XCTAssertTrue(app.navigationBars[title].waitForExistence(timeout: 5))
     }
+    private func assertMinimumTargetHeight(_ element: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
+        // A 3x display can report a 44 pt frame as 43.99999999999999.
+        // Normalize floating-point geometry without changing the 44 pt target.
+        let height = (element.frame.height * 1000).rounded() / 1000
+        XCTAssertGreaterThanOrEqual(height, 44, file: file, line: line)
+    }
     func testInboxControlsScrollAwayAndToolbarActionsStayReachable() {
         let app = launch(extra: ["--ui-long-inbox"])
         let header = app.buttons["inbox-search-header"], toolbarSearch = app.buttons["inbox-search-toolbar"]
@@ -118,7 +124,7 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertFalse(app.tabBars.firstMatch.exists)
         XCTAssertTrue(header.isHittable); XCTAssertTrue(toolbarSearch.isHittable)
         XCTAssertLessThanOrEqual(compose.frame.maxY, navigation.frame.maxY + 2)
-        XCTAssertGreaterThanOrEqual(compose.frame.height, 44)
+        assertMinimumTargetHeight(compose)
         attach("reading-space-inbox-light")
         app.swipeUp(); app.swipeUp()
         XCTAssertFalse(header.exists && header.isHittable, "Search/filter header must scroll with the mail list")
@@ -217,7 +223,7 @@ final class WorkspaceTests: XCTestCase {
         let app = launch(extra: ["--ui-header-only"])
         let compose = app.buttons["compose-mail"], avatar = app.buttons["account-avatar"]
         XCTAssertEqual(compose.label, "写邮件")
-        XCTAssertLessThanOrEqual(compose.frame.width, 50); XCTAssertGreaterThanOrEqual(compose.frame.height, 44)
+        XCTAssertLessThanOrEqual(compose.frame.width, 50); assertMinimumTargetHeight(compose)
         XCTAssertTrue(avatar.isHittable); XCTAssertLessThanOrEqual(avatar.frame.width, 50)
         XCTAssertTrue(app.staticTexts["版本计划确认"].isHittable, "Six header-only messages should fit without excess row whitespace")
         attach("refinement-inbox-dense-light")
@@ -329,8 +335,14 @@ final class WorkspaceTests: XCTestCase {
         app.buttons["收起键盘"].tap()
         app.buttons["添加附件"].tap(); attach("redesign-attachment-source-menu")
         app.buttons["选择文件"].tap(); cancelSystemPicker(app, screenshot: "redesign-system-files")
+        XCTAssertTrue(body.isHittable)
         XCTAssertEqual(body.value as? String, "Synthetic unsent draft")
         app.buttons["照片"].tap(); cancelSystemPicker(app, screenshot: "redesign-system-photos")
+        XCTAssertTrue(body.isHittable)
+        XCTAssertEqual(body.value as? String, "Synthetic unsent draft")
+        app.buttons["添加附件"].tap(); app.buttons["从照片选择"].tap()
+        cancelSystemPicker(app, screenshot: "reading-space-photos-from-menu")
+        XCTAssertTrue(body.isHittable)
         XCTAssertEqual(body.value as? String, "Synthetic unsent draft")
         app.buttons["选择收件人"].tap(); app.buttons["从手机联系人选择"].tap()
         cancelSystemPicker(app, screenshot: "redesign-system-contacts")
@@ -347,6 +359,8 @@ final class WorkspaceTests: XCTestCase {
         let cancel = english.waitForExistence(timeout: 5) ? english : app.buttons["取消"].firstMatch
         XCTAssertTrue(cancel.waitForExistence(timeout: 5)); XCTAssertTrue(cancel.isHittable)
         attach(screenshot); cancel.tap()
+        expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: cancel)
+        waitForExpectations(timeout: 5)
     }
     func testMailboxFiltersSelectionAndMovePicker() {
         let app = launch()

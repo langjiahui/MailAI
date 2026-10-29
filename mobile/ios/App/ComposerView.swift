@@ -14,6 +14,7 @@ struct ComposerView: View {
     @State private var confirmRetry = false
     @State private var copies = false
     @State private var importing = false
+    @State private var choosingPhoto = false
     @State private var photoTask: Task<Void, Never>?
     @State private var importDraftID = ""
     @State private var photo: PhotosPickerItem?
@@ -98,6 +99,8 @@ struct ComposerView: View {
                 .quickLookPreview($previewURL)
                 .onDisappear { photoTask?.cancel() }
         }
+        // Both photo actions share a stable presenter outside the toolbar/menu hierarchy.
+        .photosPicker(isPresented: $choosingPhoto, selection: $photo, matching: .images)
     }
     private var editorContent: some View {
         ScrollView {
@@ -226,9 +229,9 @@ struct ComposerView: View {
         HStack(spacing: 0) {
             Menu {
                 Button("选择文件", systemImage: "doc") { importDraftID = store.draft.id; importing = true }
-                PhotosPicker(selection: $photo, matching: .images) { Label("从照片选择", systemImage: "photo") }
+                Button { editor.dismissKeyboard(); choosingPhoto = true } label: { Label("从照片选择", systemImage: "photo") }
             } label: { Image(systemName: "paperclip").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("添加附件").frame(maxWidth: .infinity)
-            PhotosPicker(selection: $photo, matching: .images) { Image(systemName: "photo").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("照片").frame(maxWidth: .infinity)
+            Button { editor.dismissKeyboard(); choosingPhoto = true } label: { Image(systemName: "photo").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("照片").frame(maxWidth: .infinity)
             Menu {
                 Button("加粗", systemImage: "bold") { editor.format(.bold) }
                 Button("斜体", systemImage: "italic") { editor.format(.italic) }
