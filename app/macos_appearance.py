@@ -1,6 +1,47 @@
 """Native titlebar appearance, without replacing macOS window controls."""
+import logging
+
+log = logging.getLogger(__name__)
 
 _drag_view_class = None
+
+
+def titlebar_mouse_event(window, event):
+    """Handle a double click before Cocoa/WebKit choose an overlapping view.
+
+    Use window-local points, never screen pixels: mixed Retina/external displays
+    and a titlebar container above our drag view must not change the hit area.
+    Returning None consumes the second press so it cannot toggle twice.
+    """
+    from AppKit import NSWindowStyleMaskFullScreen
+    if (event.window() != window or event.clickCount() != 2
+            or window.styleMask() & NSWindowStyleMaskFullScreen
+            or window.attachedSheet() is not None):
+        return event
+    drag = getattr(window, '_mailai_drag_view', None)
+    if drag is None:
+        return event
+    content = window.contentView()
+    bounds = content.bounds()
+    point = content.convertPoint_fromView_(event.locationInWindow(), None)
+    x = point.x - bounds.origin.x
+    y = point.y - bounds.origin.y
+    top = y if content.isFlipped() else bounds.size.height - y
+    if not (104 < x < bounds.size.width and 0 <= top < 52):
+        return event
+    # NSEvent/NSView already use logical points, independent of the display's
+    # backingScaleFactor. During a resize, wait for fresh layout rather than
+    # stretching old gaps across controls whose positions may have changed.
+    reference = getattr(drag, 'region_width', bounds.size.width)
+    if reference <= 0 or abs(reference - bounds.size.width) > 1:
+        return event
+    position = x
+    if any(start <= position < end for start, end in getattr(drag, 'excluded_regions', [])):
+        return event
+    if top > 5 and not any(start <= position < end for start, end in getattr(drag, 'drag_regions', [])):
+        return event
+    toggle_maximized(window)
+    return None
 
 
 def install_unified_titlebar(window):
@@ -10,7 +51,8 @@ def install_unified_titlebar(window):
                         NSViewWidthSizable, NSViewMinYMargin, NSWindowAbove,
                         NSNotificationCenter, NSWindowWillEnterFullScreenNotification,
                         NSWindowDidEnterFullScreenNotification, NSWindowWillExitFullScreenNotification,
-                        NSWindowDidExitFullScreenNotification, NSWindowWillCloseNotification)
+                        NSWindowDidExitFullScreenNotification, NSWindowWillCloseNotification,
+                        NSEvent, NSEventMaskLeftMouseDown)
     global _drag_view_class
     if _drag_view_class is None:
         class MailAITitlebarDragView(NSView):
@@ -49,6 +91,11 @@ def install_unified_titlebar(window):
                 sync_fullscreen_layout(notification.object(), False)
 
             def windowWillClose_(self, notification):
+                window = notification.object()
+                monitor = getattr(window, '_mailai_titlebar_monitor', None)
+                if monitor is not None:
+                    NSEvent.removeMonitor_(monitor)
+                    window._mailai_titlebar_monitor = None
                 NSNotificationCenter.defaultCenter().removeObserver_(self)
 
             def mouseDown_(self, event):
@@ -74,6 +121,18 @@ def install_unified_titlebar(window):
     # Attach beside WebKit: pywebview overrides addSubview_ and flips its Y axis.
     host.addSubview_positioned_relativeTo_(drag, NSWindowAbove, content)
     window._mailai_drag_view = drag
+    # macOS versions differ in how NSTitlebarContainerView and WKWebView are
+    # ordered. Geometry alone cannot ensure mouseDown_ reaches our overlay.
+    # Monitor only this application's left presses; controls/other windows pass
+    # through, and no global input monitoring or accessibility access is used.
+    def monitor(event):
+        try:
+            return titlebar_mouse_event(window, event)
+        except Exception:
+            log.exception('处理标题栏双击失败')
+            return event
+    window._mailai_titlebar_monitor = NSEvent.addLocalMonitorForEventsMatchingMask_handler_(
+        NSEventMaskLeftMouseDown, monitor)
     center = NSNotificationCenter.defaultCenter()
     for name, selector in (
         (NSWindowWillEnterFullScreenNotification, 'windowWillEnterFullScreen:'),
@@ -131,6 +190,7 @@ def update_drag_region(window, left, right, viewport_width, gaps=None, excluded=
     drag = getattr(window, '_mailai_drag_view', None)
     if drag is not None:
         scale = window.contentView().bounds().size.width / viewport_width
+        drag.region_width = window.contentView().bounds().size.width
         drag.brand_region = (left * scale, right * scale)
         drag.drag_regions = [(start * scale, end * scale) for start, end in gaps] if gaps is not None else [drag.brand_region]
         drag.excluded_regions = [(start * scale, end * scale) for start, end in (excluded or [])]
