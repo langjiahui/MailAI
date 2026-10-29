@@ -175,23 +175,23 @@ struct InboxView: View {
                                 ForEach(unifiedMessages) { item in
                                     NavigationLink { UnifiedReaderView(store: store, item: item) } label: {
                                         MailRow(summary: item.summary, account: store.accounts.first { $0.id == item.accountID }?.email)
-                                    }
+                                    }.compactMailInboxRow()
                                 }
                             } else if grouped {
                                 ForEach(threads) { thread in
                                     if thread.messages.count == 1, let message = thread.messages.first {
-                                        NavigationLink { ReaderView(store: store, summary: message, thread: thread.messages) } label: { MailRow(summary: message) }
+                                        NavigationLink { ReaderView(store: store, summary: message, thread: thread.messages) } label: { MailRow(summary: message) }.compactMailInboxRow()
                                     } else {
                                         DisclosureGroup {
                                             ForEach(thread.messages) { message in
-                                                NavigationLink { ReaderView(store: store, summary: message, thread: thread.messages) } label: { MailRow(summary: message) }.accessibilityIdentifier("thread-message-\(message.uid)")
+                                                NavigationLink { ReaderView(store: store, summary: message, thread: thread.messages) } label: { MailRow(summary: message) }.accessibilityIdentifier("thread-message-\(message.uid)").compactMailInboxRow()
                                             }
                                         } label: {
                                             VStack(alignment: .leading, spacing: 4) {
                                                 Text(thread.messages.first?.subject ?? "邮件会话").font(.headline)
                                                 Text("\(thread.messages.count) 封 · \(thread.messages.filter(\.unread).count) 封未读").font(.caption).foregroundStyle(.secondary)
                                             }.padding(.vertical, 6)
-                                        }
+                                        }.compactMailInboxRow()
                                     }
                                 }
                             } else {
@@ -219,14 +219,14 @@ struct InboxView: View {
                                         Button(message.isFlagged == true ? "取消星标" : "添加星标") { run(.flagged(message.isFlagged != true), [message]) }
                                         Button("移动到…") { moveRequest = MailMoveRequest(items: [message]) }
                                     }
+                                    .compactMailInboxRow()
                                 }
                             }
                             if (unified ? unifiedMessages.isEmpty : filtered.isEmpty) {
                                 ContentUnavailableView("暂无邮件", systemImage: "tray", description: Text("下拉刷新，或切换文件夹与筛选条件。"))
                             }
                         }.listRowBackground(MailTheme.surface)
-                            .listRowSeparator(.hidden).listSectionSeparator(.hidden)
-                            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                            .listSectionSeparator(.hidden)
                         if !unified && store.messages.count >= 50 {
                             Button("加载更多") { store.refresh(more: true) }.disabled(store.busy)
                         }
@@ -345,6 +345,11 @@ struct InboxView: View {
         let configured = role == "trash" ? store.selected?.trashFolder : store.selected?.archiveFolder
         if let target = configured ?? store.folders.first(where: { $0.role == role || (role == "trash" ? $0.title == "废纸篓" : $0.title == "归档") })?.name { run(.move(target), items) }
         else { moveRequest = MailMoveRequest(items: items) }
+    }
+}
+private extension View {
+    func compactMailInboxRow() -> some View {
+        listRowSeparator(.hidden).listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
     }
 }
 struct MailRow: View {
