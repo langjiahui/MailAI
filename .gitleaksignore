@@ -1,0 +1,3 @@
+# Historical synthetic fixture in test_system_settings.py: "sk-1234567890-secret".
+# Exact commit, rule and line only; no real credential and no general rule exclusion.
+360da46be7f4249f3c46c9fa4a6c16f246720383:tests/test_system_settings.py:generic-api-key:29
