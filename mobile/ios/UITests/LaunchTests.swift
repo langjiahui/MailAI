@@ -1,4 +1,5 @@
 import XCTest
+import Foundation
 
 final class LaunchTests: XCTestCase {
     private func declineSystemPasswordSave(_ app: XCUIApplication) {
@@ -583,15 +584,32 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '未返回完整文字'")).firstMatch.waitForExistence(timeout: 10)); attach("redesign-ai-failure")
         XCTAssertFalse(app.buttons["创建回复草稿"].exists)
         app.terminate()
+        modelFixtureControl("hold")
+        defer { modelFixtureControl("release") }
         app = launch(extra: ["--ui-assistant", "--ui-ai-slow"])
         app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap(); app.buttons["小邮助手"].tap()
         app.buttons["起草回复"].tap(); app.buttons["开始处理"].tap()
+        // Hold the actual request until cancellation is observed. A fixed
+        // response delay races screenshot capture and taps on slower runners.
+        modelFixtureControl("await-request")
         XCTAssertTrue(app.buttons["取消"].firstMatch.waitForExistence(timeout: 3)); attach("redesign-ai-processing")
         app.buttons["取消"].firstMatch.tap()
         XCTAssertTrue(app.staticTexts["已取消，结果未采用。"].waitForExistence(timeout: 5)); attach("redesign-ai-cancelled")
+        modelFixtureControl("release")
         let late = expectation(for: NSPredicate(format: "exists == true"), evaluatedWith: app.staticTexts["synthetic model response"])
         late.isInverted = true; waitForExpectations(timeout: 6)
         XCTAssertFalse(app.buttons["创建回复草稿"].exists)
+    }
+    private func modelFixtureControl(_ action: String) {
+        let completed = expectation(description: "Synthetic model fixture " + action)
+        let url = URL(string: "https://localhost:18443/__fixture/model/" + action)!
+        var request = URLRequest(url: url); request.timeoutInterval = 15
+        URLSession.shared.dataTask(with: request) { _, response, error in
+            XCTAssertNil(error)
+            XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+            completed.fulfill()
+        }.resume()
+        wait(for: [completed], timeout: 20)
     }
     func testPageTourInDarkAndAccessibilitySizes() {
         for (dark, large, variant) in [(true, false, "dark"), (true, true, "dark-large"), (false, true, "light-large")] {

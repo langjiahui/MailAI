@@ -11,6 +11,9 @@ from email.parser import BytesParser
 BODY = b"Synthetic offline message.\r\n"
 ATTACHMENT = base64.b64encode(b"synthetic attachment")
 ARCHIVED = set()
+SLOW_MODEL_RELEASE = asyncio.Event()
+SLOW_MODEL_RELEASE.set()
+SLOW_MODEL_STARTED = asyncio.Event()
 SENDER_NAME = '=?UTF-8?B?' + base64.b64encode('测试发件人'.encode()).decode() + '?='
 RECIPIENT_NAME = '=?UTF-8?B?' + base64.b64encode('李四'.encode()).decode() + '?='
 COPY_NAME = '=?UTF-8?B?' + base64.b64encode('王五'.encode()).decode() + '?='
@@ -123,6 +126,24 @@ async def model_http(reader, writer):
         length = int(match.group(1)) if match else 0
         if length > 100000: return
         content = await reader.readexactly(length)
+        if path.startswith('/__fixture/model/'):
+            action = path.rsplit('/', 1)[-1]
+            if action == 'hold':
+                SLOW_MODEL_STARTED.clear()
+                SLOW_MODEL_RELEASE.clear()
+            elif action == 'release':
+                SLOW_MODEL_RELEASE.set()
+            elif action == 'await-request':
+                try:
+                    await asyncio.wait_for(SLOW_MODEL_STARTED.wait(), timeout=10)
+                except asyncio.TimeoutError:
+                    await write(writer, 'HTTP/1.1 408 Request Timeout\r\nContent-Length: 0\r\nConnection: close\r\n\r\n')
+                    return
+            else:
+                await write(writer, 'HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n')
+                return
+            await write(writer, 'HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n')
+            return
         if path.startswith('/redirect/'):
             await write(writer, 'HTTP/1.1 302 Found\r\nLocation: https://localhost:18443/leak/chat/completions\r\nContent-Length: 0\r\nConnection: close\r\n\r\n')
             return
@@ -131,7 +152,8 @@ async def model_http(reader, writer):
         if payload.get('model') != 'fixture':
             await write(writer, 'HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n'); return
         if path.startswith('/slow/'):
-            await asyncio.sleep(4)
+            SLOW_MODEL_STARTED.set()
+            await SLOW_MODEL_RELEASE.wait()
         result = {'choices': [{'finish_reason': 'length' if path.startswith('/incomplete/') else 'stop', 'message': {'content': 'synthetic model response'}}]}
         body = json.dumps(result).encode()
         await write(writer, f'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {len(body)}\r\nConnection: close\r\n\r\n'.encode() + body)
