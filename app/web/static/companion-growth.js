@@ -586,7 +586,8 @@
   function collectionView() {
     const set=collection();
     if(!set)return '';
-    const next=set.items.map(id=>state.items.find(item=>item.id===id)).find(item=>!item.owned);
+    const missing=set.items.map(id=>state.items.find(item=>item.id===id)).filter(item=>!item.owned).sort((a,b)=>a.stage-b.stage||a.cost-b.cost);
+    const next=missing.find(item=>item.stage<=state.stage&&item.cost<=state.stamps)||missing[0];
     return `<div class="pet-page-heading"><small>${label('collectionsEyebrow')}</small><h3>${label('collectionsTitle')}</h3><p>${label('collectionsHint')}</p></div>
     <div class="pet-series-selector" role="group" aria-label="${label('collectionsTitle')}">${state.collections.map(s=>`<button type="button" data-pet-series="${s.id}" aria-pressed="${set.id===s.id}"><span class="pet-series-mark" data-series="${s.id}" aria-hidden="true">${{post:'✉',cloud:'⌁',star:'✦'}[s.id]}</span><b>${label('collection.'+s.id)}</b><small>${s.owned} / ${s.items.length}${s.complete?' ✓':''}</small></button>`).join('')}</div>
     <section class="pet-series-detail" data-series="${set.id}"><div class="pet-section-title"><div><small>${label(set.id==='star'?'flagship':'collectionSeries')}</small><h3>${label('collection.'+set.id)}</h3></div><strong>${set.owned}<span> / ${set.items.length}</span></strong></div><p>${label('collection.'+set.id+'.tag')}</p><progress max="${set.items.length}" value="${set.owned}" aria-label="${label('collectionProgress',set.owned,set.items.length)}"></progress>

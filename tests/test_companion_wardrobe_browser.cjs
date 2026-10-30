@@ -31,6 +31,7 @@ const port=Number(process.env.MAILAI_WARDROBE_FIXTURE_PORT||18863);
    await dialog.locator('[data-pet-tab="shop"]').click();
    assert.equal(await dialog.locator('[data-pet-series]').count(),3);
    assert.equal(await dialog.locator('[data-pet-wear-collection]').count(),0,'An empty collection offers a useful first step instead of an unavailable wear action');
+   assert.equal(await dialog.locator('[data-pet-collection]').getAttribute('data-pet-collection'),'scarf','The first piece follows the earliest reachable growth stage');
    await dialog.locator('[data-pet-collection]').click();
    assert.equal(await dialog.getAttribute('data-pet-view'),'wardrobe');
    await preview.locator('[data-pet-back-shelf]').click();
@@ -177,6 +178,10 @@ const port=Number(process.env.MAILAI_WARDROBE_FIXTURE_PORT||18863);
    await page.setViewportSize({width:1280,height:1000});
    assert.deepEqual(await page.evaluate(()=>api('/api/companion/growth')),before,'Layout and full-set previews never mutate progress');
    await auditSpaceThemes(page,dialog);
+   // Drain live profile reads before the synthetic legacy-equipment matrix; a
+   // late real response must not overwrite the mocked cross-slot outfit.
+   await page.evaluate(()=>mailaiEnergy.reschedule('companion-growth',3600000));
+   await page.waitForLoadState('networkidle');
    // Synthetic owned equipment exercises composition without changing inventory.
    const fitted={...before,style:'nature',equipped:{accessory:'scarf',palette:'sky',effect:'sparkles'},items:before.items.map(item=>({...item,owned:['scarf','sky','sparkles'].includes(item.id)||item.owned}))};
    await page.route('**/api/companion/growth',route=>route.fulfill({contentType:'application/json',body:JSON.stringify(fitted)}));
@@ -185,7 +190,7 @@ const port=Number(process.env.MAILAI_WARDROBE_FIXTURE_PORT||18863);
    await dialog.locator('[data-pet-preview="cap"]').click();
    const display=selector=>art.locator(selector).first().evaluate(n=>getComputedStyle(n).display);
    const bodyColor=()=>art.locator('.mail-companion').evaluate(n=>getComputedStyle(n).getPropertyValue('--pet-body').trim());
-   assert.equal(await display('.growth-cap'),'block');assert.equal(await display('.growth-scarf'),'block','Headwear combines with the equipped scarf');
+   assert.equal(await display('.growth-cap'),'block');assert.equal(await display('.growth-scarf'),'block','Headwear combines with the equipped scarf: '+await art.getAttribute('data-fitting-outfits'));
    assert.equal(await display('.growth-stars'),'block');
    const skyColor=await art.locator('.mail-companion').evaluate(n=>getComputedStyle(n).getPropertyValue('--pet-body').trim());
    assert.equal(await bodyColor(),skyColor,'Accessory try-on keeps the equipped palette');
