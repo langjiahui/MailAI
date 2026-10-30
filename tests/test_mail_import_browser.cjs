@@ -468,9 +468,77 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve,ms));
       assert.equal(await dialog.locator('[data-count=new]').textContent(),'1');
       assert.equal(await dialog.locator('[data-count=failed]').textContent(),'0');
     }
+    // A long directory must survive a lost receipt around the screenshot's
+    // checkpoint, slow/unavailable status reads, and an old writer releasing.
+    await page.evaluate(()=>{
+      window.setTimeout=(callback,delay,...args)=>window.importTestTimeout(callback,
+        callback?.name==='onUploadStalled'&&delay===30000 || delay===5000&&String(callback).includes('controller.abort()') ? 120 : delay,...args);
+    });
+    await dialog.locator('[data-import-reset]').click();
+    const bulkCount=450, bulkRaw=raw('bulk-directory');
+    await dialog.locator('#mail-import-files').setInputFiles(Array.from({length:bulkCount},(_,i)=>({
+      name:`bulk-${String(i).padStart(4,'0')}.eml`,mimeType:'message/rfc822',buffer:bulkRaw
+    })));
+    let bulkAttempts=0, statusAttempts=0, recovering=false;
+    await page.route('**/api/mail/client-imports/*',async route=>{
+      if(route.request().method()!=='GET'||!recovering) return route.continue();
+      statusAttempts++;
+      if(statusAttempts===1) { await sleep(600); await route.abort('failed').catch(()=>{}); }
+      else if(statusAttempts===2) await route.fulfill({status:503,json:{detail:'temporary fixture outage'}});
+      else await route.continue();
+    });
+    await page.route('**/api/mail/client-imports/*/files?*',async route=>{
+      if(new URL(route.request().url()).searchParams.get('index')!=='439') return route.continue();
+      bulkAttempts++;
+      if(bulkAttempts===1) {
+        await route.fetch(); recovering=true;
+        await sleep(600); await route.abort('failed').catch(()=>{});
+      } else if(bulkAttempts===2) {
+        await route.fulfill({status:409,headers:{'Retry-After':'1'},json:{detail:'previous writer still releasing'}});
+      } else await route.continue();
+    });
+    await action.click();
+    await page.waitForFunction(()=>document.querySelector('[data-import-action]').textContent==='查看导入邮件',null,{timeout:120000});
+    assert.equal(bulkAttempts,3,'A timed out progress read must not terminate receipt recovery');
+    assert(statusAttempts>=3,'Both a timed out and a temporarily failed status read must be retried');
+    assert.equal(await dialog.locator('[data-count=found]').textContent(),String(bulkCount));
+    assert.equal(await dialog.locator('[data-count=duplicates]').textContent(),String(bulkCount-1));
+    assert.equal(await dialog.locator('[data-count=new]').textContent(),'1');
+    assert.equal(await dialog.locator('[data-count=failed]').textContent(),'0');
+    await page.unroute('**/api/mail/client-imports/*/files?*');
+    await page.unroute('**/api/mail/client-imports/*');
+
+    // Same name with changed content belongs to a different batch. Do not
+    // automatically skip it and proceed with the old content as if it matched.
+    await dialog.locator('[data-import-reset]').click();
+    const changedBatch=await page.evaluate(async ({accountId,raw})=>{
+      const job=await api('/api/mail/client-imports',{accountId,method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({label:'changed-batch',expected_files:2,auto_import:true})});
+      const response=await fetch('/api/mail/client-imports/'+job.token+'/files?index=0&name=changed.eml',{
+        method:'PUT',headers:{'Content-Type':'application/octet-stream','X-MailAI-Account':accountId},body:raw});
+      if(!response.ok) throw new Error(await response.text());
+      return job;
+    },{accountId:target.id,raw:raw('original-batch').toString()});
+    await dialog.locator('[data-import-close]').last().click();
+    await page.evaluate(id=>window.mailaiMailImport.open(id),target.id);
+    await dialog.locator('[data-import-history] summary').click();
+    await dialog.locator(`[data-import-job="${changedBatch.token}"]`).click();
+    await page.waitForFunction(()=>document.querySelector('[data-import-action]').textContent==='继续添加'&&!document.querySelector('[data-import-files]').disabled);
+    await dialog.locator('#mail-import-files').setInputFiles([
+      {name:'changed.eml',mimeType:'message/rfc822',buffer:raw('different-batch')},
+      {name:'remaining.eml',mimeType:'message/rfc822',buffer:raw('remaining-batch')}
+    ]);
+    await action.click();
+    await page.waitForFunction(()=>document.querySelector('[data-import-action]').textContent==='继续添加'&&!document.querySelector('[data-import-action]').disabled);
+    assert.match(await dialog.locator('[data-import-error]').textContent(),/不一致/);
+    const unchangedBatch=await page.evaluate(({token,accountId})=>api('/api/mail/client-imports/'+token,{accountId}),{token:changedBatch.token,accountId:target.id});
+    assert.equal(unchangedBatch.files,1,'Mismatched content must not automatically skip the ordinal');
+    assert.equal(unchangedBatch.skipped_files||0,0);
+    assert.equal(unchangedBatch.state,'collecting');
+    await dialog.locator('[data-import-reset]').click();
     await page.evaluate(()=>{window.setTimeout=window.importTestTimeout;delete window.importTestTimeout;});
     await dialog.locator('[data-import-close]').last().click();
     fs.rmSync(placementRoot,{recursive:true,force:true});
-    console.log('Mail import browser: EML/MBOX, account isolation, dedup, pause/resume, corrupt files, large attachments, stalled uploads/receipts, bounded retries, cancellation, dark/mobile UI passed');
+    console.log('Mail import browser: EML/MBOX, account isolation, dedup, pause/resume, corrupt files, large attachments, stalled uploads/receipts, slow status recovery, 450-file directory, batch mismatch, bounded retries, cancellation, dark/mobile UI passed');
   } finally { fs.rmSync(root,{recursive:true,force:true}); await browser.close(); }
 })().catch(e=>{console.error(e);process.exit(1);});

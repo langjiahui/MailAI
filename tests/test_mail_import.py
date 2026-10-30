@@ -5,6 +5,7 @@ import asyncio
 import csv
 import sys
 import tempfile
+import threading
 from contextlib import contextmanager
 from email.message import EmailMessage
 from email import policy
@@ -275,6 +276,135 @@ def test_upload_idle_timeout_and_progress():
         assert apply(token)['imported'] == 2
 
 
+def test_slow_upload_disk_io_and_cancellation():
+    from app.web.routes import mail_import as route
+    class Request:
+        async def stream(self): yield message('slow-disk', attachment=False)
+    with fixture() as (_, account), account('work'):
+        async def exercise(stage, cancel):
+            token = imp.create(expected_files=1)['token']
+            started, release = threading.Event(), threading.Event()
+            original = getattr(route._Upload, stage)
+            def slow(self, *args):
+                result = original(self, *args)
+                started.set()
+                assert release.wait(3), 'The event loop was blocked by upload disk I/O'
+                return result
+            with patch.object(route._Upload, stage, slow):
+                task = asyncio.create_task(route.api_mail_import_upload(token, Request(), 'slow.eml', 0))
+                try:
+                    assert await asyncio.to_thread(started.wait, 2), stage
+                    assert not task.done(), stage
+                    # Other ASGI work must still run while this disk operation
+                    # waits. Cancel cannot release a writer that is still busy.
+                    await asyncio.sleep(.01)
+                    if cancel:
+                        task.cancel()
+                        await asyncio.sleep(.01)
+                        assert not task.done(), 'Cancellation abandoned a live disk writer'
+                        task.cancel()
+                        await asyncio.sleep(.01)
+                        assert not task.done(), 'Repeated cancellation abandoned a live disk writer'
+                        if stage != 'close':
+                            assert str(imp._path(token)) in imp._active
+                finally:
+                    release.set()
+                try:
+                    result = await task
+                except asyncio.CancelledError:
+                    assert cancel
+                else:
+                    assert not cancel and result['files'] == 1
+            job = imp.status(token)
+            committed = not cancel or stage in ('finish', 'close')
+            assert job['state'] == 'collecting' and job['files'] == int(committed)
+            assert str(imp._path(token)) not in imp._active
+            assert len(list((imp._path(token) / 'sources').glob('*.eml'))) == int(committed)
+        for stage in ('open', 'write', 'finish', 'close'):
+            for cancel in (False, True):
+                asyncio.run(exercise(stage, cancel))
+
+
+def test_upload_writer_ownership_and_start_failure():
+    from fastapi import HTTPException
+    from app.web.routes import mail_import as route
+    with fixture() as (_, account), account('work'):
+        token = imp.create(expected_files=2)['token']
+        with patch.object(imp, '_write', side_effect=OSError('disk write failed')):
+            try: imp.begin_upload(token, 'first.eml', 0)
+            except OSError: pass
+            else: raise AssertionError('Disk failure was hidden')
+        assert str(imp._path(token)) not in imp._active, 'Failed startup must not strand the writer'
+        key, path, name = imp.begin_upload(token, 'first.eml', 0)
+        raw = message('writer-owner')
+        path.write_bytes(raw)
+        imp.finish_upload(token, key, name, len(raw), 0)
+        try:
+            # finish_upload has committed; the original request still owns
+            # cleanup. A second request must not steal that ownership.
+            try: route.call(imp.begin_upload, token, 'second.eml', 1)
+            except HTTPException as exc:
+                assert exc.status_code == 409 and exc.headers['Retry-After'] == '1'
+            else: raise AssertionError('Concurrent writer was accepted')
+            assert str(imp._path(token)) in imp._active
+        finally:
+            imp.end_upload(token)
+        upload(token, 'second.eml', message('writer-next'))
+        assert scan(token)['new'] == 2 and apply(token)['imported'] == 2
+
+
+def test_large_directory_receipts_and_resume():
+    from app.web.routes import mail_import as route
+    import json
+    raw = message('bulk-repeated', attachment=False)
+    class Request:
+        headers = {'content-length': str(len(raw))}
+        async def stream(self): yield raw
+    with fixture() as (_, account), account('work'):
+        # Match the screenshot's file count without requiring private mail or
+        # gigabytes of attachments. Duplicate content keeps DB work bounded.
+        count = 6698
+        token = imp.create(expected_files=count, auto_import=True)['token']
+        async def collect():
+            for index in range(count):
+                name = f'收件箱/{index:05d}.eml'
+                job = await route.api_mail_import_upload(token, Request(), name, index)
+                if index == 438:
+                    again = await route.api_mail_import_upload(token, Request(), name, index)
+                    assert again['files'] == job['files'] == 439
+                if index % 1000 == 0:
+                    assert (imp._path(token) / 'job.json').stat().st_size < 2048, 'Progress must not grow with the directory'
+            return job
+        job = asyncio.run(collect())
+        assert job['files'] == count and job['bytes'] == len(raw) * count
+        assert len(list((imp._path(token) / 'sources').glob('*.json'))) == count
+        # Every saved ordinal has a durable, readable receipt.
+        for index in range(count):
+            receipt = json.loads((imp._path(token) / 'sources' / f'{index:08d}.json').read_text())
+            assert receipt['size'] == len(raw) and len(receipt['digest']) == 64
+        result = scan(token)
+        assert result['state'] == 'completed' and result['imported'] == 1
+        assert result['duplicates'] == count - 1 and result['failed'] == 0
+
+
+def test_malformed_nested_mime_does_not_stop_batch():
+    raw = b'From: old@example.test\r\nSubject: malformed\r\nMessage-ID: <malformed-mime@example.test>\r\n'
+    for index in range(1100):
+        raw += f'Content-Type: multipart/mixed; boundary="b{index}"\r\n\r\n--b{index}\r\n'.encode()
+    raw += b'Content-Type: text/plain\r\n\r\nhello\r\n'
+    for index in reversed(range(1100)):
+        raw += f'\r\n--b{index}--\r\n'.encode()
+    with fixture() as (_, account), account('work'):
+        token = imp.create(expected_files=3, auto_import=True)['token']
+        upload(token, 'before.eml', message('before-malformed'))
+        upload(token, 'malformed.eml', raw)
+        upload(token, 'after.eml', message('after-malformed'))
+        job = scan(token)
+        assert job['state'] == 'completed' and job['found'] == 3
+        assert job['imported'] == 2 and job['failed'] == 1
+        assert imp.retry_files(token) == ['malformed.eml']
+
+
 def test_duplicate_progress_and_complete_reports():
     with fixture() as (root, account), account('work'):
         raw = message('already-imported')
@@ -338,7 +468,7 @@ def test_upload_receipts_and_resume():
         assert asyncio.run(api_mail_import_upload(token, Request(raw), 'one.eml', 0))['files'] == 1
         for name, data in [('other.eml', raw), ('one.eml', message('changed'))]:
             try: asyncio.run(api_mail_import_upload(token, Request(data), name, 0))
-            except HTTPException as exc: assert exc.status_code == 400
+            except HTTPException as exc: assert exc.status_code == 409, 'A changed batch must not be treated as skippable invalid mail'
             else: raise AssertionError('Changed batch accepted')
         assert imp.status(token)['files'] == 1
         asyncio.run(api_mail_import_upload(token, Request(message('receipt-two')), 'two.eml', 1))
@@ -649,6 +779,10 @@ if __name__ == '__main__':
     test_invalid_inputs_and_forwarded_identity()
     test_upload_disconnect_and_limits()
     test_upload_idle_timeout_and_progress()
+    test_slow_upload_disk_io_and_cancellation()
+    test_upload_writer_ownership_and_start_failure()
+    test_large_directory_receipts_and_resume()
+    test_malformed_nested_mime_does_not_stop_batch()
     test_upload_receipts_and_resume()
     test_skip_failed_sources_and_guidance()
     test_local_inbox_organizing_without_server()

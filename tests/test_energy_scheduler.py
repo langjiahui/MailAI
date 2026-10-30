@@ -12,7 +12,39 @@ from app import db, energy_scheduler as energy, outbox, mail_idle, mailbox_jobs,
 from app.account_context import use
 
 
+def test_workflow_deadlines_only_include_deliverable_mail():
+    from app import productivity
+    with tempfile.TemporaryDirectory() as folder:
+        path = Path(folder)/'workflow.db'
+        account = {'db_path':str(path),'user':'fixture@example.test'}
+        with use({'ACCOUNT_ID':'fixture','DB_PATH':str(path)}):
+            db.init_db()
+            live = db.upsert_email({'uid':1,'status':'inbox'})
+            deleted = db.upsert_email({'uid':2,'status':'trash'})
+            now = datetime.now()
+            overdue = (now-timedelta(hours=1)).isoformat()
+            future = (now+timedelta(seconds=30)).isoformat()
+            with db.conn() as c:
+                productivity.initialize(c)
+                c.execute('INSERT INTO mail_workflow_notices(email_id,at) VALUES(?,?)',(deleted,overdue))
+                c.execute('INSERT INTO mail_workflow_notices(email_id,at) VALUES(?,?)',(999999,overdue))
+            assert energy.next_delay({'a':account},'reminders',now=now.timestamp())==60, 'Undeliverable notices must not create a one-second wake loop'
+            with db.conn() as c:
+                c.execute('INSERT INTO mail_workflow_notices(email_id,at) VALUES(?,?)',(live,future))
+            assert 29<=energy.next_delay({'a':account},'reminders',now=now.timestamp())<=31
+            for status in ('spam','quarantine','trash'):
+                with db.conn() as c:c.execute('UPDATE emails SET status=? WHERE id=?',(status,live))
+                assert energy.next_delay({'a':account},'reminders',now=now.timestamp())==60
+            with db.conn() as c:c.execute("UPDATE emails SET status='inbox',remote_missing=1 WHERE id=?",(live,))
+            assert energy.next_delay({'a':account},'reminders',now=now.timestamp())==60
+            with db.conn() as c:
+                c.execute('UPDATE emails SET remote_missing=0 WHERE id=?',(live,))
+                c.execute('UPDATE mail_workflow_notices SET retry_after=? WHERE email_id=?',(now.timestamp()+45,live))
+            assert 44<=energy.next_delay({'a':account},'reminders',now=now.timestamp())<=46
+
+
 def main():
+    test_workflow_deadlines_only_include_deliverable_mail()
     with tempfile.TemporaryDirectory() as folder:
         path=Path(folder)/'mail.db'; account={'db_path':str(path),'user':'fixture@example.test'}
         with use({'ACCOUNT_ID':'fixture','DB_PATH':str(path),'IMAP_USER':account['user']}):

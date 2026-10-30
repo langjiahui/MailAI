@@ -8,6 +8,7 @@ import re
 import os
 from pathlib import Path
 import socket
+import signal
 import subprocess
 import sys
 import tempfile
@@ -119,6 +120,14 @@ def main():
                 restarted.terminate()
                 assert restarted.wait(timeout=10) in ((0, 1) if os.name == 'nt' else (0, -15))
                 assert '已在运行' in (Path(root) / 'server.log').read_text(encoding='utf-8', errors='replace')
+                if os.name != 'nt':
+                    interrupted = start(); ready(interrupted)
+                    interrupted.send_signal(signal.SIGINT)
+                    assert interrupted.wait(timeout=10) == 0, 'Ctrl+C must be treated as a normal exit'
+                    assert not (Path(root) / 'logs' / 'running.json').exists()
+                    text = (Path(root) / 'server.log').read_text(encoding='utf-8', errors='replace')
+                    assert 'MailAI 主进程异常退出' not in text
+                    assert '未捕获的主线程异常' not in text
             finally:
                 for process in processes:
                     if process.poll() is None:

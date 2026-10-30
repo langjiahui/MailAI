@@ -47,11 +47,12 @@
     const namedFolder = /^(inbox|sent(?: items| messages)?|收件箱|收件匣|已发送|已发送邮件|已发邮件|发件箱|寄件備份)$/i.test(parts[0].trim());
     return (namedFolder ? parts : parts.slice(1)).join('/');
   };
-  const transferError = error => error instanceof TypeError ? mailaiText('文件传输中断。已添加的文件已保留，请点击「继续添加」；若文件已移动，请重新选择原文件。') : mailaiSystemMessage(error.message);
+  const transferError = error => error instanceof TypeError || error.code === 'REQUEST_TIMEOUT' ? mailaiText('文件传输中断。已添加的文件已保留，请点击「继续添加」；若文件已移动，请重新选择原文件。') : mailaiSystemMessage(error.message);
   const busy = () => inFlight || uploading || ['scanning', 'importing', 'uploading'].includes(job?.state);
   const request = (path, options = {}) => api('/api/mail/client-imports' + path, {accountId, ...options});
   const post = path => request(path, {method:'POST'});
   const UPLOAD_IDLE_MS = 30000;
+  const transientTransferError = error => error.retryable || error instanceof TypeError || [408,429,502,503,504].includes(error.status);
   let transfer = null;
   function paintUpload() {
     if (!uploading) return;
@@ -105,7 +106,9 @@
         window.mailaiConnectionRestored?.();
         if (xhr.status >= 200 && xhr.status < 300 && xhr.response?.token) { finish(null, xhr.response); return; }
         const error = new Error(xhr.response?.detail || 'HTTP ' + xhr.status);
-        error.status = xhr.status; finish(error);
+        error.status = xhr.status;
+        error.retryable = Boolean(xhr.getResponseHeader('Retry-After'));
+        finish(error);
       };
       xhr.onerror = () => { window.mailaiConnectionFailed?.(); finish(new TypeError('Upload failed')); };
       xhr.onabort = () => finish(timeoutError || new DOMException('Stopped', 'AbortError'));
@@ -119,8 +122,14 @@
     // another writer until the old one has released the job.
     for (let attempt=0; attempt<10; attempt++) {
       if (signal.aborted) throw new DOMException('Stopped', 'AbortError');
-      job = await request('/' + job.token, {signal, timeoutMs:5000});
-      if (job.state !== 'uploading') return;
+      try {
+        job = await request('/' + job.token, {signal, timeoutMs:5000});
+        if (job.state !== 'uploading') return;
+      } catch (error) {
+        // A slow status endpoint must not defeat upload retries. Keep the same
+        // ordinal until the previous writer is confirmed to have finished.
+        if (signal.aborted || !transientTransferError(error)) throw error;
+      }
       await new Promise(resolve => setTimeout(resolve, 500));
     }
     throw new Error(mailaiText('文件仍在结束传输，请稍候再继续添加；已保存的文件会保留。'));
@@ -479,7 +488,7 @@
                 job = await request('/' + job.token + '/skip-file', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({index:i,name:fileName(file),reason:String(error.message).slice(0,500)}),signal:controller.signal});
                 break;
               }
-              if (controller.signal.aborted || attempt >= 2 || !(error.retryable || error instanceof TypeError || [408,502,503,504].includes(error.status))) {
+              if (controller.signal.aborted || attempt >= 2 || !transientTransferError(error)) {
                 if (!controller.signal.aborted) failedUpload = {index:i, name:fileName(file), reason:error instanceof TypeError ? mailaiCopySource(mailaiText('文件传输中断，已添加的文件已保留，请继续添加')) : String(error.message)};
                 throw error;
               }
@@ -499,6 +508,7 @@
       job = await post('/' + job.token + (job.state === 'ready' || job.phase === 'import' ? '/apply' : '/scan'));
       if (version === generation) { paint(); poll(); }
     } catch (error) {
+      if (uploading && transfer && !controller?.signal.aborted) failedUpload = {index:uploadCursor, name:transfer.name, reason:String(error.message)};
       uploading = false; controller = null; transfer = null; setPending(false);
       if (version === generation) {
         if (job) { try { job = await request('/' + job.token); } catch (_) {} }

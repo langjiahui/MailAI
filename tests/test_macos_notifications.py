@@ -9,6 +9,7 @@ from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app import db, desktop, mailbox_jobs
+from app import macos_notifications as native_notices
 from app.account_context import use
 from app.macos_notifications import MacNotificationService, delegate_class
 
@@ -32,7 +33,42 @@ class MacNotificationTests(unittest.TestCase):
         center.addNotificationRequest_withCompletionHandler_.side_effect = lambda request, callback: callback(error)
         service = MacNotificationService.__new__(MacNotificationService)
         service.un, service.center = un, center
+        service._init_permission_state()
         return service, un, center
+
+    def test_denied_queue_checks_once_per_minute_and_recovers_without_lost_notices(self):
+        service, un, center = self.service(status=1)
+        clock = [100.0]
+        with patch.object(native_notices.time, 'monotonic', side_effect=lambda:clock[0]), \
+                patch.object(native_notices.log, 'warning') as warning:
+            for _ in range(1000):
+                self.assertFalse(service.deliver('queued reminder', 'body'))
+            self.assertEqual(center.getNotificationSettingsWithCompletionHandler_.call_count, 1)
+            warning.assert_called_once()
+            center.addNotificationRequest_withCompletionHandler_.assert_not_called()
+            clock[0] = 160.0
+            self.assertFalse(service.deliver('queued reminder', 'body'))
+            self.assertEqual(center.getNotificationSettingsWithCompletionHandler_.call_count, 2)
+            warning.assert_called_once()
+            center.getNotificationSettingsWithCompletionHandler_.side_effect = lambda callback: callback(SimpleNamespace(authorizationStatus=lambda:2))
+            clock[0] = 219.0
+            self.assertFalse(service.deliver('queued reminder', 'body'))
+            clock[0] = 220.0
+            self.assertTrue(service.deliver('queued reminder', 'body'))
+            self.assertEqual(center.addNotificationRequest_withCompletionHandler_.call_count, 1)
+            # A later revocation is a new outage and must remain observable.
+            center.getNotificationSettingsWithCompletionHandler_.side_effect = lambda callback: callback(SimpleNamespace(authorizationStatus=lambda:1))
+            self.assertFalse(service.deliver('next reminder', 'body'))
+            self.assertEqual(warning.call_count, 2)
+
+    def test_explicit_authorization_bypasses_negative_cache(self):
+        service, un, center = self.service(status=0)
+        with patch.object(native_notices.time, 'monotonic', return_value=100):
+            self.assertFalse(service.authorized())
+            center.requestAuthorizationWithOptions_completionHandler_.side_effect = lambda options, callback: callback(True, None)
+            self.assertTrue(service.authorized(request=True))
+            center.requestAuthorizationWithOptions_completionHandler_.assert_called_once()
+            self.assertEqual(service._permission_retry_at, 0)
 
     def test_modern_submission_has_content_and_stable_account_bound_identity(self):
         service, un, center = self.service()

@@ -3045,7 +3045,9 @@ async function api(path, opts = {}) {
     if (!parentSignal?.aborted && (err instanceof TypeError || controller.signal.aborted)) window.mailaiConnectionFailed?.();
     // 内部超时中断翻译成可读文案；外部调用方主动 abort 则原样抛出
     if (controller.signal.aborted && !parentSignal?.aborted && (err?.name === 'AbortError' || /aborted/i.test(err?.message || ''))) {
-      throw new Error(mailaiT('common.timeout') || '请求超时，请稍后重试');
+      const failure = new Error(mailaiT('common.timeout') || '请求超时，请稍后重试');
+      failure.code = 'REQUEST_TIMEOUT'; failure.retryable = true;
+      throw failure;
     }
     throw err;
   } finally {

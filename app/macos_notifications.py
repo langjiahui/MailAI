@@ -2,6 +2,7 @@
 import json
 import logging
 import threading
+import time
 import uuid
 from functools import lru_cache
 from pathlib import Path
@@ -9,6 +10,7 @@ from pathlib import Path
 from .mail_notifications import notification_key
 
 log = logging.getLogger(__name__)
+PERMISSION_RETRY_SECONDS = 60
 
 
 @lru_cache(maxsize=1)
@@ -50,8 +52,33 @@ class MacNotificationService:
         self.delegate = delegate_class().alloc().init()
         self.delegate.runtime = runtime  # UNUserNotificationCenter retains its delegate weakly.
         self.center.setDelegate_(self.delegate)
+        self._init_permission_state()
+
+    def _init_permission_state(self):
+        self._permission_lock = threading.Lock()
+        self._permission_retry_at = 0.0
+        self._permission_unavailable = False
 
     def authorized(self, *, request=False, timeout=5):
+        # Authorization belongs to the app, not an individual message. A queue
+        # of overdue reminders must not query the native center for every item
+        # while permission is denied. The explicit test/enable action bypasses
+        # the cooldown so the user can recover immediately after changing it.
+        with self._permission_lock:
+            if not request and time.monotonic() < self._permission_retry_at:
+                return False
+            accepted = self._read_authorization(request=request, timeout=timeout)
+            self._permission_retry_at = 0.0 if accepted else time.monotonic() + PERMISSION_RETRY_SECONDS
+            if accepted:
+                if self._permission_unavailable:
+                    log.info('macOS 通知权限已恢复')
+                self._permission_unavailable = False
+            elif not self._permission_unavailable:
+                log.warning('macOS 通知权限未就绪，系统通知未提交')
+                self._permission_unavailable = True
+            return accepted
+
+    def _read_authorization(self, *, request, timeout):
         completed = threading.Event()
         accepted = []
 
@@ -81,7 +108,6 @@ class MacNotificationService:
 
     def deliver(self, title, body, *, task_target=None, mail_target=None, timeout=5):
         if not self.authorized(timeout=timeout):
-            log.warning('macOS 通知权限未就绪，系统通知未提交')
             return False
         content = self.un.UNMutableNotificationContent.alloc().init()
         content.setTitle_(title)

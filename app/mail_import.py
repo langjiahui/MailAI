@@ -40,6 +40,14 @@ class SourceLimit(Exception):
     pass
 
 
+class UploadMismatch(ValueError):
+    """A resumed file is different; it must never be skipped as invalid mail."""
+
+
+class UploadBusy(ValueError):
+    """The previous request still owns this batch's writer."""
+
+
 def _root():
     return _account_root(config.DB_PATH)
 
@@ -305,7 +313,9 @@ def begin_upload(token, name, index=None):
         raise ValueError('请选择邮件文件（.eml 或 .mbox），不能直接导入 Foxmail 数据库')
     with _lock:
         job = _read(token)
-        if job['state'] != 'collecting':
+        if str(_path(token)) in _active:
+            raise UploadBusy('文件仍在结束传输，请稍候再继续添加；已保存的文件会保留。')
+        if job['state'] != 'collecting' or job['phase'] != 'upload':
             raise ValueError('当前任务不能添加文件，请先完成或重新选择')
         if index is not None and not 0 <= index <= job['files']:
             raise ValueError('文件添加顺序不一致，请重新选择原批次文件后继续')
@@ -314,8 +324,8 @@ def begin_upload(token, name, index=None):
         if job['expected_files'] and job['files'] >= job['expected_files'] and (index is None or index == job['files']):
             raise ValueError('所选文件与此批次已添加的文件不一致，请选择原批次文件或重新开始')
         key = uuid.uuid4().hex + path.suffix.lower()
-        _active.add(str(_path(token)))
         _update(token, state='uploading')
+        _active.add(str(_path(token)))
         return key, _path(token) / 'sources' / key, str(path)
 
 
@@ -343,7 +353,7 @@ def finish_upload(token, key, name, size, index=None, digest=None):
                         hasher.update(chunk)
                     previous_digest = hasher.hexdigest()
             if (previous['name'], previous['size'], previous_digest) != (name, size, digest):
-                raise ValueError('所选文件与此批次已添加的文件不一致，请选择原批次文件或重新开始')
+                raise UploadMismatch('所选文件与此批次已添加的文件不一致，请选择原批次文件或重新开始')
             source_path.unlink(missing_ok=True)
             job.update(state='collecting')
             _write(job)
@@ -497,6 +507,18 @@ def _run(token, phase):
 
 
 def signature(raw, streamed=None):
+    # The email package can raise RecursionError/IndexError for malformed MIME
+    # or headers before parse_message gets a chance to reject them. Isolate
+    # those files just like other invalid mail, including during dedup/retry.
+    try:
+        return _signature(raw, streamed)
+    except (MemoryError, OSError, ValueError):
+        raise
+    except Exception as exc:
+        raise ValueError('邮件内容无法解析，请重新导出此邮件') from exc
+
+
+def _signature(raw, streamed=None):
     """Ignore transport headers/line endings, but retain identity and all MIME parts.
 
     A reused Message-ID with changed body/attachments is deliberately not merged.

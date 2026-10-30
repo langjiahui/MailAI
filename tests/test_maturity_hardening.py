@@ -4,6 +4,8 @@ import json
 import os
 import sys
 import tempfile
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -13,6 +15,7 @@ from app import config, db, outbox, pipeline, system_settings
 from app.account_context import use
 from app.llm import analyze
 from app.security import chains
+from app.db import core
 
 
 @contextmanager
@@ -162,7 +165,70 @@ def test_policy_persists_and_outbox_lock_is_honored():
             assert connection.execute("SELECT status FROM outbox").fetchone()[0] == "queued"
 
 
+def test_concurrent_database_migrations():
+    with tempfile.TemporaryDirectory(prefix='mailai-migration-race-') as root:
+        values = dict(ACCOUNT_ID='migration', DB_PATH=str(Path(root)/'mail.db'))
+        with use(values):
+            db.init_db()
+            email_id = db.upsert_email({'uid':1,'subject':'preserve migration fixture'})
+            with db.conn() as c:
+                c.execute('ALTER TABLE emails DROP COLUMN notification_claim')
+                c.execute('ALTER TABLE assistant_conversations DROP COLUMN open_email_id')
+        start = threading.Barrier(8)
+        migration_started, release = threading.Event(), threading.Event()
+        original = core._run_migrations
+        def held(c):
+            migration_started.set()
+            assert release.wait(10), 'Migration worker never released'
+            original(c)
+        def initialize():
+            with use(values):
+                start.wait(timeout=10)
+                db.init_db()
+        with patch.object(core, '_run_migrations', side_effect=held), ThreadPoolExecutor(8) as workers:
+            futures = [workers.submit(initialize) for _ in range(8)]
+            try:
+                assert migration_started.wait(10)
+            finally:
+                release.set()
+            for future in futures:
+                future.result(timeout=15)
+        with use(values):
+            assert db.get_email(email_id)['subject']=='preserve migration fixture'
+            with db.conn() as c:
+                assert 'notification_claim' in core._columns_of(c,'emails')
+                assert 'open_email_id' in core._columns_of(c,'assistant_conversations')
+                assert c.execute('SELECT count(*) FROM emails').fetchone()[0]==1
+                c.execute('ALTER TABLE emails DROP COLUMN notification_claim')
+                c.execute('ALTER TABLE assistant_conversations DROP COLUMN open_email_id')
+            def fail_after_schema(c):
+                original(c)
+                raise RuntimeError('simulated migration failure')
+            with patch.object(core, '_run_migrations', side_effect=fail_after_schema):
+                try: db.init_db()
+                except RuntimeError: pass
+                else: raise AssertionError('Failed upgrade was hidden')
+            with db.conn() as c:
+                assert 'notification_claim' not in core._columns_of(c,'emails'), 'Failed schema upgrade was partially committed'
+                assert 'open_email_id' not in core._columns_of(c,'assistant_conversations')
+            db.init_db()
+            assert db.get_email(email_id)['subject']=='preserve migration fixture'
+
+        # Account A's slow migration cannot block initialization of account B.
+        both_accounts = threading.Barrier(2)
+        def independent(c):
+            both_accounts.wait(timeout=10)
+            original(c)
+        def other_account(number):
+            with use(dict(ACCOUNT_ID=str(number),DB_PATH=str(Path(root)/f'{number}.db'))):
+                db.init_db()
+        with patch.object(core, '_run_migrations', side_effect=independent), ThreadPoolExecutor(2) as workers:
+            futures=[workers.submit(other_account,number) for number in (1,2)]
+            for future in futures:future.result(timeout=15)
+
+
 def main():
+    test_concurrent_database_migrations()
     test_uid_generation()
     test_restore_is_inert()
     test_processing_checkpoint()
