@@ -160,7 +160,7 @@ const port=Number(process.env.MAILAI_WARDROBE_FIXTURE_PORT||18863);
    await dialog.locator('[data-pet-tab="shop"]').click();
    await dialog.locator('[data-pet-series="star"]').click();
    for(const language of ['zh-CN','en'])for(const theme of ['light','dark'])for(const reward of ['','theme_monochrome','theme_baowu']) {
-    await page.evaluate(({language,theme,reward})=>{setI18nLanguage(language);document.documentElement.dataset.theme=theme;document.documentElement.dataset.rewardTheme=reward;},{language,theme,reward});
+    await page.evaluate(({language,theme,reward})=>{setI18nLanguage(language);document.documentElement.dataset.theme=theme;if(reward)document.documentElement.dataset.rewardTheme=reward;else delete document.documentElement.dataset.rewardTheme;},{language,theme,reward});
     for(const [width,height,scale]of [[1440,1000,1],[1280,900,1.5],[800,650,1],[390,844,1],[390,844,1.35],[360,740,2]]) {
      await page.setViewportSize({width,height});
      await page.evaluate(scale=>{document.documentElement.style.setProperty('--fz',scale);document.body.style.zoom=String(scale);},scale);

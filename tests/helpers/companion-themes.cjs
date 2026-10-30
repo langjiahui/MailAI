@@ -1,12 +1,13 @@
 const assert=require('node:assert/strict');
 const {selectTab}=require('./companion-ui.cjs');
 // Audit each task view, rather than only the collection overview, across the
-// actual workspace palette cascade and font-scaled layout.
+// actual workspace palette cascade and font-scaled layout. The default
+// theme has no reward-theme attribute, matching applyRewardTheme(undefined).
 async function auditSpaceThemes(page,dialog) {
  const failures=[];let checked=0;
  await page.emulateMedia({reducedMotion:'reduce'});
  for(const language of ['zh-CN','en'])for(const mode of ['light','dark'])for(const reward of ['','theme_monochrome','theme_baowu']) {
-  await page.evaluate(({language,mode,reward})=>{setI18nLanguage(language);applyTheme(mode);document.documentElement.dataset.rewardTheme=reward;},{language,mode,reward});
+  await page.evaluate(({language,mode,reward})=>{setI18nLanguage(language);applyTheme(mode);if(reward)document.documentElement.dataset.rewardTheme=reward;else delete document.documentElement.dataset.rewardTheme;},{language,mode,reward});
   for(const [width,height,scale]of [[1440,1000,1],[390,844,1.35]]) {
    await page.setViewportSize({width,height});
    await page.evaluate(scale=>{document.documentElement.style.setProperty('--fz',scale);document.body.style.zoom=String(scale);},scale);
@@ -35,7 +36,7 @@ async function auditSpaceThemes(page,dialog) {
    }
   }
  }
- await page.evaluate(()=>{document.documentElement.style.setProperty('--fz','1');document.body.style.zoom='1';setI18nLanguage('zh-CN');applyTheme('light');document.documentElement.dataset.rewardTheme='';});
+ await page.evaluate(()=>{document.documentElement.style.setProperty('--fz','1');document.body.style.zoom='1';setI18nLanguage('zh-CN');applyTheme('light');delete document.documentElement.dataset.rewardTheme;});
  await page.setViewportSize({width:1280,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});
  if(failures.length)console.error(JSON.stringify(failures,null,2));
  assert.deepEqual(failures,[], 'Companion views must keep translated controls readable and reachable');
