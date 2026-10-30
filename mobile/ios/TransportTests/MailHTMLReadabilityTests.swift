@@ -16,6 +16,16 @@ import WebKit
         }
     }
 
+    // UIKit delivers trait changes to WebKit asynchronously. Keep the assertion,
+    // but wait for the actual media query before measuring a newly loaded page.
+    private func waitForAppearance(_ dark: Bool, in view: WKWebView) async throws {
+        for _ in 0..<100 {
+            if try await view.evaluateJavaScript("matchMedia('(prefers-color-scheme:dark)').matches") as? Bool == dark { return }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        XCTFail("WebKit did not adopt the requested appearance")
+    }
+
     func testLegacyTextAndTableRemainReadableAcrossAppThemes() async throws {
         let view = SafeMailHTML.makeMailWebView()
         let controller = UIViewController()
@@ -32,7 +42,7 @@ import WebKit
         <div style="color:#000000"><p><font id="legacy" color="black">企业正文黑字</font></p>
         <table><tr><td id="cell" style="color:#000;border:1px solid #777">表格黑字</td><td id="red" style="color:#ff0000">红色重点</td></tr></table>
         <p><a id="link" href="https://example.com">链接</a></p>
-        <img id="image" alt="合成图片" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a9XkAAAAASUVORK5CYII=">
+        <img id="image" alt="合成图片" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFUlEQVR4nGNkiFv1n4GBgYEJRIAwAB3+AgtOamNiAAAAAElFTkSuQmCC">
         </div><script>window.untrustedMailScriptRan=true;document.body.dataset.untrusted='true'</script>
         """
         let authoredDark = """
@@ -64,6 +74,7 @@ import WebKit
             let delegate = Ready(ready); view.navigationDelegate = delegate
             view.loadHTMLString(MailHTMLDocument.render(markup, dark: dark), baseURL: nil)
             await fulfillment(of: [ready], timeout: 15)
+            try await waitForAppearance(dark, in: view)
             _ = delegate
             let value = try await view.evaluateJavaScript("""
             JSON.stringify((()=>{
@@ -78,7 +89,7 @@ import WebKit
                 root:getComputedStyle(document.documentElement).backgroundColor,textContrast:ratio(text),cellContrast:ratio(cell),
                 red,redContrast:ratio(document.getElementById('red')),dark:matchMedia('(prefers-color-scheme:dark)').matches,
                 adapted:document.documentElement.dataset.mailaiAppearance==='dark',
-                imagePreserved:!document.getElementById('image')||getComputedStyle(document.getElementById('image')).filter==='none',
+                imagePreserved:!document.getElementById('image')||(document.getElementById('image').complete&&document.getElementById('image').naturalWidth===2&&getComputedStyle(document.getElementById('image')).filter==='none'),
                 untrustedScriptRan:window.untrustedMailScriptRan===true||document.body.dataset.untrusted==='true'};
             })())
             """)
@@ -96,7 +107,7 @@ import WebKit
             let red = try XCTUnwrap(result["red"] as? [Double])
             XCTAssertGreaterThan(red[0], red[1], "Red emphasis must remain red: " + json)
             XCTAssertGreaterThan(red[0], red[2], json)
-            XCTAssertEqual(result["dark"] as? Bool, dark)
+            XCTAssertEqual(result["dark"] as? Bool, dark, json)
             XCTAssertEqual(result["adapted"] as? Bool, dark)
             XCTAssertEqual(result["imagePreserved"] as? Bool, true)
             XCTAssertEqual(result["untrustedScriptRan"] as? Bool, false)

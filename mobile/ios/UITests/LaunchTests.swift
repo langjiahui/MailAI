@@ -460,10 +460,14 @@ final class WorkspaceTests: XCTestCase {
             let app = launch(dark: dark, extra: ["--ui-html-legacy"])
             app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap()
             let web = app.webViews.firstMatch
-            XCTAssertTrue(web.staticTexts["企业邮件正文：请确认本周工作安排。"].waitForExistence(timeout: 10))
+            XCTAssertTrue(web.staticTexts["企业邮件正文：请确认本周工作安排。"].waitForExistence(timeout: 30))
             XCTAssertTrue(web.staticTexts["资料确认"].exists)
             XCTAssertTrue(web.staticTexts["周五前完成"].exists)
             XCTAssertTrue(app.buttons["回复全部"].isHittable)
+            let assistant = app.buttons["小邮助手"]
+            XCTAssertTrue(assistant.isHittable)
+            XCTAssertGreaterThanOrEqual(assistant.frame.height, 44)
+            XCTAssertLessThan(assistant.frame.width, web.frame.width * 0.6)
             attach(dark ? "reader-legacy-html-dark" : "reader-legacy-html-light")
             if dark {
                 app.buttons["更多邮件操作"].tap(); app.buttons["查看原始样式"].tap()
@@ -472,6 +476,10 @@ final class WorkspaceTests: XCTestCase {
                 app.buttons["更多邮件操作"].tap(); app.buttons["跟随系统主题"].tap()
                 XCTAssertTrue(web.staticTexts["企业邮件正文：请确认本周工作安排。"].waitForExistence(timeout: 10))
                 attach("reader-restored-adaptive-dark")
+                assistant.tap()
+                XCTAssertTrue(app.buttons["配置小邮与模型服务"].waitForExistence(timeout: 5))
+                app.buttons["完成"].tap()
+                XCTAssertTrue(app.buttons["回复全部"].isHittable)
             }
         }
     }

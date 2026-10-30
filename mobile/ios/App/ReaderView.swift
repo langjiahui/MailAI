@@ -110,7 +110,7 @@ struct ReaderView: View {
         else { Label(title, systemImage: symbol) }
     }
     private var messageHeader: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .top, spacing: 12) {
                     SenderAvatar(name: summary.senderName ?? summary.sender, size: 40)
                     VStack(alignment: .leading, spacing: 4) {
@@ -129,7 +129,13 @@ struct ReaderView: View {
                         if let cc = bodyContent?.carbonCopies ?? summary.carbonCopies, !cc.isEmpty { Text("抄送：" + cc.map(\.email).joined(separator: "; ")) }
                     }.font(.footnote).foregroundStyle(MailTheme.secondary).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Button { assistant = true } label: { HStack { Label("小邮 · 提炼要点", systemImage: "sparkles"); Spacer(); Image(systemName: "chevron.right").font(.caption) }.font(.subheadline).padding(12).frame(minHeight: 48).background(MailTheme.blue.opacity(0.08), in: RoundedRectangle(cornerRadius: 12)) }.disabled(bodyContent == nil).accessibilityLabel("小邮助手")
+                Button { assistant = true } label: {
+                    Label("提炼要点", systemImage: "sparkles")
+                        .font(.footnote).foregroundStyle(MailTheme.secondary)
+                        .frame(minHeight: 44).contentShape(Rectangle())
+                }.buttonStyle(.plain).padding(.leading, 52)
+                    .disabled(bodyContent == nil).accessibilityLabel("小邮助手")
+                    .accessibilityHint("用小邮提炼这封邮件的要点")
         }
     }
     @ViewBuilder private var messageContents: some View {
