@@ -465,6 +465,14 @@ final class WorkspaceTests: XCTestCase {
             XCTAssertTrue(web.staticTexts["周五前完成"].exists)
             XCTAssertTrue(app.buttons["回复全部"].isHittable)
             attach(dark ? "reader-legacy-html-dark" : "reader-legacy-html-light")
+            if dark {
+                app.buttons["更多邮件操作"].tap(); app.buttons["查看原始样式"].tap()
+                XCTAssertTrue(web.staticTexts["企业邮件正文：请确认本周工作安排。"].waitForExistence(timeout: 10))
+                attach("reader-original-style-dark")
+                app.buttons["更多邮件操作"].tap(); app.buttons["跟随系统主题"].tap()
+                XCTAssertTrue(web.staticTexts["企业邮件正文：请确认本周工作安排。"].waitForExistence(timeout: 10))
+                attach("reader-restored-adaptive-dark")
+            }
         }
     }
     func testConversationExpandsActualMessages() {

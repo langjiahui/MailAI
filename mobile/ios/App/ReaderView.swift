@@ -17,6 +17,7 @@ struct ReaderView: View {
     @State private var bodyContent: MailBody?
     @State private var error: String?
     @State private var plainText = false
+    @State private var originalHTML = false
     @State private var details = false
     @State private var htmlHeight: CGFloat = 260
     @State private var attachmentsExpanded = true
@@ -55,7 +56,10 @@ struct ReaderView: View {
                 Button { moveToRole("trash") } label: { Image(systemName: "trash") }.accessibilityLabel("移到废纸篓").disabled(store.operating || store.selectedID != ownerID)
                 Button { moveToRole("archive") } label: { Image(systemName: "archivebox") }.accessibilityLabel("归档邮件").disabled(store.operating || store.selectedID != ownerID)
                 Menu {
-                    if bodyContent?.html != nil { Button(plainText ? "查看原版" : "查看纯文本") { plainText.toggle() } }
+                    if bodyContent?.html != nil { Button(plainText ? "查看图文" : "查看纯文本") { plainText.toggle() } }
+                    if bodyContent?.html != nil, !plainText {
+                        Button(originalHTML ? "跟随系统主题" : "查看原始样式") { originalHTML.toggle() }
+                    }
                     Button("移动到…") { moving = true }
                     Button(currentFlag ? "取消星标" : "添加星标") {
                         let next = !currentFlag
@@ -82,7 +86,7 @@ struct ReaderView: View {
         .onDisappear { readTask?.cancel(); downloadTask?.cancel() }
         .onChange(of: summary.id) { _, _ in
             readTask?.cancel(); downloadTask?.cancel(); downloading = false; downloadingID = nil
-            bodyContent = nil; error = nil; details = false; htmlHeight = 260; localFlag = nil; load()
+            bodyContent = nil; error = nil; details = false; htmlHeight = 260; localFlag = nil; originalHTML = false; load()
         }
         .onChange(of: store.selectedID) { _, id in if id != ownerID { readTask?.cancel(); downloadTask?.cancel(); bodyContent = nil; error = "邮箱已切换，请返回列表重新打开这封邮件。" } }
         .onChange(of: scenePhase) { _, phase in if phase != .active { readTask?.cancel(); downloadTask?.cancel(); downloading = false; downloadingID = nil } else if bodyContent == nil { load() } }
@@ -131,7 +135,7 @@ struct ReaderView: View {
     @ViewBuilder private var messageContents: some View {
                 if let bodyContent {
                     if let html = bodyContent.html, !plainText {
-                        SafeMailHTML(html: html, externalURL: $externalURL, fontSize: readerSize * scaledBody / 17, contentHeight: $htmlHeight)
+                        SafeMailHTML(html: html, externalURL: $externalURL, fontSize: readerSize * scaledBody / 17, originalStyle: originalHTML, contentHeight: $htmlHeight)
                             .frame(height: htmlHeight).clipShape(RoundedRectangle(cornerRadius: 12))
                     } else {
                         Text(bodyContent.text.isEmpty ? "这封邮件没有纯文本正文，可切换原版查看。" : bodyContent.text)
@@ -233,17 +237,17 @@ struct SafeMailHTML: UIViewRepresentable {
     let html: String
     @Binding var externalURL: URL?
     var fontSize: Double = 17
+    var originalStyle = false
     @Binding var contentHeight: CGFloat
+    @Environment(\.colorScheme) private var colorScheme
     func makeCoordinator() -> Coordinator { Coordinator(externalURL: $externalURL, height: $contentHeight) }
     static func makeMailWebView() -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .nonPersistent()
         configuration.defaultWebpagePreferences.allowsContentJavaScript = false
+        configuration.userContentController.addUserScript(WKUserScript(source: MailHTMLDocument.appearanceScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true, in: .defaultClient))
         let view = WKWebView(frame: .zero, configuration: configuration)
-        view.overrideUserInterfaceStyle = .light
         view.isOpaque = false
-        view.backgroundColor = .white
-        view.scrollView.backgroundColor = .white
         return view
     }
     func makeUIView(context: Context) -> WKWebView {
@@ -261,11 +265,15 @@ struct SafeMailHTML: UIViewRepresentable {
         return view
     }
     func updateUIView(_ view: WKWebView, context: Context) {
-        if context.coordinator.loadedHTML != html || context.coordinator.fontSize != fontSize { load(view, coordinator: context.coordinator) }
+        if context.coordinator.loadedHTML != html || context.coordinator.fontSize != fontSize || context.coordinator.dark != dark { load(view, coordinator: context.coordinator) }
     }
+    private var dark: Bool { colorScheme == .dark && !originalStyle }
     private func load(_ view: WKWebView, coordinator: Coordinator) {
-        coordinator.loadedHTML = html; coordinator.fontSize = fontSize
-        view.loadHTMLString(MailHTMLDocument.render(html, fontSize: fontSize), baseURL: nil)
+        coordinator.loadedHTML = html; coordinator.fontSize = fontSize; coordinator.dark = dark
+        view.overrideUserInterfaceStyle = dark ? .dark : .light
+        let paper = dark ? UIColor(red: 23/255, green: 35/255, blue: 48/255, alpha: 1) : .white
+        view.backgroundColor = paper; view.scrollView.backgroundColor = paper
+        view.loadHTMLString(MailHTMLDocument.render(html, fontSize: fontSize, dark: dark), baseURL: nil)
     }
     final class Coordinator: NSObject, WKNavigationDelegate {
         @Binding var externalURL: URL?
@@ -273,6 +281,7 @@ struct SafeMailHTML: UIViewRepresentable {
         var observation: NSKeyValueObservation?
         var loadedHTML = ""
         var fontSize: Double = 0
+        var dark = false
         init(externalURL: Binding<URL?>, height: Binding<CGFloat>) { _externalURL = externalURL; self.height = height }
         func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
             if action.navigationType == .linkActivated, let url = action.request.url, url.scheme?.lowercased() == "https", url.host != nil {
