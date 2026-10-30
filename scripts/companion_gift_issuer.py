@@ -40,6 +40,7 @@ LABELS = {
     'armor': '星羽轻甲',
     'lightning': '电光脉冲',
     'mech_wings': '星羽机甲翼',
+    'star_crest': '星邮额饰',
     'theme_monochrome': '黑白简约',
     'theme_baowu': '宝武蓝',
 }
@@ -59,6 +60,7 @@ LABELS_EN = {
     'armor': 'Starfeather armor',
     'lightning': 'Electric pulse',
     'mech_wings': 'Starfeather mech wings',
+    'star_crest': 'Star-post crest',
     'theme_monochrome': 'Monochrome',
     'theme_baowu': 'Baowu blue',
 }

@@ -23,12 +23,16 @@ class Purchase(BaseModel):
 
 
 class Outfit(BaseModel):
-    slot: Literal['palette', 'accessory', 'effect', 'theme']
+    slot: Literal['palette', 'accessory', 'effect', 'theme', 'head', 'neck', 'body', 'back']
     item: str = Field(default='', max_length=32)
 
 
 class Style(BaseModel):
     style: Literal['nature', 'ranger']
+
+
+class Collection(BaseModel):
+    collection: Literal['post', 'cloud', 'star']
 
 
 class Preference(BaseModel):
@@ -64,6 +68,11 @@ def purchase(payload: Purchase):
 @router.post('/api/companion/equip')
 def equip(payload: Outfit):
     return checked(growth.equip, payload.slot, payload.item)
+
+
+@router.post('/api/companion/collection')
+def equip_collection(payload: Collection):
+    return checked(growth.equip_collection, payload.collection)
 
 
 @router.post('/api/companion/preferences')

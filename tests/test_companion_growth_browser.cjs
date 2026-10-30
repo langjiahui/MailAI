@@ -1,5 +1,6 @@
 /* Run MAILAI_GROWTH_FIXTURE=1 python tests/workspace_preview.py first. */
 const assert = require('node:assert/strict');
+const {revealItem}=require('./helpers/companion-ui.cjs');
 const {chromium} = require('playwright');
 (async () => {
   const browser = await chromium.launch({headless:true});
@@ -17,7 +18,7 @@ const {chromium} = require('playwright');
     assert.match(await dialog.textContent(),/青羽信使/);
     assert.match(await dialog.locator('.pet-client-note').textContent(),/所有邮箱共享/);
     assert.equal(await dialog.locator('.pet-hero .evolution-crest-one').evaluate(n=>getComputedStyle(n).display),'block');
-    await dialog.locator('[data-pet-tab="shop"]').click();
+    await dialog.locator('[data-pet-tab="wardrobe"]').click();
     assert.equal(await dialog.locator('[data-pet-buy="wings"]').isEnabled(),false);
     const before = await page.evaluate(()=>api('/api/companion/growth'));
     // Passive activity may earn stamps during a slower CI render. Compare net
@@ -65,6 +66,7 @@ const {chromium} = require('playwright');
     await dialog.locator('[data-pet-preview="sky"]').click();
     await preview.locator('[data-pet-receipt-close]').click();
     assert.equal(await dialog.locator('.pet-shop-receipt').count(),0);
+    await revealItem(dialog,'berry');
     await dialog.locator('[data-pet-buy="berry"]').click();
     await page.waitForFunction(()=>document.body.dataset.petStage === '4');
     assert.match(await dialog.textContent(),/灵羽伙伴/);
@@ -174,7 +176,7 @@ const {chromium} = require('playwright');
     assert.deepEqual(cute.equipped,afterStyle.equipped);
     await dialog.locator('[data-pet-style="ranger"]').click();
     await page.waitForFunction(()=>document.body.dataset.petStyle === 'ranger');
-    await dialog.locator('[data-pet-tab="shop"]').click();
+    await dialog.locator('[data-pet-tab="wardrobe"]').click();
     // CSS must respect redeemed palettes at EVERY stage, on BOTH routes.
     await page.emulateMedia({reducedMotion:'reduce'});
     const paletteMatrix = await page.evaluate(()=>{
@@ -201,8 +203,10 @@ const {chromium} = require('playwright');
     });
     assert.deepEqual(previews,{crest:'visible',cap:'hidden',bag:'pet-letter'},'Item previews must not inherit another equipped accessory');
     await page.emulateMedia({reducedMotion:'no-preference'});
+    await revealItem(dialog,'armor');
     await dialog.locator('[data-pet-buy="armor"]').click();
     await page.waitForFunction(()=>document.body.dataset.petAccessory === 'armor');
+    await revealItem(dialog,'midnight');
     await dialog.locator('[data-pet-buy="midnight"]').click();
     await page.waitForFunction(()=>document.body.dataset.petPalette === 'midnight');
     await dialog.locator('.pet-journal-body').evaluate(n=>n.scrollTop=0);
@@ -210,8 +214,8 @@ const {chromium} = require('playwright');
     await page.screenshot({path:'/tmp/mailai-pet-ranger.png'});
     // Live language changes render the entire journal, including dynamic goods.
     await page.evaluate(()=>setI18nLanguage('en'));
-    await page.waitForFunction(()=>document.querySelector('#pet-journal-title')?.textContent === 'Growth journal');
-    await dialog.locator('[data-pet-tab="shop"]').click();
+    await page.waitForFunction(()=>document.querySelector('#pet-journal-title')?.textContent === 'XiaoYou space');
+    await dialog.locator('[data-pet-tab="wardrobe"]').click();
     assert.match(await dialog.textContent(),/Sunlit messenger wings/);
     assert(!/[\u3400-\u9fff]/.test(await dialog.textContent()));
     await page.screenshot({path:'/tmp/mailai-pet-english.png'});
