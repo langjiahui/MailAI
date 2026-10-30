@@ -185,6 +185,21 @@ class MailClient:
             if raw is None and received == 0:
                 raw = data.get(b'BODY[]')
             if not isinstance(raw, bytes) or not raw:
+                if received and size <= BODY_CHUNK_BYTES:
+                    if time.monotonic() >= deadline:
+                        raise TimeoutError(f'邮件 {uid} 下载超过 120 秒')
+                    # Some providers advertise a small message two bytes larger
+                    # than their actual stored body. Do not trim the expected
+                    # size or accept a short prefix: ask for the complete body
+                    # and require it to agree with every byte already received.
+                    full = self.client.fetch([uid], ['BODY.PEEK[]']).get(uid, {}).get(b'BODY[]')
+                    if (isinstance(full, bytes) and full and len(full) <= BODY_CHUNK_BYTES
+                            and full.startswith(b''.join(chunks))):
+                        log.info('分段正文长度不一致，已核对完整正文 uid=%s declared=%s actual=%s', uid, size, len(full))
+                        callback = getattr(self, 'on_download_progress', None)
+                        if callback:
+                            callback(uid, len(full), len(full))
+                        return full
                 raise RuntimeError(f'邮件 {uid} 在 {received}/{size} 字节处中断')
             if len(raw) > length:
                 raise RuntimeError(f'邮件 {uid} 服务器未按分段返回正文')

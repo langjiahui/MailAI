@@ -5,7 +5,7 @@ import io
 from pathlib import Path
 import sys
 import threading
-import time
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
@@ -39,17 +39,26 @@ class RoutingTest(unittest.TestCase):
     def test_faster_domestic_or_github_source_is_selected(self):
         for fast in ('atomgit','github'):
             with routing._lock:routing._recent.clear()
+            # Exercise the real worker's elapsed-time measurement with a clock
+            # local to each thread. Runner scheduling is not source latency.
+            clock=threading.local()
+            start=routing._start
+            def completed_start(key, loader):
+                attempt=start(key,loader)
+                self.assertTrue(attempt.done.wait(5), 'Source worker did not finish')
+                return attempt
             def domestic():
-                if fast!='atomgit':threading.Event().wait(.04)
+                clock.now=.001 if fast=='atomgit' else .04
                 return manifest()
             def github():
-                if fast!='github':threading.Event().wait(.04)
+                clock.now=.001 if fast=='github' else .04
                 return manifest()
-            with patch.object(mirror,'discover',side_effect=domestic):
+            with patch.object(mirror,'discover',side_effect=domestic), \
+                    patch.object(routing,'time',SimpleNamespace(monotonic=lambda:getattr(clock,'now',0.0))), \
+                    patch.object(routing,'_start',side_effect=completed_start):
                 result=routing.discover(github,'2.9.6')
                 self.assertEqual(result['assets']['macos-arm64']['preferred_source'],fast)
                 self.assertEqual(result['release_url'],mirror.ATOM_RELEASES if fast=='atomgit' else manifest()['release_url'])
-            threading.Event().wait(.05)
 
     def test_newer_verified_release_wins_over_faster_stale_source(self):
         with patch.object(mirror,'discover',return_value=manifest('2.9.5')):
@@ -58,15 +67,25 @@ class RoutingTest(unittest.TestCase):
         self.assertEqual(result['assets']['macos-arm64']['preferred_source'],'github')
 
     def test_blocked_source_does_not_delay_working_source_or_application_exit(self):
-        release=threading.Event();finished=threading.Event()
+        release=threading.Event();entered=threading.Event();finished=threading.Event()
+        completed=threading.Event();results=[];errors=[]
         def blocked():
-            release.wait(2);finished.set();raise OSError('offline')
-        try:
-            with patch.object(mirror,'discover',return_value=manifest()):
-                start=time.monotonic();result=routing.discover(blocked,'2.9.6')
-            self.assertLess(time.monotonic()-start,.15)
-            self.assertEqual(result['version'],'2.10.0')
-        finally:release.set();finished.wait(1)
+            entered.set();release.wait(10);finished.set();raise OSError('offline')
+        def discover():
+            try:results.append(routing.discover(blocked,'2.9.6'))
+            except BaseException as exc:errors.append(exc)
+            finally:completed.set()
+        with patch.object(mirror,'discover',return_value=manifest()), patch.object(routing,'DISCOVERY_TIMEOUT',5):
+            worker=threading.Thread(target=discover,daemon=True)
+            worker.start()
+            try:
+                self.assertTrue(entered.wait(5), 'Blocked source did not start')
+                self.assertTrue(completed.wait(5), 'Working source waited for the blocked source')
+                if errors:raise errors[0]
+                self.assertFalse(finished.is_set(), 'Discovery only returned after the blocked source finished')
+                self.assertEqual(results[0]['version'],'2.10.0')
+            finally:
+                release.set();worker.join(5);self.assertTrue(finished.wait(5))
         self.assertTrue(all(thread.daemon for thread in threading.enumerate() if thread.name=='mailai-update-source'))
 
     def test_invalid_fast_source_never_becomes_download_identity(self):

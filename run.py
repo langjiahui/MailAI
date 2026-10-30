@@ -162,6 +162,13 @@ def main():
             finally:
                 if listener is not None:
                     listener.close()
+    except KeyboardInterrupt:
+        # Ctrl+C is an explicit exit request. _run_app's finally block has
+        # already stopped the workers; do not report a crash or leave a stale
+        # marker that falsely flags the next startup as an abnormal shutdown.
+        log.info("MailAI 已收到退出请求")
+        if ran:
+            mark_clean_shutdown()
     except BaseException:
         log.critical("MailAI 主进程异常退出", exc_info=True)
         raise

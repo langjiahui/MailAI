@@ -1,10 +1,15 @@
 """连接管理、Schema 与迁移。每个操作独立连接，线程安全。"""
 import json
+import os
 import sqlite3
+import threading
 from contextlib import contextmanager
 from datetime import datetime
 
 from .. import config
+
+_init_locks = {}
+_init_locks_guard = threading.Lock()
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS mailbox_sequence (id INTEGER PRIMARY KEY, value INTEGER DEFAULT 0);
@@ -365,12 +370,28 @@ def _columns_of(c, table: str) -> set:
 
 
 def init_db():
+    # Startup, outbox and mailbox workers can initialize the same account at
+    # once. Serialize the complete setup per database, including initializers
+    # that use executescript (which commits an existing SQLite transaction).
+    key = os.path.normcase(os.path.realpath(config.DB_PATH))
+    with _init_locks_guard:
+        lock = _init_locks.setdefault(key, threading.RLock())
+    with lock:
+        _initialize_db()
+
+
+def _initialize_db():
     with conn() as c:
         # WAL lets UI reads continue while background synchronization writes.
         c.execute("PRAGMA journal_mode=WAL")
         c.execute("PRAGMA synchronous=NORMAL")
         c.executescript(SCHEMA)
+        # Take the SQLite writer lease before reading migration column lists.
+        # This also prevents stale schema decisions in another process, and
+        # rolls back migration data/schema together when an upgrade fails.
+        c.execute('BEGIN IMMEDIATE')
         _run_migrations(c)
+        c.commit()
         from .mail_tags import initialize as initialize_mail_tags
         initialize_mail_tags(c)
         from ..companion_growth import initialize

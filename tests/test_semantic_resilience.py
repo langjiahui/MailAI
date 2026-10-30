@@ -27,7 +27,63 @@ def seed():
     return email_id
 
 
+def test_automatic_failure_cooldown_and_explicit_rebuild():
+    # Run the queued callback synchronously: the test checks scheduling and
+    # account state without downloading models or depending on timer races.
+    with tempfile.TemporaryDirectory() as root, use(account(root,'cooldown-a')):
+        clock=[100.0]
+        def start(target, **kwargs):target()
+        with patch.object(semantic,'enabled',return_value=True), \
+                patch('app.account_guard.start_account_thread',side_effect=start) as spawn, \
+                patch.object(semantic,'index_missing',side_effect=ValueError('model unavailable')) as index, \
+                patch.object(semantic,'reindex',return_value={'indexed':0}) as rebuild, \
+                patch.object(semantic.time,'monotonic',side_effect=lambda:clock[0]), \
+                patch.dict(semantic._update_retry_at,{},clear=True), \
+                patch.object(semantic.log,'exception') as logged:
+            semantic.schedule_missing()
+            assert index.call_count==1 and semantic.progress()['error']
+            assert not semantic.progress()['running']
+            for _ in range(30):semantic.schedule_missing()
+            assert spawn.call_count==index.call_count==1, 'New arrivals repeatedly restarted a failed model download'
+            assert semantic.progress()['error'], 'Skipped retry erased useful failure state'
+            logged.assert_called_once()
+            # Failure in one account must not disable indexing in another.
+            index.side_effect=None;index.return_value=0
+            with use(account(root,'cooldown-b')):
+                semantic.schedule_missing()
+                assert not semantic.progress()['error']
+            assert index.call_count==2
+            # The user can explicitly retry immediately after fixing network.
+            semantic.schedule_missing(rebuild=True)
+            rebuild.assert_called_once_with(background=True)
+            assert not semantic.progress()['error']
+            assert config.DB_PATH not in semantic._update_retry_at
+            semantic.schedule_missing()
+            assert index.call_count==3
+            # Automatic retry resumes when its deadline expires.
+            index.side_effect=ValueError('model unavailable again')
+            semantic.schedule_missing()
+            clock[0]=399.0
+            semantic.schedule_missing()
+            assert index.call_count==4
+            clock[0]=400.0;index.side_effect=None
+            semantic.schedule_missing()
+            assert index.call_count==5 and not semantic.progress()['error']
+            # A failure to start a worker also releases ownership and backs off.
+            spawn.side_effect=RuntimeError('cannot start thread')
+            try:semantic.schedule_missing()
+            except RuntimeError:pass
+            else:raise AssertionError('Worker startup error was hidden')
+            calls=spawn.call_count
+            spawn.side_effect=start
+            semantic.schedule_missing()
+            assert spawn.call_count==calls and config.DB_PATH not in semantic._update_pending
+            semantic.schedule_missing(rebuild=True)
+            assert not semantic.progress()['error']
+
+
 def main():
+    test_automatic_failure_cooldown_and_explicit_rebuild()
     with tempfile.TemporaryDirectory() as root, use(account(root, 'a')):
         email_id = seed()
         with patch.object(semantic, 'embed_texts', return_value=[VECTOR]) as embed:

@@ -50,6 +50,8 @@ _QUERY_CACHE_SECONDS = 300
 _SEARCH_WAIT_SECONDS = 0.4
 _update_again: set[str] = set()
 _rebuild_pending: set[str] = set()
+_update_retry_at: dict[str, float] = {}
+_UPDATE_RETRY_SECONDS = 300
 
 
 def _account_values():
@@ -284,7 +286,10 @@ def schedule_missing(rebuild: bool = False) -> None:
     key = config.DB_PATH
     values = _account_values()
     with _update_lock:
+        if not rebuild and time.monotonic() < _update_retry_at.get(key, 0):
+            return  # Keep the error visible; new mail cannot hammer model downloads.
         if rebuild:
+            _update_retry_at.pop(key, None)
             _rebuild_pending.add(key)
         if key in _update_pending:
             _update_again.add(key)
@@ -309,6 +314,7 @@ def schedule_missing(rebuild: bool = False) -> None:
                     # clear the queued state shown in settings.
                     _set_progress(running=False, phase="")
                 with _update_lock:
+                    _update_retry_at.pop(key, None)
                     if key in _update_again:
                         _update_again.discard(key)
                         continue
@@ -317,6 +323,7 @@ def schedule_missing(rebuild: bool = False) -> None:
         except Exception:
             log.exception("增量更新语义索引失败")
             with _update_lock:
+                _update_retry_at[key] = time.monotonic() + _UPDATE_RETRY_SECONDS
                 _update_pending.discard(key)
                 _update_again.discard(key)
                 _rebuild_pending.discard(key)
@@ -328,6 +335,7 @@ def schedule_missing(rebuild: bool = False) -> None:
         start_account_thread(run, name="semantic-index")
     except BaseException:
         with _update_lock:
+            _update_retry_at[key] = time.monotonic() + _UPDATE_RETRY_SECONDS
             _update_pending.discard(key)
             _update_again.discard(key)
             _rebuild_pending.discard(key)

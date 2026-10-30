@@ -54,6 +54,64 @@ def main():
         assert mail.fetch_uid_bounded(9, config.INBOX_FOLDER) == b'abc'
         reconnect.assert_called_once()
 
+    # Reproduce the user's 47,740/47,742 loop. Only a separately requested full
+    # body can confirm that RFC822.SIZE is inaccurate; never accept a prefix
+    # merely because the missing byte count happens to be small.
+    small = b'From: fixture@example.test\r\nSubject: size mismatch\r\n\r\n'
+    small += b'x' * (47740 - len(small))
+    progress = []
+    mail.on_download_progress = lambda *args:progress.append(args)
+    full_body = [small]
+    def misreported_fetch(uids, fields):
+        if fields == ['RFC822.SIZE']:
+            return {uids[0]: {b'RFC822.SIZE': 47742}}
+        if fields == ['BODY.PEEK[]']:
+            return {uids[0]: {b'BODY[]':full_body[0]}}
+        offset = int(fields[0].split('<', 1)[1].split('.')[0])
+        return {uids[0]: {f'BODY[]<{offset}>'.encode():small[offset:]}}
+    imap.fetch.side_effect = misreported_fetch
+    with patch.object(mail, '_reconnect') as reconnect:
+        assert mail.fetch_uid_bounded(12, 'INBOX') == small
+        reconnect.assert_not_called()
+    assert progress[-1] == (12, 47740, 47740)
+    for unconfirmed in (None, b'', small[:-2], b'changed' + small, b'x' * (BODY_CHUNK_BYTES + 1)):
+        full_body[0] = unconfirmed
+        with patch.object(mail, '_reconnect') as reconnect, patch('app.imap_client.time.sleep'):
+            try: mail.fetch_uid_bounded(12, 'INBOX')
+            except RuntimeError: pass
+            else: raise AssertionError('An unconfirmed or changed partial body was accepted')
+            assert reconnect.call_count == 2, 'A true incomplete download must still retry'
+    # A complete response can also repair missing partial bytes without any
+    # trimming or synthesized line endings.
+    full_body[0] = small + b'\r\n'
+    assert mail.fetch_uid_bounded(12, 'INBOX') == small + b'\r\n'
+
+    clock = [100.0]
+    def expired_fetch(uids, fields):
+        result = misreported_fetch(uids, fields)
+        if fields == ['BODY.PEEK[]<47740.2>']:
+            clock[0] = 221.0
+        return result
+    imap.fetch.side_effect = expired_fetch
+    imap.fetch.reset_mock()
+    with patch('app.imap_client.time.monotonic', side_effect=lambda:clock[0]), patch.object(mail, '_reconnect') as reconnect:
+        try: mail.fetch_uid_bounded(12, 'INBOX')
+        except TimeoutError: pass
+        else: raise AssertionError('An expired download started a new whole-body request')
+        reconnect.assert_not_called()
+    assert not any(call.args[1]==['BODY.PEEK[]'] for call in imap.fetch.call_args_list)
+
+    # Whole-body fallback is restricted to small messages; large bodies keep
+    # their chunk bound and cannot turn a short FETCH into an unbounded read.
+    imap.fetch.side_effect = lambda uids,fields: ({uids[0]:{b'RFC822.SIZE':BODY_CHUNK_BYTES+1}}
+        if fields==['RFC822.SIZE'] else {uids[0]:{b'BODY[]<0>':b'x'}})
+    imap.fetch.reset_mock()
+    with patch.object(mail, '_reconnect'), patch('app.imap_client.time.sleep'):
+        try: mail.fetch_uid_bounded(13, 'INBOX')
+        except RuntimeError: pass
+        else: raise AssertionError('Large incomplete mail was accepted')
+    assert not any(call.args[1]==['BODY.PEEK[]'] for call in imap.fetch.call_args_list)
+
     imap.fetch.side_effect = TimeoutError('network down')
     with patch.object(mail, '_reconnect', side_effect=TimeoutError('reconnect failed')):
         try:
