@@ -65,6 +65,8 @@ struct ReaderView: View {
                         let next = !currentFlag
                         Task { do { try await store.perform(.flagged(next), on: [summary]); localFlag = next } catch { self.error = "标记失败，请刷新核对。" } }
                     }
+                    Button("小邮助手", systemImage: "sparkles") { assistant = true }
+                        .disabled(bodyContent == nil)
                 } label: { Image(systemName: "ellipsis.circle") }.accessibilityLabel("更多邮件操作")
             }
         }
@@ -129,13 +131,6 @@ struct ReaderView: View {
                         if let cc = bodyContent?.carbonCopies ?? summary.carbonCopies, !cc.isEmpty { Text("抄送：" + cc.map(\.email).joined(separator: "; ")) }
                     }.font(.footnote).foregroundStyle(MailTheme.secondary).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Button { assistant = true } label: {
-                    Label("提炼要点", systemImage: "sparkles")
-                        .font(.footnote).foregroundStyle(MailTheme.secondary)
-                        .frame(minHeight: 44).contentShape(Rectangle())
-                }.buttonStyle(.plain).padding(.leading, 52)
-                    .disabled(bodyContent == nil).accessibilityLabel("小邮助手")
-                    .accessibilityHint("用小邮提炼这封邮件的要点")
         }
     }
     @ViewBuilder private var messageContents: some View {

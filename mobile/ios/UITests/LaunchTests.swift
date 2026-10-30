@@ -331,7 +331,7 @@ final class WorkspaceTests: XCTestCase {
     func testAssistantRequiresScopeAndSummaryCannotBeAdoptedAsReply() {
         let app = launch(extra: ["--ui-assistant"])
         app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap()
-        app.buttons["小邮助手"].tap()
+        app.buttons["更多邮件操作"].tap(); app.buttons["小邮助手"].tap()
         app.buttons["提炼要点"].tap()
         XCTAssertTrue(app.buttons["开始处理"].waitForExistence(timeout: 5)); attach("redesign-ai-scope-confirmation")
         app.buttons["开始处理"].tap()
@@ -464,12 +464,10 @@ final class WorkspaceTests: XCTestCase {
             XCTAssertTrue(web.staticTexts["资料确认"].exists)
             XCTAssertTrue(web.staticTexts["周五前完成"].exists)
             XCTAssertTrue(app.buttons["回复全部"].isHittable)
-            let assistant = app.buttons["小邮助手"]
-            XCTAssertTrue(assistant.isHittable)
-            // Accessibility converts screen coordinates to floating-point values.
-            // Keep the 44pt requirement, allowing only subpixel rounding noise.
-            XCTAssertGreaterThanOrEqual(assistant.frame.height + 0.000001, 44)
-            XCTAssertLessThan(assistant.frame.width, web.frame.width * 0.6)
+            // The assistant is secondary: no inline entry or reserved row.
+            XCTAssertFalse(app.buttons["小邮助手"].exists)
+            XCTAssertFalse(app.staticTexts["提炼要点"].exists)
+            XCTAssertLessThanOrEqual(web.frame.minY - app.buttons["邮件详细信息"].frame.maxY, 24)
             attach(dark ? "reader-legacy-html-dark" : "reader-legacy-html-light")
             if dark {
                 app.buttons["更多邮件操作"].tap(); app.buttons["查看原始样式"].tap()
@@ -478,10 +476,14 @@ final class WorkspaceTests: XCTestCase {
                 app.buttons["更多邮件操作"].tap(); app.buttons["跟随系统主题"].tap()
                 XCTAssertTrue(web.staticTexts["企业邮件正文：请确认本周工作安排。"].waitForExistence(timeout: 10))
                 attach("reader-restored-adaptive-dark")
-                assistant.tap()
+                app.buttons["更多邮件操作"].tap()
+                XCTAssertTrue(app.buttons["小邮助手"].isHittable)
+                attach("reader-secondary-actions-menu")
+                app.buttons["小邮助手"].tap()
                 XCTAssertTrue(app.buttons["配置小邮与模型服务"].waitForExistence(timeout: 5))
                 app.buttons["完成"].tap()
                 XCTAssertTrue(app.buttons["回复全部"].isHittable)
+                XCTAssertFalse(app.buttons["小邮助手"].exists)
             }
         }
     }
@@ -626,7 +628,7 @@ final class WorkspaceTests: XCTestCase {
     }
     func testAssistantFailureAndCancellationNeverExposePartialResult() {
         var app = launch(extra: ["--ui-assistant", "--ui-ai-failure"])
-        app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap(); app.buttons["小邮助手"].tap()
+        app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap(); app.buttons["更多邮件操作"].tap(); app.buttons["小邮助手"].tap()
         app.buttons["起草回复"].tap(); app.buttons["开始处理"].tap()
         XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '未返回完整文字'")).firstMatch.waitForExistence(timeout: 10)); attach("redesign-ai-failure")
         XCTAssertFalse(app.buttons["创建回复草稿"].exists)
@@ -634,7 +636,7 @@ final class WorkspaceTests: XCTestCase {
         modelFixtureControl("hold")
         defer { modelFixtureControl("release") }
         app = launch(extra: ["--ui-assistant", "--ui-ai-slow"])
-        app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap(); app.buttons["小邮助手"].tap()
+        app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap(); app.buttons["更多邮件操作"].tap(); app.buttons["小邮助手"].tap()
         app.buttons["起草回复"].tap(); app.buttons["开始处理"].tap()
         // Hold the actual request until cancellation is observed. A fixed
         // response delay races screenshot capture and taps on slower runners.
@@ -673,7 +675,7 @@ final class WorkspaceTests: XCTestCase {
             XCTAssertTrue(app.buttons["回复全部"].waitForExistence(timeout: 5))
             if large { XCTAssertLessThan(app.buttons["回复全部"].frame.height, 80); XCTAssertTrue(app.buttons["回复全部"].isHittable) }
             attach("tour-" + variant + "-reader")
-            app.buttons["小邮助手"].tap(); attach("tour-" + variant + "-assistant")
+            app.buttons["更多邮件操作"].tap(); app.buttons["小邮助手"].tap(); attach("tour-" + variant + "-assistant")
             app.buttons["提炼要点"].tap()
             XCTAssertTrue(app.buttons["开始处理"].waitForExistence(timeout: 5)); attach("tour-" + variant + "-scope")
             app.buttons["取消"].firstMatch.tap(); app.buttons["完成"].firstMatch.tap()
@@ -752,7 +754,7 @@ final class WorkspaceTests: XCTestCase {
     }
     func testUnconfiguredAssistantDoesNotOfferUploadActions() {
         let app = launch()
-        app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap(); app.buttons["小邮助手"].tap()
+        app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap(); app.buttons["更多邮件操作"].tap(); app.buttons["小邮助手"].tap()
         XCTAssertTrue(app.buttons["配置小邮与模型服务"].waitForExistence(timeout: 5)); attach("redesign-ai-unconfigured")
         XCTAssertFalse(app.buttons["提炼要点"].exists); XCTAssertFalse(app.buttons["开始处理"].exists)
     }
