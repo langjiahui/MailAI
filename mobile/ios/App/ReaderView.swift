@@ -43,10 +43,10 @@ struct ReaderView: View {
                 Text((thread.first ?? summary).subject.isEmpty ? "（无主题）" : (thread.first ?? summary).subject).font(.title2.bold()).textSelection(.enabled)
                 if thread.count > 1 {
                     ForEach(thread.sorted { ($0.date ?? .distantPast) < ($1.date ?? .distantPast) }) { item in
-                        if item.id == summary.id { messageHeader; messageContents }
+                        if item.id == summary.id { expandedMessage }
                         else { collapsedMessage(item) }
                     }
-                } else { messageHeader; messageContents }
+                } else { expandedMessage }
             }.padding(16)
         }.background(MailTheme.surface)
         .navigationTitle("邮件").navigationBarTitleDisplayMode(.inline)
@@ -110,6 +110,12 @@ struct ReaderView: View {
     @ViewBuilder private func replyActionLabel(_ title: String, symbol: String) -> some View {
         if dynamicTypeSize.isAccessibilitySize { Image(systemName: symbol).font(.title3).dynamicTypeSize(...DynamicTypeSize.xxxLarge).accessibilityLabel(title) }
         else { Label(title, systemImage: symbol) }
+    }
+    private var expandedMessage: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            messageHeader
+            VStack(alignment: .leading, spacing: 20) { messageContents }
+        }
     }
     private var messageHeader: some View {
         VStack(alignment: .leading, spacing: 8) {
