@@ -1,5 +1,6 @@
 /* After the ordinary growth browser test, exercise real server failures and recovery. */
 const assert = require('node:assert/strict');
+const {revealItem}=require('./helpers/companion-ui.cjs');
 const {chromium} = require('playwright');
 const base = 'http://127.0.0.1:18795/';
 (async()=>{
@@ -62,7 +63,7 @@ const base = 'http://127.0.0.1:18795/';
     assert(resumedBatches.every(batch=>batch.clicks===0 && !batch.learn),'Paused clicks and learning must not be awarded after resuming');
     await page.evaluate(()=>hideSystemView(true));
     // Committed purchase whose response is lost: recover the SAME request after reload.
-    await dialog.locator('[data-pet-tab="shop"]').click();
+    await dialog.locator('[data-pet-tab="wardrobe"]').click();
     const before=await page.evaluate(()=>api('/api/companion/growth'));
     assert(before.berry_today<3);
     let purchaseToken;
@@ -72,10 +73,11 @@ const base = 'http://127.0.0.1:18795/';
       assert.equal(committed.status(),200);
       await route.fulfill({status:503,contentType:'application/json',body:'{"detail":"fixture response lost after commit"}'});
     });
+    await revealItem(dialog,'berry');
     await dialog.locator('[data-pet-buy="berry"]').click();
     await dialog.locator('[data-pet-reconcile]').waitFor({state:'visible'});
     assert(await dialog.locator('[data-pet-buy="peach"]').isDisabled());
-    assert(await dialog.locator('[data-pet-equip="scarf"]').isEnabled(),'Pending purchases must allow owned outfits');
+    assert(await dialog.locator('[data-pet-item-action="scarf"]').isEnabled(),'Pending purchases must allow owned outfits');
     const committed=await page.evaluate(()=>api('/api/companion/growth'));
     assert.equal(committed.stamps,before.stamps-120);
     assert.equal(committed.berry_today,before.berry_today+1);

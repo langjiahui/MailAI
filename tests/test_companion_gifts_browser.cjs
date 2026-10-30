@@ -94,6 +94,7 @@ const {chromium,webkit}=require('playwright');
   assert.equal((await page.evaluate(()=>api('/api/companion/growth'))).gifts.length,3);
   // Claimed gifts remain discoverable from history, without retaining the original voucher.
   await dialog.locator('.pet-history [data-pet-gift-outfits]').last().click();
+  await dialog.locator('[data-pet-gift-themes]').click();
   assert.equal(await dialog.locator('[data-pet-item="theme_baowu"]').getAttribute('data-gift-focus'),'true');
   await dialog.locator('[data-pet-equip="theme_baowu"]').click();
   await page.waitForFunction(()=>document.documentElement.dataset.rewardTheme==='theme_baowu');

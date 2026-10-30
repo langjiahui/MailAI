@@ -1,5 +1,6 @@
 """Growth caps, deduplication, lifecycle hooks and atomic client-wide purchases."""
 import sys
+import json
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
@@ -13,7 +14,74 @@ from app.web.routes.companion_growth import Heartbeat
 from pydantic import ValidationError
 
 
+def test_outfit_collections():
+    with tempfile.TemporaryDirectory() as root:
+        account={'ACCOUNT_ID':'collections','DB_PATH':str(Path(root)/'mailai.db'),'IMAP_USER':'collections@example.test'}
+        with use(account):
+            db.init_db()
+            with growth.connection() as c:
+                c.execute('UPDATE companion_profile SET xp=50000,stamps=10000,earned=10000,equipped=?',
+                          (json.dumps({'accessory':'scarf'}),))
+                c.execute('INSERT INTO companion_inventory VALUES(?,?)',('scarf',growth._now().isoformat()))
+            legacy=growth.snapshot()
+            assert legacy['equipped']['neck']=='scarf'
+            assert growth.snapshot()==legacy, 'Read-time migration is idempotent'
+            for item in ('cap','satchel','wings'):
+                growth.purchase(item,token='set-test-'+item)
+            current=growth.snapshot()
+            assert {key:current['equipped'][key] for key in ('head','neck','body','back')}=={
+                'head':'cap','neck':'scarf','body':'satchel','back':'wings'}
+            post=next(s for s in current['collections'] if s['id']=='post')
+            assert post['owned']==3 and post['complete'] and post['completed_at']
+            assert not next(s for s in current['collections'] if s['id']=='cloud')['complete']
+            try:
+                growth.equip('head','armor')
+                raise AssertionError('Wrong attachment accepted')
+            except ValueError: pass
+            assert growth.snapshot()==current
+            try:
+                growth.equip_collection('star')
+                raise AssertionError('Unowned set accepted')
+            except ValueError: pass
+            assert growth.snapshot()==current
+            stamps=current['stamps']
+            full=growth.equip_collection('post')
+            assert full['stamps']==stamps and 'back' not in full['equipped']
+            assert growth.equip_collection('post')==full, 'Set changes are free and repeatable'
+            removed=growth.equip('neck','')
+            assert 'neck' not in removed['equipped'] and removed['equipped']['head']=='cap'
+            assert growth.equip('accessory','scarf')['equipped']['neck']=='scarf'
+            growth.purchase('visor')
+            replaced=growth.snapshot()
+            assert replaced['equipped']['head']=='visor' and replaced['equipped']['neck']=='scarf'
+            partial=growth.equip_collection('cloud')
+            assert partial['equipped']['head']=='visor' and partial['equipped']['back']=='wings'
+            assert 'neck' not in partial['equipped'] and 'body' not in partial['equipped']
+            # A failure partway through assembling a set must roll back the
+            # entire outfit, including parts cleared before the error.
+            real_wear=growth._wear
+            def fail_midway(equipped,item):
+                real_wear(equipped,item)
+                if item=='scarf': raise RuntimeError('Interrupted assembly')
+            try:
+                with patch.object(growth,'_wear',side_effect=fail_midway): growth.equip_collection('post')
+                raise AssertionError('Expected interrupted assembly')
+            except RuntimeError: pass
+            assert growth.snapshot()==partial
+            for item in growth.COLLECTIONS['star']: growth.purchase(item)
+            star=growth.equip_collection('star')
+            assert star['equipped']['head']=='star_crest' and star['equipped']['body']=='armor'
+            assert star['equipped']['back']=='mech_wings' and star['equipped']['palette']=='midnight'
+            assert next(s for s in star['collections'] if s['id']=='star')['complete']
+            db.init_db()
+            assert growth.snapshot()==star, 'Restart keeps the complete outfit and keepsake'
+            saved=Path(root)/'export.sqlite3';growth.export_store(saved)
+            growth.equip('head','cap');growth.import_store(saved)
+            assert all(s['complete'] for s in growth.snapshot()['collections'] if s['id'] in ('post','star'))
+
+
 def main():
+    test_outfit_collections()
     with tempfile.TemporaryDirectory() as root:
         context = {'ACCOUNT_ID':'growth-a','DB_PATH':str(Path(root)/'a.db'),'IMAP_USER':'a@example.test'}
         now = datetime(2026, 10, 10, 10, tzinfo=timezone(timedelta(hours=8)))

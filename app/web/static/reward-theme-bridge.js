@@ -101,7 +101,7 @@
   }
   let css='';
   for (const sheet of document.styleSheets) {
-    if (!sheet.href?.includes('/static/') || /(?:reward-themes|reward-theme-details|control-theme|settings-polish|home-dialog-polish|brand|date-time-picker|companion(?:-growth|-colors)?)\.css/.test(sheet.href)) continue;
+    if (!sheet.href?.includes('/static/') || /(?:reward-themes|reward-theme-details|control-theme|settings-polish|home-dialog-polish|brand|date-time-picker|companion(?:-growth|-colors|-center)?)\.css/.test(sheet.href)) continue;
     try { css+=bridge(sheet.cssRules); } catch (_) { /* A non-local stylesheet is outside the workspace. */ }
   }
   const style=document.createElement('style');

@@ -94,26 +94,28 @@
     <path d="M32 62q-10-6-11-1 1 7 13 10Z" fill="var(--pet-body)"/><path d="M32 62q-10-6-11-1 1 7 13 10Z" fill="url(#pet-feather-light)"/>
   </g></g>`;
   const mechWing = side => `<g transform="${side === 'right' ? 'translate(112 0) scale(-1 1)' : ''}"><g transform="translate(0 -6)"><g class="pet-reward-motion pet-mech-${side}">
-    <path d="M35 65Q26 60 20 65q-2 8 15 11Z" fill="url(#pet-metal)"/>
+    <path d="M35 65Q26 60 20 65q-2 8 15 11Z" fill="var(--pet-star-navy,#40537D)" stroke="#D1B178" stroke-width=".6"/>
     <g class="pet-reward-motion pet-mech-panel">
       <g class="pet-reward-motion pet-mech-feather pet-mech-feather-lower">
-        <path d="M29 69C17 66 7 65 4 69c-4 7 11 15 26 9Z" fill="url(#pet-metal)" stroke="#ABC4D8" stroke-width=".5"/>
+        <path d="M30 69C17 65-1 58-5 63c-5 8 12 19 35 15Z" fill="var(--pet-star-navy,#40537D)" stroke="#D1B178" stroke-width=".6"/>
         <path d="M8 70q8 5 18 5" fill="none" stroke="#EDF7FD" stroke-width="1" stroke-linecap="round"/>
       </g>
       <g class="pet-reward-motion pet-mech-feather pet-mech-feather-middle">
-        <path d="M30 65C17 57 3 52-2 56c-6 7 10 21 31 20Z" fill="url(#pet-pearl)" stroke="#A8C4DB" stroke-width=".5"/>
+        <path d="M30 65C16 54-8 38-13 44c-7 10 17 30 43 32Z" fill="url(#pet-pearl)" stroke="#D1B178" stroke-width=".6"/>
         <path d="M2 60q10 4 24 11-16-1-24-11Z" fill="url(#pet-glass)" opacity=".65"/>
       </g>
       <g class="pet-reward-motion pet-mech-feather pet-mech-feather-upper">
-        <path d="M31 65C20 52 3 42-6 41c-11-1-4 14 8 23 9 7 19 10 29 10Z" fill="url(#pet-pearl)" stroke="#A6C1D5" stroke-width=".55"/>
+        <path class="pet-star-feather" d="M31 65C19 49-5 20-13 24c-12 6 1 29 15 39 9 7 19 10 29 10Z" fill="var(--pet-star-navy,#40537D)" stroke="#D1B178" stroke-width=".7"/>
+        <path d="M-13 24q-4 2-4 8l7 4 4-2Z" fill="#D1B178"/>
         <path d="M-5 45C4 47 17 56 27 67 13 64 1 56-5 45Z" fill="url(#pet-glass)" opacity=".75"/>
         <path d="M-5 44Q9 47 25 63" fill="none" stroke="#FFFCF0" stroke-width="1.1" stroke-linecap="round"/>
         <path class="pet-reward-motion pet-mech-charge" d="M1 50q12 6 23 16" pathLength="100" fill="none" stroke="#F0FBFF" stroke-width="1" stroke-linecap="round"/>
         <path d="M-7 43q-2 3 1 7" fill="none" stroke="#E5BD81" stroke-width="1.6" stroke-linecap="round"/>
       </g>
     </g>
+    <g class="pet-star-fin companion-ranger-only"><path d="M32 69C14 68-13 50-16 31c-2-14 12 0 25 0 14 0 20 18 23 38Z" fill="#40537D" stroke="#D1B178" stroke-width=".8"/><path d="M28 66C13 59-1 48-10 35 4 42 18 39 28 66Z" fill="#94BDD9" opacity=".65"/><path d="m-9 37 10 9 9-1 8 12 11 9" fill="none" stroke="#E5D2A0" stroke-width=".7"/><path d="m1 43 .8 2.2L4 46l-2.2.8L1 49l-.8-2.2L-2 46l2.2-.8Z" fill="#FFE9B5"/></g>
     <path d="M32 64q-10-5-14 0 2 9 15 11Z" fill="url(#pet-pearl)" stroke="#B7CEDD" stroke-width=".45"/>
-    <circle cx="27" cy="68" r="2.5" fill="url(#pet-metal)" stroke="#E4BF8A" stroke-width=".85"/>
+    <circle cx="27" cy="68" r="2.5" fill="#40537D" stroke="#D1B178" stroke-width=".85"/>
     <circle class="pet-reward-motion pet-mech-led" cx="27" cy="68" r="1.1" fill="#F2FCFF"/>
   </g></g></g>`;
   // Both halves share the same dash timeline. The rear half sits behind the body.
@@ -194,6 +196,7 @@
             <g class="evolution-fish-young"><path d="M76 79C86 78 91 87 99 81c-5-4-5-13-1-14 4-1 6 6 5 10 5-7 11-8 11-4 0 7-6 12-12 11-5 10-15 13-26 8Z" fill="var(--pet-body)"/><path d="M76 79C86 78 91 87 99 81c-5-4-5-13-1-14 4-1 6 6 5 10 5-7 11-8 11-4 0 7-6 12-12 11-5 10-15 13-26 8Z" fill="url(#pet-feather-light)"/></g>
             <g class="evolution-fish-mature"><path d="M76 79C86 78 91 87 99 80c-6-6-5-16-1-17 6-1 8 9 6 14 7-9 16-12 16-6 0 10-8 16-16 14-6 11-17 13-28 7Z" fill="var(--pet-body)"/><path d="M76 79C86 78 91 87 99 80c-6-6-5-16-1-17 6-1 8 9 6 14 7-9 16-12 16-6 0 10-8 16-16 14-6 11-17 13-28 7Z" fill="url(#pet-feather-light)"/></g>
           </g></g>
+<g class="growth-star-tail"><g class="companion-nature-only"><path d="M77 88C98 85 108 105 122 96l-6 9c-17 1-24-15-39-13Z M77 88c16 1 27-14 38-9l-1 6c-11-4-19 13-36 8Z" fill="#40537D" stroke="#D1B178" stroke-width=".6"/></g><g class="companion-ranger-only"><path d="M77 85c19 1 24-17 40-13l-5 16 10 12c-21 1-27-9-45-8Z" fill="#40537D" stroke="#D1B178" stroke-width=".7"/><path d="m87 88 25-12-8 12 12 8-29-5" fill="#A6C4E1" opacity=".65"/></g></g>
         </g>
         </g></g>
         ${creatureFlightWing('left')}${creatureFlightWing('right')}
@@ -220,6 +223,7 @@
           <g class="companion-ranger-only evolution-fish-fin">${fishFinSurface('M62 31C64 27 69 23 72 25c2 2 0 5-1 8Z')}</g>
           <path class="companion-ranger-only evolution-star-mark" d="m55 32 1.2 3.5L60 37l-3.8 1.2L55 42l-1.2-3.8L50 37l3.8-1.5Z" fill="url(#pet-gold)"/>
           <g class="growth-cap"><path d="M31 32C29 24 39 18 52 19c14 0 24 6 23 13-10 5-33 7-44 0Z" fill="var(--pet-cloth)"/><path d="M31 32C29 24 39 18 52 19c14 0 24 6 23 13-10 5-33 7-44 0Z" fill="url(#pet-feather-light)"/><path d="M29 32q23 4 47-2 8 3 5 6-12 6-27 3-14-1-25-4Z" fill="var(--pet-cloth-edge)"/><path class="pet-reward-motion pet-cap-shine" d="M47 24h12v8H47Zm0 0 6 4 6-4" fill="#FFF2D5" stroke="#FFF9E9" stroke-width=".4" stroke-linejoin="round"/></g>
+<g class="growth-star-crest"><path d="M28 35q27-13 56 0l-2 3q-27-11-52 0Z" fill="#40537D" stroke="#D1B178" stroke-width=".6"/><path d="m55 23 3 7 8 3-8 3-3 7-3-7-8-3 8-3Z" fill="#F1D7A3"/><path d="m55 27 1.8 4.2 4.2 1.8-4.2 1.8-1.8 4.2-1.8-4.2-4.2-1.8 4.2-1.8Z" fill="#7095C6"/><path class="pet-reward-motion pet-cap-shine" d="m55 28 0 10" stroke="#D9EAF7" stroke-width=".7"/></g>
         <g class="companion-look"><g class="companion-head">
           <g class="companion-gaze">
             <g class="companion-eyes" fill="url(#pet-eye)"><ellipse cx="43" cy="54" rx="3.4" ry="4.8"/><ellipse cx="67" cy="54" rx="3.4" ry="4.8"/><g fill="white"><circle cx="42" cy="52.3" r="1.1"/><circle cx="66" cy="52.3" r="1.1"/><circle cx="44.2" cy="56" r=".55" opacity=".35"/><circle cx="68.2" cy="56" r=".55" opacity=".35"/></g></g>
@@ -257,11 +261,13 @@
           <path d="M44 80q4 3 9 4l-2 7q-6-3-7-11Z" fill="url(#pet-glass)" opacity=".65"/>
           <g class="pet-reward-motion pet-armor-core"><circle cx="39" cy="78" r="4" fill="url(#pet-glass)" stroke="#F6E8C7" stroke-width=".75"/><path d="m39 75 1 2 2 .9-2 .9-1 2-1-2-2-.9 2-.9Z" fill="#FFFDF3"/><circle class="pet-reward-motion pet-core-ring" cx="39" cy="78" r="4.8" fill="none" stroke="#D3E7EE" stroke-width=".5" pathLength="100"/></g>
         </g>
+<g class="growth-postbag"><path d="M29 68q15 17 45 25" fill="none" stroke="#92714B" stroke-width="2.5"/><rect x="17" y="83" width="22" height="14" rx="3" fill="#A88258" stroke="#7D6247" stroke-width=".65"/><path d="M18 84h20v6q-11 6-20 0Z" fill="#C49C6B" stroke="#E2C794" stroke-width=".5"/><rect x="26" y="89" width="4" height="5" rx="1" fill="#EAD4A6"/><path d="m22 86 4 3 5-3" fill="none" stroke="#F3E5C8" stroke-width=".7"/></g>
         <g class="growth-scarf"><g class="pet-reward-motion pet-scarf-tail"><path d="M34 76q2 6-3 13 3 5 9 5 8-8 4-17Z" fill="#E9B895"/><g class="pet-reward-motion pet-scarf-tip"><path d="m32 88 10 3-2 5q-8-1-10-5Z" fill="#DCA686"/><path d="m33 91 5 2" stroke="#FCE3C4" stroke-width=".8"/></g></g><path d="M28 69q26 9 55 0l-1 7q-25 10-52 0Z" fill="url(#pet-peach)"/><path d="M30 70q25 8 51 0" stroke="#FFE4CC" stroke-width="1"/><path d="M32 74q19 6 39 1" fill="none" stroke="#FFF6E5" stroke-width=".6" stroke-dasharray="1.2 2"/><path d="M34 73q-4 4 1 7l7-1q3-5-1-7Z" fill="#EDBE9C"/></g>
         <g class="companion-dock-free"><g class="companion-arm-left"><g class="companion-rest-wing"><g class="companion-nature-only">${babyWing}</g><g class="companion-ranger-only">${fishFlipper}</g></g><g class="companion-edge-grip"><path d="M31 63C21 64 8 56 7 48C5 43 8 40 12 41C11 37 16 35 20 39C22 35 27 38 26 43C30 40 34 44 31 49C28 54 37 57 35 61Q34 64 31 63Z" fill="var(--pet-body)"/><path d="M31 63C21 64 8 56 7 48C5 43 8 40 12 41C11 37 16 35 20 39C22 35 27 38 26 43C30 40 34 44 31 49C28 54 37 57 35 61Q34 64 31 63Z" fill="url(#pet-feather-light)"/><path d="M13 43q3 5 7 7M23 43q1 4 4 6" stroke="#EAF6FF" stroke-width=".8" stroke-linecap="round" opacity=".7"/></g></g>
         </g>
         <g class="companion-dock-carry"><g class="companion-carry">
           <g class="companion-bag"><g transform="rotate(8 67 79)"><rect x="56" y="69" width="24" height="22" rx="3.3" fill="url(#pet-letter)" stroke="#E4D7B7" stroke-width=".35"/><path d="m57 71 11 9 11-9" stroke="#DDCBA2" stroke-width=".8" stroke-linejoin="round"/><path class="growth-satchel-details" d="M57 70h22v9q-10 6-22 0Z" fill="url(#pet-satchel)" stroke="#CDAE78" stroke-width=".45"/><path class="growth-satchel-details" d="M66 78h4v5h-4Z" fill="#FFF0C7" stroke="#BA9C68" stroke-width=".45"/><path class="growth-satchel-details" d="M60 83h5v5h-5Z" fill="#F8E4BA" stroke="#CCAB77" stroke-width=".6" stroke-dasharray=".8 .8"/><path class="pet-reward-motion pet-satchel-glint" d="m58 70 9 18m-4-18 9 18" stroke="#FFFDF2" stroke-width="1" stroke-linecap="round"/></g></g>
+<g class="growth-collection-seal"><circle cx="69" cy="81" r="3" fill="var(--pet-seal-color,#40537D)" stroke="#D1B178" stroke-width=".6"/><path d="m69 78.8 .7 1.5 1.5.7-1.5.7-.7 1.5-.7-1.5-1.5-.7 1.5-.7Z" fill="#FFF0CB"/></g>
           <g class="companion-wave"><g class="companion-nature-only"><path d="M82 65C89 62 95 69 92 77c-2 7-9 10-16 9-5-1-6-4-2-6-3-1-1-4 3-5 6-1 8-5 5-10Z" fill="var(--pet-body)"/><path d="M82 65C89 62 95 69 92 77c-2 7-9 10-16 9-5-1-6-4-2-6-3-1-1-4 3-5 6-1 8-5 5-10Z" fill="url(#pet-feather-light)"/></g><g class="companion-ranger-only"><path d="M82 65C89 62 95 69 92 77c-2 7-9 10-16 9-6-1-6-6-1-9 7-2 10-6 7-12Z" fill="var(--pet-body)"/><path d="M82 65C89 62 95 69 92 77c-2 7-9 10-16 9-6-1-6-6-1-9 7-2 10-6 7-12Z" fill="url(#pet-feather-light)"/></g></g>
         </g></g>
       </g>

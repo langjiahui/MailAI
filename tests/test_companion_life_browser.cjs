@@ -67,9 +67,9 @@ require('node:fs').mkdirSync('output/xiaoyou-upgrade',{recursive:true});
     }
     // Costumes remain optional, and never become permanent parts of either creature.
     for (const [item,equipped] of [['cap','.growth-cap'],['scarf','.growth-scarf']]) {
-      await page.evaluate(item=>{document.body.dataset.petAccessory=item;},item);
+      await page.evaluate(item=>{document.body.dataset.petAccessory=item;document.body.dataset.petOutfits=item;},item);
       assert.equal(await hero.locator(equipped).evaluate(el=>getComputedStyle(el).display),'block');
-      await page.evaluate(()=>{document.body.dataset.petAccessory='';});
+      await page.evaluate(()=>{document.body.dataset.petAccessory='';document.body.dataset.petOutfits='';});
       assert.equal(await hero.locator(equipped).evaluate(el=>getComputedStyle(el).display),'none');
     }
     await page.evaluate(()=>mailaiPet.refresh());
@@ -115,8 +115,9 @@ require('node:fs').mkdirSync('output/xiaoyou-upgrade',{recursive:true});
     await page.evaluate(()=>{document.body.classList.add('companion-still');mailaiCompanionMotion.react('signature');});
     assert.equal(await hero.getAttribute('data-motion-active'),'false');
     await page.evaluate(()=>{document.body.classList.remove('companion-still');mailaiCompanionMotion.react('signature');});
-    await page.locator('.pet-journal-body').evaluate(el=>el.scrollTop=el.scrollHeight);
+    await page.locator('.pet-hero-portrait').evaluate(el=>el.style.transform='translateX(-200vw)');
     await page.waitForFunction(()=>document.querySelector('.pet-hero-portrait .mail-companion').dataset.motionActive==='false');
+    await page.locator('.pet-hero-portrait').evaluate(el=>el.style.transform='');
     await page.keyboard.press('Escape');
     assert.equal(await hero.getAttribute('data-motion-active'),'false');
     // A milestone is emitted only for a real transition, not initial loading.

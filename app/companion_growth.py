@@ -42,10 +42,50 @@ ITEMS = {
     'armor': {'slot': 'accessory', 'cost': 380, 'stage': 4},
     'lightning': {'slot': 'effect', 'cost': 480, 'stage': 4},
     'mech_wings': {'slot': 'accessory', 'cost': 700, 'stage': 5},
+    'star_crest': {'slot': 'accessory', 'cost': 320, 'stage': 4},
     'theme_monochrome': {'slot': 'theme', 'cost': 300, 'stage': 1},
     'theme_baowu': {'slot': 'theme', 'cost': 480, 'stage': 1},
     'berry': {'slot': 'consumable', 'cost': 120, 'stage': 1, 'xp': 80},
 }
+
+# Keep the public accessory category and legacy gift IDs. Equipment is now
+# resolved by physical attachment, so collecting a set also allows wearing it.
+OUTFIT_SLOTS = {'cap': 'head', 'visor': 'head', 'star_crest': 'head',
+                'scarf': 'neck', 'satchel': 'body', 'jacket': 'body',
+                'armor': 'body', 'wings': 'back', 'mech_wings': 'back'}
+COLLECTIONS = {
+    'post': ('cap', 'scarf', 'satchel'),
+    'cloud': ('visor', 'jacket', 'wings'),
+    'star': ('star_crest', 'armor', 'mech_wings', 'midnight'),
+}
+
+
+def _outfit(raw):
+    """Read legacy single accessories without rewriting a read transaction."""
+    equipped = json.loads(raw) if isinstance(raw, str) else dict(raw)
+    legacy = equipped.get('accessory')
+    if legacy in OUTFIT_SLOTS and not any(slot in equipped for slot in OUTFIT_SLOTS.values()):
+        equipped[OUTFIT_SLOTS[legacy]] = legacy
+    return equipped
+
+
+def _wear(equipped, item_id):
+    slot = OUTFIT_SLOTS.get(item_id, ITEMS[item_id]['slot'])
+    equipped[slot] = item_id
+    if item_id in OUTFIT_SLOTS:
+        equipped['accessory'] = item_id  # Older clients still see the last accessory.
+
+
+def _remove(equipped, slot):
+    if slot == 'accessory':
+        slot = OUTFIT_SLOTS.get(equipped.get('accessory'), slot)
+    removed = equipped.pop(slot, None)
+    if removed == equipped.get('accessory'):
+        remaining = [equipped[s] for s in ('head', 'neck', 'body', 'back') if equipped.get(s)]
+        if remaining:
+            equipped['accessory'] = remaining[-1]
+        else:
+            equipped.pop('accessory', None)
 
 
 def initialize(c, *, mailbox=True):
@@ -429,7 +469,8 @@ def _snapshot(c, now=None):
     today = c.execute('SELECT * FROM companion_days WHERE day=?', (now.date().isoformat(),)).fetchone()
     counts = json.loads(today['counts']) if today else {}
     completed = json.loads(today['quests']) if today else []
-    inventory = {r['item'] for r in c.execute('SELECT item FROM companion_inventory')}
+    acquired = {r['item']: r['acquired_at'] for r in c.execute('SELECT item,acquired_at FROM companion_inventory')}
+    inventory = set(acquired)
     last = profile['last_day']
     streak = profile['streak'] if last in (now.date().isoformat(), (now.date()-timedelta(days=1)).isoformat()) else 0
     from .companion_gifts import recipient_code
@@ -441,13 +482,17 @@ def _snapshot(c, now=None):
         'xp': profile['xp'], 'stamps': profile['stamps'], 'earned': profile['earned'],
         'enabled': bool(profile['enabled']), 'stage': stage, 'stage_floor': STAGES[stage-1],
         'next_stage_xp': STAGES[stage] if stage < len(STAGES) else None,
-        'streak': streak, 'day': now.date().isoformat(), 'style': profile['style'], 'equipped': json.loads(profile['equipped']),
+        'streak': streak, 'day': now.date().isoformat(), 'style': profile['style'], 'equipped': _outfit(profile['equipped']),
+        'collections': [{'id': name, 'items': list(items), 'owned': sum(item in inventory for item in items),
+                         'complete': all(item in inventory for item in items),
+                         'completed_at': max(acquired[item] for item in items) if all(item in inventory for item in items) else None}
+                        for name, items in COLLECTIONS.items()],
         'today': {'counts': counts, 'xp': today['xp'] if today else 0, 'stamps': today['stamps'] if today else 0},
         'rules': {kind: {'cap': cap, 'unit': unit, 'xp': xp, 'stamps': stamps} for kind, (cap, unit, xp, stamps) in RULES.items()},
         'quests': [{'id': quest, 'metric': metric, 'target': target, 'xp': xp, 'stamps': stamps,
                     'progress': min(target, counts.get(metric, 0)), 'complete': quest in completed}
                    for quest, (metric, target, xp, stamps) in QUESTS.items()],
-        'items': [{'id': name, **item, 'owned': name in inventory} for name, item in ITEMS.items()],
+        'items': [{'id': name, **item, 'equip_slot': OUTFIT_SLOTS.get(name, item['slot']), 'owned': name in inventory} for name, item in ITEMS.items()],
         'stages': list(STAGES),
         'history': [{'day': r['day'], 'xp': r['xp'], 'stamps': r['stamps']} for r in
                     c.execute('SELECT day,xp,stamps FROM companion_days ORDER BY day DESC LIMIT 14')],
@@ -545,8 +590,8 @@ def purchase(item_id, token=''):
             _save_day(c, row)
         else:
             c.execute('INSERT INTO companion_inventory VALUES(?,?)', (item_id, _now().isoformat()))
-            equipped = json.loads(profile['equipped'])
-            equipped[item['slot']] = item_id
+            equipped = _outfit(profile['equipped'])
+            _wear(equipped, item_id)
             c.execute('UPDATE companion_profile SET equipped=? WHERE id=1', (json.dumps(equipped),))
         c.execute('INSERT INTO companion_purchases VALUES(?,?,?,?,?)',
                   (token, item_id, item['cost'], item.get('xp', 0), _now().isoformat()))
@@ -554,18 +599,39 @@ def purchase(item_id, token=''):
 
 
 def equip(slot, item_id):
-    if slot not in ('palette', 'accessory', 'effect', 'theme'):
+    if slot not in ('palette', 'accessory', 'effect', 'theme', 'head', 'neck', 'body', 'back'):
         raise ValueError('装扮位置无效')
     with connection() as c:
         c.execute('BEGIN IMMEDIATE')
-        if item_id and (item_id not in ITEMS or ITEMS[item_id]['slot'] != slot or not c.execute(
+        if item_id and (item_id not in ITEMS or slot not in (ITEMS[item_id]['slot'], OUTFIT_SLOTS.get(item_id)) or not c.execute(
                 'SELECT 1 FROM companion_inventory WHERE item=?', (item_id,)).fetchone()):
             raise ValueError('请先兑换此装扮')
-        equipped = json.loads(_profile(c)['equipped'])
+        equipped = _outfit(_profile(c)['equipped'])
         if item_id:
-            equipped[slot] = item_id
+            _wear(equipped, item_id)
         else:
+            _remove(equipped, slot)
+        c.execute('UPDATE companion_profile SET equipped=? WHERE id=1', (json.dumps(equipped),))
+        return _snapshot(c)
+
+
+def equip_collection(collection_id):
+    items = COLLECTIONS.get(collection_id)
+    if not items:
+        raise ValueError('套系不存在')
+    with connection() as c:
+        c.execute('BEGIN IMMEDIATE')
+        inventory = {r['item'] for r in c.execute('SELECT item FROM companion_inventory')}
+        owned = [item for item in items if item in inventory]
+        if not owned:
+            raise ValueError('请先收藏此套系中的装扮')
+        equipped = _outfit(_profile(c)['equipped'])
+        # Replace the outfit as one transaction; missing pieces remain empty,
+        # instead of leaving a misleading mixture of two different sets.
+        for slot in ('head', 'neck', 'body', 'back', 'palette', 'effect', 'accessory'):
             equipped.pop(slot, None)
+        for item in owned:
+            _wear(equipped, item)
         c.execute('UPDATE companion_profile SET equipped=? WHERE id=1', (json.dumps(equipped),))
         return _snapshot(c)
 

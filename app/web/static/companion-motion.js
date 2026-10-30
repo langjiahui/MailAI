@@ -14,6 +14,12 @@
   };
   const style = () => Object.hasOwn(profiles,document.body.dataset.petStyle) ? document.body.dataset.petStyle : 'nature';
   const clips = {
+    collectionPost: {duration:2800,frames:[
+      [0,{}], [.18,{head:pose(0,2,5),carry:pose(0,-1,-5)}],
+      [.38,{torso:pose(0,-2),carry:pose(0,-3,-10),'arm-left':pose(0,0,12)}],
+      [.62,{figure:pose(0,-4),head:pose(0,-1,-3),carry:pose(0,-3,-12),'arm-left':pose(0,0,25)}],
+      [.8,{figure:pose(0,-1),carry:pose(0,-1,-4)}], [1,{}],
+    ]},
     dispatch: {duration:2100,frames:[
       [0,{}], [.2,{torso:pose(0,-1),head:pose(0,2,5),wave:pose(-2,0,-24)}],
       [.42,{head:pose(2,1,3),wave:pose(-3,-1,-38),bag:pose(0,-2,-12)}],

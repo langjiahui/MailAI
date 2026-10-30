@@ -32,7 +32,7 @@ const port=Number(process.env.MAILAI_EVOLUTION_FIXTURE_PORT||18857);
   const hero=page.locator('.pet-hero-portrait .mail-companion');
   const has=selector=>hero.locator(selector).first().evaluate(n=>n.getBoundingClientRect().width>0&&getComputedStyle(n).visibility!=='hidden');
   for(const style of ['nature','ranger'])for(let stage=1;stage<=7;stage++){
-   await page.evaluate(({style,stage})=>Object.assign(document.body.dataset,{petStyle:style,petStage:String(stage),petAccessory:'',petEffect:'',petPalette:'mint'}),{style,stage});
+   await page.evaluate(({style,stage})=>Object.assign(document.body.dataset,{petStyle:style,petStage:String(stage),petAccessory:'',petOutfits:'',petCollection:'',petSeal:'',petEffect:'',petPalette:'mint'}),{style,stage});
    assert.equal(await has('.companion-foot-left'),style==='nature');
    assert.equal(await has('.evolution-crest-one'),style==='nature'&&stage>=2);
    assert.equal(await has('.evolution-crest-two'),style==='nature'&&stage>=4);
@@ -53,14 +53,14 @@ const port=Number(process.env.MAILAI_EVOLUTION_FIXTURE_PORT||18857);
   // Native flight wings replace neither the face nor the front letter-holding
   // flipper. Equipping another wing set must hide them and unequipping restore them.
   for(const [style,wing] of [['nature','.evolution-wing-grown'],['ranger','.evolution-peng-wing']]){
-   await page.evaluate(style=>Object.assign(document.body.dataset,{petStyle:style,petStage:'7',petAccessory:''}),style);
+   await page.evaluate(style=>Object.assign(document.body.dataset,{petStyle:style,petStage:'7',petAccessory:'',petOutfits:''}),style);
    assert(await has(wing));
    for(const accessory of ['wings','mech_wings']){
-    await page.evaluate(accessory=>document.body.dataset.petAccessory=accessory,accessory);
+    await page.evaluate(accessory=>{document.body.dataset.petAccessory=accessory;document.body.dataset.petOutfits=accessory;},accessory);
     assert.equal(await has(wing),false,'Only the equipped wing set is visible');
     assert(await has('.companion-wave'),'The letter-holding flipper remains visible');
    }
-   await page.evaluate(()=>document.body.dataset.petAccessory='');
+   await page.evaluate(()=>{document.body.dataset.petAccessory='';document.body.dataset.petOutfits='';});
    assert(await has(wing),'Native wings return after unequipping');
   }
   // Stage thumbnails show their own anatomy, not the current body's stage or costume.
@@ -68,6 +68,7 @@ const port=Number(process.env.MAILAI_EVOLUTION_FIXTURE_PORT||18857);
   await page.locator('[data-pet-tab="journey"]').click();
   assert.equal(await page.locator('.pet-evolution-preview').count(),7);
   for(const stage of [1,7]){
+   await page.locator(`[data-pet-journey-stage="${stage}"]`).click();
    const thumbnail=page.locator(`.pet-evolution-preview [data-evolution-stage="${stage}"]`);
    assert.equal(await thumbnail.locator('.evolution-crest-three').evaluate(n=>n.getBoundingClientRect().width>0),stage===7);
    assert.equal(await thumbnail.locator('.evolution-flipper-baby').evaluate(n=>getComputedStyle(n).display==='none'),stage===7,'Fin previews use their own growth stage');

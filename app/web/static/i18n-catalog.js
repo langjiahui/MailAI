@@ -1,5 +1,53 @@
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "pet.journeyEyebrow": ["陪伴的模样", "GROWING TOGETHER"],
+  "pet.seeCollections": ["看看套系", "See collections"],
+  "pet.dailyCollectionHint": ["日常陪伴得到的邮票，可以慢慢补全喜欢的一套。", "Stamps from everyday companionship bring your favorite collection closer."],
+  "pet.goToPage": ["第 {0} 页", "Page {0}"],
+  "pet.pageOf": ["第 {0} / {1} 页", "Page {0} of {1}"],
+  "pet.wardrobePages": ["衣橱分页", "Wardrobe pages"],
+  "pet.backToWardrobe": ["返回衣橱", "Back to wardrobe"],
+  "pet.slot.back": ["背饰", "Back"],
+  "pet.slot.body": ["身体 / 邮包", "Body / bag"],
+  "pet.slot.neck": ["颈饰", "Neck"],
+  "pet.slot.head": ["头饰", "Head"],
+  "pet.slotEmpty": ["未穿戴", "Empty"],
+  "pet.currentLook": ["查看当前穿戴", "View equipped pieces"],
+  "pet.nextCollectionPiece": ["下一件：{0}", "Next piece: {0}"],
+  "pet.freeStyling": ["自由搭配", "Mix your own look"],
+  "pet.setWorn": ["已穿戴这套已收藏的部件，不花费邮票。", "Collected pieces equipped. No stamps spent."],
+  "pet.wearCollected": ["穿戴已收藏部件", "Wear collected pieces"],
+  "pet.wearSet": ["穿戴整套", "Wear full set"],
+  "pet.setCompletedOn": ["收藏完成于 {0}", "Completed on {0}"],
+  "pet.setKeepsakeHint": ["集齐后点亮收藏邮戳，穿戴全套时获得专属信封封签。", "Complete the collection to unlock its stamp and an envelope seal when wearing the full set."],
+  "pet.setKeepsake": ["集齐，留下你们的纪念", "A keepsake for completing your collection"],
+  "pet.setComplete": ["整套已集齐 · 纪念邮戳已点亮", "Collection complete · Keepsake unlocked"],
+  "pet.collectionSeries": ["成套收藏", "COLLECTION"],
+  "pet.flagship": ["旗舰套系", "FLAGSHIP COLLECTION"],
+  "pet.collectionsHint": ["每件都有归属，每次积累都看得见。", "A place for every piece, and progress you can see."],
+  "pet.collectionsTitle": ["从一件，到完整一套", "From a first piece to a complete look"],
+  "pet.collectionsEyebrow": ["小邮 · 收藏旅程", "XIAOYOU · COLLECTION JOURNEY"],
+  "pet.setPreviewSafe": ["这里只试穿，不花费邮票，也不改变当前穿戴。", "Preview only. No stamps spent or equipped items changed."],
+  "pet.fullSetPreview": ["完整套装预览", "FULL COLLECTION PREVIEW"],
+  "pet.yourCompanion": ["你的陪伴伙伴", "YOUR COMPANION"],
+  "pet.spacePurpose": ["读信、工作，也收集属于你们的旅程。", "Read, work, and collect a journey of your own."],
+  "pet.spaceGreeting": ["和小邮一起，慢慢积累", "A little closer, every day"],
+  "pet.spaceEyebrow": ["陪伴 · 收藏", "TOGETHER · COLLECT"],
+  "pet.nav.history": ["成长记录", "History"],
+  "pet.nav.themes": ["工作区主题", "Themes"],
+  "pet.nav.gifts": ["领取礼物", "Gifts"],
+  "pet.nav.journey": ["进化旅程", "Evolution"],
+  "pet.nav.wardrobe": ["自由搭配", "Wardrobe"],
+  "pet.nav.shop": ["套系收藏", "Collections"],
+  "pet.nav.today": ["日常陪伴", "Together"],
+  "pet.itemHint.star_crest": ["珍珠蓝星邮徽，连接星海巡邮的完整造型。", "A pearl-blue star-post crest, part of the Star courier collection."],
+  "pet.item.star_crest": ["星邮额饰", "Star-post crest"],
+  "pet.setAction": ["寄出纪念信", "Send a keepsake letter"],
+  "pet.collectionUnowned": ["请先收藏此套系中的装扮", "Collect a piece from this collection first"],
+  "pet.collectionMissing": ["套系不存在", "Collection not found"],
+  "pet.setWearHint": ["整套搭配会替换当前装扮，未收藏的部位留空。", "Replaces your current outfit; uncollected slots are left empty."],
+  "pet.giftViewThemes": ["查看礼包主题", "View gifted themes"],
+  "pet.giftOutfitContext": ["礼包中的收藏已标记", "Gift items are highlighted"],
   "mailRecovery.historyFailure": ["历史大邮件下载失败：{0}", "Large historical message download failed: {0}"],
   "mailRecovery.autoLimits": ["大邮件会自动分段下载，单封最多 256 MB。失败会保留问题记录并重试；下载仅保存本机副本，不修改服务器邮件。", "Large messages are downloaded automatically in chunks, up to 256 MB each. Failed downloads remain queued for retry. Only local copies are saved; server messages are unchanged."],
   "mailRecovery.signIn": ["邮箱登录已失效，请重新登录或更新授权码。", "Mailbox sign-in has expired. Sign in again or update the app password."],
@@ -97,8 +145,8 @@ const MAILAI_UI_COPY = {
   "pet.receipt.worn": ["已穿戴「{0}」 · 本次不花费邮票", "Equipped {0} · No stamps spent"],
   "pet.receipt.removed": ["已取下「{0}」 · 本次不花费邮票", "Removed {0} · No stamps spent"],
   "pet.receiptClose": ["收起操作结果", "Dismiss result"],
-  "pet.sameSlotHint": ["同类装扮一次穿戴一件", "One item per slot at a time"],
-  "pet.wardrobeTitle": ["给小邮换个新模样", "A new look for XiaoYou"],
+  "pet.sameSlotHint": ["同一部位一次穿戴一件，可与其他部位组合", "One item per slot; combine with other slots"],
+  "pet.wardrobeTitle": ["自由搭配", "Your wardrobe"],
   "pet.wardrobeHint": ["看看当前搭配，再挑一件喜欢的。", "Review your current look, then find a new favorite."],
   "pet.slot.accessory": ["当前装扮", "Outfit"],
   "pet.slot.palette": ["当前配色", "Palette"],
@@ -368,12 +416,12 @@ const MAILAI_UI_COPY = {
   "pet.nextLookHint": ["再积累 {0} 成长，迎接新的形态和专属动作。现在就能提前试穿。", "{0} more growth brings a new form and signature move. Preview it now."],
   "pet.nextLook": ["下一站 · {0}", "Next stop · {0}"],
   "pet.collectionExplore": ["试穿看看", "Try this look"],
-  "pet.collection.star.tag": ["珍珠轻甲 · 流光羽片", "PEARL ARMOR · LUMINOUS WINGS"],
-  "pet.collection.star": ["星海远行", "Star voyager"],
-  "pet.collection.cloud.tag": ["清透镜片 · 轻盈羽翼", "CLEAR LENSES · LIGHT FEATHERS"],
-  "pet.collection.cloud": ["云游探险", "Cloud explorer"],
-  "pet.collection.post.tag": ["柔软织物 · 暖金细节", "SOFT FABRIC · WARM GOLD"],
-  "pet.collection.post": ["日常信使", "Everyday post"],
+  "pet.collection.star.tag": ["午夜靛蓝与珍珠白，寄出属于你的星海来信。", "Midnight indigo and pearl, carrying letters across the stars."],
+  "pet.collection.star": ["星海巡邮", "Star courier"],
+  "pet.collection.cloud.tag": ["雾青与蜂蜜金，带上护目镜去远航。", "Mist teal and honey gold, ready for an expedition."],
+  "pet.collection.cloud": ["云间远航", "Cloud expedition"],
+  "pet.collection.post.tag": ["邮政蓝与暖铜，织物与皮革的日常信使。", "Postal blue, warm brass, soft fabric and leather."],
+  "pet.collection.post": ["晨光邮局", "Morning post"],
   "pet.collectionCount": ["已收藏装扮", "collected rewards"],
   "pet.boutiqueHint": ["圆润的小信使，也有自己的风格。先试穿，再看看它动起来的样子。", "A little messenger with a style of its own. Try a look and see it come to life."],
   "pet.boutiqueTitle": ["为下一段旅程，挑件喜欢的", "A little something for the next journey"],
@@ -724,7 +772,7 @@ const MAILAI_UI_COPY = {
   "pet.giftPermanent": ["永久拥有 · 无成长门槛", "Permanent · No level requirement"],
   "pet.giftAlreadyOwned": ["已在装扮库中", "Already in your collection"],
   "pet.giftOwned": ["已领取 · 永久拥有", "Claimed · Yours to keep"],
-  "pet.giftSlotHint": ["同类配饰或特效一次穿戴一件，可以随时切换。", "Equip one accessory and one effect at a time. Switch them whenever you like."],
+  "pet.giftSlotHint": ["同一部位一次穿戴一件，不同部位可组合，随时免费切换。", "Combine items from different slots. Each slot holds one item; switching is free."],
   "pet.giftViewOutfits": ["查看装扮", "View outfits"],
   "pet.giftViewOutfitsNamed": ["查看“{0}”中的装扮", "View outfits from {0}"],
   "pet.giftDeadline": ["领取截止：{0}", "Claim by: {0}"],
@@ -14390,22 +14438,13 @@ const MAILAI_UI_COPY = {
     "实测失败：",
     "Live check failed: "
   ],
-  "pet.launch": [
-    "小邮养成",
-    "XiaoYou growth"
-  ],
+  "pet.launch": ["小邮空间", "XiaoYou space"],
   "pet.settingsHint": [
     "一起读信、学习和工作，解锁成长形态与装扮。",
     "Read, learn and work together to unlock new forms and outfits."
   ],
-  "pet.open": [
-    "养成手账",
-    "Growth journal"
-  ],
-  "pet.close": [
-    "关闭养成手账",
-    "Close growth journal"
-  ],
+  "pet.open": ["小邮空间", "XiaoYou space"],
+  "pet.close": ["关闭小邮空间", "Close XiaoYou space"],
   "pet.level": [
     "{0}级",
     "Lv.{0}"
@@ -14668,10 +14707,7 @@ const MAILAI_UI_COPY = {
   "pet.previewing": ["正在预览：{0}", "Previewing: {0}"],
   "pet.previewSafe": ["试穿、切换成长形态和试玩动作都不消耗邮票，也不会改变当前装扮。", "Trying outfits, growth stages and moves uses no stamps and leaves your equipped look unchanged."],
   "pet.previewStatic": ["轻动效已关闭或系统已启用减少动态效果，当前显示静态预览。", "Companion motion is off or your system requests reduced motion. A static preview is shown."],
-  "pet.shopNote": [
-    "永久装扮兑换后自动穿戴，同类配饰或特效一次穿戴一个。花费邮票不会扣除成长度。轻动效开关和系统减少动态效果设置同时适用于成长特效。",
-    "Permanent outfits equip automatically. One item per slot can be equipped at a time. Spending stamps never reduces growth. The companion animation preference and system reduced-motion setting apply to growth effects."
-  ],
+  "pet.shopNote": ["永久装扮兑换后自动穿戴；同一部位一次穿戴一件，不同部位可以组合。花费邮票不会扣除成长度。", "Permanent items are equipped on redemption. Combine different outfit slots; each slot holds one item. Spending stamps does not reduce growth."],
   "pet.historyTitle": [
     "一起成长的日子",
     "Days of growing together"
@@ -14712,10 +14748,7 @@ const MAILAI_UI_COPY = {
     "累计获得邮票",
     "Lifetime stamps"
   ],
-  "pet.tabs": [
-    "养成手账页面",
-    "Growth journal pages"
-  ],
+  "pet.tabs": ["小邮空间页面", "XiaoYou space pages"],
   "pet.today": [
     "今日成长",
     "Today"

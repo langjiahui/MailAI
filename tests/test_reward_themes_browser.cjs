@@ -1,5 +1,6 @@
 /* Fresh isolated growth fixture; no real mailbox/model/network services. */
 const assert = require('node:assert/strict');
+const {revealItem}=require('./helpers/companion-ui.cjs');
 const {chromium,webkit} = require('playwright');
 (async()=>{
   const browser = await (process.env.MAILAI_BROWSER==='webkit'?webkit:chromium).launch({headless:true});
@@ -158,10 +159,12 @@ const {chromium,webkit} = require('playwright');
     await page.screenshot({path:'/tmp/mailai-theme-baowu-dark.png'});
     await page.evaluate(()=>window.mailaiPet.openThemes());
     // Individual pet palettes take priority; skin does not replace gear or XP.
+    await revealItem(dialog,'sky');
     await dialog.locator('[data-pet-buy="sky"]').click();
     await page.waitForFunction(()=>document.body.dataset.petPalette === 'sky');
     assert.equal(await dialog.locator('.pet-hero .growth-body').evaluate(node=>getComputedStyle(node).fill),'rgb(131, 181, 212)');
     const balance=(await page.evaluate(()=>api('/api/companion/growth'))).stamps;
+    await dialog.locator('[data-pet-tab="themes"]').click();
     await dialog.locator('.pet-themes-title [data-pet-slot="theme"]').click();
     await page.waitForFunction(()=>!document.documentElement.dataset.rewardTheme);
     await dialog.locator('[data-pet-equip="theme_baowu"]').click();

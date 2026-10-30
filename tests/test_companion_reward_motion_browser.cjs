@@ -1,5 +1,6 @@
 /* Dynamic reward previews never spend stamps or mutate the equipped outfit. */
 const assert = require('node:assert/strict');
+const {revealItem}=require('./helpers/companion-ui.cjs');
 const {chromium,webkit} = require('playwright');
 (async()=>{
   const browser=await (process.env.MAILAI_BROWSER==='webkit'?webkit:chromium).launch({headless:true});
@@ -11,10 +12,12 @@ const {chromium,webkit} = require('playwright');
     await page.evaluate(async()=>{
       setI18nLanguage('zh-CN');
       await api('/api/companion/preferences',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:false})});
-      await mailaiPet.refresh();await mailaiPet.openThemes();
+      await mailaiPet.refresh();await mailaiPet.open();
     });
     const before=await page.evaluate(()=>api('/api/companion/growth'));
-    const dialog=page.locator('#companion-growth-dialog'), preview=dialog.locator('.pet-live-preview');
+    const dialog=page.locator('#companion-growth-dialog'), preview=dialog.locator('.pet-live-preview'),art=dialog.locator('.pet-center-companion .pet-live-art');
+    await dialog.locator('[data-pet-tab="wardrobe"]').click();
+    await revealItem(dialog,'wings');
     const select=preview.locator('[data-pet-preview-select]');
     assert(await preview.isHidden(),'Preview stays collapsed until an icon is clicked');
     const icon=dialog.locator('[data-pet-preview="wings"]');
@@ -25,9 +28,9 @@ const {chromium,webkit} = require('playwright');
     assert(await dialog.locator('[data-pet-buy="wings"]').isDisabled(),'Locked wings must remain unpurchasable');
     await dialog.locator('[data-pet-preview="wings"]').click();
     assert.equal(await select.inputValue(),'wings');
-    assert(await preview.locator('.growth-wings').evaluate(n=>getComputedStyle(n).display!=='none'));
+    assert(await art.locator('.growth-wings').evaluate(n=>getComputedStyle(n).display!=='none'));
     await page.waitForFunction(()=>document.querySelector('.pet-live-art .mail-companion').dataset.rewardVisible==='true');
-    const wing=preview.locator('.pet-wing-left');
+    const wing=art.locator('.pet-wing-left');
     const first=await wing.evaluate(n=>getComputedStyle(n).transform);
     // Rendering on a loaded CI host may not commit a frame within a fixed delay.
     // Still require an actual visible transform change, within a bounded wait.
@@ -36,26 +39,26 @@ const {chromium,webkit} = require('playwright');
     await preview.locator('[data-pet-preview-play]').click();
     await page.waitForFunction(()=>getComputedStyle(document.querySelector('.pet-live-art .pet-wing-left')).animationPlayState==='paused');
     await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
-    assert.equal(await preview.locator('.companion-eyes').evaluate(n=>getComputedStyle(n).animationPlayState),'paused','Pause includes the normal blink');
+    assert.equal(await art.locator('.companion-eyes').evaluate(n=>getComputedStyle(n).animationPlayState),'paused','Pause includes the normal blink');
     const frozen=await wing.evaluate(n=>getComputedStyle(n).transform);
-    const frozenParts=await preview.evaluate(host=>[...host.querySelectorAll('.growth-wings .pet-reward-motion')].map(n=>getComputedStyle(n).transform));
+    const frozenParts=await art.evaluate(host=>[...host.querySelectorAll('.growth-wings .pet-reward-motion')].map(n=>getComputedStyle(n).transform));
     await page.waitForTimeout(180);
     assert.equal(await wing.evaluate(n=>getComputedStyle(n).transform),frozen,'Pause must freeze the preview');
-    assert.deepEqual(await preview.evaluate(host=>[...host.querySelectorAll('.growth-wings .pet-reward-motion')].map(n=>getComputedStyle(n).transform)),frozenParts,'Pause freezes distal feather motion too');
+    assert.deepEqual(await art.evaluate(host=>[...host.querySelectorAll('.growth-wings .pet-reward-motion')].map(n=>getComputedStyle(n).transform)),frozenParts,'Pause freezes distal feather motion too');
     await preview.locator('[data-pet-preview-play]').click();
     const clips=new Set();
-    for(const item of ['wings','mech_wings','sparkles','orbit','aurora','lightning','scarf','cap','satchel','visor','jacket','armor','sky','peach','midnight','berry']) {
+    for(const item of ['wings','mech_wings','sparkles','orbit','aurora','lightning','scarf','cap','satchel','visor','jacket','armor','sky','peach','midnight','berry','star_crest']) {
       await select.selectOption(item);
       await preview.scrollIntoViewIfNeeded();
       await page.waitForTimeout(100);
-      const active=await preview.evaluate(host=>[...host.querySelectorAll('.pet-reward-motion')].filter(n=>getComputedStyle(n).animationName!=='none'&&n.getClientRects().length).map(n=>({name:getComputedStyle(n).animationName,play:getComputedStyle(n).animationPlayState})));
+      const active=await art.evaluate(host=>[...host.querySelectorAll('.pet-reward-motion')].filter(n=>getComputedStyle(n).animationName!=='none'&&n.getClientRects().length).map(n=>({name:getComputedStyle(n).animationName,play:getComputedStyle(n).animationPlayState})));
       assert(active.length>0,`${item} must have its own visible animated details`);
       assert(active.every(n=>n.play==='running'),`${item} preview should run while visible`);
       active.forEach(n=>clips.add(n.name));
     }
     assert(clips.size>=12,'Rewards must offer distinct motion, not one shared opacity loop');
     await select.selectOption('orbit');
-    const depth=await preview.evaluate(host=>{
+    const depth=await art.evaluate(host=>{
       const rear=host.querySelector('.pet-orbit-rear'), front=host.querySelector('.pet-orbit-front'), body=host.querySelector('.companion-figure');
       const rearStream=rear.querySelector('.pet-orbit-stream'), frontStream=front.querySelector('.pet-orbit-stream');
       return {
@@ -70,12 +73,12 @@ const {chromium,webkit} = require('playwright');
     assert(depth.offsetGap<.1,'Front/rear orbit trails must join without a phase jump');
     await select.selectOption('sparkles');
     await page.evaluate(()=>mailaiEnergy.nativeVisibility(1000,false));
-    assert.equal(await preview.locator('.pet-star').first().evaluate(n=>getComputedStyle(n).animationName),'none','Native hidden windows stop the new layers');
+    assert.equal(await art.locator('.pet-star').first().evaluate(n=>getComputedStyle(n).animationName),'none','Native hidden windows stop the new layers');
     await page.evaluate(()=>mailaiEnergy.nativeVisibility(1001,true));
     await page.emulateMedia({reducedMotion:'reduce'});
     await page.waitForFunction(()=>document.querySelector('[data-pet-preview-play]').disabled);
     assert(await preview.locator('[data-pet-preview-play]').isDisabled());
-    assert.equal(await preview.locator('.pet-star').first().evaluate(n=>getComputedStyle(n).animationName),'none');
+    assert.equal(await art.locator('.pet-star').first().evaluate(n=>getComputedStyle(n).animationName),'none');
     await page.emulateMedia({reducedMotion:'no-preference'});
     await page.evaluate(()=>document.body.classList.add('companion-still'));
     await page.waitForFunction(()=>document.querySelector('[data-pet-preview-play]').disabled);
@@ -83,9 +86,12 @@ const {chromium,webkit} = require('playwright');
     await page.evaluate(()=>document.body.classList.remove('companion-still'));
     await preview.scrollIntoViewIfNeeded();
     await page.waitForFunction(()=>getComputedStyle(document.querySelector('.pet-live-art .pet-star')).animationPlayState==='running',null,{timeout:5000});
-    const running=await preview.locator('.pet-star').first().evaluate(n=>getComputedStyle(n).animationPlayState);
+    const running=await art.locator('.pet-star').first().evaluate(n=>getComputedStyle(n).animationPlayState);
     assert.equal(running,'running');
-    const originalAppearance=await page.evaluate(()=>({petStyle:document.body.dataset.petStyle,petAccessory:document.body.dataset.petAccessory,petEffect:document.body.dataset.petEffect}));
+    const originalAppearance=await page.evaluate(()=>({...document.body.dataset}));
+    await preview.locator('[data-pet-preview-close]').click();
+    await dialog.locator('[data-pet-tab="today"]').click();
+    await page.evaluate(()=>delete document.body.dataset.petOutfits);
     await dialog.locator('.pet-hero-portrait').scrollIntoViewIfNeeded();
     await page.waitForFunction(()=>document.querySelector('.pet-hero-portrait .mail-companion').dataset.rewardVisible==='true');
     for(const style of ['nature','ranger']) {
@@ -97,9 +103,13 @@ const {chromium,webkit} = require('playwright');
       }
     }
     await page.evaluate(saved=>Object.assign(document.body.dataset,saved),originalAppearance);
-    await dialog.locator('.pet-journal-body').evaluate(n=>n.scrollTop=n.scrollHeight);
+    await dialog.locator('[data-pet-tab="wardrobe"]').click();
+    await revealItem(dialog,'sparkles');
+    await dialog.locator('[data-pet-preview="sparkles"]').click();
+    await art.evaluate(n=>n.style.transform='translateX(-200vw)');
     await page.waitForFunction(()=>getComputedStyle(document.querySelector('.pet-live-art .pet-star')).animationPlayState==='paused',null,{timeout:5000});
-    assert.equal(await preview.locator('.pet-star').first().evaluate(n=>getComputedStyle(n).animationPlayState),'paused','Offscreen preview must stop');
+    assert.equal(await art.locator('.pet-star').first().evaluate(n=>getComputedStyle(n).animationPlayState),'paused','Offscreen preview must stop');
+    await art.evaluate(n=>n.style.transform='');
     await preview.scrollIntoViewIfNeeded();
     await page.evaluate(()=>setI18nLanguage('en'));
     assert(!/[\u3400-\u9fff]/.test(await preview.textContent()),'Preview must be fully localized');
@@ -113,13 +123,13 @@ const {chromium,webkit} = require('playwright');
     await page.evaluate(()=>setI18nLanguage('zh-CN'));
     await select.selectOption('mech_wings');await preview.scrollIntoViewIfNeeded();
     await page.screenshot({path:'/tmp/mailai-reward-motion-preview.png'});
+    const closed=await art.locator('svg').elementHandle();
     await preview.locator('[data-pet-preview-close]').click();
     assert(await preview.isHidden());
-    await page.waitForFunction(()=>getComputedStyle(document.querySelector('.pet-live-art .pet-mech-left')).animationPlayState==='paused',null,{timeout:5000});
-    assert.equal(await preview.locator('.pet-mech-left').evaluate(n=>getComputedStyle(n).animationPlayState),'paused');
+    assert(await closed.evaluate(svg=>!svg.isConnected && svg.getAnimations({subtree:true}).every(a=>a.playState!=='running')),'Closing try-on disposes all preview clocks');
     await dialog.locator('.pet-shop-item').first().scrollIntoViewIfNeeded();
     await page.screenshot({path:'/tmp/mailai-reward-preview-icons.png'});
     assert.deepEqual(errors,[]);
-    console.log('Reward motion: 16 outfits, unique animations, locked preview, no spending/equipping, pause, visibility, reduced motion, i18n and mobile passed');
+    console.log('Reward motion: 17 outfits, unique animations, locked preview, no spending/equipping, pause, visibility, reduced motion, i18n and mobile passed');
   } finally { await browser.close(); }
 })().catch(e=>{console.error(e);process.exitCode=1});
