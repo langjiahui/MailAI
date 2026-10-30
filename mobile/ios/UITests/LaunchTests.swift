@@ -466,7 +466,9 @@ final class WorkspaceTests: XCTestCase {
             XCTAssertTrue(app.buttons["回复全部"].isHittable)
             let assistant = app.buttons["小邮助手"]
             XCTAssertTrue(assistant.isHittable)
-            XCTAssertGreaterThanOrEqual(assistant.frame.height, 44)
+            // Accessibility converts screen coordinates to floating-point values.
+            // Keep the 44pt requirement, allowing only subpixel rounding noise.
+            XCTAssertGreaterThanOrEqual(assistant.frame.height + 0.000001, 44)
             XCTAssertLessThan(assistant.frame.width, web.frame.width * 0.6)
             attach(dark ? "reader-legacy-html-dark" : "reader-legacy-html-light")
             if dark {
