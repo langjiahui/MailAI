@@ -17,6 +17,7 @@ struct ReaderView: View {
     @State private var bodyContent: MailBody?
     @State private var error: String?
     @State private var plainText = false
+    @State private var originalHTML = false
     @State private var details = false
     @State private var htmlHeight: CGFloat = 260
     @State private var attachmentsExpanded = true
@@ -42,24 +43,30 @@ struct ReaderView: View {
                 Text((thread.first ?? summary).subject.isEmpty ? "（无主题）" : (thread.first ?? summary).subject).font(.title2.bold()).textSelection(.enabled)
                 if thread.count > 1 {
                     ForEach(thread.sorted { ($0.date ?? .distantPast) < ($1.date ?? .distantPast) }) { item in
-                        if item.id == summary.id { messageHeader; messageContents }
+                        if item.id == summary.id { expandedMessage }
                         else { collapsedMessage(item) }
                     }
-                } else { messageHeader; messageContents }
+                } else { expandedMessage }
             }.padding(16)
         }.background(MailTheme.surface)
         .navigationTitle("邮件").navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button { moveToRole("trash") } label: { Image(systemName: "trash") }.accessibilityLabel("移到废纸篓").disabled(store.operating || store.selectedID != ownerID)
                 Button { moveToRole("archive") } label: { Image(systemName: "archivebox") }.accessibilityLabel("归档邮件").disabled(store.operating || store.selectedID != ownerID)
                 Menu {
-                    if bodyContent?.html != nil { Button(plainText ? "查看原版" : "查看纯文本") { plainText.toggle() } }
+                    if bodyContent?.html != nil { Button(plainText ? "查看图文" : "查看纯文本") { plainText.toggle() } }
+                    if bodyContent?.html != nil, !plainText {
+                        Button(originalHTML ? "跟随系统主题" : "查看原始样式") { originalHTML.toggle() }
+                    }
                     Button("移动到…") { moving = true }
                     Button(currentFlag ? "取消星标" : "添加星标") {
                         let next = !currentFlag
                         Task { do { try await store.perform(.flagged(next), on: [summary]); localFlag = next } catch { self.error = "标记失败，请刷新核对。" } }
                     }
+                    Button("小邮助手", systemImage: "sparkles") { assistant = true }
+                        .disabled(bodyContent == nil)
                 } label: { Image(systemName: "ellipsis.circle") }.accessibilityLabel("更多邮件操作")
             }
         }
@@ -81,7 +88,7 @@ struct ReaderView: View {
         .onDisappear { readTask?.cancel(); downloadTask?.cancel() }
         .onChange(of: summary.id) { _, _ in
             readTask?.cancel(); downloadTask?.cancel(); downloading = false; downloadingID = nil
-            bodyContent = nil; error = nil; details = false; htmlHeight = 260; localFlag = nil; load()
+            bodyContent = nil; error = nil; details = false; htmlHeight = 260; localFlag = nil; originalHTML = false; load()
         }
         .onChange(of: store.selectedID) { _, id in if id != ownerID { readTask?.cancel(); downloadTask?.cancel(); bodyContent = nil; error = "邮箱已切换，请返回列表重新打开这封邮件。" } }
         .onChange(of: scenePhase) { _, phase in if phase != .active { readTask?.cancel(); downloadTask?.cancel(); downloading = false; downloadingID = nil } else if bodyContent == nil { load() } }
@@ -104,8 +111,14 @@ struct ReaderView: View {
         if dynamicTypeSize.isAccessibilitySize { Image(systemName: symbol).font(.title3).dynamicTypeSize(...DynamicTypeSize.xxxLarge).accessibilityLabel(title) }
         else { Label(title, systemImage: symbol) }
     }
+    private var expandedMessage: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            messageHeader
+            VStack(alignment: .leading, spacing: 20) { messageContents }
+        }
+    }
     private var messageHeader: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .top, spacing: 12) {
                     SenderAvatar(name: summary.senderName ?? summary.sender, size: 40)
                     VStack(alignment: .leading, spacing: 4) {
@@ -124,13 +137,13 @@ struct ReaderView: View {
                         if let cc = bodyContent?.carbonCopies ?? summary.carbonCopies, !cc.isEmpty { Text("抄送：" + cc.map(\.email).joined(separator: "; ")) }
                     }.font(.footnote).foregroundStyle(MailTheme.secondary).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Button { assistant = true } label: { HStack { Label("小邮 · 提炼要点", systemImage: "sparkles"); Spacer(); Image(systemName: "chevron.right").font(.caption) }.font(.subheadline).padding(12).frame(minHeight: 48).background(MailTheme.blue.opacity(0.08), in: RoundedRectangle(cornerRadius: 12)) }.disabled(bodyContent == nil).accessibilityLabel("小邮助手")
         }
     }
     @ViewBuilder private var messageContents: some View {
                 if let bodyContent {
                     if let html = bodyContent.html, !plainText {
-                        SafeMailHTML(html: html, externalURL: $externalURL, fontSize: readerSize * scaledBody / 17, contentHeight: $htmlHeight).frame(height: htmlHeight)
+                        SafeMailHTML(html: html, externalURL: $externalURL, fontSize: readerSize * scaledBody / 17, originalStyle: originalHTML, contentHeight: $htmlHeight)
+                            .frame(height: htmlHeight).clipShape(RoundedRectangle(cornerRadius: 12))
                     } else {
                         Text(bodyContent.text.isEmpty ? "这封邮件没有纯文本正文，可切换原版查看。" : bodyContent.text)
                             .font(.system(size: readerSize * scaledBody / 17)).lineSpacing(6).frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled)
@@ -231,15 +244,22 @@ struct SafeMailHTML: UIViewRepresentable {
     let html: String
     @Binding var externalURL: URL?
     var fontSize: Double = 17
+    var originalStyle = false
     @Binding var contentHeight: CGFloat
+    @Environment(\.colorScheme) private var colorScheme
     func makeCoordinator() -> Coordinator { Coordinator(externalURL: $externalURL, height: $contentHeight) }
-    func makeUIView(context: Context) -> WKWebView {
+    static func makeMailWebView() -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .nonPersistent()
         configuration.defaultWebpagePreferences.allowsContentJavaScript = false
+        configuration.userContentController.addUserScript(WKUserScript(source: MailHTMLDocument.appearanceScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true, in: .defaultClient))
         let view = WKWebView(frame: .zero, configuration: configuration)
+        view.isOpaque = false
+        return view
+    }
+    func makeUIView(context: Context) -> WKWebView {
+        let view = Self.makeMailWebView()
         view.navigationDelegate = context.coordinator
-        view.isOpaque = false; view.backgroundColor = .systemBackground
         context.coordinator.observation = view.scrollView.observe(\.contentSize, options: [.new]) { [weak coordinator = context.coordinator] scroll, _ in
             let height = min(30000, max(200, scroll.contentSize.height))
             DispatchQueue.main.async { [weak coordinator, weak scroll] in
@@ -252,13 +272,15 @@ struct SafeMailHTML: UIViewRepresentable {
         return view
     }
     func updateUIView(_ view: WKWebView, context: Context) {
-        if context.coordinator.loadedHTML != html || context.coordinator.fontSize != fontSize { load(view, coordinator: context.coordinator) }
+        if context.coordinator.loadedHTML != html || context.coordinator.fontSize != fontSize || context.coordinator.dark != dark { load(view, coordinator: context.coordinator) }
     }
+    private var dark: Bool { colorScheme == .dark && !originalStyle }
     private func load(_ view: WKWebView, coordinator: Coordinator) {
-        coordinator.loadedHTML = html; coordinator.fontSize = fontSize
-        // A restrictive CSP precedes all untrusted markup; subsequent CSPs cannot weaken it.
-        let csp = "default-src 'none'; img-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-src 'none'; font-src 'none'; media-src 'none'; connect-src 'none'"
-        view.loadHTMLString("<!doctype html><html><head><meta http-equiv='Content-Security-Policy' content=\"\(csp)\"><meta name='viewport' content='width=device-width, initial-scale=1'><style>:root{color-scheme:light dark}body{font:\(fontSize)px -apple-system;line-height:1.6;margin:0;overflow-wrap:anywhere}img{max-width:100%;height:auto}table{max-width:100%}</style></head><body>\(html)</body></html>", baseURL: nil)
+        coordinator.loadedHTML = html; coordinator.fontSize = fontSize; coordinator.dark = dark
+        view.overrideUserInterfaceStyle = dark ? .dark : .light
+        let paper = dark ? UIColor(red: 23/255, green: 35/255, blue: 48/255, alpha: 1) : .white
+        view.backgroundColor = paper; view.scrollView.backgroundColor = paper
+        view.loadHTMLString(MailHTMLDocument.render(html, fontSize: fontSize, dark: dark), baseURL: nil)
     }
     final class Coordinator: NSObject, WKNavigationDelegate {
         @Binding var externalURL: URL?
@@ -266,6 +288,7 @@ struct SafeMailHTML: UIViewRepresentable {
         var observation: NSKeyValueObservation?
         var loadedHTML = ""
         var fontSize: Double = 0
+        var dark = false
         init(externalURL: Binding<URL?>, height: Binding<CGFloat>) { _externalURL = externalURL; self.height = height }
         func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
             if action.navigationType == .linkActivated, let url = action.request.url, url.scheme?.lowercased() == "https", url.host != nil {

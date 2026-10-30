@@ -29,7 +29,16 @@ import MailAICore
         }
         func read(_ credential: AccountCredential, summary: MailSummary) async throws -> ReadResult {
             if CommandLine.arguments.contains("--ui-read-failure") { throw MailFailure.invalid("合成正文读取失败，可重试。") }
-            let html: String? = CommandLine.arguments.contains("--ui-html") ? "<p>这是一封合成 HTML 邮件。</p><p><a href='https://example.com'>测试外部链接</a></p>" : nil
+            let html: String?
+            if CommandLine.arguments.contains("--ui-html-legacy") {
+                html = """
+                <div style="font-family:Arial;color:#000000"><p><font color="black">企业邮件正文：请确认本周工作安排。</font></p>
+                <table cellspacing="0" cellpadding="8" style="border-collapse:collapse;color:#000000"><tr><td style="border:1px solid #777777">项目</td><td style="border:1px solid #777777">处理时间</td></tr><tr><td style="border:1px solid #777777">资料确认</td><td style="border:1px solid #777777"><span style="color:#ff0000">周五前完成</span></td></tr></table>
+                <p><a href="https://example.com">测试外部链接</a></p></div>
+                """
+            } else {
+                html = CommandLine.arguments.contains("--ui-html") ? "<p>这是一封合成 HTML 邮件。</p><p><a href='https://example.com'>测试外部链接</a></p>" : nil
+            }
             let attachment: MailAttachment
             if CommandLine.arguments.contains("--ui-pdf") {
                 let data = await MainActor.run { DebugPreview.pdfData() }
@@ -67,6 +76,15 @@ import MailAICore
             var extra = MailSummary(uid: UInt32(8 + index), validity: 10, folder: folder, subject: titles[index], sender: senders[index] + " <team@example.com>", replyAddress: "team@example.com", date: Date(timeIntervalSince1970: 1793102000 - Double(index * 3600)), unread: index == 1, messageID: "<ui-\(index)@example.com>")
             extra.senderName = senders[index]; extra.preview = "仅用于界面验收的合成内容，请确认下一步安排。"; extra.isFlagged = index == 0; extra.hasAttachments = index == 1
             result.append(extra)
+        }
+        if CommandLine.arguments.contains("--ui-long-inbox") {
+            for index in 7...36 {
+                var extra = MailSummary(uid: UInt32(100 + index), validity: 10, folder: folder,
+                    subject: "滚动测试邮件 \(index)", sender: "回归测试 <scroll@example.com>", replyAddress: "scroll@example.com",
+                    date: Date(timeIntervalSince1970: 1793000000 - Double(index * 3600)), unread: false, messageID: "<scroll-\(index)@example.com>")
+                extra.senderName = "回归测试"; extra.preview = "用于验证搜索筛选随邮件列表滚动。"
+                result.append(extra)
+            }
         }
         if CommandLine.arguments.contains("--ui-threads"), result.count > 1 {
             result[1].parentMessageID = item.messageID; result[1].subject = "Re: " + item.subject
