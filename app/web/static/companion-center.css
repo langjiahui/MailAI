@@ -114,6 +114,8 @@ html[data-theme] .pet-journal .pet-hero { background:none; }
 .pet-journal .pet-wardrobe-heading { align-items:center; }
 .pet-journal .pet-wardrobe-heading h3 { font-size:22px; font-weight:650; margin:0 0 6px; }
 .pet-journal .pet-wardrobe-heading>span { color:var(--pet-muted); font-size:11px; }
+.pet-wardrobe-guide { margin:8px 0 0; color:var(--pet-muted); font-size:11px; line-height:1.8; }
+.pet-series-detail .pet-set-wear-note { margin:12px 0 0; font-size:11px; line-height:1.8; }
 .pet-equipped-details { margin-top:10px; color:var(--pet-muted); font-size:11px; }
 .pet-equipped-details>summary { padding:8px 0; cursor:pointer; }
 .pet-journal .pet-wearing-slots { grid-template-columns:repeat(3,minmax(0,1fr)); margin-top:8px; gap:14px; }

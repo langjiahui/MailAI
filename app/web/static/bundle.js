@@ -1593,6 +1593,8 @@ const MAILAI_UI_COPY = {
   "pet.allCategories": ["全部种类", "All categories"],
   "pet.startCollection": ["试穿第一件", "Try the first piece"],
   "pet.tryNextPiece": ["试穿下一件", "Try the next piece"],
+  "pet.redeemWearPrice": ["{0} 邮票 · 兑换并穿戴", "{0} stamps · Redeem & equip"],
+  "pet.wardrobeGuide": ["点图试穿；兑换后会立即穿戴。已收藏装扮可免费更换。", "Select an image to preview. Redeeming equips it; collected pieces are free to change."],
   "pet.more": ["更多", "More"],
   "pet.backToCollections": ["返回套系收藏", "Back to collections"],
   "pet.backToJourney": ["返回成长旅程", "Back to evolution"],
@@ -1623,7 +1625,7 @@ const MAILAI_UI_COPY = {
   "pet.collectionsHint": ["每件都有归属，每次积累都看得见。", "A place for every piece, and progress you can see."],
   "pet.collectionsTitle": ["从一件，到完整一套", "From a first piece to a complete look"],
   "pet.collectionsEyebrow": ["小邮 · 收藏旅程", "XIAOYOU · COLLECTION JOURNEY"],
-  "pet.setPreviewSafe": ["这里只试穿，不花费邮票，也不改变当前穿戴。", "Preview only. No stamps spent or equipped items changed."],
+  "pet.setPreviewSafe": ["试穿不花费邮票；确认兑换或穿戴后才会应用。", "Previews are free. Changes apply only when you redeem or equip."],
   "pet.fullSetPreview": ["完整套装预览", "FULL COLLECTION PREVIEW"],
   "pet.yourCompanion": ["你的陪伴伙伴", "YOUR COMPANION"],
   "pet.spacePurpose": ["读信、工作，也收集属于你们的旅程。", "Read, work, and collect a journey of your own."],
@@ -1641,7 +1643,7 @@ const MAILAI_UI_COPY = {
   "pet.setAction": ["寄出纪念信", "Send a keepsake letter"],
   "pet.collectionUnowned": ["请先收藏此套系中的装扮", "Collect a piece from this collection first"],
   "pet.collectionMissing": ["套系不存在", "Collection not found"],
-  "pet.setWearHint": ["整套搭配会替换当前装扮，未收藏的部位留空。", "Replaces your current outfit; uncollected slots are left empty."],
+  "pet.setWearHint": ["套系穿戴会替换当前装扮、配色和光效；未收藏的部位留空，不扣邮票。", "Replaces your outfit, palette and effects. Uncollected slots are left empty. No stamps are spent."],
   "pet.giftViewThemes": ["查看礼包主题", "View gifted themes"],
   "pet.giftOutfitContext": ["礼包中的收藏已标记", "Gift items are highlighted"],
   "mailRecovery.historyFailure": ["历史大邮件下载失败：{0}", "Large historical message download failed: {0}"],
@@ -1721,7 +1723,7 @@ const MAILAI_UI_COPY = {
   "pet.futureStagePreview": ["正在预览其他形态，实际成长仍为「{0}」。", "Previewing a different stage. Your actual stage is still {0}."],
   "pet.resetStagePreview": ["回到当前形态", "Use current stage"],
   "pet.growthShortage": ["还需 {0} 成长值", "{0} more growth needed"],
-  "pet.earnStamps": ["去看看日常目标，赚取邮票 →", "View daily goals and earn stamps →"],
+  "pet.earnStamps": ["查看日常目标，积累成长与邮票 →", "View daily goals for growth and stamps →"],
   "pet.earnForOutfit": ["为喜欢的装扮攒邮票", "Earn stamps for your next look"],
   "pet.earnForOutfitHint": ["日常目标会自动记录进度，完成后获得成长值和邮票。", "Daily goals track your activity automatically and award growth and stamps."],
   "pet.returnToOutfits": ["继续挑装扮", "Back to outfits"],
@@ -1736,7 +1738,7 @@ const MAILAI_UI_COPY = {
   "pet.stageCurrent": ["当前：{0}", "Current: {0}"],
   "pet.stampAfter": ["兑换后剩余 {0} 邮票", "{0} stamps left after redemption"],
   "pet.redeeming": ["正在兑换…", "Redeeming…"],
-  "pet.receipt.bought": ["已确认兑换「{0}」 · 兑换价 {1} 邮票 · 当前剩余 {2} 邮票", "Redemption confirmed: {0} · Price: {1} stamps · {2} remaining"],
+  "pet.receipt.bought": ["已确认兑换并穿戴「{0}」 · 花费 {1} 邮票 · 剩余 {2} 邮票", "Redemption confirmed: {0} · Equipped · Price: {1} stamps · {2} remaining"],
   "pet.receipt.fed": ["已喂食「{0}」 · 花费 {1} 邮票 · 剩余 {2} 邮票", "Fed {0} · Spent {1} stamps · {2} remaining"],
   "pet.receipt.worn": ["已穿戴「{0}」 · 本次不花费邮票", "Equipped {0} · No stamps spent"],
   "pet.receipt.removed": ["已取下「{0}」 · 本次不花费邮票", "Removed {0} · No stamps spent"],
@@ -16296,7 +16298,7 @@ const MAILAI_UI_COPY = {
   ],
   "pet.previewIcon": ["预览 {0}", "Preview {0}"],
   "pet.previewClose": ["收起预览", "Close preview"],
-  "pet.previewTitle": ["动态预览", "Live preview"],
+  "pet.previewTitle": ["试穿预览", "Try-on preview"],
   "pet.previewChoose": ["选择预览装扮", "Choose an outfit to preview"],
   "pet.previewPlay": ["播放预览", "Play preview"],
   "pet.previewPause": ["暂停预览", "Pause preview"],
@@ -35397,7 +35399,7 @@ function mailCardDate(value, now = new Date()) {
     const pending = outfitPending?.id === item.id;
     const status = equipped ? 'equipped' : item.owned ? 'owned' : locked ? 'locked' : depleted ? 'depleted' : shortage ? 'short' : 'available';
     const hint = item.owned ? t('sameSlotHint') : locked ? t('stageRequired',stageName(item.stage)) : depleted ? t('berryLimit') : shortage ? t('stampShortage',item.cost-state.stamps) : t(item.slot === 'consumable' ? 'consumableHint' : 'redeemWear');
-    const caption = pending ? t(outfitPending.path==='purchase' ? 'redeeming' : outfitPending.item ? 'equipping' : 'removing') : equipped ? t('remove') : item.owned ? t('wear') : depleted ? t('berryLimit') : locked ? t('stageRequired',stageName(item.stage)) : shortage ? t('stampShortage',item.cost-state.stamps) : t(item.id === 'berry' ? 'feedPrice' : 'buyPrice',item.cost);
+    const caption = pending ? t(outfitPending.path==='purchase' ? 'redeeming' : outfitPending.item ? 'equipping' : 'removing') : equipped ? t('remove') : item.owned ? t('wear') : depleted ? t('berryLimit') : locked ? t('stageRequired',stageName(item.stage)) : shortage ? t('stampShortage',item.cost-state.stamps) : t(item.id === 'berry' ? 'feedPrice' : 'redeemWearPrice',item.cost);
     return {equipped, locked, shortage, status, hint, caption, pending,
       disabled:locked || (!item.owned && shortage) || depleted || busy || (!!purchaseIntent && !item.owned)};
   }
@@ -35425,7 +35427,7 @@ function mailCardDate(value, now = new Date()) {
     <section class="pet-series-detail" data-series="${set.id}"><div class="pet-section-title"><div><small>${label(set.id==='star'?'flagship':'collectionSeries')}</small><h3>${label('collection.'+set.id)}</h3></div><strong>${set.owned}<span> / ${set.items.length}</span></strong></div><p>${label('collection.'+set.id+'.tag')}</p><progress max="${set.items.length}" value="${set.owned}" aria-label="${label('collectionProgress',set.owned,set.items.length)}"></progress>
     <div class="pet-series-pieces">${set.items.map(id=>{const item=state.items.find(i=>i.id===id),view=shopItemState(item);return `<button type="button" data-pet-preview="${id}" data-owned="${item.owned}"><span class="pet-piece-check" aria-hidden="true">${item.owned?'✓':numerals[set.items.indexOf(id)]}</span><span><b>${label('item.'+id)}</b><small>${item.owned?label(view.equipped?'state.equipped':'state.owned'):label('stampPrice',item.cost)}</small></span><span class="pet-piece-link">${label('tryOn')} ↗</span></button>`;}).join('')}</div>
     <div class="pet-series-completion ${set.complete?'is-complete':''}"><span class="pet-collection-stamp" aria-hidden="true">${set.complete?'✦':'◇'}</span><div><b>${label(set.complete?'setComplete':'setKeepsake')}</b><small>${set.complete?label('setCompletedOn',dateLabel(set.completed_at)):label('setKeepsakeHint')}</small></div></div>
-    <div class="pet-series-actions">${set.owned?`<button type="button" class="pet-primary" data-pet-wear-collection="${set.id}" title="${label('setWearHint')}" ${busy?'disabled':''}>${label(set.complete?'wearSet':'wearCollected')}</button>`:''}${next?`<button type="button" ${set.owned?'':'class="pet-primary"'} data-pet-collection="${next.id}">${label(set.owned?'tryNextPiece':'startCollection')}</button>`:''}<button type="button" data-pet-go="wardrobe">${label('freeStyling')} ↗</button>${set.complete?`<button type="button" data-pet-set-action="${set.id}" ${!motionAllowed()?'disabled':''}>${label('setAction')}</button>`:''}</div>${next?`<p class="pet-next-piece">${label('nextCollectionPiece',t('item.'+next.id))} · ${state.stage<next.stage?label('growthShortage',state.stages[next.stage-1]-state.xp):state.stamps<next.cost?label('stampShortage',next.cost-state.stamps):label('state.available')}</p>`:''}</section>`;
+    <div class="pet-series-actions">${set.owned?`<button type="button" class="pet-primary" data-pet-wear-collection="${set.id}" title="${label('setWearHint')}" ${busy?'disabled':''}>${label(set.complete?'wearSet':'wearCollected')}</button>`:''}${next?`<button type="button" ${set.owned?'':'class="pet-primary"'} data-pet-collection="${next.id}">${label(set.owned?'tryNextPiece':'startCollection')}</button>`:''}<button type="button" data-pet-go="wardrobe">${label('freeStyling')} ↗</button>${set.complete?`<button type="button" data-pet-set-action="${set.id}" ${!motionAllowed()?'disabled':''}>${label('setAction')}</button>`:''}</div>${set.owned?`<p class="pet-set-wear-note">${label('setWearHint')}</p>`:''}${next?`<p class="pet-next-piece">${label('nextCollectionPiece',t('item.'+next.id))} · ${state.stage<next.stage?label('growthShortage',state.stages[next.stage-1]-state.xp):state.stamps<next.cost?label('stampShortage',next.cost-state.stamps):label('state.available')}</p>`:''}</section>`;
   }
   function giftOutfitContext(themes=false) {
     if(!giftOutfitItems.length)return '';
@@ -35441,7 +35443,7 @@ function mailCardDate(value, now = new Date()) {
     const pages=Math.max(1,Math.ceil(items.length/shelfSize));shopPage=Math.min(shopPage,pages-1);
     const collectible = s.items.filter(item=>item.slot!=='consumable'&&item.slot!=='theme');
     if(previewOpen)return `<section class="pet-live-preview" aria-labelledby="pet-preview-title"><button type="button" class="pet-back-shelf" data-pet-back-shelf data-pet-preview-close>← ${label(previewOrigin?.tab==='shop'?'backToCollections':previewOrigin?.tab==='journey'?'backToJourney':'backToWardrobe')}</button>${shopReceipt&&shopReceipt.item!==previewItem?receiptView():''}${previewView()}</section>`;
-    return `${giftOutfitContext()}<section class="pet-wardrobe-overview"><div class="pet-wardrobe-heading"><div><small>${label('boutiqueEyebrow')}</small><h3>${label('wardrobeTitle')}</h3></div><span>${label('collectionProgress',collectible.filter(i=>i.owned).length,collectible.length)}</span></div><details class="pet-equipped-details"><summary>${label('currentLook')}</summary><div class="pet-wearing-slots">${[...outfitSlots,'palette','effect'].map(slot=>`<div><small>${label('slot.'+slot)}</small><strong>${s.equipped[slot] ? label('item.'+s.equipped[slot]) : label('slotEmpty')}</strong><button type="button" data-pet-slot="${slot}" ${!s.equipped[slot]||busy?'disabled':''}>${label('remove')}</button></div>`).join('')}</div></details></section>
+    return `${giftOutfitContext()}<section class="pet-wardrobe-overview"><div class="pet-wardrobe-heading"><div><small>${label('boutiqueEyebrow')}</small><h3>${label('wardrobeTitle')}</h3></div><span>${label('collectionProgress',collectible.filter(i=>i.owned).length,collectible.length)}</span></div><p class="pet-wardrobe-guide">${label('wardrobeGuide')}</p><details class="pet-equipped-details"><summary>${label('currentLook')}</summary><div class="pet-wearing-slots">${[...outfitSlots,'palette','effect'].map(slot=>`<div><small>${label('slot.'+slot)}</small><strong>${s.equipped[slot] ? label('item.'+s.equipped[slot]) : label('slotEmpty')}</strong><button type="button" data-pet-slot="${slot}" ${!s.equipped[slot]||busy?'disabled':''}>${label('remove')}</button></div>`).join('')}</div></details></section>
     ${shopReceipt && (!previewOpen || shopReceipt.item!==previewItem) ? receiptView() : ''}<section class="pet-live-preview" aria-labelledby="pet-preview-title" ${previewOpen ? '' : 'hidden'}>${previewView()}</section>
     <div class="pet-shop-toolbar"><div class="pet-section-title"><h3>${label('shopTitle')}</h3><span>${label('shelfCount',items.length)}</span></div><div class="pet-shop-filters" role="group" aria-label="${label('shopFilter')}">${['all','owned','available'].map(filter=>`<button type="button" data-pet-shop-filter="${filter}" aria-pressed="${shopFilter===filter}">${label('filter.'+filter)}<span>${all.filter(item=>matches(item,filter)).length}</span></button>`).join('')}</div><select data-pet-category aria-label="${label('category')}">${['all','accessory','palette','effect'].map(category=>`<option value="${category}" ${shopCategory===category?'selected':''}>${label(category==='all'?'allCategories':'filter.'+category)}</option>`).join('')}</select></div>
     <div class="pet-shop" data-page-size="${shelfSize}">${items.map((item,index) => {
