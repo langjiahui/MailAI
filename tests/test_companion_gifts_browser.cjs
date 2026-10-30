@@ -1,3 +1,4 @@
+const {selectTab}=require('./helpers/companion-ui.cjs');
 /* Start MAILAI_GIFT_FIXTURE=1 workspace_preview.py. All vouchers use ephemeral test keys. */
 const assert=require('node:assert/strict');
 const {chromium,webkit}=require('playwright');
@@ -8,7 +9,7 @@ const {chromium,webkit}=require('playwright');
   const errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error('Page error:',e.stack)});
   await page.goto('http://127.0.0.1:18795/');await page.locator('#app-preloader').waitFor({state:'detached'});
   await page.evaluate(async()=>{setI18nLanguage('zh-CN');await mailaiPet.open()});
-  const dialog=page.locator('#companion-growth-dialog');await dialog.locator('[data-pet-tab="gifts"]').click();
+  const dialog=page.locator('#companion-growth-dialog');await selectTab(dialog,'gifts');
   const codes=await page.evaluate(()=>api('/fixture/gifts'));
   const before=await page.evaluate(()=>api('/api/companion/growth'));
   const identity=await dialog.locator('[data-pet-claim-code]').inputValue();assert.equal(identity,before.claim_code);
@@ -41,7 +42,7 @@ const {chromium,webkit}=require('playwright');
   assert.equal(await dialog.locator('[data-pet-item="wings"]').getAttribute('data-gift-focus'),'true');
   const wings=dialog.locator('[data-pet-equip="wings"]');assert(await wings.isEnabled(),'Gifted high-level wings can be worn at level 1');
   await wings.click();await page.waitForFunction(()=>document.body.dataset.petAccessory==='wings');
-  await dialog.locator('[data-pet-tab="gifts"]').click();
+  await selectTab(dialog,'gifts');
   assert(await dialog.locator('.pet-history').isVisible());
   await page.evaluate(()=>setI18nLanguage('en'));
   assert(!/[\u3400-\u9fff]/.test((await dialog.locator('.pet-gift-panel').textContent()).replace('赠礼测试 exclusive','')));
@@ -67,7 +68,7 @@ const {chromium,webkit}=require('playwright');
   // Stop periodic reads before draining them: networkidle alone leaves a race
   // where a new poll starts during teardown and WebKit reports an abort error.
   await page.unroute('**/api/companion/gifts/claim');await page.evaluate(()=>mailaiEnergy.pause());await page.waitForLoadState('networkidle');await page.reload();await page.locator('#app-preloader').waitFor({state:'detached'});
-  await page.evaluate(()=>mailaiPet.open());await dialog.locator('[data-pet-tab="gifts"]').click();
+  await page.evaluate(()=>mailaiPet.open());await selectTab(dialog,'gifts');
   assert.equal(await input.inputValue(),codes.campaign);
   await dialog.locator('[data-pet-gift-reconcile]').click();await dialog.locator('[data-pet-gift-wear]').waitFor({state:'visible'});
   assert.equal(await page.evaluate(()=>localStorage.getItem('mailai-companion-gift-pending')),null);
@@ -79,7 +80,7 @@ const {chromium,webkit}=require('playwright');
   // A definite rejection must release a stale pending voucher instead of blocking all future gifts.
   await page.evaluate(code=>localStorage.setItem('mailai-companion-gift-pending',code),codes.expired);
   await page.evaluate(()=>mailaiEnergy.pause());await page.waitForLoadState('networkidle');await page.reload();await page.locator('#app-preloader').waitFor({state:'detached'});
-  await page.evaluate(()=>mailaiPet.open());await dialog.locator('[data-pet-tab="gifts"]').click();
+  await page.evaluate(()=>mailaiPet.open());await selectTab(dialog,'gifts');
   await dialog.locator('[data-pet-gift-reconcile]').click();
   await page.waitForFunction(()=>/领取期限|deadline/.test(document.querySelector('[data-pet-gift-error]')?.textContent||''));
   assert.equal(await page.evaluate(()=>localStorage.getItem('mailai-companion-gift-pending')),null);
@@ -98,7 +99,7 @@ const {chromium,webkit}=require('playwright');
   assert.equal(await dialog.locator('[data-pet-item="theme_baowu"]').getAttribute('data-gift-focus'),'true');
   await dialog.locator('[data-pet-equip="theme_baowu"]').click();
   await page.waitForFunction(()=>document.documentElement.dataset.rewardTheme==='theme_baowu');
-  await dialog.locator('[data-pet-tab="gifts"]').click();await fillCode(codes.exclusive);await verify.click();
+  await selectTab(dialog,'gifts');await fillCode(codes.exclusive);await verify.click();
   await dialog.locator('[data-pet-gift-wear]').waitFor({state:'visible'});
   assert.match(await dialog.locator('.pet-gift-items [data-pet-equip="theme_baowu"]').textContent(),/正在使用|Active/);
   for(const language of ['zh-CN','en']){
@@ -117,7 +118,7 @@ const {chromium,webkit}=require('playwright');
    }
   }
   await page.evaluate(()=>{document.documentElement.style.setProperty('--fz','1');document.body.style.zoom='1'});await page.setViewportSize({width:800,height:650});
-  await dialog.locator('[data-pet-tab="gifts"]').click();
+  await selectTab(dialog,'gifts');
   await page.screenshot({path:'/tmp/mailai-gift-ux-en-dark.png'});
   assert.deepEqual(errors,[]);
   console.log('Gift UI: recipient, wrong/forged vouchers, free preview/claim, level-free wear, file import, themes, lost-response/reload recovery, mailbox sharing, history outfit navigation, scoped previews, localized dates, sticky tabs and 48 language/theme/size/scale layouts passed');

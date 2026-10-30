@@ -1,6 +1,6 @@
 /* After the ordinary growth browser test, exercise real server failures and recovery. */
 const assert = require('node:assert/strict');
-const {revealItem}=require('./helpers/companion-ui.cjs');
+const {revealItem,selectTab}=require('./helpers/companion-ui.cjs');
 const {chromium} = require('playwright');
 const base = 'http://127.0.0.1:18795/';
 (async()=>{
@@ -102,7 +102,7 @@ const base = 'http://127.0.0.1:18795/';
     assert.equal(recovered.berry_today,committed.berry_today);
     assert.equal(replayTokens[0],purchaseToken);
     assert.equal(replayTokens[1],purchaseToken);
-    await dialog.locator('[data-pet-tab="history"]').click();
+    await selectTab(dialog,'history');
     assert.match(await dialog.textContent(),/兑换记录/);
     assert.match(await dialog.textContent(),/−120 邮票/);
     // A hanging heartbeat must time out, retry its token, and allow later batches.

@@ -1,5 +1,12 @@
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "pet.previousPage": ["上一页", "Previous page"],
+  "pet.nextPage": ["下一页", "Next page"],
+  "pet.category": ["装扮种类", "Reward category"],
+  "pet.allCategories": ["全部种类", "All categories"],
+  "pet.more": ["更多", "More"],
+  "pet.backToCollections": ["返回套系收藏", "Back to collections"],
+  "pet.backToJourney": ["返回成长旅程", "Back to evolution"],
   "pet.journeyEyebrow": ["陪伴的模样", "GROWING TOGETHER"],
   "pet.seeCollections": ["看看套系", "See collections"],
   "pet.dailyCollectionHint": ["日常陪伴得到的邮票，可以慢慢补全喜欢的一套。", "Stamps from everyday companionship bring your favorite collection closer."],

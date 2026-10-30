@@ -1,4 +1,5 @@
 const assert=require('node:assert/strict');
+const {selectTab}=require('./companion-ui.cjs');
 // Audit each task view, rather than only the collection overview, across the
 // actual workspace palette cascade and font-scaled layout.
 async function auditSpaceThemes(page,dialog) {
@@ -10,7 +11,7 @@ async function auditSpaceThemes(page,dialog) {
    await page.setViewportSize({width,height});
    await page.evaluate(scale=>{document.documentElement.style.setProperty('--fz',scale);document.body.style.zoom=String(scale);},scale);
    for(const tab of ['today','shop','wardrobe','journey','gifts','themes','history']) {
-    await dialog.locator(`[data-pet-tab="${tab}"]`).click();
+    await selectTab(dialog,tab);
     const issues=await dialog.evaluate(d=>{
      const problems=[],rgb=s=>{const c=(s.match(/[\d.]+/g)||[]).map(Number);return s.startsWith('color(srgb')?c.map((v,i)=>i<3?v*255:v):c;},blend=(a,b)=>{const alpha=a[3]??1;return a.slice(0,3).map((v,i)=>v*alpha+b[i]*(1-alpha));};
      const luminance=c=>c.slice(0,3).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4}).reduce((v,c,i)=>v+c*[.2126,.7152,.0722][i],0);
@@ -20,7 +21,7 @@ async function auditSpaceThemes(page,dialog) {
      if(body.scrollHeight>body.clientHeight+1)problems.push('Outer dialog body scrolls');
      for(const [name,n]of [['dialog',d],['body',body],['main',main]])if(n.scrollWidth>n.clientWidth+1)problems.push(name+' has horizontal overflow');
      const close=d.querySelector('[data-pet-close]').getBoundingClientRect();if(close.top<0||close.right>innerWidth+1||close.bottom>innerHeight+1)problems.push('Close is outside the viewport');
-     for(const n of d.querySelectorAll('.pet-tabs button,.pet-hero h3,.pet-center-summary b,.pet-page-heading h3,.pet-series-actions button,.pet-shelf-pages button,.pet-shop-item>button,.pet-theme-card>button')) {
+     for(const n of d.querySelectorAll('.pet-tabs button,.pet-hero h3,.pet-header-wallet b,.pet-space-more>summary,.pet-shop-toolbar select,.pet-shelf-pages select,.pet-page-heading h3,.pet-series-actions button,.pet-shelf-pages button,.pet-shop-item>button,.pet-theme-card>button')) {
       const css=getComputedStyle(n);if(!n.getClientRects().length||css.visibility==='hidden'||n.disabled||n.closest('[hidden]'))continue;
       if(n.scrollWidth>n.clientWidth+1)problems.push('Clipped text: '+n.textContent.trim());
       const ratio=contrast(n),large=parseFloat(css.fontSize)>=24||parseFloat(css.fontSize)>=18.66&&parseInt(css.fontWeight)>=700;

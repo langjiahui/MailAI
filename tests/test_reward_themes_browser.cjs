@@ -1,6 +1,6 @@
 /* Fresh isolated growth fixture; no real mailbox/model/network services. */
 const assert = require('node:assert/strict');
-const {revealItem}=require('./helpers/companion-ui.cjs');
+const {revealItem,selectTab}=require('./helpers/companion-ui.cjs');
 const {chromium,webkit} = require('playwright');
 (async()=>{
   const browser = await (process.env.MAILAI_BROWSER==='webkit'?webkit:chromium).launch({headless:true});
@@ -164,7 +164,7 @@ const {chromium,webkit} = require('playwright');
     await page.waitForFunction(()=>document.body.dataset.petPalette === 'sky');
     assert.equal(await dialog.locator('.pet-hero .growth-body').evaluate(node=>getComputedStyle(node).fill),'rgb(131, 181, 212)');
     const balance=(await page.evaluate(()=>api('/api/companion/growth'))).stamps;
-    await dialog.locator('[data-pet-tab="themes"]').click();
+    await selectTab(dialog,'themes');
     await dialog.locator('.pet-themes-title [data-pet-slot="theme"]').click();
     await page.waitForFunction(()=>!document.documentElement.dataset.rewardTheme);
     await dialog.locator('[data-pet-equip="theme_baowu"]').click();
