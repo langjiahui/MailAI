@@ -30,6 +30,11 @@ const port=Number(process.env.MAILAI_WARDROBE_FIXTURE_PORT||18863);
    assert(await page.evaluate(()=>document.activeElement.matches('.pet-space-more>summary')),'Collapsed secondary navigation returns focus to its disclosure');
    await dialog.locator('[data-pet-tab="shop"]').click();
    assert.equal(await dialog.locator('[data-pet-series]').count(),3);
+   assert.equal(await dialog.locator('[data-pet-wear-collection]').count(),0,'An empty collection offers a useful first step instead of an unavailable wear action');
+   await dialog.locator('[data-pet-collection]').click();
+   assert.equal(await dialog.getAttribute('data-pet-view'),'wardrobe');
+   await preview.locator('[data-pet-back-shelf]').click();
+   assert(await page.evaluate(()=>document.activeElement.hasAttribute('data-pet-collection')),'The first-piece action restores focus after preview');
    await dialog.locator('[data-pet-tab="wardrobe"]').click();
    assert.equal(await dialog.locator('.pet-shop-item').count(),17);
    for(const [category,count] of [['palette',3],['accessory',9],['effect',4],['all',17]]) {
@@ -164,7 +169,8 @@ const port=Number(process.env.MAILAI_WARDROBE_FIXTURE_PORT||18863);
       return {dialog:d.scrollWidth<=d.clientWidth+1,body:body.scrollWidth<=body.clientWidth+1,main:main.scrollWidth<=main.clientWidth+1,bounded:body.scrollHeight<=body.clientHeight+1,nav:nav.getBoundingClientRect().bottom<=body.getBoundingClientRect().bottom+1};
      });
      assert(Object.values(bounds).every(Boolean),JSON.stringify({language,theme,reward,width,height,scale,bounds}));
-     assert(await dialog.locator('[data-pet-wear-collection="star"]').isDisabled(),'An unowned full-set preview cannot equip or buy items');
+     assert.equal(await dialog.locator('[data-pet-wear-collection="star"]').count(),0,'An unowned full-set preview cannot equip items');
+     assert(await dialog.locator('[data-pet-collection]').isEnabled(),'The first-piece preview is reachable at every size');
     }
    }
    await page.evaluate(()=>{document.documentElement.style.setProperty('--fz','1');document.body.style.zoom='1';setI18nLanguage('zh-CN');});

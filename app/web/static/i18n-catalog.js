@@ -4,6 +4,8 @@ const MAILAI_UI_COPY = {
   "pet.nextPage": ["下一页", "Next page"],
   "pet.category": ["装扮种类", "Reward category"],
   "pet.allCategories": ["全部种类", "All categories"],
+  "pet.startCollection": ["试穿第一件", "Try the first piece"],
+  "pet.tryNextPiece": ["试穿下一件", "Try the next piece"],
   "pet.more": ["更多", "More"],
   "pet.backToCollections": ["返回套系收藏", "Back to collections"],
   "pet.backToJourney": ["返回成长旅程", "Back to evolution"],

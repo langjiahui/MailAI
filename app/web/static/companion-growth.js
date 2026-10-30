@@ -269,7 +269,7 @@
         previewPlaying=true;updatePreviewMotion();
         window.mailaiCompanionMotion?.preview(dialog.querySelector('.pet-live-art svg'),previewStage || state.stage,button.dataset.petTryAction);return;
       }
-      if (button.dataset.petCollection) return selectPreview(button.dataset.petCollection,true);
+      if (button.dataset.petCollection) return selectPreview(button.dataset.petCollection,true,button);
       if (button.dataset.petPreview) return selectPreview(button.dataset.petPreview, true);
       if (button.hasAttribute('data-pet-preview-close')) return leavePreview();
       if (button.hasAttribute('data-pet-preview-play')) {
@@ -515,12 +515,12 @@
     dialog.querySelector('.pet-tab-content').scrollTop=origin?.scroll || 0;
     (target || dialog.querySelector(tab==='wardrobe'?`[data-pet-shop-filter="${shopFilter}"]`:`[data-pet-tab="${tab}"]`))?.focus({preventScroll:true});
   }
-  function selectPreview(item, scroll = false) {
+  function selectPreview(item, scroll = false, source = null) {
     if (!state?.items.some(entry => entry.id === item && entry.slot !== 'theme')) return;
     if (tab !== 'gifts') {
       const previous=dialog?.querySelector('.pet-fitting-extras');
       if(previous)previewAdvanced=previous.open;
-      if(!previewOpen)previewOrigin={tab,scroll:dialog.querySelector('.pet-tab-content').scrollTop,selector:`[data-pet-preview="${item}"]`};
+      if(!previewOpen)previewOrigin={tab,scroll:dialog.querySelector('.pet-tab-content').scrollTop,selector:source?.dataset.petCollection?`[data-pet-collection="${item}"]`:`[data-pet-preview="${item}"]`};
       previewItem=item;previewOpen=true;previewPlaying=true;tab='wardrobe';renderKey='';render();
       dialog.querySelector('.pet-tab-content').scrollTop=0;
       if(scroll)dialog.querySelector('[data-pet-preview-select]')?.focus({preventScroll:true});
@@ -528,7 +528,7 @@
     }
     let host = dialog?.querySelector('.pet-live-preview');
     if (!host) return;
-    if(!previewOpen)previewOrigin={tab,scroll:dialog.querySelector('.pet-tab-content').scrollTop,selector:`[data-pet-preview="${item}"]`};
+    if(!previewOpen)previewOrigin={tab,scroll:dialog.querySelector('.pet-tab-content').scrollTop,selector:source?.dataset.petCollection?`[data-pet-collection="${item}"]`:`[data-pet-preview="${item}"]`};
     const focused = document.activeElement?.matches('[data-pet-preview-select]');
     previewAdvanced=host.querySelector('.pet-fitting-extras')?.open ?? previewAdvanced;
     window.mailaiCompanionMotion?.stopPreview();
@@ -592,7 +592,7 @@
     <section class="pet-series-detail" data-series="${set.id}"><div class="pet-section-title"><div><small>${label(set.id==='star'?'flagship':'collectionSeries')}</small><h3>${label('collection.'+set.id)}</h3></div><strong>${set.owned}<span> / ${set.items.length}</span></strong></div><p>${label('collection.'+set.id+'.tag')}</p><progress max="${set.items.length}" value="${set.owned}" aria-label="${label('collectionProgress',set.owned,set.items.length)}"></progress>
     <div class="pet-series-pieces">${set.items.map(id=>{const item=state.items.find(i=>i.id===id),view=shopItemState(item);return `<button type="button" data-pet-preview="${id}" data-owned="${item.owned}"><span class="pet-piece-check" aria-hidden="true">${item.owned?'✓':numerals[set.items.indexOf(id)]}</span><span><b>${label('item.'+id)}</b><small>${item.owned?label(view.equipped?'state.equipped':'state.owned'):label('stampPrice',item.cost)}</small></span><span class="pet-piece-link">${label('tryOn')} ↗</span></button>`;}).join('')}</div>
     <div class="pet-series-completion ${set.complete?'is-complete':''}"><span class="pet-collection-stamp" aria-hidden="true">${set.complete?'✦':'◇'}</span><div><b>${label(set.complete?'setComplete':'setKeepsake')}</b><small>${set.complete?label('setCompletedOn',dateLabel(set.completed_at)):label('setKeepsakeHint')}</small></div></div>
-    <div class="pet-series-actions"><button type="button" class="pet-primary" data-pet-wear-collection="${set.id}" title="${label('setWearHint')}" ${busy||!set.owned?'disabled':''}>${label(set.complete?'wearSet':'wearCollected')}</button><button type="button" data-pet-go="wardrobe">${label('freeStyling')} ↗</button>${set.complete?`<button type="button" data-pet-set-action="${set.id}" ${!motionAllowed()?'disabled':''}>${label('setAction')}</button>`:''}</div>${next?`<p class="pet-next-piece">${label('nextCollectionPiece',t('item.'+next.id))} · ${state.stage<next.stage?label('growthShortage',state.stages[next.stage-1]-state.xp):state.stamps<next.cost?label('stampShortage',next.cost-state.stamps):label('state.available')}</p>`:''}</section>`;
+    <div class="pet-series-actions">${set.owned?`<button type="button" class="pet-primary" data-pet-wear-collection="${set.id}" title="${label('setWearHint')}" ${busy?'disabled':''}>${label(set.complete?'wearSet':'wearCollected')}</button>`:''}${next?`<button type="button" ${set.owned?'':'class="pet-primary"'} data-pet-collection="${next.id}">${label(set.owned?'tryNextPiece':'startCollection')}</button>`:''}<button type="button" data-pet-go="wardrobe">${label('freeStyling')} ↗</button>${set.complete?`<button type="button" data-pet-set-action="${set.id}" ${!motionAllowed()?'disabled':''}>${label('setAction')}</button>`:''}</div>${next?`<p class="pet-next-piece">${label('nextCollectionPiece',t('item.'+next.id))} · ${state.stage<next.stage?label('growthShortage',state.stages[next.stage-1]-state.xp):state.stamps<next.cost?label('stampShortage',next.cost-state.stamps):label('state.available')}</p>`:''}</section>`;
   }
   function giftOutfitContext(themes=false) {
     if(!giftOutfitItems.length)return '';
@@ -615,7 +615,7 @@
       const view = shopItemState(item);
       const action = item.owned ? `data-pet-item-action="${item.id}" data-pet-slot="${itemSlot(item)}" data-pet-equip="${view.equipped ? '' : item.id}"` : `data-pet-buy="${item.id}"`;
       return `<article ${Math.floor(index/shelfSize)!==shopPage?'hidden':''} data-pet-item="${item.id}" data-item-state="${view.status}" class="pet-shop-item ${view.locked ? 'is-locked' : ''} ${view.equipped ? 'is-equipped' : ''}"><div class="pet-item-art" data-item-preview="${item.id}"><div aria-hidden="true">${avatar('',Math.max(s.stage,item.stage))}</div><span class="pet-item-stage" aria-hidden="true">${numerals[item.stage-1]}</span><button type="button" class="pet-tryon-hit" data-pet-preview="${item.id}" title="${label('previewIcon',t('item.'+item.id))}" aria-label="${label('previewIcon',t('item.'+item.id))}"><span>${label('tryOn')}</span></button></div><div class="pet-item-copy"><div class="pet-item-title"><b>${label('item.'+item.id)}</b><span class="pet-item-status pet-status-${view.status}">${view.equipped ? '✓ ' : ''}${label('state.'+view.status)}</span></div><p>${label('itemHint.'+item.id)}</p><div class="pet-item-price"><strong>${item.owned ? label('permanentOwned') : label('stampPrice',item.cost)}</strong><small>${esc(view.hint)}</small></div></div><button type="button" ${action} ${view.pending ? 'aria-busy="true"' : ''} ${view.disabled ? 'disabled' : ''}>${esc(view.caption)}</button></article>`;
-    }).join('')}</div>${!items.length ? `<div class="pet-shop-empty"><b>${label(shopFilter==='owned'?'wardrobeEmpty':'noAvailable')}</b><p>${label(shopFilter==='owned'?'ownedEmptyHint':'availableEmptyHint')}</p><button type="button" data-pet-browse-all>${label('browseAll')}</button></div>` : ''}<nav class="pet-shelf-pages" aria-label="${label('wardrobePages')}"><select data-pet-page-select aria-label="${label('wardrobePages')}">${Array.from({length:pages},(_,i)=>`<option value="${i}" ${i===shopPage?'selected':''}>${label('pageOf',i+1,pages)}</option>`).join('')}</select><button type="button" data-pet-page="${shopPage-1}" ${shopPage===0?'disabled':''} aria-label="${label('previousPage')}">←</button><button type="button" data-pet-page="${shopPage+1}" ${shopPage===pages-1?'disabled':''} aria-label="${label('nextPage')}">→</button></nav>`;
+    }).join('')}</div>${!items.length ? `<div class="pet-shop-empty"><b>${label(shopFilter==='owned'?'wardrobeEmpty':'noAvailable')}</b><p>${label(shopFilter==='owned'?'ownedEmptyHint':'availableEmptyHint')}</p><button type="button" data-pet-browse-all>${label('browseAll')}</button></div>` : ''}<nav class="pet-shelf-pages" ${pages===1?'hidden':''} aria-label="${label('wardrobePages')}"><select data-pet-page-select aria-label="${label('wardrobePages')}">${Array.from({length:pages},(_,i)=>`<option value="${i}" ${i===shopPage?'selected':''}>${label('pageOf',i+1,pages)}</option>`).join('')}</select><button type="button" data-pet-page="${shopPage-1}" ${shopPage===0?'disabled':''} aria-label="${label('previousPage')}">←</button><button type="button" data-pet-page="${shopPage+1}" ${shopPage===pages-1?'disabled':''} aria-label="${label('nextPage')}">→</button></nav>`;
   }
   function themeShopView() {
     const s = state;

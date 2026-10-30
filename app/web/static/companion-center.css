@@ -146,6 +146,7 @@ html[data-theme] .pet-journal .pet-hero { background:none; }
 .pet-journal .pet-shop-item>button:hover:not(:disabled) { text-decoration:underline; text-underline-offset:3px; }
 .pet-journal .pet-tryon-hit { border:0; border-radius:12px; background:none; }
 .pet-journal .pet-tryon-hit>span { border:0; background:var(--pet-paper); font-size:10px; }
+.pet-shelf-pages[hidden] { display:none; }
 .pet-shelf-pages { display:flex; align-items:center; justify-content:flex-end; gap:6px; margin-top:24px; }
 .pet-shelf-pages select { margin-right:auto; min-width:0; max-width:100%; padding:8px 6px; border:0; border-radius:7px; color:var(--pet-muted); background:var(--pet-tint); font:inherit; font-size:11px; }
 .pet-shelf-pages button { min-width:32px; height:32px; border:0; border-radius:8px; background:none; color:var(--pet-muted); font-size:12px; }
