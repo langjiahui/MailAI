@@ -214,8 +214,11 @@ const port=Number(process.env.MAILAI_EVOLUTION_FIXTURE_PORT||18857);
    await page.evaluate(style=>{Object.assign(document.body.dataset,{petStyle:style,petStage:'7'});document.body.classList.remove('companion-still');mailaiCompanionMotion.react('signature',document.querySelector('.pet-hero-portrait'));},style);
    assert.equal(await hero.getAttribute('data-motion-clip'),clip);
    const before=await hero.locator(part).evaluate(n=>getComputedStyle(n).transform);
-   await page.waitForTimeout(1050);
+   // Require actual rendered wing movement; a loaded Linux/WebKit runner may
+   // not commit its first animation frame during a fixed wall-clock sleep.
+   await page.waitForFunction(({part,before})=>getComputedStyle(document.querySelector('.pet-hero-portrait '+part)).transform!==before,{part,before},{timeout:5000});
    assert.notEqual(await hero.locator(part).evaluate(n=>getComputedStyle(n).transform),before);
+
    const pose=await page.evaluate(()=>{
     const svg=document.querySelector('.pet-hero-portrait .mail-companion');
     const torso=new DOMMatrixReadOnly(getComputedStyle(svg.querySelector('.companion-torso')).transform);

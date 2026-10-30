@@ -81,6 +81,13 @@ const key='mailai-companion-position-v1';
    // Release near each edge (not exactly on it), then verify the snap, saved
    // dock pose and shoulder attachment on both creatures.
    await page.setViewportSize({width:1280,height:900});await page.evaluate(()=>{document.body.style.zoom='1';document.documentElement.style.setProperty('--fz','1');});await settled();
+   // Geometry is intentionally varied through synthetic route/stage data.
+   // Drain profile reads after the reload checks and defer the next heartbeat,
+   // so live synchronization cannot reset the pose midway through this matrix.
+   await page.waitForFunction(()=>!!document.body.dataset.petStage);
+   await page.evaluate(()=>mailaiPet.refresh());
+   await page.waitForLoadState('networkidle');
+   await page.evaluate(()=>mailaiEnergy.reschedule('companion-growth',3600000));
    const poses=new Set();
    for(const edge of ['left','right','top','bottom']) {
     const before=await box();
