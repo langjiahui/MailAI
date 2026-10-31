@@ -24,6 +24,11 @@ require('node:fs').mkdirSync('output/xiaoyou-upgrade',{recursive:true});
     browser=await (process.env.MAILAI_BROWSER==='webkit'?webkit:chromium).launch({headless:true});
     const page=await browser.newPage({viewport:{width:1280,height:1000}}),errors=[];
     page.on('pageerror',error=>errors.push(error.message));
+    // Measure the gesture's cost independently of legitimate timed activity
+    // rewards. Hold heartbeats until both unchanged-balance assertions finish,
+    // then let every held request reach the fixture and resume normal updates.
+    const heldHeartbeats=[];
+    await page.route('**/api/companion/heartbeat',route=>heldHeartbeats.push(route));
     await page.addInitScript(()=>{
       localStorage.setItem('mailai.onboarding.v2',JSON.stringify({deferred:true,mailboxDone:true,aiDone:true}));
       window.audioContexts=[];window.audioNotes=[];
@@ -58,6 +63,8 @@ require('node:fs').mkdirSync('output/xiaoyou-upgrade',{recursive:true});
     assert.equal(await page.evaluate(()=>audioContexts.length),0,'No audio device is opened by default');
     const after=await page.evaluate(()=>api('/api/companion/growth'));
     assert.equal(after.xp,before.xp,'Playing is free and does not farm growth');assert.equal(after.stamps,before.stamps);
+    await page.unroute('**/api/companion/heartbeat');
+    await Promise.all(heldHeartbeats.map(route=>route.continue()));
     // All seven learned gestures, for both routes, use the shared visible rig.
     for(const style of ['nature','ranger']) for(let stage=1;stage<=7;stage++) {
       // These are temporary visual fixtures, not saved preferences. Sample the
@@ -109,6 +116,9 @@ require('node:fs').mkdirSync('output/xiaoyou-upgrade',{recursive:true});
     await selectTab(page.locator('#companion-growth-dialog'),'home');
     await page.locator('[data-pet-life-action="hello"]').click();
     await page.waitForFunction(()=>audioContexts.length===1);
+    // The context is recorded in its constructor, before async resume creates
+    // the sound graph. Exercise blur cleanup after playback has actually begun.
+    await page.waitForFunction(()=>audioNotes.length===2);
     await page.evaluate(()=>window.dispatchEvent(new Event('blur')));
     await page.waitForFunction(()=>audioContexts.every(context=>context.state==='closed'));
     assert.equal(await hero.getAttribute('data-motion-active'),'false');
