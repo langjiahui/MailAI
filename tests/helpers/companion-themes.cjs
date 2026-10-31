@@ -22,8 +22,12 @@ async function auditSpaceThemes(page,dialog) {
      if(body.scrollHeight>body.clientHeight+1)problems.push('Outer dialog body scrolls');
      for(const [name,n]of [['dialog',d],['body',body],['main',main]])if(n.scrollWidth>n.clientWidth+1)problems.push(name+' has horizontal overflow');
      const close=d.querySelector('[data-pet-close]').getBoundingClientRect();if(close.top<0||close.right>innerWidth+1||close.bottom>innerHeight+1)problems.push('Close is outside the viewport');
-     for(const n of d.querySelectorAll('.pet-tabs button,.pet-hero h3,.pet-header-wallet b,.pet-space-more>summary,.pet-shop-toolbar select,.pet-shelf-pages select,.pet-page-heading h3,.pet-series-actions button,.pet-shelf-pages button,.pet-shop-item>button,.pet-theme-card>button')) {
+     for(const n of d.querySelectorAll('.pet-tabs button,.pet-hero h3,.pet-header-wallet b,.pet-shop-toolbar select,.pet-shelf-pages select,.pet-page-heading h3,.pet-series-actions button,.pet-shelf-pages button,.pet-shop-item>button,.pet-theme-card>button')) {
       const css=getComputedStyle(n);if(!n.getClientRects().length||css.visibility==='hidden'||n.disabled||n.closest('[hidden]'))continue;
+      if(n.matches('.pet-tabs button')) {
+       const b=n.getBoundingClientRect(),nav=d.querySelector('.pet-tabs').getBoundingClientRect();
+       if(b.left<nav.left-1||b.right>nav.right+1||b.top<nav.top-1||b.bottom>nav.bottom+1)problems.push('Navigation outside visible bounds: '+n.textContent.trim());
+      }
       if(n.scrollWidth>n.clientWidth+1)problems.push('Clipped text: '+n.textContent.trim());
       const ratio=contrast(n),large=parseFloat(css.fontSize)>=24||parseFloat(css.fontSize)>=18.66&&parseInt(css.fontWeight)>=700;
       if(ratio<(large?3:4.5)-.05)problems.push('Low text contrast '+ratio.toFixed(2)+': '+n.textContent.trim());

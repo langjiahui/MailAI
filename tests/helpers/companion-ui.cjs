@@ -15,10 +15,9 @@ async function revealItem(dialog,id) {
  }
  return card;
 }
-// Reach secondary tasks through their visible disclosure, including keyboard focus.
+// Every task is directly visible in the space navigation.
 async function selectTab(dialog,tab) {
  const button=dialog.locator(`[data-pet-tab="${tab}"]`);
- if(!await button.isVisible())await dialog.locator('.pet-space-more>summary').click();
  await button.click();
 }
 module.exports={revealItem,selectTab};

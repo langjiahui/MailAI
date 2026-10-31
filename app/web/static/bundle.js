@@ -35055,9 +35055,8 @@ function mailCardDate(value, now = new Date()) {
       if (button.hasAttribute('data-pet-close')) return dialog.close();
       if (button.dataset.petTab || button.dataset.petGo) {
         earnReturn=false;tab = button.dataset.petTab || button.dataset.petGo; previewOpen=false;previewOrigin=null;previewStage=null;renderKey='';render();
-        dialog.querySelector('.pet-space-more').open=false;
         dialog.querySelector('.pet-tab-content')?.scrollTo(0,0);
-        (dialog.querySelector(`[data-pet-tab="${tab}"]`)?.closest('.pet-more-items')?dialog.querySelector('.pet-space-more>summary'):dialog.querySelector(`[data-pet-tab="${tab}"]`))?.focus({preventScroll:true});
+        dialog.querySelector(`[data-pet-tab="${tab}"]`)?.focus({preventScroll:true});
         return;
       }
       if (button.hasAttribute('data-pet-retry')) return refresh();
@@ -35189,14 +35188,6 @@ function mailCardDate(value, now = new Date()) {
         if (button.isConnected) { button.disabled = false; button.removeAttribute('aria-busy'); }
         if (id !== account) void refresh();
       }
-    });
-    dialog.addEventListener('click',event=>{
-      const more=dialog.querySelector('.pet-space-more');
-      if(more?.open&&!more.contains(event.target))more.open=false;
-    });
-    dialog.addEventListener('cancel',event=>{
-      const more=dialog.querySelector('.pet-space-more[open]');
-      if(more){event.preventDefault();more.open=false;more.querySelector('summary').focus();}
     });
     dialog.addEventListener('input', event => {
       if (!event.target.matches('[data-pet-gift-code]') || busy) return;
@@ -35498,22 +35489,21 @@ function mailCardDate(value, now = new Date()) {
     const focus = document.activeElement;
     const giftSelection = focus?.matches('[data-pet-gift-code],[data-pet-claim-code]') ? [focus.selectionStart,focus.selectionEnd] : null;
     const identityOpen = host.querySelector('.pet-gift-identity')?.open;
-    const moreOpen=host.querySelector('.pet-space-more')?.open, equippedOpen=host.querySelector('.pet-equipped-details')?.open;
+    const equippedOpen=host.querySelector('.pet-equipped-details')?.open;
     const collectionsOpen = host.querySelector('.pet-collection-discovery')?.open;
     previewAdvanced=host.querySelector('.pet-fitting-extras')?.open ?? previewAdvanced;
-    const focusKey = focus?.closest('.pet-journal') ? Object.entries(focus.dataset).find(([key])=>['petMore','petCategory','petPageSelect','petLifeAction','petLifeChatter','petTab','petGo','petPage','petSeries','petJourneyStage','petWearCollection','petSetAction','petGiftContextClose','petBuy','petItemAction','petEquip','petSlot','petStyle','petGiftCode','petGiftPreview','petGiftClaim','petGiftWear','petGiftCopy','petGiftReconcile','petGiftOutfits','petClaimCode','petPreview','petPreviewSelect','petPreviewPlay','petPreviewClose','petPreviewStage','petPreviewAction','petPreviewMode','petResetStage','petEarn','petReturnShop','petReceiptClose','petTryAction','petShopFilter','petTryStage','petCollection'].includes(key)) : null;
+    const focusKey = focus?.closest('.pet-journal') ? Object.entries(focus.dataset).find(([key])=>['petCategory','petPageSelect','petLifeAction','petLifeChatter','petTab','petGo','petPage','petSeries','petJourneyStage','petWearCollection','petSetAction','petGiftContextClose','petBuy','petItemAction','petEquip','petSlot','petStyle','petGiftCode','petGiftPreview','petGiftClaim','petGiftWear','petGiftCopy','petGiftReconcile','petGiftOutfits','petClaimCode','petPreview','petPreviewSelect','petPreviewPlay','petPreviewClose','petPreviewStage','petPreviewAction','petPreviewMode','petResetStage','petEarn','petReturnShop','petReceiptClose','petTryAction','petShopFilter','petTryStage','petCollection'].includes(key)) : null;
     const scroll = host.querySelector('.pet-tab-content')?.scrollTop || 0;
     // Progress, receipts and tab updates must not replace the live animation rig.
     const portrait = host.querySelector('.pet-hero>.pet-hero-portrait');
     window.mailaiCompanionMotion?.stopPreview();
     const tabs=['today','shop','wardrobe','journey'],utilities=['gifts','themes','history'];
     const navButton=name=>`<button type="button" data-pet-tab="${name}" aria-pressed="${(previewOpen&&tab==='wardrobe'?previewOrigin?.tab||tab:tab)===name}" aria-label="${label('nav.'+name)}">${label('nav.'+name)}</button>`;
-    host.innerHTML=`<nav class="pet-tabs" aria-label="${label('tabs')}"><div class="pet-primary-nav">${tabs.map(navButton).join('')}</div><details class="pet-space-more"><summary data-pet-more aria-label="${label('more')}">${label(utilities.includes(tab)?'nav.'+tab:'more')}<span aria-hidden="true">⌄</span></summary><div class="pet-more-items">${utilities.map(navButton).join('')}</div></details></nav>${companionStageView()}<main class="pet-center-main"><div class="pet-center-notices">${purchaseIntent&&!busy?`<div class="pet-pending" role="status"><span>${label('purchasePending',t('item.'+purchaseIntent.item))}</span><button type="button" data-pet-reconcile>${label('reconcile')}</button></div>`:''}${feedback&&Date.now()<feedback.until?`<p class="pet-milestone" role="status">${esc(feedback.copy)}</p>`:''}${!state.enabled?`<p class="pet-paused">${label('paused')}</p>`:''}</div><section class="pet-tab-content" aria-label="${label('nav.'+tab)}">${({today:todayView,journey:journeyView,shop:collectionView,wardrobe:shopView,gifts:giftsView,themes:themeShopView,history:historyView})[tab]()}</section></main>`;
+    host.innerHTML=`<nav class="pet-tabs" aria-label="${label('tabs')}"><div class="pet-primary-nav">${tabs.map(navButton).join('')}</div><div class="pet-secondary-nav">${utilities.map(navButton).join('')}</div></nav>${companionStageView()}<main class="pet-center-main"><div class="pet-center-notices">${purchaseIntent&&!busy?`<div class="pet-pending" role="status"><span>${label('purchasePending',t('item.'+purchaseIntent.item))}</span><button type="button" data-pet-reconcile>${label('reconcile')}</button></div>`:''}${feedback&&Date.now()<feedback.until?`<p class="pet-milestone" role="status">${esc(feedback.copy)}</p>`:''}${!state.enabled?`<p class="pet-paused">${label('paused')}</p>`:''}</div><section class="pet-tab-content" aria-label="${label('nav.'+tab)}">${({today:todayView,journey:journeyView,shop:collectionView,wardrobe:shopView,gifts:giftsView,themes:themeShopView,history:historyView})[tab]()}</section></main>`;
     if (portrait?.querySelector('.mail-companion')) host.querySelector('.pet-hero>.pet-hero-portrait')?.replaceWith(portrait);
     for(const id of giftOutfitItems)host.querySelector(`[data-pet-item="${CSS.escape(id)}"]`)?.setAttribute('data-gift-focus','true');
     watchRewardMotion();
     window.mailaiCompanionMotion?.scan();
-    if(moreOpen)host.querySelector('.pet-space-more').open=true;
     if(equippedOpen&&host.querySelector('.pet-equipped-details'))host.querySelector('.pet-equipped-details').open=true;
     if (collectionsOpen) host.querySelector('.pet-collection-discovery')?.setAttribute('open','');
     if (identityOpen) { const identity = host.querySelector('.pet-gift-identity'); if (identity) identity.open = true; }
