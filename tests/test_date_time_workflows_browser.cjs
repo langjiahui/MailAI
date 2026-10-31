@@ -79,7 +79,10 @@ const {chromium,webkit}=require('playwright');
       await page.locator('#btn-create-backup').click();await page.locator('#backup-list [data-restore-backup]').first().waitFor();
       await page.locator('#backup-list [data-restore-backup]').first().click();
       await pick('restore-start','2026-01-01');await pick('restore-end','2026-12-31');
-      await page.locator('#restore-submit').click();await page.locator('#backup-restore-dialog').waitFor({state:'hidden'});
+      const restored=page.waitForResponse(r=>r.request().method()==='POST'&&/\/api\/system\/backups\/[^/]+\/restore/.test(r.url()));
+      await page.locator('#restore-submit').click();
+      const restoreResult=await restored;assert.equal(restoreResult.status(),200,await restoreResult.text());
+      await page.locator('#backup-restore-dialog').waitFor({state:'hidden'});
       assert.deepEqual(errors,[]);
       console.log(`${type.name()}: send-arrangement, task persistence, backup/range restore, all palettes, real search date selection, keyboard and rejected/dismissed popover fallback passed`);
     } finally {await browser.close();}
