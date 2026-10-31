@@ -77,9 +77,11 @@ const {chromium,webkit} = require('playwright');
       if(await dialog.locator(`[data-pet-equip="${theme}"]`).isEnabled())await dialog.locator(`[data-pet-equip="${theme}"]`).click();
       await page.waitForFunction(expected=>document.documentElement.dataset.rewardTheme===expected,theme);
       for(const style of ['nature','ranger']) {
+        await selectTab(dialog,'settings');
         if(await dialog.locator(`[data-pet-style="${style}"]`).isEnabled())await dialog.locator(`[data-pet-style="${style}"]`).click();
         await page.waitForFunction(expected=>document.body.dataset.petStyle===expected,style);
         for(const mode of ['light','dark']) {
+          await selectTab(dialog,'home');
           await page.evaluate(mode=>applyTheme(mode),mode);
           const colors=await page.evaluate(()=>{
             const body=getComputedStyle(document.body),button=getComputedStyle(document.querySelector('#btn-compose'));
