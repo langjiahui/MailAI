@@ -11,6 +11,9 @@ _lock = threading.Lock()
 _listeners = {}
 _stopping = False
 MAX_LISTENERS = 8
+IDLE_CHECK_SECONDS = 60
+MIN_CHECK_SECONDS = .25
+MAX_FAST_EMPTY_CHECKS = 3
 
 
 class Listener:
@@ -24,6 +27,9 @@ class Listener:
 
     def stop(self):
         self.stop_event.set()
+        self._shutdown_connection()
+
+    def _shutdown_connection(self):
         client = self.client
         if client:
             try:
@@ -52,19 +58,35 @@ class Listener:
                         self.stop_event.wait(300)
                         continue
                     self.client.select_folder(config.INBOX_FOLDER, readonly=True)
-                    self.state = "listening"
-                    self.last_check = time.monotonic()
-                    failures = 0
                     started = time.monotonic()
                     last_notification = 0
                     self.client.idle()
+                    self.state = "listening"
+                    self.last_check = time.monotonic()
+                    fast_empty_checks = 0
+                    broken = False
                     try:
                         while (
                             not self.stop_event.is_set()
                             and time.monotonic() - started < 1200
                         ):
-                            events = self.client.idle_check(timeout=60)
+                            checked_at = time.monotonic()
+                            events = self.client.idle_check(timeout=IDLE_CHECK_SECONDS)
                             self.last_check = time.monotonic()
+                            elapsed = self.last_check - checked_at
+                            # IMAPClient swallows EOF/socket errors in idle_check.
+                            # A closed socket then stays readable and returns []
+                            # immediately forever. Allow a few spurious TLS wakes
+                            # before reconnecting, and bound every fast iteration.
+                            fast_empty_checks = fast_empty_checks + 1 if not events and elapsed < 1 else 0
+                            if fast_empty_checks >= MAX_FAST_EMPTY_CHECKS or any(
+                                event and event[0] in (b"BYE", "BYE") for event in events
+                            ):
+                                raise ConnectionError("IDLE connection is no longer waiting")
+                            # Successful login alone does not make a connection
+                            # healthy: repeated immediate disconnects must back off.
+                            if self.last_check - started >= IDLE_CHECK_SECONDS:
+                                failures = 0
                             account = (
                                 system_settings._load_registry()
                                 .get("accounts", {})
@@ -84,11 +106,22 @@ class Listener:
                                     account_id=self.account_id,
                                     from_idle=True,
                                 )
+                            remaining = MIN_CHECK_SECONDS - (time.monotonic() - checked_at)
+                            if remaining > 0:
+                                self.stop_event.wait(remaining)
+                    except Exception:
+                        broken = True
+                        raise
                     finally:
-                        try:
-                            self.client.idle_done()
-                        except Exception:
-                            pass
+                        if broken:
+                            # DONE/LOGOUT must not wait for a dead peer before
+                            # entering the interruptible reconnect backoff.
+                            self._shutdown_connection()
+                        else:
+                            try:
+                                self.client.idle_done()
+                            except Exception:
+                                pass
             except Exception:
                 if not self.stop_event.is_set():
                     failures = min(failures + 1, 7)
