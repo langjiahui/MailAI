@@ -1,6 +1,6 @@
 /* Fitting-room actions reuse the real rig without buying or changing growth. */
 const assert=require('node:assert/strict');
-const {revealItem}=require('./helpers/companion-ui.cjs');
+const {revealItem,selectTab}=require('./helpers/companion-ui.cjs');
 const {auditSpaceThemes}=require('./helpers/companion-themes.cjs');
 const {spawn}=require('node:child_process');
 const {once}=require('node:events');
@@ -14,17 +14,40 @@ const port=Number(process.env.MAILAI_WARDROBE_FIXTURE_PORT||18863);
   for(const engine of [chromium,webkit]) {
    browser=await engine.launch();const page=await browser.newPage({viewport:{width:1280,height:1000}}),errors=[];
    page.on('pageerror',e=>errors.push(e.message));await page.goto(`http://127.0.0.1:${port}`);await page.locator('#app-preloader').waitFor({state:'hidden'});
-   await page.evaluate(async()=>{await api('/api/companion/preferences',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:false})});await mailaiPet.refresh();await mailaiPet.open();});
+   await page.evaluate(async()=>{setI18nLanguage('zh-CN');await api('/api/companion/preferences',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:false})});await mailaiPet.refresh();await mailaiPet.open();});
    const before=await page.evaluate(()=>api('/api/companion/growth')),mutations=[];
    page.on('request',r=>{if(/\/api\/companion\/(purchase|equip|style)$/.test(r.url()))mutations.push(r.url());});
    const dialog=page.locator('#companion-growth-dialog'),preview=dialog.locator('.pet-live-preview'),art=dialog.locator('.pet-center-companion .pet-live-art');
+   assert.equal(await dialog.locator('.pet-primary-nav button').count(),4);
+   assert.equal(await dialog.locator('.pet-space-more').evaluate(n=>n.open),false);
+   await dialog.locator('.pet-space-more>summary').focus();await page.keyboard.press('Enter');
+   assert(await dialog.locator('[data-pet-tab="history"]').isVisible(),'Secondary tasks are reachable through More');
+   await page.keyboard.press('Escape');
+   assert(await dialog.isVisible(),'Escape dismisses More before closing the space');
+   assert.equal(await dialog.locator('.pet-space-more').evaluate(n=>n.open),false);
+   await selectTab(dialog,'history');
+   assert.equal(await dialog.getAttribute('data-pet-view'),'history');
+   assert(await page.evaluate(()=>document.activeElement.matches('.pet-space-more>summary')),'Collapsed secondary navigation returns focus to its disclosure');
    await dialog.locator('[data-pet-tab="shop"]').click();
    assert.equal(await dialog.locator('[data-pet-series]').count(),3);
+   assert.equal(await dialog.locator('[data-pet-wear-collection]').count(),0,'An empty collection offers a useful first step instead of an unavailable wear action');
+   assert.equal(await dialog.locator('[data-pet-collection]').getAttribute('data-pet-collection'),'scarf','The first piece follows the earliest reachable growth stage');
+   await dialog.locator('[data-pet-collection]').click();
+   assert.equal(await dialog.getAttribute('data-pet-view'),'wardrobe');
+   await preview.locator('[data-pet-back-shelf]').click();
+   assert(await page.evaluate(()=>document.activeElement.hasAttribute('data-pet-collection')),'The first-piece action restores focus after preview');
    await dialog.locator('[data-pet-tab="wardrobe"]').click();
    assert.equal(await dialog.locator('.pet-shop-item').count(),17);
-   for(const [filter,count] of [['palette',3],['accessory',9],['effect',4],['owned',0],['all',17]]) {
-    await dialog.locator(`[data-pet-shop-filter="${filter}"]`).click();assert.equal(await dialog.locator('.pet-shop-item').count(),count);
+   for(const [category,count] of [['palette',3],['accessory',9],['effect',4],['all',17]]) {
+    await dialog.locator('[data-pet-category]').selectOption(category);assert.equal(await dialog.locator('.pet-shop-item').count(),count);
    }
+   await dialog.locator('[data-pet-category]').selectOption('accessory');
+   await dialog.locator('[data-pet-shop-filter="owned"]').click();
+   assert.equal(await dialog.locator('.pet-shop-item').count(),0,'Ownership and category combine instead of replacing each other');
+   assert.equal(await dialog.locator('[data-pet-category]').inputValue(),'accessory');
+   await dialog.locator('[data-pet-browse-all]').click();
+   assert.equal(await dialog.locator('[data-pet-category]').inputValue(),'all');
+   assert.equal(await dialog.locator('.pet-shop-item').count(),17);
    await dialog.locator('[data-pet-shop-filter="available"]').click();
    const available=before.items.filter(item=>item.slot!=='theme'&&!item.owned&&item.stage<=before.stage&&item.cost<=before.stamps&&!(item.id==='berry'&&before.berry_today>=3));
    assert.equal(await dialog.locator('.pet-shop-item').count(),available.length);
@@ -47,9 +70,22 @@ const port=Number(process.env.MAILAI_WARDROBE_FIXTURE_PORT||18863);
    assert.equal(await preview.locator('[data-requirement="balance"]').getAttribute('data-ready'),String(before.stamps>=scarf.cost));
    await revealItem(dialog,'mech_wings');
    assert(await dialog.locator('[data-pet-buy="mech_wings"]').isDisabled(),'Future reward stays locked');
+   await dialog.locator('[data-pet-preview="mech_wings"]').click();
+   await page.setViewportSize({width:1000,height:1000});
+   await preview.locator('[data-pet-back-shelf]').click();
+   assert(await dialog.locator('[data-pet-preview="mech_wings"]').isVisible(),'Returning after resize finds the source on its recalculated page');
+   assert.equal(await page.evaluate(()=>document.activeElement.dataset.petPreview),'mech_wings');
+   await page.setViewportSize({width:1280,height:1000});
    await dialog.locator('[data-pet-tab="shop"]').click();
    await dialog.locator('[data-pet-series="star"]').click();
    await dialog.locator('[data-pet-preview="mech_wings"]').click();assert(await preview.isVisible());
+   assert.equal(await dialog.locator('.pet-primary-nav button[aria-pressed="true"]').getAttribute('data-pet-tab'),'shop','Try-on keeps its collection context');
+   assert.match(await preview.locator('[data-pet-back-shelf]').textContent(),/返回套系收藏/);
+   await preview.locator('[data-pet-back-shelf]').click();
+   assert.equal(await dialog.getAttribute('data-pet-view'),'shop');
+   assert.equal(await dialog.locator('[data-pet-series="star"]').getAttribute('aria-pressed'),'true');
+   assert.equal(await page.evaluate(()=>document.activeElement.dataset.petPreview),'mech_wings','Return restores focus to the source piece');
+   await dialog.locator('[data-pet-preview="mech_wings"]').click();
    const choice=preview.locator('[data-pet-preview-select]'),stageChoice=preview.locator('[data-pet-preview-stage]');
    assert(await preview.locator('[data-pet-earn]').isVisible());
    await preview.locator('[data-pet-earn]').scrollIntoViewIfNeeded();
@@ -111,6 +147,12 @@ const port=Number(process.env.MAILAI_WARDROBE_FIXTURE_PORT||18863);
    await dialog.locator('[data-pet-tab="journey"]').click();assert.equal(await dialog.locator('[data-pet-try-stage]').count(),7);
    await dialog.locator('[data-pet-journey-stage="7"]').click();
    await dialog.locator('[data-pet-try-stage="7"]').click();assert.equal(await stageChoice.inputValue(),'7');
+   assert.match(await preview.locator('[data-pet-back-shelf]').textContent(),/Back to evolution/);
+   await preview.locator('[data-pet-back-shelf]').click();
+   assert.equal(await dialog.getAttribute('data-pet-view'),'journey');
+   assert.equal(await dialog.locator('[data-pet-journey-stage="7"]').getAttribute('aria-pressed'),'true');
+   assert.equal(await page.evaluate(()=>document.activeElement.dataset.petTryStage),'7');
+   await dialog.locator('[data-pet-try-stage="7"]').click();
    await page.evaluate(()=>window.closedFittingRig=document.querySelector('.pet-live-art svg'));
    await dialog.locator('[data-pet-close]').click();assert.equal(await page.evaluate(()=>closedFittingRig.dataset.motionClip||null),null);
    await page.evaluate(()=>{document.documentElement.style.setProperty('--fz','1');document.body.style.zoom='1';});
@@ -119,7 +161,7 @@ const port=Number(process.env.MAILAI_WARDROBE_FIXTURE_PORT||18863);
    await dialog.locator('[data-pet-tab="shop"]').click();
    await dialog.locator('[data-pet-series="star"]').click();
    for(const language of ['zh-CN','en'])for(const theme of ['light','dark'])for(const reward of ['','theme_monochrome','theme_baowu']) {
-    await page.evaluate(({language,theme,reward})=>{setI18nLanguage(language);document.documentElement.dataset.theme=theme;document.documentElement.dataset.rewardTheme=reward;},{language,theme,reward});
+    await page.evaluate(({language,theme,reward})=>{setI18nLanguage(language);document.documentElement.dataset.theme=theme;if(reward)document.documentElement.dataset.rewardTheme=reward;else delete document.documentElement.dataset.rewardTheme;},{language,theme,reward});
     for(const [width,height,scale]of [[1440,1000,1],[1280,900,1.5],[800,650,1],[390,844,1],[390,844,1.35],[360,740,2]]) {
      await page.setViewportSize({width,height});
      await page.evaluate(scale=>{document.documentElement.style.setProperty('--fz',scale);document.body.style.zoom=String(scale);},scale);
@@ -128,13 +170,18 @@ const port=Number(process.env.MAILAI_WARDROBE_FIXTURE_PORT||18863);
       return {dialog:d.scrollWidth<=d.clientWidth+1,body:body.scrollWidth<=body.clientWidth+1,main:main.scrollWidth<=main.clientWidth+1,bounded:body.scrollHeight<=body.clientHeight+1,nav:nav.getBoundingClientRect().bottom<=body.getBoundingClientRect().bottom+1};
      });
      assert(Object.values(bounds).every(Boolean),JSON.stringify({language,theme,reward,width,height,scale,bounds}));
-     assert(await dialog.locator('[data-pet-wear-collection="star"]').isDisabled(),'An unowned full-set preview cannot equip or buy items');
+     assert.equal(await dialog.locator('[data-pet-wear-collection="star"]').count(),0,'An unowned full-set preview cannot equip items');
+     assert(await dialog.locator('[data-pet-collection]').isEnabled(),'The first-piece preview is reachable at every size');
     }
    }
    await page.evaluate(()=>{document.documentElement.style.setProperty('--fz','1');document.body.style.zoom='1';setI18nLanguage('zh-CN');});
    await page.setViewportSize({width:1280,height:1000});
    assert.deepEqual(await page.evaluate(()=>api('/api/companion/growth')),before,'Layout and full-set previews never mutate progress');
    await auditSpaceThemes(page,dialog);
+   // Drain live profile reads before the synthetic legacy-equipment matrix; a
+   // late real response must not overwrite the mocked cross-slot outfit.
+   await page.evaluate(()=>mailaiEnergy.reschedule('companion-growth',3600000));
+   await page.waitForLoadState('networkidle');
    // Synthetic owned equipment exercises composition without changing inventory.
    const fitted={...before,style:'nature',equipped:{accessory:'scarf',palette:'sky',effect:'sparkles'},items:before.items.map(item=>({...item,owned:['scarf','sky','sparkles'].includes(item.id)||item.owned}))};
    await page.route('**/api/companion/growth',route=>route.fulfill({contentType:'application/json',body:JSON.stringify(fitted)}));
@@ -143,7 +190,7 @@ const port=Number(process.env.MAILAI_WARDROBE_FIXTURE_PORT||18863);
    await dialog.locator('[data-pet-preview="cap"]').click();
    const display=selector=>art.locator(selector).first().evaluate(n=>getComputedStyle(n).display);
    const bodyColor=()=>art.locator('.mail-companion').evaluate(n=>getComputedStyle(n).getPropertyValue('--pet-body').trim());
-   assert.equal(await display('.growth-cap'),'block');assert.equal(await display('.growth-scarf'),'block','Headwear combines with the equipped scarf');
+   assert.equal(await display('.growth-cap'),'block');assert.equal(await display('.growth-scarf'),'block','Headwear combines with the equipped scarf: '+await art.getAttribute('data-fitting-outfits'));
    assert.equal(await display('.growth-stars'),'block');
    const skyColor=await art.locator('.mail-companion').evaluate(n=>getComputedStyle(n).getPropertyValue('--pet-body').trim());
    assert.equal(await bodyColor(),skyColor,'Accessory try-on keeps the equipped palette');

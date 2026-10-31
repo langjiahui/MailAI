@@ -133,6 +133,8 @@ async function checkRestEffect(page, host, part, context) {
     await dialog.locator('[data-pet-tab="shop"]').click();
     await dialog.locator('[data-pet-series="star"]').click();
     assert.match(await dialog.locator('.pet-series-completion').textContent(),/已集齐/);
+    assert(await dialog.locator('.pet-set-wear-note').isVisible(),'Set replacement is explained before the user applies it');
+    assert.match(await dialog.locator('.pet-set-wear-note').textContent(),/配色和光效/);
     await dialog.locator('[data-pet-wear-collection="star"]').click();
     await page.waitForFunction(()=>document.body.dataset.petCollection==='star');
     assert.equal(await page.evaluate(()=>document.activeElement?.dataset.petWearCollection),'star','Set wear keeps keyboard focus on its action');

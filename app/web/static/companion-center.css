@@ -1,170 +1,286 @@
-/* XiaoYou space: stable navigation and stage, one bounded task at a time. */
-dialog.pet-journal { --pet-ink:#293e51; --pet-muted:#61717b; --pet-line:#e4e9e9; --pet-paper:#fffefa; --pet-tint:#f3f6f4; --pet-accent:#426f73; width:min(1240px,calc(100vw / var(--fz,1) - 40px)); height:min(840px,calc(100dvh / var(--fz,1) - 40px)); max-width:none; max-height:calc(100dvh / var(--fz,1) - 24px); border-radius:20px; }
-.pet-journal .pet-journal-head { padding:17px 24px; gap:12px; }
-.pet-journal .pet-journal-head h2 { font-size:20px; margin-top:4px; }
-.pet-journal .pet-journal-head small { font-size:8px; letter-spacing:2.3px; }
-.pet-journal .pet-journal-body { display:grid; grid-template-columns:144px 296px minmax(0,1fr); flex:1; min-height:0; padding:0; overflow:hidden; }
-.pet-journal .pet-tabs { position:static; display:flex; flex-direction:column; gap:6px; padding:22px 12px; min-width:0; min-height:0; border:0; border-right:1px solid var(--pet-line); border-radius:0; background:var(--pet-paper); box-shadow:none; overflow:auto; }
-.pet-journal .pet-tabs button { display:flex; align-items:center; flex:none; gap:10px; padding:12px 10px; min-height:43px; text-align:left; border-radius:10px; font-size:12px; }
-.pet-journal .pet-tabs button i { width:18px; font-size:18px; font-style:normal; text-align:center; }
-.pet-journal .pet-tabs button[aria-pressed="true"] { background:var(--pet-tint); color:var(--pet-accent); box-shadow:none; }
-.pet-nav-intro { display:flex; flex-direction:column; gap:12px; padding:0 10px 22px; }
-.pet-nav-intro>span { font-size:25px; color:#b59969; }
-.pet-nav-intro small { font-size:8px; letter-spacing:1px; color:var(--pet-muted); }
-.pet-nav-bottom { display:flex; flex-direction:column; gap:6px; margin-top:auto; padding:24px 10px 0; }
-.pet-nav-bottom b { font-size:17px; font-weight:600; }
-.pet-nav-bottom small { font-size:10px; color:var(--pet-muted); }
-.pet-center-companion { display:flex; flex-direction:column; align-items:stretch; padding:23px 23px 16px; min-width:0; min-height:0; overflow:auto; border-right:1px solid var(--pet-line); background:radial-gradient(ellipse at 55% 38%,color-mix(in srgb,var(--pet-accent) 8%,transparent),transparent 58%),color-mix(in srgb,var(--pet-paper) 55%,var(--pet-tint)); }
-.pet-journal .pet-style-choice { display:flex; justify-content:center; gap:4px; padding:3px; margin:0 0 15px; border:1px solid var(--pet-line); border-radius:10px; background:var(--pet-paper); flex:none; }
-.pet-journal .pet-style-choice button { flex:1; padding:8px 5px; font-size:11px; border:0; background:transparent; }
-.pet-journal .pet-style-choice button[aria-pressed="true"] { background:var(--pet-tint); color:var(--pet-accent); }
-.pet-journal .pet-hero { display:flex; flex-direction:column; gap:0; padding:8px 0 0; border:0; background:none; text-align:center; flex:none; }
-.pet-stage-caption { display:block; font-size:9px; color:var(--pet-muted); letter-spacing:1.3px; }
-.pet-journal .pet-hero>.pet-hero-portrait,.pet-journal .pet-hero .pet-live-art { width:100%; height:248px; margin:0; flex:none; }
-.pet-journal .pet-hero .pet-portrait { width:200px; height:200px; max-width:90%; margin:auto; }
-.pet-journal .pet-hero>.pet-hero-portrait { display:grid; place-items:center; padding:10px; box-sizing:border-box; }
-.pet-journal .pet-hero .pet-live-art { display:grid; place-items:center; min-height:0; padding:0; border:0; background:none; overflow:visible; }
-.pet-journal .pet-hero .pet-live-art .pet-portrait { width:190px; height:190px; }
+/* XiaoYou space follows the workspace palette. Spacing and soft surfaces
+   separate tasks; only the selected control and the current action stand out. */
+dialog.pet-journal {
+ --pet-ink:var(--desk-ink); --pet-muted:var(--desk-muted); --pet-line:var(--desk-line);
+ --pet-paper:var(--desk-surface); --pet-tint:var(--desk-muted-surface); --pet-accent:var(--desk-accent); --pet-on-accent:var(--control-on-accent,#fff);
+ width:min(1120px,calc(100vw / var(--fz,1) - 40px)); height:min(800px,calc(100dvh / var(--fz,1) - 40px));
+ max-width:none; max-height:calc(100dvh / var(--fz,1) - 24px); border:0; border-radius:20px;
+ container-type:inline-size; container-name:xiaoyou;
+}
+html[data-theme="dark"] dialog.pet-journal {
+ --pet-ink:var(--desk-ink); --pet-muted:var(--desk-muted); --pet-line:var(--desk-line);
+ --pet-paper:var(--desk-surface); --pet-tint:var(--desk-muted-surface); --pet-accent:var(--desk-accent); --pet-on-accent:var(--control-on-accent,#fff);
+}
+.pet-journal .pet-journal-head { padding:22px 28px 10px; gap:20px; border:0; }
+.pet-journal .pet-journal-head h2 { font-size:20px; margin:0; font-weight:650; }
+.pet-journal .pet-header-wallet { margin-left:auto; flex-direction:row; align-items:baseline; gap:7px; }
+.pet-journal .pet-shop-wallet b { font-size:18px; font-weight:650; font-variant-numeric:tabular-nums; }
+.pet-journal .pet-shop-wallet span { font-size:11px; color:var(--pet-muted); }
+.pet-journal .pet-journal-body { display:grid; grid-template-columns:288px minmax(0,1fr); grid-template-rows:auto minmax(0,1fr); flex:1; min-height:0; padding:0; overflow:hidden; }
+.pet-journal .pet-tabs { grid-column:1/-1; position:relative; z-index:6; display:flex; flex-direction:row; align-items:center; justify-content:space-between; min-width:0; gap:12px; padding:0 28px 14px; border:0; border-radius:0; background:none; box-shadow:none; overflow:visible; }
+.pet-primary-nav { display:flex; align-items:center; gap:8px; min-width:0; }
+.pet-journal .pet-tabs button { flex:none; min-width:0; min-height:40px; padding:10px 17px; border:0; border-radius:10px; background:none; color:var(--pet-muted); font-size:13px; font-weight:500; white-space:nowrap; }
+.pet-journal .pet-tabs button[aria-pressed="true"] { background:var(--pet-tint); color:var(--pet-accent); box-shadow:none; font-weight:650; }
+.pet-journal .pet-tabs button:hover,.pet-space-more>summary:hover { background:var(--pet-tint); color:var(--pet-ink); }
+.pet-space-more { position:relative; flex:none; font-size:12px; color:var(--pet-muted); }
+.pet-space-more>summary { display:flex; align-items:center; gap:8px; list-style:none; padding:11px 12px; border-radius:9px; cursor:pointer; }
+.pet-space-more>summary::-webkit-details-marker { display:none; }
+.pet-space-more>summary:focus-visible { outline:2px solid var(--pet-accent); outline-offset:2px; }
+.pet-more-items { position:absolute; right:0; top:calc(100% + 4px); min-width:170px; padding:6px; background:var(--pet-paper); border:1px solid var(--pet-line); border-radius:12px; box-shadow:0 12px 32px #10251c26; }
+.pet-journal .pet-more-items button { display:block; width:100%; text-align:left; font-size:12px; padding:10px 12px; }
+.pet-center-companion { display:flex; flex-direction:column; align-items:stretch; min-width:0; min-height:0; padding:24px 24px 18px; overflow:auto; background:color-mix(in srgb,var(--pet-tint) 65%,var(--pet-paper)); border:0; border-radius:0 18px 0 0; }
+.pet-journal .pet-style-choice { display:flex; justify-content:center; gap:4px; margin:0 0 16px; padding:3px; border:0; border-radius:10px; background:none; flex:none; }
+.pet-journal .pet-style-choice button { flex:1; padding:8px 4px; border:0; background:none; font-size:11px; }
+.pet-journal .pet-style-choice button[aria-pressed="true"] { background:var(--pet-paper); color:var(--pet-accent); box-shadow:0 2px 8px #10251c08; }
+.pet-journal .pet-hero { display:flex; flex-direction:column; gap:0; flex:none; padding:0; border:0; border-radius:0; background:none; text-align:center; }
+html[data-theme] .pet-journal .pet-hero { background:none; }
+.pet-stage-caption { font-size:10px; color:var(--pet-muted); letter-spacing:.3px; }
+.pet-journal .pet-hero>.pet-hero-portrait,.pet-journal .pet-hero .pet-live-art { display:grid; place-items:center; width:100%; height:230px; margin:0; padding:5px; flex:none; box-sizing:border-box; border:0; background:none; overflow:visible; }
+.pet-journal .pet-hero .pet-portrait { width:190px; height:190px; max-width:95%; margin:auto; }
+.pet-journal .pet-hero .pet-live-art .pet-portrait { width:184px; height:184px; }
 .pet-journal .pet-hero .pet-fitting-stage { display:none; }
 .pet-journal .pet-hero-copy { flex:none; width:100%; }
-.pet-journal .pet-hero h3 { margin:6px 0 9px; font-size:23px; }
-.pet-journal .pet-hero p { font-size:11px; line-height:1.7; margin-bottom:12px; }
-.pet-stage-progress { margin-top:8px; padding:0 2px; }
-.pet-stage-progress .pet-growth-label { font-size:10px; line-height:1.6; flex-wrap:wrap; }
-.pet-stage-preview-note { margin:24px 0; font-size:11px; line-height:1.8; color:var(--pet-muted); text-align:center; }
-.pet-journal .pet-client-note { margin:20px 0 0; padding-top:14px; border-top:1px solid var(--pet-line); font-size:9px; line-height:1.6; }
-.pet-journal .pet-client-note small { font-size:9px; }
-.pet-journal .pet-life { padding:14px 0 0; margin:15px 0 0; border:0; border-top:1px solid var(--pet-line); background:none; border-radius:0; }
-.pet-journal .pet-life-heading { display:none; }
-.pet-journal .pet-life-status { font-size:10px; min-height:0; margin:0 0 8px; }
-.pet-journal .pet-life-actions { gap:5px; }
-.pet-journal .pet-life-actions button { font-size:10px; padding:7px 6px; }
-.pet-journal .pet-life>small { display:none; }
-.pet-journal .pet-life-preference { margin-top:9px; font-size:9px; }
-.pet-center-main { display:flex; flex-direction:column; min-width:0; min-height:0; overflow:hidden; }
-.pet-center-summary { display:flex; align-items:center; justify-content:space-between; flex:none; gap:15px; padding:20px 26px 17px; border-bottom:1px solid var(--pet-line); }
-.pet-center-summary>div:first-child { display:flex; flex-direction:column; gap:6px; min-width:0; }
-.pet-center-summary>div>b { font-size:14px; }
-.pet-center-summary small { font-size:10px; color:var(--pet-muted); line-height:1.5; }
-.pet-journal .pet-shop-wallet { display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex:none; }
-.pet-journal .pet-shop-wallet b { font-size:23px; line-height:1.1; font-weight:650; font-variant-numeric:tabular-nums; }
-.pet-journal .pet-shop-wallet span { color:var(--pet-muted); font-size:9px; }
-.pet-journal .pet-tab-content { padding:23px 26px; min-height:0; overflow:auto; overscroll-behavior:contain; scrollbar-gutter:stable; scroll-margin-top:0; }
+.pet-journal .pet-hero h3 { font-size:22px; font-weight:650; margin:6px 0 9px; }
+.pet-journal .pet-hero p { font-size:11px; line-height:1.8; margin:0 0 14px; }
+.pet-stage-progress { margin-top:12px; }
+.pet-stage-progress .pet-growth-label { gap:8px; flex-wrap:wrap; font-size:10px; line-height:1.6; }
+.pet-journal progress { height:4px; background:var(--pet-line); }
+.pet-stage-preview-note { margin:22px 0; color:var(--pet-muted); font-size:11px; line-height:1.8; text-align:center; }
+.pet-journal .pet-life { padding:0; margin:24px 0 0; border:0; border-radius:0; background:none; }
+.pet-journal .pet-life-heading,.pet-journal .pet-life>small { display:none; }
+.pet-journal .pet-life-status { min-height:0; margin:0 0 10px; font-size:11px; line-height:1.7; }
+.pet-journal .pet-life-actions { gap:8px; }
+.pet-journal .pet-life-actions button { padding:8px 3px; font-size:11px; background:none; border:0; }
+.pet-journal .pet-life-preference { margin-top:12px; font-size:10px; }
+.pet-journal .pet-client-note { padding:0; border:0; margin:24px 0 0; font-size:10px; line-height:1.8; }
+.pet-journal .pet-client-note small { font-size:10px; }
+.pet-center-main { display:flex; flex-direction:column; min-height:0; min-width:0; overflow:hidden; }
 .pet-center-notices:empty { display:none; }
-.pet-center-notices { padding:8px 26px 0; flex:none; max-height:120px; overflow:auto; }
-.pet-center-notices :is(.pet-pending,.pet-milestone,.pet-paused) { margin:0 0 7px; padding:8px 10px; font-size:10px; }
-.pet-journal .pet-journal-footer { padding:9px 23px; min-height:35px; gap:16px; }
-.pet-journal-footer>[data-pet-message] { font-size:10px; line-height:1.5; overflow-wrap:anywhere; }
-.pet-page-heading { margin:0 0 18px; }
-.pet-page-heading>small { font-size:8px; letter-spacing:1.4px; color:var(--pet-accent); }
-.pet-page-heading h3 { font-size:23px; letter-spacing:-.6px; margin:8px 0; line-height:1.3; }
-.pet-page-heading p { font-size:11px; line-height:1.7; color:var(--pet-muted); margin:0; }
-.pet-series-selector { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; margin-bottom:18px; }
-.pet-series-selector button { display:grid; grid-template-columns:25px 1fr; gap:4px 6px; padding:12px 9px; border:1px solid var(--pet-line); border-radius:12px; background:transparent; text-align:left; color:var(--pet-muted); }
-.pet-series-selector button[aria-pressed="true"] { border-color:var(--pet-accent); background:var(--pet-tint); color:var(--pet-ink); }
-.pet-series-mark { grid-row:span 2; font-size:24px; align-self:center; color:#ad8c57; }
-.pet-series-selector b { font-size:11px; align-self:end; font-weight:600; }
-.pet-series-selector small { font-size:10px; font-variant-numeric:tabular-nums; }
-.pet-series-detail { --series-accent:#8b7351; border:1px solid var(--pet-line); border-radius:15px; padding:18px; }
-.pet-series-detail[data-series="cloud"] { --series-accent:#4c8079; }
-.pet-series-detail[data-series="star"] { --series-accent:#4b5f8a; background:linear-gradient(135deg,#edf0f740,transparent 70%); }
-.pet-series-detail>.pet-section-title { margin:0; align-items:center; }
-.pet-series-detail .pet-section-title small { font-size:8px; color:var(--series-accent); letter-spacing:1.4px; }
-.pet-series-detail .pet-section-title h3 { font-size:19px; margin:6px 0 0; }
+.pet-center-notices { padding:12px 28px 0; max-height:110px; overflow:auto; flex:none; }
+.pet-center-notices :is(.pet-pending,.pet-milestone,.pet-paused) { margin:0 0 8px; padding:9px 12px; font-size:11px; }
+.pet-journal .pet-tab-content { min-height:0; padding:26px 28px; overflow:auto; overscroll-behavior:contain; scrollbar-gutter:stable; scroll-margin-top:0; }
+.pet-journal .pet-journal-footer { padding:9px 28px; min-height:36px; border:0; gap:14px; }
+.pet-journal-footer>[data-pet-message] { font-size:11px; line-height:1.6; overflow-wrap:anywhere; }
+.pet-page-heading { margin:0 0 22px; }
+.pet-page-heading>small,.pet-wardrobe-heading>div>small { display:none; }
+.pet-page-heading h3 { font-size:22px; font-weight:650; letter-spacing:-.3px; line-height:1.4; margin:0 0 8px; }
+.pet-page-heading p { font-size:12px; line-height:1.8; color:var(--pet-muted); margin:0; }
+.pet-journal .pet-section-title { margin-bottom:16px; }
+.pet-journal .pet-section-title h3 { font-size:15px; font-weight:650; }
+.pet-journal .pet-quests { gap:14px; margin-bottom:26px; }
+.pet-journal .pet-quest { border:0; border-radius:12px; padding:17px 14px; background:var(--pet-tint); }
+.pet-journal .pet-quest b { font-size:12px; font-weight:600; }
+.pet-journal .pet-quest.is-complete { background:none; }
+.pet-activity-details { padding:0; border:0; }
+.pet-activity-details>summary { display:flex; align-items:center; gap:10px; cursor:pointer; font-size:12px; margin-bottom:18px; }
+.pet-activity-details>summary>span { margin-left:auto; font-size:11px; color:var(--pet-muted); }
+.pet-activity-details>summary::before { content:'＋'; color:var(--pet-muted); }
+.pet-activity-details[open]>summary::before { content:'−'; }
+.pet-daily-collection { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-top:28px; padding:18px 0; border:0; background:none; font-size:12px; line-height:1.8; color:var(--pet-muted); }
+.pet-daily-collection button { border:0; background:none; color:var(--pet-accent); padding:8px 0; font-size:12px; }
+.pet-series-selector { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; margin-bottom:28px; padding:4px; border-radius:12px; background:var(--pet-tint); }
+.pet-series-selector button { display:flex; flex-direction:column; align-items:flex-start; gap:5px; padding:12px; border:0; border-radius:9px; background:none; color:var(--pet-muted); text-align:left; }
+.pet-series-selector button[aria-pressed="true"] { color:var(--pet-ink); background:var(--pet-paper); box-shadow:0 2px 8px #10251c08; }
+.pet-series-mark { display:none; }
+.pet-series-selector b { font-size:12px; font-weight:600; overflow-wrap:anywhere; line-height:1.5; }
+.pet-series-selector small { font-size:11px; font-variant-numeric:tabular-nums; }
+.pet-series-detail { --series-accent:var(--pet-accent); padding:0; border:0; background:none; }
+.pet-series-detail>.pet-section-title { align-items:center; margin-bottom:12px; }
+.pet-series-detail .pet-section-title small { font-size:10px; color:var(--pet-muted); }
+.pet-series-detail .pet-section-title h3 { margin:6px 0 0; font-size:22px; }
 .pet-series-detail .pet-section-title strong { font-size:25px; font-weight:550; }
 .pet-series-detail .pet-section-title strong span { font-size:14px; color:var(--pet-muted); }
-.pet-series-detail>p { font-size:10px; line-height:1.7; color:var(--pet-muted); margin:10px 0 14px; }
-.pet-series-pieces { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:17px; }
-.pet-series-pieces>button { display:flex; align-items:center; gap:9px; min-width:0; padding:12px 9px; border:1px solid var(--pet-line); border-radius:10px; background:var(--pet-paper); color:var(--pet-ink); text-align:left; }
-.pet-piece-check { display:grid; place-items:center; flex:none; width:25px; height:25px; border:1px dashed var(--pet-line); border-radius:50%; font-size:10px; color:var(--pet-muted); }
-[data-owned="true"]>.pet-piece-check { border:0; background:var(--pet-tint); color:var(--pet-accent); }
-.pet-series-pieces>button>span:nth-child(2) { display:flex; flex-direction:column; gap:5px; min-width:0; }
-.pet-series-pieces b { font-size:11px; font-weight:600; overflow-wrap:anywhere; }
-.pet-series-pieces small { font-size:9px; color:var(--pet-muted); }
-.pet-piece-link { font-size:9px; color:var(--pet-accent); white-space:nowrap; margin-left:auto; }
-.pet-series-completion { display:flex; align-items:center; gap:12px; margin:18px 0; padding:13px 0; border-top:1px solid var(--pet-line); border-bottom:1px solid var(--pet-line); }
-.pet-collection-stamp { display:grid; place-items:center; width:38px; height:42px; flex:none; border:1px dashed #bfa77e; border-radius:3px; font-size:23px; color:#b39a72; }
-.pet-series-completion>div { display:flex; flex-direction:column; gap:6px; }
-.pet-series-completion b { font-size:11px; font-weight:600; }
-.pet-series-completion small { font-size:10px; color:var(--pet-muted); line-height:1.6; }
-.pet-series-completion.is-complete .pet-collection-stamp { color:var(--series-accent); background:#e8dfcb44; }
-.pet-series-actions { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
-.pet-series-actions button,.pet-daily-collection button { border:0; background:transparent; color:var(--pet-accent); font-size:11px; padding:9px 0; }
-.pet-series-actions .pet-primary { padding:11px 17px; background:var(--pet-accent); color:var(--pet-paper); border:1px solid var(--pet-accent); border-radius:9px; }
-.pet-series-detail .pet-next-piece { margin:12px 0 0; font-size:10px; }
-.pet-journal .pet-wardrobe-overview { padding:0; margin:0 0 14px; border:0; background:none; border-radius:0; }
+.pet-series-detail>p { color:var(--pet-muted); font-size:12px; line-height:1.8; margin:10px 0 18px; }
+.pet-series-pieces { display:grid; grid-template-columns:1fr 1fr; gap:8px 16px; margin-top:20px; }
+.pet-series-pieces>button { display:flex; align-items:center; gap:10px; min-width:0; padding:12px 8px; border:0; border-radius:9px; background:none; color:var(--pet-ink); text-align:left; }
+.pet-series-pieces>button:hover { background:var(--pet-tint); }
+.pet-piece-check { display:grid; place-items:center; flex:none; width:26px; height:26px; border:0; border-radius:50%; color:var(--pet-muted); background:var(--pet-tint); font-size:11px; }
+[data-owned="true"]>.pet-piece-check { color:var(--pet-accent); }
+.pet-series-pieces>button>span:nth-child(2) { display:flex; flex-direction:column; min-width:0; gap:5px; }
+.pet-series-pieces b { font-size:12px; font-weight:600; overflow-wrap:anywhere; }
+.pet-series-pieces small { font-size:11px; color:var(--pet-muted); }
+.pet-piece-link { margin-left:auto; font-size:11px; color:var(--pet-accent); white-space:nowrap; }
+.pet-series-completion { display:flex; align-items:center; gap:12px; padding:16px 0; margin:16px 0; border:0; }
+.pet-collection-stamp { display:grid; place-items:center; width:40px; height:44px; flex:none; border:1px dashed var(--pet-line); border-radius:3px; color:var(--pet-muted); font-size:23px; }
+.pet-series-completion.is-complete .pet-collection-stamp { color:var(--pet-accent); background:var(--pet-tint); }
+.pet-series-completion>div { display:flex; flex-direction:column; gap:7px; }
+.pet-series-completion b { font-size:12px; font-weight:600; }
+.pet-series-completion small { color:var(--pet-muted); font-size:11px; line-height:1.7; }
+.pet-series-actions { display:flex; align-items:center; flex-wrap:wrap; gap:16px; }
+.pet-series-actions button { padding:11px 0; border:0; background:none; color:var(--pet-accent); font-size:12px; }
+.pet-series-actions .pet-primary { padding:12px 18px; border-radius:9px; background:var(--pet-accent); color:var(--pet-on-accent); }
+.pet-series-detail .pet-next-piece { margin-top:16px; font-size:11px; }
+.pet-journal .pet-wardrobe-overview { padding:0; margin:0 0 14px; border:0; border-radius:0; background:none; }
 .pet-journal .pet-wardrobe-heading { align-items:center; }
-.pet-journal .pet-wardrobe-heading h3 { font-size:22px; margin-top:5px; }
-.pet-journal .pet-wardrobe-heading>span { font-size:10px; color:var(--pet-muted); }
-.pet-equipped-details { margin-top:12px; font-size:10px; color:var(--pet-muted); }
-.pet-equipped-details>summary { cursor:pointer; padding:6px 0; }
-.pet-journal .pet-wearing-slots { grid-template-columns:repeat(3,minmax(0,1fr)); margin-top:8px; }
-.pet-journal .pet-wearing-slots>div { padding:8px; border:1px solid var(--pet-line); border-radius:8px; }
-.pet-journal .pet-wearing-slots strong { font-size:10px; }
-.pet-wearing-slots button { font-size:9px; border:0; background:none; color:var(--pet-accent); text-align:left; padding:4px 0; }
-.pet-journal .pet-shop-toolbar { margin:0 0 13px; }
+.pet-journal .pet-wardrobe-heading h3 { font-size:22px; font-weight:650; margin:0 0 6px; }
+.pet-journal .pet-wardrobe-heading>span { color:var(--pet-muted); font-size:11px; }
+.pet-wardrobe-guide { margin:8px 0 0; color:var(--pet-muted); font-size:11px; line-height:1.8; }
+.pet-series-detail .pet-set-wear-note { margin:12px 0 0; font-size:11px; line-height:1.8; }
+.pet-equipped-details { margin-top:6px; color:var(--pet-muted); font-size:11px; }
+.pet-equipped-details>summary { padding:6px 0; cursor:pointer; }
+.pet-journal .pet-wearing-slots { grid-template-columns:repeat(3,minmax(0,1fr)); margin-top:8px; gap:14px; }
+.pet-journal .pet-wearing-slots>div { padding:0; border:0; background:none; }
+.pet-wearing-slots button { padding:6px 0; border:0; background:none; color:var(--pet-accent); font-size:11px; text-align:left; }
+.pet-journal .pet-shop-toolbar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin:0 0 12px; }
+.pet-journal .pet-shop-toolbar select { min-width:0; max-width:100%; padding:8px 6px; border:0; border-radius:7px; color:var(--pet-muted); background:var(--pet-tint); font:inherit; font-size:11px; }
 .pet-journal .pet-shop-toolbar .pet-section-title { display:none; }
-.pet-journal .pet-shop-filters { gap:5px; flex-wrap:wrap; }
-.pet-journal .pet-shop-filters button { font-size:10px; padding:7px 9px; }
-.pet-journal .pet-shop { gap:10px; grid-template-columns:repeat(3,minmax(0,1fr)); }
-.pet-journal .pet-shop-item { padding:0 10px 10px; border-radius:11px; min-width:0; }
+.pet-journal .pet-shop-filters { flex-wrap:wrap; gap:4px; }
+.pet-journal .pet-shop-filters button { padding:8px 10px; border:0; border-radius:8px; font-size:11px; background:none; }
+.pet-journal .pet-shop-filters button[aria-pressed="true"] { background:var(--pet-tint); color:var(--pet-accent); }
+.pet-journal .pet-shop-filters button span { font-size:10px; }
+.pet-journal .pet-shop { grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+.pet-journal .pet-shop-item { min-width:0; padding:0; border:0; border-radius:0; background:none; box-shadow:none; }
+.pet-journal .pet-shop-item.is-equipped { border:0; background:none; }
 .pet-journal .pet-shop-item[hidden],.pet-journal .pet-journey article[hidden] { display:none; }
-.pet-journal .pet-shop-item .pet-item-art { height:102px; margin:0 -10px 9px; }
+.pet-journal .pet-shop-item .pet-item-art { height:105px; margin:0 0 11px; border:0; border-radius:12px; background:var(--pet-tint); }
 .pet-journal .pet-shop-item .pet-portrait { width:88px; height:88px; }
+.pet-journal .pet-shop-item .pet-item-copy { padding:0 2px; }
 .pet-journal .pet-shop-item .pet-item-title { display:flex; flex-direction:column; align-items:flex-start; gap:4px; }
-.pet-journal .pet-shop-item .pet-item-title b { font-size:11px; }
-.pet-journal .pet-shop-item .pet-item-status { font-size:8px; padding:0; border:0; background:none; }
+.pet-journal .pet-shop-item .pet-item-title b { font-size:12px; font-weight:600; }
+.pet-journal .pet-shop-item .pet-item-status { padding:0; border:0; background:none; font-size:10px; }
+.pet-journal .pet-shop-item[data-item-state="available"] .pet-item-status { display:none; }
 .pet-journal .pet-shop-item .pet-item-copy>p { display:none; }
-.pet-journal .pet-shop-item .pet-item-price { margin-top:6px; }
-.pet-journal .pet-shop-item .pet-item-price strong { font-size:10px; }
-.pet-journal .pet-shop-item .pet-item-price small { font-size:9px; min-height:27px; line-height:1.5; }
-.pet-journal .pet-shop-item>button { margin-top:6px; padding:7px 3px; font-size:9px; }
-.pet-shelf-pages { display:flex; gap:7px; align-items:center; justify-content:flex-end; margin-top:15px; }
-.pet-shelf-pages>span { font-size:10px; color:var(--pet-muted); margin-right:auto; }
-.pet-shelf-pages button { width:30px; height:30px; border:1px solid var(--pet-line); border-radius:7px; background:none; color:var(--pet-muted); font-size:11px; }
-.pet-shelf-pages button[aria-current="page"] { color:var(--pet-paper); background:var(--pet-accent); border-color:var(--pet-accent); }
-.pet-back-shelf { border:0; background:none; color:var(--pet-accent); padding:0 0 16px; font-size:11px; }
+.pet-journal .pet-shop-item .pet-item-price { margin:6px 0 0; padding:0; border:0; gap:5px; }
+.pet-journal .pet-shop-item .pet-item-price strong { display:none; }
+.pet-journal .pet-shop-item .pet-item-price small { min-height:0; font-size:10px; line-height:1.7; }
+.pet-journal .pet-shop-item:is([data-item-state="owned"],[data-item-state="equipped"],[data-item-state="available"]) .pet-item-price { display:none; }
+.pet-journal .pet-shop .pet-shop-item>button { padding:9px 0; margin:3px 0 0; border:0; border-radius:6px; background:none; color:var(--pet-accent); font-size:11px; text-align:left; }
+.pet-journal .pet-shop-item>button:hover:not(:disabled) { text-decoration:underline; text-underline-offset:3px; }
+.pet-journal .pet-tryon-hit { border:0; border-radius:12px; background:none; }
+.pet-journal .pet-tryon-hit>span { border:0; background:var(--pet-paper); font-size:10px; }
+.pet-shelf-pages[hidden] { display:none; }
+.pet-shelf-pages { display:flex; align-items:center; justify-content:flex-end; gap:6px; margin-top:16px; }
+.pet-shelf-pages select { margin-right:auto; min-width:0; max-width:100%; padding:8px 6px; border:0; border-radius:7px; color:var(--pet-muted); background:var(--pet-tint); font:inherit; font-size:11px; }
+.pet-shelf-pages button { min-width:32px; height:32px; border:0; border-radius:8px; background:none; color:var(--pet-muted); font-size:12px; }
+.pet-shelf-pages button[aria-current="page"] { background:var(--pet-tint); color:var(--pet-accent); }
+.pet-back-shelf { padding:0 0 22px; border:0; background:none; color:var(--pet-accent); font-size:12px; }
 .pet-journal[data-pet-view="wardrobe"] .pet-live-preview:not([hidden]) { display:block; padding:0; border:0; border-radius:0; background:none; margin:0; overflow:visible; }
 .pet-journal .pet-preview-copy { padding:0; }
-.pet-journal .pet-preview-heading h4 { font-size:22px; }
-.pet-journal .pet-fitting-mode { margin-top:15px; }
-.pet-journal .pet-preview-controls { margin-top:12px; }
-.pet-journal .pet-preview-purchase { padding:13px 0 0; }
-.pet-journal .pet-fitting-extras { margin-top:15px; }
-.pet-stage-selector { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:6px; }
-.pet-stage-selector button { position:relative; padding:13px 0; border:1px solid var(--pet-line); border-radius:10px; color:var(--pet-muted); background:none; font-size:12px; }
-.pet-stage-selector button[aria-pressed="true"] { color:var(--pet-accent); background:var(--pet-tint); border-color:var(--pet-accent); }
-.pet-stage-selector i { position:absolute; width:4px; height:4px; bottom:5px; left:calc(50% - 2px); background:var(--pet-accent); border-radius:50%; }
-.pet-journal .pet-journey article { display:grid; grid-template-columns:32px 100px 1fr; gap:12px; padding:18px 12px; margin:4px 0; }
-.pet-journal .pet-journey .pet-evolution-preview { width:100px; height:100px; }
+.pet-journal .pet-preview-heading h4 { font-size:23px; font-weight:650; }
+.pet-journal .pet-fitting-mode { margin-top:18px; padding:3px; border:0; background:var(--pet-tint); }
+.pet-journal .pet-fitting-mode button { border:0; }
+.pet-journal .pet-fitting-mode button[aria-pressed="true"] { color:var(--pet-accent); background:var(--pet-paper); }
+.pet-journal .pet-preview-controls { margin-top:16px; }
+.pet-journal .pet-preview-controls button { border:0; background:none; }
+.pet-journal .pet-preview-purchase { margin-top:22px; padding:16px 0 0; border:0; }
+.pet-journal .pet-preview-purchase>button:not(:disabled) { padding:12px 20px; border:0; background:var(--pet-accent); color:var(--pet-on-accent); font-size:13px; }
+.pet-journal .pet-fitting-requirements { gap:18px; }
+.pet-journal .pet-fitting-requirements>div { padding:10px 0; border:0; border-radius:0; background:none; }
+.pet-journal .pet-fitting-extras { margin-top:22px; padding-top:0; border:0; }
+.pet-stage-selector { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:5px; }
+.pet-stage-selector button { position:relative; padding:13px 0; border:0; border-radius:9px; background:none; color:var(--pet-muted); font-size:12px; }
+.pet-stage-selector button[aria-pressed="true"] { color:var(--pet-accent); background:var(--pet-tint); }
+.pet-stage-selector i { position:absolute; width:4px; height:4px; left:calc(50% - 2px); bottom:5px; border-radius:50%; background:var(--pet-accent); }
+.pet-journal .pet-journey article { display:grid; grid-template-columns:140px minmax(0,1fr); gap:22px; padding:20px 0; margin:8px 0; border:0; background:none; }
+.pet-journal .pet-journey .pet-evolution-preview { width:140px; height:140px; }
+.pet-journal .pet-journey .pet-stage-number { display:none; }
 .pet-journal .pet-journey article>div:last-child { min-width:0; }
-.pet-journal .pet-quests { margin-bottom:18px; gap:12px; }
-.pet-journal .pet-quest { padding:18px 13px; }
-.pet-journal .pet-section-title { margin-bottom:14px; }
-.pet-journal .pet-section-title h3 { font-size:14px; }
-.pet-activity-details { border-top:1px solid var(--pet-line); padding-top:16px; }
-.pet-activity-details>summary { display:flex; align-items:center; gap:12px; cursor:pointer; font-size:11px; margin-bottom:16px; }
-.pet-activity-details>summary>span { margin-left:auto; font-size:9px; color:var(--pet-muted); }
-.pet-activity-details>summary::before { content:'＋'; color:var(--pet-accent); }
-.pet-activity-details[open]>summary::before { content:'−'; }
-.pet-daily-collection { display:flex; align-items:center; gap:12px; justify-content:space-between; margin-top:24px; padding:17px; background:var(--pet-tint); border-radius:12px; }
-.pet-daily-collection>span { font-size:11px; line-height:1.7; color:var(--pet-muted); }
-.pet-daily-collection button { white-space:nowrap; }
+.pet-journal .pet-unlock-list>span { border:0; background:var(--pet-tint); }
+.pet-journal .pet-journey article button { border:0; background:var(--pet-tint); }
 .pet-journal .pet-theme-shop { margin:0; padding:0; border:0; }
-.pet-journal .pet-theme-grid { grid-template-columns:1fr 1fr; }
-html[data-theme="dark"] dialog.pet-journal { --pet-ink:#e0e7ec; --pet-muted:#9cabb5; --pet-line:#38464c; --pet-paper:#222d33; --pet-tint:#2b3a3f; --pet-accent:#9cc7c1; }
-html[data-theme="dark"] .pet-center-companion { background:radial-gradient(ellipse at 55% 38%,color-mix(in srgb,var(--pet-accent) 8%,transparent),transparent 60%),color-mix(in srgb,var(--pet-paper) 55%,var(--pet-tint)); }
-html[data-theme="dark"] .pet-journal .pet-tabs button[aria-pressed="true"] { background:var(--pet-tint); }
-html[data-theme="dark"] .pet-series-detail[data-series="star"] { --series-accent:#aabadd; background:linear-gradient(135deg,#65739616,transparent 70%); }
-html[data-theme="dark"] .pet-series-detail[data-series="post"] { --series-accent:#d9be8e; }
-html[data-theme="dark"] .pet-series-detail[data-series="cloud"] { --series-accent:#9cc7c1; }
-
-@media(max-width:900px) {
- dialog.pet-journal { width:calc(100vw / var(--fz,1) - 24px); height:calc(100dvh / var(--fz,1) - 24px); border-radius:16px; }
+.pet-journal .pet-theme-grid { grid-template-columns:1fr 1fr; gap:22px; }
+.pet-journal .pet-theme-card { border:0; padding:0; border-radius:0; }
+.pet-journal .pet-theme-card>button { border:0; background:var(--pet-tint); }
+.pet-journal .pet-theme-copy { padding-top:14px; }
+.pet-journal .pet-theme-preview { border-radius:12px; }
+.pet-journal .pet-gift-identity { border:0; background:var(--pet-tint); }
+.pet-gift-wardrobe-context { display:flex; align-items:center; gap:12px; padding:12px; margin-bottom:18px; border:0; border-radius:10px; background:var(--pet-tint); font-size:11px; line-height:1.6; }
+.pet-gift-wardrobe-context>span { flex:1; color:var(--pet-muted); }
+.pet-gift-wardrobe-context button { border:0; background:none; padding:4px; color:var(--pet-accent); font-size:11px; }
+.pet-set-portrait .pet-reward-motion { animation:none!important; transform:none; }
+@container xiaoyou (max-width:1050px) {
+ .pet-journal .pet-journal-body { grid-template-columns:248px minmax(0,1fr); }
+ .pet-center-companion { padding:22px 18px; }
+ .pet-journal .pet-tab-content { padding:24px; }
+ .pet-journal .pet-shop { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .pet-piece-link { display:none; }
 }
-@media(max-width:680px) {
- dialog.pet-journal { width:calc(100vw / var(--fz,1) - 12px); height:calc(100dvh / var(--fz,1) - 12px); max-height:calc(100dvh / var(--fz,1) - 12px); border-radius:13px; }
+@container xiaoyou (max-width:740px) {
+ .pet-journal .pet-journal-body { grid-template-columns:210px minmax(0,1fr); }
+ .pet-journal .pet-tabs { padding-right:16px; padding-left:16px; gap:4px; }
+ .pet-primary-nav { gap:2px; }
+ .pet-journal .pet-tabs button { padding:10px; font-size:12px; }
+ .pet-center-companion { padding:18px 14px; }
+ .pet-journal .pet-hero>.pet-hero-portrait,.pet-journal .pet-hero .pet-live-art { height:190px; }
+ .pet-journal .pet-hero .pet-portrait,.pet-journal .pet-hero .pet-live-art .pet-portrait { width:156px; height:156px; }
+ .pet-series-pieces { grid-template-columns:1fr; }
+ .pet-journal .pet-journey article { grid-template-columns:1fr; }
+ .pet-journal .pet-journey .pet-evolution-preview { margin:auto; }
 }
+@container xiaoyou (max-width:680px) {
+ .pet-journal .pet-journal-head { padding:14px 16px 8px; gap:12px; }
+ .pet-journal .pet-journal-head h2 { font-size:18px; }
+ .pet-journal .pet-header-wallet { flex-direction:column; align-items:flex-end; gap:1px; }
+ .pet-journal .pet-shop-wallet b { font-size:16px; }
+ .pet-journal .pet-shop-wallet span { font-size:10px; }
+ .pet-journal .pet-journal-body { grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto minmax(0,1fr); }
+ .pet-journal .pet-tabs { grid-column:auto; padding:0 12px 10px; }
+ .pet-primary-nav { gap:0; flex:1; justify-content:space-between; }
+ .pet-journal .pet-tabs button { padding:9px 7px; font-size:11px; min-height:36px; }
+ .pet-space-more { font-size:11px; }
+ .pet-space-more>summary { padding:9px 7px; gap:4px; }
+ .pet-more-items { min-width:150px; }
+ .pet-journal .pet-more-items button { font-size:12px; padding:12px; }
+ .pet-center-companion { position:relative; display:grid; grid-template-columns:118px minmax(0,1fr); grid-template-rows:auto 1fr; padding:12px 18px; border:0; border-radius:14px; margin:0 12px; overflow:hidden; }
+ .pet-journal .pet-style-choice { grid-column:2; grid-row:1; margin:0 0 7px; width:100%; max-width:230px; justify-self:start; }
+ .pet-journal .pet-style-choice button { padding:6px 3px; font-size:10px; }
+ .pet-journal .pet-hero { display:contents; }
+ .pet-journal .pet-hero>.pet-hero-portrait,.pet-journal .pet-hero>.pet-live-art { grid-column:1; grid-row:1/3; width:108px; height:112px; padding:4px; margin:0; }
+ .pet-journal .pet-hero .pet-portrait,.pet-journal .pet-hero .pet-live-art .pet-portrait { width:100px; height:100px; max-width:100%; }
+ .pet-journal .pet-hero-copy { grid-column:2; grid-row:2; text-align:left; align-self:center; }
+ .pet-journal .pet-hero h3 { font-size:18px; margin:3px 0 5px; }
+ .pet-journal .pet-hero p { font-size:11px; margin:0; }
+ .pet-stage-caption,.pet-stage-progress,.pet-stage-preview-note,.pet-center-companion>.pet-client-note { display:none; }
+ .pet-center-companion>.pet-life { grid-column:1/-1; margin:8px 0 0; padding:0; }
+ .pet-journal .pet-life-status,.pet-journal .pet-life-preference { display:none; }
+ .pet-journal .pet-life-actions { display:flex; justify-content:center; }
+ .pet-journal .pet-life-actions button { flex:1; min-height:32px; }
+ .pet-journal[data-pet-view="wardrobe"] .pet-life { display:none; }
+ .pet-journal .pet-tab-content { padding:22px 18px; scrollbar-gutter:auto; }
+ .pet-center-notices { padding:10px 18px 0; max-height:70px; }
+ .pet-journal .pet-journal-footer { padding:8px 16px; }
+ .pet-page-heading h3,.pet-journal .pet-wardrobe-heading h3 { font-size:20px; }
+ .pet-series-selector { margin-bottom:22px; }
+ .pet-series-selector button { padding:9px 6px; }
+ .pet-series-selector b { font-size:11px; }
+ .pet-series-selector small { font-size:10px; }
+ .pet-series-pieces { grid-template-columns:1fr 1fr; gap:6px; }
+ .pet-series-pieces>button { padding:10px 4px; gap:7px; }
+ .pet-series-pieces b { font-size:11px; }
+ .pet-series-pieces small { font-size:10px; }
+ .pet-series-actions { gap:12px; }
+ .pet-journal .pet-quests { grid-template-columns:1fr 1fr; gap:10px; }
+ .pet-journal .pet-quest { padding:14px 10px; gap:7px; flex-wrap:wrap; }
+ .pet-journal .pet-quest>small { margin-left:23px; }
+ .pet-journal .pet-shop { gap:18px 12px; }
+ .pet-journal .pet-shop-item .pet-item-art { height:90px; }
+ .pet-journal .pet-shop-item .pet-portrait { width:80px; height:80px; }
+ .pet-journal .pet-shop-filters { flex-wrap:wrap; min-width:0; }
+ .pet-journal .pet-shop-filters button { flex:none; font-size:10px; padding:8px; }
+ .pet-journal .pet-theme-grid { grid-template-columns:1fr; }
+ .pet-journal .pet-journey article { grid-template-columns:85px minmax(0,1fr); gap:14px; }
+ .pet-journal .pet-journey .pet-evolution-preview { width:85px; height:85px; }
+}
+@container xiaoyou (max-width:360px) {
+ .pet-journal .pet-tabs { flex-wrap:wrap; gap:0; }
+ .pet-primary-nav { flex-basis:100%; display:grid; grid-template-columns:1fr 1fr; gap:2px; }
+ .pet-space-more { margin-left:auto; }
+ .pet-journal .pet-tabs button { font-size:10px; padding:9px 6px; }
+ .pet-center-companion { grid-template-columns:82px minmax(0,1fr); padding:9px 10px; margin:0 8px; }
+ .pet-journal .pet-hero>.pet-hero-portrait,.pet-journal .pet-hero>.pet-live-art { width:76px; height:86px; padding:2px; }
+ .pet-journal .pet-hero .pet-portrait,.pet-journal .pet-hero .pet-live-art .pet-portrait { width:72px; height:72px; }
+ .pet-journal .pet-hero h3 { font-size:15px; }
+ .pet-journal .pet-hero p { display:none; }
+ .pet-journal .pet-tab-content { padding:18px 12px; }
+ .pet-journal .pet-quests,.pet-series-pieces { grid-template-columns:1fr; }
+ .pet-series-selector { gap:2px; padding:3px; }
+ .pet-series-selector b { font-size:10px; }
+ .pet-journal .pet-journey article { grid-template-columns:1fr; }
+ .pet-journal .pet-journal-footer { padding:7px 10px; }
+ .pet-journal-footer>button { font-size:10px; }
+}
+@media(max-width:900px) { dialog.pet-journal { width:calc(100vw / var(--fz,1) - 24px); height:calc(100dvh / var(--fz,1) - 24px); border-radius:16px; } }
+@media(max-width:680px) { dialog.pet-journal { width:calc(100vw / var(--fz,1) - 12px); height:calc(100dvh / var(--fz,1) - 12px); max-height:calc(100dvh / var(--fz,1) - 12px); border-radius:13px; } }
 @media(max-height:650px) and (min-width:681px) {
  .pet-journal .pet-hero>.pet-hero-portrait,.pet-journal .pet-hero .pet-live-art { height:150px; }
  .pet-journal .pet-hero .pet-portrait,.pet-journal .pet-hero .pet-live-art .pet-portrait { width:135px; height:135px; }
@@ -228,143 +344,4 @@ body .pet-item-art:not([data-collection-look="star"]) .growth-armor>path:nth-chi
 body.companion-paused .pet-item-art.pet-item-art[data-fitting-outfits] .pet-reward-motion,
 body.companion-still .pet-item-art.pet-item-art[data-fitting-outfits] .pet-reward-motion { animation-name:none!important; }
 @media(prefers-reduced-motion:reduce) { body .pet-item-art.pet-item-art[data-fitting-outfits] .pet-reward-motion { animation-name:none!important; } }
-/* Compact two-row shelves keep pagination beside the visible items. */
-.pet-journal .pet-shop-item .pet-item-art { height:80px; }
-.pet-journal .pet-shop-item .pet-item-title { flex-direction:row; gap:5px; align-items:baseline; }
-.pet-journal .pet-shop-item .pet-item-title>b { flex:1; }
-.pet-journal .pet-shop-item .pet-item-price { padding-top:6px; margin-top:6px; gap:4px; }
-.pet-journal .pet-shop-item .pet-item-price small { min-height:0; }
-.pet-journal .pet-shop-item>button { padding:6px 3px; }
-.pet-journal .pet-shop-item .pet-portrait { width:72px; height:72px; }
-.pet-series-detail>.pet-section-title h3 { font-size:19px; margin:6px 0 0; }
-@container xiaoyou (max-width:1150px) { .pet-journal .pet-shop-item .pet-item-art { height:65px; } .pet-journal .pet-shop-item .pet-portrait { width:64px; height:64px; } }
-.pet-set-portrait .pet-reward-motion { animation:none!important; transform:none; }
-.pet-series-selector { margin-bottom:13px; }
-.pet-series-detail { padding:15px; }
-.pet-series-pieces { margin-top:12px; }
-.pet-series-pieces>button { padding-top:10px; padding-bottom:10px; }
-.pet-series-completion { margin:12px 0; padding:10px 0; }
-.pet-series-detail .pet-next-piece { margin-top:9px; }
 @media(prefers-reduced-motion:no-preference) { body[data-pet-outfits~="star_crest"] .growth-star-crest .pet-reward-motion,body .pet-item-art[data-item-preview="star_crest"] .growth-star-crest .pet-reward-motion { animation-name:var(--pet-clip); } }
-
-dialog.pet-journal { container-type:inline-size; container-name:xiaoyou; }
-
-@container xiaoyou (max-width:1150px) {
- .pet-journal .pet-journal-body { grid-template-columns:120px 244px minmax(0,1fr); }
- .pet-center-companion { padding:20px 17px 14px; }
- .pet-journal .pet-tab-content { padding:20px; }
- .pet-center-summary { padding:18px 20px; }
- .pet-journal .pet-shop { grid-template-columns:repeat(2,minmax(0,1fr)); }
- .pet-journal .pet-shop-item .pet-item-art { height:85px; }
- .pet-journal .pet-shop-item .pet-portrait { width:78px; height:78px; }
- .pet-journal .pet-hero .pet-live-art .pet-portrait { width:168px; height:168px; }
- .pet-journal .pet-tabs button { font-size:11px; padding:11px 6px; gap:6px; }
- .pet-series-selector { gap:5px; }
- .pet-series-selector button { grid-template-columns:1fr; justify-items:center; padding:10px 4px; }
- .pet-series-mark { grid-row:auto; font-size:19px; }
- .pet-piece-link { display:none; }
-
-}
-
-@container xiaoyou (max-width:900px) {
- .pet-journal .pet-journal-body { grid-template-columns:220px minmax(0,1fr); grid-template-rows:auto minmax(0,1fr); }
- .pet-journal .pet-tabs { grid-column:1/-1; flex-direction:row; gap:4px; padding:8px 12px; border:0; border-bottom:1px solid var(--pet-line); }
- .pet-journal .pet-tabs button { flex:none; gap:6px; min-height:37px; padding:8px 11px; }
- .pet-nav-intro,.pet-nav-bottom { display:none; }
- .pet-series-pieces { grid-template-columns:1fr; }
- .pet-journal .pet-hero>.pet-hero-portrait,.pet-journal .pet-hero .pet-live-art { height:210px; }
- .pet-journal .pet-journey article { grid-template-columns:1fr; }
- .pet-journal .pet-journey .pet-evolution-preview { width:140px; height:140px; margin:auto; }
- .pet-journal .pet-journey .pet-stage-number { display:none; }
-
-}
-
-@container xiaoyou (max-width:680px) {
- .pet-journal .pet-journal-head { padding:11px 15px; }
- .pet-journal .pet-journal-head h2 { font-size:17px; }
- .pet-journal .pet-journal-head small { font-size:7px; }
- .pet-journal .pet-journal-body { display:grid; grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto minmax(0,1fr); }
- .pet-journal .pet-tabs { grid-column:auto; padding:6px 9px; overflow-x:auto; overflow-y:hidden; }
- .pet-journal .pet-tabs button { font-size:10px; padding:8px 9px; gap:5px; min-height:35px; }
- .pet-journal .pet-tabs button i { font-size:14px; width:14px; }
- .pet-center-companion { position:relative; display:grid; grid-template-columns:128px minmax(0,1fr); grid-template-rows:auto 1fr; padding:11px 16px 10px; border:0; border-bottom:1px solid var(--pet-line); overflow:hidden; }
- .pet-journal .pet-style-choice { grid-column:2; grid-row:1; margin:0 0 8px; justify-self:start; width:100%; max-width:210px; }
- .pet-journal .pet-style-choice button { font-size:10px; padding:6px 5px; }
- .pet-journal .pet-hero { display:contents; }
- .pet-journal .pet-hero>.pet-hero-portrait,.pet-journal .pet-hero>.pet-live-art { grid-column:1; grid-row:1/3; width:118px; height:115px; padding:7px; margin:0; }
- .pet-journal .pet-hero .pet-portrait,.pet-journal .pet-hero .pet-live-art .pet-portrait { width:100px; height:100px; max-width:100%; }
- .pet-journal .pet-hero-copy { grid-column:2; grid-row:2; text-align:left; align-self:center; }
- .pet-journal .pet-hero h3 { font-size:18px; margin:3px 0 5px; }
- .pet-journal .pet-hero p { font-size:10px; margin:0; }
- .pet-stage-caption,.pet-stage-progress,.pet-stage-preview-note,.pet-center-companion>.pet-client-note { display:none; }
- .pet-center-companion>.pet-life { grid-column:1/-1; margin:7px 0 0; padding:7px 0 0; }
- .pet-journal .pet-life-status,.pet-journal .pet-life-preference { display:none; }
- .pet-journal .pet-life-actions { display:flex; justify-content:center; }
- .pet-journal .pet-life-actions button { flex:1; min-height:30px; }
- .pet-center-summary { padding:12px 16px; gap:10px; }
- .pet-center-summary>div>b { font-size:12px; }
- .pet-center-summary small { display:none; }
- .pet-journal .pet-shop-wallet { flex-direction:row; align-items:baseline; gap:6px; }
- .pet-journal .pet-shop-wallet b { font-size:19px; }
- .pet-journal .pet-tab-content { padding:16px; scrollbar-gutter:auto; }
- .pet-center-notices { padding:7px 16px 0; max-height:70px; }
- .pet-journal .pet-journal-footer { padding:8px 15px; min-height:34px; }
- .pet-page-heading { margin-bottom:13px; }
- .pet-page-heading h3 { font-size:20px; }
- .pet-page-heading p { font-size:10px; }
- .pet-series-selector { gap:7px; margin-bottom:13px; }
- .pet-series-selector button { grid-template-columns:21px 1fr; justify-items:start; gap:3px 5px; padding:10px 6px; }
- .pet-series-mark { grid-row:span 2; }
- .pet-series-selector b { font-size:10px; }
- .pet-series-selector small { font-size:9px; }
- .pet-series-detail { padding:14px; }
- .pet-series-pieces { grid-template-columns:1fr 1fr; gap:7px; }
- .pet-series-pieces>button { padding:10px 7px; gap:6px; }
- .pet-series-pieces b { font-size:10px; }
- .pet-piece-check { width:21px; height:21px; }
- .pet-series-completion { margin:14px 0; padding:11px 0; }
- .pet-journal .pet-quests { grid-template-columns:1fr 1fr; gap:8px; }
- .pet-journal .pet-quest { padding:12px 9px; gap:7px; flex-wrap:wrap; }
- .pet-journal .pet-quest b { font-size:11px; }
- .pet-journal .pet-quest>small { margin-left:23px; }
- .pet-daily-collection { padding:12px; margin-top:17px; gap:10px; }
- .pet-daily-collection>span { font-size:10px; }
- .pet-journal .pet-shop { grid-template-columns:repeat(2,minmax(0,1fr)); }
- .pet-journal .pet-shop-filters button { font-size:9px; padding:6px 8px; }
- .pet-journal .pet-theme-grid { grid-template-columns:1fr; }
- .pet-journal .pet-journey article { grid-template-columns:85px minmax(0,1fr); gap:10px; padding:13px 10px; }
- .pet-journal .pet-journey .pet-evolution-preview { width:85px; height:85px; }
-
-}
-
-@container xiaoyou (max-width:360px) {
- .pet-center-companion { grid-template-columns:86px minmax(0,1fr); padding:9px 10px; }
- .pet-journal .pet-hero>.pet-hero-portrait,.pet-journal .pet-hero>.pet-live-art { width:80px; height:90px; padding:3px; }
- .pet-journal .pet-hero .pet-portrait,.pet-journal .pet-hero .pet-live-art .pet-portrait { width:70px; height:70px; }
- .pet-journal .pet-hero h3 { font-size:15px; }
- .pet-journal .pet-hero p { display:none; }
- .pet-journal .pet-tab-content { padding:12px; }
- .pet-journal .pet-quests,.pet-series-pieces { grid-template-columns:1fr; }
- .pet-series-selector button { grid-template-columns:1fr; justify-items:center; }
- .pet-series-mark { grid-row:auto; }
- .pet-center-summary { padding:10px 12px; }
- .pet-center-summary>div>b { font-size:10px; }
- .pet-journal .pet-shop-wallet { flex-direction:column; gap:3px; }
- .pet-journal .pet-shop-wallet b { font-size:17px; }
- .pet-journal .pet-shop-item .pet-item-title { flex-direction:column; }
- .pet-journal .pet-shop { gap:7px; }
- .pet-journal .pet-journey article { grid-template-columns:1fr; }
- .pet-journal .pet-journal-footer { padding:7px 10px; }
- .pet-journal-footer>button { font-size:9px; }
-}
-.pet-journal .pet-tab-content>.pet-page-heading { margin-bottom:14px; }
-.pet-series-detail>.pet-section-title h3 { font-size:19px; }
-.pet-gift-wardrobe-context { display:flex; align-items:center; gap:10px; padding:10px; margin-bottom:15px; border:1px solid var(--pet-line); border-radius:9px; background:var(--pet-tint); font-size:10px; line-height:1.5; }
-.pet-gift-wardrobe-context>span { flex:1; color:var(--pet-muted); }
-.pet-gift-wardrobe-context button { border:0; background:none; padding:3px; color:var(--pet-accent); font-size:10px; }
-.pet-series-selector b { overflow-wrap:anywhere; line-height:1.5; }
-@container xiaoyou (max-width:680px) {
- .pet-journal[data-pet-view="wardrobe"] .pet-life { display:none; }
- .pet-journal .pet-shop-filters { flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px; }
- .pet-journal .pet-shop-filters button { flex:none; }
-}

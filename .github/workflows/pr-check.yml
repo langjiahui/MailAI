@@ -61,7 +61,7 @@ jobs:
     needs: plan
     if: ${{ fromJSON(needs.plan.outputs.checks)['native-notifications-windows'] }}
   native-scrollbar-macos:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5

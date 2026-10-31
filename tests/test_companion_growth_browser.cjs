@@ -25,6 +25,7 @@ const {chromium} = require('playwright');
     // spend, not the wallet alone, so an exact debit is still required.
     const spent=profile=>profile.earned-profile.stamps;
     const purchaseResponse=page.waitForResponse(r=>r.url().endsWith('/api/companion/purchase')&&r.request().method()==='POST');
+    assert.match(await dialog.locator('[data-pet-buy="scarf"]').textContent(),/80.*兑换并穿戴/,'The action describes spending and immediate equipping before activation');
     await dialog.locator('[data-pet-buy="scarf"]').click();
     const purchase=await (await purchaseResponse).json();
     await page.waitForFunction(()=>document.body.dataset.petAccessory === 'scarf');

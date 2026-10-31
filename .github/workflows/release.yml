@@ -145,7 +145,7 @@ jobs:
   macos-arm64:
     needs: metadata
     if: ${{ needs.metadata.outputs.reuse != 'true' }}
-    runs-on: macos-14
+    runs-on: macos-15
     env:
       CI: "1"
       MAILAI_RELEASE_VERSION: ${{ needs.metadata.outputs.version }}
@@ -160,6 +160,11 @@ jobs:
         with:
           node-version: "22"
           cache: npm
+      - name: Verify Apple Silicon build architecture
+        shell: bash
+        run: |
+          test "$(uname -m)" = arm64
+          python -c "import platform; assert platform.machine() == 'arm64', platform.machine()"
       - name: Import macOS signing certificate
         shell: bash
         env:
