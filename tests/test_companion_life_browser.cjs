@@ -24,6 +24,11 @@ require('node:fs').mkdirSync('output/xiaoyou-upgrade',{recursive:true});
     browser=await (process.env.MAILAI_BROWSER==='webkit'?webkit:chromium).launch({headless:true});
     const page=await browser.newPage({viewport:{width:1280,height:1000}}),errors=[];
     page.on('pageerror',error=>errors.push(error.message));
+    // Measure the gesture's cost independently of legitimate timed activity
+    // rewards. Hold heartbeats until both unchanged-balance assertions finish,
+    // then let every held request reach the fixture and resume normal updates.
+    const heldHeartbeats=[];
+    await page.route('**/api/companion/heartbeat',route=>heldHeartbeats.push(route));
     await page.addInitScript(()=>{
       localStorage.setItem('mailai.onboarding.v2',JSON.stringify({deferred:true,mailboxDone:true,aiDone:true}));
       window.audioContexts=[];window.audioNotes=[];
@@ -58,22 +63,41 @@ require('node:fs').mkdirSync('output/xiaoyou-upgrade',{recursive:true});
     assert.equal(await page.evaluate(()=>audioContexts.length),0,'No audio device is opened by default');
     const after=await page.evaluate(()=>api('/api/companion/growth'));
     assert.equal(after.xp,before.xp,'Playing is free and does not farm growth');assert.equal(after.stamps,before.stamps);
+    await page.unroute('**/api/companion/heartbeat');
+    await Promise.all(heldHeartbeats.map(route=>route.continue()));
     // All seven learned gestures, for both routes, use the shared visible rig.
     for(const style of ['nature','ranger']) for(let stage=1;stage<=7;stage++) {
-      await page.evaluate(({style,stage})=>{document.body.dataset.petStyle=style;document.body.dataset.petStage=String(stage);},{style,stage});
-      await page.evaluate(()=>mailaiCompanionMotion.react('signature',document.querySelector('.pet-hero-portrait')));
+      // These are temporary visual fixtures, not saved preferences. Sample the
+      // gesture and its appearance in the same browser task: a normal heartbeat
+      // may otherwise restore the saved route between separate protocol calls.
+      const appearance=await page.evaluate(({style,stage})=>{
+        document.body.dataset.petStyle=style;document.body.dataset.petStage=String(stage);
+        const portrait=document.querySelector('.pet-hero-portrait');
+        const svg=portrait.querySelector('.mail-companion');
+        const reacted=mailaiCompanionMotion.react('signature',portrait);
+        return {reacted,clip:svg.dataset.motionClip,
+          nature:getComputedStyle(svg.querySelector('.companion-nature-only')).display,
+          ranger:getComputedStyle(svg.querySelector('.companion-ranger-only')).display,
+          face:svg.querySelector('.companion-face').getBoundingClientRect().width>0};
+      },{style,stage});
       const expected=(style==='nature'?['greet','step','deliver','happy','glide','bow','phoenix']:['finWave','swim','dispatch','bubbleJoy','dive','soar','kunpeng'])[stage-1];
-      assert.equal(await hero.getAttribute('data-motion-clip'),expected);
-      assert.equal(await hero.locator('.companion-nature-only').first().evaluate(el=>getComputedStyle(el).display),style==='nature'?'inline':'none');
-      assert.equal(await hero.locator('.companion-ranger-only').first().evaluate(el=>getComputedStyle(el).display),style==='ranger'?'block':'none');
-      assert.equal(await hero.locator('.companion-face').evaluate(el=>el.getBoundingClientRect().width>0),style==='nature','Each route has its own body and face');
+      assert.equal(appearance.reacted,true,'Each route and stage starts its learned gesture');
+      assert.equal(appearance.clip,expected);
+      assert.equal(appearance.nature,style==='nature'?'inline':'none');
+      assert.equal(appearance.ranger,style==='ranger'?'block':'none');
+      assert.equal(appearance.face,style==='nature','Each route has its own body and face');
     }
     // Costumes remain optional, and never become permanent parts of either creature.
     for (const [item,equipped] of [['cap','.growth-cap'],['scarf','.growth-scarf']]) {
-      await page.evaluate(item=>{document.body.dataset.petAccessory=item;document.body.dataset.petOutfits=item;},item);
-      assert.equal(await hero.locator(equipped).evaluate(el=>getComputedStyle(el).display),'block');
-      await page.evaluate(()=>{document.body.dataset.petAccessory='';document.body.dataset.petOutfits='';});
-      assert.equal(await hero.locator(equipped).evaluate(el=>getComputedStyle(el).display),'none');
+      const appearance=await page.evaluate(({item,equipped})=>{
+        const part=document.querySelector('.pet-hero-portrait .mail-companion').querySelector(equipped);
+        document.body.dataset.petAccessory=item;document.body.dataset.petOutfits=item;
+        const worn=getComputedStyle(part).display;
+        document.body.dataset.petAccessory='';document.body.dataset.petOutfits='';
+        return {worn,removed:getComputedStyle(part).display};
+      },{item,equipped});
+      assert.equal(appearance.worn,'block');
+      assert.equal(appearance.removed,'none');
     }
     await page.evaluate(()=>mailaiPet.refresh());
     // Only explicit opt-in opens audio; every graph is short lived.
@@ -92,6 +116,9 @@ require('node:fs').mkdirSync('output/xiaoyou-upgrade',{recursive:true});
     await selectTab(page.locator('#companion-growth-dialog'),'home');
     await page.locator('[data-pet-life-action="hello"]').click();
     await page.waitForFunction(()=>audioContexts.length===1);
+    // The context is recorded in its constructor, before async resume creates
+    // the sound graph. Exercise blur cleanup after playback has actually begun.
+    await page.waitForFunction(()=>audioNotes.length===2);
     await page.evaluate(()=>window.dispatchEvent(new Event('blur')));
     await page.waitForFunction(()=>audioContexts.every(context=>context.state==='closed'));
     assert.equal(await hero.getAttribute('data-motion-active'),'false');

@@ -10,6 +10,9 @@ const {chromium,webkit}=require('playwright');
     await page.locator('#app-preloader').waitFor({state:'detached'});
   await page.evaluate(()=>setI18nLanguage('zh-CN'));
     await page.locator('.sidebar-account-folders [data-account-action="inbox"]').first().click();
+    // Existing rows remain visible during account activation. Wait for the
+    // selected mailbox to finish loading before opening a mutation dialog.
+    await page.waitForFunction(()=>document.querySelector('.list-pane')?.getAttribute('aria-busy')!=='true');
     await page.locator('.email-item').first().waitFor();
     await page.evaluate(async()=>{const data=await api('/api/mail/tags');for(const tag of data.tags)await api(`/api/mail/tags/${tag.id}`,{method:'DELETE'});await loadData();});
     const dialog=page.locator('#mail-tags-dialog');
@@ -17,7 +20,17 @@ const {chromium,webkit}=require('playwright');
     await dialog.waitFor({state:'visible'});
     const form=dialog.locator('[data-tag-form]');
     await form.locator('[name=name]').fill('项目 A');await form.locator('[type=submit]').click();
-    await dialog.getByText('标签已保存',{exact:true}).waitFor();
+    try { await dialog.getByText('标签已保存',{exact:true}).waitFor(); }
+    catch(error) {
+      console.error('Label save state',await page.evaluate(()=>{
+        const dialog=document.getElementById('mail-tags-dialog');
+        return {open:dialog.open,message:dialog.querySelector('.mail-tags-message')?.textContent,
+          name:dialog.querySelector('[name=name]')?.value,
+          busy:dialog.getAttribute('aria-busy'),mailboxBusy:document.querySelector('.list-pane')?.getAttribute('aria-busy'),
+          navigation:mailboxNavigationRevision,language:currentI18nLanguage()};
+      }));
+      console.error('Page errors',errors);throw error;
+    }
     await form.locator('[name=name]').fill('客户');await form.locator('[type=submit]').click();
     await dialog.locator('[data-edit-tag]').nth(1).waitFor();
     // A rejected mutation keeps the form intact and supports an explicit retry.

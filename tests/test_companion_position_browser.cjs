@@ -18,6 +18,13 @@ const key='mailai-companion-position-v1';
    browser=await engine.launch();
    const page=await browser.newPage({viewport:{width:1280,height:900},reducedMotion:'reduce'}),errors=[];
    page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.dismiss());
+   // Placement/reload tests use a deterministic update service. An unrelated
+   // background update request must not outlive a page navigation in WebKit;
+   // the dedicated update suite exercises real update UI states and failures.
+   await page.route(/\/api\/system\/update(?:\?.*)?$/,route=>route.fulfill({json:{
+    current_version:'3.9.3',latest_version:'3.9.3',available:false,supported:true,installable:false,
+   }}));
+   await page.route('**/api/system/update/install/status',route=>route.fulfill({json:{status:'idle',phase:'idle',running:false}}));
    await page.addInitScript(()=>{
     window.nativeWindowDrags=0;
     window.pywebview={api:{
