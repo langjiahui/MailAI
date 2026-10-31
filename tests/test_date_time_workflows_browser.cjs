@@ -79,6 +79,11 @@ const {chromium,webkit}=require('playwright');
       await page.locator('#btn-create-backup').click();await page.locator('#backup-list [data-restore-backup]').first().waitFor();
       await page.locator('#backup-list [data-restore-backup]').first().click();
       await pick('restore-start','2026-01-01');await pick('restore-end','2026-12-31');
+      // Restore takes an exclusive mailbox lease. Drain periodic UI reads so
+      // this date-picker workflow tests a real successful restore; busy-lease
+      // rejection is covered separately by the account-guard tests.
+      await page.evaluate(()=>mailaiEnergy.pause());
+      await page.waitForLoadState('networkidle');
       const restored=page.waitForResponse(r=>r.request().method()==='POST'&&/\/api\/system\/backups\/[^/]+\/restore/.test(r.url()));
       await page.locator('#restore-submit').click();
       const restoreResult=await restored;assert.equal(restoreResult.status(),200,await restoreResult.text());
