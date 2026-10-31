@@ -1,6 +1,6 @@
 /* Real purchases and saved outfits, using a separate disposable client profile. */
 const assert = require('node:assert/strict');
-const {revealItem}=require('./helpers/companion-ui.cjs');
+const {revealItem,selectTab}=require('./helpers/companion-ui.cjs');
 const {spawn} = require('node:child_process');
 const {once} = require('node:events');
 const {chromium,webkit} = require('playwright');
@@ -114,7 +114,7 @@ async function checkRestEffect(page, host, part, context) {
     assert(await page.locator('#assistant-orb .growth-wings').evaluate(n=>!!n.closest('.companion-torso')),'Shoulders follow the actual torso pose');
     assert(await page.locator('#assistant-orb .growth-visor').evaluate(n=>!!n.closest('.companion-head')),'Visor follows head turns');
     await page.evaluate(()=>mailaiPet.open());
-    await page.locator('[data-pet-tab="wardrobe"]').click();
+    await selectTab(page.locator('#companion-growth-dialog'),'wardrobe');
     const before=await page.evaluate(()=>api('/api/companion/growth'));
     assert.equal(before.stamps,10000);assert.equal(before.enabled,false);
     let cost=0;
@@ -130,7 +130,7 @@ async function checkRestEffect(page, host, part, context) {
     }
     // The old purchases now assemble real complete sets without a second cost.
     const dialog=page.locator('#companion-growth-dialog');
-    await dialog.locator('[data-pet-tab="shop"]').click();
+    await selectTab(dialog,'shop');
     await dialog.locator('[data-pet-series="star"]').click();
     assert.match(await dialog.locator('.pet-series-completion').textContent(),/已集齐/);
     assert(await dialog.locator('.pet-set-wear-note').isVisible(),'Set replacement is explained before the user applies it');
@@ -156,7 +156,14 @@ async function checkRestEffect(page, host, part, context) {
     assert.equal(await dialog.locator('.pet-set-portrait svg').getAttribute('data-motion-clip'),null);
     assert(await dialog.locator('[data-pet-set-action="star"]').isDisabled());
     await page.emulateMedia({reducedMotion:'no-preference'});
-    await dialog.locator('[data-pet-tab="wardrobe"]').click();
+    await selectTab(dialog,'home');
+    assert.match(await dialog.locator('.pet-home-collection b').textContent(),/星海巡邮.*4 \/ 4/,'The home shows the actually equipped, completed collection');
+    assert.equal(await dialog.locator('.pet-home-hero .growth-mech-wings').evaluate(n=>getComputedStyle(n).display),'block','The new cape is worn on the real companion');
+    await dialog.locator('[data-pet-home-collection="star"]').click();
+    assert.equal(await dialog.getAttribute('data-pet-view'),'shop');
+    assert.equal(await dialog.locator('[data-pet-series="star"]').getAttribute('aria-pressed'),'true','The home returns to its specific collection');
+    assert.equal((await page.evaluate(()=>api('/api/companion/growth'))).stamps,complete.stamps,'Returning to a collection never spends stamps');
+    await selectTab(dialog,'wardrobe');
     // Whole-set wear cleared the ambient effect, so restore it for the
     // existing keyboard and failure-recovery exercise below.
     await revealItem(dialog,'lightning');

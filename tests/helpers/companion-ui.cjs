@@ -2,7 +2,7 @@
 async function revealItem(dialog,id) {
  const back=dialog.locator('[data-pet-back-shelf]');
  if(await back.isVisible())await back.click();
- if(!await dialog.locator('.pet-shop').count())await dialog.locator('[data-pet-tab="wardrobe"]').click();
+ if(!await dialog.locator('.pet-shop').count())await selectTab(dialog,'wardrobe');
  let card=dialog.locator(`.pet-shop [data-pet-item="${id}"]`);
  if(!await card.count()) {
   await dialog.locator('[data-pet-category]').selectOption('all');
@@ -15,10 +15,11 @@ async function revealItem(dialog,id) {
  }
  return card;
 }
-// Reach secondary tasks through their visible disclosure, including keyboard focus.
+// Follow the visible space section, then its local task navigation.
 async function selectTab(dialog,tab) {
- const button=dialog.locator(`[data-pet-tab="${tab}"]`);
- if(!await button.isVisible())await dialog.locator('.pet-space-more>summary').click();
- await button.click();
+ if(tab==='home')return dialog.locator('[data-pet-section="home"]').click();
+ const section=['shop','wardrobe'].includes(tab)?'dress':['today','journey','history'].includes(tab)?'growth':'';
+ if(section)await dialog.locator(`[data-pet-section="${section}"]`).click();
+ await dialog.locator(`[data-pet-tab="${tab}"]`).click();
 }
 module.exports={revealItem,selectTab};

@@ -93,31 +93,19 @@
     </g>
     <path d="M32 62q-10-6-11-1 1 7 13 10Z" fill="var(--pet-body)"/><path d="M32 62q-10-6-11-1 1 7 13 10Z" fill="url(#pet-feather-light)"/>
   </g></g>`;
-  const mechWing = side => `<g transform="${side === 'right' ? 'translate(112 0) scale(-1 1)' : ''}"><g transform="translate(0 -6)"><g class="pet-reward-motion pet-mech-${side}">
-    <path d="M35 65Q26 60 20 65q-2 8 15 11Z" fill="var(--pet-star-navy,#40537D)" stroke="#D1B178" stroke-width=".6"/>
+  // The existing back-slot reward becomes a continuous cape. Joint names stay
+  // stable so owned pieces, shoulder anchors and bounded motion keep working.
+  const mechWing = side => `<g transform="${side === 'right' ? 'translate(112 0) scale(-1 1)' : ''}"><g class="pet-reward-motion pet-mech-${side}">
+    <path d="M36 64Q26 60 22 68l12 10Z" fill="#344968" stroke="#C4AB78" stroke-width=".6"/>
     <g class="pet-reward-motion pet-mech-panel">
-      <g class="pet-reward-motion pet-mech-feather pet-mech-feather-lower">
-        <path d="M30 69C17 65-1 58-5 63c-5 8 12 19 35 15Z" fill="var(--pet-star-navy,#40537D)" stroke="#D1B178" stroke-width=".6"/>
-        <path d="M8 70q8 5 18 5" fill="none" stroke="#EDF7FD" stroke-width="1" stroke-linecap="round"/>
-      </g>
-      <g class="pet-reward-motion pet-mech-feather pet-mech-feather-middle">
-        <path d="M30 65C16 54-8 38-13 44c-7 10 17 30 43 32Z" fill="url(#pet-pearl)" stroke="#D1B178" stroke-width=".6"/>
-        <path d="M2 60q10 4 24 11-16-1-24-11Z" fill="url(#pet-glass)" opacity=".65"/>
-      </g>
-      <g class="pet-reward-motion pet-mech-feather pet-mech-feather-upper">
-        <path class="pet-star-feather" d="M31 65C19 49-5 20-13 24c-12 6 1 29 15 39 9 7 19 10 29 10Z" fill="var(--pet-star-navy,#40537D)" stroke="#D1B178" stroke-width=".7"/>
-        <path d="M-13 24q-4 2-4 8l7 4 4-2Z" fill="#D1B178"/>
-        <path d="M-5 45C4 47 17 56 27 67 13 64 1 56-5 45Z" fill="url(#pet-glass)" opacity=".75"/>
-        <path d="M-5 44Q9 47 25 63" fill="none" stroke="#FFFCF0" stroke-width="1.1" stroke-linecap="round"/>
-        <path class="pet-reward-motion pet-mech-charge" d="M1 50q12 6 23 16" pathLength="100" fill="none" stroke="#F0FBFF" stroke-width="1" stroke-linecap="round"/>
-        <path d="M-7 43q-2 3 1 7" fill="none" stroke="#E5BD81" stroke-width="1.6" stroke-linecap="round"/>
-      </g>
+      <g class="pet-reward-motion pet-mech-feather pet-mech-feather-upper"><path class="pet-star-feather" d="M30 64C17 68 13 82 10 99l15-5 10 11 10-29Z" fill="#344968"/><path d="M29 67C20 72 18 86 14 95l12-5 8 10 8-23" fill="none" stroke="#C4AB78" stroke-width="1" stroke-linejoin="round"/></g>
+      <g class="pet-reward-motion pet-mech-feather pet-mech-feather-middle"><path d="M30 69Q19 82 18 92l10-5 7 10 7-19Z" fill="url(#pet-glass)" opacity=".25"/></g>
+      <g class="pet-reward-motion pet-mech-feather pet-mech-feather-lower"><path d="m23 81 1 2.5 2.5 1-2.5 1-1 2.5-1-2.5-2.5-1 2.5-1Z" fill="#E9D9AE"/><path class="pet-reward-motion pet-mech-charge" d="M19 92q8-4 15 6" pathLength="100" fill="none" stroke="#E6E9D9" stroke-width=".65" opacity=".6"/></g>
     </g>
-    <g class="pet-star-fin companion-ranger-only"><path d="M32 69C14 68-13 50-16 31c-2-14 12 0 25 0 14 0 20 18 23 38Z" fill="#40537D" stroke="#D1B178" stroke-width=".8"/><path d="M28 66C13 59-1 48-10 35 4 42 18 39 28 66Z" fill="#94BDD9" opacity=".65"/><path d="m-9 37 10 9 9-1 8 12 11 9" fill="none" stroke="#E5D2A0" stroke-width=".7"/><path d="m1 43 .8 2.2L4 46l-2.2.8L1 49l-.8-2.2L-2 46l2.2-.8Z" fill="#FFE9B5"/></g>
-    <path d="M32 64q-10-5-14 0 2 9 15 11Z" fill="url(#pet-pearl)" stroke="#B7CEDD" stroke-width=".45"/>
-    <circle cx="27" cy="68" r="2.5" fill="#40537D" stroke="#D1B178" stroke-width=".85"/>
-    <circle class="pet-reward-motion pet-mech-led" cx="27" cy="68" r="1.1" fill="#F2FCFF"/>
-  </g></g></g>`;
+    <g class="pet-star-fin companion-ranger-only"><path d="M32 65C17 68 13 84 10 99l16-6 10 11 8-29Z" fill="#344968" stroke="#C4AB78" stroke-width=".7"/><path d="M27 72q-7 11-10 21l10-5 8 10" fill="none" stroke="#A6C4D7" stroke-width="1.2" opacity=".6"/></g>
+    <path d="M32 64q-8-3-11 2 2 7 12 9Z" fill="url(#pet-pearl)" stroke="#B7CEDD" stroke-width=".45"/>
+    <circle cx="27" cy="68" r="2.5" fill="#344968" stroke="#C4AB78" stroke-width=".85"/><circle class="pet-reward-motion pet-mech-led" cx="27" cy="68" r="1.1" fill="#F2FCFF"/>
+  </g></g>`;
   // Both halves share the same dash timeline. The rear half sits behind the body.
   const orbit = rear => `<g class="growth-orbit pet-orbit-${rear ? 'rear' : 'front'}"><g transform="rotate(-22 56 65)">
     <ellipse class="pet-orbit-track" cx="56" cy="65" rx="50" ry="20" stroke="#8BB6D2" stroke-width=".65" opacity=".4"/>

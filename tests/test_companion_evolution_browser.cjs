@@ -1,3 +1,4 @@
+const {selectTab}=require('./helpers/companion-ui.cjs');
 /* Approved bird/phoenix and fish/Kunpeng: anatomy, isolated previews and finite flight. */
 const assert=require('node:assert/strict');
 const {spawn}=require('node:child_process');
@@ -65,7 +66,7 @@ const port=Number(process.env.MAILAI_EVOLUTION_FIXTURE_PORT||18857);
   }
   // Stage thumbnails show their own anatomy, not the current body's stage or costume.
   await page.evaluate(()=>mailaiPet.refresh());
-  await page.locator('[data-pet-tab="journey"]').click();
+  await selectTab(page.locator('#companion-growth-dialog'),'journey');
   assert.equal(await page.locator('.pet-evolution-preview').count(),7);
   for(const stage of [1,7]){
    await page.locator(`[data-pet-journey-stage="${stage}"]`).click();
@@ -77,7 +78,7 @@ const port=Number(process.env.MAILAI_EVOLUTION_FIXTURE_PORT||18857);
   assert.equal(await page.locator('#companion-creature-paints').count(),1,'Shared paint servers must not be cloned with every avatar');
   assert.deepEqual(await page.evaluate(()=>[...document.querySelectorAll('.mail-companion [fill^="url(#"]')].map(n=>n.getAttribute('fill').slice(5,-1)).filter(id=>!document.getElementById(id))),[],'All shared gradient references resolve');
   // Both final forms unfold their real wings, then release all animation objects.
-  await page.locator('[data-pet-tab="today"]').click();
+  await selectTab(page.locator('#companion-growth-dialog'),'home');
   await page.locator('.pet-journal-body').evaluate(n=>n.scrollTop=0);await page.waitForTimeout(300);
   fs.mkdirSync('output/xiaoyou-evolution',{recursive:true});
   await page.bringToFront();
