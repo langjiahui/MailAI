@@ -1,6 +1,6 @@
 /* Run MAILAI_GROWTH_FIXTURE=1 python tests/workspace_preview.py first. */
 const assert = require('node:assert/strict');
-const {revealItem}=require('./helpers/companion-ui.cjs');
+const {revealItem,selectTab}=require('./helpers/companion-ui.cjs');
 const {chromium} = require('playwright');
 (async () => {
   const browser = await chromium.launch({headless:true});
@@ -16,9 +16,11 @@ const {chromium} = require('playwright');
     const dialog = page.locator('#companion-growth-dialog');
     await dialog.waitFor({state:'visible'});
     assert.match(await dialog.textContent(),/青羽信使/);
+    await selectTab(dialog,'settings');
     assert.match(await dialog.locator('.pet-client-note').textContent(),/所有邮箱共享/);
+    await selectTab(dialog,'home');
     assert.equal(await dialog.locator('.pet-hero .evolution-crest-one').evaluate(n=>getComputedStyle(n).display),'block');
-    await dialog.locator('[data-pet-tab="wardrobe"]').click();
+    await selectTab(dialog,'wardrobe');
     assert.equal(await dialog.locator('[data-pet-buy="wings"]').isEnabled(),false);
     const before = await page.evaluate(()=>api('/api/companion/growth'));
     // Passive activity may earn stamps during a slower CI render. Compare net
@@ -105,6 +107,7 @@ const {chromium} = require('playwright');
     assert.equal(await dialog.locator('.pet-shop-receipt').count(),0,'Failed purchase never leaves a success receipt');
     await page.unroute('**/api/companion/purchase');
     // Pause survives reload and suppresses counters.
+    await selectTab(dialog,'settings');
     await dialog.locator('[data-pet-enabled]').click();
     await page.waitForFunction(()=>document.querySelector('.pet-paused'));
     const paused = await page.evaluate(()=>api('/api/companion/growth'));
@@ -115,6 +118,7 @@ const {chromium} = require('playwright');
     await page.waitForFunction(()=>document.body.dataset.petPalette === 'sky');
     await page.evaluate(()=>window.mailaiPet.open());
     assert.match(await dialog.textContent(),/养成已暂停/);
+    await selectTab(dialog,'settings');
     await dialog.locator('[data-pet-enabled]').click();
     await page.waitForFunction(()=>!document.querySelector('.pet-paused'));
     // Keyboard close, foreground reading and server-validated heartbeat.
@@ -155,11 +159,13 @@ const {chromium} = require('playwright');
     const resumed = await page.evaluate(()=>api('/api/companion/growth'));
     assert.equal(resumed.today.counts.active,hidden.today.counts.active);
     await page.evaluate(()=>window.mailaiPet.open());
-    await dialog.locator('[data-pet-tab="journey"]').click();
+    await selectTab(dialog,'journey');
     await page.screenshot({path:'/tmp/mailai-pet-journey.png'});
     const beforeStyle = await page.evaluate(()=>api('/api/companion/growth'));
+    await selectTab(dialog,'settings');
     await dialog.locator('[data-pet-style="ranger"]').click();
     await page.waitForFunction(()=>document.body.dataset.petStyle === 'ranger');
+    await selectTab(dialog,'home');
     assert.match(await dialog.textContent(),/星翼伙伴/);
     assert.equal(await dialog.locator('.pet-hero .evolution-crest-one').evaluate(n=>n.getBoundingClientRect().width>0),false);
     assert.equal(await dialog.locator('.pet-hero .evolution-fish-fin').evaluate(n=>getComputedStyle(n).display),'block');
@@ -167,17 +173,21 @@ const {chromium} = require('playwright');
     assert.equal(spent(afterStyle),spent(beforeStyle));
     assert.equal(afterStyle.xp-beforeStyle.xp,afterStyle.today.xp-beforeStyle.today.xp);
     // Switching back restores cute details and keeps all earned/owned progress.
+    await selectTab(dialog,'settings');
     await dialog.locator('[data-pet-style="nature"]').click();
     await page.waitForFunction(()=>document.body.dataset.petStyle === 'nature');
+    await selectTab(dialog,'home');
     assert.equal(await dialog.locator('.pet-hero .evolution-crest-one').evaluate(n=>n.getBoundingClientRect().width>0),true);
     assert.equal(await dialog.locator('.pet-hero .evolution-star-mark').evaluate(n=>getComputedStyle(n).display),'none');
     const cute = await page.evaluate(()=>api('/api/companion/growth'));
     assert.equal(spent(cute),spent(afterStyle));
     assert.equal(cute.xp-afterStyle.xp,cute.today.xp-afterStyle.today.xp);
     assert.deepEqual(cute.equipped,afterStyle.equipped);
+    await selectTab(dialog,'settings');
     await dialog.locator('[data-pet-style="ranger"]').click();
     await page.waitForFunction(()=>document.body.dataset.petStyle === 'ranger');
-    await dialog.locator('[data-pet-tab="wardrobe"]').click();
+    await selectTab(dialog,'home');
+    await selectTab(dialog,'wardrobe');
     // CSS must respect redeemed palettes at EVERY stage, on BOTH routes.
     await page.emulateMedia({reducedMotion:'reduce'});
     const paletteMatrix = await page.evaluate(()=>{
@@ -215,8 +225,8 @@ const {chromium} = require('playwright');
     await page.screenshot({path:'/tmp/mailai-pet-ranger.png'});
     // Live language changes render the entire journal, including dynamic goods.
     await page.evaluate(()=>setI18nLanguage('en'));
-    await page.waitForFunction(()=>document.querySelector('#pet-journal-title')?.textContent === 'XiaoYou space');
-    await dialog.locator('[data-pet-tab="wardrobe"]').click();
+    await page.waitForFunction(()=>document.querySelector('#pet-journal-title')?.textContent === 'XiaoYou');
+    await selectTab(dialog,'wardrobe');
     assert.match(await dialog.textContent(),/Sunlit messenger wings/);
     assert(!/[\u3400-\u9fff]/.test(await dialog.textContent()));
     await page.screenshot({path:'/tmp/mailai-pet-english.png'});
@@ -245,6 +255,7 @@ const {chromium} = require('playwright');
     assert.equal(await page.evaluate(()=>document.body.dataset.petPalette),shared.equipped.palette || 'mint');
     await page.evaluate(()=>window.mailaiPet.open());
     const fresh = await page.evaluate(()=>api('/api/companion/growth'));
+    await selectTab(dialog,'settings');
     assert.match(await dialog.locator('.pet-client-note').textContent(),/Shared across mailboxes/);
     assert.deepEqual(fresh,shared);
     await page.evaluate(async()=>{

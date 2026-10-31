@@ -1,6 +1,6 @@
 /* Dynamic reward previews never spend stamps or mutate the equipped outfit. */
 const assert = require('node:assert/strict');
-const {revealItem}=require('./helpers/companion-ui.cjs');
+const {revealItem,selectTab}=require('./helpers/companion-ui.cjs');
 const {chromium,webkit} = require('playwright');
 (async()=>{
   const browser=await (process.env.MAILAI_BROWSER==='webkit'?webkit:chromium).launch({headless:true});
@@ -16,7 +16,7 @@ const {chromium,webkit} = require('playwright');
     });
     const before=await page.evaluate(()=>api('/api/companion/growth'));
     const dialog=page.locator('#companion-growth-dialog'), preview=dialog.locator('.pet-live-preview'),art=dialog.locator('.pet-center-companion .pet-live-art');
-    await dialog.locator('[data-pet-tab="wardrobe"]').click();
+    await selectTab(dialog,'wardrobe');
     await revealItem(dialog,'wings');
     const select=preview.locator('[data-pet-preview-select]');
     assert(await preview.isHidden(),'Preview stays collapsed until an icon is clicked');
@@ -90,7 +90,7 @@ const {chromium,webkit} = require('playwright');
     assert.equal(running,'running');
     const originalAppearance=await page.evaluate(()=>({...document.body.dataset}));
     await preview.locator('[data-pet-preview-close]').click();
-    await dialog.locator('[data-pet-tab="today"]').click();
+    await selectTab(dialog,'home');
     await page.evaluate(()=>delete document.body.dataset.petOutfits);
     await dialog.locator('.pet-hero-portrait').scrollIntoViewIfNeeded();
     await page.waitForFunction(()=>document.querySelector('.pet-hero-portrait .mail-companion').dataset.rewardVisible==='true');
@@ -103,7 +103,7 @@ const {chromium,webkit} = require('playwright');
       }
     }
     await page.evaluate(saved=>Object.assign(document.body.dataset,saved),originalAppearance);
-    await dialog.locator('[data-pet-tab="wardrobe"]').click();
+    await selectTab(dialog,'wardrobe');
     await revealItem(dialog,'sparkles');
     await dialog.locator('[data-pet-preview="sparkles"]').click();
     await art.evaluate(n=>n.style.transform='translateX(-200vw)');

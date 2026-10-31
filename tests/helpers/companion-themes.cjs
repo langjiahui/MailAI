@@ -8,10 +8,10 @@ async function auditSpaceThemes(page,dialog) {
  await page.emulateMedia({reducedMotion:'reduce'});
  for(const language of ['zh-CN','en'])for(const mode of ['light','dark'])for(const reward of ['','theme_monochrome','theme_baowu']) {
   await page.evaluate(({language,mode,reward})=>{setI18nLanguage(language);applyTheme(mode);if(reward)document.documentElement.dataset.rewardTheme=reward;else delete document.documentElement.dataset.rewardTheme;},{language,mode,reward});
-  for(const [width,height,scale]of [[1440,1000,1],[390,844,1.35]]) {
+  for(const [width,height,scale]of [[1440,1000,1],[390,844,1.35],[360,740,2]]) {
    await page.setViewportSize({width,height});
    await page.evaluate(scale=>{document.documentElement.style.setProperty('--fz',scale);document.body.style.zoom=String(scale);},scale);
-   for(const tab of ['today','shop','wardrobe','journey','gifts','themes','history']) {
+   for(const tab of ['home','today','shop','wardrobe','journey','gifts','themes','history','settings']) {
     await selectTab(dialog,tab);
     const issues=await dialog.evaluate(d=>{
      const problems=[],rgb=s=>{const c=(s.match(/[\d.]+/g)||[]).map(Number);return s.startsWith('color(srgb')?c.map((v,i)=>i<3?v*255:v):c;},blend=(a,b)=>{const alpha=a[3]??1;return a.slice(0,3).map((v,i)=>v*alpha+b[i]*(1-alpha));};
@@ -22,10 +22,10 @@ async function auditSpaceThemes(page,dialog) {
      if(body.scrollHeight>body.clientHeight+1)problems.push('Outer dialog body scrolls');
      for(const [name,n]of [['dialog',d],['body',body],['main',main]])if(n.scrollWidth>n.clientWidth+1)problems.push(name+' has horizontal overflow');
      const close=d.querySelector('[data-pet-close]').getBoundingClientRect();if(close.top<0||close.right>innerWidth+1||close.bottom>innerHeight+1)problems.push('Close is outside the viewport');
-     for(const n of d.querySelectorAll('.pet-tabs button,.pet-hero h3,.pet-header-wallet b,.pet-shop-toolbar select,.pet-shelf-pages select,.pet-page-heading h3,.pet-series-actions button,.pet-shelf-pages button,.pet-shop-item>button,.pet-theme-card>button')) {
+     for(const n of d.querySelectorAll('.pet-tabs button,.pet-secondary-nav button,.pet-task-nav button,.pet-home-copy h3,.pet-home-dress,.pet-life-actions button,.pet-header-wallet span,.pet-hero h3,.pet-header-wallet b,.pet-shop-toolbar select,.pet-shelf-pages select,.pet-page-heading h3,.pet-series-actions button,.pet-shelf-pages button,.pet-shop-item>button,.pet-theme-card>button')) {
       const css=getComputedStyle(n);if(!n.getClientRects().length||css.visibility==='hidden'||n.disabled||n.closest('[hidden]'))continue;
-      if(n.matches('.pet-tabs button')) {
-       const b=n.getBoundingClientRect(),nav=d.querySelector('.pet-tabs').getBoundingClientRect();
+      if(n.matches('.pet-tabs button,.pet-secondary-nav button')) {
+       const b=n.getBoundingClientRect(),nav=n.closest('nav').getBoundingClientRect();
        if(b.left<nav.left-1||b.right>nav.right+1||b.top<nav.top-1||b.bottom>nav.bottom+1)problems.push('Navigation outside visible bounds: '+n.textContent.trim());
       }
       if(n.scrollWidth>n.clientWidth+1)problems.push('Clipped text: '+n.textContent.trim());

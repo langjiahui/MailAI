@@ -63,7 +63,7 @@ const base = 'http://127.0.0.1:18795/';
     assert(resumedBatches.every(batch=>batch.clicks===0 && !batch.learn),'Paused clicks and learning must not be awarded after resuming');
     await page.evaluate(()=>hideSystemView(true));
     // Committed purchase whose response is lost: recover the SAME request after reload.
-    await dialog.locator('[data-pet-tab="wardrobe"]').click();
+    await selectTab(dialog,'wardrobe');
     const before=await page.evaluate(()=>api('/api/companion/growth'));
     assert(before.berry_today<3);
     let purchaseToken;

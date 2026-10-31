@@ -16,7 +16,10 @@
     return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat(currentI18nLanguage(), dayOnly ? {dateStyle:'medium'} : {dateStyle:'medium',timeStyle:'short'}).format(date);
   };
   const post = body => ({method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
-  let state = null, account = '', revision = 0, tab = 'today', dialog, returnFocus;
+  let state = null, account = '', revision = 0, tab = 'home', dialog, returnFocus;
+  let dressTab = 'shop', growthTab = 'today';
+  const spaceFor = name => ['shop','wardrobe'].includes(name) ? 'dress' : ['today','journey','history'].includes(name) ? 'growth' : name;
+  const focusTab = name => (dialog.querySelector(`[data-pet-tab="${name}"]`) || dialog.querySelector(`[data-pet-section="${spaceFor(name)}"]`))?.focus({preventScroll:true});
   let busy = false, tickBusy = false, pending = null, clicks = 0, lastClick = 0;
   let outfitPending = null, shopReceipt = null, earnReturn = false, shopReturnScroll = 0;
   let lastInput = performance.now(), lastSample = performance.now(), reading = null;
@@ -28,7 +31,7 @@
   const outfits = look => outfitSlots.map(slot=>look[slot]).filter(Boolean).join(' ') || look.accessory || '';
   const collectionFor = look => state?.collections?.find(set=>set.items.every(id=>Object.values(look).includes(id)))?.id || '';
   const collection = () => state?.collections?.find(set=>set.id===collectionId);
-  const shelfCapacity = () => (dialog.clientWidth>1050?3:2)*(dialog.clientWidth>680&&dialog.clientHeight>720?2:1);
+  const shelfCapacity = () => 2*(dialog.clientWidth>680&&dialog.clientHeight>720?2:1);
   let giftDraft = '', giftPreview = null, giftError = '', giftErrorKey = '', giftBusy = false;
   let giftPending = '', giftFileName = '', giftReadRevision = 0, giftOperation = '';
   let giftOutfitItems=[];
@@ -203,7 +206,7 @@
     dialog.id = 'companion-growth-dialog';
     dialog.className = 'pet-journal';
     dialog.setAttribute('aria-labelledby', 'pet-journal-title');
-    dialog.innerHTML = `<header class="pet-journal-head"><div><h2 id="pet-journal-title"></h2></div><div class="pet-header-wallet pet-shop-wallet"></div><button type="button" class="modern-close" data-pet-close><svg viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="m6 6 8 8M14 6l-8 8"/></svg></button></header><div class="pet-journal-body"></div><footer class="pet-journal-footer"><span data-pet-message role="status" aria-live="polite"></span><button type="button" data-pet-enabled></button></footer>`;
+    dialog.innerHTML = `<header class="pet-journal-head"><div><h2 id="pet-journal-title"></h2><span class="pet-space-subtitle"></span></div><div class="pet-header-wallet pet-shop-wallet"></div><button type="button" class="modern-close" data-pet-close><svg viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="m6 6 8 8M14 6l-8 8"/></svg></button></header><div class="pet-journal-body"></div><footer class="pet-journal-footer"><span data-pet-message role="status" aria-live="polite"></span><nav class="pet-secondary-nav"><button type="button" data-pet-tab="gifts"></button><button type="button" data-pet-tab="themes"></button><button type="button" data-pet-tab="settings"></button></nav></footer>`;
     document.body.append(dialog);
     new ResizeObserver(()=>{
       if(!dialog.open)return;
@@ -219,15 +222,24 @@
       const button = event.target.closest('button');
       if (!button) return;
       if (button.hasAttribute('data-pet-close')) return dialog.close();
+      if (button.dataset.petSection) {
+        const section=button.dataset.petSection;
+        tab=section==='dress'?dressTab:section==='growth'?growthTab:'home';
+        previewOpen=false;previewOrigin=null;previewStage=null;earnReturn=false;renderKey='';render();
+        dialog.querySelector('.pet-tab-content')?.scrollTo(0,0);
+        dialog.querySelector(`[data-pet-section="${section}"]`)?.focus({preventScroll:true});return;
+      }
+      if (button.dataset.petHomeCollection) collectionId=button.dataset.petHomeCollection;
       if (button.dataset.petTab || button.dataset.petGo) {
+        if(button.dataset.petTab==='wardrobe'&&button.closest('.pet-task-nav'))shopFilter='all';
         earnReturn=false;tab = button.dataset.petTab || button.dataset.petGo; previewOpen=false;previewOrigin=null;previewStage=null;renderKey='';render();
         dialog.querySelector('.pet-tab-content')?.scrollTo(0,0);
-        dialog.querySelector(`[data-pet-tab="${tab}"]`)?.focus({preventScroll:true});
+        focusTab(tab);
         return;
       }
       if (button.hasAttribute('data-pet-retry')) return refresh();
       if (button.hasAttribute('data-pet-gift-context-close')) {giftOutfitItems=[];renderKey='';render();return;}
-      if (button.dataset.petShopFilter || button.hasAttribute('data-pet-browse-all')) { shopFilter=button.dataset.petShopFilter || 'all'; if(button.hasAttribute('data-pet-browse-all'))shopCategory='all';shopPage=0;renderKey='';render();dialog.querySelector(`[data-pet-shop-filter="${shopFilter}"]`)?.focus({preventScroll:true});return; }
+      if (button.dataset.petShopFilter || button.hasAttribute('data-pet-browse-all')) { if(button.closest('.pet-task-nav')){tab='wardrobe';previewOpen=false;previewOrigin=null;previewStage=null;}shopFilter=button.dataset.petShopFilter || 'all'; if(button.hasAttribute('data-pet-browse-all'))shopCategory='all';shopPage=0;renderKey='';render();dialog.querySelector(`[data-pet-shop-filter="${shopFilter}"]`)?.focus({preventScroll:true});return; }
       if (button.hasAttribute('data-pet-page')) { shopPage=Number(button.dataset.petPage);renderKey='';render();dialog.querySelector('[data-pet-page-select]')?.focus({preventScroll:true});return; }
       if (button.dataset.petSeries) { collectionId=button.dataset.petSeries;previewOpen=false;renderKey='';render();dialog.querySelector(`[data-pet-series="${collectionId}"]`)?.focus({preventScroll:true});return; }
       if (button.dataset.petSetAction) {
@@ -577,12 +589,13 @@
   function collectionView() {
     const set=collection();
     if(!set)return '';
-    const missing=set.items.map(id=>state.items.find(item=>item.id===id)).filter(item=>!item.owned).sort((a,b)=>a.stage-b.stage||a.cost-b.cost);
+    const pieces=set.items.map(id=>state.items.find(item=>item.id===id)).sort((a,b)=>a.stage-b.stage||a.cost-b.cost);
+    const missing=pieces.filter(item=>!item.owned);
     const next=missing.find(item=>item.stage<=state.stage&&item.cost<=state.stamps)||missing[0];
-    return `<div class="pet-page-heading"><small>${label('collectionsEyebrow')}</small><h3>${label('collectionsTitle')}</h3><p>${label('collectionsHint')}</p></div>
+    return `<div class="pet-page-heading"><small>${label('collectionsEyebrow')}</small><h3>${label('dressTitle')}</h3><p>${label('dressHint')}</p></div>
     <div class="pet-series-selector" role="group" aria-label="${label('collectionsTitle')}">${state.collections.map(s=>`<button type="button" data-pet-series="${s.id}" aria-pressed="${set.id===s.id}"><span class="pet-series-mark" data-series="${s.id}" aria-hidden="true">${{post:'✉',cloud:'⌁',star:'✦'}[s.id]}</span><b>${label('collection.'+s.id)}</b><small>${s.owned} / ${s.items.length}${s.complete?' ✓':''}</small></button>`).join('')}</div>
     <section class="pet-series-detail" data-series="${set.id}"><div class="pet-section-title"><div><small>${label(set.id==='star'?'flagship':'collectionSeries')}</small><h3>${label('collection.'+set.id)}</h3></div><strong>${set.owned}<span> / ${set.items.length}</span></strong></div><p>${label('collection.'+set.id+'.tag')}</p><progress max="${set.items.length}" value="${set.owned}" aria-label="${label('collectionProgress',set.owned,set.items.length)}"></progress>
-    <div class="pet-series-pieces">${set.items.map(id=>{const item=state.items.find(i=>i.id===id),view=shopItemState(item);return `<button type="button" data-pet-preview="${id}" data-owned="${item.owned}"><span class="pet-piece-check" aria-hidden="true">${item.owned?'✓':numerals[set.items.indexOf(id)]}</span><span><b>${label('item.'+id)}</b><small>${item.owned?label(view.equipped?'state.equipped':'state.owned'):label('stampPrice',item.cost)}</small></span><span class="pet-piece-link">${label('tryOn')} ↗</span></button>`;}).join('')}</div>
+    <div class="pet-series-pieces">${pieces.map((item,index)=>{const id=item.id,view=shopItemState(item);return `<button type="button" data-pet-preview="${id}" data-owned="${item.owned}"><span class="pet-piece-check" aria-hidden="true">${item.owned?'✓':numerals[index]}</span><span><b>${label('item.'+id)}</b><small>${item.owned?label(view.equipped?'state.equipped':'state.owned'):label('stampPrice',item.cost)}</small></span><span class="pet-piece-link">${label('tryOn')} ↗</span></button>`;}).join('')}</div>
     <div class="pet-series-completion ${set.complete?'is-complete':''}"><span class="pet-collection-stamp" aria-hidden="true">${set.complete?'✦':'◇'}</span><div><b>${label(set.complete?'setComplete':'setKeepsake')}</b><small>${set.complete?label('setCompletedOn',dateLabel(set.completed_at)):label('setKeepsakeHint')}</small></div></div>
     <div class="pet-series-actions">${set.owned?`<button type="button" class="pet-primary" data-pet-wear-collection="${set.id}" title="${label('setWearHint')}" ${busy?'disabled':''}>${label(set.complete?'wearSet':'wearCollected')}</button>`:''}${next?`<button type="button" ${set.owned?'':'class="pet-primary"'} data-pet-collection="${next.id}">${label(set.owned?'tryNextPiece':'startCollection')}</button>`:''}<button type="button" data-pet-go="wardrobe">${label('freeStyling')} ↗</button>${set.complete?`<button type="button" data-pet-set-action="${set.id}" ${!motionAllowed()?'disabled':''}>${label('setAction')}</button>`:''}</div>${set.owned?`<p class="pet-set-wear-note">${label('setWearHint')}</p>`:''}${next?`<p class="pet-next-piece">${label('nextCollectionPiece',t('item.'+next.id))} · ${state.stage<next.stage?label('growthShortage',state.stages[next.stage-1]-state.xp):state.stamps<next.cost?label('stampShortage',next.cost-state.stamps):label('state.available')}</p>`:''}</section>`;
   }
@@ -602,7 +615,7 @@
     if(previewOpen)return `<section class="pet-live-preview" aria-labelledby="pet-preview-title"><button type="button" class="pet-back-shelf" data-pet-back-shelf data-pet-preview-close>← ${label(previewOrigin?.tab==='shop'?'backToCollections':previewOrigin?.tab==='journey'?'backToJourney':'backToWardrobe')}</button>${shopReceipt&&shopReceipt.item!==previewItem?receiptView():''}${previewView()}</section>`;
     return `${giftOutfitContext()}<section class="pet-wardrobe-overview"><div class="pet-wardrobe-heading"><div><small>${label('boutiqueEyebrow')}</small><h3>${label('wardrobeTitle')}</h3></div><span>${label('collectionProgress',collectible.filter(i=>i.owned).length,collectible.length)}</span></div><p class="pet-wardrobe-guide">${label('wardrobeGuide')}</p><details class="pet-equipped-details"><summary>${label('currentLook')}</summary><div class="pet-wearing-slots">${[...outfitSlots,'palette','effect'].map(slot=>`<div><small>${label('slot.'+slot)}</small><strong>${s.equipped[slot] ? label('item.'+s.equipped[slot]) : label('slotEmpty')}</strong><button type="button" data-pet-slot="${slot}" ${!s.equipped[slot]||busy?'disabled':''}>${label('remove')}</button></div>`).join('')}</div></details></section>
     ${shopReceipt && (!previewOpen || shopReceipt.item!==previewItem) ? receiptView() : ''}<section class="pet-live-preview" aria-labelledby="pet-preview-title" ${previewOpen ? '' : 'hidden'}>${previewView()}</section>
-    <div class="pet-shop-toolbar"><div class="pet-section-title"><h3>${label('shopTitle')}</h3><span>${label('shelfCount',items.length)}</span></div><div class="pet-shop-filters" role="group" aria-label="${label('shopFilter')}">${['all','owned','available'].map(filter=>`<button type="button" data-pet-shop-filter="${filter}" aria-pressed="${shopFilter===filter}">${label('filter.'+filter)}<span>${all.filter(item=>matches(item,filter)).length}</span></button>`).join('')}</div><select data-pet-category aria-label="${label('category')}">${['all','accessory','palette','effect'].map(category=>`<option value="${category}" ${shopCategory===category?'selected':''}>${label(category==='all'?'allCategories':'filter.'+category)}</option>`).join('')}</select></div>
+    <div class="pet-shop-toolbar"><div class="pet-section-title"><h3>${label('shopTitle')}</h3><span>${label('shelfCount',items.length)}</span></div><div class="pet-shop-filters" role="group" aria-label="${label('shopFilter')}">${['all','available'].map(filter=>`<button type="button" data-pet-shop-filter="${filter}" aria-pressed="${shopFilter===filter}">${label('filter.'+filter)}<span>${all.filter(item=>matches(item,filter)).length}</span></button>`).join('')}</div><select data-pet-category aria-label="${label('category')}">${['all','accessory','palette','effect'].map(category=>`<option value="${category}" ${shopCategory===category?'selected':''}>${label(category==='all'?'allCategories':'filter.'+category)}</option>`).join('')}</select></div>
     <div class="pet-shop" data-page-size="${shelfSize}">${items.map((item,index) => {
       const view = shopItemState(item);
       const action = item.owned ? `data-pet-item-action="${item.id}" data-pet-slot="${itemSlot(item)}" data-pet-equip="${view.equipped ? '' : item.id}"` : `data-pet-buy="${item.id}"`;
@@ -620,36 +633,62 @@
   function historyView() {
     return `<div class="pet-section-title"><h3>${label('historyTitle')}</h3><span>${label('last14')}</span></div>${state.history.length ? `<div class="pet-history">${state.history.map(day=>`<article><time>${esc(dateLabel(day.day,true))}</time>${reward(day.xp,day.stamps)}</article>`).join('')}</div>` : `<p class="pet-empty">${label('historyEmpty')}</p>`}<p class="pet-note">${label('privacyNote')}</p><div class="pet-section-title pet-purchase-title"><h3>${label('purchaseHistory')}</h3><span>${label('last20')}</span></div>${(state.purchases || []).length ? `<div class="pet-history">${state.purchases.map(item=>`<article><div><b>${label(`item.${item.item}`)}</b><time>${esc(dateLabel(item.created_at))}</time></div><span>${label('purchaseCost',item.cost)}${item.xp ? ' · '+label('purchaseGrowth',item.xp) : ''}</span></article>`).join('')}</div>` : `<p class="pet-empty">${label('purchaseEmpty')}</p>`}`;
   }
-  function companionStageView() {
+  function collectionArt(set, extra = '') {
+    const look={};
+    set.items.forEach(id=>{const item=state.items.find(i=>i.id===id);look[itemSlot(item)]=id;});
+    return `<div class="pet-live-art pet-item-art pet-set-portrait ${extra}" data-fitting-outfits="${outfits(look)}" data-fitting-accessory="" data-fitting-palette="${look.palette||''}" data-fitting-effect="" data-collection-look="${set.id}" data-fitting-seal="${set.complete?set.id:''}">${avatar(extra?'':'pet-hero-portrait')}</div>`;
+  }
+  function homeView() {
+    const set=state.collections.find(s=>s.id===collectionFor(state.equipped)) || state.collections.find(s=>s.owned&&!s.complete) || state.collections[0];
+    const done=state.quests.filter(q=>q.complete).length;
+    return `<div class="pet-home-hero">${companionStageView()}<div class="pet-home-copy"><span class="pet-space-eyebrow">${label('yourCompanion')}</span><h3>${label('homeGreeting')}</h3><p>${label('homeMessage')}</p>${window.mailaiCompanionLife?.controls('home')||''}<button type="button" class="pet-home-dress" data-pet-go="shop">${label('changeLook')} ↗</button></div></div><div class="pet-home-progress"><span>${label('homeGoals',done,state.quests.length)}</span><small>${label('homeProgressHint')}</small><button type="button" data-pet-go="today">${label('viewGrowth')} →</button></div>${set?`<div class="pet-home-collection">${collectionArt(set,'pet-home-mini')}<div><b>${label('collection.'+set.id)} · ${label('piecesCollected',set.owned,set.items.length)}</b><p>${label(set.complete?'homeSetComplete':'homeSetMissing',set.items.length-set.owned)}</p></div><button type="button" data-pet-go="shop" data-pet-home-collection="${set.id}">${label('viewSet')} →</button></div>`:''}`;
+  }
+  function settingsView() {
+    return `<div class="pet-page-heading"><h3>${label('companionSettings')}</h3><p>${label('settingsHint')}</p></div><div class="pet-setting-row"><span>${label('styleChoice')}</span><div class="pet-style-choice" role="group" aria-label="${label('styleChoice')}">${['nature','ranger'].map(style=>`<button type="button" data-pet-style="${style}" aria-pressed="${state.style===style}" ${state.style===style||busy?'disabled':''}>${label('style.'+style)}</button>`).join('')}</div></div>${window.mailaiCompanionLife?.controls('settings')||''}<div class="pet-setting-row"><div><b>${label('growthTracking')}</b><p>${label('growthTrackingHint')}</p></div><button type="button" data-pet-enabled ${busy?'disabled':''}>${label(state.enabled?'pause':'resume')}</button></div><div class="pet-client-note"><span>${label('clientOwner')}</span><small>${label('clientStorage')}</small></div>`;
+  }
+  function taskNavigation() {
+    const group=spaceFor(tab);
+    const names=group==='dress'?['shop','wardrobe']:group==='growth'?['today','journey','history']:[];
+    if(!names.length)return '';
+    const selected=previewOpen&&tab==='wardrobe'&&previewOrigin?.tab==='shop'?'shop':tab;
+    const owned=tab==='wardrobe'&&shopFilter==='owned'&&(!previewOpen||previewOrigin?.tab==='wardrobe');
+    return `<nav class="pet-task-nav" aria-label="${label(group==='dress'?'dressContents':'growthContents')}">${names.map(name=>`<button type="button" data-pet-tab="${name}" aria-pressed="${selected===name&&(name!=='wardrobe'||!owned)}">${label('task.'+name)}</button>`).join('')}${group==='dress'?`<button type="button" data-pet-shop-filter="owned" aria-pressed="${owned}">${label('filter.owned')}</button>`:''}</nav>`;
+  }
+  function growthSummary() {
     const next=state.next_stage_xp, progress=next?(state.xp-state.stage_floor)/(next-state.stage_floor)*100:100;
-    let portrait=avatar('pet-hero-portrait'), caption=t('yourCompanion');
+    return `<div class="pet-growth-summary">${avatar()}<div><h3>${esc(stageName(state.stage))} · ${label('level',state.stage)}</h3><progress max="100" value="${progress}" aria-label="${label('growth')}"></progress><p>${label('growth')} ${state.xp.toLocaleString()} · ${next?label('next',next-state.xp):label('maxStage')}</p></div></div>`;
+  }
+  function companionStageView() {
+    let portrait=avatar('pet-hero-portrait'), caption=stageName(state.stage)+' · '+t('level',state.stage);
     if(tab==='shop' && collection()) {
-      const set=collection(),look={};
-      set.items.forEach(id=>{const item=state.items.find(i=>i.id===id);look[itemSlot(item)]=id;});
-      portrait=`<div class="pet-live-art pet-item-art pet-set-portrait" data-fitting-outfits="${outfits(look)}" data-fitting-accessory="" data-fitting-palette="${look.palette||''}" data-fitting-effect="" data-collection-look="${set.id}" data-fitting-seal="${set.complete?set.id:''}">${avatar('pet-hero-portrait')}</div>`;
+      portrait=collectionArt(collection());
       caption=t('fullSetPreview');
     } else if(tab==='wardrobe' && previewOpen) {
       portrait=fittedArt(state.items.find(i=>i.id===previewItem)||state.items[0]);caption=t('previewTitle');
     }
-    return `<aside class="pet-center-companion"><div class="pet-style-choice" role="group" aria-label="${label('styleChoice')}">${['nature','ranger'].map(style=>`<button type="button" data-pet-style="${style}" aria-pressed="${state.style===style}" ${state.style===style||busy?'disabled':''}>${label('style.'+style)}</button>`).join('')}</div><section class="pet-hero"><span class="pet-stage-caption">${esc(caption)}</span>${portrait}<div class="pet-hero-copy"><span class="pet-eyebrow">${label('level',state.stage)}</span><h3>${esc(stageName(state.stage))}</h3><p>${stageHint(state.stage)}</p></div></section><div class="pet-stage-progress"><div class="pet-growth-label"><b>${label('growth')} ${state.xp.toLocaleString()}</b><span>${next?label('next',next-state.xp):label('maxStage')}</span></div><progress max="100" value="${progress}" aria-label="${label('growth')}"></progress></div>${tab==='shop'||previewOpen?`<p class="pet-stage-preview-note">${label('setPreviewSafe')}</p>`:window.mailaiCompanionLife?.controls()||''}<div class="pet-client-note"><span>${label('clientOwner')}</span><small>${label('clientStorage')}</small></div></aside>`;
+    return `<aside class="pet-center-companion"><section class="pet-hero">${portrait}<div class="pet-hero-copy"><span>${tab==='home'?esc(stageName(state.stage))+' · '+label('level',state.stage):esc(caption)}</span>${tab==='home'?'':`<p>${label('setPreviewSafe')}</p>`}</div></section></aside>`;
   }
   function render() {
     if (!dialog) return;
-    dialog.querySelector('#pet-journal-title').textContent = t('open');
+    dialog.querySelector('#pet-journal-title').textContent = t('spaceTitle');
+    dialog.querySelector('.pet-space-subtitle').textContent=t('spaceSubtitle');
+    const space=spaceFor(tab);dialog.dataset.petSpace=space;
+    if(space==='dress'&&!previewOpen)dressTab=tab;
+    if(space==='growth')growthTab=tab;
+    dialog.querySelector('.pet-secondary-nav').setAttribute('aria-label',t('spaceUtilities'));
+    for(const button of dialog.querySelectorAll('.pet-secondary-nav button')){button.textContent=t('nav.'+button.dataset.petTab);button.setAttribute('aria-pressed',String(tab===button.dataset.petTab));}
     dialog.dataset.petView = tab;
     shelfSize=shelfCapacity();
     const close = dialog.querySelector('[data-pet-close]');
     close.setAttribute('aria-label',t('close'));
     dialog.querySelector('.pet-header-wallet').innerHTML=state?`<span>${label('stamps')}</span><b>${state.stamps.toLocaleString()}</b>`:'';
-    const pref = dialog.querySelector('[data-pet-enabled]');
-    pref.textContent = t(state?.enabled ? 'pause' : 'resume'); pref.disabled = !state || busy;
     const host = dialog.querySelector('.pet-journal-body');
     if (!state) {
       window.mailaiCompanionMotion?.stopPreview();
       host.innerHTML = `<p class="pet-empty">${label(account ? 'loading' : 'login')}</p><button type="button" data-pet-retry>${label('retry')}</button>`;
       return;
     }
-    const key = JSON.stringify([state.items.map(item=>[item.id,item.owned]),state.collections,state.gifts,giftOutfitItems,shelfSize,collectionId,journeyStage,shopPage,shopFilter,shopCategory,previewOpen,previewItem,previewCombined,previewStage,tab === 'gifts' ? [giftDraft,giftPreview,giftError,giftErrorKey,giftBusy,giftPending,giftFileName] : null,tab,state.style,state.xp,state.stamps,state.earned,state.streak,state.enabled,state.equipped,state.berry_today,state.day,purchaseIntent,busy,outfitPending,shopReceipt,earnReturn,feedback && Date.now()<feedback.until ? feedback.copy : '',tab === 'today' ? state.today : tab === 'history' ? [state.history,state.purchases] : null]);
+    const key = JSON.stringify([state.items.map(item=>[item.id,item.owned]),state.collections,state.gifts,giftOutfitItems,shelfSize,collectionId,journeyStage,shopPage,shopFilter,shopCategory,previewOpen,previewItem,previewCombined,previewStage,tab === 'gifts' ? [giftDraft,giftPreview,giftError,giftErrorKey,giftBusy,giftPending,giftFileName] : null,tab,state.style,state.xp,state.stamps,state.earned,state.streak,state.enabled,state.equipped,state.berry_today,state.day,purchaseIntent,busy,outfitPending,shopReceipt,earnReturn,feedback && Date.now()<feedback.until ? feedback.copy : '',['home','today'].includes(tab) ? [state.today,state.quests] : tab === 'history' ? [state.history,state.purchases] : null]);
     if (key === renderKey) return;
     renderKey = key;
     const focus = document.activeElement;
@@ -658,14 +697,16 @@
     const equippedOpen=host.querySelector('.pet-equipped-details')?.open;
     const collectionsOpen = host.querySelector('.pet-collection-discovery')?.open;
     previewAdvanced=host.querySelector('.pet-fitting-extras')?.open ?? previewAdvanced;
-    const focusKey = focus?.closest('.pet-journal') ? Object.entries(focus.dataset).find(([key])=>['petCategory','petPageSelect','petLifeAction','petLifeChatter','petTab','petGo','petPage','petSeries','petJourneyStage','petWearCollection','petSetAction','petGiftContextClose','petBuy','petItemAction','petEquip','petSlot','petStyle','petGiftCode','petGiftPreview','petGiftClaim','petGiftWear','petGiftCopy','petGiftReconcile','petGiftOutfits','petClaimCode','petPreview','petPreviewSelect','petPreviewPlay','petPreviewClose','petPreviewStage','petPreviewAction','petPreviewMode','petResetStage','petEarn','petReturnShop','petReceiptClose','petTryAction','petShopFilter','petTryStage','petCollection'].includes(key)) : null;
+    const focusKey = focus?.closest('.pet-journal') ? Object.entries(focus.dataset).find(([key])=>['petSection','petEnabled','petCategory','petPageSelect','petLifeAction','petLifeChatter','petTab','petGo','petPage','petSeries','petJourneyStage','petWearCollection','petSetAction','petGiftContextClose','petBuy','petItemAction','petEquip','petSlot','petStyle','petGiftCode','petGiftPreview','petGiftClaim','petGiftWear','petGiftCopy','petGiftReconcile','petGiftOutfits','petClaimCode','petPreview','petPreviewSelect','petPreviewPlay','petPreviewClose','petPreviewStage','petPreviewAction','petPreviewMode','petResetStage','petEarn','petReturnShop','petReceiptClose','petTryAction','petShopFilter','petTryStage','petCollection'].includes(key)) : null;
     const scroll = host.querySelector('.pet-tab-content')?.scrollTop || 0;
     // Progress, receipts and tab updates must not replace the live animation rig.
     const portrait = host.querySelector('.pet-hero>.pet-hero-portrait');
     window.mailaiCompanionMotion?.stopPreview();
-    const tabs=['today','shop','wardrobe','journey'],utilities=['gifts','themes','history'];
-    const navButton=name=>`<button type="button" data-pet-tab="${name}" aria-pressed="${(previewOpen&&tab==='wardrobe'?previewOrigin?.tab||tab:tab)===name}" aria-label="${label('nav.'+name)}">${label('nav.'+name)}</button>`;
-    host.innerHTML=`<nav class="pet-tabs" aria-label="${label('tabs')}"><div class="pet-primary-nav">${tabs.map(navButton).join('')}</div><div class="pet-secondary-nav">${utilities.map(navButton).join('')}</div></nav>${companionStageView()}<main class="pet-center-main"><div class="pet-center-notices">${purchaseIntent&&!busy?`<div class="pet-pending" role="status"><span>${label('purchasePending',t('item.'+purchaseIntent.item))}</span><button type="button" data-pet-reconcile>${label('reconcile')}</button></div>`:''}${feedback&&Date.now()<feedback.until?`<p class="pet-milestone" role="status">${esc(feedback.copy)}</p>`:''}${!state.enabled?`<p class="pet-paused">${label('paused')}</p>`:''}</div><section class="pet-tab-content" aria-label="${label('nav.'+tab)}">${({today:todayView,journey:journeyView,shop:collectionView,wardrobe:shopView,gifts:giftsView,themes:themeShopView,history:historyView})[tab]()}</section></main>`;
+    const navButton=name=>`<button type="button" data-pet-section="${name}" aria-pressed="${space===name}">${label('section.'+name)}</button>`;
+    const view=({home:homeView,today:todayView,journey:journeyView,shop:collectionView,wardrobe:shopView,gifts:giftsView,themes:themeShopView,history:historyView,settings:settingsView})[tab];
+    const task=view();
+    const body=space==='dress'?`<div class="pet-dress-layout">${companionStageView()}<div class="pet-task-panel">${task}</div></div>`:space==='growth'?`${tab==='journey'?'':growthSummary()}${task}`:task;
+    host.innerHTML=`<nav class="pet-tabs" aria-label="${label('tabs')}"><div class="pet-primary-nav">${['home','dress','growth'].map(navButton).join('')}</div></nav><main class="pet-center-main"><div class="pet-center-notices">${purchaseIntent&&!busy?`<div class="pet-pending" role="status"><span>${label('purchasePending',t('item.'+purchaseIntent.item))}</span><button type="button" data-pet-reconcile>${label('reconcile')}</button></div>`:''}${feedback&&Date.now()<feedback.until?`<p class="pet-milestone" role="status">${esc(feedback.copy)}</p>`:''}${!state.enabled?`<p class="pet-paused">${label('paused')}</p>`:''}</div><section class="pet-tab-content" aria-label="${label('nav.'+tab)}">${taskNavigation()}${body}</section></main>`;
     if (portrait?.querySelector('.mail-companion')) host.querySelector('.pet-hero>.pet-hero-portrait')?.replaceWith(portrait);
     for(const id of giftOutfitItems)host.querySelector(`[data-pet-item="${CSS.escape(id)}"]`)?.setAttribute('data-gift-focus','true');
     watchRewardMotion();

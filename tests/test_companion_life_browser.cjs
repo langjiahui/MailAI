@@ -1,3 +1,4 @@
+const {selectTab}=require('./helpers/companion-ui.cjs');
 /* Independent disposable mailbox: expressive growth, local sound and energy boundaries. */
 const assert=require('node:assert/strict');
 const {spawn}=require('node:child_process');
@@ -39,8 +40,10 @@ require('node:fs').mkdirSync('output/xiaoyou-upgrade',{recursive:true});
     const hero=page.locator('.pet-hero-portrait .mail-companion');
     await hero.waitFor();
     await page.waitForTimeout(300);
-    assert.match(await page.locator('.pet-life').textContent(),/小邮的陪伴时刻/);
+    assert.match(await page.locator('.pet-life').getAttribute('aria-label'),/小邮的陪伴时刻/);
+    await selectTab(page.locator('#companion-growth-dialog'),'settings');
     assert.equal(await page.locator('[data-pet-life-action="sound"]').getAttribute('aria-pressed'),'false');
+    await selectTab(page.locator('#companion-growth-dialog'),'home');
     const before=await page.evaluate(()=>api('/api/companion/growth'));
     await page.locator('[data-pet-life-action="signature"]').click();
     await page.waitForFunction(()=>document.querySelector('.pet-hero-portrait .mail-companion').dataset.motionClip==='deliver');
@@ -74,6 +77,7 @@ require('node:fs').mkdirSync('output/xiaoyou-upgrade',{recursive:true});
     }
     await page.evaluate(()=>mailaiPet.refresh());
     // Only explicit opt-in opens audio; every graph is short lived.
+    await selectTab(page.locator('#companion-growth-dialog'),'settings');
     await page.locator('[data-pet-life-action="sound"]').click();
     await page.waitForFunction(()=>audioNotes.length===2);
     assert.equal(await page.evaluate(()=>localStorage.getItem('mailai-companion-sound')),'on');
@@ -81,9 +85,11 @@ require('node:fs').mkdirSync('output/xiaoyou-upgrade',{recursive:true});
     await page.locator('[data-pet-life-chatter]').uncheck();
     await page.reload();await page.locator('#app-preloader').waitFor({state:'detached'});
     await page.evaluate(()=>mailaiPet.open());await hero.waitFor();
+    await selectTab(page.locator('#companion-growth-dialog'),'settings');
     assert.equal(await page.locator('[data-pet-life-action="sound"]').getAttribute('aria-pressed'),'true');
     assert.equal(await page.locator('[data-pet-life-chatter]').isChecked(),false);
     assert.equal(await page.evaluate(()=>audioContexts.length),0,'Reload cannot autoplay sound');
+    await selectTab(page.locator('#companion-growth-dialog'),'home');
     await page.locator('[data-pet-life-action="hello"]').click();
     await page.waitForFunction(()=>audioContexts.length===1);
     await page.evaluate(()=>window.dispatchEvent(new Event('blur')));
@@ -101,6 +107,7 @@ require('node:fs').mkdirSync('output/xiaoyou-upgrade',{recursive:true});
     await reducedMotion(page,'no-preference');
     await page.waitForTimeout(1900);
     await page.evaluate(()=>window.lifeWork=mailaiCompanionWork.begin());
+    await selectTab(page.locator('#companion-growth-dialog'),'home');
     await page.locator('[data-pet-life-action="hello"]').click();
     await hero.scrollIntoViewIfNeeded();
     await page.waitForFunction(()=>document.querySelector('.pet-hero-portrait .mail-companion').dataset.motionClip==='work');
@@ -134,6 +141,7 @@ require('node:fs').mkdirSync('output/xiaoyou-upgrade',{recursive:true});
     await page.locator('#assistant-orb').hover();
     await page.waitForFunction(()=>document.querySelector('#assistant-orb .mail-companion').dataset.motionClip==='greet');
     await page.evaluate(()=>mailaiPet.open());
+    await selectTab(page.locator('#companion-growth-dialog'),'settings');
     await page.locator('[data-pet-life-chatter]').check();
     // The journal's close handler discards old bubbles. Await that handler
     // before requesting a fresh idle message, not just the visual dismissal.
@@ -160,7 +168,7 @@ require('node:fs').mkdirSync('output/xiaoyou-upgrade',{recursive:true});
     await page.setViewportSize({width:390,height:844});
     await page.evaluate(()=>{document.documentElement.dataset.theme='dark';setI18nLanguage('en');mailaiPet.open();});
     await page.locator('.pet-life').scrollIntoViewIfNeeded();
-    assert.match(await page.locator('.pet-life').textContent(),/A moment with XiaoYou/);
+    assert.match(await page.locator('.pet-life').getAttribute('aria-label'),/A moment with XiaoYou/);
     assert(await page.locator('.pet-life').evaluate(el=>el.scrollWidth<=el.clientWidth+1));
     await page.screenshot({path:`output/xiaoyou-upgrade/mobile-${process.env.MAILAI_BROWSER||'chromium'}.png`});
     assert.deepEqual(errors,[]);

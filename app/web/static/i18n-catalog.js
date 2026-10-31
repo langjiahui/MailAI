@@ -1,5 +1,37 @@
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "pet.spaceUtilities": ["礼物、主题与陪伴设置", "Gifts, themes and companion settings"],
+  "pet.spaceTitle": ["小邮", "XiaoYou"],
+  "pet.spaceSubtitle": ["你的工作伙伴", "Your work companion"],
+  "pet.section.home": ["陪伴", "Together"],
+  "pet.section.dress": ["装扮", "Dress up"],
+  "pet.section.growth": ["成长", "Growth"],
+  "pet.nav.home": ["陪伴", "Together"],
+  "pet.nav.settings": ["陪伴设置", "Companion settings"],
+  "pet.task.shop": ["套装", "Collections"],
+  "pet.task.wardrobe": ["单件", "Pieces"],
+  "pet.task.today": ["今日成长", "Today"],
+  "pet.task.journey": ["成长旅程", "Journey"],
+  "pet.task.history": ["成长记录", "History"],
+  "pet.dressContents": ["衣橱内容", "Wardrobe contents"],
+  "pet.growthContents": ["成长内容", "Growth views"],
+  "pet.homeGreeting": ["今天，也一起慢慢来。", "One little step at a time."],
+  "pet.homeMessage": ["在你处理邮件的时候，我就在这里。", "I'll be here while you work through your mail."],
+  "pet.changeLook": ["换一身装扮", "Change your look"],
+  "pet.viewGrowth": ["查看成长", "View growth"],
+  "pet.homeGoals": ["今日小目标 {0} / {1}", "Today's little goals {0} / {1}"],
+  "pet.homeProgressHint": ["成长会随着日常使用慢慢积累", "Everyday moments help us grow"],
+  "pet.piecesCollected": ["已收集 {0} / {1} 件", "{0} / {1} pieces collected"],
+  "pet.homeSetComplete": ["这一套已经完整，可以随时穿上。", "A complete collection, ready to wear."],
+  "pet.homeSetMissing": ["再收集 {0} 件，就能补齐这一套。", "{0} more pieces to complete this look."],
+  "pet.viewSet": ["看看这一套", "View collection"],
+  "pet.dressTitle": ["给小邮换一身", "A new look for XiaoYou"],
+  "pet.dressHint": ["先试穿，喜欢了再带回衣橱。", "Try a look before bringing it into your wardrobe."],
+  "pet.companionSettings": ["按你的节奏陪伴", "Company at your pace"],
+  "pet.settingsHint": ["喜欢安静一点，也完全可以。", "A little quiet is welcome, too."],
+  "pet.growthTracking": ["记录成长", "Track growth"],
+  "pet.growthTrackingHint": ["阅读和使用工具时，积累成长与邮票。", "Reading and using tools adds growth and stamps."],
+  "pet.life.soundLabel": ["轻提示音", "Gentle sounds"],
   "pet.previousPage": ["上一页", "Previous page"],
   "pet.nextPage": ["下一页", "Next page"],
   "pet.category": ["装扮种类", "Reward category"],
@@ -14903,8 +14935,8 @@ const MAILAI_UI_COPY = {
     "Electric pulse"
   ],
   "pet.item.mech_wings": [
-    "星羽机甲翼",
-    "Starfeather mech wings"
+    "星轨披风",
+    "Star-trail cape"
   ],
   "pet.itemHint.midnight": ["雾蓝与浅紫交融，像安静星夜，保留明亮温柔的脸庞。", "Misty blue meets soft lilac, keeping the little face bright and gentle."],
   "pet.itemHint.jacket": ["薄荷与云蓝短披肩，暖金信封扣，留出圆肚皮和抱信的位置。", "A mint or cloud-blue capelet with a golden letter clasp leaves room for the round belly and letter."],
@@ -14915,8 +14947,8 @@ const MAILAI_UI_COPY = {
   "pet.itemHint.armor": ["圆弧珍珠白胸甲与香槟金接缝，小星徽轻缓亮起。", "Rounded pearl plates and champagne seams surround a softly glowing star badge."],
   "pet.itemHint.lightning": ["圆润冰蓝能量弧缓缓流动，亮起后慢慢退去，轻快不刺眼。", "Rounded icy-blue energy arcs flow and softly fade, without harsh flashes."],
   "pet.itemHint.mech_wings": [
-    "舒展的羽片由翼根依次展开，翼尖轻轻回落，再沿身体收拢。",
-    "Layered feathers unfold from the shoulders, then gently settle and fold alongside the body."
+    "深蓝披风沿肩部垂落，暖金包边与星纹衬出完整的信使轮廓。",
+    "A deep-blue cape with warm gold trim and star details completes the courier silhouette."
   ],
   "pet.error.style": [
     "形象路线无效",
