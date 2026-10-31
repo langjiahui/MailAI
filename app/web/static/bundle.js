@@ -35474,7 +35474,7 @@ function mailCardDate(value, now = new Date()) {
     shelfSize=shelfCapacity();
     const close = dialog.querySelector('[data-pet-close]');
     close.setAttribute('aria-label',t('close'));
-    dialog.querySelector('.pet-header-wallet').innerHTML=state?`<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 3h3a1 1 0 0 0 2 0h4a1 1 0 0 0 2 0h3v3a1 1 0 0 0 0 2v3a1 1 0 0 0 0 2v3a1 1 0 0 0 0 2v3h-3a1 1 0 0 0-2 0h-4a1 1 0 0 0-2 0H5v-3a1 1 0 0 0 0-2v-3a1 1 0 0 0 0-2V8a1 1 0 0 0 0-2Z"/><path d="m8 10 4 3 4-3M8 9h8v7H8Z"/></svg><span>${label('stamps')}</span><b>${state.stamps.toLocaleString()}</b>`:'';
+    dialog.querySelector('.pet-header-wallet').innerHTML=state?`<span>${label('stamps')}</span><b>${state.stamps.toLocaleString()}</b>`:'';
     const pref = dialog.querySelector('[data-pet-enabled]');
     pref.textContent = t(state?.enabled ? 'pause' : 'resume'); pref.disabled = !state || busy;
     const host = dialog.querySelector('.pet-journal-body');

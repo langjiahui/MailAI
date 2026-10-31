@@ -13,9 +13,8 @@ html[data-theme="dark"] dialog.pet-journal {
 }
 .pet-journal .pet-journal-head { padding:22px 28px 10px; gap:20px; border:0; }
 .pet-journal .pet-journal-head h2 { font-size:20px; margin:0; font-weight:650; }
-.pet-journal .pet-header-wallet { display:flex; margin-left:auto; align-items:center; gap:8px; padding:8px 12px; border-radius:10px; background:var(--pet-tint); white-space:nowrap; }
-.pet-header-wallet svg { width:18px; height:20px; flex:none; fill:none; stroke:var(--pet-accent); stroke-width:1.4; stroke-linecap:round; stroke-linejoin:round; }
-.pet-journal .pet-shop-wallet b { font-size:15px; font-weight:600; line-height:1.4; color:var(--pet-ink); font-variant-numeric:tabular-nums; }
+.pet-journal .pet-header-wallet { display:flex; margin-left:auto; align-items:baseline; gap:7px; white-space:nowrap; }
+.pet-journal .pet-shop-wallet b { font-size:14px; font-weight:600; line-height:1.4; color:var(--pet-ink); font-variant-numeric:tabular-nums; }
 .pet-journal .pet-shop-wallet span { font-size:11px; line-height:1.4; color:var(--pet-muted); }
 .pet-journal .pet-journal-body { display:grid; grid-template-columns:288px minmax(0,1fr); grid-template-rows:auto minmax(0,1fr); flex:1; min-height:0; padding:0; overflow:hidden; }
 .pet-journal .pet-tabs { grid-column:1/-1; position:relative; z-index:6; display:flex; flex-direction:row; flex-wrap:wrap; align-items:center; justify-content:space-between; min-width:0; gap:12px; padding:0 28px 14px; border:0; border-radius:0; background:none; box-shadow:none; overflow:visible; }
@@ -207,7 +206,7 @@ html[data-theme] .pet-journal .pet-hero { background:none; }
 @container xiaoyou (max-width:680px) {
  .pet-journal .pet-journal-head { padding:14px 16px 8px; gap:12px; }
  .pet-journal .pet-journal-head h2 { font-size:18px; }
- .pet-journal .pet-header-wallet { gap:6px; padding:7px 9px; }
+ .pet-journal .pet-header-wallet { gap:6px; }
  .pet-journal .pet-shop-wallet b { font-size:14px; }
  .pet-journal .pet-shop-wallet span { font-size:10px; }
  .pet-journal .pet-journal-body { grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto minmax(0,1fr); }
@@ -261,8 +260,7 @@ html[data-theme] .pet-journal .pet-hero { background:none; }
  .pet-journal .pet-journal-head { display:grid; grid-template-columns:minmax(0,1fr) 32px; gap:4px 8px; padding:10px 12px 8px; }
  .pet-journal .pet-journal-head>div:first-child { grid-column:1; grid-row:1; }
  .pet-journal .pet-journal-head h2 { font-size:15px; }
- .pet-journal .pet-header-wallet { grid-column:1; grid-row:2; margin-left:0; justify-self:start; gap:5px; padding:4px 7px; }
- .pet-header-wallet svg { width:15px; height:17px; }
+ .pet-journal .pet-header-wallet { grid-column:1; grid-row:2; margin-left:0; justify-self:start; gap:5px; }
  .pet-journal .pet-journal-head .modern-close { grid-column:2; grid-row:1/3; width:32px; height:32px; min-width:32px; min-height:32px; padding:8px; }
  .pet-journal .pet-journal-body { grid-template-rows:auto minmax(0,50px) minmax(0,1fr); }
  .pet-center-companion { overflow:auto; }
