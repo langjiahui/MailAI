@@ -127,7 +127,7 @@ const {chromium,webkit} = require('playwright');
     await preview.locator('[data-pet-preview-close]').click();
     assert(await preview.isHidden());
     assert(await closed.evaluate(svg=>!svg.isConnected && svg.getAnimations({subtree:true}).every(a=>a.playState!=='running')),'Closing try-on disposes all preview clocks');
-    await dialog.locator('.pet-shop-item').first().scrollIntoViewIfNeeded();
+    await dialog.locator('.pet-shop-item:not([hidden])').first().scrollIntoViewIfNeeded();
     await page.screenshot({path:'/tmp/mailai-reward-preview-icons.png'});
     assert.deepEqual(errors,[]);
     console.log('Reward motion: 17 outfits, unique animations, locked preview, no spending/equipping, pause, visibility, reduced motion, i18n and mobile passed');
