@@ -22,7 +22,7 @@ async function auditSpaceThemes(page,dialog) {
      if(body.scrollHeight>body.clientHeight+1)problems.push('Outer dialog body scrolls');
      for(const [name,n]of [['dialog',d],['body',body],['main',main]])if(n.scrollWidth>n.clientWidth+1)problems.push(name+' has horizontal overflow');
      const close=d.querySelector('[data-pet-close]').getBoundingClientRect();if(close.top<0||close.right>innerWidth+1||close.bottom>innerHeight+1)problems.push('Close is outside the viewport');
-     for(const n of d.querySelectorAll('.pet-tabs button,.pet-secondary-nav button,.pet-task-nav button,.pet-home-copy h3,.pet-home-dress,.pet-life-actions button,.pet-header-wallet span,.pet-hero h3,.pet-header-wallet b,.pet-shop-toolbar select,.pet-shelf-pages select,.pet-page-heading h3,.pet-series-actions button,.pet-shelf-pages button,.pet-shop-item>button,.pet-theme-card>button')) {
+     for(const n of d.querySelectorAll('.pet-settings h4,.pet-settings-style b,.pet-route-state,.pet-setting-row b,.pet-switch,.pet-settings-note,.pet-tabs button,.pet-secondary-nav button,.pet-task-nav button,.pet-home-copy h3,.pet-home-dress,.pet-life-actions button,.pet-header-wallet span,.pet-hero h3,.pet-header-wallet b,.pet-shop-toolbar select,.pet-shelf-pages select,.pet-page-heading h3,.pet-series-actions button,.pet-shelf-pages button,.pet-shop-item>button,.pet-theme-card>button')) {
       const css=getComputedStyle(n);if(!n.getClientRects().length||css.visibility==='hidden'||n.disabled||n.closest('[hidden]'))continue;
       if(n.matches('.pet-tabs button,.pet-secondary-nav button')) {
        const b=n.getBoundingClientRect(),nav=n.closest('nav').getBoundingClientRect();

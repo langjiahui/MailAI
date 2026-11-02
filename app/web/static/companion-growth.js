@@ -316,6 +316,7 @@
       } else if (button.dataset.petWearCollection) {
         path = 'collection'; payload = {collection:button.dataset.petWearCollection}; notice = t('setWorn');
       } else if (button.dataset.petStyle) {
+        if(button.dataset.petStyle===state.style)return;
         path = 'style'; payload = {style:button.dataset.petStyle}; notice = t('styleUpdated');
       } else if (button.dataset.petBuy || button.hasAttribute('data-pet-reconcile') || (previewTarget && !previewTarget.owned)) {
         if (purchaseIntent && !button.hasAttribute('data-pet-reconcile')) return;
@@ -644,7 +645,15 @@
     return `<div class="pet-home-hero">${companionStageView()}<div class="pet-home-copy"><span class="pet-space-eyebrow">${label('yourCompanion')}</span><h3>${label('homeGreeting')}</h3><p>${label('homeMessage')}</p>${window.mailaiCompanionLife?.controls('home')||''}<button type="button" class="pet-home-dress" data-pet-go="shop">${label('changeLook')} ↗</button></div></div><div class="pet-home-progress"><span>${label('homeGoals',done,state.quests.length)}</span><small>${label('homeProgressHint')}</small><button type="button" data-pet-go="today">${label('viewGrowth')} →</button></div>${set?`<div class="pet-home-collection">${collectionArt(set,'pet-home-mini')}<div><b>${label('collection.'+set.id)} · ${label('piecesCollected',set.owned,set.items.length)}</b><p>${label(set.complete?'homeSetComplete':'homeSetMissing',set.items.length-set.owned)}</p></div><button type="button" data-pet-go="shop" data-pet-home-collection="${set.id}">${label('viewSet')} →</button></div>`:''}`;
   }
   function settingsView() {
-    return `<div class="pet-page-heading"><h3>${label('companionSettings')}</h3><p>${label('settingsHint')}</p></div><div class="pet-setting-row"><span>${label('styleChoice')}</span><div class="pet-style-choice" role="group" aria-label="${label('styleChoice')}">${['nature','ranger'].map(style=>`<button type="button" data-pet-style="${style}" aria-pressed="${state.style===style}" ${state.style===style||busy?'disabled':''}>${label('style.'+style)}</button>`).join('')}</div></div>${window.mailaiCompanionLife?.controls('settings')||''}<div class="pet-setting-row"><div><b>${label('growthTracking')}</b><p>${label('growthTrackingHint')}</p></div><button type="button" data-pet-enabled ${busy?'disabled':''}>${label(state.enabled?'pause':'resume')}</button></div><div class="pet-client-note"><span>${label('clientOwner')}</span><small>${label('clientStorage')}</small></div>`;
+    const choices=['nature','ranger'].map(style=>`<button type="button" class="pet-settings-style pet-item-art" data-pet-style="${style}" data-style-preview="${style}" data-fitting-outfits="" data-fitting-palette="" data-fitting-effect="" data-collection-look="" aria-pressed="${state.style===style}" ${busy?'disabled':''}>
+      <span class="pet-route-portrait" aria-hidden="true">${(window.mailaiCompanionArt||'').replace('<svg ',`<svg data-evolution-stage="${state.stage}" `)}</span>
+      <b>${label('style.'+style)}</b><span class="pet-route-state"><i aria-hidden="true"></i>${label(state.style===style?'settingsSelected':'settingsChoose')}</span></button>`).join('');
+    return `<section class="pet-settings" aria-labelledby="pet-settings-title">
+      <div class="pet-page-heading"><h3 id="pet-settings-title">${label('settingsTitle')}</h3><p>${label('settingsIntro')}</p></div>
+      <div class="pet-settings-grid"><section class="pet-settings-appearance" aria-labelledby="pet-settings-appearance"><h4 id="pet-settings-appearance">${label('settingsAppearance')}</h4><p>${label('settingsAppearanceHint')}</p><div class="pet-settings-styles" role="group" aria-label="${label('styleChoice')}">${choices}</div></section>
+      <section class="pet-settings-preferences" aria-labelledby="pet-settings-preferences"><h4 id="pet-settings-preferences">${label('settingsPreferences')}</h4>${window.mailaiCompanionLife?.controls('settings')||''}
+      <div class="pet-setting-row"><div><b id="pet-growth-setting-label">${label('growthTracking')}</b><p>${label('growthTrackingHint')}</p></div><button type="button" class="pet-switch" role="switch" aria-labelledby="pet-growth-setting-label" aria-checked="${state.enabled}" data-pet-enabled ${busy?'disabled':''}><span class="pet-switch-track" aria-hidden="true"></span><span>${label(state.enabled?'settingOn':'settingOff')}</span></button></div></section></div>
+      <p class="pet-settings-note">${label('settingsLocalHint')}</p></section>`;
   }
   function taskNavigation() {
     const group=spaceFor(tab);

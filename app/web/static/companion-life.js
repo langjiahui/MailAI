@@ -64,12 +64,16 @@
   };
   function controls(mode = 'all') {
     if(mode==='home')return `<section class="pet-life pet-life-home" aria-label="${esc(t('title'))}"><p class="pet-life-status" data-pet-life-status role="status" aria-live="polite"></p><div class="pet-life-actions"><button type="button" class="pet-primary" data-pet-life-action="hello">${esc(t('hello'))}</button><button type="button" data-pet-life-action="signature">${esc(t('signature'))}</button></div></section>`;
-    if(mode==='settings')return `<section class="pet-life pet-life-settings" aria-label="${esc(t('title'))}"><p class="pet-life-status" data-pet-life-status role="status" aria-live="polite">${esc(t('rhythm'))}</p><div class="pet-setting-row"><span>${esc(t('soundLabel'))}</span><button type="button" data-pet-life-action="sound" aria-pressed="${sound}">${esc(t(sound?'soundOn':'soundOff'))}</button></div><label class="pet-setting-row"><span>${esc(t('chatter'))}</span><input type="checkbox" data-pet-life-chatter ${chatter?'checked':''}></label></section>`;
+    if(mode==='settings')return `<section class="pet-life pet-life-settings" aria-label="${esc(t('title'))}"><div class="pet-setting-row"><div><b>${esc(t('soundLabel'))}</b><p>${esc(t('soundHelp'))}</p></div><button type="button" class="pet-switch" data-pet-life-action="sound" aria-label="${esc(t('soundLabel'))}" aria-pressed="${sound}"><span class="pet-switch-track" aria-hidden="true"></span><span data-pet-switch-label>${esc(t(sound?'on':'off'))}</span></button></div><label class="pet-setting-row pet-chatter-setting"><span><b>${esc(t('chatter'))}</b><small>${esc(t('chatterHelp'))}</small></span><span class="pet-toggle"><input type="checkbox" role="switch" data-pet-life-chatter ${chatter?'checked':''}><span class="pet-switch-track" aria-hidden="true"></span></span></label><p class="pet-life-status" data-pet-life-status role="status" aria-live="polite"></p></section>`;
     return `<section class="pet-life" aria-label="${esc(t('title'))}"><div class="pet-life-heading"><b>${esc(t('title'))}</b><span>${esc(t('rhythm'))}</span></div><p class="pet-life-status" data-pet-life-status role="status" aria-live="polite">${esc(t('intro'))}</p><div class="pet-life-actions"><button type="button" data-pet-life-action="hello">${esc(t('hello'))}</button><button type="button" data-pet-life-action="signature">${esc(t('signature'))}</button><button type="button" data-pet-life-action="sound" aria-pressed="${sound}">${esc(t(sound?'soundOn':'soundOff'))}</button></div><label class="pet-life-preference"><input type="checkbox" data-pet-life-chatter ${chatter?'checked':''}>${esc(t('chatter'))}</label><small>${esc(t('energy'))}</small></section>`;
   }
   function syncControls() {
     const button=document.querySelector('[data-pet-life-action="sound"]');
-    if(button) {button.textContent=t(sound?'soundOn':'soundOff');button.setAttribute('aria-pressed',String(sound));}
+    if(button) {
+      const label=button.querySelector('[data-pet-switch-label]');
+      if(label)label.textContent=t(sound?'on':'off');else button.textContent=t(sound?'soundOn':'soundOff');
+      button.setAttribute('aria-pressed',String(sound));
+    }
     const checkbox=document.querySelector('[data-pet-life-chatter]');if(checkbox)checkbox.checked=chatter;
   }
   function save(key,value) {

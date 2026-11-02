@@ -1587,6 +1587,20 @@ if (typeof document !== 'undefined') {
 /* ---- i18n-catalog.js ---- */
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "pet.settingsTitle": ["陪伴设置", "Companion settings"],
+  "pet.settingsIntro": ["选择小邮的样子，也留一点自己的节奏。", "Choose your companion’s look and a rhythm that suits you."],
+  "pet.settingsAppearance": ["小邮的样子", "Your companion’s look"],
+  "pet.settingsAppearanceHint": ["同一份成长与收藏，换一种陪伴。", "Your growth and collection stay with you when you switch."],
+  "pet.settingsPreferences": ["陪伴方式", "How XiaoYou keeps you company"],
+  "pet.settingsSelected": ["正在陪伴", "Your current companion"],
+  "pet.settingsChoose": ["选择这个形象", "Choose this look"],
+  "pet.settingsLocalHint": ["设置自动保存，所有邮箱共用同一个小邮。", "Settings save automatically. All mailboxes share the same companion."],
+  "pet.settingOn": ["开", "On"],
+  "pet.settingOff": ["关", "Off"],
+  "pet.life.on": ["开", "On"],
+  "pet.life.off": ["关", "Off"],
+  "pet.life.soundHelp": ["互动和完成目标时，轻轻响一下。", "A soft sound for interactions and completed goals."],
+  "pet.life.chatterHelp": ["工作间隙，偶尔送来一句轻提醒。", "An occasional gentle message between tasks."],
   "pet.spaceUtilities": ["礼物、主题与陪伴设置", "Gifts, themes and companion settings"],
   "pet.spaceTitle": ["小邮", "XiaoYou"],
   "pet.spaceSubtitle": ["你的工作伙伴", "Your work companion"],
@@ -34614,12 +34628,16 @@ function mailCardDate(value, now = new Date()) {
   };
   function controls(mode = 'all') {
     if(mode==='home')return `<section class="pet-life pet-life-home" aria-label="${esc(t('title'))}"><p class="pet-life-status" data-pet-life-status role="status" aria-live="polite"></p><div class="pet-life-actions"><button type="button" class="pet-primary" data-pet-life-action="hello">${esc(t('hello'))}</button><button type="button" data-pet-life-action="signature">${esc(t('signature'))}</button></div></section>`;
-    if(mode==='settings')return `<section class="pet-life pet-life-settings" aria-label="${esc(t('title'))}"><p class="pet-life-status" data-pet-life-status role="status" aria-live="polite">${esc(t('rhythm'))}</p><div class="pet-setting-row"><span>${esc(t('soundLabel'))}</span><button type="button" data-pet-life-action="sound" aria-pressed="${sound}">${esc(t(sound?'soundOn':'soundOff'))}</button></div><label class="pet-setting-row"><span>${esc(t('chatter'))}</span><input type="checkbox" data-pet-life-chatter ${chatter?'checked':''}></label></section>`;
+    if(mode==='settings')return `<section class="pet-life pet-life-settings" aria-label="${esc(t('title'))}"><div class="pet-setting-row"><div><b>${esc(t('soundLabel'))}</b><p>${esc(t('soundHelp'))}</p></div><button type="button" class="pet-switch" data-pet-life-action="sound" aria-label="${esc(t('soundLabel'))}" aria-pressed="${sound}"><span class="pet-switch-track" aria-hidden="true"></span><span data-pet-switch-label>${esc(t(sound?'on':'off'))}</span></button></div><label class="pet-setting-row pet-chatter-setting"><span><b>${esc(t('chatter'))}</b><small>${esc(t('chatterHelp'))}</small></span><span class="pet-toggle"><input type="checkbox" role="switch" data-pet-life-chatter ${chatter?'checked':''}><span class="pet-switch-track" aria-hidden="true"></span></span></label><p class="pet-life-status" data-pet-life-status role="status" aria-live="polite"></p></section>`;
     return `<section class="pet-life" aria-label="${esc(t('title'))}"><div class="pet-life-heading"><b>${esc(t('title'))}</b><span>${esc(t('rhythm'))}</span></div><p class="pet-life-status" data-pet-life-status role="status" aria-live="polite">${esc(t('intro'))}</p><div class="pet-life-actions"><button type="button" data-pet-life-action="hello">${esc(t('hello'))}</button><button type="button" data-pet-life-action="signature">${esc(t('signature'))}</button><button type="button" data-pet-life-action="sound" aria-pressed="${sound}">${esc(t(sound?'soundOn':'soundOff'))}</button></div><label class="pet-life-preference"><input type="checkbox" data-pet-life-chatter ${chatter?'checked':''}>${esc(t('chatter'))}</label><small>${esc(t('energy'))}</small></section>`;
   }
   function syncControls() {
     const button=document.querySelector('[data-pet-life-action="sound"]');
-    if(button) {button.textContent=t(sound?'soundOn':'soundOff');button.setAttribute('aria-pressed',String(sound));}
+    if(button) {
+      const label=button.querySelector('[data-pet-switch-label]');
+      if(label)label.textContent=t(sound?'on':'off');else button.textContent=t(sound?'soundOn':'soundOff');
+      button.setAttribute('aria-pressed',String(sound));
+    }
     const checkbox=document.querySelector('[data-pet-life-chatter]');if(checkbox)checkbox.checked=chatter;
   }
   function save(key,value) {
@@ -35174,6 +35192,7 @@ function mailCardDate(value, now = new Date()) {
       } else if (button.dataset.petWearCollection) {
         path = 'collection'; payload = {collection:button.dataset.petWearCollection}; notice = t('setWorn');
       } else if (button.dataset.petStyle) {
+        if(button.dataset.petStyle===state.style)return;
         path = 'style'; payload = {style:button.dataset.petStyle}; notice = t('styleUpdated');
       } else if (button.dataset.petBuy || button.hasAttribute('data-pet-reconcile') || (previewTarget && !previewTarget.owned)) {
         if (purchaseIntent && !button.hasAttribute('data-pet-reconcile')) return;
@@ -35502,7 +35521,15 @@ function mailCardDate(value, now = new Date()) {
     return `<div class="pet-home-hero">${companionStageView()}<div class="pet-home-copy"><span class="pet-space-eyebrow">${label('yourCompanion')}</span><h3>${label('homeGreeting')}</h3><p>${label('homeMessage')}</p>${window.mailaiCompanionLife?.controls('home')||''}<button type="button" class="pet-home-dress" data-pet-go="shop">${label('changeLook')} ↗</button></div></div><div class="pet-home-progress"><span>${label('homeGoals',done,state.quests.length)}</span><small>${label('homeProgressHint')}</small><button type="button" data-pet-go="today">${label('viewGrowth')} →</button></div>${set?`<div class="pet-home-collection">${collectionArt(set,'pet-home-mini')}<div><b>${label('collection.'+set.id)} · ${label('piecesCollected',set.owned,set.items.length)}</b><p>${label(set.complete?'homeSetComplete':'homeSetMissing',set.items.length-set.owned)}</p></div><button type="button" data-pet-go="shop" data-pet-home-collection="${set.id}">${label('viewSet')} →</button></div>`:''}`;
   }
   function settingsView() {
-    return `<div class="pet-page-heading"><h3>${label('companionSettings')}</h3><p>${label('settingsHint')}</p></div><div class="pet-setting-row"><span>${label('styleChoice')}</span><div class="pet-style-choice" role="group" aria-label="${label('styleChoice')}">${['nature','ranger'].map(style=>`<button type="button" data-pet-style="${style}" aria-pressed="${state.style===style}" ${state.style===style||busy?'disabled':''}>${label('style.'+style)}</button>`).join('')}</div></div>${window.mailaiCompanionLife?.controls('settings')||''}<div class="pet-setting-row"><div><b>${label('growthTracking')}</b><p>${label('growthTrackingHint')}</p></div><button type="button" data-pet-enabled ${busy?'disabled':''}>${label(state.enabled?'pause':'resume')}</button></div><div class="pet-client-note"><span>${label('clientOwner')}</span><small>${label('clientStorage')}</small></div>`;
+    const choices=['nature','ranger'].map(style=>`<button type="button" class="pet-settings-style pet-item-art" data-pet-style="${style}" data-style-preview="${style}" data-fitting-outfits="" data-fitting-palette="" data-fitting-effect="" data-collection-look="" aria-pressed="${state.style===style}" ${busy?'disabled':''}>
+      <span class="pet-route-portrait" aria-hidden="true">${(window.mailaiCompanionArt||'').replace('<svg ',`<svg data-evolution-stage="${state.stage}" `)}</span>
+      <b>${label('style.'+style)}</b><span class="pet-route-state"><i aria-hidden="true"></i>${label(state.style===style?'settingsSelected':'settingsChoose')}</span></button>`).join('');
+    return `<section class="pet-settings" aria-labelledby="pet-settings-title">
+      <div class="pet-page-heading"><h3 id="pet-settings-title">${label('settingsTitle')}</h3><p>${label('settingsIntro')}</p></div>
+      <div class="pet-settings-grid"><section class="pet-settings-appearance" aria-labelledby="pet-settings-appearance"><h4 id="pet-settings-appearance">${label('settingsAppearance')}</h4><p>${label('settingsAppearanceHint')}</p><div class="pet-settings-styles" role="group" aria-label="${label('styleChoice')}">${choices}</div></section>
+      <section class="pet-settings-preferences" aria-labelledby="pet-settings-preferences"><h4 id="pet-settings-preferences">${label('settingsPreferences')}</h4>${window.mailaiCompanionLife?.controls('settings')||''}
+      <div class="pet-setting-row"><div><b id="pet-growth-setting-label">${label('growthTracking')}</b><p>${label('growthTrackingHint')}</p></div><button type="button" class="pet-switch" role="switch" aria-labelledby="pet-growth-setting-label" aria-checked="${state.enabled}" data-pet-enabled ${busy?'disabled':''}><span class="pet-switch-track" aria-hidden="true"></span><span>${label(state.enabled?'settingOn':'settingOff')}</span></button></div></section></div>
+      <p class="pet-settings-note">${label('settingsLocalHint')}</p></section>`;
   }
   function taskNavigation() {
     const group=spaceFor(tab);

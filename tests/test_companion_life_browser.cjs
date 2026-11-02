@@ -48,6 +48,16 @@ require('node:fs').mkdirSync('output/xiaoyou-upgrade',{recursive:true});
     assert.match(await page.locator('.pet-life').getAttribute('aria-label'),/小邮的陪伴时刻/);
     await selectTab(page.locator('#companion-growth-dialog'),'settings');
     assert.equal(await page.locator('[data-pet-life-action="sound"]').getAttribute('aria-pressed'),'false');
+    const originalProfile=await page.evaluate(()=>api('/api/companion/growth'));
+    for(const style of ['ranger','nature']){
+      await page.locator(`.pet-settings-style[data-pet-style="${style}"]`).click();
+      await page.waitForFunction(style=>document.body.dataset.petStyle===style,style);
+      await page.waitForFunction(style=>document.querySelector(`.pet-settings-style[data-pet-style="${style}"]`)?.getAttribute('aria-pressed')==='true'&&!document.querySelector(`.pet-settings-style[data-pet-style="${style}"]`)?.disabled,style);
+      const preview=await page.locator('.pet-settings-style[data-style-preview="nature"] .companion-nature-only').first().evaluate(n=>getComputedStyle(n).display);
+      assert.notEqual(preview,'none','Both choices keep their own shape after switching the active route');
+    }
+    const afterSwitch=await page.evaluate(()=>api('/api/companion/growth'));
+    assert.equal(afterSwitch.xp,originalProfile.xp);assert.equal(afterSwitch.stamps,originalProfile.stamps);assert.deepEqual(afterSwitch.equipped,originalProfile.equipped);
     await selectTab(page.locator('#companion-growth-dialog'),'home');
     const before=await page.evaluate(()=>api('/api/companion/growth'));
     await page.locator('[data-pet-life-action="signature"]').click();

@@ -26,6 +26,39 @@ const port=Number(process.env.MAILAI_WARDROBE_FIXTURE_PORT||18863);
    assert.equal(await dialog.locator('.pet-home-hero .pet-hero-portrait').count(),1);
    for(const name of ['home','dress','growth'])assert(await dialog.locator(`[data-pet-section="${name}"]`).isVisible());
    for(const name of ['gifts','themes','settings'])assert(await dialog.locator(`[data-pet-tab="${name}"]`).isVisible());
+   // Settings show both real routes and keep preference controls compact.
+   await selectTab(dialog,'settings');
+   assert.equal(await dialog.locator('.pet-settings-style').count(),2);
+   for(const style of ['nature','ranger']){
+    const shape=await dialog.locator(`[data-style-preview="${style}"]`).evaluate(n=>({nature:getComputedStyle(n.querySelector('.companion-nature-only')).display,ranger:getComputedStyle(n.querySelector('.companion-ranger-only')).display}));
+    assert.equal(shape.nature==='none',style==='ranger');assert.equal(shape.ranger==='none',style==='nature');
+   }
+   const selectedStyle=dialog.locator('.pet-settings-style[aria-pressed="true"]');
+   assert(await selectedStyle.isEnabled(),'The selected look remains focusable and responds to the pointer');
+   await selectedStyle.click();assert.deepEqual(mutations,[],'Selecting the current look cannot create another style request');
+   async function hoverFeedback(button){
+    await page.mouse.move(1,1);await button.scrollIntoViewIfNeeded();
+    const initial=await button.evaluate(n=>({image:getComputedStyle(n).backgroundImage,box:n.getBoundingClientRect().toJSON()}));
+    await button.hover();await page.waitForTimeout(180);
+    const hovered=await button.evaluate(n=>({image:getComputedStyle(n).backgroundImage,box:n.getBoundingClientRect().toJSON()}));
+    assert.notEqual(hovered.image,initial.image,'Every enabled control has a visible hover response');
+    assert.deepEqual(hovered.box,initial.box,'Hover cannot move the control or adjacent content');
+    await page.mouse.down();const pressed=await button.evaluate(n=>getComputedStyle(n).backgroundImage);
+    assert.notEqual(pressed,hovered.image,'Press feedback is distinct from hover');
+    const panel=await dialog.boundingBox();await page.mouse.move(panel.x+8,panel.y+8);await page.mouse.up();
+    assert(await dialog.isVisible(),'A press preview never activates the button');
+    await page.evaluate(()=>getSelection()?.removeAllRanges());
+   }
+   for(const target of [selectedStyle,dialog.locator('.pet-settings-style[aria-pressed="false"]'),dialog.locator('[data-pet-life-action="sound"]'),dialog.locator('[data-pet-enabled]'),dialog.locator('[data-pet-close]'),dialog.locator('[data-pet-tab="gifts"]')])await hoverFeedback(target);
+   // WebKit on macOS uses Option-Tab to include buttons in focus navigation.
+   await selectedStyle.focus();await page.keyboard.press(engine.name()==='webkit'?'Alt+Tab':'Tab');
+   const focusState=await dialog.evaluate(d=>{const target=document.activeElement,visual=target.matches('[data-pet-life-chatter]')?target.nextElementSibling:target;return {inside:d.contains(target),tag:target.tagName,control:target.outerHTML.slice(0,160),outline:getComputedStyle(visual).outlineStyle};});
+   assert(focusState.inside&&focusState.outline!=='none','Keyboard focus remains visible: '+JSON.stringify(focusState));
+   await page.mouse.move(1,1);await page.evaluate(()=>document.activeElement.blur());await page.waitForTimeout(180);
+   await page.screenshot({path:`output/xiaoyou-evolution/settings-${engine.name()}.png`});
+   await selectTab(dialog,'home');
+   await hoverFeedback(dialog.locator('.pet-life-actions .pet-primary'));
+   await hoverFeedback(dialog.locator('.pet-home-dress'));
    await dialog.locator('[data-pet-section="growth"]').click();
    await dialog.locator('[data-pet-tab="history"]').focus();await page.keyboard.press('Enter');
    assert.equal(await dialog.getAttribute('data-pet-view'),'history');
