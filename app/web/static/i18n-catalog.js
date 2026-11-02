@@ -1,5 +1,9 @@
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "pet.tryPieceNamed": ["试穿{0}", "Try {0}"],
+  "pet.recordPrivacy": ["关于成长记录", "About growth records"],
+  "pet.themeRoomTitle": ["工作区主题", "Workspace themes"],
+  "pet.themeRoomHint": ["为工作区换一种配色，也会调整小邮的默认色彩。已穿戴的小邮配色优先，支持软件的浅色、暗色与跟随系统设置。", "Give your workspace and XiaoYou’s default look a new palette. Equipped companion colors take priority. Light, dark and system appearance are supported."],
   "pet.settingsTitle": ["陪伴设置", "Companion settings"],
   "pet.settingsIntro": ["选择小邮的样子，也留一点自己的节奏。", "Choose your companion’s look and a rhythm that suits you."],
   "pet.settingsAppearance": ["小邮的样子", "Your companion’s look"],

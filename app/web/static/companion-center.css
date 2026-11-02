@@ -606,3 +606,127 @@ body.companion-still .pet-item-art.pet-item-art[data-fitting-outfits] .pet-rewar
 
 .pet-journal[data-pet-space] button {user-select:none;}
 .pet-settings-style b,.pet-route-state {min-width:0;overflow-wrap:anywhere;}
+
+/* Browsing, progress and short utility pages share a comfortable reading width. */
+.pet-journal[data-pet-space] .pet-view-body {width:100%;max-width:900px;margin:0 auto;min-width:0;}
+.pet-journal[data-pet-space] .pet-task-nav {max-width:900px;margin:0 auto 18px;gap:4px;}
+.pet-journal[data-pet-space] .pet-task-nav button {padding:8px 12px;border-radius:8px;}
+.pet-journal[data-pet-space] .pet-task-nav button[aria-pressed="true"] {background:var(--pet-tint);}
+.pet-journal[data-pet-space] :is(.pet-home-dress,.pet-daily-collection button,.pet-record-empty button) {padding:9px 12px;border:0;border-radius:8px;background:var(--pet-tint);color:var(--pet-accent);font-size:11px;min-height:36px;}
+
+/* The home links stay beside their progress, rather than at opposite edges. */
+.pet-home-followup {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;}
+.pet-journal[data-pet-space] .pet-home-progress {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-content:center;margin:0;padding:18px;border:0;border-radius:12px;background:var(--pet-tint);}
+.pet-home-progress b {font-weight:550;font-size:12px;}
+.pet-home-progress small {display:block;margin-top:6px;font-size:11px;line-height:1.7;}
+.pet-home-progress progress {grid-column:1/-1;}
+.pet-journal[data-pet-space] .pet-home-collection {grid-template-columns:56px minmax(0,1fr);gap:6px 12px;padding:16px;border-radius:12px;background:var(--pet-tint);}
+.pet-journal[data-pet-space] .pet-home-collection .pet-home-mini {grid-row:1/3;width:56px;height:56px;}
+.pet-journal[data-pet-space] .pet-home-collection>button {grid-column:2;justify-self:start;max-width:none;padding:5px 0;}
+.pet-journal[data-pet-space] .pet-home-hero {margin-bottom:20px;}
+
+/* A shelf needs room for its pieces; the large fitting portrait appears on try-on. */
+.pet-journal[data-pet-space] .pet-dress-browse {display:block;}
+.pet-journal[data-pet-space] .pet-dress-browse .pet-shop {grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;}
+.pet-journal[data-pet-space] .pet-dress-browse .pet-shop[data-page-size="2"] {grid-template-columns:repeat(2,minmax(0,1fr));}
+.pet-journal[data-pet-space] .pet-dress-browse .pet-shop-item .pet-item-art {height:128px;margin-bottom:12px;}
+.pet-journal[data-pet-space] .pet-dress-browse .pet-shop-item .pet-portrait {width:108px;height:108px;}
+.pet-journal[data-pet-space] .pet-dress-browse .pet-shop-item>button {width:100%;padding:9px 10px;text-align:center;border-radius:8px;min-height:36px;background:var(--pet-tint);}
+.pet-journal[data-pet-space] .pet-dress-browse .pet-shop-item .pet-item-title {gap:5px;}
+.pet-journal[data-pet-space] .pet-dress-browse .pet-wardrobe-overview {margin-bottom:12px;}
+.pet-journal[data-pet-space] .pet-shelf-pages {margin-top:12px;padding:4px 0;}
+.pet-journal[data-pet-space] .pet-shelf-pages button {background:var(--pet-tint);min-width:36px;min-height:36px;}
+.pet-journal[data-pet-space="dress"] .pet-series-detail {padding:18px;border-radius:14px;background:var(--pet-tint);}
+.pet-journal[data-pet-space="dress"] .pet-series-pieces {gap:8px;margin-top:14px;}
+.pet-journal[data-pet-space="dress"] .pet-series-pieces>button {padding:10px 8px;border-radius:9px;background:var(--pet-paper);}
+.pet-journal[data-pet-space="dress"] .pet-piece-check {width:22px;height:22px;background:var(--pet-tint);font-size:10px;}
+.pet-journal[data-pet-space="dress"] .pet-series-detail>p {margin:8px 0 12px;}
+.pet-journal[data-pet-space="dress"] .pet-series-completion {margin:6px 0;padding:8px 0;}
+.pet-journal[data-pet-space="dress"] .pet-series-actions {gap:8px;}
+.pet-journal[data-pet-space="dress"] .pet-series-actions button {padding:9px 10px;border-radius:8px;min-height:36px;}
+.pet-journal[data-pet-space="dress"] .pet-series-actions .pet-primary {padding:10px 14px;}
+.pet-journal[data-pet-space="dress"] .pet-series-detail .pet-next-piece {margin:10px 0 0;}
+
+/* Goals are small, readable groups with their own progress. */
+.pet-journal[data-pet-space="growth"] .pet-growth-summary {padding:12px 18px;gap:14px;margin-bottom:18px;}
+.pet-journal[data-pet-space="growth"] .pet-growth-summary .pet-portrait {width:64px;height:64px;}
+.pet-journal[data-pet-space="growth"] .pet-quests {grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:18px;}
+.pet-journal[data-pet-space="growth"] .pet-quest {display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:start;gap:10px;padding:16px;border:0;border-radius:12px;background:var(--pet-tint);}
+.pet-journal[data-pet-space="growth"] .pet-quest progress {display:block;margin-top:12px;height:3px;}
+.pet-journal[data-pet-space="growth"] .pet-quest b {font-size:12px;line-height:1.6;}
+.pet-journal[data-pet-space="growth"] .pet-quest-check {font-size:15px;line-height:1.6;}
+.pet-journal[data-pet-space="growth"] .pet-quest>small {font-size:10px;line-height:1.8;}
+.pet-journal[data-pet-space="growth"] .pet-quest.is-complete .pet-quest-check {color:var(--pet-accent);}
+.pet-journal[data-pet-space] .pet-daily-collection {margin-top:14px;padding:8px 0;gap:12px;}
+.pet-journal[data-pet-space] .pet-activity-details>summary {padding:9px 8px;border-radius:8px;margin-bottom:10px;}
+.pet-journal[data-pet-space] .pet-stage-selector {gap:6px;margin:0 0 16px;}
+.pet-journal[data-pet-space] .pet-stage-selector button {padding:10px 6px 13px;background:var(--pet-tint);}
+.pet-stage-selector button small {display:block;margin-top:5px;font-size:10px;line-height:1.5;overflow-wrap:anywhere;}
+.pet-journal[data-pet-space] .pet-stage-selector button[aria-pressed="true"] {box-shadow:inset 0 0 0 1px var(--pet-accent);}
+.pet-journal[data-pet-space] .pet-journey article {grid-template-columns:240px minmax(0,1fr);gap:24px;align-items:center;padding:24px;border-radius:14px;background:var(--pet-tint);margin:0;opacity:1;}
+.pet-journal[data-pet-space] .pet-journey .pet-evolution-preview {width:220px;height:220px;max-width:100%;margin:auto;}
+.pet-journal[data-pet-space] .pet-journey article>div:last-child>b {font-size:20px;}
+.pet-journal[data-pet-space] .pet-journey article p {font-size:12px;line-height:1.8;}
+.pet-journal[data-pet-space] .pet-journey article button {padding:10px 14px;border-radius:8px;background:var(--pet-paper);min-height:38px;}
+.pet-journal[data-pet-space] .pet-journey article small {display:block;margin-top:12px;font-size:11px;line-height:1.6;}
+.pet-journal[data-pet-space] .pet-unlock-list {gap:6px;margin:12px 0;}
+.pet-journal[data-pet-space] .pet-unlock-list>span {background:var(--pet-paper);}
+
+/* Utilities have one clear input or action surface, with supporting details nearby. */
+.pet-journal[data-pet-view="gifts"] .pet-gift-panel {border:0;border-radius:0;padding:0;background:none;}
+.pet-journal[data-pet-view="gifts"] .pet-gift-source {border:0;background:var(--pet-tint);border-radius:12px;padding:16px;margin-top:14px;}
+.pet-journal[data-pet-view="gifts"] .pet-gift-source textarea {min-height:82px;background:var(--pet-paper);}
+.pet-journal[data-pet-view="gifts"] .pet-gift-identity {margin:14px 0 0;padding:12px 14px;}
+.pet-journal[data-pet-view="gifts"] .pet-gift-panel button:not(.pet-gift-primary) {border:0;background:var(--pet-paper);min-height:36px;}
+.pet-journal[data-pet-view="gifts"] .pet-gift-primary {border:0;min-height:36px;color:var(--pet-on-accent);}
+.pet-journal[data-pet-view="gifts"] .pet-purchase-title {margin-top:24px;}
+.pet-journal[data-pet-view="gifts"] .pet-empty {text-align:left;padding:14px 0;margin:0;}
+.pet-journal[data-pet-view="themes"] .pet-themes-title h3 {font-size:22px;}
+.pet-journal[data-pet-view="themes"] .pet-theme-grid {gap:18px;margin-top:18px;}
+.pet-journal[data-pet-view="themes"] .pet-theme-card {padding:16px;border-radius:14px;background:var(--pet-tint);display:flex;flex-direction:column;}
+.pet-journal[data-pet-view="themes"] .pet-theme-preview {height:190px;}
+.pet-journal[data-pet-view="themes"] .pet-theme-copy {flex:1;padding:16px 0 18px;}
+.pet-journal[data-pet-view="themes"] .pet-theme-copy>b {font-size:15px;}
+.pet-journal[data-pet-view="themes"] .pet-theme-copy p {font-size:12px;line-height:1.8;}
+.pet-journal[data-pet-view="themes"] .pet-theme-card>button {padding:11px 14px;min-height:38px;border-radius:9px;background:var(--pet-accent);color:var(--pet-on-accent);}
+.pet-journal[data-pet-view="themes"] .pet-themes-title>button {padding:8px 12px;min-height:34px;border-radius:8px;background:var(--pet-tint);}
+.pet-record-panels {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start;}
+.pet-record-panels>section {min-width:0;padding:18px;border-radius:14px;background:var(--pet-tint);}
+.pet-record-panels .pet-section-title {align-items:start;gap:10px;flex-wrap:wrap;}
+.pet-record-panels .pet-section-title>span {font-size:10px;}
+.pet-record-empty {min-height:130px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:12px;}
+.pet-record-empty p {font-size:12px;line-height:1.8;color:var(--pet-muted);margin:0;}
+.pet-record-panels .pet-history article {padding:12px 0;gap:12px;font-size:11px;flex-wrap:wrap;border-color:var(--pet-line);}
+.pet-record-privacy {margin-top:18px;font-size:11px;line-height:1.8;color:var(--pet-muted);}
+.pet-record-privacy summary {cursor:pointer;padding:8px;border-radius:8px;}
+@container xiaoyou (max-width:680px) {
+ .pet-home-followup {grid-template-columns:1fr;gap:10px;}
+ .pet-journal[data-pet-space] .pet-home-progress {padding:14px;gap:10px;}
+ .pet-journal[data-pet-space] .pet-home-collection {padding:12px 14px;}
+ .pet-journal[data-pet-space] .pet-dress-browse .pet-shop-item .pet-item-art {height:120px;}
+ .pet-journal[data-pet-space] .pet-dress-browse .pet-shop-item .pet-portrait {width:100px;height:100px;}
+ .pet-journal[data-pet-space="growth"] .pet-quests {grid-template-columns:1fr;gap:10px;}
+ .pet-journal[data-pet-space] .pet-stage-selector button small {display:none;}
+ .pet-journal[data-pet-space] .pet-journey article {grid-template-columns:1fr;gap:12px;padding:18px;}
+ .pet-journal[data-pet-space] .pet-journey .pet-evolution-preview {width:180px;height:180px;}
+ .pet-journal[data-pet-view="themes"] .pet-theme-grid {grid-template-columns:1fr;}
+ .pet-record-panels {grid-template-columns:1fr;gap:12px;}
+ .pet-journal[data-pet-view="gifts"] .pet-gift-source {padding:12px;}
+}
+@container xiaoyou (max-width:260px) {
+ .pet-journal[data-pet-space] .pet-dress-browse .pet-shop[data-page-size] {grid-template-columns:1fr;}
+ .pet-journal[data-pet-space] .pet-home-progress {grid-template-columns:1fr;}
+ .pet-journal[data-pet-space] .pet-home-progress button {justify-self:start;}
+ .pet-journal[data-pet-space="growth"] .pet-quest {grid-template-columns:auto minmax(0,1fr);}
+ .pet-journal[data-pet-space="growth"] .pet-quest>small {grid-column:2;}
+ .pet-journal[data-pet-space] .pet-journey article {padding:12px;}
+ .pet-journal[data-pet-view="themes"] .pet-theme-card {padding:12px;}
+ .pet-journal[data-pet-view="themes"] .pet-theme-preview {height:140px;}
+}
+.pet-journal[data-pet-space] .pet-journey article[hidden] {display:none;}
+/* Short utilities shrink to their content. The header stays at the same height
+   when switching pages, so primary navigation does not move under the pointer. */
+dialog.pet-journal[data-pet-space] {top:max(16px,calc((100dvh / var(--fz,1) - 760px) / 2));bottom:auto;margin-block:0;}
+dialog.pet-journal:is([data-pet-view="history"],[data-pet-view="themes"],[data-pet-view="gifts"],[data-pet-view="settings"]) {height:auto;max-height:min(760px,calc(100dvh / var(--fz,1) - 32px));}
+/* The shared dialog cap reads this token; its default assumes a centered modal. */
+dialog.pet-journal[data-pet-space] {--dialog-room:min(760px,calc(100dvh / var(--fz,1) - 32px));}

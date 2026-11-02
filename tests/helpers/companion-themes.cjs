@@ -8,7 +8,7 @@ async function auditSpaceThemes(page,dialog) {
  await page.emulateMedia({reducedMotion:'reduce'});
  for(const language of ['zh-CN','en'])for(const mode of ['light','dark'])for(const reward of ['','theme_monochrome','theme_baowu']) {
   await page.evaluate(({language,mode,reward})=>{setI18nLanguage(language);applyTheme(mode);if(reward)document.documentElement.dataset.rewardTheme=reward;else delete document.documentElement.dataset.rewardTheme;},{language,mode,reward});
-  for(const [width,height,scale]of [[1440,1000,1],[390,844,1.35],[360,740,2]]) {
+  for(const [width,height,scale]of [[1440,1000,1],[390,844,1],[390,844,1.35],[360,740,2]]) {
    await page.setViewportSize({width,height});
    await page.evaluate(scale=>{document.documentElement.style.setProperty('--fz',scale);document.body.style.zoom=String(scale);},scale);
    for(const tab of ['home','today','shop','wardrobe','journey','gifts','themes','history','settings']) {
@@ -21,8 +21,9 @@ async function auditSpaceThemes(page,dialog) {
      const body=d.querySelector('.pet-journal-body'),main=d.querySelector('.pet-center-main');
      if(body.scrollHeight>body.clientHeight+1)problems.push('Outer dialog body scrolls');
      for(const [name,n]of [['dialog',d],['body',body],['main',main]])if(n.scrollWidth>n.clientWidth+1)problems.push(name+' has horizontal overflow');
+     const footer=d.querySelector('.pet-journal-footer').getBoundingClientRect();if(footer.top<0||footer.bottom>innerHeight+1)problems.push('Utility navigation is outside the viewport');
      const close=d.querySelector('[data-pet-close]').getBoundingClientRect();if(close.top<0||close.right>innerWidth+1||close.bottom>innerHeight+1)problems.push('Close is outside the viewport');
-     for(const n of d.querySelectorAll('.pet-settings h4,.pet-settings-style b,.pet-route-state,.pet-setting-row b,.pet-switch,.pet-settings-note,.pet-tabs button,.pet-secondary-nav button,.pet-task-nav button,.pet-home-copy h3,.pet-home-dress,.pet-life-actions button,.pet-header-wallet span,.pet-hero h3,.pet-header-wallet b,.pet-shop-toolbar select,.pet-shelf-pages select,.pet-page-heading h3,.pet-series-actions button,.pet-shelf-pages button,.pet-shop-item>button,.pet-theme-card>button')) {
+     for(const n of d.querySelectorAll('.pet-stage-selector button,.pet-record-empty button,.pet-home-progress b,.pet-quest b,.pet-theme-copy>b,.pet-settings h4,.pet-settings-style b,.pet-route-state,.pet-setting-row b,.pet-switch,.pet-settings-note,.pet-tabs button,.pet-secondary-nav button,.pet-task-nav button,.pet-home-copy h3,.pet-home-dress,.pet-life-actions button,.pet-header-wallet span,.pet-hero h3,.pet-header-wallet b,.pet-shop-toolbar select,.pet-shelf-pages select,.pet-page-heading h3,.pet-series-actions button,.pet-shelf-pages button,.pet-shop-item>button,.pet-theme-card>button')) {
       const css=getComputedStyle(n);if(!n.getClientRects().length||css.visibility==='hidden'||n.disabled||n.closest('[hidden]'))continue;
       if(n.matches('.pet-tabs button,.pet-secondary-nav button')) {
        const b=n.getBoundingClientRect(),nav=n.closest('nav').getBoundingClientRect();
