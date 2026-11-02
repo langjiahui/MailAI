@@ -27,8 +27,10 @@ require('node:fs').mkdirSync('output/xiaoyou-upgrade',{recursive:true});
     // Measure the gesture's cost independently of legitimate timed activity
     // rewards. Hold heartbeats until both unchanged-balance assertions finish,
     // then let every held request reach the fixture and resume normal updates.
-    const heldHeartbeats=[];
-    await page.route('**/api/companion/heartbeat',route=>heldHeartbeats.push(route));
+    const heldHeartbeats=[];let holdHeartbeats=true;
+    await page.route('**/api/companion/heartbeat',route=>{
+      if(holdHeartbeats)heldHeartbeats.push(route);else return route.continue();
+    });
     await page.addInitScript(()=>{
       localStorage.setItem('mailai.onboarding.v2',JSON.stringify({deferred:true,mailboxDone:true,aiDone:true}));
       window.audioContexts=[];window.audioNotes=[];
@@ -58,6 +60,11 @@ require('node:fs').mkdirSync('output/xiaoyou-upgrade',{recursive:true});
     }
     const afterSwitch=await page.evaluate(()=>api('/api/companion/growth'));
     assert.equal(afterSwitch.xp,originalProfile.xp);assert.equal(afterSwitch.stamps,originalProfile.stamps);assert.deepEqual(afterSwitch.equipped,originalProfile.equipped);
+    // Force a pending, zero-activity request so request cleanup is exercised
+    // even on fast machines. It must remain blocked until the balance checks.
+    const pendingHeartbeat=page.waitForRequest('**/api/companion/heartbeat');
+    await page.evaluate(()=>{window.lifeHeldHeartbeat=api('/api/companion/heartbeat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:crypto.randomUUID(),active:0,clicks:0})});});
+    await pendingHeartbeat;
     await selectTab(page.locator('#companion-growth-dialog'),'home');
     const before=await page.evaluate(()=>api('/api/companion/growth'));
     await page.locator('[data-pet-life-action="signature"]').click();
@@ -73,8 +80,12 @@ require('node:fs').mkdirSync('output/xiaoyou-upgrade',{recursive:true});
     assert.equal(await page.evaluate(()=>audioContexts.length),0,'No audio device is opened by default');
     const after=await page.evaluate(()=>api('/api/companion/growth'));
     assert.equal(after.xp,before.xp,'Playing is free and does not farm growth');assert.equal(after.stamps,before.stamps);
+    // WebKit releases intercepted requests when patterns are removed. Drain
+    // them first, while new arrivals continue directly through the handler.
+    holdHeartbeats=false;
+    await Promise.all(heldHeartbeats.splice(0).map(route=>route.continue()));
     await page.unroute('**/api/companion/heartbeat');
-    await Promise.all(heldHeartbeats.map(route=>route.continue()));
+    await page.evaluate(()=>lifeHeldHeartbeat);
     // All seven learned gestures, for both routes, use the shared visible rig.
     for(const style of ['nature','ranger']) for(let stage=1;stage<=7;stage++) {
       // These are temporary visual fixtures, not saved preferences. Sample the

@@ -13,6 +13,9 @@ import urllib.request
 ROOT = Path(__file__).resolve().parents[1]
 SUITES = ROOT / '.github/ci/browser-suites.json'
 ALIASES = ROOT / '.github/ci/browser-aliases.json'
+# Both engines now cover 864 localized companion views in this one process.
+# Preserve every case and assertion within the job's existing 20-minute cap.
+TEST_TIMEOUTS = {'test_companion_wardrobe_browser.cjs': 900}
 
 
 def stop(process):
@@ -83,7 +86,7 @@ def run(suite, browser='', shard=''):
                     print('::group::' + spec['file'] + ' ' + json.dumps(spec.get('env', {})), flush=True)
                     process = subprocess.Popen(command, cwd=ROOT, env={**env, **spec.get('env', {})}, start_new_session=True)
                     try:
-                        code = process.wait(timeout=600)
+                        code = process.wait(timeout=TEST_TIMEOUTS.get(path.name, 600))
                         if code:
                             raise subprocess.CalledProcessError(code, command)
                     finally:
