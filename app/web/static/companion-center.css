@@ -526,3 +526,207 @@ body.companion-still .pet-item-art.pet-item-art[data-fitting-outfits] .pet-rewar
  .pet-journal[data-pet-space] .pet-life-home .pet-life-actions {flex-direction:column;align-items:center;gap:6px;}
  .pet-journal[data-pet-space] .pet-life-home .pet-life-actions button {flex:none;max-width:100%;white-space:normal;}
 }
+
+/* Companion preferences stay close to their subject, rather than spanning the dialog. */
+.pet-journal[data-pet-space="settings"] .pet-settings {max-width:860px;margin:4px auto 0;}
+.pet-journal[data-pet-space="settings"] .pet-page-heading {margin-bottom:24px;}
+.pet-settings-grid {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:22px;align-items:start;}
+.pet-settings-grid>section {min-width:0;padding:22px;border-radius:16px;background:var(--pet-tint);}
+.pet-settings h4 {font-size:13px;font-weight:650;margin:0 0 7px;}
+.pet-settings-appearance>p {font-size:11px;line-height:1.8;color:var(--pet-muted);margin:0 0 18px;}
+.pet-settings-styles {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+.pet-journal[data-pet-space] .pet-settings-style {display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-width:0;height:auto;margin:0;padding:14px 8px;border:1px solid transparent;border-radius:12px;background:var(--pet-paper);color:var(--pet-ink);text-align:center;}
+.pet-journal[data-pet-space] .pet-settings-style[aria-pressed="true"] {border-color:var(--pet-accent);background:var(--pet-paper);}
+.pet-settings-style .pet-route-portrait {display:block;width:100px;max-width:82%;aspect-ratio:1;pointer-events:none;}
+.pet-settings-style b {font-size:11px;line-height:1.6;font-weight:600;}
+.pet-route-state {display:flex;align-items:center;justify-content:center;gap:5px;line-height:1.6;font-size:10px;color:var(--pet-muted);}
+.pet-route-state i {width:10px;height:10px;flex:none;border-radius:50%;box-shadow:inset 0 0 0 1px var(--pet-line);}
+[aria-pressed="true"]>.pet-route-state {color:var(--pet-accent);}
+[aria-pressed="true"]>.pet-route-state i {background:var(--pet-accent);box-shadow:inset 0 0 0 2px var(--pet-paper),0 0 0 1px var(--pet-accent);}
+.pet-settings-style[data-style-preview="nature"] .companion-nature-only {display:inline!important;}
+.pet-settings-style[data-style-preview="nature"] .companion-ranger-only {display:none!important;}
+.pet-settings-style[data-style-preview="ranger"] .companion-ranger-only {display:block!important;}
+.pet-settings-style[data-style-preview="ranger"] .companion-nature-only {display:none!important;}
+.pet-settings-style[data-style-preview="nature"] .mail-companion {--pet-body:var(--pet-auto-body);--pet-outline:var(--pet-edge);}
+.pet-settings-style[data-style-preview="ranger"] .mail-companion {--pet-body:var(--pet-auto-fish);--pet-outline:var(--pet-edge);}
+.pet-settings-style :is(.growth-stars,.growth-orbit,.growth-aura,.growth-lightning) {display:none!important;}
+.pet-settings-style .mail-companion * {animation:none!important;transition:none!important;}
+.pet-journal[data-pet-space="settings"] .pet-life-settings {margin:0;padding:0;background:none;border:0;}
+.pet-settings .pet-setting-row {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;padding:17px 0;border:0;margin:0;font-size:12px;}
+.pet-settings .pet-setting-row b {display:block;font-weight:550;font-size:12px;}
+.pet-settings .pet-setting-row p,.pet-settings .pet-setting-row small {display:block;color:var(--pet-muted);font-size:11px;line-height:1.7;margin:5px 0 0;}
+.pet-settings .pet-setting-row:last-child {padding-bottom:0;}
+.pet-settings .pet-settings-preferences>.pet-setting-row {padding-top:19px;}
+.pet-settings .pet-life-settings .pet-life-status {font-size:11px;line-height:1.7;margin:8px 0 0;color:var(--pet-accent);}
+.pet-settings .pet-life-settings .pet-life-status:empty {display:none;}
+.pet-settings .pet-setting-row .pet-switch {display:inline-flex;align-items:center;gap:8px;padding:5px 2px;min-width:72px;min-height:38px;border:0;border-radius:8px;background:none;color:var(--pet-muted);font-size:11px;}
+.pet-switch-track {position:relative;display:inline-block;flex:none;width:38px;height:22px;border-radius:20px;background:color-mix(in srgb,var(--pet-muted) 27%,var(--pet-paper));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--pet-muted) 18%,transparent);transition:background-color .15s;}
+.pet-switch-track::after {content:'';position:absolute;left:3px;top:3px;width:16px;height:16px;background:var(--pet-paper);border-radius:50%;box-shadow:0 1px 3px #10251c25;transition:transform .15s;}
+.pet-switch:is([aria-checked="true"],[aria-pressed="true"]) {color:var(--pet-accent)!important;}
+.pet-switch:is([aria-checked="true"],[aria-pressed="true"]) .pet-switch-track,.pet-toggle input:checked+.pet-switch-track {background:var(--pet-accent);}
+.pet-switch:is([aria-checked="true"],[aria-pressed="true"]) .pet-switch-track::after,.pet-toggle input:checked+.pet-switch-track::after {transform:translateX(16px);background:var(--pet-on-accent);}
+.pet-toggle {position:relative;display:inline-flex;align-items:center;justify-content:flex-start;min-height:38px;min-width:72px;padding:5px 2px;cursor:pointer;}
+.pet-settings .pet-toggle input {position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer;}
+.pet-toggle .pet-switch-track {pointer-events:none;}
+.pet-toggle input:focus-visible+.pet-switch-track {outline:2px solid var(--pet-accent);outline-offset:4px;}
+.pet-settings-note {margin:18px 2px 0;font-size:11px;color:var(--pet-muted);line-height:1.8;}
+@container xiaoyou (max-width:680px) {
+ .pet-journal[data-pet-space="settings"] .pet-settings {margin-top:6px;}
+ .pet-journal[data-pet-space="settings"] .pet-page-heading {margin-bottom:18px;}
+ .pet-settings-grid {grid-template-columns:1fr;gap:14px;}
+ .pet-settings-grid>section {padding:18px;}
+ .pet-settings-style .pet-route-portrait {width:86px;}
+ .pet-settings .pet-setting-row {gap:12px;}
+}
+@container xiaoyou (max-width:260px) {
+ .pet-settings-grid>section {padding:12px;}
+ .pet-settings-styles {grid-template-columns:1fr;gap:8px;}
+ .pet-journal[data-pet-space] .pet-settings-style {display:grid;grid-template-columns:48px minmax(0,1fr);gap:4px 9px;padding:10px;text-align:left;justify-items:start;}
+ .pet-settings-style .pet-route-portrait {width:48px;max-width:none;grid-row:1/3;}
+ .pet-settings-style b {font-size:10px;}
+ .pet-route-state {font-size:9px;justify-content:flex-start;}
+ .pet-settings .pet-setting-row {grid-template-columns:minmax(0,1fr);gap:5px;}
+ .pet-settings .pet-setting-row .pet-switch,.pet-settings .pet-setting-row .pet-toggle {justify-self:start;}
+}
+
+/* A shared response for every clickable control, including text-only actions. */
+.pet-journal[data-pet-space] :is(button,summary) {transition:background-color .14s,box-shadow .14s,color .14s;}
+.pet-journal[data-pet-space] button:not(:disabled):active {box-shadow:inset 0 0 0 999px color-mix(in srgb,var(--pet-accent) 14%,transparent);}
+.pet-journal[data-pet-space] :is(button,summary):focus-visible {outline:2px solid var(--pet-accent);outline-offset:3px;}
+@media (hover:hover) {
+ .pet-journal[data-pet-space] :is(button:not(:disabled),summary):hover {background-image:linear-gradient(color-mix(in srgb,var(--pet-accent) 7%,transparent),color-mix(in srgb,var(--pet-accent) 7%,transparent))!important;box-shadow:0 0 0 2px color-mix(in srgb,var(--pet-accent) 18%,transparent);}
+ .pet-journal[data-pet-space] .pet-toggle:hover .pet-switch-track {box-shadow:0 0 0 3px color-mix(in srgb,var(--pet-accent) 18%,transparent);}
+}
+@media (prefers-reduced-motion:reduce) {
+ .pet-journal[data-pet-space] :is(button,summary,.pet-switch-track),
+ .pet-journal[data-pet-space] .pet-switch-track::after {transition:none!important;}
+}
+.pet-journal[data-pet-space] button:not(:disabled):active {background-image:linear-gradient(color-mix(in srgb,var(--pet-accent) 16%,transparent),color-mix(in srgb,var(--pet-accent) 16%,transparent))!important;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--pet-accent) 40%,transparent);}
+.pet-journal[data-pet-space] .modern-close:hover {transform:none;}
+
+.pet-journal[data-pet-space] button {user-select:none;}
+.pet-settings-style b,.pet-route-state {min-width:0;overflow-wrap:anywhere;}
+
+/* Browsing, progress and short utility pages share a comfortable reading width. */
+.pet-journal[data-pet-space] .pet-view-body {width:100%;max-width:900px;margin:0 auto;min-width:0;}
+.pet-journal[data-pet-space] .pet-task-nav {max-width:900px;margin:0 auto 18px;gap:4px;}
+.pet-journal[data-pet-space] .pet-task-nav button {padding:8px 12px;border-radius:8px;}
+.pet-journal[data-pet-space] .pet-task-nav button[aria-pressed="true"] {background:var(--pet-tint);}
+.pet-journal[data-pet-space] :is(.pet-home-dress,.pet-daily-collection button,.pet-record-empty button) {padding:9px 12px;border:0;border-radius:8px;background:var(--pet-tint);color:var(--pet-accent);font-size:11px;min-height:36px;}
+
+/* The home links stay beside their progress, rather than at opposite edges. */
+.pet-home-followup {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;}
+.pet-journal[data-pet-space] .pet-home-progress {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-content:center;margin:0;padding:18px;border:0;border-radius:12px;background:var(--pet-tint);}
+.pet-home-progress b {font-weight:550;font-size:12px;}
+.pet-home-progress small {display:block;margin-top:6px;font-size:11px;line-height:1.7;}
+.pet-home-progress progress {grid-column:1/-1;}
+.pet-journal[data-pet-space] .pet-home-collection {grid-template-columns:56px minmax(0,1fr);gap:6px 12px;padding:16px;border-radius:12px;background:var(--pet-tint);}
+.pet-journal[data-pet-space] .pet-home-collection .pet-home-mini {grid-row:1/3;width:56px;height:56px;}
+.pet-journal[data-pet-space] .pet-home-collection>button {grid-column:2;justify-self:start;max-width:none;padding:5px 0;}
+.pet-journal[data-pet-space] .pet-home-hero {margin-bottom:20px;}
+
+/* A shelf needs room for its pieces; the large fitting portrait appears on try-on. */
+.pet-journal[data-pet-space] .pet-dress-browse {display:block;}
+.pet-journal[data-pet-space] .pet-dress-browse .pet-shop {grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;}
+.pet-journal[data-pet-space] .pet-dress-browse .pet-shop[data-page-size="2"] {grid-template-columns:repeat(2,minmax(0,1fr));}
+.pet-journal[data-pet-space] .pet-dress-browse .pet-shop-item .pet-item-art {height:128px;margin-bottom:12px;}
+.pet-journal[data-pet-space] .pet-dress-browse .pet-shop-item .pet-portrait {width:108px;height:108px;}
+.pet-journal[data-pet-space] .pet-dress-browse .pet-shop-item>button {width:100%;padding:9px 10px;text-align:center;border-radius:8px;min-height:36px;background:var(--pet-tint);}
+.pet-journal[data-pet-space] .pet-dress-browse .pet-shop-item .pet-item-title {gap:5px;}
+.pet-journal[data-pet-space] .pet-dress-browse .pet-wardrobe-overview {margin-bottom:12px;}
+.pet-journal[data-pet-space] .pet-shelf-pages {margin-top:12px;padding:4px 0;}
+.pet-journal[data-pet-space] .pet-shelf-pages button {background:var(--pet-tint);min-width:36px;min-height:36px;}
+.pet-journal[data-pet-space="dress"] .pet-series-detail {padding:18px;border-radius:14px;background:var(--pet-tint);}
+.pet-journal[data-pet-space="dress"] .pet-series-pieces {gap:8px;margin-top:14px;}
+.pet-journal[data-pet-space="dress"] .pet-series-pieces>button {padding:10px 8px;border-radius:9px;background:var(--pet-paper);}
+.pet-journal[data-pet-space="dress"] .pet-piece-check {width:22px;height:22px;background:var(--pet-tint);font-size:10px;}
+.pet-journal[data-pet-space="dress"] .pet-series-detail>p {margin:8px 0 12px;}
+.pet-journal[data-pet-space="dress"] .pet-series-completion {margin:6px 0;padding:8px 0;}
+.pet-journal[data-pet-space="dress"] .pet-series-actions {gap:8px;}
+.pet-journal[data-pet-space="dress"] .pet-series-actions button {padding:9px 10px;border-radius:8px;min-height:36px;}
+.pet-journal[data-pet-space="dress"] .pet-series-actions .pet-primary {padding:10px 14px;}
+.pet-journal[data-pet-space="dress"] .pet-series-detail .pet-next-piece {margin:10px 0 0;}
+
+/* Goals are small, readable groups with their own progress. */
+.pet-journal[data-pet-space="growth"] .pet-growth-summary {padding:12px 18px;gap:14px;margin-bottom:18px;}
+.pet-journal[data-pet-space="growth"] .pet-growth-summary .pet-portrait {width:64px;height:64px;}
+.pet-journal[data-pet-space="growth"] .pet-quests {grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:18px;}
+.pet-journal[data-pet-space="growth"] .pet-quest {display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:start;gap:10px;padding:16px;border:0;border-radius:12px;background:var(--pet-tint);}
+.pet-journal[data-pet-space="growth"] .pet-quest progress {display:block;margin-top:12px;height:3px;}
+.pet-journal[data-pet-space="growth"] .pet-quest b {font-size:12px;line-height:1.6;}
+.pet-journal[data-pet-space="growth"] .pet-quest-check {font-size:15px;line-height:1.6;}
+.pet-journal[data-pet-space="growth"] .pet-quest>small {font-size:10px;line-height:1.8;}
+.pet-journal[data-pet-space="growth"] .pet-quest.is-complete .pet-quest-check {color:var(--pet-accent);}
+.pet-journal[data-pet-space] .pet-daily-collection {margin-top:14px;padding:8px 0;gap:12px;}
+.pet-journal[data-pet-space] .pet-activity-details>summary {padding:9px 8px;border-radius:8px;margin-bottom:10px;}
+.pet-journal[data-pet-space] .pet-stage-selector {gap:6px;margin:0 0 16px;}
+.pet-journal[data-pet-space] .pet-stage-selector button {padding:10px 6px 13px;background:var(--pet-tint);}
+.pet-stage-selector button small {display:block;margin-top:5px;font-size:10px;line-height:1.5;overflow-wrap:anywhere;}
+.pet-journal[data-pet-space] .pet-stage-selector button[aria-pressed="true"] {box-shadow:inset 0 0 0 1px var(--pet-accent);}
+.pet-journal[data-pet-space] .pet-journey article {grid-template-columns:240px minmax(0,1fr);gap:24px;align-items:center;padding:24px;border-radius:14px;background:var(--pet-tint);margin:0;opacity:1;}
+.pet-journal[data-pet-space] .pet-journey .pet-evolution-preview {width:220px;height:220px;max-width:100%;margin:auto;}
+.pet-journal[data-pet-space] .pet-journey article>div:last-child>b {font-size:20px;}
+.pet-journal[data-pet-space] .pet-journey article p {font-size:12px;line-height:1.8;}
+.pet-journal[data-pet-space] .pet-journey article button {padding:10px 14px;border-radius:8px;background:var(--pet-paper);min-height:38px;}
+.pet-journal[data-pet-space] .pet-journey article small {display:block;margin-top:12px;font-size:11px;line-height:1.6;}
+.pet-journal[data-pet-space] .pet-unlock-list {gap:6px;margin:12px 0;}
+.pet-journal[data-pet-space] .pet-unlock-list>span {background:var(--pet-paper);}
+
+/* Utilities have one clear input or action surface, with supporting details nearby. */
+.pet-journal[data-pet-view="gifts"] .pet-gift-panel {border:0;border-radius:0;padding:0;background:none;}
+.pet-journal[data-pet-view="gifts"] .pet-gift-source {border:0;background:var(--pet-tint);border-radius:12px;padding:16px;margin-top:14px;}
+.pet-journal[data-pet-view="gifts"] .pet-gift-source textarea {min-height:82px;background:var(--pet-paper);}
+.pet-journal[data-pet-view="gifts"] .pet-gift-identity {margin:14px 0 0;padding:12px 14px;}
+.pet-journal[data-pet-view="gifts"] .pet-gift-panel button:not(.pet-gift-primary) {border:0;background:var(--pet-paper);min-height:36px;}
+.pet-journal[data-pet-view="gifts"] .pet-gift-primary {border:0;min-height:36px;color:var(--pet-on-accent);}
+.pet-journal[data-pet-view="gifts"] .pet-purchase-title {margin-top:24px;}
+.pet-journal[data-pet-view="gifts"] .pet-empty {text-align:left;padding:14px 0;margin:0;}
+.pet-journal[data-pet-view="themes"] .pet-themes-title h3 {font-size:22px;}
+.pet-journal[data-pet-view="themes"] .pet-theme-grid {gap:18px;margin-top:18px;}
+.pet-journal[data-pet-view="themes"] .pet-theme-card {padding:16px;border-radius:14px;background:var(--pet-tint);display:flex;flex-direction:column;}
+.pet-journal[data-pet-view="themes"] .pet-theme-preview {height:190px;}
+.pet-journal[data-pet-view="themes"] .pet-theme-copy {flex:1;padding:16px 0 18px;}
+.pet-journal[data-pet-view="themes"] .pet-theme-copy>b {font-size:15px;}
+.pet-journal[data-pet-view="themes"] .pet-theme-copy p {font-size:12px;line-height:1.8;}
+.pet-journal[data-pet-view="themes"] .pet-theme-card>button {padding:11px 14px;min-height:38px;border-radius:9px;background:var(--pet-accent);color:var(--pet-on-accent);}
+.pet-journal[data-pet-view="themes"] .pet-themes-title>button {padding:8px 12px;min-height:34px;border-radius:8px;background:var(--pet-tint);}
+.pet-record-panels {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start;}
+.pet-record-panels>section {min-width:0;padding:18px;border-radius:14px;background:var(--pet-tint);}
+.pet-record-panels .pet-section-title {align-items:start;gap:10px;flex-wrap:wrap;}
+.pet-record-panels .pet-section-title>span {font-size:10px;}
+.pet-record-empty {min-height:130px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:12px;}
+.pet-record-empty p {font-size:12px;line-height:1.8;color:var(--pet-muted);margin:0;}
+.pet-record-panels .pet-history article {padding:12px 0;gap:12px;font-size:11px;flex-wrap:wrap;border-color:var(--pet-line);}
+.pet-record-privacy {margin-top:18px;font-size:11px;line-height:1.8;color:var(--pet-muted);}
+.pet-record-privacy summary {cursor:pointer;padding:8px;border-radius:8px;}
+@container xiaoyou (max-width:680px) {
+ .pet-home-followup {grid-template-columns:1fr;gap:10px;}
+ .pet-journal[data-pet-space] .pet-home-progress {padding:14px;gap:10px;}
+ .pet-journal[data-pet-space] .pet-home-collection {padding:12px 14px;}
+ .pet-journal[data-pet-space] .pet-dress-browse .pet-shop-item .pet-item-art {height:120px;}
+ .pet-journal[data-pet-space] .pet-dress-browse .pet-shop-item .pet-portrait {width:100px;height:100px;}
+ .pet-journal[data-pet-space="growth"] .pet-quests {grid-template-columns:1fr;gap:10px;}
+ .pet-journal[data-pet-space] .pet-stage-selector button small {display:none;}
+ .pet-journal[data-pet-space] .pet-journey article {grid-template-columns:1fr;gap:12px;padding:18px;}
+ .pet-journal[data-pet-space] .pet-journey .pet-evolution-preview {width:180px;height:180px;}
+ .pet-journal[data-pet-view="themes"] .pet-theme-grid {grid-template-columns:1fr;}
+ .pet-record-panels {grid-template-columns:1fr;gap:12px;}
+ .pet-journal[data-pet-view="gifts"] .pet-gift-source {padding:12px;}
+}
+@container xiaoyou (max-width:260px) {
+ .pet-journal[data-pet-space] .pet-dress-browse .pet-shop[data-page-size] {grid-template-columns:1fr;}
+ .pet-journal[data-pet-space] .pet-home-progress {grid-template-columns:1fr;}
+ .pet-journal[data-pet-space] .pet-home-progress button {justify-self:start;}
+ .pet-journal[data-pet-space="growth"] .pet-quest {grid-template-columns:auto minmax(0,1fr);}
+ .pet-journal[data-pet-space="growth"] .pet-quest>small {grid-column:2;}
+ .pet-journal[data-pet-space] .pet-journey article {padding:12px;}
+ .pet-journal[data-pet-view="themes"] .pet-theme-card {padding:12px;}
+ .pet-journal[data-pet-view="themes"] .pet-theme-preview {height:140px;}
+}
+.pet-journal[data-pet-space] .pet-journey article[hidden] {display:none;}
+/* Short utilities shrink to their content. The header stays at the same height
+   when switching pages, so primary navigation does not move under the pointer. */
+dialog.pet-journal[data-pet-space] {top:max(16px,calc((100dvh / var(--fz,1) - 760px) / 2));bottom:auto;margin-block:0;}
+dialog.pet-journal:is([data-pet-view="history"],[data-pet-view="themes"],[data-pet-view="gifts"],[data-pet-view="settings"]) {height:auto;max-height:min(760px,calc(100dvh / var(--fz,1) - 32px));}
+/* The shared dialog cap reads this token; its default assumes a centered modal. */
+dialog.pet-journal[data-pet-space] {--dialog-room:min(760px,calc(100dvh / var(--fz,1) - 32px));}

@@ -16,6 +16,7 @@ from app.account_context import use
 from app.web.routes.companion_growth import Gift, preview_gift
 from fastapi import HTTPException
 from pydantic import ValidationError
+from scripts import companion_gift_issuer as issuer
 from scripts.companion_gift_issuer import issue, public, initialize, load_key, issue_saved, history, LABELS, LABELS_EN
 
 
@@ -33,7 +34,41 @@ def raw_sign(key, payload):
     return 'XYG1.'+gifts.encode(raw)+'.'+gifts.encode(key.sign(gifts.DOMAIN+raw))
 
 
+def test_collection_issuing():
+    key = Ed25519PrivateKey.generate()
+    kid, value = public(key)
+    catalog = issuer.catalogue()
+    assert set(catalog['items']) == {id for id, spec in growth.ITEMS.items() if spec['slot'] != 'consumable'}
+    with tempfile.TemporaryDirectory() as root, patch.object(config, 'DATA_DIR', root), patch.object(gifts, 'TRUSTED_KEYS', {kid:value}), use({'ACCOUNT_ID':'set-gift','DB_PATH':str(Path(root)/'mailai.db'),'IMAP_USER':'set@example.test'}):
+        db.init_db()
+        (Path(root)/'issuer').mkdir()
+        (Path(root)/'cli').mkdir()
+        before = growth.snapshot()
+        for name, spec in catalog['collections'].items():
+            request = dict(items=spec['items'],title='Collection '+name,recipient=before['claim_code'],days=0,request_id='set-'+name)
+            payload, code = issue_saved(Path(root)/'issuer',key,request)
+            assert payload['items'] == list(growth.COLLECTIONS[name])
+            assert growth.snapshot() == before, 'Generating and previewing must not change recipient data'
+            gifts.preview(code)
+            claimed = gifts.claim(code)
+            collection = next(s for s in claimed['collections'] if s['id']==name)
+            assert collection['complete'] and collection['completed_at']
+            assert claimed['stage'] == 1
+            worn = growth.equip_collection(name)
+            assert set(spec['items']).issubset(set(worn['equipped'].values())), 'Every gifted piece must coexist in the equipped set'
+            assert (worn['xp'],worn['stamps']) == (before['xp'],before['stamps'])
+            _, another = issue(key,spec['items'],title='Duplicate '+name)
+            assert gifts.claim(another)['collections'] == worn['collections'], 'Owned gifts count toward a set once'
+            before = growth.snapshot()
+        destination=Path(root)/'cli.mailaigift'
+        with patch.object(issuer,'load_key',return_value=key), patch.object(sys,'argv',['issuer','--home',str(Path(root)/'cli'),'issue','--collections','star','--title','CLI set','--campaign','--output',str(destination)]):
+            assert issuer.main()==0
+        assert gifts.verify(destination.read_text())[0]['items']==list(growth.COLLECTIONS['star'])
+    print('Collection issuing: catalogue parity, signed voucher to recipient inventory, all three sets complete/wear at stage 1, zero cost, no duplicate progress and collection CLI passed')
+
+
 def main():
+    test_collection_issuing()
     catalog=Path('app/web/static/i18n-catalog.js').read_text(encoding='utf-8')
     copy=json.loads(catalog.split('const MAILAI_UI_COPY = ',1)[1].split('\n};',1)[0]+'\n}')
     for item in LABELS:

@@ -24,46 +24,28 @@ from app import companion_gifts as gifts, companion_growth as growth
 
 DEFAULT_HOME = Path.home() / '.mailai-gift-issuer'
 SERVICE = 'MailAI Gift Issuer'
-LABELS = {
-    'scarf': '暖橙围巾',
-    'sky': '晴空蓝',
-    'peach': '蜜桃粉',
-    'cap': '信使帽',
-    'satchel': '金色邮包',
-    'sparkles': '点点星光',
-    'orbit': '星环轨迹',
-    'wings': '晴羽信使翼',
-    'aurora': '极光涟漪',
-    'midnight': '星夜蓝',
-    'jacket': '云游披肩',
-    'visor': '晴空护目镜',
-    'armor': '星羽轻甲',
-    'lightning': '电光脉冲',
-    'mech_wings': '星轨披风',
-    'star_crest': '星邮额饰',
-    'theme_monochrome': '黑白简约',
-    'theme_baowu': '宝武蓝',
-}
-LABELS_EN = {
-    'scarf': 'Warm scarf',
-    'sky': 'Sky blue',
-    'peach': 'Peach pink',
-    'cap': 'Messenger cap',
-    'satchel': 'Golden satchel',
-    'sparkles': 'Little sparkles',
-    'orbit': 'Star orbit',
-    'wings': 'Sunlit messenger wings',
-    'aurora': 'Aurora ripples',
-    'midnight': 'Starlit blue',
-    'jacket': 'Wanderer capelet',
-    'visor': 'Clear-sky goggles',
-    'armor': 'Starfeather armor',
-    'lightning': 'Electric pulse',
-    'mech_wings': 'Star-trail cape',
-    'star_crest': 'Star-post crest',
-    'theme_monochrome': 'Monochrome',
-    'theme_baowu': 'Baowu blue',
-}
+# The owner tool reads the same names, physical slots and sets as the client.
+# No second catalogue to maintain when a reward is renamed or redesigned.
+STATIC = Path(__file__).resolve().parents[1] / 'app/web/static'
+UI_COPY = json.loads((STATIC / 'i18n-catalog.js').read_text(encoding='utf-8')
+                     .split('const MAILAI_UI_COPY = ', 1)[1].split('\n};', 1)[0] + '\n}')
+LABELS = {item: UI_COPY['pet.item.' + item][0] for item, spec in growth.ITEMS.items() if spec['slot'] != 'consumable'}
+LABELS_EN = {item: UI_COPY['pet.item.' + item][1] for item in LABELS}
+
+
+def catalogue():
+    path_keys = ('pet.spaceTitle', 'pet.nav.gifts')
+    recipient_keys = (*path_keys, 'pet.giftIdentitySummary', 'pet.giftIdentity')
+    return {
+        'paths': {'gifts': [' → '.join(UI_COPY[key][language] for key in path_keys) for language in range(2)],
+                  'recipient': [' → '.join(UI_COPY[key][language] for key in recipient_keys) for language in range(2)]},
+        'items': {item: {'names': [LABELS[item], LABELS_EN[item]],
+                         'slot': growth.OUTFIT_SLOTS.get(item, growth.ITEMS[item]['slot'])} for item in LABELS},
+        'collections': {name: {'names': UI_COPY['pet.collection.' + name],
+                               'descriptions': UI_COPY['pet.collection.' + name + '.tag'],
+                               'items': list(items)} for name, items in growth.COLLECTIONS.items()},
+    }
+
 
 
 def secure_write(path, content):
@@ -262,12 +244,15 @@ def serve(home):
     session = secrets.token_urlsafe(32)
     prefix = '/' + session
     options = ''.join(f'<label><input type="checkbox" value="{item}"><span data-item="{item}">{LABELS[item]}</span></label>' for item in growth.ITEMS if item in LABELS)
-    item_names = {item:[LABELS[item],LABELS_EN[item]] for item in LABELS}
+    character_styles = '\n'.join((STATIC / name).read_text(encoding='utf-8') for name in
+                                  ('companion.css', 'companion-growth.css', 'companion-colors.css', 'companion-center.css'))
     page = (Path(__file__).with_name('gift_issuer.html').read_text(encoding='utf-8')
             .replace('__OPTIONS__',options)
+            .replace('__COMPANION_STYLES__', character_styles)
+            .replace('__COMPANION_SCRIPT__', (STATIC / 'companion.js').read_text(encoding='utf-8'))
             .replace('__STYLES__',Path(__file__).with_name('gift_issuer.css').read_text(encoding='utf-8'))
             .replace('__SCRIPT__',Path(__file__).with_name('gift_issuer.js').read_text(encoding='utf-8'))
-            .replace('__ITEM_NAMES__',json.dumps(item_names,ensure_ascii=False))).encode()
+            .replace('__CATALOGUE__',json.dumps(catalogue(),ensure_ascii=False).replace('<', r'\u003c'))).encode()
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args):
             pass  # Never log the capability URL or voucher contents.
@@ -329,7 +314,10 @@ def main():
     commands = parser.add_subparsers(dest='command', required=True)
     init = commands.add_parser('init');init.add_argument('--keychain', action='store_true');init.add_argument('--public-output', type=Path)
     pub = commands.add_parser('public');pub.add_argument('--output', type=Path, required=True)
-    send = commands.add_parser('issue');send.add_argument('--items', nargs='+', required=True);send.add_argument('--title', required=True)
+    send = commands.add_parser('issue');send.add_argument('--title', required=True)
+    choice = send.add_mutually_exclusive_group(required=True)
+    choice.add_argument('--items', nargs='+')
+    choice.add_argument('--collections', nargs='+', choices=list(growth.COLLECTIONS))
     target=send.add_mutually_exclusive_group(required=True);target.add_argument('--recipient');target.add_argument('--campaign', action='store_true')
     send.add_argument('--days', type=int, default=0);send.add_argument('--output', type=Path, required=True)
     commands.add_parser('gui')
@@ -346,7 +334,10 @@ def main():
             kid, value = public(key)
             if gifts.TRUSTED_KEYS.get(kid) != value:
                 raise ValueError('客户端尚未内置当前发放公钥，请先导出公钥并重新构建')
-            payload, code = issue(key,args.items,title=args.title,recipient='*' if args.campaign else args.recipient,days=args.days)
+            items = args.items if args.items else list(dict.fromkeys(item for name in args.collections for item in growth.COLLECTIONS[name]))
+            if len(items) > 8:
+                raise ValueError('一张领取券最多 8 件，请分成多张发放')
+            payload, code = issue(key,items,title=args.title,recipient='*' if args.campaign else args.recipient,days=args.days)
             secure_write(args.output,(code+'\n').encode());record(args.home,payload)
             print('礼券已保存：'+str(args.output)+'；编号：'+payload['id'])
     except Exception as exc:

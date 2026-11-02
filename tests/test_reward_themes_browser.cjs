@@ -164,6 +164,7 @@ const {chromium,webkit} = require('playwright');
     await revealItem(dialog,'sky');
     await dialog.locator('[data-pet-buy="sky"]').click();
     await page.waitForFunction(()=>document.body.dataset.petPalette === 'sky');
+    await selectTab(dialog,'home');
     assert.equal(await dialog.locator('.pet-hero .growth-body').evaluate(node=>getComputedStyle(node).fill),'rgb(131, 181, 212)');
     const balance=(await page.evaluate(()=>api('/api/companion/growth'))).stamps;
     await selectTab(dialog,'themes');

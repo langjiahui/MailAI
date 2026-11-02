@@ -17,7 +17,7 @@ const {chromium} = require('playwright');
     await dialog.waitFor({state:'visible'});
     assert.match(await dialog.textContent(),/青羽信使/);
     await selectTab(dialog,'settings');
-    assert.match(await dialog.locator('.pet-client-note').textContent(),/所有邮箱共享/);
+    assert.match(await dialog.locator('.pet-settings-note').textContent(),/所有邮箱共用同一个小邮/);
     await selectTab(dialog,'home');
     assert.equal(await dialog.locator('.pet-hero .evolution-crest-one').evaluate(n=>getComputedStyle(n).display),'block');
     await selectTab(dialog,'wardrobe');
@@ -36,9 +36,9 @@ const {chromium} = require('playwright');
     assert.equal(bought.xp-before.xp,bought.today.xp-before.today.xp,'Purchasing adds no XP beyond recorded activity awards');
     assert.equal(await page.evaluate(()=>document.activeElement?.dataset.petItemAction),'scarf','Card redemption keeps keyboard focus on the newly owned outfit');
     assert.match(await dialog.locator('.pet-shop-receipt:visible').textContent(),new RegExp(`80.*${purchase.stamps}`),'Receipt shows the actual purchase cost and remaining balance');
-    assert.equal(await dialog.locator('.pet-hero .growth-scarf').evaluate(n=>getComputedStyle(n).display),'block');
     // Try-on, purchase and free outfit changes all work in the fitting room.
     await dialog.locator('[data-pet-preview="scarf"]').click();
+    assert.equal(await dialog.locator('.pet-hero .growth-scarf').evaluate(n=>getComputedStyle(n).display),'block');
     const preview=dialog.locator('.pet-live-preview');
     assert.match(await preview.locator('.pet-preview-purchase').textContent(),/已拥有|穿戴中/);
     await preview.locator('[data-pet-preview-action="scarf"]').click();
@@ -82,9 +82,9 @@ const {chromium} = require('playwright');
     await dialog.locator('[data-pet-shop-filter="all"]').click();
     // Equipped effects rest between finite interactions; only a visible reaction
     // should start their clocks. Background launchers stay quiet behind a dialog.
-    // Purchase completion replaces the hero section, while the journal body
-    // remains mounted. Scroll that stable owner before checking the live rig.
-    await dialog.locator('.pet-journal-body').evaluate(n=>n.scrollTop=0);
+    // The actual equipped companion lives on the home page; browsing now
+    // leaves the width to the shelf. All effect assertions still use the live rig.
+    await selectTab(dialog,'home');
     await page.waitForFunction(()=>document.querySelector('.pet-hero .mail-companion').dataset.rewardVisible==='true');
     await page.waitForFunction(()=>document.querySelector('.pet-hero .mail-companion').dataset.motionActive==='false',null,{timeout:4000});
     assert.equal(await dialog.locator('.pet-hero .pet-star').first().evaluate(n=>getComputedStyle(n).animationName),'none');
@@ -100,6 +100,7 @@ const {chromium} = require('playwright');
     await page.waitForTimeout(350);
     await page.screenshot({path:'/tmp/mailai-pet-shop.png'});
     // Failed mutations keep the balance/outfit and surface the error.
+    await revealItem(dialog,'peach');
     await page.route('**/api/companion/purchase',route=>route.fulfill({status:400,contentType:'application/json',body:JSON.stringify({detail:'模拟兑换失败'})}));
     await dialog.locator('[data-pet-buy="peach"]').click();
     await page.waitForFunction(()=>document.querySelector('[data-pet-message]')?.classList.contains('is-error'));
@@ -187,7 +188,6 @@ const {chromium} = require('playwright');
     await dialog.locator('[data-pet-style="ranger"]').click();
     await page.waitForFunction(()=>document.body.dataset.petStyle === 'ranger');
     await selectTab(dialog,'home');
-    await selectTab(dialog,'wardrobe');
     // CSS must respect redeemed palettes at EVERY stage, on BOTH routes.
     await page.emulateMedia({reducedMotion:'reduce'});
     const paletteMatrix = await page.evaluate(()=>{
@@ -201,6 +201,7 @@ const {chromium} = require('playwright');
       return results;
     });
     for (const row of paletteMatrix) assert.equal(row.fill,{sky:'rgb(141, 196, 229)',peach:'rgb(229, 177, 187)',midnight:'rgb(167, 177, 212)'}[row.palette],JSON.stringify(row));
+    await selectTab(dialog,'wardrobe');
     const previews = await page.evaluate(()=>{
       const body=document.body.dataset,saved=body.petAccessory;
       try {
@@ -256,7 +257,7 @@ const {chromium} = require('playwright');
     await page.evaluate(()=>window.mailaiPet.open());
     const fresh = await page.evaluate(()=>api('/api/companion/growth'));
     await selectTab(dialog,'settings');
-    assert.match(await dialog.locator('.pet-client-note').textContent(),/Shared across mailboxes/);
+    assert.match(await dialog.locator('.pet-settings-note').textContent(),/All mailboxes share the same companion/);
     assert.deepEqual(fresh,shared);
     await page.evaluate(async()=>{
       await api('/api/companion/preferences',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:true})});
