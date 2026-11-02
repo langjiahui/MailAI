@@ -4,9 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>小邮礼物发放</title>
+  <style>__COMPANION_STYLES__</style>
   <style>__STYLES__</style>
 </head>
-<body>
+<body class="companion-still" data-pet-style="nature">
 <main>
   <header>
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16v4H4zM6 12h12v8H6zM12 8v12M12 8C7 8 5 3 8 3c3 0 4 5 4 5Zm0 0c5 0 7-5 4-5-3 0-4 5-4 5Z"/></svg>
@@ -17,22 +18,35 @@
     <section class="card" id="form-card">
       <div class="steps" data-label="steps"><span class="current" data-copy="step1"></span><span data-copy="step2"></span><span data-copy="step3"></span></div>
       <form class="fields" id="issuer-form">
+        <section class="collection-picker" aria-labelledby="collection-title">
+          <div class="items-head"><h2 id="collection-title" data-copy="collections"></h2><span id="count" role="status"></span></div>
+          <p class="hint" data-copy="collectionHint"></p>
+          <div id="collections" role="group" data-label="collections"></div>
+          <div class="collection-action"><button type="button" id="add-collection"></button><span id="collection-status" role="status"></span></div>
+          <p class="hint" id="capacity" role="status"></p>
+        </section>
+        <details id="individual-items"><summary data-copy="individual"></summary><div class="items">__OPTIONS__</div><p class="hint" data-copy="itemsHint"></p></details>
         <label><span data-copy="name"></span><input id="title" maxlength="80" value="小邮见面礼" required autocomplete="off"></label>
         <div class="row">
           <label><span data-copy="who"></span><select id="kind"><option value="exclusive" data-copy="personal"></option><option value="campaign" data-copy="campaign"></option></select></label>
           <label><span data-copy="deadline"></span><select id="days"><option value="0" data-copy="unlimited"></option><option value="7" data-copy="days7"></option><option value="30" data-copy="days30"></option><option value="90" data-copy="days90"></option></select></label>
         </div>
         <label id="recipient-label"><span data-copy="recipient"></span><small data-copy="recipientHint"></small><input id="recipient" data-placeholder="recipientPlaceholder" maxlength="60" required spellcheck="false" autocomplete="off" aria-describedby="recipient-error"><small id="recipient-error" class="error" role="alert"></small></label>
-        <section>
-          <div class="items-head"><b data-copy="pick"></b><span id="count" role="status"></span></div>
-          <div class="items">__OPTIONS__</div><p class="hint" data-copy="itemsHint"></p>
-        </section>
         <div class="retry" id="retry" hidden role="status"><span data-copy="retryHint"></span><button type="button" id="restart" data-copy="restart"></button></div>
         <button id="issue" class="primary" type="submit" disabled></button><p id="error" role="alert"></p>
       </form>
     </section>
     <aside class="side">
-      <section class="card" id="review"><h2 data-copy="review"></h2><div id="selection"></div><p id="meta"></p></section>
+      <section class="card" id="review">
+        <div class="preview-heading"><h2 data-copy="preview"></h2><select id="preview-shape" data-label="shape"><option value="nature" data-copy="bird"></option><option value="ranger" data-copy="fish"></option></select></div>
+        <div class="preview-modes" role="group" data-label="preview"><button type="button" id="preview-selection" data-copy="previewSelection"></button><button type="button" id="preview-set" data-copy="previewSet"></button></div>
+        <div id="outfit-preview" class="pet-live-art pet-item-art" data-fitting-outfits="" data-fitting-palette="" data-fitting-effect="" data-collection-look="" role="img"><div class="pet-portrait"></div></div>
+        <h3 id="preview-title"></h3><p id="preview-description"></p>
+        <p class="preview-notice" data-copy="previewNotice"></p>
+        <div class="review-heading"><h2 data-copy="review"></h2><button type="button" id="clear-selection" data-copy="clear"></button></div>
+        <div id="selection"></div><p id="meta"></p>
+        <p class="hint" data-copy="claimHint"></p>
+      </section>
       <section class="card" id="result" hidden aria-labelledby="result-title">
         <div class="success"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10 4 4 8-8"/></svg><span id="result-title" data-copy="ready"></span></div>
         <p id="summary"></p><p id="result-meta"></p>
@@ -48,6 +62,7 @@
     </aside>
   </div>
 </main>
+<script data-art-only>__COMPANION_SCRIPT__</script>
 <script>__SCRIPT__</script>
 </body>
 </html>

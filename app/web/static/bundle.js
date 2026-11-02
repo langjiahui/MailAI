@@ -33578,6 +33578,8 @@ function mailCardDate(value, now = new Date()) {
     <g class="companion-alert"><circle cx="92" cy="32" r="8" fill="currentColor"/><path d="M92 28v4M92 35h.01" stroke="white" stroke-width="2" stroke-linecap="round"/></g>
   </svg>`;
   window.mailaiCompanionArt = art;
+  // Owner gift previews reuse this rig without starting the mail assistant.
+  if (document.currentScript?.hasAttribute('data-art-only')) return;
   document.querySelectorAll('.companion-art, .assistant-mini').forEach(host => {
     host.classList.add('companion-avatar');
     host.innerHTML = art;
