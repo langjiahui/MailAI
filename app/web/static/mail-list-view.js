@@ -11,6 +11,7 @@ function mailTableHeader() {
 }
 
 function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, outgoing}) {
+  const subject = String(e.subject ?? '').trim() || mailaiText('无主题');
   // Local draft/sent adapters use from_addr for the counterpart, not the real sender.
   const senderAddress = e._kind ? (e._account_user || activeMailAccount()?.user || '') : e.from_addr || '';
   const sender = e._kind ? senderAddress : e.from_name || senderAddress || mailaiText('未知联系人');
@@ -24,7 +25,7 @@ function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, o
     data-id="${e.id}" data-account-id="${esc(e._account_id || '')}" data-read-state="${outgoing ? 'not-applicable' : unread ? 'unread' : 'read'}" tabindex="0" aria-selected="${bulkSelected ? 'true' : 'false'}">
     <span class="mail-table-sender" title="${esc(senderAddress && sender !== senderAddress ? `${sender} <${senderAddress}>` : sender)}">${esc(sender)}</span>
     <span class="mail-table-recipient" title="${esc(recipients)}">${esc(recipients || '—')}</span>
-    <span class="mail-table-subject" title="${esc([e.subject, chips, e.summary || e.snippet].filter(Boolean).join('\n'))}"><span>${esc(e.subject || mailaiText('无主题'))}</span>${e._conversationCount > 1 ? `<small> ${Number(e._conversationCount)}</small>` : ''}</span>
+    <span class="mail-table-subject" title="${esc([subject, chips, e.summary || e.snippet].filter(Boolean).join('\n'))}"><span>${esc(subject)}</span>${e._conversationCount > 1 ? `<small> ${Number(e._conversationCount)}</small>` : ''}</span>
     <time class="mail-table-date" title="${esc(dateText)}"><span class="mail-table-date-full">${dateText}</span><span class="mail-table-date-short">${dateText.length>5?dateText.slice(5):dateText}</span></time>
     ${currentFilter.search && e.search_match ? `<div class="mail-table-match">${renderSearchPreview(e)}</div>` : ''}
   </div>`;

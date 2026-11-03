@@ -2,6 +2,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const {chromium, webkit} = require('playwright');
+const {auditMailCardEdges}=require('./helpers/mail-card-edges.cjs');
 (async () => {
   const engine = process.env.MAILAI_BROWSER === 'webkit' ? webkit : chromium;
   const browser = await engine.launch({headless:true});
@@ -82,6 +83,17 @@ const {chromium, webkit} = require('playwright');
           return avatar.right>sender.left-5||avatar.right>subject.left-5;
         })}));
         assert(!shape.overflow&&!shape.overlaps,JSON.stringify({reward,language,mode,width,density,shape}));
+        const emptySubjects=await page.locator('#email-list').evaluate(list=>{
+          const host=document.createElement('div'),rows=[];
+          for(const kind of ['received','sent','draft'])for(const subject of ['',null,undefined,' \t\n\u3000']){
+            const mail={...allEmails[0],id:99001,subject,summary:'Preview starts here',direction:kind==='received'?'incoming':'outgoing',_kind:kind==='received'?undefined:kind};
+            host.innerHTML=renderEmailItem(mail);list.prepend(host);
+            const row=host.querySelector('.email-item'),title=row.querySelector('.email-subject'),preview=row.querySelector('.email-preview'),avatar=row.querySelector('.mail-sender-avatar');
+            rows.push({kind,subject:title.textContent,height:title.getBoundingClientRect().height,clear:!preview.getClientRects().length||preview.getBoundingClientRect().top>=avatar.getBoundingClientRect().bottom,preview:preview.textContent});
+          }
+          host.remove();return {rows,placeholder:mailaiText('（无主题）')};
+        });
+        assert(emptySubjects.rows.every(row=>row.subject===emptySubjects.placeholder&&row.height>0&&row.clear&&row.preview==='Preview starts here'),'Empty subjects cannot collapse the title row or place the preview under the avatar: '+JSON.stringify({reward,language,mode,width,density,emptySubjects}));
         assert(await page.locator('.email-item[data-id="1"] .mail-list-attachment').isVisible(),'Compact rows still show attachments');
         const tones=await page.locator('#email-list').evaluate((list,{reward})=>{
           const ctx=document.createElement('canvas').getContext('2d');
@@ -154,6 +166,7 @@ const {chromium, webkit} = require('playwright');
         }
       }
     }
+    await auditMailCardEdges(page);
     await page.unroute('**/api/companion/growth');await page.evaluate(()=>mailaiPet.refresh());
     await page.setViewportSize({width:390,height:1000});
     const crowded=await page.evaluate(()=>{
@@ -171,6 +184,28 @@ const {chromium, webkit} = require('playwright');
     await page.keyboard.press(' ');assert(await page.locator('.email-item.bulk-selected').count()>0);await page.locator('#bulk-cancel').click();
     await page.locator('.email-item[data-id="1"]').click();
     await page.locator('#reading-content:not(.hidden)').waitFor();
+    const detail=await page.evaluate(()=>api('/api/emails/1'));
+    for(const language of ['zh-CN','en'])for(const subject of ['',null,undefined,' \t\n\u3000']) {
+      const headings=await page.evaluate(async({detail,language,subject})=>{
+        setI18nLanguage(language);const mail={...detail,subject,summary:' \n ',snippet:'Fallback snippet'};
+        renderReadingPane(mail);
+        const drawer=document.createElement('div');drawer.innerHTML=renderDigestEmailDetail({...mail});
+        const summary=document.createElement('div');summary.innerHTML=mailSummaryToolbarButton(mail)+mailSummaryDisclosure(mail);
+        const result={main:document.querySelector('#reading-content .reading-subject').textContent,drawer:drawer.querySelector('.reading-subject').textContent,placeholder:mailaiText('（无主题）'),preview:summary.querySelector('.summary-box').textContent.trim(),label:summary.querySelector('[data-i18n]').dataset.i18n,special:[]};
+        const previous={mailbox:specialMailbox,id:selectedEmailId,detail:selectedEmailDetail};
+        try {
+          for(const kind of ['sent','drafts'])for(const remote of [false,true]){
+            specialMailbox=kind;
+            await selectSpecialMessage(99001,{...mail,id:99001,_remote:remote,remote_email_id:1,to_addr:'recipient@example.test',status:'sent',attachments:[],body_html:'',body_text:'Synthetic message'});
+            result.special.push({kind,remote,title:document.querySelector('.special-mail-detail h1').textContent});
+          }
+        }finally{specialMailbox=previous.mailbox;selectedEmailId=previous.id;selectedEmailDetail=previous.detail;renderReadingPane(detail);syncSelectedEmailVisual(previous.id);}
+        return result;
+      },{detail,language,subject});
+      assert.equal(headings.main,headings.placeholder);assert.equal(headings.drawer,headings.placeholder);assert.equal(headings.preview,'Fallback snippet');assert.equal(headings.label,'read.previewTitle');
+      assert(headings.special.every(row=>row.title===headings.placeholder),'Local and server sent/draft details retain their empty-subject heading: '+JSON.stringify(headings));
+    }
+    await page.evaluate(detail=>{setI18nLanguage('zh-CN');renderReadingPane(detail);},detail);
     const selected = await page.evaluate(()=>selectedEmailId);
     await page.locator('#email-list .selection-glass-plate:not([hidden])').waitFor();
     const highlight=await page.locator('#email-list .selection-glass-plate').evaluate(n=>{const s=getComputedStyle(n);return {shadow:s.boxShadow,border:parseFloat(s.borderTopWidth),image:s.backgroundImage};});
@@ -178,6 +213,12 @@ const {chromium, webkit} = require('playwright');
     await setView('table');
     assert.equal(await page.evaluate(()=>selectedEmailId),selected,'View switches retain the open message');
     assert.equal(await page.locator('.mail-table-item').count(),12);
+    const emptyTableSubjects=await page.evaluate(()=>['',null,undefined,' \t\n\u3000'].map(subject=>{
+      const host=document.createElement('div');host.innerHTML=renderEmailItem({...allEmails[0],subject});
+      return host.querySelector('.mail-table-subject>span').textContent;
+    }));
+    const emptyTablePlaceholder=await page.evaluate(()=>mailaiText('无主题'));
+    assert(emptyTableSubjects.every(subject=>subject===emptyTablePlaceholder),'Table view also labels empty and whitespace-only subjects');
     assert.match(await page.locator('.mail-table-recipient').first().textContent(),/@example.test/);
     assert.equal(await page.locator('.mail-table-heading').count(),4);
     assert.equal(await page.locator('.mail-table-state,.mail-table-attachment,.table-warning').count(),0);
