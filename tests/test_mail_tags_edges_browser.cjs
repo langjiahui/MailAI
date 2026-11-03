@@ -118,6 +118,11 @@ const {chromium,webkit}=require('playwright');
     return {owner,other,tag};
   });
   await page.locator('[data-account-action=unified]').click();
+  await page.waitForFunction(()=>unifiedMailbox && allEmails.length===200 && !document.querySelector('.list-pane').matches('[aria-busy=true]'));
+  for(const count of [400,600,650]){
+   await page.locator('[data-mail-page=next]').click();
+   await page.waitForFunction(size=>allEmails.length===size,count);
+  }
   await page.waitForFunction(()=>unifiedMailbox && allEmails.length===650);
   await page.evaluate(async id=>selectEmail(1,{accountId:id}),accounts.other);
   await page.locator('[data-edit-mail-tags]').click();
