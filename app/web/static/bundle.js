@@ -33265,7 +33265,13 @@ function mailCardDate(value, now = new Date()) {
   document.getElementById('todo-complete-all').removeAttribute('data-i18n');
 
   // Move the actual buttons, keeping their handlers and accessible names.
-  let observedHost, resize, moving=[];
+  let observedHost, resize, readingLayoutFrame=0, moving=[];
+  function scheduleReadingLayout() {
+    if(readingLayoutFrame)return;
+    // Moving toolbar buttons changes the observed toolbar's own height. Commit
+    // those moves in the next frame, outside ResizeObserver delivery.
+    readingLayoutFrame=requestAnimationFrame(()=>{readingLayoutFrame=0;layoutReading();});
+  }
   function layoutReading() {
     const host=observedHost;if(!host?.isConnected)return;
     const width=host.getBoundingClientRect().width;
@@ -33277,12 +33283,12 @@ function mailCardDate(value, now = new Date()) {
   }
   const observer=new MutationObserver(()=>{
     const host=document.querySelector('.reading-header .reading-actions');if(!host||host===observedHost||!host.querySelector('.reading-work-actions'))return;
-    resize?.disconnect();observedHost=host;moving=[];
+    resize?.disconnect();cancelAnimationFrame(readingLayoutFrame);readingLayoutFrame=0;observedHost=host;moving=[];
     const overflow=document.createElement('div');overflow.className='reading-overflow-actions';host.querySelector('.reading-more-panel').prepend(overflow);
     for(const [selector,threshold] of [['[data-reading-action="favorite"]',850],['[data-reading-action="todo"]',740],['[data-reading-action="summary"]',980],['[onclick*="reply_all"]',660]]){
       const node=host.querySelector(selector);if(node)moving.push({node,home:node.parentNode,overflow,threshold});
     }
-    resize=new ResizeObserver(layoutReading);resize.observe(host);layoutReading();
+    resize=new ResizeObserver(scheduleReadingLayout);resize.observe(host);layoutReading();
   });
   observer.observe(document.getElementById('reading-content'),{childList:true,subtree:true});
 

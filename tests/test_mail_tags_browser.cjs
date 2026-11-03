@@ -5,6 +5,25 @@ const {chromium,webkit}=require('playwright');
   try {
     const page=await browser.newPage({viewport:{width:1440,height:1000},reducedMotion:'reduce'});
     const errors=[];page.on('pageerror',error=>errors.push(error.message));
+    // Keep the observer creation sites when a browser reports a layout cycle;
+    // preserve native delivery and the existing no-page-error assertion.
+    await page.addInitScript(()=>{
+      const Native=window.ResizeObserver,trace=[];
+      window.mailaiResizeTestTrace=trace;
+      window.ResizeObserver=class extends Native{
+        constructor(callback){
+          const site=new Error().stack;
+          super((entries,observer)=>{
+            trace.push({site,targets:entries.map(({target})=>target.tagName+'#'+target.id+'.'+String(target.className)),viewport:[innerWidth,innerHeight]});
+            if(trace.length>30)trace.shift();
+            callback(entries,observer);
+          });
+        }
+      };
+      window.addEventListener('error',event=>{
+        if(event.message?.startsWith('ResizeObserver'))window.mailaiResizeTestFailure=trace.slice();
+      });
+    });
     await page.addInitScript(()=>localStorage.setItem('mailai.onboarding.v2',JSON.stringify({mailboxDone:true,aiDone:true,deferred:true})));
     await page.goto(process.env.MAILAI_TEST_URL || 'http://127.0.0.1:18795/?shell=macos');
     await page.locator('#app-preloader').waitFor({state:'detached'});
@@ -161,6 +180,7 @@ const {chromium,webkit}=require('playwright');
     assert(Date.now()-started<2500,'A stalled label catalogue must not stall mail loading');
     for(const route of held)await route.continue();
     await page.unroute('**/api/mail/tags');
+    if(errors.length)console.error('Layout observer diagnostics',await page.evaluate(()=>window.mailaiResizeTestFailure));
     assert.deepEqual(errors,[]);
     console.log('PASS mail labels UI: CRUD, retry, single and batch assignment, AI facets, rule editor and historical application, palettes, narrow layouts, account isolation');
   } finally {await browser.close();}
