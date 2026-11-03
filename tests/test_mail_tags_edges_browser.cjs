@@ -10,6 +10,8 @@ const {chromium,webkit}=require('playwright');
   await page.goto('http://127.0.0.1:18806/?shell=macos');await page.locator('#app-preloader').waitFor({state:'detached'});
   await page.evaluate(()=>setI18nLanguage('zh-CN'));
   await page.locator('.sidebar-account-folders [data-account-action=inbox]').first().click();
+  await page.waitForFunction(()=>allEmails.length===200);
+  await page.locator('[data-mail-page=next]').click();
   await page.waitForFunction(()=>allEmails.length===325);
   const dialog=page.locator('#mail-tags-dialog');
   const labels=await page.evaluate(async()=>{

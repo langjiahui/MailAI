@@ -372,6 +372,7 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve,ms));
     const afterCounts=await page.evaluate(id=>api('/api/mailbox/counts',{accountId:id}), target.id);
     for (const status of ['inbox','sent','local_archive']) assert.equal(afterCounts.totals[status],(beforeCounts.totals[status]||0)+1);
     await action.click();
+    await page.waitForFunction(id=>selectedMailboxAccountId===id && !unifiedMailbox && document.getElementById('mailbox-transition').hidden,target.id);
     await page.waitForFunction(()=>document.getElementById('count-local_archive').textContent!=='0');
     assert.equal(Number(await page.locator('#count-inbox').textContent()),afterCounts.totals.inbox);
     assert.equal(Number(await page.locator('#count-sent').textContent()),afterCounts.totals.sent);

@@ -183,11 +183,17 @@ def page(filters, *, cursor='', limit=200, refresh=False, around_id=0):
             for row in c.execute(prefix+f'''SELECT t.name,count(*) FROM emails JOIN email_tags et ON et.email_id=emails.id
                     JOIN mail_tags t ON t.id=et.tag_id WHERE {clause} GROUP BY t.name''',values):
                 facets['tags'][row[0]]=facets['tags'].get(row[0],0)+row[1]
-            for row in c.execute("SELECT lower(substr(from_addr,instr(from_addr,'@')+1)) FROM emails WHERE remote_missing=0 AND instr(from_addr,'@')>0 GROUP BY 1"):
+            for row in c.execute("SELECT lower(substr(from_addr,instr(from_addr,'@')+1)) FROM main.emails WHERE remote_missing=0 AND instr(from_addr,'@')>0 GROUP BY 1"):
                 domains.add(row[0])
-            for row in c.execute('SELECT status,is_local_archive,count(*) FROM emails WHERE remote_missing=0 GROUP BY status,is_local_archive'):
+            for row in c.execute('SELECT status,is_local_archive,count(*) FROM main.emails WHERE remote_missing=0 GROUP BY status,is_local_archive'):
                 counts['totals'][row[0]]=counts['totals'].get(row[0],0)+row[2];counts['all']+=row[2]
                 if row[1]:counts['local'][row[0]]=counts['local'].get(row[0],0)+row[2]
+            receipts=c.execute("""SELECT COUNT(*) FROM sent_messages s
+                WHERE trim(COALESCE(s.message_id,''))='' OR lower(trim(s.message_id)) NOT IN (
+                    SELECT lower(trim(message_id)) FROM main.emails WHERE trim(COALESCE(message_id,''))<>''
+                    AND (status='trash' OR pending_action='trash' OR (remote_missing=0 AND status='sent')))
+                """).fetchone()[0]
+            counts['totals']['sent']=counts['totals'].get('sent',0)+receipts
             page_where=''
             page_args=[]
             if position:

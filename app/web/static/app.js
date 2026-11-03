@@ -3037,7 +3037,7 @@ async function api(path, opts = {}) {
   }
   const data = await res.json();
   if (opts.method && /^\/api\/system\/mail\/(?:login|logout|account\/update)/.test(path)) window.mailaiMailboxStore?.invalidate();
-  if (opts.method && !['GET','HEAD'].includes(opts.method) && /^\/api\/(?:emails(?:\/|$)|mail\/(?:tags|tag-rules|bulk|send|outbox|undo|folders\/sync|client-imports)|drafts|productivity\/(?!search)|system\/(?:server-cleanup|backups\/.*restore|portable-backups\/restore))/.test(path)) {
+  if (opts.method && !['GET','HEAD'].includes(opts.method) && path.split('?')[0]!=='/api/mail/tags/snapshot' && /^\/api\/(?:emails(?:\/|$)|mail\/(?:tags|tag-rules|bulk|send|outbox|undo|folders\/sync|client-imports)|drafts|productivity\/(?!search)|system\/(?:server-cleanup|backups\/.*restore|portable-backups\/restore))/.test(path)) {
     window.mailaiMailboxStore?.invalidate(accountId);
   }
   if (data.undo_token && typeof offerUndo === 'function') {
@@ -3791,6 +3791,7 @@ function hideDashboard() {
 
 // ===== 筛选与排序 =====
 function applyFilters({silent = false, paged = false} = {}) {
+  updateFilterSummary();
   if (!paged && window.mailaiMailboxStore?.filterChanged()) return;
   renderMailSearchStatus();
   document.getElementById('list-footer').classList.toggle('hidden', Boolean(specialMailbox || currentFilter.search));
@@ -3804,7 +3805,6 @@ function applyFilters({silent = false, paged = false} = {}) {
   const scope = document.getElementById('search-scope');
   scope.textContent = currentMailboxScopeLabel().replace(/内$/, '');
   mailaiBindUI(scope, "title", () => (mailaiTemplate`搜索范围：${currentMailboxScopeLabel()}，仅搜索已同步到本机的邮件`));
-  updateFilterSummary();
   document.getElementById('mail-tag-group').hidden = Boolean(specialMailbox);
   if (specialMailbox) {
     for (const verdict of ['phishing','suspicious','clean','unreviewed']) {

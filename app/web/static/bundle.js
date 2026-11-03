@@ -22373,7 +22373,7 @@ async function api(path, opts = {}) {
   }
   const data = await res.json();
   if (opts.method && /^\/api\/system\/mail\/(?:login|logout|account\/update)/.test(path)) window.mailaiMailboxStore?.invalidate();
-  if (opts.method && !['GET','HEAD'].includes(opts.method) && /^\/api\/(?:emails(?:\/|$)|mail\/(?:tags|tag-rules|bulk|send|outbox|undo|folders\/sync|client-imports)|drafts|productivity\/(?!search)|system\/(?:server-cleanup|backups\/.*restore|portable-backups\/restore))/.test(path)) {
+  if (opts.method && !['GET','HEAD'].includes(opts.method) && path.split('?')[0]!=='/api/mail/tags/snapshot' && /^\/api\/(?:emails(?:\/|$)|mail\/(?:tags|tag-rules|bulk|send|outbox|undo|folders\/sync|client-imports)|drafts|productivity\/(?!search)|system\/(?:server-cleanup|backups\/.*restore|portable-backups\/restore))/.test(path)) {
     window.mailaiMailboxStore?.invalidate(accountId);
   }
   if (data.undo_token && typeof offerUndo === 'function') {
@@ -23127,6 +23127,7 @@ function hideDashboard() {
 
 // ===== 筛选与排序 =====
 function applyFilters({silent = false, paged = false} = {}) {
+  updateFilterSummary();
   if (!paged && window.mailaiMailboxStore?.filterChanged()) return;
   renderMailSearchStatus();
   document.getElementById('list-footer').classList.toggle('hidden', Boolean(specialMailbox || currentFilter.search));
@@ -23140,7 +23141,6 @@ function applyFilters({silent = false, paged = false} = {}) {
   const scope = document.getElementById('search-scope');
   scope.textContent = currentMailboxScopeLabel().replace(/内$/, '');
   mailaiBindUI(scope, "title", () => (mailaiTemplate`搜索范围：${currentMailboxScopeLabel()}，仅搜索已同步到本机的邮件`));
-  updateFilterSummary();
   document.getElementById('mail-tag-group').hidden = Boolean(specialMailbox);
   if (specialMailbox) {
     for (const verdict of ['phishing','suspicious','clean','unreviewed']) {
@@ -29987,6 +29987,36 @@ document.addEventListener('keydown', event => {
   const rowKey = row => `${row._account_id || ''}:${row.id}`;
   const rowsOf = entry => [...entry.pages].sort((a,b)=>a[0]-b[0]).flatMap(([,page])=>page.items);
   const live = (key,nav) => supports() && keyOf(query())===key && mailboxNavigationRevision===nav;
+  function derive(q,key){
+    if(q.special || q.conversations || !['','all'].includes(q.workflow))return null;
+    const source=[...entries.values()].reverse().find(entry=>{
+      const base=entry.query;
+      return entry.owner===owner() && entry.data && !entry.invalid && !entry.anchor && entry.pages.has(0) && !entry.data.next &&
+        rowsOf(entry).length===entry.data.total && !base.special && !base.conversations &&
+        base.status===q.status && base.folder===q.folder && base.unified===q.unified &&
+        (base.days===9999 || base.days===365000 || base.days===q.days) &&
+        !base.verdict && !base.category && !base.priority && !base.domain && !base.unread && !base.attachments && !base.tags.length && ['','all'].includes(base.workflow);
+    });
+    if(!source)return null;
+    const date=row=>{const value=new Date(row.date || row.created_at || 0).getTime();return Number.isFinite(value)?value:0;};
+    const rows=rowsOf(source).filter(row=>(!q.priority || row.priority===q.priority) && (!q.domain || getDomain(row.from_addr)===q.domain) &&
+      (!q.unread || !row.is_read && row.direction!=='outgoing') && (!q.attachments || row.attachments?.length) &&
+      ([9999,365000].includes(q.days) || date(row)>=Date.now()-q.days*86400000));
+    const risk=row=>!q.verdict || mailVerdictKey(row)===q.verdict;
+    const category=row=>!q.category || (row.category || '未分类')===q.category;
+    const tags=row=>!q.tags.length || (q.tag_mode==='all'?q.tags.every(name=>row.tags?.some(tag=>tag.name===name)):q.tags.some(name=>row.tags?.some(tag=>tag.name===name)));
+    const facets={risk:{},categories:{},tags:{}};
+    for(const row of rows){
+      if(category(row) && tags(row)){const name=mailVerdictKey(row);facets.risk[name]=(facets.risk[name] || 0)+1;}
+      if(risk(row) && tags(row)){const name=row.category || '未分类';facets.categories[name]=(facets.categories[name] || 0)+1;}
+      if(risk(row) && category(row))for(const tag of row.tags || [])facets.tags[tag.name]=(facets.tags[tag.name] || 0)+1;
+    }
+    const items=rows.filter(row=>risk(row) && category(row) && tags(row));
+    items.sort((a,b)=>(q.sort==='score-desc'?(Number(b.score || 0)-Number(a.score || 0)):q.sort==='date-asc'?date(a)-date(b):date(b)-date(a)) ||
+      (q.sort==='date-asc'?a.id-b.id:b.id-a.id) || (q.sort==='date-asc'?1:-1)*String(a._account_id || '').localeCompare(String(b._account_id || '')));
+    const data={...source.data,items,total:items.length,facets,next:''};
+    return {key,query:q,owner:owner(),pages:new Map([[0,data]]),cursors:new Map([[0,'']]),data,checked:source.checked,scroll:0};
+  }
   function trim(entry) {
     entries.delete(entry.key); entries.set(entry.key,entry);
     let count = [...entries.values()].reduce((n,e)=>n+rowsOf(e).length,0);
@@ -30070,6 +30100,7 @@ document.addEventListener('keydown', event => {
     const q=query(),key=keyOf(q),nav=mailboxNavigationRevision,token=++sequence,started=performance.now();
     if(current && current.key!==key)remember();
     let entry=entries.get(key);
+    if(!entry || entry.invalid){const derived=derive(q,key);if(derived){entry=derived;entries.set(key,entry);}}
     if(activeRequest && activeRequest.key!==key)activeRequest.controller?.abort();
     const usable=entry?.data && !entry.invalid;
     if(usable && !force){

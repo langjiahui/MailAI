@@ -134,8 +134,13 @@ def test_special_and_unified():
         with patch('app.web.routes.compose.extract_rich_body',side_effect=AssertionError('List reconstructed body')):
             result=mail_list.page({'special':'sent'})
             assert result['total']==2 and len(result['items'])==2
+            assert result['counts']['totals']['sent']==2
             assert 'data_base64' not in json.dumps(result) and 'HUGE BODY' not in json.dumps(result)
             assert mail_list.page({'special':'drafts'})['total']==1
+            receipt=db.create_sent_message({'from_addr':'me@example.test','to_addr':'recipient@example.test','subject':'Receipt without server copy','body_html':'<p>local</p>'})
+            db.finish_sent_message(receipt,ok=True,message_id='local-only@example.test')
+            for scope in ({'status':'inbox'},{'special':'sent'},{'special':'drafts'}):
+                assert mail_list.page(scope)['counts']['totals']['sent']==3
         other=dict(values,ACCOUNT_ID='other',DB_PATH=str(root/'other.db'),IMAP_USER='other@example.test')
         with use(other):db.init_db();seed(3)
         registry={'accounts':{key:{'db_path':v['DB_PATH'],'user':v['IMAP_USER']} for key,v in [('a',values),('b',other)]}}
