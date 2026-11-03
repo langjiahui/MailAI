@@ -36,6 +36,7 @@ const engine=process.env.MAILAI_BROWSER==='webkit'?webkit:chromium;
   await overlay.waitFor({state:'hidden'});assert.equal(await page.locator('#email-list .email-item').count(),1);
   const before=requests;
   await page.evaluate(id=>openAccountMailbox(id,'inbox'),work.id);
+  assert(await overlay.isHidden(),'A valid cached view must finish without a loading animation');
   await overlay.waitFor({state:'hidden'});
   assert.equal(requests,before,'Returning to an unchanged cached view reloaded metadata');
   assert.equal(await page.evaluate(()=>selectedEmailId),selected,'Cached view lost its selected message');

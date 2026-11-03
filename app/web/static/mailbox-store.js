@@ -140,7 +140,7 @@
     if(activeRequest && activeRequest.key!==key)activeRequest.controller?.abort();
     const usable=entry?.data && !entry.invalid;
     if(usable && !force){
-      paint(entry,{silent:true,restore:current?.key!==key});finishMailboxTransition(nav);trim(entry);
+      paint(entry,{silent:true,restore:current?.key!==key});finishMailboxTransition(nav,{immediate:true});trim(entry);
       if(Date.now()-entry.checked>30000)void refresh(entry,key,nav).catch(()=>{});
       return true;
     }

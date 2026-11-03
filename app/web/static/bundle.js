@@ -24896,10 +24896,18 @@ function beginMailboxTransition(revision, label) {
   overlay.style.height = `${list.clientHeight}px`;
 }
 
-function finishMailboxTransition(revision) {
+function finishMailboxTransition(revision, {immediate = false} = {}) {
   const overlay = document.getElementById('mailbox-transition');
   if (!overlay || overlay.hidden || overlay.dataset.revision !== String(revision)) return;
   clearTimeout(overlay._loadWatchdog);
+  if (immediate) {
+    clearTimeout(mailboxTransitionTimer);
+    overlay.hidden = true;
+    overlay.classList.remove('is-leaving');
+    document.getElementById('email-list')?.classList.remove('mailbox-entering');
+    document.querySelector('.list-pane')?.removeAttribute('aria-busy');
+    return;
+  }
   const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const remaining = reducedMotion ? 0 : Math.max(0, 140 - (performance.now() - mailboxTransitionStartedAt));
   mailboxTransitionTimer = setTimeout(() => {
@@ -30104,7 +30112,7 @@ document.addEventListener('keydown', event => {
     if(activeRequest && activeRequest.key!==key)activeRequest.controller?.abort();
     const usable=entry?.data && !entry.invalid;
     if(usable && !force){
-      paint(entry,{silent:true,restore:current?.key!==key});finishMailboxTransition(nav);trim(entry);
+      paint(entry,{silent:true,restore:current?.key!==key});finishMailboxTransition(nav,{immediate:true});trim(entry);
       if(Date.now()-entry.checked>30000)void refresh(entry,key,nav).catch(()=>{});
       return true;
     }
