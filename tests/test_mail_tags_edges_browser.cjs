@@ -10,6 +10,8 @@ const {chromium,webkit}=require('playwright');
   await page.goto('http://127.0.0.1:18806/?shell=macos');await page.locator('#app-preloader').waitFor({state:'detached'});
   await page.evaluate(()=>setI18nLanguage('zh-CN'));
   await page.locator('.sidebar-account-folders [data-account-action=inbox]').first().click();
+  await page.waitForFunction(()=>allEmails.length===200);
+  await page.locator('[data-mail-page=next]').click();
   await page.waitForFunction(()=>allEmails.length===325);
   const dialog=page.locator('#mail-tags-dialog');
   const labels=await page.evaluate(async()=>{
@@ -116,6 +118,11 @@ const {chromium,webkit}=require('playwright');
     return {owner,other,tag};
   });
   await page.locator('[data-account-action=unified]').click();
+  await page.waitForFunction(()=>unifiedMailbox && allEmails.length===200 && !document.querySelector('.list-pane').matches('[aria-busy=true]'));
+  for(const count of [400,600,650]){
+   await page.locator('[data-mail-page=next]').click();
+   await page.waitForFunction(size=>allEmails.length===size,count);
+  }
   await page.waitForFunction(()=>unifiedMailbox && allEmails.length===650);
   await page.evaluate(async id=>selectEmail(1,{accountId:id}),accounts.other);
   await page.locator('[data-edit-mail-tags]').click();

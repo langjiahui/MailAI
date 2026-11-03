@@ -400,6 +400,17 @@ def _initialize_db():
         initialize(c)
         from ..mail_search import initialize
         initialize(c)
+        from ..mail_list import initialize
+        initialize(c)
+        # A restored database can reuse revision values from an older snapshot.
+        # Drop process-only name caches whenever initialization/restore finishes.
+        from .contacts import _recipient_header_name_cache
+        for key in list(_recipient_header_name_cache):
+            if os.path.realpath(key[0]) == os.path.realpath(config.DB_PATH):
+                _recipient_header_name_cache.pop(key, None)
+        from ..mail_identities import _completed, _lock
+        with _lock:
+            _completed.pop(config.DB_PATH, None)
 
 
 def _run_migrations(c):

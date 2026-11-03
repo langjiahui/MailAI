@@ -4,7 +4,7 @@ const vm=require('node:vm');
 const assert=require('node:assert/strict');
 const path=require('node:path');
 const code=fs.readFileSync(path.join(__dirname,'../app/web/static/productivity.js'),'utf8');
-const start=code.indexOf('  window.mailaiProductivityFilter =');
+const start=code.indexOf('  window.mailaiProductivityQuery =');
 const end=code.indexOf('  window.mailaiProductivityTags =',start);
 const context={window:{},specialMailbox:'',mailboxNavigationRevision:1,owner:()=> 'a',updateWorkflowRows:()=>{},labels:{reply:'待回复'},state:{navigation:1,view:'reply',conversations:false,senders:new Map()}};
 vm.createContext(i18nContext(context));vm.runInContext(code.slice(start,end),context);

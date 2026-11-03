@@ -37,7 +37,7 @@ for (const facet of ['phishing', 'suspicious', 'clean', 'unreviewed']) {
   assert.doesNotMatch(mailboxBadgeRefresh, new RegExp(`${facet}:`),
     `Late mailbox-folder refresh must not overwrite the ${facet} count for the selected scope`);
 }
-assert.match(js, /function applyFilters\(\{silent = false\} = \{\}\)[\s\S]*mailVerdictKey\(e\) === verdict[\s\S]*renderCategoryNav\(list\)/,
+assert.match(js, /function applyFilters\(\{silent = false, paged = false\} = \{\}\)[\s\S]*mailVerdictKey\(e\) === verdict[\s\S]*renderCategoryNav\(list\)/,
   'Risk and category badges must be owned by the current filtered mailbox scope');
 
 console.log('Mail filters have clear semantics and a complete reset path');

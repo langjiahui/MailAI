@@ -69,6 +69,16 @@ def main():
                     db.upsert_email(dict(uid=100+n,from_addr='search@example.test',from_name='检索同事',to_addr=user,
                         subject=f'搜索闭环合同 {n+1}',body_text='合同线索和交付安排。',status='inbox',
                         date=(datetime.now()-timedelta(days=2 if n<25 else 45)).isoformat()))
+            if os.environ.get('MAILAI_MAIL_LIST_FIXTURE') == '1':
+                with db.conn() as connection:
+                    connection.executemany('''INSERT INTO emails(uid,from_addr,from_name,to_addr,subject,date,status,category,priority,is_read)
+                        VALUES(?,?,?,?,?,?,?,?,?,?)''', [
+                        (10000+n,'bulk@example.test','Bulk Sender',user,f'Bulk message {n:05d}',
+                         (datetime(2025,1,1)+timedelta(seconds=n)).isoformat(),'inbox','Old project' if n==0 else 'Bulk','高' if n==0 else '中',int(n%2==0))
+                        for n in range(5000)])
+                    connection.execute("INSERT INTO mail_tags(name,color) VALUES('Historical label','#548879')")
+                    connection.execute("INSERT INTO email_tags(email_id,tag_id) SELECT e.id,t.id FROM emails e,mail_tags t WHERE e.uid=10000 AND t.name='Historical label'")
+                    connection.execute("INSERT INTO emails(uid,from_addr,to_addr,subject,date,status) VALUES(90000,'archive@example.test',?,'Archive fixture','2024-01-01','local_archive')",(user,))
     registry['last_account'] = next(iter(registry['accounts']))
     system_settings._save_registry(registry)
     config.DB_PATH = registry['accounts'][registry['last_account']]['db_path']

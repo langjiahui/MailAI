@@ -114,6 +114,17 @@ def configure_runtime_logging() -> Path:
     logging.getLogger(__name__).info(
         "运行日志已启用: %s (Python %s)", log_path, platform.python_version()
     )
+    from .paths import APP_DIR
+    version = 'unknown'
+    for candidate in (APP_DIR / 'VERSION', Path(__file__).resolve().parent.parent / 'VERSION'):
+        try:
+            value = candidate.read_text(encoding='utf-8').strip()
+            if len(value)<30 and all(part.isdigit() for part in value.split('.')) and len(value.split('.'))==3:
+                version = value
+                break
+        except OSError:
+            pass
+    logging.getLogger(__name__).info('运行环境: MailAI %s; %s', version, platform.platform())
     return log_path
 
 

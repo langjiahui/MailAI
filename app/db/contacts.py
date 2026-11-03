@@ -19,27 +19,28 @@ def _contact_name_is_placeholder(name: str, address: str) -> bool:
     return not value or "@" in value or value in {normalized_address, local_part}
 
 
-def _recipient_header_display_names(c) -> dict[str, str]:
+def _recipient_header_display_names(c, *, allow_raw=True) -> dict[str, str]:
     """Build a revision-scoped address book from locally stored RFC822 headers."""
     database_path = next((row[2] for row in c.execute("PRAGMA database_list") if row[1] == "main"), config.DB_PATH)
-    revision = c.execute(
-        "SELECT COUNT(*),COALESCE(MAX(id),0),(SELECT value FROM mailbox_sequence WHERE id=1) "
-        "FROM emails WHERE remote_missing=0"
-    ).fetchone()
-    key = (database_path, int(revision[0]), int(revision[1]), int(revision[2]))
+    modern = bool(c.execute("SELECT 1 FROM sqlite_master WHERE name='mail_identity_cache'").fetchone())
+    revision = c.execute('SELECT value FROM mail_identity_revision WHERE id=1').fetchone()[0] if modern else tuple(c.execute(
+        'SELECT count(*),coalesce(max(id),0),(SELECT value FROM mailbox_sequence WHERE id=1) FROM emails WHERE remote_missing=0').fetchone())
+    key = (database_path, revision, allow_raw)
     cached = _recipient_header_name_cache.get(key)
     if cached is not None:
         return cached
     names: dict[str, str] = {}
     from ..parser import recipient_names_from_raw_path
     names_column = "recipient_names" if "recipient_names" in _columns_of(c, "emails") else "'' AS recipient_names"
-    if names_column.startswith("recipient_names"):
+    if names_column.startswith("recipient_names") and modern:
         rows = c.execute(
-            "SELECT recipient_names,raw_path FROM emails WHERE remote_missing=0 "
+            "SELECT CASE WHEN i.email_id IS NULL THEN e.recipient_names ELSE i.recipient_names END AS recipient_names,e.raw_path FROM emails e LEFT JOIN mail_identity_cache i ON i.email_id=e.id WHERE remote_missing=0 "
             "AND (trim(coalesce(raw_path,''))<>'' OR "
-            "trim(coalesce(recipient_names,'')) NOT IN ('','{}','[]')) "
-            "ORDER BY datetime(COALESCE(NULLIF(date,''),created_at)) DESC,id DESC"
+            "trim(coalesce(e.recipient_names,'')) NOT IN ('','{}','[]')) "
+            "ORDER BY datetime(COALESCE(NULLIF(date,''),created_at)) DESC,e.id DESC"
         ).fetchall()
+    elif names_column.startswith('recipient_names'):
+        rows = c.execute("SELECT recipient_names,raw_path FROM emails WHERE remote_missing=0 ORDER BY date DESC,id DESC").fetchall()
     else:
         rows = c.execute(
             f"SELECT {names_column},raw_path FROM emails WHERE remote_missing=0 "
@@ -53,7 +54,7 @@ def _recipient_header_display_names(c) -> dict[str, str]:
             pairs = {}
         if not isinstance(pairs, dict):
             pairs = {}
-        if not pairs or any(damaged_display_name(name) for name in pairs.values()):
+        if allow_raw and (not pairs or any(damaged_display_name(name) for name in pairs.values())):
             recovered = recipient_names_from_raw_path(row["raw_path"] or "")
             for address, name in recovered.items():
                 if (not pairs.get(address) or damaged_display_name(pairs[address])) and not damaged_display_name(name):
@@ -73,7 +74,7 @@ def _recipient_header_display_names(c) -> dict[str, str]:
     return names
 
 
-def contact_display_names(addresses, *, connection=None) -> dict[str, dict]:
+def contact_display_names(addresses, *, connection=None, allow_raw=True) -> dict[str, dict]:
     """Resolve exact email addresses to locally learned names without mutating mail."""
     wanted = {
         address.strip().casefold()
@@ -102,24 +103,27 @@ def contact_display_names(addresses, *, connection=None) -> dict[str, dict]:
             result[address] = {"name": name, "source": source}
 
     def resolve(c):
-        for address, name in _recipient_header_display_names(c).items():
+        modern = bool(c.execute("SELECT 1 FROM sqlite_master WHERE name='mail_identity_cache'").fetchone())
+        for address, name in _recipient_header_display_names(c, allow_raw=allow_raw).items():
             remember(address, name, "header", 30)
         # SQLite builds can have a low placeholder limit, so keep exact lookups bounded.
         values = sorted(wanted)
         for start in range(0, len(values), 400):
             batch = values[start:start + 400]
             marks = ",".join("?" for _ in batch)
+            source = 'emails e LEFT JOIN mail_identity_cache i ON i.email_id=e.id' if modern else 'emails e'
+            name = 'CASE WHEN i.email_id IS NULL THEN e.from_name ELSE i.sender_name END' if modern else 'e.from_name'
             rows = c.execute(
-                f"SELECT lower(from_addr) AS email,from_name,raw_path,date,id FROM emails "
+                f"SELECT lower(from_addr) AS email,{name} AS from_name,raw_path,date,e.id FROM {source} "
                 f"WHERE remote_missing=0 AND lower(from_addr) IN ({marks}) "
                 "AND trim(coalesce(from_name,''))<>'' "
-                "ORDER BY datetime(COALESCE(NULLIF(date,''),created_at)) DESC,id DESC",
+                "ORDER BY datetime(COALESCE(NULLIF(date,''),created_at)) DESC,e.id DESC",
                 batch,
             ).fetchall()
             for row in rows:
                 address = str(row["email"] or "").casefold()
                 name = row["from_name"]
-                if damaged_display_name(name):
+                if allow_raw and damaged_display_name(name):
                     from ..parser import sender_name_from_raw_path
                     name = sender_name_from_raw_path(row["raw_path"] or "", address) or name
                 remember(address, name, "history", 40)

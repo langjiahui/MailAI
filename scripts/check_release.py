@@ -60,6 +60,7 @@ TESTS = (
     'test_maturity_hardening.py', 'test_automatic_backup.py',
     'test_portable_backup.py',
     'test_mail_import.py',
+    'test_mail_list_loading.py',
     'test_release_hardening.py',
     'test_android_release.py',
     'test_ios_release.py',

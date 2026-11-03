@@ -12,7 +12,7 @@ const {chromium} = require('playwright');
     const accounts = await page.evaluate(() => _systemConfig.accounts.map(({id,user}) => ({id,user})));
     assert.equal(accounts.length, 2);
     assert(accounts.every(account => account.user.endsWith('@example.test')));
-    await page.route(/\/api\/emails\?/, async route => {
+    await page.route(/\/api\/mailbox\/list\?/, async route => {
       await new Promise(resolve => setTimeout(resolve, 350));
       await route.continue();
     });
@@ -50,6 +50,7 @@ const {chromium} = require('playwright');
     assert.equal(await page.locator('#email-list .email-item').count(), 12, 'Inbox rows must return after Trash');
     for (const theme of ['light','dark']) {
       await page.evaluate(theme => applyTheme(theme),theme);
+      await page.evaluate(()=>mailaiMailboxStore.invalidate());
       await inbox(accounts[1].id).click();
       await overlay.waitFor({state:'visible'});
       assert.equal(await overlay.evaluate(node => getComputedStyle(node).position), 'absolute');
@@ -63,6 +64,7 @@ const {chromium} = require('playwright');
     await page.evaluate(() => { _systemConfig.accounts = _systemConfig.accounts.filter(account => account.id === activeMailAccount()?.id); renderSidebarAccounts(); });
     await page.locator('#folder-nav .nav-item[data-filter="status"][data-value="trash"]').click();
     await overlay.waitFor({state:'hidden',timeout:15000});
+    await page.evaluate(()=>mailaiMailboxStore.invalidate());
     await page.locator('#folder-nav .nav-item[data-filter="status"][data-value="inbox"]').click();
     assert.equal(await page.locator('#folder-nav .nav-item[data-filter="status"][data-value="inbox"]').evaluate(node => node.classList.contains('active')), true,
       'folder selection should change on click while the mailbox request is pending');

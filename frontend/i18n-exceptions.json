@@ -1,5 +1,10 @@
 [
   {
+    "file": "mailbox-store.js",
+    "text": "未分类",
+    "reason": "Canonical stored category and facet key shared with SQLite; display labels are translated by the category renderer."
+  },
+  {
     "file": "app.js",
     "text": "服务器中已找不到这封邮件",
     "reason": "Match the raw backend error before translating its displayed message; the recovery branch must work in every UI language."
