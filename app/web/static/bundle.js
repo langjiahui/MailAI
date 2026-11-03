@@ -22238,15 +22238,17 @@ document.addEventListener('click', event => {
 
 function mailSummaryToolbarButton(e) {
   const expanded = localStorage.getItem('mailai-summary-expanded') === '1';
-  const title = e.summary ? (mailaiT('read.summaryTitle') || 'AI 摘要') : (mailaiT('read.previewTitle') || '正文预览');
-  return `<button type="button" class="reading-summary-control ${expanded ? 'is-active' : ''}" data-summary-toggle aria-expanded="${expanded}" aria-controls="primary-summary-reveal"><span data-i18n="${e.summary ? 'read.summaryTitle' : 'read.previewTitle'}">${title}</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button>`;
+  const hasSummary = Boolean(String(e.summary ?? '').trim());
+  const title = hasSummary ? (mailaiT('read.summaryTitle') || 'AI 摘要') : (mailaiT('read.previewTitle') || '正文预览');
+  return `<button type="button" class="reading-summary-control ${expanded ? 'is-active' : ''}" data-summary-toggle aria-expanded="${expanded}" aria-controls="primary-summary-reveal"><span data-i18n="${hasSummary ? 'read.summaryTitle' : 'read.previewTitle'}">${title}</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button>`;
 }
 
 function mailSummaryDisclosure(e, {drawer = false} = {}) {
   const expanded = localStorage.getItem('mailai-summary-expanded') === '1';
   const id = drawer ? 'drawer-summary-content' : 'primary-summary-content';
   const revealId = drawer ? 'drawer-summary-reveal' : 'primary-summary-reveal';
-  const title = e.summary ? (mailaiT('read.summaryTitle') || 'AI 摘要') : (mailaiT('read.previewTitle') || '正文预览');
+  const summary = String(e.summary ?? ''), snippet = String(e.snippet ?? '');
+  const title = summary.trim() ? (mailaiT('read.summaryTitle') || 'AI 摘要') : (mailaiT('read.previewTitle') || '正文预览');
   const quickMeta = drawer ? '' : `<div class="summary-quick-meta">
     ${e.category ? `<span>${esc(mailCategoryLabel(e.category))}</span>` : ''}
     ${e.priority ? `<span>${esc(mailPriorityLabel(e.priority))}</span>` : ''}
@@ -22258,7 +22260,7 @@ function mailSummaryDisclosure(e, {drawer = false} = {}) {
       <span class="summary-toggle-action"><span class="summary-expand-label">${mailaiT('common.expand') || '展开'}</span><span class="summary-collapse-label">${mailaiT('common.collapse') || '收起'}</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></span>
     </button>` : ''}
     <div id="${revealId}" class="summary-reveal" aria-hidden="${!expanded}" ${expanded ? '' : 'inert'}><div class="summary-reveal-inner">
-      ${quickMeta}<div id="${id}" class="markdown-body summary-box">${mdToHtml(e.summary || e.snippet || (mailaiT('read.noSummary') || '暂无摘要'))}</div>
+      ${quickMeta}<div id="${id}" class="markdown-body summary-box">${mdToHtml(summary.trim() ? summary : snippet.trim() ? snippet : (mailaiT('read.noSummary') || '暂无摘要'))}</div>
     </div></div>
   </section>`;
 }
@@ -22275,7 +22277,7 @@ function renderDigestEmailDetail(e) {
   const findings = renderFindings(e.findings);
   return `
     <div class="drawer-email-header">
-      <h2 class="reading-subject">${esc(e.subject)}</h2>
+      <h2 class="reading-subject">${esc(String(e.subject ?? '').trim() || mailaiText('（无主题）'))}</h2>
       <div class="reading-meta">
         <div class="meta-avatar">${(e.from_name || e.from_addr || '?').charAt(0).toUpperCase()}</div>
         <div class="meta-fields">
@@ -23457,7 +23459,7 @@ function mailPriorityLabel(p) {
 
 function renderSearchPreview(email) {
   const match = currentFilter.search && email.search_match;
-  if (!match) return esc((email.summary || email.snippet || '').slice(0, 120));
+  if (!match) return esc((String(email.summary ?? '').trim() || String(email.snippet ?? '').trim()).slice(0, 120));
   const labels = {get subject() { return mailaiText('主题匹配'); },get from_addr() { return mailaiText('发件人匹配'); },get from_name() { return mailaiText('发件人匹配'); },get summary() { return mailaiText('摘要匹配'); },get snippet() { return mailaiText('内容匹配'); },get body_text() { return mailaiText('正文匹配'); },get category() { return mailaiText('分类匹配'); },get semantic() { return mailaiText('相关邮件'); }};
   const text = String(match.text || '');
   const terms = currentFilter.search.toLowerCase().split(/\s+/).filter(Boolean);
@@ -23476,6 +23478,7 @@ function renderSearchPreview(email) {
 
 function renderEmailItem(e, idx = 0) {
   const risk = getRiskLabel(e.score, e.verdict, e);
+  const subject = String(e.subject ?? '').trim() || mailaiText('（无主题）');
   const selected = selectedEmailId === e.id && (!selectedEmailAccountId || e._account_id === selectedEmailAccountId) ? 'selected' : '';
   const bulkSelected = selectedMailIds.has(Number(e.id)) ? 'bulk-selected' : '';
   const hasAtt = e.attachments && e.attachments.length > 0;
@@ -23508,7 +23511,7 @@ function renderEmailItem(e, idx = 0) {
           <time class="email-date" ${date.iso?`datetime="${date.iso}"`:''} title="${esc(date.title)}">${esc(date.text)}</time>
         </div>
       </div>
-      <div class="email-subject">${esc(e.subject)}</div>
+      <div class="email-subject">${esc(subject)}</div>
       <div class="email-preview ${currentFilter.search && e.search_match ? 'search-match-preview' : ''}">${renderSearchPreview(e)}</div>
       <div class="email-tags">
         ${e.is_local_archive && e.folder?.startsWith('LOCAL_IMPORT/') ? `<span class="tag mail-import-origin" title="本地归档 / ${esc(e.folder.slice('LOCAL_IMPORT/'.length))}" data-i18n-title="ui.5b919f20e24b"><span data-i18n="ui.d8b9213d566b">归档 / ${esc(e.folder.slice('LOCAL_IMPORT/'.length))}</span></span>` : ''}
@@ -23574,7 +23577,7 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
     </div>` : '';
   pane.innerHTML = `<div class="special-mail-detail">
     <span class="eyebrow">${originLabel}</span>
-    <h1>${esc(row.subject || mailaiText('（无主题）'))}</h1>
+    <h1>${esc(String(row.subject ?? '').trim() || mailaiText('（无主题）'))}</h1>
     <div class="special-mail-meta"><b>${kind === 'drafts' ? mailaiText('收件人') : mailaiText('发送至')}：</b>${esc(recipients || mailaiText('尚未填写'))}<br><b><span data-i18n="ui.2bfff9580494">时间：</span></b>${esc(fmtDate(row.sent_at || row.updated_at || row.created_at))}</div>
     <div class="special-mail-actions">${kind === 'drafts' ? "<button class=\"action-btn action-primary compact\" id=\"btn-edit-special\"><svg viewBox=\"0 0 20 20\"><path d=\"m4 14.5-.5 2 2-.5L15 6.5 13.5 5 4 14.5ZM12 6.5l1.5 1.5\"/></svg><span data-i18n=\"ui.fd4b9e3b6c68\">继续编辑</span></button><button class=\"action-btn compact\" id=\"btn-delete-special\"><svg viewBox=\"0 0 20 20\"><path d=\"M4 6h12M8 6V4h4v2m-6 0 1 10h6l1-10M9 9v4m2-4v4\"/></svg><span data-i18n=\"ui.855f17276246\">舍弃草稿</span></button>" : failed ? "<button class=\"action-btn action-primary compact\" id=\"btn-edit-special\"><svg viewBox=\"0 0 20 20\"><path d=\"m4 14.5-.5 2 2-.5L15 6.5 13.5 5 4 14.5Z\"/></svg><span data-i18n=\"ui.1532ca4d4634\">重新编辑</span></button>" : (row._remote || ['sent','accepted'].includes(row.status)) ? "<button class=\"action-btn action-primary compact\" id=\"btn-edit-special\"><span data-i18n=\"ui.6b10f1cab097\">再次编辑</span></button>" : ''}</div>
     ${failed ? `<div class="special-mail-error"><b><span data-i18n="ui.48ef62f16b21">失败原因：</span></b>${esc(mailaiSystemMessage(row.error) || mailaiText('未知错误'))}</div>` : ''}
@@ -26203,7 +26206,7 @@ function renderReadingPane(e) {
             <em>${mailaiT('read.alertAction') || '查看安全依据'} <span aria-hidden="true">→</span></em>
           </button>` : ''}
         <div class="reading-heading-row">
-          <h2 class="reading-subject">${esc(e.subject)}</h2>
+          <h2 class="reading-subject">${esc(String(e.subject ?? '').trim() || mailaiText('（无主题）'))}</h2>
           <button type="button" class="security-result-trigger security-${risk.class} ${riskNeedsAttention ? 'needs-attention' : ''} ${risk.class === 'danger' && riskNeedsAttention ? 'risk-attention-intro' : ''}" aria-expanded="false" onclick="toggleSecurityAnalysis()" title="打开智能研判明细" data-i18n-title="ui.f4512bbf37ea">
             <span aria-hidden="true">${risk.class === 'danger' || risk.class === 'warn' ? '!' : risk.class === 'muted' ? '…' : '✓'}</span>
             <small data-i18n="read.securityResult">${mailaiT('read.securityResult') || '安全结果'}</small><b>${esc(risk.text)}</b><em>${riskScore}</em>
@@ -32102,6 +32105,7 @@ function mailTableHeader() {
 }
 
 function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, outgoing}) {
+  const subject = String(e.subject ?? '').trim() || mailaiText('无主题');
   // Local draft/sent adapters use from_addr for the counterpart, not the real sender.
   const senderAddress = e._kind ? (e._account_user || activeMailAccount()?.user || '') : e.from_addr || '';
   const sender = e._kind ? senderAddress : e.from_name || senderAddress || mailaiText('未知联系人');
@@ -32115,7 +32119,7 @@ function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, o
     data-id="${e.id}" data-account-id="${esc(e._account_id || '')}" data-read-state="${outgoing ? 'not-applicable' : unread ? 'unread' : 'read'}" tabindex="0" aria-selected="${bulkSelected ? 'true' : 'false'}">
     <span class="mail-table-sender" title="${esc(senderAddress && sender !== senderAddress ? `${sender} <${senderAddress}>` : sender)}">${esc(sender)}</span>
     <span class="mail-table-recipient" title="${esc(recipients)}">${esc(recipients || '—')}</span>
-    <span class="mail-table-subject" title="${esc([e.subject, chips, e.summary || e.snippet].filter(Boolean).join('\n'))}"><span>${esc(e.subject || mailaiText('无主题'))}</span>${e._conversationCount > 1 ? `<small> ${Number(e._conversationCount)}</small>` : ''}</span>
+    <span class="mail-table-subject" title="${esc([subject, chips, e.summary || e.snippet].filter(Boolean).join('\n'))}"><span>${esc(subject)}</span>${e._conversationCount > 1 ? `<small> ${Number(e._conversationCount)}</small>` : ''}</span>
     <time class="mail-table-date" title="${esc(dateText)}"><span class="mail-table-date-full">${dateText}</span><span class="mail-table-date-short">${dateText.length>5?dateText.slice(5):dateText}</span></time>
     ${currentFilter.search && e.search_match ? `<div class="mail-table-match">${renderSearchPreview(e)}</div>` : ''}
   </div>`;
