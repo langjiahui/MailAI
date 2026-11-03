@@ -589,19 +589,23 @@ body.companion-still .pet-item-art.pet-item-art[data-fitting-outfits] .pet-rewar
  .pet-settings .pet-setting-row .pet-switch,.pet-settings .pet-setting-row .pet-toggle {justify-self:start;}
 }
 
-/* A shared response for every clickable control, including text-only actions. */
-.pet-journal[data-pet-space] :is(button,summary) {transition:background-color .14s,box-shadow .14s,color .14s;}
-.pet-journal[data-pet-space] button:not(:disabled):active {box-shadow:inset 0 0 0 999px color-mix(in srgb,var(--pet-accent) 14%,transparent);}
+/* Quiet pointer feedback; outlines are reserved for keyboard navigation. */
+.pet-journal[data-pet-space] :is(button,summary) {transition:background-color .14s,color .14s;}
 .pet-journal[data-pet-space] :is(button,summary):focus-visible {outline:2px solid var(--pet-accent);outline-offset:3px;}
 @media (hover:hover) {
- .pet-journal[data-pet-space] :is(button:not(:disabled),summary):hover {background-image:linear-gradient(color-mix(in srgb,var(--pet-accent) 7%,transparent),color-mix(in srgb,var(--pet-accent) 7%,transparent))!important;box-shadow:0 0 0 2px color-mix(in srgb,var(--pet-accent) 18%,transparent);}
- .pet-journal[data-pet-space] .pet-toggle:hover .pet-switch-track {box-shadow:0 0 0 3px color-mix(in srgb,var(--pet-accent) 18%,transparent);}
+ .pet-journal[data-pet-space] :is(button:not(:disabled),summary):hover {background-image:linear-gradient(color-mix(in srgb,var(--pet-accent) 7%,transparent),color-mix(in srgb,var(--pet-accent) 7%,transparent))!important;box-shadow:none;}
+ .pet-journal[data-pet-space] :is(.pet-primary-nav,.pet-secondary-nav) button:not(:disabled):hover {background:none!important;color:var(--pet-accent);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:6px;}
+ .pet-journal[data-pet-space] .pet-primary-nav button[aria-pressed="true"]:hover {text-decoration:none;}
+ .pet-journal[data-pet-space] .pet-switch:not(:disabled):hover {background:none!important;}
+ .pet-journal[data-pet-space] :is(.pet-switch:not(:disabled):hover,.pet-toggle:hover) .pet-switch-track {background:color-mix(in srgb,var(--pet-accent) 40%,var(--pet-paper));}
+ .pet-journal[data-pet-space] :is(.pet-switch:is([aria-pressed="true"],[aria-checked="true"]):not(:disabled):hover .pet-switch-track,.pet-toggle:hover input:checked+.pet-switch-track) {background:color-mix(in srgb,var(--pet-accent) 88%,var(--pet-ink));}
 }
 @media (prefers-reduced-motion:reduce) {
  .pet-journal[data-pet-space] :is(button,summary,.pet-switch-track),
  .pet-journal[data-pet-space] .pet-switch-track::after {transition:none!important;}
 }
-.pet-journal[data-pet-space] button:not(:disabled):active {background-image:linear-gradient(color-mix(in srgb,var(--pet-accent) 16%,transparent),color-mix(in srgb,var(--pet-accent) 16%,transparent))!important;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--pet-accent) 40%,transparent);}
+.pet-journal[data-pet-space] button:not(:disabled):active {background-image:linear-gradient(color-mix(in srgb,var(--pet-accent) 16%,transparent),color-mix(in srgb,var(--pet-accent) 16%,transparent))!important;box-shadow:none;}
+.pet-journal[data-pet-space] :is(.pet-primary-nav button,.pet-secondary-nav button,.pet-switch):not(:disabled):active {background:none!important;opacity:.72;}
 .pet-journal[data-pet-space] .modern-close:hover {transform:none;}
 
 .pet-journal[data-pet-space] button {user-select:none;}
