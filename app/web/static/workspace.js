@@ -1250,7 +1250,14 @@ document.addEventListener('keydown', event => {
     const current = buttons.indexOf(document.activeElement);
     const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1
       : event.key === 'ArrowDown' ? (current + 1) % buttons.length : (current < 0 ? buttons.length - 1 : (current - 1 + buttons.length) % buttons.length);
-    buttons[next].focus();
+    // Native focus scrolling can move the reading pane horizontally after the
+    // disclosure has been clamped to the viewport. Scroll only its own panel.
+    buttons[next].focus({preventScroll:true});
+    const panel=more.querySelector('.reading-more-panel'),rect=buttons[next].getBoundingClientRect(),bounds=panel.getBoundingClientRect();
+    const scale=bounds.width/panel.offsetWidth || 1;
+    if(rect.bottom>bounds.bottom-6*scale)panel.scrollTop+=(rect.bottom-bounds.bottom)/scale+6;
+    else if(rect.top<bounds.top+6*scale)panel.scrollTop+=(rect.top-bounds.top)/scale-6;
+    positionReadingMorePanel(more);
   }
 });
 document.addEventListener('focusin', event => {
