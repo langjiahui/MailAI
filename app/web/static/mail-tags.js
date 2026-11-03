@@ -37,7 +37,7 @@
   mailaiBindUI(search,'@aria-label',()=>mailaiText('查找邮件标签'));
   mailaiBindUI(search,'placeholder',()=>mailaiText('查找标签…'));
   search.oninput=()=>{state.query=search.value.trim().toLocaleLowerCase();window.mailaiRenderMailTags(state.rows);};
-  window.mailaiRenderMailTags = rows => {
+  window.mailaiRenderMailTags = (rows, counts = null) => {
     state.rows=rows;
     group.hidden = Boolean(specialMailbox);
     const tags = new Map((isCurrent(state.account) ? state.tags : []).map(tag => [tag.name, {...tag, count:0}]));
@@ -45,6 +45,8 @@
       if (!tags.has(tag.name)) tags.set(tag.name, {...tag, count:0});
       tags.get(tag.name).count++;
     }
+    if(counts)for(const [name,count] of Object.entries(counts))tags.set(name,{...(tags.get(name) || {name,color:'#548879'}),count});
+    if(counts)for(const tag of tags.values())tag.count=counts[tag.name] || 0;
     for (const name of selected()) if (!tags.has(name)) tags.set(name, {name, color:'#548879', count:0});
     const scroll=nav.scrollTop, focus=nav.querySelector('button:focus')?.dataset.mailTag;
     search.hidden=tags.size<7 && !state.query;

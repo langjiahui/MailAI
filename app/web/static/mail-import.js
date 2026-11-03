@@ -27,6 +27,7 @@
   async function refreshImported() {
     if (!job?.imported) return;
     const target = accountId;
+    window.mailaiMailboxStore?.invalidate(target);
     await loadSystemConfig();
     if (target === activeMailAccount()?.id) await loadData({silent:true});
   }

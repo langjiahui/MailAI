@@ -12,6 +12,12 @@ const assert=require('node:assert/strict');
    return route.fulfill({json:{ok:true}});
  });
  let logged=false, available=false, verified=false, valid=false, saved=0;
+ // This scenario teaches the empty-mailbox path. Do not depend on a list
+ // accidentally remaining unloaded after the synthetic account connects.
+ await page.route('**/api/mailbox/list?*',async route=>{
+   const response=await route.fetch(),data=await response.json();
+   await route.fulfill({json:{...data,items:[],total:0,next:'',facets:{risk:{},categories:{},tags:{}},counts:{totals:{},local:{},all:0},domains:[]}});
+ });
  await page.route('**/api/system/config',async route=>{
    const response=await route.fetch(); const cfg=await response.json();
    assert.ok(cfg.accounts.every(a=>a.user.endsWith('@example.test')));

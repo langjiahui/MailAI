@@ -879,6 +879,27 @@
           "file": "tests/test_mailbox_transition_browser.cjs"
         }
       ]
+    },
+    {
+      "fixtures": [
+        {
+          "port": 18795,
+          "env": {
+            "MAILAI_MAIL_LIST_FIXTURE": "1"
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "tests/test_mailbox_store_browser.cjs"
+        },
+        {
+          "file": "tests/test_mailbox_store_browser.cjs",
+          "env": {
+            "MAILAI_BROWSER": "webkit"
+          }
+        }
+      ]
     }
   ],
   "mail-import": [

@@ -6,6 +6,7 @@ import bleach
 from typing import Literal
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
+from pydantic import BaseModel, Field
 
 from ... import db, pipeline, profiles, system_settings, threads
 from ...parser import extract_attachment, extract_inline_resource, extract_rich_body, cc_from_raw_path
@@ -14,6 +15,40 @@ from ..helpers import (annotate_list_identities, campaign_groups,
                        resolved_contact_name)
 
 router = APIRouter()
+
+
+class MailboxDiagnostic(BaseModel):
+    model_config = {'extra': 'forbid'}
+    stage: Literal['load','page','render','transition','page_error']
+    code: Literal['REQUEST_TIMEOUT','AbortError','TypeError','RangeError','Error','HTTP_ERROR']
+    milliseconds: int = Field(default=0, ge=0, le=300000)
+
+
+@router.post('/api/mailbox/list-diagnostic')
+def api_mailbox_diagnostic(payload: MailboxDiagnostic):
+    import logging
+    logging.getLogger(__name__).warning('Mailbox UI: stage=%s code=%s milliseconds=%d', payload.stage, payload.code, payload.milliseconds)
+    return {'ok': True}
+
+
+@router.get('/api/mailbox/list')
+def api_mailbox_list(filters: str = Query(default='{}', max_length=6000), cursor: str = Query(default='', max_length=16000), limit: int = Query(default=200, ge=1, le=200), refresh: bool = False, around_id: int = 0):
+    import json
+    from ...mail_list import page, StalePage
+    try:
+        return page(json.loads(filters), cursor=cursor, limit=limit, refresh=refresh, around_id=around_id)
+    except StalePage as exc:
+        raise HTTPException(409, str(exc), headers={'X-MailAI-List-Reset': '1'}) from exc
+    except (ValueError, TypeError, OverflowError) as exc:
+        raise HTTPException(400, '无效的列表筛选或分页位置') from exc
+
+
+@router.get('/api/mailbox/list-revision')
+def api_mailbox_list_revision(unified: bool = False):
+    from contextlib import ExitStack
+    from ...mail_list import _connections, _stamp
+    with ExitStack() as stack:
+        return {'revision': {account: _stamp(c) for account, _user, c in _connections(stack, {'unified': unified})}}
 
 _QUOTE_TAGS = ('p', 'div', 'span', 'br', 'b', 'strong', 'i', 'em', 'u', 's', 'ul',
                'ol', 'li', 'blockquote', 'pre', 'code', 'table', 'thead', 'tbody',
@@ -119,7 +154,16 @@ def api_email_detail(email_id: int):
             with db.conn() as connection:
                 connection.execute('UPDATE emails SET cc_addr=? WHERE id=? AND cc_addr IS NULL', (recovered_cc, email_id))
             row["cc_addr"] = recovered_cc
-    names = db.contact_display_names([row.get("from_addr"), row.get("to_addr"), row.get("cc_addr")])
+    names = db.contact_display_names([row.get("from_addr"), row.get("to_addr"), row.get("cc_addr")], allow_raw=False)
+    # Opening one legacy message may repair its own bounded header block, never
+    # every original in the account. Manual contact names stay authoritative.
+    from ...parser import recipient_names_from_raw_path, sender_name_from_raw_path
+    from ...mail_headers import damaged_display_name
+    for address, name in recipient_names_from_raw_path(row.get('raw_path') or '').items():
+        if address not in names and not damaged_display_name(name):
+            names[address] = {'name': name, 'source': 'header'}
+    if damaged_display_name(row.get('from_name')):
+        row['from_name'] = sender_name_from_raw_path(row.get('raw_path') or '', row.get('from_addr') or '') or row['from_name']
     resolved_name, _source = resolved_contact_name(row.get("from_addr"), row.get("from_name"), names)
     if resolved_name:
         row["from_name"] = resolved_name

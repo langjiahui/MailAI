@@ -1587,6 +1587,21 @@ if (typeof document !== 'undefined') {
 /* ---- i18n-catalog.js ---- */
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "mailList.more": ["显示更多", "Show more"],
+  "mailList.invalidFilters": ["无效的列表筛选条件", "Invalid mailbox filters"],
+  "mailList.longFilters": ["列表筛选条件过长", "Mailbox filters are too long"],
+  "mailList.invalidDates": ["无效的日期范围", "Invalid date range"],
+  "mailList.invalidOrder": ["无效的排序或标签筛选", "Invalid sort order or label filters"],
+  "mailList.invalidWorkflow": ["无效的处理状态", "Invalid workflow status"],
+  "mailList.upgradeAccount": ["请先打开此邮箱完成本地数据升级，再查看所有收件箱", "Open this account to upgrade its local data before viewing all inboxes"],
+  "mailList.invalidCursor": ["无效的列表分页位置", "Invalid mailbox page cursor"],
+  "mailList.invalidRequest": ["无效的列表筛选或分页位置", "Invalid mailbox filters or page cursor"],
+  "mailList.changed": ["邮件列表已更新，请重新载入当前列表", "The mailbox has changed. Reload this view"],
+  "mailList.newer": ["显示上一批", "Show previous batch"],
+  "mailList.latest": ["返回列表开头", "Back to the start"],
+  "mailList.pageFailed": ["继续加载失败，点击重试", "Could not load more. Select to retry"],
+  "mailList.refreshFailed": ["刷新失败，已保留当前邮件，请重试", "Refresh failed. Current messages are still available; please retry"],
+  "mailList.syncFailed": ["同步失败，仍可查看本地邮件", "Sync failed. Local messages are still available"],
   "pet.tryPieceNamed": ["试穿{0}", "Try {0}"],
   "pet.recordPrivacy": ["关于成长记录", "About growth records"],
   "pet.themeRoomTitle": ["工作区主题", "Workspace themes"],
@@ -20581,6 +20596,7 @@ function syncSelectedEmailVisual(id, {emphasize = false, scroll = false, account
 }
 
 function resetReadingPane() {
+  window.mailaiMailboxStore?.remember();
   window.mailaiAssistantSearch?.clearReader();
   readingTransition?.cancel();
   mailSelectionExplicit = false;
@@ -20636,6 +20652,7 @@ async function revealEmailFromSource(emailId) {
     if (requiresReload) await loadData();
     else applyFilters();
   }
+  if (window.mailaiMailboxStore?.supports()) await window.mailaiMailboxStore.reveal(Number(emailId));
   await selectEmail(Number(emailId), {emphasize:true, scroll:true});
   target = document.querySelector(`.email-item[data-id="${emailId}"]`);
   toast(target ? mailaiText('已定位到来源邮件') : mailaiText('来源邮件已打开'), 'success');
@@ -22355,6 +22372,10 @@ async function api(path, opts = {}) {
     throw failure;
   }
   const data = await res.json();
+  if (opts.method && /^\/api\/system\/mail\/(?:login|logout|account\/update)/.test(path)) window.mailaiMailboxStore?.invalidate();
+  if (opts.method && !['GET','HEAD'].includes(opts.method) && /^\/api\/(?:emails(?:\/|$)|mail\/(?:tags|tag-rules|bulk|send|outbox|undo|folders\/sync|client-imports)|drafts|productivity\/(?!search)|system\/(?:server-cleanup|backups\/.*restore|portable-backups\/restore))/.test(path)) {
+    window.mailaiMailboxStore?.invalidate(accountId);
+  }
   if (data.undo_token && typeof offerUndo === 'function') {
     const details = describeMailUndo(path, opts.body, data, accountId);
     const item = {token:data.undo_token, at:Date.now()};
@@ -22539,6 +22560,9 @@ async function loadMailPages(path, isCurrent = () => true, maxRows = Number.POSI
 }
 
 async function loadData({includeAncillary = true, silent = false} = {}) {
+  if (typeof window !== 'undefined' && window.mailaiMailboxStore?.supports()) {
+    return window.mailaiMailboxStore.load({silent});
+  }
   const revision = ++mailLoadRevision;
   const navigationRevision = mailboxNavigationRevision;
   const accountId = typeof activeMailAccount === 'function' ? activeMailAccount()?.id : '';
@@ -22694,8 +22718,8 @@ function updateFacetScopeLabels() {
   });
 }
 
-function renderCategoryNav(filteredRows) {
-  const cats = {};
+function renderCategoryNav(filteredRows, counts = null) {
+  const cats = counts || {};
   filteredRows.forEach(e => {
     const c = e.category || '未分类';
     cats[c] = (cats[c] || 0) + 1;
@@ -23102,7 +23126,8 @@ function hideDashboard() {
 }
 
 // ===== 筛选与排序 =====
-function applyFilters({silent = false} = {}) {
+function applyFilters({silent = false, paged = false} = {}) {
+  if (!paged && window.mailaiMailboxStore?.filterChanged()) return;
   renderMailSearchStatus();
   document.getElementById('list-footer').classList.toggle('hidden', Boolean(specialMailbox || currentFilter.search));
   for (const id of ['filter-priority','filter-domain']) document.getElementById(id).closest('label, fieldset')?.classList.toggle('hidden', Boolean(specialMailbox));
@@ -23128,7 +23153,7 @@ function applyFilters({silent = false} = {}) {
     return;
   }
   let list = [...(currentFilter.search && searchResults !== null ? searchResults : allEmails)];
-  list = window.mailaiProductivityFilter?.(list) || list;
+  if (!paged) list = window.mailaiProductivityFilter?.(list) || list;
 
   // 全局搜索返回完整历史；仍要遵守用户当前选择的时间范围。
   if (currentFilter.days !== 9999) {
@@ -23400,7 +23425,8 @@ function renderEmailList(emails, {silent = false} = {}) {
   });
   container.querySelector('[data-render-more-mail]')?.addEventListener('click', () => {
     mailRenderLimit += 240;
-    renderEmailList(emails);
+    if (window.mailaiMailboxStore?.supports()) window.mailaiMailboxStore.rendered();
+    else renderEmailList(emails);
   });
   if (silent) {
     container.scrollTop = scrollTop;
@@ -23505,8 +23531,10 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
   let row = suppliedRow || (currentFilter.search && searchResults?.find(x => x.id === id)) || (kind === 'drafts' ? savedDrafts.find(x => x.id === id) : sentMessages.find(x => x.id === id));
   if (!row) return;
   if ((!row._remote || row._search_summary) && !suppliedRow) {
+    const requestAccount = activeMailAccount()?.id, navigation = mailboxNavigationRevision;
     try {
-      const full = await api(row._remote ? `/api/emails/${row.remote_email_id}` : kind === 'drafts' ? `/api/drafts/${id}` : `/api/mail/sent/${id}`);
+      const full = await api(row._remote ? `/api/emails/${row.remote_email_id}` : kind === 'drafts' ? `/api/drafts/${id}` : `/api/mail/sent/${id}`, {accountId:requestAccount});
+      if (kind !== specialMailbox || requestAccount !== activeMailAccount()?.id || navigation !== mailboxNavigationRevision) return;
       row = {...row,...full,id,remote_email_id:row.remote_email_id,_remote:row._remote};
     } catch (error) {
       toast(mailaiText('加载邮件详情失败：') + mailaiSystemMessage(error.message), 'error');
@@ -24475,6 +24503,19 @@ async function refreshMailboxIfChanged(force = false) {
   const navigationRevision = mailboxNavigationRevision;
   mailboxRefreshInFlight = true;
   try {
+    if (typeof window !== 'undefined' && window.mailaiMailboxStore?.supports()) {
+      const result = await window.mailaiMailboxStore.heartbeat(force);
+      if (force || result?.changed || Date.now() - mailboxConfigCheckedAt >= 60000) {
+        mailboxConfigCheckedAt = Date.now();
+        const account = activeMailAccount()?.id;
+        const latest = await api('/api/system/config');
+        if (_systemConfig && account === activeMailAccount()?.id && latest.accounts) {
+          _systemConfig.accounts = latest.accounts.map(row => ({...row,active:row.id === account}));
+          renderSidebarAccounts();
+        }
+      }
+      return;
+    }
     const state = await api('/api/mailbox/revision');
     if (navigationRevision !== mailboxNavigationRevision || document.querySelector('.list-pane')?.getAttribute('aria-busy') === 'true') return;
     const changed = mailboxRevisionToken !== null && state.revision !== mailboxRevisionToken;
@@ -24833,6 +24874,14 @@ function beginMailboxTransition(revision, label) {
   clearTimeout(mailboxTransitionTimer);
   mailboxTransitionStartedAt = performance.now();
   overlay.dataset.revision = String(revision);
+  clearTimeout(overlay._loadWatchdog);
+  overlay._loadWatchdog = setTimeout(() => {
+    if (overlay.hidden || overlay.dataset.revision !== String(revision)) return;
+    window.mailaiMailboxStore?.report('transition', {code:'REQUEST_TIMEOUT'}, mailboxTransitionStartedAt);
+    finishMailboxTransition(revision);
+    if (!document.querySelector('#email-list .email-item')) showMailboxLoadFailure();
+    toast(mailaiText('加载数据失败：') + mailaiSystemMessage(mailaiT('common.timeout') || '请求超时，请稍后重试'), 'error');
+  }, 22000);
   document.getElementById('mailbox-transition-account').textContent = label;
   overlay.hidden = false;
   overlay.classList.remove('is-leaving');
@@ -24850,6 +24899,7 @@ function beginMailboxTransition(revision, label) {
 function finishMailboxTransition(revision) {
   const overlay = document.getElementById('mailbox-transition');
   if (!overlay || overlay.hidden || overlay.dataset.revision !== String(revision)) return;
+  clearTimeout(overlay._loadWatchdog);
   const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const remaining = reducedMotion ? 0 : Math.max(0, 140 - (performance.now() - mailboxTransitionStartedAt));
   mailboxTransitionTimer = setTimeout(() => {
@@ -27150,14 +27200,24 @@ document.addEventListener('keydown', event => {
   }
 });
 
-async function loadMailboxFolders({quiet = false} = {}) {
+async function loadMailboxFolders({quiet = false, force = false} = {}) {
   const accountId = activeMailAccount()?.id || '';
   if (mailboxFoldersAccountId !== accountId) {
     mailboxFolders = [];
     mailboxFoldersAccountId = accountId;
   }
   try {
-    const folders = await api('/api/mail/folders', {accountId});
+    const cache = loadMailboxFolders.cache ||= new Map();
+    let entry = cache.get(accountId);
+    if (!entry || force || Date.now() - entry.at > 60000) {
+      if (!entry?.pending) {
+        entry = {at:0, pending:api('/api/mail/folders', {accountId})};
+        cache.set(accountId, entry);
+        entry.pending.then(rows => { entry.rows=rows; entry.at=Date.now(); }, () => cache.delete(accountId)).finally(() => { entry.pending=null; });
+      }
+    }
+    const folders = entry.pending ? await entry.pending : entry.rows;
+    if (cache.size>12) cache.delete(cache.keys().next().value);
     if (accountId !== activeMailAccount()?.id) return false;
     mailboxFolders = folders;
     mailboxFoldersAccountId = accountId;
@@ -27204,11 +27264,15 @@ async function loadServerFolder(folder, {transitionRevision = 0} = {}) {
     ? (mailaiT('side.spam') || '垃圾邮件') : serverFolderForRole('quarantine')?.name === folder ? (mailaiT('side.quarantine') || '隔离区') : folder));
   document.getElementById('email-list').innerHTML = `<div class="email-empty"><div class="empty-text">${mailaiT('list.loadingFolder') || '正在同步服务端文件夹…'}</div></div>`;
   try {
-    const result = await api(`/api/mail/folders/sync?folder=${encodeURIComponent(folder)}`, {method:'POST'});
-    const rows = await loadMailPages(`/api/emails?days=9999&folder=${encodeURIComponent(folder)}`, isCurrent);
-    if (!isCurrent() || !rows) return;
-    allEmails = rows;
-    applyFilters(); toast(mailaiTemplate`${folder} 已同步 ${result.imported} 封`, 'success');
+    if (window.mailaiMailboxStore?.supports()) {
+      const loaded = await loadData({includeAncillary:false});
+      if (loaded === false && isCurrent()) showMailboxLoadFailure();
+      if (isCurrent()) void window.mailaiMailboxStore.syncFolder(folder);
+    } else {
+      const rows = await loadMailPages(`/api/emails?days=9999&folder=${encodeURIComponent(folder)}`, isCurrent);
+      if (!isCurrent() || !rows) return;
+      allEmails = rows; applyFilters();
+    }
   } catch (err) { if (isCurrent()) toast(mailaiText('文件夹同步失败：') + mailaiSystemMessage(err.message), 'error'); }
   finally { finishMailboxTransition(transitionRevision); }
 }
@@ -27218,7 +27282,7 @@ document.getElementById('server-folder-nav').addEventListener('click', event => 
 document.getElementById('btn-create-folder').addEventListener('click', async () => {
   const accountId = activeMailAccount()?.id;
   const name = (await mailaiAsk({get title() { return mailaiText('新建邮箱文件夹'); }, get label() { return mailaiText('文件夹名称'); }, get message() { return mailaiText('将在当前邮箱服务器创建，可在其他邮件客户端同步看到。'); }, value:'', get confirmText() { return mailaiText('创建文件夹'); }}))?.trim(); if (!name) return;
-  try { await api('/api/mail/folders', {accountId,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})}); toast(mailaiText('文件夹已创建'), 'success'); await loadMailboxFolders(); }
+  try { await api('/api/mail/folders', {accountId,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})}); toast(mailaiText('文件夹已创建'), 'success'); await loadMailboxFolders({force:true}); }
   catch (err) { toast(mailaiText('创建失败：') + mailaiSystemMessage(err.message), 'error'); }
 });
 
@@ -29386,7 +29450,8 @@ const initialLoad = loadSystemConfig().then(async cfg => {
   }
   setAppPreloaderCopy('app.preloaderLoading', mailaiText('正在载入邮箱数据'),
     'app.preloaderLoadingHint', mailaiText('小邮正在完成邮件初始化'));
-  await Promise.all([loadData(), loadMailboxFolders(), loadActionPolicy(), loadAssistantAlerts(), loadSignatures()]);
+  void Promise.allSettled([loadMailboxFolders(), loadActionPolicy(), loadAssistantAlerts(), loadSignatures()]);
+  await loadData();
   startMailboxAutoRefresh();
   window.mailOnboarding?.connected(false);
   api('/api/mail/send-capability').then(cap => { sendCapability = cap; }).catch(() => {});
@@ -29426,7 +29491,8 @@ document.getElementById('onboarding-form').addEventListener('submit', async e =>
     if (connectionResult.smtp_warning) toast(connectionResult.smtp_warning, 'warn');
     document.getElementById('onboarding-overlay').classList.add('hidden');
     await loadSystemConfig();
-    await Promise.all([loadData(), loadMailboxFolders(), loadActionPolicy(), loadAssistantAlerts()]);
+    void Promise.allSettled([loadMailboxFolders(), loadActionPolicy(), loadAssistantAlerts()]);
+    await loadData();
     startMailboxAutoRefresh();
     if (!assistantPollTimer) assistantPollTimer = setInterval(loadAssistantAlerts, 60000);
     startFetchMonitor();
@@ -29893,6 +29959,260 @@ document.addEventListener('keydown', event => {
   if (focus?.getClientRects().length) focus.focus({preventScroll:true});
   else if (!document.getElementById('compose-modal').contains(document.activeElement) || !document.activeElement.getClientRects().length) composeMessageElement().focus({preventScroll:true});
 }, true);
+
+;
+/* ---- mailbox-store.js ---- */
+/* Bounded account/query snapshots. Originals and server sync never block a view. */
+(() => {
+  const entries = new Map(), MAX_VIEWS = 12, MAX_ROWS = 4000, WINDOW_PAGES = 5;
+  let current = null, activeRequest = null, painting = false, sequence = 0;
+  let reportedAt=0;
+  let reporting=false;
+  function report(stage,error,started=performance.now()){
+    if(reporting || Date.now()-reportedAt<5000)return;reportedAt=Date.now();reporting=true;
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),5000);
+    const code=error?.code==='REQUEST_TIMEOUT'?'REQUEST_TIMEOUT':error?.status?'HTTP_ERROR':['AbortError','TypeError','RangeError'].includes(error?.name)?error.name:'Error';
+    void fetch('/api/mailbox/list-diagnostic',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json',...(owner()?{'X-MailAI-Account':owner()}:{})},
+      body:JSON.stringify({stage,code,milliseconds:Math.min(300000,Math.max(0,Math.round(performance.now()-started)))})}).catch(()=>{}).finally(()=>{clearTimeout(timer);reporting=false;});
+  }
+  const owner = () => activeMailAccount()?.id || '';
+  const workflow = () => window.mailaiProductivityQuery?.() || {workflow:'all'};
+  const supports = () => !currentFilter.search;
+  const query = () => ({status:currentFilter.status || '',folder:currentServerFolder || '',days:currentFilter.days || 9999,
+    verdict:currentFilter.verdict || '',category:currentFilter.category || '',priority:currentFilter.priority || '',
+    domain:currentFilter.domain || '',unread:Boolean(currentFilter.unread),attachments:Boolean(currentFilter.attachments),
+    tags:[...(currentFilter.mailTags || [])].sort(),tag_mode:currentFilter.mailTagMode || 'any',sort:currentFilter.sort || 'date-desc',
+    workflow:specialMailbox?'all':workflow().workflow || 'all',unified:Boolean(unifiedMailbox),special:specialMailbox || '',conversations:Boolean(!specialMailbox && workflow().conversations)});
+  const keyOf = q => JSON.stringify([owner(),q]);
+  const rowKey = row => `${row._account_id || ''}:${row.id}`;
+  const rowsOf = entry => [...entry.pages].sort((a,b)=>a[0]-b[0]).flatMap(([,page])=>page.items);
+  const live = (key,nav) => supports() && keyOf(query())===key && mailboxNavigationRevision===nav;
+  function trim(entry) {
+    entries.delete(entry.key); entries.set(entry.key,entry);
+    let count = [...entries.values()].reduce((n,e)=>n+rowsOf(e).length,0);
+    for (const [key,value] of entries) {
+      if(entries.size<=MAX_VIEWS && count<=MAX_ROWS)break;
+      if(value===entry)continue;
+      count-=rowsOf(value).length;value.controller?.abort();entries.delete(key);
+    }
+  }
+  function remember() {
+    if(!current || current.owner!==owner())return;
+    current.scroll=document.getElementById('email-list')?.scrollTop || 0;
+    current.renderLimit=mailRenderLimit;
+    const detail=selectedEmailDetail;
+    // Keep one bounded reading snapshot per cached view, not attachment bytes.
+    if(detail)current.reading=String(detail.body_html || '').length+String(detail.body_text || '').length<500000
+      ? {id:selectedEmailId,account:selectedEmailAccountId,owner:owner(),detail} : null;
+  }
+  function paint(entry,{silent=true,restore=false}={}) {
+    painting=true;
+    try {
+      current=entry;const rows=rowsOf(entry);mailboxLocalCounts=entry.data.counts;
+      if(entry.query.special==='sent')sentMessages=rows;
+      else if(entry.query.special==='drafts')savedDrafts=rows;
+      else allEmails=rows;
+      if(restore)mailRenderLimit=entry.renderLimit || 240;
+      updateSidebar();
+      const domain=document.getElementById('filter-domain');
+      if(domain){
+        const chosen=currentFilter.domain;
+        const names=[...new Set([...entry.data.domains,...(chosen?[chosen]:[])])].sort();
+        domain.innerHTML=`<option value="" data-i18n="ui.790b4b3e9a17">${esc(mailaiT('ui.790b4b3e9a17') || '不限域名')}</option>`+
+          names.map(name=>`<option value="${esc(name)}">${esc(name)}</option>`).join('');domain.value=chosen;
+      }
+      applyFilters({silent,paged:true});
+      if(!entry.query.special){
+        renderCategoryNav([],entry.data.facets.categories);
+        window.mailaiRenderMailTags?.(rows,entry.data.facets.tags);
+        for(const risk of ['phishing','suspicious','clean','unreviewed']){
+          const node=document.getElementById('count-'+risk);if(node)node.textContent=entry.data.facets.risk[risk] || 0;
+        }
+        updateListTitle(entry.data.total);
+      }else{
+        const unit=entry.query.special==='drafts'?(mailaiT('list.countDraft') || ' 封草稿'):(mailaiT('list.countMail') || ' 封');
+        document.getElementById('list-count').textContent=entry.data.total+unit;
+      }
+      const list=document.getElementById('email-list');
+      list.querySelectorAll('[data-mail-page]').forEach(node=>node.remove());
+      const indices=[...entry.pages.keys()].sort((a,b)=>a-b),first=indices[0],last=indices.at(-1);
+      function button(text,action,atStart=false){
+        const node=document.createElement('button');node.type='button';node.className='email-render-more';node.dataset.mailPage=action;
+        const source=mailaiCopySource(text);mailaiBindUI(node,'textContent',()=>mailaiText(source));node.onclick=()=>navigate(entry,action);
+        atStart?list.prepend(node):list.append(node);
+      }
+      if(first>0 || entry.anchor){button(mailaiText('返回列表开头'),'first',true);if(first>0 && entry.cursors.has(first-1))button(mailaiText('显示上一批'),'previous',true);}
+      if(entry.pages.get(last)?.next && rows.length<=mailRenderLimit)button(mailaiText('显示更多'),'next');
+      if(entry.error)button(mailaiText('继续加载失败，点击重试'),'next');
+      if(restore){
+        list.scrollTop=entry.scroll || 0;
+        const reading=entry.reading;
+        if(reading && reading.owner===entry.owner && allEmails.some(row=>row.id===reading.id && (!row._account_id || row._account_id===reading.account))){
+          selectedEmailId=reading.id;selectedEmailAccountId=reading.account;selectedEmailDetail=reading.detail;
+          document.querySelector('.reading-pane')?.classList.add('show');renderReadingPane(reading.detail);syncSelectedEmailVisual(reading.id,{accountId:reading.account});
+        }
+      }
+    } finally {painting=false;}
+  }
+  async function fetchPage(entry,index,cursor,signal){
+    const result=await api('/api/mailbox/list?filters='+encodeURIComponent(JSON.stringify(entry.query))+'&cursor='+encodeURIComponent(cursor || ''),
+      {accountId:entry.owner,signal});
+    // Reuse unchanged objects so local read/star state and selection stay stable.
+    const known=new Map(rowsOf(entry).map(row=>[rowKey(row),row]));
+    result.items=result.items.map(row=>{const previous=known.get(rowKey(row));return previous && JSON.stringify(previous)===JSON.stringify(row)?previous:row;});
+    entry.pages.set(index,result);entry.cursors.set(index,cursor || '');
+    if(result.next)entry.cursors.set(index+1,result.next);
+    entry.data=result;entry.invalid=false;entry.error=false;entry.checked=Date.now();
+    trim(entry);return result;
+  }
+  async function load({silent=false,force=false}={}) {
+    if(!supports())return null;
+    const q=query(),key=keyOf(q),nav=mailboxNavigationRevision,token=++sequence,started=performance.now();
+    if(current && current.key!==key)remember();
+    let entry=entries.get(key);
+    if(activeRequest && activeRequest.key!==key)activeRequest.controller?.abort();
+    const usable=entry?.data && !entry.invalid;
+    if(usable && !force){
+      paint(entry,{silent:true,restore:current?.key!==key});finishMailboxTransition(nav);trim(entry);
+      if(Date.now()-entry.checked>30000)void refresh(entry,key,nav).catch(()=>{});
+      return true;
+    }
+    if(!entry){entry={key,query:q,owner:owner(),pages:new Map(),cursors:new Map([[0,'']]),scroll:0};entries.set(key,entry);}
+    const old=current?.key===key && entry.data;
+    if(old && entry.invalid && !force){await refreshWindow(entry,key,nav);finishMailboxTransition(nav);return true;}
+    if(!old && !silent)document.getElementById('email-list').innerHTML=skeletonRows();
+    try {
+      if(!entry.pending){
+        entry.controller=new AbortController();activeRequest=entry;
+        entry.pending=(async()=>{
+          const response=await api('/api/mailbox/list?filters='+encodeURIComponent(JSON.stringify(q)),{accountId:entry.owner,signal:entry.controller.signal});
+          entry.pages=new Map([[0,response]]);entry.cursors=new Map([[0,''],[1,response.next]]);
+          entry.data=response;entry.invalid=false;entry.error=false;entry.checked=Date.now();trim(entry);
+        })().finally(()=>{entry.pending=null;if(activeRequest===entry)activeRequest=null;});
+      }
+      await entry.pending;
+      if(!live(key,nav))return null;
+      const scroll=old?document.getElementById('email-list').scrollTop:0;
+      paint(entry,{silent:Boolean(old) || silent});if(old)document.getElementById('email-list').scrollTop=scroll;
+      finishMailboxTransition(nav);
+      // These catalogues have their own failure and stale-response handling.
+      void window.mailaiRefreshTags?.(entry.owner).then(()=>{if(live(key,nav))paint(entry);}).catch(()=>{});
+      return true;
+    }catch(error){
+      if(!live(key,nav) || error.name==='AbortError')return null;
+      report('load',error,started);
+      if(old){paint(entry);toast(mailaiText('刷新失败，已保留当前邮件，请重试'),'warn');}
+      else {showMailboxLoadFailure();toast(mailaiText('加载数据失败：')+mailaiSystemMessage(error.message),'error');}
+      return Boolean(old);
+    }finally{if(token===sequence && live(key,nav))finishMailboxTransition(nav);}
+  }
+  async function refresh(entry,key,nav){
+    const state=await api('/api/mailbox/list-revision?unified='+entry.query.unified,{accountId:entry.owner});
+    entry.checked=Date.now();
+    if(JSON.stringify(state.revision)===JSON.stringify(entry.data.revision))return false;
+    for(const candidate of entries.values())if(candidate.owner===entry.owner || candidate.query.unified){candidate.invalid=true;candidate.reading=null;}
+    if(live(key,nav))await refreshWindow(entry,key,nav);
+    return true;
+  }
+  async function refreshWindow(entry,key,nav,fromPaging=false){
+    if(entry.paging && !fromPaging){entry.refreshAfterPage=true;return;}
+    if(entry.refreshing)return entry.refreshing;
+    entry.refreshing=(async()=>{
+      const indices=[...entry.pages.keys()].sort((a,b)=>a-b);
+      const first=indices[0],pages=new Map(),cursors=new Map(entry.cursors);
+      let cursor=entry.cursors.get(first) || '',data;
+      for(let offset=0;offset<indices.length;offset++){
+        data=await api('/api/mailbox/list?filters='+encodeURIComponent(JSON.stringify(entry.query))+'&cursor='+encodeURIComponent(cursor)+'&refresh='+(offset===0)+(!cursor && entry.anchor?'&around_id='+entry.anchor:''),{accountId:entry.owner});
+        pages.set(first+offset,data);cursors.set(first+offset,cursor);cursors.set(first+offset+1,data.next);
+        cursor=data.next;if(!cursor)break;
+      }
+      if(!live(key,nav))return;
+      const list=document.getElementById('email-list'),bounds=list.getBoundingClientRect();
+      const anchor=[...list.querySelectorAll('.email-item')].find(node=>node.getBoundingClientRect().bottom>bounds.top);
+      const anchorKey=anchor?`${anchor.dataset.accountId || ''}:${anchor.dataset.id}`:'',top=anchor?.getBoundingClientRect().top;
+      entry.pages=pages;entry.cursors=cursors;entry.data=data;entry.invalid=false;entry.checked=Date.now();
+      paint(entry);
+      const retained=[...list.querySelectorAll('.email-item')].find(node=>`${node.dataset.accountId || ''}:${node.dataset.id}`===anchorKey);
+      if(retained && top!==undefined)list.scrollTop+=retained.getBoundingClientRect().top-top;
+    })().catch(error=>{if(live(key,nav)){report('page',error);toast(mailaiText('刷新失败，已保留当前邮件，请重试'),'warn');}}).finally(()=>{entry.refreshing=null;});
+    return entry.refreshing;
+  }
+  async function navigate(entry,action,retried=false){
+    const key=entry.key,nav=mailboxNavigationRevision;
+    if(!live(key,nav) || entry.paging || entry.refreshing)return;
+    const indices=[...entry.pages.keys()].sort((a,b)=>a-b),first=indices[0],last=indices.at(-1);
+    const index=action==='first'?0:action==='previous'?first-1:last+1;
+    entry.paging=true;
+    const buttons=[...document.querySelectorAll('[data-mail-page]')];buttons.forEach(node=>node.disabled=true);
+    const list=document.getElementById('email-list'),anchor=[...list.querySelectorAll('.email-item')].find(node=>node.getBoundingClientRect().bottom>list.getBoundingClientRect().top);
+    const anchorKey=anchor?`${anchor.dataset.accountId || ''}:${anchor.dataset.id}`:'',top=anchor?.getBoundingClientRect().top;
+    try{
+      if(action==='first'){entry.anchor=0;await load({silent:true,force:true});list.scrollTop=0;return;}
+      await fetchPage(entry,index,entry.cursors.get(index),undefined);
+      while(entry.pages.size>WINDOW_PAGES){const keys=[...entry.pages.keys()].sort((a,b)=>a-b);entry.pages.delete(action==='previous'?keys.at(-1):keys[0]);}
+      if(entry.cursors.size>512)entry.cursors.delete([...entry.cursors.keys()].sort((a,b)=>a-b)[1]);
+      if(!live(key,nav))return;
+      mailRenderLimit=rowsOf(entry).length;paint(entry);
+      const retained=[...list.querySelectorAll('.email-item')].find(node=>`${node.dataset.accountId || ''}:${node.dataset.id}`===anchorKey);
+      if(retained && top!==undefined)list.scrollTop+=retained.getBoundingClientRect().top-top;
+    }catch(error){
+      if(!live(key,nav))return;
+      report('page',error);
+      if(error.status===409){
+        entry.invalid=true;await refreshWindow(entry,key,nav,true);
+        if(!retried && !entry.invalid && live(key,nav)){entry.paging=false;await navigate(entry,action,true);}
+        else if(live(key,nav)){entry.error=true;paint(entry);}
+      }
+      else {entry.error=true;paint(entry);toast(mailaiText('继续加载失败，点击重试'),'warn');}
+    }finally{
+      entry.paging=false;buttons.forEach(node=>{if(node.isConnected)node.disabled=false;});
+      if(entry.refreshAfterPage && live(key,nav)){entry.refreshAfterPage=false;void refresh(entry,key,nav).catch(()=>{});}
+    }
+  }
+  function filterChanged(){
+    if(painting || !supports())return false;
+    if(current && current.key===keyOf(query()) && !current.invalid){paint(current);return true;}
+    void load();return true;
+  }
+  function invalidate(account){
+    for(const entry of entries.values())if(!account || entry.owner===account || entry.query.unified){entry.invalid=true;entry.reading=null;}
+  }
+  const folderSync=new Map();
+  window.mailaiMailboxStore={supports,load,filterChanged,remember,invalidate,
+    report,
+    async reveal(id){
+      if(!supports() || !current || current.query.unified || current.query.special)return;
+      if(rowsOf(current).some(row=>row.id===id))return;
+      const entry=current,key=entry.key,nav=mailboxNavigationRevision;
+      const data=await api('/api/mailbox/list?filters='+encodeURIComponent(JSON.stringify(entry.query))+'&around_id='+id,{accountId:entry.owner});
+      if(!live(key,nav))return;
+      entry.anchor=id;entry.pages=new Map([[0,data]]);entry.cursors=new Map([[0,''],[1,data.next]]);entry.data=data;entry.invalid=false;
+      paint(entry,{silent:false});trim(entry);
+    },
+    async syncFolder(folder){
+      const account=owner(),key=account+':'+folder,previous=folderSync.get(key);
+      if(previous && (previous.pending || Date.now()-previous.at<60000))return;
+      const entry={pending:true,at:Date.now()};folderSync.set(key,entry);
+      try{
+        await api('/api/mail/folders/sync?folder='+encodeURIComponent(folder),{accountId:account,method:'POST'});
+        invalidate(account);
+        if(owner()===account && currentServerFolder===folder)await load({silent:true,force:true});
+      }catch(error){if(owner()===account && currentServerFolder===folder)toast(mailaiText('同步失败，仍可查看本地邮件'),'warn');}
+      finally{entry.pending=false;entry.at=Date.now();if(folderSync.size>24)folderSync.delete(folderSync.keys().next().value);}
+    },
+    async heartbeat(force=false){
+      if(!supports() || !current)return false;
+      let changed=true;
+      if(force){invalidate(owner());await refreshWindow(current,current.key,mailboxNavigationRevision);}
+      else changed=await refresh(current,current.key,mailboxNavigationRevision);
+      return {changed:Boolean(changed)};
+    },
+    rendered(){if(current && supports() && current.key===keyOf(query()) && !painting)paint(current);},
+    // Aggregate counters only; no mail text is exposed to diagnostics.
+    diagnostics:()=>({views:entries.size,rows:[...entries.values()].reduce((n,e)=>n+rowsOf(e).length,0),window:current?rowsOf(current).length:0})};
+  window.addEventListener('error',event=>{if(current)report('page_error',event.error);});
+  window.addEventListener('unhandledrejection',event=>{if(current)report('page_error',event.reason);});
+})();
 
 ;
 /* ---- reading-start.js ---- */
@@ -36916,13 +37236,17 @@ function mailCardDate(value, now = new Date()) {
       decorateReading();
     }
   }
-  window.mailaiProductivityFilter = (rows) => {
+  window.mailaiProductivityQuery = () => {
     if (state.navigation !== mailboxNavigationRevision) {
       state.navigation = mailboxNavigationRevision;
       state.view = "all";
       const select = document.getElementById('productivity-workflow-filter');
       if (select) select.value = 'all';
     }
+    return {workflow:state.view,conversations:state.conversations};
+  };
+  window.mailaiProductivityFilter = (rows) => {
+    window.mailaiProductivityQuery();
     if (specialMailbox) return rows;
     let result = rows;
     if (state.view === "focus")
@@ -36955,7 +37279,7 @@ function mailCardDate(value, now = new Date()) {
     }
     return [...groups.values()].map((group) => ({
       ...group[0],
-      _conversationCount: group.length,
+      _conversationCount: group.reduce((count,row)=>count+(row._conversationCount || 1),0),
     }));
   };
   window.mailaiProductivityTitle = (title) =>
@@ -39796,6 +40120,7 @@ function mailCardDate(value, now = new Date()) {
   async function refreshImported() {
     if (!job?.imported) return;
     const target = accountId;
+    window.mailaiMailboxStore?.invalidate(target);
     await loadSystemConfig();
     if (target === activeMailAccount()?.id) await loadData({silent:true});
   }
@@ -41016,7 +41341,7 @@ function mailCardDate(value, now = new Date()) {
   mailaiBindUI(search,'@aria-label',()=>mailaiText('查找邮件标签'));
   mailaiBindUI(search,'placeholder',()=>mailaiText('查找标签…'));
   search.oninput=()=>{state.query=search.value.trim().toLocaleLowerCase();window.mailaiRenderMailTags(state.rows);};
-  window.mailaiRenderMailTags = rows => {
+  window.mailaiRenderMailTags = (rows, counts = null) => {
     state.rows=rows;
     group.hidden = Boolean(specialMailbox);
     const tags = new Map((isCurrent(state.account) ? state.tags : []).map(tag => [tag.name, {...tag, count:0}]));
@@ -41024,6 +41349,8 @@ function mailCardDate(value, now = new Date()) {
       if (!tags.has(tag.name)) tags.set(tag.name, {...tag, count:0});
       tags.get(tag.name).count++;
     }
+    if(counts)for(const [name,count] of Object.entries(counts))tags.set(name,{...(tags.get(name) || {name,color:'#548879'}),count});
+    if(counts)for(const tag of tags.values())tag.count=counts[tag.name] || 0;
     for (const name of selected()) if (!tags.has(name)) tags.set(name, {name, color:'#548879', count:0});
     const scroll=nav.scrollTop, focus=nav.querySelector('button:focus')?.dataset.mailTag;
     search.hidden=tags.size<7 && !state.query;

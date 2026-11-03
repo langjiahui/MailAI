@@ -575,5 +575,14 @@
     "env": {
       "MAILAI_BROWSER": "webkit"
     }
+  },
+  {
+    "file": "tests/test_mailbox_store_browser.cjs"
+  },
+  {
+    "file": "tests/test_mailbox_store_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
   }
 ]

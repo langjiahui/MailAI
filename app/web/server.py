@@ -7,6 +7,7 @@
 import logging
 import os
 import json
+import time
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, Response
@@ -35,6 +36,24 @@ log = logging.getLogger(__name__)
 app = FastAPI(title="MailAI", docs_url=None, redoc_url=None)
 app.add_middleware(AccountGuardMiddleware)
 app.add_middleware(LocalOriginMiddleware)
+
+
+@app.middleware('http')
+async def mailbox_request_timing(request, call_next):
+    path = request.url.path
+    observed = path in {'/api/mailbox/list','/api/mailbox/list-revision','/api/emails','/api/mail/sent','/api/drafts','/api/mail/folders'}
+    started = time.monotonic()
+    try:
+        response = await call_next(request)
+    except Exception as exc:
+        if observed:
+            log.error('Mailbox request failed: route=%s type=%s seconds=%.2f', path, type(exc).__name__, time.monotonic()-started)
+        raise
+    elapsed = time.monotonic()-started
+    if observed and (elapsed>=1 or response.status_code>=400):
+        # Never include filters, account identities, subjects or error payloads.
+        log.warning('Mailbox request: route=%s status=%d seconds=%.2f',path,response.status_code,elapsed)
+    return response
 _STATIC = os.path.join(os.path.dirname(__file__), "static")
 
 app.mount("/static", StaticFiles(directory=_STATIC), name="static")

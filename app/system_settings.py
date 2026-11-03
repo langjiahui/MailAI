@@ -375,7 +375,7 @@ def list_unified_inbox(days: int = 9999, limit: int = 1000, offset: int = 0, q: 
                 contact_names = db.contact_display_names(
                     [value for message in decoded_rows
                      for value in (message.get("from_addr"), message.get("to_addr")) if value],
-                    connection=connection,
+                    connection=connection, allow_raw=False,
                 )
         except (OSError, sqlite3.Error):
             continue

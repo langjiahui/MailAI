@@ -80,11 +80,11 @@ def resolved_contact_name(address: str, current_name: str, names: dict[str, dict
     return current, "message" if current else ""
 
 
-def annotate_list_identity(item: dict, names: dict[str, dict] | None = None) -> None:
+def annotate_list_identity(item: dict, names: dict[str, dict] | None = None, *, current_user=None) -> None:
     """Describe the user's role and the useful counterparty for compact list rows."""
     names = names or {}
     sender = str(item.get("from_addr") or "").strip().casefold()
-    current = str(config.IMAP_USER or "").strip().casefold()
+    current = str(config.IMAP_USER if current_user is None else current_user or "").strip().casefold()
     outgoing = bool(current and sender == current) or item.get("status") in ("sent", "draft")
     if outgoing:
         recipients = [(name.strip(), address.strip()) for name, address in getaddresses(
@@ -118,7 +118,7 @@ def annotate_list_identities(items: list[dict]) -> None:
         value for item in items
         for value in (item.get("from_addr"), item.get("to_addr"), item.get("cc_addr"), item.get("bcc_addr"))
         if value
-    ])
+    ], allow_raw=False)
     for item in items:
         annotate_list_identity(item, names)
 

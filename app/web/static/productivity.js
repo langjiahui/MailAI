@@ -226,13 +226,17 @@
       decorateReading();
     }
   }
-  window.mailaiProductivityFilter = (rows) => {
+  window.mailaiProductivityQuery = () => {
     if (state.navigation !== mailboxNavigationRevision) {
       state.navigation = mailboxNavigationRevision;
       state.view = "all";
       const select = document.getElementById('productivity-workflow-filter');
       if (select) select.value = 'all';
     }
+    return {workflow:state.view,conversations:state.conversations};
+  };
+  window.mailaiProductivityFilter = (rows) => {
+    window.mailaiProductivityQuery();
     if (specialMailbox) return rows;
     let result = rows;
     if (state.view === "focus")
@@ -265,7 +269,7 @@
     }
     return [...groups.values()].map((group) => ({
       ...group[0],
-      _conversationCount: group.length,
+      _conversationCount: group.reduce((count,row)=>count+(row._conversationCount || 1),0),
     }));
   };
   window.mailaiProductivityTitle = (title) =>
