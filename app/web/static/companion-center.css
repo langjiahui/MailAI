@@ -799,8 +799,7 @@ dialog.pet-journal[data-pet-space] {--dialog-room:min(760px,calc(100dvh / var(--
 }
 .pet-equipment-art .growth-orbit {fill:none;opacity:1;}
 .pet-equipment-art .growth-orbit ellipse {clip-path:none;}
-.pet-journal[data-pet-space] .pet-backpack-companion {position:sticky;top:52px;}
-.pet-journal[data-pet-space="dress"] .pet-task-nav {position:sticky;top:0;z-index:2;}
+.pet-journal[data-pet-space] .pet-backpack-companion {position:sticky;top:0;}
 @container xiaoyou (max-width:680px) {
  .pet-journal[data-pet-space] .pet-backpack-companion {position:relative;top:auto;}
 }
