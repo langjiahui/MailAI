@@ -10,7 +10,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app import db, companion_growth as growth
 from app.account_context import use
-from app.web.routes.companion_growth import Heartbeat
+from app.web.routes.companion_growth import Heartbeat, RestoreOutfit
 from pydantic import ValidationError
 
 
@@ -80,8 +80,71 @@ def test_outfit_collections():
             assert all(s['complete'] for s in growth.snapshot()['collections'] if s['id'] in ('post','star'))
 
 
+def test_atomic_outfit_undo():
+    with tempfile.TemporaryDirectory() as root:
+        account = {'ACCOUNT_ID':'undo','DB_PATH':str(Path(root)/'mailai.db'),'IMAP_USER':'undo@example.test'}
+        with use(account):
+            db.init_db()
+            with growth.connection() as c:
+                c.execute('UPDATE companion_profile SET xp=50000,stamps=10000,earned=10000,enabled=0')
+            for item in ('cap','scarf','satchel','visor','jacket','wings','theme_baowu'):
+                growth.purchase(item,token='undo-setup-'+item)
+            original = growth.equip_collection('post')
+            view = lambda s: {slot:s['equipped'].get(slot,'') for slot in growth.WARDROBE_SLOTS}
+            changed = growth.equip_collection('cloud')
+            restored = growth.restore_outfit(view(original),view(changed))
+            assert view(restored) == view(original)
+            assert restored['stamps'] == changed['stamps'] and restored['xp'] == changed['xp']
+            assert restored['equipped']['theme'] == 'theme_baowu'
+            assert restored['items'] == changed['items'] and restored['purchases'] == changed['purchases']
+            assert growth.restore_outfit(view(original),view(changed)) == restored, 'A lost undo response can be retried safely'
+            newer = growth.equip('head','visor')
+            try:
+                growth.restore_outfit(view(changed),view(restored))
+                raise AssertionError('Stale undo overwrote another window')
+            except ValueError as exc:
+                assert '其他窗口' in str(exc)
+            assert growth.snapshot() == newer
+            for invalid in ({**view(newer),'body':'armor'}, {**view(newer),'head':'jacket'}):
+                try:
+                    growth.restore_outfit(invalid,view(newer))
+                    raise AssertionError('Unowned item or wrong attachment accepted')
+                except ValueError: pass
+                assert growth.snapshot() == newer, 'Validation never clears a subset of slots'
+            real_wear = growth._wear
+            def interrupted(equipped,item):
+                real_wear(equipped,item)
+                if item == 'scarf': raise RuntimeError('Interrupted undo')
+            try:
+                with patch.object(growth,'_wear',side_effect=interrupted):
+                    growth.restore_outfit(view(original),view(newer))
+                raise AssertionError('Interrupted undo committed')
+            except RuntimeError: pass
+            assert growth.snapshot() == newer, 'A mid-restore failure rolls back every part'
+            def concurrent_change(item):
+                with use(account):
+                    return growth.equip('head',item)
+            # All operations share the same store. No undo may overwrite a
+            # different head installed after the expected snapshot.
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                outcomes=list(pool.map(concurrent_change,('cap','visor')))
+            current=growth.snapshot()
+            stale=next(s for s in outcomes if view(s)!=view(current))
+            try:
+                growth.restore_outfit(view(changed),view(stale))
+                raise AssertionError('Concurrent stale undo accepted')
+            except ValueError: pass
+            assert growth.snapshot() == current
+        for invalid in ({'look':{'head':None},'expected':{}}, {'look':{'head':'x'*33},'expected':{}}, {'look':{'theme':'theme_baowu'},'expected':{}}, {'look':{},'expected':{},'unknown':True}):
+            try:
+                RestoreOutfit(**invalid)
+                raise AssertionError('Malformed outfit accepted')
+            except ValidationError: pass
+
+
 def main():
     test_outfit_collections()
+    test_atomic_outfit_undo()
     with tempfile.TemporaryDirectory() as root:
         context = {'ACCOUNT_ID':'growth-a','DB_PATH':str(Path(root)/'a.db'),'IMAP_USER':'a@example.test'}
         now = datetime(2026, 10, 10, 10, tzinfo=timezone(timedelta(hours=8)))

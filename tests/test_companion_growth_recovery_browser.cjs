@@ -1,6 +1,7 @@
 /* After the ordinary growth browser test, exercise real server failures and recovery. */
 const assert = require('node:assert/strict');
 const {revealItem,selectTab}=require('./helpers/companion-ui.cjs');
+const {selectItem}=require('./helpers/companion-backpack.cjs');
 const {chromium} = require('playwright');
 const base = 'http://127.0.0.1:18795/';
 (async()=>{
@@ -73,10 +74,11 @@ const base = 'http://127.0.0.1:18795/';
       assert.equal(committed.status(),200);
       await route.fulfill({status:503,contentType:'application/json',body:'{"detail":"fixture response lost after commit"}'});
     });
-    await revealItem(dialog,'berry');
+    await selectItem(dialog,'berry');await dialog.locator('[data-pet-purchase-open="berry"]').click();
     await dialog.locator('[data-pet-buy="berry"]').click();
     await dialog.locator('[data-pet-reconcile]').waitFor({state:'visible'});
-    assert(await dialog.locator('[data-pet-buy="peach"]').isDisabled());
+    await selectItem(dialog,'peach');assert(await dialog.locator('[data-pet-purchase-open="peach"]').isDisabled());
+    await revealItem(dialog,'scarf');
     assert(await dialog.locator('[data-pet-item-action="scarf"]').isEnabled(),'Pending purchases must allow owned outfits');
     const committed=await page.evaluate(()=>api('/api/companion/growth'));
     assert.equal(committed.stamps,before.stamps-120);

@@ -1,6 +1,7 @@
 /* Dynamic reward previews never spend stamps or mutate the equipped outfit. */
 const assert = require('node:assert/strict');
 const {revealItem,selectTab}=require('./helpers/companion-ui.cjs');
+const {openStageFitting}=require('./helpers/companion-backpack.cjs');
 const {chromium,webkit} = require('playwright');
 (async()=>{
   const browser=await (process.env.MAILAI_BROWSER==='webkit'?webkit:chromium).launch({headless:true});
@@ -21,12 +22,13 @@ const {chromium,webkit} = require('playwright');
     const select=preview.locator('[data-pet-preview-select]');
     assert(await preview.isHidden(),'Preview stays collapsed until an icon is clicked');
     const icon=dialog.locator('[data-pet-preview="wings"]');
-    assert.equal((await icon.textContent()).trim(),'试穿','The artwork advertises try-on without adding a second button row');
-    const iconBox=await icon.boundingBox(),artBox=await dialog.locator('[data-pet-item="wings"] .pet-item-art').boundingBox();
-    assert(iconBox.width>=44&&iconBox.height>=44);assert(Math.abs(iconBox.width-artBox.width)<1&&Math.abs(iconBox.height-artBox.height)<1);
+    assert.match(await icon.getAttribute('aria-label'),/翼/,'The full item tile describes the unowned reward');
+    const iconBox=await icon.boundingBox(),artBox=await dialog.locator('[data-pet-item="wings"] .pet-equipment-art').boundingBox();
+    assert(iconBox.width>=44&&iconBox.height>=44);assert(iconBox.width>=artBox.width&&iconBox.height>=artBox.height);
     const mutations=[];page.on('request',req=>{if(/\/api\/companion\/(purchase|equip|style)$/.test(req.url()))mutations.push(req.url());});
-    assert(await dialog.locator('[data-pet-buy="wings"]').isDisabled(),'Locked wings must remain unpurchasable');
     await dialog.locator('[data-pet-preview="wings"]').click();
+    assert(await dialog.locator('[data-pet-purchase-open="wings"]').isDisabled(),'Locked wings must remain unpurchasable');
+    await openStageFitting(dialog);await select.selectOption('wings');
     assert.equal(await select.inputValue(),'wings');
     assert(await art.locator('.growth-wings').evaluate(n=>getComputedStyle(n).display!=='none'));
     await page.waitForFunction(()=>document.querySelector('.pet-live-art .mail-companion').dataset.rewardVisible==='true');
@@ -103,9 +105,7 @@ const {chromium,webkit} = require('playwright');
       }
     }
     await page.evaluate(saved=>Object.assign(document.body.dataset,saved),originalAppearance);
-    await selectTab(dialog,'wardrobe');
-    await revealItem(dialog,'sparkles');
-    await dialog.locator('[data-pet-preview="sparkles"]').click();
+    await openStageFitting(dialog);await select.selectOption('sparkles');
     await art.evaluate(n=>n.style.transform='translateX(-200vw)');
     await page.waitForFunction(()=>getComputedStyle(document.querySelector('.pet-live-art .pet-star')).animationPlayState==='paused',null,{timeout:5000});
     assert.equal(await art.locator('.pet-star').first().evaluate(n=>getComputedStyle(n).animationPlayState),'paused','Offscreen preview must stop');
@@ -127,6 +127,7 @@ const {chromium,webkit} = require('playwright');
     await preview.locator('[data-pet-preview-close]').click();
     assert(await preview.isHidden());
     assert(await closed.evaluate(svg=>!svg.isConnected && svg.getAnimations({subtree:true}).every(a=>a.playState!=='running')),'Closing try-on disposes all preview clocks');
+    await selectTab(dialog,'wardrobe');
     await dialog.locator('.pet-shop-item:not([hidden])').first().scrollIntoViewIfNeeded();
     await page.screenshot({path:'/tmp/mailai-reward-preview-icons.png'});
     assert.deepEqual(errors,[]);

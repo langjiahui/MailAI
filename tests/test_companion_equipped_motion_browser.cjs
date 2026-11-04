@@ -1,6 +1,7 @@
 /* Real purchases and saved outfits, using a separate disposable client profile. */
 const assert = require('node:assert/strict');
 const {revealItem,selectTab}=require('./helpers/companion-ui.cjs');
+const {selectItem,redeemItem,removeItem,settled}=require('./helpers/companion-backpack.cjs');
 const {spawn} = require('node:child_process');
 const {once} = require('node:events');
 const {chromium,webkit} = require('playwright');
@@ -117,12 +118,39 @@ async function checkRestEffect(page, host, part, context) {
     await selectTab(page.locator('#companion-growth-dialog'),'wardrobe');
     const before=await page.evaluate(()=>api('/api/companion/growth'));
     assert.equal(before.stamps,10000);assert.equal(before.enabled,false);
+
+    const firstDialog=page.locator('#companion-growth-dialog');
+    let prematurePurchases=0;const trackPurchase=r=>{if(r.url().endsWith('/api/companion/purchase')&&r.method()==='POST')prematurePurchases++;};
+    page.on('request',trackPurchase);
+    await selectItem(firstDialog,'scarf');
+    assert.equal(await page.evaluate(()=>document.body.dataset.petNeck),'none');
+    assert.equal(await firstDialog.locator('.pet-live-art .growth-scarf').evaluate(n=>getComputedStyle(n).display),'block','An unowned item is only tried on');
+    await firstDialog.locator('[data-pet-purchase-open="scarf"]').click();
+    for(const language of ['zh-CN','en'])for(const theme of ['','theme_monochrome','theme_baowu'])for(const mode of ['light','dark'])for(const width of [390,1440])for(const scale of [1,1.35,2]) {
+      await page.setViewportSize({width,height:1000});
+      await page.evaluate(({language,theme,mode,scale})=>{setI18nLanguage(language);applyTheme(mode);document.documentElement.dataset.rewardTheme=theme;document.documentElement.style.setProperty('--fz',scale);document.body.style.zoom=String(scale);},{language,theme,mode,scale});
+      const confirm=firstDialog.locator('.pet-backpack-confirm');
+      assert.match(await confirm.textContent(),/80/);
+      assert.match(await confirm.textContent(),/9,920|9920/);
+      const clipped=await confirm.evaluate(n=>n.scrollWidth>n.clientWidth+1||[...n.querySelectorAll('button')].some(b=>b.scrollWidth>b.clientWidth+1));
+      assert.equal(clipped,false,JSON.stringify({language,theme,mode,width,scale}));
+      if(language==='en')assert(!/[\u3400-\u9fff]/.test(await firstDialog.textContent()));
+    }
+    assert.equal(prematurePurchases,0,'Trying and inspecting the confirmation never spends stamps');
+    assert.deepEqual(await page.evaluate(()=>api('/api/companion/growth')),before);
+    await page.setViewportSize({width:1440,height:1000});await page.evaluate(()=>{setI18nLanguage('zh-CN');applyTheme('light');document.documentElement.dataset.rewardTheme='';document.documentElement.style.setProperty('--fz','1');document.body.style.zoom='1';});
+    await firstDialog.locator('[data-pet-purchase-cancel]').click();
+    assert.equal(await page.evaluate(()=>document.activeElement?.dataset.petPurchaseOpen),'scarf','Cancel returns keyboard focus to the price action');
+    await firstDialog.locator('[data-pet-trial-end]').click();
+    assert.equal(await firstDialog.locator('.pet-live-art .growth-scarf').evaluate(n=>getComputedStyle(n).display),'none');
+    assert.equal(await page.evaluate(()=>document.activeElement?.dataset.petPreview),'scarf','Ending a trial returns focus to its tile');
+    page.off('request',trackPurchase);
+    console.log('PASS 72 unowned trial / confirmation layouts, exact quote, cancellation focus and zero premature spend');
     let cost=0;
     for(const [slot,item] of rewards) {
       cost+=before.items.find(reward=>reward.id===item).cost;
       await revealItem(page.locator('#companion-growth-dialog'),item);
-      await page.locator(`[data-pet-buy="${item}"]`).click();
-      await page.waitForFunction(({slot,item})=>document.body.dataset[`pet${slot[0].toUpperCase()+slot.slice(1)}`]===item,{slot,item});
+      await redeemItem(page.locator('#companion-growth-dialog'),item);
       const saved=await page.evaluate(()=>api('/api/companion/growth'));
       assert.equal(saved.equipped[slot],item);
       assert(saved.items.find(reward=>reward.id===item).owned);
@@ -159,6 +187,13 @@ async function checkRestEffect(page, host, part, context) {
     await selectTab(dialog,'home');
     assert.match(await dialog.locator('.pet-home-collection b').textContent(),/星海巡邮.*4 \/ 4/,'The home shows the actually equipped, completed collection');
     assert.equal(await dialog.locator('.pet-home-hero .growth-mech-wings').evaluate(n=>getComputedStyle(n).display),'block','The new cape is worn on the real companion');
+    await dialog.locator('[data-pet-section="dress"]').click();
+    assert.equal(await dialog.getAttribute('data-pet-view'),'shop');
+    assert.equal(await dialog.locator('.pet-hero>.pet-set-portrait').count(),1,'Returning through the dress section preserves the current-look action host');
+    await page.waitForFunction(()=>document.querySelector('.pet-set-portrait svg')?.dataset.rewardVisible==='true');
+    await dialog.locator('[data-pet-set-action="star"]').click();
+    assert.equal(await dialog.locator('.pet-set-portrait svg').getAttribute('data-motion-clip'),'collectionPost','The saved set action still works after returning from home');
+    await selectTab(dialog,'home');
     await dialog.locator('[data-pet-home-collection="star"]').click();
     assert.equal(await dialog.getAttribute('data-pet-view'),'shop');
     assert.equal(await dialog.locator('[data-pet-series="star"]').getAttribute('aria-pressed'),'true','The home returns to its specific collection');
@@ -169,64 +204,96 @@ async function checkRestEffect(page, host, part, context) {
     await revealItem(dialog,'lightning');
     await page.locator('.pet-shop [data-pet-item-action="lightning"]').click();
     await page.waitForFunction(()=>document.body.dataset.petEffect==='lightning');
-    // Equipped is a completed state; the same card must remain usable to remove it.
+
+    // Owned tiles equip immediately. Selecting the already worn item is a no-op;
+    // removal lives in the selected item detail instead of toggling the tile.
     const outfitAction=id=>page.locator(`.pet-shop [data-pet-item-action="${id}"]`);
-    const outfitStatus=id=>page.locator(`[data-pet-item="${id}"] .pet-status-equipped`);
+    const removeAction=id=>dialog.locator(`.pet-backpack-detail [data-pet-item-action="${id}"]`);
     for(const id of ['mech_wings','lightning','midnight']) {
-      assert.equal(await outfitAction(id).textContent(),'卸下');
+      assert.equal(await outfitAction(id).getAttribute('aria-pressed'),'true');
       assert(await outfitAction(id).isEnabled());
-      assert.equal(await outfitStatus(id).textContent(),'✓ 穿戴中');
+      assert.match(await outfitAction(id).textContent(),/穿戴中/);
     }
-    let releaseEquip, equipCalls=0;
-    const heldEquip=new Promise(resolve=>{releaseEquip=resolve;});
+    let releaseEquip,equipCalls=0;const heldEquip=new Promise(resolve=>{releaseEquip=resolve;});
+    await selectItem(dialog,'lightning');
     await page.route('**/api/companion/equip',async route=>{equipCalls++;await heldEquip;await route.continue();});
-    await revealItem(page.locator('#companion-growth-dialog'),'lightning');
-    await outfitAction('lightning').click();
-    await page.waitForFunction(()=>document.querySelector('[data-pet-item-action="lightning"]')?.getAttribute('aria-busy')==='true');
-    assert.equal(await outfitAction('lightning').textContent(),'卸下中…');
-    assert(await outfitAction('mech_wings').isDisabled(),'Other mutations pause only while a request is pending');
-    await page.evaluate(()=>document.querySelector('[data-pet-item-action="lightning"]').dispatchEvent(new MouseEvent('click',{bubbles:true})));
-    await page.evaluate(()=>setI18nLanguage('en'));
-    assert.equal(await outfitAction('lightning').textContent(),'Removing…');
-    releaseEquip();
-    await page.waitForFunction(()=>document.body.dataset.petEffect==='none' && !document.querySelector('[data-pet-item-action="lightning"]')?.disabled);
+    await removeAction('lightning').click();
+    await page.waitForFunction(()=>document.querySelector('#companion-growth-dialog')?.getAttribute('aria-busy')==='true');
+    assert(await outfitAction('mech_wings').isDisabled(),'Other mutations pause while a request is pending');
+    await page.evaluate(()=>document.querySelector('.pet-backpack-detail [data-pet-item-action="lightning"]').dispatchEvent(new MouseEvent('click',{bubbles:true})));
+    await page.evaluate(()=>setI18nLanguage('en'));assert.match(await removeAction('lightning').textContent(),/Remove/);
+    releaseEquip();await settled(dialog);
     assert.equal(equipCalls,1,'Repeated activation cannot submit twice');
     await page.unroute('**/api/companion/equip');
-    assert.equal(await outfitAction('lightning').textContent(),'Equip');
-    assert.equal(await outfitStatus('lightning').count(),0);
-    assert.equal(await page.locator('.pet-shop [aria-busy="true"]').count(),0);
+    assert.equal(await outfitAction('lightning').getAttribute('aria-pressed'),'false');
     assert.equal(await page.evaluate(()=>document.body.dataset.petAccessory),'mech_wings','Removing effects preserves accessories');
     await page.route('**/api/companion/equip',r=>r.fulfill({status:500,json:{detail:'Fixture equip failure'}}));
-    await revealItem(page.locator('#companion-growth-dialog'),'lightning');
-    await outfitAction('lightning').click();
-    await page.waitForFunction(()=>document.querySelector('[data-pet-message]')?.classList.contains('is-error') && !document.querySelector('[data-pet-item-action="lightning"]')?.disabled);
+    await outfitAction('lightning').click();await settled(dialog);
+    assert(await dialog.locator('[data-pet-message]').evaluate(n=>n.classList.contains('is-error')));
     assert.equal(await page.evaluate(()=>document.body.dataset.petEffect),'none');
-    assert.equal(await outfitAction('lightning').getAttribute('aria-busy'),null);
     await page.unroute('**/api/companion/equip');
-    await revealItem(page.locator('#companion-growth-dialog'),'lightning');
-    await outfitAction('lightning').click();
-    await page.waitForFunction(()=>document.body.dataset.petEffect==='lightning' && !document.querySelector('[data-pet-item-action="lightning"]')?.disabled);
-    assert.equal(await outfitStatus('lightning').textContent(),'✓ Equipped');
+    await outfitAction('lightning').click();await settled(dialog);
+    assert.equal(await outfitAction('lightning').getAttribute('aria-pressed'),'true');
     for(const [slot,id,fallback] of [['back','mech_wings','none'],['effect','lightning','none'],['palette','midnight','mint']]) {
-      await revealItem(page.locator('#companion-growth-dialog'),id);
-      await outfitAction(id).focus();await page.keyboard.press('Enter');
-      await page.waitForFunction(({slot,fallback,id})=>document.body.dataset[`pet${slot[0].toUpperCase()+slot.slice(1)}`]===fallback && !document.querySelector(`[data-pet-item-action="${id}"]`)?.disabled,{slot,fallback,id});
-      assert.equal(await outfitAction(id).textContent(),'Equip');
-      await page.keyboard.press('Enter');
-      await page.waitForFunction(({slot,id})=>document.body.dataset[`pet${slot[0].toUpperCase()+slot.slice(1)}`]===id && !document.querySelector(`[data-pet-item-action="${id}"]`)?.disabled,{slot,id});
-      assert.equal(await outfitAction(id).textContent(),'Remove');
+      await selectItem(dialog,id);await removeAction(id).focus();await page.keyboard.press('Enter');await settled(dialog);
+      assert.equal(await page.evaluate(slot=>document.body.dataset['pet'+slot[0].toUpperCase()+slot.slice(1)],slot),fallback);
+      assert.equal(await outfitAction(id).getAttribute('aria-pressed'),'false');
+      await outfitAction(id).focus();await page.keyboard.press('Enter');await settled(dialog);
+      assert.equal(await page.evaluate(slot=>document.body.dataset['pet'+slot[0].toUpperCase()+slot.slice(1)],slot),id);
     }
     for(const language of ['zh-CN','en']) for(const theme of ['', 'theme_monochrome','theme_baowu']) for(const mode of ['light','dark']) for(const width of [390,1440]) {
       await page.setViewportSize({width,height:1000});
-      await page.evaluate(({language,theme,mode})=>{
-        setI18nLanguage(language);applyTheme(mode);
-        if(theme)document.documentElement.dataset.rewardTheme=theme;else delete document.documentElement.dataset.rewardTheme;
-      },{language,theme,mode});
-      assert.equal(await outfitStatus('lightning').textContent(),language==='en'?'✓ Equipped':'✓ 穿戴中');
-      assert.equal(await outfitAction('lightning').textContent(),language==='en'?'Remove':'卸下');
-      const clipped=await page.locator('.pet-shop [data-pet-item-action]').evaluateAll(nodes=>nodes.filter(n=>n.scrollWidth>n.clientWidth+1 || n.getBoundingClientRect().right>innerWidth+1).map(n=>n.dataset.petItemAction));
+      await page.evaluate(({language,theme,mode})=>{setI18nLanguage(language);applyTheme(mode);if(theme)document.documentElement.dataset.rewardTheme=theme;else delete document.documentElement.dataset.rewardTheme;},{language,theme,mode});
+      assert.match(await outfitAction('lightning').textContent(),language==='en'?/Equipped/:/穿戴中/);
+      assert.equal(await outfitAction('lightning').getAttribute('aria-pressed'),'true');
+      const clipped=await page.locator('.pet-shop [data-pet-item-action]').evaluateAll(nodes=>nodes.filter(n=>n.getClientRects().length&&!n.closest('[hidden]')&&(n.scrollWidth>n.clientWidth+1||n.getBoundingClientRect().right>innerWidth+1)).map(n=>n.dataset.petItemAction));
       assert.deepEqual(clipped,[],JSON.stringify({language,theme,mode,width,clipped}));
     }
+    const fitting=dialog.locator('.pet-live-art');
+    const appearance=host=>host.locator('.mail-companion').evaluate(svg=>{
+      const parts=['.growth-scarf','.growth-cap','.growth-wings','.growth-jacket','.growth-armor','.growth-visor','.growth-mech-wings','.growth-postbag','.growth-star-crest','.growth-stars','.growth-orbit','.growth-aura','.growth-lightning','.growth-star-tail','.growth-collection-seal'];
+      return {parts:parts.map(selector=>getComputedStyle(svg.querySelector(selector)).display),body:getComputedStyle(svg).getPropertyValue('--pet-body').trim(),leaves:getComputedStyle(svg.querySelector('.companion-leaves')).visibility,wings:getComputedStyle(svg.querySelector('.evolution-peng-wing')).visibility};
+    });
+    await page.setViewportSize({width:1440,height:1000});
+    for(const style of ['nature','ranger']) {
+      await page.evaluate(async style=>{await api('/api/companion/style',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({style})});await mailaiPet.refresh();setI18nLanguage('zh-CN');},style);
+      for(const [,id] of rewards) {
+        await selectItem(dialog,id);
+        assert.deepEqual(await appearance(fitting),await appearance(page.locator('#assistant-orb')),`${id}: direct equip matches the actual companion`);
+        const worn=await page.evaluate(()=>api('/api/companion/growth')),wornAppearance=await appearance(fitting);
+        let repeated=0;await page.route('**/api/companion/equip',async r=>{repeated++;await r.continue();});
+        await outfitAction(id).click();assert.equal(repeated,0,'Selecting an equipped tile cannot remove it or repeat the save');
+        await page.unroute('**/api/companion/equip');
+        await removeAction(id).click();await settled(dialog);
+        const removed=await appearance(fitting);
+        assert.notDeepEqual(removed,wornAppearance,`${id}: removing a worn item changes its appearance`);
+        assert.deepEqual(removed,await appearance(page.locator('#assistant-orb')),`${id}: removal stays visible in the portrait`);
+        if(style==='nature'&&id==='jacket')await dialog.screenshot({path:'/tmp/mailai-backpack-removed.png'});
+        await dialog.locator('[data-pet-undo-outfit]').click();await settled(dialog);
+        const restored=await page.evaluate(()=>api('/api/companion/growth'));
+        assert.deepEqual(['head','neck','body','back','palette','effect','theme'].map(k=>restored.equipped[k]||''),['head','neck','body','back','palette','effect','theme'].map(k=>worn.equipped[k]||''),'Undo restores all slots and preserves the workspace theme');assert(!restored.equipped.accessory||['head','neck','body','back'].map(k=>restored.equipped[k]).includes(restored.equipped.accessory));
+        assert.equal(restored.stamps,worn.stamps);assert.deepEqual(restored.items,worn.items);
+        assert.deepEqual(await appearance(fitting),await appearance(page.locator('#assistant-orb')));
+        if(style==='nature'&&id==='jacket')await dialog.screenshot({path:'/tmp/mailai-backpack-equipped.png'});
+      }
+      console.log(`PASS ${style}: 16 direct equipment changes, explicit removals, atomic undos and matching portraits`);
+    }
+    for(const language of ['zh-CN','en'])for(const theme of ['','theme_monochrome','theme_baowu'])for(const mode of ['light','dark'])for(const width of [390,1440])for(const scale of [1,1.35,2]) {
+      await page.setViewportSize({width,height:1000});await page.evaluate(({language,theme,mode,scale})=>{setI18nLanguage(language);applyTheme(mode);document.documentElement.dataset.rewardTheme=theme;document.documentElement.style.setProperty('--fz',scale);document.body.style.zoom=String(scale);},{language,theme,mode,scale});
+      assert.equal(await dialog.locator('[data-pet-preview-mode]').count(),0,'Backpack never asks for a preview mode');
+      const bounds=await dialog.evaluate(n=>({client:n.clientWidth,scroll:n.scrollWidth,slots:[...n.querySelectorAll('.pet-backpack-slots button')].filter(b=>b.scrollWidth>b.clientWidth+1).map(b=>b.textContent)}));
+      assert(bounds.scroll<=bounds.client+1,JSON.stringify({language,theme,mode,width,scale,bounds}));assert.deepEqual(bounds.slots,[]);
+      if(language==='en')assert(!/[\u3400-\u9fff]/.test(await dialog.textContent()));
+    }
+    await page.setViewportSize({width:1440,height:1000});await page.evaluate(()=>{setI18nLanguage('zh-CN');document.documentElement.style.setProperty('--fz','1');document.body.style.zoom='1';});
+    await selectItem(dialog,'jacket');
+    const failedLook=await appearance(fitting),failedState=await page.evaluate(()=>api('/api/companion/growth'));
+    await page.route('**/api/companion/equip',r=>r.fulfill({status:500,json:{detail:'Fixture fitting failure'}}));
+    await removeAction('jacket').click();await settled(dialog);
+    assert.deepEqual(await appearance(fitting),failedLook);assert.deepEqual(await page.evaluate(()=>api('/api/companion/growth')),failedState);
+    await page.unroute('**/api/companion/equip');await removeAction('jacket').click();await settled(dialog);
+    await outfitAction('jacket').click();await settled(dialog);
+    console.log('PASS saved wardrobe, 24 localized card layouts, 72 scaled backpack layouts, duplicate guard, failed save retry and keyboard removal');
     await page.evaluate(()=>{setI18nLanguage('zh-CN');applyTheme('dark');});
     await revealItem(page.locator('#companion-growth-dialog'),'lightning');
     await page.locator('[data-pet-item="lightning"]').screenshot({path:`/tmp/mailai-outfit-state-${process.env.MAILAI_BROWSER||'chromium'}.png`});
@@ -282,7 +349,7 @@ async function checkRestEffect(page, host, part, context) {
     await page.waitForFunction(()=>document.querySelector('#compose-ai-panel .mail-companion').dataset.rewardVisible==='false');
     assert.equal(await page.locator('#compose-ai-panel .pet-orbit-stream').first().evaluate(n=>getComputedStyle(n).animationPlayState),'paused');
     assert.deepEqual(errors,[]);
-    console.log('Equipped rewards: 16 real purchases, correct costs, reload persistence, both routes, 96 running animations across floating/chat/writing avatars, equipped labels, card removal, pending states, duplicate protection, failure retry, keyboard, 24 localized layouts, unwear and hidden pause passed');
+    console.log('Equipped rewards: 16 real purchases, correct costs, reload persistence, both routes, 96 running animations across floating/chat/writing avatars, equipped labels, card removal, pending states, duplicate protection, failure retry, keyboard, 24 localized layouts, saved fitting results for 16 items on both routes, actual portraits, 72 scaled backpack layouts, failure retry, unwear and hidden pause passed');
   } finally {
     if(browser)await browser.close();
     const stopped=once(fixture,'exit');fixture.kill('SIGTERM');

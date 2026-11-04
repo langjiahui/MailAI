@@ -13,6 +13,7 @@ async function auditSpaceThemes(page,dialog) {
    await page.evaluate(scale=>{document.documentElement.style.setProperty('--fz',scale);document.body.style.zoom=String(scale);},scale);
    for(const tab of ['home','today','shop','wardrobe','journey','gifts','themes','history','settings']) {
     await selectTab(dialog,tab);
+    if(tab==='wardrobe'){const trial=dialog.locator('.pet-shop-item:not([hidden]) [data-pet-preview]').first();if(await trial.isVisible())await trial.click();}
     const issues=await dialog.evaluate(d=>{
      const problems=[],rgb=s=>{const c=(s.match(/[\d.]+/g)||[]).map(Number);return s.startsWith('color(srgb')?c.map((v,i)=>i<3?v*255:v):c;},blend=(a,b)=>{const alpha=a[3]??1;return a.slice(0,3).map((v,i)=>v*alpha+b[i]*(1-alpha));};
      const luminance=c=>c.slice(0,3).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4}).reduce((v,c,i)=>v+c*[.2126,.7152,.0722][i],0);
@@ -23,7 +24,7 @@ async function auditSpaceThemes(page,dialog) {
      for(const [name,n]of [['dialog',d],['body',body],['main',main]])if(n.scrollWidth>n.clientWidth+1)problems.push(name+' has horizontal overflow');
      const footer=d.querySelector('.pet-journal-footer').getBoundingClientRect();if(footer.top<0||footer.bottom>innerHeight+1)problems.push('Utility navigation is outside the viewport');
      const close=d.querySelector('[data-pet-close]').getBoundingClientRect();if(close.top<0||close.right>innerWidth+1||close.bottom>innerHeight+1)problems.push('Close is outside the viewport');
-     for(const n of d.querySelectorAll('.pet-stage-selector button,.pet-record-empty button,.pet-home-progress b,.pet-quest b,.pet-theme-copy>b,.pet-settings h4,.pet-settings-style b,.pet-route-state,.pet-setting-row b,.pet-switch,.pet-settings-note,.pet-tabs button,.pet-secondary-nav button,.pet-task-nav button,.pet-home-copy h3,.pet-home-dress,.pet-life-actions button,.pet-header-wallet span,.pet-hero h3,.pet-header-wallet b,.pet-shop-toolbar select,.pet-shelf-pages select,.pet-page-heading h3,.pet-series-actions button,.pet-shelf-pages button,.pet-shop-item>button,.pet-theme-card>button')) {
+     for(const n of d.querySelectorAll('.pet-backpack-item b,.pet-backpack-item small,.pet-backpack-slots b,.pet-backpack-slots small,.pet-backpack-look-label,.pet-backpack-detail h4,.pet-backpack-detail small,.pet-backpack-detail p,.pet-backpack-detail-actions>button,.pet-backpack-confirm dt,.pet-backpack-confirm dd,.pet-outfit-undo,.pet-stage-selector button,.pet-record-empty button,.pet-home-progress b,.pet-quest b,.pet-theme-copy>b,.pet-settings h4,.pet-settings-style b,.pet-route-state,.pet-setting-row b,.pet-switch,.pet-settings-note,.pet-tabs button,.pet-secondary-nav button,.pet-task-nav button,.pet-home-copy h3,.pet-home-dress,.pet-life-actions button,.pet-header-wallet span,.pet-hero h3,.pet-header-wallet b,.pet-shop-toolbar select,.pet-shelf-pages select,.pet-page-heading h3,.pet-series-actions button,.pet-shelf-pages button,.pet-shop-item>button,.pet-theme-card>button')) {
       const css=getComputedStyle(n);if(!n.getClientRects().length||css.visibility==='hidden'||n.disabled||n.closest('[hidden]'))continue;
       if(n.matches('.pet-tabs button,.pet-secondary-nav button')) {
        const b=n.getBoundingClientRect(),nav=n.closest('nav').getBoundingClientRect();
