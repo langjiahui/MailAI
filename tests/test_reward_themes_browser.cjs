@@ -1,6 +1,7 @@
 /* Fresh isolated growth fixture; no real mailbox/model/network services. */
 const assert = require('node:assert/strict');
 const {revealItem,selectTab}=require('./helpers/companion-ui.cjs');
+const {redeemItem}=require('./helpers/companion-backpack.cjs');
 const {chromium,webkit} = require('playwright');
 (async()=>{
   const browser = await (process.env.MAILAI_BROWSER==='webkit'?webkit:chromium).launch({headless:true});
@@ -162,7 +163,7 @@ const {chromium,webkit} = require('playwright');
     await page.evaluate(()=>window.mailaiPet.openThemes());
     // Individual pet palettes take priority; skin does not replace gear or XP.
     await revealItem(dialog,'sky');
-    await dialog.locator('[data-pet-buy="sky"]').click();
+    await redeemItem(dialog,'sky');
     await page.waitForFunction(()=>document.body.dataset.petPalette === 'sky');
     await selectTab(dialog,'home');
     assert.equal(await dialog.locator('.pet-hero .growth-body').evaluate(node=>getComputedStyle(node).fill),'rgb(131, 181, 212)');

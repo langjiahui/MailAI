@@ -27,6 +27,22 @@ class Outfit(BaseModel):
     item: str = Field(default='', max_length=32)
 
 
+class WardrobeLook(BaseModel):
+    model_config = {'extra': 'forbid'}
+    head: str = Field(default='', max_length=32)
+    neck: str = Field(default='', max_length=32)
+    body: str = Field(default='', max_length=32)
+    back: str = Field(default='', max_length=32)
+    palette: str = Field(default='', max_length=32)
+    effect: str = Field(default='', max_length=32)
+
+
+class RestoreOutfit(BaseModel):
+    model_config = {'extra': 'forbid'}
+    look: WardrobeLook
+    expected: WardrobeLook
+
+
 class Style(BaseModel):
     style: Literal['nature', 'ranger']
 
@@ -68,6 +84,11 @@ def purchase(payload: Purchase):
 @router.post('/api/companion/equip')
 def equip(payload: Outfit):
     return checked(growth.equip, payload.slot, payload.item)
+
+
+@router.post('/api/companion/outfit/restore')
+def restore_outfit(payload: RestoreOutfit):
+    return checked(growth.restore_outfit, payload.look.model_dump(), payload.expected.model_dump())
 
 
 @router.post('/api/companion/collection')

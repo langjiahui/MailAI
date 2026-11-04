@@ -615,6 +615,37 @@ def equip(slot, item_id):
         return _snapshot(c)
 
 
+WARDROBE_SLOTS = ('head', 'neck', 'body', 'back', 'palette', 'effect')
+
+
+def restore_outfit(look, expected):
+    """Undo appearance atomically, without refunding purchases or overwriting a newer look."""
+    if set(look) != set(WARDROBE_SLOTS) or set(expected) != set(WARDROBE_SLOTS):
+        raise ValueError('装扮位置无效')
+    with connection() as c:
+        c.execute('BEGIN IMMEDIATE')
+        equipped = _outfit(_profile(c)['equipped'])
+        current = {slot: equipped.get(slot, '') for slot in WARDROBE_SLOTS}
+        if current == look:
+            return _snapshot(c)  # Safe retry after a committed response was lost.
+        if current != expected:
+            raise ValueError('装扮已在其他窗口更改，请刷新后重新选择')
+        inventory = {row['item'] for row in c.execute('SELECT item FROM companion_inventory')}
+        for slot, item_id in look.items():
+            if item_id and (item_id not in inventory or item_id not in ITEMS or
+                            OUTFIT_SLOTS.get(item_id, ITEMS[item_id]['slot']) != slot):
+                raise ValueError('请先兑换此装扮')
+        # Keep workspace theme and unrelated preferences; normalize the legacy
+        # accessory alias together with the physical outfit in one transaction.
+        for slot in (*WARDROBE_SLOTS, 'accessory'):
+            equipped.pop(slot, None)
+        for slot in WARDROBE_SLOTS:
+            if look[slot]:
+                _wear(equipped, look[slot])
+        c.execute('UPDATE companion_profile SET equipped=? WHERE id=1', (json.dumps(equipped),))
+        return _snapshot(c)
+
+
 def equip_collection(collection_id):
     items = COLLECTIONS.get(collection_id)
     if not items:
