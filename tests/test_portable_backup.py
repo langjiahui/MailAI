@@ -31,11 +31,19 @@ def test_portable_round_trip_and_integrity():
             conversation=db.create_assistant_conversation('备份前的协作习惯')
             message_id=db.add_assistant_message(conversation,'user','记住我平时希望一次只问一个问题')
             work_memory.save_personal(dict(kind='communication',preference='沟通时一次只问一个问题',source_quote='记住我平时希望一次只问一个问题'))
+            quote='以后回信控制在200字以内'
+            db.add_assistant_message(conversation,'user',quote)
+            work_memory.remember_explicit(quote,'writing',quote,'writing.length')
+            automatic=next(row for row in work_memory.listing()['items'] if row['kind']=='writing')
+            work_memory.remove(automatic['id'],automatic['revision'],work_assistant.preferences()['revision'])
             state=work_memory.settings();work_memory.save_settings(False,True,state['revision'])
             with db.conn() as connection:
                 connection.execute('INSERT INTO work_memory_cursors VALUES(?,?)',(conversation,message_id))
             memory_before=work_memory.settings()
             evidence_before=work_memory.listing('adopted')
+            with db.conn() as connection:
+                forgotten_before=[tuple(row) for row in connection.execute('SELECT * FROM work_memory_forget ORDER BY memory_key')]
+            assert len(forgotten_before)==2
             with companion_growth.connection() as connection:
                 connection.execute('UPDATE companion_profile SET xp=1200,stamps=1100 WHERE id=1')
             companion_growth.purchase('scarf', token='backup-scarf-once')
@@ -96,6 +104,7 @@ def test_portable_round_trip_and_integrity():
                 assert work_memory.listing('adopted') == evidence_before
                 with db.conn() as connection:
                     assert tuple(connection.execute('SELECT * FROM work_memory_cursors').fetchone()) == (conversation,message_id)
+                    assert [tuple(row) for row in connection.execute('SELECT * FROM work_memory_forget ORDER BY memory_key')]==forgotten_before
                 message = db.get_email(1)
                 assert restored["requires_resync"] is True
                 assert message["raw_path"].startswith(str(target_raw) + os.sep)

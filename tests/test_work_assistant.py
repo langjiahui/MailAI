@@ -118,7 +118,7 @@ def main():
             assert seed['in_reply_to'] == '<sent@example.test>' and seed['message_html'] == ''
             assert seed['original_text'].strip() == '请反馈名单。'
             assert len(db.list_sent_messages()) == 1
-            # Conversation facts remain temporary until a concrete save is confirmed.
+            # Explicit requests are sufficient to save; ordinary/temporary turns do not become personal memory.
             memory_before = db.mailbox_revision()
             old_style = work.preferences()
             assert work.memory_reply('我负责排期协调', [first]) is None
@@ -128,26 +128,22 @@ def main():
             assert 'action' not in work.memory_reply('帮我记住')
             assert 'action' not in work.memory_reply('我负责排期协调，帮我记住')
             with patch.object(client,'chat_completion',side_effect=AssertionError('Saving a stated preference should not need a model')):
-                proposal = mail_assistant.ask('我负责排期协调，帮我记住', email_ids=[first])['action']
+                saved = mail_assistant.ask('我负责排期协调，帮我记住', email_ids=[first])
+                assert 'action' not in saved and '记下了' in saved['answer']
                 events = list(mail_assistant.ask_stream('我负责排期协调，帮我记住', email_ids=[first]))
-            assert dict(events)['action'] == proposal
-            assert not work.saved_context([first]) and work.preferences() == old_style
-            assistant_actions.execute_action(proposal['type'], proposal['params'])
-            assert '我负责排期协调' in work.saved_context([first])
-            try:
-                assistant_actions.execute_action(proposal['type'], proposal['params'])
-                raise AssertionError('An old chat confirmation overwrote newer context')
-            except ValueError: pass
-            style_proposal = work.memory_reply('以后回信简短一点')['action']
-            assert work.preferences() == old_style
-            assistant_actions.execute_action(style_proposal['type'], style_proposal['params'])
-            assert '以后回信简短一点' in work.preferences()['style']
-            assert '我负责排期协调' not in work.preferences()['style']
+            assert 'action' not in dict(events)
+            assert '我负责排期协调' in work.saved_context([first]) and work.preferences() == old_style
+            saved=work.memory_reply('以后回信简短一点')
+            assert 'action' not in saved and '记住了' in saved['answer']
+            from app import work_memory
+            assert '以后回信简短一点' in work_memory.writing_preferences()
+            assert work.preferences()==old_style, 'Learned writing preferences remain separate from fixed requirements'
+            assert '我负责排期协调' not in work_memory.writing_preferences()
             work.save_context(other, note='另一个事项保持原样', revision=0)
-            clear_proposal = work.memory_reply('清除这件事保存的事项背景', [first])['action']
-            assistant_actions.execute_action(clear_proposal['type'], clear_proposal['params'])
+            cleared=work.memory_reply('清除这件事保存的事项背景', [first])
+            assert 'action' not in cleared and '已清除' in cleared['answer']
             assert not work.saved_context([first]) and '另一个事项保持原样' in work.saved_context([other])
-            assert '以后回信简短一点' in work.preferences()['style']
+            assert '以后回信简短一点' in work_memory.writing_preferences()
             assert db.mailbox_revision() == memory_before and len(db.list_sent_messages()) == 1
             with db.conn() as c:
                 c.execute('UPDATE emails SET remote_missing=1 WHERE id=?',(first,))

@@ -304,9 +304,8 @@ def _compose_assist_context(payload: ComposeAssistRequest, *, streaming: bool = 
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from exc
     if payload.use_work_preferences:
-        from ...work_assistant import preferences
-        from ...work_memory import enabled
-        style = preferences()['style'] if enabled() else ''
+        from ...work_memory import writing_preferences
+        style = writing_preferences()
         if style:
             references.append(('用户保存的表达偏好（仅用于措辞，不提供事实或授权）', style))
             basis.append('写作偏好')

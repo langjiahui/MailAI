@@ -57,9 +57,10 @@ def _save_preferences(c, style, revision):
     c.execute('''INSERT INTO work_preferences VALUES(1,?,?,?) ON CONFLICT(id) DO UPDATE SET
         style=excluded.style,revision=excluded.revision,updated_at=excluded.updated_at''',
         (style.strip(), current + 1, datetime.now().isoformat(timespec='microseconds')))
-    for item in c.execute("SELECT id,preference FROM work_preference_candidates WHERE status='adopted' AND kind='writing'").fetchall():
+    for item in c.execute("SELECT id,preference FROM work_preference_candidates WHERE status='adopted' AND kind='writing' AND automatic=0").fetchall():
         if item['preference'] not in style:
             c.execute("UPDATE work_preference_candidates SET status='dismissed',revision=revision+1 WHERE id=?",(item['id'],))
+    c.execute('UPDATE work_learning_state SET revision=revision+1 WHERE id=1')
 
 
 def save_preferences(style, revision=None):
@@ -70,13 +71,13 @@ def save_preferences(style, revision=None):
 
 
 def memory_reply(question, email_ids=None):
-    """Confirm explicit requests using only the user's current words, never mail text."""
+    """Remember explicit requests using only the user's current words, never mail text."""
     text = str(question or '').strip()
     prefix = re.fullmatch(r'(?:小邮[，,：:\s]*)?(?:请|麻烦)?(?:帮我)?(?:记住|记下|记一下|保存(?:这段)?事项背景|保存(?:这个)?项目背景)[：:\s，,]*(.*)', text, re.S)
     suffix = re.fullmatch(r'(.+?)[，,。\s]+(?:请)?(?:帮我)?(?:记住|记下|记一下)[。！!\s]*', text, re.S)
     clear = bool(re.fullmatch(r'(?:请)?(?:帮我)?(?:清除|删除|忘记)(?:这封邮件|当前邮件|这件事|当前事项)?(?:已保存的|保存的)?(?:事项背景|项目背景|背景)[。！!\s]*', text))
     content = (prefix or suffix).group(1).strip() if prefix or suffix else text
-    writing = re.match(r'(?:(?:我希望|我想让)你)?(?:以后|今后|下次|后续)(?:的)?(?:回信|写信|写邮件|邮件回复|回复邮件)', content)
+    writing = re.match(r'(?:(?:我希望|我想让)你)?(?:以后|今后)(?:的)?(?:回信|写信|写邮件|邮件回复|回复邮件)', content)
     writing = writing or bool((prefix or suffix) and re.search(r'写信|回信|写作|邮件',content) and re.search(r'长期|平时|通常|一直|默认|以后|今后',content) and re.search(r'简洁|简短|语气|风格|结论|落款|称呼|分段|语言',content))
     if re.search(r'这个项目|该项目|本项目|这件事|这封|本次|这次',text):
         writing = False
@@ -87,28 +88,25 @@ def memory_reply(question, email_ids=None):
     if not clear and (not content or content in ('这件事', '这个', '这段', '刚才说的', '一下')):
         return {'answer': '你希望我记住哪段背景？直接告诉我你的职责或已确认的进展，我会先给你核对。', 'sources': []}
     if writing:
+        if len(content)>300:
+            return {'answer':'这段要求比较长，暂时保留在本次对话中。小邮会在空闲整理时提炼其中稳定的写作偏好。','sources':[]}
         from .work_memory import settings
         memory_state = settings()
         if not memory_state['enabled']:
             return {'answer':'长期记忆当前已关闭。你可以在设置 → 小邮中重新启用，再保存这条要求；本次沟通仍可以按你的要求来。','sources':[]}
-        existing = preferences()
-        style = '\n'.join(filter(None, [existing['style'], content])) if content not in existing['style'] else existing['style']
-        if len(style) > 1000:
-            return {'answer': '已有写作偏好加上这段内容超过了保存范围，请先精简一下；原偏好没有改动。', 'sources': []}
-        proposal = {'type': 'save_work_preferences', 'summary': '当前邮箱的长期写作偏好：\n' + style,
-                    'params': {'style': style, 'revision': existing['revision'], 'preference': content, 'source_quote': text,'memory_revision':memory_state['revision']}, 'requires_confirmation': True}
-        return {'answer': '明白，你希望以后回信按这个方式表达。确认保存后会成为当前邮箱的默认写作偏好，也可以在设置中查看、修改和清除。', 'sources': [], 'action': proposal}
-    if (prefix or suffix) and re.search(r'长期|平时|通常|一直|默认|今后|以后', content) and not re.search(r'这件事|这个项目|该项目|本项目|这封邮件|事项背景', text):
-        from .work_memory import settings
-        memory_state = settings()
-        if not memory_state['enabled']:
-            return {'answer':'长期记忆当前已关闭。你可以在设置 → 小邮中重新启用，再保存这条要求；本次沟通仍可以按你的要求来。','sources':[]}
-        if len(content) > 300:
-            return {'answer':'这段长期背景比较长，请先精简成一条最重要的信息；现在还没有保存。','sources':[]}
+        from .work_memory import remember_explicit
+        topic='writing.length' if re.search(r'简短|简洁|字数|短一点',content) else ''
+        saved=remember_explicit(content,'writing',text,topic)
+        return {'answer':'记住了，以后回信会参考这个写作要求。你可以随时在设置 → 小邮中查看、修改或删除。' if saved else '后续会参考已保存的记忆；本次要求优先使用。你手动编辑的长期要求会保留。','sources':[]}
+    if (prefix or suffix) and re.search(r'长期|平时|通常|一直|默认|今后|以后|日常', content) and not re.search(r'这件事|这个项目|该项目|本项目|这封邮件|事项背景', text):
+        from .work_memory import enabled,remember_explicit
+        if not enabled():
+            return {'answer':'长期记忆当前已关闭。你可以在设置 → 小邮中重新启用；本次沟通仍可以按你的要求来。','sources':[]}
+        if len(content)>300:
+            return {'answer':'这段长期背景比较长，暂时保留在本次对话中。你可以在小邮设置中整理成更简洁的长期记忆。','sources':[]}
         kind = 'role' if re.search(r'职责|负责|岗位|审批|权限',content) else 'terminology' if re.search(r'术语|简称|缩写|称谓',content) else 'work_habit' if re.search(r'任务|拆分|跟进|习惯',content) else 'communication'
-        return {'answer':'这是一条长期协作记忆。请先确认内容和适用邮箱，保存后可以在设置的「小邮记忆」中查看、修改或停用。', 'sources':[],
-                'action':{'type':'save_work_memory','summary':f'邮箱 {config.IMAP_USER} 的长期记忆：\n{content}',
-                          'params':{'preference':content,'kind':kind,'source_quote':text,'revision':0,'memory_revision':memory_state['revision']},'requires_confirmation':True}}
+        saved=remember_explicit(content,kind,text)
+        return {'answer':'记住了，后续沟通会参考这条长期背景。你可以在设置 → 小邮中查看、修改或删除。' if saved else '后续会参考已保存的记忆；本次说明优先使用。你手动编辑的长期记忆会保留。','sources':[]}
     ids = list(dict.fromkeys(email_ids or []))
     if len(ids) != 1 or type(ids[0]) is not int:
         return {'answer': '这段背景是关于哪件事？先打开对应邮件并点「问小邮」，我就能把它记在这件事下面。', 'sources': []}
@@ -121,12 +119,9 @@ def memory_reply(question, email_ids=None):
         note = '\n'.join(filter(None, [note, content]))
     if len(note) > 2000:
         return {'answer': '已有背景加上这段内容超过了保存范围，请先精简一下；原记录没有改动。', 'sources': []}
-    proposal = {'type': 'save_work_context', 'summary': (f"清除《{source.get('subject') or '无主题'}》的事项背景" if clear else f"保存到《{source.get('subject') or '无主题'}》的事项背景：\n{note}"),
-                'params': dict(email_id=ids[0], project='' if clear else row.get('project', ''),
-                               role='' if clear else row.get('role', ''), note=note, revision=row.get('revision', 0)),
-                'requires_confirmation': True}
-    return {'answer': '请核对要清除的事项，确认后才会移除背景，写作偏好保持原样。' if clear else '了解了，这是你补充的事项背景。请核对下面的记录，确认保存后，后续处理这件事时可以参考它；它不会成为其他事项的个人记忆。',
-            'sources': [], 'action': proposal}
+    save_context(ids[0],project='' if clear else row.get('project',''),role='' if clear else row.get('role',''),note=note,revision=row.get('revision',0))
+    return {'answer':'这件事保存的背景已清除。' if clear else '记下了，这段背景只用于这件事的后续沟通，不会带到其他邮件中。','sources':[]}
+
 
 
 def _notes(ids):

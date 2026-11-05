@@ -121,15 +121,30 @@ def main():
         import json
         from app.llm import client as memory_client
         original_completion = memory_client.chat_completion
+        original_stream = memory_client.chat_completion_stream
         def memory_completion(messages, **kwargs):
-            if '归纳可复用的记忆' not in messages[0]['content']:
+            if '自动沉淀稳定、可复用的长期记忆' not in messages[0]['content']:
                 return original_completion(messages, **kwargs)
-            turns = json.loads(messages[-1]['content'])
+            turns = json.loads(messages[-1]['content'])['turns']
             source = next((row for row in reversed(turns) if '一次只问一个问题' in row['content']), None)
-            candidates = [dict(preference='沟通时一次只问一个问题',kind='communication',scope='account',reason='用户明确表达沟通习惯',
+            candidates = [dict(preference='沟通时一次只问一个问题',kind='communication',scope='account',topic='communication.questions',reason='用户明确表达沟通习惯',
                 evidence=[dict(message_id=source['message_id'],quote=source['content'])])] if source else []
             return {'choices':[{'message':{'content':json.dumps({'candidates':candidates},ensure_ascii=False)},'finish_reason':'stop'}]}
         memory_client.chat_completion = memory_completion
+        def memory_stream(messages,**kwargs):
+            if '我平时希望小邮沟通时一次只问一个问题' in messages[-1]['content']:
+                yield '明白，我们就一次聊清一个关键问题。'
+            else:
+                yield from original_stream(messages,**kwargs)
+        memory_client.chat_completion_stream=memory_stream
+        @server.app.post('/fixture/memory-idle')
+        def age_memory_fixture():
+            from app import db
+            # Test-only synthetic accounts; the acceptance server omits this flag.
+            for key,account in registry['accounts'].items():
+                with use(dict(ACCOUNT_ID=key,DB_PATH=account['db_path'])):
+                    with db.conn() as c:c.execute("UPDATE assistant_conversations SET updated_at='2020-01-01T00:00:00'")
+            return {'ok':True}
     if os.environ.get('MAILAI_GIFT_FIXTURE') == '1':
         # Ephemeral test authority exists only in this isolated fixture, never in the app.
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey

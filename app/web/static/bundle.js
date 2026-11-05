@@ -1587,17 +1587,23 @@ if (typeof document !== 'undefined') {
 /* ---- i18n-catalog.js ---- */
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
-  "work.analysisMore": ["本批分析完成，还有新对话待整理。可继续分析并核对下面的候选记忆。", "This batch is complete. More turns remain; continue analyzing and review the suggestions below."],
+  "work.stylePlaceholder": ["例如：结论在前，语气自然，避免客套落款。", "For example: lead with the conclusion, use a natural tone, and avoid formal sign-offs."],
+  "work.manuallyEdited": ["已手动调整", "Manually edited"],
+  "work.summaryMore": ["共 {count} 条记忆，可在管理中查看全部。", "{count} memories in total. Open Manage memory to see all."],
+  "work.noSavedMemories": ["还没有沉淀出长期记忆。照常与小邮沟通就好，稳定的偏好会逐步记住。", "No lasting memories yet. Talk with XiaoYou as usual; stable preferences will be learned over time."],
+  "work.memoryDeleted": ["这条记忆已删除，旧对话中的相同信息不会立即重新出现。", "Memory deleted. The same information from old conversations will not immediately reappear."],
+  "work.deleteMemory": ["删除", "Delete"],
+  "work.analysisMore": ["本批已整理，还有对话待分析。可继续整理。", "This batch is complete. More conversations remain to be organized."],
   "work.continueAnalysis": ["继续分析", "Continue analysis"],
   "work.memoryAccount": ["适用邮箱：", "Account: "],
   "work.memoryEnabled": ["启用长期记忆", "Use lasting memory"],
   "work.memoryEnabledHint": ["让小邮参考当前邮箱的写作要求和已确认记忆。关闭会保留内容并停止引用与分析。", "Let XiaoYou use this account’s writing requirements and confirmed memories. Turning this off retains saved content and stops recall and analysis."],
-  "work.autoLearn": ["空闲时整理对话", "Organize conversations while idle"],
-  "work.autoLearnHint": ["在本窗口空闲后，调用已连接的 AI 提炼对话经验；只生成待确认建议。", "After this window is idle, use the connected AI to extract conversation insights as suggestions for review."],
+  "work.autoLearn": ["自动整理长期记忆", "Automatically organize lasting memory"],
+  "work.autoLearnHint": ["空闲时用已连接的 AI 分析对话，自动沉淀稳定偏好，无需逐条确认。", "Use the connected AI while idle to learn stable preferences automatically, without approving each memory."],
   "work.memorySummary": ["记忆摘要", "Memory summary"],
-  "work.summaryEmpty": ["小邮还没有已确认的长期记忆。", "XiaoYou has no confirmed lasting memories yet."],
+  "work.summaryEmpty": ["还没有长期记忆，稳定偏好会随沟通逐步沉淀。", "No lasting memories yet. Stable preferences will be learned through conversation."],
   "work.clearLearned": ["清除对话记忆", "Clear conversation memories"],
-  "work.clearLearnedHint": ["将清除当前邮箱的对话记忆和待确认建议，并跳过旧对话。写作要求、邮件和聊天记录会保留。", "Clear this account’s conversation memories and suggestions, and skip old conversations. Writing requirements, emails and chat history are retained."],
+  "work.clearLearnedHint": ["清除当前邮箱从对话中沉淀的记忆，并跳过旧对话。明确写作要求、邮件与聊天记录会保留。", "Clear memories learned from this account’s conversations and skip old conversations. Explicit writing requirements, emails and chat history are retained."],
   "work.confirmClear": ["确认清除", "Confirm clear"],
   "work.cancel": ["取消", "Cancel"],
   "work.memorySettingsSaved": ["记忆设置已保存。", "Memory settings saved."],
@@ -1627,7 +1633,7 @@ const MAILAI_UI_COPY = {
   "work.error.memoryState": ["这条经验状态已变化，请重新核对", "This memory's status changed. Review it again."],
   "work.error.mergedPreference": ["这条要求已与手动偏好合并，请先在上方编辑并保存", "This requirement is part of your manually edited preferences. Edit and save the text above first."],
   "work.welcomeTitle": ["这封邮件，你想先聊什么？", "What would you like to discuss about this email?"],
-  "work.welcomeHint": ["直接告诉我你的想法。职责和进展可以在这里沟通，要保存为事项背景时，我会先请你确认。", "Tell me what you have in mind. We can discuss your role and progress here; I will ask you to confirm before saving context for this matter."],
+  "work.welcomeHint": ["直接说说你的想法。事项背景随邮件记录，稳定的长期偏好会逐步记住，可在设置中管理。", "Tell me what you have in mind. Matter context stays with this email; stable lasting preferences are learned gradually and can be managed in Settings."],
   "work.talkUnderstand": ["这封邮件要我确认什么？", "What does this email ask me to confirm?"],
   "work.talkReply": ["我想先聊聊怎么回应", "I'd like to discuss how to respond"],
   "work.replyPrompt": ["我想先聊聊怎么回应这封邮件。", "I'd like to discuss how to respond to this email first."],
@@ -1635,14 +1641,14 @@ const MAILAI_UI_COPY = {
   "work.savedContext": ["聊聊这件事已保存的背景", "Discuss the saved context for this matter"],
   "work.contextPrompt": ["这件事已经保存了哪些背景？请区分我确认的记录和邮件原文。", "What context has been saved for this matter? Distinguish my confirmed notes from the original email."],
   "work.settingsTitle": ["小邮记忆", "XiaoYou memory"],
-  "work.settingsRowHint": ["管理写作、沟通与工作习惯；从对话中分析经验，确认后逐步沉淀。", "Manage writing, communication and work habits. Review insights from conversations before adopting them."],
+  "work.settingsRowHint": ["查看小邮逐步了解的写作、沟通与工作习惯，随时修改或删除。", "See the writing, communication and work habits XiaoYou learns. Edit or delete them at any time."],
   "work.managePreferences": ["管理记忆", "Manage memory"],
-  "work.settingsHint": ["记忆适用于上方邮箱。长期写作偏好在这里管理；具体项目事实留在对应事项中。分析所得经验先待确认，采用后才用于后续沟通。", "Memory applies to the account above. Manage lasting writing preferences here; project facts stay with their matter. Insights from analysis affect future conversations only after adoption."],
-  "work.learningTitle": ["从沟通中沉淀", "Learn from conversations"],
-  "work.learningHint": ["每批按顺序分析最多 80 条新的用户发言，保留原话来源；只用于当次的要求不自动变成长期习惯。", "Analyze up to 80 new user turns in chronological order per batch, keeping original quotes. One-off instructions do not automatically become lasting habits."],
-  "work.analyze": ["分析最近对话", "Analyze recent conversations"],
+  "work.settingsHint": ["小邮会自动沉淀明确的长期偏好或跨对话重复的稳定习惯。临时要求只用于当次沟通。手动写作要求和你修改过的记忆优先。", "XiaoYou automatically learns explicit lasting preferences and stable habits repeated across conversations. One-off requests stay with their conversation. Your explicit requirements and manual edits take priority."],
+  "work.learningTitle": ["小邮已记住", "What XiaoYou remembers"],
+  "work.learningHint": ["记忆会逐步整理、合并更新，保留原话来源。你可以直接修改或删除，自动整理会尊重这些调整。", "Memories are gradually organized and updated with original sources. Edit or delete them directly; automatic learning respects your changes."],
+  "work.analyze": ["整理最近对话", "Organize recent conversations"],
   "work.analyzing": ["正在分析对话中的可复用经验…", "Analyzing reusable insights from conversations…"],
-  "work.analysisDone": ["分析完成。请核对来源，再选择要采用的记忆。", "Analysis complete. Review sources before adopting any memory."],
+  "work.analysisDone": ["已自动更新长期记忆，可以在下面查看、修改或删除。", "Lasting memory updated automatically. View, edit or delete it below."],
   "work.noNewConversations": ["没有新的对话需要分析，已保存的记忆保持原样。", "No new conversations to analyze. Saved memory is unchanged."],
   "work.pending": ["待确认", "To review"],
   "work.adopted": ["已采用", "Adopted"],
@@ -1671,7 +1677,7 @@ const MAILAI_UI_COPY = {
   "work.confirmPersonalMemory": ["确认保存长期记忆", "Confirm lasting memory"],
   "work.memorySaved": ["长期记忆已保存，可在设置的小邮记忆中管理。", "Lasting memory saved. Manage it in Settings → XiaoYou memory."],
   "work.loadingPreferences": ["正在读取写作偏好…", "Loading writing preferences…"],
-  "work.preferencesSaved": ["已保存当前邮箱的写作偏好。", "Writing preferences saved for this account."],
+  "work.preferencesSaved": ["已保存当前邮箱的明确写作要求。", "Explicit writing requirements saved for this account."],
   "work.chooseAccount": ["请先选择要管理偏好的邮箱。", "Select the account whose preferences you want to manage."],
   "work.accountChanged": ["邮箱已切换，请重新打开偏好设置。", "The account changed. Reopen writing preferences."],
   "work.reload": ["重新读取", "Reload"],
@@ -1737,7 +1743,7 @@ const MAILAI_UI_COPY = {
   "work.project": ["项目或事项名称", "Project or matter"],
   "work.role": ["我的职责", "My role"],
   "work.note": ["已确认进展与背景", "Confirmed progress and context"],
-  "work.style": ["当前邮箱的写作偏好", "Writing preferences for this account"],
+  "work.style": ["明确写作要求", "Explicit writing requirements"],
   "work.clear": ["清空内容", "Clear fields"],
   "work.save": ["保存", "Save"],
   "work.changed": ["邮箱或邮件已切换，请重新打开记录。", "The account or message changed. Reopen this form."],
@@ -33030,6 +33036,7 @@ function mailCardDate(value, now = new Date()) {
   const button = (action, label) => `<button type="button" data-work="${action}" data-i18n="work.${label}">${esc(w(label))}</button>`;
   const post = body => ({headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
   const assistant = document.getElementById('assistant-panel');
+  let memoryScheduler=null,scheduledAccount=null;
   const scopePicker = document.getElementById('assistant-scope-picker');
   const eligible = row => !['trash','spam','quarantine','draft','sent'].includes(row?.status);
   function target() {
@@ -33078,6 +33085,8 @@ function mailCardDate(value, now = new Date()) {
   window.addEventListener('resize',schedulePosition);
   new ResizeObserver(schedulePosition).observe(assistant);
   function refresh() {
+    const account=activeMailAccount()?.id;
+    if(account!==scheduledAccount){scheduledAccount=account;memoryScheduler?.();}
     const state = target();
     mailaiBindUI(document.getElementById('assistant-input'),'@placeholder',()=>target() ? w('talkPlaceholder') : mailaiT('asst.inputPh'));
     tools.hidden = !state;
@@ -33124,8 +33133,8 @@ function mailCardDate(value, now = new Date()) {
     memoryState=data;memoryUse.checked=data.enabled;memoryAuto.checked=data.auto_analyze;
     memoryUse.disabled=false;memoryAuto.disabled=!data.enabled;memoryClear.disabled=false;
     const summary=memoryControls.querySelector('[data-memory-summary]');
-    const rows=data.summary.filter(row=>row.kind!=='writing');
-    summary.innerHTML=`${data.writing_requirements?`<p><small>${esc(w('style'))}</small><br>${esc(data.writing_requirements)}</p>`:''}${rows.length?rows.slice(0,8).map(row=>`<p><small>${esc(w('kind.'+row.kind))}</small><br>${esc(row.preference)}</p>`).join(''):''}${!data.writing_requirements&&!rows.length?`<p>${esc(w('summaryEmpty'))}</p>`:''}`;
+    const rows=data.summary;
+    summary.innerHTML=`${data.writing_requirements?`<p><small>${esc(w('style'))}</small><br><span class="memory-summary-value">${esc(data.writing_requirements)}</span></p>`:''}${rows.length?rows.slice(0,3).map(row=>`<p><small>${esc(w('kind.'+row.kind))}${row.user_edited?' · '+esc(w('manuallyEdited')):''}</small><br><span class="memory-summary-value">${esc(row.preference)}</span></p>`).join(''):''}${rows.length>3?`<p class="memory-summary-more">${esc(w('summaryMore').replace('{count}',data.total||rows.length))}</p>`:''}${!data.writing_requirements&&!rows.length?`<p>${esc(w('summaryEmpty'))}</p>`:''}`;
   }
   async function loadMemoryState(){
     const account=activeMailAccount()?.id;if(!account)return;
@@ -33169,16 +33178,19 @@ function mailCardDate(value, now = new Date()) {
   // The server rechecks switches, account, idle sources and generation revision.
   let learnTimer=null,lastInteraction=Date.now();
   for(const name of['pointerdown','keydown','input'])document.addEventListener(name,()=>{lastInteraction=Date.now();},{passive:true});
-  document.addEventListener('mailai:assistant-finished',event=>{
-    clearTimeout(learnTimer);const account=event.detail?.account;
+  const scheduleLearning=event=>{
+    clearTimeout(learnTimer);const account=event.detail?.account||activeMailAccount()?.id;
     const attempt=async()=>{
       if(activeMailAccount()?.id!==account)return;
       const remaining=95000-(Date.now()-lastInteraction);
       if(assistantController||remaining>0){learnTimer=setTimeout(attempt,Math.max(1000,remaining));return;}
-      try{await api('/api/work/memory/analyze?idle=true',{accountId:account,method:'POST'});}catch(_){/* User work must never depend on background learning. */}
+      try{const data=await api('/api/work/memory/analyze?idle=true',{accountId:account,method:'POST'});if(data.more)learnTimer=setTimeout(attempt,95000);}catch(_){/* User work must never depend on background learning. */}
     };
     learnTimer=setTimeout(attempt,95000);
-  });
+  };
+  document.addEventListener('mailai:assistant-finished',scheduleLearning);
+  memoryScheduler=()=>scheduleLearning({detail:{account:activeMailAccount()?.id}});
+  setTimeout(()=>scheduleLearning({detail:{}}),1000);
 
   document.getElementById('work-style-settings').addEventListener('click', async event => {
     const account = activeMailAccount();
@@ -33186,25 +33198,26 @@ function mailCardDate(value, now = new Date()) {
     const trigger = event.currentTarget, dialog = document.createElement('dialog');
     dialog.id = 'work-preferences-dialog'; dialog.className = 'work-dialog work-memory-dialog';
     dialog.setAttribute('aria-labelledby','work-preferences-title');
-    dialog.innerHTML = `<form><header><h2 id="work-preferences-title">${esc(w('settingsTitle'))}</h2><button type="button" data-close aria-label="${esc(w('close'))}">✕</button></header><p class="work-dialog-source">${esc(account.user || account.id)}</p><p>${esc(w('settingsHint'))}</p><label>${esc(w('style'))}<textarea name="style" maxlength="1000" disabled></textarea></label><div class="work-memory-edit-actions"><button type="button" data-reload>${esc(w('reload'))}</button>${button('clear','clear')}<button type="submit" disabled>${esc(w('save'))}</button></div><p role="status" data-status>${esc(w('loadingPreferences'))}</p><section class="work-memory-learning"><div class="work-memory-learning-head"><h3>${esc(w('learningTitle'))}</h3><button type="button" data-analyze>${esc(w('analyze'))}</button></div><p>${esc(w('learningHint'))}</p><nav class="work-memory-tabs" aria-label="${esc(w('memoryStatus'))}">${['pending','adopted','dismissed'].map(name=>`<button type="button" data-memory-status="${name}" aria-pressed="${name==='pending'}">${esc(w(name))}</button>`).join('')}</nav><div data-memory-list></div><footer class="work-memory-pagination"><button type="button" data-page-prev>${esc(w('previous'))}</button><span data-page-label></span><button type="button" data-page-next>${esc(w('next'))}</button></footer></section></form>`;
+    dialog.innerHTML = `<form><header><h2 id="work-preferences-title">${esc(w('settingsTitle'))}</h2><button type="button" data-close aria-label="${esc(w('close'))}">✕</button></header><p class="work-dialog-source">${esc(account.user || account.id)}</p><p>${esc(w('settingsHint'))}</p><label>${esc(w('style'))}<textarea name="style" maxlength="1000" placeholder="${esc(w('stylePlaceholder'))}" disabled></textarea></label><div class="work-memory-edit-actions"><button type="button" data-reload>${esc(w('reload'))}</button>${button('clear','clear')}<button type="submit" disabled>${esc(w('save'))}</button></div><p role="status" data-status>${esc(w('loadingPreferences'))}</p><section class="work-memory-learning"><div class="work-memory-learning-head"><h3>${esc(w('learningTitle'))}</h3><button type="button" data-analyze>${esc(w('analyze'))}</button></div><p>${esc(w('learningHint'))}</p><div data-memory-list></div><footer class="work-memory-pagination"><button type="button" data-page-prev>${esc(w('previous'))}</button><span data-page-label></span><button type="button" data-page-next>${esc(w('next'))}</button></footer></section></form>`;
     document.body.append(dialog);
     const editor=dialog.querySelector('[name="style"]'), status=dialog.querySelector('[data-status]'), submit=dialog.querySelector('[type="submit"]'), clear=dialog.querySelector('[data-work="clear"]'), reload=dialog.querySelector('[data-reload]'), analyze=dialog.querySelector('[data-analyze]'), list=dialog.querySelector('[data-memory-list]');
-    let revision=null, baseStyle='', loading=false, busy=false, filter='pending', offset=0, pageData=null, ticket=0,learningEnabled=true;
+    let revision=null, baseStyle='', loading=false, busy=false, filter='adopted', offset=0, pageData=null, ticket=0,learningEnabled=true;
     const active=()=>dialog.isConnected&&dialog.open&&activeMailAccount()?.id===account.id;
     const dirty=()=>editor.value!==baseStyle;
     const updateControls=()=>{
       const editing=list.querySelector('[data-memory-editor]:not([hidden])');
       editor.disabled=submit.disabled=clear.disabled=revision===null||loading||busy||Boolean(editing);
+      submit.disabled ||= !dirty();clear.disabled ||= !editor.value;
       reload.disabled=loading||busy||Boolean(editing);analyze.disabled=!learningEnabled||loading||busy||dirty()||Boolean(editing);
-      dialog.querySelectorAll('[data-memory-action],[data-memory-status],[data-page-prev],[data-page-next]').forEach(node=>node.disabled=loading||busy||dirty()||Boolean(editing&&!editing.contains(node)));
+      dialog.querySelectorAll('[data-memory-action],[data-page-prev],[data-page-next]').forEach(node=>node.disabled=loading||busy||dirty()||Boolean(editing&&!editing.contains(node)));
       dialog.querySelector('[data-page-prev]').disabled ||= offset===0;
       dialog.querySelector('[data-page-next]').disabled ||= !pageData||offset+pageData.items.length>=pageData.total;
     };
     const applyPreferences=data=>{editor.value=data.style;baseStyle=data.style;revision=data.revision;};
     function renderList(data){
-      pageData=data;
-      dialog.querySelectorAll('[data-memory-status]').forEach(node=>{node.textContent=`${w(node.dataset.memoryStatus)} · ${data.counts[node.dataset.memoryStatus]||0}`;node.setAttribute('aria-pressed',String(node.dataset.memoryStatus===filter));});
-      list.innerHTML=data.items.length?data.items.map(row=>`<article class="work-memory-item" data-memory-id="${row.id}"><small>${esc(w('kind.'+row.kind))}</small><p class="work-memory-value">${esc(row.preference)}</p>${row.reason?`<p class="work-memory-reason">${esc(row.reason)}</p>`:''}<details><summary>${esc(w('evidence'))} · ${row.evidence.length}</summary>${row.evidence.length?row.evidence.map(source=>`<blockquote>${esc(source.quote)}<cite>${esc(source.title||w('confirmedInChat'))} · ${esc(source.created_at||'')}</cite></blockquote>`).join(''):`<p>${esc(w('confirmedInChat'))}</p>`}</details><div class="work-memory-item-actions">${row.status!=='adopted'?`<button type="button" data-memory-action="adopt">${esc(w('adopt'))}</button>`:''}<button type="button" data-memory-action="edit">${esc(w('edit'))}</button>${row.status!=='dismissed'?`<button type="button" data-memory-action="dismiss">${esc(w(row.status==='adopted'?'stopUsing':'dismiss'))}</button>`:''}</div><div data-memory-editor hidden><textarea maxlength="300" aria-label="${esc(w('memoryContent'))}">${esc(row.preference)}</textarea><button type="button" data-memory-action="save">${esc(w('saveEdit'))}</button><button type="button" data-memory-action="cancel">${esc(w('cancelEdit'))}</button></div></article>`).join(''):`<p class="work-memory-empty">${esc(w(filter==='pending'?'noCandidates':'noRecords'))}</p>`;
+      pageData=data;dialog.querySelector('.work-memory-pagination').hidden=data.total<=20;
+
+      list.innerHTML=data.items.length?data.items.map(row=>`<article class="work-memory-item" data-memory-id="${row.id}"><small>${esc(w('kind.'+row.kind))}${row.user_edited?' · '+esc(w('manuallyEdited')):''}</small><p class="work-memory-value">${esc(row.preference)}</p>${row.reason?`<p class="work-memory-reason">${esc(row.reason)}</p>`:''}<details><summary>${esc(w('evidence'))} · ${row.evidence.length}</summary>${row.evidence.length?row.evidence.map(source=>`<blockquote>${esc(source.quote)}<cite>${esc(source.title||w('confirmedInChat'))} · ${esc(source.created_at||'')}</cite></blockquote>`).join(''):`<p>${esc(w('confirmedInChat'))}</p>`}</details><div class="work-memory-item-actions"><button type="button" data-memory-action="edit">${esc(w('edit'))}</button><button type="button" data-memory-action="delete">${esc(w('deleteMemory'))}</button></div><div data-memory-editor hidden><textarea maxlength="300" aria-label="${esc(w('memoryContent'))}">${esc(row.preference)}</textarea><button type="button" data-memory-action="save">${esc(w('saveEdit'))}</button><button type="button" data-memory-action="cancel">${esc(w('cancelEdit'))}</button></div></article>`).join(''):`<p class="work-memory-empty">${esc(w('noSavedMemories'))}</p>`;
       dialog.querySelector('[data-page-label]').textContent=data.total?`${offset+1}–${offset+data.items.length} / ${data.total}`:'0';
       updateControls();
     }
@@ -33241,14 +33254,10 @@ function mailCardDate(value, now = new Date()) {
       busy=true;updateControls();status.textContent=w('analyzing');
       try{
         const data=await api('/api/work/memory/analyze',{accountId:account.id,method:'POST'});
-        if(!active())return;filter='pending';offset=0;await loadList();status.textContent=w(data.more?'analysisMore':data.analyzed?'analysisDone':'noNewConversations');analyze.textContent=w(data.more?'continueAnalysis':'analyze');
+        if(!active())return;filter='adopted';offset=0;await loadList();status.textContent=w(data.more?'analysisMore':data.analyzed?'analysisDone':'noNewConversations');analyze.textContent=w(data.more?'continueAnalysis':'analyze');
       }catch(error){if(active())status.textContent=mailaiSystemMessage(error.message);}
       finally{busy=false;if(active())updateControls();}
     };
-    dialog.querySelectorAll('[data-memory-status]').forEach(node=>node.onclick=async()=>{
-      if(busy||dirty())return;filter=node.dataset.memoryStatus;offset=0;
-      try{await loadList();}catch(error){if(active())status.textContent=mailaiSystemMessage(error.message);}
-    });
     for(const [selector,delta]of[['[data-page-prev]',-20],['[data-page-next]',20]])dialog.querySelector(selector).onclick=async()=>{
       if(busy||dirty())return;offset=Math.max(0,offset+delta);
       try{await loadList();}catch(error){if(active())status.textContent=mailaiSystemMessage(error.message);}
@@ -33263,8 +33272,8 @@ function mailCardDate(value, now = new Date()) {
       busy=true;updateControls();
       try{
         const op=control.dataset.memoryAction;
-        const data=await api(`/api/work/memory/${row.id}${op==='save'?'':'/'+op}`,{accountId:account.id,method:op==='save'?'PUT':'POST',...post(op==='save'?{preference:editBox.querySelector('textarea').value,revision:row.revision,pref_revision:revision}:{revision,candidate_revision:row.revision})});
-        if(!active())return;applyPreferences(data);status.textContent=w('memoryUpdated');await loadList();
+        const data=await api(`/api/work/memory/${row.id}`,{accountId:account.id,method:op==='save'?'PUT':'DELETE',...post(op==='save'?{preference:editBox.querySelector('textarea').value,revision:row.revision,pref_revision:revision}:{revision:row.revision,pref_revision:revision})});
+        if(!active())return;applyPreferences(data);status.textContent=w(op==='delete'?'memoryDeleted':'memoryUpdated');if(op==='delete'&&pageData.items.length===1&&offset)offset=Math.max(0,offset-20);await loadList();
       }catch(error){if(active())status.textContent=mailaiSystemMessage(error.message);}
       finally{busy=false;if(active())updateControls();}
     };

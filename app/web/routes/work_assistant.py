@@ -46,6 +46,11 @@ class MemoryEditRequest(BaseModel):
     pref_revision: int = Field(ge=0)
 
 
+class MemoryDeleteRequest(BaseModel):
+    revision: int = Field(ge=1)
+    pref_revision: int = Field(ge=0)
+
+
 def checked(action, *args, **kwargs):
     try:
         return action(*args, **kwargs)
@@ -84,7 +89,7 @@ def prepare_followup(sent_id: int):
 
 
 @router.get('/api/work/memory')
-def memory_listing(status: str='pending', offset: int=Query(0,ge=0), limit: int=Query(20,ge=1,le=50)):
+def memory_listing(status: str='adopted', offset: int=Query(0,ge=0), limit: int=Query(20,ge=1,le=50)):
     return checked(work_memory.listing,status,offset,limit)
 
 
@@ -121,3 +126,8 @@ def memory_dismiss(candidate_id: int,payload: MemoryCandidateActionRequest):
 @router.put('/api/work/memory/{candidate_id}')
 def memory_edit(candidate_id: int,payload: MemoryEditRequest):
     return checked(work_memory.edit,candidate_id,payload.preference,payload.revision,payload.pref_revision)
+
+
+@router.delete('/api/work/memory/{candidate_id}')
+def memory_delete(candidate_id: int,payload: MemoryDeleteRequest):
+    return checked(work_memory.remove,candidate_id,payload.revision,payload.pref_revision)

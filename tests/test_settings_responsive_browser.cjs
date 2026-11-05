@@ -42,6 +42,14 @@ const {chromium, webkit} = require('playwright');
               return {overflow:panel.scrollWidth>panel.clientWidth+2,escaped,bounds:{left:bounds.left,right:bounds.right},close:{top:close.top,bottom:close.bottom,right:close.right},pageOverflow:document.documentElement.scrollWidth>innerWidth+1,overflowing:[...document.body.querySelectorAll("*")].filter(n=>n.getClientRects().length && n.getBoundingClientRect().right>innerWidth+1).slice(0,12).map(n=>({tag:n.tagName,id:n.id,cls:n.className,right:n.getBoundingClientRect().right}))};
             });
             assert(!geometry.overflow && !geometry.pageOverflow && !geometry.escaped.length,JSON.stringify({context,geometry}));
+            if(tab==='preferences'){
+              const layout=await page.locator('.preference-grid').evaluate(grid=>{
+                const rect=selector=>{const r=grid.querySelector(selector).getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width};};
+                return {display:rect('.device-preferences'),sync:rect('.sync-preferences'),semantic:rect('.semantic-preferences'),notifications:rect('.notification-preferences')};
+              });
+              assert(Math.abs(layout.semantic.left-layout.sync.left)<2&&layout.semantic.top>=layout.sync.bottom-2,'Search follows sync without leaving an empty left column');
+              assert(layout.display.width>=layout.notifications.width-2,'Display settings retain the main content width');
+            }
             assert(geometry.close.top>=0 && geometry.close.bottom<=1000 && geometry.close.right<=width+1,JSON.stringify({context,geometry}));
             assert.equal(await page.locator('#system-tabs [aria-current="page"]').getAttribute('data-system-tab'),tab);
             const navVisible=await page.locator('#system-tabs [aria-current="page"]').evaluate(button=>{

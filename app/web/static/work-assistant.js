@@ -4,6 +4,7 @@
   const button = (action, label) => `<button type="button" data-work="${action}" data-i18n="work.${label}">${esc(w(label))}</button>`;
   const post = body => ({headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
   const assistant = document.getElementById('assistant-panel');
+  let memoryScheduler=null,scheduledAccount=null;
   const scopePicker = document.getElementById('assistant-scope-picker');
   const eligible = row => !['trash','spam','quarantine','draft','sent'].includes(row?.status);
   function target() {
@@ -52,6 +53,8 @@
   window.addEventListener('resize',schedulePosition);
   new ResizeObserver(schedulePosition).observe(assistant);
   function refresh() {
+    const account=activeMailAccount()?.id;
+    if(account!==scheduledAccount){scheduledAccount=account;memoryScheduler?.();}
     const state = target();
     mailaiBindUI(document.getElementById('assistant-input'),'@placeholder',()=>target() ? w('talkPlaceholder') : mailaiT('asst.inputPh'));
     tools.hidden = !state;
@@ -98,8 +101,8 @@
     memoryState=data;memoryUse.checked=data.enabled;memoryAuto.checked=data.auto_analyze;
     memoryUse.disabled=false;memoryAuto.disabled=!data.enabled;memoryClear.disabled=false;
     const summary=memoryControls.querySelector('[data-memory-summary]');
-    const rows=data.summary.filter(row=>row.kind!=='writing');
-    summary.innerHTML=`${data.writing_requirements?`<p><small>${esc(w('style'))}</small><br>${esc(data.writing_requirements)}</p>`:''}${rows.length?rows.slice(0,8).map(row=>`<p><small>${esc(w('kind.'+row.kind))}</small><br>${esc(row.preference)}</p>`).join(''):''}${!data.writing_requirements&&!rows.length?`<p>${esc(w('summaryEmpty'))}</p>`:''}`;
+    const rows=data.summary;
+    summary.innerHTML=`${data.writing_requirements?`<p><small>${esc(w('style'))}</small><br><span class="memory-summary-value">${esc(data.writing_requirements)}</span></p>`:''}${rows.length?rows.slice(0,3).map(row=>`<p><small>${esc(w('kind.'+row.kind))}${row.user_edited?' · '+esc(w('manuallyEdited')):''}</small><br><span class="memory-summary-value">${esc(row.preference)}</span></p>`).join(''):''}${rows.length>3?`<p class="memory-summary-more">${esc(w('summaryMore').replace('{count}',data.total||rows.length))}</p>`:''}${!data.writing_requirements&&!rows.length?`<p>${esc(w('summaryEmpty'))}</p>`:''}`;
   }
   async function loadMemoryState(){
     const account=activeMailAccount()?.id;if(!account)return;
@@ -143,16 +146,19 @@
   // The server rechecks switches, account, idle sources and generation revision.
   let learnTimer=null,lastInteraction=Date.now();
   for(const name of['pointerdown','keydown','input'])document.addEventListener(name,()=>{lastInteraction=Date.now();},{passive:true});
-  document.addEventListener('mailai:assistant-finished',event=>{
-    clearTimeout(learnTimer);const account=event.detail?.account;
+  const scheduleLearning=event=>{
+    clearTimeout(learnTimer);const account=event.detail?.account||activeMailAccount()?.id;
     const attempt=async()=>{
       if(activeMailAccount()?.id!==account)return;
       const remaining=95000-(Date.now()-lastInteraction);
       if(assistantController||remaining>0){learnTimer=setTimeout(attempt,Math.max(1000,remaining));return;}
-      try{await api('/api/work/memory/analyze?idle=true',{accountId:account,method:'POST'});}catch(_){/* User work must never depend on background learning. */}
+      try{const data=await api('/api/work/memory/analyze?idle=true',{accountId:account,method:'POST'});if(data.more)learnTimer=setTimeout(attempt,95000);}catch(_){/* User work must never depend on background learning. */}
     };
     learnTimer=setTimeout(attempt,95000);
-  });
+  };
+  document.addEventListener('mailai:assistant-finished',scheduleLearning);
+  memoryScheduler=()=>scheduleLearning({detail:{account:activeMailAccount()?.id}});
+  setTimeout(()=>scheduleLearning({detail:{}}),1000);
 
   document.getElementById('work-style-settings').addEventListener('click', async event => {
     const account = activeMailAccount();
@@ -160,25 +166,26 @@
     const trigger = event.currentTarget, dialog = document.createElement('dialog');
     dialog.id = 'work-preferences-dialog'; dialog.className = 'work-dialog work-memory-dialog';
     dialog.setAttribute('aria-labelledby','work-preferences-title');
-    dialog.innerHTML = `<form><header><h2 id="work-preferences-title">${esc(w('settingsTitle'))}</h2><button type="button" data-close aria-label="${esc(w('close'))}">✕</button></header><p class="work-dialog-source">${esc(account.user || account.id)}</p><p>${esc(w('settingsHint'))}</p><label>${esc(w('style'))}<textarea name="style" maxlength="1000" disabled></textarea></label><div class="work-memory-edit-actions"><button type="button" data-reload>${esc(w('reload'))}</button>${button('clear','clear')}<button type="submit" disabled>${esc(w('save'))}</button></div><p role="status" data-status>${esc(w('loadingPreferences'))}</p><section class="work-memory-learning"><div class="work-memory-learning-head"><h3>${esc(w('learningTitle'))}</h3><button type="button" data-analyze>${esc(w('analyze'))}</button></div><p>${esc(w('learningHint'))}</p><nav class="work-memory-tabs" aria-label="${esc(w('memoryStatus'))}">${['pending','adopted','dismissed'].map(name=>`<button type="button" data-memory-status="${name}" aria-pressed="${name==='pending'}">${esc(w(name))}</button>`).join('')}</nav><div data-memory-list></div><footer class="work-memory-pagination"><button type="button" data-page-prev>${esc(w('previous'))}</button><span data-page-label></span><button type="button" data-page-next>${esc(w('next'))}</button></footer></section></form>`;
+    dialog.innerHTML = `<form><header><h2 id="work-preferences-title">${esc(w('settingsTitle'))}</h2><button type="button" data-close aria-label="${esc(w('close'))}">✕</button></header><p class="work-dialog-source">${esc(account.user || account.id)}</p><p>${esc(w('settingsHint'))}</p><label>${esc(w('style'))}<textarea name="style" maxlength="1000" placeholder="${esc(w('stylePlaceholder'))}" disabled></textarea></label><div class="work-memory-edit-actions"><button type="button" data-reload>${esc(w('reload'))}</button>${button('clear','clear')}<button type="submit" disabled>${esc(w('save'))}</button></div><p role="status" data-status>${esc(w('loadingPreferences'))}</p><section class="work-memory-learning"><div class="work-memory-learning-head"><h3>${esc(w('learningTitle'))}</h3><button type="button" data-analyze>${esc(w('analyze'))}</button></div><p>${esc(w('learningHint'))}</p><div data-memory-list></div><footer class="work-memory-pagination"><button type="button" data-page-prev>${esc(w('previous'))}</button><span data-page-label></span><button type="button" data-page-next>${esc(w('next'))}</button></footer></section></form>`;
     document.body.append(dialog);
     const editor=dialog.querySelector('[name="style"]'), status=dialog.querySelector('[data-status]'), submit=dialog.querySelector('[type="submit"]'), clear=dialog.querySelector('[data-work="clear"]'), reload=dialog.querySelector('[data-reload]'), analyze=dialog.querySelector('[data-analyze]'), list=dialog.querySelector('[data-memory-list]');
-    let revision=null, baseStyle='', loading=false, busy=false, filter='pending', offset=0, pageData=null, ticket=0,learningEnabled=true;
+    let revision=null, baseStyle='', loading=false, busy=false, filter='adopted', offset=0, pageData=null, ticket=0,learningEnabled=true;
     const active=()=>dialog.isConnected&&dialog.open&&activeMailAccount()?.id===account.id;
     const dirty=()=>editor.value!==baseStyle;
     const updateControls=()=>{
       const editing=list.querySelector('[data-memory-editor]:not([hidden])');
       editor.disabled=submit.disabled=clear.disabled=revision===null||loading||busy||Boolean(editing);
+      submit.disabled ||= !dirty();clear.disabled ||= !editor.value;
       reload.disabled=loading||busy||Boolean(editing);analyze.disabled=!learningEnabled||loading||busy||dirty()||Boolean(editing);
-      dialog.querySelectorAll('[data-memory-action],[data-memory-status],[data-page-prev],[data-page-next]').forEach(node=>node.disabled=loading||busy||dirty()||Boolean(editing&&!editing.contains(node)));
+      dialog.querySelectorAll('[data-memory-action],[data-page-prev],[data-page-next]').forEach(node=>node.disabled=loading||busy||dirty()||Boolean(editing&&!editing.contains(node)));
       dialog.querySelector('[data-page-prev]').disabled ||= offset===0;
       dialog.querySelector('[data-page-next]').disabled ||= !pageData||offset+pageData.items.length>=pageData.total;
     };
     const applyPreferences=data=>{editor.value=data.style;baseStyle=data.style;revision=data.revision;};
     function renderList(data){
-      pageData=data;
-      dialog.querySelectorAll('[data-memory-status]').forEach(node=>{node.textContent=`${w(node.dataset.memoryStatus)} · ${data.counts[node.dataset.memoryStatus]||0}`;node.setAttribute('aria-pressed',String(node.dataset.memoryStatus===filter));});
-      list.innerHTML=data.items.length?data.items.map(row=>`<article class="work-memory-item" data-memory-id="${row.id}"><small>${esc(w('kind.'+row.kind))}</small><p class="work-memory-value">${esc(row.preference)}</p>${row.reason?`<p class="work-memory-reason">${esc(row.reason)}</p>`:''}<details><summary>${esc(w('evidence'))} · ${row.evidence.length}</summary>${row.evidence.length?row.evidence.map(source=>`<blockquote>${esc(source.quote)}<cite>${esc(source.title||w('confirmedInChat'))} · ${esc(source.created_at||'')}</cite></blockquote>`).join(''):`<p>${esc(w('confirmedInChat'))}</p>`}</details><div class="work-memory-item-actions">${row.status!=='adopted'?`<button type="button" data-memory-action="adopt">${esc(w('adopt'))}</button>`:''}<button type="button" data-memory-action="edit">${esc(w('edit'))}</button>${row.status!=='dismissed'?`<button type="button" data-memory-action="dismiss">${esc(w(row.status==='adopted'?'stopUsing':'dismiss'))}</button>`:''}</div><div data-memory-editor hidden><textarea maxlength="300" aria-label="${esc(w('memoryContent'))}">${esc(row.preference)}</textarea><button type="button" data-memory-action="save">${esc(w('saveEdit'))}</button><button type="button" data-memory-action="cancel">${esc(w('cancelEdit'))}</button></div></article>`).join(''):`<p class="work-memory-empty">${esc(w(filter==='pending'?'noCandidates':'noRecords'))}</p>`;
+      pageData=data;dialog.querySelector('.work-memory-pagination').hidden=data.total<=20;
+
+      list.innerHTML=data.items.length?data.items.map(row=>`<article class="work-memory-item" data-memory-id="${row.id}"><small>${esc(w('kind.'+row.kind))}${row.user_edited?' · '+esc(w('manuallyEdited')):''}</small><p class="work-memory-value">${esc(row.preference)}</p>${row.reason?`<p class="work-memory-reason">${esc(row.reason)}</p>`:''}<details><summary>${esc(w('evidence'))} · ${row.evidence.length}</summary>${row.evidence.length?row.evidence.map(source=>`<blockquote>${esc(source.quote)}<cite>${esc(source.title||w('confirmedInChat'))} · ${esc(source.created_at||'')}</cite></blockquote>`).join(''):`<p>${esc(w('confirmedInChat'))}</p>`}</details><div class="work-memory-item-actions"><button type="button" data-memory-action="edit">${esc(w('edit'))}</button><button type="button" data-memory-action="delete">${esc(w('deleteMemory'))}</button></div><div data-memory-editor hidden><textarea maxlength="300" aria-label="${esc(w('memoryContent'))}">${esc(row.preference)}</textarea><button type="button" data-memory-action="save">${esc(w('saveEdit'))}</button><button type="button" data-memory-action="cancel">${esc(w('cancelEdit'))}</button></div></article>`).join(''):`<p class="work-memory-empty">${esc(w('noSavedMemories'))}</p>`;
       dialog.querySelector('[data-page-label]').textContent=data.total?`${offset+1}–${offset+data.items.length} / ${data.total}`:'0';
       updateControls();
     }
@@ -215,14 +222,10 @@
       busy=true;updateControls();status.textContent=w('analyzing');
       try{
         const data=await api('/api/work/memory/analyze',{accountId:account.id,method:'POST'});
-        if(!active())return;filter='pending';offset=0;await loadList();status.textContent=w(data.more?'analysisMore':data.analyzed?'analysisDone':'noNewConversations');analyze.textContent=w(data.more?'continueAnalysis':'analyze');
+        if(!active())return;filter='adopted';offset=0;await loadList();status.textContent=w(data.more?'analysisMore':data.analyzed?'analysisDone':'noNewConversations');analyze.textContent=w(data.more?'continueAnalysis':'analyze');
       }catch(error){if(active())status.textContent=mailaiSystemMessage(error.message);}
       finally{busy=false;if(active())updateControls();}
     };
-    dialog.querySelectorAll('[data-memory-status]').forEach(node=>node.onclick=async()=>{
-      if(busy||dirty())return;filter=node.dataset.memoryStatus;offset=0;
-      try{await loadList();}catch(error){if(active())status.textContent=mailaiSystemMessage(error.message);}
-    });
     for(const [selector,delta]of[['[data-page-prev]',-20],['[data-page-next]',20]])dialog.querySelector(selector).onclick=async()=>{
       if(busy||dirty())return;offset=Math.max(0,offset+delta);
       try{await loadList();}catch(error){if(active())status.textContent=mailaiSystemMessage(error.message);}
@@ -237,8 +240,8 @@
       busy=true;updateControls();
       try{
         const op=control.dataset.memoryAction;
-        const data=await api(`/api/work/memory/${row.id}${op==='save'?'':'/'+op}`,{accountId:account.id,method:op==='save'?'PUT':'POST',...post(op==='save'?{preference:editBox.querySelector('textarea').value,revision:row.revision,pref_revision:revision}:{revision,candidate_revision:row.revision})});
-        if(!active())return;applyPreferences(data);status.textContent=w('memoryUpdated');await loadList();
+        const data=await api(`/api/work/memory/${row.id}`,{accountId:account.id,method:op==='save'?'PUT':'DELETE',...post(op==='save'?{preference:editBox.querySelector('textarea').value,revision:row.revision,pref_revision:revision}:{revision:row.revision,pref_revision:revision})});
+        if(!active())return;applyPreferences(data);status.textContent=w(op==='delete'?'memoryDeleted':'memoryUpdated');if(op==='delete'&&pageData.items.length===1&&offset)offset=Math.max(0,offset-20);await loadList();
       }catch(error){if(active())status.textContent=mailaiSystemMessage(error.message);}
       finally{busy=false;if(active())updateControls();}
     };

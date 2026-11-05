@@ -71,14 +71,14 @@
   <link rel="stylesheet" href="/static/companion-colors.css?v=theme-materials-20261021">
   <link rel="stylesheet" href="/static/companion-center.css?v=c3b045bbcd50">
   <link rel="stylesheet" href="/static/brand.css?v=glass-green-baowu-1">
-  <link rel="stylesheet" href="/static/settings-polish.css?v=theme-navigation-8">
+  <link rel="stylesheet" href="/static/settings-polish.css?v=d01b4731ef84">
   <link rel="stylesheet" href="/static/home-dialog-polish.css?v=28359c254fe3">
   <link rel="stylesheet" href="/static/command-palette.css?v=8c960b147483">
   <link rel="stylesheet" href="/static/assistant-divider.css?v=1a5111637e30">
   <link rel="stylesheet" href="/static/mail-filter-panel.css?v=3a5b855c7ae5">
   <link rel="stylesheet" href="/static/mail-list-view.css?v=7184f04d4973">
   <link rel="stylesheet" href="/static/todo-center.css?v=f6dc42f18191">
-  <link rel="stylesheet" href="/static/work-assistant.css?v=3b8cafdc7ddf">
+  <link rel="stylesheet" href="/static/work-assistant.css?v=648bbfa972a1">
 </head>
 <body>
   <div id="app-preloader" class="app-preloader" role="status" aria-live="polite">
@@ -301,6 +301,13 @@
             <p id="show-server-folders-note" class="preference-note" data-i18n="prefs.serverFoldersNote">默认关闭，不影响后台收信与同步。</p>
             <label class="preference-row" for="auto-sync-paused"><span><b><span data-i18n="ui.1d21ea3dcbf1">暂停当前邮箱自动收信</span></b><small><span data-i18n="ui.d27a24e325e8">只暂停后台定时检查；仍可手动同步，重新开启后自动收信恢复。</span></small></span><span class="switch"><input id="auto-sync-paused" type="checkbox" role="switch"><i></i></span></label>
           </article>
+          <article class="preference-card semantic-preferences">
+            <div class="preference-card-head"><span class="connection-icon"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3a7 7 0 1 0 7 7M10 7a3 3 0 1 0 3 3M13 13l4 4"/></svg></span><div><h3 data-i18n="semantic.cardTitle">语义检索（实验）</h3><p data-i18n="semantic.cardDesc">用本地嵌入模型理解"意思相近"的邮件，增强小邮助手的找信能力</p></div></div>
+            <label class="notification-choice semantic-toggle"><input type="checkbox" id="semantic-enabled"><span><b data-i18n="semantic.enable">启用语义检索</b><small data-i18n="semantic.enableHint">开启后自动更新索引；首次需下载约 100MB 模型，邮件留在本机</small></span></label>
+            <div class="preference-save-state"><span id="semantic-status" role="status" aria-live="polite"><span data-i18n="ui.f95ea7f4c063">未启用</span></span><button id="semantic-reindex" type="button" class="hidden" data-i18n="semantic.reindexBtn">重建索引</button></div>
+            <div id="semantic-progress" class="semantic-progress hidden" role="progressbar" aria-hidden="true"><i></i></div>
+            <p class="preference-note" data-i18n="semantic.note">当前覆盖最近 5000 封邮件的主题、摘要及正文前 800 字。索引在后台更新，模型繁忙时优先显示关键词结果。源码运行需安装 requirements-semantic.txt。</p>
+          </article>
 
           </div>
           <div class="preference-col">
@@ -312,13 +319,7 @@
             <div class="preference-save-state"><span id="notification-save-status" role="status" aria-live="polite" data-i18n="notify.reading">正在读取设置…</span><button id="notification-retry-load" type="button" class="hidden" data-i18n="notify.retry">重试</button></div>
             <p class="preference-note" data-i18n="notify.note">仅对上方邮箱生效。单个会话可在邮件阅读区静音。</p>
           </article>
-          <article class="preference-card semantic-preferences">
-            <div class="preference-card-head"><span class="connection-icon"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3a7 7 0 1 0 7 7M10 7a3 3 0 1 0 3 3M13 13l4 4"/></svg></span><div><h3 data-i18n="semantic.cardTitle">语义检索（实验）</h3><p data-i18n="semantic.cardDesc">用本地嵌入模型理解"意思相近"的邮件，增强小邮助手的找信能力</p></div></div>
-            <label class="notification-choice semantic-toggle"><input type="checkbox" id="semantic-enabled"><span><b data-i18n="semantic.enable">启用语义检索</b><small data-i18n="semantic.enableHint">开启后自动更新索引；首次需下载约 100MB 模型，邮件留在本机</small></span></label>
-            <div class="preference-save-state"><span id="semantic-status" role="status" aria-live="polite"><span data-i18n="ui.f95ea7f4c063">未启用</span></span><button id="semantic-reindex" type="button" class="hidden" data-i18n="semantic.reindexBtn">重建索引</button></div>
-            <div id="semantic-progress" class="semantic-progress hidden" role="progressbar" aria-hidden="true"><i></i></div>
-            <p class="preference-note" data-i18n="semantic.note">当前覆盖最近 5000 封邮件的主题、摘要及正文前 800 字。索引在后台更新，模型繁忙时优先显示关键词结果。源码运行需安装 requirements-semantic.txt。</p>
-          </article>
+
           </div>
         </div>
       </section>
@@ -331,13 +332,13 @@
             <div id="xiaoyou-memory-controls">
               <p class="work-dialog-source" data-memory-account></p>
               <label class="preference-row"><span><b data-i18n="work.memoryEnabled">启用长期记忆</b><small data-i18n="work.memoryEnabledHint">让小邮参考当前邮箱的写作要求和已确认记忆。关闭会保留内容并停止引用与分析。</small></span><span class="switch"><input type="checkbox" role="switch" data-memory-enabled disabled><i></i></span></label>
-              <label class="preference-row"><span><b data-i18n="work.autoLearn">空闲时整理对话</b><small data-i18n="work.autoLearnHint">在本窗口空闲后，调用已连接的 AI 提炼对话经验；只生成待确认建议。</small></span><span class="switch"><input type="checkbox" role="switch" data-memory-auto disabled><i></i></span></label>
+              <label class="preference-row"><span><b data-i18n="work.autoLearn">自动整理长期记忆</b><small data-i18n="work.autoLearnHint">空闲时用已连接的 AI 分析对话，自动沉淀稳定偏好，无需逐条确认。</small></span><span class="switch"><input type="checkbox" role="switch" data-memory-auto disabled><i></i></span></label>
               <div class="xiaoyou-memory-summary"><b data-i18n="work.memorySummary">记忆摘要</b><div data-memory-summary></div></div>
               <p data-memory-control-status role="status"></p>
               <button class="btn-ghost" type="button" data-memory-clear disabled data-i18n="work.clearLearned">清除对话记忆</button>
-              <div data-memory-clear-confirm hidden><p data-i18n="work.clearLearnedHint">将清除当前邮箱的对话记忆和待确认建议，并跳过旧对话。写作要求、邮件和聊天记录会保留。</p><button type="button" class="btn-ghost" data-memory-clear-yes data-i18n="work.confirmClear">确认清除</button><button type="button" class="btn-ghost" data-memory-clear-no data-i18n="work.cancel">取消</button></div>
+              <div data-memory-clear-confirm hidden><p data-i18n="work.clearLearnedHint">清除当前邮箱从对话中沉淀的记忆，并跳过旧对话。明确写作要求、邮件与聊天记录会保留。</p><button type="button" class="btn-ghost" data-memory-clear-yes data-i18n="work.confirmClear">确认清除</button><button type="button" class="btn-ghost" data-memory-clear-no data-i18n="work.cancel">取消</button></div>
             </div>
-            <div class="preference-row"><span><b data-i18n="work.settingsTitle">小邮记忆</b><small data-i18n="work.settingsRowHint">管理写作、沟通与工作习惯；从对话中分析经验，确认后逐步沉淀。</small></span><button id="work-style-settings" class="btn-ghost" type="button" data-i18n="work.managePreferences">管理记忆</button></div>
+            <div class="preference-row"><span><b data-i18n="work.settingsTitle">小邮记忆</b><small data-i18n="work.settingsRowHint">查看小邮逐步了解的写作、沟通与工作习惯，随时修改或删除。</small></span><button id="work-style-settings" class="btn-ghost" type="button" data-i18n="work.managePreferences">管理记忆</button></div>
           </article>
           <article class="preference-card companion-preferences">
             <div class="preference-card-head"><span class="connection-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M5 7a5 5 0 0 1 10 0v7a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V7Zm2 3h.01M13 10h.01M8 13q2 2 4 0M10 2V1"/></svg></span><div><h3 data-i18n="work.appearanceTitle">陪伴与外观</h3><p data-i18n="work.appearanceHint">调整小邮的形象、成长与陪伴体验</p></div></div>
@@ -1273,7 +1274,7 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=2fd265abbc05"></script>
+  <script src="/static/bundle.js?v=4fea3e68e9e4"></script>
   <script src="/static/settings-scroll.js?v=5"></script>
   <script type="module" src="/static/author-logo.js?v=5"></script>
 </body>
