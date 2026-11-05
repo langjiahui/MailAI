@@ -1,6 +1,8 @@
 import Foundation
 import SwiftMail
 import MailAICore
+@preconcurrency import Network
+import Security
 
 struct NativeMailService: MailService {
     /// Only fixed classification codes are persisted. Never record server
@@ -51,11 +53,18 @@ struct NativeMailService: MailService {
             "errorType": String(reflecting: type(of: error)), "errorCase": safeCase,
             "markers": keywords.joined(separator: ","), "date": ISO8601DateFormatter().string(from: Date())])
     }
-    private static func step<T: Sendable>(_ phase: Phase, _ action: @Sendable () async throws -> T) async throws -> T {
+    private static func step<T: Sendable>(_ phase: Phase, endpoint: (String, Int, TransportSecurity)? = nil,
+        _ action: @Sendable () async throws -> T) async throws -> T {
         do { return try await action() }
         catch {
             if error is CancellationError || Task.isCancelled { throw error }
-            let (issue, record) = diagnostic(error, phase: phase)
+            let (issue, base) = diagnostic(error, phase: phase)
+            var record = base
+            if phase == .imapConnect, issue == .timedOut, let endpoint {
+                record["port"] = String(endpoint.1)
+                record["transport"] = endpoint.2 == .tls ? "tls" : "startTLS"
+                record["systemHandshake"] = await MailGreetingProbe.inspect(host: endpoint.0, port: endpoint.1, security: endpoint.2)
+            }
             if let directory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first,
                let data = try? JSONEncoder().encode(record) {
                 try? data.write(to: directory.appendingPathComponent("mail-connection-diagnostic.json"), options: [.atomic, .completeFileProtection])
@@ -76,7 +85,7 @@ struct NativeMailService: MailService {
         return try await withTaskCancellationHandler {
             do {
                 try Task.checkCancellation()
-                try await Self.step(.imapConnect) {
+                try await Self.step(.imapConnect, endpoint: (a.imapHost, a.imapPort, a.imapSecurity)) {
                     try await MailConnectionGate.connect(host: a.imapHost, port: a.imapPort,
                         attempt: { try await server.connect() }, reset: { try? await server.disconnect() })
                 }
@@ -303,5 +312,78 @@ struct NativeMailService: MailService {
             try? await server.disconnect()
             throw SubmissionFailure(uncertain: true)
         }
+    }
+}
+
+/// On a connection timeout, distinguish the system TLS path from the library
+/// greeting timer. Reads a bounded greeting only. Sends no IMAP commands or
+/// credentials, keeps system certificate verification, and never stores bytes.
+final class MailGreetingProbe: @unchecked Sendable {
+    private let queue = DispatchQueue(label: "com.mailai.greeting-probe")
+    private let connection: NWConnection
+    private var continuation: CheckedContinuation<String, Never>?
+    private var outcome: String?
+    private var timer: DispatchWorkItem?
+    private var ready = false
+    private let start = Date()
+    private var received = Data()
+    init(host: String, port: UInt16, security: TransportSecurity) {
+        if security == .tls {
+            let tls = NWProtocolTLS.Options()
+            sec_protocol_options_set_min_tls_protocol_version(tls.securityProtocolOptions, .TLSv12)
+            connection = NWConnection(host: NWEndpoint.Host(host), port: NWEndpoint.Port(rawValue: port)!, using: NWParameters(tls: tls))
+        } else {
+            connection = NWConnection(host: NWEndpoint.Host(host), port: NWEndpoint.Port(rawValue: port)!, using: .tcp)
+        }
+    }
+    static func inspect(host: String, port: Int, security: TransportSecurity) async -> String {
+        guard let port = UInt16(exactly: port), port > 0 else { return "invalidPort" }
+        let probe = MailGreetingProbe(host: host, port: port, security: security)
+        return await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                probe.queue.async { [probe] in
+                    if let outcome = probe.outcome { continuation.resume(returning: outcome); return }
+                    probe.continuation = continuation
+                    probe.connection.stateUpdateHandler = { [weak probe] state in probe?.update(state) }
+                    let timer = DispatchWorkItem { [weak probe] in
+                        guard let probe else { return }
+                        probe.finish(probe.ready ? "readyNoGreeting" : "notReady")
+                    }
+                    probe.timer = timer; probe.queue.asyncAfter(deadline: .now() + 15, execute: timer)
+                    probe.connection.start(queue: probe.queue)
+                }
+            }
+        } onCancel: { probe.queue.async { probe.finish("cancelled") } }
+    }
+    private func update(_ state: NWConnection.State) {
+        switch state {
+        case .ready: ready = true; read()
+        case .failed(let error):
+            if case .tls = error { finish("systemTLSFailed") }
+            else { finish("systemConnectionFailed") }
+        case .waiting(let error):
+            if connection.currentPath?.unsatisfiedReason == .localNetworkDenied { finish("localNetworkDenied") }
+            else if case .tls = error { finish("systemTLSFailed") }
+        default: break
+        }
+    }
+    private func read() {
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 4096 - received.count) { [weak self] data, _, done, error in
+            guard let self else { return }
+            if let data { self.received.append(data) }
+            if self.received.contains(10) || self.received.count >= 4096 {
+                let text = String(decoding: self.received, as: UTF8.self).uppercased()
+                let status = text.hasPrefix("* OK") || text.hasPrefix("* PREAUTH") ? "greetingOK" : "unexpectedGreeting"
+                self.finish(status)
+            } else if done || error != nil { self.finish("closedBeforeGreeting") }
+            else { self.read() }
+        }
+    }
+    private func finish(_ status: String) {
+        guard outcome == nil else { return }
+        let value = status + ":" + String(Int(Date().timeIntervalSince(start) * 1000)) + "ms"
+        outcome = value; received.removeAll(); timer?.cancel(); timer = nil
+        connection.stateUpdateHandler = nil; connection.cancel()
+        continuation?.resume(returning: value); continuation = nil
     }
 }

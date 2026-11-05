@@ -6,6 +6,12 @@ import SwiftMail
 @testable import MailAI
 
 final class ProtocolTests: XCTestCase {
+    func testSystemGreetingProbeChecksTLSIdentityWithoutLogin() async {
+        let good = await MailGreetingProbe.inspect(host: "localhost", port: 1993, security: .tls)
+        XCTAssertTrue(good.hasPrefix("greetingOK:"), good)
+        let bad = await MailGreetingProbe.inspect(host: "localhost", port: 1994, security: .tls)
+        XCTAssertTrue(bad.hasPrefix("systemTLSFailed:"), bad)
+    }
     func testConnectionDiagnosticsExcludeServerResponsesAndCredentials() throws {
         let secret = "synthetic-sensitive@example.invalid synthetic-password"
         let (issue, record) = NativeMailService.diagnostic(IMAPError.loginFailed(secret), phase: .imapLogin)
