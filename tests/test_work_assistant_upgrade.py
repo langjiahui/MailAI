@@ -5,6 +5,7 @@ import json
 import sqlite3
 import sys
 import tempfile
+from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
@@ -18,7 +19,9 @@ FIXTURES = Path(__file__).parent/'fixtures'
 
 
 def snapshot(path, names=None):
-    with sqlite3.connect(path) as c:
+    # A sqlite3 connection context commits/rolls back but does not close the
+    # handle. Close snapshots explicitly so Windows can remove the old store.
+    with closing(sqlite3.connect(path)) as c:
         if names is None:
             # Shadow/virtual tables are search indexes, not user records.
             names = [row[1] for row in c.execute('PRAGMA table_list')
