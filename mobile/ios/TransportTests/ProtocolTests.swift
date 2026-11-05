@@ -6,11 +6,20 @@ import SwiftMail
 @testable import MailAI
 
 final class ProtocolTests: XCTestCase {
-    func testSystemGreetingProbeChecksTLSIdentityWithoutLogin() async {
-        let good = await MailGreetingProbe.inspect(host: "localhost", port: 1993, security: .tls)
-        XCTAssertTrue(good.hasPrefix("greetingOK:"), good)
-        let bad = await MailGreetingProbe.inspect(host: "localhost", port: 1994, security: .tls)
-        XCTAssertTrue(bad.hasPrefix("systemTLSFailed:"), bad)
+    func testMalformedMetadataRecoversWithFreshReadOnlyHeaderFetch() async throws {
+        let service = NativeMailService()
+        for port in [1995, 1996] {
+            var entry = credential(); entry.account.imapPort = port
+            let list = try await service.summaries(entry, folder: "INBOX", limit: 50)
+            XCTAssertEqual(list.count, 1)
+            XCTAssertEqual(list.first?.uid, 7); XCTAssertEqual(list.first?.validity, 10)
+            XCTAssertEqual(list.first?.subject, "Synthetic mail")
+            XCTAssertEqual(list.first?.senderName, "测试发件人")
+            XCTAssertEqual(list.first?.senderAddress, "sender@example.com")
+            // The next refresh must reuse the successful per-account mode.
+            let again = try await service.summaries(entry, folder: "INBOX", limit: 50)
+            XCTAssertEqual(again.map(\.uid), [7])
+        }
     }
     func testConnectionDiagnosticsExcludeServerResponsesAndCredentials() throws {
         let secret = "synthetic-sensitive@example.invalid synthetic-password"
@@ -20,7 +29,7 @@ final class ProtocolTests: XCTestCase {
         XCTAssertFalse(text.contains(secret)); XCTAssertFalse(text.contains("synthetic-sensitive"))
         XCTAssertEqual(record["phase"], "imapLogin")
         let (parse, _) = NativeMailService.diagnostic(IMAPParseError.malformedResponse(secret), phase: .imapRequest)
-        XCTAssertEqual(parse, .serverResponse)
+        XCTAssertEqual(parse, .malformedResponse)
     }
     func testModelKeyOnlySetupPreservesLegacyConfigAndClearsKeysOnProviderChange() throws {
         var value = AssistantConfiguration(); value.key = " synthetic-key\n"

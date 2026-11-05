@@ -74,6 +74,18 @@ private actor MockMailService: MailService {
         let (_, _, service, _) = try await setup()
         let count = await service.count(); XCTAssertEqual(count, 0)
     }
+    func testSuccessfulRefreshClearsOnlyPreviousReceiveError() async throws {
+        let (store, _, _, _) = try await setup()
+        for message in ["收信失败，已保留缓存。旧错误", "合成的其他操作错误"] {
+            store.error = message; store.refresh()
+            for _ in 0..<100 {
+                if !store.busy { break }
+                try await Task.sleep(for: .milliseconds(10))
+            }
+            XCTAssertFalse(store.busy); XCTAssertNotNil(store.lastRefresh)
+            XCTAssertEqual(store.error, message.hasPrefix("收信失败") ? nil : message)
+        }
+    }
     func testNetworkFailureBeforeSMTPKeepsDraftEditableAndShowsIntranetGuidance() async throws {
         let (store, _, service, _) = try await setup()
         await service.setOutcome(.network)

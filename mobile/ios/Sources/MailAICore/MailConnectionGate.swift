@@ -3,10 +3,12 @@ import Foundation
 
 public enum MailConnectionFailure: String, Error, LocalizedError, Sendable {
     case localNetworkDenied, dns, unavailable, refused, timedOut
-    case certificate, tlsNegotiation, authentication, serverResponse, connectionClosed
+    case certificate, tlsNegotiation, authentication, serverResponse, connectionClosed, malformedResponse
 
     public var errorDescription: String? {
         switch self {
+        case .malformedResponse:
+            return "部分邮件的服务器响应格式不兼容。已保留缓存，请联系支持检查邮件格式。"
         case .certificate:
             return "邮箱证书校验失败。请核对服务器域名与证书是否匹配；企业证书需由公司提供并在 iPhone 上信任。"
         case .tlsNegotiation:

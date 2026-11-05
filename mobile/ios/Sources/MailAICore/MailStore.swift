@@ -138,6 +138,7 @@ public extension MailService {
                 try files.write(result, account: entry.account.id, key: "list:" + folder)
                 folders = list; messages = result; lastRefresh = Date()
                 try learnContacts(result.flatMap(\.contactAddresses), account: entry.account.id)
+                if self.error?.hasPrefix("收信失败，已保留缓存。") == true { self.error = nil }
             } catch {
                 if generation == token, !Task.isCancelled { self.error = "收信失败，已保留缓存。" + ((error as? MailConnectionFailure)?.localizedDescription ?? "请检查服务器、证书与授权码后重试。") }
             }

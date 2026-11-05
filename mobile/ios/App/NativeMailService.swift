@@ -1,19 +1,21 @@
 import Foundation
 import SwiftMail
 import MailAICore
-@preconcurrency import Network
-import Security
 
 struct NativeMailService: MailService {
     /// Only fixed classification codes are persisted. Never record server
     /// responses, endpoint names, usernames, credentials or message contents.
-    enum Phase: String { case imapConnect, imapLogin, imapRequest, imapFolders, imapSummaries, smtpConnect, smtpLogin }
+    enum Phase: String { case imapConnect, imapLogin, imapRequest, imapFolders, imapSummaries, imapSelect, imapFetch, smtpConnect, smtpLogin }
     static func diagnostic(_ error: Error, phase: Phase) -> (MailConnectionFailure, [String: String]) {
+        let underlying = Mirror(reflecting: error).children.first { $0.label == "parserError" }?.value
+        let parser = underlying.map { Mirror(reflecting: $0) }
+        let isSyntaxError = underlying.map { String(reflecting: type(of: $0)).hasSuffix(".ParserError") } == true || error is IMAPParseError
         let detail = String(reflecting: error).lowercased()
         let keywords = ["certificate", "hostname", "handshake", "ssl", "tls", "timeout", "parse", "unexpected", "closed", "capability", "authentication", "login"]
             .filter { detail.contains($0) }
         let issue: MailConnectionFailure
         if let existing = error as? MailConnectionFailure { issue = existing }
+        else if isSyntaxError { issue = .malformedResponse }
         else if keywords.contains("certificate") || keywords.contains("hostname") { issue = .certificate }
         else if keywords.contains("handshake") || keywords.contains("ssl") || keywords.contains("tls") { issue = .tlsNegotiation }
         else if keywords.contains("timeout") { issue = .timedOut }
@@ -49,22 +51,28 @@ struct NativeMailService: MailService {
         } else if error is IMAPParseError { safeCase = "malformedResponse" }
         else if error is IMAPProtocolError { safeCase = "unexpectedTaggedResponse" }
         else { safeCase = "other" }
-        return (issue, ["phase": phase.rawValue, "category": issue.rawValue,
+        var record = ["phase": phase.rawValue, "category": issue.rawValue,
             "errorType": String(reflecting: type(of: error)), "errorCase": safeCase,
-            "markers": keywords.joined(separator: ","), "date": ISO8601DateFormatter().string(from: Date())])
+            "markers": keywords.joined(separator: ","), "date": ISO8601DateFormatter().string(from: Date())]
+        if let parser,
+           let file = parser.children.first(where: { $0.label == "file" })?.value as? String,
+           file.hasPrefix("NIOIMAPCore/"), !file.contains(".."),
+           let line = parser.children.first(where: { $0.label == "line" })?.value as? Int {
+            record["parserFile"] = file; record["parserLine"] = String(line)
+            if let hint = parser.children.first(where: { $0.label == "hint" })?.value as? String, hint == "Invalid UTF8" {
+                record["parserHint"] = "InvalidUTF8"
+            }
+        }
+        return (issue, record)
     }
-    private static func step<T: Sendable>(_ phase: Phase, endpoint: (String, Int, TransportSecurity)? = nil,
-        _ action: @Sendable () async throws -> T) async throws -> T {
+    private static func step<T: Sendable>(_ phase: Phase, _ action: @Sendable () async throws -> T) async throws -> T {
         do { return try await action() }
         catch {
             if error is CancellationError || Task.isCancelled { throw error }
-            let (issue, base) = diagnostic(error, phase: phase)
-            var record = base
-            if phase == .imapConnect, issue == .timedOut, let endpoint {
-                record["port"] = String(endpoint.1)
-                record["transport"] = endpoint.2 == .tls ? "tls" : "startTLS"
-                record["systemHandshake"] = await MailGreetingProbe.inspect(host: endpoint.0, port: endpoint.1, security: endpoint.2)
-            }
+            // Preserve the detailed inner FETCH/SELECT failure instead of
+            // overwriting it with the enclosing summaries operation.
+            if phase == .imapSummaries, error is MailConnectionFailure { throw error }
+            let (issue, record) = diagnostic(error, phase: phase)
             if let directory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first,
                let data = try? JSONEncoder().encode(record) {
                 try? data.write(to: directory.appendingPathComponent("mail-connection-diagnostic.json"), options: [.atomic, .completeFileProtection])
@@ -85,7 +93,7 @@ struct NativeMailService: MailService {
         return try await withTaskCancellationHandler {
             do {
                 try Task.checkCancellation()
-                try await Self.step(.imapConnect, endpoint: (a.imapHost, a.imapPort, a.imapSecurity)) {
+                try await Self.step(.imapConnect) {
                     try await MailConnectionGate.connect(host: a.imapHost, port: a.imapPort,
                         attempt: { try await server.connect() }, reset: { try? await server.disconnect() })
                 }
@@ -136,16 +144,37 @@ struct NativeMailService: MailService {
         }
     }
     func summaries(_ entry: AccountCredential, folder: String, limit: Int) async throws -> [MailSummary] {
-        try await withIMAP(entry, phase: .imapSummaries) { server in
-            let selection = try await server.examineMailbox(folder)
-            guard let range = selection.latest(limit) else { return [] }
-            var result: [MailSummary] = []
-            for try await info in server.fetchMessageInfos(using: range, options: .slim.union(.bodyStructure)) {
+        // A malformed MIME tree or legacy ENVELOPE must not prevent refreshing
+        // the whole mailbox. Retry only syntax failures on a fresh, fully
+        // verified connection. Never retry mutations or authentication errors.
+        let remembered = await MailListCompatibility.shared.mode(entry.account.id)
+        for mode in remembered...2 {
+            do {
+                let result = try await fetchSummaries(entry, folder: folder, limit: limit, mode: mode)
+                await MailListCompatibility.shared.remember(mode, for: entry.account.id)
+                return result
+            } catch {
                 try Task.checkCancellation()
-                guard let uid = info.uid else { continue }
-                result.append(Self.summary(info, uid: uid.value, validity: selection.uidValidity.value, folder: folder))
+                guard error as? MailConnectionFailure == .malformedResponse, mode < 2 else { throw error }
             }
-            return result.sorted { $0.uid > $1.uid }
+        }
+        throw MailConnectionFailure.malformedResponse
+    }
+    private func fetchSummaries(_ entry: AccountCredential, folder: String, limit: Int, mode: Int) async throws -> [MailSummary] {
+        try await withIMAP(entry, phase: .imapSummaries) { server in
+            let selection = try await Self.step(.imapSelect) { try await server.examineMailbox(folder) }
+            guard let range = selection.latest(limit) else { return [] }
+            let options: FetchMessageInfoOptions = mode == 0 ? .slim.union(.bodyStructure)
+                : (mode == 1 ? .slim : [.flags, .internalDate, .size, .fullHeader])
+            return try await Self.step(.imapFetch) {
+                var result: [MailSummary] = []
+                for try await info in server.fetchMessageInfos(using: range, options: options) {
+                    try Task.checkCancellation()
+                    guard let uid = info.uid else { throw MailConnectionFailure.malformedResponse }
+                    result.append(Self.summary(info, uid: uid.value, validity: selection.uidValidity.value, folder: folder))
+                }
+                return result.sorted { $0.uid > $1.uid }
+            }
         }
     }
     func read(_ entry: AccountCredential, summary: MailSummary) async throws -> ReadResult {
@@ -315,75 +344,9 @@ struct NativeMailService: MailService {
     }
 }
 
-/// On a connection timeout, distinguish the system TLS path from the library
-/// greeting timer. Reads a bounded greeting only. Sends no IMAP commands or
-/// credentials, keeps system certificate verification, and never stores bytes.
-final class MailGreetingProbe: @unchecked Sendable {
-    private let queue = DispatchQueue(label: "com.mailai.greeting-probe")
-    private let connection: NWConnection
-    private var continuation: CheckedContinuation<String, Never>?
-    private var outcome: String?
-    private var timer: DispatchWorkItem?
-    private var ready = false
-    private let start = Date()
-    private var received = Data()
-    init(host: String, port: UInt16, security: TransportSecurity) {
-        if security == .tls {
-            let tls = NWProtocolTLS.Options()
-            sec_protocol_options_set_min_tls_protocol_version(tls.securityProtocolOptions, .TLSv12)
-            connection = NWConnection(host: NWEndpoint.Host(host), port: NWEndpoint.Port(rawValue: port)!, using: NWParameters(tls: tls))
-        } else {
-            connection = NWConnection(host: NWEndpoint.Host(host), port: NWEndpoint.Port(rawValue: port)!, using: .tcp)
-        }
-    }
-    static func inspect(host: String, port: Int, security: TransportSecurity) async -> String {
-        guard let port = UInt16(exactly: port), port > 0 else { return "invalidPort" }
-        let probe = MailGreetingProbe(host: host, port: port, security: security)
-        return await withTaskCancellationHandler {
-            await withCheckedContinuation { continuation in
-                probe.queue.async { [probe] in
-                    if let outcome = probe.outcome { continuation.resume(returning: outcome); return }
-                    probe.continuation = continuation
-                    probe.connection.stateUpdateHandler = { [weak probe] state in probe?.update(state) }
-                    let timer = DispatchWorkItem { [weak probe] in
-                        guard let probe else { return }
-                        probe.finish(probe.ready ? "readyNoGreeting" : "notReady")
-                    }
-                    probe.timer = timer; probe.queue.asyncAfter(deadline: .now() + 15, execute: timer)
-                    probe.connection.start(queue: probe.queue)
-                }
-            }
-        } onCancel: { probe.queue.async { probe.finish("cancelled") } }
-    }
-    private func update(_ state: NWConnection.State) {
-        switch state {
-        case .ready: ready = true; read()
-        case .failed(let error):
-            if case .tls = error { finish("systemTLSFailed") }
-            else { finish("systemConnectionFailed") }
-        case .waiting(let error):
-            if connection.currentPath?.unsatisfiedReason == .localNetworkDenied { finish("localNetworkDenied") }
-            else if case .tls = error { finish("systemTLSFailed") }
-        default: break
-        }
-    }
-    private func read() {
-        connection.receive(minimumIncompleteLength: 1, maximumLength: 4096 - received.count) { [weak self] data, _, done, error in
-            guard let self else { return }
-            if let data { self.received.append(data) }
-            if self.received.contains(10) || self.received.count >= 4096 {
-                let text = String(decoding: self.received, as: UTF8.self).uppercased()
-                let status = text.hasPrefix("* OK") || text.hasPrefix("* PREAUTH") ? "greetingOK" : "unexpectedGreeting"
-                self.finish(status)
-            } else if done || error != nil { self.finish("closedBeforeGreeting") }
-            else { self.read() }
-        }
-    }
-    private func finish(_ status: String) {
-        guard outcome == nil else { return }
-        let value = status + ":" + String(Int(Date().timeIntervalSince(start) * 1000)) + "ms"
-        outcome = value; received.removeAll(); timer?.cancel(); timer = nil
-        connection.stateUpdateHandler = nil; connection.cancel()
-        continuation?.resume(returning: value); continuation = nil
-    }
+private actor MailListCompatibility {
+    static let shared = MailListCompatibility()
+    private var modes: [UUID: Int] = [:]
+    func mode(_ account: UUID) -> Int { modes[account] ?? 0 }
+    func remember(_ mode: Int, for account: UUID) { modes[account] = mode }
 }

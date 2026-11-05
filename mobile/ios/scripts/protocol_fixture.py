@@ -5,6 +5,7 @@ import argparse
 import asyncio
 import re
 import ssl
+from functools import partial
 from pathlib import Path
 from email import policy
 from email.parser import BytesParser
@@ -26,7 +27,7 @@ async def write(writer, value):
     await writer.drain()
 
 
-async def imap(reader, writer):
+async def imap(reader, writer, *, malformed_body=False, malformed_envelope=False):
     await write(writer, '* OK synthetic IMAP fixture\r\n')
     try:
         while line := await reader.readline():
@@ -40,13 +41,26 @@ async def imap(reader, writer):
             elif ' LIST ' in upper:
                 await write(writer, '* LIST () "/" "INBOX"\r\n* LIST (\\Sent) "/" "Sent"\r\n* LIST (\\Archive) "/" "Archive"\r\n')
             elif ' FETCH ' in upper:
-                if 'BODY.PEEK[' in upper:
+                if 'BODY.PEEK[' in upper and 'BODY.PEEK[HEADER]' not in upper:
                     section = re.search(r'BODY\.PEEK\[([^]]*)\]', command, re.I).group(1)
                     partial = '<0>' if '<' in command else ''
                     payload = ATTACHMENT if section == '2' else BODY
                     await write(writer, f'* 1 FETCH (UID 7 BODY[{section}]{partial} {{{len(payload)}}}\r\n'.encode() + payload + b')\r\n')
                 else:
-                    await write(writer, f'* 1 FETCH (UID 7 FLAGS () INTERNALDATE "20-Oct-2026 12:00:00 +0000" RFC822.SIZE 200 ENVELOPE {ENVELOPE} BODYSTRUCTURE (("TEXT" "PLAIN" ("CHARSET" "UTF-8") NIL NIL "7BIT" {len(BODY)} 1)("APPLICATION" "OCTET-STREAM" ("NAME" "synthetic.txt") NIL NIL "BASE64" {len(ATTACHMENT)} NIL ("ATTACHMENT" ("FILENAME" "synthetic.txt"))) "MIXED"))\r\n')
+                    fields = ['UID 7']
+                    if 'FLAGS' in upper: fields.append('FLAGS ()')
+                    if 'INTERNALDATE' in upper: fields.append('INTERNALDATE "20-Oct-2026 12:00:00 +0000"')
+                    if 'RFC822.SIZE' in upper: fields.append('RFC822.SIZE 200')
+                    if 'ENVELOPE' in upper:
+                        fields.append('ENVELOPE ' + ('INVALID' if malformed_envelope else ENVELOPE))
+                    if 'BODYSTRUCTURE' in upper:
+                        structure = f'(("TEXT" "PLAIN" ("CHARSET" "UTF-8") NIL NIL "7BIT" {len(BODY)} 1)("APPLICATION" "OCTET-STREAM" ("NAME" "synthetic.txt") NIL NIL "BASE64" {len(ATTACHMENT)} NIL ("ATTACHMENT" ("FILENAME" "synthetic.txt"))) "MIXED")'
+                        fields.append('BODYSTRUCTURE ' + ('INVALID' if malformed_body else structure))
+                    response = ('* 1 FETCH (' + ' '.join(fields)).encode()
+                    if 'BODY.PEEK[HEADER]' in upper:
+                        header = f'From: {SENDER_NAME} <sender@example.com>\r\nTo: {RECIPIENT_NAME} <demo@example.com>\r\nSubject: Synthetic mail\r\nMessage-ID: <synthetic@example.com>\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary="synthetic"\r\n\r\n'.encode()
+                        response += f' BODY[HEADER] {{{len(header)}}}\r\n'.encode() + header
+                    await write(writer, response + b')\r\n')
             elif ' MOVE ' in upper:
                 await write(writer, f'{tag} OK [COPYUID 10 7 9] moved\r\n'); continue
             elif ' SEARCH ' in upper:
@@ -170,6 +184,8 @@ async def main(args):
     context.load_cert_chain(args.cert, args.key)
     servers = [await asyncio.start_server(imap, '127.0.0.1', 1993, ssl=context),
                await asyncio.start_server(smtp, '127.0.0.1', 1465, ssl=context),
+               await asyncio.start_server(partial(imap, malformed_body=True), '127.0.0.1', 1995, ssl=context),
+               await asyncio.start_server(partial(imap, malformed_envelope=True), '127.0.0.1', 1996, ssl=context),
                await asyncio.start_server(model_http, '127.0.0.1', 18443, ssl=context)]
     wrong_cert = Path(args.cert).with_name('fixture-wrong.pem')
     if wrong_cert.exists():
