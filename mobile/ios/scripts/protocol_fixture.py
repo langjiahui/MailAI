@@ -5,6 +5,7 @@ import argparse
 import asyncio
 import re
 import ssl
+from pathlib import Path
 from email import policy
 from email.parser import BytesParser
 
@@ -170,6 +171,13 @@ async def main(args):
     servers = [await asyncio.start_server(imap, '127.0.0.1', 1993, ssl=context),
                await asyncio.start_server(smtp, '127.0.0.1', 1465, ssl=context),
                await asyncio.start_server(model_http, '127.0.0.1', 18443, ssl=context)]
+    wrong_cert = Path(args.cert).with_name('fixture-wrong.pem')
+    if wrong_cert.exists():
+        wrong = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        wrong.minimum_version = ssl.TLSVersion.TLSv1_2
+        wrong.load_cert_chain(wrong_cert, args.key)
+        servers.extend([await asyncio.start_server(imap, '127.0.0.1', 1994, ssl=wrong),
+                        await asyncio.start_server(smtp, '127.0.0.1', 1466, ssl=wrong)])
     print('Synthetic TLS IMAP/SMTP fixtures ready', flush=True)
     await asyncio.gather(*(server.serve_forever() for server in servers))
 

@@ -9,7 +9,10 @@ public struct ReadResult: Sendable {
 
 public struct SubmissionFailure: Error, Sendable {
     public var uncertain: Bool
-    public init(uncertain: Bool) { self.uncertain = uncertain }
+    public var connectionFailure: MailConnectionFailure?
+    public init(uncertain: Bool, connectionFailure: MailConnectionFailure? = nil) {
+        self.uncertain = uncertain; self.connectionFailure = connectionFailure
+    }
 }
 
 public protocol MailService: Sendable {
@@ -136,7 +139,7 @@ public extension MailService {
                 folders = list; messages = result; lastRefresh = Date()
                 try learnContacts(result.flatMap(\.contactAddresses), account: entry.account.id)
             } catch {
-                if generation == token, !Task.isCancelled { self.error = "收信失败，已保留缓存。请检查网络、服务器与授权码后重试。" }
+                if generation == token, !Task.isCancelled { self.error = "收信失败，已保留缓存。" + ((error as? MailConnectionFailure)?.localizedDescription ?? "请检查服务器、证书与授权码后重试。") }
             }
             if generation == token { busy = false }
         }
@@ -235,6 +238,9 @@ public extension MailService {
             try? files.write(submitted, account: id, key: "draft")
             if selectedID == id { draft = submitted; try? persistDraft() }
             if uncertain { throw MailFailure.uncertainSend }
+            if let issue = (error as? SubmissionFailure)?.connectionFailure {
+                throw MailFailure.invalid("邮件未发送。" + issue.localizedDescription)
+            }
             throw MailFailure.invalid("邮件未发送，请检查网络、授权码及收件地址后手动重试。")
         }
     }

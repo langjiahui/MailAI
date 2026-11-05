@@ -41,3 +41,11 @@ for name in ['fixture-ca.pem', 'fixture-server.pem']:
     if text.count('X509v3 Basic Constraints:') != 1:
         raise SystemExit('Malformed fixture: duplicated or missing Basic Constraints')
 run('security', 'verify-cert', '-c', 'build/fixture-server.pem', '-r', 'build/fixture-ca.pem', '-p', 'ssl', '-n', 'localhost')
+
+# Same trusted CA, deliberately different identity. IP compatibility must not
+# turn into accepting any certificate signed by a trusted root.
+(root / 'fixture-wrong.ext').write_text((root / 'fixture.ext').read_text().replace(
+    'DNS:localhost,IP:127.0.0.1', 'DNS:wrong-mail.example.test'))
+run('openssl', 'x509', '-req', '-in', 'build/fixture.csr', '-CA', 'build/fixture-ca.pem',
+    '-CAkey', 'build/fixture-key.pem', '-CAcreateserial', '-out', 'build/fixture-wrong.pem',
+    '-days', '2', '-extfile', 'build/fixture-wrong.ext')

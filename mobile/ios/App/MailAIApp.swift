@@ -240,7 +240,7 @@ struct InboxView: View {
                         }.listRowBackground(Color.clear).listRowSeparator(.hidden).listSectionSeparator(.hidden)
                     }.listStyle(.plain).navigationLinkIndicatorVisibility(.hidden).scrollContentBackground(.hidden).background(MailTheme.surface)
                         .refreshable {
-                            if unified { do { try await store.refreshAllInboxes(); unifiedMessages = try store.cachedInbox() } catch { store.error = "部分邮箱同步失败，已保留缓存。" } }
+                            if unified { do { try await store.refreshAllInboxes(); unifiedMessages = try store.cachedInbox() } catch { store.error = "部分邮箱同步失败，已保留缓存。" + ((error as? MailConnectionFailure)?.localizedDescription ?? "") } }
                             else { store.refresh() }
                         }
             }

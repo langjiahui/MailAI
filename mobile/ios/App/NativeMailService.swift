@@ -15,7 +15,8 @@ struct NativeMailService: MailService {
         return try await withTaskCancellationHandler {
             do {
                 try Task.checkCancellation()
-                try await server.connect()
+                try await MailConnectionGate.connect(host: a.imapHost, port: a.imapPort,
+                    attempt: { try await server.connect() }, reset: { try? await server.disconnect() })
                 try await server.login(username: a.username, password: entry.password)
                 let result = try await action(server)
                 try? await server.disconnect()
@@ -35,7 +36,8 @@ struct NativeMailService: MailService {
         let server = smtp(entry)
         try await withTaskCancellationHandler {
             do {
-                try await server.connect()
+                try await MailConnectionGate.connect(host: entry.account.smtpHost, port: entry.account.smtpPort,
+                    attempt: { try await server.connect() }, reset: { try? await server.disconnect() })
                 try await server.login(username: entry.account.username, password: entry.password)
                 try? await server.disconnect()
             } catch { try? await server.disconnect(); throw error }
@@ -217,11 +219,12 @@ struct NativeMailService: MailService {
         let email = try Self.email(entry, draft: draft)
         let server = smtp(entry)
         do {
-            try await server.connect()
+            try await MailConnectionGate.connect(host: entry.account.smtpHost, port: entry.account.smtpPort,
+                attempt: { try await server.connect() }, reset: { try? await server.disconnect() })
             try await server.login(username: entry.account.username, password: entry.password)
         } catch {
             try? await server.disconnect()
-            throw SubmissionFailure(uncertain: false)
+            throw SubmissionFailure(uncertain: false, connectionFailure: error as? MailConnectionFailure)
         }
         do {
             _ = try await server.sendEmail(email)

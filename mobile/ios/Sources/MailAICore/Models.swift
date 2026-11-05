@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 
 public enum MailFailure: LocalizedError, Equatable {
     case invalid(String)
@@ -105,10 +106,32 @@ public enum MailValidation {
               !host.lowercased().hasPrefix("fe80:") else {
             throw MailFailure.invalid("请填写邮箱服务器域名，不能使用网址、回环或链路本地地址。")
         }
-        // SwiftMail's TLS adapter omits hostname validation for IP literals.
-        // Require a DNS name so fullVerification always checks the configured server identity.
-        guard !host.contains(":"), !host.allSatisfy({ $0.isNumber || $0 == "." }) else {
-            throw MailFailure.invalid("请使用与服务器证书匹配的域名；内网 IP 请改用对应的内网域名。")
+        // NIOSSL fullVerification checks an IP literal against the peer's IP SAN,
+        // even when SNI is omitted. User-configured private mail endpoints are valid.
+        var v4 = in_addr()
+        if inet_pton(AF_INET, host, &v4) == 1 {
+            let bytes = withUnsafeBytes(of: v4) { Array($0) }
+            guard (1...223).contains(bytes[0]), bytes[0] != 127,
+                  !(bytes[0] == 169 && bytes[1] == 254) else {
+                throw MailFailure.invalid("邮箱服务器不能使用回环、链路本地、组播或未指定地址。")
+            }
+            return
+        }
+        var v6 = in6_addr()
+        if inet_pton(AF_INET6, host, &v6) == 1 {
+            let bytes = withUnsafeBytes(of: v6) { Array($0) }
+            guard bytes[0] & 0xe0 == 0x20 || bytes[0] & 0xfe == 0xfc else {
+                throw MailFailure.invalid("请使用公网或公司内网 IPv6 地址，不能使用回环、链路本地或映射地址。")
+            }
+            return
+        }
+        let labels = host.split(separator: ".", omittingEmptySubsequences: false)
+        guard host.utf8.count <= 253, !host.contains(":"),
+              !host.allSatisfy({ $0.isNumber || $0 == "." }),
+              labels.allSatisfy({ !$0.isEmpty && $0.utf8.count <= 63 &&
+                  $0.first != "-" && $0.last != "-" &&
+                  $0.utf8.allSatisfy { (65...90).contains($0) || (97...122).contains($0) || (48...57).contains($0) || $0 == 45 } }) else {
+            throw MailFailure.invalid("请填写有效的邮箱服务器域名或 IP 地址，不包含端口或网址。")
         }
     }
 }

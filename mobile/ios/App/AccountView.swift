@@ -124,7 +124,7 @@ struct AccountView: View {
             }.listRowBackground(MailTheme.surface)
             Section {
                 if setup.manualServers { Button("恢复自动服务器设置") { setup.restoreAutomaticServers(); error = nil } }
-                Text("使用服务商提供的服务器域名与加密设置。默认地址需要通过连接验证后才能使用。").font(.footnote).foregroundStyle(MailTheme.secondary)
+                Text("支持公司内网域名和 IP。请填写管理员提供的服务器与加密方式；证书须与域名或 IP 匹配。连接内网时请允许 MailAI 访问本地网络。").font(.footnote).foregroundStyle(MailTheme.secondary)
             }.listRowBackground(MailTheme.surface)
         }.textInputAutocapitalization(.never).autocorrectionDisabled().multilineTextAlignment(.trailing)
             .scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("高级设置").navigationBarTitleDisplayMode(.inline)
@@ -169,6 +169,7 @@ struct AccountView: View {
                 guard requestID == id, !Task.isCancelled else { return }
 
                 self.error = (error as? MailFailure)?.localizedDescription ??
+                    (error as? MailConnectionFailure)?.localizedDescription ??
                     "添加失败，请检查网络及密码／授权码，并确认邮箱已开启 IMAP/SMTP 服务。仍无法连接时，可在高级设置中核对服务器配置。"
             }
             if requestID == id { testing = false; task = nil }

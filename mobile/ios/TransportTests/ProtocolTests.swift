@@ -80,6 +80,26 @@ final class ProtocolTests: XCTestCase {
         let result = try await service.read(entry, summary: XCTUnwrap(messages.first))
         XCTAssertTrue(result.body.text.contains("Synthetic offline message")); XCTAssertTrue(result.markedRead)
     }
+    func testIPLiteralUsesTLSIdentityVerificationForBothMailProtocols() async throws {
+        let service = NativeMailService()
+        var entry = credential()
+        // Loopback is synthetic only; account validation still rejects it. The
+        // trusted fixture contains an exact IP SAN as corporate IP certs must.
+        entry.account.imapHost = "127.0.0.1"; entry.account.smtpHost = "127.0.0.1"
+        try await service.validate(entry)
+        for smtp in [false, true] {
+            var wrong = entry
+            if smtp { wrong.account.smtpPort = 1466 } else { wrong.account.imapPort = 1994 }
+            do {
+                try await service.validate(wrong)
+                XCTFail("A trusted CA must not make a mismatched IP SAN valid")
+            } catch {
+                XCTAssertFalse(error is MailConnectionFailure, "Must reach the TLS check, not fail on routing")
+                let detail = String(reflecting: error).lowercased()
+                XCTAssertTrue(["tls", "ssl", "certificate", "hostname", "handshake"].contains(where: detail.contains), detail)
+            }
+        }
+    }
     func testAttachmentsServerSearchFlagsMoveAndSentArchive() async throws {
         let service = NativeMailService(); var entry = credential(); entry.account.sentFolder = "Sent"
         let messages = try await service.summaries(entry, folder: "INBOX", limit: 50)

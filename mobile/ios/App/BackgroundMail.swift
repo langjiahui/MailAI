@@ -40,7 +40,7 @@ import MailAICore
                 UserDefaults.standard.set("后台检查成功", forKey: "mail.backgroundStatus")
                 success = true
             } catch {
-                UserDefaults.standard.set(Task.isCancelled ? "后台检查被系统取消，保留缓存。" : "后台检查未完成。设备锁定、网络或账号验证可能受限。", forKey: "mail.backgroundStatus")
+                UserDefaults.standard.set(Task.isCancelled ? "后台检查被系统取消，保留缓存。" : ((error as? MailConnectionFailure)?.localizedDescription ?? "后台检查未完成。设备锁定、网络或账号验证可能受限。"), forKey: "mail.backgroundStatus")
             }
             task.setTaskCompleted(success: success); work = nil
         }

@@ -204,7 +204,7 @@ struct ReaderView: View {
                     }
                 } else { try? await store.markReadIfNeeded(summary) }
             }
-            catch { if !Task.isCancelled { self.error = (error as? MailFailure)?.localizedDescription ?? "请检查网络后重试，已缓存的正文可离线阅读。" } }
+            catch { if !Task.isCancelled { self.error = (error as? MailFailure)?.localizedDescription ?? (error as? MailConnectionFailure)?.localizedDescription ?? "请检查网络后重试，已缓存的正文可离线阅读。" } }
         }
     }
     private func compose(_ mode: DraftMode) {
