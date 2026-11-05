@@ -117,6 +117,96 @@ private actor FeatureService: MailService {
             XCTAssertNil(cached)
         }
     }
+    func testTrashCacheAndConfiguredTrashAreExcludedFromCorrespondenceEvenWhenActive() async throws {
+        let vault = FeatureVault(), service = BulkCorrespondenceService(), files = try MailFiles(root: root)
+        var account = MailAccount(); account.email = "demo@example.com"; account.trashFolder = "CorporateDeleted"; account.suggestServers()
+        vault.entries = [.init(account: account, password: "synthetic-bulk-only")]
+        try files.write([MailFolder(name: "INBOX"), MailFolder(name: "Archive"), MailFolder(name: "Trash"), MailFolder(name: "CorporateDeleted")], account: account.id, key: "folders")
+        for folder in ["Archive", "Trash", "CorporateDeleted"] { try files.write([bulkItem(7, folder: folder)], account: account.id, key: "list:" + folder) }
+        let store = MailStore(vault: vault, files: files, service: service)
+        try store.selectFolder("CorporateDeleted")
+        XCTAssertFalse(store.isCorrespondenceFolder("CorporateDeleted")); XCTAssertFalse(store.isCorrespondenceFolder("Trash"))
+        XCTAssertEqual(try store.cachedCorrespondenceRecords(with: "peer@example.com").map(\.folder), ["Archive"])
+        do { _ = try await store.moveCorrespondence([bulkItem(7, folder: "CorporateDeleted")], address: "peer@example.com", to: "Trash"); XCTFail("Already-deleted mail must not be moved again") } catch {}
+        let moved = await service.moves; XCTAssertTrue(moved.isEmpty)
+    }
+    func testCorrespondenceBulkMoveGroupsFoldersAndUndoRestoresEverySource() async throws {
+        let (store, service, files, account) = try await bulkSetup()
+        let incoming = bulkItem(7), archived = bulkItem(7, folder: "Archive"), sent = bulkItem(8, folder: "Sent")
+        for item in [incoming, archived, sent] {
+            try files.write([item], account: account, key: "list:" + item.folder)
+            try files.write([item], account: account, key: "correspondence:peer@example.com:" + item.folder)
+        }
+        let result = try await store.moveCorrespondence([incoming, incoming, archived, sent], address: "peer@example.com", to: "Trash")
+        XCTAssertEqual(result.completed.count, 3); XCTAssertFalse(result.needsReconciliation)
+        XCTAssertTrue(try store.cachedCorrespondenceRecords(with: "peer@example.com").isEmpty)
+        XCTAssertNotNil(store.undoID); XCTAssertEqual(store.folder, "INBOX")
+        try await store.undoLastAction(); store.cancelRefresh()
+        let moves = await service.moves, undone = await service.undone
+        XCTAssertEqual(moves.map { $0.0 }, ["Archive", "INBOX", "Sent"])
+        XCTAssertEqual(Set(undone), ["Archive", "INBOX", "Sent"])
+        XCTAssertEqual(moves.flatMap { $0.1 }.count, 3)
+    }
+    func testCorrespondenceBulkMoveStopsOnUncertainBatchAndDoesNotClaimUndo() async throws {
+        let (store, service, files, account) = try await bulkSetup()
+        await service.fail(folder: "INBOX")
+        let records = [bulkItem(7, folder: "Archive"), bulkItem(7), bulkItem(8, folder: "Sent")]
+        for item in records { try files.write([item], account: account, key: "list:" + item.folder) }
+        let result = try await store.moveCorrespondence(records, address: "peer@example.com", to: "Trash")
+        XCTAssertEqual(result.completed.map(\.folder), ["Archive"]); XCTAssertTrue(result.needsReconciliation)
+        let calls = await service.moves
+        XCTAssertEqual(calls.map { $0.0 }, ["Archive", "INBOX"], "Never retry the uncertain request or process later batches")
+        XCTAssertNil(store.undoID)
+        XCTAssertEqual(try files.read([MailSummary].self, account: account, key: "list:INBOX")?.count, 1)
+    }
+    func testCorrespondenceBulkMoveChunksLargeSelectionsAndRequiresAllMappingsForUndo() async throws {
+        let (store, service, _, _) = try await bulkSetup()
+        let result = try await store.moveCorrespondence((1...205).map { bulkItem(UInt32($0)) }, address: "peer@example.com", to: "Trash")
+        XCTAssertEqual(result.completed.count, 205)
+        let batches = await service.moves
+        XCTAssertEqual(batches.map { $0.1.count }, [100, 100, 5]); XCTAssertNotNil(store.undoID)
+        await service.omitReceipt()
+        let noMapping = try await store.moveCorrespondence([bulkItem(999)], address: "peer@example.com", to: "Trash")
+        XCTAssertEqual(noMapping.completed.count, 1); XCTAssertFalse(noMapping.needsReconciliation); XCTAssertNil(store.undoID)
+    }
+    func testCorrespondenceBulkMoveRejectsUnrelatedMailAndSameFolderBeforeMutation() async throws {
+        let (store, service, _, _) = try await bulkSetup()
+        var other = bulkItem(7); other.senderAddress = "not-peer@example.com"
+        for (items, target) in [([other], "Trash"), ([bulkItem(7)], "INBOX")] {
+            do { _ = try await store.moveCorrespondence(items, address: "peer@example.com", to: target); XCTFail("Invalid selection must not move") }
+            catch {}
+        }
+        let moves = await service.moves; XCTAssertTrue(moves.isEmpty)
+    }
+    func testCorrespondencePaginationCanLoadBeyondFiveHundredAndCacheAllPhysicalRecords() async throws {
+        let (store, service, _, _) = try await bulkSetup()
+        await service.setRecords((1...601).map { bulkItem(UInt32($0)) })
+        var before: UInt32?, found: [MailSummary] = []
+        repeat {
+            let result = try await store.correspondencePage(with: "peer@example.com", folder: "INBOX", beforeUID: before, limit: 200)
+            found += result.messages; before = result.nextUID
+        } while before != nil
+        XCTAssertEqual(found.count, 601); XCTAssertEqual(Set(found.map(\.id)).count, 601)
+        XCTAssertEqual(try store.cachedCorrespondenceRecords(with: "peer@example.com").count, 601)
+        XCTAssertEqual(store.folder, "INBOX"); XCTAssertTrue(store.messages.isEmpty)
+    }
+    func testCorrespondencePaginationRejectsNonAdvancingCursor() async throws {
+        let (store, service, _, _) = try await bulkSetup(); await service.repeatCursor()
+        do { _ = try await store.correspondencePage(with: "peer@example.com", folder: "INBOX", beforeUID: 5, limit: 200); XCTFail("Nonadvancing cursor must fail") }
+        catch {}
+        XCTAssertTrue(try store.cachedCorrespondenceRecords(with: "peer@example.com").isEmpty)
+    }
+    private func bulkItem(_ uid: UInt32, folder: String = "INBOX") -> MailSummary {
+        var item = MailSummary(uid: uid, validity: 10, folder: folder, subject: "合成往来", sender: "peer@example.com", replyAddress: "peer@example.com", date: nil, unread: false, messageID: "<peer-\(uid)@example.com>")
+        item.senderAddress = "peer@example.com"; return item
+    }
+    private func bulkSetup() async throws -> (MailStore, BulkCorrespondenceService, MailFiles, UUID) {
+        let vault = FeatureVault(), service = BulkCorrespondenceService(), files = try MailFiles(root: root)
+        var account = MailAccount(); account.email = "demo@example.com"; account.suggestServers()
+        vault.entries = [.init(account: account, password: "synthetic-bulk-only")]
+        try files.write([MailFolder(name: "INBOX"), MailFolder(name: "Archive"), MailFolder(name: "Sent")], account: account.id, key: "folders")
+        return (MailStore(vault: vault, files: files, service: service), service, files, account.id)
+    }
     func testLegacyDraftAndAccountDecodeWithoutLosingContent() throws {
         let data = Data(#"{"to":"a@example.com","subject":"旧草稿","text":"正文","state":"editing"}"#.utf8)
         let draft = try JSONDecoder().decode(MailDraft.self, from: data)
@@ -321,5 +411,41 @@ private actor CorrespondenceTestService: MailService {
         if held { await withCheckedContinuation { continuation = $0 } }
         let item = MailSummary(uid: 7, validity: 10, folder: folder, subject: "合成往来记录", sender: "peer@example.com", replyAddress: "peer@example.com", date: nil, unread: false)
         return MailSearchResult(messages: [item], total: 1)
+    }
+}
+
+private actor BulkCorrespondenceService: MailService {
+    var moves: [(String, [UInt32])] = []
+    var undone: [String] = []
+    var failedFolder: String?
+    var noReceipt = false
+    var badCursor = false
+    var records: [MailSummary] = []
+    var nextUID: UInt32 = 1000
+    func fail(folder: String) { failedFolder = folder }
+    func omitReceipt() { noReceipt = true }
+    func repeatCursor() { badCursor = true }
+    func setRecords(_ input: [MailSummary]) { records = input }
+    func validate(_ credential: AccountCredential) async throws {}
+    func folders(_ credential: AccountCredential) async throws -> [MailFolder] { [.init(name: "INBOX"), .init(name: "Sent")] }
+    func summaries(_ credential: AccountCredential, folder: String, limit: Int) async throws -> [MailSummary] { [] }
+    func read(_ credential: AccountCredential, summary: MailSummary) async throws -> ReadResult { .init(body: .init(text: "synthetic", html: nil), markedRead: false) }
+    func send(_ credential: AccountCredential, draft: MailDraft) async throws {}
+    func move(_ credential: AccountCredential, summaries: [MailSummary], to folder: String) async throws -> [MailSummary]? {
+        XCTAssertTrue(summaries.allSatisfy { $0.folder == summaries.first?.folder && $0.validity == summaries.first?.validity })
+        moves.append((summaries[0].folder, summaries.map(\.uid)))
+        if failedFolder == summaries[0].folder { throw MailFailure.invalid("synthetic uncertain result") }
+        if noReceipt { return nil }
+        return summaries.map { nextUID += 1; return $0.relocated(uid: nextUID, validity: 20, folder: folder) }
+    }
+    func perform(_ credential: AccountCredential, summaries: [MailSummary], action: MailAction) async throws {
+        XCTAssertTrue(summaries.allSatisfy { $0.folder == "Trash" && $0.validity == 20 })
+        if case .move(let source) = action { undone.append(source) }
+    }
+    func correspondencePage(_ credential: AccountCredential, folder: String, address: String, beforeUID: UInt32?, limit: Int) async throws -> MailSearchResult {
+        if badCursor { return .init(messages: [], total: 10, nextUID: beforeUID) }
+        let all = records.filter { $0.folder == folder }.sorted { $0.uid > $1.uid }
+        let remaining = all.filter { beforeUID == nil || $0.uid < beforeUID! }, page = Array(remaining.prefix(limit))
+        return .init(messages: page, total: all.count, nextUID: remaining.count > page.count ? page.last?.uid : nil)
     }
 }

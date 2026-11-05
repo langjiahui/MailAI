@@ -295,12 +295,15 @@ struct NativeMailService: MailService {
         return try await searchMessages(entry, folder: folder, criteria: [.text(query)], limit: limit)
     }
     func correspondence(_ entry: AccountCredential, folder: String, address: String, limit: Int) async throws -> MailSearchResult {
+        try await correspondencePage(entry, folder: folder, address: address, beforeUID: nil, limit: limit)
+    }
+    func correspondencePage(_ entry: AccountCredential, folder: String, address: String, beforeUID: UInt32?, limit: Int) async throws -> MailSearchResult {
         guard MailValidation.isAddress(address) else { throw MailFailure.invalid("发件人邮箱地址不可用。") }
         let result = try await searchMessages(entry, folder: folder,
-            criteria: [.or(.from(address), .or(.to(address), .cc(address)))], limit: limit)
-        return MailSearchResult(messages: result.messages.filter { $0.involves(address) }, total: result.total)
+            criteria: [.or(.from(address), .or(.to(address), .cc(address)))], limit: limit, beforeUID: beforeUID)
+        return MailSearchResult(messages: result.messages.filter { $0.involves(address) }, total: result.total, nextUID: result.nextUID)
     }
-    private func searchMessages(_ entry: AccountCredential, folder: String, criteria: [SearchCriteria], limit: Int) async throws -> MailSearchResult {
+    private func searchMessages(_ entry: AccountCredential, folder: String, criteria: [SearchCriteria], limit: Int, beforeUID: UInt32? = nil) async throws -> MailSearchResult {
         let remembered = await MailListCompatibility.shared.mode(entry.account.id)
         for mode in remembered...2 {
             do {
@@ -308,17 +311,18 @@ struct NativeMailService: MailService {
                     let selection = try await server.examineMailbox(folder)
                     let result: ExtendedSearchResult<UID> = try await server.extendedSearch(criteria: criteria)
                     let all = result.all?.toArray().sorted { $0.value > $1.value } ?? []
-                    let chosen = Array(all.prefix(min(500, max(1, limit))))
-                    guard !chosen.isEmpty else { return MailSearchResult(messages: [], total: 0) }
+                    let remaining = all.filter { beforeUID == nil || $0.value < beforeUID! }
+                    let chosen = Array(remaining.prefix(min(500, max(1, limit))))
+                    guard !chosen.isEmpty else { return MailSearchResult(messages: [], total: all.count) }
                     let options: FetchMessageInfoOptions = mode == 0 ? .slim.union(.bodyStructure)
                         : (mode == 1 ? .slim : [.flags, .internalDate, .size, .fullHeader])
                     var messages: [MailSummary] = []
                     for try await info in server.fetchMessageInfos(using: UIDSet(chosen), options: options) {
                         try Task.checkCancellation()
-                        guard let uid = info.uid else { throw MailConnectionFailure.malformedResponse }
+                        guard let uid = info.uid, chosen.contains(where: { $0.value == uid.value }) else { throw MailConnectionFailure.malformedResponse }
                         messages.append(Self.summary(info, uid: uid.value, validity: selection.uidValidity.value, folder: folder))
                     }
-                    return MailSearchResult(messages: messages.sorted { $0.uid > $1.uid }, total: all.count)
+                    return MailSearchResult(messages: messages.sorted { $0.uid > $1.uid }, total: all.count, nextUID: remaining.count > chosen.count ? chosen.last?.value : nil)
                 }
                 await MailListCompatibility.shared.remember(mode, for: entry.account.id)
                 return result

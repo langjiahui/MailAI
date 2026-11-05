@@ -60,7 +60,13 @@ public struct LocatedMessage: Identifiable, Sendable {
 public struct MailSearchResult: Sendable {
     public var messages: [MailSummary]
     public var total: Int
-    public init(messages: [MailSummary], total: Int) { self.messages = messages; self.total = total }
+    public var nextUID: UInt32?
+    public init(messages: [MailSummary], total: Int, nextUID: UInt32? = nil) { self.messages = messages; self.total = total; self.nextUID = nextUID }
+}
+public struct MailBatchMoveResult: Sendable {
+    public let completed: [MailSummary]
+    public let needsReconciliation: Bool
+    public init(completed: [MailSummary], needsReconciliation: Bool) { self.completed = completed; self.needsReconciliation = needsReconciliation }
 }
 
 /// Uses actual Message-ID / reply references; equal subjects alone never merge mail.

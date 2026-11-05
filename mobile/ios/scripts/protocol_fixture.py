@@ -48,7 +48,8 @@ async def imap(reader, writer, *, malformed_body=False, malformed_envelope=False
                     payload = ATTACHMENT if section == '2' else BODY
                     await write(writer, f'* 1 FETCH (UID 7 BODY[{section}]{partial} {{{len(payload)}}}\r\n'.encode() + payload + b')\r\n')
                 else:
-                    fields = ['UID 7']
+                    requested = re.search(r'UID FETCH ([0-9]+)', upper)
+                    fields = ['UID ' + (requested.group(1) if requested else '7')]
                     if 'FLAGS' in upper: fields.append('FLAGS ()')
                     if 'INTERNALDATE' in upper: fields.append('INTERNALDATE "20-Oct-2026 12:00:00 +0000"')
                     if 'RFC822.SIZE' in upper: fields.append('RFC822.SIZE 200')
@@ -74,7 +75,9 @@ async def imap(reader, writer, *, malformed_body=False, malformed_envelope=False
             elif ' SEARCH ' in upper:
                 if 'SENDER@EXAMPLE.COM' in upper and not all(key in upper for key in ['FROM ', 'TO ', 'CC ']):
                     await write(writer, f'{tag} BAD participant header search required\r\n'); continue
-                if 'MESSAGE-ID' in upper:
+                if 'PAGING@EXAMPLE.COM' in upper:
+                    await write(writer, '* SEARCH 7 8\r\n')
+                elif 'MESSAGE-ID' in upper:
                     match = re.search(r'<[^>]+>', command)
                     exists = match and match.group(0) in ARCHIVED
                     await write(writer, '* SEARCH' + (' 7' if exists else '') + '\r\n')

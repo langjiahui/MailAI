@@ -208,6 +208,7 @@ public struct MailSummary: Codable, Identifiable, Equatable, Sendable {
         if replyAddress.caseInsensitiveCompare(address) != .orderedSame { result.append(MailAddress(email: replyAddress)) }
         return result + (recipients ?? []) + (carbonCopies ?? [])
     }
+    public var correspondenceID: String { messageID.flatMap { $0.isEmpty ? nil : "message:" + $0 } ?? "local:" + id }
     public func correspondent(ownAddress: String) -> String {
         let sender = contactAddresses.first?.email ?? replyAddress
         if sender.caseInsensitiveCompare(ownAddress) != .orderedSame { return sender }

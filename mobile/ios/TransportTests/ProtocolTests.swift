@@ -8,6 +8,15 @@ import CryptoKit
 @testable import MailAI
 
 final class ProtocolTests: XCTestCase {
+    func testCorrespondencePaginationAdvancesEvenWhenHeaderSearchOnlyHasFalsePositives() async throws {
+        let service = NativeMailService(), entry = credential()
+        let first = try await service.correspondencePage(entry, folder: "INBOX", address: "paging@example.com", beforeUID: nil, limit: 1)
+        XCTAssertTrue(first.messages.isEmpty); XCTAssertEqual(first.total, 2); XCTAssertEqual(first.nextUID, 8)
+        let second = try await service.correspondencePage(entry, folder: "INBOX", address: "paging@example.com", beforeUID: first.nextUID, limit: 1)
+        XCTAssertTrue(second.messages.isEmpty); XCTAssertEqual(second.total, 2); XCTAssertNil(second.nextUID)
+        let exhausted = try await service.correspondencePage(entry, folder: "INBOX", address: "paging@example.com", beforeUID: 7, limit: 1)
+        XCTAssertTrue(exhausted.messages.isEmpty); XCTAssertEqual(exhausted.total, 2); XCTAssertNil(exhausted.nextUID)
+    }
     func testMalformedMetadataRecoversWithFreshReadOnlyHeaderFetch() async throws {
         let service = NativeMailService()
         for port in [1995, 1996] {

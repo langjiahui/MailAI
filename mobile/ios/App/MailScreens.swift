@@ -28,7 +28,7 @@ struct MailboxesView: View {
                         }
                     }
                 }.listRowBackground(MailTheme.surface)
-                Section("当前邮箱文件夹") {
+                Section(store.accounts.count > 1 ? "当前邮箱文件夹" : "文件夹") {
                     ForEach(store.folders, id: \.name) { folder in
                         Button { do { try store.selectFolder(folder.name); unified = false; dismiss() } catch { store.error = error.localizedDescription } } label: {
                             HStack { Label(folder.title, systemImage: folder.symbol); Spacer(); if !unified && store.folder == folder.name { Image(systemName: "checkmark") } }
@@ -142,7 +142,7 @@ struct MailSearchView: View {
                 MailSearchField(text: $query, prompt: "搜索当前文件夹", submitted: { limit = 50; search() }).padding(.horizontal, 16).padding(.vertical, 8)
                 List {
                 Group {
-                Section { Text((store.selected?.email ?? "") + " · " + (store.folders.first { $0.name == store.folder }?.title ?? store.folder)).font(.caption).foregroundStyle(MailTheme.secondary) }
+                Section { Text((store.accounts.count > 1 ? (store.selected?.email ?? "") + " · " : "") + (store.folders.first { $0.name == store.folder }?.title ?? store.folder)).font(.caption).foregroundStyle(MailTheme.secondary) }
                 if !query.isEmpty {
                     Section(completedQuery == query ? "服务器匹配 \(total) 封 · 已显示 \(results.count) 封" : "本机缓存匹配") {
                         if (completedQuery == query ? results : local).isEmpty {
@@ -206,7 +206,7 @@ struct ContactsView: View {
     @State private var composing = false
     var body: some View {
         List {
-            Section(store.selected?.email ?? "往来联系人") {
+            Section(store.accounts.count > 1 ? (store.selected?.email ?? "往来联系人") : "往来联系人") {
                 ForEach(store.contacts.filter { query.isEmpty || ($0.email + $0.name + $0.note).localizedCaseInsensitiveContains(query) }.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }) { contact in
                     NavigationLink { ContactDetail(store: store, initial: contact, compose: compose) } label: {
                         HStack { SenderAvatar(name: contact.name.isEmpty ? contact.title : contact.name); VStack(alignment: .leading) { Text(contact.name.isEmpty ? contact.title : contact.name).foregroundStyle(.primary); Text(contact.email).font(.caption).foregroundStyle(.secondary); if !contact.note.isEmpty { Text(contact.note).font(.caption).foregroundStyle(MailTheme.secondary).lineLimit(1) } }; Spacer() }
@@ -305,7 +305,7 @@ struct CorrespondenceView: View {
     let address: String
     var seed: MailSummary? = nil
     @State private var ownerID: UUID?
-    @State private var messages: [MailSummary] = []
+    @State private var records: [MailSummary] = []
     @State private var work: Task<Void, Never>?
     @State private var generation = UUID()
     @State private var working = false
@@ -314,58 +314,136 @@ struct CorrespondenceView: View {
     @State private var limit = 50
     @State private var more = false
     @State private var error: String?
+    @State private var selecting = false
+    @State private var selection = Set<String>()
+    @State private var incomingOnly = false
+    @State private var deleting: MailMoveRequest?
+    @State private var choosingTrash = false
+    @State private var moving = false
+    @State private var needsReconciliation = false
     @Environment(\.dismiss) private var dismiss
+    private var messages: [MailSummary] {
+        MailStore.correspondenceMessages(records.filter { !incomingOnly || $0.contactAddresses.first?.email.caseInsensitiveCompare(address) == .orderedSame }, address: address)
+    }
+    private var chosen: [MailSummary] { records.filter { selection.contains($0.correspondenceID) } }
     var body: some View {
         List {
             Section {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(address).font(.subheadline.weight(.semibold)).textSelection(.enabled)
-                    Text("当前邮箱：" + (store.selected?.email ?? "")).font(.caption).foregroundStyle(MailTheme.secondary)
+                    if store.accounts.count > 1 { Text("当前邮箱：" + (store.selected?.email ?? "")).font(.caption).foregroundStyle(MailTheme.secondary) }
+                    Text(incomingOnly ? "仅对方发来的邮件" : "包含收到及发出的邮件").font(.caption).foregroundStyle(MailTheme.secondary)
                 }
             }.listRowBackground(MailTheme.surface)
             if working {
-                HStack { ProgressView(); Text(folderCount == 0 ? "正在查找往来邮件…" : "正在查找 \(completed)/\(folderCount) 个文件夹").font(.footnote) }
-                    .listRowBackground(MailTheme.surface)
+                HStack { ProgressView(); Text("正在查找 \(completed)/\(folderCount) 个文件夹 · 已找到 \(messages.count) 封").font(.footnote) }.listRowBackground(MailTheme.surface)
             }
             if let error {
-                Section { MailNotice(text: error, symbol: "wifi.exclamationmark"); Button("重试查询") { search() } }.listRowBackground(MailTheme.surface)
+                Section { MailNotice(text: error, symbol: "exclamationmark.circle"); Button("重试查询") { search() }.disabled(moving) }.listRowBackground(MailTheme.surface)
             }
             Section("往来记录 · \(messages.count) 封") {
                 ForEach(messages) { message in
-                    NavigationLink { ReaderView(store: store, summary: message) } label: {
-                        MailRow(summary: message, account: direction(message) + " · " + (store.folders.first { $0.name == message.folder }?.title ?? MailFolder(name: message.folder).title))
+                    if selecting {
+                        Button { toggle(message) } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: selection.contains(message.correspondenceID) ? "checkmark.circle.fill" : "circle").font(.title3).foregroundStyle(MailTheme.blue).frame(width: 32, height: 44)
+                                row(message)
+                            }.contentShape(Rectangle())
+                        }.buttonStyle(.plain).accessibilityIdentifier("correspondence-select-\(message.folder)-\(message.uid)")
+                            .accessibilityValue(selection.contains(message.correspondenceID) ? "已选择" : "未选择")
+                            .listRowBackground(selection.contains(message.correspondenceID) ? MailTheme.blue.opacity(0.06) : MailTheme.surface)
+                    } else {
+                        NavigationLink { ReaderView(store: store, summary: message) } label: { row(message) }
+                            .contextMenu { Button("选择并批量删除", systemImage: "checkmark.circle") { selecting = true; selection = [message.correspondenceID] } }
                     }
                 }
                 if messages.isEmpty && !working {
-                    ContentUnavailableView("暂无往来记录", systemImage: "envelope", description: Text(error == nil ? "收件、已发送与归档中的往来邮件会显示在这里。" : "联网重试可查找更多历史邮件。"))
+                    ContentUnavailableView("暂无往来记录", systemImage: "envelope", description: Text(self.error == nil ? "收件、已发送与归档中的往来邮件会显示在这里。" : "联网重试可查找更多历史邮件。"))
                 }
             }.listRowBackground(MailTheme.surface)
-            if more && limit < 500 { Button("加载更多往来") { limit += 50; search() }.disabled(working) }
-            if more && limit >= 500 { Text("已达到本次查询上限，可在原邮箱进一步查找。").font(.footnote).foregroundStyle(MailTheme.secondary) }
+            if more {
+                Section {
+                    Text("尚有往来未加载，全选已加载仅处理当前记录。").font(.footnote).foregroundStyle(MailTheme.secondary)
+                    if limit < 500 { Button("加载更多往来") { limit += 50; search() }.disabled(working || moving) }
+                    Button("加载并选择全部往来") { search(all: true) }.disabled(working || moving).accessibilityIdentifier("correspondence-load-all")
+                }.listRowBackground(MailTheme.surface)
+            }
         }.listStyle(.plain).scrollContentBackground(.hidden).background(MailTheme.surface)
-            .navigationTitle("往来邮件").navigationBarTitleDisplayMode(.inline).toolbar(.visible, for: .navigationBar)
-            .toolbar { ToolbarItem(placement: .topBarTrailing) {
-                if working { Button("停止") { stop() }.accessibilityIdentifier("stop-correspondence") }
-                else { Button("刷新") { search() }.accessibilityIdentifier("refresh-correspondence") }
-            } }
+            .navigationTitle(selecting ? "已选 \(selection.count) 封" : "往来邮件").navigationBarTitleDisplayMode(.inline).toolbar(.visible, for: .navigationBar)
+            .navigationBarBackButtonHidden(moving)
+            .toolbar {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    if working { Button("停止") { stop(); self.error = "查询已停止，仅显示已查到的记录。" }.accessibilityIdentifier("stop-correspondence") }
+                    else if selecting { Button("完成") { selecting = false; selection = [] }.disabled(moving) }
+                    Menu {
+                        if !selecting { Button("选择邮件") { selecting = true; selection = [] }.disabled(messages.isEmpty || needsReconciliation) }
+                        Button("加载并选择全部往来") { search(all: true) }
+                        Toggle("仅对方发来的邮件", isOn: $incomingOnly)
+                        Button("刷新") { search() }
+                    } label: { Image(systemName: "ellipsis.circle") }.accessibilityLabel("更多往来操作").accessibilityIdentifier("correspondence-actions").disabled(working || moving)
+                }
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                VStack(spacing: 0) {
+                    if moving { HStack { ProgressView(); Text("正在处理邮件…").font(.subheadline) }.frame(maxWidth: .infinity, minHeight: 52) }
+                    else if store.undoID != nil {
+                        HStack { Text(store.undoTitle).font(.subheadline); Spacer(); Button("撤销") { undo() }.frame(minHeight: 44) }.padding(.horizontal)
+                            .task(id: store.undoID) { do { try await Task.sleep(for: .seconds(8)); store.clearUndo() } catch {} }
+                    }
+                    if selecting && !moving {
+                        HStack {
+                            Button(selection.count == messages.count ? "取消全选" : "全选已加载") { selection = selection.count == messages.count ? [] : Set(messages.map(\.correspondenceID)) }.frame(minHeight: 44).disabled(needsReconciliation)
+                            Spacer()
+                            Button("删除", systemImage: "trash", role: .destructive) { deleting = MailMoveRequest(items: chosen) }.frame(minHeight: 44).disabled(selection.isEmpty || needsReconciliation).accessibilityIdentifier("correspondence-delete")
+                        }.font(.subheadline).padding(.horizontal)
+                    }
+                }.background(.regularMaterial)
+            }
+            .alert("删除选中的往来邮件？", isPresented: Binding(get: { deleting != nil && !choosingTrash }, set: { if !$0 && !choosingTrash { deleting = nil } }), presenting: deleting) { request in
+                Button("移到废纸篓", role: .destructive) {
+                    if let target = store.selected?.trashFolder ?? store.folders.first(where: { $0.role == "trash" || $0.title == "废纸篓" })?.name { deleting = nil; move(request.items, to: target) }
+                    else { choosingTrash = true }
+                }
+                Button("取消", role: .cancel) { deleting = nil }
+            } message: { request in
+                Text("将 \(Set(request.items.map(\.correspondenceID)).count) 封往来邮件（\(request.items.count) 份文件夹记录）移到废纸篓，可在废纸篓中找回。\(incomingOnly ? "只包含对方发来的邮件。" : "包含对方发来的及你发给对方的邮件。")仅处理本次选中的记录。")
+            }
+            .confirmationDialog("未识别废纸篓，请明确选择目标文件夹", isPresented: $choosingTrash, titleVisibility: .visible) {
+                ForEach(store.folders.filter { folder in !(deleting?.items.contains { $0.folder == folder.name } ?? true) }) { folder in
+                    Button(folder.title) { let items = deleting?.items ?? []; deleting = nil; move(items, to: folder.name) }
+                }
+                Button("取消", role: .cancel) { deleting = nil }
+            }
             .task {
-                guard ownerID == nil || ownerID == store.selectedID else { return }
+                guard ownerID == nil else { return }
                 ownerID = store.selectedID
-                do { messages = MailStore.correspondenceMessages((try store.cachedCorrespondence(with: address)) + [seed].compactMap { $0 }, address: address) }
-                catch { messages = [seed].compactMap { $0 } }
+                do { records = try store.cachedCorrespondenceRecords(with: address) + [seed].compactMap { $0 }; merge([]) }
+                catch { records = [seed].compactMap { $0 }; merge([]) }
                 search()
             }
             .onDisappear { stop() }
-            .onChange(of: store.selectedID) { _, id in if ownerID != id { stop(); messages = []; dismiss() } }
+            .onChange(of: choosingTrash) { _, value in if !value { deleting = nil } }
+            .onChange(of: incomingOnly) { _, _ in selection = [] }
+            .onChange(of: store.selectedID) { _, id in if ownerID != id { stop(); records = []; selection = []; deleting = nil; dismiss() } }
+    }
+    private func row(_ message: MailSummary) -> some View {
+        MailRow(summary: message, account: direction(message) + " · " + (store.folders.first { $0.name == message.folder }?.title ?? MailFolder(name: message.folder).title))
+    }
+    private func toggle(_ message: MailSummary) {
+        if selection.contains(message.correspondenceID) { selection.remove(message.correspondenceID) } else { selection.insert(message.correspondenceID) }
     }
     private func direction(_ message: MailSummary) -> String {
         message.contactAddresses.first?.email.caseInsensitiveCompare(store.selected?.email ?? "") == .orderedSame ? "发出" : "收到"
     }
+    private func merge(_ input: [MailSummary]) {
+        var seen = Set<String>()
+        records = (records + input).filter { store.isCorrespondenceFolder($0.folder) && $0.involves(address) && seen.insert($0.id).inserted }
+    }
     private func stop() { generation = UUID(); work?.cancel(); work = nil; working = false }
-    private func search() {
+    private func search(all: Bool = false) {
         stop(); let token = generation
-        guard ownerID == store.selectedID else { return }
-        working = true; completed = 0; folderCount = 0; more = false; error = nil
+        guard ownerID == store.selectedID, !moving else { return }
+        selecting = false; selection = []; working = true; completed = 0; folderCount = 0; more = false; self.error = nil
         work = Task {
             do {
                 let folders = try await store.correspondenceFolders()
@@ -375,18 +453,44 @@ struct CorrespondenceView: View {
                 for folder in folders {
                     try Task.checkCancellation()
                     do {
-                        let result = try await store.correspondence(with: address, folder: folder.name, limit: limit)
-                        try Task.checkCancellation(); guard generation == token else { return }
-                        messages = MailStore.correspondenceMessages(messages + result.messages, address: address)
-                        more = more || result.total > limit
-                    } catch {
-                        try Task.checkCancellation(); failures += 1
-                    }
+                        var before: UInt32?
+                        repeat {
+                            let result = try await store.correspondencePage(with: address, folder: folder.name, beforeUID: before, limit: all ? 200 : limit)
+                            try Task.checkCancellation(); guard generation == token else { return }
+                            if before == nil { records.removeAll { $0.folder == folder.name } }
+                            merge(result.messages)
+                            before = result.nextUID
+                            more = more || (!all && before != nil)
+                        } while all && before != nil
+                    } catch { try Task.checkCancellation(); failures += 1 }
                     completed += 1
                 }
-                if failures > 0 { error = "\(failures) 个文件夹暂未读到，已保留可用的往来记录。" }
-            } catch { if !Task.isCancelled && generation == token { self.error = "查询未完成，已保留本机记录，请检查邮箱连接后重试。" } }
+                needsReconciliation = failures > 0
+                if failures > 0 { self.error = "\(failures) 个文件夹暂未读到，已保留可用记录；未选择全部，请重试查询。" }
+                else if all { selecting = true; selection = Set(messages.map(\.correspondenceID)) }
+            } catch { if !Task.isCancelled && generation == token { self.error = "查询未完成，已保留本机记录，请检查邮箱连接后重试。"; needsReconciliation = true } }
             if generation == token { working = false; work = nil }
+        }
+    }
+    private func move(_ items: [MailSummary], to target: String) {
+        guard ownerID == store.selectedID, !moving, !items.isEmpty else { return }
+        stop(); moving = true; self.error = nil
+        Task {
+            do {
+                let result = try await store.moveCorrespondence(items, address: address, to: target)
+                let ids = Set(result.completed.map(\.id)); records.removeAll { ids.contains($0.id) }
+                selecting = false; selection = []
+                needsReconciliation = result.needsReconciliation
+                if result.needsReconciliation { self.error = "已确认移入 \(result.completed.count) 份记录，其他记录的结果尚未确认。请先刷新核对，不要重复删除。" }
+            } catch { self.error = "操作结果未确认，请先刷新核对服务器记录。"; needsReconciliation = true }
+            moving = false
+        }
+    }
+    private func undo() {
+        moving = true
+        Task {
+            do { try await store.undoLastAction(); moving = false; search() }
+            catch { moving = false; needsReconciliation = true; self.error = "撤销未完成，请刷新核对服务器记录。" }
         }
     }
 }

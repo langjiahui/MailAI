@@ -25,10 +25,17 @@ public protocol MailService: Sendable {
     func perform(_ credential: AccountCredential, summaries: [MailSummary], action: MailAction) async throws
     func search(_ credential: AccountCredential, folder: String, query: String, limit: Int) async throws -> MailSearchResult
     func correspondence(_ credential: AccountCredential, folder: String, address: String, limit: Int) async throws -> MailSearchResult
+    func correspondencePage(_ credential: AccountCredential, folder: String, address: String, beforeUID: UInt32?, limit: Int) async throws -> MailSearchResult
     func archiveSent(_ credential: AccountCredential, draft: MailDraft) async throws
     func move(_ credential: AccountCredential, summaries: [MailSummary], to folder: String) async throws -> [MailSummary]?
 }
 public extension MailService {
+    func correspondencePage(_ credential: AccountCredential, folder: String, address: String, beforeUID: UInt32?, limit: Int) async throws -> MailSearchResult {
+        guard beforeUID == nil else { throw MailFailure.invalid("当前服务不支持继续加载往来邮件。") }
+        let result = try await correspondence(credential, folder: folder, address: address, limit: limit)
+        guard result.total <= limit || result.nextUID != nil else { throw MailFailure.invalid("查询尚未完整，不能选择全部往来。") }
+        return result
+    }
     func move(_ credential: AccountCredential, summaries: [MailSummary], to folder: String) async throws -> [MailSummary]? {
         try await perform(credential, summaries: summaries, action: .move(folder)); return nil
     }
@@ -350,7 +357,7 @@ public extension MailService {
         guard selectedID == entry.account.id else { return }
         let ids = Set(items.map(\.id))
         switch action {
-        case .move: messages.removeAll { ids.contains($0.id) }
+        case .move: try invalidateCorrespondence(account: entry.account.id); messages.removeAll { ids.contains($0.id) }
         case .read(let value): for index in messages.indices where ids.contains(messages[index].id) { messages[index].unread = !value }
         case .flagged(let value): for index in messages.indices where ids.contains(messages[index].id) { messages[index].isFlagged = value }
         }
@@ -367,6 +374,7 @@ public extension MailService {
         clearUndo(); cancelRefresh(); operating = true
         defer { operating = false; refresh() }
         for (action, items) in actions { try await service.perform(entry, summaries: items, action: action) }
+        try invalidateCorrespondence(account: entry.account.id)
     }
     public func search(_ query: String, limit: Int = 50) async throws -> [MailSummary] {
         let entry = try credential(), currentFolder = folder
@@ -420,16 +428,32 @@ public extension MailService {
             return list.map { LocatedMessage(accountID: account.id, summary: $0) }
         }.sorted { ($0.summary.date ?? .distantPast) > ($1.summary.date ?? .distantPast) }
     }
+    private func correspondenceKey(_ address: String, folder: String, account: UUID) throws -> String {
+        let revision = try files.read(Int.self, account: account, key: "correspondence-revision") ?? 0
+        return "correspondence:" + address.lowercased() + ":" + folder + (revision == 0 ? "" : ":r\(revision)")
+    }
+    private func invalidateCorrespondence(account: UUID) throws {
+        let revision = try files.read(Int.self, account: account, key: "correspondence-revision") ?? 0
+        try files.write(revision + 1, account: account, key: "correspondence-revision")
+    }
+    public func isCorrespondenceFolder(_ name: String) -> Bool {
+        let title = folders.first(where: { $0.name == name })?.title ?? MailFolder(name: name).title
+        return selected?.trashFolder != name && !["草稿", "废纸篓", "垃圾邮件"].contains(title)
+    }
     public func cachedCorrespondence(with address: String) throws -> [MailSummary] {
+        Self.correspondenceMessages(try cachedCorrespondenceRecords(with: address), address: address)
+    }
+    public func cachedCorrespondenceRecords(with address: String) throws -> [MailSummary] {
         let entry = try credential()
         guard MailValidation.isAddress(address) else { throw MailFailure.invalid("发件人邮箱地址不可用。") }
-        let names = Set(folders.filter { !["草稿", "废纸篓", "垃圾邮件"].contains($0.title) }.map(\.name) + [folder, "INBOX"] + [entry.account.sentFolder].compactMap { $0 })
+        let names = Set((folders.map(\.name) + [folder, "INBOX"] + [entry.account.sentFolder].compactMap { $0 }).filter(isCorrespondenceFolder))
         var result: [MailSummary] = []
         for name in names {
             result += try files.read([MailSummary].self, account: entry.account.id, key: "list:" + name) ?? []
-            result += try files.read([MailSummary].self, account: entry.account.id, key: "correspondence:" + address.lowercased() + ":" + name) ?? []
+            result += try files.read([MailSummary].self, account: entry.account.id, key: correspondenceKey(address, folder: name, account: entry.account.id)) ?? []
         }
-        return Self.correspondenceMessages(result, address: address)
+        var seen = Set<String>()
+        return result.filter { $0.involves(address) && seen.insert($0.id).inserted }
     }
     public func correspondenceFolders() async throws -> [MailFolder] {
         let entry = try credential()
@@ -437,7 +461,7 @@ public extension MailService {
         try Task.checkCancellation()
         guard selectedID == entry.account.id else { throw CancellationError() }
         try files.write(list, account: entry.account.id, key: "folders"); folders = list
-        return list.filter { !["草稿", "废纸篓", "垃圾邮件"].contains($0.title) }
+        return list.filter { isCorrespondenceFolder($0.name) }
     }
     public func correspondence(with address: String, folder: String, limit: Int = 50) async throws -> MailSearchResult {
         let entry = try credential()
@@ -446,13 +470,64 @@ public extension MailService {
         try Task.checkCancellation()
         guard selectedID == entry.account.id else { throw CancellationError() }
         let messages = Self.correspondenceMessages(result.messages, address: address)
-        try files.write(messages, account: entry.account.id, key: "correspondence:" + address.lowercased() + ":" + folder)
+        try files.write(messages, account: entry.account.id, key: correspondenceKey(address, folder: folder, account: entry.account.id))
         return MailSearchResult(messages: messages, total: result.total)
+    }
+    public func correspondencePage(with address: String, folder: String, beforeUID: UInt32?, limit: Int) async throws -> MailSearchResult {
+        let entry = try credential()
+        guard MailValidation.isAddress(address) else { throw MailFailure.invalid("往来邮箱地址不可用。") }
+        let result = try await service.correspondencePage(entry, folder: folder, address: address, beforeUID: beforeUID, limit: min(500, max(1, limit)))
+        try Task.checkCancellation(); guard selectedID == entry.account.id else { throw CancellationError() }
+        if let next = result.nextUID, let beforeUID, next >= beforeUID { throw MailFailure.invalid("服务器分页未前进，请刷新后重试。") }
+        let key = try correspondenceKey(address, folder: folder, account: entry.account.id)
+        let previous = beforeUID == nil ? [] : (try files.read([MailSummary].self, account: entry.account.id, key: key) ?? [])
+        var seen = Set<String>()
+        let page = result.messages.filter { $0.involves(address) }
+        try files.write((previous + page).filter { seen.insert($0.id).inserted }, account: entry.account.id, key: key)
+        return MailSearchResult(messages: page, total: result.total, nextUID: result.nextUID)
+    }
+    /// Operate on physical folder records, not display-deduplicated Message-IDs.
+    /// Stop after any uncertain batch; never silently retry a destructive request.
+    public func moveCorrespondence(_ items: [MailSummary], address: String, to target: String) async throws -> MailBatchMoveResult {
+        guard !operating else { throw MailFailure.invalid("请等待当前邮件操作结束。") }
+        let entry = try credential()
+        guard MailValidation.isAddress(address), !target.isEmpty, !MailValidation.hasControl(target),
+              items.allSatisfy({ $0.involves(address) && $0.folder != target && isCorrespondenceFolder($0.folder) }) else { throw MailFailure.invalid("往来邮件或目标文件夹已变化，请重新查询。") }
+        cancelRefresh(); operating = true; clearUndo(); defer { operating = false }
+        var seen = Set<String>(), completed: [MailSummary] = [], undo: [(MailAction, [MailSummary])] = []
+        var uncertain = false
+        let records = items.filter { seen.insert($0.id).inserted }
+        let groups = Dictionary(grouping: records, by: { $0.folder + ":" + String($0.validity) })
+        batchLoop: for key in groups.keys.sorted() {
+            let group = groups[key]!
+            for start in stride(from: 0, to: group.count, by: 100) {
+                let batch = Array(group[start..<min(start+100, group.count)])
+                do {
+                    let receipt = try await service.move(entry, summaries: batch, to: target)
+                    completed += batch
+                    if let receipt, receipt.count == batch.count { undo.append((.move(batch[0].folder), receipt)) }
+                    let ids = Set(batch.map(\.id))
+                    let source = batch[0].folder
+                    var cached = try files.read([MailSummary].self, account: entry.account.id, key: "list:" + source) ?? []
+                    cached.removeAll { ids.contains($0.id) }
+                    try files.write(cached, account: entry.account.id, key: "list:" + source)
+                    if folder == source { messages.removeAll { ids.contains($0.id) } }
+                } catch { uncertain = true; break batchLoop }
+            }
+        }
+        // Invalidates cached queries for every correspondent, including stale
+        // folder copies. The next query always reconciles with the server.
+        try invalidateCorrespondence(account: entry.account.id)
+        if !completed.isEmpty && !uncertain && undo.reduce(0, { $0 + $1.1.count }) == completed.count {
+            undoAccount = entry.account.id; undoActions = undo; undoExpiry = Date(timeIntervalSinceNow: 8)
+            undoTitle = "已移到废纸篓"; undoID = UUID()
+        }
+        return MailBatchMoveResult(completed: completed, needsReconciliation: uncertain)
     }
     public static func correspondenceMessages(_ input: [MailSummary], address: String) -> [MailSummary] {
         var seen = Set<String>()
         return input.filter { $0.involves(address) }.sorted { ($0.date ?? .distantPast) > ($1.date ?? .distantPast) }.filter {
-            seen.insert($0.messageID.flatMap { $0.isEmpty ? nil : "message:" + $0 } ?? "local:" + $0.id).inserted
+            seen.insert($0.correspondenceID).inserted
         }
     }
     public func refreshAllInboxes() async throws {

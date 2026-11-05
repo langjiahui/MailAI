@@ -15,7 +15,10 @@ import MailAICore
         func load() throws -> [AccountCredential] { credentials }
         func save(_ values: [AccountCredential]) throws { credentials = values }
     }
-    private struct Service: MailService {
+    private actor Service: MailService {
+        var removed = Set<String>()
+        var origins: [String: MailSummary] = [:]
+        var nextUID: UInt32 = 1000
         func validate(_ credential: AccountCredential) async throws {
             if CommandLine.arguments.contains("--ui-account-failure") {
                 try await Task.sleep(for: .seconds(12))
@@ -25,7 +28,7 @@ import MailAICore
         func folders(_ credential: AccountCredential) async throws -> [MailFolder] { [.init(name: "INBOX"), .init(name: "Archive"), .init(name: "Sent"), .init(name: "Trash")] }
         func summaries(_ credential: AccountCredential, folder: String, limit: Int) async throws -> [MailSummary] {
             if CommandLine.arguments.contains("--ui-offline") { throw MailFailure.invalid("合成离线状态") }
-            return CommandLine.arguments.contains("--ui-empty-inbox") ? [] : DebugPreview.messages(folder: folder)
+            return CommandLine.arguments.contains("--ui-empty-inbox") ? [] : DebugPreview.messages(folder: folder).filter { !removed.contains($0.id) }
         }
         func read(_ credential: AccountCredential, summary: MailSummary) async throws -> ReadResult {
             if CommandLine.arguments.contains("--ui-read-failure") { throw MailFailure.invalid("合成正文读取失败，可重试。") }
@@ -60,20 +63,38 @@ import MailAICore
             if attachment.mimeType == "application/pdf" { return await MainActor.run { DebugPreview.pdfData() } }
             return Data("synthetic".utf8)
         }
-        func perform(_ credential: AccountCredential, summaries: [MailSummary], action: MailAction) async throws {}
+        func perform(_ credential: AccountCredential, summaries: [MailSummary], action: MailAction) async throws {
+            if case .move = action { for item in summaries { if let original = origins[item.id] { removed.remove(original.id) } } }
+        }
         func move(_ credential: AccountCredential, summaries: [MailSummary], to folder: String) async throws -> [MailSummary]? {
-            summaries.map { $0.relocated(uid: $0.uid + 1000, validity: 20, folder: folder) }
+            if CommandLine.arguments.contains("--ui-correspondence-move-failure"), summaries.first?.folder == "INBOX" { throw MailFailure.invalid("合成移动未确认") }
+            return summaries.map {
+                nextUID += 1; let moved = $0.relocated(uid: nextUID, validity: 20, folder: folder)
+                removed.insert($0.id); origins[moved.id] = $0; return moved
+            }
         }
         func correspondence(_ credential: AccountCredential, folder: String, address: String, limit: Int) async throws -> MailSearchResult {
             if CommandLine.arguments.contains("--ui-correspondence-failure") { throw MailFailure.invalid("合成往来查询失败") }
-            let source: [MailSummary]
+            var source: [MailSummary]
             if folder == "Sent" {
                 var sent = MailSummary(uid: 77, validity: 10, folder: folder, subject: "已发送的合成回复", sender: "测试邮箱 <demo@example.com>", replyAddress: "demo@example.com", date: Date(timeIntervalSince1970: 1793103000), unread: false, messageID: "<sent-correspondence@example.com>")
                 sent.senderAddress = "demo@example.com"; sent.senderName = "测试邮箱"; sent.recipients = [.init(name: "测试联系人", email: "sender@example.com")]
                 source = [sent]
             } else { source = DebugPreview.messages(folder: folder) }
-            let matches = source.filter { $0.involves(address) }
+            if folder == "INBOX", CommandLine.arguments.contains("--ui-correspondence-many") {
+                for index in 1...205 {
+                    var item = DebugPreview.messages(folder: folder)[0].relocated(uid: UInt32(100+index), validity: 10, folder: folder)
+                    item.subject = "合成历史往来 \(index)"; item.messageID = "<bulk-\(index)@example.com>"; source.append(item)
+                }
+            }
+            let matches = source.filter { $0.involves(address) && !removed.contains($0.id) }.sorted { $0.uid > $1.uid }
             return MailSearchResult(messages: Array(matches.prefix(limit)), total: matches.count)
+        }
+        func correspondencePage(_ credential: AccountCredential, folder: String, address: String, beforeUID: UInt32?, limit: Int) async throws -> MailSearchResult {
+            let all = try await correspondence(credential, folder: folder, address: address, limit: Int.max)
+            let remaining = all.messages.filter { beforeUID == nil || $0.uid < beforeUID! }
+            let chosen = Array(remaining.prefix(limit))
+            return MailSearchResult(messages: chosen, total: all.total, nextUID: remaining.count > chosen.count ? chosen.last?.uid : nil)
         }
         func search(_ credential: AccountCredential, folder: String, query: String, limit: Int) async throws -> MailSearchResult {
             guard CommandLine.arguments.contains("--ui-server-search") else { throw MailFailure.invalid("合成服务器搜索失败") }
@@ -142,7 +163,15 @@ import MailAICore
             try files.write([editing, unknown, sent], account: account.id, key: "drafts-v2")
         }
         UserDefaults.standard.set(CommandLine.arguments.contains("--ui-dark") ? "dark" : "light", forKey: "mail.appearance")
-        return MailStore(vault: Vault(CommandLine.arguments.contains("--ui-empty-accounts") ? [] : [.init(account: account, password: "synthetic-ui-only")]), files: files, service: Service())
+        if CommandLine.arguments.contains("--ui-start-trash") { try files.write(messages(folder: "Trash"), account: account.id, key: "list:Trash") }
+        var entries = [AccountCredential(account: account, password: "synthetic-ui-only")]
+        if CommandLine.arguments.contains("--ui-multiple-accounts") {
+            var second = MailAccount(); second.email = "second@example.com"; second.suggestServers()
+            entries.append(.init(account: second, password: "synthetic-ui-only"))
+        }
+        let result = MailStore(vault: Vault(CommandLine.arguments.contains("--ui-empty-accounts") ? [] : entries), files: files, service: Service())
+        if CommandLine.arguments.contains("--ui-start-trash") { try result.selectFolder("Trash") }
+        return result
     }
 }
 #endif

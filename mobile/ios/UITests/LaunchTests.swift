@@ -541,6 +541,88 @@ final class WorkspaceTests: XCTestCase {
             attach(dark ? "reader-wide-zoom-dark" : "reader-wide-zoom-light")
         }
     }
+    func testCorrespondenceSelectionExcludesPreviouslyDeletedSeed() {
+        let app = launch(extra: ["--ui-start-trash"])
+        app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap(); app.buttons["reader-correspondence"].tap()
+        XCTAssertTrue(app.staticTexts["已发送的合成回复"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.staticTexts["当前邮箱：demo@example.com"].exists)
+        app.buttons["correspondence-actions"].tap(); app.buttons["选择邮件"].tap(); app.buttons["全选已加载"].tap()
+        app.buttons["correspondence-delete"].tap()
+        let alert = app.alerts["删除选中的往来邮件？"]
+        XCTAssertTrue(alert.staticTexts.matching(NSPredicate(format: "label CONTAINS '2 封往来邮件（3 份文件夹记录）'")).firstMatch.waitForExistence(timeout: 5))
+        attach("correspondence-from-trash-scope")
+        alert.buttons["取消"].tap()
+    }
+    func testAccountContextOnlyAppearsWithMultipleAccounts() {
+        for multiple in [false, true] {
+            let app = launch(extra: multiple ? ["--ui-multiple-accounts"] : [])
+            app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap(); app.buttons["reader-correspondence"].tap()
+            XCTAssertTrue(app.staticTexts["已发送的合成回复"].waitForExistence(timeout: 10))
+            XCTAssertEqual(app.staticTexts["当前邮箱：demo@example.com"].exists, multiple)
+            attach(multiple ? "correspondence-multiple-account-context" : "correspondence-single-account-clean")
+            openSection("通讯录", in: app)
+            if multiple { XCTAssertTrue(app.staticTexts["demo@example.com"].exists) }
+            else { XCTAssertTrue(app.staticTexts["往来联系人"].exists); XCTAssertFalse(app.staticTexts["demo@example.com"].exists) }
+            attach(multiple ? "contacts-multiple-account-context" : "contacts-single-account-clean")
+        }
+    }
+    func testCorrespondenceBulkTrashConfirmsFolderCopiesAndCanUndo() {
+        for dark in [false, true] {
+            let app = launch(dark: dark)
+            app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap(); app.buttons["reader-correspondence"].tap()
+            XCTAssertTrue(app.staticTexts["已发送的合成回复"].waitForExistence(timeout: 10))
+            app.buttons["correspondence-actions"].tap(); app.buttons["选择邮件"].tap()
+            app.buttons["全选已加载"].tap()
+            XCTAssertTrue(app.navigationBars["已选 2 封"].exists)
+            attach(dark ? "correspondence-selected-dark" : "correspondence-selected-light")
+            app.buttons["correspondence-delete"].tap()
+            let alert = app.alerts["删除选中的往来邮件？"]
+            XCTAssertTrue(alert.waitForExistence(timeout: 5))
+            XCTAssertTrue(alert.staticTexts.matching(NSPredicate(format: "label CONTAINS '2 封往来邮件（3 份文件夹记录）'")).firstMatch.exists)
+            attach(dark ? "correspondence-confirm-dark" : "correspondence-confirm-light")
+            alert.buttons["取消"].tap()
+            XCTAssertTrue(app.staticTexts["已发送的合成回复"].exists)
+            app.buttons["correspondence-delete"].tap(); app.alerts.buttons["移到废纸篓"].tap()
+            let undo = app.buttons["撤销"].firstMatch
+            XCTAssertTrue(undo.waitForExistence(timeout: 5))
+            XCTAssertFalse(app.staticTexts["已发送的合成回复"].exists)
+            XCTAssertTrue(app.staticTexts["暂无往来记录"].exists)
+            undo.tap()
+            XCTAssertTrue(app.staticTexts["已发送的合成回复"].waitForExistence(timeout: 10))
+            XCTAssertTrue(app.staticTexts["项目资料确认与下一步安排"].exists)
+            app.buttons["correspondence-actions"].tap(); app.buttons["仅对方发来的邮件"].tap()
+            XCTAssertFalse(app.staticTexts["已发送的合成回复"].exists)
+            XCTAssertTrue(app.staticTexts["项目资料确认与下一步安排"].exists)
+            attach(dark ? "correspondence-incoming-only-dark" : "correspondence-incoming-only-light")
+        }
+    }
+    func testCorrespondenceLoadAllSelectsEarlierPagesBeforeDeleting() {
+        let app = launch(extra: ["--ui-correspondence-many"])
+        app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap(); app.buttons["reader-correspondence"].tap()
+        XCTAssertTrue(app.staticTexts["已发送的合成回复"].waitForExistence(timeout: 10))
+        app.buttons["correspondence-actions"].tap(); app.buttons["加载并选择全部往来"].tap()
+        XCTAssertTrue(app.navigationBars["已选 207 封"].waitForExistence(timeout: 15))
+        attach("correspondence-all-pages-selected")
+        app.buttons["correspondence-delete"].tap()
+        let alert = app.alerts["删除选中的往来邮件？"]
+        XCTAssertTrue(alert.staticTexts.matching(NSPredicate(format: "label CONTAINS '207 封往来邮件（208 份文件夹记录）'")).firstMatch.waitForExistence(timeout: 5))
+        attach("correspondence-all-pages-confirmation")
+        alert.buttons["移到废纸篓"].tap()
+        XCTAssertTrue(app.staticTexts["暂无往来记录"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["撤销"].firstMatch.exists)
+    }
+    func testCorrespondencePartialMoveRequiresReconciliation() {
+        let app = launch(extra: ["--ui-correspondence-move-failure"])
+        app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap(); app.buttons["reader-correspondence"].tap()
+        XCTAssertTrue(app.staticTexts["已发送的合成回复"].waitForExistence(timeout: 10))
+        app.buttons["correspondence-actions"].tap(); app.buttons["选择邮件"].tap(); app.buttons["全选已加载"].tap()
+        app.buttons["correspondence-delete"].tap(); app.alerts.buttons["移到废纸篓"].tap()
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS '已确认移入 1 份记录'")).firstMatch.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["撤销"].exists)
+        XCTAssertTrue(app.buttons["重试查询"].exists)
+        XCTAssertTrue(app.staticTexts["已发送的合成回复"].exists)
+        attach("correspondence-partial-move-reconciliation")
+    }
     func testCorrespondenceIncludesSentAndPreservesCachedResultsOnFailure() {
         var app = launch()
         app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap()
