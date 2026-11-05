@@ -500,10 +500,15 @@ function assistantSourcesHtml(sources = [], accountId = '') {
    执行结果走 /api/assistant/actions/execute（白名单 + 服务端校验 + 审计）。 */
 function renderAssistantActionCard(bubble, action, account) {
   if (!bubble || !action || !action.type) return;
+  const memoryAction = ['save_work_context','save_work_preferences','save_work_memory'].includes(action.type);
+  const memoryCopy = key => mailaiT(key) || mailaiText(MAILAI_UI_COPY[key]?.[0] || key);
+  const memoryLabel = action.type === 'save_work_memory' ? 'work.confirmPersonalMemory' : action.type === 'save_work_preferences' ? 'work.confirmStyle' :
+    !action.params?.project && !action.params?.role && !action.params?.note ? 'work.confirmClearContext' : 'work.confirmContext';
   const card = document.createElement('div');
   card.className = 'assistant-action-card';
-  card.innerHTML = `<div class="assistant-action-copy"><b><span data-i18n="ui.aa0aa6a5b6a7">建议操作</span></b><span>${esc(action.summary || '')}</span></div>
-    <div class="assistant-action-buttons"><button type="button" data-action-confirm>${action.type === 'fill_attachment_reply' ? mailaiText('开始填写') : mailaiText('确认执行')}</button><button type="button" data-action-dismiss><span data-i18n="ui.2cd0f3be8738">取消</span></button></div>`;
+  if (memoryAction) card.classList.add('work-memory-confirm');
+  card.innerHTML = `<div class="assistant-action-copy"><b>${memoryAction ? esc(memoryCopy('work.confirmMemory')) : '<span data-i18n="ui.aa0aa6a5b6a7">建议操作</span>'}</b><span>${esc(action.summary || '')}</span></div>
+    <div class="assistant-action-buttons"><button type="button" data-action-confirm>${memoryAction ? esc(memoryCopy(memoryLabel)) : action.type === 'fill_attachment_reply' ? mailaiText('开始填写') : mailaiText('确认执行')}</button><button type="button" data-action-dismiss><span data-i18n="ui.2cd0f3be8738">取消</span></button></div>`;
   const finish = html => { card.innerHTML = `<p class="assistant-action-result">${html}</p>`; };
   card.querySelector('[data-action-dismiss]').addEventListener('click', () => {
     finish(mailaiText('已取消，未执行任何操作。'));
@@ -512,6 +517,7 @@ function renderAssistantActionCard(bubble, action, account) {
     const button = event.currentTarget;
     button.disabled = true;
     try {
+      if (memoryAction && activeMailAccount()?.id !== account?.id) throw new Error(memoryCopy('work.accountChanged'));
       if (action.type === 'fill_attachment_reply') {
         await window.startAssistantDocumentReply?.(action.params?.email_id, account?.id || '', action.params?.instruction || '');
         button.disabled = false;
@@ -522,12 +528,18 @@ function renderAssistantActionCard(bubble, action, account) {
         body:JSON.stringify({type:action.type, params:action.params || {}})});
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(typeof result.detail === 'string' ? result.detail : mailaiTemplate`执行失败（${response.status}）`);
-      if (action.type === 'create_todo') finish(mailaiTemplate`已创建待办：${esc(result.title || '')}${result.deadline ? mailaiTemplate`（截止 ${esc(result.deadline)}）` : ''}`);
+      if (memoryAction) finish(esc(memoryCopy(action.type === 'save_work_context' ? 'work.contextSaved' : action.type === 'save_work_preferences' ? 'work.styleSaved' : 'work.memorySaved')));
+      else if (action.type === 'create_todo') finish(mailaiTemplate`已创建待办：${esc(result.title || '')}${result.deadline ? mailaiTemplate`（截止 ${esc(result.deadline)}）` : ''}`);
       else if (action.type === 'mark_read') finish(mailaiTemplate`已将 ${Number(result.marked) || 0} 封邮件标记为已读。`);
       else if (action.type === 'draft_reply') finish(mailaiTemplate`回复草稿已创建（收件人 ${esc(result.to_addr || '')}），可在草稿箱中继续编辑。`);
       else finish(mailaiText('操作已完成。'));
     } catch (error) {
-      finish(esc(mailaiSystemMessage(error.message) || mailaiText('操作执行失败，请稍后重试。')));
+      if (memoryAction) {
+        let status = card.querySelector('[data-memory-error]');
+        if (!status) { status=document.createElement('p'); status.dataset.memoryError=''; status.setAttribute('role','status'); card.append(status); }
+        status.textContent = mailaiSystemMessage(error.message);
+        button.disabled = false;
+      } else finish(esc(mailaiSystemMessage(error.message) || mailaiText('操作执行失败，请稍后重试。')));
     }
   });
   bubble.appendChild(card);
@@ -636,6 +648,7 @@ function renderAssistantWelcome() {
   const wrap = document.getElementById('assistant-messages');
   wrap.replaceChildren(document.getElementById('assistant-welcome-template').content.cloneNode(true));
   wrap.classList.add('is-welcome');
+  window.mailaiWorkGuide?.refresh();
   window.mailaiAssistantScroll?.follow();
 }
 function appendAssistantMessage(role, content, sources = []) {
@@ -1117,6 +1130,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
     if (searchMeta) window.mailaiAssistantSearch?.complete(thinking,searchMeta,sources);
     if (pendingAction) renderAssistantActionCard(bubble, pendingAction, account);
     assistantHistory.push({role:'assistant', content:validAnswer()});
+    document.dispatchEvent(new CustomEvent('mailai:assistant-finished',{detail:{account:account?.id}}));
   } catch (error) {
     if (revision !== assistantRevision) return;
     paint();
@@ -2441,6 +2455,8 @@ async function aiCompose(operation, button) {
       subject: selected.has('subject') ? values.subject : '',
       recipients: selected.has('recipients') ? values.recipients : '',
       original_text: selected.has('original') ? values.original : '',
+      source_email_id: selected.has('original') && operation === 'reply' ? composeContext.reply_to_email_id : null,
+      use_work_preferences: Boolean(document.getElementById('work-use-preferences')?.checked),
       body_text: quickRewrite || selected.has('body') ? values.body : '',
       attachment_names: selected.has('attachments') ? values.attachments : [],
       tone: document.getElementById('compose-ai-tone').value,
@@ -2449,7 +2465,7 @@ async function aiCompose(operation, button) {
     };
     const assist = async payload => {
       const finishWork = globalThis.mailaiCompanionWork?.begin();
-      try { return await api('/api/mail/compose/assist', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); }
+      try { return await api('/api/mail/compose/assist', {accountId:composeAccountId,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); }
       finally { finishWork?.(); }
     };
     const renderPreview = suggestion => {
@@ -6116,8 +6132,8 @@ async function showInterruptedAppUpdateOutcome() {
   }
 }
 
-async function loadSystemConfig() {
-  const data = await api('/api/system/config');
+async function loadSystemConfig(prefetched=null) {
+  const data = prefetched || await api('/api/system/config');
   if (data.accounts?.some(account => account.id === browsingAccountId)) {
     data.accounts.forEach(account => { account.active = account.id === browsingAccountId; });
     data.mail.user = data.accounts.find(account => account.active).user;
@@ -6125,19 +6141,22 @@ async function loadSystemConfig() {
   _systemConfig = data;
   window.mailOnboarding?.configChanged(data);
   const model = data.model || {};
-  document.getElementById('model-provider').value = model.provider || 'custom';
-  document.getElementById('model-extra-params').value = JSON.stringify(model.extra_params || {}, null, 2);
-  document.getElementById('model-multimodal-enabled').checked = model.multimodal_enabled !== false;
-  document.getElementById('model-base-url').value = model.base_url || '';
-  document.getElementById('model-name').value = model.model || '';
-  document.getElementById('multimodal-model').value = model.multimodal_model || '';
-  document.getElementById('model-api-key').value = '';
-  mailaiBindUI(document.getElementById('model-api-key'), "placeholder", () => (model.api_key_masked ? mailaiTemplate`已配置 ${model.api_key_masked}，留空保持不变` : mailaiText('请输入 API Key')));
-  document.getElementById('model-verify-ssl').checked = model.verify_ssl !== false;
-  renderModelDataNotice(model.provider || 'custom', model.base_url || '');
-  const modelStatus = document.getElementById('model-status');
-  mailaiBindUI(modelStatus, "textContent", () => (model.verified ? mailaiText('已验证') : model.available ? mailaiText('已配置 · 待验证') : mailaiText('未配置')));
-  modelStatus.className = `connection-status ${model.verified ? 'connected' : ''}`;
+  if (!window.mailaiModelForm?.retainDraft()) {
+    document.getElementById('model-provider').value = model.provider || 'custom';
+    document.getElementById('model-extra-params').value = JSON.stringify(model.extra_params || {}, null, 2);
+    document.getElementById('model-multimodal-enabled').checked = model.multimodal_enabled !== false;
+    document.getElementById('model-base-url').value = model.base_url || '';
+    document.getElementById('model-name').value = model.model || '';
+    document.getElementById('multimodal-model').value = model.multimodal_model || '';
+    document.getElementById('model-api-key').value = '';
+    mailaiBindUI(document.getElementById('model-api-key'), "placeholder", () => (model.api_key_masked ? mailaiTemplate`已配置 ${model.api_key_masked}，留空保持不变` : mailaiText('请输入 API Key')));
+    document.getElementById('model-verify-ssl').checked = model.verify_ssl !== false;
+    renderModelDataNotice(model.provider || 'custom', model.base_url || '');
+    const modelStatus = document.getElementById('model-status');
+    mailaiBindUI(modelStatus, "textContent", () => (model.verified ? mailaiText('已验证') : model.available ? mailaiText('已配置 · 待验证') : mailaiText('未配置')));
+    modelStatus.className = `connection-status ${model.verified ? 'connected' : ''}`;
+    window.mailaiModelForm?.loaded();
+  }
 
   const mail = data.mail || {};
   const mailStatus = document.getElementById('mail-status');
@@ -8694,29 +8713,17 @@ document.getElementById('model-provider').addEventListener('change', async e => 
   const selectedProfile = _systemConfig?.model?.profiles?.[provider];
   renderModelDataNotice(provider, selectedProfile?.base_url || document.getElementById('model-base-url').value);
   if ((_systemConfig?.model?.saved_providers || []).includes(provider)) {
-    if (!document.getElementById('start-model')?.classList.contains('hidden')) {
-      const saved = _systemConfig?.model?.profiles?.[provider] || {};
-      document.getElementById('model-base-url').value = saved.base_url || '';
-      document.getElementById('model-name').value = saved.model || '';
-      document.getElementById('multimodal-model').value = saved.multimodal_model || '';
-      document.getElementById('model-multimodal-enabled').checked = saved.multimodal_enabled !== false;
-      document.getElementById('model-extra-params').value = JSON.stringify(saved.extra_params || {}, null, 2);
-      document.getElementById('model-api-key').value = '';
-      mailaiBindUI(document.getElementById('model-api-key'), "placeholder", () => (mailaiText('已安全保存此服务商的 API Key')));
-      document.getElementById('model-verify-ssl').checked = saved.verify_ssl !== false;
-      mailaiBindUI(document.getElementById('model-status'), "textContent", () => (mailaiText('待验证')));
-      renderModelDataNotice(provider, saved.base_url || '');
-      return;
-    }
-    e.target.disabled = true;
-    try {
-      await api('/api/system/model', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({provider})});
-      await loadSystemConfig();
-      toast(CLOUD_MODEL_PROVIDERS.has(provider) ? mailaiText('已切换到云端模型，请留意邮件隐私提示') : mailaiText('已切换到自部署模型，请确认模型地址可信'), CLOUD_MODEL_PROVIDERS.has(provider) ? 'warn' : 'success');
-    } catch (error) {
-      e.target.value = _systemConfig?.model?.provider || 'custom';
-      toast(mailaiText('切换模型失败：') + mailaiSystemMessage(error.message), 'error');
-    } finally { e.target.disabled = false; }
+    const saved = _systemConfig?.model?.profiles?.[provider] || {};
+    document.getElementById('model-base-url').value = saved.base_url || '';
+    document.getElementById('model-name').value = saved.model || '';
+    document.getElementById('multimodal-model').value = saved.multimodal_model || '';
+    document.getElementById('model-multimodal-enabled').checked = saved.multimodal_enabled !== false;
+    document.getElementById('model-extra-params').value = JSON.stringify(saved.extra_params || {}, null, 2);
+    document.getElementById('model-api-key').value = '';
+    mailaiBindUI(document.getElementById('model-api-key'), "placeholder", () => (mailaiText('已安全保存此服务商的 API Key')));
+    document.getElementById('model-verify-ssl').checked = saved.verify_ssl !== false;
+    mailaiBindUI(document.getElementById('model-status'), "textContent", () => (mailaiText('待验证')));
+    renderModelDataNotice(provider, saved.base_url || '');
     return;
   }
   const preset = (_systemConfig?.model?.presets || []).find(p => p.id === e.target.value);
@@ -8757,30 +8764,6 @@ function modelFormPayload() {
     verify_ssl: document.getElementById('model-verify-ssl').checked,
   };
 }
-document.getElementById('model-config-form').addEventListener('submit', async e => {
-  e.preventDefault();
-  try {
-    const payload = modelFormPayload();
-    await api('/api/system/model', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
-    await loadSystemConfig();
-    toast(mailaiText('模型配置已保存'), 'success');
-  } catch (err) { toast(mailaiText('保存模型配置失败：') + mailaiSystemMessage(err.message), 'error'); }
-});
-document.getElementById('btn-test-model').addEventListener('click', async () => {
-  const button = document.getElementById('btn-test-model');
-  setLoading(button, true, mailaiText('测试中…'));
-  const status = document.getElementById('model-status');
-  mailaiBindUI(status, "textContent", () => (mailaiText('测试中…')));
-  try {
-    const payload = modelFormPayload();
-    const result = await api('/api/system/model/test', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
-    const visionUnavailable = result.multimodal && result.multimodal.checked && !result.multimodal.supported;
-    mailaiBindUI(status, "textContent", () => (!result.ok ? mailaiText('连接失败') : visionUnavailable ? mailaiText('图片识别不可用') : mailaiText('连接成功')));
-    status.className = `connection-status ${!result.ok || visionUnavailable ? 'failed' : 'connected'}`;
-    toast(mailaiSystemMessage(result.message) || status.textContent, !result.ok || visionUnavailable ? 'error' : 'success');
-  } catch (err) { mailaiBindUI(status, "textContent", () => (mailaiText('连接失败'))); status.className = 'connection-status failed'; toast(mailaiSystemMessage(err.message), 'error'); }
-  finally { setLoading(button, false); }
-});
 function diagnosticAdvice(item) {
   // 诊断条目名称随界面语言变化，匹配必须走后端下发的稳定 id
   const id = item.id || '';

@@ -577,7 +577,7 @@ const I18N_MESSAGES = {
     "guide.topic.assistant.desc": "Configure a model and select mail or attachments as references.",
     "guide.topic.assistant.location": "Settings → AI Services; bottom-right → XiaoYou",
     "guide.topic.assistant.action": "Configure AI services",
-    "guide.topic.assistant.step1": "Choose a provider, API URL, model and API key, test the connection and save. The page header shows model usage recorded on this computer.",
+    "guide.topic.assistant.step1": "Choose a provider and enter the API URL, model and API key, then select Validate and save to activate. The page header shows model usage recorded on this computer.",
     "guide.topic.assistant.step2": "Select reference mail in XiaoYou and ask for a summary, to-dos or a reply draft. Preview selected attachments before analysis; extraction limits and unsupported formats are reported.",
     "guide.topic.assistant.step3": "Ask to fill a supported spreadsheet, document or form and prepare a reply. Review detected fields and generated files. Drafts still require your review and confirmation before sending.",
     "guide.topic.phone.title": "Control mail from your phone",
@@ -929,7 +929,7 @@ const I18N_MESSAGES = {
     'asst.welcomeAria': 'Start a new chat',
     'asst.welcomeEyebrow': 'Sort out your work with Xiaoyou',
     'asst.welcomeTitle': 'Where shall we start today?',
-    'asst.welcomeHint': 'Search mail, organize to-dos, or analyze images and attachments.',
+    'asst.welcomeHint': 'Search mail, organize to-dos, or analyze images and attachments. Open an email and choose Ask XiaoYou to prepare a reply or add context and writing preferences.',
     'asst.q1Title': 'Review important mail',
     'asst.q1Hint': 'Key points, less digging',
     'asst.q2Title': "Today's to-dos",
@@ -1587,6 +1587,199 @@ if (typeof document !== 'undefined') {
 /* ---- i18n-catalog.js ---- */
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "model.profileDraftHint": ["选择服务商可载入已有配置，验证并保存后启用。首次配置请填写地址、模型名称和 API Key。其他厂商支持 OpenAI Chat Completions 兼容 API。", "Select a provider to load its saved settings, then validate and save to activate. For a new provider, enter the API URL, model name and API key. Other providers support OpenAI Chat Completions compatible APIs."],
+  "model.probeHint": ["验证会发送简短文本请求；启用图片识别时还会发送一张不含业务信息的极小测试图，可能产生少量 API 费用。", "Validation sends a short text request. If image recognition is enabled, it also sends a tiny test image containing no business data. Small API charges may apply."],
+  "model.actionHint": ["验证连接后自动保存并启用。", "Validate the connection, then automatically save and activate."],
+  "model.validateSave": ["验证并保存", "Validate and save"],
+  "model.moreActions": ["更多操作", "More actions"],
+  "model.testOnly": ["仅测试连接", "Test connection only"],
+  "model.testOnlyHint": ["检查当前填写，不保存配置", "Check these settings without saving"],
+  "model.saveOnly": ["仅保存配置", "Save without testing"],
+  "model.saveOnlyHint": ["跳过验证，直接保存并启用", "Save and activate without validation"],
+  "model.unsaved": ["有尚未保存的修改，验证并保存后生效。", "You have unsaved changes. Validate and save to apply them."],
+  "model.draftStatus": ["修改未保存", "Unsaved changes"],
+  "model.invalidDraft": ["请检查填写内容。", "Check the settings you entered."],
+  "model.checking": ["正在验证…", "Validating…"],
+  "model.saving": ["正在保存…", "Saving…"],
+  "model.changedDuringCheck": ["配置已更改，请重新验证后保存。", "Settings changed. Validate again before saving."],
+  "model.testPassed": ["连接测试通过，本次测试未保存配置。", "Connection test passed. This test did not save settings."],
+  "model.testPassedStatus": ["连接测试通过", "Connection test passed"],
+  "model.savedOnly": ["配置已保存并启用。可在更多操作中单独测试连接。", "Settings saved and activated. You can test the connection under More actions."],
+  "model.savedEnabled": ["验证通过，配置已保存并启用。", "Validation passed. Settings saved and activated."],
+  "model.checkFailed": ["验证未通过，请修改后重试。", "Validation failed. Update the settings and try again."],
+  "model.saveFailed": ["配置保存失败，请重试。", "Could not save settings. Try again."],
+  "model.visionFailed": ["图片识别不可用，请关闭图片识别或更换模型后重试。", "Image recognition is unavailable. Disable it or change the model and try again."],
+  "work.stylePlaceholder": ["例如：结论在前，语气自然，避免客套落款。", "For example: lead with the conclusion, use a natural tone, and avoid formal sign-offs."],
+  "work.manuallyEdited": ["已手动调整", "Manually edited"],
+  "work.summaryMore": ["共 {count} 条记忆，可在管理中查看全部。", "{count} memories in total. Open Manage memory to see all."],
+  "work.noSavedMemories": ["还没有沉淀出长期记忆。照常与小邮沟通就好，稳定的偏好会逐步记住。", "No lasting memories yet. Talk with XiaoYou as usual; stable preferences will be learned over time."],
+  "work.memoryDeleted": ["这条记忆已删除，旧对话中的相同信息不会立即重新出现。", "Memory deleted. The same information from old conversations will not immediately reappear."],
+  "work.deleteMemory": ["删除", "Delete"],
+  "work.analysisMore": ["本批已整理，还有对话待分析。可继续整理。", "This batch is complete. More conversations remain to be organized."],
+  "work.continueAnalysis": ["继续分析", "Continue analysis"],
+  "work.memoryAccount": ["适用邮箱：", "Account: "],
+  "work.memoryEnabled": ["启用长期记忆", "Use lasting memory"],
+  "work.memoryEnabledHint": ["让小邮参考当前邮箱的写作要求和已确认记忆。关闭会保留内容并停止引用与分析。", "Let XiaoYou use this account’s writing requirements and confirmed memories. Turning this off retains saved content and stops recall and analysis."],
+  "work.autoLearn": ["自动整理长期记忆", "Automatically organize lasting memory"],
+  "work.autoLearnHint": ["空闲时用已连接的 AI 分析对话，自动沉淀稳定偏好，无需逐条确认。", "Use the connected AI while idle to learn stable preferences automatically, without approving each memory."],
+  "work.memorySummary": ["记忆摘要", "Memory summary"],
+  "work.summaryEmpty": ["还没有长期记忆，稳定偏好会随沟通逐步沉淀。", "No lasting memories yet. Stable preferences will be learned through conversation."],
+  "work.clearLearned": ["清除对话记忆", "Clear conversation memories"],
+  "work.clearLearnedHint": ["清除当前邮箱从对话中沉淀的记忆，并跳过旧对话。明确写作要求、邮件与聊天记录会保留。", "Clear memories learned from this account’s conversations and skip old conversations. Explicit writing requirements, emails and chat history are retained."],
+  "work.confirmClear": ["确认清除", "Confirm clear"],
+  "work.cancel": ["取消", "Cancel"],
+  "work.memorySettingsSaved": ["记忆设置已保存。", "Memory settings saved."],
+  "work.memoriesCleared": ["对话记忆已清除。后续只从新的对话中分析经验。", "Conversation memories cleared. Only new conversation turns will be analyzed."],
+  "work.memoryPaused": ["长期记忆已关闭，已保存内容暂不引用。可在小邮设置中重新启用。", "Lasting memory is off. Saved content is not being used. Enable it in XiaoYou settings."],
+  "work.error.settingsRevision": ["记忆设置已变化，请重新读取后保存", "Memory settings changed. Reload them before saving."],
+  "work.settingsTab": ["小邮", "XiaoYou"],
+  "work.settingsPageTitle": ["与你一起工作的小邮", "XiaoYou, your work companion"],
+  "work.settingsPageHint": ["集中管理沟通与记忆，以及陪伴和外观。", "Manage communication, memory, companionship and appearance in one place."],
+  "work.conversationMemory": ["沟通与记忆", "Communication and memory"],
+  "work.conversationMemoryHint": ["管理长期理解、写作要求与对话经验", "Manage lasting context, writing requirements and conversation insights"],
+  "work.appearanceTitle": ["陪伴与外观", "Companionship and appearance"],
+  "work.appearanceHint": ["调整小邮的形象、成长与陪伴体验", "Customize XiaoYou's look, growth and companionship"],
+  "work.error.saveRevision": ["保存版本无效，请重新核对后保存", "The save revision is invalid. Review the latest content before saving."],
+  "work.error.source": ["原邮件无效，请重新选择", "The original email is unavailable. Select it again."],
+  "work.error.memoryRange": ["写作记忆查询范围无效", "The memory query range is invalid."],
+  "work.error.analysisBusy": ["写作经验正在分析，请稍后查看结果", "Memory analysis is already running. Check the result shortly."],
+  "work.error.memoryValue": ["长期记忆的类型或内容无效，请重新核对", "The memory type or content is invalid. Review it again."],
+  "work.error.memoryLength": ["每条记忆需为 1–300 字", "Each memory must contain between 1 and 300 characters."],
+  "work.error.memoryMissing": ["这条写作经验不存在，请重新读取", "This memory is no longer available. Reload the list."],
+  "work.error.memoryChanged": ["这条记忆已变化，请重新读取后编辑；输入尚未保存", "This memory changed. Reload it before editing; your input has not been saved."],
+  "work.error.memoryDuplicate": ["已有相同的记忆，请管理现有记录", "An identical memory already exists. Manage the existing record."],
+  "work.error.analysisModel": ["请先连接 AI 模型，再分析对话中的写作经验", "Connect an AI model before analyzing conversations."],
+  "work.error.analysisIncomplete": ["写作经验分析未完成，请稍后重试；原偏好没有改动", "Memory analysis did not finish. Try again later; existing preferences are unchanged."],
+  "work.error.analysisUnreadable": ["写作经验分析结果无法读取，请重试", "The analysis result could not be read. Try again."],
+  "work.error.analysisChanged": ["分析范围已经变化，请重新分析", "The analysis scope changed. Start the analysis again."],
+  "work.error.memoryState": ["这条经验状态已变化，请重新核对", "This memory's status changed. Review it again."],
+  "work.error.mergedPreference": ["这条要求已与手动偏好合并，请先在上方编辑并保存", "This requirement is part of your manually edited preferences. Edit and save the text above first."],
+  "work.welcomeTitle": ["这封邮件，你想先聊什么？", "What would you like to discuss about this email?"],
+  "work.welcomeHint": ["说说你的想法，我会结合这封邮件一起理清。也可以直接告诉我想怎么回复。", "Tell me what you have in mind. We can work through this email together, or discuss how you'd like to reply."],
+  "work.talkUnderstand": ["这封邮件要我确认什么？", "What does this email ask me to confirm?"],
+  "work.talkReply": ["我想先聊聊怎么回应", "I'd like to discuss how to respond"],
+  "work.replyPrompt": ["我想先聊聊怎么回应这封邮件。", "I'd like to discuss how to respond to this email first."],
+  "work.talkPlaceholder": ["说说你的想法…", "Tell me what you have in mind…"],
+  "work.savedContext": ["聊聊这件事已保存的背景", "Discuss the saved context for this matter"],
+  "work.contextPrompt": ["这件事已经保存了哪些背景？请区分我确认的记录和邮件原文。", "What context has been saved for this matter? Distinguish my confirmed notes from the original email."],
+  "work.settingsTitle": ["小邮记忆", "XiaoYou memory"],
+  "work.settingsRowHint": ["查看小邮逐步了解的写作、沟通与工作习惯，随时修改或删除。", "See the writing, communication and work habits XiaoYou learns. Edit or delete them at any time."],
+  "work.managePreferences": ["管理记忆", "Manage memory"],
+  "work.settingsHint": ["小邮会自动沉淀明确的长期偏好或跨对话重复的稳定习惯。临时要求只用于当次沟通。手动写作要求和你修改过的记忆优先。", "XiaoYou automatically learns explicit lasting preferences and stable habits repeated across conversations. One-off requests stay with their conversation. Your explicit requirements and manual edits take priority."],
+  "work.learningTitle": ["小邮已记住", "What XiaoYou remembers"],
+  "work.learningHint": ["记忆会逐步整理、合并更新，保留原话来源。你可以直接修改或删除，自动整理会尊重这些调整。", "Memories are gradually organized and updated with original sources. Edit or delete them directly; automatic learning respects your changes."],
+  "work.analyze": ["整理最近对话", "Organize recent conversations"],
+  "work.analyzing": ["正在分析对话中的可复用经验…", "Analyzing reusable insights from conversations…"],
+  "work.analysisDone": ["已自动更新长期记忆，可以在下面查看、修改或删除。", "Lasting memory updated automatically. View, edit or delete it below."],
+  "work.noNewConversations": ["没有新的对话需要分析，已保存的记忆保持原样。", "No new conversations to analyze. Saved memory is unchanged."],
+  "work.pending": ["待确认", "To review"],
+  "work.adopted": ["已采用", "Adopted"],
+  "work.dismissed": ["已停用", "Inactive"],
+  "work.memoryStatus": ["记忆状态", "Memory status"],
+  "work.kind.writing": ["写作要求", "Writing"],
+  "work.kind.communication": ["沟通方式", "Communication"],
+  "work.kind.work_habit": ["工作习惯", "Work habits"],
+  "work.kind.role": ["长期职责与边界", "Role and boundaries"],
+  "work.kind.terminology": ["术语与称谓", "Terminology"],
+  "work.evidence": ["查看原话来源", "View original sources"],
+  "work.confirmedInChat": ["用户明确确认", "Explicitly confirmed by the user"],
+  "work.adopt": ["确认采用", "Adopt"],
+  "work.edit": ["编辑", "Edit"],
+  "work.dismiss": ["暂不采用", "Dismiss"],
+  "work.stopUsing": ["停用这条记忆", "Stop using this memory"],
+  "work.memoryContent": ["记忆内容", "Memory content"],
+  "work.saveEdit": ["保存修改", "Save changes"],
+  "work.cancelEdit": ["取消编辑", "Cancel editing"],
+  "work.memoryUpdated": ["记忆已更新。", "Memory updated."],
+  "work.noCandidates": ["还没有待确认的经验。可以先与小邮沟通，再分析最近对话。", "No insights to review yet. Talk with XiaoYou, then analyze recent conversations."],
+  "work.noRecords": ["当前没有这类记忆。", "No memories in this category."],
+  "work.saveBeforeLearning": ["请先保存或重新读取正在编辑的偏好，再管理其他记忆。", "Save or reload your edits before managing other memories."],
+  "work.previous": ["上一页", "Previous"],
+  "work.next": ["下一页", "Next"],
+  "work.confirmPersonalMemory": ["确认保存长期记忆", "Confirm lasting memory"],
+  "work.memorySaved": ["长期记忆已保存，可在设置的小邮记忆中管理。", "Lasting memory saved. Manage it in Settings → XiaoYou memory."],
+  "work.loadingPreferences": ["正在读取写作偏好…", "Loading writing preferences…"],
+  "work.preferencesSaved": ["已保存当前邮箱的明确写作要求。", "Explicit writing requirements saved for this account."],
+  "work.chooseAccount": ["请先选择要管理偏好的邮箱。", "Select the account whose preferences you want to manage."],
+  "work.accountChanged": ["邮箱已切换，请重新打开偏好设置。", "The account changed. Reopen writing preferences."],
+  "work.reload": ["重新读取", "Reload"],
+  "work.confirmContext": ["确认保存事项背景", "Confirm matter context"],
+  "work.confirmMemory": ["请确认后再保存", "Review before saving"],
+  "work.confirmClearContext": ["确认清除事项背景", "Confirm clearing this context"],
+  "work.confirmStyle": ["确认保存写作偏好", "Confirm writing preferences"],
+  "work.contextSaved": ["事项背景已更新，只用于这件事的后续协作。", "Context updated for subsequent work on this matter."],
+  "work.styleSaved": ["写作偏好已保存，可在设置中管理。", "Writing preferences saved. You can manage them in Settings."],
+  "work.understandHint": ["明确请求与待确认信息", "Clarify requests and open questions"],
+  "work.replyHint": ["补充你的意见，再准备草稿", "Add your views, then prepare a draft"],
+  "work.planHint": ["安排已有待办与提醒", "Plan tasks and reminders"],
+  "work.contextHint": ["保存职责、进展与表达偏好", "Save your role, progress and writing style"],
+  "work.tools": ["围绕这封邮件", "Work with this email"],
+  "work.savedNotice": ["已保存，后续协作可参考这份背景与偏好。", "Saved. This context and style can inform subsequent work."],
+  "work.understandPrompt": ["这封邮件要我确认什么？哪些信息还不明确？请结合我保存的事项背景，帮我理清下一步。", "What does this email ask me to confirm, and what is still unclear? Use my saved context to help me identify the next step."],
+  "work.collapse": ["收起", "Collapse"],
+  "work.loading": ["正在梳理本地往来…", "Reviewing local correspondence…"],
+  "work.status0": ["已标记等待反馈", "Saved as waiting for feedback"],
+  "work.status1": ["有待推进的任务", "Tasks remain to be progressed"],
+  "work.status2": ["已记录任务完成", "Saved tasks are completed"],
+  "work.status3": ["处理状态待确认", "Handling status needs confirmation"],
+  "work.status4": ["当前邮件已标记待回复", "This message is marked for reply"],
+  "work.status5": ["当前邮件已标记等待对方", "This message is marked as waiting for a response"],
+  "work.status6": ["当前邮件已安排稍后处理", "This message is scheduled for later"],
+  "work.status7": ["当前邮件已标记处理完成", "This message is marked as handled"],
+  "work.status8": ["核对最新往来，确认等待状态是否仍然适用。", "Check the latest correspondence and whether you are still waiting for feedback."],
+  "work.status9": ["核对最新往来，按已保存的任务继续推进。", "Check the latest correspondence and continue with your saved tasks."],
+  "work.status10": ["待办已完成；仍需核对后续来信，确认整个事项是否结束。", "The saved tasks are complete. Check later correspondence to confirm whether the whole matter is finished."],
+  "work.status11": ["核对最新往来后，确认是否需要自己推进或等待反馈。", "Check the latest correspondence to decide whether to take action or wait for feedback."],
+  "work.status12": ["此状态来自你的邮件处理安排；不代表整件事或其他待办已完成。", "This is your saved handling state for this message. It does not establish completion of the matter or other tasks."],
+  "pet.quest.finisher": ["完成 1 项待办", "Complete one task"],
+  "work.document": ["填写附件并回复", "Fill attachment and reply"],
+  "work.limited": ["本次只核对了部分内容，请继续分段核对其余正文或往来。", "Only part of the content was reviewed. Check the remaining reply or correspondence separately."],
+  "work.followupInstruction": ["请依据之前发出的邮件准备一封简短、礼貌的跟进草稿，询问其中待反馈事项的进展。不要断言对方没有回复，不要新增截止日期或承诺。", "Prepare a brief, polite follow-up to my previous email asking about the requested feedback. Do not assert that no reply was sent or add deadlines or commitments."],
+  "work.service0": ["写作偏好需为 1000 字以内的文字", "Writing preferences must be text up to 1000 characters."],
+  "work.service1": ["项目和职责最多 200 字，事项记录最多 2000 字", "Project and role may contain up to 200 characters; notes up to 2000."],
+  "work.service2": ["事项记录已变化，请重新读取后保存", "The work context changed. Reload it before saving."],
+  "work.service3": ["请填写 1–30000 字的回复正文", "Enter a reply between 1 and 30000 characters."],
+  "work.service4": ["其他回复正在核对，请稍后重试", "Other replies are being checked. Try again shortly."],
+  "work.service5": ["成功发送的邮件记录不存在", "The successfully sent message was not found."],
+  "work.service6": ["核对暂未完成，请稍后重试", "The review could not complete. Try again."],
+  "work.service7": ["核对结果未生成完整，请缩小范围后重试", "The review was truncated. Narrow the scope and retry."],
+  "work.service8": ["核对结果无法读取，请重试", "The review could not be read. Try again."],
+  "work.service9": ["正文提及附件，目前没有添加附件。", "The reply mentions an attachment, but no attachment has been added."],
+  "work.service10": ["未连接 AI 模型，仅完成本地附件检查。", "No AI model is connected. Only the local attachment check was completed."],
+  "work.title": ["小邮 · 一起推进这件事", "XiaoYou · Move this forward"],
+  "work.understand": ["梳理这件事", "Review this matter"],
+  "work.reply": ["准备回复", "Prepare reply"],
+  "work.waitingReview": ["有其他关联来信，请核对等待内容是否已有反馈。", "Other linked mail is available. Check whether it addresses what you are waiting for."],
+  "work.requests": ["原邮件中的问题与要求", "Questions and requests in this message"],
+  "work.noRequests": ["暂未发现明确请求，可结合原文继续核对。", "No explicit request was detected. Check the original message."],
+  "work.changes": ["发现调整表述", "Change wording detected"],
+  "work.saved": ["已保存的事项背景", "Saved work context"],
+  "work.progress": ["查看往来与变化", "Correspondence and changes"],
+  "work.plan": ["安排下一步", "Plan next step"],
+  "work.memory": ["事项与写作偏好", "Work context and writing preferences"],
+  "work.refresh": ["重新梳理", "Refresh"],
+  "work.retry": ["暂时无法整理，可重新加载。", "Could not load. Try again."],
+  "work.scope": ["按关联往来在本机整理；原文请求需核对责任，来信或发信本身不代表事项完成。", "Organized locally from linked correspondence. Verify responsibility; a received or sent message does not establish completion."],
+  "work.close": ["关闭", "Close"],
+  "work.memoryHint": ["记录项目、自己的职责和已确认的进展。与当前邮件关联的往来可引用这些背景；写作偏好仅用于措辞。清空并保存即可移除。", "Save the project, your role and confirmed progress. Linked correspondence can use this context; writing preferences affect wording only. Clear and save to remove."],
+  "work.project": ["项目或事项名称", "Project or matter"],
+  "work.role": ["我的职责", "My role"],
+  "work.note": ["已确认进展与背景", "Confirmed progress and context"],
+  "work.style": ["明确写作要求", "Explicit writing requirements"],
+  "work.clear": ["清空内容", "Clear fields"],
+  "work.save": ["保存", "Save"],
+  "work.changed": ["邮箱或邮件已切换，请重新打开记录。", "The account or message changed. Reopen this form."],
+  "work.useStyle": ["使用我保存的写作偏好", "Use my saved writing preferences"],
+  "work.linkedHint": ["回复时勾选“原邮件”，可结合关联往来和你保存的事项背景；生成前可取消勾选。", "For replies, selecting the original message also includes linked correspondence and saved context. Deselect it to exclude them."],
+  "work.review": ["核对回复是否答全", "Check reply completeness"],
+  "work.replyOnly": ["请从原邮件打开回复后使用。", "Open a reply from the original message first."],
+  "work.reviewing": ["正在核对问题、回复和附件…", "Checking questions, reply and attachments…"],
+  "work.edited": ["正文或附件已修改，请重新核对。", "The reply or attachments changed. Check again."],
+  "work.noOmissions": ["本次未发现可定位的遗漏候选。", "No traceable omission candidates were found."],
+  "work.reviewHint": ["AI 核对仅供参考，仍需确认事实、承诺和附件。", "AI review is advisory. Verify facts, commitments and attachments."],
+  "work.followup": ["准备跟进草稿", "Prepare follow-up draft"],
+  "work.today": ["今天值得先看的三件事", "Up to three things to review today"],
+  "pet.activity.task": ["完成待办事项", "Completed tasks"],
   "mailList.more": ["显示更多", "Show more"],
   "mailList.invalidFilters": ["无效的列表筛选条件", "Invalid mailbox filters"],
   "mailList.longFilters": ["列表筛选条件过长", "Mailbox filters are too long"],
@@ -16996,7 +17189,7 @@ const MAILAI_I18N_CHINESE = {
   "guide.topic.assistant.title": "AI 服务与小邮助手",
   "guide.topic.assistant.desc": "配置模型，选择邮件或附件作为本次参考。",
   "guide.topic.assistant.location": "设置 → AI 服务；右下角 → 小邮",
-  "guide.topic.assistant.step1": "AI 服务中选择服务商、填写 API 地址、模型名称和 API Key，先测试连接再保存；页头可查看本机记录的模型用量。",
+  "guide.topic.assistant.step1": "AI 服务中选择服务商，填写 API 地址、模型名称和 API Key，点击「验证并保存」即可启用；页头可查看本机记录的模型用量。",
   "guide.topic.assistant.step2": "在小邮中选择参考邮件，提问总结重点、整理待办或准备回复。可选择附件先预览再分析，读取范围与不支持格式会有提示。",
   "guide.topic.assistant.step3": "支持的表格、文档或表单可请求填写并准备回复；先核对字段与生成文件。小邮准备的草稿仍需人工检查并确认发送。",
   "guide.topic.assistant.action": "配置 AI 服务",
@@ -17570,7 +17763,7 @@ const MAILAI_I18N_CHINESE = {
   "asst.welcomeAria": "开始新对话",
   "asst.welcomeEyebrow": "和小邮一起，把工作理清楚",
   "asst.welcomeTitle": "今天想从哪里开始？",
-  "asst.welcomeHint": "查邮件、理待办，也可以带上图片或附件一起分析。",
+  "asst.welcomeHint": "查邮件、理待办，也可以带上图片或附件一起分析。打开邮件后点「问小邮」，还可准备回复、补充事项背景与偏好。",
   "asst.q1Title": "梳理重要邮件",
   "asst.q1Hint": "抓重点，少翻找",
   "asst.q2Title": "看看今天待办",
@@ -19856,10 +20049,15 @@ function assistantSourcesHtml(sources = [], accountId = '') {
    执行结果走 /api/assistant/actions/execute（白名单 + 服务端校验 + 审计）。 */
 function renderAssistantActionCard(bubble, action, account) {
   if (!bubble || !action || !action.type) return;
+  const memoryAction = ['save_work_context','save_work_preferences','save_work_memory'].includes(action.type);
+  const memoryCopy = key => mailaiT(key) || mailaiText(MAILAI_UI_COPY[key]?.[0] || key);
+  const memoryLabel = action.type === 'save_work_memory' ? 'work.confirmPersonalMemory' : action.type === 'save_work_preferences' ? 'work.confirmStyle' :
+    !action.params?.project && !action.params?.role && !action.params?.note ? 'work.confirmClearContext' : 'work.confirmContext';
   const card = document.createElement('div');
   card.className = 'assistant-action-card';
-  card.innerHTML = `<div class="assistant-action-copy"><b><span data-i18n="ui.aa0aa6a5b6a7">建议操作</span></b><span>${esc(action.summary || '')}</span></div>
-    <div class="assistant-action-buttons"><button type="button" data-action-confirm>${action.type === 'fill_attachment_reply' ? mailaiText('开始填写') : mailaiText('确认执行')}</button><button type="button" data-action-dismiss><span data-i18n="ui.2cd0f3be8738">取消</span></button></div>`;
+  if (memoryAction) card.classList.add('work-memory-confirm');
+  card.innerHTML = `<div class="assistant-action-copy"><b>${memoryAction ? esc(memoryCopy('work.confirmMemory')) : '<span data-i18n="ui.aa0aa6a5b6a7">建议操作</span>'}</b><span>${esc(action.summary || '')}</span></div>
+    <div class="assistant-action-buttons"><button type="button" data-action-confirm>${memoryAction ? esc(memoryCopy(memoryLabel)) : action.type === 'fill_attachment_reply' ? mailaiText('开始填写') : mailaiText('确认执行')}</button><button type="button" data-action-dismiss><span data-i18n="ui.2cd0f3be8738">取消</span></button></div>`;
   const finish = html => { card.innerHTML = `<p class="assistant-action-result">${html}</p>`; };
   card.querySelector('[data-action-dismiss]').addEventListener('click', () => {
     finish(mailaiText('已取消，未执行任何操作。'));
@@ -19868,6 +20066,7 @@ function renderAssistantActionCard(bubble, action, account) {
     const button = event.currentTarget;
     button.disabled = true;
     try {
+      if (memoryAction && activeMailAccount()?.id !== account?.id) throw new Error(memoryCopy('work.accountChanged'));
       if (action.type === 'fill_attachment_reply') {
         await window.startAssistantDocumentReply?.(action.params?.email_id, account?.id || '', action.params?.instruction || '');
         button.disabled = false;
@@ -19878,12 +20077,18 @@ function renderAssistantActionCard(bubble, action, account) {
         body:JSON.stringify({type:action.type, params:action.params || {}})});
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(typeof result.detail === 'string' ? result.detail : mailaiTemplate`执行失败（${response.status}）`);
-      if (action.type === 'create_todo') finish(mailaiTemplate`已创建待办：${esc(result.title || '')}${result.deadline ? mailaiTemplate`（截止 ${esc(result.deadline)}）` : ''}`);
+      if (memoryAction) finish(esc(memoryCopy(action.type === 'save_work_context' ? 'work.contextSaved' : action.type === 'save_work_preferences' ? 'work.styleSaved' : 'work.memorySaved')));
+      else if (action.type === 'create_todo') finish(mailaiTemplate`已创建待办：${esc(result.title || '')}${result.deadline ? mailaiTemplate`（截止 ${esc(result.deadline)}）` : ''}`);
       else if (action.type === 'mark_read') finish(mailaiTemplate`已将 ${Number(result.marked) || 0} 封邮件标记为已读。`);
       else if (action.type === 'draft_reply') finish(mailaiTemplate`回复草稿已创建（收件人 ${esc(result.to_addr || '')}），可在草稿箱中继续编辑。`);
       else finish(mailaiText('操作已完成。'));
     } catch (error) {
-      finish(esc(mailaiSystemMessage(error.message) || mailaiText('操作执行失败，请稍后重试。')));
+      if (memoryAction) {
+        let status = card.querySelector('[data-memory-error]');
+        if (!status) { status=document.createElement('p'); status.dataset.memoryError=''; status.setAttribute('role','status'); card.append(status); }
+        status.textContent = mailaiSystemMessage(error.message);
+        button.disabled = false;
+      } else finish(esc(mailaiSystemMessage(error.message) || mailaiText('操作执行失败，请稍后重试。')));
     }
   });
   bubble.appendChild(card);
@@ -19992,6 +20197,7 @@ function renderAssistantWelcome() {
   const wrap = document.getElementById('assistant-messages');
   wrap.replaceChildren(document.getElementById('assistant-welcome-template').content.cloneNode(true));
   wrap.classList.add('is-welcome');
+  window.mailaiWorkGuide?.refresh();
   window.mailaiAssistantScroll?.follow();
 }
 function appendAssistantMessage(role, content, sources = []) {
@@ -20473,6 +20679,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
     if (searchMeta) window.mailaiAssistantSearch?.complete(thinking,searchMeta,sources);
     if (pendingAction) renderAssistantActionCard(bubble, pendingAction, account);
     assistantHistory.push({role:'assistant', content:validAnswer()});
+    document.dispatchEvent(new CustomEvent('mailai:assistant-finished',{detail:{account:account?.id}}));
   } catch (error) {
     if (revision !== assistantRevision) return;
     paint();
@@ -21797,6 +22004,8 @@ async function aiCompose(operation, button) {
       subject: selected.has('subject') ? values.subject : '',
       recipients: selected.has('recipients') ? values.recipients : '',
       original_text: selected.has('original') ? values.original : '',
+      source_email_id: selected.has('original') && operation === 'reply' ? composeContext.reply_to_email_id : null,
+      use_work_preferences: Boolean(document.getElementById('work-use-preferences')?.checked),
       body_text: quickRewrite || selected.has('body') ? values.body : '',
       attachment_names: selected.has('attachments') ? values.attachments : [],
       tone: document.getElementById('compose-ai-tone').value,
@@ -21805,7 +22014,7 @@ async function aiCompose(operation, button) {
     };
     const assist = async payload => {
       const finishWork = globalThis.mailaiCompanionWork?.begin();
-      try { return await api('/api/mail/compose/assist', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); }
+      try { return await api('/api/mail/compose/assist', {accountId:composeAccountId,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); }
       finally { finishWork?.(); }
     };
     const renderPreview = suggestion => {
@@ -25472,8 +25681,8 @@ async function showInterruptedAppUpdateOutcome() {
   }
 }
 
-async function loadSystemConfig() {
-  const data = await api('/api/system/config');
+async function loadSystemConfig(prefetched=null) {
+  const data = prefetched || await api('/api/system/config');
   if (data.accounts?.some(account => account.id === browsingAccountId)) {
     data.accounts.forEach(account => { account.active = account.id === browsingAccountId; });
     data.mail.user = data.accounts.find(account => account.active).user;
@@ -25481,19 +25690,22 @@ async function loadSystemConfig() {
   _systemConfig = data;
   window.mailOnboarding?.configChanged(data);
   const model = data.model || {};
-  document.getElementById('model-provider').value = model.provider || 'custom';
-  document.getElementById('model-extra-params').value = JSON.stringify(model.extra_params || {}, null, 2);
-  document.getElementById('model-multimodal-enabled').checked = model.multimodal_enabled !== false;
-  document.getElementById('model-base-url').value = model.base_url || '';
-  document.getElementById('model-name').value = model.model || '';
-  document.getElementById('multimodal-model').value = model.multimodal_model || '';
-  document.getElementById('model-api-key').value = '';
-  mailaiBindUI(document.getElementById('model-api-key'), "placeholder", () => (model.api_key_masked ? mailaiTemplate`已配置 ${model.api_key_masked}，留空保持不变` : mailaiText('请输入 API Key')));
-  document.getElementById('model-verify-ssl').checked = model.verify_ssl !== false;
-  renderModelDataNotice(model.provider || 'custom', model.base_url || '');
-  const modelStatus = document.getElementById('model-status');
-  mailaiBindUI(modelStatus, "textContent", () => (model.verified ? mailaiText('已验证') : model.available ? mailaiText('已配置 · 待验证') : mailaiText('未配置')));
-  modelStatus.className = `connection-status ${model.verified ? 'connected' : ''}`;
+  if (!window.mailaiModelForm?.retainDraft()) {
+    document.getElementById('model-provider').value = model.provider || 'custom';
+    document.getElementById('model-extra-params').value = JSON.stringify(model.extra_params || {}, null, 2);
+    document.getElementById('model-multimodal-enabled').checked = model.multimodal_enabled !== false;
+    document.getElementById('model-base-url').value = model.base_url || '';
+    document.getElementById('model-name').value = model.model || '';
+    document.getElementById('multimodal-model').value = model.multimodal_model || '';
+    document.getElementById('model-api-key').value = '';
+    mailaiBindUI(document.getElementById('model-api-key'), "placeholder", () => (model.api_key_masked ? mailaiTemplate`已配置 ${model.api_key_masked}，留空保持不变` : mailaiText('请输入 API Key')));
+    document.getElementById('model-verify-ssl').checked = model.verify_ssl !== false;
+    renderModelDataNotice(model.provider || 'custom', model.base_url || '');
+    const modelStatus = document.getElementById('model-status');
+    mailaiBindUI(modelStatus, "textContent", () => (model.verified ? mailaiText('已验证') : model.available ? mailaiText('已配置 · 待验证') : mailaiText('未配置')));
+    modelStatus.className = `connection-status ${model.verified ? 'connected' : ''}`;
+    window.mailaiModelForm?.loaded();
+  }
 
   const mail = data.mail || {};
   const mailStatus = document.getElementById('mail-status');
@@ -28050,29 +28262,17 @@ document.getElementById('model-provider').addEventListener('change', async e => 
   const selectedProfile = _systemConfig?.model?.profiles?.[provider];
   renderModelDataNotice(provider, selectedProfile?.base_url || document.getElementById('model-base-url').value);
   if ((_systemConfig?.model?.saved_providers || []).includes(provider)) {
-    if (!document.getElementById('start-model')?.classList.contains('hidden')) {
-      const saved = _systemConfig?.model?.profiles?.[provider] || {};
-      document.getElementById('model-base-url').value = saved.base_url || '';
-      document.getElementById('model-name').value = saved.model || '';
-      document.getElementById('multimodal-model').value = saved.multimodal_model || '';
-      document.getElementById('model-multimodal-enabled').checked = saved.multimodal_enabled !== false;
-      document.getElementById('model-extra-params').value = JSON.stringify(saved.extra_params || {}, null, 2);
-      document.getElementById('model-api-key').value = '';
-      mailaiBindUI(document.getElementById('model-api-key'), "placeholder", () => (mailaiText('已安全保存此服务商的 API Key')));
-      document.getElementById('model-verify-ssl').checked = saved.verify_ssl !== false;
-      mailaiBindUI(document.getElementById('model-status'), "textContent", () => (mailaiText('待验证')));
-      renderModelDataNotice(provider, saved.base_url || '');
-      return;
-    }
-    e.target.disabled = true;
-    try {
-      await api('/api/system/model', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({provider})});
-      await loadSystemConfig();
-      toast(CLOUD_MODEL_PROVIDERS.has(provider) ? mailaiText('已切换到云端模型，请留意邮件隐私提示') : mailaiText('已切换到自部署模型，请确认模型地址可信'), CLOUD_MODEL_PROVIDERS.has(provider) ? 'warn' : 'success');
-    } catch (error) {
-      e.target.value = _systemConfig?.model?.provider || 'custom';
-      toast(mailaiText('切换模型失败：') + mailaiSystemMessage(error.message), 'error');
-    } finally { e.target.disabled = false; }
+    const saved = _systemConfig?.model?.profiles?.[provider] || {};
+    document.getElementById('model-base-url').value = saved.base_url || '';
+    document.getElementById('model-name').value = saved.model || '';
+    document.getElementById('multimodal-model').value = saved.multimodal_model || '';
+    document.getElementById('model-multimodal-enabled').checked = saved.multimodal_enabled !== false;
+    document.getElementById('model-extra-params').value = JSON.stringify(saved.extra_params || {}, null, 2);
+    document.getElementById('model-api-key').value = '';
+    mailaiBindUI(document.getElementById('model-api-key'), "placeholder", () => (mailaiText('已安全保存此服务商的 API Key')));
+    document.getElementById('model-verify-ssl').checked = saved.verify_ssl !== false;
+    mailaiBindUI(document.getElementById('model-status'), "textContent", () => (mailaiText('待验证')));
+    renderModelDataNotice(provider, saved.base_url || '');
     return;
   }
   const preset = (_systemConfig?.model?.presets || []).find(p => p.id === e.target.value);
@@ -28113,30 +28313,6 @@ function modelFormPayload() {
     verify_ssl: document.getElementById('model-verify-ssl').checked,
   };
 }
-document.getElementById('model-config-form').addEventListener('submit', async e => {
-  e.preventDefault();
-  try {
-    const payload = modelFormPayload();
-    await api('/api/system/model', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
-    await loadSystemConfig();
-    toast(mailaiText('模型配置已保存'), 'success');
-  } catch (err) { toast(mailaiText('保存模型配置失败：') + mailaiSystemMessage(err.message), 'error'); }
-});
-document.getElementById('btn-test-model').addEventListener('click', async () => {
-  const button = document.getElementById('btn-test-model');
-  setLoading(button, true, mailaiText('测试中…'));
-  const status = document.getElementById('model-status');
-  mailaiBindUI(status, "textContent", () => (mailaiText('测试中…')));
-  try {
-    const payload = modelFormPayload();
-    const result = await api('/api/system/model/test', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
-    const visionUnavailable = result.multimodal && result.multimodal.checked && !result.multimodal.supported;
-    mailaiBindUI(status, "textContent", () => (!result.ok ? mailaiText('连接失败') : visionUnavailable ? mailaiText('图片识别不可用') : mailaiText('连接成功')));
-    status.className = `connection-status ${!result.ok || visionUnavailable ? 'failed' : 'connected'}`;
-    toast(mailaiSystemMessage(result.message) || status.textContent, !result.ok || visionUnavailable ? 'error' : 'success');
-  } catch (err) { mailaiBindUI(status, "textContent", () => (mailaiText('连接失败'))); status.className = 'connection-status failed'; toast(mailaiSystemMessage(err.message), 'error'); }
-  finally { setLoading(button, false); }
-});
 function diagnosticAdvice(item) {
   // 诊断条目名称随界面语言变化，匹配必须走后端下发的稳定 id
   const id = item.id || '';
@@ -31542,25 +31718,30 @@ function addReadingActions(force = false) {
 function updateAssistantScopeControl() {
   const mode = document.getElementById('assistant-scope').value;
   const ids = assistantPinnedScope || (mode === 'selected' && selectedEmailId ? [selectedEmailId] : null);
-  let label = mode === 'filtered' ? mailaiText('当前列表 · 本邮箱') : mode === 'selected' ? mailaiText('正在阅读的邮件') : mailaiText('当前邮箱');
-  if (ids?.length === 1) {
-    const row = selectedEmailDetail?.id === ids[0] ? selectedEmailDetail : allEmails.find(item => {
-      const owner = item._account_id || item.account_id;
-      return item.id === ids[0] && (!owner || owner === activeMailAccount()?.id);
-    });
-    label = row?.subject || mailaiText('这封邮件');
-  } else if (ids?.length) label = mailaiTemplate`${ids.length} 封指定邮件`;
+  const scopeLabel = () => {
+    let label = mode === 'filtered' ? mailaiText('当前列表 · 本邮箱') : mode === 'selected' ? mailaiText('正在阅读的邮件') : mailaiText('当前邮箱');
+    if (ids?.length === 1) {
+      const row = selectedEmailDetail?.id === ids[0] ? selectedEmailDetail : allEmails.find(item => {
+        const owner = item._account_id || item.account_id;
+        return item.id === ids[0] && (!owner || owner === activeMailAccount()?.id);
+      });
+      label = row?.subject || mailaiText('这封邮件');
+    } else if (ids?.length) label = mailaiTemplate`${ids.length} 封指定邮件`;
+    return label;
+  };
   const node = document.getElementById('assistant-scope-label');
-  node.textContent = label;
-  mailaiBindUI(node, "title", () => (`${activeMailAccount()?.user || mailaiText('当前邮箱')} · ${label}`));
+  node.removeAttribute('data-i18n');
+  mailaiBindUI(node, 'textContent', scopeLabel);
+  mailaiBindUI(node, "title", () => (`${activeMailAccount()?.user || mailaiText('当前邮箱')} · ${scopeLabel()}`));
   const note = document.getElementById('assistant-scope-note');
   if (note) mailaiBindUI(note, "textContent", () => (mailaiTemplate`${activeMailAccount()?.user || mailaiText('当前邮箱')} · ${ids?.length ? mailaiTemplate`已固定 ${ids.length} 封邮件` : mode === 'filtered' ? mailaiText('列表中属于本邮箱的邮件') : mailaiText('全部已同步邮件')} · 每次最多分析 20 封`));
-  mailaiBindUI(document.querySelector('#assistant-scope-picker summary'), "@aria-label", () => (mailaiTemplate`参考范围：${label}，点击更改`));
+  mailaiBindUI(document.querySelector('#assistant-scope-picker summary'), "@aria-label", () => (mailaiTemplate`参考范围：${scopeLabel()}，点击更改`));
   document.getElementById('assistant-scope-clear').classList.toggle('hidden', mode === 'account');
   document.querySelectorAll('[data-assistant-scope]').forEach(button => {
     button.setAttribute('aria-pressed', String(button.dataset.assistantScope === mode));
     button.disabled = button.dataset.assistantScope === 'selected' && !selectedEmailId && !assistantPinnedScope;
   });
+  window.mailaiWorkGuide?.refresh();
 }
 
 let assistantListScroll = null;
@@ -31663,7 +31844,11 @@ function initializeAssistantPolish() {
   observer.observe(document.querySelector('.layout'), {attributes:true,attributeFilter:['class']});
   observer.observe(document.getElementById('reading-content'), {attributes:true,attributeFilter:['class']});
   new MutationObserver(updateAssistantScopeControl).observe(document.getElementById('reading-content'), {childList:true});
-  new ResizeObserver(updateAssistantPlacement).observe(document.querySelector('.reading-pane'));
+  let placementFrame=0;
+  const schedulePlacement=()=>{
+    if(!placementFrame)placementFrame=requestAnimationFrame(()=>{placementFrame=0;updateAssistantPlacement();});
+  };
+  new ResizeObserver(schedulePlacement).observe(document.querySelector('.reading-pane'));
   window.visualViewport?.addEventListener('resize', updateAssistantPlacement);
   window.visualViewport?.addEventListener('scroll', updateAssistantPlacement);
   window.addEventListener('resize', updateAssistantPlacement);
@@ -32293,7 +32478,8 @@ function mailCardDate(value, now = new Date()) {
     const width=effective+'px';
     if(document.body.style.getPropertyValue('--assistant-dock-width')!==width)document.body.style.setProperty('--assistant-dock-width',width);
     const rect=panel.getBoundingClientRect();
-    handle.style.setProperty('--assistant-divider-left',rect.left/zoom+'px');
+    // Anchor to the workspace edge, never a transient panel entrance transform.
+    handle.style.setProperty('--assistant-divider-left',pane.getBoundingClientRect().right/zoom+'px');
     handle.style.setProperty('--assistant-divider-top',rect.top/zoom+'px');
     handle.style.setProperty('--assistant-divider-height',rect.height/zoom+'px');
     handle.setAttribute('aria-valuemin',String(limits.min));handle.setAttribute('aria-valuemax',String(limits.max));
@@ -32766,7 +32952,7 @@ function mailCardDate(value, now = new Date()) {
     const actions = item => item.todo_id
       ? "<button type=\"button\" data-secretary-action=\"todo\"><span data-i18n=\"ui.071147e4925d\">改期 / 安排</span></button><button type=\"button\" data-secretary-action=\"done\"><span data-i18n=\"ui.c0b3fbff51cc\">完成</span></button>"
       : item.risky ? '' : "<button type=\"button\" data-secretary-action=\"todo\"><span data-i18n=\"ui.46110fd51dc0\">确认加入待办</span></button><button type=\"button\" data-secretary-action=\"ignore\"><span data-i18n=\"ui.e563878df325\">忽略线索</span></button><button type=\"button\" data-secretary-action=\"reply\"><span data-i18n=\"ui.cf945e21ddef\">回复</span></button>";
-    content.innerHTML = `<header class="secretary-intro"><h3>${focus === 'decision' ? mailaiText('先看需要判断的事') : mailaiText('把下一步理清楚')}</h3><p><span data-i18n="ui.35a452fa45fa">${esc(data.account_user)} · 已查看 ${data.scanned} 封${data.truncated ? mailaiText('（已达上限）') : ''}</span></p><small>${esc(data.scope)}<br><span data-i18n="ui.2f66f464715a">自动整理的线索，请核实责任与处理状态。</span></small></header>` + data.groups.map(group => `
+    content.innerHTML = `<header class="secretary-intro"><h3>${focus === 'decision' ? mailaiText('先看需要判断的事') : mailaiText('把下一步理清楚')}</h3><p><span data-i18n="ui.35a452fa45fa">${esc(data.account_user)} · 已查看 ${data.scanned} 封${data.truncated ? mailaiText('（已达上限）') : ''}</span></p><small>${esc(data.scope)}<br><span data-i18n="ui.2f66f464715a">自动整理的线索，请核实责任与处理状态。</span></small></header>` + ((data.next_steps || []).length ? `<section class="work-card"><b>${esc(mailaiText('今天值得先看的三件事'))}</b>${data.next_steps.map(item => `<p><strong>${esc(item.evidence || item.subject)}</strong><br><small>${esc(item.reason)}</small> <button type="button" data-secretary-step="${Number(item.email_id)}">${esc(mailaiText('梳理这件事'))}</button></p>`).join('')}</section>` : '') + data.groups.map(group => `
       <details class="secretary-group" ${['safety', 'history'].includes(group.key) ? '' : 'open'}><summary><span>${esc(group.title)}</span><em>${group.count}</em></summary>
       ${group.key === 'tasks' ? "<p class=\"secretary-empty\"><span data-i18n=\"ui.eda2cc95e9cd\">今天到期或提醒，以及近 7 天逾期的任务。未安排日期的任务保留在待办中。</span> <button type=\"button\" data-secretary-todos><span data-i18n=\"ui.0f1f3c58fd43\">查看全部待办</span></button></p>" : group.key === 'history' ? "<p class=\"secretary-empty\"><span data-i18n=\"ui.60e08046b758\">逾期超过 7 天，暂不列为今日重点。任务没有删除，可改期后继续推进。</span> <button type=\"button\" data-secretary-todos><span data-i18n=\"ui.a253decc7359\">管理全部待办</span></button></p>" : ''}
       ${group.items.length ? `<div class="secretary-group-intro"><small>${group.count > group.items.length ? mailaiTemplate`先展示 ${group.items.length} 项` : mailaiText('每项均可回到原邮件核对')}</small><button type="button" data-secretary-group="${group.key}"><span data-i18n="ui.f0281a6a1eab">${group.key === 'safety' ? mailaiText('解释') : mailaiText('整理')}这 ${group.items.length} 项</span></button></div>` : "<p class=\"secretary-empty\"><span data-i18n=\"ui.11886638c00b\">本次范围内没有符合条件的项目，并不代表没有其他工作。</span></p>"}
@@ -32791,6 +32977,9 @@ function mailCardDate(value, now = new Date()) {
   content.addEventListener('click', async event => {
     const button = event.target.closest('button');
     if (!button || !data) return;
+    if (button.dataset.secretaryStep && current()) {
+      return window.mailaiOpenWork(Number(button.dataset.secretaryStep), accountId).catch(error => toast(mailaiSystemMessage(error.message), 'warn'));
+    }
     if (!current()) { window.refreshSecretaryAccount(); return; }
     if (button.hasAttribute('data-secretary-todos')) return openTodoCenter();
     const groupKey = button.dataset.secretaryGroup;
@@ -32831,6 +33020,329 @@ function mailCardDate(value, now = new Date()) {
     } catch (error) { toast(mailaiText('操作未完成：') + mailaiSystemMessage(error.message), 'warn'); }
     finally { button.disabled = false; button.textContent = label; }
   });
+})();
+
+;
+/* ---- work-assistant.js ---- */
+/* Work guidance belongs to XiaoYou's existing mail context, never the reader. */
+(() => {
+  const w = key => mailaiT(`work.${key}`) || MAILAI_UI_COPY[`work.${key}`]?.[0] || key;
+  const button = (action, label) => `<button type="button" data-work="${action}" data-i18n="work.${label}">${esc(w(label))}</button>`;
+  const post = body => ({headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  const assistant = document.getElementById('assistant-panel');
+  let memoryScheduler=null,scheduledAccount=null;
+  const scopePicker = document.getElementById('assistant-scope-picker');
+  const eligible = row => !['trash','spam','quarantine','draft','sent'].includes(row?.status);
+  const inputPlaceholder = () => target() ? w('talkPlaceholder') : mailaiT('asst.inputPh') || MAILAI_I18N_CHINESE['asst.inputPh'];
+  function target() {
+    const account = activeMailAccount()?.id;
+    const ids = assistantPinnedScope || (document.getElementById('assistant-scope').value === 'selected' && selectedEmailId ? [selectedEmailId] : null);
+    if (!account || document.getElementById('assistant-scope').value !== 'selected' || assistantSearchMode || ids?.length !== 1) return null;
+    if (assistantScopeKey) {
+      try { if (JSON.parse(assistantScopeKey)[0] !== account) return null; } catch (_) { return null; }
+    }
+    const id = Number(ids[0]);
+    if (!Number.isInteger(id) || id <= 0) return null;
+    const row = Number(selectedEmailDetail?.id) === id && (selectedEmailAccountId || account) === account ? selectedEmailDetail :
+      allEmails.find(item => Number(item.id) === id && (item._account_id || item.account_id || account) === account);
+    if (row && !eligible(row)) return null;
+    return {account,id,row,key:`${account}:${id}`,revision:assistantRevision};
+  }
+  const tools = document.createElement('section');
+  tools.id = 'assistant-work-tools'; tools.hidden = true;
+  tools.innerHTML = `<button type="button" data-work-context><span data-i18n="work.savedContext">${esc(w('savedContext'))}</span></button>`;
+  scopePicker.querySelector('.assistant-scope-options').append(tools);
+  function positionReferenceTools() {
+    if (!scopePicker.open) return;
+    const menu = scopePicker.querySelector('.assistant-scope-options');
+    const anchor = scopePicker.querySelector('summary').getBoundingClientRect();
+    const panelBounds = assistant.getBoundingClientRect();
+    const top = Math.max(8,panelBounds.top+8), bottom = Math.min(innerHeight-8,panelBounds.bottom-8);
+    const left = Math.max(8,panelBounds.left+8), right = Math.min(innerWidth-8,panelBounds.right-8);
+    menu.style.transform = 'none';
+    const scale = menu.getBoundingClientRect().width / menu.offsetWidth || 1;
+    const above = Math.max(0,anchor.top-top-8*scale), below = Math.max(0,bottom-anchor.bottom-8*scale);
+    const upward = above >= below;
+    menu.style.boxSizing = 'border-box';
+    menu.style.maxHeight = `${(upward ? above : below)/scale}px`;
+    menu.style.top = upward ? 'auto' : 'calc(100% + 8px)';
+    menu.style.bottom = upward ? 'calc(100% + 8px)' : 'auto';
+    const bounds = menu.getBoundingClientRect();
+    const x = Math.max(left,Math.min(bounds.left,right-bounds.width));
+    menu.style.transform = `translateX(${(x-bounds.left)/scale}px)`;
+  }
+  let positionFrame = 0;
+  const schedulePosition = () => {
+    if (positionFrame || !scopePicker.open) return;
+    positionFrame = requestAnimationFrame(() => { positionFrame=0; positionReferenceTools(); });
+  };
+  scopePicker.addEventListener('toggle',schedulePosition);
+  window.addEventListener('resize',schedulePosition);
+  new ResizeObserver(schedulePosition).observe(assistant);
+  function refresh() {
+    const account=activeMailAccount()?.id;
+    if(account!==scheduledAccount){scheduledAccount=account;memoryScheduler?.();}
+    const state = target();
+    mailaiBindUI(document.getElementById('assistant-input'),'@placeholder',inputPlaceholder);
+    tools.hidden = !state;
+    schedulePosition();
+    const welcome = document.querySelector('#assistant-messages .assistant-welcome');
+    if (!welcome || (welcome.dataset.workScope || '') === (state?.key || '')) return;
+    const title = welcome.querySelector('h3'), hint = welcome.querySelector(':scope>p'), quick = welcome.querySelector('.assistant-quick');
+    if (state) {
+      welcome.dataset.workScope = state.key;
+      welcome.classList.add('assistant-conversation-guide');
+      title.dataset.i18n = 'work.welcomeTitle'; title.textContent = w('welcomeTitle');
+      hint.dataset.i18n = 'work.welcomeHint'; hint.textContent = w('welcomeHint');
+      quick.innerHTML = `<button type="button" data-assistant-question="${esc(w('understandPrompt'))}"><span data-i18n="work.talkUnderstand">${esc(w('talkUnderstand'))}</span></button><button type="button" data-assistant-question="${esc(w('replyPrompt'))}"><span data-i18n="work.talkReply">${esc(w('talkReply'))}</span></button>`;
+    } else {
+      delete welcome.dataset.workScope;
+      welcome.classList.remove('assistant-conversation-guide');
+      const template = document.getElementById('assistant-welcome-template').content;
+      title.replaceWith(template.querySelector('h3').cloneNode(true));
+      hint.replaceWith(template.querySelector('.assistant-welcome>p').cloneNode(true));
+      quick.replaceChildren(...template.querySelector('.assistant-quick').cloneNode(true).childNodes);
+    }
+    applyI18n(welcome);
+  }
+  window.mailaiWorkGuide = {refresh};
+  assistant.addEventListener('click', event => {
+    if (!event.target.closest('[data-work-context]')) return;
+    const state = target();
+    if (!state) return;
+    scopePicker.open = false;
+    if (assistantController) return toast(mailaiText('请先等待当前回答完成，或停止生成'),'warn');
+    askAssistant(w('contextPrompt'),[state.id]);
+  });
+  const input = document.getElementById('assistant-input');
+  input.removeAttribute('data-i18n-placeholder');
+  mailaiBindUI(input,'@placeholder',inputPlaceholder);
+  document.addEventListener('mailai:language-changed', refresh);
+  refresh();
+
+  const memoryControls=document.getElementById('xiaoyou-memory-controls');
+  const memoryPanel=document.querySelector('[data-system-panel="xiaoyou"]');
+  const memoryUse=memoryControls.querySelector('[data-memory-enabled]'), memoryAuto=memoryControls.querySelector('[data-memory-auto]'), memoryClear=memoryControls.querySelector('[data-memory-clear]'), memoryStatus=memoryControls.querySelector('[data-memory-control-status]');
+  let memoryState=null,memoryAccount=null,memoryBusy=false,memoryTicket=0;
+  function renderMemoryState(data){
+    memoryState=data;memoryUse.checked=data.enabled;memoryAuto.checked=data.auto_analyze;
+    memoryUse.disabled=false;memoryAuto.disabled=!data.enabled;memoryClear.disabled=false;
+    const summary=memoryControls.querySelector('[data-memory-summary]');
+    const rows=data.summary;
+    summary.innerHTML=`${data.writing_requirements?`<p><small>${esc(w('style'))}</small><br><span class="memory-summary-value">${esc(data.writing_requirements)}</span></p>`:''}${rows.length?rows.slice(0,3).map(row=>`<p><small>${esc(w('kind.'+row.kind))}${row.user_edited?' · '+esc(w('manuallyEdited')):''}</small><br><span class="memory-summary-value">${esc(row.preference)}</span></p>`).join(''):''}${rows.length>3?`<p class="memory-summary-more">${esc(w('summaryMore').replace('{count}',data.total||rows.length))}</p>`:''}${!data.writing_requirements&&!rows.length?`<p>${esc(w('summaryEmpty'))}</p>`:''}`;
+  }
+  async function loadMemoryState(){
+    const account=activeMailAccount()?.id;if(!account)return;
+    const ticket=++memoryTicket,switched=memoryAccount!==account;memoryAccount=account;
+    memoryControls.querySelector('[data-memory-account]').textContent=`${w('memoryAccount')}${activeMailAccount()?.user||account}`;
+    if(switched){memoryState=null;memoryControls.querySelector('[data-memory-summary]').textContent='';}
+    clearConfirm.hidden=true;
+    memoryUse.disabled=memoryAuto.disabled=memoryClear.disabled=true;
+    try{
+      const data=await api('/api/work/memory/settings',{accountId:account});
+      if(ticket!==memoryTicket||activeMailAccount()?.id!==account)return;
+      renderMemoryState(data);memoryStatus.textContent='';
+    }catch(error){if(ticket===memoryTicket)memoryStatus.textContent=mailaiSystemMessage(error.message);}
+  }
+  new MutationObserver(()=>{if(!memoryPanel.classList.contains('hidden'))loadMemoryState();}).observe(memoryPanel,{attributes:true,attributeFilter:['class']});
+  for(const control of[memoryUse,memoryAuto])control.onchange=async()=>{
+    if(!memoryState||memoryBusy||activeMailAccount()?.id!==memoryAccount)return;
+    const account=memoryAccount,previous=memoryState;
+    memoryBusy=true;memoryUse.disabled=memoryAuto.disabled=memoryClear.disabled=true;
+    try{
+      const data=await api('/api/work/memory/settings',{accountId:account,method:'PUT',...post({enabled:memoryUse.checked,auto_analyze:memoryAuto.checked,revision:previous.revision})});
+      if(activeMailAccount()?.id!==account)return;renderMemoryState(data);memoryStatus.textContent=w('memorySettingsSaved');
+    }catch(error){if(activeMailAccount()?.id===account){renderMemoryState(previous);memoryStatus.textContent=mailaiSystemMessage(error.message);}}
+    finally{memoryBusy=false;}
+  };
+  const clearConfirm=memoryControls.querySelector('[data-memory-clear-confirm]');
+  memoryClear.onclick=()=>{clearConfirm.hidden=false;memoryControls.querySelector('[data-memory-clear-no]').focus();};
+  memoryControls.querySelector('[data-memory-clear-no]').onclick=()=>{clearConfirm.hidden=true;memoryClear.focus();};
+  memoryControls.querySelector('[data-memory-clear-yes]').onclick=async()=>{
+    if(!memoryState||memoryBusy||activeMailAccount()?.id!==memoryAccount)return;
+    memoryBusy=true;const account=memoryAccount;
+    memoryControls.querySelectorAll('button,input').forEach(node=>node.disabled=true);
+    try{
+      const data=await api('/api/work/memory/clear',{accountId:account,method:'POST',...post({revision:memoryState.revision})});
+      if(activeMailAccount()?.id!==account)return;renderMemoryState(data);clearConfirm.hidden=true;memoryStatus.textContent=w('memoriesCleared');
+    }catch(error){if(activeMailAccount()?.id===account){renderMemoryState(memoryState);memoryStatus.textContent=mailaiSystemMessage(error.message);}}
+    finally{memoryBusy=false;memoryControls.querySelectorAll('[data-memory-clear-confirm] button').forEach(node=>node.disabled=false);}
+  };
+  document.addEventListener('mailai:language-changed',()=>{if(memoryState)renderMemoryState(memoryState);});
+  // Run only after a completed conversation, while this window remains idle.
+  // The server rechecks switches, account, idle sources and generation revision.
+  let learnTimer=null,lastInteraction=Date.now();
+  for(const name of['pointerdown','keydown','input'])document.addEventListener(name,()=>{lastInteraction=Date.now();},{passive:true});
+  const scheduleLearning=event=>{
+    clearTimeout(learnTimer);const account=event.detail?.account||activeMailAccount()?.id;
+    const attempt=async()=>{
+      if(activeMailAccount()?.id!==account)return;
+      const remaining=95000-(Date.now()-lastInteraction);
+      if(assistantController||remaining>0){learnTimer=setTimeout(attempt,Math.max(1000,remaining));return;}
+      try{const data=await api('/api/work/memory/analyze?idle=true',{accountId:account,method:'POST'});if(data.more)learnTimer=setTimeout(attempt,95000);}catch(_){/* User work must never depend on background learning. */}
+    };
+    learnTimer=setTimeout(attempt,95000);
+  };
+  document.addEventListener('mailai:assistant-finished',scheduleLearning);
+  memoryScheduler=()=>scheduleLearning({detail:{account:activeMailAccount()?.id}});
+  setTimeout(()=>scheduleLearning({detail:{}}),1000);
+
+  document.getElementById('work-style-settings').addEventListener('click', async event => {
+    const account = activeMailAccount();
+    if (!account?.id) return toast(w('chooseAccount'),'warn');
+    const trigger = event.currentTarget, dialog = document.createElement('dialog');
+    dialog.id = 'work-preferences-dialog'; dialog.className = 'work-dialog work-memory-dialog';
+    dialog.setAttribute('aria-labelledby','work-preferences-title');
+    dialog.innerHTML = `<form><header><h2 id="work-preferences-title">${esc(w('settingsTitle'))}</h2><button type="button" data-close aria-label="${esc(w('close'))}">✕</button></header><p class="work-dialog-source">${esc(account.user || account.id)}</p><p>${esc(w('settingsHint'))}</p><label>${esc(w('style'))}<textarea name="style" maxlength="1000" placeholder="${esc(w('stylePlaceholder'))}" disabled></textarea></label><div class="work-memory-edit-actions"><button type="button" data-reload>${esc(w('reload'))}</button>${button('clear','clear')}<button type="submit" disabled>${esc(w('save'))}</button></div><p role="status" data-status>${esc(w('loadingPreferences'))}</p><section class="work-memory-learning"><div class="work-memory-learning-head"><h3>${esc(w('learningTitle'))}</h3><button type="button" data-analyze>${esc(w('analyze'))}</button></div><p>${esc(w('learningHint'))}</p><div data-memory-list></div><footer class="work-memory-pagination"><button type="button" data-page-prev>${esc(w('previous'))}</button><span data-page-label></span><button type="button" data-page-next>${esc(w('next'))}</button></footer></section></form>`;
+    document.body.append(dialog);
+    const editor=dialog.querySelector('[name="style"]'), status=dialog.querySelector('[data-status]'), submit=dialog.querySelector('[type="submit"]'), clear=dialog.querySelector('[data-work="clear"]'), reload=dialog.querySelector('[data-reload]'), analyze=dialog.querySelector('[data-analyze]'), list=dialog.querySelector('[data-memory-list]');
+    let revision=null, baseStyle='', loading=false, busy=false, filter='adopted', offset=0, pageData=null, ticket=0,learningEnabled=true;
+    const active=()=>dialog.isConnected&&dialog.open&&activeMailAccount()?.id===account.id;
+    const dirty=()=>editor.value!==baseStyle;
+    const updateControls=()=>{
+      const editing=list.querySelector('[data-memory-editor]:not([hidden])');
+      editor.disabled=submit.disabled=clear.disabled=revision===null||loading||busy||Boolean(editing);
+      submit.disabled ||= !dirty();clear.disabled ||= !editor.value;
+      reload.disabled=loading||busy||Boolean(editing);analyze.disabled=!learningEnabled||loading||busy||dirty()||Boolean(editing);
+      dialog.querySelectorAll('[data-memory-action],[data-page-prev],[data-page-next]').forEach(node=>node.disabled=loading||busy||dirty()||Boolean(editing&&!editing.contains(node)));
+      dialog.querySelector('[data-page-prev]').disabled ||= offset===0;
+      dialog.querySelector('[data-page-next]').disabled ||= !pageData||offset+pageData.items.length>=pageData.total;
+    };
+    const applyPreferences=data=>{editor.value=data.style;baseStyle=data.style;revision=data.revision;};
+    function renderList(data){
+      pageData=data;dialog.querySelector('.work-memory-pagination').hidden=data.total<=20;
+
+      list.innerHTML=data.items.length?data.items.map(row=>`<article class="work-memory-item" data-memory-id="${row.id}"><small>${esc(w('kind.'+row.kind))}${row.user_edited?' · '+esc(w('manuallyEdited')):''}</small><p class="work-memory-value">${esc(row.preference)}</p>${row.reason?`<p class="work-memory-reason">${esc(row.reason)}</p>`:''}<details><summary>${esc(w('evidence'))} · ${row.evidence.length}</summary>${row.evidence.length?row.evidence.map(source=>`<blockquote>${esc(source.quote)}<cite>${esc(source.title||w('confirmedInChat'))} · ${esc(source.created_at||'')}</cite></blockquote>`).join(''):`<p>${esc(w('confirmedInChat'))}</p>`}</details><div class="work-memory-item-actions"><button type="button" data-memory-action="edit">${esc(w('edit'))}</button><button type="button" data-memory-action="delete">${esc(w('deleteMemory'))}</button></div><div data-memory-editor hidden><textarea maxlength="300" aria-label="${esc(w('memoryContent'))}">${esc(row.preference)}</textarea><button type="button" data-memory-action="save">${esc(w('saveEdit'))}</button><button type="button" data-memory-action="cancel">${esc(w('cancelEdit'))}</button></div></article>`).join(''):`<p class="work-memory-empty">${esc(w('noSavedMemories'))}</p>`;
+      dialog.querySelector('[data-page-label]').textContent=data.total?`${offset+1}–${offset+data.items.length} / ${data.total}`:'0';
+      updateControls();
+    }
+    const loadList=async()=>{
+      const request=++ticket;
+      const data=await api(`/api/work/memory?status=${filter}&offset=${offset}&limit=20`,{accountId:account.id});
+      if(active()&&request===ticket)renderList(data);
+    };
+    const load=async()=>{
+      if(!active()||loading||busy)return;
+      loading=true;updateControls();status.textContent=w('loadingPreferences');
+      try{
+        const [data,settings]=await Promise.all([api('/api/work/preferences',{accountId:account.id}),api('/api/work/memory/settings',{accountId:account.id}),loadList()]);
+        if(!active())return;applyPreferences(data);learningEnabled=settings.enabled;status.textContent=learningEnabled?'':w('memoryPaused');
+      }catch(error){if(active())status.textContent=mailaiSystemMessage(error.message);}
+      finally{loading=false;if(active())updateControls();}
+    };
+    editor.oninput=()=>{updateControls();status.textContent=dirty()?w('saveBeforeLearning'):'';};
+    clear.onclick=()=>{editor.value='';editor.dispatchEvent(new Event('input'));editor.focus();};
+    reload.onclick=load;
+    dialog.querySelector('[data-close]').onclick=()=>dialog.close();
+    dialog.addEventListener('close',()=>{++ticket;dialog.remove();if(trigger.isConnected)trigger.focus({preventScroll:true});if(!memoryPanel.classList.contains('hidden'))loadMemoryState();},{once:true});
+    dialog.querySelector('form').onsubmit=async e=>{
+      e.preventDefault();if(!active()||revision===null||busy)return;
+      busy=true;updateControls();
+      try{
+        const data=await api('/api/work/preferences',{accountId:account.id,method:'PUT',...post({style:editor.value,revision})});
+        if(!active())return;applyPreferences(data);status.textContent=w('preferencesSaved');await loadList();
+      }catch(error){if(active())status.textContent=mailaiSystemMessage(error.message);}
+      finally{busy=false;if(active())updateControls();}
+    };
+    analyze.onclick=async()=>{
+      if(!active()||busy||dirty())return;
+      busy=true;updateControls();status.textContent=w('analyzing');
+      try{
+        const data=await api('/api/work/memory/analyze',{accountId:account.id,method:'POST'});
+        if(!active())return;filter='adopted';offset=0;await loadList();status.textContent=w(data.more?'analysisMore':data.analyzed?'analysisDone':'noNewConversations');analyze.textContent=w(data.more?'continueAnalysis':'analyze');
+      }catch(error){if(active())status.textContent=mailaiSystemMessage(error.message);}
+      finally{busy=false;if(active())updateControls();}
+    };
+    for(const [selector,delta]of[['[data-page-prev]',-20],['[data-page-next]',20]])dialog.querySelector(selector).onclick=async()=>{
+      if(busy||dirty())return;offset=Math.max(0,offset+delta);
+      try{await loadList();}catch(error){if(active())status.textContent=mailaiSystemMessage(error.message);}
+    };
+    list.onclick=async event=>{
+      const control=event.target.closest('[data-memory-action]'),article=control?.closest('[data-memory-id]');
+      if(!control||!article||control.disabled||busy||dirty())return;
+      const row=pageData.items.find(item=>item.id===Number(article.dataset.memoryId));if(!row)return;
+      const editBox=article.querySelector('[data-memory-editor]');
+      if(control.dataset.memoryAction==='edit'){editBox.hidden=false;editBox.querySelector('textarea').focus();updateControls();return;}
+      if(control.dataset.memoryAction==='cancel'){editBox.hidden=true;updateControls();return;}
+      busy=true;updateControls();
+      try{
+        const op=control.dataset.memoryAction;
+        const data=await api(`/api/work/memory/${row.id}`,{accountId:account.id,method:op==='save'?'PUT':'DELETE',...post(op==='save'?{preference:editBox.querySelector('textarea').value,revision:row.revision,pref_revision:revision}:{revision:row.revision,pref_revision:revision})});
+        if(!active())return;applyPreferences(data);status.textContent=w(op==='delete'?'memoryDeleted':'memoryUpdated');if(op==='delete'&&pageData.items.length===1&&offset)offset=Math.max(0,offset-20);await loadList();
+      }catch(error){if(active())status.textContent=mailaiSystemMessage(error.message);}
+      finally{busy=false;if(active())updateControls();}
+    };
+    dialog.showModal();await load();
+  });
+
+  // Compose controls remain separate from generation, so users can check their
+  // own text and retain explicit control over whether to use linked sources.
+  const panel = document.getElementById('compose-ai-panel');
+  const controls = document.createElement('section');
+  controls.className = 'work-compose';
+  controls.innerHTML = `<label><input type="checkbox" id="work-use-preferences" checked><span data-i18n="work.useStyle">${esc(w('useStyle'))}</span></label><p data-i18n="work.linkedHint">${esc(w('linkedHint'))}</p>${button('review','review')}<div data-work-review role="status"></div>`;
+  panel.querySelector('.compose-ai-scroll').append(controls);
+  let reviewSnapshot = null;
+  const reviewFingerprint = () => JSON.stringify([composeMessageElement().innerText,
+    composeAttachments.map(item => [item.filename || item.name || '', item.size || 0, item.sha256 || ''])]);
+  const sameFiles = files => files.length === composeAttachments.length && files.every((item,index) => item === composeAttachments[index]);
+  const invalidateReview = () => {
+    if (!reviewSnapshot) return;
+    if (reviewSnapshot.session !== draftSession) { reviewSnapshot = null; return; }
+    if (reviewSnapshot.fingerprint !== reviewFingerprint() || !sameFiles(reviewSnapshot.files)) {
+      controls.querySelector('[data-work-review]').textContent = w('edited');
+      reviewSnapshot = null;
+    }
+  };
+  new MutationObserver(invalidateReview).observe(document.getElementById('compose-body'),{subtree:true,childList:true,characterData:true});
+  new MutationObserver(invalidateReview).observe(document.getElementById('compose-attachments'),{subtree:true,childList:true});
+  controls.querySelector('[data-work="review"]').onclick = async event => {
+    const session = draftSession, account = composeAccountId, id = composeContext.reply_to_email_id;
+    const output = controls.querySelector('[data-work-review]'), control = event.currentTarget;
+    if (!id) { output.textContent = w('replyOnly'); return; }
+    const body = composeMessageElement().innerText;
+    const names = composeAttachments.map(item => item.filename || item.name || '');
+    const current = () => session === draftSession && !session.canceled && account === composeAccountId && document.body.classList.contains('compose-open');
+    const original = reviewFingerprint(), files = [...composeAttachments];
+    reviewSnapshot = null;
+    control.disabled = true;
+    output.textContent = w('reviewing');
+    const finish = globalThis.mailaiCompanionWork?.begin();
+    try {
+      const result = await api('/api/work/review',{accountId:account,method:'POST',...post({email_id:id,body,attachment_names:names,semantic:true})});
+      if (!current()) return;
+      if (reviewFingerprint() !== original || !sameFiles(files)) { output.textContent = w('edited'); return; }
+      reviewSnapshot = {session,fingerprint:original,files};
+      output.innerHTML = result.items.length ? result.items.map(item => `<p>${item.question ? `<q>${esc(item.question)}</q><br>` : ''}${esc(mailaiSystemMessage(item.note))}</p>`).join('') : `<p>${esc(result.model_used ? w('noOmissions') : mailaiSystemMessage(result.note || ''))}</p>`;
+      output.insertAdjacentHTML('beforeend',`<small>${esc(w('reviewHint'))}</small>`);
+      if (result.limited) output.insertAdjacentHTML('beforeend',`<p>${esc(w('limited'))}</p>`);
+    } catch (error) { if (current()) output.textContent = mailaiSystemMessage(error.message); }
+    finally { finish?.(); control.disabled = false; }
+  };
+  new MutationObserver(() => {
+    if (!document.body.classList.contains('compose-open')) {
+      controls.querySelector('[data-work-review]').textContent = '';
+      reviewSnapshot = null;
+      document.getElementById('work-use-preferences').checked = true;
+    }
+  }).observe(document.body,{attributes:true,attributeFilter:['class']});
+  window.mailaiPrepareFollowup = async (sentId, account) => {
+    const active = activeMailAccount()?.id;
+    const seed = await api(`/api/work/followups/${Number(sentId)}/prepare`,{accountId:account});
+    if (active !== activeMailAccount()?.id) return;
+    const opened = await openCompose({...seed,account_id:account});
+    if (opened) {
+      document.getElementById('compose-ai-instruction').value = w('followupInstruction');
+      toggleComposeAiPanel(true);
+    }
+  };
+  window.mailaiOpenWork = async (id, account) => {
+    if (account !== activeMailAccount()?.id) return;
+    await revealEmailFromSource(id);
+    if (account !== activeMailAccount()?.id || Number(selectedEmailDetail?.id) !== Number(id)) return;
+    openAssistantForEmail(selectedEmailDetail);
+    await askAssistant(w('understandPrompt'), [Number(id)]);
+  };
 })();
 
 ;
@@ -36463,6 +36975,7 @@ function mailCardDate(value, now = new Date()) {
   document.getElementById('model-provider').addEventListener('change', conceal, true);
   document.getElementById('model-config-form').addEventListener('submit', conceal, true);
   document.getElementById('btn-test-model').addEventListener('click', conceal, true);
+  document.getElementById('btn-save-model-only').addEventListener('click', conceal, true);
   document.addEventListener('click', event => {
     if (event.target.closest('[data-system-tab], #btn-close-system, #start-model-later, #start-enable, [data-help-settings]')) conceal();
   }, true);
@@ -36470,6 +36983,75 @@ function mailCardDate(value, now = new Date()) {
   if (panel) new MutationObserver(() => { if (panel.classList.contains('hidden')) conceal(); }).observe(panel, {attributes:true, attributeFilter:['class']});
   document.addEventListener('mailai:language-changed', render);
   render();
+})();
+
+/* Validate and activate one immutable draft; optional diagnostic actions stay separate. */
+(() => {
+  const form=document.getElementById('model-config-form'),primary=document.getElementById('btn-save-model');
+  const feedback=document.getElementById('model-action-feedback'),status=document.getElementById('model-status');
+  const more=document.getElementById('model-more-actions');
+  const copy=key=>mailaiT(`model.${key}`)||MAILAI_UI_COPY[`model.${key}`][0];
+  let busy=false,dirty=false,allowReload=false;
+  function message(key,phase='idle',detail=''){
+    feedback.dataset.state=phase;
+    feedback.setAttribute('role',phase==='error'?'alert':'status');
+    mailaiBindUI(feedback,'textContent',()=>copy(key)+(detail?' '+mailaiSystemMessage(detail):''));
+  }
+  function badge(key,phase=''){
+    status.className=`connection-status ${phase}`;
+    mailaiBindUI(status,'textContent',()=>copy(key));
+  }
+  function changed(){
+    if(busy)return;
+    dirty=true;message('unsaved');badge('draftStatus');
+  }
+  form.addEventListener('input',changed);
+  form.addEventListener('change',changed);
+  window.mailaiModelForm={
+    retainDraft:()=>!form.closest('#start-model')&&!allowReload&&(dirty||busy),
+    loaded:()=>{dirty=false;message('actionHint');},
+  };
+  async function run(mode){
+    if(busy||!form.reportValidity())return;
+    more.open=false;
+    let payload;
+    try{payload=modelFormPayload();}catch(error){message('invalidDraft','error',error.message);feedback.focus();return;}
+    const serialized=JSON.stringify(payload);
+    const controls=[...form.elements].map(node=>[node,node.disabled]);
+    busy=true;form.setAttribute('aria-busy','true');more.inert=true;
+    controls.forEach(([node])=>{node.disabled=true;});
+    let saving=mode==='save';
+    try{
+      if(mode!=='save'){
+        message('checking','loading');badge('checking');
+        mailaiBindUI(primary.querySelector('span'),'textContent',()=>copy('checking'));
+        const result=await api('/api/system/model/test',{method:'POST',headers:{'Content-Type':'application/json'},body:serialized});
+        if(!result.ok)throw new Error(result.message||copy('checkFailed'));
+        if(result.multimodal?.checked&&!result.multimodal.supported)throw new Error(result.multimodal.message||copy('visionFailed'));
+        if(JSON.stringify(modelFormPayload())!==serialized){dirty=true;message('changedDuringCheck','error');badge('draftStatus');return;}
+        if(mode==='test'){message('testPassed','success');badge('testPassedStatus','connected');return;}
+      }
+      saving=true;message('saving','loading');badge('saving');
+      mailaiBindUI(primary.querySelector('span'),'textContent',()=>copy('saving'));
+      const saved=await api('/api/system/model',{method:'POST',headers:{'Content-Type':'application/json'},body:serialized});
+      allowReload=true;
+      await loadSystemConfig(saved.config||null);
+      message(mode==='save'?'savedOnly':'savedEnabled','success');
+    }catch(error){
+      message(saving?'saveFailed':'checkFailed','error',error.message);
+      badge(saving?'saveFailed':'checkFailed','failed');
+      feedback.focus({preventScroll:true});feedback.scrollIntoView({block:'nearest'});
+    }finally{
+      allowReload=false;busy=false;more.inert=false;form.removeAttribute('aria-busy');
+      controls.forEach(([node,disabled])=>{node.disabled=disabled;});
+      mailaiBindUI(primary.querySelector('span'),'textContent',()=>copy('validateSave'));
+    }
+  }
+  form.addEventListener('submit',event=>{event.preventDefault();run('validate-save');});
+  document.getElementById('btn-test-model').addEventListener('click',()=>run('test'));
+  document.getElementById('btn-save-model-only').addEventListener('click',()=>run('save'));
+  more.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();more.open=false;more.querySelector('summary').focus();}});
+  document.addEventListener('click',event=>{if(!more.contains(event.target))more.open=false;});
 })();
 
 ;
@@ -38294,10 +38876,18 @@ function mailCardDate(value, now = new Date()) {
         items
           .map(
             (row, i) =>
-              `<div class="productivity-source-quote"><strong>${esc(row.subject || mailaiText("无主题"))}</strong><p>${esc(row.to_addr || "")}</p><small>${esc({ scheduled: row.sent ? mailaiText("已提交提醒") : mailaiText("等待回复"), get replied() { return mailaiText("已同步到回复"); }, get canceled() { return mailaiText("已取消"); } }[row.state] || row.state)} · ${esc(row.at.replace("T", " "))}</small><div class="productivity-actions"><button type="button" data-followup-open="${i}"><span data-i18n="ui.c259135be1d3">查看已发送邮件</span></button>${row.state === "scheduled" ? `<input type="datetime-local" data-followup-at="${i}" value="${esc(row.at.slice(0, 16))}" aria-label="新的跟进时间" data-i18n-aria="ui.6da097eb22f3"><button type="button" data-followup-save="${i}"><span data-i18n="ui.fd094431c8ca">调整时间</span></button><button type="button" data-followup-cancel="${i}"><span data-i18n="ui.f3b07169f705">取消提醒</span></button>` : ""}</div></div>`,
+              `<div class="productivity-source-quote"><strong>${esc(row.subject || mailaiText("无主题"))}</strong><p>${esc(row.to_addr || "")}</p><small>${esc({ scheduled: row.sent ? mailaiText("已提交提醒") : mailaiText("等待回复"), get replied() { return mailaiText("已同步到回复"); }, get canceled() { return mailaiText("已取消"); } }[row.state] || row.state)} · ${esc(row.at.replace("T", " "))}</small><div class="productivity-actions"><button type="button" data-followup-open="${i}"><span data-i18n="ui.c259135be1d3">查看已发送邮件</span></button>${row.state === "scheduled" ? `<button type="button" data-followup-prepare="${i}">${esc(mailaiText("准备跟进草稿"))}</button><input type="datetime-local" data-followup-at="${i}" value="${esc(row.at.slice(0, 16))}" aria-label="新的跟进时间" data-i18n-aria="ui.6da097eb22f3"><button type="button" data-followup-save="${i}"><span data-i18n="ui.fd094431c8ca">调整时间</span></button><button type="button" data-followup-cancel="${i}"><span data-i18n="ui.f3b07169f705">取消提醒</span></button>` : ""}</div></div>`,
           )
           .join("") ||
         mailaiText("没有发信跟进记录。请在写信的“发送安排”中设置未回复提醒。");
+      host.querySelectorAll('[data-followup-prepare]').forEach(btn => {
+        btn.onclick = () => busy(btn, async () => {
+          const id = items[Number(btn.dataset.followupPrepare)].sent_id;
+          if (!live(rev)) return;
+          dialog.close();
+          await window.mailaiPrepareFollowup(id, account);
+        });
+      });
       host.querySelectorAll("[data-followup-open]").forEach(
         (btn) =>
           (btn.onclick = () =>

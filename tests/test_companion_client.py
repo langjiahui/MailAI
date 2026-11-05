@@ -63,7 +63,11 @@ def main():
                 assert growth.snapshot() == before
                 with growth.connection() as c:
                     growth._award(c,'active',60)
-                    assert growth._snapshot(c)['xp'] == before['xp'] + 15  # Focus goal once, timing cap exhausted.
+                    assert growth._snapshot(c)['xp'] == before['xp']  # Time cap; work goal now requires completion.
+                    growth._award(c,'task',key='migration-completed-task')
+                    assert growth._snapshot(c)['xp'] == before['xp'] + 12 + 15
+                    growth._award(c,'task',key='migration-completed-task')
+                    assert growth._snapshot(c)['xp'] == before['xp'] + 12 + 15  # Outcome and goal only once.
                 after = growth.snapshot()
                 assert growth.snapshot() == after  # Migration is idempotent.
             with use(accounts[1]):

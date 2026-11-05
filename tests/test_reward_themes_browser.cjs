@@ -24,7 +24,7 @@ const {chromium,webkit} = require('playwright');
     await page.evaluate(async()=>{
       setI18nLanguage('zh-CN');applyTheme('light');
       await api('/api/companion/preferences',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:false})});
-      await window.mailaiPet.refresh();showSystemView('preferences');
+      await window.mailaiPet.refresh();showSystemView('xiaoyou');
     });
     await page.locator('#companion-theme-settings').click();
     const dialog=page.locator('#companion-growth-dialog');

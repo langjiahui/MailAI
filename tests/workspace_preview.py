@@ -5,7 +5,13 @@ def main():
     import tempfile
     from pathlib import Path
     from datetime import datetime, timedelta
-    fixture = tempfile.TemporaryDirectory(prefix='mailai-workspace-ui-')
+    persistent = os.environ.get('MAILAI_PREVIEW_HOME')
+    if persistent:
+        from types import SimpleNamespace
+        Path(persistent).mkdir(parents=True,exist_ok=True)
+        fixture = SimpleNamespace(name=str(Path(persistent).resolve()))
+    else:
+        fixture = tempfile.TemporaryDirectory(prefix='mailai-workspace-ui-')
     os.environ.update(MAILAI_HOME=fixture.name, IMAP_USER='work@example.test', IMAP_PASSWORD='fixture',
                       IMAP_HOST='imap.example.test', SMTP_HOST='smtp.example.test', SMTP_USE_IMAP_CREDENTIALS='true',
                       LLM_API_KEY='fixture', LLM_BASE_URL='http://127.0.0.1:9', LLM_MODEL='fixture-model',
@@ -18,8 +24,14 @@ def main():
 
     credential_store.load = lambda key: 'fixture'
     credential_store.available = lambda: True
-    registry = {'accounts': {}}
-    for label in ('work','personal'):
+    previous = system_settings._load_registry() if persistent else None
+    reuse = bool(previous and previous.get('accounts'))
+    registry = previous if reuse else {'accounts': {}}
+    if reuse:
+        for key, account in registry['accounts'].items():
+            with use(dict(ACCOUNT_ID=key,DB_PATH=account['db_path'],RAW_DIR=account['raw_dir'],IMAP_USER=account['user'])):
+                db.init_db()
+    for label in (() if reuse else ('work','personal')):
         user = label + '@example.test'
         key = system_settings._account_key('imap.example.test',user)
         account = dict(user=user, host='imap.example.test',db_path=os.path.join(fixture.name,label+'.db'),
@@ -79,7 +91,8 @@ def main():
                     connection.execute("INSERT INTO mail_tags(name,color) VALUES('Historical label','#548879')")
                     connection.execute("INSERT INTO email_tags(email_id,tag_id) SELECT e.id,t.id FROM emails e,mail_tags t WHERE e.uid=10000 AND t.name='Historical label'")
                     connection.execute("INSERT INTO emails(uid,from_addr,to_addr,subject,date,status) VALUES(90000,'archive@example.test',?,'Archive fixture','2024-01-01','local_archive')",(user,))
-    registry['last_account'] = next(iter(registry['accounts']))
+    if registry.get('last_account') not in registry['accounts']:
+        registry['last_account'] = next(iter(registry['accounts']))
     system_settings._save_registry(registry)
     config.DB_PATH = registry['accounts'][registry['last_account']]['db_path']
     config.RAW_DIR = registry['accounts'][registry['last_account']]['raw_dir']
@@ -104,6 +117,34 @@ def main():
             time.sleep(1)
             yield '\n## 后续内容\n\n这是完整日报。'
         pipeline.today_digest_stream = digest_stream
+    if os.environ.get('MAILAI_MEMORY_FIXTURE') == '1':
+        import json
+        from app.llm import client as memory_client
+        original_completion = memory_client.chat_completion
+        original_stream = memory_client.chat_completion_stream
+        def memory_completion(messages, **kwargs):
+            if '自动沉淀稳定、可复用的长期记忆' not in messages[0]['content']:
+                return original_completion(messages, **kwargs)
+            turns = json.loads(messages[-1]['content'])['turns']
+            source = next((row for row in reversed(turns) if '一次只问一个问题' in row['content']), None)
+            candidates = [dict(preference='沟通时一次只问一个问题',kind='communication',scope='account',topic='communication.questions',reason='用户明确表达沟通习惯',
+                evidence=[dict(message_id=source['message_id'],quote=source['content'])])] if source else []
+            return {'choices':[{'message':{'content':json.dumps({'candidates':candidates},ensure_ascii=False)},'finish_reason':'stop'}]}
+        memory_client.chat_completion = memory_completion
+        def memory_stream(messages,**kwargs):
+            if '我平时希望小邮沟通时一次只问一个问题' in messages[-1]['content']:
+                yield '明白，我们就一次聊清一个关键问题。'
+            else:
+                yield from original_stream(messages,**kwargs)
+        memory_client.chat_completion_stream=memory_stream
+        @server.app.post('/fixture/memory-idle')
+        def age_memory_fixture():
+            from app import db
+            # Test-only synthetic accounts; the acceptance server omits this flag.
+            for key,account in registry['accounts'].items():
+                with use(dict(ACCOUNT_ID=key,DB_PATH=account['db_path'])):
+                    with db.conn() as c:c.execute("UPDATE assistant_conversations SET updated_at='2020-01-01T00:00:00'")
+            return {'ok':True}
     if os.environ.get('MAILAI_GIFT_FIXTURE') == '1':
         # Ephemeral test authority exists only in this isolated fixture, never in the app.
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey

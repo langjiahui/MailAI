@@ -143,6 +143,10 @@ const {auditMailCardEdges}=require('./helpers/mail-card-edges.cjs');
           }
           avatar.remove();
           const host=document.createElement('div');host.innerHTML=renderEmailItem({...allEmails[0],score:90,verdict:'phishing',is_read:1});list.append(host);
+          host.querySelector('.email-item').classList.add('selected');
+          const selectedAvatar=host.querySelector('.mail-sender-avatar'),selectedStyle=getComputedStyle(selectedAvatar);
+          results.push({selector:'selected avatar',ratio:contrast(rgba(selectedStyle.color),over(rgba(selectedStyle.backgroundColor),selected))});
+          if(parseFloat(selectedStyle.borderRadius)>=parseFloat(selectedStyle.width)/2)throw Error('Sender marks should use the compact rounded-square identity shape');
           for(const n of [list.querySelector('.risk-badge.warn'),host.querySelector('.risk-badge.danger'),host.querySelector('.risk-alert-dot')]){
             const style=getComputedStyle(n),bg=over(rgba(style.backgroundColor),paper);
             results.push({selector:n.className,ratio:contrast(rgba(style.color),bg)});

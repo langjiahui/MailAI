@@ -45,7 +45,7 @@
     const actions = item => item.todo_id
       ? "<button type=\"button\" data-secretary-action=\"todo\"><span data-i18n=\"ui.071147e4925d\">改期 / 安排</span></button><button type=\"button\" data-secretary-action=\"done\"><span data-i18n=\"ui.c0b3fbff51cc\">完成</span></button>"
       : item.risky ? '' : "<button type=\"button\" data-secretary-action=\"todo\"><span data-i18n=\"ui.46110fd51dc0\">确认加入待办</span></button><button type=\"button\" data-secretary-action=\"ignore\"><span data-i18n=\"ui.e563878df325\">忽略线索</span></button><button type=\"button\" data-secretary-action=\"reply\"><span data-i18n=\"ui.cf945e21ddef\">回复</span></button>";
-    content.innerHTML = `<header class="secretary-intro"><h3>${focus === 'decision' ? mailaiText('先看需要判断的事') : mailaiText('把下一步理清楚')}</h3><p><span data-i18n="ui.35a452fa45fa">${esc(data.account_user)} · 已查看 ${data.scanned} 封${data.truncated ? mailaiText('（已达上限）') : ''}</span></p><small>${esc(data.scope)}<br><span data-i18n="ui.2f66f464715a">自动整理的线索，请核实责任与处理状态。</span></small></header>` + data.groups.map(group => `
+    content.innerHTML = `<header class="secretary-intro"><h3>${focus === 'decision' ? mailaiText('先看需要判断的事') : mailaiText('把下一步理清楚')}</h3><p><span data-i18n="ui.35a452fa45fa">${esc(data.account_user)} · 已查看 ${data.scanned} 封${data.truncated ? mailaiText('（已达上限）') : ''}</span></p><small>${esc(data.scope)}<br><span data-i18n="ui.2f66f464715a">自动整理的线索，请核实责任与处理状态。</span></small></header>` + ((data.next_steps || []).length ? `<section class="work-card"><b>${esc(mailaiText('今天值得先看的三件事'))}</b>${data.next_steps.map(item => `<p><strong>${esc(item.evidence || item.subject)}</strong><br><small>${esc(item.reason)}</small> <button type="button" data-secretary-step="${Number(item.email_id)}">${esc(mailaiText('梳理这件事'))}</button></p>`).join('')}</section>` : '') + data.groups.map(group => `
       <details class="secretary-group" ${['safety', 'history'].includes(group.key) ? '' : 'open'}><summary><span>${esc(group.title)}</span><em>${group.count}</em></summary>
       ${group.key === 'tasks' ? "<p class=\"secretary-empty\"><span data-i18n=\"ui.eda2cc95e9cd\">今天到期或提醒，以及近 7 天逾期的任务。未安排日期的任务保留在待办中。</span> <button type=\"button\" data-secretary-todos><span data-i18n=\"ui.0f1f3c58fd43\">查看全部待办</span></button></p>" : group.key === 'history' ? "<p class=\"secretary-empty\"><span data-i18n=\"ui.60e08046b758\">逾期超过 7 天，暂不列为今日重点。任务没有删除，可改期后继续推进。</span> <button type=\"button\" data-secretary-todos><span data-i18n=\"ui.a253decc7359\">管理全部待办</span></button></p>" : ''}
       ${group.items.length ? `<div class="secretary-group-intro"><small>${group.count > group.items.length ? mailaiTemplate`先展示 ${group.items.length} 项` : mailaiText('每项均可回到原邮件核对')}</small><button type="button" data-secretary-group="${group.key}"><span data-i18n="ui.f0281a6a1eab">${group.key === 'safety' ? mailaiText('解释') : mailaiText('整理')}这 ${group.items.length} 项</span></button></div>` : "<p class=\"secretary-empty\"><span data-i18n=\"ui.11886638c00b\">本次范围内没有符合条件的项目，并不代表没有其他工作。</span></p>"}
@@ -70,6 +70,9 @@
   content.addEventListener('click', async event => {
     const button = event.target.closest('button');
     if (!button || !data) return;
+    if (button.dataset.secretaryStep && current()) {
+      return window.mailaiOpenWork(Number(button.dataset.secretaryStep), accountId).catch(error => toast(mailaiSystemMessage(error.message), 'warn'));
+    }
     if (!current()) { window.refreshSecretaryAccount(); return; }
     if (button.hasAttribute('data-secretary-todos')) return openTodoCenter();
     const groupKey = button.dataset.secretaryGroup;

@@ -191,7 +191,7 @@ def api_assistant_ask_stream(payload: AssistantRequest):
 
 @router.post("/api/assistant/actions/execute")
 def api_assistant_action_execute(payload: dict):
-    """执行用户已确认的助手建议操作（白名单：create_todo/draft_reply/mark_read）。
+    """执行用户已确认的助手建议操作，包括背景／偏好保存。
 
     助手本身从不执行操作——这里处理的是界面上用户点击"确认执行"后的提交，
     审计日志以 actor="assistant_confirmed" 记录。

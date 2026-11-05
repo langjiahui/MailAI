@@ -127,7 +127,7 @@ async function bulkCollectionCase() {
 }
 
 function assistantCases() {
-  const nodes = {'assistant-scope':{value:'account'},'assistant-scope-label':{},
+  const nodes = {'assistant-scope':{value:'account'},'assistant-scope-label':{removeAttribute(name){delete this[name];}},
     'assistant-scope-note':{},'assistant-scope-clear':{classList:{toggle(){}}}};
   let resets = 0, opens = 0, chatOpens = 0, account = 'a';
   const context = vm.createContext(i18nContext({JSON, Number, assistantScopeKey:'',assistantPinnedScope:[11],assistantHistoryLoaded:false,

@@ -589,6 +589,9 @@
       ],
       "tests": [
         {
+          "file": "tests/test_model_service_browser.cjs"
+        },
+        {
           "file": "tests/test_settings_responsive_browser.cjs"
         },
         {
@@ -840,6 +843,15 @@
         },
         {
           "file": "tests/test_experience_polish_browser.cjs"
+        },
+        {
+          "file": "tests/test_work_assistant_browser.cjs"
+        },
+        {
+          "file": "tests/test_work_assistant_browser.cjs",
+          "env": {
+            "MAILAI_BROWSER": "webkit"
+          }
         }
       ]
     }

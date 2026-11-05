@@ -7,7 +7,7 @@ const {chromium, webkit} = require('playwright');
   const engine = process.env.MAILAI_BROWSER === 'webkit' ? webkit : chromium;
   const browser = await engine.launch({headless:true});
   const errors = [];
-  const tabs = ['preferences','account','ai','remote','maintenance','guide','about'];
+  const tabs = ['preferences','account','ai','xiaoyou','remote','maintenance','guide','about'];
   try {
     const page = await browser.newPage({viewport:{width:1512,height:1000},reducedMotion:'reduce'});
     page.on('pageerror',e=>errors.push(e.message));
@@ -42,6 +42,14 @@ const {chromium, webkit} = require('playwright');
               return {overflow:panel.scrollWidth>panel.clientWidth+2,escaped,bounds:{left:bounds.left,right:bounds.right},close:{top:close.top,bottom:close.bottom,right:close.right},pageOverflow:document.documentElement.scrollWidth>innerWidth+1,overflowing:[...document.body.querySelectorAll("*")].filter(n=>n.getClientRects().length && n.getBoundingClientRect().right>innerWidth+1).slice(0,12).map(n=>({tag:n.tagName,id:n.id,cls:n.className,right:n.getBoundingClientRect().right}))};
             });
             assert(!geometry.overflow && !geometry.pageOverflow && !geometry.escaped.length,JSON.stringify({context,geometry}));
+            if(tab==='preferences'){
+              const layout=await page.locator('.preference-grid').evaluate(grid=>{
+                const rect=selector=>{const r=grid.querySelector(selector).getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width};};
+                return {display:rect('.device-preferences'),sync:rect('.sync-preferences'),semantic:rect('.semantic-preferences'),notifications:rect('.notification-preferences')};
+              });
+              assert(Math.abs(layout.semantic.left-layout.sync.left)<2&&layout.semantic.top>=layout.sync.bottom-2,'Search follows sync without leaving an empty left column');
+              assert(layout.display.width>=layout.notifications.width-2,'Display settings retain the main content width');
+            }
             assert(geometry.close.top>=0 && geometry.close.bottom<=1000 && geometry.close.right<=width+1,JSON.stringify({context,geometry}));
             assert.equal(await page.locator('#system-tabs [aria-current="page"]').getAttribute('data-system-tab'),tab);
             const navVisible=await page.locator('#system-tabs [aria-current="page"]').evaluate(button=>{
@@ -93,7 +101,11 @@ const {chromium, webkit} = require('playwright');
     await page.locator('input[name="interface-language-choice"][value="zh-CN"]').check();
     await page.locator('input[name="interface-language-choice"][value="en"]').check();
     assert.equal(await page.locator('[data-i18n="settings.syncTitle"]').textContent(),'Sync and folders');
-    assert.equal(await page.locator('[data-i18n="settings.companionTitle"]').textContent(),'Companion and personalization');
+    await page.locator('[data-system-tab="xiaoyou"]').click();
+    assert.equal(await page.locator('[data-i18n="work.appearanceTitle"]').textContent(),'Companionship and appearance');
+    assert.equal(await page.locator('[data-system-panel="preferences"] #companion-growth-settings').count(),0);
+    assert.equal(await page.locator('[data-system-panel="xiaoyou"] #companion-growth-settings').count(),1);
+    await page.locator('[data-system-tab="preferences"]').click();
     const folders=page.locator('#show-server-folders');const original=await folders.isChecked();
     await folders.setChecked(!original);await folders.setChecked(original);
     // Off/on switches must retain distinct, contrasting tracks and thumbs.
@@ -114,6 +126,6 @@ const {chromium, webkit} = require('playwright');
     assert.equal(await page.locator('#system-tabs [aria-current="page"]').getAttribute('data-system-tab'),'preferences');
     await page.evaluate(async()=>{setI18nLanguage('zh-CN');applyTheme('light');await api('/api/companion/equip',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slot:'theme',item:''})});});
     assert.deepEqual(errors,[]);
-    console.log(`Settings: ${cases} layouts across 7 tabs, 6 palettes, 2 languages and 390–3440px; saved preferences and keyboard navigation passed (${process.env.MAILAI_BROWSER||'chromium'}).`);
+    console.log(`Settings: ${cases} layouts across 8 tabs, 6 palettes, 2 languages and 390–3440px; saved preferences and keyboard navigation passed (${process.env.MAILAI_BROWSER||'chromium'}).`);
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

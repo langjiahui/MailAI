@@ -150,7 +150,10 @@ html.integrated-workspace body:is(.assistant-split,.assistant-docked,.assistant-
 /* The resize control owns the subtle seam between adjacent workspaces. */
 html.integrated-workspace body:is(.assistant-split,.assistant-docked) #assistant-panel {
  bottom:0!important; max-height:none;
+ animation:assistantDockOpen .16s ease-out;
 }
+/* An adjacent column fades in without moving its boundary across the content. */
+@keyframes assistantDockOpen { from { opacity:0; } to { opacity:1; } }
 html.integrated-workspace body:is(.assistant-split,.assistant-docked) #assistant-panel::before {
  content:none;
 }

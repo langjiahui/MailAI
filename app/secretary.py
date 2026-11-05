@@ -90,7 +90,17 @@ def briefing(focus='execution'):
             groups['attention'].append(card(row, '可能需要决策或确认' if focus == 'decision' else '可能需要反馈或协作', text[max(0, match.start()-20):match.end()+65]))
         elif row.get('priority') == '高':
             groups['attention'].append(card(row, '被标为高重要程度', summary[:120] or subject))
+    next_steps = []
+    selected = set()
+    for item in groups['tasks'] + groups['attention']:
+        if item['email_id'] in selected:
+            continue
+        selected.add(item['email_id'])
+        next_steps.append(item)
+        if len(next_steps) == 3:
+            break
     return dict(focus=focus, account_user=config.IMAP_USER, generated_at=datetime.now().isoformat(timespec='seconds'),
+                next_steps=next_steps,
                 days=7, scanned=len(emails), truncated=len(candidates)>300,
                 scope='邮件线索来自近 7 天收件箱（最多 300 封）；今天先做按任务日期和提醒筛选，不按邮件新旧。',
                 note='协作线索来自主题与摘要，不代表尚未回复、本人负责或尚未完成；请核对原邮件。',

@@ -1,0 +1,9 @@
+{
+  "version": "4.1.1",
+  "commit": "eb730abe9a7941ee20d06a2eaf5dee7bd3908098",
+  "synthetic": true,
+  "uncompressed_sha256": {
+    "work-upgrade-4.1.1-mailai.db.gz": "a3b6d5693366723494bf310c58120a6b95e393ffec9435066095a05cc3b7d33c",
+    "work-upgrade-4.1.1-companion.sqlite3.gz": "288b90f33b6b206e89aee47c3167b47eb6090efece7e01455db147a2934065ee"
+  }
+}

@@ -61,6 +61,8 @@ def list_todos(include_done=False):
 
 def set_todo_status(todo_id: int, status: str):
     with conn() as c:
+        c.execute('BEGIN IMMEDIATE')
+        _reward_completed(c, [todo_id], status)
         c.execute("UPDATE todos SET status=?,user_edited=1,remind_at=CASE WHEN ?='done' THEN NULL ELSE remind_at END WHERE id=?", (status, status, todo_id))
 
 
@@ -70,11 +72,23 @@ def set_todos_status(todo_ids: list[int], status: str) -> int:
         return 0
     placeholders = ",".join("?" for _ in ids)
     with conn() as c:
+        c.execute('BEGIN IMMEDIATE')
+        _reward_completed(c, ids, status)
         cursor = c.execute(
             f"UPDATE todos SET status=?,user_edited=1,remind_at=CASE WHEN ?='done' THEN NULL ELSE remind_at END WHERE id IN ({placeholders})",
             [status, status, *ids],
         )
         return cursor.rowcount
+
+
+def _reward_completed(c, ids, status):
+    if status != 'done':
+        return
+    from ..companion_growth import safe_record
+    slots = ','.join('?' for _ in ids)
+    for row in c.execute(f"SELECT id FROM todos WHERE status='open' AND id IN ({slots})", ids).fetchall():
+        # The permanent hashed event key prevents reopen/complete reward farming.
+        safe_record('task', key=f"completed-task:{row['id']}", connection=c)
 
 
 def update_todo(todo_id: int, *, title: str | None = None, deadline: str | None = None):
