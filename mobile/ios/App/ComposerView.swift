@@ -4,6 +4,7 @@ import MailAICore
 import UniformTypeIdentifiers
 import PhotosUI
 import QuickLook
+import ImageIO
 
 struct ComposerView: View {
     @Bindable var store: MailStore
@@ -80,8 +81,9 @@ struct ComposerView: View {
                             if let data = try await value.loadTransferable(type: Data.self) {
                                 try Task.checkCancellation()
                                 guard store.draft.id == draftID, store.selectedID == accountID, editable else { throw MailFailure.invalid("草稿已改变，照片未添加。") }
-                                try store.addAttachment(name: "照片.\(value.supportedContentTypes.first?.preferredFilenameExtension ?? "jpg")", mimeType: value.supportedContentTypes.first?.preferredMIMEType ?? "image/jpeg", data: data)
-                            }
+                                let attachment = try ImportedMailPhoto.attachment(data)
+                                try store.addAttachment(name: attachment.name, mimeType: attachment.mimeType, data: data)
+                            } else { throw MailFailure.invalid("照片读取失败，请从相册重新选择。") }
                         } catch { if !Task.isCancelled { self.error = error.localizedDescription } }
                         if !Task.isCancelled { photo = nil }
                     }
@@ -100,7 +102,7 @@ struct ComposerView: View {
                 .onDisappear { photoTask?.cancel() }
         }
         // Both photo actions share a stable presenter outside the toolbar/menu hierarchy.
-        .photosPicker(isPresented: $choosingPhoto, selection: $photo, matching: .images)
+        .photosPicker(isPresented: $choosingPhoto, selection: $photo, matching: .images, preferredItemEncoding: .current)
     }
     private var editorContent: some View {
         ScrollView {
@@ -279,6 +281,32 @@ struct ComposerView: View {
         let info = try url.resourceValues(forKeys: [.fileSizeKey, .contentTypeKey, .isRegularFileKey])
         guard info.isRegularFile == true, (info.fileSize ?? Int.max) <= MailAttachment.singleLimit else { throw MailFailure.invalid("文件不可读或超过 15 MB。") }
         try store.addAttachment(name: url.lastPathComponent, mimeType: info.contentType?.preferredMIMEType ?? "application/octet-stream", data: Data(contentsOf: url))
+    }
+}
+
+enum ImportedMailPhoto {
+    /// The picker advertises all supported representations, which may differ
+    /// from the bytes returned by Data Transferable. Identify the actual file;
+    /// retain its original bytes rather than encoding a second time.
+    static func attachment(_ data: Data) throws -> MailAttachment {
+        guard !data.isEmpty, data.count <= MailAttachment.singleLimit else {
+            throw MailFailure.invalid("照片不可读或超过 15 MB，请重新选择。")
+        }
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              CGImageSourceGetStatus(source) == .statusComplete,
+              CGImageSourceGetCount(source) > 0,
+              let identifier = CGImageSourceGetType(source),
+              let type = UTType(identifier as String), type.conforms(to: .image),
+              let ext = type.preferredFilenameExtension, let mime = type.preferredMIMEType,
+              CGImageSourceCreateImageAtIndex(source, 0, nil) != nil else {
+            throw MailFailure.invalid("照片数据不完整或格式无法识别，请从相册重新选择。")
+        }
+        if type == .png {
+            guard data.suffix(12) == Data([0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130]) else {
+                throw MailFailure.invalid("照片数据不完整，请从相册重新选择。")
+            }
+        }
+        return MailAttachment(name: "照片." + ext, mimeType: mime, data: data)
     }
 }
 // Keep the document picker in its own presentation. Cancelling it must only

@@ -3,6 +3,8 @@ import MailAICore
 import Security
 import UIKit
 import SwiftMail
+import ImageIO
+import CryptoKit
 @testable import MailAI
 
 final class ProtocolTests: XCTestCase {
@@ -165,6 +167,55 @@ final class ProtocolTests: XCTestCase {
         configuration.endpoint = "https://example.test/v1"; configuration.consent = false; XCTAssertThrowsError(try configuration.url())
         XCTAssertEqual(try configuration.url(requiringConsent: false).absoluteString, "https://example.test/v1/chat/completions")
         XCTAssertFalse(configuration.consent)
+    }
+    private func syntheticPhoto(side: Int) throws -> Data {
+        var pixels = [UInt8](repeating: 255, count: side * side * 4)
+        var seed: UInt32 = 0x12345678
+        for index in pixels.indices where index % 4 != 3 {
+            seed ^= seed << 13; seed ^= seed >> 17; seed ^= seed << 5
+            pixels[index] = UInt8(truncatingIfNeeded: seed)
+        }
+        let provider = try XCTUnwrap(CGDataProvider(data: Data(pixels) as CFData))
+        let image = try XCTUnwrap(CGImage(width: side, height: side, bitsPerComponent: 8,
+            bitsPerPixel: 32, bytesPerRow: side * 4, space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue), provider: provider,
+            decode: nil, shouldInterpolate: false, intent: .defaultIntent))
+        let output = NSMutableData()
+        let destination = try XCTUnwrap(CGImageDestinationCreateWithData(output, "public.png" as CFString, 1, nil))
+        CGImageDestinationAddImage(destination, image, nil)
+        XCTAssertTrue(CGImageDestinationFinalize(destination))
+        return output as Data
+    }
+    func testImportedPhotoUsesActualImageBytesAndPreservesRepresentation() throws {
+        let png = try syntheticPhoto(side: 32)
+        let imported = try ImportedMailPhoto.attachment(png)
+        XCTAssertEqual(imported.name, "照片.png"); XCTAssertEqual(imported.mimeType, "image/png")
+        XCTAssertEqual(imported.data, png)
+        let image = try XCTUnwrap(UIImage(data: png))
+        let jpeg = try XCTUnwrap(image.jpegData(compressionQuality: 0.9))
+        let importedJPEG = try ImportedMailPhoto.attachment(jpeg)
+        XCTAssertTrue(["照片.jpg", "照片.jpeg"].contains(importedJPEG.name))
+        XCTAssertEqual(importedJPEG.mimeType, "image/jpeg"); XCTAssertEqual(importedJPEG.data, jpeg)
+    }
+    func testImportedPhotoRejectsEmptyAndTruncatedPNG() throws {
+        XCTAssertThrowsError(try ImportedMailPhoto.attachment(Data()))
+        let png = try syntheticPhoto(side: 32)
+        XCTAssertThrowsError(try ImportedMailPhoto.attachment(Data(png.dropLast(12))))
+        XCTAssertThrowsError(try ImportedMailPhoto.attachment(Data(png.prefix(png.count / 2))))
+    }
+    func testLargePhotoSMTPMatchesOriginalByteHashAtReceiver() async throws {
+        // Larger than the reported 9.7 MB source; synthetic pixels only.
+        let png = try syntheticPhoto(side: 1800)
+        XCTAssertGreaterThan(png.count, 9_746_089)
+        XCTAssertLessThan(png.count, MailAttachment.singleLimit)
+        let digest = SHA256.hash(data: png).map { String(format: "%02x", $0) }.joined()
+        var draft = MailDraft(); draft.to = "photo-integrity@example.com"
+        draft.subject = "synthetic photo integrity"
+        draft.text = "synthetic photo sha256:\(digest) bytes:\(png.count)"
+        draft.attachments = [try ImportedMailPhoto.attachment(png)]
+        // The real production builder and TLS SMTP submission path are used.
+        // The fixture returns 250 only after decoding MIME and verifying the hash.
+        try await NativeMailService().send(credential(), draft: draft)
     }
     func testSMTPAcceptsSyntheticMessage() async throws {
         var draft = MailDraft(); draft.to = "recipient@example.com"; draft.subject = "synthetic 测试"; draft.text = "synthetic 中文正文"

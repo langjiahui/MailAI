@@ -1,6 +1,7 @@
 """Local TLS IMAP/SMTP fixture. Synthetic data only; never connects to an email provider."""
 import json
 import base64
+import hashlib
 import argparse
 import asyncio
 import re
@@ -115,7 +116,21 @@ async def smtp(reader, writer):
                 parsed = BytesParser(policy=policy.default).parsebytes(bytes(content))
                 body = parsed.get_body(preferencelist=('plain',))
                 text = body.get_content() if body else ''
-                if parsed.get('Bcc') is not None:
+                if text.startswith('synthetic photo sha256:'):
+                    expected = re.fullmatch(r'synthetic photo sha256:([0-9a-f]{64}) bytes:(\d+)', text.strip())
+                    parts = list(parsed.iter_attachments())
+                    photo = parts[0].get_payload(decode=True) if len(parts) == 1 else b''
+                    valid = (expected is not None and parsed.get('Bcc') is None
+                             and len(parts) == 1 and parts[0].get_filename() == '照片.png'
+                             and parts[0].get_content_type() == 'image/png'
+                             and not parsed.defects and not parts[0].defects
+                             and len(photo) == int(expected.group(2))
+                             and hashlib.sha256(photo).hexdigest() == expected.group(1)
+                             and photo.startswith(b'\x89PNG\r\n\x1a\n')
+                             and photo.endswith(b'\x00\x00\x00\x00IEND\xaeB`\x82'))
+                    if valid: print(json.dumps({'syntheticPhotoBytes': len(photo), 'sha256Verified': True}), flush=True)
+                    await write(writer, '250 2.0.0 photo byte hash verified\r\n' if valid else '550 5.7.1 synthetic photo bytes or MIME differ\r\n')
+                elif parsed.get('Bcc') is not None:
                     await write(writer, '550 5.7.1 Bcc must not be present in delivered headers\r\n')
                 elif 'synthetic' not in text.lower():
                     await write(writer, '550 5.7.1 fixture accepts synthetic tests only\r\n')
