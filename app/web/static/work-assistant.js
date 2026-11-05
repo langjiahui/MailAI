@@ -7,7 +7,7 @@
   let memoryScheduler=null,scheduledAccount=null;
   const scopePicker = document.getElementById('assistant-scope-picker');
   const eligible = row => !['trash','spam','quarantine','draft','sent'].includes(row?.status);
-  const inputPlaceholder = () => target() ? w('talkPlaceholder') : mailaiText('问问你的邮箱…');
+  const inputPlaceholder = () => target() ? w('talkPlaceholder') : mailaiT('asst.inputPh') || MAILAI_I18N_CHINESE['asst.inputPh'];
   function target() {
     const account = activeMailAccount()?.id;
     const ids = assistantPinnedScope || (document.getElementById('assistant-scope').value === 'selected' && selectedEmailId ? [selectedEmailId] : null);
