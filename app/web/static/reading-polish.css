@@ -634,14 +634,14 @@ html[data-theme] body #reading-empty .reading-start-actions button:disabled { op
   background:transparent!important; color:var(--desk-ink)!important;
   box-shadow:none!important;
 }
-#reading-content .reading-header .reading-actions :is(.reading-reply-group>.reading-icon-action,.reading-work-actions>button,.reading-ai-group>button,.reading-more-actions>summary):hover,
-#reading-content .reading-header .reading-actions .reading-more-actions[open]>summary {
+#app #reading-content .reading-header .reading-actions :is(.reading-reply-group>.reading-icon-action,.reading-work-actions>button,.reading-ai-group>button,.reading-more-actions>summary):hover,
+#app #reading-content .reading-header .reading-actions .reading-more-actions[open]>summary {
   background:var(--desk-hover)!important; border-color:transparent!important; color:var(--desk-ink)!important;
 }
-#reading-content .reading-header .reading-actions .reading-reply-group>button.reading-primary-action {
+#app #reading-content .reading-header .reading-actions button.reading-primary-action {
   background:var(--desk-selected)!important; color:var(--desk-ink)!important; border-color:transparent!important;
 }
-#reading-content .reading-header .reading-actions .reading-reply-group>button.reading-primary-action:hover { background:var(--desk-hover)!important; filter:none; }
+#app #reading-content .reading-header .reading-actions button.reading-primary-action:hover { background:var(--desk-hover)!important; filter:none; }
 #reading-content .reading-header .reading-actions :is(button,summary):focus-visible,
 #reading-content .reading-attachments :is(a,button):focus-visible {
   outline:2px solid var(--desk-accent)!important; outline-offset:3px;
