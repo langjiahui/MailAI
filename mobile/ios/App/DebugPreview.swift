@@ -149,7 +149,16 @@ import MailAICore
             (text as NSString).draw(in: CGRect(x: 48, y: 72, width: 499, height: 650), withAttributes: [.font: UIFont.systemFont(ofSize: 24), .foregroundColor: UIColor.label])
         }
     }
+    static var notificationService: any MailService { Service() }
+    static var notificationCredentials: [AccountCredential] {
+        var account = MailAccount(id: UUID(uuidString: "00000000-0000-0000-0000-000000000011")!)
+        account.email = "demo@example.com"; account.suggestServers()
+        return [.init(account: account, password: "synthetic-notification-only")]
+    }
     static func store() throws -> MailStore {
+        UserDefaults.standard.set(false, forKey: "mail.background")
+        UserDefaults.standard.set(false, forKey: "mail.notificationPreview")
+        BackgroundMail.shared.stop()
         var account = MailAccount(); account.email = "demo@example.com"; account.displayName = "测试邮箱"; account.suggestServers()
         let cacheRoot = FileManager.default.temporaryDirectory.appendingPathComponent("MailAI-UI-" + UUID().uuidString)
         let files = try MailFiles(root: cacheRoot)
@@ -171,6 +180,9 @@ import MailAICore
         }
         let result = MailStore(vault: Vault(CommandLine.arguments.contains("--ui-empty-accounts") ? [] : entries), files: files, service: Service())
         if CommandLine.arguments.contains("--ui-start-trash") { try result.selectFolder("Trash") }
+        if CommandLine.arguments.contains("--ui-notification-open") {
+            BackgroundMail.shared.pendingTarget = .init(accountID: account.id, uid: 7, validity: CommandLine.arguments.contains("--ui-stale-notification") ? 99 : 10)
+        }
         return result
     }
 }

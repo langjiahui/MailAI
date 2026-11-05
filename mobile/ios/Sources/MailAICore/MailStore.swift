@@ -47,6 +47,7 @@ public extension MailService {
 }
 
 @MainActor @Observable public final class MailStore {
+    public private(set) var startupReady = false
     public private(set) var accounts: [MailAccount] = []
     public private(set) var selectedID: UUID?
     public private(set) var folders: [MailFolder] = [.init(name: "INBOX")]
@@ -80,6 +81,7 @@ public extension MailService {
         do {
             credentials = try vault.load(); accounts = credentials.map(\.account)
             if let first = accounts.first { try selectAccount(first.id) }
+            startupReady = true
         } catch { self.error = "本地数据读取失败：\(error.localizedDescription)" }
     }
     public var selected: MailAccount? { accounts.first { $0.id == selectedID } }
@@ -529,6 +531,17 @@ public extension MailService {
         return input.filter { $0.involves(address) }.sorted { ($0.date ?? .distantPast) > ($1.date ?? .distantPast) }.filter {
             seen.insert($0.correspondenceID).inserted
         }
+    }
+    public func messageForNotification(_ target: MailNotificationTarget) async throws -> MailSummary? {
+        guard accounts.contains(where: { $0.id == target.accountID }) else { throw MailFailure.invalid("通知对应的邮箱已移除。") }
+        if selectedID != target.accountID { try selectAccount(target.accountID) }
+        try selectFolder("INBOX"); cancelRefresh()
+        let entry = try credential()
+        let result = try await service.summaries(entry, folder: "INBOX", limit: 500)
+        try Task.checkCancellation(); guard selectedID == entry.account.id, folder == "INBOX" else { throw CancellationError() }
+        try files.write(result, account: entry.account.id, key: "list:INBOX")
+        messages = result; lastRefresh = Date()
+        return result.first { $0.uid == target.uid && $0.validity == target.validity }
     }
     public func refreshAllInboxes() async throws {
         cancelRefresh()

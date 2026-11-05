@@ -3,7 +3,7 @@ import MailAICore
 import ContactsUI
 
 enum InboxDestination: String, Hashable, Identifiable {
-    case contacts, settings
+    case contacts, settings, notifications
     var id: String { rawValue }
 }
 

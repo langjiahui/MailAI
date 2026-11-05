@@ -8,6 +8,50 @@ import CryptoKit
 @testable import MailAI
 
 final class ProtocolTests: XCTestCase {
+    @MainActor func testBackgroundCredentialsUseSeparateAfterFirstUnlockRecordAndCanBeRemoved() throws {
+        let foregroundService = "com.mailai.tests.foreground." + UUID().uuidString
+        let backgroundService = "com.mailai.tests.background." + UUID().uuidString
+        let foreground = KeychainVault(service: foregroundService)
+        let background = KeychainVault(service: backgroundService, backgroundAccess: true)
+        defer { try? foreground.remove(); try? background.remove() }
+        let entry = credential(); try foreground.save([entry])
+        // Existing records must migrate their attributes when enabling background access.
+        try KeychainVault(service: backgroundService).save([entry]); try background.save([entry])
+        func accessibility(_ service: String) throws -> String {
+            var value: CFTypeRef?
+            let result = SecItemCopyMatching([kSecClass: kSecClassGenericPassword, kSecAttrService: service, kSecAttrAccount: "accounts", kSecReturnAttributes: true] as CFDictionary, &value)
+            XCTAssertEqual(result, errSecSuccess)
+            return try XCTUnwrap((value as? [String: Any])?[kSecAttrAccessible as String] as? String)
+        }
+        XCTAssertEqual(try accessibility(foregroundService), kSecAttrAccessibleWhenUnlockedThisDeviceOnly as String)
+        XCTAssertEqual(try accessibility(backgroundService), kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly as String)
+        try background.remove(); XCTAssertTrue(try background.load().isEmpty)
+        XCTAssertEqual(try foreground.load().first?.password, "synthetic-password")
+    }
+    @MainActor func testNotificationStateHasBackgroundProtectionWhileBodiesAndAttachmentsStayLocked() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let account = UUID(), privateRoot = root.appendingPathComponent("private")
+        let files = try MailFiles(root: privateRoot)
+        try files.write(["synthetic private body"], account: account, key: "body")
+        try files.writeData(Data("synthetic attachment".utf8), account: account, key: "attachment")
+        let notice = try MailNotificationFile(root: root.appendingPathComponent("notifications")); try notice.save(MailNotificationLedger())
+        #if targetEnvironment(simulator)
+        // Simulator reports the Mac volume's capabilities but does not return
+        // iPhone protection attributes. Verify IO here; the same test asserts
+        // actual protection classes on the physical iPhone before installation.
+        XCTAssertEqual(try files.read([String].self, account: account, key: "body"), ["synthetic private body"])
+        XCTAssertEqual(try files.readData(account: account, key: "attachment"), Data("synthetic attachment".utf8))
+        XCTAssertTrue(try notice.load().pending.isEmpty)
+        #else
+        for file in try FileManager.default.contentsOfDirectory(at: privateRoot.appendingPathComponent(account.uuidString), includingPropertiesForKeys: nil) {
+            let attrs = try FileManager.default.attributesOfItem(atPath: file.path)
+            XCTAssertEqual(attrs[.protectionKey] as? String, FileProtectionType.complete.rawValue)
+        }
+        XCTAssertEqual(try FileManager.default.attributesOfItem(atPath: notice.url.path)[.protectionKey] as? String, FileProtectionType.completeUntilFirstUserAuthentication.rawValue)
+        XCTAssertEqual(try FileManager.default.attributesOfItem(atPath: notice.url.deletingLastPathComponent().path)[.protectionKey] as? String, FileProtectionType.completeUntilFirstUserAuthentication.rawValue)
+        #endif
+    }
     func testCorrespondencePaginationAdvancesEvenWhenHeaderSearchOnlyHasFalsePositives() async throws {
         let service = NativeMailService(), entry = credential()
         let first = try await service.correspondencePage(entry, folder: "INBOX", address: "paging@example.com", beforeUID: nil, limit: 1)

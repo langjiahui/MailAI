@@ -712,15 +712,99 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '合成附件下载失败'")).firstMatch.waitForExistence(timeout: 5)); attach("redesign-attachment-failure")
         XCTAssertTrue(app.buttons["回复全部"].exists)
     }
+    private func allowNotificationPermission(in app: XCUIApplication) {
+        if app.buttons["打开系统通知设置"].exists {
+            app.buttons["打开系统通知设置"].tap()
+            let settings = XCUIApplication(bundleIdentifier: "com.apple.Preferences")
+            XCTAssertTrue(settings.wait(for: .runningForeground, timeout: 5))
+            func allowSwitch() -> XCUIElement { settings.switches["Allow Notifications"].exists ? settings.switches["Allow Notifications"] : settings.switches["允许通知"] }
+            if !allowSwitch().waitForExistence(timeout: 2) {
+                for _ in 0..<8 {
+                    let row = settings.staticTexts["Notifications"].exists ? settings.staticTexts["Notifications"] : settings.staticTexts["通知"]
+                    if row.exists && row.isHittable { row.tap(); break }
+                    settings.swipeUp()
+                }
+                if !allowSwitch().waitForExistence(timeout: 2) {
+                    for _ in 0..<12 {
+                        let mail = settings.staticTexts["MailAI"]
+                        if mail.exists && mail.isHittable { mail.tap(); break }
+                        settings.swipeUp()
+                    }
+                }
+            }
+            let toggle = allowSwitch()
+            XCTAssertTrue(toggle.waitForExistence(timeout: 5)); if toggle.value as? String == "0" { toggle.tap() }
+            app.activate()
+        } else {
+            app.buttons["申请通知权限"].tap()
+            let alert = XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.firstMatch
+            if alert.waitForExistence(timeout: 2) {
+                let allow = alert.buttons["Allow"].exists ? alert.buttons["Allow"] : alert.buttons["允许"]
+                XCTAssertTrue(allow.exists); allow.tap()
+            }
+        }
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '通知权限' AND label CONTAINS '已允许'")).firstMatch.waitForExistence(timeout: 5))
+    }
+    func testNotificationRouteOpensExactMessageAndRejectsStaleMailbox() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-fixture", "--ui-notification-open"]
+        app.launch()
+        XCTAssertTrue(app.buttons["回复全部"].waitForExistence(timeout: 10)); XCTAssertTrue(app.staticTexts["项目资料确认与下一步安排"].exists)
+        attach("notification-opens-mail-reader")
+        app.terminate(); app.launchArguments.append("--ui-stale-notification"); app.launch()
+        XCTAssertTrue(app.buttons["compose-mail"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '邮件可能已移动或删除'")).firstMatch.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["回复全部"].exists)
+        attach("notification-stale-target-inbox")
+    }
+    func testNotificationSettingsEnableCheckPreviewAndDisable() {
+        let app = launch(); openSection("设置", in: app); app.buttons["后台收信与通知"].tap()
+        allowNotificationPermission(in: app)
+        let enabled = app.switches["background-mail-toggle"]
+        XCTAssertTrue(enabled.waitForExistence(timeout: 5)); enabled.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        XCTAssertTrue(app.buttons["notification-check-now"].waitForExistence(timeout: 5))
+        app.swipeUp()
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '检查完成'")).firstMatch.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["尚无系统后台检查记录"].exists, "Manual checks must not masquerade as an actual system background task")
+        attach("notifications-enabled-and-checked")
+        app.swipeDown(); app.swipeDown()
+        app.switches["提醒中显示发件人和主题"].coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        attach("notifications-preview-opt-in")
+        app.switches["background-mail-toggle"].coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        app.swipeUp(); XCTAssertFalse(app.buttons["notification-check-now"].isEnabled)
+        attach("notifications-disabled")
+    }
+    func testLocalNotificationAppearsInBackgroundAndOpensSettings() {
+        let app = launch(); openSection("设置", in: app); app.buttons["后台收信与通知"].tap()
+        allowNotificationPermission(in: app)
+        app.swipeUp()
+        let test = app.buttons["notification-test"]
+        XCTAssertTrue(test.waitForExistence(timeout: 5)); test.tap()
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '已提交测试提醒'")).firstMatch.waitForExistence(timeout: 5))
+        attach("notification-test-submitted")
+        XCUIDevice.shared.press(.home)
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let notice = springboard.staticTexts["MailAI 测试提醒"]
+        XCTAssertTrue(notice.waitForExistence(timeout: 18)); attach("notification-background-banner")
+        notice.tap()
+        XCTAssertTrue(app.navigationBars["后台收信与通知"].waitForExistence(timeout: 8))
+        attach("notification-tap-opens-settings")
+    }
     func testNativeNotificationPermissionIsUserTriggered() {
         let app = launch()
         openSection("设置", in: app); app.buttons["后台收信与通知"].tap()
+        let firstRequest = app.staticTexts.containing(NSPredicate(format: "label CONTAINS '通知权限' AND label CONTAINS '尚未申请'")).firstMatch.exists
         app.buttons["申请通知权限"].tap()
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         let alert = springboard.alerts.firstMatch
-        XCTAssertTrue(alert.waitForExistence(timeout: 5)); attach("redesign-system-notification-permission")
-        let deny = alert.buttons["Don’t Allow"].exists ? alert.buttons["Don’t Allow"] : (alert.buttons["Don't Allow"].exists ? alert.buttons["Don't Allow"] : alert.buttons["不允许"])
-        XCTAssertTrue(deny.exists); deny.tap()
+        if firstRequest {
+            XCTAssertTrue(alert.waitForExistence(timeout: 5)); attach("redesign-system-notification-permission")
+            let deny = alert.buttons["Don’t Allow"].exists ? alert.buttons["Don’t Allow"] : (alert.buttons["Don't Allow"].exists ? alert.buttons["Don't Allow"] : alert.buttons["不允许"])
+            XCTAssertTrue(deny.exists); deny.tap()
+            XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '通知权限' AND label CONTAINS '已关闭'")).firstMatch.waitForExistence(timeout: 5))
+        } else {
+            XCTAssertFalse(alert.exists, "iOS must not ask again after a decision")
+            XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '通知权限' AND label CONTAINS '已允许'")).firstMatch.exists || app.buttons["打开系统通知设置"].exists)
+        }
     }
     func testDraftAttachmentsFormatAndDecisionDialogs() {
         let app = launch(extra: ["--ui-records"])

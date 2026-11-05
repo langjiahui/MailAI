@@ -26,20 +26,24 @@ import Logging
     var body: some Scene {
         WindowGroup {
             Group {
-                if let store {
+                if let store, store.startupReady {
                     if store.accounts.isEmpty { WelcomeView(store: store) }
                     else { InboxView(store: store) }
                 }
                 else {
-                    ContentUnavailableView { Label("存储暂不可用", systemImage: "externaldrive.badge.exclamationmark") } description: { Text(startupError ?? "请重试，现有数据会保留。") } actions: {
+                    ContentUnavailableView { Label("存储暂不可用", systemImage: "externaldrive.badge.exclamationmark") } description: { Text(startupError ?? store?.error ?? "请重试，现有数据会保留。") } actions: {
                         Button("重试") { retryStorage() }.buttonStyle(.borderedProminent)
                     }
                 }
             }.tint(MailTheme.blue)
                 .preferredColorScheme(appearance == "system" ? nil : (appearance == "dark" ? .dark : .light))
+                .task { if scenePhase == .active { BackgroundMail.shared.activate() } }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.protectedDataDidBecomeAvailableNotification)) { _ in if store?.startupReady != true { retryStorage() } }
+                .onChange(of: store?.accounts) { _, _ in try? BackgroundMail.shared.synchronizeAccounts() }
                 .onChange(of: scenePhase) { _, phase in
-                    if phase == .active { BackgroundMail.shared.cancelRunning(); store?.refresh() }
-                    else { store?.cancelRefresh(); BackgroundMail.shared.schedule() }
+                    if phase == .active { if let store, !store.startupReady { retryStorage() }; store?.refresh(); BackgroundMail.shared.activate() }
+                    else if phase == .inactive { try? BackgroundMail.shared.synchronizeAccounts() }
+                    else if phase == .background { store?.cancelRefresh(); BackgroundMail.shared.enterBackground() }
                 }
         }
     }
@@ -90,6 +94,10 @@ struct InboxView: View {
     @State private var searching = false
     @State private var searchHeaderVisible = true
     @State private var showingDrafts = false
+    @State private var notificationMessage: MailSummary?
+    @State private var notificationTask: Task<Void, Never>?
+    @State private var notificationOpening = false
+    @State private var notificationGeneration = UUID()
     @State private var selecting = false
     @State private var selection = Set<String>()
     @State private var moveRequest: MailMoveRequest?
@@ -112,13 +120,42 @@ struct InboxView: View {
     private var unreadCount: Int { unified ? unifiedMessages.filter { $0.summary.unread }.count : store.messages.filter(\.unread).count }
     var body: some View {
         NavigationStack {
-            mailContent.navigationDestination(item: $destination) { destination in
+            mailContent.navigationDestination(isPresented: Binding(get: { notificationMessage != nil }, set: { if !$0 { notificationMessage = nil } })) { if let notificationMessage { ReaderView(store: store, summary: notificationMessage) } }
+                .navigationDestination(item: $destination) { destination in
                 switch destination {
                 case .contacts: ContactsView(store: store).toolbar(.visible, for: .navigationBar)
                 case .settings: SettingsView(store: store, addingAccount: $addingAccount).toolbar(.visible, for: .navigationBar)
+                case .notifications: BackgroundSettingsView()
                 }
             }
         }
+        .disabled(notificationOpening)
+        .overlay {
+            if notificationOpening {
+                VStack(spacing: 14) { ProgressView("正在打开通知邮件…"); Button("取消打开") { notificationTask?.cancel() } }
+                    .padding(24).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+            }
+        }
+        .onChange(of: BackgroundMail.shared.pendingTarget, initial: true) { _, target in
+            guard let target else { return }
+            BackgroundMail.shared.pendingTarget = nil
+            notificationTask?.cancel(); notificationGeneration = UUID(); let token = notificationGeneration; notificationOpening = true
+            notificationTask = Task {
+                defer { if notificationGeneration == token { notificationOpening = false } }
+                do {
+                    guard !store.sending, !store.operating else { throw MailFailure.invalid("请等待当前操作完成。") }
+                    try store.saveDraft()
+                    let message = try await store.messageForNotification(target)
+                    try Task.checkCancellation(); guard notificationGeneration == token else { return }
+                    composing = false; addingAccount = false; mailboxes = false; searching = false; showingDrafts = false; destination = nil
+                    notificationMessage = message
+                    if message == nil { store.error = "邮件可能已移动或删除，已打开对应收件箱供你核对。" }
+                }
+                catch { if !Task.isCancelled { store.error = "暂时无法打开通知邮件，请保存当前编辑或操作后重试。" } }
+            }
+        }
+        .onChange(of: BackgroundMail.shared.pendingSettings, initial: true) { _, value in if value { BackgroundMail.shared.pendingSettings = false; destination = .notifications } }
+        .onChange(of: BackgroundMail.shared.refreshID) { _, _ in if store.folder == "INBOX" && !store.operating { store.refresh() } }
         .sheet(isPresented: $addingAccount) { NavigationStack { AccountView(store: store) } }
         .sheet(isPresented: $composing) { ComposerView(store: store) }
         .sheet(isPresented: $showingDrafts) { DraftsView(store: store) }

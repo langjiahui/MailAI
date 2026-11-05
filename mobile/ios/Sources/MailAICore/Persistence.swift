@@ -15,7 +15,8 @@ public struct AccountCredential: Codable, Sendable {
 
 @MainActor public final class KeychainVault: CredentialStorage {
     private let service: String
-    public init(service: String = "com.mailai.ios.accounts.v1") { self.service = service }
+    private let backgroundAccess: Bool
+    public init(service: String = "com.mailai.ios.accounts.v1", backgroundAccess: Bool = false) { self.service = service; self.backgroundAccess = backgroundAccess }
     private var query: [String: Any] {
         [kSecClass as String: kSecClassGenericPassword,
          kSecAttrService as String: service, kSecAttrAccount as String: "accounts"]
@@ -33,13 +34,17 @@ public struct AccountCredential: Codable, Sendable {
     public func save(_ credentials: [AccountCredential]) throws {
         let values: [String: Any] = [
             kSecValueData as String: try JSONEncoder().encode(credentials),
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+            kSecAttrAccessible as String: backgroundAccess ? kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly : kSecAttrAccessibleWhenUnlockedThisDeviceOnly
         ]
         var status = SecItemUpdate(query as CFDictionary, values as CFDictionary)
         if status == errSecItemNotFound {
             status = SecItemAdd(query.merging(values) { _, new in new } as CFDictionary, nil)
         }
         guard status == errSecSuccess else { throw keychainError(status) }
+    }
+    public func remove() throws {
+        let status = SecItemDelete(query as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else { throw keychainError(status) }
     }
     private func keychainError(_ status: OSStatus) -> Error {
         let message = status == errSecMissingEntitlement
