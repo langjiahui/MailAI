@@ -733,25 +733,30 @@ function addReadingActions(force = false) {
 function updateAssistantScopeControl() {
   const mode = document.getElementById('assistant-scope').value;
   const ids = assistantPinnedScope || (mode === 'selected' && selectedEmailId ? [selectedEmailId] : null);
-  let label = mode === 'filtered' ? mailaiText('当前列表 · 本邮箱') : mode === 'selected' ? mailaiText('正在阅读的邮件') : mailaiText('当前邮箱');
-  if (ids?.length === 1) {
-    const row = selectedEmailDetail?.id === ids[0] ? selectedEmailDetail : allEmails.find(item => {
-      const owner = item._account_id || item.account_id;
-      return item.id === ids[0] && (!owner || owner === activeMailAccount()?.id);
-    });
-    label = row?.subject || mailaiText('这封邮件');
-  } else if (ids?.length) label = mailaiTemplate`${ids.length} 封指定邮件`;
+  const scopeLabel = () => {
+    let label = mode === 'filtered' ? mailaiText('当前列表 · 本邮箱') : mode === 'selected' ? mailaiText('正在阅读的邮件') : mailaiText('当前邮箱');
+    if (ids?.length === 1) {
+      const row = selectedEmailDetail?.id === ids[0] ? selectedEmailDetail : allEmails.find(item => {
+        const owner = item._account_id || item.account_id;
+        return item.id === ids[0] && (!owner || owner === activeMailAccount()?.id);
+      });
+      label = row?.subject || mailaiText('这封邮件');
+    } else if (ids?.length) label = mailaiTemplate`${ids.length} 封指定邮件`;
+    return label;
+  };
   const node = document.getElementById('assistant-scope-label');
-  node.textContent = label;
-  mailaiBindUI(node, "title", () => (`${activeMailAccount()?.user || mailaiText('当前邮箱')} · ${label}`));
+  node.removeAttribute('data-i18n');
+  mailaiBindUI(node, 'textContent', scopeLabel);
+  mailaiBindUI(node, "title", () => (`${activeMailAccount()?.user || mailaiText('当前邮箱')} · ${scopeLabel()}`));
   const note = document.getElementById('assistant-scope-note');
   if (note) mailaiBindUI(note, "textContent", () => (mailaiTemplate`${activeMailAccount()?.user || mailaiText('当前邮箱')} · ${ids?.length ? mailaiTemplate`已固定 ${ids.length} 封邮件` : mode === 'filtered' ? mailaiText('列表中属于本邮箱的邮件') : mailaiText('全部已同步邮件')} · 每次最多分析 20 封`));
-  mailaiBindUI(document.querySelector('#assistant-scope-picker summary'), "@aria-label", () => (mailaiTemplate`参考范围：${label}，点击更改`));
+  mailaiBindUI(document.querySelector('#assistant-scope-picker summary'), "@aria-label", () => (mailaiTemplate`参考范围：${scopeLabel()}，点击更改`));
   document.getElementById('assistant-scope-clear').classList.toggle('hidden', mode === 'account');
   document.querySelectorAll('[data-assistant-scope]').forEach(button => {
     button.setAttribute('aria-pressed', String(button.dataset.assistantScope === mode));
     button.disabled = button.dataset.assistantScope === 'selected' && !selectedEmailId && !assistantPinnedScope;
   });
+  window.mailaiWorkGuide?.refresh();
 }
 
 let assistantListScroll = null;

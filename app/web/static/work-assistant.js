@@ -1,134 +1,248 @@
-/* Work assistance is lazy, account-bound and never submits a message. */
+/* Work guidance belongs to XiaoYou's existing mail context, never the reader. */
 (() => {
   const w = key => mailaiT(`work.${key}`) || MAILAI_UI_COPY[`work.${key}`]?.[0] || key;
   const button = (action, label) => `<button type="button" data-work="${action}" data-i18n="work.${label}">${esc(w(label))}</button>`;
-  let loaded = null, ticket = 0;
-  const eligible = email => !['trash','spam','quarantine','draft','sent'].includes(email.status);
-  window.mailaiWorkAction = email => !eligible(email) ? '' : `<button type="button" data-reading-action="work" data-work-toggle="${Number(email.id)}" aria-expanded="false" aria-controls="work-panel-${Number(email.id)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h5m-5 4h8"/></svg><span data-i18n="work.understand">${esc(w('understand'))}</span></button>`;
-  window.mailaiWorkCard = email => !eligible(email) ? '' :
-    `<section class="work-card" id="work-panel-${Number(email.id)}" aria-labelledby="work-title-${Number(email.id)}" data-work-email="${Number(email.id)}" data-work-account="${esc(activeMailAccount()?.id || '')}" hidden><header><h3 id="work-title-${Number(email.id)}" data-work-title tabindex="-1" data-i18n="work.title">${esc(w('title'))}</h3><div>${button('reply','reply')}${email.attachments?.some(item => /\.(?:xlsx?|docx|pdf)$/i.test(item.name || '')) ? button('document','document') : ''}${button('close','collapse')}</div></header><div data-work-content hidden></div></section>`;
-  const live = (host, account, id) => host.isConnected && activeMailAccount()?.id === account && selectedEmailDetail?.id === id;
   const post = body => ({headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
-  function setOpen(host, open, focus = true) {
-    host.hidden = !open;
-    const trigger = document.querySelector(`[data-work-toggle="${host.dataset.workEmail}"]`);
-    trigger?.setAttribute('aria-expanded', String(open));
-    if (focus) {
-      const target = open ? host.querySelector('[data-work-title]') :
-        trigger?.closest('.reading-more-actions')?.querySelector('summary') || trigger;
-      target?.focus({preventScroll:true});
+  const assistant = document.getElementById('assistant-panel');
+  const scopePicker = document.getElementById('assistant-scope-picker');
+  const eligible = row => !['trash','spam','quarantine','draft','sent'].includes(row?.status);
+  function target() {
+    const account = activeMailAccount()?.id;
+    const ids = assistantPinnedScope || (document.getElementById('assistant-scope').value === 'selected' && selectedEmailId ? [selectedEmailId] : null);
+    if (!account || document.getElementById('assistant-scope').value !== 'selected' || assistantSearchMode || ids?.length !== 1) return null;
+    if (assistantScopeKey) {
+      try { if (JSON.parse(assistantScopeKey)[0] !== account) return null; } catch (_) { return null; }
     }
+    const id = Number(ids[0]);
+    if (!Number.isInteger(id) || id <= 0) return null;
+    const row = Number(selectedEmailDetail?.id) === id && (selectedEmailAccountId || account) === account ? selectedEmailDetail :
+      allEmails.find(item => Number(item.id) === id && (item._account_id || item.account_id || account) === account);
+    if (row && !eligible(row)) return null;
+    return {account,id,row,key:`${account}:${id}`,revision:assistantRevision};
   }
-  new MutationObserver(() => {
-    if (loaded && !loaded.host.isConnected) loaded = null;
-  }).observe(document.getElementById('reading-content'),{childList:true});
-  function render(host, data) {
-    const progress = data.progress;
-    const content = host.querySelector('[data-work-content]');
-    content.hidden = false;
-    const requests = data.requests.map(text => `<li>${esc(text)}</li>`).join('');
-    const notes = data.context.filter(row => row.project || row.role || row.note);
-    content.innerHTML = `<p><strong>${esc(mailaiSystemMessage(progress.status))}</strong> · ${esc(mailaiSystemMessage(progress.next_step))}</p>
-      ${data.waiting_review ? `<p class="work-attention">${esc(w('waitingReview'))}</p>` : ''}
-      ${requests ? `<details open><summary>${esc(w('requests'))}</summary><ul>${requests}</ul></details>` : `<p>${esc(w('noRequests'))}</p>`}
-      ${progress.changes.items.length ? `<p>${esc(w('changes'))} ${progress.changes.items.length} · ${esc(progress.changes.items[0].quote)}</p>` : ''}
-      ${notes.length ? `<details><summary>${esc(w('saved'))}</summary>${notes.map(row => `<article><b>${esc(row.project)}</b><p>${esc(row.role)}</p><p>${esc(row.note)}</p><small>${esc(row.updated_at)}</small></article>`).join('')}</details>` : ''}
-      <div class="work-actions">${button('progress','progress')}${button('plan','plan')}${button('memory','memory')}${button('refresh','refresh')}</div><small>${esc(w('scope'))}</small>`;
+  const tools = document.createElement('section');
+  tools.id = 'assistant-work-tools'; tools.hidden = true;
+  tools.innerHTML = `<button type="button" data-work-context><span data-i18n="work.savedContext">${esc(w('savedContext'))}</span></button>`;
+  scopePicker.querySelector('.assistant-scope-options').append(tools);
+  function positionReferenceTools() {
+    if (!scopePicker.open) return;
+    const menu = scopePicker.querySelector('.assistant-scope-options');
+    const anchor = scopePicker.querySelector('summary').getBoundingClientRect();
+    const panelBounds = assistant.getBoundingClientRect();
+    const top = Math.max(8,panelBounds.top+8), bottom = Math.min(innerHeight-8,panelBounds.bottom-8);
+    const left = Math.max(8,panelBounds.left+8), right = Math.min(innerWidth-8,panelBounds.right-8);
+    menu.style.transform = 'none';
+    const scale = menu.getBoundingClientRect().width / menu.offsetWidth || 1;
+    const above = Math.max(0,anchor.top-top-8*scale), below = Math.max(0,bottom-anchor.bottom-8*scale);
+    const upward = above >= below;
+    menu.style.boxSizing = 'border-box';
+    menu.style.maxHeight = `${(upward ? above : below)/scale}px`;
+    menu.style.top = upward ? 'auto' : 'calc(100% + 8px)';
+    menu.style.bottom = upward ? 'calc(100% + 8px)' : 'auto';
+    const bounds = menu.getBoundingClientRect();
+    const x = Math.max(left,Math.min(bounds.left,right-bounds.width));
+    menu.style.transform = `translateX(${(x-bounds.left)/scale}px)`;
   }
-  async function load(host) {
-    const account = host.dataset.workAccount, id = Number(host.dataset.workEmail), rev = ++ticket;
-    const content = host.querySelector('[data-work-content]');
-    content.hidden = false;
-    content.setAttribute('aria-busy','true');
-    content.innerHTML = `<p role="status">${esc(w('loading'))}</p>`;
-    try {
-      const data = await api(`/api/work/emails/${id}`, {accountId:account});
-      if (!live(host,account,id) || rev !== ticket) return;
-      loaded = {data,host,account,id};
-      render(host,data);
-    } catch (error) {
-      if (live(host,account,id) && rev === ticket) content.innerHTML = `<p role="status">${esc(w('retry'))} ${esc(mailaiSystemMessage(error.message))}</p>${button('refresh','refresh')}`;
-    } finally { if (rev === ticket) content.removeAttribute('aria-busy'); }
+  let positionFrame = 0;
+  const schedulePosition = () => {
+    if (positionFrame || !scopePicker.open) return;
+    positionFrame = requestAnimationFrame(() => { positionFrame=0; positionReferenceTools(); });
+  };
+  scopePicker.addEventListener('toggle',schedulePosition);
+  window.addEventListener('resize',schedulePosition);
+  new ResizeObserver(schedulePosition).observe(assistant);
+  function refresh() {
+    const state = target();
+    mailaiBindUI(document.getElementById('assistant-input'),'@placeholder',()=>target() ? w('talkPlaceholder') : mailaiT('asst.inputPh'));
+    tools.hidden = !state;
+    schedulePosition();
+    const welcome = document.querySelector('#assistant-messages .assistant-welcome');
+    if (!welcome || (welcome.dataset.workScope || '') === (state?.key || '')) return;
+    const title = welcome.querySelector('h3'), hint = welcome.querySelector(':scope>p'), quick = welcome.querySelector('.assistant-quick');
+    if (state) {
+      welcome.dataset.workScope = state.key;
+      welcome.classList.add('assistant-conversation-guide');
+      title.dataset.i18n = 'work.welcomeTitle'; title.textContent = w('welcomeTitle');
+      hint.dataset.i18n = 'work.welcomeHint'; hint.textContent = w('welcomeHint');
+      quick.innerHTML = `<button type="button" data-assistant-question="${esc(w('understandPrompt'))}"><span data-i18n="work.talkUnderstand">${esc(w('talkUnderstand'))}</span></button><button type="button" data-assistant-question="${esc(w('replyPrompt'))}"><span data-i18n="work.talkReply">${esc(w('talkReply'))}</span></button>`;
+    } else {
+      delete welcome.dataset.workScope;
+      welcome.classList.remove('assistant-conversation-guide');
+      const template = document.getElementById('assistant-welcome-template').content;
+      title.replaceWith(template.querySelector('h3').cloneNode(true));
+      hint.replaceWith(template.querySelector('.assistant-welcome>p').cloneNode(true));
+      quick.replaceChildren(...template.querySelector('.assistant-quick').cloneNode(true).childNodes);
+    }
+    applyI18n(welcome);
   }
-  async function memory(host) {
-    if (loaded?.host !== host) await load(host);
-    const state = loaded;
-    if (!state || state.host !== host || !live(host,state.account,state.id)) return;
-    const row = state.data.context.find(item => item.email_id === state.id) || {};
-    const dialog = document.createElement('dialog');
-    dialog.className = 'work-dialog';
-    dialog.setAttribute('aria-label',w('memory'));
-    dialog.innerHTML = `<form><header><h2>${esc(w('memory'))}</h2><button type="button" data-close aria-label="${esc(w('close'))}">✕</button></header>
-      <p>${esc(w('memoryHint'))}</p><label>${esc(w('project'))}<input name="project" maxlength="200" value="${esc(row.project || '')}"></label>
-      <label>${esc(w('role'))}<input name="role" maxlength="200" value="${esc(row.role || '')}"></label>
-      <label>${esc(w('note'))}<textarea name="note" maxlength="2000">${esc(row.note || '')}</textarea></label>
-      <label>${esc(w('style'))}<textarea name="style" maxlength="1000">${esc(state.data.preferences.style)}</textarea></label>
-      <p role="status" data-status></p><footer>${button('clear','clear')}<button type="submit">${esc(w('save'))}</button></footer></form>`;
+  window.mailaiWorkGuide = {refresh};
+  assistant.addEventListener('click', event => {
+    if (!event.target.closest('[data-work-context]')) return;
+    const state = target();
+    if (!state) return;
+    scopePicker.open = false;
+    if (assistantController) return toast(mailaiText('请先等待当前回答完成，或停止生成'),'warn');
+    askAssistant(w('contextPrompt'),[state.id]);
+  });
+  const input = document.getElementById('assistant-input');
+  input.removeAttribute('data-i18n-placeholder');
+  mailaiBindUI(input,'@placeholder',()=>target() ? w('talkPlaceholder') : mailaiT('asst.inputPh'));
+  document.addEventListener('mailai:language-changed', refresh);
+  refresh();
+
+  const memoryControls=document.getElementById('xiaoyou-memory-controls');
+  const memoryPanel=document.querySelector('[data-system-panel="xiaoyou"]');
+  const memoryUse=memoryControls.querySelector('[data-memory-enabled]'), memoryAuto=memoryControls.querySelector('[data-memory-auto]'), memoryClear=memoryControls.querySelector('[data-memory-clear]'), memoryStatus=memoryControls.querySelector('[data-memory-control-status]');
+  let memoryState=null,memoryAccount=null,memoryBusy=false,memoryTicket=0;
+  function renderMemoryState(data){
+    memoryState=data;memoryUse.checked=data.enabled;memoryAuto.checked=data.auto_analyze;
+    memoryUse.disabled=false;memoryAuto.disabled=!data.enabled;memoryClear.disabled=false;
+    const summary=memoryControls.querySelector('[data-memory-summary]');
+    const rows=data.summary.filter(row=>row.kind!=='writing');
+    summary.innerHTML=`${data.writing_requirements?`<p><small>${esc(w('style'))}</small><br>${esc(data.writing_requirements)}</p>`:''}${rows.length?rows.slice(0,8).map(row=>`<p><small>${esc(w('kind.'+row.kind))}</small><br>${esc(row.preference)}</p>`).join(''):''}${!data.writing_requirements&&!rows.length?`<p>${esc(w('summaryEmpty'))}</p>`:''}`;
+  }
+  async function loadMemoryState(){
+    const account=activeMailAccount()?.id;if(!account)return;
+    const ticket=++memoryTicket,switched=memoryAccount!==account;memoryAccount=account;
+    memoryControls.querySelector('[data-memory-account]').textContent=`${w('memoryAccount')}${activeMailAccount()?.user||account}`;
+    if(switched){memoryState=null;memoryControls.querySelector('[data-memory-summary]').textContent='';}
+    clearConfirm.hidden=true;
+    memoryUse.disabled=memoryAuto.disabled=memoryClear.disabled=true;
+    try{
+      const data=await api('/api/work/memory/settings',{accountId:account});
+      if(ticket!==memoryTicket||activeMailAccount()?.id!==account)return;
+      renderMemoryState(data);memoryStatus.textContent='';
+    }catch(error){if(ticket===memoryTicket)memoryStatus.textContent=mailaiSystemMessage(error.message);}
+  }
+  new MutationObserver(()=>{if(!memoryPanel.classList.contains('hidden'))loadMemoryState();}).observe(memoryPanel,{attributes:true,attributeFilter:['class']});
+  for(const control of[memoryUse,memoryAuto])control.onchange=async()=>{
+    if(!memoryState||memoryBusy||activeMailAccount()?.id!==memoryAccount)return;
+    const account=memoryAccount,previous=memoryState;
+    memoryBusy=true;memoryUse.disabled=memoryAuto.disabled=memoryClear.disabled=true;
+    try{
+      const data=await api('/api/work/memory/settings',{accountId:account,method:'PUT',...post({enabled:memoryUse.checked,auto_analyze:memoryAuto.checked,revision:previous.revision})});
+      if(activeMailAccount()?.id!==account)return;renderMemoryState(data);memoryStatus.textContent=w('memorySettingsSaved');
+    }catch(error){if(activeMailAccount()?.id===account){renderMemoryState(previous);memoryStatus.textContent=mailaiSystemMessage(error.message);}}
+    finally{memoryBusy=false;}
+  };
+  const clearConfirm=memoryControls.querySelector('[data-memory-clear-confirm]');
+  memoryClear.onclick=()=>{clearConfirm.hidden=false;memoryControls.querySelector('[data-memory-clear-no]').focus();};
+  memoryControls.querySelector('[data-memory-clear-no]').onclick=()=>{clearConfirm.hidden=true;memoryClear.focus();};
+  memoryControls.querySelector('[data-memory-clear-yes]').onclick=async()=>{
+    if(!memoryState||memoryBusy||activeMailAccount()?.id!==memoryAccount)return;
+    memoryBusy=true;const account=memoryAccount;
+    memoryControls.querySelectorAll('button,input').forEach(node=>node.disabled=true);
+    try{
+      const data=await api('/api/work/memory/clear',{accountId:account,method:'POST',...post({revision:memoryState.revision})});
+      if(activeMailAccount()?.id!==account)return;renderMemoryState(data);clearConfirm.hidden=true;memoryStatus.textContent=w('memoriesCleared');
+    }catch(error){if(activeMailAccount()?.id===account){renderMemoryState(memoryState);memoryStatus.textContent=mailaiSystemMessage(error.message);}}
+    finally{memoryBusy=false;memoryControls.querySelectorAll('[data-memory-clear-confirm] button').forEach(node=>node.disabled=false);}
+  };
+  document.addEventListener('mailai:language-changed',()=>{if(memoryState)renderMemoryState(memoryState);});
+  // Run only after a completed conversation, while this window remains idle.
+  // The server rechecks switches, account, idle sources and generation revision.
+  let learnTimer=null,lastInteraction=Date.now();
+  for(const name of['pointerdown','keydown','input'])document.addEventListener(name,()=>{lastInteraction=Date.now();},{passive:true});
+  document.addEventListener('mailai:assistant-finished',event=>{
+    clearTimeout(learnTimer);const account=event.detail?.account;
+    const attempt=async()=>{
+      if(activeMailAccount()?.id!==account)return;
+      const remaining=95000-(Date.now()-lastInteraction);
+      if(assistantController||remaining>0){learnTimer=setTimeout(attempt,Math.max(1000,remaining));return;}
+      try{await api('/api/work/memory/analyze?idle=true',{accountId:account,method:'POST'});}catch(_){/* User work must never depend on background learning. */}
+    };
+    learnTimer=setTimeout(attempt,95000);
+  });
+
+  document.getElementById('work-style-settings').addEventListener('click', async event => {
+    const account = activeMailAccount();
+    if (!account?.id) return toast(w('chooseAccount'),'warn');
+    const trigger = event.currentTarget, dialog = document.createElement('dialog');
+    dialog.id = 'work-preferences-dialog'; dialog.className = 'work-dialog work-memory-dialog';
+    dialog.setAttribute('aria-labelledby','work-preferences-title');
+    dialog.innerHTML = `<form><header><h2 id="work-preferences-title">${esc(w('settingsTitle'))}</h2><button type="button" data-close aria-label="${esc(w('close'))}">✕</button></header><p class="work-dialog-source">${esc(account.user || account.id)}</p><p>${esc(w('settingsHint'))}</p><label>${esc(w('style'))}<textarea name="style" maxlength="1000" disabled></textarea></label><div class="work-memory-edit-actions"><button type="button" data-reload>${esc(w('reload'))}</button>${button('clear','clear')}<button type="submit" disabled>${esc(w('save'))}</button></div><p role="status" data-status>${esc(w('loadingPreferences'))}</p><section class="work-memory-learning"><div class="work-memory-learning-head"><h3>${esc(w('learningTitle'))}</h3><button type="button" data-analyze>${esc(w('analyze'))}</button></div><p>${esc(w('learningHint'))}</p><nav class="work-memory-tabs" aria-label="${esc(w('memoryStatus'))}">${['pending','adopted','dismissed'].map(name=>`<button type="button" data-memory-status="${name}" aria-pressed="${name==='pending'}">${esc(w(name))}</button>`).join('')}</nav><div data-memory-list></div><footer class="work-memory-pagination"><button type="button" data-page-prev>${esc(w('previous'))}</button><span data-page-label></span><button type="button" data-page-next>${esc(w('next'))}</button></footer></section></form>`;
     document.body.append(dialog);
-    dialog.addEventListener('close', () => { dialog.remove(); if (host.isConnected) host.querySelector('[data-work="memory"]')?.focus(); }, {once:true});
-    dialog.querySelector('[data-close]').onclick = () => dialog.close();
-    dialog.querySelector('[data-work="clear"]').onclick = () => {
-      for (const name of ['project','role','note','style']) dialog.querySelector(`[name="${name}"]`).value = '';
+    const editor=dialog.querySelector('[name="style"]'), status=dialog.querySelector('[data-status]'), submit=dialog.querySelector('[type="submit"]'), clear=dialog.querySelector('[data-work="clear"]'), reload=dialog.querySelector('[data-reload]'), analyze=dialog.querySelector('[data-analyze]'), list=dialog.querySelector('[data-memory-list]');
+    let revision=null, baseStyle='', loading=false, busy=false, filter='pending', offset=0, pageData=null, ticket=0,learningEnabled=true;
+    const active=()=>dialog.isConnected&&dialog.open&&activeMailAccount()?.id===account.id;
+    const dirty=()=>editor.value!==baseStyle;
+    const updateControls=()=>{
+      const editing=list.querySelector('[data-memory-editor]:not([hidden])');
+      editor.disabled=submit.disabled=clear.disabled=revision===null||loading||busy||Boolean(editing);
+      reload.disabled=loading||busy||Boolean(editing);analyze.disabled=!learningEnabled||loading||busy||dirty()||Boolean(editing);
+      dialog.querySelectorAll('[data-memory-action],[data-memory-status],[data-page-prev],[data-page-next]').forEach(node=>node.disabled=loading||busy||dirty()||Boolean(editing&&!editing.contains(node)));
+      dialog.querySelector('[data-page-prev]').disabled ||= offset===0;
+      dialog.querySelector('[data-page-next]').disabled ||= !pageData||offset+pageData.items.length>=pageData.total;
     };
-    dialog.querySelector('form').onsubmit = async event => {
-      event.preventDefault();
-      if (!live(host,state.account,state.id)) { dialog.querySelector('[data-status]').textContent = w('changed'); return; }
-      const submit = dialog.querySelector('[type="submit"]');
-      submit.disabled = true;
-      const values = Object.fromEntries(new FormData(event.target));
-      dialog.querySelectorAll('input,textarea,[data-work="clear"]').forEach(node => { node.disabled = true; });
-      try {
-        const result = await api(`/api/work/emails/${state.id}/context`, {accountId:state.account,method:'PUT',...post({...values, style_revision:state.data.preferences.revision, revision:row.revision || 0})});
-        row.revision = result.revision;
-        dialog.close();
-        if (live(host,state.account,state.id)) await load(host);
-      } catch (error) { dialog.querySelector('[data-status]').textContent = mailaiSystemMessage(error.message); }
-      finally { dialog.querySelectorAll('input,textarea,[data-work="clear"]').forEach(node => { node.disabled = false; }); submit.disabled = false; }
+    const applyPreferences=data=>{editor.value=data.style;baseStyle=data.style;revision=data.revision;};
+    function renderList(data){
+      pageData=data;
+      dialog.querySelectorAll('[data-memory-status]').forEach(node=>{node.textContent=`${w(node.dataset.memoryStatus)} · ${data.counts[node.dataset.memoryStatus]||0}`;node.setAttribute('aria-pressed',String(node.dataset.memoryStatus===filter));});
+      list.innerHTML=data.items.length?data.items.map(row=>`<article class="work-memory-item" data-memory-id="${row.id}"><small>${esc(w('kind.'+row.kind))}</small><p class="work-memory-value">${esc(row.preference)}</p>${row.reason?`<p class="work-memory-reason">${esc(row.reason)}</p>`:''}<details><summary>${esc(w('evidence'))} · ${row.evidence.length}</summary>${row.evidence.length?row.evidence.map(source=>`<blockquote>${esc(source.quote)}<cite>${esc(source.title||w('confirmedInChat'))} · ${esc(source.created_at||'')}</cite></blockquote>`).join(''):`<p>${esc(w('confirmedInChat'))}</p>`}</details><div class="work-memory-item-actions">${row.status!=='adopted'?`<button type="button" data-memory-action="adopt">${esc(w('adopt'))}</button>`:''}<button type="button" data-memory-action="edit">${esc(w('edit'))}</button>${row.status!=='dismissed'?`<button type="button" data-memory-action="dismiss">${esc(w(row.status==='adopted'?'stopUsing':'dismiss'))}</button>`:''}</div><div data-memory-editor hidden><textarea maxlength="300" aria-label="${esc(w('memoryContent'))}">${esc(row.preference)}</textarea><button type="button" data-memory-action="save">${esc(w('saveEdit'))}</button><button type="button" data-memory-action="cancel">${esc(w('cancelEdit'))}</button></div></article>`).join(''):`<p class="work-memory-empty">${esc(w(filter==='pending'?'noCandidates':'noRecords'))}</p>`;
+      dialog.querySelector('[data-page-label]').textContent=data.total?`${offset+1}–${offset+data.items.length} / ${data.total}`:'0';
+      updateControls();
+    }
+    const loadList=async()=>{
+      const request=++ticket;
+      const data=await api(`/api/work/memory?status=${filter}&offset=${offset}&limit=20`,{accountId:account.id});
+      if(active()&&request===ticket)renderList(data);
     };
-    dialog.showModal();
-  }
-  document.getElementById('reading-content').addEventListener('click', async event => {
-    const trigger = event.target.closest('[data-work-toggle]');
-    if (trigger) {
-      const host = document.getElementById(trigger.getAttribute('aria-controls'));
-      if (!host || !live(host,host.dataset.workAccount,Number(host.dataset.workEmail))) return;
-      const open = host.hidden;
-      setOpen(host,open);
-      if (open && loaded?.host !== host) await load(host);
-      return;
-    }
-    const control = event.target.closest('[data-work]'), host = control?.closest('.work-card');
-    if (!host || control.disabled) return;
-    const account = host.dataset.workAccount, id = Number(host.dataset.workEmail);
-    if (!live(host,account,id)) return;
-    control.disabled = true;
-    try {
-      switch (control.dataset.work) {
-        case 'close': setOpen(host,false); break;
-        case 'refresh': await load(host); break;
-        case 'memory': await memory(host); break;
-        case 'plan': await window.openTaskPlanner({emailId:id,accountId:account}); break;
-        case 'progress': openConversationProgress(); break;
-        case 'document': await window.startAssistantDocumentReply(id,account); break;
-        case 'reply':
-          await composeFromEmail('reply');
-          if (composeContext.reply_to_email_id === id && composeAccountId === account && document.body.classList.contains('compose-open')) toggleComposeAiPanel(true);
-          break;
-      }
-    } catch (error) { toast(mailaiSystemMessage(error.message),'warn'); }
-    finally { control.disabled = false; }
-  });
-  document.getElementById('reading-content').addEventListener('keydown', event => {
-    const host = event.target.closest('.work-card');
-    if (event.key === 'Escape' && host && !host.hidden) {
-      event.preventDefault(); event.stopPropagation(); setOpen(host,false);
-    }
-  });
-  window.addEventListener('mailai-tasks-changed', event => {
-    if (loaded && loaded.account === event.detail.accountId && live(loaded.host,loaded.account,loaded.id)) load(loaded.host);
-  });
-  document.addEventListener('mailai:language-changed', () => {
-    if (loaded && live(loaded.host,loaded.account,loaded.id)) render(loaded.host,loaded.data);
+    const load=async()=>{
+      if(!active()||loading||busy)return;
+      loading=true;updateControls();status.textContent=w('loadingPreferences');
+      try{
+        const [data,settings]=await Promise.all([api('/api/work/preferences',{accountId:account.id}),api('/api/work/memory/settings',{accountId:account.id}),loadList()]);
+        if(!active())return;applyPreferences(data);learningEnabled=settings.enabled;status.textContent=learningEnabled?'':w('memoryPaused');
+      }catch(error){if(active())status.textContent=mailaiSystemMessage(error.message);}
+      finally{loading=false;if(active())updateControls();}
+    };
+    editor.oninput=()=>{updateControls();status.textContent=dirty()?w('saveBeforeLearning'):'';};
+    clear.onclick=()=>{editor.value='';editor.dispatchEvent(new Event('input'));editor.focus();};
+    reload.onclick=load;
+    dialog.querySelector('[data-close]').onclick=()=>dialog.close();
+    dialog.addEventListener('close',()=>{++ticket;dialog.remove();if(trigger.isConnected)trigger.focus({preventScroll:true});if(!memoryPanel.classList.contains('hidden'))loadMemoryState();},{once:true});
+    dialog.querySelector('form').onsubmit=async e=>{
+      e.preventDefault();if(!active()||revision===null||busy)return;
+      busy=true;updateControls();
+      try{
+        const data=await api('/api/work/preferences',{accountId:account.id,method:'PUT',...post({style:editor.value,revision})});
+        if(!active())return;applyPreferences(data);status.textContent=w('preferencesSaved');await loadList();
+      }catch(error){if(active())status.textContent=mailaiSystemMessage(error.message);}
+      finally{busy=false;if(active())updateControls();}
+    };
+    analyze.onclick=async()=>{
+      if(!active()||busy||dirty())return;
+      busy=true;updateControls();status.textContent=w('analyzing');
+      try{
+        const data=await api('/api/work/memory/analyze',{accountId:account.id,method:'POST'});
+        if(!active())return;filter='pending';offset=0;await loadList();status.textContent=w(data.more?'analysisMore':data.analyzed?'analysisDone':'noNewConversations');analyze.textContent=w(data.more?'continueAnalysis':'analyze');
+      }catch(error){if(active())status.textContent=mailaiSystemMessage(error.message);}
+      finally{busy=false;if(active())updateControls();}
+    };
+    dialog.querySelectorAll('[data-memory-status]').forEach(node=>node.onclick=async()=>{
+      if(busy||dirty())return;filter=node.dataset.memoryStatus;offset=0;
+      try{await loadList();}catch(error){if(active())status.textContent=mailaiSystemMessage(error.message);}
+    });
+    for(const [selector,delta]of[['[data-page-prev]',-20],['[data-page-next]',20]])dialog.querySelector(selector).onclick=async()=>{
+      if(busy||dirty())return;offset=Math.max(0,offset+delta);
+      try{await loadList();}catch(error){if(active())status.textContent=mailaiSystemMessage(error.message);}
+    };
+    list.onclick=async event=>{
+      const control=event.target.closest('[data-memory-action]'),article=control?.closest('[data-memory-id]');
+      if(!control||!article||control.disabled||busy||dirty())return;
+      const row=pageData.items.find(item=>item.id===Number(article.dataset.memoryId));if(!row)return;
+      const editBox=article.querySelector('[data-memory-editor]');
+      if(control.dataset.memoryAction==='edit'){editBox.hidden=false;editBox.querySelector('textarea').focus();updateControls();return;}
+      if(control.dataset.memoryAction==='cancel'){editBox.hidden=true;updateControls();return;}
+      busy=true;updateControls();
+      try{
+        const op=control.dataset.memoryAction;
+        const data=await api(`/api/work/memory/${row.id}${op==='save'?'':'/'+op}`,{accountId:account.id,method:op==='save'?'PUT':'POST',...post(op==='save'?{preference:editBox.querySelector('textarea').value,revision:row.revision,pref_revision:revision}:{revision,candidate_revision:row.revision})});
+        if(!active())return;applyPreferences(data);status.textContent=w('memoryUpdated');await loadList();
+      }catch(error){if(active())status.textContent=mailaiSystemMessage(error.message);}
+      finally{busy=false;if(active())updateControls();}
+    };
+    dialog.showModal();await load();
   });
 
   // Compose controls remain separate from generation, so users can check their
@@ -195,7 +309,8 @@
   window.mailaiOpenWork = async (id, account) => {
     if (account !== activeMailAccount()?.id) return;
     await revealEmailFromSource(id);
-    const host = document.querySelector('.work-card');
-    if (host && live(host,account,id)) { setOpen(host,true); await load(host); }
+    if (account !== activeMailAccount()?.id || Number(selectedEmailDetail?.id) !== Number(id)) return;
+    openAssistantForEmail(selectedEmailDetail);
+    await askAssistant(w('understandPrompt'), [Number(id)]);
   };
 })();

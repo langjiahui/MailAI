@@ -5,10 +5,11 @@
 /api/assistant/actions/execute 执行；所有执行都以
 actor="assistant_confirmed" 写入审计日志，与真人操作(actor="user")区分。
 
-白名单只有三类低风险动作：
+支持以下需明确确认的动作：
   - create_todo  创建待办
   - draft_reply  创建回复草稿（只是草稿，发送仍需用户在撰写器里手动完成）
   - mark_read    标记已读
+  - save_work_context / save_work_preferences 保存用户明确补充的背景／偏好
 执行入口对每个动作的参数做服务端校验，客户端传入的白名单外动作一律拒绝。
 """
 from __future__ import annotations
@@ -21,7 +22,7 @@ from . import config, db
 
 log = logging.getLogger(__name__)
 
-ACTION_TYPES = ("create_todo", "draft_reply", "mark_read")
+ACTION_TYPES = ("create_todo", "draft_reply", "mark_read", "save_work_context", "save_work_preferences", "save_work_memory")
 _MAX_MARK_READ = 200
 _MAX_TITLE = 200
 
@@ -89,7 +90,7 @@ def detect_proposal(question: str, email_ids: list[int] | None = None) -> dict |
         return None
     if re.search(r'(?:不要|不需要|不用|先别|先不|暂不)(?:帮我)?(?:创建|新建|添加|标记|回复|发送)|只(?:需|要)?(?:分析|总结|梳理|列出|提炼|整理)', question):
         return None
-    if re.search(r'(?:是否|要不要|该不该|需不需要|需要|用不用|应该).{0,10}(?:回复|答复|创建|标记)|(?:怎么|如何)(?:创建|新建|添加)', question):
+    if re.search(r'(?:是否|要不要|该不该|需不需要|需要|用不用|应该).{0,10}(?:回复|答复|创建|标记)|(?:怎么|如何)(?:创建|新建|添加|回复|答复|回信)|先(?:聊聊|讨论|沟通)', question):
         return None
     ids = [int(i) for i in (email_ids or []) if isinstance(i, int) or str(i).isdigit()]
 
@@ -215,6 +216,28 @@ def _execute_draft_reply(params: dict) -> dict:
 def execute_action(action_type: str, params: dict | None) -> dict:
     """校验并执行用户已确认的白名单动作。"""
     params = params or {}
+    if action_type == 'save_work_memory':
+        from .work_memory import save_personal
+        result = save_personal(params)
+        db.add_audit_log(None,action='assistant_save_work_memory',actor='assistant_confirmed',reason='用户确认长期协作记忆')
+        return {'ok':True,'revision':result['revision']}
+    if action_type in ('save_work_context', 'save_work_preferences'):
+        from . import work_assistant
+        revision = params.get('revision')
+        if type(revision) is not int or revision < 0:
+            raise ValueError('保存版本无效，请重新核对后保存')
+        if action_type == 'save_work_preferences':
+            from .work_memory import save_confirmed
+            result = save_confirmed(params)
+            email_id = None
+        else:
+            email_id = params.get('email_id')
+            if type(email_id) is not int or email_id <= 0:
+                raise ValueError('原邮件无效，请重新选择')
+            result = work_assistant.save_context(email_id, project=params.get('project', ''),
+                role=params.get('role', ''), note=params.get('note', ''), revision=revision)
+        db.add_audit_log(email_id, action='assistant_' + action_type, actor='assistant_confirmed', reason='用户确认保存背景或写作偏好')
+        return {'ok': True, 'revision': result['revision']}
     if action_type == "create_todo":
         return _execute_create_todo(params)
     if action_type == "mark_read":

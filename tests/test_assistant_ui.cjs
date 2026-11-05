@@ -9,7 +9,7 @@ const appJs = fs.readFileSync(path.join(__dirname, '../app/web/static/app.js'), 
 
 assert.match(html, /id="assistant-new"[\s\S]*?<svg[^>]*>[\s\S]*?id="assistant-history"[\s\S]*?<svg/,
   'New conversation and history should use aligned SVG icons');
-assert.match(js, /mailaiBindUI\([^\n]+"@aria-label"[^\n]+mailaiTemplate`参考范围：\$\{label\}，点击更改`/,
+assert.match(js, /mailaiBindUI\([^\n]+"@aria-label"[^\n]+mailaiTemplate`参考范围：\$\{scopeLabel\(\)\}，点击更改`/,
   'The compact scope chip must expose its current value and purpose to assistive technology');
 assert.match(html, /id="assistant-welcome-template"[\s\S]*?id="assistant-quick"[\s\S]*?<\/template>/,
   'Example questions belong in the new-conversation template, not the fixed composer');

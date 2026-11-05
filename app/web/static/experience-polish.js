@@ -87,7 +87,7 @@
     const host=document.querySelector('.reading-header .reading-actions');if(!host||host===observedHost||!host.querySelector('.reading-work-actions'))return;
     resize?.disconnect();cancelAnimationFrame(readingLayoutFrame);readingLayoutFrame=0;observedHost=host;moving=[];
     const overflow=document.createElement('div');overflow.className='reading-overflow-actions';host.querySelector('.reading-more-panel').prepend(overflow);
-    for(const [selector,threshold] of [['[data-reading-action="favorite"]',850],['[data-reading-action="todo"]',740],['[data-reading-action="work"]',740],['[data-reading-action="summary"]',980],['[onclick*="reply_all"]',660]]){
+    for(const [selector,threshold] of [['[data-reading-action="favorite"]',850],['[data-reading-action="todo"]',740],['[data-reading-action="summary"]',980],['[onclick*="reply_all"]',660]]){
       const node=host.querySelector(selector);if(node)moving.push({node,home:node.parentNode,overflow,threshold});
     }
     resize=new ResizeObserver(scheduleReadingLayout);resize.observe(host);layoutReading();

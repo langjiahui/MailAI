@@ -7,7 +7,7 @@ const {chromium, webkit} = require('playwright');
   const engine = process.env.MAILAI_BROWSER === 'webkit' ? webkit : chromium;
   const browser = await engine.launch({headless:true});
   const errors = [];
-  const tabs = ['preferences','account','ai','remote','maintenance','guide','about'];
+  const tabs = ['preferences','account','ai','xiaoyou','remote','maintenance','guide','about'];
   try {
     const page = await browser.newPage({viewport:{width:1512,height:1000},reducedMotion:'reduce'});
     page.on('pageerror',e=>errors.push(e.message));
@@ -93,7 +93,11 @@ const {chromium, webkit} = require('playwright');
     await page.locator('input[name="interface-language-choice"][value="zh-CN"]').check();
     await page.locator('input[name="interface-language-choice"][value="en"]').check();
     assert.equal(await page.locator('[data-i18n="settings.syncTitle"]').textContent(),'Sync and folders');
-    assert.equal(await page.locator('[data-i18n="settings.companionTitle"]').textContent(),'Companion and personalization');
+    await page.locator('[data-system-tab="xiaoyou"]').click();
+    assert.equal(await page.locator('[data-i18n="work.appearanceTitle"]').textContent(),'Companionship and appearance');
+    assert.equal(await page.locator('[data-system-panel="preferences"] #companion-growth-settings').count(),0);
+    assert.equal(await page.locator('[data-system-panel="xiaoyou"] #companion-growth-settings').count(),1);
+    await page.locator('[data-system-tab="preferences"]').click();
     const folders=page.locator('#show-server-folders');const original=await folders.isChecked();
     await folders.setChecked(!original);await folders.setChecked(original);
     // Off/on switches must retain distinct, contrasting tracks and thumbs.
@@ -114,6 +118,6 @@ const {chromium, webkit} = require('playwright');
     assert.equal(await page.locator('#system-tabs [aria-current="page"]').getAttribute('data-system-tab'),'preferences');
     await page.evaluate(async()=>{setI18nLanguage('zh-CN');applyTheme('light');await api('/api/companion/equip',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slot:'theme',item:''})});});
     assert.deepEqual(errors,[]);
-    console.log(`Settings: ${cases} layouts across 7 tabs, 6 palettes, 2 languages and 390–3440px; saved preferences and keyboard navigation passed (${process.env.MAILAI_BROWSER||'chromium'}).`);
+    console.log(`Settings: ${cases} layouts across 8 tabs, 6 palettes, 2 languages and 390–3440px; saved preferences and keyboard navigation passed (${process.env.MAILAI_BROWSER||'chromium'}).`);
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -923,7 +923,7 @@ const I18N_MESSAGES = {
     'asst.welcomeAria': 'Start a new chat',
     'asst.welcomeEyebrow': 'Sort out your work with Xiaoyou',
     'asst.welcomeTitle': 'Where shall we start today?',
-    'asst.welcomeHint': 'Search mail, organize to-dos, or analyze images and attachments.',
+    'asst.welcomeHint': 'Search mail, organize to-dos, or analyze images and attachments. Open an email and choose Ask XiaoYou to prepare a reply or add context and writing preferences.',
     'asst.q1Title': 'Review important mail',
     'asst.q1Hint': 'Key points, less digging',
     'asst.q2Title': "Today's to-dos",

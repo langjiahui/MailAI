@@ -20,7 +20,7 @@ const classes = new Set(['assistant-visible']);
 const scopeSummary = {setAttribute(name,value) { this[name] = value; }};
 const nodes = {
   'assistant-scope': {value:'account'},
-  'assistant-scope-label': {},
+  'assistant-scope-label': {removeAttribute(name){delete this[name];}},
   'assistant-scope-clear': {classList:{toggle(name, value) { this.hidden = value; }}},
   'reading-content': {classList:{contains:() => true}},
   'assistant-panel': {style:{setProperty(){}}},

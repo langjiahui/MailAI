@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app import config, db, portable_backup, system_settings, companion_growth, work_assistant
+from app import config, db, portable_backup, system_settings, companion_growth, work_assistant, work_memory
 from app.account_context import use
 
 
@@ -28,6 +28,14 @@ def test_portable_round_trip_and_integrity():
                 connection.execute("INSERT INTO outbox(token,payload,status,due_at,created_at,updated_at) VALUES('send','{}','queued','','','')")
             work_assistant.save_context(1, project='迁移项目', note='保留事项记录', revision=0)
             work_assistant.save_preferences('简洁自然')
+            conversation=db.create_assistant_conversation('备份前的协作习惯')
+            message_id=db.add_assistant_message(conversation,'user','记住我平时希望一次只问一个问题')
+            work_memory.save_personal(dict(kind='communication',preference='沟通时一次只问一个问题',source_quote='记住我平时希望一次只问一个问题'))
+            state=work_memory.settings();work_memory.save_settings(False,True,state['revision'])
+            with db.conn() as connection:
+                connection.execute('INSERT INTO work_memory_cursors VALUES(?,?)',(conversation,message_id))
+            memory_before=work_memory.settings()
+            evidence_before=work_memory.listing('adopted')
             with companion_growth.connection() as connection:
                 connection.execute('UPDATE companion_profile SET xp=1200,stamps=1100 WHERE id=1')
             companion_growth.purchase('scarf', token='backup-scarf-once')
@@ -84,6 +92,10 @@ def test_portable_round_trip_and_integrity():
                 assert companion_growth.purchase('theme_baowu', token='backup-theme-blue') == pet_before
                 assert '保留事项记录' in work_assistant.saved_context([1])
                 assert work_assistant.preferences()['style'] == '简洁自然'
+                assert work_memory.settings() == memory_before
+                assert work_memory.listing('adopted') == evidence_before
+                with db.conn() as connection:
+                    assert tuple(connection.execute('SELECT * FROM work_memory_cursors').fetchone()) == (conversation,message_id)
                 message = db.get_email(1)
                 assert restored["requires_resync"] is True
                 assert message["raw_path"].startswith(str(target_raw) + os.sep)

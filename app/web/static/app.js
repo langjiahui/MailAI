@@ -500,10 +500,15 @@ function assistantSourcesHtml(sources = [], accountId = '') {
    执行结果走 /api/assistant/actions/execute（白名单 + 服务端校验 + 审计）。 */
 function renderAssistantActionCard(bubble, action, account) {
   if (!bubble || !action || !action.type) return;
+  const memoryAction = ['save_work_context','save_work_preferences','save_work_memory'].includes(action.type);
+  const memoryCopy = key => mailaiT(key) || mailaiText(MAILAI_UI_COPY[key]?.[0] || key);
+  const memoryLabel = action.type === 'save_work_memory' ? 'work.confirmPersonalMemory' : action.type === 'save_work_preferences' ? 'work.confirmStyle' :
+    !action.params?.project && !action.params?.role && !action.params?.note ? 'work.confirmClearContext' : 'work.confirmContext';
   const card = document.createElement('div');
   card.className = 'assistant-action-card';
-  card.innerHTML = `<div class="assistant-action-copy"><b><span data-i18n="ui.aa0aa6a5b6a7">建议操作</span></b><span>${esc(action.summary || '')}</span></div>
-    <div class="assistant-action-buttons"><button type="button" data-action-confirm>${action.type === 'fill_attachment_reply' ? mailaiText('开始填写') : mailaiText('确认执行')}</button><button type="button" data-action-dismiss><span data-i18n="ui.2cd0f3be8738">取消</span></button></div>`;
+  if (memoryAction) card.classList.add('work-memory-confirm');
+  card.innerHTML = `<div class="assistant-action-copy"><b>${memoryAction ? esc(memoryCopy('work.confirmMemory')) : '<span data-i18n="ui.aa0aa6a5b6a7">建议操作</span>'}</b><span>${esc(action.summary || '')}</span></div>
+    <div class="assistant-action-buttons"><button type="button" data-action-confirm>${memoryAction ? esc(memoryCopy(memoryLabel)) : action.type === 'fill_attachment_reply' ? mailaiText('开始填写') : mailaiText('确认执行')}</button><button type="button" data-action-dismiss><span data-i18n="ui.2cd0f3be8738">取消</span></button></div>`;
   const finish = html => { card.innerHTML = `<p class="assistant-action-result">${html}</p>`; };
   card.querySelector('[data-action-dismiss]').addEventListener('click', () => {
     finish(mailaiText('已取消，未执行任何操作。'));
@@ -512,6 +517,7 @@ function renderAssistantActionCard(bubble, action, account) {
     const button = event.currentTarget;
     button.disabled = true;
     try {
+      if (memoryAction && activeMailAccount()?.id !== account?.id) throw new Error(memoryCopy('work.accountChanged'));
       if (action.type === 'fill_attachment_reply') {
         await window.startAssistantDocumentReply?.(action.params?.email_id, account?.id || '', action.params?.instruction || '');
         button.disabled = false;
@@ -522,12 +528,18 @@ function renderAssistantActionCard(bubble, action, account) {
         body:JSON.stringify({type:action.type, params:action.params || {}})});
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(typeof result.detail === 'string' ? result.detail : mailaiTemplate`执行失败（${response.status}）`);
-      if (action.type === 'create_todo') finish(mailaiTemplate`已创建待办：${esc(result.title || '')}${result.deadline ? mailaiTemplate`（截止 ${esc(result.deadline)}）` : ''}`);
+      if (memoryAction) finish(esc(memoryCopy(action.type === 'save_work_context' ? 'work.contextSaved' : action.type === 'save_work_preferences' ? 'work.styleSaved' : 'work.memorySaved')));
+      else if (action.type === 'create_todo') finish(mailaiTemplate`已创建待办：${esc(result.title || '')}${result.deadline ? mailaiTemplate`（截止 ${esc(result.deadline)}）` : ''}`);
       else if (action.type === 'mark_read') finish(mailaiTemplate`已将 ${Number(result.marked) || 0} 封邮件标记为已读。`);
       else if (action.type === 'draft_reply') finish(mailaiTemplate`回复草稿已创建（收件人 ${esc(result.to_addr || '')}），可在草稿箱中继续编辑。`);
       else finish(mailaiText('操作已完成。'));
     } catch (error) {
-      finish(esc(mailaiSystemMessage(error.message) || mailaiText('操作执行失败，请稍后重试。')));
+      if (memoryAction) {
+        let status = card.querySelector('[data-memory-error]');
+        if (!status) { status=document.createElement('p'); status.dataset.memoryError=''; status.setAttribute('role','status'); card.append(status); }
+        status.textContent = mailaiSystemMessage(error.message);
+        button.disabled = false;
+      } else finish(esc(mailaiSystemMessage(error.message) || mailaiText('操作执行失败，请稍后重试。')));
     }
   });
   bubble.appendChild(card);
@@ -636,6 +648,7 @@ function renderAssistantWelcome() {
   const wrap = document.getElementById('assistant-messages');
   wrap.replaceChildren(document.getElementById('assistant-welcome-template').content.cloneNode(true));
   wrap.classList.add('is-welcome');
+  window.mailaiWorkGuide?.refresh();
   window.mailaiAssistantScroll?.follow();
 }
 function appendAssistantMessage(role, content, sources = []) {
@@ -1117,6 +1130,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
     if (searchMeta) window.mailaiAssistantSearch?.complete(thinking,searchMeta,sources);
     if (pendingAction) renderAssistantActionCard(bubble, pendingAction, account);
     assistantHistory.push({role:'assistant', content:validAnswer()});
+    document.dispatchEvent(new CustomEvent('mailai:assistant-finished',{detail:{account:account?.id}}));
   } catch (error) {
     if (revision !== assistantRevision) return;
     paint();
@@ -6895,7 +6909,7 @@ function renderReadingPane(e) {
         </div>
         <div class="reading-actions">
           <section class="reading-action-group reading-mail-group" aria-label="邮件操作" data-i18n-aria="ui.15ecc4e1adf5"><span class="reading-action-group-title">${mailaiT('read.groupMail') || '邮件操作'}</span><div class="reading-mail-controls"><div class="reading-reply-actions">${replyActions}</div></div></section>
-          <section class="reading-action-group reading-ai-group" aria-label="AI 助手" data-i18n-aria="ui.1b0049fcfd41"><span class="reading-action-group-title">${mailaiT('read.groupAi') || 'AI 助手'}</span>${window.mailaiWorkAction?.(e) || ''}</section>
+          <section class="reading-action-group reading-ai-group" aria-label="AI 助手" data-i18n-aria="ui.1b0049fcfd41"><span class="reading-action-group-title">${mailaiT('read.groupAi') || 'AI 助手'}</span></section>
           ${mailSummaryToolbarButton(e)}
           <details class="reading-more-actions">
             <summary aria-label="更多邮件操作" data-i18n-aria="ui.e8ee3628b5cc">
@@ -6917,7 +6931,6 @@ function renderReadingPane(e) {
     <div class="reading-workspace">
       <main class="reading-main">
         ${renderConversationProgress(e)}
-        ${window.mailaiWorkCard?.(e) || ''}
         ${mailSummaryDisclosure(e)}
 
         <div class="reading-section body-section">
