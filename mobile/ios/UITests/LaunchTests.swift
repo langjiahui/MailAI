@@ -118,10 +118,11 @@ final class WorkspaceTests: XCTestCase {
         let height = (element.frame.height * 1000).rounded() / 1000
         XCTAssertGreaterThanOrEqual(height, 44, file: file, line: line)
     }
-    private func assertBalancedInboxHeader(_ app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+    private func assertBalancedInboxHeader(_ app: XCUIApplication, toolbarSearch: Bool = false, file: StaticString = #filePath, line: UInt = #line) {
         let avatar = app.buttons["account-avatar"], search = app.buttons["inbox-search-toolbar"], compose = app.buttons["compose-mail"]
         let title = app.buttons["inbox-title"]
-        for control in [avatar, search, compose] {
+        XCTAssertEqual(search.exists && search.isHittable, toolbarSearch, file: file, line: line)
+        for control in [avatar, compose] + (toolbarSearch ? [search] : []) {
             XCTAssertTrue(control.isHittable, file: file, line: line)
             XCTAssertEqual(control.frame.width, 44, accuracy: 0.5, file: file, line: line)
             XCTAssertEqual(control.frame.height, 44, accuracy: 0.5, file: file, line: line)
@@ -129,14 +130,14 @@ final class WorkspaceTests: XCTestCase {
         }
         XCTAssertEqual(title.frame.midX, app.windows.firstMatch.frame.midX, accuracy: 1, file: file, line: line)
         XCTAssertLessThanOrEqual(avatar.frame.maxX, title.frame.minX, file: file, line: line)
-        XCTAssertLessThanOrEqual(title.frame.maxX, search.frame.minX, file: file, line: line)
+        XCTAssertLessThanOrEqual(title.frame.maxX, (toolbarSearch ? search : compose).frame.minX, file: file, line: line)
     }
     func testInboxControlsScrollAwayAndToolbarActionsStayReachable() {
         let app = launch(extra: ["--ui-long-inbox"])
         let header = app.buttons["inbox-search-header"], toolbarSearch = app.buttons["inbox-search-toolbar"]
         let navigation = app.descendants(matching: .any).matching(identifier: "inbox-top-bar").firstMatch, compose = app.buttons["compose-mail"]
         XCTAssertFalse(app.tabBars.firstMatch.exists)
-        XCTAssertTrue(header.isHittable); XCTAssertTrue(toolbarSearch.isHittable)
+        XCTAssertTrue(header.isHittable); XCTAssertFalse(toolbarSearch.isHittable)
         XCTAssertLessThanOrEqual(compose.frame.maxY, navigation.frame.maxY + 2)
         assertMinimumTargetHeight(compose)
         assertBalancedInboxHeader(app)
@@ -144,7 +145,7 @@ final class WorkspaceTests: XCTestCase {
         app.swipeUp(); app.swipeUp()
         XCTAssertFalse(header.exists && header.isHittable, "Search/filter header must scroll with the mail list")
         XCTAssertTrue(toolbarSearch.isHittable); XCTAssertTrue(compose.isHittable)
-        assertBalancedInboxHeader(app)
+        assertBalancedInboxHeader(app, toolbarSearch: true)
         attach("reading-space-inbox-scrolled")
         toolbarSearch.tap()
         XCTAssertTrue(app.textFields["mail-search-input"].waitForExistence(timeout: 5))
@@ -248,6 +249,38 @@ final class WorkspaceTests: XCTestCase {
         avatar.tap(); XCTAssertTrue(app.buttons["完成"].waitForExistence(timeout: 5)); app.buttons["完成"].tap()
         app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap()
         XCTAssertTrue(app.buttons["回复全部"].waitForExistence(timeout: 5))
+    }
+    func testInboxPolishAppearanceAndRepeatedHeaderActions() {
+        for dark in [false, true] {
+            let app = launch(dark: dark, extra: ["--ui-long-inbox"])
+            assertBalancedInboxHeader(app)
+            XCTAssertTrue(app.staticTexts["请核对附件并确认下一步安排。仅用于界面验收。"].exists)
+            attach(dark ? "inbox-polish-dark" : "inbox-polish-light")
+            app.swipeUp(); app.swipeUp()
+            assertBalancedInboxHeader(app, toolbarSearch: true)
+            attach(dark ? "inbox-polish-scrolled-dark" : "inbox-polish-scrolled-light")
+            for _ in 0..<2 {
+                app.buttons["account-avatar"].press(forDuration: 0.15)
+                XCTAssertTrue(app.buttons["sidebar-settings"].waitForExistence(timeout: 5))
+                app.buttons["完成"].firstMatch.tap()
+                app.buttons["inbox-search-toolbar"].press(forDuration: 0.15)
+                XCTAssertTrue(app.textFields["mail-search-input"].waitForExistence(timeout: 5))
+                if !dark { attach("inbox-polish-search") }
+                app.buttons["完成"].firstMatch.tap()
+                app.buttons["compose-mail"].press(forDuration: 0.15)
+                XCTAssertTrue(app.buttons["send-mail"].waitForExistence(timeout: 5))
+                app.buttons["关闭"].firstMatch.tap()
+                XCTAssertTrue(app.buttons["保存并返回"].waitForExistence(timeout: 5))
+                app.buttons["保存并返回"].tap()
+                XCTAssertTrue(app.buttons["account-avatar"].waitForExistence(timeout: 5))
+                assertBalancedInboxHeader(app, toolbarSearch: true)
+            }
+            app.terminate()
+        }
+        let app = launch(dark: true, large: true, extra: ["--ui-header-only"])
+        for control in ["account-avatar", "inbox-search-header", "compose-mail"] { XCTAssertTrue(app.buttons[control].isHittable) }
+        XCTAssertTrue(app.staticTexts["项目资料确认与下一步安排"].isHittable)
+        attach("inbox-polish-large-dark")
     }
     func testRecipientSelectionRequiresDoneAndPersistsDraft() {
         let app = launch()

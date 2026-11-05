@@ -15,6 +15,45 @@ enum MailTheme {
     static let ink = adaptive(0x142334, 0xEAF1F8)
     static let secondary = adaptive(0x667585, 0xA0B0C0)
     static let separator = adaptive(0xE6ECF2, 0x2A3948)
+    static func senderColors(_ key: String) -> (Color, Color) {
+        let index = key.lowercased().unicodeScalars.reduce(UInt64(0)) { ($0 &* 33) &+ UInt64($1.value) } % 3
+        switch index {
+        case 1: return (adaptive(0x276C79, 0x9BCFD6), adaptive(0xEAF3F4, 0x233B42))
+        case 2: return (adaptive(0x53649A, 0xB3C1EF), adaptive(0xEEF0F8, 0x2D344B))
+        default: return (blue, adaptive(0xE8F1FA, 0x20374C))
+        }
+    }
+}
+/// Preserve the native Button/Menu gesture while making press feedback visible.
+struct MailPressButtonStyle: ButtonStyle {
+    var cornerRadius: CGFloat = 14
+    var pressedScale: CGFloat = 0.92
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.isEnabled) private var enabled
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(MailTheme.blue.opacity(configuration.isPressed ? 0.12 : 0), in: RoundedRectangle(cornerRadius: cornerRadius))
+            .scaleEffect(configuration.isPressed && !reduceMotion ? pressedScale : 1)
+            .opacity(enabled ? 1 : 0.4)
+            .animation(.easeOut(duration: reduceMotion ? 0 : 0.14), value: configuration.isPressed)
+            .sensoryFeedback(.selection, trigger: configuration.isPressed) { _, pressed in pressed && enabled }
+    }
+}
+struct InboxSenderAvatar: View {
+    let name: String
+    let address: String
+    let unread: Bool
+    var body: some View {
+        let colors = MailTheme.senderColors(address)
+        Text(String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(1)).uppercased())
+            .font(.system(size: 17, weight: .semibold, design: .rounded))
+            .foregroundStyle(colors.0).frame(width: 40, height: 40)
+            .background(colors.1, in: Circle())
+            .overlay(alignment: .bottomTrailing) {
+                if unread { Circle().fill(MailTheme.blue).frame(width: 8, height: 8).overlay { Circle().stroke(MailTheme.surface, lineWidth: 2) } }
+            }
+            .accessibilityHidden(true)
+    }
 }
 struct MailSearchField: View {
     @Binding var text: String

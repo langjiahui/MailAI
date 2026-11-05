@@ -88,6 +88,7 @@ struct InboxView: View {
     @State private var composing = false
     @State private var mailboxes = false
     @State private var searching = false
+    @State private var searchHeaderVisible = true
     @State private var showingDrafts = false
     @State private var selecting = false
     @State private var selection = Set<String>()
@@ -144,7 +145,9 @@ struct InboxView: View {
         .onChange(of: store.lastRefresh) { _, _ in if unified { unifiedMessages = (try? store.cachedInbox()) ?? [] } }
     }
     @ViewBuilder private var mailContent: some View {
-        Group {
+        VStack(spacing: 0) {
+            if !store.accounts.isEmpty { inboxTopBar }
+            Group {
             if store.accounts.isEmpty {
                 VStack(spacing: 22) {
                     Spacer()
@@ -160,6 +163,7 @@ struct InboxView: View {
                 List {
                     if !unified {
                         inboxControls
+                            .onScrollVisibilityChange(threshold: 0.1) { searchHeaderVisible = $0 }
                             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                             .listRowSeparator(.hidden).listRowBackground(MailTheme.surface)
                     }
@@ -244,13 +248,11 @@ struct InboxView: View {
                             else { store.refresh() }
                         }
             }
+            }
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationTitle(mailboxTitle)
         .toolbar(.hidden, for: .navigationBar)
-        .safeAreaInset(edge: .top, spacing: 0) {
-            if !store.accounts.isEmpty { inboxTopBar }
-        }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if !store.accounts.isEmpty {
                 VStack(spacing: 0) {
@@ -277,7 +279,7 @@ struct InboxView: View {
         .disabled(store.operating)
     }
     // Equal side columns keep the title centered independently of its text and
-    // the number of actions. Every icon shares one 40 pt surface / 44 pt target.
+    // the number of actions. Each action retains a full 44 pt hit target.
     private var inboxTopBar: some View {
         HStack(spacing: 0) {
             accountButton.frame(width: 92, alignment: .leading)
@@ -287,12 +289,13 @@ struct InboxView: View {
                     Button("完成") { selecting = false; selection = [] }
                         .font(.subheadline.weight(.semibold)).frame(width: 92, height: 44)
                 } else {
-                    if !unified { searchButton }
+                    if !unified && !searchHeaderVisible { searchButton.transition(.opacity) }
                     composeButton
                 }
             }.frame(width: 92, alignment: .trailing)
+                .animation(.easeOut(duration: 0.15), value: searchHeaderVisible)
         }
-        .padding(.horizontal, 16).padding(.vertical, 8)
+        .padding(.horizontal, 16).padding(.vertical, 4)
         .background(MailTheme.surface)
         .accessibilityElement(children: .contain).accessibilityIdentifier("inbox-top-bar")
     }
@@ -310,38 +313,37 @@ struct InboxView: View {
             HStack(spacing: 4) {
                 Text(selecting ? "已选 \(selection.count) 封" : (filter == "all" || unified ? mailboxTitle : mailboxTitle + " · " + filterTitle))
                     .font(.headline).lineLimit(1).minimumScaleFactor(0.8)
-                if !selecting && filter == "all" && unreadCount > 0 {
-                    Text(unreadCount, format: .number).font(.caption.weight(.semibold)).foregroundStyle(MailTheme.blue)
-                }
                 Image(systemName: "chevron.down").font(.system(size: 10, weight: .semibold))
             }
             .foregroundStyle(MailTheme.ink).dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             .frame(maxWidth: .infinity, minHeight: 44).contentShape(Rectangle())
         }
-        .buttonStyle(.plain).accessibilityIdentifier("inbox-title")
+        .buttonStyle(MailPressButtonStyle(pressedScale: 0.98)).accessibilityIdentifier("inbox-title")
         .accessibilityLabel("更多邮件操作")
         .accessibilityValue(mailboxTitle + "，" + (unified ? "全部邮件" : filterTitle) + "，\(unreadCount) 封未读")
     }
     private func topBarIcon(_ symbol: String) -> some View {
-        Image(systemName: symbol).font(.system(size: 18, weight: .medium))
-            .foregroundStyle(MailTheme.blue).frame(width: 40, height: 40)
-            .background(MailTheme.canvas, in: Circle())
-            .frame(width: 44, height: 44).contentShape(Circle())
+        Image(systemName: symbol).font(.system(size: 21, weight: .regular))
+            .foregroundStyle(MailTheme.blue)
+            .frame(width: 44, height: 44).contentShape(Rectangle())
     }
     private var accountButton: some View {
-        Button { mailboxes = true } label: { topBarIcon("person") }
-            .buttonStyle(.plain).accessibilityLabel("邮箱与文件夹")
+        Button { mailboxes = true } label: {
+            SenderAvatar(name: store.selected.map { $0.displayName.isEmpty ? $0.email : $0.displayName } ?? "邮", size: 32)
+                .frame(width: 44, height: 44).contentShape(Rectangle())
+        }
+            .buttonStyle(MailPressButtonStyle()).accessibilityLabel("邮箱与文件夹")
             .accessibilityValue(store.selected?.email ?? "")
             .accessibilityIdentifier("account-avatar")
     }
     private var searchButton: some View {
         Button { searching = true } label: { topBarIcon("magnifyingglass") }
-            .buttonStyle(.plain).accessibilityLabel("搜索邮件").accessibilityIdentifier("inbox-search-toolbar")
+            .buttonStyle(MailPressButtonStyle()).accessibilityLabel("搜索邮件").accessibilityIdentifier("inbox-search-toolbar")
     }
     private var composeButton: some View {
         Button { do { try store.newDraft(); composing = true } catch { store.error = error.localizedDescription } } label: {
             topBarIcon("square.and.pencil")
-        }.buttonStyle(.plain).accessibilityLabel("写邮件").accessibilityIdentifier("compose-mail").disabled(store.sending)
+        }.buttonStyle(MailPressButtonStyle()).accessibilityLabel("写邮件").accessibilityIdentifier("compose-mail").disabled(store.sending)
     }
     private var inboxControls: some View {
         HStack(spacing: 0) {
@@ -353,7 +355,7 @@ struct InboxView: View {
                 }
                 .foregroundStyle(MailTheme.secondary).padding(.leading, 12).frame(minHeight: 44)
                 .contentShape(Rectangle())
-            }.buttonStyle(.plain).accessibilityLabel("展开邮箱搜索").accessibilityIdentifier("inbox-search-header")
+            }.buttonStyle(MailPressButtonStyle(cornerRadius: 12, pressedScale: 0.99)).accessibilityLabel("搜索邮件").accessibilityIdentifier("inbox-search-header")
             if filter != "all" {
                 Button { filter = "all" } label: {
                     HStack(spacing: 4) { Text(filterTitle); Image(systemName: "xmark").font(.system(size: 10, weight: .medium)) }
@@ -371,7 +373,7 @@ struct InboxView: View {
             } label: {
                 Image(systemName: "line.3.horizontal.decrease").font(.system(size: 17, weight: .medium))
                     .foregroundStyle(filter == "all" ? MailTheme.secondary : MailTheme.blue).frame(width: 44, height: 44)
-            }.buttonStyle(.plain).accessibilityLabel("筛选邮件").accessibilityValue(filterTitle).accessibilityIdentifier("inbox-filter")
+            }.buttonStyle(MailPressButtonStyle(cornerRadius: 12)).accessibilityLabel("筛选邮件").accessibilityValue(filterTitle).accessibilityIdentifier("inbox-filter")
         }
         .background(MailTheme.canvas, in: RoundedRectangle(cornerRadius: 12)).disabled(selecting)
     }
@@ -396,8 +398,8 @@ struct MailRow: View {
     var account: String? = nil
     var keyword = ""
     private var displaySender: String {
-        let name = summary.contactAddresses.first?.name ?? ""
-        return name.isEmpty ? summary.sender : name
+        let sender = summary.contactAddresses.first
+        return sender?.name.isEmpty == false ? sender!.name : (sender?.email ?? summary.sender)
     }
     private var indicators: some View {
         HStack(spacing: 6) {
@@ -414,28 +416,30 @@ struct MailRow: View {
         return Text(text)
     }
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            Circle().fill(summary.unread ? MailTheme.blue : .clear).frame(width: 6, height: 6).padding(.top, 6).accessibilityLabel("未读").accessibilityHidden(!summary.unread)
-            VStack(alignment: .leading, spacing: 3) {
+        HStack(alignment: .top, spacing: 12) {
+            InboxSenderAvatar(name: displaySender, address: summary.senderAddress ?? summary.replyAddress, unread: summary.unread).padding(.top, 2)
+            VStack(alignment: .leading, spacing: 4) {
                 if dynamicTypeSize.isAccessibilitySize {
-                    matched(displaySender).font(.subheadline.weight(summary.unread ? .semibold : .regular))
+                    matched(displaySender).font(.headline.weight(summary.unread ? .bold : .semibold))
                     HStack(spacing: 6) {
                         indicators
                         if let date = summary.date { Text(date.formatted(date: .abbreviated, time: .shortened)).font(.caption2).foregroundStyle(MailTheme.secondary) }
                     }
                 } else {
                     HStack(alignment: .firstTextBaseline) {
-                        matched(displaySender).font(.subheadline.weight(summary.unread ? .semibold : .regular)).lineLimit(1)
+                        matched(displaySender).font(.headline.weight(summary.unread ? .bold : .semibold)).lineLimit(1)
                         Spacer(minLength: 8)
                         indicators.fixedSize()
                         if let date = summary.date { Text(Calendar.current.isDateInToday(date) ? date.formatted(date: .omitted, time: .shortened) : date.formatted(.dateTime.month().day())).font(.caption2).foregroundStyle(.secondary).fixedSize() }
                     }
                 }
-                matched(summary.subject.isEmpty ? "（无主题）" : summary.subject).font(.subheadline.weight(summary.unread ? .semibold : .regular)).lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                matched(summary.subject.isEmpty ? "（无主题）" : summary.subject).font(.subheadline).lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                 if let preview = summary.preview, !preview.isEmpty { matched(preview).font(.caption).foregroundStyle(MailTheme.secondary).lineLimit(1) }
                 if let account { Text(account).font(.caption2).foregroundStyle(MailTheme.secondary).lineLimit(1) }
             }
-        }.padding(.vertical, 10).foregroundStyle(MailTheme.ink)
+        }.padding(.vertical, 12).foregroundStyle(MailTheme.ink)
+            .overlay(alignment: .bottom) { Rectangle().fill(MailTheme.separator.opacity(0.5)).frame(height: 0.5).padding(.leading, 52).accessibilityHidden(true) }
+            .accessibilityValue(summary.unread ? "未读" : "已读")
     }
 }
 struct UnifiedReaderView: View {
