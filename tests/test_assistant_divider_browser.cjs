@@ -38,11 +38,30 @@ async function run(engine){
    assert(Math.abs(result.reading.right-result.panel.left)<2,JSON.stringify(result));
    assert(Math.abs(result.panel.width/result.zoom-result.value)<2,JSON.stringify(result));
    assert(Math.abs((result.divider.left+result.divider.right)/2-result.panel.left)<2,JSON.stringify(result));
+   const clearance=await panel.evaluate(n=>{
+    const edge=n.getBoundingClientRect().left;
+    return [...n.querySelectorAll('.assistant-head,.companion-hub-launch,.assistant-composer,.assistant-bubble')].every(child=>child.getBoundingClientRect().left>=edge-1);
+   });
+   assert(clearance,'Divider stays outside the assistant content');
    return result;
   }
   await navigate(()=>p.goto((process.env.MAILAI_FIXTURE_URL||'http://127.0.0.1:18795')+'/?shell=macos'));
   await p.locator('#app-preloader').waitFor({state:'hidden'});await p.locator('#email-list .email-item').first().waitFor();
   assert(await p.evaluate(()=>_systemConfig.accounts.every(a=>a.user.endsWith('@example.test'))));
+  // Normal motion must keep the seam at the column boundary throughout opening,
+  // not cache a transformed intermediate rectangle inside the conversation.
+  await p.emulateMedia({reducedMotion:'no-preference'});
+  await p.locator('#email-list .email-item').first().click();await p.waitForFunction(()=>!!selectedEmailDetail);
+  for(const [width,zoom] of [[1440,1],[2048,1.3],[2048,1.25]]){
+   await p.setViewportSize({width,height:1000});
+   await p.evaluate(z=>{document.body.style.zoom=z;document.documentElement.style.setProperty('--fz',z);closeAssistant();},zoom);
+   await panel.waitFor({state:'hidden'});
+   await p.evaluate(()=>openAssistant());await handle.waitFor();
+   for(let frame=0;frame<24;frame++){await settle();await geometry();}
+   assert.equal(await panel.evaluate(n=>getComputedStyle(n).transform),'none');
+  }
+  await p.emulateMedia({reducedMotion:'reduce'});
+  await p.evaluate(()=>{closeAssistant();selectedEmailId=null;selectedEmailDetail=null;});await panel.waitFor({state:'hidden'});
   // Native font restoration can leave --fz and the effective body zoom out of
   // step for a frame (or on an older webview). Welcome controls must still fit.
   await p.evaluate(()=>{openAssistant();renderAssistantWelcome();});

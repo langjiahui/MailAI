@@ -1,5 +1,6 @@
 /* Docked widths share one value with the reading workspace. Floating sizes stay independent. */
-html[data-theme] body:is(.assistant-split,.assistant-docked) .layout { margin-right:var(--assistant-dock-width,420px); }
+/* Match the fixed assistant immediately, including while opening or dragging. */
+html[data-theme] body:is(.assistant-split,.assistant-docked) .layout { margin-right:var(--assistant-dock-width,420px);transition:none; }
 html[data-theme] body:is(.assistant-split,.assistant-docked) #assistant-panel { width:var(--assistant-dock-width,420px)!important;right:0!important; }
 #assistant-dock-divider {
  position:fixed;z-index:10;left:var(--assistant-divider-left);top:var(--assistant-divider-top);

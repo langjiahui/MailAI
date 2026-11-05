@@ -26,7 +26,8 @@
     const width=effective+'px';
     if(document.body.style.getPropertyValue('--assistant-dock-width')!==width)document.body.style.setProperty('--assistant-dock-width',width);
     const rect=panel.getBoundingClientRect();
-    handle.style.setProperty('--assistant-divider-left',rect.left/zoom+'px');
+    // Anchor to the workspace edge, never a transient panel entrance transform.
+    handle.style.setProperty('--assistant-divider-left',pane.getBoundingClientRect().right/zoom+'px');
     handle.style.setProperty('--assistant-divider-top',rect.top/zoom+'px');
     handle.style.setProperty('--assistant-divider-height',rect.height/zoom+'px');
     handle.setAttribute('aria-valuemin',String(limits.min));handle.setAttribute('aria-valuemax',String(limits.max));

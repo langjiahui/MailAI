@@ -32489,7 +32489,8 @@ function mailCardDate(value, now = new Date()) {
     const width=effective+'px';
     if(document.body.style.getPropertyValue('--assistant-dock-width')!==width)document.body.style.setProperty('--assistant-dock-width',width);
     const rect=panel.getBoundingClientRect();
-    handle.style.setProperty('--assistant-divider-left',rect.left/zoom+'px');
+    // Anchor to the workspace edge, never a transient panel entrance transform.
+    handle.style.setProperty('--assistant-divider-left',pane.getBoundingClientRect().right/zoom+'px');
     handle.style.setProperty('--assistant-divider-top',rect.top/zoom+'px');
     handle.style.setProperty('--assistant-divider-height',rect.height/zoom+'px');
     handle.setAttribute('aria-valuemin',String(limits.min));handle.setAttribute('aria-valuemax',String(limits.max));
@@ -33043,6 +33044,7 @@ function mailCardDate(value, now = new Date()) {
   let memoryScheduler=null,scheduledAccount=null;
   const scopePicker = document.getElementById('assistant-scope-picker');
   const eligible = row => !['trash','spam','quarantine','draft','sent'].includes(row?.status);
+  const inputPlaceholder = () => target() ? w('talkPlaceholder') : mailaiText('问问你的邮箱…');
   function target() {
     const account = activeMailAccount()?.id;
     const ids = assistantPinnedScope || (document.getElementById('assistant-scope').value === 'selected' && selectedEmailId ? [selectedEmailId] : null);
@@ -33092,7 +33094,7 @@ function mailCardDate(value, now = new Date()) {
     const account=activeMailAccount()?.id;
     if(account!==scheduledAccount){scheduledAccount=account;memoryScheduler?.();}
     const state = target();
-    mailaiBindUI(document.getElementById('assistant-input'),'@placeholder',()=>target() ? w('talkPlaceholder') : mailaiT('asst.inputPh'));
+    mailaiBindUI(document.getElementById('assistant-input'),'@placeholder',inputPlaceholder);
     tools.hidden = !state;
     schedulePosition();
     const welcome = document.querySelector('#assistant-messages .assistant-welcome');
@@ -33125,7 +33127,7 @@ function mailCardDate(value, now = new Date()) {
   });
   const input = document.getElementById('assistant-input');
   input.removeAttribute('data-i18n-placeholder');
-  mailaiBindUI(input,'@placeholder',()=>target() ? w('talkPlaceholder') : mailaiT('asst.inputPh'));
+  mailaiBindUI(input,'@placeholder',inputPlaceholder);
   document.addEventListener('mailai:language-changed', refresh);
   refresh();
 

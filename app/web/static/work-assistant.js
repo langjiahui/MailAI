@@ -7,6 +7,7 @@
   let memoryScheduler=null,scheduledAccount=null;
   const scopePicker = document.getElementById('assistant-scope-picker');
   const eligible = row => !['trash','spam','quarantine','draft','sent'].includes(row?.status);
+  const inputPlaceholder = () => target() ? w('talkPlaceholder') : mailaiText('问问你的邮箱…');
   function target() {
     const account = activeMailAccount()?.id;
     const ids = assistantPinnedScope || (document.getElementById('assistant-scope').value === 'selected' && selectedEmailId ? [selectedEmailId] : null);
@@ -56,7 +57,7 @@
     const account=activeMailAccount()?.id;
     if(account!==scheduledAccount){scheduledAccount=account;memoryScheduler?.();}
     const state = target();
-    mailaiBindUI(document.getElementById('assistant-input'),'@placeholder',()=>target() ? w('talkPlaceholder') : mailaiT('asst.inputPh'));
+    mailaiBindUI(document.getElementById('assistant-input'),'@placeholder',inputPlaceholder);
     tools.hidden = !state;
     schedulePosition();
     const welcome = document.querySelector('#assistant-messages .assistant-welcome');
@@ -89,7 +90,7 @@
   });
   const input = document.getElementById('assistant-input');
   input.removeAttribute('data-i18n-placeholder');
-  mailaiBindUI(input,'@placeholder',()=>target() ? w('talkPlaceholder') : mailaiT('asst.inputPh'));
+  mailaiBindUI(input,'@placeholder',inputPlaceholder);
   document.addEventListener('mailai:language-changed', refresh);
   refresh();
 

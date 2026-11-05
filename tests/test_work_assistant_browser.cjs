@@ -37,6 +37,16 @@ let log=''; fixture.stdout.on('data',chunk=>log+=chunk); fixture.stderr.on('data
     assert.equal(await guide.locator('[data-work-action]').count(),0);
     assert.equal(await page.locator('#assistant-scope-label').textContent(),await page.evaluate(()=>selectedEmailDetail.subject));
     assert(!requests.some(url=>url.includes('/api/work/')||url.includes('/api/assistant/ask')),'Opening XiaoYou is lazy');
+    // Scope/language changes update hints without replacing the user's draft.
+    await page.locator('#assistant-input').fill('尚未发送的想法');
+    for(const language of ['zh-CN','en','zh-CN'])for(const scope of ['account','filtered','selected']){
+      await page.evaluate(({language,scope})=>{setI18nLanguage(language);const input=document.getElementById('assistant-scope');input.value=scope;input.onchange();},{language,scope});
+      const placeholder=await page.locator('#assistant-input').getAttribute('placeholder');
+      assert(placeholder&&placeholder!=='null'&&placeholder!=='undefined',JSON.stringify({language,scope,placeholder}));
+      assert.equal(placeholder,await page.evaluate(scope=>scope==='selected'?(mailaiT('work.talkPlaceholder')||MAILAI_UI_COPY['work.talkPlaceholder'][0]):mailaiText('问问你的邮箱…'),scope));
+      assert.equal(await page.locator('#assistant-input').inputValue(),'尚未发送的想法');
+    }
+    await page.locator('#assistant-input').fill('');
     // A scoped conversation stays compact and inside the dock at large text sizes.
     for(const theme of ['', 'theme_monochrome','theme_baowu'])for(const mode of ['light','dark'])for(const language of ['zh-CN','en'])for(const scale of [1,2]){
       await page.setViewportSize({width:780,height:900});
