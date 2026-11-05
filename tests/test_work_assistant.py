@@ -28,6 +28,11 @@ def main():
             first = mail(1,'<first@example.test>')
             second = mail(2,'<second@example.test>','<first@example.test>', '已确认提交时间由周五调整到下周一。')
             other = mail(3,'<other@example.test>',text='不关联的合同报价。')
+            discarded = mail(4,'<discarded@example.test>')
+            work.save_context(discarded, note='随原邮件永久删除', revision=0)
+            with db.conn() as c:
+                c.execute('DELETE FROM emails WHERE id=?', (discarded,))
+                assert c.execute('SELECT COUNT(*) FROM work_context WHERE email_id=?', (discarded,)).fetchone()[0] == 0
             before = db.mailbox_revision()
             with patch.object(client,'chat_completion',side_effect=AssertionError('Read triggered a model call')):
                 result = work.overview(first)

@@ -9,7 +9,8 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app import config, db, portable_backup, system_settings, companion_growth
+from app import config, db, portable_backup, system_settings, companion_growth, work_assistant
+from app.account_context import use
 
 
 def test_portable_round_trip_and_integrity():
@@ -18,13 +19,15 @@ def test_portable_round_trip_and_integrity():
         source_raw.mkdir(parents=True)
         values = dict(DATA_DIR=root, DB_PATH=str(Path(root, "mail.db")), RAW_DIR=str(source_raw),
                       IMAP_USER="move@example.test", IMAP_HOST="imap.old.example.test")
-        with patch.multiple(config, **values):
+        with patch.multiple(config, **values), use({'ACCOUNT_ID': 'portable-fixture'}):
             db.init_db()
             raw = source_raw / "folder" / "邮件.eml"
             raw.parent.mkdir(); raw.write_bytes(b"From: a@example.test\r\nSubject: portable\r\n\r\nhello")
             with db.conn() as connection:
                 connection.execute("INSERT INTO emails(uid,folder,message_id,subject,raw_path,created_at,pending_action) VALUES(1,'INBOX','<portable@example.test>','portable',?,datetime('now'),'delete')", (str(raw),))
                 connection.execute("INSERT INTO outbox(token,payload,status,due_at,created_at,updated_at) VALUES('send','{}','queued','','','')")
+            work_assistant.save_context(1, project='迁移项目', note='保留事项记录', revision=0)
+            work_assistant.save_preferences('简洁自然')
             with companion_growth.connection() as connection:
                 connection.execute('UPDATE companion_profile SET xp=1200,stamps=1100 WHERE id=1')
             companion_growth.purchase('scarf', token='backup-scarf-once')
@@ -79,6 +82,8 @@ def test_portable_round_trip_and_integrity():
                 assert companion_growth.snapshot() == pet_before
                 assert companion_growth.purchase('berry', token='backup-berry-once') == pet_before
                 assert companion_growth.purchase('theme_baowu', token='backup-theme-blue') == pet_before
+                assert '保留事项记录' in work_assistant.saved_context([1])
+                assert work_assistant.preferences()['style'] == '简洁自然'
                 message = db.get_email(1)
                 assert restored["requires_resync"] is True
                 assert message["raw_path"].startswith(str(target_raw) + os.sep)
@@ -115,7 +120,7 @@ def test_selective_export_date_range():
     with tempfile.TemporaryDirectory() as root:
         values = dict(DATA_DIR=root, DB_PATH=str(Path(root, "mail.db")), RAW_DIR=str(Path(root, "raw")),
                       IMAP_USER="range@example.test", IMAP_HOST="imap.example.test")
-        with patch.multiple(config, **values):
+        with patch.multiple(config, **values), use({'ACCOUNT_ID': 'range-fixture'}):
             db.init_db()
             with db.conn() as connection:
                 connection.execute("INSERT INTO emails(uid,folder,subject,date,created_at) VALUES(1,'INBOX','old','2025-01-05T09:00:00','2025-01-05T09:00:00')")
@@ -129,6 +134,8 @@ def test_selective_export_date_range():
                 connection.execute("INSERT INTO briefing_dismissed(email_id) VALUES(1)")
             db.add_audit_log(1, "quarantine", actor="user", reason="旧邮件隔离")
             db.add_audit_log(2, "quarantine", actor="user", reason="保留邮件隔离")
+            work_assistant.save_context(1, note='范围外事项记录', revision=0)
+            work_assistant.save_context(2, note='保留事项记录', revision=0)
             result = portable_backup.create(password="", since="2026-01-01", until="2026-06-30")
             package = portable_backup.stored_path(result["filename"])
             preview = portable_backup.inspect(package)
@@ -143,6 +150,7 @@ def test_selective_export_date_range():
                     assert todos == ["keep todo"], todos
                     assert connection.execute("SELECT COUNT(*) FROM url_chains").fetchone()[0] == 0
                     assert connection.execute("SELECT COUNT(*) FROM briefing_dismissed").fetchone()[0] == 0
+                    assert connection.execute('SELECT email_id,note FROM work_context').fetchall() == [(2, '保留事项记录')]
                     audit = connection.execute("SELECT email_id FROM audit_logs ORDER BY email_id IS NULL").fetchall()
                     # The pruned email's audit entry is retained but anonymized.
                     assert any(row[0] is None for row in audit)
@@ -157,6 +165,7 @@ def test_selective_export_date_range():
             # The source database is never modified by an export.
             with db.conn() as c:
                 assert c.execute("SELECT COUNT(*) FROM emails").fetchone()[0] == 4
+                assert c.execute('SELECT COUNT(*) FROM work_context').fetchone()[0] == 2
     print("✅ 便携迁移包按日期范围选择性导出通过")
 
 

@@ -21,6 +21,10 @@ def initialize(c):
     c.execute('''CREATE TABLE IF NOT EXISTS work_preferences (
         id INTEGER PRIMARY KEY CHECK(id=1), style TEXT NOT NULL,
         revision INTEGER NOT NULL, updated_at TEXT NOT NULL)''')
+    # Existing purge and selective-export paths delete emails directly. Keep
+    # per-message memory with that lifecycle even on connections without FKs.
+    c.execute('''CREATE TRIGGER IF NOT EXISTS work_context_cleanup AFTER DELETE ON emails
+        BEGIN DELETE FROM work_context WHERE email_id=OLD.id; END''')
 
 
 def preferences():
