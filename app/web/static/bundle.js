@@ -23805,7 +23805,7 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
     <b><span data-i18n="ui.c7225dbf105e">附件</span><span class="special-mail-attachment-count">${row.attachments.length}</span></b><div class="special-mail-attachment-list">${row.attachments.map((item, index) => {
       const name = item.filename || item.name || mailaiText('未命名附件');
       const url = mailboxResourceUrl(row._remote ? `/api/emails/${row.remote_email_id}/attachments/${index}` : kind === 'sent' ? `/api/mail/sent/${row.id}/attachments/${index}` : `/api/drafts/${row.id}/attachments/${index}`);
-      return `<span class="attachment-row"><a class="special-mail-attachment-item" href="${url}" download="${esc(name)}" title="${esc(mailaiText('用默认应用打开'))}"><svg class="special-mail-file-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8Zm0 0v5h5M9 13h6m-6 4h4"/></svg><span class="special-mail-file-copy"><span class="special-mail-attachment-name">${esc(name)}</span><small>${formatFileSize(item.size || 0)}</small></span></a>${attachmentPreviewAction(url, name)}${attachmentDownloadAction(url, name)}</span>`;
+      return `<span class="attachment-row"><a class="special-mail-attachment-item" href="${url}" download="${esc(name)}" title="${esc(mailaiText('用默认应用打开'))}">${attachmentFileIcon({...item, name})}<span class="special-mail-file-copy"><span class="special-mail-attachment-name">${esc(name)}</span><small>${formatFileSize(item.size || 0)}</small></span></a>${attachmentPreviewAction(url, name)}${attachmentDownloadAction(url, name)}</span>`;
     }).join('')}</div>
     </div>` : '';
   pane.innerHTML = `<div class="special-mail-detail">
@@ -26397,7 +26397,7 @@ function renderReadingPane(e) {
       <div class="section-title"><span><span data-i18n="ui.c7225dbf105e">附件</span><span class="reading-attachment-count">${e.attachments.length}</span></span></div>
       <div class="attachments">${e.attachments.map((a, i) => `
         <div class="attachment-row"><a class="attachment" href="${mailboxResourceUrl(`/api/emails/${e.id}/attachments/${i}`)}" download="${esc(a.name)}" title="${esc(mailaiText('用默认应用打开'))}">
-          <svg class="att-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8Zm0 0v5h5M9 13h6m-6 4h4"/></svg>
+          ${attachmentFileIcon(a)}
           <span class="att-copy"><span class="att-name">${esc(a.name)}</span><span class="att-size">${fmtSize(a.size)}</span></span>
         </a>${attachmentPreviewAction(mailboxResourceUrl(`/api/emails/${e.id}/attachments/${i}`), a.name)}${attachmentDownloadAction(mailboxResourceUrl(`/api/emails/${e.id}/attachments/${i}`), a.name)}</div>
       `).join('')}</div>
@@ -27560,17 +27560,41 @@ function attachmentTypeName(type) {
   return (key && mailaiT(key)) || ({pdf:'PDF', sheet:'表格', document:'文档', image:'图片', archive:'压缩包', other:'其他'})[type] || (mailaiT('att.typeFile') || '文件');
 }
 
-function attachmentFileIcon(item) {
-  const type = attachmentType(item);
+// Visual kinds are independent of the server's attachment filter categories.
+function attachmentIconKind(item = {}) {
+  const name = String(item.name || item.filename || '').trim();
+  const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
+  const mime = String(item.content_type || '').toLowerCase();
+  if (['ppt', 'pptx', 'odp', 'key'].includes(ext) || /presentation|powerpoint/.test(mime)) return 'slides';
+  if (['mp3', 'wav', 'm4a', 'aac', 'flac', 'ogg'].includes(ext) || mime.startsWith('audio/')) return 'audio';
+  if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext) || mime.startsWith('video/')) return 'video';
+  if (['json', 'xml', 'html', 'css', 'js', 'ts', 'py', 'java', 'sh', 'yaml', 'yml'].includes(ext)) return 'code';
+  if (['txt', 'md', 'log'].includes(ext) || mime === 'text/plain') return 'text';
+  if (['bmp', 'tif', 'tiff', 'heic', 'avif', 'ico'].includes(ext)) return 'image';
+  if (mime === 'application/vnd.ms-excel') return 'sheet';
+  if (['bz2', 'xz', 'tgz'].includes(ext) || /compressed|archive|gzip/.test(mime)) return 'archive';
+  return attachmentType({name, content_type:mime});
+}
+
+function attachmentFileIcon(item = {}) {
+  const type = attachmentIconKind(item);
   const marks = {
-    pdf:'<path d="M14 22h12M14 27h8"/>',
-    sheet:'<rect x="12" y="21" width="16" height="12" rx="1"/><path d="M12 25h16M18 21v12"/>',
-    document:'<path d="M13 22h14M13 27h14M13 32h9"/>',
-    image:'<circle cx="15" cy="23" r="2"/><path d="m12 33 6-6 4 4 3-4 4 6"/>',
-    archive:'<path d="M19 19h3m-3 4h3m-3 4h3"/><rect x="18" y="31" width="5" height="4" rx="1"/>',
-    other:'<path d="M14 24h12M14 29h8"/>',
+    pdf:'<path d="M15 27c5-7 6-13 4-13-3 0 0 12 8 11 4-1-11-6-14 0-2 4 5 1 9-2"/>',
+    sheet:'<rect x="12" y="16" width="16" height="12" rx="1.5"/><path d="M12 20h16m-16 4h16m-10-8v12"/>',
+    document:'<path d="m12 17 3 11 5-8 5 8 3-11"/>',
+    slides:'<rect x="11" y="15" width="18" height="12" rx="1.5"/><path d="M20 27v3m-4 0h8m-4-12v6l5-3Z"/>',
+    image:'<rect x="11" y="15" width="18" height="14" rx="2"/><circle cx="16" cy="19" r="1.5"/><path d="m12 27 6-6 4 4 3-3 4 5"/>',
+    archive:'<path d="M18 14h4m-4 4h4m-4 4h4"/><rect x="17" y="26" width="6" height="4" rx="1"/>',
+    audio:'<path d="M18 27V17l9-2v10M18 21l9-2"/><ellipse cx="15" cy="27" rx="3" ry="2"/><ellipse cx="24" cy="25" rx="3" ry="2"/>',
+    video:'<rect x="11" y="15" width="18" height="14" rx="2"/><path d="m18 19 6 3-6 3Z"/>',
+    code:'<path d="m15 17-5 5 5 5m10-10 5 5-5 5m-3-12-4 14"/>',
+    text:'<path d="M13 17h14m-14 5h14m-14 5h9"/>',
+    other:'<path d="M15 17h10v11H15zM18 21h4m-4 3h4"/>',
   };
-  return `<span class="attachment-file-icon" aria-hidden="true"><svg viewBox="0 0 40 48"><path class="file-sheet" d="M9 2h15l10 10v30a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V6a4 4 0 0 1 4-4Z"/><path class="file-fold" d="M24 2v10h10"/><g class="file-mark">${marks[type]}</g></svg><strong>${esc(attachmentTypeLabel(item.content_type,item.name))}</strong></span>`;
+  const labels = {pdf:'PDF',sheet:'XLS',document:'DOC',slides:'PPT',image:'IMG',archive:'ZIP',audio:'AUD',video:'VID',code:'CODE',text:'TXT',other:'FILE'};
+  const extension = String(item.name || item.filename || '').trim().match(/\.([a-z0-9]{1,4})$/i)?.[1];
+  const label = extension ? extension.toUpperCase() : labels[type];
+  return `<span class="attachment-file-icon attachment-type-icon" data-file-kind="${type}" aria-hidden="true"><svg viewBox="0 0 40 48"><path class="file-sheet" d="M10 2h14l10 10v30a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4V6a4 4 0 0 1 4-4Z"/><path class="file-fold" d="M24 2v7a3 3 0 0 0 3 3h7"/><g class="file-mark">${marks[type]}</g></svg><strong>${label}</strong></span>`;
 }
 
 function updateAttachmentTypeFilters() {
@@ -35736,7 +35760,8 @@ function mailCardDate(value, now = new Date()) {
   }
   let css='';
   for (const sheet of document.styleSheets) {
-    if (!sheet.href?.includes('/static/') || /(?:reward-themes|reward-theme-details|control-theme|settings-polish|home-dialog-polish|brand|date-time-picker|companion(?:-growth|-colors|-center)?)\.css/.test(sheet.href)) continue;
+    // File type colors have their own light/dark and monochrome palettes.
+    if (!sheet.href?.includes('/static/') || /(?:attachment-icons|reward-themes|reward-theme-details|control-theme|settings-polish|home-dialog-polish|brand|date-time-picker|companion(?:-growth|-colors|-center)?)\.css/.test(sheet.href)) continue;
     try { css+=bridge(sheet.cssRules); } catch (_) { /* A non-local stylesheet is outside the workspace. */ }
   }
   const style=document.createElement('style');
