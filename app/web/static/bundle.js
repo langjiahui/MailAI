@@ -23794,21 +23794,29 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
       return name ? `${name} <${address}>` : address;
     }).join(', ');
   };
-  const recipients = [displayRecipientField(row.to_addr), row.cc_addr && mailaiTemplate`抄送：${displayRecipientField(row.cc_addr)}`, row.bcc_addr && mailaiTemplate`密送：${displayRecipientField(row.bcc_addr)}`].filter(Boolean).join(' · ');
+  const recipientMeta = [
+    [kind === 'drafts' ? mailaiText('收件人') : mailaiText('发送至'), displayRecipientField(row.to_addr) || mailaiText('尚未填写')],
+    [mailaiText('抄送'), displayRecipientField(row.cc_addr)],
+    [mailaiText('密送'), displayRecipientField(row.bcc_addr)],
+  ].filter(([, value]) => value).map(([label, value]) => `<div class="special-mail-meta-row"><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('');
   const failed = kind === 'sent' && row.status === 'failed';
   const originLabel = row._remote ? (kind === 'drafts' ? mailaiText('服务器草稿') : mailaiText('服务器已发送邮件')) : (kind === 'drafts' ? mailaiText('本地草稿') : failed ? mailaiText('发送失败') : row.status === 'unknown' ? mailaiText('发送结果待确认，请在任务与发件箱中核对') : row.status === 'sending' ? mailaiText('正在发送') : mailaiText('已发送邮件'));
   const specialAttachments = (row.attachments || []).length ? `<div class="special-mail-attachments">
-    <b><span data-i18n="ui.c7225dbf105e">附件</span></b><div class="special-mail-attachment-list">${row.attachments.map((item, index) => {
+    <b><span data-i18n="ui.c7225dbf105e">附件</span><span class="special-mail-attachment-count">${row.attachments.length}</span></b><div class="special-mail-attachment-list">${row.attachments.map((item, index) => {
       const name = item.filename || item.name || mailaiText('未命名附件');
       const url = mailboxResourceUrl(row._remote ? `/api/emails/${row.remote_email_id}/attachments/${index}` : kind === 'sent' ? `/api/mail/sent/${row.id}/attachments/${index}` : `/api/drafts/${row.id}/attachments/${index}`);
-      return `<span class="attachment-row"><a class="special-mail-attachment-item" href="${url}" download="${esc(name)}" title="${esc(mailaiText('用默认应用打开'))}"><span class="special-mail-attachment-name">${esc(name)}</span><small>${formatFileSize(item.size || 0)}</small></a>${attachmentPreviewAction(url, name)}${attachmentDownloadAction(url, name)}</span>`;
+      return `<span class="attachment-row"><a class="special-mail-attachment-item" href="${url}" download="${esc(name)}" title="${esc(mailaiText('用默认应用打开'))}"><svg class="special-mail-file-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8Zm0 0v5h5M9 13h6m-6 4h4"/></svg><span class="special-mail-file-copy"><span class="special-mail-attachment-name">${esc(name)}</span><small>${formatFileSize(item.size || 0)}</small></span></a>${attachmentPreviewAction(url, name)}${attachmentDownloadAction(url, name)}</span>`;
     }).join('')}</div>
     </div>` : '';
   pane.innerHTML = `<div class="special-mail-detail">
-    <span class="eyebrow">${originLabel}</span>
-    <h1>${esc(String(row.subject ?? '').trim() || mailaiText('（无主题）'))}</h1>
-    <div class="special-mail-meta"><b>${kind === 'drafts' ? mailaiText('收件人') : mailaiText('发送至')}：</b>${esc(recipients || mailaiText('尚未填写'))}<br><b><span data-i18n="ui.2bfff9580494">时间：</span></b>${esc(fmtDate(row.sent_at || row.updated_at || row.created_at))}</div>
+    <header class="special-mail-header">
+      <div class="special-mail-toolbar">
+        <span class="eyebrow">${esc(originLabel)}</span>
     <div class="special-mail-actions">${kind === 'drafts' ? "<button class=\"action-btn action-primary compact\" id=\"btn-edit-special\"><svg viewBox=\"0 0 20 20\"><path d=\"m4 14.5-.5 2 2-.5L15 6.5 13.5 5 4 14.5ZM12 6.5l1.5 1.5\"/></svg><span data-i18n=\"ui.fd4b9e3b6c68\">继续编辑</span></button><button class=\"action-btn compact\" id=\"btn-delete-special\"><svg viewBox=\"0 0 20 20\"><path d=\"M4 6h12M8 6V4h4v2m-6 0 1 10h6l1-10M9 9v4m2-4v4\"/></svg><span data-i18n=\"ui.855f17276246\">舍弃草稿</span></button>" : failed ? "<button class=\"action-btn action-primary compact\" id=\"btn-edit-special\"><svg viewBox=\"0 0 20 20\"><path d=\"m4 14.5-.5 2 2-.5L15 6.5 13.5 5 4 14.5Z\"/></svg><span data-i18n=\"ui.1532ca4d4634\">重新编辑</span></button>" : (row._remote || ['sent','accepted'].includes(row.status)) ? "<button class=\"action-btn action-primary compact\" id=\"btn-edit-special\"><span data-i18n=\"ui.6b10f1cab097\">再次编辑</span></button>" : ''}</div>
+      </div>
+      <h1>${esc(String(row.subject ?? '').trim() || mailaiText('（无主题）'))}</h1>
+      <dl class="special-mail-meta">${recipientMeta}<div class="special-mail-meta-row"><dt><span data-i18n="ui.2bfff9580494">时间：</span></dt><dd>${esc(fmtDate(row.sent_at || row.updated_at || row.created_at))}</dd></div></dl>
+    </header>
     ${failed ? `<div class="special-mail-error"><b><span data-i18n="ui.48ef62f16b21">失败原因：</span></b>${esc(mailaiSystemMessage(row.error) || mailaiText('未知错误'))}</div>` : ''}
     ${!failed && row.error ? `<div class="special-mail-error" role="status"><b data-i18n="send.warning">${esc(mailaiText('发送提示'))}：</b>${esc(mailaiSystemMessage(row.error))}</div>` : ''}
     ${specialAttachments}
@@ -26385,13 +26393,12 @@ function renderReadingPane(e) {
   const riskScore = Number(e.score || 0);
   const riskNeedsAttention = needsRiskAttention(e);
   const attachments = (e.attachments || []).length ? `
-    <div class="reading-section">
-      <div class="section-title"><span data-i18n="ui.f552e66b6dfe">📎 附件（${e.attachments.length}）</span></div>
+    <div class="reading-section reading-attachments">
+      <div class="section-title"><span><span data-i18n="ui.c7225dbf105e">附件</span><span class="reading-attachment-count">${e.attachments.length}</span></span></div>
       <div class="attachments">${e.attachments.map((a, i) => `
         <div class="attachment-row"><a class="attachment" href="${mailboxResourceUrl(`/api/emails/${e.id}/attachments/${i}`)}" download="${esc(a.name)}" title="${esc(mailaiText('用默认应用打开'))}">
-          <span class="att-icon">📄</span>
-          <span class="att-name">${esc(a.name)}</span>
-          <span class="att-size">${fmtSize(a.size)}</span>
+          <svg class="att-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8Zm0 0v5h5M9 13h6m-6 4h4"/></svg>
+          <span class="att-copy"><span class="att-name">${esc(a.name)}</span><span class="att-size">${fmtSize(a.size)}</span></span>
         </a>${attachmentPreviewAction(mailboxResourceUrl(`/api/emails/${e.id}/attachments/${i}`), a.name)}${attachmentDownloadAction(mailboxResourceUrl(`/api/emails/${e.id}/attachments/${i}`), a.name)}</div>
       `).join('')}</div>
     </div>
@@ -26484,13 +26491,13 @@ function renderReadingPane(e) {
       <main class="reading-main">
         ${renderConversationProgress(e)}
         ${mailSummaryDisclosure(e)}
+        ${attachments}
 
         <div class="reading-section body-section">
           <div class="section-title"><span data-i18n="read.body">${mailaiT('read.body') || '邮件正文'}</span>${e.has_rich_body ? '' : `<div class="body-format-actions"><small>${mailaiT('read.fmtPlainOpt') || '纯文本邮件 · 优化排版'}</small></div>`}</div>
           ${e.has_rich_body ? `<div id="rich-email-body" class="email-body rich-email-body"><div class="reading-loading">${mailaiT('read.restoring') || '正在还原邮件排版…'}</div></div>` : `<div class="markdown-body email-body plain-email-body">${window.mailaiReadingText?.(e) || mdToHtml(e.body_text || '')}</div>`}
         </div>
 
-        ${attachments}
       </main>
     </div>
   `;
