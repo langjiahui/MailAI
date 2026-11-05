@@ -176,14 +176,19 @@ class MailClient:
             return raw
         chunks = []
         received = 0
-        while received < size:
+        # Confirm actual EOF: some gateways report an encoded size that omits
+        # MIME line wrapping. Stopping at RFC822.SIZE would save a short prefix.
+        while True:
             if time.monotonic() >= deadline:
                 raise TimeoutError(f'邮件 {uid} 下载超过 120 秒')
-            length = min(BODY_CHUNK_BYTES, size - received)
+            length = min(BODY_CHUNK_BYTES, size - received) if received < size else min(
+                BODY_CHUNK_BYTES, MAX_AUTOMATIC_MESSAGE_BYTES - received + 1)
             data = self.client.fetch([uid], [f'BODY.PEEK[]<{received}.{length}>']).get(uid, {})
             raw = data.get(f'BODY[]<{received}>'.encode())
             if raw is None and received == 0:
                 raw = data.get(b'BODY[]')
+            if raw == b'' and received >= size:
+                break
             if not isinstance(raw, bytes) or not raw:
                 if received and size <= BODY_CHUNK_BYTES:
                     if time.monotonic() >= deadline:
@@ -205,9 +210,11 @@ class MailClient:
                 raise RuntimeError(f'邮件 {uid} 服务器未按分段返回正文')
             chunks.append(raw)
             received += len(raw)
+            if received > MAX_AUTOMATIC_MESSAGE_BYTES:
+                raise OversizedMessageError(uid, received)
             callback = getattr(self, 'on_download_progress', None)
             if callback:
-                callback(uid, received, size)
+                callback(uid, received, max(size, received))
         return b''.join(chunks)
 
     def fetch_uid_bounded(self, uid: int, folder: str) -> bytes:

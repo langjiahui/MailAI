@@ -1,6 +1,10 @@
 """Offline checks for chunked downloads and durable per-message retries."""
 import sys
 import tempfile
+import time
+from email import policy
+from email.message import EmailMessage
+from email.parser import BytesParser
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -48,7 +52,8 @@ def main():
         attempts += 1
         if attempts == 1:
             raise TimeoutError('simulated stalled server')
-        return {uids[0]: {b'BODY[]<0>': b'abc'}}
+        offset = int(fields[0].split('<', 1)[1].split('.')[0])
+        return {uids[0]: {f'BODY[]<{offset}>'.encode(): b'abc'[offset:]}}
     imap.fetch.side_effect = flaky_fetch
     with patch.object(mail, '_reconnect') as reconnect, patch('app.imap_client.time.sleep'):
         assert mail.fetch_uid_bounded(9, config.INBOX_FOLDER) == b'abc'
@@ -111,6 +116,45 @@ def main():
         except RuntimeError: pass
         else: raise AssertionError('Large incomplete mail was accepted')
     assert not any(call.args[1]==['BODY.PEEK[]'] for call in imap.fetch.call_args_list)
+
+    # A gateway may advertise the MIME size without the Base64 CRLF wrapping.
+    # Fetch to an explicit empty partial response, never stop at that count.
+    attachment = bytes(range(256)) * 15_000
+    message = EmailMessage(policy=policy.SMTP)
+    message.set_content('Synthetic attachment integrity test')
+    message.add_attachment(attachment, maintype='application', subtype='octet-stream', filename='synthetic.bin')
+    full = message.as_bytes()
+    reported = len(full) - full.count(b'\r\n') * 2
+    progress = []
+    def underreported(uids, fields):
+        if fields == ['RFC822.SIZE']:
+            return {uids[0]: {b'RFC822.SIZE': reported}}
+        offset, length = map(int, fields[0].split('<', 1)[1].rstrip('>').split('.'))
+        assert 0 < length <= BODY_CHUNK_BYTES
+        return {uids[0]: {f'BODY[]<{offset}>'.encode(): full[offset:offset + length]}}
+    imap.fetch.side_effect = underreported
+    mail.on_download_progress = lambda uid, received, size: progress.append((received, size))
+    received = mail.fetch_uid_bounded(7, config.INBOX_FOLDER)
+    assert received == full, 'An underestimated size must not truncate the MIME body'
+    decoded = next(BytesParser(policy=policy.default).parsebytes(received).iter_attachments()).get_payload(decode=True)
+    assert decoded == attachment, 'Recovered attachment must match its original bytes'
+    assert progress[-1] == (len(full), len(full))
+    del mail.on_download_progress
+
+    # Independent byte cap still applies even when the advertised size lies.
+    def oversized_tail(uids, fields):
+        if fields == ['RFC822.SIZE']:
+            return {uids[0]: {b'RFC822.SIZE': 1024}}
+        offset, length = map(int, fields[0].split('<', 1)[1].rstrip('>').split('.'))
+        return {uids[0]: {f'BODY[]<{offset}>'.encode(): b'x' * min(length, max(0, 4097 - offset))}}
+    imap.fetch.side_effect = oversized_tail
+    with patch('app.imap_client.MAX_AUTOMATIC_MESSAGE_BYTES', 4096):
+        try:
+            mail._fetch_uid_bounded_once(7, config.INBOX_FOLDER, time.monotonic() + 10)
+        except OversizedMessageError:
+            pass
+        else:
+            raise AssertionError('Underreported mail cannot bypass the byte cap')
 
     imap.fetch.side_effect = TimeoutError('network down')
     with patch.object(mail, '_reconnect', side_effect=TimeoutError('reconnect failed')):
