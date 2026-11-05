@@ -2,9 +2,20 @@ import XCTest
 import MailAICore
 import Security
 import UIKit
+import SwiftMail
 @testable import MailAI
 
 final class ProtocolTests: XCTestCase {
+    func testConnectionDiagnosticsExcludeServerResponsesAndCredentials() throws {
+        let secret = "synthetic-sensitive@example.invalid synthetic-password"
+        let (issue, record) = NativeMailService.diagnostic(IMAPError.loginFailed(secret), phase: .imapLogin)
+        XCTAssertEqual(issue, .authentication)
+        let text = String(decoding: try JSONEncoder().encode(record), as: UTF8.self)
+        XCTAssertFalse(text.contains(secret)); XCTAssertFalse(text.contains("synthetic-sensitive"))
+        XCTAssertEqual(record["phase"], "imapLogin")
+        let (parse, _) = NativeMailService.diagnostic(IMAPParseError.malformedResponse(secret), phase: .imapRequest)
+        XCTAssertEqual(parse, .serverResponse)
+    }
     func testModelKeyOnlySetupPreservesLegacyConfigAndClearsKeysOnProviderChange() throws {
         var value = AssistantConfiguration(); value.key = " synthetic-key\n"
         XCTAssertEqual(value.normalized().key, "synthetic-key")
@@ -94,9 +105,8 @@ final class ProtocolTests: XCTestCase {
                 try await service.validate(wrong)
                 XCTFail("A trusted CA must not make a mismatched IP SAN valid")
             } catch {
-                XCTAssertFalse(error is MailConnectionFailure, "Must reach the TLS check, not fail on routing")
-                let detail = String(reflecting: error).lowercased()
-                XCTAssertTrue(["tls", "ssl", "certificate", "hostname", "handshake"].contains(where: detail.contains), detail)
+                let issue = try XCTUnwrap(error as? MailConnectionFailure)
+                XCTAssertTrue([MailConnectionFailure.certificate, .tlsNegotiation].contains(issue), "Must reach the TLS check, not fail on routing: \(error)")
             }
         }
     }

@@ -3,10 +3,71 @@ import SwiftMail
 import MailAICore
 
 struct NativeMailService: MailService {
+    /// Only fixed classification codes are persisted. Never record server
+    /// responses, endpoint names, usernames, credentials or message contents.
+    enum Phase: String { case imapConnect, imapLogin, imapRequest, imapFolders, imapSummaries, smtpConnect, smtpLogin }
+    static func diagnostic(_ error: Error, phase: Phase) -> (MailConnectionFailure, [String: String]) {
+        let detail = String(reflecting: error).lowercased()
+        let keywords = ["certificate", "hostname", "handshake", "ssl", "tls", "timeout", "parse", "unexpected", "closed", "capability", "authentication", "login"]
+            .filter { detail.contains($0) }
+        let issue: MailConnectionFailure
+        if let existing = error as? MailConnectionFailure { issue = existing }
+        else if keywords.contains("certificate") || keywords.contains("hostname") { issue = .certificate }
+        else if keywords.contains("handshake") || keywords.contains("ssl") || keywords.contains("tls") { issue = .tlsNegotiation }
+        else if keywords.contains("timeout") { issue = .timedOut }
+        else if let imap = error as? IMAPError {
+            switch imap {
+            case .loginFailed, .authFailed, .unsupportedAuthMechanism: issue = .authentication
+            case .timeout: issue = .timedOut
+            default: issue = .serverResponse
+            }
+        } else if let smtp = error as? SMTPError {
+            switch smtp {
+            case .authenticationFailed: issue = .authentication
+            case .tlsFailed: issue = .tlsNegotiation
+            default: issue = .serverResponse
+            }
+        } else if error is IMAPConnectionError { issue = .connectionClosed }
+        else { issue = .serverResponse }
+        let safeCase: String
+        if let imap = error as? IMAPError {
+            switch imap {
+            case .connectionFailed: safeCase = "connectionFailed"
+            case .greetingFailed: safeCase = "greetingFailed"
+            case .loginFailed: safeCase = "loginFailed"
+            case .authFailed: safeCase = "authFailed"
+            case .unsupportedAuthMechanism: safeCase = "unsupportedAuthMechanism"
+            case .commandFailed: safeCase = "commandFailed"
+            case .commandNotSupported: safeCase = "commandNotSupported"
+            case .selectFailed: safeCase = "selectFailed"
+            case .fetchFailed: safeCase = "fetchFailed"
+            case .timeout: safeCase = "timeout"
+            default: safeCase = "otherIMAPError"
+            }
+        } else if error is IMAPParseError { safeCase = "malformedResponse" }
+        else if error is IMAPProtocolError { safeCase = "unexpectedTaggedResponse" }
+        else { safeCase = "other" }
+        return (issue, ["phase": phase.rawValue, "category": issue.rawValue,
+            "errorType": String(reflecting: type(of: error)), "errorCase": safeCase,
+            "markers": keywords.joined(separator: ","), "date": ISO8601DateFormatter().string(from: Date())])
+    }
+    private static func step<T: Sendable>(_ phase: Phase, _ action: @Sendable () async throws -> T) async throws -> T {
+        do { return try await action() }
+        catch {
+            if error is CancellationError || Task.isCancelled { throw error }
+            let (issue, record) = diagnostic(error, phase: phase)
+            if let directory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first,
+               let data = try? JSONEncoder().encode(record) {
+                try? data.write(to: directory.appendingPathComponent("mail-connection-diagnostic.json"), options: [.atomic, .completeFileProtection])
+            }
+            if error is MailFailure { throw error }
+            throw issue
+        }
+    }
     private func security(_ value: TransportSecurity) -> MailTransportSecurity {
         value == .tls ? .implicitTLS : .startTLS
     }
-    private func withIMAP<T: Sendable>(_ entry: AccountCredential,
+    private func withIMAP<T: Sendable>(_ entry: AccountCredential, phase: Phase = .imapRequest,
         action: @Sendable (IMAPServer) async throws -> T) async throws -> T {
         let a = entry.account
         let server = IMAPServer(host: a.imapHost, port: a.imapPort,
@@ -15,10 +76,12 @@ struct NativeMailService: MailService {
         return try await withTaskCancellationHandler {
             do {
                 try Task.checkCancellation()
-                try await MailConnectionGate.connect(host: a.imapHost, port: a.imapPort,
-                    attempt: { try await server.connect() }, reset: { try? await server.disconnect() })
-                try await server.login(username: a.username, password: entry.password)
-                let result = try await action(server)
+                try await Self.step(.imapConnect) {
+                    try await MailConnectionGate.connect(host: a.imapHost, port: a.imapPort,
+                        attempt: { try await server.connect() }, reset: { try? await server.disconnect() })
+                }
+                try await Self.step(.imapLogin) { try await server.login(username: a.username, password: entry.password) }
+                let result = try await Self.step(phase) { try await action(server) }
                 try? await server.disconnect()
                 return result
             } catch { try? await server.disconnect(); throw error }
@@ -36,15 +99,17 @@ struct NativeMailService: MailService {
         let server = smtp(entry)
         try await withTaskCancellationHandler {
             do {
-                try await MailConnectionGate.connect(host: entry.account.smtpHost, port: entry.account.smtpPort,
-                    attempt: { try await server.connect() }, reset: { try? await server.disconnect() })
-                try await server.login(username: entry.account.username, password: entry.password)
+                try await Self.step(.smtpConnect) {
+                    try await MailConnectionGate.connect(host: entry.account.smtpHost, port: entry.account.smtpPort,
+                        attempt: { try await server.connect() }, reset: { try? await server.disconnect() })
+                }
+                try await Self.step(.smtpLogin) { try await server.login(username: entry.account.username, password: entry.password) }
                 try? await server.disconnect()
             } catch { try? await server.disconnect(); throw error }
         } onCancel: { Task { try? await server.disconnect() } }
     }
     func folders(_ entry: AccountCredential) async throws -> [MailFolder] {
-        try await withIMAP(entry) { server in
+        try await withIMAP(entry, phase: .imapFolders) { server in
             let list = try await server.listMailboxes().filter(\.isSelectable).map { item in
                 var folder = MailFolder(name: item.name)
                 if item.attributes.contains(.sent) { folder.role = "sent" }
@@ -62,7 +127,7 @@ struct NativeMailService: MailService {
         }
     }
     func summaries(_ entry: AccountCredential, folder: String, limit: Int) async throws -> [MailSummary] {
-        try await withIMAP(entry) { server in
+        try await withIMAP(entry, phase: .imapSummaries) { server in
             let selection = try await server.examineMailbox(folder)
             guard let range = selection.latest(limit) else { return [] }
             var result: [MailSummary] = []
@@ -219,9 +284,11 @@ struct NativeMailService: MailService {
         let email = try Self.email(entry, draft: draft)
         let server = smtp(entry)
         do {
-            try await MailConnectionGate.connect(host: entry.account.smtpHost, port: entry.account.smtpPort,
-                attempt: { try await server.connect() }, reset: { try? await server.disconnect() })
-            try await server.login(username: entry.account.username, password: entry.password)
+            try await Self.step(.smtpConnect) {
+                try await MailConnectionGate.connect(host: entry.account.smtpHost, port: entry.account.smtpPort,
+                    attempt: { try await server.connect() }, reset: { try? await server.disconnect() })
+            }
+            try await Self.step(.smtpLogin) { try await server.login(username: entry.account.username, password: entry.password) }
         } catch {
             try? await server.disconnect()
             throw SubmissionFailure(uncertain: false, connectionFailure: error as? MailConnectionFailure)

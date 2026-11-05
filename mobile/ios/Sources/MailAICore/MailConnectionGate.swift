@@ -3,9 +3,20 @@ import Foundation
 
 public enum MailConnectionFailure: String, Error, LocalizedError, Sendable {
     case localNetworkDenied, dns, unavailable, refused, timedOut
+    case certificate, tlsNegotiation, authentication, serverResponse, connectionClosed
 
     public var errorDescription: String? {
         switch self {
+        case .certificate:
+            return "邮箱证书校验失败。请核对服务器域名与证书是否匹配；企业证书需由公司提供并在 iPhone 上信任。"
+        case .tlsNegotiation:
+            return "邮箱加密握手失败。请核对端口与 TLS／STARTTLS 设置；公司网络可能拦截了加密连接。"
+        case .authentication:
+            return "邮箱登录被拒绝。请核对登录用户名、密码／授权码，以及公司是否允许 IMAP／SMTP 登录。"
+        case .serverResponse:
+            return "邮箱服务器响应无法处理，请重试；若持续失败，请联系支持检查邮件协议兼容性。"
+        case .connectionClosed:
+            return "邮箱服务器中断了连接。请确认公司 Wi-Fi／VPN 稳定，稍后重试。"
         case .localNetworkDenied:
             return "本地网络访问受限。请在 iPhone 设置 → 隐私与安全性 → 本地网络中允许 MailAI，然后返回重试。"
         case .dns:
