@@ -113,3 +113,75 @@ struct AttachmentPreview: Identifiable { let id = UUID(); let url: URL }
     try data.write(to: url, options: [.atomic, .completeFileProtection])
     return url
 }
+
+struct MailPanelAction: Identifiable {
+    let id = UUID()
+    let title: String
+    let symbol: String
+    var selected = false
+    var enabled = true
+    var action: () -> Void
+}
+struct MailActionPanelData: Identifiable {
+    let id = UUID()
+    let title: String
+    let groups: [[MailPanelAction]]
+}
+struct MailPanelHeader: View {
+    let title: String
+    let close: () -> Void
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(title).font(.headline).dynamicTypeSize(...DynamicTypeSize.xxxLarge).foregroundStyle(MailTheme.ink).accessibilityAddTraits(.isHeader)
+            Spacer(minLength: 8)
+            Button(action: close) { Image(systemName: "xmark").font(.system(size: 14, weight: .semibold)).foregroundStyle(MailTheme.secondary).frame(width: 44, height: 44).background(MailTheme.canvas, in: Circle()) }
+                .buttonStyle(MailPressButtonStyle(cornerRadius: 22, pressedScale: 0.96)).accessibilityLabel("关闭" + title).accessibilityIdentifier("close-mail-panel")
+        }.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 8)
+    }
+}
+private struct MailActionPanel: View {
+    let data: MailActionPanelData
+    let choose: (@escaping () -> Void) -> Void
+    let close: () -> Void
+    @Environment(\.dynamicTypeSize) private var typeSize
+    private var height: CGFloat { min(620, max(250, 104 + CGFloat(data.groups.reduce(0) { $0 + $1.count }) * 52 + CGFloat(max(0, data.groups.count - 1)) * 12)) }
+    var body: some View {
+        VStack(spacing: 0) {
+            MailPanelHeader(title: data.title, close: close)
+            ScrollView {
+                VStack(spacing: 12) {
+                    ForEach(Array(data.groups.enumerated()), id: \.offset) { _, group in
+                        VStack(spacing: 0) {
+                            ForEach(group) { item in
+                                Button { choose(item.action) } label: {
+                                    HStack(spacing: 14) {
+                                        Image(systemName: item.symbol).font(.system(size: 19, weight: .regular)).frame(width: 24).foregroundStyle(MailTheme.secondary)
+                                        Text(item.title).font(.body).foregroundStyle(MailTheme.ink).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                                        Spacer(minLength: 12)
+                                        if item.selected { Image(systemName: "checkmark").font(.body.weight(.semibold)).foregroundStyle(MailTheme.blue) }
+                                    }.frame(maxWidth: .infinity, minHeight: 52, alignment: .leading).padding(.horizontal, 16).contentShape(Rectangle())
+                                }.buttonStyle(MailPressButtonStyle(cornerRadius: 12, pressedScale: 0.99)).disabled(!item.enabled)
+                                    .accessibilityValue(item.selected ? "已选择" : "")
+                            }
+                        }.padding(.vertical, 3).background(MailTheme.canvas, in: RoundedRectangle(cornerRadius: 14))
+                    }
+                }.padding(.horizontal, 20).padding(.bottom, 20)
+            }
+        }.background(MailTheme.surface)
+            .presentationDetents(typeSize.isAccessibilitySize ? [.large] : [.height(height), .large])
+            .presentationDragIndicator(.visible).presentationCornerRadius(24).presentationBackground(MailTheme.surface).presentationBackgroundInteraction(.disabled)
+            .accessibilityElement(children: .contain).accessibilityIdentifier("mail-action-panel")
+    }
+}
+private struct MailActionPanelPresentation: ViewModifier {
+    @Binding var panel: MailActionPanelData?
+    @State private var pending: (() -> Void)?
+    func body(content: Content) -> some View {
+        content.accessibilityHidden(panel != nil).sheet(item: $panel, onDismiss: { let action = pending; pending = nil; action?() }) { data in
+            MailActionPanel(data: data, choose: { action in guard pending == nil else { return }; pending = action; panel = nil }, close: { panel = nil }).accessibilityHidden(false)
+        }
+    }
+}
+extension View {
+    func mailActionPanel(_ panel: Binding<MailActionPanelData?>) -> some View { modifier(MailActionPanelPresentation(panel: panel)) }
+}

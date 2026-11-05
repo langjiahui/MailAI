@@ -140,8 +140,31 @@ public struct MailFolder: Codable, Identifiable, Hashable, Sendable {
     public var name: String
     public var id: String { name }
     public var role: String?
+    /// Decode legacy IMAP modified UTF-7 for display only. The raw name remains
+    /// the folder identity for protocol commands and existing cache keys.
+    public var displayName: String {
+        var result = "", index = name.startIndex
+        let alphabet = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+,")
+        while index < name.endIndex {
+            guard name[index] == "&", let end = name[index...].firstIndex(of: "-") else { result.append(name[index]); index = name.index(after: index); continue }
+            let token = String(name[name.index(after: index)..<end])
+            if token.isEmpty { result.append("&") }
+            else {
+                var base64 = token.replacingOccurrences(of: ",", with: "/")
+                base64 += String(repeating: "=", count: (4 - base64.count % 4) % 4)
+                if token.utf8.count <= 4096, token.unicodeScalars.allSatisfy({ alphabet.contains($0) }),
+                   let data = Data(base64Encoded: base64), data.count % 2 == 0,
+                   let decoded = String(data: data, encoding: .utf16BigEndian), !decoded.isEmpty,
+                   decoded.unicodeScalars.allSatisfy({ $0.value > 126 && !CharacterSet.controlCharacters.contains($0) }) { result += decoded }
+                else { result += String(name[index...end]) }
+            }
+            index = name.index(after: end)
+        }
+        return result
+    }
     public var title: String {
-        let value = role ?? name.lowercased().split(separator: "/").last.map(String.init) ?? name.lowercased()
+        let displayed = displayName
+        let value = role ?? displayed.lowercased().split(separator: "/").last.map(String.init) ?? displayed.lowercased()
         switch value {
         case "inbox": return "收件箱"
         case "sent", "sent messages", "sent items", "已发送邮件", "已发送的邮件": return "已发送"
@@ -149,7 +172,7 @@ public struct MailFolder: Codable, Identifiable, Hashable, Sendable {
         case "trash", "deleted", "deleted messages", "deleted items", "已删除邮件", "已删除的邮件", "已删除项目", "已删除": return "废纸篓"
         case "archive", "archives", "all mail": return "归档"
         case "junk", "spam": return "垃圾邮件"
-        default: return name
+        default: return displayed
         }
     }
     public var symbol: String {

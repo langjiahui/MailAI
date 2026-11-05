@@ -82,6 +82,18 @@ private actor FeatureService: MailService {
         XCTAssertEqual(actions, [.move("Trash"), .move("INBOX")])
         XCTAssertEqual(uids, [107, 108])
     }
+    func testLegacyFolderDisplayDecodesWithoutChangingProtocolIdentity() {
+        let raw = "&lpR5u1M6-", folder = MailFolder(name: raw)
+        XCTAssertEqual(folder.title, "隔离区"); XCTAssertEqual(folder.name, raw); XCTAssertEqual(folder.id, raw)
+        XCTAssertEqual(MailFolder(name: "~peter/mail/&U,BTFw-/&ZeVnLIqe-").title, "~peter/mail/台北/日本語")
+        XCTAssertEqual(MailFolder(name: "R&-D").title, "R&D")
+        XCTAssertEqual(MailFolder(name: "项目/资料").title, "项目/资料")
+    }
+    func testMalformedOrEncodedASCIIFolderNamesRemainLossless() {
+        for name in ["R&D", "&broken", "&AEc-", "&AA-", "&AA=-", "&AAE-", "foo&!-bar"] { XCTAssertEqual(MailFolder(name: name).title, name) }
+        var role = MailFolder(name: "&lpR5u1M6-"); role.role = "junk"
+        XCTAssertEqual(role.title, "垃圾邮件"); XCTAssertEqual(role.name, "&lpR5u1M6-")
+    }
     func testCorporateDeletedFolderNamesAreRecognizedWithoutGuessingOutbox() {
         for name in ["Trash", "Deleted Items", "已删除邮件", "已删除项目"] { XCTAssertEqual(MailFolder(name: name).title, "废纸篓") }
         XCTAssertNotEqual(MailFolder(name: "发件箱").title, "已发送")

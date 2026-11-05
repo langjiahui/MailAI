@@ -98,6 +98,7 @@ struct InboxView: View {
     @State private var notificationTask: Task<Void, Never>?
     @State private var notificationOpening = false
     @State private var notificationGeneration = UUID()
+    @State private var actionPanel: MailActionPanelData?
     @State private var selecting = false
     @State private var selection = Set<String>()
     @State private var moveRequest: MailMoveRequest?
@@ -160,6 +161,7 @@ struct InboxView: View {
         .sheet(isPresented: $composing) { ComposerView(store: store) }
         .sheet(isPresented: $showingDrafts) { DraftsView(store: store) }
         .sheet(isPresented: $searching) { MailSearchView(store: store) }
+        .mailActionPanel($actionPanel)
         .sheet(isPresented: $mailboxes, onDismiss: {
             if let pendingDestination { destination = pendingDestination; self.pendingDestination = nil }
         }) { MailboxesView(store: store, unified: $unified) { pendingDestination = $0 } }
@@ -309,10 +311,13 @@ struct InboxView: View {
                         HStack(spacing: 16) {
                             Button(selection.count == filtered.count ? "取消全选" : "全选") { selection = selection.count == filtered.count ? [] : Set(filtered.map(\.id)) }
                             Spacer()
-                            Menu("标记", systemImage: "checkmark.circle") {
-                                Button("标为已读") { run(.read(true), chosen) }
-                                Button("标为未读") { run(.read(false), chosen) }
-                                Button("添加星标") { run(.flagged(true), chosen) }
+                            Button("标记", systemImage: "checkmark.circle") {
+                                let items = chosen
+                                actionPanel = MailActionPanelData(title: "标记邮件", groups: [[
+                                    MailPanelAction(title: "标为已读", symbol: "envelope.open") { run(.read(true), items) },
+                                    MailPanelAction(title: "标为未读", symbol: "envelope.badge") { run(.read(false), items) },
+                                    MailPanelAction(title: "添加星标", symbol: "star") { run(.flagged(true), items) }
+                                ]])
                             }.disabled(selection.isEmpty)
                             Button("移动", systemImage: "folder") { moveRequest = MailMoveRequest(items: chosen) }.disabled(selection.isEmpty)
                             Button("删除", systemImage: "trash", role: .destructive) { deleting = MailMoveRequest(items: chosen) }
@@ -347,16 +352,7 @@ struct InboxView: View {
         .accessibilityElement(children: .contain).accessibilityIdentifier("inbox-top-bar")
     }
     private var inboxTitleMenu: some View {
-        Menu {
-            Button("邮箱与文件夹", systemImage: "tray.2") { mailboxes = true }
-            Button("草稿与发送记录", systemImage: "doc") { showingDrafts = true }
-            Button("添加邮箱", systemImage: "plus") { addingAccount = true }
-            if !unified {
-                if filter != "all" { Button("显示全部邮件") { filter = "all" } }
-                Button(grouped ? "逐封显示" : "按会话显示") { grouped.toggle(); selecting = false; selection = [] }
-                if !grouped { Button(selecting ? "完成选择" : "选择邮件") { selecting.toggle(); selection = [] } }
-            }
-        } label: {
+        Button { showInboxActions() } label: {
             HStack(spacing: 4) {
                 Text(selecting ? "已选 \(selection.count) 封" : (filter == "all" || unified ? mailboxTitle : mailboxTitle + " · " + filterTitle))
                     .font(.headline).lineLimit(1).minimumScaleFactor(0.8)
@@ -412,17 +408,33 @@ struct InboxView: View {
                         .frame(minWidth: 44, minHeight: 44)
                 }.buttonStyle(.plain).accessibilityLabel("清除筛选：" + filterTitle).accessibilityIdentifier("clear-inbox-filter")
             }
-            Menu {
-                Picker("筛选邮件", selection: $filter) {
-                    Text("全部邮件").tag("all"); Text("未读").tag("unread")
-                    Text("星标").tag("flagged"); Text("附件").tag("attachments")
-                }.pickerStyle(.inline)
+            Button {
+                actionPanel = MailActionPanelData(title: "筛选邮件", groups: [[
+                    MailPanelAction(title: "全部邮件", symbol: "tray", selected: filter == "all") { filter = "all" },
+                    MailPanelAction(title: "未读", symbol: "envelope.badge", selected: filter == "unread") { filter = "unread" },
+                    MailPanelAction(title: "星标", symbol: "star", selected: filter == "flagged") { filter = "flagged" },
+                    MailPanelAction(title: "附件", symbol: "paperclip", selected: filter == "attachments") { filter = "attachments" }
+                ]])
             } label: {
                 Image(systemName: "line.3.horizontal.decrease").font(.system(size: 17, weight: .medium))
                     .foregroundStyle(filter == "all" ? MailTheme.secondary : MailTheme.blue).frame(width: 44, height: 44)
             }.buttonStyle(MailPressButtonStyle(cornerRadius: 12)).accessibilityLabel("筛选邮件").accessibilityValue(filterTitle).accessibilityIdentifier("inbox-filter")
         }
         .background(MailTheme.canvas, in: RoundedRectangle(cornerRadius: 12)).disabled(selecting)
+    }
+    private func showInboxActions() {
+        var organization: [MailPanelAction] = []
+        if !unified {
+            if filter != "all" { organization.append(MailPanelAction(title: "显示全部邮件", symbol: "tray") { filter = "all" }) }
+            organization.append(MailPanelAction(title: grouped ? "逐封显示" : "按会话显示", symbol: grouped ? "list.bullet" : "bubble.left.and.bubble.right") { grouped.toggle(); selecting = false; selection = [] })
+            if !grouped { organization.append(MailPanelAction(title: selecting ? "完成选择" : "选择邮件", symbol: "checkmark.circle") { selecting.toggle(); selection = [] }) }
+        }
+        let navigation = [
+            MailPanelAction(title: "邮箱与文件夹", symbol: "tray.2") { mailboxes = true },
+            MailPanelAction(title: "草稿与发送记录", symbol: "doc.text") { showingDrafts = true },
+            MailPanelAction(title: "添加邮箱", symbol: "plus") { addingAccount = true }
+        ]
+        actionPanel = MailActionPanelData(title: mailboxTitle + "操作", groups: organization.isEmpty ? [navigation] : [navigation, organization])
     }
     private var chosen: [MailSummary] { store.messages.filter { selection.contains($0.id) } }
     private func run(_ action: MailAction, _ items: [MailSummary]) {

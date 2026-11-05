@@ -28,6 +28,7 @@ struct ReaderView: View {
     @State private var downloading = false
     @State private var downloadingID: String?
     @State private var assistant = false
+    @State private var actionPanel: MailActionPanelData?
     @State private var moving = false
     @State private var correspondence = false
     @State private var readTask: Task<Void, Never>?
@@ -56,20 +57,7 @@ struct ReaderView: View {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button { moveToRole("trash") } label: { Image(systemName: "trash") }.accessibilityLabel("移到废纸篓").disabled(store.operating || store.selectedID != ownerID)
                 Button { moveToRole("archive") } label: { Image(systemName: "archivebox") }.accessibilityLabel("归档邮件").disabled(store.operating || store.selectedID != ownerID)
-                Menu {
-                    if bodyContent?.html != nil { Button(plainText ? "查看图文" : "查看纯文本") { plainText.toggle() } }
-                    if bodyContent?.html != nil, !plainText {
-                        Button(originalHTML ? "跟随系统主题" : "查看原始样式") { originalHTML.toggle() }
-                    }
-                    Button("往来邮件", systemImage: "arrow.left.arrow.right") { correspondence = true }.disabled(!MailValidation.isAddress(correspondent)).accessibilityIdentifier("reader-correspondence-menu")
-                    Button("移动到…") { moving = true }
-                    Button(currentFlag ? "取消星标" : "添加星标") {
-                        let next = !currentFlag
-                        Task { do { try await store.perform(.flagged(next), on: [summary]); localFlag = next } catch { self.error = "标记失败，请刷新核对。" } }
-                    }
-                    Button("小邮助手", systemImage: "sparkles") { assistant = true }
-                        .disabled(bodyContent == nil)
-                } label: { Image(systemName: "ellipsis.circle") }.accessibilityLabel("更多邮件操作")
+                Button { showReaderActions() } label: { Image(systemName: "ellipsis.circle") }.accessibilityLabel("更多邮件操作").disabled(store.selectedID != ownerID)
             }
         }
         .toolbar(.hidden, for: .tabBar)
@@ -79,9 +67,10 @@ struct ReaderView: View {
                     .disabled(bodyContent == nil || store.sending)
                 Button { compose(.replyAll) } label: { replyActionLabel("回复全部", symbol: "arrowshape.turn.up.left.2").frame(maxWidth: .infinity, minHeight: 44) }
                     .disabled(bodyContent == nil || store.sending)
-                Menu {
-                    Button("转发正文") { compose(.forward) }
-                    if bodyContent?.attachments?.isEmpty == false { Button("转发正文与全部附件") { forwardWithAttachments() } }
+                Button {
+                    var actions = [MailPanelAction(title: "转发正文", symbol: "arrowshape.turn.up.right") { compose(.forward) }]
+                    if bodyContent?.attachments?.isEmpty == false { actions.append(MailPanelAction(title: "转发正文与全部附件", symbol: "paperclip") { forwardWithAttachments() }) }
+                    actionPanel = MailActionPanelData(title: "转发邮件", groups: [actions])
                 } label: { replyActionLabel("转发", symbol: "arrowshape.turn.up.right").frame(maxWidth: .infinity, minHeight: 44) }
                     .disabled(bodyContent == nil || store.sending || downloading)
             }.font(.callout).buttonStyle(.borderless).padding(.horizontal, 12).padding(.vertical, 8).background(MailTheme.surface).overlay(alignment: .top) { Divider() }
@@ -94,6 +83,7 @@ struct ReaderView: View {
         }
         .onChange(of: store.selectedID) { _, id in if id != ownerID { readTask?.cancel(); downloadTask?.cancel(); bodyContent = nil; error = "邮箱已切换，请返回列表重新打开这封邮件。" } }
         .onChange(of: scenePhase) { _, phase in if phase != .active { readTask?.cancel(); downloadTask?.cancel(); downloading = false; downloadingID = nil } else if bodyContent == nil { load() } }
+        .mailActionPanel($actionPanel)
         .sheet(isPresented: $composing) { ComposerView(store: store) }
         .navigationDestination(isPresented: $correspondence) { CorrespondenceView(store: store, address: correspondent, seed: summary) }
         .sheet(isPresented: $moving) { MovePicker(store: store, items: [summary]) }
@@ -109,6 +99,22 @@ struct ReaderView: View {
             if let url = externalURL { Button("打开链接") { openURL(url); externalURL = nil } }
             Button("取消", role: .cancel) { externalURL = nil }
         } message: { Text(externalURL?.host ?? "") }
+    }
+    private func showReaderActions() {
+        var reading: [MailPanelAction] = []
+        if bodyContent?.html != nil { reading.append(MailPanelAction(title: plainText ? "查看图文" : "查看纯文本", symbol: plainText ? "doc.richtext" : "doc.plaintext") { plainText.toggle() }) }
+        if bodyContent?.html != nil, !plainText { reading.append(MailPanelAction(title: originalHTML ? "跟随系统主题" : "查看原始样式", symbol: "circle.lefthalf.filled") { originalHTML.toggle() }) }
+        let organize = [
+            MailPanelAction(title: "往来邮件", symbol: "arrow.left.arrow.right", enabled: MailValidation.isAddress(correspondent)) { correspondence = true },
+            MailPanelAction(title: "移动到…", symbol: "folder") { moving = true },
+            MailPanelAction(title: currentFlag ? "取消星标" : "添加星标", symbol: currentFlag ? "star.fill" : "star") {
+                guard store.selectedID == ownerID else { return }
+                let next = !currentFlag
+                Task { do { try await store.perform(.flagged(next), on: [summary]); localFlag = next } catch { self.error = "标记失败，请刷新核对。" } }
+            }
+        ]
+        let help = [MailPanelAction(title: "小邮助手", symbol: "sparkles", enabled: bodyContent != nil) { assistant = true }]
+        actionPanel = MailActionPanelData(title: "邮件操作", groups: reading.isEmpty ? [organize, help] : [reading, organize, help])
     }
     @ViewBuilder private func replyActionLabel(_ title: String, symbol: String) -> some View {
         if dynamicTypeSize.isAccessibilitySize { Image(systemName: symbol).font(.title3).dynamicTypeSize(...DynamicTypeSize.xxxLarge).accessibilityLabel(title) }

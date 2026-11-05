@@ -166,6 +166,65 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertFalse(app.staticTexts["移动端设计评审"].exists)
         app.buttons["clear-inbox-filter"].tap()
     }
+    func testUnifiedActionPanelsAndMailboxToolsInBothThemes() {
+        for dark in [false, true] {
+            let app = launch(dark: dark, extra: ["--ui-panel-folders", "--ui-html"])
+            app.buttons["更多邮件操作"].tap()
+            XCTAssertTrue(app.staticTexts["收件箱操作"].waitForExistence(timeout: 5))
+            let inboxRows = ["邮箱与文件夹", "草稿与发送记录", "添加邮箱", "按会话显示", "选择邮件"]
+            let inboxPanel = app.otherElements["mail-action-panel"]
+            for title in inboxRows { XCTAssertGreaterThanOrEqual(inboxPanel.buttons[title].frame.height, 44) }
+            let start = inboxPanel.staticTexts[inboxRows[0]].frame.minX
+            for title in inboxRows { XCTAssertEqual(inboxPanel.staticTexts[title].frame.minX, start, accuracy: 1) }
+            attach(dark ? "panels-inbox-dark" : "panels-inbox-light")
+            app.buttons["close-mail-panel"].tap()
+            XCTAssertTrue(app.buttons["compose-mail"].isHittable)
+            app.buttons["更多邮件操作"].tap(); app.otherElements["mail-action-panel"].buttons["邮箱与文件夹"].tap()
+            XCTAssertTrue(app.buttons["sidebar-settings"].waitForExistence(timeout: 5)); XCTAssertTrue(app.buttons["sidebar-contacts"].isHittable)
+            XCTAssertFalse(app.buttons["所有收件箱"].exists, "A single mailbox needs no unified or current-account selector")
+            attach(dark ? "panels-mailboxes-dark" : "panels-mailboxes-light")
+            let extra = app.buttons.matching(NSPredicate(format: "label CONTAINS '更多文件夹'")).firstMatch
+            for _ in 0..<4 { if extra.exists && extra.isHittable { break }; app.swipeUp() }
+            XCTAssertTrue(extra.exists); extra.tap(); app.swipeUp()
+            XCTAssertTrue(app.buttons["隔离区"].waitForExistence(timeout: 5)); XCTAssertFalse(app.staticTexts["&lpR5u1M6-"].exists)
+            attach(dark ? "panels-extra-folders-dark" : "panels-extra-folders-light")
+            app.buttons["隔离区"].tap()
+            XCTAssertTrue(NSPredicate(format: "value CONTAINS '隔离区'").evaluate(with: app.buttons["更多邮件操作"]))
+            app.buttons["account-avatar"].tap(); app.buttons["收件箱"].firstMatch.tap()
+            app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap()
+            XCTAssertTrue(app.webViews.links["测试外部链接"].waitForExistence(timeout: 10))
+            app.buttons["更多邮件操作"].tap()
+            XCTAssertTrue(app.staticTexts["邮件操作"].waitForExistence(timeout: 5))
+            let readerRows = ["查看纯文本", "查看原始样式", "往来邮件", "移动到…", "添加星标", "小邮助手"]
+            let readerPanel = app.otherElements["mail-action-panel"]
+            let readerStart = readerPanel.staticTexts[readerRows[0]].frame.minX
+            for title in readerRows { XCTAssertGreaterThanOrEqual(readerPanel.buttons[title].frame.height, 44); XCTAssertEqual(readerPanel.staticTexts[title].frame.minX, readerStart, accuracy: 1) }
+            attach(dark ? "panels-reader-dark" : "panels-reader-light")
+            app.buttons["移动到…"].tap()
+            XCTAssertTrue(app.navigationBars["移动 1 封邮件"].waitForExistence(timeout: 5)); app.buttons["取消"].tap()
+            app.buttons["转发"].tap()
+            XCTAssertTrue(app.staticTexts["转发邮件"].waitForExistence(timeout: 5)); attach(dark ? "panels-forward-dark" : "panels-forward-light")
+            app.buttons["转发正文"].tap(); XCTAssertTrue(app.buttons["send-mail"].waitForExistence(timeout: 5))
+            app.buttons["关闭"].tap(); app.buttons["保存并返回"].tap()
+            XCTAssertTrue(app.buttons["回复全部"].waitForExistence(timeout: 5))
+        }
+    }
+    func testActionPanelLargeTextRemainsScrollableAndDismissible() {
+        let app = launch(dark: true, large: true)
+        app.buttons["更多邮件操作"].tap()
+        XCTAssertTrue(app.buttons["close-mail-panel"].waitForExistence(timeout: 5))
+        app.swipeUp()
+        XCTAssertTrue(app.buttons["选择邮件"].isHittable)
+        attach("panels-inbox-accessibility")
+        app.buttons["close-mail-panel"].tap(); app.buttons["account-avatar"].tap()
+        for _ in 0..<4 {
+            if app.buttons["sidebar-settings"].exists && app.buttons["sidebar-settings"].isHittable { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(app.buttons["sidebar-settings"].waitForExistence(timeout: 5)); XCTAssertTrue(app.buttons["sidebar-settings"].isHittable)
+        attach("panels-mailboxes-accessibility")
+        app.buttons["sidebar-settings"].tap(); XCTAssertTrue(app.navigationBars["设置"].waitForExistence(timeout: 5))
+    }
     func testSidebarDestinationsReturnToTheSameMailboxAndFilter() {
         let app = launch()
         app.buttons["inbox-filter"].tap(); app.buttons["星标"].firstMatch.tap()
@@ -246,7 +305,7 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["版本计划确认"].isHittable, "Six header-only messages should fit without excess row whitespace")
         assertBalancedInboxHeader(app)
         attach("refinement-inbox-dense-light")
-        avatar.tap(); XCTAssertTrue(app.buttons["完成"].waitForExistence(timeout: 5)); app.buttons["完成"].tap()
+        avatar.tap(); XCTAssertTrue(app.buttons["close-mail-panel"].waitForExistence(timeout: 5)); app.buttons["close-mail-panel"].tap()
         app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap()
         XCTAssertTrue(app.buttons["回复全部"].waitForExistence(timeout: 5))
     }
@@ -262,7 +321,7 @@ final class WorkspaceTests: XCTestCase {
             for _ in 0..<2 {
                 app.buttons["account-avatar"].press(forDuration: 0.15)
                 XCTAssertTrue(app.buttons["sidebar-settings"].waitForExistence(timeout: 5))
-                app.buttons["完成"].firstMatch.tap()
+                app.buttons["close-mail-panel"].tap()
                 app.buttons["inbox-search-toolbar"].press(forDuration: 0.15)
                 XCTAssertTrue(app.textFields["mail-search-input"].waitForExistence(timeout: 5))
                 if !dark { attach("inbox-polish-search") }
@@ -456,7 +515,7 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertTrue(cancel.isHittable); cancel.tap()
     }
     func testMailboxFiltersSelectionAndMovePicker() {
-        let app = launch()
+        let app = launch(extra: ["--ui-multiple-accounts"])
         app.buttons["inbox-filter"].tap(); app.buttons["星标"].firstMatch.tap()
         XCTAssertTrue(app.staticTexts["移动端设计评审"].waitForExistence(timeout: 5)); attach("redesign-flagged-filter")
         XCTAssertFalse(app.staticTexts["项目资料确认与下一步安排"].exists)
@@ -472,7 +531,7 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertTrue(currentFolder.exists); XCTAssertFalse(currentFolder.isEnabled)
         attach("redesign-move-picker")
         app.buttons["取消"].tap(); app.buttons["完成"].firstMatch.tap()
-        app.buttons["邮箱与文件夹"].tap()
+        app.buttons["更多邮件操作"].tap(); app.otherElements["mail-action-panel"].buttons["邮箱与文件夹"].tap()
         XCTAssertTrue(app.buttons["所有收件箱"].waitForExistence(timeout: 5)); attach("redesign-mailboxes")
         app.buttons["所有收件箱"].tap()
         XCTAssertTrue(app.staticTexts["项目资料确认与下一步安排"].waitForExistence(timeout: 5)); attach("redesign-unified-inbox")
@@ -932,8 +991,8 @@ final class WorkspaceTests: XCTestCase {
             if large { XCTAssertLessThan(app.buttons["inbox-filter"].frame.height, 100) }; XCTAssertFalse(app.tabBars.firstMatch.exists)
             assertBalancedInboxHeader(app)
             attach("tour-" + variant + "-inbox")
-            app.buttons["邮箱与文件夹"].tap(); attach("tour-" + variant + "-mailboxes")
-            app.buttons["完成"].firstMatch.tap()
+            app.buttons["更多邮件操作"].tap(); app.otherElements["mail-action-panel"].buttons["邮箱与文件夹"].tap(); attach("tour-" + variant + "-mailboxes")
+            app.buttons["close-mail-panel"].tap()
             app.buttons["搜索邮件"].tap()
             XCTAssertTrue(app.textFields["mail-search-input"].waitForExistence(timeout: 5)); attach("tour-" + variant + "-search")
             app.buttons["完成"].firstMatch.tap()

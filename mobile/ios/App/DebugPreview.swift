@@ -25,7 +25,10 @@ import MailAICore
                 throw MailFailure.invalid("收信连接未完成，请检查密码／授权码或服务器设置。")
             }
         }
-        func folders(_ credential: AccountCredential) async throws -> [MailFolder] { [.init(name: "INBOX"), .init(name: "Archive"), .init(name: "Sent"), .init(name: "Trash")] }
+        func folders(_ credential: AccountCredential) async throws -> [MailFolder] {
+            if CommandLine.arguments.contains("--ui-panel-folders") { return ["INBOX", "Archive", "Sent", "Drafts", "Trash", "Junk", "&lpR5u1M6-", "Virus Items"].map { MailFolder(name: $0) } }
+            return [.init(name: "INBOX"), .init(name: "Archive"), .init(name: "Sent"), .init(name: "Trash")]
+        }
         func summaries(_ credential: AccountCredential, folder: String, limit: Int) async throws -> [MailSummary] {
             if CommandLine.arguments.contains("--ui-offline") { throw MailFailure.invalid("合成离线状态") }
             return CommandLine.arguments.contains("--ui-empty-inbox") ? [] : DebugPreview.messages(folder: folder).filter { !removed.contains($0.id) }

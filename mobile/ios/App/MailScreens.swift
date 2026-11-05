@@ -11,38 +11,64 @@ struct MailboxesView: View {
     let store: MailStore
     @Binding var unified: Bool
     let openDestination: (InboxDestination) -> Void
+    @State private var extraFolders = false
     @Environment(\.dismiss) private var dismiss
+    private var primaryFolders: [MailFolder] { store.folders.filter { $0.symbol != "folder" }.sorted { order($0) < order($1) } }
+    private var otherFolders: [MailFolder] { store.folders.filter { $0.symbol == "folder" } }
+    private func order(_ folder: MailFolder) -> Int { ["收件箱", "已发送", "草稿", "归档", "废纸篓", "垃圾邮件"].firstIndex(of: folder.title) ?? 99 }
     var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    Button { unified = true; dismiss() } label: { Label("所有收件箱", systemImage: "tray.2.fill") }
-                }.listRowBackground(MailTheme.surface)
-                Section("邮箱") {
-                    ForEach(store.accounts) { account in
-                        Button {
-                            do { try store.selectAccount(account.id); unified = false; store.refresh(); dismiss() }
-                            catch { store.error = error.localizedDescription }
-                        } label: {
-                            HStack { SenderAvatar(name: account.displayName.isEmpty ? account.email : account.displayName); Text(account.email).foregroundStyle(.primary); Spacer(); if store.selectedID == account.id && !unified { Image(systemName: "checkmark") } }
+        VStack(spacing: 0) {
+            MailPanelHeader(title: "邮箱与文件夹") { dismiss() }
+            ScrollView {
+                VStack(spacing: 16) {
+                    if store.accounts.count > 1 {
+                        group("邮箱") {
+                            Button { unified = true; dismiss() } label: { panelRow("所有收件箱", symbol: "tray.2", selected: unified) }
+                            ForEach(store.accounts) { account in
+                                Button {
+                                    do { try store.selectAccount(account.id); unified = false; store.refresh(); dismiss() }
+                                    catch { store.error = error.localizedDescription }
+                                } label: { panelRow(account.email, symbol: "envelope", selected: store.selectedID == account.id && !unified) }
+                            }
                         }
                     }
-                }.listRowBackground(MailTheme.surface)
-                Section(store.accounts.count > 1 ? "当前邮箱文件夹" : "文件夹") {
-                    ForEach(store.folders, id: \.name) { folder in
-                        Button { do { try store.selectFolder(folder.name); unified = false; dismiss() } catch { store.error = error.localizedDescription } } label: {
-                            HStack { Label(folder.title, systemImage: folder.symbol); Spacer(); if !unified && store.folder == folder.name { Image(systemName: "checkmark") } }
+                    group("文件夹") { ForEach(primaryFolders) { folder in folderButton(folder) } }
+                    group("常用") {
+                        Button { openDestination(.contacts); dismiss() } label: { panelRow("通讯录", symbol: "person.crop.rectangle", navigates: true) }.accessibilityIdentifier("sidebar-contacts")
+                        Button { openDestination(.settings); dismiss() } label: { panelRow("设置", symbol: "gearshape", navigates: true) }.accessibilityIdentifier("sidebar-settings")
+                    }
+                    if !otherFolders.isEmpty {
+                        group {
+                            DisclosureGroup(isExpanded: $extraFolders) {
+                                ForEach(otherFolders) { folder in folderButton(folder) }
+                            } label: { Text("更多文件夹 · \(otherFolders.count)").font(.body).foregroundStyle(MailTheme.ink).frame(minHeight: 52) }
+                                .tint(MailTheme.secondary).padding(.horizontal, 16)
                         }
                     }
-                }.listRowBackground(MailTheme.surface)
-            }.listRowBackground(MailTheme.surface).listStyle(.insetGrouped).scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("邮箱与文件夹").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } } }
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    HStack(spacing: 16) {
-                        Button { openDestination(.contacts); dismiss() } label: { Label("通讯录", systemImage: "person.crop.rectangle").frame(maxWidth: .infinity, minHeight: 48) }.accessibilityIdentifier("sidebar-contacts")
-                        Button { openDestination(.settings); dismiss() } label: { Label("设置", systemImage: "gearshape").frame(maxWidth: .infinity, minHeight: 48) }.accessibilityIdentifier("sidebar-settings")
-                    }.font(.subheadline).buttonStyle(.plain).padding(.horizontal, 16).padding(.vertical, 8).background(.regularMaterial)
-                }
+                }.padding(.horizontal, 20).padding(.bottom, 20)
+            }.buttonStyle(MailPressButtonStyle(cornerRadius: 12, pressedScale: 0.99))
+        }.background(MailTheme.surface).presentationDetents([.large]).presentationDragIndicator(.visible).presentationCornerRadius(24).presentationBackground(MailTheme.surface)
+            .onAppear { extraFolders = otherFolders.contains { $0.name == store.folder } }
+    }
+    private func group<Content: View>(_ title: String? = nil, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if let title { Text(title).font(.caption.weight(.medium)).foregroundStyle(MailTheme.secondary).padding(.leading, 16) }
+            VStack(spacing: 0, content: content).padding(.vertical, 3).background(MailTheme.canvas, in: RoundedRectangle(cornerRadius: 14))
         }
+    }
+    private func folderButton(_ folder: MailFolder) -> some View {
+        Button { do { try store.selectFolder(folder.name); unified = false; dismiss() } catch { store.error = error.localizedDescription } } label: {
+            panelRow(folder.title, symbol: folder.symbol, selected: !unified && store.folder == folder.name)
+        }
+    }
+    private func panelRow(_ title: String, symbol: String, selected: Bool = false, navigates: Bool = false) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: symbol).font(.system(size: 19)).frame(width: 24).foregroundStyle(selected ? MailTheme.blue : MailTheme.secondary)
+            Text(title).font(.body).foregroundStyle(selected ? MailTheme.blue : MailTheme.ink).lineLimit(2).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+            if selected { Image(systemName: "checkmark").font(.body.weight(.semibold)).foregroundStyle(MailTheme.blue) }
+            else if navigates { Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(MailTheme.secondary) }
+        }.frame(maxWidth: .infinity, minHeight: 52, alignment: .leading).padding(.horizontal, 16).contentShape(Rectangle()).accessibilityValue(selected ? "当前位置" : "")
     }
 }
 struct MailMoveRequest: Identifiable {
@@ -198,6 +224,7 @@ struct MailSearchView: View {
 }
 struct ContactsView: View {
     let store: MailStore
+    @State private var actionPanel: MailActionPanelData?
     @State private var query = ""
     @State private var editing: MailContact?
     @State private var pendingRecipient: String?
@@ -217,8 +244,14 @@ struct ContactsView: View {
         }.listRowBackground(MailTheme.surface).listStyle(.plain).scrollContentBackground(.hidden).background(MailTheme.surface).navigationTitle("通讯录").navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .top, spacing: 0) { MailSearchField(text: $query, prompt: "姓名、备注或邮箱").padding(.horizontal, 16).padding(.vertical, 8).background(MailTheme.surface) }
             .toolbar { ToolbarItem(placement: .topBarTrailing) {
-                Menu { Button("新建联系人") { editing = MailContact(email: "") }; Button("从手机联系人选择") { picking = true } } label: { Image(systemName: "plus") }.accessibilityLabel("联系人操作").disabled(store.selectedID == nil)
+                Button {
+                    actionPanel = MailActionPanelData(title: "联系人操作", groups: [[
+                        MailPanelAction(title: "新建联系人", symbol: "person.badge.plus") { editing = MailContact(email: "") },
+                        MailPanelAction(title: "从手机联系人选择", symbol: "person.crop.circle.badge.plus") { picking = true }
+                    ]])
+                } label: { Image(systemName: "plus") }.accessibilityLabel("联系人操作").disabled(store.selectedID == nil)
             } }
+            .mailActionPanel($actionPanel)
             .sheet(item: $editing, onDismiss: {
                 if let email = pendingRecipient { pendingRecipient = nil; compose(email) }
             }) { contact in ContactEditor(store: store, contact: contact) { pendingRecipient = $0 } }
@@ -304,6 +337,7 @@ struct CorrespondenceView: View {
     let store: MailStore
     let address: String
     var seed: MailSummary? = nil
+    @State private var actionPanel: MailActionPanelData?
     @State private var ownerID: UUID?
     @State private var records: [MailSummary] = []
     @State private var work: Task<Void, Never>?
@@ -375,14 +409,18 @@ struct CorrespondenceView: View {
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     if working { Button("停止") { stop(); self.error = "查询已停止，仅显示已查到的记录。" }.accessibilityIdentifier("stop-correspondence") }
                     else if selecting { Button("完成") { selecting = false; selection = [] }.disabled(moving) }
-                    Menu {
-                        if !selecting { Button("选择邮件") { selecting = true; selection = [] }.disabled(messages.isEmpty || needsReconciliation) }
-                        Button("加载并选择全部往来") { search(all: true) }
-                        Toggle("仅对方发来的邮件", isOn: $incomingOnly)
-                        Button("刷新") { search() }
+                    Button {
+                        var selectionActions: [MailPanelAction] = []
+                        if !selecting { selectionActions.append(MailPanelAction(title: "选择邮件", symbol: "checkmark.circle", enabled: !messages.isEmpty && !needsReconciliation) { selecting = true; selection = [] }) }
+                        selectionActions.append(MailPanelAction(title: "加载并选择全部往来", symbol: "checkmark.circle.badge.plus") { search(all: true) })
+                        actionPanel = MailActionPanelData(title: "往来邮件操作", groups: [selectionActions, [
+                            MailPanelAction(title: "仅对方发来的邮件", symbol: "envelope", selected: incomingOnly) { incomingOnly.toggle() },
+                            MailPanelAction(title: "刷新", symbol: "arrow.clockwise") { search() }
+                        ]])
                     } label: { Image(systemName: "ellipsis.circle") }.accessibilityLabel("更多往来操作").accessibilityIdentifier("correspondence-actions").disabled(working || moving)
                 }
             }
+            .mailActionPanel($actionPanel)
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 VStack(spacing: 0) {
                     if moving { HStack { ProgressView(); Text("正在处理邮件…").font(.subheadline) }.frame(maxWidth: .infinity, minHeight: 52) }
