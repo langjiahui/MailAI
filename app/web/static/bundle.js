@@ -577,7 +577,7 @@ const I18N_MESSAGES = {
     "guide.topic.assistant.desc": "Configure a model and select mail or attachments as references.",
     "guide.topic.assistant.location": "Settings → AI Services; bottom-right → XiaoYou",
     "guide.topic.assistant.action": "Configure AI services",
-    "guide.topic.assistant.step1": "Choose a provider, API URL, model and API key, test the connection and save. The page header shows model usage recorded on this computer.",
+    "guide.topic.assistant.step1": "Choose a provider and enter the API URL, model and API key, then select Validate and save to activate. The page header shows model usage recorded on this computer.",
     "guide.topic.assistant.step2": "Select reference mail in XiaoYou and ask for a summary, to-dos or a reply draft. Preview selected attachments before analysis; extraction limits and unsupported formats are reported.",
     "guide.topic.assistant.step3": "Ask to fill a supported spreadsheet, document or form and prepare a reply. Review detected fields and generated files. Drafts still require your review and confirmation before sending.",
     "guide.topic.phone.title": "Control mail from your phone",
@@ -1587,6 +1587,28 @@ if (typeof document !== 'undefined') {
 /* ---- i18n-catalog.js ---- */
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "model.profileDraftHint": ["选择服务商可载入已有配置，验证并保存后启用。首次配置请填写地址、模型名称和 API Key。其他厂商支持 OpenAI Chat Completions 兼容 API。", "Select a provider to load its saved settings, then validate and save to activate. For a new provider, enter the API URL, model name and API key. Other providers support OpenAI Chat Completions compatible APIs."],
+  "model.probeHint": ["验证会发送简短文本请求；启用图片识别时还会发送一张不含业务信息的极小测试图，可能产生少量 API 费用。", "Validation sends a short text request. If image recognition is enabled, it also sends a tiny test image containing no business data. Small API charges may apply."],
+  "model.actionHint": ["验证连接后自动保存并启用。", "Validate the connection, then automatically save and activate."],
+  "model.validateSave": ["验证并保存", "Validate and save"],
+  "model.moreActions": ["更多操作", "More actions"],
+  "model.testOnly": ["仅测试连接", "Test connection only"],
+  "model.testOnlyHint": ["检查当前填写，不保存配置", "Check these settings without saving"],
+  "model.saveOnly": ["仅保存配置", "Save without testing"],
+  "model.saveOnlyHint": ["跳过验证，直接保存并启用", "Save and activate without validation"],
+  "model.unsaved": ["有尚未保存的修改，验证并保存后生效。", "You have unsaved changes. Validate and save to apply them."],
+  "model.draftStatus": ["修改未保存", "Unsaved changes"],
+  "model.invalidDraft": ["请检查填写内容。", "Check the settings you entered."],
+  "model.checking": ["正在验证…", "Validating…"],
+  "model.saving": ["正在保存…", "Saving…"],
+  "model.changedDuringCheck": ["配置已更改，请重新验证后保存。", "Settings changed. Validate again before saving."],
+  "model.testPassed": ["连接测试通过，本次测试未保存配置。", "Connection test passed. This test did not save settings."],
+  "model.testPassedStatus": ["连接测试通过", "Connection test passed"],
+  "model.savedOnly": ["配置已保存并启用。可在更多操作中单独测试连接。", "Settings saved and activated. You can test the connection under More actions."],
+  "model.savedEnabled": ["验证通过，配置已保存并启用。", "Validation passed. Settings saved and activated."],
+  "model.checkFailed": ["验证未通过，请修改后重试。", "Validation failed. Update the settings and try again."],
+  "model.saveFailed": ["配置保存失败，请重试。", "Could not save settings. Try again."],
+  "model.visionFailed": ["图片识别不可用，请关闭图片识别或更换模型后重试。", "Image recognition is unavailable. Disable it or change the model and try again."],
   "work.stylePlaceholder": ["例如：结论在前，语气自然，避免客套落款。", "For example: lead with the conclusion, use a natural tone, and avoid formal sign-offs."],
   "work.manuallyEdited": ["已手动调整", "Manually edited"],
   "work.summaryMore": ["共 {count} 条记忆，可在管理中查看全部。", "{count} memories in total. Open Manage memory to see all."],
@@ -17167,7 +17189,7 @@ const MAILAI_I18N_CHINESE = {
   "guide.topic.assistant.title": "AI 服务与小邮助手",
   "guide.topic.assistant.desc": "配置模型，选择邮件或附件作为本次参考。",
   "guide.topic.assistant.location": "设置 → AI 服务；右下角 → 小邮",
-  "guide.topic.assistant.step1": "AI 服务中选择服务商、填写 API 地址、模型名称和 API Key，先测试连接再保存；页头可查看本机记录的模型用量。",
+  "guide.topic.assistant.step1": "AI 服务中选择服务商，填写 API 地址、模型名称和 API Key，点击「验证并保存」即可启用；页头可查看本机记录的模型用量。",
   "guide.topic.assistant.step2": "在小邮中选择参考邮件，提问总结重点、整理待办或准备回复。可选择附件先预览再分析，读取范围与不支持格式会有提示。",
   "guide.topic.assistant.step3": "支持的表格、文档或表单可请求填写并准备回复；先核对字段与生成文件。小邮准备的草稿仍需人工检查并确认发送。",
   "guide.topic.assistant.action": "配置 AI 服务",
@@ -25659,8 +25681,8 @@ async function showInterruptedAppUpdateOutcome() {
   }
 }
 
-async function loadSystemConfig() {
-  const data = await api('/api/system/config');
+async function loadSystemConfig(prefetched=null) {
+  const data = prefetched || await api('/api/system/config');
   if (data.accounts?.some(account => account.id === browsingAccountId)) {
     data.accounts.forEach(account => { account.active = account.id === browsingAccountId; });
     data.mail.user = data.accounts.find(account => account.active).user;
@@ -25668,19 +25690,22 @@ async function loadSystemConfig() {
   _systemConfig = data;
   window.mailOnboarding?.configChanged(data);
   const model = data.model || {};
-  document.getElementById('model-provider').value = model.provider || 'custom';
-  document.getElementById('model-extra-params').value = JSON.stringify(model.extra_params || {}, null, 2);
-  document.getElementById('model-multimodal-enabled').checked = model.multimodal_enabled !== false;
-  document.getElementById('model-base-url').value = model.base_url || '';
-  document.getElementById('model-name').value = model.model || '';
-  document.getElementById('multimodal-model').value = model.multimodal_model || '';
-  document.getElementById('model-api-key').value = '';
-  mailaiBindUI(document.getElementById('model-api-key'), "placeholder", () => (model.api_key_masked ? mailaiTemplate`已配置 ${model.api_key_masked}，留空保持不变` : mailaiText('请输入 API Key')));
-  document.getElementById('model-verify-ssl').checked = model.verify_ssl !== false;
-  renderModelDataNotice(model.provider || 'custom', model.base_url || '');
-  const modelStatus = document.getElementById('model-status');
-  mailaiBindUI(modelStatus, "textContent", () => (model.verified ? mailaiText('已验证') : model.available ? mailaiText('已配置 · 待验证') : mailaiText('未配置')));
-  modelStatus.className = `connection-status ${model.verified ? 'connected' : ''}`;
+  if (!window.mailaiModelForm?.retainDraft()) {
+    document.getElementById('model-provider').value = model.provider || 'custom';
+    document.getElementById('model-extra-params').value = JSON.stringify(model.extra_params || {}, null, 2);
+    document.getElementById('model-multimodal-enabled').checked = model.multimodal_enabled !== false;
+    document.getElementById('model-base-url').value = model.base_url || '';
+    document.getElementById('model-name').value = model.model || '';
+    document.getElementById('multimodal-model').value = model.multimodal_model || '';
+    document.getElementById('model-api-key').value = '';
+    mailaiBindUI(document.getElementById('model-api-key'), "placeholder", () => (model.api_key_masked ? mailaiTemplate`已配置 ${model.api_key_masked}，留空保持不变` : mailaiText('请输入 API Key')));
+    document.getElementById('model-verify-ssl').checked = model.verify_ssl !== false;
+    renderModelDataNotice(model.provider || 'custom', model.base_url || '');
+    const modelStatus = document.getElementById('model-status');
+    mailaiBindUI(modelStatus, "textContent", () => (model.verified ? mailaiText('已验证') : model.available ? mailaiText('已配置 · 待验证') : mailaiText('未配置')));
+    modelStatus.className = `connection-status ${model.verified ? 'connected' : ''}`;
+    window.mailaiModelForm?.loaded();
+  }
 
   const mail = data.mail || {};
   const mailStatus = document.getElementById('mail-status');
@@ -28237,29 +28262,17 @@ document.getElementById('model-provider').addEventListener('change', async e => 
   const selectedProfile = _systemConfig?.model?.profiles?.[provider];
   renderModelDataNotice(provider, selectedProfile?.base_url || document.getElementById('model-base-url').value);
   if ((_systemConfig?.model?.saved_providers || []).includes(provider)) {
-    if (!document.getElementById('start-model')?.classList.contains('hidden')) {
-      const saved = _systemConfig?.model?.profiles?.[provider] || {};
-      document.getElementById('model-base-url').value = saved.base_url || '';
-      document.getElementById('model-name').value = saved.model || '';
-      document.getElementById('multimodal-model').value = saved.multimodal_model || '';
-      document.getElementById('model-multimodal-enabled').checked = saved.multimodal_enabled !== false;
-      document.getElementById('model-extra-params').value = JSON.stringify(saved.extra_params || {}, null, 2);
-      document.getElementById('model-api-key').value = '';
-      mailaiBindUI(document.getElementById('model-api-key'), "placeholder", () => (mailaiText('已安全保存此服务商的 API Key')));
-      document.getElementById('model-verify-ssl').checked = saved.verify_ssl !== false;
-      mailaiBindUI(document.getElementById('model-status'), "textContent", () => (mailaiText('待验证')));
-      renderModelDataNotice(provider, saved.base_url || '');
-      return;
-    }
-    e.target.disabled = true;
-    try {
-      await api('/api/system/model', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({provider})});
-      await loadSystemConfig();
-      toast(CLOUD_MODEL_PROVIDERS.has(provider) ? mailaiText('已切换到云端模型，请留意邮件隐私提示') : mailaiText('已切换到自部署模型，请确认模型地址可信'), CLOUD_MODEL_PROVIDERS.has(provider) ? 'warn' : 'success');
-    } catch (error) {
-      e.target.value = _systemConfig?.model?.provider || 'custom';
-      toast(mailaiText('切换模型失败：') + mailaiSystemMessage(error.message), 'error');
-    } finally { e.target.disabled = false; }
+    const saved = _systemConfig?.model?.profiles?.[provider] || {};
+    document.getElementById('model-base-url').value = saved.base_url || '';
+    document.getElementById('model-name').value = saved.model || '';
+    document.getElementById('multimodal-model').value = saved.multimodal_model || '';
+    document.getElementById('model-multimodal-enabled').checked = saved.multimodal_enabled !== false;
+    document.getElementById('model-extra-params').value = JSON.stringify(saved.extra_params || {}, null, 2);
+    document.getElementById('model-api-key').value = '';
+    mailaiBindUI(document.getElementById('model-api-key'), "placeholder", () => (mailaiText('已安全保存此服务商的 API Key')));
+    document.getElementById('model-verify-ssl').checked = saved.verify_ssl !== false;
+    mailaiBindUI(document.getElementById('model-status'), "textContent", () => (mailaiText('待验证')));
+    renderModelDataNotice(provider, saved.base_url || '');
     return;
   }
   const preset = (_systemConfig?.model?.presets || []).find(p => p.id === e.target.value);
@@ -28300,30 +28313,6 @@ function modelFormPayload() {
     verify_ssl: document.getElementById('model-verify-ssl').checked,
   };
 }
-document.getElementById('model-config-form').addEventListener('submit', async e => {
-  e.preventDefault();
-  try {
-    const payload = modelFormPayload();
-    await api('/api/system/model', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
-    await loadSystemConfig();
-    toast(mailaiText('模型配置已保存'), 'success');
-  } catch (err) { toast(mailaiText('保存模型配置失败：') + mailaiSystemMessage(err.message), 'error'); }
-});
-document.getElementById('btn-test-model').addEventListener('click', async () => {
-  const button = document.getElementById('btn-test-model');
-  setLoading(button, true, mailaiText('测试中…'));
-  const status = document.getElementById('model-status');
-  mailaiBindUI(status, "textContent", () => (mailaiText('测试中…')));
-  try {
-    const payload = modelFormPayload();
-    const result = await api('/api/system/model/test', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
-    const visionUnavailable = result.multimodal && result.multimodal.checked && !result.multimodal.supported;
-    mailaiBindUI(status, "textContent", () => (!result.ok ? mailaiText('连接失败') : visionUnavailable ? mailaiText('图片识别不可用') : mailaiText('连接成功')));
-    status.className = `connection-status ${!result.ok || visionUnavailable ? 'failed' : 'connected'}`;
-    toast(mailaiSystemMessage(result.message) || status.textContent, !result.ok || visionUnavailable ? 'error' : 'success');
-  } catch (err) { mailaiBindUI(status, "textContent", () => (mailaiText('连接失败'))); status.className = 'connection-status failed'; toast(mailaiSystemMessage(err.message), 'error'); }
-  finally { setLoading(button, false); }
-});
 function diagnosticAdvice(item) {
   // 诊断条目名称随界面语言变化，匹配必须走后端下发的稳定 id
   const id = item.id || '';
@@ -36986,6 +36975,7 @@ function mailCardDate(value, now = new Date()) {
   document.getElementById('model-provider').addEventListener('change', conceal, true);
   document.getElementById('model-config-form').addEventListener('submit', conceal, true);
   document.getElementById('btn-test-model').addEventListener('click', conceal, true);
+  document.getElementById('btn-save-model-only').addEventListener('click', conceal, true);
   document.addEventListener('click', event => {
     if (event.target.closest('[data-system-tab], #btn-close-system, #start-model-later, #start-enable, [data-help-settings]')) conceal();
   }, true);
@@ -36993,6 +36983,75 @@ function mailCardDate(value, now = new Date()) {
   if (panel) new MutationObserver(() => { if (panel.classList.contains('hidden')) conceal(); }).observe(panel, {attributes:true, attributeFilter:['class']});
   document.addEventListener('mailai:language-changed', render);
   render();
+})();
+
+/* Validate and activate one immutable draft; optional diagnostic actions stay separate. */
+(() => {
+  const form=document.getElementById('model-config-form'),primary=document.getElementById('btn-save-model');
+  const feedback=document.getElementById('model-action-feedback'),status=document.getElementById('model-status');
+  const more=document.getElementById('model-more-actions');
+  const copy=key=>mailaiT(`model.${key}`)||MAILAI_UI_COPY[`model.${key}`][0];
+  let busy=false,dirty=false,allowReload=false;
+  function message(key,phase='idle',detail=''){
+    feedback.dataset.state=phase;
+    feedback.setAttribute('role',phase==='error'?'alert':'status');
+    mailaiBindUI(feedback,'textContent',()=>copy(key)+(detail?' '+mailaiSystemMessage(detail):''));
+  }
+  function badge(key,phase=''){
+    status.className=`connection-status ${phase}`;
+    mailaiBindUI(status,'textContent',()=>copy(key));
+  }
+  function changed(){
+    if(busy)return;
+    dirty=true;message('unsaved');badge('draftStatus');
+  }
+  form.addEventListener('input',changed);
+  form.addEventListener('change',changed);
+  window.mailaiModelForm={
+    retainDraft:()=>!form.closest('#start-model')&&!allowReload&&(dirty||busy),
+    loaded:()=>{dirty=false;message('actionHint');},
+  };
+  async function run(mode){
+    if(busy||!form.reportValidity())return;
+    more.open=false;
+    let payload;
+    try{payload=modelFormPayload();}catch(error){message('invalidDraft','error',error.message);feedback.focus();return;}
+    const serialized=JSON.stringify(payload);
+    const controls=[...form.elements].map(node=>[node,node.disabled]);
+    busy=true;form.setAttribute('aria-busy','true');more.inert=true;
+    controls.forEach(([node])=>{node.disabled=true;});
+    let saving=mode==='save';
+    try{
+      if(mode!=='save'){
+        message('checking','loading');badge('checking');
+        mailaiBindUI(primary.querySelector('span'),'textContent',()=>copy('checking'));
+        const result=await api('/api/system/model/test',{method:'POST',headers:{'Content-Type':'application/json'},body:serialized});
+        if(!result.ok)throw new Error(result.message||copy('checkFailed'));
+        if(result.multimodal?.checked&&!result.multimodal.supported)throw new Error(result.multimodal.message||copy('visionFailed'));
+        if(JSON.stringify(modelFormPayload())!==serialized){dirty=true;message('changedDuringCheck','error');badge('draftStatus');return;}
+        if(mode==='test'){message('testPassed','success');badge('testPassedStatus','connected');return;}
+      }
+      saving=true;message('saving','loading');badge('saving');
+      mailaiBindUI(primary.querySelector('span'),'textContent',()=>copy('saving'));
+      const saved=await api('/api/system/model',{method:'POST',headers:{'Content-Type':'application/json'},body:serialized});
+      allowReload=true;
+      await loadSystemConfig(saved.config||null);
+      message(mode==='save'?'savedOnly':'savedEnabled','success');
+    }catch(error){
+      message(saving?'saveFailed':'checkFailed','error',error.message);
+      badge(saving?'saveFailed':'checkFailed','failed');
+      feedback.focus({preventScroll:true});feedback.scrollIntoView({block:'nearest'});
+    }finally{
+      allowReload=false;busy=false;more.inert=false;form.removeAttribute('aria-busy');
+      controls.forEach(([node,disabled])=>{node.disabled=disabled;});
+      mailaiBindUI(primary.querySelector('span'),'textContent',()=>copy('validateSave'));
+    }
+  }
+  form.addEventListener('submit',event=>{event.preventDefault();run('validate-save');});
+  document.getElementById('btn-test-model').addEventListener('click',()=>run('test'));
+  document.getElementById('btn-save-model-only').addEventListener('click',()=>run('save'));
+  more.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();more.open=false;more.querySelector('summary').focus();}});
+  document.addEventListener('click',event=>{if(!more.contains(event.target))more.open=false;});
 })();
 
 ;

@@ -593,5 +593,8 @@
     "env": {
       "MAILAI_BROWSER": "webkit"
     }
+  },
+  {
+    "file": "tests/test_model_service_browser.cjs"
   }
 ]

@@ -571,7 +571,7 @@ const I18N_MESSAGES = {
     "guide.topic.assistant.desc": "Configure a model and select mail or attachments as references.",
     "guide.topic.assistant.location": "Settings → AI Services; bottom-right → XiaoYou",
     "guide.topic.assistant.action": "Configure AI services",
-    "guide.topic.assistant.step1": "Choose a provider, API URL, model and API key, test the connection and save. The page header shows model usage recorded on this computer.",
+    "guide.topic.assistant.step1": "Choose a provider and enter the API URL, model and API key, then select Validate and save to activate. The page header shows model usage recorded on this computer.",
     "guide.topic.assistant.step2": "Select reference mail in XiaoYou and ask for a summary, to-dos or a reply draft. Preview selected attachments before analysis; extraction limits and unsupported formats are reported.",
     "guide.topic.assistant.step3": "Ask to fill a supported spreadsheet, document or form and prepare a reply. Review detected fields and generated files. Drafts still require your review and confirmation before sending.",
     "guide.topic.phone.title": "Control mail from your phone",

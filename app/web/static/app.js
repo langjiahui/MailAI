@@ -6132,8 +6132,8 @@ async function showInterruptedAppUpdateOutcome() {
   }
 }
 
-async function loadSystemConfig() {
-  const data = await api('/api/system/config');
+async function loadSystemConfig(prefetched=null) {
+  const data = prefetched || await api('/api/system/config');
   if (data.accounts?.some(account => account.id === browsingAccountId)) {
     data.accounts.forEach(account => { account.active = account.id === browsingAccountId; });
     data.mail.user = data.accounts.find(account => account.active).user;
@@ -6141,19 +6141,22 @@ async function loadSystemConfig() {
   _systemConfig = data;
   window.mailOnboarding?.configChanged(data);
   const model = data.model || {};
-  document.getElementById('model-provider').value = model.provider || 'custom';
-  document.getElementById('model-extra-params').value = JSON.stringify(model.extra_params || {}, null, 2);
-  document.getElementById('model-multimodal-enabled').checked = model.multimodal_enabled !== false;
-  document.getElementById('model-base-url').value = model.base_url || '';
-  document.getElementById('model-name').value = model.model || '';
-  document.getElementById('multimodal-model').value = model.multimodal_model || '';
-  document.getElementById('model-api-key').value = '';
-  mailaiBindUI(document.getElementById('model-api-key'), "placeholder", () => (model.api_key_masked ? mailaiTemplate`已配置 ${model.api_key_masked}，留空保持不变` : mailaiText('请输入 API Key')));
-  document.getElementById('model-verify-ssl').checked = model.verify_ssl !== false;
-  renderModelDataNotice(model.provider || 'custom', model.base_url || '');
-  const modelStatus = document.getElementById('model-status');
-  mailaiBindUI(modelStatus, "textContent", () => (model.verified ? mailaiText('已验证') : model.available ? mailaiText('已配置 · 待验证') : mailaiText('未配置')));
-  modelStatus.className = `connection-status ${model.verified ? 'connected' : ''}`;
+  if (!window.mailaiModelForm?.retainDraft()) {
+    document.getElementById('model-provider').value = model.provider || 'custom';
+    document.getElementById('model-extra-params').value = JSON.stringify(model.extra_params || {}, null, 2);
+    document.getElementById('model-multimodal-enabled').checked = model.multimodal_enabled !== false;
+    document.getElementById('model-base-url').value = model.base_url || '';
+    document.getElementById('model-name').value = model.model || '';
+    document.getElementById('multimodal-model').value = model.multimodal_model || '';
+    document.getElementById('model-api-key').value = '';
+    mailaiBindUI(document.getElementById('model-api-key'), "placeholder", () => (model.api_key_masked ? mailaiTemplate`已配置 ${model.api_key_masked}，留空保持不变` : mailaiText('请输入 API Key')));
+    document.getElementById('model-verify-ssl').checked = model.verify_ssl !== false;
+    renderModelDataNotice(model.provider || 'custom', model.base_url || '');
+    const modelStatus = document.getElementById('model-status');
+    mailaiBindUI(modelStatus, "textContent", () => (model.verified ? mailaiText('已验证') : model.available ? mailaiText('已配置 · 待验证') : mailaiText('未配置')));
+    modelStatus.className = `connection-status ${model.verified ? 'connected' : ''}`;
+    window.mailaiModelForm?.loaded();
+  }
 
   const mail = data.mail || {};
   const mailStatus = document.getElementById('mail-status');
@@ -8710,29 +8713,17 @@ document.getElementById('model-provider').addEventListener('change', async e => 
   const selectedProfile = _systemConfig?.model?.profiles?.[provider];
   renderModelDataNotice(provider, selectedProfile?.base_url || document.getElementById('model-base-url').value);
   if ((_systemConfig?.model?.saved_providers || []).includes(provider)) {
-    if (!document.getElementById('start-model')?.classList.contains('hidden')) {
-      const saved = _systemConfig?.model?.profiles?.[provider] || {};
-      document.getElementById('model-base-url').value = saved.base_url || '';
-      document.getElementById('model-name').value = saved.model || '';
-      document.getElementById('multimodal-model').value = saved.multimodal_model || '';
-      document.getElementById('model-multimodal-enabled').checked = saved.multimodal_enabled !== false;
-      document.getElementById('model-extra-params').value = JSON.stringify(saved.extra_params || {}, null, 2);
-      document.getElementById('model-api-key').value = '';
-      mailaiBindUI(document.getElementById('model-api-key'), "placeholder", () => (mailaiText('已安全保存此服务商的 API Key')));
-      document.getElementById('model-verify-ssl').checked = saved.verify_ssl !== false;
-      mailaiBindUI(document.getElementById('model-status'), "textContent", () => (mailaiText('待验证')));
-      renderModelDataNotice(provider, saved.base_url || '');
-      return;
-    }
-    e.target.disabled = true;
-    try {
-      await api('/api/system/model', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({provider})});
-      await loadSystemConfig();
-      toast(CLOUD_MODEL_PROVIDERS.has(provider) ? mailaiText('已切换到云端模型，请留意邮件隐私提示') : mailaiText('已切换到自部署模型，请确认模型地址可信'), CLOUD_MODEL_PROVIDERS.has(provider) ? 'warn' : 'success');
-    } catch (error) {
-      e.target.value = _systemConfig?.model?.provider || 'custom';
-      toast(mailaiText('切换模型失败：') + mailaiSystemMessage(error.message), 'error');
-    } finally { e.target.disabled = false; }
+    const saved = _systemConfig?.model?.profiles?.[provider] || {};
+    document.getElementById('model-base-url').value = saved.base_url || '';
+    document.getElementById('model-name').value = saved.model || '';
+    document.getElementById('multimodal-model').value = saved.multimodal_model || '';
+    document.getElementById('model-multimodal-enabled').checked = saved.multimodal_enabled !== false;
+    document.getElementById('model-extra-params').value = JSON.stringify(saved.extra_params || {}, null, 2);
+    document.getElementById('model-api-key').value = '';
+    mailaiBindUI(document.getElementById('model-api-key'), "placeholder", () => (mailaiText('已安全保存此服务商的 API Key')));
+    document.getElementById('model-verify-ssl').checked = saved.verify_ssl !== false;
+    mailaiBindUI(document.getElementById('model-status'), "textContent", () => (mailaiText('待验证')));
+    renderModelDataNotice(provider, saved.base_url || '');
     return;
   }
   const preset = (_systemConfig?.model?.presets || []).find(p => p.id === e.target.value);
@@ -8773,30 +8764,6 @@ function modelFormPayload() {
     verify_ssl: document.getElementById('model-verify-ssl').checked,
   };
 }
-document.getElementById('model-config-form').addEventListener('submit', async e => {
-  e.preventDefault();
-  try {
-    const payload = modelFormPayload();
-    await api('/api/system/model', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
-    await loadSystemConfig();
-    toast(mailaiText('模型配置已保存'), 'success');
-  } catch (err) { toast(mailaiText('保存模型配置失败：') + mailaiSystemMessage(err.message), 'error'); }
-});
-document.getElementById('btn-test-model').addEventListener('click', async () => {
-  const button = document.getElementById('btn-test-model');
-  setLoading(button, true, mailaiText('测试中…'));
-  const status = document.getElementById('model-status');
-  mailaiBindUI(status, "textContent", () => (mailaiText('测试中…')));
-  try {
-    const payload = modelFormPayload();
-    const result = await api('/api/system/model/test', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
-    const visionUnavailable = result.multimodal && result.multimodal.checked && !result.multimodal.supported;
-    mailaiBindUI(status, "textContent", () => (!result.ok ? mailaiText('连接失败') : visionUnavailable ? mailaiText('图片识别不可用') : mailaiText('连接成功')));
-    status.className = `connection-status ${!result.ok || visionUnavailable ? 'failed' : 'connected'}`;
-    toast(mailaiSystemMessage(result.message) || status.textContent, !result.ok || visionUnavailable ? 'error' : 'success');
-  } catch (err) { mailaiBindUI(status, "textContent", () => (mailaiText('连接失败'))); status.className = 'connection-status failed'; toast(mailaiSystemMessage(err.message), 'error'); }
-  finally { setLoading(button, false); }
-});
 function diagnosticAdvice(item) {
   // 诊断条目名称随界面语言变化，匹配必须走后端下发的稳定 id
   const id = item.id || '';

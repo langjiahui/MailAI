@@ -2,7 +2,7 @@
 html[data-theme] #system-view [data-system-panel="ai"] .settings-page-intro { align-items:flex-start; }
 #system-view [data-system-panel="ai"] #model-usage-open { flex:none; display:flex; gap:6px; align-items:center; width:max-content; max-width:100%; white-space:nowrap; min-height:36px; padding:8px 12px; border:1px solid var(--desk-line); border-radius:9px; background:var(--desk-surface); color:var(--desk-ink); font-size:12px; box-shadow:none; }
 #system-view [data-system-panel="ai"] #model-usage-open:hover { background:var(--desk-hover); }
-html[data-theme] #system-view [data-system-panel="ai"] #model-config-form { margin:0; padding:24px; overflow:visible; border:1px solid var(--desk-line)!important; background:var(--desk-surface)!important; border-radius:14px; box-shadow:none!important; }
+html[data-theme] #system-view [data-system-panel="ai"] #model-config-form { margin:0 0 76px; padding:24px; overflow:visible; border:1px solid var(--desk-line)!important; background:var(--desk-surface)!important; border-radius:14px; box-shadow:none!important; }
 #model-config-form#model-config-form.model-service-form { container-type:inline-size; }
 #model-config-form.model-service-form .model-service-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:28px; margin-top:24px; }
 #model-config-form.model-service-form .model-service-section { min-width:0; }
@@ -18,7 +18,7 @@ html[data-theme] #model-config-form.model-service-form :is(input:not([type="chec
 #model-config-form.model-service-form .model-service-section>details { margin-top:20px; padding-top:16px; border-top:1px solid var(--desk-line); }
 #model-config-form.model-service-form .model-service-section>details>summary { cursor:pointer; color:var(--desk-ink); font-size:12px; }
 #model-config-form.model-service-form :is(input,select,textarea,summary):focus-visible { outline:2px solid var(--desk-accent); outline-offset:3px; }
-html[data-theme] #system-view [data-system-panel="ai"] .connection-actions { justify-content:flex-end; margin:24px -24px -24px; padding:16px 24px; border-top:1px solid var(--desk-line); background:var(--desk-surface)!important; border-radius:0 0 14px 14px; }
+html[data-theme] #system-view [data-system-panel="ai"] .connection-actions { position:static; justify-content:flex-end; margin:0; padding:0; border:0; background:transparent!important; border-radius:0; }
 #system-view [data-system-panel="ai"] .connection-actions .action-btn { min-height:38px; padding:8px 14px; border-radius:9px; font-size:12px; }
 #system-view [data-system-panel="ai"] .connection-actions .action-secondary { border:1px solid var(--desk-line); background:var(--desk-muted-surface); color:var(--desk-ink); }
 @container (max-width:720px) {
@@ -27,7 +27,7 @@ html[data-theme] #system-view [data-system-panel="ai"] .connection-actions { jus
 }
 @media (max-width:600px) {
   html[data-theme] #system-view [data-system-panel="ai"] #model-config-form { padding:18px; }
-  html[data-theme] #system-view [data-system-panel="ai"] .connection-actions { margin:24px -18px -18px; padding:14px 18px; flex-wrap:wrap; }
+  html[data-theme] #system-view [data-system-panel="ai"] .connection-actions { flex-wrap:wrap; }
 }
 
 #system-view [data-system-panel="ai"] .connection-icon { flex:none; border:0; background:var(--desk-selected)!important; color:var(--desk-accent)!important; box-shadow:none; }
@@ -39,3 +39,20 @@ html[data-theme] #model-config-form.model-service-form .model-key-field input { 
 #model-config-form.model-service-form #model-key-visibility { position:absolute; right:6px; top:50%; transform:translateY(-50%); min-height:30px; padding:5px 10px; border:0; border-radius:6px; background:transparent; color:var(--desk-accent); font:inherit; font-size:11px; cursor:pointer; }
 #model-config-form.model-service-form #model-key-visibility:hover { background:var(--desk-selected); }
 #model-config-form.model-service-form #model-key-visibility:focus-visible { outline:2px solid var(--desk-accent); outline-offset:1px; }
+
+#model-config-form .model-service-footer { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:16px; align-items:center; margin-top:24px; padding-top:20px; border-top:1px solid var(--desk-line); }
+#model-action-feedback { margin:0; min-width:0; color:var(--desk-muted); font-size:12px; line-height:1.7; overflow-wrap:anywhere; }
+#model-action-feedback[data-state="success"] { color:var(--desk-accent); }
+#model-action-feedback[data-state="error"] { color:var(--desk-ink); }
+#model-action-feedback:focus-visible { outline:2px solid var(--desk-accent); outline-offset:4px; border-radius:4px; }
+#model-config-form #model-more-actions { position:relative; margin:0; flex:none; }
+#model-more-actions>summary { padding:9px 8px; min-height:38px; box-sizing:border-box; cursor:pointer; color:var(--desk-muted); font-size:12px; line-height:20px; }
+#model-more-actions .model-action-menu { position:absolute; z-index:8; left:0; bottom:calc(100% + 8px); width:220px; max-width:calc(80vw / var(--fz,1)); padding:5px; box-sizing:border-box; border:1px solid var(--desk-line); border-radius:10px; background:var(--desk-surface); box-shadow:0 8px 24px #0002; }
+#model-more-actions .model-action-menu button { display:grid; gap:3px; width:100%; padding:10px; border:0; border-radius:6px; background:transparent; color:var(--desk-ink); text-align:left; font:inherit; font-size:12px; cursor:pointer; }
+#model-more-actions .model-action-menu button:hover { background:var(--desk-hover); }
+#model-more-actions .model-action-menu small { color:var(--desk-muted); font-size:11px; line-height:1.6; }
+#start-model .model-service-footer { display:none; }
+@container (max-width:560px) {
+ #model-config-form .model-service-footer { grid-template-columns:minmax(0,1fr); gap:12px; }
+ #model-config-form .model-service-footer .connection-actions { justify-content:flex-start; }
+}

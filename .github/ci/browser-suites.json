@@ -589,6 +589,9 @@
       ],
       "tests": [
         {
+          "file": "tests/test_model_service_browser.cjs"
+        },
+        {
           "file": "tests/test_settings_responsive_browser.cjs"
         },
         {
