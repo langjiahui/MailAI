@@ -64,6 +64,11 @@ def main():
                           note='名单尚待确认，无权承诺额外预算或提交日期。')
         work.save_context(unrelated, project='另一项目', note='预算86421.49元。OTHER86421。')
         work.save_preferences('先写结论，正文简洁，不写敬礼或身份落款。')
+        # Seed every synthetic mail record before the read-only baseline.
+        # Current main includes local sent-record changes in mailbox_sequence.
+        sent = db.create_sent_message(dict(to_addr='supplier@example.test',from_addr='me@example.test',
+            subject='实施人员名单反馈',body_html='<p>请协助反馈实施人员名单。</p>',mode='compose'))
+        db.finish_sent_message(sent,ok=True,message_id='<synthetic-sent@example.test>')
         revision = db.mailbox_revision()
 
         def missing_check(value):
@@ -100,9 +105,6 @@ def main():
             user_instruction='按最新来信回复交付日期，说明名单尚待确认；不要承诺提供时间。',
             original_text=db.get_email(first)['body_text'])), reply_check)
 
-        sent = db.create_sent_message(dict(to_addr='supplier@example.test',from_addr='me@example.test',
-            subject='实施人员名单反馈',body_html='<p>请协助反馈实施人员名单。</p>',mode='compose'))
-        db.finish_sent_message(sent,ok=True,message_id='<synthetic-sent@example.test>')
         seed = work.followup_seed(sent)
         run('followup_draft', lambda: api_compose_assist(ComposeAssistRequest(operation='draft',
             subject=seed['subject'],recipients=seed['to_addr'],original_text=seed['original_text'],
