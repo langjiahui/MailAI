@@ -1,5 +1,7 @@
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "work.collapse": ["收起", "Collapse"],
+  "work.loading": ["正在梳理本地往来…", "Reviewing local correspondence…"],
   "work.status0": ["已标记等待反馈", "Saved as waiting for feedback"],
   "work.status1": ["有待推进的任务", "Tasks remain to be progressed"],
   "work.status2": ["已记录任务完成", "Saved tasks are completed"],

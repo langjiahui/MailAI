@@ -6895,7 +6895,7 @@ function renderReadingPane(e) {
         </div>
         <div class="reading-actions">
           <section class="reading-action-group reading-mail-group" aria-label="邮件操作" data-i18n-aria="ui.15ecc4e1adf5"><span class="reading-action-group-title">${mailaiT('read.groupMail') || '邮件操作'}</span><div class="reading-mail-controls"><div class="reading-reply-actions">${replyActions}</div></div></section>
-          <section class="reading-action-group reading-ai-group" aria-label="AI 助手" data-i18n-aria="ui.1b0049fcfd41"><span class="reading-action-group-title">${mailaiT('read.groupAi') || 'AI 助手'}</span></section>
+          <section class="reading-action-group reading-ai-group" aria-label="AI 助手" data-i18n-aria="ui.1b0049fcfd41"><span class="reading-action-group-title">${mailaiT('read.groupAi') || 'AI 助手'}</span>${window.mailaiWorkAction?.(e) || ''}</section>
           ${mailSummaryToolbarButton(e)}
           <details class="reading-more-actions">
             <summary aria-label="更多邮件操作" data-i18n-aria="ui.e8ee3628b5cc">

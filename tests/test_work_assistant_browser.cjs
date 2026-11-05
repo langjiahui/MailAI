@@ -26,10 +26,21 @@ let log=''; fixture.stdout.on('data',chunk=>log+=chunk); fixture.stderr.on('data
     await page.goto(base);await page.locator('#app-preloader').waitFor({state:'detached'});
     await page.emulateMedia({reducedMotion:'reduce'});
     await page.locator('.email-item').first().click();
-    const card=page.locator('.work-card[data-work-email]');await card.waitFor();
+    const card=page.locator('.work-card[data-work-email]');await card.waitFor({state:'attached'});
+    const toggle=page.locator('[data-work-toggle]');
+    assert(!await card.isVisible(),'Work assistance must not occupy the reading area by default');
     assert(!requests.some(url=>url.includes('/api/work/emails/')),'Opening mail must not eagerly load the work graph');
-    await card.locator('[data-work="load"]').click();
+    if (!await toggle.isVisible()) await page.locator('.reading-more-actions>summary').click();
+    await toggle.focus();await page.keyboard.press('Enter');
     await card.locator('[data-work="memory"]').waitFor();
+    assert.equal(await toggle.getAttribute('aria-expanded'),'true');
+    const readCount=requests.filter(url=>url.includes('/api/work/emails/')).length;
+    await page.keyboard.press('Escape');
+    assert(!await card.isVisible(),'Escape collapses the work panel');
+    assert.equal(await toggle.getAttribute('aria-expanded'),'false');
+    if (!await toggle.isVisible()) await page.locator('.reading-more-actions>summary').click();
+    await toggle.click();await card.waitFor();
+    assert.equal(requests.filter(url=>url.includes('/api/work/emails/')).length,readCount,'Reopening reuses the local result');
     await page.route('**/api/work/emails/*',route=>route.fulfill({status:503,json:{detail:'模拟读取失败'}}),{times:1});
     await card.locator('[data-work="refresh"]').click();
     await card.locator('[data-work-content] [role="status"]').waitFor();
@@ -99,17 +110,22 @@ let log=''; fixture.stdout.on('data',chunk=>log+=chunk); fixture.stderr.on('data
       await page.setViewportSize({width:1440,height:1000});
       await page.evaluate(({theme,mode,language})=>{document.body.style.zoom='1';document.documentElement.style.setProperty('--fz','1');document.documentElement.dataset.rewardTheme=theme;applyTheme(mode);setI18nLanguage(language);},{theme,mode,language});
       await card.locator('[data-work="memory"]').click();await dialog.waitFor();
-      for(const [width,height,scale] of [[390,844,1],[780,844,1.3],[1440,1000,1],[1440,1000,1.3]]) {
+      for(const [width,height,scale] of [[390,844,1],[390,844,2],[780,844,1.3],[780,844,2],[1440,1000,1],[1440,1000,1.3],[1440,1000,2]]) {
         await page.setViewportSize({width,height});
         await page.evaluate(scale=>{document.body.style.zoom=String(scale);document.documentElement.style.setProperty('--fz',String(scale));},scale);
-        const metrics=await dialog.evaluate(node=>({overflow:node.scrollWidth-node.clientWidth,width:node.getBoundingClientRect().width,viewport:innerWidth}));
-        assert(metrics.overflow<=2 && metrics.width<=metrics.viewport,JSON.stringify({theme,mode,language,width,scale,metrics}));
+        const metrics=await dialog.evaluate(node=>({overflow:node.scrollWidth-node.clientWidth,width:node.getBoundingClientRect().width,viewport:innerWidth,top:node.getBoundingClientRect().top,bottom:node.getBoundingClientRect().bottom,height:innerHeight}));
+        assert(metrics.overflow<=2 && metrics.width<=metrics.viewport && metrics.top>=-1 && metrics.bottom<=metrics.height+1,JSON.stringify({theme,mode,language,width,scale,metrics}));
         layouts++;
       }
       await page.evaluate(()=>{document.body.style.zoom='1';document.documentElement.style.setProperty('--fz','1');});
       await dialog.locator('[data-close]').click();
     }
-    assert.equal(layouts,48);
+    assert.equal(layouts,84);
+    await page.setViewportSize({width:1440,height:1000});
+    await card.locator('[data-work="close"]').click();
+    assert(!await card.isVisible());
+    await page.locator('.email-item').nth(1).click();
+    assert(!await page.locator('.work-card[data-work-email]').isVisible(),'Switching messages starts collapsed');
     assert.deepEqual(errors,[]);
     console.log('PASS work assistance UI: lazy reads, persisted escaped context, reply handoff, advisory review, stale response and theme/language layouts');
   } finally {await browser.close();}

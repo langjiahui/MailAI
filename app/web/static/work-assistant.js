@@ -3,10 +3,22 @@
   const w = key => mailaiT(`work.${key}`) || MAILAI_UI_COPY[`work.${key}`]?.[0] || key;
   const button = (action, label) => `<button type="button" data-work="${action}" data-i18n="work.${label}">${esc(w(label))}</button>`;
   let loaded = null, ticket = 0;
-  window.mailaiWorkCard = email => ['trash','spam','quarantine','draft','sent'].includes(email.status) ? '' :
-    `<section class="work-card" data-work-email="${Number(email.id)}" data-work-account="${esc(activeMailAccount()?.id || '')}"><header><b data-i18n="work.title">${esc(w('title'))}</b><div>${button('load','understand')}${button('reply','reply')}${email.attachments?.some(item => /\.(?:xlsx?|docx|pdf)$/i.test(item.name || '')) ? button('document','document') : ''}</div></header><div data-work-content hidden></div></section>`;
+  const eligible = email => !['trash','spam','quarantine','draft','sent'].includes(email.status);
+  window.mailaiWorkAction = email => !eligible(email) ? '' : `<button type="button" data-reading-action="work" data-work-toggle="${Number(email.id)}" aria-expanded="false" aria-controls="work-panel-${Number(email.id)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h5m-5 4h8"/></svg><span data-i18n="work.understand">${esc(w('understand'))}</span></button>`;
+  window.mailaiWorkCard = email => !eligible(email) ? '' :
+    `<section class="work-card" id="work-panel-${Number(email.id)}" aria-labelledby="work-title-${Number(email.id)}" data-work-email="${Number(email.id)}" data-work-account="${esc(activeMailAccount()?.id || '')}" hidden><header><h3 id="work-title-${Number(email.id)}" data-work-title tabindex="-1" data-i18n="work.title">${esc(w('title'))}</h3><div>${button('reply','reply')}${email.attachments?.some(item => /\.(?:xlsx?|docx|pdf)$/i.test(item.name || '')) ? button('document','document') : ''}${button('close','collapse')}</div></header><div data-work-content hidden></div></section>`;
   const live = (host, account, id) => host.isConnected && activeMailAccount()?.id === account && selectedEmailDetail?.id === id;
   const post = body => ({headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  function setOpen(host, open, focus = true) {
+    host.hidden = !open;
+    const trigger = document.querySelector(`[data-work-toggle="${host.dataset.workEmail}"]`);
+    trigger?.setAttribute('aria-expanded', String(open));
+    if (focus) {
+      const target = open ? host.querySelector('[data-work-title]') :
+        trigger?.closest('.reading-more-actions')?.querySelector('summary') || trigger;
+      target?.focus({preventScroll:true});
+    }
+  }
   new MutationObserver(() => {
     if (loaded && !loaded.host.isConnected) loaded = null;
   }).observe(document.getElementById('reading-content'),{childList:true});
@@ -14,7 +26,6 @@
     const progress = data.progress;
     const content = host.querySelector('[data-work-content]');
     content.hidden = false;
-    host.querySelector('[data-work="load"]').setAttribute('aria-expanded','true');
     const requests = data.requests.map(text => `<li>${esc(text)}</li>`).join('');
     const notes = data.context.filter(row => row.project || row.role || row.note);
     content.innerHTML = `<p><strong>${esc(mailaiSystemMessage(progress.status))}</strong> · ${esc(mailaiSystemMessage(progress.next_step))}</p>
@@ -29,6 +40,7 @@
     const content = host.querySelector('[data-work-content]');
     content.hidden = false;
     content.setAttribute('aria-busy','true');
+    content.innerHTML = `<p role="status">${esc(w('loading'))}</p>`;
     try {
       const data = await api(`/api/work/emails/${id}`, {accountId:account});
       if (!live(host,account,id) || rev !== ticket) return;
@@ -76,6 +88,15 @@
     dialog.showModal();
   }
   document.getElementById('reading-content').addEventListener('click', async event => {
+    const trigger = event.target.closest('[data-work-toggle]');
+    if (trigger) {
+      const host = document.getElementById(trigger.getAttribute('aria-controls'));
+      if (!host || !live(host,host.dataset.workAccount,Number(host.dataset.workEmail))) return;
+      const open = host.hidden;
+      setOpen(host,open);
+      if (open && loaded?.host !== host) await load(host);
+      return;
+    }
     const control = event.target.closest('[data-work]'), host = control?.closest('.work-card');
     if (!host || control.disabled) return;
     const account = host.dataset.workAccount, id = Number(host.dataset.workEmail);
@@ -83,14 +104,7 @@
     control.disabled = true;
     try {
       switch (control.dataset.work) {
-        case 'load':
-          if (loaded?.host === host) {
-            const content = host.querySelector('[data-work-content]');
-            content.hidden = !content.hidden;
-            control.setAttribute('aria-expanded', String(!content.hidden));
-          }
-          else await load(host);
-          break;
+        case 'close': setOpen(host,false); break;
         case 'refresh': await load(host); break;
         case 'memory': await memory(host); break;
         case 'plan': await window.openTaskPlanner({emailId:id,accountId:account}); break;
@@ -103,6 +117,12 @@
       }
     } catch (error) { toast(mailaiSystemMessage(error.message),'warn'); }
     finally { control.disabled = false; }
+  });
+  document.getElementById('reading-content').addEventListener('keydown', event => {
+    const host = event.target.closest('.work-card');
+    if (event.key === 'Escape' && host && !host.hidden) {
+      event.preventDefault(); event.stopPropagation(); setOpen(host,false);
+    }
   });
   window.addEventListener('mailai-tasks-changed', event => {
     if (loaded && loaded.account === event.detail.accountId && live(loaded.host,loaded.account,loaded.id)) load(loaded.host);
@@ -176,6 +196,6 @@
     if (account !== activeMailAccount()?.id) return;
     await revealEmailFromSource(id);
     const host = document.querySelector('.work-card');
-    if (host && live(host,account,id)) await load(host);
+    if (host && live(host,account,id)) { setOpen(host,true); await load(host); }
   };
 })();

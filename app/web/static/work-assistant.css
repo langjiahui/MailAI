@@ -7,6 +7,7 @@
 .work-compose{padding:12px 0;margin-top:12px;border-top:1px solid var(--border);font-size:13px;overflow-wrap:anywhere}.work-compose label{display:flex;gap:6px;align-items:center}.work-compose q{white-space:pre-wrap}.work-compose [data-work-review]{line-height:1.6;margin-top:8px}
 @media(max-width:600px){.work-card{padding:10px}.work-card header>div{width:100%}.work-card button{min-height:36px}.work-dialog{padding:14px}}
 /* Use the established opaque palette so original mail cannot show through forms. */
+.work-card[hidden]{display:none!important}.work-card h3{font-size:14px;margin:0}.work-card [data-work-title]:focus{outline:none}
 html[data-theme] body .work-dialog{background:var(--desk-surface)!important;color:var(--desk-ink)!important;border-color:var(--desk-line)!important}
 html[data-theme] body :is(.work-card,.work-compose){color:var(--desk-ink);background:var(--desk-surface)}
 html[data-theme] body :is(.work-card,.work-compose,.work-dialog) :is(button,input,textarea){color:var(--desk-ink);background:var(--desk-surface);border-color:var(--desk-line)}
