@@ -840,6 +840,15 @@
         },
         {
           "file": "tests/test_experience_polish_browser.cjs"
+        },
+        {
+          "file": "tests/test_work_assistant_browser.cjs"
+        },
+        {
+          "file": "tests/test_work_assistant_browser.cjs",
+          "env": {
+            "MAILAI_BROWSER": "webkit"
+          }
         }
       ]
     }

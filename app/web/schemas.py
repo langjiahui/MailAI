@@ -68,6 +68,8 @@ class RuleCategoryRequest(BaseModel):
 
 class ComposeAssistRequest(BaseModel):
     operation: str
+    source_email_id: int | None = Field(None, gt=0)
+    use_work_preferences: bool = False
     subject: str = ""
     body_text: str = ""
     original_text: str = ""

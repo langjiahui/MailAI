@@ -15,14 +15,15 @@ log = logging.getLogger(__name__)
 STAGES = (0, 240, 1200, 3600, 9000, 20000, 50000)
 # count limit, units per award, XP, stamps. Seconds stay in seconds in storage.
 RULES = {
-    'active': (1800, 60, 2, 1), 'reading': (1200, 30, 2, 1),
-    'click': (40, 5, 1, 1), 'read': (20, 1, 5, 3),
+    'active': (1800, 60, 1, 0), 'reading': (1200, 30, 1, 0),
+    'click': (40, 5, 0, 0), 'read': (20, 1, 5, 3),
     'received': (20, 1, 2, 1), 'sent': (10, 1, 10, 5),
     'tool': (10, 1, 6, 3), 'learn': (5, 1, 5, 3),
+    'task': (10, 1, 12, 6),
 }
 QUESTS = {
     'reader': ('read', 3, 15, 8),
-    'focus': ('active', 600, 15, 8),
+    'finisher': ('task', 1, 15, 8),
     'helper': ('tool', 2, 15, 8),
     'student': ('learn', 1, 10, 5),
 }

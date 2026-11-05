@@ -13,8 +13,10 @@ STATES = {"unhandled", "reply", "waiting", "later", "done"}
 
 def initialize(c):
     from .sent_followups import initialize as initialize_followups
+    from .work_assistant import initialize as initialize_work
 
     initialize_followups(c)
+    initialize_work(c)
     columns = {r[1] for r in c.execute("PRAGMA table_info(emails)")}
     for key, definition in {
         "handle_state": "TEXT NOT NULL DEFAULT 'unhandled'",

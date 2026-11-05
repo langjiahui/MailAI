@@ -20,6 +20,7 @@ assistant-divider.js
 assistant-scroll.js
 assistant-search.js
 secretary.js
+work-assistant.js
 task-planner.js
 todo-groups.js
 task-notices.js

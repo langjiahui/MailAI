@@ -584,5 +584,14 @@
     "env": {
       "MAILAI_BROWSER": "webkit"
     }
+  },
+  {
+    "file": "tests/test_work_assistant_browser.cjs"
+  },
+  {
+    "file": "tests/test_work_assistant_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
   }
 ]

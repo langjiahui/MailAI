@@ -2441,6 +2441,8 @@ async function aiCompose(operation, button) {
       subject: selected.has('subject') ? values.subject : '',
       recipients: selected.has('recipients') ? values.recipients : '',
       original_text: selected.has('original') ? values.original : '',
+      source_email_id: selected.has('original') && operation === 'reply' ? composeContext.reply_to_email_id : null,
+      use_work_preferences: Boolean(document.getElementById('work-use-preferences')?.checked),
       body_text: quickRewrite || selected.has('body') ? values.body : '',
       attachment_names: selected.has('attachments') ? values.attachments : [],
       tone: document.getElementById('compose-ai-tone').value,
@@ -2449,7 +2451,7 @@ async function aiCompose(operation, button) {
     };
     const assist = async payload => {
       const finishWork = globalThis.mailaiCompanionWork?.begin();
-      try { return await api('/api/mail/compose/assist', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); }
+      try { return await api('/api/mail/compose/assist', {accountId:composeAccountId,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); }
       finally { finishWork?.(); }
     };
     const renderPreview = suggestion => {
@@ -6915,6 +6917,7 @@ function renderReadingPane(e) {
     <div class="reading-workspace">
       <main class="reading-main">
         ${renderConversationProgress(e)}
+        ${window.mailaiWorkCard?.(e) || ''}
         ${mailSummaryDisclosure(e)}
 
         <div class="reading-section body-section">

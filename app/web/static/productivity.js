@@ -1135,10 +1135,18 @@
         items
           .map(
             (row, i) =>
-              `<div class="productivity-source-quote"><strong>${esc(row.subject || mailaiText("无主题"))}</strong><p>${esc(row.to_addr || "")}</p><small>${esc({ scheduled: row.sent ? mailaiText("已提交提醒") : mailaiText("等待回复"), get replied() { return mailaiText("已同步到回复"); }, get canceled() { return mailaiText("已取消"); } }[row.state] || row.state)} · ${esc(row.at.replace("T", " "))}</small><div class="productivity-actions"><button type="button" data-followup-open="${i}"><span data-i18n="ui.c259135be1d3">查看已发送邮件</span></button>${row.state === "scheduled" ? `<input type="datetime-local" data-followup-at="${i}" value="${esc(row.at.slice(0, 16))}" aria-label="新的跟进时间" data-i18n-aria="ui.6da097eb22f3"><button type="button" data-followup-save="${i}"><span data-i18n="ui.fd094431c8ca">调整时间</span></button><button type="button" data-followup-cancel="${i}"><span data-i18n="ui.f3b07169f705">取消提醒</span></button>` : ""}</div></div>`,
+              `<div class="productivity-source-quote"><strong>${esc(row.subject || mailaiText("无主题"))}</strong><p>${esc(row.to_addr || "")}</p><small>${esc({ scheduled: row.sent ? mailaiText("已提交提醒") : mailaiText("等待回复"), get replied() { return mailaiText("已同步到回复"); }, get canceled() { return mailaiText("已取消"); } }[row.state] || row.state)} · ${esc(row.at.replace("T", " "))}</small><div class="productivity-actions"><button type="button" data-followup-open="${i}"><span data-i18n="ui.c259135be1d3">查看已发送邮件</span></button>${row.state === "scheduled" ? `<button type="button" data-followup-prepare="${i}">${esc(mailaiText("准备跟进草稿"))}</button><input type="datetime-local" data-followup-at="${i}" value="${esc(row.at.slice(0, 16))}" aria-label="新的跟进时间" data-i18n-aria="ui.6da097eb22f3"><button type="button" data-followup-save="${i}"><span data-i18n="ui.fd094431c8ca">调整时间</span></button><button type="button" data-followup-cancel="${i}"><span data-i18n="ui.f3b07169f705">取消提醒</span></button>` : ""}</div></div>`,
           )
           .join("") ||
         mailaiText("没有发信跟进记录。请在写信的“发送安排”中设置未回复提醒。");
+      host.querySelectorAll('[data-followup-prepare]').forEach(btn => {
+        btn.onclick = () => busy(btn, async () => {
+          const id = items[Number(btn.dataset.followupPrepare)].sent_id;
+          if (!live(rev)) return;
+          dialog.close();
+          await window.mailaiPrepareFollowup(id, account);
+        });
+      });
       host.querySelectorAll("[data-followup-open]").forEach(
         (btn) =>
           (btn.onclick = () =>

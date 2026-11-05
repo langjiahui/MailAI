@@ -726,6 +726,9 @@ def _ask_impl(question: str, history: list[dict] | None = None, email_ids=None, 
             f"{risk_context(e)}\n"
             f"摘要:{e.get('summary') or e.get('snippet') or ''}\n正文:{body}"
         )
+    from .work_assistant import saved_context
+    if saved := saved_context([e['id'] for e in sources]):
+        context.append(saved)
     if client.available():
         messages = [{"role": "system", "content": (
             "你叫小邮，是用户身边可靠、干练、有分寸的工作伙伴。只能依据提供的邮件上下文回答，不得编造。"
@@ -856,6 +859,9 @@ def ask_stream(question: str, history: list[dict] | None = None, email_ids=None,
             f"{risk_context(e)}\n"
             f"摘要:{e.get('summary') or e.get('snippet') or ''}\n正文:{parser.redact((e.get('body_text') or '')[:max(1800, min(config.LLM_MAX_BODY_CHARS, 20000))])}"
         )
+    from .work_assistant import saved_context
+    if saved := saved_context([e['id'] for e in sources]):
+        context.append(saved)
     messages = [{"role": "system", "content": (
         "你叫小邮，是用户身边可靠、干练、有分寸的工作伙伴。只能依据提供的邮件上下文回答，不得编造。回答使用简洁中文；"
         "历史对话中提到的图片原图不在本次输入中，不能声称看过；需核对图中细节时请用户重新上传。"

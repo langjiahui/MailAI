@@ -11,7 +11,7 @@ const cases=partition(require('./helpers/home-dialog-cases.cjs'));
   p.on('pageerror',e=>errors.push(e.message));
   await p.route('**/api/ui-preferences.js',r=>r.fulfill({contentType:'text/javascript',body:''}));
   await p.addInitScript(()=>localStorage.setItem('mailai.onboarding.v2',JSON.stringify({deferred:true,mailboxDone:true,aiDone:true})));
-  await p.goto('http://127.0.0.1:18795/?shell=macos');await p.locator('#app-preloader').waitFor({state:'detached'});await p.evaluate(()=>initialLoad);
+  await p.goto((process.env.MAILAI_TEST_URL || 'http://127.0.0.1:18795/')+'?shell=macos');await p.locator('#app-preloader').waitFor({state:'detached'});await p.evaluate(()=>initialLoad);
   for(const[name,selector,open,close]of cases){
    await p.evaluate('('+open.toString()+')()');await p.locator(selector).waitFor({state:'visible'});
    for(const theme of['','theme_monochrome','theme_baowu'])for(const mode of['light','dark']){

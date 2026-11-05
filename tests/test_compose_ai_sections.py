@@ -9,6 +9,8 @@ from app.web.schemas import ComposeAssistRequest
 import json
 import asyncio
 from fastapi import HTTPException
+import tempfile
+from unittest.mock import patch
 
 
 async def _events(response):
@@ -77,9 +79,39 @@ def test_compose_stream_interruption_never_completes():
     assert [event["type"] for event in events] == ["delta", "error"]
 
 
+def test_checks_use_the_actual_allowed_reference_snapshot():
+    from app import db, companion_growth
+    from app.account_context import use
+    with tempfile.TemporaryDirectory() as folder, use({'ACCOUNT_ID':'compose-reference',
+        'DB_PATH':str(Path(folder)/'mail.db'),'IMAP_USER':'me@example.test'}):
+        db.init_db()
+        first = db.upsert_email(dict(uid=1,message_id='<reference-root@example.test>',
+            thread_id='<reference-root@example.test>',subject='交付确认',body_text='请确认交付日期。',
+            status='inbox',date='2026-11-05T09:00:00'))
+        db.upsert_email(dict(uid=2,message_id='<reference-change@example.test>',
+            in_reply_to='<reference-root@example.test>',thread_id='<reference-root@example.test>',
+            subject='日期调整',body_text='交付日期现调整到2026年12月21日。',
+            status='inbox',date='2026-11-05T10:00:00'))
+        payload = ComposeAssistRequest(operation='reply',source_email_id=first,
+            user_instruction='回复通知中的日期',original_text='请确认交付日期。')
+        result = {'choices':[{'message':{'content':'{"subject":"日期确认","body":"已收到交付日期调整到2026年12月21日的通知。"}'},'finish_reason':'stop'}]}
+        def chunks(*args,**kwargs):
+            yield '主题：日期确认\n\n已收到交付日期调整到2026年12月21日的通知。'
+        with patch.object(companion_growth,'safe_record'),patch.object(compose.llm_client,'chat_completion',return_value=result),patch.object(compose.llm_client,'chat_completion_stream',chunks):
+            single = compose.api_compose_assist(payload)
+            streamed = asyncio.run(_events(compose.api_compose_assist_stream(payload)))[-1]
+            for reply in (single,streamed):
+                assert next(item for item in reply['checks'] if item['text']=='2026年12月21日')['found_in_reference']
+            # Text excluded by the prompt's length bound cannot count as model evidence.
+            cropped = compose.api_compose_assist(ComposeAssistRequest(operation='draft',
+                user_instruction='起草邮件',original_text='普通材料。'*1500+'2026年12月21日'))
+            assert not next(item for item in cropped['checks'] if item['text']=='2026年12月21日')['found_in_reference']
+
+
 if __name__ == "__main__":
     test_structured_parts()
     test_plain_response_with_placeholder()
     test_reasoning_is_not_a_draft_part()
     test_compose_stream_progress_and_final_parts()
     test_compose_stream_interruption_never_completes()
+    test_checks_use_the_actual_allowed_reference_snapshot()

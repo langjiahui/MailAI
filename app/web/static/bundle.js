@@ -1587,6 +1587,68 @@ if (typeof document !== 'undefined') {
 /* ---- i18n-catalog.js ---- */
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "work.status0": ["已标记等待反馈", "Saved as waiting for feedback"],
+  "work.status1": ["有待推进的任务", "Tasks remain to be progressed"],
+  "work.status2": ["已记录任务完成", "Saved tasks are completed"],
+  "work.status3": ["处理状态待确认", "Handling status needs confirmation"],
+  "work.status4": ["当前邮件已标记待回复", "This message is marked for reply"],
+  "work.status5": ["当前邮件已标记等待对方", "This message is marked as waiting for a response"],
+  "work.status6": ["当前邮件已安排稍后处理", "This message is scheduled for later"],
+  "work.status7": ["当前邮件已标记处理完成", "This message is marked as handled"],
+  "work.status8": ["核对最新往来，确认等待状态是否仍然适用。", "Check the latest correspondence and whether you are still waiting for feedback."],
+  "work.status9": ["核对最新往来，按已保存的任务继续推进。", "Check the latest correspondence and continue with your saved tasks."],
+  "work.status10": ["待办已完成；仍需核对后续来信，确认整个事项是否结束。", "The saved tasks are complete. Check later correspondence to confirm whether the whole matter is finished."],
+  "work.status11": ["核对最新往来后，确认是否需要自己推进或等待反馈。", "Check the latest correspondence to decide whether to take action or wait for feedback."],
+  "work.status12": ["此状态来自你的邮件处理安排；不代表整件事或其他待办已完成。", "This is your saved handling state for this message. It does not establish completion of the matter or other tasks."],
+  "pet.quest.finisher": ["完成 1 项待办", "Complete one task"],
+  "work.document": ["填写附件并回复", "Fill attachment and reply"],
+  "work.limited": ["本次只核对了部分内容，请继续分段核对其余正文或往来。", "Only part of the content was reviewed. Check the remaining reply or correspondence separately."],
+  "work.followupInstruction": ["请依据之前发出的邮件准备一封简短、礼貌的跟进草稿，询问其中待反馈事项的进展。不要断言对方没有回复，不要新增截止日期或承诺。", "Prepare a brief, polite follow-up to my previous email asking about the requested feedback. Do not assert that no reply was sent or add deadlines or commitments."],
+  "work.service0": ["写作偏好需为 1000 字以内的文字", "Writing preferences must be text up to 1000 characters."],
+  "work.service1": ["项目和职责最多 200 字，事项记录最多 2000 字", "Project and role may contain up to 200 characters; notes up to 2000."],
+  "work.service2": ["事项记录已变化，请重新读取后保存", "The work context changed. Reload it before saving."],
+  "work.service3": ["请填写 1–30000 字的回复正文", "Enter a reply between 1 and 30000 characters."],
+  "work.service4": ["其他回复正在核对，请稍后重试", "Other replies are being checked. Try again shortly."],
+  "work.service5": ["成功发送的邮件记录不存在", "The successfully sent message was not found."],
+  "work.service6": ["核对暂未完成，请稍后重试", "The review could not complete. Try again."],
+  "work.service7": ["核对结果未生成完整，请缩小范围后重试", "The review was truncated. Narrow the scope and retry."],
+  "work.service8": ["核对结果无法读取，请重试", "The review could not be read. Try again."],
+  "work.service9": ["正文提及附件，目前没有添加附件。", "The reply mentions an attachment, but no attachment has been added."],
+  "work.service10": ["未连接 AI 模型，仅完成本地附件检查。", "No AI model is connected. Only the local attachment check was completed."],
+  "work.title": ["小邮 · 一起推进这件事", "XiaoYou · Move this forward"],
+  "work.understand": ["梳理这件事", "Review this matter"],
+  "work.reply": ["准备回复", "Prepare reply"],
+  "work.waitingReview": ["有其他关联来信，请核对等待内容是否已有反馈。", "Other linked mail is available. Check whether it addresses what you are waiting for."],
+  "work.requests": ["原邮件中的问题与要求", "Questions and requests in this message"],
+  "work.noRequests": ["暂未发现明确请求，可结合原文继续核对。", "No explicit request was detected. Check the original message."],
+  "work.changes": ["发现调整表述", "Change wording detected"],
+  "work.saved": ["已保存的事项背景", "Saved work context"],
+  "work.progress": ["查看往来与变化", "Correspondence and changes"],
+  "work.plan": ["安排下一步", "Plan next step"],
+  "work.memory": ["事项与写作偏好", "Work context and writing preferences"],
+  "work.refresh": ["重新梳理", "Refresh"],
+  "work.retry": ["暂时无法整理，可重新加载。", "Could not load. Try again."],
+  "work.scope": ["按关联往来在本机整理；原文请求需核对责任，来信或发信本身不代表事项完成。", "Organized locally from linked correspondence. Verify responsibility; a received or sent message does not establish completion."],
+  "work.close": ["关闭", "Close"],
+  "work.memoryHint": ["记录项目、自己的职责和已确认的进展。与当前邮件关联的往来可引用这些背景；写作偏好仅用于措辞。清空并保存即可移除。", "Save the project, your role and confirmed progress. Linked correspondence can use this context; writing preferences affect wording only. Clear and save to remove."],
+  "work.project": ["项目或事项名称", "Project or matter"],
+  "work.role": ["我的职责", "My role"],
+  "work.note": ["已确认进展与背景", "Confirmed progress and context"],
+  "work.style": ["当前邮箱的写作偏好", "Writing preferences for this account"],
+  "work.clear": ["清空内容", "Clear fields"],
+  "work.save": ["保存", "Save"],
+  "work.changed": ["邮箱或邮件已切换，请重新打开记录。", "The account or message changed. Reopen this form."],
+  "work.useStyle": ["使用我保存的写作偏好", "Use my saved writing preferences"],
+  "work.linkedHint": ["回复时勾选“原邮件”，可结合关联往来和你保存的事项背景；生成前可取消勾选。", "For replies, selecting the original message also includes linked correspondence and saved context. Deselect it to exclude them."],
+  "work.review": ["核对回复是否答全", "Check reply completeness"],
+  "work.replyOnly": ["请从原邮件打开回复后使用。", "Open a reply from the original message first."],
+  "work.reviewing": ["正在核对问题、回复和附件…", "Checking questions, reply and attachments…"],
+  "work.edited": ["正文或附件已修改，请重新核对。", "The reply or attachments changed. Check again."],
+  "work.noOmissions": ["本次未发现可定位的遗漏候选。", "No traceable omission candidates were found."],
+  "work.reviewHint": ["AI 核对仅供参考，仍需确认事实、承诺和附件。", "AI review is advisory. Verify facts, commitments and attachments."],
+  "work.followup": ["准备跟进草稿", "Prepare follow-up draft"],
+  "work.today": ["今天值得先看的三件事", "Up to three things to review today"],
+  "pet.activity.task": ["完成待办事项", "Completed tasks"],
   "mailList.more": ["显示更多", "Show more"],
   "mailList.invalidFilters": ["无效的列表筛选条件", "Invalid mailbox filters"],
   "mailList.longFilters": ["列表筛选条件过长", "Mailbox filters are too long"],
@@ -21797,6 +21859,8 @@ async function aiCompose(operation, button) {
       subject: selected.has('subject') ? values.subject : '',
       recipients: selected.has('recipients') ? values.recipients : '',
       original_text: selected.has('original') ? values.original : '',
+      source_email_id: selected.has('original') && operation === 'reply' ? composeContext.reply_to_email_id : null,
+      use_work_preferences: Boolean(document.getElementById('work-use-preferences')?.checked),
       body_text: quickRewrite || selected.has('body') ? values.body : '',
       attachment_names: selected.has('attachments') ? values.attachments : [],
       tone: document.getElementById('compose-ai-tone').value,
@@ -21805,7 +21869,7 @@ async function aiCompose(operation, button) {
     };
     const assist = async payload => {
       const finishWork = globalThis.mailaiCompanionWork?.begin();
-      try { return await api('/api/mail/compose/assist', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); }
+      try { return await api('/api/mail/compose/assist', {accountId:composeAccountId,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); }
       finally { finishWork?.(); }
     };
     const renderPreview = suggestion => {
@@ -26271,6 +26335,7 @@ function renderReadingPane(e) {
     <div class="reading-workspace">
       <main class="reading-main">
         ${renderConversationProgress(e)}
+        ${window.mailaiWorkCard?.(e) || ''}
         ${mailSummaryDisclosure(e)}
 
         <div class="reading-section body-section">
@@ -32766,7 +32831,7 @@ function mailCardDate(value, now = new Date()) {
     const actions = item => item.todo_id
       ? "<button type=\"button\" data-secretary-action=\"todo\"><span data-i18n=\"ui.071147e4925d\">改期 / 安排</span></button><button type=\"button\" data-secretary-action=\"done\"><span data-i18n=\"ui.c0b3fbff51cc\">完成</span></button>"
       : item.risky ? '' : "<button type=\"button\" data-secretary-action=\"todo\"><span data-i18n=\"ui.46110fd51dc0\">确认加入待办</span></button><button type=\"button\" data-secretary-action=\"ignore\"><span data-i18n=\"ui.e563878df325\">忽略线索</span></button><button type=\"button\" data-secretary-action=\"reply\"><span data-i18n=\"ui.cf945e21ddef\">回复</span></button>";
-    content.innerHTML = `<header class="secretary-intro"><h3>${focus === 'decision' ? mailaiText('先看需要判断的事') : mailaiText('把下一步理清楚')}</h3><p><span data-i18n="ui.35a452fa45fa">${esc(data.account_user)} · 已查看 ${data.scanned} 封${data.truncated ? mailaiText('（已达上限）') : ''}</span></p><small>${esc(data.scope)}<br><span data-i18n="ui.2f66f464715a">自动整理的线索，请核实责任与处理状态。</span></small></header>` + data.groups.map(group => `
+    content.innerHTML = `<header class="secretary-intro"><h3>${focus === 'decision' ? mailaiText('先看需要判断的事') : mailaiText('把下一步理清楚')}</h3><p><span data-i18n="ui.35a452fa45fa">${esc(data.account_user)} · 已查看 ${data.scanned} 封${data.truncated ? mailaiText('（已达上限）') : ''}</span></p><small>${esc(data.scope)}<br><span data-i18n="ui.2f66f464715a">自动整理的线索，请核实责任与处理状态。</span></small></header>` + ((data.next_steps || []).length ? `<section class="work-card"><b>${esc(mailaiText('今天值得先看的三件事'))}</b>${data.next_steps.map(item => `<p><strong>${esc(item.evidence || item.subject)}</strong><br><small>${esc(item.reason)}</small> <button type="button" data-secretary-step="${Number(item.email_id)}">${esc(mailaiText('梳理这件事'))}</button></p>`).join('')}</section>` : '') + data.groups.map(group => `
       <details class="secretary-group" ${['safety', 'history'].includes(group.key) ? '' : 'open'}><summary><span>${esc(group.title)}</span><em>${group.count}</em></summary>
       ${group.key === 'tasks' ? "<p class=\"secretary-empty\"><span data-i18n=\"ui.eda2cc95e9cd\">今天到期或提醒，以及近 7 天逾期的任务。未安排日期的任务保留在待办中。</span> <button type=\"button\" data-secretary-todos><span data-i18n=\"ui.0f1f3c58fd43\">查看全部待办</span></button></p>" : group.key === 'history' ? "<p class=\"secretary-empty\"><span data-i18n=\"ui.60e08046b758\">逾期超过 7 天，暂不列为今日重点。任务没有删除，可改期后继续推进。</span> <button type=\"button\" data-secretary-todos><span data-i18n=\"ui.a253decc7359\">管理全部待办</span></button></p>" : ''}
       ${group.items.length ? `<div class="secretary-group-intro"><small>${group.count > group.items.length ? mailaiTemplate`先展示 ${group.items.length} 项` : mailaiText('每项均可回到原邮件核对')}</small><button type="button" data-secretary-group="${group.key}"><span data-i18n="ui.f0281a6a1eab">${group.key === 'safety' ? mailaiText('解释') : mailaiText('整理')}这 ${group.items.length} 项</span></button></div>` : "<p class=\"secretary-empty\"><span data-i18n=\"ui.11886638c00b\">本次范围内没有符合条件的项目，并不代表没有其他工作。</span></p>"}
@@ -32791,6 +32856,9 @@ function mailCardDate(value, now = new Date()) {
   content.addEventListener('click', async event => {
     const button = event.target.closest('button');
     if (!button || !data) return;
+    if (button.dataset.secretaryStep && current()) {
+      return window.mailaiOpenWork(Number(button.dataset.secretaryStep), accountId).catch(error => toast(mailaiSystemMessage(error.message), 'warn'));
+    }
     if (!current()) { window.refreshSecretaryAccount(); return; }
     if (button.hasAttribute('data-secretary-todos')) return openTodoCenter();
     const groupKey = button.dataset.secretaryGroup;
@@ -32831,6 +32899,190 @@ function mailCardDate(value, now = new Date()) {
     } catch (error) { toast(mailaiText('操作未完成：') + mailaiSystemMessage(error.message), 'warn'); }
     finally { button.disabled = false; button.textContent = label; }
   });
+})();
+
+;
+/* ---- work-assistant.js ---- */
+/* Work assistance is lazy, account-bound and never submits a message. */
+(() => {
+  const w = key => mailaiT(`work.${key}`) || MAILAI_UI_COPY[`work.${key}`]?.[0] || key;
+  const button = (action, label) => `<button type="button" data-work="${action}" data-i18n="work.${label}">${esc(w(label))}</button>`;
+  let loaded = null, ticket = 0;
+  window.mailaiWorkCard = email => ['trash','spam','quarantine','draft','sent'].includes(email.status) ? '' :
+    `<section class="work-card" data-work-email="${Number(email.id)}" data-work-account="${esc(activeMailAccount()?.id || '')}"><header><b data-i18n="work.title">${esc(w('title'))}</b><div>${button('load','understand')}${button('reply','reply')}${email.attachments?.some(item => /\.(?:xlsx?|docx|pdf)$/i.test(item.name || '')) ? button('document','document') : ''}</div></header><div data-work-content hidden></div></section>`;
+  const live = (host, account, id) => host.isConnected && activeMailAccount()?.id === account && selectedEmailDetail?.id === id;
+  const post = body => ({headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  new MutationObserver(() => {
+    if (loaded && !loaded.host.isConnected) loaded = null;
+  }).observe(document.getElementById('reading-content'),{childList:true});
+  function render(host, data) {
+    const progress = data.progress;
+    const content = host.querySelector('[data-work-content]');
+    content.hidden = false;
+    host.querySelector('[data-work="load"]').setAttribute('aria-expanded','true');
+    const requests = data.requests.map(text => `<li>${esc(text)}</li>`).join('');
+    const notes = data.context.filter(row => row.project || row.role || row.note);
+    content.innerHTML = `<p><strong>${esc(mailaiSystemMessage(progress.status))}</strong> · ${esc(mailaiSystemMessage(progress.next_step))}</p>
+      ${data.waiting_review ? `<p class="work-attention">${esc(w('waitingReview'))}</p>` : ''}
+      ${requests ? `<details open><summary>${esc(w('requests'))}</summary><ul>${requests}</ul></details>` : `<p>${esc(w('noRequests'))}</p>`}
+      ${progress.changes.items.length ? `<p>${esc(w('changes'))} ${progress.changes.items.length} · ${esc(progress.changes.items[0].quote)}</p>` : ''}
+      ${notes.length ? `<details><summary>${esc(w('saved'))}</summary>${notes.map(row => `<article><b>${esc(row.project)}</b><p>${esc(row.role)}</p><p>${esc(row.note)}</p><small>${esc(row.updated_at)}</small></article>`).join('')}</details>` : ''}
+      <div class="work-actions">${button('progress','progress')}${button('plan','plan')}${button('memory','memory')}${button('refresh','refresh')}</div><small>${esc(w('scope'))}</small>`;
+  }
+  async function load(host) {
+    const account = host.dataset.workAccount, id = Number(host.dataset.workEmail), rev = ++ticket;
+    const content = host.querySelector('[data-work-content]');
+    content.hidden = false;
+    content.setAttribute('aria-busy','true');
+    try {
+      const data = await api(`/api/work/emails/${id}`, {accountId:account});
+      if (!live(host,account,id) || rev !== ticket) return;
+      loaded = {data,host,account,id};
+      render(host,data);
+    } catch (error) {
+      if (live(host,account,id) && rev === ticket) content.innerHTML = `<p role="status">${esc(w('retry'))} ${esc(mailaiSystemMessage(error.message))}</p>${button('refresh','refresh')}`;
+    } finally { if (rev === ticket) content.removeAttribute('aria-busy'); }
+  }
+  async function memory(host) {
+    if (loaded?.host !== host) await load(host);
+    const state = loaded;
+    if (!state || state.host !== host || !live(host,state.account,state.id)) return;
+    const row = state.data.context.find(item => item.email_id === state.id) || {};
+    const dialog = document.createElement('dialog');
+    dialog.className = 'work-dialog';
+    dialog.setAttribute('aria-label',w('memory'));
+    dialog.innerHTML = `<form><header><h2>${esc(w('memory'))}</h2><button type="button" data-close aria-label="${esc(w('close'))}">✕</button></header>
+      <p>${esc(w('memoryHint'))}</p><label>${esc(w('project'))}<input name="project" maxlength="200" value="${esc(row.project || '')}"></label>
+      <label>${esc(w('role'))}<input name="role" maxlength="200" value="${esc(row.role || '')}"></label>
+      <label>${esc(w('note'))}<textarea name="note" maxlength="2000">${esc(row.note || '')}</textarea></label>
+      <label>${esc(w('style'))}<textarea name="style" maxlength="1000">${esc(state.data.preferences.style)}</textarea></label>
+      <p role="status" data-status></p><footer>${button('clear','clear')}<button type="submit">${esc(w('save'))}</button></footer></form>`;
+    document.body.append(dialog);
+    dialog.addEventListener('close', () => { dialog.remove(); if (host.isConnected) host.querySelector('[data-work="memory"]')?.focus(); }, {once:true});
+    dialog.querySelector('[data-close]').onclick = () => dialog.close();
+    dialog.querySelector('[data-work="clear"]').onclick = () => {
+      for (const name of ['project','role','note','style']) dialog.querySelector(`[name="${name}"]`).value = '';
+    };
+    dialog.querySelector('form').onsubmit = async event => {
+      event.preventDefault();
+      if (!live(host,state.account,state.id)) { dialog.querySelector('[data-status]').textContent = w('changed'); return; }
+      const submit = dialog.querySelector('[type="submit"]');
+      submit.disabled = true;
+      const values = Object.fromEntries(new FormData(event.target));
+      dialog.querySelectorAll('input,textarea,[data-work="clear"]').forEach(node => { node.disabled = true; });
+      try {
+        const result = await api(`/api/work/emails/${state.id}/context`, {accountId:state.account,method:'PUT',...post({...values, style_revision:state.data.preferences.revision, revision:row.revision || 0})});
+        row.revision = result.revision;
+        dialog.close();
+        if (live(host,state.account,state.id)) await load(host);
+      } catch (error) { dialog.querySelector('[data-status]').textContent = mailaiSystemMessage(error.message); }
+      finally { dialog.querySelectorAll('input,textarea,[data-work="clear"]').forEach(node => { node.disabled = false; }); submit.disabled = false; }
+    };
+    dialog.showModal();
+  }
+  document.getElementById('reading-content').addEventListener('click', async event => {
+    const control = event.target.closest('[data-work]'), host = control?.closest('.work-card');
+    if (!host || control.disabled) return;
+    const account = host.dataset.workAccount, id = Number(host.dataset.workEmail);
+    if (!live(host,account,id)) return;
+    control.disabled = true;
+    try {
+      switch (control.dataset.work) {
+        case 'load':
+          if (loaded?.host === host) {
+            const content = host.querySelector('[data-work-content]');
+            content.hidden = !content.hidden;
+            control.setAttribute('aria-expanded', String(!content.hidden));
+          }
+          else await load(host);
+          break;
+        case 'refresh': await load(host); break;
+        case 'memory': await memory(host); break;
+        case 'plan': await window.openTaskPlanner({emailId:id,accountId:account}); break;
+        case 'progress': openConversationProgress(); break;
+        case 'document': await window.startAssistantDocumentReply(id,account); break;
+        case 'reply':
+          await composeFromEmail('reply');
+          if (composeContext.reply_to_email_id === id && composeAccountId === account && document.body.classList.contains('compose-open')) toggleComposeAiPanel(true);
+          break;
+      }
+    } catch (error) { toast(mailaiSystemMessage(error.message),'warn'); }
+    finally { control.disabled = false; }
+  });
+  window.addEventListener('mailai-tasks-changed', event => {
+    if (loaded && loaded.account === event.detail.accountId && live(loaded.host,loaded.account,loaded.id)) load(loaded.host);
+  });
+  document.addEventListener('mailai:language-changed', () => {
+    if (loaded && live(loaded.host,loaded.account,loaded.id)) render(loaded.host,loaded.data);
+  });
+
+  // Compose controls remain separate from generation, so users can check their
+  // own text and retain explicit control over whether to use linked sources.
+  const panel = document.getElementById('compose-ai-panel');
+  const controls = document.createElement('section');
+  controls.className = 'work-compose';
+  controls.innerHTML = `<label><input type="checkbox" id="work-use-preferences" checked><span data-i18n="work.useStyle">${esc(w('useStyle'))}</span></label><p data-i18n="work.linkedHint">${esc(w('linkedHint'))}</p>${button('review','review')}<div data-work-review role="status"></div>`;
+  panel.querySelector('.compose-ai-scroll').append(controls);
+  let reviewSnapshot = null;
+  const reviewFingerprint = () => JSON.stringify([composeMessageElement().innerText,
+    composeAttachments.map(item => [item.filename || item.name || '', item.size || 0, item.sha256 || ''])]);
+  const sameFiles = files => files.length === composeAttachments.length && files.every((item,index) => item === composeAttachments[index]);
+  const invalidateReview = () => {
+    if (!reviewSnapshot) return;
+    if (reviewSnapshot.session !== draftSession) { reviewSnapshot = null; return; }
+    if (reviewSnapshot.fingerprint !== reviewFingerprint() || !sameFiles(reviewSnapshot.files)) {
+      controls.querySelector('[data-work-review]').textContent = w('edited');
+      reviewSnapshot = null;
+    }
+  };
+  new MutationObserver(invalidateReview).observe(document.getElementById('compose-body'),{subtree:true,childList:true,characterData:true});
+  new MutationObserver(invalidateReview).observe(document.getElementById('compose-attachments'),{subtree:true,childList:true});
+  controls.querySelector('[data-work="review"]').onclick = async event => {
+    const session = draftSession, account = composeAccountId, id = composeContext.reply_to_email_id;
+    const output = controls.querySelector('[data-work-review]'), control = event.currentTarget;
+    if (!id) { output.textContent = w('replyOnly'); return; }
+    const body = composeMessageElement().innerText;
+    const names = composeAttachments.map(item => item.filename || item.name || '');
+    const current = () => session === draftSession && !session.canceled && account === composeAccountId && document.body.classList.contains('compose-open');
+    const original = reviewFingerprint(), files = [...composeAttachments];
+    reviewSnapshot = null;
+    control.disabled = true;
+    output.textContent = w('reviewing');
+    const finish = globalThis.mailaiCompanionWork?.begin();
+    try {
+      const result = await api('/api/work/review',{accountId:account,method:'POST',...post({email_id:id,body,attachment_names:names,semantic:true})});
+      if (!current()) return;
+      if (reviewFingerprint() !== original || !sameFiles(files)) { output.textContent = w('edited'); return; }
+      reviewSnapshot = {session,fingerprint:original,files};
+      output.innerHTML = result.items.length ? result.items.map(item => `<p>${item.question ? `<q>${esc(item.question)}</q><br>` : ''}${esc(mailaiSystemMessage(item.note))}</p>`).join('') : `<p>${esc(result.model_used ? w('noOmissions') : mailaiSystemMessage(result.note || ''))}</p>`;
+      output.insertAdjacentHTML('beforeend',`<small>${esc(w('reviewHint'))}</small>`);
+      if (result.limited) output.insertAdjacentHTML('beforeend',`<p>${esc(w('limited'))}</p>`);
+    } catch (error) { if (current()) output.textContent = mailaiSystemMessage(error.message); }
+    finally { finish?.(); control.disabled = false; }
+  };
+  new MutationObserver(() => {
+    if (!document.body.classList.contains('compose-open')) {
+      controls.querySelector('[data-work-review]').textContent = '';
+      reviewSnapshot = null;
+      document.getElementById('work-use-preferences').checked = true;
+    }
+  }).observe(document.body,{attributes:true,attributeFilter:['class']});
+  window.mailaiPrepareFollowup = async (sentId, account) => {
+    const active = activeMailAccount()?.id;
+    const seed = await api(`/api/work/followups/${Number(sentId)}/prepare`,{accountId:account});
+    if (active !== activeMailAccount()?.id) return;
+    const opened = await openCompose({...seed,account_id:account});
+    if (opened) {
+      document.getElementById('compose-ai-instruction').value = w('followupInstruction');
+      toggleComposeAiPanel(true);
+    }
+  };
+  window.mailaiOpenWork = async (id, account) => {
+    if (account !== activeMailAccount()?.id) return;
+    await revealEmailFromSource(id);
+    const host = document.querySelector('.work-card');
+    if (host && live(host,account,id)) await load(host);
+  };
 })();
 
 ;
@@ -38294,10 +38546,18 @@ function mailCardDate(value, now = new Date()) {
         items
           .map(
             (row, i) =>
-              `<div class="productivity-source-quote"><strong>${esc(row.subject || mailaiText("无主题"))}</strong><p>${esc(row.to_addr || "")}</p><small>${esc({ scheduled: row.sent ? mailaiText("已提交提醒") : mailaiText("等待回复"), get replied() { return mailaiText("已同步到回复"); }, get canceled() { return mailaiText("已取消"); } }[row.state] || row.state)} · ${esc(row.at.replace("T", " "))}</small><div class="productivity-actions"><button type="button" data-followup-open="${i}"><span data-i18n="ui.c259135be1d3">查看已发送邮件</span></button>${row.state === "scheduled" ? `<input type="datetime-local" data-followup-at="${i}" value="${esc(row.at.slice(0, 16))}" aria-label="新的跟进时间" data-i18n-aria="ui.6da097eb22f3"><button type="button" data-followup-save="${i}"><span data-i18n="ui.fd094431c8ca">调整时间</span></button><button type="button" data-followup-cancel="${i}"><span data-i18n="ui.f3b07169f705">取消提醒</span></button>` : ""}</div></div>`,
+              `<div class="productivity-source-quote"><strong>${esc(row.subject || mailaiText("无主题"))}</strong><p>${esc(row.to_addr || "")}</p><small>${esc({ scheduled: row.sent ? mailaiText("已提交提醒") : mailaiText("等待回复"), get replied() { return mailaiText("已同步到回复"); }, get canceled() { return mailaiText("已取消"); } }[row.state] || row.state)} · ${esc(row.at.replace("T", " "))}</small><div class="productivity-actions"><button type="button" data-followup-open="${i}"><span data-i18n="ui.c259135be1d3">查看已发送邮件</span></button>${row.state === "scheduled" ? `<button type="button" data-followup-prepare="${i}">${esc(mailaiText("准备跟进草稿"))}</button><input type="datetime-local" data-followup-at="${i}" value="${esc(row.at.slice(0, 16))}" aria-label="新的跟进时间" data-i18n-aria="ui.6da097eb22f3"><button type="button" data-followup-save="${i}"><span data-i18n="ui.fd094431c8ca">调整时间</span></button><button type="button" data-followup-cancel="${i}"><span data-i18n="ui.f3b07169f705">取消提醒</span></button>` : ""}</div></div>`,
           )
           .join("") ||
         mailaiText("没有发信跟进记录。请在写信的“发送安排”中设置未回复提醒。");
+      host.querySelectorAll('[data-followup-prepare]').forEach(btn => {
+        btn.onclick = () => busy(btn, async () => {
+          const id = items[Number(btn.dataset.followupPrepare)].sent_id;
+          if (!live(rev)) return;
+          dialog.close();
+          await window.mailaiPrepareFollowup(id, account);
+        });
+      });
       host.querySelectorAll("[data-followup-open]").forEach(
         (btn) =>
           (btn.onclick = () =>
