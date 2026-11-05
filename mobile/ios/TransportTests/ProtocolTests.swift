@@ -217,6 +217,25 @@ final class ProtocolTests: XCTestCase {
         // The fixture returns 250 only after decoding MIME and verifying the hash.
         try await NativeMailService().send(credential(), draft: draft)
     }
+    func testCorrespondenceUsesParticipantHeadersAndMetadataFallback() async throws {
+        let service = NativeMailService()
+        for port in [1993, 1995, 1996] {
+            var entry = credential(); entry.account.imapPort = port
+            let result = try await service.correspondence(entry, folder: "INBOX", address: "sender@example.com", limit: 50)
+            XCTAssertEqual(result.messages.map(\.uid), [7]); XCTAssertEqual(result.messages.first?.senderName, "测试发件人")
+            let wrong = try await service.correspondence(entry, folder: "INBOX", address: "not-sender@example.com", limit: 50)
+            XCTAssertTrue(wrong.messages.isEmpty)
+        }
+    }
+    func testBatchMoveRetainsEveryUIDAndDestinationMapping() async throws {
+        let service = NativeMailService(); let entry = credential()
+        let list = try await service.summaries(entry, folder: "INBOX", limit: 50)
+        let first = try XCTUnwrap(list.first)
+        let second = first.relocated(uid: 8, validity: first.validity, folder: first.folder)
+        let receipt = try await service.move(entry, summaries: [first, second], to: "Trash")
+        let moved = try XCTUnwrap(receipt)
+        XCTAssertEqual(Set(moved.map(\.uid)), [9,10]); XCTAssertTrue(moved.allSatisfy { $0.folder == "Trash" && $0.validity == 10 })
+    }
     func testSMTPAcceptsSyntheticMessage() async throws {
         var draft = MailDraft(); draft.to = "recipient@example.com"; draft.subject = "synthetic 测试"; draft.text = "synthetic 中文正文"
         try await NativeMailService().send(credential(), draft: draft)

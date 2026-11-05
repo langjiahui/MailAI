@@ -38,6 +38,85 @@ private actor FeatureService: MailService {
         try await store.addAccount(account, password: "synthetic-password"); store.cancelRefresh()
         return (store, vault, service, files)
     }
+    func testCorrespondenceMatchesExactParticipantsAndDeduplicatesMessages() throws {
+        var incoming = FeatureService.item(); incoming.senderAddress = "sender@example.com"; incoming.messageID = "<same@example.com>"
+        var duplicate = incoming.relocated(uid: 9, validity: 10, folder: "Archive")
+        duplicate.date = Date(timeIntervalSince1970: 100)
+        var outgoing = FeatureService.item(folder: "Sent"); outgoing.sender = "demo@example.com"; outgoing.replyAddress = "demo@example.com"
+        outgoing.recipients = [.init(email: "SENDER@example.com")]
+        var falseMatch = outgoing; falseMatch.recipients = [.init(email: "not-sender@example.com")]
+        XCTAssertTrue(incoming.involves("sender@example.com")); XCTAssertTrue(outgoing.involves("sender@example.com"))
+        XCTAssertFalse(falseMatch.involves("sender@example.com"))
+        XCTAssertEqual(incoming.correspondent(ownAddress: "demo@example.com"), "sender@example.com")
+        XCTAssertEqual(outgoing.correspondent(ownAddress: "demo@example.com"), "SENDER@example.com")
+        incoming.senderAddress = "different@example.com"
+        XCTAssertFalse(incoming.involves("sender@example.com"), "Reply-To alone is not a correspondence participant")
+        let result = MailStore.correspondenceMessages([duplicate, duplicate, outgoing, falseMatch], address: "sender@example.com")
+        XCTAssertEqual(result.count, 2)
+    }
+    func testCachedCorrespondenceIncludesSentAndRemainsAccountScoped() throws {
+        let vault = FeatureVault(), files = try MailFiles(root: root)
+        var first = MailAccount(); first.email = "demo@example.com"; first.suggestServers()
+        var second = MailAccount(); second.email = "other@example.com"; second.suggestServers()
+        vault.entries = [.init(account: first, password: "synthetic"), .init(account: second, password: "synthetic")]
+        try files.write([MailFolder(name: "INBOX"), MailFolder(name: "Sent")], account: first.id, key: "folders")
+        let incoming = FeatureService.item()
+        var outgoing = FeatureService.item(folder: "Sent"); outgoing.sender = first.email; outgoing.replyAddress = first.email
+        outgoing.recipients = [.init(email: "sender@example.com")]
+        try files.write([incoming], account: first.id, key: "list:INBOX")
+        try files.write([outgoing], account: first.id, key: "list:Sent")
+        try files.write([incoming.relocated(uid: 99, validity: 10, folder: "INBOX")], account: second.id, key: "list:INBOX")
+        let store = MailStore(vault: vault, files: files, service: FeatureService())
+        XCTAssertEqual(Set(try store.cachedCorrespondence(with: "sender@example.com").map(\.folder)), ["INBOX", "Sent"])
+        XCTAssertEqual(store.folder, "INBOX")
+        try store.selectAccount(second.id)
+        XCTAssertEqual(try store.cachedCorrespondence(with: "sender@example.com").map(\.uid), [99])
+    }
+    func testBatchMoveAndUndoUseEveryMappedDestinationUID() async throws {
+        let (store, _, service, _) = try await setup()
+        let items = [FeatureService.item(), FeatureService.item().relocated(uid: 8, validity: 10, folder: "INBOX")]
+        try await store.perform(.move("Trash"), on: items)
+        XCTAssertNotNil(store.undoID)
+        try await store.undoLastAction(); store.cancelRefresh()
+        let actions = await service.recordedActions(), uids = await service.recordedUIDs()
+        XCTAssertEqual(actions, [.move("Trash"), .move("INBOX")])
+        XCTAssertEqual(uids, [107, 108])
+    }
+    func testCorporateDeletedFolderNamesAreRecognizedWithoutGuessingOutbox() {
+        for name in ["Trash", "Deleted Items", "已删除邮件", "已删除项目"] { XCTAssertEqual(MailFolder(name: name).title, "废纸篓") }
+        XCTAssertNotEqual(MailFolder(name: "发件箱").title, "已发送")
+    }
+    func testServerCorrespondenceCachesWithoutSwitchingTheActiveFolder() async throws {
+        let vault = FeatureVault(), files = try MailFiles(root: root), service = CorrespondenceTestService()
+        var account = MailAccount(); account.email = "demo@example.com"; account.suggestServers()
+        vault.entries = [.init(account: account, password: "synthetic")]
+        let store = MailStore(vault: vault, files: files, service: service)
+        let folders = try await store.correspondenceFolders()
+        XCTAssertEqual(folders.map(\.name), ["INBOX", "Sent"])
+        let result = try await store.correspondence(with: "peer@example.com", folder: "Sent", limit: 9999)
+        XCTAssertEqual(result.messages.count, 1); XCTAssertEqual(store.folder, "INBOX"); XCTAssertTrue(store.messages.isEmpty)
+        let recordedLimit = await service.lastLimit; XCTAssertEqual(recordedLimit, 500)
+        let restored = MailStore(vault: vault, files: files, service: service)
+        XCTAssertEqual(try restored.cachedCorrespondence(with: "peer@example.com").map(\.folder), ["Sent"])
+    }
+    func testAccountSwitchDiscardsInFlightCorrespondenceBeforeCacheWrite() async throws {
+        let vault = FeatureVault(), files = try MailFiles(root: root), service = CorrespondenceTestService()
+        var first = MailAccount(); first.email = "first@example.com"; first.suggestServers()
+        var second = MailAccount(); second.email = "second@example.com"; second.suggestServers()
+        vault.entries = [.init(account: first, password: "synthetic"), .init(account: second, password: "synthetic")]
+        let store = MailStore(vault: vault, files: files, service: service)
+        await service.hold()
+        let query = Task { try await store.correspondence(with: "peer@example.com", folder: "Sent") }
+        for _ in 0..<100 { if await service.started { break }; try await Task.sleep(for: .milliseconds(5)) }
+        let started = await service.started; XCTAssertTrue(started)
+        try store.selectAccount(second.id); await service.release()
+        do { _ = try await query.value; XCTFail("A changed account must discard the query") }
+        catch is CancellationError {} catch { XCTFail("Unexpected error: \(error)") }
+        for account in [first, second] {
+            let cached = try files.read([MailSummary].self, account: account.id, key: "correspondence:peer@example.com:Sent")
+            XCTAssertNil(cached)
+        }
+    }
     func testLegacyDraftAndAccountDecodeWithoutLosingContent() throws {
         let data = Data(#"{"to":"a@example.com","subject":"旧草稿","text":"正文","state":"editing"}"#.utf8)
         let draft = try JSONDecoder().decode(MailDraft.self, from: data)
@@ -222,5 +301,25 @@ private actor FeatureService: MailService {
         XCTAssertEqual(a?.first { $0.email == "sender@example.com" }?.name, "缓存姓名")
         XCTAssertEqual(b?.first { $0.email == "sender@example.com" }?.name, "Sender")
         XCTAssertEqual(store.contacts, b)
+    }
+}
+
+private actor CorrespondenceTestService: MailService {
+    var started = false
+    var lastLimit = 0
+    private var held = false
+    private var continuation: CheckedContinuation<Void, Never>?
+    func hold() { held = true }
+    func release() { held = false; continuation?.resume(); continuation = nil }
+    func validate(_ credential: AccountCredential) async throws {}
+    func folders(_ credential: AccountCredential) async throws -> [MailFolder] { [.init(name: "INBOX"), .init(name: "Sent"), .init(name: "Trash")] }
+    func summaries(_ credential: AccountCredential, folder: String, limit: Int) async throws -> [MailSummary] { [] }
+    func read(_ credential: AccountCredential, summary: MailSummary) async throws -> ReadResult { .init(body: .init(text: "synthetic", html: nil), markedRead: false) }
+    func send(_ credential: AccountCredential, draft: MailDraft) async throws {}
+    func correspondence(_ credential: AccountCredential, folder: String, address: String, limit: Int) async throws -> MailSearchResult {
+        started = true; lastLimit = limit
+        if held { await withCheckedContinuation { continuation = $0 } }
+        let item = MailSummary(uid: 7, validity: 10, folder: folder, subject: "合成往来记录", sender: "peer@example.com", replyAddress: "peer@example.com", date: nil, unread: false)
+        return MailSearchResult(messages: [item], total: 1)
     }
 }

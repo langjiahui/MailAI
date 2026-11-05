@@ -29,6 +29,7 @@ struct ReaderView: View {
     @State private var downloadingID: String?
     @State private var assistant = false
     @State private var moving = false
+    @State private var correspondence = false
     @State private var readTask: Task<Void, Never>?
     @State private var downloadTask: Task<Void, Never>?
     @Environment(\.dismiss) private var dismiss
@@ -60,6 +61,7 @@ struct ReaderView: View {
                     if bodyContent?.html != nil, !plainText {
                         Button(originalHTML ? "跟随系统主题" : "查看原始样式") { originalHTML.toggle() }
                     }
+                    Button("往来邮件", systemImage: "arrow.left.arrow.right") { correspondence = true }.disabled(!MailValidation.isAddress(correspondent)).accessibilityIdentifier("reader-correspondence-menu")
                     Button("移动到…") { moving = true }
                     Button(currentFlag ? "取消星标" : "添加星标") {
                         let next = !currentFlag
@@ -93,6 +95,7 @@ struct ReaderView: View {
         .onChange(of: store.selectedID) { _, id in if id != ownerID { readTask?.cancel(); downloadTask?.cancel(); bodyContent = nil; error = "邮箱已切换，请返回列表重新打开这封邮件。" } }
         .onChange(of: scenePhase) { _, phase in if phase != .active { readTask?.cancel(); downloadTask?.cancel(); downloading = false; downloadingID = nil } else if bodyContent == nil { load() } }
         .sheet(isPresented: $composing) { ComposerView(store: store) }
+        .navigationDestination(isPresented: $correspondence) { CorrespondenceView(store: store, address: correspondent, seed: summary) }
         .sheet(isPresented: $moving) { MovePicker(store: store, items: [summary]) }
         .sheet(isPresented: $assistant) {
             AssistantPanel(text: summary.subject + "\n" + (bodyContent?.text ?? "")) { output in
@@ -124,7 +127,14 @@ struct ReaderView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(summary.senderName?.isEmpty == false ? summary.senderName! : summary.sender).font(.subheadline.weight(.semibold)).textSelection(.enabled)
                         if dynamicTypeSize.isAccessibilitySize, let date = summary.date { Text(date.formatted()).font(.caption2).foregroundStyle(MailTheme.secondary) }
-                        Button { details.toggle() } label: { HStack(spacing: 4) { Text("发送至 " + (bodyContent?.recipients ?? summary.recipients ?? []).map { $0.name.isEmpty ? $0.email : $0.name }.joined(separator: "、")).lineLimit(2).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true); Image(systemName: "chevron.down").rotationEffect(.degrees(details ? 180 : 0)).font(.caption2) }.font(.caption).foregroundStyle(MailTheme.secondary).frame(minHeight: 44, alignment: .leading) }.buttonStyle(.plain).accessibilityLabel("邮件详细信息")
+                        HStack(spacing: 8) {
+                            Button { details.toggle() } label: { HStack(spacing: 4) { Text("发送至 " + (bodyContent?.recipients ?? summary.recipients ?? []).map { $0.name.isEmpty ? $0.email : $0.name }.joined(separator: "、")).lineLimit(2).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true); Image(systemName: "chevron.down").rotationEffect(.degrees(details ? 180 : 0)).font(.caption2) }.font(.caption).foregroundStyle(MailTheme.secondary).frame(minHeight: 44, alignment: .leading) }.buttonStyle(.plain).accessibilityLabel("邮件详细信息")
+                            Spacer(minLength: 0)
+                            Button("往来邮件") { correspondence = true }
+                                .font(.caption).foregroundStyle(MailTheme.blue).fixedSize()
+                                .frame(minHeight: 44).buttonStyle(MailPressButtonStyle())
+                                .disabled(!MailValidation.isAddress(correspondent)).accessibilityIdentifier("reader-correspondence")
+                        }
                     }
                     Spacer(minLength: 4)
                     if !dynamicTypeSize.isAccessibilitySize, let date = summary.date { Text(date.formatted(date: .omitted, time: .shortened)).font(.caption2).foregroundStyle(MailTheme.secondary).fixedSize().accessibilityLabel(date.formatted()) }
@@ -189,6 +199,7 @@ struct ReaderView: View {
         guard let target = configured ?? store.folders.first(where: { $0.role == role || $0.title == (role == "trash" ? "废纸篓" : "归档") })?.name else { moving = true; return }
         Task { do { try await store.perform(.move(target), on: [summary]); dismiss() } catch { self.error = "操作未完成，请刷新核对服务器状态。" } }
     }
+    private var correspondent: String { summary.correspondent(ownAddress: store.selected?.email ?? "") }
     private var currentFlag: Bool { localFlag ?? store.messages.first(where: { $0.id == summary.id })?.isFlagged ?? summary.isFlagged ?? false }
     private func load() {
         error = nil; readTask?.cancel()
@@ -252,20 +263,23 @@ struct SafeMailHTML: UIViewRepresentable {
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .nonPersistent()
         configuration.defaultWebpagePreferences.allowsContentJavaScript = false
+        configuration.ignoresViewportScaleLimits = true
+        configuration.userContentController.addUserScript(WKUserScript(source: MailHTMLDocument.layoutScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true, in: .defaultClient))
         configuration.userContentController.addUserScript(WKUserScript(source: MailHTMLDocument.appearanceScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true, in: .defaultClient))
         let view = WKWebView(frame: .zero, configuration: configuration)
         view.isOpaque = false
+        view.scrollView.contentInsetAdjustmentBehavior = .never
         return view
     }
     func makeUIView(context: Context) -> WKWebView {
         let view = Self.makeMailWebView()
         view.navigationDelegate = context.coordinator
         context.coordinator.observation = view.scrollView.observe(\.contentSize, options: [.new]) { [weak coordinator = context.coordinator] scroll, _ in
-            let height = min(30000, max(200, scroll.contentSize.height))
+            let height = min(30000, max(200, scroll.contentSize.height / max(1, scroll.zoomScale)))
             DispatchQueue.main.async { [weak coordinator, weak scroll] in
                 guard let coordinator, let scroll else { return }
                 if abs(coordinator.height.wrappedValue - height) > 1 { coordinator.height.wrappedValue = height }
-                scroll.isScrollEnabled = scroll.contentSize.height > 30000
+                scroll.isScrollEnabled = scroll.contentSize.height > 30000 || scroll.contentSize.width > scroll.bounds.width + 1 || scroll.zoomScale > scroll.minimumZoomScale + 0.01
             }
         }
         load(view, coordinator: context.coordinator)

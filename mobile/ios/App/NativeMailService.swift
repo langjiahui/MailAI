@@ -292,18 +292,42 @@ struct NativeMailService: MailService {
     }
     func search(_ entry: AccountCredential, folder: String, query: String, limit: Int) async throws -> MailSearchResult {
         guard !query.isEmpty, query.count <= 256, !MailValidation.hasControl(query) else { throw MailFailure.invalid("请输入 1 至 256 字的搜索内容。") }
-        return try await withIMAP(entry) { server in
-            let selection = try await server.examineMailbox(folder)
-            let result: ExtendedSearchResult<UID> = try await server.extendedSearch(criteria: [.text(query)])
-            let all = result.all?.toArray().sorted { $0.value > $1.value } ?? []
-            let chosen = Array(all.prefix(limit))
-            guard !chosen.isEmpty else { return MailSearchResult(messages: [], total: 0) }
-            var messages: [MailSummary] = []
-            for try await info in server.fetchMessageInfos(using: UIDSet(chosen), options: .slim.union(.bodyStructure)) {
-                if let uid = info.uid { messages.append(Self.summary(info, uid: uid.value, validity: selection.uidValidity.value, folder: folder)) }
+        return try await searchMessages(entry, folder: folder, criteria: [.text(query)], limit: limit)
+    }
+    func correspondence(_ entry: AccountCredential, folder: String, address: String, limit: Int) async throws -> MailSearchResult {
+        guard MailValidation.isAddress(address) else { throw MailFailure.invalid("发件人邮箱地址不可用。") }
+        let result = try await searchMessages(entry, folder: folder,
+            criteria: [.or(.from(address), .or(.to(address), .cc(address)))], limit: limit)
+        return MailSearchResult(messages: result.messages.filter { $0.involves(address) }, total: result.total)
+    }
+    private func searchMessages(_ entry: AccountCredential, folder: String, criteria: [SearchCriteria], limit: Int) async throws -> MailSearchResult {
+        let remembered = await MailListCompatibility.shared.mode(entry.account.id)
+        for mode in remembered...2 {
+            do {
+                let result = try await withIMAP(entry, phase: .imapSummaries) { server in
+                    let selection = try await server.examineMailbox(folder)
+                    let result: ExtendedSearchResult<UID> = try await server.extendedSearch(criteria: criteria)
+                    let all = result.all?.toArray().sorted { $0.value > $1.value } ?? []
+                    let chosen = Array(all.prefix(min(500, max(1, limit))))
+                    guard !chosen.isEmpty else { return MailSearchResult(messages: [], total: 0) }
+                    let options: FetchMessageInfoOptions = mode == 0 ? .slim.union(.bodyStructure)
+                        : (mode == 1 ? .slim : [.flags, .internalDate, .size, .fullHeader])
+                    var messages: [MailSummary] = []
+                    for try await info in server.fetchMessageInfos(using: UIDSet(chosen), options: options) {
+                        try Task.checkCancellation()
+                        guard let uid = info.uid else { throw MailConnectionFailure.malformedResponse }
+                        messages.append(Self.summary(info, uid: uid.value, validity: selection.uidValidity.value, folder: folder))
+                    }
+                    return MailSearchResult(messages: messages.sorted { $0.uid > $1.uid }, total: all.count)
+                }
+                await MailListCompatibility.shared.remember(mode, for: entry.account.id)
+                return result
+            } catch {
+                try Task.checkCancellation()
+                guard error as? MailConnectionFailure == .malformedResponse, mode < 2 else { throw error }
             }
-            return MailSearchResult(messages: messages.sorted { $0.uid > $1.uid }, total: all.count)
         }
+        throw MailConnectionFailure.malformedResponse
     }
     func archiveSent(_ entry: AccountCredential, draft: MailDraft) async throws {
         let email = try Self.email(entry, draft: draft)

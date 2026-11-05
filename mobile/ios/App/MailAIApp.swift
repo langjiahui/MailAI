@@ -93,6 +93,7 @@ struct InboxView: View {
     @State private var selecting = false
     @State private var selection = Set<String>()
     @State private var moveRequest: MailMoveRequest?
+    @State private var deleting: MailMoveRequest?
     @State private var destination: InboxDestination?
     @State private var pendingDestination: InboxDestination?
     @State private var filter = "all"
@@ -125,7 +126,11 @@ struct InboxView: View {
         .sheet(isPresented: $mailboxes, onDismiss: {
             if let pendingDestination { destination = pendingDestination; self.pendingDestination = nil }
         }) { MailboxesView(store: store, unified: $unified) { pendingDestination = $0 } }
-        .sheet(item: $moveRequest) { request in MovePicker(store: store, items: request.items) }
+        .sheet(item: $moveRequest) { request in MovePicker(store: store, items: request.items, destinationRole: request.destinationRole) }
+        .alert("删除选中的邮件？", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), presenting: deleting) { request in
+            Button("移到废纸篓", role: .destructive) { deleting = nil; moveToRole("trash", request.items) }
+            Button("取消", role: .cancel) { deleting = nil }
+        } message: { request in Text("将 \(request.items.count) 封邮件移到废纸篓，可在废纸篓中找回。") }
         .alert("操作提示", isPresented: Binding(get: { store.error != nil && destination != nil }, set: { if !$0 { store.error = nil } })) {
             Button("知道了") { store.error = nil }
         } message: { Text(store.error ?? "") }
@@ -138,8 +143,8 @@ struct InboxView: View {
             #endif
             store.refresh()
         }
-        .onChange(of: store.selectedID) { _, _ in selection = []; selecting = false }
-        .onChange(of: store.folder) { _, _ in selection = []; selecting = false }
+        .onChange(of: store.selectedID) { _, _ in selection = []; selecting = false; deleting = nil }
+        .onChange(of: store.folder) { _, _ in selection = []; selecting = false; deleting = nil }
         .onChange(of: filter) { _, _ in selection = [] }
         .onChange(of: unified) { _, value in if value { unifiedMessages = (try? store.cachedInbox()) ?? [] } }
         .onChange(of: store.lastRefresh) { _, _ in if unified { unifiedMessages = (try? store.cachedInbox()) ?? [] } }
@@ -219,11 +224,13 @@ struct InboxView: View {
                                         Button { moveToRole("archive", [message]) } label: { Label("归档", systemImage: "archivebox") }.tint(MailTheme.blue)
                                     }
                                     .contextMenu {
+                                        Button("选择并批量操作", systemImage: "checkmark.circle") { selecting = true; selection = [message.id] }
                                         Button(message.unread ? "标为已读" : "标为未读") { run(.read(message.unread), [message]) }
                                         Button(message.isFlagged == true ? "取消星标" : "添加星标") { run(.flagged(message.isFlagged != true), [message]) }
                                         Button("移动到…") { moveRequest = MailMoveRequest(items: [message]) }
                                     }
                                     .compactMailInboxRow()
+                                    .listRowBackground(selecting && selection.contains(message.id) ? MailTheme.blue.opacity(0.06) : MailTheme.surface)
                                 }
                             }
                             if (unified ? unifiedMessages.isEmpty : filtered.isEmpty) {
@@ -271,7 +278,10 @@ struct InboxView: View {
                                 Button("添加星标") { run(.flagged(true), chosen) }
                             }.disabled(selection.isEmpty)
                             Button("移动", systemImage: "folder") { moveRequest = MailMoveRequest(items: chosen) }.disabled(selection.isEmpty)
-                        }.frame(minHeight: 52).padding(.horizontal, 16)
+                            Button("删除", systemImage: "trash", role: .destructive) { deleting = MailMoveRequest(items: chosen) }
+                                .disabled(selection.isEmpty || store.folders.first(where: { $0.name == store.folder })?.title == "废纸篓")
+                                .accessibilityIdentifier("bulk-delete")
+                        }.font(.subheadline).dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(minHeight: 52).padding(.horizontal, 16)
                     }
                 }.background(.regularMaterial)
             }
@@ -384,7 +394,7 @@ struct InboxView: View {
     private func moveToRole(_ role: String, _ items: [MailSummary]) {
         let configured = role == "trash" ? store.selected?.trashFolder : store.selected?.archiveFolder
         if let target = configured ?? store.folders.first(where: { $0.role == role || (role == "trash" ? $0.title == "废纸篓" : $0.title == "归档") })?.name { run(.move(target), items) }
-        else { moveRequest = MailMoveRequest(items: items) }
+        else { moveRequest = MailMoveRequest(items: items, destinationRole: role == "trash" ? "trash" : nil) }
     }
 }
 private extension View {

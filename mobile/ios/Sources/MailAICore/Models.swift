@@ -144,9 +144,9 @@ public struct MailFolder: Codable, Identifiable, Hashable, Sendable {
         let value = role ?? name.lowercased().split(separator: "/").last.map(String.init) ?? name.lowercased()
         switch value {
         case "inbox": return "收件箱"
-        case "sent", "sent messages", "sent items": return "已发送"
-        case "drafts", "draft": return "草稿"
-        case "trash", "deleted messages", "deleted items": return "废纸篓"
+        case "sent", "sent messages", "sent items", "已发送邮件", "已发送的邮件": return "已发送"
+        case "drafts", "draft", "草稿箱": return "草稿"
+        case "trash", "deleted", "deleted messages", "deleted items", "已删除邮件", "已删除的邮件", "已删除项目", "已删除": return "废纸篓"
         case "archive", "archives", "all mail": return "归档"
         case "junk", "spam": return "垃圾邮件"
         default: return name
@@ -207,6 +207,20 @@ public struct MailSummary: Codable, Identifiable, Equatable, Sendable {
         var result = [MailAddress(name: name, email: address)]
         if replyAddress.caseInsensitiveCompare(address) != .orderedSame { result.append(MailAddress(email: replyAddress)) }
         return result + (recipients ?? []) + (carbonCopies ?? [])
+    }
+    public func correspondent(ownAddress: String) -> String {
+        let sender = contactAddresses.first?.email ?? replyAddress
+        if sender.caseInsensitiveCompare(ownAddress) != .orderedSame { return sender }
+        return ((recipients ?? []) + (carbonCopies ?? [])).first {
+            MailValidation.isAddress($0.email) && $0.email.caseInsensitiveCompare(ownAddress) != .orderedSame
+        }?.email ?? sender
+    }
+    public func involves(_ address: String) -> Bool {
+        let target = address.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard MailValidation.isAddress(target) else { return false }
+        let sender = contactAddresses.first?.email ?? ""
+        return ([sender] + (recipients ?? []).map(\.email) + (carbonCopies ?? []).map(\.email))
+            .contains { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == target }
     }
 }
 

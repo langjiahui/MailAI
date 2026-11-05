@@ -520,6 +520,73 @@ final class WorkspaceTests: XCTestCase {
             }
         }
     }
+    func testFixedWidthHTMLShowsWholeImageAndActionAndSupportsZoom() {
+        for dark in [false, true] {
+            let app = launch(dark: dark, extra: ["--ui-html-wide"])
+            app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap()
+            let web = app.webViews.firstMatch, action = web.links["查看合成详情"]
+            XCTAssertTrue(web.staticTexts["正文末尾：这行内容也应完整显示。"].waitForExistence(timeout: 20))
+            XCTAssertTrue(action.isHittable)
+            XCTAssertGreaterThanOrEqual(action.frame.minX, web.frame.minX-1)
+            XCTAssertLessThanOrEqual(action.frame.maxX, web.frame.maxX+1)
+            XCTAssertTrue(app.buttons["回复全部"].isHittable)
+            attach(dark ? "reader-wide-dark" : "reader-wide-light")
+            action.tap(); XCTAssertTrue(app.buttons["打开链接"].waitForExistence(timeout: 5)); dialogCancel(app).tap()
+            let image = web.images["合成二维码"]
+            XCTAssertTrue(image.exists)
+            let initialImageWidth = image.frame.width
+            web.pinch(withScale: 2, velocity: 1)
+            XCTAssertGreaterThan(image.frame.width, initialImageWidth * 1.25, "Pinch must actually enlarge the mail image")
+            XCTAssertTrue(app.buttons["回复全部"].isHittable)
+            attach(dark ? "reader-wide-zoom-dark" : "reader-wide-zoom-light")
+        }
+    }
+    func testCorrespondenceIncludesSentAndPreservesCachedResultsOnFailure() {
+        var app = launch()
+        app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap()
+        app.buttons["reader-correspondence"].tap()
+        XCTAssertTrue(app.navigationBars["往来邮件"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["已发送的合成回复"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["项目资料确认与下一步安排"].exists)
+        attach("correspondence-incoming-and-sent")
+        app.staticTexts["已发送的合成回复"].tap()
+        XCTAssertTrue(app.buttons["回复全部"].waitForExistence(timeout: 5))
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.navigationBars["往来邮件"].waitForExistence(timeout: 5))
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.buttons["reader-correspondence"].waitForExistence(timeout: 5))
+        app.terminate()
+        app = launch(extra: ["--ui-correspondence-failure"])
+        app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap(); app.buttons["reader-correspondence"].tap()
+        XCTAssertTrue(app.buttons["重试查询"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["项目资料确认与下一步安排"].exists)
+        attach("correspondence-offline-cache")
+    }
+    func testBulkTrashRequiresConfirmationAndCanUndo() {
+        for dark in [false, true] {
+            let app = launch(dark: dark)
+            app.buttons["更多邮件操作"].tap(); app.buttons["选择邮件"].tap()
+            app.buttons.matching(identifier: "选择邮件").element(boundBy: 0).tap()
+            app.buttons.matching(identifier: "选择邮件").element(boundBy: 1).tap()
+            let delete = app.buttons["bulk-delete"]
+            XCTAssertTrue(delete.isEnabled); XCTAssertTrue(delete.isHittable)
+            attach(dark ? "bulk-selected-dark" : "bulk-selected-light")
+            delete.tap()
+            let alert = app.alerts["删除选中的邮件？"]
+            XCTAssertTrue(alert.waitForExistence(timeout: 5))
+            XCTAssertTrue(alert.staticTexts["将 2 封邮件移到废纸篓，可在废纸篓中找回。"].exists)
+            attach(dark ? "bulk-confirm-dark" : "bulk-confirm-light")
+            alert.buttons["取消"].tap()
+            XCTAssertTrue(app.staticTexts["项目资料确认与下一步安排"].exists)
+            delete.tap(); app.alerts.buttons["移到废纸篓"].tap()
+            XCTAssertTrue(app.buttons["撤销"].waitForExistence(timeout: 5))
+            XCTAssertFalse(app.staticTexts["项目资料确认与下一步安排"].exists)
+            XCTAssertFalse(app.staticTexts["移动端设计评审"].exists)
+            XCTAssertTrue(app.staticTexts["合同修订版本"].exists)
+            app.buttons["撤销"].tap()
+            XCTAssertTrue(app.staticTexts["项目资料确认与下一步安排"].waitForExistence(timeout: 5))
+        }
+    }
     func testConversationExpandsActualMessages() {
         let app = launch(extra: ["--ui-threads"])
         app.buttons["更多邮件操作"].tap(); app.buttons["按会话显示"].tap()

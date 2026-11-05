@@ -63,8 +63,17 @@ async def imap(reader, writer, *, malformed_body=False, malformed_envelope=False
                         response += f' BODY[HEADER] {{{len(header)}}}\r\n'.encode() + header
                     await write(writer, response + b')\r\n')
             elif ' MOVE ' in upper:
-                await write(writer, f'{tag} OK [COPYUID 10 7 9] moved\r\n'); continue
+                source = re.search(r'UID MOVE ([0-9,:]+)', command, re.I).group(1)
+                uids = []
+                for term in source.split(','):
+                    bounds = [int(v) for v in term.split(':')]
+                    uids.extend(range(bounds[0], bounds[-1]+1))
+                assert 0 < len(uids) <= 100
+                target = ','.join(str(uid+2) for uid in uids)
+                await write(writer, f'{tag} OK [COPYUID 10 {source} {target}] moved\r\n'); continue
             elif ' SEARCH ' in upper:
+                if 'SENDER@EXAMPLE.COM' in upper and not all(key in upper for key in ['FROM ', 'TO ', 'CC ']):
+                    await write(writer, f'{tag} BAD participant header search required\r\n'); continue
                 if 'MESSAGE-ID' in upper:
                     match = re.search(r'<[^>]+>', command)
                     exists = match and match.group(0) in ARCHIVED

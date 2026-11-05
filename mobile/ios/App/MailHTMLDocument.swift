@@ -18,6 +18,63 @@ enum MailHTMLDocument {
         """
     }
 
+    // Fit fixed desktop email layouts as a whole, including positioned images
+    // and table cells. Sender JavaScript remains disabled. CSS zoom participates
+    // in layout, so the native document height also shrinks without blank space.
+    static let layoutScript = #"""
+    (() => {
+      if (!document.body) return;
+      document.querySelectorAll('meta[name="viewport"]').forEach(e=>e.remove());
+      const viewport=document.createElement('meta');viewport.name='viewport';
+      viewport.content='width=device-width, initial-scale=1, user-scalable=yes';document.head.append(viewport);
+      const body=document.body, root=document.createElement('div');
+      root.dataset.mailaiLayoutRoot='true';
+      while(body.firstChild)root.append(body.firstChild);
+      body.append(root);
+      const set=(e,p,v)=>e.style.setProperty(p,v,'important');
+      for(const e of [document.documentElement,body]){
+        set(e,'width','100%');set(e,'min-width','0');set(e,'max-width','100%');
+        set(e,'margin','0');set(e,'box-sizing','border-box');
+        set(e,'-webkit-text-size-adjust','100%');
+      }
+      set(body,'padding','12px');
+      set(root,'display','flow-root');set(root,'box-sizing','border-box');
+      set(root,'min-width','0');set(root,'max-width','none');set(root,'margin','0');set(root,'padding','0');
+      set(root,'position','relative');set(root,'transform','none');
+      let scheduled=false;
+      const fit=()=>{
+        scheduled=false;
+        const available=Math.max(1,document.documentElement.clientWidth-24);
+        set(root,'zoom','1');set(root,'height','auto');set(root,'width',available+'px');
+        const elements=[root,...root.querySelectorAll('*')];
+        const extent=()=>{
+          const origin=root.getBoundingClientRect();
+          let width=Math.max(available,root.scrollWidth),height=root.scrollHeight;
+          for(const e of elements){
+            const r=e.getBoundingClientRect();
+            if(r.width&&r.height){width=Math.max(width,r.right-origin.left);height=Math.max(height,r.bottom-origin.top);}
+          }
+          return {width,height};
+        };
+        let bounds=extent();
+        // Resolve percentage layouts against their authored desktop container.
+        for(let i=0;i<2&&bounds.width>available+1;i++){
+          set(root,'width',Math.ceil(bounds.width)+'px');bounds=extent();
+        }
+        const scale=Math.min(1,available/Math.max(available,bounds.width));
+        set(root,'height',Math.ceil(bounds.height)+'px');
+        set(root,'zoom',String(scale));
+        document.documentElement.dataset.mailaiLayout='fit';
+        document.documentElement.dataset.mailaiScale=String(scale);
+      };
+      const schedule=()=>{if(!scheduled){scheduled=true;requestAnimationFrame(fit);}};
+      new ResizeObserver(schedule).observe(root);
+      window.addEventListener('resize',schedule);
+      root.querySelectorAll('img').forEach(e=>e.addEventListener('load',schedule));
+      fit();
+    })();
+    """#
+
     // Runs in WebKit's isolated client world. Snapshot computed styles before
     // changing ancestors, so inherited legacy colors are not transformed twice.
     // Foreground contrast is checked against each adapted, composited background;

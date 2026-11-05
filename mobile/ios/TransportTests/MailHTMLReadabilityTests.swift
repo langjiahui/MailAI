@@ -26,6 +26,60 @@ import WebKit
         XCTFail("WebKit did not adopt the requested appearance")
     }
 
+    func testFixedWidthMailFitsQRCodeAndActionAcrossWidthsAndThemes() async throws {
+        let view = SafeMailHTML.makeMailWebView()
+        let controller = UIViewController()
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+        let window = UIWindow(windowScene: scene); window.frame = CGRect(x: 0, y: 0, width: 844, height: 852)
+        window.rootViewController = controller; window.isHidden = false; controller.view.addSubview(view)
+        defer { view.stopLoading(); view.removeFromSuperview(); window.isHidden = true }
+        for dark in [false, true] {
+            view.overrideUserInterfaceStyle = dark ? .dark : .light
+            window.overrideUserInterfaceStyle = dark ? .dark : .light
+            for width in [320.0, 700.0, 361.0] {
+                view.frame = CGRect(x: 0, y: 0, width: width, height: 600)
+                let ready = expectation(description: "Wide mail loaded")
+                let delegate = Ready(ready); view.navigationDelegate = delegate
+                view.loadHTMLString(MailHTMLDocument.render(DebugPreview.wideHTML, dark: dark), baseURL: nil)
+                await fulfillment(of: [ready], timeout: 15)
+                try await Task.sleep(for: .milliseconds(150))
+                let evaluated = try await view.evaluateJavaScript("""
+                JSON.stringify((()=>{
+                  const image=document.getElementById('wide-image'),button=document.getElementById('wide-action');
+                  const i=image.getBoundingClientRect(),b=button.getBoundingClientRect();
+                  const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+                  let overlap=false,node;
+                  while(node=walker.nextNode()){
+                    if(!node.textContent.trim()||node.parentElement.tagName==='SCRIPT')continue;
+                    const range=document.createRange();range.selectNodeContents(node);
+                    const lines=[...range.getClientRects()].filter(r=>r.width&&r.height);
+                    overlap ||= lines.some((r,index)=>index>0&&r.top>lines[index-1].top+1&&r.top<lines[index-1].bottom-.5);
+                  }
+                  return {width:innerWidth,scroll:document.documentElement.scrollWidth,imageLeft:i.left,imageRight:i.right,
+                    imageRatio:i.width/i.height,imageLoaded:image.complete&&image.naturalWidth===180,
+                    buttonLeft:b.left,buttonRight:b.right,scale:Number(document.documentElement.dataset.mailaiScale),
+                    overlappingTextLines:overlap,
+                    height:document.documentElement.scrollHeight,viewports:document.querySelectorAll('meta[name=viewport]').length,
+                    senderScriptRan:window.untrustedMailScriptRan===true};
+                })())
+                """)
+                let json = try XCTUnwrap(evaluated as? String)
+                let value = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String:Any])
+                XCTAssertLessThanOrEqual(try XCTUnwrap(value["scroll"] as? Double), width+1, json)
+                for key in ["imageRight", "buttonRight"] { XCTAssertLessThanOrEqual(try XCTUnwrap(value[key] as? Double), width+1, json) }
+                for key in ["imageLeft", "buttonLeft"] { XCTAssertGreaterThanOrEqual(try XCTUnwrap(value[key] as? Double), 0, json) }
+                XCTAssertEqual(try XCTUnwrap(value["imageRatio"] as? Double), 1, accuracy: 0.01, json)
+                XCTAssertEqual(value["imageLoaded"] as? Bool, true, json)
+                XCTAssertEqual(value["overlappingTextLines"] as? Bool, false, json)
+                XCTAssertEqual(value["viewports"] as? Int, 1)
+                XCTAssertEqual(value["senderScriptRan"] as? Bool, false)
+                XCTAssertLessThan(try XCTUnwrap(value["scale"] as? Double), 1, json)
+                XCTAssertLessThan(try XCTUnwrap(value["height"] as? Double), 1200, json)
+                XCTAssertTrue(view.configuration.ignoresViewportScaleLimits)
+                XCTAssertFalse(view.configuration.defaultWebpagePreferences.allowsContentJavaScript)
+            }
+        }
+    }
     func testLegacyTextAndTableRemainReadableAcrossAppThemes() async throws {
         let view = SafeMailHTML.makeMailWebView()
         let controller = UIViewController()

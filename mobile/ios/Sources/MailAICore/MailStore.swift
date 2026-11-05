@@ -24,6 +24,7 @@ public protocol MailService: Sendable {
     func attachment(_ credential: AccountCredential, summary: MailSummary, attachment: MailAttachment) async throws -> Data
     func perform(_ credential: AccountCredential, summaries: [MailSummary], action: MailAction) async throws
     func search(_ credential: AccountCredential, folder: String, query: String, limit: Int) async throws -> MailSearchResult
+    func correspondence(_ credential: AccountCredential, folder: String, address: String, limit: Int) async throws -> MailSearchResult
     func archiveSent(_ credential: AccountCredential, draft: MailDraft) async throws
     func move(_ credential: AccountCredential, summaries: [MailSummary], to folder: String) async throws -> [MailSummary]?
 }
@@ -34,6 +35,7 @@ public extension MailService {
     func attachment(_ credential: AccountCredential, summary: MailSummary, attachment: MailAttachment) async throws -> Data { throw MailFailure.invalid("当前服务不支持附件下载。") }
     func perform(_ credential: AccountCredential, summaries: [MailSummary], action: MailAction) async throws { throw MailFailure.invalid("当前服务不支持邮件整理。") }
     func search(_ credential: AccountCredential, folder: String, query: String, limit: Int) async throws -> MailSearchResult { throw MailFailure.invalid("当前服务不支持服务器搜索。") }
+    func correspondence(_ credential: AccountCredential, folder: String, address: String, limit: Int) async throws -> MailSearchResult { throw MailFailure.invalid("当前服务不支持往来邮件查询。") }
     func archiveSent(_ credential: AccountCredential, draft: MailDraft) async throws { throw MailFailure.invalid("已发送副本尚未保存。邮件已提交，请勿重复发送。") }
 }
 
@@ -417,6 +419,41 @@ public extension MailService {
             let list = try files.read([MailSummary].self, account: account.id, key: "list:INBOX") ?? []
             return list.map { LocatedMessage(accountID: account.id, summary: $0) }
         }.sorted { ($0.summary.date ?? .distantPast) > ($1.summary.date ?? .distantPast) }
+    }
+    public func cachedCorrespondence(with address: String) throws -> [MailSummary] {
+        let entry = try credential()
+        guard MailValidation.isAddress(address) else { throw MailFailure.invalid("发件人邮箱地址不可用。") }
+        let names = Set(folders.filter { !["草稿", "废纸篓", "垃圾邮件"].contains($0.title) }.map(\.name) + [folder, "INBOX"] + [entry.account.sentFolder].compactMap { $0 })
+        var result: [MailSummary] = []
+        for name in names {
+            result += try files.read([MailSummary].self, account: entry.account.id, key: "list:" + name) ?? []
+            result += try files.read([MailSummary].self, account: entry.account.id, key: "correspondence:" + address.lowercased() + ":" + name) ?? []
+        }
+        return Self.correspondenceMessages(result, address: address)
+    }
+    public func correspondenceFolders() async throws -> [MailFolder] {
+        let entry = try credential()
+        let list = try await service.folders(entry)
+        try Task.checkCancellation()
+        guard selectedID == entry.account.id else { throw CancellationError() }
+        try files.write(list, account: entry.account.id, key: "folders"); folders = list
+        return list.filter { !["草稿", "废纸篓", "垃圾邮件"].contains($0.title) }
+    }
+    public func correspondence(with address: String, folder: String, limit: Int = 50) async throws -> MailSearchResult {
+        let entry = try credential()
+        guard MailValidation.isAddress(address) else { throw MailFailure.invalid("发件人邮箱地址不可用。") }
+        let result = try await service.correspondence(entry, folder: folder, address: address, limit: min(500, max(1, limit)))
+        try Task.checkCancellation()
+        guard selectedID == entry.account.id else { throw CancellationError() }
+        let messages = Self.correspondenceMessages(result.messages, address: address)
+        try files.write(messages, account: entry.account.id, key: "correspondence:" + address.lowercased() + ":" + folder)
+        return MailSearchResult(messages: messages, total: result.total)
+    }
+    public static func correspondenceMessages(_ input: [MailSummary], address: String) -> [MailSummary] {
+        var seen = Set<String>()
+        return input.filter { $0.involves(address) }.sorted { ($0.date ?? .distantPast) > ($1.date ?? .distantPast) }.filter {
+            seen.insert($0.messageID.flatMap { $0.isEmpty ? nil : "message:" + $0 } ?? "local:" + $0.id).inserted
+        }
     }
     public func refreshAllInboxes() async throws {
         cancelRefresh()
