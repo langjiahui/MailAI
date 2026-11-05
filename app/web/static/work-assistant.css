@@ -28,9 +28,23 @@ html[data-theme] body #assistant-panel .assistant-welcome.assistant-conversation
 @media(max-width:600px){.xiaoyou-settings-grid .preference-row:has(>button){flex-direction:column;align-items:flex-start;gap:12px}}
 .xiaoyou-memory-summary{padding:16px 0;border-bottom:1px solid var(--desk-line);overflow-wrap:anywhere}.xiaoyou-memory-summary p{white-space:pre-wrap;margin:10px 0}.xiaoyou-memory-summary small{color:var(--desk-muted)}#xiaoyou-memory-controls [data-memory-clear-confirm]{margin-top:12px;padding:12px;border:1px solid var(--desk-line);border-radius:10px}#xiaoyou-memory-controls [hidden]{display:none!important}#xiaoyou-memory-controls [data-memory-control-status]{font-size:12px;color:var(--desk-muted)}
 html[data-theme] body .work-dialog{background:var(--desk-surface)!important;color:var(--desk-ink)!important;border-color:var(--desk-line)!important}
-html[data-theme] body :is(.work-card,.work-compose){color:var(--desk-ink);background:var(--desk-surface)}
-html[data-theme] body :is(.work-card,.work-compose,.work-dialog) :is(button,input,textarea){color:var(--desk-ink);background:var(--desk-surface);border-color:var(--desk-line)}
-html[data-theme] body :is(.work-card,.work-compose) small{color:var(--desk-muted)}
+html[data-theme] body .work-card{color:var(--desk-ink);background:var(--desk-surface)}
+html[data-theme] body :is(.work-card,.work-dialog) :is(button,input,textarea){color:var(--desk-ink);background:var(--desk-surface);border-color:var(--desk-line)}
+html[data-theme] body .work-card small{color:var(--desk-muted)}
+/* Writing checks are part of the writing panel, including its neutral dark palette. */
+html[data-theme] body #compose-ai-panel .work-compose{background:transparent!important;color:var(--draft-ink);border-color:var(--draft-line)}
+html[data-theme] body #compose-ai-panel .work-compose>p,html[data-theme] body #compose-ai-panel .work-compose small{color:var(--draft-muted)}
+html[data-theme] body #compose-ai-panel .work-compose button{background:transparent!important;color:var(--draft-ink)!important;border-color:var(--draft-line)}
+html[data-theme] body #compose-ai-panel .work-compose button:hover{background:var(--draft-paper)!important}
+html[data-theme] body #compose-ai-panel .work-compose :is(button,input):focus-visible{outline-color:var(--desk-accent)}
+/* A mail-specific conversation starts compactly beside its source. */
+#assistant-panel .assistant-welcome.assistant-conversation-guide{display:grid;grid-template-columns:48px minmax(0,1fr);align-items:center;gap:14px 12px;margin:12px 0 auto;padding:0 0 16px;max-width:100%;box-sizing:border-box}
+#assistant-panel .assistant-conversation-guide .assistant-welcome-portrait{grid-column:1;grid-row:1;width:48px;height:48px;margin:0}
+#assistant-panel .assistant-conversation-guide .assistant-welcome-portrait::before{display:none}
+#assistant-panel .assistant-conversation-guide h3{grid-column:2;grid-row:1;font-size:16px;line-height:1.5;margin:0;text-align:left;overflow-wrap:anywhere}
+#assistant-panel .assistant-conversation-guide>p{grid-column:1/-1;margin:0;font-size:12px;line-height:1.7;text-align:left;overflow-wrap:anywhere}
+#assistant-panel .assistant-conversation-guide .assistant-quick{grid-column:1/-1;min-width:0;width:100%;box-sizing:border-box}
+#assistant-panel .assistant-conversation-guide .assistant-quick button{text-align:left;justify-content:flex-start;line-height:1.6}
 
 .xiaoyou-memory-summary .memory-summary-value{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-wrap}.xiaoyou-memory-summary .memory-summary-more{font-size:12px;color:var(--desk-muted)}
 

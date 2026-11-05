@@ -859,7 +859,11 @@ function initializeAssistantPolish() {
   observer.observe(document.querySelector('.layout'), {attributes:true,attributeFilter:['class']});
   observer.observe(document.getElementById('reading-content'), {attributes:true,attributeFilter:['class']});
   new MutationObserver(updateAssistantScopeControl).observe(document.getElementById('reading-content'), {childList:true});
-  new ResizeObserver(updateAssistantPlacement).observe(document.querySelector('.reading-pane'));
+  let placementFrame=0;
+  const schedulePlacement=()=>{
+    if(!placementFrame)placementFrame=requestAnimationFrame(()=>{placementFrame=0;updateAssistantPlacement();});
+  };
+  new ResizeObserver(schedulePlacement).observe(document.querySelector('.reading-pane'));
   window.visualViewport?.addEventListener('resize', updateAssistantPlacement);
   window.visualViewport?.addEventListener('scroll', updateAssistantPlacement);
   window.addEventListener('resize', updateAssistantPlacement);

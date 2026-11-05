@@ -64,7 +64,7 @@ body[data-mail-list-view="table"] #email-list .group-count::before { content:"·
 
 /* The card list is a reading queue: identity, subject, then supporting detail. */
 html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-item {
-  --mail-identity-inset:52px;
+  --mail-identity-inset:44px;
   min-height:90px; margin:0 6px 2px!important; padding:10px 12px!important;
   border-radius:8px!important; transition:background-color .15s; overflow:hidden;
 }
@@ -90,7 +90,7 @@ html[data-theme] body:not([data-mail-list-view="table"]) #email-list .group-coun
 /* Date headings and a little breathing room group the queue without rules. */
 html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-group { border:0!important; padding-bottom:0; }
 html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-group + .email-group { padding-top:12px; }
-.mail-sender-avatar { --avatar-hue:155; position:absolute; left:12px; top:11px; display:grid; place-items:center; width:38px; height:38px; border-radius:50%; background:hsl(var(--avatar-hue) 38% 91%); color:hsl(var(--avatar-hue) 35% 31%); font-size:15px; font-weight:650; line-height:1; user-select:none; }
+.mail-sender-avatar { --avatar-hue:155; position:absolute; left:12px; top:11px; display:grid; place-items:center; width:32px; height:32px; border-radius:9px; background:hsl(var(--avatar-hue) 38% 91%); color:hsl(var(--avatar-hue) 35% 31%); font-size:14px; font-weight:650; line-height:1; user-select:none; }
 .mail-sender-avatar[data-avatar-tone="1"] { --avatar-hue:210; }
 .mail-sender-avatar[data-avatar-tone="2"] { --avatar-hue:32; }
 .mail-sender-avatar[data-avatar-tone="3"] { --avatar-hue:255; }
@@ -99,8 +99,8 @@ html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-grou
 html[data-theme="dark"] .mail-sender-avatar { background:hsl(var(--avatar-hue) 22% 25%); color:hsl(var(--avatar-hue) 40% 79%); }
 .mail-list-attachment { display:inline-flex; flex:none; color:var(--desk-muted,var(--muted)); }
 .mail-list-attachment svg { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
-html[data-theme] body:not([data-mail-list-view="table"])[data-density="compact"] #email-list .email-item { --mail-identity-inset:45px; min-height:68px; padding:10px 11px!important; }
-body[data-density="compact"] .mail-sender-avatar { left:11px; top:12px; width:32px; height:32px; font-size:13px; }
+html[data-theme] body:not([data-mail-list-view="table"])[data-density="compact"] #email-list .email-item { --mail-identity-inset:40px; min-height:68px; padding:10px 11px!important; }
+body[data-density="compact"] .mail-sender-avatar { left:11px; top:12px; width:28px; height:28px; border-radius:8px; font-size:12px; }
 body[data-density="compact"] .mail-list-attachment { display:inline-flex; }
 body[data-mail-list-avatars="false"] #email-list .mail-sender-avatar { display:none; }
 html[data-theme] body:not([data-mail-list-view="table"])[data-mail-list-avatars="false"] #email-list .email-item { --mail-identity-inset:0px; padding-left:12px!important; }
@@ -146,6 +146,8 @@ html[data-theme] #email-list .mail-sender-avatar {
   background:hsl(var(--avatar-hue) var(--mail-avatar-saturation) var(--mail-avatar-lightness))!important;
   color:hsl(var(--avatar-hue) var(--mail-avatar-ink-saturation) var(--mail-avatar-ink-lightness))!important;
 }
+html[data-theme] #email-list .email-item.selected .mail-sender-avatar{background:var(--desk-accent)!important;color:var(--reward-on-accent,#fff)!important}
+html[data-theme="dark"] #email-list .email-item.selected .mail-sender-avatar{color:var(--reward-on-accent,#142d20)!important}
 /* Status stays semantic in every palette, including monochrome. */
 #email-list {
   --mail-warning-ink:#865017; --mail-warning-paper:#fff3da;
@@ -172,6 +174,7 @@ html[data-theme] body #email-list .email-item:focus-visible {
 }
 html[data-theme] body #email-list .mail-list-attachment { color:var(--desk-muted)!important; }
 @media(forced-colors:active) {
+ html[data-theme] body #email-list .email-item.selected .mail-sender-avatar{background:Canvas!important;color:CanvasText!important;border:1px solid CanvasText}
  html[data-theme] #email-list .mail-sender-avatar { background:Canvas!important; color:CanvasText!important; border:1px solid CanvasText; }
  html[data-theme] body #email-list .risk-badge:is(.warn,.danger) { background:Canvas!important; color:CanvasText!important; border:1px solid CanvasText; }
  html[data-theme] body #email-list .email-item:focus-visible { outline-color:Highlight; }

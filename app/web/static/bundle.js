@@ -1633,7 +1633,7 @@ const MAILAI_UI_COPY = {
   "work.error.memoryState": ["这条经验状态已变化，请重新核对", "This memory's status changed. Review it again."],
   "work.error.mergedPreference": ["这条要求已与手动偏好合并，请先在上方编辑并保存", "This requirement is part of your manually edited preferences. Edit and save the text above first."],
   "work.welcomeTitle": ["这封邮件，你想先聊什么？", "What would you like to discuss about this email?"],
-  "work.welcomeHint": ["直接说说你的想法。事项背景随邮件记录，稳定的长期偏好会逐步记住，可在设置中管理。", "Tell me what you have in mind. Matter context stays with this email; stable lasting preferences are learned gradually and can be managed in Settings."],
+  "work.welcomeHint": ["说说你的想法，我会结合这封邮件一起理清。也可以直接告诉我想怎么回复。", "Tell me what you have in mind. We can work through this email together, or discuss how you'd like to reply."],
   "work.talkUnderstand": ["这封邮件要我确认什么？", "What does this email ask me to confirm?"],
   "work.talkReply": ["我想先聊聊怎么回应", "I'd like to discuss how to respond"],
   "work.replyPrompt": ["我想先聊聊怎么回应这封邮件。", "I'd like to discuss how to respond to this email first."],
@@ -31855,7 +31855,11 @@ function initializeAssistantPolish() {
   observer.observe(document.querySelector('.layout'), {attributes:true,attributeFilter:['class']});
   observer.observe(document.getElementById('reading-content'), {attributes:true,attributeFilter:['class']});
   new MutationObserver(updateAssistantScopeControl).observe(document.getElementById('reading-content'), {childList:true});
-  new ResizeObserver(updateAssistantPlacement).observe(document.querySelector('.reading-pane'));
+  let placementFrame=0;
+  const schedulePlacement=()=>{
+    if(!placementFrame)placementFrame=requestAnimationFrame(()=>{placementFrame=0;updateAssistantPlacement();});
+  };
+  new ResizeObserver(schedulePlacement).observe(document.querySelector('.reading-pane'));
   window.visualViewport?.addEventListener('resize', updateAssistantPlacement);
   window.visualViewport?.addEventListener('scroll', updateAssistantPlacement);
   window.addEventListener('resize', updateAssistantPlacement);

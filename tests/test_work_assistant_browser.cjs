@@ -37,6 +37,19 @@ let log=''; fixture.stdout.on('data',chunk=>log+=chunk); fixture.stderr.on('data
     assert.equal(await guide.locator('[data-work-action]').count(),0);
     assert.equal(await page.locator('#assistant-scope-label').textContent(),await page.evaluate(()=>selectedEmailDetail.subject));
     assert(!requests.some(url=>url.includes('/api/work/')||url.includes('/api/assistant/ask')),'Opening XiaoYou is lazy');
+    // A scoped conversation stays compact and inside the dock at large text sizes.
+    for(const theme of ['', 'theme_monochrome','theme_baowu'])for(const mode of ['light','dark'])for(const language of ['zh-CN','en'])for(const scale of [1,2]){
+      await page.setViewportSize({width:780,height:900});
+      await page.evaluate(({theme,mode,language,scale})=>{document.documentElement.dataset.rewardTheme=theme;applyTheme(mode);setI18nLanguage(language);document.body.style.zoom=String(scale);document.documentElement.style.setProperty('--fz',String(scale));},{theme,mode,language,scale});
+      await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+      const geometry=await panel.locator('.assistant-conversation-guide').evaluate(welcome=>{
+        const box=welcome.getBoundingClientRect(),portrait=welcome.querySelector('.assistant-welcome-portrait').getBoundingClientRect(),title=welcome.querySelector('h3').getBoundingClientRect();
+        return {width:box.width,portrait:portrait.width,titleLeft:title.left,portraitRight:portrait.right,overflow:welcome.scrollWidth-welcome.clientWidth,escaped:[...welcome.querySelectorAll('h3,p,button')].some(n=>{const r=n.getBoundingClientRect();return r.left<box.left-2||r.right>box.right+2;})};
+      });
+      assert(geometry.portrait<=geometry.width*.35&&!geometry.escaped&&geometry.overflow<=2&&geometry.titleLeft>=geometry.portraitRight,JSON.stringify({theme,mode,language,scale,geometry}));
+    }
+    await page.setViewportSize({width:1440,height:1000});
+    await page.evaluate(()=>{document.body.style.zoom='1';document.documentElement.style.setProperty('--fz','1');document.documentElement.removeAttribute('data-reward-theme');applyTheme('light');setI18nLanguage('zh-CN');});
     await page.evaluate(()=>{_systemConfig.model.available=true;_systemConfig.model.verified=true;});
     let guidedRequest;
     await page.route('**/api/assistant/ask-stream',route=>{
@@ -133,6 +146,20 @@ let log=''; fixture.stdout.on('data',chunk=>log+=chunk); fixture.stderr.on('data
     await page.evaluate(async()=>{await composeFromEmail('reply');toggleComposeAiPanel(true);});
     await page.locator('#compose-ai-panel').waitFor({state:'visible'});
     assert(await page.locator('#work-use-preferences').isChecked());
+    // The added writing checks share the panel's painted surface and readable ink.
+    for(const theme of ['', 'theme_monochrome','theme_baowu'])for(const mode of ['light','dark'])for(const language of ['zh-CN','en']){
+      await page.evaluate(({theme,mode,language})=>{document.documentElement.dataset.rewardTheme=theme;applyTheme(mode);setI18nLanguage(language);},{theme,mode,language});
+      const palette=await page.locator('.work-compose').evaluate(root=>{
+        const ctx=document.createElement('canvas').getContext('2d');
+        const paint=color=>{ctx.fillStyle=color;ctx.fillRect(0,0,1,1);};
+        const background=node=>{const chain=[];for(let n=node;n;n=n.parentElement)chain.unshift(n);ctx.clearRect(0,0,1,1);paint('#fff');chain.forEach(n=>paint(getComputedStyle(n).backgroundColor));return [...ctx.getImageData(0,0,1,1).data];};
+        const luminance=rgb=>rgb.slice(0,3).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4;}).reduce((s,v,i)=>s+v*[.2126,.7152,.0722][i],0);
+        return {surface:background(root),panel:background(root.parentElement),contrast:[...root.querySelectorAll('label,p,button')].map(node=>{const bg=luminance(background(node));ctx.clearRect(0,0,1,1);paint(getComputedStyle(node).color);const fg=luminance([...ctx.getImageData(0,0,1,1).data]);return(Math.max(bg,fg)+.05)/(Math.min(bg,fg)+.05);})};
+      });
+      assert.deepEqual(palette.surface,palette.panel,JSON.stringify({theme,mode,language,palette}));
+      assert(palette.contrast.every(value=>value>=4.5),JSON.stringify({theme,mode,language,palette}));
+    }
+    await page.evaluate(()=>{document.documentElement.removeAttribute('data-reward-theme');applyTheme('light');setI18nLanguage('zh-CN');});
     const editor=page.locator('#compose-message');
     await page.evaluate(()=>{composeMessageElement().innerText='收到，详见附件。';composeAttachments=[];});
     await page.route('**/api/work/review',async route=>{
