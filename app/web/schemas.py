@@ -217,6 +217,7 @@ class DocumentReplyValuesRequest(DocumentReplyPrepareRequest):
 
 class AssistantMailContext(BaseModel):
     email_id: int = Field(ge=1)
+    pinned: bool = False
     excluded: list[int] = Field(default_factory=list, max_length=200)
 
 

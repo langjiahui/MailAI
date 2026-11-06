@@ -1078,7 +1078,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
   try {
     const response = await fetch('/api/assistant/ask-stream', {method:'POST', signal:controller.signal,
       headers:{'Content-Type':'application/json', 'X-MailAI-Account':account?.id || ''},
-      body:JSON.stringify({question, history:assistantHistory.slice(0, -1).slice(-6), conversation_id:assistantConversationId, email_ids:emailIds, mail_context:mailContext, include_mail_attachments:window.assistantMail?.include()!==false, open_email_id:mailContext?.email_id||(selectedEmailId>0&&(!selectedEmailAccountId||selectedEmailAccountId===account?.id)?Number(selectedEmailId):null), scope_label:scope, images, attachments, alert_context:alertContext, search_mode:searchMode, ...searchRequest})});
+      body:JSON.stringify({question, history:assistantHistory.slice(0, -1).slice(-6), conversation_id:assistantConversationId, email_ids:emailIds, mail_context:mailContext, include_mail_attachments:window.assistantMail?.include()!==false, open_email_id:mailContext?.pinned?mailContext.email_id:(selectedEmailId>0&&(!selectedEmailAccountId||selectedEmailAccountId===account?.id)?Number(selectedEmailId):null), scope_label:scope, images, attachments, alert_context:alertContext, search_mode:searchMode, ...searchRequest})});
     if (!response.ok || !response.body) {const detail=await response.json().catch(()=>({}));throw new Error(typeof detail.detail==='string'?detail.detail:mailaiTemplate`请求未完成（${response.status}），请检查图片格式、大小和模型连接`);}
     const reader = response.body.getReader(); const decoder = new TextDecoder();
     let pending = '';

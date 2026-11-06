@@ -46,12 +46,19 @@ def main():
         assistant.api_assistant_mail_context_update(conversation,{'email_id':email_id,'excluded':[0,1]})
         assert assistant.api_assistant_conversation(conversation)['mail_context']['excluded']==[0,1]
         # The actual request carries explicit choices; no model-side guessing about omissions.
-        chosen={'email_id':email_id,'excluded':[0,1]}
+        chosen={'email_id':email_id,'excluded':[0,1],'pinned':True}
         with patch.object(assistant_vision.client,'chat_completion_stream',side_effect=answer):
             follow=assistant.api_assistant_ask(AssistantRequest(question='具体交期呢？',email_ids=[email_id],open_email_id=email_id,conversation_id=conversation,mail_context=chosen))
         text='\n'.join(p.get('text','') for p in calls[-1][-1]['content'])
         assert 'OWNER_0' not in text and 'OWNER_1' not in text and 'OWNER_5' in text
         assert '用户已排除' in text and follow['conversation_id']==conversation
+        assert assistant.api_assistant_conversation(conversation)['mail_context']['pinned'] is True
+        assistant.api_assistant_mail_context_update(conversation,{'email_id':email_id,'excluded':[0,1]})
+        assert db.get_assistant_mail_context(conversation)['pinned'] is True
+        with db.conn() as c:
+            c.execute('UPDATE assistant_mail_context SET excluded=? WHERE conversation_id=?',(json.dumps([0,1]),conversation))
+        assert db.get_assistant_mail_context(conversation)['pinned'] is False
+        assert db.get_assistant_mail_context(conversation)['excluded']==[0,1]
         with patch.object(assistant_vision.client,'chat_completion_stream') as model:
             assistant.api_assistant_ask(AssistantRequest(question='你能做什么',email_ids=[email_id],conversation_id=conversation,mail_context=chosen))
             model.assert_not_called()

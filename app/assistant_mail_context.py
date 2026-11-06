@@ -9,7 +9,7 @@ MAX_FILES = 12
 MAX_TOTAL_PAGES = 100
 
 
-def describe(email_id, excluded=None):
+def describe(email_id, excluded=None, pinned=False):
     catalog = files.catalog(email_id)
     excluded = {i for i in (excluded or []) if type(i) is int and i >= 0}
     row = db.get_email(email_id)
@@ -17,7 +17,7 @@ def describe(email_id, excluded=None):
     limit = max(1800, min(config.LLM_MAX_BODY_CHARS, 20000))
     body_partial = len(row.get('body_text') or '') > limit
     return {'email_id':email_id, 'subject':catalog['subject'],
-            'excluded':sorted(excluded), 'body_partial':body_partial, 'body_limit':limit, 'items':[{**item, 'included':item['index'] not in excluded,
+            'excluded':sorted(excluded), 'pinned':bool(pinned), 'body_partial':body_partial, 'body_limit':limit, 'items':[{**item, 'included':item['index'] not in excluded,
                 'status':'pending' if item['supported'] else 'unavailable',
                 'detail':item['reason']} for item in catalog['items']]}
 
@@ -31,11 +31,11 @@ def resolve(payload):
     if not chosen and payload.conversation_id:
         previous = db.get_assistant_mail_context(payload.conversation_id)
         if previous and previous['email_id']==email_id:
-            return describe(email_id, previous['excluded'])
+            return describe(email_id, previous['excluded'], previous.get('pinned',False))
     if chosen and chosen.email_id != email_id:
         # A natural-language scope change must not reuse another mail's exclusions.
         chosen = None
-    return describe(email_id, chosen.excluded if chosen else [])
+    return describe(email_id, chosen.excluded if chosen else [], chosen.pinned if chosen else False)
 
 
 def _gap(context, item, message):

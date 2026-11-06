@@ -633,7 +633,7 @@ function openAssistantForEmail(row) {
   assistantScopeKey = scopeKey;
   document.getElementById('assistant-scope').value = 'selected';
   updateAssistantScopeControl();
-  window.assistantMail?.bind(row);
+  window.assistantMail?.bind(row,true);
   window.showSecretaryChat?.();
   openAssistant();
 }
@@ -833,7 +833,7 @@ function initializeAssistantPolish() {
     assistantPinnedScope = scope.value === 'selected' && selectedEmailId ? [selectedEmailId] : null;
     assistantScopeKey = '';
     resetAssistantConversation();
-    if (scope.value==='selected'&&selectedEmailDetail) window.assistantMail?.bind(selectedEmailDetail);
+    if (scope.value==='selected'&&selectedEmailDetail) window.assistantMail?.bind(selectedEmailDetail,true);
     updateAssistantScopeControl();
   };
   document.querySelectorAll('[data-assistant-scope]').forEach(button => button.onclick = () => {

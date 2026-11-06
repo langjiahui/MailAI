@@ -283,7 +283,7 @@ def api_assistant_conversation(conversation_id: int):
     context = db.get_assistant_mail_context(conversation_id)
     if context:
         try:
-            context = assistant_mail_context.describe(context['email_id'], context['excluded'])
+            context = assistant_mail_context.describe(context['email_id'], context['excluded'], context.get('pinned',False))
         except ValueError:
             context = {**context, 'unavailable':True, 'subject':'', 'items':[]}
     return {"id": conversation_id, "messages": messages, 'attachments':attachments, 'mail_context':context,
@@ -364,10 +364,10 @@ def api_assistant_mail_context_update(conversation_id:int, payload:dict):
         raise HTTPException(404,'会话不存在')
     try:
         chosen = AssistantMailContext.model_validate(payload)
-        context = assistant_mail_context.describe(chosen.email_id, chosen.excluded)
         previous = db.get_assistant_mail_context(conversation_id)
         if not previous or previous['email_id'] != chosen.email_id:
             raise ValueError('会话邮件已变化，请重新打开邮件对话')
+        context = assistant_mail_context.describe(chosen.email_id, chosen.excluded, previous.get('pinned',False))
         db.set_assistant_mail_context(conversation_id,context)
         return {'ok':True}
     except ValueError as exc:

@@ -154,7 +154,7 @@ def set_assistant_mail_context(conversation_id, context):
         else:
             c.execute('INSERT INTO assistant_mail_context(conversation_id,email_id,excluded) VALUES(?,?,?) '
                       'ON CONFLICT(conversation_id) DO UPDATE SET email_id=excluded.email_id,excluded=excluded.excluded',
-                      (conversation_id, context['email_id'], json.dumps(context.get('excluded') or [])))
+                      (conversation_id, context['email_id'], json.dumps({'excluded':context.get('excluded') or [], 'pinned':bool(context.get('pinned'))})))
 
 
 def get_assistant_mail_context(conversation_id):
@@ -163,7 +163,9 @@ def get_assistant_mail_context(conversation_id):
     if not row:
         return None
     try:
-        values = json.loads(row['excluded'])
-        return {'email_id':row['email_id'], 'excluded':[i for i in values if type(i) is int and i >= 0][:200]} if isinstance(values,list) else None
+        stored = json.loads(row['excluded'])
+        values = stored.get('excluded') if isinstance(stored,dict) else stored
+        return {'email_id':row['email_id'], 'excluded':[i for i in values if type(i) is int and i >= 0][:200],
+                'pinned':stored.get('pinned') is True if isinstance(stored,dict) else False} if isinstance(values,list) else None
     except (ValueError,TypeError):
         return None

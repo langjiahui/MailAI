@@ -20776,7 +20776,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
   try {
     const response = await fetch('/api/assistant/ask-stream', {method:'POST', signal:controller.signal,
       headers:{'Content-Type':'application/json', 'X-MailAI-Account':account?.id || ''},
-      body:JSON.stringify({question, history:assistantHistory.slice(0, -1).slice(-6), conversation_id:assistantConversationId, email_ids:emailIds, mail_context:mailContext, include_mail_attachments:window.assistantMail?.include()!==false, open_email_id:mailContext?.email_id||(selectedEmailId>0&&(!selectedEmailAccountId||selectedEmailAccountId===account?.id)?Number(selectedEmailId):null), scope_label:scope, images, attachments, alert_context:alertContext, search_mode:searchMode, ...searchRequest})});
+      body:JSON.stringify({question, history:assistantHistory.slice(0, -1).slice(-6), conversation_id:assistantConversationId, email_ids:emailIds, mail_context:mailContext, include_mail_attachments:window.assistantMail?.include()!==false, open_email_id:mailContext?.pinned?mailContext.email_id:(selectedEmailId>0&&(!selectedEmailAccountId||selectedEmailAccountId===account?.id)?Number(selectedEmailId):null), scope_label:scope, images, attachments, alert_context:alertContext, search_mode:searchMode, ...searchRequest})});
     if (!response.ok || !response.body) {const detail=await response.json().catch(()=>({}));throw new Error(typeof detail.detail==='string'?detail.detail:mailaiTemplate`请求未完成（${response.status}），请检查图片格式、大小和模型连接`);}
     const reader = response.body.getReader(); const decoder = new TextDecoder();
     let pending = '';
@@ -31835,7 +31835,7 @@ function openAssistantForEmail(row) {
   assistantScopeKey = scopeKey;
   document.getElementById('assistant-scope').value = 'selected';
   updateAssistantScopeControl();
-  window.assistantMail?.bind(row);
+  window.assistantMail?.bind(row,true);
   window.showSecretaryChat?.();
   openAssistant();
 }
@@ -32035,7 +32035,7 @@ function initializeAssistantPolish() {
     assistantPinnedScope = scope.value === 'selected' && selectedEmailId ? [selectedEmailId] : null;
     assistantScopeKey = '';
     resetAssistantConversation();
-    if (scope.value==='selected'&&selectedEmailDetail) window.assistantMail?.bind(selectedEmailDetail);
+    if (scope.value==='selected'&&selectedEmailDetail) window.assistantMail?.bind(selectedEmailDetail,true);
     updateAssistantScopeControl();
   };
   document.querySelectorAll('[data-assistant-scope]').forEach(button => button.onclick = () => {
@@ -34279,7 +34279,7 @@ function mailCardDate(value, now = new Date()) {
   const t=key=>mailaiT(`mailContext.${key}`)||MAILAI_UI_COPY[`mailContext.${key}`][0];
   let context=null,account='',conversation=null,ticket=0,fileMode=false;
   const active=()=>context&&account===activeMailAccount()?.id;
-  function snapshot(){return active()?{email_id:context.email_id,excluded:[...(context.excluded||[])]}:null;}
+  function snapshot(){return active()?{email_id:context.email_id,excluded:[...(context.excluded||[])],pinned:!!context.pinned}:null;}
   function close(focus=false){const trigger=stage.querySelector('[data-mail-materials]'),popup=stage.querySelector('.assistant-mail-materials');if(popup)popup.hidden=true;trigger?.setAttribute('aria-expanded','false');if(focus)trigger?.focus();}
   function render(){
     stage.hidden=!active();if(stage.hidden){stage.replaceChildren();return;}
@@ -34300,14 +34300,14 @@ function mailCardDate(value, now = new Date()) {
   }
   function clear(){++ticket;context=null;account='';conversation=null;fileMode=false;render();}
   function restore(value,id=assistantConversationId){++ticket;context={...value,items:(value.items||[]).map(r=>({...r}))};account=activeMailAccount()?.id||'';conversation=id;fileMode=false;window.assistantAttachments?.clear();render();}
-  function bind(mail){
-    if(active()&&context.email_id===Number(mail.id)){render();return;}
+  function bind(mail,pinned=false){
+    if(active()&&context.email_id===Number(mail.id)){if(pinned)context.pinned=true;render();return;}
     const owner=activeMailAccount()?.id||'',revision=++ticket;
-    context={email_id:Number(mail.id),subject:mail.subject||'',excluded:[],items:(mail.attachments||[]).map((a,index)=>({...a,index,status:'pending'})),loading:true};account=owner;conversation=null;fileMode=false;window.assistantAttachments?.clear();render();
+    context={email_id:Number(mail.id),subject:mail.subject||'',excluded:[],pinned,items:(mail.attachments||[]).map((a,index)=>({...a,index,status:'pending'})),loading:true};account=owner;conversation=null;fileMode=false;window.assistantAttachments?.clear();render();
     api(`/api/emails/${mail.id}/assistant-context`,{accountId:owner}).then(value=>{
       if(ticket!==revision||owner!==activeMailAccount()?.id)return;
       // Keep choices made while the metadata request was in flight.
-      context={...value,excluded:context.excluded||[]};render();
+      context={...value,excluded:context.excluded||[],pinned:context.pinned};render();
     }).catch(()=>{if(ticket===revision){context.loading=false;context.error=true;render();}});
   }
   function request(ids,attachments,skip=false){
