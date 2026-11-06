@@ -76,3 +76,5 @@ html[data-theme] body :is(.start-model-panel,.start-card) :focus-visible { outli
 .start-guide-link:hover { text-decoration:underline; text-underline-offset:3px; }
 @media(pointer:coarse) { .start-actions button,.start-guide-link { min-height:44px; } }
 @media(prefers-reduced-transparency:reduce) { .start-card,.start-model { backdrop-filter:none; } }
+/* Search recovery remains directly clickable while a passive invitation waits. */
+html[data-theme] body:has(#global-search:not(:placeholder-shown)) .start-card { display:none!important; }

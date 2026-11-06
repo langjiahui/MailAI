@@ -42,6 +42,12 @@ const assert=require('node:assert/strict');
  await page.evaluate(async()=>{await loadSystemConfig();mailOnboarding.connected(true)});
  await page.locator('.start-card').waitFor({state:'visible'});
  assert.equal(await page.locator('#start-model').isVisible(),false,'connecting mail must not force model setup before reading');
+ // Vary the visual input state without changing this scenario's empty-mailbox filters.
+ // Actual typing and search recovery are exercised by test_search_handoff_browser.cjs.
+ await page.locator('#global-search').evaluate(n=>{n.value='引导不能遮挡搜索结果';});
+ assert.equal(await page.locator('.start-card').isVisible(),false,'Search controls and recovery stay unobstructed');
+ await page.locator('#global-search').evaluate(n=>{n.value='';});
+ assert.equal(await page.locator('.start-card').isVisible(),true,'Guidance remains available after leaving the search');
  await page.locator('.start-guide-link').click();
  await page.locator('[data-learn-step="mail"][data-complete="true"]').waitFor();
  assert.equal(await page.locator('#guide-progress').innerText(),'已完成 1 / 3 项');
