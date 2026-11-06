@@ -50,6 +50,14 @@ const {chromium} = require('playwright');
     const skyBought=await page.evaluate(()=>api('/api/companion/growth'));
     assert.equal(spent(skyBought)-spent(bought),120);
     assert.match(await dialog.locator('[data-pet-message]').textContent(),new RegExp(`120.*${skyPurchase.stamps}`));
+    // An asynchronous reward must update the wallet without erasing a paid-action receipt.
+    const reward={...skyBought,xp:skyBought.xp+10,earned:skyBought.earned+5,stamps:skyBought.stamps+5};
+    await page.route('**/api/companion/growth',route=>route.fulfill({json:reward}));
+    await page.evaluate(()=>mailaiPet.refresh());
+    assert.match((await dialog.locator('.pet-header-wallet').textContent()).replace(/[,\s]/g,''),new RegExp(String(reward.stamps)));
+    assert.match(await dialog.locator('[data-pet-message]').textContent(),new RegExp(`120.*${skyPurchase.stamps}`),'Passive rewards keep the exact purchase receipt visible');
+    await page.unroute('**/api/companion/growth');
+    await page.evaluate(()=>mailaiPet.refresh());
     await page.evaluate(()=>setI18nLanguage('en'));
     assert.match(await dialog.locator('[data-pet-message]').textContent(),/Redemption confirmed:/);
     assert(!/[\u3400-\u9fff]/.test(await dialog.textContent()));

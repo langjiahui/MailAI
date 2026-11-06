@@ -36315,7 +36315,8 @@ function mailCardDate(value, now = new Date()) {
     }
     paint();
     if (milestone) document.dispatchEvent(new CustomEvent('mailai:companion-milestone',{detail:milestone}));
-    if (notice && dialog?.open) message(notice);
+    // Passive rewards update the wallet and milestones without replacing an explicit receipt.
+    if (notice && dialog?.open && !shopReceipt) message(notice);
     return true;
   }
   async function refresh() {
