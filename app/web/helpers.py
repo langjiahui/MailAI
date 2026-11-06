@@ -146,7 +146,8 @@ def prepare_assistant_images(payload):
 def prepare_assistant_materials(payload, images):
     from .. import assistant_attachments, assistant_vision
     try:
-        materials = assistant_attachments.prepare([item.model_dump() for item in payload.attachments])
+        from .. import assistant_documents
+        materials = assistant_documents.prepare([item.model_dump() for item in payload.attachments])
         if materials and not assistant_vision.client.available():
             raise ValueError('尚未配置可用模型，附件未发送。请先检查模型连接。')
         if len(images)+sum(bool(item.get('image')) for item in materials)>3:

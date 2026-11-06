@@ -764,7 +764,7 @@ def _ask_impl(question: str, history: list[dict] | None = None, email_ids=None, 
 def ask(question: str, history: list[dict] | None = None, email_ids=None, images=None, materials=None, search_mode=False, search_context=None) -> dict:
     """同步问答。识别到可操作意图时附带建议操作卡片（action 字段）。"""
     from .work_assistant import memory_reply
-    memory = memory_reply(question, email_ids) if not (images or materials or search_mode) else None
+    memory = memory_reply(question, email_ids) if not (images or search_mode or (materials and not any(m.get('_auto_mail') for m in materials))) else None
     if memory:
         return memory
     direct = _direct_answer(question or '') if not (images or materials or (search_context or {}).get('action')) else None
@@ -780,7 +780,7 @@ def ask(question: str, history: list[dict] | None = None, email_ids=None, images
     if assistant_actions.requests_document_reply(question):
         return {"answer": _document_reply_scope_answer(email_ids), "sources": []}
     result = _ask_impl(question, history, email_ids, images, materials)
-    if not (images or materials):
+    if not images and (not materials or any(m.get('_auto_mail') for m in materials)):
         if proposal:
             result["action"] = proposal
     return result
@@ -789,7 +789,7 @@ def ask(question: str, history: list[dict] | None = None, email_ids=None, images
 def ask_stream(question: str, history: list[dict] | None = None, email_ids=None, images=None, materials=None, search_mode=False, search_context=None):
     """产出 (event, payload)，优先使用模型原生流式响应。"""
     from .work_assistant import memory_reply
-    memory = memory_reply(question, email_ids) if not (images or materials or search_mode) else None
+    memory = memory_reply(question, email_ids) if not (images or search_mode or (materials and not any(m.get('_auto_mail') for m in materials))) else None
     if memory:
         if memory.get('action'):
             yield 'action', memory['action']
@@ -809,6 +809,8 @@ def ask_stream(question: str, history: list[dict] | None = None, email_ids=None,
         return
     if not search_mode and (images or materials):
         from . import assistant_vision
+        if proposal and any(m.get('_auto_mail') for m in materials or []):
+            yield 'action', proposal
         yield from assistant_vision.ask_stream(question, history, email_ids, images or [], materials)
         return
     question = (question or "").strip()

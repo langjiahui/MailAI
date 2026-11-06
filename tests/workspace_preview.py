@@ -102,7 +102,10 @@ def main():
         def search_plan(question,history=None):
             return productivity.normalize_search_criteria({'sender':'检索同事','after':(datetime.now()-timedelta(days=6)).date().isoformat(),'before':datetime.now().date().isoformat(),'query':'闭环合同'})
         def search_answer(messages,**kwargs):
-            match=re.search(r'\[email_id:(\d+)\]',messages[-1]['content'])
+            content = messages[-1]['content']
+            if isinstance(content, list):
+                content = '\n'.join(part.get('text','') for part in content if isinstance(part,dict) and part.get('type') == 'text')
+            match=re.search(r'\[email_id:(\d+)\]',content)
             yield '我找到了这批候选邮件，可以先打开原邮件核对。'
             time.sleep(.12)
             if match: yield f"[email_id:{match[1]}]"

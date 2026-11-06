@@ -260,11 +260,11 @@ def extract(email_id, index, digest=None, *, include_lookup=False):
         raise
     except Exception as exc:
         raise ValueError('附件无法解析，可能损坏、加密或格式不匹配，请转换后重试') from exc
-    lookup_text = text
+    lookup_text, lookup_note = text, note
     if include_lookup and ext in ('docx', 'xlsx', 'pptx'):
-        lookup_text = _office(raw, ext, expanded=True)[0]
+        lookup_text, lookup_note = _office(raw, ext, expanded=True)
     elif include_lookup and ext == 'xls':
-        lookup_text = _legacy_xls(raw, expanded=True)[0]
+        lookup_text, lookup_note = _legacy_xls(raw, expanded=True)
     lookup_text = lookup_text[:MAX_LOCAL_LOOKUP_TEXT]
     truncated = len(text)>MAX_TEXT
     if not image and not text.strip():
@@ -273,6 +273,7 @@ def extract(email_id, index, digest=None, *, include_lookup=False):
     result = dict(email_id=email_id,index=index,digest=fingerprint,name=name,size=len(raw),text=text[:MAX_TEXT],note=note,truncated=truncated,image=image)
     if include_lookup and not image:
         result['lookup_text'] = lookup_text
+        result['lookup_note'] = lookup_note
     return result
 
 
@@ -327,4 +328,4 @@ def model_text(question, material):
 
 
 def history_text(question, materials):
-    return question + ('\n（本次参考附件：'+'；'.join(f'{i+1}. {m["name"]}'+('〔节选〕' if m['truncated'] else '') for i,m in enumerate(materials))+'。历史不存附件正文；后续核对请重新选择附件。）' if materials else '')
+    return question + ('\n（本次参考附件：'+'；'.join(f'{i+1}. {m["name"]}'+('〔节选〕' if m['truncated'] else '') for i,m in enumerate(materials))+'。）' if materials else '')

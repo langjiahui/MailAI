@@ -6,6 +6,26 @@
   const entries = [...panel.querySelectorAll('[data-help-entry]')];
   const filters = [...panel.querySelectorAll('[data-help-filter]')];
   const topics = [...panel.querySelectorAll('.help-topic details')];
+  const copy = key => mailaiT(key) || MAILAI_UI_COPY[key]?.[0] || '';
+  function learningProgress() {
+    const state = window.mailOnboarding?.progress() || {};
+    let count = 0;
+    panel.querySelectorAll('[data-learn-step]').forEach(item => {
+      const name = item.dataset.learnStep, done = !!state[name];
+      if (done) count++;
+      item.dataset.complete = String(done);
+      let status = item.querySelector('.help-step-status');
+      if (!status) { status = document.createElement('span'); status.className = 'help-step-status'; item.querySelector('h5').after(status); }
+      mailaiBindUI(status, 'textContent', () => copy(done ? 'learn.done' : name === 'ai' ? 'learn.optional' : 'learn.pending'));
+    });
+    mailaiBindUI(panel.querySelector('#guide-progress'), 'textContent', () => copy('learn.progress').replace('{count}', String(count)));
+    const ai = panel.querySelector('#guide-try-ai');
+    ai.dataset.helpAction = state.model ? 'assistant' : 'model';
+    mailaiBindUI(ai.querySelector('span'), 'textContent', () => state.model ? copy('learn.openAssistant') : (mailaiT('guide.start.2.action') || MAILAI_I18N_CHINESE['guide.start.2.action']));
+  }
+  document.addEventListener('mailai:learning-progress', learningProgress);
+  learningProgress();
+  mailaiBindUI(panel.querySelector('.guide-intro-actions>span'), 'textContent', () => (mailaiT('learn.topics') || '{count} 个功能主题').replace('{count}', String(topics.length)));
   let category = 'all';
   const normalize = value => value.toLocaleLowerCase().normalize('NFKC').replace(/\s+/g, ' ').trim();
   const queryWords = () => [...new Set(normalize(search.value).split(' ').filter(Boolean))];
@@ -84,6 +104,7 @@
       entry.querySelectorAll('.help-topic-copy [data-i18n], .help-faq-copy [data-i18n], .help-match').forEach(node => highlight(node, words));
     }
     const active = !!words.length || category !== 'all';
+    panel.querySelector('.help-discover').hidden = active;
     filters.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.helpFilter === category)));
     panel.querySelector('#guide-clear').hidden = !search.value;
     panel.querySelector('.help-reset').hidden = !active;
@@ -97,7 +118,7 @@
   }
   function keepSummaryVisible(summary) {
     requestAnimationFrame(() => {
-      const top = panel.querySelector('.help-toolbar').getBoundingClientRect().bottom + 12;
+      const top = panel.getBoundingClientRect().top + 12;
       const rect = summary.getBoundingClientRect();
       if (rect.top < top) panel.scrollTop += (rect.top - top) / (panel.getBoundingClientRect().width / panel.offsetWidth || 1);
       else if (rect.bottom > panel.getBoundingClientRect().bottom) summary.scrollIntoView({block:'nearest'});
@@ -140,6 +161,13 @@
       const details = collapse.closest('details'); details.open = false;
       const summary = details.querySelector('summary'); summary.focus({preventScroll:true}); keepSummaryVisible(summary); return;
     }
+    const topic = event.target.closest('[data-help-topic]');
+    if (topic) {
+      const target = panel.querySelector(`[data-guide-topic="${topic.dataset.helpTopic}"] details`);
+      if (!target) return;
+      search.value = ''; category = 'all'; refresh(); target.open = true;
+      target.querySelector('summary').focus({preventScroll:true}); keepSummaryVisible(target.querySelector('summary')); return;
+    }
     const settings = event.target.closest('[data-help-settings]');
     if (settings) {
       const tab = settings.dataset.helpSettings;
@@ -153,13 +181,21 @@
     if (!action) return;
     const targets = {contacts:'btn-contacts', attachments:'btn-attachments', todos:'btn-todos', outbox:'btn-task-center', digest:'btn-digest', rules:'btn-rules'};
     const name = action.dataset.helpAction;
-    if (!['mail', 'search', ...Object.keys(targets)].includes(name)) return;
+    if (name === 'read' && !window.mailOnboarding?.progress().mail) { selectSystemTab('account'); return; }
+    if (name === 'model') { window.mailOnboarding?.openModel(); return; }
+    if (!['mail', 'read', 'assistant', 'search', ...Object.keys(targets)].includes(name)) return;
     hideSystemView();
     if (!document.getElementById('system-view').classList.contains('hidden')) return;
-    if (name === 'search') window.mailaiProductivity?.openSearch();
+    if (name === 'read') {
+      const first = document.getElementById('reading-start-first');
+      if (first && !first.disabled) first.click();
+      else toast(copy('learn.emptyMail'), 'info');
+    }
+    else if (name === 'assistant') openAssistant();
+    else if (name === 'search') window.mailaiProductivity?.openSearch();
     else if (name === 'mail') document.getElementById('global-search')?.focus();
     else document.getElementById(targets[name])?.click();
   });
-  document.addEventListener('mailai:language-changed', refresh);
+  document.addEventListener('mailai:language-changed', () => { refresh(); learningProgress(); });
   refresh();
 })();

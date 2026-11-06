@@ -821,6 +821,7 @@ function closeAssistant() {
 function resetAssistantConversation({focus = true} = {}) {
   window.mailaiAssistantSearch?.reset(); assistantLastSearchRequest = null;
   assistantSearchMode = false;
+  window.assistantMail?.clear();
   window.assistantAttachments?.clear(); assistantLastAttachments=[];
   window.assistantImages?.clear(); assistantLastImages = [];
   if (focus) window.showSecretaryChat?.();
@@ -845,6 +846,7 @@ async function loadAssistantConversation(id) {
   document.getElementById('assistant-send').disabled = false;
   document.getElementById('assistant-stop').classList.add('hidden');
   document.getElementById('assistant-retry').classList.add('hidden');
+  window.assistantMail?.clear();
   window.assistantAttachments?.clear(); assistantLastAttachments=[];
   window.assistantImages?.clear(); assistantLastImages = [];
   const revision = ++assistantRevision;
@@ -865,6 +867,21 @@ async function loadAssistantConversation(id) {
     document.getElementById('assistant-scope').value='account';
     assistantScopeKey=JSON.stringify([activeMailAccount()?.id,'account',null,true]);
     window.mailaiAssistantSearch.focusLatest();
+  }
+  if (data.mail_context) {
+    window.assistantMail?.restore(data.mail_context, assistantConversationId);
+    assistantPinnedScope = [data.mail_context.email_id];
+    document.getElementById('assistant-scope').value='selected';
+    assistantScopeKey=JSON.stringify([activeMailAccount()?.id,'selected',assistantPinnedScope,false]);
+    updateAssistantScopeControl();
+  }
+  if (data.attachments?.length) {
+    window.assistantMail?.filesOnly();
+    window.assistantAttachments?.restore(data.attachments, assistantConversationId);
+    assistantPinnedScope = [...new Set(data.attachments.map(r=>r.email_id))];
+    document.getElementById('assistant-scope').value='selected';
+    assistantScopeKey=JSON.stringify([activeMailAccount()?.id,'selected',assistantPinnedScope,false]);
+    updateAssistantScopeControl();
   }
   assistantAlertContextIds = data.alert_email_ids || [];
   reconcileAssistantRiskAnalysis(data.pending_alert_ids);
@@ -1017,14 +1034,16 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
   assistantLastScope = emailIds;
   assistantLastImages = images;
   assistantLastAttachments=attachments;
-  if(attachments.length)window.assistantAttachments?.clear();
+  if(attachments.length)window.assistantAttachments?.retain(attachments);
+  else window.assistantAttachments?.clear();
+  const mailContext = window.assistantMail?.request(emailIds,attachments,searchMode||alertContext);
   if(images.length)window.assistantImages?.clear();
   if (typeof updateAssistantScopeControl === 'function') updateAssistantScopeControl();
   const revision = ++assistantRevision;
   const controller = new AbortController(); assistantController = controller;
-  const historyQuestion=question+(inlineImageCount?mailaiText('\n（本次已传入当前邮件的内嵌图片 ')+inlineImageCount+mailaiText(' 张，仅用于本次识图，后续核对请重新选择邮件图片。）'):'')+(attachments.length?mailaiText('\n（本次参考附件：')+attachments.map((r,i)=>`${i+1}. ${r.name}`).join('；')+mailaiText('。历史不存附件正文，后续核对请重新选择。）'):'');
+  const historyQuestion=question+(inlineImageCount?mailaiText('\n（本次已传入当前邮件的内嵌图片 ')+inlineImageCount+mailaiText(' 张，仅用于本次识图，后续核对请重新选择邮件图片。）'):'')+(attachments.length?mailaiText('\n（本次参考附件：')+attachments.map((r,i)=>`${i+1}. ${r.name}`).join('；')+mailaiText('。已在本轮重新读取附件，可继续追问。）'):'');
   const retrying = Boolean(options.retry);
-  const userMessage = retrying ? null : appendAssistantMessage('user', historyQuestion);
+  const userMessage = retrying ? null : appendAssistantMessage('user', attachments.length?question:historyQuestion);
   if(images.length && userMessage)window.assistantImages?.showSent(userMessage,images);
   if (!retrying) assistantHistory.push({role:'user', content:historyQuestion});
   const thinking = appendAssistantMessage('assistant', '');
@@ -1059,14 +1078,16 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
   try {
     const response = await fetch('/api/assistant/ask-stream', {method:'POST', signal:controller.signal,
       headers:{'Content-Type':'application/json', 'X-MailAI-Account':account?.id || ''},
-      body:JSON.stringify({question, history:assistantHistory.slice(0, -1).slice(-6), conversation_id:assistantConversationId, email_ids:emailIds, open_email_id:selectedEmailId>0&&(!selectedEmailAccountId||selectedEmailAccountId===account?.id)?Number(selectedEmailId):null, scope_label:scope, images, attachments, alert_context:alertContext, search_mode:searchMode, ...searchRequest})});
+      body:JSON.stringify({question, history:assistantHistory.slice(0, -1).slice(-6), conversation_id:assistantConversationId, email_ids:emailIds, mail_context:mailContext, include_mail_attachments:window.assistantMail?.include()!==false, open_email_id:mailContext?.pinned?mailContext.email_id:(selectedEmailId>0&&(!selectedEmailAccountId||selectedEmailAccountId===account?.id)?Number(selectedEmailId):null), scope_label:scope, images, attachments, alert_context:alertContext, search_mode:searchMode, ...searchRequest})});
     if (!response.ok || !response.body) {const detail=await response.json().catch(()=>({}));throw new Error(typeof detail.detail==='string'?detail.detail:mailaiTemplate`请求未完成（${response.status}），请检查图片格式、大小和模型连接`);}
     const reader = response.body.getReader(); const decoder = new TextDecoder();
     let pending = '';
     const consumeLine = line => {
       if (!line.trim() || revision !== assistantRevision) return;
       const event = JSON.parse(line);
-      if (event.type === 'meta') assistantConversationId = event.conversation_id;
+      if (event.type === 'meta') { assistantConversationId = event.conversation_id; window.assistantAttachments?.conversation(assistantConversationId); window.assistantMail?.conversation(assistantConversationId); }
+      else if (event.type === 'mail-context') { window.assistantMail?.restore(event.context, assistantConversationId); updateAssistantScopeControl(); }
+      else if (event.type === 'materials') { window.assistantMail?.coverage(event.items||[]); }
       else if (event.type === 'search') { searchMeta=event.search; thinking.dataset.searchRunId=searchMeta.id; }
       else if (event.type === 'sources') {
         sources = event.sources || [];
@@ -1095,6 +1116,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
           assistantScopeKey = JSON.stringify([account?.id, mode, assistantPinnedScope, assistantSearchMode]);
           scope = `${account?.user || mailaiText('当前邮箱')} · ${ids ? (ids.length ? mailaiText('所选范围 ') + ids.length + mailaiText(' 封') : mailaiText('未附邮件')) : mailaiText('全部已同步邮件')}`;
           document.getElementById('assistant-scope-note').textContent = scope;
+          if (!ids?.length || ids.length!==1) window.assistantMail?.clear();
           updateAssistantScopeControl();
         }
         if (event.intent === 'help') {
@@ -1149,6 +1171,7 @@ async function askAssistant(question, explicitIds = null, images = [], attachmen
       document.getElementById('assistant-stop').classList.add('hidden');
       setAssistantState(assistantNotificationState(assistantAlerts));
       window.mailaiAssistantSearch?.idle();
+      window.assistantMail?.refresh();
     }
   }
 }
@@ -4942,6 +4965,7 @@ async function selectEmail(id, options = {}) {
     const e = await api('/api/emails/' + id, {accountId:requestAccountId, signal:controller.signal});
     if (requestRevision !== readingLoadRevision || selectedEmailId !== id) return;
     selectedEmailDetail = e;
+    window.mailOnboarding?.opened();
     globalThis.mailaiPet?.openedEmail(id, requestAccountId);
     if (animateArrival) window.mailaiCompanionMotion?.wake();
     transition.finish(() => renderReadingPane(e));
@@ -5522,6 +5546,7 @@ async function activateMailAccount(accountId, {keepMailbox = false, quiet = fals
   }
   if (!account.active) {
     if (!preferenceSaved) await api('/api/system/mail/preferred', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({account_id:accountId})});
+    window.assistantMail?.clear();
     window.assistantAttachments?.clear(); assistantLastAttachments=[];
     window.assistantImages?.clear(); assistantLastImages = []; assistantLastQuestion = ''; assistantLastScope = null; assistantLastAlertContext = false;
     assistantController?.abort(); assistantController = null; ++assistantRevision;
@@ -5800,7 +5825,14 @@ function renderAppVersion(result) {
   const status = document.getElementById('app-update-status');
   const device = document.getElementById('app-device-label');
   const releaseLink = document.getElementById('app-release-link');
-  if (label) label.textContent = `MailAI ${result.current_version || ''}`.trim();
+  if (label) {
+    label.replaceChildren(document.createTextNode('MailAI'));
+    if (result.current_version) {
+      const version=document.createElement('span');version.className='app-version-number';
+      version.textContent=String(result.current_version);
+      label.append(document.createTextNode(' '),version);
+    }
+  }
   if (device) {
     device.removeAttribute('data-i18n');
     mailaiBindUI(device, 'textContent', () => appDeviceName(result.device));
@@ -5824,7 +5856,7 @@ function renderAppVersion(result) {
   if (releaseSummary) releaseSummary.classList.toggle('hidden', !notes);
   if (releaseTitle && notes) mailaiBindUI(releaseTitle, "textContent", () => (result.available
     ? mailaiTemplate`新版本 ${result.latest_version} 更新内容`
-    : mailaiTemplate`MailAI ${result.current_version} 更新内容`));
+    : mailaiText('查看更新内容')));
   if (releaseNotes) releaseNotes.textContent = notes;
   if (!status) return;
   if (result.development) mailaiBindUI(status, "textContent", () => (mailaiText('源码运行模式；安装包版本会自动检查更新。')));
@@ -6147,12 +6179,14 @@ async function loadSystemConfig(prefetched=null) {
     data.mail.user = data.accounts.find(account => account.active).user;
   }
   _systemConfig = data;
+  window.assistantAttachments?.refresh();
   window.mailOnboarding?.configChanged(data);
   const model = data.model || {};
   if (!window.mailaiModelForm?.retainDraft()) {
     document.getElementById('model-provider').value = model.provider || 'custom';
     document.getElementById('model-extra-params').value = JSON.stringify(model.extra_params || {}, null, 2);
     document.getElementById('model-multimodal-enabled').checked = model.multimodal_enabled !== false;
+    document.getElementById('model-document-input').value = model.document_input_mode || 'auto';
     document.getElementById('model-base-url').value = model.base_url || '';
     document.getElementById('model-name').value = model.model || '';
     document.getElementById('multimodal-model').value = model.multimodal_model || '';
@@ -8094,7 +8128,7 @@ function renderAttachmentCenter() {
         <small class="attachment-sender">${esc(item.from_addr || (mailaiT('att.unknownSender') || '未知发件人'))}</small>
       </span>
     </a>
-      <span class="attachment-card-side"><button type="button" class="attachment-compare-action" data-attachment-tools data-email-id="${item.email_id}" data-attachment-index="${item.index}" aria-label="附件操作：${esc(item.name)}" title="附件操作" aria-haspopup="dialog" data-i18n-title="ui.24c0c6687fe1" data-i18n-aria="ui.debe2b33cb8d"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="4" cy="10" r="1"/><circle cx="10" cy="10" r="1"/><circle cx="16" cy="10" r="1"/></svg></button>
+      <span class="attachment-card-side"><button type="button" class="attachment-compare-action" data-assistant-file data-email-id="${item.email_id}" data-attachment-index="${item.index}" aria-label="${esc(mailaiText('分析邮件附件'))}" title="${esc(mailaiText('分析邮件附件'))}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 2 2.2 5.8L18 10l-5.8 2.2L10 18l-2.2-5.8L2 10l5.8-2.2Z"/></svg></button><button type="button" class="attachment-compare-action" data-attachment-tools data-email-id="${item.email_id}" data-attachment-index="${item.index}" aria-label="附件操作：${esc(item.name)}" title="附件操作" aria-haspopup="dialog" data-i18n-title="ui.24c0c6687fe1" data-i18n-aria="ui.debe2b33cb8d"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="4" cy="10" r="1"/><circle cx="10" cy="10" r="1"/><circle cx="16" cy="10" r="1"/></svg></button>
         ${['danger', 'warn'].includes(getRiskLabel(item.score, item.verdict, item).class) ? `<em class="attachment-risk">${getRiskLabel(item.score, item.verdict, item).text}</em>` : ''}
         ${attachmentPreviewAction(mailboxResourceUrl(`/api/emails/${item.email_id}/attachments/${item.index}`, attachmentCenterAccountId), item.name)}
         <a class="attachment-download-action" href="${mailboxResourceUrl(`/api/emails/${item.email_id}/attachments/${item.index}`, attachmentCenterAccountId)}" download="${esc(item.name)}" data-preview-download aria-label="${esc((mailaiT('att.downloadFile') || '下载 {name}').replace('{name}',item.name))}" title="${esc((mailaiT('att.downloadFile') || '下载 {name}').replace('{name}',item.name))}"><svg class="attachment-download" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9m-3-3 3 3 3-3M4 15h12"/></svg></a>
@@ -8749,6 +8783,7 @@ document.getElementById('model-provider').addEventListener('change', async e => 
     document.getElementById('model-name').value = saved.model || '';
     document.getElementById('multimodal-model').value = saved.multimodal_model || '';
     document.getElementById('model-multimodal-enabled').checked = saved.multimodal_enabled !== false;
+    document.getElementById('model-document-input').value = saved.document_input_mode || 'auto';
     document.getElementById('model-extra-params').value = JSON.stringify(saved.extra_params || {}, null, 2);
     document.getElementById('model-api-key').value = '';
     mailaiBindUI(document.getElementById('model-api-key'), "placeholder", () => (mailaiText('已安全保存此服务商的 API Key')));
@@ -8765,6 +8800,7 @@ document.getElementById('model-provider').addEventListener('change', async e => 
   }
   document.getElementById('multimodal-model').value = '';
   document.getElementById('model-multimodal-enabled').checked = !!preset.multimodal_enabled;
+  document.getElementById('model-document-input').value = 'auto';
   document.getElementById('model-extra-params').value = '{}';
   document.getElementById('model-api-key').value = '';
   mailaiBindUI(document.getElementById('model-api-key'), "placeholder", () => (mailaiText('请填写此服务对应的 API Key')));
@@ -8788,6 +8824,7 @@ function modelFormPayload() {
     provider: document.getElementById('model-provider').value,
     extra_params: extra,
     multimodal_enabled: document.getElementById('model-multimodal-enabled').checked,
+    document_input_mode: document.getElementById('model-document-input').value,
     base_url: document.getElementById('model-base-url').value.trim(),
     model: document.getElementById('model-name').value.trim(),
     multimodal_model: document.getElementById('multimodal-model').value.trim(),

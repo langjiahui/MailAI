@@ -290,6 +290,7 @@ def public_config() -> dict:
             "extra_params": config.LLM_EXTRA_PARAMS, "multimodal_enabled": config.MULTIMODAL_ENABLED,
             "base_url": config.LLM_BASE_URL, "model": config.LLM_MODEL,
             "multimodal_model": config.MULTIMODAL_MODEL,
+            "document_input_mode": getattr(config, "DOCUMENT_INPUT_MODE", "auto"),
             "api_key_masked": _mask(config.LLM_API_KEY),
             "verify_ssl": config.LLM_VERIFY_SSL,
             "available": llm_client.available(),
@@ -681,6 +682,10 @@ def _model_profiles():
 def _model_fingerprint(resolved: dict) -> str:
     fields = {key: resolved.get(key) for key in (
         'provider', 'base_url', 'model', 'api_key', 'verify_ssl', 'extra_params')}
+    if resolved.get('document_input_mode', 'auto') != 'auto':
+        fields['document_input_mode'] = resolved['document_input_mode']
+        if resolved['document_input_mode'] == 'native_pdf':
+            fields['document_model'] = resolved.get('multimodal_model')
     payload = json.dumps(fields, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
     return hashlib.sha256(payload.encode('utf-8')).hexdigest()
 
@@ -769,7 +774,10 @@ def _model_values(values):
     extra = values.get("extra_params")
     if extra is None:
         extra = {} if changed else config.LLM_EXTRA_PARAMS
-    return dict(base_url=base_url, model=model, api_key=api_key, provider=provider,
+    document_mode = values.get('document_input_mode', getattr(config, 'DOCUMENT_INPUT_MODE', 'auto') if not changed else 'auto')
+    if document_mode not in ('auto','text','native_pdf'):
+        raise ValueError('请选择支持的文档读取方式')
+    return dict(base_url=base_url, model=model, api_key=api_key, provider=provider, document_input_mode=document_mode,
                 extra_params=validate_extra(extra), verify_ssl=bool(values.get("verify_ssl", config.LLM_VERIFY_SSL)),
                 multimodal_enabled=bool(values.get("multimodal_enabled", config.MULTIMODAL_ENABLED)),
                 multimodal_model=(values.get("multimodal_model") or "").strip() or model)
@@ -790,6 +798,7 @@ def save_model(values: dict):
                "LLM_PROVIDER": resolved['provider'], "LLM_API_KEY": resolved['api_key'],
                "LLM_VERIFY_SSL": resolved['verify_ssl'], "MULTIMODAL_MODEL": resolved['multimodal_model'],
                "MULTIMODAL_ENABLED": resolved['multimodal_enabled'],
+               "DOCUMENT_INPUT_MODE": resolved['document_input_mode'],
                "LLM_EXTRA_PARAMS": json.dumps(resolved['extra_params'], ensure_ascii=False)}
     _persist(updates)
     for key, value in updates.items():
@@ -803,6 +812,7 @@ def test_model(values: dict | None = None) -> dict:
     """Test text and, when requested, vision input without persisting the draft."""
     try:
         resolved = _model_values(values or {})
+        document_mode = resolved.pop('document_input_mode')
         multimodal_enabled = resolved.pop('multimodal_enabled')
         multimodal_model = resolved.pop('multimodal_model')
         result = llm_client.chat_completion(
@@ -814,6 +824,9 @@ def test_model(values: dict | None = None) -> dict:
         content = message.get('content') if isinstance(message, dict) else None
         if not isinstance(content, str) or not content.strip() or choice.get('finish_reason') == 'length':
             return {"ok": False, "message": "接口未返回完整文本，请检查模型名称、参数或推理长度限制"}
+        if document_mode == 'native_pdf':
+            from .assistant_documents import test_native_pdf
+            test_native_pdf(resolved, multimodal_model)
         _verified_model_fingerprints.add(_model_fingerprint(_model_values(values or {})))
         if not multimodal_enabled:
             return {"ok": True, "message": "文本连接成功：" + content[:80],

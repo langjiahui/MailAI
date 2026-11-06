@@ -1,3 +1,4 @@
+from typing import Literal
 """接口请求模型（Pydantic）。从 server.py 集中拆分，供各路由模块复用。"""
 from pydantic import BaseModel, Field
 
@@ -150,6 +151,7 @@ class ModelConfigRequest(BaseModel):
     provider: str = "custom"
     extra_params: dict | None = None
     multimodal_enabled: bool = True
+    document_input_mode: Literal["auto", "text", "native_pdf"] = "auto"
     base_url: str = ""
     model: str = ""
     multimodal_model: str = ""
@@ -213,6 +215,12 @@ class DocumentReplyValuesRequest(DocumentReplyPrepareRequest):
     text: str = Field(min_length=1, max_length=3000)
 
 
+class AssistantMailContext(BaseModel):
+    email_id: int = Field(ge=1)
+    pinned: bool = False
+    excluded: list[int] = Field(default_factory=list, max_length=200)
+
+
 class AssistantRequest(BaseModel):
     question: str = Field(max_length=12000)
     history: list[dict] = Field(default_factory=list)
@@ -220,6 +228,8 @@ class AssistantRequest(BaseModel):
     email_ids: list[int] | None = None
     open_email_id: int | None = Field(default=None, ge=1)
     scope_label: str = ''
+    include_mail_attachments: bool = True
+    mail_context: AssistantMailContext | None = None
     alert_context: bool = False
     search_mode: bool = False
     search_run_id: str = Field(default='',max_length=64)

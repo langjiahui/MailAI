@@ -28,6 +28,7 @@ energy-reminders.js
 experience-polish.js
 assistant-images.js
 assistant-attachments.js
+assistant-mail-context.js
 assistant-document-reply.js
 companion.js
 companion-position.js

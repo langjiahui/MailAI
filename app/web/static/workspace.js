@@ -624,7 +624,7 @@ function syncPreferenceChoices() {
 
 function openAssistantForEmail(row) {
   const ids = [Number(row.id)];
-  const scopeKey = JSON.stringify([activeMailAccount()?.id, 'selected', ids]);
+  const scopeKey = JSON.stringify([activeMailAccount()?.id, 'selected', ids, false]);
   // An explicit mail entry starts a new context; reopening the same one keeps
   // its conversation. Invalidate any pending history restore before opening.
   if (assistantScopeKey !== scopeKey) resetAssistantConversation({focus:false});
@@ -633,6 +633,7 @@ function openAssistantForEmail(row) {
   assistantScopeKey = scopeKey;
   document.getElementById('assistant-scope').value = 'selected';
   updateAssistantScopeControl();
+  window.assistantMail?.bind(row,true);
   window.showSecretaryChat?.();
   openAssistant();
 }
@@ -740,7 +741,7 @@ function updateAssistantScopeControl() {
         const owner = item._account_id || item.account_id;
         return item.id === ids[0] && (!owner || owner === activeMailAccount()?.id);
       });
-      label = row?.subject || mailaiText('这封邮件');
+      label = row?.subject || window.assistantMail?.subject(ids[0]) || mailaiText('这封邮件');
     } else if (ids?.length) label = mailaiTemplate`${ids.length} 封指定邮件`;
     return label;
   };
@@ -831,7 +832,9 @@ function initializeAssistantPolish() {
   scope.onchange = () => {
     assistantPinnedScope = scope.value === 'selected' && selectedEmailId ? [selectedEmailId] : null;
     assistantScopeKey = '';
-    resetAssistantConversation(); updateAssistantScopeControl();
+    resetAssistantConversation();
+    if (scope.value==='selected'&&selectedEmailDetail) window.assistantMail?.bind(selectedEmailDetail,true);
+    updateAssistantScopeControl();
   };
   document.querySelectorAll('[data-assistant-scope]').forEach(button => button.onclick = () => {
     scope.value = button.dataset.assistantScope; scope.onchange();

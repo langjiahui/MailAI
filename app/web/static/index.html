@@ -29,9 +29,9 @@
   <link rel="stylesheet" href="/static/companion-growth.css?v=c090b61f42b6" />
   <link rel="stylesheet" href="/static/theme.css?v=account-remove-20261010" />
   <link rel="stylesheet" href="/static/attachment-preview.css?v=native-open-20261015">
-  <link rel="stylesheet" href="/static/onboarding.css?v=credential-layout-4">
+  <link rel="stylesheet" href="/static/onboarding.css?v=c5ed93f2054e">
   <link rel="stylesheet" href="/static/select-ui.css?v=theme-select-20261012">
-  <link rel="stylesheet" href="/static/reading-polish.css?v=044b8cb7e8f2">
+  <link rel="stylesheet" href="/static/reading-polish.css?v=ed890b0113b1">
   <link rel="stylesheet" href="/static/dialog-polish.css?v=compose-separators-20261013">
   <link rel="stylesheet" href="/static/glass-material.css?v=2">
   <link rel="stylesheet" href="/static/motion.css?v=3">
@@ -44,7 +44,8 @@
   <link rel="stylesheet" href="/static/dashboard-polish.css?v=4">
   <link rel="stylesheet" href="/static/digest-polish.css?v=1">
   <link rel="stylesheet" href="/static/experience-polish.css?v=5390e83178fa">
-  <link rel="stylesheet" href="/static/attachment-icons.css?v=4caffaee6197">
+  <link rel="stylesheet" href="/static/assistant-documents.css?v=5043802da432">
+  <link rel="stylesheet" href="/static/attachment-icons.css?v=e93d3f45c0dc">
   <link rel="stylesheet" href="/static/page-polish.css?v=i18n-20261010">
   <link rel="stylesheet" href="/static/macos-window.css?v=758439776e9b">
   <link rel="stylesheet" href="/static/windows-window.css?v=3">
@@ -64,7 +65,7 @@
   <link rel="stylesheet" href="/static/mail-import.css?v=d35a0659875f">
   <link rel="stylesheet" href="/static/maintenance-layout.css?v=palette-surfaces-5">
   <link rel="stylesheet" href="/static/model-service.css?v=415aca8dfbf5">
-  <link rel="stylesheet" href="/static/help-center.css?v=2">
+  <link rel="stylesheet" href="/static/help-center.css?v=c9d6ab680857">
   <link rel="stylesheet" href="/static/reward-themes.css?v=4db3b59d0ef7">
   <link rel="stylesheet" href="/static/control-theme.css?v=eeb0efe7c591">
   <link rel="stylesheet" href="/static/date-time-picker.css?v=boundaries-20261013">
@@ -72,7 +73,7 @@
   <link rel="stylesheet" href="/static/companion-colors.css?v=theme-materials-20261021">
   <link rel="stylesheet" href="/static/companion-center.css?v=c3b045bbcd50">
   <link rel="stylesheet" href="/static/brand.css?v=glass-green-baowu-1">
-  <link rel="stylesheet" href="/static/settings-polish.css?v=d01b4731ef84">
+  <link rel="stylesheet" href="/static/settings-polish.css?v=6b8cabf513b0">
   <link rel="stylesheet" href="/static/home-dialog-polish.css?v=28359c254fe3">
   <link rel="stylesheet" href="/static/command-palette.css?v=8c960b147483">
   <link rel="stylesheet" href="/static/assistant-divider.css?v=c4c909118f79">
@@ -352,7 +353,7 @@
 
       <section class="system-panel hidden" data-system-panel="guide" aria-labelledby="guide-title">
         <div class="help-navigation">
-        <div class="settings-page-intro"><div><h3 id="guide-title" data-i18n="guide.intro">使用帮助</h3><p data-i18n="guide.introHint">从连接邮箱到日常办公，按当前需要找到下一步。</p></div><div class="guide-intro-actions"><span data-i18n="guide.topics">14 个功能主题</span></div></div>
+        <div class="settings-page-intro"><div><h3 id="guide-title" data-i18n="guide.intro">使用帮助</h3><p data-i18n="guide.introHint">从连接邮箱到日常办公，按当前需要找到下一步。</p></div><div class="guide-intro-actions"><span data-i18n="guide.topics">17 个功能主题</span></div></div>
         <div class="help-toolbar"><div class="help-search"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg><input id="guide-search" type="search" autocomplete="off" aria-label="搜索使用帮助" data-i18n-aria="guide.search.label" placeholder="搜索功能或问题，如定时发送、附件、微信…" data-i18n-placeholder="guide.search.placeholder"><button type="button" id="guide-clear" hidden data-i18n="guide.search.clear">清空</button></div><div class="help-categories" role="group" aria-label="帮助分类" data-i18n-aria="guide.filter.label">
 <button type="button" data-help-filter="all" aria-pressed="true" data-i18n="guide.filter.all">全部</button>
 <button type="button" data-help-filter="mail" aria-pressed="false" data-i18n="guide.filter.mail">收发与阅读</button>
@@ -362,11 +363,12 @@
 <button type="button" data-help-filter="data" aria-pressed="false" data-i18n="guide.filter.data">数据</button>
 </div><div class="help-filter-status"><span id="guide-results" role="status" aria-live="polite" aria-atomic="true"></span><button type="button" class="help-reset" data-help-reset hidden data-i18n="guide.filter.reset">重置筛选</button></div></div>
         </div>
-        <section class="help-start" aria-labelledby="help-start-title"><div class="help-section-head"><div><h4 id="help-start-title" data-i18n="guide.start.title">第一次使用？先完成这三步</h4><p data-i18n="guide.start.hint">邮箱与 AI 服务分别配置，可以先使用邮箱。</p></div></div><ol class="help-start-steps">
-<li><span class="help-step-number" aria-hidden="true">01</span><div><h5 data-i18n="guide.start.1.title">连接邮箱</h5><p data-i18n="guide.start.1.copy">添加账号，确认邮件同步状态。</p><button type="button" data-help-settings="account"><span data-i18n="guide.start.1.action">设置邮箱</span><span aria-hidden="true"> →</span></button></div></li>
-<li><span class="help-step-number" aria-hidden="true">02</span><div><h5 data-i18n="guide.start.2.title">连接 AI</h5><p data-i18n="guide.start.2.copy">测试并保存模型，启用小邮能力。</p><button type="button" data-help-settings="ai"><span data-i18n="guide.start.2.action">配置 AI</span><span aria-hidden="true"> →</span></button></div></li>
-<li><span class="help-step-number" aria-hidden="true">03</span><div><h5 data-i18n="guide.start.3.title">阅读第一封邮件</h5><p data-i18n="guide.start.3.copy">核对来源、正文和风险提示。</p><button type="button" data-help-action="mail"><span data-i18n="guide.start.3.action">返回邮件列表</span><span aria-hidden="true"> →</span></button></div></li>
+        <section class="help-start" aria-labelledby="help-start-title"><div class="help-section-head"><div><h4 id="help-start-title" data-i18n="learn.startTitle">按你的节奏，开始使用</h4><p data-i18n="learn.startHint">先连接邮箱、阅读邮件，再按需要启用小邮。进度会自动保存。</p></div><span id="guide-progress" class="help-progress" role="status" aria-live="polite"></span></div><ol class="help-start-steps">
+<li data-learn-step="mail"><span class="help-step-number" aria-hidden="true">01</span><div><h5 data-i18n="guide.start.1.title">连接邮箱</h5><p data-i18n="guide.start.1.copy">添加账号，确认邮件同步状态。</p><button type="button" data-help-settings="account"><span data-i18n="guide.start.1.action">设置邮箱</span><span aria-hidden="true"> →</span></button></div></li>
+<li data-learn-step="read"><span class="help-step-number" aria-hidden="true">02</span><div><h5 data-i18n="learn.readTitle">读一封邮件</h5><p data-i18n="learn.readCopy">打开正文，查看来源、风险提示与附件。</p><button type="button" data-help-action="read"><span data-i18n="learn.readAction">去阅读邮件</span><span aria-hidden="true"> →</span></button></div></li>
+<li data-learn-step="ai"><span class="help-step-number" aria-hidden="true">03</span><div><h5 data-i18n="learn.aiTitle">试试小邮 · 可选</h5><p data-i18n="learn.aiCopy">连接并验证模型后，选一封邮件提问；收到回答即完成体验。</p><button type="button" id="guide-try-ai" data-help-action="assistant"><span data-i18n="learn.openAssistant">打开小邮</span><span aria-hidden="true"> →</span></button></div></li>
 </ol></section>
+        <details class="help-discover"><summary><span data-i18n="learn.discoverTitle">用好这些新能力</span></summary><p data-i18n="learn.discoverHint">按任务查看操作方法，无需重新走一遍首次引导。</p><div><button type="button" data-help-topic="files"><span data-i18n="learn.discoverFiles">整封邮件与附件对话</span><span aria-hidden="true"> ↗</span></button><button type="button" data-help-topic="assistant"><span data-i18n="learn.discoverModel">切换模型与读取方式</span><span aria-hidden="true"> ↗</span></button><button type="button" data-help-topic="outbox"><span data-i18n="learn.discoverSend">草稿、定时发送与跟进</span><span aria-hidden="true"> ↗</span></button><button type="button" data-help-topic="import"><span data-i18n="learn.discoverData">导入历史邮件</span><span aria-hidden="true"> ↗</span></button><button type="button" data-help-topic="memory"><span data-i18n="learn.discoverMemory">让小邮记住工作习惯</span><span aria-hidden="true"> ↗</span></button><button type="button" data-help-topic="personal"><span data-i18n="learn.discoverPersonal">调整主题与小邮外观</span><span aria-hidden="true"> ↗</span></button></div></details>
         <section class="help-feature-section" aria-labelledby="help-feature-title"><div class="help-section-head"><div><h4 id="help-feature-title" data-i18n="guide.features">功能指南</h4><p data-i18n="guide.featuresHint">点击主题查看步骤，一次专注一个功能。</p></div></div><div class="help-topic-grid">
 <article class="help-topic" data-help-entry data-help-category="mail"><details name="help-topics"><summary><span class="help-topic-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M3 5h14v11H3zM3 6l7 5 7-5"/></svg></span><span class="help-topic-copy"><h5 data-i18n="guide.topic.mailbox.title">邮箱账号与同步</h5><span data-i18n="guide.topic.mailbox.desc">连接多个邮箱，按账号查看邮件和同步状态。</span></span><svg class="help-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6"/></svg></summary><div class="help-topic-body"><p class="help-location"><span data-i18n="guide.location">入口</span><span aria-hidden="true"> · </span><span data-i18n="guide.topic.mailbox.location">设置 → 邮箱账号；顶部同步按钮</span></p><ol>
 <li data-i18n="guide.topic.mailbox.step1">使用客户端授权码连接邮箱；Google、Microsoft 也可从官方登录入口授权。连接前核对收发服务器与账号。</li>
@@ -382,6 +384,7 @@
 <li data-i18n="guide.topic.reading.step1">邮件逐封阅读；历史引用和签名折叠时，点击展开原文即可查看完整内容。摘要需要可用的 AI 服务。</li>
 <li data-i18n="guide.topic.reading.step2">阅读区的往来入口可查找当前邮箱与对方的已同步收发记录；联系人列表中的往来次数也可打开记录。</li>
 <li data-i18n="guide.topic.reading.step3">点击记录跳转阅读；勾选后可批量移入垃圾箱。我的收藏是本机标记，与服务器星标分别管理。</li>
+<li data-i18n="learn.composeStep">从草稿箱继续编辑未发送的邮件；已发送邮件可再次编辑为新邮件；已删除中可恢复或永久删除。先确认账号和文件夹，最终发送或永久删除前核对内容。</li>
 </ol><button type="button" class="help-entry-action" data-help-action="mail"><span data-i18n="guide.topic.reading.action">返回邮件列表</span><span aria-hidden="true"> →</span></button><button type="button" class="help-collapse" data-help-collapse data-i18n="guide.collapse">收起步骤</button></div></details></article>
 <article class="help-topic" data-help-entry data-help-category="work"><details name="help-topics"><summary><span class="help-topic-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M5 3h12v14H5zM2 6h3M2 10h3M2 14h3M11 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM8 14c0-3 6-3 6 0"/></svg></span><span class="help-topic-copy"><h5 data-i18n="guide.topic.contacts.title">联系人与标签</h5><span data-i18n="guide.topic.contacts.desc">导入资料、核对更新，用标签和部门筛选联系人。</span></span><svg class="help-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6"/></svg></summary><div class="help-topic-body"><p class="help-location"><span data-i18n="guide.location">入口</span><span aria-hidden="true"> · </span><span data-i18n="guide.topic.contacts.location">顶部 → 联系人</span></p><ol>
 <li data-i18n="guide.topic.contacts.step1">搜索姓名、拼音、邮箱、公司或标签；按个人标签、导入标签、公司和部门组合筛选，多个标签可选匹配任一或全部。</li>
@@ -398,7 +401,7 @@
 <li data-i18n="guide.topic.compose.step2">小邮帮写可参考选定邮件；选中文字后可局部润色，先预览再应用，并可撤销。发送前核对收件人、日期、金额和附件。</li>
 <li data-i18n="guide.topic.compose.step3">超出普通附件限额的文件可在配置腾讯云 COS 后转为分享链接；附件中心的已分享文件可查看到期时间并重新生成链接。</li>
 </ol><button type="button" class="help-entry-action" data-help-action="mail"><span data-i18n="guide.topic.compose.action">返回邮箱写信</span><span aria-hidden="true"> →</span></button><button type="button" class="help-collapse" data-help-collapse data-i18n="guide.collapse">收起步骤</button></div></details></article>
-<article class="help-topic" data-help-entry data-help-category="work"><details name="help-topics"><summary><span class="help-topic-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M3 12v5h14v-5M10 13V3M6 7l4-4 4 4"/></svg></span><span class="help-topic-copy"><h5 data-i18n="guide.topic.outbox.title">定时发送与发信跟进</h5><span data-i18n="guide.topic.outbox.desc">查看发送阶段，调整尚未开始的定时任务。</span></span><svg class="help-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6"/></svg></summary><div class="help-topic-body"><p class="help-location"><span data-i18n="guide.location">入口</span><span aria-hidden="true"> · </span><span data-i18n="guide.topic.outbox.location">写信底部 → 发送安排；顶部 → 发件箱</span></p><ol>
+<article data-guide-topic="outbox" class="help-topic" data-help-entry data-help-category="work"><details name="help-topics"><summary><span class="help-topic-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M3 12v5h14v-5M10 13V3M6 7l4-4 4 4"/></svg></span><span class="help-topic-copy"><h5 data-i18n="guide.topic.outbox.title">定时发送与发信跟进</h5><span data-i18n="guide.topic.outbox.desc">查看发送阶段，调整尚未开始的定时任务。</span></span><svg class="help-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6"/></svg></summary><div class="help-topic-body"><p class="help-location"><span data-i18n="guide.location">入口</span><span aria-hidden="true"> · </span><span data-i18n="guide.topic.outbox.location">写信底部 → 发送安排；顶部 → 发件箱</span></p><ol>
 <li data-i18n="guide.topic.outbox.step1">发送安排可设置发送时间及未回复提醒，安排随草稿保存；点击发送后才会加入发件队列。</li>
 <li data-i18n="guide.topic.outbox.step2">发件箱中可核对任务状态，对尚未开始的定时任务编辑邮件、调整时间或取消。编辑后需重新确认发送。</li>
 <li data-i18n="guide.topic.outbox.step3">定时发送依赖电脑开机、联网和 MailAI 运行。发送结果需要核对时，先查看已发送邮件或网页邮箱，不要直接重复发送。</li>
@@ -413,9 +416,12 @@
 <li data-i18n="guide.topic.brief.step2">小邮的工作简报可按执行或决策视角查看今天先做、等待反馈和待你确认的线索，不覆盖聊天记录。</li>
 <li data-i18n="guide.topic.brief.step3">从简报回到原邮件核对，再添加或调整待办。未同步邮件、自动识别的线索或未记录的回复不能代表实际进展。</li>
 </ol><button type="button" class="help-entry-action" data-help-action="digest"><span data-i18n="guide.topic.brief.action">打开今日日报</span><span aria-hidden="true"> →</span></button><button type="button" class="help-collapse" data-help-collapse data-i18n="guide.collapse">收起步骤</button></div></details></article>
-<article class="help-topic" data-help-entry data-help-category="ai"><details name="help-topics"><summary><span class="help-topic-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M3 4h14v11h-6l-4 3v-3H3zM7 8h.01M13 8h.01M7 11h6"/></svg></span><span class="help-topic-copy"><h5 data-i18n="guide.topic.assistant.title">AI 服务与小邮助手</h5><span data-i18n="guide.topic.assistant.desc">配置模型，选择邮件或附件作为本次参考。</span></span><svg class="help-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6"/></svg></summary><div class="help-topic-body"><p class="help-location"><span data-i18n="guide.location">入口</span><span aria-hidden="true"> · </span><span data-i18n="guide.topic.assistant.location">设置 → AI 服务；右下角 → 小邮</span></p><ol>
-<li data-i18n="guide.topic.assistant.step1">AI 服务中选择服务商，填写 API 地址、模型名称和 API Key，点击「验证并保存」即可启用；页头可查看本机记录的模型用量。</li>
-<li data-i18n="guide.topic.assistant.step2">在小邮中选择参考邮件，提问总结重点、整理待办或准备回复。可选择附件先预览再分析，读取范围与不支持格式会有提示。</li>
+<article class="help-topic" data-guide-topic="files" data-help-entry data-help-category="ai"><details name="help-topics"><summary><span class="help-topic-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M4 2h8l4 4v12H4zM12 2v5h4M7 11h6M7 14h4"/></svg></span><span class="help-topic-copy"><h5 data-i18n="learn.fileTitle">与小邮讨论整封邮件</h5><span data-i18n="learn.fileDesc">正文与附件自动纳入参考，直接提问并连续追问。</span></span><svg class="help-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6"/></svg></summary><div class="help-topic-body"><p class="help-location"><span data-i18n="learn.fileLocation">邮件 → 问小邮；附件中心 → 文件旁的小邮入口</span></p><ol><li data-i18n="learn.file1">在邮件里点击「问小邮」，默认参考当前正文和附件，无需先挑选文件。输入框上方可查看材料清单并排除附件；打开对话或查看清单不调用模型，发送问题才开始读取。</li><li data-i18n="learn.file2">同一邮件可以连续追问，恢复历史时保留讨论对象与排除项。浏览另一封邮件不会悄悄替换当前讨论；从明确的切换入口开始新邮件。只讨论单个文件时，从附件中心加入对话。</li><li data-i18n="learn.file3">PDF 按当前模型设置读取：纯文字模型读取文字；开启并验证图片识别后可逐页读图；原文件直传仅适用于支持 PDF 的接口。切换服务商后请核对读取方式并验证。</li><li data-i18n="learn.file4">整封邮件每轮最多读取 12 个附件、单个 10 MB、合计 20 MB，PDF 合计 100 页、文字 30 万字符；指定文件模式最多 3 个。超限、失败与不支持的材料会标明。Office 图表和排版不保证完整，可转 PDF，重要结论请对照原件。</li></ol><button type="button" class="help-entry-action" data-help-action="attachments"><span data-i18n="learn.fileAction">去附件中心选择文件</span><span aria-hidden="true"> →</span></button><button type="button" class="help-collapse" data-help-collapse data-i18n="guide.collapse">收起步骤</button></div></details></article>
+<article class="help-topic" data-guide-topic="memory" data-help-entry data-help-category="ai"><details name="help-topics"><summary><span class="help-topic-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M3 4h14v12H3zM6 8h8M6 12h5"/></svg></span><span class="help-topic-copy"><h5 data-i18n="learn.memoryTitle">事项背景、写作偏好与记忆</h5><span data-i18n="learn.memoryDesc">区分当前邮件背景、临时要求和长期习惯，随时查看与修改。</span></span><svg class="help-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6"/></svg></summary><div class="help-topic-body"><p class="help-location"><span data-i18n="learn.memoryLocation">邮件 → 问小邮；设置 → 小邮 → 沟通与记忆</span></p><ol><li data-i18n="learn.memory1">在邮件里告诉小邮你的想法与职责，明确要求保存时，背景记在当前邮件下；“这次正式一点”只用于当前沟通，“以后回信简短一点”属于当前邮箱的长期写作要求。</li><li data-i18n="learn.memory2">在设置 → 小邮查看适用邮箱、记忆摘要及原话来源，可修改、删除或关闭长期记忆。空闲整理对话会使用已配置的 AI；可以单独关闭自动整理。</li><li data-i18n="learn.memory3">删除聊天与清除记忆分别管理。清除对话记忆后，明确写作要求、邮件事项背景和聊天记录仍保留；写作要求可单独清空。准备回复后先核对内容与附件，再确认发送。</li></ol><button type="button" class="help-entry-action" data-help-settings="xiaoyou"><span data-i18n="learn.memoryAction">管理小邮记忆</span><span aria-hidden="true"> →</span></button><button type="button" class="help-collapse" data-help-collapse data-i18n="guide.collapse">收起步骤</button></div></details></article>
+<article class="help-topic" data-guide-topic="personal" data-help-entry data-help-category="ai"><details name="help-topics"><summary><span class="help-topic-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M3 4h14v12H3zM6 8h8M6 12h5"/></svg></span><span class="help-topic-copy"><h5 data-i18n="learn.personalTitle">主题、阅读布局与小邮空间</h5><span data-i18n="learn.personalDesc">调整明暗、字号与布局，再按喜好设置陪伴和装扮。</span></span><svg class="help-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6"/></svg></summary><div class="help-topic-body"><p class="help-location"><span data-i18n="learn.personalLocation">设置 → 常用设置／小邮；小邮 → 小邮空间</span></p><ol><li data-i18n="learn.personal1">常用设置可选浅色、暗色或跟随系统，调整字号、列表密度、头像与通知；拖动三栏边界或调整小邮停靠布局，偏好会保存在当前设备。</li><li data-i18n="learn.personal2">在设置 → 小邮打开小邮空间，查看成长、装扮、礼物与主题。已拥有的直接穿戴，未拥有的先试穿并核对邮票花费，再确认兑换；穿戴可以撤销。</li><li data-i18n="learn.personal3">领取礼物先验证预览，再免费领取，不会自动改穿戴。成长与装扮由本机所有邮箱共享；小邮对话记忆则按邮箱区分。陪伴动效、声音等可按个人习惯调整。</li></ol><button type="button" class="help-entry-action" data-help-settings="preferences"><span data-i18n="learn.personalAction">调整阅读与外观</span><span aria-hidden="true"> →</span></button><button type="button" class="help-collapse" data-help-collapse data-i18n="guide.collapse">收起步骤</button></div></details></article>
+<article data-guide-topic="assistant" class="help-topic" data-help-entry data-help-category="ai"><details name="help-topics"><summary><span class="help-topic-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M3 4h14v11h-6l-4 3v-3H3zM7 8h.01M13 8h.01M7 11h6"/></svg></span><span class="help-topic-copy"><h5 data-i18n="guide.topic.assistant.title">AI 服务与小邮助手</h5><span data-i18n="guide.topic.assistant.desc">配置模型，选择邮件或附件作为本次参考。</span></span><svg class="help-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6"/></svg></summary><div class="help-topic-body"><p class="help-location"><span data-i18n="guide.location">入口</span><span aria-hidden="true"> · </span><span data-i18n="guide.topic.assistant.location">设置 → AI 服务；右下角 → 小邮</span></p><ol>
+<li data-i18n="learn.modelStep">AI 服务中填写服务地址、模型名称与 API Key，可分别保存企业内网与第三方服务商配置；切换后核对当前模型并验证保存。PDF 读取方式随服务商保存；原文件直传会用合成 PDF 验证接口能力。</li>
+<li data-i18n="learn.assistantStep">从邮件的“问小邮”直接讨论正文与附件；材料会随这封邮件保留，可在输入框上方查看或排除文件。AI 摘要可独立展开阅读，继续讨论时使用“问小邮”。附件中心可分析单个文件。</li>
 <li data-i18n="guide.topic.assistant.step3">支持的表格、文档或表单可请求填写并准备回复；先核对字段与生成文件。小邮准备的草稿仍需人工检查并确认发送。</li>
 </ol><button type="button" class="help-entry-action" data-help-settings="ai"><span data-i18n="guide.topic.assistant.action">配置 AI 服务</span><span aria-hidden="true"> →</span></button><button type="button" class="help-collapse" data-help-collapse data-i18n="guide.collapse">收起步骤</button></div></details></article>
 <article class="help-topic" data-help-entry data-help-category="ai"><details name="help-topics"><summary><span class="help-topic-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M6 2h8v16H6zM9 15h2M8 5h4"/></svg></span><span class="help-topic-copy"><h5 data-i18n="guide.topic.phone.title">手机聊天控制邮件</h5><span data-i18n="guide.topic.phone.desc">连接本人微信或钉钉，先预览回复再确认。</span></span><svg class="help-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6"/></svg></summary><div class="help-topic-body"><p class="help-location"><span data-i18n="guide.location">入口</span><span aria-hidden="true"> · </span><span data-i18n="guide.topic.phone.location">设置 → 手机控制</span></p><ol>
@@ -428,7 +434,7 @@
 <li data-i18n="guide.topic.security.step2">阅读邮件时展开风险提示核对身份、链接和附件证据，使用反馈标记误报、漏报或确认结果。</li>
 <li data-i18n="guide.topic.security.step3">安全看板查看趋势与处置记录；规则中心调整启停、权重和阈值。白名单会减少常规误报，但严重风险仍可能提醒。</li>
 </ol><button type="button" class="help-entry-action" data-help-action="rules"><span data-i18n="guide.topic.security.action">打开规则中心</span><span aria-hidden="true"> →</span></button><button type="button" class="help-collapse" data-help-collapse data-i18n="guide.collapse">收起步骤</button></div></details></article>
-<article class="help-topic" data-help-entry data-help-category="data"><details name="help-topics"><summary><span class="help-topic-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M3 11v6h14v-6M10 2v11M6 9l4 4 4-4"/></svg></span><span class="help-topic-copy"><h5 data-i18n="guide.topic.import.title">导入 Foxmail 旧邮件</h5><span data-i18n="guide.topic.import.desc">扫描去重后导入，历史邮件保留在本地归档。</span></span><svg class="help-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6"/></svg></summary><div class="help-topic-body"><p class="help-location"><span data-i18n="guide.location">入口</span><span aria-hidden="true"> · </span><span data-i18n="guide.topic.import.location">设置 → 数据与维护 → 从 Foxmail 导入</span></p><ol>
+<article data-guide-topic="import" class="help-topic" data-help-entry data-help-category="data"><details name="help-topics"><summary><span class="help-topic-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M3 11v6h14v-6M10 2v11M6 9l4 4 4-4"/></svg></span><span class="help-topic-copy"><h5 data-i18n="guide.topic.import.title">导入 Foxmail 旧邮件</h5><span data-i18n="guide.topic.import.desc">扫描去重后导入，历史邮件保留在本地归档。</span></span><svg class="help-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6"/></svg></summary><div class="help-topic-body"><p class="help-location"><span data-i18n="guide.location">入口</span><span aria-hidden="true"> · </span><span data-i18n="guide.topic.import.location">设置 → 数据与维护 → 从 Foxmail 导入</span></p><ol>
 <li data-i18n="guide.topic.import.step1">先在原客户端导出完整 EML、MBOX 或邮件目录，再核对 MailAI 中的目标邮箱并选择文件。</li>
 <li data-i18n="guide.topic.import.step2">先扫描并去重，查看新增、重复和问题文件，再点击导入缺少的邮件；不会覆盖原客户端邮件，也不会上传服务器。</li>
 <li data-i18n="guide.topic.import.step3">完成后从目标邮箱的本地归档阅读。暂停、重启或失败后，可从最近导入记录继续；问题文件可重新导出并重试。</li>
@@ -441,7 +447,8 @@
 </div></section>
         <div id="guide-empty" class="help-empty" hidden role="status"><strong data-i18n="guide.empty.title">没有找到相关帮助</strong><p data-i18n="guide.empty.copy">换一个关键词试试，或返回全部主题。</p><button type="button" data-help-reset data-i18n="guide.empty.action">查看全部帮助</button></div>
         <section class="help-faq-section" aria-labelledby="help-faq-title"><div class="help-section-head"><h4 id="help-faq-title" data-i18n="guide.faq.title">常见问题</h4></div><div class="help-faq-list">
-<details class="help-faq" data-help-entry data-help-category="ai"><summary><span data-i18n="guide.faq.ai-unavailable.title">小邮没有回答或模型连接失败？</span><svg class="help-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6"/></svg></summary><div><p data-i18n="guide.faq.ai-unavailable.copy">在 AI 服务中核对服务商、API 地址、模型名称和 Key，再点击测试连接；仍失败时到数据与维护运行诊断，按失败项查看建议。模型故障不影响阅读已同步邮件。</p><button type="button" class="help-entry-action" data-help-settings="ai"><span data-i18n="guide.faq.ai-unavailable.action">检查 AI 服务</span><span aria-hidden="true"> →</span></button></div></details>
+<details class="help-faq" data-help-entry data-help-category="ai"><summary><span data-i18n="learn.fileFAQ">为什么附件分析没有读到图表或扫描内容？</span><svg class="help-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6"/></svg></summary><div><p data-i18n="learn.fileAnswer">先查看会话文件详情中的读取方式与覆盖范围。仅文字模式无法看到扫描页和图表；可在 AI 服务开启并验证图片识别，或使用已验证支持 PDF 的原文件直传接口。附件中心的本地内容搜索与小邮模型分析使用不同读取路径，搜索不到不代表模型也无法阅读。</p><button type="button" class="help-entry-action" data-help-settings="ai"><span data-i18n="guide.topic.assistant.action">配置 AI 服务</span></button></div></details>
+<details class="help-faq" data-help-entry data-help-category="ai"><summary><span data-i18n="guide.faq.ai-unavailable.title">小邮没有回答或模型连接失败？</span><svg class="help-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6"/></svg></summary><div><p data-i18n="learn.connectionHelp">在 AI 服务中核对服务商、API 地址、模型名称和 API Key，再点击「验证并保存」。附件读取失败时，还需核对 PDF 读取方式与图片识别能力。仍失败可到数据与维护运行诊断；模型故障不影响阅读已同步邮件。</p><button type="button" class="help-entry-action" data-help-settings="ai"><span data-i18n="guide.faq.ai-unavailable.action">检查 AI 服务</span><span aria-hidden="true"> →</span></button></div></details>
 <details class="help-faq" data-help-entry data-help-category="mail"><summary><span data-i18n="guide.faq.missing-mail.title">为什么搜不到邮件或附件？</span><svg class="help-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6"/></svg></summary><div><p data-i18n="guide.faq.missing-mail.copy">先检查搜索的账号、文件夹、日期和筛选条件，再核对同步状态。邮件搜索只覆盖已同步内容；Foxmail 历史需先导入。附件内容搜索不包含扫描图片，较长文件可能只读取部分文字。</p><button type="button" class="help-entry-action" data-help-settings="account"><span data-i18n="guide.faq.missing-mail.action">检查邮箱账号</span><span aria-hidden="true"> →</span></button></div></details>
 <details class="help-faq" data-help-entry data-help-category="work"><summary><span data-i18n="guide.faq.uncertain-send.title">发送失败，能直接重新发送吗？</span><svg class="help-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6"/></svg></summary><div><p data-i18n="guide.faq.uncertain-send.copy">先在任务与发件箱核对阶段。若提示结果需要核对，请先查看已发送邮件或网页邮箱，确认是否送达再操作，避免重复发信；尚未开始的定时任务可调整或取消。</p><button type="button" class="help-entry-action" data-help-settings="maintenance"><span data-i18n="guide.faq.uncertain-send.action">运行诊断</span><span aria-hidden="true"> →</span></button></div></details>
 <details class="help-faq" data-help-entry data-help-category="data"><summary><span data-i18n="guide.faq.privacy.title">邮件和附件会发送到哪里？</span><svg class="help-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6"/></svg></summary><div><p data-i18n="guide.faq.privacy.copy">邮件与界面偏好保存在本机。启用云端 AI 后，自动分析及小邮功能会按任务发送所需内容到所选模型服务；大附件分享和手机控制分别经过存储服务与聊天平台。可在关于与隐私查看说明，并按需要使用本地模型。</p><button type="button" class="help-entry-action" data-help-settings="about"><span data-i18n="guide.faq.privacy.action">查看隐私说明</span><span aria-hidden="true"> →</span></button></div></details>
@@ -507,11 +514,7 @@
             <a class="action-btn action-secondary" href="https://github.com/langjiahui/MailAI" target="_blank" rel="noopener noreferrer"><span data-i18n="about.projectHome">项目主页</span><svg class="about-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3h7v7m0-7L11 13M10 3H6a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3v-4"/></svg></a>
             <button id="btn-share-app" type="button" class="action-btn action-secondary"><span data-i18n="about.share">分享 MailAI</span><svg class="about-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m9 10 6-4M9 14l6 4"/></svg></button>
           </div>
-            <details id="app-release-summary" class="app-release-summary hidden">
-              <summary><small data-i18n="about.releaseNotesLabel">版本说明</small><strong id="app-release-summary-title" data-i18n="about.releaseTitle">本版本更新</strong><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg></summary>
-              <p id="app-release-summary-notes"></p>
-            </details>
-            <p class="app-update-policy" data-i18n="about.updatePolicy">应用会定期检查新版本；发现更新时先征得你的确认，再下载并启动对应设备的安装程序。</p>
+
         </div>
         <div class="author-hero">
           <svg class="author-logo-filters" width="0" height="0" aria-hidden="true" focusable="false">
@@ -533,6 +536,11 @@
           <p class="author-motto" data-i18n="about.motto">让邮件处理更从容，让 AI 的使用更透明。</p>
           <div class="author-links"><a class="action-btn action-secondary" href="https://github.com/langjiahui/MailAI/issues" target="_blank" rel="noopener noreferrer"><svg class="about-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m3 7 9 6 9-6"/></svg><span data-i18n="about.contactAuthor">联系作者</span></a><button type="button" class="author-guide" data-about-target="guide" data-i18n="about.guide">使用帮助</button></div>
         </div>
+            <details id="app-release-summary" class="app-release-summary hidden">
+              <summary><small data-i18n="about.releaseNotesLabel">版本说明</small><strong id="app-release-summary-title" data-i18n="about.releaseTitle">本版本更新</strong><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg></summary>
+              <p id="app-release-summary-notes"></p>
+            </details>
+            <p class="app-update-policy" data-i18n="about.updatePolicy">应用会定期检查新版本；发现更新时先征得你的确认，再下载并启动对应设备的安装程序。</p>
         </div>
         <section class="about-data" aria-labelledby="about-data-title">
         <div class="author-section-heading"><h3 id="about-data-title" data-i18n="about.dataHeading">关于你的数据</h3><p data-i18n="about.dataHint">本地保存，不代表所有处理都离线。这里说明数据保存在哪里，以及什么时候会联网。</p></div>
@@ -566,6 +574,7 @@
                 <h4 id="model-capabilities-title" data-i18n="model.capabilitiesTitle">模型与能力</h4>
                 <div class="form-row"><label><span data-i18n="model.textModel">文本模型</span><input id="model-name" required placeholder="填写服务商提供的模型 ID" data-i18n-placeholder="model.textModelPh"></label><label><span data-i18n="model.multimodalModel">多模态模型</span><input id="multimodal-model" placeholder="留空则复用文本模型" data-i18n-placeholder="model.multimodalModelPh"></label></div>
                 <label class="check-row"><input id="model-multimodal-enabled" type="checkbox"><span data-i18n="model.multimodalEnable">启用图片识别（测试连接会实际验证模型能否接收图片；使用相同 API 地址与 Key）</span></label>
+                <label><span data-i18n="files.readingMode">PDF 读取方式</span><select id="model-document-input"><option value="auto" data-i18n="files.auto">按模型能力读取</option><option value="text" data-i18n="files.textOption">仅文字（不含图表和扫描内容）</option><option value="native_pdf" data-i18n="files.nativeOption">原文件直传（接口须支持 PDF）</option></select></label><p class="form-hint" data-i18n="files.modelHint">随当前服务商配置保存。按模型能力读取时，开启图片识别的模型逐页读图，否则读取文字。原文件直传会用合成 PDF 测试接口能力。</p>
                 <p class="form-hint" data-i18n="model.probeHint">验证会发送简短文本请求；启用图片识别时还会发送一张不含业务信息的极小测试图，可能产生少量 API 费用。</p>
                 <details><summary data-i18n="model.extraSummary">扩展请求参数</summary><label><span data-i18n="model.extraLabel">JSON 对象</span><textarea id="model-extra-params" rows="3" spellcheck="false" placeholder='{}'></textarea></label><p class="form-hint" data-i18n="model.extraHint">通常无需填写。可按厂商文档设置参数，例如 {"enable_thinking":false}；值为 null 可省略对应参数。切换厂商后会清空。</p></details>
               </section>
@@ -1231,7 +1240,7 @@
         <div class="onboarding-brand"><span data-brand-mark aria-hidden="true"></span><span>MailAI</span></div>
         <div class="onboarding-step" data-i18n="ob.step">开始使用 · 连接邮箱</div>
         <h2 id="onboarding-title" data-i18n="ob.title">欢迎使用 MailAI</h2>
-        <p data-i18n="ob.intro">让小邮帮你读邮件、理待办、留意风险来信。连接邮箱后即可使用邮件功能；小邮对话和 AI 分析需要另行配置模型服务，可稍后设置。</p>
+        <p data-i18n="learn.welcome">先连接邮箱并阅读邮件，再按需要连接 AI。邮箱授权码与模型 API Key 分别配置；可以随时跳过，并从使用帮助继续。</p>
         <form id="onboarding-form">
           <label><span data-i18n="ob.emailLabel">邮箱账号</span><input id="onboarding-user" type="email" autocomplete="username" required placeholder="name@example.com"></label>
           <label><span data-i18n="ob.passwordLabel">客户端授权密码</span><input id="onboarding-password" type="password" autocomplete="current-password" required placeholder="请输入邮箱授权码" data-i18n-placeholder="ob.passwordPh"></label>
@@ -1284,7 +1293,7 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=16140b6ae746"></script>
+  <script src="/static/bundle.js?v=c7ca89a586b1"></script>
   <script src="/static/settings-scroll.js?v=5"></script>
   <script type="module" src="/static/author-logo.js?v=5"></script>
 </body>
