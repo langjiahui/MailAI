@@ -59,3 +59,20 @@ html[data-theme="dark"] .onboarding-manage { color:#d7e1db; background:#19211c; 
 html[data-theme="dark"] .onboarding-step { color:#72b995; }
 html[data-theme="dark"] .start-actions .btn-ghost { color:#cbd6d0 !important; background:#19211c !important; border-color:rgba(180,210,194,.12) !important; }
 @media(max-width:600px) { .start-model-panel { padding:18px; } .start-card { left:12px; bottom:12px; max-width:calc(calc(100vw / var(--fz,1)) - 24px); } }
+
+/* First-use guidance follows the same semantic palette as the workspace. */
+html[data-theme] body :is(.start-card,.start-model-panel,.start-assistant,.onboarding-card) {
+  color:var(--desk-ink,var(--text)); background:var(--desk-surface,var(--surface));
+  border-color:transparent; box-shadow:0 14px 48px color-mix(in srgb,var(--desk-ink) 12%,transparent);
+}
+html[data-theme] body :is(.start-card,.start-model-panel,.start-assistant,.onboarding-card) :is(h2,h3,label) { color:var(--desk-ink); }
+html[data-theme] body :is(.start-card,.start-model-panel,.start-assistant,.onboarding-card) :is(p,small,.onboarding-step) { color:var(--desk-muted); }
+html[data-theme] body .start-actions .action-primary { background:var(--desk-accent)!important; color:var(--reward-on-accent,var(--desk-surface))!important; }
+html[data-theme] body .start-actions .btn-ghost { border-color:transparent!important; background:var(--desk-muted-surface)!important; color:var(--desk-ink)!important; }
+html[data-theme] body :is(.start-model,.onboarding-overlay) { background:color-mix(in srgb,var(--desk-ink) 30%,transparent); }
+html[data-theme] body .start-highlight { outline:2px solid color-mix(in srgb,var(--desk-accent) 45%,transparent); outline-offset:-2px; }
+html[data-theme] body :is(.start-model-panel,.start-card) :focus-visible { outline-color:var(--desk-accent); }
+.start-guide-link { display:inline-flex; margin-top:12px; padding:4px 0; min-height:28px; border:0; background:transparent; color:var(--desk-accent); font:inherit; font-size:12px; cursor:pointer; }
+.start-guide-link:hover { text-decoration:underline; text-underline-offset:3px; }
+@media(pointer:coarse) { .start-actions button,.start-guide-link { min-height:44px; } }
+@media(prefers-reduced-transparency:reduce) { .start-card,.start-model { backdrop-filter:none; } }

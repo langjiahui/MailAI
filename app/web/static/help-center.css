@@ -75,10 +75,9 @@
   #system-view [data-system-panel="guide"] .help-start { padding:18px; }
 }
 
-/* Search stays in place while filtering and while reading a longer topic. */
+/* Let the directory scroll together instead of masking topics below a tall header. */
 #system-view [data-system-panel="guide"] .help-toolbar { margin:0; padding:12px 0; gap:9px; border-bottom:1px solid var(--desk-line); }
-#system-view [data-system-panel="guide"] .help-navigation { position:sticky; top:0; z-index:3; margin-bottom:22px; background:#f3f7f4; }
-html[data-theme="dark"] #system-view [data-system-panel="guide"] .help-navigation { background:#181e1b; }
+#system-view [data-system-panel="guide"] .help-navigation { position:static; margin-bottom:24px; padding-bottom:0; background:transparent; }
 #system-view [data-system-panel="guide"] .help-navigation .settings-page-intro { margin-bottom:8px; }
 #system-view [data-system-panel="guide"] .help-start { margin-bottom:24px; }
 html[data-theme] #system-view [data-system-panel="guide"] .help-search input { border:0!important; border-radius:0; box-shadow:none!important; outline:none!important; background:transparent!important; }
@@ -102,7 +101,7 @@ html[data-theme] #system-view [data-system-panel="guide"] .help-search input { b
 #system-view [data-system-panel="guide"] .help-topic details[open] .help-entry-action { grid-column:2; grid-row:2; justify-self:start; }
 #system-view [data-system-panel="guide"] .help-collapse { grid-column:1; grid-row:2; justify-self:start; min-height:32px; padding:5px 10px; border:1px solid var(--desk-line); border-radius:7px; background:transparent; color:var(--desk-muted); font:inherit; font-size:11px; cursor:pointer; }
 #system-view [data-system-panel="guide"] .help-collapse:hover { background:var(--desk-hover); color:var(--desk-ink); }
-#system-view [data-system-panel="guide"] :is(.help-topic summary,.help-faq summary) { scroll-margin-top:180px; }
+#system-view [data-system-panel="guide"] :is(.help-topic summary,.help-faq summary) { scroll-margin-top:16px; }
 @container (max-width:640px) {
   #system-view [data-system-panel="guide"] .help-toolbar { padding:8px 0; }
   #system-view [data-system-panel="guide"] .help-categories { gap:4px; }
@@ -134,3 +133,67 @@ html[data-theme] #system-view [data-system-panel="guide"] .help-search input { b
   #system-view [data-system-panel="guide"] .help-topic-grid:has(details[open]) .help-topic:not(:has(details[open])) .help-topic-copy { display:block; }
   #system-view [data-system-panel="guide"] .help-topic-grid:has(details[open]) .help-topic:not(:has(details[open])) .help-topic-copy>span { margin-top:5px; }
 }
+
+/* A quiet task directory, using the same semantic palette in every theme. */
+#system-view [data-system-panel="guide"] { --help-card-surface:var(--desk-muted-surface); }
+html[data-theme="dark"] #system-view [data-system-panel="guide"] { --help-card-surface:color-mix(in srgb,var(--desk-muted-surface) 92%,var(--desk-ink)); }
+html[data-theme] body #system-view [data-system-panel="guide"] :is(.help-start,.help-topic,.help-faq-list,.help-shortcuts) { border:0; box-shadow:none; }
+#system-view [data-system-panel="guide"] .help-toolbar { border-bottom:0; padding-bottom:0; }
+html[data-theme] body #system-view [data-system-panel="guide"] :is(.help-start,.help-search) { background:var(--help-card-surface)!important; }
+#system-view [data-system-panel="guide"] .help-search { border-color:transparent; border-radius:12px; }
+#system-view [data-system-panel="guide"] .help-search:focus-within { border-color:var(--desk-accent); }
+#system-view [data-system-panel="guide"] .help-categories { gap:4px; }
+html[data-theme] body #system-view [data-system-panel="guide"] .help-categories button[aria-pressed="true"] { background:var(--desk-selected)!important; color:var(--desk-accent)!important; }
+#system-view [data-system-panel="guide"] .help-filter-status { min-height:20px; }
+#system-view [data-system-panel="guide"] .help-section-head { margin-bottom:14px; }
+#system-view [data-system-panel="guide"] .help-topic-grid { gap:10px; align-items:stretch; }
+html[data-theme] body #system-view [data-system-panel="guide"] .help-topic { background:var(--help-card-surface)!important; border-radius:12px; }
+#system-view [data-system-panel="guide"] .help-topic summary { min-height:94px; padding:16px; align-items:center; }
+#system-view [data-system-panel="guide"] .help-topic .help-chevron { margin-top:0; }
+#system-view [data-system-panel="guide"] .help-topic-copy>span { margin-top:4px; line-height:1.6; }
+#system-view [data-system-panel="guide"] .help-topic:has(>details[open]) { box-shadow:inset 3px 0 var(--desk-accent); }
+#system-view [data-system-panel="guide"] .help-topic-grid:has(details[open]) .help-topic:not(:has(details[open])) summary { min-height:0; }
+html[data-theme] body #system-view [data-system-panel="guide"] .help-faq-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; gap:8px; background:transparent; overflow:visible; }
+html[data-theme] body #system-view [data-system-panel="guide"] .help-faq { border:0; border-radius:10px; background:var(--help-card-surface)!important; overflow:hidden; }
+#system-view [data-system-panel="guide"] .help-faq summary { min-height:52px; padding:14px 16px; }
+#system-view [data-system-panel="guide"] .help-faq>div { padding:0 16px 14px; }
+#system-view [data-system-panel="guide"] .help-shortcuts { display:block; margin-top:28px; padding:0; border-radius:0; background:transparent; }
+#system-view [data-system-panel="guide"] .help-shortcuts>div { margin-bottom:12px; }
+#system-view [data-system-panel="guide"] .help-shortcuts dl { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+#system-view [data-system-panel="guide"] .help-shortcuts dl>div { display:flex; align-items:center; justify-content:space-between; gap:12px; min-width:0; min-height:54px; padding:10px 14px; border-radius:10px; background:var(--help-card-surface); }
+#system-view [data-system-panel="guide"] .help-shortcuts dt { order:1; display:flex; align-items:center; gap:4px; flex:none; white-space:nowrap; }
+#system-view [data-system-panel="guide"] .help-shortcuts dd { margin:0; color:var(--desk-ink); font-size:12px; line-height:1.5; overflow-wrap:anywhere; }
+#system-view [data-system-panel="guide"] .help-shortcuts kbd { min-width:22px; padding:3px 5px; text-align:center; border:0; border-radius:5px; background:var(--desk-surface); box-shadow:0 1px 2px var(--desk-line); font-size:11px; line-height:1.5; }
+#system-view [data-system-panel="guide"] .help-footer { margin-top:26px; padding-top:20px; border-top:0; }
+@container (max-width:1100px) {
+  #system-view [data-system-panel="guide"] .help-shortcuts dl { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@container (max-width:640px) {
+  html[data-theme] body #system-view [data-system-panel="guide"] .help-faq-list { grid-template-columns:minmax(0,1fr); }
+  #system-view [data-system-panel="guide"] .help-topic summary { min-height:84px; }
+  #system-view [data-system-panel="guide"] .help-footer>div:last-child { margin-right:0; }
+}
+@container (max-width:480px) {
+  #system-view [data-system-panel="guide"] .help-shortcuts dl { grid-template-columns:minmax(0,1fr); }
+}
+
+/* A live checklist, followed by optional task-based discovery. */
+#system-view [data-system-panel="guide"] .help-progress { color:var(--desk-accent); font-size:11px; white-space:nowrap; }
+#system-view [data-system-panel="guide"] .help-step-status { display:inline-block; margin-top:4px; font-size:11px; line-height:1.5; color:var(--desk-muted); }
+#system-view [data-system-panel="guide"] [data-learn-step][data-complete="true"] :is(.help-step-number,.help-step-status) { color:var(--desk-accent); }
+#system-view [data-system-panel="guide"] [data-learn-step][data-complete="true"] .help-step-number { font-size:0; }
+#system-view [data-system-panel="guide"] [data-learn-step][data-complete="true"] .help-step-number::after { content:'✓'; font-size:16px; }
+#system-view [data-system-panel="guide"] .help-start-steps li+li { border:0; }
+#system-view [data-system-panel="guide"] .help-discover { margin:0 0 24px; color:var(--desk-ink); }
+#system-view [data-system-panel="guide"] .help-discover summary { width:fit-content; min-height:32px; font-size:13px; font-weight:600; cursor:pointer; }
+#system-view [data-system-panel="guide"] .help-discover>p { margin:6px 0 12px; color:var(--desk-muted); font-size:12px; line-height:1.7; }
+#system-view [data-system-panel="guide"] .help-discover>div { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+#system-view [data-system-panel="guide"] .help-discover button { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 14px; min-height:48px; border:0; border-radius:10px; background:var(--help-card-surface); color:var(--desk-accent); font:inherit; font-size:12px; text-align:left; cursor:pointer; }
+#system-view [data-system-panel="guide"] .help-discover button:hover { background:var(--desk-selected); }
+@container(max-width:1000px) { #system-view [data-system-panel="guide"] .help-discover>div { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@container(max-width:480px) { #system-view [data-system-panel="guide"] .help-discover>div { grid-template-columns:minmax(0,1fr); } }
+#system-view [data-system-panel="guide"] .help-start-steps li { align-items:stretch; }
+#system-view [data-system-panel="guide"] .help-start-steps .help-step-number { align-self:start; }
+#system-view [data-system-panel="guide"] .help-start-steps li>div { display:flex; flex-direction:column; align-items:flex-start; min-width:0; }
+#system-view [data-system-panel="guide"] .help-start-steps li>div>p { flex:1; }
+#system-view [data-system-panel="guide"] .help-start-steps li>div>button { margin-top:auto; }

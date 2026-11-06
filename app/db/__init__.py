@@ -158,3 +158,7 @@ from .digests import (
     list_digests,
     get_digest,
 )
+
+from .assistant import set_assistant_attachment_refs, get_assistant_attachment_refs
+
+from .assistant import set_assistant_mail_context, get_assistant_mail_context

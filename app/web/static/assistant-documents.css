@@ -1,0 +1,94 @@
+/* Quiet file context and an optional extraction inspector. */
+html[data-theme] body #assistant-attachment-picker { width:min(760px,calc(100vw - 32px)); max-height:calc(92dvh / var(--fz,1)); padding:22px; border:0!important; border-radius:18px; background:var(--desk-surface)!important; color:var(--desk-ink)!important; box-shadow:0 20px 70px #0003; }
+#assistant-attachment-picker[open] { display:flex; flex-direction:column; gap:14px; }
+html[data-theme] body #assistant-attachment-picker>header { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:0; border:0; background:transparent; }
+#assistant-attachment-picker h3 { margin:5px 0 0; font-size:20px; }
+#assistant-attachment-picker>header small,#attachment-picker-source { color:var(--desk-muted)!important; font-size:12px; margin:0; overflow-wrap:anywhere; }
+html[data-theme] body #assistant-attachment-picker :is(button,textarea) { font:inherit; border:1px solid transparent; border-radius:9px; box-shadow:none; color:var(--desk-ink)!important; background:var(--desk-muted-surface)!important; }
+#assistant-attachment-picker>header button { width:32px; height:32px; flex:none; }
+html[data-theme] body #assistant-attachment-picker .attachment-picker-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; min-height:0; max-height:40vh; overflow:auto; }
+#assistant-attachment-picker #attachment-picker-list { display:grid; gap:6px; min-width:0; }
+html[data-theme] body #assistant-attachment-picker .attachment-picker-item { display:flex; align-items:center; gap:10px; padding:10px; border:0; border-radius:10px; background:var(--desk-muted-surface)!important; color:var(--desk-ink)!important; }
+#assistant-attachment-picker .attachment-picker-item>span:last-child { min-width:0; }
+#assistant-attachment-picker .attachment-picker-item b { display:block; overflow-wrap:anywhere; font-size:12px; }
+html[data-theme] body #assistant-attachment-picker .attachment-picker-item small { display:block; margin-top:3px; color:var(--desk-muted)!important; font-size:11px; }
+#assistant-attachment-picker input { flex:none; accent-color:var(--desk-accent); }
+#assistant-attachment-picker #attachment-picker-preview:empty { display:none; }
+#assistant-attachment-picker #attachment-picker-preview { padding:0; min-height:0; overflow:visible; background:transparent!important; }
+.attachment-reading-card { display:flex; align-items:center; gap:12px; padding:8px 10px; }
+.attachment-reading-card h4 { font-size:12px; margin:0; overflow-wrap:anywhere; }
+.attachment-reading-card p { margin:4px 0; font-size:12px; }
+html[data-theme] body #assistant-attachment-picker :is(.attachment-reading-card p,.attachment-reading-card small,summary,#attachment-picker-status,footer small) { color:var(--desk-muted)!important; font-size:11px; }
+#assistant-attachment-picker details { margin-top:8px; }
+#assistant-attachment-picker summary { cursor:pointer; padding:6px 10px; }
+html[data-theme] body #assistant-attachment-picker pre { white-space:pre-wrap; overflow-wrap:anywhere; max-height:180px; overflow:auto; margin:6px 0 0; padding:12px; border:0; border-radius:10px; background:var(--desk-muted-surface)!important; color:var(--desk-ink)!important; font:inherit; font-size:12px; line-height:1.65; }
+.attachment-question { flex:none; }
+.attachment-question label { display:block; margin-bottom:7px; font-size:12px; }
+#assistant-attachment-picker textarea { box-sizing:border-box; width:100%; min-height:64px; padding:10px; resize:vertical; }
+.file-question-prompts { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+#assistant-attachment-picker .file-question-prompts button { padding:6px 9px; font-size:11px; }
+html[data-theme] body #assistant-attachment-picker footer { display:flex; align-items:center; gap:12px; justify-content:space-between; padding:0; border:0; background:transparent; }
+#assistant-attachment-picker footer small { flex:1; line-height:1.6; }
+html[data-theme] body #assistant-attachment-picker #attachment-picker-add { padding:10px 14px; background:var(--desk-selected)!important; color:var(--desk-accent)!important; white-space:nowrap; }
+#assistant-attachment-picker #attachment-picker-add:disabled { opacity:.45; }
+/* File context shares the existing scope row; details float above the composer. */
+html[data-theme] body #assistant-panel .assistant-context-row #assistant-attachment-stage {
+  display:flex; align-items:center; gap:2px; position:relative; flex:0 1 50%; min-width:0;
+  max-height:none; overflow:visible; margin:0 0 0 auto; padding:0; border:0!important; background:transparent!important;
+}
+#assistant-attachment-stage[hidden] { display:none!important; }
+#assistant-panel .assistant-context-row .assistant-scope-picker { flex:1; min-width:0; max-width:none; }
+#assistant-panel .assistant-context-row .assistant-scope-picker summary { overflow:hidden; }
+html[data-theme] body #assistant-attachment-stage button { border:0; background:transparent!important; color:var(--desk-muted)!important; box-shadow:none; border-radius:6px; font:inherit; cursor:pointer; }
+html[data-theme] body #assistant-attachment-stage .assistant-file-chip {
+  display:inline-flex; align-items:center; gap:4px; width:auto; height:28px; max-width:100%; min-width:0; padding:3px 5px; font-size:10px;
+}
+#assistant-attachment-stage .assistant-file-chip span { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:10px; }
+#assistant-attachment-stage .assistant-file-chip svg { width:14px; height:14px; flex:none; fill:none; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
+#assistant-attachment-stage .assistant-file-chip .file-chip-chevron { width:10px; height:10px; }
+html[data-theme] body #assistant-attachment-stage .assistant-file-add { width:24px; height:28px; flex:none; padding:0; font-size:18px; line-height:1; }
+html[data-theme] body #assistant-attachment-stage :is(.assistant-file-chip,.assistant-file-add):hover { background:var(--desk-hover)!important; color:var(--desk-ink)!important; }
+html[data-theme] body #assistant-attachment-stage .assistant-file-popover {
+  display:block; box-sizing:border-box; position:absolute; z-index:60; right:0; bottom:calc(100% + 8px);
+  min-width:0; max-width:none; overflow:auto; padding:12px; border:1px solid var(--desk-line); border-radius:12px;
+  background:var(--desk-surface)!important; color:var(--desk-ink)!important; box-shadow:0 8px 28px #0002;
+}
+#assistant-attachment-stage .assistant-file-popover[hidden] { display:none!important; }
+#assistant-attachment-stage .assistant-file-popover-title { display:block; margin-bottom:8px; font-size:11px; }
+#assistant-attachment-stage .assistant-file-card { display:flex; align-items:center; gap:8px; padding:6px 0; min-width:0; }
+#assistant-attachment-stage .assistant-file-card>span:not(.attachment-type-icon) { flex:1; min-width:0; }
+#assistant-attachment-stage .assistant-file-card b { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:11px; }
+html[data-theme] body #assistant-attachment-stage :is(.assistant-file-card small,.assistant-file-hint) { display:block; margin-top:3px; color:var(--desk-muted)!important; font-size:10px; line-height:1.5; }
+#assistant-attachment-stage .assistant-file-card button { width:28px; height:28px; flex:none; }
+html[data-theme] body #assistant-attachment-stage [data-attachment-remove] { font-size:18px; line-height:1; }
+#assistant-attachment-stage .attachment-preview-action svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.6; }
+#assistant-attachment-stage .unavailable { opacity:.7; }
+html[data-theme] body :is(#assistant-attachment-stage,#assistant-attachment-picker) :is(button,textarea,summary):focus-visible { outline:2px solid var(--desk-accent)!important; outline-offset:2px; }
+@media(max-width:520px) { html[data-theme] body #assistant-attachment-picker { padding:16px; } #assistant-attachment-picker footer { flex-wrap:wrap; } #assistant-attachment-picker footer small { flex-basis:100%; } #assistant-attachment-picker .attachment-picker-grid { max-height:30vh; } }
+
+/* Four file actions fit two short rows in cards and one row in the dense list. */
+#attachment-center:not([data-file-view=list]) .attachment-card-side { display:grid; grid-template-columns:repeat(2,32px); width:70px; gap:6px; align-content:start; }
+#attachment-center:not([data-file-view=list]) .attachment-card-side .attachment-risk { grid-column:1/-1; text-align:center; }
+html[data-theme] body #attachment-center:not([data-file-view=list]) .attachment-download-action { margin:0; }
+
+html[data-theme] body dialog#assistant-attachment-picker>header,
+html[data-theme] body dialog#assistant-attachment-picker>footer { background:transparent!important; border:0!important; box-shadow:none!important; }
+@media(pointer:coarse) { #assistant-attachment-picker>header button,#assistant-attachment-stage .assistant-file-card button { min-width:40px; min-height:40px; } html[data-theme] body #assistant-attachment-stage :is(.assistant-file-chip,.assistant-file-add) { min-height:36px; } }
+
+/* Whole mail shares the existing scope row; material details stay optional. */
+html[data-theme] body #assistant-mail-context { position:relative; display:flex; align-items:center; flex:0 1 auto; min-width:0; margin-left:auto; }
+#assistant-mail-context[hidden] { display:none!important; }
+html[data-theme] body #assistant-mail-context button { display:inline-flex; align-items:center; gap:4px; min-height:28px; padding:3px 5px; border:0; border-radius:6px; background:transparent; color:var(--desk-muted); font:inherit; font-size:11px; white-space:nowrap; cursor:pointer; }
+#assistant-mail-context button>svg { flex:none; width:12px; height:12px; fill:none; stroke:currentColor; stroke-width:1.5; }
+html[data-theme] body #assistant-mail-context button:hover { color:var(--desk-ink); background:var(--desk-hover); }
+html[data-theme] body #assistant-mail-context .assistant-mail-materials { position:absolute; z-index:60; bottom:calc(100% + 8px); right:0; box-sizing:border-box; overflow:auto; padding:14px; border:0; border-radius:12px; background:var(--desk-surface); color:var(--desk-ink); box-shadow:0 8px 28px #0002; }
+#assistant-mail-context .assistant-mail-materials[hidden] { display:none; }
+#assistant-mail-context .assistant-mail-materials>b { display:block; font-size:12px; line-height:1.6; overflow-wrap:anywhere; }
+#assistant-mail-context .assistant-mail-materials>small,#assistant-mail-context .assistant-mail-materials>p { display:block; color:var(--desk-muted); margin:6px 0 10px; font-size:11px; line-height:1.6; }
+#assistant-mail-context .assistant-mail-material { display:flex; align-items:flex-start; gap:9px; padding:7px 0; }
+#assistant-mail-context .assistant-mail-material input { flex:none; margin:3px 0 0; accent-color:var(--desk-accent); }
+#assistant-mail-context .assistant-mail-material span { min-width:0; }
+#assistant-mail-context .assistant-mail-material b { display:block; font-size:11px; line-height:1.6; overflow-wrap:anywhere; }
+#assistant-mail-context .assistant-mail-material small { display:block; color:var(--desk-muted); margin-top:3px; font-size:11px; line-height:1.5; overflow-wrap:anywhere; }
+html[data-theme] body #assistant-mail-context :is(button,input):focus-visible { outline:2px solid var(--desk-accent); outline-offset:2px; }
+@media(pointer:coarse) { html[data-theme] body #assistant-mail-context button { min-height:36px; } #assistant-mail-context .assistant-mail-material { min-height:44px; } }

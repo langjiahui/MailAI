@@ -11,11 +11,12 @@ const assert=require('node:assert/strict');
    const {key,value}=route.request().postDataJSON();preferences[key]=value;
    return route.fulfill({json:{ok:true}});
  });
- let logged=false, available=false, verified=false, valid=false, saved=0;
+ let logged=false, available=false, verified=false, valid=false, saved=0, emptyMail=true;
  // This scenario teaches the empty-mailbox path. Do not depend on a list
  // accidentally remaining unloaded after the synthetic account connects.
  await page.route('**/api/mailbox/list?*',async route=>{
    const response=await route.fetch(),data=await response.json();
+   if (!emptyMail) return route.fulfill({json:data});
    await route.fulfill({json:{...data,items:[],total:0,next:'',facets:{risk:{},categories:{},tags:{}},counts:{totals:{},local:{},all:0},domains:[]}});
  });
  await page.route('**/api/system/config',async route=>{
@@ -39,6 +40,14 @@ const assert=require('node:assert/strict');
  assert.equal(await page.locator('.start-card h3').textContent(),'尚未连接邮箱');
  logged=true;
  await page.evaluate(async()=>{await loadSystemConfig();mailOnboarding.connected(true)});
+ await page.locator('.start-card').waitFor({state:'visible'});
+ assert.equal(await page.locator('#start-model').isVisible(),false,'connecting mail must not force model setup before reading');
+ await page.locator('.start-guide-link').click();
+ await page.locator('[data-learn-step="mail"][data-complete="true"]').waitFor();
+ assert.equal(await page.locator('#guide-progress').innerText(),'已完成 1 / 3 项');
+ assert.equal(await page.locator('[data-learn-step="read"]').getAttribute('data-complete'),'false');
+ assert.equal(await page.locator('#guide-try-ai').getAttribute('data-help-action'),'model');
+ await page.locator('#guide-try-ai').click();
  await page.locator('#start-model-title').waitFor({state:'visible'});
  await page.evaluate(()=>{_systemConfig.model.saved_providers=['deepseek'];_systemConfig.model.profiles={deepseek:{base_url:'https://saved.test/v1',model:'saved-model',extra_params:{},verify_ssl:true}}});
  await page.locator('#model-provider').selectOption('deepseek');
@@ -78,6 +87,7 @@ const assert=require('node:assert/strict');
  await page.locator('#start-enable').click();
  await page.locator('.start-model').waitFor({state:'hidden'});assert.equal(saved,1);
  assert.equal(await page.locator('[data-system-panel="ai"] #model-config-form').count(),1);
+ await page.evaluate(()=>hideSystemView());
  await page.locator('.start-card .action-primary').click();
  await page.locator('.start-card .action-primary').click();
  assert.match(await page.locator('.start-card h3').textContent(),/2 \/ 3/);
@@ -86,10 +96,46 @@ const assert=require('node:assert/strict');
  await page.locator('.start-card .btn-ghost').click();
  await page.reload(); await page.waitForFunction(()=>!!window.mailOnboarding && !!_systemConfig);
  assert.equal(await page.locator('.start-card').isVisible(),false);
+ emptyMail=false;
+ await page.evaluate(async()=>{await window.mailaiMailboxStore.load({force:true});showSystemView('guide');});
+ await page.locator('[data-help-action="read"]').click();
+ await page.waitForFunction(()=>!!selectedEmailDetail);
+ await page.evaluate(()=>showSystemView('guide'));
+ assert.equal(await page.locator('#guide-progress').innerText(),'已完成 2 / 3 项');
+ assert.equal(await page.locator('#guide-try-ai').getAttribute('data-help-action'),'assistant');
+ await page.locator('.help-discover>summary').click();
+ await page.locator('[data-help-topic="files"]').click();
+ assert(await page.locator('[data-guide-topic="files"] details').getAttribute('open')!==null);
+ assert.match(await page.locator('[data-guide-topic="files"] ol').innerText(),/100 页/);
+ await page.locator('#guide-search').fill('扫描');
+ assert(await page.locator('.help-faq:not([hidden])').count()>0);
+ await page.locator('#guide-clear').click();
+ await page.evaluate(()=>mailOnboarding.answered());
+ assert.equal(await page.locator('#guide-progress').innerText(),'已完成 3 / 3 项');
+ await page.locator('.guide-replay-action').click();
+ await page.evaluate(()=>showSystemView('guide'));
+ // Replay may repeat the assistant experience, but must retain actual reading progress.
+ assert.equal(await page.locator('[data-learn-step="read"]').getAttribute('data-complete'),'true');
+ assert.equal(await page.locator('#guide-progress').innerText(),'已完成 3 / 3 项','replaying a tour must retain real usage progress');
+ await page.evaluate(()=>hideSystemView());
  available=true;verified=false;await page.evaluate(async()=>{await loadSystemConfig();openAssistant()});
  await page.locator('#start-assistant').waitFor({state:'visible'});
  assert.equal(await page.locator('#assistant-form').isVisible(),false);
+ // Upgrade keeps the old skip/completion flags; replay did not erase real use.
+ available=true;verified=true;
+ await page.evaluate(()=>localStorage.setItem('mailai.onboarding.v2',JSON.stringify({deferred:true,mailboxDone:true,aiDone:true,readDone:true})));
+ await page.reload(); await page.waitForFunction(()=>!!window.mailOnboarding && !!_systemConfig);
+ assert.equal(await page.locator('.start-card').isVisible(),false);
+ assert.equal(await page.locator('#start-model').isVisible(),false);
+ await page.evaluate(()=>showSystemView('guide'));
+ assert.equal(await page.locator('#guide-progress').innerText(),'已完成 3 / 3 项');
+ // A malformed preference must not prevent startup; retained history identifies return users.
+ await page.route(/\/api\/assistant\/conversations\?limit=10$/,r=>r.fulfill({json:[{id:1,message_count:2}]}));
+ await page.evaluate(()=>localStorage.setItem('mailai.onboarding.v2','7'));
+ await page.reload(); await page.waitForFunction(()=>window.mailOnboarding?.progress().ai);
+ assert.equal(await page.locator('#start-model').isVisible(),false);
+ assert.equal(await page.locator('.start-card').isVisible(),false);
  assert.deepEqual(errors,[]);
- console.log('PASS welcome, light/dark, skip, model failure without save, verified enable, form restoration, tutorial persistence, assistant gating');
+ console.log('PASS welcome, light/dark, skip, model failure without save, verified enable, form restoration, tutorial persistence, actual learning progress, discovery, upgrade and malformed-state recovery, assistant gating');
  } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1)});

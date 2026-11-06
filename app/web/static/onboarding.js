@@ -3,7 +3,12 @@
   const key = 'mailai.onboarding.v2';
   let state = {};
   try { state = JSON.parse(localStorage.getItem(key) || '{}') || {}; } catch (_) {}
-  const save = () => { try { localStorage.setItem(key, JSON.stringify(state)); } catch (_) {} };
+  if (typeof state !== 'object' || Array.isArray(state)) state = {};
+  if (state.aiDone) state.assistantUsed = true;
+  const copy = key => mailaiT(key) || MAILAI_UI_COPY[key]?.[0] || '';
+  const progress = () => ({mail:!!_systemConfig?.mail?.logged_in, read:!!state.readDone, ai:!!state.assistantUsed, model:ready()});
+  const notify = () => document.dispatchEvent(new CustomEvent('mailai:learning-progress'));
+  const save = () => { try { localStorage.setItem(key, JSON.stringify(state)); } catch (_) {} notify(); };
   const el = id => document.getElementById(id);
   const ready = () => !!(_systemConfig?.model?.available && _systemConfig?.model?.verified);
   let mailboxRunning = false, aiRunning = false, busy = false, modelHome, priorFocus;
@@ -15,7 +20,7 @@
   (document.getElementById('app') || document.body).append(card);
   const modal = document.createElement('div');
   modal.id = 'start-model'; modal.className = 'start-model hidden';
-  modal.innerHTML = `<section class="start-model-panel" role="dialog" aria-modal="true" aria-labelledby="start-model-title"><span class="onboarding-step"><span data-i18n="ui.8b17d932e60d">设置小邮 · 可稍后完成</span></span><h2 id="start-model-title"><span data-i18n="ui.aa3a10fddb9f">为小邮连接 AI 模型</span></h2><p><span data-i18n="ui.91b6c88a8772">邮箱和模型分别配置。启用后，小邮可以总结邮件、整理待办、辅助写信。</span></p><details><summary><span data-i18n="ui.6e48e41be7f4">没有 API Key？</span></summary><p><span data-i18n="ui.b04994f584b9">API Key 是模型服务的访问密钥，与邮箱授权码不同。请向企业管理员获取服务地址、模型名称和 API Key，或从所选模型服务商获取。</span></p></details><div id="start-model-form"></div><p><span data-i18n="ui.5c9947093207">使用 AI 时，相关邮件内容会发送至配置的模型服务。验证连接会发送简短请求，可能产生服务费用。</span></p><div id="start-model-result" class="start-model-result" data-state="idle" role="status" aria-live="polite" aria-atomic="true" tabindex="-1"><span class="start-model-result-icon" aria-hidden="true">i</span><div><strong id="start-model-result-title"></strong><p id="start-model-result-detail"></p><p id="start-model-result-help" hidden></p></div></div><div class="start-actions"><button id="start-enable" class="action-btn action-primary"><span data-i18n="ui.4e634e80bcff">验证并启用</span></button><button id="start-model-later" class="btn-ghost"><span data-i18n="ui.17c7b357d97f">稍后设置，进入邮箱</span></button></div></section>`;
+  modal.innerHTML = `<section class="start-model-panel" role="dialog" aria-modal="true" aria-labelledby="start-model-title"><span class="onboarding-step"><span data-i18n="ui.8b17d932e60d">设置小邮 · 可稍后完成</span></span><h2 id="start-model-title"><span data-i18n="ui.aa3a10fddb9f">为小邮连接 AI 模型</span></h2><p><span data-i18n="ui.91b6c88a8772">邮箱和模型分别配置。启用后，小邮可以总结邮件、整理待办、辅助写信。</span></p><details><summary><span data-i18n="ui.6e48e41be7f4">没有 API Key？</span></summary><p><span data-i18n="ui.b04994f584b9">API Key 是模型服务的访问密钥，与邮箱授权码不同。请向企业管理员获取服务地址、模型名称和 API Key，或从所选模型服务商获取。</span></p></details><div id="start-model-form"></div><p><span data-i18n="learn.modelPrivacy">启用后，邮件自动分析、小邮问答和空闲记忆整理会按任务将所需内容发送至当前模型服务，可在设置中调整。验证连接会发送测试请求，可能产生服务费用。</span></p><div id="start-model-result" class="start-model-result" data-state="idle" role="status" aria-live="polite" aria-atomic="true" tabindex="-1"><span class="start-model-result-icon" aria-hidden="true">i</span><div><strong id="start-model-result-title"></strong><p id="start-model-result-detail"></p><p id="start-model-result-help" hidden></p></div></div><div class="start-actions"><button id="start-enable" class="action-btn action-primary"><span data-i18n="ui.4e634e80bcff">验证并启用</span></button><button id="start-model-later" class="btn-ghost"><span data-i18n="ui.17c7b357d97f">稍后设置，进入邮箱</span></button></div></section>`;
   document.body.append(modal);
 
   function modelResult(phase, message) {
@@ -51,7 +56,11 @@
     const button = document.createElement('button'); button.className = 'action-btn action-primary'; button.textContent = primary; button.onclick = () => action(button);
     const later = document.createElement('button'); later.className = 'btn-ghost'; later.textContent = secondary;
     later.onclick = () => { mailboxRunning = aiRunning = false; state.deferred = true; save(); hideCard(); };
-    actions.append(button, later); card.append(brand, h, p, actions); card.classList.remove('hidden');
+    actions.append(button, later);
+    const help = document.createElement('button'); help.type = 'button'; help.className = 'start-guide-link';
+    mailaiBindUI(help, 'textContent', () => copy('learn.library'));
+    help.onclick = () => { hideCard(); showSystemView('guide'); };
+    card.append(brand, h, p, actions, help); card.classList.remove('hidden');
   }
 
   function inviteMailbox() {
@@ -100,8 +109,8 @@
   function inviteAi() {
     if (!state.mailboxDone || state.aiDone || state.deferred || !ready()) return;
     el('assistant-orb')?.classList.add('start-highlight');
-    show(mailaiText('体验小邮'), mailaiText('打开一封邮件后，让小邮总结重点和待办。成功收到回答后即完成体验。'), mailaiText('总结当前邮件'), button => {
-      if (!selectedEmailDetail) return toast(mailaiText('请先打开一封邮件'), 'warn');
+    show(mailaiText('体验小邮'), copy('learn.aiInvite'), selectedEmailDetail ? mailaiText('总结当前邮件') : copy('learn.openAssistant'), button => {
+      if (!selectedEmailDetail) { openAssistant(); toast(copy('learn.noMailAI'), 'info'); return; }
       if (aiRunning || el('assistant-send')?.disabled) return toast(mailaiText('小邮正在处理当前请求，请稍候'), 'warn');
       aiRunning = true; button.disabled = true; mailaiBindUI(button, "textContent", () => (mailaiText('正在总结…')));
       openAssistant();
@@ -179,15 +188,15 @@
     if (state.browsed) el('onboarding-later').click();
   }
   async function connected(fresh) {
-    const first = !state.connected && fresh; state.connected = true;
+    state.connected = true;
     if (!fresh && !state.mailboxDone) state.mailboxDone = true;
     save(); refreshAssistant();
     // Reinstalling can reset WebView storage while retaining the mailbox DB.
     // Conversation history is stronger evidence than a local tutorial flag.
     if (!state.aiDone && ready() && await hasAssistantHistory()) {
-      state.aiDone = true; aiRunning = false; save(); hideCard();
+      state.aiDone = state.assistantUsed = true; aiRunning = false; save(); hideCard();
     }
-    if (first && !ready()) openModel(); else inviteMailbox();
+    inviteMailbox();
   }
   el('onboarding-later').onclick = () => {
     state.browsed = true; save(); el('onboarding-overlay').classList.add('hidden');
@@ -198,9 +207,12 @@
   replay.onclick = () => { state.mailboxDone = state.aiDone = state.deferred = false; state.mailboxStep = 0; save(); if (!_systemConfig?.mail?.logged_in) return el('onboarding-overlay').classList.remove('hidden'); hideSystemView(); mailboxRunning = true; mailboxStep(); };
   document.querySelector('[data-system-panel="guide"] .guide-intro-actions').append(replay);
   applyI18n(replay);
-  window.mailOnboarding = {openModel, refreshAssistant, disconnected, connected, configChanged: () => setTimeout(refreshAssistant, 0), answered: () => {
-    const guided = aiRunning; state.aiDone = true; aiRunning = false; save();
+  window.mailOnboarding = {openModel, refreshAssistant, disconnected, connected, progress, opened: () => {
+    if (!state.readDone) { state.readDone = true; save(); }
+  }, configChanged: () => setTimeout(() => { refreshAssistant(); notify(); }, 0), answered: () => {
+    const guided = aiRunning; state.aiDone = true; state.assistantUsed = true; aiRunning = false; save();
     if (state.mailboxDone) hideCard();
     if (guided) toast(mailaiText('准备好了，开始处理邮件吧'), 'success');
+    notify();
   }};
 })();

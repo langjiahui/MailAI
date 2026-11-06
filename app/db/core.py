@@ -305,6 +305,15 @@ CREATE TABLE IF NOT EXISTS assistant_conversations (
     created_at TEXT,
     updated_at TEXT
 );
+CREATE TABLE IF NOT EXISTS assistant_mail_context (
+    conversation_id INTEGER PRIMARY KEY REFERENCES assistant_conversations(id) ON DELETE CASCADE,
+    email_id INTEGER NOT NULL,
+    excluded TEXT NOT NULL DEFAULT '[]'
+);
+CREATE TABLE IF NOT EXISTS assistant_document_refs (
+    conversation_id INTEGER PRIMARY KEY REFERENCES assistant_conversations(id) ON DELETE CASCADE,
+    refs TEXT NOT NULL DEFAULT '[]'
+);
 CREATE TABLE IF NOT EXISTS assistant_messages (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     conversation_id INTEGER NOT NULL REFERENCES assistant_conversations(id) ON DELETE CASCADE,

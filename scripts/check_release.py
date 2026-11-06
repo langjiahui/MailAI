@@ -66,6 +66,8 @@ TESTS = (
     'test_ios_release.py',
     'test_document_preview.py', 'test_spreadsheet_preview.py', 'test_attachment_preview.py', 'test_inline_attachments.py', 'test_multimodal.py', 'test_server_folder_preference.py',
     'test_assistant_attachments.py',
+    'test_assistant_documents.py',
+    'test_assistant_mail_context.py',
     'test_assistant_images.py',
     'test_task_planner.py',
     'test_todo_grouping.py',

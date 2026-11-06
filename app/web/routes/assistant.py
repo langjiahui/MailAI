@@ -98,17 +98,29 @@ def api_assistant_alerts_seen(payload: dict | None = None):
     return {"ok": True, "seen_at": mail_assistant.mark_risk_alerts_seen((payload or {}).get('ids', []))}
 
 
+def _materials(payload, images, defer=False):
+    from ... import assistant_mail_context
+    try:
+        context = assistant_mail_context.resolve(payload)
+        skip_reading = bool(mail_assistant._direct_answer(payload.question))
+        return ([] if defer or skip_reading else assistant_mail_context.prepare(context, images), context) if context else (prepare_assistant_materials(payload, images), None)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
 @router.post("/api/assistant/ask")
 def api_assistant_ask(payload: AssistantRequest):
     from ... import assistant_vision, assistant_attachments, assistant_context
     payload, context = assistant_context.resolve(payload)
     images = prepare_assistant_images(payload)
-    materials = prepare_assistant_materials(payload, images)
+    materials, mail_context = _materials(payload, images)
     search_context = _search_context(payload)
     try:
         conversation_id = payload.conversation_id
         if not conversation_id or not db.assistant_conversation_exists(conversation_id):
             conversation_id = db.create_assistant_conversation(payload.question.strip()[:36] or "新对话")
+        db.set_assistant_attachment_refs(conversation_id, [r.model_dump() for r in payload.attachments])
+        db.set_assistant_mail_context(conversation_id, mail_context)
         assistant_context.remember_open_email(conversation_id, payload.open_email_id)
         db.add_assistant_message(conversation_id, "user", assistant_attachments.history_text(assistant_vision.history_text(payload.question, images),materials), images=images)
         db.set_assistant_alert_context(conversation_id, payload.email_ids if payload.alert_context else [])
@@ -121,7 +133,7 @@ def api_assistant_ask(payload: AssistantRequest):
             result['search'] = assistant_search.public(assistant_search.finish(run['id'],message_id))
         from ...companion_growth import safe_record
         safe_record('tool', key=f'assistant:{message_id}')
-        return {**result, "conversation_id": conversation_id}
+        return {**result, "conversation_id": conversation_id, "mail_context":mail_context}
     except ValueError as exc:
         raise HTTPException(400, str(exc))
     except Exception as exc:
@@ -134,11 +146,13 @@ def api_assistant_ask_stream(payload: AssistantRequest):
     from ... import assistant_vision, assistant_attachments, assistant_context
     payload, context = assistant_context.resolve(payload)
     images = prepare_assistant_images(payload)
-    materials = prepare_assistant_materials(payload, images)
+    materials, mail_context = _materials(payload, images, defer=True)
     search_context = _search_context(payload)
     conversation_id = payload.conversation_id
     if not conversation_id or not db.assistant_conversation_exists(conversation_id):
         conversation_id = db.create_assistant_conversation(payload.question.strip()[:36] or "新对话")
+    db.set_assistant_attachment_refs(conversation_id, [r.model_dump() for r in payload.attachments])
+    db.set_assistant_mail_context(conversation_id, mail_context)
     assistant_context.remember_open_email(conversation_id, payload.open_email_id)
     db.add_assistant_message(conversation_id, "user", assistant_attachments.history_text(assistant_vision.history_text(payload.question, images),materials), images=images)
     db.set_assistant_alert_context(conversation_id, payload.email_ids if payload.alert_context else [])
@@ -149,14 +163,22 @@ def api_assistant_ask_stream(payload: AssistantRequest):
         try:
             yield json.dumps({"type": "meta", "conversation_id": conversation_id}, ensure_ascii=False) + "\n"
             yield json.dumps({'type': 'scope', 'label': payload.scope_label or config.IMAP_USER}, ensure_ascii=False) + '\n'
+            if mail_context:
+                yield json.dumps({'type':'mail-context','context':mail_context}, ensure_ascii=False)+'\n'
             if context:
                 yield json.dumps({'type':'status', 'state':'understanding', **context,
                                   'message':'正在衔接邮件上下文…', 'message_en':'Connecting the mail context…'},ensure_ascii=False)+'\n'
-            for event, value in mail_assistant.ask_stream(payload.question, payload.history, payload.email_ids, **({'images': images} if images else {}), **({'materials':materials} if materials else {}), **({'search_mode':True} if payload.search_mode else {}), **({'search_context':search_context} if search_context else {})):
+            prepared = materials
+            if mail_context and not mail_assistant._direct_answer(payload.question):
+                from ... import assistant_mail_context
+                prepared = assistant_mail_context.prepare(mail_context, images)
+            for event, value in mail_assistant.ask_stream(payload.question, payload.history, payload.email_ids, **({'images': images} if images else {}), **({'materials':prepared} if prepared else {}), **({'search_mode':True} if payload.search_mode else {}), **({'search_context':search_context} if search_context else {})):
                 if event == 'search':
                     from ... import assistant_search
                     search_run = assistant_search.create(conversation_id,value)
                     yield json.dumps({'type':'search','search':assistant_search.public(search_run)},ensure_ascii=False)+'\n'
+                elif event == "materials":
+                    yield json.dumps({"type":"materials", "items":value}, ensure_ascii=False)+"\n"
                 elif event == "sources":
                     sources = value
                     yield json.dumps({"type": "sources", "sources": value}, ensure_ascii=False) + "\n"
@@ -250,7 +272,22 @@ def api_assistant_conversation(conversation_id: int):
     messages = db.get_assistant_messages(conversation_id)
     from ... import assistant_search
     assistant_search.restore(messages,conversation_id)
-    return {"id": conversation_id, "messages": messages, **db.assistant_alert_context(conversation_id, messages)}
+    from ... import assistant_documents
+    attachments = []
+    for ref in db.get_assistant_attachment_refs(conversation_id):
+        try:
+            attachments.append(assistant_documents.reference(**ref))
+        except (ValueError, TypeError, KeyError):
+            attachments.append({**ref, 'unavailable':True, 'name':'来源附件已不可用，请重新选择'})
+    from ... import assistant_mail_context
+    context = db.get_assistant_mail_context(conversation_id)
+    if context:
+        try:
+            context = assistant_mail_context.describe(context['email_id'], context['excluded'])
+        except ValueError:
+            context = {**context, 'unavailable':True, 'subject':'', 'items':[]}
+    return {"id": conversation_id, "messages": messages, 'attachments':attachments, 'mail_context':context,
+            **db.assistant_alert_context(conversation_id, messages)}
 
 
 @router.post('/api/assistant/search-runs/{run_id}/found')
@@ -280,3 +317,58 @@ def api_assistant_attachment_preview(email_id:int,index:int):
         item['text']=item['text'][:2200]
         return JSONResponse(item, headers={'Cache-Control':'no-store'})
     except ValueError as exc:raise HTTPException(400,str(exc))
+
+
+@router.get('/api/emails/{email_id}/assistant-attachments/{index}/reference')
+def api_assistant_attachment_reference(email_id:int, index:int):
+    from ... import assistant_documents
+    try:
+        return JSONResponse(assistant_documents.reference(email_id,index), headers={'Cache-Control':'no-store'})
+    except ValueError as exc:
+        raise HTTPException(400,str(exc))
+
+
+@router.put('/api/assistant/conversations/{conversation_id}/attachments')
+def api_assistant_attachment_refs(conversation_id:int, payload:dict):
+    from ... import assistant_documents
+    from ..schemas import AssistantAttachmentRef
+    if not db.assistant_conversation_exists(conversation_id):
+        raise HTTPException(404,'会话不存在')
+    try:
+        refs = payload.get('attachments')
+        if not isinstance(refs,list) or len(refs)>3:
+            raise ValueError('每次最多选择 3 个附件')
+        refs = [AssistantAttachmentRef.model_validate(ref).model_dump() for ref in refs]
+        for ref in refs:
+            assistant_documents.reference(**ref)
+        db.set_assistant_attachment_refs(conversation_id, refs)
+        return {'ok':True}
+    except (ValueError,TypeError) as exc:
+        raise HTTPException(400,'附件引用无效，请重新选择') from exc
+
+
+@router.get('/api/emails/{email_id}/assistant-context')
+def api_assistant_mail_context(email_id:int):
+    from ... import assistant_mail_context
+    try:
+        return JSONResponse(assistant_mail_context.describe(email_id), headers={'Cache-Control':'no-store'})
+    except ValueError as exc:
+        raise HTTPException(404,str(exc)) from exc
+
+
+@router.put('/api/assistant/conversations/{conversation_id}/mail-context')
+def api_assistant_mail_context_update(conversation_id:int, payload:dict):
+    from ... import assistant_mail_context
+    from ..schemas import AssistantMailContext
+    if not db.assistant_conversation_exists(conversation_id):
+        raise HTTPException(404,'会话不存在')
+    try:
+        chosen = AssistantMailContext.model_validate(payload)
+        context = assistant_mail_context.describe(chosen.email_id, chosen.excluded)
+        previous = db.get_assistant_mail_context(conversation_id)
+        if not previous or previous['email_id'] != chosen.email_id:
+            raise ValueError('会话邮件已变化，请重新打开邮件对话')
+        db.set_assistant_mail_context(conversation_id,context)
+        return {'ok':True}
+    except ValueError as exc:
+        raise HTTPException(400,str(exc)) from exc

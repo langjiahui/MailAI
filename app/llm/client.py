@@ -100,7 +100,7 @@ def chat_completion(messages: list[dict[str, Any]], *, response_format: dict | N
     result = None
     try:
         deadline = time.monotonic() + min(timeout or config.LLM_TIMEOUT, 300)
-        with urllib.request.urlopen(req, context=_ssl_context(verify_ssl), timeout=min(timeout or config.LLM_TIMEOUT, 300)) as resp:
+        with urllib.request.urlopen(req, context=(_ssl_context() if verify_ssl is None else _ssl_context(verify_ssl)), timeout=min(timeout or config.LLM_TIMEOUT, 300)) as resp:
             raw = b''.join(_response_chunks(resp, deadline)).decode("utf-8")
             try:
                 result = json.loads(raw)
@@ -144,11 +144,16 @@ def chat_completion(messages: list[dict[str, Any]], *, response_format: dict | N
 
 def chat_completion_stream(messages: list[dict[str, Any]], *, temperature: float = 0.2,
                            max_tokens: int | None = None, timeout: int | None = None,
-                           model: str | None = None, require_completion: bool = False):
+                           model: str | None = None, require_completion: bool = False,
+                           base_url: str | None = None, api_key: str | None = None,
+                           provider: str | None = None, verify_ssl: bool | None = None,
+                           extra_params: dict | None = None):
     """逐段产出 OpenAI 兼容 SSE 响应中的文本 delta。"""
-    if not available():
+    effective_key = config.LLM_API_KEY if api_key is None else api_key
+    if (api_key is None and not available()) or (api_key is not None and not effective_key):
         return
-    url = completion_url(config.LLM_BASE_URL)
+    effective_provider = provider or config.LLM_PROVIDER
+    url = completion_url(config.LLM_BASE_URL if base_url is None else base_url)
     body: dict[str, Any] = {
         "model": model or config.LLM_MODEL,
         "messages": messages,
@@ -159,14 +164,14 @@ def chat_completion_stream(messages: list[dict[str, Any]], *, temperature: float
         body["max_tokens"] = max_tokens
     # Unknown gateways retain their existing request contract. They can opt in
     # through extra_params; absent usage is explicitly recorded as unreported.
-    if config.LLM_PROVIDER in ('deepseek', 'kimi', 'kimi_code', 'ollama'):
+    if effective_provider in ('deepseek', 'kimi', 'kimi_code', 'ollama'):
         body['stream_options'] = {'include_usage': True}
-    body = adapt_body(body, config.LLM_PROVIDER, config.LLM_EXTRA_PARAMS)
-    usage_ctx = usage.context(config.LLM_PROVIDER, url, body['model'])
+    body = adapt_body(body, effective_provider, config.LLM_EXTRA_PARAMS if extra_params is None else extra_params)
+    usage_ctx = usage.context(effective_provider, url, body['model'])
     usage_response = None
     req = urllib.request.Request(
         url, data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
-        headers={"Authorization": f"Bearer {config.LLM_API_KEY}",
+        headers={"Authorization": f"Bearer {effective_key}",
                  "Content-Type": "application/json; charset=utf-8",
                  "Accept": "text/event-stream"}, method="POST",
     )
@@ -175,7 +180,7 @@ def chat_completion_stream(messages: list[dict[str, Any]], *, temperature: float
     visible = VisibleTextStream()
     try:
         deadline = time.monotonic() + min(timeout or config.LLM_TIMEOUT, 300)
-        with urllib.request.urlopen(req, context=_ssl_context(), timeout=min(timeout or config.LLM_TIMEOUT, 300)) as resp:
+        with urllib.request.urlopen(req, context=(_ssl_context() if verify_ssl is None else _ssl_context(verify_ssl)), timeout=min(timeout or config.LLM_TIMEOUT, 300)) as resp:
             for raw_line in _response_lines(resp, deadline):
                 line = raw_line.decode("utf-8", errors="ignore").strip()
                 if not line.startswith("data:"):

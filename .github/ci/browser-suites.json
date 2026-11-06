@@ -82,6 +82,24 @@
           }
         }
       ]
+    },
+    {
+      "fixtures": [
+        {
+          "port": 18795,
+          "env": {
+            "MAILAI_GROWTH_FIXTURE": "1"
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "tests/test_assistant_file_context_browser.cjs"
+        },
+        {
+          "file": "tests/test_whole_mail_conversation_browser.cjs"
+        }
+      ]
     }
   ],
   "search": [

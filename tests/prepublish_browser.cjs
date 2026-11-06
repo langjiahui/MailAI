@@ -15,7 +15,7 @@ const fs = require('node:fs');
   const count = n => page.waitForFunction(n => document.querySelectorAll('#email-list .email-item').length === n, n);
   const pass = text => {checks.push(text);console.log('PASS', text);};
   try {
-    await page.goto('http://127.0.0.1:18795/');
+    await page.goto(process.env.MAILAI_TEST_URL||'http://127.0.0.1:18795/');
     await count(24);
     const config = await page.evaluate(() => api('/api/system/config'));
     assert.ok(config.accounts.every(a => a.user.endsWith('@example.test')), 'Only the isolated fixture may be tested');
@@ -86,18 +86,23 @@ const fs = require('node:fs');
     await page.locator('#btn-close-system').click();
 
     await page.locator('#email-list .email-item[data-id="1"]').first().click();
-    await page.locator('[data-assistant-attachments]').click();
+    assert.equal(await page.locator('[data-assistant-attachments],[data-file-analyze]').count(),0);
+    await page.evaluate(()=>assistantAttachments.open(1));
     await page.locator('#attachment-picker-list input:not(:disabled)').first().check();
     await page.waitForFunction(() => !document.getElementById('attachment-picker-add').disabled);
+    await page.locator('#attachment-picker-preview summary').click();
+    await page.waitForFunction(()=>document.querySelector('#attachment-picker-preview pre')?.textContent.includes('项目组'));
     assert.ok((await page.locator('#attachment-picker-preview').innerText()).includes('项目组'));
     assert.equal(await page.locator('#attachment-picker-list input:disabled').count(),1);
     assert.equal(await page.locator('.attachment-picker-item', {hasText:'旧版资料.xls'}).locator('input').isEnabled(),true);
     await shot('attachment-preview');
+    await page.route('**/api/assistant/ask-stream',route=>route.fulfill({contentType:'application/x-ndjson',body:JSON.stringify({type:'meta',conversation_id:901})+'\n'+JSON.stringify({type:'delta',content:'项目交付安排已核对。'})+'\n'+JSON.stringify({type:'done'})+'\n'}));
     await page.locator('#attachment-picker-add').click();
     await page.locator('#assistant-attachment-stage').waitFor();
     await page.locator('#assistant-new').click();
     assert.equal(await page.locator('#assistant-attachment-stage').isVisible(),false);
     await page.locator('#assistant-close').click();
+    await page.unroute('**/api/assistant/ask-stream');
     pass('邮件附件本地提取、XLS 支持、危险旧格式禁选、加入对话及清除');
 
     await page.locator('#btn-compose').click();

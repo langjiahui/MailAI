@@ -596,5 +596,11 @@
   },
   {
     "file": "tests/test_model_service_browser.cjs"
+  },
+  {
+    "file": "tests/test_assistant_file_context_browser.cjs"
+  },
+  {
+    "file": "tests/test_whole_mail_conversation_browser.cjs"
   }
 ]

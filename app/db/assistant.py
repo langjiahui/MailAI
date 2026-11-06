@@ -115,3 +115,55 @@ def get_assistant_image(image_id: int, thumbnail=False):
 def assistant_conversation_exists(conversation_id: int) -> bool:
     with conn() as c:
         return c.execute("SELECT 1 FROM assistant_conversations WHERE id=?", (conversation_id,)).fetchone() is not None
+
+
+def set_assistant_attachment_refs(conversation_id, refs):
+    # References are account-local; callers validate digests before writing.
+    clean = [{key:r[key] for key in ('email_id','index','digest')} for r in refs]
+    with conn() as c:
+        c.execute('INSERT INTO assistant_document_refs(conversation_id,refs) VALUES(?,?) '
+                  'ON CONFLICT(conversation_id) DO UPDATE SET refs=excluded.refs',
+                  (conversation_id, json.dumps(clean)))
+
+
+def get_assistant_attachment_refs(conversation_id):
+    with conn() as c:
+        row = c.execute('SELECT refs FROM assistant_document_refs WHERE conversation_id=?', (conversation_id,)).fetchone()
+    try:
+        refs = json.loads(row['refs'] or '[]') if row else []
+        if not isinstance(refs,list):
+            return []
+        clean = []
+        for ref in refs[:3]:
+            if not isinstance(ref,dict):
+                continue
+            email_id,index,digest = ref.get('email_id'),ref.get('index'),ref.get('digest')
+            if (type(email_id) is int and email_id>0 and type(index) is int and index>=0
+                    and isinstance(digest,str) and len(digest)==64
+                    and all(char in '0123456789abcdef' for char in digest)):
+                clean.append({'email_id':email_id,'index':index,'digest':digest})
+        return clean
+    except (ValueError,TypeError):
+        return []
+
+
+def set_assistant_mail_context(conversation_id, context):
+    with conn() as c:
+        if not context:
+            c.execute('DELETE FROM assistant_mail_context WHERE conversation_id=?', (conversation_id,))
+        else:
+            c.execute('INSERT INTO assistant_mail_context(conversation_id,email_id,excluded) VALUES(?,?,?) '
+                      'ON CONFLICT(conversation_id) DO UPDATE SET email_id=excluded.email_id,excluded=excluded.excluded',
+                      (conversation_id, context['email_id'], json.dumps(context.get('excluded') or [])))
+
+
+def get_assistant_mail_context(conversation_id):
+    with conn() as c:
+        row = c.execute('SELECT email_id,excluded FROM assistant_mail_context WHERE conversation_id=?', (conversation_id,)).fetchone()
+    if not row:
+        return None
+    try:
+        values = json.loads(row['excluded'])
+        return {'email_id':row['email_id'], 'excluded':[i for i in values if type(i) is int and i >= 0][:200]} if isinstance(values,list) else None
+    except (ValueError,TypeError):
+        return None
