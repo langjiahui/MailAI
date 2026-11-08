@@ -140,7 +140,8 @@ jobs:
     name: browser-test (${{ matrix.suite }}, ${{ matrix.browser }}, ${{ matrix.shard }})
     needs: plan
     if: ${{ fromJSON(needs.plan.outputs.checks)['browser-test'] }}
-    runs-on: ubuntu-latest
+    # Match the noble browser container: host toolcache Python needs matching SSL libraries.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     container:
       image: ${{ needs.plan.outputs.browser_image }}
