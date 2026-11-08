@@ -26388,24 +26388,29 @@ function autoSizeRichEmailFrame(frame) {
     });
     richEmailCleanupObserver.observe(document.body, {childList:true, subtree:true});
   }
-  frame.addEventListener('load', () => {
+  // Do not expose sender-white surfaces while remote images delay iframe.load.
+  // The parent prepares the script-disabled document as soon as parsing ends.
+  frame.style.visibility = 'hidden';
+  let preparation = 0, queued = 0, disposed = false, preparedDocument = null, measured = '';
+  const listeners = [];
+  richEmailFrames.add(frame);
+  frame._disposeRichEmail = () => {
+    disposed = true;
+    cancelAnimationFrame(preparation);
+    cancelAnimationFrame(queued);
+    frame._contentResizeObserver?.disconnect();
+    listeners.forEach(([node, event, callback]) => node.removeEventListener(event, callback));
+    richEmailFrames.delete(frame);
+    frame._disposeRichEmail = null;
+  };
+  const prepare = () => {
+    const doc = frame.contentDocument;
+    if (disposed || !frame.isConnected || !doc?.body || doc.readyState === 'loading'
+        || !doc.documentElement.hasAttribute('data-mailai-theme')) return false;
+    if (preparedDocument === doc) return true;
     try {
-      frame._disposeRichEmail?.();
-      const doc = frame.contentDocument;
-      if (!doc?.body || !frame.isConnected) return;
-      richEmailFrames.add(frame);
       applyRichEmailFrameTheme(frame);
-      let queued = 0, disposed = false, measured = '';
-      const listeners = [];
       const sizeKey = () => `${frame.clientWidth}:${doc.body.getBoundingClientRect().height}:${doc.body.scrollHeight}`;
-      frame._disposeRichEmail = () => {
-        disposed = true;
-        cancelAnimationFrame(queued);
-        frame._contentResizeObserver?.disconnect();
-        listeners.forEach(([node, event, callback]) => node.removeEventListener(event, callback));
-        richEmailFrames.delete(frame);
-        frame._disposeRichEmail = null;
-      };
       const resize = () => {
         if (queued || disposed) return;
         queued = requestAnimationFrame(() => {
@@ -26458,8 +26463,23 @@ function autoSizeRichEmailFrame(frame) {
         frame._contentResizeObserver.observe(doc.body);
         frame._contentResizeObserver.observe(frame);
       }
-    } catch (_) {}
-  });
+      preparedDocument = doc;
+    } catch (_) {
+      // Preserve the readable document if optional sizing/copy setup fails.
+      preparedDocument = doc;
+    }
+    frame.style.visibility = 'visible';
+    return true;
+  };
+  const prepareWhenParsed = () => {
+    if (disposed) return;
+    if (!frame.isConnected) { frame._disposeRichEmail?.(); return; }
+    if (!prepare()) preparation = requestAnimationFrame(prepareWhenParsed);
+  };
+  const onLoad = () => { if (prepare()) cancelAnimationFrame(preparation); };
+  frame.addEventListener('load', onLoad);
+  listeners.push([frame, 'load', onLoad]);
+  preparation = requestAnimationFrame(prepareWhenParsed);
 }
 
 function mountRichEmailBody(e, allowRemote = true) {

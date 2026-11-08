@@ -13,6 +13,67 @@ const {chromium,webkit}=require('playwright');
    await page.locator('#app-preloader').waitFor({state:'detached'});
    await page.locator('#email-list .email-item').first().click();
    await page.waitForFunction(()=>!!selectedEmailDetail);
+   // Hold the image response open: iframe.load must remain pending while the
+   // parsed message is already readable, themed and interactive.
+   let releaseImage;
+   const imageGate=new Promise(resolve=>{releaseImage=resolve;});
+   let imageRequested=false;
+   await page.route('https://example.test/slow-reader-image.png',async route=>{
+    imageRequested=true;
+    await imageGate;
+    await route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=','base64')});
+   });
+   try{
+    await page.evaluate(()=>{
+     applyTheme('dark');
+     window.readerWhiteFrames=[];
+     window.readerObserve=true;
+     const sample=()=>{
+      const frame=document.querySelector('#rich-email-body iframe'),doc=frame?.contentDocument;
+      const panel=doc?.getElementById('slow-white-panel');
+      if(panel && getComputedStyle(frame).visibility==='visible'){
+       const bg=doc.defaultView.getComputedStyle(panel).backgroundColor;
+       if(bg==='rgb(255, 255, 255)')readerWhiteFrames.push(bg);
+      }
+      if(readerObserve)requestAnimationFrame(sample);
+     };
+     requestAnimationFrame(sample);
+     renderReadingPane({...selectedEmailDetail,has_rich_body:true,has_remote_images:true,
+      body_html:'<div id="slow-white-panel" style="background:#fff!important;color:#111!important"><p>Ready before images</p><a href="mailto:reader@example.test">Reply</a><img src="https://example.test/slow-reader-image.png"></div>'});
+    });
+    await page.waitForFunction(()=>{
+     const f=document.querySelector('#rich-email-body iframe'),d=f?.contentDocument;
+     return d?.getElementById('slow-white-panel') && getComputedStyle(f).visibility==='visible';
+    },{},{timeout:5000});
+    assert(imageRequested,'slow image request started');
+    const early=await page.evaluate(()=>{
+     const f=document.querySelector('#rich-email-body iframe'),d=f.contentDocument,p=d.getElementById('slow-white-panel');
+     window.slowReaderFrame=f;
+     return {ready:d.readyState,imageComplete:d.querySelector('img').complete,
+      background:d.defaultView.getComputedStyle(p).backgroundColor,
+      color:d.defaultView.getComputedStyle(p).color,height:f.clientHeight,whiteFrames:readerWhiteFrames};
+    });
+    assert.equal(early.ready,'interactive');
+    assert.equal(early.imageComplete,false);
+    assert.notEqual(early.background,'rgb(255, 255, 255)');
+    assert.notEqual(early.color,'rgb(17, 17, 17)');
+    assert(early.height>=280);
+    assert.deepEqual(early.whiteFrames,[],'no visible white frame before image completion');
+    await page.evaluate(()=>applyTheme('light'));
+    assert.equal(await page.frameLocator('#rich-email-body iframe').locator('#slow-white-panel').evaluate(n=>getComputedStyle(n).backgroundColor),'rgb(255, 255, 255)');
+    await page.evaluate(()=>applyTheme('dark'));
+   }finally{
+    await page.evaluate(()=>{window.readerObserve=false;});
+    releaseImage();
+   }
+   await page.waitForFunction(()=>slowReaderFrame.contentDocument.readyState==='complete');
+   assert.equal(await page.frameLocator('#rich-email-body iframe').locator('[data-mailai-copy-image]').count(),1,'load must not duplicate document setup');
+   await page.evaluate(()=>{
+    renderReadingPane({...selectedEmailDetail,has_rich_body:true,body_html:'<p>Superseded</p>'});
+    window.discardedReader=document.querySelector('#rich-email-body iframe');
+    renderReadingPane({...selectedEmailDetail,has_rich_body:true,body_html:'<p>Latest message</p>'});
+   });
+   await page.waitForFunction(()=>!richEmailFrames.has(discardedReader) && !discardedReader._disposeRichEmail);
    for(const theme of ['light','dark'])for(const language of ['zh-CN','en']){
     await page.evaluate(({theme,language})=>{
      applyTheme(theme);setI18nLanguage(language);
