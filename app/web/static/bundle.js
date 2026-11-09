@@ -30241,9 +30241,9 @@ function readPaneSizes() {
   catch (_) { return currentPaneDefaults(); }
 }
 
-function constrainPaneSizes(input) {
+function constrainPaneSizes(input, totalWidth) {
   const layout = document.querySelector('.layout');
-  const total = layout?.clientWidth || window.innerWidth;
+  const total = totalWidth || layout?.clientWidth || window.innerWidth;
   const readingMin = Math.min(440, Math.max(360, total * .32));
   let sidebar = Math.max(180, Math.min(380, Number(input.sidebar) || PANE_DEFAULTS.sidebar));
   let list = Math.max(300, Math.min(720, Number(input.list) || PANE_DEFAULTS.list));
@@ -30253,10 +30253,10 @@ function constrainPaneSizes(input) {
   return {sidebar:Math.round(sidebar), list:Math.round(list)};
 }
 
-function applyPaneSizes(sizes, persist = false) {
+function applyPaneSizes(sizes, persist = false, totalWidth) {
   const layout = document.querySelector('.layout');
   if (!layout) return;
-  const value = constrainPaneSizes(sizes);
+  const value = constrainPaneSizes(sizes, totalWidth);
   layout.style.setProperty('--sidebar-width', value.sidebar + 'px');
   layout.style.setProperty('--list-width', value.list + 'px');
   document.querySelector('[data-resizer="sidebar"]')?.setAttribute('aria-valuenow', value.sidebar);
@@ -30273,25 +30273,45 @@ function initPaneResizers() {
     handle.setAttribute('aria-valuemin', kind === 'sidebar' ? '180' : '300');
     handle.setAttribute('aria-valuemax', kind === 'sidebar' ? '380' : '720');
     handle.addEventListener('pointerdown', event => {
-      if (window.innerWidth <= 1024) return;
+      if (window.innerWidth <= 1024 || event.button !== 0 || handle.classList.contains('dragging')) return;
       event.preventDefault();
       const startX = event.clientX;
       const start = {...sizes};
+      const layout = document.querySelector('.layout');
+      // Cache geometry before writes and coalesce pointer bursts per frame.
+      const totalWidth = layout.clientWidth;
+      const scale = layout.getBoundingClientRect().width / totalWidth || 1;
+      const pointerId = event.pointerId;
+      let latestX = startX, frame = 0;
+      const flush = () => {
+        frame = 0;
+        sizes = applyPaneSizes({...start, [kind]:start[kind] + (latestX - startX) / scale}, false, totalWidth);
+      };
       handle.setPointerCapture(event.pointerId);
       handle.classList.add('dragging'); document.body.classList.add('pane-resizing');
       const move = moveEvent => {
-        const delta = moveEvent.clientX - startX;
-        sizes = applyPaneSizes({...start, [kind]:start[kind] + delta});
+        if (moveEvent.pointerId !== pointerId) return;
+        latestX = moveEvent.clientX;
+        if (!frame) frame = requestAnimationFrame(flush);
       };
-      const end = () => {
+      const end = endEvent => {
+        if (endEvent.pointerId !== pointerId) return;
+        if (endEvent.type === 'pointerup') latestX = endEvent.clientX;
+        cancelAnimationFrame(frame);
+        flush();
+        handle.removeEventListener('pointerup', end);
+        handle.removeEventListener('pointercancel', end);
+        handle.removeEventListener('lostpointercapture', end);
+        if (handle.hasPointerCapture(pointerId)) handle.releasePointerCapture(pointerId);
         handle.removeEventListener('pointermove', move);
         handle.classList.remove('dragging'); document.body.classList.remove('pane-resizing');
         sizes = applyPaneSizes(sizes, true);
         preferredSizes = {...sizes};
       };
       handle.addEventListener('pointermove', move);
-      handle.addEventListener('pointerup', end, {once:true});
-      handle.addEventListener('pointercancel', end, {once:true});
+      handle.addEventListener('pointerup', end);
+      handle.addEventListener('pointercancel', end);
+      handle.addEventListener('lostpointercapture', end);
     });
     handle.addEventListener('dblclick', () => { preferredSizes = currentPaneDefaults(); sizes = applyPaneSizes(preferredSizes, true); toast(mailaiText('已恢复默认栏宽'), 'success'); });
     handle.addEventListener('keydown', event => {
