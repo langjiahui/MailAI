@@ -30,6 +30,7 @@ const {chromium, webkit} = require('playwright');
       await page.addScriptTag({path:path.join(root,'companion.js')});
       await page.addScriptTag({path:path.join(root,'brand.js')});
       await page.addScriptTag({content:handoff});
+      assert.equal(await page.locator('.preloader-companion').evaluate(el=>getComputedStyle(el).filter),'none','Startup filter must not clip wings outside the SVG viewport');
       await page.waitForTimeout(600);
       const geometry = await page.evaluate(() => {
         const root = document.documentElement;
@@ -77,6 +78,7 @@ const {chromium, webkit} = require('playwright');
         document.documentElement.style.removeProperty('--fz');
         document.querySelector('.layout>.sidebar').style.removeProperty('width');
       });
+      assert.equal(await page.locator('.preloader-companion').evaluate(el=>getComputedStyle(el).filter),'none','Startup filter must not clip wings outside the SVG viewport');
       await page.waitForTimeout(600);
       await page.screenshot({path:path.resolve(__dirname,`../build/${shell}-startup-${theme}.png`)});
       await page.evaluate(()=>hideAppPreloader());

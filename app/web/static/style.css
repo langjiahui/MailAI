@@ -3431,7 +3431,9 @@ body:has(#onboarding-overlay:not(.hidden)) .preloader-workspace { display:none; 
   height:140px;
   transform:translateX(-50%) translate3d(0,0,0);
   transform-origin:50% 100%;
-  filter:drop-shadow(0 13px 18px rgba(35,77,57,.09));
+  /* Keep overflowing wings visible in native WebKit. The rig has its own shadow. */
+  overflow:visible;
+  filter:none;
   transition:opacity .18s ease .7s,filter .48s ease;
 }
 .preloader-companion .companion-shadow { opacity:.16; }
@@ -3485,7 +3487,7 @@ body[data-pet-style="ranger"] .preloader-companion:not(.introducing):not(.arrivi
 .app-preloader.leaving .preloader-status { filter:none; }
 .app-preloader.leaving .preloader-companion {
   opacity:0;
-  filter:drop-shadow(0 8px 12px rgba(35,77,57,0));
+  filter:none;
 }
 .app-preloader.handoff-active.leaving .preloader-companion { opacity:1; }
 @media (prefers-reduced-motion: reduce) {

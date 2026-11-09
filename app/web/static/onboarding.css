@@ -22,7 +22,7 @@
 .start-actions .action-primary:hover { background:linear-gradient(145deg,#28654d,#1e4e3c); }
 .start-highlight { outline:3px solid #64ad8a; outline-offset:-3px; }
 .start-model { position:fixed; inset:0; z-index:1100; display:grid; place-items:center; padding:24px; background:#071b1466; backdrop-filter:blur(10px); }
-.start-model-panel { width:560px; max-width:100%; max-height:calc(calc(100dvh / var(--fz,1)) - 48px); overflow:auto; padding:28px; border:1px solid var(--border); border-radius:22px; background:var(--glass,#fff); color:var(--text); }
+.start-model-panel { width:min(1040px,calc(100vw / var(--fz,1) - 48px)); min-width:0; max-width:100%; max-height:calc(calc(100dvh / var(--fz,1)) - 48px); overflow:auto; padding:28px; border:1px solid var(--border); border-radius:22px; background:var(--glass,#fff); color:var(--text); }
 .start-model-panel h2 { margin:8px 0; }
 .start-model-panel p { color:var(--muted); line-height:1.7; font-size:13px; }
 /* Result states are independent of the decorative theme and glass opacity. */
@@ -78,3 +78,22 @@ html[data-theme] body :is(.start-model-panel,.start-card) :focus-visible { outli
 @media(prefers-reduced-transparency:reduce) { .start-card,.start-model { backdrop-filter:none; } }
 /* Search recovery remains directly clickable while a passive invitation waits. */
 html[data-theme] body:has(#global-search:not(:placeholder-shown)) .start-card { display:none!important; }
+
+/* Use the available desktop width; the form's existing container query
+   stacks connection and capabilities when the dialog becomes narrow. */
+.start-model-panel { box-sizing:border-box; }
+.start-model-panel #model-config-form { padding:20px; }
+.start-model-panel .connection-card-head { margin-bottom:14px; }
+.start-model-panel #model-config-form .model-service-fields { margin-top:20px; }
+.start-model-panel>.start-actions {
+  position:sticky; bottom:-28px; z-index:2;
+  margin:14px -28px -28px; padding:14px 28px;
+  border-top:1px solid var(--desk-line,var(--border));
+  background:var(--desk-surface,var(--surface,#fff));
+}
+@media(max-width:600px) {
+  .start-model { padding:12px; }
+  .start-model-panel { width:calc(100vw / var(--fz,1) - 24px); max-height:calc(100dvh / var(--fz,1) - 24px); }
+  .start-model-panel #model-config-form { padding:16px; }
+  .start-model-panel>.start-actions { bottom:-18px; margin-inline:-18px; margin-bottom:-18px; padding:12px 18px; }
+}

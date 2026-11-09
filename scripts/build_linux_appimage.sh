@@ -72,8 +72,16 @@ DESKTOP
 APPIMAGETOOL="${APPIMAGETOOL:-}"
 if [[ -z "$APPIMAGETOOL" ]]; then
   APPIMAGETOOL="$(mktemp -d)/appimagetool"
-  curl -fsSL -o "$APPIMAGETOOL" \
-    "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+  # Pin and verify the tool; the GitHub browser download route can return 504.
+  TOOL_SHA256=e8c1169c4af66c3184d7ee110713d4be04befe671fa358e2c1591ee840553b03
+  tool_valid() { echo "$TOOL_SHA256  $APPIMAGETOOL" | sha256sum --check --status; }
+  if ! curl -fsSL --retry 2 --connect-timeout 15 --max-time 180 -o "$APPIMAGETOOL" \
+    "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage" || ! tool_valid; then
+    curl -fsSL --retry 3 --connect-timeout 15 --max-time 180 \
+      -H 'Accept: application/octet-stream' -o "$APPIMAGETOOL" \
+      "https://api.github.com/repos/AppImage/appimagetool/releases/assets/715388534"
+  fi
+  tool_valid || { echo "AppImage tool checksum mismatch"; exit 1; }
   chmod +x "$APPIMAGETOOL"
 fi
 # CI 容器通常没有 FUSE，用解包直跑模式。

@@ -250,7 +250,7 @@ html[data-theme] body .reading-main>.reading-section.optional-mail-summary {
   box-shadow:none!important; overflow:hidden;
 }
 html[data-theme] body .reading-main>.optional-mail-summary .summary-reveal-inner>.summary-box {
-  margin:8px 0 12px; border-radius:10px;
+  margin:8px 0 12px; border-radius:10px; padding:10px 14px;
 }
 html[data-theme] body .drawer-email-body>.optional-mail-summary:hover { border-color:var(--desk-accent)!important; box-shadow:0 6px 18px rgba(27,80,55,.08)!important; }
 html[data-theme] body .drawer-email-body>.optional-mail-summary.is-expanded { box-shadow:0 9px 24px rgba(27,80,55,.07)!important; }

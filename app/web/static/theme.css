@@ -1043,7 +1043,7 @@ html[data-theme="dark"] .preloader-status small { color:#8fa99b; }
 html[data-theme="dark"] .preloader-route-line { stroke:rgba(128,170,151,.3); }
 html[data-theme="dark"] .preloader-route-sheen { stroke:rgba(148,199,174,.52); }
 html[data-theme="dark"] .preloader-mail { color:#89b09a; border-color:rgba(154,192,171,.14); background:rgba(28,44,36,.8); box-shadow:0 3px 10px rgba(0,0,0,.12),inset 0 1px rgba(255,255,255,.04); }
-html[data-theme="dark"] .preloader-companion.companion-art { filter:drop-shadow(0 13px 21px rgba(0,0,0,.25)); }
+html[data-theme="dark"] .preloader-companion.companion-art { filter:none; }
 
 /* Remaining Rule Center controls: threshold bar and advanced-rule switcher. */
 html[data-theme="dark"] .threshold-panel {
