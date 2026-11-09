@@ -297,29 +297,33 @@ def search_emails(terms: list[str], limit: int = 200, offset: int = 0,
         return rows
 
 
-def list_correspondence_emails(address: str, limit: int = 50) -> list[dict]:
-    """Return locally stored mail exchanged with one exact email address."""
-    target = str(address or "").strip().casefold()
+def correspondence_page(address: str, limit: int = 50, offset: int = 0) -> dict:
+    """Count and page exact, locally visible correspondence in one snapshot."""
+    from email.utils import getaddresses
+    target = str(address or '').strip().casefold()
+    limit, offset = max(1, min(int(limit), 100)), max(0, int(offset))
+    items, total = [], 0
     if not target:
-        return []
+        return {'emails': items, 'total': total, 'has_more': False}
     with conn() as c:
-        candidates = _decode_rows(c.execute(
-            "SELECT * FROM emails WHERE remote_missing=0 AND "
+        rows = c.execute(
+            "SELECT id,date,from_addr,from_name,to_addr,subject,snippet,verdict,score,status "
+            "FROM emails WHERE remote_missing=0 AND status!='trash' AND "
             "(lower(coalesce(from_addr,''))=? OR lower(coalesce(to_addr,'')) LIKE ?) "
-            "ORDER BY date DESC,id DESC LIMIT ?",
-            (target, f"%{target}%", max(20, min(int(limit) * 4, 400))),
-        ).fetchall())
-    import re
-    address_pattern = re.compile(r"[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}", re.I)
-    result = []
-    for row in candidates:
-        sender = str(row.get("from_addr") or "").strip().casefold()
-        recipients = {value.casefold() for value in address_pattern.findall(str(row.get("to_addr") or ""))}
-        if sender == target or target in recipients:
-            result.append(row)
-        if len(result) >= max(1, min(int(limit), 100)):
-            break
-    return result
+            "ORDER BY date DESC,id DESC", (target, '%' + target + '%'))
+        for row in rows:
+            addresses = {value.strip().casefold() for _, value in getaddresses([row['to_addr'] or ''])}
+            addresses.add(str(row['from_addr'] or '').strip().casefold())
+            if target not in addresses:
+                continue
+            if offset <= total < offset + limit:
+                items.append(dict(row))
+            total += 1
+    return {'emails': items, 'total': total, 'has_more': offset + len(items) < total}
+
+
+def list_correspondence_emails(address: str, limit: int = 50) -> list[dict]:
+    return correspondence_page(address, limit)['emails']
 
 
 def list_attachments(limit: int = 500, offset: int = 0, query: str = "", kind: str = "all") -> list[dict]:

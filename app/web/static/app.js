@@ -315,7 +315,7 @@ function renderContactCenter() {
         ${picker ? `<button type="button" class="contact-pick-check" data-contact-pick="${esc(item.email)}" aria-label="${checked ? mailaiText('取消选择') : mailaiText('选择')} ${esc(item.email)}"><span>${checked ? '✓' : ''}</span></button>` : ''}
         <span class="contact-center-avatar">${esc(contactInitial(item))}</span>
         <div class="contact-center-main"><b>${esc(item.name || item.email)}</b><small>${item.name ? `${esc(item.email)}${item.company ? ` · ${esc(item.company)}` : ''}` : (item.company ? esc(item.company) : mailaiText('从邮件往来自动识别'))}</small>${window.mailaiDirectoryContactLabel?.(item) || ''}</div>
-        ${picker ? `<div class="contact-frequency"><b>${item.count || 0}</b><small>${mailaiT('contact.exchanges') || '往来次数'}</small></div>` : `<button type="button" class="contact-frequency contact-correspondence-trigger" data-contact-correspondence="${esc(item.email)}" aria-label="查看与${esc(item.name || item.email)}的往来邮件" data-i18n-aria="ui.005faf59bfff"><b>${item.count || 0}</b><small>${mailaiT('contact.exchanges') || '往来次数'}</small></button>`}
+        ${picker ? `<div class="contact-frequency"><b>${item.correspondence_count ?? item.count ?? 0}</b><small>${mailaiT('contact.exchanges') || '往来次数'}</small></div>` : `<button type="button" class="contact-frequency contact-correspondence-trigger" data-contact-correspondence="${esc(item.email)}" aria-label="查看与${esc(item.name || item.email)}的往来邮件" data-i18n-aria="ui.005faf59bfff"><b>${item.correspondence_count ?? item.count ?? 0}</b><small>${mailaiT('contact.exchanges') || '往来次数'}</small></button>`}
         <button type="button" class="contact-star ${item.favorite ? 'active' : ''}" data-contact-favorite="${esc(item.email)}" data-favorite="${item.favorite ? '1' : '0'}" aria-pressed="${Boolean(item.favorite)}" aria-label="${item.favorite ? mailaiText('取消常用') : mailaiText('设为常用')}">★</button>
         <div class="contact-row-actions">${picker ? '' : `<button type="button" data-contact-compose="${esc(item.email)}">${mailaiT('contact.compose') || '写邮件'}</button><button type="button" data-contact-edit="${esc(item.email)}">${mailaiT('contact.edit') || '编辑'}</button>${selectedGroup && selectedGroup !== '__ungrouped__' ? `<button type="button" data-group-remove-member="${esc(item.email)}">${mailaiT('contact.removeFromGroup') || '移出分组'}</button>` : ''}<button type="button" class="danger" data-contact-delete="${esc(item.email)}">${mailaiT('contact.remove') || '移除'}</button>`}</div>
       </article>`;
@@ -2983,7 +2983,7 @@ function renderDigestEmailDetail(e) {
           ${renderMessageRecipients(e)}
           <div class="drawer-meta-row"><span class="meta-label">${mailaiT('read.timeShort') || '时间'}</span><span>${fmtDate(e.date)}</span></div>
         </div>
-        <span class="drawer-risk tag tag-${risk.class}">${risk.text}<b>${e.score || 0}</b></span>
+        <span class="drawer-risk tag tag-${risk.class}">${risk.text}${risk.class === 'muted' ? '' : `<b>${e.score || 0}</b>`}</span>
       </div>
     </div>
     <div class="drawer-email-body">
@@ -4204,7 +4204,7 @@ function renderEmailItem(e, idx = 0) {
         </div>
         <div class="email-meta">
           <span class="mail-state-icons">${e.is_favorite ? "<span class=\"mail-state-star\" title=\"已收藏\" data-i18n-title=\"ui.471dd4d7f869\">★</span>" : ''}${e.is_starred ? "<span class=\"mail-state-star\" title=\"已加星标\" data-i18n-title=\"ui.0cd7bd093269\">★</span>" : ''}</span>
-          ${e._kind === 'draft' ? "<span class=\"risk-badge normal\"><span data-i18n=\"ui.2a2fd29bd27a\">草稿</span></span>" : e._kind === 'sent' ? `<span class="risk-badge ${['failed','unknown'].includes(e.status) ? 'high' : 'normal'}">${({get failed() { return mailaiText('失败'); },get unknown() { return mailaiText('待确认'); },get sending() { return mailaiText('发送中'); },get sent() { return mailaiText('已发送'); },get accepted() { return mailaiText('已接受'); }})[e.status] || mailaiText('待确认')}</span>` : `<span class="risk-badge ${risk.class}">${risk.class === 'danger' ? '<i class="risk-alert-dot" aria-hidden="true">!</i>' : ''}${risk.text} ${e.score}</span>`}${e.pending_action ? `<span class="tag">${e.pending_action === 'trash_local' ? mailaiText('已在本地删除') : e.pending_error ? mailaiText('后台重试中') : e.pending_action === 'trash' ? mailaiText('待同步删除 · 可取消') : mailaiText('正在同步删除')}</span>` : ''}
+          ${e._kind === 'draft' ? "<span class=\"risk-badge normal\"><span data-i18n=\"ui.2a2fd29bd27a\">草稿</span></span>" : e._kind === 'sent' ? `<span class="risk-badge ${['failed','unknown'].includes(e.status) ? 'high' : 'normal'}">${({get failed() { return mailaiText('失败'); },get unknown() { return mailaiText('待确认'); },get sending() { return mailaiText('发送中'); },get sent() { return mailaiText('已发送'); },get accepted() { return mailaiText('已接受'); }})[e.status] || mailaiText('待确认')}</span>` : `<span class="risk-badge ${risk.class}">${risk.class === 'danger' ? '<i class="risk-alert-dot" aria-hidden="true">!</i>' : ''}${risk.text}${risk.class === 'muted' ? '' : ` ${e.score}`}</span>`}${e.pending_action ? `<span class="tag">${e.pending_action === 'trash_local' ? mailaiText('已在本地删除') : e.pending_error ? mailaiText('后台重试中') : e.pending_action === 'trash' ? mailaiText('待同步删除 · 可取消') : mailaiText('正在同步删除')}</span>` : ''}
           ${hasAtt ? `<span class="mail-list-attachment tag-attachment" title="${esc(mailaiT('list.tagAttachment') || '附件')}" aria-label="${esc(mailaiT('list.tagAttachment') || '附件')}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7 10 5-5a3 3 0 0 1 4 4l-7 7a4.5 4.5 0 0 1-6-6l7-7m-5 9 7-7"/></svg></span>` : ''}
           <time class="email-date" ${date.iso?`datetime="${date.iso}"`:''} title="${esc(date.title)}">${esc(date.text)}</time>
         </div>
@@ -6820,10 +6820,61 @@ function renderFindings(items) {
   }).join('');
 }
 
+function readingActionText(key) { return mailaiT(key) || MAILAI_UI_COPY[key][0]; }
+const mailAnalysisBusy = new Set();
+function mailAnalysisKey(id, accountId) { return `${accountId}:${id}`; }
+
+async function analyzeSelectedMail(control) {
+  const email = selectedEmailDetail;
+  if (!email?.id) return;
+  const accountId = selectedEmailAccountId || activeMailAccount()?.id || '';
+  const id = email.id, key = mailAnalysisKey(id, accountId);
+  if (mailAnalysisBusy.has(key)) return;
+  mailAnalysisBusy.add(key);
+  control.disabled = true;
+  control.textContent = readingActionText('read.analysisRunning');
+  const stillSelected = () => selectedEmailDetail?.id === id &&
+    (selectedEmailAccountId || activeMailAccount()?.id || '') === accountId;
+  try {
+    let task = await api(`/api/emails/${id}/analysis`, {accountId, method:'POST'});
+    while (task.state === 'running') {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      task = await api(`/api/emails/${id}/analysis`, {accountId});
+      if (!stillSelected()) return;
+    }
+    if (task.state !== 'complete') throw new Error(task.error || readingActionText('read.analysisInterrupted'));
+    window.mailaiMailboxStore?.invalidate(accountId);
+    if (!stillSelected()) return;
+    const updated = await api(`/api/emails/${id}`, {accountId});
+    if (!stillSelected()) return;
+    selectedEmailDetail = updated;
+    const row = allEmails.find(item => item.id === id && (!item._account_id || item._account_id === accountId));
+    if (row) Object.assign(row, updated);
+    mailAnalysisBusy.delete(key);
+    renderReadingPane(updated);
+    toggleSecurityAnalysis(true);
+    toast(readingActionText(task.work_analysis ? 'read.analysisDone' : 'read.analysisRulesDone'), 'success');
+  } catch (error) {
+    if (stillSelected()) toast(mailaiSystemMessage(error.message), 'error');
+  } finally {
+    mailAnalysisBusy.delete(key);
+    if (control.isConnected) {
+      control.disabled = false;
+      control.textContent = readingActionText(email.verdict === 'unreviewed' ? 'read.analyze' : 'read.reanalyze');
+    }
+  }
+}
+
+document.addEventListener('click', event => {
+  const control = event.target.closest('[data-mail-analyze]');
+  if (control) analyzeSelectedMail(control);
+});
+
 function renderSecurityAnalysis(e) {
   const risk = getRiskLabel(e.score, e.verdict, e);
   const riskScore = Number(e.score || 0);
-  const gauge = buildRiskGauge(riskScore, risk);
+  const gauge = risk.class === 'muted' ? '' : buildRiskGauge(riskScore, risk);
+  const busy = mailAnalysisBusy.has(mailAnalysisKey(e.id, selectedEmailAccountId || activeMailAccount()?.id || ''));
   const riskSummary = risk.class === 'danger'
     ? mailaiText('检测到高风险信号，请勿直接点击链接或打开可疑附件。')
     : risk.class === 'warn'
@@ -6833,7 +6884,7 @@ function renderSecurityAnalysis(e) {
         : risk.reviewed
           ? mailaiText('已结合人工反馈确认，可继续阅读邮件内容。')
           : mailaiText('暂未发现明显安全风险，可正常阅读并保持必要警惕。');
-  const findings = renderFindings(e.findings);
+  const findings = risk.class === 'muted' ? `<li>${esc(riskSummary)}</li>` : renderFindings(e.findings);
 
   const llmReasons = (e.llm_reasons || []).length ? `
     <div class="reading-section">
@@ -6863,10 +6914,11 @@ function renderSecurityAnalysis(e) {
         ${gauge}
         <div><span>${mailaiT('read.verdictCurrent') || '当前结论'}</span><h4>${esc(risk.text)}</h4><p>${esc(riskSummary)}</p></div>
       </div>
+      <div class="reading-section"><button type="button" class="btn-primary" data-mail-analyze ${busy ? 'disabled' : ''}>${esc(readingActionText(busy ? 'read.analysisRunning' : e.verdict === 'unreviewed' ? 'read.analyze' : 'read.reanalyze'))}</button><p>${esc(readingActionText('read.analysisScope'))}</p></div>
       <div class="security-analysis-grid">
         ${evidenceDimensions}
         <div class="reading-section insight-section">
-          <div class="section-title"><span>${mailaiT('read.findings') || '具体发现'}</span><small>${(mailaiT('read.findingsScore') || '累计风险分 {n}').replace('{n}', riskScore)}</small></div>
+          <div class="section-title"><span>${mailaiT('read.findings') || '具体发现'}</span>${risk.class === 'muted' ? '' : `<small>${(mailaiT('read.findingsScore') || '累计风险分 {n}').replace('{n}', riskScore)}</small>`}</div>
           <ul class="findings">${findings}</ul>
         </div>
         ${llmReasons}
@@ -6953,8 +7005,9 @@ function renderReadingPane(e) {
           <h2 class="reading-subject">${esc(String(e.subject ?? '').trim() || mailaiText('（无主题）'))}</h2>
           <button type="button" class="security-result-trigger security-${risk.class} ${riskNeedsAttention ? 'needs-attention' : ''} ${risk.class === 'danger' && riskNeedsAttention ? 'risk-attention-intro' : ''}" aria-expanded="false" onclick="toggleSecurityAnalysis()" title="打开智能研判明细" data-i18n-title="ui.f4512bbf37ea">
             <span aria-hidden="true">${risk.class === 'danger' || risk.class === 'warn' ? '!' : risk.class === 'muted' ? '…' : '✓'}</span>
-            <small data-i18n="read.securityResult">${mailaiT('read.securityResult') || '安全结果'}</small><b>${esc(risk.text)}</b><em>${riskScore}</em>
+            <small data-i18n="read.securityResult">${mailaiT('read.securityResult') || '安全结果'}</small><b>${esc(risk.text)}</b>${risk.class === 'muted' ? '' : `<em>${riskScore}</em>`}
           </button>
+          ${e.verdict === 'unreviewed' ? `<button type="button" class="btn-ghost" data-mail-analyze ${mailAnalysisBusy.has(mailAnalysisKey(e.id, selectedEmailAccountId || activeMailAccount()?.id || '')) ? 'disabled' : ''}>${esc(readingActionText(mailAnalysisBusy.has(mailAnalysisKey(e.id, selectedEmailAccountId || activeMailAccount()?.id || '')) ? 'read.analysisRunning' : 'read.analyze'))}</button>` : ''}
         </div>
         <div class="reading-meta">
           <div class="meta-avatar">${(e.from_name || e.from_addr || '?').charAt(0).toUpperCase()}</div>
@@ -7213,40 +7266,52 @@ function renderCorrespondence(data, currentId) {
         </button>
       </div>`;
     }).join('')}
-  </div>`;
+  </div>${data.has_more ? `<button type="button" class="btn-ghost" data-correspondence-more>${esc(readingActionText('read.moreCorrespondence'))}</button>` : ''}`;
 }
 
-async function loadCorrespondence(source) {
+async function loadCorrespondence(source, append = false) {
   if (!source) return;
   correspondenceSource = source;
   const currentId = source.kind === 'email' ? Number(source.id) : null;
   const revision = ++correspondenceRevision;
-  correspondenceData = null;
+  const previous = append ? correspondenceData : null;
+  const offset = previous?.emails?.length || 0;
+  correspondenceData = previous;
   correspondenceCurrentId = currentId;
   correspondenceAccountId = source.accountId || activeMailAccount()?.id || '';
-  correspondenceSelectedIds.clear();
+  if (!append) correspondenceSelectedIds.clear();
   const drawer = document.getElementById('correspondence-drawer');
   const body = document.getElementById('correspondence-body');
   const subtitle = document.getElementById('correspondence-subtitle');
   drawer.classList.remove('hidden');
   drawer.setAttribute('aria-hidden', 'false');
   document.body.style.overflow = 'hidden';
-  mailaiBindUI(subtitle, "textContent", () => (source.kind === 'contact' ? mailaiTemplate`正在查找与 ${source.email} 的历史邮件…` : mailaiText('正在识别联系人并查找历史邮件…')));
-  body.innerHTML = "<div class=\"correspondence-loading\"><span></span><b><span data-i18n=\"ui.122436799568\">正在查找往来邮件</span></b><small><span data-i18n=\"ui.6550934c2f95\">范围为当前邮箱已同步的邮件</span></small></div>";
+  if (!append) mailaiBindUI(subtitle, "textContent", () => (source.kind === 'contact' ? mailaiTemplate`正在查找与 ${source.email} 的历史邮件…` : mailaiText('正在识别联系人并查找历史邮件…')));
+  if (!append) body.innerHTML = "<div class=\"correspondence-loading\"><span></span><b><span data-i18n=\"ui.122436799568\">正在查找往来邮件</span></b><small><span data-i18n=\"ui.6550934c2f95\">范围为当前邮箱已同步的邮件</span></small></div>";
+  const more = body.querySelector('[data-correspondence-more]');
+  if (append && more) more.disabled = true;
   try {
     const path = source.kind === 'contact'
-      ? `/api/mail/contacts/correspondence?email=${encodeURIComponent(source.email)}&limit=50`
-      : `/api/emails/${source.id}/correspondence?limit=50`;
+      ? `/api/mail/contacts/correspondence?email=${encodeURIComponent(source.email)}&limit=50&offset=${offset}`
+      : `/api/emails/${source.id}/correspondence?limit=50&offset=${offset}`;
     const data = await api(path, {accountId:correspondenceAccountId});
     if (revision !== correspondenceRevision) return;
+    if (previous) data.emails = [...new Map([...previous.emails, ...data.emails].map(item => [item.id, item])).values()];
     const visibleCount = (data.emails || []).filter(item => item.status !== 'trash').length;
     const counterpart = source.name && source.name !== data.counterpart ? `${source.name} · ${data.counterpart}` : data.counterpart;
-    mailaiBindUI(subtitle, "textContent", () => (counterpart ? mailaiTemplate`${counterpart} · 当前显示 ${visibleCount} 封往来邮件` : mailaiText('未识别到对方联系人')));
+    mailaiBindUI(subtitle, "textContent", () => (counterpart ? readingActionText('read.correspondenceLoaded').replace('{counterpart}', counterpart).replace('{loaded}', visibleCount).replace('{total}', data.total ?? visibleCount) : mailaiText('未识别到对方联系人')));
     correspondenceData = data;
     body.innerHTML = renderCorrespondence(data, currentId);
     syncCorrespondenceSelection();
   } catch (err) {
     if (revision !== correspondenceRevision) return;
+    if (previous) {
+      correspondenceData = previous;
+      body.innerHTML = renderCorrespondence(previous, currentId);
+      syncCorrespondenceSelection();
+      toast(mailaiSystemMessage(err.message), 'error');
+      return;
+    }
     mailaiBindUI(subtitle, "textContent", () => (mailaiText('历史邮件暂时无法加载')));
     body.innerHTML = `<div class="correspondence-empty error"><h4><span data-i18n="ui.d1d044826a45">加载失败</span></h4><p>${esc(mailaiSystemMessage(err.message))}</p><button type="button" data-retry-correspondence><span data-i18n="ui.7bdd5ce1e298">重新加载</span></button></div>`;
   }
@@ -9452,6 +9517,7 @@ document.querySelector('#correspondence-drawer .drawer-backdrop').addEventListen
 document.getElementById('correspondence-body').addEventListener('click', event => {
   const retry = event.target.closest('[data-retry-correspondence]');
   if (retry) return reloadCorrespondence();
+  if (event.target.closest('[data-correspondence-more]')) return loadCorrespondence(correspondenceSource, true);
   const selectAll = event.target.closest('[data-correspondence-select-all]');
   if (selectAll) {
     const available = correspondenceSelectableItems().map(item => Number(item.id));

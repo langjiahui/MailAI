@@ -65,9 +65,9 @@ def api_save_contact(payload: ContactRequest):
 
 
 @router.get("/api/mail/contacts/correspondence")
-def api_contact_correspondence(email: str, limit: int = 50):
+def api_contact_correspondence(email: str, limit: int = 50, offset: int = 0):
     """List locally stored mail exchanged with a contact in the current account."""
-    return correspondence_payload(valid_contact_email(email), limit)
+    return correspondence_payload(valid_contact_email(email), limit, offset)
 
 
 @router.patch("/api/mail/contacts/favorite")

@@ -31,6 +31,23 @@ def main():
         payload = server.api_contact_correspondence("alice@example.com", limit=20)
         assert payload["counterpart"] == "alice@example.com"
         assert [item["direction"] for item in payload["emails"]] == ["received", "sent"]
+        # Count beyond the first page, omit deleted/unavailable copies and
+        # count each matching message once even when the address repeats.
+        with db.conn() as connection:
+            for uid in range(4, 110):
+                connection.execute("INSERT INTO emails(uid,folder,from_addr,to_addr,subject,date,created_at,remote_missing,status) VALUES(?,?,?,?,?,?,?,0,'inbox')",
+                                   (uid, 'INBOX', 'alice@example.com', 'alice@example.com, me@example.com', 'Page ' + str(uid), '2026-10-01', '2026-10-01'))
+            connection.execute("UPDATE emails SET status='trash' WHERE uid=4")
+            connection.execute("UPDATE emails SET remote_missing=1 WHERE uid=5")
+        from app.db.emails import correspondence_page
+        first = correspondence_page('alice@example.com')
+        assert first['total'] == 106 and len(first['emails']) == 50 and first['has_more']
+        second = correspondence_page('alice@example.com', 50, 50)
+        third = correspondence_page('alice@example.com', 50, 100)
+        assert len(second['emails']) == 50 and len(third['emails']) == 6 and not third['has_more']
+        assert len({row['id'] for page in [first, second, third] for row in page['emails']}) == 106
+        contact = next(row for row in db.search_contacts('alice@example.com') if row['email'] == 'alice@example.com')
+        assert contact['correspondence_count'] == first['total']
     print("✅ 往来邮件双向匹配、排序与精确地址过滤测试通过")
 
 
