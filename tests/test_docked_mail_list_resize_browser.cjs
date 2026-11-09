@@ -38,7 +38,11 @@ const {chromium,webkit}=require('playwright');
       for(const [viewport,zoom] of [[1600,1],[2048,1.25],[1280,1],[2048,1]]){
         await page.setViewportSize({width:viewport,height:1000});
         await page.evaluate(zoom=>{document.body.style.zoom=zoom;document.documentElement.style.setProperty('--fz',zoom);updateAssistantPlacement();},zoom);await settle();
-        if(await handle.isVisible())await drag(36);
+        if(await handle.isVisible()) {
+          const beforeZoomDrag=await width();
+          await drag(-36);
+          if(viewport===2048)assert(Math.abs(await width()-beforeZoomDrag+36/zoom)<2,`Drag follows physical pointer distance at UI zoom: ${zoom}, before ${beforeZoomDrag}, after ${await width()}`);
+        }
         const geometry=await page.evaluate(()=>{
           const zoom=parseFloat(getComputedStyle(document.body).zoom)||1;
           return {overflow:document.documentElement.scrollWidth>innerWidth+1,reading:document.querySelector('.reading-pane').getBoundingClientRect().width/zoom};
