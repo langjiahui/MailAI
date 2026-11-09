@@ -79,10 +79,13 @@ def analyze(email_id, progress=None):
 
 
 def start(email_id):
-    if not db.get_email(email_id):
-        raise ValueError('邮件不存在，请刷新后重试')
     key = config.DB_PATH
     with _lock:
+        row = db.get_email(email_id)
+        if not row:
+            raise ValueError('邮件不存在，请刷新后重试')
+        if row['verdict'] != 'unreviewed':
+            return {'email_id': email_id, 'state': 'complete', 'work_analysis': bool(row.get('summary'))}
         task = _tasks.get(key, {})
         if task.get('state') == 'running':
             if task['email_id'] == email_id:

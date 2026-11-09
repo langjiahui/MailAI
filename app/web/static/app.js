@@ -6855,7 +6855,7 @@ function updateMailAnalysisUI(id, accountId) {
     control.disabled = busy;
     if (control.classList.contains('security-result-trigger')) return;
     mailaiBindUI(control, 'textContent', () => readingActionText(busy ? busyText :
-      selectedEmailDetail?.verdict === 'unreviewed' ? 'read.analyze' : 'read.reanalyze'));
+      task?.state === 'failed' ? 'read.analysisRetry' : 'read.analyze'));
   });
   const result = document.querySelector('.security-result-trigger');
   if (result) {
@@ -6941,7 +6941,7 @@ async function watchMailAnalysis(id, accountId, task) {
 
 async function analyzeSelectedMail() {
   const email = selectedEmailDetail;
-  if (!email?.id) return;
+  if (!email?.id || email.verdict !== 'unreviewed') return;
   const accountId = selectedEmailAccountId || activeMailAccount()?.id || '';
   const key = mailAnalysisKey(email.id, accountId);
   if (mailAnalysisBusy.has(key)) return;
@@ -7036,7 +7036,7 @@ function renderSecurityAnalysis(e) {
         ${gauge}
         <div><span>${mailaiT('read.verdictCurrent') || '当前结论'}</span><h4>${esc(risk.text)}</h4><p>${esc(riskSummary)}</p></div>
       </div>
-      <div class="reading-section"><button type="button" class="btn-primary" data-mail-analyze ${busy ? 'disabled' : ''}>${esc(readingActionText(busy ? 'read.analysisRunning' : e.verdict === 'unreviewed' ? 'read.analyze' : 'read.reanalyze'))}</button><p>${esc(readingActionText('read.analysisScope'))}</p></div>
+      ${e.verdict === 'unreviewed' ? `<div class="reading-section"><button type="button" class="btn-primary" data-mail-analyze ${busy ? 'disabled' : ''}>${esc(readingActionText(busy ? 'read.analysisRunning' : 'read.analyze'))}</button><p>${esc(readingActionText('read.analysisScope'))}</p></div>` : ''}
       <div class="security-analysis-grid">
         ${evidenceDimensions}
         <div class="reading-section insight-section">
