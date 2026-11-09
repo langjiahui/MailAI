@@ -19,7 +19,9 @@ def main():
              patch.object(pipeline, '_analyze_attachments', return_value=([], [])), \
              patch.object(mail_analysis.rules, 'scan', return_value=scan), \
              patch.object(pipeline.llm_client, 'available', return_value=False):
-            result = mail_analysis.analyze(eid)
+            stages = []
+            result = mail_analysis.analyze(eid, stages.append)
+            assert stages == ['rules', 'attachments', 'saving'], stages
             assert result['state'] == 'complete' and not result['work_analysis']
             after = db.get_email(eid)
             assert after['verdict'] == 'clean' and after['review_source'] == 'rule'

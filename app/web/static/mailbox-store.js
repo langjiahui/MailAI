@@ -146,7 +146,7 @@
     }
     if(!entry){entry={key,query:q,owner:owner(),pages:new Map(),cursors:new Map([[0,'']]),scroll:0};entries.set(key,entry);}
     const old=current?.key===key && entry.data;
-    if(old && entry.invalid && !force){await refreshWindow(entry,key,nav);finishMailboxTransition(nav);return true;}
+    if(old && entry.invalid && !force){await refreshWindow(entry,key,nav);finishMailboxTransition(nav);return !entry.invalid;}
     if(!old && !silent)document.getElementById('email-list').innerHTML=skeletonRows();
     try {
       if(!entry.pending){
