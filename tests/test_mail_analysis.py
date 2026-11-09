@@ -19,7 +19,9 @@ def main():
              patch.object(pipeline, '_analyze_attachments', return_value=([], [])), \
              patch.object(mail_analysis.rules, 'scan', return_value=scan), \
              patch.object(pipeline.llm_client, 'available', return_value=False):
-            result = mail_analysis.analyze(eid)
+            stages = []
+            result = mail_analysis.analyze(eid, stages.append)
+            assert stages == ['rules', 'attachments', 'saving'], stages
             assert result['state'] == 'complete' and not result['work_analysis']
             after = db.get_email(eid)
             assert after['verdict'] == 'clean' and after['review_source'] == 'rule'
@@ -31,6 +33,13 @@ def main():
                 except RuntimeError: pass
                 else: raise AssertionError('Failure was swallowed')
             assert db.get_email(eid)['verdict'] == 'clean'
+            # A completed message is terminal even if an old client posts again.
+            with patch.object(mail_analysis, 'start_account_thread') as start_thread:
+                assert mail_analysis.start(eid)['state'] == 'complete'
+                start_thread.assert_not_called()
+            # Simulate a separate pending message for duplicate-click handling.
+            with db.conn() as c:
+                c.execute("UPDATE emails SET verdict='unreviewed' WHERE id=?", (eid,))
             # Coalesce double clicks and pin a detached task to its account.
             tasks = []
             with patch.object(mail_analysis, 'start_account_thread', side_effect=lambda work, **kw: tasks.append(work)):

@@ -5,9 +5,9 @@ MailAI 是一款**本地运行、AI 驱动**的邮件与工作助手。它通过
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v4.4.0**
+当前版本：**v4.4.1**
 
-本次更新：新增单封邮件开始分析与重新分析，显示处理进度和失败重试，未分析邮件隐藏风险分数。统一通讯录与往来详情的可查看邮件数量，支持查看总数与继续加载；修复 Word 签名空图片、特殊符号及历史邮件头排版。[发布说明](docs/发布-v4.4.0-单封分析与往来统计.md) · [完整版本历史](https://github.com/langjiahui/MailAI/releases)
+本次更新：融合邮件安全状态与分析入口，展示分析进度及最终结论，并同步刷新邮件列表和风险统计；分析完成后结束流程，失败可重试。[发布说明](docs/发布-v4.4.1-分析结果同步与控件融合.md) · [完整版本历史](https://github.com/langjiahui/MailAI/releases)
 
 ## Android
 

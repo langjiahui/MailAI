@@ -685,3 +685,24 @@ html[data-theme] body #reading-empty .reading-start-actions button:disabled { op
 @media(pointer:coarse) {
   #reading-content .reading-attachments :is(.attachment-preview-action,.attachment-save-action) { width:40px; height:40px; }
 }
+
+/* Analysis feedback stays with the message through its complete lifecycle. */
+.reading-analysis-status { margin:10px 0 0; color:var(--desk-muted); font-size:12px; line-height:1.6; }
+.reading-analysis-status[data-state="complete"] { color:var(--desk-accent); }
+.reading-analysis-status[data-state="failed"] { color:var(--status-danger,#b85050); }
+.reading-analysis-status button { margin-inline-start:8px; }
+
+.security-result-trigger .security-analysis-action {
+  font-style:normal; font-size:11px; font-weight:600;
+  margin-inline-start:4px; padding-inline-start:8px; border-inline-start:1px solid var(--desk-line);
+  color:var(--desk-accent);
+}
+.security-result-trigger.is-analyzing { opacity:1; cursor:wait; }
+.security-result-trigger.is-analyzing [data-mail-security-icon]::after {
+  content:''; width:11px; height:11px; border:2px solid currentColor;
+  border-right-color:transparent; border-radius:50%; animation:mail-analysis-spin .8s linear infinite;
+}
+@keyframes mail-analysis-spin { to { transform:rotate(360deg); } }
+@media(prefers-reduced-motion:reduce) {
+  .security-result-trigger.is-analyzing [data-mail-security-icon]::after { animation:none; }
+}

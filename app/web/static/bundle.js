@@ -1590,6 +1590,17 @@ const MAILAI_UI_COPY = {
   "read.moreCorrespondence": ["继续加载", "Load more"],
   "read.analyze": ["开始分析", "Analyze"],
   "read.reanalyze": ["重新分析", "Analyze again"],
+  "read.analysisStageRules": ["正在检查邮件安全规则…", "Checking message security rules…"],
+  "read.analysisStageAttachments": ["正在检查链接和附件…", "Checking links and attachments…"],
+  "read.analysisStageModel": ["正在进行模型复核并生成摘要…", "Reviewing with the model and preparing a summary…"],
+  "read.analysisStageSaving": ["正在保存分析结果…", "Saving analysis results…"],
+  "read.analysisResult": ["分析完成 · {result}（{score} 分）", "Analysis completed · {result} ({score})"],
+  "read.analysisFailed": ["分析未完成：{error}，可点击分析按钮重试。", "Analysis could not complete: {error}. Use the analysis button to retry."],
+  "read.analysisRefreshFailed": ["分析已完成，列表同步失败，请刷新结果。", "Analysis completed, but the list could not sync. Refresh the results."],
+  "read.analysisRefresh": ["刷新结果", "Refresh results"],
+  "read.analysisSyncing": ["正在同步结果…", "Syncing results…"],
+  "read.analysisRetry": ["重试分析", "Retry analysis"],
+  "read.analysisNoSummary": ["本次未生成 AI 摘要", "No AI summary was generated"],
   "read.analysisRunning": ["正在分析…", "Analyzing…"],
   "read.analysisInterrupted": ["分析已中断，请重试", "Analysis was interrupted. Try again."],
   "read.analysisDone": ["邮件分析已完成", "Mail analysis completed"],
@@ -22972,9 +22983,9 @@ async function loadMailPages(path, isCurrent = () => true, maxRows = Number.POSI
   return null;
 }
 
-async function loadData({includeAncillary = true, silent = false} = {}) {
+async function loadData({includeAncillary = true, silent = false, requireFresh = false} = {}) {
   if (typeof window !== 'undefined' && window.mailaiMailboxStore?.supports()) {
-    return window.mailaiMailboxStore.load({silent});
+    return window.mailaiMailboxStore.load({silent, requireFresh});
   }
   const revision = ++mailLoadRevision;
   const navigationRevision = mailboxNavigationRevision;
@@ -26535,52 +26546,174 @@ function renderFindings(items) {
 
 function readingActionText(key) { return mailaiT(key) || MAILAI_UI_COPY[key][0]; }
 const mailAnalysisBusy = new Set();
+const mailAnalysisStates = new Map();
+const mailAnalysisResuming = new Set();
 function mailAnalysisKey(id, accountId) { return `${accountId}:${id}`; }
-
-async function analyzeSelectedMail(control) {
-  const email = selectedEmailDetail;
-  if (!email?.id) return;
-  const accountId = selectedEmailAccountId || activeMailAccount()?.id || '';
-  const id = email.id, key = mailAnalysisKey(id, accountId);
-  if (mailAnalysisBusy.has(key)) return;
-  mailAnalysisBusy.add(key);
-  control.disabled = true;
-  control.textContent = readingActionText('read.analysisRunning');
-  const stillSelected = () => selectedEmailDetail?.id === id &&
+function isSelectedAnalysisMail(id, accountId) {
+  return selectedEmailDetail?.id === id &&
     (selectedEmailAccountId || activeMailAccount()?.id || '') === accountId;
-  try {
-    let task = await api(`/api/emails/${id}/analysis`, {accountId, method:'POST'});
-    while (task.state === 'running') {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      task = await api(`/api/emails/${id}/analysis`, {accountId});
-      if (!stillSelected()) return;
+}
+
+function mailAnalysisStatusText(task) {
+  if (task.refreshFailed) return readingActionText('read.analysisRefreshFailed');
+  if (task.state === 'failed') {
+    return readingActionText('read.analysisFailed').replace('{error}', mailaiSystemMessage(task.error));
+  }
+  if (task.state === 'complete' && task.email) {
+    const risk = getRiskLabel(task.email.score, task.email.verdict, task.email);
+    return readingActionText('read.analysisResult').replace('{result}', risk.text).replace('{score}', Number(task.email.score || 0)) +
+      (task.work_analysis ? '' : ' · ' + readingActionText('read.analysisNoSummary'));
+  }
+  if (task.state === 'complete') return readingActionText('read.analysisSyncing');
+  const key = {queued:'read.analysisRunning', rules:'read.analysisStageRules',
+    attachments:'read.analysisStageAttachments', model:'read.analysisStageModel', saving:'read.analysisStageSaving'}[task.stage];
+  return readingActionText(key || 'read.analysisRunning');
+}
+
+function updateMailAnalysisUI(id, accountId) {
+  if (!isSelectedAnalysisMail(id, accountId)) return;
+  const key = mailAnalysisKey(id, accountId), task = mailAnalysisStates.get(key);
+  const busy = mailAnalysisBusy.has(key);
+  const busyText = task?.state === 'complete' ? 'read.analysisSyncing' : 'read.analysisRunning';
+  document.querySelectorAll('[data-mail-analyze]').forEach(control => {
+    control.disabled = busy;
+    if (control.classList.contains('security-result-trigger')) return;
+    mailaiBindUI(control, 'textContent', () => readingActionText(busy ? busyText :
+      task?.state === 'failed' ? 'read.analysisRetry' : 'read.analyze'));
+  });
+  const result = document.querySelector('.security-result-trigger');
+  if (result) {
+    result.classList.toggle('is-analyzing', busy);
+    const risk = getRiskLabel(selectedEmailDetail.score, selectedEmailDetail.verdict, selectedEmailDetail);
+    mailaiBindUI(result.querySelector('b'), 'textContent', () => busy ? readingActionText(busyText) : risk.text);
+    const icon = result.querySelector('[data-mail-security-icon]');
+    if (icon) icon.textContent = busy ? '' : risk.class === 'muted' ? '…' : ['danger','warn'].includes(risk.class) ? '!' : '✓';
+    const action = result.querySelector('[data-mail-analysis-action]');
+    if (action) {
+      action.hidden = busy;
+      mailaiBindUI(action, 'textContent', () => readingActionText(task?.state === 'failed' ? 'read.analysisRetry' : 'read.analyze'));
     }
-    if (task.state !== 'complete') throw new Error(task.error || readingActionText('read.analysisInterrupted'));
-    window.mailaiMailboxStore?.invalidate(accountId);
-    if (!stillSelected()) return;
-    const updated = await api(`/api/emails/${id}`, {accountId});
-    if (!stillSelected()) return;
-    selectedEmailDetail = updated;
-    const row = allEmails.find(item => item.id === id && (!item._account_id || item._account_id === accountId));
-    if (row) Object.assign(row, updated);
-    mailAnalysisBusy.delete(key);
-    renderReadingPane(updated);
-    toggleSecurityAnalysis(true);
-    toast(readingActionText(task.work_analysis ? 'read.analysisDone' : 'read.analysisRulesDone'), 'success');
-  } catch (error) {
-    if (stillSelected()) toast(mailaiSystemMessage(error.message), 'error');
-  } finally {
-    mailAnalysisBusy.delete(key);
-    if (control.isConnected) {
-      control.disabled = false;
-      control.textContent = readingActionText(email.verdict === 'unreviewed' ? 'read.analyze' : 'read.reanalyze');
-    }
+  }
+  const status = document.querySelector('[data-mail-analysis-status]');
+  if (!status) return;
+  status.hidden = !task;
+  if (task) {
+    status.dataset.state = task.state;
+    mailaiBindUI(status.querySelector('[data-mail-analysis-message]'), 'textContent', () => mailAnalysisStatusText(task));
+    status.querySelector('[data-mail-analysis-refresh]').hidden = !task.refreshFailed;
   }
 }
 
-document.addEventListener('click', event => {
-  const control = event.target.closest('[data-mail-analyze]');
-  if (control) analyzeSelectedMail(control);
+function setMailAnalysisState(id, accountId, task) {
+  mailAnalysisStates.set(mailAnalysisKey(id, accountId), task);
+  updateMailAnalysisUI(id, accountId);
+}
+
+async function refreshMailAnalysisResult(id, accountId, task) {
+  window.mailaiMailboxStore?.invalidate(accountId);
+  const updated = await api(`/api/emails/${id}`, {accountId});
+  const {score, verdict, feedback, reviewed} = updated;
+  const completed = {...task, email:{score, verdict, feedback, reviewed}, refreshFailed:false};
+  setMailAnalysisState(id, accountId, completed);
+  if (isSelectedAnalysisMail(id, accountId)) {
+    const detailsOpen = document.body.classList.contains('security-flyout-open');
+    selectedEmailDetail = updated;
+    renderReadingPane(updated);
+    if (detailsOpen) toggleSecurityAnalysis(true);
+  }
+  if (activeMailAccount()?.id !== accountId && !unifiedMailbox) return;
+  // Refresh the current query and server facets together. Mutating allEmails
+  // alone leaves cached pages, badges and risk filters on the old result.
+  if (searchResults) {
+    for (const row of searchResults) {
+      if (row.id === id && (row._account_id || activeMailAccount()?.id) === accountId) Object.assign(row, updated);
+    }
+  }
+  try {
+    const refreshed = await loadData({includeAncillary:false, silent:true, requireFresh:true});
+    if (refreshed === false) throw new Error(readingActionText('read.analysisRefreshFailed'));
+  } catch (_) {
+    setMailAnalysisState(id, accountId, {...completed, refreshFailed:true});
+  }
+}
+
+async function watchMailAnalysis(id, accountId, task) {
+  const key = mailAnalysisKey(id, accountId);
+  try {
+    while (task.state === 'running') {
+      setMailAnalysisState(id, accountId, task);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      task = await api(`/api/emails/${id}/analysis`, {accountId});
+    }
+    if (task.state !== 'complete') throw new Error(task.error || readingActionText('read.analysisInterrupted'));
+    try {
+      await refreshMailAnalysisResult(id, accountId, task);
+    } catch (_) {
+      setMailAnalysisState(id, accountId, {...task, refreshFailed:true});
+    }
+    if (activeMailAccount()?.id === accountId || unifiedMailbox) {
+      const result = mailAnalysisStates.get(key);
+      toast(mailAnalysisStatusText(result), result.refreshFailed ? 'warn' : 'success');
+    }
+  } catch (error) {
+    setMailAnalysisState(id, accountId, {state:'failed', error:error.message});
+  } finally {
+    mailAnalysisBusy.delete(key);
+    updateMailAnalysisUI(id, accountId);
+  }
+}
+
+async function analyzeSelectedMail() {
+  const email = selectedEmailDetail;
+  if (!email?.id || email.verdict !== 'unreviewed') return;
+  const accountId = selectedEmailAccountId || activeMailAccount()?.id || '';
+  const key = mailAnalysisKey(email.id, accountId);
+  if (mailAnalysisBusy.has(key)) return;
+  mailAnalysisBusy.add(key);
+  setMailAnalysisState(email.id, accountId, {state:'running', stage:'queued'});
+  try {
+    const task = await api(`/api/emails/${email.id}/analysis`, {accountId, method:'POST'});
+    await watchMailAnalysis(email.id, accountId, task);
+  } catch (error) {
+    mailAnalysisBusy.delete(key);
+    setMailAnalysisState(email.id, accountId, {state:'failed', error:error.message});
+  }
+}
+
+async function resumeMailAnalysis(id, accountId) {
+  const key = mailAnalysisKey(id, accountId);
+  updateMailAnalysisUI(id, accountId);
+  if (mailAnalysisStates.has(key) || mailAnalysisBusy.has(key) || mailAnalysisResuming.has(key)) return;
+  mailAnalysisResuming.add(key);
+  try {
+    const task = await api(`/api/emails/${id}/analysis`, {accountId});
+    if (mailAnalysisBusy.has(key) || !isSelectedAnalysisMail(id, accountId)) return;
+    if (task.state === 'running') {
+      mailAnalysisBusy.add(key);
+      void watchMailAnalysis(id, accountId, task);
+    } else if (task.state === 'complete') {
+      mailAnalysisBusy.add(key);
+      setMailAnalysisState(id, accountId, task);
+      try { await refreshMailAnalysisResult(id, accountId, task); }
+      catch (_) { setMailAnalysisState(id, accountId, {...task, refreshFailed:true}); }
+      finally { mailAnalysisBusy.delete(key); updateMailAnalysisUI(id, accountId); }
+    } else if (task.state === 'failed') setMailAnalysisState(id, accountId, task);
+  } catch (_) {
+    // An optional status check must not block opening a message.
+  } finally { mailAnalysisResuming.delete(key); }
+}
+
+document.addEventListener('click', async event => {
+  if (event.target.closest('[data-mail-analyze]')) return analyzeSelectedMail();
+  const refresh = event.target.closest('[data-mail-analysis-refresh]');
+  if (!refresh || !selectedEmailDetail) return;
+  const id = selectedEmailDetail.id, accountId = selectedEmailAccountId || activeMailAccount()?.id || '';
+  refresh.disabled = true;
+  try {
+    await refreshMailAnalysisResult(id, accountId, mailAnalysisStates.get(mailAnalysisKey(id, accountId)));
+  } catch (_) {
+    toast(readingActionText('read.analysisRefreshFailed'), 'warn');
+  } finally { if (refresh.isConnected) refresh.disabled = false; }
 });
 
 function renderSecurityAnalysis(e) {
@@ -26627,7 +26760,7 @@ function renderSecurityAnalysis(e) {
         ${gauge}
         <div><span>${mailaiT('read.verdictCurrent') || '当前结论'}</span><h4>${esc(risk.text)}</h4><p>${esc(riskSummary)}</p></div>
       </div>
-      <div class="reading-section"><button type="button" class="btn-primary" data-mail-analyze ${busy ? 'disabled' : ''}>${esc(readingActionText(busy ? 'read.analysisRunning' : e.verdict === 'unreviewed' ? 'read.analyze' : 'read.reanalyze'))}</button><p>${esc(readingActionText('read.analysisScope'))}</p></div>
+      ${e.verdict === 'unreviewed' ? `<div class="reading-section"><button type="button" class="btn-primary" data-mail-analyze ${busy ? 'disabled' : ''}>${esc(readingActionText(busy ? 'read.analysisRunning' : 'read.analyze'))}</button><p>${esc(readingActionText('read.analysisScope'))}</p></div>` : ''}
       <div class="security-analysis-grid">
         ${evidenceDimensions}
         <div class="reading-section insight-section">
@@ -26716,12 +26849,12 @@ function renderReadingPane(e) {
           </button>` : ''}
         <div class="reading-heading-row">
           <h2 class="reading-subject">${esc(String(e.subject ?? '').trim() || mailaiText('（无主题）'))}</h2>
-          <button type="button" class="security-result-trigger security-${risk.class} ${riskNeedsAttention ? 'needs-attention' : ''} ${risk.class === 'danger' && riskNeedsAttention ? 'risk-attention-intro' : ''}" aria-expanded="false" onclick="toggleSecurityAnalysis()" title="打开智能研判明细" data-i18n-title="ui.f4512bbf37ea">
-            <span aria-hidden="true">${risk.class === 'danger' || risk.class === 'warn' ? '!' : risk.class === 'muted' ? '…' : '✓'}</span>
-            <small data-i18n="read.securityResult">${mailaiT('read.securityResult') || '安全结果'}</small><b>${esc(risk.text)}</b>${risk.class === 'muted' ? '' : `<em>${riskScore}</em>`}
+          <button type="button" class="security-result-trigger security-${risk.class} ${riskNeedsAttention ? 'needs-attention' : ''} ${risk.class === 'danger' && riskNeedsAttention ? 'risk-attention-intro' : ''}" title="${esc(e.verdict === 'unreviewed' ? readingActionText('read.analyze') : mailaiText('打开智能研判明细'))}" ${e.verdict === 'unreviewed' ? 'data-mail-analyze' : 'aria-expanded="false" onclick="toggleSecurityAnalysis()"'}>
+            <span aria-hidden="true" data-mail-security-icon>${risk.class === 'danger' || risk.class === 'warn' ? '!' : risk.class === 'muted' ? '…' : '✓'}</span>
+            <small data-i18n="read.securityResult">${mailaiT('read.securityResult') || '安全结果'}</small><b>${esc(risk.text)}</b>${e.verdict === 'unreviewed' ? `<i class="security-analysis-action" data-mail-analysis-action>${esc(readingActionText('read.analyze'))}</i>` : risk.class === 'muted' ? '' : `<em>${riskScore}</em>`}
           </button>
-          ${e.verdict === 'unreviewed' ? `<button type="button" class="btn-ghost" data-mail-analyze ${mailAnalysisBusy.has(mailAnalysisKey(e.id, selectedEmailAccountId || activeMailAccount()?.id || '')) ? 'disabled' : ''}>${esc(readingActionText(mailAnalysisBusy.has(mailAnalysisKey(e.id, selectedEmailAccountId || activeMailAccount()?.id || '')) ? 'read.analysisRunning' : 'read.analyze'))}</button>` : ''}
         </div>
+        <div class="reading-analysis-status" data-mail-analysis-status role="status" aria-live="polite" hidden><span data-mail-analysis-message></span><button type="button" class="btn-ghost" data-mail-analysis-refresh hidden>${esc(readingActionText('read.analysisRefresh'))}</button></div>
         <div class="reading-meta">
           <div class="meta-avatar">${(e.from_name || e.from_addr || '?').charAt(0).toUpperCase()}</div>
           <div class="meta-fields">
@@ -26798,6 +26931,7 @@ function renderReadingPane(e) {
   }
   mountRichEmailBody(e);
   loadConversationProgress();
+  void resumeMailAnalysis(e.id, selectedEmailAccountId || activeMailAccount()?.id || '');
 }
 
 let securityAnalysisEmail = null;
@@ -30640,7 +30774,7 @@ document.addEventListener('keydown', event => {
     entry.data=result;entry.invalid=false;entry.error=false;entry.checked=Date.now();
     trim(entry);return result;
   }
-  async function load({silent=false,force=false}={}) {
+  async function load({silent=false,force=false,requireFresh=false}={}) {
     if(!supports())return null;
     const q=query(),key=keyOf(q),nav=mailboxNavigationRevision,token=++sequence,started=performance.now();
     if(current && current.key!==key)remember();
@@ -30655,7 +30789,7 @@ document.addEventListener('keydown', event => {
     }
     if(!entry){entry={key,query:q,owner:owner(),pages:new Map(),cursors:new Map([[0,'']]),scroll:0};entries.set(key,entry);}
     const old=current?.key===key && entry.data;
-    if(old && entry.invalid && !force){await refreshWindow(entry,key,nav);finishMailboxTransition(nav);return true;}
+    if(old && entry.invalid && !force){await refreshWindow(entry,key,nav);finishMailboxTransition(nav);return requireFresh ? !entry.invalid : true;}
     if(!old && !silent)document.getElementById('email-list').innerHTML=skeletonRows();
     try {
       if(!entry.pending){
