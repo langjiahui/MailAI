@@ -448,7 +448,7 @@ def api_email_thread(email_id: int):
 
 
 @router.get("/api/emails/{email_id}/correspondence")
-def api_email_correspondence(email_id: int, limit: int = 50):
+def api_email_correspondence(email_id: int, limit: int = 50, offset: int = 0):
     """List mail exchanged with the other party of the selected message."""
     row = db.get_email(email_id)
     if not row:
@@ -465,7 +465,7 @@ def api_email_correspondence(email_id: int, limit: int = 50):
         counterpart = next((item for item in recipients if item.casefold() != own_address), "")
     if not counterpart:
         return {"counterpart": "", "count": 0, "emails": []}
-    return correspondence_payload(counterpart, limit)
+    return correspondence_payload(counterpart, limit, offset)
 
 
 @router.get("/api/emails/{email_id}/audit")
@@ -534,3 +534,18 @@ def api_retry_action_sync(email_id: int):
 @router.post('/api/mail/action-sync/{email_id}/pause')
 def api_pause_action_sync(email_id: int):
     return _change_action_schedule(email_id, True)
+
+
+@router.post('/api/emails/{email_id}/analysis')
+def api_email_analysis_start(email_id: int):
+    from ...mail_analysis import start
+    try:
+        return start(email_id)
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@router.get('/api/emails/{email_id}/analysis')
+def api_email_analysis_status(email_id: int):
+    from ...mail_analysis import status
+    return status(email_id)

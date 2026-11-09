@@ -51,6 +51,9 @@
     "file": "tests/test_reading_original_browser.cjs"
   },
   {
+    "file": "tests/test_mail_signature_symbols_browser.cjs"
+  },
+  {
     "file": "tests/test_reader_search_browser.cjs"
   },
   {
@@ -602,5 +605,11 @@
   },
   {
     "file": "tests/test_whole_mail_conversation_browser.cjs"
+  },
+  {
+    "file": "tests/test_manual_analysis_browser.cjs",
+    "env": {
+      "MAILAI_TEST_URL": "http://127.0.0.1:18795/"
+    }
   }
 ]

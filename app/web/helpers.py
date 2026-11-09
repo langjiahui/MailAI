@@ -161,13 +161,16 @@ def prepare_assistant_materials(payload, images):
         raise HTTPException(400,str(exc))
 
 
-def correspondence_payload(counterpart: str, limit: int = 50) -> dict:
+def correspondence_payload(counterpart: str, limit: int = 50, offset: int = 0) -> dict:
     """Build the shared correspondence response for message and contact entry points."""
     own_address = str(config.IMAP_USER or "").strip().casefold()
-    items = db.list_correspondence_emails(counterpart, limit=max(1, min(limit, 100)))
+    from ..db.emails import correspondence_page
+    page = correspondence_page(counterpart, limit, offset)
+    items = page['emails']
     return {
         "counterpart": counterpart,
-        "count": len(items),
+        "count": len(items), "total": page["total"], "has_more": page["has_more"],
+        "offset": max(0, offset),
         "emails": [{
             "id": item.get("id"), "date": item.get("date"),
             "from_addr": item.get("from_addr"), "from_name": item.get("from_name"),

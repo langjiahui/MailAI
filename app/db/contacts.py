@@ -156,7 +156,7 @@ def search_contacts(query: str = "", limit: int = 20, favorites_only: bool = Fal
     contacts: dict[str, dict] = {}
     with conn() as c:
         rows = c.execute(
-            "SELECT from_addr,from_name,to_addr,date,created_at FROM emails "
+            "SELECT from_addr,from_name,to_addr,date,created_at,status,remote_missing FROM emails "
             "WHERE coalesce(from_addr,'')<>'' OR coalesce(to_addr,'')<>''"
         ).fetchall()
         sent_rows = c.execute(
@@ -184,7 +184,13 @@ def search_contacts(query: str = "", limit: int = 20, favorites_only: bool = Fal
         if contact_date and contact_date > item["last_contact"]:
             item["last_contact"] = contact_date
 
+    correspondence_counts = {}
     for row in rows:
+        if not row["remote_missing"] and row["status"] != "trash":
+            addresses = {address.strip().casefold() for _, address in getaddresses([row["to_addr"] or ""])}
+            addresses.add(str(row["from_addr"] or "").strip().casefold())
+            for address in addresses:
+                correspondence_counts[address] = correspondence_counts.get(address, 0) + 1
         contact_date = row["date"] or row["created_at"] or ""
         remember(row["from_addr"], row["from_name"] or "", contact_date)
         for name, address in getaddresses([row["to_addr"] or ""]):
@@ -222,6 +228,7 @@ def search_contacts(query: str = "", limit: int = 20, favorites_only: bool = Fal
     from ..contact_directory import _signature
     saved_by_email={row['email'].casefold():dict(row) for row in saved_rows}
     for address,item in contacts.items():
+        item["correspondence_count"] = correspondence_counts.get(address, 0)
         item['directory_revision']=_signature(saved_by_email.get(address),directory_profiles.get(address,{}))
         contact_tags.annotate(item, personal_tags.get(address, []))
     values = [item for address, item in contacts.items() if address not in hidden]
