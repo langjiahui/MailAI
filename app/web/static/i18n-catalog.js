@@ -1,5 +1,6 @@
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "read.historyHeader": ["历史邮件信息", "Previous message details"],
   "mailContext.sourceGone": ["来源邮件已不可用，请重新同步或切换讨论对象。", "The source email is unavailable. Sync again or choose a different email to discuss."],
   "mailContext.issue9": ["正在综合正文与附件读取结果…", "Reviewing mail and file reading results…"],
   "mailContext.contents": ["正文 + {count} 个附件", "Body + {count} files"],

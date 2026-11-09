@@ -6487,6 +6487,10 @@ function richEmailDocument(html, allowRemote = true, composePreview = false) {
       :root{color-scheme:light}*{box-sizing:border-box}html,body{margin:0;padding:0;overflow:hidden;background:transparent;color:#252d29}
       body{padding:6px 4px 18px;font:15px/1.8 -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow-wrap:anywhere}
       img{max-width:100%;height:auto}table{max-width:100%;border-collapse:collapse}a{color:#28705a;text-decoration:none}
+      [data-mailai-history-header]{margin:8px 0;padding:4px 0;font-size:13px}
+      [data-mailai-history-header]>summary{cursor:pointer;color:inherit;font:inherit;min-height:32px;line-height:32px}
+      [data-mailai-history-header]>summary:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+      [data-mailai-history-header]>div{padding:8px 0;overflow-wrap:anywhere}
       blockquote{margin:16px 0;padding-left:14px;border-left:3px solid #d9dfdb;color:#66736c}pre{white-space:pre-wrap}
       html[data-mailai-theme="dark"]{color-scheme:dark;background:#1c2227}
       html[data-mailai-theme="dark"] body{color:#edf1f5;background:#1c2227!important}
@@ -6711,6 +6715,7 @@ function autoSizeRichEmailFrame(frame) {
         || !doc.documentElement.hasAttribute('data-mailai-theme')) return false;
     if (preparedDocument === doc) return true;
     try {
+      window.mailaiPrepareReadingMarkup?.(doc);
       applyRichEmailFrameTheme(frame);
       const sizeKey = () => `${frame.clientWidth}:${doc.body.getBoundingClientRect().height}:${doc.body.scrollHeight}`;
       const resize = () => {

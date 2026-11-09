@@ -1587,6 +1587,7 @@ if (typeof document !== 'undefined') {
 /* ---- i18n-catalog.js ---- */
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "read.historyHeader": ["历史邮件信息", "Previous message details"],
   "mailContext.sourceGone": ["来源邮件已不可用，请重新同步或切换讨论对象。", "The source email is unavailable. Sync again or choose a different email to discuss."],
   "mailContext.issue9": ["正在综合正文与附件读取结果…", "Reviewing mail and file reading results…"],
   "mailContext.contents": ["正文 + {count} 个附件", "Body + {count} files"],
@@ -26185,6 +26186,10 @@ function richEmailDocument(html, allowRemote = true, composePreview = false) {
       :root{color-scheme:light}*{box-sizing:border-box}html,body{margin:0;padding:0;overflow:hidden;background:transparent;color:#252d29}
       body{padding:6px 4px 18px;font:15px/1.8 -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow-wrap:anywhere}
       img{max-width:100%;height:auto}table{max-width:100%;border-collapse:collapse}a{color:#28705a;text-decoration:none}
+      [data-mailai-history-header]{margin:8px 0;padding:4px 0;font-size:13px}
+      [data-mailai-history-header]>summary{cursor:pointer;color:inherit;font:inherit;min-height:32px;line-height:32px}
+      [data-mailai-history-header]>summary:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+      [data-mailai-history-header]>div{padding:8px 0;overflow-wrap:anywhere}
       blockquote{margin:16px 0;padding-left:14px;border-left:3px solid #d9dfdb;color:#66736c}pre{white-space:pre-wrap}
       html[data-mailai-theme="dark"]{color-scheme:dark;background:#1c2227}
       html[data-mailai-theme="dark"] body{color:#edf1f5;background:#1c2227!important}
@@ -26409,6 +26414,7 @@ function autoSizeRichEmailFrame(frame) {
         || !doc.documentElement.hasAttribute('data-mailai-theme')) return false;
     if (preparedDocument === doc) return true;
     try {
+      window.mailaiPrepareReadingMarkup?.(doc);
       applyRichEmailFrameTheme(frame);
       const sizeKey = () => `${frame.clientWidth}:${doc.body.getBoundingClientRect().height}:${doc.body.scrollHeight}`;
       const resize = () => {
@@ -40574,6 +40580,65 @@ function mailCardDate(value, now = new Date()) {
 (() => {
   window.mailaiReadingText = (email) => mdToHtml(email?.body_text || '');
 })();
+
+/* Presentation-only compatibility for Windows-authored HTML signatures. */
+window.mailaiPrepareReadingMarkup = doc => {
+  const view = doc.defaultView;
+  for (const node of doc.body.querySelectorAll('span,font')) {
+    // Only Wingdings' documented phone/envelope slots. Other symbol fonts and
+    // unknown glyphs must retain their original meaning and content.
+    const family = view.getComputedStyle(node).fontFamily.split(',')[0].replace(/["']/g,'').trim();
+    if (!/^Wingdings$/i.test(family)) continue;
+    for (const text of [...node.childNodes].filter(child=>child.nodeType===3)) {
+      const converted = text.nodeValue.replace(/[\u0028\u0029\u002a\uF028\uF029\uF02A]/g, glyph => {
+        const slot=glyph.charCodeAt(0)&255;
+        return slot===42 ? '✉' : '☎';
+      });
+      if (converted===text.nodeValue) continue;
+      // Split runs so unknown characters still use the sender's original font.
+      const fragment=doc.createDocumentFragment();
+      for (const glyph of text.nodeValue) {
+        if (/[\u0028\u0029\u002a\uF028\uF029\uF02A]/.test(glyph)) {
+          const icon=doc.createElement('span');
+          icon.style.setProperty('font-family','Arial, sans-serif','important');
+          icon.textContent=(glyph.charCodeAt(0)&255)===42?'✉':'☎';
+          fragment.append(icon);
+        } else fragment.append(doc.createTextNode(glyph));
+      }
+      text.replaceWith(fragment);
+    }
+  }
+  // Word-pasted signatures can carry tiny image tags whose file:/CID source
+  // was unavailable and stripped. Hide only empty decorative slots, not real
+  // images, remote-image placeholders, or meaningful alternative text.
+  for (const image of doc.querySelectorAll('img:not([src]):not([srcset])')) {
+    const width=Number(image.getAttribute('width')), height=Number(image.getAttribute('height'));
+    if (width>0 && height>0 && width<=24 && height<=24 && !(image.getAttribute('alt')||'').trim()) {
+      image.style.setProperty('display','none','important');
+    }
+  }
+  // Recognize a complete, dedicated forward-header box by its direct rows.
+  // Never move subsequent siblings (the actual message body) into the fold.
+  const labels=/^(?:发件人|发送时间|收件人|抄送|主题|From|Sent|Date|To|Cc|Subject)\s*[:：]/i;
+  const headers=[...doc.querySelectorAll('[id="divRplyFwdMsg"]')];
+  for (const box of doc.querySelectorAll('blockquote div')) {
+    const rows=[...box.children];
+    if (rows.length<3 || rows.length>7 || rows.some(row=>row.tagName!=='DIV' || !labels.test(row.textContent.trim()))) continue;
+    if ([...box.childNodes].some(node=>node.nodeType===3 && node.nodeValue.trim())) continue;
+    const text=box.textContent;
+    if (/(?:发件人|From)\s*[:：]/i.test(text) && /(?:收件人|To)\s*[:：]/i.test(text) && /(?:主题|Subject)\s*[:：]/i.test(text)) headers.push(box);
+  }
+  for (const header of headers) {
+    if (header.closest('[data-mailai-history-header]')) continue;
+    const text=header.textContent || '';
+    if (!/(?:From|发件人)\s*[:：]/i.test(text) || !/(?:Subject|主题)\s*[:：]/i.test(text)) continue;
+    const details=doc.createElement('details');
+    details.setAttribute('data-mailai-history-header','');
+    const summary=doc.createElement('summary');
+    summary.textContent=mailaiT('read.historyHeader') || MAILAI_UI_COPY['read.historyHeader'][currentI18nLanguage()==='en' ? 1 : 0];
+    header.before(details); details.append(summary,header);
+  }
+};
 
 ;
 /* ---- diagnostics-progress.js ---- */

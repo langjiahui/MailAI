@@ -51,6 +51,9 @@
     "file": "tests/test_reading_original_browser.cjs"
   },
   {
+    "file": "tests/test_mail_signature_symbols_browser.cjs"
+  },
+  {
     "file": "tests/test_reader_search_browser.cjs"
   },
   {
