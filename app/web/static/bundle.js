@@ -22650,18 +22650,13 @@ function mailSummaryDisclosure(e, {drawer = false} = {}) {
   const revealId = drawer ? 'drawer-summary-reveal' : 'primary-summary-reveal';
   const summary = String(e.summary ?? ''), snippet = String(e.snippet ?? '');
   const title = summary.trim() ? (mailaiT('read.summaryTitle') || 'AI 摘要') : (mailaiT('read.previewTitle') || '正文预览');
-  const quickMeta = drawer ? '' : `<div class="summary-quick-meta">
-    ${e.category ? `<span>${esc(mailCategoryLabel(e.category))}</span>` : ''}
-    ${e.priority ? `<span>${esc(mailPriorityLabel(e.priority))}</span>` : ''}
-    ${(e.attachments || []).length ? `<span>${(mailaiT('read.attachCount') || '{n} 个附件').replace('{n}', e.attachments.length)}</span>` : ''}
-  </div>`;
   return `<section class="reading-section ${drawer ? 'drawer-summary-section' : 'summary-section primary-summary'} optional-mail-summary ${expanded ? 'is-expanded' : ''}">
     ${drawer ? `<button type="button" class="summary-toggle" data-summary-toggle aria-expanded="${expanded}" aria-controls="${revealId}">
       <span class="summary-toggle-copy"><strong>${title}</strong><small>${mailaiT('read.optionalSummary') || '需要时查看'}</small></span>
       <span class="summary-toggle-action"><span class="summary-expand-label">${mailaiT('common.expand') || '展开'}</span><span class="summary-collapse-label">${mailaiT('common.collapse') || '收起'}</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></span>
     </button>` : ''}
     <div id="${revealId}" class="summary-reveal" aria-hidden="${!expanded}" ${expanded ? '' : 'inert'}><div class="summary-reveal-inner">
-      ${quickMeta}<div id="${id}" class="markdown-body summary-box">${mdToHtml(summary.trim() ? summary : snippet.trim() ? snippet : (mailaiT('read.noSummary') || '暂无摘要'))}</div>
+      <div id="${id}" class="markdown-body summary-box">${mdToHtml(summary.trim() ? summary : snippet.trim() ? snippet : (mailaiT('read.noSummary') || '暂无摘要'))}</div>
     </div></div>
   </section>`;
 }
