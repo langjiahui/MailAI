@@ -3259,9 +3259,9 @@ async function loadMailPages(path, isCurrent = () => true, maxRows = Number.POSI
   return null;
 }
 
-async function loadData({includeAncillary = true, silent = false} = {}) {
+async function loadData({includeAncillary = true, silent = false, requireFresh = false} = {}) {
   if (typeof window !== 'undefined' && window.mailaiMailboxStore?.supports()) {
-    return window.mailaiMailboxStore.load({silent});
+    return window.mailaiMailboxStore.load({silent, requireFresh});
   }
   const revision = ++mailLoadRevision;
   const navigationRevision = mailboxNavigationRevision;
@@ -6906,7 +6906,7 @@ async function refreshMailAnalysisResult(id, accountId, task) {
     }
   }
   try {
-    const refreshed = await loadData({includeAncillary:false, silent:true});
+    const refreshed = await loadData({includeAncillary:false, silent:true, requireFresh:true});
     if (refreshed === false) throw new Error(readingActionText('read.analysisRefreshFailed'));
   } catch (_) {
     setMailAnalysisState(id, accountId, {...completed, refreshFailed:true});

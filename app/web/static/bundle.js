@@ -22983,9 +22983,9 @@ async function loadMailPages(path, isCurrent = () => true, maxRows = Number.POSI
   return null;
 }
 
-async function loadData({includeAncillary = true, silent = false} = {}) {
+async function loadData({includeAncillary = true, silent = false, requireFresh = false} = {}) {
   if (typeof window !== 'undefined' && window.mailaiMailboxStore?.supports()) {
-    return window.mailaiMailboxStore.load({silent});
+    return window.mailaiMailboxStore.load({silent, requireFresh});
   }
   const revision = ++mailLoadRevision;
   const navigationRevision = mailboxNavigationRevision;
@@ -26630,7 +26630,7 @@ async function refreshMailAnalysisResult(id, accountId, task) {
     }
   }
   try {
-    const refreshed = await loadData({includeAncillary:false, silent:true});
+    const refreshed = await loadData({includeAncillary:false, silent:true, requireFresh:true});
     if (refreshed === false) throw new Error(readingActionText('read.analysisRefreshFailed'));
   } catch (_) {
     setMailAnalysisState(id, accountId, {...completed, refreshFailed:true});
@@ -30774,7 +30774,7 @@ document.addEventListener('keydown', event => {
     entry.data=result;entry.invalid=false;entry.error=false;entry.checked=Date.now();
     trim(entry);return result;
   }
-  async function load({silent=false,force=false}={}) {
+  async function load({silent=false,force=false,requireFresh=false}={}) {
     if(!supports())return null;
     const q=query(),key=keyOf(q),nav=mailboxNavigationRevision,token=++sequence,started=performance.now();
     if(current && current.key!==key)remember();
@@ -30789,7 +30789,7 @@ document.addEventListener('keydown', event => {
     }
     if(!entry){entry={key,query:q,owner:owner(),pages:new Map(),cursors:new Map([[0,'']]),scroll:0};entries.set(key,entry);}
     const old=current?.key===key && entry.data;
-    if(old && entry.invalid && !force){await refreshWindow(entry,key,nav);finishMailboxTransition(nav);return !entry.invalid;}
+    if(old && entry.invalid && !force){await refreshWindow(entry,key,nav);finishMailboxTransition(nav);return requireFresh ? !entry.invalid : true;}
     if(!old && !silent)document.getElementById('email-list').innerHTML=skeletonRows();
     try {
       if(!entry.pending){
