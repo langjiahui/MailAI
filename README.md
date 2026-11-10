@@ -5,9 +5,9 @@ MailAI 是一款**本地运行、AI 驱动**的邮件与工作助手。它通过
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v4.4.1**
+当前版本：**v4.4.2**
 
-本次更新：融合邮件安全状态与分析入口，展示分析进度及最终结论，并同步刷新邮件列表和风险统计；分析完成后结束流程，失败可重试。[发布说明](docs/发布-v4.4.1-分析结果同步与控件融合.md) · [完整版本历史](https://github.com/langjiahui/MailAI/releases)
+本次更新：修复右键移动邮件时文件夹菜单不可见的问题，支持悬停展开并适应窗口边缘；优化高级搜索和邮件筛选入口的图标与状态显示。[发布说明](docs/发布-v4.4.2-邮件移动与筛选界面.md) · [完整版本历史](https://github.com/langjiahui/MailAI/releases)
 
 ## Android
 

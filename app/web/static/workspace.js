@@ -480,7 +480,9 @@ function updateFilterChips() {
   if (focusedIndex >= 0) (chipHost.children[Math.min(focusedIndex, count - 1)] || document.getElementById('btn-filter-panel'))?.focus({preventScroll:true});
   const triggerCount = document.querySelector('#btn-filter-panel .filter-trigger-count');
   if (triggerCount) { triggerCount.textContent = count; triggerCount.hidden = count === 0; }
-  mailaiBindUI(document.getElementById('btn-filter-panel'), '@aria-label', () => count ? (mailaiT('filter.selected') || '筛选，已选 {count} 项').replace('{count}', count) : mailaiT('filter.toggle'));
+  const triggerLabel = () => count ? (mailaiT('filter.selected') || '筛选，已选 {count} 项').replace('{count}', count) : mailaiT('filter.toggle');
+  mailaiBindUI(document.getElementById('btn-filter-panel'), '@aria-label', triggerLabel);
+  mailaiBindUI(document.getElementById('btn-filter-panel'), 'title', triggerLabel);
   document.getElementById('filter-chips-clear')?.classList.toggle('hidden', count === 0);
   document.getElementById('filter-result-summary')?.classList.toggle('hidden', count === 0);
 }
@@ -905,7 +907,7 @@ function initializeWorkspace() {
   filters.append(filterHeader, filterSelection, filterBody, filterFooter);
   const filterButton = document.getElementById('btn-filter-panel');
   filterButton.removeAttribute('data-i18n');
-  filterButton.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h5m4 0h5M3 10h9m4 0h1M3 15h1m4 0h9"/><circle cx="10" cy="5" r="2"/><circle cx="14" cy="10" r="2"/><circle cx="6" cy="15" r="2"/></svg><span data-i18n="filter.toggle">筛选</span><span class="filter-trigger-count" hidden aria-hidden="true"></span>';
+  filterButton.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 4.5h13l-5 6v4l-3 1v-5z"/></svg><span class="filter-trigger-count" hidden aria-hidden="true"></span>';
   const filterClose = document.createElement('button');
   filterClose.type = 'button'; filterClose.id = 'btn-collapse-filters';
   filterClose.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 12 5-5 5 5"/></svg>';

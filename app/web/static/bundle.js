@@ -24196,6 +24196,19 @@ function positionMailContextMenu(menu,x,y) {
   menu.style.top=`${Math.max(8,Math.min(y,window.innerHeight-rect.height-8))/scale}px`;
 }
 
+function positionMailFolderMenu(menu) {
+  const group=menu.querySelector('.mail-context-folders'), trigger=menu.querySelector('[data-context-action=folders]');
+  if (!group || group.classList.contains('hidden') || !trigger) return;
+  const scale=Number.parseFloat(getComputedStyle(document.body).zoom)||1;
+  const menuRect=menu.getBoundingClientRect(), triggerRect=trigger.getBoundingClientRect();
+  group.style.maxHeight=`${Math.max(80,(window.innerHeight-16)/scale)}px`;
+  const groupRect=group.getBoundingClientRect(), gap=4*scale;
+  const left=menuRect.right+gap+groupRect.width<=window.innerWidth-8 ? menuRect.right+gap : Math.max(8,menuRect.left-gap-groupRect.width);
+  const top=Math.max(8,Math.min(triggerRect.top,window.innerHeight-groupRect.height-8));
+  group.style.left=`${(left-menuRect.left)/scale}px`;
+  group.style.top=`${(top-menuRect.top)/scale}px`;
+}
+
 function ensureMailContextMenu() {
   let menu = document.getElementById('mail-context-menu');
   if (menu) return menu;
@@ -24205,13 +24218,26 @@ function ensureMailContextMenu() {
   menu.setAttribute('role', 'menu');
   menu.setAttribute('aria-hidden', 'true');
   document.body.appendChild(menu);
+  let folderCloseTimer;
   const folders=(open,focus=false)=>{
+    clearTimeout(folderCloseTimer);
     const group=menu.querySelector('.mail-context-folders'),trigger=menu.querySelector('[data-context-action=folders]');
     if(!group||trigger?.disabled)return;
     group.classList.toggle('hidden',!open);trigger.setAttribute('aria-expanded',String(open));
-    const rect=menu.getBoundingClientRect();positionMailContextMenu(menu,rect.left,rect.top);
+    if(open) positionMailFolderMenu(menu);
     if(focus)(open?group.querySelector('button:not(:disabled)'):trigger)?.focus();
   };
+  menu.addEventListener('pointerover',event=>{
+    if(event.pointerType==='touch')return;
+    if(event.target.closest('[data-context-action=folders]')) folders(true);
+    else if(event.target.closest('.mail-context-folders')) clearTimeout(folderCloseTimer);
+    else if(event.target.closest('[role=menuitem]')) { clearTimeout(folderCloseTimer); folderCloseTimer=setTimeout(()=>folders(false),250); }
+  });
+  menu.addEventListener('pointerleave',event=>{
+    if(event.pointerType!=='touch') { clearTimeout(folderCloseTimer); folderCloseTimer=setTimeout(()=>folders(false),250); }
+  });
+  menu.addEventListener('pointerenter',()=>clearTimeout(folderCloseTimer));
+  menu.addEventListener('scroll',()=>positionMailFolderMenu(menu),true);
   menu.addEventListener('keydown',event=>{
     if(event.isComposing||event.keyCode===229||event.ctrlKey||event.metaKey||event.altKey)return;
     const inFolders=Boolean(event.target.closest('.mail-context-folders'));
@@ -24240,7 +24266,9 @@ function ensureMailContextMenu() {
     const action = button.dataset.contextAction;
     const id = Number(menu.dataset.contextId);
     if (action === 'folders') {
-      folders(menu.querySelector('.mail-context-folders')?.classList.contains('hidden'));
+      const closed=menu.querySelector('.mail-context-folders')?.classList.contains('hidden');
+      folders(event.detail && matchMedia('(hover: hover)').matches ? true : closed);
+      button.focus({preventScroll:true});
       return;
     }
     hideMailContextMenu();
@@ -24313,6 +24341,10 @@ function showMailContextMenu(x, y, id) {
     <div class="mail-context-separator"></div>
     <button type="button" role="menuitem" data-context-action="select-all">${mailContextIcon('<path d="M4 4h12v12H4zM7 10l2 2 4-4"/>')}<span><span data-i18n="ui.70b25d866a2e">全选当前列表</span></span><kbd>⌘A</kbd></button>
     ${count > 1 ? `<button type="button" role="menuitem" data-context-action="clear">${mailContextIcon('<path d="m6 6 8 8M14 6l-8 8"/>')}<span><span data-i18n="ui.74966e20df2e">取消选择</span></span><kbd>Esc</kbd></button>` : ''}`;
+  const group=menu.querySelector('.mail-context-folders');
+  const items=document.createElement('div');items.className='mail-context-items';
+  while(menu.firstChild) items.appendChild(menu.firstChild);
+  menu.append(items,group);
   menu.classList.remove('hidden');
   menu.setAttribute('aria-hidden', 'false');
   positionMailContextMenu(menu,x,y);
@@ -31937,7 +31969,9 @@ function updateFilterChips() {
   if (focusedIndex >= 0) (chipHost.children[Math.min(focusedIndex, count - 1)] || document.getElementById('btn-filter-panel'))?.focus({preventScroll:true});
   const triggerCount = document.querySelector('#btn-filter-panel .filter-trigger-count');
   if (triggerCount) { triggerCount.textContent = count; triggerCount.hidden = count === 0; }
-  mailaiBindUI(document.getElementById('btn-filter-panel'), '@aria-label', () => count ? (mailaiT('filter.selected') || '筛选，已选 {count} 项').replace('{count}', count) : mailaiT('filter.toggle'));
+  const triggerLabel = () => count ? (mailaiT('filter.selected') || '筛选，已选 {count} 项').replace('{count}', count) : mailaiT('filter.toggle');
+  mailaiBindUI(document.getElementById('btn-filter-panel'), '@aria-label', triggerLabel);
+  mailaiBindUI(document.getElementById('btn-filter-panel'), 'title', triggerLabel);
   document.getElementById('filter-chips-clear')?.classList.toggle('hidden', count === 0);
   document.getElementById('filter-result-summary')?.classList.toggle('hidden', count === 0);
 }
@@ -32362,7 +32396,7 @@ function initializeWorkspace() {
   filters.append(filterHeader, filterSelection, filterBody, filterFooter);
   const filterButton = document.getElementById('btn-filter-panel');
   filterButton.removeAttribute('data-i18n');
-  filterButton.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h5m4 0h5M3 10h9m4 0h1M3 15h1m4 0h9"/><circle cx="10" cy="5" r="2"/><circle cx="14" cy="10" r="2"/><circle cx="6" cy="15" r="2"/></svg><span data-i18n="filter.toggle">筛选</span><span class="filter-trigger-count" hidden aria-hidden="true"></span>';
+  filterButton.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 4.5h13l-5 6v4l-3 1v-5z"/></svg><span class="filter-trigger-count" hidden aria-hidden="true"></span>';
   const filterClose = document.createElement('button');
   filterClose.type = 'button'; filterClose.id = 'btn-collapse-filters';
   filterClose.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 12 5-5 5 5"/></svg>';
@@ -38680,7 +38714,7 @@ function mailCardDate(value, now = new Date()) {
     searchBtn.type = "button";
     searchBtn.className = "search-filter-button";
     searchBtn.innerHTML =
-      '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h6m4 0h4M3 10h2m4 0h8M3 15h8m4 0h2"/><circle cx="11" cy="5" r="2"/><circle cx="7" cy="10" r="2"/><circle cx="13" cy="15" r="2"/></svg>';
+      '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5.5h5m4 0h5M3 10h2m4 0h8M3 14.5h8m4 0h2"/><circle cx="10" cy="5.5" r="2"/><circle cx="7" cy="10" r="2"/><circle cx="13" cy="14.5" r="2"/></svg>';
     mailaiBindUI(searchBtn, "title", () => (mailaiText("高级搜索")));
     searchBtn.setAttribute("aria-haspopup", "dialog");
     searchBtn.setAttribute("aria-controls", "productivity-dialog");
