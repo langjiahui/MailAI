@@ -4472,6 +4472,19 @@ function positionMailContextMenu(menu,x,y) {
   menu.style.top=`${Math.max(8,Math.min(y,window.innerHeight-rect.height-8))/scale}px`;
 }
 
+function positionMailFolderMenu(menu) {
+  const group=menu.querySelector('.mail-context-folders'), trigger=menu.querySelector('[data-context-action=folders]');
+  if (!group || group.classList.contains('hidden') || !trigger) return;
+  const scale=Number.parseFloat(getComputedStyle(document.body).zoom)||1;
+  const menuRect=menu.getBoundingClientRect(), triggerRect=trigger.getBoundingClientRect();
+  group.style.maxHeight=`${Math.max(80,(window.innerHeight-16)/scale)}px`;
+  const groupRect=group.getBoundingClientRect(), gap=4*scale;
+  const left=menuRect.right+gap+groupRect.width<=window.innerWidth-8 ? menuRect.right+gap : Math.max(8,menuRect.left-gap-groupRect.width);
+  const top=Math.max(8,Math.min(triggerRect.top,window.innerHeight-groupRect.height-8));
+  group.style.left=`${(left-menuRect.left)/scale}px`;
+  group.style.top=`${(top-menuRect.top)/scale}px`;
+}
+
 function ensureMailContextMenu() {
   let menu = document.getElementById('mail-context-menu');
   if (menu) return menu;
@@ -4481,13 +4494,26 @@ function ensureMailContextMenu() {
   menu.setAttribute('role', 'menu');
   menu.setAttribute('aria-hidden', 'true');
   document.body.appendChild(menu);
+  let folderCloseTimer;
   const folders=(open,focus=false)=>{
+    clearTimeout(folderCloseTimer);
     const group=menu.querySelector('.mail-context-folders'),trigger=menu.querySelector('[data-context-action=folders]');
     if(!group||trigger?.disabled)return;
     group.classList.toggle('hidden',!open);trigger.setAttribute('aria-expanded',String(open));
-    const rect=menu.getBoundingClientRect();positionMailContextMenu(menu,rect.left,rect.top);
+    if(open) positionMailFolderMenu(menu);
     if(focus)(open?group.querySelector('button:not(:disabled)'):trigger)?.focus();
   };
+  menu.addEventListener('pointerover',event=>{
+    if(event.pointerType==='touch')return;
+    if(event.target.closest('[data-context-action=folders]')) folders(true);
+    else if(event.target.closest('.mail-context-folders')) clearTimeout(folderCloseTimer);
+    else if(event.target.closest('[role=menuitem]')) { clearTimeout(folderCloseTimer); folderCloseTimer=setTimeout(()=>folders(false),250); }
+  });
+  menu.addEventListener('pointerleave',event=>{
+    if(event.pointerType!=='touch') { clearTimeout(folderCloseTimer); folderCloseTimer=setTimeout(()=>folders(false),250); }
+  });
+  menu.addEventListener('pointerenter',()=>clearTimeout(folderCloseTimer));
+  menu.addEventListener('scroll',()=>positionMailFolderMenu(menu),true);
   menu.addEventListener('keydown',event=>{
     if(event.isComposing||event.keyCode===229||event.ctrlKey||event.metaKey||event.altKey)return;
     const inFolders=Boolean(event.target.closest('.mail-context-folders'));
@@ -4516,7 +4542,9 @@ function ensureMailContextMenu() {
     const action = button.dataset.contextAction;
     const id = Number(menu.dataset.contextId);
     if (action === 'folders') {
-      folders(menu.querySelector('.mail-context-folders')?.classList.contains('hidden'));
+      const closed=menu.querySelector('.mail-context-folders')?.classList.contains('hidden');
+      folders(event.detail && matchMedia('(hover: hover)').matches ? true : closed);
+      button.focus({preventScroll:true});
       return;
     }
     hideMailContextMenu();
@@ -4589,6 +4617,10 @@ function showMailContextMenu(x, y, id) {
     <div class="mail-context-separator"></div>
     <button type="button" role="menuitem" data-context-action="select-all">${mailContextIcon('<path d="M4 4h12v12H4zM7 10l2 2 4-4"/>')}<span><span data-i18n="ui.70b25d866a2e">全选当前列表</span></span><kbd>⌘A</kbd></button>
     ${count > 1 ? `<button type="button" role="menuitem" data-context-action="clear">${mailContextIcon('<path d="m6 6 8 8M14 6l-8 8"/>')}<span><span data-i18n="ui.74966e20df2e">取消选择</span></span><kbd>Esc</kbd></button>` : ''}`;
+  const group=menu.querySelector('.mail-context-folders');
+  const items=document.createElement('div');items.className='mail-context-items';
+  while(menu.firstChild) items.appendChild(menu.firstChild);
+  menu.append(items,group);
   menu.classList.remove('hidden');
   menu.setAttribute('aria-hidden', 'false');
   positionMailContextMenu(menu,x,y);

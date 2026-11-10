@@ -141,10 +141,33 @@ html[data-theme] body .list-workspace-tools #filter-chips { flex:1 1 120px; orde
 html[data-theme] body .list-workspace-tools #filter-chips-clear { flex:none; margin-left:auto; padding:4px; min-height:26px; background:transparent!important; color:var(--desk-muted)!important; font-size:10.5px; }
 html[data-theme] body .list-workspace-tools #filter-chips-clear.hidden { display:none!important; }
 #filter-result-summary { flex:none; color:var(--desk-muted); font-size:10.5px; white-space:nowrap; }
-html[data-theme] body .list-sort #btn-filter-panel { display:inline-flex; align-items:center; gap:5px; min-height:32px; padding:5px 8px; }
-#btn-filter-panel svg { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; }
+html[data-theme] body .list-sort #btn-filter-panel { display:inline-flex; align-items:center; justify-content:center; }
+#btn-filter-panel svg { width:18px; height:18px; flex:none; fill:none; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
 .filter-trigger-count { font-size:10px; font-weight:650; font-variant-numeric:tabular-nums; }
 html[data-theme] body .list-sort #btn-filter-panel:has(.filter-trigger-count:not([hidden])) { color:var(--desk-accent); background:var(--desk-selected); }
+/* Search conditions and list filters are separate actions with distinct icons. */
+html[data-theme] body .topbar .global-search .search-filter-button {
+  display:inline-flex; align-items:center; justify-content:center;
+  flex:0 0 32px; width:32px; min-width:32px; height:30px; min-height:30px!important;
+  align-self:center; margin:0; padding:0!important;
+  border:0!important; border-radius:7px;
+  background:transparent!important; color:var(--desk-muted);
+}
+html[data-theme] body .topbar .global-search .search-filter-button svg { width:18px; height:18px; flex:none; }
+html[data-theme] body .topbar .global-search .search-filter-button:is(:hover,[aria-expanded=true]) {
+  color:var(--desk-accent); background:var(--desk-selected)!important;
+}
+html[data-theme] body .list-sort #btn-filter-panel {
+  gap:4px; min-width:30px; height:30px; min-height:30px; padding:0 6px;
+  border:0; border-radius:7px;
+  background:transparent; color:var(--desk-muted);
+}
+html[data-theme] body .list-sort #btn-filter-panel:is(:hover,[aria-expanded=true]) { color:var(--desk-accent); background:var(--desk-selected); }
+.filter-trigger-count:not([hidden]) {
+  display:inline-grid; place-items:center; min-width:17px; height:17px; padding:0 4px;
+  border-radius:9px; color:var(--reward-on-accent, #fff); background:var(--desk-accent);
+  font-size:10px; line-height:1;
+}
 @container mail-list-pane (max-width:370px) {
   html[data-theme] body #workspace-filters .filter-block { padding-left:80px; }
   #workspace-filters .filter-block legend { width:76px; }
