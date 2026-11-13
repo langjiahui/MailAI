@@ -59,25 +59,25 @@ html[data-theme] body #todo-center #todo-quick-title {
   gap: 6px;
 }
 #todo-center .todo-quick-controls > * {
-  flex: 0 0 auto !important;
+  flex: 0 0 auto;
 }
 html[data-theme][data-theme] body #todo-center .todo-quick-controls .datetime-control {
-  width: auto !important;
+  width: auto;
   min-width: 0;
 }
 html[data-theme][data-theme] body #todo-center .todo-quick-controls .datetime-trigger {
-  width: auto !important;
+  width: auto;
   min-width: 102px;
   max-width: 146px;
-  min-height: 28px !important;
-  height: 28px !important;
+  min-height: 28px;
+  height: 28px;
   gap: 6px;
-  padding: 0 10px !important;
+  padding: 0 10px;
   border: 0 !important;
-  border-radius: 8px !important;
+  border-radius: 8px;
   background: var(--desk-surface) !important;
   color: var(--desk-muted) !important;
-  font-size: 12px !important;
+  font-size: 12px;
   font-weight: 500;
   box-shadow: 0 1px 2px rgba(0, 0, 0, .04) !important;
   white-space: nowrap;
@@ -88,18 +88,18 @@ html[data-theme][data-theme] body #todo-center .todo-quick-controls .datetime-tr
   flex: 0 0 14px;
 }
 html[data-theme][data-theme] body #todo-center :is(#todo-quick-deadline, #todo-quick-recurrence) {
-  min-width: 88px !important;
-  width: auto !important;
-  min-height: 28px !important;
-  height: 28px !important;
-  padding: 0 30px 0 10px !important;
+  min-width: 88px;
+  width: auto;
+  min-height: 28px;
+  height: 28px;
+  padding: 0 30px 0 10px;
   border: 0 !important;
-  border-radius: 8px !important;
+  border-radius: 8px;
   background-color: var(--desk-surface) !important;
   color: var(--desk-muted) !important;
-  font-size: 12px !important;
+  font-size: 12px;
   font-weight: 500;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, .04) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
   white-space: nowrap;
 }
 html[data-theme="dark"][data-theme="dark"] body #todo-center .todo-quick-controls .datetime-trigger,
@@ -109,9 +109,9 @@ html[data-theme="dark"][data-theme="dark"] body #todo-center :is(#todo-quick-dea
   box-shadow: none !important;
 }
 html[data-theme] body #todo-center #todo-quick-submit {
-  min-height: 28px !important;
-  min-width: 52px !important;
-  padding: 4px 14px !important;
+  min-height: 28px;
+  min-width: 52px;
+  padding: 4px 14px;
   border: 0 !important;
   border-radius: 8px;
   background: var(--desk-accent) !important;

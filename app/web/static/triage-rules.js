@@ -476,4 +476,8 @@
 
   window.openTriageCenter = openModal;
   window.closeTriageCenter = closeModal;
+  globalThis.MailAIModules?.register('triageRules', {
+    open: openModal,
+    close: closeModal,
+  });
 })();

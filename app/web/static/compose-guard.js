@@ -489,4 +489,8 @@
   window.clearComposeGuardBanner = clearComposeGuardMarks;
   window.clearComposeGuardMarks = clearComposeGuardMarks;
   window.runComposeGuardAudit = runComposeGuardAudit;
+  globalThis.MailAIModules?.register('composeGuard', {
+    runAudit: runComposeGuardAudit,
+    clearMarks: clearComposeGuardMarks,
+  });
 })();

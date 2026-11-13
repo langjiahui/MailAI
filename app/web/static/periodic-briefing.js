@@ -754,4 +754,7 @@
   });
 
   syncHeaderForTab();
+  globalThis.MailAIModules?.register('periodicBriefing', {
+    open: window.openPeriodicBriefing,
+  });
 })();

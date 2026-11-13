@@ -457,4 +457,8 @@
 
   window.openCalendarTimeline = openModal;
   window.closeCalendarTimeline = closeModal;
+  globalThis.MailAIModules?.register('calendarTimeline', {
+    open: openModal,
+    close: closeModal,
+  });
 })();

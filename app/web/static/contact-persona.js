@@ -582,4 +582,8 @@
       renderPersonaStrip();
     }
   }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+  globalThis.MailAIModules?.register('contactPersona', {
+    schedule: () => window.mailaiScheduleComposePersona?.(0),
+  });
 })();

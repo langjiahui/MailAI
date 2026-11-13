@@ -20141,6 +20141,123 @@ function mailaiLabelHTML(label) {
 })();
 
 ;
+/* ---- mailai-state.js ---- */
+/* Shared state convergence and module registry for MailAI frontend modules. */
+(() => {
+  const registry = new Map();
+  const state = {
+    account: {id: '', user: '', unified: false},
+    mailbox: {specialMailbox: '', serverFolder: '', selectedEmailId: null, total: 0},
+    todos: {open: false, accountId: '', count: 0, loading: false},
+    compose: {open: false, accountId: '', mode: 'compose', draftId: null},
+    ui: {view: 'mailbox', theme: 'light', language: 'zh-CN'},
+  };
+  const listeners = new Map();
+
+  function cloneSlice(slice) {
+    const current = state[slice];
+    return current && typeof current === 'object' ? {...current} : current;
+  }
+
+  function notify(slice, next, prev) {
+    const subs = listeners.get(slice);
+    if (!subs?.size) return;
+    subs.forEach(fn => {
+      try { fn(cloneSlice(slice), prev ? {...prev} : prev, slice); } catch (_) {}
+    });
+  }
+
+  window.MailAIModules = {
+    register(name, exports = {}) {
+      const key = String(name || '').trim();
+      if (!key) return exports;
+      const entry = Object.freeze({...exports});
+      registry.set(key, entry);
+      window.dispatchEvent(new CustomEvent('mailai:module-registered', {detail: {name: key}}));
+      return entry;
+    },
+    get(name) {
+      return registry.get(String(name || '').trim()) || null;
+    },
+    has(name) {
+      return registry.has(String(name || '').trim());
+    },
+    list() {
+      return [...registry.keys()];
+    },
+  };
+
+  window.MailAIState = {
+    get(slice) {
+      if (!slice) return this.snapshot();
+      return cloneSlice(slice);
+    },
+    set(slice, patch) {
+      if (!Object.prototype.hasOwnProperty.call(state, slice) || !patch || typeof patch !== 'object') return cloneSlice(slice);
+      const prev = {...state[slice]};
+      let changed = false;
+      const next = {...prev};
+      for (const [k, v] of Object.entries(patch)) {
+        if (!Object.is(prev[k], v)) {
+          next[k] = v;
+          changed = true;
+        }
+      }
+      if (!changed) return next;
+      state[slice] = next;
+      notify(slice, next, prev);
+      return {...next};
+    },
+    subscribe(slice, handler) {
+      if (typeof handler !== 'function') return () => {};
+      if (!listeners.has(slice)) listeners.set(slice, new Set());
+      const bucket = listeners.get(slice);
+      bucket.add(handler);
+      return () => bucket.delete(handler);
+    },
+    snapshot() {
+      return {
+        account: {...state.account},
+        mailbox: {...state.mailbox},
+        todos: {...state.todos},
+        compose: {...state.compose},
+        ui: {...state.ui},
+      };
+    },
+  };
+
+  window.MailAICore = {
+    readStorage(key, fallback = '') {
+      try {
+        const value = localStorage.getItem(key);
+        return value === null ? fallback : value;
+      } catch (_) {
+        return fallback;
+      }
+    },
+    writeStorage(key, value) {
+      try {
+        localStorage.setItem(key, String(value));
+        return true;
+      } catch (_) {
+        return false;
+      }
+    },
+    bindBackdropClose(selector, onClose) {
+      const node = document.querySelector(selector);
+      if (!node || typeof onClose !== 'function') return null;
+      node.addEventListener('click', onClose);
+      return node;
+    },
+  };
+
+  window.MailAIModules.register('state', {
+    state: window.MailAIState,
+    core: window.MailAICore,
+  });
+})();
+
+;
 /* ---- app.js ---- */
 const API = '';
 
@@ -21651,6 +21768,7 @@ async function openCompose(seed = {}) {
   mailaiBindUI(send, "title", () => (sendCapability.reason || mailaiText('发送邮件')));
   document.getElementById('compose-modal').classList.remove('hidden');
   document.body.classList.add('compose-open');
+  globalThis.MailAIState?.set('compose', {open:true, accountId:composeAccountId, mode:composeContext.mode, draftId:currentDraftId});
   const session = draftSession;
   restoreSharedFileTasks(session, composeAccountId);
   send.disabled = true;
@@ -21749,258 +21867,7 @@ function closeComposePreview() {
   document.getElementById('compose-preview-frame').srcdoc = '';
 }
 
-function closeShareLinkDialog() {
-  document.getElementById('share-link-dialog').classList.add('hidden');
-}
-
-async function openShareLinkDialog() {
-  const session = draftSession, accountId = composeAccountId;
-  const current = () => session === draftSession && accountId === composeAccountId && !session.canceled;
-  document.getElementById('share-link-dialog').classList.remove('hidden');
-  document.getElementById('share-cos-file').focus();
-  try {
-    const state = await api('/api/share-storage/config', {accountId});
-    if (!current() || document.getElementById('share-link-dialog').classList.contains('hidden')) return;
-    document.getElementById('share-cos-bucket').value = state.bucket || '';
-    document.getElementById('share-cos-region').value = state.region || '';
-    document.getElementById('share-cos-id').value = state.secret_id || '';
-    document.getElementById('share-cos-key').value = '';
-    document.querySelector('.share-cos-config').classList.toggle('hidden', Boolean(state.credential_available));
-    document.getElementById('share-cos-settings-toggle').classList.toggle('hidden', !state.credential_available);
-    mailaiBindUI(document.getElementById('share-cos-status'), "textContent", () => (state.credential_available ? mailaiText('存储已连接。大附件会自动转为下载链接。') : mailaiText('首次连接需要腾讯云存储信息，保存后无需重复填写。也可直接把已有网盘分享链接粘贴到正文。')));
-  } catch (error) {
-    if (!current()) return;
-    mailaiBindUI(document.getElementById('share-cos-status'), "textContent", () => (mailaiText('无法读取 COS 配置：') + mailaiSystemMessage(error.message)));
-  }
-}
-
-function normalizeShareUrl(value) {
-  try {
-    const url = new URL(String(value || '').trim());
-    if (url.protocol !== 'https:' || url.username || url.password || !url.hostname || url.href.length > 4096) return '';
-    return url.href;
-  } catch (_) { return ''; }
-}
-
-function insertSharedLink(name, value, expiresAt = '', closeDialog = true) {
-  const url = normalizeShareUrl(value);
-  if (!url) throw new Error(mailaiText('请填写有效的 HTTPS 分享链接'));
-  const title = String(name || '').trim().slice(0, 160) || mailaiText('共享文件');
-  const block = document.createElement('p');
-  block.dataset.mailaiSharedLink = 'true';
-  const heading = document.createElement('strong');
-  mailaiBindUI(heading, "textContent", () => (mailaiTemplate`共享文件：${title}`));
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.textContent = url;
-  anchor.target = '_blank';
-  anchor.rel = 'noopener noreferrer';
-  block.append(heading, document.createElement('br'), anchor);
-  if (expiresAt && Number.isFinite(Date.parse(expiresAt))) {
-    const expiry = document.createElement('small');
-    mailaiBindUI(expiry, "textContent", () => (mailaiTemplate`下载链接有效至 ${new Date(expiresAt).toLocaleString(currentI18nLanguage())}`));
-    block.append(document.createElement('br'), expiry);
-  }
-  composeMessageElement().append(block);
-  clearComposePreflight();
-  queueDraftSave();
-  refreshComposeAiContext();
-  if (closeDialog) closeShareLinkDialog();
-  composeMessageElement().focus();
-}
-
-function uploadCosFile(file, days, accountId, onProgress, endpoint = "/api/share-storage/upload") {
-  return new Promise((resolve, reject) => {
-    const request = new XMLHttpRequest();
-    request.open('POST', endpoint);
-    request.timeout = 30 * 60 * 1000;
-    request.setRequestHeader('X-MailAI-Account', accountId);
-    request.setRequestHeader('X-MailAI-Filename', encodeURIComponent(file.name));
-    request.setRequestHeader('X-MailAI-Expiry-Days', String(days));
-    request.setRequestHeader('Content-Type', 'application/octet-stream');
-    request.upload.onprogress = event => { if (event.lengthComputable) onProgress(Math.round(event.loaded / event.total * 100)); };
-    request.onerror = () => reject(new Error(mailaiText('上传连接中断，请检查网络后重试')));
-    request.ontimeout = () => reject(new Error(mailaiText('上传等待超时，请检查网络后重试')));
-    request.onabort = () => reject(new Error(mailaiText('上传已取消')));
-    request.onload = () => {
-      let response;
-      try { response = JSON.parse(request.responseText); } catch (_) { response = {}; }
-      if (request.status >= 200 && request.status < 300) resolve(response);
-      else reject(new Error(response.detail || mailaiTemplate`上传失败（${request.status}）`));
-    };
-    request.send(file);
-  });
-}
-
-function signatureProfileFromForm() {
-  const fields = ['name','title','department','company','phone','email','website'];
-  return Object.fromEntries(fields.map(key => [key, document.getElementById(`signature-profile-${key}`).value.trim()]));
-}
-
-function fillSignatureProfile(profile = {}) {
-  for (const key of ['name','title','department','company','phone','email','website']) document.getElementById(`signature-profile-${key}`).value = profile[key] || '';
-}
-
-let savedSignatureRange = null;
-let selectedSignatureImage = null;
-function rememberSignatureSelection() {
-  const editor = document.getElementById('signature-editor');
-  const selection = window.getSelection();
-  if (!selection?.rangeCount || !editor.contains(selection.anchorNode)) return;
-  savedSignatureRange = selection.getRangeAt(0).cloneRange();
-}
-
-function clearSignatureImageSelection() {
-  selectedSignatureImage?.classList.remove('signature-image-selected');
-  selectedSignatureImage = null;
-  document.getElementById('signature-image-controls').classList.add('hidden');
-}
-
-function signatureImageNaturalWidth(image) {
-  return image.naturalWidth || Number(image.getAttribute('width')) || Math.round(image.getBoundingClientRect().width) || 1;
-}
-
-function signatureImageWidth(image) {
-  return Number(image.getAttribute('width')) || Math.round(image.getBoundingClientRect().width) || signatureImageNaturalWidth(image);
-}
-
-function refreshSignatureImageControls() {
-  const image = selectedSignatureImage;
-  const editor = document.getElementById('signature-editor');
-  if (!image || !editor.contains(image)) return clearSignatureImageSelection();
-  const width = signatureImageWidth(image);
-  const percent = Math.max(1, Math.round(width / signatureImageNaturalWidth(image) * 100));
-  document.getElementById('signature-image-width').value = String(width);
-  document.getElementById('signature-image-scale').value = String(Math.min(200, percent));
-  document.getElementById('signature-image-scale-value').textContent = `${percent}%`;
-  document.querySelectorAll('[data-signature-image-scale]').forEach(button => {
-    button.classList.toggle('active', Number(button.dataset.signatureImageScale) === percent);
-  });
-}
-
-function selectSignatureImage(image) {
-  if (!image || !document.getElementById('signature-editor').contains(image)) return;
-  clearSignatureImageSelection();
-  selectedSignatureImage = image;
-  image.classList.add('signature-image-selected');
-  document.getElementById('signature-image-controls').classList.remove('hidden');
-  refreshSignatureImageControls();
-  if (!image.complete) image.addEventListener('load', () => {
-    if (selectedSignatureImage === image) refreshSignatureImageControls();
-  }, {once:true});
-}
-
-function setSignatureImageWidth(value) {
-  if (!selectedSignatureImage || !document.getElementById('signature-editor').contains(selectedSignatureImage)) return clearSignatureImageSelection();
-  const width = Math.min(1200, Math.max(16, Math.round(Number(value) || 0)));
-  selectedSignatureImage.setAttribute('width', String(width));
-  selectedSignatureImage.removeAttribute('height');
-  selectedSignatureImage.style.width = `${width}px`;
-  selectedSignatureImage.style.maxWidth = '100%';
-  selectedSignatureImage.style.height = 'auto';
-  refreshSignatureImageControls();
-}
-
-async function insertSignatureImage(file) {
-  if (!file) return;
-  if (!/^image\/(png|jpeg|gif|webp)$/i.test(file.type)) return toast(mailaiText('支持 PNG、JPEG、GIF 或 WebP 图片'), 'warn');
-  if (file.size > 5 * 1024 * 1024) return toast(mailaiText('单张签名图片不能超过 5MB'), 'warn');
-  const signatureId = editingSignatureId;
-  const src = `data:${file.type};base64,${await readFileAsBase64(file)}`;
-  if (document.getElementById('signature-manager').classList.contains('hidden') || signatureId !== editingSignatureId) return;
-  const editor = document.getElementById('signature-editor');
-  const image = document.createElement('img');
-  image.addEventListener('load', () => {
-    if (!image.hasAttribute('width')) setSignatureImageWidthForNewImage(image);
-  }, {once:true});
-  image.src = src;
-  image.alt = file.name;
-  image.style.cssText = 'max-width:100%;height:auto;vertical-align:middle';
-  const range = savedSignatureRange && editor.contains(savedSignatureRange.commonAncestorContainer)
-    ? savedSignatureRange.cloneRange() : document.createRange();
-  if (!editor.contains(range.commonAncestorContainer)) range.selectNodeContents(editor);
-  if (!savedSignatureRange || !editor.contains(savedSignatureRange.commonAncestorContainer)) range.collapse(false);
-  range.deleteContents();
-  range.insertNode(image);
-  range.setStartAfter(image);
-  range.collapse(true);
-  editor.focus();
-  const selection = window.getSelection();
-  selection.removeAllRanges();
-  selection.addRange(range);
-  savedSignatureRange = range.cloneRange();
-  selectSignatureImage(image);
-}
-
-function setSignatureImageWidthForNewImage(image) {
-  const width = Math.min(360, image.naturalWidth || 360);
-  if (selectedSignatureImage === image) setSignatureImageWidth(width);
-  else {
-    image.setAttribute('width', String(width));
-    image.style.width = `${width}px`;
-  }
-}
-
-function editSignature(signatureId = '') {
-  editingSignatureId = signatureId;
-  savedSignatureRange = null;
-  clearSignatureImageSelection();
-  const item = signatureState.items.find(row => row.id === signatureId);
-  document.getElementById('signature-name').value = item?.name || '';
-  document.getElementById('signature-editor').innerHTML = item?.html || '';
-  document.getElementById('signature-make-default').checked = Boolean(signatureId && signatureId === signatureState.default_id);
-  document.getElementById('btn-delete-signature').disabled = !item;
-  document.querySelectorAll('[data-signature-id]').forEach(button => button.classList.toggle('active', button.dataset.signatureId === signatureId));
-}
-
-function renderSignatureManager() {
-  fillSignatureProfile(signatureState.profile || {});
-  document.getElementById('signature-list').innerHTML = signatureState.items.length ? signatureState.items.map(item => `<button type="button" data-signature-id="${esc(item.id)}"><span>${esc(item.name)}</span>${item.id === signatureState.default_id ? "<small><span data-i18n=\"ui.844b8cc8dff7\">默认</span></small>" : ''}</button>`).join('') : "<p><span data-i18n=\"ui.559aa7c8eb41\">还没有签名</span><br><small><span data-i18n=\"ui.f1322541d545\">新建一套或让 AI 帮你生成</span></small></p>";
-  document.getElementById('btn-ai-generate-signature').disabled = !signatureState.ai_available;
-  mailaiBindUI(document.getElementById('btn-ai-generate-signature'), "title", () => (signatureState.ai_available ? mailaiText('根据发件人资料生成签名') : mailaiText('请先在系统中心配置 AI 模型')));
-  editSignature(editingSignatureId && signatureState.items.some(item => item.id === editingSignatureId) ? editingSignatureId : (signatureState.items[0]?.id || ''));
-}
-
-async function openSignatureManager() {
-  try { await loadSignatures(); } catch (err) { return toast(mailaiText('加载签名失败：') + mailaiSystemMessage(err.message), 'error'); }
-  renderSignatureManager();
-  document.getElementById('signature-ai-options').classList.add('hidden');
-  document.getElementById('signature-manager').classList.remove('hidden');
-}
-
-function closeSignatureManager() {
-  clearSignatureImageSelection();
-  document.getElementById('signature-manager').classList.add('hidden');
-}
-
-async function saveSignature() {
-  const name = document.getElementById('signature-name').value.trim();
-  const editorCopy = document.getElementById('signature-editor').cloneNode(true);
-  editorCopy.querySelectorAll('.signature-image-selected').forEach(image => image.classList.remove('signature-image-selected'));
-  const html = editorCopy.innerHTML.trim();
-  if (!name || !(document.getElementById('signature-editor').innerText.trim() || document.querySelector('#signature-editor img'))) return toast(mailaiText('请填写签名名称和内容'), 'warn');
-  signatureState = await api('/api/mail/signatures', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:editingSignatureId,name,html,profile:signatureProfileFromForm(),make_default:document.getElementById('signature-make-default').checked})});
-  const saved = signatureState.items.find(item => item.name === name && item.html === html) || signatureState.items.at(-1);
-  editingSignatureId = saved?.id || editingSignatureId;
-  renderSignatureManager(); renderSignatureSelect();
-  if (currentSignatureId === editingSignatureId || (!currentSignatureId && document.getElementById('signature-make-default').checked)) renderComposeSignature(editingSignatureId);
-  queueDraftSave(); toast(mailaiText('签名已保存'), 'success');
-}
-
-async function generateSignatures(button) {
-  const profile = signatureProfileFromForm();
-  if (!profile.name && !profile.email) return toast(mailaiText('请至少填写姓名或邮箱'), 'warn');
-  setLoading(button, true, mailaiText('AI 生成中…'));
-  const finishCompanionWork = globalThis.mailaiCompanionWork?.begin();
-  try {
-    const result = await api('/api/mail/signatures/generate', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({profile,style:document.getElementById('signature-ai-style').value})});
-    const host = document.getElementById('signature-ai-options');
-    host.innerHTML = result.options.map((item, index) => `<button type="button" data-ai-signature="${index}"><b>${esc(item.name)}</b><span>${item.html}</span><small><span data-i18n="ui.ab41d65b7982">使用这套</span></small></button>`).join('');
-    host._options = result.options;
-    host.classList.remove('hidden');
-  } catch (err) { toast(mailaiText('AI 签名生成失败：') + mailaiSystemMessage(err.message), 'error'); }
-  finally { finishCompanionWork?.(); setLoading(button, false); }
-}
+// 大附件共享、签名编辑器逻辑已模块化拆分至 share-links.js 与 signature-manager.js
 
 function quoteOriginal(e, mode) {
   const originalBody = e.quote_html || mdToHtml(e.body_text || '');
@@ -22072,6 +21939,7 @@ function hideCompose() {
   closeSignatureManager();
   document.getElementById('compose-modal').classList.add('hidden');
   document.body.classList.remove('compose-open', 'compose-ai-active');
+  globalThis.MailAIState?.set('compose', {open:false, draftId:null});
   toggleComposeAiPanel(false);
   clearComposePreflight();
   const returnFocus = composeReturnFocus;
@@ -23963,6 +23831,7 @@ function showDashboard() {
   hideRulesView(false);
   document.querySelector('.layout').classList.add('hidden');
   document.getElementById('dashboard-view').classList.remove('hidden');
+  globalThis.MailAIState?.set('ui', {view:'dashboard'});
   setTopMenuLabel('btn-dashboard', mailaiT('nav.backToMailList') || '返回邮件列表');
   mailaiBindUI(document.getElementById('btn-dashboard'), "title", () => (mailaiT('dash.backTitle') || '返回邮件列表'));
   loadDashboard(_dashboardDays);
@@ -23971,6 +23840,7 @@ function showDashboard() {
 function hideDashboard() {
   document.getElementById('dashboard-view').classList.add('hidden');
   document.querySelector('.layout').classList.remove('hidden');
+  globalThis.MailAIState?.set('ui', {view:'mailbox'});
   setTopMenuLabel('btn-dashboard', mailaiT('security.dashboard') || '安全看板');
   mailaiBindUI(document.getElementById('btn-dashboard'), "title", () => (mailaiT('dash.openTitle') || '查看安全看板'));
 }
@@ -25393,6 +25263,7 @@ function showRulesView() {
   hideDashboard();
   document.querySelector('.layout').classList.add('hidden');
   document.getElementById('rules-view').classList.remove('hidden');
+  globalThis.MailAIState?.set('ui', {view:'rules'});
   setTopMenuLabel('btn-rules', mailaiT('nav.backToMailList') || '返回邮件列表');
   loadRules().catch(e => toast(mailaiText('加载规则失败：') + mailaiSystemMessage(e.message), 'error'));
 }
@@ -25404,6 +25275,7 @@ function hideRulesView(showLayout = true) {
   setTopMenuLabel('btn-rules', mailaiT('security.rules') || '规则中心');
   if (showLayout && document.getElementById('dashboard-view').classList.contains('hidden')) {
     document.querySelector('.layout').classList.remove('hidden');
+    globalThis.MailAIState?.set('ui', {view:'mailbox'});
   }
 }
 
@@ -25786,6 +25658,7 @@ async function activateMailAccount(accountId, {keepMailbox = false, quiet = fals
     if (!quiet) toast(mailaiTemplate`正在使用 ${account.user}`);
   }
   if (!keepMailbox && activeMailAccount()?.id === accountId) selectedMailboxAccountId = accountId;
+  globalThis.MailAIState?.set('account', {id:accountId, user:account.user || '', unified:Boolean(unifiedMailbox)});
   return (_systemConfig?.accounts || []).find(item => item.id === accountId);
 }
 
@@ -28928,6 +28801,7 @@ async function openTodoCenter(options = {}) {
   document.getElementById('todo-center').classList.remove('hidden');
   document.body.classList.add('modal-open');
   todoCenterAccountId = activeMailAccount()?.id;
+  globalThis.MailAIState?.set('todos', {open:true, accountId:todoCenterAccountId || '', loading:false});
   document.getElementById('todo-account-label').textContent = activeMailAccount()?.user || '';
   todoCenterLoading = false;
   selectedTodoIds.clear(); todoRenderLimit = resume?.limit || 160; todoCenterRows = []; todoFollowupRows = []; window.mailaiFollowupRows = todoFollowupRows; renderTodoCenter();
@@ -28953,11 +28827,13 @@ async function loadTodoCenter() {
     todoCenterRows = rows;
     todoFollowupRows = Array.isArray(followups) ? followups : [];
     window.mailaiFollowupRows = todoFollowupRows;
+    globalThis.MailAIState?.set('todos', {count:rows.length, loading:false, accountId:accountId || ''});
     renderTodoCenter();
   } catch (error) { if (revision === todoCenterRevision) { todoCenterLoading = false; updateTodoBatchToolbar(); const host = document.getElementById('todo-list'); host.querySelector('.todo-refresh-error')?.remove(); if (!todoCenterRows.length) host.replaceChildren(); host.insertAdjacentHTML('afterbegin', `<div class="todo-refresh-error" role="status"><span data-i18n="ui.c89e2064daba">暂时无法更新，已保留当前内容。${esc(mailaiSystemMessage(error.message))}</span> <button data-todo-retry><span data-i18n="ui.b8784c8dd563">重试</span></button></div>`); } }
 }
 function closeTodoCenter() {
   document.getElementById('task-notices')?.close();++todoCenterRevision;todoCenterLoading=false;
+  globalThis.MailAIState?.set('todos', {open:false, loading:false});
   document.getElementById('todo-center').classList.add('hidden');document.body.classList.remove('modal-open');
   const target=todoReturnFocus?.isConnected&&todoReturnFocus!==document.body&&todoReturnFocus.getClientRects().length ? todoReturnFocus : document.getElementById('btn-todos');
   target?.focus({preventScroll:true});
@@ -29529,97 +29405,7 @@ document.getElementById('btn-enable-notifications').addEventListener('click', as
   const permission = await Notification.requestPermission();
   toast(permission === 'granted' ? mailaiText('系统通知已开启') : mailaiText('未获得通知权限'), permission === 'granted' ? 'success' : 'warn');
 });
-function renderBackupItem(item, index) {
-  const date = new Date(item.created_at);
-  const locale = currentI18nLanguage() === 'en' ? 'en-US' : 'zh-CN';
-  const label = Number.isNaN(date.getTime()) ? (mailaiT('backup.localFallback') || '本地备份') : new Intl.DateTimeFormat(locale, {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(date);
-  const tSave = mailaiT('backup.saveAs') || '另存为';
-  const tDelete = mailaiT('backup.delete') || '删除';
-  const tRestore = mailaiT('backup.restore') || '恢复';
-  const tPortable = mailaiT('backup.portable') || '迁移包';
-  const download = `<button type="button" data-download-backup="${esc(item.filename)}" data-portable="${item.portable ? 'true' : 'false'}" aria-label="${item.portable ? (mailaiT('backup.ariaExport') || '导出迁移包到指定位置') : (mailaiT('backup.ariaDownload') || `下载 ${esc(label)} 的备份`)}" data-i18n="backup.saveAs" data-i18n-aria="${item.portable ? 'backup.ariaExport' : 'backup.ariaDownload'}">${tSave}</button>`;
-  const remove = `<button type="button" data-delete-backup="${esc(item.filename)}" data-portable="${item.portable ? 'true' : 'false'}" aria-label="${mailaiT('backup.ariaDelete') || '删除'} ${item.portable ? tPortable : (mailaiT('backup.ariaBackup') || '备份')}" data-i18n="backup.delete" data-i18n-aria="${item.portable ? 'backup.deleteMigrationAria' : 'backup.deleteLocalAria'}">${tDelete}</button>`;
-  const actions = item.portable ? `${download}${remove}` : `<button type="button" data-restore-backup="${esc(item.filename)}" aria-label="${mailaiT('backup.ariaRestore') || `恢复 ${esc(label)} 的备份`}" data-i18n="backup.restore" data-i18n-aria="backup.ariaRestore">${tRestore}</button>${download}${remove}`;
-  return `<div class="backup-item"><div class="backup-record-copy"><b>${Number.isNaN(date.getTime()) ? `<span data-i18n="backup.localFallback">${esc(label)}</span>` : esc(label)}${item.portable ? `<em data-i18n="backup.portable">${tPortable}</em>` : index === 0 ? `<em data-i18n="backup.latest">${mailaiT('backup.latest') || '最新'}</em>` : ''}</b><small title="${esc(item.filename)}">${esc(item.filename)}</small></div><small class="backup-record-size">${formatFileSize(item.size)}</small><div class="backup-record-actions">${actions}</div></div>`;
-}
-async function loadBackups() {
-  const accountId = activeMailAccount()?.id;
-  window.refreshCleanupAutomation?.(accountId);
-  const host = document.getElementById('backup-list');
-  try {
-    const [localItems, portableItems] = await Promise.all([api('/api/system/backups', {accountId}), api('/api/system/portable-backups', {accountId})]);
-    const items = [...portableItems, ...localItems].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
-    if (accountId !== activeMailAccount()?.id) return;
-    host.innerHTML = items.length ? items.slice(0, 3).map(renderBackupItem).join('') + (items.length > 3 ? `<details class="older-backups"><summary><span data-i18n="backup.showOlder">${mailaiT('backup.showOlder') || '查看更早备份'}</span> (${items.length - 3})</summary>${items.slice(3).map((item,index)=>renderBackupItem(item,index+3)).join('')}</details>` : '') : `<div class="backup-empty"><b data-i18n="backup.emptyTitle">${mailaiT('backup.emptyTitle') || '还没有备份'}</b><small data-i18n="backup.emptyHint">${mailaiT('backup.emptyHint') || '创建第一份备份，为邮件留一份本地副本。'}</small></div>`;
-    window.refreshCleanupHistory?.(accountId);
-  } catch (_) {
-    if (accountId === activeMailAccount()?.id) host.innerHTML = `<div class="backup-empty"><b data-i18n="backup.loadFailTitle">${mailaiT('backup.loadFailTitle') || '暂时无法读取备份'}</b><small data-i18n="backup.loadFailHint">${mailaiT('backup.loadFailHint') || '请稍后重新打开此页。'}</small></div>`;
-  }
-}
-document.getElementById('btn-create-backup').addEventListener('click', async () => {
-  const button = document.getElementById('btn-create-backup'); setLoading(button, true, mailaiText('备份中…'));
-  try { const result = await api('/api/system/backups?include_raw=true', {method:'POST'}); toast(mailaiTemplate`备份完成 · ${formatFileSize(result.size)}`, 'success'); await loadBackups(); }
-  catch (err) { toast(mailaiSystemMessage(err.message), 'error'); } finally { setLoading(button, false); }
-});
-function askMigrationPassword(mode) {
-  const dialog = document.getElementById('migration-password-dialog');
-  const form = dialog.querySelector('form');
-  const password = document.getElementById('migration-password');
-  const confirmation = document.getElementById('migration-password-confirm');
-  const confirmationRow = document.getElementById('migration-password-confirm-row');
-  const noPasswordRow = document.getElementById('migration-no-password-row');
-  const noPassword = document.getElementById('migration-no-password');
-  const error = document.getElementById('migration-password-error');
-  const importing = mode === 'import';
-  mailaiBindUI(document.getElementById('migration-password-title'), "textContent", () => (importing ? mailaiText('输入迁移密码') : mailaiText('保护迁移包')));
-  mailaiBindUI(document.getElementById('migration-password-help'), "textContent", () => (importing ? mailaiText('该迁移包已加密。请输入旧设备导出时设置的密码。密码只用于本次解密。') : mailaiText('迁移包包含邮件正文和附件。设置密码后，即使文件遗失也无法直接读取内容。')));
-  password.value = ''; confirmation.value = ''; noPassword.checked = false; error.textContent = '';
-  confirmationRow.classList.toggle('hidden', importing); noPasswordRow.classList.toggle('hidden', importing);
-  password.disabled = false; confirmation.disabled = importing;
-  return new Promise(resolve => {
-    let completed = false;
-    const finish = value => { if (completed) return; completed = true; cleanup(); resolve(value); };
-    const cleanup = () => { form.removeEventListener('submit', submit); noPassword.removeEventListener('change', toggle); dialog.removeEventListener('close', close); };
-    const close = () => { if (dialog.returnValue !== 'migration-ok') finish(null); };
-    const toggle = () => { password.disabled = noPassword.checked; confirmation.disabled = noPassword.checked; error.textContent = ''; };
-    const submit = event => {
-      event.preventDefault();
-      if (event.submitter?.value === 'cancel') { dialog.close('cancel'); return; }
-      if (!importing && noPassword.checked) { dialog.close('migration-ok'); finish(''); return; }
-      if (password.value.length < 12 && !importing) { mailaiBindUI(error, "textContent", () => (mailaiText('迁移密码至少需要 12 位'))); password.focus(); return; }
-      if (!password.value && importing) { mailaiBindUI(error, "textContent", () => (mailaiText('请输入迁移密码'))); password.focus(); return; }
-      if (!importing && password.value !== confirmation.value) { mailaiBindUI(error, "textContent", () => (mailaiText('两次输入的密码不一致'))); confirmation.focus(); return; }
-      const value = password.value; dialog.close('migration-ok'); finish(value);
-    };
-    form.addEventListener('submit', submit); noPassword.addEventListener('change', toggle); dialog.addEventListener('close', close);
-    dialog.showModal(); setTimeout(() => password.focus(), 0);
-  });
-}
-document.getElementById('btn-export-portable').addEventListener('click', async () => {
-  const button = document.getElementById('btn-export-portable');
-  const since = document.getElementById('portable-export-since')?.value || '';
-  const until = document.getElementById('portable-export-until')?.value || '';
-  if (since && until && since > until) { toast(mailaiText('导出起始日期不能晚于截止日期'), 'warn'); return; }
-  const password = await askMigrationPassword('export');
-  if (password === null) return;
-  setLoading(button, true, mailaiText('导出中…'));
-  try {
-    const result = await api('/api/system/portable-backups', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({include_raw:true,password,since,until})});
-    if (window.pywebview?.api?.save_portable_backup) {
-      const saved = await window.pywebview.api.save_portable_backup(result.filename);
-      if (saved?.ok) toast(mailaiTemplate`迁移包已保存到 ${saved.path}`, 'success');
-      else if (saved?.canceled) toast(mailaiText('已取消选择位置；迁移包仍保存在下方记录中，可随时重新下载'), 'warn');
-      else throw new Error(mailaiText('无法保存迁移包'));
-    } else {
-      const link = document.createElement('a'); link.href = result.download_url; link.download = result.filename; document.body.appendChild(link); link.click(); link.remove();
-      toast(mailaiTemplate`迁移包已交给浏览器下载 · ${formatFileSize(result.size)}，请在下载列表中查看位置`, 'success');
-    }
-    await loadBackups();
-  } catch (err) { toast(mailaiSystemMessage(err.message), 'error'); } finally { setLoading(button, false); }
-});
-document.getElementById('btn-import-portable').addEventListener('click', () => document.getElementById('portable-backup-file').click());
-
-// 语言切换：静态标记由 applyI18n 处理，这里重渲染 JS 动态区域
+// 备份、迁移包与账号删除确认逻辑已模块化拆分至 backup-migration.js
 document.addEventListener('mailai:language-changed', () => {
   try { renderComposeAccountPicker(document.getElementById('compose-from').value); renderSignatureSelect(); } catch (_) {}
   try { applyFilters(); updateFacetScopeLabels(); } catch (_) {}
@@ -29629,82 +29415,6 @@ document.addEventListener('mailai:language-changed', () => {
   try { if (_dashboardData) renderDashboard(_dashboardData); } catch (_) {}
   try { refreshRulesLanguage(); } catch (_) {}
   try { loadSemanticStatus(); } catch (_) {}
-});
-document.getElementById('portable-backup-file').addEventListener('change', async event => {
-  const file = event.target.files?.[0]; event.target.value = ''; if (!file) return;
-  const signature = new Uint8Array(await file.slice(0, 8).arrayBuffer());
-  const encrypted = [77,65,73,76,65,73,51,0].every((value,index) => signature[index] === value);
-  let password = '';
-  if (encrypted) {
-    password = await askMigrationPassword('import');
-    if (password === null) return;
-  }
-  const button = document.getElementById('btn-import-portable'); setLoading(button, true, mailaiText('检查中…'));
-  try {
-    const accountId = activeMailAccount()?.id || '';
-    const response = await fetch('/api/system/portable-backups/inspect', {method:'POST', headers:{'Content-Type':'application/octet-stream','X-Migration-Password':password,...(accountId ? {'X-MailAI-Account':accountId} : {})}, body:file});
-    const preview = await response.json(); if (!response.ok) throw new Error(preview.detail || mailaiText('迁移包检查失败'));
-    const content = preview.content || {}, account = preview.account || {};
-    if (!preview.current_account_matches) {
-      await api(`/api/system/portable-backups/import/${encodeURIComponent(preview.import_token)}`, {method:'DELETE'}).catch(()=>{});
-      throw new Error(mailaiTemplate`迁移包属于 ${account.email || mailaiText('未知账号')}，请先切换或登录该邮箱后再导入`);
-    }
-    const sourceDate = preview.created_at ? new Date(preview.created_at).toLocaleString(currentI18nLanguage()) : mailaiText('未知时间');
-    const rawState = content.includes_raw_mail ? mailaiTemplate`${content.raw_messages || 0} 份邮件原文` : mailaiText('不含邮件原文');
-    const missing = content.missing_raw_messages ? mailaiTemplate`\n注意：源设备有 ${content.missing_raw_messages} 份原文缺失。` : '';
-    const confirmed = window.confirm(mailaiTemplate`迁移包检查通过\n\n账号：${account.email}\n来源：${preview.source_platform || mailaiText('未知系统')}\n导出时间：${sourceDate}\n内容：${content.emails || 0} 封邮件，${rawState}\n文件大小：${formatFileSize(preview.source_size || file.size)}${missing}\n\n导入会替换当前账号的本地数据，并先自动创建安全备份。服务器邮件不会被删除或修改。继续吗？`);
-    if (!confirmed) { await api(`/api/system/portable-backups/import/${encodeURIComponent(preview.import_token)}`, {method:'DELETE'}).catch(()=>{}); return; }
-    setLoading(button, true, mailaiText('导入中…'));
-    const result = await api('/api/system/portable-backups/restore', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({import_token:preview.import_token,password})});
-    if (window.confirm(mailaiTemplate`已导入 ${result.emails || 0} 封邮件。\n\n是否现在重新同步邮箱，以建立新设备的服务器关联？邮件较多时可能需要较长时间。`)) {
-      await api('/api/fetch_all', {method:'POST'});
-    }
-    window.location.reload();
-  } catch (err) { toast(mailaiSystemMessage(err.message), 'error'); } finally { setLoading(button, false); }
-});
-document.getElementById('backup-list').addEventListener('click', event => {
-  const restoreButton = event.target.closest('[data-restore-backup]');
-  if (restoreButton) { window.openBackupRestore(restoreButton.dataset.restoreBackup); return; }
-  const downloadButton = event.target.closest('[data-download-backup]');
-  const deleteButton = event.target.closest('[data-delete-backup]');
-  if (deleteButton) {
-    const filename = deleteButton.dataset.deleteBackup;
-    const portable = deleteButton.dataset.portable === 'true';
-    if (!window.confirm(mailaiTemplate`确定永久删除这个${portable ? mailaiText('迁移包') : mailaiText('本机备份')}吗？\n\n${filename}\n\n删除后无法恢复。`)) return;
-    (async () => {
-      setLoading(deleteButton, true, mailaiText('删除中…'));
-      try {
-        const path = portable ? `/api/system/portable-backups/stored/${encodeURIComponent(filename)}` : `/api/system/backups/${encodeURIComponent(filename)}`;
-        await api(path, {method:'DELETE'});
-        toast(mailaiTemplate`${portable ? mailaiText('迁移包') : mailaiText('备份')}已删除`, 'success');
-        await loadBackups();
-      } catch (err) { toast(mailaiTemplate`删除失败：${mailaiSystemMessage(err.message)}`, 'error'); }
-      finally { setLoading(deleteButton, false); }
-    })();
-    return;
-  }
-  if (!downloadButton) return;
-  const filename = downloadButton.dataset.downloadBackup;
-  const portable = downloadButton.dataset.portable === 'true';
-  (async () => {
-    setLoading(downloadButton, true, mailaiText('选择位置…'));
-    try {
-      if (window.pywebview?.api) {
-        const method = portable ? window.pywebview.api.save_portable_backup : window.pywebview.api.save_local_backup;
-        if (typeof method === 'function') {
-          const result = await method(filename);
-          if (result?.ok) toast(mailaiTemplate`已保存到 ${result.path}`, 'success');
-          else if (result?.canceled) toast(mailaiText('已取消另存为，原备份仍保留在应用中'), 'warn');
-          else throw new Error(mailaiText('保存失败'));
-          return;
-        }
-      }
-      const href = portable ? `/api/system/portable-backups/download/${encodeURIComponent(filename)}` : `/api/system/backups/${encodeURIComponent(filename)}`;
-      const link = document.createElement('a'); link.href = href; link.download = filename; link.hidden = true; document.body.appendChild(link); link.click(); link.remove();
-      toast(mailaiText('已交给浏览器下载，请在下载列表中查看保存位置'), 'success');
-    } catch (err) { toast(mailaiTemplate`备份另存失败：${mailaiSystemMessage(err.message)}`, 'error'); }
-    finally { setLoading(downloadButton, false); }
-  })();
 });
 document.getElementById('mail-config-form').addEventListener('submit', async e => {
   e.preventDefault();
@@ -29768,75 +29478,6 @@ document.getElementById('btn-manage-mail').addEventListener('click', async () =>
     return;
   }
   if (account) openMailAddPanel(account);
-});
-function openLogoutDialog(accountId = selectedManagedAccountId) {
-  const modal = document.getElementById('logout-modal');
-  const accounts = _systemConfig?.accounts || [];
-  const target = accounts.find(account => account.id === accountId);
-  if (!target) return toast(mailaiText('请先选择要删除的邮箱'), 'error');
-  modal.dataset.accountId = target.id;
-  mailaiBindUI(document.getElementById('logout-account-label'), "textContent", () => (mailaiTemplate`${target.user} · 将移除本机保存的邮箱账号和授权码`));
-  const keep = modal.querySelector('input[value="keep"]');
-  keep.checked = true;
-  modal.querySelectorAll('.logout-choice').forEach(choice => choice.classList.toggle('selected', choice.contains(keep)));
-  document.getElementById('logout-warning').classList.add('hidden');
-  modal.classList.remove('hidden');
-  modal.setAttribute('aria-hidden', 'false');
-  document.body.classList.add('modal-open');
-  keep.focus();
-}
-
-function closeLogoutDialog() {
-  const modal = document.getElementById('logout-modal');
-  modal.classList.add('hidden');
-  modal.setAttribute('aria-hidden', 'true');
-  document.body.classList.remove('modal-open');
-}
-
-async function stopFetchBeforeLogout() {
-  let state = await api('/api/fetch_status');
-  if (!state.running) return;
-  await api('/api/cancel_fetch', {method: 'POST'});
-  toast(mailaiText('正在安全停止邮件同步…'));
-  for (let attempt = 0; attempt < 40; attempt += 1) {
-    await new Promise(resolve => setTimeout(resolve, 250));
-    state = await api('/api/fetch_status');
-    if (!state.running) return;
-  }
-  throw new Error(mailaiText('邮件同步仍在停止中，请稍后再次删除'));
-}
-
-document.getElementById('btn-delete-mail').addEventListener('click', () => openLogoutDialog());
-document.getElementById('btn-close-logout').addEventListener('click', closeLogoutDialog);
-document.getElementById('btn-cancel-logout').addEventListener('click', closeLogoutDialog);
-document.querySelector('#logout-modal [data-close-logout]').addEventListener('click', closeLogoutDialog);
-document.querySelectorAll('input[name="logout-history"]').forEach(input => input.addEventListener('change', () => {
-  document.querySelectorAll('.logout-choice').forEach(choice => choice.classList.toggle('selected', choice.contains(input)));
-  document.getElementById('logout-warning').classList.toggle('hidden', input.value !== 'clear');
-}));
-document.getElementById('btn-confirm-logout').addEventListener('click', async () => {
-  const button = document.getElementById('btn-confirm-logout');
-  const clearHistory = document.querySelector('input[name="logout-history"]:checked').value === 'clear';
-  setLoading(button, true, clearHistory ? mailaiText('正在清空…') : mailaiText('正在删除…'));
-  try {
-    await stopFetchBeforeLogout();
-    const accountId = document.getElementById('logout-modal').dataset.accountId || '';
-    const targetWasActive = (_systemConfig?.accounts || []).some(account => account.id === accountId && account.active);
-    await api('/api/system/mail/logout', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({clear_history: clearHistory, account_id: accountId})});
-    closeLogoutDialog();
-    selectedManagedAccountId = '';
-    await loadSystemConfig();
-    if (targetWasActive) {
-      ++mailLoadRevision;
-      allEmails = []; allTodos = []; sentMessages = []; savedDrafts = []; mailboxLocalCounts = null;
-      resetReadingPane(); updateSidebar(); applyFilters();
-    }
-    selectSystemTab('account');
-    document.querySelector('.layout').classList.add('hidden');
-    document.getElementById('system-view').classList.remove('hidden');
-    toast(clearHistory ? mailaiText('已删除邮箱并清空本地邮件历史') : mailaiText('已删除邮箱，本地邮件历史已保留'), 'success');
-  } catch (err) { toast(mailaiText('删除失败：') + mailaiSystemMessage(err.message), 'error'); }
-  finally { setLoading(button, false); }
 });
 document.getElementById('btn-rules').addEventListener('click', () => {
   const view = document.getElementById('rules-view');
@@ -30440,57 +30081,6 @@ window.mailaiPrepareExit = async () => {
   return closeCompose();
 };
 document.getElementById('btn-add-attachment').addEventListener('click', () => document.getElementById('compose-attachments-input').click());
-document.getElementById('share-cos-settings-toggle').addEventListener('click', () => {
-  document.querySelector('.share-cos-config').classList.toggle('hidden');
-});
-document.querySelectorAll('[data-close-share-link]').forEach(button => button.addEventListener('click', closeShareLinkDialog));
-document.getElementById('share-cos-save').addEventListener('click', async event => {
-  const button = event.currentTarget;
-  const session = draftSession, accountId = composeAccountId;
-  const current = () => session === draftSession && accountId === composeAccountId && !session.canceled;
-  button.disabled = true;
-  try {
-    await api('/api/share-storage/config', {accountId, method:'POST',
-      headers:{'Content-Type':'application/json'}, body:JSON.stringify({
-        bucket:document.getElementById('share-cos-bucket').value,
-        region:document.getElementById('share-cos-region').value,
-        secret_id:document.getElementById('share-cos-id').value,
-        secret_key:document.getElementById('share-cos-key').value})});
-    if (!current()) return;
-    document.getElementById('share-cos-key').value = '';
-    mailaiBindUI(document.getElementById('share-cos-status'), "textContent", () => (mailaiText('COS 配置已保存')));
-    document.querySelector('.share-cos-config').classList.add('hidden');
-    document.getElementById('share-cos-settings-toggle').classList.remove('hidden');
-  } catch (error) { if (current()) document.getElementById('share-cos-status').textContent = mailaiSystemMessage(error.message); }
-  finally { button.disabled = false; }
-});
-document.getElementById('share-cos-form').addEventListener('submit', async event => {
-  event.preventDefault();
-  const files = [...document.getElementById('share-cos-file').files];
-  if (!files.length) return toast(mailaiText('请先选择文件'), 'warn');
-  if (files.some(file => file.size > 2 * 1024 * 1024 * 1024)) return toast(mailaiText('单个共享文件不能超过 2 GB'), 'warn');
-  const session = draftSession, accountId = composeAccountId;
-  if (session.busy || session.canceled || session.sharing) return;
-  session.sharing = true;
-  const days = Number(document.getElementById('share-cos-expiry').value);
-  session.attachmentReads = (session.attachmentReads || 0) + 1;
-  const button = document.getElementById('share-cos-upload');
-  button.disabled = true;
-  try {
-    closeShareLinkDialog();
-    const cards = files.map(file => ({file, name:file.name, size:file.size, days, state:'waiting'}));
-    (session.sharedFiles ||= []).push(...cards); renderSharedFileCards();
-    const failed = [];
-    for (const [index, file] of files.entries()) {
-      if (session !== draftSession || accountId !== composeAccountId || session.canceled) return;
-      if (!await uploadSharedFileWithCard(file, days, session, accountId, () => {}, cards[index])) failed.push(file);
-    }
-    if (session !== draftSession || accountId !== composeAccountId || session.canceled) return;
-    document.getElementById('share-cos-file').value = '';
-    toast(failed.length ? mailaiTemplate`${failed.length} 个文件上传失败，请在附件区重试或移除` : mailaiText('大附件已上传，分享链接已插入正文'), failed.length ? 'warn' : 'success');
-  } catch (error) { if (session === draftSession && accountId === composeAccountId) toast(mailaiSystemMessage(error.message), 'error'); }
-  finally { session.attachmentReads -= 1; session.sharing = false; button.disabled = false; mailaiBindUI(button, "textContent", () => (mailaiT('compose.cosUpload') || '上传并插入邮件')); if (session === draftSession) renderSharedFileCards(); }
-});
 document.getElementById('btn-insert-compose-image').addEventListener('click', () => { rememberComposeSelection(); document.getElementById('compose-image-input').click(); });
 document.getElementById('compose-image-input').addEventListener('change', event => {
   insertComposeImage(event.target.files[0]).catch(err => toast(mailaiText('插入图片失败：') + mailaiSystemMessage(err.message), 'error'));
@@ -30538,62 +30128,6 @@ composeDropHost.addEventListener('paste', event => {
 document.getElementById('btn-compose-preview').addEventListener('click', openComposePreview);
 document.querySelectorAll('[data-close-compose-preview]').forEach(button => button.addEventListener('click', closeComposePreview));
 document.getElementById('compose-signature-select').addEventListener('change', event => { renderComposeSignature(event.target.value); queueDraftSave(); });
-document.getElementById('btn-manage-signatures').addEventListener('click', openSignatureManager);
-document.querySelectorAll('[data-close-signatures]').forEach(button => button.addEventListener('click', closeSignatureManager));
-document.getElementById('btn-new-signature').addEventListener('click', () => editSignature(''));
-document.getElementById('signature-list').addEventListener('click', event => { const button = event.target.closest('[data-signature-id]'); if (button) editSignature(button.dataset.signatureId); });
-document.getElementById('btn-save-signature').addEventListener('click', () => saveSignature().catch(err => toast(mailaiText('保存签名失败：') + mailaiSystemMessage(err.message), 'error')));
-document.getElementById('btn-delete-signature').addEventListener('click', async () => {
-  if (!editingSignatureId || !window.confirm(mailaiText('确定删除这套签名？'))) return;
-  const removed = editingSignatureId;
-  signatureState = await api(`/api/mail/signatures/${encodeURIComponent(removed)}`, {method:'DELETE'});
-  editingSignatureId = '';
-  if (currentSignatureId === removed) renderComposeSignature('');
-  renderSignatureManager(); renderSignatureSelect(); queueDraftSave();
-  toast(mailaiText('签名已删除'), 'success');
-});
-document.getElementById('btn-ai-generate-signature').addEventListener('click', event => generateSignatures(event.currentTarget));
-document.getElementById('signature-editor').addEventListener('keyup', rememberSignatureSelection);
-document.getElementById('signature-editor').addEventListener('mouseup', rememberSignatureSelection);
-document.getElementById('signature-editor').addEventListener('click', event => {
-  const image = event.target.closest?.('img');
-  if (image) selectSignatureImage(image);
-  else clearSignatureImageSelection();
-});
-document.getElementById('signature-editor').addEventListener('input', () => {
-  if (selectedSignatureImage && !document.getElementById('signature-editor').contains(selectedSignatureImage)) clearSignatureImageSelection();
-});
-document.querySelectorAll('[data-signature-image-scale]').forEach(button => button.addEventListener('click', () => {
-  if (selectedSignatureImage) setSignatureImageWidth(signatureImageNaturalWidth(selectedSignatureImage) * Number(button.dataset.signatureImageScale) / 100);
-}));
-document.getElementById('signature-image-scale').addEventListener('input', event => {
-  if (selectedSignatureImage) setSignatureImageWidth(signatureImageNaturalWidth(selectedSignatureImage) * Number(event.target.value) / 100);
-});
-document.getElementById('signature-image-width').addEventListener('change', event => setSignatureImageWidth(event.target.value));
-document.getElementById('signature-image-done').addEventListener('click', clearSignatureImageSelection);
-document.getElementById('btn-insert-signature-image').addEventListener('pointerdown', rememberSignatureSelection);
-document.getElementById('btn-insert-signature-image').addEventListener('click', () => document.getElementById('signature-image-input').click());
-document.getElementById('signature-image-input').addEventListener('change', async event => {
-  const file = event.target.files[0], button = document.getElementById('btn-insert-signature-image');
-  event.target.value = '';
-  if (!file || button.disabled) return;
-  setLoading(button, true, mailaiText('读取图片…'));
-  try { await insertSignatureImage(file); }
-  catch(error) { toast(mailaiText('插入签名图片失败：') + mailaiSystemMessage(error.message), 'error'); }
-  finally { setLoading(button, false); }
-});
-document.getElementById('signature-ai-options').addEventListener('click', event => {
-  const button = event.target.closest('[data-ai-signature]');
-  if (!button) return;
-  const item = event.currentTarget._options?.[Number(button.dataset.aiSignature)];
-  if (!item) return;
-  editingSignatureId = '';
-  clearSignatureImageSelection();
-  document.getElementById('signature-name').value = item.name;
-  document.getElementById('signature-editor').innerHTML = item.html;
-  document.getElementById('signature-make-default').checked = !signatureState.default_id;
-  toast(mailaiText('已放入编辑区，确认后点击保存'), 'success');
-});
 document.getElementById('compose-attachments-input').addEventListener('change', event => {
   addComposeAttachments(event.target.files).catch(e => toast(mailaiText('读取附件失败：') + mailaiSystemMessage(e.message), 'error'));
   event.target.value = '';
@@ -31149,107 +30683,7 @@ function hideAppPreloader() {
 }
 
 // ===== 三栏宽度拖拽与本地记忆 =====
-const PANE_SIZE_KEY = 'mailai.workspace.paneSizes.v1';
-const PANE_DEFAULTS = {sidebar: 226, list: 405};
-
-function paneSizePreferenceKey() {
-  return document.body.dataset.mailListView === 'table' ? 'mailai.workspace.tablePaneSizes.v1' : PANE_SIZE_KEY;
-}
-
-function currentPaneDefaults() {
-  return {...PANE_DEFAULTS, list:document.body.dataset.mailListView === 'table' ? 720 : PANE_DEFAULTS.list};
-}
-
-function readPaneSizes() {
-  try { return {...currentPaneDefaults(), ...JSON.parse(localStorage.getItem(paneSizePreferenceKey()) || '{}')}; }
-  catch (_) { return currentPaneDefaults(); }
-}
-
-function constrainPaneSizes(input, totalWidth) {
-  const layout = document.querySelector('.layout');
-  const total = totalWidth || layout?.clientWidth || window.innerWidth;
-  const readingMin = Math.min(440, Math.max(360, total * .32));
-  let sidebar = Math.max(180, Math.min(380, Number(input.sidebar) || PANE_DEFAULTS.sidebar));
-  let list = Math.max(300, Math.min(720, Number(input.list) || PANE_DEFAULTS.list));
-  const available = Math.max(480, total - 24 - readingMin);
-  if (sidebar + list > available) list = Math.max(300, available - sidebar);
-  if (sidebar + list > available) sidebar = Math.max(180, available - list);
-  return {sidebar:Math.round(sidebar), list:Math.round(list)};
-}
-
-function applyPaneSizes(sizes, persist = false, totalWidth) {
-  const layout = document.querySelector('.layout');
-  if (!layout) return;
-  const value = constrainPaneSizes(sizes, totalWidth);
-  layout.style.setProperty('--sidebar-width', value.sidebar + 'px');
-  layout.style.setProperty('--list-width', value.list + 'px');
-  document.querySelector('[data-resizer="sidebar"]')?.setAttribute('aria-valuenow', value.sidebar);
-  document.querySelector('[data-resizer="list"]')?.setAttribute('aria-valuenow', value.list);
-  if (persist) localStorage.setItem(paneSizePreferenceKey(), JSON.stringify(value));
-  return value;
-}
-
-function initPaneResizers() {
-  let preferredSizes = readPaneSizes();
-  let sizes = applyPaneSizes(preferredSizes);
-  document.querySelectorAll('.pane-resizer').forEach(handle => {
-    const kind = handle.dataset.resizer;
-    handle.setAttribute('aria-valuemin', kind === 'sidebar' ? '180' : '300');
-    handle.setAttribute('aria-valuemax', kind === 'sidebar' ? '380' : '720');
-    handle.addEventListener('pointerdown', event => {
-      if (window.innerWidth <= 1024 || event.button !== 0 || handle.classList.contains('dragging')) return;
-      event.preventDefault();
-      const startX = event.clientX;
-      const start = {...sizes};
-      const layout = document.querySelector('.layout');
-      // Cache geometry before writes and coalesce pointer bursts per frame.
-      const totalWidth = layout.clientWidth;
-      const scale = layout.getBoundingClientRect().width / totalWidth || 1;
-      const pointerId = event.pointerId;
-      let latestX = startX, frame = 0;
-      const flush = () => {
-        frame = 0;
-        sizes = applyPaneSizes({...start, [kind]:start[kind] + (latestX - startX) / scale}, false, totalWidth);
-      };
-      handle.setPointerCapture(event.pointerId);
-      handle.classList.add('dragging'); document.body.classList.add('pane-resizing');
-      const move = moveEvent => {
-        if (moveEvent.pointerId !== pointerId) return;
-        latestX = moveEvent.clientX;
-        if (!frame) frame = requestAnimationFrame(flush);
-      };
-      const end = endEvent => {
-        if (endEvent.pointerId !== pointerId) return;
-        if (endEvent.type === 'pointerup') latestX = endEvent.clientX;
-        cancelAnimationFrame(frame);
-        flush();
-        handle.removeEventListener('pointerup', end);
-        handle.removeEventListener('pointercancel', end);
-        handle.removeEventListener('lostpointercapture', end);
-        if (handle.hasPointerCapture(pointerId)) handle.releasePointerCapture(pointerId);
-        handle.removeEventListener('pointermove', move);
-        handle.classList.remove('dragging'); document.body.classList.remove('pane-resizing');
-        sizes = applyPaneSizes(sizes, true);
-        preferredSizes = {...sizes};
-      };
-      handle.addEventListener('pointermove', move);
-      handle.addEventListener('pointerup', end);
-      handle.addEventListener('pointercancel', end);
-      handle.addEventListener('lostpointercapture', end);
-    });
-    handle.addEventListener('dblclick', () => { preferredSizes = currentPaneDefaults(); sizes = applyPaneSizes(preferredSizes, true); toast(mailaiText('已恢复默认栏宽'), 'success'); });
-    handle.addEventListener('keydown', event => {
-      if (!['ArrowLeft','ArrowRight'].includes(event.key)) return;
-      event.preventDefault();
-      sizes = applyPaneSizes({...sizes, [kind]:sizes[kind] + (event.key === 'ArrowRight' ? 16 : -16)}, true);
-      preferredSizes = {...sizes};
-    });
-  });
-  window.addEventListener('mailai:list-view-changed', () => { preferredSizes = readPaneSizes(); sizes = applyPaneSizes(preferredSizes); });
-  window.addEventListener('resize', () => { sizes = applyPaneSizes(preferredSizes); });
-}
-
-initPaneResizers();
+// 三栏宽度拖拽与本地记忆已模块化拆分至 pane-resizers.js
 
 Promise.all([
   initialLoad,
@@ -31307,26 +30741,6 @@ document.getElementById('email-list').addEventListener('click', async event => {
   currentFilter.search = document.getElementById('global-search').value;
   const revision = advanceMailSearchRevision(); clearTimeout(globalSearchTimer); searchResults = null;
   try { await loadData(); if (revision === searchRevision) runGlobalSearch(); } catch (error) { if (revision === searchRevision) toast(mailaiTemplate`加载邮件失败：${mailaiSystemMessage(error.message)}`, 'error'); }
-});
-
-document.getElementById('compose-shared-files').addEventListener('click', async event => {
-  const retry = event.target.closest('[data-retry-share]');
-  const dismiss = event.target.closest('[data-dismiss-share]');
-  const session = draftSession, accountId = composeAccountId;
-  if ((!retry && !dismiss) || session.sharing || session.busy || session.canceled) return;
-  const index = Number(retry ? retry.dataset.retryShare : dismiss.dataset.dismissShare);
-  const item = session.sharedFiles?.[index];
-  if (!item || !['failed','waiting'].includes(item.state)) return;
-  if (dismiss) {
-    try { if (item.taskId) await api(`/api/share-storage/tasks/${item.taskId}`, {accountId, method:'DELETE'});
-      if (session !== draftSession) return;
-      session.sharedFiles.splice(index, 1); renderSharedFileCards();
-    } catch (error) { toast(mailaiSystemMessage(error.message), 'error'); }
-    return;
-  }
-  session.sharing = true; session.attachmentReads = (session.attachmentReads || 0) + 1;
-  try { await uploadSharedFileWithCard(item.file, item.days, session, accountId, () => {}, item); }
-  finally { session.sharing = false; session.attachmentReads--; if (session === draftSession) renderSharedFileCards(); }
 });
 
 // A single Escape closes only the innermost writing layer, never the draft.
@@ -43226,6 +42640,10 @@ window.mailaiPrepareReadingMarkup = doc => {
       renderPersonaStrip();
     }
   }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+  globalThis.MailAIModules?.register('contactPersona', {
+    schedule: () => window.mailaiScheduleComposePersona?.(0),
+  });
 })();
 
 ;
@@ -43986,6 +43404,9 @@ window.mailaiPrepareReadingMarkup = doc => {
   });
 
   syncHeaderForTab();
+  globalThis.MailAIModules?.register('periodicBriefing', {
+    open: window.openPeriodicBriefing,
+  });
 })();
 
 ;
@@ -44449,6 +43870,10 @@ window.mailaiPrepareReadingMarkup = doc => {
 
   window.openCalendarTimeline = openModal;
   window.closeCalendarTimeline = closeModal;
+  globalThis.MailAIModules?.register('calendarTimeline', {
+    open: openModal,
+    close: closeModal,
+  });
 })();
 
 ;
@@ -44931,6 +44356,10 @@ window.mailaiPrepareReadingMarkup = doc => {
 
   window.openTriageCenter = openModal;
   window.closeTriageCenter = closeModal;
+  globalThis.MailAIModules?.register('triageRules', {
+    open: openModal,
+    close: closeModal,
+  });
 })();
 
 ;
@@ -45426,6 +44855,10 @@ window.mailaiPrepareReadingMarkup = doc => {
   window.clearComposeGuardBanner = clearComposeGuardMarks;
   window.clearComposeGuardMarks = clearComposeGuardMarks;
   window.runComposeGuardAudit = runComposeGuardAudit;
+  globalThis.MailAIModules?.register('composeGuard', {
+    runAudit: runComposeGuardAudit,
+    clearMarks: clearComposeGuardMarks,
+  });
 })();
 
 ;
@@ -45632,6 +45065,11 @@ window.mailaiPrepareReadingMarkup = doc => {
       const ids = group ? group.rows.filter((r) => r.status !== 'done').map((r) => r.id) : [];
       if (ids.length && preset) applySnooze(ids, preset, groupBtn);
     }
+  });
+
+  globalThis.MailAIModules?.register('todoQuickActions', {
+    createTodo: () => form.requestSubmit(),
+    snooze: applySnooze,
   });
 })();
 
@@ -47269,6 +46707,776 @@ window.mailaiPrepareReadingMarkup = doc => {
     if(event.target.closest('[data-bulk-mail-tags]'))void window.mailaiEditMailTags(true);
   });
 })();
+
+;
+/* ---- share-links.js ---- */
+/* Large-file cloud share links and COS storage dialog for Compose. */
+function closeShareLinkDialog() {
+  document.getElementById('share-link-dialog').classList.add('hidden');
+}
+
+async function openShareLinkDialog() {
+  const session = draftSession, accountId = composeAccountId;
+  const current = () => session === draftSession && accountId === composeAccountId && !session.canceled;
+  document.getElementById('share-link-dialog').classList.remove('hidden');
+  document.getElementById('share-cos-file').focus();
+  try {
+    const state = await api('/api/share-storage/config', {accountId});
+    if (!current() || document.getElementById('share-link-dialog').classList.contains('hidden')) return;
+    document.getElementById('share-cos-bucket').value = state.bucket || '';
+    document.getElementById('share-cos-region').value = state.region || '';
+    document.getElementById('share-cos-id').value = state.secret_id || '';
+    document.getElementById('share-cos-key').value = '';
+    document.querySelector('.share-cos-config').classList.toggle('hidden', Boolean(state.credential_available));
+    document.getElementById('share-cos-settings-toggle').classList.toggle('hidden', !state.credential_available);
+    mailaiBindUI(document.getElementById('share-cos-status'), "textContent", () => (state.credential_available ? mailaiText('存储已连接。大附件会自动转为下载链接。') : mailaiText('首次连接需要腾讯云存储信息，保存后无需重复填写。也可直接把已有网盘分享链接粘贴到正文。')));
+  } catch (error) {
+    if (!current()) return;
+    mailaiBindUI(document.getElementById('share-cos-status'), "textContent", () => (mailaiText('无法读取 COS 配置：') + mailaiSystemMessage(error.message)));
+  }
+}
+
+function normalizeShareUrl(value) {
+  try {
+    const url = new URL(String(value || '').trim());
+    if (url.protocol !== 'https:' || url.username || url.password || !url.hostname || url.href.length > 4096) return '';
+    return url.href;
+  } catch (_) { return ''; }
+}
+
+function insertSharedLink(name, value, expiresAt = '', closeDialog = true) {
+  const url = normalizeShareUrl(value);
+  if (!url) throw new Error(mailaiText('请填写有效的 HTTPS 分享链接'));
+  const title = String(name || '').trim().slice(0, 160) || mailaiText('共享文件');
+  const block = document.createElement('p');
+  block.dataset.mailaiSharedLink = 'true';
+  const heading = document.createElement('strong');
+  mailaiBindUI(heading, "textContent", () => (mailaiTemplate`共享文件：${title}`));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.textContent = url;
+  anchor.target = '_blank';
+  anchor.rel = 'noopener noreferrer';
+  block.append(heading, document.createElement('br'), anchor);
+  if (expiresAt && Number.isFinite(Date.parse(expiresAt))) {
+    const expiry = document.createElement('small');
+    mailaiBindUI(expiry, "textContent", () => (mailaiTemplate`下载链接有效至 ${new Date(expiresAt).toLocaleString(currentI18nLanguage())}`));
+    block.append(document.createElement('br'), expiry);
+  }
+  composeMessageElement().append(block);
+  clearComposePreflight();
+  queueDraftSave();
+  refreshComposeAiContext();
+  if (closeDialog) closeShareLinkDialog();
+  composeMessageElement().focus();
+}
+
+function uploadCosFile(file, days, accountId, onProgress, endpoint = "/api/share-storage/upload") {
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open('POST', endpoint);
+    request.timeout = 30 * 60 * 1000;
+    request.setRequestHeader('X-MailAI-Account', accountId);
+    request.setRequestHeader('X-MailAI-Filename', encodeURIComponent(file.name));
+    request.setRequestHeader('X-MailAI-Expiry-Days', String(days));
+    request.setRequestHeader('Content-Type', 'application/octet-stream');
+    request.upload.onprogress = event => { if (event.lengthComputable) onProgress(Math.round(event.loaded / event.total * 100)); };
+    request.onerror = () => reject(new Error(mailaiText('上传连接中断，请检查网络后重试')));
+    request.ontimeout = () => reject(new Error(mailaiText('上传等待超时，请检查网络后重试')));
+    request.onabort = () => reject(new Error(mailaiText('上传已取消')));
+    request.onload = () => {
+      let response;
+      try { response = JSON.parse(request.responseText); } catch (_) { response = {}; }
+      if (request.status >= 200 && request.status < 300) resolve(response);
+      else reject(new Error(response.detail || mailaiTemplate`上传失败（${request.status}）`));
+    };
+    request.send(file);
+  });
+}
+
+document.getElementById('share-cos-settings-toggle').addEventListener('click', () => {
+  document.querySelector('.share-cos-config').classList.toggle('hidden');
+});
+document.querySelectorAll('[data-close-share-link]').forEach(button => button.addEventListener('click', closeShareLinkDialog));
+document.getElementById('share-cos-save').addEventListener('click', async event => {
+  const button = event.currentTarget;
+  const session = draftSession, accountId = composeAccountId;
+  const current = () => session === draftSession && accountId === composeAccountId && !session.canceled;
+  button.disabled = true;
+  try {
+    await api('/api/share-storage/config', {accountId, method:'POST',
+      headers:{'Content-Type':'application/json'}, body:JSON.stringify({
+        bucket:document.getElementById('share-cos-bucket').value,
+        region:document.getElementById('share-cos-region').value,
+        secret_id:document.getElementById('share-cos-id').value,
+        secret_key:document.getElementById('share-cos-key').value})});
+    if (!current()) return;
+    document.getElementById('share-cos-key').value = '';
+    mailaiBindUI(document.getElementById('share-cos-status'), "textContent", () => (mailaiText('COS 配置已保存')));
+    document.querySelector('.share-cos-config').classList.add('hidden');
+    document.getElementById('share-cos-settings-toggle').classList.remove('hidden');
+  } catch (error) { if (current()) document.getElementById('share-cos-status').textContent = mailaiSystemMessage(error.message); }
+  finally { button.disabled = false; }
+});
+document.getElementById('share-cos-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  const files = [...document.getElementById('share-cos-file').files];
+  if (!files.length) return toast(mailaiText('请先选择文件'), 'warn');
+  if (files.some(file => file.size > 2 * 1024 * 1024 * 1024)) return toast(mailaiText('单个共享文件不能超过 2 GB'), 'warn');
+  const session = draftSession, accountId = composeAccountId;
+  if (session.busy || session.canceled || session.sharing) return;
+  session.sharing = true;
+  const days = Number(document.getElementById('share-cos-expiry').value);
+  session.attachmentReads = (session.attachmentReads || 0) + 1;
+  const button = document.getElementById('share-cos-upload');
+  button.disabled = true;
+  try {
+    closeShareLinkDialog();
+    const cards = files.map(file => ({file, name:file.name, size:file.size, days, state:'waiting'}));
+    (session.sharedFiles ||= []).push(...cards); renderSharedFileCards();
+    const failed = [];
+    for (const [index, file] of files.entries()) {
+      if (session !== draftSession || accountId !== composeAccountId || session.canceled) return;
+      if (!await uploadSharedFileWithCard(file, days, session, accountId, () => {}, cards[index])) failed.push(file);
+    }
+    if (session !== draftSession || accountId !== composeAccountId || session.canceled) return;
+    document.getElementById('share-cos-file').value = '';
+    toast(failed.length ? mailaiTemplate`${failed.length} 个文件上传失败，请在附件区重试或移除` : mailaiText('大附件已上传，分享链接已插入正文'), failed.length ? 'warn' : 'success');
+  } catch (error) { if (session === draftSession && accountId === composeAccountId) toast(mailaiSystemMessage(error.message), 'error'); }
+  finally { session.attachmentReads -= 1; session.sharing = false; button.disabled = false; mailaiBindUI(button, "textContent", () => (mailaiT('compose.cosUpload') || '上传并插入邮件')); if (session === draftSession) renderSharedFileCards(); }
+});
+document.getElementById('compose-shared-files').addEventListener('click', async event => {
+  const retry = event.target.closest('[data-retry-share]');
+  const dismiss = event.target.closest('[data-dismiss-share]');
+  const session = draftSession, accountId = composeAccountId;
+  if ((!retry && !dismiss) || session.sharing || session.busy || session.canceled) return;
+  const index = Number(retry ? retry.dataset.retryShare : dismiss.dataset.dismissShare);
+  const item = session.sharedFiles?.[index];
+  if (!item || !['failed','waiting'].includes(item.state)) return;
+  if (dismiss) {
+    try { if (item.taskId) await api(`/api/share-storage/tasks/${item.taskId}`, {accountId, method:'DELETE'});
+      if (session !== draftSession) return;
+      session.sharedFiles.splice(index, 1); renderSharedFileCards();
+    } catch (error) { toast(mailaiSystemMessage(error.message), 'error'); }
+    return;
+  }
+  session.sharing = true; session.attachmentReads = (session.attachmentReads || 0) + 1;
+  try { await uploadSharedFileWithCard(item.file, item.days, session, accountId, () => {}, item); }
+  finally { session.sharing = false; session.attachmentReads--; if (session === draftSession) renderSharedFileCards(); }
+});
+
+globalThis.MailAIModules?.register('shareLinks', {
+  openShareLinkDialog,
+  closeShareLinkDialog,
+  normalizeShareUrl,
+  insertSharedLink,
+  uploadCosFile,
+});
+
+;
+/* ---- signature-manager.js ---- */
+/* Email signature editor, inline image sizing, and AI signature generation. */
+function signatureProfileFromForm() {
+  const fields = ['name','title','department','company','phone','email','website'];
+  return Object.fromEntries(fields.map(key => [key, document.getElementById(`signature-profile-${key}`).value.trim()]));
+}
+
+function fillSignatureProfile(profile = {}) {
+  for (const key of ['name','title','department','company','phone','email','website']) document.getElementById(`signature-profile-${key}`).value = profile[key] || '';
+}
+
+let savedSignatureRange = null;
+let selectedSignatureImage = null;
+function rememberSignatureSelection() {
+  const editor = document.getElementById('signature-editor');
+  const selection = window.getSelection();
+  if (!selection?.rangeCount || !editor.contains(selection.anchorNode)) return;
+  savedSignatureRange = selection.getRangeAt(0).cloneRange();
+}
+
+function clearSignatureImageSelection() {
+  selectedSignatureImage?.classList.remove('signature-image-selected');
+  selectedSignatureImage = null;
+  document.getElementById('signature-image-controls').classList.add('hidden');
+}
+
+function signatureImageNaturalWidth(image) {
+  return image.naturalWidth || Number(image.getAttribute('width')) || Math.round(image.getBoundingClientRect().width) || 1;
+}
+
+function signatureImageWidth(image) {
+  return Number(image.getAttribute('width')) || Math.round(image.getBoundingClientRect().width) || signatureImageNaturalWidth(image);
+}
+
+function refreshSignatureImageControls() {
+  const image = selectedSignatureImage;
+  const editor = document.getElementById('signature-editor');
+  if (!image || !editor.contains(image)) return clearSignatureImageSelection();
+  const width = signatureImageWidth(image);
+  const percent = Math.max(1, Math.round(width / signatureImageNaturalWidth(image) * 100));
+  document.getElementById('signature-image-width').value = String(width);
+  document.getElementById('signature-image-scale').value = String(Math.min(200, percent));
+  document.getElementById('signature-image-scale-value').textContent = `${percent}%`;
+  document.querySelectorAll('[data-signature-image-scale]').forEach(button => {
+    button.classList.toggle('active', Number(button.dataset.signatureImageScale) === percent);
+  });
+}
+
+function selectSignatureImage(image) {
+  if (!image || !document.getElementById('signature-editor').contains(image)) return;
+  clearSignatureImageSelection();
+  selectedSignatureImage = image;
+  image.classList.add('signature-image-selected');
+  document.getElementById('signature-image-controls').classList.remove('hidden');
+  refreshSignatureImageControls();
+  if (!image.complete) image.addEventListener('load', () => {
+    if (selectedSignatureImage === image) refreshSignatureImageControls();
+  }, {once:true});
+}
+
+function setSignatureImageWidth(value) {
+  if (!selectedSignatureImage || !document.getElementById('signature-editor').contains(selectedSignatureImage)) return clearSignatureImageSelection();
+  const width = Math.min(1200, Math.max(16, Math.round(Number(value) || 0)));
+  selectedSignatureImage.setAttribute('width', String(width));
+  selectedSignatureImage.removeAttribute('height');
+  selectedSignatureImage.style.width = `${width}px`;
+  selectedSignatureImage.style.maxWidth = '100%';
+  selectedSignatureImage.style.height = 'auto';
+  refreshSignatureImageControls();
+}
+
+async function insertSignatureImage(file) {
+  if (!file) return;
+  if (!/^image\/(png|jpeg|gif|webp)$/i.test(file.type)) return toast(mailaiText('支持 PNG、JPEG、GIF 或 WebP 图片'), 'warn');
+  if (file.size > 5 * 1024 * 1024) return toast(mailaiText('单张签名图片不能超过 5MB'), 'warn');
+  const signatureId = editingSignatureId;
+  const src = `data:${file.type};base64,${await readFileAsBase64(file)}`;
+  if (document.getElementById('signature-manager').classList.contains('hidden') || signatureId !== editingSignatureId) return;
+  const editor = document.getElementById('signature-editor');
+  const image = document.createElement('img');
+  image.addEventListener('load', () => {
+    if (!image.hasAttribute('width')) setSignatureImageWidthForNewImage(image);
+  }, {once:true});
+  image.src = src;
+  image.alt = file.name;
+  image.style.cssText = 'max-width:100%;height:auto;vertical-align:middle';
+  const range = savedSignatureRange && editor.contains(savedSignatureRange.commonAncestorContainer)
+    ? savedSignatureRange.cloneRange() : document.createRange();
+  if (!editor.contains(range.commonAncestorContainer)) range.selectNodeContents(editor);
+  if (!savedSignatureRange || !editor.contains(savedSignatureRange.commonAncestorContainer)) range.collapse(false);
+  range.deleteContents();
+  range.insertNode(image);
+  range.setStartAfter(image);
+  range.collapse(true);
+  editor.focus();
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+  savedSignatureRange = range.cloneRange();
+  selectSignatureImage(image);
+}
+
+function setSignatureImageWidthForNewImage(image) {
+  const width = Math.min(360, image.naturalWidth || 360);
+  if (selectedSignatureImage === image) setSignatureImageWidth(width);
+  else {
+    image.setAttribute('width', String(width));
+    image.style.width = `${width}px`;
+  }
+}
+
+function editSignature(signatureId = '') {
+  editingSignatureId = signatureId;
+  savedSignatureRange = null;
+  clearSignatureImageSelection();
+  const item = signatureState.items.find(row => row.id === signatureId);
+  document.getElementById('signature-name').value = item?.name || '';
+  document.getElementById('signature-editor').innerHTML = item?.html || '';
+  document.getElementById('signature-make-default').checked = Boolean(signatureId && signatureId === signatureState.default_id);
+  document.getElementById('btn-delete-signature').disabled = !item;
+  document.querySelectorAll('[data-signature-id]').forEach(button => button.classList.toggle('active', button.dataset.signatureId === signatureId));
+}
+
+function renderSignatureManager() {
+  fillSignatureProfile(signatureState.profile || {});
+  document.getElementById('signature-list').innerHTML = signatureState.items.length ? signatureState.items.map(item => `<button type="button" data-signature-id="${esc(item.id)}"><span>${esc(item.name)}</span>${item.id === signatureState.default_id ? "<small><span data-i18n=\"ui.844b8cc8dff7\">默认</span></small>" : ''}</button>`).join('') : "<p><span data-i18n=\"ui.559aa7c8eb41\">还没有签名</span><br><small><span data-i18n=\"ui.f1322541d545\">新建一套或让 AI 帮你生成</span></small></p>";
+  document.getElementById('btn-ai-generate-signature').disabled = !signatureState.ai_available;
+  mailaiBindUI(document.getElementById('btn-ai-generate-signature'), "title", () => (signatureState.ai_available ? mailaiText('根据发件人资料生成签名') : mailaiText('请先在系统中心配置 AI 模型')));
+  editSignature(editingSignatureId && signatureState.items.some(item => item.id === editingSignatureId) ? editingSignatureId : (signatureState.items[0]?.id || ''));
+}
+
+async function openSignatureManager() {
+  try { await loadSignatures(); } catch (err) { return toast(mailaiText('加载签名失败：') + mailaiSystemMessage(err.message), 'error'); }
+  renderSignatureManager();
+  document.getElementById('signature-ai-options').classList.add('hidden');
+  document.getElementById('signature-manager').classList.remove('hidden');
+}
+
+function closeSignatureManager() {
+  clearSignatureImageSelection();
+  document.getElementById('signature-manager').classList.add('hidden');
+}
+
+async function saveSignature() {
+  const name = document.getElementById('signature-name').value.trim();
+  const editorCopy = document.getElementById('signature-editor').cloneNode(true);
+  editorCopy.querySelectorAll('.signature-image-selected').forEach(image => image.classList.remove('signature-image-selected'));
+  const html = editorCopy.innerHTML.trim();
+  if (!name || !(document.getElementById('signature-editor').innerText.trim() || document.querySelector('#signature-editor img'))) return toast(mailaiText('请填写签名名称和内容'), 'warn');
+  signatureState = await api('/api/mail/signatures', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:editingSignatureId,name,html,profile:signatureProfileFromForm(),make_default:document.getElementById('signature-make-default').checked})});
+  const saved = signatureState.items.find(item => item.name === name && item.html === html) || signatureState.items.at(-1);
+  editingSignatureId = saved?.id || editingSignatureId;
+  renderSignatureManager(); renderSignatureSelect();
+  if (currentSignatureId === editingSignatureId || (!currentSignatureId && document.getElementById('signature-make-default').checked)) renderComposeSignature(editingSignatureId);
+  queueDraftSave(); toast(mailaiText('签名已保存'), 'success');
+}
+
+async function generateSignatures(button) {
+  const profile = signatureProfileFromForm();
+  if (!profile.name && !profile.email) return toast(mailaiText('请至少填写姓名或邮箱'), 'warn');
+  setLoading(button, true, mailaiText('AI 生成中…'));
+  const finishCompanionWork = globalThis.mailaiCompanionWork?.begin();
+  try {
+    const result = await api('/api/mail/signatures/generate', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({profile,style:document.getElementById('signature-ai-style').value})});
+    const host = document.getElementById('signature-ai-options');
+    host.innerHTML = result.options.map((item, index) => `<button type="button" data-ai-signature="${index}"><b>${esc(item.name)}</b><span>${item.html}</span><small><span data-i18n="ui.ab41d65b7982">使用这套</span></small></button>`).join('');
+    host._options = result.options;
+    host.classList.remove('hidden');
+  } catch (err) { toast(mailaiText('AI 签名生成失败：') + mailaiSystemMessage(err.message), 'error'); }
+  finally { finishCompanionWork?.(); setLoading(button, false); }
+}
+
+document.getElementById('btn-manage-signatures').addEventListener('click', openSignatureManager);
+document.querySelectorAll('[data-close-signatures]').forEach(button => button.addEventListener('click', closeSignatureManager));
+document.getElementById('btn-new-signature').addEventListener('click', () => editSignature(''));
+document.getElementById('signature-list').addEventListener('click', event => { const button = event.target.closest('[data-signature-id]'); if (button) editSignature(button.dataset.signatureId); });
+document.getElementById('btn-save-signature').addEventListener('click', () => saveSignature().catch(err => toast(mailaiText('保存签名失败：') + mailaiSystemMessage(err.message), 'error')));
+document.getElementById('btn-delete-signature').addEventListener('click', async () => {
+  if (!editingSignatureId || !window.confirm(mailaiText('确定删除这套签名？'))) return;
+  const removed = editingSignatureId;
+  signatureState = await api(`/api/mail/signatures/${encodeURIComponent(removed)}`, {method:'DELETE'});
+  editingSignatureId = '';
+  if (currentSignatureId === removed) renderComposeSignature('');
+  renderSignatureManager(); renderSignatureSelect(); queueDraftSave();
+  toast(mailaiText('签名已删除'), 'success');
+});
+document.getElementById('btn-ai-generate-signature').addEventListener('click', event => generateSignatures(event.currentTarget));
+document.getElementById('signature-editor').addEventListener('keyup', rememberSignatureSelection);
+document.getElementById('signature-editor').addEventListener('mouseup', rememberSignatureSelection);
+document.getElementById('signature-editor').addEventListener('click', event => {
+  const image = event.target.closest?.('img');
+  if (image) selectSignatureImage(image);
+  else clearSignatureImageSelection();
+});
+document.getElementById('signature-editor').addEventListener('input', () => {
+  if (selectedSignatureImage && !document.getElementById('signature-editor').contains(selectedSignatureImage)) clearSignatureImageSelection();
+});
+document.querySelectorAll('[data-signature-image-scale]').forEach(button => button.addEventListener('click', () => {
+  if (selectedSignatureImage) setSignatureImageWidth(signatureImageNaturalWidth(selectedSignatureImage) * Number(button.dataset.signatureImageScale) / 100);
+}));
+document.getElementById('signature-image-scale').addEventListener('input', event => {
+  if (selectedSignatureImage) setSignatureImageWidth(signatureImageNaturalWidth(selectedSignatureImage) * Number(event.target.value) / 100);
+});
+document.getElementById('signature-image-width').addEventListener('change', event => setSignatureImageWidth(event.target.value));
+document.getElementById('signature-image-done').addEventListener('click', clearSignatureImageSelection);
+document.getElementById('btn-insert-signature-image').addEventListener('pointerdown', rememberSignatureSelection);
+document.getElementById('btn-insert-signature-image').addEventListener('click', () => document.getElementById('signature-image-input').click());
+document.getElementById('signature-image-input').addEventListener('change', async event => {
+  const file = event.target.files[0], button = document.getElementById('btn-insert-signature-image');
+  event.target.value = '';
+  if (!file || button.disabled) return;
+  setLoading(button, true, mailaiText('读取图片…'));
+  try { await insertSignatureImage(file); }
+  catch(error) { toast(mailaiText('插入签名图片失败：') + mailaiSystemMessage(error.message), 'error'); }
+  finally { setLoading(button, false); }
+});
+document.getElementById('signature-ai-options').addEventListener('click', event => {
+  const button = event.target.closest('[data-ai-signature]');
+  if (!button) return;
+  const item = event.currentTarget._options?.[Number(button.dataset.aiSignature)];
+  if (!item) return;
+  editingSignatureId = '';
+  clearSignatureImageSelection();
+  document.getElementById('signature-name').value = item.name;
+  document.getElementById('signature-editor').innerHTML = item.html;
+  document.getElementById('signature-make-default').checked = !signatureState.default_id;
+  toast(mailaiText('已放入编辑区，确认后点击保存'), 'success');
+});
+
+globalThis.MailAIModules?.register('signatureManager', {
+  openSignatureManager,
+  closeSignatureManager,
+  renderSignatureManager,
+  editSignature,
+  saveSignature,
+  generateSignatures,
+});
+
+;
+/* ---- backup-migration.js ---- */
+/* Local backups, encrypted portable migration packages, and account logout confirmation. */
+function renderBackupItem(item, index) {
+  const date = new Date(item.created_at);
+  const locale = currentI18nLanguage() === 'en' ? 'en-US' : 'zh-CN';
+  const label = Number.isNaN(date.getTime()) ? (mailaiT('backup.localFallback') || '本地备份') : new Intl.DateTimeFormat(locale, {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(date);
+  const tSave = mailaiT('backup.saveAs') || '另存为';
+  const tDelete = mailaiT('backup.delete') || '删除';
+  const tRestore = mailaiT('backup.restore') || '恢复';
+  const tPortable = mailaiT('backup.portable') || '迁移包';
+  const download = `<button type="button" data-download-backup="${esc(item.filename)}" data-portable="${item.portable ? 'true' : 'false'}" aria-label="${item.portable ? (mailaiT('backup.ariaExport') || '导出迁移包到指定位置') : (mailaiT('backup.ariaDownload') || `下载 ${esc(label)} 的备份`)}" data-i18n="backup.saveAs" data-i18n-aria="${item.portable ? 'backup.ariaExport' : 'backup.ariaDownload'}">${tSave}</button>`;
+  const remove = `<button type="button" data-delete-backup="${esc(item.filename)}" data-portable="${item.portable ? 'true' : 'false'}" aria-label="${mailaiT('backup.ariaDelete') || '删除'} ${item.portable ? tPortable : (mailaiT('backup.ariaBackup') || '备份')}" data-i18n="backup.delete" data-i18n-aria="${item.portable ? 'backup.deleteMigrationAria' : 'backup.deleteLocalAria'}">${tDelete}</button>`;
+  const actions = item.portable ? `${download}${remove}` : `<button type="button" data-restore-backup="${esc(item.filename)}" aria-label="${mailaiT('backup.ariaRestore') || `恢复 ${esc(label)} 的备份`}" data-i18n="backup.restore" data-i18n-aria="backup.ariaRestore">${tRestore}</button>${download}${remove}`;
+  return `<div class="backup-item"><div class="backup-record-copy"><b>${Number.isNaN(date.getTime()) ? `<span data-i18n="backup.localFallback">${esc(label)}</span>` : esc(label)}${item.portable ? `<em data-i18n="backup.portable">${tPortable}</em>` : index === 0 ? `<em data-i18n="backup.latest">${mailaiT('backup.latest') || '最新'}</em>` : ''}</b><small title="${esc(item.filename)}">${esc(item.filename)}</small></div><small class="backup-record-size">${formatFileSize(item.size)}</small><div class="backup-record-actions">${actions}</div></div>`;
+}
+
+async function loadBackups() {
+  const accountId = activeMailAccount()?.id;
+  window.refreshCleanupAutomation?.(accountId);
+  const host = document.getElementById('backup-list');
+  try {
+    const [localItems, portableItems] = await Promise.all([api('/api/system/backups', {accountId}), api('/api/system/portable-backups', {accountId})]);
+    const items = [...portableItems, ...localItems].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
+    if (accountId !== activeMailAccount()?.id) return;
+    host.innerHTML = items.length ? items.slice(0, 3).map(renderBackupItem).join('') + (items.length > 3 ? `<details class="older-backups"><summary><span data-i18n="backup.showOlder">${mailaiT('backup.showOlder') || '查看更早备份'}</span> (${items.length - 3})</summary>${items.slice(3).map((item,index)=>renderBackupItem(item,index+3)).join('')}</details>` : '') : `<div class="backup-empty"><b data-i18n="backup.emptyTitle">${mailaiT('backup.emptyTitle') || '还没有备份'}</b><small data-i18n="backup.emptyHint">${mailaiT('backup.emptyHint') || '创建第一份备份，为邮件留一份本地副本。'}</small></div>`;
+    window.refreshCleanupHistory?.(accountId);
+  } catch (_) {
+    if (accountId === activeMailAccount()?.id) host.innerHTML = `<div class="backup-empty"><b data-i18n="backup.loadFailTitle">${mailaiT('backup.loadFailTitle') || '暂时无法读取备份'}</b><small data-i18n="backup.loadFailHint">${mailaiT('backup.loadFailHint') || '请稍后重新打开此页。'}</small></div>`;
+  }
+}
+
+document.getElementById('btn-create-backup').addEventListener('click', async () => {
+  const button = document.getElementById('btn-create-backup'); setLoading(button, true, mailaiText('备份中…'));
+  try { const result = await api('/api/system/backups?include_raw=true', {method:'POST'}); toast(mailaiTemplate`备份完成 · ${formatFileSize(result.size)}`, 'success'); await loadBackups(); }
+  catch (err) { toast(mailaiSystemMessage(err.message), 'error'); } finally { setLoading(button, false); }
+});
+
+function askMigrationPassword(mode) {
+  const dialog = document.getElementById('migration-password-dialog');
+  const form = dialog.querySelector('form');
+  const password = document.getElementById('migration-password');
+  const confirmation = document.getElementById('migration-password-confirm');
+  const confirmationRow = document.getElementById('migration-password-confirm-row');
+  const noPasswordRow = document.getElementById('migration-no-password-row');
+  const noPassword = document.getElementById('migration-no-password');
+  const error = document.getElementById('migration-password-error');
+  const importing = mode === 'import';
+  mailaiBindUI(document.getElementById('migration-password-title'), "textContent", () => (importing ? mailaiText('输入迁移密码') : mailaiText('保护迁移包')));
+  mailaiBindUI(document.getElementById('migration-password-help'), "textContent", () => (importing ? mailaiText('该迁移包已加密。请输入旧设备导出时设置的密码。密码只用于本次解密。') : mailaiText('迁移包包含邮件正文和附件。设置密码后，即使文件遗失也无法直接读取内容。')));
+  password.value = ''; confirmation.value = ''; noPassword.checked = false; error.textContent = '';
+  confirmationRow.classList.toggle('hidden', importing); noPasswordRow.classList.toggle('hidden', importing);
+  password.disabled = false; confirmation.disabled = importing;
+  return new Promise(resolve => {
+    let completed = false;
+    const finish = value => { if (completed) return; completed = true; cleanup(); resolve(value); };
+    const cleanup = () => { form.removeEventListener('submit', submit); noPassword.removeEventListener('change', toggle); dialog.removeEventListener('close', close); };
+    const close = () => { if (dialog.returnValue !== 'migration-ok') finish(null); };
+    const toggle = () => { password.disabled = noPassword.checked; confirmation.disabled = noPassword.checked; error.textContent = ''; };
+    const submit = event => {
+      event.preventDefault();
+      if (event.submitter?.value === 'cancel') { dialog.close('cancel'); return; }
+      if (!importing && noPassword.checked) { dialog.close('migration-ok'); finish(''); return; }
+      if (password.value.length < 12 && !importing) { mailaiBindUI(error, "textContent", () => (mailaiText('迁移密码至少需要 12 位'))); password.focus(); return; }
+      if (!password.value && importing) { mailaiBindUI(error, "textContent", () => (mailaiText('请输入迁移密码'))); password.focus(); return; }
+      if (!importing && password.value !== confirmation.value) { mailaiBindUI(error, "textContent", () => (mailaiText('两次输入的密码不一致'))); confirmation.focus(); return; }
+      const value = password.value; dialog.close('migration-ok'); finish(value);
+    };
+    form.addEventListener('submit', submit); noPassword.addEventListener('change', toggle); dialog.addEventListener('close', close);
+    dialog.showModal(); setTimeout(() => password.focus(), 0);
+  });
+}
+
+document.getElementById('btn-export-portable').addEventListener('click', async () => {
+  const button = document.getElementById('btn-export-portable');
+  const since = document.getElementById('portable-export-since')?.value || '';
+  const until = document.getElementById('portable-export-until')?.value || '';
+  if (since && until && since > until) { toast(mailaiText('导出起始日期不能晚于截止日期'), 'warn'); return; }
+  const password = await askMigrationPassword('export');
+  if (password === null) return;
+  setLoading(button, true, mailaiText('导出中…'));
+  try {
+    const result = await api('/api/system/portable-backups', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({include_raw:true,password,since,until})});
+    if (window.pywebview?.api?.save_portable_backup) {
+      const saved = await window.pywebview.api.save_portable_backup(result.filename);
+      if (saved?.ok) toast(mailaiTemplate`迁移包已保存到 ${saved.path}`, 'success');
+      else if (saved?.canceled) toast(mailaiText('已取消选择位置；迁移包仍保存在下方记录中，可随时重新下载'), 'warn');
+      else throw new Error(mailaiText('无法保存迁移包'));
+    } else {
+      const link = document.createElement('a'); link.href = result.download_url; link.download = result.filename; document.body.appendChild(link); link.click(); link.remove();
+      toast(mailaiTemplate`迁移包已交给浏览器下载 · ${formatFileSize(result.size)}，请在下载列表中查看位置`, 'success');
+    }
+    await loadBackups();
+  } catch (err) { toast(mailaiSystemMessage(err.message), 'error'); } finally { setLoading(button, false); }
+});
+document.getElementById('btn-import-portable').addEventListener('click', () => document.getElementById('portable-backup-file').click());
+
+document.getElementById('portable-backup-file').addEventListener('change', async event => {
+  const file = event.target.files?.[0]; event.target.value = ''; if (!file) return;
+  const signature = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+  const encrypted = [77,65,73,76,65,73,51,0].every((value,index) => signature[index] === value);
+  let password = '';
+  if (encrypted) {
+    password = await askMigrationPassword('import');
+    if (password === null) return;
+  }
+  const button = document.getElementById('btn-import-portable'); setLoading(button, true, mailaiText('检查中…'));
+  try {
+    const accountId = activeMailAccount()?.id || '';
+    const response = await fetch('/api/system/portable-backups/inspect', {method:'POST', headers:{'Content-Type':'application/octet-stream','X-Migration-Password':password,...(accountId ? {'X-MailAI-Account':accountId} : {})}, body:file});
+    const preview = await response.json(); if (!response.ok) throw new Error(preview.detail || mailaiText('迁移包检查失败'));
+    const content = preview.content || {}, account = preview.account || {};
+    if (!preview.current_account_matches) {
+      await api(`/api/system/portable-backups/import/${encodeURIComponent(preview.import_token)}`, {method:'DELETE'}).catch(()=>{});
+      throw new Error(mailaiTemplate`迁移包属于 ${account.email || mailaiText('未知账号')}，请先切换或登录该邮箱后再导入`);
+    }
+    const sourceDate = preview.created_at ? new Date(preview.created_at).toLocaleString(currentI18nLanguage()) : mailaiText('未知时间');
+    const rawState = content.includes_raw_mail ? mailaiTemplate`${content.raw_messages || 0} 份邮件原文` : mailaiText('不含邮件原文');
+    const missing = content.missing_raw_messages ? mailaiTemplate`\n注意：源设备有 ${content.missing_raw_messages} 份原文缺失。` : '';
+    const confirmed = window.confirm(mailaiTemplate`迁移包检查通过\n\n账号：${account.email}\n来源：${preview.source_platform || mailaiText('未知系统')}\n导出时间：${sourceDate}\n内容：${content.emails || 0} 封邮件，${rawState}\n文件大小：${formatFileSize(preview.source_size || file.size)}${missing}\n\n导入会替换当前账号的本地数据，并先自动创建安全备份。服务器邮件不会被删除或修改。继续吗？`);
+    if (!confirmed) { await api(`/api/system/portable-backups/import/${encodeURIComponent(preview.import_token)}`, {method:'DELETE'}).catch(()=>{}); return; }
+    setLoading(button, true, mailaiText('导入中…'));
+    const result = await api('/api/system/portable-backups/restore', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({import_token:preview.import_token,password})});
+    if (window.confirm(mailaiTemplate`已导入 ${result.emails || 0} 封邮件。\n\n是否现在重新同步邮箱，以建立新设备的服务器关联？邮件较多时可能需要较长时间。`)) {
+      await api('/api/fetch_all', {method:'POST'});
+    }
+    window.location.reload();
+  } catch (err) { toast(mailaiSystemMessage(err.message), 'error'); } finally { setLoading(button, false); }
+});
+
+document.getElementById('backup-list').addEventListener('click', event => {
+  const restoreButton = event.target.closest('[data-restore-backup]');
+  if (restoreButton) { window.openBackupRestore(restoreButton.dataset.restoreBackup); return; }
+  const downloadButton = event.target.closest('[data-download-backup]');
+  const deleteButton = event.target.closest('[data-delete-backup]');
+  if (deleteButton) {
+    const filename = deleteButton.dataset.deleteBackup;
+    const portable = deleteButton.dataset.portable === 'true';
+    if (!window.confirm(mailaiTemplate`确定永久删除这个${portable ? mailaiText('迁移包') : mailaiText('本机备份')}吗？\n\n${filename}\n\n删除后无法恢复。`)) return;
+    (async () => {
+      setLoading(deleteButton, true, mailaiText('删除中…'));
+      try {
+        const path = portable ? `/api/system/portable-backups/stored/${encodeURIComponent(filename)}` : `/api/system/backups/${encodeURIComponent(filename)}`;
+        await api(path, {method:'DELETE'});
+        toast(mailaiTemplate`${portable ? mailaiText('迁移包') : mailaiText('备份')}已删除`, 'success');
+        await loadBackups();
+      } catch (err) { toast(mailaiTemplate`删除失败：${mailaiSystemMessage(err.message)}`, 'error'); }
+      finally { setLoading(deleteButton, false); }
+    })();
+    return;
+  }
+  if (!downloadButton) return;
+  const filename = downloadButton.dataset.downloadBackup;
+  const portable = downloadButton.dataset.portable === 'true';
+  (async () => {
+    setLoading(downloadButton, true, mailaiText('选择位置…'));
+    try {
+      if (window.pywebview?.api) {
+        const method = portable ? window.pywebview.api.save_portable_backup : window.pywebview.api.save_local_backup;
+        if (typeof method === 'function') {
+          const result = await method(filename);
+          if (result?.ok) toast(mailaiTemplate`已保存到 ${result.path}`, 'success');
+          else if (result?.canceled) toast(mailaiText('已取消另存为，原备份仍保留在应用中'), 'warn');
+          else throw new Error(mailaiText('保存失败'));
+          return;
+        }
+      }
+      const href = portable ? `/api/system/portable-backups/download/${encodeURIComponent(filename)}` : `/api/system/backups/${encodeURIComponent(filename)}`;
+      const link = document.createElement('a'); link.href = href; link.download = filename; link.hidden = true; document.body.appendChild(link); link.click(); link.remove();
+      toast(mailaiText('已交给浏览器下载，请在下载列表中查看保存位置'), 'success');
+    } catch (err) { toast(mailaiTemplate`备份另存失败：${mailaiSystemMessage(err.message)}`, 'error'); }
+    finally { setLoading(downloadButton, false); }
+  })();
+});
+
+function openLogoutDialog(accountId = selectedManagedAccountId) {
+  const modal = document.getElementById('logout-modal');
+  const accounts = _systemConfig?.accounts || [];
+  const target = accounts.find(account => account.id === accountId);
+  if (!target) return toast(mailaiText('请先选择要删除的邮箱'), 'error');
+  modal.dataset.accountId = target.id;
+  mailaiBindUI(document.getElementById('logout-account-label'), "textContent", () => (mailaiTemplate`${target.user} · 将移除本机保存的邮箱账号和授权码`));
+  const keep = modal.querySelector('input[value="keep"]');
+  keep.checked = true;
+  modal.querySelectorAll('.logout-choice').forEach(choice => choice.classList.toggle('selected', choice.contains(keep)));
+  document.getElementById('logout-warning').classList.add('hidden');
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('modal-open');
+  keep.focus();
+}
+
+function closeLogoutDialog() {
+  const modal = document.getElementById('logout-modal');
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('modal-open');
+}
+
+async function stopFetchBeforeLogout() {
+  let state = await api('/api/fetch_status');
+  if (!state.running) return;
+  await api('/api/cancel_fetch', {method: 'POST'});
+  toast(mailaiText('正在安全停止邮件同步…'));
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    await new Promise(resolve => setTimeout(resolve, 250));
+    state = await api('/api/fetch_status');
+    if (!state.running) return;
+  }
+  throw new Error(mailaiText('邮件同步仍在停止中，请稍后再次删除'));
+}
+
+document.getElementById('btn-delete-mail').addEventListener('click', () => openLogoutDialog());
+document.getElementById('btn-close-logout').addEventListener('click', closeLogoutDialog);
+document.getElementById('btn-cancel-logout').addEventListener('click', closeLogoutDialog);
+document.querySelector('#logout-modal [data-close-logout]').addEventListener('click', closeLogoutDialog);
+document.querySelectorAll('input[name="logout-history"]').forEach(input => input.addEventListener('change', () => {
+  document.querySelectorAll('.logout-choice').forEach(choice => choice.classList.toggle('selected', choice.contains(input)));
+  document.getElementById('logout-warning').classList.toggle('hidden', input.value !== 'clear');
+}));
+document.getElementById('btn-confirm-logout').addEventListener('click', async () => {
+  const button = document.getElementById('btn-confirm-logout');
+  const clearHistory = document.querySelector('input[name="logout-history"]:checked').value === 'clear';
+  setLoading(button, true, clearHistory ? mailaiText('正在清空…') : mailaiText('正在删除…'));
+  try {
+    await stopFetchBeforeLogout();
+    const accountId = document.getElementById('logout-modal').dataset.accountId || '';
+    const targetWasActive = (_systemConfig?.accounts || []).some(account => account.id === accountId && account.active);
+    await api('/api/system/mail/logout', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({clear_history: clearHistory, account_id: accountId})});
+    closeLogoutDialog();
+    selectedManagedAccountId = '';
+    await loadSystemConfig();
+    if (targetWasActive) {
+      ++mailLoadRevision;
+      allEmails = []; allTodos = []; sentMessages = []; savedDrafts = []; mailboxLocalCounts = null;
+      resetReadingPane(); updateSidebar(); applyFilters();
+    }
+    selectSystemTab('account');
+    document.querySelector('.layout').classList.add('hidden');
+    document.getElementById('system-view').classList.remove('hidden');
+    toast(clearHistory ? mailaiText('已删除邮箱并清空本地邮件历史') : mailaiText('已删除邮箱，本地邮件历史已保留'), 'success');
+  } catch (err) { toast(mailaiText('删除失败：') + mailaiSystemMessage(err.message), 'error'); }
+  finally { setLoading(button, false); }
+});
+
+globalThis.MailAIModules?.register('backupMigration', {
+  renderBackupItem,
+  loadBackups,
+  askMigrationPassword,
+  openLogoutDialog,
+  closeLogoutDialog,
+  stopFetchBeforeLogout,
+});
+
+;
+/* ---- pane-resizers.js ---- */
+/* Three-pane workspace resizer handles, constraints, and persistence. */
+const PANE_SIZE_KEY = 'mailai.workspace.paneSizes.v1';
+const PANE_DEFAULTS = {sidebar: 226, list: 405};
+
+function paneSizePreferenceKey() {
+  return document.body.dataset.mailListView === 'table' ? 'mailai.workspace.tablePaneSizes.v1' : PANE_SIZE_KEY;
+}
+
+function currentPaneDefaults() {
+  return {...PANE_DEFAULTS, list:document.body.dataset.mailListView === 'table' ? 720 : PANE_DEFAULTS.list};
+}
+
+function readPaneSizes() {
+  try { return {...currentPaneDefaults(), ...JSON.parse(localStorage.getItem(paneSizePreferenceKey()) || '{}')}; }
+  catch (_) { return currentPaneDefaults(); }
+}
+
+function constrainPaneSizes(input, totalWidth) {
+  const layout = document.querySelector('.layout');
+  const total = totalWidth || layout?.clientWidth || window.innerWidth;
+  const readingMin = Math.min(440, Math.max(360, total * .32));
+  let sidebar = Math.max(180, Math.min(380, Number(input.sidebar) || PANE_DEFAULTS.sidebar));
+  let list = Math.max(300, Math.min(720, Number(input.list) || PANE_DEFAULTS.list));
+  const available = Math.max(480, total - 24 - readingMin);
+  if (sidebar + list > available) list = Math.max(300, available - sidebar);
+  if (sidebar + list > available) sidebar = Math.max(180, available - list);
+  return {sidebar:Math.round(sidebar), list:Math.round(list)};
+}
+
+function applyPaneSizes(sizes, persist = false, totalWidth) {
+  const layout = document.querySelector('.layout');
+  if (!layout) return;
+  const value = constrainPaneSizes(sizes, totalWidth);
+  layout.style.setProperty('--sidebar-width', value.sidebar + 'px');
+  layout.style.setProperty('--list-width', value.list + 'px');
+  document.querySelector('[data-resizer="sidebar"]')?.setAttribute('aria-valuenow', value.sidebar);
+  document.querySelector('[data-resizer="list"]')?.setAttribute('aria-valuenow', value.list);
+  if (persist) localStorage.setItem(paneSizePreferenceKey(), JSON.stringify(value));
+  return value;
+}
+
+function initPaneResizers() {
+  let preferredSizes = readPaneSizes();
+  let sizes = applyPaneSizes(preferredSizes);
+  document.querySelectorAll('.pane-resizer').forEach(handle => {
+    const kind = handle.dataset.resizer;
+    handle.setAttribute('aria-valuemin', kind === 'sidebar' ? '180' : '300');
+    handle.setAttribute('aria-valuemax', kind === 'sidebar' ? '380' : '720');
+    handle.addEventListener('pointerdown', event => {
+      if (window.innerWidth <= 1024 || event.button !== 0 || handle.classList.contains('dragging')) return;
+      event.preventDefault();
+      const startX = event.clientX;
+      const start = {...sizes};
+      const layout = document.querySelector('.layout');
+      // Cache geometry before writes and coalesce pointer bursts per frame.
+      const totalWidth = layout.clientWidth;
+      const scale = layout.getBoundingClientRect().width / totalWidth || 1;
+      const pointerId = event.pointerId;
+      let latestX = startX, frame = 0;
+      const flush = () => {
+        frame = 0;
+        sizes = applyPaneSizes({...start, [kind]:start[kind] + (latestX - startX) / scale}, false, totalWidth);
+      };
+      handle.setPointerCapture(event.pointerId);
+      handle.classList.add('dragging'); document.body.classList.add('pane-resizing');
+      const move = moveEvent => {
+        if (moveEvent.pointerId !== pointerId) return;
+        latestX = moveEvent.clientX;
+        if (!frame) frame = requestAnimationFrame(flush);
+      };
+      const end = endEvent => {
+        if (endEvent.pointerId !== pointerId) return;
+        if (endEvent.type === 'pointerup') latestX = endEvent.clientX;
+        cancelAnimationFrame(frame);
+        flush();
+        handle.removeEventListener('pointerup', end);
+        handle.removeEventListener('pointercancel', end);
+        handle.removeEventListener('lostpointercapture', end);
+        if (handle.hasPointerCapture(pointerId)) handle.releasePointerCapture(pointerId);
+        handle.removeEventListener('pointermove', move);
+        handle.classList.remove('dragging'); document.body.classList.remove('pane-resizing');
+        sizes = applyPaneSizes(sizes, true);
+        preferredSizes = {...sizes};
+      };
+      handle.addEventListener('pointermove', move);
+      handle.addEventListener('pointerup', end);
+      handle.addEventListener('pointercancel', end);
+      handle.addEventListener('lostpointercapture', end);
+    });
+    handle.addEventListener('dblclick', () => { preferredSizes = currentPaneDefaults(); sizes = applyPaneSizes(preferredSizes, true); toast(mailaiText('已恢复默认栏宽'), 'success'); });
+    handle.addEventListener('keydown', event => {
+      if (!['ArrowLeft','ArrowRight'].includes(event.key)) return;
+      event.preventDefault();
+      sizes = applyPaneSizes({...sizes, [kind]:sizes[kind] + (event.key === 'ArrowRight' ? 16 : -16)}, true);
+      preferredSizes = {...sizes};
+    });
+  });
+  window.addEventListener('mailai:list-view-changed', () => { preferredSizes = readPaneSizes(); sizes = applyPaneSizes(preferredSizes); });
+  window.addEventListener('resize', () => { sizes = applyPaneSizes(preferredSizes); });
+}
+
+initPaneResizers();
+
+globalThis.MailAIModules?.register('paneResizers', {
+  readPaneSizes,
+  constrainPaneSizes,
+  applyPaneSizes,
+  initPaneResizers,
+});
 
 ;
 /* ---- native-menu.js ---- */

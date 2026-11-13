@@ -246,7 +246,13 @@ def main():
                  [node, str(ROOT / 'tests/test_dark_theme_palette.cjs')],
                  [node, str(ROOT / 'tests/test_dark_dialog_surfaces.cjs')],
                  [node, str(ROOT / 'tests/test_ui_refinement.cjs')],
-                 [node, str(ROOT / 'tests/test_model_privacy_ui.cjs')]]
+                 [node, str(ROOT / 'tests/test_model_privacy_ui.cjs')],
+                 [node, '--check', str(ROOT / 'app/web/static/mailai-state.js')],
+                 [node, '--check', str(ROOT / 'app/web/static/share-links.js')],
+                 [node, '--check', str(ROOT / 'app/web/static/signature-manager.js')],
+                 [node, '--check', str(ROOT / 'app/web/static/backup-migration.js')],
+                 [node, '--check', str(ROOT / 'app/web/static/pane-resizers.js')],
+                 [node, str(ROOT / 'tests/test_frontend_modularization.cjs')]]
     failures = []
     for command in commands:
         label = Path(command[-1]).name

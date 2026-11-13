@@ -201,4 +201,9 @@
       if (ids.length && preset) applySnooze(ids, preset, groupBtn);
     }
   });
+
+  globalThis.MailAIModules?.register('todoQuickActions', {
+    createTodo: () => form.requestSubmit(),
+    snooze: applySnooze,
+  });
 })();
