@@ -1,0 +1,285 @@
+/* Lightweight inline task creation, quick snooze menus, and recurrence badges for Todo Center. */
+#todo-center .todo-quick-add {
+  flex: none;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 8px 28px 10px;
+  background: var(--desk-surface);
+  border-bottom: 1px solid color-mix(in srgb, var(--desk-line) 42%, transparent);
+}
+#todo-center[data-todo-view=reminders] .todo-quick-add,
+#todo-center[data-todo-view=followups] .todo-quick-add {
+  display: none;
+}
+#todo-center .todo-quick-form {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  gap: 6px;
+  padding: 5px 6px 5px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--desk-muted-surface) 88%, var(--desk-surface));
+  transition: box-shadow .16s ease, background-color .16s ease;
+}
+html[data-theme="dark"] #todo-center .todo-quick-form {
+  background: color-mix(in srgb, var(--desk-ink) 5%, var(--desk-surface));
+}
+#todo-center .todo-quick-form:focus-within {
+  background: var(--desk-muted-surface);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--desk-accent) 26%, transparent);
+}
+#todo-center .todo-quick-plus {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  color: var(--desk-accent);
+}
+html[data-theme] body #todo-center #todo-quick-title {
+  flex: 1 1 160px;
+  min-width: 0;
+  min-height: 28px;
+  padding: 3px 4px;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--desk-ink) !important;
+  font-size: 13px;
+  box-shadow: none !important;
+}
+#todo-center #todo-quick-title:focus {
+  outline: none;
+}
+#todo-center .todo-quick-controls {
+  display: flex;
+  flex: none;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+}
+#todo-center .todo-quick-controls > * {
+  flex: 0 0 auto !important;
+}
+html[data-theme][data-theme] body #todo-center .todo-quick-controls .datetime-control {
+  width: auto !important;
+  min-width: 0;
+}
+html[data-theme][data-theme] body #todo-center .todo-quick-controls .datetime-trigger {
+  width: auto !important;
+  min-width: 102px;
+  max-width: 146px;
+  min-height: 28px !important;
+  height: 28px !important;
+  gap: 6px;
+  padding: 0 10px !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background: var(--desk-surface) !important;
+  color: var(--desk-muted) !important;
+  font-size: 12px !important;
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .04) !important;
+  white-space: nowrap;
+}
+html[data-theme][data-theme] body #todo-center .todo-quick-controls .datetime-trigger svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+}
+html[data-theme][data-theme] body #todo-center :is(#todo-quick-deadline, #todo-quick-recurrence) {
+  min-width: 88px !important;
+  width: auto !important;
+  min-height: 28px !important;
+  height: 28px !important;
+  padding: 0 30px 0 10px !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background-color: var(--desk-surface) !important;
+  color: var(--desk-muted) !important;
+  font-size: 12px !important;
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .04) !important;
+  white-space: nowrap;
+}
+html[data-theme="dark"][data-theme="dark"] body #todo-center .todo-quick-controls .datetime-trigger,
+html[data-theme="dark"][data-theme="dark"] body #todo-center :is(#todo-quick-deadline, #todo-quick-recurrence) {
+  background-color: color-mix(in srgb, var(--desk-ink) 7%, var(--desk-surface)) !important;
+  color: var(--desk-ink) !important;
+  box-shadow: none !important;
+}
+html[data-theme] body #todo-center #todo-quick-submit {
+  min-height: 28px !important;
+  min-width: 52px !important;
+  padding: 4px 14px !important;
+  border: 0 !important;
+  border-radius: 8px;
+  background: var(--desk-accent) !important;
+  color: var(--reward-on-accent, #fff) !important;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+html[data-theme="dark"] body #todo-center #todo-quick-submit {
+  color: var(--desk-surface, #142d20) !important;
+}
+html[data-theme] body #todo-center #todo-quick-submit:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+html[data-theme] body #todo-center #todo-quick-submit:disabled {
+  opacity: .55;
+  cursor: wait;
+}
+
+/* Recurrence pill & manual source chip */
+html[data-theme] body #todo-center .todo-recurrence-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  padding: 2px 9px;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--desk-accent) 11%, var(--desk-surface)) !important;
+  color: var(--desk-accent) !important;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 550;
+  white-space: nowrap;
+}
+html[data-theme] body #todo-center .todo-recurrence-chip:hover {
+  background: var(--desk-selected) !important;
+}
+#todo-center .todo-recurrence-chip svg {
+  width: 12px;
+  height: 12px;
+}
+#todo-center .todo-source-manual {
+  cursor: default;
+  color: var(--desk-muted) !important;
+  text-decoration: none !important;
+}
+html[data-theme] body #todo-center .todo-source-manual:hover {
+  color: var(--desk-muted) !important;
+  text-decoration: none !important;
+}
+
+/* Quick snooze popover menu on task rows & groups */
+html[data-theme] body #todo-center .todo-plan-actions {
+  gap: 4px;
+  align-items: center;
+}
+#todo-center .todo-snooze-menu {
+  position: relative;
+  flex: none;
+}
+#todo-center .todo-snooze-menu > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--desk-muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  list-style: none;
+  white-space: nowrap;
+}
+#todo-center .todo-snooze-menu > summary::-webkit-details-marker {
+  display: none;
+}
+#todo-center .todo-snooze-menu > summary:hover,
+#todo-center .todo-snooze-menu[open] > summary {
+  background: var(--desk-selected);
+  color: var(--desk-accent);
+}
+#todo-center .todo-snooze-menu > summary svg {
+  width: 13px;
+  height: 13px;
+}
+#todo-center .todo-snooze-menu:not([open]) > .todo-snooze-popover {
+  display: none;
+}
+#todo-center .todo-snooze-popover {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 126px;
+  padding: 6px;
+  border: 1px solid color-mix(in srgb, var(--desk-line) 75%, transparent);
+  border-radius: 11px;
+  background: var(--desk-surface);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .18);
+}
+html[data-theme] body #todo-center .todo-snooze-popover button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 30px;
+  padding: 5px 10px;
+  border: 0 !important;
+  border-radius: 7px;
+  background: transparent !important;
+  color: var(--desk-ink) !important;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+}
+html[data-theme] body #todo-center .todo-snooze-popover button:hover:not(:disabled) {
+  background: var(--desk-selected) !important;
+  color: var(--desk-accent) !important;
+}
+html[data-theme] body #todo-center .todo-snooze-popover button small {
+  color: var(--desk-muted);
+  font-size: 11px;
+  font-weight: 450;
+}
+
+@container todo-center-card (max-width:650px) {
+  #todo-center .todo-quick-add {
+    padding: 8px 18px 10px;
+  }
+  #todo-center .todo-quick-form {
+    flex-wrap: wrap;
+  }
+  #todo-center .todo-quick-controls {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  html[data-theme] body #todo-center .todo-center-item {
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+  }
+  html[data-theme] body #todo-center .todo-plan-actions {
+    gap: 2px;
+  }
+  #todo-center .todo-snooze-menu > summary span {
+    display: none;
+  }
+  #todo-center .todo-snooze-menu > summary {
+    min-width: 34px;
+    justify-content: center;
+    padding: 5px 7px;
+  }
+}
+@media(max-width:760px) {
+  html[data-theme] body #todo-center .todo-recurrence-chip {
+    min-height: 26px !important;
+    min-width: 0 !important;
+    padding: 2px 9px !important;
+  }
+  html[data-theme] body #todo-center .todo-snooze-menu > summary {
+    min-height: 36px !important;
+    min-width: 36px !important;
+  }
+}

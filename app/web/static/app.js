@@ -8687,14 +8687,20 @@ function renderTodoCenter() {
     const overdue = item.status !== 'done' && date && date < now;
     const dateLabel = date === now ? mailaiText('今天') : date.startsWith(now.slice(0,4)) ? mailaiTemplate`${Number(date.slice(5,7))}月${Number(date.slice(8,10))}日` : date;
     const reminder = (!context.sharedReminder || item.remind_at !== context.sharedReminder) && item.remind_at && item.status !== 'done' ? (new Date(item.remind_at).getTime() <= Date.now() ? mailaiText('提醒已到期') : mailaiText('提醒 ') + fmtDate(item.remind_at)) : '';
+    const recurrenceLabel = item.recurrence === 'weekly' ? mailaiText('每周重复') : item.recurrence === 'monthly' ? mailaiText('每月重复') : '';
+    const recurrenceChip = recurrenceLabel ? `<button type="button" class="todo-recurrence-chip" data-todo-plan="${item.id}" title="${esc(mailaiText('点击修改重复周期'))}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10a6 6 0 0 1 10.3-4.2L16 7.5M16 4v3.5h-3.5M16 10a6 6 0 0 1-10.3 4.2L4 12.5M4 16v-3.5h3.5"/></svg>${esc(recurrenceLabel)}</button>` : '';
+    const sourceHTML = item.email_id
+      ? `<div class="todo-source-meta"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="m3 5 7 6 7-6"/></svg><button type="button" class="todo-source" data-todo-email="${item.email_id}" title="${esc(item.email_subject || '')}">${esc(context.grouped ? (item.email_id === context.latestEmailId ? mailaiText('最新邮件') : mailaiText('较早邮件')) : item.email_subject || mailaiText('查看来源邮件'))}</button>${context.grouped ? '' : `<time datetime="${esc(sourceDate)}">${esc(fmtDate(sourceDate))}</time>`}</div>`
+      : `<div class="todo-source-meta"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5.5h12M4 10h12M4 14.5h7"/></svg><span class="todo-source todo-source-manual">${esc(mailaiText('手动创建'))}</span><time datetime="${esc(sourceDate)}">${esc(fmtDate(sourceDate))}</time></div>`;
+    const snoozeHTML = item.status === 'done' ? '' : `<details class="todo-snooze-menu" data-todo-snooze-menu="${item.id}"><summary title="${esc(mailaiText('快速推迟截止时间与提醒'))}"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M10 6.5v3.8l2.6 1.5"/></svg><span>${esc(mailaiText('推迟'))}</span></summary><div class="todo-snooze-popover" role="menu"><button type="button" data-todo-snooze="${item.id}" data-snooze-preset="tomorrow">${esc(mailaiText('明天'))}</button><button type="button" data-todo-snooze="${item.id}" data-snooze-preset="next_monday">${esc(mailaiText('下周一'))}</button><button type="button" data-todo-snooze="${item.id}" data-snooze-preset="plus_3d">${esc(mailaiText('+3 天'))}</button></div></details>`;
     return `<article class="todo-center-item ${item.status === 'done' ? 'done' : ''} ${overdue ? 'overdue' : ''}" data-todo-id="${item.id}">
       <label class="todo-select" title="选择此待办" data-i18n-title="ui.3e92834e2cf6"><input type="checkbox" aria-label="选择待办：${esc(item.title)}" data-todo-select="${item.id}" ${selectedTodoIds.has(item.id) ? 'checked' : ''} ${item.status === 'done' ? 'disabled' : ''} data-i18n-aria="ui.76e5f02ab646"><span></span></label>
       <button type="button" class="todo-status-action todo-complete-action" data-todo-toggle="${item.id}" title="${esc(item.status === 'done' ? mailaiText('恢复待办') : mailaiText('完成待办'))}" aria-label="${esc(item.status === 'done' ? mailaiText('恢复待办') : mailaiText('完成待办'))} · ${esc(item.title)}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 10 3.5 3.5L15 7"/></svg><span class="todo-action-label">${item.status === 'done' ? mailaiText('恢复待办') : mailaiText('完成')}</span></button>
       <div class="todo-main"><textarea rows="1" class="todo-title-input" aria-label="待办标题" title="点击修改任务标题" data-i18n-title="ui.4a3dd238b908" data-i18n-aria="ui.d1f7f1e2d4a6">${esc(item.title)}</textarea><input type="date" hidden value="${esc(date)}" aria-label="截止日期" data-i18n-aria="ui.31802424217f">
-        <div class="todo-time-meta">${context.grouped ? '' : `<button type="button" data-todo-plan="${item.id}" title="${date ? mailaiText('调整截止时间：') + esc(date) : mailaiText('设置截止时间与提醒')}" class="todo-time-chip ${overdue ? 'overdue' : ''}">${date ? (overdue ? mailaiText('逾期 · ') : item.stage === 'waiting' ? mailaiText('跟进 · ') : mailaiText('截止 · ')) + esc(dateLabel) : mailaiText('设置截止时间')}</button>`}${reminder ? `<button type="button" class="todo-reminder-chip" data-todo-plan="${item.id}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8a5 5 0 0 1 10 0v4l2 2H3l2-2ZM8 17h4"/></svg>${esc(reminder)}</button>` : ''}${item.status === 'done' ? "<span class=\"todo-done-label\"><span data-i18n=\"ui.f28461bb49c8\">已完成</span></span>" : ''}</div>
-        <div class="todo-source-meta"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="m3 5 7 6 7-6"/></svg><button type="button" class="todo-source" data-todo-email="${item.email_id}" title="${esc(item.email_subject || '')}">${esc(context.grouped ? (item.email_id === context.latestEmailId ? mailaiText('最新邮件') : mailaiText('较早邮件')) : item.email_subject || mailaiText('查看来源邮件'))}</button>${context.grouped ? '' : `<time datetime="${esc(sourceDate)}">${esc(fmtDate(sourceDate))}</time>`}</div>
+        <div class="todo-time-meta">${context.grouped ? '' : `<button type="button" data-todo-plan="${item.id}" title="${date ? mailaiText('调整截止时间：') + esc(date) : mailaiText('设置截止时间与提醒')}" class="todo-time-chip ${overdue ? 'overdue' : ''}">${date ? (overdue ? mailaiText('逾期 · ') : item.stage === 'waiting' ? mailaiText('跟进 · ') : mailaiText('截止 · ')) + esc(dateLabel) : mailaiText('设置截止时间')}</button>`}${reminder ? `<button type="button" class="todo-reminder-chip" data-todo-plan="${item.id}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8a5 5 0 0 1 10 0v4l2 2H3l2-2ZM8 17h4"/></svg>${esc(reminder)}</button>` : ''}${recurrenceChip}${item.status === 'done' ? "<span class=\"todo-done-label\"><span data-i18n=\"ui.f28461bb49c8\">已完成</span></span>" : ''}</div>
+        ${sourceHTML}
       </div>
-      <div class="todo-plan-actions"><button type="button" class="todo-status-action todo-arrange-action" data-todo-plan="${item.id}" title="${esc(mailaiText('设置截止时间与提醒'))}"><span data-i18n="ui.49a49a3748ec">安排提醒</span><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="5" width="14" height="12" rx="2"/><path d="M6 3v4m8-4v4M3 9h14m-9 3h.01M12 12h.01"/></svg></button></div>
+      <div class="todo-plan-actions">${snoozeHTML}<button type="button" class="todo-status-action todo-arrange-action" data-todo-plan="${item.id}" title="${esc(mailaiText('设置截止时间与提醒'))}"><span data-i18n="ui.49a49a3748ec">安排提醒</span><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="5" width="14" height="12" rx="2"/><path d="M6 3v4m8-4v4M3 9h14m-9 3h.01M12 12h.01"/></svg></button></div>
     </article>`;
   };
   const html = rows.length ? (window.mailaiTodoGroupHTML ? window.mailaiTodoGroupHTML(visibleGroups,renderRow) : visibleRows.map(renderRow).join('')) + (rows.length > visibleRows.length ? `
@@ -8768,11 +8774,12 @@ async function setTodoBatchStatus(ids, status = 'done') {
 }
 
 async function openTodoCenter(options = {}) {
-  const resume = options.resume && todoSourceReturn?.accountId === activeMailAccount()?.id ? todoSourceReturn : null;
+  const opts = options && typeof options === 'object' && !(options instanceof Event) ? options : {};
+  const resume = opts.resume && todoSourceReturn?.accountId === activeMailAccount()?.id ? todoSourceReturn : null;
   todoSourceReturn = null;
   document.getElementById('todo-source-return').classList.add('hidden');
   todoReturnFocus = resume ? document.getElementById('btn-todos') : document.activeElement;
-  window.mailaiTodoTab?.(resume?.view || options.view || 'all');
+  window.mailaiTodoTab?.(resume?.view || (typeof opts.view === 'string' ? opts.view : '') || 'all');
   closeAssistant();
   document.getElementById('todo-center').classList.remove('hidden');
   document.body.classList.add('modal-open');
@@ -8874,7 +8881,7 @@ document.getElementById('attachment-type-filters').addEventListener('click', eve
   attachmentTypeFilter = button.dataset.attachmentType;
   loadAttachmentCenter();
 });
-document.getElementById('btn-todos').addEventListener('click', openTodoCenter);
+document.getElementById('btn-todos').addEventListener('click', () => openTodoCenter());
 document.getElementById('btn-contacts').addEventListener('click', () => openContactCenter());
 document.getElementById('btn-close-contacts').addEventListener('click', closeContactCenter);
 document.querySelector('#contact-center > .attachment-center-backdrop').addEventListener('click', closeContactCenter);
@@ -9115,9 +9122,16 @@ document.getElementById('todo-list').addEventListener('click', async event => {
       const actions = [...document.querySelectorAll('#todo-list .todo-complete-action')].filter(node => node.getClientRects().length);
       const actionIndex = actions.indexOf(toggle);
       try {
-        await api(`/api/todos/${item.id}/${item.status === 'done' ? 'reopen' : 'done'}`, {accountId,method:'POST'});
+        const res = await api(`/api/todos/${item.id}/${item.status === 'done' ? 'reopen' : 'done'}`, {accountId,method:'POST'});
         if (item.status !== 'done' && !document.getElementById('todo-show-done').checked && revision === todoCenterRevision) await window.mailaiMotion?.leave(toggle.closest('[data-todo-id]'));
         item.status = item.status === 'done' ? 'open' : 'done';
+        if (Array.isArray(res?.spawned) && res.spawned.length) {
+          for (const nextTask of res.spawned) {
+            if (!todoCenterRows.some(row => row.id === nextTask.id)) todoCenterRows.unshift(nextTask);
+          }
+          const nextDate = String(res.spawned[0].deadline || '').slice(0, 10);
+          toast(nextDate ? mailaiTemplate`已完成，已生成下期待办（${nextDate}）` : mailaiText('已完成，已生成下一周期的新待办'), 'success');
+        }
         if (revision === todoCenterRevision) {
           renderTodoCenter();
           const remaining = [...document.querySelectorAll('#todo-list .todo-complete-action')].filter(node => node.getClientRects().length);

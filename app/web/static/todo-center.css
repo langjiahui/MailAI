@@ -104,8 +104,8 @@ html[data-theme] body #todo-batch-toggle[aria-pressed=true] {
 #todo-center .todo-options[open]>summary { background:var(--desk-selected); color:var(--desk-accent); }
 #todo-center svg { width:16px; height:16px; flex:none; fill:none; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
 #todo-center .todo-options:not([open])>#todo-extra-actions { display:none; }
-#todo-extra-actions { position:absolute; right:0; top:calc(100% + 6px); z-index:6; min-width:190px; padding:6px; border:1px solid color-mix(in srgb,var(--desk-line) 75%,transparent); border-radius:12px; background:var(--desk-surface); color:var(--desk-ink); box-shadow:0 12px 32px rgba(0,0,0,.18); }
-html[data-theme] body #todo-extra-actions :is(label,button) { display:flex; align-items:center; gap:9px; width:100%; margin:0; min-height:38px; padding:8px 10px; box-sizing:border-box; border:0; border-radius:8px; background:transparent; color:var(--desk-ink); font-size:12px; cursor:pointer; text-align:left; white-space:nowrap; }
+#todo-extra-actions { position:absolute; right:0; top:calc(100% + 6px); z-index:6; min-width:190px; max-width:min(280px,calc((100vw - 48px) / var(--fz,1))); width:max-content; box-sizing:border-box; padding:6px; border:1px solid color-mix(in srgb,var(--desk-line) 75%,transparent); border-radius:12px; background:var(--desk-surface); color:var(--desk-ink); box-shadow:0 12px 32px rgba(0,0,0,.18); }
+html[data-theme] body #todo-extra-actions :is(label,button) { display:flex; align-items:center; gap:9px; width:100%; margin:0; min-height:38px; padding:8px 10px; box-sizing:border-box; border:0; border-radius:8px; background:transparent; color:var(--desk-ink); font-size:12px; line-height:1.35; cursor:pointer; text-align:left; white-space:normal; }
 html[data-theme] body #todo-extra-actions :is(label,button):hover { background:var(--desk-hover); }
 #todo-extra-actions input { accent-color:var(--desk-accent); }
 #todo-group-overview { margin:0 0 0 4px; padding:0; color:var(--desk-muted); font-size:12px; line-height:1.5; font-variant-numeric:tabular-nums; }

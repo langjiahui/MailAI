@@ -589,6 +589,9 @@ def _run_migrations(c):
         c.execute("ALTER TABLE contacts ADD COLUMN group_name TEXT DEFAULT ''")
     if 'completed_at' not in _columns_of(c, 'todos'):
         c.execute("ALTER TABLE todos ADD COLUMN completed_at TEXT")
+    for column, definition in {'recurrence': "TEXT DEFAULT ''", 'recurrence_source_id': 'INTEGER'}.items():
+        if column not in _columns_of(c, 'todos'):
+            c.execute(f'ALTER TABLE todos ADD COLUMN {column} {definition}')
     c.execute("CREATE TABLE IF NOT EXISTS server_cleanup_jobs(token TEXT PRIMARY KEY,payload TEXT NOT NULL,status TEXT NOT NULL,created_at TEXT NOT NULL,expires_at TEXT NOT NULL,result TEXT DEFAULT '{}')")
     from ..contact_directory import init_schema as init_directory_schema
     init_directory_schema(c)

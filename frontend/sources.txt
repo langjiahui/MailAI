@@ -59,6 +59,7 @@ periodic-briefing.js
 calendar-timeline.js
 triage-rules.js
 compose-guard.js
+todo-quick-actions.js
 mail-import.js
 mail-recovery.js
 task-activity.js

@@ -6,7 +6,14 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException
 
 from ... import db, system_settings
-from ..schemas import TodoBulkStatusRequest, TodoUpdateRequest, TodoGroupReminderRequest
+from ..schemas import (
+    TodoBulkSnoozeRequest,
+    TodoBulkStatusRequest,
+    TodoCreateRequest,
+    TodoGroupReminderRequest,
+    TodoSnoozeRequest,
+    TodoUpdateRequest,
+)
 
 log = logging.getLogger(__name__)
 router = APIRouter()
@@ -16,6 +23,16 @@ router = APIRouter()
 def api_todos(include_done: bool = False):
     from ...todo_grouping import annotate
     return annotate(db.list_todos(include_done))
+
+
+@router.post("/api/todos")
+def api_todo_create(payload: TodoCreateRequest):
+    from ... import task_planner
+    try:
+        task = task_planner.save(email_id=None, **payload.model_dump(exclude_none=True))
+        return {"ok": True, "task": task}
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
 
 
 @router.post('/api/todos/group/reminder')
@@ -34,19 +51,59 @@ def api_todos_bulk_status(payload: TodoBulkStatusRequest):
     ids = sorted({todo_id for todo_id in payload.ids if todo_id > 0})
     if not ids:
         raise HTTPException(400, "请选择待办事项")
-    return {"ok": True, "updated": db.set_todos_status(ids, payload.status)}
+    updated, spawned = db.set_todos_status_detailed(ids, payload.status)
+    return {"ok": True, "updated": updated, "spawned": spawned}
+
+
+@router.post("/api/todos/bulk/snooze")
+def api_todos_bulk_snooze(payload: TodoBulkSnoozeRequest):
+    from ... import task_planner
+    try:
+        tasks = task_planner.snooze_many(
+            payload.ids,
+            preset=payload.preset,
+            deadline=payload.deadline,
+            remind_at=payload.remind_at,
+        )
+        return {"ok": True, "updated": len(tasks), "tasks": tasks}
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
 
 
 @router.post("/api/todos/{todo_id}/done")
 def api_todo_done(todo_id: int):
-    db.set_todo_status(todo_id, "done")
-    return {"ok": True}
+    with db.conn() as connection:
+        if not connection.execute("SELECT 1 FROM todos WHERE id=?", (todo_id,)).fetchone():
+            raise HTTPException(404, "待办不存在")
+    spawned = db.set_todo_status(todo_id, "done") or []
+    return {"ok": True, "spawned": spawned}
 
 
 @router.post("/api/todos/{todo_id}/reopen")
 def api_todo_reopen(todo_id: int):
+    with db.conn() as connection:
+        if not connection.execute("SELECT 1 FROM todos WHERE id=?", (todo_id,)).fetchone():
+            raise HTTPException(404, "待办不存在")
     db.set_todo_status(todo_id, "open")
     return {"ok": True}
+
+
+@router.post("/api/todos/{todo_id}/snooze")
+def api_todo_snooze(todo_id: int, payload: TodoSnoozeRequest):
+    with db.conn() as connection:
+        if not connection.execute("SELECT 1 FROM todos WHERE id=?", (todo_id,)).fetchone():
+            raise HTTPException(404, "待办不存在")
+    from ... import task_planner
+    try:
+        task = task_planner.snooze(
+            todo_id,
+            preset=payload.preset,
+            deadline=payload.deadline,
+            remind_at=payload.remind_at,
+        )
+        return {"ok": True, "task": task}
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
 
 
 @router.patch("/api/todos/{todo_id}")
