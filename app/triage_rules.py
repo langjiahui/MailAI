@@ -340,11 +340,11 @@ _SUBSCRIPTION_SCAN_LIMIT = 1200
 
 
 def _subscription_window(days: int | str = 45) -> tuple[int, str]:
-    if isinstance(days, bool):
+    if isinstance(days, bool) or not isinstance(days, (int, str)):
         raise ValueError("统计天数参数无效")
     try:
         raw_days = int(days)
-    except (TypeError, ValueError) as exc:
+    except ValueError as exc:
         raise ValueError("统计天数参数无效") from exc
     span = max(7, min(raw_days, 180))
     cutoff = (datetime.now() - timedelta(days=span)).isoformat(timespec="seconds")
@@ -461,7 +461,7 @@ def scan_subscriptions(days: int = 45, min_count: int = 2) -> dict:
     }
 
 
-def triage_sender_batch(sender_addr: str, mode: str = "keep_latest_done", days: int = 45) -> dict:
+def triage_sender_batch(sender_addr: str, mode: str = "keep_latest_done", days: int | str = 45) -> dict:
     """Safely batch-triage clean inbox emails from one subscription/notification sender."""
     target = str(sender_addr or "").strip().lower()
     if not target:

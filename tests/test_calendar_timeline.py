@@ -20,6 +20,37 @@ from app.account_context import use
 from app.web.routes.productivity import router as productivity_router
 
 
+def test_custom_events_overlapping_window():
+    with tempfile.TemporaryDirectory() as root, use({
+        "ACCOUNT_ID": "calendar-window-test",
+        "DB_PATH": str(Path(root) / "calendar.db"),
+    }):
+        db.init_db()
+        with db.conn() as c:
+            c.executemany(
+                "INSERT INTO calendar_events(title,start_at,end_at,all_day,created_at) VALUES(?,?,?,?,?)",
+                [("历史日程", "2026-10-01", "2026-10-01", 1, "2026-10-01T00:00:00")] * 300,
+            )
+
+        for title, start, end, all_day in (
+            ("跨窗口维护", "2026-11-05T23:45", "2026-11-13T01:15", False),
+            ("凌晨会议", "2026-11-13T00:15", "2026-11-13T00:45", False),
+            ("窗口开始前结束", "2026-11-05T23:45", "2026-11-06T00:00", False),
+            ("全天展会", "2026-11-04", "2026-11-06", True),
+            ("窗口结束后开始", "2026-11-14T00:00", "2026-11-14T01:00", False),
+        ):
+            mail_calendar.create_custom_event({"title": title, "start": start, "end": end, "all_day": all_day})
+
+        timeline = mail_calendar.timeline(days=1, today=date(2026, 11, 13))
+        items = {item["title"]: item for item in timeline["items"]}
+        assert items.keys() == {"跨窗口维护", "凌晨会议", "全天展会"}, items
+        assert items["跨窗口维护"]["start_at"] == "2026-11-05T23:45"
+        assert items["全天展会"]["end_at"] == "2026-11-06"
+        assert items["跨窗口维护"]["conflict_with"] == ["凌晨会议"]
+        assert items["凌晨会议"]["conflict_with"] == ["跨窗口维护"]
+        assert timeline["summary"]["conflicts"] == 1
+
+
 def _write_eml(path: Path, subject: str, sender: str, ics_text: str, filename: str = "invite.ics", subtype: str = "calendar") -> str:
     msg = EmailMessage()
     msg["Subject"] = subject
@@ -177,6 +208,7 @@ def _seed_timeline_data(root: str, today: date):
 
 
 def main():
+    test_custom_events_overlapping_window()
     today = date.today()
     tomorrow_iso = (today + timedelta(days=1)).isoformat()
 

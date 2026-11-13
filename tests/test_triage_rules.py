@@ -402,15 +402,16 @@ def main():
             assert db.get_email(followup_id)["followup_at"] != ""
             assert db.get_email(snoozed_id)["snoozed_until"] != ""
 
-            # 8. Regression: invalid `days` returns 400 (not 500) & >1,200 rows shares exact scanned pool
+            # 8. The batch endpoint rejects invalid windows and shares the scan's candidate limit.
             with TestClient(test_app) as client:
-                for bad_days in ("bad", True):
-                    r_bad = client.post("/api/productivity/triage/sender-batch", json={
-                        "sender_addr": guard_sender,
-                        "mode": "all_done",
-                        "days": bad_days,
-                    })
+                for bad_days in ('"bad"', 'true', '7.9', '1e309'):
+                    r_bad = client.post(
+                        "/api/productivity/triage/sender-batch",
+                        content=f'{{"sender_addr":"{guard_sender}","mode":"all_done","days":{bad_days}}}',
+                        headers={"Content-Type": "application/json"},
+                    )
                     assert r_bad.status_code == 400, (bad_days, r_bad.status_code, r_bad.text)
+                    assert r_bad.json()["detail"] == "统计天数参数无效"
 
             cap_sender = "cap@limit.example.com"
             base_dt = datetime.now() - timedelta(days=1)
@@ -450,7 +451,15 @@ def main():
             cap_grp = next(g for g in cap_scan["groups"] if g["sender_addr"] == cap_sender)
             assert cap_grp["total_count"] == 2, cap_grp
 
-            cap_batch = triage_rules.triage_sender_batch(cap_sender, mode="all_done", days=45)
+            with TestClient(test_app) as client:
+                response = client.post("/api/productivity/triage/sender-batch", json={
+                    "sender_addr": cap_sender,
+                    "mode": "all_done",
+                    "days": "45",
+                })
+                assert response.status_code == 200, response.text
+                cap_batch = response.json()
+            assert cap_batch["days"] == 45
             assert cap_batch["updated_count"] == 2, cap_batch
             assert cap_extra_id not in cap_batch["email_ids"]
             assert db.get_email(cap_extra_id)["is_read"] == 0

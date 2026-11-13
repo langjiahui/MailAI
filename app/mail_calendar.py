@@ -682,16 +682,18 @@ def timeline(
 
         items.extend(_collect_ics_timeline_items(c, start_d, end_d))
 
+        # Custom all-day events include their end date. Timed events end at an exclusive instant.
         custom_rows = _safe_rows(
             c,
-            "SELECT * FROM calendar_events ORDER BY start_at ASC LIMIT 300",
+            "SELECT * FROM calendar_events WHERE (start_at >= ?1 OR "
+            "CASE WHEN all_day OR length(start_at)=10 THEN date(end_at) >= ?1 "
+            "ELSE datetime(end_at) > datetime(?1) END) AND start_at < ?2 "
+            "ORDER BY start_at ASC, id ASC LIMIT 300",
+            (start_d.isoformat(), (end_d + timedelta(days=1)).isoformat()),
         )
         for row in custom_rows:
             st = _parse_local_dt(row.get("start_at"))
             if not st:
-                continue
-            target_d = date.fromisoformat(st["date"])
-            if not (start_d <= target_d <= end_d):
                 continue
             en = _parse_local_dt(row.get("end_at"))
             all_day = bool(row.get("all_day")) or st["all_day"]
