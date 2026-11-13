@@ -6,7 +6,6 @@
       "workspace-assistant",
       "search",
       "compose-library",
-      "mail-updates",
       "task-workspace",
       "mail-navigation",
       "mail-import",
@@ -39,32 +38,17 @@
       {
         "browser": "chromium",
         "suite": "responsive-dialogs",
-        "shard": "1/6"
+        "shard": "1/3"
       },
       {
         "browser": "chromium",
         "suite": "responsive-dialogs",
-        "shard": "2/6"
+        "shard": "2/3"
       },
       {
         "browser": "chromium",
         "suite": "responsive-dialogs",
-        "shard": "3/6"
-      },
-      {
-        "browser": "chromium",
-        "suite": "responsive-dialogs",
-        "shard": "4/6"
-      },
-      {
-        "browser": "chromium",
-        "suite": "responsive-dialogs",
-        "shard": "5/6"
-      },
-      {
-        "browser": "chromium",
-        "suite": "responsive-dialogs",
-        "shard": "6/6"
+        "shard": "3/3"
       },
       {
         "browser": "webkit",
@@ -74,39 +58,23 @@
       {
         "browser": "webkit",
         "suite": "responsive-dialogs",
-        "shard": "1/6"
+        "shard": "1/3"
       },
       {
         "browser": "webkit",
         "suite": "responsive-dialogs",
-        "shard": "2/6"
+        "shard": "2/3"
       },
       {
         "browser": "webkit",
         "suite": "responsive-dialogs",
-        "shard": "3/6"
-      },
-      {
-        "browser": "webkit",
-        "suite": "responsive-dialogs",
-        "shard": "4/6"
-      },
-      {
-        "browser": "webkit",
-        "suite": "responsive-dialogs",
-        "shard": "5/6"
-      },
-      {
-        "browser": "webkit",
-        "suite": "responsive-dialogs",
-        "shard": "6/6"
+        "shard": "3/3"
       }
     ]
   },
   "xiaoyou_matrix": {
     "suite": [
       "xiaoyou-anatomy",
-      "xiaoyou-life",
       "xiaoyou-rest"
     ],
     "include": [
@@ -119,6 +87,20 @@
         "browser": "",
         "suite": "xiaoyou-wardrobe",
         "shard": "2/2"
+      }
+    ]
+  },
+  "assistant_matrix": {
+    "include": [
+      {
+        "browser": "chromium",
+        "suite": "assistant-ui-matrix",
+        "shard": ""
+      },
+      {
+        "browser": "webkit",
+        "suite": "assistant-ui-matrix",
+        "shard": ""
       }
     ]
   }

@@ -347,7 +347,7 @@ class PartitionTest(unittest.TestCase):
         self.assertEqual(scheduled,set(json.loads(ci_browser.SUITES.read_text())))
         for browser in ['chromium','webkit']:
             rows=[r for r in jobs['responsive_matrix']['include'] if r['browser']==browser]
-            self.assertEqual({r['shard'] for r in rows if r['suite']=='responsive-dialogs'},{f'{i}/6' for i in range(1,7)})
+            self.assertEqual({r['shard'] for r in rows if r['suite']=='responsive-dialogs'},{'1/3','2/3','3/3'})
             self.assertEqual(sum(r['suite']=='responsive-settings' for r in rows),1)
         wardrobe_rows=[r for r in jobs['xiaoyou_matrix'].get('include',[]) if r['suite']=='xiaoyou-wardrobe']
         self.assertEqual({r['shard'] for r in wardrobe_rows},{'1/2','2/2'})
@@ -358,14 +358,14 @@ class PartitionTest(unittest.TestCase):
         const assert=require('node:assert/strict');
         const {partition}=require('./tests/helpers/ci-shard.cjs');
         const cases=require('./tests/helpers/home-dialog-cases.cjs');
-        const groups=[1,2,3,4,5,6].map(i=>partition(cases,`${i}/6`));
+        const groups=[1,2,3].map(i=>partition(cases,`${i}/3`));
         assert(groups.every(group=>group.length>0));
         assert.deepEqual(groups.flat().map(row=>row[0]).sort(),cases.map(row=>row[0]).sort());
         assert.equal(new Set(groups.flat().map(row=>row[0])).size,cases.length);
         assert.deepEqual(partition(['chromium','webkit'],'1/2'),['chromium']);
         assert.deepEqual(partition(['chromium','webkit'],'2/2'),['webkit']);
         assert.deepEqual(partition(['chromium','webkit'],''),['chromium','webkit']);
-        for(const value of ['0/6','7/6','1/99','bad','1/0','1.5/6']) assert.throws(()=>partition(cases,value));
+        for(const value of ['0/3','4/3','1/99','bad','1/0','1.5/3']) assert.throws(()=>partition(cases,value));
         assert.equal(partition(cases,''),cases);
         """
         subprocess.run(['node','-e',source],cwd=ROOT,check=True)

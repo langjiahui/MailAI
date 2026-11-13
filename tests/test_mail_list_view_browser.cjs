@@ -267,20 +267,25 @@ const {auditMailCardEdges}=require('./helpers/mail-card-edges.cjs');
     await fittedWidths.dispose();
     assert(defaults[2]>defaults[0]&&defaults[2]>defaults[1],`The subject gets most of the default column space: ${JSON.stringify(defaults)}`);
     fs.mkdirSync('output/mail-list-view',{recursive:true});
-    for (const theme of ['', 'theme_monochrome','theme_baowu']) for (const scale of [1,1.25]) for (const mode of ['light','dark']) for (const language of ['zh-CN','en']) for (const width of [1440,1024,900,768,390]) {
+    for (const width of [1440,1024,900,768,390]) {
       await page.setViewportSize({width,height:1000});
-      await page.evaluate(({mode,language,theme,scale})=>{applyTheme(mode);setI18nLanguage(language);theme?document.documentElement.dataset.rewardTheme=theme:delete document.documentElement.dataset.rewardTheme;document.body.style.zoom=scale;document.documentElement.style.setProperty('--fz',scale);},{mode,language,theme,scale});
-      await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
-      const geometry=await page.evaluate(()=>{
-        const header=document.querySelector('.mail-table-header'),row=document.querySelector('.mail-table-item');
-        const h=[...header.children].map(n=>n.getBoundingClientRect().left),r=[...row.children].slice(0,4).map(n=>n.getBoundingClientRect().left);
-        const list=document.querySelector('.list-pane').getBoundingClientRect(),read=document.querySelector('.reading-pane').getBoundingClientRect();
-        const clippedHeadings=[...header.querySelectorAll('.mail-table-heading > span,.mail-table-heading button > span:first-child')].filter(n=>n.scrollWidth>n.clientWidth+1).map(n=>n.textContent);
-        return {overflowing:[...document.querySelectorAll(".topbar,.global-actions,.nav-action,.reading-pane,.assistant-panel")].filter(n=>n.getClientRects().length&&n.getBoundingClientRect().right>innerWidth+1).map(n=>({id:n.id,cls:n.className,right:n.getBoundingClientRect().right})),clippedHeadings,aligned:h.every((x,i)=>Math.abs(x-r[i])<2),overflow:document.documentElement.scrollWidth>innerWidth+1,listRight:list.right,readingLeft:read.left,listOverflow:document.querySelector('#email-list').scrollWidth>document.querySelector('#email-list').clientWidth+1};
-      });
-      assert(geometry.aligned&&!geometry.overflow&&!geometry.listOverflow&&!geometry.clippedHeadings.length,JSON.stringify({width,mode,language,theme,scale,geometry}));
-      if(width>820)assert(geometry.readingLeft>=geometry.listRight-1,JSON.stringify(geometry));
-      if(!theme&&scale===1&&[1440,900].includes(width)&&language==='zh-CN')await page.screenshot({path:`output/mail-list-view/${mode}-${width}-${process.env.MAILAI_BROWSER||'chromium'}.png`});
+      for (const scale of [1,1.25]) for (const language of ['zh-CN','en']) {
+        await page.evaluate(({language,scale})=>{setI18nLanguage(language);document.body.style.zoom=scale;document.documentElement.style.setProperty('--fz',scale);},{language,scale});
+        await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+        for (const theme of ['', 'theme_monochrome','theme_baowu']) for (const mode of ['light','dark']) {
+          await page.evaluate(({mode,theme})=>{applyTheme(mode);theme?document.documentElement.dataset.rewardTheme=theme:delete document.documentElement.dataset.rewardTheme;},{mode,theme});
+          const geometry=await page.evaluate(()=>{
+            const header=document.querySelector('.mail-table-header'),row=document.querySelector('.mail-table-item');
+            const h=[...header.children].map(n=>n.getBoundingClientRect().left),r=[...row.children].slice(0,4).map(n=>n.getBoundingClientRect().left);
+            const list=document.querySelector('.list-pane').getBoundingClientRect(),read=document.querySelector('.reading-pane').getBoundingClientRect();
+            const clippedHeadings=[...header.querySelectorAll('.mail-table-heading > span,.mail-table-heading button > span:first-child')].filter(n=>n.scrollWidth>n.clientWidth+1).map(n=>n.textContent);
+            return {overflowing:[...document.querySelectorAll(".topbar,.global-actions,.nav-action,.reading-pane,.assistant-panel")].filter(n=>n.getClientRects().length&&n.getBoundingClientRect().right>innerWidth+1).map(n=>({id:n.id,cls:n.className,right:n.getBoundingClientRect().right})),clippedHeadings,aligned:h.every((x,i)=>Math.abs(x-r[i])<2),overflow:document.documentElement.scrollWidth>innerWidth+1,listRight:list.right,readingLeft:read.left,listOverflow:document.querySelector('#email-list').scrollWidth>document.querySelector('#email-list').clientWidth+1};
+          });
+          assert(geometry.aligned&&!geometry.overflow&&!geometry.listOverflow&&!geometry.clippedHeadings.length,JSON.stringify({width,mode,language,theme,scale,geometry}));
+          if(width>820)assert(geometry.readingLeft>=geometry.listRight-1,JSON.stringify(geometry));
+          if(!theme&&scale===1&&[1440,900].includes(width)&&language==='zh-CN')await page.screenshot({path:`output/mail-list-view/${mode}-${width}-${process.env.MAILAI_BROWSER||'chromium'}.png`});
+        }
+      }
     }
     await page.setViewportSize({width:1440,height:1000});
     await page.evaluate(()=>{setI18nLanguage('zh-CN');applyTheme('light');delete document.documentElement.dataset.rewardTheme;document.body.style.zoom=1;document.documentElement.style.setProperty('--fz',1);showSystemView('preferences');});
