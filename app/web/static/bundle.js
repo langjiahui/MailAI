@@ -2603,7 +2603,7 @@ const MAILAI_UI_COPY = {
   "command.askXiaoYouReply": ["让小邮拟定回复", "Draft reply with XiaoYou"],
   "command.addTodoTask": ["加入待办 / 安排任务", "Add todo / schedule task"],
   "command.addTodoShort": ["加待办", "Add todo"],
-  "command.askXiaoYouShort": ["问小邮", "Ask XiaoYou"],
+  "command.askXiaoYouShort": ["问小邮", "Ask Xiaoyou"],
   "command.forwardMail": ["转发邮件", "Forward mail"],
   "command.favoriteMail": ["收藏此邮件", "Favorite this mail"],
   "command.unfavoriteMail": ["取消收藏", "Remove favorite"],
@@ -19785,6 +19785,10 @@ if (typeof document !== 'undefined') {
 function mailaiCopySource(label) {
   if (mailaiUICopyKeys.has(label)) return label;
   for (const [source, key] of mailaiUICopyKeys) if (I18N_MESSAGES.en[key] === label) return source;
+  for (const [, pair] of Object.entries(MAILAI_UI_COPY)) if (pair[1] === label) return pair[0];
+  for (const [key, source] of Object.entries(MAILAI_I18N_CHINESE)) {
+    if (typeof source === 'string' && I18N_MESSAGES.en[key] === label) return source;
+  }
   for (const [key, [source, english]] of mailaiSystemPatterns) {
     if (english.replace(/\{\d+\}/g, '').trim().length < 8) continue;
     const parameters = mailaiUIReadParameters(english, label);
@@ -31493,12 +31497,27 @@ document.getElementById('cleanup-preview').onclick = async event => {
   } catch (error) { document.getElementById('cleanup-error').textContent = mailaiSystemMessage(error.message); }
   finally { setLoading(button,false); setCleanupBusy(false); }
 };
+async function postCleanupWithRetry(path, options) {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await api(path, options);
+    } catch (error) {
+      // AccountGuardMiddleware rejects immediately on 5ms background polls; retry briefly before failing.
+      if (error?.status === 409 && attempt < 5 && /邮箱仍有操作或对话正在进行/.test(error.message || '')) {
+        await new Promise(resolve => setTimeout(resolve, 160 * (attempt + 1)));
+        continue;
+      }
+      throw error;
+    }
+  }
+}
+
 document.getElementById('cleanup-execute').onclick = async event => {
   if (event.currentTarget.disabled) return;
   const dialog = document.getElementById('server-cleanup-dialog'), token = cleanupPreview.token;
   setCleanupBusy(true); const button = event.currentTarget; setLoading(button,true,cleanupT('cleanup.executing', '正在备份并清理，请勿退出…'));
   try {
-    const result = await api('/api/system/server-cleanup/execute', {accountId:dialog.dataset.accountId,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,confirmation:document.getElementById('cleanup-confirm-email').value,acknowledge:document.getElementById('cleanup-ack').checked})});
+    const result = await postCleanupWithRetry('/api/system/server-cleanup/execute', {accountId:dialog.dataset.accountId,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,confirmation:document.getElementById('cleanup-confirm-email').value,acknowledge:document.getElementById('cleanup-ack').checked})});
     document.getElementById('cleanup-result').innerHTML = renderCleanupResult(result);
     await loadData(); await loadBackups(); await refreshCleanupHistory(dialog.dataset.accountId);
   } catch (error) { document.getElementById('cleanup-error').textContent = mailaiSystemMessage(error.message) + cleanupT('cleanup.errorSuffix', '。若请求已开始，请查看最近清理记录并核对服务器，不要盲目重试。'); }
@@ -31624,7 +31643,7 @@ document.getElementById('cleanup-auto-save').onclick = async event => {
   cleanupAutoBusy = true; syncCleanupAutomation();
   document.getElementById('cleanup-auto-error').textContent = '';
   try {
-    const policy = await api('/api/system/server-cleanup/automation', {accountId, method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    const policy = await postCleanupWithRetry('/api/system/server-cleanup/automation', {accountId, method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
     if (accountId === activeMailAccount()?.id) { ++cleanupAutoLoadRevision; renderCleanupAutomation(policy); }
     dialog.close(); toast(cleanupT('cleanupAuto.saved', '自动清理设置已保存'), 'success');
   } catch (error) { document.getElementById('cleanup-auto-error').textContent = mailaiSystemMessage(error.message); }
@@ -36850,6 +36869,8 @@ function mailCardDate(value, now = new Date()) {
       if (button.dataset.petSection) {
         const section=button.dataset.petSection;
         tab=section==='dress'?dressTab:section==='growth'?growthTab:'home';
+        const bodyHost = dialog.querySelector('.pet-journal-body');
+        if (bodyHost) bodyHost.dataset.petRenderedTab = '';
         previewOpen=false;previewOrigin=null;previewStage=null;earnReturn=false;renderKey='';render();
         dialog.querySelector('.pet-tab-content')?.scrollTo(0,0);
         dialog.querySelector(`[data-pet-section="${section}"]`)?.focus({preventScroll:true});return;
@@ -36857,6 +36878,8 @@ function mailCardDate(value, now = new Date()) {
       if (button.dataset.petHomeCollection) collectionId=button.dataset.petHomeCollection;
       if (button.dataset.petTab || button.dataset.petGo) {
         if(button.dataset.petTab==='wardrobe'&&button.closest('.pet-task-nav'))shopFilter='all';
+        const bodyHost = dialog.querySelector('.pet-journal-body');
+        if (bodyHost) bodyHost.dataset.petRenderedTab = '';
         earnReturn=false;tab = button.dataset.petTab || button.dataset.petGo; previewOpen=false;previewOrigin=null;previewStage=null;if(tab==='shop')collectionActual=false;renderKey='';render();
         dialog.querySelector('.pet-tab-content')?.scrollTo(0,0);
         focusTab(tab);
@@ -37404,7 +37427,8 @@ function mailCardDate(value, now = new Date()) {
     previewAdvanced=host.querySelector('.pet-fitting-extras')?.open ?? previewAdvanced;
     const focusKey = focus?.closest('.pet-journal') ? Object.entries(focus.dataset).find(([key])=>['petSection','petEnabled','petCategory','petPageSelect','petLifeAction','petLifeChatter','petTab','petGo','petPage','petSeries','petJourneyStage','petWearCollection','petSetAction','petGiftContextClose','petBuy','petItemAction','petEquip','petSlot','petStyle','petGiftCode','petGiftPreview','petGiftClaim','petGiftWear','petGiftCopy','petGiftReconcile','petGiftOutfits','petClaimCode','petPreview','petPreviewSelect','petPreviewPlay','petPreviewClose','petPreviewStage','petPreviewAction','petPreviewMode','petResetStage','petEarn','petReturnShop','petReceiptClose','petTryAction','petShopFilter','petTryStage','petCollection','petPurchaseOpen','petPurchaseCancel','petTrialEnd','petWardrobeSlot','petBackCollection','petBackpackSeries','petUndoOutfit'].includes(key)) : null;
     const scroll = host.querySelector('.pet-tab-content')?.scrollTop || 0;
-    // Progress, receipts and tab updates must not replace the live animation rig.
+    // Progress, receipts and tab updates must not replace the live animation rig or ephemeral life status on the same tab.
+    const prevLifeStatus = host.dataset.petRenderedTab === tab ? (host.querySelector('[data-pet-life-status]')?.textContent || '') : '';
     const portrait = host.querySelector('.pet-hero>.pet-hero-portrait');
     window.mailaiCompanionMotion?.stopPreview();
     const navButton=name=>`<button type="button" data-pet-section="${name}" aria-pressed="${space===name}">${label('section.'+name)}</button>`;
@@ -37412,6 +37436,8 @@ function mailCardDate(value, now = new Date()) {
     const task=view();
     const body=space==='dress'?`<div class="pet-dress-layout ${tab==='wardrobe'&&!previewOpen?'pet-backpack-layout':''}">${companionStageView()}<div class="pet-task-panel">${task}</div></div>`:space==='growth'?`${tab==='journey'?'':growthSummary()}${task}`:task;
     host.innerHTML=`<nav class="pet-tabs" aria-label="${label('tabs')}"><div class="pet-primary-nav">${['home','dress','growth'].map(navButton).join('')}</div></nav><main class="pet-center-main"><div class="pet-center-notices">${purchaseIntent&&!busy?`<div class="pet-pending" role="status"><span>${label('purchasePending',t('item.'+purchaseIntent.item))}</span><button type="button" data-pet-reconcile>${label('reconcile')}</button></div>`:''}${feedback&&Date.now()<feedback.until?`<p class="pet-milestone" role="status">${esc(feedback.copy)}</p>`:''}${!state.enabled?`<p class="pet-paused">${label('paused')}</p>`:''}</div><section class="pet-tab-content" aria-label="${label('nav.'+tab)}">${taskNavigation()}<div class="pet-view-body">${body}</div></section></main>`;
+    host.dataset.petRenderedTab = tab;
+    if (prevLifeStatus) { const nextStatus = host.querySelector('[data-pet-life-status]'); if (nextStatus && !nextStatus.textContent) nextStatus.textContent = prevLifeStatus; }
     const livePortrait=host.querySelector('.pet-hero>.pet-hero-portrait');
     if (portrait?.querySelector('.mail-companion')&&livePortrait) {portrait.className=livePortrait.className;livePortrait.replaceWith(portrait);}
     for(const id of giftOutfitItems)host.querySelector(`[data-pet-item="${CSS.escape(id)}"]`)?.setAttribute('data-gift-focus','true');

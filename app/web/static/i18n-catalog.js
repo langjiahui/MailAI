@@ -1004,7 +1004,7 @@ const MAILAI_UI_COPY = {
   "command.askXiaoYouReply": ["让小邮拟定回复", "Draft reply with XiaoYou"],
   "command.addTodoTask": ["加入待办 / 安排任务", "Add todo / schedule task"],
   "command.addTodoShort": ["加待办", "Add todo"],
-  "command.askXiaoYouShort": ["问小邮", "Ask XiaoYou"],
+  "command.askXiaoYouShort": ["问小邮", "Ask Xiaoyou"],
   "command.forwardMail": ["转发邮件", "Forward mail"],
   "command.favoriteMail": ["收藏此邮件", "Favorite this mail"],
   "command.unfavoriteMail": ["取消收藏", "Remove favorite"],
