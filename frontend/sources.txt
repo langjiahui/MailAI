@@ -55,6 +55,7 @@ diagnostics-progress.js
 contact-directory.js
 contact-filters.js
 contact-persona.js
+periodic-briefing.js
 mail-import.js
 mail-recovery.js
 task-activity.js

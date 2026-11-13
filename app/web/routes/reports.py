@@ -5,8 +5,10 @@ import os
 from datetime import datetime
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 
-from ... import config, db, pipeline
+from ... import config, db, periodic_briefing, pipeline
 from ..helpers import campaign_groups
 
 log = logging.getLogger(__name__)
@@ -118,3 +120,98 @@ def api_weekly_report():
         for p in top:
             lines.append(f"- {p['sender_key']}（风险分 {p['risk_score']}，邮件数 {p['message_count']}）")
     return {"report": "\n".join(lines)}
+
+
+class PeriodicBriefingRequest(BaseModel):
+    period: str = Field("this_week", max_length=30)
+    start_date: str = Field("", max_length=20)
+    end_date: str = Field("", max_length=20)
+    style: str = Field("leader", max_length=20)
+    focus: str = Field("", max_length=400)
+    include_preferences: bool = True
+    mode: str = Field("auto", max_length=16)
+    save: bool = True
+
+
+class PeriodicBriefingSaveRequest(BaseModel):
+    briefing_id: int | None = Field(None, ge=1)
+    period: str = Field("this_week", max_length=30)
+    start_date: str = Field("", max_length=20)
+    end_date: str = Field("", max_length=20)
+    style: str = Field("leader", max_length=20)
+    title: str = Field("", max_length=200)
+    content: str = Field(min_length=1, max_length=100000)
+    metrics: dict = Field(default_factory=dict)
+    source: str = Field("local", max_length=16)
+
+
+@router.get("/api/work/briefings/preview")
+def api_work_briefing_preview(
+    period: str = "this_week",
+    start_date: str = "",
+    end_date: str = "",
+    focus: str = "",
+    include_preferences: bool = True,
+):
+    try:
+        return periodic_briefing.collect_summary(
+            period, start_date, end_date, focus=focus, include_preferences=include_preferences
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@router.get("/api/work/briefings")
+def api_work_briefings(limit: int = 30):
+    return periodic_briefing.list_briefings(limit)
+
+
+@router.get("/api/work/briefings/{briefing_id}")
+def api_work_briefing_detail(briefing_id: int):
+    item = periodic_briefing.get_briefing(briefing_id)
+    if not item:
+        raise HTTPException(404, "周期简报不存在")
+    return item
+
+
+@router.post("/api/work/briefings/generate")
+def api_work_briefing_generate(payload: PeriodicBriefingRequest):
+    try:
+        return periodic_briefing.generate_briefing(**payload.model_dump())
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@router.post("/api/work/briefings/stream")
+def api_work_briefing_stream(payload: PeriodicBriefingRequest):
+    try:
+        periodic_briefing.resolve_window(payload.period, payload.start_date, payload.end_date)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+    def generate():
+        try:
+            for event in periodic_briefing.stream_briefing(**payload.model_dump()):
+                yield json.dumps(event, ensure_ascii=False) + "\n"
+        except ValueError as exc:
+            yield json.dumps({"type": "error", "message": str(exc)}, ensure_ascii=False) + "\n"
+        except Exception:
+            log.exception("周期简报流式生成失败")
+            yield json.dumps({"type": "error", "message": "周期简报生成中断，可重试或改用本地汇总"}, ensure_ascii=False) + "\n"
+
+    return StreamingResponse(generate(), media_type="application/x-ndjson")
+
+
+@router.post("/api/work/briefings")
+def api_work_briefing_save(payload: PeriodicBriefingSaveRequest):
+    try:
+        return periodic_briefing.save_briefing(**payload.model_dump())
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@router.delete("/api/work/briefings/{briefing_id}")
+def api_work_briefing_delete(briefing_id: int):
+    if not periodic_briefing.delete_briefing(briefing_id):
+        raise HTTPException(404, "周期简报不存在")
+    return {"ok": True}

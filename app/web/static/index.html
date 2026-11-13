@@ -82,6 +82,7 @@
   <link rel="stylesheet" href="/static/todo-center.css?v=6f852dcf30ad">
   <link rel="stylesheet" href="/static/work-assistant.css?v=f28ab44dea3d">
   <link rel="stylesheet" href="/static/contact-persona.css?v=1">
+  <link rel="stylesheet" href="/static/periodic-briefing.css?v=1">
 </head>
 <body>
   <div id="app-preloader" class="app-preloader" role="status" aria-live="polite">
@@ -917,7 +918,7 @@
       <section class="attachment-center-card todo-center-card" role="dialog" aria-modal="true" aria-labelledby="todo-center-title">
         <header><div><h2 id="todo-center-title" data-i18n="todo.title">待办中心</h2><small id="todo-account-label" class="tool-account-label"></small><p id="todo-center-summary" role="status" aria-live="polite"></p></div><button id="btn-close-todos" class="btn-ghost" data-i18n-aria="dlg.close">✕</button></header>
         <div class="todo-center-tools">
-          <details id="todo-options" class="todo-options"><summary><span data-i18n="todo.ui.options">更多</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg></summary><div id="todo-extra-actions"><label class="todo-show-done"><input id="todo-show-done" type="checkbox"> <span data-i18n="todo.showDone">显示已完成</span></label></div></details>
+          <details id="todo-options" class="todo-options"><summary><span data-i18n="todo.ui.options">更多</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg></summary><div id="todo-extra-actions"><label class="todo-show-done"><input id="todo-show-done" type="checkbox"> <span data-i18n="todo.showDone">显示已完成</span></label><button id="btn-todo-open-briefing" class="todo-open-briefing-btn" type="button" data-i18n="briefing.openFromTodo">生成工作简报（周报 / 月报）</button></div></details>
         </div>
         <div id="todo-list" class="todo-center-list"></div>
           <div class="todo-batch-actions">
@@ -1029,6 +1030,10 @@
         <div class="modal-header">
           <div class="digest-title-group"><h2 id="digest-title"><span class="digest-title-icon"><svg viewBox="0 0 20 20"><path d="M5 3.5h10v13H5zM7.5 7h5M7.5 10h5M7.5 13h3"/></svg></span><span data-i18n="digest.title">今日日报</span></h2><small id="digest-account-label"></small></div>
           <div class="digest-header-actions">
+            <div class="digest-mode-tabs" role="tablist" aria-label="简报模式" data-i18n-aria="briefing.tabsAria">
+              <button type="button" class="digest-mode-tab is-active" data-briefing-tab="daily" role="tab" aria-selected="true" data-i18n="briefing.tabDaily">今日日报</button>
+              <button type="button" class="digest-mode-tab" data-briefing-tab="periodic" role="tab" aria-selected="false" data-i18n="briefing.tabPeriodic">周报 / 月报</button>
+            </div>
             <select id="digest-history-select" class="digest-history-select">
               <option value="" data-i18n="digest.todayOpt">今日日报</option>
             </select>
@@ -1038,6 +1043,68 @@
         </div>
         <div class="modal-body markdown-body" id="digest-body">
           <span data-i18n="digest.generating">正在生成…</span>
+        </div>
+        <div id="periodic-briefing-pane" class="hidden" role="tabpanel" aria-label="周期工作简报" data-i18n-aria="briefing.paneAria">
+          <div class="periodic-toolbar">
+            <div class="periodic-controls-row">
+              <label class="periodic-field">
+                <span data-i18n="briefing.period">周期</span>
+                <select id="periodic-period-select">
+                  <option value="this_week" data-i18n="briefing.thisWeek">本周</option>
+                  <option value="last_7_days" data-i18n="briefing.last7Days">近 7 天</option>
+                  <option value="this_month" data-i18n="briefing.thisMonth">本月</option>
+                  <option value="last_30_days" data-i18n="briefing.last30Days">近 30 天</option>
+                  <option value="custom" data-i18n="briefing.custom">自定义</option>
+                </select>
+              </label>
+              <div id="periodic-custom-range" class="periodic-custom-range hidden">
+                <label class="periodic-field"><span data-i18n="briefing.rangeStart">起</span><input id="periodic-start-date" type="date"></label>
+                <label class="periodic-field"><span data-i18n="briefing.rangeEnd">止</span><input id="periodic-end-date" type="date"></label>
+              </div>
+              <label class="periodic-field">
+                <span data-i18n="briefing.style">汇报风格</span>
+                <select id="periodic-style-select">
+                  <option value="leader" data-i18n="briefing.styleLeader">汇报领导（正式）</option>
+                  <option value="team" data-i18n="briefing.styleTeam">团队同步（简洁）</option>
+                  <option value="log" data-i18n="briefing.styleLog">个人复盘（详实）</option>
+                </select>
+              </label>
+              <label class="periodic-field periodic-focus-field">
+                <span data-i18n="briefing.focus">侧重点</span>
+                <input id="periodic-focus-input" type="text" maxlength="200" placeholder="可选：例如突出项目交付、风险卡点" data-i18n-placeholder="briefing.focusPh">
+              </label>
+              <label class="periodic-pref-toggle">
+                <input id="periodic-use-preferences" type="checkbox" checked>
+                <span data-i18n="briefing.usePrefs">结合写作偏好</span>
+              </label>
+            </div>
+            <div id="periodic-metrics-strip" class="periodic-metrics-strip"></div>
+            <div class="periodic-actions-row">
+              <div class="periodic-actions-group">
+                <button type="button" id="periodic-btn-ai" class="periodic-btn-primary" data-i18n="briefing.genAi">AI 智能生成</button>
+                <button type="button" id="periodic-btn-local" class="periodic-btn-subtle" data-i18n="briefing.genLocal">本地快速整理</button>
+                <button type="button" id="periodic-btn-view" class="periodic-btn-subtle is-active" data-i18n="briefing.modeView">预览</button>
+                <button type="button" id="periodic-btn-edit" class="periodic-btn-subtle" data-i18n="briefing.modeEdit">编辑草稿</button>
+              </div>
+              <div class="periodic-actions-group">
+                <label class="periodic-field">
+                  <select id="periodic-history-select" aria-label="历史周期简报" data-i18n-aria="briefing.historyAria">
+                    <option value="" data-i18n="briefing.newOption">新建当前周期简报</option>
+                  </select>
+                </label>
+                <button type="button" id="periodic-delete-history" class="periodic-btn-danger" disabled data-i18n="briefing.delete">删除</button>
+                <button type="button" id="periodic-btn-save" class="periodic-btn-subtle" disabled data-i18n="briefing.save">保存记录</button>
+                <button type="button" id="periodic-btn-copy" class="periodic-btn-subtle" disabled data-i18n="briefing.copy">复制全文</button>
+                <button type="button" id="periodic-btn-compose" class="periodic-btn-primary" disabled data-i18n="briefing.compose">转为写信草稿</button>
+              </div>
+            </div>
+          </div>
+          <div class="periodic-content-area">
+            <div id="periodic-briefing-status" class="hidden" role="status" aria-live="polite"></div>
+            <input id="periodic-title-input" class="periodic-title-input" type="text" maxlength="200" placeholder="简报标题 / 邮件主题" data-i18n-placeholder="briefing.titlePh">
+            <div id="periodic-briefing-preview" class="markdown-body"></div>
+            <textarea id="periodic-briefing-editor" class="hidden" rows="16" placeholder="在这里直接调整周报 / 月报内容…" data-i18n-placeholder="briefing.editorPh"></textarea>
+          </div>
         </div>
       </div>
     </div>
@@ -1294,7 +1361,7 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=0d6a839d90ea"></script>
+  <script src="/static/bundle.js?v=68b6f5a28883"></script>
   <script src="/static/settings-scroll.js?v=5"></script>
   <script type="module" src="/static/author-logo.js?v=5"></script>
 </body>

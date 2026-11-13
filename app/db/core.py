@@ -221,6 +221,19 @@ CREATE TABLE IF NOT EXISTS digest_history (
     content TEXT,
     created_at TEXT
 );
+CREATE TABLE IF NOT EXISTS periodic_briefings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    period TEXT NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    style TEXT NOT NULL DEFAULT 'leader',
+    title TEXT NOT NULL DEFAULT '',
+    content TEXT NOT NULL DEFAULT '',
+    metrics_json TEXT NOT NULL DEFAULT '{}',
+    source TEXT NOT NULL DEFAULT 'local',
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_periodic_briefings_created ON periodic_briefings(created_at DESC, id DESC);
 CREATE TABLE IF NOT EXISTS rule_settings (
     code TEXT PRIMARY KEY,
     enabled INTEGER NOT NULL DEFAULT 1,
@@ -548,6 +561,8 @@ def _run_migrations(c):
     c.execute('CREATE INDEX IF NOT EXISTS idx_sent_progress_reply ON sent_messages(reply_to_email_id)')
     if 'group_name' not in _columns_of(c, 'contacts'):
         c.execute("ALTER TABLE contacts ADD COLUMN group_name TEXT DEFAULT ''")
+    if 'completed_at' not in _columns_of(c, 'todos'):
+        c.execute("ALTER TABLE todos ADD COLUMN completed_at TEXT")
     c.execute("CREATE TABLE IF NOT EXISTS server_cleanup_jobs(token TEXT PRIMARY KEY,payload TEXT NOT NULL,status TEXT NOT NULL,created_at TEXT NOT NULL,expires_at TEXT NOT NULL,result TEXT DEFAULT '{}')")
     from ..contact_directory import init_schema as init_directory_schema
     init_directory_schema(c)

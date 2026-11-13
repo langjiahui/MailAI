@@ -60,23 +60,30 @@ def list_todos(include_done=False):
 
 
 def set_todo_status(todo_id: int, status: str):
+    completed_at = datetime.now().isoformat(timespec="seconds") if status == "done" else None
     with conn() as c:
         c.execute('BEGIN IMMEDIATE')
         _reward_completed(c, [todo_id], status)
-        c.execute("UPDATE todos SET status=?,user_edited=1,remind_at=CASE WHEN ?='done' THEN NULL ELSE remind_at END WHERE id=?", (status, status, todo_id))
+        c.execute(
+            "UPDATE todos SET status=?,user_edited=1,completed_at=CASE WHEN ?='done' THEN ? ELSE NULL END,"
+            "remind_at=CASE WHEN ?='done' THEN NULL ELSE remind_at END WHERE id=?",
+            (status, status, completed_at, status, todo_id),
+        )
 
 
 def set_todos_status(todo_ids: list[int], status: str) -> int:
     ids = sorted({int(todo_id) for todo_id in todo_ids if int(todo_id) > 0})
     if not ids:
         return 0
+    completed_at = datetime.now().isoformat(timespec="seconds") if status == "done" else None
     placeholders = ",".join("?" for _ in ids)
     with conn() as c:
         c.execute('BEGIN IMMEDIATE')
         _reward_completed(c, ids, status)
         cursor = c.execute(
-            f"UPDATE todos SET status=?,user_edited=1,remind_at=CASE WHEN ?='done' THEN NULL ELSE remind_at END WHERE id IN ({placeholders})",
-            [status, status, *ids],
+            f"UPDATE todos SET status=?,user_edited=1,completed_at=CASE WHEN ?='done' THEN ? ELSE NULL END,"
+            f"remind_at=CASE WHEN ?='done' THEN NULL ELSE remind_at END WHERE id IN ({placeholders})",
+            [status, status, completed_at, status, *ids],
         )
         return cursor.rowcount
 
