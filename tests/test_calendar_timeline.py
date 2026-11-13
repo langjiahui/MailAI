@@ -344,7 +344,7 @@ def main():
                 assert client.delete(f"/api/productivity/calendar/events/{new_ev_id}").status_code == 404
                 assert mail_calendar.delete_custom_event(custom_id) is True
 
-            # Regression: TZID conversion & multi-day all-day DTEND preservation
+            # Regression: TZID conversion, multi-day all-day DTEND preservation & cross-midnight conflict detection
             fixed_day = date(2026, 11, 13)
             tz_ics = "\r\n".join([
                 "BEGIN:VCALENDAR",
@@ -366,6 +366,18 @@ def main():
                 "DTSTART;VALUE=DATE:20261113",
                 "DTEND;VALUE=DATE:20261116",
                 "SUMMARY:三日年度峰会",
+                "END:VEVENT",
+                "BEGIN:VEVENT",
+                "UID:ics-midnight-wrap@corp.test",
+                "DTSTART;TZID=America/New_York:20261113T104500",
+                "DTEND;TZID=America/New_York:20261113T121500",
+                "SUMMARY:跨午夜纽约长会",
+                "END:VEVENT",
+                "BEGIN:VEVENT",
+                "UID:ics-nextday-early@corp.test",
+                "DTSTART;TZID=Asia/Shanghai:20261114T001500",
+                "DTEND;TZID=Asia/Shanghai:20261114T004500",
+                "SUMMARY:次日凌晨晨会",
                 "END:VEVENT",
                 "END:VCALENDAR",
             ])
@@ -398,6 +410,12 @@ def main():
                 if hasattr(time, "tzset"):
                     assert ny_item["date"] == "2026-11-13" and ny_item["start_time"] == "22:00" and ny_item["end_time"] == "23:30", ny_item
                     assert win_item["date"] == "2026-11-13" and win_item["start_time"] == "22:30" and win_item["end_time"] == "23:00", win_item
+                    wrap_item = next(it for it in tz_tl["items"] if it["title"] == "跨午夜纽约长会")
+                    early_item = next(it for it in tz_tl["items"] if it["title"] == "次日凌晨晨会")
+                    assert wrap_item["date"] == "2026-11-13" and wrap_item["start_time"] == "23:45" and wrap_item["end_time"] == "01:15", wrap_item
+                    assert early_item["date"] == "2026-11-14" and early_item["start_time"] == "00:15" and early_item["end_time"] == "00:45", early_item
+                    assert wrap_item["conflict"] is True and "次日凌晨晨会" in wrap_item["conflict_with"], wrap_item
+                    assert early_item["conflict"] is True and "跨午夜纽约长会" in early_item["conflict_with"], early_item
                 summit_item = next(it for it in tz_tl["items"] if it["title"] == "三日年度峰会")
                 assert summit_item["all_day"] is True
                 assert summit_item["date"] == "2026-11-13" and summit_item["end_at"] == "2026-11-15", summit_item

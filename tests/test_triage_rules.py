@@ -402,6 +402,60 @@ def main():
             assert db.get_email(followup_id)["followup_at"] != ""
             assert db.get_email(snoozed_id)["snoozed_until"] != ""
 
+            # 8. Regression: invalid `days` returns 400 (not 500) & >1,200 rows shares exact scanned pool
+            with TestClient(test_app) as client:
+                for bad_days in ("bad", True):
+                    r_bad = client.post("/api/productivity/triage/sender-batch", json={
+                        "sender_addr": guard_sender,
+                        "mode": "all_done",
+                        "days": bad_days,
+                    })
+                    assert r_bad.status_code == 400, (bad_days, r_bad.status_code, r_bad.text)
+
+            cap_sender = "cap@limit.example.com"
+            base_dt = datetime.now() - timedelta(days=1)
+            with db.conn() as c:
+                # 1 oldest email (#1202 overall inside 45d window) + 1,199 filler emails + 2 newer cap emails
+                old_extra_dt = (base_dt - timedelta(days=20)).isoformat(timespec="seconds")
+                c.execute(
+                    "INSERT INTO emails(uid, folder, message_id, subject, from_addr, from_name, to_addr, date, snippet, body_text, is_automated, status, verdict, created_at) "
+                    "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (5000, "INBOX", "<cap-old@limit.example.com>", "超窗第3封", cap_sender, "Cap", "me@corp.test",
+                     old_extra_dt, "cap", "cap", 1, "inbox", "clean", old_extra_dt),
+                )
+                cap_extra_id = c.execute("SELECT last_insert_rowid()").fetchone()[0]
+                filler_rows = []
+                for idx in range(1199):
+                    dt_iso = (base_dt - timedelta(seconds=1200 - idx)).isoformat(timespec="seconds")
+                    filler_rows.append((
+                        5001 + idx, "INBOX", f"<filler-{idx}@bulk.example.com>", f"Filler {idx}",
+                        "filler@bulk.example.com", "Filler", "me@corp.test",
+                        dt_iso, "filler", "filler", 1, "inbox", "clean", dt_iso,
+                    ))
+                c.executemany(
+                    "INSERT INTO emails(uid, folder, message_id, subject, from_addr, from_name, to_addr, date, snippet, body_text, is_automated, status, verdict, created_at) "
+                    "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    filler_rows,
+                )
+                for idx in range(2):
+                    dt_iso = (datetime.now() - timedelta(minutes=2 - idx)).isoformat(timespec="seconds")
+                    c.execute(
+                        "INSERT INTO emails(uid, folder, message_id, subject, from_addr, from_name, to_addr, date, snippet, body_text, is_automated, status, verdict, created_at) "
+                        "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                        (7000 + idx, "INBOX", f"<cap-new-{idx}@limit.example.com>", f"列表内推送 #{idx}",
+                         cap_sender, "Cap", "me@corp.test", dt_iso, "cap", "cap", 1, "inbox", "clean", dt_iso),
+                    )
+
+            cap_scan = triage_rules.scan_subscriptions(days=45, min_count=2)
+            cap_grp = next(g for g in cap_scan["groups"] if g["sender_addr"] == cap_sender)
+            assert cap_grp["total_count"] == 2, cap_grp
+
+            cap_batch = triage_rules.triage_sender_batch(cap_sender, mode="all_done", days=45)
+            assert cap_batch["updated_count"] == 2, cap_batch
+            assert cap_extra_id not in cap_batch["email_ids"]
+            assert db.get_email(cap_extra_id)["is_read"] == 0
+            assert db.get_email(cap_extra_id)["handle_state"] == "unhandled"
+
     print("PASS test_triage_rules: subscription scan, safe batch cleanup, rule preview/apply, ingest hook & API CRUD")
 
 

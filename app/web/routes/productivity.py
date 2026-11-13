@@ -479,11 +479,13 @@ def triage_subscriptions(days: int = 45, min_count: int = 2):
 def triage_sender_batch_route(payload: dict):
     from ...triage_rules import triage_sender_batch
 
+    raw_days = payload.get('days')
+    days_arg = 45 if raw_days is None or raw_days == '' else raw_days
     return checked(
         triage_sender_batch,
         str(payload.get('sender_addr') or ''),
         str(payload.get('mode') or 'keep_latest_done'),
-        int(payload.get('days') or 45),
+        days_arg,
     )
 
 

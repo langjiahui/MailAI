@@ -508,41 +508,62 @@ def _collect_ics_timeline_items(c: sqlite3.Connection, start_d: date, end_d: dat
     return items
 
 
+def _item_interval(item: dict) -> tuple[datetime, datetime] | None:
+    st = _parse_local_dt(item.get("start_at"))
+    if st and not st.get("all_day") and st.get("_dt"):
+        start_dt = st["_dt"]
+    else:
+        day_raw = str(item.get("date") or "").strip()
+        start_m = _minutes_of_day(item.get("start_time"))
+        if not day_raw or start_m is None:
+            return None
+        try:
+            d = date.fromisoformat(day_raw)
+        except ValueError:
+            return None
+        start_dt = datetime.combine(d, time(start_m // 60, start_m % 60))
+
+    en = _parse_local_dt(item.get("end_at"))
+    if en and not en.get("all_day") and en.get("_dt") and en["_dt"] > start_dt:
+        end_dt = en["_dt"]
+    else:
+        end_m = _minutes_of_day(item.get("end_time"))
+        if end_m is not None:
+            cand_end = datetime.combine(start_dt.date(), time(end_m // 60, end_m % 60))
+            if cand_end <= start_dt:
+                cand_end = start_dt + timedelta(minutes=30)
+            end_dt = cand_end
+        else:
+            end_dt = start_dt + timedelta(minutes=30)
+    return start_dt, end_dt
+
+
 def _assign_conflicts(items: list[dict]) -> int:
-    """标注同日具体时段互相重叠的未完成日程。"""
-    by_day: dict[str, list[dict]] = {}
+    """标注具体时段互相重叠的未完成日程（支持跨午夜区间）。"""
+    timed: list[tuple[datetime, datetime, dict]] = []
     for item in items:
         item["conflict"] = False
         item["conflict_with"] = []
         if item.get("all_day") or item.get("status") == "done":
             continue
-        start_m = _minutes_of_day(item.get("start_time"))
-        if start_m is None:
+        interval = _item_interval(item)
+        if interval is None:
             continue
-        end_m = _minutes_of_day(item.get("end_time"))
-        if end_m is None or end_m <= start_m:
-            end_m = start_m + 30
-        item["_start_m"] = start_m
-        item["_end_m"] = end_m
-        by_day.setdefault(item["date"], []).append(item)
+        timed.append((interval[0], interval[1], item))
 
+    timed.sort(key=lambda row: (row[0], row[1]))
     conflict_pairs = 0
-    for day_items in by_day.values():
-        if len(day_items) < 2:
-            continue
-        for i in range(len(day_items)):
-            a = day_items[i]
-            for j in range(i + 1, len(day_items)):
-                b = day_items[j]
-                if a["_start_m"] < b["_end_m"] and b["_start_m"] < a["_end_m"]:
-                    a["conflict"] = True
-                    b["conflict"] = True
-                    a["conflict_with"].append(b["title"])
-                    b["conflict_with"].append(a["title"])
-                    conflict_pairs += 1
-    for item in items:
-        item.pop("_start_m", None)
-        item.pop("_end_m", None)
+    for i in range(len(timed)):
+        _a_start, a_end, a = timed[i]
+        for j in range(i + 1, len(timed)):
+            b_start, _b_end, b = timed[j]
+            if b_start >= a_end:
+                break
+            a["conflict"] = True
+            b["conflict"] = True
+            a["conflict_with"].append(b["title"])
+            b["conflict_with"].append(a["title"])
+            conflict_pairs += 1
     return conflict_pairs
 
 
