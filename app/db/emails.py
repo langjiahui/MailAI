@@ -62,10 +62,12 @@ def upsert_email(e: dict) -> int:
             "SELECT id FROM emails WHERE folder=? AND uid=?",
             (e.get("folder", "INBOX"), e["uid"]),
         ).fetchone()
-        # Changed message text must be embedded again by the next background pass.
-        if row and supplied.intersection({"subject", "from_name", "from_addr", "to_addr", "summary", "snippet", "body_text"}):
+        # Changed message text or thread grouping must be embedded again by the next background pass.
+        if row and supplied.intersection({"subject", "from_name", "from_addr", "to_addr", "summary", "snippet", "body_text", "thread_id"}):
             if c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='email_vectors'").fetchone():
                 c.execute("DELETE FROM email_vectors WHERE email_id=?", (row["id"],))
+            if c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='semantic_chunks'").fetchone():
+                c.execute("DELETE FROM semantic_chunks WHERE email_id=?", (row["id"],))
         if row and not was_present:
             from .mail_tags import apply_to_email
             apply_to_email(c, row['id'], e)

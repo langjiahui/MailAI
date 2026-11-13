@@ -50,7 +50,7 @@
   <link rel="stylesheet" href="/static/macos-window.css?v=758439776e9b">
   <link rel="stylesheet" href="/static/windows-window.css?v=3">
   <link rel="stylesheet" href="/static/assistant-polish.css?v=3c8d125994aa">
-  <link rel="stylesheet" href="/static/assistant-search.css?v=preview-cards-20261017">
+  <link rel="stylesheet" href="/static/assistant-search.css?v=1357079c9837">
   <link rel="stylesheet" href="/static/list-controls-polish.css?v=5">
   <link rel="stylesheet" href="/static/tab-transitions.css?v=2">
   <link rel="stylesheet" href="/static/author.css?v=7">
@@ -308,7 +308,7 @@
             <label class="notification-choice semantic-toggle"><input type="checkbox" id="semantic-enabled"><span><b data-i18n="semantic.enable">启用语义检索</b><small data-i18n="semantic.enableHint">开启后自动更新索引；首次需下载约 100MB 模型，邮件留在本机</small></span></label>
             <div class="preference-save-state"><span id="semantic-status" role="status" aria-live="polite"><span data-i18n="ui.f95ea7f4c063">未启用</span></span><button id="semantic-reindex" type="button" class="hidden" data-i18n="semantic.reindexBtn">重建索引</button></div>
             <div id="semantic-progress" class="semantic-progress hidden" role="progressbar" aria-hidden="true"><i></i></div>
-            <p class="preference-note" data-i18n="semantic.note">当前覆盖最近 5000 封邮件的主题、摘要及正文前 800 字。索引在后台更新，模型繁忙时优先显示关键词结果。源码运行需安装 requirements-semantic.txt。</p>
+            <p class="preference-note" data-i18n="semantic.note">当前覆盖最近 5000 封邮件的主题、摘要、正文分块、历史会话脉络及已提取的附件文字。索引在后台更新，模型繁忙时优先显示关键词结果。源码运行需安装 requirements-semantic.txt。</p>
           </article>
 
           </div>
@@ -1293,7 +1293,7 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=ff200fb8eeb7"></script>
+  <script src="/static/bundle.js?v=442544358157"></script>
   <script src="/static/settings-scroll.js?v=5"></script>
   <script type="module" src="/static/author-logo.js?v=5"></script>
 </body>

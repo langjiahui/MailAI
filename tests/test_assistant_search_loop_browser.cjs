@@ -104,9 +104,22 @@ const {chromium,webkit}=require('playwright');
   assert.match(await last().locator('[data-search-loop-action=exclude_results]').innerText(),/Skip these/);
   await page.evaluate(()=>setI18nLanguage(I18N_DEFAULT_LANG));
   assert.match(await last().locator('[data-search-loop-action=exclude_results]').innerText(),/排除这批/);
-  // Real search markup with long subjects/addresses must shrink inside the
+  // Real search markup with long subjects/addresses/match reasons must shrink inside the
   // conversation, not just keep the outer result section at the right width.
   await page.evaluate(()=>{
+   const cards=[...document.querySelectorAll('.assistant-search-result')];
+   const activeCard=cards.at(-1);
+   const firstRow=activeCard?.querySelector('.assistant-search-candidate');
+   if(firstRow){
+    const btn=firstRow.querySelector('.assistant-search-source>span:nth-child(2)');
+    if(btn && !btn.querySelector('.assistant-search-match-tag')){
+     btn.insertAdjacentHTML('beforeend','<em class="assistant-search-match-tag">命中附件 · 设备采购与维保补充报价单_2026_终稿_v3.pdf</em>');
+    }
+    const detail=firstRow.querySelector('.assistant-search-detail');
+    if(detail && !detail.querySelector('.assistant-search-match-reason')){
+     detail.insertAdjacentHTML('afterbegin','<p class="assistant-search-match-reason"><span>命中附件 · 设备采购与维保补充报价单_2026_终稿_v3.pdf</span></p>');
+    }
+   }
    document.querySelectorAll('.assistant-search-source').forEach(row=>{
     row.querySelector('b').textContent='回复: Re: 关于员工出差机票预订及报销流程规范与补充说明'.repeat(4);
     row.querySelector('small').textContent='long-sender-address-without-spaces'.repeat(6)+'@example.test · 2026-10-17';

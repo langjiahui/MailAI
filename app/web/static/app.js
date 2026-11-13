@@ -491,7 +491,7 @@ function assistantSourcesHtml(sources = [], accountId = '') {
     <summary><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14v11H3zM3 5l7 6 7-6"/></svg><span><span data-i18n="ui.17f30557fb63">参考邮件</span></span><em><span data-i18n="ui.eca498c1d243">${items.length} 封</span></em><span class="source-disclosure"><span class="source-expand"><span data-i18n="ui.00bd3960fea8">展开</span></span><span class="source-collapse"><span data-i18n="ui.afd4b783536b">收起</span></span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m5 6 3 3 3-3"/></svg></span></summary>
     <div class="assistant-source-list" role="list" aria-label="本次回答的参考邮件" data-i18n-aria="ui.e127c0657d05">${items.map((source, index) => {
       const title = source.subject || mailaiText('（无主题）');
-      const meta = [source.from_addr, source.date ? String(source.date).slice(0, 10) : ''].filter(Boolean).join(' · ');
+      const meta = [source.match_reason, source.from_addr, source.date ? String(source.date).slice(0, 10) : ''].filter(Boolean).join(' · ');
       return `<div role="listitem"><button type="button" data-email-id="${Number(source.id)}" data-source-account="${esc(accountId)}" aria-label="查看参考邮件 ${index + 1}：${esc(title)}" data-i18n-aria="ui.5084aca82354"><span class="source-index">${index + 1}</span><span class="source-copy"><span class="source-subject">${esc(title)}</span>${meta ? `<small>${esc(meta)}</small>` : ''}</span><span class="source-open" aria-hidden="true">↗</span></button></div>`;
     }).join('')}</div></details>`;
 }

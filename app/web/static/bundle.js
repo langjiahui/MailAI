@@ -405,12 +405,15 @@ const I18N_MESSAGES = {
     'semantic.cardDesc': 'Understands mails with similar meaning via a local embedding model, improving the assistant\'s retrieval',
     'semantic.enable': 'Enable semantic search',
     'semantic.enableHint': 'Indexes new mail automatically; the first run downloads ~100MB. Mail stays on this device.',
-    'semantic.note': 'Covers the latest 5,000 emails: subject, summary and the first 800 body characters. Indexing runs in the background; busy models fall back to keyword results. Source checkouts need requirements-semantic.txt.',
+    'semantic.note': 'Covers the latest 5,000 emails: subject, summary, full body chunks, thread context, and extracted attachment text. Indexing runs in the background; busy models fall back to keyword results. Source checkouts need requirements-semantic.txt.',
     'semantic.queued': 'Queued for background indexing. You can keep using your mail.',
     'semantic.indexFailed': 'Index update incomplete. Retry when ready; keyword search remains available.',
     'semantic.reindexBtn': 'Rebuild index',
     'semantic.noDeps': 'Optional component not installed (requirements-semantic.txt)',
     'semantic.indexed': 'Indexed {n} mails',
+    'semantic.withAttachmentsAndThreads': ' ({a} attachments, {t} threads)',
+    'semantic.withAttachments': ' ({a} attachments)',
+    'semantic.withThreads': ' ({t} threads)',
     'semantic.notIndexed': 'Not indexed yet',
     'semantic.error': 'Unable to read status',
     'semantic.saving': 'Saving…',
@@ -17372,7 +17375,7 @@ const MAILAI_I18N_CHINESE = {
   "semantic.enable": "启用语义检索",
   "semantic.enableHint": "开启后自动更新索引；首次需下载约 100MB 模型，邮件留在本机",
   "semantic.reindexBtn": "重建索引",
-  "semantic.note": "当前覆盖最近 5000 封邮件的主题、摘要及正文前 800 字。索引在后台更新，模型繁忙时优先显示关键词结果。源码运行需安装 requirements-semantic.txt。",
+  "semantic.note": "当前覆盖最近 5000 封邮件的主题、摘要、正文分块、历史会话脉络及已提取的附件文字。索引在后台更新，模型繁忙时优先显示关键词结果。源码运行需安装 requirements-semantic.txt。",
   "guide.intro": "使用帮助",
   "guide.introHint": "从连接邮箱到日常办公，按当前需要找到下一步。",
   "guide.topics": "14 个功能主题",
@@ -18662,6 +18665,9 @@ const MAILAI_I18N_CHINESE = {
   "semantic.needAccount": "添加邮箱后即可启用",
   "semantic.noDeps": "未安装可选依赖（requirements-semantic.txt）",
   "semantic.indexed": "已索引 {n} 封邮件",
+  "semantic.withAttachmentsAndThreads": "（含 {a} 份附件、{t} 段会话）",
+  "semantic.withAttachments": "（含 {a} 份附件）",
+  "semantic.withThreads": "（含 {t} 段会话）",
   "semantic.notIndexed": "尚未建立索引",
   "semantic.indexFailed": "索引更新未完成，可重试；关键词搜索仍可使用",
   "semantic.error": "暂时无法读取状态",
@@ -20328,7 +20334,7 @@ function assistantSourcesHtml(sources = [], accountId = '') {
     <summary><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14v11H3zM3 5l7 6 7-6"/></svg><span><span data-i18n="ui.17f30557fb63">参考邮件</span></span><em><span data-i18n="ui.eca498c1d243">${items.length} 封</span></em><span class="source-disclosure"><span class="source-expand"><span data-i18n="ui.00bd3960fea8">展开</span></span><span class="source-collapse"><span data-i18n="ui.afd4b783536b">收起</span></span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m5 6 3 3 3-3"/></svg></span></summary>
     <div class="assistant-source-list" role="list" aria-label="本次回答的参考邮件" data-i18n-aria="ui.e127c0657d05">${items.map((source, index) => {
       const title = source.subject || mailaiText('（无主题）');
-      const meta = [source.from_addr, source.date ? String(source.date).slice(0, 10) : ''].filter(Boolean).join(' · ');
+      const meta = [source.match_reason, source.from_addr, source.date ? String(source.date).slice(0, 10) : ''].filter(Boolean).join(' · ');
       return `<div role="listitem"><button type="button" data-email-id="${Number(source.id)}" data-source-account="${esc(accountId)}" aria-label="查看参考邮件 ${index + 1}：${esc(title)}" data-i18n-aria="ui.5084aca82354"><span class="source-index">${index + 1}</span><span class="source-copy"><span class="source-subject">${esc(title)}</span>${meta ? `<small>${esc(meta)}</small>` : ''}</span><span class="source-open" aria-hidden="true">↗</span></button></div>`;
     }).join('')}</div></details>`;
 }
@@ -32414,10 +32420,22 @@ async function loadSemanticStatus() {
     toggle.disabled = false;
     toggle.closest('label')?.removeAttribute('title');
     toggle.checked = !!prefs.semantic_enabled;
-    mailaiBindUI(status, "textContent", () => (stats.indexed
-      ? (mailaiT('semantic.indexed') || '已索引 {n} 封邮件').replace('{n}', stats.indexed) +
-        (stats.last_indexed_at ? ` · ${String(stats.last_indexed_at).slice(0, 16)}` : '')
-      : (mailaiT('semantic.notIndexed') || '尚未建立索引')));
+    const formatSemanticStatus = () => {
+      if (!stats.indexed) return mailaiT('semantic.notIndexed') || '尚未建立索引';
+      let text = (mailaiT('semantic.indexed') || '已索引 {n} 封邮件').replace('{n}', stats.indexed);
+      const files = Number(stats.attachment_files || 0);
+      const threads = Number(stats.thread_chunks || 0);
+      if (files && threads) {
+        text += (mailaiT('semantic.withAttachmentsAndThreads') || '（含 {a} 份附件、{t} 段会话）').replace('{a}', files).replace('{t}', threads);
+      } else if (files) {
+        text += (mailaiT('semantic.withAttachments') || '（含 {a} 份附件）').replace('{a}', files);
+      } else if (threads) {
+        text += (mailaiT('semantic.withThreads') || '（含 {t} 段会话）').replace('{t}', threads);
+      }
+      if (stats.last_indexed_at) text += ` · ${String(stats.last_indexed_at).slice(0, 16)}`;
+      return text;
+    };
+    mailaiBindUI(status, "textContent", formatSemanticStatus);
     if (stats.progress?.error) mailaiBindUI(status, "textContent", () => (mailaiT('semantic.indexFailed') || '索引更新未完成，可重试；关键词搜索仍可使用'));
     reindex.classList.toggle('hidden', !stats.enabled);
     // 重建进行中（例如刚触发后切换了页签再回来）时恢复进度条与轮询
@@ -33519,10 +33537,11 @@ function mailCardDate(value, now = new Date()) {
       const details=run.details?.has(Number(source.id))||false,subject=source.subject||mailaiText('（无主题）');
       const detailId=`search-source-${run.id}-${Number(source.id)}`;
       return `<div class="assistant-search-candidate" ${index>=3&&!expanded?'hidden':''}>
-        <button type="button" class="assistant-search-source" data-search-source-details="${Number(source.id)}" aria-expanded="${details}" aria-controls="${esc(detailId)}" aria-label="${esc((details?t('hideDetails'):t('showDetails'))+': '+subject)}" title="${esc([subject,source.from_name,source.from_addr].filter(Boolean).join('\n'))}" ${index>=3&&!expanded?'hidden':''}>
-          <span class="assistant-search-source-index">${index+1}</span><span><b>${esc(subject)}</b><small>${esc([source.from_name || source.from_addr,String(source.date || '').slice(0,10)].filter(Boolean).join(' · '))}</small></span><span class="assistant-search-source-chevron" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="m6 8 4 4 4-4"/></svg></span>
+        <button type="button" class="assistant-search-source" data-search-source-details="${Number(source.id)}" aria-expanded="${details}" aria-controls="${esc(detailId)}" aria-label="${esc((details?t('hideDetails'):t('showDetails'))+': '+subject)}" title="${esc([subject,source.match_reason,source.from_name,source.from_addr].filter(Boolean).join('\n'))}" ${index>=3&&!expanded?'hidden':''}>
+          <span class="assistant-search-source-index">${index+1}</span><span><b>${esc(subject)}</b><small>${esc([source.from_name || source.from_addr,String(source.date || '').slice(0,10)].filter(Boolean).join(' · '))}</small>${source.match_reason?`<em class="assistant-search-match-tag">${esc(source.match_reason)}</em>`:''}</span><span class="assistant-search-source-chevron" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="m6 8 4 4 4-4"/></svg></span>
         </button>
         <div class="assistant-search-detail" id="${esc(detailId)}" ${details?'':'hidden'}>
+          ${source.match_reason?`<p class="assistant-search-match-reason"><span>${esc(source.match_reason)}</span></p>`:''}
           <dl><dt>${esc(t('sender'))}</dt><dd>${esc(source.from_addr||source.from_name||'')}</dd>${source.date?`<dt>${esc(t('date'))}</dt><dd><time datetime="${esc(source.date)}">${esc(sourceTime(source.date))}</time></dd>`:''}</dl>
           ${source.preview?`<p class="assistant-search-excerpt"><strong>${esc(t('preview'))}</strong>${esc(source.preview)}</p>`:''}
           <footer class="assistant-search-detail-actions"><button type="button" class="assistant-search-open-mail" data-search-loop-source="${Number(source.id)}" aria-label="${esc(t('openMail')+': '+subject)}" title="${esc(subject)}"><span data-search-open-label>${esc(t('openMail'))}</span><span class="assistant-search-source-open" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M4 10h12m-5-5 5 5-5 5"/></svg></span></button></footer>

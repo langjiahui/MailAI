@@ -49,16 +49,16 @@ function harness({account = {id: 'a'}, prefs = {}, stats = {}, fail = false} = {
     assert.equal(nodes['semantic-reindex'].hidden, true);
     assert.match(label.attrs.title || '', /requirements-semantic/);
   }
-  // 依赖可用且已启用：开关可用，显示索引统计，重建按钮出现
+  // 依赖可用且已启用：开关可用，显示索引统计（含附件/会话切片明细），重建按钮出现
   {
     const {ctx, nodes, label} = harness({
       prefs: {semantic_enabled: true},
-      stats: {deps_available: true, enabled: true, indexed: 42, last_indexed_at: '2026-09-19T08:00:00'},
+      stats: {deps_available: true, enabled: true, indexed: 42, attachment_files: 3, thread_chunks: 4, last_indexed_at: '2026-09-19T08:00:00'},
     });
     await ctx.loadSemanticStatus();
     assert.equal(nodes['semantic-enabled'].disabled, false);
     assert.equal(nodes['semantic-enabled'].checked, true);
-    assert.match(nodes['semantic-status'].textContent, /42/);
+    assert.match(nodes['semantic-status'].textContent, /42.*3.*附件.*4.*会话/);
     assert.equal(nodes['semantic-reindex'].hidden, false);
     assert.equal(label.attrs.title, undefined);
   }

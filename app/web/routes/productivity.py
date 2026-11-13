@@ -220,16 +220,12 @@ def export_contacts(format: str = "csv"):
 
 @router.post("/api/productivity/attachments/{email_id}/{index}/index")
 def index_attachment(email_id: int, index: int):
-    from ...attachment_text import extract_local
+    from ...attachment_text import extract_local, save_cache
 
     item = checked(extract_local, email_id, index)
     if item.get("image"):
         raise HTTPException(400, "图片暂不建立文字索引，可使用现有图片分析")
-    with db.conn() as c:
-        c.execute(
-            "INSERT OR REPLACE INTO attachment_text_index VALUES(?,?,?,?,?,?)",
-            (email_id, index, item["digest"], item["name"], item["text"], item["note"]),
-        )
+    save_cache(email_id, index, item["digest"], item["name"], item["text"], item["note"])
     return {"ok": True, "name": item["name"], "note": item["note"]}
 
 
