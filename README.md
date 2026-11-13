@@ -5,9 +5,9 @@ MailAI 是一款**本地优先（Local-First）、AI 驱动**的开源跨平台�
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v4.5.2**
+当前版本：**v4.5.3**
 
-本次更新：对齐订阅降噪扫描与批处理的 `1,200` 封候选集边界，修复跨午夜会议日程时段冲突漏报，以及批处理接口 `days` 参数非法时返回 `400` 校验错误。[发布说明](docs/发布-v4.5.2-批处理候选边界与跨午夜冲突修复.md) · [完整版本历史](https://github.com/langjiahui/MailAI/releases)
+本次更新：日程时间线纳入从查询窗口外延续进来的自建日程并检测冲突。订阅批处理会拒绝小数及溢出的天数参数。[发布说明](docs/发布-v4.5.3-日程窗口与订阅参数修复.md) · [完整版本历史](https://github.com/langjiahui/MailAI/releases)
 
 ---
 

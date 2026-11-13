@@ -58,8 +58,8 @@ pytest 通过 `tests/test_offline_suite.py` 以子进程方式逐个运行脚本
 - **Quality gate** 是稳定的分支保护汇总检查，工作流本身始终触发；只按计划选择其中的任务。任意已选任务失败、取消或意外跳过都会阻止通过，未选任务必须确实跳过。
 - `.github/ci/browser-suites.json` 保留测试与 fixture 的顺序依赖，`browser-jobs.json` 保留完整矩阵，`browser-coverage.json` 约束原有覆盖。快速模式由 `scripts/ci_plan.py` 选择分组：独立待办模块检查待办、提醒、来源往返及布局；公共 JS、公共主题等无法安全归因的改动回退 full。未识别的新文件和测试帮助函数也回退 full。
 - 修改浏览器测试时检查其所在的全部分组。生成的 bundle/index 仅在存在对应前端源码改动时随源码归因；只改产物则回退 full。Android／iOS 沿用独立平台流程，Android 构建不再因根 VERSION 或桌面标签触发。
-- 浏览器矩阵统一并发调度，默认最多 18 个分片，仓库变量 `CI_BROWSER_PARALLEL` 可设置为 1–20，并应匹配运行器额度。每片使用独立 runner、邮箱库和进程组；片内有依赖的测试继续顺序执行。邮件设置已拆为更新、待办工作区、导航、导入恢复、外观语言及分组待办六部分。
-- Linux 浏览器任务使用 `.github/ci/browser-image.json` 中固定摘要的官方 Playwright 镜像，预装 Chromium、WebKit 和系统库；镜像版本必须与 package-lock 一致，开始测试前实际启动两种浏览器验证。更新 Playwright 时同步镜像版本及摘要。继续缓存 Python/npm 依赖；普通非容器执行保留有界的依赖安装回退。
+- 浏览器矩阵统一并发调度，默认最多 18 个分片，仓库变量 `CI_BROWSER_PARALLEL` 可设置为 1–20，并应匹配运行器额度。每片使用独立 runner、邮箱库和进程组；片内有依赖的测试继续顺序执行。邮件设置分为待办工作区、导航与更新、导入恢复、邮件列表视图、外观语言及分组待办六部分。
+- Linux 浏览器任务使用 `.github/ci/browser-image.json` 中固定摘要的官方 Playwright 镜像，预装 Chromium、WebKit 和系统库。预检核对镜像版本与 `package-lock.json` 一致，并检查两种浏览器的可执行文件；测试按分组启动浏览器。更新 Playwright 时同步镜像版本及摘要。容器缓存 Python 虚拟环境和 npm 依赖，非容器执行保留有界的依赖安装回退。
 - 不删除断言、不缩减正式矩阵、不忽略失败提速。执行计划、逐项耗时、日志和截图上传为运行附件，用实际耗时调整分片；5–10 分钟快速检查及 10–15 分钟完整检查是优化目标，不是未经实测的保证。
 
 ### 下次发布按以下顺序执行
