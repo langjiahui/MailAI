@@ -131,7 +131,10 @@ def ask_stream(question, history, email_ids, images, materials=None):
     if automatic:
         from .work_assistant import saved_context
         from .work_memory import approved_context
+        from .recipient_profiles import assistant_context as recipient_assistant_context
         context += '\n' + saved_context([e['id'] for e in sources]) + '\n' + approved_context(question)
+        if persona_ctx := recipient_assistant_context(question, sources):
+            context += '\n' + persona_ctx
         for email in sources:
             limit = max(1800, min(config.LLM_MAX_BODY_CHARS, 20000))
             if len(email.get('body_text') or '') > limit:

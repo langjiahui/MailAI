@@ -228,6 +228,8 @@
       if (button.dataset.petSection) {
         const section=button.dataset.petSection;
         tab=section==='dress'?dressTab:section==='growth'?growthTab:'home';
+        const bodyHost = dialog.querySelector('.pet-journal-body');
+        if (bodyHost) bodyHost.dataset.petRenderedTab = '';
         previewOpen=false;previewOrigin=null;previewStage=null;earnReturn=false;renderKey='';render();
         dialog.querySelector('.pet-tab-content')?.scrollTo(0,0);
         dialog.querySelector(`[data-pet-section="${section}"]`)?.focus({preventScroll:true});return;
@@ -235,6 +237,8 @@
       if (button.dataset.petHomeCollection) collectionId=button.dataset.petHomeCollection;
       if (button.dataset.petTab || button.dataset.petGo) {
         if(button.dataset.petTab==='wardrobe'&&button.closest('.pet-task-nav'))shopFilter='all';
+        const bodyHost = dialog.querySelector('.pet-journal-body');
+        if (bodyHost) bodyHost.dataset.petRenderedTab = '';
         earnReturn=false;tab = button.dataset.petTab || button.dataset.petGo; previewOpen=false;previewOrigin=null;previewStage=null;if(tab==='shop')collectionActual=false;renderKey='';render();
         dialog.querySelector('.pet-tab-content')?.scrollTo(0,0);
         focusTab(tab);
@@ -782,7 +786,8 @@
     previewAdvanced=host.querySelector('.pet-fitting-extras')?.open ?? previewAdvanced;
     const focusKey = focus?.closest('.pet-journal') ? Object.entries(focus.dataset).find(([key])=>['petSection','petEnabled','petCategory','petPageSelect','petLifeAction','petLifeChatter','petTab','petGo','petPage','petSeries','petJourneyStage','petWearCollection','petSetAction','petGiftContextClose','petBuy','petItemAction','petEquip','petSlot','petStyle','petGiftCode','petGiftPreview','petGiftClaim','petGiftWear','petGiftCopy','petGiftReconcile','petGiftOutfits','petClaimCode','petPreview','petPreviewSelect','petPreviewPlay','petPreviewClose','petPreviewStage','petPreviewAction','petPreviewMode','petResetStage','petEarn','petReturnShop','petReceiptClose','petTryAction','petShopFilter','petTryStage','petCollection','petPurchaseOpen','petPurchaseCancel','petTrialEnd','petWardrobeSlot','petBackCollection','petBackpackSeries','petUndoOutfit'].includes(key)) : null;
     const scroll = host.querySelector('.pet-tab-content')?.scrollTop || 0;
-    // Progress, receipts and tab updates must not replace the live animation rig.
+    // Progress, receipts and tab updates must not replace the live animation rig or ephemeral life status on the same tab.
+    const prevLifeStatus = host.dataset.petRenderedTab === tab ? (host.querySelector('[data-pet-life-status]')?.textContent || '') : '';
     const portrait = host.querySelector('.pet-hero>.pet-hero-portrait');
     window.mailaiCompanionMotion?.stopPreview();
     const navButton=name=>`<button type="button" data-pet-section="${name}" aria-pressed="${space===name}">${label('section.'+name)}</button>`;
@@ -790,6 +795,8 @@
     const task=view();
     const body=space==='dress'?`<div class="pet-dress-layout ${tab==='wardrobe'&&!previewOpen?'pet-backpack-layout':''}">${companionStageView()}<div class="pet-task-panel">${task}</div></div>`:space==='growth'?`${tab==='journey'?'':growthSummary()}${task}`:task;
     host.innerHTML=`<nav class="pet-tabs" aria-label="${label('tabs')}"><div class="pet-primary-nav">${['home','dress','growth'].map(navButton).join('')}</div></nav><main class="pet-center-main"><div class="pet-center-notices">${purchaseIntent&&!busy?`<div class="pet-pending" role="status"><span>${label('purchasePending',t('item.'+purchaseIntent.item))}</span><button type="button" data-pet-reconcile>${label('reconcile')}</button></div>`:''}${feedback&&Date.now()<feedback.until?`<p class="pet-milestone" role="status">${esc(feedback.copy)}</p>`:''}${!state.enabled?`<p class="pet-paused">${label('paused')}</p>`:''}</div><section class="pet-tab-content" aria-label="${label('nav.'+tab)}">${taskNavigation()}<div class="pet-view-body">${body}</div></section></main>`;
+    host.dataset.petRenderedTab = tab;
+    if (prevLifeStatus) { const nextStatus = host.querySelector('[data-pet-life-status]'); if (nextStatus && !nextStatus.textContent) nextStatus.textContent = prevLifeStatus; }
     const livePortrait=host.querySelector('.pet-hero>.pet-hero-portrait');
     if (portrait?.querySelector('.mail-companion')&&livePortrait) {portrait.className=livePortrait.className;livePortrait.replaceWith(portrait);}
     for(const id of giftOutfitItems)host.querySelector(`[data-pet-item="${CSS.escape(id)}"]`)?.setAttribute('data-gift-focus','true');

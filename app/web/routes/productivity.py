@@ -220,16 +220,12 @@ def export_contacts(format: str = "csv"):
 
 @router.post("/api/productivity/attachments/{email_id}/{index}/index")
 def index_attachment(email_id: int, index: int):
-    from ...attachment_text import extract_local
+    from ...attachment_text import extract_local, save_cache
 
     item = checked(extract_local, email_id, index)
     if item.get("image"):
         raise HTTPException(400, "图片暂不建立文字索引，可使用现有图片分析")
-    with db.conn() as c:
-        c.execute(
-            "INSERT OR REPLACE INTO attachment_text_index VALUES(?,?,?,?,?,?)",
-            (email_id, index, item["digest"], item["name"], item["text"], item["note"]),
-        )
+    save_cache(email_id, index, item["digest"], item["name"], item["text"], item["note"])
     return {"ok": True, "name": item["name"], "note": item["note"]}
 
 
@@ -317,6 +313,65 @@ def attachment_versions(name: str):
     }
 
 
+@router.get("/api/productivity/calendar/timeline")
+def calendar_timeline(
+    days: int = 14,
+    include_past_days: int = 7,
+    include_done: bool = False,
+):
+    from ...mail_calendar import timeline
+
+    return checked(timeline, days, include_past_days, include_done)
+
+
+@router.post("/api/productivity/calendar/events")
+def calendar_event_create(payload: dict):
+    from ...mail_calendar import create_custom_event
+
+    return checked(create_custom_event, payload)
+
+
+@router.delete("/api/productivity/calendar/events/{event_id}")
+def calendar_event_delete(event_id: int):
+    from fastapi import HTTPException
+    from ...mail_calendar import delete_custom_event
+
+    if not checked(delete_custom_event, event_id):
+        raise HTTPException(status_code=404, detail="日程不存在")
+    return {"ok": True}
+
+
+@router.post("/api/productivity/calendar/export-batch")
+def calendar_export_batch(payload: dict):
+    from ...mail_calendar import export_batch_ics
+
+    items = payload.get("items") or []
+    return Response(
+        checked(export_batch_ics, items),
+        media_type="text/calendar; charset=utf-8",
+        headers={
+            "Content-Disposition": 'attachment; filename="schedule.ics"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+@router.get("/api/productivity/calendar/system-calendars")
+def calendar_system_calendars():
+    from ...mail_calendar import list_macos_calendars
+
+    return checked(list_macos_calendars)
+
+
+@router.post("/api/productivity/calendar/system-add")
+def calendar_system_add(payload: dict):
+    from ...mail_calendar import write_macos_calendar
+
+    items = payload.get("items") or []
+    calendar_name = str(payload.get("calendar_name") or "")
+    return checked(write_macos_calendar, items, calendar_name)
+
+
 @router.get("/api/productivity/calendar/{email_id}")
 def calendar(email_id: int):
     from ...mail_calendar import invitations
@@ -391,6 +446,16 @@ def sent_followups():
     return items()
 
 
+@router.post('/api/productivity/followups/{sent_id}')
+def schedule_followup(sent_id: int, payload: dict):
+    from ...sent_followups import schedule
+    try:
+        days = int(payload.get('days') or 0)
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(400, '无效跟进天数') from exc
+    return checked(schedule, sent_id, days=days, at=str(payload.get('at') or ''))
+
+
 @router.patch('/api/productivity/followups/{sent_id}')
 def arrange_followup(sent_id:int,payload:dict):
     from ...sent_followups import arrange
@@ -401,3 +466,68 @@ def arrange_followup(sent_id:int,payload:dict):
 def ai_evidence(email_id:int):
     from ...mail_evidence import semantic_compare
     return checked(semantic_compare,email_id)
+
+
+@router.get('/api/productivity/triage/subscriptions')
+def triage_subscriptions(days: int = 45, min_count: int = 2):
+    from ...triage_rules import scan_subscriptions
+
+    return checked(scan_subscriptions, days, min_count)
+
+
+@router.post('/api/productivity/triage/sender-batch')
+def triage_sender_batch_route(payload: dict):
+    from ...triage_rules import triage_sender_batch
+
+    return checked(
+        triage_sender_batch,
+        str(payload.get('sender_addr') or ''),
+        str(payload.get('mode') or 'keep_latest_done'),
+    )
+
+
+@router.get('/api/productivity/triage/rules')
+def triage_rules_list():
+    from ...triage_rules import list_rules
+
+    return {'rules': checked(list_rules)}
+
+
+@router.post('/api/productivity/triage/rules')
+def triage_rule_save(payload: dict):
+    from ...triage_rules import save_rule
+
+    return checked(save_rule, payload)
+
+
+@router.patch('/api/productivity/triage/rules/{rule_id}')
+def triage_rule_toggle(rule_id: int, payload: dict):
+    from ...triage_rules import toggle_rule
+
+    return checked(toggle_rule, rule_id, bool(payload.get('enabled', True)))
+
+
+@router.delete('/api/productivity/triage/rules/{rule_id}')
+def triage_rule_delete(rule_id: int):
+    from fastapi import HTTPException
+    from ...triage_rules import delete_rule
+
+    if not checked(delete_rule, rule_id):
+        raise HTTPException(404, '规则不存在')
+    return {'ok': True}
+
+
+@router.post('/api/productivity/triage/rules/preview')
+def triage_rule_preview(payload: dict):
+    from ...triage_rules import preview_rule
+
+    return checked(preview_rule, payload)
+
+
+@router.post('/api/productivity/triage/rules/apply')
+def triage_rules_apply(payload: dict | None = None):
+    from ...triage_rules import apply_rules_existing
+
+    raw_id = (payload or {}).get('rule_id')
+    rule_id = int(raw_id) if raw_id is not None else None
+    return checked(apply_rules_existing, rule_id)

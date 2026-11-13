@@ -1,5 +1,6 @@
 """待办事项。"""
-from datetime import datetime
+import calendar
+from datetime import date, datetime, timedelta
 import re
 import unicodedata
 
@@ -59,26 +60,124 @@ def list_todos(include_done=False):
         return [dict(r) for r in c.execute(sql).fetchall()]
 
 
+def _next_cycle_date(date_str: str | None, recurrence: str, reference_date: date | None = None) -> str:
+    ref = reference_date or date.today()
+    base = ref
+    if date_str:
+        try:
+            base = date.fromisoformat(str(date_str).strip()[:10])
+        except ValueError:
+            base = ref
+    if recurrence == "weekly":
+        return (base + timedelta(days=7)).isoformat()
+    if recurrence == "monthly":
+        year = base.year + (base.month // 12)
+        month = (base.month % 12) + 1
+        day = min(base.day, calendar.monthrange(year, month)[1])
+        return date(year, month, day).isoformat()
+    return base.isoformat()
+
+
+def _next_cycle_remind_at(remind_at: str | None, next_deadline: str, recurrence: str, now: datetime) -> str | None:
+    if not remind_at:
+        return None
+    try:
+        rem = datetime.fromisoformat(str(remind_at).strip())
+        if rem.tzinfo is not None:
+            rem = rem.astimezone().replace(tzinfo=None)
+    except ValueError:
+        return None
+    next_rem_date = date.fromisoformat(_next_cycle_date(rem.date().isoformat(), recurrence, reference_date=now.date()))
+    candidate = datetime.combine(next_rem_date, rem.time())
+    if candidate <= now:
+        candidate = datetime.combine(date.fromisoformat(next_deadline), rem.time())
+    if candidate <= now:
+        return None
+    return candidate.isoformat(timespec="seconds")
+
+
+def _spawn_next_recurring_todos(c, ids: list[int], status: str, now: datetime) -> list[dict]:
+    if status != "done" or not ids:
+        return []
+    slots = ",".join("?" for _ in ids)
+    rows = c.execute(
+        f"SELECT * FROM todos WHERE status='open' AND recurrence IN ('weekly','monthly') AND id IN ({slots}) "
+        f"AND NOT EXISTS (SELECT 1 FROM todos child WHERE child.recurrence_source_id=todos.id)",
+        ids,
+    ).fetchall()
+    spawned_ids = []
+    now_iso = now.isoformat(timespec="seconds")
+    for row in rows:
+        recurrence = (row["recurrence"] or "").strip()
+        next_deadline = _next_cycle_date(row["deadline"], recurrence, reference_date=now.date())
+        next_remind = _next_cycle_remind_at(row["remind_at"], next_deadline, recurrence, now)
+        cursor = c.execute(
+            "INSERT INTO todos(email_id,title,deadline,status,created_at,user_edited,stage,kind,remind_at,recurrence,recurrence_source_id) "
+            "VALUES(?,?,?,'open',?,1,?,?,?,?,?)",
+            (
+                row["email_id"],
+                row["title"],
+                next_deadline,
+                now_iso,
+                row["stage"] or "active",
+                row["kind"] or "execution",
+                next_remind,
+                recurrence,
+                row["id"],
+            ),
+        )
+        spawned_ids.append(cursor.lastrowid)
+    if not spawned_ids:
+        return []
+    s_slots = ",".join("?" for _ in spawned_ids)
+    return [
+        dict(r)
+        for r in c.execute(
+            "SELECT t.*, e.subject AS email_subject, e.from_addr AS email_from, "
+            "e.date AS email_date, e.created_at AS email_indexed_at, e.thread_id AS email_thread "
+            f"FROM todos t LEFT JOIN emails e ON e.id=t.email_id WHERE t.id IN ({s_slots})",
+            spawned_ids,
+        ).fetchall()
+    ]
+
+
 def set_todo_status(todo_id: int, status: str):
+    now = datetime.now()
+    completed_at = now.isoformat(timespec="seconds") if status == "done" else None
     with conn() as c:
         c.execute('BEGIN IMMEDIATE')
         _reward_completed(c, [todo_id], status)
-        c.execute("UPDATE todos SET status=?,user_edited=1,remind_at=CASE WHEN ?='done' THEN NULL ELSE remind_at END WHERE id=?", (status, status, todo_id))
+        spawned = _spawn_next_recurring_todos(c, [todo_id], status, now)
+        c.execute(
+            "UPDATE todos SET status=?,user_edited=1,completed_at=CASE WHEN ?='done' THEN ? ELSE NULL END,"
+            "remind_at=CASE WHEN ?='done' THEN NULL ELSE remind_at END WHERE id=?",
+            (status, status, completed_at, status, todo_id),
+        )
+        return spawned
 
 
-def set_todos_status(todo_ids: list[int], status: str) -> int:
+def set_todos_status_detailed(todo_ids: list[int], status: str) -> tuple[int, list[dict]]:
     ids = sorted({int(todo_id) for todo_id in todo_ids if int(todo_id) > 0})
     if not ids:
-        return 0
+        return 0, []
+    now = datetime.now()
+    completed_at = now.isoformat(timespec="seconds") if status == "done" else None
     placeholders = ",".join("?" for _ in ids)
     with conn() as c:
         c.execute('BEGIN IMMEDIATE')
         _reward_completed(c, ids, status)
+        spawned = _spawn_next_recurring_todos(c, ids, status, now)
         cursor = c.execute(
-            f"UPDATE todos SET status=?,user_edited=1,remind_at=CASE WHEN ?='done' THEN NULL ELSE remind_at END WHERE id IN ({placeholders})",
-            [status, status, *ids],
+            f"UPDATE todos SET status=?,user_edited=1,completed_at=CASE WHEN ?='done' THEN ? ELSE NULL END,"
+            f"remind_at=CASE WHEN ?='done' THEN NULL ELSE remind_at END WHERE id IN ({placeholders})",
+            [status, status, completed_at, status, *ids],
         )
-        return cursor.rowcount
+        return cursor.rowcount, spawned
+
+
+def set_todos_status(todo_ids: list[int], status: str) -> int:
+    updated, _ = set_todos_status_detailed(todo_ids, status)
+    return updated
 
 
 def _reward_completed(c, ids, status):

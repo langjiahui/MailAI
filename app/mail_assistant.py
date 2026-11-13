@@ -247,6 +247,227 @@ def _date_window(question):
     return None
 
 
+def _match_reason(meta: dict | None) -> str:
+    if not isinstance(meta, dict):
+        return ""
+    kind = meta.get("match_kind") or ""
+    ref = str(meta.get("source_ref") or "").strip()[:80]
+    if kind == "attachment":
+        return f"命中附件 · {ref}" if ref else "命中附件内容"
+    if kind == "thread":
+        return "命中历史会话脉络"
+    if kind == "body":
+        return "命中正文续篇"
+    return ""
+
+
+def _attach_match_meta(row: dict, meta: dict | None) -> dict:
+    if not row or not isinstance(meta, dict):
+        return row
+    prev = row.get("_match_meta") if isinstance(row.get("_match_meta"), dict) else {}
+    # Attachment keyword/semantic matches carry concrete filename & excerpt attribution.
+    if prev.get("match_kind") == "attachment" and meta.get("match_kind") != "attachment":
+        return row
+    cleaned = {**meta}
+    cleaned["match_reason"] = cleaned.get("match_reason") or _match_reason(cleaned)
+    row["_match_meta"] = cleaned
+    return row
+
+
+def _like_escape(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def _attachment_keyword_hits(connection, condition: str, args: list, terms: list[str], *, limit: int = 40) -> dict[int, dict]:
+    """Search locally cached attachment text within the caller's validated mail filter."""
+    needles = [str(t).strip().lower()[:80] for t in terms if str(t).strip()][:8]
+    if not needles:
+        return {}
+    if not connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='attachment_text_index'").fetchone():
+        return {}
+    clauses = " OR ".join("(lower(a.name) LIKE ? ESCAPE '\\' OR lower(a.body) LIKE ? ESCAPE '\\')" for _ in needles)
+    like_args = [arg for n in needles for arg in (f"%{_like_escape(n)}%", f"%{_like_escape(n)}%")]
+    rows = connection.execute(
+        f"SELECT a.email_id, a.name, a.body, a.note FROM attachment_text_index a "
+        f"JOIN emails e ON e.id=a.email_id "
+        f"WHERE a.email_id IN (SELECT id FROM emails WHERE {condition}) "
+        f"AND e.status NOT IN ('trash','spam','quarantine') AND ({clauses}) "
+        f"ORDER BY e.date DESC, e.id DESC LIMIT ?",
+        [*args, *like_args, limit],
+    ).fetchall()
+    hits: dict[int, dict] = {}
+    for r in rows:
+        body = str(r["body"] or "")
+        body_low = body.lower()
+        name_low = str(r["name"] or "").lower()
+        matched_count = sum(1 for n in needles if n in name_low or n in body_low)
+        excerpt = ""
+        for n in needles:
+            pos = body_low.find(n)
+            if pos >= 0:
+                excerpt = body[max(0, pos - 40):min(len(body), pos + 140)]
+                break
+        if not excerpt:
+            excerpt = body[:180]
+        excerpt = re.sub(r"\s+", " ", excerpt).strip()
+        email_id = int(r["email_id"])
+        prev = hits.get(email_id)
+        if not prev or matched_count > prev["hits"]:
+            hits[email_id] = {
+                "match_kind": "attachment",
+                "source_ref": str(r["name"] or ""),
+                "excerpt": excerpt,
+                "note": str(r["note"] or ""),
+                "hits": max(1, matched_count),
+            }
+    return hits
+
+
+def _thread_keyword_hits(connection, condition: str, args: list, terms: list[str], *, limit: int = 40) -> dict[int, dict]:
+    """Search saved thread summaries within the caller's validated mail filter."""
+    needles = [str(t).strip().lower()[:80] for t in terms if str(t).strip()][:8]
+    if not needles:
+        return {}
+    if not connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='threads'").fetchone():
+        return {}
+    clauses = " OR ".join("lower(coalesce(t.summary,'')) LIKE ? ESCAPE '\\'" for _ in needles)
+    like_args = [f"%{_like_escape(n)}%" for n in needles]
+    rows = connection.execute(
+        f"SELECT e.id AS email_id, e.subject, t.summary FROM threads t "
+        f"JOIN emails e ON e.thread_id=t.thread_id "
+        f"WHERE e.id IN (SELECT id FROM emails WHERE {condition}) AND ({clauses}) "
+        f"ORDER BY e.date DESC, e.id DESC LIMIT ?",
+        [*args, *like_args, limit],
+    ).fetchall()
+    hits: dict[int, dict] = {}
+    for r in rows:
+        summary = str(r["summary"] or "")
+        low = summary.lower()
+        matched_count = sum(1 for n in needles if n in low)
+        excerpt = re.sub(r"\s+", " ", summary).strip()[:220]
+        email_id = int(r["email_id"])
+        if email_id not in hits:
+            hits[email_id] = {
+                "match_kind": "thread",
+                "source_ref": str(r["subject"] or ""),
+                "excerpt": excerpt,
+                "hits": max(1, matched_count),
+            }
+    return hits
+
+
+def _thread_context_block(email: dict, *, connection=None) -> str:
+    """Return a concise redacted summary + peer context when the mail belongs to a thread."""
+    thread_id = str(email.get("thread_id") or "").strip()
+    if not thread_id or email.get("status") in ("trash", "spam", "quarantine"):
+        return ""
+    def _load(c):
+        summary = ""
+        if c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='threads'").fetchone():
+            tr = c.execute("SELECT summary FROM threads WHERE thread_id=?", (thread_id,)).fetchone()
+            summary = str((tr["summary"] if tr else "") or "").strip()
+        peers = c.execute(
+            "SELECT subject, from_name, from_addr, date, snippet, substr(body_text,1,200) AS body_head "
+            "FROM emails WHERE thread_id=? AND id<>? AND remote_missing=0 "
+            "AND status NOT IN ('trash','spam','quarantine') ORDER BY date DESC, id DESC LIMIT 2",
+            (thread_id, email["id"]),
+        ).fetchall()
+        return summary, peers
+    if connection is not None:
+        summary, peers = _load(connection)
+    else:
+        with db.conn() as c:
+            summary, peers = _load(c)
+    if not summary and not peers:
+        return ""
+    lines = []
+    if summary:
+        lines.append("摘要：" + parser.redact(summary[:320]))
+    for peer in reversed(peers):
+        who = str(peer["from_name"] or peer["from_addr"] or "").strip()[:50]
+        head = parser.redact(re.sub(r"\s+", " ", str(peer["snippet"] or peer["body_head"] or "")).strip()[:140])
+        lines.append(f"- [{str(peer['date'] or '')[:10]}] {who}（{str(peer['subject'] or '')[:80]}）：{head}")
+    return "\n历史会话脉络：\n" + "\n".join(lines)
+
+
+def _attachment_context_block(email: dict, terms: list[str], *, connection=None) -> str:
+    """Return bounded, redacted excerpts from locally extracted attachment cache for this email."""
+    if email.get("status") in ("trash", "spam", "quarantine"):
+        return ""
+    def _load(c):
+        if not c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='attachment_text_index'").fetchone():
+            return []
+        return c.execute(
+            "SELECT name, body, note FROM attachment_text_index WHERE email_id=? ORDER BY attachment_index LIMIT 3",
+            (email["id"],),
+        ).fetchall()
+    if connection is not None:
+        rows = _load(connection)
+    else:
+        with db.conn() as c:
+            rows = _load(c)
+    if not rows:
+        return ""
+    parts = []
+    budget = 900
+    low_terms = [str(t).strip().lower() for t in terms if str(t).strip()]
+    for r in rows:
+        if budget <= 80:
+            break
+        body = str(r["body"] or "").strip()
+        if not body:
+            continue
+        snippet = ""
+        body_low = body.lower()
+        for t in low_terms:
+            pos = body_low.find(t)
+            if pos >= 0:
+                snippet = body[max(0, pos - 60):min(len(body), pos + 260)]
+                break
+        if not snippet:
+            snippet = body[:360]
+        snippet = parser.redact(re.sub(r"\s+", " ", snippet).strip())[:budget]
+        note = str(r["note"] or "")[:80]
+        parts.append(f"[本地已提取附件片段（非全文）：{str(r['name'] or '')[:80]}；{note}]\n{snippet}")
+        budget -= len(snippet) + 40
+    return ("\n" + "\n".join(parts)) if parts else ""
+
+
+def _build_mail_context(sources: list[dict], question: str, *, search_mode: bool = False) -> list[str]:
+    """Assemble per-email context blocks (headers, body, thread peers, extracted attachment snippets)."""
+    terms = _terms(question)
+    context = []
+    with db.conn() as c:
+        for e in sources:
+            body_limit = max(1800, min(config.LLM_MAX_BODY_CHARS, 20000))
+            body = parser.redact((e.get("body_text") or "")[:body_limit])
+            findings = e.get("findings") or []
+            finding_text = "；".join(
+                f"{f.get('code','')}:{f.get('detail','')}" for f in findings[:6] if isinstance(f, dict)
+            )
+            thread_block = _thread_context_block(e, connection=c)
+            attachment_block = _attachment_context_block(e, terms, connection=c)
+            context.append(
+                f"[email_id:{e['id']}] 日期:{e.get('date','')} 发件人:{e.get('from_addr','')}\n"
+                + (_search_mail_metadata(e) if search_mode else '') +
+                f"主题:{e.get('subject','')}\n安全判定:{e.get('verdict','clean')} 风险分:{e.get('score',0)} "
+                f"状态:{e.get('status','')} 命中证据:{finding_text or '无'}\n"
+                f"{risk_context(e)}\n"
+                f"摘要:{e.get('summary') or e.get('snippet') or ''}\n正文:{body}"
+                f"{thread_block}{attachment_block}"
+            )
+    from .work_assistant import saved_context
+    if saved := saved_context([e['id'] for e in sources]):
+        context.append(saved)
+    from .work_memory import approved_context
+    if memory := approved_context(question):
+        context.append(memory)
+    from .recipient_profiles import assistant_context as recipient_assistant_context
+    if persona_ctx := recipient_assistant_context(question, sources):
+        context.append(persona_ctx)
+    return context
+
+
 def _qualified_rows(question, rows):
     window = _date_window(question)
     if window:
@@ -310,6 +531,18 @@ def retrieve(question: str, limit: int = 20) -> list[dict]:
     # 关键词问题先从整个本地邮箱筛选候选集，避免邮箱超过 2000 封后漏检。
     emails = db.search_emails(terms, limit=400) if terms else db.list_emails(days=9999, limit=400)
     emails = _qualified_rows(question, emails)
+    att_hits = {}
+    thread_hits = {}
+    if terms:
+        with db.conn() as c:
+            base_cond = "remote_missing=0"
+            att_hits = _attachment_keyword_hits(c, base_cond, [], terms)
+            thread_hits = _thread_keyword_hits(c, base_cond, [], terms)
+        existing_ids = {item["id"] for item in emails}
+        extra_ids = [eid for eid in (*att_hits, *thread_hits) if eid not in existing_ids]
+        if extra_ids:
+            extra_rows = _qualified_rows(question, [row for eid in extra_ids if (row := db.get_email(eid)) and not row.get("remote_missing")])
+            emails = [*emails, *extra_rows]
     scored = []
     for item in emails:
         hay = " ".join(str(item.get(k) or "") for k in
@@ -318,6 +551,13 @@ def retrieve(question: str, limit: int = 20) -> list[dict]:
         sender_name = (item.get("from_name") or "").strip().lower()
         sender_addr = (item.get("from_addr") or "").strip().lower()
         score = sum((4 if term in subject else 1) for term in terms if term in hay)
+        eid = item["id"]
+        if eid in att_hits:
+            score += 3 * att_hits[eid]["hits"]
+            _attach_match_meta(item, att_hits[eid])
+        if eid in thread_hits:
+            score += 2 * thread_hits[eid]["hits"]
+            _attach_match_meta(item, thread_hits[eid])
         # 用户明确说出发件人姓名或地址时，优先于正文中偶然出现的同名词。
         if sender_name and len(sender_name) >= 2 and sender_name in question.lower():
             score += 30
@@ -440,8 +680,14 @@ def _source_citations(sources, with_preview=False):
         item = {"id": email["id"], "subject": email.get("subject") or "（无主题）",
                 "from_name": email.get("from_name") or "", "from_addr": email.get("from_addr") or "",
                 "date": email.get("date") or "", "score": email.get("score") or 0}
+        meta = email.get("_match_meta") if isinstance(email.get("_match_meta"), dict) else None
+        if meta and meta.get("match_reason"):
+            item["match_reason"] = meta["match_reason"]
         if with_preview:
-            text = re.sub(r'\s+', ' ', str(email.get('summary') or email.get('snippet') or email.get('body_text') or '')[:4000]).strip()
+            if meta and meta.get("match_kind") in ("attachment", "thread") and meta.get("excerpt"):
+                text = re.sub(r'\s+', ' ', str(meta["excerpt"])).strip()
+            else:
+                text = re.sub(r'\s+', ' ', str(email.get('summary') or email.get('snippet') or email.get('body_text') or '')[:4000]).strip()
             text = parser.redact(text[:1000])
             item['preview'] = text[:280] + ('…' if len(text) > 280 else '')
         citations.append(item)
@@ -516,15 +762,22 @@ def _sources(question, email_ids):
         if work_sources is not None:
             return work_sources
         rows = retrieve(question)
-        # 可选语义检索：把向量相似但关键词未命中的邮件补充进上下文
+        # 可选语义检索：把向量相似但关键词未命中的邮件补充进上下文（含附件切片与历史会话）
         from . import semantic
         if semantic.enabled():
             try:
                 seen = {r["id"] for r in rows}
-                for email_id in semantic.search(question, limit=8):
+                semantic_ids = semantic.search(question, limit=8)
+                hit_map = semantic.hit_details(question, semantic_ids)
+                for row in rows:
+                    if row["id"] in hit_map:
+                        _attach_match_meta(row, hit_map[row["id"]])
+                for email_id in semantic_ids:
                     if email_id not in seen:
                         row = db.get_email(email_id)
                         if row and not row.get("remote_missing"):
+                            if email_id in hit_map:
+                                _attach_match_meta(row, hit_map[email_id])
                             rows.append(row)
                             seen.add(email_id)
             except Exception:
@@ -641,13 +894,25 @@ def _search_result(question, history=None, search_context=None):
             condition += ' AND status=?'
             args.append('draft' if mailbox == 'drafts' else mailbox)
         candidates = {}
+        att_hits = {}
+        thread_hits = {}
+        semantic_meta = {}
         if terms or hard or plan is not None:
             keyword, values = predicate(c,terms)
             rows = c.execute(f'SELECT {db.EMAIL_LIST_COLUMNS},body_text FROM emails WHERE {condition} AND {keyword} ORDER BY date DESC,id DESC LIMIT 400',[*args,*values]).fetchall()
             candidates.update((r['id'],dict(r)) for r in rows)
+            if terms:
+                att_hits = _attachment_keyword_hits(c, condition, args, terms)
+                thread_hits = _thread_keyword_hits(c, condition, args, terms)
+                extra_ids = [eid for eid in (*att_hits, *thread_hits) if eid not in candidates]
+                if extra_ids:
+                    marks = ','.join('?' for _ in extra_ids)
+                    extra_rows = c.execute(f'SELECT {db.EMAIL_LIST_COLUMNS},body_text FROM emails WHERE {condition} AND id IN ({marks})',[*args,*extra_ids]).fetchall()
+                    candidates.update((r['id'],dict(r)) for r in extra_rows)
         if text and semantic.enabled():
             try:
                 ids = list(dict.fromkeys(semantic.search(question[:1000],limit=12)))[:12]
+                semantic_meta = semantic.hit_details(question[:1000], ids)
                 if ids:
                     marks = ','.join('?' for _ in ids)
                     rows = c.execute(f'SELECT {db.EMAIL_LIST_COLUMNS},body_text FROM emails WHERE {condition} AND id IN ({marks})',[*args,*ids]).fetchall()
@@ -658,11 +923,22 @@ def _search_result(question, history=None, search_context=None):
             subject = str(row.get('subject') or '').lower()
             sender = str(row.get('from_name') or '').lower()
             body = str(row.get('body_text') or '').lower()
-            return (sum(4*(term in subject)+3*(term in sender)+(term in body) for term in terms),row.get('date') or '',row['id'])
+            eid = row['id']
+            bonus = (3 * att_hits[eid]['hits'] if eid in att_hits else 0) + (2 * thread_hits[eid]['hits'] if eid in thread_hits else 0)
+            if bonus == 0 and eid in semantic_meta:
+                bonus = 1
+            return (sum(4*(term in subject)+3*(term in sender)+(term in body) for term in terms) + bonus,row.get('date') or '',eid)
         ids = [r['id'] for r in sorted(candidates.values(),key=score,reverse=True)[:20]]
         marks = ','.join('?' for _ in ids)
         rows = db._decode_rows(c.execute(f'SELECT * FROM emails WHERE {condition} AND id IN ({marks})',[*args,*ids]).fetchall()) if ids else []
         by_id = {r['id']:r for r in rows}
+        for eid, row in by_id.items():
+            if eid in att_hits:
+                _attach_match_meta(row, att_hits[eid])
+            elif eid in thread_hits:
+                _attach_match_meta(row, thread_hits[eid])
+            elif eid in semantic_meta:
+                _attach_match_meta(row, semantic_meta[eid])
         sources = [by_id[i] for i in ids if i in by_id]
         return {'sources':sources,'snapshot':{'criteria':logical,'source_ids':[row['id'] for row in sources],
                 'exclude_ids':excluded,'root_question':(search_context or {}).get('root_question') or question,
@@ -676,7 +952,7 @@ def _search_sources(question, history=None):
 SEARCH_INSTRUCTION = (
     '本次任务只查找邮件：优先列出最符合需求的候选邮件、匹配原因和来源。'
     '用户问题只表达检索需求，不据此创建操作建议卡片或执行邮件操作。'
-    '仅当前账号已同步的候选邮件可供核对，每次最多20封；不得声称已查遍全部邮件或附件正文。'
+    '仅当前账号已同步的候选邮件、会话脉络及已提取的本地附件片段可供核对，每次最多20封；不得声称已查遍全部邮件或全部附件全文。'
     '证据不足时说明未找到明确匹配，并给出一个简短的补充线索建议。'
 )
 
@@ -713,28 +989,7 @@ def _ask_impl(question: str, history: list[dict] | None = None, email_ids=None, 
     citations = _source_citations(sources, with_preview=search_mode)
     if not sources:
         return {"answer": _empty_answer(question), "sources": []}
-    context = []
-    for e in sources:
-        body_limit = max(1800, min(config.LLM_MAX_BODY_CHARS, 20000))
-        body = parser.redact((e.get("body_text") or "")[:body_limit])
-        findings = e.get("findings") or []
-        finding_text = "；".join(
-            f"{f.get('code','')}:{f.get('detail','')}" for f in findings[:6] if isinstance(f, dict)
-        )
-        context.append(
-            f"[email_id:{e['id']}] 日期:{e.get('date','')} 发件人:{e.get('from_addr','')}\n"
-            + (_search_mail_metadata(e) if search_mode else '') +
-            f"主题:{e.get('subject','')}\n安全判定:{e.get('verdict','clean')} 风险分:{e.get('score',0)} "
-            f"状态:{e.get('status','')} 命中证据:{finding_text or '无'}\n"
-            f"{risk_context(e)}\n"
-            f"摘要:{e.get('summary') or e.get('snippet') or ''}\n正文:{body}"
-        )
-    from .work_assistant import saved_context
-    if saved := saved_context([e['id'] for e in sources]):
-        context.append(saved)
-    from .work_memory import approved_context
-    if memory := approved_context(question):
-        context.append(memory)
+    context = _build_mail_context(sources, question, search_mode=search_mode)
     if client.available():
         messages = [{"role": "system", "content": (
             "你叫小邮，是用户身边可靠、干练、有分寸的工作伙伴。只能依据提供的邮件上下文回答，不得编造。"
@@ -868,23 +1123,7 @@ def ask_stream(question: str, history: list[dict] | None = None, email_ids=None,
                      "detail": "正在分析内容并组织回答",
                      "message_en": f"Found {len(sources)} relevant mail(s)",
                      "detail_en": "Analyzing the content and preparing an answer"}
-    context = []
-    for e in sources:
-        findings = e.get("findings") or []
-        finding_text = "；".join(f"{f.get('code','')}:{f.get('detail','')}" for f in findings[:6] if isinstance(f, dict))
-        context.append(
-            f"[email_id:{e['id']}] 日期:{e.get('date','')} 发件人:{e.get('from_addr','')}\n主题:{e.get('subject','')}\n"
-            + (_search_mail_metadata(e) if search_mode else '') +
-            f"安全判定:{e.get('verdict','clean')} 风险分:{e.get('score',0)} 状态:{e.get('status','')} 命中证据:{finding_text or '无'}\n"
-            f"{risk_context(e)}\n"
-            f"摘要:{e.get('summary') or e.get('snippet') or ''}\n正文:{parser.redact((e.get('body_text') or '')[:max(1800, min(config.LLM_MAX_BODY_CHARS, 20000))])}"
-        )
-    from .work_assistant import saved_context
-    if saved := saved_context([e['id'] for e in sources]):
-        context.append(saved)
-    from .work_memory import approved_context
-    if memory := approved_context(question):
-        context.append(memory)
+    context = _build_mail_context(sources, task_question, search_mode=search_mode)
     messages = [{"role": "system", "content": (
         "你叫小邮，是用户身边可靠、干练、有分寸的工作伙伴。只能依据提供的邮件上下文回答，不得编造。回答使用简洁中文；"
         "历史对话中提到的图片原图不在本次输入中，不能声称看过；需核对图中细节时请用户重新上传。"

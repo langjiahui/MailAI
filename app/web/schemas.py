@@ -91,6 +91,7 @@ class ContactRequest(BaseModel):
     group_name: str = ''
     profile: dict | None = None
     directory_revision: str | None = None
+    comm_profile: dict | None = None
 
 
 class ContactPendingRequest(ContactRequest):
@@ -127,6 +128,7 @@ class MailPreflightRequest(BaseModel):
     mode: str = "compose"
     reply_to_email_id: int | None = None
     original_text: str = ""
+    allow_empty_recipients: bool = False
 
 
 class TodoUpdateRequest(BaseModel):
@@ -134,6 +136,29 @@ class TodoUpdateRequest(BaseModel):
     deadline: str | None = None
     stage: str | None = None
     kind: str | None = None
+    remind_at: str | None = None
+    recurrence: str | None = None
+
+
+class TodoCreateRequest(BaseModel):
+    title: str
+    deadline: str | None = None
+    stage: str = "active"
+    kind: str = "execution"
+    remind_at: str | None = None
+    recurrence: str = ""
+
+
+class TodoSnoozeRequest(BaseModel):
+    preset: Literal["tomorrow", "next_monday", "plus_3d"] | None = None
+    deadline: str | None = None
+    remind_at: str | None = None
+
+
+class TodoBulkSnoozeRequest(BaseModel):
+    ids: list[int] = Field(min_length=1, max_length=200)
+    preset: Literal["tomorrow", "next_monday", "plus_3d"] | None = None
+    deadline: str | None = None
     remind_at: str | None = None
 
 

@@ -405,12 +405,15 @@ const I18N_MESSAGES = {
     'semantic.cardDesc': 'Understands mails with similar meaning via a local embedding model, improving the assistant\'s retrieval',
     'semantic.enable': 'Enable semantic search',
     'semantic.enableHint': 'Indexes new mail automatically; the first run downloads ~100MB. Mail stays on this device.',
-    'semantic.note': 'Covers the latest 5,000 emails: subject, summary and the first 800 body characters. Indexing runs in the background; busy models fall back to keyword results. Source checkouts need requirements-semantic.txt.',
+    'semantic.note': 'Covers the latest 5,000 emails: subject, summary, full body chunks, thread context, and extracted attachment text. Indexing runs in the background; busy models fall back to keyword results. Source checkouts need requirements-semantic.txt.',
     'semantic.queued': 'Queued for background indexing. You can keep using your mail.',
     'semantic.indexFailed': 'Index update incomplete. Retry when ready; keyword search remains available.',
     'semantic.reindexBtn': 'Rebuild index',
     'semantic.noDeps': 'Optional component not installed (requirements-semantic.txt)',
     'semantic.indexed': 'Indexed {n} mails',
+    'semantic.withAttachmentsAndThreads': ' ({a} attachments, {t} threads)',
+    'semantic.withAttachments': ' ({a} attachments)',
+    'semantic.withThreads': ' ({t} threads)',
     'semantic.notIndexed': 'Not indexed yet',
     'semantic.error': 'Unable to read status',
     'semantic.saving': 'Saving…',
@@ -506,9 +509,18 @@ const I18N_MESSAGES = {
     "guide.location": "Entry point",
     "guide.shortcuts.title": "Keyboard shortcuts",
     "guide.shortcuts.command": "Command menu",
+    "guide.shortcuts.help": "Shortcut reference",
     "guide.shortcuts.search": "Search mail",
+    "guide.shortcuts.compose": "Compose mail",
     "guide.shortcuts.read": "Next / previous mail",
     "guide.shortcuts.reply": "Reply",
+    "guide.shortcuts.replyAll": "Reply / all / forward",
+    "guide.shortcuts.triage": "Mark done / next mail",
+    "guide.shortcuts.workflow": "Schedule handling",
+    "guide.shortcuts.todo": "Add to todos",
+    "guide.shortcuts.unread": "Toggle read/unread",
+    "guide.shortcuts.star": "Toggle star",
+    "guide.shortcuts.ai": "XiaoYou summary / nudge",
     "guide.shortcuts.note": "Single-key shortcuts are inactive while typing, in dialogs or while composing.",
     "guide.topic.mailbox.title": "Mail accounts & sync",
     "guide.topic.mailbox.desc": "Connect several mailboxes and check each account’s sync status.",
@@ -2562,6 +2574,7 @@ const MAILAI_UI_COPY = {
   "command.empty": ["没有匹配的命令", "No matching commands"],
   "command.navigate": ["选择", "Select"],
   "command.execute": ["打开", "Open"],
+  "command.shortcuts": ["快捷键", "Shortcuts"],
   "command.close": ["关闭", "Close"],
   "command.searchCurrent": ["搜索当前邮件", "Search current mail"],
   "command.currentAccount": ["当前邮箱：{0}", "Current mailbox: {0}"],
@@ -2572,6 +2585,57 @@ const MAILAI_UI_COPY = {
   "command.commonActions": ["常用操作", "Quick actions"],
   "command.settings": ["设置", "Settings"],
   "command.searchGroup": ["搜索邮件", "Search mail"],
+  "command.currentMailGroup": ["当前邮件操作", "Current mail actions"],
+  "command.currentMailTag": ["当前邮件", "Current mail"],
+  "command.recentTag": ["最近使用", "Recent"],
+  "command.followupsTodo": ["发信跟进（待办中心）", "Sent follow-ups (Todo center)"],
+  "command.shortcutsGuide": ["快捷键速查", "Shortcut reference"],
+  "command.filterReply": ["仅看「待回复」邮件", "Show Needs reply mail"],
+  "command.filterFocus": ["仅看重点邮件", "Show Focused mail"],
+  "command.filterAll": ["显示全部邮件", "Show all mail"],
+  "command.replyCurrent": ["回复当前邮件", "Reply to current mail"],
+  "command.doneNext": ["标为已处理并看下一封", "Mark done and open next"],
+  "command.doneNextShort": ["已处理+下一封", "Done + Next"],
+  "command.markDone": ["标为已处理", "Mark as done"],
+  "command.markReply": ["标为「待回复」", "Mark as Needs reply"],
+  "command.scheduleWorkflow": ["安排处理状态与时间", "Schedule handling & time"],
+  "command.askXiaoYou": ["让小邮总结与解读", "Ask XiaoYou to summarize"],
+  "command.askXiaoYouReply": ["让小邮拟定回复", "Draft reply with XiaoYou"],
+  "command.addTodoTask": ["加入待办 / 安排任务", "Add todo / schedule task"],
+  "command.addTodoShort": ["加待办", "Add todo"],
+  "command.askXiaoYouShort": ["问小邮", "Ask Xiaoyou"],
+  "command.forwardMail": ["转发邮件", "Forward mail"],
+  "command.favoriteMail": ["收藏此邮件", "Favorite this mail"],
+  "command.unfavoriteMail": ["取消收藏", "Remove favorite"],
+  "command.aiFollowupDraft": ["AI 一键催办草稿", "AI follow-up draft"],
+  "command.aiFollowupShort": ["AI 催办草稿", "AI follow-up"],
+  "command.starMail": ["添加星标", "Star mail"],
+  "command.unstarMail": ["取消星标", "Remove star"],
+  "command.trashMail": ["移入已删除", "Move to trash"],
+  "command.undoWorkflow": ["撤销上次处理标定", "Undo last status change"],
+  "command.toastSelectOne": ["请先选择一封邮件", "Select a message first"],
+  "command.toastMarkedState": ["已标记为「{0}」", "Marked as \"{0}\""],
+  "command.toastDoneNext": ["已标为已处理，并切到下一封", "Marked done and opened next mail"],
+  "command.toastUndoState": ["已撤销，恢复为「{0}」", "Undone, restored to \"{0}\""],
+  "command.toastMarkedRead": ["已标为已读", "Marked as read"],
+  "command.toastMarkedUnread": ["已标为未读", "Marked as unread"],
+  "command.toastLocalStar": ["仅本地保留的邮件请使用收藏", "Use Favorites for local-only messages"],
+  "command.toastStarred": ["已添加星标", "Starred"],
+  "command.toastUnstarred": ["已取消星标", "Star removed"],
+  "command.toastAskSummary": ["总结这封邮件的重点和需要我处理的事项", "Summarize key points and action items for this email"],
+  "shortcuts.panelTitle": ["工作台快捷键", "Workbench shortcuts"],
+  "shortcuts.globalGroup": ["全局与导航", "Global & navigation"],
+  "shortcuts.paletteAction": ["快捷操作面板", "Quick command palette"],
+  "shortcuts.composeAction": ["写新邮件", "Compose mail"],
+  "shortcuts.mailGroup": ["邮件快速操作", "Quick mail actions"],
+  "shortcuts.replyGroup": ["回复 / 回复全部 / 转发", "Reply / Reply all / Forward"],
+  "shortcuts.unreadToggle": ["标为未读 / 已读", "Mark unread / read"],
+  "shortcuts.starToggle": ["星标 / 取消星标", "Toggle star"],
+  "shortcuts.workflowGroup": ["处理状态与 AI 待办", "Workflow & AI todos"],
+  "shortcuts.doneNextAction": ["已处理并切下一封", "Mark done & next"],
+  "shortcuts.aiUnderstandOrNudge": ["让小邮总结与解读（已发送支持 AI 催办）", "XiaoYou summary (AI nudge on sent mail)"],
+  "shortcuts.footerHint": ["提示：也可在 ⌘K 面板内直接搜索并执行当前邮件操作。", "Tip: you can also search and run current mail actions inside ⌘K."],
+  "shortcuts.openPalette": ["打开快捷操作", "Open quick actions"],
   "nativeMenu.viewTitle": ["显示菜单", "View"],
   "nativeMenu.8a1474446080": ["关于 MailAI", "About MailAI"],
   "nativeMenu.2ba74de12dbb": ["检查更新…", "Check for Updates…"],
@@ -17134,7 +17198,406 @@ const MAILAI_UI_COPY = {
   "mailTags.1ad8b915dc7a": ["每次最多读取 1000 封邮件的标签", "Read labels for up to 1,000 messages at a time"],
   "mailTags.f721beb2e89f": ["无效的标签编辑快照，请重新打开设置窗口", "The label editing snapshot is invalid. Reopen the label picker."],
   "mailTags.b0a2b1a013da": ["规则条件无效，请重新设置", "Invalid rule conditions. Set them again."],
-  "mailTags.3f6c514b0fc1": ["重试剩余 {0} 封", "Retry remaining {0} messages"]
+  "mailTags.3f6c514b0fc1": ["重试剩余 {0} 封", "Retry remaining {0} messages"],
+
+  "followup.empty": ["暂无待跟进的已发送邮件", "No sent emails waiting for a reply"],
+  "followup.emptyHint": ["写信时在“发送安排”中设置未回复提醒，或打开已发送邮件点击“安排跟进”，这里会自动汇总并在到期时提示一键催办。", "Enable a follow-up reminder when sending or on a sent email to track pending replies and draft nudges here."],
+  "followup.aiAction": ["AI 催办", "AI Nudge"],
+  "followup.aiOneClick": ["AI 一键催办", "AI One-Click Nudge"],
+  "followup.reschedule": ["改期", "Reschedule"],
+  "followup.after3Days": ["3 天后", "In 3 days"],
+  "followup.markDone": ["完成跟进", "Done"],
+  "followup.stopFollowup": ["不再跟进", "Stop"],
+  "followup.reopen": ["重新跟进", "Re-follow up"],
+  "followup.viewSent": ["查看原信", "View sent"],
+  "followup.viewReply": ["查看对方回复", "View reply"],
+  "followup.dueTag": ["跟进到期", "Follow-up due"],
+  "followup.repliedTag": ["已回信", "Replied"],
+  "followup.closedTag": ["已关闭", "Closed"],
+  "followup.toPrefix": ["发给 ", "To "],
+  "followup.sentToday": ["今天发送", "Sent today"],
+  "followup.sentDaysAgo": ["{0} 天前发送", "Sent {0}d ago"],
+  "followup.plannedAt": ["计划跟进 · {0}", "Planned · {0}"],
+  "followup.dueAt": ["跟进到期 · {0}", "Due · {0}"],
+  "followup.showClosed": ["显示已结束记录", "Show closed"],
+  "followup.onlyWaiting": ["仅看等待中", "Open only"],
+  "followup.toneLabel": ["催办语气", "Nudge tone"],
+  "followup.tonePolite": ["温和礼貌", "Gentle & polite"],
+  "followup.toneDirect": ["简短直接", "Brief & direct"],
+  "followup.toneFormal": ["正式商务", "Formal"],
+  "followup.barSummary": ["共 {0} 封等待回复 · {1} 封已到期", "{0} awaiting reply · {1} due"],
+  "followup.barSummarySimple": ["共 {0} 封等待回复", "{0} awaiting reply"],
+  "followup.canceledToast": ["已关闭该跟进提醒", "Follow-up closed"],
+  "followup.reopenedToast": ["已重新安排明天跟进", "Scheduled follow-up for tomorrow"],
+  "followup.rescheduledToast": ["已调整跟进时间", "Follow-up time updated"],
+  "followup.scheduleAction": ["安排跟进", "Schedule follow-up"],
+  "followup.scheduledToast": ["已加入发信跟进（待办中心可查看）", "Added to Follow-ups in To-do Center"],
+  "followup.draftReadyModel": ["小邮已结合原邮件生成跟进草稿；发送前请核对。", "XiaoYou drafted a follow-up from your original email; review before sending."],
+  "followup.draftReadyOffline": ["未连接 AI 模型，已生成基础跟进草稿；发送前请核对。", "No AI model connected; generated a standard follow-up draft to review."],
+  "followup.draftReadyFallback": ["AI 暂未响应，已生成本地跟进草稿；发送前请核对。", "AI did not respond; generated a local follow-up draft to review."],
+  "followup.summaryDue": ["{0} 封待催办", "{0} follow-ups due"],
+  "followup.summaryActive": ["{0} 封跟进中", "{0} follow-ups"],
+  "followup.summaryOnlyDue": ["{0} 封发信待催办", "{0} sent follow-ups due"],
+  "followup.summaryOnlyActive": ["{0} 封发信等待回复", "{0} sent emails awaiting reply"],
+  "followup.summaryAppend": ["{0} · {1}", "{0} · {1}"],
+  "followup.chooseTimeFirst": ["暂未选择具体时间", "Please pick a date and time first"],
+  "followup.manageInTodo": ["在待办中心管理", "Open in To-do Center"],
+  "persona.role.leader": ["汇报对象 / 领导", "Leader / Reporting Line"],
+  "persona.role.customer": ["客户 / 重要外部", "Customer / External VIP"],
+  "persona.role.colleague": ["内部同事 / 协作", "Colleague / Internal"],
+  "persona.role.partner": ["合作方 / 供应商", "Partner / Vendor"],
+  "persona.short.leader": ["领导", "Leader"],
+  "persona.short.customer": ["客户", "Customer"],
+  "persona.short.colleague": ["同事", "Colleague"],
+  "persona.short.partner": ["合作方", "Partner"],
+  "persona.explicitPrefix": ["角色：{0}", "Role: {0}"],
+  "persona.inferredPrefix": ["识别：{0}", "Detected: {0}"],
+  "persona.sectionTitle": ["沟通画像与写作预设", "Communication Persona & Presets"],
+  "persona.sectionHint": ["用于写信、催办与小邮草拟时匹配语气与签名", "Matches tone and signature for compose, follow-ups, and XiaoYou"],
+  "persona.roleLabel": ["沟通角色", "Communication role"],
+  "persona.roleAuto": ["自动识别", "Auto-detect"],
+  "persona.tone": ["默认语气", "Default tone"],
+  "persona.toneFollowRole": ["跟随角色预设", "Follow role preset"],
+  "persona.salutation": ["常用称呼", "Preferred salutation"],
+  "persona.salutationPh": ["例如：张总您好：", "e.g., Dear Alex,"],
+  "persona.signature": ["专属签名", "Dedicated signature"],
+  "persona.sigFollowDefault": ["跟随角色或默认签名", "Follow role or default"],
+  "persona.writingHint": ["沟通与写作要求", "Writing & terminology notes"],
+  "persona.writingHintPh": ["例如：先给结论与风险；对外称呼用贵司", "e.g., Lead with conclusions and risks; keep terminology formal"],
+  "persona.inferredHint": ["当前识别：{0}", "Detected: {0}"],
+  "persona.rolePresetsTitle": ["分角色写作与签名预设", "Role Writing & Signature Presets"],
+  "persona.rolePresetsDesc": ["为不同沟通对象配置默认语气、称呼风格、写作要点与匹配签名；仅保存在当前邮箱。", "Configure default tone, greeting style, writing tips, and signature for each role."],
+  "persona.loading": ["正在加载…", "Loading…"],
+  "persona.sigDefaultGlobal": ["使用全局默认签名", "Use global default signature"],
+  "persona.salutationHintLabel": ["称呼习惯参考", "Greeting guidance"],
+  "persona.styleHintLabel": ["写作与措辞要点", "Writing guidance"],
+  "persona.savePresets": ["保存角色预设", "Save presets"],
+  "persona.presetsSaved": ["分角色写作预设已保存", "Role presets saved"],
+  "persona.rolePresetsBtnAria": ["配置分角色写作与签名预设", "Configure role writing and signature presets"],
+  "persona.btnRolePresets": ["角色写作预设", "Role Presets"],
+  "persona.aiBasisOff": ["未勾选「收件人」参考项，AI 不会读取收件人画像", "Recipients unchecked; AI will not use recipient persona"],
+  "persona.suggestedTone": ["语气：{0}", "Tone: {0}"],
+  "persona.suggestedSalutation": ["称呼：{0}", "Greeting: {0}"],
+  "persona.matchedMemories": ["命中记忆 {0} 条", "{0} memory item(s)"],
+  "persona.aiBasisNote": ["已匹配收件人画像：{0}", "Recipient persona matched: {0}"],
+  "persona.noneHint": ["未设角色 · 可补充称呼与签名", "No role · add greeting & signature"],
+  "persona.suggestedSig": ["签名：{0}", "Signature: {0}"],
+  "persona.insertSalutation": ["插入称呼", "Insert greeting"],
+  "persona.applyMatch": ["应用匹配设置", "Apply match"],
+  "persona.editContactPersona": ["调整画像", "Edit persona"],
+  "persona.noEmailToEdit": ["请先填写有效的收件人邮箱", "Enter a valid recipient email first"],
+  "persona.quickTitle": ["调整收件人沟通画像", "Edit Recipient Persona"],
+  "persona.quickDesc": ["修改后仅保存在当前邮箱通讯录，并在下次写信、催办或回复时自动匹配。", "Saved locally in this account's contacts and applied automatically in compose and follow-ups."],
+  "persona.saveContactPersona": ["保存画像", "Save persona"],
+  "persona.contactPersonaSaved": ["联系人沟通画像已保存", "Recipient persona saved"],
+  "persona.applyDoneToast": ["已应用「{0}」写作语气与签名预设", "Applied tone and signature preset for {0}"],
+  "briefing.openFromTodo": ["生成工作简报（周报 / 月报）", "Generate Work Briefing (Weekly / Monthly)"],
+  "briefing.tabsAria": ["简报模式", "Briefing mode"],
+  "briefing.tabDaily": ["今日日报", "Daily Digest"],
+  "briefing.tabPeriodic": ["周报 / 月报", "Weekly / Monthly"],
+  "briefing.paneAria": ["周期工作简报", "Periodic Work Briefing"],
+  "briefing.period": ["周期", "Period"],
+  "briefing.thisWeek": ["本周", "This week"],
+  "briefing.last7Days": ["近 7 天", "Last 7 days"],
+  "briefing.thisMonth": ["本月", "This month"],
+  "briefing.last30Days": ["近 30 天", "Last 30 days"],
+  "briefing.custom": ["自定义", "Custom"],
+  "briefing.rangeStart": ["起", "From"],
+  "briefing.rangeEnd": ["止", "To"],
+  "briefing.style": ["汇报风格", "Style"],
+  "briefing.styleLeader": ["汇报领导（正式）", "Executive (Formal)"],
+  "briefing.styleTeam": ["团队同步（简洁）", "Team Sync (Concise)"],
+  "briefing.styleLog": ["个人复盘（详实）", "Personal Log (Detailed)"],
+  "briefing.focus": ["侧重点", "Focus"],
+  "briefing.focusPh": ["可选：例如突出项目交付、风险卡点", "Optional: e.g., highlight milestones or risks"],
+  "briefing.usePrefs": ["结合写作偏好", "Use writing preferences"],
+  "briefing.genAi": ["AI 智能生成", "Generate with AI"],
+  "briefing.genLocal": ["本地快速整理", "Quick Local Summary"],
+  "briefing.modeView": ["预览", "Preview"],
+  "briefing.modeEdit": ["编辑草稿", "Edit Draft"],
+  "briefing.historyAria": ["历史周期简报", "Saved briefings"],
+  "briefing.newOption": ["新建当前周期简报", "New current-period briefing"],
+  "briefing.delete": ["删除", "Delete"],
+  "briefing.save": ["保存记录", "Save"],
+  "briefing.copy": ["复制全文", "Copy"],
+  "briefing.compose": ["转为写信草稿", "Send as Email"],
+  "briefing.titlePh": ["简报标题 / 邮件主题", "Briefing title / email subject"],
+  "briefing.editorPh": ["在这里直接调整周报 / 月报内容…", "Edit your weekly or monthly briefing here…"],
+  "briefing.cmdPalette": ["周期工作简报（周报 / 月报）", "Periodic Work Briefing (Weekly / Monthly)"],
+  "briefing.titleShort": ["周期工作简报", "Periodic Work Briefing"],
+  "briefing.overdueTag": ["[过期]", "[Overdue]"],
+  "briefing.srcLocal": ["本地", "Local"],
+  "briefing.badgeAi": ["AI 智能提炼", "AI Synthesized"],
+  "briefing.badgeLocal": ["本地聚合整理", "Local Summary"],
+  "briefing.metricReceived": ["收件梳理", "Inbox Reviewed"],
+  "briefing.metricEmailsTpl": ["{0} 封", "{0} emails"],
+  "briefing.metricImportantTpl": ["重点 {0} 封", "{0} key"],
+  "briefing.metricSent": ["发出与跟进", "Sent & Follow-ups"],
+  "briefing.metricFollowupsTpl": ["待复 {0} · 已复 {1}", "{0} waiting · {1} replied"],
+  "briefing.metricDoneTodos": ["本期已完成待办", "Completed Todos"],
+  "briefing.metricItemsTpl": ["{0} 项", "{0} items"],
+  "briefing.metricProjectsTpl": ["项目：{0}", "Projects: {0}"],
+  "briefing.metricOpenTodos": ["下阶段待推进", "Open Next Steps"],
+  "briefing.metricOverdueTpl": ["含逾期 {0} 项", "{0} overdue"],
+  "briefing.metricNoOverdue": ["暂无逾期", "On track"],
+  "briefing.emptyHintTpl": ["当前周期统计：收件 {0} 封、发件 {1} 封、完成待办 {2} 项、待推进 {3} 项。点击上方按钮即可聚合生成可编辑草稿。", "Window summary: {0} received, {1} sent, {2} todos done, {3} open. Click above to generate an editable draft."],
+  "briefing.emptyFallback": ["聚合当前邮箱的往来邮件、待办进度与发信跟进，快速生成周报或月报草稿。", "Aggregate mail, todos, and follow-ups in this account into a weekly or monthly report."],
+  "briefing.readyAi": ["已汇总本地工作数据，可点击「AI 智能生成」或「本地快速整理」", "Local activity aggregated. Choose AI generation or Quick Local Summary."],
+  "briefing.readyLocal": ["当前未配置模型，点击「本地快速整理」可离线零等待生成", "No model configured. Click Quick Local Summary for instant offline generation."],
+  "briefing.generatingLocal": ["正在整理本地工作数据…", "Summarizing local activity…"],
+  "briefing.generatingAuto": ["正在聚合数据并生成工作简报…", "Aggregating activity and generating briefing…"],
+  "briefing.genHttpFailTpl": ["生成失败（{0}）", "Generation failed ({0})"],
+  "briefing.genFail": ["生成失败", "Generation failed"],
+  "briefing.doneStatus": ["简报已生成并自动保存，可切换「编辑草稿」微调后复制或转写信", "Briefing generated and saved. Edit, copy, or send it as an email."],
+  "briefing.doneToast": ["周期工作简报已生成", "Periodic work briefing generated"],
+  "briefing.savedToast": ["简报修改已保存", "Briefing saved"],
+  "briefing.saveErr": ["保存失败：", "Save failed: "],
+  "briefing.historyStatusTpl": ["历史简报 · {0} ~ {1}", "Saved briefing · {0} ~ {1}"],
+  "briefing.loadErr": ["读取简报失败：", "Failed to load briefing: "],
+  "briefing.deletedToast": ["已删除该条简报记录", "Briefing deleted"],
+  "briefing.deleteErr": ["删除失败：", "Delete failed: "],
+  "briefing.copiedClean": ["已复制纯净正文（可直接粘贴至企微 / 钉钉 / OA）", "Clean briefing text copied"],
+  "briefing.copiedClip": ["已复制到剪贴板", "Copied to clipboard"],
+  "briefing.defaultSubj": ["【工作周报】", "[Weekly Report]"],
+  "briefing.composeToast": ["已将周期简报填入发信正文；填入收件人后可自动匹配角色与签名", "Briefing inserted into compose. Add a recipient to match persona and signature."],
+  "timeline.openFromTodo": ["日程时间线", "Schedule Timeline"],
+  "timeline.title": ["日程时间线 & 系统日历协同", "Schedule Timeline & System Calendar"],
+  "timeline.subtitle": ["自动聚合待办截止、发信跟进、ICS 会议邀请与自建日程，检测时段冲突并同步日历", "Aggregate todos, follow-ups, ICS invites, and custom events with conflict checks & calendar sync"],
+  "timeline.filterAll": ["全部", "All"],
+  "timeline.filterTodo": ["待办", "Todos"],
+  "timeline.filterFollowup": ["发信跟进", "Follow-ups"],
+  "timeline.filterIcs": ["会议邀请", "Invites"],
+  "timeline.filterCustom": ["自建日程", "Custom"],
+  "timeline.rangeAria": ["时间范围", "Time range"],
+  "timeline.range14": ["近 7 天 + 未来 14 天", "Last 7d + Next 14d"],
+  "timeline.range30": ["近 7 天 + 未来 30 天", "Last 7d + Next 30d"],
+  "timeline.range7": ["近 7 天 + 未来 7 天", "Last 7d + Next 7d"],
+  "timeline.includeDone": ["含已完成", "Include Done"],
+  "timeline.newBtn": ["+ 新建日程", "+ New Event"],
+  "timeline.formTitle": ["日程标题", "Event Title"],
+  "timeline.formTitlePh": ["例如：版本评审会 / 客户电话", "e.g., Release Review / Client Call"],
+  "timeline.formStart": ["开始时间", "Start"],
+  "timeline.formEnd": ["结束时间", "End"],
+  "timeline.formLocation": ["地点 / 会议室", "Location"],
+  "timeline.formLocationPh": ["可选：线下会议室或线上链接", "Optional: room or meeting link"],
+  "timeline.formDesc": ["备注", "Notes"],
+  "timeline.formDescPh": ["可选：议程要点或准备事项", "Optional: agenda or notes"],
+  "timeline.formAllDay": ["全天事件", "All-day event"],
+  "timeline.formCancel": ["取消", "Cancel"],
+  "timeline.formSubmit": ["添加至时间线", "Add to Timeline"],
+  "timeline.selectAll": ["全选当前", "Select Visible"],
+  "timeline.systemSelectAria": ["目标系统日历", "Target system calendar"],
+  "timeline.exportBatch": ["导出 .ics", "Export .ics"],
+  "timeline.systemAdd": ["写入系统日历", "Add to macOS Calendar"],
+  "timeline.jsSelectedTpl": ["已选 {0} 项", "{0} selected"],
+  "timeline.jsCancelAll": ["取消全选", "Clear Selection"],
+  "timeline.jsSummaryTotal": ["近期日程", "Upcoming Items"],
+  "timeline.jsSummaryOverdue": ["已逾期", "Overdue"],
+  "timeline.jsSummaryToday": ["今日安排", "Today"],
+  "timeline.jsSummaryConflicts": ["时段冲突", "Time Conflicts"],
+  "timeline.jsConflictsTpl": ["{0} 处", "{0}"],
+  "timeline.jsAllday": ["全天", "All Day"],
+  "timeline.jsConflictBadgeTpl": ["时段冲突：{0}", "Overlaps: {0}"],
+  "timeline.jsLocationTpl": ["地点：{0}", "Location: {0}"],
+  "timeline.jsComplete": ["完成", "Complete"],
+  "timeline.jsOpenEmail": ["查看邮件", "View Email"],
+  "timeline.jsDelete": ["删除", "Delete"],
+  "timeline.jsEmpty": ["当前范围暂无日程安排，可点击「+ 新建日程」添加，或先同步包含待办与会议邀请的邮件。", "No scheduled items in this window. Click + New Event or sync emails with todos and invites."],
+  "timeline.jsSysIcsOnly": ["系统日历（请用 .ics 导入）", "System Calendar (use .ics export)"],
+  "timeline.jsSysNone": ["未读取到系统日历", "No system calendars detected"],
+  "timeline.jsSysHintIcs": ["可使用「导出 .ics」导入苹果日历", "Use Export .ics to import into Calendar"],
+  "timeline.jsSysOptionTpl": ["日历：{0}", "Calendar: {0}"],
+  "timeline.jsSysReady": ["支持写入 macOS「日历」或导出 .ics", "Ready for macOS Calendar or .ics export"],
+  "timeline.jsLoading": ["正在聚合待办、跟进与会议日程…", "Aggregating todos, follow-ups, and invites…"],
+  "timeline.jsLoadErr": ["读取日程时间线失败", "Failed to load schedule timeline"],
+  "timeline.jsValidateForm": ["请填写日程标题与开始时间", "Please enter a title and start time"],
+  "timeline.jsAddedToast": ["已添加自建日程", "Custom event added"],
+  "timeline.jsAddErr": ["创建日程失败", "Failed to create event"],
+  "timeline.jsTodoDoneToast": ["待办已标记完成", "Todo marked completed"],
+  "timeline.jsTodoErr": ["更新待办失败", "Failed to update todo"],
+  "timeline.jsDeletedToast": ["已删除自建日程", "Custom event deleted"],
+  "timeline.jsDelErr": ["删除日程失败", "Failed to delete event"],
+  "timeline.jsNeedSelect": ["请先勾选至少一条日程", "Select at least one item first"],
+  "timeline.jsExportDoneTpl": ["已导出 {0} 条日程至 schedule.ics", "Exported {0} item(s) to schedule.ics"],
+  "timeline.jsExportErr": ["导出 .ics 失败", "Failed to export .ics"],
+  "timeline.jsNeedSys": ["请先勾选日程并选择目标系统日历", "Select items and choose a target calendar"],
+  "timeline.jsSysAddedTpl": ["已写入「{0}」：新增 {1} 条，跳过重复 {2} 条", "Added to \"{0}\": {1} created, {2} skipped"],
+  "timeline.jsSysErr": ["写入系统日历失败", "Failed to add to macOS Calendar"],
+  "timeline.jsSysWriting": ["正在写入…", "Writing…"],
+  "timeline.prodOpenBtn": ["打开日程时间线", "Open Schedule Timeline"],
+  "timeline.cmdPalette": ["日程时间线（Deadlines & 会议）", "Schedule Timeline (Deadlines & Meetings)"],
+  "triage.openFromTodo": ["订阅降噪 & 自动分流", "Noise & Auto-Triage"],
+  "triage.title": ["订阅降噪与自动分流规则", "Subscription Cleanup & Auto-Triage"],
+  "triage.subtitle": ["识别高频重复推送并安全批处理，自定义新邮件入库自动已读、归档与打标签规则", "Detect recurring notifications safely and configure auto-read, workflow, and tag rules"],
+  "triage.tabsAria": ["分流中心模式", "Triage center mode"],
+  "triage.tabSubs": ["高频推送降噪", "Subscription Cleanup"],
+  "triage.tabRules": ["自动分流规则", "Auto-Triage Rules"],
+  "triage.subsSafety": ["仅统计安全收件箱邮件，绝不自动请求外网退订链接或删除服务器邮件。", "Scans clean inbox emails only. Never auto-fetches unsubscribe links or deletes mail."],
+  "triage.refresh": ["重新扫描", "Rescan"],
+  "triage.rulesHint": ["仅对干净收件箱邮件生效；隔离或疑似钓鱼邮件不会绕过安全检查。", "Applies to clean inbox emails only; quarantined or phishing mail never bypasses security."],
+  "triage.newRule": ["+ 新建分流规则", "+ New Rule"],
+  "triage.applyAll": ["对收件箱运行全部规则", "Run All Rules on Inbox"],
+  "triage.ruleName": ["规则名称", "Rule Name"],
+  "triage.ruleNamePh": ["例如：日报推送自动归档", "e.g., Auto-archive daily digests"],
+  "triage.matchMode": ["条件关系", "Match"],
+  "triage.matchAll": ["满足全部条件", "Match all conditions"],
+  "triage.matchAny": ["满足任一条件", "Match any condition"],
+  "triage.addCond": ["+ 添加条件", "+ Add Condition"],
+  "triage.actionState": ["处理状态", "Workflow State"],
+  "triage.stateKeep": ["保持不变", "Keep Unchanged"],
+  "triage.stateDone": ["标为已处理", "Mark Done"],
+  "triage.stateReply": ["标为待回复", "Mark Needs Reply"],
+  "triage.stateLater": ["稍后处理", "Snooze (Later)"],
+  "triage.laterHours": ["延后小时", "Snooze Hours"],
+  "triage.actionRead": ["自动设为已读", "Mark as Read"],
+  "triage.actionStar": ["自动星标", "Add Star"],
+  "triage.previewBtn": ["命中预览", "Preview Matches"],
+  "triage.cancelBtn": ["取消", "Cancel"],
+  "triage.saveRule": ["保存规则", "Save Rule"],
+  "triage.jsSummaryGroups": ["高频推送源", "Noisy Senders"],
+  "triage.jsGroupsTpl": ["{0} 个", "{0}"],
+  "triage.jsSummaryEmails": ["可整理邮件", "Emails Matched"],
+  "triage.jsEmailsTpl": ["{0} 封", "{0}"],
+  "triage.jsSummaryUnread": ["未读推送", "Unread Pushes"],
+  "triage.jsSummaryUnsub": ["含退订协议", "With Unsubscribe"],
+  "triage.jsSubsEmpty": ["暂未识别到重复通知或订阅推送，收件箱较为干净。", "No recurring notifications or newsletter pushes detected."],
+  "triage.jsUnsubTooltip": ["点击后在外部打开退订链接，请先确认发件人可信", "Opens external unsubscribe target after your review"],
+  "triage.jsUnsubMailto": ["查看退订邮箱", "Unsubscribe Email"],
+  "triage.jsUnsubPage": ["打开退订页", "Open Unsubscribe"],
+  "triage.jsTotalCountTpl": ["共 {0} 封", "{0} total"],
+  "triage.jsUnreadCountTpl": ["未读 {0} 封", "{0} unread"],
+  "triage.jsHasRuleBadge": ["已设自动规则", "Rule Active"],
+  "triage.jsKeepLatest": ["留最新 · 其余已读已处理", "Keep Latest · Done Rest"],
+  "triage.jsAllDone": ["全部已读已处理", "Mark All Read & Done"],
+  "triage.jsToRule": ["设为自动规则", "Create Rule"],
+  "triage.jsLatestSubjTpl": ["最近主题：{0}", "Latest: {0}"],
+  "triage.jsCondSub": ["识别为订阅推送", "Detected Subscription"],
+  "triage.jsFieldSender": ["发件人", "Sender"],
+  "triage.jsFieldDomain": ["发件域名", "Domain"],
+  "triage.jsFieldSubj": ["主题", "Subject"],
+  "triage.jsFieldBody": ["正文", "Body"],
+  "triage.jsOpContains": ["包含", "contains"],
+  "triage.jsOpEquals": ["等于", "equals"],
+  "triage.jsOpNotContains": ["不包含", "does not contain"],
+  "triage.jsActDone": ["标为已处理", "Mark Done"],
+  "triage.jsActLaterTpl": ["延后 {0} 小时", "Snooze {0}h"],
+  "triage.jsActReply": ["标为待回复", "Mark Needs Reply"],
+  "triage.jsActRead": ["设为已读", "Mark Read"],
+  "triage.jsActStar": ["加星标", "Star"],
+  "triage.jsActTagTpl": ["打标签：{0}", "Tags: {0}"],
+  "triage.jsOr": ["或", "OR"],
+  "triage.jsAnd": ["且", "AND"],
+  "triage.jsRulesEmpty": ["尚未配置自动分流规则，点击「+ 新建分流规则」即可按发件人、域名或主题自动归档与已读。", "No auto-triage rules yet. Click + New Rule to automate inbox routing."],
+  "triage.jsEnabled": ["已启用", "Enabled"],
+  "triage.jsDisabled": ["已停用", "Disabled"],
+  "triage.jsHitTpl": ["已命中 {0} 次", "{0} hits"],
+  "triage.jsDisable": ["停用", "Disable"],
+  "triage.jsEnable": ["启用", "Enable"],
+  "triage.jsRunNow": ["立即运行", "Run Now"],
+  "triage.jsEdit": ["编辑", "Edit"],
+  "triage.jsDelete": ["删除", "Delete"],
+  "triage.jsWhenTpl": ["条件：{0}", "When: {0}"],
+  "triage.jsThenTpl": ["动作：{0}", "Then: {0}"],
+  "triage.jsCondPh": ["填写关键词或发件人地址", "Enter keyword or sender address"],
+  "triage.jsRemove": ["移除", "Remove"],
+  "triage.jsScanning": ["正在扫描高频通知与订阅邮件…", "Scanning recurring notifications and subscriptions…"],
+  "triage.jsLoadErr": ["加载订阅与分流数据失败", "Failed to load triage data"],
+  "triage.jsBatchDoneTpl": ["已批量处理 {0} 封订阅推送", "Triaged {0} subscription message(s)"],
+  "triage.jsBatchErr": ["批量降噪失败", "Batch cleanup failed"],
+  "triage.jsAutoNameTpl": ["自动归档：{0}", "Auto-archive: {0}"],
+  "triage.jsPreviewNone": ["当前收件箱暂无匹配邮件，规则保存后将对新到达邮件生效。", "No current inbox matches. Rule will still apply to incoming mail."],
+  "triage.jsPreviewTpl": ["共命中 {0} 封收件箱邮件：", "{0} matching inbox email(s):"],
+  "triage.jsPreviewErr": ["预览规则失败", "Failed to preview rule"],
+  "triage.jsSaved": ["自动分流规则已保存", "Auto-triage rule saved"],
+  "triage.jsSaveErr": ["保存规则失败", "Failed to save rule"],
+  "triage.jsApplyAllTpl": ["已执行分流规则：命中 {0} 封，更新 {1} 封", "Applied rules: {0} matched, {1} updated"],
+  "triage.jsApplyErr": ["执行规则失败", "Failed to apply rules"],
+  "triage.jsApplyOneTpl": ["规则已运行：命中 {0} 封，更新 {1} 封", "Rule ran: {0} matched, {1} updated"],
+  "triage.jsDeleted": ["已删除自动分流规则", "Auto-triage rule deleted"],
+  "compose.guard": ["自检", "Guard"],
+  "compose.guardTitle": ["发信前多维自检：漏附、日期冲突、外发范围、凭据泄露与占位符", "Pre-send self-audit: attachments, date conflicts, recipients, secrets, and placeholders"],
+  "composeGuard.clean": ["已通过发信前多维自检：未发现漏附、日期冲突、凭据泄露、占位符或外发风险", "Pre-send self-audit passed: no missing attachments, date conflicts, leaked secrets, placeholders, or risky recipients found"],
+  "composeGuard.high": ["高风险", "High Risk"],
+  "composeGuard.warn": ["提醒", "Notice"],
+  "composeGuard.sourceFallback": ["发信检查", "Send Check"],
+  "todo.quickAddTitle": ["快速新建待办", "Quick create to-do"],
+  "todo.quickPh": ["快速记一条待办（无需关联邮件）…", "Quickly jot down a to-do (no email needed)…"],
+  "todo.quickTitleAria": ["快速新建待办标题", "New to-do title"],
+  "todo.recurrenceLabel": ["重复周期", "Recurrence"],
+  "todo.recNone": ["不重复", "Does not repeat"],
+  "todo.recWeekly": ["每周重复", "Weekly"],
+  "todo.recMonthly": ["每月重复", "Monthly"],
+  "todo.quickSubmit": ["新建", "Add"],
+  "todo.quickEmptyTitle": ["请先输入待办内容", "Enter a to-do first"],
+  "todo.quickCreated": ["已新建待办", "To-do created"],
+  "todo.quickCreatedRec": ["已新建周期待办", "Recurring to-do created"],
+  "todo.quickCreateErr": ["创建待办失败：", "Failed to create to-do: "],
+  "todo.recEditTitle": ["点击修改重复周期", "Click to edit recurrence"],
+  "todo.manualSource": ["手动创建", "Created manually"],
+  "todo.snoozeAction": ["推迟", "Snooze"],
+  "todo.snoozeTitle": ["快速推迟截止时间与提醒", "Snooze deadline and reminder"],
+  "todo.snoozeGroupTitle": ["快速推迟本组待办", "Snooze group to-dos"],
+  "todo.snoozePlus3d": ["+3 天", "+3 days"],
+  "todo.snoozedTo": ["已推迟至 {0}", "Snoozed to {0}"],
+  "todo.snoozedOk": ["已推迟待办时间", "To-do snoozed"],
+  "todo.snoozeErr": ["推迟失败：", "Failed to snooze: "],
+  "todo.recSpawnedAt": ["已完成，已生成下期待办（{0}）", "Completed; created next cycle ({0})"],
+  "todo.recSpawned": ["已完成，已生成下一周期的新待办", "Completed; created next cycle to-do"],
+  "calendar.service.titleRequired": ["请填写日程标题", "Enter an event title"],
+  "calendar.service.itemTitleMissing": ["日程条目缺少标题", "Event item is missing a title"],
+  "calendar.service.itemStartInvalid": ["“{1}”缺少有效开始时间", "\"{1}\" is missing a valid start time"],
+  "calendar.service.exportSelectOne": ["请至少选择一条日程事件导出", "Select at least one calendar event to export"],
+  "calendar.service.exportLimit": ["单次最多导出 100 条日程", "You can export up to 100 calendar events at a time"],
+  "calendar.service.macosOnlyIcs": ["仅 macOS 支持直写系统日历，请使用 .ics 文件导出导入", "Direct Calendar sync is only supported on macOS; export a .ics file instead"],
+  "calendar.service.unsupportedUseIcs": ["当前系统暂不支持直写系统日历，请改用「导出 .ics」导入", "Direct Calendar sync is not supported on this OS; export a .ics file instead"],
+  "calendar.service.syncSelectOne": ["请至少选择一条日程事件", "Select at least one calendar event"],
+  "calendar.service.syncLimit": ["单次最多向系统日历写入 50 条事件", "You can add up to 50 events to Calendar at a time"],
+  "calendar.service.endBeforeStart": ["结束日期不能早于开始日期", "End date cannot be earlier than start date"],
+  "calendar.service.macosPermDenied": ["尚未授权 MailAI 访问 macOS「日历」，请在系统设置 → 隐私与安全性 → 自动化中允许，或先导出 .ics 导入", "MailAI is not allowed to access macOS Calendar yet. Enable it in System Settings -> Privacy & Security -> Automation, or export a .ics file"],
+  "calendar.service.macosWriteErr": ["写入 macOS 日历失败：{1}", "Could not write to macOS Calendar: {1}"],
+  "calendar.service.allDayDateInvalid": ["全天日程需要有效的 YYYY-MM-DD 日期", "All-day events require a valid YYYY-MM-DD date"],
+  "calendar.service.notFound": ["日程不存在", "Calendar event not found"],
+  "briefing.service.periodUnsupported": ["不支持的简报周期", "Unsupported briefing period"],
+  "briefing.service.styleUnsupported": ["不支持的汇报风格", "Unsupported briefing style"],
+  "briefing.service.modeUnsupported": ["不支持的生成模式", "Unsupported generation mode"],
+  "briefing.service.emptyContent": ["简报内容不能为空", "Briefing content cannot be empty"],
+  "briefing.service.modelUnavailable": ["模型尚未配置或不可用，可改用本地快速汇总生成", "AI model is not configured or unavailable; use quick local summary instead"],
+  "briefing.service.notFoundRecord": ["简报记录不存在", "Briefing record not found"],
+  "briefing.service.aiConnFailed": ["AI 简报生成失败，请检查模型连接或改用本地汇总", "AI briefing failed; check your model connection or use local summary"],
+  "briefing.service.rangeLimit": ["单次周期简报范围最多支持 180 天", "Briefing date range supports up to 180 days at a time"],
+  "briefing.service.customRangeInvalid": ["自定义周期需要有效的 YYYY-MM-DD 起止日期", "Custom period requires valid YYYY-MM-DD start and end dates"],
+  "briefing.service.streamInterrupted": ["简报流式生成提前中断，请重试或改用本地汇总", "Briefing stream was interrupted early; retry or use local summary"],
+  "briefing.service.aiConfigFailed": ["AI 简报生成失败，请检查模型配置或改用本地汇总", "AI briefing failed; check your model settings or use local summary"],
+  "briefing.service.notFound": ["周期简报不存在", "Periodic briefing not found"],
+  "briefing.service.genInterrupted": ["周期简报生成中断，可重试或改用本地汇总", "Periodic briefing generation was interrupted; retry or use local summary"],
+  "persona.service.presetInvalid": ["角色预设格式无效", "Invalid role preset format"],
+  "persona.service.roleInvalid": ["沟通角色无效", "Invalid communication role"],
+  "persona.service.toneInvalid": ["默认语气无效", "Invalid default tone"],
+  "persona.service.signatureMissingPick": ["所选签名不存在，请重新选择", "Selected signature does not exist; choose another"],
+  "persona.service.roleToneInvalid": ["{0} 的默认语气无效", "Invalid default tone for {0}"],
+  "persona.service.signatureMissing": ["所选签名不存在或已被删除", "Selected signature does not exist or has been deleted"],
+  "followup.service.daysOrDate": ["请指定 1–90 天的跟进周期或选择具体跟进时间", "Specify a 1–90 day follow-up period or pick a specific date"],
+  "followup.service.daysInvalid": ["无效跟进天数", "Invalid follow-up days"],
+  "followup.service.toneInvalid": ["无效催办语气，仅支持 auto、polite、direct 或 formal", "Invalid follow-up tone; expected auto, polite, direct, or formal"],
+  "todo.service.snoozeTimeRequired": ["请选择推迟时间", "Select a snooze time"],
+  "todo.service.recurrenceUnsupported": ["重复周期仅支持不重复、每周或每月", "Recurrence must be none, weekly, or monthly"],
+  "todo.service.reopenBeforeSnooze": ["请先恢复已完成的待办，再推迟", "Reopen a completed to-do before snoozing"],
+  "triage.service.matchModeUnsupported": ["匹配方式仅支持 all（全部满足）或 any（任一满足）", "Match mode must be all or any"],
+  "triage.service.conditionsCount": ["请设置 1 至 15 条匹配条件", "Set 1 to 15 matching conditions"],
+  "triage.service.actionsRequired": ["请至少配置一项自动分流动作", "Configure at least one auto-triage action"],
+  "triage.service.handleStateInvalid": ["处理状态动作无效", "Invalid handling state action"],
+  "triage.service.tagsFormatInvalid": ["标签列表格式无效", "Invalid label list format"],
+  "triage.service.pickOneAction": ["请至少选择一项分流动作（如设为已处理、自动已读、星标或打标签）", "Choose at least one triage action (such as mark handled, mark read, star, or apply label)"],
+  "triage.service.ruleNameRequired": ["请填写规则名称", "Enter a rule name"],
+  "triage.service.senderRequired": ["缺少发件人邮箱地址", "Sender email address is missing"],
+  "triage.service.batchModeUnsupported": ["不支持的批处理模式", "Unsupported batch mode"],
+  "triage.service.noInboxForSender": ["未找到该发件人当前可处理的收件箱邮件", "No inbox messages found from this sender to process"],
+  "triage.service.conditionsFormatInvalid": ["规则条件格式无效", "Invalid rule conditions format"],
+  "triage.service.conditionFieldInvalid": ["条件字段仅支持发件人、发件域名、主题、正文或订阅识别", "Condition field must be sender, domain, subject, body, or subscription"],
+  "triage.service.conditionValueLength": ["请填写 1 至 300 字的条件匹配内容", "Enter 1 to 300 characters for condition match value"],
+  "triage.service.ruleNotFoundRefresh": ["规则不存在，请刷新后重试", "Rule not found; refresh and try again"],
+  "triage.service.ruleNotFoundInvalid": ["规则不存在或无效", "Rule not found or invalid"],
+  "triage.service.tagIdInvalid": ["标签 ID 无效", "Invalid label ID"]
 };
 const MAILAI_I18N_CHINESE = {
   "app.tagline": "邮件安全与效率助手",
@@ -17268,7 +17731,7 @@ const MAILAI_I18N_CHINESE = {
   "semantic.enable": "启用语义检索",
   "semantic.enableHint": "开启后自动更新索引；首次需下载约 100MB 模型，邮件留在本机",
   "semantic.reindexBtn": "重建索引",
-  "semantic.note": "当前覆盖最近 5000 封邮件的主题、摘要及正文前 800 字。索引在后台更新，模型繁忙时优先显示关键词结果。源码运行需安装 requirements-semantic.txt。",
+  "semantic.note": "当前覆盖最近 5000 封邮件的主题、摘要、正文分块、历史会话脉络及已提取的附件文字。索引在后台更新，模型繁忙时优先显示关键词结果。源码运行需安装 requirements-semantic.txt。",
   "guide.intro": "使用帮助",
   "guide.introHint": "从连接邮箱到日常办公，按当前需要找到下一步。",
   "guide.topics": "14 个功能主题",
@@ -17415,9 +17878,18 @@ const MAILAI_I18N_CHINESE = {
   "guide.shortcuts.title": "常用快捷键",
   "guide.shortcuts.note": "输入文字、弹窗和写信时，不触发单键快捷操作。",
   "guide.shortcuts.command": "快捷操作",
+  "guide.shortcuts.help": "快捷键速查",
   "guide.shortcuts.search": "搜索邮件",
+  "guide.shortcuts.compose": "写新邮件",
   "guide.shortcuts.read": "下一封 / 上一封",
   "guide.shortcuts.reply": "回复邮件",
+  "guide.shortcuts.replyAll": "回复 / 全部 / 转发",
+  "guide.shortcuts.triage": "标为已处理 / 切下一封",
+  "guide.shortcuts.workflow": "安排处理状态",
+  "guide.shortcuts.todo": "加入待办",
+  "guide.shortcuts.unread": "未读 / 已读切换",
+  "guide.shortcuts.star": "添加 / 取消星标",
+  "guide.shortcuts.ai": "小邮解读 / AI 催办",
   "guide.footer.title": "把 MailAI 调整得更顺手",
   "guide.footer.copy": "调整主题、字号与通知，或查看当前版本和更新。",
   "guide.footer.preferences": "显示与通知",
@@ -18549,6 +19021,9 @@ const MAILAI_I18N_CHINESE = {
   "semantic.needAccount": "添加邮箱后即可启用",
   "semantic.noDeps": "未安装可选依赖（requirements-semantic.txt）",
   "semantic.indexed": "已索引 {n} 封邮件",
+  "semantic.withAttachmentsAndThreads": "（含 {a} 份附件、{t} 段会话）",
+  "semantic.withAttachments": "（含 {a} 份附件）",
+  "semantic.withThreads": "（含 {t} 段会话）",
   "semantic.notIndexed": "尚未建立索引",
   "semantic.indexFailed": "索引更新未完成，可重试；关键词搜索仍可使用",
   "semantic.error": "暂时无法读取状态",
@@ -19310,6 +19785,10 @@ if (typeof document !== 'undefined') {
 function mailaiCopySource(label) {
   if (mailaiUICopyKeys.has(label)) return label;
   for (const [source, key] of mailaiUICopyKeys) if (I18N_MESSAGES.en[key] === label) return source;
+  for (const [, pair] of Object.entries(MAILAI_UI_COPY)) if (pair[1] === label) return pair[0];
+  for (const [key, source] of Object.entries(MAILAI_I18N_CHINESE)) {
+    if (typeof source === 'string' && I18N_MESSAGES.en[key] === label) return source;
+  }
   for (const [key, [source, english]] of mailaiSystemPatterns) {
     if (english.replace(/\{\d+\}/g, '').trim().length < 8) continue;
     const parameters = mailaiUIReadParameters(english, label);
@@ -19721,6 +20200,123 @@ function mailaiLabelHTML(label) {
 })();
 
 ;
+/* ---- mailai-state.js ---- */
+/* Shared state convergence and module registry for MailAI frontend modules. */
+(() => {
+  const registry = new Map();
+  const state = {
+    account: {id: '', user: '', unified: false},
+    mailbox: {specialMailbox: '', serverFolder: '', selectedEmailId: null, total: 0},
+    todos: {open: false, accountId: '', count: 0, loading: false},
+    compose: {open: false, accountId: '', mode: 'compose', draftId: null},
+    ui: {view: 'mailbox', theme: 'light', language: 'zh-CN'},
+  };
+  const listeners = new Map();
+
+  function cloneSlice(slice) {
+    const current = state[slice];
+    return current && typeof current === 'object' ? {...current} : current;
+  }
+
+  function notify(slice, next, prev) {
+    const subs = listeners.get(slice);
+    if (!subs?.size) return;
+    subs.forEach(fn => {
+      try { fn(cloneSlice(slice), prev ? {...prev} : prev, slice); } catch (_) {}
+    });
+  }
+
+  window.MailAIModules = {
+    register(name, exports = {}) {
+      const key = String(name || '').trim();
+      if (!key) return exports;
+      const entry = Object.freeze({...exports});
+      registry.set(key, entry);
+      window.dispatchEvent(new CustomEvent('mailai:module-registered', {detail: {name: key}}));
+      return entry;
+    },
+    get(name) {
+      return registry.get(String(name || '').trim()) || null;
+    },
+    has(name) {
+      return registry.has(String(name || '').trim());
+    },
+    list() {
+      return [...registry.keys()];
+    },
+  };
+
+  window.MailAIState = {
+    get(slice) {
+      if (!slice) return this.snapshot();
+      return cloneSlice(slice);
+    },
+    set(slice, patch) {
+      if (!Object.prototype.hasOwnProperty.call(state, slice) || !patch || typeof patch !== 'object') return cloneSlice(slice);
+      const prev = {...state[slice]};
+      let changed = false;
+      const next = {...prev};
+      for (const [k, v] of Object.entries(patch)) {
+        if (!Object.is(prev[k], v)) {
+          next[k] = v;
+          changed = true;
+        }
+      }
+      if (!changed) return next;
+      state[slice] = next;
+      notify(slice, next, prev);
+      return {...next};
+    },
+    subscribe(slice, handler) {
+      if (typeof handler !== 'function') return () => {};
+      if (!listeners.has(slice)) listeners.set(slice, new Set());
+      const bucket = listeners.get(slice);
+      bucket.add(handler);
+      return () => bucket.delete(handler);
+    },
+    snapshot() {
+      return {
+        account: {...state.account},
+        mailbox: {...state.mailbox},
+        todos: {...state.todos},
+        compose: {...state.compose},
+        ui: {...state.ui},
+      };
+    },
+  };
+
+  window.MailAICore = {
+    readStorage(key, fallback = '') {
+      try {
+        const value = localStorage.getItem(key);
+        return value === null ? fallback : value;
+      } catch (_) {
+        return fallback;
+      }
+    },
+    writeStorage(key, value) {
+      try {
+        localStorage.setItem(key, String(value));
+        return true;
+      } catch (_) {
+        return false;
+      }
+    },
+    bindBackdropClose(selector, onClose) {
+      const node = document.querySelector(selector);
+      if (!node || typeof onClose !== 'function') return null;
+      node.addEventListener('click', onClose);
+      return node;
+    },
+  };
+
+  window.MailAIModules.register('state', {
+    state: window.MailAIState,
+    core: window.MailAICore,
+  });
+})();
+
+;
 /* ---- app.js ---- */
 const API = '';
 
@@ -19988,7 +20584,7 @@ function chooseContact(index) {
   const prefix = split >= 0 ? normalizeRecipientText(value.slice(0, split)) : '';
   contactInput.value = [prefix, contactRecipientValue(item)].filter(Boolean).join(', ');
   contactInput.focus();
-  hideContactSuggestions(); queueDraftSave(); refreshComposeAiContext();
+  hideContactSuggestions(); queueDraftSave(); refreshComposeAiContext(); window.mailaiScheduleComposePersona?.(40);
 }
 
 function highlightContact(index) {
@@ -20215,7 +20811,7 @@ function assistantSourcesHtml(sources = [], accountId = '') {
     <summary><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14v11H3zM3 5l7 6 7-6"/></svg><span><span data-i18n="ui.17f30557fb63">参考邮件</span></span><em><span data-i18n="ui.eca498c1d243">${items.length} 封</span></em><span class="source-disclosure"><span class="source-expand"><span data-i18n="ui.00bd3960fea8">展开</span></span><span class="source-collapse"><span data-i18n="ui.afd4b783536b">收起</span></span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m5 6 3 3 3-3"/></svg></span></summary>
     <div class="assistant-source-list" role="list" aria-label="本次回答的参考邮件" data-i18n-aria="ui.e127c0657d05">${items.map((source, index) => {
       const title = source.subject || mailaiText('（无主题）');
-      const meta = [source.from_addr, source.date ? String(source.date).slice(0, 10) : ''].filter(Boolean).join(' · ');
+      const meta = [source.match_reason, source.from_addr, source.date ? String(source.date).slice(0, 10) : ''].filter(Boolean).join(' · ');
       return `<div role="listitem"><button type="button" data-email-id="${Number(source.id)}" data-source-account="${esc(accountId)}" aria-label="查看参考邮件 ${index + 1}：${esc(title)}" data-i18n-aria="ui.5084aca82354"><span class="source-index">${index + 1}</span><span class="source-copy"><span class="source-subject">${esc(title)}</span>${meta ? `<small>${esc(meta)}</small>` : ''}</span><span class="source-open" aria-hidden="true">↗</span></button></div>`;
     }).join('')}</div></details>`;
 }
@@ -21231,6 +21827,7 @@ async function openCompose(seed = {}) {
   mailaiBindUI(send, "title", () => (sendCapability.reason || mailaiText('发送邮件')));
   document.getElementById('compose-modal').classList.remove('hidden');
   document.body.classList.add('compose-open');
+  globalThis.MailAIState?.set('compose', {open:true, accountId:composeAccountId, mode:composeContext.mode, draftId:currentDraftId});
   const session = draftSession;
   restoreSharedFileTasks(session, composeAccountId);
   send.disabled = true;
@@ -21242,11 +21839,15 @@ async function openCompose(seed = {}) {
   const initialSignatureRevision = composeSignatureRevision;
   loadSignatures().then(state => {
     // A late default must not replace a signature/AI signoff chosen while loading.
-    if (session === draftSession && !session.canceled && !seed.id && !currentSignatureId &&
+    if (session === draftSession && !session.canceled && !seed.id &&
         composeSignatureRevision === initialSignatureRevision &&
-        !document.getElementById('compose-signature-content').innerText.trim())
-      renderComposeSignature(state.default_id || '');
+        !document.getElementById('compose-signature-content').innerText.trim()) {
+      if (currentSignatureId) renderComposeSignature(currentSignatureId);
+      else renderComposeSignature(state.default_id || '');
+    }
+    if (session === draftSession && !session.canceled) window.mailaiSyncComposePersona?.({session, seed});
   }).catch(() => {});
+  window.mailaiSyncComposePersona?.({session, seed});
   try { document.execCommand('styleWithCSS', false, true); } catch (_) {}
   resetComposeAiPanel();
   (composeContext.mode === 'forward' ? document.getElementById('compose-to') : composeMessageElement()).focus();
@@ -21325,258 +21926,7 @@ function closeComposePreview() {
   document.getElementById('compose-preview-frame').srcdoc = '';
 }
 
-function closeShareLinkDialog() {
-  document.getElementById('share-link-dialog').classList.add('hidden');
-}
-
-async function openShareLinkDialog() {
-  const session = draftSession, accountId = composeAccountId;
-  const current = () => session === draftSession && accountId === composeAccountId && !session.canceled;
-  document.getElementById('share-link-dialog').classList.remove('hidden');
-  document.getElementById('share-cos-file').focus();
-  try {
-    const state = await api('/api/share-storage/config', {accountId});
-    if (!current() || document.getElementById('share-link-dialog').classList.contains('hidden')) return;
-    document.getElementById('share-cos-bucket').value = state.bucket || '';
-    document.getElementById('share-cos-region').value = state.region || '';
-    document.getElementById('share-cos-id').value = state.secret_id || '';
-    document.getElementById('share-cos-key').value = '';
-    document.querySelector('.share-cos-config').classList.toggle('hidden', Boolean(state.credential_available));
-    document.getElementById('share-cos-settings-toggle').classList.toggle('hidden', !state.credential_available);
-    mailaiBindUI(document.getElementById('share-cos-status'), "textContent", () => (state.credential_available ? mailaiText('存储已连接。大附件会自动转为下载链接。') : mailaiText('首次连接需要腾讯云存储信息，保存后无需重复填写。也可直接把已有网盘分享链接粘贴到正文。')));
-  } catch (error) {
-    if (!current()) return;
-    mailaiBindUI(document.getElementById('share-cos-status'), "textContent", () => (mailaiText('无法读取 COS 配置：') + mailaiSystemMessage(error.message)));
-  }
-}
-
-function normalizeShareUrl(value) {
-  try {
-    const url = new URL(String(value || '').trim());
-    if (url.protocol !== 'https:' || url.username || url.password || !url.hostname || url.href.length > 4096) return '';
-    return url.href;
-  } catch (_) { return ''; }
-}
-
-function insertSharedLink(name, value, expiresAt = '', closeDialog = true) {
-  const url = normalizeShareUrl(value);
-  if (!url) throw new Error(mailaiText('请填写有效的 HTTPS 分享链接'));
-  const title = String(name || '').trim().slice(0, 160) || mailaiText('共享文件');
-  const block = document.createElement('p');
-  block.dataset.mailaiSharedLink = 'true';
-  const heading = document.createElement('strong');
-  mailaiBindUI(heading, "textContent", () => (mailaiTemplate`共享文件：${title}`));
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.textContent = url;
-  anchor.target = '_blank';
-  anchor.rel = 'noopener noreferrer';
-  block.append(heading, document.createElement('br'), anchor);
-  if (expiresAt && Number.isFinite(Date.parse(expiresAt))) {
-    const expiry = document.createElement('small');
-    mailaiBindUI(expiry, "textContent", () => (mailaiTemplate`下载链接有效至 ${new Date(expiresAt).toLocaleString(currentI18nLanguage())}`));
-    block.append(document.createElement('br'), expiry);
-  }
-  composeMessageElement().append(block);
-  clearComposePreflight();
-  queueDraftSave();
-  refreshComposeAiContext();
-  if (closeDialog) closeShareLinkDialog();
-  composeMessageElement().focus();
-}
-
-function uploadCosFile(file, days, accountId, onProgress, endpoint = "/api/share-storage/upload") {
-  return new Promise((resolve, reject) => {
-    const request = new XMLHttpRequest();
-    request.open('POST', endpoint);
-    request.timeout = 30 * 60 * 1000;
-    request.setRequestHeader('X-MailAI-Account', accountId);
-    request.setRequestHeader('X-MailAI-Filename', encodeURIComponent(file.name));
-    request.setRequestHeader('X-MailAI-Expiry-Days', String(days));
-    request.setRequestHeader('Content-Type', 'application/octet-stream');
-    request.upload.onprogress = event => { if (event.lengthComputable) onProgress(Math.round(event.loaded / event.total * 100)); };
-    request.onerror = () => reject(new Error(mailaiText('上传连接中断，请检查网络后重试')));
-    request.ontimeout = () => reject(new Error(mailaiText('上传等待超时，请检查网络后重试')));
-    request.onabort = () => reject(new Error(mailaiText('上传已取消')));
-    request.onload = () => {
-      let response;
-      try { response = JSON.parse(request.responseText); } catch (_) { response = {}; }
-      if (request.status >= 200 && request.status < 300) resolve(response);
-      else reject(new Error(response.detail || mailaiTemplate`上传失败（${request.status}）`));
-    };
-    request.send(file);
-  });
-}
-
-function signatureProfileFromForm() {
-  const fields = ['name','title','department','company','phone','email','website'];
-  return Object.fromEntries(fields.map(key => [key, document.getElementById(`signature-profile-${key}`).value.trim()]));
-}
-
-function fillSignatureProfile(profile = {}) {
-  for (const key of ['name','title','department','company','phone','email','website']) document.getElementById(`signature-profile-${key}`).value = profile[key] || '';
-}
-
-let savedSignatureRange = null;
-let selectedSignatureImage = null;
-function rememberSignatureSelection() {
-  const editor = document.getElementById('signature-editor');
-  const selection = window.getSelection();
-  if (!selection?.rangeCount || !editor.contains(selection.anchorNode)) return;
-  savedSignatureRange = selection.getRangeAt(0).cloneRange();
-}
-
-function clearSignatureImageSelection() {
-  selectedSignatureImage?.classList.remove('signature-image-selected');
-  selectedSignatureImage = null;
-  document.getElementById('signature-image-controls').classList.add('hidden');
-}
-
-function signatureImageNaturalWidth(image) {
-  return image.naturalWidth || Number(image.getAttribute('width')) || Math.round(image.getBoundingClientRect().width) || 1;
-}
-
-function signatureImageWidth(image) {
-  return Number(image.getAttribute('width')) || Math.round(image.getBoundingClientRect().width) || signatureImageNaturalWidth(image);
-}
-
-function refreshSignatureImageControls() {
-  const image = selectedSignatureImage;
-  const editor = document.getElementById('signature-editor');
-  if (!image || !editor.contains(image)) return clearSignatureImageSelection();
-  const width = signatureImageWidth(image);
-  const percent = Math.max(1, Math.round(width / signatureImageNaturalWidth(image) * 100));
-  document.getElementById('signature-image-width').value = String(width);
-  document.getElementById('signature-image-scale').value = String(Math.min(200, percent));
-  document.getElementById('signature-image-scale-value').textContent = `${percent}%`;
-  document.querySelectorAll('[data-signature-image-scale]').forEach(button => {
-    button.classList.toggle('active', Number(button.dataset.signatureImageScale) === percent);
-  });
-}
-
-function selectSignatureImage(image) {
-  if (!image || !document.getElementById('signature-editor').contains(image)) return;
-  clearSignatureImageSelection();
-  selectedSignatureImage = image;
-  image.classList.add('signature-image-selected');
-  document.getElementById('signature-image-controls').classList.remove('hidden');
-  refreshSignatureImageControls();
-  if (!image.complete) image.addEventListener('load', () => {
-    if (selectedSignatureImage === image) refreshSignatureImageControls();
-  }, {once:true});
-}
-
-function setSignatureImageWidth(value) {
-  if (!selectedSignatureImage || !document.getElementById('signature-editor').contains(selectedSignatureImage)) return clearSignatureImageSelection();
-  const width = Math.min(1200, Math.max(16, Math.round(Number(value) || 0)));
-  selectedSignatureImage.setAttribute('width', String(width));
-  selectedSignatureImage.removeAttribute('height');
-  selectedSignatureImage.style.width = `${width}px`;
-  selectedSignatureImage.style.maxWidth = '100%';
-  selectedSignatureImage.style.height = 'auto';
-  refreshSignatureImageControls();
-}
-
-async function insertSignatureImage(file) {
-  if (!file) return;
-  if (!/^image\/(png|jpeg|gif|webp)$/i.test(file.type)) return toast(mailaiText('支持 PNG、JPEG、GIF 或 WebP 图片'), 'warn');
-  if (file.size > 5 * 1024 * 1024) return toast(mailaiText('单张签名图片不能超过 5MB'), 'warn');
-  const signatureId = editingSignatureId;
-  const src = `data:${file.type};base64,${await readFileAsBase64(file)}`;
-  if (document.getElementById('signature-manager').classList.contains('hidden') || signatureId !== editingSignatureId) return;
-  const editor = document.getElementById('signature-editor');
-  const image = document.createElement('img');
-  image.addEventListener('load', () => {
-    if (!image.hasAttribute('width')) setSignatureImageWidthForNewImage(image);
-  }, {once:true});
-  image.src = src;
-  image.alt = file.name;
-  image.style.cssText = 'max-width:100%;height:auto;vertical-align:middle';
-  const range = savedSignatureRange && editor.contains(savedSignatureRange.commonAncestorContainer)
-    ? savedSignatureRange.cloneRange() : document.createRange();
-  if (!editor.contains(range.commonAncestorContainer)) range.selectNodeContents(editor);
-  if (!savedSignatureRange || !editor.contains(savedSignatureRange.commonAncestorContainer)) range.collapse(false);
-  range.deleteContents();
-  range.insertNode(image);
-  range.setStartAfter(image);
-  range.collapse(true);
-  editor.focus();
-  const selection = window.getSelection();
-  selection.removeAllRanges();
-  selection.addRange(range);
-  savedSignatureRange = range.cloneRange();
-  selectSignatureImage(image);
-}
-
-function setSignatureImageWidthForNewImage(image) {
-  const width = Math.min(360, image.naturalWidth || 360);
-  if (selectedSignatureImage === image) setSignatureImageWidth(width);
-  else {
-    image.setAttribute('width', String(width));
-    image.style.width = `${width}px`;
-  }
-}
-
-function editSignature(signatureId = '') {
-  editingSignatureId = signatureId;
-  savedSignatureRange = null;
-  clearSignatureImageSelection();
-  const item = signatureState.items.find(row => row.id === signatureId);
-  document.getElementById('signature-name').value = item?.name || '';
-  document.getElementById('signature-editor').innerHTML = item?.html || '';
-  document.getElementById('signature-make-default').checked = Boolean(signatureId && signatureId === signatureState.default_id);
-  document.getElementById('btn-delete-signature').disabled = !item;
-  document.querySelectorAll('[data-signature-id]').forEach(button => button.classList.toggle('active', button.dataset.signatureId === signatureId));
-}
-
-function renderSignatureManager() {
-  fillSignatureProfile(signatureState.profile || {});
-  document.getElementById('signature-list').innerHTML = signatureState.items.length ? signatureState.items.map(item => `<button type="button" data-signature-id="${esc(item.id)}"><span>${esc(item.name)}</span>${item.id === signatureState.default_id ? "<small><span data-i18n=\"ui.844b8cc8dff7\">默认</span></small>" : ''}</button>`).join('') : "<p><span data-i18n=\"ui.559aa7c8eb41\">还没有签名</span><br><small><span data-i18n=\"ui.f1322541d545\">新建一套或让 AI 帮你生成</span></small></p>";
-  document.getElementById('btn-ai-generate-signature').disabled = !signatureState.ai_available;
-  mailaiBindUI(document.getElementById('btn-ai-generate-signature'), "title", () => (signatureState.ai_available ? mailaiText('根据发件人资料生成签名') : mailaiText('请先在系统中心配置 AI 模型')));
-  editSignature(editingSignatureId && signatureState.items.some(item => item.id === editingSignatureId) ? editingSignatureId : (signatureState.items[0]?.id || ''));
-}
-
-async function openSignatureManager() {
-  try { await loadSignatures(); } catch (err) { return toast(mailaiText('加载签名失败：') + mailaiSystemMessage(err.message), 'error'); }
-  renderSignatureManager();
-  document.getElementById('signature-ai-options').classList.add('hidden');
-  document.getElementById('signature-manager').classList.remove('hidden');
-}
-
-function closeSignatureManager() {
-  clearSignatureImageSelection();
-  document.getElementById('signature-manager').classList.add('hidden');
-}
-
-async function saveSignature() {
-  const name = document.getElementById('signature-name').value.trim();
-  const editorCopy = document.getElementById('signature-editor').cloneNode(true);
-  editorCopy.querySelectorAll('.signature-image-selected').forEach(image => image.classList.remove('signature-image-selected'));
-  const html = editorCopy.innerHTML.trim();
-  if (!name || !(document.getElementById('signature-editor').innerText.trim() || document.querySelector('#signature-editor img'))) return toast(mailaiText('请填写签名名称和内容'), 'warn');
-  signatureState = await api('/api/mail/signatures', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:editingSignatureId,name,html,profile:signatureProfileFromForm(),make_default:document.getElementById('signature-make-default').checked})});
-  const saved = signatureState.items.find(item => item.name === name && item.html === html) || signatureState.items.at(-1);
-  editingSignatureId = saved?.id || editingSignatureId;
-  renderSignatureManager(); renderSignatureSelect();
-  if (currentSignatureId === editingSignatureId || (!currentSignatureId && document.getElementById('signature-make-default').checked)) renderComposeSignature(editingSignatureId);
-  queueDraftSave(); toast(mailaiText('签名已保存'), 'success');
-}
-
-async function generateSignatures(button) {
-  const profile = signatureProfileFromForm();
-  if (!profile.name && !profile.email) return toast(mailaiText('请至少填写姓名或邮箱'), 'warn');
-  setLoading(button, true, mailaiText('AI 生成中…'));
-  const finishCompanionWork = globalThis.mailaiCompanionWork?.begin();
-  try {
-    const result = await api('/api/mail/signatures/generate', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({profile,style:document.getElementById('signature-ai-style').value})});
-    const host = document.getElementById('signature-ai-options');
-    host.innerHTML = result.options.map((item, index) => `<button type="button" data-ai-signature="${index}"><b>${esc(item.name)}</b><span>${item.html}</span><small><span data-i18n="ui.ab41d65b7982">使用这套</span></small></button>`).join('');
-    host._options = result.options;
-    host.classList.remove('hidden');
-  } catch (err) { toast(mailaiText('AI 签名生成失败：') + mailaiSystemMessage(err.message), 'error'); }
-  finally { finishCompanionWork?.(); setLoading(button, false); }
-}
+// 大附件共享、签名编辑器逻辑已模块化拆分至 share-links.js 与 signature-manager.js
 
 function quoteOriginal(e, mode) {
   const originalBody = e.quote_html || mdToHtml(e.body_text || '');
@@ -21648,6 +21998,7 @@ function hideCompose() {
   closeSignatureManager();
   document.getElementById('compose-modal').classList.add('hidden');
   document.body.classList.remove('compose-open', 'compose-ai-active');
+  globalThis.MailAIState?.set('compose', {open:false, draftId:null});
   toggleComposeAiPanel(false);
   clearComposePreflight();
   const returnFocus = composeReturnFocus;
@@ -22449,11 +22800,12 @@ async function runMailPreflight(payload) {
     });
   }
   const blockingIssues = (result.issues || []).filter(item => item.level === 'danger');
+  const displayIssues = blockingIssues.length ? (result.issues || []) : [];
   const host = document.getElementById('compose-preflight');
   host.classList.toggle('hidden', !blockingIssues.length);
   host.innerHTML = blockingIssues.length ? `<button type="button" class="preflight-backdrop" data-preflight-edit aria-label="返回修改邮件" data-i18n-aria="ui.1ef1f8681805"></button><section class="preflight-dialog" role="dialog" aria-modal="true" aria-labelledby="preflight-dialog-title">
   <header class="preflight-summary"><span class="preflight-heading"><small><span data-i18n="ui.50350a2e5829">发送前提醒</span></small><strong id="preflight-dialog-title"><span data-i18n="ui.7da5b6514066">请核对这 ${blockingIssues.length} 项</span></strong><em><span data-i18n="ui.0a2b5b9ee428">发现可能影响发送安全或完整性的问题</span></em></span><button type="button" data-preflight-edit aria-label="关闭发送提醒" data-i18n-aria="ui.7f7099756572">×</button></header>
-  <div class="preflight-list">` + blockingIssues.map(item => `<div class="preflight-item ${item.level}">
+  <div class="preflight-list">` + displayIssues.map(item => `<div class="preflight-item ${item.level}">
     <span class="preflight-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M10 3.2l7 12.3H3z"/><path d="M10 7.2v4.2M10 14.1h.01"/></svg></span>
     <span><b>${esc(mailaiSystemMessage(item.message))}</b>${item.reason ? `<small>${esc(item.reason)}</small>` : ''}</span><em>${esc(item.source || mailaiText('发送检查'))}</em>
   </div>`).join('') + `</div><footer class="preflight-decision">
@@ -22479,6 +22831,7 @@ function composePreflightFingerprint(payload = draftPayload()) {
 
 function clearComposePreflight() {
   composePreflightPending = null;
+  if (typeof window.clearComposeGuardBanner === 'function') window.clearComposeGuardBanner();
   const host = document.getElementById('compose-preflight');
   if (!host) return;
   host.innerHTML = '';
@@ -23010,11 +23363,13 @@ async function loadData({includeAncillary = true, silent = false, requireFresh =
       : currentFilter.status === 'trash' ? '/api/emails?days=365000&status=trash'
       : (folder ? `/api/emails?days=9999&folder=${encodeURIComponent(folder)}` : '/api/emails?days=' + (days === 9999 ? 365000 : days));
     const draftsRevision = draftListRevision;
+    const readSeq = typeof window !== 'undefined' ? (window.mailaiReadMutationSeq?.() || 0) : 0;
     const tagCatalog = typeof window !== 'undefined' ? window.mailaiRefreshTags?.(accountId) : null;
     const requests = [loadMailPages(mailPath, isCurrent), api('/api/mailbox/counts').catch(() => null)];
     if (includeAncillary) requests.push(api('/api/todos'), api('/api/mail/sent'), api('/api/drafts'));
     const [emails, localCounts, todos, sent, drafts] = await Promise.all(requests);
     if (!isCurrent() || !emails) return null;
+    if (typeof window !== 'undefined') window.mailaiPreserveLocalReadState?.(emails, accountId, readSeq);
     allEmails = emails;
     mailboxLocalCounts = unified ? null : localCounts;
     if (includeAncillary) {
@@ -23537,6 +23892,7 @@ function showDashboard() {
   hideRulesView(false);
   document.querySelector('.layout').classList.add('hidden');
   document.getElementById('dashboard-view').classList.remove('hidden');
+  globalThis.MailAIState?.set('ui', {view:'dashboard'});
   setTopMenuLabel('btn-dashboard', mailaiT('nav.backToMailList') || '返回邮件列表');
   mailaiBindUI(document.getElementById('btn-dashboard'), "title", () => (mailaiT('dash.backTitle') || '返回邮件列表'));
   loadDashboard(_dashboardDays);
@@ -23545,6 +23901,7 @@ function showDashboard() {
 function hideDashboard() {
   document.getElementById('dashboard-view').classList.add('hidden');
   document.querySelector('.layout').classList.remove('hidden');
+  globalThis.MailAIState?.set('ui', {view:'mailbox'});
   setTopMenuLabel('btn-dashboard', mailaiT('security.dashboard') || '安全看板');
   mailaiBindUI(document.getElementById('btn-dashboard'), "title", () => (mailaiT('dash.openTitle') || '查看安全看板'));
 }
@@ -24069,6 +24426,34 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
       toast(row._remote ? mailaiText('服务器草稿已移入垃圾箱') : mailaiText('草稿已舍弃'), 'success');
     } catch (err) { toast(mailaiText('舍弃草稿失败：') + mailaiSystemMessage(err.message), 'error'); }
   });
+  if (kind === 'sent' && !row._remote && ['sent', 'accepted'].includes(row.status) && row.message_id) {
+    const actionsHost = document.querySelector('.special-mail-actions');
+    const accountId = activeMailAccount()?.id;
+    const nudgeBtn = document.createElement('button');
+    nudgeBtn.type = 'button'; nudgeBtn.className = 'action-btn compact'; nudgeBtn.id = 'btn-sent-ai-followup';
+    mailaiBindUI(nudgeBtn, 'textContent', () => mailaiText('AI 催办'));
+    nudgeBtn.onclick = async () => {
+      if (nudgeBtn.disabled) return;
+      nudgeBtn.disabled = true;
+      try { await window.mailaiDraftFollowup?.(row.id, accountId); }
+      catch (err) { toast(mailaiSystemMessage(err.message), 'error'); }
+      finally { nudgeBtn.disabled = false; }
+    };
+    const scheduleBtn = document.createElement('button');
+    scheduleBtn.type = 'button'; scheduleBtn.className = 'action-btn compact'; scheduleBtn.id = 'btn-sent-schedule-followup';
+    mailaiBindUI(scheduleBtn, 'textContent', () => mailaiText('安排跟进'));
+    scheduleBtn.onclick = async () => {
+      if (scheduleBtn.disabled) return;
+      scheduleBtn.disabled = true;
+      try {
+        await api('/api/productivity/followups/' + row.id, {accountId, method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({days:3})});
+        window.mailaiTasksChanged?.(accountId);
+        toast(mailaiText('已加入发信跟进（待办中心可查看）'), 'success');
+      } catch (err) { toast(mailaiSystemMessage(err.message), 'error'); }
+      finally { scheduleBtn.disabled = false; }
+    };
+    actionsHost.append(nudgeBtn, scheduleBtn);
+  }
   if (kind === 'sent' && (row._remote || ['sent','accepted'].includes(row.status))) {
     const button = document.createElement('button');
     button.type = 'button'; button.className = 'action-btn compact special-delete';
@@ -24543,7 +24928,46 @@ function readSyncKey(id, accountId) {
   return `${accountId || 'default'}:${Number(id)}`;
 }
 
+let mailReadMutationSeq = 0;
+const localReadMutations = new Map();
+const MAX_LOCAL_READ_MUTATIONS = 500;
+
+function recordLocalReadMutation(id, accountId, isRead) {
+  const key = readSyncKey(id, accountId);
+  localReadMutations.delete(key);
+  localReadMutations.set(key, { value: isRead ? 1 : 0, seq: ++mailReadMutationSeq });
+  if (localReadMutations.size > MAX_LOCAL_READ_MUTATIONS) {
+    localReadMutations.delete(localReadMutations.keys().next().value);
+  }
+}
+
+window.mailaiReadMutationSeq = () => mailReadMutationSeq;
+
+window.mailaiReadMutationFor = (id, accountId = '', sinceSeq = 0) => {
+  const m = localReadMutations.get(readSyncKey(id, accountId));
+  return m && m.seq > sinceSeq ? m : null;
+};
+
+window.mailaiPreserveLocalReadState = (rows, ownerId = '', sinceSeq = 0) => {
+  if (!Array.isArray(rows) || !rows.length) return rows;
+  const fallbackOwner = ownerId || activeMailAccount()?.id || '';
+  for (const row of rows) {
+    if (!row || row.id == null) continue;
+    const key = readSyncKey(row.id, row._account_id || fallbackOwner);
+    if (readSyncJobs.has(key)) {
+      row.is_read = 1;
+      continue;
+    }
+    const mutation = localReadMutations.get(key);
+    if (mutation && mutation.seq > sinceSeq) {
+      row.is_read = mutation.value;
+    }
+  }
+  return rows;
+};
+
 function setLocalEmailReadState(id, accountId, isRead) {
+  recordLocalReadMutation(id, accountId, isRead);
   const activeAccountId = activeMailAccount()?.id || '';
   const stillInAccount = activeAccountId === accountId;
   const local = allEmails.find(item => Number(item.id) === Number(id) &&
@@ -24696,6 +25120,7 @@ async function selectEmail(id, options = {}) {
   const animateArrival = selectedEmailId !== id || selectedEmailAccountId !== (options.accountId || '');
   const requestRevision = ++readingLoadRevision;
   const requestAccountId = options.accountId || activeMailAccount()?.id || '';
+  const readSeqAtStart = typeof window !== 'undefined' ? (window.mailaiReadMutationSeq?.() || 0) : 0;
   readingLoadController?.abort();
   const controller = new AbortController();
   readingLoadController = controller;
@@ -24715,12 +25140,16 @@ async function selectEmail(id, options = {}) {
   try {
     const e = await api('/api/emails/' + id, {accountId:requestAccountId, signal:controller.signal});
     if (requestRevision !== readingLoadRevision || selectedEmailId !== id) return;
+    const readOverride = typeof window !== 'undefined' ? window.mailaiReadMutationFor?.(id, requestAccountId, readSeqAtStart) : null;
+    if (readOverride) e.is_read = readOverride.value;
     selectedEmailDetail = e;
     window.mailOnboarding?.opened();
     globalThis.mailaiPet?.openedEmail(id, requestAccountId);
     if (animateArrival) window.mailaiCompanionMotion?.wake();
     transition.finish(() => renderReadingPane(e));
-    if (!e.is_read) queueEmailReadSync(id, requestAccountId);
+    if (!e.is_read && !(readOverride && !readOverride.value)) {
+      queueEmailReadSync(id, requestAccountId);
+    }
   } catch (err) {
     if (requestWasAborted(err, controller)) return;
     if (requestRevision !== readingLoadRevision || selectedEmailId !== id) return;
@@ -24939,6 +25368,7 @@ function showRulesView() {
   hideDashboard();
   document.querySelector('.layout').classList.add('hidden');
   document.getElementById('rules-view').classList.remove('hidden');
+  globalThis.MailAIState?.set('ui', {view:'rules'});
   setTopMenuLabel('btn-rules', mailaiT('nav.backToMailList') || '返回邮件列表');
   loadRules().catch(e => toast(mailaiText('加载规则失败：') + mailaiSystemMessage(e.message), 'error'));
 }
@@ -24950,6 +25380,7 @@ function hideRulesView(showLayout = true) {
   setTopMenuLabel('btn-rules', mailaiT('security.rules') || '规则中心');
   if (showLayout && document.getElementById('dashboard-view').classList.contains('hidden')) {
     document.querySelector('.layout').classList.remove('hidden');
+    globalThis.MailAIState?.set('ui', {view:'mailbox'});
   }
 }
 
@@ -25332,6 +25763,7 @@ async function activateMailAccount(accountId, {keepMailbox = false, quiet = fals
     if (!quiet) toast(mailaiTemplate`正在使用 ${account.user}`);
   }
   if (!keepMailbox && activeMailAccount()?.id === accountId) selectedMailboxAccountId = accountId;
+  globalThis.MailAIState?.set('account', {id:accountId, user:account.user || '', unified:Boolean(unifiedMailbox)});
   return (_systemConfig?.accounts || []).find(item => item.id === accountId);
 }
 
@@ -28220,12 +28652,96 @@ document.addEventListener('click', downloadAttachmentInDesktop, true);
 
 let todoRenderLimit = 160;
 let todoCenterRows = [];
+let todoFollowupRows = [];
+window.mailaiFollowupRows = todoFollowupRows;
+let todoFollowupShowAll = false;
+let todoFollowupTone = 'polite';
 let todoCenterAccountId = '';
 let todoCenterRevision = 0;
 let todoCenterLoading = false;
 let todoBatchBusy = false;
 let todoReturnFocus;
 let todoSourceReturn = null;
+
+window.mailaiRevealSentMessage = async (sentId, targetAccountId = activeMailAccount()?.id) => {
+  const id = targetAccountId || activeMailAccount()?.id;
+  if (!id) return;
+  const item = await api(`/api/mail/sent/${Number(sentId)}`, {accountId: id});
+  await openAccountMailbox(id, 'sent');
+  return selectSpecialMessage(Number(sentId), item);
+};
+
+function followupLocalDatetime(daysOffset = 1, hour = 9) {
+  const date = new Date();
+  date.setDate(date.getDate() + daysOffset);
+  date.setHours(hour, 0, 0, 0);
+  date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+  return date.toISOString().slice(0, 16);
+}
+
+function renderTodoFollowups(host) {
+  const rows = Array.isArray(window.mailaiFollowupRows) ? window.mailaiFollowupRows : [];
+  const openRows = rows.filter(r => r.state === 'scheduled');
+  const dueCount = openRows.filter(r => r.due).length;
+  const rank = r => r.state === 'scheduled' ? (r.due ? 0 : 1) : r.state === 'replied' ? 2 : 3;
+  const visible = rows
+    .filter(r => todoFollowupShowAll || r.state === 'scheduled')
+    .slice()
+    .sort((a, b) => rank(a) - rank(b) || String(a.at || '').localeCompare(String(b.at || '')));
+  const barSummary = dueCount
+    ? mailaiTemplate`共 ${openRows.length} 封等待回复 · ${dueCount} 封已到期`
+    : mailaiTemplate`共 ${openRows.length} 封等待回复`;
+  const toolbar = `<div class="todo-followup-toolbar">
+    <span class="todo-followup-summary">${esc(barSummary)}</span>
+    <div class="todo-followup-controls">
+      <label class="todo-followup-tone"><span>${esc(mailaiText('催办语气'))}</span><select data-followup-tone aria-label="催办语气" data-i18n-aria="followup.toneLabel">
+        <option value="polite" ${todoFollowupTone === 'polite' ? 'selected' : ''}>${esc(mailaiText('温和礼貌'))}</option>
+        <option value="direct" ${todoFollowupTone === 'direct' ? 'selected' : ''}>${esc(mailaiText('简短直接'))}</option>
+        <option value="formal" ${todoFollowupTone === 'formal' ? 'selected' : ''}>${esc(mailaiText('正式商务'))}</option>
+      </select></label>
+      <button type="button" class="todo-followup-filter" data-followup-filter aria-pressed="${todoFollowupShowAll}">${esc(todoFollowupShowAll ? mailaiText('仅看等待中') : mailaiText('显示已结束记录'))}</button>
+    </div>
+  </div>`;
+  const cards = visible.length
+    ? visible.map(row => {
+      const scheduled = row.state === 'scheduled';
+      const statusLabel = scheduled
+        ? (row.due ? mailaiText('跟进到期') : mailaiText('等待中'))
+        : row.state === 'replied' ? mailaiText('已回信') : mailaiText('已关闭');
+      const statusClass = scheduled ? (row.due ? 'is-due' : 'is-waiting') : (row.state === 'replied' ? 'is-replied' : 'is-canceled');
+      const ageLabel = Number(row.waiting_days || 0) === 0 ? mailaiText('今天发送') : mailaiTemplate`${Number(row.waiting_days || 0)} 天前发送`;
+      const formattedAt = fmtDate(row.at);
+      const timeLabel = row.due ? mailaiTemplate`跟进到期 · ${formattedAt}` : mailaiTemplate`计划跟进 · ${formattedAt}`;
+      return `<article class="todo-followup-item ${statusClass}" data-followup-sent-id="${row.sent_id}">
+        <span class="todo-followup-badge ${statusClass}">${esc(statusLabel)}</span>
+        <div class="todo-followup-main">
+          <button type="button" class="todo-followup-subject" data-followup-open="${row.sent_id}" data-user-content>${esc(row.subject || mailaiText('无主题'))}</button>
+          <div class="todo-time-meta">
+            <span class="todo-time-chip">${esc(ageLabel)}</span>
+            ${scheduled ? `<span class="todo-time-chip ${row.due ? 'overdue' : ''}">${esc(timeLabel)}</span>` : ''}
+            ${row.to_addr ? `<span class="todo-followup-recipient" title="${esc(row.to_addr)}">${esc(mailaiText('发给 ') + row.to_addr)}</span>` : ''}
+          </div>
+          ${row.snippet ? `<p class="todo-followup-snippet" data-user-content>${esc(row.snippet)}</p>` : ''}
+        </div>
+        <div class="todo-followup-actions">
+          ${scheduled ? `<button type="button" class="todo-followup-ai-btn" data-followup-ai-draft="${row.sent_id}">${esc(mailaiText('AI 催办'))}</button>
+          <details class="todo-followup-reschedule"><summary>${esc(mailaiText('改期'))}</summary><div>
+            <button type="button" data-followup-preset="1d" data-sent-id="${row.sent_id}">${esc(mailaiText('明天 9 点'))}</button>
+            <button type="button" data-followup-preset="3d" data-sent-id="${row.sent_id}">${esc(mailaiText('3 天后'))}</button>
+            <div class="todo-followup-custom-time"><input type="datetime-local" value="${esc(String(row.at || '').slice(0, 16))}" aria-label="新的跟进时间" data-i18n-aria="ui.6da097eb22f3"><button type="button" data-followup-save-time="${row.sent_id}">${esc(mailaiText('保存'))}</button></div>
+          </div></details>
+          <button type="button" class="todo-followup-ghost-btn" data-followup-cancel="${row.sent_id}">${esc(mailaiText('不再跟进'))}</button>`
+          : row.state === 'replied'
+          ? `${row.reply_id ? `<button type="button" class="todo-followup-ai-btn" data-followup-reply="${row.reply_id}">${esc(mailaiText('查看对方回复'))}</button>` : ''}<button type="button" class="todo-followup-ghost-btn" data-followup-open="${row.sent_id}">${esc(mailaiText('查看原信'))}</button>`
+          : `<button type="button" class="todo-followup-ai-btn" data-followup-reopen="${row.sent_id}">${esc(mailaiText('重新跟进'))}</button><button type="button" class="todo-followup-ghost-btn" data-followup-open="${row.sent_id}">${esc(mailaiText('查看原信'))}</button>`}
+        </div>
+      </article>`;
+    }).join('')
+    : (window.mailaiTodoEmpty?.() || '');
+  host.innerHTML = toolbar + cards;
+  animateCountText(document.getElementById('todo-count'), openRows.length, n => (mailaiT('todo.openCount') || '{n} 项未完成').replace('{n}', n));
+  document.getElementById('todo-group-overview')?.setAttribute('hidden', '');
+}
 const todoEdits = new Map();
 function todoEditKey(id, accountId = todoCenterAccountId) { return accountId + ':' + id; }
 function paintTodoSave(article, edit) {
@@ -28246,40 +28762,67 @@ function captureTodoEdit(article) {
 
 function renderTodoCenter() {
   if (todoCenterLoading) return;
+  const host = document.getElementById('todo-list');
+  const activeView = window.mailaiTodoCurrentView?.() || 'all';
   const showDone = document.getElementById('todo-show-done').checked;
-  const rows = todoCenterRows.filter(item => (showDone || item.status !== 'done') && (!window.mailaiTodoMatches || window.mailaiTodoMatches(item)));
-  const visibleIds = new Set(rows.map(item => item.id));
-  selectedTodoIds = new Set([...selectedTodoIds].filter(id => visibleIds.has(id)));
   const now = localDateKey();
-  const openCount = rows.filter(item => item.status !== 'done').length;
   const allOpen = todoCenterRows.filter(item => item.status !== 'done');
   const overdueCount = allOpen.filter(item => String(item.deadline || '').slice(0,10) && String(item.deadline).slice(0,10) < now).length;
   const todayCount = allOpen.filter(item=>String(item.deadline || '').slice(0,10) === now).length;
-  document.getElementById('todo-center-summary').textContent = overdueCount
+  const activeFollowups = (window.mailaiFollowupRows || []).filter(r => r.state === 'scheduled');
+  const dueFollowups = activeFollowups.filter(r => r.due).length;
+  const baseSummary = overdueCount
     ? mailaiTemplate`${allOpen.length} 项待办 · ${overdueCount} 项已逾期`
     : todayCount ? mailaiTemplate`${allOpen.length} 项待办 · ${todayCount} 项今天截止`
     : allOpen.length ? mailaiTemplate`${allOpen.length} 项待办` : mailaiText('待办已处理完，新的安排从邮件开始。');
+  if (!activeFollowups.length) {
+    document.getElementById('todo-center-summary').textContent = baseSummary;
+  } else if (!allOpen.length) {
+    document.getElementById('todo-center-summary').textContent = dueFollowups
+      ? mailaiTemplate`${dueFollowups} 封发信待催办`
+      : mailaiTemplate`${activeFollowups.length} 封发信等待回复`;
+  } else {
+    const fSuffix = dueFollowups
+      ? mailaiTemplate`${dueFollowups} 封待催办`
+      : mailaiTemplate`${activeFollowups.length} 封跟进中`;
+    document.getElementById('todo-center-summary').textContent = mailaiTemplate`${baseSummary} · ${fSuffix}`;
+  }
+  if (activeView === 'followups') {
+    renderTodoFollowups(host);
+    updateTodoBatchToolbar([]);
+    window.mailaiTodoCounts?.();
+    return;
+  }
+  const rows = todoCenterRows.filter(item => (showDone || item.status !== 'done') && (!window.mailaiTodoMatches || window.mailaiTodoMatches(item)));
+  const visibleIds = new Set(rows.map(item => item.id));
+  selectedTodoIds = new Set([...selectedTodoIds].filter(id => visibleIds.has(id)));
+  const openCount = rows.filter(item => item.status !== 'done').length;
   animateCountText(document.getElementById('todo-count'), openCount, n => (mailaiT('todo.openCount') || '{n} 项未完成').replace('{n}', n));
   const groups = window.mailaiTodoGroups ? window.mailaiTodoGroups(rows) : rows.map(item=>({key:String(item.id),rows:[item]}));
   const visibleRows = rows.slice(0, todoRenderLimit);
   const renderedIds = new Set(visibleRows.map(item=>item.id));
   const visibleGroups = groups.filter(group=>group.rows.some(item=>renderedIds.has(item.id)))
     .map(group=>({...group,visibleRows:group.rows.filter(item=>renderedIds.has(item.id))}));
-  const host = document.getElementById('todo-list');
   const renderRow = (item, context = {}) => {
     const date = String(item.deadline || '').slice(0, 10);
     const sourceDate = item.email_date || item.email_indexed_at || item.created_at || '';
     const overdue = item.status !== 'done' && date && date < now;
     const dateLabel = date === now ? mailaiText('今天') : date.startsWith(now.slice(0,4)) ? mailaiTemplate`${Number(date.slice(5,7))}月${Number(date.slice(8,10))}日` : date;
     const reminder = (!context.sharedReminder || item.remind_at !== context.sharedReminder) && item.remind_at && item.status !== 'done' ? (new Date(item.remind_at).getTime() <= Date.now() ? mailaiText('提醒已到期') : mailaiText('提醒 ') + fmtDate(item.remind_at)) : '';
+    const recurrenceLabel = item.recurrence === 'weekly' ? mailaiText('每周重复') : item.recurrence === 'monthly' ? mailaiText('每月重复') : '';
+    const recurrenceChip = recurrenceLabel ? `<button type="button" class="todo-recurrence-chip" data-todo-plan="${item.id}" title="${esc(mailaiText('点击修改重复周期'))}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10a6 6 0 0 1 10.3-4.2L16 7.5M16 4v3.5h-3.5M16 10a6 6 0 0 1-10.3 4.2L4 12.5M4 16v-3.5h3.5"/></svg>${esc(recurrenceLabel)}</button>` : '';
+    const sourceHTML = item.email_id
+      ? `<div class="todo-source-meta"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="m3 5 7 6 7-6"/></svg><button type="button" class="todo-source" data-todo-email="${item.email_id}" title="${esc(item.email_subject || '')}">${esc(context.grouped ? (item.email_id === context.latestEmailId ? mailaiText('最新邮件') : mailaiText('较早邮件')) : item.email_subject || mailaiText('查看来源邮件'))}</button>${context.grouped ? '' : `<time datetime="${esc(sourceDate)}">${esc(fmtDate(sourceDate))}</time>`}</div>`
+      : `<div class="todo-source-meta"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5.5h12M4 10h12M4 14.5h7"/></svg><span class="todo-source todo-source-manual">${esc(mailaiText('手动创建'))}</span><time datetime="${esc(sourceDate)}">${esc(fmtDate(sourceDate))}</time></div>`;
+    const snoozeHTML = item.status === 'done' ? '' : `<details class="todo-snooze-menu" data-todo-snooze-menu="${item.id}"><summary title="${esc(mailaiText('快速推迟截止时间与提醒'))}"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M10 6.5v3.8l2.6 1.5"/></svg><span>${esc(mailaiText('推迟'))}</span></summary><div class="todo-snooze-popover" role="menu"><button type="button" data-todo-snooze="${item.id}" data-snooze-preset="tomorrow">${esc(mailaiText('明天'))}</button><button type="button" data-todo-snooze="${item.id}" data-snooze-preset="next_monday">${esc(mailaiText('下周一'))}</button><button type="button" data-todo-snooze="${item.id}" data-snooze-preset="plus_3d">${esc(mailaiText('+3 天'))}</button></div></details>`;
     return `<article class="todo-center-item ${item.status === 'done' ? 'done' : ''} ${overdue ? 'overdue' : ''}" data-todo-id="${item.id}">
       <label class="todo-select" title="选择此待办" data-i18n-title="ui.3e92834e2cf6"><input type="checkbox" aria-label="选择待办：${esc(item.title)}" data-todo-select="${item.id}" ${selectedTodoIds.has(item.id) ? 'checked' : ''} ${item.status === 'done' ? 'disabled' : ''} data-i18n-aria="ui.76e5f02ab646"><span></span></label>
       <button type="button" class="todo-status-action todo-complete-action" data-todo-toggle="${item.id}" title="${esc(item.status === 'done' ? mailaiText('恢复待办') : mailaiText('完成待办'))}" aria-label="${esc(item.status === 'done' ? mailaiText('恢复待办') : mailaiText('完成待办'))} · ${esc(item.title)}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 10 3.5 3.5L15 7"/></svg><span class="todo-action-label">${item.status === 'done' ? mailaiText('恢复待办') : mailaiText('完成')}</span></button>
       <div class="todo-main"><textarea rows="1" class="todo-title-input" aria-label="待办标题" title="点击修改任务标题" data-i18n-title="ui.4a3dd238b908" data-i18n-aria="ui.d1f7f1e2d4a6">${esc(item.title)}</textarea><input type="date" hidden value="${esc(date)}" aria-label="截止日期" data-i18n-aria="ui.31802424217f">
-        <div class="todo-time-meta">${context.grouped ? '' : `<button type="button" data-todo-plan="${item.id}" title="${date ? mailaiText('调整截止时间：') + esc(date) : mailaiText('设置截止时间与提醒')}" class="todo-time-chip ${overdue ? 'overdue' : ''}">${date ? (overdue ? mailaiText('逾期 · ') : item.stage === 'waiting' ? mailaiText('跟进 · ') : mailaiText('截止 · ')) + esc(dateLabel) : mailaiText('设置截止时间')}</button>`}${reminder ? `<button type="button" class="todo-reminder-chip" data-todo-plan="${item.id}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8a5 5 0 0 1 10 0v4l2 2H3l2-2ZM8 17h4"/></svg>${esc(reminder)}</button>` : ''}${item.status === 'done' ? "<span class=\"todo-done-label\"><span data-i18n=\"ui.f28461bb49c8\">已完成</span></span>" : ''}</div>
-        <div class="todo-source-meta"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="m3 5 7 6 7-6"/></svg><button type="button" class="todo-source" data-todo-email="${item.email_id}" title="${esc(item.email_subject || '')}">${esc(context.grouped ? (item.email_id === context.latestEmailId ? mailaiText('最新邮件') : mailaiText('较早邮件')) : item.email_subject || mailaiText('查看来源邮件'))}</button>${context.grouped ? '' : `<time datetime="${esc(sourceDate)}">${esc(fmtDate(sourceDate))}</time>`}</div>
+        <div class="todo-time-meta">${context.grouped ? '' : `<button type="button" data-todo-plan="${item.id}" title="${date ? mailaiText('调整截止时间：') + esc(date) : mailaiText('设置截止时间与提醒')}" class="todo-time-chip ${overdue ? 'overdue' : ''}">${date ? (overdue ? mailaiText('逾期 · ') : item.stage === 'waiting' ? mailaiText('跟进 · ') : mailaiText('截止 · ')) + esc(dateLabel) : mailaiText('设置截止时间')}</button>`}${reminder ? `<button type="button" class="todo-reminder-chip" data-todo-plan="${item.id}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8a5 5 0 0 1 10 0v4l2 2H3l2-2ZM8 17h4"/></svg>${esc(reminder)}</button>` : ''}${recurrenceChip}${item.status === 'done' ? "<span class=\"todo-done-label\"><span data-i18n=\"ui.f28461bb49c8\">已完成</span></span>" : ''}</div>
+        ${sourceHTML}
       </div>
-      <div class="todo-plan-actions"><button type="button" class="todo-status-action todo-arrange-action" data-todo-plan="${item.id}" title="${esc(mailaiText('设置截止时间与提醒'))}"><span data-i18n="ui.49a49a3748ec">安排提醒</span><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="5" width="14" height="12" rx="2"/><path d="M6 3v4m8-4v4M3 9h14m-9 3h.01M12 12h.01"/></svg></button></div>
+      <div class="todo-plan-actions">${snoozeHTML}<button type="button" class="todo-status-action todo-arrange-action" data-todo-plan="${item.id}" title="${esc(mailaiText('设置截止时间与提醒'))}"><span data-i18n="ui.49a49a3748ec">安排提醒</span><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="5" width="14" height="12" rx="2"/><path d="M6 3v4m8-4v4M3 9h14m-9 3h.01M12 12h.01"/></svg></button></div>
     </article>`;
   };
   const html = rows.length ? (window.mailaiTodoGroupHTML ? window.mailaiTodoGroupHTML(visibleGroups,renderRow) : visibleRows.map(renderRow).join('')) + (rows.length > visibleRows.length ? `
@@ -28353,18 +28896,20 @@ async function setTodoBatchStatus(ids, status = 'done') {
 }
 
 async function openTodoCenter(options = {}) {
-  const resume = options.resume && todoSourceReturn?.accountId === activeMailAccount()?.id ? todoSourceReturn : null;
+  const opts = options && typeof options === 'object' && !(options instanceof Event) ? options : {};
+  const resume = opts.resume && todoSourceReturn?.accountId === activeMailAccount()?.id ? todoSourceReturn : null;
   todoSourceReturn = null;
   document.getElementById('todo-source-return').classList.add('hidden');
   todoReturnFocus = resume ? document.getElementById('btn-todos') : document.activeElement;
-  window.mailaiTodoTab?.(resume?.view || 'all');
+  window.mailaiTodoTab?.(resume?.view || (typeof opts.view === 'string' ? opts.view : '') || 'all');
   closeAssistant();
   document.getElementById('todo-center').classList.remove('hidden');
   document.body.classList.add('modal-open');
   todoCenterAccountId = activeMailAccount()?.id;
+  globalThis.MailAIState?.set('todos', {open:true, accountId:todoCenterAccountId || '', loading:false});
   document.getElementById('todo-account-label').textContent = activeMailAccount()?.user || '';
   todoCenterLoading = false;
-  selectedTodoIds.clear(); todoRenderLimit = resume?.limit || 160; todoCenterRows = []; renderTodoCenter();
+  selectedTodoIds.clear(); todoRenderLimit = resume?.limit || 160; todoCenterRows = []; todoFollowupRows = []; window.mailaiFollowupRows = todoFollowupRows; renderTodoCenter();
   await loadTodoCenter();
   if(resume && todoCenterAccountId === resume.accountId && !document.getElementById('todo-center').classList.contains('hidden')) {
     const list=document.getElementById('todo-list');list.scrollTop=resume.scroll;
@@ -28376,15 +28921,24 @@ async function openTodoCenter(options = {}) {
 async function loadTodoCenter() {
   const accountId = todoCenterAccountId, revision = ++todoCenterRevision;
   todoCenterLoading = true; updateTodoBatchToolbar([]);
-  if (!todoCenterRows.length && !document.querySelector('#todo-list [data-todo-id]')) document.getElementById('todo-list').innerHTML = "<div class=\"attachment-empty\"><span data-i18n=\"ui.04b1aaa8c80d\">正在读取待办…</span></div>";
+  if (!todoCenterRows.length && !document.querySelector('#todo-list [data-todo-id], #todo-list [data-followup-sent-id]')) document.getElementById('todo-list').innerHTML = "<div class=\"attachment-empty\"><span data-i18n=\"ui.04b1aaa8c80d\">正在读取待办…</span></div>";
   try {
-    const rows = await api('/api/todos?include_done=true', {accountId});
+    const [rows, followups] = await Promise.all([
+      api('/api/todos?include_done=true', {accountId}),
+      api('/api/productivity/followups/list', {accountId}).catch(() => []),
+    ]);
     if (revision !== todoCenterRevision) return;
-    todoCenterLoading = false; todoCenterRows = rows; renderTodoCenter();
+    todoCenterLoading = false;
+    todoCenterRows = rows;
+    todoFollowupRows = Array.isArray(followups) ? followups : [];
+    window.mailaiFollowupRows = todoFollowupRows;
+    globalThis.MailAIState?.set('todos', {count:rows.length, loading:false, accountId:accountId || ''});
+    renderTodoCenter();
   } catch (error) { if (revision === todoCenterRevision) { todoCenterLoading = false; updateTodoBatchToolbar(); const host = document.getElementById('todo-list'); host.querySelector('.todo-refresh-error')?.remove(); if (!todoCenterRows.length) host.replaceChildren(); host.insertAdjacentHTML('afterbegin', `<div class="todo-refresh-error" role="status"><span data-i18n="ui.c89e2064daba">暂时无法更新，已保留当前内容。${esc(mailaiSystemMessage(error.message))}</span> <button data-todo-retry><span data-i18n="ui.b8784c8dd563">重试</span></button></div>`); } }
 }
 function closeTodoCenter() {
   document.getElementById('task-notices')?.close();++todoCenterRevision;todoCenterLoading=false;
+  globalThis.MailAIState?.set('todos', {open:false, loading:false});
   document.getElementById('todo-center').classList.add('hidden');document.body.classList.remove('modal-open');
   const target=todoReturnFocus?.isConnected&&todoReturnFocus!==document.body&&todoReturnFocus.getClientRects().length ? todoReturnFocus : document.getElementById('btn-todos');
   target?.focus({preventScroll:true});
@@ -28452,7 +29006,7 @@ document.getElementById('attachment-type-filters').addEventListener('click', eve
   attachmentTypeFilter = button.dataset.attachmentType;
   loadAttachmentCenter();
 });
-document.getElementById('btn-todos').addEventListener('click', openTodoCenter);
+document.getElementById('btn-todos').addEventListener('click', () => openTodoCenter());
 document.getElementById('btn-contacts').addEventListener('click', () => openContactCenter());
 document.getElementById('btn-close-contacts').addEventListener('click', closeContactCenter);
 document.querySelector('#contact-center > .attachment-center-backdrop').addEventListener('click', closeContactCenter);
@@ -28525,6 +29079,7 @@ document.getElementById('contact-form').addEventListener('submit', async event =
       group_name:document.getElementById('contact-group-name')?.value || '',
       favorite:document.getElementById('contact-favorite').checked,
       ...(window.mailaiDirectoryFields ? {profile:window.mailaiDirectoryFields(),directory_revision:window.mailaiDirectoryEditRevision?.()} : {}),
+      ...(window.mailaiContactPersonaFields ? {comm_profile:window.mailaiContactPersonaFields()} : {}),
     })});
     if (session !== contactCenterSession) return;
     closeContactEditor(); await loadContactCenter(); await loadData({silent:true}); toast(mailaiText('联系人已保存，邮件列表姓名已更新'), 'success');
@@ -28540,7 +29095,7 @@ document.getElementById('btn-apply-contacts').addEventListener('click', () => {
   }
   applyContactSelection(target, selectedContactEmails, contactPickerContacts);
   const count = selectedContactEmails.size;
-  closeContactCenter(); target.focus(); contactInput = null; hideContactSuggestions(); toast(mailaiTemplate`收件人已更新，已选择 ${count} 位`, 'success');
+  closeContactCenter(); target.focus(); contactInput = null; hideContactSuggestions(); window.mailaiScheduleComposePersona?.(40); toast(mailaiTemplate`收件人已更新，已选择 ${count} 位`, 'success');
 });
 document.getElementById('btn-close-todos').addEventListener('click', closeTodoCenter);
 document.querySelector('#todo-center .attachment-center-backdrop').addEventListener('click', closeTodoCenter);
@@ -28571,6 +29126,11 @@ document.getElementById('todo-complete-all').addEventListener('click', async () 
   catch (err) { toast(mailaiText('全部完成失败：') + mailaiSystemMessage(err.message), 'error'); }
 });
 document.getElementById('todo-list').addEventListener('change', event => {
+  const toneSelect = event.target.closest('[data-followup-tone]');
+  if (toneSelect) {
+    todoFollowupTone = toneSelect.value || 'polite';
+    return;
+  }
   const selector = event.target.closest('[data-todo-select]');
   if (selector) {
     const id = Number(selector.dataset.todoSelect);
@@ -28584,6 +29144,97 @@ document.getElementById('todo-list').addEventListener('click', async event => {
   if (event.target.closest('[data-todo-retry]')) return loadTodoCenter();
   if (event.target.closest('[data-todo-save-retry]')) return saveTodoItem(event.target.closest('[data-todo-id]'));
   const accountId = todoCenterAccountId, revision = todoCenterRevision;
+  if (event.target.closest('[data-followup-filter]')) {
+    todoFollowupShowAll = !todoFollowupShowAll;
+    renderTodoCenter();
+    return;
+  }
+  const aiFollowup = event.target.closest('[data-followup-ai-draft]');
+  if (aiFollowup) {
+    if (aiFollowup.disabled) return;
+    aiFollowup.disabled = true;
+    const prev = aiFollowup.textContent;
+    aiFollowup.textContent = mailaiText('生成中…');
+    try {
+      await window.mailaiDraftFollowup?.(Number(aiFollowup.dataset.followupAiDraft), accountId, {tone: todoFollowupTone});
+    } catch (err) {
+      toast(mailaiSystemMessage(err.message), 'error');
+    } finally {
+      aiFollowup.disabled = false;
+      aiFollowup.textContent = prev;
+    }
+    return;
+  }
+  const presetBtn = event.target.closest('[data-followup-preset]');
+  if (presetBtn) {
+    if (presetBtn.disabled) return;
+    presetBtn.disabled = true;
+    const sentId = Number(presetBtn.dataset.sentId);
+    const when = followupLocalDatetime(presetBtn.dataset.followupPreset === '3d' ? 3 : 1, 9);
+    try {
+      await api(`/api/productivity/followups/${sentId}`, {accountId, method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({at:when, cancel:false})});
+      toast(mailaiText('已调整跟进时间'), 'success');
+      if (revision === todoCenterRevision) await loadTodoCenter();
+    } catch (err) { toast(mailaiSystemMessage(err.message), 'error'); }
+    finally { presetBtn.disabled = false; }
+    return;
+  }
+  const saveTimeBtn = event.target.closest('[data-followup-save-time]');
+  if (saveTimeBtn) {
+    if (saveTimeBtn.disabled) return;
+    const sentId = Number(saveTimeBtn.dataset.followupSaveTime);
+    const input = saveTimeBtn.closest('.todo-followup-reschedule')?.querySelector('input[type="datetime-local"]');
+    const at = input?.value || '';
+    if (!at) { toast(mailaiText('暂未选择具体时间'), 'warn'); return; }
+    saveTimeBtn.disabled = true;
+    try {
+      await api(`/api/productivity/followups/${sentId}`, {accountId, method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({at, cancel:false})});
+      toast(mailaiText('已调整跟进时间'), 'success');
+      if (revision === todoCenterRevision) await loadTodoCenter();
+    } catch (err) { toast(mailaiSystemMessage(err.message), 'error'); }
+    finally { saveTimeBtn.disabled = false; }
+    return;
+  }
+  const cancelFollowup = event.target.closest('[data-followup-cancel]');
+  if (cancelFollowup) {
+    if (cancelFollowup.disabled) return;
+    cancelFollowup.disabled = true;
+    try {
+      await api(`/api/productivity/followups/${Number(cancelFollowup.dataset.followupCancel)}`, {accountId, method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({at:'', cancel:true})});
+      toast(mailaiText('已关闭该跟进提醒'), 'success');
+      if (revision === todoCenterRevision) await loadTodoCenter();
+    } catch (err) { toast(mailaiSystemMessage(err.message), 'error'); }
+    finally { cancelFollowup.disabled = false; }
+    return;
+  }
+  const reopenFollowup = event.target.closest('[data-followup-reopen]');
+  if (reopenFollowup) {
+    if (reopenFollowup.disabled) return;
+    reopenFollowup.disabled = true;
+    try {
+      await api(`/api/productivity/followups/${Number(reopenFollowup.dataset.followupReopen)}`, {accountId, method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({days:1})});
+      toast(mailaiText('已重新安排明天跟进'), 'success');
+      if (revision === todoCenterRevision) await loadTodoCenter();
+    } catch (err) { toast(mailaiSystemMessage(err.message), 'error'); }
+    finally { reopenFollowup.disabled = false; }
+    return;
+  }
+  const openSent = event.target.closest('[data-followup-open]');
+  if (openSent) {
+    const sentId = Number(openSent.dataset.followupOpen);
+    closeTodoCenter();
+    try { await window.mailaiRevealSentMessage?.(sentId, accountId); }
+    catch (err) { toast(mailaiSystemMessage(err.message), 'error'); }
+    return;
+  }
+  const openReply = event.target.closest('[data-followup-reply]');
+  if (openReply) {
+    const emailId = Number(openReply.dataset.followupReply);
+    closeTodoCenter();
+    if (accountId !== activeMailAccount()?.id) await openAccountMailbox(accountId, 'inbox');
+    await revealEmailFromSource(emailId);
+    return;
+  }
   const plan = event.target.closest('[data-todo-plan]');
   if (plan) { if (!(await flushTodoEdits([Number(plan.dataset.todoPlan)]))) return; await window.openTaskPlanner({todoId:Number(plan.dataset.todoPlan),accountId}); return; }
   const toggle = event.target.closest('[data-todo-toggle]');
@@ -28596,9 +29247,16 @@ document.getElementById('todo-list').addEventListener('click', async event => {
       const actions = [...document.querySelectorAll('#todo-list .todo-complete-action')].filter(node => node.getClientRects().length);
       const actionIndex = actions.indexOf(toggle);
       try {
-        await api(`/api/todos/${item.id}/${item.status === 'done' ? 'reopen' : 'done'}`, {accountId,method:'POST'});
+        const res = await api(`/api/todos/${item.id}/${item.status === 'done' ? 'reopen' : 'done'}`, {accountId,method:'POST'});
         if (item.status !== 'done' && !document.getElementById('todo-show-done').checked && revision === todoCenterRevision) await window.mailaiMotion?.leave(toggle.closest('[data-todo-id]'));
         item.status = item.status === 'done' ? 'open' : 'done';
+        if (Array.isArray(res?.spawned) && res.spawned.length) {
+          for (const nextTask of res.spawned) {
+            if (!todoCenterRows.some(row => row.id === nextTask.id)) todoCenterRows.unshift(nextTask);
+          }
+          const nextDate = String(res.spawned[0].deadline || '').slice(0, 10);
+          toast(nextDate ? mailaiTemplate`已完成，已生成下期待办（${nextDate}）` : mailaiText('已完成，已生成下一周期的新待办'), 'success');
+        }
         if (revision === todoCenterRevision) {
           renderTodoCenter();
           const remaining = [...document.querySelectorAll('#todo-list .todo-complete-action')].filter(node => node.getClientRects().length);
@@ -28852,97 +29510,7 @@ document.getElementById('btn-enable-notifications').addEventListener('click', as
   const permission = await Notification.requestPermission();
   toast(permission === 'granted' ? mailaiText('系统通知已开启') : mailaiText('未获得通知权限'), permission === 'granted' ? 'success' : 'warn');
 });
-function renderBackupItem(item, index) {
-  const date = new Date(item.created_at);
-  const locale = currentI18nLanguage() === 'en' ? 'en-US' : 'zh-CN';
-  const label = Number.isNaN(date.getTime()) ? (mailaiT('backup.localFallback') || '本地备份') : new Intl.DateTimeFormat(locale, {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(date);
-  const tSave = mailaiT('backup.saveAs') || '另存为';
-  const tDelete = mailaiT('backup.delete') || '删除';
-  const tRestore = mailaiT('backup.restore') || '恢复';
-  const tPortable = mailaiT('backup.portable') || '迁移包';
-  const download = `<button type="button" data-download-backup="${esc(item.filename)}" data-portable="${item.portable ? 'true' : 'false'}" aria-label="${item.portable ? (mailaiT('backup.ariaExport') || '导出迁移包到指定位置') : (mailaiT('backup.ariaDownload') || `下载 ${esc(label)} 的备份`)}" data-i18n="backup.saveAs" data-i18n-aria="${item.portable ? 'backup.ariaExport' : 'backup.ariaDownload'}">${tSave}</button>`;
-  const remove = `<button type="button" data-delete-backup="${esc(item.filename)}" data-portable="${item.portable ? 'true' : 'false'}" aria-label="${mailaiT('backup.ariaDelete') || '删除'} ${item.portable ? tPortable : (mailaiT('backup.ariaBackup') || '备份')}" data-i18n="backup.delete" data-i18n-aria="${item.portable ? 'backup.deleteMigrationAria' : 'backup.deleteLocalAria'}">${tDelete}</button>`;
-  const actions = item.portable ? `${download}${remove}` : `<button type="button" data-restore-backup="${esc(item.filename)}" aria-label="${mailaiT('backup.ariaRestore') || `恢复 ${esc(label)} 的备份`}" data-i18n="backup.restore" data-i18n-aria="backup.ariaRestore">${tRestore}</button>${download}${remove}`;
-  return `<div class="backup-item"><div class="backup-record-copy"><b>${Number.isNaN(date.getTime()) ? `<span data-i18n="backup.localFallback">${esc(label)}</span>` : esc(label)}${item.portable ? `<em data-i18n="backup.portable">${tPortable}</em>` : index === 0 ? `<em data-i18n="backup.latest">${mailaiT('backup.latest') || '最新'}</em>` : ''}</b><small title="${esc(item.filename)}">${esc(item.filename)}</small></div><small class="backup-record-size">${formatFileSize(item.size)}</small><div class="backup-record-actions">${actions}</div></div>`;
-}
-async function loadBackups() {
-  const accountId = activeMailAccount()?.id;
-  window.refreshCleanupAutomation?.(accountId);
-  const host = document.getElementById('backup-list');
-  try {
-    const [localItems, portableItems] = await Promise.all([api('/api/system/backups', {accountId}), api('/api/system/portable-backups', {accountId})]);
-    const items = [...portableItems, ...localItems].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
-    if (accountId !== activeMailAccount()?.id) return;
-    host.innerHTML = items.length ? items.slice(0, 3).map(renderBackupItem).join('') + (items.length > 3 ? `<details class="older-backups"><summary><span data-i18n="backup.showOlder">${mailaiT('backup.showOlder') || '查看更早备份'}</span> (${items.length - 3})</summary>${items.slice(3).map((item,index)=>renderBackupItem(item,index+3)).join('')}</details>` : '') : `<div class="backup-empty"><b data-i18n="backup.emptyTitle">${mailaiT('backup.emptyTitle') || '还没有备份'}</b><small data-i18n="backup.emptyHint">${mailaiT('backup.emptyHint') || '创建第一份备份，为邮件留一份本地副本。'}</small></div>`;
-    window.refreshCleanupHistory?.(accountId);
-  } catch (_) {
-    if (accountId === activeMailAccount()?.id) host.innerHTML = `<div class="backup-empty"><b data-i18n="backup.loadFailTitle">${mailaiT('backup.loadFailTitle') || '暂时无法读取备份'}</b><small data-i18n="backup.loadFailHint">${mailaiT('backup.loadFailHint') || '请稍后重新打开此页。'}</small></div>`;
-  }
-}
-document.getElementById('btn-create-backup').addEventListener('click', async () => {
-  const button = document.getElementById('btn-create-backup'); setLoading(button, true, mailaiText('备份中…'));
-  try { const result = await api('/api/system/backups?include_raw=true', {method:'POST'}); toast(mailaiTemplate`备份完成 · ${formatFileSize(result.size)}`, 'success'); await loadBackups(); }
-  catch (err) { toast(mailaiSystemMessage(err.message), 'error'); } finally { setLoading(button, false); }
-});
-function askMigrationPassword(mode) {
-  const dialog = document.getElementById('migration-password-dialog');
-  const form = dialog.querySelector('form');
-  const password = document.getElementById('migration-password');
-  const confirmation = document.getElementById('migration-password-confirm');
-  const confirmationRow = document.getElementById('migration-password-confirm-row');
-  const noPasswordRow = document.getElementById('migration-no-password-row');
-  const noPassword = document.getElementById('migration-no-password');
-  const error = document.getElementById('migration-password-error');
-  const importing = mode === 'import';
-  mailaiBindUI(document.getElementById('migration-password-title'), "textContent", () => (importing ? mailaiText('输入迁移密码') : mailaiText('保护迁移包')));
-  mailaiBindUI(document.getElementById('migration-password-help'), "textContent", () => (importing ? mailaiText('该迁移包已加密。请输入旧设备导出时设置的密码。密码只用于本次解密。') : mailaiText('迁移包包含邮件正文和附件。设置密码后，即使文件遗失也无法直接读取内容。')));
-  password.value = ''; confirmation.value = ''; noPassword.checked = false; error.textContent = '';
-  confirmationRow.classList.toggle('hidden', importing); noPasswordRow.classList.toggle('hidden', importing);
-  password.disabled = false; confirmation.disabled = importing;
-  return new Promise(resolve => {
-    let completed = false;
-    const finish = value => { if (completed) return; completed = true; cleanup(); resolve(value); };
-    const cleanup = () => { form.removeEventListener('submit', submit); noPassword.removeEventListener('change', toggle); dialog.removeEventListener('close', close); };
-    const close = () => { if (dialog.returnValue !== 'migration-ok') finish(null); };
-    const toggle = () => { password.disabled = noPassword.checked; confirmation.disabled = noPassword.checked; error.textContent = ''; };
-    const submit = event => {
-      event.preventDefault();
-      if (event.submitter?.value === 'cancel') { dialog.close('cancel'); return; }
-      if (!importing && noPassword.checked) { dialog.close('migration-ok'); finish(''); return; }
-      if (password.value.length < 12 && !importing) { mailaiBindUI(error, "textContent", () => (mailaiText('迁移密码至少需要 12 位'))); password.focus(); return; }
-      if (!password.value && importing) { mailaiBindUI(error, "textContent", () => (mailaiText('请输入迁移密码'))); password.focus(); return; }
-      if (!importing && password.value !== confirmation.value) { mailaiBindUI(error, "textContent", () => (mailaiText('两次输入的密码不一致'))); confirmation.focus(); return; }
-      const value = password.value; dialog.close('migration-ok'); finish(value);
-    };
-    form.addEventListener('submit', submit); noPassword.addEventListener('change', toggle); dialog.addEventListener('close', close);
-    dialog.showModal(); setTimeout(() => password.focus(), 0);
-  });
-}
-document.getElementById('btn-export-portable').addEventListener('click', async () => {
-  const button = document.getElementById('btn-export-portable');
-  const since = document.getElementById('portable-export-since')?.value || '';
-  const until = document.getElementById('portable-export-until')?.value || '';
-  if (since && until && since > until) { toast(mailaiText('导出起始日期不能晚于截止日期'), 'warn'); return; }
-  const password = await askMigrationPassword('export');
-  if (password === null) return;
-  setLoading(button, true, mailaiText('导出中…'));
-  try {
-    const result = await api('/api/system/portable-backups', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({include_raw:true,password,since,until})});
-    if (window.pywebview?.api?.save_portable_backup) {
-      const saved = await window.pywebview.api.save_portable_backup(result.filename);
-      if (saved?.ok) toast(mailaiTemplate`迁移包已保存到 ${saved.path}`, 'success');
-      else if (saved?.canceled) toast(mailaiText('已取消选择位置；迁移包仍保存在下方记录中，可随时重新下载'), 'warn');
-      else throw new Error(mailaiText('无法保存迁移包'));
-    } else {
-      const link = document.createElement('a'); link.href = result.download_url; link.download = result.filename; document.body.appendChild(link); link.click(); link.remove();
-      toast(mailaiTemplate`迁移包已交给浏览器下载 · ${formatFileSize(result.size)}，请在下载列表中查看位置`, 'success');
-    }
-    await loadBackups();
-  } catch (err) { toast(mailaiSystemMessage(err.message), 'error'); } finally { setLoading(button, false); }
-});
-document.getElementById('btn-import-portable').addEventListener('click', () => document.getElementById('portable-backup-file').click());
-
-// 语言切换：静态标记由 applyI18n 处理，这里重渲染 JS 动态区域
+// 备份、迁移包与账号删除确认逻辑已模块化拆分至 backup-migration.js
 document.addEventListener('mailai:language-changed', () => {
   try { renderComposeAccountPicker(document.getElementById('compose-from').value); renderSignatureSelect(); } catch (_) {}
   try { applyFilters(); updateFacetScopeLabels(); } catch (_) {}
@@ -28952,82 +29520,6 @@ document.addEventListener('mailai:language-changed', () => {
   try { if (_dashboardData) renderDashboard(_dashboardData); } catch (_) {}
   try { refreshRulesLanguage(); } catch (_) {}
   try { loadSemanticStatus(); } catch (_) {}
-});
-document.getElementById('portable-backup-file').addEventListener('change', async event => {
-  const file = event.target.files?.[0]; event.target.value = ''; if (!file) return;
-  const signature = new Uint8Array(await file.slice(0, 8).arrayBuffer());
-  const encrypted = [77,65,73,76,65,73,51,0].every((value,index) => signature[index] === value);
-  let password = '';
-  if (encrypted) {
-    password = await askMigrationPassword('import');
-    if (password === null) return;
-  }
-  const button = document.getElementById('btn-import-portable'); setLoading(button, true, mailaiText('检查中…'));
-  try {
-    const accountId = activeMailAccount()?.id || '';
-    const response = await fetch('/api/system/portable-backups/inspect', {method:'POST', headers:{'Content-Type':'application/octet-stream','X-Migration-Password':password,...(accountId ? {'X-MailAI-Account':accountId} : {})}, body:file});
-    const preview = await response.json(); if (!response.ok) throw new Error(preview.detail || mailaiText('迁移包检查失败'));
-    const content = preview.content || {}, account = preview.account || {};
-    if (!preview.current_account_matches) {
-      await api(`/api/system/portable-backups/import/${encodeURIComponent(preview.import_token)}`, {method:'DELETE'}).catch(()=>{});
-      throw new Error(mailaiTemplate`迁移包属于 ${account.email || mailaiText('未知账号')}，请先切换或登录该邮箱后再导入`);
-    }
-    const sourceDate = preview.created_at ? new Date(preview.created_at).toLocaleString(currentI18nLanguage()) : mailaiText('未知时间');
-    const rawState = content.includes_raw_mail ? mailaiTemplate`${content.raw_messages || 0} 份邮件原文` : mailaiText('不含邮件原文');
-    const missing = content.missing_raw_messages ? mailaiTemplate`\n注意：源设备有 ${content.missing_raw_messages} 份原文缺失。` : '';
-    const confirmed = window.confirm(mailaiTemplate`迁移包检查通过\n\n账号：${account.email}\n来源：${preview.source_platform || mailaiText('未知系统')}\n导出时间：${sourceDate}\n内容：${content.emails || 0} 封邮件，${rawState}\n文件大小：${formatFileSize(preview.source_size || file.size)}${missing}\n\n导入会替换当前账号的本地数据，并先自动创建安全备份。服务器邮件不会被删除或修改。继续吗？`);
-    if (!confirmed) { await api(`/api/system/portable-backups/import/${encodeURIComponent(preview.import_token)}`, {method:'DELETE'}).catch(()=>{}); return; }
-    setLoading(button, true, mailaiText('导入中…'));
-    const result = await api('/api/system/portable-backups/restore', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({import_token:preview.import_token,password})});
-    if (window.confirm(mailaiTemplate`已导入 ${result.emails || 0} 封邮件。\n\n是否现在重新同步邮箱，以建立新设备的服务器关联？邮件较多时可能需要较长时间。`)) {
-      await api('/api/fetch_all', {method:'POST'});
-    }
-    window.location.reload();
-  } catch (err) { toast(mailaiSystemMessage(err.message), 'error'); } finally { setLoading(button, false); }
-});
-document.getElementById('backup-list').addEventListener('click', event => {
-  const restoreButton = event.target.closest('[data-restore-backup]');
-  if (restoreButton) { window.openBackupRestore(restoreButton.dataset.restoreBackup); return; }
-  const downloadButton = event.target.closest('[data-download-backup]');
-  const deleteButton = event.target.closest('[data-delete-backup]');
-  if (deleteButton) {
-    const filename = deleteButton.dataset.deleteBackup;
-    const portable = deleteButton.dataset.portable === 'true';
-    if (!window.confirm(mailaiTemplate`确定永久删除这个${portable ? mailaiText('迁移包') : mailaiText('本机备份')}吗？\n\n${filename}\n\n删除后无法恢复。`)) return;
-    (async () => {
-      setLoading(deleteButton, true, mailaiText('删除中…'));
-      try {
-        const path = portable ? `/api/system/portable-backups/stored/${encodeURIComponent(filename)}` : `/api/system/backups/${encodeURIComponent(filename)}`;
-        await api(path, {method:'DELETE'});
-        toast(mailaiTemplate`${portable ? mailaiText('迁移包') : mailaiText('备份')}已删除`, 'success');
-        await loadBackups();
-      } catch (err) { toast(mailaiTemplate`删除失败：${mailaiSystemMessage(err.message)}`, 'error'); }
-      finally { setLoading(deleteButton, false); }
-    })();
-    return;
-  }
-  if (!downloadButton) return;
-  const filename = downloadButton.dataset.downloadBackup;
-  const portable = downloadButton.dataset.portable === 'true';
-  (async () => {
-    setLoading(downloadButton, true, mailaiText('选择位置…'));
-    try {
-      if (window.pywebview?.api) {
-        const method = portable ? window.pywebview.api.save_portable_backup : window.pywebview.api.save_local_backup;
-        if (typeof method === 'function') {
-          const result = await method(filename);
-          if (result?.ok) toast(mailaiTemplate`已保存到 ${result.path}`, 'success');
-          else if (result?.canceled) toast(mailaiText('已取消另存为，原备份仍保留在应用中'), 'warn');
-          else throw new Error(mailaiText('保存失败'));
-          return;
-        }
-      }
-      const href = portable ? `/api/system/portable-backups/download/${encodeURIComponent(filename)}` : `/api/system/backups/${encodeURIComponent(filename)}`;
-      const link = document.createElement('a'); link.href = href; link.download = filename; link.hidden = true; document.body.appendChild(link); link.click(); link.remove();
-      toast(mailaiText('已交给浏览器下载，请在下载列表中查看保存位置'), 'success');
-    } catch (err) { toast(mailaiTemplate`备份另存失败：${mailaiSystemMessage(err.message)}`, 'error'); }
-    finally { setLoading(downloadButton, false); }
-  })();
 });
 document.getElementById('mail-config-form').addEventListener('submit', async e => {
   e.preventDefault();
@@ -29091,75 +29583,6 @@ document.getElementById('btn-manage-mail').addEventListener('click', async () =>
     return;
   }
   if (account) openMailAddPanel(account);
-});
-function openLogoutDialog(accountId = selectedManagedAccountId) {
-  const modal = document.getElementById('logout-modal');
-  const accounts = _systemConfig?.accounts || [];
-  const target = accounts.find(account => account.id === accountId);
-  if (!target) return toast(mailaiText('请先选择要删除的邮箱'), 'error');
-  modal.dataset.accountId = target.id;
-  mailaiBindUI(document.getElementById('logout-account-label'), "textContent", () => (mailaiTemplate`${target.user} · 将移除本机保存的邮箱账号和授权码`));
-  const keep = modal.querySelector('input[value="keep"]');
-  keep.checked = true;
-  modal.querySelectorAll('.logout-choice').forEach(choice => choice.classList.toggle('selected', choice.contains(keep)));
-  document.getElementById('logout-warning').classList.add('hidden');
-  modal.classList.remove('hidden');
-  modal.setAttribute('aria-hidden', 'false');
-  document.body.classList.add('modal-open');
-  keep.focus();
-}
-
-function closeLogoutDialog() {
-  const modal = document.getElementById('logout-modal');
-  modal.classList.add('hidden');
-  modal.setAttribute('aria-hidden', 'true');
-  document.body.classList.remove('modal-open');
-}
-
-async function stopFetchBeforeLogout() {
-  let state = await api('/api/fetch_status');
-  if (!state.running) return;
-  await api('/api/cancel_fetch', {method: 'POST'});
-  toast(mailaiText('正在安全停止邮件同步…'));
-  for (let attempt = 0; attempt < 40; attempt += 1) {
-    await new Promise(resolve => setTimeout(resolve, 250));
-    state = await api('/api/fetch_status');
-    if (!state.running) return;
-  }
-  throw new Error(mailaiText('邮件同步仍在停止中，请稍后再次删除'));
-}
-
-document.getElementById('btn-delete-mail').addEventListener('click', () => openLogoutDialog());
-document.getElementById('btn-close-logout').addEventListener('click', closeLogoutDialog);
-document.getElementById('btn-cancel-logout').addEventListener('click', closeLogoutDialog);
-document.querySelector('#logout-modal [data-close-logout]').addEventListener('click', closeLogoutDialog);
-document.querySelectorAll('input[name="logout-history"]').forEach(input => input.addEventListener('change', () => {
-  document.querySelectorAll('.logout-choice').forEach(choice => choice.classList.toggle('selected', choice.contains(input)));
-  document.getElementById('logout-warning').classList.toggle('hidden', input.value !== 'clear');
-}));
-document.getElementById('btn-confirm-logout').addEventListener('click', async () => {
-  const button = document.getElementById('btn-confirm-logout');
-  const clearHistory = document.querySelector('input[name="logout-history"]:checked').value === 'clear';
-  setLoading(button, true, clearHistory ? mailaiText('正在清空…') : mailaiText('正在删除…'));
-  try {
-    await stopFetchBeforeLogout();
-    const accountId = document.getElementById('logout-modal').dataset.accountId || '';
-    const targetWasActive = (_systemConfig?.accounts || []).some(account => account.id === accountId && account.active);
-    await api('/api/system/mail/logout', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({clear_history: clearHistory, account_id: accountId})});
-    closeLogoutDialog();
-    selectedManagedAccountId = '';
-    await loadSystemConfig();
-    if (targetWasActive) {
-      ++mailLoadRevision;
-      allEmails = []; allTodos = []; sentMessages = []; savedDrafts = []; mailboxLocalCounts = null;
-      resetReadingPane(); updateSidebar(); applyFilters();
-    }
-    selectSystemTab('account');
-    document.querySelector('.layout').classList.add('hidden');
-    document.getElementById('system-view').classList.remove('hidden');
-    toast(clearHistory ? mailaiText('已删除邮箱并清空本地邮件历史') : mailaiText('已删除邮箱，本地邮件历史已保留'), 'success');
-  } catch (err) { toast(mailaiText('删除失败：') + mailaiSystemMessage(err.message), 'error'); }
-  finally { setLoading(button, false); }
 });
 document.getElementById('btn-rules').addEventListener('click', () => {
   const view = document.getElementById('rules-view');
@@ -29763,57 +30186,6 @@ window.mailaiPrepareExit = async () => {
   return closeCompose();
 };
 document.getElementById('btn-add-attachment').addEventListener('click', () => document.getElementById('compose-attachments-input').click());
-document.getElementById('share-cos-settings-toggle').addEventListener('click', () => {
-  document.querySelector('.share-cos-config').classList.toggle('hidden');
-});
-document.querySelectorAll('[data-close-share-link]').forEach(button => button.addEventListener('click', closeShareLinkDialog));
-document.getElementById('share-cos-save').addEventListener('click', async event => {
-  const button = event.currentTarget;
-  const session = draftSession, accountId = composeAccountId;
-  const current = () => session === draftSession && accountId === composeAccountId && !session.canceled;
-  button.disabled = true;
-  try {
-    await api('/api/share-storage/config', {accountId, method:'POST',
-      headers:{'Content-Type':'application/json'}, body:JSON.stringify({
-        bucket:document.getElementById('share-cos-bucket').value,
-        region:document.getElementById('share-cos-region').value,
-        secret_id:document.getElementById('share-cos-id').value,
-        secret_key:document.getElementById('share-cos-key').value})});
-    if (!current()) return;
-    document.getElementById('share-cos-key').value = '';
-    mailaiBindUI(document.getElementById('share-cos-status'), "textContent", () => (mailaiText('COS 配置已保存')));
-    document.querySelector('.share-cos-config').classList.add('hidden');
-    document.getElementById('share-cos-settings-toggle').classList.remove('hidden');
-  } catch (error) { if (current()) document.getElementById('share-cos-status').textContent = mailaiSystemMessage(error.message); }
-  finally { button.disabled = false; }
-});
-document.getElementById('share-cos-form').addEventListener('submit', async event => {
-  event.preventDefault();
-  const files = [...document.getElementById('share-cos-file').files];
-  if (!files.length) return toast(mailaiText('请先选择文件'), 'warn');
-  if (files.some(file => file.size > 2 * 1024 * 1024 * 1024)) return toast(mailaiText('单个共享文件不能超过 2 GB'), 'warn');
-  const session = draftSession, accountId = composeAccountId;
-  if (session.busy || session.canceled || session.sharing) return;
-  session.sharing = true;
-  const days = Number(document.getElementById('share-cos-expiry').value);
-  session.attachmentReads = (session.attachmentReads || 0) + 1;
-  const button = document.getElementById('share-cos-upload');
-  button.disabled = true;
-  try {
-    closeShareLinkDialog();
-    const cards = files.map(file => ({file, name:file.name, size:file.size, days, state:'waiting'}));
-    (session.sharedFiles ||= []).push(...cards); renderSharedFileCards();
-    const failed = [];
-    for (const [index, file] of files.entries()) {
-      if (session !== draftSession || accountId !== composeAccountId || session.canceled) return;
-      if (!await uploadSharedFileWithCard(file, days, session, accountId, () => {}, cards[index])) failed.push(file);
-    }
-    if (session !== draftSession || accountId !== composeAccountId || session.canceled) return;
-    document.getElementById('share-cos-file').value = '';
-    toast(failed.length ? mailaiTemplate`${failed.length} 个文件上传失败，请在附件区重试或移除` : mailaiText('大附件已上传，分享链接已插入正文'), failed.length ? 'warn' : 'success');
-  } catch (error) { if (session === draftSession && accountId === composeAccountId) toast(mailaiSystemMessage(error.message), 'error'); }
-  finally { session.attachmentReads -= 1; session.sharing = false; button.disabled = false; mailaiBindUI(button, "textContent", () => (mailaiT('compose.cosUpload') || '上传并插入邮件')); if (session === draftSession) renderSharedFileCards(); }
-});
 document.getElementById('btn-insert-compose-image').addEventListener('click', () => { rememberComposeSelection(); document.getElementById('compose-image-input').click(); });
 document.getElementById('compose-image-input').addEventListener('change', event => {
   insertComposeImage(event.target.files[0]).catch(err => toast(mailaiText('插入图片失败：') + mailaiSystemMessage(err.message), 'error'));
@@ -29861,62 +30233,6 @@ composeDropHost.addEventListener('paste', event => {
 document.getElementById('btn-compose-preview').addEventListener('click', openComposePreview);
 document.querySelectorAll('[data-close-compose-preview]').forEach(button => button.addEventListener('click', closeComposePreview));
 document.getElementById('compose-signature-select').addEventListener('change', event => { renderComposeSignature(event.target.value); queueDraftSave(); });
-document.getElementById('btn-manage-signatures').addEventListener('click', openSignatureManager);
-document.querySelectorAll('[data-close-signatures]').forEach(button => button.addEventListener('click', closeSignatureManager));
-document.getElementById('btn-new-signature').addEventListener('click', () => editSignature(''));
-document.getElementById('signature-list').addEventListener('click', event => { const button = event.target.closest('[data-signature-id]'); if (button) editSignature(button.dataset.signatureId); });
-document.getElementById('btn-save-signature').addEventListener('click', () => saveSignature().catch(err => toast(mailaiText('保存签名失败：') + mailaiSystemMessage(err.message), 'error')));
-document.getElementById('btn-delete-signature').addEventListener('click', async () => {
-  if (!editingSignatureId || !window.confirm(mailaiText('确定删除这套签名？'))) return;
-  const removed = editingSignatureId;
-  signatureState = await api(`/api/mail/signatures/${encodeURIComponent(removed)}`, {method:'DELETE'});
-  editingSignatureId = '';
-  if (currentSignatureId === removed) renderComposeSignature('');
-  renderSignatureManager(); renderSignatureSelect(); queueDraftSave();
-  toast(mailaiText('签名已删除'), 'success');
-});
-document.getElementById('btn-ai-generate-signature').addEventListener('click', event => generateSignatures(event.currentTarget));
-document.getElementById('signature-editor').addEventListener('keyup', rememberSignatureSelection);
-document.getElementById('signature-editor').addEventListener('mouseup', rememberSignatureSelection);
-document.getElementById('signature-editor').addEventListener('click', event => {
-  const image = event.target.closest?.('img');
-  if (image) selectSignatureImage(image);
-  else clearSignatureImageSelection();
-});
-document.getElementById('signature-editor').addEventListener('input', () => {
-  if (selectedSignatureImage && !document.getElementById('signature-editor').contains(selectedSignatureImage)) clearSignatureImageSelection();
-});
-document.querySelectorAll('[data-signature-image-scale]').forEach(button => button.addEventListener('click', () => {
-  if (selectedSignatureImage) setSignatureImageWidth(signatureImageNaturalWidth(selectedSignatureImage) * Number(button.dataset.signatureImageScale) / 100);
-}));
-document.getElementById('signature-image-scale').addEventListener('input', event => {
-  if (selectedSignatureImage) setSignatureImageWidth(signatureImageNaturalWidth(selectedSignatureImage) * Number(event.target.value) / 100);
-});
-document.getElementById('signature-image-width').addEventListener('change', event => setSignatureImageWidth(event.target.value));
-document.getElementById('signature-image-done').addEventListener('click', clearSignatureImageSelection);
-document.getElementById('btn-insert-signature-image').addEventListener('pointerdown', rememberSignatureSelection);
-document.getElementById('btn-insert-signature-image').addEventListener('click', () => document.getElementById('signature-image-input').click());
-document.getElementById('signature-image-input').addEventListener('change', async event => {
-  const file = event.target.files[0], button = document.getElementById('btn-insert-signature-image');
-  event.target.value = '';
-  if (!file || button.disabled) return;
-  setLoading(button, true, mailaiText('读取图片…'));
-  try { await insertSignatureImage(file); }
-  catch(error) { toast(mailaiText('插入签名图片失败：') + mailaiSystemMessage(error.message), 'error'); }
-  finally { setLoading(button, false); }
-});
-document.getElementById('signature-ai-options').addEventListener('click', event => {
-  const button = event.target.closest('[data-ai-signature]');
-  if (!button) return;
-  const item = event.currentTarget._options?.[Number(button.dataset.aiSignature)];
-  if (!item) return;
-  editingSignatureId = '';
-  clearSignatureImageSelection();
-  document.getElementById('signature-name').value = item.name;
-  document.getElementById('signature-editor').innerHTML = item.html;
-  document.getElementById('signature-make-default').checked = !signatureState.default_id;
-  toast(mailaiText('已放入编辑区，确认后点击保存'), 'success');
-});
 document.getElementById('compose-attachments-input').addEventListener('change', event => {
   addComposeAttachments(event.target.files).catch(e => toast(mailaiText('读取附件失败：') + mailaiSystemMessage(e.message), 'error'));
   event.target.value = '';
@@ -30472,107 +30788,7 @@ function hideAppPreloader() {
 }
 
 // ===== 三栏宽度拖拽与本地记忆 =====
-const PANE_SIZE_KEY = 'mailai.workspace.paneSizes.v1';
-const PANE_DEFAULTS = {sidebar: 226, list: 405};
-
-function paneSizePreferenceKey() {
-  return document.body.dataset.mailListView === 'table' ? 'mailai.workspace.tablePaneSizes.v1' : PANE_SIZE_KEY;
-}
-
-function currentPaneDefaults() {
-  return {...PANE_DEFAULTS, list:document.body.dataset.mailListView === 'table' ? 720 : PANE_DEFAULTS.list};
-}
-
-function readPaneSizes() {
-  try { return {...currentPaneDefaults(), ...JSON.parse(localStorage.getItem(paneSizePreferenceKey()) || '{}')}; }
-  catch (_) { return currentPaneDefaults(); }
-}
-
-function constrainPaneSizes(input, totalWidth) {
-  const layout = document.querySelector('.layout');
-  const total = totalWidth || layout?.clientWidth || window.innerWidth;
-  const readingMin = Math.min(440, Math.max(360, total * .32));
-  let sidebar = Math.max(180, Math.min(380, Number(input.sidebar) || PANE_DEFAULTS.sidebar));
-  let list = Math.max(300, Math.min(720, Number(input.list) || PANE_DEFAULTS.list));
-  const available = Math.max(480, total - 24 - readingMin);
-  if (sidebar + list > available) list = Math.max(300, available - sidebar);
-  if (sidebar + list > available) sidebar = Math.max(180, available - list);
-  return {sidebar:Math.round(sidebar), list:Math.round(list)};
-}
-
-function applyPaneSizes(sizes, persist = false, totalWidth) {
-  const layout = document.querySelector('.layout');
-  if (!layout) return;
-  const value = constrainPaneSizes(sizes, totalWidth);
-  layout.style.setProperty('--sidebar-width', value.sidebar + 'px');
-  layout.style.setProperty('--list-width', value.list + 'px');
-  document.querySelector('[data-resizer="sidebar"]')?.setAttribute('aria-valuenow', value.sidebar);
-  document.querySelector('[data-resizer="list"]')?.setAttribute('aria-valuenow', value.list);
-  if (persist) localStorage.setItem(paneSizePreferenceKey(), JSON.stringify(value));
-  return value;
-}
-
-function initPaneResizers() {
-  let preferredSizes = readPaneSizes();
-  let sizes = applyPaneSizes(preferredSizes);
-  document.querySelectorAll('.pane-resizer').forEach(handle => {
-    const kind = handle.dataset.resizer;
-    handle.setAttribute('aria-valuemin', kind === 'sidebar' ? '180' : '300');
-    handle.setAttribute('aria-valuemax', kind === 'sidebar' ? '380' : '720');
-    handle.addEventListener('pointerdown', event => {
-      if (window.innerWidth <= 1024 || event.button !== 0 || handle.classList.contains('dragging')) return;
-      event.preventDefault();
-      const startX = event.clientX;
-      const start = {...sizes};
-      const layout = document.querySelector('.layout');
-      // Cache geometry before writes and coalesce pointer bursts per frame.
-      const totalWidth = layout.clientWidth;
-      const scale = layout.getBoundingClientRect().width / totalWidth || 1;
-      const pointerId = event.pointerId;
-      let latestX = startX, frame = 0;
-      const flush = () => {
-        frame = 0;
-        sizes = applyPaneSizes({...start, [kind]:start[kind] + (latestX - startX) / scale}, false, totalWidth);
-      };
-      handle.setPointerCapture(event.pointerId);
-      handle.classList.add('dragging'); document.body.classList.add('pane-resizing');
-      const move = moveEvent => {
-        if (moveEvent.pointerId !== pointerId) return;
-        latestX = moveEvent.clientX;
-        if (!frame) frame = requestAnimationFrame(flush);
-      };
-      const end = endEvent => {
-        if (endEvent.pointerId !== pointerId) return;
-        if (endEvent.type === 'pointerup') latestX = endEvent.clientX;
-        cancelAnimationFrame(frame);
-        flush();
-        handle.removeEventListener('pointerup', end);
-        handle.removeEventListener('pointercancel', end);
-        handle.removeEventListener('lostpointercapture', end);
-        if (handle.hasPointerCapture(pointerId)) handle.releasePointerCapture(pointerId);
-        handle.removeEventListener('pointermove', move);
-        handle.classList.remove('dragging'); document.body.classList.remove('pane-resizing');
-        sizes = applyPaneSizes(sizes, true);
-        preferredSizes = {...sizes};
-      };
-      handle.addEventListener('pointermove', move);
-      handle.addEventListener('pointerup', end);
-      handle.addEventListener('pointercancel', end);
-      handle.addEventListener('lostpointercapture', end);
-    });
-    handle.addEventListener('dblclick', () => { preferredSizes = currentPaneDefaults(); sizes = applyPaneSizes(preferredSizes, true); toast(mailaiText('已恢复默认栏宽'), 'success'); });
-    handle.addEventListener('keydown', event => {
-      if (!['ArrowLeft','ArrowRight'].includes(event.key)) return;
-      event.preventDefault();
-      sizes = applyPaneSizes({...sizes, [kind]:sizes[kind] + (event.key === 'ArrowRight' ? 16 : -16)}, true);
-      preferredSizes = {...sizes};
-    });
-  });
-  window.addEventListener('mailai:list-view-changed', () => { preferredSizes = readPaneSizes(); sizes = applyPaneSizes(preferredSizes); });
-  window.addEventListener('resize', () => { sizes = applyPaneSizes(preferredSizes); });
-}
-
-initPaneResizers();
+// 三栏宽度拖拽与本地记忆已模块化拆分至 pane-resizers.js
 
 Promise.all([
   initialLoad,
@@ -30632,30 +30848,10 @@ document.getElementById('email-list').addEventListener('click', async event => {
   try { await loadData(); if (revision === searchRevision) runGlobalSearch(); } catch (error) { if (revision === searchRevision) toast(mailaiTemplate`加载邮件失败：${mailaiSystemMessage(error.message)}`, 'error'); }
 });
 
-document.getElementById('compose-shared-files').addEventListener('click', async event => {
-  const retry = event.target.closest('[data-retry-share]');
-  const dismiss = event.target.closest('[data-dismiss-share]');
-  const session = draftSession, accountId = composeAccountId;
-  if ((!retry && !dismiss) || session.sharing || session.busy || session.canceled) return;
-  const index = Number(retry ? retry.dataset.retryShare : dismiss.dataset.dismissShare);
-  const item = session.sharedFiles?.[index];
-  if (!item || !['failed','waiting'].includes(item.state)) return;
-  if (dismiss) {
-    try { if (item.taskId) await api(`/api/share-storage/tasks/${item.taskId}`, {accountId, method:'DELETE'});
-      if (session !== draftSession) return;
-      session.sharedFiles.splice(index, 1); renderSharedFileCards();
-    } catch (error) { toast(mailaiSystemMessage(error.message), 'error'); }
-    return;
-  }
-  session.sharing = true; session.attachmentReads = (session.attachmentReads || 0) + 1;
-  try { await uploadSharedFileWithCard(item.file, item.days, session, accountId, () => {}, item); }
-  finally { session.sharing = false; session.attachmentReads--; if (session === draftSession) renderSharedFileCards(); }
-});
-
 // A single Escape closes only the innermost writing layer, never the draft.
 document.addEventListener('keydown', event => {
   if (event.isComposing || event.keyCode === 229) return;
-  if (event.key !== 'Escape' || !document.body.classList.contains('compose-open')) return;
+  if (event.key !== 'Escape' || !document.body.classList.contains('compose-open') || document.querySelector('dialog[open]')) return;
   const visible = id => { const node = document.getElementById(id); return node && !node.classList.contains('hidden'); };
   let close = null;
   let focus = null;
@@ -30796,8 +30992,10 @@ document.addEventListener('keydown', event => {
     } finally {painting=false;}
   }
   async function fetchPage(entry,index,cursor,signal){
+    const readSeq=window.mailaiReadMutationSeq?.() || 0;
     const result=await api('/api/mailbox/list?filters='+encodeURIComponent(JSON.stringify(entry.query))+'&cursor='+encodeURIComponent(cursor || ''),
       {accountId:entry.owner,signal});
+    window.mailaiPreserveLocalReadState?.(result.items,entry.owner,readSeq);
     // Reuse unchanged objects so local read/star state and selection stay stable.
     const known=new Map(rowsOf(entry).map(row=>[rowKey(row),row]));
     result.items=result.items.map(row=>{const previous=known.get(rowKey(row));return previous && JSON.stringify(previous)===JSON.stringify(row)?previous:row;});
@@ -30827,7 +31025,9 @@ document.addEventListener('keydown', event => {
       if(!entry.pending){
         entry.controller=new AbortController();activeRequest=entry;
         entry.pending=(async()=>{
+          const readSeq=window.mailaiReadMutationSeq?.() || 0;
           const response=await api('/api/mailbox/list?filters='+encodeURIComponent(JSON.stringify(q)),{accountId:entry.owner,signal:entry.controller.signal});
+          window.mailaiPreserveLocalReadState?.(response.items,entry.owner,readSeq);
           entry.pages=new Map([[0,response]]);entry.cursors=new Map([[0,''],[1,response.next]]);
           entry.data=response;entry.invalid=false;entry.error=false;entry.checked=Date.now();trim(entry);
         })().finally(()=>{entry.pending=null;if(activeRequest===entry)activeRequest=null;});
@@ -30863,8 +31063,10 @@ document.addEventListener('keydown', event => {
       const indices=[...entry.pages.keys()].sort((a,b)=>a-b);
       const first=indices[0],pages=new Map(),cursors=new Map(entry.cursors);
       let cursor=entry.cursors.get(first) || '',data;
+      const readSeq=window.mailaiReadMutationSeq?.() || 0;
       for(let offset=0;offset<indices.length;offset++){
         data=await api('/api/mailbox/list?filters='+encodeURIComponent(JSON.stringify(entry.query))+'&cursor='+encodeURIComponent(cursor)+'&refresh='+(offset===0)+(!cursor && entry.anchor?'&around_id='+entry.anchor:''),{accountId:entry.owner});
+        window.mailaiPreserveLocalReadState?.(data.items,entry.owner,readSeq);
         pages.set(first+offset,data);cursors.set(first+offset,cursor);cursors.set(first+offset+1,data.next);
         cursor=data.next;if(!cursor)break;
       }
@@ -31347,12 +31549,27 @@ document.getElementById('cleanup-preview').onclick = async event => {
   } catch (error) { document.getElementById('cleanup-error').textContent = mailaiSystemMessage(error.message); }
   finally { setLoading(button,false); setCleanupBusy(false); }
 };
+async function postCleanupWithRetry(path, options) {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await api(path, options);
+    } catch (error) {
+      // AccountGuardMiddleware rejects immediately on 5ms background polls; retry briefly before failing.
+      if (error?.status === 409 && attempt < 5 && /邮箱仍有操作或对话正在进行/.test(error.message || '')) {
+        await new Promise(resolve => setTimeout(resolve, 160 * (attempt + 1)));
+        continue;
+      }
+      throw error;
+    }
+  }
+}
+
 document.getElementById('cleanup-execute').onclick = async event => {
   if (event.currentTarget.disabled) return;
   const dialog = document.getElementById('server-cleanup-dialog'), token = cleanupPreview.token;
   setCleanupBusy(true); const button = event.currentTarget; setLoading(button,true,cleanupT('cleanup.executing', '正在备份并清理，请勿退出…'));
   try {
-    const result = await api('/api/system/server-cleanup/execute', {accountId:dialog.dataset.accountId,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,confirmation:document.getElementById('cleanup-confirm-email').value,acknowledge:document.getElementById('cleanup-ack').checked})});
+    const result = await postCleanupWithRetry('/api/system/server-cleanup/execute', {accountId:dialog.dataset.accountId,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,confirmation:document.getElementById('cleanup-confirm-email').value,acknowledge:document.getElementById('cleanup-ack').checked})});
     document.getElementById('cleanup-result').innerHTML = renderCleanupResult(result);
     await loadData(); await loadBackups(); await refreshCleanupHistory(dialog.dataset.accountId);
   } catch (error) { document.getElementById('cleanup-error').textContent = mailaiSystemMessage(error.message) + cleanupT('cleanup.errorSuffix', '。若请求已开始，请查看最近清理记录并核对服务器，不要盲目重试。'); }
@@ -31478,7 +31695,7 @@ document.getElementById('cleanup-auto-save').onclick = async event => {
   cleanupAutoBusy = true; syncCleanupAutomation();
   document.getElementById('cleanup-auto-error').textContent = '';
   try {
-    const policy = await api('/api/system/server-cleanup/automation', {accountId, method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    const policy = await postCleanupWithRetry('/api/system/server-cleanup/automation', {accountId, method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
     if (accountId === activeMailAccount()?.id) { ++cleanupAutoLoadRevision; renderCleanupAutomation(policy); }
     dialog.close(); toast(cleanupT('cleanupAuto.saved', '自动清理设置已保存'), 'success');
   } catch (error) { document.getElementById('cleanup-auto-error').textContent = mailaiSystemMessage(error.message); }
@@ -32065,10 +32282,22 @@ async function loadSemanticStatus() {
     toggle.disabled = false;
     toggle.closest('label')?.removeAttribute('title');
     toggle.checked = !!prefs.semantic_enabled;
-    mailaiBindUI(status, "textContent", () => (stats.indexed
-      ? (mailaiT('semantic.indexed') || '已索引 {n} 封邮件').replace('{n}', stats.indexed) +
-        (stats.last_indexed_at ? ` · ${String(stats.last_indexed_at).slice(0, 16)}` : '')
-      : (mailaiT('semantic.notIndexed') || '尚未建立索引')));
+    const formatSemanticStatus = () => {
+      if (!stats.indexed) return mailaiT('semantic.notIndexed') || '尚未建立索引';
+      let text = (mailaiT('semantic.indexed') || '已索引 {n} 封邮件').replace('{n}', stats.indexed);
+      const files = Number(stats.attachment_files || 0);
+      const threads = Number(stats.thread_chunks || 0);
+      if (files && threads) {
+        text += (mailaiT('semantic.withAttachmentsAndThreads') || '（含 {a} 份附件、{t} 段会话）').replace('{a}', files).replace('{t}', threads);
+      } else if (files) {
+        text += (mailaiT('semantic.withAttachments') || '（含 {a} 份附件）').replace('{a}', files);
+      } else if (threads) {
+        text += (mailaiT('semantic.withThreads') || '（含 {t} 段会话）').replace('{t}', threads);
+      }
+      if (stats.last_indexed_at) text += ` · ${String(stats.last_indexed_at).slice(0, 16)}`;
+      return text;
+    };
+    mailaiBindUI(status, "textContent", formatSemanticStatus);
     if (stats.progress?.error) mailaiBindUI(status, "textContent", () => (mailaiT('semantic.indexFailed') || '索引更新未完成，可重试；关键词搜索仍可使用'));
     reindex.classList.toggle('hidden', !stats.enabled);
     // 重建进行中（例如刚触发后切换了页签再回来）时恢复进度条与轮询
@@ -33170,10 +33399,11 @@ function mailCardDate(value, now = new Date()) {
       const details=run.details?.has(Number(source.id))||false,subject=source.subject||mailaiText('（无主题）');
       const detailId=`search-source-${run.id}-${Number(source.id)}`;
       return `<div class="assistant-search-candidate" ${index>=3&&!expanded?'hidden':''}>
-        <button type="button" class="assistant-search-source" data-search-source-details="${Number(source.id)}" aria-expanded="${details}" aria-controls="${esc(detailId)}" aria-label="${esc((details?t('hideDetails'):t('showDetails'))+': '+subject)}" title="${esc([subject,source.from_name,source.from_addr].filter(Boolean).join('\n'))}" ${index>=3&&!expanded?'hidden':''}>
-          <span class="assistant-search-source-index">${index+1}</span><span><b>${esc(subject)}</b><small>${esc([source.from_name || source.from_addr,String(source.date || '').slice(0,10)].filter(Boolean).join(' · '))}</small></span><span class="assistant-search-source-chevron" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="m6 8 4 4 4-4"/></svg></span>
+        <button type="button" class="assistant-search-source" data-search-source-details="${Number(source.id)}" aria-expanded="${details}" aria-controls="${esc(detailId)}" aria-label="${esc((details?t('hideDetails'):t('showDetails'))+': '+subject)}" title="${esc([subject,source.match_reason,source.from_name,source.from_addr].filter(Boolean).join('\n'))}" ${index>=3&&!expanded?'hidden':''}>
+          <span class="assistant-search-source-index">${index+1}</span><span><b>${esc(subject)}</b><small>${esc([source.from_name || source.from_addr,String(source.date || '').slice(0,10)].filter(Boolean).join(' · '))}</small>${source.match_reason?`<em class="assistant-search-match-tag">${esc(source.match_reason)}</em>`:''}</span><span class="assistant-search-source-chevron" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="m6 8 4 4 4-4"/></svg></span>
         </button>
         <div class="assistant-search-detail" id="${esc(detailId)}" ${details?'':'hidden'}>
+          ${source.match_reason?`<p class="assistant-search-match-reason"><span>${esc(source.match_reason)}</span></p>`:''}
           <dl><dt>${esc(t('sender'))}</dt><dd>${esc(source.from_addr||source.from_name||'')}</dd>${source.date?`<dt>${esc(t('date'))}</dt><dd><time datetime="${esc(source.date)}">${esc(sourceTime(source.date))}</time></dd>`:''}</dl>
           ${source.preview?`<p class="assistant-search-excerpt"><strong>${esc(t('preview'))}</strong>${esc(source.preview)}</p>`:''}
           <footer class="assistant-search-detail-actions"><button type="button" class="assistant-search-open-mail" data-search-loop-source="${Number(source.id)}" aria-label="${esc(t('openMail')+': '+subject)}" title="${esc(subject)}"><span data-search-open-label>${esc(t('openMail'))}</span><span class="assistant-search-source-open" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M4 10h12m-5-5 5 5-5 5"/></svg></span></button></footer>
@@ -33843,7 +34073,32 @@ function mailCardDate(value, now = new Date()) {
     if (opened) {
       document.getElementById('compose-ai-instruction').value = w('followupInstruction');
       toggleComposeAiPanel(true);
+      window.mailaiSyncComposePersona?.({seed});
     }
+  };
+  window.mailaiDraftFollowup = async (sentId, account, options = {}) => {
+    const active = activeMailAccount()?.id;
+    const language = typeof getI18nLanguage === 'function' ? getI18nLanguage() : 'zh-CN';
+    const seed = await api(`/api/work/followups/${Number(sentId)}/draft`, {
+      accountId: account,
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        tone: options.tone || 'auto',
+        instruction: options.instruction || '',
+        use_work_preferences: options.useWorkPreferences !== false,
+        language,
+      }),
+    });
+    if (active !== activeMailAccount()?.id) return false;
+    if (!document.getElementById('todo-center').classList.contains('hidden')) closeTodoCenter?.();
+    const opened = await openCompose({...seed, account_id: account});
+    if (opened) {
+      document.getElementById('compose-ai-instruction').value = w('followupInstruction');
+      if (seed.note) toast?.(mailaiSystemMessage(seed.note), seed.model_used ? 'success' : 'info');
+      window.mailaiSyncComposePersona?.({seed});
+    }
+    return opened;
   };
   window.mailaiOpenWork = async (id, account) => {
     if (account !== activeMailAccount()?.id) return;
@@ -33858,10 +34113,15 @@ function mailCardDate(value, now = new Date()) {
 /* ---- task-planner.js ---- */
 /* Shared task editor; all entry points edit the same account-bound todo row. */
 (() => {
-  document.body.insertAdjacentHTML('beforeend', `<dialog id="task-planner"><form><header><div><small><span data-i18n="ui.ade31c9bd6b0">简报与待办共用一条任务</span></small><h3><span data-i18n="ui.e8ec08580add">安排任务</span></h3></div><button type="button" data-plan-close aria-label="关闭" data-i18n-aria="ui.3fd47edce45b">×</button></header><p id="plan-source"></p><label id="plan-existing-label"><span data-i18n="ui.eda29e2e5ed0">此邮件已有任务</span><select id="plan-existing"></select></label><label><span data-i18n="ui.2479560deb33">任务名称</span><input id="plan-title" required maxlength="500"></label><div class="plan-grid"><label><span data-i18n="ui.14d614e81c9d">任务类型</span><select id="plan-kind"><option value="execution" data-i18n="ui.f93a2b033630">执行事项</option><option value="decision" data-i18n="ui.e3079522171b">决策事项</option></select></label><label><span data-i18n="ui.d2f2242680da">任务阶段</span><select id="plan-stage"><option value="active" data-i18n="ui.c6535b571547">由我推进</option><option value="waiting" data-i18n="ui.ecb9104683d3">等待反馈</option></select></label></div><label><span id="plan-date-label"><span data-i18n="ui.0abb39c962d1">截止日期（可选）</span></span><input id="plan-deadline" type="date"></label><label><span data-i18n="ui.55e4169d5992">提醒时间（可选）</span><input id="plan-remind" type="datetime-local"></label><div class="plan-reminder-shortcuts"><button type="button" data-plan-time="later"><span data-i18n="ui.c2a29a783b63">10 分钟后</span></button><button type="button" data-plan-time="tomorrow"><span data-i18n="ui.6a1e759cb774">明天 9 点</span></button><button type="button" data-plan-time="deadline"><span data-i18n="ui.a938f999b95f">截止日 9 点</span></button><button type="button" data-plan-time="clear"><span data-i18n="ui.0f207fc4c5e1">不提醒</span></button></div><small><span data-i18n="ui.d9de63bbac7c">截止日期用于标记逾期；只有设置提醒时间，才会发送提醒。</span></small><small><span data-i18n="ui.0cb207b628eb">提醒属于这条任务；完成任务后停止提醒。桌面版在后台运行时也会发系统通知（需允许通知）；完全退出后，下次启动补提醒。浏览器版的提示方式取决于运行平台。</span></small><p id="plan-error" role="status"></p><footer><button type="button" id="plan-reopen" hidden><span data-i18n="ui.345fcbfd7446">恢复待办</span></button><button type="button" data-plan-close><span data-i18n="ui.2cd0f3be8738">取消</span></button><button id="plan-save" type="submit"><span data-i18n="ui.231530ddc697">保存安排</span></button></footer></form></dialog>`);
+  document.body.insertAdjacentHTML('beforeend', `<dialog id="task-planner"><form><header><div><small><span data-i18n="ui.ade31c9bd6b0">简报与待办共用一条任务</span></small><h3><span data-i18n="ui.e8ec08580add">安排任务</span></h3></div><button type="button" data-plan-close aria-label="关闭" data-i18n-aria="ui.3fd47edce45b">×</button></header><p id="plan-source"></p><label id="plan-existing-label"><span data-i18n="ui.eda29e2e5ed0">此邮件已有任务</span><select id="plan-existing"></select></label><label><span data-i18n="ui.2479560deb33">任务名称</span><input id="plan-title" required maxlength="500"></label><div class="plan-grid"><label><span data-i18n="ui.14d614e81c9d">任务类型</span><select id="plan-kind"><option value="execution" data-i18n="ui.f93a2b033630">执行事项</option><option value="decision" data-i18n="ui.e3079522171b">决策事项</option></select></label><label><span data-i18n="ui.d2f2242680da">任务阶段</span><select id="plan-stage"><option value="active" data-i18n="ui.c6535b571547">由我推进</option><option value="waiting" data-i18n="ui.ecb9104683d3">等待反馈</option></select></label></div><div class="plan-grid"><label><span id="plan-date-label"><span data-i18n="ui.0abb39c962d1">截止日期（可选）</span></span><input id="plan-deadline" type="date"></label><label><span data-i18n="todo.recurrenceLabel">重复周期</span><select id="plan-recurrence"><option value="" data-i18n="todo.recNone">不重复</option><option value="weekly" data-i18n="todo.recWeekly">每周重复</option><option value="monthly" data-i18n="todo.recMonthly">每月重复</option></select></label></div><label><span data-i18n="ui.55e4169d5992">提醒时间（可选）</span><input id="plan-remind" type="datetime-local"></label><div class="plan-reminder-shortcuts"><button type="button" data-plan-time="later"><span data-i18n="ui.c2a29a783b63">10 分钟后</span></button><button type="button" data-plan-time="tomorrow"><span data-i18n="ui.6a1e759cb774">明天 9 点</span></button><button type="button" data-plan-time="deadline"><span data-i18n="ui.a938f999b95f">截止日 9 点</span></button><button type="button" data-plan-time="clear"><span data-i18n="ui.0f207fc4c5e1">不提醒</span></button></div><small><span data-i18n="ui.d9de63bbac7c">截止日期用于标记逾期；只有设置提醒时间，才会发送提醒。</span></small><small><span data-i18n="ui.0cb207b628eb">提醒属于这条任务；完成任务后停止提醒。桌面版在后台运行时也会发系统通知（需允许通知）；完全退出后，下次启动补提醒。浏览器版的提示方式取决于运行平台。</span></small><p id="plan-error" role="status"></p><footer><button type="button" id="plan-reopen" hidden><span data-i18n="ui.345fcbfd7446">恢复待办</span></button><button type="button" data-plan-close><span data-i18n="ui.2cd0f3be8738">取消</span></button><button id="plan-save" type="submit"><span data-i18n="ui.231530ddc697">保存安排</span></button></footer></form></dialog>`);
   const dialog = document.getElementById('task-planner');
   const get = id => document.getElementById('plan-'+id);
-  let context=null, ticket=0;
+  let context=null, ticket=0, returnFocus=null;
+  function restoreDialogFocus(){
+    if(dialog.contains(document.activeElement)&&typeof document.activeElement.blur==='function')document.activeElement.blur();
+    if(returnFocus&&returnFocus.isConnected&&typeof returnFocus.focus==='function')returnFocus.focus({preventScroll:true});
+    returnFocus=null;
+  }
   function localTime(value) {
     if (!value) return '';
     const date=new Date(value); if (!Number.isFinite(date.getTime())) return '';
@@ -33873,6 +34133,7 @@ function mailCardDate(value, now = new Date()) {
     get('kind').value=task?.kind || context.kind || 'execution';
     get('stage').value=task?.stage || 'active';
     get('deadline').value=(task?.deadline || '').slice(0,10);
+    get('recurrence').value=task?.recurrence || '';
     context.originalReminder=localTime(task?.remind_at);
     get('remind').value=context.remind ? localTime(Date.now()+3600000) : context.originalReminder;
     get('reopen').hidden=task?.status!=='done';
@@ -33889,14 +34150,15 @@ function mailCardDate(value, now = new Date()) {
       const rows=await api('/api/todos?include_done=true',{accountId});
       if (currentTicket!==ticket) return;
       let selected=rows.find(t=>t.id===Number(todoId));
-      emailId=Number(emailId || selected?.email_id);
-      const matches=rows.filter(t=>t.email_id===emailId);
+      const resolvedEmailId = Number(emailId || selected?.email_id || 0) || null;
+      const matches=resolvedEmailId ? rows.filter(t=>t.email_id===resolvedEmailId) : (selected ? [selected] : []);
       selected=selected || matches.find(t=>t.status!=='done') || matches[0];
-      context={accountId,emailId,title,kind,remind,matches};
-      get('existing-label').hidden=!matches.length;
+      context={accountId,emailId:resolvedEmailId,title,kind,remind,matches};
+      get('existing-label').hidden=!resolvedEmailId || !matches.length;
       get('existing').innerHTML=matches.map(t=>`<option value="${t.id}">${esc(t.title)}${t.status==='done'?mailaiText('（已完成）'):''}</option>`).join('');
       if (selected) get('existing').value=selected.id;
-      mailaiBindUI(get('source'), "textContent", () => (((_systemConfig?.accounts || []).find(a=>a.id===accountId)?.user || '') + ' · ' + (selected?.email_subject || title || mailaiText('已关联来源邮件'))));
+      mailaiBindUI(get('source'), "textContent", () => (((_systemConfig?.accounts || []).find(a=>a.id===accountId)?.user || '') + ' · ' + (resolvedEmailId ? (selected?.email_subject || title || mailaiText('已关联来源邮件')) : mailaiText('手动创建'))));
+      returnFocus=document.activeElement instanceof HTMLElement?document.activeElement:null;
       paint(selected);dialog.showModal();get('title').focus();
     } catch(e) {toast(mailaiText('无法打开任务：')+mailaiSystemMessage(e.message),'warn');}
   };
@@ -33908,6 +34170,7 @@ function mailCardDate(value, now = new Date()) {
     window.refreshSecretaryAccount?.();
     try {const rows=await api('/api/todos?include_done=true',{accountId});if(accountId!==activeMailAccount()?.id)return;allTodos=rows;updateSidebar();}catch(_){}
   });
+  dialog.addEventListener('close', restoreDialogFocus);
   dialog.querySelectorAll('[data-plan-close]').forEach(b=>b.onclick=()=>dialog.close());
   dialog.querySelectorAll('[data-plan-time]').forEach(button=>button.onclick=()=>{
     const action=button.dataset.planTime;get('error').textContent='';
@@ -33935,7 +34198,7 @@ function mailCardDate(value, now = new Date()) {
     }catch(e){if(context===c && dialog.open)get('error').textContent=mailaiSystemMessage(e.message);}
     finally{c.reopening=false;if(context===c)get('reopen').disabled=false;}
   };
-  const editorValues = () => ({title:get('title').value.trim(),kind:get('kind').value,stage:get('stage').value,deadline:get('deadline').value,remind_at:get('remind').value});
+  const editorValues = () => ({title:get('title').value.trim(),kind:get('kind').value,stage:get('stage').value,deadline:get('deadline').value,recurrence:get('recurrence').value,remind_at:get('remind').value});
   dialog.querySelector('form').onsubmit=async event=>{
     event.preventDefault();const c=context;if(!c || c.saving)return;
     const originalTask=c.task;
@@ -33947,7 +34210,8 @@ function mailCardDate(value, now = new Date()) {
     c.saving=true;get('save').disabled=true;get('save').setAttribute('aria-busy','true');
     mailaiBindUI(get('save'), "textContent", () => (mailaiText('保存中…')));get('error').textContent='';
     try {
-      const result=await api(originalTask?`/api/todos/${originalTask.id}`:`/api/emails/${c.emailId}/todo`,{accountId:c.accountId,method:originalTask?'PATCH':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      const targetUrl = originalTask ? `/api/todos/${originalTask.id}` : (c.emailId ? `/api/emails/${c.emailId}/todo` : '/api/todos');
+      const result=await api(targetUrl,{accountId:c.accountId,method:originalTask?'PATCH':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       window.mailaiTasksChanged(c.accountId);
       if(context!==c || !dialog.open)return;
       const sameTask=c.task===originalTask;
@@ -34027,7 +34291,7 @@ function mailCardDate(value, now = new Date()) {
       <header class="todo-group-header"><span class="todo-group-progress" aria-label="${esc(mailaiTemplate`已完成 ${completed} / ${allRows.length} 项`)}" style="--todo-progress:${Math.round(completed/allRows.length*100)}%"><b>${allRows.length>99?Math.round(completed/allRows.length*100)+'%':completed}</b>${allRows.length>99?'':`<span>/${allRows.length}</span>`}</span><div class="todo-group-main"><h3 data-user-content>${esc(latest.group_title || latest.email_subject || latest.title)}</h3>
         <div class="todo-group-meta"><span>${esc(mailaiTemplate`${open.length} 项未完成 / 共 ${allRows.length} 项`)}</span>${date ? `<span class="todo-group-deadline ${overdue?'overdue':''}">${esc((overdue ? mailaiText('逾期 · ') : latest.stage === 'waiting' ? mailaiText('跟进 · ') : mailaiText('截止 · '))+dateLabel)}</span>` : ''}${reminderTimes.some(Boolean) ? `<span>${esc(reminder)}</span>` : ''}</div>
         <div class="todo-group-sources">${visibleSources[0] ? sourceButton(visibleSources[0],0) : ''}${visibleSources.length > 1 ? `<details class="todo-sources-more"><summary>${esc(mailaiTemplate`其他来源 ${sources.length-1}`)}</summary><div>${visibleSources.slice(1).map((item,index)=>sourceButton(item,index+1)).join('')}<p class="todo-group-review">${esc(mailaiText('相关通知已归集，时间和地点请核对最新邮件；原事项均已保留。'))}</p></div></details>` : ''}</div>
-      </div><div class="todo-group-actions">${open.length ? `<button type="button" data-todo-group-remind="${key}">${esc(mailaiText('统一提醒'))}</button><button type="button" data-todo-group-done="${key}">${esc(mailaiText('完成本组'))}</button>` : ''}</div></header>
+      </div><div class="todo-group-actions">${open.length ? `<details class="todo-snooze-menu" data-todo-group-snooze-menu="${key}"><summary title="${esc(mailaiText('快速推迟本组待办'))}"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M10 6.5v3.8l2.6 1.5"/></svg><span>${esc(mailaiText('推迟'))}</span></summary><div class="todo-snooze-popover" role="menu"><button type="button" data-todo-group-snooze="${key}" data-snooze-preset="tomorrow">${esc(mailaiText('明天'))}</button><button type="button" data-todo-group-snooze="${key}" data-snooze-preset="next_monday">${esc(mailaiText('下周一'))}</button><button type="button" data-todo-group-snooze="${key}" data-snooze-preset="plus_3d">${esc(mailaiText('+3 天'))}</button></div></details><button type="button" data-todo-group-remind="${key}">${esc(mailaiText('统一提醒'))}</button><button type="button" data-todo-group-done="${key}">${esc(mailaiText('完成本组'))}</button>` : ''}</div></header>
       <details class="todo-group-details" ${isOpen ? 'open' : ''}><summary><span class="todo-group-preview" data-user-content>${esc(preview.slice(0,2).map(item=>item.title).join(' · '))}</span><span class="todo-group-expand">${esc(mailaiTemplate`查看 ${group.rows.length} 项`)}</span><span class="todo-group-collapse">${esc(mailaiText('收起子事项'))}</span></summary>${(group.visibleRows || group.rows).map(item=>renderRow(item,{grouped:true,latestEmailId:latest.email_id,sharedReminder:reminderTimes.length===1?reminderTimes[0]:''})).join('')}</details>
     </section>`;
   }).join('');
@@ -34269,7 +34533,7 @@ function mailCardDate(value, now = new Date()) {
 
   const todo=document.getElementById('todo-center'), list=document.getElementById('todo-list');
   const tabs=document.createElement('nav');tabs.className='todo-view-tabs';mailaiBindUI(tabs, "@aria-label", () => (mailaiText('待办视图')));
-  const names={get all() { return mailaiText('全部待办'); },get today() { return mailaiText('今天'); },get overdue() { return mailaiText('已逾期'); },get later() { return mailaiText('以后'); },get unplanned() { return mailaiText('未安排'); }};
+  const names={get all() { return mailaiText('全部待办'); },get today() { return mailaiText('今天'); },get overdue() { return mailaiText('已逾期'); },get later() { return mailaiText('以后'); },get unplanned() { return mailaiText('未安排'); },get followups() { return mailaiText('发信跟进'); }};
   tabs.innerHTML=Object.entries(names).map(([key,label])=>`<button type="button" data-todo-view="${key}" aria-pressed="${key==='all'}">${label}</button>`).join('');
   todo.querySelector('.todo-center-tools').before(tabs);
   const noticeButton=document.getElementById('btn-task-notices');tabs.append(noticeButton);noticeButton.setAttribute('aria-pressed','false');
@@ -34279,22 +34543,26 @@ function mailCardDate(value, now = new Date()) {
     if(!dates.length)return 'unplanned';const now=localDateKey();return dates[0]<now?'overdue':dates[0]===now?'today':'later';
   }
   window.mailaiTodoEmpty=()=>{
-    const titles={get all() { return mailaiText('还没有待办事项'); },get today() { return mailaiText('今天没有待办'); },get overdue() { return mailaiText('没有逾期待办'); },get later() { return mailaiText('没有安排以后的待办'); },get unplanned() { return mailaiText('没有未安排的待办'); }};
-    return `<div class="todo-empty-state"><b>${titles[view] || titles.all}</b><p>${view==='all'?mailaiText('可以从邮件中添加待办，再设置截止时间与提醒。'):mailaiText('其他任务可在全部待办中查看。')}</p>${view==='all'?'':"<button type=\"button\" data-todo-empty-all><span data-i18n=\"ui.0f1f3c58fd43\">查看全部待办</span></button>"}</div>`;
+    const titles={get all() { return mailaiText('还没有待办事项'); },get today() { return mailaiText('今天没有待办'); },get overdue() { return mailaiText('没有逾期待办'); },get later() { return mailaiText('没有安排以后的待办'); },get unplanned() { return mailaiText('没有未安排的待办'); },get followups() { return mailaiText('暂无待跟进的已发送邮件'); }};
+    return `<div class="todo-empty-state"><b>${titles[view] || titles.all}</b><p>${view==='all'?mailaiText('可以从邮件中添加待办，再设置截止时间与提醒。'):view==='followups'?mailaiText('写信时在“发送安排”中设置未回复提醒，或打开已发送邮件点击“安排跟进”，这里会自动汇总并在到期时提示一键催办。'):mailaiText('其他任务可在全部待办中查看。')}</p>${view==='all'||view==='followups'?'':"<button type=\"button\" data-todo-empty-all><span data-i18n=\"ui.0f1f3c58fd43\">查看全部待办</span></button>"}</div>`;
   };
   list.addEventListener('click',e=>{if(e.target.closest('[data-todo-empty-all]'))window.mailaiTodoTab('all')});
-  window.mailaiTodoMatches=item=>view==='all'||view==='reminders'||(item.status!=='done'&&group(item)===view);
+  window.mailaiTodoCurrentView=()=>view;
+  window.mailaiTodoMatches=item=>view==='all'||view==='reminders'||view==='followups'||(item.status!=='done'&&group(item)===view);
   window.mailaiTodoCounts=()=>{
+    const followupRows=Array.isArray(window.mailaiFollowupRows)?window.mailaiFollowupRows:[];
     for(const [key,label] of Object.entries(names)){
-      const count=todoCenterRows.filter(r=>r.status!=='done'&&(key==='all'||group(r)===key)).length;
+      const count=key==='followups'
+        ? followupRows.filter(r=>r.state==='scheduled').length
+        : todoCenterRows.filter(r=>r.status!=='done'&&(key==='all'||group(r)===key)).length;
       tabs.querySelector(`[data-todo-view="${key}"]`).innerHTML=`<span>${label}</span><small>${count}</small>`;
     }
   };
   window.mailaiTodoTab=next=>{
     const changed=next!==view&&!todo.classList.contains('hidden');
-    view=next;const reminders=next==='reminders';
+    view=next;const reminders=next==='reminders', followups=next==='followups';
     todo.dataset.todoView=next;
-    list.classList.toggle('hidden',reminders);todo.querySelector('.todo-center-tools').classList.toggle('hidden',reminders);
+    list.classList.toggle('hidden',reminders);todo.querySelector('.todo-center-tools').classList.toggle('hidden',reminders||followups);
     tabs.querySelectorAll('[data-todo-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.todoView===next)));
     noticeButton.setAttribute('aria-pressed',String(reminders));
     if(!reminders){renderTodoCenter();if(changed)window.mailaiMotion?.reveal(list);}
@@ -34308,9 +34576,14 @@ function mailCardDate(value, now = new Date()) {
     renderTodoCenter();
   };
   const options=document.getElementById('todo-options');
-  document.addEventListener('pointerdown',event=>{if(!options.contains(event.target))options.open=false;});
+  document.addEventListener('pointerdown',event=>{
+    if(!options.contains(event.target))options.open=false;
+    document.querySelectorAll('#todo-list .todo-followup-reschedule[open]').forEach(node=>{if(!node.contains(event.target))node.open=false;});
+  });
   document.addEventListener('keydown',event=>{
     if(event.key==='Escape'&&options.open){event.preventDefault();event.stopPropagation();options.open=false;options.querySelector('summary').focus();}
+    const openReschedule=event.key==='Escape'&&document.querySelector('#todo-list .todo-followup-reschedule[open]');
+    if(openReschedule){event.preventDefault();event.stopPropagation();openReschedule.open=false;openReschedule.querySelector('summary').focus();}
   },true);
   document.getElementById('todo-extra-actions').addEventListener('click',event=>{if(event.target.closest('button'))options.open=false;});
   mailaiBindUI(document.getElementById('todo-complete-all'), "textContent", () => (mailaiText('完成当前视图')));
@@ -36655,6 +36928,8 @@ function mailCardDate(value, now = new Date()) {
       if (button.dataset.petSection) {
         const section=button.dataset.petSection;
         tab=section==='dress'?dressTab:section==='growth'?growthTab:'home';
+        const bodyHost = dialog.querySelector('.pet-journal-body');
+        if (bodyHost) bodyHost.dataset.petRenderedTab = '';
         previewOpen=false;previewOrigin=null;previewStage=null;earnReturn=false;renderKey='';render();
         dialog.querySelector('.pet-tab-content')?.scrollTo(0,0);
         dialog.querySelector(`[data-pet-section="${section}"]`)?.focus({preventScroll:true});return;
@@ -36662,6 +36937,8 @@ function mailCardDate(value, now = new Date()) {
       if (button.dataset.petHomeCollection) collectionId=button.dataset.petHomeCollection;
       if (button.dataset.petTab || button.dataset.petGo) {
         if(button.dataset.petTab==='wardrobe'&&button.closest('.pet-task-nav'))shopFilter='all';
+        const bodyHost = dialog.querySelector('.pet-journal-body');
+        if (bodyHost) bodyHost.dataset.petRenderedTab = '';
         earnReturn=false;tab = button.dataset.petTab || button.dataset.petGo; previewOpen=false;previewOrigin=null;previewStage=null;if(tab==='shop')collectionActual=false;renderKey='';render();
         dialog.querySelector('.pet-tab-content')?.scrollTo(0,0);
         focusTab(tab);
@@ -37209,7 +37486,8 @@ function mailCardDate(value, now = new Date()) {
     previewAdvanced=host.querySelector('.pet-fitting-extras')?.open ?? previewAdvanced;
     const focusKey = focus?.closest('.pet-journal') ? Object.entries(focus.dataset).find(([key])=>['petSection','petEnabled','petCategory','petPageSelect','petLifeAction','petLifeChatter','petTab','petGo','petPage','petSeries','petJourneyStage','petWearCollection','petSetAction','petGiftContextClose','petBuy','petItemAction','petEquip','petSlot','petStyle','petGiftCode','petGiftPreview','petGiftClaim','petGiftWear','petGiftCopy','petGiftReconcile','petGiftOutfits','petClaimCode','petPreview','petPreviewSelect','petPreviewPlay','petPreviewClose','petPreviewStage','petPreviewAction','petPreviewMode','petResetStage','petEarn','petReturnShop','petReceiptClose','petTryAction','petShopFilter','petTryStage','petCollection','petPurchaseOpen','petPurchaseCancel','petTrialEnd','petWardrobeSlot','petBackCollection','petBackpackSeries','petUndoOutfit'].includes(key)) : null;
     const scroll = host.querySelector('.pet-tab-content')?.scrollTop || 0;
-    // Progress, receipts and tab updates must not replace the live animation rig.
+    // Progress, receipts and tab updates must not replace the live animation rig or ephemeral life status on the same tab.
+    const prevLifeStatus = host.dataset.petRenderedTab === tab ? (host.querySelector('[data-pet-life-status]')?.textContent || '') : '';
     const portrait = host.querySelector('.pet-hero>.pet-hero-portrait');
     window.mailaiCompanionMotion?.stopPreview();
     const navButton=name=>`<button type="button" data-pet-section="${name}" aria-pressed="${space===name}">${label('section.'+name)}</button>`;
@@ -37217,6 +37495,8 @@ function mailCardDate(value, now = new Date()) {
     const task=view();
     const body=space==='dress'?`<div class="pet-dress-layout ${tab==='wardrobe'&&!previewOpen?'pet-backpack-layout':''}">${companionStageView()}<div class="pet-task-panel">${task}</div></div>`:space==='growth'?`${tab==='journey'?'':growthSummary()}${task}`:task;
     host.innerHTML=`<nav class="pet-tabs" aria-label="${label('tabs')}"><div class="pet-primary-nav">${['home','dress','growth'].map(navButton).join('')}</div></nav><main class="pet-center-main"><div class="pet-center-notices">${purchaseIntent&&!busy?`<div class="pet-pending" role="status"><span>${label('purchasePending',t('item.'+purchaseIntent.item))}</span><button type="button" data-pet-reconcile>${label('reconcile')}</button></div>`:''}${feedback&&Date.now()<feedback.until?`<p class="pet-milestone" role="status">${esc(feedback.copy)}</p>`:''}${!state.enabled?`<p class="pet-paused">${label('paused')}</p>`:''}</div><section class="pet-tab-content" aria-label="${label('nav.'+tab)}">${taskNavigation()}<div class="pet-view-body">${body}</div></section></main>`;
+    host.dataset.petRenderedTab = tab;
+    if (prevLifeStatus) { const nextStatus = host.querySelector('[data-pet-life-status]'); if (nextStatus && !nextStatus.textContent) nextStatus.textContent = prevLifeStatus; }
     const livePortrait=host.querySelector('.pet-hero>.pet-hero-portrait');
     if (portrait?.querySelector('.mail-companion')&&livePortrait) {portrait.className=livePortrait.className;livePortrait.replaceWith(portrait);}
     for(const id of giftOutfitItems)host.querySelector(`[data-pet-item="${CSS.escape(id)}"]`)?.setAttribute('data-gift-focus','true');
@@ -39525,13 +39805,27 @@ function mailCardDate(value, now = new Date()) {
       if (!live(rev)) return;
       const host = dialog.querySelector("[data-followup-list]");
       host.innerHTML =
-        items
+        `<div class="productivity-actions"><button type="button" data-followup-todo-center>${esc(mailaiText("在待办中心管理"))}</button></div>` +
+        (items
           .map(
             (row, i) =>
-              `<div class="productivity-source-quote"><strong>${esc(row.subject || mailaiText("无主题"))}</strong><p>${esc(row.to_addr || "")}</p><small>${esc({ scheduled: row.sent ? mailaiText("已提交提醒") : mailaiText("等待回复"), get replied() { return mailaiText("已同步到回复"); }, get canceled() { return mailaiText("已取消"); } }[row.state] || row.state)} · ${esc(row.at.replace("T", " "))}</small><div class="productivity-actions"><button type="button" data-followup-open="${i}"><span data-i18n="ui.c259135be1d3">查看已发送邮件</span></button>${row.state === "scheduled" ? `<button type="button" data-followup-prepare="${i}">${esc(mailaiText("准备跟进草稿"))}</button><input type="datetime-local" data-followup-at="${i}" value="${esc(row.at.slice(0, 16))}" aria-label="新的跟进时间" data-i18n-aria="ui.6da097eb22f3"><button type="button" data-followup-save="${i}"><span data-i18n="ui.fd094431c8ca">调整时间</span></button><button type="button" data-followup-cancel="${i}"><span data-i18n="ui.f3b07169f705">取消提醒</span></button>` : ""}</div></div>`,
+              `<div class="productivity-source-quote"><strong>${esc(row.subject || mailaiText("无主题"))}</strong><p>${esc(row.to_addr || "")}</p><small>${esc({ scheduled: row.sent ? mailaiText("已提交提醒") : mailaiText("等待回复"), get replied() { return mailaiText("已同步到回复"); }, get canceled() { return mailaiText("已取消"); } }[row.state] || row.state)} · ${esc(row.at.replace("T", " "))}</small><div class="productivity-actions"><button type="button" data-followup-open="${i}"><span data-i18n="ui.c259135be1d3">查看已发送邮件</span></button>${row.state === "scheduled" ? `<button type="button" data-followup-ai="${i}" class="primary-action">${esc(mailaiText("AI 一键催办"))}</button><button type="button" data-followup-prepare="${i}">${esc(mailaiText("准备跟进草稿"))}</button><input type="datetime-local" data-followup-at="${i}" value="${esc(row.at.slice(0, 16))}" aria-label="新的跟进时间" data-i18n-aria="ui.6da097eb22f3"><button type="button" data-followup-save="${i}"><span data-i18n="ui.fd094431c8ca">调整时间</span></button><button type="button" data-followup-cancel="${i}"><span data-i18n="ui.f3b07169f705">取消提醒</span></button>` : ""}</div></div>`,
           )
           .join("") ||
-        mailaiText("没有发信跟进记录。请在写信的“发送安排”中设置未回复提醒。");
+        mailaiText("没有发信跟进记录。请在写信的“发送安排”中设置未回复提醒。"));
+      host.querySelector('[data-followup-todo-center]')?.addEventListener('click', async () => {
+        dialog.close();
+        await openTodoCenter?.();
+        window.mailaiTodoTab?.('followups');
+      });
+      host.querySelectorAll('[data-followup-ai]').forEach(btn => {
+        btn.onclick = () => busy(btn, async () => {
+          const id = items[Number(btn.dataset.followupAi)].sent_id;
+          if (!live(rev)) return;
+          dialog.close();
+          await window.mailaiDraftFollowup(id, account);
+        });
+      });
       host.querySelectorAll('[data-followup-prepare]').forEach(btn => {
         btn.onclick = () => busy(btn, async () => {
           const id = items[Number(btn.dataset.followupPrepare)].sent_id;
@@ -39602,7 +39896,7 @@ function mailCardDate(value, now = new Date()) {
     const email = account === owner() && selectedEmailDetail ? selectedEmailDetail : { id: 0, subject: "" };
     const rev = open(
       mailaiText("会议安排"),
-      `<label><span data-i18n="ui.961ddaf780e3">导入 ICS 日历文件</span><input id="productivity-calendar-file" type="file" accept=".ics,text/calendar"></label><div id="productivity-invitations"></div><p><span data-i18n="ui.5c56bfb6da4b">核对后创建日历事件：</span></p><div class="productivity-grid"><label class="wide"><span data-i18n="ui.c3405f8c7d9d">标题</span><input id="productivity-event-title"></label><label><span data-i18n="ui.1b1b03a8147d">开始时间（本地）</span><input type="datetime-local" id="productivity-event-start"></label><label><span data-i18n="ui.7a5c755878e3">结束时间（本地）</span><input type="datetime-local" id="productivity-event-end"></label><label class="wide"><span data-i18n="ui.253ac66fb8e1">地点</span><input id="productivity-event-location"></label></div><div class="productivity-actions">${button(mailaiText("导出日历事件"), "export-event", 'class="primary-action"')}</div><p class="productivity-hint"><span data-i18n="ui.21e07454f9db">导入文件只预览邀请；可下载原始 ICS 导入系统日历。接受/拒绝需核对并发送日历回复，对方服务可能不自动更新。手动创建的日期由你核对填写。</span></p>`,
+      `<label><span data-i18n="ui.961ddaf780e3">导入 ICS 日历文件</span><input id="productivity-calendar-file" type="file" accept=".ics,text/calendar"></label><div id="productivity-invitations"></div><p><span data-i18n="ui.5c56bfb6da4b">核对后创建日历事件：</span></p><div class="productivity-grid"><label class="wide"><span data-i18n="ui.c3405f8c7d9d">标题</span><input id="productivity-event-title"></label><label><span data-i18n="ui.1b1b03a8147d">开始时间（本地）</span><input type="datetime-local" id="productivity-event-start"></label><label><span data-i18n="ui.7a5c755878e3">结束时间（本地）</span><input type="datetime-local" id="productivity-event-end"></label><label class="wide"><span data-i18n="ui.253ac66fb8e1">地点</span><input id="productivity-event-location"></label></div><div class="productivity-actions">${button(mailaiText("导出日历事件"), "export-event", 'class="primary-action"')}${button(mailaiText("打开日程时间线"), "open-timeline")}</div><p class="productivity-hint"><span data-i18n="ui.21e07454f9db">导入文件只预览邀请；可下载原始 ICS 导入系统日历。接受/拒绝需核对并发送日历回复，对方服务可能不自动更新。手动创建的日期由你核对填写。</span></p>`,
       account,
     );
     dialog.querySelector("#productivity-event-title").value =
@@ -39670,6 +39964,11 @@ function mailCardDate(value, now = new Date()) {
         live(rev) && msg(mailaiSystemMessage(error.message), true);
       }
     };
+    dialog.querySelector('[data-productivity-action="open-timeline"]').onclick =
+      () => {
+        dialog?.open && dialog.close();
+        window.openCalendarTimeline?.();
+      };
     dialog.querySelector('[data-productivity-action="export-event"]').onclick =
       (n) =>
         busy(n.currentTarget, async () => {
@@ -40149,7 +40448,212 @@ function mailCardDate(value, now = new Date()) {
     }
   }
   let paletteRunning=false;
+  let lastWorkflowUndo=null;
+  const recentPaletteKey='mailai.palette.recent.v1';
+  const readRecentPaletteId=()=>{try{return localStorage.getItem(recentPaletteKey)||'';}catch(_){return '';}};
+  const rememberRecentPaletteId=id=>{if(!id||id==='search-query')return;try{localStorage.setItem(recentPaletteKey,id);}catch(_){}};
   const paletteBlocked=()=>paletteRunning||bulkOperationActive||Boolean(document.querySelector('dialog[open],.modal:not(.hidden),.compose-modal:not(.hidden),.attachment-center:not(.hidden),#task-center:not(.hidden),#onboarding-overlay:not(.hidden),#start-model:not(.hidden)'));
+  const shortcutBlocked=event=>{
+    if(event.isComposing||event.keyCode===229||event.metaKey||event.ctrlKey||event.altKey)return true;
+    if(document.body.classList.contains('compose-open'))return true;
+    const field=event.target.closest?.('input,textarea,select,[contenteditable="true"]');
+    if(field&&!field.closest('dialog:not([open])'))return true;
+    return Boolean(document.querySelector('dialog[open],.modal:not(.hidden),.compose-modal:not(.hidden),.attachment-center:not(.hidden),#todo-center:not(.hidden),#contact-center:not(.hidden),#task-center:not(.hidden),#digest-modal:not(.hidden),#correspondence-modal:not(.hidden),#mail-context-menu:not(.hidden),#security-analysis-panel:not(.hidden),#onboarding-overlay:not(.hidden),#start-model:not(.hidden)'));
+  };
+  const showMailWorkspace=()=>{hideDashboard();hideRulesView(false);hideSystemView(true);};
+  function activeMailContext(){
+    if(specialMailbox)return null;
+    if(selectedEmailDetail?.id){
+      return {
+        email:selectedEmailDetail,
+        id:Number(selectedEmailDetail.id),
+        accountId:selectedEmailAccountId||selectedEmailDetail._account_id||selectedEmailDetail.account_id||owner(),
+      };
+    }
+    if(!unifiedMailbox){
+      const focused=document.activeElement?.closest('#email-list .email-item[data-id]');
+      if(focused){
+        const id=Number(focused.dataset.id);
+        const rowAccount=focused.dataset.accountId||owner();
+        const found=allEmails.find(item=>Number(item.id)===id&&(!item._account_id||item._account_id===rowAccount));
+        if(id>0)return {email:found||{id,subject:'',status:currentFilter.status||'inbox'},id,accountId:rowAccount};
+      }
+    }
+    return null;
+  }
+  async function ensureEmailOpened(ctx){
+    if(!ctx)return null;
+    if(Number(selectedEmailDetail?.id)===ctx.id&&(selectedEmailAccountId||owner())===ctx.accountId)return selectedEmailDetail;
+    await (unifiedMailbox?selectUnifiedEmail(ctx.id,ctx.accountId):selectEmail(ctx.id));
+    return selectedEmailDetail;
+  }
+  function syncLocalMailRow(id,accountId,patch){
+    for(const item of [...allEmails,...(searchResults||[])]){
+      const itemAccount=item._account_id||item.account_id||owner();
+      if(Number(item.id)===Number(id)&&(!itemAccount||itemAccount===accountId))Object.assign(item,patch);
+    }
+    if(selectedEmailDetail&&Number(selectedEmailDetail.id)===Number(id))Object.assign(selectedEmailDetail,patch);
+  }
+  async function applyQuickWorkflow(ctx,nextState,{advance=false}={}){
+    if(!ctx)return toast(mailaiText('请先选择一封邮件'),'warn');
+    const rows=[...document.querySelectorAll('#email-list .email-item')];
+    const currentIndex=rows.findIndex(n=>Number(n.dataset.id)===ctx.id);
+    const nextCandidate=advance?(rows[currentIndex+1]||rows[currentIndex-1]||null):null;
+    const nextCandidateId=nextCandidate?Number(nextCandidate.dataset.id):0;
+    const prevState=ctx.email.handle_state||'unhandled';
+    const prevAt=ctx.email.snoozed_until||ctx.email.followup_at||'';
+    const result=await api(`/api/productivity/workflow/${ctx.id}`,{
+      accountId:ctx.accountId,
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({state:nextState,at:'',followup_at:''}),
+    });
+    const patch={
+      handle_state:result.state,
+      snoozed_until:result.state==='later'?result.at:'',
+      followup_at:result.state==='waiting'?result.at:'',
+    };
+    syncLocalMailRow(ctx.id,ctx.accountId,patch);
+    lastWorkflowUndo={id:ctx.id,accountId:ctx.accountId,prevState,prevAt,nextState:result.state,subject:ctx.email.subject||''};
+    await loadWorkflow();
+    decorateReading();
+    if(advance){
+      const updatedRows=[...document.querySelectorAll('#email-list .email-item')];
+      const nextEl=(nextCandidateId&&updatedRows.find(n=>Number(n.dataset.id)===nextCandidateId))||updatedRows[Math.min(Math.max(0,currentIndex),updatedRows.length-1)];
+      if(nextEl){nextEl.click();nextEl.scrollIntoView({block:'nearest'});}
+      toast(nextEl?mailaiText('已标为已处理，并切到下一封'):mailaiTemplate`已标记为「${labels[result.state]||result.state}」`,'success');
+      return;
+    }
+    toast(mailaiTemplate`已标记为「${labels[result.state]||result.state}」`,'success');
+  }
+  async function undoLastQuickWorkflow(){
+    const snap=lastWorkflowUndo;
+    if(!snap)return;
+    const result=await api(`/api/productivity/workflow/${snap.id}`,{
+      accountId:snap.accountId,
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({state:snap.prevState,at:snap.prevAt,followup_at:snap.prevAt}),
+    });
+    syncLocalMailRow(snap.id,snap.accountId,{
+      handle_state:result.state,
+      snoozed_until:result.state==='later'?result.at:'',
+      followup_at:result.state==='waiting'?result.at:'',
+    });
+    lastWorkflowUndo=null;
+    await loadWorkflow();
+    decorateReading();
+    toast(mailaiTemplate`已撤销，恢复为「${labels[result.state]||result.state}」`,'success');
+  }
+  async function quickToggleRead(ctx){
+    if(!ctx)return toast(mailaiText('请先选择一封邮件'),'warn');
+    const nextRead=!ctx.email.is_read;
+    await api(`/api/emails/${ctx.id}/read?value=${nextRead}`,{accountId:ctx.accountId,method:'POST'});
+    syncLocalMailRow(ctx.id,ctx.accountId,{is_read:nextRead});
+    if(typeof setLocalEmailReadState==='function')setLocalEmailReadState(ctx.id,ctx.accountId,nextRead);
+    updateSidebar?.();
+    applyFilters?.({silent:true});
+    toast(nextRead?mailaiText('已标为已读'):mailaiText('已标为未读'),'success');
+  }
+  async function quickToggleFavorite(ctx){
+    if(!ctx)return toast(mailaiText('请先选择一封邮件'),'warn');
+    const nextFav=!ctx.email.is_favorite;
+    const result=await api(`/api/emails/${ctx.id}/favorite?value=${nextFav}`,{accountId:ctx.accountId,method:'POST'});
+    syncLocalMailRow(ctx.id,ctx.accountId,{is_favorite:result.is_favorite});
+    const favBtn=document.querySelector('#reading-content [data-reading-action="favorite"]');
+    if(favBtn&&Number(selectedEmailDetail?.id)===ctx.id){
+      favBtn.setAttribute('aria-pressed',String(result.is_favorite));
+      const labelNode=favBtn.querySelector('[data-action-label]');
+      if(labelNode)mailaiBindUI(labelNode,'textContent',()=>result.is_favorite?mailaiText('已收藏'):mailaiText('收藏'));
+    }
+    applyFilters?.({silent:true});
+    toast(result.is_favorite?mailaiText('已加入我的收藏'):mailaiText('已取消收藏'),'success');
+  }
+  async function quickToggleStar(ctx){
+    if(!ctx)return toast(mailaiText('请先选择一封邮件'),'warn');
+    if(ctx.email.is_local_archive)return toast(mailaiText('仅本地保留的邮件请使用收藏'),'info');
+    const nextStar=!ctx.email.is_starred;
+    const result=await api(`/api/emails/${ctx.id}/star?value=${nextStar}`,{accountId:ctx.accountId,method:'POST'});
+    syncLocalMailRow(ctx.id,ctx.accountId,{is_starred:result.is_starred});
+    applyFilters?.({silent:true});
+    toast(result.is_starred?mailaiText('已添加星标'):mailaiText('已取消星标'),'success');
+  }
+  async function quickTrashMail(ctx){
+    if(!ctx)return toast(mailaiText('请先选择一封邮件'),'warn');
+    if(ctx.email.status==='trash'||currentFilter.status==='trash')return toast(mailaiText('邮件已在已删除中，请使用恢复操作'),'warn');
+    const result=await api('/api/emails/bulk',{accountId:ctx.accountId,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids:[ctx.id],action:'trash'})});
+    if(result.failed?.length)throw new Error(result.failed[0].error||mailaiText('删除失败，请重试'));
+    if(Number(selectedEmailDetail?.id)===ctx.id)resetReadingPane();
+    if(owner()===ctx.accountId){
+      selectedMailIds.delete(ctx.id);
+      if(!selectedMailIds.size)mailSelectionExplicit=false;
+    }
+    await loadData();
+    toast(mailaiText('当前邮件已移入已删除'),'success');
+  }
+  async function quickAskXiaoYou(ctx,mode='understand'){
+    if(!ctx)return toast(mailaiText('请先选择一封邮件'),'warn');
+    if(ctx.email.status==='sent'&&mode==='followup'){
+      return window.mailaiDraftFollowup?.(ctx.id,ctx.accountId);
+    }
+    if(assistantController)return toast(mailaiText('请先等待当前回答完成，或停止生成'),'warn');
+    await ensureEmailOpened(ctx);
+    openAssistantForEmail(selectedEmailDetail);
+    const prompt=mode==='reply'
+      ? (mailaiT('work.replyPrompt')||'结合这封邮件内容和上下文，帮我拟定一封得体回复草稿')
+      : mailaiText('总结这封邮件的重点和需要我处理的事项');
+    await askAssistant(prompt,[ctx.id]);
+  }
+  function setWorkflowFilterView(nextView){
+    showMailWorkspace();
+    state.navigation=mailboxNavigationRevision;
+    state.view=nextView;
+    const select=document.getElementById('productivity-workflow-filter');
+    if(select)select.value=nextView;
+    clearMailSelection();
+    refresh();
+    window.mailaiWorkflowChanged?.();
+  }
+  function shortcutBadgeLabel(keys){
+    const mac=/Mac|iPhone|iPad/.test(navigator.platform);
+    return String(keys||'').replace('MOD',mac?'⌘':'Ctrl ');
+  }
+  function shortcutsDialog(){
+    if(paletteRunning||bulkOperationActive)return;
+    const rev=open(
+      mailaiText('工作台快捷键'),
+      `<p class="shortcut-note">${esc(mailaiT('guide.shortcuts.note')||'输入文字、弹窗和写信时，不触发单键快捷操作。')}</p>
+      <div class="shortcut-grid">
+        <section class="shortcut-group"><h3>${esc(mailaiText('全局与导航'))}</h3><div class="shortcut-rows">
+          <div class="shortcut-row"><span>${esc(mailaiText('快捷操作面板'))}</span><span class="shortcut-keys"><kbd>${esc(shortcutBadgeLabel('MOD'))}</kbd><kbd>K</kbd></span></div>
+          <div class="shortcut-row"><span>${esc(mailaiText('搜索当前邮件'))}</span><span class="shortcut-keys"><kbd>/</kbd></span></div>
+          <div class="shortcut-row"><span>${esc(mailaiText('写新邮件'))}</span><span class="shortcut-keys"><kbd>C</kbd></span></div>
+          <div class="shortcut-row"><span>${esc(mailaiText('快捷键速查'))}</span><span class="shortcut-keys"><kbd>?</kbd></span></div>
+        </div></section>
+        <section class="shortcut-group"><h3>${esc(mailaiText('邮件快速操作'))}</h3><div class="shortcut-rows">
+          <div class="shortcut-row"><span>${esc(mailaiT('guide.shortcuts.read')||'下一封 / 上一封')}</span><span class="shortcut-keys"><kbd>J</kbd><kbd>K</kbd></span></div>
+          <div class="shortcut-row"><span>${esc(mailaiText('回复 / 回复全部 / 转发'))}</span><span class="shortcut-keys"><kbd>R</kbd><kbd>A</kbd><kbd>F</kbd></span></div>
+          <div class="shortcut-row"><span>${esc(mailaiText('标为未读 / 已读'))}</span><span class="shortcut-keys"><kbd>U</kbd></span></div>
+          <div class="shortcut-row"><span>${esc(mailaiText('星标 / 取消星标'))}</span><span class="shortcut-keys"><kbd>S</kbd></span></div>
+        </div></section>
+        <section class="shortcut-group shortcut-group-wide"><h3>${esc(mailaiText('处理状态与 AI 待办'))}</h3><div class="shortcut-rows">
+          <div class="shortcut-row"><span>${esc(mailaiText('标为已处理'))}</span><span class="shortcut-keys"><kbd>E</kbd></span></div>
+          <div class="shortcut-row"><span>${esc(mailaiText('已处理并切下一封'))}</span><span class="shortcut-keys"><kbd>⇧E</kbd></span></div>
+          <div class="shortcut-row"><span>${esc(mailaiText('安排处理状态与时间'))}</span><span class="shortcut-keys"><kbd>W</kbd></span></div>
+          <div class="shortcut-row"><span>${esc(mailaiText('加入待办 / 安排任务'))}</span><span class="shortcut-keys"><kbd>T</kbd></span></div>
+          <div class="shortcut-row"><span>${esc(mailaiText('让小邮总结与解读（已发送支持 AI 催办）'))}</span><span class="shortcut-keys"><kbd>I</kbd></span></div>
+        </div></section>
+      </div>
+      <div class="shortcut-footer"><span class="shortcut-note">${esc(mailaiText('提示：也可在 ⌘K 面板内直接搜索并执行当前邮件操作。'))}</span><div class="productivity-actions"><button type="button" class="primary-action" data-productivity-action="open-palette">${esc(mailaiText('打开快捷操作'))}</button></div></div>`
+    );
+    dialog.dataset.panel='shortcuts';
+    dialog.querySelector('[data-productivity-action="open-palette"]').onclick=async()=>{
+      if(!live(rev))return;
+      const closed=new Promise(resolve=>dialog.addEventListener('close',resolve,{once:true}));
+      dialog.close();await closed;
+      palette();
+    };
+  }
   async function palette() {
     if(paletteBlocked())return;
     // A native close event can arrive after the next keyboard shortcut. Let
@@ -40158,21 +40662,22 @@ function mailCardDate(value, now = new Date()) {
     if(paletteBlocked())return;
     const rev = open(
       mailaiText("快捷操作"),
-      `<input id="productivity-command-query" type="text" role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls="productivity-commands" autocomplete="off" spellcheck="false" maxlength="500" placeholder="搜索命令、邮箱，或输入邮件关键词" aria-label="搜索快捷操作" data-i18n-placeholder="command.placeholder" data-i18n-aria="ui.717bfece6fe9"><div id="productivity-commands" role="listbox" aria-label="快捷操作" data-i18n-aria="guide.shortcuts.command"></div><div class="command-empty" role="status" hidden data-i18n="command.empty">没有匹配的命令</div><footer class="command-hints"><span><kbd>↑</kbd><kbd>↓</kbd> <span data-i18n="command.navigate">选择</span></span><span><kbd>↵</kbd> <span data-i18n="command.execute">打开</span></span><span><kbd>Esc</kbd> <span data-i18n="command.close">关闭</span></span></footer>`,
+      `<div class="command-mail-bar" id="productivity-command-mail" hidden></div><input id="productivity-command-query" type="text" role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls="productivity-commands" autocomplete="off" spellcheck="false" maxlength="500" placeholder="搜索命令、邮箱，或输入邮件关键词" aria-label="搜索快捷操作" data-i18n-placeholder="command.placeholder" data-i18n-aria="ui.717bfece6fe9"><div id="productivity-commands" role="listbox" aria-label="快捷操作" data-i18n-aria="guide.shortcuts.command"></div><div class="command-empty" role="status" hidden data-i18n="command.empty">没有匹配的命令</div><footer class="command-hints"><span><kbd>↑</kbd><kbd>↓</kbd> <span data-i18n="command.navigate">选择</span></span><span><kbd>↵</kbd> <span data-i18n="command.execute">打开</span></span><span><kbd>?</kbd> <span data-i18n="command.shortcuts">快捷键</span></span><span><kbd>Esc</kbd> <span data-i18n="command.close">关闭</span></span></footer>`,
     );
     dialog.dataset.panel='commands';
     const launcher=document.getElementById('btn-command-palette');
     launcher?.setAttribute('aria-expanded','true');
     const host = dialog.querySelector("#productivity-commands");
+    const mailBar=dialog.querySelector('#productivity-command-mail');
     const input=dialog.querySelector('#productivity-command-query');
     const origin=returnFocus;
     const selection=origin?.matches('input,textarea')?[origin.selectionStart,origin.selectionEnd]:null;
     mailaiBindUI(dialog.querySelector('[data-account-label]'),'textContent',()=>mailaiTemplate`当前邮箱：${activeMailAccount()?.user||mailaiText('未选择邮箱')}`);
     const normalize=value=>String(value).normalize('NFKC').toLocaleLowerCase();
-    const showMail=()=>{hideDashboard();hideRulesView(false);hideSystemView(true);};
+    const showMail=showMailWorkspace;
     let choices=[],active=-1;
     const searchIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m15.5 15.5 4.3 4.3"/></svg>';
-    const commandPaths={advanced:'M4 7h16M4 17h16M8 4v6M16 14v6',templates:'M6 3h8l4 4v14H6zM14 3v5h4M9 12h6M9 16h6',scheduled:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M12 7v5l3 2','contact-import':'M4 8h15l-4-4M20 16H5l4 4'};
+    const commandPaths={'todo-quick-add':'M12 5v14M5 12h14','triage-center':'M4 5h16l-6 7v6l-4 2v-8L4 5Z','calendar-timeline':'M4 5h16v14H4zM8 3v4M16 3v4M4 10h16M8 14h2m4 0h2','periodic-briefing':'M4 5h16v14H4zM8 3v4M16 3v4M4 10h16M8 14h4',advanced:'M4 7h16M4 17h16M8 4v6M16 14v6',templates:'M6 3h8l4 4v14H6zM14 3v5h4M9 12h6M9 16h6',scheduled:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M12 7v5l3 2','contact-import':'M4 8h15l-4-4M20 16H5l4 4',shortcuts:'M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Zm4 4h.01M12 10h.01M16 10h.01M7 14h10',followups:'M22 2 11 13M22 2l-7 20-4-9-9-4Z','filter-reply':'M4 6h16M7 12h10M10 18h4','filter-focus':'m12 3 2.5 5.1 5.6.8-4 3.9.9 5.6-5-2.6-5 2.6.9-5.6-4-3.9 5.6-.8z','filter-all':'M4 7h16M4 12h16M4 17h16','mail-reply':'m10 6-6 6 6 6M4 12h9c4 0 6.5 2 7 6','mail-reply-all':'m10 6-6 6 6 6m5-12-6 6 6 6','mail-forward':'m14 6 6 6-6 6m6-6h-9c-4 0-6.5 2-7 6','mail-done':'M4 12l5 5L20 6','mail-done-next':'M4 12l5 5L20 6M15 17l4 0','mail-workflow-reply':'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z','mail-workflow-dialog':'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4v5l3 2','mail-todo':'M3.5 7.5 5.5 9.5 9 6M12.5 8h8M3.5 16.5 5.5 18.5 9 15M12.5 17h8','mail-read':'M3.5 6.5h17v11h-17zM4 7l8 6 8-6','mail-favorite':'m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z','mail-star':'m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z','mail-ai-summary':'M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9Z','mail-ai-reply':'M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9Z','mail-ai-followup':'M22 2 11 13M22 2l-7 20-4-9-9-4Z','mail-undo-workflow':'M9 14 4 9l5-5M4 9h10a6 6 0 1 1 0 12h-1','mail-trash':'M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15'};
     function highlight(value,words){
       const chars=[...String(value)],offsets=[],marked=new Set();let normalized='';
       chars.forEach((char,index)=>{const text=normalize(char);normalized+=text;for(let n=0;n<text.length;n++)offsets.push(index);});
@@ -40181,22 +40686,90 @@ function mailCardDate(value, now = new Date()) {
       chars.forEach((char,index)=>{const match=marked.has(index);if(match!==inside){html+=match?'<mark>':'</mark>';inside=match;}html+=esc(char);});
       return html+(inside?'</mark>':'');
     }
+    function quickPills(ctx){
+      if(!ctx)return [];
+      if(ctx.email.status==='sent')return [
+        {id:'pill-ai-followup',label:mailaiText('AI 催办草稿'),shortcut:'',run:()=>window.mailaiDraftFollowup?.(ctx.id,ctx.accountId)},
+        {id:'pill-reply-all',label:mailaiText('回复全部'),shortcut:'A',run:async()=>{await ensureEmailOpened(ctx);composeFromEmail('reply_all');}},
+        {id:'pill-forward',label:mailaiText('转发'),shortcut:'F',run:async()=>{await ensureEmailOpened(ctx);composeFromEmail('forward');}},
+        {id:'pill-todo',label:mailaiText('加待办'),shortcut:'T',run:()=>window.openTaskPlanner({emailId:ctx.id,title:ctx.email.subject||'',accountId:ctx.accountId})},
+      ];
+      return [
+        {id:'pill-reply',label:mailaiText('回复'),shortcut:'R',run:async()=>{await ensureEmailOpened(ctx);composeFromEmail('reply');}},
+        {id:'pill-done',label:mailaiText('已处理'),shortcut:'E',run:()=>applyQuickWorkflow(ctx,'done')},
+        {id:'pill-done-next',label:mailaiText('已处理+下一封'),shortcut:'⇧E',run:()=>applyQuickWorkflow(ctx,'done',{advance:true})},
+        {id:'pill-todo',label:mailaiText('加待办'),shortcut:'T',run:()=>window.openTaskPlanner({emailId:ctx.id,title:ctx.email.subject||'',accountId:ctx.accountId})},
+        {id:'pill-ai',label:mailaiText('问小邮'),shortcut:'I',run:()=>quickAskXiaoYou(ctx,'understand')},
+      ];
+    }
+    let currentPills=[];
+    function drawMailBar(){
+      const ctx=activeMailContext();
+      if(!ctx){mailBar.hidden=true;mailBar.replaceChildren();currentPills=[];return;}
+      const subject=String(ctx.email.subject||'').trim()||mailaiText('（无主题）');
+      currentPills=quickPills(ctx);
+      mailBar.hidden=false;
+      mailBar.innerHTML=`<div class="command-mail-meta"><small>${esc(mailaiText('当前邮件'))}</small><strong>${esc(subject)}</strong></div><div class="command-mail-pills">${currentPills.map((pill,i)=>`<button type="button" class="command-mail-pill" data-command-pill="${i}"><span>${esc(pill.label)}</span>${pill.shortcut?`<kbd>${esc(pill.shortcut)}</kbd>`:''}</button>`).join('')}</div>`;
+    }
     function commands(){
       const hasAccount=Boolean(owner());
-      const item=(id,label,run,buttonId,aliases='',needsAccount=true)=>({id,label,run,buttonId,aliases,group:'actions',detail:'',disabled:needsAccount&&!hasAccount});
+      const ctx=activeMailContext();
+      const item=(id,label,run,buttonId='',aliases='',needsAccount=true,shortcut='',group='actions',detail='',disabled=false)=>({id,label,run,buttonId,aliases,group,detail,shortcut,disabled:(needsAccount&&!hasAccount)||disabled});
       const rows=[
-        item('focus-search',mailaiText('搜索当前邮件'),()=>{showMail();const target=document.getElementById('global-search');target.focus();target.select();},'', 'search mail sou suo'),
-        item('compose',mailaiText('写邮件'),()=>document.getElementById('btn-compose').click(),'btn-compose','compose write xie youjian'),
+        item('focus-search',mailaiText('搜索当前邮件'),()=>{showMail();const target=document.getElementById('global-search');target.focus();target.select();},'', 'search mail sou suo',true,'/'),
+        item('compose',mailaiText('写邮件'),()=>document.getElementById('btn-compose').click(),'btn-compose','compose write xie youjian',true,'C'),
+        item('todos',mailaiText('待办'),openTodoCenter,'btn-todos','todo task daiban'),
+        item('todo-quick-add',mailaiText('快速新建待办'),async()=>{await openTodoCenter({view:'all'});window.mailaiFocusQuickTodo?.();},'','new todo create manual task xinjian daiban'),
+        item('followups',mailaiText('发信跟进（待办中心）'),()=>openTodoCenter({view:'followups'}),'','followup sent cuiban nudge genjin'),
+        item('periodic-briefing',mailaiText('周期工作简报（周报 / 月报）'),()=>window.openPeriodicBriefing?.(),'btn-digest','weekly monthly report zhoubao yuebao jianbao'),
+        item('calendar-timeline',mailaiText('日程时间线（Deadlines & 会议）'),()=>window.openCalendarTimeline?.(),'','calendar schedule timeline richeng rili'),
+        item('triage-center',mailaiText('订阅降噪与自动分流规则'),()=>window.openTriageCenter?.('subs'),'','subscription unsubscribe auto triage noise rule dingyue fenliu guize'),
+        item('shortcuts',mailaiText('快捷键速查'),shortcutsDialog,'','shortcuts keybindings kuaijiejian help',false,'?'),
+        item('filter-reply',mailaiText('仅看「待回复」邮件'),()=>setWorkflowFilterView('reply'),'','filter reply daifu'),
+        item('filter-focus',mailaiText('仅看重点邮件'),()=>setWorkflowFilterView('focus'),'','filter focus zhongdian'),
+        item('filter-all',mailaiText('显示全部邮件'),()=>setWorkflowFilterView('all'),'','filter all quanbu'),
         item('advanced',mailaiText('高级搜索'),openSearch,'','advanced search'),
         item('templates',mailaiText('邮件模板'),templates,'','template moban'),
         item('attachments',mailaiText('附件中心'),openAttachmentCenter,'btn-attachments','attachment fujian'),
-        item('todos',mailaiText('待办'),openTodoCenter,'btn-todos','todo task daiban'),
         item('scheduled',mailaiText('定时发送'),scheduled,'','scheduled send'),
         item('contacts',mailaiText('联系人'),()=>openContactCenter(),'btn-contacts','contact tongxunlu'),
         item('contact-import',mailaiText('通讯录互导'),contacts,'','import export contacts'),
         item('sync',mailaiText('同步邮件'),()=>document.getElementById('btn-poll').click(),'btn-poll','sync tongbu'),
         item('settings',mailaiText('设置'),()=>{showSystemView('preferences');document.querySelector('[data-system-tab=preferences]')?.focus();},'btn-preferences','settings preferences shezhi',false),
       ];
+      if(ctx){
+        const isSent=ctx.email.status==='sent';
+        const isTrash=ctx.email.status==='trash'||currentFilter.status==='trash';
+        if(isSent){
+          rows.push(
+            item('mail-ai-followup',mailaiText('AI 一键催办草稿'),()=>window.mailaiDraftFollowup?.(ctx.id,ctx.accountId),'','ai followup nudge cuiban caogao',true,'','current-mail'),
+          );
+        } else {
+          rows.push(
+            item('mail-reply',mailaiText('回复当前邮件'),async()=>{await ensureEmailOpened(ctx);composeFromEmail('reply');},'','reply huifu',true,'R','current-mail'),
+            item('mail-done-next',mailaiText('标为已处理并看下一封'),()=>applyQuickWorkflow(ctx,'done',{advance:true}),'','done next yichuli xiayifeng',true,'⇧E','current-mail'),
+            item('mail-done',mailaiText('标为已处理'),()=>applyQuickWorkflow(ctx,'done'),'','done handled yichuli',true,'E','current-mail'),
+            item('mail-workflow-reply',mailaiText('标为「待回复」'),()=>applyQuickWorkflow(ctx,'reply'),'','workflow reply daihuifu',true,'','current-mail'),
+            item('mail-workflow-dialog',mailaiText('安排处理状态与时间'),async()=>{await ensureEmailOpened(ctx);workflowDialog();},'','workflow schedule later waiting anpai',true,'W','current-mail'),
+            item('mail-ai-summary',mailaiText('让小邮总结与解读'),()=>quickAskXiaoYou(ctx,'understand'),'','ai summary xiaoyou zongjie jiedu',true,'I','current-mail'),
+            item('mail-ai-reply',mailaiText('让小邮拟定回复'),()=>quickAskXiaoYou(ctx,'reply'),'','ai reply draft xiaoyou huifu',true,'','current-mail'),
+          );
+        }
+        rows.push(
+          item('mail-reply-all',mailaiText('回复全部'),async()=>{await ensureEmailOpened(ctx);composeFromEmail('reply_all');},'','reply all huifu quanbu',true,'A','current-mail'),
+          item('mail-forward',mailaiText('转发邮件'),async()=>{await ensureEmailOpened(ctx);composeFromEmail('forward');},'','forward zhuanfa',true,'F','current-mail'),
+          item('mail-todo',mailaiText('加入待办 / 安排任务'),()=>window.openTaskPlanner({emailId:ctx.id,title:ctx.email.subject||'',accountId:ctx.accountId}),'','todo task daiban renwu',true,'T','current-mail'),
+          item('mail-read',ctx.email.is_read?mailaiText('标为未读'):mailaiText('标为已读'),()=>quickToggleRead(ctx),'','read unread weidu yidu',true,'U','current-mail'),
+          item('mail-favorite',ctx.email.is_favorite?mailaiText('取消收藏'):mailaiText('收藏此邮件'),()=>quickToggleFavorite(ctx),'','favorite shoucang',true,'','current-mail'),
+          item('mail-star',ctx.email.is_starred?mailaiText('取消星标'):mailaiText('添加星标'),()=>quickToggleStar(ctx),'','star xingbiao',true,'S','current-mail','',Boolean(ctx.email.is_local_archive)),
+        );
+        if(!isTrash){
+          rows.push(item('mail-trash',mailaiText('移入已删除'),()=>quickTrashMail(ctx),'','trash delete shanchu',true,'','current-mail'));
+        }
+        if(lastWorkflowUndo){
+          rows.push(item('mail-undo-workflow',mailaiText('撤销上次处理标定'),undoLastQuickWorkflow,'','undo workflow chexiao',true,'','current-mail'));
+        }
+      }
       for(const account of _systemConfig?.accounts||[])rows.push({id:'account:'+account.id,label:account.user,detail:account.id===owner()?mailaiText('当前邮箱 · 收件箱'):mailaiText('切换到收件箱'),group:'accounts',aliases:'account mailbox inbox '+mailaiText('切换邮箱'),run:async()=>{await openAccountMailbox(account.id,'inbox');if(owner()===account.id){showMail();document.querySelector('#email-list .email-item')?.focus({preventScroll:true});}}});
       return rows;
     }
@@ -40208,33 +40781,39 @@ function mailCardDate(value, now = new Date()) {
       else input.removeAttribute('aria-activedescendant');
     }
     function draw(query = "",preserve=false) {
-      const previous=choices[active]?.id,words=normalize(query).trim().split(/\s+/).filter(Boolean);
+      drawMailBar();
+      const previous=choices[active]?.id,recentId=readRecentPaletteId(),words=normalize(query).trim().split(/\s+/).filter(Boolean);
       choices=commands().filter(command=>words.every(word=>normalize([command.label,mailaiCopySource(command.label),command.aliases].join(' ')).includes(word)));
       if(query.trim()&&owner()){
         const term=query.trim();
         choices.push({id:'search-query',label:mailaiTemplate`搜索邮件：${term}`,detail:currentMailboxScopeLabel(),group:'search',run:()=>{showMail();const target=document.getElementById('global-search');target.value=term;target.dispatchEvent(new Event('input',{bubbles:true}));target.focus();}});
       }
       let group='';
+      const groupTitle=name=>name==='accounts'?mailaiText('切换邮箱'):name==='search'?mailaiText('搜索邮件'):name==='current-mail'?mailaiText('当前邮件操作'):mailaiText('常用操作');
       host.innerHTML=choices.map((command,index)=>{
-        const heading=command.group!==group?`<div class="command-group" role="presentation">${esc(command.group==='accounts'?mailaiText('切换邮箱'):command.group==='search'?mailaiText('搜索邮件'):mailaiText('常用操作'))}</div>`:'';group=command.group;
+        const heading=command.group!==group?`<div class="command-group" role="presentation">${esc(groupTitle(command.group))}</div>`:'';group=command.group;
         const icon=command.buttonId?document.getElementById(command.buttonId)?.querySelector('svg')?.outerHTML:commandPaths[command.id]?`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${commandPaths[command.id]}"/></svg>`:searchIcon;
-        return `${heading}<div class="command-option" id="command-option-${index}" role="option" aria-selected="false" aria-disabled="${Boolean(command.disabled)}" data-command-index="${index}" data-command-id="${esc(command.id)}"><span class="command-icon" aria-hidden="true">${command.group==='accounts'?esc(command.label.slice(0,1).toUpperCase()):icon||searchIcon}</span><span class="command-copy"><strong>${highlight(command.label,words)}</strong>${command.detail?`<small>${highlight(command.detail,words)}</small>`:''}</span><span class="command-open" aria-hidden="true">↵</span></div>`;
+        const badge=command.shortcut?`<kbd class="command-key">${esc(command.shortcut)}</kbd>`:'';
+        const recentTag=command.id===recentId?`<span class="command-recent-tag">${esc(mailaiText('最近使用'))}</span>`:'';
+        return `${heading}<div class="command-option" id="command-option-${index}" role="option" aria-selected="false" aria-disabled="${Boolean(command.disabled)}" data-command-index="${index}" data-command-id="${esc(command.id)}"><span class="command-icon" aria-hidden="true">${command.group==='accounts'?esc(command.label.slice(0,1).toUpperCase()):icon||searchIcon}</span><span class="command-copy"><strong>${highlight(command.label,words)}</strong>${command.detail?`<small>${highlight(command.detail,words)}</small>`:''}</span>${recentTag}${badge}<span class="command-open" aria-hidden="true">↵</span></div>`;
       }).join('');
       dialog.querySelector('.command-empty').hidden=choices.length>0;
       const prior=preserve?choices.findIndex(command=>command.id===previous&&!command.disabled):-1;
       select(prior>=0?prior:choices.findIndex(command=>!command.disabled));
     }
-    async function execute(index){
-      const command=choices[index];if(!live(rev)||paletteRunning||!command||command.disabled)return;
+    async function runAction(action){
+      if(!live(rev)||paletteRunning||!action||action.disabled)return;
+      if(action.id)rememberRecentPaletteId(action.id);
       paletteRunning=true;launcher?.setAttribute('aria-busy','true');
       // Wait for the shared dialog's close listeners before opening another
       // productivity panel, otherwise its revision/focus would be invalidated.
       const closed=new Promise(resolve=>dialog.addEventListener('close',resolve,{once:true}));
       dialog.close();await closed;
-      try{await command.run();}
+      try{await action.run();}
       catch(error){toast(mailaiSystemMessage(error.message),'error');}
       finally{paletteRunning=false;launcher?.removeAttribute('aria-busy');}
     }
+    async function execute(index){return runAction(choices[index]);}
     const onKey=event=>{
       event.stopPropagation();
       if(event.isComposing||event.keyCode===229||input._composing)return;
@@ -40252,6 +40831,7 @@ function mailCardDate(value, now = new Date()) {
       launcher?.setAttribute('aria-expanded','false');input.setAttribute('aria-expanded','false');
       if(!paletteRunning&&selection&&origin===document.activeElement&&selection[0]!==null)origin.setSelectionRange(...selection);
     },{once:true});
+    mailBar.onclick=event=>{const pill=event.target.closest('[data-command-pill]');if(pill)runAction(currentPills[Number(pill.dataset.commandPill)]);};
     host.onpointerdown=event=>{if(event.target.closest('[data-command-index]'))event.preventDefault();};
     host.onpointermove=event=>{const option=event.target.closest('[data-command-index]');if(option&&!choices[Number(option.dataset.commandIndex)]?.disabled)select(Number(option.dataset.commandIndex));};
     host.onclick=event=>{const option=event.target.closest('[data-command-index]');if(option)execute(Number(option.dataset.commandIndex));};
@@ -40264,7 +40844,7 @@ function mailCardDate(value, now = new Date()) {
   const commandLauncher=document.getElementById('btn-command-palette');
   commandLauncher.onclick=palette;
   commandLauncher.querySelector('kbd').textContent=/Mac|iPhone|iPad/.test(navigator.platform)?'⌘K':'Ctrl K';
-  document.addEventListener("keydown", (event) => {
+  document.addEventListener("keydown", async (event) => {
     if (event.isComposing || event.keyCode === 229) return;
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
       if (paletteBlocked()) return;
@@ -40272,19 +40852,27 @@ function mailCardDate(value, now = new Date()) {
       palette();
       return;
     }
-    if (
-      event.metaKey ||
-      event.ctrlKey ||
-      event.altKey ||
-      event.shiftKey ||
-      document.body.classList.contains("compose-open") ||
-      event.target.closest('input,textarea,select,[contenteditable="true"]') ||
-      document.querySelector("dialog[open],.modal:not(.hidden)")
-    )
+    if (shortcutBlocked(event)) return;
+    if (event.key === "?") {
+      event.preventDefault();
+      shortcutsDialog();
       return;
+    }
+    if (event.key === "E" && event.shiftKey) {
+      const ctx = activeMailContext();
+      if (ctx) {
+        event.preventDefault();
+        try { await applyQuickWorkflow(ctx, "done", { advance: true }); }
+        catch (error) { toast(mailaiSystemMessage(error.message), "error"); }
+      }
+      return;
+    }
+    if (event.shiftKey) return;
     if (event.key === "/") {
       event.preventDefault();
-      document.getElementById("global-search").focus();
+      const target = document.getElementById("global-search");
+      target?.focus();
+      target?.select();
     } else if (["j", "k"].includes(event.key)) {
       const rows = [...document.querySelectorAll("#email-list .email-item")];
       const at = rows.findIndex(
@@ -40302,11 +40890,79 @@ function mailCardDate(value, now = new Date()) {
         next.click();
         next.scrollIntoView({ block: "nearest" });
       }
+    } else if (event.key === "c") {
+      event.preventDefault();
+      document.getElementById("btn-compose")?.click();
     } else if (event.key === "r") {
       const reply = document.querySelector(
         '#reading-content [data-mail-action="reply"]',
       );
-      reply?.click();
+      if (reply) {
+        event.preventDefault();
+        reply.click();
+      } else {
+        const ctx = activeMailContext();
+        if (ctx) {
+          event.preventDefault();
+          try { await ensureEmailOpened(ctx); composeFromEmail("reply"); }
+          catch (error) { toast(mailaiSystemMessage(error.message), "error"); }
+        }
+      }
+    } else if (event.key === "a") {
+      const ctx = activeMailContext();
+      if (ctx) {
+        event.preventDefault();
+        try { await ensureEmailOpened(ctx); composeFromEmail("reply_all"); }
+        catch (error) { toast(mailaiSystemMessage(error.message), "error"); }
+      }
+    } else if (event.key === "f") {
+      const ctx = activeMailContext();
+      if (ctx) {
+        event.preventDefault();
+        try { await ensureEmailOpened(ctx); composeFromEmail("forward"); }
+        catch (error) { toast(mailaiSystemMessage(error.message), "error"); }
+      }
+    } else if (event.key === "e") {
+      const ctx = activeMailContext();
+      if (ctx) {
+        event.preventDefault();
+        try { await applyQuickWorkflow(ctx, "done"); }
+        catch (error) { toast(mailaiSystemMessage(error.message), "error"); }
+      }
+    } else if (event.key === "w") {
+      const ctx = activeMailContext();
+      if (ctx) {
+        event.preventDefault();
+        try { await ensureEmailOpened(ctx); workflowDialog(); }
+        catch (error) { toast(mailaiSystemMessage(error.message), "error"); }
+      }
+    } else if (event.key === "t") {
+      const ctx = activeMailContext();
+      if (ctx) {
+        event.preventDefault();
+        window.openTaskPlanner?.({ emailId: ctx.id, title: ctx.email.subject || "", accountId: ctx.accountId });
+      }
+    } else if (event.key === "u") {
+      const ctx = activeMailContext();
+      if (ctx) {
+        event.preventDefault();
+        try { await quickToggleRead(ctx); }
+        catch (error) { toast(mailaiSystemMessage(error.message), "error"); }
+      }
+    } else if (event.key === "s") {
+      const ctx = activeMailContext();
+      if (ctx) {
+        event.preventDefault();
+        try { await quickToggleStar(ctx); }
+        catch (error) { toast(mailaiSystemMessage(error.message), "error"); }
+      }
+    } else if (event.key === "i") {
+      const ctx = activeMailContext();
+      if (ctx) {
+        event.preventDefault();
+        try { await quickAskXiaoYou(ctx, ctx.email.status === "sent" ? "followup" : "understand"); }
+        catch (error) { toast(mailaiSystemMessage(error.message), "error"); }
+      }
     }
   });
   initControls();
@@ -41537,6 +42193,3069 @@ window.mailaiPrepareReadingMarkup = doc => {
   center.addEventListener('keydown',event=>{if(event.key==='Escape'){const menu=center.querySelector('.contact-filter-menu[open]');if(menu){event.stopPropagation();menu.open=false;menu.querySelector('summary').focus();}}});
   for(const menu of bar.querySelectorAll('details'))menu.addEventListener('toggle',()=>{if(menu.open)for(const other of center.querySelectorAll('.contact-filter-menu'))if(other!==menu)other.open=false;});
   renderControls();
+})();
+
+;
+/* ---- contact-persona.js ---- */
+/* Communication personas for contacts, role presets, and smart compose matching. */
+(() => {
+  const ROLE_KEYS = ['leader', 'customer', 'colleague', 'partner'];
+  const roleLabel = key => {
+    const map = {
+      leader: mailaiText('汇报对象 / 领导'),
+      customer: mailaiText('客户 / 重要外部'),
+      colleague: mailaiText('内部同事 / 协作'),
+      partner: mailaiText('合作方 / 供应商'),
+    };
+    return map[key] || '';
+  };
+  const roleShortLabel = key => {
+    const map = {
+      leader: mailaiText('领导'),
+      customer: mailaiText('客户'),
+      colleague: mailaiText('同事'),
+      partner: mailaiText('合作方'),
+    };
+    return map[key] || '';
+  };
+  const toneOptions = () => {
+    const source = document.getElementById('compose-ai-tone');
+    return source ? [...source.options].map(opt => ({ value: opt.value, label: opt.textContent })) : [];
+  };
+
+  // 1. Contact list role badge hook (wraps existing mailaiDirectoryContactLabel cleanly)
+  const baseLabel = window.mailaiDirectoryContactLabel;
+  window.mailaiDirectoryContactLabel = item => {
+    const base = baseLabel ? baseLabel(item) : '';
+    const persona = item?.persona || {};
+    const rk = persona.role_key || '';
+    if (!rk) return base;
+    const label = roleShortLabel(rk) || persona.short_label || rk;
+    const full = roleLabel(rk) || persona.role_label || label;
+    const prefix = persona.role_source === 'explicit'
+      ? mailaiTemplate`角色：${full}`
+      : mailaiTemplate`识别：${full}`;
+    const pill = `<em class="contact-role-pill" data-role-key="${esc(rk)}" data-role-source="${esc(persona.role_source || 'inferred')}" title="${esc(prefix)}">${esc(label)}</em>`;
+    if (base) return base.replace('</div>', pill + '</div>');
+    return `<div class="directory-contact-label contact-labels">${pill}</div>`;
+  };
+
+  // 2. Contact editor persona section
+  const fieldsHost = document.querySelector('.contact-editor-fields');
+  const favoriteCheck = fieldsHost?.querySelector('.contact-favorite-check');
+  let personaSection = null;
+  let cachedSignatures = [];
+  const loadAccountSignatures = async accountId => {
+    try {
+      const data = await api('/api/mail/signatures', { accountId });
+      cachedSignatures = Array.isArray(data?.items) ? data.items : [];
+      return cachedSignatures;
+    } catch (_) {
+      return cachedSignatures;
+    }
+  };
+  const fillSignatureOptions = (select, items, emptyLabel, selectedId) => {
+    if (!select) return;
+    select.innerHTML = `<option value="">${esc(emptyLabel)}</option>` +
+      (items || []).map(item => `<option value="${esc(item.id)}">${esc(item.name)}</option>`).join('');
+    select.value = selectedId && (items || []).some(item => item.id === selectedId) ? selectedId : '';
+  };
+
+  if (fieldsHost && favoriteCheck) {
+    personaSection = document.createElement('details');
+    personaSection.className = 'persona-editor-details';
+    const tones = toneOptions();
+    personaSection.innerHTML = `
+      <summary>
+        <span>${esc(mailaiText('沟通画像与写作预设'))}</span>
+        <small>${esc(mailaiText('用于写信、催办与小邮草拟时匹配语气与签名'))}</small>
+      </summary>
+      <div class="persona-editor-grid">
+        <p class="persona-editor-detected" data-persona-detected hidden></p>
+        <label>
+          <span>${esc(mailaiText('沟通角色'))}</span>
+          <select id="contact-persona-role">
+            <option value="">${esc(mailaiText('自动识别'))}</option>
+            ${ROLE_KEYS.map(key => `<option value="${key}">${esc(roleLabel(key))}</option>`).join('')}
+          </select>
+        </label>
+        <label>
+          <span>${esc(mailaiText('默认语气'))}</span>
+          <select id="contact-persona-tone">
+            <option value="">${esc(mailaiText('跟随角色预设'))}</option>
+            ${tones.map(t => `<option value="${esc(t.value)}">${esc(t.label)}</option>`).join('')}
+          </select>
+        </label>
+        <label>
+          <span>${esc(mailaiText('常用称呼'))}</span>
+          <input id="contact-persona-salutation" maxlength="80" autocomplete="off" placeholder="${esc(mailaiText('例如：张总您好：'))}">
+        </label>
+        <label>
+          <span>${esc(mailaiText('专属签名'))}</span>
+          <select id="contact-persona-signature">
+            <option value="">${esc(mailaiText('跟随角色或默认签名'))}</option>
+          </select>
+        </label>
+        <label class="wide">
+          <span>${esc(mailaiText('沟通与写作要求'))}</span>
+          <textarea id="contact-persona-hint" rows="2" maxlength="400" placeholder="${esc(mailaiText('例如：先给结论与风险；对外称呼用贵司'))}"></textarea>
+        </label>
+      </div>`;
+    favoriteCheck.before(personaSection);
+
+    const prevEdit = window.mailaiDirectoryEdit;
+    window.mailaiDirectoryEdit = item => {
+      prevEdit?.(item);
+      const comm = item?.comm_profile || {};
+      const persona = item?.persona || {};
+      document.getElementById('contact-persona-role').value = comm.role_key || '';
+      document.getElementById('contact-persona-tone').value = comm.tone || '';
+      document.getElementById('contact-persona-salutation').value = comm.salutation || '';
+      document.getElementById('contact-persona-hint').value = comm.writing_hint || '';
+      const detected = personaSection.querySelector('[data-persona-detected]');
+      if (persona.role_source === 'inferred' && persona.role_key && !comm.role_key) {
+        detected.hidden = false;
+        detected.textContent = mailaiTemplate`当前识别：${roleLabel(persona.role_key) || persona.role_label || persona.role_key}`;
+      } else {
+        detected.hidden = true;
+        detected.textContent = '';
+      }
+      personaSection.open = Boolean(comm.role_key || comm.tone || comm.salutation || comm.writing_hint || comm.signature_id);
+      const sigSelect = document.getElementById('contact-persona-signature');
+      const account = contactCenterSession?.accountId || activeMailAccount()?.id;
+      fillSignatureOptions(sigSelect, cachedSignatures, mailaiText('跟随角色或默认签名'), comm.signature_id || '');
+      if (account) {
+        loadAccountSignatures(account).then(items => {
+          fillSignatureOptions(sigSelect, items, mailaiText('跟随角色或默认签名'), comm.signature_id || '');
+        });
+      }
+    };
+
+    window.mailaiContactPersonaFields = () => ({
+      role_key: document.getElementById('contact-persona-role')?.value || '',
+      tone: document.getElementById('contact-persona-tone')?.value || '',
+      salutation: document.getElementById('contact-persona-salutation')?.value.trim() || '',
+      writing_hint: document.getElementById('contact-persona-hint')?.value.trim() || '',
+      signature_id: document.getElementById('contact-persona-signature')?.value || '',
+    });
+  }
+
+  // 3. Role Presets button & modal dialog
+  const toolsBar = document.querySelector('#contact-center .contact-center-tools');
+  const newContactBtn = document.getElementById('btn-new-contact');
+  let rolePresetsDialog = null;
+  let roleDialogRev = 0;
+
+  async function openRolePresetsDialog(accountId) {
+    if (!rolePresetsDialog) {
+      rolePresetsDialog = document.createElement('dialog');
+      rolePresetsDialog.id = 'role-presets-dialog';
+      rolePresetsDialog.className = 'persona-dialog';
+      rolePresetsDialog.setAttribute('aria-labelledby', 'role-presets-title');
+      document.body.append(rolePresetsDialog);
+    }
+    const rev = ++roleDialogRev;
+    const targetAccount = accountId || (document.body.classList.contains('compose-open') ? composeAccountId : '') || activeMailAccount()?.id || '';
+    rolePresetsDialog.innerHTML = `
+      <header>
+        <div>
+          <h2 id="role-presets-title">${esc(mailaiText('分角色写作与签名预设'))}</h2>
+          <p>${esc(mailaiText('为不同沟通对象配置默认语气、称呼风格、写作要点与匹配签名；仅保存在当前邮箱。'))}</p>
+        </div>
+        <button type="button" data-persona-close aria-label="${esc(mailaiText('关闭'))}">✕</button>
+      </header>
+      <div class="persona-dialog-body"><p class="persona-dialog-status">${esc(mailaiText('正在加载…'))}</p></div>`;
+    rolePresetsDialog.querySelector('[data-persona-close]').onclick = () => rolePresetsDialog.close();
+    if (!rolePresetsDialog.open) rolePresetsDialog.showModal();
+    try {
+      const data = await api('/api/mail/contacts/role-presets', { accountId: targetAccount });
+      if (!rolePresetsDialog.open || rev !== roleDialogRev) return;
+      const sigs = data.signatures || [];
+      const presets = data.presets || {};
+      const tones = toneOptions();
+      rolePresetsDialog.innerHTML = `
+        <header>
+          <div>
+            <h2 id="role-presets-title">${esc(mailaiText('分角色写作与签名预设'))}</h2>
+            <p>${esc(mailaiText('为不同沟通对象配置默认语气、称呼风格、写作要点与匹配签名；仅保存在当前邮箱。'))}</p>
+          </div>
+          <button type="button" data-persona-close aria-label="${esc(mailaiText('关闭'))}">✕</button>
+        </header>
+        <form>
+          <div class="persona-dialog-body">
+            ${ROLE_KEYS.map(key => {
+              const p = presets[key] || {};
+              return `
+                <section class="role-preset-card" data-role-card="${key}">
+                  <div class="role-preset-card-head">
+                    <strong>${esc(roleLabel(key))}</strong>
+                  </div>
+                  <div class="role-preset-grid">
+                    <label>
+                      <span>${esc(mailaiText('默认语气'))}</span>
+                      <select data-preset-field="tone">
+                        ${tones.map(t => `<option value="${esc(t.value)}"${t.value === p.tone ? ' selected' : ''}>${esc(t.label)}</option>`).join('')}
+                      </select>
+                    </label>
+                    <label>
+                      <span>${esc(mailaiText('专属签名'))}</span>
+                      <select data-preset-field="signature_id">
+                        <option value="">${esc(mailaiText('使用全局默认签名'))}</option>
+                        ${sigs.map(s => `<option value="${esc(s.id)}"${s.id === p.signature_id ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}
+                      </select>
+                    </label>
+                    <label class="wide">
+                      <span>${esc(mailaiText('称呼习惯参考'))}</span>
+                      <input data-preset-field="salutation_hint" maxlength="120" value="${esc(p.salutation_hint || '')}">
+                    </label>
+                    <label class="wide">
+                      <span>${esc(mailaiText('写作与措辞要点'))}</span>
+                      <textarea data-preset-field="style_hint" rows="2" maxlength="400">${esc(p.style_hint || '')}</textarea>
+                    </label>
+                  </div>
+                </section>`;
+            }).join('')}
+            <p class="persona-dialog-status" data-presets-status></p>
+          </div>
+          <footer>
+            <button type="button" data-persona-close>${esc(mailaiText('取消'))}</button>
+            <button type="submit" class="primary-action">${esc(mailaiText('保存角色预设'))}</button>
+          </footer>
+        </form>`;
+      for (const close of rolePresetsDialog.querySelectorAll('[data-persona-close]')) {
+        close.onclick = () => rolePresetsDialog.close();
+      }
+      rolePresetsDialog.querySelector('form').onsubmit = async event => {
+        event.preventDefault();
+        const submit = rolePresetsDialog.querySelector('[type="submit"]');
+        const status = rolePresetsDialog.querySelector('[data-presets-status]');
+        submit.disabled = true;
+        status.classList.remove('is-error');
+        status.textContent = mailaiText('正在保存…');
+        const payload = {};
+        for (const card of rolePresetsDialog.querySelectorAll('[data-role-card]')) {
+          const key = card.dataset.roleCard;
+          payload[key] = {
+            tone: card.querySelector('[data-preset-field="tone"]').value,
+            signature_id: card.querySelector('[data-preset-field="signature_id"]').value,
+            salutation_hint: card.querySelector('[data-preset-field="salutation_hint"]').value.trim(),
+            style_hint: card.querySelector('[data-preset-field="style_hint"]').value.trim(),
+          };
+        }
+        try {
+          await api('/api/mail/contacts/role-presets', {
+            accountId: targetAccount,
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          rolePresetsDialog.close();
+          toast(mailaiText('分角色写作预设已保存'), 'success');
+          if (!document.getElementById('contact-center').classList.contains('hidden')) loadContactCenter?.();
+          if (document.body.classList.contains('compose-open')) window.mailaiSyncComposePersona?.({ forceResolve: true });
+        } catch (err) {
+          status.textContent = mailaiSystemMessage(err.message);
+          status.classList.add('is-error');
+        } finally {
+          submit.disabled = false;
+        }
+      };
+    } catch (err) {
+      if (!rolePresetsDialog.open || rev !== roleDialogRev) return;
+      rolePresetsDialog.querySelector('.persona-dialog-body').innerHTML = `<p class="persona-dialog-status is-error">${esc(mailaiSystemMessage(err.message))}</p>`;
+    }
+  }
+
+  if (toolsBar && newContactBtn) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'btn-role-presets';
+    btn.className = 'persona-role-presets-btn';
+    mailaiBindUI(btn, '@aria-label', () => mailaiText('配置分角色写作与签名预设'));
+    mailaiBindUI(btn, 'textContent', () => mailaiText('角色写作预设'));
+    btn.onclick = () => openRolePresetsDialog(contactAccountId());
+    newContactBtn.before(btn);
+  }
+
+  // 4. Compose Persona Strip + AI sidebar persona note + quick persona edit dialog
+  const composeFields = document.querySelector('#compose-modal .compose-fields');
+  const personaStrip = document.createElement('div');
+  personaStrip.id = 'compose-persona-strip';
+  personaStrip.className = 'compose-persona-strip hidden';
+  composeFields?.after(personaStrip);
+
+  const aiContextBlock = document.querySelector('#compose-ai-panel .compose-ai-context-block');
+  const aiPersonaNote = document.createElement('p');
+  aiPersonaNote.id = 'compose-ai-persona-note';
+  aiPersonaNote.className = 'compose-ai-persona-note hidden';
+  aiContextBlock?.append(aiPersonaNote);
+
+  let latestResolution = null;
+  let personaRevision = 0;
+  let personaTimer = null;
+  let quickDialog = null;
+
+  function applyEffectiveMatch(resolution, { allowAuto = false, session = draftSession, seed = null } = {}) {
+    const eff = resolution?.effective;
+    if (!eff) return;
+    if (session !== draftSession || !document.body.classList.contains('compose-open')) return;
+    const toneEl = document.getElementById('compose-ai-tone');
+    const canTouchSignature = allowAuto && !seed?.id && !session.personaTouchedSignature &&
+      (!currentSignatureId || currentSignatureId === signatureState.default_id || (seed?.signature_id && seed.signature_id === eff.signature_id));
+    if (canTouchSignature && eff.signature_id && signatureState.items.some(item => item.id === eff.signature_id) && currentSignatureId !== eff.signature_id) {
+      renderComposeSignature(eff.signature_id);
+    }
+    const canTouchTone = allowAuto && !seed?.id && !session.personaTouchedTone;
+    if (canTouchTone && eff.tone && toneEl && [...toneEl.options].some(o => o.value === eff.tone)) {
+      toneEl.value = eff.tone;
+    }
+  }
+
+  function renderAiPersonaNote() {
+    const recipientCheckbox = document.querySelector('.compose-ai-context-options input[value="recipients"]');
+    const eff = latestResolution?.effective;
+    if (!document.body.classList.contains('compose-open') || !eff?.primary_email) {
+      aiPersonaNote.classList.add('hidden');
+      return;
+    }
+    if (!recipientCheckbox?.checked) {
+      aiPersonaNote.classList.remove('hidden');
+      aiPersonaNote.textContent = mailaiText('未勾选「收件人」参考项，AI 不会读取收件人画像');
+      return;
+    }
+    if (!eff.has_context) {
+      aiPersonaNote.classList.add('hidden');
+      return;
+    }
+    aiPersonaNote.classList.remove('hidden');
+    const summaryParts = [];
+    if (eff.role_key) summaryParts.push(roleShortLabel(eff.role_key) || eff.short_label || eff.role_label);
+    if (eff.tone) summaryParts.push(mailaiTemplate`语气：${eff.tone}`);
+    if (eff.salutation) summaryParts.push(mailaiTemplate`称呼：${eff.salutation}`);
+    if (eff.matched_memories?.length) summaryParts.push(mailaiTemplate`命中记忆 ${eff.matched_memories.length} 条`);
+    aiPersonaNote.textContent = mailaiTemplate`已匹配收件人画像：${summaryParts.join(' · ') || eff.contact_summary}`;
+  }
+
+  function renderPersonaStrip() {
+    const toValue = document.getElementById('compose-to')?.value || '';
+    const eff = latestResolution?.effective;
+    if (!document.body.classList.contains('compose-open') || !toValue.trim() || !eff?.primary_email) {
+      personaStrip.classList.add('hidden');
+      personaStrip.innerHTML = '';
+      renderAiPersonaNote();
+      return;
+    }
+    const toneEl = document.getElementById('compose-ai-tone');
+    const needsApply = Boolean(
+      (eff.signature_id && eff.signature_id !== currentSignatureId && signatureState.items.some(i => i.id === eff.signature_id)) ||
+      (eff.tone && toneEl && toneEl.value !== eff.tone)
+    );
+    const rk = eff.role_key || '';
+    const rolePill = rk
+      ? `<em class="contact-role-pill" data-role-key="${esc(rk)}" data-role-source="${esc(eff.role_source || 'inferred')}">${esc(eff.role_source === 'explicit' ? mailaiTemplate`角色：${roleShortLabel(rk) || eff.short_label}` : mailaiTemplate`识别：${roleShortLabel(rk) || eff.short_label}`)}</em>`
+      : `<span class="compose-persona-chip">${esc(mailaiText('未设角色 · 可补充称呼与签名'))}</span>`;
+    const chips = [];
+    if (eff.tone) chips.push(`<span class="compose-persona-chip">${esc(mailaiTemplate`语气：${eff.tone}`)}</span>`);
+    if (eff.signature_name) chips.push(`<span class="compose-persona-chip">${esc(mailaiTemplate`签名：${eff.signature_name}`)}</span>`);
+    if (eff.salutation) chips.push(`<span class="compose-persona-chip">${esc(mailaiTemplate`称呼：${eff.salutation}`)}</span>`);
+    if (eff.matched_memories?.length) chips.push(`<span class="compose-persona-chip">${esc(mailaiTemplate`命中记忆 ${eff.matched_memories.length} 条`)}</span>`);
+
+    personaStrip.classList.remove('hidden');
+    personaStrip.innerHTML = `
+      <div class="compose-persona-meta">
+        ${rolePill}
+        <span class="compose-persona-summary">${esc(eff.contact_summary || eff.primary_email)}</span>
+        ${chips.join('')}
+      </div>
+      <div class="compose-persona-actions">
+        ${eff.salutation ? `<button type="button" data-persona-action="insert-salutation">${esc(mailaiText('插入称呼'))}</button>` : ''}
+        ${needsApply ? `<button type="button" class="is-suggested" data-persona-action="apply">${esc(mailaiText('应用匹配设置'))}</button>` : ''}
+        <button type="button" data-persona-action="edit">${esc(mailaiText('调整画像'))}</button>
+        <button type="button" data-persona-action="presets">${esc(mailaiText('角色写作预设'))}</button>
+      </div>`;
+    renderAiPersonaNote();
+  }
+
+  function openQuickPersonaDialog(primaryRecipient) {
+    if (!primaryRecipient?.email) {
+      toast(mailaiText('请先填写有效的收件人邮箱'), 'warn');
+      return;
+    }
+    if (!quickDialog) {
+      quickDialog = document.createElement('dialog');
+      quickDialog.id = 'compose-persona-dialog';
+      quickDialog.className = 'persona-dialog';
+      quickDialog.setAttribute('aria-labelledby', 'quick-persona-title');
+      document.body.append(quickDialog);
+    }
+    const saved = primaryRecipient.comm_profile || {};
+    const sigs = signatureState.items || [];
+    const tones = toneOptions();
+    quickDialog.innerHTML = `
+      <header>
+        <div>
+          <h2 id="quick-persona-title">${esc(mailaiText('调整收件人沟通画像'))}</h2>
+          <p>${esc(primaryRecipient.display_name ? `${primaryRecipient.display_name} <${primaryRecipient.email}>` : primaryRecipient.email)} · ${esc(mailaiText('修改后仅保存在当前邮箱通讯录，并在下次写信、催办或回复时自动匹配。'))}</p>
+        </div>
+        <button type="button" data-persona-close aria-label="${esc(mailaiText('关闭'))}">✕</button>
+      </header>
+      <form>
+        <div class="persona-dialog-body">
+          <div class="role-preset-grid">
+            <label>
+              <span>${esc(mailaiText('沟通角色'))}</span>
+              <select id="quick-persona-role">
+                <option value="">${esc(mailaiText('自动识别'))}</option>
+                ${ROLE_KEYS.map(key => `<option value="${key}"${key === saved.role_key ? ' selected' : ''}>${esc(roleLabel(key))}</option>`).join('')}
+              </select>
+            </label>
+            <label>
+              <span>${esc(mailaiText('默认语气'))}</span>
+              <select id="quick-persona-tone">
+                <option value="">${esc(mailaiText('跟随角色预设'))}</option>
+                ${tones.map(t => `<option value="${esc(t.value)}"${t.value === saved.tone ? ' selected' : ''}>${esc(t.label)}</option>`).join('')}
+              </select>
+            </label>
+            <label>
+              <span>${esc(mailaiText('常用称呼'))}</span>
+              <input id="quick-persona-salutation" maxlength="80" autocomplete="off" value="${esc(saved.salutation || '')}" placeholder="${esc(mailaiText('例如：张总您好：'))}">
+            </label>
+            <label>
+              <span>${esc(mailaiText('专属签名'))}</span>
+              <select id="quick-persona-signature">
+                <option value="">${esc(mailaiText('跟随角色或默认签名'))}</option>
+                ${sigs.map(s => `<option value="${esc(s.id)}"${s.id === saved.signature_id ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}
+              </select>
+            </label>
+            <label class="wide">
+              <span>${esc(mailaiText('沟通与写作要求'))}</span>
+              <textarea id="quick-persona-hint" rows="3" maxlength="400" placeholder="${esc(mailaiText('例如：先给结论与风险；对外称呼用贵司'))}">${esc(saved.writing_hint || '')}</textarea>
+            </label>
+          </div>
+          <p class="persona-dialog-status" data-quick-status></p>
+        </div>
+        <footer>
+          <button type="button" data-persona-close>${esc(mailaiText('取消'))}</button>
+          <button type="submit" class="primary-action">${esc(mailaiText('保存画像'))}</button>
+        </footer>
+      </form>`;
+    for (const close of quickDialog.querySelectorAll('[data-persona-close]')) {
+      close.onclick = () => quickDialog.close();
+    }
+    quickDialog.querySelector('form').onsubmit = async event => {
+      event.preventDefault();
+      const submit = quickDialog.querySelector('[type="submit"]');
+      const status = quickDialog.querySelector('[data-quick-status]');
+      submit.disabled = true;
+      status.classList.remove('is-error');
+      status.textContent = mailaiText('正在保存…');
+      const account = composeAccountId;
+      try {
+        const res = await api('/api/mail/contacts/persona', {
+          accountId: account,
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: primaryRecipient.email,
+            role_key: document.getElementById('quick-persona-role').value,
+            tone: document.getElementById('quick-persona-tone').value,
+            salutation: document.getElementById('quick-persona-salutation').value.trim(),
+            signature_id: document.getElementById('quick-persona-signature').value,
+            writing_hint: document.getElementById('quick-persona-hint').value.trim(),
+          }),
+        });
+        quickDialog.close();
+        toast(mailaiText('联系人沟通画像已保存'), 'success');
+        if (account === composeAccountId && document.body.classList.contains('compose-open')) {
+          latestResolution = res;
+          applyEffectiveMatch(res, { allowAuto: true, session: draftSession });
+          renderPersonaStrip();
+        }
+      } catch (err) {
+        status.textContent = mailaiSystemMessage(err.message);
+        status.classList.add('is-error');
+      } finally {
+        submit.disabled = false;
+      }
+    };
+    if (!quickDialog.open) quickDialog.showModal();
+  }
+
+  personaStrip.addEventListener('click', event => {
+    const actionBtn = event.target.closest('[data-persona-action]');
+    if (!actionBtn || !latestResolution) return;
+    const action = actionBtn.dataset.personaAction;
+    const eff = latestResolution.effective || {};
+    if (action === 'insert-salutation' && eff.salutation) {
+      const editor = composeMessageElement();
+      const firstLine = `${eff.salutation}`;
+      const existing = editor.innerText.trim();
+      if (!existing.startsWith(firstLine)) {
+        const p = document.createElement('p');
+        p.textContent = firstLine;
+        editor.prepend(p);
+        queueDraftSave?.();
+      }
+      editor.focus();
+      return;
+    }
+    if (action === 'apply') {
+      if (eff.signature_id && signatureState.items.some(item => item.id === eff.signature_id)) {
+        draftSession.personaTouchedSignature = false;
+        renderComposeSignature(eff.signature_id);
+        queueDraftSave?.();
+      }
+      const toneEl = document.getElementById('compose-ai-tone');
+      if (eff.tone && toneEl && [...toneEl.options].some(o => o.value === eff.tone)) {
+        draftSession.personaTouchedTone = false;
+        toneEl.value = eff.tone;
+      }
+      renderPersonaStrip();
+      toast(mailaiTemplate`已应用「${eff.role_label || eff.contact_summary || eff.primary_email}」写作语气与签名预设`, 'success');
+      return;
+    }
+    if (action === 'edit') {
+      openQuickPersonaDialog(latestResolution.recipients?.[0]);
+      return;
+    }
+    if (action === 'presets') {
+      openRolePresetsDialog(composeAccountId);
+    }
+  });
+
+  window.mailaiSyncComposePersona = async (options = {}) => {
+    const session = options.session || draftSession;
+    const seed = options.seed || null;
+    const account = composeAccountId;
+    const recipients = document.getElementById('compose-to')?.value.trim() || '';
+    if (!document.body.classList.contains('compose-open') || !recipients || !recipients.includes('@')) {
+      latestResolution = null;
+      renderPersonaStrip();
+      return;
+    }
+    const rev = ++personaRevision;
+    try {
+      const res = await api('/api/mail/contacts/resolve-persona', {
+        accountId: account,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipients,
+          include_memories: document.getElementById('work-use-preferences')?.checked !== false,
+        }),
+      });
+      if (rev !== personaRevision || session !== draftSession || session.canceled || account !== composeAccountId || !document.body.classList.contains('compose-open')) {
+        return;
+      }
+      latestResolution = res;
+      applyEffectiveMatch(res, { allowAuto: true, session, seed });
+      renderPersonaStrip();
+    } catch (_) {
+      /* Keep compose usable even if persona resolution fails transiently. */
+    }
+  };
+
+  window.mailaiScheduleComposePersona = (delay = 240) => {
+    clearTimeout(personaTimer);
+    personaTimer = setTimeout(() => { window.mailaiSyncComposePersona?.(); }, delay);
+  };
+
+  document.getElementById('compose-ai-tone')?.addEventListener('change', () => {
+    if (draftSession) draftSession.personaTouchedTone = true;
+    renderPersonaStrip();
+  });
+  document.getElementById('compose-signature-select')?.addEventListener('change', () => {
+    if (draftSession) draftSession.personaTouchedSignature = true;
+    setTimeout(renderPersonaStrip, 0);
+  });
+  document.getElementById('compose-to')?.addEventListener('input', () => window.mailaiScheduleComposePersona(280));
+  document.getElementById('compose-to')?.addEventListener('blur', () => window.mailaiScheduleComposePersona(40));
+  document.querySelector('.compose-ai-context-options')?.addEventListener('change', renderAiPersonaNote);
+  document.addEventListener('change', event => {
+    if (event.target?.id === 'work-use-preferences') window.mailaiScheduleComposePersona(40);
+  });
+  new MutationObserver(() => {
+    if (!document.body.classList.contains('compose-open')) {
+      clearTimeout(personaTimer);
+      latestResolution = null;
+      renderPersonaStrip();
+    }
+  }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+  document.addEventListener('mailai:language-changed', () => {
+    renderPersonaStrip();
+    renderAiPersonaNote();
+  });
+
+  globalThis.MailAIModules?.register('contactPersona', {
+    schedule: () => window.mailaiScheduleComposePersona?.(0),
+  });
+})();
+
+;
+/* ---- periodic-briefing.js ---- */
+(() => {
+  const modal = document.getElementById('digest-modal');
+  const pane = document.getElementById('periodic-briefing-pane');
+  const digestBody = document.getElementById('digest-body');
+  if (!modal || !pane || !digestBody) return;
+
+  const modalContent = modal.querySelector('.modal-content');
+  const dailySelect = document.getElementById('digest-history-select');
+  const dailyRefreshBtn = document.getElementById('btn-regenerate-digest');
+  const tabButtons = [...modal.querySelectorAll('[data-briefing-tab]')];
+
+  const periodSelect = document.getElementById('periodic-period-select');
+  const customRangeBox = document.getElementById('periodic-custom-range');
+  const startInput = document.getElementById('periodic-start-date');
+  const endInput = document.getElementById('periodic-end-date');
+  const styleSelect = document.getElementById('periodic-style-select');
+  const focusInput = document.getElementById('periodic-focus-input');
+  const prefCheckbox = document.getElementById('periodic-use-preferences');
+  const historySelect = document.getElementById('periodic-history-select');
+  const deleteHistoryBtn = document.getElementById('periodic-delete-history');
+  const metricsStrip = document.getElementById('periodic-metrics-strip');
+  const statusEl = document.getElementById('periodic-briefing-status');
+  const titleInput = document.getElementById('periodic-title-input');
+  const previewEl = document.getElementById('periodic-briefing-preview');
+  const editorEl = document.getElementById('periodic-briefing-editor');
+  const aiGenBtn = document.getElementById('periodic-btn-ai');
+  const localGenBtn = document.getElementById('periodic-btn-local');
+  const modeViewBtn = document.getElementById('periodic-btn-view');
+  const modeEditBtn = document.getElementById('periodic-btn-edit');
+  const saveBtn = document.getElementById('periodic-btn-save');
+  const copyBtn = document.getElementById('periodic-btn-copy');
+  const composeBtn = document.getElementById('periodic-btn-compose');
+
+  let activeTab = 'daily';
+  let editMode = false;
+  let viewRevision = 0;
+  let currentSummary = null;
+  let currentHistory = [];
+  let currentBriefingId = null;
+  let currentSource = 'local';
+  let currentMarkdown = '';
+  let activeStreamController = null;
+  let dirty = false;
+
+  function accountId() {
+    return typeof activeMailAccount === 'function' ? (activeMailAccount()?.id || '') : '';
+  }
+
+  function accountHeaders(acc = accountId()) {
+    return acc ? { 'X-MailAI-Account': acc } : {};
+  }
+
+  function cleanExportMarkdown(markdown) {
+    const overduePlain = mailaiText('[过期]');
+    return String(markdown || '')
+      .replace(/\s*\[email_id:\d+\]/g, '')
+      .replace(/\[\s*⚠️?\s*过期\s*\]/g, overduePlain)
+      .trim();
+  }
+
+  function renderBriefingInline(text, { interactive = true } = {}) {
+    let html = esc(String(text || ''));
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    html = html.replace(/https?:\/\/[^\s<>"'，。；）)]+/g, url =>
+      `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`
+    );
+    if (interactive) {
+      const sourceTitle = esc(mailaiText('查看来源邮件'));
+      const sourceText = esc(mailaiText('查看来源'));
+      const overdueIcon = '<span class="digest-status-icon warn"><svg viewBox="0 0 20 20"><path d="M10 3 17 16H3L10 3ZM10 8v3M10 14h.01"/></svg></span>';
+      html = html
+        .replace(
+          /\[email_id:(\d+)\]/g,
+          `<a class="digest-email-link" data-email-id="$1" href="#" title="${sourceTitle}"><svg viewBox="0 0 20 20"><path d="M3.5 5.5h13v9h-13zM4 6l6 5 6-5"/></svg><span>${sourceText}</span></a>`
+        )
+        .replace(/\[\s*⚠️?\s*过期\s*\]/g, `${overdueIcon}${esc(mailaiText('过期'))}`)
+        .replace(/⚠️?/g, overdueIcon);
+    }
+    return html;
+  }
+
+  function splitTableRow(line) {
+    let s = String(line || '').trim();
+    if (!s.includes('|')) return null;
+    if (s.startsWith('|')) s = s.slice(1);
+    if (s.endsWith('|') && !s.endsWith('\\|')) s = s.slice(0, -1);
+    const cells = [];
+    let current = '';
+    for (let i = 0; i < s.length; i++) {
+      if (s[i] === '\\' && s[i + 1] === '|') {
+        current += '|';
+        i++;
+      } else if (s[i] === '|') {
+        cells.push(current.trim());
+        current = '';
+      } else {
+        current += s[i];
+      }
+    }
+    cells.push(current.trim());
+    return cells.length >= 2 ? cells : null;
+  }
+
+  function parseTableAlignments(line, expectedLen) {
+    const cells = splitTableRow(line);
+    if (!cells || cells.length !== expectedLen) return null;
+    const aligns = [];
+    for (const cell of cells) {
+      if (!/^:?-{2,}:?$/.test(cell)) return null;
+      if (cell.startsWith(':') && cell.endsWith(':')) aligns.push('center');
+      else if (cell.endsWith(':')) aligns.push('right');
+      else aligns.push('left');
+    }
+    return aligns;
+  }
+
+  function renderBriefingMarkdown(markdown, { interactive = true } = {}) {
+    const lines = String(markdown || '').replace(/\r\n?/g, '\n').split('\n');
+    const out = [];
+    let listTag = '';
+    let para = [];
+
+    const flushPara = () => {
+      if (!para.length) return;
+      out.push(`<p>${para.map(line => renderBriefingInline(line, { interactive })).join('<br/>')}</p>`);
+      para = [];
+    };
+    const flushList = () => {
+      if (!listTag) return;
+      out.push(`</${listTag}>`);
+      listTag = '';
+    };
+
+    for (let i = 0; i < lines.length; i++) {
+      const trimmed = lines[i].trimEnd().trim();
+      if (!trimmed) {
+        flushPara();
+        flushList();
+        continue;
+      }
+
+      if (/^(?:[-*_]\s*){3,}$/.test(trimmed)) {
+        flushPara();
+        flushList();
+        out.push('<hr/>');
+        continue;
+      }
+
+      const headerCells = splitTableRow(trimmed);
+      const alignments = headerCells && i + 1 < lines.length ? parseTableAlignments(lines[i + 1], headerCells.length) : null;
+      if (headerCells && alignments) {
+        flushPara();
+        flushList();
+        const ths = headerCells
+          .map((cell, idx) => `<th style="text-align:${alignments[idx]}">${renderBriefingInline(cell, { interactive })}</th>`)
+          .join('');
+        const bodyRows = [];
+        let j = i + 2;
+        while (j < lines.length) {
+          const rowTrimmed = lines[j].trim();
+          if (!rowTrimmed || !rowTrimmed.includes('|')) break;
+          const rowCells = splitTableRow(rowTrimmed);
+          if (!rowCells) break;
+          const tds = headerCells
+            .map((_, idx) => `<td style="text-align:${alignments[idx]}">${renderBriefingInline(rowCells[idx] ?? '', { interactive })}</td>`)
+            .join('');
+          bodyRows.push(`<tr>${tds}</tr>`);
+          j++;
+        }
+        const tableHtml = `<table><thead><tr>${ths}</tr></thead>${bodyRows.length ? `<tbody>${bodyRows.join('')}</tbody>` : ''}</table>`;
+        out.push(interactive ? `<div class="periodic-table-wrap">${tableHtml}</div>` : tableHtml);
+        i = j - 1;
+        continue;
+      }
+
+      if (trimmed.startsWith('>')) {
+        flushPara();
+        flushList();
+        const quoteLines = [];
+        let j = i;
+        while (j < lines.length && lines[j].trim().startsWith('>')) {
+          quoteLines.push(lines[j].trim().replace(/^>\s?/, ''));
+          j++;
+        }
+        out.push(`<blockquote>${quoteLines.map(line => renderBriefingInline(line, { interactive })).join('<br/>')}</blockquote>`);
+        i = j - 1;
+        continue;
+      }
+
+      const heading = trimmed.match(/^(#{1,4})\s+(.*)$/);
+      if (heading) {
+        flushPara();
+        flushList();
+        const level = heading[1].length;
+        out.push(`<h${level}>${renderBriefingInline(heading[2], { interactive })}</h${level}>`);
+        continue;
+      }
+      const ulItem = trimmed.match(/^[-*•]\s+(.*)$/);
+      if (ulItem) {
+        flushPara();
+        if (listTag !== 'ul') {
+          flushList();
+          listTag = 'ul';
+          out.push('<ul>');
+        }
+        out.push(`<li>${renderBriefingInline(ulItem[1], { interactive })}</li>`);
+        continue;
+      }
+      const olItem = trimmed.match(/^\d+[.、]\s+(.*)$/);
+      if (olItem) {
+        flushPara();
+        if (listTag !== 'ol') {
+          flushList();
+          listTag = 'ol';
+          out.push('<ol>');
+        }
+        out.push(`<li>${renderBriefingInline(olItem[1], { interactive })}</li>`);
+        continue;
+      }
+      flushList();
+      para.push(trimmed);
+    }
+    flushPara();
+    flushList();
+    return out.join('');
+  }
+
+  function formatCleanEmailHtml(markdown) {
+    const cleaned = cleanExportMarkdown(markdown);
+    if (!cleaned) return '';
+    return renderBriefingMarkdown(cleaned, { interactive: false });
+  }
+
+  function updateCustomRangeVisibility() {
+    const custom = periodSelect.value === 'custom';
+    customRangeBox.classList.toggle('hidden', !custom);
+    if (custom && (!startInput.value || !endInput.value)) {
+      const now = new Date();
+      const endStr = now.toISOString().slice(0, 10);
+      const startDt = new Date(now.getTime() - 6 * 86400000);
+      if (!endInput.value) endInput.value = endStr;
+      if (!startInput.value) startInput.value = startDt.toISOString().slice(0, 10);
+    }
+  }
+
+  function setStatus(text = '', badge = '') {
+    if (!text && !badge) {
+      statusEl.classList.add('hidden');
+      statusEl.replaceChildren();
+      return;
+    }
+    statusEl.classList.remove('hidden');
+    statusEl.innerHTML = `<span>${esc(text)}</span>${badge ? `<strong>${esc(badge)}</strong>` : ''}`;
+  }
+
+  function sourceTag(src) {
+    return src === 'ai' ? 'AI' : mailaiText('本地');
+  }
+
+  function sourceBadge(src) {
+    return src === 'ai' ? mailaiText('AI 智能提炼') : mailaiText('本地聚合整理');
+  }
+
+  function renderMetrics(summary) {
+    if (!summary?.metrics) {
+      metricsStrip.innerHTML = '';
+      return;
+    }
+    const m = summary.metrics;
+    const receivedCount = m.received_count || 0;
+    const importantCount = m.important_count || 0;
+    const sentCount = m.sent_count || 0;
+    const waitingCount = m.followups_waiting_count || 0;
+    const repliedCount = m.followups_replied_count || 0;
+    const doneCount = m.todos_done_count || 0;
+    const openCount = m.todos_open_count || 0;
+    const overdueCount = m.todos_overdue_count || 0;
+    const projectSlice = summary.highlights?.projects?.length
+      ? mailaiTemplate`项目：${summary.highlights.projects.slice(0, 2).join(' / ')}`
+      : `${summary.window?.start_date || ''} ~ ${summary.window?.end_date || ''}`;
+
+    const cards = [
+      {
+        label: mailaiText('收件梳理'),
+        value: mailaiTemplate`${receivedCount} 封`,
+        note: mailaiTemplate`重点 ${importantCount} 封`,
+        warn: false,
+      },
+      {
+        label: mailaiText('发出与跟进'),
+        value: mailaiTemplate`${sentCount} 封`,
+        note: mailaiTemplate`待复 ${waitingCount} · 已复 ${repliedCount}`,
+        warn: (m.followups_due_count || 0) > 0,
+      },
+      {
+        label: mailaiText('本期已完成待办'),
+        value: mailaiTemplate`${doneCount} 项`,
+        note: projectSlice,
+        warn: false,
+      },
+      {
+        label: mailaiText('下阶段待推进'),
+        value: mailaiTemplate`${openCount} 项`,
+        note: overdueCount ? mailaiTemplate`含逾期 ${overdueCount} 项` : mailaiText('暂无逾期'),
+        warn: overdueCount > 0,
+      },
+    ];
+    metricsStrip.innerHTML = cards
+      .map(
+        c =>
+          `<div class="periodic-metric-card${c.warn ? ' has-warn' : ''}"><span>${esc(c.label)}</span><strong>${esc(c.value)}</strong><small>${esc(c.note)}</small></div>`
+      )
+      .join('');
+  }
+
+  function renderContent() {
+    const hasText = Boolean(currentMarkdown.trim());
+    saveBtn.disabled = !hasText;
+    copyBtn.disabled = !hasText;
+    composeBtn.disabled = !hasText;
+    modeViewBtn.classList.toggle('is-active', !editMode);
+    modeEditBtn.classList.toggle('is-active', editMode);
+
+    if (editMode) {
+      previewEl.classList.add('hidden');
+      editorEl.classList.remove('hidden');
+      if (editorEl.value !== currentMarkdown) editorEl.value = currentMarkdown;
+      return;
+    }
+
+    editorEl.classList.add('hidden');
+    previewEl.classList.remove('hidden');
+    if (!hasText) {
+      const m = currentSummary?.metrics;
+      const hint = m
+        ? mailaiTemplate`当前周期统计：收件 ${m.received_count} 封、发件 ${m.sent_count} 封、完成待办 ${m.todos_done_count} 项、待推进 ${m.todos_open_count} 项。点击上方按钮即可聚合生成可编辑草稿。`
+        : mailaiText('聚合当前邮箱的往来邮件、待办进度与发信跟进，快速生成周报或月报草稿。');
+      previewEl.innerHTML = `<div class="periodic-empty"><p>${esc(hint)}</p></div>`;
+      return;
+    }
+    previewEl.innerHTML = renderBriefingMarkdown(currentMarkdown, { interactive: true });
+  }
+
+  function renderHistorySelect() {
+    const selected = currentBriefingId ? String(currentBriefingId) : '';
+    const options = [`<option value="">${esc(mailaiText('新建当前周期简报'))}</option>`];
+    for (const item of currentHistory) {
+      const label = `${item.title || `${item.start_date} ~ ${item.end_date}`} · ${sourceTag(item.source)}`;
+      options.push(`<option value="${item.id}">${esc(label)}</option>`);
+    }
+    historySelect.innerHTML = options.join('');
+    historySelect.value = selected;
+    deleteHistoryBtn.disabled = !currentBriefingId;
+  }
+
+  function setEditMode(flag) {
+    if (editMode && !flag) {
+      currentMarkdown = editorEl.value;
+    }
+    editMode = Boolean(flag);
+    renderContent();
+    if (editMode) editorEl.focus();
+  }
+
+  function syncHeaderForTab() {
+    tabButtons.forEach(btn => {
+      const active = btn.dataset.briefingTab === activeTab;
+      btn.classList.toggle('is-active', active);
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    const isPeriodic = activeTab === 'periodic';
+    modalContent?.classList.toggle('is-periodic-mode', isPeriodic);
+    dailySelect?.classList.toggle('hidden', isPeriodic);
+    dailyRefreshBtn?.classList.toggle('hidden', isPeriodic);
+    digestBody.classList.toggle('hidden', isPeriodic);
+    pane.classList.toggle('hidden', !isPeriodic);
+    if (typeof setDigestTitle === 'function') {
+      if (isPeriodic) {
+        setDigestTitle(mailaiText('周期工作简报'));
+      } else if (typeof digestTodayLabel === 'function') {
+        setDigestTitle(digestTodayLabel());
+      }
+    }
+  }
+
+  async function refreshPreviewAndHistory({ keepDraft = false } = {}) {
+    const rev = ++viewRevision;
+    const acc = accountId();
+    updateCustomRangeVisibility();
+    const params = new URLSearchParams({
+      period: periodSelect.value,
+      start_date: startInput.value || '',
+      end_date: endInput.value || '',
+      focus: focusInput.value || '',
+      include_preferences: prefCheckbox.checked ? 'true' : 'false',
+    });
+    try {
+      const [summary, history] = await Promise.all([
+        api(`/api/work/briefings/preview?${params.toString()}`, { accountId: acc }),
+        api('/api/work/briefings?limit=30', { accountId: acc }).catch(() => []),
+      ]);
+      if (rev !== viewRevision || activeTab !== 'periodic') return;
+      currentSummary = summary;
+      currentHistory = Array.isArray(history) ? history : [];
+      if (!keepDraft && !currentBriefingId && !dirty) {
+        titleInput.value = summary.default_subject || '';
+      }
+      renderMetrics(summary);
+      renderHistorySelect();
+      renderContent();
+      if (!currentMarkdown.trim()) {
+        setStatus(
+          summary.llm_available
+            ? mailaiText('已汇总本地工作数据，可点击「AI 智能生成」或「本地快速整理」')
+            : mailaiText('当前未配置模型，点击「本地快速整理」可离线零等待生成'),
+          `${summary.window.start_date} ~ ${summary.window.end_date}`
+        );
+      }
+    } catch (err) {
+      if (rev !== viewRevision || activeTab !== 'periodic') return;
+      setStatus(mailaiSystemMessage(err.message));
+    }
+  }
+
+  function setBusy(busy) {
+    aiGenBtn.disabled = busy;
+    localGenBtn.disabled = busy;
+    periodSelect.disabled = busy;
+    styleSelect.disabled = busy;
+  }
+
+  async function generatePeriodic(mode = 'auto') {
+    if (activeStreamController) activeStreamController.abort();
+    const controller = new AbortController();
+    activeStreamController = controller;
+    const acc = accountId();
+    const rev = ++viewRevision;
+    const finishWork = globalThis.mailaiCompanionWork?.begin?.(controller.signal);
+
+    updateCustomRangeVisibility();
+    setBusy(true);
+    editMode = false;
+    currentBriefingId = null;
+    dirty = false;
+    currentMarkdown = '';
+    setStatus(
+      mode === 'local'
+        ? mailaiText('正在整理本地工作数据…')
+        : mailaiText('正在聚合数据并生成工作简报…')
+    );
+    renderContent();
+
+    const payload = {
+      period: periodSelect.value,
+      start_date: startInput.value || '',
+      end_date: endInput.value || '',
+      style: styleSelect.value || 'leader',
+      focus: focusInput.value || '',
+      include_preferences: prefCheckbox.checked,
+      mode,
+      save: true,
+    };
+
+    try {
+      const res = await fetch('/api/work/briefings/stream', {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          ...accountHeaders(acc),
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok || !res.body) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || mailaiTemplate`生成失败（${res.status}）`);
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let completedEvent = null;
+
+      while (true) {
+        const { value, done } = await reader.read();
+        buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const evt = JSON.parse(line);
+          if (rev !== viewRevision) return;
+          if (evt.type === 'meta' && evt.summary) {
+            currentSummary = evt.summary;
+            titleInput.value = evt.summary.default_subject || titleInput.value;
+            renderMetrics(evt.summary);
+          } else if (evt.type === 'delta' && typeof evt.content === 'string') {
+            currentMarkdown += evt.content;
+            renderContent();
+          } else if (evt.type === 'done') {
+            completedEvent = evt;
+          } else if (evt.type === 'error') {
+            throw new Error(evt.message || mailaiText('生成失败'));
+          }
+        }
+        if (done) break;
+      }
+
+      if (buffer.trim() && rev === viewRevision) {
+        const evt = JSON.parse(buffer);
+        if (evt.type === 'done') completedEvent = evt;
+        else if (evt.type === 'error') throw new Error(evt.message || mailaiText('生成失败'));
+      }
+
+      if (rev !== viewRevision) return;
+      if (completedEvent) {
+        currentMarkdown = completedEvent.content || currentMarkdown;
+        currentSource = completedEvent.source || 'local';
+        if (completedEvent.summary) {
+          currentSummary = completedEvent.summary;
+          renderMetrics(currentSummary);
+        }
+        if (completedEvent.briefing?.id) {
+          currentBriefingId = completedEvent.briefing.id;
+          titleInput.value = completedEvent.briefing.title || titleInput.value;
+          const exists = currentHistory.filter(item => item.id !== completedEvent.briefing.id);
+          currentHistory = [completedEvent.briefing, ...exists];
+          renderHistorySelect();
+        }
+      }
+      renderContent();
+      setStatus(
+        mailaiText('简报已生成并自动保存，可切换「编辑草稿」微调后复制或转写信'),
+        sourceBadge(currentSource)
+      );
+      toast(mailaiText('周期工作简报已生成'), 'success');
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      setStatus(mailaiSystemMessage(err.message));
+      toast(mailaiSystemMessage(err.message), 'error');
+    } finally {
+      if (activeStreamController === controller) activeStreamController = null;
+      finishWork?.();
+      setBusy(false);
+    }
+  }
+
+  async function saveCurrentBriefing() {
+    const content = (editMode ? editorEl.value : currentMarkdown).trim();
+    if (!content) return;
+    currentMarkdown = content;
+    const acc = accountId();
+    try {
+      const saved = await api('/api/work/briefings', {
+        method: 'POST',
+        accountId: acc,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          briefing_id: currentBriefingId || null,
+          period: periodSelect.value,
+          start_date: currentSummary?.window?.start_date || startInput.value || '',
+          end_date: currentSummary?.window?.end_date || endInput.value || '',
+          style: styleSelect.value || 'leader',
+          title: titleInput.value.trim() || currentSummary?.default_subject || mailaiText('周期工作简报'),
+          content,
+          metrics: currentSummary?.metrics || {},
+          source: currentSource || 'local',
+        }),
+      });
+      currentBriefingId = saved.id;
+      dirty = false;
+      currentHistory = [saved, ...currentHistory.filter(row => row.id !== saved.id)];
+      renderHistorySelect();
+      renderContent();
+      toast(mailaiText('简报修改已保存'), 'success');
+    } catch (err) {
+      toast(mailaiText('保存失败：') + mailaiSystemMessage(err.message), 'error');
+    }
+  }
+
+  async function loadHistoryItem(id) {
+    if (!id) {
+      currentBriefingId = null;
+      currentMarkdown = '';
+      dirty = false;
+      deleteHistoryBtn.disabled = true;
+      await refreshPreviewAndHistory();
+      return;
+    }
+    const rev = ++viewRevision;
+    const acc = accountId();
+    try {
+      const item = await api(`/api/work/briefings/${id}`, { accountId: acc });
+      if (rev !== viewRevision) return;
+      currentBriefingId = item.id;
+      currentMarkdown = item.content || '';
+      currentSource = item.source || 'local';
+      dirty = false;
+      if (item.period && [...periodSelect.options].some(opt => opt.value === item.period)) {
+        periodSelect.value = item.period;
+      }
+      if (item.period === 'custom') {
+        startInput.value = item.start_date || '';
+        endInput.value = item.end_date || '';
+      }
+      if (item.style && [...styleSelect.options].some(opt => opt.value === item.style)) {
+        styleSelect.value = item.style;
+      }
+      updateCustomRangeVisibility();
+      titleInput.value = item.title || '';
+      if (item.metrics) renderMetrics({ metrics: item.metrics, window: item, highlights: {} });
+      renderHistorySelect();
+      setEditMode(false);
+      setStatus(mailaiTemplate`历史简报 · ${item.start_date} ~ ${item.end_date}`, sourceBadge(item.source));
+    } catch (err) {
+      toast(mailaiText('读取简报失败：') + mailaiSystemMessage(err.message), 'error');
+    }
+  }
+
+  async function removeHistoryItem() {
+    if (!currentBriefingId) return;
+    const targetId = currentBriefingId;
+    try {
+      await api(`/api/work/briefings/${targetId}`, { method: 'DELETE', accountId: accountId() });
+      currentHistory = currentHistory.filter(row => row.id !== targetId);
+      currentBriefingId = null;
+      currentMarkdown = '';
+      dirty = false;
+      renderHistorySelect();
+      renderContent();
+      await refreshPreviewAndHistory();
+      toast(mailaiText('已删除该条简报记录'), 'success');
+    } catch (err) {
+      toast(mailaiText('删除失败：') + mailaiSystemMessage(err.message), 'error');
+    }
+  }
+
+  async function copyBriefing() {
+    const raw = editMode ? editorEl.value : currentMarkdown;
+    const text = cleanExportMarkdown(raw);
+    if (!text) return;
+    const subject = titleInput.value.trim();
+    const full = subject ? `${subject}\n\n${text}` : text;
+    try {
+      await navigator.clipboard.writeText(full);
+      toast(mailaiText('已复制纯净正文（可直接粘贴至企微 / 钉钉 / OA）'), 'success');
+    } catch (_) {
+      const box = document.createElement('textarea');
+      box.value = full;
+      document.body.appendChild(box);
+      box.select();
+      document.execCommand('copy');
+      box.remove();
+      toast(mailaiText('已复制到剪贴板'), 'success');
+    }
+  }
+
+  async function turnIntoComposeDraft() {
+    const raw = editMode ? editorEl.value : currentMarkdown;
+    if (!raw.trim() || typeof openCompose !== 'function') return;
+    const subject = titleInput.value.trim() || currentSummary?.default_subject || mailaiText('【工作周报】');
+    const message_html = formatCleanEmailHtml(raw);
+    const acc = accountId();
+    activeStreamController?.abort();
+    modal.classList.add('hidden');
+    await openCompose({
+      account_id: acc,
+      mode: 'compose',
+      subject,
+      message_html,
+    });
+    toast(mailaiText('已将周期简报填入发信正文；填入收件人后可自动匹配角色与签名'), 'success');
+  }
+
+  function switchTab(tab, options = {}) {
+    activeTab = tab === 'periodic' ? 'periodic' : 'daily';
+    syncHeaderForTab();
+    if (activeTab === 'periodic') {
+      if (options.period && [...periodSelect.options].some(opt => opt.value === options.period)) {
+        periodSelect.value = options.period;
+      }
+      refreshPreviewAndHistory({ keepDraft: Boolean(currentMarkdown.trim()) });
+    } else {
+      activeStreamController?.abort();
+    }
+  }
+
+  window.openPeriodicBriefing = async function openPeriodicBriefing(options = {}) {
+    if (typeof closeTodoCenter === 'function') closeTodoCenter();
+    if (typeof closeContactCenter === 'function') closeContactCenter();
+    if (typeof closeAttachmentCenter === 'function') closeAttachmentCenter();
+    if (typeof closeCalendarTimeline === 'function') closeCalendarTimeline();
+    if (typeof closeTriageCenter === 'function') closeTriageCenter();
+    if (typeof closeAssistant === 'function') closeAssistant();
+    const digestAccountLabelEl = document.getElementById('digest-account-label');
+    if (digestAccountLabelEl && typeof digestAccountLabel === 'function') {
+      digestAccountLabelEl.textContent = digestAccountLabel();
+    }
+    modal.classList.remove('hidden');
+    switchTab('periodic', options);
+  };
+
+  tabButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.dataset.briefingTab;
+      if (tab === 'daily') {
+        switchTab('daily');
+        if (typeof openDigestModal === 'function') openDigestModal();
+      } else {
+        switchTab('periodic');
+      }
+    });
+  });
+
+  modal.querySelectorAll('.modal-close, .modal-backdrop').forEach(el => {
+    el.addEventListener('click', () => activeStreamController?.abort());
+  });
+
+  document.getElementById('btn-digest')?.addEventListener('click', () => {
+    activeTab = 'daily';
+    syncHeaderForTab();
+  }, true);
+
+  document.getElementById('btn-todo-open-briefing')?.addEventListener('click', () => {
+    document.getElementById('todo-options')?.removeAttribute('open');
+    if (typeof closeTodoCenter === 'function') closeTodoCenter();
+    window.openPeriodicBriefing();
+  });
+
+  periodSelect.addEventListener('change', () => {
+    currentBriefingId = null;
+    dirty = false;
+    refreshPreviewAndHistory({ keepDraft: false });
+  });
+  startInput.addEventListener('change', () => refreshPreviewAndHistory({ keepDraft: Boolean(currentMarkdown.trim()) }));
+  endInput.addEventListener('change', () => refreshPreviewAndHistory({ keepDraft: Boolean(currentMarkdown.trim()) }));
+  historySelect.addEventListener('change', () => loadHistoryItem(historySelect.value));
+  deleteHistoryBtn.addEventListener('click', removeHistoryItem);
+  aiGenBtn.addEventListener('click', () => generatePeriodic('auto'));
+  localGenBtn.addEventListener('click', () => generatePeriodic('local'));
+  modeViewBtn.addEventListener('click', () => setEditMode(false));
+  modeEditBtn.addEventListener('click', () => setEditMode(true));
+  editorEl.addEventListener('input', () => {
+    currentMarkdown = editorEl.value;
+    dirty = true;
+  });
+  saveBtn.addEventListener('click', saveCurrentBriefing);
+  copyBtn.addEventListener('click', copyBriefing);
+  composeBtn.addEventListener('click', turnIntoComposeDraft);
+
+  previewEl.addEventListener('click', event => {
+    const link = event.target.closest('.digest-email-link');
+    if (!link) return;
+    event.preventDefault();
+    const id = parseInt(link.dataset.emailId, 10);
+    if (id && typeof openDigestEmailDrawer === 'function') openDigestEmailDrawer(id);
+  });
+
+  syncHeaderForTab();
+  document.addEventListener('mailai:language-changed', () => {
+    syncHeaderForTab();
+    if (!modal.classList.contains('hidden') && activeTab === 'periodic') {
+      if (currentSummary) renderMetrics(currentSummary);
+      renderHistorySelect();
+      renderContent();
+    }
+  });
+  globalThis.MailAIModules?.register('periodicBriefing', {
+    open: window.openPeriodicBriefing,
+  });
+})();
+
+;
+/* ---- calendar-timeline.js ---- */
+(() => {
+  const modal = document.getElementById('calendar-timeline-modal');
+  if (!modal) return;
+
+  const summaryStrip = document.getElementById('timeline-summary-strip');
+  const filterBtns = [...modal.querySelectorAll('[data-timeline-kind]')];
+  const daysSelect = document.getElementById('timeline-days-select');
+  const includeDoneCheck = document.getElementById('timeline-include-done');
+  const toggleCreateBtn = document.getElementById('timeline-toggle-create');
+  const createForm = document.getElementById('timeline-create-form');
+  const createTitleInput = document.getElementById('timeline-create-title');
+  const createStartInput = document.getElementById('timeline-create-start');
+  const createEndInput = document.getElementById('timeline-create-end');
+  const createLocationInput = document.getElementById('timeline-create-location');
+  const createDescInput = document.getElementById('timeline-create-desc');
+  const createAllDayCheck = document.getElementById('timeline-create-allday');
+  const createSubmitBtn = document.getElementById('timeline-create-submit');
+  const createCancelBtn = document.getElementById('timeline-create-cancel');
+  const listEl = document.getElementById('timeline-list');
+  const selectAllBtn = document.getElementById('timeline-select-all');
+  const selectedCountEl = document.getElementById('timeline-selected-count');
+  const sysCalendarSelect = document.getElementById('timeline-system-calendar');
+  const sysAddBtn = document.getElementById('timeline-btn-system-add');
+  const sysNoteEl = document.getElementById('timeline-system-note');
+  const exportBatchBtn = document.getElementById('timeline-btn-export-batch');
+
+  let activeKind = 'all';
+  let currentData = null;
+  const selectedIds = new Set();
+  let systemCalendarsLoaded = false;
+
+  function accountId() {
+    return typeof activeMailAccount === 'function' ? (activeMailAccount()?.id || '') : '';
+  }
+
+  function accountHeaders(acc = accountId()) {
+    return acc ? { 'X-MailAI-Account': acc } : {};
+  }
+
+  function kindLabel(item) {
+    if (item.kind === 'todo') return mailaiText('待办');
+    if (item.kind === 'followup') return mailaiText('发信跟进');
+    if (item.kind === 'ics') return mailaiText('会议邀请');
+    if (item.kind === 'custom') return mailaiText('自建日程');
+    return item.kind_label || '';
+  }
+
+  function filteredItems() {
+    const items = currentData?.items || [];
+    if (activeKind === 'all') return items;
+    return items.filter(it => it.kind === activeKind);
+  }
+
+  function selectedItems() {
+    const items = currentData?.items || [];
+    return items.filter(it => selectedIds.has(it.item_id));
+  }
+
+  function updateSelectionUi() {
+    const visible = filteredItems();
+    const checkedCount = selectedItems().length;
+    selectedCountEl.textContent = mailaiTemplate`已选 ${checkedCount} 项`;
+    exportBatchBtn.disabled = checkedCount === 0;
+    const hasCal = Boolean(sysCalendarSelect.value) && currentData?.macos_calendar_supported !== false;
+    sysAddBtn.disabled = checkedCount === 0 || !hasCal;
+    const allVisibleSelected = visible.length > 0 && visible.every(it => selectedIds.has(it.item_id));
+    selectAllBtn.textContent = allVisibleSelected ? mailaiText('取消全选') : mailaiText('全选当前');
+  }
+
+  function renderSummary() {
+    const s = currentData?.summary;
+    if (!s) {
+      summaryStrip.innerHTML = '';
+      return;
+    }
+    const cards = [
+      { label: mailaiText('近期日程'), value: mailaiTemplate`${s.total || 0} 项`, cls: '' },
+      { label: mailaiText('已逾期'), value: mailaiTemplate`${s.overdue || 0} 项`, cls: (s.overdue || 0) > 0 ? 'is-danger' : '' },
+      { label: mailaiText('今日安排'), value: mailaiTemplate`${s.today || 0} 项`, cls: '' },
+      { label: mailaiText('时段冲突'), value: mailaiTemplate`${s.conflicts || 0} 处`, cls: (s.conflicts || 0) > 0 ? 'is-warn' : '' },
+    ];
+    summaryStrip.innerHTML = cards
+      .map(
+        c => `
+        <div class="timeline-metric ${c.cls}">
+          <span class="timeline-metric-label">${esc(c.label)}</span>
+          <strong class="timeline-metric-value">${esc(c.value)}</strong>
+        </div>`
+      )
+      .join('');
+  }
+
+  function renderGroups() {
+    const groups = currentData?.groups || [];
+    const rendered = [];
+    for (const group of groups) {
+      const groupItems = (group.items || []).filter(it => activeKind === 'all' || it.kind === activeKind);
+      if (!groupItems.length) continue;
+      const headerCls = group.bucket === 'overdue' ? 'is-overdue' : group.bucket === 'today' ? 'is-today' : '';
+      const rowsHtml = groupItems
+        .map(it => {
+          const isDone = it.status === 'done';
+          const checked = selectedIds.has(it.item_id) ? 'checked' : '';
+          const timeText = it.all_day
+            ? mailaiText('全天')
+            : `${esc(it.start_time || '--:--')}${it.end_time ? ` - ${esc(it.end_time)}` : ''}`;
+          const conflictText = it.conflict && (it.conflict_with || []).length
+            ? mailaiTemplate`时段冲突：${it.conflict_with.slice(0, 2).join('、')}`
+            : '';
+          const metaParts = [];
+          if (it.location) metaParts.push(mailaiTemplate`地点：${it.location}`);
+          if (it.source_label) metaParts.push(it.source_label);
+          if (it.description && it.kind !== 'todo') {
+            metaParts.push(it.description);
+          }
+
+          const actions = [];
+          if (it.kind === 'todo' && !isDone && it.todo_id) {
+            actions.push(
+              `<button type="button" class="timeline-mini-btn" data-action="complete-todo" data-todo-id="${it.todo_id}">${esc(mailaiText('完成'))}</button>`
+            );
+          }
+          if (it.email_id) {
+            actions.push(
+              `<button type="button" class="timeline-mini-btn" data-action="open-email" data-email-id="${it.email_id}">${esc(mailaiText('查看邮件'))}</button>`
+            );
+          }
+          if (it.kind === 'custom' && it.custom_id) {
+            actions.push(
+              `<button type="button" class="timeline-mini-btn danger" data-action="delete-custom" data-custom-id="${it.custom_id}">${esc(mailaiText('删除'))}</button>`
+            );
+          }
+
+          return `
+            <div class="timeline-item ${it.conflict ? 'is-conflict' : ''} ${isDone ? 'is-done' : ''}" data-item-id="${esc(it.item_id)}">
+              <input type="checkbox" class="timeline-item-check" data-select-id="${esc(it.item_id)}" ${checked} aria-label="${esc(it.title)}">
+              <div class="timeline-item-time">
+                <span>${timeText}</span>
+                <small>${esc(it.date)}</small>
+              </div>
+              <div class="timeline-item-main">
+                <div class="timeline-item-title-row">
+                  <span class="timeline-item-title">${esc(it.title)}</span>
+                  <span class="timeline-badge kind-${esc(it.kind)}">${esc(kindLabel(it))}</span>
+                  ${it.overdue ? `<span class="timeline-badge is-overdue">${esc(mailaiText('已逾期'))}</span>` : ''}
+                  ${conflictText ? `<span class="timeline-badge is-conflict">${esc(conflictText)}</span>` : ''}
+                </div>
+                ${metaParts.length ? `<div class="timeline-item-meta">${metaParts.map(p => `<span>${esc(p)}</span>`).join(' · ')}</div>` : ''}
+              </div>
+              <div class="timeline-item-actions">${actions.join('')}</div>
+            </div>`;
+        })
+        .join('');
+
+      rendered.push(`
+        <section class="timeline-group">
+          <div class="timeline-group-header ${headerCls}">
+            <span>${esc(group.label)}</span>
+            <span>${esc(mailaiTemplate`${groupItems.length} 项`)}</span>
+          </div>
+          ${rowsHtml}
+        </section>`);
+    }
+
+    listEl.innerHTML = rendered.length
+      ? rendered.join('')
+      : `<div class="timeline-empty">${esc(mailaiText('当前范围暂无日程安排，可点击「+ 新建日程」添加，或先同步包含待办与会议邀请的邮件。'))}</div>`;
+
+    updateSelectionUi();
+  }
+
+  async function loadSystemCalendars() {
+    if (systemCalendarsLoaded) return;
+    try {
+      const data = await api('/api/productivity/calendar/system-calendars', {
+        headers: accountHeaders(),
+      });
+      systemCalendarsLoaded = true;
+      const cals = data.calendars || [];
+      if (!data.supported) {
+        sysCalendarSelect.innerHTML = `<option value="">${esc(mailaiText('系统日历（请用 .ics 导入）'))}</option>`;
+        sysCalendarSelect.disabled = true;
+        sysNoteEl.textContent = data.note || '';
+      } else if (!cals.length) {
+        sysCalendarSelect.innerHTML = `<option value="">${esc(mailaiText('未读取到系统日历'))}</option>`;
+        sysCalendarSelect.disabled = true;
+        sysNoteEl.textContent = data.note || mailaiText('可使用「导出 .ics」导入苹果日历');
+      } else {
+        sysCalendarSelect.disabled = false;
+        sysCalendarSelect.innerHTML = cals
+          .map(name => `<option value="${esc(name)}">${esc(mailaiTemplate`日历：${name}`)}</option>`)
+          .join('');
+        sysNoteEl.textContent = mailaiText('支持写入 macOS「日历」或导出 .ics');
+      }
+    } catch {
+      sysCalendarSelect.innerHTML = `<option value="">${esc(mailaiText('未读取到系统日历'))}</option>`;
+      sysCalendarSelect.disabled = true;
+    }
+    updateSelectionUi();
+  }
+
+  async function loadTimeline() {
+    listEl.innerHTML = `<div class="timeline-empty">${esc(mailaiText('正在聚合待办、跟进与会议日程…'))}</div>`;
+    try {
+      const days = Number(daysSelect.value) || 14;
+      const includeDone = includeDoneCheck.checked ? 'true' : 'false';
+      const data = await api(
+        `/api/productivity/calendar/timeline?days=${days}&include_past_days=7&include_done=${includeDone}`,
+        { headers: accountHeaders() }
+      );
+      currentData = data;
+      const validSet = new Set((data.items || []).map(x => x.item_id));
+      for (const id of [...selectedIds]) {
+        if (!validSet.has(id)) selectedIds.delete(id);
+      }
+      renderSummary();
+      renderGroups();
+    } catch (e) {
+      const msg = e.message || mailaiText('读取日程时间线失败');
+      listEl.innerHTML = `<div class="timeline-empty">${esc(msg)}</div>`;
+    }
+  }
+
+  function resetCreateDefaults() {
+    const now = new Date();
+    now.setMinutes(0, 0, 0);
+    now.setHours(now.getHours() + 1);
+    const pad = n => String(n).padStart(2, '0');
+    const localStart = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:00`;
+    const endDt = new Date(now.getTime() + 3600000);
+    const localEnd = `${endDt.getFullYear()}-${pad(endDt.getMonth() + 1)}-${pad(endDt.getDate())}T${pad(endDt.getHours())}:00`;
+    createTitleInput.value = '';
+    createStartInput.value = localStart;
+    createEndInput.value = localEnd;
+    createLocationInput.value = '';
+    createDescInput.value = '';
+    createAllDayCheck.checked = false;
+  }
+
+  async function openModal() {
+    if (typeof closeTodoCenter === 'function') closeTodoCenter();
+    if (typeof closeContactCenter === 'function') closeContactCenter();
+    if (typeof closeAttachmentCenter === 'function') closeAttachmentCenter();
+    if (typeof closeTriageCenter === 'function') closeTriageCenter();
+    if (typeof closeAssistant === 'function') closeAssistant();
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    createForm.classList.add('hidden');
+    resetCreateDefaults();
+    await Promise.all([loadTimeline(), loadSystemCalendars()]);
+  }
+
+  function closeModal() {
+    modal.classList.add('hidden');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeKind = btn.dataset.timelineKind || 'all';
+      filterBtns.forEach(b => b.classList.toggle('is-active', b === btn));
+      renderGroups();
+    });
+  });
+
+  daysSelect.addEventListener('change', loadTimeline);
+  includeDoneCheck.addEventListener('change', loadTimeline);
+  sysCalendarSelect.addEventListener('change', updateSelectionUi);
+
+  toggleCreateBtn.addEventListener('click', () => {
+    const opening = createForm.classList.contains('hidden');
+    createForm.classList.toggle('hidden');
+    if (opening) {
+      resetCreateDefaults();
+      createTitleInput.focus();
+    }
+  });
+
+  createCancelBtn.addEventListener('click', () => {
+    createForm.classList.add('hidden');
+  });
+
+  createForm.addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const title = createTitleInput.value.trim();
+    const start = createStartInput.value.trim();
+    if (!title || !start) {
+      toast(mailaiText('请填写日程标题与开始时间'), 'warn');
+      return;
+    }
+    createSubmitBtn.disabled = true;
+    try {
+      await api('/api/productivity/calendar/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...accountHeaders() },
+        body: JSON.stringify({
+          title,
+          start,
+          end: createEndInput.value.trim(),
+          location: createLocationInput.value.trim(),
+          description: createDescInput.value.trim(),
+          all_day: createAllDayCheck.checked,
+        }),
+      });
+      createForm.classList.add('hidden');
+      toast(mailaiText('已添加自建日程'), 'success');
+      await loadTimeline();
+    } catch (e) {
+      toast(e.message || mailaiText('创建日程失败'), 'error');
+    } finally {
+      createSubmitBtn.disabled = false;
+    }
+  });
+
+  listEl.addEventListener('change', ev => {
+    const chk = ev.target.closest('.timeline-item-check');
+    if (!chk) return;
+    const id = chk.dataset.selectId;
+    if (!id) return;
+    if (chk.checked) selectedIds.add(id);
+    else selectedIds.delete(id);
+    updateSelectionUi();
+  });
+
+  listEl.addEventListener('click', async ev => {
+    const btn = ev.target.closest('[data-action]');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    if (action === 'complete-todo') {
+      const todoId = Number(btn.dataset.todoId);
+      if (!todoId) return;
+      btn.disabled = true;
+      try {
+        await api(`/api/todos/${todoId}/done`, {
+          method: 'POST',
+          headers: accountHeaders(),
+        });
+        toast(mailaiText('待办已标记完成'), 'success');
+        if (typeof loadTodos === 'function') await loadTodos();
+        await loadTimeline();
+      } catch (e) {
+        btn.disabled = false;
+        toast(e.message || mailaiText('更新待办失败'), 'error');
+      }
+      return;
+    }
+    if (action === 'open-email') {
+      const emailId = Number(btn.dataset.emailId);
+      if (!emailId) return;
+      if (typeof openDigestEmailDrawer === 'function') {
+        await openDigestEmailDrawer(emailId);
+      } else if (typeof selectEmail === 'function') {
+        closeModal();
+        await selectEmail(emailId);
+      }
+      return;
+    }
+    if (action === 'delete-custom') {
+      const customId = Number(btn.dataset.customId);
+      if (!customId) return;
+      btn.disabled = true;
+      try {
+        await api(`/api/productivity/calendar/events/${customId}`, {
+          method: 'DELETE',
+          headers: accountHeaders(),
+        });
+        selectedIds.delete(`custom:${customId}`);
+        toast(mailaiText('已删除自建日程'), 'success');
+        await loadTimeline();
+      } catch (e) {
+        btn.disabled = false;
+        toast(e.message || mailaiText('删除日程失败'), 'error');
+      }
+    }
+  });
+
+  selectAllBtn.addEventListener('click', () => {
+    const visible = filteredItems();
+    const allSelected = visible.length > 0 && visible.every(it => selectedIds.has(it.item_id));
+    for (const it of visible) {
+      if (allSelected) selectedIds.delete(it.item_id);
+      else selectedIds.add(it.item_id);
+    }
+    renderGroups();
+  });
+
+  exportBatchBtn.addEventListener('click', async () => {
+    const chosen = selectedItems();
+    if (!chosen.length) {
+      toast(mailaiText('请先勾选至少一条日程'), 'warn');
+      return;
+    }
+    exportBatchBtn.disabled = true;
+    try {
+      const res = await fetch('/api/productivity/calendar/export-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...accountHeaders() },
+        body: JSON.stringify({ items: chosen }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `HTTP ${res.status}`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'schedule.ics';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast(mailaiTemplate`已导出 ${chosen.length} 条日程至 schedule.ics`, 'success');
+    } catch (e) {
+      toast(e.message || mailaiText('导出 .ics 失败'), 'error');
+    } finally {
+      updateSelectionUi();
+    }
+  });
+
+  sysAddBtn.addEventListener('click', async () => {
+    const chosen = selectedItems();
+    const calendarName = sysCalendarSelect.value;
+    if (!chosen.length || !calendarName) {
+      toast(mailaiText('请先勾选日程并选择目标系统日历'), 'warn');
+      return;
+    }
+    sysAddBtn.disabled = true;
+    sysAddBtn.textContent = mailaiText('正在写入…');
+    try {
+      const res = await api('/api/productivity/calendar/system-add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...accountHeaders() },
+        body: JSON.stringify({ calendar_name: calendarName, items: chosen }),
+      });
+      toast(
+        mailaiTemplate`已写入「${res.calendar}」：新增 ${res.created} 条，跳过重复 ${res.skipped} 条`,
+        'success'
+      );
+    } catch (e) {
+      toast(e.message || mailaiText('写入系统日历失败'), 'error');
+    } finally {
+      sysAddBtn.textContent = mailaiText('写入系统日历');
+      updateSelectionUi();
+    }
+  });
+
+  const todoTrigger = document.getElementById('btn-todo-open-timeline');
+  if (todoTrigger) todoTrigger.addEventListener('click', openModal);
+
+  const closeBtn = document.getElementById('btn-close-timeline');
+  if (closeBtn) closeBtn.addEventListener('click', closeModal);
+  modal.querySelectorAll('[data-close-timeline]').forEach(el => el.addEventListener('click', closeModal));
+
+  document.addEventListener('keydown', ev => {
+    if (ev.key === 'Escape' && !modal.classList.contains('hidden')) {
+      closeModal();
+    }
+  });
+
+  document.addEventListener('mailai:language-changed', () => {
+    if (!modal.classList.contains('hidden') && currentData) {
+      renderSummary();
+      renderGroups();
+      updateSelectionUi();
+    }
+  });
+
+  window.openCalendarTimeline = openModal;
+  window.closeCalendarTimeline = closeModal;
+  globalThis.MailAIModules?.register('calendarTimeline', {
+    open: openModal,
+    close: closeModal,
+  });
+})();
+
+;
+/* ---- triage-rules.js ---- */
+(() => {
+  const modal = document.getElementById('triage-rules-modal');
+  if (!modal) return;
+
+  const tabBtns = [...modal.querySelectorAll('[data-triage-tab]')];
+  const subsPane = document.getElementById('triage-pane-subs');
+  const rulesPane = document.getElementById('triage-pane-rules');
+  const subSummaryEl = document.getElementById('triage-subs-summary');
+  const subListEl = document.getElementById('triage-subs-list');
+  const subRefreshBtn = document.getElementById('triage-subs-refresh');
+
+  const newRuleBtn = document.getElementById('triage-btn-new-rule');
+  const applyAllBtn = document.getElementById('triage-btn-apply-all');
+  const ruleEditor = document.getElementById('triage-rule-editor');
+  const ruleNameInput = document.getElementById('triage-rule-name');
+  const ruleMatchSelect = document.getElementById('triage-rule-match');
+  const condListEl = document.getElementById('triage-cond-list');
+  const addCondBtn = document.getElementById('triage-btn-add-cond');
+  const actionStateSelect = document.getElementById('triage-action-state');
+  const actionHoursWrap = document.getElementById('triage-later-hours-wrap');
+  const actionHoursInput = document.getElementById('triage-action-later-hours');
+  const actionReadCheck = document.getElementById('triage-action-read');
+  const actionStarCheck = document.getElementById('triage-action-star');
+  const tagPicksEl = document.getElementById('triage-tag-picks');
+  const previewBox = document.getElementById('triage-rule-preview');
+  const previewBtn = document.getElementById('triage-btn-preview-rule');
+  const cancelRuleBtn = document.getElementById('triage-btn-cancel-rule');
+  const rulesListEl = document.getElementById('triage-rules-list');
+
+  let activeTab = 'subs';
+  let subData = null;
+  let rulesData = [];
+  let tagsCatalog = [];
+  let editingRuleId = null;
+
+  function accountId() {
+    return typeof activeMailAccount === 'function' ? (activeMailAccount()?.id || '') : '';
+  }
+
+  function accountHeaders(acc = accountId()) {
+    return acc ? { 'X-MailAI-Account': acc } : {};
+  }
+
+  function switchTab(tab) {
+    activeTab = tab;
+    tabBtns.forEach(btn => {
+      const on = btn.dataset.triageTab === tab;
+      btn.classList.toggle('is-active', on);
+      btn.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    subsPane.classList.toggle('hidden', tab !== 'subs');
+    rulesPane.classList.toggle('hidden', tab !== 'rules');
+  }
+
+  function renderSubs() {
+    const s = subData?.summary;
+    if (!s) {
+      subSummaryEl.innerHTML = '';
+    } else {
+      const cards = [
+        { label: mailaiText('高频推送源'), value: mailaiTemplate`${s.total_groups || 0} 个` },
+        { label: mailaiText('可整理邮件'), value: mailaiTemplate`${s.total_emails || 0} 封` },
+        { label: mailaiText('未读推送'), value: mailaiTemplate`${s.unread_emails || 0} 封` },
+        { label: mailaiText('含退订协议'), value: mailaiTemplate`${s.with_unsubscribe || 0} 个` },
+      ];
+      subSummaryEl.innerHTML = cards
+        .map(
+          c => `
+          <div class="triage-metric">
+            <span class="triage-metric-label">${esc(c.label)}</span>
+            <strong class="triage-metric-value">${esc(c.value)}</strong>
+          </div>`
+        )
+        .join('');
+    }
+
+    const groups = subData?.groups || [];
+    if (!groups.length) {
+      subListEl.innerHTML = `<div class="triage-empty">${esc(mailaiText('暂未识别到重复通知或订阅推送，收件箱较为干净。'))}</div>`;
+      return;
+    }
+
+    subListEl.innerHTML = groups
+      .map(g => {
+        const unsubHtml = (g.unsubscribe_links || [])
+          .slice(0, 1)
+          .map(
+            lk => `<a class="triage-unsub-link" href="${esc(lk.target)}" target="_blank" rel="noopener noreferrer" title="${esc(mailaiText('点击后在外部打开退订链接，请先确认发件人可信'))}">${esc(lk.kind === 'mailto' ? mailaiText('查看退订邮箱') : mailaiText('打开退订页'))}</a>`
+          )
+          .join('');
+        return `
+          <article class="triage-card" data-sender-addr="${esc(g.sender_addr)}">
+            <div class="triage-card-top">
+              <div class="triage-card-title">
+                <span class="triage-sender-name">${esc(g.sender_name || g.sender_addr)}</span>
+                <span class="triage-sender-addr">${esc(g.sender_addr)}</span>
+                <span class="triage-pill accent">${esc(mailaiTemplate`共 ${g.total_count} 封`)}</span>
+                ${g.unread_count ? `<span class="triage-pill warn">${esc(mailaiTemplate`未读 ${g.unread_count} 封`)}</span>` : ''}
+                ${g.has_active_rule ? `<span class="triage-pill done">${esc(mailaiText('已设自动规则'))}</span>` : ''}
+              </div>
+              <div class="triage-card-actions">
+                <button type="button" class="triage-mini-btn" data-sub-action="keep_latest_done" data-sender="${esc(g.sender_addr)}" ${g.total_count < 2 ? 'disabled' : ''}>${esc(mailaiText('留最新 · 其余已读已处理'))}</button>
+                <button type="button" class="triage-mini-btn" data-sub-action="all_done" data-sender="${esc(g.sender_addr)}" ${!g.unread_count && !g.unhandled_count ? 'disabled' : ''}>${esc(mailaiText('全部已读已处理'))}</button>
+                <button type="button" class="triage-mini-btn" data-sub-rule="${esc(g.sender_addr)}">${esc(mailaiText('设为自动规则'))}</button>
+              </div>
+            </div>
+            <div class="triage-card-meta">
+              <span>${esc(mailaiTemplate`最近主题：${g.latest_subject || '—'}`)}</span>
+              ${(g.reasons || []).map(r => `<span class="triage-pill">${esc(r)}</span>`).join('')}
+              ${unsubHtml}
+            </div>
+          </article>`;
+      })
+      .join('');
+  }
+
+  function formatRuleSummary(rule) {
+    const conds = (rule.conditions || []).map(c => {
+      if (c.field === 'is_subscription') return mailaiText('识别为订阅推送');
+      const fMap = {
+        sender: mailaiText('发件人'),
+        domain: mailaiText('发件域名'),
+        subject: mailaiText('主题'),
+        body: mailaiText('正文'),
+      };
+      const oMap = {
+        contains: mailaiText('包含'),
+        equals: mailaiText('等于'),
+        not_contains: mailaiText('不包含'),
+      };
+      return `${fMap[c.field] || c.field} ${oMap[c.operator] || c.operator} "${c.value}"`;
+    });
+    const a = rule.actions || {};
+    const acts = [];
+    if (a.handle_state === 'done') acts.push(mailaiText('标为已处理'));
+    if (a.handle_state === 'later') acts.push(mailaiTemplate`延后 ${a.later_hours || 24} 小时`);
+    if (a.handle_state === 'reply') acts.push(mailaiText('标为待回复'));
+    if (a.mark_read) acts.push(mailaiText('设为已读'));
+    if (a.mark_starred) acts.push(mailaiText('加星标'));
+    if ((a.tag_ids || []).length) {
+      const names = a.tag_ids
+        .map(id => tagsCatalog.find(t => t.id === id)?.name)
+        .filter(Boolean);
+      if (names.length) acts.push(mailaiTemplate`打标签：${names.join('、')}`);
+    }
+    return {
+      when: conds.join(rule.match_mode === 'any' ? ` ${mailaiText('或')} ` : ` ${mailaiText('且')} `),
+      then: acts.join(' · '),
+    };
+  }
+
+  function renderRules() {
+    if (!rulesData.length) {
+      rulesListEl.innerHTML = `<div class="triage-empty">${esc(mailaiText('尚未配置自动分流规则，点击「+ 新建分流规则」即可按发件人、域名或主题自动归档与已读。'))}</div>`;
+      return;
+    }
+    rulesListEl.innerHTML = rulesData
+      .map(rule => {
+        const desc = formatRuleSummary(rule);
+        return `
+          <article class="triage-card" data-rule-id="${rule.id}">
+            <div class="triage-card-top">
+              <div class="triage-card-title">
+                <span class="triage-sender-name">${esc(rule.name)}</span>
+                <span class="triage-pill ${rule.enabled ? 'done' : ''}">${esc(rule.enabled ? mailaiText('已启用') : mailaiText('已停用'))}</span>
+                <span class="triage-pill">${esc(mailaiTemplate`已命中 ${rule.hit_count || 0} 次`)}</span>
+              </div>
+              <div class="triage-card-actions">
+                <button type="button" class="triage-mini-btn" data-rule-action="toggle" data-rule-id="${rule.id}" data-enabled="${rule.enabled ? '1' : '0'}">${esc(rule.enabled ? mailaiText('停用') : mailaiText('启用'))}</button>
+                <button type="button" class="triage-mini-btn" data-rule-action="apply" data-rule-id="${rule.id}">${esc(mailaiText('立即运行'))}</button>
+                <button type="button" class="triage-mini-btn" data-rule-action="edit" data-rule-id="${rule.id}">${esc(mailaiText('编辑'))}</button>
+                <button type="button" class="triage-mini-btn danger" data-rule-action="delete" data-rule-id="${rule.id}">${esc(mailaiText('删除'))}</button>
+              </div>
+            </div>
+            <div class="triage-card-meta">
+              <span>${esc(mailaiTemplate`条件：${desc.when}`)}</span>
+              <span>${esc(mailaiTemplate`动作：${desc.then}`)}</span>
+            </div>
+          </article>`;
+      })
+      .join('');
+  }
+
+  function renderCondRow(cond = { field: 'sender', operator: 'contains', value: '' }) {
+    const row = document.createElement('div');
+    row.className = 'triage-cond-row';
+    const isSub = cond.field === 'is_subscription';
+    row.innerHTML = `
+      <select class="triage-cond-field">
+        <option value="sender" ${cond.field === 'sender' ? 'selected' : ''}>${esc(mailaiText('发件人'))}</option>
+        <option value="domain" ${cond.field === 'domain' ? 'selected' : ''}>${esc(mailaiText('发件域名'))}</option>
+        <option value="subject" ${cond.field === 'subject' ? 'selected' : ''}>${esc(mailaiText('主题'))}</option>
+        <option value="body" ${cond.field === 'body' ? 'selected' : ''}>${esc(mailaiText('正文'))}</option>
+        <option value="is_subscription" ${isSub ? 'selected' : ''}>${esc(mailaiText('识别为订阅推送'))}</option>
+      </select>
+      <select class="triage-cond-op" ${isSub ? 'hidden' : ''}>
+        <option value="contains" ${cond.operator === 'contains' ? 'selected' : ''}>${esc(mailaiText('包含'))}</option>
+        <option value="equals" ${cond.operator === 'equals' ? 'selected' : ''}>${esc(mailaiText('等于'))}</option>
+        <option value="not_contains" ${cond.operator === 'not_contains' ? 'selected' : ''}>${esc(mailaiText('不包含'))}</option>
+      </select>
+      <input type="text" class="triage-cond-val" maxlength="300" placeholder="${esc(mailaiText('填写关键词或发件人地址'))}" value="${esc(isSub ? '1' : cond.value || '')}" ${isSub ? 'hidden' : ''}>
+      <button type="button" class="triage-mini-btn danger triage-cond-del">${esc(mailaiText('移除'))}</button>`;
+    const fieldSel = row.querySelector('.triage-cond-field');
+    const opSel = row.querySelector('.triage-cond-op');
+    const valInput = row.querySelector('.triage-cond-val');
+    fieldSel.addEventListener('change', () => {
+      const sub = fieldSel.value === 'is_subscription';
+      opSel.hidden = sub;
+      valInput.hidden = sub;
+      if (sub) valInput.value = '1';
+      else if (valInput.value === '1') valInput.value = '';
+    });
+    row.querySelector('.triage-cond-del').addEventListener('click', () => {
+      if (condListEl.children.length > 1) row.remove();
+    });
+    condListEl.appendChild(row);
+  }
+
+  function renderTagPicker(selectedIds = []) {
+    const selectedSet = new Set(selectedIds);
+    if (!tagsCatalog.length) {
+      tagPicksEl.innerHTML = `<span class="triage-note">${esc(mailaiText('暂无个人标签'))}</span>`;
+      return;
+    }
+    tagPicksEl.innerHTML = tagsCatalog
+      .map(
+        t => `
+        <label class="triage-tag-pick">
+          <input type="checkbox" class="triage-tag-check" value="${t.id}" ${selectedSet.has(t.id) ? 'checked' : ''}>
+          <span>${esc(t.name)}</span>
+        </label>`
+      )
+      .join('');
+  }
+
+  function openRuleEditor(preset = null) {
+    editingRuleId = preset?.id || null;
+    ruleNameInput.value = preset?.name || '';
+    ruleMatchSelect.value = preset?.match_mode || 'all';
+    condListEl.innerHTML = '';
+    const conds = preset?.conditions?.length
+      ? preset.conditions
+      : [{ field: 'sender', operator: 'contains', value: '' }];
+    conds.forEach(renderCondRow);
+    const acts = preset?.actions || {};
+    actionStateSelect.value = acts.handle_state || '';
+    actionHoursInput.value = String(acts.later_hours || 24);
+    actionHoursWrap.classList.toggle('hidden', actionStateSelect.value !== 'later');
+    actionReadCheck.checked = Boolean(acts.mark_read);
+    actionStarCheck.checked = Boolean(acts.mark_starred);
+    renderTagPicker(acts.tag_ids || []);
+    previewBox.classList.add('hidden');
+    previewBox.innerHTML = '';
+    ruleEditor.classList.remove('hidden');
+    ruleNameInput.focus();
+  }
+
+  function collectRulePayload() {
+    const conditions = [...condListEl.querySelectorAll('.triage-cond-row')].map(row => ({
+      field: row.querySelector('.triage-cond-field').value,
+      operator: row.querySelector('.triage-cond-op').value,
+      value: row.querySelector('.triage-cond-val').value.trim(),
+    }));
+    const tag_ids = [...tagPicksEl.querySelectorAll('.triage-tag-check:checked')].map(el => Number(el.value));
+    const payload = {
+      name: ruleNameInput.value.trim(),
+      match_mode: ruleMatchSelect.value,
+      conditions,
+      actions: {
+        handle_state: actionStateSelect.value,
+        later_hours: Number(actionHoursInput.value) || 24,
+        mark_read: actionReadCheck.checked,
+        mark_starred: actionStarCheck.checked,
+        tag_ids,
+      },
+    };
+    if (editingRuleId !== null) payload.id = editingRuleId;
+    return payload;
+  }
+
+  async function loadAll() {
+    subListEl.innerHTML = `<div class="triage-empty">${esc(mailaiText('正在扫描高频通知与订阅邮件…'))}</div>`;
+    try {
+      const [subs, rulesRes, tagsRes] = await Promise.all([
+        api('/api/productivity/triage/subscriptions', { headers: accountHeaders() }),
+        api('/api/productivity/triage/rules', { headers: accountHeaders() }),
+        api('/api/mail/tags', { headers: accountHeaders() }).catch(() => ({ tags: [] })),
+      ]);
+      subData = subs;
+      rulesData = rulesRes.rules || [];
+      tagsCatalog = tagsRes.tags || [];
+      renderSubs();
+      renderRules();
+    } catch (e) {
+      const msg = e.message || mailaiText('加载订阅与分流数据失败');
+      subListEl.innerHTML = `<div class="triage-empty">${esc(msg)}</div>`;
+    }
+  }
+
+  async function openModal(initialTab = 'subs') {
+    if (typeof closeTodoCenter === 'function') closeTodoCenter();
+    if (typeof closeContactCenter === 'function') closeContactCenter();
+    if (typeof closeAttachmentCenter === 'function') closeAttachmentCenter();
+    if (typeof closeCalendarTimeline === 'function') closeCalendarTimeline();
+    if (typeof closeAssistant === 'function') closeAssistant();
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    ruleEditor.classList.add('hidden');
+    switchTab(initialTab);
+    await loadAll();
+  }
+
+  function closeModal() {
+    modal.classList.add('hidden');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+
+  tabBtns.forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.triageTab || 'subs')));
+  subRefreshBtn.addEventListener('click', loadAll);
+  newRuleBtn.addEventListener('click', () => openRuleEditor());
+  addCondBtn.addEventListener('click', () => renderCondRow());
+  cancelRuleBtn.addEventListener('click', () => ruleEditor.classList.add('hidden'));
+  actionStateSelect.addEventListener('change', () => {
+    actionHoursWrap.classList.toggle('hidden', actionStateSelect.value !== 'later');
+  });
+
+  subListEl.addEventListener('click', async ev => {
+    const batchBtn = ev.target.closest('[data-sub-action]');
+    if (batchBtn) {
+      const mode = batchBtn.dataset.subAction;
+      const sender = batchBtn.dataset.sender;
+      batchBtn.disabled = true;
+      try {
+        const res = await api('/api/productivity/triage/sender-batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...accountHeaders() },
+          body: JSON.stringify({ sender_addr: sender, mode }),
+        });
+        toast(mailaiTemplate`已批量处理 ${res.updated_count || 0} 封订阅推送`, 'success');
+        if (typeof loadEmails === 'function') loadEmails();
+        await loadAll();
+      } catch (e) {
+        batchBtn.disabled = false;
+        toast(e.message || mailaiText('批量降噪失败'), 'error');
+      }
+      return;
+    }
+
+    const ruleBtn = ev.target.closest('[data-sub-rule]');
+    if (ruleBtn) {
+      const addr = ruleBtn.dataset.subRule;
+      switchTab('rules');
+      openRuleEditor({
+        name: mailaiTemplate`自动归档：${addr}`,
+        match_mode: 'all',
+        conditions: [{ field: 'sender', operator: 'equals', value: addr }],
+        actions: { handle_state: 'done', mark_read: true, mark_starred: false, tag_ids: [] },
+      });
+    }
+  });
+
+  previewBtn.addEventListener('click', async () => {
+    try {
+      const payload = collectRulePayload();
+      const res = await api('/api/productivity/triage/rules/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...accountHeaders() },
+        body: JSON.stringify(payload),
+      });
+      previewBox.classList.remove('hidden');
+      if (!res.matched_count) {
+        previewBox.innerHTML = `<span>${esc(mailaiText('当前收件箱暂无匹配邮件，规则保存后将对新到达邮件生效。'))}</span>`;
+      } else {
+        const lines = (res.items || []).slice(0, 6).map(
+          it => `<div>• ${esc(it.subject)} <span class="triage-note">(${esc(it.from_addr)})</span></div>`
+        );
+        previewBox.innerHTML = `<strong>${esc(mailaiTemplate`共命中 ${res.matched_count} 封收件箱邮件：`)}</strong>${lines.join('')}`;
+      }
+    } catch (e) {
+      toast(e.message || mailaiText('预览规则失败'), 'error');
+    }
+  });
+
+  ruleEditor.addEventListener('submit', async ev => {
+    ev.preventDefault();
+    try {
+      const payload = collectRulePayload();
+      await api('/api/productivity/triage/rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...accountHeaders() },
+        body: JSON.stringify(payload),
+      });
+      ruleEditor.classList.add('hidden');
+      toast(mailaiText('自动分流规则已保存'), 'success');
+      await loadAll();
+    } catch (e) {
+      toast(e.message || mailaiText('保存规则失败'), 'error');
+    }
+  });
+
+  applyAllBtn.addEventListener('click', async () => {
+    applyAllBtn.disabled = true;
+    try {
+      const res = await api('/api/productivity/triage/rules/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...accountHeaders() },
+        body: JSON.stringify({}),
+      });
+      toast(mailaiTemplate`已执行分流规则：命中 ${res.matched || 0} 封，更新 ${res.updated || 0} 封`, 'success');
+      if (typeof loadEmails === 'function') loadEmails();
+      await loadAll();
+    } catch (e) {
+      toast(e.message || mailaiText('执行规则失败'), 'error');
+    } finally {
+      applyAllBtn.disabled = false;
+    }
+  });
+
+  rulesListEl.addEventListener('click', async ev => {
+    const btn = ev.target.closest('[data-rule-action]');
+    if (!btn) return;
+    const action = btn.dataset.ruleAction;
+    const ruleId = Number(btn.dataset.ruleId);
+    const targetRule = rulesData.find(r => r.id === ruleId);
+    if (!ruleId || !targetRule) return;
+
+    if (action === 'edit') {
+      openRuleEditor(targetRule);
+      return;
+    }
+    if (action === 'toggle') {
+      await api(`/api/productivity/triage/rules/${ruleId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...accountHeaders() },
+        body: JSON.stringify({ enabled: btn.dataset.enabled !== '1' }),
+      });
+      await loadAll();
+      return;
+    }
+    if (action === 'apply') {
+      const res = await api('/api/productivity/triage/rules/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...accountHeaders() },
+        body: JSON.stringify({ rule_id: ruleId }),
+      });
+      toast(mailaiTemplate`规则已运行：命中 ${res.matched || 0} 封，更新 ${res.updated || 0} 封`, 'success');
+      if (typeof loadEmails === 'function') loadEmails();
+      await loadAll();
+      return;
+    }
+    if (action === 'delete') {
+      await api(`/api/productivity/triage/rules/${ruleId}`, {
+        method: 'DELETE',
+        headers: accountHeaders(),
+      });
+      toast(mailaiText('已删除自动分流规则'), 'success');
+      await loadAll();
+    }
+  });
+
+  const todoMenuTrigger = document.getElementById('btn-todo-open-triage');
+  if (todoMenuTrigger) {
+    todoMenuTrigger.addEventListener('click', () => {
+      document.getElementById('todo-options')?.removeAttribute('open');
+      if (typeof closeTodoCenter === 'function') closeTodoCenter();
+      openModal('subs');
+    });
+  }
+
+  const closeBtn = document.getElementById('btn-close-triage');
+  if (closeBtn) closeBtn.addEventListener('click', closeModal);
+  modal.querySelectorAll('[data-close-triage]').forEach(el => el.addEventListener('click', closeModal));
+
+  document.addEventListener('keydown', ev => {
+    if (ev.key === 'Escape' && !modal.classList.contains('hidden')) {
+      closeModal();
+    }
+  });
+
+  document.addEventListener('mailai:language-changed', () => {
+    if (!modal.classList.contains('hidden')) {
+      if (subData) renderSubs();
+      renderRules();
+    }
+  });
+
+  window.openTriageCenter = openModal;
+  window.closeTriageCenter = closeModal;
+  globalThis.MailAIModules?.register('triageRules', {
+    open: openModal,
+    close: closeModal,
+  });
+})();
+
+;
+/* ---- compose-guard.js ---- */
+/* Non-blocking inline compose audit highlights + pulse spotlight + floating hover tooltip */
+(() => {
+  const button = document.getElementById('btn-compose-guard');
+  const bodyEl = document.getElementById('compose-body');
+  const msgEl = document.getElementById('compose-message');
+  const layerEl = document.getElementById('compose-guard-layer');
+  const subjectEl = document.getElementById('compose-subject');
+  const toEl = document.getElementById('compose-to');
+  const ccEl = document.getElementById('compose-cc');
+  const attachmentsEl = document.getElementById('compose-attachments');
+  if (!button || !bodyEl || !msgEl || !layerEl) return;
+
+  const tooltip = document.createElement('div');
+  tooltip.id = 'compose-guard-tooltip';
+  tooltip.className = 'compose-guard-tooltip hidden';
+  tooltip.setAttribute('role', 'tooltip');
+  tooltip.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(tooltip);
+
+  let activeBodyMarks = []; // [{ range, issue, tone, spans: [] }]
+  let activeFieldIssues = new Map(); // element -> [issue]
+  let allActiveIssues = [];
+  let hoveredKey = '';
+  let syncRaf = 0;
+  let hideGraceTimer = 0;
+
+  function clearHideTimer() {
+    if (hideGraceTimer) {
+      clearTimeout(hideGraceTimer);
+      hideGraceTimer = 0;
+    }
+  }
+
+  function setActiveIssues(issuesList) {
+    const activeSet = new Set(issuesList || []);
+    layerEl.classList.toggle('has-active', activeSet.size > 0);
+
+    for (const mark of activeBodyMarks) {
+      const hit = activeSet.has(mark.issue);
+      for (const span of mark.spans || []) {
+        span.classList.toggle('is-active', hit);
+      }
+    }
+
+    for (const [el, list] of activeFieldIssues.entries()) {
+      const hit = list.some(item => activeSet.has(item));
+      el.classList.toggle('compose-guard-field-active', hit);
+    }
+  }
+
+  function hideTooltip() {
+    clearHideTimer();
+    hoveredKey = '';
+    setActiveIssues([]);
+    tooltip.innerHTML = '';
+    tooltip.className = 'compose-guard-tooltip hidden';
+    tooltip.setAttribute('aria-hidden', 'true');
+  }
+
+  function scheduleHideInteractive() {
+    clearHideTimer();
+    hideGraceTimer = setTimeout(() => {
+      if (hoveredKey === 'button:all') hideTooltip();
+    }, 140);
+  }
+
+  function scrollIssueIntoView(issue) {
+    const mark = activeBodyMarks.find(m => m.issue === issue);
+    if (mark) {
+      try {
+        const rects = mark.range.getClientRects();
+        const r = rects[0];
+        if (r) {
+          const bodyRect = bodyEl.getBoundingClientRect();
+          if (r.top < bodyRect.top || r.bottom > bodyRect.bottom) {
+            bodyEl.scrollTop += (r.top - bodyRect.top) - bodyRect.height * 0.3;
+          }
+        }
+      } catch (_) {}
+      return;
+    }
+    for (const [el, list] of activeFieldIssues.entries()) {
+      if (list.includes(issue)) {
+        el.scrollIntoView({ block: 'nearest' });
+        return;
+      }
+    }
+  }
+
+  function focusIssueTarget(issue) {
+    const mark = activeBodyMarks.find(m => m.issue === issue);
+    if (mark) {
+      scrollIssueIntoView(issue);
+      msgEl.focus({ preventScroll: true });
+      try {
+        const sel = window.getSelection();
+        if (sel) {
+          const caret = document.createRange();
+          caret.setStart(mark.range.startContainer, mark.range.startOffset);
+          caret.setEnd(mark.range.endContainer, mark.range.endOffset);
+          sel.removeAllRanges();
+          sel.addRange(caret);
+        }
+      } catch (_) {}
+      return;
+    }
+    for (const [el, list] of activeFieldIssues.entries()) {
+      if (list.includes(issue) && typeof el.focus === 'function') {
+        el.focus();
+        return;
+      }
+    }
+  }
+
+  function showTooltip(issues, anchorRect, key, { interactive = false } = {}) {
+    clearHideTimer();
+    if (!issues || !issues.length) {
+      hideTooltip();
+      return;
+    }
+    if (hoveredKey !== key || tooltip.classList.contains('hidden')) {
+      hoveredKey = key;
+      tooltip.classList.toggle('is-interactive', interactive);
+      tooltip.innerHTML = issues.map((issue, idx) => {
+        const tone = (issue.tone === 'high' || issue.level === 'danger') ? 'high' : 'warn';
+        const badge = tone === 'high' ? mailaiText('高风险') : mailaiText('提醒');
+        return `<div class="compose-guard-tip-row tone-${tone}" data-issue-idx="${idx}">
+          <span class="compose-guard-tip-badge">${esc(badge)}</span>
+          <div class="compose-guard-tip-body">
+            <strong>${esc(mailaiSystemMessage(issue.message || ''))}</strong>
+            ${issue.reason ? `<small>${esc(itemReason(issue))}</small>` : ''}
+            <span class="compose-guard-tip-meta">${esc(issue.source || mailaiText('发信检查'))}</span>
+          </div>
+        </div>`;
+      }).join('');
+      tooltip._issues = issues;
+      tooltip.classList.remove('hidden');
+      tooltip.setAttribute('aria-hidden', 'false');
+    }
+
+    setActiveIssues(interactive ? issues : issues);
+
+    const pad = 10;
+    const tipRect = tooltip.getBoundingClientRect();
+    let left = Math.max(pad, Math.min(anchorRect.left, window.innerWidth - tipRect.width - pad));
+    let top = anchorRect.top - tipRect.height - 8;
+    if (top < pad) {
+      top = Math.min(window.innerHeight - tipRect.height - pad, anchorRect.bottom + 8);
+    }
+    tooltip.style.left = `${Math.round(left)}px`;
+    tooltip.style.top = `${Math.round(top)}px`;
+  }
+
+  function itemReason(issue) {
+    return issue.reason || '';
+  }
+
+  function updateButtonBadge(issues, isAuditClean) {
+    button.querySelector('.compose-guard-count')?.remove();
+    button.classList.remove('has-high', 'is-clean');
+    if (issues.length) {
+      const hasHigh = issues.some(i => i.tone === 'high' || i.level === 'danger');
+      if (hasHigh) button.classList.add('has-high');
+      const badge = document.createElement('span');
+      badge.className = 'compose-guard-count';
+      badge.textContent = String(issues.length);
+      button.appendChild(badge);
+    } else if (isAuditClean) {
+      button.classList.add('is-clean');
+    }
+  }
+
+  function clearFieldClasses() {
+    [subjectEl, toEl, ccEl, attachmentsEl].forEach(el => {
+      if (!el) return;
+      el.classList.remove('compose-guard-field-high', 'compose-guard-field-warn', 'compose-guard-field-active');
+    });
+  }
+
+  function clearComposeGuardMarks() {
+    activeBodyMarks = [];
+    activeFieldIssues = new Map();
+    allActiveIssues = [];
+    layerEl.replaceChildren();
+    layerEl.classList.remove('has-active');
+    clearFieldClasses();
+    updateButtonBadge([], false);
+    hideTooltip();
+  }
+
+  function collectTextNodes(root) {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const segments = [];
+    let fullText = '';
+    let node;
+    while ((node = walker.nextNode())) {
+      const text = node.nodeValue || '';
+      if (!text) continue;
+      segments.push({ node, start: fullText.length, end: fullText.length + text.length });
+      fullText += text;
+    }
+    return { segments, fullText };
+  }
+
+  function createRangeForOffsets(segments, startIdx, endIdx) {
+    let startNode = null, startOff = 0, endNode = null, endOff = 0;
+    for (const seg of segments) {
+      if (!startNode && startIdx >= seg.start && startIdx <= seg.end) {
+        startNode = seg.node;
+        startOff = startIdx - seg.start;
+      }
+      if (endIdx >= seg.start && endIdx <= seg.end) {
+        endNode = seg.node;
+        endOff = endIdx - seg.start;
+        break;
+      }
+    }
+    if (!startNode || !endNode) return null;
+    const range = document.createRange();
+    try {
+      range.setStart(startNode, startOff);
+      range.setEnd(endNode, endOff);
+      return range;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function layoutBodyMarks() {
+    layerEl.replaceChildren();
+    if (!activeBodyMarks.length) return;
+    const bodyRect = bodyEl.getBoundingClientRect();
+    const scrollLeft = bodyEl.scrollLeft;
+    const scrollTop = bodyEl.scrollTop;
+    const frag = document.createDocumentFragment();
+    for (let idx = 0; idx < activeBodyMarks.length; idx++) {
+      const mark = activeBodyMarks[idx];
+      mark.spans = [];
+      let rects;
+      try {
+        rects = mark.range.getClientRects();
+      } catch (_) {
+        continue;
+      }
+      for (const r of rects) {
+        if (r.width < 1 || r.height < 1) continue;
+        const span = document.createElement('span');
+        span.className = `compose-guard-mark tone-${mark.tone}`;
+        span.dataset.guardMark = String(idx);
+        span.style.left = `${r.left - bodyRect.left + scrollLeft}px`;
+        span.style.top = `${r.top - bodyRect.top + scrollTop}px`;
+        span.style.width = `${r.width}px`;
+        span.style.height = `${r.height}px`;
+        mark.spans.push(span);
+        frag.appendChild(span);
+      }
+    }
+    layerEl.appendChild(frag);
+  }
+
+  function scheduleLayout() {
+    if (syncRaf) return;
+    syncRaf = requestAnimationFrame(() => {
+      syncRaf = 0;
+      layoutBodyMarks();
+    });
+  }
+
+  function attachFieldIssue(el, issue) {
+    if (!el) return;
+    const list = activeFieldIssues.get(el) || [];
+    if (!list.includes(issue)) list.push(issue);
+    activeFieldIssues.set(el, list);
+    const hasHigh = list.some(i => i.tone === 'high' || i.level === 'danger');
+    el.classList.remove('compose-guard-field-high', 'compose-guard-field-warn');
+    el.classList.add(hasHigh ? 'compose-guard-field-high' : 'compose-guard-field-warn');
+  }
+
+  function applyInlineHighlights(result) {
+    clearComposeGuardMarks();
+    const issues = Array.isArray(result?.issues) ? result.issues : [];
+    allActiveIssues = issues;
+
+    if (!issues.length) {
+      updateButtonBadge([], true);
+      toast(mailaiText('已通过发信前多维自检：未发现漏附、日期冲突、凭据泄露、占位符或外发风险'), 'success');
+      return;
+    }
+
+    const { segments, fullText } = collectTextNodes(msgEl);
+    const usedBodySpans = [];
+
+    for (const issue of issues) {
+      const tone = (issue.tone === 'high' || issue.level === 'danger') ? 'high' : 'warn';
+      const highlights = Array.isArray(issue.highlights) && issue.highlights.length
+        ? issue.highlights
+        : [{ scope: 'button', text: '' }];
+
+      let anchoredSomewhere = false;
+      for (const h of highlights) {
+        if (h.scope === 'body' && h.text && fullText) {
+          let from = 0;
+          let matchedThis = false;
+          while (from < fullText.length) {
+            const idx = fullText.indexOf(h.text, from);
+            if (idx < 0) break;
+            const end = idx + h.text.length;
+            const overlaps = usedBodySpans.some(([s, e]) => idx < e && end > s);
+            if (!overlaps) {
+              const range = createRangeForOffsets(segments, idx, end);
+              if (range) {
+                activeBodyMarks.push({ range, issue, tone, spans: [] });
+                usedBodySpans.push([idx, end]);
+                matchedThis = true;
+                anchoredSomewhere = true;
+                break;
+              }
+            }
+            from = idx + Math.max(1, h.text.length);
+          }
+          if (matchedThis) continue;
+        }
+        if (h.scope === 'subject') {
+          attachFieldIssue(subjectEl, issue);
+          anchoredSomewhere = true;
+        } else if (h.scope === 'recipients') {
+          attachFieldIssue(toEl, issue);
+          if (ccEl && ccEl.value.trim()) attachFieldIssue(ccEl, issue);
+          anchoredSomewhere = true;
+        } else if (h.scope === 'attachments') {
+          attachFieldIssue(attachmentsEl, issue);
+          anchoredSomewhere = true;
+        }
+      }
+      if (!anchoredSomewhere) {
+        attachFieldIssue(button, issue);
+      }
+    }
+
+    updateButtonBadge(issues, false);
+    layoutBodyMarks();
+  }
+
+  msgEl.addEventListener('mousemove', ev => {
+    if (!activeBodyMarks.length) return;
+    const x = ev.clientX;
+    const y = ev.clientY;
+    const matchedIssues = [];
+    let anchor = null;
+    for (let i = 0; i < activeBodyMarks.length; i++) {
+      const mark = activeBodyMarks[i];
+      let rects;
+      try {
+        rects = mark.range.getClientRects();
+      } catch (_) {
+        continue;
+      }
+      for (const r of rects) {
+        if (x >= r.left - 2 && x <= r.right + 2 && y >= r.top - 2 && y <= r.bottom + 4) {
+          if (!matchedIssues.includes(mark.issue)) matchedIssues.push(mark.issue);
+          if (!anchor) anchor = r;
+          break;
+        }
+      }
+    }
+    if (matchedIssues.length && anchor) {
+      showTooltip(matchedIssues, anchor, 'body:' + matchedIssues.map(i => i.code).join(','));
+    } else if (hoveredKey.startsWith('body:')) {
+      hideTooltip();
+    }
+  });
+
+  msgEl.addEventListener('mouseleave', () => {
+    if (hoveredKey.startsWith('body:')) hideTooltip();
+  });
+
+  [subjectEl, toEl, ccEl, attachmentsEl].forEach((el, idx) => {
+    if (!el) return;
+    const showForField = () => {
+      const list = activeFieldIssues.get(el);
+      if (list && list.length) showTooltip(list, el.getBoundingClientRect(), `field:${idx}`);
+    };
+    el.addEventListener('mouseenter', showForField);
+    el.addEventListener('focus', showForField);
+    el.addEventListener('mouseleave', () => {
+      if (hoveredKey === `field:${idx}`) hideTooltip();
+    });
+    el.addEventListener('blur', () => {
+      if (hoveredKey === `field:${idx}`) hideTooltip();
+    });
+  });
+
+  button.addEventListener('mouseenter', () => {
+    clearHideTimer();
+    if (allActiveIssues.length) {
+      showTooltip(allActiveIssues, button.getBoundingClientRect(), 'button:all', { interactive: true });
+    }
+  });
+  button.addEventListener('mouseleave', () => {
+    if (hoveredKey === 'button:all') scheduleHideInteractive();
+  });
+
+  tooltip.addEventListener('mouseenter', () => {
+    clearHideTimer();
+  });
+  tooltip.addEventListener('mouseleave', () => {
+    if (hoveredKey === 'button:all') scheduleHideInteractive();
+  });
+  tooltip.addEventListener('mousemove', ev => {
+    if (hoveredKey !== 'button:all') return;
+    const row = ev.target.closest('.compose-guard-tip-row[data-issue-idx]');
+    const issues = tooltip._issues || [];
+    if (row) {
+      const issue = issues[Number(row.dataset.issueIdx)];
+      if (issue) {
+        setActiveIssues([issue]);
+        scrollIssueIntoView(issue);
+      }
+    } else {
+      setActiveIssues(issues);
+    }
+  });
+  tooltip.addEventListener('click', ev => {
+    const row = ev.target.closest('.compose-guard-tip-row[data-issue-idx]');
+    if (!row) return;
+    const issue = (tooltip._issues || [])[Number(row.dataset.issueIdx)];
+    if (issue) {
+      focusIssueTarget(issue);
+      setActiveIssues([issue]);
+    }
+  });
+
+  bodyEl.addEventListener('scroll', () => {
+    if (hoveredKey.startsWith('body:')) hideTooltip();
+    scheduleLayout();
+  });
+  window.addEventListener('resize', () => {
+    hideTooltip();
+    scheduleLayout();
+  });
+
+  async function runComposeGuardAudit() {
+    if (draftSession?.busy || draftSession?.closing || draftSession?.switching || draftSession?.canceled) return;
+    const payload = draftPayload();
+    const session = draftSession;
+    const accountId = composeAccountId;
+    const fingerprint = composePreflightFingerprint(payload);
+    button.disabled = true;
+    try {
+      const result = await api('/api/mail/preflight', {
+        accountId,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to_addr: payload.to_addr,
+          cc_addr: payload.cc_addr,
+          bcc_addr: payload.bcc_addr,
+          subject: payload.subject,
+          body_text: composeMessageText(),
+          attachment_count: composeAttachments.length,
+          attachment_names: composeAttachments.map(item => item.filename || item.name || ''),
+          mode: composeContext.mode,
+          reply_to_email_id: composeContext.reply_to_email_id,
+          original_text: composeContext.original_text || '',
+          allow_empty_recipients: true,
+        }),
+      });
+      if (
+        session !== draftSession ||
+        session?.canceled ||
+        accountId !== composeAccountId ||
+        !document.body.classList.contains('compose-open') ||
+        composePreflightFingerprint() !== fingerprint
+      ) {
+        return;
+      }
+      applyInlineHighlights(result);
+    } catch (error) {
+      toast(mailaiText('发送前检查失败：') + mailaiSystemMessage(error.message), 'error');
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  button.addEventListener('click', () => {
+    runComposeGuardAudit();
+  });
+
+  document.addEventListener('mailai:language-changed', () => {
+    if (!tooltip.classList.contains('hidden')) hideTooltip();
+  });
+
+  window.clearComposeGuardBanner = clearComposeGuardMarks;
+  window.clearComposeGuardMarks = clearComposeGuardMarks;
+  window.runComposeGuardAudit = runComposeGuardAudit;
+  globalThis.MailAIModules?.register('composeGuard', {
+    runAudit: runComposeGuardAudit,
+    clearMarks: clearComposeGuardMarks,
+  });
+})();
+
+;
+/* ---- todo-quick-actions.js ---- */
+/* Manual quick-add bar, one-click snooze menus, and recurrence actions for Todo Center. */
+(() => {
+  const center = document.getElementById('todo-center');
+  const tools = center?.querySelector('.todo-center-tools');
+  const list = document.getElementById('todo-list');
+  if (!center || !tools || !list) return;
+
+  const quickBar = document.createElement('section');
+  quickBar.className = 'todo-quick-add';
+  mailaiBindUI(quickBar, '@aria-label', () => mailaiText('快速新建待办'));
+  quickBar.innerHTML = `
+    <form id="todo-quick-form" class="todo-quick-form">
+      <svg class="todo-quick-plus" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4.5v11M4.5 10h11"/></svg>
+      <input id="todo-quick-title" type="text" maxlength="500" autocomplete="off"
+        placeholder="快速记一条待办（无需关联邮件）…" data-i18n-placeholder="todo.quickPh"
+        aria-label="快速新建待办标题" data-i18n-aria="todo.quickTitleAria">
+      <div class="todo-quick-controls">
+        <input id="todo-quick-deadline" type="date" aria-label="截止日期（可选）" data-i18n-aria="ui.0abb39c962d1">
+        <select id="todo-quick-recurrence" aria-label="重复周期" data-i18n-aria="todo.recurrenceLabel">
+          <option value="" data-i18n="todo.recNone">不重复</option>
+          <option value="weekly" data-i18n="todo.recWeekly">每周重复</option>
+          <option value="monthly" data-i18n="todo.recMonthly">每月重复</option>
+        </select>
+        <button id="todo-quick-submit" type="submit" data-i18n="todo.quickSubmit">新建</button>
+      </div>
+    </form>
+  `;
+  tools.after(quickBar);
+  if (typeof applyI18n === 'function') applyI18n(quickBar);
+
+  const form = document.getElementById('todo-quick-form');
+  const titleInput = document.getElementById('todo-quick-title');
+  const deadlineInput = document.getElementById('todo-quick-deadline');
+  const recurrenceSelect = document.getElementById('todo-quick-recurrence');
+  const submitButton = document.getElementById('todo-quick-submit');
+
+  window.mailaiFocusQuickTodo = () => {
+    if (center.classList.contains('hidden')) return;
+    if (center.dataset.todoView === 'reminders' || center.dataset.todoView === 'followups') {
+      window.mailaiTodoTab?.('all');
+    }
+    requestAnimationFrame(() => titleInput?.focus());
+  };
+
+  let creating = false;
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (creating) return;
+    const title = (titleInput.value || '').trim();
+    if (!title) {
+      toast(mailaiText('请先输入待办内容'), 'warn');
+      titleInput.focus();
+      return;
+    }
+    const accountId = todoCenterAccountId || activeMailAccount()?.id;
+    const deadline = deadlineInput.value || null;
+    const recurrence = recurrenceSelect.value || '';
+    creating = true;
+    submitButton.disabled = true;
+    try {
+      const res = await api('/api/todos', {
+        accountId,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, deadline, recurrence }),
+      });
+      titleInput.value = '';
+      deadlineInput.value = '';
+      recurrenceSelect.value = '';
+      if (accountId === todoCenterAccountId && res?.task) {
+        if (!todoCenterRows.some((row) => row.id === res.task.id)) {
+          todoCenterRows.unshift(res.task);
+        }
+        if (window.mailaiTodoMatches && !window.mailaiTodoMatches(res.task)) {
+          window.mailaiTodoTab?.('all');
+        } else {
+          renderTodoCenter();
+        }
+      }
+      window.mailaiTasksChanged?.(accountId);
+      toast(
+        recurrence
+          ? mailaiText('已新建周期待办')
+          : mailaiText('已新建待办'),
+        'success'
+      );
+      titleInput.focus();
+    } catch (error) {
+      toast(mailaiText('创建待办失败：') + mailaiSystemMessage(error.message), 'error');
+    } finally {
+      creating = false;
+      submitButton.disabled = false;
+    }
+  });
+
+  function closeOpenSnoozeMenus(except = null) {
+    list.querySelectorAll('.todo-snooze-menu[open]').forEach((menu) => {
+      if (menu !== except) menu.open = false;
+    });
+  }
+
+  document.addEventListener('pointerdown', (event) => {
+    const inside = event.target.closest?.('.todo-snooze-menu');
+    closeOpenSnoozeMenus(inside || null);
+  });
+
+  document.addEventListener(
+    'keydown',
+    (event) => {
+      if (event.key !== 'Escape') return;
+      const openMenu = list.querySelector('.todo-snooze-menu[open]');
+      if (openMenu) {
+        event.preventDefault();
+        event.stopPropagation();
+        openMenu.open = false;
+        openMenu.querySelector('summary')?.focus();
+      }
+    },
+    true
+  );
+
+  list.addEventListener(
+    'toggle',
+    (event) => {
+      if (event.target.matches?.('.todo-snooze-menu') && event.target.open) {
+        closeOpenSnoozeMenus(event.target);
+      }
+    },
+    true
+  );
+
+  async function applySnooze(ids, preset, sourceButton) {
+    const accountId = todoCenterAccountId;
+    const revision = todoCenterRevision;
+    if (!ids.length) return;
+    if (typeof flushTodoEdits === 'function') {
+      const ok = await flushTodoEdits(ids);
+      if (!ok || accountId !== todoCenterAccountId) return;
+    }
+    const popover = sourceButton.closest('.todo-snooze-menu');
+    const buttons = popover ? [...popover.querySelectorAll('button')] : [sourceButton];
+    buttons.forEach((b) => { b.disabled = true; });
+    try {
+      const res = ids.length === 1
+        ? await api(`/api/todos/${ids[0]}/snooze`, {
+            accountId,
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ preset }),
+          })
+        : await api('/api/todos/bulk/snooze', {
+            accountId,
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids, preset }),
+          });
+      const updated = res?.task ? [res.task] : (res?.tasks || []);
+      if (accountId === todoCenterAccountId && updated.length) {
+        const byId = new Map(updated.map((row) => [row.id, row]));
+        todoCenterRows = todoCenterRows.map((row) => (byId.has(row.id) ? { ...row, ...byId.get(row.id) } : row));
+        if (revision === todoCenterRevision) {
+          if (popover) popover.open = false;
+          renderTodoCenter();
+        }
+      }
+      window.mailaiTasksChanged?.(accountId);
+      const targetDate = String(updated[0]?.deadline || '').slice(0, 10);
+      toast(
+        targetDate
+          ? mailaiTemplate`已推迟至 ${targetDate}`
+          : mailaiText('已推迟待办时间'),
+        'success'
+      );
+    } catch (error) {
+      toast(mailaiText('推迟失败：') + mailaiSystemMessage(error.message), 'error');
+    } finally {
+      buttons.forEach((b) => { if (b.isConnected) b.disabled = false; });
+    }
+  }
+
+  list.addEventListener('click', (event) => {
+    const singleBtn = event.target.closest('[data-todo-snooze]');
+    if (singleBtn) {
+      event.preventDefault();
+      event.stopPropagation();
+      const id = Number(singleBtn.dataset.todoSnooze);
+      const preset = singleBtn.dataset.snoozePreset;
+      if (id && preset) applySnooze([id], preset, singleBtn);
+      return;
+    }
+    const groupBtn = event.target.closest('[data-todo-group-snooze]');
+    if (groupBtn) {
+      event.preventDefault();
+      event.stopPropagation();
+      const groupKey = groupBtn.dataset.todoGroupSnooze;
+      const preset = groupBtn.dataset.snoozePreset;
+      const allGroups = window.mailaiTodoGroups
+        ? window.mailaiTodoGroups(todoCenterRows.filter((item) => item.status !== 'done' && (!window.mailaiTodoMatches || window.mailaiTodoMatches(item))))
+        : [];
+      const group = allGroups.find((g) => g.key === groupKey);
+      const ids = group ? group.rows.filter((r) => r.status !== 'done').map((r) => r.id) : [];
+      if (ids.length && preset) applySnooze(ids, preset, groupBtn);
+    }
+  });
+
+  globalThis.MailAIModules?.register('todoQuickActions', {
+    createTodo: () => form.requestSubmit(),
+    snooze: applySnooze,
+  });
 })();
 
 ;
@@ -43173,6 +46892,776 @@ window.mailaiPrepareReadingMarkup = doc => {
     if(event.target.closest('[data-bulk-mail-tags]'))void window.mailaiEditMailTags(true);
   });
 })();
+
+;
+/* ---- share-links.js ---- */
+/* Large-file cloud share links and COS storage dialog for Compose. */
+function closeShareLinkDialog() {
+  document.getElementById('share-link-dialog').classList.add('hidden');
+}
+
+async function openShareLinkDialog() {
+  const session = draftSession, accountId = composeAccountId;
+  const current = () => session === draftSession && accountId === composeAccountId && !session.canceled;
+  document.getElementById('share-link-dialog').classList.remove('hidden');
+  document.getElementById('share-cos-file').focus();
+  try {
+    const state = await api('/api/share-storage/config', {accountId});
+    if (!current() || document.getElementById('share-link-dialog').classList.contains('hidden')) return;
+    document.getElementById('share-cos-bucket').value = state.bucket || '';
+    document.getElementById('share-cos-region').value = state.region || '';
+    document.getElementById('share-cos-id').value = state.secret_id || '';
+    document.getElementById('share-cos-key').value = '';
+    document.querySelector('.share-cos-config').classList.toggle('hidden', Boolean(state.credential_available));
+    document.getElementById('share-cos-settings-toggle').classList.toggle('hidden', !state.credential_available);
+    mailaiBindUI(document.getElementById('share-cos-status'), "textContent", () => (state.credential_available ? mailaiText('存储已连接。大附件会自动转为下载链接。') : mailaiText('首次连接需要腾讯云存储信息，保存后无需重复填写。也可直接把已有网盘分享链接粘贴到正文。')));
+  } catch (error) {
+    if (!current()) return;
+    mailaiBindUI(document.getElementById('share-cos-status'), "textContent", () => (mailaiText('无法读取 COS 配置：') + mailaiSystemMessage(error.message)));
+  }
+}
+
+function normalizeShareUrl(value) {
+  try {
+    const url = new URL(String(value || '').trim());
+    if (url.protocol !== 'https:' || url.username || url.password || !url.hostname || url.href.length > 4096) return '';
+    return url.href;
+  } catch (_) { return ''; }
+}
+
+function insertSharedLink(name, value, expiresAt = '', closeDialog = true) {
+  const url = normalizeShareUrl(value);
+  if (!url) throw new Error(mailaiText('请填写有效的 HTTPS 分享链接'));
+  const title = String(name || '').trim().slice(0, 160) || mailaiText('共享文件');
+  const block = document.createElement('p');
+  block.dataset.mailaiSharedLink = 'true';
+  const heading = document.createElement('strong');
+  mailaiBindUI(heading, "textContent", () => (mailaiTemplate`共享文件：${title}`));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.textContent = url;
+  anchor.target = '_blank';
+  anchor.rel = 'noopener noreferrer';
+  block.append(heading, document.createElement('br'), anchor);
+  if (expiresAt && Number.isFinite(Date.parse(expiresAt))) {
+    const expiry = document.createElement('small');
+    mailaiBindUI(expiry, "textContent", () => (mailaiTemplate`下载链接有效至 ${new Date(expiresAt).toLocaleString(currentI18nLanguage())}`));
+    block.append(document.createElement('br'), expiry);
+  }
+  composeMessageElement().append(block);
+  clearComposePreflight();
+  queueDraftSave();
+  refreshComposeAiContext();
+  if (closeDialog) closeShareLinkDialog();
+  composeMessageElement().focus();
+}
+
+function uploadCosFile(file, days, accountId, onProgress, endpoint = "/api/share-storage/upload") {
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open('POST', endpoint);
+    request.timeout = 30 * 60 * 1000;
+    request.setRequestHeader('X-MailAI-Account', accountId);
+    request.setRequestHeader('X-MailAI-Filename', encodeURIComponent(file.name));
+    request.setRequestHeader('X-MailAI-Expiry-Days', String(days));
+    request.setRequestHeader('Content-Type', 'application/octet-stream');
+    request.upload.onprogress = event => { if (event.lengthComputable) onProgress(Math.round(event.loaded / event.total * 100)); };
+    request.onerror = () => reject(new Error(mailaiText('上传连接中断，请检查网络后重试')));
+    request.ontimeout = () => reject(new Error(mailaiText('上传等待超时，请检查网络后重试')));
+    request.onabort = () => reject(new Error(mailaiText('上传已取消')));
+    request.onload = () => {
+      let response;
+      try { response = JSON.parse(request.responseText); } catch (_) { response = {}; }
+      if (request.status >= 200 && request.status < 300) resolve(response);
+      else reject(new Error(response.detail || mailaiTemplate`上传失败（${request.status}）`));
+    };
+    request.send(file);
+  });
+}
+
+document.getElementById('share-cos-settings-toggle').addEventListener('click', () => {
+  document.querySelector('.share-cos-config').classList.toggle('hidden');
+});
+document.querySelectorAll('[data-close-share-link]').forEach(button => button.addEventListener('click', closeShareLinkDialog));
+document.getElementById('share-cos-save').addEventListener('click', async event => {
+  const button = event.currentTarget;
+  const session = draftSession, accountId = composeAccountId;
+  const current = () => session === draftSession && accountId === composeAccountId && !session.canceled;
+  button.disabled = true;
+  try {
+    await api('/api/share-storage/config', {accountId, method:'POST',
+      headers:{'Content-Type':'application/json'}, body:JSON.stringify({
+        bucket:document.getElementById('share-cos-bucket').value,
+        region:document.getElementById('share-cos-region').value,
+        secret_id:document.getElementById('share-cos-id').value,
+        secret_key:document.getElementById('share-cos-key').value})});
+    if (!current()) return;
+    document.getElementById('share-cos-key').value = '';
+    mailaiBindUI(document.getElementById('share-cos-status'), "textContent", () => (mailaiText('COS 配置已保存')));
+    document.querySelector('.share-cos-config').classList.add('hidden');
+    document.getElementById('share-cos-settings-toggle').classList.remove('hidden');
+  } catch (error) { if (current()) document.getElementById('share-cos-status').textContent = mailaiSystemMessage(error.message); }
+  finally { button.disabled = false; }
+});
+document.getElementById('share-cos-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  const files = [...document.getElementById('share-cos-file').files];
+  if (!files.length) return toast(mailaiText('请先选择文件'), 'warn');
+  if (files.some(file => file.size > 2 * 1024 * 1024 * 1024)) return toast(mailaiText('单个共享文件不能超过 2 GB'), 'warn');
+  const session = draftSession, accountId = composeAccountId;
+  if (session.busy || session.canceled || session.sharing) return;
+  session.sharing = true;
+  const days = Number(document.getElementById('share-cos-expiry').value);
+  session.attachmentReads = (session.attachmentReads || 0) + 1;
+  const button = document.getElementById('share-cos-upload');
+  button.disabled = true;
+  try {
+    closeShareLinkDialog();
+    const cards = files.map(file => ({file, name:file.name, size:file.size, days, state:'waiting'}));
+    (session.sharedFiles ||= []).push(...cards); renderSharedFileCards();
+    const failed = [];
+    for (const [index, file] of files.entries()) {
+      if (session !== draftSession || accountId !== composeAccountId || session.canceled) return;
+      if (!await uploadSharedFileWithCard(file, days, session, accountId, () => {}, cards[index])) failed.push(file);
+    }
+    if (session !== draftSession || accountId !== composeAccountId || session.canceled) return;
+    document.getElementById('share-cos-file').value = '';
+    toast(failed.length ? mailaiTemplate`${failed.length} 个文件上传失败，请在附件区重试或移除` : mailaiText('大附件已上传，分享链接已插入正文'), failed.length ? 'warn' : 'success');
+  } catch (error) { if (session === draftSession && accountId === composeAccountId) toast(mailaiSystemMessage(error.message), 'error'); }
+  finally { session.attachmentReads -= 1; session.sharing = false; button.disabled = false; mailaiBindUI(button, "textContent", () => (mailaiT('compose.cosUpload') || '上传并插入邮件')); if (session === draftSession) renderSharedFileCards(); }
+});
+document.getElementById('compose-shared-files').addEventListener('click', async event => {
+  const retry = event.target.closest('[data-retry-share]');
+  const dismiss = event.target.closest('[data-dismiss-share]');
+  const session = draftSession, accountId = composeAccountId;
+  if ((!retry && !dismiss) || session.sharing || session.busy || session.canceled) return;
+  const index = Number(retry ? retry.dataset.retryShare : dismiss.dataset.dismissShare);
+  const item = session.sharedFiles?.[index];
+  if (!item || !['failed','waiting'].includes(item.state)) return;
+  if (dismiss) {
+    try { if (item.taskId) await api(`/api/share-storage/tasks/${item.taskId}`, {accountId, method:'DELETE'});
+      if (session !== draftSession) return;
+      session.sharedFiles.splice(index, 1); renderSharedFileCards();
+    } catch (error) { toast(mailaiSystemMessage(error.message), 'error'); }
+    return;
+  }
+  session.sharing = true; session.attachmentReads = (session.attachmentReads || 0) + 1;
+  try { await uploadSharedFileWithCard(item.file, item.days, session, accountId, () => {}, item); }
+  finally { session.sharing = false; session.attachmentReads--; if (session === draftSession) renderSharedFileCards(); }
+});
+
+globalThis.MailAIModules?.register('shareLinks', {
+  openShareLinkDialog,
+  closeShareLinkDialog,
+  normalizeShareUrl,
+  insertSharedLink,
+  uploadCosFile,
+});
+
+;
+/* ---- signature-manager.js ---- */
+/* Email signature editor, inline image sizing, and AI signature generation. */
+function signatureProfileFromForm() {
+  const fields = ['name','title','department','company','phone','email','website'];
+  return Object.fromEntries(fields.map(key => [key, document.getElementById(`signature-profile-${key}`).value.trim()]));
+}
+
+function fillSignatureProfile(profile = {}) {
+  for (const key of ['name','title','department','company','phone','email','website']) document.getElementById(`signature-profile-${key}`).value = profile[key] || '';
+}
+
+let savedSignatureRange = null;
+let selectedSignatureImage = null;
+function rememberSignatureSelection() {
+  const editor = document.getElementById('signature-editor');
+  const selection = window.getSelection();
+  if (!selection?.rangeCount || !editor.contains(selection.anchorNode)) return;
+  savedSignatureRange = selection.getRangeAt(0).cloneRange();
+}
+
+function clearSignatureImageSelection() {
+  selectedSignatureImage?.classList.remove('signature-image-selected');
+  selectedSignatureImage = null;
+  document.getElementById('signature-image-controls').classList.add('hidden');
+}
+
+function signatureImageNaturalWidth(image) {
+  return image.naturalWidth || Number(image.getAttribute('width')) || Math.round(image.getBoundingClientRect().width) || 1;
+}
+
+function signatureImageWidth(image) {
+  return Number(image.getAttribute('width')) || Math.round(image.getBoundingClientRect().width) || signatureImageNaturalWidth(image);
+}
+
+function refreshSignatureImageControls() {
+  const image = selectedSignatureImage;
+  const editor = document.getElementById('signature-editor');
+  if (!image || !editor.contains(image)) return clearSignatureImageSelection();
+  const width = signatureImageWidth(image);
+  const percent = Math.max(1, Math.round(width / signatureImageNaturalWidth(image) * 100));
+  document.getElementById('signature-image-width').value = String(width);
+  document.getElementById('signature-image-scale').value = String(Math.min(200, percent));
+  document.getElementById('signature-image-scale-value').textContent = `${percent}%`;
+  document.querySelectorAll('[data-signature-image-scale]').forEach(button => {
+    button.classList.toggle('active', Number(button.dataset.signatureImageScale) === percent);
+  });
+}
+
+function selectSignatureImage(image) {
+  if (!image || !document.getElementById('signature-editor').contains(image)) return;
+  clearSignatureImageSelection();
+  selectedSignatureImage = image;
+  image.classList.add('signature-image-selected');
+  document.getElementById('signature-image-controls').classList.remove('hidden');
+  refreshSignatureImageControls();
+  if (!image.complete) image.addEventListener('load', () => {
+    if (selectedSignatureImage === image) refreshSignatureImageControls();
+  }, {once:true});
+}
+
+function setSignatureImageWidth(value) {
+  if (!selectedSignatureImage || !document.getElementById('signature-editor').contains(selectedSignatureImage)) return clearSignatureImageSelection();
+  const width = Math.min(1200, Math.max(16, Math.round(Number(value) || 0)));
+  selectedSignatureImage.setAttribute('width', String(width));
+  selectedSignatureImage.removeAttribute('height');
+  selectedSignatureImage.style.width = `${width}px`;
+  selectedSignatureImage.style.maxWidth = '100%';
+  selectedSignatureImage.style.height = 'auto';
+  refreshSignatureImageControls();
+}
+
+async function insertSignatureImage(file) {
+  if (!file) return;
+  if (!/^image\/(png|jpeg|gif|webp)$/i.test(file.type)) return toast(mailaiText('支持 PNG、JPEG、GIF 或 WebP 图片'), 'warn');
+  if (file.size > 5 * 1024 * 1024) return toast(mailaiText('单张签名图片不能超过 5MB'), 'warn');
+  const signatureId = editingSignatureId;
+  const src = `data:${file.type};base64,${await readFileAsBase64(file)}`;
+  if (document.getElementById('signature-manager').classList.contains('hidden') || signatureId !== editingSignatureId) return;
+  const editor = document.getElementById('signature-editor');
+  const image = document.createElement('img');
+  image.addEventListener('load', () => {
+    if (!image.hasAttribute('width')) setSignatureImageWidthForNewImage(image);
+  }, {once:true});
+  image.src = src;
+  image.alt = file.name;
+  image.style.cssText = 'max-width:100%;height:auto;vertical-align:middle';
+  const range = savedSignatureRange && editor.contains(savedSignatureRange.commonAncestorContainer)
+    ? savedSignatureRange.cloneRange() : document.createRange();
+  if (!editor.contains(range.commonAncestorContainer)) range.selectNodeContents(editor);
+  if (!savedSignatureRange || !editor.contains(savedSignatureRange.commonAncestorContainer)) range.collapse(false);
+  range.deleteContents();
+  range.insertNode(image);
+  range.setStartAfter(image);
+  range.collapse(true);
+  editor.focus();
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+  savedSignatureRange = range.cloneRange();
+  selectSignatureImage(image);
+}
+
+function setSignatureImageWidthForNewImage(image) {
+  const width = Math.min(360, image.naturalWidth || 360);
+  if (selectedSignatureImage === image) setSignatureImageWidth(width);
+  else {
+    image.setAttribute('width', String(width));
+    image.style.width = `${width}px`;
+  }
+}
+
+function editSignature(signatureId = '') {
+  editingSignatureId = signatureId;
+  savedSignatureRange = null;
+  clearSignatureImageSelection();
+  const item = signatureState.items.find(row => row.id === signatureId);
+  document.getElementById('signature-name').value = item?.name || '';
+  document.getElementById('signature-editor').innerHTML = item?.html || '';
+  document.getElementById('signature-make-default').checked = Boolean(signatureId && signatureId === signatureState.default_id);
+  document.getElementById('btn-delete-signature').disabled = !item;
+  document.querySelectorAll('[data-signature-id]').forEach(button => button.classList.toggle('active', button.dataset.signatureId === signatureId));
+}
+
+function renderSignatureManager() {
+  fillSignatureProfile(signatureState.profile || {});
+  document.getElementById('signature-list').innerHTML = signatureState.items.length ? signatureState.items.map(item => `<button type="button" data-signature-id="${esc(item.id)}"><span>${esc(item.name)}</span>${item.id === signatureState.default_id ? "<small><span data-i18n=\"ui.844b8cc8dff7\">默认</span></small>" : ''}</button>`).join('') : "<p><span data-i18n=\"ui.559aa7c8eb41\">还没有签名</span><br><small><span data-i18n=\"ui.f1322541d545\">新建一套或让 AI 帮你生成</span></small></p>";
+  document.getElementById('btn-ai-generate-signature').disabled = !signatureState.ai_available;
+  mailaiBindUI(document.getElementById('btn-ai-generate-signature'), "title", () => (signatureState.ai_available ? mailaiText('根据发件人资料生成签名') : mailaiText('请先在系统中心配置 AI 模型')));
+  editSignature(editingSignatureId && signatureState.items.some(item => item.id === editingSignatureId) ? editingSignatureId : (signatureState.items[0]?.id || ''));
+}
+
+async function openSignatureManager() {
+  try { await loadSignatures(); } catch (err) { return toast(mailaiText('加载签名失败：') + mailaiSystemMessage(err.message), 'error'); }
+  renderSignatureManager();
+  document.getElementById('signature-ai-options').classList.add('hidden');
+  document.getElementById('signature-manager').classList.remove('hidden');
+}
+
+function closeSignatureManager() {
+  clearSignatureImageSelection();
+  document.getElementById('signature-manager').classList.add('hidden');
+}
+
+async function saveSignature() {
+  const name = document.getElementById('signature-name').value.trim();
+  const editorCopy = document.getElementById('signature-editor').cloneNode(true);
+  editorCopy.querySelectorAll('.signature-image-selected').forEach(image => image.classList.remove('signature-image-selected'));
+  const html = editorCopy.innerHTML.trim();
+  if (!name || !(document.getElementById('signature-editor').innerText.trim() || document.querySelector('#signature-editor img'))) return toast(mailaiText('请填写签名名称和内容'), 'warn');
+  signatureState = await api('/api/mail/signatures', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:editingSignatureId,name,html,profile:signatureProfileFromForm(),make_default:document.getElementById('signature-make-default').checked})});
+  const saved = signatureState.items.find(item => item.name === name && item.html === html) || signatureState.items.at(-1);
+  editingSignatureId = saved?.id || editingSignatureId;
+  renderSignatureManager(); renderSignatureSelect();
+  if (currentSignatureId === editingSignatureId || (!currentSignatureId && document.getElementById('signature-make-default').checked)) renderComposeSignature(editingSignatureId);
+  queueDraftSave(); toast(mailaiText('签名已保存'), 'success');
+}
+
+async function generateSignatures(button) {
+  const profile = signatureProfileFromForm();
+  if (!profile.name && !profile.email) return toast(mailaiText('请至少填写姓名或邮箱'), 'warn');
+  setLoading(button, true, mailaiText('AI 生成中…'));
+  const finishCompanionWork = globalThis.mailaiCompanionWork?.begin();
+  try {
+    const result = await api('/api/mail/signatures/generate', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({profile,style:document.getElementById('signature-ai-style').value})});
+    const host = document.getElementById('signature-ai-options');
+    host.innerHTML = result.options.map((item, index) => `<button type="button" data-ai-signature="${index}"><b>${esc(item.name)}</b><span>${item.html}</span><small><span data-i18n="ui.ab41d65b7982">使用这套</span></small></button>`).join('');
+    host._options = result.options;
+    host.classList.remove('hidden');
+  } catch (err) { toast(mailaiText('AI 签名生成失败：') + mailaiSystemMessage(err.message), 'error'); }
+  finally { finishCompanionWork?.(); setLoading(button, false); }
+}
+
+document.getElementById('btn-manage-signatures').addEventListener('click', openSignatureManager);
+document.querySelectorAll('[data-close-signatures]').forEach(button => button.addEventListener('click', closeSignatureManager));
+document.getElementById('btn-new-signature').addEventListener('click', () => editSignature(''));
+document.getElementById('signature-list').addEventListener('click', event => { const button = event.target.closest('[data-signature-id]'); if (button) editSignature(button.dataset.signatureId); });
+document.getElementById('btn-save-signature').addEventListener('click', () => saveSignature().catch(err => toast(mailaiText('保存签名失败：') + mailaiSystemMessage(err.message), 'error')));
+document.getElementById('btn-delete-signature').addEventListener('click', async () => {
+  if (!editingSignatureId || !window.confirm(mailaiText('确定删除这套签名？'))) return;
+  const removed = editingSignatureId;
+  signatureState = await api(`/api/mail/signatures/${encodeURIComponent(removed)}`, {method:'DELETE'});
+  editingSignatureId = '';
+  if (currentSignatureId === removed) renderComposeSignature('');
+  renderSignatureManager(); renderSignatureSelect(); queueDraftSave();
+  toast(mailaiText('签名已删除'), 'success');
+});
+document.getElementById('btn-ai-generate-signature').addEventListener('click', event => generateSignatures(event.currentTarget));
+document.getElementById('signature-editor').addEventListener('keyup', rememberSignatureSelection);
+document.getElementById('signature-editor').addEventListener('mouseup', rememberSignatureSelection);
+document.getElementById('signature-editor').addEventListener('click', event => {
+  const image = event.target.closest?.('img');
+  if (image) selectSignatureImage(image);
+  else clearSignatureImageSelection();
+});
+document.getElementById('signature-editor').addEventListener('input', () => {
+  if (selectedSignatureImage && !document.getElementById('signature-editor').contains(selectedSignatureImage)) clearSignatureImageSelection();
+});
+document.querySelectorAll('[data-signature-image-scale]').forEach(button => button.addEventListener('click', () => {
+  if (selectedSignatureImage) setSignatureImageWidth(signatureImageNaturalWidth(selectedSignatureImage) * Number(button.dataset.signatureImageScale) / 100);
+}));
+document.getElementById('signature-image-scale').addEventListener('input', event => {
+  if (selectedSignatureImage) setSignatureImageWidth(signatureImageNaturalWidth(selectedSignatureImage) * Number(event.target.value) / 100);
+});
+document.getElementById('signature-image-width').addEventListener('change', event => setSignatureImageWidth(event.target.value));
+document.getElementById('signature-image-done').addEventListener('click', clearSignatureImageSelection);
+document.getElementById('btn-insert-signature-image').addEventListener('pointerdown', rememberSignatureSelection);
+document.getElementById('btn-insert-signature-image').addEventListener('click', () => document.getElementById('signature-image-input').click());
+document.getElementById('signature-image-input').addEventListener('change', async event => {
+  const file = event.target.files[0], button = document.getElementById('btn-insert-signature-image');
+  event.target.value = '';
+  if (!file || button.disabled) return;
+  setLoading(button, true, mailaiText('读取图片…'));
+  try { await insertSignatureImage(file); }
+  catch(error) { toast(mailaiText('插入签名图片失败：') + mailaiSystemMessage(error.message), 'error'); }
+  finally { setLoading(button, false); }
+});
+document.getElementById('signature-ai-options').addEventListener('click', event => {
+  const button = event.target.closest('[data-ai-signature]');
+  if (!button) return;
+  const item = event.currentTarget._options?.[Number(button.dataset.aiSignature)];
+  if (!item) return;
+  editingSignatureId = '';
+  clearSignatureImageSelection();
+  document.getElementById('signature-name').value = item.name;
+  document.getElementById('signature-editor').innerHTML = item.html;
+  document.getElementById('signature-make-default').checked = !signatureState.default_id;
+  toast(mailaiText('已放入编辑区，确认后点击保存'), 'success');
+});
+
+globalThis.MailAIModules?.register('signatureManager', {
+  openSignatureManager,
+  closeSignatureManager,
+  renderSignatureManager,
+  editSignature,
+  saveSignature,
+  generateSignatures,
+});
+
+;
+/* ---- backup-migration.js ---- */
+/* Local backups, encrypted portable migration packages, and account logout confirmation. */
+function renderBackupItem(item, index) {
+  const date = new Date(item.created_at);
+  const locale = currentI18nLanguage() === 'en' ? 'en-US' : 'zh-CN';
+  const label = Number.isNaN(date.getTime()) ? (mailaiT('backup.localFallback') || '本地备份') : new Intl.DateTimeFormat(locale, {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(date);
+  const tSave = mailaiT('backup.saveAs') || '另存为';
+  const tDelete = mailaiT('backup.delete') || '删除';
+  const tRestore = mailaiT('backup.restore') || '恢复';
+  const tPortable = mailaiT('backup.portable') || '迁移包';
+  const download = `<button type="button" data-download-backup="${esc(item.filename)}" data-portable="${item.portable ? 'true' : 'false'}" aria-label="${item.portable ? (mailaiT('backup.ariaExport') || '导出迁移包到指定位置') : (mailaiT('backup.ariaDownload') || `下载 ${esc(label)} 的备份`)}" data-i18n="backup.saveAs" data-i18n-aria="${item.portable ? 'backup.ariaExport' : 'backup.ariaDownload'}">${tSave}</button>`;
+  const remove = `<button type="button" data-delete-backup="${esc(item.filename)}" data-portable="${item.portable ? 'true' : 'false'}" aria-label="${mailaiT('backup.ariaDelete') || '删除'} ${item.portable ? tPortable : (mailaiT('backup.ariaBackup') || '备份')}" data-i18n="backup.delete" data-i18n-aria="${item.portable ? 'backup.deleteMigrationAria' : 'backup.deleteLocalAria'}">${tDelete}</button>`;
+  const actions = item.portable ? `${download}${remove}` : `<button type="button" data-restore-backup="${esc(item.filename)}" aria-label="${mailaiT('backup.ariaRestore') || `恢复 ${esc(label)} 的备份`}" data-i18n="backup.restore" data-i18n-aria="backup.ariaRestore">${tRestore}</button>${download}${remove}`;
+  return `<div class="backup-item"><div class="backup-record-copy"><b>${Number.isNaN(date.getTime()) ? `<span data-i18n="backup.localFallback">${esc(label)}</span>` : esc(label)}${item.portable ? `<em data-i18n="backup.portable">${tPortable}</em>` : index === 0 ? `<em data-i18n="backup.latest">${mailaiT('backup.latest') || '最新'}</em>` : ''}</b><small title="${esc(item.filename)}">${esc(item.filename)}</small></div><small class="backup-record-size">${formatFileSize(item.size)}</small><div class="backup-record-actions">${actions}</div></div>`;
+}
+
+async function loadBackups() {
+  const accountId = activeMailAccount()?.id;
+  window.refreshCleanupAutomation?.(accountId);
+  const host = document.getElementById('backup-list');
+  try {
+    const [localItems, portableItems] = await Promise.all([api('/api/system/backups', {accountId}), api('/api/system/portable-backups', {accountId})]);
+    const items = [...portableItems, ...localItems].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
+    if (accountId !== activeMailAccount()?.id) return;
+    host.innerHTML = items.length ? items.slice(0, 3).map(renderBackupItem).join('') + (items.length > 3 ? `<details class="older-backups"><summary><span data-i18n="backup.showOlder">${mailaiT('backup.showOlder') || '查看更早备份'}</span> (${items.length - 3})</summary>${items.slice(3).map((item,index)=>renderBackupItem(item,index+3)).join('')}</details>` : '') : `<div class="backup-empty"><b data-i18n="backup.emptyTitle">${mailaiT('backup.emptyTitle') || '还没有备份'}</b><small data-i18n="backup.emptyHint">${mailaiT('backup.emptyHint') || '创建第一份备份，为邮件留一份本地副本。'}</small></div>`;
+    window.refreshCleanupHistory?.(accountId);
+  } catch (_) {
+    if (accountId === activeMailAccount()?.id) host.innerHTML = `<div class="backup-empty"><b data-i18n="backup.loadFailTitle">${mailaiT('backup.loadFailTitle') || '暂时无法读取备份'}</b><small data-i18n="backup.loadFailHint">${mailaiT('backup.loadFailHint') || '请稍后重新打开此页。'}</small></div>`;
+  }
+}
+
+document.getElementById('btn-create-backup').addEventListener('click', async () => {
+  const button = document.getElementById('btn-create-backup'); setLoading(button, true, mailaiText('备份中…'));
+  try { const result = await api('/api/system/backups?include_raw=true', {method:'POST'}); toast(mailaiTemplate`备份完成 · ${formatFileSize(result.size)}`, 'success'); await loadBackups(); }
+  catch (err) { toast(mailaiSystemMessage(err.message), 'error'); } finally { setLoading(button, false); }
+});
+
+function askMigrationPassword(mode) {
+  const dialog = document.getElementById('migration-password-dialog');
+  const form = dialog.querySelector('form');
+  const password = document.getElementById('migration-password');
+  const confirmation = document.getElementById('migration-password-confirm');
+  const confirmationRow = document.getElementById('migration-password-confirm-row');
+  const noPasswordRow = document.getElementById('migration-no-password-row');
+  const noPassword = document.getElementById('migration-no-password');
+  const error = document.getElementById('migration-password-error');
+  const importing = mode === 'import';
+  mailaiBindUI(document.getElementById('migration-password-title'), "textContent", () => (importing ? mailaiText('输入迁移密码') : mailaiText('保护迁移包')));
+  mailaiBindUI(document.getElementById('migration-password-help'), "textContent", () => (importing ? mailaiText('该迁移包已加密。请输入旧设备导出时设置的密码。密码只用于本次解密。') : mailaiText('迁移包包含邮件正文和附件。设置密码后，即使文件遗失也无法直接读取内容。')));
+  password.value = ''; confirmation.value = ''; noPassword.checked = false; error.textContent = '';
+  confirmationRow.classList.toggle('hidden', importing); noPasswordRow.classList.toggle('hidden', importing);
+  password.disabled = false; confirmation.disabled = importing;
+  return new Promise(resolve => {
+    let completed = false;
+    const finish = value => { if (completed) return; completed = true; cleanup(); resolve(value); };
+    const cleanup = () => { form.removeEventListener('submit', submit); noPassword.removeEventListener('change', toggle); dialog.removeEventListener('close', close); };
+    const close = () => { if (dialog.returnValue !== 'migration-ok') finish(null); };
+    const toggle = () => { password.disabled = noPassword.checked; confirmation.disabled = noPassword.checked; error.textContent = ''; };
+    const submit = event => {
+      event.preventDefault();
+      if (event.submitter?.value === 'cancel') { dialog.close('cancel'); return; }
+      if (!importing && noPassword.checked) { dialog.close('migration-ok'); finish(''); return; }
+      if (password.value.length < 12 && !importing) { mailaiBindUI(error, "textContent", () => (mailaiText('迁移密码至少需要 12 位'))); password.focus(); return; }
+      if (!password.value && importing) { mailaiBindUI(error, "textContent", () => (mailaiText('请输入迁移密码'))); password.focus(); return; }
+      if (!importing && password.value !== confirmation.value) { mailaiBindUI(error, "textContent", () => (mailaiText('两次输入的密码不一致'))); confirmation.focus(); return; }
+      const value = password.value; dialog.close('migration-ok'); finish(value);
+    };
+    form.addEventListener('submit', submit); noPassword.addEventListener('change', toggle); dialog.addEventListener('close', close);
+    dialog.showModal(); setTimeout(() => password.focus(), 0);
+  });
+}
+
+document.getElementById('btn-export-portable').addEventListener('click', async () => {
+  const button = document.getElementById('btn-export-portable');
+  const since = document.getElementById('portable-export-since')?.value || '';
+  const until = document.getElementById('portable-export-until')?.value || '';
+  if (since && until && since > until) { toast(mailaiText('导出起始日期不能晚于截止日期'), 'warn'); return; }
+  const password = await askMigrationPassword('export');
+  if (password === null) return;
+  setLoading(button, true, mailaiText('导出中…'));
+  try {
+    const result = await api('/api/system/portable-backups', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({include_raw:true,password,since,until})});
+    if (window.pywebview?.api?.save_portable_backup) {
+      const saved = await window.pywebview.api.save_portable_backup(result.filename);
+      if (saved?.ok) toast(mailaiTemplate`迁移包已保存到 ${saved.path}`, 'success');
+      else if (saved?.canceled) toast(mailaiText('已取消选择位置；迁移包仍保存在下方记录中，可随时重新下载'), 'warn');
+      else throw new Error(mailaiText('无法保存迁移包'));
+    } else {
+      const link = document.createElement('a'); link.href = result.download_url; link.download = result.filename; document.body.appendChild(link); link.click(); link.remove();
+      toast(mailaiTemplate`迁移包已交给浏览器下载 · ${formatFileSize(result.size)}，请在下载列表中查看位置`, 'success');
+    }
+    await loadBackups();
+  } catch (err) { toast(mailaiSystemMessage(err.message), 'error'); } finally { setLoading(button, false); }
+});
+document.getElementById('btn-import-portable').addEventListener('click', () => document.getElementById('portable-backup-file').click());
+
+document.getElementById('portable-backup-file').addEventListener('change', async event => {
+  const file = event.target.files?.[0]; event.target.value = ''; if (!file) return;
+  const signature = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+  const encrypted = [77,65,73,76,65,73,51,0].every((value,index) => signature[index] === value);
+  let password = '';
+  if (encrypted) {
+    password = await askMigrationPassword('import');
+    if (password === null) return;
+  }
+  const button = document.getElementById('btn-import-portable'); setLoading(button, true, mailaiText('检查中…'));
+  try {
+    const accountId = activeMailAccount()?.id || '';
+    const response = await fetch('/api/system/portable-backups/inspect', {method:'POST', headers:{'Content-Type':'application/octet-stream','X-Migration-Password':password,...(accountId ? {'X-MailAI-Account':accountId} : {})}, body:file});
+    const preview = await response.json(); if (!response.ok) throw new Error(preview.detail || mailaiText('迁移包检查失败'));
+    const content = preview.content || {}, account = preview.account || {};
+    if (!preview.current_account_matches) {
+      await api(`/api/system/portable-backups/import/${encodeURIComponent(preview.import_token)}`, {method:'DELETE'}).catch(()=>{});
+      throw new Error(mailaiTemplate`迁移包属于 ${account.email || mailaiText('未知账号')}，请先切换或登录该邮箱后再导入`);
+    }
+    const sourceDate = preview.created_at ? new Date(preview.created_at).toLocaleString(currentI18nLanguage()) : mailaiText('未知时间');
+    const rawState = content.includes_raw_mail ? mailaiTemplate`${content.raw_messages || 0} 份邮件原文` : mailaiText('不含邮件原文');
+    const missing = content.missing_raw_messages ? mailaiTemplate`\n注意：源设备有 ${content.missing_raw_messages} 份原文缺失。` : '';
+    const confirmed = window.confirm(mailaiTemplate`迁移包检查通过\n\n账号：${account.email}\n来源：${preview.source_platform || mailaiText('未知系统')}\n导出时间：${sourceDate}\n内容：${content.emails || 0} 封邮件，${rawState}\n文件大小：${formatFileSize(preview.source_size || file.size)}${missing}\n\n导入会替换当前账号的本地数据，并先自动创建安全备份。服务器邮件不会被删除或修改。继续吗？`);
+    if (!confirmed) { await api(`/api/system/portable-backups/import/${encodeURIComponent(preview.import_token)}`, {method:'DELETE'}).catch(()=>{}); return; }
+    setLoading(button, true, mailaiText('导入中…'));
+    const result = await api('/api/system/portable-backups/restore', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({import_token:preview.import_token,password})});
+    if (window.confirm(mailaiTemplate`已导入 ${result.emails || 0} 封邮件。\n\n是否现在重新同步邮箱，以建立新设备的服务器关联？邮件较多时可能需要较长时间。`)) {
+      await api('/api/fetch_all', {method:'POST'});
+    }
+    window.location.reload();
+  } catch (err) { toast(mailaiSystemMessage(err.message), 'error'); } finally { setLoading(button, false); }
+});
+
+document.getElementById('backup-list').addEventListener('click', event => {
+  const restoreButton = event.target.closest('[data-restore-backup]');
+  if (restoreButton) { window.openBackupRestore(restoreButton.dataset.restoreBackup); return; }
+  const downloadButton = event.target.closest('[data-download-backup]');
+  const deleteButton = event.target.closest('[data-delete-backup]');
+  if (deleteButton) {
+    const filename = deleteButton.dataset.deleteBackup;
+    const portable = deleteButton.dataset.portable === 'true';
+    if (!window.confirm(mailaiTemplate`确定永久删除这个${portable ? mailaiText('迁移包') : mailaiText('本机备份')}吗？\n\n${filename}\n\n删除后无法恢复。`)) return;
+    (async () => {
+      setLoading(deleteButton, true, mailaiText('删除中…'));
+      try {
+        const path = portable ? `/api/system/portable-backups/stored/${encodeURIComponent(filename)}` : `/api/system/backups/${encodeURIComponent(filename)}`;
+        await api(path, {method:'DELETE'});
+        toast(mailaiTemplate`${portable ? mailaiText('迁移包') : mailaiText('备份')}已删除`, 'success');
+        await loadBackups();
+      } catch (err) { toast(mailaiTemplate`删除失败：${mailaiSystemMessage(err.message)}`, 'error'); }
+      finally { setLoading(deleteButton, false); }
+    })();
+    return;
+  }
+  if (!downloadButton) return;
+  const filename = downloadButton.dataset.downloadBackup;
+  const portable = downloadButton.dataset.portable === 'true';
+  (async () => {
+    setLoading(downloadButton, true, mailaiText('选择位置…'));
+    try {
+      if (window.pywebview?.api) {
+        const method = portable ? window.pywebview.api.save_portable_backup : window.pywebview.api.save_local_backup;
+        if (typeof method === 'function') {
+          const result = await method(filename);
+          if (result?.ok) toast(mailaiTemplate`已保存到 ${result.path}`, 'success');
+          else if (result?.canceled) toast(mailaiText('已取消另存为，原备份仍保留在应用中'), 'warn');
+          else throw new Error(mailaiText('保存失败'));
+          return;
+        }
+      }
+      const href = portable ? `/api/system/portable-backups/download/${encodeURIComponent(filename)}` : `/api/system/backups/${encodeURIComponent(filename)}`;
+      const link = document.createElement('a'); link.href = href; link.download = filename; link.hidden = true; document.body.appendChild(link); link.click(); link.remove();
+      toast(mailaiText('已交给浏览器下载，请在下载列表中查看保存位置'), 'success');
+    } catch (err) { toast(mailaiTemplate`备份另存失败：${mailaiSystemMessage(err.message)}`, 'error'); }
+    finally { setLoading(downloadButton, false); }
+  })();
+});
+
+function openLogoutDialog(accountId = selectedManagedAccountId) {
+  const modal = document.getElementById('logout-modal');
+  const accounts = _systemConfig?.accounts || [];
+  const target = accounts.find(account => account.id === accountId);
+  if (!target) return toast(mailaiText('请先选择要删除的邮箱'), 'error');
+  modal.dataset.accountId = target.id;
+  mailaiBindUI(document.getElementById('logout-account-label'), "textContent", () => (mailaiTemplate`${target.user} · 将移除本机保存的邮箱账号和授权码`));
+  const keep = modal.querySelector('input[value="keep"]');
+  keep.checked = true;
+  modal.querySelectorAll('.logout-choice').forEach(choice => choice.classList.toggle('selected', choice.contains(keep)));
+  document.getElementById('logout-warning').classList.add('hidden');
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('modal-open');
+  keep.focus();
+}
+
+function closeLogoutDialog() {
+  const modal = document.getElementById('logout-modal');
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('modal-open');
+}
+
+async function stopFetchBeforeLogout() {
+  let state = await api('/api/fetch_status');
+  if (!state.running) return;
+  await api('/api/cancel_fetch', {method: 'POST'});
+  toast(mailaiText('正在安全停止邮件同步…'));
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    await new Promise(resolve => setTimeout(resolve, 250));
+    state = await api('/api/fetch_status');
+    if (!state.running) return;
+  }
+  throw new Error(mailaiText('邮件同步仍在停止中，请稍后再次删除'));
+}
+
+document.getElementById('btn-delete-mail').addEventListener('click', () => openLogoutDialog());
+document.getElementById('btn-close-logout').addEventListener('click', closeLogoutDialog);
+document.getElementById('btn-cancel-logout').addEventListener('click', closeLogoutDialog);
+document.querySelector('#logout-modal [data-close-logout]').addEventListener('click', closeLogoutDialog);
+document.querySelectorAll('input[name="logout-history"]').forEach(input => input.addEventListener('change', () => {
+  document.querySelectorAll('.logout-choice').forEach(choice => choice.classList.toggle('selected', choice.contains(input)));
+  document.getElementById('logout-warning').classList.toggle('hidden', input.value !== 'clear');
+}));
+document.getElementById('btn-confirm-logout').addEventListener('click', async () => {
+  const button = document.getElementById('btn-confirm-logout');
+  const clearHistory = document.querySelector('input[name="logout-history"]:checked').value === 'clear';
+  setLoading(button, true, clearHistory ? mailaiText('正在清空…') : mailaiText('正在删除…'));
+  try {
+    await stopFetchBeforeLogout();
+    const accountId = document.getElementById('logout-modal').dataset.accountId || '';
+    const targetWasActive = (_systemConfig?.accounts || []).some(account => account.id === accountId && account.active);
+    await api('/api/system/mail/logout', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({clear_history: clearHistory, account_id: accountId})});
+    closeLogoutDialog();
+    selectedManagedAccountId = '';
+    await loadSystemConfig();
+    if (targetWasActive) {
+      ++mailLoadRevision;
+      allEmails = []; allTodos = []; sentMessages = []; savedDrafts = []; mailboxLocalCounts = null;
+      resetReadingPane(); updateSidebar(); applyFilters();
+    }
+    selectSystemTab('account');
+    document.querySelector('.layout').classList.add('hidden');
+    document.getElementById('system-view').classList.remove('hidden');
+    toast(clearHistory ? mailaiText('已删除邮箱并清空本地邮件历史') : mailaiText('已删除邮箱，本地邮件历史已保留'), 'success');
+  } catch (err) { toast(mailaiText('删除失败：') + mailaiSystemMessage(err.message), 'error'); }
+  finally { setLoading(button, false); }
+});
+
+globalThis.MailAIModules?.register('backupMigration', {
+  renderBackupItem,
+  loadBackups,
+  askMigrationPassword,
+  openLogoutDialog,
+  closeLogoutDialog,
+  stopFetchBeforeLogout,
+});
+
+;
+/* ---- pane-resizers.js ---- */
+/* Three-pane workspace resizer handles, constraints, and persistence. */
+const PANE_SIZE_KEY = 'mailai.workspace.paneSizes.v1';
+const PANE_DEFAULTS = {sidebar: 226, list: 405};
+
+function paneSizePreferenceKey() {
+  return document.body.dataset.mailListView === 'table' ? 'mailai.workspace.tablePaneSizes.v1' : PANE_SIZE_KEY;
+}
+
+function currentPaneDefaults() {
+  return {...PANE_DEFAULTS, list:document.body.dataset.mailListView === 'table' ? 720 : PANE_DEFAULTS.list};
+}
+
+function readPaneSizes() {
+  try { return {...currentPaneDefaults(), ...JSON.parse(localStorage.getItem(paneSizePreferenceKey()) || '{}')}; }
+  catch (_) { return currentPaneDefaults(); }
+}
+
+function constrainPaneSizes(input, totalWidth) {
+  const layout = document.querySelector('.layout');
+  const total = totalWidth || layout?.clientWidth || window.innerWidth;
+  const readingMin = Math.min(440, Math.max(360, total * .32));
+  let sidebar = Math.max(180, Math.min(380, Number(input.sidebar) || PANE_DEFAULTS.sidebar));
+  let list = Math.max(300, Math.min(720, Number(input.list) || PANE_DEFAULTS.list));
+  const available = Math.max(480, total - 24 - readingMin);
+  if (sidebar + list > available) list = Math.max(300, available - sidebar);
+  if (sidebar + list > available) sidebar = Math.max(180, available - list);
+  return {sidebar:Math.round(sidebar), list:Math.round(list)};
+}
+
+function applyPaneSizes(sizes, persist = false, totalWidth) {
+  const layout = document.querySelector('.layout');
+  if (!layout) return;
+  const value = constrainPaneSizes(sizes, totalWidth);
+  layout.style.setProperty('--sidebar-width', value.sidebar + 'px');
+  layout.style.setProperty('--list-width', value.list + 'px');
+  document.querySelector('[data-resizer="sidebar"]')?.setAttribute('aria-valuenow', value.sidebar);
+  document.querySelector('[data-resizer="list"]')?.setAttribute('aria-valuenow', value.list);
+  if (persist) localStorage.setItem(paneSizePreferenceKey(), JSON.stringify(value));
+  return value;
+}
+
+function initPaneResizers() {
+  let preferredSizes = readPaneSizes();
+  let sizes = applyPaneSizes(preferredSizes);
+  document.querySelectorAll('.pane-resizer').forEach(handle => {
+    const kind = handle.dataset.resizer;
+    handle.setAttribute('aria-valuemin', kind === 'sidebar' ? '180' : '300');
+    handle.setAttribute('aria-valuemax', kind === 'sidebar' ? '380' : '720');
+    handle.addEventListener('pointerdown', event => {
+      if (window.innerWidth <= 1024 || event.button !== 0 || handle.classList.contains('dragging')) return;
+      event.preventDefault();
+      const startX = event.clientX;
+      const start = {...sizes};
+      const layout = document.querySelector('.layout');
+      // Cache geometry before writes and coalesce pointer bursts per frame.
+      const totalWidth = layout.clientWidth;
+      const scale = layout.getBoundingClientRect().width / totalWidth || 1;
+      const pointerId = event.pointerId;
+      let latestX = startX, frame = 0;
+      const flush = () => {
+        frame = 0;
+        sizes = applyPaneSizes({...start, [kind]:start[kind] + (latestX - startX) / scale}, false, totalWidth);
+      };
+      handle.setPointerCapture(event.pointerId);
+      handle.classList.add('dragging'); document.body.classList.add('pane-resizing');
+      const move = moveEvent => {
+        if (moveEvent.pointerId !== pointerId) return;
+        latestX = moveEvent.clientX;
+        if (!frame) frame = requestAnimationFrame(flush);
+      };
+      const end = endEvent => {
+        if (endEvent.pointerId !== pointerId) return;
+        if (endEvent.type === 'pointerup') latestX = endEvent.clientX;
+        cancelAnimationFrame(frame);
+        flush();
+        handle.removeEventListener('pointerup', end);
+        handle.removeEventListener('pointercancel', end);
+        handle.removeEventListener('lostpointercapture', end);
+        if (handle.hasPointerCapture(pointerId)) handle.releasePointerCapture(pointerId);
+        handle.removeEventListener('pointermove', move);
+        handle.classList.remove('dragging'); document.body.classList.remove('pane-resizing');
+        sizes = applyPaneSizes(sizes, true);
+        preferredSizes = {...sizes};
+      };
+      handle.addEventListener('pointermove', move);
+      handle.addEventListener('pointerup', end);
+      handle.addEventListener('pointercancel', end);
+      handle.addEventListener('lostpointercapture', end);
+    });
+    handle.addEventListener('dblclick', () => { preferredSizes = currentPaneDefaults(); sizes = applyPaneSizes(preferredSizes, true); toast(mailaiText('已恢复默认栏宽'), 'success'); });
+    handle.addEventListener('keydown', event => {
+      if (!['ArrowLeft','ArrowRight'].includes(event.key)) return;
+      event.preventDefault();
+      sizes = applyPaneSizes({...sizes, [kind]:sizes[kind] + (event.key === 'ArrowRight' ? 16 : -16)}, true);
+      preferredSizes = {...sizes};
+    });
+  });
+  window.addEventListener('mailai:list-view-changed', () => { preferredSizes = readPaneSizes(); sizes = applyPaneSizes(preferredSizes); });
+  window.addEventListener('resize', () => { sizes = applyPaneSizes(preferredSizes); });
+}
+
+initPaneResizers();
+
+globalThis.MailAIModules?.register('paneResizers', {
+  readPaneSizes,
+  constrainPaneSizes,
+  applyPaneSizes,
+  initPaneResizers,
+});
 
 ;
 /* ---- native-menu.js ---- */

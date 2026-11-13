@@ -112,6 +112,7 @@ from .todos import (
     list_todos,
     set_todo_status,
     set_todos_status,
+    set_todos_status_detailed,
     update_todo,
     refresh_generated_todos,
     delete_todos_of,

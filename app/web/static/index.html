@@ -50,7 +50,7 @@
   <link rel="stylesheet" href="/static/macos-window.css?v=758439776e9b">
   <link rel="stylesheet" href="/static/windows-window.css?v=3">
   <link rel="stylesheet" href="/static/assistant-polish.css?v=3c8d125994aa">
-  <link rel="stylesheet" href="/static/assistant-search.css?v=preview-cards-20261017">
+  <link rel="stylesheet" href="/static/assistant-search.css?v=1357079c9837">
   <link rel="stylesheet" href="/static/list-controls-polish.css?v=5">
   <link rel="stylesheet" href="/static/tab-transitions.css?v=2">
   <link rel="stylesheet" href="/static/author.css?v=7">
@@ -75,12 +75,18 @@
   <link rel="stylesheet" href="/static/brand.css?v=glass-green-baowu-1">
   <link rel="stylesheet" href="/static/settings-polish.css?v=6b8cabf513b0">
   <link rel="stylesheet" href="/static/home-dialog-polish.css?v=28359c254fe3">
-  <link rel="stylesheet" href="/static/command-palette.css?v=8c960b147483">
+  <link rel="stylesheet" href="/static/command-palette.css?v=45ec4fd720de">
   <link rel="stylesheet" href="/static/assistant-divider.css?v=c4c909118f79">
   <link rel="stylesheet" href="/static/mail-filter-panel.css?v=3ccdf7a34022">
   <link rel="stylesheet" href="/static/mail-list-view.css?v=ebe8a3ee4d37">
-  <link rel="stylesheet" href="/static/todo-center.css?v=f6dc42f18191">
+  <link rel="stylesheet" href="/static/todo-center.css?v=6f852dcf30ad">
+  <link rel="stylesheet" href="/static/todo-quick-actions.css?v=1">
   <link rel="stylesheet" href="/static/work-assistant.css?v=f28ab44dea3d">
+  <link rel="stylesheet" href="/static/contact-persona.css?v=1">
+  <link rel="stylesheet" href="/static/periodic-briefing.css?v=1">
+  <link rel="stylesheet" href="/static/calendar-timeline.css?v=1">
+  <link rel="stylesheet" href="/static/triage-rules.css?v=1">
+  <link rel="stylesheet" href="/static/compose-guard.css?v=1">
 </head>
 <body>
   <div id="app-preloader" class="app-preloader" role="status" aria-live="polite">
@@ -308,7 +314,7 @@
             <label class="notification-choice semantic-toggle"><input type="checkbox" id="semantic-enabled"><span><b data-i18n="semantic.enable">启用语义检索</b><small data-i18n="semantic.enableHint">开启后自动更新索引；首次需下载约 100MB 模型，邮件留在本机</small></span></label>
             <div class="preference-save-state"><span id="semantic-status" role="status" aria-live="polite"><span data-i18n="ui.f95ea7f4c063">未启用</span></span><button id="semantic-reindex" type="button" class="hidden" data-i18n="semantic.reindexBtn">重建索引</button></div>
             <div id="semantic-progress" class="semantic-progress hidden" role="progressbar" aria-hidden="true"><i></i></div>
-            <p class="preference-note" data-i18n="semantic.note">当前覆盖最近 5000 封邮件的主题、摘要及正文前 800 字。索引在后台更新，模型繁忙时优先显示关键词结果。源码运行需安装 requirements-semantic.txt。</p>
+            <p class="preference-note" data-i18n="semantic.note">当前覆盖最近 5000 封邮件的主题、摘要、正文分块、历史会话脉络及已提取的附件文字。索引在后台更新，模型繁忙时优先显示关键词结果。源码运行需安装 requirements-semantic.txt。</p>
           </article>
 
           </div>
@@ -453,7 +459,7 @@
 <details class="help-faq" data-help-entry data-help-category="work"><summary><span data-i18n="guide.faq.uncertain-send.title">发送失败，能直接重新发送吗？</span><svg class="help-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6"/></svg></summary><div><p data-i18n="guide.faq.uncertain-send.copy">先在任务与发件箱核对阶段。若提示结果需要核对，请先查看已发送邮件或网页邮箱，确认是否送达再操作，避免重复发信；尚未开始的定时任务可调整或取消。</p><button type="button" class="help-entry-action" data-help-settings="maintenance"><span data-i18n="guide.faq.uncertain-send.action">运行诊断</span><span aria-hidden="true"> →</span></button></div></details>
 <details class="help-faq" data-help-entry data-help-category="data"><summary><span data-i18n="guide.faq.privacy.title">邮件和附件会发送到哪里？</span><svg class="help-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6"/></svg></summary><div><p data-i18n="guide.faq.privacy.copy">邮件与界面偏好保存在本机。启用云端 AI 后，自动分析及小邮功能会按任务发送所需内容到所选模型服务；大附件分享和手机控制分别经过存储服务与聊天平台。可在关于与隐私查看说明，并按需要使用本地模型。</p><button type="button" class="help-entry-action" data-help-settings="about"><span data-i18n="guide.faq.privacy.action">查看隐私说明</span><span aria-hidden="true"> →</span></button></div></details>
 </div></section>
-        <section class="help-shortcuts" aria-labelledby="help-shortcuts-title"><div><h4 id="help-shortcuts-title" data-i18n="guide.shortcuts.title">常用快捷键</h4><p data-i18n="guide.shortcuts.note">输入文字、弹窗和写信时，不触发单键快捷操作。</p></div><dl><div><dt><kbd>⌘ / Ctrl</kbd> + <kbd>K</kbd></dt><dd data-i18n="guide.shortcuts.command">快捷操作</dd></div><div><dt><kbd>/</kbd></dt><dd data-i18n="guide.shortcuts.search">搜索邮件</dd></div><div><dt><kbd>J</kbd> / <kbd>K</kbd></dt><dd data-i18n="guide.shortcuts.read">下一封 / 上一封</dd></div><div><dt><kbd>R</kbd></dt><dd data-i18n="guide.shortcuts.reply">回复邮件</dd></div></dl></section>
+        <section class="help-shortcuts" aria-labelledby="help-shortcuts-title"><div><h4 id="help-shortcuts-title" data-i18n="guide.shortcuts.title">常用快捷键</h4><p data-i18n="guide.shortcuts.note">输入文字、弹窗和写信时，不触发单键快捷操作。</p></div><dl><div><dt><kbd>⌘ / Ctrl</kbd> + <kbd>K</kbd></dt><dd data-i18n="guide.shortcuts.command">快捷操作</dd></div><div><dt><kbd>?</kbd></dt><dd data-i18n="guide.shortcuts.help">快捷键速查</dd></div><div><dt><kbd>/</kbd></dt><dd data-i18n="guide.shortcuts.search">搜索邮件</dd></div><div><dt><kbd>C</kbd></dt><dd data-i18n="guide.shortcuts.compose">写新邮件</dd></div><div><dt><kbd>J</kbd> / <kbd>K</kbd></dt><dd data-i18n="guide.shortcuts.read">下一封 / 上一封</dd></div><div><dt><kbd>R</kbd> / <kbd>A</kbd> / <kbd>F</kbd></dt><dd data-i18n="guide.shortcuts.replyAll">回复 / 全部 / 转发</dd></div><div><dt><kbd>E</kbd> / <kbd>⇧E</kbd></dt><dd data-i18n="guide.shortcuts.triage">标为已处理 / 切下一封</dd></div><div><dt><kbd>W</kbd></dt><dd data-i18n="guide.shortcuts.workflow">安排处理状态</dd></div><div><dt><kbd>T</kbd></dt><dd data-i18n="guide.shortcuts.todo">加入待办</dd></div><div><dt><kbd>U</kbd></dt><dd data-i18n="guide.shortcuts.unread">未读 / 已读切换</dd></div><div><dt><kbd>S</kbd></dt><dd data-i18n="guide.shortcuts.star">添加 / 取消星标</dd></div><div><dt><kbd>I</kbd></dt><dd data-i18n="guide.shortcuts.ai">小邮解读 / AI 催办</dd></div></dl></section>
         <div class="help-footer"><div><h4 data-i18n="guide.footer.title">把 MailAI 调整得更顺手</h4><p data-i18n="guide.footer.copy">调整主题、字号与通知，或查看当前版本和更新。</p></div><div><button type="button" data-help-settings="preferences" data-i18n="guide.footer.preferences">显示与通知</button><button type="button" data-help-settings="about" data-i18n="guide.footer.about">版本与隐私</button></div></div>
       </section>
 
@@ -916,7 +922,7 @@
       <section class="attachment-center-card todo-center-card" role="dialog" aria-modal="true" aria-labelledby="todo-center-title">
         <header><div><h2 id="todo-center-title" data-i18n="todo.title">待办中心</h2><small id="todo-account-label" class="tool-account-label"></small><p id="todo-center-summary" role="status" aria-live="polite"></p></div><button id="btn-close-todos" class="btn-ghost" data-i18n-aria="dlg.close">✕</button></header>
         <div class="todo-center-tools">
-          <details id="todo-options" class="todo-options"><summary><span data-i18n="todo.ui.options">更多</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg></summary><div id="todo-extra-actions"><label class="todo-show-done"><input id="todo-show-done" type="checkbox"> <span data-i18n="todo.showDone">显示已完成</span></label></div></details>
+          <details id="todo-options" class="todo-options"><summary><span data-i18n="todo.ui.options">更多</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg></summary><div id="todo-extra-actions"><label class="todo-show-done"><input id="todo-show-done" type="checkbox"> <span data-i18n="todo.showDone">显示已完成</span></label><button id="btn-todo-open-timeline" class="todo-open-timeline-btn" type="button" data-i18n="timeline.openFromTodo">日程时间线</button><button id="btn-todo-open-briefing" class="todo-open-briefing-btn" type="button" data-i18n="briefing.openFromTodo">生成工作简报（周报 / 月报）</button><button id="btn-todo-open-triage" class="todo-open-triage-btn" type="button" data-i18n="triage.openFromTodo">订阅降噪 & 自动分流</button></div></details>
         </div>
         <div id="todo-list" class="todo-center-list"></div>
           <div class="todo-batch-actions">
@@ -946,6 +952,7 @@
         <div class="compose-toolbar" aria-label="正文格式" data-i18n-aria="compose.format">
           <div class="compose-toolbar-actions">
             <button type="button" id="btn-compose-preview" class="compose-tool-labeled" title="预览收件人看到的邮件" data-i18n-title="compose.previewTitle"><svg viewBox="0 0 20 20"><path d="M2.8 10s2.6-4.4 7.2-4.4 7.2 4.4 7.2 4.4-2.6 4.4-7.2 4.4S2.8 10 2.8 10Z"/><circle cx="10" cy="10" r="2"/></svg><span data-i18n="compose.preview">预览</span></button>
+            <button type="button" id="btn-compose-guard" class="compose-tool-labeled" title="发信前多维自检：漏附、日期冲突、外发范围、凭据泄露与占位符" data-i18n-title="compose.guardTitle"><svg viewBox="0 0 20 20"><path d="M10 2.6 4.2 5v4.6c0 3.7 2.5 6.8 5.8 7.8 3.3-1 5.8-4.1 5.8-7.8V5L10 2.6Z"/><path d="m7.6 10.1 1.7 1.7 3.3-3.5"/></svg><span data-i18n="compose.guard">自检</span></button>
             <button type="button" id="btn-add-attachment" class="compose-tool-labeled compose-attach-button"><svg viewBox="0 0 20 20"><path d="M7.2 10.7 12 5.9a2.5 2.5 0 0 1 3.5 3.5l-6.3 6.3a4 4 0 0 1-5.7-5.7l6-6"/></svg><span data-i18n="compose.attach">附件</span></button>
             <div class="compose-signature-tools"><select id="compose-signature-select" aria-label="选择邮件签名" data-i18n-aria="compose.signatureAria"><option value="" data-i18n="compose.noSignature">不使用签名</option></select><button type="button" id="btn-manage-signatures" title="管理签名" data-i18n-title="compose.manageTitle" data-i18n="compose.manage">管理</button></div>
             <div class="compose-toolbar-status"><button type="button" id="draft-state" disabled aria-live="polite" title="草稿仅保存在本机，不会同步到邮箱服务器" data-i18n-title="compose.autosaveTitle" data-i18n="compose.autosave">草稿自动保存</button></div>
@@ -963,6 +970,7 @@
         <div id="compose-shared-files" class="compose-shared-files hidden"></div><div id="compose-attachments" class="compose-attachments hidden" aria-live="polite"></div>
         <div id="compose-preflight" class="compose-preflight hidden" aria-live="polite"></div>
         <div id="compose-body" class="compose-editor">
+          <div id="compose-guard-layer" class="compose-guard-layer" aria-hidden="true"></div>
           <div id="compose-message" class="compose-message" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="输入邮件正文…" data-i18n-data-placeholder="compose.bodyPh"></div>
           <section id="compose-signature" class="compose-signature hidden" contenteditable="false" aria-label="邮件签名" data-i18n-aria="compose.signatureAria"><div id="compose-signature-content"></div></section>
           <section id="compose-quote" class="compose-quote hidden" contenteditable="false" aria-label="引用的原邮件" data-i18n-aria="compose.quoteAria">
@@ -1028,6 +1036,10 @@
         <div class="modal-header">
           <div class="digest-title-group"><h2 id="digest-title"><span class="digest-title-icon"><svg viewBox="0 0 20 20"><path d="M5 3.5h10v13H5zM7.5 7h5M7.5 10h5M7.5 13h3"/></svg></span><span data-i18n="digest.title">今日日报</span></h2><small id="digest-account-label"></small></div>
           <div class="digest-header-actions">
+            <div class="digest-mode-tabs" role="tablist" aria-label="简报模式" data-i18n-aria="briefing.tabsAria">
+              <button type="button" class="digest-mode-tab is-active" data-briefing-tab="daily" role="tab" aria-selected="true" data-i18n="briefing.tabDaily">今日日报</button>
+              <button type="button" class="digest-mode-tab" data-briefing-tab="periodic" role="tab" aria-selected="false" data-i18n="briefing.tabPeriodic">周报 / 月报</button>
+            </div>
             <select id="digest-history-select" class="digest-history-select">
               <option value="" data-i18n="digest.todayOpt">今日日报</option>
             </select>
@@ -1038,7 +1050,255 @@
         <div class="modal-body markdown-body" id="digest-body">
           <span data-i18n="digest.generating">正在生成…</span>
         </div>
+        <div id="periodic-briefing-pane" class="hidden" role="tabpanel" aria-label="周期工作简报" data-i18n-aria="briefing.paneAria">
+          <div class="periodic-toolbar">
+            <div class="periodic-controls-row">
+              <label class="periodic-field">
+                <span data-i18n="briefing.period">周期</span>
+                <select id="periodic-period-select">
+                  <option value="this_week" data-i18n="briefing.thisWeek">本周</option>
+                  <option value="last_7_days" data-i18n="briefing.last7Days">近 7 天</option>
+                  <option value="this_month" data-i18n="briefing.thisMonth">本月</option>
+                  <option value="last_30_days" data-i18n="briefing.last30Days">近 30 天</option>
+                  <option value="custom" data-i18n="briefing.custom">自定义</option>
+                </select>
+              </label>
+              <div id="periodic-custom-range" class="periodic-custom-range hidden">
+                <label class="periodic-field"><span data-i18n="briefing.rangeStart">起</span><input id="periodic-start-date" type="date"></label>
+                <label class="periodic-field"><span data-i18n="briefing.rangeEnd">止</span><input id="periodic-end-date" type="date"></label>
+              </div>
+              <label class="periodic-field">
+                <span data-i18n="briefing.style">汇报风格</span>
+                <select id="periodic-style-select">
+                  <option value="leader" data-i18n="briefing.styleLeader">汇报领导（正式）</option>
+                  <option value="team" data-i18n="briefing.styleTeam">团队同步（简洁）</option>
+                  <option value="log" data-i18n="briefing.styleLog">个人复盘（详实）</option>
+                </select>
+              </label>
+              <label class="periodic-field periodic-focus-field">
+                <span data-i18n="briefing.focus">侧重点</span>
+                <input id="periodic-focus-input" type="text" maxlength="200" placeholder="可选：例如突出项目交付、风险卡点" data-i18n-placeholder="briefing.focusPh">
+              </label>
+              <label class="periodic-pref-toggle">
+                <input id="periodic-use-preferences" type="checkbox" checked>
+                <span data-i18n="briefing.usePrefs">结合写作偏好</span>
+              </label>
+            </div>
+            <div id="periodic-metrics-strip" class="periodic-metrics-strip"></div>
+            <div class="periodic-actions-row">
+              <div class="periodic-actions-group">
+                <button type="button" id="periodic-btn-ai" class="periodic-btn-primary" data-i18n="briefing.genAi">AI 智能生成</button>
+                <button type="button" id="periodic-btn-local" class="periodic-btn-subtle" data-i18n="briefing.genLocal">本地快速整理</button>
+                <button type="button" id="periodic-btn-view" class="periodic-btn-subtle is-active" data-i18n="briefing.modeView">预览</button>
+                <button type="button" id="periodic-btn-edit" class="periodic-btn-subtle" data-i18n="briefing.modeEdit">编辑草稿</button>
+              </div>
+              <div class="periodic-actions-group">
+                <label class="periodic-field">
+                  <select id="periodic-history-select" aria-label="历史周期简报" data-i18n-aria="briefing.historyAria">
+                    <option value="" data-i18n="briefing.newOption">新建当前周期简报</option>
+                  </select>
+                </label>
+                <button type="button" id="periodic-delete-history" class="periodic-btn-danger" disabled data-i18n="briefing.delete">删除</button>
+                <button type="button" id="periodic-btn-save" class="periodic-btn-subtle" disabled data-i18n="briefing.save">保存记录</button>
+                <button type="button" id="periodic-btn-copy" class="periodic-btn-subtle" disabled data-i18n="briefing.copy">复制全文</button>
+                <button type="button" id="periodic-btn-compose" class="periodic-btn-primary" disabled data-i18n="briefing.compose">转为写信草稿</button>
+              </div>
+            </div>
+          </div>
+          <div class="periodic-content-area">
+            <div id="periodic-briefing-status" class="hidden" role="status" aria-live="polite"></div>
+            <input id="periodic-title-input" class="periodic-title-input" type="text" maxlength="200" placeholder="简报标题 / 邮件主题" data-i18n-placeholder="briefing.titlePh">
+            <div id="periodic-briefing-preview" class="markdown-body"></div>
+            <textarea id="periodic-briefing-editor" class="hidden" rows="16" placeholder="在这里直接调整周报 / 月报内容…" data-i18n-placeholder="briefing.editorPh"></textarea>
+          </div>
+        </div>
       </div>
+    </div>
+
+    <!-- 本地日程时间线与系统日历协同弹窗 -->
+    <div id="calendar-timeline-modal" class="modal hidden" aria-hidden="true">
+      <div class="modal-backdrop" data-close-timeline></div>
+      <section class="modal-content timeline-dialog" role="dialog" aria-modal="true" aria-labelledby="timeline-modal-title">
+        <div class="modal-header timeline-header">
+          <div class="timeline-heading">
+            <span class="timeline-heading-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 9h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg></span>
+            <div>
+              <h2 id="timeline-modal-title" data-i18n="timeline.title">日程时间线 & 系统日历协同</h2>
+              <p class="timeline-subtitle" data-i18n="timeline.subtitle">自动聚合待办截止、发信跟进、ICS 会议邀请与自建日程，检测时段冲突并同步日历</p>
+            </div>
+          </div>
+          <button id="btn-close-timeline" class="modal-close modern-close" type="button" aria-label="关闭" data-i18n-aria="ui.3fd47edce45b"><svg viewBox="0 0 20 20"><path d="m6 6 8 8M14 6l-8 8"/></svg></button>
+        </div>
+
+        <div class="timeline-toolbar">
+          <div id="timeline-summary-strip" class="timeline-summary-strip"></div>
+          <div class="timeline-controls-row">
+            <div class="timeline-filters">
+              <button type="button" class="timeline-chip is-active" data-timeline-kind="all" data-i18n="timeline.filterAll">全部</button>
+              <button type="button" class="timeline-chip" data-timeline-kind="todo" data-i18n="timeline.filterTodo">待办</button>
+              <button type="button" class="timeline-chip" data-timeline-kind="followup" data-i18n="timeline.filterFollowup">发信跟进</button>
+              <button type="button" class="timeline-chip" data-timeline-kind="ics" data-i18n="timeline.filterIcs">会议邀请</button>
+              <button type="button" class="timeline-chip" data-timeline-kind="custom" data-i18n="timeline.filterCustom">自建日程</button>
+            </div>
+            <div class="timeline-options">
+              <select id="timeline-days-select" aria-label="时间范围" data-i18n-aria="timeline.rangeAria">
+                <option value="14" selected data-i18n="timeline.range14">近 7 天 + 未来 14 天</option>
+                <option value="30" data-i18n="timeline.range30">近 7 天 + 未来 30 天</option>
+                <option value="7" data-i18n="timeline.range7">近 7 天 + 未来 7 天</option>
+              </select>
+              <label class="timeline-done-toggle">
+                <input id="timeline-include-done" type="checkbox">
+                <span data-i18n="timeline.includeDone">含已完成</span>
+              </label>
+              <button type="button" id="timeline-toggle-create" class="timeline-btn-subtle" data-i18n="timeline.newBtn">+ 新建日程</button>
+            </div>
+          </div>
+        </div>
+
+        <form id="timeline-create-form" class="timeline-create-form hidden">
+          <div class="timeline-form-grid">
+            <label class="timeline-form-field span-2">
+              <span data-i18n="timeline.formTitle">日程标题</span>
+              <input id="timeline-create-title" type="text" maxlength="200" required placeholder="例如：版本评审会 / 客户电话" data-i18n-placeholder="timeline.formTitlePh">
+            </label>
+            <label class="timeline-form-field">
+              <span data-i18n="timeline.formStart">开始时间</span>
+              <input id="timeline-create-start" type="datetime-local" required>
+            </label>
+            <label class="timeline-form-field">
+              <span data-i18n="timeline.formEnd">结束时间</span>
+              <input id="timeline-create-end" type="datetime-local">
+            </label>
+            <label class="timeline-form-field span-2">
+              <span data-i18n="timeline.formLocation">地点 / 会议室</span>
+              <input id="timeline-create-location" type="text" maxlength="200" placeholder="可选：线下会议室或线上链接" data-i18n-placeholder="timeline.formLocationPh">
+            </label>
+            <label class="timeline-form-field span-2">
+              <span data-i18n="timeline.formDesc">备注</span>
+              <input id="timeline-create-desc" type="text" maxlength="400" placeholder="可选：议程要点或准备事项" data-i18n-placeholder="timeline.formDescPh">
+            </label>
+          </div>
+          <div class="timeline-form-actions">
+            <label class="timeline-done-toggle">
+              <input id="timeline-create-allday" type="checkbox">
+              <span data-i18n="timeline.formAllDay">全天事件</span>
+            </label>
+            <div class="timeline-sync-right">
+              <button type="button" id="timeline-create-cancel" class="timeline-btn-subtle" data-i18n="timeline.formCancel">取消</button>
+              <button type="submit" id="timeline-create-submit" class="timeline-btn-primary" data-i18n="timeline.formSubmit">添加至时间线</button>
+            </div>
+          </div>
+        </form>
+
+        <div id="timeline-list" class="timeline-body"></div>
+
+        <div class="timeline-sync-bar">
+          <div class="timeline-sync-left">
+            <button type="button" id="timeline-select-all" class="timeline-btn-subtle" data-i18n="timeline.selectAll">全选当前</button>
+            <span id="timeline-selected-count" class="timeline-select-note"></span>
+          </div>
+          <div class="timeline-sync-right">
+            <span id="timeline-system-note" class="timeline-system-note"></span>
+            <select id="timeline-system-calendar" class="timeline-system-select" aria-label="目标系统日历" data-i18n-aria="timeline.systemSelectAria"></select>
+            <button type="button" id="timeline-btn-export-batch" class="timeline-btn-subtle" disabled data-i18n="timeline.exportBatch">导出 .ics</button>
+            <button type="button" id="timeline-btn-system-add" class="timeline-btn-primary" disabled data-i18n="timeline.systemAdd">写入系统日历</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 订阅降噪与自动分流规则弹窗 -->
+    <div id="triage-rules-modal" class="modal hidden" aria-hidden="true">
+      <div class="modal-backdrop" data-close-triage></div>
+      <section class="modal-content triage-dialog" role="dialog" aria-modal="true" aria-labelledby="triage-modal-title">
+        <div class="modal-header triage-header">
+          <div class="triage-heading">
+            <span class="triage-heading-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16l-6 7v6l-4 2v-8L4 5Z"/></svg></span>
+            <div>
+              <h2 id="triage-modal-title" data-i18n="triage.title">订阅降噪与自动分流规则</h2>
+              <p class="triage-subtitle" data-i18n="triage.subtitle">识别高频重复推送并安全批处理，自定义新邮件入库自动已读、归档与打标签规则</p>
+            </div>
+          </div>
+          <div class="triage-header-actions">
+            <div class="triage-tabs" role="tablist" aria-label="分流中心模式" data-i18n-aria="triage.tabsAria">
+              <button type="button" class="triage-tab is-active" role="tab" aria-selected="true" data-triage-tab="subs" data-i18n="triage.tabSubs">高频推送降噪</button>
+              <button type="button" class="triage-tab" role="tab" aria-selected="false" data-triage-tab="rules" data-i18n="triage.tabRules">自动分流规则</button>
+            </div>
+            <button id="btn-close-triage" class="modal-close modern-close" type="button" aria-label="关闭" data-i18n-aria="ui.3fd47edce45b"><svg viewBox="0 0 20 20"><path d="m6 6 8 8M14 6l-8 8"/></svg></button>
+          </div>
+        </div>
+
+        <div id="triage-pane-subs" class="triage-pane">
+          <div class="triage-toolbar">
+            <div id="triage-subs-summary" class="triage-summary-strip"></div>
+            <div class="triage-toolbar-row">
+              <span class="triage-note" data-i18n="triage.subsSafety">仅统计安全收件箱邮件，绝不自动请求外网退订链接或删除服务器邮件。</span>
+              <button type="button" id="triage-subs-refresh" class="triage-btn-subtle" data-i18n="triage.refresh">重新扫描</button>
+            </div>
+          </div>
+          <div id="triage-subs-list" class="triage-body"></div>
+        </div>
+
+        <div id="triage-pane-rules" class="triage-pane hidden">
+          <div class="triage-toolbar">
+            <div class="triage-toolbar-row">
+              <span class="triage-note" data-i18n="triage.rulesHint">仅对干净收件箱邮件生效；隔离或疑似钓鱼邮件不会绕过安全检查。</span>
+              <div class="triage-card-actions">
+                <button type="button" id="triage-btn-new-rule" class="triage-btn-subtle" data-i18n="triage.newRule">+ 新建分流规则</button>
+                <button type="button" id="triage-btn-apply-all" class="triage-btn-primary" data-i18n="triage.applyAll">对收件箱运行全部规则</button>
+              </div>
+            </div>
+          </div>
+
+          <form id="triage-rule-editor" class="triage-rule-editor hidden">
+            <div class="triage-editor-row">
+              <label class="triage-editor-field">
+                <span data-i18n="triage.ruleName">规则名称</span>
+                <input id="triage-rule-name" type="text" maxlength="100" required placeholder="例如：日报推送自动归档" data-i18n-placeholder="triage.ruleNamePh">
+              </label>
+              <label class="triage-editor-field">
+                <span data-i18n="triage.matchMode">条件关系</span>
+                <select id="triage-rule-match">
+                  <option value="all" data-i18n="triage.matchAll">满足全部条件</option>
+                  <option value="any" data-i18n="triage.matchAny">满足任一条件</option>
+                </select>
+              </label>
+              <button type="button" id="triage-btn-add-cond" class="triage-mini-btn" data-i18n="triage.addCond">+ 添加条件</button>
+            </div>
+
+            <div id="triage-cond-list" class="triage-conditions-box"></div>
+
+            <div class="triage-actions-box">
+              <label class="triage-editor-field">
+                <span data-i18n="triage.actionState">处理状态</span>
+                <select id="triage-action-state">
+                  <option value="" data-i18n="triage.stateKeep">保持不变</option>
+                  <option value="done" data-i18n="triage.stateDone">标为已处理</option>
+                  <option value="reply" data-i18n="triage.stateReply">标为待回复</option>
+                  <option value="later" data-i18n="triage.stateLater">稍后处理</option>
+                </select>
+              </label>
+              <label id="triage-later-hours-wrap" class="triage-editor-field hidden">
+                <span data-i18n="triage.laterHours">延后小时</span>
+                <input id="triage-action-later-hours" type="number" min="1" max="720" value="24">
+              </label>
+              <label class="triage-editor-field"><input id="triage-action-read" type="checkbox"><span data-i18n="triage.actionRead">自动设为已读</span></label>
+              <label class="triage-editor-field"><input id="triage-action-star" type="checkbox"><span data-i18n="triage.actionStar">自动星标</span></label>
+            </div>
+
+            <div id="triage-tag-picks" class="triage-tag-picks"></div>
+            <div id="triage-rule-preview" class="triage-preview-box hidden"></div>
+
+            <div class="triage-editor-row" style="justify-content:flex-end;">
+              <button type="button" id="triage-btn-preview-rule" class="triage-btn-subtle" data-i18n="triage.previewBtn">命中预览</button>
+              <button type="button" id="triage-btn-cancel-rule" class="triage-btn-subtle" data-i18n="triage.cancelBtn">取消</button>
+              <button type="submit" id="triage-btn-save-rule" class="triage-btn-primary" data-i18n="triage.saveRule">保存规则</button>
+            </div>
+          </form>
+
+          <div id="triage-rules-list" class="triage-body"></div>
+        </div>
+      </section>
     </div>
 
     <!-- 误报 / 漏报反馈 -->
@@ -1293,7 +1553,7 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=d6da3a1dcd3b"></script>
+  <script src="/static/bundle.js?v=04a8ae64f26f"></script>
   <script src="/static/settings-scroll.js?v=5"></script>
   <script type="module" src="/static/author-logo.js?v=5"></script>
 </body>

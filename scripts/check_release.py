@@ -149,6 +149,11 @@ TESTS = (
     'test_remote_control.py', 'test_remote_context.py', 'test_remote_resilience.py', 'test_remote_briefing.py',
     'test_remote_guidance.py', 'test_remote_help.py', 'test_remote_mail_format.py',
     'test_remote_transports.py', 'test_weixin_media.py', 'test_weixin_presence.py',
+    'test_calendar_timeline.py',
+    'test_periodic_briefing.py',
+    'test_recipient_profiles.py',
+    'test_todo_interactions.py',
+    'test_triage_rules.py',
 )
 
 
@@ -246,7 +251,19 @@ def main():
                  [node, str(ROOT / 'tests/test_dark_theme_palette.cjs')],
                  [node, str(ROOT / 'tests/test_dark_dialog_surfaces.cjs')],
                  [node, str(ROOT / 'tests/test_ui_refinement.cjs')],
-                 [node, str(ROOT / 'tests/test_model_privacy_ui.cjs')]]
+                 [node, str(ROOT / 'tests/test_model_privacy_ui.cjs')],
+                 [node, '--check', str(ROOT / 'app/web/static/calendar-timeline.js')],
+                 [node, '--check', str(ROOT / 'app/web/static/compose-guard.js')],
+                 [node, '--check', str(ROOT / 'app/web/static/contact-persona.js')],
+                 [node, '--check', str(ROOT / 'app/web/static/periodic-briefing.js')],
+                 [node, '--check', str(ROOT / 'app/web/static/todo-quick-actions.js')],
+                 [node, '--check', str(ROOT / 'app/web/static/triage-rules.js')],
+                 [node, '--check', str(ROOT / 'app/web/static/mailai-state.js')],
+                 [node, '--check', str(ROOT / 'app/web/static/share-links.js')],
+                 [node, '--check', str(ROOT / 'app/web/static/signature-manager.js')],
+                 [node, '--check', str(ROOT / 'app/web/static/backup-migration.js')],
+                 [node, '--check', str(ROOT / 'app/web/static/pane-resizers.js')],
+                 [node, str(ROOT / 'tests/test_frontend_modularization.cjs')]]
     failures = []
     for command in commands:
         label = Path(command[-1]).name

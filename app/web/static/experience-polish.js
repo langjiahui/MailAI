@@ -19,7 +19,7 @@
 
   const todo=document.getElementById('todo-center'), list=document.getElementById('todo-list');
   const tabs=document.createElement('nav');tabs.className='todo-view-tabs';mailaiBindUI(tabs, "@aria-label", () => (mailaiText('待办视图')));
-  const names={get all() { return mailaiText('全部待办'); },get today() { return mailaiText('今天'); },get overdue() { return mailaiText('已逾期'); },get later() { return mailaiText('以后'); },get unplanned() { return mailaiText('未安排'); }};
+  const names={get all() { return mailaiText('全部待办'); },get today() { return mailaiText('今天'); },get overdue() { return mailaiText('已逾期'); },get later() { return mailaiText('以后'); },get unplanned() { return mailaiText('未安排'); },get followups() { return mailaiText('发信跟进'); }};
   tabs.innerHTML=Object.entries(names).map(([key,label])=>`<button type="button" data-todo-view="${key}" aria-pressed="${key==='all'}">${label}</button>`).join('');
   todo.querySelector('.todo-center-tools').before(tabs);
   const noticeButton=document.getElementById('btn-task-notices');tabs.append(noticeButton);noticeButton.setAttribute('aria-pressed','false');
@@ -29,22 +29,26 @@
     if(!dates.length)return 'unplanned';const now=localDateKey();return dates[0]<now?'overdue':dates[0]===now?'today':'later';
   }
   window.mailaiTodoEmpty=()=>{
-    const titles={get all() { return mailaiText('还没有待办事项'); },get today() { return mailaiText('今天没有待办'); },get overdue() { return mailaiText('没有逾期待办'); },get later() { return mailaiText('没有安排以后的待办'); },get unplanned() { return mailaiText('没有未安排的待办'); }};
-    return `<div class="todo-empty-state"><b>${titles[view] || titles.all}</b><p>${view==='all'?mailaiText('可以从邮件中添加待办，再设置截止时间与提醒。'):mailaiText('其他任务可在全部待办中查看。')}</p>${view==='all'?'':"<button type=\"button\" data-todo-empty-all><span data-i18n=\"ui.0f1f3c58fd43\">查看全部待办</span></button>"}</div>`;
+    const titles={get all() { return mailaiText('还没有待办事项'); },get today() { return mailaiText('今天没有待办'); },get overdue() { return mailaiText('没有逾期待办'); },get later() { return mailaiText('没有安排以后的待办'); },get unplanned() { return mailaiText('没有未安排的待办'); },get followups() { return mailaiText('暂无待跟进的已发送邮件'); }};
+    return `<div class="todo-empty-state"><b>${titles[view] || titles.all}</b><p>${view==='all'?mailaiText('可以从邮件中添加待办，再设置截止时间与提醒。'):view==='followups'?mailaiText('写信时在“发送安排”中设置未回复提醒，或打开已发送邮件点击“安排跟进”，这里会自动汇总并在到期时提示一键催办。'):mailaiText('其他任务可在全部待办中查看。')}</p>${view==='all'||view==='followups'?'':"<button type=\"button\" data-todo-empty-all><span data-i18n=\"ui.0f1f3c58fd43\">查看全部待办</span></button>"}</div>`;
   };
   list.addEventListener('click',e=>{if(e.target.closest('[data-todo-empty-all]'))window.mailaiTodoTab('all')});
-  window.mailaiTodoMatches=item=>view==='all'||view==='reminders'||(item.status!=='done'&&group(item)===view);
+  window.mailaiTodoCurrentView=()=>view;
+  window.mailaiTodoMatches=item=>view==='all'||view==='reminders'||view==='followups'||(item.status!=='done'&&group(item)===view);
   window.mailaiTodoCounts=()=>{
+    const followupRows=Array.isArray(window.mailaiFollowupRows)?window.mailaiFollowupRows:[];
     for(const [key,label] of Object.entries(names)){
-      const count=todoCenterRows.filter(r=>r.status!=='done'&&(key==='all'||group(r)===key)).length;
+      const count=key==='followups'
+        ? followupRows.filter(r=>r.state==='scheduled').length
+        : todoCenterRows.filter(r=>r.status!=='done'&&(key==='all'||group(r)===key)).length;
       tabs.querySelector(`[data-todo-view="${key}"]`).innerHTML=`<span>${label}</span><small>${count}</small>`;
     }
   };
   window.mailaiTodoTab=next=>{
     const changed=next!==view&&!todo.classList.contains('hidden');
-    view=next;const reminders=next==='reminders';
+    view=next;const reminders=next==='reminders', followups=next==='followups';
     todo.dataset.todoView=next;
-    list.classList.toggle('hidden',reminders);todo.querySelector('.todo-center-tools').classList.toggle('hidden',reminders);
+    list.classList.toggle('hidden',reminders);todo.querySelector('.todo-center-tools').classList.toggle('hidden',reminders||followups);
     tabs.querySelectorAll('[data-todo-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.todoView===next)));
     noticeButton.setAttribute('aria-pressed',String(reminders));
     if(!reminders){renderTodoCenter();if(changed)window.mailaiMotion?.reveal(list);}
@@ -58,9 +62,14 @@
     renderTodoCenter();
   };
   const options=document.getElementById('todo-options');
-  document.addEventListener('pointerdown',event=>{if(!options.contains(event.target))options.open=false;});
+  document.addEventListener('pointerdown',event=>{
+    if(!options.contains(event.target))options.open=false;
+    document.querySelectorAll('#todo-list .todo-followup-reschedule[open]').forEach(node=>{if(!node.contains(event.target))node.open=false;});
+  });
   document.addEventListener('keydown',event=>{
     if(event.key==='Escape'&&options.open){event.preventDefault();event.stopPropagation();options.open=false;options.querySelector('summary').focus();}
+    const openReschedule=event.key==='Escape'&&document.querySelector('#todo-list .todo-followup-reschedule[open]');
+    if(openReschedule){event.preventDefault();event.stopPropagation();openReschedule.open=false;openReschedule.querySelector('summary').focus();}
   },true);
   document.getElementById('todo-extra-actions').addEventListener('click',event=>{if(event.target.closest('button'))options.open=false;});
   mailaiBindUI(document.getElementById('todo-complete-all'), "textContent", () => (mailaiText('完成当前视图')));

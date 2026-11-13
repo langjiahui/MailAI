@@ -308,7 +308,32 @@
     if (opened) {
       document.getElementById('compose-ai-instruction').value = w('followupInstruction');
       toggleComposeAiPanel(true);
+      window.mailaiSyncComposePersona?.({seed});
     }
+  };
+  window.mailaiDraftFollowup = async (sentId, account, options = {}) => {
+    const active = activeMailAccount()?.id;
+    const language = typeof getI18nLanguage === 'function' ? getI18nLanguage() : 'zh-CN';
+    const seed = await api(`/api/work/followups/${Number(sentId)}/draft`, {
+      accountId: account,
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        tone: options.tone || 'auto',
+        instruction: options.instruction || '',
+        use_work_preferences: options.useWorkPreferences !== false,
+        language,
+      }),
+    });
+    if (active !== activeMailAccount()?.id) return false;
+    if (!document.getElementById('todo-center').classList.contains('hidden')) closeTodoCenter?.();
+    const opened = await openCompose({...seed, account_id: account});
+    if (opened) {
+      document.getElementById('compose-ai-instruction').value = w('followupInstruction');
+      if (seed.note) toast?.(mailaiSystemMessage(seed.note), seed.model_used ? 'success' : 'info');
+      window.mailaiSyncComposePersona?.({seed});
+    }
+    return opened;
   };
   window.mailaiOpenWork = async (id, account) => {
     if (account !== activeMailAccount()?.id) return;

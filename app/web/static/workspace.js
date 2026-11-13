@@ -576,10 +576,22 @@ async function loadSemanticStatus() {
     toggle.disabled = false;
     toggle.closest('label')?.removeAttribute('title');
     toggle.checked = !!prefs.semantic_enabled;
-    mailaiBindUI(status, "textContent", () => (stats.indexed
-      ? (mailaiT('semantic.indexed') || '已索引 {n} 封邮件').replace('{n}', stats.indexed) +
-        (stats.last_indexed_at ? ` · ${String(stats.last_indexed_at).slice(0, 16)}` : '')
-      : (mailaiT('semantic.notIndexed') || '尚未建立索引')));
+    const formatSemanticStatus = () => {
+      if (!stats.indexed) return mailaiT('semantic.notIndexed') || '尚未建立索引';
+      let text = (mailaiT('semantic.indexed') || '已索引 {n} 封邮件').replace('{n}', stats.indexed);
+      const files = Number(stats.attachment_files || 0);
+      const threads = Number(stats.thread_chunks || 0);
+      if (files && threads) {
+        text += (mailaiT('semantic.withAttachmentsAndThreads') || '（含 {a} 份附件、{t} 段会话）').replace('{a}', files).replace('{t}', threads);
+      } else if (files) {
+        text += (mailaiT('semantic.withAttachments') || '（含 {a} 份附件）').replace('{a}', files);
+      } else if (threads) {
+        text += (mailaiT('semantic.withThreads') || '（含 {t} 段会话）').replace('{t}', threads);
+      }
+      if (stats.last_indexed_at) text += ` · ${String(stats.last_indexed_at).slice(0, 16)}`;
+      return text;
+    };
+    mailaiBindUI(status, "textContent", formatSemanticStatus);
     if (stats.progress?.error) mailaiBindUI(status, "textContent", () => (mailaiT('semantic.indexFailed') || '索引更新未完成，可重试；关键词搜索仍可使用'));
     reindex.classList.toggle('hidden', !stats.enabled);
     // 重建进行中（例如刚触发后切换了页签再回来）时恢复进度条与轮询

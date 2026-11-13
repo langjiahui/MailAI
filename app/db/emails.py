@@ -14,7 +14,7 @@ def upsert_email(e: dict) -> int:
         "llm_phishing", "llm_reasons", "status", "reviewed", "feedback", "feedback_note",
         "url_chain", "final_landing_domain", "final_landing_ip", "review_source",
         "recommended_status", "action_mode", "action_taken", "action_reason",
-        "raw_path", "created_at", "arrival_kind", "processing_complete",
+        "raw_path", "list_unsubscribe", "is_automated", "created_at", "arrival_kind", "processing_complete",
     )
     e = dict(e)
     e.setdefault("folder", "INBOX")
@@ -62,13 +62,17 @@ def upsert_email(e: dict) -> int:
             "SELECT id FROM emails WHERE folder=? AND uid=?",
             (e.get("folder", "INBOX"), e["uid"]),
         ).fetchone()
-        # Changed message text must be embedded again by the next background pass.
-        if row and supplied.intersection({"subject", "from_name", "from_addr", "to_addr", "summary", "snippet", "body_text"}):
+        # Changed message text or thread grouping must be embedded again by the next background pass.
+        if row and supplied.intersection({"subject", "from_name", "from_addr", "to_addr", "summary", "snippet", "body_text", "thread_id"}):
             if c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='email_vectors'").fetchone():
                 c.execute("DELETE FROM email_vectors WHERE email_id=?", (row["id"],))
+            if c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='semantic_chunks'").fetchone():
+                c.execute("DELETE FROM semantic_chunks WHERE email_id=?", (row["id"],))
         if row and not was_present:
             from .mail_tags import apply_to_email
             apply_to_email(c, row['id'], e)
+            from ..triage_rules import apply_to_ingested_email
+            apply_to_ingested_email(c, row['id'], e)
         return row["id"]
 
 

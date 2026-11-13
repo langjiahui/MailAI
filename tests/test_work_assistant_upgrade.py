@@ -16,6 +16,11 @@ from app.account_context import use
 from app.llm import client
 
 FIXTURES = Path(__file__).parent/'fixtures'
+# Compatible additive columns introduced after v4.1.1; legacy rows must receive safe defaults only.
+ADDITIVE_MIGRATION_DEFAULTS = {
+    'todos': {'completed_at': None, 'recurrence': '', 'recurrence_source_id': None},
+    'emails': {'list_unsubscribe': '', 'is_automated': 0},
+}
 
 
 def snapshot(path, names=None):
@@ -26,8 +31,28 @@ def snapshot(path, names=None):
             # Shadow/virtual tables are search indexes, not user records.
             names = [row[1] for row in c.execute('PRAGMA table_list')
                      if row[2] == 'table' and not row[1].startswith('sqlite_')]
-        return {name: (c.execute(f'SELECT * FROM "{name}" LIMIT 0').description,
-                       sorted(c.execute(f'SELECT * FROM "{name}"').fetchall(), key=repr)) for name in names}
+            return {name: (c.execute(f'SELECT * FROM "{name}" LIMIT 0').description,
+                           sorted(c.execute(f'SELECT * FROM "{name}"').fetchall(), key=repr)) for name in names}
+        result = {}
+        allowed = ADDITIVE_MIGRATION_DEFAULTS if path.name == 'mailai.db' else {}
+        for name, (desc, _) in names.items():
+            base_cols = [col[0] for col in desc]
+            current_cols = [col[0] for col in c.execute(f'SELECT * FROM "{name}" LIMIT 0').description]
+            extra_cols = [col for col in current_cols if col not in base_cols]
+            expected_defaults = allowed.get(name, {})
+            assert set(extra_cols).issubset(expected_defaults), f'{name}: unexpected columns {extra_cols}'
+            if extra_cols:
+                extra_expr = ', '.join(f'"{col}"' for col in extra_cols)
+                for row in c.execute(f'SELECT {extra_expr} FROM "{name}"').fetchall():
+                    assert row == tuple(expected_defaults[col] for col in extra_cols), (
+                        f'{name}: additive column default changed on legacy row: {row}'
+                    )
+            select_expr = ', '.join(f'"{col}"' for col in base_cols)
+            result[name] = (
+                c.execute(f'SELECT {select_expr} FROM "{name}" LIMIT 0').description,
+                sorted(c.execute(f'SELECT {select_expr} FROM "{name}"').fetchall(), key=repr),
+            )
+        return result
 
 
 def main():

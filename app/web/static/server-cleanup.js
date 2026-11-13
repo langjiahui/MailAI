@@ -90,12 +90,27 @@ document.getElementById('cleanup-preview').onclick = async event => {
   } catch (error) { document.getElementById('cleanup-error').textContent = mailaiSystemMessage(error.message); }
   finally { setLoading(button,false); setCleanupBusy(false); }
 };
+async function postCleanupWithRetry(path, options) {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await api(path, options);
+    } catch (error) {
+      // AccountGuardMiddleware rejects immediately on 5ms background polls; retry briefly before failing.
+      if (error?.status === 409 && attempt < 5 && /邮箱仍有操作或对话正在进行/.test(error.message || '')) {
+        await new Promise(resolve => setTimeout(resolve, 160 * (attempt + 1)));
+        continue;
+      }
+      throw error;
+    }
+  }
+}
+
 document.getElementById('cleanup-execute').onclick = async event => {
   if (event.currentTarget.disabled) return;
   const dialog = document.getElementById('server-cleanup-dialog'), token = cleanupPreview.token;
   setCleanupBusy(true); const button = event.currentTarget; setLoading(button,true,cleanupT('cleanup.executing', '正在备份并清理，请勿退出…'));
   try {
-    const result = await api('/api/system/server-cleanup/execute', {accountId:dialog.dataset.accountId,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,confirmation:document.getElementById('cleanup-confirm-email').value,acknowledge:document.getElementById('cleanup-ack').checked})});
+    const result = await postCleanupWithRetry('/api/system/server-cleanup/execute', {accountId:dialog.dataset.accountId,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,confirmation:document.getElementById('cleanup-confirm-email').value,acknowledge:document.getElementById('cleanup-ack').checked})});
     document.getElementById('cleanup-result').innerHTML = renderCleanupResult(result);
     await loadData(); await loadBackups(); await refreshCleanupHistory(dialog.dataset.accountId);
   } catch (error) { document.getElementById('cleanup-error').textContent = mailaiSystemMessage(error.message) + cleanupT('cleanup.errorSuffix', '。若请求已开始，请查看最近清理记录并核对服务器，不要盲目重试。'); }
@@ -221,7 +236,7 @@ document.getElementById('cleanup-auto-save').onclick = async event => {
   cleanupAutoBusy = true; syncCleanupAutomation();
   document.getElementById('cleanup-auto-error').textContent = '';
   try {
-    const policy = await api('/api/system/server-cleanup/automation', {accountId, method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    const policy = await postCleanupWithRetry('/api/system/server-cleanup/automation', {accountId, method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
     if (accountId === activeMailAccount()?.id) { ++cleanupAutoLoadRevision; renderCleanupAutomation(policy); }
     dialog.close(); toast(cleanupT('cleanupAuto.saved', '自动清理设置已保存'), 'success');
   } catch (error) { document.getElementById('cleanup-auto-error').textContent = mailaiSystemMessage(error.message); }

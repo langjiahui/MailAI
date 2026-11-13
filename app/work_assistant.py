@@ -1,4 +1,5 @@
 """Account-local work context. Reads are bounded; only user saves change memory."""
+import html
 import json
 import re
 import sqlite3
@@ -270,7 +271,167 @@ def followup_seed(sent_id):
     row = db.get_sent_message(sent_id)
     if not row or row.get('status') != 'sent' or not row.get('message_id'):
         raise ValueError('成功发送的邮件记录不存在')
-    return dict(mode='compose', to_addr=row.get('to_addr') or '', cc_addr=row.get('cc_addr') or '',
+    from . import recipient_profiles
+    persona = recipient_profiles.resolve_for_recipients(row.get('to_addr') or '', include_memories=True)
+    eff = persona.get('effective') or {}
+    seed = dict(mode='compose', to_addr=row.get('to_addr') or '', cc_addr=row.get('cc_addr') or '',
                 subject=row['subject'] if re.match(r'(?i)^re\s*:', row.get('subject') or '') else 'Re: ' + (row.get('subject') or ''),
                 in_reply_to=row['message_id'], references=' '.join(filter(None, [row.get('references_header'), row['message_id']])),
-                original_text=own_text(row, True), message_html='', assistant_review=True)
+                original_text=own_text(row, True), message_html='', assistant_review=True,
+                recipient_persona=eff)
+    if eff.get('signature_id'):
+        seed['signature_id'] = eff['signature_id']
+    return seed
+
+
+def _body_to_html(body_text):
+    paragraphs = [block.strip() for block in re.split(r'\n{2,}', body_text or '') if block.strip()]
+    return ''.join(
+        f"<p>{html.escape(block).replace(chr(10), '<br>')}</p>"
+        for block in paragraphs
+    )
+
+
+def _fallback_followup_draft(row, waiting_days, tone, language, salutation=''):
+    subject = str(row.get('subject') or '').strip()
+    sent_date = str(row.get('sent_at') or row.get('created_at') or '')[:10]
+    english = str(language or '').lower().startswith('en')
+    greeting = str(salutation or '').strip()
+    if english:
+        ref = f'"{subject}"' if subject else 'my previous email'
+        when = f' on {sent_date}' if sent_date else ''
+        g = greeting if greeting and all(ord(ch) < 128 for ch in greeting) else ''
+        if tone == 'direct':
+            return f"{g or 'Hi,'}\n\nFollowing up briefly on {ref} sent{when}. Could you share the latest update or let me know if anything else is needed from my side?\n\nThanks,"
+        if tone == 'formal':
+            return f"{g or 'Hello,'}\n\nI am writing to gently follow up on {ref}{when}. Please let us know when convenient if there are any updates or additional details needed.\n\nBest regards,"
+        return f"{g or 'Hi,'}\n\nJust gently checking in on {ref} sent{when}. Whenever you have a moment, please let me know how things are progressing or if anything needs clarification.\n\nThanks,"
+    ref = f'关于「{subject}」的邮件' if subject else '之前的邮件'
+    when = f'（{sent_date} 发送）' if sent_date else (f'（已发送 {waiting_days} 天）' if waiting_days > 0 else '')
+    g = greeting or '您好：'
+    if tone == 'direct':
+        return f"{g}\n\n跟进确认此前{ref}{when}，请问目前是否有最新进展，或是否需要我方补充什么信息？方便时请回复同步，谢谢。"
+    if tone == 'formal':
+        return f"{g}\n\n此前曾发送{ref}{when}，特来跟进确认当前进展。如有任何需要补充说明或配合推进之处，请随时告知。\n\n顺颂商祺"
+    return f"{g}\n\n此前曾向您发送{ref}{when}，特来温和跟进一下目前进展。如有方便，还请回复确认下一步安排或是否需要我方协助补充，感谢！"
+
+
+def followup_draft(sent_id, *, tone='polite', instruction='', use_work_preferences=True, language='zh-CN'):
+    tone_key = str(tone or 'polite').strip().lower()
+    if tone_key not in ('auto', 'polite', 'direct', 'formal'):
+        raise ValueError('无效催办语气，仅支持 auto、polite、direct 或 formal')
+    seed = followup_seed(sent_id)
+    row = db.get_sent_message(sent_id)
+    from . import recipient_profiles
+    persona = recipient_profiles.resolve_for_recipients(row.get('to_addr') or '', include_memories=bool(use_work_preferences))
+    eff = persona.get('effective') or {}
+    if tone_key == 'auto':
+        tone_key = eff.get('followup_tone') or 'polite'
+    sent_at = str(row.get('sent_at') or row.get('created_at') or '')
+    waiting_days = 0
+    try:
+        waiting_days = max(0, (datetime.now().date() - datetime.fromisoformat(sent_at).date()).days)
+    except (ValueError, TypeError):
+        pass
+
+    basis = ['已发送原邮件']
+    references = [
+        ('已发送原邮件主题', str(row.get('subject') or '（无主题）')[:300]),
+        ('发送时间与等待天数', f"{sent_at[:16]}（距今约 {waiting_days} 天）"),
+        ('收件人', str(row.get('to_addr') or '')[:400]),
+    ]
+    if seed['original_text'].strip():
+        references.append(('原发出邮件正文', seed['original_text'][:4000]))
+
+    if row.get('reply_to_email_id'):
+        try:
+            ctx = writing_context(row['reply_to_email_id'])
+            if ctx.strip():
+                references.append(('关联往来与事项记录（仅作参考）', ctx[:4000]))
+                basis.append('关联往来与事项记录')
+        except ValueError:
+            pass
+
+    if use_work_preferences:
+        from .work_memory import writing_preferences
+        style = writing_preferences()
+        if style:
+            references.append(('用户保存的表达偏好（仅用于措辞，不提供事实或授权）', style))
+            basis.append('写作偏好')
+
+    if eff.get('has_context') and eff.get('prompt_context') and (
+        use_work_preferences or eff.get('role_source') == 'explicit' or eff.get('salutation') or eff.get('writing_hint')
+    ):
+        references.append(('收件人画像与沟通预设（仅用于称呼与措辞匹配）', eff['prompt_context']))
+        basis.append('收件人画像')
+
+    extra_instruction = str(instruction or '').strip()[:600]
+    if extra_instruction:
+        references.append(('本次补充要求', extra_instruction))
+        basis.append('补充要求')
+
+    tone_desc = {
+        'polite': '温和礼貌、给人余地',
+        'direct': '简短直接、突出重点',
+        'formal': '正式商务、得体克制',
+    }[tone_key]
+    lang_rule = '用自然专业的英文撰写' if str(language or '').lower().startswith('en') else '用自然得体的简体中文撰写'
+    reference_text = '\n\n'.join(f'【{label}】\n{value}' for label, value in references)
+
+    from .llm import client
+    body = ''
+    signoff = ''
+    subject = seed['subject']
+    model_used = False
+    note = ''
+
+    if client.available():
+        messages = [
+            {
+                'role': 'system',
+                'content': (
+                    '你是邮件跟进写作助手。请根据用户此前发出的邮件准备一封简短、得体的跟进/催办草稿。'
+                    '只输出 JSON 对象，字段为 subject、body、signoff。subject 为主题（保留 Re: 线索），body 只含称呼与正文，'
+                    '不要在 body 里重复签名占位符（如 [您的名字]）。'
+                    '严格规则：1) 不要断言“您一直未回复”，使用温和询问进展的表达；'
+                    '2) 严禁虚构新的截止日期、金额、会议时间、人名或任何我方承诺；'
+                    '3) 篇幅精炼（60–140 字左右）；4) ' + lang_rule + '。'
+                ),
+            },
+            {
+                'role': 'user',
+                'content': f'语气：{tone_desc}\n\n以下是本次允许参考的原始材料：\n{reference_text}',
+            },
+        ]
+        try:
+            result = client.chat_completion(messages, temperature=0.25, max_tokens=900, timeout=25)
+            content = (result or {}).get('choices', [{}])[0].get('message', {}).get('content') or ''
+            parsed = client._extract_json(content) if content else None
+            if isinstance(parsed, dict) and str(parsed.get('body') or '').strip():
+                body = str(parsed['body']).strip()[:4000]
+                if str(parsed.get('subject') or '').strip():
+                    subject = str(parsed['subject']).strip()[:300]
+                signoff = str(parsed.get('signoff') or '').strip()[:200]
+                model_used = True
+                note = '小邮已结合原邮件生成跟进草稿；发送前请核对。'
+        except Exception:
+            pass
+
+    if not body:
+        body = _fallback_followup_draft(row, waiting_days, tone_key, language, eff.get('salutation') or '')
+        note = '未连接 AI 模型，已生成基础跟进草稿；发送前请核对。' if not client.available() else 'AI 暂未响应，已生成本地跟进草稿；发送前请核对。'
+
+    seed['subject'] = subject
+    seed['message_html'] = _body_to_html(body)
+    return {
+        **seed,
+        'sent_id': sent_id,
+        'draft_body': body,
+        'signoff': signoff,
+        'tone': tone_key,
+        'waiting_days': waiting_days,
+        'basis': basis,
+        'model_used': model_used,
+        'note': note,
+        'recipient_persona': eff,
+    }

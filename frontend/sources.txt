@@ -8,6 +8,7 @@ i18n-runtime.js
 attachment-preview.js
 interaction-core.js
 energy-ui.js
+mailai-state.js
 app.js
 mailbox-store.js
 reading-start.js
@@ -54,6 +55,12 @@ diagnostics-progress.js
 
 contact-directory.js
 contact-filters.js
+contact-persona.js
+periodic-briefing.js
+calendar-timeline.js
+triage-rules.js
+compose-guard.js
+todo-quick-actions.js
 mail-import.js
 mail-recovery.js
 task-activity.js
@@ -61,4 +68,8 @@ help-center.js
 date-time-picker.js
 
 mail-tags.js
+share-links.js
+signature-manager.js
+backup-migration.js
+pane-resizers.js
 native-menu.js

@@ -140,6 +140,10 @@ if (typeof document !== 'undefined') {
 function mailaiCopySource(label) {
   if (mailaiUICopyKeys.has(label)) return label;
   for (const [source, key] of mailaiUICopyKeys) if (I18N_MESSAGES.en[key] === label) return source;
+  for (const [, pair] of Object.entries(MAILAI_UI_COPY)) if (pair[1] === label) return pair[0];
+  for (const [key, source] of Object.entries(MAILAI_I18N_CHINESE)) {
+    if (typeof source === 'string' && I18N_MESSAGES.en[key] === label) return source;
+  }
   for (const [key, [source, english]] of mailaiSystemPatterns) {
     if (english.replace(/\{\d+\}/g, '').trim().length < 8) continue;
     const parameters = mailaiUIReadParameters(english, label);

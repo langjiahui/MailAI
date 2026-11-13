@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Request, Query
 from starlette.concurrency import run_in_threadpool
 from fastapi.responses import Response
 
-from ... import db, contact_directory
+from ... import db, contact_directory, recipient_profiles, signatures
 from ..helpers import correspondence_payload, valid_contact_email
 from ..schemas import (ContactFavoriteRequest, ContactGroupMembersRequest,
                        ContactGroupRequest, ContactRequest, ContactPendingRequest)
@@ -53,14 +53,61 @@ def api_save_contact(payload: ContactRequest):
     email = valid_contact_email(payload.email)
     try:
         profile = contact_directory.normalize_profile(payload.profile) if payload.profile is not None else None
+        comm_profile = recipient_profiles.normalize_profile(
+            payload.comm_profile,
+            valid_signatures=set(recipient_profiles._signature_map().keys()),
+        ) if payload.comm_profile is not None else None
     except ValueError as exc:
         raise HTTPException(400,str(exc))
     try:
         return db.save_contact(email,payload.name,payload.company,payload.note,payload.favorite,
                                profile=profile,group_name=payload.group_name,
-                               expected_directory_revision=payload.directory_revision)
+                               expected_directory_revision=payload.directory_revision,
+                               comm_profile=comm_profile)
     except ValueError as exc:
         raise HTTPException(409,str(exc))
+
+
+@router.get("/api/mail/contacts/role-presets")
+def api_get_role_presets():
+    sig_state = signatures.load()
+    return {
+        "presets": recipient_profiles.role_presets(),
+        "defaults": recipient_profiles.ROLE_DEFAULTS,
+        "signatures": [{"id": s["id"], "name": s["name"]} for s in sig_state.get("items") or []],
+        "default_signature_id": sig_state.get("default_id") or "",
+    }
+
+
+@router.put("/api/mail/contacts/role-presets")
+def api_save_role_presets(payload: dict):
+    try:
+        presets = recipient_profiles.save_role_presets(payload)
+        sig_state = signatures.load()
+        return {
+            "presets": presets,
+            "defaults": recipient_profiles.ROLE_DEFAULTS,
+            "signatures": [{"id": s["id"], "name": s["name"]} for s in sig_state.get("items") or []],
+            "default_signature_id": sig_state.get("default_id") or "",
+        }
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@router.post("/api/mail/contacts/resolve-persona")
+def api_resolve_persona(payload: dict):
+    recipients = str((payload or {}).get("recipients") or "")[:2000]
+    include_memories = bool((payload or {}).get("include_memories", True))
+    return recipient_profiles.resolve_for_recipients(recipients, include_memories=include_memories)
+
+
+@router.put("/api/mail/contacts/persona")
+def api_save_contact_persona(payload: dict):
+    try:
+        email = str((payload or {}).get("email") or "").strip()
+        return recipient_profiles.upsert_contact_persona(email, payload or {})
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
 
 
 

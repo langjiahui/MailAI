@@ -1,0 +1,384 @@
+/* Communication persona badges, contact persona editor, role presets, and compose strip. */
+.contact-role-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 550;
+  line-height: 1.4;
+  background: var(--desk-selected);
+  color: var(--desk-accent);
+  border: 1px solid color-mix(in srgb, var(--desk-accent) 26%, transparent);
+}
+.contact-role-pill[data-role-key="leader"] {
+  background: color-mix(in srgb, #b87c24 14%, var(--desk-surface));
+  color: #8f5810;
+  border-color: color-mix(in srgb, #b87c24 30%, transparent);
+}
+html[data-theme="dark"] .contact-role-pill[data-role-key="leader"] {
+  background: rgba(214, 158, 66, 0.16);
+  color: #f0ca86;
+  border-color: rgba(214, 158, 66, 0.32);
+}
+.contact-role-pill[data-role-key="customer"] {
+  background: color-mix(in srgb, #1f7a5c 14%, var(--desk-surface));
+  color: #176148;
+}
+html[data-theme="dark"] .contact-role-pill[data-role-key="customer"] {
+  background: rgba(82, 196, 143, 0.16);
+  color: #8ce4ba;
+  border-color: rgba(82, 196, 143, 0.3);
+}
+.contact-role-pill[data-role-key="partner"] {
+  background: color-mix(in srgb, #446e9b 13%, var(--desk-surface));
+  color: #30557d;
+  border-color: color-mix(in srgb, #446e9b 26%, transparent);
+}
+html[data-theme="dark"] .contact-role-pill[data-role-key="partner"] {
+  background: rgba(110, 166, 224, 0.16);
+  color: #a4ccf5;
+  border-color: rgba(110, 166, 224, 0.3);
+}
+.contact-role-pill[data-role-source="inferred"] {
+  border-style: dashed;
+}
+
+.persona-role-presets-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid var(--desk-line);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--desk-ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.persona-role-presets-btn:hover {
+  background: var(--desk-hover);
+}
+.persona-role-presets-btn:focus-visible,
+.compose-persona-actions button:focus-visible,
+.persona-dialog :is(button, input, select, textarea):focus-visible {
+  outline: 2px solid var(--desk-accent);
+  outline-offset: 2px;
+}
+
+.persona-editor-details {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--desk-line);
+  padding-top: 10px;
+}
+.persona-editor-details > summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  cursor: pointer;
+  list-style: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--desk-ink);
+  padding: 4px 0;
+}
+.persona-editor-details > summary::-webkit-details-marker {
+  display: none;
+}
+.persona-editor-details > summary small {
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--desk-muted);
+}
+.persona-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+  margin-top: 10px;
+}
+.persona-editor-grid label {
+  display: grid;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--desk-muted);
+}
+.persona-editor-grid label.wide {
+  grid-column: 1 / -1;
+}
+.persona-editor-grid :is(input, select, textarea) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--desk-line);
+  border-radius: 8px;
+  background: var(--desk-muted-surface);
+  color: var(--desk-ink);
+  font: inherit;
+  font-size: 13px;
+}
+.persona-editor-detected {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 12px;
+  color: var(--desk-accent);
+}
+
+.compose-persona-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  padding: 6px 24px 8px;
+  border-bottom: 1px solid var(--desk-line);
+  background: transparent;
+  font-size: 12px;
+  color: var(--desk-ink);
+}
+.compose-persona-strip.hidden {
+  display: none !important;
+}
+.compose-persona-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  flex: 1 1 260px;
+  min-width: 0;
+}
+.compose-persona-summary {
+  color: var(--desk-muted);
+  overflow-wrap: anywhere;
+}
+.compose-persona-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--desk-surface);
+  border: 1px solid var(--desk-line);
+  color: var(--desk-ink);
+  font-size: 11px;
+}
+.compose-persona-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: auto;
+}
+.compose-persona-actions button {
+  padding: 4px 9px;
+  min-height: 26px;
+  border: 1px solid var(--desk-line);
+  border-radius: 7px;
+  background: var(--desk-surface);
+  color: var(--desk-ink);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.compose-persona-actions button:hover {
+  background: var(--desk-hover);
+}
+.compose-persona-actions button.is-suggested {
+  background: var(--desk-selected);
+  border-color: color-mix(in srgb, var(--desk-accent) 42%, var(--desk-line));
+  color: var(--desk-accent);
+  font-weight: 550;
+}
+.compose-ai-persona-note {
+  margin: 8px 0 0;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--desk-muted-surface);
+  border: 1px solid var(--desk-line);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--desk-muted);
+}
+.compose-ai-persona-note strong {
+  color: var(--desk-ink);
+  font-weight: 550;
+}
+
+.persona-dialog {
+  padding: 0;
+  width: min(680px, calc(100vw / var(--fz, 1) - 28px));
+  max-height: calc(100dvh / var(--fz, 1) - 36px);
+  border: 1px solid var(--desk-line);
+  border-radius: 14px;
+  background: var(--desk-surface);
+  color: var(--desk-ink);
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.28);
+  font: inherit;
+  font-size: 13px;
+}
+.persona-dialog::backdrop {
+  background: rgba(8, 17, 12, 0.56);
+  backdrop-filter: blur(3px);
+}
+.persona-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+.persona-dialog > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--desk-line);
+  flex: none;
+}
+.persona-dialog > header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+.persona-dialog > header p {
+  margin: 5px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--desk-muted);
+}
+.persona-dialog > header button {
+  border: 0;
+  background: transparent;
+  color: var(--desk-muted);
+  font-size: 20px;
+  line-height: 1;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+.persona-dialog form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+.persona-dialog-body {
+  padding: 16px 22px;
+  overflow: auto;
+  display: grid;
+  gap: 12px;
+}
+.role-preset-card {
+  border: 1px solid var(--desk-line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: var(--desk-muted-surface);
+  display: grid;
+  gap: 10px;
+}
+.role-preset-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.role-preset-card-head strong {
+  font-size: 14px;
+}
+.role-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.persona-dialog-body label {
+  display: grid;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--desk-muted);
+}
+.persona-dialog-body label.wide {
+  grid-column: 1 / -1;
+}
+.persona-dialog-body :is(input, select, textarea) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--desk-line);
+  border-radius: 8px;
+  background: var(--desk-surface);
+  color: var(--desk-ink);
+  font: inherit;
+  font-size: 13px;
+}
+.persona-dialog footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 22px;
+  border-top: 1px solid var(--desk-line);
+  flex: none;
+}
+.persona-dialog footer button {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--desk-line);
+  background: var(--desk-muted-surface);
+  color: var(--desk-ink);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.persona-dialog footer button.primary-action {
+  background: var(--desk-accent);
+  border-color: transparent;
+  color: var(--reward-on-accent, var(--desk-surface));
+  font-weight: 550;
+}
+.persona-dialog-status {
+  margin: 0;
+  font-size: 12px;
+  color: var(--desk-muted);
+}
+.persona-dialog-status.is-error {
+  color: var(--ui-danger, #c96156);
+}
+
+html[data-theme] body .compose-modal:has(>.productivity-expanded):has(>.compose-ai-panel:not(.hidden)) > .compose-card > .compose-persona-strip {
+  margin-right: 384px !important;
+}
+@media (max-width: 1120px) {
+  html[data-theme] body .compose-modal:has(>.productivity-expanded):has(>.compose-ai-panel:not(.hidden)) > .compose-card > .compose-persona-strip {
+    margin-right: 0 !important;
+  }
+}
+@media (max-width: 760px) {
+  .compose-persona-strip {
+    padding: 8px 14px;
+  }
+  .persona-editor-grid,
+  .role-preset-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+html.windows-performance .persona-dialog::backdrop,
+html[data-perf-tier="low"] .persona-dialog::backdrop {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .persona-dialog::backdrop {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .persona-dialog *,
+  .persona-editor-details *,
+  .compose-persona-strip * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

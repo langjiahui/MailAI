@@ -99,12 +99,75 @@ def extract_local(email_id, index, *, cache=False):
     if result.get("kind") != "text":
         raise ValueError(result.get("message") or "文字提取未完成，请稍后重试")
     if cache:
-        with db.conn() as c:
-            c.execute(
-                'INSERT OR REPLACE INTO attachment_text_index VALUES(?,?,?,?,?,?)',
-                (email_id, index, result['digest'], result['name'], result['text'], result['note']),
-            )
+        save_cache(email_id, index, result['digest'], result['name'], result['text'], result['note'])
     return result
+
+
+def save_cache(email_id: int, index: int, digest: str, name: str, body: str, note: str, connection=None):
+    """Persist verified extracted attachment text and invalidate stale semantic attachment chunks."""
+    def _write(c):
+        c.execute(
+            'INSERT OR REPLACE INTO attachment_text_index VALUES(?,?,?,?,?,?)',
+            (email_id, index, digest, name, body, note),
+        )
+        if c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='semantic_chunks'").fetchone():
+            base = int(index) * 100
+            c.execute(
+                "DELETE FROM semantic_chunks WHERE email_id=? AND chunk_kind='attachment' AND chunk_index>=? AND chunk_index<?",
+                (email_id, base, base + 100),
+            )
+
+    if connection is not None:
+        _write(connection)
+        return
+    with db.conn() as c:
+        _write(c)
+
+
+def warm_email_attachments(email_id: int, *, max_files: int = 4) -> int:
+    """Best-effort extract and cache supported document attachments for local search/semantic indexing."""
+    from . import assistant_attachments
+
+    row = db.get_email(email_id)
+    if (
+        not row
+        or row.get("remote_missing")
+        or row.get("status") in ("trash", "spam", "quarantine")
+    ):
+        return 0
+    raw_path = Path(row.get("raw_path") or "")
+    if not raw_path.is_file() or raw_path.stat().st_size > 40 * 1024 * 1024:
+        return 0
+    try:
+        catalog = assistant_attachments.catalog(email_id)
+    except ValueError:
+        return 0
+    with db.conn() as c:
+        existing = {
+            int(r["attachment_index"]): (r["digest"], r["name"])
+            for r in c.execute(
+                "SELECT attachment_index, digest, name FROM attachment_text_index WHERE email_id=?",
+                (email_id,),
+            ).fetchall()
+        }
+    warmed = 0
+    for item in catalog.get("items") or []:
+        if warmed >= max_files:
+            break
+        if not item.get("supported"):
+            continue
+        ext = assistant_attachments.kind(item.get("name") or "")
+        if ext in ("png", "jpg", "jpeg", "webp"):
+            continue
+        idx = int(item["index"])
+        if idx in existing and existing[idx][1] == item.get("name"):
+            continue
+        try:
+            extract_local(email_id, idx, cache=True)
+            warmed += 1
+        except ValueError:
+            continue
+    return warmed
 
 
 def search_excerpts(text, query):

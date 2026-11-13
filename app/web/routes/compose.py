@@ -309,6 +309,13 @@ def _compose_assist_context(payload: ComposeAssistRequest, *, streaming: bool = 
         if style:
             references.append(('用户保存的表达偏好（仅用于措辞，不提供事实或授权）', style))
             basis.append('写作偏好')
+    if payload.recipients.strip():
+        from ...recipient_profiles import resolve_for_recipients
+        persona = resolve_for_recipients(payload.recipients, include_memories=bool(payload.use_work_preferences))
+        eff = persona.get('effective') or {}
+        if eff.get('has_context') and eff.get('prompt_context'):
+            references.append(('收件人画像与沟通预设（仅用于称呼、语气与措辞匹配；不提供事实或授权）', eff['prompt_context']))
+            basis.append('收件人画像与角色预设')
     values = (
         ("写作要求", payload.user_instruction[:1000]),
         ("邮件主题", payload.subject[:300]),
@@ -461,7 +468,7 @@ def api_mail_preflight(payload: MailPreflightRequest):
     except ValueError as exc:
         raise HTTPException(400, str(exc))
     envelope_recipients = normalized.pop("recipients")
-    if not envelope_recipients:
+    if not envelope_recipients and not payload.allow_empty_recipients:
         raise HTTPException(400, "至少需要一个有效的收件人")
     review = outgoing_guard.review(payload.model_dump(), envelope_recipients)
     return {**review, "recipients": smtp_client.recipient_fields_for_display(normalized),

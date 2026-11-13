@@ -221,6 +221,43 @@ CREATE TABLE IF NOT EXISTS digest_history (
     content TEXT,
     created_at TEXT
 );
+CREATE TABLE IF NOT EXISTS periodic_briefings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    period TEXT NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    style TEXT NOT NULL DEFAULT 'leader',
+    title TEXT NOT NULL DEFAULT '',
+    content TEXT NOT NULL DEFAULT '',
+    metrics_json TEXT NOT NULL DEFAULT '{}',
+    source TEXT NOT NULL DEFAULT 'local',
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_periodic_briefings_created ON periodic_briefings(created_at DESC, id DESC);
+CREATE TABLE IF NOT EXISTS calendar_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    start_at TEXT NOT NULL,
+    end_at TEXT NOT NULL,
+    all_day INTEGER NOT NULL DEFAULT 0,
+    location TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    source_email_id INTEGER REFERENCES emails(id),
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_calendar_events_start ON calendar_events(start_at);
+CREATE TABLE IF NOT EXISTS auto_triage_rules (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    match_mode TEXT NOT NULL DEFAULT 'all',
+    conditions_json TEXT NOT NULL,
+    actions_json TEXT NOT NULL,
+    hit_count INTEGER NOT NULL DEFAULT 0,
+    last_hit_at TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS rule_settings (
     code TEXT PRIMARY KEY,
     enabled INTEGER NOT NULL DEFAULT 1,
@@ -299,6 +336,15 @@ CREATE TABLE IF NOT EXISTS contact_tag_members (
     PRIMARY KEY(email,tag)
 );
 CREATE INDEX IF NOT EXISTS idx_contact_tag_members_tag ON contact_tag_members(tag);
+CREATE TABLE IF NOT EXISTS contact_communication_profiles (
+    email TEXT PRIMARY KEY COLLATE NOCASE,
+    role_key TEXT NOT NULL DEFAULT '',
+    salutation TEXT NOT NULL DEFAULT '',
+    tone TEXT NOT NULL DEFAULT '',
+    writing_hint TEXT NOT NULL DEFAULT '',
+    signature_id TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL DEFAULT ''
+);
 CREATE TABLE IF NOT EXISTS assistant_conversations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
@@ -513,6 +559,8 @@ def _run_migrations(c):
         "notification_sent": "INTEGER NOT NULL DEFAULT 0",
         "notification_claim": "TEXT NOT NULL DEFAULT ''",
         "notification_retry_at": "REAL NOT NULL DEFAULT 0",
+        "list_unsubscribe": "TEXT NOT NULL DEFAULT ''",
+        "is_automated": "INTEGER NOT NULL DEFAULT 0",
     }
     for col, dtype in new_email_cols.items():
         if col not in emails_cols:
@@ -539,6 +587,11 @@ def _run_migrations(c):
     c.execute('CREATE INDEX IF NOT EXISTS idx_sent_progress_reply ON sent_messages(reply_to_email_id)')
     if 'group_name' not in _columns_of(c, 'contacts'):
         c.execute("ALTER TABLE contacts ADD COLUMN group_name TEXT DEFAULT ''")
+    if 'completed_at' not in _columns_of(c, 'todos'):
+        c.execute("ALTER TABLE todos ADD COLUMN completed_at TEXT")
+    for column, definition in {'recurrence': "TEXT DEFAULT ''", 'recurrence_source_id': 'INTEGER'}.items():
+        if column not in _columns_of(c, 'todos'):
+            c.execute(f'ALTER TABLE todos ADD COLUMN {column} {definition}')
     c.execute("CREATE TABLE IF NOT EXISTS server_cleanup_jobs(token TEXT PRIMARY KEY,payload TEXT NOT NULL,status TEXT NOT NULL,created_at TEXT NOT NULL,expires_at TEXT NOT NULL,result TEXT DEFAULT '{}')")
     from ..contact_directory import init_schema as init_directory_schema
     init_directory_schema(c)

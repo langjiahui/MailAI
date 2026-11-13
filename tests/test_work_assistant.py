@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from app import db, config, work_assistant as work, companion_growth as growth, task_planner, mail_assistant, assistant_actions
+from app import db, config, work_assistant as work, companion_growth as growth, task_planner, mail_assistant, assistant_actions, sent_followups
 from app.account_context import use
 from app.llm import client
 from app.web.routes.compose import _compose_assist_context
@@ -117,6 +117,33 @@ def main():
             seed = work.followup_seed(sent)
             assert seed['in_reply_to'] == '<sent@example.test>' and seed['message_html'] == ''
             assert seed['original_text'].strip() == '请反馈名单。'
+            # Follow-up drafting never auto-sends; supports offline fallback + grounded AI draft + schedule/cancel.
+            with patch.object(client, 'available', return_value=False):
+                offline = work.followup_draft(sent, tone='polite')
+                direct = work.followup_draft(sent, tone='direct', language='en')
+            assert offline['model_used'] is False and offline['in_reply_to'] == '<sent@example.test>'
+            assert '项目排期' in offline['draft_body'] and '<p>' in offline['message_html']
+            assert '未连接' in offline['note']
+            assert direct['model_used'] is False and 'Following up briefly' in direct['draft_body']
+            fake_nudge = {'choices': [{'message': {'content': json.dumps({
+                'subject': 'Re: 项目排期',
+                'body': '您好：\n\n此前发出的「项目排期」邮件不知目前确认进展如何，方便时请反馈，感谢！',
+                'signoff': '',
+            })}, 'finish_reason': 'stop'}]}
+            with patch.object(client, 'available', return_value=True), patch.object(client, 'chat_completion', return_value=fake_nudge):
+                ai_draft = work.followup_draft(sent, tone='formal', use_work_preferences=True)
+            assert ai_draft['model_used'] is True and '项目排期' in ai_draft['draft_body']
+            with patch.object(client, 'available', return_value=True), patch.object(client, 'chat_completion', side_effect=RuntimeError('network down')):
+                degraded = work.followup_draft(sent, tone='polite')
+            assert degraded['model_used'] is False and '项目排期' in degraded['draft_body']
+            scheduled = sent_followups.schedule(sent, days=3)
+            assert scheduled['ok'] and scheduled['at']
+            listed = sent_followups.items()
+            assert listed[0]['sent_id'] == sent and listed[0]['snippet'] == '请反馈名单。' and listed[0]['state'] == 'scheduled'
+            sent_followups.arrange(sent, cancel=True)
+            assert sent_followups.items()[0]['state'] == 'canceled'
+            sent_followups.schedule(sent, days=2)
+            assert sent_followups.items()[0]['state'] == 'scheduled'
             assert len(db.list_sent_messages()) == 1
             # Explicit requests are sufficient to save; ordinary/temporary turns do not become personal memory.
             memory_before = db.mailbox_revision()

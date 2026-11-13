@@ -168,6 +168,8 @@ def search_contacts(query: str = "", limit: int = 20, favorites_only: bool = Fal
         directory_profiles = profiles(c)
         from . import contact_tags
         personal_tags = contact_tags.members(c)
+        from .. import recipient_profiles
+        comm_profiles = recipient_profiles.saved_profiles(c)
 
     def remember(address: str, name: str = "", contact_date: str = ""):
         address = (address or "").strip().lower()
@@ -226,11 +228,18 @@ def search_contacts(query: str = "", limit: int = 20, favorites_only: bool = Fal
         if (not item["manual"] or not str(item["name"] or "").strip()) and address in learned_names:
             item["name"] = learned_names[address]["name"]
     from ..contact_directory import _signature
+    from .. import recipient_profiles
+    presets = recipient_profiles.role_presets()
+    sigs = recipient_profiles._signature_map()
+    my_domain = recipient_profiles._my_corporate_domain()
     saved_by_email={row['email'].casefold():dict(row) for row in saved_rows}
     for address,item in contacts.items():
         item["correspondence_count"] = correspondence_counts.get(address, 0)
         item['directory_revision']=_signature(saved_by_email.get(address),directory_profiles.get(address,{}))
         contact_tags.annotate(item, personal_tags.get(address, []))
+        saved_comm = comm_profiles.get(address) or {"role_key": "", "salutation": "", "tone": "", "writing_hint": "", "signature_id": ""}
+        item['comm_profile'] = saved_comm
+        item['persona'] = recipient_profiles.resolve_contact_summary(item, saved_comm, presets, sigs, my_domain)
     values = [item for address, item in contacts.items() if address not in hidden]
     values = filter_contact_values(values,query,favorites_only,group_name,department,tags=tags,tag_mode=tag_mode,company=company)
     values = sorted(values, key=lambda item: (-int(item["favorite"]), -item["count"], item["email"]))
@@ -258,7 +267,8 @@ def filter_contact_values(values, query='', favorites_only=False, group_name='',
 
 
 def save_contact(email: str, name: str = "", company: str = "", note: str = "",
-                 favorite: bool = False, *, profile=None, group_name=None, expected_directory_revision=None) -> dict:
+                 favorite: bool = False, *, profile=None, group_name=None, expected_directory_revision=None,
+                 comm_profile=None) -> dict:
     """新增或更新个人联系人；历史学习到的记录会被个人资料覆盖。"""
     normalized = (email or "").strip().lower()
     now = datetime.now().isoformat(timespec="seconds")
@@ -277,6 +287,9 @@ def save_contact(email: str, name: str = "", company: str = "", note: str = "",
         )
         if profile is not None:
             save_profile(c,normalized,profile)
+        if comm_profile is not None:
+            from .. import recipient_profiles
+            recipient_profiles.save_profile(c, normalized, comm_profile)
         if group_name is not None:
             group=str(group_name).strip()[:80]
             if group: c.execute('INSERT OR IGNORE INTO contact_groups(name) VALUES(?)',(group,))
