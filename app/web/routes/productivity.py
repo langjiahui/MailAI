@@ -466,3 +466,68 @@ def arrange_followup(sent_id:int,payload:dict):
 def ai_evidence(email_id:int):
     from ...mail_evidence import semantic_compare
     return checked(semantic_compare,email_id)
+
+
+@router.get('/api/productivity/triage/subscriptions')
+def triage_subscriptions(days: int = 45, min_count: int = 2):
+    from ...triage_rules import scan_subscriptions
+
+    return checked(scan_subscriptions, days, min_count)
+
+
+@router.post('/api/productivity/triage/sender-batch')
+def triage_sender_batch_route(payload: dict):
+    from ...triage_rules import triage_sender_batch
+
+    return checked(
+        triage_sender_batch,
+        str(payload.get('sender_addr') or ''),
+        str(payload.get('mode') or 'keep_latest_done'),
+    )
+
+
+@router.get('/api/productivity/triage/rules')
+def triage_rules_list():
+    from ...triage_rules import list_rules
+
+    return {'rules': checked(list_rules)}
+
+
+@router.post('/api/productivity/triage/rules')
+def triage_rule_save(payload: dict):
+    from ...triage_rules import save_rule
+
+    return checked(save_rule, payload)
+
+
+@router.patch('/api/productivity/triage/rules/{rule_id}')
+def triage_rule_toggle(rule_id: int, payload: dict):
+    from ...triage_rules import toggle_rule
+
+    return checked(toggle_rule, rule_id, bool(payload.get('enabled', True)))
+
+
+@router.delete('/api/productivity/triage/rules/{rule_id}')
+def triage_rule_delete(rule_id: int):
+    from fastapi import HTTPException
+    from ...triage_rules import delete_rule
+
+    if not checked(delete_rule, rule_id):
+        raise HTTPException(404, '规则不存在')
+    return {'ok': True}
+
+
+@router.post('/api/productivity/triage/rules/preview')
+def triage_rule_preview(payload: dict):
+    from ...triage_rules import preview_rule
+
+    return checked(preview_rule, payload)
+
+
+@router.post('/api/productivity/triage/rules/apply')
+def triage_rules_apply(payload: dict | None = None):
+    from ...triage_rules import apply_rules_existing
+
+    raw_id = (payload or {}).get('rule_id')
+    rule_id = int(raw_id) if raw_id is not None else None
+    return checked(apply_rules_existing, rule_id)

@@ -433,6 +433,12 @@ def process_message(mail: MailClient, uid: int, raw: bytes,
         "final_landing_ip": final_ip,
         "review_source": review_source,
         "raw_path": email["raw_path"],
+        "list_unsubscribe": str(email.get("list_unsubscribe") or "")[:500],
+        "is_automated": 1 if (
+            email.get("list_unsubscribe")
+            or str(email.get("precedence") or "").lower() in ("bulk", "list", "junk")
+            or str((email.get("headers") or {}).get("auto-submitted") or "").lower() not in ("", "no")
+        ) else 0,
         "processing_complete": 0,
     }
     record['_purge_digest'] = trash_purge.digest(raw)

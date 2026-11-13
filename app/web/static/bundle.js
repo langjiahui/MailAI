@@ -17425,7 +17425,95 @@ const MAILAI_UI_COPY = {
   "timeline.jsSysErr": ["写入系统日历失败", "Failed to add to macOS Calendar"],
   "timeline.jsSysWriting": ["正在写入…", "Writing…"],
   "timeline.prodOpenBtn": ["打开日程时间线", "Open Schedule Timeline"],
-  "timeline.cmdPalette": ["日程时间线（Deadlines & 会议）", "Schedule Timeline (Deadlines & Meetings)"]
+  "timeline.cmdPalette": ["日程时间线（Deadlines & 会议）", "Schedule Timeline (Deadlines & Meetings)"],
+  "triage.openFromTodo": ["订阅降噪 & 自动分流", "Noise & Auto-Triage"],
+  "triage.title": ["订阅降噪与自动分流规则", "Subscription Cleanup & Auto-Triage"],
+  "triage.subtitle": ["识别高频重复推送并安全批处理，自定义新邮件入库自动已读、归档与打标签规则", "Detect recurring notifications safely and configure auto-read, workflow, and tag rules"],
+  "triage.tabsAria": ["分流中心模式", "Triage center mode"],
+  "triage.tabSubs": ["高频推送降噪", "Subscription Cleanup"],
+  "triage.tabRules": ["自动分流规则", "Auto-Triage Rules"],
+  "triage.subsSafety": ["仅统计安全收件箱邮件，绝不自动请求外网退订链接或删除服务器邮件。", "Scans clean inbox emails only. Never auto-fetches unsubscribe links or deletes mail."],
+  "triage.refresh": ["重新扫描", "Rescan"],
+  "triage.rulesHint": ["仅对干净收件箱邮件生效；隔离或疑似钓鱼邮件不会绕过安全检查。", "Applies to clean inbox emails only; quarantined or phishing mail never bypasses security."],
+  "triage.newRule": ["+ 新建分流规则", "+ New Rule"],
+  "triage.applyAll": ["对收件箱运行全部规则", "Run All Rules on Inbox"],
+  "triage.ruleName": ["规则名称", "Rule Name"],
+  "triage.ruleNamePh": ["例如：日报推送自动归档", "e.g., Auto-archive daily digests"],
+  "triage.matchMode": ["条件关系", "Match"],
+  "triage.matchAll": ["满足全部条件", "Match all conditions"],
+  "triage.matchAny": ["满足任一条件", "Match any condition"],
+  "triage.addCond": ["+ 添加条件", "+ Add Condition"],
+  "triage.actionState": ["处理状态", "Workflow State"],
+  "triage.stateKeep": ["保持不变", "Keep Unchanged"],
+  "triage.stateDone": ["标为已处理", "Mark Done"],
+  "triage.stateReply": ["标为待回复", "Mark Needs Reply"],
+  "triage.stateLater": ["稍后处理", "Snooze (Later)"],
+  "triage.laterHours": ["延后小时", "Snooze Hours"],
+  "triage.actionRead": ["自动设为已读", "Mark as Read"],
+  "triage.actionStar": ["自动星标", "Add Star"],
+  "triage.previewBtn": ["命中预览", "Preview Matches"],
+  "triage.cancelBtn": ["取消", "Cancel"],
+  "triage.saveRule": ["保存规则", "Save Rule"],
+  "triage.jsSummaryGroups": ["高频推送源", "Noisy Senders"],
+  "triage.jsGroupsTpl": ["{0} 个", "{0}"],
+  "triage.jsSummaryEmails": ["可整理邮件", "Emails Matched"],
+  "triage.jsEmailsTpl": ["{0} 封", "{0}"],
+  "triage.jsSummaryUnread": ["未读推送", "Unread Pushes"],
+  "triage.jsSummaryUnsub": ["含退订协议", "With Unsubscribe"],
+  "triage.jsSubsEmpty": ["暂未识别到重复通知或订阅推送，收件箱较为干净。", "No recurring notifications or newsletter pushes detected."],
+  "triage.jsUnsubTooltip": ["点击后在外部打开退订链接，请先确认发件人可信", "Opens external unsubscribe target after your review"],
+  "triage.jsUnsubMailto": ["查看退订邮箱", "Unsubscribe Email"],
+  "triage.jsUnsubPage": ["打开退订页", "Open Unsubscribe"],
+  "triage.jsTotalCountTpl": ["共 {0} 封", "{0} total"],
+  "triage.jsUnreadCountTpl": ["未读 {0} 封", "{0} unread"],
+  "triage.jsHasRuleBadge": ["已设自动规则", "Rule Active"],
+  "triage.jsKeepLatest": ["留最新 · 其余已读已处理", "Keep Latest · Done Rest"],
+  "triage.jsAllDone": ["全部已读已处理", "Mark All Read & Done"],
+  "triage.jsToRule": ["设为自动规则", "Create Rule"],
+  "triage.jsLatestSubjTpl": ["最近主题：{0}", "Latest: {0}"],
+  "triage.jsCondSub": ["识别为订阅推送", "Detected Subscription"],
+  "triage.jsFieldSender": ["发件人", "Sender"],
+  "triage.jsFieldDomain": ["发件域名", "Domain"],
+  "triage.jsFieldSubj": ["主题", "Subject"],
+  "triage.jsFieldBody": ["正文", "Body"],
+  "triage.jsOpContains": ["包含", "contains"],
+  "triage.jsOpEquals": ["等于", "equals"],
+  "triage.jsOpNotContains": ["不包含", "does not contain"],
+  "triage.jsActDone": ["标为已处理", "Mark Done"],
+  "triage.jsActLaterTpl": ["延后 {0} 小时", "Snooze {0}h"],
+  "triage.jsActReply": ["标为待回复", "Mark Needs Reply"],
+  "triage.jsActRead": ["设为已读", "Mark Read"],
+  "triage.jsActStar": ["加星标", "Star"],
+  "triage.jsActTagTpl": ["打标签：{0}", "Tags: {0}"],
+  "triage.jsOr": ["或", "OR"],
+  "triage.jsAnd": ["且", "AND"],
+  "triage.jsRulesEmpty": ["尚未配置自动分流规则，点击「+ 新建分流规则」即可按发件人、域名或主题自动归档与已读。", "No auto-triage rules yet. Click + New Rule to automate inbox routing."],
+  "triage.jsEnabled": ["已启用", "Enabled"],
+  "triage.jsDisabled": ["已停用", "Disabled"],
+  "triage.jsHitTpl": ["已命中 {0} 次", "{0} hits"],
+  "triage.jsDisable": ["停用", "Disable"],
+  "triage.jsEnable": ["启用", "Enable"],
+  "triage.jsRunNow": ["立即运行", "Run Now"],
+  "triage.jsEdit": ["编辑", "Edit"],
+  "triage.jsDelete": ["删除", "Delete"],
+  "triage.jsWhenTpl": ["条件：{0}", "When: {0}"],
+  "triage.jsThenTpl": ["动作：{0}", "Then: {0}"],
+  "triage.jsCondPh": ["填写关键词或发件人地址", "Enter keyword or sender address"],
+  "triage.jsRemove": ["移除", "Remove"],
+  "triage.jsScanning": ["正在扫描高频通知与订阅邮件…", "Scanning recurring notifications and subscriptions…"],
+  "triage.jsLoadErr": ["加载订阅与分流数据失败", "Failed to load triage data"],
+  "triage.jsBatchDoneTpl": ["已批量处理 {0} 封订阅推送", "Triaged {0} subscription message(s)"],
+  "triage.jsBatchErr": ["批量降噪失败", "Batch cleanup failed"],
+  "triage.jsAutoNameTpl": ["自动归档：{0}", "Auto-archive: {0}"],
+  "triage.jsPreviewNone": ["当前收件箱暂无匹配邮件，规则保存后将对新到达邮件生效。", "No current inbox matches. Rule will still apply to incoming mail."],
+  "triage.jsPreviewTpl": ["共命中 {0} 封收件箱邮件：", "{0} matching inbox email(s):"],
+  "triage.jsPreviewErr": ["预览规则失败", "Failed to preview rule"],
+  "triage.jsSaved": ["自动分流规则已保存", "Auto-triage rule saved"],
+  "triage.jsSaveErr": ["保存规则失败", "Failed to save rule"],
+  "triage.jsApplyAllTpl": ["已执行分流规则：命中 {0} 封，更新 {1} 封", "Applied rules: {0} matched, {1} updated"],
+  "triage.jsApplyErr": ["执行规则失败", "Failed to apply rules"],
+  "triage.jsApplyOneTpl": ["规则已运行：命中 {0} 封，更新 {1} 封", "Rule ran: {0} matched, {1} updated"],
+  "triage.jsDeleted": ["已删除自动分流规则", "Auto-triage rule deleted"]
 };
 const MAILAI_I18N_CHINESE = {
   "app.tagline": "邮件安全与效率助手",
@@ -40987,7 +41075,7 @@ function mailCardDate(value, now = new Date()) {
     const showMail=showMailWorkspace;
     let choices=[],active=-1;
     const searchIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m15.5 15.5 4.3 4.3"/></svg>';
-    const commandPaths={'calendar-timeline':'M4 5h16v14H4zM8 3v4M16 3v4M4 10h16M8 14h2m4 0h2','periodic-briefing':'M4 5h16v14H4zM8 3v4M16 3v4M4 10h16M8 14h4',advanced:'M4 7h16M4 17h16M8 4v6M16 14v6',templates:'M6 3h8l4 4v14H6zM14 3v5h4M9 12h6M9 16h6',scheduled:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M12 7v5l3 2','contact-import':'M4 8h15l-4-4M20 16H5l4 4',shortcuts:'M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Zm4 4h.01M12 10h.01M16 10h.01M7 14h10',followups:'M22 2 11 13M22 2l-7 20-4-9-9-4Z','filter-reply':'M4 6h16M7 12h10M10 18h4','filter-focus':'m12 3 2.5 5.1 5.6.8-4 3.9.9 5.6-5-2.6-5 2.6.9-5.6-4-3.9 5.6-.8z','filter-all':'M4 7h16M4 12h16M4 17h16','mail-reply':'m10 6-6 6 6 6M4 12h9c4 0 6.5 2 7 6','mail-reply-all':'m10 6-6 6 6 6m5-12-6 6 6 6','mail-forward':'m14 6 6 6-6 6m6-6h-9c-4 0-6.5 2-7 6','mail-done':'M4 12l5 5L20 6','mail-done-next':'M4 12l5 5L20 6M15 17l4 0','mail-workflow-reply':'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z','mail-workflow-dialog':'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4v5l3 2','mail-todo':'M3.5 7.5 5.5 9.5 9 6M12.5 8h8M3.5 16.5 5.5 18.5 9 15M12.5 17h8','mail-read':'M3.5 6.5h17v11h-17zM4 7l8 6 8-6','mail-favorite':'m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z','mail-star':'m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z','mail-ai-summary':'M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9Z','mail-ai-reply':'M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9Z','mail-ai-followup':'M22 2 11 13M22 2l-7 20-4-9-9-4Z','mail-undo-workflow':'M9 14 4 9l5-5M4 9h10a6 6 0 1 1 0 12h-1','mail-trash':'M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15'};
+    const commandPaths={'triage-center':'M4 5h16l-6 7v6l-4 2v-8L4 5Z','calendar-timeline':'M4 5h16v14H4zM8 3v4M16 3v4M4 10h16M8 14h2m4 0h2','periodic-briefing':'M4 5h16v14H4zM8 3v4M16 3v4M4 10h16M8 14h4',advanced:'M4 7h16M4 17h16M8 4v6M16 14v6',templates:'M6 3h8l4 4v14H6zM14 3v5h4M9 12h6M9 16h6',scheduled:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M12 7v5l3 2','contact-import':'M4 8h15l-4-4M20 16H5l4 4',shortcuts:'M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Zm4 4h.01M12 10h.01M16 10h.01M7 14h10',followups:'M22 2 11 13M22 2l-7 20-4-9-9-4Z','filter-reply':'M4 6h16M7 12h10M10 18h4','filter-focus':'m12 3 2.5 5.1 5.6.8-4 3.9.9 5.6-5-2.6-5 2.6.9-5.6-4-3.9 5.6-.8z','filter-all':'M4 7h16M4 12h16M4 17h16','mail-reply':'m10 6-6 6 6 6M4 12h9c4 0 6.5 2 7 6','mail-reply-all':'m10 6-6 6 6 6m5-12-6 6 6 6','mail-forward':'m14 6 6 6-6 6m6-6h-9c-4 0-6.5 2-7 6','mail-done':'M4 12l5 5L20 6','mail-done-next':'M4 12l5 5L20 6M15 17l4 0','mail-workflow-reply':'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z','mail-workflow-dialog':'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4v5l3 2','mail-todo':'M3.5 7.5 5.5 9.5 9 6M12.5 8h8M3.5 16.5 5.5 18.5 9 15M12.5 17h8','mail-read':'M3.5 6.5h17v11h-17zM4 7l8 6 8-6','mail-favorite':'m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z','mail-star':'m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z','mail-ai-summary':'M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9Z','mail-ai-reply':'M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9Z','mail-ai-followup':'M22 2 11 13M22 2l-7 20-4-9-9-4Z','mail-undo-workflow':'M9 14 4 9l5-5M4 9h10a6 6 0 1 1 0 12h-1','mail-trash':'M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15'};
     function highlight(value,words){
       const chars=[...String(value)],offsets=[],marked=new Set();let normalized='';
       chars.forEach((char,index)=>{const text=normalize(char);normalized+=text;for(let n=0;n<text.length;n++)offsets.push(index);});
@@ -41032,6 +41120,7 @@ function mailCardDate(value, now = new Date()) {
         item('followups',mailaiText('发信跟进（待办中心）'),()=>openTodoCenter({view:'followups'}),'','followup sent cuiban nudge genjin'),
         item('periodic-briefing',mailaiText('周期工作简报（周报 / 月报）'),()=>window.openPeriodicBriefing?.(),'btn-digest','weekly monthly report zhoubao yuebao jianbao'),
         item('calendar-timeline',mailaiText('日程时间线（Deadlines & 会议）'),()=>window.openCalendarTimeline?.(),'','calendar schedule timeline richeng rili'),
+        item('triage-center',mailaiText('订阅降噪与自动分流规则'),()=>window.openTriageCenter?.('subs'),'','subscription unsubscribe auto triage noise rule dingyue fenliu guize'),
         item('shortcuts',mailaiText('快捷键速查'),shortcutsDialog,'','shortcuts keybindings kuaijiejian help',false,'?'),
         item('filter-reply',mailaiText('仅看「待回复」邮件'),()=>setWorkflowFilterView('reply'),'','filter reply daifu'),
         item('filter-focus',mailaiText('仅看重点邮件'),()=>setWorkflowFilterView('focus'),'','filter focus zhongdian'),
@@ -44312,6 +44401,488 @@ window.mailaiPrepareReadingMarkup = doc => {
 
   window.openCalendarTimeline = openModal;
   window.closeCalendarTimeline = closeModal;
+})();
+
+;
+/* ---- triage-rules.js ---- */
+(() => {
+  const modal = document.getElementById('triage-rules-modal');
+  if (!modal) return;
+
+  const tabBtns = [...modal.querySelectorAll('[data-triage-tab]')];
+  const subsPane = document.getElementById('triage-pane-subs');
+  const rulesPane = document.getElementById('triage-pane-rules');
+  const subSummaryEl = document.getElementById('triage-subs-summary');
+  const subListEl = document.getElementById('triage-subs-list');
+  const subRefreshBtn = document.getElementById('triage-subs-refresh');
+
+  const newRuleBtn = document.getElementById('triage-btn-new-rule');
+  const applyAllBtn = document.getElementById('triage-btn-apply-all');
+  const ruleEditor = document.getElementById('triage-rule-editor');
+  const ruleNameInput = document.getElementById('triage-rule-name');
+  const ruleMatchSelect = document.getElementById('triage-rule-match');
+  const condListEl = document.getElementById('triage-cond-list');
+  const addCondBtn = document.getElementById('triage-btn-add-cond');
+  const actionStateSelect = document.getElementById('triage-action-state');
+  const actionHoursWrap = document.getElementById('triage-later-hours-wrap');
+  const actionHoursInput = document.getElementById('triage-action-later-hours');
+  const actionReadCheck = document.getElementById('triage-action-read');
+  const actionStarCheck = document.getElementById('triage-action-star');
+  const tagPicksEl = document.getElementById('triage-tag-picks');
+  const previewBox = document.getElementById('triage-rule-preview');
+  const previewBtn = document.getElementById('triage-btn-preview-rule');
+  const cancelRuleBtn = document.getElementById('triage-btn-cancel-rule');
+  const rulesListEl = document.getElementById('triage-rules-list');
+
+  let activeTab = 'subs';
+  let subData = null;
+  let rulesData = [];
+  let tagsCatalog = [];
+  let editingRuleId = null;
+
+  function accountId() {
+    return typeof activeMailAccount === 'function' ? (activeMailAccount()?.id || '') : '';
+  }
+
+  function accountHeaders(acc = accountId()) {
+    return acc ? { 'X-MailAI-Account': acc } : {};
+  }
+
+  function switchTab(tab) {
+    activeTab = tab;
+    tabBtns.forEach(btn => {
+      const on = btn.dataset.triageTab === tab;
+      btn.classList.toggle('is-active', on);
+      btn.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    subsPane.classList.toggle('hidden', tab !== 'subs');
+    rulesPane.classList.toggle('hidden', tab !== 'rules');
+  }
+
+  function renderSubs() {
+    const s = subData?.summary;
+    if (!s) {
+      subSummaryEl.innerHTML = '';
+    } else {
+      const cards = [
+        { label: mailaiText('高频推送源'), value: mailaiTemplate`${s.total_groups || 0} 个` },
+        { label: mailaiText('可整理邮件'), value: mailaiTemplate`${s.total_emails || 0} 封` },
+        { label: mailaiText('未读推送'), value: mailaiTemplate`${s.unread_emails || 0} 封` },
+        { label: mailaiText('含退订协议'), value: mailaiTemplate`${s.with_unsubscribe || 0} 个` },
+      ];
+      subSummaryEl.innerHTML = cards
+        .map(
+          c => `
+          <div class="triage-metric">
+            <span class="triage-metric-label">${esc(c.label)}</span>
+            <strong class="triage-metric-value">${esc(c.value)}</strong>
+          </div>`
+        )
+        .join('');
+    }
+
+    const groups = subData?.groups || [];
+    if (!groups.length) {
+      subListEl.innerHTML = `<div class="triage-empty">${esc(mailaiText('暂未识别到重复通知或订阅推送，收件箱较为干净。'))}</div>`;
+      return;
+    }
+
+    subListEl.innerHTML = groups
+      .map(g => {
+        const unsubHtml = (g.unsubscribe_links || [])
+          .slice(0, 1)
+          .map(
+            lk => `<a class="triage-unsub-link" href="${esc(lk.target)}" target="_blank" rel="noopener noreferrer" title="${esc(mailaiText('点击后在外部打开退订链接，请先确认发件人可信'))}">${esc(lk.kind === 'mailto' ? mailaiText('查看退订邮箱') : mailaiText('打开退订页'))}</a>`
+          )
+          .join('');
+        return `
+          <article class="triage-card" data-sender-addr="${esc(g.sender_addr)}">
+            <div class="triage-card-top">
+              <div class="triage-card-title">
+                <span class="triage-sender-name">${esc(g.sender_name || g.sender_addr)}</span>
+                <span class="triage-sender-addr">${esc(g.sender_addr)}</span>
+                <span class="triage-pill accent">${esc(mailaiTemplate`共 ${g.total_count} 封`)}</span>
+                ${g.unread_count ? `<span class="triage-pill warn">${esc(mailaiTemplate`未读 ${g.unread_count} 封`)}</span>` : ''}
+                ${g.has_active_rule ? `<span class="triage-pill done">${esc(mailaiText('已设自动规则'))}</span>` : ''}
+              </div>
+              <div class="triage-card-actions">
+                <button type="button" class="triage-mini-btn" data-sub-action="keep_latest_done" data-sender="${esc(g.sender_addr)}" ${g.total_count < 2 ? 'disabled' : ''}>${esc(mailaiText('留最新 · 其余已读已处理'))}</button>
+                <button type="button" class="triage-mini-btn" data-sub-action="all_done" data-sender="${esc(g.sender_addr)}" ${!g.unread_count && !g.unhandled_count ? 'disabled' : ''}>${esc(mailaiText('全部已读已处理'))}</button>
+                <button type="button" class="triage-mini-btn" data-sub-rule="${esc(g.sender_addr)}">${esc(mailaiText('设为自动规则'))}</button>
+              </div>
+            </div>
+            <div class="triage-card-meta">
+              <span>${esc(mailaiTemplate`最近主题：${g.latest_subject || '—'}`)}</span>
+              ${(g.reasons || []).map(r => `<span class="triage-pill">${esc(r)}</span>`).join('')}
+              ${unsubHtml}
+            </div>
+          </article>`;
+      })
+      .join('');
+  }
+
+  function formatRuleSummary(rule) {
+    const conds = (rule.conditions || []).map(c => {
+      if (c.field === 'is_subscription') return mailaiText('识别为订阅推送');
+      const fMap = {
+        sender: mailaiText('发件人'),
+        domain: mailaiText('发件域名'),
+        subject: mailaiText('主题'),
+        body: mailaiText('正文'),
+      };
+      const oMap = {
+        contains: mailaiText('包含'),
+        equals: mailaiText('等于'),
+        not_contains: mailaiText('不包含'),
+      };
+      return `${fMap[c.field] || c.field} ${oMap[c.operator] || c.operator} "${c.value}"`;
+    });
+    const a = rule.actions || {};
+    const acts = [];
+    if (a.handle_state === 'done') acts.push(mailaiText('标为已处理'));
+    if (a.handle_state === 'later') acts.push(mailaiTemplate`延后 ${a.later_hours || 24} 小时`);
+    if (a.handle_state === 'reply') acts.push(mailaiText('标为待回复'));
+    if (a.mark_read) acts.push(mailaiText('设为已读'));
+    if (a.mark_starred) acts.push(mailaiText('加星标'));
+    if ((a.tag_ids || []).length) {
+      const names = a.tag_ids
+        .map(id => tagsCatalog.find(t => t.id === id)?.name)
+        .filter(Boolean);
+      if (names.length) acts.push(mailaiTemplate`打标签：${names.join('、')}`);
+    }
+    return {
+      when: conds.join(rule.match_mode === 'any' ? ` ${mailaiText('或')} ` : ` ${mailaiText('且')} `),
+      then: acts.join(' · '),
+    };
+  }
+
+  function renderRules() {
+    if (!rulesData.length) {
+      rulesListEl.innerHTML = `<div class="triage-empty">${esc(mailaiText('尚未配置自动分流规则，点击「+ 新建分流规则」即可按发件人、域名或主题自动归档与已读。'))}</div>`;
+      return;
+    }
+    rulesListEl.innerHTML = rulesData
+      .map(rule => {
+        const desc = formatRuleSummary(rule);
+        return `
+          <article class="triage-card" data-rule-id="${rule.id}">
+            <div class="triage-card-top">
+              <div class="triage-card-title">
+                <span class="triage-sender-name">${esc(rule.name)}</span>
+                <span class="triage-pill ${rule.enabled ? 'done' : ''}">${esc(rule.enabled ? mailaiText('已启用') : mailaiText('已停用'))}</span>
+                <span class="triage-pill">${esc(mailaiTemplate`已命中 ${rule.hit_count || 0} 次`)}</span>
+              </div>
+              <div class="triage-card-actions">
+                <button type="button" class="triage-mini-btn" data-rule-action="toggle" data-rule-id="${rule.id}" data-enabled="${rule.enabled ? '1' : '0'}">${esc(rule.enabled ? mailaiText('停用') : mailaiText('启用'))}</button>
+                <button type="button" class="triage-mini-btn" data-rule-action="apply" data-rule-id="${rule.id}">${esc(mailaiText('立即运行'))}</button>
+                <button type="button" class="triage-mini-btn" data-rule-action="edit" data-rule-id="${rule.id}">${esc(mailaiText('编辑'))}</button>
+                <button type="button" class="triage-mini-btn danger" data-rule-action="delete" data-rule-id="${rule.id}">${esc(mailaiText('删除'))}</button>
+              </div>
+            </div>
+            <div class="triage-card-meta">
+              <span>${esc(mailaiTemplate`条件：${desc.when}`)}</span>
+              <span>${esc(mailaiTemplate`动作：${desc.then}`)}</span>
+            </div>
+          </article>`;
+      })
+      .join('');
+  }
+
+  function renderCondRow(cond = { field: 'sender', operator: 'contains', value: '' }) {
+    const row = document.createElement('div');
+    row.className = 'triage-cond-row';
+    const isSub = cond.field === 'is_subscription';
+    row.innerHTML = `
+      <select class="triage-cond-field">
+        <option value="sender" ${cond.field === 'sender' ? 'selected' : ''}>${esc(mailaiText('发件人'))}</option>
+        <option value="domain" ${cond.field === 'domain' ? 'selected' : ''}>${esc(mailaiText('发件域名'))}</option>
+        <option value="subject" ${cond.field === 'subject' ? 'selected' : ''}>${esc(mailaiText('主题'))}</option>
+        <option value="body" ${cond.field === 'body' ? 'selected' : ''}>${esc(mailaiText('正文'))}</option>
+        <option value="is_subscription" ${isSub ? 'selected' : ''}>${esc(mailaiText('识别为订阅推送'))}</option>
+      </select>
+      <select class="triage-cond-op" ${isSub ? 'hidden' : ''}>
+        <option value="contains" ${cond.operator === 'contains' ? 'selected' : ''}>${esc(mailaiText('包含'))}</option>
+        <option value="equals" ${cond.operator === 'equals' ? 'selected' : ''}>${esc(mailaiText('等于'))}</option>
+        <option value="not_contains" ${cond.operator === 'not_contains' ? 'selected' : ''}>${esc(mailaiText('不包含'))}</option>
+      </select>
+      <input type="text" class="triage-cond-val" maxlength="300" placeholder="${esc(mailaiText('填写关键词或发件人地址'))}" value="${esc(isSub ? '1' : cond.value || '')}" ${isSub ? 'hidden' : ''}>
+      <button type="button" class="triage-mini-btn danger triage-cond-del">${esc(mailaiText('移除'))}</button>`;
+    const fieldSel = row.querySelector('.triage-cond-field');
+    const opSel = row.querySelector('.triage-cond-op');
+    const valInput = row.querySelector('.triage-cond-val');
+    fieldSel.addEventListener('change', () => {
+      const sub = fieldSel.value === 'is_subscription';
+      opSel.hidden = sub;
+      valInput.hidden = sub;
+      if (sub) valInput.value = '1';
+      else if (valInput.value === '1') valInput.value = '';
+    });
+    row.querySelector('.triage-cond-del').addEventListener('click', () => {
+      if (condListEl.children.length > 1) row.remove();
+    });
+    condListEl.appendChild(row);
+  }
+
+  function renderTagPicker(selectedIds = []) {
+    const selectedSet = new Set(selectedIds);
+    if (!tagsCatalog.length) {
+      tagPicksEl.innerHTML = `<span class="triage-note">${esc(mailaiText('暂无个人标签'))}</span>`;
+      return;
+    }
+    tagPicksEl.innerHTML = tagsCatalog
+      .map(
+        t => `
+        <label class="triage-tag-pick">
+          <input type="checkbox" class="triage-tag-check" value="${t.id}" ${selectedSet.has(t.id) ? 'checked' : ''}>
+          <span>${esc(t.name)}</span>
+        </label>`
+      )
+      .join('');
+  }
+
+  function openRuleEditor(preset = null) {
+    editingRuleId = preset?.id || null;
+    ruleNameInput.value = preset?.name || '';
+    ruleMatchSelect.value = preset?.match_mode || 'all';
+    condListEl.innerHTML = '';
+    const conds = preset?.conditions?.length
+      ? preset.conditions
+      : [{ field: 'sender', operator: 'contains', value: '' }];
+    conds.forEach(renderCondRow);
+    const acts = preset?.actions || {};
+    actionStateSelect.value = acts.handle_state || '';
+    actionHoursInput.value = String(acts.later_hours || 24);
+    actionHoursWrap.classList.toggle('hidden', actionStateSelect.value !== 'later');
+    actionReadCheck.checked = Boolean(acts.mark_read);
+    actionStarCheck.checked = Boolean(acts.mark_starred);
+    renderTagPicker(acts.tag_ids || []);
+    previewBox.classList.add('hidden');
+    previewBox.innerHTML = '';
+    ruleEditor.classList.remove('hidden');
+    ruleNameInput.focus();
+  }
+
+  function collectRulePayload() {
+    const conditions = [...condListEl.querySelectorAll('.triage-cond-row')].map(row => ({
+      field: row.querySelector('.triage-cond-field').value,
+      operator: row.querySelector('.triage-cond-op').value,
+      value: row.querySelector('.triage-cond-val').value.trim(),
+    }));
+    const tag_ids = [...tagPicksEl.querySelectorAll('.triage-tag-check:checked')].map(el => Number(el.value));
+    const payload = {
+      name: ruleNameInput.value.trim(),
+      match_mode: ruleMatchSelect.value,
+      conditions,
+      actions: {
+        handle_state: actionStateSelect.value,
+        later_hours: Number(actionHoursInput.value) || 24,
+        mark_read: actionReadCheck.checked,
+        mark_starred: actionStarCheck.checked,
+        tag_ids,
+      },
+    };
+    if (editingRuleId !== null) payload.id = editingRuleId;
+    return payload;
+  }
+
+  async function loadAll() {
+    subListEl.innerHTML = `<div class="triage-empty">${esc(mailaiText('正在扫描高频通知与订阅邮件…'))}</div>`;
+    try {
+      const [subs, rulesRes, tagsRes] = await Promise.all([
+        api('/api/productivity/triage/subscriptions', { headers: accountHeaders() }),
+        api('/api/productivity/triage/rules', { headers: accountHeaders() }),
+        api('/api/mail/tags', { headers: accountHeaders() }).catch(() => ({ tags: [] })),
+      ]);
+      subData = subs;
+      rulesData = rulesRes.rules || [];
+      tagsCatalog = tagsRes.tags || [];
+      renderSubs();
+      renderRules();
+    } catch (e) {
+      const msg = e.message || mailaiText('加载订阅与分流数据失败');
+      subListEl.innerHTML = `<div class="triage-empty">${esc(msg)}</div>`;
+    }
+  }
+
+  async function openModal(initialTab = 'subs') {
+    if (typeof closeTodoCenter === 'function') closeTodoCenter();
+    if (typeof closeAssistant === 'function') closeAssistant();
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    ruleEditor.classList.add('hidden');
+    switchTab(initialTab);
+    await loadAll();
+  }
+
+  function closeModal() {
+    modal.classList.add('hidden');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+
+  tabBtns.forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.triageTab || 'subs')));
+  subRefreshBtn.addEventListener('click', loadAll);
+  newRuleBtn.addEventListener('click', () => openRuleEditor());
+  addCondBtn.addEventListener('click', () => renderCondRow());
+  cancelRuleBtn.addEventListener('click', () => ruleEditor.classList.add('hidden'));
+  actionStateSelect.addEventListener('change', () => {
+    actionHoursWrap.classList.toggle('hidden', actionStateSelect.value !== 'later');
+  });
+
+  subListEl.addEventListener('click', async ev => {
+    const batchBtn = ev.target.closest('[data-sub-action]');
+    if (batchBtn) {
+      const mode = batchBtn.dataset.subAction;
+      const sender = batchBtn.dataset.sender;
+      batchBtn.disabled = true;
+      try {
+        const res = await api('/api/productivity/triage/sender-batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...accountHeaders() },
+          body: JSON.stringify({ sender_addr: sender, mode }),
+        });
+        toast(mailaiTemplate`已批量处理 ${res.updated_count || 0} 封订阅推送`, 'success');
+        if (typeof loadEmails === 'function') loadEmails();
+        await loadAll();
+      } catch (e) {
+        batchBtn.disabled = false;
+        toast(e.message || mailaiText('批量降噪失败'), 'error');
+      }
+      return;
+    }
+
+    const ruleBtn = ev.target.closest('[data-sub-rule]');
+    if (ruleBtn) {
+      const addr = ruleBtn.dataset.subRule;
+      switchTab('rules');
+      openRuleEditor({
+        name: mailaiTemplate`自动归档：${addr}`,
+        match_mode: 'all',
+        conditions: [{ field: 'sender', operator: 'equals', value: addr }],
+        actions: { handle_state: 'done', mark_read: true, mark_starred: false, tag_ids: [] },
+      });
+    }
+  });
+
+  previewBtn.addEventListener('click', async () => {
+    try {
+      const payload = collectRulePayload();
+      const res = await api('/api/productivity/triage/rules/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...accountHeaders() },
+        body: JSON.stringify(payload),
+      });
+      previewBox.classList.remove('hidden');
+      if (!res.matched_count) {
+        previewBox.innerHTML = `<span>${esc(mailaiText('当前收件箱暂无匹配邮件，规则保存后将对新到达邮件生效。'))}</span>`;
+      } else {
+        const lines = (res.items || []).slice(0, 6).map(
+          it => `<div>• ${esc(it.subject)} <span class="triage-note">(${esc(it.from_addr)})</span></div>`
+        );
+        previewBox.innerHTML = `<strong>${esc(mailaiTemplate`共命中 ${res.matched_count} 封收件箱邮件：`)}</strong>${lines.join('')}`;
+      }
+    } catch (e) {
+      toast(e.message || mailaiText('预览规则失败'), 'error');
+    }
+  });
+
+  ruleEditor.addEventListener('submit', async ev => {
+    ev.preventDefault();
+    try {
+      const payload = collectRulePayload();
+      await api('/api/productivity/triage/rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...accountHeaders() },
+        body: JSON.stringify(payload),
+      });
+      ruleEditor.classList.add('hidden');
+      toast(mailaiText('自动分流规则已保存'), 'success');
+      await loadAll();
+    } catch (e) {
+      toast(e.message || mailaiText('保存规则失败'), 'error');
+    }
+  });
+
+  applyAllBtn.addEventListener('click', async () => {
+    applyAllBtn.disabled = true;
+    try {
+      const res = await api('/api/productivity/triage/rules/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...accountHeaders() },
+        body: JSON.stringify({}),
+      });
+      toast(mailaiTemplate`已执行分流规则：命中 ${res.matched || 0} 封，更新 ${res.updated || 0} 封`, 'success');
+      if (typeof loadEmails === 'function') loadEmails();
+      await loadAll();
+    } catch (e) {
+      toast(e.message || mailaiText('执行规则失败'), 'error');
+    } finally {
+      applyAllBtn.disabled = false;
+    }
+  });
+
+  rulesListEl.addEventListener('click', async ev => {
+    const btn = ev.target.closest('[data-rule-action]');
+    if (!btn) return;
+    const action = btn.dataset.ruleAction;
+    const ruleId = Number(btn.dataset.ruleId);
+    const targetRule = rulesData.find(r => r.id === ruleId);
+    if (!ruleId || !targetRule) return;
+
+    if (action === 'edit') {
+      openRuleEditor(targetRule);
+      return;
+    }
+    if (action === 'toggle') {
+      await api(`/api/productivity/triage/rules/${ruleId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...accountHeaders() },
+        body: JSON.stringify({ enabled: btn.dataset.enabled !== '1' }),
+      });
+      await loadAll();
+      return;
+    }
+    if (action === 'apply') {
+      const res = await api('/api/productivity/triage/rules/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...accountHeaders() },
+        body: JSON.stringify({ rule_id: ruleId }),
+      });
+      toast(mailaiTemplate`规则已运行：命中 ${res.matched || 0} 封，更新 ${res.updated || 0} 封`, 'success');
+      if (typeof loadEmails === 'function') loadEmails();
+      await loadAll();
+      return;
+    }
+    if (action === 'delete') {
+      await api(`/api/productivity/triage/rules/${ruleId}`, {
+        method: 'DELETE',
+        headers: accountHeaders(),
+      });
+      toast(mailaiText('已删除自动分流规则'), 'success');
+      await loadAll();
+    }
+  });
+
+  const todoMenuTrigger = document.getElementById('btn-todo-open-triage');
+  if (todoMenuTrigger) {
+    todoMenuTrigger.addEventListener('click', () => {
+      document.getElementById('todo-options')?.removeAttribute('open');
+      if (typeof closeTodoCenter === 'function') closeTodoCenter();
+      openModal('subs');
+    });
+  }
+
+  const closeBtn = document.getElementById('btn-close-triage');
+  if (closeBtn) closeBtn.addEventListener('click', closeModal);
+  modal.querySelectorAll('[data-close-triage]').forEach(el => el.addEventListener('click', closeModal));
+
+  document.addEventListener('keydown', ev => {
+    if (ev.key === 'Escape' && !modal.classList.contains('hidden')) {
+      closeModal();
+    }
+  });
+
+  window.openTriageCenter = openModal;
+  window.closeTriageCenter = closeModal;
 })();
 
 ;

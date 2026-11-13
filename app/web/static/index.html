@@ -84,6 +84,7 @@
   <link rel="stylesheet" href="/static/contact-persona.css?v=1">
   <link rel="stylesheet" href="/static/periodic-briefing.css?v=1">
   <link rel="stylesheet" href="/static/calendar-timeline.css?v=1">
+  <link rel="stylesheet" href="/static/triage-rules.css?v=1">
 </head>
 <body>
   <div id="app-preloader" class="app-preloader" role="status" aria-live="polite">
@@ -919,7 +920,7 @@
       <section class="attachment-center-card todo-center-card" role="dialog" aria-modal="true" aria-labelledby="todo-center-title">
         <header><div><h2 id="todo-center-title" data-i18n="todo.title">待办中心</h2><small id="todo-account-label" class="tool-account-label"></small><p id="todo-center-summary" role="status" aria-live="polite"></p></div><button id="btn-close-todos" class="btn-ghost" data-i18n-aria="dlg.close">✕</button></header>
         <div class="todo-center-tools">
-          <details id="todo-options" class="todo-options"><summary><span data-i18n="todo.ui.options">更多</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg></summary><div id="todo-extra-actions"><label class="todo-show-done"><input id="todo-show-done" type="checkbox"> <span data-i18n="todo.showDone">显示已完成</span></label><button id="btn-todo-open-timeline" class="todo-open-timeline-btn" type="button" data-i18n="timeline.openFromTodo">日程时间线</button><button id="btn-todo-open-briefing" class="todo-open-briefing-btn" type="button" data-i18n="briefing.openFromTodo">生成工作简报（周报 / 月报）</button></div></details>
+          <details id="todo-options" class="todo-options"><summary><span data-i18n="todo.ui.options">更多</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg></summary><div id="todo-extra-actions"><label class="todo-show-done"><input id="todo-show-done" type="checkbox"> <span data-i18n="todo.showDone">显示已完成</span></label><button id="btn-todo-open-timeline" class="todo-open-timeline-btn" type="button" data-i18n="timeline.openFromTodo">日程时间线</button><button id="btn-todo-open-briefing" class="todo-open-briefing-btn" type="button" data-i18n="briefing.openFromTodo">生成工作简报（周报 / 月报）</button><button id="btn-todo-open-triage" class="todo-open-triage-btn" type="button" data-i18n="triage.openFromTodo">订阅降噪 & 自动分流</button></div></details>
         </div>
         <div id="todo-list" class="todo-center-list"></div>
           <div class="todo-batch-actions">
@@ -1202,6 +1203,100 @@
       </section>
     </div>
 
+    <!-- 订阅降噪与自动分流规则弹窗 -->
+    <div id="triage-rules-modal" class="modal hidden" aria-hidden="true">
+      <div class="modal-backdrop" data-close-triage></div>
+      <section class="modal-content triage-dialog" role="dialog" aria-modal="true" aria-labelledby="triage-modal-title">
+        <div class="modal-header triage-header">
+          <div class="triage-heading">
+            <span class="triage-heading-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16l-6 7v6l-4 2v-8L4 5Z"/></svg></span>
+            <div>
+              <h2 id="triage-modal-title" data-i18n="triage.title">订阅降噪与自动分流规则</h2>
+              <p class="triage-subtitle" data-i18n="triage.subtitle">识别高频重复推送并安全批处理，自定义新邮件入库自动已读、归档与打标签规则</p>
+            </div>
+          </div>
+          <div class="triage-header-actions">
+            <div class="triage-tabs" role="tablist" aria-label="分流中心模式" data-i18n-aria="triage.tabsAria">
+              <button type="button" class="triage-tab is-active" role="tab" aria-selected="true" data-triage-tab="subs" data-i18n="triage.tabSubs">高频推送降噪</button>
+              <button type="button" class="triage-tab" role="tab" aria-selected="false" data-triage-tab="rules" data-i18n="triage.tabRules">自动分流规则</button>
+            </div>
+            <button id="btn-close-triage" class="modal-close modern-close" type="button" aria-label="关闭" data-i18n-aria="ui.3fd47edce45b"><svg viewBox="0 0 20 20"><path d="m6 6 8 8M14 6l-8 8"/></svg></button>
+          </div>
+        </div>
+
+        <div id="triage-pane-subs" class="triage-pane">
+          <div class="triage-toolbar">
+            <div id="triage-subs-summary" class="triage-summary-strip"></div>
+            <div class="triage-toolbar-row">
+              <span class="triage-note" data-i18n="triage.subsSafety">仅统计安全收件箱邮件，绝不自动请求外网退订链接或删除服务器邮件。</span>
+              <button type="button" id="triage-subs-refresh" class="triage-btn-subtle" data-i18n="triage.refresh">重新扫描</button>
+            </div>
+          </div>
+          <div id="triage-subs-list" class="triage-body"></div>
+        </div>
+
+        <div id="triage-pane-rules" class="triage-pane hidden">
+          <div class="triage-toolbar">
+            <div class="triage-toolbar-row">
+              <span class="triage-note" data-i18n="triage.rulesHint">仅对干净收件箱邮件生效；隔离或疑似钓鱼邮件不会绕过安全检查。</span>
+              <div class="triage-card-actions">
+                <button type="button" id="triage-btn-new-rule" class="triage-btn-subtle" data-i18n="triage.newRule">+ 新建分流规则</button>
+                <button type="button" id="triage-btn-apply-all" class="triage-btn-primary" data-i18n="triage.applyAll">对收件箱运行全部规则</button>
+              </div>
+            </div>
+          </div>
+
+          <form id="triage-rule-editor" class="triage-rule-editor hidden">
+            <div class="triage-editor-row">
+              <label class="triage-editor-field">
+                <span data-i18n="triage.ruleName">规则名称</span>
+                <input id="triage-rule-name" type="text" maxlength="100" required placeholder="例如：日报推送自动归档" data-i18n-placeholder="triage.ruleNamePh">
+              </label>
+              <label class="triage-editor-field">
+                <span data-i18n="triage.matchMode">条件关系</span>
+                <select id="triage-rule-match">
+                  <option value="all" data-i18n="triage.matchAll">满足全部条件</option>
+                  <option value="any" data-i18n="triage.matchAny">满足任一条件</option>
+                </select>
+              </label>
+              <button type="button" id="triage-btn-add-cond" class="triage-mini-btn" data-i18n="triage.addCond">+ 添加条件</button>
+            </div>
+
+            <div id="triage-cond-list" class="triage-conditions-box"></div>
+
+            <div class="triage-actions-box">
+              <label class="triage-editor-field">
+                <span data-i18n="triage.actionState">处理状态</span>
+                <select id="triage-action-state">
+                  <option value="" data-i18n="triage.stateKeep">保持不变</option>
+                  <option value="done" data-i18n="triage.stateDone">标为已处理</option>
+                  <option value="reply" data-i18n="triage.stateReply">标为待回复</option>
+                  <option value="later" data-i18n="triage.stateLater">稍后处理</option>
+                </select>
+              </label>
+              <label id="triage-later-hours-wrap" class="triage-editor-field hidden">
+                <span data-i18n="triage.laterHours">延后小时</span>
+                <input id="triage-action-later-hours" type="number" min="1" max="720" value="24">
+              </label>
+              <label class="triage-editor-field"><input id="triage-action-read" type="checkbox"><span data-i18n="triage.actionRead">自动设为已读</span></label>
+              <label class="triage-editor-field"><input id="triage-action-star" type="checkbox"><span data-i18n="triage.actionStar">自动星标</span></label>
+            </div>
+
+            <div id="triage-tag-picks" class="triage-tag-picks"></div>
+            <div id="triage-rule-preview" class="triage-preview-box hidden"></div>
+
+            <div class="triage-editor-row" style="justify-content:flex-end;">
+              <button type="button" id="triage-btn-preview-rule" class="triage-btn-subtle" data-i18n="triage.previewBtn">命中预览</button>
+              <button type="button" id="triage-btn-cancel-rule" class="triage-btn-subtle" data-i18n="triage.cancelBtn">取消</button>
+              <button type="submit" id="triage-btn-save-rule" class="triage-btn-primary" data-i18n="triage.saveRule">保存规则</button>
+            </div>
+          </form>
+
+          <div id="triage-rules-list" class="triage-body"></div>
+        </div>
+      </section>
+    </div>
+
     <!-- 误报 / 漏报反馈 -->
     <div id="feedback-modal" class="modal feedback-modal hidden" aria-hidden="true">
       <div class="modal-backdrop" data-close-feedback></div>
@@ -1454,7 +1549,7 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=37d8125d0be2"></script>
+  <script src="/static/bundle.js?v=68c916e93024"></script>
   <script src="/static/settings-scroll.js?v=5"></script>
   <script type="module" src="/static/author-logo.js?v=5"></script>
 </body>

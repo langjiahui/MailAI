@@ -246,6 +246,18 @@ CREATE TABLE IF NOT EXISTS calendar_events (
     created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_calendar_events_start ON calendar_events(start_at);
+CREATE TABLE IF NOT EXISTS auto_triage_rules (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    match_mode TEXT NOT NULL DEFAULT 'all',
+    conditions_json TEXT NOT NULL,
+    actions_json TEXT NOT NULL,
+    hit_count INTEGER NOT NULL DEFAULT 0,
+    last_hit_at TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS rule_settings (
     code TEXT PRIMARY KEY,
     enabled INTEGER NOT NULL DEFAULT 1,
@@ -547,6 +559,8 @@ def _run_migrations(c):
         "notification_sent": "INTEGER NOT NULL DEFAULT 0",
         "notification_claim": "TEXT NOT NULL DEFAULT ''",
         "notification_retry_at": "REAL NOT NULL DEFAULT 0",
+        "list_unsubscribe": "TEXT NOT NULL DEFAULT ''",
+        "is_automated": "INTEGER NOT NULL DEFAULT 0",
     }
     for col, dtype in new_email_cols.items():
         if col not in emails_cols:

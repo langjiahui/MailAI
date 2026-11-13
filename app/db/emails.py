@@ -14,7 +14,7 @@ def upsert_email(e: dict) -> int:
         "llm_phishing", "llm_reasons", "status", "reviewed", "feedback", "feedback_note",
         "url_chain", "final_landing_domain", "final_landing_ip", "review_source",
         "recommended_status", "action_mode", "action_taken", "action_reason",
-        "raw_path", "created_at", "arrival_kind", "processing_complete",
+        "raw_path", "list_unsubscribe", "is_automated", "created_at", "arrival_kind", "processing_complete",
     )
     e = dict(e)
     e.setdefault("folder", "INBOX")
@@ -71,6 +71,8 @@ def upsert_email(e: dict) -> int:
         if row and not was_present:
             from .mail_tags import apply_to_email
             apply_to_email(c, row['id'], e)
+            from ..triage_rules import apply_to_ingested_email
+            apply_to_ingested_email(c, row['id'], e)
         return row["id"]
 
 

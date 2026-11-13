@@ -57,6 +57,7 @@ contact-filters.js
 contact-persona.js
 periodic-briefing.js
 calendar-timeline.js
+triage-rules.js
 mail-import.js
 mail-recovery.js
 task-activity.js
