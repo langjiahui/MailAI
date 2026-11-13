@@ -234,6 +234,18 @@ CREATE TABLE IF NOT EXISTS periodic_briefings (
     created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_periodic_briefings_created ON periodic_briefings(created_at DESC, id DESC);
+CREATE TABLE IF NOT EXISTS calendar_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    start_at TEXT NOT NULL,
+    end_at TEXT NOT NULL,
+    all_day INTEGER NOT NULL DEFAULT 0,
+    location TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    source_email_id INTEGER REFERENCES emails(id),
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_calendar_events_start ON calendar_events(start_at);
 CREATE TABLE IF NOT EXISTS rule_settings (
     code TEXT PRIMARY KEY,
     enabled INTEGER NOT NULL DEFAULT 1,

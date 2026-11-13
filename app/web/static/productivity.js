@@ -1223,7 +1223,7 @@
     const email = account === owner() && selectedEmailDetail ? selectedEmailDetail : { id: 0, subject: "" };
     const rev = open(
       mailaiText("会议安排"),
-      `<label><span data-i18n="ui.961ddaf780e3">导入 ICS 日历文件</span><input id="productivity-calendar-file" type="file" accept=".ics,text/calendar"></label><div id="productivity-invitations"></div><p><span data-i18n="ui.5c56bfb6da4b">核对后创建日历事件：</span></p><div class="productivity-grid"><label class="wide"><span data-i18n="ui.c3405f8c7d9d">标题</span><input id="productivity-event-title"></label><label><span data-i18n="ui.1b1b03a8147d">开始时间（本地）</span><input type="datetime-local" id="productivity-event-start"></label><label><span data-i18n="ui.7a5c755878e3">结束时间（本地）</span><input type="datetime-local" id="productivity-event-end"></label><label class="wide"><span data-i18n="ui.253ac66fb8e1">地点</span><input id="productivity-event-location"></label></div><div class="productivity-actions">${button(mailaiText("导出日历事件"), "export-event", 'class="primary-action"')}</div><p class="productivity-hint"><span data-i18n="ui.21e07454f9db">导入文件只预览邀请；可下载原始 ICS 导入系统日历。接受/拒绝需核对并发送日历回复，对方服务可能不自动更新。手动创建的日期由你核对填写。</span></p>`,
+      `<label><span data-i18n="ui.961ddaf780e3">导入 ICS 日历文件</span><input id="productivity-calendar-file" type="file" accept=".ics,text/calendar"></label><div id="productivity-invitations"></div><p><span data-i18n="ui.5c56bfb6da4b">核对后创建日历事件：</span></p><div class="productivity-grid"><label class="wide"><span data-i18n="ui.c3405f8c7d9d">标题</span><input id="productivity-event-title"></label><label><span data-i18n="ui.1b1b03a8147d">开始时间（本地）</span><input type="datetime-local" id="productivity-event-start"></label><label><span data-i18n="ui.7a5c755878e3">结束时间（本地）</span><input type="datetime-local" id="productivity-event-end"></label><label class="wide"><span data-i18n="ui.253ac66fb8e1">地点</span><input id="productivity-event-location"></label></div><div class="productivity-actions">${button(mailaiText("导出日历事件"), "export-event", 'class="primary-action"')}${button(mailaiText("打开日程时间线"), "open-timeline")}</div><p class="productivity-hint"><span data-i18n="ui.21e07454f9db">导入文件只预览邀请；可下载原始 ICS 导入系统日历。接受/拒绝需核对并发送日历回复，对方服务可能不自动更新。手动创建的日期由你核对填写。</span></p>`,
       account,
     );
     dialog.querySelector("#productivity-event-title").value =
@@ -1291,6 +1291,11 @@
         live(rev) && msg(mailaiSystemMessage(error.message), true);
       }
     };
+    dialog.querySelector('[data-productivity-action="open-timeline"]').onclick =
+      () => {
+        dialog?.open && dialog.close();
+        window.openCalendarTimeline?.();
+      };
     dialog.querySelector('[data-productivity-action="export-event"]').onclick =
       (n) =>
         busy(n.currentTarget, async () => {
@@ -1998,7 +2003,7 @@
     const showMail=showMailWorkspace;
     let choices=[],active=-1;
     const searchIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m15.5 15.5 4.3 4.3"/></svg>';
-    const commandPaths={'periodic-briefing':'M4 5h16v14H4zM8 3v4M16 3v4M4 10h16M8 14h4',advanced:'M4 7h16M4 17h16M8 4v6M16 14v6',templates:'M6 3h8l4 4v14H6zM14 3v5h4M9 12h6M9 16h6',scheduled:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M12 7v5l3 2','contact-import':'M4 8h15l-4-4M20 16H5l4 4',shortcuts:'M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Zm4 4h.01M12 10h.01M16 10h.01M7 14h10',followups:'M22 2 11 13M22 2l-7 20-4-9-9-4Z','filter-reply':'M4 6h16M7 12h10M10 18h4','filter-focus':'m12 3 2.5 5.1 5.6.8-4 3.9.9 5.6-5-2.6-5 2.6.9-5.6-4-3.9 5.6-.8z','filter-all':'M4 7h16M4 12h16M4 17h16','mail-reply':'m10 6-6 6 6 6M4 12h9c4 0 6.5 2 7 6','mail-reply-all':'m10 6-6 6 6 6m5-12-6 6 6 6','mail-forward':'m14 6 6 6-6 6m6-6h-9c-4 0-6.5 2-7 6','mail-done':'M4 12l5 5L20 6','mail-done-next':'M4 12l5 5L20 6M15 17l4 0','mail-workflow-reply':'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z','mail-workflow-dialog':'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4v5l3 2','mail-todo':'M3.5 7.5 5.5 9.5 9 6M12.5 8h8M3.5 16.5 5.5 18.5 9 15M12.5 17h8','mail-read':'M3.5 6.5h17v11h-17zM4 7l8 6 8-6','mail-favorite':'m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z','mail-star':'m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z','mail-ai-summary':'M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9Z','mail-ai-reply':'M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9Z','mail-ai-followup':'M22 2 11 13M22 2l-7 20-4-9-9-4Z','mail-undo-workflow':'M9 14 4 9l5-5M4 9h10a6 6 0 1 1 0 12h-1','mail-trash':'M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15'};
+    const commandPaths={'calendar-timeline':'M4 5h16v14H4zM8 3v4M16 3v4M4 10h16M8 14h2m4 0h2','periodic-briefing':'M4 5h16v14H4zM8 3v4M16 3v4M4 10h16M8 14h4',advanced:'M4 7h16M4 17h16M8 4v6M16 14v6',templates:'M6 3h8l4 4v14H6zM14 3v5h4M9 12h6M9 16h6',scheduled:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M12 7v5l3 2','contact-import':'M4 8h15l-4-4M20 16H5l4 4',shortcuts:'M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Zm4 4h.01M12 10h.01M16 10h.01M7 14h10',followups:'M22 2 11 13M22 2l-7 20-4-9-9-4Z','filter-reply':'M4 6h16M7 12h10M10 18h4','filter-focus':'m12 3 2.5 5.1 5.6.8-4 3.9.9 5.6-5-2.6-5 2.6.9-5.6-4-3.9 5.6-.8z','filter-all':'M4 7h16M4 12h16M4 17h16','mail-reply':'m10 6-6 6 6 6M4 12h9c4 0 6.5 2 7 6','mail-reply-all':'m10 6-6 6 6 6m5-12-6 6 6 6','mail-forward':'m14 6 6 6-6 6m6-6h-9c-4 0-6.5 2-7 6','mail-done':'M4 12l5 5L20 6','mail-done-next':'M4 12l5 5L20 6M15 17l4 0','mail-workflow-reply':'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z','mail-workflow-dialog':'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4v5l3 2','mail-todo':'M3.5 7.5 5.5 9.5 9 6M12.5 8h8M3.5 16.5 5.5 18.5 9 15M12.5 17h8','mail-read':'M3.5 6.5h17v11h-17zM4 7l8 6 8-6','mail-favorite':'m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z','mail-star':'m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z','mail-ai-summary':'M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9Z','mail-ai-reply':'M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9Z','mail-ai-followup':'M22 2 11 13M22 2l-7 20-4-9-9-4Z','mail-undo-workflow':'M9 14 4 9l5-5M4 9h10a6 6 0 1 1 0 12h-1','mail-trash':'M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15'};
     function highlight(value,words){
       const chars=[...String(value)],offsets=[],marked=new Set();let normalized='';
       chars.forEach((char,index)=>{const text=normalize(char);normalized+=text;for(let n=0;n<text.length;n++)offsets.push(index);});
@@ -2042,6 +2047,7 @@
         item('todos',mailaiText('待办'),openTodoCenter,'btn-todos','todo task daiban'),
         item('followups',mailaiText('发信跟进（待办中心）'),()=>openTodoCenter({view:'followups'}),'','followup sent cuiban nudge genjin'),
         item('periodic-briefing',mailaiText('周期工作简报（周报 / 月报）'),()=>window.openPeriodicBriefing?.(),'btn-digest','weekly monthly report zhoubao yuebao jianbao'),
+        item('calendar-timeline',mailaiText('日程时间线（Deadlines & 会议）'),()=>window.openCalendarTimeline?.(),'','calendar schedule timeline richeng rili'),
         item('shortcuts',mailaiText('快捷键速查'),shortcutsDialog,'','shortcuts keybindings kuaijiejian help',false,'?'),
         item('filter-reply',mailaiText('仅看「待回复」邮件'),()=>setWorkflowFilterView('reply'),'','filter reply daifu'),
         item('filter-focus',mailaiText('仅看重点邮件'),()=>setWorkflowFilterView('focus'),'','filter focus zhongdian'),

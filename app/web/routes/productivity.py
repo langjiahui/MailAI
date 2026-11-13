@@ -313,6 +313,65 @@ def attachment_versions(name: str):
     }
 
 
+@router.get("/api/productivity/calendar/timeline")
+def calendar_timeline(
+    days: int = 14,
+    include_past_days: int = 7,
+    include_done: bool = False,
+):
+    from ...mail_calendar import timeline
+
+    return checked(timeline, days, include_past_days, include_done)
+
+
+@router.post("/api/productivity/calendar/events")
+def calendar_event_create(payload: dict):
+    from ...mail_calendar import create_custom_event
+
+    return checked(create_custom_event, payload)
+
+
+@router.delete("/api/productivity/calendar/events/{event_id}")
+def calendar_event_delete(event_id: int):
+    from fastapi import HTTPException
+    from ...mail_calendar import delete_custom_event
+
+    if not checked(delete_custom_event, event_id):
+        raise HTTPException(status_code=404, detail="日程不存在")
+    return {"ok": True}
+
+
+@router.post("/api/productivity/calendar/export-batch")
+def calendar_export_batch(payload: dict):
+    from ...mail_calendar import export_batch_ics
+
+    items = payload.get("items") or []
+    return Response(
+        checked(export_batch_ics, items),
+        media_type="text/calendar; charset=utf-8",
+        headers={
+            "Content-Disposition": 'attachment; filename="schedule.ics"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+@router.get("/api/productivity/calendar/system-calendars")
+def calendar_system_calendars():
+    from ...mail_calendar import list_macos_calendars
+
+    return checked(list_macos_calendars)
+
+
+@router.post("/api/productivity/calendar/system-add")
+def calendar_system_add(payload: dict):
+    from ...mail_calendar import write_macos_calendar
+
+    items = payload.get("items") or []
+    calendar_name = str(payload.get("calendar_name") or "")
+    return checked(write_macos_calendar, items, calendar_name)
+
+
 @router.get("/api/productivity/calendar/{email_id}")
 def calendar(email_id: int):
     from ...mail_calendar import invitations

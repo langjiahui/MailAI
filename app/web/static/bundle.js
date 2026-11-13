@@ -17359,7 +17359,73 @@ const MAILAI_UI_COPY = {
   "briefing.copiedClean": ["已复制纯净正文（可直接粘贴至企微 / 钉钉 / OA）", "Clean briefing text copied"],
   "briefing.copiedClip": ["已复制到剪贴板", "Copied to clipboard"],
   "briefing.defaultSubj": ["【工作周报】", "[Weekly Report]"],
-  "briefing.composeToast": ["已将周期简报填入发信正文；填入收件人后可自动匹配角色与签名", "Briefing inserted into compose. Add a recipient to match persona and signature."]
+  "briefing.composeToast": ["已将周期简报填入发信正文；填入收件人后可自动匹配角色与签名", "Briefing inserted into compose. Add a recipient to match persona and signature."],
+  "timeline.openFromTodo": ["日程时间线", "Schedule Timeline"],
+  "timeline.title": ["日程时间线 & 系统日历协同", "Schedule Timeline & System Calendar"],
+  "timeline.subtitle": ["自动聚合待办截止、发信跟进、ICS 会议邀请与自建日程，检测时段冲突并同步日历", "Aggregate todos, follow-ups, ICS invites, and custom events with conflict checks & calendar sync"],
+  "timeline.filterAll": ["全部", "All"],
+  "timeline.filterTodo": ["待办", "Todos"],
+  "timeline.filterFollowup": ["发信跟进", "Follow-ups"],
+  "timeline.filterIcs": ["会议邀请", "Invites"],
+  "timeline.filterCustom": ["自建日程", "Custom"],
+  "timeline.rangeAria": ["时间范围", "Time range"],
+  "timeline.range14": ["近 7 天 + 未来 14 天", "Last 7d + Next 14d"],
+  "timeline.range30": ["近 7 天 + 未来 30 天", "Last 7d + Next 30d"],
+  "timeline.range7": ["近 7 天 + 未来 7 天", "Last 7d + Next 7d"],
+  "timeline.includeDone": ["含已完成", "Include Done"],
+  "timeline.newBtn": ["+ 新建日程", "+ New Event"],
+  "timeline.formTitle": ["日程标题", "Event Title"],
+  "timeline.formTitlePh": ["例如：版本评审会 / 客户电话", "e.g., Release Review / Client Call"],
+  "timeline.formStart": ["开始时间", "Start"],
+  "timeline.formEnd": ["结束时间", "End"],
+  "timeline.formLocation": ["地点 / 会议室", "Location"],
+  "timeline.formLocationPh": ["可选：线下会议室或线上链接", "Optional: room or meeting link"],
+  "timeline.formDesc": ["备注", "Notes"],
+  "timeline.formDescPh": ["可选：议程要点或准备事项", "Optional: agenda or notes"],
+  "timeline.formAllDay": ["全天事件", "All-day event"],
+  "timeline.formCancel": ["取消", "Cancel"],
+  "timeline.formSubmit": ["添加至时间线", "Add to Timeline"],
+  "timeline.selectAll": ["全选当前", "Select Visible"],
+  "timeline.systemSelectAria": ["目标系统日历", "Target system calendar"],
+  "timeline.exportBatch": ["导出 .ics", "Export .ics"],
+  "timeline.systemAdd": ["写入系统日历", "Add to macOS Calendar"],
+  "timeline.jsSelectedTpl": ["已选 {0} 项", "{0} selected"],
+  "timeline.jsCancelAll": ["取消全选", "Clear Selection"],
+  "timeline.jsSummaryTotal": ["近期日程", "Upcoming Items"],
+  "timeline.jsSummaryOverdue": ["已逾期", "Overdue"],
+  "timeline.jsSummaryToday": ["今日安排", "Today"],
+  "timeline.jsSummaryConflicts": ["时段冲突", "Time Conflicts"],
+  "timeline.jsConflictsTpl": ["{0} 处", "{0}"],
+  "timeline.jsAllday": ["全天", "All Day"],
+  "timeline.jsConflictBadgeTpl": ["时段冲突：{0}", "Overlaps: {0}"],
+  "timeline.jsLocationTpl": ["地点：{0}", "Location: {0}"],
+  "timeline.jsComplete": ["完成", "Complete"],
+  "timeline.jsOpenEmail": ["查看邮件", "View Email"],
+  "timeline.jsDelete": ["删除", "Delete"],
+  "timeline.jsEmpty": ["当前范围暂无日程安排，可点击「+ 新建日程」添加，或先同步包含待办与会议邀请的邮件。", "No scheduled items in this window. Click + New Event or sync emails with todos and invites."],
+  "timeline.jsSysIcsOnly": ["系统日历（请用 .ics 导入）", "System Calendar (use .ics export)"],
+  "timeline.jsSysNone": ["未读取到系统日历", "No system calendars detected"],
+  "timeline.jsSysHintIcs": ["可使用「导出 .ics」导入苹果日历", "Use Export .ics to import into Calendar"],
+  "timeline.jsSysOptionTpl": ["日历：{0}", "Calendar: {0}"],
+  "timeline.jsSysReady": ["支持写入 macOS「日历」或导出 .ics", "Ready for macOS Calendar or .ics export"],
+  "timeline.jsLoading": ["正在聚合待办、跟进与会议日程…", "Aggregating todos, follow-ups, and invites…"],
+  "timeline.jsLoadErr": ["读取日程时间线失败", "Failed to load schedule timeline"],
+  "timeline.jsValidateForm": ["请填写日程标题与开始时间", "Please enter a title and start time"],
+  "timeline.jsAddedToast": ["已添加自建日程", "Custom event added"],
+  "timeline.jsAddErr": ["创建日程失败", "Failed to create event"],
+  "timeline.jsTodoDoneToast": ["待办已标记完成", "Todo marked completed"],
+  "timeline.jsTodoErr": ["更新待办失败", "Failed to update todo"],
+  "timeline.jsDeletedToast": ["已删除自建日程", "Custom event deleted"],
+  "timeline.jsDelErr": ["删除日程失败", "Failed to delete event"],
+  "timeline.jsNeedSelect": ["请先勾选至少一条日程", "Select at least one item first"],
+  "timeline.jsExportDoneTpl": ["已导出 {0} 条日程至 schedule.ics", "Exported {0} item(s) to schedule.ics"],
+  "timeline.jsExportErr": ["导出 .ics 失败", "Failed to export .ics"],
+  "timeline.jsNeedSys": ["请先勾选日程并选择目标系统日历", "Select items and choose a target calendar"],
+  "timeline.jsSysAddedTpl": ["已写入「{0}」：新增 {1} 条，跳过重复 {2} 条", "Added to \"{0}\": {1} created, {2} skipped"],
+  "timeline.jsSysErr": ["写入系统日历失败", "Failed to add to macOS Calendar"],
+  "timeline.jsSysWriting": ["正在写入…", "Writing…"],
+  "timeline.prodOpenBtn": ["打开日程时间线", "Open Schedule Timeline"],
+  "timeline.cmdPalette": ["日程时间线（Deadlines & 会议）", "Schedule Timeline (Deadlines & Meetings)"]
 };
 const MAILAI_I18N_CHINESE = {
   "app.tagline": "邮件安全与效率助手",
@@ -40141,7 +40207,7 @@ function mailCardDate(value, now = new Date()) {
     const email = account === owner() && selectedEmailDetail ? selectedEmailDetail : { id: 0, subject: "" };
     const rev = open(
       mailaiText("会议安排"),
-      `<label><span data-i18n="ui.961ddaf780e3">导入 ICS 日历文件</span><input id="productivity-calendar-file" type="file" accept=".ics,text/calendar"></label><div id="productivity-invitations"></div><p><span data-i18n="ui.5c56bfb6da4b">核对后创建日历事件：</span></p><div class="productivity-grid"><label class="wide"><span data-i18n="ui.c3405f8c7d9d">标题</span><input id="productivity-event-title"></label><label><span data-i18n="ui.1b1b03a8147d">开始时间（本地）</span><input type="datetime-local" id="productivity-event-start"></label><label><span data-i18n="ui.7a5c755878e3">结束时间（本地）</span><input type="datetime-local" id="productivity-event-end"></label><label class="wide"><span data-i18n="ui.253ac66fb8e1">地点</span><input id="productivity-event-location"></label></div><div class="productivity-actions">${button(mailaiText("导出日历事件"), "export-event", 'class="primary-action"')}</div><p class="productivity-hint"><span data-i18n="ui.21e07454f9db">导入文件只预览邀请；可下载原始 ICS 导入系统日历。接受/拒绝需核对并发送日历回复，对方服务可能不自动更新。手动创建的日期由你核对填写。</span></p>`,
+      `<label><span data-i18n="ui.961ddaf780e3">导入 ICS 日历文件</span><input id="productivity-calendar-file" type="file" accept=".ics,text/calendar"></label><div id="productivity-invitations"></div><p><span data-i18n="ui.5c56bfb6da4b">核对后创建日历事件：</span></p><div class="productivity-grid"><label class="wide"><span data-i18n="ui.c3405f8c7d9d">标题</span><input id="productivity-event-title"></label><label><span data-i18n="ui.1b1b03a8147d">开始时间（本地）</span><input type="datetime-local" id="productivity-event-start"></label><label><span data-i18n="ui.7a5c755878e3">结束时间（本地）</span><input type="datetime-local" id="productivity-event-end"></label><label class="wide"><span data-i18n="ui.253ac66fb8e1">地点</span><input id="productivity-event-location"></label></div><div class="productivity-actions">${button(mailaiText("导出日历事件"), "export-event", 'class="primary-action"')}${button(mailaiText("打开日程时间线"), "open-timeline")}</div><p class="productivity-hint"><span data-i18n="ui.21e07454f9db">导入文件只预览邀请；可下载原始 ICS 导入系统日历。接受/拒绝需核对并发送日历回复，对方服务可能不自动更新。手动创建的日期由你核对填写。</span></p>`,
       account,
     );
     dialog.querySelector("#productivity-event-title").value =
@@ -40209,6 +40275,11 @@ function mailCardDate(value, now = new Date()) {
         live(rev) && msg(mailaiSystemMessage(error.message), true);
       }
     };
+    dialog.querySelector('[data-productivity-action="open-timeline"]').onclick =
+      () => {
+        dialog?.open && dialog.close();
+        window.openCalendarTimeline?.();
+      };
     dialog.querySelector('[data-productivity-action="export-event"]').onclick =
       (n) =>
         busy(n.currentTarget, async () => {
@@ -40916,7 +40987,7 @@ function mailCardDate(value, now = new Date()) {
     const showMail=showMailWorkspace;
     let choices=[],active=-1;
     const searchIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m15.5 15.5 4.3 4.3"/></svg>';
-    const commandPaths={'periodic-briefing':'M4 5h16v14H4zM8 3v4M16 3v4M4 10h16M8 14h4',advanced:'M4 7h16M4 17h16M8 4v6M16 14v6',templates:'M6 3h8l4 4v14H6zM14 3v5h4M9 12h6M9 16h6',scheduled:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M12 7v5l3 2','contact-import':'M4 8h15l-4-4M20 16H5l4 4',shortcuts:'M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Zm4 4h.01M12 10h.01M16 10h.01M7 14h10',followups:'M22 2 11 13M22 2l-7 20-4-9-9-4Z','filter-reply':'M4 6h16M7 12h10M10 18h4','filter-focus':'m12 3 2.5 5.1 5.6.8-4 3.9.9 5.6-5-2.6-5 2.6.9-5.6-4-3.9 5.6-.8z','filter-all':'M4 7h16M4 12h16M4 17h16','mail-reply':'m10 6-6 6 6 6M4 12h9c4 0 6.5 2 7 6','mail-reply-all':'m10 6-6 6 6 6m5-12-6 6 6 6','mail-forward':'m14 6 6 6-6 6m6-6h-9c-4 0-6.5 2-7 6','mail-done':'M4 12l5 5L20 6','mail-done-next':'M4 12l5 5L20 6M15 17l4 0','mail-workflow-reply':'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z','mail-workflow-dialog':'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4v5l3 2','mail-todo':'M3.5 7.5 5.5 9.5 9 6M12.5 8h8M3.5 16.5 5.5 18.5 9 15M12.5 17h8','mail-read':'M3.5 6.5h17v11h-17zM4 7l8 6 8-6','mail-favorite':'m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z','mail-star':'m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z','mail-ai-summary':'M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9Z','mail-ai-reply':'M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9Z','mail-ai-followup':'M22 2 11 13M22 2l-7 20-4-9-9-4Z','mail-undo-workflow':'M9 14 4 9l5-5M4 9h10a6 6 0 1 1 0 12h-1','mail-trash':'M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15'};
+    const commandPaths={'calendar-timeline':'M4 5h16v14H4zM8 3v4M16 3v4M4 10h16M8 14h2m4 0h2','periodic-briefing':'M4 5h16v14H4zM8 3v4M16 3v4M4 10h16M8 14h4',advanced:'M4 7h16M4 17h16M8 4v6M16 14v6',templates:'M6 3h8l4 4v14H6zM14 3v5h4M9 12h6M9 16h6',scheduled:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M12 7v5l3 2','contact-import':'M4 8h15l-4-4M20 16H5l4 4',shortcuts:'M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Zm4 4h.01M12 10h.01M16 10h.01M7 14h10',followups:'M22 2 11 13M22 2l-7 20-4-9-9-4Z','filter-reply':'M4 6h16M7 12h10M10 18h4','filter-focus':'m12 3 2.5 5.1 5.6.8-4 3.9.9 5.6-5-2.6-5 2.6.9-5.6-4-3.9 5.6-.8z','filter-all':'M4 7h16M4 12h16M4 17h16','mail-reply':'m10 6-6 6 6 6M4 12h9c4 0 6.5 2 7 6','mail-reply-all':'m10 6-6 6 6 6m5-12-6 6 6 6','mail-forward':'m14 6 6 6-6 6m6-6h-9c-4 0-6.5 2-7 6','mail-done':'M4 12l5 5L20 6','mail-done-next':'M4 12l5 5L20 6M15 17l4 0','mail-workflow-reply':'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z','mail-workflow-dialog':'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4v5l3 2','mail-todo':'M3.5 7.5 5.5 9.5 9 6M12.5 8h8M3.5 16.5 5.5 18.5 9 15M12.5 17h8','mail-read':'M3.5 6.5h17v11h-17zM4 7l8 6 8-6','mail-favorite':'m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z','mail-star':'m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z','mail-ai-summary':'M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9Z','mail-ai-reply':'M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9Z','mail-ai-followup':'M22 2 11 13M22 2l-7 20-4-9-9-4Z','mail-undo-workflow':'M9 14 4 9l5-5M4 9h10a6 6 0 1 1 0 12h-1','mail-trash':'M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15'};
     function highlight(value,words){
       const chars=[...String(value)],offsets=[],marked=new Set();let normalized='';
       chars.forEach((char,index)=>{const text=normalize(char);normalized+=text;for(let n=0;n<text.length;n++)offsets.push(index);});
@@ -40960,6 +41031,7 @@ function mailCardDate(value, now = new Date()) {
         item('todos',mailaiText('待办'),openTodoCenter,'btn-todos','todo task daiban'),
         item('followups',mailaiText('发信跟进（待办中心）'),()=>openTodoCenter({view:'followups'}),'','followup sent cuiban nudge genjin'),
         item('periodic-briefing',mailaiText('周期工作简报（周报 / 月报）'),()=>window.openPeriodicBriefing?.(),'btn-digest','weekly monthly report zhoubao yuebao jianbao'),
+        item('calendar-timeline',mailaiText('日程时间线（Deadlines & 会议）'),()=>window.openCalendarTimeline?.(),'','calendar schedule timeline richeng rili'),
         item('shortcuts',mailaiText('快捷键速查'),shortcutsDialog,'','shortcuts keybindings kuaijiejian help',false,'?'),
         item('filter-reply',mailaiText('仅看「待回复」邮件'),()=>setWorkflowFilterView('reply'),'','filter reply daifu'),
         item('filter-focus',mailaiText('仅看重点邮件'),()=>setWorkflowFilterView('focus'),'','filter focus zhongdian'),
@@ -43777,6 +43849,469 @@ window.mailaiPrepareReadingMarkup = doc => {
   });
 
   syncHeaderForTab();
+})();
+
+;
+/* ---- calendar-timeline.js ---- */
+(() => {
+  const modal = document.getElementById('calendar-timeline-modal');
+  if (!modal) return;
+
+  const summaryStrip = document.getElementById('timeline-summary-strip');
+  const filterBtns = [...modal.querySelectorAll('[data-timeline-kind]')];
+  const daysSelect = document.getElementById('timeline-days-select');
+  const includeDoneCheck = document.getElementById('timeline-include-done');
+  const toggleCreateBtn = document.getElementById('timeline-toggle-create');
+  const createForm = document.getElementById('timeline-create-form');
+  const createTitleInput = document.getElementById('timeline-create-title');
+  const createStartInput = document.getElementById('timeline-create-start');
+  const createEndInput = document.getElementById('timeline-create-end');
+  const createLocationInput = document.getElementById('timeline-create-location');
+  const createDescInput = document.getElementById('timeline-create-desc');
+  const createAllDayCheck = document.getElementById('timeline-create-allday');
+  const createSubmitBtn = document.getElementById('timeline-create-submit');
+  const createCancelBtn = document.getElementById('timeline-create-cancel');
+  const listEl = document.getElementById('timeline-list');
+  const selectAllBtn = document.getElementById('timeline-select-all');
+  const selectedCountEl = document.getElementById('timeline-selected-count');
+  const sysCalendarSelect = document.getElementById('timeline-system-calendar');
+  const sysAddBtn = document.getElementById('timeline-btn-system-add');
+  const sysNoteEl = document.getElementById('timeline-system-note');
+  const exportBatchBtn = document.getElementById('timeline-btn-export-batch');
+
+  let activeKind = 'all';
+  let currentData = null;
+  const selectedIds = new Set();
+  let systemCalendarsLoaded = false;
+
+  function accountId() {
+    return typeof activeMailAccount === 'function' ? (activeMailAccount()?.id || '') : '';
+  }
+
+  function accountHeaders(acc = accountId()) {
+    return acc ? { 'X-MailAI-Account': acc } : {};
+  }
+
+  function kindLabel(item) {
+    if (item.kind === 'todo') return mailaiText('待办');
+    if (item.kind === 'followup') return mailaiText('发信跟进');
+    if (item.kind === 'ics') return mailaiText('会议邀请');
+    if (item.kind === 'custom') return mailaiText('自建日程');
+    return item.kind_label || '';
+  }
+
+  function filteredItems() {
+    const items = currentData?.items || [];
+    if (activeKind === 'all') return items;
+    return items.filter(it => it.kind === activeKind);
+  }
+
+  function selectedItems() {
+    const items = currentData?.items || [];
+    return items.filter(it => selectedIds.has(it.item_id));
+  }
+
+  function updateSelectionUi() {
+    const visible = filteredItems();
+    const checkedCount = selectedItems().length;
+    selectedCountEl.textContent = mailaiTemplate`已选 ${checkedCount} 项`;
+    exportBatchBtn.disabled = checkedCount === 0;
+    const hasCal = Boolean(sysCalendarSelect.value) && currentData?.macos_calendar_supported !== false;
+    sysAddBtn.disabled = checkedCount === 0 || !hasCal;
+    const allVisibleSelected = visible.length > 0 && visible.every(it => selectedIds.has(it.item_id));
+    selectAllBtn.textContent = allVisibleSelected ? mailaiText('取消全选') : mailaiText('全选当前');
+  }
+
+  function renderSummary() {
+    const s = currentData?.summary;
+    if (!s) {
+      summaryStrip.innerHTML = '';
+      return;
+    }
+    const cards = [
+      { label: mailaiText('近期日程'), value: mailaiTemplate`${s.total || 0} 项`, cls: '' },
+      { label: mailaiText('已逾期'), value: mailaiTemplate`${s.overdue || 0} 项`, cls: (s.overdue || 0) > 0 ? 'is-danger' : '' },
+      { label: mailaiText('今日安排'), value: mailaiTemplate`${s.today || 0} 项`, cls: '' },
+      { label: mailaiText('时段冲突'), value: mailaiTemplate`${s.conflicts || 0} 处`, cls: (s.conflicts || 0) > 0 ? 'is-warn' : '' },
+    ];
+    summaryStrip.innerHTML = cards
+      .map(
+        c => `
+        <div class="timeline-metric ${c.cls}">
+          <span class="timeline-metric-label">${esc(c.label)}</span>
+          <strong class="timeline-metric-value">${esc(c.value)}</strong>
+        </div>`
+      )
+      .join('');
+  }
+
+  function renderGroups() {
+    const groups = currentData?.groups || [];
+    const rendered = [];
+    for (const group of groups) {
+      const groupItems = (group.items || []).filter(it => activeKind === 'all' || it.kind === activeKind);
+      if (!groupItems.length) continue;
+      const headerCls = group.bucket === 'overdue' ? 'is-overdue' : group.bucket === 'today' ? 'is-today' : '';
+      const rowsHtml = groupItems
+        .map(it => {
+          const isDone = it.status === 'done';
+          const checked = selectedIds.has(it.item_id) ? 'checked' : '';
+          const timeText = it.all_day
+            ? mailaiText('全天')
+            : `${esc(it.start_time || '--:--')}${it.end_time ? ` - ${esc(it.end_time)}` : ''}`;
+          const conflictText = it.conflict && (it.conflict_with || []).length
+            ? mailaiTemplate`时段冲突：${it.conflict_with.slice(0, 2).join('、')}`
+            : '';
+          const metaParts = [];
+          if (it.location) metaParts.push(mailaiTemplate`地点：${it.location}`);
+          if (it.source_label) metaParts.push(it.source_label);
+          if (it.description && it.kind !== 'todo') {
+            metaParts.push(it.description);
+          }
+
+          const actions = [];
+          if (it.kind === 'todo' && !isDone && it.todo_id) {
+            actions.push(
+              `<button type="button" class="timeline-mini-btn" data-action="complete-todo" data-todo-id="${it.todo_id}">${esc(mailaiText('完成'))}</button>`
+            );
+          }
+          if (it.email_id) {
+            actions.push(
+              `<button type="button" class="timeline-mini-btn" data-action="open-email" data-email-id="${it.email_id}">${esc(mailaiText('查看邮件'))}</button>`
+            );
+          }
+          if (it.kind === 'custom' && it.custom_id) {
+            actions.push(
+              `<button type="button" class="timeline-mini-btn danger" data-action="delete-custom" data-custom-id="${it.custom_id}">${esc(mailaiText('删除'))}</button>`
+            );
+          }
+
+          return `
+            <div class="timeline-item ${it.conflict ? 'is-conflict' : ''} ${isDone ? 'is-done' : ''}" data-item-id="${esc(it.item_id)}">
+              <input type="checkbox" class="timeline-item-check" data-select-id="${esc(it.item_id)}" ${checked} aria-label="${esc(it.title)}">
+              <div class="timeline-item-time">
+                <span>${timeText}</span>
+                <small>${esc(it.date)}</small>
+              </div>
+              <div class="timeline-item-main">
+                <div class="timeline-item-title-row">
+                  <span class="timeline-item-title">${esc(it.title)}</span>
+                  <span class="timeline-badge kind-${esc(it.kind)}">${esc(kindLabel(it))}</span>
+                  ${it.overdue ? `<span class="timeline-badge is-overdue">${esc(mailaiText('已逾期'))}</span>` : ''}
+                  ${conflictText ? `<span class="timeline-badge is-conflict">${esc(conflictText)}</span>` : ''}
+                </div>
+                ${metaParts.length ? `<div class="timeline-item-meta">${metaParts.map(p => `<span>${esc(p)}</span>`).join(' · ')}</div>` : ''}
+              </div>
+              <div class="timeline-item-actions">${actions.join('')}</div>
+            </div>`;
+        })
+        .join('');
+
+      rendered.push(`
+        <section class="timeline-group">
+          <div class="timeline-group-header ${headerCls}">
+            <span>${esc(group.label)}</span>
+            <span>${esc(mailaiTemplate`${groupItems.length} 项`)}</span>
+          </div>
+          ${rowsHtml}
+        </section>`);
+    }
+
+    listEl.innerHTML = rendered.length
+      ? rendered.join('')
+      : `<div class="timeline-empty">${esc(mailaiText('当前范围暂无日程安排，可点击「+ 新建日程」添加，或先同步包含待办与会议邀请的邮件。'))}</div>`;
+
+    updateSelectionUi();
+  }
+
+  async function loadSystemCalendars() {
+    if (systemCalendarsLoaded) return;
+    try {
+      const data = await api('/api/productivity/calendar/system-calendars', {
+        headers: accountHeaders(),
+      });
+      systemCalendarsLoaded = true;
+      const cals = data.calendars || [];
+      if (!data.supported) {
+        sysCalendarSelect.innerHTML = `<option value="">${esc(mailaiText('系统日历（请用 .ics 导入）'))}</option>`;
+        sysCalendarSelect.disabled = true;
+        sysNoteEl.textContent = data.note || '';
+      } else if (!cals.length) {
+        sysCalendarSelect.innerHTML = `<option value="">${esc(mailaiText('未读取到系统日历'))}</option>`;
+        sysCalendarSelect.disabled = true;
+        sysNoteEl.textContent = data.note || mailaiText('可使用「导出 .ics」导入苹果日历');
+      } else {
+        sysCalendarSelect.disabled = false;
+        sysCalendarSelect.innerHTML = cals
+          .map(name => `<option value="${esc(name)}">${esc(mailaiTemplate`日历：${name}`)}</option>`)
+          .join('');
+        sysNoteEl.textContent = mailaiText('支持写入 macOS「日历」或导出 .ics');
+      }
+    } catch {
+      sysCalendarSelect.innerHTML = `<option value="">${esc(mailaiText('未读取到系统日历'))}</option>`;
+      sysCalendarSelect.disabled = true;
+    }
+    updateSelectionUi();
+  }
+
+  async function loadTimeline() {
+    listEl.innerHTML = `<div class="timeline-empty">${esc(mailaiText('正在聚合待办、跟进与会议日程…'))}</div>`;
+    try {
+      const days = Number(daysSelect.value) || 14;
+      const includeDone = includeDoneCheck.checked ? 'true' : 'false';
+      const data = await api(
+        `/api/productivity/calendar/timeline?days=${days}&include_past_days=7&include_done=${includeDone}`,
+        { headers: accountHeaders() }
+      );
+      currentData = data;
+      const validSet = new Set((data.items || []).map(x => x.item_id));
+      for (const id of [...selectedIds]) {
+        if (!validSet.has(id)) selectedIds.delete(id);
+      }
+      renderSummary();
+      renderGroups();
+    } catch (e) {
+      const msg = e.message || mailaiText('读取日程时间线失败');
+      listEl.innerHTML = `<div class="timeline-empty">${esc(msg)}</div>`;
+    }
+  }
+
+  function resetCreateDefaults() {
+    const now = new Date();
+    now.setMinutes(0, 0, 0);
+    now.setHours(now.getHours() + 1);
+    const pad = n => String(n).padStart(2, '0');
+    const localStart = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:00`;
+    const endDt = new Date(now.getTime() + 3600000);
+    const localEnd = `${endDt.getFullYear()}-${pad(endDt.getMonth() + 1)}-${pad(endDt.getDate())}T${pad(endDt.getHours())}:00`;
+    createTitleInput.value = '';
+    createStartInput.value = localStart;
+    createEndInput.value = localEnd;
+    createLocationInput.value = '';
+    createDescInput.value = '';
+    createAllDayCheck.checked = false;
+  }
+
+  async function openModal() {
+    if (typeof closeTodoCenter === 'function') closeTodoCenter();
+    if (typeof closeAssistant === 'function') closeAssistant();
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    createForm.classList.add('hidden');
+    resetCreateDefaults();
+    await Promise.all([loadTimeline(), loadSystemCalendars()]);
+  }
+
+  function closeModal() {
+    modal.classList.add('hidden');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeKind = btn.dataset.timelineKind || 'all';
+      filterBtns.forEach(b => b.classList.toggle('is-active', b === btn));
+      renderGroups();
+    });
+  });
+
+  daysSelect.addEventListener('change', loadTimeline);
+  includeDoneCheck.addEventListener('change', loadTimeline);
+  sysCalendarSelect.addEventListener('change', updateSelectionUi);
+
+  toggleCreateBtn.addEventListener('click', () => {
+    const opening = createForm.classList.contains('hidden');
+    createForm.classList.toggle('hidden');
+    if (opening) {
+      resetCreateDefaults();
+      createTitleInput.focus();
+    }
+  });
+
+  createCancelBtn.addEventListener('click', () => {
+    createForm.classList.add('hidden');
+  });
+
+  createForm.addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const title = createTitleInput.value.trim();
+    const start = createStartInput.value.trim();
+    if (!title || !start) {
+      toast(mailaiText('请填写日程标题与开始时间'), 'warn');
+      return;
+    }
+    createSubmitBtn.disabled = true;
+    try {
+      await api('/api/productivity/calendar/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...accountHeaders() },
+        body: JSON.stringify({
+          title,
+          start,
+          end: createEndInput.value.trim(),
+          location: createLocationInput.value.trim(),
+          description: createDescInput.value.trim(),
+          all_day: createAllDayCheck.checked,
+        }),
+      });
+      createForm.classList.add('hidden');
+      toast(mailaiText('已添加自建日程'), 'success');
+      await loadTimeline();
+    } catch (e) {
+      toast(e.message || mailaiText('创建日程失败'), 'error');
+    } finally {
+      createSubmitBtn.disabled = false;
+    }
+  });
+
+  listEl.addEventListener('change', ev => {
+    const chk = ev.target.closest('.timeline-item-check');
+    if (!chk) return;
+    const id = chk.dataset.selectId;
+    if (!id) return;
+    if (chk.checked) selectedIds.add(id);
+    else selectedIds.delete(id);
+    updateSelectionUi();
+  });
+
+  listEl.addEventListener('click', async ev => {
+    const btn = ev.target.closest('[data-action]');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    if (action === 'complete-todo') {
+      const todoId = Number(btn.dataset.todoId);
+      if (!todoId) return;
+      btn.disabled = true;
+      try {
+        await api(`/api/todos/${todoId}/done`, {
+          method: 'POST',
+          headers: accountHeaders(),
+        });
+        toast(mailaiText('待办已标记完成'), 'success');
+        if (typeof loadTodos === 'function') await loadTodos();
+        await loadTimeline();
+      } catch (e) {
+        btn.disabled = false;
+        toast(e.message || mailaiText('更新待办失败'), 'error');
+      }
+      return;
+    }
+    if (action === 'open-email') {
+      const emailId = Number(btn.dataset.emailId);
+      if (!emailId) return;
+      if (typeof openDigestEmailDrawer === 'function') {
+        await openDigestEmailDrawer(emailId);
+      } else if (typeof selectEmail === 'function') {
+        closeModal();
+        await selectEmail(emailId);
+      }
+      return;
+    }
+    if (action === 'delete-custom') {
+      const customId = Number(btn.dataset.customId);
+      if (!customId) return;
+      btn.disabled = true;
+      try {
+        await api(`/api/productivity/calendar/events/${customId}`, {
+          method: 'DELETE',
+          headers: accountHeaders(),
+        });
+        selectedIds.delete(`custom:${customId}`);
+        toast(mailaiText('已删除自建日程'), 'success');
+        await loadTimeline();
+      } catch (e) {
+        btn.disabled = false;
+        toast(e.message || mailaiText('删除日程失败'), 'error');
+      }
+    }
+  });
+
+  selectAllBtn.addEventListener('click', () => {
+    const visible = filteredItems();
+    const allSelected = visible.length > 0 && visible.every(it => selectedIds.has(it.item_id));
+    for (const it of visible) {
+      if (allSelected) selectedIds.delete(it.item_id);
+      else selectedIds.add(it.item_id);
+    }
+    renderGroups();
+  });
+
+  exportBatchBtn.addEventListener('click', async () => {
+    const chosen = selectedItems();
+    if (!chosen.length) {
+      toast(mailaiText('请先勾选至少一条日程'), 'warn');
+      return;
+    }
+    exportBatchBtn.disabled = true;
+    try {
+      const res = await fetch('/api/productivity/calendar/export-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...accountHeaders() },
+        body: JSON.stringify({ items: chosen }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `HTTP ${res.status}`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'schedule.ics';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast(mailaiTemplate`已导出 ${chosen.length} 条日程至 schedule.ics`, 'success');
+    } catch (e) {
+      toast(e.message || mailaiText('导出 .ics 失败'), 'error');
+    } finally {
+      updateSelectionUi();
+    }
+  });
+
+  sysAddBtn.addEventListener('click', async () => {
+    const chosen = selectedItems();
+    const calendarName = sysCalendarSelect.value;
+    if (!chosen.length || !calendarName) {
+      toast(mailaiText('请先勾选日程并选择目标系统日历'), 'warn');
+      return;
+    }
+    sysAddBtn.disabled = true;
+    sysAddBtn.textContent = mailaiText('正在写入…');
+    try {
+      const res = await api('/api/productivity/calendar/system-add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...accountHeaders() },
+        body: JSON.stringify({ calendar_name: calendarName, items: chosen }),
+      });
+      toast(
+        mailaiTemplate`已写入「${res.calendar}」：新增 ${res.created} 条，跳过重复 ${res.skipped} 条`,
+        'success'
+      );
+    } catch (e) {
+      toast(e.message || mailaiText('写入系统日历失败'), 'error');
+    } finally {
+      sysAddBtn.textContent = mailaiText('写入系统日历');
+      updateSelectionUi();
+    }
+  });
+
+  const todoTrigger = document.getElementById('btn-todo-open-timeline');
+  if (todoTrigger) todoTrigger.addEventListener('click', openModal);
+
+  const closeBtn = document.getElementById('btn-close-timeline');
+  if (closeBtn) closeBtn.addEventListener('click', closeModal);
+  modal.querySelectorAll('[data-close-timeline]').forEach(el => el.addEventListener('click', closeModal));
+
+  document.addEventListener('keydown', ev => {
+    if (ev.key === 'Escape' && !modal.classList.contains('hidden')) {
+      closeModal();
+    }
+  });
+
+  window.openCalendarTimeline = openModal;
+  window.closeCalendarTimeline = closeModal;
 })();
 
 ;
