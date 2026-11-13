@@ -17591,6 +17591,7 @@ const MAILAI_UI_COPY = {
   "triage.service.ruleNameRequired": ["请填写规则名称", "Enter a rule name"],
   "triage.service.senderRequired": ["缺少发件人邮箱地址", "Sender email address is missing"],
   "triage.service.batchModeUnsupported": ["不支持的批处理模式", "Unsupported batch mode"],
+  "triage.service.invalidDays": ["统计天数参数无效", "Invalid day window parameter"],
   "triage.service.noInboxForSender": ["未找到该发件人当前可处理的收件箱邮件", "No inbox messages found from this sender to process"],
   "triage.service.conditionsFormatInvalid": ["规则条件格式无效", "Invalid rule conditions format"],
   "triage.service.conditionFieldInvalid": ["条件字段仅支持发件人、发件域名、主题、正文或订阅识别", "Condition field must be sender, domain, subject, body, or subscription"],

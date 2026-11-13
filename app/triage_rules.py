@@ -335,8 +335,18 @@ _SUBSCRIPTION_ELIGIBLE_WHERE = (
 )
 
 
-def _subscription_window(days: int = 45) -> tuple[int, str]:
-    span = max(7, min(int(days), 180))
+_SUBSCRIPTION_ORDER = "ORDER BY COALESCE(NULLIF(date,''), created_at) DESC, id DESC"
+_SUBSCRIPTION_SCAN_LIMIT = 1200
+
+
+def _subscription_window(days: int | str = 45) -> tuple[int, str]:
+    if isinstance(days, bool):
+        raise ValueError("统计天数参数无效")
+    try:
+        raw_days = int(days)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("统计天数参数无效") from exc
+    span = max(7, min(raw_days, 180))
     cutoff = (datetime.now() - timedelta(days=span)).isoformat(timespec="seconds")
     return span, cutoff
 
@@ -355,7 +365,7 @@ def scan_subscriptions(days: int = 45, min_count: int = 2) -> dict:
                 "raw_path, list_unsubscribe, is_automated "
                 "FROM emails "
                 f"WHERE {_SUBSCRIPTION_ELIGIBLE_WHERE} "
-                "ORDER BY COALESCE(NULLIF(date,''), created_at) DESC, id DESC LIMIT 1200",
+                f"{_SUBSCRIPTION_ORDER} LIMIT {_SUBSCRIPTION_SCAN_LIMIT}",
                 (cutoff,),
             ).fetchall()
         ]
@@ -465,10 +475,15 @@ def triage_sender_batch(sender_addr: str, mode: str = "keep_latest_done", days: 
         rows = [
             dict(r)
             for r in c.execute(
-                "SELECT id, is_read, handle_state FROM emails "
+                "WITH candidate_pool AS ("
+                "SELECT id, from_addr, is_read, handle_state, date, created_at "
+                "FROM emails "
                 f"WHERE {_SUBSCRIPTION_ELIGIBLE_WHERE} "
-                "AND lower(from_addr)=? "
-                "ORDER BY COALESCE(NULLIF(date,''), created_at) DESC, id DESC",
+                f"{_SUBSCRIPTION_ORDER} LIMIT {_SUBSCRIPTION_SCAN_LIMIT}"
+                ") "
+                "SELECT id, is_read, handle_state FROM candidate_pool "
+                "WHERE lower(from_addr)=? "
+                f"{_SUBSCRIPTION_ORDER}",
                 (cutoff, target),
             ).fetchall()
         ]
