@@ -8766,7 +8766,7 @@ async function openTodoCenter(options = {}) {
   todoSourceReturn = null;
   document.getElementById('todo-source-return').classList.add('hidden');
   todoReturnFocus = resume ? document.getElementById('btn-todos') : document.activeElement;
-  window.mailaiTodoTab?.(resume?.view || 'all');
+  window.mailaiTodoTab?.(resume?.view || options.view || 'all');
   closeAssistant();
   document.getElementById('todo-center').classList.remove('hidden');
   document.body.classList.add('modal-open');

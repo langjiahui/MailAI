@@ -112,8 +112,94 @@ async function run(type){
   await page.evaluate(()=>openCompose());await page.locator('#compose-subject').fill('Fixture draft must remain');
   await page.keyboard.press('Control+k');assert.equal(await palette.isVisible(),false);
   assert.equal(await page.locator('#compose-subject').inputValue(),'Fixture draft must remain');
+  await page.locator('#btn-close-compose').click();
+  await page.locator('#compose-modal').waitFor({state:'hidden'});
+
+  // Item 2: unified workbench shortcuts, contextual quick-action bar, fast triage & shortcut sheet.
+  await page.evaluate(async()=>await openAccountMailbox(_systemConfig.accounts[0].id,'inbox'));
+  await page.waitForFunction(()=>activeMailAccount()?.id===_systemConfig.accounts[0].id&&allEmails.length>=2);
+  await page.locator('#email-list .email-item').first().waitFor();
+  const secondId=Number(await page.locator('#email-list .email-item').nth(1).getAttribute('data-id'));
+  await page.locator('#email-list .email-item').first().click();
+  await page.waitForFunction(()=>Boolean(selectedEmailDetail&&selectedEmailDetail.id));
+  const openedId=await page.evaluate(()=>Number(selectedEmailDetail.id));
+  const openedSubject=await page.evaluate(()=>String(selectedEmailDetail.subject||'').trim());
+  await page.evaluate(async id=>{
+   await api(`/api/productivity/workflow/${id}`,{accountId:_systemConfig.accounts[0].id,method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({state:'unhandled',at:'',followup_at:''})});
+   const row=allEmails.find(r=>Number(r.id)===id); if(row) row.handle_state='unhandled';
+   if(selectedEmailDetail&&Number(selectedEmailDetail.id)===id) selectedEmailDetail.handle_state='unhandled';
+  },openedId);
+
+  // Contextual mail bar + searchable contextual commands appear inside Cmd/Ctrl+K while preserving index 0/1 ordering.
+  await open();
+  assert.equal(await active(),'focus-search');
+  await page.keyboard.press('ArrowDown');assert.equal(await active(),'compose');
+  await page.locator('#productivity-command-mail').waitFor();
+  assert.match(await page.locator('#productivity-command-mail .command-mail-meta strong').innerText(),new RegExp(openedSubject.slice(0,8).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
+  assert.equal(await page.locator('#productivity-command-mail [data-command-pill]').count(),5);
+  await page.screenshot({path:`build/command-palette-context-${type.name()}.png`});
+  await input.fill('yichuli');
+  assert.equal(await active(),'mail-done-next','Contextual fast-triage commands are searchable by pinyin/alias');
+
+  // Contrast check on new palette mail-bar, keys, recent badges and shortcut cheat-sheet across 6 palettes.
+  await input.fill('');
+  for(const [theme,mode,width,scale] of [['','light',1440,1],['theme_monochrome','dark',1440,1],['theme_baowu','dark',390,1.2]]){
+   await page.setViewportSize({width,height:800});
+   await page.evaluate(({theme,mode,scale})=>{applyTheme(mode);if(theme)document.documentElement.dataset.rewardTheme=theme;else delete document.documentElement.dataset.rewardTheme;document.body.style.zoom=scale;document.documentElement.style.setProperty('--fz',String(scale));},{theme,mode,scale});
+   const failures=await palette.evaluate(root=>{
+    const ctx=document.createElement('canvas').getContext('2d');
+    const paint=color=>{ctx.fillStyle=color;ctx.fillRect(0,0,1,1);};
+    const lum=rgb=>rgb.slice(0,3).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4;}).reduce((n,v,i)=>n+v*[.2126,.7152,.0722][i],0);
+    return [...root.querySelectorAll('.command-mail-meta strong,.command-mail-pill,.command-key,.command-hints')].filter(n=>n.getClientRects().length&&n.textContent.trim()).map(n=>{
+     const a=[];for(let x=n;x;x=x.parentElement)a.unshift(x);
+     ctx.clearRect(0,0,1,1);paint('#fff');a.forEach(x=>paint(getComputedStyle(x).backgroundColor));const bg=lum([...ctx.getImageData(0,0,1,1).data]);
+     ctx.clearRect(0,0,1,1);paint(getComputedStyle(n).color);const fg=lum([...ctx.getImageData(0,0,1,1).data]);
+     return {text:n.textContent.trim(),ratio:(Math.max(bg,fg)+.05)/(Math.min(bg,fg)+.05)};
+    }).filter(n=>n.ratio<4.5);
+   });
+   assert.deepEqual(failures,[],JSON.stringify({theme,mode,width,failures}));
+  }
+  await page.setViewportSize({width:1440,height:1000});
+  await page.evaluate(()=>{applyTheme('light');delete document.documentElement.dataset.rewardTheme;document.body.style.zoom=1;document.documentElement.style.setProperty('--fz','1');});
+  await page.keyboard.press('Escape');await closed();
+
+  // Single-key workflow triage (`e`), Shift+E (mark done + advance), undo via palette, read toggle (`u`), task (`t`), shortcut sheet (`?`), and input guard.
+  await page.locator('#productivity-command-mail').waitFor({state:'hidden'});
+  await page.keyboard.press('e');
+  await page.waitForFunction(id=>allEmails.find(r=>Number(r.id)===id)?.handle_state==='done',openedId);
+  await open();await input.fill('undo');assert.equal(await active(),'mail-undo-workflow');
+  await input.press('Enter');await closed();
+  await page.waitForFunction(id=>allEmails.find(r=>Number(r.id)===id)?.handle_state==='unhandled',openedId);
+
+  await page.keyboard.press('Shift+E');
+  await page.waitForFunction(([prev,next])=>allEmails.find(r=>Number(r.id)===prev)?.handle_state==='done'&&Number(selectedEmailDetail?.id)===next,[openedId,secondId]);
+
+  const wasRead=await page.evaluate(id=>Boolean(allEmails.find(r=>Number(r.id)===id)?.is_read),secondId);
+  await page.keyboard.press('u');
+  await page.waitForFunction(([id,expected])=>Boolean(allEmails.find(r=>Number(r.id)===id)?.is_read)===expected,[secondId,!wasRead]);
+
+  await page.keyboard.press('t');
+  await page.locator('#task-planner').waitFor();
+  await page.keyboard.press('Escape');
+  await page.locator('#task-planner').waitFor({state:'hidden'});
+
+  await page.keyboard.press('?');
+  await page.locator('#productivity-dialog[data-panel=shortcuts]').waitFor();
+  assert.equal(await page.locator('#productivity-dialog[data-panel=shortcuts] .shortcut-row').count()>=10,true);
+  await page.screenshot({path:`build/command-palette-shortcuts-${type.name()}.png`});
+  await page.locator('#productivity-dialog[data-panel=shortcuts] [data-productivity-action="open-palette"]').click();
+  await input.waitFor();
+  await input.fill('genjin');assert.equal(await active(),'followups');
+  await input.press('Enter');await closed();
+  await page.locator('#todo-center[data-todo-view="followups"]').waitFor();
+  // While todo center is open, single-key shortcuts must not leak through.
+  await page.keyboard.press('c');
+  assert.equal(await page.locator('#compose-modal').isVisible(),false);
+  await page.locator('#btn-close-todos').click();
+  await page.locator('#todo-center').waitFor({state:'hidden'});
+
   assert.deepEqual(sent,[]);assert.deepEqual(errors,[]);
-  console.log(`PASS ${type.name()}: command discovery, keyboard/IME/focus, current-scope search, account switch/failure, shared dialog handoff, modal/draft guards, i18n and narrow zoom`);
+  console.log(`PASS ${type.name()}: command discovery, keyboard/IME/focus, current-scope search, account switch/failure, shared dialog handoff, modal/draft guards, fast triage flow, shortcut sheet, i18n and narrow zoom`);
  }finally{await browser.close();}
 }
 (async()=>{for(const type of [chromium,webkit].filter(type=>!process.env.MAILAI_BROWSER||type.name()===process.env.MAILAI_BROWSER))await run(type);})().catch(error=>{console.error(error);process.exitCode=1;});
