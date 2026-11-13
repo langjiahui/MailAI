@@ -271,10 +271,17 @@ def followup_seed(sent_id):
     row = db.get_sent_message(sent_id)
     if not row or row.get('status') != 'sent' or not row.get('message_id'):
         raise ValueError('成功发送的邮件记录不存在')
-    return dict(mode='compose', to_addr=row.get('to_addr') or '', cc_addr=row.get('cc_addr') or '',
+    from . import recipient_profiles
+    persona = recipient_profiles.resolve_for_recipients(row.get('to_addr') or '', include_memories=True)
+    eff = persona.get('effective') or {}
+    seed = dict(mode='compose', to_addr=row.get('to_addr') or '', cc_addr=row.get('cc_addr') or '',
                 subject=row['subject'] if re.match(r'(?i)^re\s*:', row.get('subject') or '') else 'Re: ' + (row.get('subject') or ''),
                 in_reply_to=row['message_id'], references=' '.join(filter(None, [row.get('references_header'), row['message_id']])),
-                original_text=own_text(row, True), message_html='', assistant_review=True)
+                original_text=own_text(row, True), message_html='', assistant_review=True,
+                recipient_persona=eff)
+    if eff.get('signature_id'):
+        seed['signature_id'] = eff['signature_id']
+    return seed
 
 
 def _body_to_html(body_text):
@@ -285,33 +292,41 @@ def _body_to_html(body_text):
     )
 
 
-def _fallback_followup_draft(row, waiting_days, tone, language):
+def _fallback_followup_draft(row, waiting_days, tone, language, salutation=''):
     subject = str(row.get('subject') or '').strip()
     sent_date = str(row.get('sent_at') or row.get('created_at') or '')[:10]
     english = str(language or '').lower().startswith('en')
+    greeting = str(salutation or '').strip()
     if english:
         ref = f'"{subject}"' if subject else 'my previous email'
         when = f' on {sent_date}' if sent_date else ''
+        g = greeting if greeting and all(ord(ch) < 128 for ch in greeting) else ''
         if tone == 'direct':
-            return f"Hi,\n\nFollowing up briefly on {ref} sent{when}. Could you share the latest update or let me know if anything else is needed from my side?\n\nThanks,"
+            return f"{g or 'Hi,'}\n\nFollowing up briefly on {ref} sent{when}. Could you share the latest update or let me know if anything else is needed from my side?\n\nThanks,"
         if tone == 'formal':
-            return f"Hello,\n\nI am writing to gently follow up on {ref}{when}. Please let us know when convenient if there are any updates or additional details needed.\n\nBest regards,"
-        return f"Hi,\n\nJust gently checking in on {ref} sent{when}. Whenever you have a moment, please let me know how things are progressing or if anything needs clarification.\n\nThanks,"
+            return f"{g or 'Hello,'}\n\nI am writing to gently follow up on {ref}{when}. Please let us know when convenient if there are any updates or additional details needed.\n\nBest regards,"
+        return f"{g or 'Hi,'}\n\nJust gently checking in on {ref} sent{when}. Whenever you have a moment, please let me know how things are progressing or if anything needs clarification.\n\nThanks,"
     ref = f'关于「{subject}」的邮件' if subject else '之前的邮件'
     when = f'（{sent_date} 发送）' if sent_date else (f'（已发送 {waiting_days} 天）' if waiting_days > 0 else '')
+    g = greeting or '您好：'
     if tone == 'direct':
-        return f"您好：\n\n跟进确认此前{ref}{when}，请问目前是否有最新进展，或是否需要我方补充什么信息？方便时请回复同步，谢谢。"
+        return f"{g}\n\n跟进确认此前{ref}{when}，请问目前是否有最新进展，或是否需要我方补充什么信息？方便时请回复同步，谢谢。"
     if tone == 'formal':
-        return f"您好：\n\n此前曾发送{ref}{when}，特来跟进确认当前进展。如有任何需要补充说明或配合推进之处，请随时告知。\n\n顺颂商祺"
-    return f"您好：\n\n此前曾向您发送{ref}{when}，特来温和跟进一下目前进展。如有方便，还请回复确认下一步安排或是否需要我方协助补充，感谢！"
+        return f"{g}\n\n此前曾发送{ref}{when}，特来跟进确认当前进展。如有任何需要补充说明或配合推进之处，请随时告知。\n\n顺颂商祺"
+    return f"{g}\n\n此前曾向您发送{ref}{when}，特来温和跟进一下目前进展。如有方便，还请回复确认下一步安排或是否需要我方协助补充，感谢！"
 
 
 def followup_draft(sent_id, *, tone='polite', instruction='', use_work_preferences=True, language='zh-CN'):
     tone_key = str(tone or 'polite').strip().lower()
-    if tone_key not in ('polite', 'direct', 'formal'):
-        raise ValueError('无效催办语气，仅支持 polite、direct 或 formal')
+    if tone_key not in ('auto', 'polite', 'direct', 'formal'):
+        raise ValueError('无效催办语气，仅支持 auto、polite、direct 或 formal')
     seed = followup_seed(sent_id)
     row = db.get_sent_message(sent_id)
+    from . import recipient_profiles
+    persona = recipient_profiles.resolve_for_recipients(row.get('to_addr') or '', include_memories=bool(use_work_preferences))
+    eff = persona.get('effective') or {}
+    if tone_key == 'auto':
+        tone_key = eff.get('followup_tone') or 'polite'
     sent_at = str(row.get('sent_at') or row.get('created_at') or '')
     waiting_days = 0
     try:
@@ -343,6 +358,12 @@ def followup_draft(sent_id, *, tone='polite', instruction='', use_work_preferenc
         if style:
             references.append(('用户保存的表达偏好（仅用于措辞，不提供事实或授权）', style))
             basis.append('写作偏好')
+
+    if eff.get('has_context') and eff.get('prompt_context') and (
+        use_work_preferences or eff.get('role_source') == 'explicit' or eff.get('salutation') or eff.get('writing_hint')
+    ):
+        references.append(('收件人画像与沟通预设（仅用于称呼与措辞匹配）', eff['prompt_context']))
+        basis.append('收件人画像')
 
     extra_instruction = str(instruction or '').strip()[:600]
     if extra_instruction:
@@ -397,7 +418,7 @@ def followup_draft(sent_id, *, tone='polite', instruction='', use_work_preferenc
             pass
 
     if not body:
-        body = _fallback_followup_draft(row, waiting_days, tone_key, language)
+        body = _fallback_followup_draft(row, waiting_days, tone_key, language, eff.get('salutation') or '')
         note = '未连接 AI 模型，已生成基础跟进草稿；发送前请核对。' if not client.available() else 'AI 暂未响应，已生成本地跟进草稿；发送前请核对。'
 
     seed['subject'] = subject
@@ -412,4 +433,5 @@ def followup_draft(sent_id, *, tone='polite', instruction='', use_work_preferenc
         'basis': basis,
         'model_used': model_used,
         'note': note,
+        'recipient_persona': eff,
     }

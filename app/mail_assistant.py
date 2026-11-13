@@ -462,6 +462,9 @@ def _build_mail_context(sources: list[dict], question: str, *, search_mode: bool
     from .work_memory import approved_context
     if memory := approved_context(question):
         context.append(memory)
+    from .recipient_profiles import assistant_context as recipient_assistant_context
+    if persona_ctx := recipient_assistant_context(question, sources):
+        context.append(persona_ctx)
     return context
 
 

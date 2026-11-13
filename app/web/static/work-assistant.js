@@ -308,6 +308,7 @@
     if (opened) {
       document.getElementById('compose-ai-instruction').value = w('followupInstruction');
       toggleComposeAiPanel(true);
+      window.mailaiSyncComposePersona?.({seed});
     }
   };
   window.mailaiDraftFollowup = async (sentId, account, options = {}) => {
@@ -318,7 +319,7 @@
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
-        tone: options.tone || 'polite',
+        tone: options.tone || 'auto',
         instruction: options.instruction || '',
         use_work_preferences: options.useWorkPreferences !== false,
         language,
@@ -330,6 +331,7 @@
     if (opened) {
       document.getElementById('compose-ai-instruction').value = w('followupInstruction');
       if (seed.note) toast?.(mailaiSystemMessage(seed.note), seed.model_used ? 'success' : 'info');
+      window.mailaiSyncComposePersona?.({seed});
     }
     return opened;
   };

@@ -264,7 +264,7 @@ function chooseContact(index) {
   const prefix = split >= 0 ? normalizeRecipientText(value.slice(0, split)) : '';
   contactInput.value = [prefix, contactRecipientValue(item)].filter(Boolean).join(', ');
   contactInput.focus();
-  hideContactSuggestions(); queueDraftSave(); refreshComposeAiContext();
+  hideContactSuggestions(); queueDraftSave(); refreshComposeAiContext(); window.mailaiScheduleComposePersona?.(40);
 }
 
 function highlightContact(index) {
@@ -1518,11 +1518,15 @@ async function openCompose(seed = {}) {
   const initialSignatureRevision = composeSignatureRevision;
   loadSignatures().then(state => {
     // A late default must not replace a signature/AI signoff chosen while loading.
-    if (session === draftSession && !session.canceled && !seed.id && !currentSignatureId &&
+    if (session === draftSession && !session.canceled && !seed.id &&
         composeSignatureRevision === initialSignatureRevision &&
-        !document.getElementById('compose-signature-content').innerText.trim())
-      renderComposeSignature(state.default_id || '');
+        !document.getElementById('compose-signature-content').innerText.trim()) {
+      if (currentSignatureId) renderComposeSignature(currentSignatureId);
+      else renderComposeSignature(state.default_id || '');
+    }
+    if (session === draftSession && !session.canceled) window.mailaiSyncComposePersona?.({session, seed});
   }).catch(() => {});
+  window.mailaiSyncComposePersona?.({session, seed});
   try { document.execCommand('styleWithCSS', false, true); } catch (_) {}
   resetComposeAiPanel();
   (composeContext.mode === 'forward' ? document.getElementById('compose-to') : composeMessageElement()).focus();
@@ -8941,6 +8945,7 @@ document.getElementById('contact-form').addEventListener('submit', async event =
       group_name:document.getElementById('contact-group-name')?.value || '',
       favorite:document.getElementById('contact-favorite').checked,
       ...(window.mailaiDirectoryFields ? {profile:window.mailaiDirectoryFields(),directory_revision:window.mailaiDirectoryEditRevision?.()} : {}),
+      ...(window.mailaiContactPersonaFields ? {comm_profile:window.mailaiContactPersonaFields()} : {}),
     })});
     if (session !== contactCenterSession) return;
     closeContactEditor(); await loadContactCenter(); await loadData({silent:true}); toast(mailaiText('联系人已保存，邮件列表姓名已更新'), 'success');
@@ -8956,7 +8961,7 @@ document.getElementById('btn-apply-contacts').addEventListener('click', () => {
   }
   applyContactSelection(target, selectedContactEmails, contactPickerContacts);
   const count = selectedContactEmails.size;
-  closeContactCenter(); target.focus(); contactInput = null; hideContactSuggestions(); toast(mailaiTemplate`收件人已更新，已选择 ${count} 位`, 'success');
+  closeContactCenter(); target.focus(); contactInput = null; hideContactSuggestions(); window.mailaiScheduleComposePersona?.(40); toast(mailaiTemplate`收件人已更新，已选择 ${count} 位`, 'success');
 });
 document.getElementById('btn-close-todos').addEventListener('click', closeTodoCenter);
 document.querySelector('#todo-center .attachment-center-backdrop').addEventListener('click', closeTodoCenter);
@@ -11167,7 +11172,7 @@ document.getElementById('compose-shared-files').addEventListener('click', async 
 // A single Escape closes only the innermost writing layer, never the draft.
 document.addEventListener('keydown', event => {
   if (event.isComposing || event.keyCode === 229) return;
-  if (event.key !== 'Escape' || !document.body.classList.contains('compose-open')) return;
+  if (event.key !== 'Escape' || !document.body.classList.contains('compose-open') || document.querySelector('dialog[open]')) return;
   const visible = id => { const node = document.getElementById(id); return node && !node.classList.contains('hidden'); };
   let close = null;
   let focus = null;

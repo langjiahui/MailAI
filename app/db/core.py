@@ -299,6 +299,15 @@ CREATE TABLE IF NOT EXISTS contact_tag_members (
     PRIMARY KEY(email,tag)
 );
 CREATE INDEX IF NOT EXISTS idx_contact_tag_members_tag ON contact_tag_members(tag);
+CREATE TABLE IF NOT EXISTS contact_communication_profiles (
+    email TEXT PRIMARY KEY COLLATE NOCASE,
+    role_key TEXT NOT NULL DEFAULT '',
+    salutation TEXT NOT NULL DEFAULT '',
+    tone TEXT NOT NULL DEFAULT '',
+    writing_hint TEXT NOT NULL DEFAULT '',
+    signature_id TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL DEFAULT ''
+);
 CREATE TABLE IF NOT EXISTS assistant_conversations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,

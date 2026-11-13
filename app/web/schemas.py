@@ -91,6 +91,7 @@ class ContactRequest(BaseModel):
     group_name: str = ''
     profile: dict | None = None
     directory_revision: str | None = None
+    comm_profile: dict | None = None
 
 
 class ContactPendingRequest(ContactRequest):
