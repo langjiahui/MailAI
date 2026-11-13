@@ -1,0 +1,21 @@
+{
+  "version": "1.0.0",
+  "build": "8313",
+  "bundleID": "com.mailai.ios.Q9AWGPWKK7",
+  "architecture": "arm64",
+  "sourceCommit": "cd4939bcd88ad8ad864077cd1f1a6d27ef8efd53",
+  "sourceIOSTree": "0eb592f457f8df9a5715cc738125c04b2173b4eb",
+  "fetchedMain": "0fef6565ce65bfbec12a60b6f9b7c794c5521305",
+  "method": "Local Xcode Release build, Apple development signing",
+  "profileExpiresUTC": "2026-11-19T13:08:16+00:00",
+  "file": "MailAI-iOS-1.0.0-8313-development.ipa",
+  "sha256": "1555d720a4ab7a589f6b3137f92172bf222cc6124fa61befb42cbb746133ba65",
+  "coreTestsPassed": 77,
+  "formalRelease": false,
+  "installation": {
+    "installed": true,
+    "buildReadback": "8313",
+    "launchVerified": true,
+    "checkedAt": "2026-11-12T13:09:46.153707+00:00"
+  }
+}

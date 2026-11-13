@@ -1,0 +1,10 @@
+{
+  "build": "8313",
+  "version": "1.0.0",
+  "file": "MailAI-iOS-1.0.0-8313-unsigned.ipa",
+  "architecture": "arm64",
+  "sourceCommit": "cd4939bcd88ad8ad864077cd1f1a6d27ef8efd53",
+  "sha256": "dc6fa2a8498ed611ca10e36a2854a8c3f168faf6c19a8779069f05028aaf936f",
+  "signing": "unsigned",
+  "installed": false
+}
