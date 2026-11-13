@@ -272,6 +272,136 @@ def main():
                 assert r_del.status_code == 200
                 assert client.delete(f"/api/productivity/triage/rules/{saved['id']}").status_code == 404
 
+            # 7. Regression guard: batch triage must respect `days` window & preserve starred/favorite/followup/snoozed
+            guard_sender = "digest@guard.example.com"
+            recent_ids = []
+            for idx in range(4):
+                recent_ids.append(db.upsert_email({
+                    "uid": 600 + idx,
+                    "folder": "INBOX",
+                    "message_id": f"<guard-recent-{idx}@guard.example.com>",
+                    "subject": f"产品周报 #{idx + 1}",
+                    "from_addr": guard_sender,
+                    "from_name": "产品周报",
+                    "to_addr": "me@corp.test",
+                    "date": (datetime.now() - timedelta(days=idx + 1)).isoformat(timespec="seconds"),
+                    "snippet": "周期推送",
+                    "body_text": "本周产品更新。",
+                    "list_unsubscribe": "<https://guard.example.com/unsub>",
+                    "is_automated": 1,
+                    "status": "inbox",
+                    "verdict": "clean",
+                }))
+            old_starred_id = db.upsert_email({
+                "uid": 610,
+                "folder": "INBOX",
+                "message_id": "<guard-old-starred@guard.example.com>",
+                "subject": "重要历史存档（60天前）",
+                "from_addr": guard_sender,
+                "from_name": "产品周报",
+                "to_addr": "me@corp.test",
+                "date": (datetime.now() - timedelta(days=60)).isoformat(timespec="seconds"),
+                "snippet": "星标存档",
+                "body_text": "长期留存。",
+                "is_automated": 1,
+                "status": "inbox",
+                "verdict": "clean",
+            })
+            old_unstarred_id = db.upsert_email({
+                "uid": 611,
+                "folder": "INBOX",
+                "message_id": "<guard-old-plain@guard.example.com>",
+                "subject": "60天前普通旧邮件",
+                "from_addr": guard_sender,
+                "from_name": "产品周报",
+                "to_addr": "me@corp.test",
+                "date": (datetime.now() - timedelta(days=55)).isoformat(timespec="seconds"),
+                "snippet": "窗口外",
+                "body_text": "超出列表时间窗口。",
+                "is_automated": 1,
+                "status": "inbox",
+                "verdict": "clean",
+            })
+            followup_id = db.upsert_email({
+                "uid": 612,
+                "folder": "INBOX",
+                "message_id": "<guard-followup@guard.example.com>",
+                "subject": "本周周报（待跟进）",
+                "from_addr": guard_sender,
+                "from_name": "产品周报",
+                "to_addr": "me@corp.test",
+                "date": (datetime.now() - timedelta(days=2)).isoformat(timespec="seconds"),
+                "snippet": "待跟进",
+                "body_text": "带跟进提醒。",
+                "is_automated": 1,
+                "status": "inbox",
+                "verdict": "clean",
+            })
+            snoozed_id = db.upsert_email({
+                "uid": 613,
+                "folder": "INBOX",
+                "message_id": "<guard-snooze@guard.example.com>",
+                "subject": "本周周报（稍后提醒）",
+                "from_addr": guard_sender,
+                "from_name": "产品周报",
+                "to_addr": "me@corp.test",
+                "date": (datetime.now() - timedelta(days=3)).isoformat(timespec="seconds"),
+                "snippet": "稍后提醒",
+                "body_text": "带稍后提醒。",
+                "is_automated": 1,
+                "status": "inbox",
+                "verdict": "clean",
+            })
+            recent_starred_id = db.upsert_email({
+                "uid": 614,
+                "folder": "INBOX",
+                "message_id": "<guard-recent-starred@guard.example.com>",
+                "subject": "本周周报（已加星标）",
+                "from_addr": guard_sender,
+                "from_name": "产品周报",
+                "to_addr": "me@corp.test",
+                "date": (datetime.now() - timedelta(days=1)).isoformat(timespec="seconds"),
+                "snippet": "星标保留",
+                "body_text": "最近且已加星标。",
+                "is_automated": 1,
+                "status": "inbox",
+                "verdict": "clean",
+            })
+            with db.conn() as c:
+                c.execute(
+                    "UPDATE emails SET is_starred=1, is_favorite=1 WHERE id=?",
+                    (old_starred_id,),
+                )
+                c.execute(
+                    "UPDATE emails SET is_starred=1 WHERE id=?",
+                    (recent_starred_id,),
+                )
+                c.execute(
+                    "UPDATE emails SET followup_at=? WHERE id=?",
+                    ((datetime.now() + timedelta(days=2)).isoformat(timespec="minutes"), followup_id),
+                )
+                c.execute(
+                    "UPDATE emails SET snoozed_until=? WHERE id=?",
+                    ((datetime.now() + timedelta(days=1)).isoformat(timespec="minutes"), snoozed_id),
+                )
+
+            guard_scan = triage_rules.scan_subscriptions(days=45, min_count=2)
+            guard_grp = next(g for g in guard_scan["groups"] if g["sender_addr"] == guard_sender)
+            assert guard_grp["total_count"] == 4, guard_grp
+
+            guard_batch = triage_rules.triage_sender_batch(guard_sender, mode="all_done", days=45)
+            assert guard_batch["updated_count"] == 4, guard_batch
+            assert set(guard_batch["email_ids"]) == set(recent_ids)
+            for rid in recent_ids:
+                row = db.get_email(rid)
+                assert row["is_read"] == 1 and row["handle_state"] == "done"
+            for pid in (old_starred_id, old_unstarred_id, followup_id, snoozed_id, recent_starred_id):
+                row = db.get_email(pid)
+                assert row["is_read"] == 0, (pid, row)
+                assert row["handle_state"] == "unhandled", (pid, row)
+            assert db.get_email(followup_id)["followup_at"] != ""
+            assert db.get_email(snoozed_id)["snoozed_until"] != ""
+
     print("PASS test_triage_rules: subscription scan, safe batch cleanup, rule preview/apply, ingest hook & API CRUD")
 
 

@@ -43633,7 +43633,7 @@ window.mailaiPrepareReadingMarkup = doc => {
     const checkedCount = selectedItems().length;
     selectedCountEl.textContent = mailaiTemplate`已选 ${checkedCount} 项`;
     exportBatchBtn.disabled = checkedCount === 0;
-    const hasCal = Boolean(sysCalendarSelect.value) && currentData?.macos_calendar_supported !== false;
+    const hasCal = !sysCalendarSelect.disabled && Boolean(sysCalendarSelect.value);
     sysAddBtn.disabled = checkedCount === 0 || !hasCal;
     const allVisibleSelected = visible.length > 0 && visible.every(it => selectedIds.has(it.item_id));
     selectAllBtn.textContent = allVisibleSelected ? mailaiText('取消全选') : mailaiText('全选当前');
@@ -43703,12 +43703,17 @@ window.mailaiPrepareReadingMarkup = doc => {
             );
           }
 
+          const endDate = it.end_at ? String(it.end_at).slice(0, 10) : '';
+          const dateLabel = it.all_day && endDate && endDate > it.date
+            ? `${it.date} ~ ${endDate}`
+            : it.date;
+
           return `
             <div class="timeline-item ${it.conflict ? 'is-conflict' : ''} ${isDone ? 'is-done' : ''}" data-item-id="${esc(it.item_id)}">
               <input type="checkbox" class="timeline-item-check" data-select-id="${esc(it.item_id)}" ${checked} aria-label="${esc(it.title)}">
               <div class="timeline-item-time">
                 <span>${timeText}</span>
-                <small>${esc(it.date)}</small>
+                <small>${esc(dateLabel)}</small>
               </div>
               <div class="timeline-item-main">
                 <div class="timeline-item-title-row">
@@ -44384,7 +44389,7 @@ window.mailaiPrepareReadingMarkup = doc => {
         const res = await api('/api/productivity/triage/sender-batch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...accountHeaders() },
-          body: JSON.stringify({ sender_addr: sender, mode }),
+          body: JSON.stringify({ sender_addr: sender, mode, days: subData?.days || 45 }),
         });
         toast(mailaiTemplate`已批量处理 ${res.updated_count || 0} 封订阅推送`, 'success');
         if (typeof loadEmails === 'function') loadEmails();

@@ -327,11 +327,24 @@ def delete_rule(rule_id: int) -> bool:
         return cur.rowcount > 0
 
 
+_SUBSCRIPTION_ELIGIBLE_WHERE = (
+    "remote_missing=0 AND status='inbox' AND (verdict='clean' OR feedback='fp') "
+    "AND COALESCE(NULLIF(date,''), created_at)>=? "
+    "AND COALESCE(is_starred,0)=0 AND COALESCE(is_favorite,0)=0 "
+    "AND COALESCE(followup_at,'')='' AND COALESCE(snoozed_until,'')=''"
+)
+
+
+def _subscription_window(days: int = 45) -> tuple[int, str]:
+    span = max(7, min(int(days), 180))
+    cutoff = (datetime.now() - timedelta(days=span)).isoformat(timespec="seconds")
+    return span, cutoff
+
+
 def scan_subscriptions(days: int = 45, min_count: int = 2) -> dict:
     """Scan clean inbox messages for recurring notifications, newsletters & unsubscribe metadata."""
-    span = max(7, min(int(days), 180))
+    span, cutoff = _subscription_window(days)
     threshold = max(1, min(int(min_count), 20))
-    cutoff = (datetime.now() - timedelta(days=span)).isoformat(timespec="seconds")
 
     with db.conn() as c:
         _ensure_schema(c)
@@ -341,8 +354,7 @@ def scan_subscriptions(days: int = 45, min_count: int = 2) -> dict:
                 "SELECT id, subject, from_addr, from_name, date, created_at, is_read, handle_state, "
                 "raw_path, list_unsubscribe, is_automated "
                 "FROM emails "
-                "WHERE remote_missing=0 AND status='inbox' AND (verdict='clean' OR feedback='fp') "
-                "AND COALESCE(NULLIF(date,''), created_at)>=? "
+                f"WHERE {_SUBSCRIPTION_ELIGIBLE_WHERE} "
                 "ORDER BY COALESCE(NULLIF(date,''), created_at) DESC, id DESC LIMIT 1200",
                 (cutoff,),
             ).fetchall()
@@ -439,13 +451,14 @@ def scan_subscriptions(days: int = 45, min_count: int = 2) -> dict:
     }
 
 
-def triage_sender_batch(sender_addr: str, mode: str = "keep_latest_done") -> dict:
+def triage_sender_batch(sender_addr: str, mode: str = "keep_latest_done", days: int = 45) -> dict:
     """Safely batch-triage clean inbox emails from one subscription/notification sender."""
     target = str(sender_addr or "").strip().lower()
     if not target:
         raise ValueError("缺少发件人邮箱地址")
     if mode not in _VALID_BATCH_MODES:
         raise ValueError("不支持的批处理模式")
+    span, cutoff = _subscription_window(days)
 
     with db.conn() as c:
         _ensure_schema(c)
@@ -453,10 +466,10 @@ def triage_sender_batch(sender_addr: str, mode: str = "keep_latest_done") -> dic
             dict(r)
             for r in c.execute(
                 "SELECT id, is_read, handle_state FROM emails "
-                "WHERE remote_missing=0 AND status='inbox' AND (verdict='clean' OR feedback='fp') "
+                f"WHERE {_SUBSCRIPTION_ELIGIBLE_WHERE} "
                 "AND lower(from_addr)=? "
                 "ORDER BY COALESCE(NULLIF(date,''), created_at) DESC, id DESC",
-                (target,),
+                (cutoff, target),
             ).fetchall()
         ]
     if not rows:
@@ -480,7 +493,7 @@ def triage_sender_batch(sender_addr: str, mode: str = "keep_latest_done") -> dic
                 c.execute("BEGIN IMMEDIATE")
                 placeholders = ",".join("?" for _ in affected_ids)
                 c.execute(
-                    f"UPDATE emails SET handle_state='done', snoozed_until='', followup_at='', workflow_updated_at=? "
+                    f"UPDATE emails SET handle_state='done', workflow_updated_at=? "
                     f"WHERE id IN ({placeholders})",
                     (now, *affected_ids),
                 )
@@ -493,13 +506,14 @@ def triage_sender_batch(sender_addr: str, mode: str = "keep_latest_done") -> dic
             action="triage_sender_batch",
             actor="user",
             reason=f"{target} · {mode} ({len(affected_ids)} 封)",
-            meta={"sender_addr": target, "mode": mode, "email_ids": affected_ids[:50]},
+            meta={"sender_addr": target, "mode": mode, "days": span, "email_ids": affected_ids[:50]},
         )
 
     return {
         "ok": True,
         "sender_addr": target,
         "mode": mode,
+        "days": span,
         "updated_count": len(affected_ids),
         "kept_latest_id": int(rows[0]["id"]) if mode == "keep_latest_done" and rows else None,
         "email_ids": affected_ids,

@@ -7,11 +7,12 @@ import base64
 import sqlite3
 import subprocess
 import sys
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone, tzinfo
 from email import policy
 from email.parser import BytesParser
 from pathlib import Path
 from uuid import uuid4
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from . import db, productivity, config
 
 
@@ -47,9 +48,9 @@ def parse_ics(text):
                 if key in ("DTSTART", "DTEND", "RECURRENCE-ID"):
                     if ";VALUE=DATE" in prop.upper():
                         event[key.lower() + "_value"] = "DATE"
-                    match = re.search(r"TZID=([^;:]+)", prop, re.I)
+                    match = re.search(r'TZID=(?:"([^"]+)"|([^;:]+))', prop, re.I)
                     if match:
-                        event[key.lower() + "_tzid"] = match[1]
+                        event[key.lower() + "_tzid"] = (match.group(1) or match.group(2) or "").strip()
         if event.get("dtstart"):
             # Retain source timezone. Do not reinterpret ambiguous floating time.
             event["time_note"] = (
@@ -229,7 +230,64 @@ def _safe_rows(c: sqlite3.Connection, sql: str, params: tuple = ()) -> list[dict
         raise
 
 
-def _parse_ics_dt(raw: str | None, value_type: str | None = None) -> dict | None:
+_WINDOWS_TZID_TO_IANA = {
+    "china standard time": "Asia/Shanghai",
+    "taipei standard time": "Asia/Taipei",
+    "tokyo standard time": "Asia/Tokyo",
+    "korea standard time": "Asia/Seoul",
+    "singapore standard time": "Asia/Singapore",
+    "india standard time": "Asia/Kolkata",
+    "arabian standard time": "Asia/Dubai",
+    "eastern standard time": "America/New_York",
+    "us eastern standard time": "America/New_York",
+    "central standard time": "America/Chicago",
+    "mountain standard time": "America/Denver",
+    "pacific standard time": "America/Los_Angeles",
+    "gmt standard time": "Europe/London",
+    "greenwich standard time": "UTC",
+    "w. europe standard time": "Europe/Berlin",
+    "central europe standard time": "Europe/Budapest",
+    "romance standard time": "Europe/Paris",
+    "russian standard time": "Europe/Moscow",
+    "aus eastern standard time": "Australia/Sydney",
+    "utc": "UTC",
+    "gmt": "UTC",
+}
+
+
+def _resolve_ics_tz(tzid: str | None) -> tzinfo | None:
+    clean = str(tzid or "").strip().strip('"').strip("'")
+    if not clean:
+        return None
+    mapped = _WINDOWS_TZID_TO_IANA.get(clean.lower())
+    candidates = [mapped] if mapped else []
+    candidates.append(clean)
+    if "/" in clean:
+        parts = clean.strip("/").split("/")
+        if len(parts) >= 2:
+            candidates.append("/".join(parts[-2:]))
+    for name in candidates:
+        if not name:
+            continue
+        try:
+            return ZoneInfo(name)
+        except (ZoneInfoNotFoundError, KeyError, ValueError):
+            continue
+    offset_match = re.fullmatch(
+        r"(?:(?:UTC|GMT)\s*)?([+-])\s*(\d{1,2})(?::?(\d{2}))?", clean, re.I
+    )
+    if offset_match:
+        sign = 1 if offset_match.group(1) == "+" else -1
+        hours = int(offset_match.group(2))
+        mins = int(offset_match.group(3) or 0)
+        if hours <= 23 and mins <= 59:
+            return timezone(sign * timedelta(hours=hours, minutes=mins))
+    return None
+
+
+def _parse_ics_dt(
+    raw: str | None, value_type: str | None = None, tzid: str | None = None
+) -> dict | None:
     text = str(raw or "").strip()
     if not text:
         return None
@@ -248,8 +306,11 @@ def _parse_ics_dt(raw: str | None, value_type: str | None = None) -> dict | None
     except ValueError:
         return None
     if is_utc:
-        from datetime import timezone
         dt = dt.replace(tzinfo=timezone.utc).astimezone().replace(tzinfo=None)
+    elif tzid:
+        tz = _resolve_ics_tz(tzid)
+        if tz is not None:
+            dt = dt.replace(tzinfo=tz).astimezone().replace(tzinfo=None)
     return {
         "date": dt.date().isoformat(),
         "iso": dt.isoformat(timespec="minutes"),
@@ -387,26 +448,44 @@ def _collect_ics_timeline_items(c: sqlite3.Connection, start_d: date, end_d: dat
             except ValueError:
                 continue
             for ev in parsed:
-                st = _parse_ics_dt(ev.get("dtstart"), ev.get("dtstart_value"))
+                st = _parse_ics_dt(
+                    ev.get("dtstart"),
+                    ev.get("dtstart_value"),
+                    ev.get("dtstart_tzid"),
+                )
                 if not st:
                     continue
                 ev_date = date.fromisoformat(st["date"])
-                if not (start_d <= ev_date <= end_d):
-                    continue
-                dedupe_key = (str(ev.get("uid") or ev.get("title") or ""), st["iso"])
-                if dedupe_key in seen_keys:
-                    continue
-                seen_keys.add(dedupe_key)
-                en = _parse_ics_dt(ev.get("dtend"), ev.get("dtend_value"))
+                en = _parse_ics_dt(
+                    ev.get("dtend"),
+                    ev.get("dtend_value"),
+                    ev.get("dtend_tzid") or ev.get("dtstart_tzid"),
+                )
                 if st["all_day"]:
-                    end_iso = st["date"]
+                    ev_end_d = ev_date
+                    if en and en.get("date"):
+                        en_d = date.fromisoformat(en["date"])
+                        if en["all_day"]:
+                            if en_d > ev_date:
+                                ev_end_d = en_d - timedelta(days=1)
+                        elif en_d >= ev_date:
+                            ev_end_d = en_d
+                    end_iso = ev_end_d.isoformat()
                     end_time = ""
                 else:
                     end_dt = (en or {}).get("_dt") or (st["_dt"] + timedelta(hours=1))
                     if end_dt <= st["_dt"]:
                         end_dt = st["_dt"] + timedelta(hours=1)
+                    ev_end_d = end_dt.date()
                     end_iso = end_dt.isoformat(timespec="minutes")
                     end_time = end_dt.strftime("%H:%M")
+
+                if ev_end_d < start_d or ev_date > end_d:
+                    continue
+                dedupe_key = (str(ev.get("uid") or ev.get("title") or ""), st["iso"])
+                if dedupe_key in seen_keys:
+                    continue
+                seen_keys.add(dedupe_key)
                 items.append({
                     "item_id": f"ics:{row['id']}:{len(items)}",
                     "kind": "ics",
