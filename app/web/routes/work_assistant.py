@@ -83,9 +83,29 @@ def review(payload: ReviewRequest):
     return checked(work_assistant.review, payload.email_id, payload.body, payload.attachment_names, semantic=payload.semantic)
 
 
+class FollowupDraftRequest(BaseModel):
+    tone: str = Field('polite', max_length=30)
+    instruction: str = Field('', max_length=600)
+    use_work_preferences: bool = True
+    language: str = Field('zh-CN', max_length=20)
+
+
 @router.get('/api/work/followups/{sent_id}/prepare')
 def prepare_followup(sent_id: int):
     return checked(work_assistant.followup_seed, sent_id)
+
+
+@router.post('/api/work/followups/{sent_id}/draft')
+def draft_followup(sent_id: int, payload: FollowupDraftRequest | None = None):
+    req = payload or FollowupDraftRequest()
+    return checked(
+        work_assistant.followup_draft,
+        sent_id,
+        tone=req.tone,
+        instruction=req.instruction,
+        use_work_preferences=req.use_work_preferences,
+        language=req.language,
+    )
 
 
 @router.get('/api/work/memory')

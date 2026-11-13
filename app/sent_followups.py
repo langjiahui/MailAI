@@ -1,9 +1,31 @@
 """Account-local reminders for successfully sent mail; never sends a follow-up email."""
 
+import html
+import re
 import time
 from datetime import datetime, timedelta
 from . import db, config
 from .productivity import local_time
+
+_HTML_TAG = re.compile(r"<[^>]+>")
+_HTML_IGNORE = re.compile(r"<(script|style)\b[^>]*>.*?</\1>", re.I | re.S)
+
+
+def _snippet(body_html, limit=140):
+    text = _HTML_IGNORE.sub(" ", body_html or "")
+    text = html.unescape(_HTML_TAG.sub(" ", text))
+    text = re.sub(r"\s+", " ", text).strip()
+    if len(text) <= limit:
+        return text
+    return text[: limit - 1].rstrip() + "…"
+
+
+def _waiting_days(sent_at):
+    try:
+        sent_dt = datetime.fromisoformat(sent_at or "")
+        return max(0, (datetime.now().date() - sent_dt.date()).days)
+    except (ValueError, TypeError):
+        return 0
 
 
 def initialize(c):
@@ -46,13 +68,66 @@ def refresh():
 
 def items():
     refresh()
+    now_iso = datetime.now().isoformat(timespec="seconds")
     with db.conn() as c:
-        return [
+        rows = [
             dict(row)
             for row in c.execute(
-                "SELECT f.*,s.subject,s.to_addr,s.sent_at FROM sent_followups f JOIN sent_messages s ON s.id=f.sent_id ORDER BY f.created_at DESC LIMIT 200"
+                "SELECT f.*,s.subject,s.to_addr,s.cc_addr,s.sent_at,s.reply_to_email_id,"
+                "substr(s.body_html,1,3000) AS _body_html,"
+                "r.subject AS reply_subject,r.date AS reply_date,r.from_addr AS reply_from "
+                "FROM sent_followups f JOIN sent_messages s ON s.id=f.sent_id "
+                "LEFT JOIN emails r ON r.id=f.reply_id "
+                "ORDER BY f.created_at DESC LIMIT 200"
             )
         ]
+    for item in rows:
+        body_html = item.pop("_body_html", "")
+        item["snippet"] = _snippet(body_html)
+        item["waiting_days"] = _waiting_days(item.get("sent_at"))
+        item["due"] = bool(
+            item.get("state") == "scheduled"
+            and item.get("at")
+            and str(item["at"]) <= now_iso
+        )
+    return rows
+
+
+def schedule(sent_id, days=0, at=""):
+    """Schedule or re-schedule a follow-up reminder for an already-sent message."""
+    row = db.get_sent_message(sent_id)
+    if not row or row.get("status") != "sent" or not row.get("message_id"):
+        raise ValueError("仅成功发送且带邮件标识的记录可安排跟进")
+    if at:
+        when = local_time(at, future=True)
+    else:
+        try:
+            day_count = int(days or 0)
+        except (ValueError, TypeError):
+            day_count = 0
+        if day_count < 1 or day_count > 90:
+            raise ValueError("请指定 1–90 天的跟进周期或选择具体跟进时间")
+        base = datetime.now()
+        try:
+            sent_at = datetime.fromisoformat(row.get("sent_at") or "")
+            if sent_at > base:
+                base = sent_at
+        except (ValueError, TypeError):
+            pass
+        when = (base + timedelta(days=day_count)).isoformat(timespec="seconds")
+    with db.conn() as c:
+        c.execute("BEGIN IMMEDIATE")
+        existing = c.execute(
+            "SELECT state FROM sent_followups WHERE sent_id=?", (sent_id,)
+        ).fetchone()
+        if existing and existing["state"] == "replied":
+            raise ValueError("已同步到回复，请核对会话后再安排新的待办")
+        c.execute(
+            "INSERT INTO sent_followups(sent_id,at,state,reply_id,sent,retry_after,created_at) VALUES(?,?,'scheduled',NULL,0,0,?) "
+            "ON CONFLICT(sent_id) DO UPDATE SET state='scheduled',at=excluded.at,sent=0,retry_after=0",
+            (sent_id, when, datetime.now().isoformat()),
+        )
+    return {"ok": True, "at": when}
 
 
 def arrange(sent_id, at="", cancel=False):

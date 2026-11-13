@@ -4345,6 +4345,34 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
       toast(row._remote ? mailaiText('服务器草稿已移入垃圾箱') : mailaiText('草稿已舍弃'), 'success');
     } catch (err) { toast(mailaiText('舍弃草稿失败：') + mailaiSystemMessage(err.message), 'error'); }
   });
+  if (kind === 'sent' && !row._remote && ['sent', 'accepted'].includes(row.status) && row.message_id) {
+    const actionsHost = document.querySelector('.special-mail-actions');
+    const accountId = activeMailAccount()?.id;
+    const nudgeBtn = document.createElement('button');
+    nudgeBtn.type = 'button'; nudgeBtn.className = 'action-btn compact'; nudgeBtn.id = 'btn-sent-ai-followup';
+    mailaiBindUI(nudgeBtn, 'textContent', () => mailaiText('AI 催办'));
+    nudgeBtn.onclick = async () => {
+      if (nudgeBtn.disabled) return;
+      nudgeBtn.disabled = true;
+      try { await window.mailaiDraftFollowup?.(row.id, accountId); }
+      catch (err) { toast(mailaiSystemMessage(err.message), 'error'); }
+      finally { nudgeBtn.disabled = false; }
+    };
+    const scheduleBtn = document.createElement('button');
+    scheduleBtn.type = 'button'; scheduleBtn.className = 'action-btn compact'; scheduleBtn.id = 'btn-sent-schedule-followup';
+    mailaiBindUI(scheduleBtn, 'textContent', () => mailaiText('安排跟进'));
+    scheduleBtn.onclick = async () => {
+      if (scheduleBtn.disabled) return;
+      scheduleBtn.disabled = true;
+      try {
+        await api('/api/productivity/followups/' + row.id, {accountId, method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({days:3})});
+        window.mailaiTasksChanged?.(accountId);
+        toast(mailaiText('已加入发信跟进（待办中心可查看）'), 'success');
+      } catch (err) { toast(mailaiSystemMessage(err.message), 'error'); }
+      finally { scheduleBtn.disabled = false; }
+    };
+    actionsHost.append(nudgeBtn, scheduleBtn);
+  }
   if (kind === 'sent' && (row._remote || ['sent','accepted'].includes(row.status))) {
     const button = document.createElement('button');
     button.type = 'button'; button.className = 'action-btn compact special-delete';
@@ -8496,12 +8524,96 @@ document.addEventListener('click', downloadAttachmentInDesktop, true);
 
 let todoRenderLimit = 160;
 let todoCenterRows = [];
+let todoFollowupRows = [];
+window.mailaiFollowupRows = todoFollowupRows;
+let todoFollowupShowAll = false;
+let todoFollowupTone = 'polite';
 let todoCenterAccountId = '';
 let todoCenterRevision = 0;
 let todoCenterLoading = false;
 let todoBatchBusy = false;
 let todoReturnFocus;
 let todoSourceReturn = null;
+
+window.mailaiRevealSentMessage = async (sentId, targetAccountId = activeMailAccount()?.id) => {
+  const id = targetAccountId || activeMailAccount()?.id;
+  if (!id) return;
+  const item = await api(`/api/mail/sent/${Number(sentId)}`, {accountId: id});
+  await openAccountMailbox(id, 'sent');
+  return selectSpecialMessage(Number(sentId), item);
+};
+
+function followupLocalDatetime(daysOffset = 1, hour = 9) {
+  const date = new Date();
+  date.setDate(date.getDate() + daysOffset);
+  date.setHours(hour, 0, 0, 0);
+  date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+  return date.toISOString().slice(0, 16);
+}
+
+function renderTodoFollowups(host) {
+  const rows = Array.isArray(window.mailaiFollowupRows) ? window.mailaiFollowupRows : [];
+  const openRows = rows.filter(r => r.state === 'scheduled');
+  const dueCount = openRows.filter(r => r.due).length;
+  const rank = r => r.state === 'scheduled' ? (r.due ? 0 : 1) : r.state === 'replied' ? 2 : 3;
+  const visible = rows
+    .filter(r => todoFollowupShowAll || r.state === 'scheduled')
+    .slice()
+    .sort((a, b) => rank(a) - rank(b) || String(a.at || '').localeCompare(String(b.at || '')));
+  const barSummary = dueCount
+    ? mailaiTemplate`共 ${openRows.length} 封等待回复 · ${dueCount} 封已到期`
+    : mailaiTemplate`共 ${openRows.length} 封等待回复`;
+  const toolbar = `<div class="todo-followup-toolbar">
+    <span class="todo-followup-summary">${esc(barSummary)}</span>
+    <div class="todo-followup-controls">
+      <label class="todo-followup-tone"><span>${esc(mailaiText('催办语气'))}</span><select data-followup-tone aria-label="催办语气" data-i18n-aria="followup.toneLabel">
+        <option value="polite" ${todoFollowupTone === 'polite' ? 'selected' : ''}>${esc(mailaiText('温和礼貌'))}</option>
+        <option value="direct" ${todoFollowupTone === 'direct' ? 'selected' : ''}>${esc(mailaiText('简短直接'))}</option>
+        <option value="formal" ${todoFollowupTone === 'formal' ? 'selected' : ''}>${esc(mailaiText('正式商务'))}</option>
+      </select></label>
+      <button type="button" class="todo-followup-filter" data-followup-filter aria-pressed="${todoFollowupShowAll}">${esc(todoFollowupShowAll ? mailaiText('仅看等待中') : mailaiText('显示已结束记录'))}</button>
+    </div>
+  </div>`;
+  const cards = visible.length
+    ? visible.map(row => {
+      const scheduled = row.state === 'scheduled';
+      const statusLabel = scheduled
+        ? (row.due ? mailaiText('跟进到期') : mailaiText('等待中'))
+        : row.state === 'replied' ? mailaiText('已回信') : mailaiText('已关闭');
+      const statusClass = scheduled ? (row.due ? 'is-due' : 'is-waiting') : (row.state === 'replied' ? 'is-replied' : 'is-canceled');
+      const ageLabel = Number(row.waiting_days || 0) === 0 ? mailaiText('今天发送') : mailaiTemplate`${Number(row.waiting_days || 0)} 天前发送`;
+      const formattedAt = fmtDate(row.at);
+      const timeLabel = row.due ? mailaiTemplate`跟进到期 · ${formattedAt}` : mailaiTemplate`计划跟进 · ${formattedAt}`;
+      return `<article class="todo-followup-item ${statusClass}" data-followup-sent-id="${row.sent_id}">
+        <span class="todo-followup-badge ${statusClass}">${esc(statusLabel)}</span>
+        <div class="todo-followup-main">
+          <button type="button" class="todo-followup-subject" data-followup-open="${row.sent_id}" data-user-content>${esc(row.subject || mailaiText('无主题'))}</button>
+          <div class="todo-time-meta">
+            <span class="todo-time-chip">${esc(ageLabel)}</span>
+            ${scheduled ? `<span class="todo-time-chip ${row.due ? 'overdue' : ''}">${esc(timeLabel)}</span>` : ''}
+            ${row.to_addr ? `<span class="todo-followup-recipient" title="${esc(row.to_addr)}">${esc(mailaiText('发给 ') + row.to_addr)}</span>` : ''}
+          </div>
+          ${row.snippet ? `<p class="todo-followup-snippet" data-user-content>${esc(row.snippet)}</p>` : ''}
+        </div>
+        <div class="todo-followup-actions">
+          ${scheduled ? `<button type="button" class="todo-followup-ai-btn" data-followup-ai-draft="${row.sent_id}">${esc(mailaiText('AI 催办'))}</button>
+          <details class="todo-followup-reschedule"><summary>${esc(mailaiText('改期'))}</summary><div>
+            <button type="button" data-followup-preset="1d" data-sent-id="${row.sent_id}">${esc(mailaiText('明天 9 点'))}</button>
+            <button type="button" data-followup-preset="3d" data-sent-id="${row.sent_id}">${esc(mailaiText('3 天后'))}</button>
+            <div class="todo-followup-custom-time"><input type="datetime-local" value="${esc(String(row.at || '').slice(0, 16))}" aria-label="新的跟进时间" data-i18n-aria="ui.6da097eb22f3"><button type="button" data-followup-save-time="${row.sent_id}">${esc(mailaiText('保存'))}</button></div>
+          </div></details>
+          <button type="button" class="todo-followup-ghost-btn" data-followup-cancel="${row.sent_id}">${esc(mailaiText('不再跟进'))}</button>`
+          : row.state === 'replied'
+          ? `${row.reply_id ? `<button type="button" class="todo-followup-ai-btn" data-followup-reply="${row.reply_id}">${esc(mailaiText('查看对方回复'))}</button>` : ''}<button type="button" class="todo-followup-ghost-btn" data-followup-open="${row.sent_id}">${esc(mailaiText('查看原信'))}</button>`
+          : `<button type="button" class="todo-followup-ai-btn" data-followup-reopen="${row.sent_id}">${esc(mailaiText('重新跟进'))}</button><button type="button" class="todo-followup-ghost-btn" data-followup-open="${row.sent_id}">${esc(mailaiText('查看原信'))}</button>`}
+        </div>
+      </article>`;
+    }).join('')
+    : (window.mailaiTodoEmpty?.() || '');
+  host.innerHTML = toolbar + cards;
+  animateCountText(document.getElementById('todo-count'), openRows.length, n => (mailaiT('todo.openCount') || '{n} 项未完成').replace('{n}', n));
+  document.getElementById('todo-group-overview')?.setAttribute('hidden', '');
+}
 const todoEdits = new Map();
 function todoEditKey(id, accountId = todoCenterAccountId) { return accountId + ':' + id; }
 function paintTodoSave(article, edit) {
@@ -8522,26 +8634,47 @@ function captureTodoEdit(article) {
 
 function renderTodoCenter() {
   if (todoCenterLoading) return;
+  const host = document.getElementById('todo-list');
+  const activeView = window.mailaiTodoCurrentView?.() || 'all';
   const showDone = document.getElementById('todo-show-done').checked;
-  const rows = todoCenterRows.filter(item => (showDone || item.status !== 'done') && (!window.mailaiTodoMatches || window.mailaiTodoMatches(item)));
-  const visibleIds = new Set(rows.map(item => item.id));
-  selectedTodoIds = new Set([...selectedTodoIds].filter(id => visibleIds.has(id)));
   const now = localDateKey();
-  const openCount = rows.filter(item => item.status !== 'done').length;
   const allOpen = todoCenterRows.filter(item => item.status !== 'done');
   const overdueCount = allOpen.filter(item => String(item.deadline || '').slice(0,10) && String(item.deadline).slice(0,10) < now).length;
   const todayCount = allOpen.filter(item=>String(item.deadline || '').slice(0,10) === now).length;
-  document.getElementById('todo-center-summary').textContent = overdueCount
+  const activeFollowups = (window.mailaiFollowupRows || []).filter(r => r.state === 'scheduled');
+  const dueFollowups = activeFollowups.filter(r => r.due).length;
+  const baseSummary = overdueCount
     ? mailaiTemplate`${allOpen.length} 项待办 · ${overdueCount} 项已逾期`
     : todayCount ? mailaiTemplate`${allOpen.length} 项待办 · ${todayCount} 项今天截止`
     : allOpen.length ? mailaiTemplate`${allOpen.length} 项待办` : mailaiText('待办已处理完，新的安排从邮件开始。');
+  if (!activeFollowups.length) {
+    document.getElementById('todo-center-summary').textContent = baseSummary;
+  } else if (!allOpen.length) {
+    document.getElementById('todo-center-summary').textContent = dueFollowups
+      ? mailaiTemplate`${dueFollowups} 封发信待催办`
+      : mailaiTemplate`${activeFollowups.length} 封发信等待回复`;
+  } else {
+    const fSuffix = dueFollowups
+      ? mailaiTemplate`${dueFollowups} 封待催办`
+      : mailaiTemplate`${activeFollowups.length} 封跟进中`;
+    document.getElementById('todo-center-summary').textContent = mailaiTemplate`${baseSummary} · ${fSuffix}`;
+  }
+  if (activeView === 'followups') {
+    renderTodoFollowups(host);
+    updateTodoBatchToolbar([]);
+    window.mailaiTodoCounts?.();
+    return;
+  }
+  const rows = todoCenterRows.filter(item => (showDone || item.status !== 'done') && (!window.mailaiTodoMatches || window.mailaiTodoMatches(item)));
+  const visibleIds = new Set(rows.map(item => item.id));
+  selectedTodoIds = new Set([...selectedTodoIds].filter(id => visibleIds.has(id)));
+  const openCount = rows.filter(item => item.status !== 'done').length;
   animateCountText(document.getElementById('todo-count'), openCount, n => (mailaiT('todo.openCount') || '{n} 项未完成').replace('{n}', n));
   const groups = window.mailaiTodoGroups ? window.mailaiTodoGroups(rows) : rows.map(item=>({key:String(item.id),rows:[item]}));
   const visibleRows = rows.slice(0, todoRenderLimit);
   const renderedIds = new Set(visibleRows.map(item=>item.id));
   const visibleGroups = groups.filter(group=>group.rows.some(item=>renderedIds.has(item.id)))
     .map(group=>({...group,visibleRows:group.rows.filter(item=>renderedIds.has(item.id))}));
-  const host = document.getElementById('todo-list');
   const renderRow = (item, context = {}) => {
     const date = String(item.deadline || '').slice(0, 10);
     const sourceDate = item.email_date || item.email_indexed_at || item.created_at || '';
@@ -8640,7 +8773,7 @@ async function openTodoCenter(options = {}) {
   todoCenterAccountId = activeMailAccount()?.id;
   document.getElementById('todo-account-label').textContent = activeMailAccount()?.user || '';
   todoCenterLoading = false;
-  selectedTodoIds.clear(); todoRenderLimit = resume?.limit || 160; todoCenterRows = []; renderTodoCenter();
+  selectedTodoIds.clear(); todoRenderLimit = resume?.limit || 160; todoCenterRows = []; todoFollowupRows = []; window.mailaiFollowupRows = todoFollowupRows; renderTodoCenter();
   await loadTodoCenter();
   if(resume && todoCenterAccountId === resume.accountId && !document.getElementById('todo-center').classList.contains('hidden')) {
     const list=document.getElementById('todo-list');list.scrollTop=resume.scroll;
@@ -8652,11 +8785,18 @@ async function openTodoCenter(options = {}) {
 async function loadTodoCenter() {
   const accountId = todoCenterAccountId, revision = ++todoCenterRevision;
   todoCenterLoading = true; updateTodoBatchToolbar([]);
-  if (!todoCenterRows.length && !document.querySelector('#todo-list [data-todo-id]')) document.getElementById('todo-list').innerHTML = "<div class=\"attachment-empty\"><span data-i18n=\"ui.04b1aaa8c80d\">正在读取待办…</span></div>";
+  if (!todoCenterRows.length && !document.querySelector('#todo-list [data-todo-id], #todo-list [data-followup-sent-id]')) document.getElementById('todo-list').innerHTML = "<div class=\"attachment-empty\"><span data-i18n=\"ui.04b1aaa8c80d\">正在读取待办…</span></div>";
   try {
-    const rows = await api('/api/todos?include_done=true', {accountId});
+    const [rows, followups] = await Promise.all([
+      api('/api/todos?include_done=true', {accountId}),
+      api('/api/productivity/followups/list', {accountId}).catch(() => []),
+    ]);
     if (revision !== todoCenterRevision) return;
-    todoCenterLoading = false; todoCenterRows = rows; renderTodoCenter();
+    todoCenterLoading = false;
+    todoCenterRows = rows;
+    todoFollowupRows = Array.isArray(followups) ? followups : [];
+    window.mailaiFollowupRows = todoFollowupRows;
+    renderTodoCenter();
   } catch (error) { if (revision === todoCenterRevision) { todoCenterLoading = false; updateTodoBatchToolbar(); const host = document.getElementById('todo-list'); host.querySelector('.todo-refresh-error')?.remove(); if (!todoCenterRows.length) host.replaceChildren(); host.insertAdjacentHTML('afterbegin', `<div class="todo-refresh-error" role="status"><span data-i18n="ui.c89e2064daba">暂时无法更新，已保留当前内容。${esc(mailaiSystemMessage(error.message))}</span> <button data-todo-retry><span data-i18n="ui.b8784c8dd563">重试</span></button></div>`); } }
 }
 function closeTodoCenter() {
@@ -8847,6 +8987,11 @@ document.getElementById('todo-complete-all').addEventListener('click', async () 
   catch (err) { toast(mailaiText('全部完成失败：') + mailaiSystemMessage(err.message), 'error'); }
 });
 document.getElementById('todo-list').addEventListener('change', event => {
+  const toneSelect = event.target.closest('[data-followup-tone]');
+  if (toneSelect) {
+    todoFollowupTone = toneSelect.value || 'polite';
+    return;
+  }
   const selector = event.target.closest('[data-todo-select]');
   if (selector) {
     const id = Number(selector.dataset.todoSelect);
@@ -8860,6 +9005,97 @@ document.getElementById('todo-list').addEventListener('click', async event => {
   if (event.target.closest('[data-todo-retry]')) return loadTodoCenter();
   if (event.target.closest('[data-todo-save-retry]')) return saveTodoItem(event.target.closest('[data-todo-id]'));
   const accountId = todoCenterAccountId, revision = todoCenterRevision;
+  if (event.target.closest('[data-followup-filter]')) {
+    todoFollowupShowAll = !todoFollowupShowAll;
+    renderTodoCenter();
+    return;
+  }
+  const aiFollowup = event.target.closest('[data-followup-ai-draft]');
+  if (aiFollowup) {
+    if (aiFollowup.disabled) return;
+    aiFollowup.disabled = true;
+    const prev = aiFollowup.textContent;
+    aiFollowup.textContent = mailaiText('生成中…');
+    try {
+      await window.mailaiDraftFollowup?.(Number(aiFollowup.dataset.followupAiDraft), accountId, {tone: todoFollowupTone});
+    } catch (err) {
+      toast(mailaiSystemMessage(err.message), 'error');
+    } finally {
+      aiFollowup.disabled = false;
+      aiFollowup.textContent = prev;
+    }
+    return;
+  }
+  const presetBtn = event.target.closest('[data-followup-preset]');
+  if (presetBtn) {
+    if (presetBtn.disabled) return;
+    presetBtn.disabled = true;
+    const sentId = Number(presetBtn.dataset.sentId);
+    const when = followupLocalDatetime(presetBtn.dataset.followupPreset === '3d' ? 3 : 1, 9);
+    try {
+      await api(`/api/productivity/followups/${sentId}`, {accountId, method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({at:when, cancel:false})});
+      toast(mailaiText('已调整跟进时间'), 'success');
+      if (revision === todoCenterRevision) await loadTodoCenter();
+    } catch (err) { toast(mailaiSystemMessage(err.message), 'error'); }
+    finally { presetBtn.disabled = false; }
+    return;
+  }
+  const saveTimeBtn = event.target.closest('[data-followup-save-time]');
+  if (saveTimeBtn) {
+    if (saveTimeBtn.disabled) return;
+    const sentId = Number(saveTimeBtn.dataset.followupSaveTime);
+    const input = saveTimeBtn.closest('.todo-followup-reschedule')?.querySelector('input[type="datetime-local"]');
+    const at = input?.value || '';
+    if (!at) { toast(mailaiText('暂未选择具体时间'), 'warn'); return; }
+    saveTimeBtn.disabled = true;
+    try {
+      await api(`/api/productivity/followups/${sentId}`, {accountId, method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({at, cancel:false})});
+      toast(mailaiText('已调整跟进时间'), 'success');
+      if (revision === todoCenterRevision) await loadTodoCenter();
+    } catch (err) { toast(mailaiSystemMessage(err.message), 'error'); }
+    finally { saveTimeBtn.disabled = false; }
+    return;
+  }
+  const cancelFollowup = event.target.closest('[data-followup-cancel]');
+  if (cancelFollowup) {
+    if (cancelFollowup.disabled) return;
+    cancelFollowup.disabled = true;
+    try {
+      await api(`/api/productivity/followups/${Number(cancelFollowup.dataset.followupCancel)}`, {accountId, method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({at:'', cancel:true})});
+      toast(mailaiText('已关闭该跟进提醒'), 'success');
+      if (revision === todoCenterRevision) await loadTodoCenter();
+    } catch (err) { toast(mailaiSystemMessage(err.message), 'error'); }
+    finally { cancelFollowup.disabled = false; }
+    return;
+  }
+  const reopenFollowup = event.target.closest('[data-followup-reopen]');
+  if (reopenFollowup) {
+    if (reopenFollowup.disabled) return;
+    reopenFollowup.disabled = true;
+    try {
+      await api(`/api/productivity/followups/${Number(reopenFollowup.dataset.followupReopen)}`, {accountId, method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({days:1})});
+      toast(mailaiText('已重新安排明天跟进'), 'success');
+      if (revision === todoCenterRevision) await loadTodoCenter();
+    } catch (err) { toast(mailaiSystemMessage(err.message), 'error'); }
+    finally { reopenFollowup.disabled = false; }
+    return;
+  }
+  const openSent = event.target.closest('[data-followup-open]');
+  if (openSent) {
+    const sentId = Number(openSent.dataset.followupOpen);
+    closeTodoCenter();
+    try { await window.mailaiRevealSentMessage?.(sentId, accountId); }
+    catch (err) { toast(mailaiSystemMessage(err.message), 'error'); }
+    return;
+  }
+  const openReply = event.target.closest('[data-followup-reply]');
+  if (openReply) {
+    const emailId = Number(openReply.dataset.followupReply);
+    closeTodoCenter();
+    if (accountId !== activeMailAccount()?.id) await openAccountMailbox(accountId, 'inbox');
+    await revealEmailFromSource(emailId);
+    return;
+  }
   const plan = event.target.closest('[data-todo-plan]');
   if (plan) { if (!(await flushTodoEdits([Number(plan.dataset.todoPlan)]))) return; await window.openTaskPlanner({todoId:Number(plan.dataset.todoPlan),accountId}); return; }
   const toggle = event.target.closest('[data-todo-toggle]');

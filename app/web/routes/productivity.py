@@ -391,6 +391,16 @@ def sent_followups():
     return items()
 
 
+@router.post('/api/productivity/followups/{sent_id}')
+def schedule_followup(sent_id: int, payload: dict):
+    from ...sent_followups import schedule
+    try:
+        days = int(payload.get('days') or 0)
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(400, '无效跟进天数') from exc
+    return checked(schedule, sent_id, days=days, at=str(payload.get('at') or ''))
+
+
 @router.patch('/api/productivity/followups/{sent_id}')
 def arrange_followup(sent_id:int,payload:dict):
     from ...sent_followups import arrange

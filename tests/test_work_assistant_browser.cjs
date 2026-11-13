@@ -200,6 +200,39 @@ let log=''; fixture.stdout.on('data',chunk=>log+=chunk); fixture.stderr.on('data
     assert.equal(await page.evaluate(()=>composeContext.in_reply_to),expectedMessage);
     assert(!writes.some(url=>url.endsWith('/api/mail/send')||url.endsWith('/api/mail/outbox')),'Assistance must not submit a send');
     await page.evaluate(()=>hideCompose());
+    // Follow-up center merges sent followups into Todo Center with 1-click AI nudge drafting.
+    await page.evaluate(async()=>{await api('/api/productivity/followups/1',{accountId:activeMailAccount()?.id,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({days:3})});await openTodoCenter();});
+    await page.locator('#todo-center button[data-todo-view="followups"]').waitFor({state:'visible'});
+    assert.equal(await page.locator('#todo-center button[data-todo-view="followups"] small').innerText(),'1');
+    await page.locator('#todo-center button[data-todo-view="followups"]').click();
+    const followupCard=page.locator('#todo-list [data-followup-sent-id="1"]');
+    await followupCard.waitFor({state:'visible'});
+    for(const mode of ['light','dark']){
+      await page.evaluate(mode=>applyTheme(mode),mode);
+      for(const width of [1440,390]){
+        await page.setViewportSize({width,height:900});
+        assert(await followupCard.evaluate(n=>n.scrollWidth<=n.clientWidth+1),`followup card containment ${mode}/${width}`);
+      }
+    }
+    await page.setViewportSize({width:1440,height:1000});
+    await page.evaluate(()=>applyTheme('light'));
+    await page.locator('[data-followup-tone]').selectOption('direct');
+    await followupCard.locator('[data-followup-ai-draft]').click();
+    await page.locator('#compose-modal').waitFor({state:'visible'});
+    await page.waitForFunction(()=>document.getElementById('todo-center').classList.contains('hidden'));
+    assert.equal(await page.evaluate(()=>composeContext.in_reply_to),expectedMessage);
+    assert((await page.evaluate(()=>composeMessageElement().innerText.trim())).length>10,'One-click AI nudge populates reviewable draft body');
+    assert(!writes.some(url=>url.endsWith('/api/mail/send')||url.endsWith('/api/mail/outbox')),'One-click AI nudge must never auto-send');
+    await page.evaluate(()=>hideCompose());
+    await page.evaluate(()=>openTodoCenter());
+    await page.locator('#todo-center button[data-todo-view="followups"]').click();
+    await followupCard.locator('[data-followup-cancel]').click();
+    await page.locator('#todo-list .todo-empty-state').waitFor({state:'visible'});
+    assert.equal(await page.locator('#todo-center button[data-todo-view="followups"] small').innerText(),'0');
+    await page.locator('[data-followup-filter]').click();
+    await followupCard.locator('[data-followup-reopen]').click();
+    await page.waitForFunction(()=>document.querySelector('#todo-center button[data-todo-view="followups"] small')?.innerText==='1');
+    await page.evaluate(()=>closeTodoCenter());
     // Settings memory stays readable across themes, languages, windows and 200% text.
     fs.mkdirSync('output/work-assistant',{recursive:true});
     let layouts=0;
