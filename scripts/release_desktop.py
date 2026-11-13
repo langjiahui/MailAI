@@ -73,12 +73,11 @@ class GitHub(ci_quality.GitHub):
             raise
 
     def raw(self, path):
-        result = subprocess.run(['gh', 'api', f'repos/{self.repository}/{path}',
-                                 '--allow-escape-sequences'], capture_output=True,
-                                check=True, timeout=30)
-        if len(result.stdout) > 8 * 1024 * 1024:
+        stdout = ci_quality._run_gh_read(
+            ['gh', 'api', f'repos/{self.repository}/{path}', '--allow-escape-sequences'])
+        if len(stdout) > 8 * 1024 * 1024:
             raise ValueError('Oversized GitHub response')
-        return result.stdout
+        return stdout
 
     def write(self, method, path, payload=None):
         result = subprocess.run(['gh', 'api', '--method', method,
@@ -94,12 +93,12 @@ class GitHub(ci_quality.GitHub):
         return base64.b64decode(data['content']).decode('utf-8')
 
     def asset(self, asset_id):
-        result = subprocess.run(['gh', 'api', f'repos/{self.repository}/releases/assets/{asset_id}',
-                                 '-H', 'Accept: application/octet-stream'], capture_output=True,
-                                check=True, timeout=30)
-        if len(result.stdout) > 1024 * 1024:
+        stdout = ci_quality._run_gh_read(
+            ['gh', 'api', f'repos/{self.repository}/releases/assets/{asset_id}',
+             '-H', 'Accept: application/octet-stream'])
+        if len(stdout) > 1024 * 1024:
             raise ValueError('Oversized signed update manifest')
-        return result.stdout
+        return stdout
 
 
 def tag_commit(api, tag):

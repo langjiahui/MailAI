@@ -31,7 +31,7 @@ jobs:
         id: plan
         env:
           GH_TOKEN: ${{ github.token }}
-          CI_BROWSER_PARALLEL: ${{ vars.CI_BROWSER_PARALLEL || '12' }}
+          CI_BROWSER_PARALLEL: ${{ vars.CI_BROWSER_PARALLEL || '18' }}
         run: python3 scripts/ci_quality.py plan
       - uses: actions/upload-artifact@v5
         with:

@@ -36,6 +36,21 @@ def git(*args):
     return subprocess.check_output(['git', *args], cwd=ROOT, text=True).strip()
 
 
+def _run_gh_read(command):
+    """Run a read-only `gh api` command, retrying transient network or 5xx errors."""
+    for attempt in range(3):
+        try:
+            return subprocess.run(command, capture_output=True, check=True, timeout=30).stdout
+        except subprocess.CalledProcessError as exc:
+            error = exc.stderr.decode(errors='replace') if isinstance(exc.stderr, bytes) else (exc.stderr or '')
+            if re.search(r'HTTP 4\d\d\b', error) or attempt == 2:
+                raise
+        except subprocess.TimeoutExpired:
+            if attempt == 2:
+                raise
+        time.sleep(attempt + 1)
+
+
 class GitHub:
     def __init__(self, repository):
         if not re.fullmatch(r'[\w.-]+/[\w.-]+', repository):
@@ -43,8 +58,8 @@ class GitHub:
         self.repository = repository
 
     def raw(self, path):
-        return subprocess.check_output(
-            ['gh', 'api', f'repos/{self.repository}/{path}', '--allow-escape-sequences'], timeout=30)
+        return _run_gh_read(
+            ['gh', 'api', f'repos/{self.repository}/{path}', '--allow-escape-sequences'])
 
     def get(self, path):
         return json.loads(self.raw(path))
@@ -173,9 +188,9 @@ def plan(api):
         selected['checks'] = {name: name == 'secret-scan' for name in CHECKS}
         selected['matrix'] = []
     image = ci_plan.browser_image()
-    parallel = int(os.getenv('CI_BROWSER_PARALLEL') or '12')
-    if not 1 <= parallel <= 16:
-        raise ValueError('CI_BROWSER_PARALLEL must be between 1 and 16')
+    parallel = int(os.getenv('CI_BROWSER_PARALLEL') or '18')
+    if not 1 <= parallel <= 20:
+        raise ValueError('CI_BROWSER_PARALLEL must be between 1 and 20')
     emit_output('reuse', bool(source))
     emit_output('source_run', source or '')
     emit_output('mode', selected['mode'])

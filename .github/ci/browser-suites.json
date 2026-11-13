@@ -85,7 +85,9 @@
           }
         }
       ]
-    },
+    }
+  ],
+  "workspace-assistant": [
     {
       "fixtures": [
         {
@@ -452,6 +454,23 @@
       ],
       "tests": [
         {
+          "file": "tests/test_companion_equipped_motion_browser.cjs"
+        }
+      ]
+    }
+  ],
+  "growth-outfits-webkit": [
+    {
+      "fixtures": [
+        {
+          "port": 18795,
+          "env": {
+            "MAILAI_GROWTH_FIXTURE": "1"
+          }
+        }
+      ],
+      "tests": [
+        {
           "file": "tests/test_companion_reward_motion_browser.cjs"
         },
         {
@@ -459,9 +478,6 @@
           "env": {
             "MAILAI_BROWSER": "webkit"
           }
-        },
-        {
-          "file": "tests/test_companion_equipped_motion_browser.cjs"
         },
         {
           "file": "tests/test_companion_equipped_motion_browser.cjs",
@@ -521,7 +537,21 @@
           "env": {
             "MAILAI_BROWSER": "webkit"
           }
-        },
+        }
+      ]
+    }
+  ],
+  "growth-themes-surfaces": [
+    {
+      "fixtures": [
+        {
+          "port": 18795,
+          "env": {
+            "MAILAI_GROWTH_FIXTURE": "1"
+          }
+        }
+      ],
+      "tests": [
         {
           "file": "tests/test_correspondence_theme_browser.cjs"
         },
@@ -954,18 +984,30 @@
           "file": "tests/test_mail_import_browser.cjs"
         },
         {
-          "file": "tests/test_mail_list_view_browser.cjs",
-          "env": {
-            "MAILAI_TEST_URL": "http://127.0.0.1:18795/"
-          }
-        },
-        {
           "file": "tests/test_mail_recovery_browser.cjs"
         },
         {
           "file": "tests/test_mail_recovery_browser.cjs",
           "env": {
             "MAILAI_BROWSER": "webkit"
+          }
+        }
+      ]
+    }
+  ],
+  "mail-list-view": [
+    {
+      "fixtures": [
+        {
+          "port": 18795,
+          "env": {}
+        }
+      ],
+      "tests": [
+        {
+          "file": "tests/test_mail_list_view_browser.cjs",
+          "env": {
+            "MAILAI_TEST_URL": "http://127.0.0.1:18795/"
           }
         }
       ]
