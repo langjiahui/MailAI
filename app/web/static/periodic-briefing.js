@@ -688,6 +688,11 @@
   }
 
   window.openPeriodicBriefing = async function openPeriodicBriefing(options = {}) {
+    if (typeof closeTodoCenter === 'function') closeTodoCenter();
+    if (typeof closeContactCenter === 'function') closeContactCenter();
+    if (typeof closeAttachmentCenter === 'function') closeAttachmentCenter();
+    if (typeof closeCalendarTimeline === 'function') closeCalendarTimeline();
+    if (typeof closeTriageCenter === 'function') closeTriageCenter();
     if (typeof closeAssistant === 'function') closeAssistant();
     const digestAccountLabelEl = document.getElementById('digest-account-label');
     if (digestAccountLabelEl && typeof digestAccountLabel === 'function') {
@@ -754,6 +759,14 @@
   });
 
   syncHeaderForTab();
+  document.addEventListener('mailai:language-changed', () => {
+    syncHeaderForTab();
+    if (!modal.classList.contains('hidden') && activeTab === 'periodic') {
+      if (currentSummary) renderMetrics(currentSummary);
+      renderHistorySelect();
+      renderContent();
+    }
+  });
   globalThis.MailAIModules?.register('periodicBriefing', {
     open: window.openPeriodicBriefing,
   });

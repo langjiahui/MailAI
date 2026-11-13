@@ -185,7 +185,7 @@
 .triage-btn-primary {
   border: 1px solid var(--desk-accent);
   background: var(--desk-accent);
-  color: #fff;
+  color: var(--reward-on-accent, #fff);
 }
 
 .triage-btn-subtle,
@@ -443,5 +443,14 @@ html[data-theme="dark"] .triage-pill.done {
 @media (max-width: 720px) {
   .triage-summary-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #triage-rules-modal *,
+  #triage-rules-modal *::before,
+  #triage-rules-modal *::after {
+    transition: none !important;
+    animation: none !important;
   }
 }

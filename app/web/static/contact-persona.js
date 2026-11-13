@@ -272,8 +272,8 @@
     btn.type = 'button';
     btn.id = 'btn-role-presets';
     btn.className = 'persona-role-presets-btn';
-    btn.setAttribute('aria-label', mailaiText('配置分角色写作与签名预设'));
-    btn.textContent = mailaiText('角色写作预设');
+    mailaiBindUI(btn, '@aria-label', () => mailaiText('配置分角色写作与签名预设'));
+    mailaiBindUI(btn, 'textContent', () => mailaiText('角色写作预设'));
     btn.onclick = () => openRolePresetsDialog(contactAccountId());
     newContactBtn.before(btn);
   }
@@ -582,6 +582,11 @@
       renderPersonaStrip();
     }
   }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+  document.addEventListener('mailai:language-changed', () => {
+    renderPersonaStrip();
+    renderAiPersonaNote();
+  });
 
   globalThis.MailAIModules?.register('contactPersona', {
     schedule: () => window.mailaiScheduleComposePersona?.(0),

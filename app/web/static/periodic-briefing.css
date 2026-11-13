@@ -203,7 +203,7 @@ html[data-theme="dark"] .periodic-metric-card.has-warn small {
 
 .periodic-btn-primary {
   background: var(--desk-accent);
-  color: #fff;
+  color: var(--reward-on-accent, #fff);
 }
 
 .periodic-btn-primary:hover:not(:disabled) {
@@ -453,5 +453,14 @@ html[data-theme="dark"] .periodic-metric-card.has-warn small {
   }
   .periodic-content-area {
     padding: 14px 16px 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #periodic-briefing-pane *,
+  #periodic-briefing-pane *::before,
+  #periodic-briefing-pane *::after {
+    transition: none !important;
+    animation: none !important;
   }
 }

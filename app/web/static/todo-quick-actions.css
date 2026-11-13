@@ -283,3 +283,11 @@ html[data-theme] body #todo-center .todo-snooze-popover button small {
     min-width: 36px !important;
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  #todo-center .todo-quick-add *,
+  #todo-center .todo-snooze-menu * {
+    transition: none;
+    animation: none;
+  }
+}

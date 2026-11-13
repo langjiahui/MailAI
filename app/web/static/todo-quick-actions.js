@@ -26,6 +26,7 @@
     </form>
   `;
   tools.after(quickBar);
+  if (typeof applyI18n === 'function') applyI18n(quickBar);
 
   const form = document.getElementById('todo-quick-form');
   const titleInput = document.getElementById('todo-quick-title');

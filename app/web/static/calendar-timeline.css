@@ -210,7 +210,7 @@
 .timeline-btn-primary {
   border: 1px solid var(--desk-accent);
   background: var(--desk-accent);
-  color: #fff;
+  color: var(--reward-on-accent, #fff);
 }
 
 .timeline-btn-primary:hover:not(:disabled) {
@@ -550,5 +550,14 @@ html[data-theme="dark"] .timeline-badge.kind-ics {
   .timeline-item-actions {
     grid-column: 1 / -1;
     justify-content: flex-end;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #calendar-timeline-modal *,
+  #calendar-timeline-modal *::before,
+  #calendar-timeline-modal *::after {
+    transition: none !important;
+    animation: none !important;
   }
 }

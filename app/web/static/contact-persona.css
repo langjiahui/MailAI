@@ -334,7 +334,7 @@ html[data-theme="dark"] .contact-role-pill[data-role-key="partner"] {
 .persona-dialog footer button.primary-action {
   background: var(--desk-accent);
   border-color: transparent;
-  color: var(--desk-surface);
+  color: var(--reward-on-accent, var(--desk-surface));
   font-weight: 550;
 }
 .persona-dialog-status {
@@ -361,5 +361,24 @@ html[data-theme] body .compose-modal:has(>.productivity-expanded):has(>.compose-
   .persona-editor-grid,
   .role-preset-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+html.windows-performance .persona-dialog::backdrop,
+html[data-perf-tier="low"] .persona-dialog::backdrop {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .persona-dialog::backdrop {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .persona-dialog *,
+  .persona-editor-details *,
+  .compose-persona-strip * {
+    transition: none !important;
+    animation: none !important;
   }
 }

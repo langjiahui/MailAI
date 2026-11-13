@@ -42385,8 +42385,8 @@ window.mailaiPrepareReadingMarkup = doc => {
     btn.type = 'button';
     btn.id = 'btn-role-presets';
     btn.className = 'persona-role-presets-btn';
-    btn.setAttribute('aria-label', mailaiText('配置分角色写作与签名预设'));
-    btn.textContent = mailaiText('角色写作预设');
+    mailaiBindUI(btn, '@aria-label', () => mailaiText('配置分角色写作与签名预设'));
+    mailaiBindUI(btn, 'textContent', () => mailaiText('角色写作预设'));
     btn.onclick = () => openRolePresetsDialog(contactAccountId());
     newContactBtn.before(btn);
   }
@@ -42695,6 +42695,11 @@ window.mailaiPrepareReadingMarkup = doc => {
       renderPersonaStrip();
     }
   }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+  document.addEventListener('mailai:language-changed', () => {
+    renderPersonaStrip();
+    renderAiPersonaNote();
+  });
 
   globalThis.MailAIModules?.register('contactPersona', {
     schedule: () => window.mailaiScheduleComposePersona?.(0),
@@ -43393,6 +43398,11 @@ window.mailaiPrepareReadingMarkup = doc => {
   }
 
   window.openPeriodicBriefing = async function openPeriodicBriefing(options = {}) {
+    if (typeof closeTodoCenter === 'function') closeTodoCenter();
+    if (typeof closeContactCenter === 'function') closeContactCenter();
+    if (typeof closeAttachmentCenter === 'function') closeAttachmentCenter();
+    if (typeof closeCalendarTimeline === 'function') closeCalendarTimeline();
+    if (typeof closeTriageCenter === 'function') closeTriageCenter();
     if (typeof closeAssistant === 'function') closeAssistant();
     const digestAccountLabelEl = document.getElementById('digest-account-label');
     if (digestAccountLabelEl && typeof digestAccountLabel === 'function') {
@@ -43459,6 +43469,14 @@ window.mailaiPrepareReadingMarkup = doc => {
   });
 
   syncHeaderForTab();
+  document.addEventListener('mailai:language-changed', () => {
+    syncHeaderForTab();
+    if (!modal.classList.contains('hidden') && activeTab === 'periodic') {
+      if (currentSummary) renderMetrics(currentSummary);
+      renderHistorySelect();
+      renderContent();
+    }
+  });
   globalThis.MailAIModules?.register('periodicBriefing', {
     open: window.openPeriodicBriefing,
   });
@@ -43707,6 +43725,9 @@ window.mailaiPrepareReadingMarkup = doc => {
 
   async function openModal() {
     if (typeof closeTodoCenter === 'function') closeTodoCenter();
+    if (typeof closeContactCenter === 'function') closeContactCenter();
+    if (typeof closeAttachmentCenter === 'function') closeAttachmentCenter();
+    if (typeof closeTriageCenter === 'function') closeTriageCenter();
     if (typeof closeAssistant === 'function') closeAssistant();
     modal.classList.remove('hidden');
     modal.setAttribute('aria-hidden', 'false');
@@ -43920,6 +43941,14 @@ window.mailaiPrepareReadingMarkup = doc => {
   document.addEventListener('keydown', ev => {
     if (ev.key === 'Escape' && !modal.classList.contains('hidden')) {
       closeModal();
+    }
+  });
+
+  document.addEventListener('mailai:language-changed', () => {
+    if (!modal.classList.contains('hidden') && currentData) {
+      renderSummary();
+      renderGroups();
+      updateSelectionUi();
     }
   });
 
@@ -44234,6 +44263,9 @@ window.mailaiPrepareReadingMarkup = doc => {
 
   async function openModal(initialTab = 'subs') {
     if (typeof closeTodoCenter === 'function') closeTodoCenter();
+    if (typeof closeContactCenter === 'function') closeContactCenter();
+    if (typeof closeAttachmentCenter === 'function') closeAttachmentCenter();
+    if (typeof closeCalendarTimeline === 'function') closeCalendarTimeline();
     if (typeof closeAssistant === 'function') closeAssistant();
     modal.classList.remove('hidden');
     modal.setAttribute('aria-hidden', 'false');
@@ -44406,6 +44438,13 @@ window.mailaiPrepareReadingMarkup = doc => {
   document.addEventListener('keydown', ev => {
     if (ev.key === 'Escape' && !modal.classList.contains('hidden')) {
       closeModal();
+    }
+  });
+
+  document.addEventListener('mailai:language-changed', () => {
+    if (!modal.classList.contains('hidden')) {
+      if (subData) renderSubs();
+      renderRules();
     }
   });
 
@@ -44907,6 +44946,10 @@ window.mailaiPrepareReadingMarkup = doc => {
     runComposeGuardAudit();
   });
 
+  document.addEventListener('mailai:language-changed', () => {
+    if (!tooltip.classList.contains('hidden')) hideTooltip();
+  });
+
   window.clearComposeGuardBanner = clearComposeGuardMarks;
   window.clearComposeGuardMarks = clearComposeGuardMarks;
   window.runComposeGuardAudit = runComposeGuardAudit;
@@ -44946,6 +44989,7 @@ window.mailaiPrepareReadingMarkup = doc => {
     </form>
   `;
   tools.after(quickBar);
+  if (typeof applyI18n === 'function') applyI18n(quickBar);
 
   const form = document.getElementById('todo-quick-form');
   const titleInput = document.getElementById('todo-quick-title');

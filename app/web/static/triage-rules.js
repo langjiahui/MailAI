@@ -299,6 +299,9 @@
 
   async function openModal(initialTab = 'subs') {
     if (typeof closeTodoCenter === 'function') closeTodoCenter();
+    if (typeof closeContactCenter === 'function') closeContactCenter();
+    if (typeof closeAttachmentCenter === 'function') closeAttachmentCenter();
+    if (typeof closeCalendarTimeline === 'function') closeCalendarTimeline();
     if (typeof closeAssistant === 'function') closeAssistant();
     modal.classList.remove('hidden');
     modal.setAttribute('aria-hidden', 'false');
@@ -471,6 +474,13 @@
   document.addEventListener('keydown', ev => {
     if (ev.key === 'Escape' && !modal.classList.contains('hidden')) {
       closeModal();
+    }
+  });
+
+  document.addEventListener('mailai:language-changed', () => {
+    if (!modal.classList.contains('hidden')) {
+      if (subData) renderSubs();
+      renderRules();
     }
   });
 

@@ -486,6 +486,10 @@
     runComposeGuardAudit();
   });
 
+  document.addEventListener('mailai:language-changed', () => {
+    if (!tooltip.classList.contains('hidden')) hideTooltip();
+  });
+
   window.clearComposeGuardBanner = clearComposeGuardMarks;
   window.clearComposeGuardMarks = clearComposeGuardMarks;
   window.runComposeGuardAudit = runComposeGuardAudit;
