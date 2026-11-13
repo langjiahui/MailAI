@@ -1783,7 +1783,8 @@
   const shortcutBlocked=event=>{
     if(event.isComposing||event.keyCode===229||event.metaKey||event.ctrlKey||event.altKey)return true;
     if(document.body.classList.contains('compose-open'))return true;
-    if(event.target.closest('input,textarea,select,[contenteditable="true"]'))return true;
+    const field=event.target.closest?.('input,textarea,select,[contenteditable="true"]');
+    if(field&&!field.closest('dialog:not([open])'))return true;
     return Boolean(document.querySelector('dialog[open],.modal:not(.hidden),.compose-modal:not(.hidden),.attachment-center:not(.hidden),#todo-center:not(.hidden),#contact-center:not(.hidden),#task-center:not(.hidden),#digest-modal:not(.hidden),#correspondence-modal:not(.hidden),#mail-context-menu:not(.hidden),#security-analysis-panel:not(.hidden),#onboarding-overlay:not(.hidden),#start-model:not(.hidden)'));
   };
   const showMailWorkspace=()=>{hideDashboard();hideRulesView(false);hideSystemView(true);};
@@ -1876,7 +1877,7 @@
     const nextRead=!ctx.email.is_read;
     await api(`/api/emails/${ctx.id}/read?value=${nextRead}`,{accountId:ctx.accountId,method:'POST'});
     syncLocalMailRow(ctx.id,ctx.accountId,{is_read:nextRead});
-    if(typeof setLocalEmailReadState==='function'&&ctx.accountId===owner())setLocalEmailReadState(ctx.id,ctx.accountId,nextRead);
+    if(typeof setLocalEmailReadState==='function')setLocalEmailReadState(ctx.id,ctx.accountId,nextRead);
     updateSidebar?.();
     applyFilters?.({silent:true});
     toast(nextRead?mailaiText('已标为已读'):mailaiText('已标为未读'),'success');

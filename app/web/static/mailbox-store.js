@@ -121,8 +121,10 @@
     } finally {painting=false;}
   }
   async function fetchPage(entry,index,cursor,signal){
+    const readSeq=window.mailaiReadMutationSeq?.() || 0;
     const result=await api('/api/mailbox/list?filters='+encodeURIComponent(JSON.stringify(entry.query))+'&cursor='+encodeURIComponent(cursor || ''),
       {accountId:entry.owner,signal});
+    window.mailaiPreserveLocalReadState?.(result.items,entry.owner,readSeq);
     // Reuse unchanged objects so local read/star state and selection stay stable.
     const known=new Map(rowsOf(entry).map(row=>[rowKey(row),row]));
     result.items=result.items.map(row=>{const previous=known.get(rowKey(row));return previous && JSON.stringify(previous)===JSON.stringify(row)?previous:row;});
@@ -152,7 +154,9 @@
       if(!entry.pending){
         entry.controller=new AbortController();activeRequest=entry;
         entry.pending=(async()=>{
+          const readSeq=window.mailaiReadMutationSeq?.() || 0;
           const response=await api('/api/mailbox/list?filters='+encodeURIComponent(JSON.stringify(q)),{accountId:entry.owner,signal:entry.controller.signal});
+          window.mailaiPreserveLocalReadState?.(response.items,entry.owner,readSeq);
           entry.pages=new Map([[0,response]]);entry.cursors=new Map([[0,''],[1,response.next]]);
           entry.data=response;entry.invalid=false;entry.error=false;entry.checked=Date.now();trim(entry);
         })().finally(()=>{entry.pending=null;if(activeRequest===entry)activeRequest=null;});
@@ -188,8 +192,10 @@
       const indices=[...entry.pages.keys()].sort((a,b)=>a-b);
       const first=indices[0],pages=new Map(),cursors=new Map(entry.cursors);
       let cursor=entry.cursors.get(first) || '',data;
+      const readSeq=window.mailaiReadMutationSeq?.() || 0;
       for(let offset=0;offset<indices.length;offset++){
         data=await api('/api/mailbox/list?filters='+encodeURIComponent(JSON.stringify(entry.query))+'&cursor='+encodeURIComponent(cursor)+'&refresh='+(offset===0)+(!cursor && entry.anchor?'&around_id='+entry.anchor:''),{accountId:entry.owner});
+        window.mailaiPreserveLocalReadState?.(data.items,entry.owner,readSeq);
         pages.set(first+offset,data);cursors.set(first+offset,cursor);cursors.set(first+offset+1,data.next);
         cursor=data.next;if(!cursor)break;
       }

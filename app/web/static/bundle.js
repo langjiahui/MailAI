@@ -23363,11 +23363,13 @@ async function loadData({includeAncillary = true, silent = false, requireFresh =
       : currentFilter.status === 'trash' ? '/api/emails?days=365000&status=trash'
       : (folder ? `/api/emails?days=9999&folder=${encodeURIComponent(folder)}` : '/api/emails?days=' + (days === 9999 ? 365000 : days));
     const draftsRevision = draftListRevision;
+    const readSeq = typeof window !== 'undefined' ? (window.mailaiReadMutationSeq?.() || 0) : 0;
     const tagCatalog = typeof window !== 'undefined' ? window.mailaiRefreshTags?.(accountId) : null;
     const requests = [loadMailPages(mailPath, isCurrent), api('/api/mailbox/counts').catch(() => null)];
     if (includeAncillary) requests.push(api('/api/todos'), api('/api/mail/sent'), api('/api/drafts'));
     const [emails, localCounts, todos, sent, drafts] = await Promise.all(requests);
     if (!isCurrent() || !emails) return null;
+    if (typeof window !== 'undefined') window.mailaiPreserveLocalReadState?.(emails, accountId, readSeq);
     allEmails = emails;
     mailboxLocalCounts = unified ? null : localCounts;
     if (includeAncillary) {
@@ -24926,7 +24928,46 @@ function readSyncKey(id, accountId) {
   return `${accountId || 'default'}:${Number(id)}`;
 }
 
+let mailReadMutationSeq = 0;
+const localReadMutations = new Map();
+const MAX_LOCAL_READ_MUTATIONS = 500;
+
+function recordLocalReadMutation(id, accountId, isRead) {
+  const key = readSyncKey(id, accountId);
+  localReadMutations.delete(key);
+  localReadMutations.set(key, { value: isRead ? 1 : 0, seq: ++mailReadMutationSeq });
+  if (localReadMutations.size > MAX_LOCAL_READ_MUTATIONS) {
+    localReadMutations.delete(localReadMutations.keys().next().value);
+  }
+}
+
+window.mailaiReadMutationSeq = () => mailReadMutationSeq;
+
+window.mailaiReadMutationFor = (id, accountId = '', sinceSeq = 0) => {
+  const m = localReadMutations.get(readSyncKey(id, accountId));
+  return m && m.seq > sinceSeq ? m : null;
+};
+
+window.mailaiPreserveLocalReadState = (rows, ownerId = '', sinceSeq = 0) => {
+  if (!Array.isArray(rows) || !rows.length) return rows;
+  const fallbackOwner = ownerId || activeMailAccount()?.id || '';
+  for (const row of rows) {
+    if (!row || row.id == null) continue;
+    const key = readSyncKey(row.id, row._account_id || fallbackOwner);
+    if (readSyncJobs.has(key)) {
+      row.is_read = 1;
+      continue;
+    }
+    const mutation = localReadMutations.get(key);
+    if (mutation && mutation.seq > sinceSeq) {
+      row.is_read = mutation.value;
+    }
+  }
+  return rows;
+};
+
 function setLocalEmailReadState(id, accountId, isRead) {
+  recordLocalReadMutation(id, accountId, isRead);
   const activeAccountId = activeMailAccount()?.id || '';
   const stillInAccount = activeAccountId === accountId;
   const local = allEmails.find(item => Number(item.id) === Number(id) &&
@@ -25079,6 +25120,7 @@ async function selectEmail(id, options = {}) {
   const animateArrival = selectedEmailId !== id || selectedEmailAccountId !== (options.accountId || '');
   const requestRevision = ++readingLoadRevision;
   const requestAccountId = options.accountId || activeMailAccount()?.id || '';
+  const readSeqAtStart = typeof window !== 'undefined' ? (window.mailaiReadMutationSeq?.() || 0) : 0;
   readingLoadController?.abort();
   const controller = new AbortController();
   readingLoadController = controller;
@@ -25098,12 +25140,16 @@ async function selectEmail(id, options = {}) {
   try {
     const e = await api('/api/emails/' + id, {accountId:requestAccountId, signal:controller.signal});
     if (requestRevision !== readingLoadRevision || selectedEmailId !== id) return;
+    const readOverride = typeof window !== 'undefined' ? window.mailaiReadMutationFor?.(id, requestAccountId, readSeqAtStart) : null;
+    if (readOverride) e.is_read = readOverride.value;
     selectedEmailDetail = e;
     window.mailOnboarding?.opened();
     globalThis.mailaiPet?.openedEmail(id, requestAccountId);
     if (animateArrival) window.mailaiCompanionMotion?.wake();
     transition.finish(() => renderReadingPane(e));
-    if (!e.is_read) queueEmailReadSync(id, requestAccountId);
+    if (!e.is_read && !(readOverride && !readOverride.value)) {
+      queueEmailReadSync(id, requestAccountId);
+    }
   } catch (err) {
     if (requestWasAborted(err, controller)) return;
     if (requestRevision !== readingLoadRevision || selectedEmailId !== id) return;
@@ -30946,8 +30992,10 @@ document.addEventListener('keydown', event => {
     } finally {painting=false;}
   }
   async function fetchPage(entry,index,cursor,signal){
+    const readSeq=window.mailaiReadMutationSeq?.() || 0;
     const result=await api('/api/mailbox/list?filters='+encodeURIComponent(JSON.stringify(entry.query))+'&cursor='+encodeURIComponent(cursor || ''),
       {accountId:entry.owner,signal});
+    window.mailaiPreserveLocalReadState?.(result.items,entry.owner,readSeq);
     // Reuse unchanged objects so local read/star state and selection stay stable.
     const known=new Map(rowsOf(entry).map(row=>[rowKey(row),row]));
     result.items=result.items.map(row=>{const previous=known.get(rowKey(row));return previous && JSON.stringify(previous)===JSON.stringify(row)?previous:row;});
@@ -30977,7 +31025,9 @@ document.addEventListener('keydown', event => {
       if(!entry.pending){
         entry.controller=new AbortController();activeRequest=entry;
         entry.pending=(async()=>{
+          const readSeq=window.mailaiReadMutationSeq?.() || 0;
           const response=await api('/api/mailbox/list?filters='+encodeURIComponent(JSON.stringify(q)),{accountId:entry.owner,signal:entry.controller.signal});
+          window.mailaiPreserveLocalReadState?.(response.items,entry.owner,readSeq);
           entry.pages=new Map([[0,response]]);entry.cursors=new Map([[0,''],[1,response.next]]);
           entry.data=response;entry.invalid=false;entry.error=false;entry.checked=Date.now();trim(entry);
         })().finally(()=>{entry.pending=null;if(activeRequest===entry)activeRequest=null;});
@@ -31013,8 +31063,10 @@ document.addEventListener('keydown', event => {
       const indices=[...entry.pages.keys()].sort((a,b)=>a-b);
       const first=indices[0],pages=new Map(),cursors=new Map(entry.cursors);
       let cursor=entry.cursors.get(first) || '',data;
+      const readSeq=window.mailaiReadMutationSeq?.() || 0;
       for(let offset=0;offset<indices.length;offset++){
         data=await api('/api/mailbox/list?filters='+encodeURIComponent(JSON.stringify(entry.query))+'&cursor='+encodeURIComponent(cursor)+'&refresh='+(offset===0)+(!cursor && entry.anchor?'&around_id='+entry.anchor:''),{accountId:entry.owner});
+        window.mailaiPreserveLocalReadState?.(data.items,entry.owner,readSeq);
         pages.set(first+offset,data);cursors.set(first+offset,cursor);cursors.set(first+offset+1,data.next);
         cursor=data.next;if(!cursor)break;
       }
@@ -34064,7 +34116,12 @@ function mailCardDate(value, now = new Date()) {
   document.body.insertAdjacentHTML('beforeend', `<dialog id="task-planner"><form><header><div><small><span data-i18n="ui.ade31c9bd6b0">简报与待办共用一条任务</span></small><h3><span data-i18n="ui.e8ec08580add">安排任务</span></h3></div><button type="button" data-plan-close aria-label="关闭" data-i18n-aria="ui.3fd47edce45b">×</button></header><p id="plan-source"></p><label id="plan-existing-label"><span data-i18n="ui.eda29e2e5ed0">此邮件已有任务</span><select id="plan-existing"></select></label><label><span data-i18n="ui.2479560deb33">任务名称</span><input id="plan-title" required maxlength="500"></label><div class="plan-grid"><label><span data-i18n="ui.14d614e81c9d">任务类型</span><select id="plan-kind"><option value="execution" data-i18n="ui.f93a2b033630">执行事项</option><option value="decision" data-i18n="ui.e3079522171b">决策事项</option></select></label><label><span data-i18n="ui.d2f2242680da">任务阶段</span><select id="plan-stage"><option value="active" data-i18n="ui.c6535b571547">由我推进</option><option value="waiting" data-i18n="ui.ecb9104683d3">等待反馈</option></select></label></div><div class="plan-grid"><label><span id="plan-date-label"><span data-i18n="ui.0abb39c962d1">截止日期（可选）</span></span><input id="plan-deadline" type="date"></label><label><span data-i18n="todo.recurrenceLabel">重复周期</span><select id="plan-recurrence"><option value="" data-i18n="todo.recNone">不重复</option><option value="weekly" data-i18n="todo.recWeekly">每周重复</option><option value="monthly" data-i18n="todo.recMonthly">每月重复</option></select></label></div><label><span data-i18n="ui.55e4169d5992">提醒时间（可选）</span><input id="plan-remind" type="datetime-local"></label><div class="plan-reminder-shortcuts"><button type="button" data-plan-time="later"><span data-i18n="ui.c2a29a783b63">10 分钟后</span></button><button type="button" data-plan-time="tomorrow"><span data-i18n="ui.6a1e759cb774">明天 9 点</span></button><button type="button" data-plan-time="deadline"><span data-i18n="ui.a938f999b95f">截止日 9 点</span></button><button type="button" data-plan-time="clear"><span data-i18n="ui.0f207fc4c5e1">不提醒</span></button></div><small><span data-i18n="ui.d9de63bbac7c">截止日期用于标记逾期；只有设置提醒时间，才会发送提醒。</span></small><small><span data-i18n="ui.0cb207b628eb">提醒属于这条任务；完成任务后停止提醒。桌面版在后台运行时也会发系统通知（需允许通知）；完全退出后，下次启动补提醒。浏览器版的提示方式取决于运行平台。</span></small><p id="plan-error" role="status"></p><footer><button type="button" id="plan-reopen" hidden><span data-i18n="ui.345fcbfd7446">恢复待办</span></button><button type="button" data-plan-close><span data-i18n="ui.2cd0f3be8738">取消</span></button><button id="plan-save" type="submit"><span data-i18n="ui.231530ddc697">保存安排</span></button></footer></form></dialog>`);
   const dialog = document.getElementById('task-planner');
   const get = id => document.getElementById('plan-'+id);
-  let context=null, ticket=0;
+  let context=null, ticket=0, returnFocus=null;
+  function restoreDialogFocus(){
+    if(dialog.contains(document.activeElement)&&typeof document.activeElement.blur==='function')document.activeElement.blur();
+    if(returnFocus&&returnFocus.isConnected&&typeof returnFocus.focus==='function')returnFocus.focus({preventScroll:true});
+    returnFocus=null;
+  }
   function localTime(value) {
     if (!value) return '';
     const date=new Date(value); if (!Number.isFinite(date.getTime())) return '';
@@ -34101,6 +34158,7 @@ function mailCardDate(value, now = new Date()) {
       get('existing').innerHTML=matches.map(t=>`<option value="${t.id}">${esc(t.title)}${t.status==='done'?mailaiText('（已完成）'):''}</option>`).join('');
       if (selected) get('existing').value=selected.id;
       mailaiBindUI(get('source'), "textContent", () => (((_systemConfig?.accounts || []).find(a=>a.id===accountId)?.user || '') + ' · ' + (resolvedEmailId ? (selected?.email_subject || title || mailaiText('已关联来源邮件')) : mailaiText('手动创建'))));
+      returnFocus=document.activeElement instanceof HTMLElement?document.activeElement:null;
       paint(selected);dialog.showModal();get('title').focus();
     } catch(e) {toast(mailaiText('无法打开任务：')+mailaiSystemMessage(e.message),'warn');}
   };
@@ -34112,6 +34170,7 @@ function mailCardDate(value, now = new Date()) {
     window.refreshSecretaryAccount?.();
     try {const rows=await api('/api/todos?include_done=true',{accountId});if(accountId!==activeMailAccount()?.id)return;allTodos=rows;updateSidebar();}catch(_){}
   });
+  dialog.addEventListener('close', restoreDialogFocus);
   dialog.querySelectorAll('[data-plan-close]').forEach(b=>b.onclick=()=>dialog.close());
   dialog.querySelectorAll('[data-plan-time]').forEach(button=>button.onclick=()=>{
     const action=button.dataset.planTime;get('error').textContent='';
@@ -40397,7 +40456,8 @@ function mailCardDate(value, now = new Date()) {
   const shortcutBlocked=event=>{
     if(event.isComposing||event.keyCode===229||event.metaKey||event.ctrlKey||event.altKey)return true;
     if(document.body.classList.contains('compose-open'))return true;
-    if(event.target.closest('input,textarea,select,[contenteditable="true"]'))return true;
+    const field=event.target.closest?.('input,textarea,select,[contenteditable="true"]');
+    if(field&&!field.closest('dialog:not([open])'))return true;
     return Boolean(document.querySelector('dialog[open],.modal:not(.hidden),.compose-modal:not(.hidden),.attachment-center:not(.hidden),#todo-center:not(.hidden),#contact-center:not(.hidden),#task-center:not(.hidden),#digest-modal:not(.hidden),#correspondence-modal:not(.hidden),#mail-context-menu:not(.hidden),#security-analysis-panel:not(.hidden),#onboarding-overlay:not(.hidden),#start-model:not(.hidden)'));
   };
   const showMailWorkspace=()=>{hideDashboard();hideRulesView(false);hideSystemView(true);};
@@ -40490,7 +40550,7 @@ function mailCardDate(value, now = new Date()) {
     const nextRead=!ctx.email.is_read;
     await api(`/api/emails/${ctx.id}/read?value=${nextRead}`,{accountId:ctx.accountId,method:'POST'});
     syncLocalMailRow(ctx.id,ctx.accountId,{is_read:nextRead});
-    if(typeof setLocalEmailReadState==='function'&&ctx.accountId===owner())setLocalEmailReadState(ctx.id,ctx.accountId,nextRead);
+    if(typeof setLocalEmailReadState==='function')setLocalEmailReadState(ctx.id,ctx.accountId,nextRead);
     updateSidebar?.();
     applyFilters?.({silent:true});
     toast(nextRead?mailaiText('已标为已读'):mailaiText('已标为未读'),'success');

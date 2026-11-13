@@ -3043,11 +3043,13 @@ async function loadData({includeAncillary = true, silent = false, requireFresh =
       : currentFilter.status === 'trash' ? '/api/emails?days=365000&status=trash'
       : (folder ? `/api/emails?days=9999&folder=${encodeURIComponent(folder)}` : '/api/emails?days=' + (days === 9999 ? 365000 : days));
     const draftsRevision = draftListRevision;
+    const readSeq = typeof window !== 'undefined' ? (window.mailaiReadMutationSeq?.() || 0) : 0;
     const tagCatalog = typeof window !== 'undefined' ? window.mailaiRefreshTags?.(accountId) : null;
     const requests = [loadMailPages(mailPath, isCurrent), api('/api/mailbox/counts').catch(() => null)];
     if (includeAncillary) requests.push(api('/api/todos'), api('/api/mail/sent'), api('/api/drafts'));
     const [emails, localCounts, todos, sent, drafts] = await Promise.all(requests);
     if (!isCurrent() || !emails) return null;
+    if (typeof window !== 'undefined') window.mailaiPreserveLocalReadState?.(emails, accountId, readSeq);
     allEmails = emails;
     mailboxLocalCounts = unified ? null : localCounts;
     if (includeAncillary) {
@@ -4606,7 +4608,46 @@ function readSyncKey(id, accountId) {
   return `${accountId || 'default'}:${Number(id)}`;
 }
 
+let mailReadMutationSeq = 0;
+const localReadMutations = new Map();
+const MAX_LOCAL_READ_MUTATIONS = 500;
+
+function recordLocalReadMutation(id, accountId, isRead) {
+  const key = readSyncKey(id, accountId);
+  localReadMutations.delete(key);
+  localReadMutations.set(key, { value: isRead ? 1 : 0, seq: ++mailReadMutationSeq });
+  if (localReadMutations.size > MAX_LOCAL_READ_MUTATIONS) {
+    localReadMutations.delete(localReadMutations.keys().next().value);
+  }
+}
+
+window.mailaiReadMutationSeq = () => mailReadMutationSeq;
+
+window.mailaiReadMutationFor = (id, accountId = '', sinceSeq = 0) => {
+  const m = localReadMutations.get(readSyncKey(id, accountId));
+  return m && m.seq > sinceSeq ? m : null;
+};
+
+window.mailaiPreserveLocalReadState = (rows, ownerId = '', sinceSeq = 0) => {
+  if (!Array.isArray(rows) || !rows.length) return rows;
+  const fallbackOwner = ownerId || activeMailAccount()?.id || '';
+  for (const row of rows) {
+    if (!row || row.id == null) continue;
+    const key = readSyncKey(row.id, row._account_id || fallbackOwner);
+    if (readSyncJobs.has(key)) {
+      row.is_read = 1;
+      continue;
+    }
+    const mutation = localReadMutations.get(key);
+    if (mutation && mutation.seq > sinceSeq) {
+      row.is_read = mutation.value;
+    }
+  }
+  return rows;
+};
+
 function setLocalEmailReadState(id, accountId, isRead) {
+  recordLocalReadMutation(id, accountId, isRead);
   const activeAccountId = activeMailAccount()?.id || '';
   const stillInAccount = activeAccountId === accountId;
   const local = allEmails.find(item => Number(item.id) === Number(id) &&
@@ -4759,6 +4800,7 @@ async function selectEmail(id, options = {}) {
   const animateArrival = selectedEmailId !== id || selectedEmailAccountId !== (options.accountId || '');
   const requestRevision = ++readingLoadRevision;
   const requestAccountId = options.accountId || activeMailAccount()?.id || '';
+  const readSeqAtStart = typeof window !== 'undefined' ? (window.mailaiReadMutationSeq?.() || 0) : 0;
   readingLoadController?.abort();
   const controller = new AbortController();
   readingLoadController = controller;
@@ -4778,12 +4820,16 @@ async function selectEmail(id, options = {}) {
   try {
     const e = await api('/api/emails/' + id, {accountId:requestAccountId, signal:controller.signal});
     if (requestRevision !== readingLoadRevision || selectedEmailId !== id) return;
+    const readOverride = typeof window !== 'undefined' ? window.mailaiReadMutationFor?.(id, requestAccountId, readSeqAtStart) : null;
+    if (readOverride) e.is_read = readOverride.value;
     selectedEmailDetail = e;
     window.mailOnboarding?.opened();
     globalThis.mailaiPet?.openedEmail(id, requestAccountId);
     if (animateArrival) window.mailaiCompanionMotion?.wake();
     transition.finish(() => renderReadingPane(e));
-    if (!e.is_read) queueEmailReadSync(id, requestAccountId);
+    if (!e.is_read && !(readOverride && !readOverride.value)) {
+      queueEmailReadSync(id, requestAccountId);
+    }
   } catch (err) {
     if (requestWasAborted(err, controller)) return;
     if (requestRevision !== readingLoadRevision || selectedEmailId !== id) return;
