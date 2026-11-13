@@ -9,6 +9,8 @@ import urllib.error
 import urllib.request
 from typing import Any
 
+import certifi
+
 from .. import config
 from .providers import completion_url, adapt_body
 from . import usage
@@ -57,6 +59,7 @@ def _ssl_context(verify_ssl: bool | None = None) -> ssl.SSLContext:
     should_verify = config.LLM_VERIFY_SSL if verify_ssl is None else verify_ssl
     if should_verify:
         ctx = ssl.create_default_context()
+        ctx.load_verify_locations(cafile=certifi.where())
         ctx.minimum_version = ssl.TLSVersion.TLSv1_2
     else:
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
