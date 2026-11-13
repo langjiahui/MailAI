@@ -1,0 +1,245 @@
+/* Non-intrusive inline highlights, pulse spotlight & hover tooltip for compose pre-send audit */
+#compose-body.compose-editor {
+  position: relative;
+}
+
+#compose-message.compose-message {
+  position: relative;
+  z-index: 2;
+}
+
+.compose-guard-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.compose-guard-mark {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 4px;
+  box-sizing: border-box;
+  transition: opacity 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.compose-guard-mark.tone-warn {
+  background: rgba(210, 153, 34, 0.16);
+  background-image: linear-gradient(transparent calc(100% - 2px), rgba(199, 132, 24, 0.9) calc(100% - 2px));
+}
+
+.compose-guard-mark.tone-high {
+  background: rgba(209, 77, 71, 0.15);
+  background-image: linear-gradient(transparent calc(100% - 2px), rgba(209, 77, 71, 0.92) calc(100% - 2px));
+}
+
+.compose-guard-layer.has-active .compose-guard-mark:not(.is-active) {
+  opacity: 0.35;
+}
+
+.compose-guard-mark.tone-warn.is-active {
+  background: rgba(210, 153, 34, 0.32);
+  box-shadow: 0 0 0 2px rgba(199, 132, 24, 0.45);
+  animation: composeGuardPulseWarn 1.15s ease-in-out infinite;
+}
+
+.compose-guard-mark.tone-high.is-active {
+  background: rgba(209, 77, 71, 0.28);
+  box-shadow: 0 0 0 2px rgba(209, 77, 71, 0.48);
+  animation: composeGuardPulseHigh 1.15s ease-in-out infinite;
+}
+
+html[data-theme="dark"] .compose-guard-mark.tone-warn {
+  background: rgba(234, 184, 90, 0.18);
+  background-image: linear-gradient(transparent calc(100% - 2px), rgba(234, 184, 90, 0.92) calc(100% - 2px));
+}
+
+html[data-theme="dark"] .compose-guard-mark.tone-high {
+  background: rgba(240, 120, 114, 0.2);
+  background-image: linear-gradient(transparent calc(100% - 2px), rgba(240, 120, 114, 0.92) calc(100% - 2px));
+}
+
+html[data-theme="dark"] .compose-guard-mark.tone-warn.is-active {
+  background: rgba(234, 184, 90, 0.34);
+  box-shadow: 0 0 0 2px rgba(234, 184, 90, 0.52);
+}
+
+html[data-theme="dark"] .compose-guard-mark.tone-high.is-active {
+  background: rgba(240, 120, 114, 0.34);
+  box-shadow: 0 0 0 2px rgba(240, 120, 114, 0.56);
+}
+
+.compose-guard-field-warn {
+  box-shadow: inset 0 -2px 0 rgba(199, 132, 24, 0.9) !important;
+  background-color: color-mix(in srgb, #d29922 12%, transparent) !important;
+  border-radius: 6px;
+  transition: box-shadow 0.16s ease, background-color 0.16s ease;
+}
+
+.compose-guard-field-high {
+  box-shadow: inset 0 -2px 0 rgba(209, 77, 71, 0.92) !important;
+  background-color: color-mix(in srgb, #d14d47 11%, transparent) !important;
+  border-radius: 6px;
+  transition: box-shadow 0.16s ease, background-color 0.16s ease;
+}
+
+.compose-guard-field-warn.compose-guard-field-active {
+  box-shadow: 0 0 0 2px rgba(199, 132, 24, 0.42), inset 0 -2px 0 rgba(199, 132, 24, 0.95) !important;
+  background-color: color-mix(in srgb, #d29922 20%, transparent) !important;
+  animation: composeGuardPulseWarn 1.15s ease-in-out infinite;
+}
+
+.compose-guard-field-high.compose-guard-field-active {
+  box-shadow: 0 0 0 2px rgba(209, 77, 71, 0.46), inset 0 -2px 0 rgba(209, 77, 71, 0.98) !important;
+  background-color: color-mix(in srgb, #d14d47 19%, transparent) !important;
+  animation: composeGuardPulseHigh 1.15s ease-in-out infinite;
+}
+
+@keyframes composeGuardPulseWarn {
+  0%, 100% {
+    box-shadow: 0 0 0 2px rgba(199, 132, 24, 0.34);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(199, 132, 24, 0.14);
+  }
+}
+
+@keyframes composeGuardPulseHigh {
+  0%, 100% {
+    box-shadow: 0 0 0 2px rgba(209, 77, 71, 0.38);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(209, 77, 71, 0.16);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .compose-guard-mark.is-active,
+  .compose-guard-field-warn.compose-guard-field-active,
+  .compose-guard-field-high.compose-guard-field-active {
+    animation: none;
+  }
+}
+
+#btn-compose-guard {
+  position: relative;
+}
+
+#btn-compose-guard .compose-guard-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  background: #c78b1e;
+}
+
+#btn-compose-guard.has-high .compose-guard-count {
+  background: #d14d47;
+}
+
+#btn-compose-guard.is-clean {
+  color: var(--desk-accent);
+}
+
+/* Lightweight floating hover tooltip */
+.compose-guard-tooltip {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  max-width: min(360px, calc(100vw - 24px));
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--desk-line) 85%, transparent);
+  background: var(--desk-surface, #ffffff);
+  color: var(--desk-ink, #1e2d27);
+  box-shadow: 0 10px 28px rgba(18, 32, 26, 0.16);
+  display: grid;
+  gap: 5px;
+  font-size: 12px;
+}
+
+.compose-guard-tooltip.is-interactive {
+  pointer-events: auto;
+}
+
+.compose-guard-tooltip.hidden {
+  display: none;
+}
+
+.compose-guard-tip-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 7px;
+  align-items: start;
+  padding: 4px 5px;
+  border-radius: 7px;
+  transition: background-color 0.12s ease;
+}
+
+.compose-guard-tip-row + .compose-guard-tip-row {
+  border-top: 1px solid color-mix(in srgb, var(--desk-line) 45%, transparent);
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.compose-guard-tooltip.is-interactive .compose-guard-tip-row {
+  cursor: pointer;
+}
+
+.compose-guard-tooltip.is-interactive .compose-guard-tip-row:hover {
+  background: var(--desk-hover, rgba(50, 123, 98, 0.08));
+}
+
+.compose-guard-tip-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: color-mix(in srgb, #d29922 18%, transparent);
+  color: #9e6b10;
+  margin-top: 1px;
+}
+
+.compose-guard-tip-row.tone-high .compose-guard-tip-badge {
+  background: color-mix(in srgb, #d14d47 18%, transparent);
+  color: #b43c37;
+}
+
+html[data-theme="dark"] .compose-guard-tip-badge {
+  color: #eab85a;
+}
+
+html[data-theme="dark"] .compose-guard-tip-row.tone-high .compose-guard-tip-badge {
+  color: #f08d87;
+}
+
+.compose-guard-tip-body {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.compose-guard-tip-body strong {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--desk-ink, #1e2d27);
+  line-height: 1.35;
+}
+
+.compose-guard-tip-body small {
+  font-size: 11px;
+  color: var(--desk-muted, #62756c);
+  line-height: 1.4;
+}
+
+.compose-guard-tip-meta {
+  font-size: 10px;
+  color: var(--desk-muted, #62756c);
+}

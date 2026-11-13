@@ -85,6 +85,7 @@
   <link rel="stylesheet" href="/static/periodic-briefing.css?v=1">
   <link rel="stylesheet" href="/static/calendar-timeline.css?v=1">
   <link rel="stylesheet" href="/static/triage-rules.css?v=1">
+  <link rel="stylesheet" href="/static/compose-guard.css?v=1">
 </head>
 <body>
   <div id="app-preloader" class="app-preloader" role="status" aria-live="polite">
@@ -950,6 +951,7 @@
         <div class="compose-toolbar" aria-label="正文格式" data-i18n-aria="compose.format">
           <div class="compose-toolbar-actions">
             <button type="button" id="btn-compose-preview" class="compose-tool-labeled" title="预览收件人看到的邮件" data-i18n-title="compose.previewTitle"><svg viewBox="0 0 20 20"><path d="M2.8 10s2.6-4.4 7.2-4.4 7.2 4.4 7.2 4.4-2.6 4.4-7.2 4.4S2.8 10 2.8 10Z"/><circle cx="10" cy="10" r="2"/></svg><span data-i18n="compose.preview">预览</span></button>
+            <button type="button" id="btn-compose-guard" class="compose-tool-labeled" title="发信前多维自检：漏附、日期冲突、外发范围、凭据泄露与占位符" data-i18n-title="compose.guardTitle"><svg viewBox="0 0 20 20"><path d="M10 2.6 4.2 5v4.6c0 3.7 2.5 6.8 5.8 7.8 3.3-1 5.8-4.1 5.8-7.8V5L10 2.6Z"/><path d="m7.6 10.1 1.7 1.7 3.3-3.5"/></svg><span data-i18n="compose.guard">自检</span></button>
             <button type="button" id="btn-add-attachment" class="compose-tool-labeled compose-attach-button"><svg viewBox="0 0 20 20"><path d="M7.2 10.7 12 5.9a2.5 2.5 0 0 1 3.5 3.5l-6.3 6.3a4 4 0 0 1-5.7-5.7l6-6"/></svg><span data-i18n="compose.attach">附件</span></button>
             <div class="compose-signature-tools"><select id="compose-signature-select" aria-label="选择邮件签名" data-i18n-aria="compose.signatureAria"><option value="" data-i18n="compose.noSignature">不使用签名</option></select><button type="button" id="btn-manage-signatures" title="管理签名" data-i18n-title="compose.manageTitle" data-i18n="compose.manage">管理</button></div>
             <div class="compose-toolbar-status"><button type="button" id="draft-state" disabled aria-live="polite" title="草稿仅保存在本机，不会同步到邮箱服务器" data-i18n-title="compose.autosaveTitle" data-i18n="compose.autosave">草稿自动保存</button></div>
@@ -967,6 +969,7 @@
         <div id="compose-shared-files" class="compose-shared-files hidden"></div><div id="compose-attachments" class="compose-attachments hidden" aria-live="polite"></div>
         <div id="compose-preflight" class="compose-preflight hidden" aria-live="polite"></div>
         <div id="compose-body" class="compose-editor">
+          <div id="compose-guard-layer" class="compose-guard-layer" aria-hidden="true"></div>
           <div id="compose-message" class="compose-message" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="输入邮件正文…" data-i18n-data-placeholder="compose.bodyPh"></div>
           <section id="compose-signature" class="compose-signature hidden" contenteditable="false" aria-label="邮件签名" data-i18n-aria="compose.signatureAria"><div id="compose-signature-content"></div></section>
           <section id="compose-quote" class="compose-quote hidden" contenteditable="false" aria-label="引用的原邮件" data-i18n-aria="compose.quoteAria">
@@ -1549,7 +1552,7 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=68c916e93024"></script>
+  <script src="/static/bundle.js?v=7fdc3279aabf"></script>
   <script src="/static/settings-scroll.js?v=5"></script>
   <script type="module" src="/static/author-logo.js?v=5"></script>
 </body>

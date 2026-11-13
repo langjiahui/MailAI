@@ -128,6 +128,7 @@ class MailPreflightRequest(BaseModel):
     mode: str = "compose"
     reply_to_email_id: int | None = None
     original_text: str = ""
+    allow_empty_recipients: bool = False
 
 
 class TodoUpdateRequest(BaseModel):

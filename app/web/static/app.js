@@ -2729,11 +2729,12 @@ async function runMailPreflight(payload) {
     });
   }
   const blockingIssues = (result.issues || []).filter(item => item.level === 'danger');
+  const displayIssues = blockingIssues.length ? (result.issues || []) : [];
   const host = document.getElementById('compose-preflight');
   host.classList.toggle('hidden', !blockingIssues.length);
   host.innerHTML = blockingIssues.length ? `<button type="button" class="preflight-backdrop" data-preflight-edit aria-label="返回修改邮件" data-i18n-aria="ui.1ef1f8681805"></button><section class="preflight-dialog" role="dialog" aria-modal="true" aria-labelledby="preflight-dialog-title">
   <header class="preflight-summary"><span class="preflight-heading"><small><span data-i18n="ui.50350a2e5829">发送前提醒</span></small><strong id="preflight-dialog-title"><span data-i18n="ui.7da5b6514066">请核对这 ${blockingIssues.length} 项</span></strong><em><span data-i18n="ui.0a2b5b9ee428">发现可能影响发送安全或完整性的问题</span></em></span><button type="button" data-preflight-edit aria-label="关闭发送提醒" data-i18n-aria="ui.7f7099756572">×</button></header>
-  <div class="preflight-list">` + blockingIssues.map(item => `<div class="preflight-item ${item.level}">
+  <div class="preflight-list">` + displayIssues.map(item => `<div class="preflight-item ${item.level}">
     <span class="preflight-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M10 3.2l7 12.3H3z"/><path d="M10 7.2v4.2M10 14.1h.01"/></svg></span>
     <span><b>${esc(mailaiSystemMessage(item.message))}</b>${item.reason ? `<small>${esc(item.reason)}</small>` : ''}</span><em>${esc(item.source || mailaiText('发送检查'))}</em>
   </div>`).join('') + `</div><footer class="preflight-decision">
@@ -2759,6 +2760,7 @@ function composePreflightFingerprint(payload = draftPayload()) {
 
 function clearComposePreflight() {
   composePreflightPending = null;
+  if (typeof window.clearComposeGuardBanner === 'function') window.clearComposeGuardBanner();
   const host = document.getElementById('compose-preflight');
   if (!host) return;
   host.innerHTML = '';

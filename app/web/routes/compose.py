@@ -468,7 +468,7 @@ def api_mail_preflight(payload: MailPreflightRequest):
     except ValueError as exc:
         raise HTTPException(400, str(exc))
     envelope_recipients = normalized.pop("recipients")
-    if not envelope_recipients:
+    if not envelope_recipients and not payload.allow_empty_recipients:
         raise HTTPException(400, "至少需要一个有效的收件人")
     review = outgoing_guard.review(payload.model_dump(), envelope_recipients)
     return {**review, "recipients": smtp_client.recipient_fields_for_display(normalized),

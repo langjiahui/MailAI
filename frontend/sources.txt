@@ -58,6 +58,7 @@ contact-persona.js
 periodic-briefing.js
 calendar-timeline.js
 triage-rules.js
+compose-guard.js
 mail-import.js
 mail-recovery.js
 task-activity.js

@@ -15914,7 +15914,13 @@ const MAILAI_UI_COPY = {
   "triage.jsApplyAllTpl": ["已执行分流规则：命中 {0} 封，更新 {1} 封", "Applied rules: {0} matched, {1} updated"],
   "triage.jsApplyErr": ["执行规则失败", "Failed to apply rules"],
   "triage.jsApplyOneTpl": ["规则已运行：命中 {0} 封，更新 {1} 封", "Rule ran: {0} matched, {1} updated"],
-  "triage.jsDeleted": ["已删除自动分流规则", "Auto-triage rule deleted"]
+  "triage.jsDeleted": ["已删除自动分流规则", "Auto-triage rule deleted"],
+  "compose.guard": ["自检", "Guard"],
+  "compose.guardTitle": ["发信前多维自检：漏附、日期冲突、外发范围、凭据泄露与占位符", "Pre-send self-audit: attachments, date conflicts, recipients, secrets, and placeholders"],
+  "composeGuard.clean": ["已通过发信前多维自检：未发现漏附、日期冲突、凭据泄露、占位符或外发风险", "Pre-send self-audit passed: no missing attachments, date conflicts, leaked secrets, placeholders, or risky recipients found"],
+  "composeGuard.high": ["高风险", "High Risk"],
+  "composeGuard.warn": ["提醒", "Notice"],
+  "composeGuard.sourceFallback": ["发信检查", "Send Check"]
 };
 const MAILAI_I18N_CHINESE = {
   "app.tagline": "邮件安全与效率助手",
