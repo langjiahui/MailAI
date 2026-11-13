@@ -347,8 +347,10 @@ class PartitionTest(unittest.TestCase):
         self.assertEqual(scheduled,set(json.loads(ci_browser.SUITES.read_text())))
         for browser in ['chromium','webkit']:
             rows=[r for r in jobs['responsive_matrix']['include'] if r['browser']==browser]
-            self.assertEqual({r['shard'] for r in rows if r['suite']=='responsive-dialogs'},{'1/3','2/3','3/3'})
+            self.assertEqual({r['shard'] for r in rows if r['suite']=='responsive-dialogs'},{f'{i}/6' for i in range(1,7)})
             self.assertEqual(sum(r['suite']=='responsive-settings' for r in rows),1)
+        wardrobe_rows=[r for r in jobs['xiaoyou_matrix'].get('include',[]) if r['suite']=='xiaoyou-wardrobe']
+        self.assertEqual({r['shard'] for r in wardrobe_rows},{'1/2','2/2'})
 
     @unittest.skipUnless(shutil.which('node'), 'Node required for browser shard contract')
     def test_dialog_partitions_preserve_all_cases_and_reject_empty_or_invalid_shards(self):
@@ -356,11 +358,14 @@ class PartitionTest(unittest.TestCase):
         const assert=require('node:assert/strict');
         const {partition}=require('./tests/helpers/ci-shard.cjs');
         const cases=require('./tests/helpers/home-dialog-cases.cjs');
-        const groups=[1,2,3].map(i=>partition(cases,`${i}/3`));
+        const groups=[1,2,3,4,5,6].map(i=>partition(cases,`${i}/6`));
         assert(groups.every(group=>group.length>0));
         assert.deepEqual(groups.flat().map(row=>row[0]).sort(),cases.map(row=>row[0]).sort());
         assert.equal(new Set(groups.flat().map(row=>row[0])).size,cases.length);
-        for(const value of ['0/3','4/3','1/99','bad','1/0','1.5/3']) assert.throws(()=>partition(cases,value));
+        assert.deepEqual(partition(['chromium','webkit'],'1/2'),['chromium']);
+        assert.deepEqual(partition(['chromium','webkit'],'2/2'),['webkit']);
+        assert.deepEqual(partition(['chromium','webkit'],''),['chromium','webkit']);
+        for(const value of ['0/6','7/6','1/99','bad','1/0','1.5/6']) assert.throws(()=>partition(cases,value));
         assert.equal(partition(cases,''),cases);
         """
         subprocess.run(['node','-e',source],cwd=ROOT,check=True)
@@ -448,6 +453,30 @@ class MirrorTriggerTest(unittest.TestCase):
                 if path.startswith('releases/'):result[key]=True
                 return result
             with self.assertRaises(ValueError):ci_mirror.resolve('workflow_dispatch',event,REPO,api)
+
+    def test_read_gh_api_retries_transient_errors_without_retrying_4xx(self):
+        eof=subprocess.CalledProcessError(1,['gh'],stderr=b'unexpected EOF')
+        ok=subprocess.CompletedProcess(['gh'],0,stdout=b'{"ok":true}')
+        with patch.object(subprocess,'run',side_effect=[eof,ok]) as mocked,patch.object(quality.time,'sleep'):
+            self.assertEqual(quality.GitHub(REPO).get('branches/main'),{'ok':True})
+        self.assertEqual(mocked.call_count,2)
+        not_found=subprocess.CalledProcessError(1,['gh'],stderr=b'gh: Not Found (HTTP 404)')
+        with patch.object(subprocess,'run',side_effect=[not_found,ok]) as mocked,patch.object(quality.time,'sleep'):
+            with self.assertRaises(subprocess.CalledProcessError):
+                quality.GitHub(REPO).get('branches/main')
+        self.assertEqual(mocked.call_count,1)
+
+    def test_parallel_browser_budget_defaults_to_18_and_caps_at_20(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);event=root/'event.json';event.write_text('{}')
+            env={'GITHUB_EVENT_NAME':'workflow_dispatch','GITHUB_EVENT_PATH':str(event)}
+            with patch.dict(os.environ,env),patch.object(quality,'ROOT',root),patch.object(quality,'emit_output') as output,patch.object(quality,'summary'):
+                quality.plan(FakeGitHub())
+            values={call.args[0]:call.args[1] for call in output.call_args_list}
+            self.assertEqual(values['browser_parallel'],18)
+            with patch.dict(os.environ,{**env,'CI_BROWSER_PARALLEL':'21'}),patch.object(quality,'ROOT',root):
+                with self.assertRaises(ValueError):
+                    quality.plan(FakeGitHub())
 
 
 if __name__ == '__main__':

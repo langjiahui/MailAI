@@ -1,5 +1,6 @@
 /* Welcome/header ownership, dynamic rig cleanup and isolation from desktop docking. */
 const assert=require('node:assert/strict');
+const {partition}=require('./helpers/ci-shard.cjs');
 const {spawn}=require('node:child_process');
 const {once}=require('node:events');
 const {chromium,webkit}=require('playwright');
@@ -9,7 +10,7 @@ const port=18865;
  let logs='',browser;fixture.stdout.on('data',d=>logs+=d);fixture.stderr.on('data',d=>logs+=d);
  try{
   let ready=false;for(let i=0;i<150;i++){try{if((await fetch(`http://127.0.0.1:${port}/api/health`)).ok){ready=true;break;}}catch{}await new Promise(r=>setTimeout(r,100));}assert(ready,logs);
-  for(const engine of [chromium,webkit]){
+  for(const engine of partition([chromium,webkit])){
    browser=await engine.launch();const p=await browser.newPage({viewport:{width:1440,height:1000},reducedMotion:'reduce'}),errors=[];p.on('pageerror',e=>errors.push(e.message));
    await p.goto(`http://127.0.0.1:${port}`);await p.locator('#app-preloader').waitFor({state:'hidden'});
    await p.evaluate(()=>{openAssistant();renderAssistantWelcome();});

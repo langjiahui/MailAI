@@ -1,6 +1,7 @@
 /* Fitting-room actions reuse the real rig without buying or changing growth. */
 const assert=require('node:assert/strict');
 const {revealItem,selectTab}=require('./helpers/companion-ui.cjs');
+const {partition}=require('./helpers/ci-shard.cjs');
 const {openStageFitting}=require('./helpers/companion-backpack.cjs');
 const {auditSpaceThemes}=require('./helpers/companion-themes.cjs');
 const {spawn}=require('node:child_process');
@@ -12,7 +13,7 @@ const port=Number(process.env.MAILAI_WARDROBE_FIXTURE_PORT||18863);
  let logs='',browser;fixture.stdout.on('data',d=>logs+=d);fixture.stderr.on('data',d=>logs+=d);
  try {
   let ready=false;for(let i=0;i<150;i++){try{if((await fetch(`http://127.0.0.1:${port}/api/health`)).ok){ready=true;break;}}catch(_){}await new Promise(r=>setTimeout(r,100));}assert(ready,logs);
-  for(const engine of [chromium,webkit]) {
+  for(const engine of partition([chromium,webkit])) {
    browser=await engine.launch();const page=await browser.newPage({viewport:{width:1280,height:1000}}),errors=[];
    page.on('pageerror',e=>errors.push(e.message));await page.goto(`http://127.0.0.1:${port}`);await page.locator('#app-preloader').waitFor({state:'hidden'});
    await page.evaluate(async()=>{setI18nLanguage('zh-CN');await api('/api/companion/preferences',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:false})});await mailaiPet.refresh();await mailaiPet.open();});

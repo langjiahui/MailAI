@@ -18,16 +18,18 @@ AREAS = {
              ['todos', 'task-workspace', 'dates-motion', 'interaction', 'responsive-dialogs']),
     'search': (['app/web/static/assistant-search.', 'app/web/static/mail-filter-panel.',
                 'app/web/static/mail-list-view.', 'app/search_query.py', 'app/mail_search.py'],
-               ['search', 'assistant-search', 'mail-appearance', 'interaction', 'responsive-dialogs']),
+               ['search', 'assistant-search', 'mail-list-view', 'mail-appearance',
+                'interaction', 'responsive-dialogs']),
     'compose': (['app/web/static/compose-', 'app/web/static/attachment-',
-                 'app/web/routes/compose.py'],
+                 'app/web/static/signature-manager.', 'app/web/routes/compose.py'],
                 ['compose-library', 'interaction', 'responsive-dialogs']),
     'settings': (['app/web/static/settings-', 'app/web/static/home-dialog-polish.css',
                   'app/web/static/control-theme.css', 'app/web/static/correspondence-polish.css'],
-                 ['mail-updates', 'mail-appearance', 'growth-themes', 'responsive-settings',
-                  'responsive-dialogs', 'interaction']),
+                 ['mail-updates', 'mail-appearance', 'growth-themes', 'growth-themes-surfaces',
+                  'responsive-settings', 'responsive-dialogs', 'interaction']),
     'companion': (['app/web/static/companion-', 'app/web/static/companion.'],
-                  ['growth-journal', 'growth-outfits', 'growth-themes', 'growth-gifts',
+                  ['growth-journal', 'growth-outfits', 'growth-outfits-webkit',
+                   'growth-themes', 'growth-themes-surfaces', 'growth-gifts',
                    'xiaoyou-anatomy', 'xiaoyou-wardrobe', 'xiaoyou-life', 'xiaoyou-rest',
                    'interaction', 'responsive-dialogs']),
     'cleanup': (['app/automatic_server_cleanup.py', 'app/server_cleanup.py',
@@ -141,7 +143,7 @@ def select(paths, *, force_full=False, root=ROOT):
             continue
         if path.startswith(('app/macos_', 'native/macos/')):
             checks['native-scrollbar-macos'] = True
-            selected.update(['startup', 'workspace']); continue
+            selected.update(['startup', 'workspace', 'workspace-assistant']); continue
         if path.startswith(('app/windows_', 'native/windows/')):
             checks['native-notifications-windows'] = True
             selected.add('startup'); continue
