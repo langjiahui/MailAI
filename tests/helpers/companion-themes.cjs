@@ -6,15 +6,15 @@ const {selectTab}=require('./companion-ui.cjs');
 async function auditSpaceThemes(page,dialog) {
  const failures=[];let checked=0;
  await page.emulateMedia({reducedMotion:'reduce'});
- for(const language of ['zh-CN','en'])for(const mode of ['light','dark'])for(const reward of ['','theme_monochrome','theme_baowu']) {
-  await page.evaluate(({language,mode,reward})=>{setI18nLanguage(language);applyTheme(mode);if(reward)document.documentElement.dataset.rewardTheme=reward;else delete document.documentElement.dataset.rewardTheme;},{language,mode,reward});
-  for(const [width,height,scale]of [[1440,1000,1],[390,844,1],[390,844,1.35],[360,740,2]]) {
-   await page.setViewportSize({width,height});
-   await page.evaluate(scale=>{document.documentElement.style.setProperty('--fz',scale);document.body.style.zoom=String(scale);},scale);
+ for(const [width,height,scale]of [[1440,1000,1],[390,844,1],[390,844,1.35],[360,740,2]]) {
+  await page.setViewportSize({width,height});
+  await page.evaluate(scale=>{document.documentElement.style.setProperty('--fz',scale);document.body.style.zoom=String(scale);},scale);
+  for(const language of ['zh-CN','en'])for(const mode of ['light','dark'])for(const reward of ['','theme_monochrome','theme_baowu']) {
+   await page.evaluate(({language,mode,reward})=>{setI18nLanguage(language);applyTheme(mode);if(reward)document.documentElement.dataset.rewardTheme=reward;else delete document.documentElement.dataset.rewardTheme;},{language,mode,reward});
    for(const tab of ['home','today','shop','wardrobe','journey','gifts','themes','history','settings']) {
     await selectTab(dialog,tab);
     if(tab==='wardrobe'){const trial=dialog.locator('.pet-shop-item:not([hidden]) [data-pet-preview]').first();if(await trial.isVisible()){try{await trial.click();}catch(error){throw new Error('Wardrobe tile must remain clickable: '+JSON.stringify({language,mode,reward,width,height,scale}),{cause:error});}}}
-    const issues=await dialog.evaluate(d=>{
+    const issues=await dialog.evaluate((d,{language})=>{
      const problems=[],rgb=s=>{const c=(s.match(/[\d.]+/g)||[]).map(Number);return s.startsWith('color(srgb')?c.map((v,i)=>i<3?v*255:v):c;},blend=(a,b)=>{const alpha=a[3]??1;return a.slice(0,3).map((v,i)=>v*alpha+b[i]*(1-alpha));};
      const luminance=c=>c.slice(0,3).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4}).reduce((v,c,i)=>v+c*[.2126,.7152,.0722][i],0);
      const background=n=>{const chain=[];for(let a=n;a instanceof Element;a=a.parentElement)chain.unshift(a);return chain.reduce((color,a)=>blend(rgb(getComputedStyle(a).backgroundColor),color),[255,255,255]);};
@@ -34,9 +34,9 @@ async function auditSpaceThemes(page,dialog) {
       const ratio=contrast(n),large=parseFloat(css.fontSize)>=24||parseFloat(css.fontSize)>=18.66&&parseInt(css.fontWeight)>=700;
       if(ratio<(large?3:4.5)-.05)problems.push('Low text contrast '+ratio.toFixed(2)+': '+n.textContent.trim());
      }
+     if(language==='en'&&/[\u3400-\u9fff]/.test(d.textContent))problems.push('Chinese in English interface');
      return problems;
-    });
-    if(language==='en'&&/[\u3400-\u9fff]/.test(await dialog.textContent()))issues.push('Chinese in English interface');
+    },{language});
     if(issues.length)failures.push({language,mode,reward,width,scale,tab,issues});
     checked++;
    }

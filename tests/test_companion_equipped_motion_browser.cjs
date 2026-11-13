@@ -126,15 +126,17 @@ async function checkRestEffect(page, host, part, context) {
     assert.equal(await page.evaluate(()=>document.body.dataset.petNeck),'none');
     assert.equal(await firstDialog.locator('.pet-live-art .growth-scarf').evaluate(n=>getComputedStyle(n).display),'block','An unowned item is only tried on');
     await firstDialog.locator('[data-pet-purchase-open="scarf"]').click();
-    for(const language of ['zh-CN','en'])for(const theme of ['','theme_monochrome','theme_baowu'])for(const mode of ['light','dark'])for(const width of [390,1440])for(const scale of [1,1.35,2]) {
+    for(const width of [390,1440]) {
       await page.setViewportSize({width,height:1000});
-      await page.evaluate(({language,theme,mode,scale})=>{setI18nLanguage(language);applyTheme(mode);document.documentElement.dataset.rewardTheme=theme;document.documentElement.style.setProperty('--fz',scale);document.body.style.zoom=String(scale);},{language,theme,mode,scale});
-      const confirm=firstDialog.locator('.pet-backpack-confirm');
-      assert.match(await confirm.textContent(),/80/);
-      assert.match(await confirm.textContent(),/9,920|9920/);
-      const clipped=await confirm.evaluate(n=>n.scrollWidth>n.clientWidth+1||[...n.querySelectorAll('button')].some(b=>b.scrollWidth>b.clientWidth+1));
-      assert.equal(clipped,false,JSON.stringify({language,theme,mode,width,scale}));
-      if(language==='en')assert(!/[\u3400-\u9fff]/.test(await firstDialog.textContent()));
+      for(const language of ['zh-CN','en'])for(const theme of ['','theme_monochrome','theme_baowu'])for(const mode of ['light','dark'])for(const scale of [1,1.35,2]) {
+        await page.evaluate(({language,theme,mode,scale})=>{setI18nLanguage(language);applyTheme(mode);document.documentElement.dataset.rewardTheme=theme;document.documentElement.style.setProperty('--fz',scale);document.body.style.zoom=String(scale);},{language,theme,mode,scale});
+        const confirm=firstDialog.locator('.pet-backpack-confirm');
+        assert.match(await confirm.textContent(),/80/);
+        assert.match(await confirm.textContent(),/9,920|9920/);
+        const result=await confirm.evaluate((n,{language})=>({clipped:n.scrollWidth>n.clientWidth+1||[...n.querySelectorAll('button')].some(b=>b.scrollWidth>b.clientWidth+1),hasZh:language==='en'&&/[\u3400-\u9fff]/.test(n.closest('dialog').textContent)}),{language});
+        assert.equal(result.clipped,false,JSON.stringify({language,theme,mode,width,scale}));
+        assert.equal(result.hasZh,false,JSON.stringify({language,theme,mode,width,scale}));
+      }
     }
     assert.equal(prematurePurchases,0,'Trying and inspecting the confirmation never spends stamps');
     assert.deepEqual(await page.evaluate(()=>api('/api/companion/growth')),before);
@@ -278,12 +280,15 @@ async function checkRestEffect(page, host, part, context) {
       }
       console.log(`PASS ${style}: 16 direct equipment changes, explicit removals, atomic undos and matching portraits`);
     }
-    for(const language of ['zh-CN','en'])for(const theme of ['','theme_monochrome','theme_baowu'])for(const mode of ['light','dark'])for(const width of [390,1440])for(const scale of [1,1.35,2]) {
-      await page.setViewportSize({width,height:1000});await page.evaluate(({language,theme,mode,scale})=>{setI18nLanguage(language);applyTheme(mode);document.documentElement.dataset.rewardTheme=theme;document.documentElement.style.setProperty('--fz',scale);document.body.style.zoom=String(scale);},{language,theme,mode,scale});
-      assert.equal(await dialog.locator('[data-pet-preview-mode]').count(),0,'Backpack never asks for a preview mode');
-      const bounds=await dialog.evaluate(n=>({client:n.clientWidth,scroll:n.scrollWidth,slots:[...n.querySelectorAll('.pet-backpack-slots button')].filter(b=>b.scrollWidth>b.clientWidth+1).map(b=>b.textContent)}));
-      assert(bounds.scroll<=bounds.client+1,JSON.stringify({language,theme,mode,width,scale,bounds}));assert.deepEqual(bounds.slots,[]);
-      if(language==='en')assert(!/[\u3400-\u9fff]/.test(await dialog.textContent()));
+    for(const width of [390,1440]) {
+      await page.setViewportSize({width,height:1000});
+      for(const language of ['zh-CN','en'])for(const theme of ['','theme_monochrome','theme_baowu'])for(const mode of ['light','dark'])for(const scale of [1,1.35,2]) {
+        await page.evaluate(({language,theme,mode,scale})=>{setI18nLanguage(language);applyTheme(mode);document.documentElement.dataset.rewardTheme=theme;document.documentElement.style.setProperty('--fz',scale);document.body.style.zoom=String(scale);},{language,theme,mode,scale});
+        assert.equal(await dialog.locator('[data-pet-preview-mode]').count(),0,'Backpack never asks for a preview mode');
+        const bounds=await dialog.evaluate((n,{language})=>({client:n.clientWidth,scroll:n.scrollWidth,slots:[...n.querySelectorAll('.pet-backpack-slots button')].filter(b=>b.scrollWidth>b.clientWidth+1).map(b=>b.textContent),hasZh:language==='en'&&/[\u3400-\u9fff]/.test(n.textContent)}),{language});
+        assert(bounds.scroll<=bounds.client+1,JSON.stringify({language,theme,mode,width,scale,bounds}));assert.deepEqual(bounds.slots,[]);
+        assert.equal(bounds.hasZh,false,JSON.stringify({language,theme,mode,width,scale}));
+      }
     }
     await page.setViewportSize({width:1440,height:1000});await page.evaluate(()=>{setI18nLanguage('zh-CN');document.documentElement.style.setProperty('--fz','1');document.body.style.zoom='1';});
     await selectItem(dialog,'jacket');

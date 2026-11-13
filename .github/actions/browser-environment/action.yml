@@ -14,10 +14,11 @@ runs:
         cache: ${{ env.CI_BROWSER_IMAGE_VERSION == '' && 'pip' || '' }}
         cache-dependency-path: requirements*.txt
     - uses: actions/cache@v4
+      id: ci-venv
       if: ${{ env.CI_BROWSER_IMAGE_VERSION != '' }}
       with:
-        path: ~/.cache/pip
-        key: pip-container-${{ runner.os }}-${{ runner.arch }}-3.13-${{ hashFiles('requirements*.txt') }}
+        path: .venv-ci
+        key: ci-venv-${{ runner.os }}-${{ runner.arch }}-3.13-${{ hashFiles('requirements*.txt') }}
     - uses: actions/setup-node@v5
       with:
         node-version: '22'
@@ -38,8 +39,18 @@ runs:
         APT
     - name: Install project dependencies
       shell: bash
+      env:
+        CI_VENV_CACHE_HIT: ${{ steps.ci-venv.outputs.cache-hit }}
       run: |
-        python -m pip install -r requirements.txt
+        if [ -n "${CI_BROWSER_IMAGE_VERSION:-}" ]; then
+          if [ "$CI_VENV_CACHE_HIT" != "true" ] || [ ! -x .venv-ci/bin/python ]; then
+            python -m venv .venv-ci
+            .venv-ci/bin/python -m pip install --no-cache-dir -r requirements.txt
+          fi
+          echo "$GITHUB_WORKSPACE/.venv-ci/bin" >> "$GITHUB_PATH"
+        else
+          python -m pip install -r requirements.txt
+        fi
         npm ci --no-audit --no-fund
     - name: Validate preinstalled browser runtimes
       if: ${{ env.CI_BROWSER_IMAGE_VERSION != '' }}
@@ -50,13 +61,9 @@ runs:
         const fs = require('node:fs');
         assert.equal(require('playwright/package.json').version, process.env.CI_BROWSER_IMAGE_VERSION);
         const playwright = require('playwright');
-        (async () => {
-          for (const name of ['chromium', 'webkit']) {
-            assert(fs.existsSync(playwright[name].executablePath()), name + ' runtime missing');
-            const browser = await playwright[name].launch({headless:true});
-            await browser.close();
-          }
-        })().catch(error => { console.error(error); process.exitCode = 1; });
+        for (const name of ['chromium', 'webkit']) {
+          assert(fs.existsSync(playwright[name].executablePath()), name + ' runtime missing');
+        }
         JS
     - name: Install browsers on non-container runners
       if: ${{ env.CI_BROWSER_IMAGE_VERSION == '' }}

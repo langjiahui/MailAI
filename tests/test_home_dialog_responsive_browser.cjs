@@ -20,14 +20,15 @@ const cases=partition(require('./helpers/home-dialog-cases.cjs'));
   await p.setViewportSize({width:1512,height:1000});
   await p.evaluate(language=>{document.body.style.zoom='1';document.documentElement.style.setProperty('--fz','1');setI18nLanguage(language)},language);
   await p.evaluate('('+open.toString()+')()');await p.locator(selector).waitFor({state:'visible'});
-  for(const theme of ['', 'theme_monochrome','theme_baowu']) {
-   await p.evaluate(async theme=>{await api('/api/companion/equip',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slot:'theme',item:theme})});await mailaiPet.refresh()},theme);
-   for(const mode of ['light','dark']) {
-    await p.evaluate(mode=>applyTheme(mode),mode);
-    for(const[width,height,scale]of widths) {
-     await p.setViewportSize({width,height});await p.evaluate(scale=>{document.body.style.zoom=scale;document.documentElement.style.setProperty('--fz',scale)},scale);
-     // WebKit delivers resize events on the next frame; measure the settled layout.
-     await p.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  for(const[width,height,scale]of widths) {
+   await p.setViewportSize({width,height});await p.evaluate(scale=>{document.body.style.zoom=scale;document.documentElement.style.setProperty('--fz',scale)},scale);
+   // WebKit delivers resize events on the next frame; measure the settled layout.
+   await p.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+   for(const theme of ['', 'theme_monochrome','theme_baowu']) {
+    if(name==='companion') await p.evaluate(async theme=>{await api('/api/companion/equip',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slot:'theme',item:theme})});await mailaiPet.refresh()},theme);
+    else await p.evaluate(theme=>{if(theme)document.documentElement.dataset.rewardTheme=theme;else document.documentElement.removeAttribute('data-reward-theme');},theme);
+    for(const mode of ['light','dark']) {
+     await p.evaluate(mode=>applyTheme(mode),mode);
      const context={theme,mode,language,name,width,height,scale};
      const metrics=await p.locator(selector).evaluate(n=>{
       const r=n.getBoundingClientRect();
@@ -45,6 +46,9 @@ const cases=partition(require('./helpers/home-dialog-cases.cjs'));
   await p.evaluate('('+close.toString()+')()');
   console.log('PASS layout: '+name+' / '+language);
  }
+ const shard=process.env.MAILAI_CI_SHARD||'';
+ const [shardIndex,shardCount]=shard.split('/');
+ if(!shard||shardIndex===shardCount) {
  // All original toolbar commands remain physically reachable on the homepage.
  await p.setViewportSize({width:1512,height:1000});await p.evaluate(()=>{document.body.style.zoom='1';document.documentElement.style.setProperty('--fz','1')});
  await p.locator('.email-item').first().click();await p.waitForFunction(()=>!!selectedEmailDetail);
@@ -82,6 +86,7 @@ const cases=partition(require('./helpers/home-dialog-cases.cjs'));
  await p.setViewportSize({width:390,height:844});await p.evaluate(()=>{document.body.style.zoom='1';document.documentElement.style.setProperty('--fz','1')});
  await p.locator('.compose-format-tools button').last().focus();assert(await p.locator('.compose-format-tools button').last().evaluate(n=>{const r=n.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth}),'Keyboard can reach the end of the format rail');
  await p.evaluate(()=>closeCompose());
+ }
  await p.evaluate(async()=>{setI18nLanguage('zh-CN');applyTheme('light');await api('/api/companion/equip',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slot:'theme',item:''})});});
  assert.deepEqual(errors,[]);console.log(`PASS ${checked} homepage/dialog layouts: ${cases.length} dialog surfaces, six palettes, two languages, 390–2560px, 125% scaling; nested Escape, inside clicks, language retention and format rail (${process.env.MAILAI_BROWSER||'chromium'}).`);
  }finally{await browser.close()}
