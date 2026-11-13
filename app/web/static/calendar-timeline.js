@@ -61,7 +61,7 @@
     const checkedCount = selectedItems().length;
     selectedCountEl.textContent = mailaiTemplate`已选 ${checkedCount} 项`;
     exportBatchBtn.disabled = checkedCount === 0;
-    const hasCal = Boolean(sysCalendarSelect.value) && currentData?.macos_calendar_supported !== false;
+    const hasCal = !sysCalendarSelect.disabled && Boolean(sysCalendarSelect.value);
     sysAddBtn.disabled = checkedCount === 0 || !hasCal;
     const allVisibleSelected = visible.length > 0 && visible.every(it => selectedIds.has(it.item_id));
     selectAllBtn.textContent = allVisibleSelected ? mailaiText('取消全选') : mailaiText('全选当前');
