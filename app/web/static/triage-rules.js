@@ -334,7 +334,7 @@
         const res = await api('/api/productivity/triage/sender-batch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...accountHeaders() },
-          body: JSON.stringify({ sender_addr: sender, mode }),
+          body: JSON.stringify({ sender_addr: sender, mode, days: subData?.days || 45 }),
         });
         toast(mailaiTemplate`已批量处理 ${res.updated_count || 0} 封订阅推送`, 'success');
         if (typeof loadEmails === 'function') loadEmails();

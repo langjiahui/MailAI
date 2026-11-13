@@ -1054,5 +1054,30 @@
         }
       ]
     }
+  ],
+  "productivity-flows": [
+    {
+      "fixtures": [],
+      "tests": [
+        {
+          "file": "tests/test_calendar_timeline_browser.cjs"
+        },
+        {
+          "file": "tests/test_triage_rules_browser.cjs"
+        },
+        {
+          "file": "tests/test_periodic_briefing_browser.cjs"
+        },
+        {
+          "file": "tests/test_recipient_persona_browser.cjs"
+        },
+        {
+          "file": "tests/test_todo_interactions_browser.cjs"
+        },
+        {
+          "file": "tests/test_compose_guard_browser.cjs"
+        }
+      ]
+    }
   ]
 }

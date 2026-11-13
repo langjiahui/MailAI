@@ -1,8 +1,10 @@
 """Calendar timeline aggregation, conflict detection, batch ICS export, macOS JXA mock & API routes."""
 import json
+import os
 import subprocess
 import sys
 import tempfile
+import time
 from datetime import date, datetime, timedelta
 from email.message import EmailMessage
 from pathlib import Path
@@ -341,6 +343,74 @@ def main():
                 assert r_del.status_code == 200 and r_del.json()["ok"] is True
                 assert client.delete(f"/api/productivity/calendar/events/{new_ev_id}").status_code == 404
                 assert mail_calendar.delete_custom_event(custom_id) is True
+
+            # Regression: TZID conversion & multi-day all-day DTEND preservation
+            fixed_day = date(2026, 11, 13)
+            tz_ics = "\r\n".join([
+                "BEGIN:VCALENDAR",
+                "VERSION:2.0",
+                "BEGIN:VEVENT",
+                "UID:ics-ny-tzid@corp.test",
+                "DTSTART;TZID=America/New_York:20261113T090000",
+                "DTEND;TZID=America/New_York:20261113T103000",
+                "SUMMARY:跨时区纽约同步会",
+                "END:VEVENT",
+                "BEGIN:VEVENT",
+                "UID:ics-win-tzid@corp.test",
+                'DTSTART;TZID="Eastern Standard Time":20261113T093000',
+                'DTEND;TZID="Eastern Standard Time":20261113T100000',
+                "SUMMARY:Windows时区邀请",
+                "END:VEVENT",
+                "BEGIN:VEVENT",
+                "UID:ics-multiday-allday@corp.test",
+                "DTSTART;VALUE=DATE:20261113",
+                "DTEND;VALUE=DATE:20261116",
+                "SUMMARY:三日年度峰会",
+                "END:VEVENT",
+                "END:VCALENDAR",
+            ])
+            eml_dir = Path(root) / "eml"
+            db.upsert_email({
+                "uid": 399,
+                "folder": "INBOX",
+                "message_id": "<tz-multiday-399@corp.test>",
+                "subject": "跨时区与多日日程",
+                "from_addr": "global@corp.test",
+                "from_name": "Global Ops",
+                "to_addr": "me@corp.test",
+                "date": "2026-11-13T08:00:00",
+                "snippet": "跨时区与三日峰会",
+                "body_text": "请核对日程。",
+                "attachments": json.dumps([{"filename": "global.ics", "content_type": "text/calendar"}]),
+                "raw_path": _write_eml(eml_dir / "399.eml", "跨时区与多日日程", "global@corp.test", tz_ics, filename="global.ics"),
+                "status": "inbox",
+                "verdict": "clean",
+            })
+
+            prev_tz = os.environ.get("TZ")
+            try:
+                if hasattr(time, "tzset"):
+                    os.environ["TZ"] = "Asia/Shanghai"
+                    time.tzset()
+                tz_tl = mail_calendar.timeline(days=10, include_past_days=1, today=fixed_day)
+                ny_item = next(it for it in tz_tl["items"] if it["title"] == "跨时区纽约同步会")
+                win_item = next(it for it in tz_tl["items"] if it["title"] == "Windows时区邀请")
+                if hasattr(time, "tzset"):
+                    assert ny_item["date"] == "2026-11-13" and ny_item["start_time"] == "22:00" and ny_item["end_time"] == "23:30", ny_item
+                    assert win_item["date"] == "2026-11-13" and win_item["start_time"] == "22:30" and win_item["end_time"] == "23:00", win_item
+                summit_item = next(it for it in tz_tl["items"] if it["title"] == "三日年度峰会")
+                assert summit_item["all_day"] is True
+                assert summit_item["date"] == "2026-11-13" and summit_item["end_at"] == "2026-11-15", summit_item
+                exported_summit = mail_calendar.export_batch_ics([summit_item])
+                assert "DTSTART;VALUE=DATE:20261113" in exported_summit, exported_summit
+                assert "DTEND;VALUE=DATE:20261116" in exported_summit, exported_summit
+            finally:
+                if hasattr(time, "tzset"):
+                    if prev_tz is None:
+                        os.environ.pop("TZ", None)
+                    else:
+                        os.environ["TZ"] = prev_tz
+                    time.tzset()
 
     print("PASS test_calendar_timeline: multi-source aggregation, conflict detection, batch ICS, mocked JXA & routes")
 

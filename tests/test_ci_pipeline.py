@@ -351,6 +351,8 @@ class PartitionTest(unittest.TestCase):
             self.assertEqual(sum(r['suite']=='responsive-settings' for r in rows),1)
         wardrobe_rows=[r for r in jobs['xiaoyou_matrix'].get('include',[]) if r['suite']=='xiaoyou-wardrobe']
         self.assertEqual({r['shard'] for r in wardrobe_rows},{'1/2','2/2'})
+        prod_rows=[r for r in jobs['productivity_matrix'].get('include',[]) if r['suite']=='productivity-flows']
+        self.assertEqual({r['browser'] for r in prod_rows},{'chromium','webkit'})
 
     @unittest.skipUnless(shutil.which('node'), 'Node required for browser shard contract')
     def test_dialog_partitions_preserve_all_cases_and_reject_empty_or_invalid_shards(self):

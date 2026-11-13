@@ -103,5 +103,19 @@
         "shard": ""
       }
     ]
+  },
+  "productivity_matrix": {
+    "include": [
+      {
+        "browser": "chromium",
+        "suite": "productivity-flows",
+        "shard": ""
+      },
+      {
+        "browser": "webkit",
+        "suite": "productivity-flows",
+        "shard": ""
+      }
+    ]
   }
 }

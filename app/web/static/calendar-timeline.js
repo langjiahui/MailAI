@@ -131,12 +131,17 @@
             );
           }
 
+          const endDate = it.end_at ? String(it.end_at).slice(0, 10) : '';
+          const dateLabel = it.all_day && endDate && endDate > it.date
+            ? `${it.date} ~ ${endDate}`
+            : it.date;
+
           return `
             <div class="timeline-item ${it.conflict ? 'is-conflict' : ''} ${isDone ? 'is-done' : ''}" data-item-id="${esc(it.item_id)}">
               <input type="checkbox" class="timeline-item-check" data-select-id="${esc(it.item_id)}" ${checked} aria-label="${esc(it.title)}">
               <div class="timeline-item-time">
                 <span>${timeText}</span>
-                <small>${esc(it.date)}</small>
+                <small>${esc(dateLabel)}</small>
               </div>
               <div class="timeline-item-main">
                 <div class="timeline-item-title-row">

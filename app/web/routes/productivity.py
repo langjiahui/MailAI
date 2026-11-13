@@ -483,6 +483,7 @@ def triage_sender_batch_route(payload: dict):
         triage_sender_batch,
         str(payload.get('sender_addr') or ''),
         str(payload.get('mode') or 'keep_latest_done'),
+        int(payload.get('days') or 45),
     )
 
 

@@ -128,6 +128,18 @@
       "seconds": 190
     },
     {
+      "suite": "productivity-flows",
+      "browser": "chromium",
+      "shard": "",
+      "seconds": 55
+    },
+    {
+      "suite": "productivity-flows",
+      "browser": "webkit",
+      "shard": "",
+      "seconds": 60
+    },
+    {
       "suite": "responsive-dialogs",
       "browser": "chromium",
       "shard": "1/3",
