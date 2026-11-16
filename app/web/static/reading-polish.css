@@ -226,14 +226,15 @@ html[data-theme] body .reading-header .reading-actions .reading-more-panel .read
 html[data-theme] body .reading-header .reading-actions .reading-more-panel button {
   display:flex; align-items:center; justify-content:flex-start; gap:12px; width:100%; height:auto; min-height:40px;
   padding:9px 12px; border:0!important; border-radius:7px; box-shadow:none!important;
-  background:transparent!important; color:var(--desk-ink)!important; font:inherit; font-size:13px;
+  background-color:transparent!important; color:var(--desk-ink)!important; font:inherit; font-size:13px;
   font-weight:400; line-height:1.4; text-align:start; white-space:normal; overflow-wrap:anywhere; cursor:pointer;
 }
 .reading-header .reading-actions .reading-more-panel button span { display:inline!important; font:inherit; }
 .reading-more-panel svg { width:16px; height:16px; flex:none; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; opacity:.8; }
-html[data-theme] body .reading-header .reading-actions .reading-more-panel button:hover { background:var(--desk-hover)!important; }
-html[data-theme] body .reading-header .reading-actions .reading-more-panel button:focus-visible { background:var(--desk-hover)!important; outline:2px solid var(--desk-accent)!important; outline-offset:-2px; }
-html[data-theme] body .reading-header .reading-actions .reading-more-panel button:disabled { opacity:.45; cursor:default; background:transparent!important; }
+/* The theme bridge copies color longhands independently of the background shorthand. */
+html[data-theme] body .reading-header .reading-actions .reading-more-panel button:not(:disabled):is(:hover,:focus-visible) { background-color:var(--desk-hover)!important; }
+html[data-theme] body .reading-header .reading-actions .reading-more-panel button:focus-visible { outline:2px solid var(--desk-accent)!important; outline-offset:-2px; }
+html[data-theme] body .reading-header .reading-actions .reading-more-panel button:disabled { opacity:.45; cursor:default; background-color:transparent!important; }
 @media(pointer:coarse) {
   html[data-theme] body .reading-header .reading-actions .reading-more-panel button { min-height:44px; }
 }

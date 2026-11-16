@@ -5,9 +5,9 @@ MailAI 是一款**本地优先（Local-First）、AI 驱动**的开源跨平台�
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v4.6.0**
+当前版本：**v4.6.1**
 
-本次更新：支持打印和分享单封邮件，可从当前邮件直接生成 PDF、复制正文或导出原始 EML。打印与分享预览支持明暗主题，长邮件可在大面板内滚动查看。[发布说明](docs/发布-v4.6.0-单封邮件打印与分享.md) · [完整版本历史](https://github.com/langjiahui/MailAI/releases)
+本次更新：修复打印和分享预览在滚动边缘时露白的问题，并统一「更多」菜单的悬停效果。[发布说明](docs/发布-v4.6.1-邮件预览与菜单样式修复.md) · [完整版本历史](https://github.com/langjiahui/MailAI/releases)
 
 ---
 
