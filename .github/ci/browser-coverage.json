@@ -629,5 +629,17 @@
   },
   {
     "file": "tests/test_compose_guard_browser.cjs"
+  },
+  {
+    "file": "tests/test_mail_output_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "chromium"
+    }
+  },
+  {
+    "file": "tests/test_mail_output_browser.cjs",
+    "env": {
+      "MAILAI_BROWSER": "webkit"
+    }
   }
 ]

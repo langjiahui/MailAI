@@ -209,6 +209,43 @@ def api_conversation_progress(email_id: int):
         raise HTTPException(404, str(error)) from error
 
 
+@router.get('/api/emails/{email_id}/output')
+def api_email_output(email_id: int, language: Literal['zh-CN', 'en'] = 'zh-CN', source: Literal['email', 'sent'] = 'email'):
+    from ...mail_output import snapshot
+    try:
+        return snapshot(email_id, language, source)
+    except ValueError as error:
+        raise HTTPException(404 if str(error) == '邮件不存在' else 409, str(error)) from error
+
+
+@router.get('/api/emails/{email_id}/original')
+def api_email_original(email_id: int, source: Literal['email', 'sent'] = 'email', revision: str = Query(default='', max_length=64, pattern=r'^(?:[0-9a-f]{64})?$')):
+    import hmac
+    from ...mail_output import original, original_revision
+    from fastapi.responses import FileResponse
+    try:
+        path, name = original(email_id, source)
+        if revision and not hmac.compare_digest(revision,original_revision(path)):
+            raise HTTPException(409, '原始邮件不可用或已变化，请重新打开邮件。')
+    except (ValueError, FileNotFoundError) as error:
+        raise HTTPException(404, str(error)) from error
+    return FileResponse(path, media_type='message/rfc822', filename=name)
+
+
+@router.get('/api/emails/{email_id}/pdf')
+def api_email_pdf(email_id: int, language: Literal['zh-CN', 'en'] = 'zh-CN', source: Literal['email', 'sent'] = 'email'):
+    from urllib.parse import quote
+    from ...browser_mail_pdf import render_pdf
+    from ...mail_output import snapshot
+    try:
+        output = snapshot(email_id, language, source)
+        pdf = render_pdf(output['document'])
+    except ValueError as error:
+        raise HTTPException(404 if str(error) == '邮件不存在' else 409, str(error)) from error
+    name = quote(output['filename'] + '.pdf')
+    return Response(pdf, media_type='application/pdf', headers={'Content-Disposition': f"attachment; filename*=UTF-8''{name}", 'Cache-Control': 'no-store'})
+
+
 @router.get("/api/emails/{email_id}/inline/{inline_index}")
 def api_inline_resource(email_id: int, inline_index: int):
     row = db.get_email(email_id)

@@ -2855,6 +2855,21 @@ async function api(path, opts = {}) {
   }
 }
 
+async function postWithAccountGuardRetry(path, options) {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await api(path, options);
+    } catch (error) {
+      // This response comes from the guard before the mutation handler runs.
+      if (error?.status === 409 && attempt < 5 && /^邮箱仍有操作或对话正在进行，请完成后重试切换或恢复。$/.test(error.message)) {
+        await new Promise(resolve => setTimeout(resolve, 160 * (attempt + 1)));
+        continue;
+      }
+      throw error;
+    }
+  }
+}
+
 function setLoading(el, loading, text) {
   if (loading) {
     if (!el.classList.contains('loading')) {
@@ -3989,6 +4004,19 @@ function renderEmailItem(e, idx = 0) {
 }
 
 // ===== 阅读区 =====
+function renderMailOutputButtons(reference) {
+  const attributes = reference
+    ? `class="action-btn compact" data-mail-output-id="${Number(reference.id)}" data-mail-output-source="${reference.source === 'sent' ? 'sent' : 'email'}" data-mail-output-account="${esc(reference.accountId || '')}"`
+    : '';
+  return `<button type="button" data-mail-output="print" ${attributes}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8V3h10v5M7 17H4a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-3M7 14h10v7H7zM17 11h.01"/></svg>
+      <span data-i18n="mailOutput.print">${esc(mailaiText('打印邮件'))}</span>
+    </button><button type="button" data-mail-output="share" ${attributes}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m9 10 6-4M9 14l6 4"/></svg>
+      <span data-i18n="mailOutput.share">${esc(mailaiText('分享邮件'))}</span>
+    </button>`;
+}
+
 async function selectSpecialMessage(id, suppliedRow = null) {  const kind = specialMailbox;
   let row = suppliedRow || (currentFilter.search && searchResults?.find(x => x.id === id)) || (kind === 'drafts' ? savedDrafts.find(x => x.id === id) : sentMessages.find(x => x.id === id));
   if (!row) return;
@@ -4042,7 +4070,10 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
     <header class="special-mail-header">
       <div class="special-mail-toolbar">
         <span class="eyebrow">${esc(originLabel)}</span>
-    <div class="special-mail-actions">${kind === 'drafts' ? "<button class=\"action-btn action-primary compact\" id=\"btn-edit-special\"><svg viewBox=\"0 0 20 20\"><path d=\"m4 14.5-.5 2 2-.5L15 6.5 13.5 5 4 14.5ZM12 6.5l1.5 1.5\"/></svg><span data-i18n=\"ui.fd4b9e3b6c68\">继续编辑</span></button><button class=\"action-btn compact\" id=\"btn-delete-special\"><svg viewBox=\"0 0 20 20\"><path d=\"M4 6h12M8 6V4h4v2m-6 0 1 10h6l1-10M9 9v4m2-4v4\"/></svg><span data-i18n=\"ui.855f17276246\">舍弃草稿</span></button>" : failed ? "<button class=\"action-btn action-primary compact\" id=\"btn-edit-special\"><svg viewBox=\"0 0 20 20\"><path d=\"m4 14.5-.5 2 2-.5L15 6.5 13.5 5 4 14.5Z\"/></svg><span data-i18n=\"ui.1532ca4d4634\">重新编辑</span></button>" : (row._remote || ['sent','accepted'].includes(row.status)) ? "<button class=\"action-btn action-primary compact\" id=\"btn-edit-special\"><span data-i18n=\"ui.6b10f1cab097\">再次编辑</span></button>" : ''}</div>
+    <div class="special-mail-actions">${kind === 'drafts' ? "<button class=\"action-btn action-primary compact\" id=\"btn-edit-special\"><svg viewBox=\"0 0 20 20\"><path d=\"m4 14.5-.5 2 2-.5L15 6.5 13.5 5 4 14.5ZM12 6.5l1.5 1.5\"/></svg><span data-i18n=\"ui.fd4b9e3b6c68\">继续编辑</span></button><button class=\"action-btn compact\" id=\"btn-delete-special\"><svg viewBox=\"0 0 20 20\"><path d=\"M4 6h12M8 6V4h4v2m-6 0 1 10h6l1-10M9 9v4m2-4v4\"/></svg><span data-i18n=\"ui.855f17276246\">舍弃草稿</span></button>" : failed ? "<button class=\"action-btn action-primary compact\" id=\"btn-edit-special\"><svg viewBox=\"0 0 20 20\"><path d=\"m4 14.5-.5 2 2-.5L15 6.5 13.5 5 4 14.5Z\"/></svg><span data-i18n=\"ui.1532ca4d4634\">重新编辑</span></button>" : (row._remote || ['sent','accepted'].includes(row.status)) ? "<button class=\"action-btn action-primary compact\" id=\"btn-edit-special\"><span data-i18n=\"ui.6b10f1cab097\">再次编辑</span></button>" : ''}${kind === 'sent' ? renderMailOutputButtons({
+      id:row._remote ? row.remote_email_id : row.id,
+      source:row._remote ? 'email' : 'sent', accountId:activeMailAccount()?.id,
+    }) : ''}</div>
       </div>
       <h1>${esc(String(row.subject ?? '').trim() || mailaiText('（无主题）'))}</h1>
       <dl class="special-mail-meta">${recipientMeta}<div class="special-mail-meta-row"><dt><span data-i18n="ui.2bfff9580494">时间：</span></dt><dd>${esc(fmtDate(row.sent_at || row.updated_at || row.created_at))}</dd></div></dl>

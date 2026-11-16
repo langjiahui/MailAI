@@ -56,7 +56,12 @@ internal fun peopleSummary(mail: MailItem, ownEmail: String): String {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun MailPeopleDialog(vm: MailViewModel, mail: MailItem, close: () -> Unit) {
+internal fun MailPeopleDialog(
+    vm: MailViewModel,
+    mail: MailItem,
+    onOutput: (String) -> Unit = {},
+    close: () -> Unit,
+) {
     val groups =
         remember(mail.sender, mail.recipients, mail.cc) {
             listOf(
@@ -70,6 +75,23 @@ internal fun MailPeopleDialog(vm: MailViewModel, mail: MailItem, close: () -> Un
     var expandedKey by remember(mail.key) { mutableStateOf<String?>(null) }
     MailBottomSheet(title = "邮件详情", onDismiss = close) {
         Column(Modifier.fillMaxWidth().testTag("mail-details-sheet")) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                TextButton(
+                    onClick = { onOutput("print") },
+                    enabled = mail.body != null || mail.html != null,
+                ) {
+                    Text("打印")
+                }
+                TextButton(
+                    onClick = { onOutput("share") },
+                    enabled = mail.body != null || mail.html != null,
+                ) {
+                    Text("分享")
+                }
+            }
             TextButton(
                 onClick = { vm.toggleStar(mail) },
                 enabled = !vm.busy,

@@ -1599,6 +1599,45 @@ if (typeof document !== 'undefined') {
 /* ---- i18n-catalog.js ---- */
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "mailOutput.print": ["打印邮件", "Print email"],
+  "mailOutput.share": ["分享邮件", "Share email"],
+  "mailOutput.close": ["关闭", "Close"],
+  "mailOutput.format": ["分享格式", "Format"],
+  "mailOutput.text": ["邮件文本", "Email text"],
+  "mailOutput.eml": ["原始邮件 EML", "Original email (EML)"],
+  "mailOutput.preview": ["邮件输出预览", "Email output preview"],
+  "mailOutput.printAction": ["打印", "Print"],
+  "mailOutput.sharePdf": ["分享 PDF", "Share PDF"],
+  "mailOutput.savePdf": ["另存为 PDF", "Save as PDF"],
+  "mailOutput.copy": ["复制文本", "Copy text"],
+  "mailOutput.save": ["保存到本地", "Save file"],
+  "mailOutput.systemShare": ["系统分享", "System share"],
+  "mailOutput.emlHint": ["包含完整邮件头、正文和全部附件；接收方需要支持 EML 的应用。", "Includes complete headers, body and all attachments. The recipient needs an EML-compatible app."],
+  "mailOutput.pdfHint": ["生成适合阅读和打印的 PDF，附件仅列出名称及大小。", "Prepare a PDF for reading and printing. Attachments are listed by name and size."],
+  "mailOutput.copyFailed": ["复制失败，请重试。", "Could not copy. Please try again."],
+  "mailOutput.textHint": ["包含主题、邮件头和完整正文，附件仅列出名称及大小。", "Includes subject, headers and the full body. Attachments are listed by name and size."],
+  "mailOutput.working": ["正在准备邮件输出…", "Preparing email output…"],
+  "mailOutput.printOpened": ["已打开打印窗口。", "Print dialog opened."],
+  "mailOutput.canceled": ["已取消。", "Canceled."],
+  "mailOutput.saved": ["文件已保存。", "File saved."],
+  "mailOutput.downloadStarted": ["已开始下载文件。", "File download started."],
+  "mailOutput.copied": ["已复制邮件文本。", "Email text copied."],
+  "mailOutput.shared": ["已交给系统分享面板。", "Handed off to the system share sheet."],
+  "mailOutput.service.7934a564d9": ["生成 PDF 需要本机安装 Chrome、Edge 或 Chromium。", "Install Chrome, Edge, or Chromium on this device to generate a PDF."],
+  "mailOutput.service.7a9565fd17": ["正在生成其他邮件的 PDF，请稍后重试。", "Another email PDF is being generated. Please try again shortly."],
+  "mailOutput.service.9a5b1c8274": ["邮件正文尚未下载，请先读取完整邮件。", "The email body is not downloaded yet. Open the complete email first."],
+  "mailOutput.service.9a4454164f": ["邮件正文过大，请导出原始邮件。", "The email body is too large. Export the original email instead."],
+  "mailOutput.service.0274fdceee": ["原始邮件文件不存在，无法导出 EML；仍可打印或复制已缓存的正文。", "The original email is unavailable, so EML export is disabled. You can still print or copy the cached body."],
+  "mailOutput.service.be8c7ef536": ["邮件排版加载超时，请重试。", "Email layout timed out. Please try again."],
+  "mailOutput.service.0c83d116ab": ["PDF 生成未完成，请重试。", "PDF generation did not finish. Please try again."],
+  "mailOutput.service.369470afdc": ["PDF 生成超时，请重试。", "PDF generation timed out. Please try again."],
+  "mailOutput.service.99dfe86176": ["PDF 文件未生成，请重试。", "The PDF file was not generated. Please try again."],
+  "mailOutput.service.aa3c1643f7": ["请先选择邮箱账号。", "Select an email account first."],
+  "mailOutput.service.e492e91331": ["已打开多个邮件输出窗口，请关闭后重试。", "Several email output windows are open. Close one and try again."],
+  "mailOutput.service.0f68cb6eed": ["邮件输出已过期，请重新打开。", "The email output has expired. Please reopen it."],
+  "mailOutput.service.6497b68974": ["不支持的导出格式。", "Unsupported export format."],
+  "mailOutput.service.2a06f9d1af": ["原始邮件不可用或已变化，请重新打开邮件。", "The original email is unavailable or has changed. Reopen the email."],
+
   "read.moreCorrespondence": ["继续加载", "Load more"],
   "read.analyze": ["开始分析", "Analyze"],
   "read.reanalyze": ["重新分析", "Analyze again"],
@@ -23176,6 +23215,21 @@ async function api(path, opts = {}) {
   }
 }
 
+async function postWithAccountGuardRetry(path, options) {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await api(path, options);
+    } catch (error) {
+      // This response comes from the guard before the mutation handler runs.
+      if (error?.status === 409 && attempt < 5 && /^邮箱仍有操作或对话正在进行，请完成后重试切换或恢复。$/.test(error.message)) {
+        await new Promise(resolve => setTimeout(resolve, 160 * (attempt + 1)));
+        continue;
+      }
+      throw error;
+    }
+  }
+}
+
 function setLoading(el, loading, text) {
   if (loading) {
     if (!el.classList.contains('loading')) {
@@ -24310,6 +24364,19 @@ function renderEmailItem(e, idx = 0) {
 }
 
 // ===== 阅读区 =====
+function renderMailOutputButtons(reference) {
+  const attributes = reference
+    ? `class="action-btn compact" data-mail-output-id="${Number(reference.id)}" data-mail-output-source="${reference.source === 'sent' ? 'sent' : 'email'}" data-mail-output-account="${esc(reference.accountId || '')}"`
+    : '';
+  return `<button type="button" data-mail-output="print" ${attributes}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8V3h10v5M7 17H4a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-3M7 14h10v7H7zM17 11h.01"/></svg>
+      <span data-i18n="mailOutput.print">${esc(mailaiText('打印邮件'))}</span>
+    </button><button type="button" data-mail-output="share" ${attributes}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m9 10 6-4M9 14l6 4"/></svg>
+      <span data-i18n="mailOutput.share">${esc(mailaiText('分享邮件'))}</span>
+    </button>`;
+}
+
 async function selectSpecialMessage(id, suppliedRow = null) {  const kind = specialMailbox;
   let row = suppliedRow || (currentFilter.search && searchResults?.find(x => x.id === id)) || (kind === 'drafts' ? savedDrafts.find(x => x.id === id) : sentMessages.find(x => x.id === id));
   if (!row) return;
@@ -24363,7 +24430,10 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
     <header class="special-mail-header">
       <div class="special-mail-toolbar">
         <span class="eyebrow">${esc(originLabel)}</span>
-    <div class="special-mail-actions">${kind === 'drafts' ? "<button class=\"action-btn action-primary compact\" id=\"btn-edit-special\"><svg viewBox=\"0 0 20 20\"><path d=\"m4 14.5-.5 2 2-.5L15 6.5 13.5 5 4 14.5ZM12 6.5l1.5 1.5\"/></svg><span data-i18n=\"ui.fd4b9e3b6c68\">继续编辑</span></button><button class=\"action-btn compact\" id=\"btn-delete-special\"><svg viewBox=\"0 0 20 20\"><path d=\"M4 6h12M8 6V4h4v2m-6 0 1 10h6l1-10M9 9v4m2-4v4\"/></svg><span data-i18n=\"ui.855f17276246\">舍弃草稿</span></button>" : failed ? "<button class=\"action-btn action-primary compact\" id=\"btn-edit-special\"><svg viewBox=\"0 0 20 20\"><path d=\"m4 14.5-.5 2 2-.5L15 6.5 13.5 5 4 14.5Z\"/></svg><span data-i18n=\"ui.1532ca4d4634\">重新编辑</span></button>" : (row._remote || ['sent','accepted'].includes(row.status)) ? "<button class=\"action-btn action-primary compact\" id=\"btn-edit-special\"><span data-i18n=\"ui.6b10f1cab097\">再次编辑</span></button>" : ''}</div>
+    <div class="special-mail-actions">${kind === 'drafts' ? "<button class=\"action-btn action-primary compact\" id=\"btn-edit-special\"><svg viewBox=\"0 0 20 20\"><path d=\"m4 14.5-.5 2 2-.5L15 6.5 13.5 5 4 14.5ZM12 6.5l1.5 1.5\"/></svg><span data-i18n=\"ui.fd4b9e3b6c68\">继续编辑</span></button><button class=\"action-btn compact\" id=\"btn-delete-special\"><svg viewBox=\"0 0 20 20\"><path d=\"M4 6h12M8 6V4h4v2m-6 0 1 10h6l1-10M9 9v4m2-4v4\"/></svg><span data-i18n=\"ui.855f17276246\">舍弃草稿</span></button>" : failed ? "<button class=\"action-btn action-primary compact\" id=\"btn-edit-special\"><svg viewBox=\"0 0 20 20\"><path d=\"m4 14.5-.5 2 2-.5L15 6.5 13.5 5 4 14.5Z\"/></svg><span data-i18n=\"ui.1532ca4d4634\">重新编辑</span></button>" : (row._remote || ['sent','accepted'].includes(row.status)) ? "<button class=\"action-btn action-primary compact\" id=\"btn-edit-special\"><span data-i18n=\"ui.6b10f1cab097\">再次编辑</span></button>" : ''}${kind === 'sent' ? renderMailOutputButtons({
+      id:row._remote ? row.remote_email_id : row.id,
+      source:row._remote ? 'email' : 'sent', accountId:activeMailAccount()?.id,
+    }) : ''}</div>
       </div>
       <h1>${esc(String(row.subject ?? '').trim() || mailaiText('（无主题）'))}</h1>
       <dl class="special-mail-meta">${recipientMeta}<div class="special-mail-meta-row"><dt><span data-i18n="ui.2bfff9580494">时间：</span></dt><dd>${esc(fmtDate(row.sent_at || row.updated_at || row.created_at))}</dd></div></dl>
@@ -30869,6 +30939,299 @@ document.addEventListener('keydown', event => {
 }, true);
 
 ;
+/* ---- mail-output.js ---- */
+/* Single-mail output: capture identity before any asynchronous work. */
+(() => {
+  const t = key => mailaiT('mailOutput.' + key) || MAILAI_UI_COPY['mailOutput.' + key]?.[0] || key;
+  const dialog = document.createElement('dialog');
+  dialog.id = 'mail-output-dialog';
+  dialog.className = 'library-dialog mail-output-dialog';
+  dialog.setAttribute('aria-labelledby', 'mail-output-title');
+  dialog.innerHTML = `<header class="mail-output-header"><div><h2 id="mail-output-title"></h2><p id="mail-output-subject"></p></div><button type="button" data-output-close></button></header>
+    <div class="mail-output-content">
+      <div class="mail-output-options">
+        <fieldset id="mail-output-format" aria-describedby="mail-output-description">
+          <legend data-output-label="format"></legend>
+          <label><input type="radio" name="mail-output-kind" value="pdf" checked><span>PDF</span></label>
+          <label><input type="radio" name="mail-output-kind" value="text"><span data-output-label="text"></span></label>
+          <label><input type="radio" name="mail-output-kind" value="eml"><span data-output-label="eml"></span></label>
+        </fieldset>
+        <p id="mail-output-description"></p>
+      </div>
+      <div id="mail-output-preview-host"></div>
+      <pre id="mail-output-text-preview" hidden tabindex="0" aria-labelledby="mail-output-title"></pre>
+    </div>
+    <footer><div class="mail-output-meta"><p id="mail-output-notes"></p><p id="mail-output-status" role="status" aria-live="polite"></p></div><div class="mail-output-actions"><button type="button" data-output-print></button><button type="button" data-output-copy></button><button type="button" data-output-save></button><button type="button" data-output-share></button></div></footer>`;
+  document.body.append(dialog);
+  const find = selector => dialog.querySelector(selector);
+  let preview = null;
+  const format = find('#mail-output-format');
+  const status = find('[role="status"]');
+  let run = null;
+  const native = () => window.pywebview?.api;
+  const current = scope => run === scope && dialog.open;
+  const kind = () => format.querySelector(':checked').value;
+  const browserFileShare = () => typeof navigator.share === 'function' && typeof navigator.canShare === 'function';
+
+  function paint() {
+    const scope = run;
+    if (!scope) return;
+    find('h2').textContent = t(scope.mode === 'print' ? 'print' : 'share');
+    find('[data-output-close]').textContent = t('close');
+    if(preview) preview.title = t('preview');
+    for (const el of dialog.querySelectorAll('[data-output-label]')) el.textContent = t(el.dataset.outputLabel);
+    find('[data-output-print]').textContent = t('printAction');
+    find('[data-output-copy]').textContent = t('copy');
+    const printing = scope.mode === 'print';
+    const pdf = kind() === 'pdf';
+    const text = kind() === 'text';
+    find('[data-output-save]').textContent = t(pdf ? 'savePdf' : 'save');
+    find('[data-output-share]').textContent = t(pdf ? 'sharePdf' : 'systemShare');
+    const subject = find('#mail-output-subject');
+    subject.title = subject.textContent = scope.data?.filename || '';
+    find('.mail-output-options').hidden = printing;
+    find('#mail-output-preview-host').hidden = text;
+    const textPreview = find('#mail-output-text-preview');
+    textPreview.hidden = !text;
+    if (text) textPreview.textContent = scope.data?.text || '';
+    const description = find('#mail-output-description');
+    description.textContent = t(text ? 'textHint' : pdf ? 'pdfHint' : 'emlHint');
+    find('#mail-output-notes').textContent = scope.data?.notes.join(' ') || '';
+    const ready = !!scope.data, busy = scope.busy;
+    format.disabled = !ready || busy;
+    for (const el of dialog.querySelectorAll('footer button')) el.disabled = !ready || busy;
+    find('[data-output-print]').disabled = !ready || busy || (!scope.data.token && !scope.previewReady);
+    find('[data-output-print]').hidden = !printing;
+    format.querySelector('[value="eml"]').disabled = !scope.data?.has_raw;
+    find('[data-output-copy]').hidden = printing || !text;
+    find('[data-output-save]').hidden = printing || text;
+    const file = pdf ? scope.pdfFile : scope.file;
+    const canShare = text ? typeof navigator.share === 'function' : scope.data?.native_share || (file && browserFileShare() && navigator.canShare({files:[file]}));
+    find('[data-output-share]').disabled = !ready || busy || !canShare;
+    find('[data-output-share]').hidden = printing || !canShare;
+    let primary = '[data-output-save]';
+    if (printing) primary = '[data-output-print]';
+    else if (text) primary = '[data-output-copy]';
+    else if (canShare) primary = '[data-output-share]';
+    for (const button of dialog.querySelectorAll('footer button')) {
+      button.classList.toggle('primary-action', button.matches(primary));
+    }
+  }
+
+  function release(scope) {
+    if (scope?.data?.token) native()?.release_mail_output(scope.data.token).catch(() => {});
+  }
+
+  function applyPreviewTheme() {
+    const doc = preview?.contentDocument;
+    if (doc?.URL !== 'about:srcdoc') return;
+    const theme = document.documentElement.dataset.theme;
+    const {ink, muted, link, line} = richEmailBasePalette(theme);
+    let style = doc.getElementById('mail-output-screen-style');
+    if (!style) {
+      style = doc.createElement('style');
+      style.id = 'mail-output-screen-style';
+      doc.head.append(style);
+    }
+    // The browser prints this same frame, so all UI colors are screen-only.
+    style.textContent = `@media screen {
+      html { background:transparent; }
+      body { max-width:80rem; margin-inline:auto; padding:clamp(12px,3vw,28px); }
+      .mail-output-header { border-bottom:0; padding-bottom:0; }
+      .mail-output-note { display:none; }
+      ${theme === 'dark' ? `
+        html { color-scheme:dark; color:${ink}; }
+        blockquote { border-color:${line}; }
+        .mail-output-body [style] { background-color:transparent!important; color:inherit!important; }
+        a, .mail-output-body a[style] { color:${link}!important; }
+        blockquote { color:${muted}; }
+      ` : ''}
+    }`;
+  }
+
+  function close() { dialog.close(); }
+  dialog.addEventListener('close', () => {
+    const old = run;
+    run = null;
+    old?.controller.abort();
+    preview?.remove();
+    preview = null;
+    find('#mail-output-text-preview').textContent = '';
+    release(old);
+    if (old?.returnFocus?.isConnected) old.returnFocus.focus({preventScroll:true});
+  });
+  find('[data-output-close]').onclick = close;
+
+  async function work(action) {
+    const scope = run;
+    if (!scope?.data || scope.busy) return;
+    const focused = document.activeElement;
+    scope.busy = true; status.textContent = t('working'); paint();
+    try { await action(scope); }
+    catch(error) { if(current(scope)) status.textContent = mailaiSystemMessage(error?.message || error); }
+    finally {
+      if (current(scope)) {
+        scope.busy = false;
+        paint();
+        if (document.activeElement === document.body && dialog.contains(focused) && focused.getClientRects().length) {
+          focused.focus({preventScroll:true});
+        }
+      }
+    }
+  }
+
+  async function fetchFile(scope) {
+    if (kind() !== 'eml' || scope.data.token) return;
+    const revision=scope.data.original_revision || '';
+    const response = await fetch(`/api/emails/${scope.id}/original?source=${scope.source}&revision=${encodeURIComponent(revision)}`, {headers:{'X-MailAI-Account':scope.accountId}, signal:scope.controller.signal});
+    if (!response.ok) { const error=await response.json();throw new Error(error.detail); }
+    // Large originals remain downloadable without buffering their attachments
+    // into the browser's sharing API.
+    if (Number(response.headers.get('content-length')) > 64*1024*1024) { await response.body?.cancel();return; }
+    const blob = await response.blob();
+    if(current(scope) && kind()==='eml') scope.file = new File([blob],scope.data.filename+'.eml',{type:'message/rfc822'});
+  }
+
+  function preparePdf(scope) {
+    if (scope.pdfFile) return Promise.resolve(scope.pdfFile);
+    if (!scope.pdfRequest) {
+      scope.pdfRequest = (async () => {
+        let content;
+        if (scope.data.token) {
+          const result = await native().mail_output_pdf(scope.data.token);
+          content = Uint8Array.from(atob(result.data), char => char.charCodeAt(0));
+        } else {
+          const response = await fetch(`/api/emails/${scope.id}/pdf?source=${scope.source}&language=${scope.language}`, {
+            headers:{'X-MailAI-Account':scope.accountId}, signal:scope.controller.signal,
+          });
+          if (!response.ok) throw new Error((await response.json()).detail);
+          content = await response.blob();
+        }
+        scope.pdfFile = new File([content], scope.data.filename + '.pdf', {type:'application/pdf'});
+        if (current(scope)) paint();
+        return scope.pdfFile;
+      })().finally(() => { scope.pdfRequest = null; });
+    }
+    return scope.pdfRequest;
+  }
+
+  format.onchange = () => work(async scope => {
+    scope.file = null;
+    await fetchFile(scope);
+    if(current(scope)) status.textContent = '';
+  });
+
+  async function open(mode, reference = {}) {
+    const email = selectedEmailDetail;
+    const id = Number(reference.id || email?.id);
+    const accountId = reference.accountId || selectedEmailAccountId || email?._account_id || activeMailAccount()?.id || '';
+    const source = reference.source === 'sent' ? 'sent' : 'email';
+    if (!id || id<=0 || !accountId) return;
+    if (dialog.open) return;
+    const scope = {id,accountId,source,mode,busy:true,data:null,file:null,controller:new AbortController(),previewReady:false,returnFocus:reference.returnFocus};
+    run=scope;format.querySelector('[value="pdf"]').checked=true;status.textContent=t('working');paint();dialog.showModal();
+    try {
+      const language = scope.language = document.documentElement.lang === 'en' ? 'en' : 'zh-CN';
+      const data = native()?.prepare_mail_output ? await native().prepare_mail_output(id,accountId,language,source) : await api(`/api/emails/${id}/output?language=${language}&source=${source}`,{accountId,signal:scope.controller.signal});
+      scope.data = data;
+      if (!current(scope)) {release(scope);return;}
+      const frame = document.createElement('iframe');
+      frame.id = 'mail-output-preview';
+      frame.title = t('preview');
+      frame.setAttribute('sandbox', 'allow-same-origin allow-modals');
+      frame.addEventListener('load', () => {
+        if (!current(scope) || frame.contentDocument?.URL !== 'about:srcdoc') return;
+        applyPreviewTheme();
+        frame.contentDocument.addEventListener('click', event => {
+          if (event.target.closest?.('a[href]')) event.preventDefault();
+        });
+        frame.contentDocument.addEventListener('keydown', event => {
+          if (event.key !== 'Escape' || !current(scope)) return;
+          event.preventDefault();
+          close();
+        });
+        scope.previewReady = true;
+        frame.dataset.ready = '';
+        paint();
+      });
+      frame.srcdoc = data.document;
+      preview = frame;
+      find('#mail-output-preview-host').replaceChildren(frame);
+      status.textContent = '';
+      // Prepare file shares before the click so navigator.share keeps the user gesture.
+      if (mode === 'share' && !data.native_share && browserFileShare()) preparePdf(scope).catch(() => {});
+    } catch(error) { if(current(scope)) status.textContent=mailaiSystemMessage(error?.message || error); }
+    finally { if(current(scope)){scope.busy=false;paint();} }
+  }
+
+  find('[data-output-print]').onclick = () => work(async scope => {
+    if (scope.data.token && native()?.print_mail_output) {
+      await native().print_mail_output(scope.data.token);
+    } else {
+      const frame = preview;
+      await Promise.race([frame.contentDocument.fonts.ready, new Promise(resolve => setTimeout(resolve, 2000))]);
+      if (!current(scope)) return;
+      frame.contentWindow.print();
+    }
+    if(current(scope)) {
+      status.textContent=t('printOpened');
+      find('[data-output-close]').focus({preventScroll:true});
+    }
+  });
+
+  function download(file) {
+    const url=URL.createObjectURL(file),anchor=document.createElement('a');
+    anchor.href=url;anchor.download=file.name;document.body.append(anchor);anchor.click();anchor.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+  }
+  find('[data-output-save]').onclick = () => work(async scope => {
+    if(scope.data.token) {
+      const result=await native().save_mail_output(scope.data.token,kind());
+      if(current(scope)) status.textContent=t(result.canceled?'canceled':'saved');
+    } else if (kind() === 'pdf') {
+      const file = await preparePdf(scope);
+      if (current(scope)) { download(file); status.textContent=t('downloadStarted'); }
+    } else if (scope.file) {download(scope.file);status.textContent=t('downloadStarted');}
+    else if(kind()==='eml') {
+      const anchor=document.createElement('a');
+      anchor.href=`/api/emails/${scope.id}/original?source=${scope.source}&revision=${encodeURIComponent(scope.data.original_revision || '')}&mailai_account=${encodeURIComponent(scope.accountId)}`;
+      anchor.download=scope.data.filename+'.eml';document.body.append(anchor);anchor.click();anchor.remove();
+      status.textContent=t('downloadStarted');
+    }
+  });
+  find('[data-output-copy]').onclick = () => work(async scope => {
+    if(navigator.clipboard?.writeText) await navigator.clipboard.writeText(scope.data.text);
+    else {
+      const field=document.createElement('textarea');field.value=scope.data.text;dialog.append(field);field.select();
+      const ok=document.execCommand('copy');field.remove();if(!ok)throw new Error(t('copyFailed'));
+    }
+    if(current(scope))status.textContent=t('copied');
+  });
+  find('[data-output-share]').onclick = () => work(async scope => {
+    try {
+      if(kind()!=='text' && scope.data.native_share) await native().share_mail_output(scope.data.token,kind());
+      else if (kind() === 'text') await navigator.share({title:scope.data.filename, text:scope.data.text});
+      else await navigator.share({files:[kind() === 'pdf' ? scope.pdfFile : scope.file]});
+      if(current(scope))status.textContent=t('shared');
+    } catch(error) {if(error.name==='AbortError'){if(current(scope))status.textContent=t('canceled');}else throw error;}
+  });
+  document.addEventListener('click',event=>{
+    const trigger=event.target.closest('[data-mail-output]');
+    if(!trigger)return;
+    const menu = trigger.closest('details');
+    menu?.removeAttribute('open');
+    open(trigger.dataset.mailOutput, {
+      id:trigger.dataset.mailOutputId, source:trigger.dataset.mailOutputSource,
+      accountId:trigger.dataset.mailOutputAccount, returnFocus:menu?.querySelector('summary') || trigger,
+    });
+  });
+  window.mailaiMailOutput={open};
+  document.addEventListener('mailai:language-changed',paint);
+  document.addEventListener('mailai:themechange', applyPreviewTheme);
+  document.addEventListener('mailai:reward-themechange', applyPreviewTheme);
+})();
+
+;
 /* ---- mailbox-store.js ---- */
 /* Bounded account/query snapshots. Originals and server sync never block a view. */
 (() => {
@@ -31366,7 +31729,7 @@ document.getElementById('backup-restore-form').onsubmit = async event => {
   dialog.oncancel = event => event.preventDefault();
   try {
     const query = ranged ? '?' + new URLSearchParams({start_date:start,end_date:end}) : '';
-    const result = await api(`/api/system/backups/${encodeURIComponent(dialog.dataset.filename)}/restore${query}`, {accountId:dialog.dataset.accountId,method:'POST'});
+    const result = await postWithAccountGuardRetry(`/api/system/backups/${encodeURIComponent(dialog.dataset.filename)}/restore${query}`, {accountId:dialog.dataset.accountId,method:'POST'});
     dialog.close();
     toast(mailaiTemplate`${ranged ? mailaiTemplate`已恢复 ${result.restored_count} 封邮件` : mailaiText('完整恢复完成')}，已保留安全备份`, 'success');
     await loadData(); await loadBackups();
@@ -31550,27 +31913,12 @@ document.getElementById('cleanup-preview').onclick = async event => {
   } catch (error) { document.getElementById('cleanup-error').textContent = mailaiSystemMessage(error.message); }
   finally { setLoading(button,false); setCleanupBusy(false); }
 };
-async function postCleanupWithRetry(path, options) {
-  for (let attempt = 0; ; attempt += 1) {
-    try {
-      return await api(path, options);
-    } catch (error) {
-      // AccountGuardMiddleware rejects immediately on 5ms background polls; retry briefly before failing.
-      if (error?.status === 409 && attempt < 5 && /邮箱仍有操作或对话正在进行/.test(error.message || '')) {
-        await new Promise(resolve => setTimeout(resolve, 160 * (attempt + 1)));
-        continue;
-      }
-      throw error;
-    }
-  }
-}
-
 document.getElementById('cleanup-execute').onclick = async event => {
   if (event.currentTarget.disabled) return;
   const dialog = document.getElementById('server-cleanup-dialog'), token = cleanupPreview.token;
   setCleanupBusy(true); const button = event.currentTarget; setLoading(button,true,cleanupT('cleanup.executing', '正在备份并清理，请勿退出…'));
   try {
-    const result = await postCleanupWithRetry('/api/system/server-cleanup/execute', {accountId:dialog.dataset.accountId,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,confirmation:document.getElementById('cleanup-confirm-email').value,acknowledge:document.getElementById('cleanup-ack').checked})});
+    const result = await postWithAccountGuardRetry('/api/system/server-cleanup/execute', {accountId:dialog.dataset.accountId,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,confirmation:document.getElementById('cleanup-confirm-email').value,acknowledge:document.getElementById('cleanup-ack').checked})});
     document.getElementById('cleanup-result').innerHTML = renderCleanupResult(result);
     await loadData(); await loadBackups(); await refreshCleanupHistory(dialog.dataset.accountId);
   } catch (error) { document.getElementById('cleanup-error').textContent = mailaiSystemMessage(error.message) + cleanupT('cleanup.errorSuffix', '。若请求已开始，请查看最近清理记录并核对服务器，不要盲目重试。'); }
@@ -31696,7 +32044,7 @@ document.getElementById('cleanup-auto-save').onclick = async event => {
   cleanupAutoBusy = true; syncCleanupAutomation();
   document.getElementById('cleanup-auto-error').textContent = '';
   try {
-    const policy = await postCleanupWithRetry('/api/system/server-cleanup/automation', {accountId, method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    const policy = await postWithAccountGuardRetry('/api/system/server-cleanup/automation', {accountId, method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
     if (accountId === activeMailAccount()?.id) { ++cleanupAutoLoadRevision; renderCleanupAutomation(policy); }
     dialog.close(); toast(cleanupT('cleanupAuto.saved', '自动清理设置已保存'), 'success');
   } catch (error) { document.getElementById('cleanup-auto-error').textContent = mailaiSystemMessage(error.message); }
@@ -32387,6 +32735,7 @@ function addReadingActions(force = false) {
       const button = host.querySelector(selector);
       if (button) secondary.appendChild(button);
     }
+    secondary.insertAdjacentHTML('beforeend', renderMailOutputButtons());
     morePanel.querySelector('.reading-secondary-actions')?.remove();
     morePanel.prepend(secondary);
     morePanel.querySelector('[data-reading-action="delete-current"]')?.remove();

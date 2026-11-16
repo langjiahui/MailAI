@@ -209,6 +209,24 @@ class ContactStorageTest {
                     .readText(),
             )
             assertEquals(refreshed, repo.store(a).messages("INBOX").single())
+            // Export the actual server MIME, then reuse exactly those bytes
+            // offline. Cached text must never be presented as an original EML.
+            val exported = repo.exportOriginal(a, refreshed, op)
+            val rawBytes = exported.readBytes()
+            val exportedMessage =
+                MimeMessage(Session.getInstance(Properties()), rawBytes.inputStream())
+            assertEquals(message.messageID, exportedMessage.messageID)
+            assertTrue(MimeCodec.content(exportedMessage).html!!.contains("原版正文"))
+            assertTrue(MimeCodec.content(exportedMessage).files.any { it.name == "document.txt" })
+            assertNotEquals(
+                exported,
+                repo.originalFile(
+                    a.copy(imap = a.imap.copy(host = "different.example.test")),
+                    refreshed,
+                ),
+            )
+            server.stop()
+            assertArrayEquals(rawBytes, repo.exportOriginal(a, refreshed, op).readBytes())
             repo.store(a).close()
         } finally {
             op.release()

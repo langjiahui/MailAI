@@ -500,6 +500,29 @@ class DesktopApi:
     def __init__(self, runtime: DesktopRuntime):
         self._runtime = runtime
         self._macos_chrome_ready = False
+        from .desktop_mail_output import MailOutputStore
+        self._mail_outputs = MailOutputStore(runtime)
+
+    def prepare_mail_output(self, email_id, account_id, language='zh-CN', source='email'):
+        return self._mail_outputs.prepare(email_id, account_id, language, source)
+
+    def mail_output_pdf(self, token):
+        import base64
+        with self._mail_outputs.lock:
+            return {'ok':True, 'data':base64.b64encode(self._mail_outputs.pdf(token).read_bytes()).decode('ascii')}
+
+    def save_mail_output(self, token, kind='pdf'):
+        return self._mail_outputs.save(token, kind)
+
+    def share_mail_output(self, token, kind='pdf'):
+        return self._mail_outputs.share(token, kind)
+
+    def print_mail_output(self, token):
+        return self._mail_outputs.print_document(token)
+
+    def release_mail_output(self, token):
+        self._mail_outputs.release(token)
+        return {'ok':True}
 
     def open_compose_window(self, draft_id: int, account_id: str):
         from .compose_windows import open_window

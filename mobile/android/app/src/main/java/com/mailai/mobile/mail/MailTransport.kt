@@ -294,6 +294,35 @@ internal constructor(
             }
         }
 
+    fun original(
+        a: Account,
+        password: String,
+        item: MailItem,
+        op: Operation,
+        output: java.io.OutputStream,
+    ) {
+        existing(a, password, item, op) { message ->
+            var written = 0L
+            val bounded =
+                object : java.io.OutputStream() {
+                    override fun write(value: Int) {
+                        write(byteArrayOf(value.toByte()), 0, 1)
+                    }
+
+                    override fun write(bytes: ByteArray, offset: Int, length: Int) {
+                        op.check()
+                        require(written + length <= 100L * 1024 * 1024) { "原始邮件超过 100MB，无法在手机上导出" }
+                        output.write(bytes, offset, length)
+                        written += length
+                    }
+                }
+            // IMAPMessage.writeTo streams the original MIME, including complete
+            // headers and attachments. Do not reconstruct an EML from the cache.
+            message.writeTo(bounded)
+            op.check()
+        }
+    }
+
     fun read(
         a: Account,
         password: String,

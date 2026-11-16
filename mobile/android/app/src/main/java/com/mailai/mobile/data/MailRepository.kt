@@ -212,6 +212,32 @@ class MailRepository(
             }
         }
 
+    fun originalFile(a: Account, item: MailItem): File {
+        val digest =
+            java.security.MessageDigest.getInstance("SHA-256")
+                .digest((a.imap.toString() + "\n" + a.username + "\n" + item.key).toByteArray())
+                .joinToString("") { "%02x".format(it) }
+        return file(a, "original-$digest.eml")
+    }
+
+    suspend fun exportOriginal(a: Account, item: MailItem, op: Operation): File =
+        withContext(Dispatchers.IO) {
+            op.check()
+            val target = originalFile(a, item)
+            if (target.isFile) return@withContext target
+            val pending = File.createTempFile("original-", ".part", accountDir(a))
+            try {
+                pending.outputStream().use {
+                    transport.original(a, accounts.password(a.id), item, op, it)
+                }
+                op.check()
+                check(pending.renameTo(target)) { "原始邮件保存失败，请重试" }
+                target
+            } finally {
+                pending.delete()
+            }
+        }
+
     suspend fun seen(a: Account, item: MailItem, op: Operation) =
         withContext(Dispatchers.IO) {
             transport.seen(a, accounts.password(a.id), item, op)

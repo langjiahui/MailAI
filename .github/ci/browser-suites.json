@@ -83,6 +83,18 @@
           "env": {
             "MAILAI_BROWSER": "webkit"
           }
+        },
+        {
+          "file": "tests/test_mail_output_browser.cjs",
+          "env": {
+            "MAILAI_BROWSER": "chromium"
+          }
+        },
+        {
+          "file": "tests/test_mail_output_browser.cjs",
+          "env": {
+            "MAILAI_BROWSER": "webkit"
+          }
         }
       ]
     }
