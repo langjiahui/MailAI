@@ -2855,6 +2855,21 @@ async function api(path, opts = {}) {
   }
 }
 
+async function postWithAccountGuardRetry(path, options) {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await api(path, options);
+    } catch (error) {
+      // This response comes from the guard before the mutation handler runs.
+      if (error?.status === 409 && attempt < 5 && /^邮箱仍有操作或对话正在进行，请完成后重试切换或恢复。$/.test(error.message)) {
+        await new Promise(resolve => setTimeout(resolve, 160 * (attempt + 1)));
+        continue;
+      }
+      throw error;
+    }
+  }
+}
+
 function setLoading(el, loading, text) {
   if (loading) {
     if (!el.classList.contains('loading')) {

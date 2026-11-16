@@ -38,7 +38,9 @@ def child(directory):
                 text = '\n'.join(page.extract_text() for page in reader.pages)
                 for n in range(rows):
                     assert text.count(f'ROW{n:03d} unique') == 1, (rows,n)
-                assert all(abs(float(page.mediabox.width)-595.28)<1 for page in reader.pages)
+                sizes = [(float(page.mediabox.width), float(page.mediabox.height)) for page in reader.pages]
+                assert all(abs(width - 595.28) < 1 and abs(height - 841.89) < 1
+                           for width, height in sizes), sizes
                 print('PASS native PDF',rows,'rows',len(reader.pages),'pages',flush=True)
         except BaseException as error:
             import traceback

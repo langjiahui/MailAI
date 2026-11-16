@@ -97,7 +97,7 @@ document.getElementById('backup-restore-form').onsubmit = async event => {
   dialog.oncancel = event => event.preventDefault();
   try {
     const query = ranged ? '?' + new URLSearchParams({start_date:start,end_date:end}) : '';
-    const result = await api(`/api/system/backups/${encodeURIComponent(dialog.dataset.filename)}/restore${query}`, {accountId:dialog.dataset.accountId,method:'POST'});
+    const result = await postWithAccountGuardRetry(`/api/system/backups/${encodeURIComponent(dialog.dataset.filename)}/restore${query}`, {accountId:dialog.dataset.accountId,method:'POST'});
     dialog.close();
     toast(mailaiTemplate`${ranged ? mailaiTemplate`已恢复 ${result.restored_count} 封邮件` : mailaiText('完整恢复完成')}，已保留安全备份`, 'success');
     await loadData(); await loadBackups();

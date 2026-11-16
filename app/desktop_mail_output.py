@@ -117,6 +117,7 @@ def render_pdf(document: str, target: Path) -> None:
                 AppHelper.callAfter(export)
             elif sys.platform == 'win32':
                 from .windows_appearance import on_ui_thread
+                from Microsoft.Web.WebView2.Core import CoreWebView2PrintMediaSize
                 from System import Action, Boolean
                 from System.Threading.Tasks import Task
                 def export():
@@ -125,7 +126,8 @@ def render_pdf(document: str, target: Path) -> None:
                         settings = core.Environment.CreatePrintSettings()
                         settings.ShouldPrintBackgrounds = True
                         settings.ShouldPrintHeaderAndFooter = False
-                        settings.PaperWidth, settings.PaperHeight = 8.2677, 11.6929
+                        settings.MediaSize = CoreWebView2PrintMediaSize.Custom
+                        settings.PageWidth, settings.PageHeight = 210 / 25.4, 297 / 25.4
                         settings.MarginTop = settings.MarginBottom = 0.6299
                         settings.MarginLeft = settings.MarginRight = 0.6299
                         def finished(task):

@@ -79,13 +79,16 @@ const {chromium,webkit}=require('playwright');
       await page.locator('#btn-create-backup').click();await page.locator('#backup-list [data-restore-backup]').first().waitFor();
       await page.locator('#backup-list [data-restore-backup]').first().click();
       await pick('restore-start','2026-01-01');await pick('restore-end','2026-12-31');
-      // Restore takes an exclusive mailbox lease. Drain periodic UI reads so
-      // this date-picker workflow tests a real successful restore; busy-lease
-      // rejection is covered separately by the account-guard tests.
-      await page.evaluate(()=>mailaiEnergy.pause());
-      await page.waitForLoadState('networkidle');
-      const restored=page.waitForResponse(r=>r.request().method()==='POST'&&/\/api\/system\/backups\/[^/]+\/restore/.test(r.url()));
+      // Exercise recovery from one rejected lease, then run the real restore.
+      const restorePath=/\/api\/system\/backups\/[^/]+\/restore\?/;
+      const busy='邮箱仍有操作或对话正在进行，请完成后重试切换或恢复。';
+      await page.route(restorePath,route=>route.fulfill({status:409,json:{detail:busy}}),{times:1});
+      const matchedRestore=r=>r.request().method()==='POST'&&restorePath.test(r.url());
+      const rejected=page.waitForResponse(r=>matchedRestore(r)&&r.status()===409);
+      const restored=page.waitForResponse(async r=>matchedRestore(r)&&
+        (r.status()!==409||(await r.json()).detail!==busy));
       await page.locator('#restore-submit').click();
+      assert.deepEqual(await (await rejected).json(),{detail:busy});
       const restoreResult=await restored;assert.equal(restoreResult.status(),200,await restoreResult.text());
       await page.locator('#backup-restore-dialog').waitFor({state:'hidden'});
       assert.deepEqual(errors,[]);
