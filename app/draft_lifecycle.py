@@ -5,8 +5,10 @@ import threading
 log = logging.getLogger(__name__)
 
 
-def request_safe_exit(runtime, finish):
+def request_safe_exit(runtime, finish, on_cancel=None):
     if getattr(runtime, '_draft_exit_pending', False) or runtime.quitting:
+        if on_cancel:
+            on_cancel()
         return
     if not runtime.window:
         finish()
@@ -26,6 +28,8 @@ def request_safe_exit(runtime, finish):
             finish()
         else:
             runtime.show_window()
+            if on_cancel:
+                on_cancel()
 
     timer = threading.Timer(20, lambda: complete(False))
     timer.daemon = True

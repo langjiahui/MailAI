@@ -652,25 +652,20 @@ function openAssistantForEmail(row) {
   openAssistant();
 }
 
-function addReadingActions(force = false) {
+function addReadingActions() {
   const host = document.querySelector('.reading-header .reading-actions');
   if (!host) return;
-  if (host.querySelector('.reading-work-actions')) {
-    if (!force) return;
-    host.querySelector('.reading-work-actions')?.remove();
-    host.querySelector('[data-reading-action="remind"]')?.remove();
-    host.querySelectorAll('[data-reading-action="summary"],[data-reading-action="image"],[data-reading-action="ask"]').forEach(node => node.remove());
-  }
+  if (host.querySelector('.reading-work-actions')) return;
   const div = document.createElement('div'); div.className = 'reading-work-actions';
   const icon = paths => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${paths}"/></svg>`;
-  div.innerHTML = `<button type="button" data-reading-action="favorite" aria-pressed="${Boolean(selectedEmailDetail?.is_favorite)}">${icon('m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z')}<span data-action-label>${selectedEmailDetail?.is_favorite ? (mailaiT('read.favorited') || '已收藏') : (mailaiT('read.favorite') || '收藏')}</span></button>
+  div.innerHTML = `<button type="button" data-reading-action="favorite" aria-pressed="${Boolean(selectedEmailDetail?.is_favorite)}">${icon('m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z')}<span data-action-label data-i18n="${selectedEmailDetail?.is_favorite ? 'read.favorited' : 'read.favorite'}">${selectedEmailDetail?.is_favorite ? (mailaiT('read.favorited') || '已收藏') : (mailaiT('read.favorite') || '收藏')}</span></button>
     <button type="button" data-edit-mail-tags aria-haspopup="dialog" aria-label="${mailaiText('设置标签')}" data-i18n-aria="ui.b819b0dd5668">${icon('M3 3h7l11 11-7 7L3 10V3zM7 7h.01')}<span data-i18n="ui.1d0fd5f9336d">${mailaiText('标签')}</span></button>
-    <button type="button" data-reading-action="todo">${icon('M3.5 7.5 5.5 9.5 9 6M12.5 8h8M3.5 16.5 5.5 18.5 9 15M12.5 17h8')}<span>${mailaiT('read.todo') || '加入待办'}</span></button>
-    <button type="button" data-reading-action="remind">${icon('M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 4v5l3 2')}<span>${mailaiT('read.remind') || '稍后提醒'}</span></button>`;
+    <button type="button" data-reading-action="todo">${icon('M3.5 7.5 5.5 9.5 9 6M12.5 8h8M3.5 16.5 5.5 18.5 9 15M12.5 17h8')}<span data-i18n="read.todo">${mailaiT('read.todo') || '加入待办'}</span></button>
+    <button type="button" data-reading-action="remind">${icon('M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 4v5l3 2')}<span data-i18n="read.remind">${mailaiT('read.remind') || '稍后提醒'}</span></button>`;
   host.querySelector('.reading-mail-controls')?.appendChild(div);
-  host.querySelector('.reading-ai-group')?.insertAdjacentHTML('beforeend', `<button type="button" data-reading-action="summary">${icon('M4 6h16M4 11h12M4 16h8m5-2 1 2 2 1-2 1-1 2-1-2-2-1 2-1z')}<span>${mailaiT('read.summary') || '总结邮件'}</span></button>
-    <button type="button" data-reading-action="image">${icon('M3 5h18v14H3zM7 10h.01M5 17l5-5 3 3 2-2 4 4')}<span>${mailaiT('read.image') || '识别邮件图片'}</span></button>
-    <button type="button" data-reading-action="ask">${icon('M4 4h16v12H9l-5 4zM8 9h8m-8 3h5')}<span>${mailaiT('read.ask') || '问小邮'}</span></button>`);
+  host.querySelector('.reading-ai-group')?.insertAdjacentHTML('beforeend', `<button type="button" data-reading-action="summary">${icon('M4 6h16M4 11h12M4 16h8m5-2 1 2 2 1-2 1-1 2-1-2-2-1 2-1z')}<span data-i18n="read.summary">${mailaiT('read.summary') || '总结邮件'}</span></button>
+    <button type="button" data-reading-action="image">${icon('M3 5h18v14H3zM7 10h.01M5 17l5-5 3 3 2-2 4 4')}<span data-i18n="read.image">${mailaiT('read.image') || '识别邮件图片'}</span></button>
+    <button type="button" data-reading-action="ask">${icon('M4 4h16v12H9l-5 4zM8 9h8m-8 3h5')}<span data-i18n="read.ask">${mailaiT('read.ask') || '问小邮'}</span></button>`);
   const morePanel = host.querySelector('.reading-more-panel');
   if (morePanel) {
     // Keep rare actions discoverable without crowding the reading toolbar.

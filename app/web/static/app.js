@@ -5788,15 +5788,17 @@ function renderAppUpdateDialog() {
 function renderAppUpdateControls() {
   const phase = appUpdateTask.phase, running = appUpdateTask.running || appUpdateInstalling;
   const ready = phase === 'ready', opened = ['installer_opened','launched'].includes(phase);
+  const restarts = availableAppUpdate?.install_method === 'mac-app';
   const install = document.getElementById('btn-install-update');
   const later = document.getElementById('btn-defer-update');
   if (install) {
     install.removeAttribute('data-i18n');
-    install.disabled = running || !availableAppUpdate?.installable;
+    install.disabled = running || phase === 'restarting' || !availableAppUpdate?.installable;
     mailaiBindUI(install, 'textContent', () => running
       ? phase === 'downloading' ? updateFlowText('downloading', appUpdateTask.percent || 0) : updateFlowText('working')
-      : ready ? updateFlowText('install') : opened ? mailaiText('重新打开安装器')
-      : phase === 'failed' ? updateFlowText('retry') : updateFlowText('download'));
+      : phase === 'restarting' ? updateFlowText('restarting')
+      : ready ? updateFlowText(restarts ? 'restart' : 'install') : opened ? mailaiText('重新打开安装器')
+      : phase === 'failed' ? updateFlowText(restarts ? 'restartRetry' : 'retry') : updateFlowText('download'));
   }
   if (later) {
     later.removeAttribute('data-i18n');
@@ -5804,7 +5806,9 @@ function renderAppUpdateControls() {
       : ready ? updateFlowText('laterInstall') : opened || running ? updateFlowText('return') : updateFlowText('later'));
   }
   const hint = document.getElementById('update-dialog-next-step');
-  if (hint) mailaiBindUI(hint, 'textContent', () => ready ? updateFlowText('readyHint')
+  if (hint) mailaiBindUI(hint, 'textContent', () => ready ? updateFlowText(restarts ? 'restartHint' : 'readyHint')
+    : phase === 'restarting' ? updateFlowText('restarting')
+    : restarts && running && appUpdateTask.action === 'install' ? updateFlowText('restartHint')
     : opened ? updateFlowText('openedHint') : running && appUpdateTask.action === 'install' ? updateFlowText('installHint') : updateFlowText('downloadHint'));
   const resume = document.getElementById('btn-continue-update');
   const pending = !!availableAppUpdate?.available;
@@ -5812,7 +5816,7 @@ function renderAppUpdateControls() {
     resume.classList.toggle('hidden', !pending);
     resume.removeAttribute('data-i18n');
     mailaiBindUI(resume, 'textContent', () => appUpdateTask.running ? updateFlowText('viewProgress')
-      : ready || opened ? updateFlowText('continueInstall') : updateFlowText('continue'));
+      : ready && restarts ? updateFlowText('restart') : ready || opened ? updateFlowText('continueInstall') : updateFlowText('continue'));
   }
   const check = document.getElementById('btn-check-update');
   check?.classList.toggle('action-primary', !pending);
@@ -5832,6 +5836,7 @@ function renderCompanionUpdate() {
   if (!chip) return;
   const phase = appUpdateTask.phase;
   const running = !!appUpdateTask.running;
+  const restarts = availableAppUpdate?.install_method === 'mac-app';
   const ready = phase === 'ready', failed = phase === 'failed';
   const pending = !!availableAppUpdate?.available;
   const shown = pending && phase !== 'idle' && !document.getElementById('update-dialog')?.open;
@@ -5839,12 +5844,14 @@ function renderCompanionUpdate() {
   chip.hidden = !shown;
   chip.dataset.phase = running ? 'downloading' : phase;
   // The mascot keeps its normal assistant action; only this small badge opens updates.
-  const label = () => ready ? updateFlowText('petReady') : failed ? updateFlowText('petFailed')
+  const label = () => phase === 'restarting' ? updateFlowText('restarting')
+    : ready ? updateFlowText('petReady') : failed ? updateFlowText('petFailed')
     : running && appUpdateTask.action === 'download' ? updateFlowText('petDownloading', appUpdateTask.percent || 0)
     : running ? updateFlowText('petInstalling') : updateFlowText('petOpened');
   mailaiBindUI(document.getElementById('companion-update-copy'), 'textContent', label);
   mailaiBindUI(chip, '@aria-label', () => `${label()} · ${updateFlowText('openUpdate')}`);
-  mailaiBindUI(chip, 'title', () => updateFlowText(ready ? 'readyHint' : ['installer_opened','launched'].includes(phase) ? 'openedHint' : 'downloadHint'));
+  mailaiBindUI(chip, 'title', () => updateFlowText(ready ? (restarts ? 'restartHint' : 'readyHint')
+    : phase === 'restarting' ? 'restarting' : ['installer_opened','launched'].includes(phase) ? 'openedHint' : 'downloadHint'));
   const meter = document.getElementById('companion-update-fill');
   if (meter) meter.style.width = `${ready ? 100 : Math.min(100, Math.max(0, Number(appUpdateTask.percent) || 0))}%`;
   document.getElementById('app-update-indicator')?.classList.toggle('hidden', !pending || phase === 'idle');
@@ -5921,6 +5928,7 @@ function renderUpdateProgress(state) {
     get verifying() { return mailaiText('正在校验安装包'); }, get verified() { return mailaiText('校验完成'); }, get launching() { return mailaiText('正在启动安装程序'); },
     get installing() { return mailaiText('等待授权并安装'); }, get installed() { return mailaiText('安装完成'); }, get launched() { return mailaiText('安装程序已启动'); }, get failed() { return mailaiText('更新未完成'); },
     get installer_opened() { return mailaiText('macOS 安装器已打开'); },
+    get restarting() { return updateFlowText('restarting'); },
     get ready() { return updateFlowText('ready'); },
   };
   box.classList.remove('hidden');
@@ -5985,7 +5993,10 @@ async function checkForAppUpdate(manual = false) {
     try { await refreshAppUpdateTask(); } catch (_) {}
     if (revision !== appUpdateCheckRevision) return result;
     if (appUpdateTask.running) void monitorAppUpdateInstall().catch(() => {});
-    if (result.available && (manual || (!appUpdateWasDeferred(result.latest_version) && appUpdateTask.phase === 'idle'))) showAppUpdate(result);
+    const newlyAvailable = result.available && appUpdateTask.phase === 'idle' && !appUpdateWasDeferred(result.latest_version);
+    if (newlyAvailable && !manual && result.install_method === 'mac-app') {
+      void installAppUpdate();
+    } else if (result.available && (manual || newlyAvailable)) showAppUpdate(result);
     else if (result.available) renderAppUpdateControls();
     else if (manual) toast(appUpdateMessage(result.message) || (result.supported ? mailaiText('当前已是最新版本') : mailaiText('当前设备暂无对应安装包')), result.development ? 'info' : 'success');
     return result;
@@ -6009,8 +6020,8 @@ async function checkForAppUpdate(manual = false) {
 }
 
 async function installAppUpdate(event) {
-  event.preventDefault();
-  if (appUpdateInstalling || appUpdateTask.running || !availableAppUpdate?.installable) return;
+  event?.preventDefault();
+  if (appUpdateInstalling || appUpdateTask.running || appUpdateTask.phase === 'restarting' || !availableAppUpdate?.installable) return;
   const prepared = ['ready','installer_opened','launched'].includes(appUpdateTask.phase);
   const version = availableAppUpdate.latest_version;
   let accepted = false;
@@ -6024,8 +6035,8 @@ async function installAppUpdate(event) {
     const result = await monitorAppUpdateInstall();
     if (result.status === 'failed') throw new Error(result.error || mailaiText('更新未完成'));
     if (result.phase === 'ready') {
-      toast(updateFlowText('readyNotice'), 'success');
-    } else if (result.status === 'completed') {
+      toast(updateFlowText(availableAppUpdate?.install_method === 'mac-app' ? 'restartReady' : 'readyNotice'), 'success');
+    } else if (result.status === 'completed' && result.phase !== 'restarting') {
       if (result.phase !== 'installer_opened') document.getElementById('update-dialog').close();
       toast(appUpdateMessage(result.message) || mailaiText('更新已完成'), result.phase === 'installer_opened' ? 'info' : 'success');
     }
@@ -9226,7 +9237,6 @@ document.addEventListener('mailai:language-changed', () => {
   try { renderComposeAccountPicker(document.getElementById('compose-from').value); renderSignatureSelect(); } catch (_) {}
   try { applyFilters(); updateFacetScopeLabels(); } catch (_) {}
   try { renderSidebarAccounts(); } catch (_) {}
-  try { addReadingActions(true); } catch (_) {}
   try { refreshSecurityAnalysisLanguage(); } catch (_) {}
   try { if (_dashboardData) renderDashboard(_dashboardData); } catch (_) {}
   try { refreshRulesLanguage(); } catch (_) {}

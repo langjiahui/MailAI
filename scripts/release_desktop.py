@@ -29,6 +29,7 @@ VERSION = re.compile(r'(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)')
 INSTALLERS = {'windows-x64': 'MailAI-Windows-x64-Setup.exe',
               'macos-arm64': 'MailAI-macOS-arm64.pkg',
               'linux-x64': 'MailAI-Linux-x64.AppImage'}
+RELEASE_ASSETS = {**INSTALLERS, 'macos-arm64-app': 'MailAI-macOS.zip'}
 
 
 def version(value):
@@ -344,8 +345,8 @@ class Coordinator:
             raise ValueError('Release is not a published formal desktop version')
         assets = {a['name']: a for a in release['assets']}
         required = {'latest.json', 'latest.signed.json', 'MailAI-macOS-arm64.dmg'}
-        required.update(INSTALLERS.values())
-        required.update(name + '.sha256' for name in INSTALLERS.values())
+        required.update(RELEASE_ASSETS.values())
+        required.update(name + '.sha256' for name in RELEASE_ASSETS.values())
         if not required <= set(assets) or any(a['state'] != 'uploaded' or a['size'] <= 0
                                                for a in assets.values()):
             raise ValueError('Published release is missing complete platform assets')
@@ -353,9 +354,9 @@ class Coordinator:
         if json.loads(self.api.asset(assets['latest.json']['id'])) != manifest:
             raise ValueError('Plain and signed update manifests differ')
         if (manifest['version'] != plan['version'] or manifest['release_url'] != release['html_url']
-                or set(manifest['assets']) != set(INSTALLERS)):
+                or set(manifest['assets']) != set(RELEASE_ASSETS)):
             raise ValueError('Signed manifest does not describe this release')
-        for platform, name in INSTALLERS.items():
+        for platform, name in RELEASE_ASSETS.items():
             item, asset = manifest['assets'][platform], assets[name]
             if (item['url'] != asset['browser_download_url'] or item['size'] != asset['size']
                     or asset.get('digest') != 'sha256:' + item['sha256']):

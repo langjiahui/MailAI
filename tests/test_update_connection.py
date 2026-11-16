@@ -38,18 +38,20 @@ def dropped():
 class UpdateConnectionTest(unittest.TestCase):
     def test_tls_eof_uses_official_metadata_and_caches_success(self):
         with patch.dict(os.environ, {'MAILAI_APP_VERSION':'2.8.18','MAILAI_UPDATE_MANIFEST_URL':updater.DEFAULT_MANIFEST_URL}), \
-             patch.object(updater.update_routing,'discover',side_effect=lambda loader, _version: loader()), \
+             patch.object(updater.update_routing,'discover',side_effect=lambda loader, _version, **options: loader()), \
              patch.object(updater,'FROZEN',True),patch.object(updater,'device_key',return_value='macos-arm64'), \
              patch.object(updater,'_cache',{'checked_at':0,'result':None}),patch.object(updater.time,'sleep'), \
-             patch.object(updater.urllib.request,'urlopen',side_effect=[dropped(),Response(json.dumps(RELEASE).encode())]) as request:
+             patch.object(updater.urllib.request,'urlopen',side_effect=[dropped(),dropped(),Response(json.dumps(RELEASE).encode())]) as request:
             result=updater.check(force=True)
             self.assertTrue(result['available'])
             self.assertEqual(result['latest_version'],'2.8.19')
             self.assertEqual(result['asset'],{'url':URL,'sha256':SHA,'size':len(PAYLOAD),'api_url':API})
             self.assertEqual(updater.check(),result)
-            self.assertEqual(request.call_count,2)
-            self.assertEqual(request.call_args_list[0].args[0].full_url,updater.DEFAULT_MANIFEST_URL)
-            self.assertEqual(request.call_args_list[1].args[0].full_url,updater.GITHUB_API_URL+'/latest')
+            self.assertNotIn('install_method',result)
+            self.assertEqual(request.call_count,3)
+            self.assertEqual(request.call_args_list[0].args[0].full_url,updater.SIGNED_MANIFEST_URL)
+            self.assertEqual(request.call_args_list[1].args[0].full_url,updater.DEFAULT_MANIFEST_URL)
+            self.assertEqual(request.call_args_list[2].args[0].full_url,updater.GITHUB_API_URL+'/latest')
             for call in request.call_args_list:
                 self.assertEqual(call.kwargs['context'].verify_mode,ssl.CERT_REQUIRED)
                 self.assertTrue(call.kwargs['context'].check_hostname)

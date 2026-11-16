@@ -14,6 +14,9 @@ STATIC_MANIFEST_URL = 'https://raw.atomgit.com/' + ATOM_REPOSITORY + '/raw/updat
 GITHUB_RELEASES = 'https://github.com/langjiahui/MailAI/releases'
 NAMES = {'windows-x64': 'MailAI-Windows-x64-Setup.exe', 'macos-arm64': 'MailAI-macOS-arm64.pkg',
          'linux-x64': 'MailAI-Linux-x64.AppImage'}
+MAC_APP_DEVICE = 'macos-arm64-app'
+MAC_APP_NAME = 'MailAI-macOS.zip'
+RELEASE_ASSETS = {**NAMES, MAC_APP_DEVICE: MAC_APP_NAME}
 log = logging.getLogger(__name__)
 
 
@@ -70,12 +73,14 @@ def discover() -> dict:
         if type(item.get('size')) is not int or not 0 < item['size'] <= 500 * 1024 * 1024:
             raise ValueError('国内更新安装包大小无效')
         result['assets'][device] = {**item, 'mirror_url': attachment(tag, name)}
+    if MAC_APP_DEVICE in assets:
+        result['assets'][MAC_APP_DEVICE] = assets[MAC_APP_DEVICE]
     return result
 
 
 def valid_mirror(url: str, original: str) -> bool:
     match = re.fullmatch(re.escape(GITHUB_RELEASES) + r'/download/(v\d+\.\d+\.\d+)/([^/]+)', original)
-    if not match or match[2] not in NAMES.values():
+    if not match or match[2] not in RELEASE_ASSETS.values():
         return False
     legacy = f'{ATOM_API}/releases/{quote(match[1], safe="")}/attach_files/{quote(match[2], safe="")}/download'
     return url in {attachment(match[1], match[2]), legacy}

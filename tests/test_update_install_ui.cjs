@@ -108,5 +108,33 @@ const click = {preventDefault(){}};
   await ctx.installAppUpdate(click);
   assert.equal(element('update-dialog').open,false);
   assert.equal(messages.at(-1).kind,'success');
+  // macOS checks can download quietly, but applying the ready app still requires a click.
+  const macRelease = {...release, install_method:'mac-app'};
+  const macReady = {...ready, release:macRelease};
+  ctx.appUpdateLastCheck=null;ctx.availableAppUpdate=null;ctx.appUpdateTask=idle;
+  ctx.renderAppVersion=()=>{};
+  ctx.api=async(url,options)=>{
+    if(options?.method==='POST'){posts.push(url);return macReady;}
+    return url==='/api/system/update/install/status' ? ctx.appUpdateTask : macRelease;
+  };
+  const previousPosts=posts.length;
+  await ctx.checkForAppUpdate(false);
+  await new Promise(setImmediate);
+  assert.deepEqual(posts.slice(previousPosts),['/api/system/update/download']);
+  assert.equal(element('update-dialog').open,false);
+  assert.equal(element('btn-install-update').textContent,'重启并更新');
+  assert.equal(element('btn-continue-update').textContent,'重启并更新');
+  assert.equal(element('btn-install-update').disabled,false);
+  ctx.api=async(url,options)=>{
+    assert.equal(options?.method,'POST');posts.push(url);
+    return {...macReady,phase:'restarting'};
+  };
+  await ctx.installAppUpdate(click);
+  assert.equal(posts.at(-1),'/api/system/update/install/ready?version=3.1.0');
+  assert.equal(element('btn-install-update').textContent,'正在重启 MailAI…');
+  assert.equal(element('btn-install-update').disabled,true);
+  const restartedPosts=posts.length;
+  await ctx.installAppUpdate(click);
+  assert.equal(posts.length,restartedPosts);
   console.log('PASS defer/reopen progress, mascot entry, single monitor, explicit install, cancellation retry and lost-response recovery');
 })().catch(error=>{console.error(error);process.exitCode=1;});

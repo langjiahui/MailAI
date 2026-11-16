@@ -2393,6 +2393,18 @@ const MAILAI_UI_COPY = {
   "updateFlow.downloading": ["下载中 {0}%", "Downloading {0}%"],
   "updateFlow.working": ["正在处理…", "Working…"],
   "updateFlow.install": ["立即安装", "Install now"],
+  "updateFlow.restart": ["重启并更新", "Restart and update"],
+  "updateFlow.restartHint": ["更新已就绪。重启前会保存草稿并检查邮件处理状态。", "The update is ready. MailAI will save drafts and check active mail operations before restarting."],
+  "updateFlow.restarting": ["正在重启 MailAI…", "Restarting MailAI…"],
+  "updateFlow.restartReady": ["更新已就绪，可重启并更新。", "Update ready. Restart MailAI to apply it."],
+  "updateFlow.restartRetry": ["重试更新", "Retry update"],
+  "updateFlow.bundleVersion": ["应用更新包与目标版本不一致。", "The app update doesn’t match the target version."],
+  "updateFlow.bundleIdentity": ["无法确认当前应用的签名身份。", "Couldn’t verify the installed app’s signing identity."],
+  "updateFlow.bundleLocation": ["当前安装位置无法自动更新，请从发布页运行 PKG 安装包。", "This installation location cannot be updated automatically. Run the PKG installer from the release page."],
+  "updateFlow.bundleVerification": ["应用更新包校验失败，请从发布页下载 PKG 安装包。", "App update verification failed. Download the PKG installer from the release page."],
+  "updateFlow.unsavedDraft": ["草稿尚未保存，更新已暂缓。", "Update postponed because drafts haven’t been saved."],
+  "updateFlow.mailBusy": ["邮件仍在处理，请稍后重试更新。", "Mail operations are in progress. Try updating again shortly."],
+  "updateFlow.quitFailed": ["MailAI 未能退出，请稍后重试更新。", "MailAI couldn’t quit. Try updating again shortly."],
   "updateFlow.download": ["下载更新", "Download update"],
   "updateFlow.retry": ["重试下载", "Retry download"],
   "updateFlow.background": ["后台下载", "Download in background"],
@@ -26148,15 +26160,17 @@ function renderAppUpdateDialog() {
 function renderAppUpdateControls() {
   const phase = appUpdateTask.phase, running = appUpdateTask.running || appUpdateInstalling;
   const ready = phase === 'ready', opened = ['installer_opened','launched'].includes(phase);
+  const restarts = availableAppUpdate?.install_method === 'mac-app';
   const install = document.getElementById('btn-install-update');
   const later = document.getElementById('btn-defer-update');
   if (install) {
     install.removeAttribute('data-i18n');
-    install.disabled = running || !availableAppUpdate?.installable;
+    install.disabled = running || phase === 'restarting' || !availableAppUpdate?.installable;
     mailaiBindUI(install, 'textContent', () => running
       ? phase === 'downloading' ? updateFlowText('downloading', appUpdateTask.percent || 0) : updateFlowText('working')
-      : ready ? updateFlowText('install') : opened ? mailaiText('重新打开安装器')
-      : phase === 'failed' ? updateFlowText('retry') : updateFlowText('download'));
+      : phase === 'restarting' ? updateFlowText('restarting')
+      : ready ? updateFlowText(restarts ? 'restart' : 'install') : opened ? mailaiText('重新打开安装器')
+      : phase === 'failed' ? updateFlowText(restarts ? 'restartRetry' : 'retry') : updateFlowText('download'));
   }
   if (later) {
     later.removeAttribute('data-i18n');
@@ -26164,7 +26178,9 @@ function renderAppUpdateControls() {
       : ready ? updateFlowText('laterInstall') : opened || running ? updateFlowText('return') : updateFlowText('later'));
   }
   const hint = document.getElementById('update-dialog-next-step');
-  if (hint) mailaiBindUI(hint, 'textContent', () => ready ? updateFlowText('readyHint')
+  if (hint) mailaiBindUI(hint, 'textContent', () => ready ? updateFlowText(restarts ? 'restartHint' : 'readyHint')
+    : phase === 'restarting' ? updateFlowText('restarting')
+    : restarts && running && appUpdateTask.action === 'install' ? updateFlowText('restartHint')
     : opened ? updateFlowText('openedHint') : running && appUpdateTask.action === 'install' ? updateFlowText('installHint') : updateFlowText('downloadHint'));
   const resume = document.getElementById('btn-continue-update');
   const pending = !!availableAppUpdate?.available;
@@ -26172,7 +26188,7 @@ function renderAppUpdateControls() {
     resume.classList.toggle('hidden', !pending);
     resume.removeAttribute('data-i18n');
     mailaiBindUI(resume, 'textContent', () => appUpdateTask.running ? updateFlowText('viewProgress')
-      : ready || opened ? updateFlowText('continueInstall') : updateFlowText('continue'));
+      : ready && restarts ? updateFlowText('restart') : ready || opened ? updateFlowText('continueInstall') : updateFlowText('continue'));
   }
   const check = document.getElementById('btn-check-update');
   check?.classList.toggle('action-primary', !pending);
@@ -26192,6 +26208,7 @@ function renderCompanionUpdate() {
   if (!chip) return;
   const phase = appUpdateTask.phase;
   const running = !!appUpdateTask.running;
+  const restarts = availableAppUpdate?.install_method === 'mac-app';
   const ready = phase === 'ready', failed = phase === 'failed';
   const pending = !!availableAppUpdate?.available;
   const shown = pending && phase !== 'idle' && !document.getElementById('update-dialog')?.open;
@@ -26199,12 +26216,14 @@ function renderCompanionUpdate() {
   chip.hidden = !shown;
   chip.dataset.phase = running ? 'downloading' : phase;
   // The mascot keeps its normal assistant action; only this small badge opens updates.
-  const label = () => ready ? updateFlowText('petReady') : failed ? updateFlowText('petFailed')
+  const label = () => phase === 'restarting' ? updateFlowText('restarting')
+    : ready ? updateFlowText('petReady') : failed ? updateFlowText('petFailed')
     : running && appUpdateTask.action === 'download' ? updateFlowText('petDownloading', appUpdateTask.percent || 0)
     : running ? updateFlowText('petInstalling') : updateFlowText('petOpened');
   mailaiBindUI(document.getElementById('companion-update-copy'), 'textContent', label);
   mailaiBindUI(chip, '@aria-label', () => `${label()} · ${updateFlowText('openUpdate')}`);
-  mailaiBindUI(chip, 'title', () => updateFlowText(ready ? 'readyHint' : ['installer_opened','launched'].includes(phase) ? 'openedHint' : 'downloadHint'));
+  mailaiBindUI(chip, 'title', () => updateFlowText(ready ? (restarts ? 'restartHint' : 'readyHint')
+    : phase === 'restarting' ? 'restarting' : ['installer_opened','launched'].includes(phase) ? 'openedHint' : 'downloadHint'));
   const meter = document.getElementById('companion-update-fill');
   if (meter) meter.style.width = `${ready ? 100 : Math.min(100, Math.max(0, Number(appUpdateTask.percent) || 0))}%`;
   document.getElementById('app-update-indicator')?.classList.toggle('hidden', !pending || phase === 'idle');
@@ -26281,6 +26300,7 @@ function renderUpdateProgress(state) {
     get verifying() { return mailaiText('正在校验安装包'); }, get verified() { return mailaiText('校验完成'); }, get launching() { return mailaiText('正在启动安装程序'); },
     get installing() { return mailaiText('等待授权并安装'); }, get installed() { return mailaiText('安装完成'); }, get launched() { return mailaiText('安装程序已启动'); }, get failed() { return mailaiText('更新未完成'); },
     get installer_opened() { return mailaiText('macOS 安装器已打开'); },
+    get restarting() { return updateFlowText('restarting'); },
     get ready() { return updateFlowText('ready'); },
   };
   box.classList.remove('hidden');
@@ -26345,7 +26365,10 @@ async function checkForAppUpdate(manual = false) {
     try { await refreshAppUpdateTask(); } catch (_) {}
     if (revision !== appUpdateCheckRevision) return result;
     if (appUpdateTask.running) void monitorAppUpdateInstall().catch(() => {});
-    if (result.available && (manual || (!appUpdateWasDeferred(result.latest_version) && appUpdateTask.phase === 'idle'))) showAppUpdate(result);
+    const newlyAvailable = result.available && appUpdateTask.phase === 'idle' && !appUpdateWasDeferred(result.latest_version);
+    if (newlyAvailable && !manual && result.install_method === 'mac-app') {
+      void installAppUpdate();
+    } else if (result.available && (manual || newlyAvailable)) showAppUpdate(result);
     else if (result.available) renderAppUpdateControls();
     else if (manual) toast(appUpdateMessage(result.message) || (result.supported ? mailaiText('当前已是最新版本') : mailaiText('当前设备暂无对应安装包')), result.development ? 'info' : 'success');
     return result;
@@ -26369,8 +26392,8 @@ async function checkForAppUpdate(manual = false) {
 }
 
 async function installAppUpdate(event) {
-  event.preventDefault();
-  if (appUpdateInstalling || appUpdateTask.running || !availableAppUpdate?.installable) return;
+  event?.preventDefault();
+  if (appUpdateInstalling || appUpdateTask.running || appUpdateTask.phase === 'restarting' || !availableAppUpdate?.installable) return;
   const prepared = ['ready','installer_opened','launched'].includes(appUpdateTask.phase);
   const version = availableAppUpdate.latest_version;
   let accepted = false;
@@ -26384,8 +26407,8 @@ async function installAppUpdate(event) {
     const result = await monitorAppUpdateInstall();
     if (result.status === 'failed') throw new Error(result.error || mailaiText('更新未完成'));
     if (result.phase === 'ready') {
-      toast(updateFlowText('readyNotice'), 'success');
-    } else if (result.status === 'completed') {
+      toast(updateFlowText(availableAppUpdate?.install_method === 'mac-app' ? 'restartReady' : 'readyNotice'), 'success');
+    } else if (result.status === 'completed' && result.phase !== 'restarting') {
       if (result.phase !== 'installer_opened') document.getElementById('update-dialog').close();
       toast(appUpdateMessage(result.message) || mailaiText('更新已完成'), result.phase === 'installer_opened' ? 'info' : 'success');
     }
@@ -29586,7 +29609,6 @@ document.addEventListener('mailai:language-changed', () => {
   try { renderComposeAccountPicker(document.getElementById('compose-from').value); renderSignatureSelect(); } catch (_) {}
   try { applyFilters(); updateFacetScopeLabels(); } catch (_) {}
   try { renderSidebarAccounts(); } catch (_) {}
-  try { addReadingActions(true); } catch (_) {}
   try { refreshSecurityAnalysisLanguage(); } catch (_) {}
   try { if (_dashboardData) renderDashboard(_dashboardData); } catch (_) {}
   try { refreshRulesLanguage(); } catch (_) {}
@@ -32709,25 +32731,20 @@ function openAssistantForEmail(row) {
   openAssistant();
 }
 
-function addReadingActions(force = false) {
+function addReadingActions() {
   const host = document.querySelector('.reading-header .reading-actions');
   if (!host) return;
-  if (host.querySelector('.reading-work-actions')) {
-    if (!force) return;
-    host.querySelector('.reading-work-actions')?.remove();
-    host.querySelector('[data-reading-action="remind"]')?.remove();
-    host.querySelectorAll('[data-reading-action="summary"],[data-reading-action="image"],[data-reading-action="ask"]').forEach(node => node.remove());
-  }
+  if (host.querySelector('.reading-work-actions')) return;
   const div = document.createElement('div'); div.className = 'reading-work-actions';
   const icon = paths => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${paths}"/></svg>`;
-  div.innerHTML = `<button type="button" data-reading-action="favorite" aria-pressed="${Boolean(selectedEmailDetail?.is_favorite)}">${icon('m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z')}<span data-action-label>${selectedEmailDetail?.is_favorite ? (mailaiT('read.favorited') || '已收藏') : (mailaiT('read.favorite') || '收藏')}</span></button>
+  div.innerHTML = `<button type="button" data-reading-action="favorite" aria-pressed="${Boolean(selectedEmailDetail?.is_favorite)}">${icon('m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z')}<span data-action-label data-i18n="${selectedEmailDetail?.is_favorite ? 'read.favorited' : 'read.favorite'}">${selectedEmailDetail?.is_favorite ? (mailaiT('read.favorited') || '已收藏') : (mailaiT('read.favorite') || '收藏')}</span></button>
     <button type="button" data-edit-mail-tags aria-haspopup="dialog" aria-label="${mailaiText('设置标签')}" data-i18n-aria="ui.b819b0dd5668">${icon('M3 3h7l11 11-7 7L3 10V3zM7 7h.01')}<span data-i18n="ui.1d0fd5f9336d">${mailaiText('标签')}</span></button>
-    <button type="button" data-reading-action="todo">${icon('M3.5 7.5 5.5 9.5 9 6M12.5 8h8M3.5 16.5 5.5 18.5 9 15M12.5 17h8')}<span>${mailaiT('read.todo') || '加入待办'}</span></button>
-    <button type="button" data-reading-action="remind">${icon('M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 4v5l3 2')}<span>${mailaiT('read.remind') || '稍后提醒'}</span></button>`;
+    <button type="button" data-reading-action="todo">${icon('M3.5 7.5 5.5 9.5 9 6M12.5 8h8M3.5 16.5 5.5 18.5 9 15M12.5 17h8')}<span data-i18n="read.todo">${mailaiT('read.todo') || '加入待办'}</span></button>
+    <button type="button" data-reading-action="remind">${icon('M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 4v5l3 2')}<span data-i18n="read.remind">${mailaiT('read.remind') || '稍后提醒'}</span></button>`;
   host.querySelector('.reading-mail-controls')?.appendChild(div);
-  host.querySelector('.reading-ai-group')?.insertAdjacentHTML('beforeend', `<button type="button" data-reading-action="summary">${icon('M4 6h16M4 11h12M4 16h8m5-2 1 2 2 1-2 1-1 2-1-2-2-1 2-1z')}<span>${mailaiT('read.summary') || '总结邮件'}</span></button>
-    <button type="button" data-reading-action="image">${icon('M3 5h18v14H3zM7 10h.01M5 17l5-5 3 3 2-2 4 4')}<span>${mailaiT('read.image') || '识别邮件图片'}</span></button>
-    <button type="button" data-reading-action="ask">${icon('M4 4h16v12H9l-5 4zM8 9h8m-8 3h5')}<span>${mailaiT('read.ask') || '问小邮'}</span></button>`);
+  host.querySelector('.reading-ai-group')?.insertAdjacentHTML('beforeend', `<button type="button" data-reading-action="summary">${icon('M4 6h16M4 11h12M4 16h8m5-2 1 2 2 1-2 1-1 2-1-2-2-1 2-1z')}<span data-i18n="read.summary">${mailaiT('read.summary') || '总结邮件'}</span></button>
+    <button type="button" data-reading-action="image">${icon('M3 5h18v14H3zM7 10h.01M5 17l5-5 3 3 2-2 4 4')}<span data-i18n="read.image">${mailaiT('read.image') || '识别邮件图片'}</span></button>
+    <button type="button" data-reading-action="ask">${icon('M4 4h16v12H9l-5 4zM8 9h8m-8 3h5')}<span data-i18n="read.ask">${mailaiT('read.ask') || '问小邮'}</span></button>`);
   const morePanel = host.querySelector('.reading-more-panel');
   if (morePanel) {
     // Keep rare actions discoverable without crowding the reading toolbar.

@@ -223,7 +223,9 @@ jobs:
           zsh scripts/build_macos.command
       - name: Write macOS checksum
         shell: bash
-        run: shasum -a 256 dist/MailAI-macOS-arm64.pkg > dist/MailAI-macOS-arm64.pkg.sha256
+        run: |
+          shasum -a 256 dist/MailAI-macOS-arm64.pkg > dist/MailAI-macOS-arm64.pkg.sha256
+          shasum -a 256 dist/MailAI-macOS.zip > dist/MailAI-macOS.zip.sha256
       - uses: actions/upload-artifact@v5
         with:
           name: release-macos-arm64
@@ -232,6 +234,8 @@ jobs:
             dist/MailAI-macOS-arm64.pkg
             dist/MailAI-macOS-arm64.pkg.sha256
             dist/MailAI-macOS-arm64.dmg
+            dist/MailAI-macOS.zip
+            dist/MailAI-macOS.zip.sha256
           if-no-files-found: error
       - name: Remove temporary self-signing keychain
         if: always()

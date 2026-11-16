@@ -15,7 +15,7 @@ import urllib.error
 import urllib.parse
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from app.update_mirror import ATOM_API, attachment, NAMES
+from app.update_mirror import ATOM_API, attachment, NAMES, RELEASE_ASSETS, MAC_APP_DEVICE
 from app.update_transport import open_public
 from app.update_trust import verify
 from scripts.publish_update_channel import publish as publish_channel, version as version_tuple
@@ -79,9 +79,9 @@ def _matches_once(tag, path):
 
 
 def upload(tag, path, token):
-    if path.name in NAMES.values():
+    if path.name in RELEASE_ASSETS.values():
         manifest = json.loads((path.parent / 'latest.json').read_text(encoding='utf-8'))
-        device = next(device for device, name in NAMES.items() if name == path.name)
+        device = next(device for device, name in RELEASE_ASSETS.items() if name == path.name)
         expected = manifest['assets'][device]
         if (manifest.get('version') != tag.removeprefix('v') or expected['size'] != path.stat().st_size
                 or expected['sha256'] != digest(path)):
@@ -136,7 +136,8 @@ def sync(tag, assets, token, notes, *, publish_pointer=True):
     signed = verify(json.loads((assets / 'latest.signed.json').read_text(encoding='utf-8')))
     if signed != manifest or manifest.get('version') != tag.removeprefix('v'):
         raise ValueError('Release version/signature mismatch')
-    for device, name in NAMES.items():
+    names = RELEASE_ASSETS if MAC_APP_DEVICE in manifest['assets'] else NAMES
+    for device, name in names.items():
         path = assets / name
         item = manifest['assets'][device]
         if (item['sha256'] != digest(path) or item['size'] != path.stat().st_size

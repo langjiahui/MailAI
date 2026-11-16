@@ -30,6 +30,7 @@ TESTS = (
     'test_macos_keychain.py',
     'test_macos_stable_reader.py',
     'test_macos_upgrade_auth.py',
+    'test_macos_app_update.py',
     'test_macos_signing.py',
     'test_macos_menu.py',
     'test_macos_notifications.py',
