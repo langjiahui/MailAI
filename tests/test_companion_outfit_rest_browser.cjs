@@ -37,11 +37,12 @@ walk(tree);assert(clips.size>20,'Discover the complete gesture library');
   await page.evaluate(()=>mailaiEnergy.reschedule('companion-growth',3600000));
   // Freeze virtual time between browser protocol calls. Under CI load a
   // 445ms landing can otherwise finish before its assertion reaches the page.
-  // Only runFor advances timers; the real-frame continuity suite is separate.
+  // Check each timer boundary separately. The real-frame continuity suite
+  // covers intermediate frames without replaying them for every rest case.
   const clockStart=new Date('2026-10-21T12:00:00Z');
   await page.clock.install({time:clockStart});
   await page.clock.pauseAt(new Date(clockStart.getTime()+1000));
-  await page.clock.runFor(5000);
+  await page.clock.fastForward(5000);
   await page.evaluate(()=>{
    window.ciRestSnapshot=svg=>[...svg.querySelectorAll('.companion-figure,.companion-heading,.companion-look,.companion-torso,.companion-head,.companion-tail,.companion-carry,.companion-arm-left,.companion-foot-left,.companion-foot-right,.companion-eyes,.companion-flight-left,.companion-flight-right,.pet-reward-motion')].map(node=>{
     const css=getComputedStyle(node),matrix=new DOMMatrixReadOnly(css.transform);
@@ -88,12 +89,12 @@ walk(tree);assert(clips.size>20,'Discover the complete gesture library');
    },{selector,name},{timeout:3000});
    const duration=await started.jsonValue();
    assert(duration>0,name+' has actual motion');
-   await page.clock.runFor(duration+30);
+   await page.clock.fastForward(duration+30);
    assert.equal(await page.locator(selector).getAttribute('data-motion-clip'),'settle',label+' has a landing: '+JSON.stringify(await page.evaluate(selector=>({svg:{...document.querySelector(selector).dataset},style:document.body.dataset.petStyle,body:document.body.className}),selector)));
    assert.equal(await page.locator(selector).getAttribute('data-outfit-rest'),'true',name+' releases outfit clocks with the body');
    const finite=await page.locator(selector).evaluate(svg=>svg.getAnimations({subtree:true}).every(a=>a.effect.getTiming().iterations===1));
    assert(finite,name+' release cannot loop');
-   await page.clock.runFor(500);
+   await page.clock.fastForward(500);
    await idle(selector,baseline,label);checked++;
   }
   const orb='#assistant-orb .mail-companion';
@@ -101,7 +102,7 @@ walk(tree);assert(clips.size>20,'Discover the complete gesture library');
    await page.evaluate(style=>{
     Object.assign(document.body.dataset,{petStyle:style,petAccessory:style==='nature'?'wings':'mech_wings',petEffect:'aurora',petPalette:'sky',petStage:'7'});
    },style);
-   await page.clock.runFor(5000);
+   await page.clock.fastForward(5000);
    for(const name of clips)if(name!=='work')await gesture(orb,name);
   }
   const hosts=[
@@ -112,15 +113,15 @@ walk(tree);assert(clips.size>20,'Discover the complete gesture library');
    ['growth','.pet-hero-portrait .mail-companion',()=>page.evaluate(async()=>{await closeCompose();await mailaiPet.open();})],
   ];
   for(const [name,selector,open]of hosts){
-   await open();await page.locator(selector).waitFor({state:'visible'});await page.clock.runFor(5000);
+   await open();await page.locator(selector).waitFor({state:'visible'});await page.clock.fastForward(5000);
    for(const style of ['nature','ranger']){
     await page.evaluate(style=>Object.assign(document.body.dataset,{petStyle:style,petAccessory:style==='nature'?'wings':'mech_wings'}),style);
-    await page.clock.runFor(5000);await gesture(selector,'greet',name+'/'+style);
+    await page.clock.fastForward(5000);await gesture(selector,'greet',name+'/'+style);
     const baseline=await snapshot(selector);
     await page.evaluate(()=>document.body.classList.add('companion-working'));
     await page.clock.runFor(370);
     await page.evaluate(()=>document.body.classList.remove('companion-working'));
-    await page.clock.runFor(500);await idle(selector,baseline,name+' work/'+style);
+    await page.clock.fastForward(500);await idle(selector,baseline,name+' work/'+style);
     if(name==='perch'){
      const metrics=await page.locator(selector).evaluate(svg=>{
       const wing=svg.querySelector(document.body.dataset.petStyle==='nature'?'.growth-wings':'.growth-mech-wings').getBoundingClientRect();
@@ -137,7 +138,7 @@ walk(tree);assert(clips.size>20,'Discover the complete gesture library');
    }
   }
   await page.evaluate(()=>document.getElementById('companion-growth-dialog').close());
-  await page.clock.runFor(5000);
+  await page.clock.fastForward(5000);
   const baseline=await snapshot(orb);
   await page.evaluate(()=>mailaiCompanionMotion.react('swim',document.querySelector('#assistant-orb .mail-companion')));
   await page.clock.runFor(600);await page.emulateMedia({reducedMotion:'reduce'});
