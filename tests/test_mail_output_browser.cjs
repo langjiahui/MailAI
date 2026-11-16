@@ -24,7 +24,29 @@ const {chromium,webkit} = require('playwright');
     assert.deepEqual(await entries.locator('span').allTextContents(),['打印邮件','分享邮件']);
     assert.equal(await entries.locator('svg').count(),2);
     assert.deepEqual(await entries.locator('svg').evaluateAll(icons=>icons.map(icon=>icon.getBoundingClientRect().width)),[16,16]);
-    await page.evaluate(()=>applyTheme('dark'));
+    for(const palette of ['theme_monochrome','theme_baowu','']) for(const mode of ['light','dark']) {
+      const hoverColor=await page.evaluate(({palette,mode})=>{
+        if(palette)document.documentElement.dataset.rewardTheme=palette;
+        else delete document.documentElement.dataset.rewardTheme;
+        applyTheme(mode);
+        const probe=document.createElement('span');
+        probe.style.backgroundColor='var(--desk-hover)';
+        document.body.append(probe);
+        const color=getComputedStyle(probe).backgroundColor;
+        probe.remove();
+        return color;
+      },{palette,mode});
+      const actions=page.locator('.reading-more-panel button:not([data-reading-action="delete-current"]):enabled');
+      for(const action of await actions.all()){
+        await action.hover();
+        assert.equal(await action.evaluate(button=>getComputedStyle(button).backgroundColor),
+          hoverColor,`${mode} ${palette}: ${(await action.innerText()).trim()}`);
+      }
+      const remove=page.locator('[data-reading-action="delete-current"]');
+      await remove.hover();
+      assert.notEqual(await remove.evaluate(button=>getComputedStyle(button).backgroundColor),hoverColor,
+        'Delete keeps its danger feedback');
+    }
     await page.locator('[data-mail-output="print"]').click();
     const dialog=page.locator('#mail-output-dialog');
     await page.waitForFunction(()=>!document.querySelector('#mail-output-format').disabled);
@@ -40,8 +62,11 @@ const {chromium,webkit} = require('playwright');
     }));
     const previewStyle=()=>page.locator('#mail-output-preview').evaluate(frame=>{
       const doc=frame.contentDocument;
+      const root=frame.contentWindow.getComputedStyle(doc.documentElement);
       return {
-        background:frame.contentWindow.getComputedStyle(doc.documentElement).backgroundColor,
+        background:root.backgroundColor,
+        edgeBehavior:root.overscrollBehaviorY,
+        bodyEdgeBehavior:frame.contentWindow.getComputedStyle(doc.body).overscrollBehaviorY,
         frameBorder:getComputedStyle(frame).borderTopWidth,
         panel:getComputedStyle(frame.closest('dialog')).backgroundColor,
         header:getComputedStyle(frame.closest('dialog').querySelector('header')).backgroundColor,
@@ -49,7 +74,9 @@ const {chromium,webkit} = require('playwright');
       };
     });
     const darkPreview=await previewStyle();
-    assert.equal(darkPreview.background,'rgba(0, 0, 0, 0)');
+    assert.equal(darkPreview.background,darkPreview.panel);
+    assert.equal(darkPreview.edgeBehavior,'none');
+    assert.equal(darkPreview.bodyEdgeBehavior,'none');
     assert.equal(darkPreview.frameBorder,'0px');
     assert.equal(darkPreview.header,darkPreview.panel);
     assert.equal(darkPreview.note,'none');
@@ -65,8 +92,22 @@ const {chromium,webkit} = require('playwright');
     assert.ok(scrollPosition>0,'The expanded preview must still scroll long emails');
     assert.deepEqual(await printButton.boundingBox(),printPosition,'The print action stays in place while reading');
     await frame.evaluate(el=>{el.contentDocument.scrollingElement.scrollTop=0;});
+    for(const mode of ['light','dark']) {
+      await page.evaluate(mode=>{
+        document.documentElement.dataset.rewardTheme='theme_monochrome';
+        applyTheme(mode);
+      },mode);
+      const monochrome=await previewStyle();
+      assert.equal(monochrome.background,monochrome.panel);
+    }
+    await page.evaluate(()=>{
+      delete document.documentElement.dataset.rewardTheme;
+      document.dispatchEvent(new CustomEvent('mailai:reward-themechange'));
+    });
     await page.emulateMedia({media:'print'});
-    assert.equal((await previewStyle()).background,'rgb(255, 255, 255)');
+    const printStyle=await previewStyle();
+    assert.equal(printStyle.background,'rgb(255, 255, 255)');
+    assert.equal(printStyle.edgeBehavior,'auto');
     await page.emulateMedia({media:'screen'});
     await page.screenshot({path:`build/mail-output/browser-${engine}-dark-print.png`});
     assert.ok(initial.text.includes('请协助确认'));

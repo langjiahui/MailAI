@@ -31027,6 +31027,7 @@ document.addEventListener('keydown', event => {
     if (doc?.URL !== 'about:srcdoc') return;
     const theme = document.documentElement.dataset.theme;
     const {ink, muted, link, line} = richEmailBasePalette(theme);
+    const surface = getComputedStyle(dialog).backgroundColor;
     let style = doc.getElementById('mail-output-screen-style');
     if (!style) {
       style = doc.createElement('style');
@@ -31035,7 +31036,8 @@ document.addEventListener('keydown', event => {
     }
     // The browser prints this same frame, so all UI colors are screen-only.
     style.textContent = `@media screen {
-      html { background:transparent; }
+      html { background-color:${surface}; }
+      html, body { overscroll-behavior-y:none; }
       body { max-width:80rem; margin-inline:auto; padding:clamp(12px,3vw,28px); }
       .mail-output-header { border-bottom:0; padding-bottom:0; }
       .mail-output-note { display:none; }
