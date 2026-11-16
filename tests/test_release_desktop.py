@@ -62,7 +62,7 @@ class FakeGitHub:
         self.releases = [dict(tag_name='v3.6.0', draft=False, prerelease=False, published_at=NOW)]
         self.manifest = dict(version='3.7.0', release_url=f'https://github.com/{REPO}/releases/tag/v3.7.0', assets={})
         self.assets = []
-        for number, (platform, name) in enumerate(release.INSTALLERS.items(), 1):
+        for number, (platform, name) in enumerate(release.RELEASE_ASSETS.items(), 1):
             url = f'https://github.com/{REPO}/releases/download/v3.7.0/{name}'
             self.manifest['assets'][platform] = dict(url=url, size=100, sha256='1' * 64)
             self.assets.append(dict(name=name, id=number, size=100, digest='sha256:' + '1' * 64,

@@ -1,11 +1,11 @@
 // Run against the isolated example.test workspace fixture; never a live mailbox.
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
-const {chromium}=require('playwright');
+const {chromium,webkit}=require('playwright');
 const preview=process.env.MAILAI_TEST_URL||'http://127.0.0.1:18795/';
 const han=/[\u3400-\u9fff]/;
 (async()=>{
-  const browser=await chromium.launch({headless:true});
+  const browser=await (process.env.MAILAI_BROWSER==='webkit'?webkit:chromium).launch({headless:true});
   try {
     const page=await browser.newPage({viewport:{width:1440,height:1000},reducedMotion:'reduce'});
     const errors=[];page.on('pageerror',e=>errors.push(e.message));
@@ -53,6 +53,32 @@ const han=/[\u3400-\u9fff]/;
       }));
       assert.deepEqual(leaks,[],`Untranslated interface in ${selector}`);
     };
+    // A message opened in Chinese must update its existing action labels when
+    // language changes, including buttons moved into the responsive More menu.
+    await page.evaluate(()=>setI18nLanguage('zh-CN'));
+    await page.locator('.email-item').first().click();
+    const summaryAction=page.locator('[data-reading-action="summary"]');
+    await summaryAction.waitFor({state:'attached'});
+    const originalSummaryAction=await summaryAction.elementHandle();
+    assert.equal((await summaryAction.textContent()).trim(),'总结邮件');
+    await page.evaluate(()=>setI18nLanguage('en'));
+    for(const width of [1100,2200,1100]) {
+      await page.setViewportSize({width,height:1000});
+      await page.waitForTimeout(100);
+      await page.locator('.reading-more-actions > summary').click();
+      assert.equal(await summaryAction.count(),1,'Language changes and resizing must retain one summary action');
+      assert(await summaryAction.evaluate((node, original)=>node===original,originalSummaryAction),'Responsive layout must retain the translated button');
+      assert.equal((await summaryAction.textContent()).trim(),'Summarize');
+      assert.equal(await summaryAction.getAttribute('aria-label'),'Summarize');
+      assert.equal(await summaryAction.getAttribute('title'),'Summarize');
+      await audit('.reading-actions');
+      await page.keyboard.press('Escape');
+    }
+    await page.evaluate(()=>setI18nLanguage('zh-CN'));
+    assert.equal((await summaryAction.textContent()).trim(),'总结邮件');
+    await page.evaluate(()=>setI18nLanguage('en'));
+    assert.equal((await summaryAction.textContent()).trim(),'Summarize');
+    await page.setViewportSize({width:1440,height:1000});
     await page.locator('#btn-filter-panel').click();await audit('.mail-filter-group');
     assert.equal(await page.locator('#productivity-workflow-filter').inputValue(),'all');
     await page.locator('#filter-priority [data-value="高"]').click();

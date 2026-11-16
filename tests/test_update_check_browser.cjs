@@ -6,9 +6,9 @@ const {chromium,webkit}=require('playwright');
  try{
   const page=await browser.newPage({viewport:{width:1360,height:950},reducedMotion:'reduce'});
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
-  let failed=false,available=false,hold=null,installable=false;
+  let failed=false,available=false,hold=null,installable=false,macApp=false;
   let task={status:'idle',phase:'idle',running:false},downloads=0,installs=0,statusCalls=0;
-  const ready=()=>({status:'completed',phase:'ready',running:false,action:'download',version:'2.8.19',total:100,downloaded:100,percent:100,release:{current_version:'2.8.18',latest_version:'2.8.19',device:'macos-arm64',supported:true,available:true,installable:true,notes:'Isolated update fixture. No actual installation.\n'.repeat(35),unsigned_warning:'当前版本未配置代码签名，安装时系统可能显示安全警告。'}});
+  const ready=()=>({status:'completed',phase:'ready',running:false,action:'download',version:'2.8.19',total:100,downloaded:100,percent:100,release:{current_version:'2.8.18',latest_version:'2.8.19',device:'macos-arm64',supported:true,available:true,installable:true,notes:'Isolated update fixture. No actual installation.\n'.repeat(35),unsigned_warning:macApp?'':'当前版本未配置代码签名，安装时系统可能显示安全警告。',...(macApp?{install_method:'mac-app'}:{})}});
   await page.route('**/api/system/update/install/status',route=>{statusCalls++;return route.fulfill({json:task});});
   await page.route('**/api/system/update/download',route=>{
    downloads++;task={...ready(),status:'running',phase:'downloading',running:true,downloaded:23,percent:23};
@@ -16,7 +16,7 @@ const {chromium,webkit}=require('playwright');
   });
   await page.route(/\/api\/system\/update\/install\/ready(?:\?.*)?$/,route=>{
    installs++;assert.equal(new URL(route.request().url()).searchParams.get('version'),'2.8.19');
-   task={...ready(),action:'install',phase:'installer_opened',message:'安装器已打开'};
+   task={...ready(),action:'install',phase:macApp?'restarting':'installer_opened',message:macApp?'正在重启 MailAI…':'安装器已打开'};
    return route.fulfill({json:task});
   });
   await page.route(/\/api\/system\/update(?:\?.*)?$/,async route=>{
@@ -24,7 +24,7 @@ const {chromium,webkit}=require('playwright');
    if(failed)return route.fulfill({status:502,json:{detail:failed==='sources'?'检查更新失败：无法连接更新服务。国内源：安全证书验证失败，请检查系统日期及公司受信任证书；GitHub：HTTP 403':'连接更新服务中断，请重试或点击“查看发布页”手动下载'}});
    return route.fulfill({json:{current_version:'2.8.18',latest_version:available?'2.8.19':'2.8.18',
     device:'macos-arm64',supported:true,available,installable,notes:'Isolated update fixture. No actual installation.\n'.repeat(35),unsigned_warning:'当前版本未配置代码签名，安装时系统可能显示安全警告。',
-    release_url:'https://github.com/langjiahui/MailAI/releases/tag/v2.8.19'}});
+    release_url:'https://github.com/langjiahui/MailAI/releases/tag/v2.8.19',...(macApp?{install_method:'mac-app',unsigned_warning:''}:{})}});
   });
   await page.route('**/api/ui-preferences.js',route=>route.fulfill({contentType:'text/javascript',body:''}));
   await page.route('**/api/ui-preferences',route=>route.fulfill({json:{ok:true}}));
@@ -131,6 +131,27 @@ const {chromium,webkit}=require('playwright');
   assert.equal(installs,1);assert.equal(downloads,1);assert(await page.locator('#update-dialog').isVisible());
   await install.click();await page.waitForFunction(()=>document.getElementById('btn-install-update').textContent==='Reopen Installer');
   assert.equal(installs,2,'A canceled system installer can be reopened without downloading again');
+  await page.keyboard.press('Escape');
+  macApp=true;task={status:'idle',phase:'idle',running:false};
+  await page.evaluate(()=>localStorage.removeItem('mailai-update-deferred'));
+  await page.evaluate(()=>checkForAppUpdate(false));
+  await page.waitForFunction(()=>document.getElementById('companion-update').dataset.phase==='downloading');
+  assert(!await page.locator('#update-dialog').isVisible());
+  assert.equal(downloads,2);assert.equal(installs,2);
+  task=ready();
+  await page.waitForFunction(()=>document.getElementById('companion-update').dataset.phase==='ready');
+  assert.equal(installs,2,'Downloading the app must wait for restart confirmation');
+  await chip.click();
+  await page.locator('#update-dialog').waitFor({state:'visible'});
+  assert.equal(await install.innerText(),'Restart and update');
+  assert.equal(await page.locator('#update-dialog-warning').innerText(),'');
+  await page.evaluate(()=>setI18nLanguage('zh-CN'));
+  assert.equal(await install.innerText(),'重启并更新');
+  await install.click();
+  await page.waitForFunction(()=>document.getElementById('btn-install-update').textContent==='正在重启 MailAI…');
+  assert(await install.isDisabled());assert.equal(installs,3);
+  await page.evaluate(()=>installAppUpdate({preventDefault(){}}));
+  assert.equal(installs,3,'Restart handoff must block duplicate installation');
   assert(statusCalls>0);assert.deepEqual(errors,[]);
   console.log('PASS bilingual checks, defer/continue via pet, uninterrupted mail, preserved progress, explicit install, canceled Installer retry and responsive static/motion states');
  }finally{await browser.close();}

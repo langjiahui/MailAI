@@ -17,10 +17,11 @@ class AccountGuard:
         self._available = threading.Condition(self._lock)
         self._readers = 0
         self._changing = False
+        self._stopping = False
 
     def acquire(self, exclusive=False):
         with self._lock:
-            if self._changing or (exclusive and self._readers):
+            if self._stopping or self._changing or (exclusive and self._readers):
                 return False
             if exclusive:
                 self._changing = True
@@ -38,7 +39,9 @@ class AccountGuard:
 
     def acquire_work(self):
         with self._available:
-            self._available.wait_for(lambda: not self._changing)
+            self._available.wait_for(lambda: self._stopping or not self._changing)
+            if self._stopping:
+                raise AccountBusy("邮件服务正在退出")
             self._readers += 1
 
     def reserve_work(self):
@@ -48,11 +51,21 @@ class AccountGuard:
         This closes the gap in which another request could switch accounts.
         """
         with self._lock:
+            if self._stopping:
+                raise AccountBusy("邮件服务正在退出")
             self._readers += 1
 
     def wait_ready(self):
         with self._available:
-            self._available.wait_for(lambda: not self._changing)
+            self._available.wait_for(lambda: self._stopping or not self._changing)
+            if self._stopping:
+                raise AccountBusy("邮件服务正在退出")
+
+    def set_stopping(self, stopping):
+        """Wake queued work so it cannot keep an updating process alive."""
+        with self._available:
+            self._stopping = stopping
+            self._available.notify_all()
 
 
 guard = AccountGuard()

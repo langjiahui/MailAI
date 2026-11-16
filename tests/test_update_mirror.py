@@ -47,6 +47,10 @@ class MirrorTest(unittest.TestCase):
     def setUp(self):
         route = patch.object(resume.update_routing, 'download_source', return_value='atomgit')
         route.start(); self.addCleanup(route.stop)
+        # These cases exercise legacy installer fallback. The optional signed
+        # app archive endpoint must stay isolated from the public network.
+        signed_source = patch.object(updater, '_read_json_url', side_effect=OSError('offline fixture'))
+        signed_source.start(); self.addCleanup(signed_source.stop)
         with updater.update_routing._lock:
             updater.update_routing._recent.clear()
 

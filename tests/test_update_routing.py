@@ -66,6 +66,19 @@ class RoutingTest(unittest.TestCase):
         self.assertEqual(result['version'],'2.10.0')
         self.assertEqual(result['assets']['macos-arm64']['preferred_source'],'github')
 
+    def test_signed_app_archive_preferred_at_same_version_without_hiding_newer_release(self):
+        with_app = manifest()
+        with_app['assets'][mirror.MAC_APP_DEVICE] = {
+            'url': mirror.GITHUB_RELEASES + '/download/v2.10.0/' + mirror.MAC_APP_NAME,
+            'size': 100000, 'sha256': 'b' * 64,
+        }
+        with patch.object(mirror, 'discover', return_value=with_app):
+            result = routing.discover(lambda: manifest(), '2.9.6', preferred_asset=mirror.MAC_APP_DEVICE)
+        self.assertIn(mirror.MAC_APP_DEVICE, result['assets'])
+        with patch.object(mirror, 'discover', return_value=with_app):
+            result = routing.discover(lambda: manifest('3.0.0'), '2.9.6', preferred_asset=mirror.MAC_APP_DEVICE)
+        self.assertEqual(result['version'], '3.0.0')
+
     def test_blocked_source_does_not_delay_working_source_or_application_exit(self):
         release=threading.Event();entered=threading.Event();finished=threading.Event()
         completed=threading.Event();results=[];errors=[]

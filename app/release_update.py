@@ -28,13 +28,10 @@ log = logging.getLogger(__name__)
 DEFAULT_MANIFEST_URL = (
     "https://github.com/langjiahui/MailAI/releases/latest/download/latest.json"
 )
+SIGNED_MANIFEST_URL = DEFAULT_MANIFEST_URL.replace('latest.json', 'latest.signed.json')
 GITHUB_API_URL = "https://api.github.com/repos/langjiahui/MailAI/releases"
 GITHUB_RELEASE_URL = "https://github.com/langjiahui/MailAI/releases"
-GITHUB_ASSET_NAMES = {
-    "windows-x64": "MailAI-Windows-x64-Setup.exe",
-    "macos-arm64": "MailAI-macOS-arm64.pkg",
-    "linux-x64": "MailAI-Linux-x64.AppImage",
-}
+GITHUB_ASSET_NAMES = update_mirror.RELEASE_ASSETS
 _NETWORK_ERRORS = (OSError, http.client.HTTPException)
 MANIFEST_MAX_BYTES = 1024 * 1024
 DOWNLOAD_MAX_BYTES = 500 * 1024 * 1024
@@ -193,7 +190,24 @@ def _github_download_fallback(asset: dict) -> dict:
     return {**asset, "url": candidate["api_url"]}
 
 
-def evaluate_manifest(manifest: dict, *, device: str | None = None) -> dict:
+def _official_github_manifest():
+    from .update_trust import verify
+    try:
+        envelope = _read_json_url(SIGNED_MANIFEST_URL, timeout=3)
+    except _NETWORK_ERRORS:
+        manifest = _read_manifest(DEFAULT_MANIFEST_URL)
+        # An unsigned listing may still offer the existing system installer.
+        assets = manifest.get('assets')
+        if not isinstance(assets, dict):
+            raise ValueError('更新清单缺少安装包列表')
+        return {**manifest, 'assets': {
+            device: item for device, item in assets.items()
+            if device != update_mirror.MAC_APP_DEVICE
+        }}
+    return verify(envelope)
+
+
+def evaluate_manifest(manifest: dict, *, device: str | None = None, allow_app=False) -> dict:
     installed = current_version()
     latest = str(manifest.get("version") or "").strip().lstrip("v")
     installed_tuple = _version_tuple(installed)
@@ -202,7 +216,11 @@ def evaluate_manifest(manifest: dict, *, device: str | None = None) -> dict:
     assets = manifest.get("assets")
     if not isinstance(assets, dict):
         raise ValueError("更新清单缺少安装包列表")
-    raw_asset = assets.get(device)
+    app_update = False
+    if allow_app and device == "macos-arm64" and FROZEN and update_mirror.MAC_APP_DEVICE in assets:
+        from .macos_app_update import eligible
+        app_update = eligible()
+    raw_asset = assets.get(update_mirror.MAC_APP_DEVICE if app_update else device)
     supported = isinstance(raw_asset, dict)
     asset = None
     if supported:
@@ -210,7 +228,7 @@ def evaluate_manifest(manifest: dict, *, device: str | None = None) -> dict:
         digest = str(raw_asset.get("sha256") or "").strip().lower()
         if not re.fullmatch(r"[a-f0-9]{64}", digest):
             raise ValueError("安装包缺少有效 SHA-256")
-        expected_suffix = ".exe" if device == "windows-x64" else ".pkg" if device == "macos-arm64" else ""
+        expected_suffix = ".zip" if app_update else ".exe" if device == "windows-x64" else ".pkg" if device == "macos-arm64" else ""
         if expected_suffix and not urllib.parse.urlparse(url).path.lower().endswith(expected_suffix):
             raise ValueError(f"{device} 安装包格式不正确")
         asset = {"url": url, "sha256": digest, "size": int(raw_asset.get("size") or 0)}
@@ -226,7 +244,7 @@ def evaluate_manifest(manifest: dict, *, device: str | None = None) -> dict:
             if not re.fullmatch(re.escape(GITHUB_API_URL) + r"/assets/[1-9][0-9]*", api_url):
                 raise ValueError("备用下载地址不属于官方仓库")
             asset["api_url"] = api_url
-    return {
+    result = {
         "current_version": installed,
         "latest_version": latest,
         "device": device,
@@ -239,6 +257,9 @@ def evaluate_manifest(manifest: dict, *, device: str | None = None) -> dict:
         "asset": asset,
         "unsigned_warning": "当前版本未配置代码签名，安装时系统可能显示安全警告。",
     }
+    if app_update:
+        result.update(install_method="mac-app", unsigned_warning="")
+    return result
 
 
 def check(*, force: bool = False) -> dict:
@@ -256,10 +277,17 @@ def check(*, force: bool = False) -> dict:
             return dict(cached)
     manifest_url = os.getenv("MAILAI_UPDATE_MANIFEST_URL", DEFAULT_MANIFEST_URL).strip()
     if manifest_url == DEFAULT_MANIFEST_URL:
-        manifest = update_routing.discover(lambda: _read_manifest(manifest_url), current_version())
+        mac_desktop = device_key() == "macos-arm64" and FROZEN
+        loader = _official_github_manifest if mac_desktop else (
+            lambda: _read_manifest(manifest_url)
+        )
+        if mac_desktop:
+            manifest = update_routing.discover(loader, current_version(), preferred_asset=update_mirror.MAC_APP_DEVICE)
+        else:
+            manifest = update_routing.discover(loader, current_version())
     else:
         manifest = _read_manifest(manifest_url)
-    result = evaluate_manifest(manifest)
+    result = evaluate_manifest(manifest, allow_app=manifest_url == DEFAULT_MANIFEST_URL)
     with _lock:
         _cache.update(checked_at=now, result=dict(result))
     return result
@@ -360,6 +388,17 @@ def _download_fresh(asset: dict, target: Path, progress=None) -> None:
             temporary.unlink()
 
 
+def _download_path(release: dict) -> Path:
+    suffix = ".zip" if release.get("install_method") == "mac-app" else ".exe" if release["device"] == "windows-x64" else ".pkg"
+    return USER_DIR / "updates" / f"MailAI-{release['latest_version']}-{release['device']}{suffix}"
+
+
+def _ready_message(release):
+    if release.get("install_method") == "mac-app":
+        return "更新已就绪，可重启并更新。"
+    return "安装包已就绪，点击立即安装后才会启动安装器。"
+
+
 def download_and_launch(progress=None, *, download_only=False, prepared_only=False, expected_version=None) -> dict:
     if progress:
         progress(phase="checking", downloaded=0, total=0, speed_bps=0,
@@ -370,10 +409,9 @@ def download_and_launch(progress=None, *, download_only=False, prepared_only=Fal
     if not result.get("installable"):
         raise ValueError("当前运行方式不支持自动启动安装器")
     asset = result["asset"]
-    suffix = ".exe" if result["device"] == "windows-x64" else ".pkg"
     update_dir = USER_DIR / "updates"
     update_dir.mkdir(parents=True, exist_ok=True)
-    target = update_dir / f"MailAI-{result['latest_version']}-{result['device']}{suffix}"
+    target = _download_path(result)
     if progress:
         progress(phase="checking", version=result["latest_version"], release=result,
                  message="正在确认最新版本")
@@ -383,6 +421,8 @@ def download_and_launch(progress=None, *, download_only=False, prepared_only=Fal
         ready = _read_ready_update()
         if (not ready or ready.get("version") != result["latest_version"]
                 or ready["release"].get("device") != result["device"]
+                or ready["release"].get("install_method") != result.get("install_method")
+                or ready["release"]["asset"].get("sha256") != asset["sha256"]
                 or (expected_version and expected_version != result["latest_version"])):
             raise ValueError("更新信息已变化，请重新检查并下载更新。")
         if not target.is_file():
@@ -402,14 +442,20 @@ def download_and_launch(progress=None, *, download_only=False, prepared_only=Fal
     _remember_ready_update(result)
     # Old installers are never reusable — prune them so the folder cannot pile up.
     for stale in update_dir.glob("MailAI-*"):
-        if stale != target and stale.suffix.lower() in {".pkg", ".exe"} and stale.is_file():
+        if stale != target and stale.suffix.lower() in {".pkg", ".exe", ".zip"} and stale.is_file():
             try:
                 stale.unlink()
             except OSError:
                 log.warning("无法清理旧安装包 %s", stale)
     if download_only:
         return {"ok": True, "version": result["latest_version"], "release": result,
-                "phase": "ready", "message": "安装包已就绪，点击立即安装后才会启动安装器。"}
+                "phase": "ready", "message": _ready_message(result)}
+    if result.get("install_method") == "mac-app":
+        from .macos_app_update import install
+        if progress:
+            progress(phase="verifying", message="正在校验安装包")
+        install(target, result["latest_version"])
+        return {"ok": True, "version": result["latest_version"], "phase": "restarting"}
     if progress:
         progress(phase="launching", downloaded=int(asset.get("size") or 0),
                  total=int(asset.get("size") or 0), speed_bps=0, message="正在启动安装程序")
@@ -531,8 +577,7 @@ def _remember_ready_update(release: dict) -> None:
     path = _ready_update_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     if not release["asset"].get("size"):
-        suffix = ".exe" if release["device"] == "windows-x64" else ".pkg"
-        target = path.parent / f"MailAI-{release['latest_version']}-{release['device']}{suffix}"
+        target = _download_path(release)
         release = {**release, "asset": {**release["asset"], "size": target.stat().st_size}}
     temporary = path.with_suffix(".tmp")
     temporary.write_text(json.dumps({"version": release["latest_version"], "release": release}), encoding="utf-8")
@@ -556,8 +601,7 @@ def _read_ready_update() -> dict | None:
         size = int(release["asset"]["size"])
         if not 0 < size <= DOWNLOAD_MAX_BYTES:
             return None
-        suffix = ".exe" if device == "windows-x64" else ".pkg"
-        target = USER_DIR / "updates" / f"MailAI-{version}-{device}{suffix}"
+        target = _download_path(release)
         if target.is_file() and target.stat().st_size == size:
             return saved
     except (OSError, ValueError, TypeError, KeyError, AttributeError):
@@ -574,7 +618,7 @@ def install_status() -> dict:
             size = int(ready["release"]["asset"]["size"])
             return {**state, **ready, "status": "completed", "phase": "ready", "percent": 100,
                     "downloaded": size, "total": size, "action": "download",
-                    "message": "安装包已就绪，点击立即安装后才会启动安装器。"}
+                    "message": _ready_message(ready["release"])}
     return state
 
 
@@ -600,7 +644,8 @@ def start_install(*, download_only=False, prepared_only=False, expected_version=
                 result = download_and_launch(progress=report)
             _set_install_state(
                 status="completed", phase=result.get("phase") or "launched", running=False, speed_bps=0,
-                message=result.get("message") or "安装器已启动", error="",
+                message=result.get("message") or ("正在重启 MailAI…" if result.get("phase") == "restarting" else "安装器已启动"),
+                error="",
                 version=result.get("version") or "",
             )
         except Exception as exc:

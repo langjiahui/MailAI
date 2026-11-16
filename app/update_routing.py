@@ -76,7 +76,7 @@ def _normalize(manifest, source):
     if not isinstance(original_assets, dict):
         raise ValueError('Official update assets are missing')
     assets = {}
-    for device, name in update_mirror.NAMES.items():
+    for device, name in update_mirror.RELEASE_ASSETS.items():
         item = original_assets.get(device)
         if item is None:
             continue
@@ -91,7 +91,7 @@ def _normalize(manifest, source):
             'release_url': update_mirror.ATOM_RELEASES if source == 'atomgit' else original_release}
 
 
-def discover(github_loader, installed_version):
+def discover(github_loader, installed_version, *, preferred_asset=None):
     # Both loaders read only our two public repositories. No GeoIP or telemetry.
     loaders = {'atomgit': update_mirror.discover, 'github': github_loader}
     attempts = {source: _start('manifest:' + source,
@@ -128,8 +128,11 @@ def discover(github_loader, installed_version):
         if '更新清单校验失败' in reasons.values():
             raise ValueError('更新清单校验失败，已停止更新。' + failures)
         raise OSError('无法连接更新服务。' + failures)
-    source, (manifest, _elapsed) = max(candidates.items(),
-        key=lambda pair: (_version(pair[1][0]['version']), -pair[1][1]))
+    def priority(item):
+        manifest, elapsed = item[1]
+        return _version(manifest['version']), preferred_asset in manifest['assets'], -elapsed
+
+    source, (manifest, _elapsed) = max(candidates.items(), key=priority)
     log.info('更新清单自动选路：%s', source)
     return manifest
 

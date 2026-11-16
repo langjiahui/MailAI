@@ -841,6 +841,8 @@ def run_macos_window(asgi_app, preferred_port: int = 0,
         runtime.window = window
         window.events.before_load += native_menu.web_loading
         window.events.loaded += native_menu.web_loaded
+        from .macos_app_update import confirm_startup
+        window.events.loaded += lambda: confirm_startup(window)
         window.events.before_show += desktop_api._prepare_window
         window.events.closing += runtime.handle_closing
         window.events.minimized += lambda: runtime.set_window_foreground(False)

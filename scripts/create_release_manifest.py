@@ -50,6 +50,8 @@ def main():
         "macos-arm64": "MailAI-macOS-arm64.pkg",
         "linux-x64": "MailAI-Linux-x64.AppImage",
     }
+    if (args.assets / "MailAI-macOS.zip").is_file():
+        names["macos-arm64-app"] = "MailAI-macOS.zip"
     assets = {}
     for device, name in names.items():
         path = args.assets / name
