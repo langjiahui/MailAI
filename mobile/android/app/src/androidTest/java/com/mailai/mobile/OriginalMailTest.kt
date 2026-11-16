@@ -140,6 +140,103 @@ class OriginalMailTest {
     }
 
     @Test
+    fun singleMailOutputPreviewsCopiesAndOpensSystemPrint() {
+        device.wakeUp()
+        device.executeShellCommand("wm dismiss-keyguard")
+        if (android.os.Build.VERSION.SDK_INT >= 33)
+            device.executeShellCommand(
+                "pm grant ${context.packageName} android.permission.POST_NOTIFICATIONS"
+            )
+        val (scenario, vm) = launch()
+        try {
+            compose.waitUntil(10000) {
+                runCatching {
+                        compose.onAllNodesWithText("多人收件人与原版邮件").fetchSemanticsNodes().isNotEmpty()
+                    }
+                    .getOrDefault(false)
+            }
+            compose.onNodeWithText("多人收件人与原版邮件").performClick()
+            compose.onNodeWithContentDescription("详情").performClick()
+            compose.onNodeWithText("分享").performClick()
+            compose.onNodeWithText("分享邮件").assertIsDisplayed()
+            val pdfs = java.io.File(context.cacheDir, "mail-output")
+            val before = pdfs.listFiles().orEmpty().toSet()
+            compose.onNodeWithText("分享 PDF").performClick()
+            compose.waitUntil(10000) {
+                pdfs.listFiles().orEmpty().any { it !in before && it.length() > 5 }
+            }
+            val pdf = pdfs.listFiles().orEmpty().first { it !in before && it.length() > 5 }
+            pdf.inputStream().use {
+                val signature = ByteArray(5)
+                assertEquals(5, it.read(signature))
+                assertEquals("%PDF-", String(signature, Charsets.US_ASCII))
+            }
+            assertTrue(
+                "Android's share chooser must open directly",
+                device.wait(
+                    Until.hasObject(By.pkg("com.android.intentresolver").depth(0)),
+                    10000,
+                ) || device.hasObject(By.pkg("android").depth(0)),
+            )
+            device.pressBack()
+            compose.onNodeWithText("文本").performClick()
+            compose.onNodeWithText("复制文本").performClick()
+            compose.onNodeWithText("已复制邮件文本").assertExists()
+            val copied =
+                context
+                    .getSystemService(android.content.ClipboardManager::class.java)
+                    .primaryClip!!
+                    .getItemAt(0)
+                    .text
+                    .toString()
+            assertTrue(copied.contains("多人收件人与原版邮件"))
+            assertTrue(copied.contains("接口联调：已完成"))
+            assertTrue(copied.contains("说明.pdf"))
+            assertFalse(copied.contains("SCRIPT_EXECUTED"))
+            compose.onNodeWithText("关闭").performClick()
+            compose.onNodeWithContentDescription("详情").performClick()
+            compose.onNodeWithText("打印").performClick()
+            compose.onNodeWithText("打印邮件").assertIsDisplayed()
+            compose.onNodeWithText("分享 PDF").assertDoesNotExist()
+            compose.onNodeWithText("另存为 PDF").assertDoesNotExist()
+            compose.onNodeWithText("原始邮件").assertDoesNotExist()
+            context
+                .getSystemService(android.content.ClipboardManager::class.java)
+                .clearPrimaryClip()
+            compose.onNodeWithTag("mail-output-preview").assertIsDisplayed()
+            assertTrue(
+                "The output WebView must render the email headers",
+                device.wait(
+                    Until.hasObject(
+                        By.clazz("android.webkit.WebView").hasDescendant(By.textContains("发件人"))
+                    ),
+                    10000,
+                ),
+            )
+            capture("single-mail-output")
+            compose.onNodeWithText("打印").assertIsDisplayed().performClick()
+            assertTrue(
+                "The system print UI must open",
+                device.wait(Until.hasObject(By.pkg("com.android.printspooler")), 15000),
+            )
+            device.waitForIdle(1500)
+            assertTrue(
+                device.takeScreenshot(
+                    File(context.getExternalFilesDir(null), "single-mail-system-print.png")
+                )
+            )
+            device.pressBack()
+            compose.waitUntil(10000) {
+                compose.onAllNodesWithText("打印邮件").fetchSemanticsNodes().isNotEmpty()
+            }
+            compose.onNodeWithText("关闭").assertIsDisplayed().performClick()
+            assertFalse(vm.busy)
+        } finally {
+            cleanup(scenario)
+        }
+    }
+
+    @Test
     fun encodedRecipientsCollapseAndOriginalHtmlRendersWithoutScripts() {
         val (scenario, vm) = launch()
         try {

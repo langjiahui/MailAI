@@ -851,6 +851,22 @@ class MailViewModel(app: Application, private val savedState: SavedStateHandle) 
         }
     }
 
+    fun originalForOutput(
+        a: Account,
+        item: MailItem,
+        failed: (String) -> Unit = {},
+        ready: (java.io.File) -> Unit,
+    ) {
+        run(
+            "正在准备原始邮件…",
+            network = true,
+            failureMessage = { failure -> message(failure).also(failed) },
+        ) { operation, _ ->
+            if (!repo.originalFile(a, item).isFile) requireOnline()
+            ready(repo.exportOriginal(a, item, operation))
+        }
+    }
+
     fun showMessage(value: String, failed: Boolean = false) {
         if (busy) return
         status = value

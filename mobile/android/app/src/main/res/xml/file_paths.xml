@@ -1,1 +1,1 @@
-<paths><files-path name="attachments" path="accounts/" /><files-path name="updates" path="updates/" /></paths>
+<paths><files-path name="attachments" path="accounts/" /><files-path name="updates" path="updates/" /><cache-path name="mail-output" path="mail-output/" /></paths>

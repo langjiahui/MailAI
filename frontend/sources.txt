@@ -10,6 +10,7 @@ interaction-core.js
 energy-ui.js
 mailai-state.js
 app.js
+mail-output.js
 mailbox-store.js
 reading-start.js
 conversation-progress.js

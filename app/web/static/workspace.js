@@ -680,6 +680,7 @@ function addReadingActions(force = false) {
       const button = host.querySelector(selector);
       if (button) secondary.appendChild(button);
     }
+    secondary.insertAdjacentHTML('beforeend', renderMailOutputButtons());
     morePanel.querySelector('.reading-secondary-actions')?.remove();
     morePanel.prepend(secondary);
     morePanel.querySelector('[data-reading-action="delete-current"]')?.remove();

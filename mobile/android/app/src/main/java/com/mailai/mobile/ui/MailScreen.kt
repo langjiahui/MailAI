@@ -537,6 +537,9 @@ private fun Reader(vm: MailViewModel, back: () -> Unit) {
     SideEffect { if (vm.selected != null) lastMail = vm.selected }
     val readingScroll = rememberSaveable(m.key, saver = ScrollState.Saver) { ScrollState(0) }
     var details by remember(m.key) { mutableStateOf(false) }
+    var output by remember(m.key) { mutableStateOf<String?>(null) }
+    var outputAccount by remember(m.key) { mutableStateOf<Account?>(null) }
+    var outputMail by remember(m.key) { mutableStateOf<MailItem?>(null) }
     var attachmentList by remember(m.key) { mutableStateOf(false) }
     var link by remember { mutableStateOf<String?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -545,7 +548,21 @@ private fun Reader(vm: MailViewModel, back: () -> Unit) {
         m.attachments.filter {
             it.contentId.isBlank() || !it.type.startsWith("image/", true) || it.local.isBlank()
         }
-    if (details) MailPeopleDialog(vm, m) { details = false }
+    if (details)
+        MailPeopleDialog(
+            vm,
+            m,
+            onOutput = { mode ->
+                outputAccount = vm.account
+                outputMail = m
+                details = false
+                output = mode
+            },
+        ) {
+            details = false
+        }
+    if (output != null && outputAccount != null && outputMail != null)
+        MailOutputSheet(vm, outputAccount!!, outputMail!!, output!!) { output = null }
     if (attachmentList)
         MailBottomSheet(title = "附件 · ${files.size}", onDismiss = { attachmentList = false }) {
             Column(Modifier.fillMaxWidth().testTag("attachment-sheet")) {

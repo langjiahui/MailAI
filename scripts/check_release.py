@@ -45,6 +45,8 @@ TESTS = (
     'test_completion_features.py',
     'test_productivity.py', 'test_productivity_lifecycle.py', 'test_oauth_mail.py', 'test_mail_idle.py', 'test_attachment_text.py',
     'test_cc_reading.py',
+    'test_mail_output.py',
+    'test_mail_output_native.py',
     'test_trash_purge.py',
     'test_model_providers.py',
     'test_llm_visible_output.py',
