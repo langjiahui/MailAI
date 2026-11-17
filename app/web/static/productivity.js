@@ -321,7 +321,7 @@
     searchBtn.type = "button";
     searchBtn.className = "search-filter-button";
     searchBtn.innerHTML =
-      '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5.5h5m4 0h5M3 10h2m4 0h8M3 14.5h8m4 0h2"/><circle cx="10" cy="5.5" r="2"/><circle cx="7" cy="10" r="2"/><circle cx="13" cy="14.5" r="2"/></svg>';
+      '<svg viewBox="0 0 20 20" aria-hidden="true"><g><path d="M3 5.5h5m4 0h5"/><circle cx="10" cy="5.5" r="2"/></g><g><path d="M3 10h2m4 0h8"/><circle cx="7" cy="10" r="2"/></g><g><path d="M3 14.5h8m4 0h2"/><circle cx="13" cy="14.5" r="2"/></g></svg>';
     mailaiBindUI(searchBtn, "title", () => (mailaiText("高级搜索")));
     searchBtn.setAttribute("aria-haspopup", "dialog");
     searchBtn.setAttribute("aria-controls", "productivity-dialog");

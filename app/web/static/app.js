@@ -4009,7 +4009,7 @@ function renderMailOutputButtons(reference) {
     ? `class="action-btn compact" data-mail-output-id="${Number(reference.id)}" data-mail-output-source="${reference.source === 'sent' ? 'sent' : 'email'}" data-mail-output-account="${esc(reference.accountId || '')}"`
     : '';
   return `<button type="button" data-mail-output="print" ${attributes}>
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8V3h10v5M7 17H4a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-3M7 14h10v7H7zM17 11h.01"/></svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8V3h10v5M7 17H4a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-3M17 11h.01"/><path class="hover-icon-part" d="M7 14h10v7H7z"/></svg>
       <span data-i18n="mailOutput.print">${esc(mailaiText('打印邮件'))}</span>
     </button><button type="button" data-mail-output="share" ${attributes}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m9 10 6-4M9 14l6 4"/></svg>
@@ -6995,9 +6995,9 @@ function renderReadingPane(e) {
   // 操作按钮
   let replyActions = "<button type=\"button\" class=\"btn-ghost mobile-back\" onclick=\"closeReadingPane()\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m10 5-7 7 7 7M3 12h18\"/></svg><span><span data-i18n=\"ui.e9d5ca6c1406\">返回列表</span></span></button>";
   replyActions += `<div class="reading-reply-group" role="toolbar" aria-label="邮件回复操作" data-i18n-aria="ui.28acc057be3f">
-    <button type="button" class="btn-ghost reading-icon-action reading-primary-action" aria-label="回复" data-tooltip="回复" data-mail-action="reply" onclick="composeFromEmail('reply')" data-i18n-aria="ui.cf945e21ddef" data-i18n-tooltip="ui.cf945e21ddef"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6-6 6 6 6M4 12h9c4 0 6.5 2 7 6"/></svg><span class="reading-action-label"><span data-i18n="ui.cf945e21ddef">回复</span></span></button>
-    <button type="button" class="btn-ghost reading-icon-action" aria-label="回复全部" data-tooltip="回复全部" onclick="composeFromEmail('reply_all')" data-i18n-aria="ui.6053deabe328" data-i18n-tooltip="ui.6053deabe328"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6-6 6 6 6m5-12-6 6 6 6M9 12h5c3.5 0 6 2 6.5 6"/></svg><span class="reading-action-label"><span data-i18n="ui.6053deabe328">回复全部</span></span></button>
-    <button type="button" class="btn-ghost reading-icon-action" aria-label="转发" data-tooltip="转发" onclick="composeFromEmail('forward')" data-i18n-aria="ui.02107ba378e2" data-i18n-tooltip="ui.02107ba378e2"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6 6 6-6 6m6-6h-9c-4 0-6.5 2-7 6"/></svg><span class="reading-action-label"><span data-i18n="ui.02107ba378e2">转发</span></span></button>
+    <button type="button" class="btn-ghost reading-icon-action reading-primary-action reading-reply-left" aria-label="回复" data-tooltip="回复" data-mail-action="reply" onclick="composeFromEmail('reply')" data-i18n-aria="ui.cf945e21ddef" data-i18n-tooltip="ui.cf945e21ddef"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6-6 6 6 6M4 12h9c4 0 6.5 2 7 6"/></svg><span class="reading-action-label"><span data-i18n="ui.cf945e21ddef">回复</span></span></button>
+    <button type="button" class="btn-ghost reading-icon-action reading-reply-left" aria-label="回复全部" data-tooltip="回复全部" onclick="composeFromEmail('reply_all')" data-i18n-aria="ui.6053deabe328" data-i18n-tooltip="ui.6053deabe328"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6-6 6 6 6m5-12-6 6 6 6M9 12h5c3.5 0 6 2 6.5 6"/></svg><span class="reading-action-label"><span data-i18n="ui.6053deabe328">回复全部</span></span></button>
+    <button type="button" class="btn-ghost reading-icon-action reading-forward" aria-label="转发" data-tooltip="转发" onclick="composeFromEmail('forward')" data-i18n-aria="ui.02107ba378e2" data-i18n-tooltip="ui.02107ba378e2"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6 6 6-6 6m6-6h-9c-4 0-6.5 2-7 6"/></svg><span class="reading-action-label"><span data-i18n="ui.02107ba378e2">转发</span></span></button>
     <span class="reading-reply-divider" aria-hidden="true"></span>
     <button type="button" class="btn-ghost reading-icon-action btn-correspondence" aria-label="查看往来邮件" data-tooltip="查看往来邮件" onclick="openCorrespondence()" data-i18n-aria="ui.5417c13433ae" data-i18n-tooltip="ui.5417c13433ae"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h15m-4-4 4 4-4 4M20 17H5m4-4-4 4 4 4"/></svg><span class="reading-action-label"><span data-i18n="ui.d11fbf68d8e2">往来</span></span></button>
   </div>`;
@@ -7005,7 +7005,7 @@ function renderReadingPane(e) {
   const restoreIcon = actionIcon('M4 11a8 8 0 1 1 2 7M4 5v6h6');
   const checkIcon = actionIcon('M4 12l5 5L20 6');
   const shieldIcon = actionIcon('M12 2 4 5v6c0 5 3.5 8.5 8 11 4.5-2.5 8-6 8-11V5zM9 12l2 2 4-4');
-  const flagIcon = actionIcon('M5 21V4m0 1c3-2 5 2 8 0s5-1 6 0v10c-3-1-4-2-7 0s-5-2-7 0');
+  const flagIcon = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path class="hover-icon-part" d="M5 5c3-2 5 2 8 0s5-1 6 0v10c-3-1-4-2-7 0s-5-2-7 0"/></svg>`;
   let decisionActions = '';
   if (e.status === 'quarantine' || e.status === 'spam') {
     decisionActions += `<button class="btn-success" onclick="restoreEmail(${e.id}, this)">${restoreIcon}<span><span data-i18n="ui.8541ab93c902">恢复回收件箱</span></span></button>`;
@@ -7061,7 +7061,7 @@ function renderReadingPane(e) {
           ${mailSummaryToolbarButton(e)}
           <details class="reading-more-actions">
             <summary aria-label="更多邮件操作" data-i18n-aria="ui.e8ee3628b5cc">
-              <svg class="reading-more-symbol" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h.01M10 10h.01M16 10h.01" stroke-width="3"/></svg>
+              <svg class="reading-more-symbol" viewBox="0 0 20 20" aria-hidden="true"><g stroke-width="3"><path d="M4 10h.01"/><path d="M10 10h.01"/><path d="M16 10h.01"/></g></svg>
               <span><span data-i18n="ui.38844b135cf7">更多</span></span>
               <svg class="reading-more-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 7.5 4.5 4.5 4.5-4.5"/></svg>
             </summary>
@@ -9740,6 +9740,7 @@ document.getElementById('assistant-history-list').addEventListener('click', even
 const assistantInput = document.getElementById('assistant-input');
 function resizeAssistantInput() {
   const minimum = 36, maximum = Math.min(128, Math.max(88, Math.round(window.innerHeight * .18)));
+  assistantInput.toggleAttribute('data-has-question', Boolean(assistantInput.value.trim()));
   assistantInput.style.height = 'auto';
   const height = Math.max(minimum, Math.min(assistantInput.scrollHeight, maximum));
   assistantInput.style.height = `${height}px`;

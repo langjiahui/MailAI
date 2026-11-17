@@ -99,7 +99,7 @@ html[data-reward-theme] {
   --control-on-accent:var(--reward-on-accent);
 }
 html[data-theme][data-theme][data-theme] body :is(button.primary-action,button.action-primary,button.btn-primary,button.onboarding-submit,
-  #btn-compose,#btn-send-mail,#assistant-send,#task-planner #plan-save,#save-reminder,
+  #btn-compose,#btn-send-mail,#task-planner #plan-save,#save-reminder,
   .library-dialog button[type="submit"],.contact-new-button,#group-add-members,#todo-complete-selected,
   .compose-ai-main:not(.compose-perch),.preflight-confirm-send,[data-action-confirm]),
 html[data-theme][data-theme][data-theme] body .special-mail-actions #btn-edit-special {
@@ -108,14 +108,14 @@ html[data-theme][data-theme][data-theme] body .special-mail-actions #btn-edit-sp
   border-color:var(--control-accent)!important;
 }
 html[data-theme][data-theme][data-theme] body :is(button.primary-action,button.action-primary,button.btn-primary,button.onboarding-submit,
-  #btn-compose,#btn-send-mail,#assistant-send,#task-planner #plan-save,#save-reminder,
+  #btn-compose,#btn-send-mail,#task-planner #plan-save,#save-reminder,
   .library-dialog button[type="submit"],.contact-new-button,#group-add-members,#todo-complete-selected,
   .compose-ai-main:not(.compose-perch),.preflight-confirm-send,[data-action-confirm]) :is(span,svg),
 html[data-theme][data-theme][data-theme] body .special-mail-actions #btn-edit-special :is(span,svg) {
   color:inherit!important;
 }
 html[data-theme][data-theme][data-theme] body :is(button.primary-action,button.action-primary,button.btn-primary,button.onboarding-submit,
-  #btn-compose,#btn-send-mail,#assistant-send,#task-planner #plan-save,#save-reminder,
+  #btn-compose,#btn-send-mail,#task-planner #plan-save,#save-reminder,
   .library-dialog button[type="submit"],.contact-new-button,#group-add-members,#todo-complete-selected,
   .compose-ai-main:not(.compose-perch),.preflight-confirm-send,[data-action-confirm]):hover:not(:disabled),
 html[data-theme][data-theme][data-theme] body .special-mail-actions #btn-edit-special:hover:not(:disabled) {
@@ -128,9 +128,35 @@ html[data-theme][data-theme][data-theme] body :is(button.primary-action,button.a
 html[data-theme][data-theme][data-theme] body .special-mail-actions #btn-edit-special:focus-visible {
   outline:2px solid var(--control-accent)!important; outline-offset:3px;
 }
-/* Line icons inherit the action's foreground rather than a theme accent. */
-html[data-theme][data-theme][data-theme] body .special-mail-actions #btn-edit-special svg,
-html[data-theme][data-theme][data-theme] body #assistant-send svg path { stroke:currentColor!important; }
+html[data-theme][data-theme][data-theme] body .special-mail-actions #btn-edit-special svg { stroke:currentColor!important; }
+/* A staged image or attachment already makes the question field optional. */
+#assistant-form:has(#assistant-input:is([data-has-question],:optional)) {
+  --assistant-send-ink:var(--control-accent);
+  --assistant-send-stroke:2.1;
+  --assistant-send-hover-ink:color-mix(in srgb,var(--control-accent) 76%,var(--desk-ink));
+  --assistant-send-hover-stroke:2.45;
+}
+html[data-theme][data-theme][data-theme] body #assistant-send {
+  background:transparent!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+  color:var(--assistant-send-ink,color-mix(in srgb,var(--desk-muted) 78%,var(--desk-muted-surface)))!important;
+  transform:none;
+  filter:none;
+  transition:color 140ms ease;
+}
+html[data-theme][data-theme][data-theme] body #assistant-send svg path {
+  stroke:currentColor!important;
+  stroke-width:var(--assistant-send-stroke,1.65);
+  transition:stroke-width 140ms ease;
+}
+@media (hover:hover) and (pointer:fine) {
+  #assistant-send:hover:not(:disabled,[aria-disabled="true"]) {
+    --assistant-send-ink:var(--assistant-send-hover-ink,var(--desk-muted));
+    --assistant-send-stroke:var(--assistant-send-hover-stroke,1.95);
+    cursor:pointer;
+  }
+}
 /* Secondary toolbar actions use surface ink in every state. The legacy color
  * bridge can mistake a green hover fill for a primary action and assign dark
  * on-accent text to a dark surface. Keep this pair explicit above that cascade. */
