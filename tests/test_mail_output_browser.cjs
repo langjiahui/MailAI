@@ -120,8 +120,9 @@ const {chromium,webkit} = require('playwright');
       const idle=await state();
       assert.ok(idle.hidden,label+': scrollbar hides after inactivity');
       assert.ok(Math.abs(idle.width-before.width)<=1,label+': hiding the scrollbar keeps the text width stable');
+      // GTK can animate wheel scrolling; use the settled position for reversal.
       await page.mouse.wheel(0,-240);
-      await page.waitForFunction(top=>document.querySelector('#mail-output-preview').contentDocument.scrollingElement.scrollTop<top,active.top);
+      await page.waitForFunction(top=>document.querySelector('#mail-output-preview').contentDocument.scrollingElement.scrollTop<top,idle.top);
       const start=await state();
       const thumb=page.locator('#mail-output-preview-host .mail-output-scrollbar i');
       const thumbBox=await thumb.boundingBox();
