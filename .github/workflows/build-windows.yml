@@ -1,42 +1,46 @@
-name: Build Windows release
-
+name: Diagnose WebKit preview scrolling
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: Release version, for example 1.2.0
+        description: Diagnostic reference version (no publication)
         required: true
-        default: 1.0.12
-
+        default: 4.7.5
+permissions:
+  contents: read
 jobs:
-  windows-x64:
-    runs-on: windows-2022
+  linux-scroll-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    container:
+      image: mcr.microsoft.com/playwright@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
+      options: --ipc=host
     env:
-      CI: "1"
+      CI_BROWSER_IMAGE_VERSION: 1.63.0
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.13"
-      - uses: actions/setup-node@v5
-        with:
-          node-version: "22"
-      - name: Install Inno Setup
-        shell: pwsh
-        run: choco install innosetup --no-progress -y
-      - name: Build and verify executable
-        shell: pwsh
+      - uses: ./.github/actions/browser-environment
+      - name: Probe isolated synthetic previews
+        shell: bash
         run: |
-          "${{ inputs.version }}" | Set-Content VERSION -NoNewline
-          $env:MAILAI_RELEASE_VERSION = "${{ inputs.version }}"
-          cmd /c scripts\build_windows.bat
+          python tests/workspace_preview.py > /tmp/mailai-debug-fixture.log 2>&1 &
+          preview_pid=$!
+          trap 'kill "$preview_pid" || true' EXIT
+          python - <<'PY'
+          import time, urllib.request
+          for _ in range(300):
+              try:
+                  with urllib.request.urlopen('http://127.0.0.1:18795/api/health',timeout=1):
+                      break
+              except OSError:
+                  time.sleep(.1)
+          else:
+              raise RuntimeError('Isolated fixture startup timed out')
+          PY
+          node tests/mail-output-linux-debug.cjs
       - uses: actions/upload-artifact@v5
+        if: always()
         with:
-          name: MailAI-Windows-x64
-          path: |
-            dist/windows/MailAI/MailAI.exe
-            dist/windows/MailAI/MailAI.exe.sha256
-            dist/MailAI-Windows-x64-portable.zip
-            dist/MailAI-Windows-x64-Setup.exe
-            dist/MailAI-Windows-x64-Setup.exe.sha256
-          if-no-files-found: error
+          name: synthetic-preview-diagnostics
+          path: build/mail-output-debug/
+          retention-days: 3
