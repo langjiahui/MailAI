@@ -3,7 +3,7 @@ const fs=require('fs');
 (async()=>{
  const browser=await webkit.launch({headless:true});
  fs.mkdirSync('build/mail-output-debug',{recursive:true});
- for(const variant of ['overscroll-auto','outer-contain']]){
+ for(const variant of ['overscroll-auto','outer-contain']){
   const page=await browser.newPage({viewport:{width:1440,height:1000},reducedMotion:'reduce'});
   await page.goto('http://127.0.0.1:18795');
   await page.locator('#email-list .email-item').first().click();await page.waitForFunction(()=>!!selectedEmailDetail);
