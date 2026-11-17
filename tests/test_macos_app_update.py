@@ -30,6 +30,7 @@ class UpdateManifestTest(unittest.TestCase):
             with (patch.object(mac_update, 'FROZEN', True),
                   patch.object(mac_update.sys, 'platform', 'darwin'),
                   patch.object(mac_update.sys, 'executable', str(executable)),
+                  patch.object(mac_update.os, 'getuid', return_value=bundle.stat().st_uid, create=True),
                   patch.object(desktop, '_runtime', Mock(quitting=False))):
                 self.assertEqual(mac_update._installed_bundle(), bundle.resolve())
                 with patch.object(mac_update.os, 'getuid', return_value=os.getuid() + 1):
