@@ -186,7 +186,7 @@
       }
     }
     if(!live())return;
-    if(!await loadData({includeAncillary:false,silent:true}))throw new Error('refresh');
+    if(!await loadData({includeAncillary:false,silent:true,requireFresh:true}))throw new Error('refresh');
     if(!live())return;
     if (reader && selectedEmailId === reader.id && readerAccount === (selectedEmailAccountId || account)) {
       const result = await api('/api/mail/tags/snapshot', {...post({ids:[reader.id]}),accountId:readerAccount});

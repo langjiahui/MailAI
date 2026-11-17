@@ -7,7 +7,7 @@ MailAI 是一款**本地优先（Local-First）、AI 驱动**的开源跨平台�
 
 当前版本：**v4.7.3**
 
-本次更新：macOS 过渡版。4.7.0 和 4.7.1 用户请在「设置 → 关于」重新检查更新，按提示下载并通过系统安装器完成升级。[发布说明](docs/发布-v4.7.3-macOS旧版升级过渡.md) · [完整版本历史](https://github.com/langjiahui/MailAI/releases)
+本次更新：macOS 过渡版。4.7.0 和 4.7.1 用户请在「设置 → 关于」重新检查更新，按提示下载并通过系统安装器完成升级。本版也修复了批量保存邮件标签后列表未刷新的问题。[发布说明](docs/发布-v4.7.3-macOS旧版升级过渡.md) · [完整版本历史](https://github.com/langjiahui/MailAI/releases)
 
 ---
 

@@ -54,11 +54,21 @@ const {chromium,webkit}=require('playwright');
   try{await dialog.getByText(/剩余 100 封未完成/).waitFor();}catch(error){console.error('BATCH DEBUG',batches.map(b=>b.length),errors,await dialog.textContent());throw error;}
   assert.deepEqual(batches.map(b=>b.length),[100,100,100,25]);
   assert.equal(await page.evaluate(()=>selectedMailIds.size),100);
+  let expiredCursor=false;
+  await page.route('**/api/mailbox/list?**', async route=>{
+   const query=new URL(route.request().url()).searchParams;
+   if(!expiredCursor && query.get('cursor') && query.get('refresh')==='false'){
+    expiredCursor=true;
+    await route.fulfill({status:409,json:{detail:'Mailbox revision changed between pages'}});
+   }else await route.continue();
+  });
   fail=false;
   await dialog.locator('[data-assign-form] [type=submit]').click();await dialog.waitFor({state:'hidden'});
   assert.deepEqual(batches.at(-1),batches[1]);
   await page.unroute('**/api/mail/tags/members');
-  await page.waitForFunction(()=>allEmails.every(e=>e.tags.some(t=>t.name==='项目 B')));
+  await page.waitForFunction(()=>allEmails.length===325 && allEmails.every(e=>e.tags.some(t=>t.name==='项目 B')));
+  assert.equal(expiredCursor,true);
+  await page.unroute('**/api/mailbox/list?**');
   await page.locator('#bulk-cancel').click();
   // A committed change with a failed catalogue refresh is reported as saved.
   await page.locator('.email-item[data-id="1"]').click();await page.locator('[data-edit-mail-tags]').click();
