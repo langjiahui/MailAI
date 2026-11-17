@@ -37,10 +37,11 @@ jobs:
           else:
               raise RuntimeError('Isolated fixture startup timed out')
           PY
-          node tests/mail-output-linux-debug.cjs
+          MAILAI_BROWSER=webkit node tests/test_mail_output_browser.cjs
+          MAILAI_BROWSER=chromium node tests/test_mail_output_browser.cjs
       - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: synthetic-preview-diagnostics
-          path: build/mail-output-debug/
+          path: build/mail-output/
           retention-days: 3
