@@ -2,6 +2,119 @@
    Unsupported discrete/auto-size transitions retain immediate native behavior. */
 :root { --motion-fast:120ms; --motion-med:180ms; --motion-slow:220ms; }
 
+/* One gesture per hover; the label, button and click target stay in place. */
+@media (hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference) {
+  .topbar button:is(.nav-action,.search-filter-button):hover:not(:disabled,[aria-disabled="true"],[aria-busy="true"],[aria-expanded="true"]) :is(
+    .nav-pencil, .nav-contact-person,
+    .nav-attachments > .nav-icon, .nav-security > .nav-icon,
+    .nav-sync:not(.loading) > .nav-icon, .nav-digest > .nav-icon, .nav-tools > .nav-icon,
+    .productivity-outbox-entry:not(.task-activity-running) .task-activity-arrow,
+    .search-filter-button svg > g
+  ),
+  :where(
+    .sidebar-account-folders > button,
+    #btn-filter-panel,
+    .reading-start-actions > button,
+    .reading-actions :is(.reading-reply-group,.reading-work-actions,.reading-ai-group) > button,
+    .reading-more-panel button,
+    #assistant-panel :is(.assistant-head-actions > button,.assistant-quick > button,#assistant-send)
+  ):hover:not(:disabled,[aria-disabled="true"],[aria-busy="true"]) :where(svg:not(:has(> .hover-icon-part)),svg > .hover-icon-part),
+  #folder-nav > button:hover:not(:disabled) > .icon > svg,
+  #system-tabs > button[data-system-tab]:hover:not(:disabled,[aria-disabled="true"])::before,
+  .reading-actions > .reading-summary-control:hover:not(:disabled) > svg > path,
+  .reading-more-actions > summary:hover > .reading-more-symbol path {
+    transform-box:fill-box;
+    transform-origin:center;
+    animation:toolbarIconNudge var(--toolbar-icon-duration, 320ms) ease-in-out var(--toolbar-icon-delay, 0ms);
+  }
+  .topbar .nav-pencil { --toolbar-icon-peak:translate(1.4px,-2.2px) rotate(-12deg); }
+  .topbar .nav-contact-person { --toolbar-icon-peak:translateY(-1.6px) scale(1.13); }
+  .topbar .nav-attachments > .nav-icon { --toolbar-icon-peak:rotate(-19deg); }
+  .topbar .nav-security > .nav-icon { --toolbar-icon-peak:scale(1.17); }
+  .topbar .nav-sync > .nav-icon { --toolbar-icon-peak:rotate(32deg); }
+  .topbar .nav-digest > .nav-icon { --toolbar-icon-peak:translateY(-2.2px); }
+  .topbar .nav-tools > .nav-icon { --toolbar-icon-peak:rotate(32deg); }
+  .topbar .task-activity-arrow { --toolbar-icon-peak:translateY(-2.8px); }
+  .topbar .search-filter-button svg > g { --toolbar-icon-peak:translateX(2.4px); }
+  .topbar .search-filter-button svg > g:nth-child(2) { --toolbar-icon-peak:translateX(-2.4px); }
+  .topbar .nav-todos:hover:not(:disabled,[aria-disabled="true"],[aria-busy="true"]) .nav-todo-check,
+  .reading-actions [data-reading-action="todo"]:hover:not(:disabled,[aria-disabled="true"],[aria-busy="true"]) .reading-todo-check,
+  .assistant-quick-todo:hover:not(:disabled,[aria-disabled="true"],[aria-busy="true"]) .assistant-quick-check {
+    stroke-dasharray:1 1;
+    animation:toolbarCheckTrace 280ms ease-out var(--toolbar-icon-delay, 0ms) backwards;
+  }
+
+  /* Mailbox icons hint at the action each folder represents. */
+  :is(.sidebar-account-folders > [data-account-action="favorites"], #folder-nav > [data-value="favorites"],
+      .reading-actions [data-reading-action="favorite"]) { --toolbar-icon-peak:rotate(-14deg) scale(1.16); }
+  :is(.sidebar-account-folders > [data-account-action="inbox"], #folder-nav > [data-value="inbox"]) { --toolbar-icon-peak:translateY(2.5px); }
+  :is(.sidebar-account-folders > [data-account-action="sent"], #folder-nav > [data-value="sent"]) { --toolbar-icon-peak:translate(2px,-2px) rotate(9deg); }
+  :is(.sidebar-account-folders > [data-account-action="drafts"], #folder-nav > [data-value="drafts"]) { --toolbar-icon-peak:translateY(-2px) rotate(-9deg); }
+  :is(.sidebar-account-folders > [data-account-action="local_archive"], #folder-nav > [data-value="local_archive"]) { --toolbar-icon-peak:translateY(1.5px) scaleY(.85); }
+  :is(.sidebar-account-folders > [data-account-action="trash"], #folder-nav > [data-value="trash"]) { --toolbar-icon-peak:rotate(-15deg); }
+
+  #btn-filter-panel { --toolbar-icon-peak:translateY(1.5px) scaleY(.8); }
+  #reading-start-assistant { --toolbar-icon-peak:rotate(16deg) scale(1.23); }
+  :is(#reading-start-first,.reading-actions .reading-forward) { --toolbar-icon-peak:translateX(3px); }
+  .reading-actions .reading-reply-left { --toolbar-icon-peak:translateX(-3px); }
+  .reading-actions [data-edit-mail-tags] { --toolbar-icon-peak:rotate(16deg); }
+  .reading-actions [data-reading-action="todo"] { --toolbar-icon-peak:translateY(-1px); }
+  .reading-actions .reading-todo-check + .reading-todo-check { --toolbar-icon-delay:45ms; }
+  .reading-actions [data-reading-action="summary"] { --toolbar-icon-peak:scaleX(.84); }
+  .reading-actions [data-reading-action="ask"] { --toolbar-icon-peak:translateY(-2px) scale(1.09); }
+  .reading-summary-control { --toolbar-icon-peak:translateY(2.5px); }
+  .reading-more-symbol path {
+    --toolbar-icon-peak:translateY(-3.5px);
+    --toolbar-icon-duration:260ms;
+  }
+  .reading-more-symbol path:nth-child(2) { --toolbar-icon-delay:45ms; }
+  .reading-more-symbol path:nth-child(3) { --toolbar-icon-delay:90ms; }
+
+  .reading-more-panel .btn-correspondence { --toolbar-icon-peak:translateX(2.8px) rotate(-8deg); }
+  .reading-more-panel [data-reading-action="remind"] .hover-icon-part {
+    --toolbar-icon-peak:rotate(38deg);
+    transform-box:view-box;
+  }
+  .reading-more-panel [data-reading-action="image"] { --toolbar-icon-peak:rotate(-10deg) scale(1.12); }
+  .reading-more-panel [data-mail-output="print"] .hover-icon-part { --toolbar-icon-peak:translateY(2.4px); }
+  .reading-more-panel [data-mail-output="share"] { --toolbar-icon-peak:rotate(-14deg) scale(1.13); }
+  .reading-more-panel .reading-decision-actions button { --toolbar-icon-peak:scale(1.17); }
+  .reading-more-panel .reading-decision-actions .hover-icon-part {
+    --toolbar-icon-peak:skewY(-12deg);
+    transform-origin:left center;
+  }
+  .reading-more-panel [data-reading-action="delete-current"] .hover-icon-part { --toolbar-icon-peak:translateY(-1.8px) rotate(-12deg); }
+
+  #assistant-new { --toolbar-icon-peak:scale(1.23); }
+  #assistant-history { --toolbar-icon-peak:rotate(-35deg); }
+  #assistant-float { --toolbar-icon-peak:translate(1.8px,-1.7px); }
+  #assistant-close { --toolbar-icon-peak:rotate(13deg) scale(.83); }
+  .assistant-quick-mail { --toolbar-icon-peak:translateY(-2.5px) rotate(-8deg); }
+  .assistant-quick-todo { --toolbar-icon-peak:translateY(-1px); }
+  .assistant-quick-risk { --toolbar-icon-peak:scale(1.17); }
+  .assistant-quick-about { --toolbar-icon-peak:rotate(16deg) scale(1.23); }
+  #assistant-send { --toolbar-icon-peak:translate(2px,-2px) rotate(5deg); }
+  #assistant-form:has(#assistant-input:is([data-has-question],:optional)) > #assistant-send {
+    --toolbar-icon-peak:translate(2.8px,-2.8px) rotate(8deg);
+  }
+
+  #system-tabs [data-system-tab="preferences"] { --toolbar-icon-peak:translateX(2.5px) scaleX(.88); }
+  #system-tabs [data-system-tab="account"] { --toolbar-icon-peak:translateY(-2.5px) rotate(-8deg); }
+  #system-tabs [data-system-tab="ai"] { --toolbar-icon-peak:rotate(16deg) scale(1.2); }
+  #system-tabs [data-system-tab="xiaoyou"] { --toolbar-icon-peak:translateY(-2px) scale(1.13); }
+  #system-tabs [data-system-tab="remote"] { --toolbar-icon-peak:rotate(-17deg); }
+  #system-tabs [data-system-tab="maintenance"] { --toolbar-icon-peak:translateY(1.5px) scaleY(.81); }
+  #system-tabs [data-system-tab="guide"] { --toolbar-icon-peak:rotate(-9deg) scaleX(.86); }
+  #system-tabs [data-system-tab="about"] { --toolbar-icon-peak:scale(1.19); }
+}
+@keyframes toolbarIconNudge {
+  44% { transform:var(--toolbar-icon-peak, translateY(-2px)); }
+}
+@keyframes toolbarCheckTrace {
+  from { stroke-dashoffset:.74; }
+  to { stroke-dashoffset:0; }
+}
+
 /* Keep reading stable, including when the same message is refreshed. */
 #reading-content .reading-header,
 #reading-content .reading-main > .reading-section,

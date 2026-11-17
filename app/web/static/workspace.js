@@ -660,8 +660,12 @@ function addReadingActions() {
   const icon = paths => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${paths}"/></svg>`;
   div.innerHTML = `<button type="button" data-reading-action="favorite" aria-pressed="${Boolean(selectedEmailDetail?.is_favorite)}">${icon('m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z')}<span data-action-label data-i18n="${selectedEmailDetail?.is_favorite ? 'read.favorited' : 'read.favorite'}">${selectedEmailDetail?.is_favorite ? (mailaiT('read.favorited') || '已收藏') : (mailaiT('read.favorite') || '收藏')}</span></button>
     <button type="button" data-edit-mail-tags aria-haspopup="dialog" aria-label="${mailaiText('设置标签')}" data-i18n-aria="ui.b819b0dd5668">${icon('M3 3h7l11 11-7 7L3 10V3zM7 7h.01')}<span data-i18n="ui.1d0fd5f9336d">${mailaiText('标签')}</span></button>
-    <button type="button" data-reading-action="todo">${icon('M3.5 7.5 5.5 9.5 9 6M12.5 8h8M3.5 16.5 5.5 18.5 9 15M12.5 17h8')}<span data-i18n="read.todo">${mailaiT('read.todo') || '加入待办'}</span></button>
-    <button type="button" data-reading-action="remind">${icon('M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 4v5l3 2')}<span data-i18n="read.remind">${mailaiT('read.remind') || '稍后提醒'}</span></button>`;
+    <button type="button" data-reading-action="todo"><svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12.5 8h8M12.5 17h8"/>
+      <path class="reading-todo-check" d="M3.5 7.5 5.5 9.5 9 6" pathLength="1"/>
+      <path class="reading-todo-check" d="M3.5 16.5 5.5 18.5 9 15" pathLength="1"/>
+    </svg><span data-i18n="read.todo">${mailaiT('read.todo') || '加入待办'}</span></button>
+    <button type="button" data-reading-action="remind"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path class="hover-icon-part" d="M12 7v5l3 2"/></svg><span data-i18n="read.remind">${mailaiT('read.remind') || '稍后提醒'}</span></button>`;
   host.querySelector('.reading-mail-controls')?.appendChild(div);
   host.querySelector('.reading-ai-group')?.insertAdjacentHTML('beforeend', `<button type="button" data-reading-action="summary">${icon('M4 6h16M4 11h12M4 16h8m5-2 1 2 2 1-2 1-1 2-1-2-2-1 2-1z')}<span data-i18n="read.summary">${mailaiT('read.summary') || '总结邮件'}</span></button>
     <button type="button" data-reading-action="image">${icon('M3 5h18v14H3zM7 10h.01M5 17l5-5 3 3 2-2 4 4')}<span data-i18n="read.image">${mailaiT('read.image') || '识别邮件图片'}</span></button>
@@ -680,7 +684,7 @@ function addReadingActions() {
     morePanel.prepend(secondary);
     morePanel.querySelector('[data-reading-action="delete-current"]')?.remove();
     if (selectedEmailDetail?.status !== 'trash') {
-      morePanel.insertAdjacentHTML('beforeend', `<button type="button" data-reading-action="delete-current" data-action-hint="${esc(mailaiText('将这封邮件移入已删除'))}">${icon('M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7M14 10v7')}<span><span data-i18n="ui.2f9d72d5133f">删除邮件</span></span></button>`);
+      morePanel.insertAdjacentHTML('beforeend', `<button type="button" data-reading-action="delete-current" data-action-hint="${esc(mailaiText('将这封邮件移入已删除'))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l1 15h10l1-15M10 10v7M14 10v7"/><path class="hover-icon-part" d="M4 6h16M9 6V3h6v3"/></svg><span><span data-i18n="ui.2f9d72d5133f">删除邮件</span></span></button>`);
     }
     const more = morePanel.closest('details');
     more.ontoggle = () => { if (more.open) requestAnimationFrame(() => positionReadingMorePanel(more)); };

@@ -128,7 +128,8 @@
     if(action==='new'){
       resetAssistantConversation();assistantSearchMode=true;assistantPinnedScope=null;
       document.getElementById('assistant-scope').value='account';
-      const input=document.getElementById('assistant-input');input.value='';input.placeholder=t('newPlaceholder');input.focus();return;
+      const input=document.getElementById('assistant-input');input.value='';input.placeholder=t('newPlaceholder');
+      window.resizeAssistantInput?.();input.focus();return;
     }
     const question=action==='set_sender'?t('senderQuestion').replace('{0}',value):action==='set_keywords'?t('keywordQuestion').replace('{0}',value):t(actionNames[action]);
     askAssistant(question,null,[],[],false,{searchMode:true,searchRequest:{search_run_id:run.id,search_action:action,search_value:value}});
