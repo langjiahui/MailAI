@@ -75,12 +75,68 @@ const {chromium,webkit} = require('playwright');
     });
     const darkPreview=await previewStyle();
     assert.equal(darkPreview.background,darkPreview.panel);
-    assert.equal(darkPreview.edgeBehavior,'none');
-    assert.equal(darkPreview.bodyEdgeBehavior,'none');
+    assert.equal(darkPreview.edgeBehavior,'auto');
+    assert.equal(darkPreview.bodyEdgeBehavior,'auto');
+    assert.equal(await dialog.locator('.mail-output-content').evaluate(el=>getComputedStyle(el).overscrollBehaviorY),'contain');
     assert.equal(darkPreview.frameBorder,'0px');
     assert.equal(darkPreview.header,darkPreview.panel);
     assert.equal(darkPreview.note,'none');
     const frame=page.locator('#mail-output-preview');
+    const checkPreviewScroll=async label=>{
+      await page.waitForFunction(()=>document.querySelector('#mail-output-preview')?.hasAttribute('data-ready'));
+      const state=()=>frame.evaluate(el=>{
+        const doc=el.contentDocument,root=doc.scrollingElement,view=el.contentWindow;
+        return {top:root.scrollTop,visible:el.parentElement.querySelector('.mail-output-scrollbar').classList.contains('output-scrollbar-visible'),
+          hidden:view.getComputedStyle(root).scrollbarWidth==='none'||view.getComputedStyle(root,'::-webkit-scrollbar').display==='none',
+          width:doc.body.getBoundingClientRect().width};
+      });
+      await page.waitForFunction(()=>!document.querySelector('#mail-output-preview-host .mail-output-scrollbar').classList.contains('output-scrollbar-visible'));
+      await frame.evaluate(el=>{el.contentDocument.scrollingElement.scrollTop=0;});
+      const before=await state(),box=await frame.boundingBox();
+      assert.ok(before.hidden,label+': idle native scrollbar is removed');
+      // Locator.hover waits for the rendered hit target and stable geometry;
+      // the load callback's data-ready flag alone does not commit WebKit's
+      // scrolling tree before raw mouse input in the Linux headless renderer.
+      await frame.hover({position:{x:box.width/2,y:Math.min(160,box.height/2)}});
+      await page.mouse.wheel(0,480);
+      try {
+        await page.waitForFunction(()=>document.querySelector('#mail-output-preview').contentDocument.scrollingElement.scrollTop>0);
+      } catch(error) {
+        console.error(label,await frame.evaluate(el=>{
+          const doc=el.contentDocument,root=doc.scrollingElement,view=el.contentWindow;
+          return {ready:doc.readyState,frame:el.getBoundingClientRect().toJSON(),top:root.scrollTop,
+            height:root.scrollHeight,viewport:root.clientHeight,bodyZoom:getComputedStyle(document.body).zoom,
+            visibility:getComputedStyle(el).visibility,opacity:getComputedStyle(el).opacity,
+            overflow:view.getComputedStyle(root).overflowY,overscroll:view.getComputedStyle(root).overscrollBehaviorY};
+        }));
+        await page.screenshot({path:`build/mail-output/scroll-failure-${engine}.png`});
+        throw error;
+      }
+      await page.waitForFunction(()=>document.querySelector('#mail-output-preview-host .mail-output-scrollbar').classList.contains('output-scrollbar-visible'));
+      const active=await state();
+      assert.ok(active.visible,label+': wheel reveals the scrollbar');
+      assert.ok(Math.abs(active.width-before.width)<=1,label+': showing the scrollbar keeps the text width stable');
+      await page.waitForFunction(()=>!document.querySelector('#mail-output-preview-host .mail-output-scrollbar').classList.contains('output-scrollbar-visible'));
+      const idle=await state();
+      assert.ok(idle.hidden,label+': scrollbar hides after inactivity');
+      assert.ok(Math.abs(idle.width-before.width)<=1,label+': hiding the scrollbar keeps the text width stable');
+      // GTK can animate wheel scrolling; use the settled position for reversal.
+      await page.mouse.wheel(0,-240);
+      await page.waitForFunction(top=>document.querySelector('#mail-output-preview').contentDocument.scrollingElement.scrollTop<top,idle.top);
+      const start=await state();
+      const thumb=page.locator('#mail-output-preview-host .mail-output-scrollbar i');
+      const thumbBox=await thumb.boundingBox();
+      await page.mouse.move(thumbBox.x+thumbBox.width/2,thumbBox.y+thumbBox.height/2);
+      await page.mouse.down();
+      await page.mouse.move(thumbBox.x+thumbBox.width/2,thumbBox.y+thumbBox.height/2+70,{steps:5});
+      await page.waitForFunction(top=>document.querySelector('#mail-output-preview').contentDocument.scrollingElement.scrollTop>top,start.top);
+      await page.waitForTimeout(1000);
+      assert.ok((await state()).visible,label+': holding the thumb keeps it visible');
+      await page.mouse.up();
+      await page.waitForFunction(()=>!document.querySelector('#mail-output-preview-host .mail-output-scrollbar').classList.contains('output-scrollbar-visible'));
+
+    };
+    await checkPreviewScroll('Print');
     assert.ok(await frame.evaluate(el=>el.clientWidth>=innerWidth*.9 && el.clientHeight>=innerHeight*.8));
     const printButton=dialog.locator('[data-output-print]');
     const printPosition=await printButton.boundingBox();
@@ -144,6 +200,7 @@ const {chromium,webkit} = require('playwright');
       await page.evaluate(theme=>{applyTheme(theme);window.mailaiMailOutput.open('share');},theme);
       await page.waitForFunction(()=>!document.querySelector('#mail-output-format').disabled);
       assert.equal(await dialog.locator('input[type=file]').count(),0);
+      await checkPreviewScroll('Share PDF '+theme);
       assert.ok(await frame.evaluate(el=>el.clientHeight>=innerHeight*.7));
       await dialog.locator('[data-output-save]').click();
       await page.waitForFunction(()=>!document.querySelector('#mail-output-format').disabled);
@@ -155,9 +212,16 @@ const {chromium,webkit} = require('playwright');
       assert.equal(await dialog.locator('[data-output-print]').isVisible(),false);
       assert.match(await dialog.locator('#mail-output-text-preview').innerText(),/请协助确认/);
       assert.ok(await dialog.locator('#mail-output-text-preview').evaluate(el=>el.clientHeight>=innerHeight*.7));
+      const textPreview=dialog.locator('#mail-output-text-preview');
+      await textPreview.hover();
+      await page.mouse.wheel(0,360);
+      await page.waitForFunction(()=>document.querySelector('#mail-output-text-preview').scrollTop>0);
+      await page.waitForFunction(()=>!document.querySelector('#mail-output-text-host .mail-output-scrollbar').classList.contains('output-scrollbar-visible'));
+      assert.ok(await textPreview.evaluate(el=>getComputedStyle(el).scrollbarWidth==='none'||getComputedStyle(el,'::-webkit-scrollbar').display==='none'));
       await page.keyboard.press('ArrowRight');
       await page.waitForFunction(()=>document.activeElement.value==='eml');
       await page.waitForFunction(()=>!document.querySelector('#mail-output-format').disabled);
+      await checkPreviewScroll('Share EML '+theme);
       await dialog.locator('[data-output-save]').click();
       await page.waitForFunction(()=>!document.querySelector('#mail-output-format').disabled);
       await page.screenshot({path:`build/mail-output/browser-${engine}-${theme}.png`});
@@ -214,6 +278,7 @@ const {chromium,webkit} = require('playwright');
         assert.ok(metrics.left>=-1&&metrics.right<=376&&metrics.top>=-1&&metrics.bottom<=813&&!metrics.overflow,JSON.stringify({language,theme,mode,metrics}));
       }
     }
+    await checkPreviewScroll('Share narrow at 125%');
     await page.setViewportSize({width:640,height:320});
     assert.ok(await frame.evaluate(el=>el.getBoundingClientRect().height>=90));
     const landscapeActions=await dialog.locator('footer').boundingBox();

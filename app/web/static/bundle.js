@@ -30967,6 +30967,10 @@ document.addEventListener('keydown', event => {
 /* Single-mail output: capture identity before any asynchronous work. */
 (() => {
   const t = key => mailaiT('mailOutput.' + key) || MAILAI_UI_COPY['mailOutput.' + key]?.[0] || key;
+  const scrollStyle = `@media screen {
+    .mail-output-scroll { scrollbar-width:none!important; }
+    .mail-output-scroll::-webkit-scrollbar { display:none; }
+  }`;
   const dialog = document.createElement('dialog');
   dialog.id = 'mail-output-dialog';
   dialog.className = 'library-dialog mail-output-dialog';
@@ -30983,10 +30987,13 @@ document.addEventListener('keydown', event => {
         <p id="mail-output-description"></p>
       </div>
       <div id="mail-output-preview-host"></div>
-      <pre id="mail-output-text-preview" hidden tabindex="0" aria-labelledby="mail-output-title"></pre>
+      <div id="mail-output-text-host" hidden><pre id="mail-output-text-preview" class="mail-output-scroll" tabindex="0" aria-labelledby="mail-output-title"></pre></div>
     </div>
     <footer><div class="mail-output-meta"><p id="mail-output-notes"></p><p id="mail-output-status" role="status" aria-live="polite"></p></div><div class="mail-output-actions"><button type="button" data-output-print></button><button type="button" data-output-copy></button><button type="button" data-output-save></button><button type="button" data-output-share></button></div></footer>`;
   document.body.append(dialog);
+  const scrollbarStyle = document.createElement('style');
+  scrollbarStyle.textContent = scrollStyle;
+  dialog.append(scrollbarStyle);
   const find = selector => dialog.querySelector(selector);
   let preview = null;
   const format = find('#mail-output-format');
@@ -30996,6 +31003,77 @@ document.addEventListener('keydown', event => {
   const current = scope => run === scope && dialog.open;
   const kind = () => format.querySelector(':checked').value;
   const browserFileShare = () => typeof navigator.share === 'function' && typeof navigator.canShare === 'function';
+
+  function installScrollbar(target, scope, host) {
+    const track = document.createElement('div');
+    track.className = 'mail-output-scrollbar';
+    track.setAttribute('aria-hidden', 'true');
+    const thumb = document.createElement('i');
+    track.append(thumb);
+    host.append(track);
+    let timer, drag = null, lastTop = target.scrollTop;
+    const hide = () => { clearTimeout(timer); track.classList.remove('output-scrollbar-visible'); };
+    const show = () => {
+      if (track.hidden) return;
+      clearTimeout(timer);
+      track.classList.add('output-scrollbar-visible');
+      timer = setTimeout(() => { if (!drag) hide(); }, 900);
+    };
+    const sync = () => {
+      const overflow = target.scrollHeight - target.clientHeight;
+      track.hidden = overflow <= 1;
+      const height = track.clientHeight;
+      const thumbHeight = Math.min(height, Math.max(32, height * target.clientHeight / target.scrollHeight));
+      thumb.style.height = `${thumbHeight}px`;
+      thumb.style.transform = `translateY(${Math.max(0, height - thumbHeight) * Math.min(1, Math.max(0, target.scrollTop / (overflow || 1)))}px)`;
+      if (target.scrollTop !== lastTop) { lastTop = target.scrollTop; show(); }
+    };
+    const release = () => {
+      if (!drag) return;
+      const pointer = drag.pointer;
+      drag = null;
+      if (track.hasPointerCapture(pointer)) track.releasePointerCapture(pointer);
+      show();
+    };
+    track.addEventListener('pointermove', event => {
+      if (drag) {
+        if (!(event.buttons & 1)) { release(); return; }
+        const rect = track.getBoundingClientRect(), thumbRect = thumb.getBoundingClientRect();
+        const travel = rect.height - thumbRect.height;
+        if (travel > 0) target.scrollTop = (event.clientY - rect.top - drag.offset) / travel * (target.scrollHeight - target.clientHeight);
+        sync();
+      }
+      show();
+    });
+    track.addEventListener('pointerdown', event => {
+      if (event.button !== 0 || track.hidden) return;
+      event.preventDefault();
+      const rect = track.getBoundingClientRect(), thumbRect = thumb.getBoundingClientRect();
+      const onThumb = event.clientY >= thumbRect.top && event.clientY <= thumbRect.bottom;
+      drag = {pointer:event.pointerId,offset:onThumb ? event.clientY - thumbRect.top : thumbRect.height / 2};
+      if (!onThumb && rect.height > thumbRect.height) {
+        target.scrollTop = (event.clientY - rect.top - drag.offset) / (rect.height - thumbRect.height) * (target.scrollHeight - target.clientHeight);
+        sync();
+      }
+      track.setPointerCapture(event.pointerId);
+      show();
+    });
+    for (const event of ['pointerup','pointercancel','lostpointercapture']) track.addEventListener(event, release);
+    window.addEventListener('blur', release);
+    // WebKit suppresses DOM scroll callbacks in script-disabled sandbox frames,
+    // even when the parent installed them. Observe the offset from the parent;
+    // the mail document keeps its sandbox and the overlay can still be dragged.
+    // Timers also update the thumb when macOS scrolls an unfocused window and
+    // WKWebView suspends that window's animation frames.
+    sync();
+    const observation = setInterval(sync, 50);
+    scope.scrollCleanups.push(() => {
+      clearInterval(observation);
+      clearTimeout(timer);
+      window.removeEventListener('blur', release);
+      track.remove();
+    });
+  }
 
   function paint() {
     const scope = run;
@@ -31016,7 +31094,7 @@ document.addEventListener('keydown', event => {
     find('.mail-output-options').hidden = printing;
     find('#mail-output-preview-host').hidden = text;
     const textPreview = find('#mail-output-text-preview');
-    textPreview.hidden = !text;
+    find('#mail-output-text-host').hidden = !text;
     if (text) textPreview.textContent = scope.data?.text || '';
     const description = find('#mail-output-description');
     description.textContent = t(text ? 'textHint' : pdf ? 'pdfHint' : 'emlHint');
@@ -31061,7 +31139,7 @@ document.addEventListener('keydown', event => {
     // The browser prints this same frame, so all UI colors are screen-only.
     style.textContent = `@media screen {
       html { background-color:${surface}; }
-      html, body { overscroll-behavior-y:none; }
+      html { overflow-y:auto; }
       body { max-width:80rem; margin-inline:auto; padding:clamp(12px,3vw,28px); }
       .mail-output-header { border-bottom:0; padding-bottom:0; }
       .mail-output-note { display:none; }
@@ -31072,7 +31150,7 @@ document.addEventListener('keydown', event => {
         a, .mail-output-body a[style] { color:${link}!important; }
         blockquote { color:${muted}; }
       ` : ''}
-    }`;
+    }${scrollStyle}`;
   }
 
   function clearClosedRun() {
@@ -31080,6 +31158,7 @@ document.addEventListener('keydown', event => {
     const old = run;
     run = null;
     old?.controller.abort();
+    old?.scrollCleanups.forEach(cleanup => cleanup());
     preview?.remove();
     preview = null;
     find('#mail-output-text-preview').textContent = '';
@@ -31157,8 +31236,9 @@ document.addEventListener('keydown', event => {
     if (!id || id<=0 || !accountId) return;
     if (dialog.open) return;
     clearClosedRun();
-    const scope = {id,accountId,source,mode,busy:true,data:null,file:null,controller:new AbortController(),previewReady:false,returnFocus:reference.returnFocus};
+    const scope = {id,accountId,source,mode,busy:true,data:null,file:null,controller:new AbortController(),scrollCleanups:[],previewReady:false,returnFocus:reference.returnFocus};
     run=scope;format.querySelector('[value="pdf"]').checked=true;status.textContent=t('working');paint();dialog.showModal();
+    installScrollbar(find('#mail-output-text-preview'), scope, find('#mail-output-text-host'));
     try {
       const language = scope.language = document.documentElement.lang === 'en' ? 'en' : 'zh-CN';
       const data = native()?.prepare_mail_output ? await native().prepare_mail_output(id,accountId,language,source) : await api(`/api/emails/${id}/output?language=${language}&source=${source}`,{accountId,signal:scope.controller.signal});
@@ -31171,6 +31251,8 @@ document.addEventListener('keydown', event => {
       frame.addEventListener('load', () => {
         if (!current(scope) || frame.contentDocument?.URL !== 'about:srcdoc') return;
         applyPreviewTheme();
+        frame.contentDocument.documentElement.classList.add('mail-output-scroll');
+        installScrollbar(frame.contentDocument.documentElement, scope, find('#mail-output-preview-host'));
         frame.contentDocument.addEventListener('click', event => {
           if (event.target.closest?.('a[href]')) event.preventDefault();
         });

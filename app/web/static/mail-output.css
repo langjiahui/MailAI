@@ -41,6 +41,7 @@ html.macos-native-window:not(.macos-native-fullscreen) .mail-output-dialog {
   min-width:0;
   min-height:0;
   overflow:auto;
+  overscroll-behavior-y:contain;
   padding:4px var(--output-padding) 8px;
 }
 .mail-output-options { display:flex; flex-wrap:wrap; align-items:center; gap:4px 12px; }
@@ -80,8 +81,12 @@ html[data-theme] body #mail-output-format { background:transparent!important; }
 #mail-output-format input:disabled { cursor:default; }
 #mail-output-format input:disabled + span { opacity:.55; }
 .mail-output-content p { margin:0; font-size:12px; color:var(--desk-muted); overflow-wrap:anywhere; }
-.mail-output-dialog :is(#mail-output-preview-host,#mail-output-text-preview) { flex:1 0 min(140px,32dvh); box-sizing:border-box; min-height:0; }
-#mail-output-preview-host { display:grid; grid-template-rows:minmax(0,1fr); }
+.mail-output-dialog :is(#mail-output-preview-host,#mail-output-text-host) { flex:1 0 min(140px,32dvh); box-sizing:border-box; min-height:0; }
+#mail-output-preview-host,#mail-output-text-host { position:relative; display:grid; grid-template-rows:minmax(0,1fr); }
+.mail-output-scrollbar { position:absolute; top:8px; bottom:8px; right:1px; width:14px; touch-action:none; user-select:none; }
+.mail-output-scrollbar i { display:block; width:5px; margin-inline:auto; border-radius:8px; background:var(--desk-muted); opacity:0; transition:opacity .18s; }
+.mail-output-scrollbar.output-scrollbar-visible i { opacity:.55; }
+@media(forced-colors:active) { .mail-output-scrollbar i { background:CanvasText; opacity:1; } }
 .mail-output-dialog iframe {
   display:block;
   box-sizing:border-box;
@@ -90,7 +95,9 @@ html[data-theme] body #mail-output-format { background:transparent!important; }
   border:0;
   background-color:var(--desk-surface);
 }
-.mail-output-dialog iframe:not([data-ready]) { visibility:hidden; }
+/* Keep the iframe's scrolling tree alive while its screen theme is prepared.
+   WKWebView can retain a non-scrollable tree after visibility:hidden is lifted. */
+.mail-output-dialog iframe:not([data-ready]) { opacity:0; }
 .mail-output-dialog #mail-output-text-preview {
   overflow:auto;
   white-space:pre-wrap;
