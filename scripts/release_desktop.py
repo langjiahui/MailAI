@@ -20,8 +20,10 @@ import zipfile
 
 if __package__:
     from . import ci_quality
+    from .create_release_manifest import offers_macos_app_update
 else:
     import ci_quality
+    from create_release_manifest import offers_macos_app_update
 
 ROOT = Path(__file__).resolve().parents[1]
 SHA = re.compile(r'[a-f0-9]{40}')
@@ -344,9 +346,10 @@ class Coordinator:
         if release['draft'] or release['prerelease'] or release['tag_name'] != plan['tag']:
             raise ValueError('Release is not a published formal desktop version')
         assets = {a['name']: a for a in release['assets']}
+        expected_updates = RELEASE_ASSETS if offers_macos_app_update(plan['version']) else INSTALLERS
         required = {'latest.json', 'latest.signed.json', 'MailAI-macOS-arm64.dmg'}
-        required.update(RELEASE_ASSETS.values())
-        required.update(name + '.sha256' for name in RELEASE_ASSETS.values())
+        required.update(expected_updates.values())
+        required.update(name + '.sha256' for name in expected_updates.values())
         if not required <= set(assets) or any(a['state'] != 'uploaded' or a['size'] <= 0
                                                for a in assets.values()):
             raise ValueError('Published release is missing complete platform assets')
@@ -354,9 +357,9 @@ class Coordinator:
         if json.loads(self.api.asset(assets['latest.json']['id'])) != manifest:
             raise ValueError('Plain and signed update manifests differ')
         if (manifest['version'] != plan['version'] or manifest['release_url'] != release['html_url']
-                or set(manifest['assets']) != set(RELEASE_ASSETS)):
+                or set(manifest['assets']) != set(expected_updates)):
             raise ValueError('Signed manifest does not describe this release')
-        for platform, name in RELEASE_ASSETS.items():
+        for platform, name in expected_updates.items():
             item, asset = manifest['assets'][platform], assets[name]
             if (item['url'] != asset['browser_download_url'] or item['size'] != asset['size']
                     or asset.get('digest') != 'sha256:' + item['sha256']):

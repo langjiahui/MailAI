@@ -9,6 +9,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
+def offers_macos_app_update(version: str) -> bool:
+    # Bridge 4.7.0–4.7.1 through Installer so their older updater cannot select ZIP.
+    return version != '4.7.3'
+
+
 def digest(path: Path) -> str:
     value = hashlib.sha256()
     with path.open("rb") as source:

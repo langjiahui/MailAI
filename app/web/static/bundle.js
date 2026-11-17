@@ -31453,15 +31453,24 @@ document.addEventListener('keydown', event => {
     if(entry.refreshing)return entry.refreshing;
     entry.refreshing=(async()=>{
       const indices=[...entry.pages.keys()].sort((a,b)=>a-b);
-      const first=indices[0],pages=new Map(),cursors=new Map(entry.cursors);
-      let cursor=entry.cursors.get(first) || '',data;
-      const readSeq=window.mailaiReadMutationSeq?.() || 0;
-      for(let offset=0;offset<indices.length;offset++){
-        data=await api('/api/mailbox/list?filters='+encodeURIComponent(JSON.stringify(entry.query))+'&cursor='+encodeURIComponent(cursor)+'&refresh='+(offset===0)+(!cursor && entry.anchor?'&around_id='+entry.anchor:''),{accountId:entry.owner});
-        window.mailaiPreserveLocalReadState?.(data.items,entry.owner,readSeq);
-        pages.set(first+offset,data);cursors.set(first+offset,cursor);cursors.set(first+offset+1,data.next);
-        cursor=data.next;if(!cursor)break;
+      const first=indices[0];
+      async function readWindow(){
+        const pages=new Map(),cursors=new Map(entry.cursors);
+        let cursor=entry.cursors.get(first) || '',data;
+        const readSeq=window.mailaiReadMutationSeq?.() || 0;
+        for(let offset=0;offset<indices.length;offset++){
+          data=await api('/api/mailbox/list?filters='+encodeURIComponent(JSON.stringify(entry.query))+'&cursor='+encodeURIComponent(cursor)+'&refresh='+(offset===0)+(!cursor && entry.anchor?'&around_id='+entry.anchor:''),{accountId:entry.owner});
+          window.mailaiPreserveLocalReadState?.(data.items,entry.owner,readSeq);
+          pages.set(first+offset,data);cursors.set(first+offset,cursor);cursors.set(first+offset+1,data.next);
+          cursor=data.next;if(!cursor)break;
+        }
+        return {pages,cursors,data};
       }
+      const {pages,cursors,data}=await readWindow().catch(error=>{
+        // A mailbox write between pages invalidates the cursor and the partial window.
+        if(error.status===409 && live(key,nav))return readWindow();
+        throw error;
+      });
       if(!live(key,nav))return;
       const list=document.getElementById('email-list'),bounds=list.getBoundingClientRect();
       const anchor=[...list.querySelectorAll('.email-item')].find(node=>node.getBoundingClientRect().bottom>bounds.top);
@@ -47079,7 +47088,7 @@ window.mailaiPrepareReadingMarkup = doc => {
       }
     }
     if(!live())return;
-    if(!await loadData({includeAncillary:false,silent:true}))throw new Error('refresh');
+    if(!await loadData({includeAncillary:false,silent:true,requireFresh:true}))throw new Error('refresh');
     if(!live())return;
     if (reader && selectedEmailId === reader.id && readerAccount === (selectedEmailAccountId || account)) {
       const result = await api('/api/mail/tags/snapshot', {...post({ids:[reader.id]}),accountId:readerAccount});

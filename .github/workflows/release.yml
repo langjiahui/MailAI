@@ -296,6 +296,17 @@ jobs:
           --artifacts "$SOURCE_ARTIFACTS" --tree "$RELEASE_TREE" --version "$RELEASE_VERSION" --assets release-assets
       - name: Verify final platform checksums
         run: python scripts/ci_release_build.py verify-assets --assets release-assets
+      - name: Select macOS packages for public distribution
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from scripts.create_release_manifest import offers_macos_app_update
+
+          if not offers_macos_app_update(os.environ['GITHUB_REF_NAME'].removeprefix('v')):
+              for name in ('MailAI-macOS.zip', 'MailAI-macOS.zip.sha256'):
+                  (Path('release-assets') / name).unlink()
+          PY
       - name: Install release signature dependencies
         run: python -m pip install 'cryptography>=44,<47' certifi
       - name: Create device update manifest
