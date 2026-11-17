@@ -2424,6 +2424,8 @@ const MAILAI_UI_COPY = {
   "updateFlow.ready": ["更新已就绪", "Update ready"],
   "updateFlow.readyNotice": ["更新已下载，可点击小邮提示或从设置 → 关于安装。", "Update downloaded. Click XiaoYou’s badge or go to Settings → About to install."],
   "updateFlow.petReady": ["更新已就绪 · 点击安装", "Update ready · Install"],
+  "updateFlow.petRestart": ["更新已就绪 · 重启并更新", "Update ready · Restart and update"],
+  "updateFlow.installPermission": ["更新所需的权限不足，请使用系统安装器完成更新。", "The update needs additional permissions. Complete the update using the system installer."],
   "updateFlow.petFailed": ["更新中断 · 点击重试", "Update interrupted · Retry"],
   "updateFlow.petDownloading": ["更新下载中 {0}%", "Downloading update {0}%"],
   "updateFlow.petInstalling": ["正在准备安装…", "Preparing to install…"],
@@ -26153,7 +26155,7 @@ function renderAppUpdateDialog() {
   mailaiBindUI(title, 'textContent', () => `${result.current_version} → ${result.latest_version}`);
   mailaiBindUI(document.getElementById('update-dialog-device'), "textContent", () => (mailaiTemplate`已为这台设备匹配 ${appDeviceName(result.device)} 安装包。`));
   mailaiBindUI(document.getElementById('update-dialog-notes-title'), "textContent", () => (mailaiTemplate`${result.latest_version} 版本发布说明`));
-  mailaiBindUI(document.getElementById('update-dialog-notes'), "textContent", () => (result.notes || mailaiText('本版本暂未提供发布说明。')));
+  mailaiBindUI(document.getElementById('update-dialog-notes'), "textContent", () => String(result.notes || mailaiText('本版本暂未提供发布说明。')).replace(/\[([^\]]+)\]\([^\s)]+\)/g, '$1').replace(/\*\*([^*]+)\*\*/g, '$1'));
   mailaiBindUI(document.getElementById('update-dialog-warning'), 'textContent', () => appUpdateMessage(result.unsigned_warning));
 }
 
@@ -26217,7 +26219,7 @@ function renderCompanionUpdate() {
   chip.dataset.phase = running ? 'downloading' : phase;
   // The mascot keeps its normal assistant action; only this small badge opens updates.
   const label = () => phase === 'restarting' ? updateFlowText('restarting')
-    : ready ? updateFlowText('petReady') : failed ? updateFlowText('petFailed')
+    : ready ? updateFlowText(restarts ? 'petRestart' : 'petReady') : failed ? updateFlowText('petFailed')
     : running && appUpdateTask.action === 'download' ? updateFlowText('petDownloading', appUpdateTask.percent || 0)
     : running ? updateFlowText('petInstalling') : updateFlowText('petOpened');
   mailaiBindUI(document.getElementById('companion-update-copy'), 'textContent', label);
@@ -26236,6 +26238,7 @@ function applyAppUpdateTask(state) {
   if (!state || (state.updated_at && appUpdateTask.updated_at > state.updated_at)) return;
   // A ready package for an older release is not an install action for a newer one.
   if (!state.running && appUpdateLastCheck && (!appUpdateLastCheck.available ||
+      (state.release && state.release.install_method !== appUpdateLastCheck.install_method) ||
       (state.version && state.version !== appUpdateLastCheck.latest_version))) {
     state = {status:'idle', phase:'idle', running:false, updated_at:state.updated_at};
     availableAppUpdate = appUpdateLastCheck.available ? appUpdateLastCheck : null;
@@ -26406,9 +26409,7 @@ async function installAppUpdate(event) {
     applyAppUpdateTask(started);
     const result = await monitorAppUpdateInstall();
     if (result.status === 'failed') throw new Error(result.error || mailaiText('更新未完成'));
-    if (result.phase === 'ready') {
-      toast(updateFlowText(availableAppUpdate?.install_method === 'mac-app' ? 'restartReady' : 'readyNotice'), 'success');
-    } else if (result.status === 'completed' && result.phase !== 'restarting') {
+    if (result.status === 'completed' && !['ready','restarting'].includes(result.phase)) {
       if (result.phase !== 'installer_opened') document.getElementById('update-dialog').close();
       toast(appUpdateMessage(result.message) || mailaiText('更新已完成'), result.phase === 'installer_opened' ? 'info' : 'success');
     }

@@ -5505,8 +5505,8 @@ input, select, textarea, [contenteditable] {
   position:absolute; z-index:6; right:8px; bottom:calc(100% + 10px);
   display:flex; align-items:center; gap:7px; width:max-content;
   max-width:min(236px,calc(100vw / var(--fz,1) / 2 - 20px));
-  min-height:38px; padding:9px 12px 12px; overflow:hidden;
-  border:1px solid var(--border); border-radius:13px 13px 4px 13px;
+  min-height:38px; padding:9px 12px; overflow:hidden;
+  border:1px solid var(--border); border-radius:12px;
   background:var(--surface); color:var(--text); box-shadow:0 4px 16px #00000014;
   font:inherit; font-size:11px; line-height:1.5; text-align:left; cursor:pointer;
 }
@@ -5518,10 +5518,10 @@ input, select, textarea, [contenteditable] {
 .companion-update > i { position:absolute; inset:auto 0 0; height:3px; background:var(--surface-soft); }
 .companion-update > i > b { display:block; height:100%; background:var(--primary); transition:width .3s ease; }
 .companion-update[data-phase="failed"] > i > b { background:var(--warning); }
-.companion-update[data-phase="ready"] { border-color:var(--primary); }
+.companion-update[data-phase="ready"] > i { display:none; }
 .companion-update[data-phase="downloading"] .companion-update-arrow { animation:update-pet-download 2.4s ease-in-out infinite; }
 @keyframes update-pet-download { 0%,65%,100% { transform:translateY(0); } 35% { transform:translateY(2px); } }
-.mail-assistant[data-pet-edge-x="left"] .companion-update { right:auto; left:8px; border-radius:13px 13px 13px 4px; }
+.mail-assistant[data-pet-edge-x="left"] .companion-update { right:auto; left:8px; }
 .mail-assistant[data-pet-edge-y="top"] .companion-update { bottom:auto; top:calc(100% + 10px); }
 .mail-assistant:has(.companion-update:not([hidden])) :is(.companion-caption,.companion-life-bubble) { visibility:hidden; }
 /* Mail risk nudges retain their priority and the update entry remains in About. */

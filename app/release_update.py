@@ -505,6 +505,8 @@ def _macos_install_error(log_path: Path) -> str:
         output = log_path.read_text(encoding="utf-8", errors="replace")[-1000:].strip()
     except OSError:
         output = ""
+    if "Permission denied" in output or "Operation not permitted" in output:
+        return "更新所需的权限不足，请使用系统安装器完成更新。"
     if "(-128)" in output or "User canceled" in output or "用户已取消" in output:
         return "已取消安装，MailAI 保持原版本。"
     detail = " ".join(output.split())[-240:]
@@ -545,6 +547,14 @@ def consume_install_outcome() -> dict:
         return {"pending": True, "version": version}
     if outcome not in {"success", "failed"}:
         return {"pending": True, "version": version}
+    if outcome == "failed":
+        ready = _read_ready_update()
+        if ready and ready.get("version") == version:
+            ready["error"] = _macos_install_error(log_path)
+            ready["requires_installer"] = ready["error"] == "更新所需的权限不足，请使用系统安装器完成更新。"
+            temporary = _ready_update_path().with_suffix(".tmp")
+            temporary.write_text(json.dumps(ready), encoding="utf-8")
+            temporary.replace(_ready_update_path())
     pending_path.unlink(missing_ok=True)
     outcome_path.unlink(missing_ok=True)
     if outcome == "failed":
@@ -616,9 +626,10 @@ def install_status() -> dict:
         ready = _read_ready_update()
         if ready:
             size = int(ready["release"]["asset"]["size"])
-            return {**state, **ready, "status": "completed", "phase": "ready", "percent": 100,
+            failed = bool(ready.get("error"))
+            return {**state, **ready, "status": "failed" if failed else "completed", "phase": "failed" if failed else "ready", "percent": 100,
                     "downloaded": size, "total": size, "action": "download",
-                    "message": _ready_message(ready["release"])}
+                    "message": ready.get("error") or _ready_message(ready["release"])}
     return state
 
 
