@@ -93,9 +93,24 @@ const {chromium,webkit} = require('playwright');
       await frame.evaluate(el=>{el.contentDocument.scrollingElement.scrollTop=0;});
       const before=await state(),box=await frame.boundingBox();
       assert.ok(before.hidden,label+': idle native scrollbar is removed');
-      await page.mouse.move(box.x+box.width/2,box.y+Math.min(160,box.height/2));
+      // Locator.hover waits for the rendered hit target and stable geometry;
+      // the load callback's data-ready flag alone does not commit WebKit's
+      // scrolling tree before raw mouse input in the Linux headless renderer.
+      await frame.hover({position:{x:box.width/2,y:Math.min(160,box.height/2)}});
       await page.mouse.wheel(0,480);
-      await page.waitForFunction(()=>document.querySelector('#mail-output-preview').contentDocument.scrollingElement.scrollTop>0);
+      try {
+        await page.waitForFunction(()=>document.querySelector('#mail-output-preview').contentDocument.scrollingElement.scrollTop>0);
+      } catch(error) {
+        console.error(label,await frame.evaluate(el=>{
+          const doc=el.contentDocument,root=doc.scrollingElement,view=el.contentWindow;
+          return {ready:doc.readyState,frame:el.getBoundingClientRect().toJSON(),top:root.scrollTop,
+            height:root.scrollHeight,viewport:root.clientHeight,bodyZoom:getComputedStyle(document.body).zoom,
+            visibility:getComputedStyle(el).visibility,opacity:getComputedStyle(el).opacity,
+            overflow:view.getComputedStyle(root).overflowY,overscroll:view.getComputedStyle(root).overscrollBehaviorY};
+        }));
+        await page.screenshot({path:`build/mail-output/scroll-failure-${engine}.png`});
+        throw error;
+      }
       await page.waitForFunction(()=>document.querySelector('#mail-output-preview-host .mail-output-scrollbar').classList.contains('output-scrollbar-visible'));
       const active=await state();
       assert.ok(active.visible,label+': wheel reveals the scrollbar');
@@ -196,8 +211,7 @@ const {chromium,webkit} = require('playwright');
       assert.match(await dialog.locator('#mail-output-text-preview').innerText(),/请协助确认/);
       assert.ok(await dialog.locator('#mail-output-text-preview').evaluate(el=>el.clientHeight>=innerHeight*.7));
       const textPreview=dialog.locator('#mail-output-text-preview');
-      const textBox=await textPreview.boundingBox();
-      await page.mouse.move(textBox.x+textBox.width/2,textBox.y+80);
+      await textPreview.hover();
       await page.mouse.wheel(0,360);
       await page.waitForFunction(()=>document.querySelector('#mail-output-text-preview').scrollTop>0);
       await page.waitForFunction(()=>!document.querySelector('#mail-output-text-host .mail-output-scrollbar').classList.contains('output-scrollbar-visible'));
