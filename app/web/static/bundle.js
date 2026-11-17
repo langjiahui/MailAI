@@ -31073,8 +31073,8 @@ document.addEventListener('keydown', event => {
     }`;
   }
 
-  function close() { dialog.close(); }
-  dialog.addEventListener('close', () => {
+  function clearClosedRun() {
+    if (dialog.open) return;
     const old = run;
     run = null;
     old?.controller.abort();
@@ -31083,7 +31083,9 @@ document.addEventListener('keydown', event => {
     find('#mail-output-text-preview').textContent = '';
     release(old);
     if (old?.returnFocus?.isConnected) old.returnFocus.focus({preventScroll:true});
-  });
+  }
+  function close() { dialog.close(); clearClosedRun(); }
+  dialog.addEventListener('close', clearClosedRun);
   find('[data-output-close]').onclick = close;
 
   async function work(action) {
@@ -31152,6 +31154,7 @@ document.addEventListener('keydown', event => {
     const source = reference.source === 'sent' ? 'sent' : 'email';
     if (!id || id<=0 || !accountId) return;
     if (dialog.open) return;
+    clearClosedRun();
     const scope = {id,accountId,source,mode,busy:true,data:null,file:null,controller:new AbortController(),previewReady:false,returnFocus:reference.returnFocus};
     run=scope;format.querySelector('[value="pdf"]').checked=true;status.textContent=t('working');paint();dialog.showModal();
     try {

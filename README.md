@@ -7,7 +7,7 @@ MailAI 是一款**本地优先（Local-First）、AI 驱动**的开源跨平台�
 
 当前版本：**v4.7.1**
 
-本次更新：优化黑白主题的头像和附件图标配色，浅色与深色模式均采用柔和的分类颜色。[发布说明](docs/发布-v4.7.1-黑白主题配色优化.md) · [完整版本历史](https://github.com/langjiahui/MailAI/releases)
+本次更新：优化黑白主题的头像和附件图标配色，浅色与深色模式均采用柔和的分类颜色，并修复打印分享预览连续关闭、重开时的状态问题。[发布说明](docs/发布-v4.7.1-黑白主题配色优化.md) · [完整版本历史](https://github.com/langjiahui/MailAI/releases)
 
 ---
 
