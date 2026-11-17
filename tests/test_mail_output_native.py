@@ -1,4 +1,4 @@
-"""Exercise real desktop PDF rendering in an isolated GUI process when available."""
+"""Exercise native preview scrolling and desktop PDF rendering in isolated processes."""
 import importlib.util
 from pathlib import Path
 import os
@@ -9,6 +9,94 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
+
+
+def scroll_child():
+    import json
+    import time
+    import AppKit
+    import Foundation
+    import Quartz
+    import WebKit
+    from app.mail_output import CSS, CSP
+
+    AppKit.NSApplication.sharedApplication()
+    config = WebKit.WKWebViewConfiguration.alloc().init()
+    config.setWebsiteDataStore_(WebKit.WKWebsiteDataStore.nonPersistentDataStore())
+    view = WebKit.WKWebView.alloc().initWithFrame_configuration_(((0, 0), (1200, 800)), config)
+    window = AppKit.NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
+        ((100, 100), (1200, 800)), AppKit.NSWindowStyleMaskTitled, AppKit.NSBackingStoreBuffered, False)
+    window.setTitle_('MailAI local scroll test')
+    window.setContentView_(view)
+    window.orderFrontRegardless()
+
+    def wait(predicate, timeout=5):
+        end = time.monotonic() + timeout
+        while not predicate():
+            if time.monotonic() > end:
+                raise AssertionError('Native mail preview scroll check timed out')
+            Foundation.NSRunLoop.currentRunLoop().runUntilDate_(Foundation.NSDate.dateWithTimeIntervalSinceNow_(.01))
+
+    def evaluate(js):
+        result = []
+        view.evaluateJavaScript_completionHandler_(js, lambda value, error: result.append((value, error)))
+        wait(lambda: bool(result))
+        value, error = result[0]
+        assert error is None, str(error)
+        return value
+
+    paragraphs = ''.join(f'<p>Long synthetic message line {n}</p>' for n in range(120))
+    document = f'<!doctype html><meta http-equiv="Content-Security-Policy" content="{CSP}"><style>{CSS}</style><h1>Scroll fixture</h1>{paragraphs}'
+    data = dict(document=document, filename='Synthetic fixture', text='Synthetic message\n' * 200, notes=[])
+    stubs = '''const selectedEmailDetail={id:1},selectedEmailAccountId='fixture',MAILAI_UI_COPY={};
+      const mailaiT=k=>k,mailaiSystemMessage=x=>x,activeMailAccount=()=>({id:'fixture'});
+      const richEmailBasePalette=()=>({ink:'#222',muted:'#666',link:'#333',line:'#ddd'});
+      async function api(){return ''' + json.dumps(data) + ''';}'''
+    css = (ROOT / 'app/web/static/mail-output.css').read_text()
+    script = (ROOT / 'app/web/static/mail-output.js').read_text()
+    html = '''<!doctype html><html data-theme="light"><style>
+      :root{--desk-surface:white;--desk-ink:#222;--desk-muted:#666}*{box-sizing:border-box}body{margin:0}
+      </style><style>''' + css + '</style><body><script>' + stubs + script + '</script>'
+    try:
+        view.loadHTMLString_baseURL_(html, Foundation.NSURL.URLWithString_('http://mail-output.test/'))
+        wait(lambda: not view.isLoading())
+        for mode in ('print', 'share'):
+            evaluate(f"window.mailaiMailOutput.open('{mode}');void 0")
+            wait(lambda: evaluate("!!document.querySelector('#mail-output-preview')?.hasAttribute('data-ready')"))
+            # Let AppKit commit the newly loaded iframe's scrolling tree.
+            rendered = time.monotonic() + .3
+            wait(lambda: time.monotonic() >= rendered)
+
+            def state():
+                return json.loads(evaluate('''JSON.stringify((()=>{
+                  const frame=document.querySelector('#mail-output-preview'),doc=frame.contentDocument;
+                  const track=document.querySelector('#mail-output-preview-host .mail-output-scrollbar');
+                  return {top:doc.scrollingElement.scrollTop,width:doc.body.getBoundingClientRect().width,
+                    visible:track.classList.contains('output-scrollbar-visible'),opacity:getComputedStyle(track.firstChild).opacity,
+                    nativeHidden:frame.contentWindow.getComputedStyle(doc.documentElement).scrollbarWidth==='none'||frame.contentWindow.getComputedStyle(doc.documentElement,'::-webkit-scrollbar').display==='none',
+                    footer:document.querySelector('#mail-output-dialog footer').getBoundingClientRect().top};
+                })())'''))
+
+            before = state()
+            assert before['nativeHidden'] and not before['visible'], before
+            # Send an actual AppKit wheel event to WKWebView, without posting
+            # global input or touching the installed app or user's mailbox.
+            point = window.convertPointToScreen_((600, 400))
+            event = Quartz.CGEventCreateScrollWheelEvent(None, Quartz.kCGScrollEventUnitPixel, 1, -480)
+            Quartz.CGEventSetLocation(event, (point.x, AppKit.NSScreen.mainScreen().frame().size.height - point.y))
+            view.scrollWheel_(AppKit.NSEvent.eventWithCGEvent_(event))
+            wait(lambda: state()['top'] > 0 and state()['visible'])
+            active = state()
+            assert abs(active['width'] - before['width']) <= 1, (before, active)
+            assert active['footer'] == before['footer'], (before, active)
+            wait(lambda: not state()['visible'] and float(state()['opacity']) == 0)
+            idle = state()
+            assert idle['nativeHidden'] and abs(idle['width'] - before['width']) <= 1, idle
+            evaluate("document.querySelector('[data-output-close]').click()")
+            assert evaluate("document.querySelectorAll('.mail-output-scrollbar').length") == 0
+        print('PASS native WKWebView: real wheel in print/share, idle hiding, stable width/footer, sandbox and cleanup', flush=True)
+    finally:
+        window.close()
 
 
 def child(directory):
@@ -58,6 +146,8 @@ def main():
         print('SKIP native PDF: desktop renderer is not installed on this platform')
         return
     with tempfile.TemporaryDirectory(prefix='mailai-output-test-') as directory:
+        if sys.platform == 'darwin':
+            subprocess.run([sys.executable, __file__, '--scroll-child'], cwd=ROOT, check=True, timeout=60)
         command=[sys.executable,__file__,'--child',directory]
         process=subprocess.Popen(command,cwd=ROOT,start_new_session=sys.platform!='win32')
         try:
@@ -71,4 +161,9 @@ def main():
 
 
 if __name__=='__main__':
-    child(sys.argv[2]) if len(sys.argv)>1 and sys.argv[1]=='--child' else main()
+    if len(sys.argv) > 1 and sys.argv[1] == '--scroll-child':
+        scroll_child()
+    elif len(sys.argv) > 1 and sys.argv[1] == '--child':
+        child(sys.argv[2])
+    else:
+        main()
