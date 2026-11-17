@@ -173,7 +173,8 @@
     // The browser prints this same frame, so all UI colors are screen-only.
     style.textContent = `@media screen {
       html { background-color:${surface}; }
-      html, body { overscroll-behavior-y:none; }
+      html { overflow-y:auto; }
+      html, body { overscroll-behavior-y:contain; }
       body { max-width:80rem; margin-inline:auto; padding:clamp(12px,3vw,28px); }
       .mail-output-header { border-bottom:0; padding-bottom:0; }
       .mail-output-note { display:none; }
