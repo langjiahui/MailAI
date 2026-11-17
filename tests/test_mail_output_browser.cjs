@@ -220,8 +220,6 @@ const {chromium,webkit} = require('playwright');
     assert.ok(landscapeActions.y+landscapeActions.height<=320);
     await page.setViewportSize({width:375,height:812});
     await page.evaluate(()=>{document.body.style.zoom='1';document.documentElement.style.setProperty('--fz','1');setI18nLanguage('zh-CN');document.documentElement.removeAttribute('data-reward-theme');});
-    await dialog.locator('[data-output-close]').click();
-
     const pdfRequests=[];
     await page.route(/\/api\/emails\/\d+\/pdf/,async route=>{
       pdfRequests.push(route.request());
@@ -232,6 +230,8 @@ const {chromium,webkit} = require('playwright');
       delete navigator.canShare;
       delete navigator.share;
       Object.defineProperty(navigator,'share',{configurable:true,value:undefined});
+      // Reopen in the same task, before the queued native dialog close event.
+      document.querySelector('[data-output-close]').click();
       window.mailaiMailOutput.open('share');
     });
     await page.waitForFunction(()=>!document.querySelector('#mail-output-format').disabled);

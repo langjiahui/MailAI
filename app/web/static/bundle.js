@@ -23106,7 +23106,7 @@ function renderDigestEmailDetail(e) {
     <div class="drawer-email-header">
       <h2 class="reading-subject">${esc(String(e.subject ?? '').trim() || mailaiText('（无主题）'))}</h2>
       <div class="reading-meta">
-        <div class="meta-avatar">${(e.from_name || e.from_addr || '?').charAt(0).toUpperCase()}</div>
+        <div class="meta-avatar" data-avatar-tone="${mailAvatarTone(e.from_name, e.from_addr)}">${esc((e.from_name || e.from_addr || '?').charAt(0).toUpperCase())}</div>
         <div class="meta-fields">
           <div class="drawer-meta-row"><span class="meta-label">${mailaiT('read.fromShort') || '发件人'}</span>${renderSenderContact(e.from_name, e.from_addr)}</div>
           ${renderMessageRecipients(e)}
@@ -25783,7 +25783,7 @@ function renderSidebarAccounts() {
         <div class="sidebar-account-heading">
         <button type="button" class="account-collapse" data-account-collapse="${esc(account.id)}" aria-label="${collapsed ? mailaiText('展开') : mailaiText('收起')} ${esc(account.user)}" aria-expanded="${!collapsed}"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 4 4 4-4 4"/></svg></button>
         <button type="button" class="sidebar-account-head" data-account-action="inbox" data-account-id="${esc(account.id)}" title="查看 ${esc(account.user)} 的收件箱" data-i18n-title="ui.81208a9b139f">
-          <span class="sidebar-account-avatar">${esc(accountMark(account))}</span><span class="sidebar-account-identity"><b>${esc(localStorage.getItem('alias:' + account.id) || account.user.split('@')[0])}</b><small>${esc(account.user.split('@')[1] || (mailaiT('acct.stateReady') || '已连接'))}</small></span>
+          <span class="sidebar-account-avatar" data-avatar-tone="${mailAvatarTone('', account.user)}">${esc(accountMark(account))}</span><span class="sidebar-account-identity"><b>${esc(localStorage.getItem('alias:' + account.id) || account.user.split('@')[0])}</b><small>${esc(account.user.split('@')[1] || (mailaiT('acct.stateReady') || '已连接'))}</small></span>
         </button>
         ${statusVisible ? `<button type="button" data-account-recovery="${esc(account.id)}" class="account-sync-state ${syncing ? 'running' : 'warning'}" title="${esc(syncDetail)}">${syncing ? '<i class="account-sync-spinner" aria-hidden="true"></i>' : ''}${esc(status)}</button>` : ''}
         <details class="account-menu"><summary aria-label="管理 ${esc(account.user)}" title="${mailaiT('side.accountOptions') || '邮箱选项'}" data-i18n-aria="ui.01040917d2fe">⋯</summary><div><button type="button" data-account-recovery="${esc(account.id)}">${esc(mailaiText('同步与问题邮件'))}</button><button type="button" data-account-alias="${esc(account.id)}">${mailaiT('side.renameAccount') || '修改显示名称'}</button><button type="button" data-account-manage="${esc(account.id)}">${mailaiT('side.manageAccount') || '管理此邮箱'}</button></div></details>
@@ -27414,7 +27414,7 @@ function renderReadingPane(e) {
         </div>
         <div class="reading-analysis-status" data-mail-analysis-status role="status" aria-live="polite" hidden><span data-mail-analysis-message></span><button type="button" class="btn-ghost" data-mail-analysis-refresh hidden>${esc(readingActionText('read.analysisRefresh'))}</button></div>
         <div class="reading-meta">
-          <div class="meta-avatar">${(e.from_name || e.from_addr || '?').charAt(0).toUpperCase()}</div>
+          <div class="meta-avatar" data-avatar-tone="${mailAvatarTone(e.from_name, e.from_addr)}">${esc((e.from_name || e.from_addr || '?').charAt(0).toUpperCase())}</div>
           <div class="meta-fields">
             <div class="meta-sender-row"><span class="meta-label" data-i18n="read.from">${mailaiT('read.from') || '发件人：'}</span>${renderSenderContact(e.from_name, e.from_addr)}</div>
             ${renderMessageRecipients(e)}
@@ -31073,8 +31073,8 @@ document.addEventListener('keydown', event => {
     }`;
   }
 
-  function close() { dialog.close(); }
-  dialog.addEventListener('close', () => {
+  function clearClosedRun() {
+    if (dialog.open) return;
     const old = run;
     run = null;
     old?.controller.abort();
@@ -31083,7 +31083,9 @@ document.addEventListener('keydown', event => {
     find('#mail-output-text-preview').textContent = '';
     release(old);
     if (old?.returnFocus?.isConnected) old.returnFocus.focus({preventScroll:true});
-  });
+  }
+  function close() { dialog.close(); clearClosedRun(); }
+  dialog.addEventListener('close', clearClosedRun);
   find('[data-output-close]').onclick = close;
 
   async function work(action) {
@@ -31152,6 +31154,7 @@ document.addEventListener('keydown', event => {
     const source = reference.source === 'sent' ? 'sent' : 'email';
     if (!id || id<=0 || !accountId) return;
     if (dialog.open) return;
+    clearClosedRun();
     const scope = {id,accountId,source,mode,busy:true,data:null,file:null,controller:new AbortController(),previewReady:false,returnFocus:reference.returnFocus};
     run=scope;format.querySelector('[value="pdf"]').checked=true;status.textContent=t('working');paint();dialog.showModal();
     try {
@@ -33437,13 +33440,17 @@ function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, o
   </div>`;
 }
 
-// Decorative, local-only identity marks; the same address keeps the same tone.
+// Prefer the address so a display-name change keeps the same tone.
+function mailAvatarTone(name, address) {
+  const identity = (String(address || '').trim() || String(name || '').trim()).toLowerCase();
+  let hash = 0;
+  for (const char of identity) hash = (Math.imul(hash, 31) + char.codePointAt(0)) | 0;
+  return (hash >>> 0) % 6;
+}
+
 function mailSenderAvatar(name, address) {
-  const identity=String(address || name || '').trim().toLowerCase();
-  let hash=0;
-  for (const char of identity) hash=(Math.imul(hash,31)+char.codePointAt(0))|0;
   const initial=String(name || address || '').match(/[\p{L}\p{N}]/u)?.[0]?.toLocaleUpperCase() || '·';
-  return `<span class="mail-sender-avatar" data-avatar-tone="${(hash>>>0)%6}" aria-hidden="true">${esc(initial)}</span>`;
+  return `<span class="mail-sender-avatar" data-avatar-tone="${mailAvatarTone(name, address)}" aria-hidden="true">${esc(initial)}</span>`;
 }
 
 function mailCardDate(value, now = new Date()) {
