@@ -3,7 +3,7 @@ const fs=require('fs');
 (async()=>{
  const browser=await webkit.launch({headless:true});
  fs.mkdirSync('build/mail-output-debug',{recursive:true});
- for(const variant of ['baseline','parent-wheel','native-scrollbar','overscroll-auto','composite','visible-on-load','click-frame','scrolling-yes','inner-div','outer-viewport','unsandboxed']){
+ for(const variant of ['overscroll-auto','outer-contain']]){
   const page=await browser.newPage({viewport:{width:1440,height:1000},reducedMotion:'reduce'});
   await page.goto('http://127.0.0.1:18795');
   await page.locator('#email-list .email-item').first().click();await page.waitForFunction(()=>!!selectedEmailDetail);
@@ -22,7 +22,8 @@ const fs=require('fs');
    d.addEventListener('wheel',e=>window.__wheel.push(['child',e.target.tagName,e.deltaY]),{capture:true,passive:true});
    if(v==='parent-wheel')f.addEventListener('wheel',e=>{d.scrollingElement.scrollTop+=e.deltaY;e.preventDefault();},{passive:false});
    if(v==='native-scrollbar')d.documentElement.classList.remove('mail-output-scroll');
-   if(v==='overscroll-auto')d.getElementById('mail-output-screen-style').textContent+='@media screen{html,body{overscroll-behavior:auto!important}}';
+   if(v==='outer-contain')f.closest('.mail-output-content').style.overscrollBehaviorY='contain';
+   if(v==='overscroll-auto'||v==='outer-contain')d.getElementById('mail-output-screen-style').textContent+='@media screen{html,body{overscroll-behavior:auto!important}}';
    if(v==='scrolling-yes')f.setAttribute('scrolling','yes');
    if(v==='inner-div'){
     const scroll=d.createElement('div');scroll.id='debug-scroll';scroll.style.cssText='height:100vh;overflow:auto';while(d.body.firstChild)scroll.append(d.body.firstChild);d.body.append(scroll);d.getElementById('mail-output-screen-style').textContent+='@media screen{html,body{height:100%;margin:0;padding:0;overflow:hidden;overscroll-behavior:auto!important}}';
