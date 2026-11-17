@@ -29,12 +29,20 @@ def _installed_bundle():
     bundle = executable.parents[2]
     if (executable.relative_to(bundle).parts != ('Contents', 'MacOS', 'MailAI')
             or bundle.suffix != '.app' or not os.access(bundle.parent, os.W_OK | os.X_OK)
+            or bundle.stat().st_uid != os.getuid() or not os.access(bundle, os.W_OK)
             or not (bundle / 'Contents' / '_CodeSignature' / 'CodeResources').is_file()):
         return None
     return bundle
 
 
 def eligible():
+    try:
+        saved = json.loads((USER_DIR / 'updates/ready-update.json').read_text(encoding='utf-8'))
+        from .release_update import current_version, _version_tuple
+        if saved.get('requires_installer') and _version_tuple(saved['version']) > _version_tuple(current_version()):
+            return False
+    except (OSError, ValueError, TypeError, KeyError, AttributeError):
+        pass
     return _installed_bundle() is not None
 
 
@@ -155,6 +163,7 @@ def confirm_startup(window):
         try:
             if window.evaluate_js('typeof window.mailaiPrepareExit === "function"') is not True:
                 return
+            window.show()
             (USER_DIR / 'updates' / f'boot-{token}').touch(mode=0o600, exist_ok=False)
             os.environ.pop('MAILAI_UPDATE_BOOT_TOKEN', None)
         except Exception:

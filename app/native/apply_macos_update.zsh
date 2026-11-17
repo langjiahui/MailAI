@@ -25,9 +25,14 @@ record_result() {
   print -r -- "$1" > "$temporary" && /bin/mv -f "$temporary" "$updates/install-outcome.txt"
 }
 
+reopen_previous() {
+  PYINSTALLER_RESET_ENVIRONMENT=1 "$application/Contents/MacOS/MailAI" </dev/null >>"$updates/install-output.log" 2>&1 &!
+}
+
 fail_update() {
   record_result failed
   if [[ ! -e "$backup" ]]; then
+    if ! process_running "$parent_pid"; then reopen_previous; fi
     /bin/rm -rf "$stage"
   fi
   exit 1
@@ -50,7 +55,7 @@ restore_update() {
     fi
     /bin/mv "$backup" "$application" || fail_update
     record_result failed
-    PYINSTALLER_RESET_ENVIRONMENT=1 "$application/Contents/MacOS/MailAI" </dev/null >>"$updates/install-output.log" 2>&1 &!
+    reopen_previous
     /bin/rm -rf "$stage"
     exit 1
   fi

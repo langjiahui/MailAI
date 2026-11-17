@@ -825,6 +825,8 @@ const MAILAI_UI_COPY = {
   "updateFlow.ready": ["更新已就绪", "Update ready"],
   "updateFlow.readyNotice": ["更新已下载，可点击小邮提示或从设置 → 关于安装。", "Update downloaded. Click XiaoYou’s badge or go to Settings → About to install."],
   "updateFlow.petReady": ["更新已就绪 · 点击安装", "Update ready · Install"],
+  "updateFlow.petRestart": ["更新已就绪 · 重启并更新", "Update ready · Restart and update"],
+  "updateFlow.installPermission": ["更新所需的权限不足，请使用系统安装器完成更新。", "The update needs additional permissions. Complete the update using the system installer."],
   "updateFlow.petFailed": ["更新中断 · 点击重试", "Update interrupted · Retry"],
   "updateFlow.petDownloading": ["更新下载中 {0}%", "Downloading update {0}%"],
   "updateFlow.petInstalling": ["正在准备安装…", "Preparing to install…"],

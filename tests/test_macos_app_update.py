@@ -19,6 +19,47 @@ from app import account_guard, desktop, draft_lifecycle
 
 
 class UpdateManifestTest(unittest.TestCase):
+    def test_system_owned_bundle_uses_system_installer(self):
+        with tempfile.TemporaryDirectory() as folder:
+            bundle = Path(folder) / 'MailAI.app'
+            executable = bundle / 'Contents/MacOS/MailAI'
+            executable.parent.mkdir(parents=True)
+            signature = bundle / 'Contents/_CodeSignature/CodeResources'
+            signature.parent.mkdir()
+            signature.touch()
+            with (patch.object(mac_update, 'FROZEN', True),
+                  patch.object(mac_update.sys, 'platform', 'darwin'),
+                  patch.object(mac_update.sys, 'executable', str(executable)),
+                  patch.object(mac_update.os, 'getuid', return_value=bundle.stat().st_uid, create=True),
+                  patch.object(desktop, '_runtime', Mock(quitting=False))):
+                self.assertEqual(mac_update._installed_bundle(), bundle.resolve())
+                with patch.object(mac_update.os, 'getuid', return_value=os.getuid() + 1):
+                    self.assertFalse(mac_update.eligible())
+
+    def test_failed_update_stays_failed_after_outcome_is_consumed(self):
+        with (tempfile.TemporaryDirectory() as folder,
+              patch.object(release_update, 'USER_DIR', Path(folder)),
+              patch.object(release_update, 'current_version', return_value='3.0.0'),
+              patch.object(release_update, 'device_key', return_value='macos-arm64'),
+              patch.object(release_update, '_install_state', {'status':'idle'})):
+            import json
+            updates = Path(folder) / 'updates'
+            updates.mkdir()
+            release = {'latest_version':'3.1.0', 'device':'macos-arm64',
+                       'asset':{'size':4}, 'install_method':'mac-app'}
+            release_update._download_path(release).write_bytes(b'test')
+            release_update._remember_ready_update(release)
+            (updates / 'install-pending.json').write_text(json.dumps({
+                'version':'3.1.0', 'started_at':time.time(), 'method':'mac-app'}))
+            (updates / 'install-outcome.txt').write_text('failed')
+            (updates / 'install-output.log').write_text('Permission denied')
+            self.assertEqual(release_update.consume_install_outcome()['status'], 'failed')
+            self.assertEqual(release_update.consume_install_outcome(), {'pending':False})
+            self.assertEqual(release_update.install_status()['phase'], 'failed')
+            self.assertEqual(release_update.install_status()['error'], '更新所需的权限不足，请使用系统安装器完成更新。')
+            with patch.object(mac_update, 'USER_DIR', Path(folder)):
+                self.assertFalse(mac_update.eligible())
+
     def test_prepared_app_requires_confirmation_and_rechecks_its_hash(self):
         payload = b'isolated signed application archive fixture'
         release = {
@@ -207,7 +248,7 @@ class NativeMacUpdateTest(unittest.TestCase):
             with self.assertRaises(subprocess.CalledProcessError):
                 mac_update._verify_bundle(previous, candidate, '3.1.0')
 
-    def run_handoff(self, startup, *, reap_parent=True):
+    def run_handoff(self, startup, *, reap_parent=True, deny_move=False):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             current, stage, updates = (root / name for name in ('MailAI.app', 'stage', 'updates'))
@@ -216,6 +257,13 @@ class NativeMacUpdateTest(unittest.TestCase):
             marker = root / 'old-started'
             process_file = root / 'new-process'
             executable = self.make_app(current, '3.0.0', f'touch "{marker}"')
+            if deny_move:
+                locked = root / 'locked'
+                locked.mkdir()
+                current.rename(locked / 'MailAI.app')
+                current = locked / 'MailAI.app'
+                executable = current / 'Contents/MacOS/MailAI'
+                locked.chmod(0o555)
             command = 'exit 1'
             if startup in {'ready', 'crashed'}:
                 command = f'touch "{updates}/boot-$MAILAI_UPDATE_BOOT_TOKEN"\n'
@@ -234,6 +282,8 @@ class NativeMacUpdateTest(unittest.TestCase):
                             active.wait(timeout=3)
                         self.assertEqual(helper.wait(timeout=8), 0 if succeeded else 1)
                     finally:
+                        if deny_move:
+                            locked.chmod(0o755)
                         if helper.poll() is None:
                             helper.kill()
                         if active.poll() is None:
@@ -261,6 +311,9 @@ class NativeMacUpdateTest(unittest.TestCase):
 
     def test_failed_startup_restores_and_relaunches_previous_app(self):
         self.run_handoff('failed')
+
+    def test_permission_failure_reopens_previous_app(self):
+        self.run_handoff('failed', deny_move=True)
 
     def test_crash_after_startup_receipt_still_restores_previous_app(self):
         self.run_handoff('crashed')
