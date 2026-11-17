@@ -31,13 +31,17 @@ function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, o
   </div>`;
 }
 
-// Decorative, local-only identity marks; the same address keeps the same tone.
+// Prefer the address so a display-name change keeps the same tone.
+function mailAvatarTone(name, address) {
+  const identity = (String(address || '').trim() || String(name || '').trim()).toLowerCase();
+  let hash = 0;
+  for (const char of identity) hash = (Math.imul(hash, 31) + char.codePointAt(0)) | 0;
+  return (hash >>> 0) % 6;
+}
+
 function mailSenderAvatar(name, address) {
-  const identity=String(address || name || '').trim().toLowerCase();
-  let hash=0;
-  for (const char of identity) hash=(Math.imul(hash,31)+char.codePointAt(0))|0;
   const initial=String(name || address || '').match(/[\p{L}\p{N}]/u)?.[0]?.toLocaleUpperCase() || '·';
-  return `<span class="mail-sender-avatar" data-avatar-tone="${(hash>>>0)%6}" aria-hidden="true">${esc(initial)}</span>`;
+  return `<span class="mail-sender-avatar" data-avatar-tone="${mailAvatarTone(name, address)}" aria-hidden="true">${esc(initial)}</span>`;
 }
 
 function mailCardDate(value, now = new Date()) {

@@ -114,7 +114,7 @@ html[data-theme] body:not([data-mail-list-view="table"]) #email-list .group-head
 html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-meta { flex-wrap:wrap; justify-content:flex-end; }
 html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-meta>.tag { max-width:100%; white-space:normal; text-align:right; }
 
-/* Identity colors follow the theme; monochrome uses neutral gray initials. */
+/* Identity colors follow the theme. */
 #email-list .mail-sender-avatar { --mail-avatar-saturation:38%; --mail-avatar-lightness:91%; --mail-avatar-ink-saturation:35%; --mail-avatar-ink-lightness:31%; }
 #email-list .mail-sender-avatar[data-avatar-tone="0"] { --avatar-hue:155; }
 #email-list .mail-sender-avatar[data-avatar-tone="1"] { --avatar-hue:210; }
@@ -123,19 +123,6 @@ html[data-theme] body:not([data-mail-list-view="table"]) #email-list .email-meta
 #email-list .mail-sender-avatar[data-avatar-tone="4"] { --avatar-hue:40; }
 #email-list .mail-sender-avatar[data-avatar-tone="5"] { --avatar-hue:185; }
 html[data-theme="dark"] #email-list .mail-sender-avatar { --mail-avatar-saturation:22%; --mail-avatar-lightness:25%; --mail-avatar-ink-saturation:40%; --mail-avatar-ink-lightness:79%; }
-/* Soft graphite identities with occasional ink accents, never a colored tint. */
-html[data-reward-theme="theme_monochrome"] #email-list .mail-sender-avatar { --mail-avatar-saturation:0%; --mail-avatar-ink-saturation:0%; --mail-avatar-lightness:18%; --mail-avatar-ink-lightness:100%; }
-html[data-reward-theme="theme_monochrome"] #email-list .mail-sender-avatar[data-avatar-tone="1"] { --mail-avatar-lightness:92%; --mail-avatar-ink-lightness:28%; }
-html[data-reward-theme="theme_monochrome"] #email-list .mail-sender-avatar[data-avatar-tone="2"] { --mail-avatar-lightness:88%; --mail-avatar-ink-lightness:28%; }
-html[data-reward-theme="theme_monochrome"] #email-list .mail-sender-avatar[data-avatar-tone="3"] { --mail-avatar-lightness:28%; --mail-avatar-ink-lightness:100%; }
-html[data-reward-theme="theme_monochrome"] #email-list .mail-sender-avatar[data-avatar-tone="4"] { --mail-avatar-lightness:96%; --mail-avatar-ink-lightness:30%; }
-html[data-reward-theme="theme_monochrome"] #email-list .mail-sender-avatar[data-avatar-tone="5"] { --mail-avatar-lightness:84%; --mail-avatar-ink-lightness:26%; }
-html[data-theme="dark"][data-reward-theme="theme_monochrome"] #email-list .mail-sender-avatar { --mail-avatar-saturation:0%; --mail-avatar-ink-saturation:0%; --mail-avatar-lightness:82%; --mail-avatar-ink-lightness:12%; }
-html[data-theme="dark"][data-reward-theme="theme_monochrome"] #email-list .mail-sender-avatar[data-avatar-tone="1"] { --mail-avatar-lightness:24%; --mail-avatar-ink-lightness:90%; }
-html[data-theme="dark"][data-reward-theme="theme_monochrome"] #email-list .mail-sender-avatar[data-avatar-tone="2"] { --mail-avatar-lightness:29%; --mail-avatar-ink-lightness:94%; }
-html[data-theme="dark"][data-reward-theme="theme_monochrome"] #email-list .mail-sender-avatar[data-avatar-tone="3"] { --mail-avatar-lightness:65%; --mail-avatar-ink-lightness:12%; }
-html[data-theme="dark"][data-reward-theme="theme_monochrome"] #email-list .mail-sender-avatar[data-avatar-tone="4"] { --mail-avatar-lightness:18%; --mail-avatar-ink-lightness:88%; }
-html[data-theme="dark"][data-reward-theme="theme_monochrome"] #email-list .mail-sender-avatar[data-avatar-tone="5"] { --mail-avatar-lightness:32%; --mail-avatar-ink-lightness:96%; }
 html[data-reward-theme="theme_baowu"] #email-list .mail-sender-avatar { --avatar-hue:210; }
 html[data-reward-theme="theme_baowu"] #email-list .mail-sender-avatar[data-avatar-tone="1"] { --avatar-hue:205; }
 html[data-reward-theme="theme_baowu"] #email-list .mail-sender-avatar[data-avatar-tone="2"] { --avatar-hue:25; }
@@ -146,8 +133,8 @@ html[data-theme] #email-list .mail-sender-avatar {
   background:hsl(var(--avatar-hue) var(--mail-avatar-saturation) var(--mail-avatar-lightness))!important;
   color:hsl(var(--avatar-hue) var(--mail-avatar-ink-saturation) var(--mail-avatar-ink-lightness))!important;
 }
-html[data-theme] #email-list .email-item.selected .mail-sender-avatar{background:var(--desk-accent)!important;color:var(--reward-on-accent,#fff)!important}
-html[data-theme="dark"] #email-list .email-item.selected .mail-sender-avatar{color:var(--reward-on-accent,#142d20)!important}
+html[data-theme]:where(:not([data-reward-theme="theme_monochrome"])) #email-list .email-item.selected .mail-sender-avatar{background:var(--desk-accent)!important;color:var(--reward-on-accent,#fff)!important}
+html[data-theme="dark"]:where(:not([data-reward-theme="theme_monochrome"])) #email-list .email-item.selected .mail-sender-avatar{color:var(--reward-on-accent,#142d20)!important}
 /* Status stays semantic in every palette, including monochrome. */
 #email-list {
   --mail-warning-ink:#865017; --mail-warning-paper:#fff3da;

@@ -105,3 +105,25 @@ html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[d
   html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .topbar .global-search,
   html[data-theme][data-reward-theme]:is([data-reward-theme="theme_monochrome"],[data-reward-theme="theme_baowu"]) body .reading-header .reading-actions :is(button,summary) { transition:none!important; }
 }
+/* Give people a stable identity color across the list, reader and account rail. */
+@media (forced-colors: none) {
+  html[data-reward-theme="theme_monochrome"] {
+    --identity-fill:30% 88%;
+    --identity-ink:25% 30%;
+  }
+  html[data-theme="dark"][data-reward-theme="theme_monochrome"] {
+    --identity-fill:23% 28%;
+    --identity-ink:42% 86%;
+  }
+  html[data-reward-theme="theme_monochrome"] [data-avatar-tone="0"] { --identity-hue:145; }
+  html[data-reward-theme="theme_monochrome"] [data-avatar-tone="1"] { --identity-hue:215; }
+  html[data-reward-theme="theme_monochrome"] [data-avatar-tone="2"] { --identity-hue:20; }
+  html[data-reward-theme="theme_monochrome"] [data-avatar-tone="3"] { --identity-hue:270; }
+  html[data-reward-theme="theme_monochrome"] [data-avatar-tone="4"] { --identity-hue:38; }
+  html[data-reward-theme="theme_monochrome"] [data-avatar-tone="5"] { --identity-hue:185; }
+  html[data-theme][data-reward-theme="theme_monochrome"] body #account-mailbox-nav .sidebar-account .sidebar-account-avatar[data-avatar-tone],
+  html[data-theme][data-reward-theme="theme_monochrome"] body :is(#email-list,#reading-content,#digest-email-drawer) :is(.mail-sender-avatar,.meta-avatar)[data-avatar-tone] {
+    background:hsl(var(--identity-hue) var(--identity-fill))!important;
+    color:hsl(var(--identity-hue) var(--identity-ink))!important;
+  }
+}

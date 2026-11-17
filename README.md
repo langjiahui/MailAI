@@ -5,9 +5,9 @@ MailAI 是一款**本地优先（Local-First）、AI 驱动**的开源跨平台�
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v4.7.0**
+当前版本：**v4.7.1**
 
-本次更新：新增 macOS 应用内后台下载及「重启并更新」，重启前保存草稿并检查邮件任务，启动异常时支持恢复旧版；修复切换语言后「总结邮件」入口重复和翻译残留的问题。[发布说明](docs/发布-v4.7.0-macOS应用内更新与阅读菜单国际化.md) · [完整版本历史](https://github.com/langjiahui/MailAI/releases)
+本次更新：优化黑白主题的头像和附件图标配色，浅色与深色模式均采用柔和的分类颜色。[发布说明](docs/发布-v4.7.1-黑白主题配色优化.md) · [完整版本历史](https://github.com/langjiahui/MailAI/releases)
 
 ---
 

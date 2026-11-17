@@ -137,7 +137,7 @@ const {auditMailCardEdges}=require('./helpers/mail-card-edges.cjs');
             avatar.dataset.avatarTone=String(tone);const style=getComputedStyle(avatar),fg=rgba(style.color),bg=over(rgba(style.backgroundColor),paper);
             results.push({selector:'avatar '+tone,ratio:contrast(fg,bg)});avatarBackgrounds.push(bg.join(','));
             const chroma=Math.max(...bg.slice(0,3))-Math.min(...bg.slice(0,3));
-            if(reward==='theme_monochrome' && chroma!==0)throw Error('Monochrome avatars must remain neutral: '+JSON.stringify({tone,fg,bg}));
+            if(reward==='theme_monochrome' && (chroma<8 || chroma>45))throw Error('Monochrome avatars need a muted color: '+JSON.stringify({tone,fg,bg}));
             if(reward==='theme_baowu' && [0,1,3].includes(tone) && !(fg[2]>fg[0]&&bg[2]>bg[0]))throw Error('Baowu identity marks must retain their main blue palette');
             if(reward!=='theme_monochrome' && [2,4].includes(tone) && !(bg[0]>bg[2]))throw Error('Warm accent avatars remain available in every theme');
           }
@@ -146,6 +146,11 @@ const {auditMailCardEdges}=require('./helpers/mail-card-edges.cjs');
           host.querySelector('.email-item').classList.add('selected');
           const selectedAvatar=host.querySelector('.mail-sender-avatar'),selectedStyle=getComputedStyle(selectedAvatar);
           results.push({selector:'selected avatar',ratio:contrast(rgba(selectedStyle.color),over(rgba(selectedStyle.backgroundColor),selected))});
+          if(reward==='theme_monochrome'){
+            const selectedFill=selectedStyle.backgroundColor;
+            host.querySelector('.email-item').classList.remove('selected');
+            if(selectedStyle.backgroundColor!==selectedFill)throw Error('Sender color must survive selection changes');
+          }
           if(parseFloat(selectedStyle.borderRadius)>=parseFloat(selectedStyle.width)/2)throw Error('Sender marks should use the compact rounded-square identity shape');
           for(const n of [list.querySelector('.risk-badge.warn'),host.querySelector('.risk-badge.danger'),host.querySelector('.risk-alert-dot')]){
             const style=getComputedStyle(n),bg=over(rgba(style.backgroundColor),paper);
@@ -171,6 +176,39 @@ const {auditMailCardEdges}=require('./helpers/mail-card-edges.cjs');
       }
     }
     await auditMailCardEdges(page);
+    simulatedReward='theme_monochrome';
+    await page.setViewportSize({width:1440,height:1000});
+    await page.evaluate(async()=>{await mailaiPet.refresh();await selectEmail(1);});
+    await page.locator('.sidebar-account.active .sidebar-account-avatar').waitFor();
+    for(const mode of ['light','dark']){
+      const details=await page.evaluate(mode=>{
+        applyTheme(mode);
+        const listAvatar=document.querySelector('#email-list .selected .mail-sender-avatar');
+        const readerAvatar=document.querySelector('#reading-content .meta-avatar');
+        const avatar=node=>({tone:node.dataset.avatarTone,fill:getComputedStyle(node).backgroundColor});
+        const row=document.createElement('div');
+        row.className='attachment';
+        row.innerHTML=['sample.pdf','sample.docx','sample.xlsx'].map(name=>attachmentFileIcon({name})).join('');
+        document.getElementById('reading-content').append(row);
+        const fileColors=[...row.querySelectorAll('strong')].map(badge=>getComputedStyle(badge).backgroundColor);
+        row.remove();
+        return {
+          list:avatar(listAvatar),reader:avatar(readerAvatar),fileColors,
+          accounts:[...document.querySelectorAll('.sidebar-account-avatar')].map(avatar),
+        };
+      },mode);
+      assert.deepEqual(details.list,details.reader,'The same sender uses the same color in the list and reader');
+      assert(details.accounts.length>0);
+      for(const {tone,fill} of details.accounts){
+        assert.match(tone,/^[0-5]$/);
+        const channels=fill.match(/\d+/g).slice(0,3).map(Number);
+        const chroma=Math.max(...channels)-Math.min(...channels);
+        assert(chroma>=8&&chroma<=45,`Account avatars use muted colors in ${mode} mode (${fill})`);
+      }
+      assert.deepEqual(details.fileColors,mode==='light'
+        ? ['rgb(147, 73, 65)','rgb(71, 101, 140)','rgb(55, 105, 81)']
+        : ['rgb(203, 146, 138)','rgb(149, 173, 206)','rgb(145, 184, 160)']);
+    }
     await page.unroute('**/api/companion/growth');await page.evaluate(()=>mailaiPet.refresh());
     await page.setViewportSize({width:390,height:1000});
     const crowded=await page.evaluate(()=>{
