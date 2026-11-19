@@ -1262,6 +1262,8 @@ const I18N_MESSAGES = {
     'side.accountOptions': 'Mailbox options',
     'side.renameAccount': 'Rename display name',
     'side.manageAccount': 'Manage this mailbox',
+    'side.moveAccountUp': 'Move mailbox up',
+    'side.moveAccountDown': 'Move mailbox down',
     'guide.replay': 'Replay the guide',
     'rules.backMail': 'Back to mail',
     'rules.allOn': 'All on',

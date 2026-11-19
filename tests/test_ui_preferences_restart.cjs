@@ -57,6 +57,7 @@ async function pageAt(url) {
     'mailai-companion-position-v1':'{"version":1,"x":0,"y":0.6,"dock":"left"}',
     'mailai.preferences.showServerFolders.v1':'true',
     'mailai-browsing-account':'test-account', 'alias:test-account':'Work',
+    'mailai.sidebar.accountOrder.v1':'["personal","work"]',
     'collapsed:test-account':'1', 'mailai-secretary-focus:test-account':'decision',
     'mailai.onboarding.v2':'{"dismissed":true}',
   };
