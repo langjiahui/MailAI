@@ -5396,7 +5396,7 @@ function renderSidebarAccounts() {
   if (!host || !multiple) return;
   const inboxTotal = accounts.reduce((sum, account) => sum + Number(account.inbox || 0), 0);
   host.innerHTML = `<button type="button" class="nav-item unified-inbox-button ${unifiedMailbox ? 'active' : ''}" data-account-action="unified">
-    <span class="icon"><svg viewBox="0 0 20 20"><path d="M3 5h14v11H3zM3 6l7 5 7-5"/></svg></span><span>${mailaiT('list.allInboxes') || '所有收件箱'}</span><span class="count">${inboxTotal}</span></button>` + accounts.map(account => {
+    <span class="icon"><svg viewBox="0 0 20 20"><path d="M3 5h14v11H3zM3 6l7 5 7-5"/></svg></span><span>${mailaiT('list.allInboxes') || '所有收件箱'}</span><span class="count">${inboxTotal}</span></button>` + orderedSidebarAccounts(accounts).map((account, index) => {
       const selectedAccount = selectedMailboxAccountId === account.id && !unifiedMailbox;
       const collapsed = localStorage.getItem('collapsed:' + account.id) === '1';
       const syncing = account.credential_available && account.sync_status === 'running';
@@ -5414,7 +5414,13 @@ function renderSidebarAccounts() {
           <span class="sidebar-account-avatar" data-avatar-tone="${mailAvatarTone('', account.user)}">${esc(accountMark(account))}</span><span class="sidebar-account-identity"><b>${esc(localStorage.getItem('alias:' + account.id) || account.user.split('@')[0])}</b><small>${esc(account.user.split('@')[1] || (mailaiT('acct.stateReady') || '已连接'))}</small></span>
         </button>
         ${statusVisible ? `<button type="button" data-account-recovery="${esc(account.id)}" class="account-sync-state ${syncing ? 'running' : 'warning'}" title="${esc(syncDetail)}">${syncing ? '<i class="account-sync-spinner" aria-hidden="true"></i>' : ''}${esc(status)}</button>` : ''}
-        <details class="account-menu"><summary aria-label="管理 ${esc(account.user)}" title="${mailaiT('side.accountOptions') || '邮箱选项'}" data-i18n-aria="ui.01040917d2fe">⋯</summary><div><button type="button" data-account-recovery="${esc(account.id)}">${esc(mailaiText('同步与问题邮件'))}</button><button type="button" data-account-alias="${esc(account.id)}">${mailaiT('side.renameAccount') || '修改显示名称'}</button><button type="button" data-account-manage="${esc(account.id)}">${mailaiT('side.manageAccount') || '管理此邮箱'}</button></div></details>
+        <details class="account-menu"><summary aria-label="管理 ${esc(account.user)}" title="${mailaiT('side.accountOptions') || '邮箱选项'}" data-i18n-aria="ui.01040917d2fe">⋯</summary><div>
+          ${index > 0 ? `<button type="button" data-account-move="up">${mailaiT('side.moveAccountUp') || '上移邮箱'}</button>` : ''}
+          ${index < accounts.length - 1 ? `<button type="button" data-account-move="down">${mailaiT('side.moveAccountDown') || '下移邮箱'}</button>` : ''}
+          <button type="button" data-account-recovery="${esc(account.id)}">${esc(mailaiText('同步与问题邮件'))}</button>
+          <button type="button" data-account-alias="${esc(account.id)}">${mailaiT('side.renameAccount') || '修改显示名称'}</button>
+          <button type="button" data-account-manage="${esc(account.id)}">${mailaiT('side.manageAccount') || '管理此邮箱'}</button>
+        </div></details>
         </div>
         <div class="sidebar-account-folders">${[['favorites', mailaiT('side.favorites') || '我的收藏','m10 2 2.4 5 5.6.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.6-.8Z'],['inbox', mailaiT('side.inbox') || '收件箱','M3 13v4h14v-4M10 3v9m-3-3 3 3 3-3'],['sent', mailaiT('side.sent') || '已发送','m3 9 14-6-5 14-3-6-6-2Zm6 2 8-8'],['drafts', mailaiT('side.drafts') || '草稿箱','M5 2h7l4 4v12H5zM12 2v5h4M8 11h5M8 14h4'],['local_archive', mailaiText('本地归档'),'M3 4h14v4H3zM4 8v9h12V8M8 11h4'],['trash', mailaiT('side.trash') || '已删除','M4 6h12M7 6V3h6v3M6 8l1 9h6l1-9']].map(([action,label,path]) => `<button type="button" class="${selectedAccount && (action === 'local_archive' ? currentFilter.status === 'local_archive' : action === 'favorites' ? currentFilter.status === 'favorites' : action === 'trash' ? currentFilter.status === 'trash' || Boolean(currentServerFolder && currentServerFolder === serverFolderForRole('trash')?.name) : action === 'inbox' ? currentFilter.status === 'inbox' && !specialMailbox && !currentServerFolder : specialMailbox === action) ? 'active' : ''}" data-account-action="${action}" data-account-id="${esc(account.id)}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="${path}"/></svg><span>${label}</span>${action === 'inbox' && Number(account.unread) ? `<em title="未读邮件" data-i18n-title="ui.ef3356ba548c">${Number(account.unread)}</em>` : ''}</button>`).join('')}</div>
       </section>`;

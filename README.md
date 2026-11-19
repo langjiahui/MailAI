@@ -5,9 +5,9 @@ MailAI 是一款**本地优先（Local-First）、AI 驱动**的开源跨平台�
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v4.7.5**
+当前版本：**v4.8.0**
 
-本次更新：修复 macOS 打印与分享预览无法使用鼠标滚轮滚动的问题。预览滚动条在停止操作约 0.9 秒后自动隐藏，支持拖动，正文宽度和底部操作按钮保持稳定。[发布说明](docs/发布-v4.7.5-打印与分享预览滚动修复.md) · [完整版本历史](https://github.com/langjiahui/MailAI/releases)
+本次更新：左侧边栏新增邮箱顺序调整功能，可在邮箱选项菜单中上移或下移邮箱位置，保持「所有收件箱」置顶并跨重启持久保留顺序。[发布说明](docs/发布-v4.8.0-左侧邮箱顺序调整.md) · [完整版本历史](https://github.com/langjiahui/MailAI/releases)
 
 ---
 

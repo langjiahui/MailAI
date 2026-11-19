@@ -17,7 +17,7 @@ KEYS = {
     "mailai-assistant-layout-v1", "mailai.workspace.paneSizes.v1",
     "mailai.assistant.dockWidth.v1",
     "mailai-companion-position-v1",
-    "mailai-browsing-account", "mailai.onboarding.v2",
+    "mailai-browsing-account", "mailai.sidebar.accountOrder.v1", "mailai.onboarding.v2",
 }
 
 

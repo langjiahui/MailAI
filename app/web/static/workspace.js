@@ -887,8 +887,33 @@ function initializeAssistantPolish() {
   updateAssistantPlacement(); updateAssistantScopeControl();
 }
 
+const SIDEBAR_ACCOUNT_ORDER_KEY = 'mailai.sidebar.accountOrder.v1';
+
+function orderedSidebarAccounts(accounts) {
+  let order;
+  try { order = JSON.parse(localStorage.getItem(SIDEBAR_ACCOUNT_ORDER_KEY)); }
+  catch (_) { return accounts; }
+  if (!Array.isArray(order)) return accounts;
+  const rank = new Map(order.map((id, index) => [id, index]));
+  return [...accounts].sort((left, right) => (rank.get(left.id) ?? order.length) - (rank.get(right.id) ?? order.length));
+}
+
 function initializeWorkspace() {
   document.getElementById('account-mailbox-nav').addEventListener('click', async event => {
+    const move = event.target.closest('[data-account-move]');
+    if (move) {
+      const accountId = move.closest('[data-sidebar-account]').dataset.sidebarAccount;
+      const order = orderedSidebarAccounts(_systemConfig?.accounts || []).map(account => account.id);
+      const index = order.indexOf(accountId);
+      const target = index + (move.dataset.accountMove === 'up' ? -1 : 1);
+      if (index < 0 || target < 0 || target >= order.length) return;
+      [order[index], order[target]] = [order[target], order[index]];
+      try { localStorage.setItem(SIDEBAR_ACCOUNT_ORDER_KEY, JSON.stringify(order)); }
+      catch (_) { return; }
+      renderSidebarAccounts();
+      event.currentTarget.querySelector(`[data-sidebar-account="${CSS.escape(accountId)}"] .account-menu summary`)?.focus();
+      return;
+    }
     const id = event.target.closest('[data-account-collapse]')?.dataset.accountCollapse;
     if (id) { localStorage.setItem('collapsed:' + id, localStorage.getItem('collapsed:' + id) === '1' ? '0' : '1'); renderSidebarAccounts(); [...document.querySelectorAll('[data-account-collapse]')].find(button => button.dataset.accountCollapse === id)?.focus(); }
     const managedId = event.target.closest('[data-account-manage]')?.dataset.accountManage;
