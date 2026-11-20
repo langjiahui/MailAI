@@ -12,11 +12,17 @@ data class MailContact(val email: String, val name: String = "") {
 }
 
 object MailAddresses {
-    fun decode(value: String): String =
-        MailHeaderCodec.decode(value)
-            .replace(Regex("[\\r\\n]+[\\t ]*"), " ")
-            .trim()
-            .removeSurrounding("\"")
+    fun decode(value: String): String {
+        var name = MailHeaderCodec.decode(value).replace(Regex("[\r\n]+[\t ]*"), " ").trim()
+        // Legacy servers may escape the enclosing display-name quotes more than once.
+        // Only balanced wrappers are removed, preserving punctuation inside the name.
+        repeat(8) {
+            val unwrapped = name.removeSurrounding("\\\"").removeSurrounding("\"").trim()
+            if (unwrapped == name) return name
+            name = unwrapped
+        }
+        return name
+    }
 
     fun parse(raw: String): List<MailContact> {
         if (raw.isBlank()) return emptyList()
@@ -29,7 +35,12 @@ object MailAddresses {
             }
             .getOrDefault(emptyList())
             .mapNotNull { address ->
-                val email = address.address?.trim().orEmpty()
+                val rawEmail = address.address?.trim().orEmpty()
+                val email =
+                    if (address.personal.isNullOrBlank() &&
+                        rawEmail.startsWith("\\\"") && rawEmail.endsWith("\\\"")) {
+                        decode(rawEmail)
+                    } else rawEmail
                 if (!email.contains('@') || email.any { it == '\r' || it == '\n' }) null
                 else MailContact(email, decode(address.personal.orEmpty()))
             }
