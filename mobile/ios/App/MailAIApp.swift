@@ -456,10 +456,7 @@ struct MailRow: View {
     let summary: MailSummary
     var account: String? = nil
     var keyword = ""
-    private var displaySender: String {
-        let sender = summary.contactAddresses.first
-        return sender?.name.isEmpty == false ? sender!.name : (sender?.email ?? summary.sender)
-    }
+    private var displaySender: String { summary.displaySender }
     private var indicators: some View {
         HStack(spacing: 6) {
             if summary.isFlagged == true { Image(systemName: "star.fill").foregroundStyle(.orange).accessibilityLabel("星标") }

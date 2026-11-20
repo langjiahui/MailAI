@@ -216,6 +216,7 @@ public struct MailSummary: Codable, Identifiable, Equatable, Sendable {
         self.sender = sender; self.replyAddress = replyAddress; self.date = date; self.unread = unread
         self.messageID = messageID
     }
+    public var displaySender: String { contactAddresses.first?.title ?? sender }
     public var contactAddresses: [MailAddress] {
         let raw = sender.trimmingCharacters(in: .whitespacesAndNewlines)
         let left = raw.lastIndex(of: "<"), right = raw.lastIndex(of: ">")

@@ -38,6 +38,27 @@ private actor FeatureService: MailService {
         try await store.addAccount(account, password: "synthetic-password"); store.cancelRefresh()
         return (store, vault, service, files)
     }
+    func testEscapedSenderNameIsCleanedForNewAndCachedMessages() throws {
+        let email = "person@example.com"
+        for name in [#"\"person@example.com\""#, #""person@example.com""#] {
+            var message = FeatureService.item()
+            message.sender = name
+            message.senderAddress = email
+            message.replyAddress = email
+            message.senderName = name
+            XCTAssertEqual(message.displaySender, email)
+            let cached = try JSONDecoder().decode(MailSummary.self, from: JSONEncoder().encode(message))
+            XCTAssertEqual(cached.displaySender, email)
+            message.senderName = nil
+            message.senderAddress = nil
+            message.sender = name + " <" + email + ">"
+            XCTAssertEqual(message.displaySender, email)
+        }
+        XCTAssertEqual(MailAddress(name: #"\"张三\""#, email: email).title, "张三")
+        XCTAssertEqual(MailAddress.cleanedName(#""Jane \"JJ\" Doe""#, email: email), #"Jane "JJ" Doe"#)
+        XCTAssertEqual(MailAddress.cleanedName(#"研发\支持"#, email: email), #"研发\支持"#)
+        XCTAssertEqual(MailAddress.cleanedName("O'Connor", email: email), "O'Connor")
+    }
     func testCorrespondenceMatchesExactParticipantsAndDeduplicatesMessages() throws {
         var incoming = FeatureService.item(); incoming.senderAddress = "sender@example.com"; incoming.messageID = "<same@example.com>"
         var duplicate = incoming.relocated(uid: 9, validity: 10, folder: "Archive")

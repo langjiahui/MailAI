@@ -4,11 +4,27 @@ public struct MailAddress: Codable, Equatable, Hashable, Sendable, Identifiable 
     public var name: String
     public var email: String
     public var id: String { email.lowercased() }
-    public var title: String { name.isEmpty ? email : name }
+    public var title: String {
+        let displayName = Self.cleanedName(name, email: email)
+        return displayName.isEmpty ? email : displayName
+    }
     public init(name: String = "", email: String) { self.name = name; self.email = email }
     public static func cleanedName(_ value: String, email: String) -> String {
         var name = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        if name.count >= 2, name.first == "\"", name.last == "\"" { name = String(name.dropFirst().dropLast()).trimmingCharacters(in: .whitespacesAndNewlines) }
+        // Some legacy servers escape the enclosing display-name quotes twice.
+        // Remove balanced wrappers only, preserving punctuation inside real names.
+        for _ in 0..<8 {
+            if name.count >= 4, name.hasPrefix(#"\""#), name.hasSuffix(#"\""#) {
+                name = String(name.dropFirst(2).dropLast(2))
+            } else if name.count >= 2, name.first == "\"", name.last == "\"" {
+                name = String(name.dropFirst().dropLast())
+                name = name.replacingOccurrences(of: #"\""#, with: "\"")
+                    .replacingOccurrences(of: #"\\"#, with: #"\"#)
+            } else {
+                break
+            }
+            name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
         guard !MailValidation.hasControl(name), name.caseInsensitiveCompare(email) != .orderedSame,
               name.range(of: "=\\?[^?\\s]+\\?[bBqQ]\\?[^?]*\\?=", options: .regularExpression) == nil else { return "" }
         return String(name.prefix(200))
