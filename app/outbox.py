@@ -193,6 +193,62 @@ def _public_item(row):
     return row
 
 
+def _safe_attachments(items):
+    result = []
+    for att in items or []:
+        if isinstance(att, dict):
+            name = str(att.get('filename') or att.get('name') or '')
+            result.append({
+                'filename': name,
+                'name': name,
+                'size': int(att.get('size') or 0),
+                'content_type': str(att.get('content_type') or 'application/octet-stream'),
+            })
+    return result
+
+
+def _outbox_mail_view(row, *, full=False):
+    row = dict(row)
+    payload = json.loads(row.get('payload') or '{}')
+    result = json.loads(row.get('result') or '{}')
+    body_html = str(payload.get('body_html') or '')
+    return {
+        'id': f"outbox:{row['token']}",
+        'outbox_token': row['token'],
+        '_outbox': True,
+        'draft_id': payload.get('id'),
+        'sent_record_id': result.get('sent_record_id'),
+        'from_addr': payload.get('from_addr') or '',
+        'to_addr': payload.get('to_addr') or '',
+        'cc_addr': payload.get('cc_addr') or '',
+        'bcc_addr': payload.get('bcc_addr') or '',
+        'subject': payload.get('subject') or '',
+        'body_html': body_html if full else body_html[:1000],
+        'attachments': _safe_attachments(payload.get('attachments')),
+        'status': row['status'],
+        'scheduled': bool(payload.get('send_at')),
+        'due_at': row.get('due_at') or '',
+        'created_at': row.get('created_at') or '',
+        'updated_at': row.get('updated_at') or '',
+        'sent_at': row.get('created_at') or '',
+        'error': row.get('error') or result.get('warning') or '',
+    }
+
+
+def pending_sent_items():
+    with db.conn() as c:
+        rows = c.execute(
+            "SELECT * FROM outbox WHERE status IN ('queued','sending') ORDER BY created_at DESC"
+        ).fetchall()
+    return [_outbox_mail_view(row, full=False) for row in rows]
+
+
+def detail(token):
+    with db.conn() as c:
+        row = c.execute('SELECT * FROM outbox WHERE token=?', (token,)).fetchone()
+    return _outbox_mail_view(row, full=True) if row else None
+
+
 def item(token):
     with db.conn() as c:
         row = c.execute('SELECT * FROM outbox WHERE token=?', (token,)).fetchone()

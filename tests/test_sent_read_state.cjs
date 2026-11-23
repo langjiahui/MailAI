@@ -47,3 +47,24 @@ assert.match(html,/mail-table-recipient[^>]*>receiver@example.test/);
 assert.match(html,/data-read-state="not-applicable"/);
 assert.doesNotMatch(html,/class="email-item[^"]*\bunread\b/);
 console.log('Classic table preserves sent-mail identity and read state');
+
+// Queued/sending outbox items appear in Sent with accurate state labels and inline undo while queued.
+ctx.document.body.dataset.mailListView='cards';
+ctx.specialMailbox='sent';
+ctx.sentMessages=[
+  {id:'outbox:tok-1',outbox_token:'tok-1',_outbox:true,to_addr:'peer@example.test',subject:'待发送',status:'queued',scheduled:false,created_at:'2026-11-23T17:00:00'},
+  {id:'outbox:tok-2',outbox_token:'tok-2',_outbox:true,to_addr:'peer@example.test',subject:'发送中',status:'sending',scheduled:false,created_at:'2026-11-23T16:59:00'},
+];
+const [queuedRow, sendingRow] = ctx.specialMailboxRows();
+assert.equal(queuedRow.from_name, '等待发送');
+assert.equal(sendingRow.from_name, '发送中');
+const queuedHtml = ctx.renderEmailItem(queuedRow);
+assert.match(queuedHtml, /data-id="outbox:tok-1"/);
+assert.match(queuedHtml, /data-cancel-outbox="tok-1"/);
+assert.match(queuedHtml, /撤销发送/);
+assert.match(queuedHtml, /risk-badge warn/);
+const sendingHtml = ctx.renderEmailItem(sendingRow);
+assert.doesNotMatch(sendingHtml, /data-cancel-outbox=/, 'In-flight SMTP rows must not offer cancel');
+assert.match(sendingHtml, /发送中/);
+assert.doesNotMatch(sendingHtml, /发送失败/);
+console.log('Queued and sending outbox items render accurately in Sent with inline undo');

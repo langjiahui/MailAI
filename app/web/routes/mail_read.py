@@ -139,7 +139,12 @@ def api_mailbox_counts():
                 SELECT lower(trim(message_id)) FROM emails WHERE trim(COALESCE(message_id,''))<>''
                 AND (status='trash' OR pending_action='trash' OR (remote_missing=0 AND status='sent')))
             """).fetchone()[0]
-        totals['sent'] = totals.get('sent', 0) + receipts
+        queued_outbox = c.execute("""SELECT COUNT(*) FROM outbox o
+            WHERE o.status IN ('queued','sending')
+            AND (json_extract(o.result,'$.sent_record_id') IS NULL
+                 OR json_extract(o.result,'$.sent_record_id') NOT IN (SELECT id FROM sent_messages))
+            """).fetchone()[0]
+        totals['sent'] = totals.get('sent', 0) + receipts + queued_outbox
         return dict(totals=totals, local=local, all=all_count)
 
 

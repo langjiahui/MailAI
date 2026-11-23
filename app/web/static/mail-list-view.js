@@ -19,13 +19,18 @@ function renderMailTableItem(e, {selected, bulkSelected, risk, unread, hasAtt, o
   const date = new Date(e.date || e.created_at || '');
   const dateText = Number.isFinite(date.getTime())
     ? `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')} ${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}` : '—';
-  const pending = e.pending_action ? (e.pending_error ? mailaiText('后台重试中') : mailaiText('正在同步删除')) : '';
+  const pending = e.pending_action ? (e.pending_error ? mailaiText('后台重试中') : mailaiText('正在同步删除'))
+    : e._kind === 'sent' && e.status === 'queued' ? (e.scheduled ? mailaiText('定时发送') : mailaiText('等待发送'))
+    : e._kind === 'sent' && e.status === 'sending' ? mailaiText('发送中')
+    : '';
   const chips = [e._account_user, ...(e.tags || []).map(tag => tag.name), e.category ? mailCategoryLabel(e.category) : '', e.priority ? mailPriorityLabel(e.priority) : '', pending].filter(Boolean).join(' · ');
+  const inlineUndo = e._kind === 'sent' && e._outbox && e.status === 'queued' && e.outbox_token
+    ? ` <button type="button" class="tag sent-inline-undo" data-cancel-outbox="${esc(e.outbox_token)}"><span data-i18n="ui.dd8e7a3dcc88">${esc(mailaiText('撤销发送'))}</span></button>` : '';
   return `<div class="email-item mail-table-item ${selected} ${bulkSelected} ${unread ? 'unread' : ''} ${outgoing ? 'outgoing-mail' : ''} risk-${risk.class}"
-    data-id="${e.id}" data-account-id="${esc(e._account_id || '')}" data-read-state="${outgoing ? 'not-applicable' : unread ? 'unread' : 'read'}" tabindex="0" aria-selected="${bulkSelected ? 'true' : 'false'}">
+    data-id="${esc(String(e.id))}" data-account-id="${esc(e._account_id || '')}" data-read-state="${outgoing ? 'not-applicable' : unread ? 'unread' : 'read'}" tabindex="0" aria-selected="${bulkSelected ? 'true' : 'false'}">
     <span class="mail-table-sender" title="${esc(senderAddress && sender !== senderAddress ? `${sender} <${senderAddress}>` : sender)}">${esc(sender)}</span>
     <span class="mail-table-recipient" title="${esc(recipients)}">${esc(recipients || '—')}</span>
-    <span class="mail-table-subject" title="${esc([subject, chips, e.summary || e.snippet].filter(Boolean).join('\n'))}"><span>${esc(subject)}</span>${e._conversationCount > 1 ? `<small> ${Number(e._conversationCount)}</small>` : ''}</span>
+    <span class="mail-table-subject" title="${esc([subject, chips, e.summary || e.snippet].filter(Boolean).join('\n'))}"><span>${esc(subject)}</span>${e._conversationCount > 1 ? `<small> ${Number(e._conversationCount)}</small>` : ''}${inlineUndo}</span>
     <time class="mail-table-date" title="${esc(dateText)}"><span class="mail-table-date-full">${dateText}</span><span class="mail-table-date-short">${dateText.length>5?dateText.slice(5):dateText}</span></time>
     ${currentFilter.search && e.search_match ? `<div class="mail-table-match">${renderSearchPreview(e)}</div>` : ''}
   </div>`;

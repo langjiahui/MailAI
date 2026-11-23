@@ -38,7 +38,7 @@ def initialize(c):
         c.execute(f'''CREATE TRIGGER IF NOT EXISTS mail_list_{action.lower()} AFTER {action} ON emails BEGIN
             INSERT INTO mail_list_changes(email_id) VALUES({prefix}.id);
             DELETE FROM mail_list_changes WHERE seq <= last_insert_rowid()-10000; END''')
-    for table in ('contacts', 'focus_senders', 'drafts', 'sent_messages'):
+    for table in ('contacts', 'focus_senders', 'drafts', 'sent_messages', 'outbox'):
         for action in ('INSERT', 'UPDATE', 'DELETE'):
             c.execute(f'''CREATE TRIGGER IF NOT EXISTS mail_list_{table}_{action.lower()} AFTER {action} ON {table} BEGIN
                 UPDATE mailbox_sequence SET value=value+1 WHERE id=1; END''')
@@ -104,7 +104,8 @@ def _special_source(kind):
     """One metadata union preserves SMTP receipt identity and server-copy dedup."""
     table='drafts' if kind=='drafts' else 'sent_messages'
     status='draft' if kind=='drafts' else 'sent'
-    fields=db.EMAIL_LIST_COLUMNS.split(',')+['cc_addr','bcc_addr','body_html','remote_email_id','_remote','_kind','_search_summary','remote_missing','list_date']
+    extra=['_outbox','outbox_token','due_at','scheduled','draft_id'] if kind=='sent' else []
+    fields=db.EMAIL_LIST_COLUMNS.split(',')+['cc_addr','bcc_addr','body_html','remote_email_id','_remote','_kind','_search_summary','remote_missing','list_date']+extra
     metadata="""(SELECT coalesce(json_group_array(json_object('filename',coalesce(json_extract(value,'$.filename'),json_extract(value,'$.name'),'附件'),
         'size',coalesce(json_extract(value,'$.size'),0),'content_type',coalesce(json_extract(value,'$.content_type'),''))),'[]')
         FROM json_each(CASE WHEN json_valid(attachments_json) THEN attachments_json ELSE '[]' END))"""
@@ -112,18 +113,54 @@ def _special_source(kind):
         'to_addr':'to_addr','cc_addr':'cc_addr','bcc_addr':'bcc_addr','date':'updated_at' if kind=='drafts' else 'coalesce(sent_at,created_at)',
         'created_at':'created_at','snippet':'substr(body_html,1,1000)','summary':'substr(body_html,1,1000)',
         'attachments':metadata,'body_html':"''",'status':"'draft'" if kind=='drafts' else 'status',
-        'is_read':'1','_remote':'0','_kind':"'draft'" if kind=='drafts' else "'sent'",'_search_summary':'1','remote_missing':'0'}
+        'is_read':'1','_remote':'0','_kind':"'draft'" if kind=='drafts' else "'sent'",'_search_summary':'1','remote_missing':'0',
+        '_outbox':'0','outbox_token':"''",'due_at':"''",'scheduled':'0','draft_id':'NULL'}
     local['list_date']="coalesce(julianday("+local['date']+",'utc'),0)"
     remote={field:field for field in db.EMAIL_LIST_COLUMNS.split(',')}
-    remote.update(id='-id',cc_addr='cc_addr',bcc_addr="''",body_html="''",remote_email_id='id',_remote='1',_kind=local['_kind'],_search_summary='1',remote_missing='0',list_date='list_date')
+    remote.update(id='-id',cc_addr='cc_addr',bcc_addr="''",body_html="''",remote_email_id='id',_remote='1',_kind=local['_kind'],_search_summary='1',remote_missing='0',list_date='list_date',
+        _outbox='0',outbox_token="''",due_at="''",scheduled='0',draft_id='NULL')
     def projection(values):return ','.join(values.get(field,'NULL')+' AS '+field for field in fields)
     exclude=''
+    outbox_union=''
     if kind=='sent':
         exclude=""" AND (coalesce(message_id,'')='' OR NOT EXISTS(SELECT 1 FROM sent_messages s WHERE lower(trim(s.message_id))=lower(trim(main.emails.message_id))))"""
         local_where=""" WHERE coalesce(trim(message_id),'')='' OR NOT EXISTS(SELECT 1 FROM main.emails e
             WHERE lower(trim(e.message_id))=lower(trim(sent_messages.message_id)) AND (e.status='trash' OR e.pending_action='trash'))"""
+        outbox_attachments="""(SELECT coalesce(json_group_array(json_object('filename',coalesce(json_extract(value,'$.filename'),json_extract(value,'$.name'),'附件'),
+            'size',coalesce(json_extract(value,'$.size'),0),'content_type',coalesce(json_extract(value,'$.content_type'),''))),'[]')
+            FROM json_each(CASE WHEN json_valid(json_extract(payload,'$.attachments')) THEN json_extract(payload,'$.attachments') ELSE '[]' END))"""
+        queued={
+            'id':'(1000000000000 + rowid)',
+            'message_id':"''",
+            'subject':"coalesce(json_extract(payload,'$.subject'),'')",
+            'from_addr':"coalesce(json_extract(payload,'$.from_addr'),'')",
+            'to_addr':"coalesce(json_extract(payload,'$.to_addr'),'')",
+            'cc_addr':"coalesce(json_extract(payload,'$.cc_addr'),'')",
+            'bcc_addr':"coalesce(json_extract(payload,'$.bcc_addr'),'')",
+            'date':'created_at',
+            'created_at':'created_at',
+            'snippet':"substr(coalesce(json_extract(payload,'$.body_html'),''),1,1000)",
+            'summary':"substr(coalesce(json_extract(payload,'$.body_html'),''),1,1000)",
+            'attachments':outbox_attachments,
+            'body_html':"''",
+            'status':'status',
+            'is_read':'1',
+            '_remote':'0',
+            '_kind':"'sent'",
+            '_search_summary':'1',
+            'remote_missing':'0',
+            'list_date':"coalesce(julianday(created_at,'utc'),0)",
+            '_outbox':'1',
+            'outbox_token':'token',
+            'due_at':"coalesce(due_at,'')",
+            'scheduled':"CASE WHEN coalesce(json_extract(payload,'$.send_at'),'')<>'' THEN 1 ELSE 0 END",
+            'draft_id':"json_extract(payload,'$.id')",
+        }
+        outbox_where=""" WHERE status IN ('queued','sending') AND (json_extract(result,'$.sent_record_id') IS NULL
+            OR NOT EXISTS(SELECT 1 FROM sent_messages s WHERE s.id=json_extract(outbox.result,'$.sent_record_id')))"""
+        outbox_union=f" UNION ALL SELECT {projection(queued)} FROM outbox{outbox_where}"
     else:local_where=''
-    return f"WITH emails AS (SELECT {projection(local)} FROM {table}{local_where} UNION ALL SELECT {projection(remote)} FROM main.emails WHERE remote_missing=0 AND status='{status}'{exclude}) "
+    return f"WITH emails AS (SELECT {projection(local)} FROM {table}{local_where} UNION ALL SELECT {projection(remote)} FROM main.emails WHERE remote_missing=0 AND status='{status}'{exclude}{outbox_union}) "
 
 
 def _stamp(c):
@@ -193,7 +230,12 @@ def page(filters, *, cursor='', limit=200, refresh=False, around_id=0):
                     SELECT lower(trim(message_id)) FROM main.emails WHERE trim(COALESCE(message_id,''))<>''
                     AND (status='trash' OR pending_action='trash' OR (remote_missing=0 AND status='sent')))
                 """).fetchone()[0]
-            counts['totals']['sent']=counts['totals'].get('sent',0)+receipts
+            queued_outbox=c.execute("""SELECT COUNT(*) FROM outbox o
+                WHERE o.status IN ('queued','sending')
+                AND (json_extract(o.result,'$.sent_record_id') IS NULL
+                     OR json_extract(o.result,'$.sent_record_id') NOT IN (SELECT id FROM sent_messages))
+                """).fetchone()[0]
+            counts['totals']['sent']=counts['totals'].get('sent',0)+receipts+queued_outbox
             page_where=''
             page_args=[]
             if position:
@@ -208,7 +250,7 @@ def page(filters, *, cursor='', limit=200, refresh=False, around_id=0):
                     op='>' if ascending else '<'
                     page_where=f'({sort_expr}{op}? OR ({sort_expr}=? AND id{op}=?))'
                     page_args=[target[0],target[0],target[1]]
-            columns=db.EMAIL_LIST_COLUMNS+(',cc_addr,bcc_addr,body_html,remote_email_id,_remote,_kind,_search_summary' if q['special'] else '')
+            columns=db.EMAIL_LIST_COLUMNS+(',cc_addr,bcc_addr,body_html,remote_email_id,_remote,_kind,_search_summary'+ (',_outbox,outbox_token,due_at,scheduled,draft_id' if q['special']=='sent' else '') if q['special'] else '')
             if q['conversations'] and not q['special']:
                 group="coalesce(nullif(thread_id,''),nullif(message_id,''),'single-'||id)"
                 sql=f'''WITH grouped AS (SELECT {columns},list_date,coalesce(score,0) AS _score,
@@ -239,6 +281,14 @@ def page(filters, *, cursor='', limit=200, refresh=False, around_id=0):
     for row in items:
         for field in ('_sort_key','_owner','_rank','_score','list_date'):
             row.pop(field,None)
+        if q['special']=='sent':
+            if row.get('_outbox'):
+                row['_outbox']=True
+                row['scheduled']=bool(row.get('scheduled'))
+                row['id']=f"outbox:{row.get('outbox_token') or ''}"
+            else:
+                for field in ('_outbox','outbox_token','due_at','scheduled','draft_id'):
+                    row.pop(field,None)
         if q['special']:
             row['summary']=re.sub(r'<[^>]+>',' ',row.get('summary') or '')
         if isinstance(row.get('attachments'),list):

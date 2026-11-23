@@ -195,6 +195,7 @@ def api_delete_draft(draft_id: int):
 
 @router.get("/api/mail/sent")
 def api_sent_messages(limit: int = 500):
+    from ... import outbox
     local = db.list_sent_messages(limit)
     for row in local:
         row.update(smtp_client.recipient_fields_for_display(row))
@@ -204,6 +205,15 @@ def api_sent_messages(limit: int = 500):
             "SELECT message_id FROM emails WHERE message_id != '' AND "
             "(status='trash' OR pending_action='trash')").fetchall()}
     local = [item for item in local if str(item.get('message_id') or '').strip().casefold() not in removed]
+    local_ids = {item["id"] for item in local}
+    pending = []
+    for row in outbox.pending_sent_items():
+        if row.get("sent_record_id") in local_ids:
+            continue
+        if not row.get("from_addr"):
+            row["from_addr"] = config.IMAP_USER
+        row.update(smtp_client.recipient_fields_for_display(row))
+        pending.append(row)
     local_message_ids = {str(item.get("message_id") or "").strip().casefold()
                          for item in local if item.get("message_id")}
     remote = []
@@ -215,8 +225,9 @@ def api_sent_messages(limit: int = 500):
         remote.append({**row, "body_html": rich_body, "id": -row["id"], "remote_email_id": row["id"],
                        "sent_at": row.get("date"), "status": "sent",
                        "attachments": row.get("attachments") or [], "_remote": True})
-    result = sorted(local + remote, key=lambda item: item.get("sent_at") or item.get("created_at") or "",
-                    reverse=True)[:max(1, min(limit, 5000))]
+    completed = sorted(local + remote, key=lambda item: item.get("sent_at") or item.get("created_at") or "",
+                       reverse=True)
+    result = (pending + completed)[:max(1, min(limit, 5000))]
     annotate_list_identities(result)
     return result
 
@@ -562,6 +573,19 @@ def api_queue_mail(payload: QueuedMailRequest):
 def api_outbox():
     from ...outbox import items
     return items()
+
+
+@router.get('/api/mail/outbox/{token}')
+def api_outbox_detail(token: str):
+    from ...outbox import detail
+    row = detail(token)
+    if not row:
+        raise HTTPException(404, '发送任务不存在')
+    if not row.get('from_addr'):
+        row['from_addr'] = config.IMAP_USER
+    row.update(smtp_client.recipient_fields_for_display(row))
+    annotate_list_identities([row])
+    return row
 
 
 @router.post('/api/mail/outbox/{token}/acknowledge')
