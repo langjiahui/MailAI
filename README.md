@@ -5,9 +5,9 @@ MailAI 是一款**本地优先（Local-First）、AI 驱动**的开源跨平台�
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v4.8.0**
+当前版本：**v4.8.1**
 
-本次更新：左侧边栏新增邮箱顺序调整功能，可在邮箱选项菜单中上移或下移邮箱位置，保持「所有收件箱」置顶并跨重启持久保留顺序。[发布说明](docs/发布-v4.8.0-左侧邮箱顺序调整.md) · [完整版本历史](https://github.com/langjiahui/MailAI/releases)
+本次更新：修复 WebKit 下切换缓存邮件列表时滚动位置恢复偶发偏移的问题，补齐数据库级联清理触发器与侧边栏排序异常账号 ID 自动清理，并拆出安全看板图表模块及隔离离线测试凭据环境。[发布说明](docs/发布-v4.8.1-稳定性与门禁加固.md) · [完整版本历史](https://github.com/langjiahui/MailAI/releases)
 
 ---
 
@@ -28,11 +28,11 @@ MailAI 是一款**本地优先（Local-First）、AI 驱动**的开源跨平台�
 
 ### Android
 
-安卓独立客户端 **1.4.0 正式版**：[下载 Android APK](https://github.com/langjiahui/MailAI/releases/download/android-v1.4.0/MailAI-Android-1.4.0.apk) · [国内 APK](https://atomgit.com/langjiahui2011/MailAI/releases/download/android-v1.4.0/MailAI-Android-1.4.0.apk)。基于 Jetpack Compose 与 Kotlin 独立构建，手机直连 IMAP / SMTP 与模型服务，不依赖桌面端在线。支持国内签名更新清单与安装包镜像自动选路，修复局域网／自建 HTTP 接口、Qwen 空工具调用字段及 Kimi 推理输出兼容问题；覆盖升级保留本地邮件、草稿和附件。Android 与 Web／桌面各自独立维护版本号，详见 [Android 源码与说明](mobile/android/README.md)。
+安卓独立客户端 **1.5.0 正式版**：[下载 Android APK](https://github.com/langjiahui/MailAI/releases/download/android-v1.5.0/MailAI-Android-1.5.0.apk) · [国内 APK](https://atomgit.com/langjiahui2011/MailAI/releases/download/android-v1.5.0/MailAI-Android-1.5.0.apk)。基于 Jetpack Compose 与 Kotlin 独立构建，手机直连 IMAP / SMTP 与模型服务，不依赖桌面端在线。支持单封邮件安全纸面打印、A4 PDF／原始 `.eml` 分享导出与国内签名更新镜像，修复服务器嵌套转义引号显示名清洗问题；覆盖升级保留本地邮件、草稿和附件。Android 与 Web／桌面各自独立维护版本号，详见 [Android 源码与说明](mobile/android/README.md)。
 
 ### iOS
 
-iOS 原生客户端正在首版 **1.0.0** 测试验收，支持 iOS 18+（iPhone / iPad）。基于 SwiftUI 与 SwiftMail 独立收发，包含多账号管理、真实文件夹同步、离线缓存阅读、本地草稿、纯文本发送与回复。当前提供待签名 IPA，需使用个人或设备证书签名后安装；附件、小邮助手与后台推送将在后续版本移植。详见 [iOS 源码与范围说明](mobile/ios/README.md) · [测试安装说明](mobile/ios/INSTALL.md)。
+iOS 原生客户端正在首版 **1.0.0** 测试验收，支持 iOS 18+（iPhone / iPad）。基于 SwiftUI 与 SwiftMail 独立收发，已完成多账号与企业内网连接、真实文件夹同步、HTML 暗色正文适配、附件预览分享、往来邮件与批量删除、按需小邮助手及系统后台收信通知。当前提供待签名 IPA，需使用个人或设备证书签名后安装；详见 [iOS 源码与范围说明](mobile/ios/README.md) · [测试安装说明](mobile/ios/INSTALL.md)。
 
 ---
 
