@@ -33,12 +33,16 @@ struct ReaderView: View {
     @State private var correspondence = false
     @State private var readTask: Task<Void, Never>?
     @State private var downloadTask: Task<Void, Never>?
+    @State private var showBottomActions = true
+    @State private var lastScrollOffset: CGFloat = 0
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage("mail.readerSize") private var readerSize = 17.0
     @ScaledMetric(relativeTo: .body) private var scaledBody = 17.0
+    private struct ReaderScrollState: Equatable { let offset: CGFloat; let atTop: Bool; let atBottom: Bool }
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -51,6 +55,25 @@ struct ReaderView: View {
                 } else { expandedMessage }
             }.padding(16)
         }.background(MailTheme.surface)
+        .contentMargins(.bottom, 76, for: .scrollContent)
+        .onScrollGeometryChange(for: ReaderScrollState.self) { geo in
+            let offset = geo.contentOffset.y + geo.contentInsets.top
+            let maxOffset = max(0, geo.contentSize.height - geo.containerSize.height + geo.contentInsets.top + geo.contentInsets.bottom)
+            return ReaderScrollState(offset: offset, atTop: offset <= 16, atBottom: maxOffset <= 40 || offset >= maxOffset - 36)
+        } action: { _, state in
+            let delta = state.offset - lastScrollOffset
+            if state.atTop || state.atBottom {
+                if !showBottomActions { setBottomActions(true) }
+                lastScrollOffset = state.offset
+            } else if delta > 12 && state.offset > 32 {
+                if showBottomActions { setBottomActions(false) }
+                lastScrollOffset = state.offset
+            } else if delta < -8 {
+                if !showBottomActions { setBottomActions(true) }
+                lastScrollOffset = state.offset
+            }
+        }
+        .simultaneousGesture(TapGesture().onEnded { if !showBottomActions { setBottomActions(true) } })
         .navigationTitle("邮件").navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
         .toolbar {
@@ -61,25 +84,22 @@ struct ReaderView: View {
             }
         }
         .toolbar(.hidden, for: .tabBar)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            HStack(spacing: 10) {
-                Button { compose(.reply) } label: { replyActionLabel("回复", symbol: "arrowshape.turn.up.left").frame(maxWidth: .infinity, minHeight: 44) }
-                    .disabled(bodyContent == nil || store.sending)
-                Button { compose(.replyAll) } label: { replyActionLabel("回复全部", symbol: "arrowshape.turn.up.left.2").frame(maxWidth: .infinity, minHeight: 44) }
-                    .disabled(bodyContent == nil || store.sending)
-                Button {
-                    var actions = [MailPanelAction(title: "转发正文", symbol: "arrowshape.turn.up.right") { compose(.forward) }]
-                    if bodyContent?.attachments?.isEmpty == false { actions.append(MailPanelAction(title: "转发正文与全部附件", symbol: "paperclip") { forwardWithAttachments() }) }
-                    actionPanel = MailActionPanelData(title: "转发邮件", groups: [actions])
-                } label: { replyActionLabel("转发", symbol: "arrowshape.turn.up.right").frame(maxWidth: .infinity, minHeight: 44) }
-                    .disabled(bodyContent == nil || store.sending || downloading)
-            }.font(.callout).buttonStyle(.borderless).padding(.horizontal, 12).padding(.vertical, 8).background(MailTheme.surface).overlay(alignment: .top) { Divider() }
+        .overlay(alignment: .bottom) {
+            if showBottomActions {
+                readerBottomCapsule
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 10)
+                    .transition(reduceMotion ? .opacity : .asymmetric(
+                        insertion: .move(edge: .bottom).combined(with: .opacity).combined(with: .scale(scale: 0.86, anchor: .bottom)),
+                        removal: .move(edge: .bottom).combined(with: .opacity).combined(with: .scale(scale: 0.9, anchor: .bottom))
+                    ))
+            }
         }
         .task(id: retry) { load() }
         .onDisappear { readTask?.cancel(); downloadTask?.cancel() }
         .onChange(of: summary.id) { _, _ in
             readTask?.cancel(); downloadTask?.cancel(); downloading = false; downloadingID = nil
-            bodyContent = nil; error = nil; details = false; htmlHeight = 260; localFlag = nil; originalHTML = false; load()
+            bodyContent = nil; error = nil; details = false; htmlHeight = 260; localFlag = nil; originalHTML = false; showBottomActions = true; lastScrollOffset = 0; load()
         }
         .onChange(of: store.selectedID) { _, id in if id != ownerID { readTask?.cancel(); downloadTask?.cancel(); bodyContent = nil; error = "邮箱已切换，请返回列表重新打开这封邮件。" } }
         .onChange(of: scenePhase) { _, phase in if phase != .active { readTask?.cancel(); downloadTask?.cancel(); downloading = false; downloadingID = nil } else if bodyContent == nil { load() } }
@@ -116,9 +136,54 @@ struct ReaderView: View {
         let help = [MailPanelAction(title: "小邮助手", symbol: "sparkles", enabled: bodyContent != nil) { assistant = true }]
         actionPanel = MailActionPanelData(title: "邮件操作", groups: reading.isEmpty ? [organize, help] : [reading, organize, help])
     }
+    private func setBottomActions(_ visible: Bool) {
+        if reduceMotion { showBottomActions = visible }
+        else { withAnimation(visible ? .spring(response: 0.38, dampingFraction: 0.74) : .spring(response: 0.28, dampingFraction: 0.88)) { showBottomActions = visible } }
+    }
+    @ViewBuilder private var readerBottomCapsule: some View {
+        let content = HStack(spacing: 2) {
+            Button { compose(.reply) } label: { replyActionLabel("回复", symbol: "arrowshape.turn.up.left") }
+                .accessibilityLabel("回复")
+                .sensoryFeedback(.selection, trigger: composing)
+                .disabled(bodyContent == nil || store.sending)
+            Button { compose(.replyAll) } label: { replyActionLabel("回复全部", symbol: "arrowshape.turn.up.left.2") }
+                .accessibilityLabel("回复全部")
+                .sensoryFeedback(.selection, trigger: composing)
+                .disabled(bodyContent == nil || store.sending)
+            Button {
+                var actions = [MailPanelAction(title: "转发正文", symbol: "arrowshape.turn.up.right") { compose(.forward) }]
+                if bodyContent?.attachments?.isEmpty == false { actions.append(MailPanelAction(title: "转发正文与全部附件", symbol: "paperclip") { forwardWithAttachments() }) }
+                actionPanel = MailActionPanelData(title: "转发邮件", groups: [actions])
+            } label: { replyActionLabel("转发", symbol: "arrowshape.turn.up.right") }
+                .accessibilityLabel("转发")
+                .sensoryFeedback(.selection, trigger: actionPanel?.id)
+                .disabled(bodyContent == nil || store.sending || downloading)
+        }
+        .buttonStyle(MailPressButtonStyle(cornerRadius: 20, pressedScale: 0.90))
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+        if #available(iOS 26.0, *) {
+            content.glassEffect(.regular.interactive(), in: Capsule())
+        } else {
+            content.background(.ultraThinMaterial, in: Capsule())
+                .overlay { Capsule().stroke(Color.primary.opacity(0.08), lineWidth: 0.5) }
+                .shadow(color: .black.opacity(0.10), radius: 14, y: 6)
+        }
+    }
     @ViewBuilder private func replyActionLabel(_ title: String, symbol: String) -> some View {
-        if dynamicTypeSize.isAccessibilitySize { Image(systemName: symbol).font(.title3).dynamicTypeSize(...DynamicTypeSize.xxxLarge).accessibilityLabel(title) }
-        else { Label(title, systemImage: symbol) }
+        if dynamicTypeSize.isAccessibilitySize {
+            Image(systemName: symbol).font(.title3).dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                .foregroundStyle(MailTheme.blue).frame(minWidth: 48, minHeight: 44)
+        } else {
+            HStack(spacing: 5) {
+                Image(systemName: symbol).font(.system(size: 14, weight: .semibold))
+                Text(title).font(.subheadline.weight(.medium)).lineLimit(1)
+            }
+            .foregroundStyle(MailTheme.blue)
+            .padding(.horizontal, 12)
+            .frame(minHeight: 44)
+            .contentShape(Capsule())
+        }
     }
     private var expandedMessage: some View {
         VStack(alignment: .leading, spacing: 8) {
