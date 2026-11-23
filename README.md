@@ -5,9 +5,9 @@ MailAI 是一款**本地优先（Local-First）、AI 驱动**的开源跨平台�
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v4.8.1**
+当前版本：**v4.8.2**
 
-本次更新：修复 WebKit 下切换缓存邮件列表时滚动位置恢复偶发偏移的问题，补齐数据库级联清理触发器与侧边栏排序异常账号 ID 自动清理，并拆出安全看板图表模块及隔离离线测试凭据环境。[发布说明](docs/发布-v4.8.1-稳定性与门禁加固.md) · [完整版本历史](https://github.com/langjiahui/MailAI/releases)
+本次更新：优化 Web 端阅读「更多」菜单的分组结构、渐变分隔与桌面端紧凑行高，并将窄屏溢出操作按语义归入对应分组展示，同步补充桌面布局与键盘导航回归检查。[发布说明](docs/发布-v4.8.2-阅读更多菜单与展示优化.md) · [完整版本历史](https://github.com/langjiahui/MailAI/releases)
 
 ---
 

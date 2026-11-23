@@ -32703,16 +32703,18 @@ function addReadingActions() {
     <button type="button" data-reading-action="ask">${icon('M4 4h16v12H9l-5 4zM8 9h8m-8 3h5')}<span data-i18n="read.ask">${mailaiT('read.ask') || '问小邮'}</span></button>`);
   const morePanel = host.querySelector('.reading-more-panel');
   if (morePanel) {
-    // Keep rare actions discoverable without crowding the reading toolbar.
+    const organize = document.createElement('div');
+    organize.className = 'reading-organize-actions';
+    for (const selector of ['[data-reading-action="remind"]', '.btn-correspondence']) {
+      const button = host.querySelector(selector);
+      if (button) organize.append(button);
+    }
     const secondary = document.createElement('div');
     secondary.className = 'reading-secondary-actions';
-    for (const selector of ['.btn-correspondence', '[data-reading-action="remind"]', '[data-reading-action="image"]']) {
-      const button = host.querySelector(selector);
-      if (button) secondary.appendChild(button);
-    }
+    const image = host.querySelector('[data-reading-action="image"]');
+    if (image) secondary.append(image);
     secondary.insertAdjacentHTML('beforeend', renderMailOutputButtons());
-    morePanel.querySelector('.reading-secondary-actions')?.remove();
-    morePanel.prepend(secondary);
+    morePanel.prepend(organize, secondary);
     morePanel.querySelector('[data-reading-action="delete-current"]')?.remove();
     if (selectedEmailDetail?.status !== 'trash') {
       morePanel.insertAdjacentHTML('beforeend', `<button type="button" data-reading-action="delete-current" data-action-hint="${esc(mailaiText('将这封邮件移入已删除'))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l1 15h10l1-15M10 10v7M14 10v7"/><path class="hover-icon-part" d="M4 6h16M9 6V3h6v3"/></svg><span><span data-i18n="ui.2f9d72d5133f">删除邮件</span></span></button>`);
@@ -34963,7 +34965,13 @@ function mailCardDate(value, now = new Date()) {
   function layoutReading() {
     const host=observedHost;if(!host?.isConnected)return;
     const width=host.getBoundingClientRect().width;
-    for(const item of moving){const target=width<item.threshold?item.overflow:item.home;if(item.node.parentNode!==target)target.append(item.node)}
+    for (const {node, home, before, threshold} of moving) {
+      if (width < threshold) {
+        if (node.parentNode !== before.parentNode) before.before(node);
+      } else if (node.parentNode !== home) {
+        home.append(node);
+      }
+    }
     host.classList.add('prioritized-actions');
     host.querySelectorAll('.reading-action-group').forEach(group=>group.classList.toggle('empty-actions',!group.querySelector('button')));
     const more=host.querySelector('.reading-more-actions[open]');
@@ -34972,9 +34980,16 @@ function mailCardDate(value, now = new Date()) {
   const observer=new MutationObserver(()=>{
     const host=document.querySelector('.reading-header .reading-actions');if(!host||host===observedHost||!host.querySelector('.reading-work-actions'))return;
     resize?.disconnect();cancelAnimationFrame(readingLayoutFrame);readingLayoutFrame=0;observedHost=host;moving=[];
-    const overflow=document.createElement('div');overflow.className='reading-overflow-actions';host.querySelector('.reading-more-panel').prepend(overflow);
-    for(const [selector,threshold] of [['[data-reading-action="favorite"]',850],['[data-reading-action="todo"]',740],['[data-reading-action="summary"]',980],['[onclick*="reply_all"]',660]]){
-      const node=host.querySelector(selector);if(node)moving.push({node,home:node.parentNode,overflow,threshold});
+    const remind = host.querySelector('.reading-organize-actions [data-reading-action="remind"]');
+    const image = host.querySelector('.reading-secondary-actions [data-reading-action="image"]');
+    for (const [selector, threshold, before] of [
+      ['[data-reading-action="favorite"]', 850, remind],
+      ['[data-reading-action="todo"]', 740, remind],
+      ['[onclick*="reply_all"]', 660, remind],
+      ['[data-reading-action="summary"]', 980, image],
+    ]) {
+      const node = host.querySelector(selector);
+      if (node && before) moving.push({node, home:node.parentNode, before, threshold});
     }
     // Apply pending responsive moves before keyboard navigation selects a row.
     host.addEventListener('keydown',layoutReading);

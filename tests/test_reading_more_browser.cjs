@@ -22,17 +22,22 @@ const {chromium, webkit} = require('playwright');
         await panel.waitFor({state:'visible'});
         const result = await panel.evaluate(n => {
           const rect=n.getBoundingClientRect(), buttons=[...n.querySelectorAll('button')];
-          const groups=[...n.querySelectorAll('.reading-risk-group,.reading-overflow-actions')];
+          const sections=[...n.children].filter(section=>section.getClientRects().length);
           return {left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom,width:innerWidth,height:innerHeight,
-            rows:buttons.map(b=>({text:b.textContent.trim(),width:b.offsetWidth,height:b.offsetHeight,border:getComputedStyle(b).borderWidth})),
-            lines:groups.map(g=>({top:getComputedStyle(g).borderTopWidth,bottom:getComputedStyle(g).borderBottomWidth})),
+            rowHeight:matchMedia('(max-width:760px), (pointer:coarse)').matches ? 44 : 32,
+            rows:buttons.map(b=>({text:b.textContent.trim(),width:b.offsetWidth,height:b.offsetHeight,minHeight:getComputedStyle(b).minHeight,border:getComputedStyle(b).borderWidth})),
+            lines:sections.map(section=>{
+              const divider=getComputedStyle(section,'::before');
+              return {content:divider.content,height:divider.height,fill:divider.backgroundImage};
+            }),
             focus:document.activeElement===buttons[0]};
         });
         const context=JSON.stringify({language,mode,theme,width,result});
         assert(result.left>=11&&result.right<=result.width-11&&result.top>=11&&result.bottom<=result.height-11,context);
         assert(result.focus,context);
-        assert(result.rows.every(r=>r.height>=40&&r.width===result.rows[0].width&&r.border==='0px'),context);
-        assert(result.lines.every(r=>r.top==='0px'&&r.bottom==='0px'),context);
+        assert(result.rows.every(r=>r.height>=result.rowHeight&&r.minHeight===`${result.rowHeight}px`&&r.width===result.rows[0].width&&r.border==='0px'),context);
+        assert.equal(result.lines[0].content,'none',context);
+        assert(result.lines.slice(1).every(line=>line.height==='1px'&&line.fill.startsWith('linear-gradient(')),context);
         await page.keyboard.press('End');
         assert(await page.locator('[data-reading-action="delete-current"]').evaluate(n=>document.activeElement===n),'End reaches the scrollable last row');
         assert(await page.locator('[data-reading-action="delete-current"]').evaluate(n=>{const r=n.getBoundingClientRect();return n.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));}),'Last row can be reached and clicked');
@@ -41,6 +46,19 @@ const {chromium, webkit} = require('playwright');
         await page.keyboard.press('Escape'); assert(!(await panel.isVisible())); assert(await trigger.evaluate(n=>document.activeElement===n));
       }
     }
+    await page.setViewportSize({width:1440,height:876});
+    await page.evaluate(() => {
+      setI18nLanguage('zh-CN');
+      document.documentElement.dataset.theme='light';
+      delete document.documentElement.dataset.rewardTheme;
+    });
+    await trigger.focus(); await page.keyboard.press('ArrowDown');
+    const desktopActions=(await panel.locator('button').allTextContents()).map(label=>label.trim());
+    assert.deepEqual(desktopActions,[
+      '收藏','加入待办','稍后提醒','往来','总结邮件','识别邮件图片','打印邮件','分享邮件','确认无风险','报告风险','删除邮件',
+    ]);
+    assert(await panel.evaluate(n=>n.scrollHeight<=n.clientHeight && n.offsetHeight<=400),'All actions including toolbar overflow fit the desktop disclosure');
+    await page.keyboard.press('Escape');
     // Keep an open disclosure usable as overflow actions move during resize/zoom.
     await page.setViewportSize({width:1920,height:900}); await trigger.click();
     await page.setViewportSize({width:390,height:600});
@@ -70,6 +88,6 @@ const {chromium, webkit} = require('playwright');
     assert(!(await first.evaluate(n=>document.activeElement===n)),'Keyboard navigation skips disabled actions');
     await first.evaluate(n=>n.disabled=false);
     assert.deepEqual(errors,[]);
-    console.log('PASS reading More: 36 theme/language/width combinations, no separators, consistent rows, zoom/resize containment, keyboard navigation, dismissal and reminder action');
+    console.log('PASS reading More: 36 theme/language/width combinations, compact rows and faded dividers, desktop fit, zoom/resize, keyboard navigation and dismissal');
   } finally { await browser.close(); }
 })().catch(error=>{console.error(error);process.exitCode=1;});
