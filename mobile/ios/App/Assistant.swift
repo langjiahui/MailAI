@@ -132,7 +132,7 @@ struct AssistantSettingsView: View {
             }.disabled(working).listRowBackground(MailTheme.surface)
             Section {
                 Toggle("允许主动调用时发送选定的邮件文字", isOn: $configuration.consent)
-                Text("接收方：\(URL(string: configuration.endpoint)?.host ?? "尚未配置")。只有主动调用并确认范围后才发送选定文字；不自动上传整箱邮件或附件。").font(.footnote).foregroundStyle(.secondary)
+                Text("接收方：\(URL(string: configuration.endpoint)?.host ?? "尚未配置")。仅在你主动使用小邮时发送当前选定文字；不自动上传整箱邮件或附件。").font(.footnote).foregroundStyle(.secondary)
                 Button("保存配置") { do { configuration = configuration.normalized(); try AssistantVault.save(configuration); status = "配置已保存" } catch { status = error.localizedDescription } }.disabled(working)
                 Button("测试连接") {
                     working = true; status = nil
@@ -152,12 +152,8 @@ struct AssistantSettingsView: View {
             .onDisappear { task?.cancel() }
     }
 }
-private struct AssistantScopeRequest: Identifiable {
-    let id = UUID()
-    let title: String
-    let instruction: String
-}
 struct AssistantPanel: View {
+    private static let polishInstruction = "保持事实和原意，润色下面的邮件正文，只返回可直接使用的正文。"
     let text: String
     var composing = false
     var adopt: ((String) -> Bool)?
@@ -170,20 +166,30 @@ struct AssistantPanel: View {
     @State private var task: Task<Void, Never>?
     @State private var configuration: AssistantConfiguration?
     @State private var purpose = ""
-    @State private var scopeRequest: AssistantScopeRequest?
     @State private var comparison = false
+    @State private var scopeExpanded = false
+    @State private var autoStarted = false
+    private var hasText: Bool { !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     Label(composing ? "润色当前正文" : "仅当前邮件", systemImage: "sparkles").font(.subheadline.weight(.medium)).foregroundStyle(MailTheme.blue)
-                    Text("仅处理当前邮件文字，结果由你确认后采用。").foregroundStyle(.secondary)
-                    if configuration?.consent != true {
-                        MailNotice(text: "请先配置并授权模型服务，再处理当前邮件。", symbol: "lock.shield")
-                        NavigationLink("配置小邮与模型服务") { AssistantSettingsView() }
-                    } else {
-                        if composing { action("润色", "保持事实和原意，润色下面的邮件正文，只返回可直接使用的正文。") }
-                        else {
+                    if let configuration, configuration.consent {
+                        let destination = URL(string: configuration.endpoint)?.host ?? configuration.endpoint
+                        Text("仅发送当前\(composing ? "正文" : "邮件")文字（\(text.count) 字）至 \(destination)，不包含附件或其他邮件，结果由你确认后采用。").font(.footnote).foregroundStyle(.secondary)
+                        DisclosureGroup("查看发送范围 · \(text.count) 字", isExpanded: $scopeExpanded) {
+                            Text(text).font(.caption).foregroundStyle(MailTheme.secondary).textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 6)
+                                .accessibilityIdentifier("assistant-scope-text")
+                        }.font(.footnote)
+                        if composing {
+                            if hasText {
+                                action("润色", Self.polishInstruction, label: result.isEmpty && status == nil ? "润色" : "重新润色")
+                            } else {
+                                MailNotice(text: "请先输入需要润色的正文。", symbol: "text.alignleft")
+                            }
+                        } else {
                             LazyVGrid(columns: [GridItem(.adaptive(minimum: dynamicTypeSize.isAccessibilitySize ? 120 : 64), spacing: 8)], spacing: 8) {
                                 action("提炼要点", "用简洁中文提炼邮件要点，保留关键数字、时间和条件。")
                                 action("提取待办", "提取明确的行动、负责人和截止时间，缺失信息标明未说明，不要猜测。")
@@ -191,6 +197,10 @@ struct AssistantPanel: View {
                                 action("起草回复", "为这封邮件起草礼貌、简明的中文回复正文。未确定的信息用待确认标注，不作承诺。")
                             }
                         }
+                    } else {
+                        Text("仅处理当前邮件文字，结果由你确认后采用。").foregroundStyle(.secondary)
+                        MailNotice(text: "请先配置并授权模型服务，再处理当前邮件。", symbol: "lock.shield")
+                        NavigationLink("配置小邮与模型服务") { AssistantSettingsView() }
                     }
                     if working { HStack { ProgressView(); Text("正在处理…"); Spacer(); Button("取消") { task?.cancel(); working = false; status = "已取消，结果未采用。" }.frame(minWidth: 44, minHeight: 44) } }
                     if let status { Text(status).font(.footnote).foregroundStyle(.secondary) }
@@ -212,38 +222,36 @@ struct AssistantPanel: View {
                             }.buttonStyle(MailPrimaryButton()).disabled(working || (composing && comparison))
                         }
                     }
-                }.padding(20).onAppear { do { configuration = try AssistantVault.load() } catch { status = error.localizedDescription } }
+                }.padding(20).onAppear(perform: loadConfiguration)
             }.background(MailTheme.surface).navigationTitle("小邮").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } } }
         }.presentationDetents(composing || dynamicTypeSize.isAccessibilitySize ? [.large] : [.medium, .large])
         .presentationDragIndicator(.visible)
-        .sheet(item: $scopeRequest) { request in
-            NavigationStack {
-                List {
-                    Section("接收服务") { Text(configuration?.endpoint ?? "").font(.subheadline).textSelection(.enabled); Text(configuration?.model ?? "").font(.caption).foregroundStyle(MailTheme.secondary) }.listRowBackground(MailTheme.surface)
-                    Section("本次发送范围 · \(text.count) 字") { Text(text).font(.subheadline).textSelection(.enabled).accessibilityIdentifier("assistant-scope-text") }.listRowBackground(MailTheme.surface)
-                    Section { MailNotice(text: "只发送以上文字，不包含附件或其他邮件。", symbol: "lock.shield") }.listRowBackground(MailTheme.surface)
-                }.scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("确认处理范围").navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) { Button("取消") { scopeRequest = nil } }
-                        ToolbarItem(placement: .confirmationAction) { Button("开始处理") { scopeRequest = nil; generate(request) } }
-                    }
-            }
-        }
-        .task { do { configuration = try AssistantVault.load() } catch { status = error.localizedDescription } }
+        .task { loadConfiguration() }
             .onDisappear { task?.cancel() }
             .onChange(of: phase) { _, value in if value != .active { task?.cancel(); working = false; if result.isEmpty { status = "处理已暂停，请回到前台后重试。" } } }
     }
-    private func action(_ title: String, _ instruction: String) -> some View {
+    private func loadConfiguration() {
+        do {
+            let loaded = try AssistantVault.load()
+            configuration = loaded
+            if composing, hasText, loaded.consent, !autoStarted, !working, result.isEmpty, status == nil {
+                autoStarted = true
+                generate(title: "润色", instruction: Self.polishInstruction)
+            }
+        } catch {
+            status = error.localizedDescription
+        }
+    }
+    private func action(_ title: String, _ instruction: String, label: String? = nil) -> some View {
         let labels = ["提炼要点": "总结", "提取待办": "待办", "翻译中文": "翻译", "起草回复": "回复"]
-        return Button { scopeRequest = AssistantScopeRequest(title: title, instruction: instruction) } label: {
-            Text(labels[title] ?? title).font(.subheadline.weight(.medium)).frame(maxWidth: .infinity, minHeight: 44)
+        return Button { generate(title: title, instruction: instruction) } label: {
+            Text(label ?? labels[title] ?? title).font(.subheadline.weight(.medium)).frame(maxWidth: .infinity, minHeight: 44)
                 .background(purpose == title ? MailTheme.blue.opacity(0.12) : MailTheme.canvas, in: RoundedRectangle(cornerRadius: 10))
         }.buttonStyle(.plain).foregroundStyle(MailTheme.blue).accessibilityLabel(title).disabled(working)
     }
-    private func generate(_ request: AssistantScopeRequest) {
+    private func generate(title: String, instruction: String) {
         guard let configuration, configuration.consent else { return }
-        task?.cancel(); result = ""; status = nil; comparison = false; purpose = request.title; working = true
-        let instruction = request.instruction
+        task?.cancel(); result = ""; status = nil; comparison = false; purpose = title; working = true
         task = Task {
             do { let output = try await AssistantAPI.generate(configuration: configuration, instruction: instruction, text: text); try Task.checkCancellation(); result = output }
             catch { if !Task.isCancelled { status = error.localizedDescription } }

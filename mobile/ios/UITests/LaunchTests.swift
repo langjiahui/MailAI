@@ -424,13 +424,16 @@ final class WorkspaceTests: XCTestCase {
         let app = launch(extra: ["--ui-assistant"])
         app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap()
         app.buttons["更多邮件操作"].tap(); app.buttons["小邮助手"].tap()
+        let scopeToggle = app.buttons.containing(NSPredicate(format: "label BEGINSWITH '查看发送范围'")).firstMatch
+        XCTAssertTrue(scopeToggle.waitForExistence(timeout: 5))
+        scopeToggle.tap()
+        XCTAssertTrue(app.staticTexts["assistant-scope-text"].waitForExistence(timeout: 5)); attach("redesign-ai-scope-confirmation")
         app.buttons["提炼要点"].tap()
-        XCTAssertTrue(app.buttons["开始处理"].waitForExistence(timeout: 5)); attach("redesign-ai-scope-confirmation")
-        app.buttons["开始处理"].tap()
+        XCTAssertFalse(app.buttons["开始处理"].exists)
         XCTAssertTrue(app.staticTexts["synthetic model response"].waitForExistence(timeout: 10)); attach("redesign-ai-summary-result")
         XCTAssertFalse(app.buttons["创建回复草稿"].exists)
         app.buttons["查看原文对照"].tap(); attach("redesign-ai-original-comparison")
-        app.buttons["起草回复"].tap(); app.buttons["开始处理"].tap()
+        app.buttons["起草回复"].tap()
         XCTAssertTrue(app.buttons["创建回复草稿"].waitForExistence(timeout: 10))
         app.buttons["创建回复草稿"].tap()
         XCTAssertTrue(app.buttons["send-mail"].waitForExistence(timeout: 5))
@@ -954,7 +957,7 @@ final class WorkspaceTests: XCTestCase {
     func testAssistantFailureAndCancellationNeverExposePartialResult() {
         var app = launch(extra: ["--ui-assistant", "--ui-ai-failure"])
         app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap(); app.buttons["更多邮件操作"].tap(); app.buttons["小邮助手"].tap()
-        app.buttons["起草回复"].tap(); app.buttons["开始处理"].tap()
+        app.buttons["起草回复"].tap()
         XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '未返回完整文字'")).firstMatch.waitForExistence(timeout: 10)); attach("redesign-ai-failure")
         XCTAssertFalse(app.buttons["创建回复草稿"].exists)
         app.terminate()
@@ -962,7 +965,7 @@ final class WorkspaceTests: XCTestCase {
         defer { modelFixtureControl("release") }
         app = launch(extra: ["--ui-assistant", "--ui-ai-slow"])
         app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap(); app.buttons["更多邮件操作"].tap(); app.buttons["小邮助手"].tap()
-        app.buttons["起草回复"].tap(); app.buttons["开始处理"].tap()
+        app.buttons["起草回复"].tap()
         // Hold the actual request until cancellation is observed. A fixed
         // response delay races screenshot capture and taps on slower runners.
         modelFixtureControl("await-request")
@@ -1001,9 +1004,10 @@ final class WorkspaceTests: XCTestCase {
             if large { XCTAssertLessThan(app.buttons["回复全部"].frame.height, 80); XCTAssertTrue(app.buttons["回复全部"].isHittable) }
             attach("tour-" + variant + "-reader")
             app.buttons["更多邮件操作"].tap(); app.buttons["小邮助手"].tap(); attach("tour-" + variant + "-assistant")
-            app.buttons["提炼要点"].tap()
-            XCTAssertTrue(app.buttons["开始处理"].waitForExistence(timeout: 5)); attach("tour-" + variant + "-scope")
-            app.buttons["取消"].firstMatch.tap(); app.buttons["完成"].firstMatch.tap()
+            let scopeToggle = app.buttons.containing(NSPredicate(format: "label BEGINSWITH '查看发送范围'")).firstMatch
+            XCTAssertTrue(scopeToggle.waitForExistence(timeout: 5)); scopeToggle.tap()
+            XCTAssertTrue(app.staticTexts["assistant-scope-text"].waitForExistence(timeout: 5)); attach("tour-" + variant + "-scope")
+            app.buttons["完成"].firstMatch.tap()
             app.buttons["回复全部"].tap(); attach("tour-" + variant + "-composer")
             app.buttons["关闭"].tap(); app.buttons["保存并返回"].tap()
             app.navigationBars.buttons.element(boundBy: 0).tap()
@@ -1044,12 +1048,15 @@ final class WorkspaceTests: XCTestCase {
         app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap(); app.buttons["回复全部"].tap()
         let body = app.textViews["compose-body-editor"]
         XCTAssertTrue(body.waitForExistence(timeout: 5)); body.tap(); body.typeText("Synthetic current draft")
-        app.buttons["收起键盘"].tap(); app.buttons["小邮润色"].tap(); app.buttons["润色"].tap()
-        XCTAssertTrue(app.staticTexts["Synthetic current draft"].waitForExistence(timeout: 5))
+        app.buttons["收起键盘"].tap(); app.buttons["小邮润色"].tap()
+        XCTAssertFalse(app.buttons["开始处理"].exists)
+        XCTAssertTrue(app.buttons["采用到正文"].waitForExistence(timeout: 10))
+        let scopeToggle = app.buttons.containing(NSPredicate(format: "label BEGINSWITH '查看发送范围'")).firstMatch
+        XCTAssertTrue(scopeToggle.waitForExistence(timeout: 5)); scopeToggle.tap()
+        XCTAssertTrue(app.staticTexts["assistant-scope-text"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts["assistant-scope-text"].label, "Synthetic current draft")
         XCTAssertFalse(app.staticTexts["assistant-scope-text"].label.contains("请于周五前确认测试材料"))
-        app.buttons["开始处理"].tap()
-        XCTAssertTrue(app.buttons["采用到正文"].waitForExistence(timeout: 10)); app.buttons["采用到正文"].tap()
+        app.buttons["采用到正文"].tap()
         XCTAssertEqual(body.value as? String, "synthetic model response")
         app.swipeUp(); app.buttons["原邮件 · 点击展开"].tap()
         XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '请于周五前确认测试材料'")).firstMatch.waitForExistence(timeout: 5))
@@ -1081,7 +1088,7 @@ final class WorkspaceTests: XCTestCase {
         let app = launch()
         app.staticTexts["项目资料确认与下一步安排"].firstMatch.tap(); app.buttons["更多邮件操作"].tap(); app.buttons["小邮助手"].tap()
         XCTAssertTrue(app.buttons["配置小邮与模型服务"].waitForExistence(timeout: 5)); attach("redesign-ai-unconfigured")
-        XCTAssertFalse(app.buttons["提炼要点"].exists); XCTAssertFalse(app.buttons["开始处理"].exists)
+        XCTAssertFalse(app.buttons["提炼要点"].exists); XCTAssertFalse(app.buttons["起草回复"].exists); XCTAssertFalse(app.buttons["开始处理"].exists)
     }
     func testStorageFailureOffersRetryWithoutDeletingData() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-fixture", "--ui-storage-error"]; app.launch()
