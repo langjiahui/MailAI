@@ -189,9 +189,7 @@ struct InboxView: View {
         .onChange(of: store.lastRefresh) { _, _ in if unified { unifiedMessages = (try? store.cachedInbox()) ?? [] } }
     }
     @ViewBuilder private var mailContent: some View {
-        VStack(spacing: 0) {
-            if !store.accounts.isEmpty { inboxTopBar }
-            Group {
+        Group {
             if store.accounts.isEmpty {
                 VStack(spacing: 22) {
                     Spacer()
@@ -294,11 +292,25 @@ struct InboxView: View {
                             else { store.refresh() }
                         }
             }
-            }
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationTitle(mailboxTitle)
-        .toolbar(.hidden, for: .navigationBar)
+        .toolbar(store.accounts.isEmpty ? .hidden : .visible, for: .navigationBar)
+        .toolbar {
+            if !store.accounts.isEmpty {
+                ToolbarItem(placement: .topBarLeading) { accountButton }
+                ToolbarItem(placement: .principal) { inboxTitleMenu }
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    if selecting {
+                        Button("完成") { selecting = false; selection = [] }
+                            .fontWeight(.semibold)
+                    } else {
+                        if !unified && !searchHeaderVisible { searchButton }
+                        composeButton
+                    }
+                }
+            }
+        }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if !store.accounts.isEmpty {
                 VStack(spacing: 0) {
@@ -330,27 +342,6 @@ struct InboxView: View {
         }
         .disabled(store.operating)
     }
-    // Equal side columns keep the title centered independently of its text and
-    // the number of actions. Each action retains a full 44 pt hit target.
-    private var inboxTopBar: some View {
-        HStack(spacing: 0) {
-            accountButton.frame(width: 92, alignment: .leading)
-            inboxTitleMenu.frame(maxWidth: .infinity)
-            HStack(spacing: 4) {
-                if selecting {
-                    Button("完成") { selecting = false; selection = [] }
-                        .font(.subheadline.weight(.semibold)).frame(width: 92, height: 44)
-                } else {
-                    if !unified && !searchHeaderVisible { searchButton.transition(.opacity) }
-                    composeButton
-                }
-            }.frame(width: 92, alignment: .trailing)
-                .animation(.easeOut(duration: 0.15), value: searchHeaderVisible)
-        }
-        .padding(.horizontal, 16).padding(.vertical, 4)
-        .background(MailTheme.surface)
-        .accessibilityElement(children: .contain).accessibilityIdentifier("inbox-top-bar")
-    }
     private var inboxTitleMenu: some View {
         Button { showInboxActions() } label: {
             HStack(spacing: 4) {
@@ -359,34 +350,44 @@ struct InboxView: View {
                 Image(systemName: "chevron.down").font(.system(size: 10, weight: .semibold))
             }
             .foregroundStyle(MailTheme.ink).dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-            .frame(maxWidth: .infinity, minHeight: 44).contentShape(Rectangle())
+            .padding(.horizontal, 10).frame(minHeight: 36).contentShape(Capsule())
         }
-        .buttonStyle(MailPressButtonStyle(pressedScale: 0.98)).accessibilityIdentifier("inbox-title")
+        .buttonStyle(.plain)
+        .sensoryFeedback(.selection, trigger: actionPanel?.id)
+        .accessibilityIdentifier("inbox-title")
         .accessibilityLabel("更多邮件操作")
         .accessibilityValue(mailboxTitle + "，" + (unified ? "全部邮件" : filterTitle) + "，\(unreadCount) 封未读")
     }
-    private func topBarIcon(_ symbol: String) -> some View {
-        Image(systemName: symbol).font(.system(size: 21, weight: .regular))
-            .foregroundStyle(MailTheme.blue)
-            .frame(width: 44, height: 44).contentShape(Rectangle())
+    private var accountInitial: String {
+        let name = store.selected.map { $0.displayName.isEmpty ? $0.email : $0.displayName } ?? "邮"
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return String((trimmed.isEmpty ? "邮" : trimmed).prefix(1)).uppercased()
     }
     private var accountButton: some View {
         Button { mailboxes = true } label: {
-            SenderAvatar(name: store.selected.map { $0.displayName.isEmpty ? $0.email : $0.displayName } ?? "邮", size: 32)
-                .frame(width: 44, height: 44).contentShape(Rectangle())
+            Text(accountInitial)
+                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                .foregroundStyle(MailTheme.blue)
         }
-            .buttonStyle(MailPressButtonStyle()).accessibilityLabel("邮箱与文件夹")
-            .accessibilityValue(store.selected?.email ?? "")
-            .accessibilityIdentifier("account-avatar")
+        .tint(MailTheme.blue)
+        .sensoryFeedback(.selection, trigger: mailboxes)
+        .accessibilityLabel("邮箱与文件夹")
+        .accessibilityValue(store.selected?.email ?? "")
+        .accessibilityIdentifier("account-avatar")
     }
     private var searchButton: some View {
-        Button { searching = true } label: { topBarIcon("magnifyingglass") }
-            .buttonStyle(MailPressButtonStyle()).accessibilityLabel("搜索邮件").accessibilityIdentifier("inbox-search-toolbar")
+        Button { searching = true } label: { Image(systemName: "magnifyingglass") }
+            .tint(MailTheme.blue)
+            .sensoryFeedback(.selection, trigger: searching)
+            .accessibilityLabel("搜索邮件").accessibilityIdentifier("inbox-search-toolbar")
     }
     private var composeButton: some View {
         Button { do { try store.newDraft(); composing = true } catch { store.error = error.localizedDescription } } label: {
-            topBarIcon("square.and.pencil")
-        }.buttonStyle(MailPressButtonStyle()).accessibilityLabel("写邮件").accessibilityIdentifier("compose-mail").disabled(store.sending)
+            Image(systemName: "square.and.pencil")
+        }
+        .tint(MailTheme.blue)
+        .sensoryFeedback(.selection, trigger: composing)
+        .accessibilityLabel("写邮件").accessibilityIdentifier("compose-mail").disabled(store.sending)
     }
     private var inboxControls: some View {
         HStack(spacing: 0) {

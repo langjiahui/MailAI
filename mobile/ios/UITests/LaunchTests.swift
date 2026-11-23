@@ -124,22 +124,22 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertEqual(search.exists && search.isHittable, toolbarSearch, file: file, line: line)
         for control in [avatar, compose] + (toolbarSearch ? [search] : []) {
             XCTAssertTrue(control.isHittable, file: file, line: line)
-            XCTAssertEqual(control.frame.width, 44, accuracy: 0.5, file: file, line: line)
-            XCTAssertEqual(control.frame.height, 44, accuracy: 0.5, file: file, line: line)
-            XCTAssertEqual(control.frame.midY, compose.frame.midY, accuracy: 0.5, file: file, line: line)
+            XCTAssertGreaterThanOrEqual(control.frame.width, 28, file: file, line: line)
+            XCTAssertGreaterThanOrEqual(control.frame.height, 36, file: file, line: line)
+            XCTAssertEqual(control.frame.midY, compose.frame.midY, accuracy: 1.5, file: file, line: line)
         }
-        XCTAssertEqual(title.frame.midX, app.windows.firstMatch.frame.midX, accuracy: 1, file: file, line: line)
+        XCTAssertEqual(title.frame.midX, app.windows.firstMatch.frame.midX, accuracy: 2, file: file, line: line)
         XCTAssertLessThanOrEqual(avatar.frame.maxX, title.frame.minX, file: file, line: line)
         XCTAssertLessThanOrEqual(title.frame.maxX, (toolbarSearch ? search : compose).frame.minX, file: file, line: line)
     }
     func testInboxControlsScrollAwayAndToolbarActionsStayReachable() {
         let app = launch(extra: ["--ui-long-inbox"])
         let header = app.buttons["inbox-search-header"], toolbarSearch = app.buttons["inbox-search-toolbar"]
-        let navigation = app.descendants(matching: .any).matching(identifier: "inbox-top-bar").firstMatch, compose = app.buttons["compose-mail"]
+        let navigation = app.navigationBars.firstMatch, compose = app.buttons["compose-mail"]
         XCTAssertFalse(app.tabBars.firstMatch.exists)
         XCTAssertTrue(header.isHittable); XCTAssertFalse(toolbarSearch.isHittable)
         XCTAssertLessThanOrEqual(compose.frame.maxY, navigation.frame.maxY + 2)
-        assertMinimumTargetHeight(compose)
+        XCTAssertGreaterThanOrEqual(compose.frame.height, 36)
         assertBalancedInboxHeader(app)
         attach("reading-space-inbox-light")
         app.swipeUp(); app.swipeUp()
