@@ -57,7 +57,7 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
  await p.locator('.email-item').first().click();await p.locator('.prioritized-actions').waitFor();
  await p.locator('#reading-pane').evaluate(n=>{n.style.width='540px';n.style.maxWidth='540px'}).catch(()=>{});
  await p.setViewportSize({width:1050,height:900});await p.waitForTimeout(150);
- await p.locator('.reading-more-actions>summary').click();assert(await p.locator('.reading-overflow-actions [data-reading-action=summary]').isVisible());
+ await p.locator('.reading-more-actions>summary').click();assert(await p.locator('.reading-secondary-actions [data-reading-action=summary]').isVisible());
  await p.screenshot({path:'build/experience-reading.png'});
  assert.deepEqual(errors,[]);console.log('PASS failure pause/resume, dense attachments, reminder workspace, date filters and responsive reading actions');
 }finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});

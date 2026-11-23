@@ -221,11 +221,17 @@ html[data-theme] body .reading-header .reading-actions .reading-ai-group { borde
   padding:6px; border:1px solid var(--desk-line); border-radius:12px;
   background:var(--desk-surface); box-shadow:0 12px 32px #00000014,0 2px 6px #00000008;
 }
-html[data-theme] body .reading-header .reading-actions .reading-more-panel :is(.reading-risk-group,.reading-decision-actions,.reading-secondary-actions,.reading-overflow-actions) { display:flex; flex-direction:column; align-items:stretch; width:100%; padding:0; border:0; gap:2px; }
-html[data-theme] body .reading-header .reading-actions .reading-more-panel .reading-risk-group { margin:8px 0 0; padding:0; border:0!important; }
+html[data-theme] body .reading-header .reading-actions .reading-more-panel :is(.reading-organize-actions,.reading-secondary-actions,.reading-risk-group,.reading-decision-actions) {
+  display:flex; flex-direction:column; align-items:stretch; width:100%; padding:0; margin:0; border:0; gap:0;
+}
+html[data-theme] body .reading-header .reading-actions .reading-more-panel > :not(:first-child) { position:relative; margin-top:11px; }
+.reading-more-panel > :not(:first-child)::before {
+  content:""; position:absolute; inset-inline:8px; top:-6px; height:1px; pointer-events:none;
+  background:linear-gradient(90deg,transparent,var(--desk-line) 14%,var(--desk-line) 86%,transparent);
+}
 html[data-theme] body .reading-header .reading-actions .reading-more-panel button {
-  display:flex; align-items:center; justify-content:flex-start; gap:12px; width:100%; height:auto; min-height:40px;
-  padding:9px 12px; border:0!important; border-radius:7px; box-shadow:none!important;
+  display:flex; align-items:center; justify-content:flex-start; gap:10px; width:100%; height:auto; min-height:32px;
+  padding:4px 9px; border:0!important; border-radius:6px; box-shadow:none!important;
   background-color:transparent!important; color:var(--desk-ink)!important; font:inherit; font-size:13px;
   font-weight:400; line-height:1.4; text-align:start; white-space:normal; overflow-wrap:anywhere; cursor:pointer;
 }
@@ -440,9 +446,9 @@ html[data-theme] body .reading-pane .plain-email-body>* {
   html[data-theme] body .reading-workspace { padding-inline:18px; }
 }
 
-/* Separate the current-message delete action from informational actions. */
+/* Give the current-message delete action a distinct color. */
 html[data-theme] body .reading-header .reading-actions .reading-more-panel button[data-reading-action="delete-current"] {
-  margin-top:8px; color:#bf3b35!important;
+  color:#bf3b35!important;
 }
 html[data-theme="dark"] body .reading-header .reading-actions .reading-more-panel button[data-reading-action="delete-current"] { color:#ffaaa3!important; }
 

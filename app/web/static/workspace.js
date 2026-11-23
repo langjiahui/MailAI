@@ -672,16 +672,18 @@ function addReadingActions() {
     <button type="button" data-reading-action="ask">${icon('M4 4h16v12H9l-5 4zM8 9h8m-8 3h5')}<span data-i18n="read.ask">${mailaiT('read.ask') || '问小邮'}</span></button>`);
   const morePanel = host.querySelector('.reading-more-panel');
   if (morePanel) {
-    // Keep rare actions discoverable without crowding the reading toolbar.
+    const organize = document.createElement('div');
+    organize.className = 'reading-organize-actions';
+    for (const selector of ['[data-reading-action="remind"]', '.btn-correspondence']) {
+      const button = host.querySelector(selector);
+      if (button) organize.append(button);
+    }
     const secondary = document.createElement('div');
     secondary.className = 'reading-secondary-actions';
-    for (const selector of ['.btn-correspondence', '[data-reading-action="remind"]', '[data-reading-action="image"]']) {
-      const button = host.querySelector(selector);
-      if (button) secondary.appendChild(button);
-    }
+    const image = host.querySelector('[data-reading-action="image"]');
+    if (image) secondary.append(image);
     secondary.insertAdjacentHTML('beforeend', renderMailOutputButtons());
-    morePanel.querySelector('.reading-secondary-actions')?.remove();
-    morePanel.prepend(secondary);
+    morePanel.prepend(organize, secondary);
     morePanel.querySelector('[data-reading-action="delete-current"]')?.remove();
     if (selectedEmailDetail?.status !== 'trash') {
       morePanel.insertAdjacentHTML('beforeend', `<button type="button" data-reading-action="delete-current" data-action-hint="${esc(mailaiText('将这封邮件移入已删除'))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l1 15h10l1-15M10 10v7M14 10v7"/><path class="hover-icon-part" d="M4 6h16M9 6V3h6v3"/></svg><span><span data-i18n="ui.2f9d72d5133f">删除邮件</span></span></button>`);
