@@ -24,6 +24,11 @@ targets:
     type: application
     platform: iOS
     sources: [App, Resources]
+    info:
+      path: build/AppInfo.plist
+      properties:
+        BGTaskSchedulerPermittedIdentifiers: [com.mailai.ios.refresh]
+        UIBackgroundModes: [fetch]
     dependencies:
       - package: MailAICore
       - package: SwiftMail

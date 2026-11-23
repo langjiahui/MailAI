@@ -1,6 +1,12 @@
 name: iOS native build
 on:
   workflow_dispatch:
+    inputs:
+      verification:
+        description: 'Verification scope (reader is for local reader fixes; releases use full)'
+        type: choice
+        options: [full, reader]
+        default: full
   push:
     branches: [codex/ios-native-release]
     paths: ['mobile/ios/**', '.github/workflows/ios-preview.yml']
@@ -14,7 +20,8 @@ concurrency:
 jobs:
   build:
     runs-on: macos-15
-    timeout-minutes: 60
+    # Full page/state coverage now includes target-device dark and Dynamic Type tours.
+    timeout-minutes: 90
     permissions:
       contents: write
     steps:
@@ -41,12 +48,41 @@ jobs:
         run: python3 scripts/build.py
       - name: Launch and account form on simulator
         working-directory: mobile/ios
+        env:
+          VERIFICATION_SCOPE: ${{ github.event_name == 'workflow_dispatch' && inputs.verification || 'full' }}
         shell: bash
         run: |
+          selection=()
+          case "$VERIFICATION_SCOPE" in
+            full) ;;
+            reader)
+              selection=(
+                '-only-testing:MailAITransportTests/MailHTMLReadabilityTests'
+                '-only-testing:MailAIUITests/WorkspaceTests/testLegacyHTMLPaperInBothAppThemes'
+                '-only-testing:MailAIUITests/WorkspaceTests/testHTMLModeAndExternalLinkConfirmation'
+              ) ;;
+            *) echo 'Unknown verification scope'; exit 1 ;;
+          esac
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          Path('build/validation-scope.json').write_text(json.dumps({
+              'scope': os.environ['VERIFICATION_SCOPE'],
+              'source_commit': os.environ['GITHUB_SHA'],
+              'run_id': os.environ['GITHUB_RUN_ID'],
+              'is_full_native_matrix': os.environ['VERIFICATION_SCOPE'] == 'full',
+          }, indent=2))
+          PY
           device=$(python3 - <<'PY'
           import json, subprocess
           devices=json.loads(subprocess.check_output(['xcrun','simctl','list','devices','available','--json']))['devices']
-          print(next(d['udid'] for key, values in sorted(devices.items(), reverse=True) if 'iOS' in key for d in values if d['name'].startswith('iPhone')))
+          runtime=next(key for key in sorted(devices, reverse=True) if 'iOS' in key)
+          target=next((d['udid'] for d in devices[runtime] if d['name']=='MailAI Acceptance iPhone 15 Pro'), None)
+          if target is None:
+              types=json.loads(subprocess.check_output(['xcrun','simctl','list','devicetypes','--json']))['devicetypes']
+              device_type=next(d['identifier'] for d in types if d['name']=='iPhone 15 Pro')
+              target=subprocess.check_output(['xcrun','simctl','create','MailAI Acceptance iPhone 15 Pro',device_type,runtime],text=True).strip()
+          print(target)
           PY
           )
           xcrun simctl boot "$device" || true
@@ -62,8 +98,14 @@ jobs:
           python3 scripts/protocol_fixture.py --cert build/fixture-chain.pem --key build/fixture-server-key.pem > build/fixture.log 2>&1 &
           fixture_pid=$!
           trap 'kill "$fixture_pid" 2>/dev/null || true; rm -f build/fixture*.pem build/fixture.csr build/fixture.ext build/fixture-ca.srl build/fixture-ca.cnf' EXIT
-          xcodebuild -project MailAI.xcodeproj -scheme MailAI -destination "id=$device" -parallel-testing-enabled NO -resultBundlePath build/UITests.xcresult CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- test
-          xcrun xcresulttool export attachments --path build/UITests.xcresult --output-path build/screenshots
+          xcodebuild -project MailAI.xcodeproj -scheme MailAI -destination "id=$device" -parallel-testing-enabled NO -resultBundlePath build/UITests.xcresult "${selection[@]}" CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- test
+      - name: Export simulator screenshots
+        if: always()
+        working-directory: mobile/ios
+        run: |
+          if [ -d build/UITests.xcresult ]; then
+            xcrun xcresulttool export attachments --path build/UITests.xcresult --output-path build/screenshots
+          fi
       - name: Stage a private release draft for artifact verification
         if: github.event_name == 'push' && github.ref == 'refs/heads/codex/ios-native-release'
         env:
@@ -77,6 +119,7 @@ jobs:
           path: |
             mobile/ios/build/distribution/*
             mobile/ios/build/Dependencies.resolved
+            mobile/ios/build/validation-scope.json
             mobile/ios/build/screenshots/
             mobile/ios/build/UITests.xcresult
           if-no-files-found: error

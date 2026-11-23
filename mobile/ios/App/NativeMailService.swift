@@ -3,10 +3,88 @@ import SwiftMail
 import MailAICore
 
 struct NativeMailService: MailService {
+    /// Only fixed classification codes are persisted. Never record server
+    /// responses, endpoint names, usernames, credentials or message contents.
+    enum Phase: String { case imapConnect, imapLogin, imapRequest, imapFolders, imapSummaries, imapSelect, imapFetch, smtpConnect, smtpLogin }
+    static func diagnostic(_ error: Error, phase: Phase) -> (MailConnectionFailure, [String: String]) {
+        let underlying = Mirror(reflecting: error).children.first { $0.label == "parserError" }?.value
+        let parser = underlying.map { Mirror(reflecting: $0) }
+        let isSyntaxError = underlying.map { String(reflecting: type(of: $0)).hasSuffix(".ParserError") } == true || error is IMAPParseError
+        let detail = String(reflecting: error).lowercased()
+        let keywords = ["certificate", "hostname", "handshake", "ssl", "tls", "timeout", "parse", "unexpected", "closed", "capability", "authentication", "login"]
+            .filter { detail.contains($0) }
+        let issue: MailConnectionFailure
+        if let existing = error as? MailConnectionFailure { issue = existing }
+        else if isSyntaxError { issue = .malformedResponse }
+        else if keywords.contains("certificate") || keywords.contains("hostname") { issue = .certificate }
+        else if keywords.contains("handshake") || keywords.contains("ssl") || keywords.contains("tls") { issue = .tlsNegotiation }
+        else if keywords.contains("timeout") { issue = .timedOut }
+        else if let imap = error as? IMAPError {
+            switch imap {
+            case .loginFailed, .authFailed, .unsupportedAuthMechanism: issue = .authentication
+            case .timeout: issue = .timedOut
+            default: issue = .serverResponse
+            }
+        } else if let smtp = error as? SMTPError {
+            switch smtp {
+            case .authenticationFailed: issue = .authentication
+            case .tlsFailed: issue = .tlsNegotiation
+            default: issue = .serverResponse
+            }
+        } else if error is IMAPConnectionError { issue = .connectionClosed }
+        else { issue = .serverResponse }
+        let safeCase: String
+        if let imap = error as? IMAPError {
+            switch imap {
+            case .connectionFailed: safeCase = "connectionFailed"
+            case .greetingFailed: safeCase = "greetingFailed"
+            case .loginFailed: safeCase = "loginFailed"
+            case .authFailed: safeCase = "authFailed"
+            case .unsupportedAuthMechanism: safeCase = "unsupportedAuthMechanism"
+            case .commandFailed: safeCase = "commandFailed"
+            case .commandNotSupported: safeCase = "commandNotSupported"
+            case .selectFailed: safeCase = "selectFailed"
+            case .fetchFailed: safeCase = "fetchFailed"
+            case .timeout: safeCase = "timeout"
+            default: safeCase = "otherIMAPError"
+            }
+        } else if error is IMAPParseError { safeCase = "malformedResponse" }
+        else if error is IMAPProtocolError { safeCase = "unexpectedTaggedResponse" }
+        else { safeCase = "other" }
+        var record = ["phase": phase.rawValue, "category": issue.rawValue,
+            "errorType": String(reflecting: type(of: error)), "errorCase": safeCase,
+            "markers": keywords.joined(separator: ","), "date": ISO8601DateFormatter().string(from: Date())]
+        if let parser,
+           let file = parser.children.first(where: { $0.label == "file" })?.value as? String,
+           file.hasPrefix("NIOIMAPCore/"), !file.contains(".."),
+           let line = parser.children.first(where: { $0.label == "line" })?.value as? Int {
+            record["parserFile"] = file; record["parserLine"] = String(line)
+            if let hint = parser.children.first(where: { $0.label == "hint" })?.value as? String, hint == "Invalid UTF8" {
+                record["parserHint"] = "InvalidUTF8"
+            }
+        }
+        return (issue, record)
+    }
+    private static func step<T: Sendable>(_ phase: Phase, _ action: @Sendable () async throws -> T) async throws -> T {
+        do { return try await action() }
+        catch {
+            if error is CancellationError || Task.isCancelled { throw error }
+            // Preserve the detailed inner FETCH/SELECT failure instead of
+            // overwriting it with the enclosing summaries operation.
+            if phase == .imapSummaries, error is MailConnectionFailure { throw error }
+            let (issue, record) = diagnostic(error, phase: phase)
+            if let directory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first,
+               let data = try? JSONEncoder().encode(record) {
+                try? data.write(to: directory.appendingPathComponent("mail-connection-diagnostic.json"), options: [.atomic, .completeFileProtection])
+            }
+            if error is MailFailure { throw error }
+            throw issue
+        }
+    }
     private func security(_ value: TransportSecurity) -> MailTransportSecurity {
         value == .tls ? .implicitTLS : .startTLS
     }
-    private func withIMAP<T: Sendable>(_ entry: AccountCredential,
+    private func withIMAP<T: Sendable>(_ entry: AccountCredential, phase: Phase = .imapRequest,
         action: @Sendable (IMAPServer) async throws -> T) async throws -> T {
         let a = entry.account
         let server = IMAPServer(host: a.imapHost, port: a.imapPort,
@@ -15,9 +93,12 @@ struct NativeMailService: MailService {
         return try await withTaskCancellationHandler {
             do {
                 try Task.checkCancellation()
-                try await server.connect()
-                try await server.login(username: a.username, password: entry.password)
-                let result = try await action(server)
+                try await Self.step(.imapConnect) {
+                    try await MailConnectionGate.connect(host: a.imapHost, port: a.imapPort,
+                        attempt: { try await server.connect() }, reset: { try? await server.disconnect() })
+                }
+                try await Self.step(.imapLogin) { try await server.login(username: a.username, password: entry.password) }
+                let result = try await Self.step(phase) { try await action(server) }
                 try? await server.disconnect()
                 return result
             } catch { try? await server.disconnect(); throw error }
@@ -35,15 +116,26 @@ struct NativeMailService: MailService {
         let server = smtp(entry)
         try await withTaskCancellationHandler {
             do {
-                try await server.connect()
-                try await server.login(username: entry.account.username, password: entry.password)
+                try await Self.step(.smtpConnect) {
+                    try await MailConnectionGate.connect(host: entry.account.smtpHost, port: entry.account.smtpPort,
+                        attempt: { try await server.connect() }, reset: { try? await server.disconnect() })
+                }
+                try await Self.step(.smtpLogin) { try await server.login(username: entry.account.username, password: entry.password) }
                 try? await server.disconnect()
             } catch { try? await server.disconnect(); throw error }
         } onCancel: { Task { try? await server.disconnect() } }
     }
     func folders(_ entry: AccountCredential) async throws -> [MailFolder] {
-        try await withIMAP(entry) { server in
-            let list = try await server.listMailboxes().filter(\.isSelectable).map { MailFolder(name: $0.name) }
+        try await withIMAP(entry, phase: .imapFolders) { server in
+            let list = try await server.listMailboxes().filter(\.isSelectable).map { item in
+                var folder = MailFolder(name: item.name)
+                if item.attributes.contains(.sent) { folder.role = "sent" }
+                else if item.attributes.contains(.trash) { folder.role = "trash" }
+                else if item.attributes.contains(.archive) || item.attributes.contains(.all) { folder.role = "archive" }
+                else if item.attributes.contains(.drafts) { folder.role = "drafts" }
+                else if item.attributes.contains(.junk) { folder.role = "junk" }
+                return folder
+            }
             return list.sorted { a, b in
                 if a.name.uppercased() == "INBOX" { return true }
                 if b.name.uppercased() == "INBOX" { return false }
@@ -52,20 +144,37 @@ struct NativeMailService: MailService {
         }
     }
     func summaries(_ entry: AccountCredential, folder: String, limit: Int) async throws -> [MailSummary] {
-        try await withIMAP(entry) { server in
-            let selection = try await server.examineMailbox(folder)
-            guard let range = selection.latest(limit) else { return [] }
-            var result: [MailSummary] = []
-            for try await info in server.fetchMessageInfos(using: range, options: .slim) {
+        // A malformed MIME tree or legacy ENVELOPE must not prevent refreshing
+        // the whole mailbox. Retry only syntax failures on a fresh, fully
+        // verified connection. Never retry mutations or authentication errors.
+        let remembered = await MailListCompatibility.shared.mode(entry.account.id)
+        for mode in remembered...2 {
+            do {
+                let result = try await fetchSummaries(entry, folder: folder, limit: limit, mode: mode)
+                await MailListCompatibility.shared.remember(mode, for: entry.account.id)
+                return result
+            } catch {
                 try Task.checkCancellation()
-                guard let uid = info.uid else { continue }
-                let reply = (info.replyToAddresses.mailboxes.first ?? info.fromAddresses.mailboxes.first)?.address ?? ""
-                result.append(MailSummary(uid: uid.value, validity: selection.uidValidity.value, folder: folder,
-                    subject: info.subject ?? "（无主题）", sender: info.from ?? "未知发件人", replyAddress: reply,
-                    date: info.internalDate ?? info.date, unread: !info.flags.contains(.seen),
-                    messageID: info.messageId?.description))
+                guard error as? MailConnectionFailure == .malformedResponse, mode < 2 else { throw error }
             }
-            return result.sorted { $0.uid > $1.uid }
+        }
+        throw MailConnectionFailure.malformedResponse
+    }
+    private func fetchSummaries(_ entry: AccountCredential, folder: String, limit: Int, mode: Int) async throws -> [MailSummary] {
+        try await withIMAP(entry, phase: .imapSummaries) { server in
+            let selection = try await Self.step(.imapSelect) { try await server.examineMailbox(folder) }
+            guard let range = selection.latest(limit) else { return [] }
+            let options: FetchMessageInfoOptions = mode == 0 ? .slim.union(.bodyStructure)
+                : (mode == 1 ? .slim : [.flags, .internalDate, .size, .fullHeader])
+            return try await Self.step(.imapFetch) {
+                var result: [MailSummary] = []
+                for try await info in server.fetchMessageInfos(using: range, options: options) {
+                    try Task.checkCancellation()
+                    guard let uid = info.uid else { throw MailConnectionFailure.malformedResponse }
+                    result.append(Self.summary(info, uid: uid.value, validity: selection.uidValidity.value, folder: folder))
+                }
+                return result.sorted { $0.uid > $1.uid }
+            }
         }
     }
     func read(_ entry: AccountCredential, summary: MailSummary) async throws -> ReadResult {
@@ -90,28 +199,165 @@ struct NativeMailService: MailService {
                 parts.append(part)
             }
             let message = Message(header: info, parts: parts)
-            let body = MailBody(text: message.textBody ?? "", html: message.htmlBody)
+            let metadata = Message(header: info, parts: info.parts).attachments.map {
+                MailAttachment(id: $0.section.description, name: $0.suggestedFilename, mimeType: $0.contentType, size: $0.size ?? 0)
+            }
+            let body = MailBody(text: message.textBody ?? "", html: message.htmlBody, attachments: metadata,
+                recipients: Self.addresses(info.toAddresses.mailboxes), carbonCopies: Self.addresses(info.ccAddresses.mailboxes))
             var marked = false
             do { try await server.store(flags: [.seen], on: MessageIdentifierSet(uid), operation: .add); marked = true }
             catch { /* Reading succeeds even when the separate read-flag update is rejected. */ }
             return ReadResult(body: body, markedRead: marked)
         }
     }
-    func send(_ entry: AccountCredential, draft: MailDraft) async throws {
+    private static func addresses(_ values: [EmailAddress]) -> [MailAddress] {
+        values.map { MailAddress(name: $0.name?.decodeMIMEHeader() ?? "", email: $0.address) }
+    }
+    private static func summary(_ info: MessageInfo, uid: UInt32, validity: UInt32, folder: String) -> MailSummary {
+        let reply = (info.replyToAddresses.mailboxes.first ?? info.fromAddresses.mailboxes.first)?.address ?? ""
+        var value = MailSummary(uid: uid, validity: validity, folder: folder,
+            subject: info.subject ?? "（无主题）", sender: info.from ?? "未知发件人", replyAddress: reply,
+            date: info.internalDate ?? info.date, unread: !info.flags.contains(.seen), messageID: info.messageId?.description)
+        value.recipients = addresses(info.toAddresses.mailboxes); value.carbonCopies = addresses(info.ccAddresses.mailboxes)
+        value.senderName = info.fromAddresses.mailboxes.first?.name?.decodeMIMEHeader()
+        value.senderAddress = info.fromAddresses.mailboxes.first?.address
+        value.isFlagged = info.flags.contains(.flagged)
+        value.hasAttachments = !Message(header: info, parts: info.parts).attachments.isEmpty
+        value.parentMessageID = info.inReplyTo?.description
+        value.references = info.references?.map(\.description).joined(separator: " ")
+        return value
+    }
+    private static func email(_ entry: AccountCredential, draft: MailDraft) throws -> Email {
         var editable = draft; editable.state = .editing
-        let addresses = try editable.validateForSending()
+        _ = try editable.validateForSending()
+        let groups = try draft.recipientGroups()
+        let attachments = try draft.attachments.map { item -> Attachment in
+            guard let data = item.data else { throw MailFailure.invalid("附件数据不可用。") }
+            return Attachment(filename: MailAttachment.safeName(item.name), mimeType: item.mimeType, data: data)
+        }
         var email = Email(sender: EmailAddress(name: entry.account.displayName, address: entry.account.email),
-            recipients: addresses.map { EmailAddress(address: $0) }, subject: draft.subject, textBody: draft.text)
+            recipients: groups.to.map { EmailAddress(address: $0) }, ccRecipients: groups.cc.map { EmailAddress(address: $0) },
+            bccRecipients: groups.bcc.map { EmailAddress(address: $0) }, subject: draft.subject, textBody: draft.text,
+            htmlBody: draft.html, attachments: attachments)
+        email.messageID = MessageID("<\(draft.id)@mailai.local>")
         if let reply = draft.inReplyTo, !MailValidation.hasControl(reply), let parsed = MessageID(reply) {
             email.additionalHeaders = ["In-Reply-To": parsed.description, "References": parsed.description]
         }
+        return email
+    }
+    func attachment(_ entry: AccountCredential, summary: MailSummary, attachment: MailAttachment) async throws -> Data {
+        try await withIMAP(entry) { server in
+            let selection = try await server.examineMailbox(summary.folder)
+            guard selection.uidValidity.value == summary.validity else { throw MailFailure.changedMailbox }
+            let uid = UID(summary.uid)
+            guard let info = try await server.fetchMessageInfo(for: uid, options: [.bodyStructure]),
+                  var part = Message(header: info, parts: info.parts).attachments.first(where: { $0.section.description == attachment.id }) else {
+                throw MailFailure.invalid("附件已不存在，请刷新原邮件。")
+            }
+            let encodedLimit = 22_000_000
+            guard (part.size ?? 0) <= encodedLimit else { throw MailFailure.invalid("附件超过 15 MB 限制。") }
+            part.data = try await server.fetchPart(section: part.section, of: uid, offset: 0, count: encodedLimit + 1)
+            guard (part.data?.count ?? 0) <= encodedLimit, let data = part.decodedData(), data.count <= MailAttachment.singleLimit else {
+                throw MailFailure.invalid("附件过大或无法解码。")
+            }
+            return data
+        }
+    }
+    func perform(_ entry: AccountCredential, summaries: [MailSummary], action: MailAction) async throws {
+        guard let first = summaries.first else { return }
+        guard summaries.allSatisfy({ $0.folder == first.folder && $0.validity == first.validity }) else { throw MailFailure.changedMailbox }
+        try await withIMAP(entry) { server in
+            let selection = try await server.selectMailbox(first.folder)
+            guard selection.uidValidity.value == first.validity else { throw MailFailure.changedMailbox }
+            let ids = UIDSet(summaries.map { UID($0.uid) })
+            switch action {
+            case .read(let value): try await server.store(flags: [.seen], on: ids, operation: value ? .add : .remove)
+            case .flagged(let value): try await server.store(flags: [.flagged], on: ids, operation: value ? .add : .remove)
+            case .move(let target):
+                guard target != first.folder, !MailValidation.hasControl(target) else { throw MailFailure.invalid("请选择其他文件夹。") }
+                _ = try await server.move(messages: ids, to: target)
+            }
+        }
+    }
+    func move(_ entry: AccountCredential, summaries: [MailSummary], to folder: String) async throws -> [MailSummary]? {
+        guard let first = summaries.first, summaries.allSatisfy({ $0.folder == first.folder && $0.validity == first.validity }), folder != first.folder else { throw MailFailure.changedMailbox }
+        return try await withIMAP(entry) { server in
+            let selection = try await server.selectMailbox(first.folder)
+            guard selection.uidValidity.value == first.validity else { throw MailFailure.changedMailbox }
+            guard let receipt = try await server.move(messages: UIDSet(summaries.map { UID($0.uid) }), to: folder), receipt.mapping.count == summaries.count else { return nil }
+            return receipt.mapping.compactMap { pair in
+                summaries.first(where: { $0.uid == pair.source.value })?.relocated(uid: pair.destination.value, validity: receipt.destinationUIDValidity.value, folder: folder)
+            }
+        }
+    }
+    func search(_ entry: AccountCredential, folder: String, query: String, limit: Int) async throws -> MailSearchResult {
+        guard !query.isEmpty, query.count <= 256, !MailValidation.hasControl(query) else { throw MailFailure.invalid("请输入 1 至 256 字的搜索内容。") }
+        return try await searchMessages(entry, folder: folder, criteria: [.text(query)], limit: limit)
+    }
+    func correspondence(_ entry: AccountCredential, folder: String, address: String, limit: Int) async throws -> MailSearchResult {
+        try await correspondencePage(entry, folder: folder, address: address, beforeUID: nil, limit: limit)
+    }
+    func correspondencePage(_ entry: AccountCredential, folder: String, address: String, beforeUID: UInt32?, limit: Int) async throws -> MailSearchResult {
+        guard MailValidation.isAddress(address) else { throw MailFailure.invalid("发件人邮箱地址不可用。") }
+        let result = try await searchMessages(entry, folder: folder,
+            criteria: [.or(.from(address), .or(.to(address), .cc(address)))], limit: limit, beforeUID: beforeUID)
+        return MailSearchResult(messages: result.messages.filter { $0.involves(address) }, total: result.total, nextUID: result.nextUID)
+    }
+    private func searchMessages(_ entry: AccountCredential, folder: String, criteria: [SearchCriteria], limit: Int, beforeUID: UInt32? = nil) async throws -> MailSearchResult {
+        let remembered = await MailListCompatibility.shared.mode(entry.account.id)
+        for mode in remembered...2 {
+            do {
+                let result = try await withIMAP(entry, phase: .imapSummaries) { server in
+                    let selection = try await server.examineMailbox(folder)
+                    let result: ExtendedSearchResult<UID> = try await server.extendedSearch(criteria: criteria)
+                    let all = result.all?.toArray().sorted { $0.value > $1.value } ?? []
+                    let remaining = all.filter { beforeUID == nil || $0.value < beforeUID! }
+                    let chosen = Array(remaining.prefix(min(500, max(1, limit))))
+                    guard !chosen.isEmpty else { return MailSearchResult(messages: [], total: all.count) }
+                    let options: FetchMessageInfoOptions = mode == 0 ? .slim.union(.bodyStructure)
+                        : (mode == 1 ? .slim : [.flags, .internalDate, .size, .fullHeader])
+                    var messages: [MailSummary] = []
+                    for try await info in server.fetchMessageInfos(using: UIDSet(chosen), options: options) {
+                        try Task.checkCancellation()
+                        guard let uid = info.uid, chosen.contains(where: { $0.value == uid.value }) else { throw MailConnectionFailure.malformedResponse }
+                        messages.append(Self.summary(info, uid: uid.value, validity: selection.uidValidity.value, folder: folder))
+                    }
+                    return MailSearchResult(messages: messages.sorted { $0.uid > $1.uid }, total: all.count, nextUID: remaining.count > chosen.count ? chosen.last?.value : nil)
+                }
+                await MailListCompatibility.shared.remember(mode, for: entry.account.id)
+                return result
+            } catch {
+                try Task.checkCancellation()
+                guard error as? MailConnectionFailure == .malformedResponse, mode < 2 else { throw error }
+            }
+        }
+        throw MailConnectionFailure.malformedResponse
+    }
+    func archiveSent(_ entry: AccountCredential, draft: MailDraft) async throws {
+        let email = try Self.email(entry, draft: draft)
+        try await withIMAP(entry) { server in
+            _ = try await server.listSpecialUseMailboxes()
+            let target: String
+            if let configured = entry.account.sentFolder, !configured.isEmpty { target = configured }
+            else { target = try await server.sentFolder.name }
+            _ = try await server.examineMailbox(target)
+            let found: ExtendedSearchResult<UID> = try await server.extendedSearch(criteria: [.header("Message-ID", "<\(draft.id)@mailai.local>")])
+            if found.all?.toArray().isEmpty == false { return }
+            _ = try await server.append(email: email, to: target, flags: [.seen])
+        }
+    }
+    func send(_ entry: AccountCredential, draft: MailDraft) async throws {
+        let email = try Self.email(entry, draft: draft)
         let server = smtp(entry)
         do {
-            try await server.connect()
-            try await server.login(username: entry.account.username, password: entry.password)
+            try await Self.step(.smtpConnect) {
+                try await MailConnectionGate.connect(host: entry.account.smtpHost, port: entry.account.smtpPort,
+                    attempt: { try await server.connect() }, reset: { try? await server.disconnect() })
+            }
+            try await Self.step(.smtpLogin) { try await server.login(username: entry.account.username, password: entry.password) }
         } catch {
             try? await server.disconnect()
-            throw SubmissionFailure(uncertain: false)
+            throw SubmissionFailure(uncertain: false, connectionFailure: error as? MailConnectionFailure)
         }
         do {
             _ = try await server.sendEmail(email)
@@ -124,4 +370,11 @@ struct NativeMailService: MailService {
             throw SubmissionFailure(uncertain: true)
         }
     }
+}
+
+private actor MailListCompatibility {
+    static let shared = MailListCompatibility()
+    private var modes: [UUID: Int] = [:]
+    func mode(_ account: UUID) -> Int { modes[account] ?? 0 }
+    func remember(_ mode: Int, for account: UUID) { modes[account] = mode }
 }

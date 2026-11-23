@@ -1,0 +1,534 @@
+import SwiftUI
+import MailAICore
+import ContactsUI
+
+enum InboxDestination: String, Hashable, Identifiable {
+    case contacts, settings, notifications
+    var id: String { rawValue }
+}
+
+struct MailboxesView: View {
+    let store: MailStore
+    @Binding var unified: Bool
+    let openDestination: (InboxDestination) -> Void
+    @State private var extraFolders = false
+    @Environment(\.dismiss) private var dismiss
+    private var primaryFolders: [MailFolder] { store.folders.filter { $0.symbol != "folder" }.sorted { order($0) < order($1) } }
+    private var otherFolders: [MailFolder] { store.folders.filter { $0.symbol == "folder" } }
+    private func order(_ folder: MailFolder) -> Int { ["收件箱", "已发送", "草稿", "归档", "废纸篓", "垃圾邮件"].firstIndex(of: folder.title) ?? 99 }
+    var body: some View {
+        VStack(spacing: 0) {
+            MailPanelHeader(title: "邮箱与文件夹") { dismiss() }
+            ScrollView {
+                VStack(spacing: 16) {
+                    if store.accounts.count > 1 {
+                        group("邮箱") {
+                            Button { unified = true; dismiss() } label: { panelRow("所有收件箱", symbol: "tray.2", selected: unified) }
+                            ForEach(store.accounts) { account in
+                                Button {
+                                    do { try store.selectAccount(account.id); unified = false; store.refresh(); dismiss() }
+                                    catch { store.error = error.localizedDescription }
+                                } label: { panelRow(account.email, symbol: "envelope", selected: store.selectedID == account.id && !unified) }
+                            }
+                        }
+                    }
+                    group("文件夹") { ForEach(primaryFolders) { folder in folderButton(folder) } }
+                    group("常用") {
+                        Button { openDestination(.contacts); dismiss() } label: { panelRow("通讯录", symbol: "person.crop.rectangle", navigates: true) }.accessibilityIdentifier("sidebar-contacts")
+                        Button { openDestination(.settings); dismiss() } label: { panelRow("设置", symbol: "gearshape", navigates: true) }.accessibilityIdentifier("sidebar-settings")
+                    }
+                    if !otherFolders.isEmpty {
+                        group {
+                            DisclosureGroup(isExpanded: $extraFolders) {
+                                ForEach(otherFolders) { folder in folderButton(folder) }
+                            } label: { Text("更多文件夹 · \(otherFolders.count)").font(.body).foregroundStyle(MailTheme.ink).frame(minHeight: 52) }
+                                .tint(MailTheme.secondary).padding(.horizontal, 16)
+                        }
+                    }
+                }.padding(.horizontal, 20).padding(.bottom, 20)
+            }.buttonStyle(MailPressButtonStyle(cornerRadius: 12, pressedScale: 0.99))
+        }.background(MailTheme.surface).presentationDetents([.large]).presentationDragIndicator(.visible).presentationCornerRadius(24).presentationBackground(MailTheme.surface)
+            .onAppear { extraFolders = otherFolders.contains { $0.name == store.folder } }
+    }
+    private func group<Content: View>(_ title: String? = nil, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if let title { Text(title).font(.caption.weight(.medium)).foregroundStyle(MailTheme.secondary).padding(.leading, 16) }
+            VStack(spacing: 0, content: content).padding(.vertical, 3).background(MailTheme.canvas, in: RoundedRectangle(cornerRadius: 14))
+        }
+    }
+    private func folderButton(_ folder: MailFolder) -> some View {
+        Button { do { try store.selectFolder(folder.name); unified = false; dismiss() } catch { store.error = error.localizedDescription } } label: {
+            panelRow(folder.title, symbol: folder.symbol, selected: !unified && store.folder == folder.name)
+        }
+    }
+    private func panelRow(_ title: String, symbol: String, selected: Bool = false, navigates: Bool = false) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: symbol).font(.system(size: 19)).frame(width: 24).foregroundStyle(selected ? MailTheme.blue : MailTheme.secondary)
+            Text(title).font(.body).foregroundStyle(selected ? MailTheme.blue : MailTheme.ink).lineLimit(2).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+            if selected { Image(systemName: "checkmark").font(.body.weight(.semibold)).foregroundStyle(MailTheme.blue) }
+            else if navigates { Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(MailTheme.secondary) }
+        }.frame(maxWidth: .infinity, minHeight: 52, alignment: .leading).padding(.horizontal, 16).contentShape(Rectangle()).accessibilityValue(selected ? "当前位置" : "")
+    }
+}
+struct MailMoveRequest: Identifiable {
+    let id = UUID()
+    let items: [MailSummary]
+    var destinationRole: String? = nil
+}
+struct MovePicker: View {
+    let store: MailStore; let items: [MailSummary]
+    var destinationRole: String? = nil
+    @Environment(\.dismiss) private var dismiss
+    @State private var working = false
+    @State private var error: String?
+    var body: some View {
+        NavigationStack {
+            List {
+                if destinationRole == "trash" { Text("此邮箱未标记废纸篓，请选择接收这些删除邮件的文件夹。").font(.footnote).foregroundStyle(MailTheme.secondary) }
+                if let error { Text(error).foregroundStyle(.red) }
+                ForEach(store.folders, id: \.name) { folder in
+                    Button {
+                        working = true
+                        Task {
+                            do { try await store.perform(.move(folder.name), on: items); dismiss() }
+                            catch { self.error = "移动未完成，请关闭后刷新核对。为避免重复移动，不会自动重试。" }
+                            working = false
+                        }
+                    } label: { HStack { Label(folder.title, systemImage: folder.symbol); Spacer(); if folder.name == items.first?.folder { Text("当前位置").font(.caption).foregroundStyle(MailTheme.secondary) } } }.disabled(working || items.isEmpty || folder.name == items.first?.folder).listRowBackground(MailTheme.surface)
+                }
+            }.listStyle(.insetGrouped).scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle(destinationRole == "trash" ? "选择废纸篓" : "移动 \(items.count) 封邮件").navigationBarTitleDisplayMode(.inline)
+                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() }.disabled(working) } }
+                .overlay { if working { ProgressView("正在移动…") } }
+                .interactiveDismissDisabled(working)
+        }
+    }
+}
+struct DraftsView: View {
+    let store: MailStore
+    @State private var composing = false
+    @State private var deleting: MailDraft?
+    @State private var records = false
+    @Environment(\.dismiss) private var dismiss
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                Picker("记录类型", selection: $records) { Text("草稿").tag(false); Text("发送记录").tag(true) }.pickerStyle(.segmented).padding(16)
+                List {
+                ForEach(store.drafts.filter { !$0.isEmpty && (records ? $0.state != .editing : $0.state == .editing) }.sorted { ($0.updatedAt ?? .distantPast) > ($1.updatedAt ?? .distantPast) }) { item in
+                    Button { do { try store.openDraft(item.id); composing = true } catch { store.error = error.localizedDescription } } label: {
+                        VStack(alignment: .leading, spacing: 5) {
+                            HStack { Text(item.subject.isEmpty ? "（无主题）" : item.subject).font(.headline); Spacer(); Text(state(item)).font(.caption).foregroundStyle(item.state == .uncertain ? .orange : .secondary) }
+                            Text(item.to.isEmpty ? "未填写收件人" : item.to).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                            Text(item.text).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                            if let date = item.updatedAt { Text(date.formatted(date: .abbreviated, time: .shortened)).font(.caption2).foregroundStyle(.secondary) }
+                        }.foregroundStyle(.primary).padding(.vertical, 5)
+                    }.swipeActions {
+                        if item.state != .uncertain && item.state != .submitting {
+                            Button("删除", role: .destructive) { deleting = item }
+                        }
+                    }
+                }
+                if store.drafts.filter({ !$0.isEmpty && (records ? $0.state != .editing : $0.state == .editing) }).isEmpty {
+                    ContentUnavailableView(records ? "暂无发送记录" : "暂无草稿", systemImage: records ? "paperplane" : "doc", description: Text(records ? "邮件提交状态会保存在这里。" : "编辑中的邮件会自动保存在这里。"))
+                }
+                }.listStyle(.plain).scrollContentBackground(.hidden)
+            }.background(MailTheme.surface).navigationTitle("草稿与发送记录").navigationBarTitleDisplayMode(.inline)
+                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } } }
+                .sheet(isPresented: $composing) { ComposerView(store: store) }
+                .alert("删除“\(deleting?.subject.isEmpty == false ? deleting!.subject : "无主题")”？", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
+                    Button(deleting?.state == .editing ? "删除草稿" : "删除本机发送记录", role: .destructive) { if let deleting { do { try store.discardDraft(deleting.id) } catch { store.error = error.localizedDescription } }; deleting = nil }
+                    Button("取消", role: .cancel) { deleting = nil }
+                } message: { Text("只删除此设备上的本机记录，无法撤销。服务器邮件会保留。") }
+        }
+    }
+    private func state(_ draft: MailDraft) -> String {
+        switch draft.state { case .editing: return "草稿"; case .sent: return draft.sentCopyPending == true ? "待存档" : "已发送"; case .submitting, .uncertain: return "结果待确认" }
+    }
+}
+struct MailSearchView: View {
+    let store: MailStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
+    @State private var results: [MailSummary] = []
+    @State private var completedQuery = ""
+    @State private var recent: [String] = []
+    private var recentKey: String { "mail.recentSearch." + (store.selectedID?.uuidString ?? "none") + "." + store.folder }
+    @State private var total = 0
+    @State private var limit = 50
+    @State private var task: Task<Void, Never>?
+    @State private var working = false
+    @State private var error: String?
+    private var local: [MailSummary] {
+        store.messages.filter { ($0.subject + " " + $0.sender + " " + ($0.preview ?? "") + " " + ($0.recipients ?? []).map(\.email).joined(separator: " ")).localizedCaseInsensitiveContains(query) }
+    }
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                MailSearchField(text: $query, prompt: "搜索当前文件夹", submitted: { limit = 50; search() }).padding(.horizontal, 16).padding(.vertical, 8)
+                List {
+                Group {
+                Section { Text((store.accounts.count > 1 ? (store.selected?.email ?? "") + " · " : "") + (store.folders.first { $0.name == store.folder }?.title ?? store.folder)).font(.caption).foregroundStyle(MailTheme.secondary) }
+                if !query.isEmpty {
+                    Section(completedQuery == query ? "服务器匹配 \(total) 封 · 已显示 \(results.count) 封" : "本机缓存匹配") {
+                        if (completedQuery == query ? results : local).isEmpty {
+                            ContentUnavailableView("没有匹配的邮件", systemImage: "magnifyingglass", description: Text(completedQuery == query ? "试试更短的关键词。" : "可继续搜索服务器当前文件夹。"))
+                        }
+                        ForEach(completedQuery == query ? results : local) { message in
+                            NavigationLink { ReaderView(store: store, summary: message) } label: { MailRow(summary: message, keyword: query) }
+                        }
+                    }
+                    if completedQuery != query { Button("搜索服务器整个当前文件夹") { limit = 50; search() }.disabled(working) }
+                    if completedQuery == query && results.count < total && limit < 500 { Button("加载更多结果") { limit += 50; search() }.disabled(working) }
+                    if completedQuery == query && results.count < total && limit >= 500 { Text("已展示前500条结果，请缩短关键词或添加更具体的条件。").font(.footnote).foregroundStyle(MailTheme.secondary) }
+                } else {
+                    if !recent.isEmpty {
+                        Section {
+                            ForEach(recent, id: \.self) { item in Button { query = item } label: { Label(item, systemImage: "clock").foregroundStyle(MailTheme.ink) } }
+                            Button("清空最近搜索") { recent = []; UserDefaults.standard.removeObject(forKey: recentKey) }
+                        } header: { Text("最近搜索") }
+                    } else { ContentUnavailableView("搜索邮件", systemImage: "magnifyingglass", description: Text("先搜索本机缓存，再继续搜索服务器当前文件夹。")) }
+                }
+                if let error { Text(error).foregroundStyle(.red); Button("重试") { search() } }
+                }.listRowBackground(MailTheme.surface)
+                }.listStyle(.plain).scrollContentBackground(.hidden)
+            }.listRowBackground(MailTheme.surface).scrollContentBackground(.hidden).background(MailTheme.surface).navigationTitle("搜索").navigationBarTitleDisplayMode(.inline)
+                .onChange(of: query) { _, _ in task?.cancel(); working = false; error = nil }
+                .overlay { if working { ProgressView("正在搜索…").padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16)) } }
+                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } } }
+                .onAppear { recent = UserDefaults.standard.stringArray(forKey: recentKey) ?? [] }
+                .onChange(of: store.selectedID) { _, _ in resetScope() }
+                .onChange(of: store.folder) { _, _ in resetScope() }
+                .onDisappear { task?.cancel() }
+        }
+    }
+    private func search() {
+        task?.cancel(); let input = query
+        guard !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        remember(input); working = true; error = nil; completedQuery = ""
+        task = Task {
+            do { let found = try await store.search(input, limit: limit); try Task.checkCancellation(); results = found; total = store.searchTotal; completedQuery = input }
+            catch { if !Task.isCancelled { self.error = "服务器搜索失败，已保留本机结果。可重试或缩小关键词。" } }
+            if !Task.isCancelled { working = false }
+        }
+    }
+    private func remember(_ input: String) {
+        recent.removeAll { $0.caseInsensitiveCompare(input) == .orderedSame }; recent.insert(input, at: 0); recent = Array(recent.prefix(8))
+        UserDefaults.standard.set(recent, forKey: recentKey)
+    }
+    private func resetScope() {
+        task?.cancel(); results = []; completedQuery = ""; working = false; error = nil
+        recent = UserDefaults.standard.stringArray(forKey: recentKey) ?? []
+    }
+
+}
+struct ContactsView: View {
+    let store: MailStore
+    @State private var actionPanel: MailActionPanelData?
+    @State private var query = ""
+    @State private var editing: MailContact?
+    @State private var pendingRecipient: String?
+    @State private var pendingPhone: MailAddress?
+    @State private var picking = false
+    @State private var composing = false
+    var body: some View {
+        List {
+            Section(store.accounts.count > 1 ? (store.selected?.email ?? "往来联系人") : "往来联系人") {
+                ForEach(store.contacts.filter { query.isEmpty || ($0.email + $0.name + $0.note).localizedCaseInsensitiveContains(query) }.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }) { contact in
+                    NavigationLink { ContactDetail(store: store, initial: contact, compose: compose) } label: {
+                        HStack { SenderAvatar(name: contact.name.isEmpty ? contact.title : contact.name); VStack(alignment: .leading) { Text(contact.name.isEmpty ? contact.title : contact.name).foregroundStyle(.primary); Text(contact.email).font(.caption).foregroundStyle(.secondary); if !contact.note.isEmpty { Text(contact.note).font(.caption).foregroundStyle(MailTheme.secondary).lineLimit(1) } }; Spacer() }
+                    }.accessibilityIdentifier("contact-" + contact.email).contextMenu { Button("写邮件") { compose(contact.email) } }
+                }
+                if store.contacts.isEmpty { ContentUnavailableView("暂无联系人", systemImage: "person.crop.rectangle", description: Text("添加联系人，或从往来邮件中积累。")) }
+            }.listRowBackground(MailTheme.surface)
+        }.listRowBackground(MailTheme.surface).listStyle(.plain).scrollContentBackground(.hidden).background(MailTheme.surface).navigationTitle("通讯录").navigationBarTitleDisplayMode(.inline)
+            .safeAreaInset(edge: .top, spacing: 0) { MailSearchField(text: $query, prompt: "姓名、备注或邮箱").padding(.horizontal, 16).padding(.vertical, 8).background(MailTheme.surface) }
+            .toolbar { ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    actionPanel = MailActionPanelData(title: "联系人操作", groups: [[
+                        MailPanelAction(title: "新建联系人", symbol: "person.badge.plus") { editing = MailContact(email: "") },
+                        MailPanelAction(title: "从手机联系人选择", symbol: "person.crop.circle.badge.plus") { picking = true }
+                    ]])
+                } label: { Image(systemName: "plus") }.accessibilityLabel("联系人操作").disabled(store.selectedID == nil)
+            } }
+            .mailActionPanel($actionPanel)
+            .sheet(item: $editing, onDismiss: {
+                if let email = pendingRecipient { pendingRecipient = nil; compose(email) }
+            }) { contact in ContactEditor(store: store, contact: contact) { pendingRecipient = $0 } }
+            .sheet(isPresented: $picking, onDismiss: {
+                if let address = pendingPhone { pendingPhone = nil; editing = MailContact(email: address.email, name: address.name) }
+            }) { PhoneContactPicker { address in pendingPhone = address; picking = false } }
+            .sheet(isPresented: $composing) { ComposerView(store: store) }
+    }
+    private func compose(_ email: String) {
+        do { try store.newDraft(); store.updateDraft { $0.to = email }; composing = true }
+        catch { store.error = error.localizedDescription }
+    }
+}
+struct ContactEditor: View {
+    let store: MailStore
+    @State var contact: MailContact
+    let originalEmail: String
+    let compose: (String) -> Void
+    let saved: ((MailContact) -> Void)?
+    init(store: MailStore, contact: MailContact, saved: ((MailContact) -> Void)? = nil, compose: @escaping (String) -> Void) {
+        self.store = store; _contact = State(initialValue: contact); originalEmail = contact.email; self.saved = saved; self.compose = compose
+    }
+    @Environment(\.dismiss) private var dismiss
+    @State private var error: String?
+    var body: some View {
+        NavigationStack {
+            Form {
+                VStack(alignment: .leading, spacing: 8) { Text("邮箱地址").font(.subheadline.weight(.medium)); TextField("邮箱地址", text: $contact.email).accessibilityIdentifier("contact-email").keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled() }
+                VStack(alignment: .leading, spacing: 8) { Text("姓名").font(.subheadline.weight(.medium)); TextField("选填", text: $contact.name).accessibilityIdentifier("contact-name") }
+                VStack(alignment: .leading, spacing: 8) { Text("备注").font(.subheadline.weight(.medium)); TextField("补充联系信息（选填）", text: $contact.note, axis: .vertical).accessibilityIdentifier("contact-note") }
+                if let error { Text(error).foregroundStyle(.red) }
+                Button("写邮件") { dismiss(); compose(contact.email) }.disabled(!MailValidation.isAddress(contact.email))
+            }.scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle(originalEmail.isEmpty ? "新建联系人" : "编辑联系人").navigationBarTitleDisplayMode(.inline).toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button("保存") { do { try store.saveContact(contact, replacingEmail: originalEmail); saved?(contact); dismiss() } catch { self.error = error.localizedDescription } }.disabled(!MailValidation.isAddress(contact.email)) }
+            }
+        }
+    }
+}
+struct ContactDetail: View {
+    let store: MailStore
+    let initial: MailContact
+    let compose: (String) -> Void
+    @State private var editing = false
+    @State private var updated: MailContact?
+    @State private var pendingCompose: String?
+    private var contact: MailContact { let current = updated ?? initial; return store.contacts.first { $0.email == current.email } ?? current }
+    var body: some View {
+        List {
+            Section {
+                VStack(spacing: 10) { SenderAvatar(name: contact.name.isEmpty ? contact.title : contact.name, size: 64); Text(contact.name.isEmpty ? contact.title : contact.name).font(.title2.bold()); Text(contact.email).foregroundStyle(MailTheme.secondary).textSelection(.enabled) }.frame(maxWidth: .infinity).padding(.vertical, 24)
+                Button("写邮件", systemImage: "square.and.pencil") { compose(contact.email) }.frame(maxWidth: .infinity, minHeight: 44)
+                NavigationLink { CorrespondenceView(store: store, address: contact.email) } label: { Label("往来邮件", systemImage: "arrow.left.arrow.right") }
+            }.listRowBackground(MailTheme.surface)
+            Section("备注") { Text(contact.note.isEmpty ? "暂无备注" : contact.note).textSelection(.enabled) }.listRowBackground(MailTheme.surface)
+        }.scrollContentBackground(.hidden).background(MailTheme.canvas).navigationTitle("联系人").navigationBarTitleDisplayMode(.inline).toolbar(.hidden, for: .tabBar)
+            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("编辑") { editing = true } } }
+            .sheet(isPresented: $editing, onDismiss: { if let email = pendingCompose { pendingCompose = nil; compose(email) } }) { ContactEditor(store: store, contact: contact, saved: { updated = $0 }, compose: { pendingCompose = $0 }) }
+    }
+}
+struct PhoneContactPicker: UIViewControllerRepresentable {
+    let selected: (MailAddress) -> Void
+    func makeCoordinator() -> Coordinator { Coordinator(selected: selected) }
+    func makeUIViewController(context: Context) -> CNContactPickerViewController {
+        let controller = CNContactPickerViewController(); controller.delegate = context.coordinator
+        controller.displayedPropertyKeys = [CNContactEmailAddressesKey]
+        controller.predicateForEnablingContact = NSPredicate(format: "emailAddresses.@count > 0")
+        controller.predicateForSelectionOfContact = NSPredicate(value: false)
+        controller.predicateForSelectionOfProperty = NSPredicate(format: "key == 'emailAddresses'")
+        return controller
+    }
+    func updateUIViewController(_ uiViewController: CNContactPickerViewController, context: Context) {}
+    final class Coordinator: NSObject, CNContactPickerDelegate {
+        let selected: (MailAddress) -> Void
+        init(selected: @escaping (MailAddress) -> Void) { self.selected = selected }
+        func contactPicker(_ picker: CNContactPickerViewController, didSelect contactProperty: CNContactProperty) {
+            if let email = contactProperty.value as? String { selected(MailAddress(name: CNContactFormatter.string(from: contactProperty.contact, style: .fullName) ?? "", email: email)) }
+        }
+    }
+}
+
+struct CorrespondenceView: View {
+    let store: MailStore
+    let address: String
+    var seed: MailSummary? = nil
+    @State private var actionPanel: MailActionPanelData?
+    @State private var ownerID: UUID?
+    @State private var records: [MailSummary] = []
+    @State private var work: Task<Void, Never>?
+    @State private var generation = UUID()
+    @State private var working = false
+    @State private var completed = 0
+    @State private var folderCount = 0
+    @State private var limit = 50
+    @State private var more = false
+    @State private var error: String?
+    @State private var selecting = false
+    @State private var selection = Set<String>()
+    @State private var incomingOnly = false
+    @State private var deleting: MailMoveRequest?
+    @State private var choosingTrash = false
+    @State private var moving = false
+    @State private var needsReconciliation = false
+    @Environment(\.dismiss) private var dismiss
+    private var messages: [MailSummary] {
+        MailStore.correspondenceMessages(records.filter { !incomingOnly || $0.contactAddresses.first?.email.caseInsensitiveCompare(address) == .orderedSame }, address: address)
+    }
+    private var chosen: [MailSummary] { records.filter { selection.contains($0.correspondenceID) } }
+    var body: some View {
+        List {
+            Section {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(address).font(.subheadline.weight(.semibold)).textSelection(.enabled)
+                    if store.accounts.count > 1 { Text("当前邮箱：" + (store.selected?.email ?? "")).font(.caption).foregroundStyle(MailTheme.secondary) }
+                    Text(incomingOnly ? "仅对方发来的邮件" : "包含收到及发出的邮件").font(.caption).foregroundStyle(MailTheme.secondary)
+                }
+            }.listRowBackground(MailTheme.surface)
+            if working {
+                HStack { ProgressView(); Text("正在查找 \(completed)/\(folderCount) 个文件夹 · 已找到 \(messages.count) 封").font(.footnote) }.listRowBackground(MailTheme.surface)
+            }
+            if let error {
+                Section { MailNotice(text: error, symbol: "exclamationmark.circle"); Button("重试查询") { search() }.disabled(moving) }.listRowBackground(MailTheme.surface)
+            }
+            Section("往来记录 · \(messages.count) 封") {
+                ForEach(messages) { message in
+                    if selecting {
+                        Button { toggle(message) } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: selection.contains(message.correspondenceID) ? "checkmark.circle.fill" : "circle").font(.title3).foregroundStyle(MailTheme.blue).frame(width: 32, height: 44)
+                                row(message)
+                            }.contentShape(Rectangle())
+                        }.buttonStyle(.plain).accessibilityIdentifier("correspondence-select-\(message.folder)-\(message.uid)")
+                            .accessibilityValue(selection.contains(message.correspondenceID) ? "已选择" : "未选择")
+                            .listRowBackground(selection.contains(message.correspondenceID) ? MailTheme.blue.opacity(0.06) : MailTheme.surface)
+                    } else {
+                        NavigationLink { ReaderView(store: store, summary: message) } label: { row(message) }
+                            .contextMenu { Button("选择并批量删除", systemImage: "checkmark.circle") { selecting = true; selection = [message.correspondenceID] } }
+                    }
+                }
+                if messages.isEmpty && !working {
+                    ContentUnavailableView("暂无往来记录", systemImage: "envelope", description: Text(self.error == nil ? "收件、已发送与归档中的往来邮件会显示在这里。" : "联网重试可查找更多历史邮件。"))
+                }
+            }.listRowBackground(MailTheme.surface)
+            if more {
+                Section {
+                    Text("尚有往来未加载，全选已加载仅处理当前记录。").font(.footnote).foregroundStyle(MailTheme.secondary)
+                    if limit < 500 { Button("加载更多往来") { limit += 50; search() }.disabled(working || moving) }
+                    Button("加载并选择全部往来") { search(all: true) }.disabled(working || moving).accessibilityIdentifier("correspondence-load-all")
+                }.listRowBackground(MailTheme.surface)
+            }
+        }.listStyle(.plain).scrollContentBackground(.hidden).background(MailTheme.surface)
+            .navigationTitle(selecting ? "已选 \(selection.count) 封" : "往来邮件").navigationBarTitleDisplayMode(.inline).toolbar(.visible, for: .navigationBar)
+            .navigationBarBackButtonHidden(moving)
+            .toolbar {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    if working { Button("停止") { stop(); self.error = "查询已停止，仅显示已查到的记录。" }.accessibilityIdentifier("stop-correspondence") }
+                    else if selecting { Button("完成") { selecting = false; selection = [] }.disabled(moving) }
+                    Button {
+                        var selectionActions: [MailPanelAction] = []
+                        if !selecting { selectionActions.append(MailPanelAction(title: "选择邮件", symbol: "checkmark.circle", enabled: !messages.isEmpty && !needsReconciliation) { selecting = true; selection = [] }) }
+                        selectionActions.append(MailPanelAction(title: "加载并选择全部往来", symbol: "checkmark.circle.badge.plus") { search(all: true) })
+                        actionPanel = MailActionPanelData(title: "往来邮件操作", groups: [selectionActions, [
+                            MailPanelAction(title: "仅对方发来的邮件", symbol: "envelope", selected: incomingOnly) { incomingOnly.toggle() },
+                            MailPanelAction(title: "刷新", symbol: "arrow.clockwise") { search() }
+                        ]])
+                    } label: { Image(systemName: "ellipsis.circle") }.accessibilityLabel("更多往来操作").accessibilityIdentifier("correspondence-actions").disabled(working || moving)
+                }
+            }
+            .mailActionPanel($actionPanel)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                VStack(spacing: 0) {
+                    if moving { HStack { ProgressView(); Text("正在处理邮件…").font(.subheadline) }.frame(maxWidth: .infinity, minHeight: 52) }
+                    else if store.undoID != nil {
+                        HStack { Text(store.undoTitle).font(.subheadline); Spacer(); Button("撤销") { undo() }.frame(minHeight: 44) }.padding(.horizontal)
+                            .task(id: store.undoID) { do { try await Task.sleep(for: .seconds(8)); store.clearUndo() } catch {} }
+                    }
+                    if selecting && !moving {
+                        HStack {
+                            Button(selection.count == messages.count ? "取消全选" : "全选已加载") { selection = selection.count == messages.count ? [] : Set(messages.map(\.correspondenceID)) }.frame(minHeight: 44).disabled(needsReconciliation)
+                            Spacer()
+                            Button("删除", systemImage: "trash", role: .destructive) { deleting = MailMoveRequest(items: chosen) }.frame(minHeight: 44).disabled(selection.isEmpty || needsReconciliation).accessibilityIdentifier("correspondence-delete")
+                        }.font(.subheadline).padding(.horizontal)
+                    }
+                }.background(.regularMaterial)
+            }
+            .alert("删除选中的往来邮件？", isPresented: Binding(get: { deleting != nil && !choosingTrash }, set: { if !$0 && !choosingTrash { deleting = nil } }), presenting: deleting) { request in
+                Button("移到废纸篓", role: .destructive) {
+                    if let target = store.selected?.trashFolder ?? store.folders.first(where: { $0.role == "trash" || $0.title == "废纸篓" })?.name { deleting = nil; move(request.items, to: target) }
+                    else { choosingTrash = true }
+                }
+                Button("取消", role: .cancel) { deleting = nil }
+            } message: { request in
+                Text("将 \(Set(request.items.map(\.correspondenceID)).count) 封往来邮件（\(request.items.count) 份文件夹记录）移到废纸篓，可在废纸篓中找回。\(incomingOnly ? "只包含对方发来的邮件。" : "包含对方发来的及你发给对方的邮件。")仅处理本次选中的记录。")
+            }
+            .confirmationDialog("未识别废纸篓，请明确选择目标文件夹", isPresented: $choosingTrash, titleVisibility: .visible) {
+                ForEach(store.folders.filter { folder in !(deleting?.items.contains { $0.folder == folder.name } ?? true) }) { folder in
+                    Button(folder.title) { let items = deleting?.items ?? []; deleting = nil; move(items, to: folder.name) }
+                }
+                Button("取消", role: .cancel) { deleting = nil }
+            }
+            .task {
+                guard ownerID == nil else { return }
+                ownerID = store.selectedID
+                do { records = try store.cachedCorrespondenceRecords(with: address) + [seed].compactMap { $0 }; merge([]) }
+                catch { records = [seed].compactMap { $0 }; merge([]) }
+                search()
+            }
+            .onDisappear { stop() }
+            .onChange(of: choosingTrash) { _, value in if !value { deleting = nil } }
+            .onChange(of: incomingOnly) { _, _ in selection = [] }
+            .onChange(of: store.selectedID) { _, id in if ownerID != id { stop(); records = []; selection = []; deleting = nil; dismiss() } }
+    }
+    private func row(_ message: MailSummary) -> some View {
+        MailRow(summary: message, account: direction(message) + " · " + (store.folders.first { $0.name == message.folder }?.title ?? MailFolder(name: message.folder).title))
+    }
+    private func toggle(_ message: MailSummary) {
+        if selection.contains(message.correspondenceID) { selection.remove(message.correspondenceID) } else { selection.insert(message.correspondenceID) }
+    }
+    private func direction(_ message: MailSummary) -> String {
+        message.contactAddresses.first?.email.caseInsensitiveCompare(store.selected?.email ?? "") == .orderedSame ? "发出" : "收到"
+    }
+    private func merge(_ input: [MailSummary]) {
+        var seen = Set<String>()
+        records = (records + input).filter { store.isCorrespondenceFolder($0.folder) && $0.involves(address) && seen.insert($0.id).inserted }
+    }
+    private func stop() { generation = UUID(); work?.cancel(); work = nil; working = false }
+    private func search(all: Bool = false) {
+        stop(); let token = generation
+        guard ownerID == store.selectedID, !moving else { return }
+        selecting = false; selection = []; working = true; completed = 0; folderCount = 0; more = false; self.error = nil
+        work = Task {
+            do {
+                let folders = try await store.correspondenceFolders()
+                try Task.checkCancellation(); guard generation == token else { return }
+                folderCount = folders.count
+                var failures = 0
+                for folder in folders {
+                    try Task.checkCancellation()
+                    do {
+                        var before: UInt32?
+                        repeat {
+                            let result = try await store.correspondencePage(with: address, folder: folder.name, beforeUID: before, limit: all ? 200 : limit)
+                            try Task.checkCancellation(); guard generation == token else { return }
+                            if before == nil { records.removeAll { $0.folder == folder.name } }
+                            merge(result.messages)
+                            before = result.nextUID
+                            more = more || (!all && before != nil)
+                        } while all && before != nil
+                    } catch { try Task.checkCancellation(); failures += 1 }
+                    completed += 1
+                }
+                needsReconciliation = failures > 0
+                if failures > 0 { self.error = "\(failures) 个文件夹暂未读到，已保留可用记录；未选择全部，请重试查询。" }
+                else if all { selecting = true; selection = Set(messages.map(\.correspondenceID)) }
+            } catch { if !Task.isCancelled && generation == token { self.error = "查询未完成，已保留本机记录，请检查邮箱连接后重试。"; needsReconciliation = true } }
+            if generation == token { working = false; work = nil }
+        }
+    }
+    private func move(_ items: [MailSummary], to target: String) {
+        guard ownerID == store.selectedID, !moving, !items.isEmpty else { return }
+        stop(); moving = true; self.error = nil
+        Task {
+            do {
+                let result = try await store.moveCorrespondence(items, address: address, to: target)
+                let ids = Set(result.completed.map(\.id)); records.removeAll { ids.contains($0.id) }
+                selecting = false; selection = []
+                needsReconciliation = result.needsReconciliation
+                if result.needsReconciliation { self.error = "已确认移入 \(result.completed.count) 份记录，其他记录的结果尚未确认。请先刷新核对，不要重复删除。" }
+            } catch { self.error = "操作结果未确认，请先刷新核对服务器记录。"; needsReconciliation = true }
+            moving = false
+        }
+    }
+    private func undo() {
+        moving = true
+        Task {
+            do { try await store.undoLastAction(); moving = false; search() }
+            catch { moving = false; needsReconciliation = true; self.error = "撤销未完成，请刷新核对服务器记录。" }
+        }
+    }
+}

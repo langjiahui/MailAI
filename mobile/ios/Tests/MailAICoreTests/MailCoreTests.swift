@@ -12,7 +12,7 @@ import XCTest
 }
 
 private actor MockMailService: MailService {
-    enum Outcome { case accepted, rejected, unknown }
+    enum Outcome { case accepted, rejected, unknown, network }
     var outcome: Outcome = .accepted
     var submissions = 0
     func setOutcome(_ value: Outcome) { outcome = value }
@@ -29,6 +29,7 @@ private actor MockMailService: MailService {
         case .accepted: return
         case .rejected: throw SubmissionFailure(uncertain: false)
         case .unknown: throw SubmissionFailure(uncertain: true)
+        case .network: throw SubmissionFailure(uncertain: false, connectionFailure: .unavailable)
         }
     }
 }
@@ -61,17 +62,38 @@ private actor MockMailService: MailService {
     }
     func testServerValidationAndExactProviderMatching() throws {
         var a = account(); a.email = "a@qq.com.evil.example"; a.suggestServers()
-        XCTAssertEqual(a.imapHost, "")
+        XCTAssertEqual(a.imapHost, "imap.qq.com.evil.example")
         a.email = "a@qq.com"; a.suggestServers(); XCTAssertEqual(a.imapHost, "imap.qq.com")
         for host in ["localhost", "127.0.0.1", "169.254.1.1", "::1", "https://imap.example.com", "a@example.com"] {
             a.imapHost = host; XCTAssertThrowsError(try a.validated(), host)
         }
-        a.imapHost = "10.42.0.8"; XCTAssertThrowsError(try a.validated())
+        a.imapHost = "10.42.0.8"; XCTAssertNoThrow(try a.validated())
         a.imapHost = "imap.corp.example"; XCTAssertNoThrow(try a.validated())
     }
     func testNoSMTPSubmissionDuringAccountValidation() async throws {
         let (_, _, service, _) = try await setup()
         let count = await service.count(); XCTAssertEqual(count, 0)
+    }
+    func testSuccessfulRefreshClearsOnlyPreviousReceiveError() async throws {
+        let (store, _, _, _) = try await setup()
+        for message in ["收信失败，已保留缓存。旧错误", "合成的其他操作错误"] {
+            store.error = message; store.refresh()
+            for _ in 0..<100 {
+                if !store.busy { break }
+                try await Task.sleep(for: .milliseconds(10))
+            }
+            XCTAssertFalse(store.busy); XCTAssertNotNil(store.lastRefresh)
+            XCTAssertEqual(store.error, message.hasPrefix("收信失败") ? nil : message)
+        }
+    }
+    func testNetworkFailureBeforeSMTPKeepsDraftEditableAndShowsIntranetGuidance() async throws {
+        let (store, _, service, _) = try await setup()
+        await service.setOutcome(.network)
+        do { try await store.send(); XCTFail("Expected network failure") }
+        catch { XCTAssertTrue(error.localizedDescription.contains("VPN")) }
+        XCTAssertEqual(store.draft.state, .editing)
+        XCTAssertEqual(store.draft.text, "离线模拟邮件")
+        let count = await service.count(); XCTAssertEqual(count, 1, "Never automatically repeat a failed send")
     }
     func testUnknownAcceptanceLocksRetryAndSurvivesRestart() async throws {
         let (store, vault, service, files) = try await setup()
