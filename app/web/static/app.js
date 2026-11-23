@@ -3696,7 +3696,7 @@ function renderEmailList(emails, {silent = false} = {}) {
   };
   container.querySelectorAll('.email-item').forEach(item => {
     item.addEventListener('click', event => {
-      const cancelOutboxBtn = event.target.closest?.('[data-cancel-outbox]');
+      const cancelOutboxBtn = event?.target?.closest?.('[data-cancel-outbox]');
       if (cancelOutboxBtn) {
         event.stopPropagation();
         void cancelSentOutboxItem(cancelOutboxBtn.dataset.cancelOutbox, cancelOutboxBtn);
