@@ -15,7 +15,13 @@ os.environ["PYTHONUTF8"] = "1"
 os.environ["PYTHONIOENCODING"] = "utf-8"
 release_temp = ROOT / "build" / "release-temp"
 release_temp.mkdir(parents=True, exist_ok=True)
-os.environ.update(TEMP=str(release_temp), TMP=str(release_temp), TMPDIR=str(release_temp))
+os.environ.update(
+    TEMP=str(release_temp),
+    TMP=str(release_temp),
+    TMPDIR=str(release_temp),
+    LLM_API_KEY="",
+    LLM_BASE_URL="https://api.deepseek.com",
+)
 for stream in (sys.stdout, sys.stderr):
     reconfigure = getattr(stream, "reconfigure", None)
     if reconfigure:
@@ -266,6 +272,7 @@ def main():
                  [node, '--check', str(ROOT / 'app/web/static/signature-manager.js')],
                  [node, '--check', str(ROOT / 'app/web/static/backup-migration.js')],
                  [node, '--check', str(ROOT / 'app/web/static/pane-resizers.js')],
+                 [node, '--check', str(ROOT / 'app/web/static/dashboard-charts.js')],
                  [node, str(ROOT / 'tests/test_frontend_modularization.cjs')]]
     failures = []
     for command in commands:

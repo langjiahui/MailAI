@@ -100,6 +100,7 @@
         document.getElementById('list-count').textContent=entry.data.total+unit;
       }
       const list=document.getElementById('email-list');
+      const priorScroll=!restore && silent ? (list?.scrollTop || 0) : 0;
       list.querySelectorAll('[data-mail-page]').forEach(node=>node.remove());
       const indices=[...entry.pages.keys()].sort((a,b)=>a-b),first=indices[0],last=indices.at(-1);
       function button(text,action,atStart=false){
@@ -111,12 +112,16 @@
       if(entry.pages.get(last)?.next && rows.length<=mailRenderLimit)button(mailaiText('显示更多'),'next');
       if(entry.error)button(mailaiText('继续加载失败，点击重试'),'next');
       if(restore){
-        list.scrollTop=entry.scroll || 0;
         const reading=entry.reading;
         if(reading && reading.owner===entry.owner && allEmails.some(row=>row.id===reading.id && (!row._account_id || row._account_id===reading.account))){
           selectedEmailId=reading.id;selectedEmailAccountId=reading.account;selectedEmailDetail=reading.detail;
           document.querySelector('.reading-pane')?.classList.add('show');renderReadingPane(reading.detail);syncSelectedEmailVisual(reading.id,{accountId:reading.account});
         }
+        const targetScroll=entry.scroll || 0;
+        list.scrollTop=targetScroll;
+        if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>{if(current===entry && list)list.scrollTop=targetScroll;});
+      }else if(silent && list && list.scrollTop!==priorScroll){
+        list.scrollTop=priorScroll;
       }
     } finally {painting=false;}
   }

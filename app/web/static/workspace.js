@@ -894,6 +894,14 @@ function orderedSidebarAccounts(accounts) {
   try { order = JSON.parse(localStorage.getItem(SIDEBAR_ACCOUNT_ORDER_KEY)); }
   catch (_) { return accounts; }
   if (!Array.isArray(order)) return accounts;
+  if (accounts.length > 0) {
+    const known = new Set(accounts.map(account => account.id));
+    const pruned = order.filter(id => known.has(id));
+    if (pruned.length !== order.length && pruned.length > 0) {
+      order = pruned;
+      try { localStorage.setItem(SIDEBAR_ACCOUNT_ORDER_KEY, JSON.stringify(order)); } catch (_) {}
+    }
+  }
   const rank = new Map(order.map((id, index) => [id, index]));
   return [...accounts].sort((left, right) => (rank.get(left.id) ?? order.length) - (rank.get(right.id) ?? order.length));
 }

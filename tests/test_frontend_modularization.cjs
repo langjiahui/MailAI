@@ -21,7 +21,7 @@ const stateIdx = sources.indexOf('mailai-state.js');
 const appIdx = sources.indexOf('app.js');
 assert.ok(stateIdx >= 0 && stateIdx < appIdx, 'mailai-state.js must load before app.js');
 
-for (const extracted of ['share-links.js', 'signature-manager.js', 'backup-migration.js', 'pane-resizers.js']) {
+for (const extracted of ['share-links.js', 'signature-manager.js', 'backup-migration.js', 'pane-resizers.js', 'dashboard-charts.js']) {
   const idx = sources.indexOf(extracted);
   assert.ok(idx > appIdx, `${extracted} must load after app.js`);
 }
@@ -78,6 +78,7 @@ const ownershipChecks = [
   ['signature-manager.js', ['function openSignatureManager(', 'function saveSignature(', 'function generateSignatures(']],
   ['backup-migration.js', ['function renderBackupItem(', 'function askMigrationPassword(', 'function openLogoutDialog(']],
   ['pane-resizers.js', ['function applyPaneSizes(', 'function initPaneResizers(']],
+  ['dashboard-charts.js', ['function animateValue(', 'function renderTrendChart(', 'function renderSenderChart(']],
 ];
 for (const [file, signatures] of ownershipChecks) {
   const code = fs.readFileSync(path.join(staticDir, file), 'utf8');

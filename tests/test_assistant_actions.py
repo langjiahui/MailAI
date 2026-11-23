@@ -33,7 +33,9 @@ def _audit_rows(action=None):
 def main():
     with tempfile.TemporaryDirectory() as root, \
             patch.object(config, "DB_PATH", os.path.join(root, "mail.db")), \
-            patch.object(config, "IMAP_USER", "me@example.com"):
+            patch.object(config, "IMAP_USER", "me@example.com"), \
+            patch.object(config, "LLM_API_KEY", ""), \
+            patch.object(mail_assistant.client, "available", return_value=False):
         db.init_db()
         email_id = _insert_email(1)
 

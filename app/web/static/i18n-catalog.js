@@ -17086,6 +17086,8 @@ const MAILAI_I18N_CHINESE = {
   "side.accountOptions": "邮箱选项",
   "side.renameAccount": "修改显示名称",
   "side.manageAccount": "管理此邮箱",
+  "side.moveAccountUp": "上移邮箱",
+  "side.moveAccountDown": "下移邮箱",
   "list.loadingTrash": "正在读取已删除邮件…",
   "acct.stateActive": "当前发件账号",
   "acct.stateReauth": "需重新登录",

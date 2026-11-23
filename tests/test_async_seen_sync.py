@@ -85,6 +85,19 @@ def main():
             ))
             assert response['queued'] == 1 and db.get_email(email_id)['is_read'] == 0
 
+        with db.conn() as c:
+            c.execute("INSERT INTO assistant_conversations(id,title) VALUES(10,'conv')")
+            c.execute("INSERT INTO assistant_mail_context(conversation_id,email_id) VALUES(10,?)", (email_id,))
+            c.execute("INSERT INTO assistant_document_refs(conversation_id,refs) VALUES(10,'[]')")
+            c.execute("INSERT INTO assistant_messages(id,conversation_id,role,content) VALUES(20,10,'user','hi')")
+            c.execute("INSERT INTO assistant_search_runs(id,conversation_id,message_id,payload,created_at) VALUES('r1',10,20,'{}','2026-01-01')")
+            c.execute("INSERT INTO assistant_images(id,message_id,mime,payload,thumbnail) VALUES(30,20,'image/png',X'00',X'00')")
+            c.execute('DELETE FROM emails WHERE id=?', (email_id,))
+            assert c.execute('SELECT count(*) FROM seen_sync_jobs WHERE email_id=?', (email_id,)).fetchone()[0] == 0
+            c.execute('DELETE FROM assistant_conversations WHERE id=10')
+            for table in ('assistant_mail_context', 'assistant_document_refs', 'assistant_search_runs', 'assistant_messages', 'assistant_images'):
+                assert c.execute(f'SELECT count(*) FROM {table}').fetchone()[0] == 0, table
+
     print('Async seen sync: optimistic local state, coalescing, race safety and retry passed')
 
 

@@ -395,6 +395,17 @@ CREATE TABLE IF NOT EXISTS ai_analysis_cache (
 CREATE INDEX IF NOT EXISTS idx_ai_analysis_cache_kind ON ai_analysis_cache(kind);
 CREATE TRIGGER IF NOT EXISTS assistant_message_images_cleanup AFTER DELETE ON assistant_messages
 BEGIN DELETE FROM assistant_images WHERE message_id=OLD.id; END;
+CREATE TRIGGER IF NOT EXISTS assistant_message_search_cleanup AFTER DELETE ON assistant_messages
+BEGIN DELETE FROM assistant_search_runs WHERE message_id=OLD.id; END;
+CREATE TRIGGER IF NOT EXISTS assistant_conversation_children_cleanup AFTER DELETE ON assistant_conversations
+BEGIN
+    DELETE FROM assistant_mail_context WHERE conversation_id=OLD.id;
+    DELETE FROM assistant_document_refs WHERE conversation_id=OLD.id;
+    DELETE FROM assistant_search_runs WHERE conversation_id=OLD.id;
+    DELETE FROM assistant_messages WHERE conversation_id=OLD.id;
+END;
+CREATE TRIGGER IF NOT EXISTS emails_seen_sync_cleanup AFTER DELETE ON emails
+BEGIN DELETE FROM seen_sync_jobs WHERE email_id=OLD.id; END;
 """
 
 
@@ -446,6 +457,10 @@ def _initialize_db():
         # rolls back migration data/schema together when an upgrade fails.
         c.execute('BEGIN IMMEDIATE')
         _run_migrations(c)
+        c.execute('DELETE FROM seen_sync_jobs WHERE NOT EXISTS(SELECT 1 FROM emails e WHERE e.id=seen_sync_jobs.email_id)')
+        for child_table in ('assistant_mail_context', 'assistant_document_refs', 'assistant_search_runs', 'assistant_messages'):
+            c.execute(f'DELETE FROM {child_table} WHERE NOT EXISTS(SELECT 1 FROM assistant_conversations a WHERE a.id={child_table}.conversation_id)')
+        c.execute('DELETE FROM assistant_images WHERE NOT EXISTS(SELECT 1 FROM assistant_messages m WHERE m.id=assistant_images.message_id)')
         c.commit()
         from .mail_tags import initialize as initialize_mail_tags
         initialize_mail_tags(c)

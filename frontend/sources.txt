@@ -73,4 +73,5 @@ share-links.js
 signature-manager.js
 backup-migration.js
 pane-resizers.js
+dashboard-charts.js
 native-menu.js
