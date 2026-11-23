@@ -1,10 +1,14 @@
 # MailAI Android
 
-当前 Android 正式版本：**1.4.0**（versionCode **2100112**），Android 10+。
+当前 Android 正式版本：**1.5.0**（versionCode **2100113**），Android 10+。
 
-[下载 APK](https://github.com/langjiahui/MailAI/releases/download/android-v1.4.0/MailAI-Android-1.4.0.apk) · [国内 APK](https://atomgit.com/langjiahui2011/MailAI/releases/download/android-v1.4.0/MailAI-Android-1.4.0.apk) · [发布说明](https://github.com/langjiahui/MailAI/releases/tag/android-v1.4.0)
+[下载 APK](https://github.com/langjiahui/MailAI/releases/download/android-v1.5.0/MailAI-Android-1.5.0.apk) · [国内 APK](https://atomgit.com/langjiahui2011/MailAI/releases/download/android-v1.5.0/MailAI-Android-1.5.0.apk) · [发布说明](https://github.com/langjiahui/MailAI/releases/tag/android-v1.5.0)
 
 Kotlin + Jetpack Compose 原生邮件客户端，软件名称为 **MailAI**。手机通过 IMAP/SMTP 独立收发，电脑关机也能工作，不依赖桌面服务或 Google Play 服务。
+
+## 1.5.0 单封邮件打印分享与显示名修复
+
+在阅读页「邮件详情」新增「打印」与「分享」入口，支持禁用脚本与外网加载的安全纸面系统打印、A4 PDF 生成分享／导出、纯文本分享以及按需导出原始 `.eml` 文件；同步修复老旧服务器在邮件头中对显示名重复转义引号（如 `\"张三\"`）导致界面残留引号的问题，保留姓名标点与多收件人解析完整性。覆盖安装保留既有账号、邮件、草稿和签名设置。
 
 ## 1.4.0 国内更新与内网模型兼容
 
@@ -100,7 +104,7 @@ Kotlin + Jetpack Compose 原生邮件客户端，软件名称为 **MailAI**。�
 
 正式客户端每日检查 GitHub 正式 Android 通道，可自动在不限流量网络下载；手动下载确认当前流量，支持进度、取消与重试。下载后核验 SHA-256、大小、包名、版本和相同签名，再交给系统安装器。
 
-**已安装 1.0.0、1.0.1、1.1.0、1.2.0、1.3.0 或历史 2.10.0 的用户可通过应用内更新或下载本页 APK 覆盖安装，不卸载。** 安卓版使用独立的版本线，内部安装序号继续递增（本版 2100112），功能与数据不回退。beta 用户首次进入正式通道需手动覆盖安装。 旧 beta 客户端只认识 beta 清单，无法识别正式清单；后续正式版本可使用应用内更新。
+**已安装 1.0.0、1.0.1、1.1.0、1.2.0、1.3.0、1.4.0 或历史 2.10.0 的用户可通过应用内更新或下载本页 APK 覆盖安装，不卸载。** 安卓版使用独立的版本线，内部安装序号继续递增（本版 2100113），功能与数据不回退。beta 用户首次进入正式通道需手动覆盖安装。 旧 beta 客户端只认识 beta 清单，无法识别正式清单；后续正式版本可使用应用内更新。
 
 ## 数据与边界
 
