@@ -16052,7 +16052,8 @@ const MAILAI_UI_COPY = {
   "triage.service.conditionValueLength": ["请填写 1 至 300 字的条件匹配内容", "Enter 1 to 300 characters for condition match value"],
   "triage.service.ruleNotFoundRefresh": ["规则不存在，请刷新后重试", "Rule not found; refresh and try again"],
   "triage.service.ruleNotFoundInvalid": ["规则不存在或无效", "Rule not found or invalid"],
-  "triage.service.tagIdInvalid": ["标签 ID 无效", "Invalid label ID"]
+  "triage.service.tagIdInvalid": ["标签 ID 无效", "Invalid label ID"],
+  "outbox.service.taskNotFound": ["发送任务不存在", "Send task not found"]
 };
 const MAILAI_I18N_CHINESE = {
   "app.tagline": "邮件安全与效率助手",

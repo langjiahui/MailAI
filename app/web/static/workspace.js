@@ -205,14 +205,45 @@ function showOperationFailures(items, retry) {
   taskNotice(mailaiTemplate`${items.length} 封未完成：${items.slice(0, 2).map(item => mailaiSystemMessage(item.error)).join('；')}`, mailaiText('仅重试失败项'), retry);
 }
 
+async function refreshSentMailboxView(accountId, {token = '', nextStatus = '', sentRecordId = null} = {}) {
+  try {
+    window.mailaiMailboxStore?.invalidate(accountId);
+    if (accountId && accountId !== activeMailAccount()?.id) return;
+    if ((specialMailbox === 'sent' || specialMailbox === 'drafts') && window.mailaiMailboxStore?.supports()) {
+      await loadData({silent:true, requireFresh:true});
+    } else {
+      const [sentList, draftList] = await Promise.all([api('/api/mail/sent', {accountId}), api('/api/drafts', {accountId})]);
+      if (accountId && accountId !== activeMailAccount()?.id) return;
+      sentMessages = sentList;
+      savedDrafts = draftList;
+      updateSidebar();
+      if (specialMailbox === 'sent' || specialMailbox === 'drafts') renderSpecialMailbox({silent:true});
+    }
+    if (token && specialMailbox === 'sent' && String(selectedEmailId) === 'outbox:' + token) {
+      if (nextStatus === 'sent' && sentRecordId) void selectSpecialMessage(sentRecordId);
+      else if (nextStatus === 'sending') void selectSpecialMessage('outbox:' + token);
+      else if (nextStatus === 'canceled') resetReadingPane();
+    }
+  } catch (_) {}
+}
+
 async function refreshAfterQueuedSend(token, accountId) {
+  let lastStatus = 'queued';
   for (let attempt = 0; attempt < 120; attempt++) {
-    await new Promise(resolve => setTimeout(resolve, 2500));
+    await new Promise(resolve => setTimeout(resolve, attempt < 30 ? 1000 : 2500));
     try {
       const rows = await api('/api/mail/outbox', {accountId});
       const row = rows.find(item => item.token === token);
-      if (!row || ['queued','sending'].includes(row.status)) continue;
-      if (accountId === activeMailAccount()?.id) await loadData();
+      if (!row) continue;
+      if (row.status !== lastStatus) {
+        lastStatus = row.status;
+        if (accountId === activeMailAccount()?.id) {
+          await refreshSentMailboxView(accountId, {token, nextStatus: row.status, sentRecordId: row.sent_record_id});
+        }
+      }
+      if (['queued','sending'].includes(row.status)) continue;
+      window.mailaiTaskActivity?.refresh();
+      if (accountId === activeMailAccount()?.id) void loadData({silent:true});
       return;
     } catch (_) { return; }
   }
@@ -226,7 +257,12 @@ function showQueuedMail(result, accountId) {
   }
   if (!result.scheduled) refreshAfterQueuedSend(result.token, accountId);
   taskNotice(result.scheduled ? mailaiTemplate`邮件已安排 ${new Date(result.due_at).toLocaleString(currentI18nLanguage())} 发送；可在发件箱中编辑或调整时间` : mailaiText('邮件已加入发件箱，发送前可撤销'), mailaiText('撤销发送'), async () => {
-    try { await api(`/api/mail/outbox/${result.token}/cancel`, {method:'POST', accountId}); window.mailaiTaskActivity?.refresh(); taskNotice(mailaiText('已撤销发送，内容保留在草稿箱'), '', null, 3500); }
+    try {
+      await api(`/api/mail/outbox/${result.token}/cancel`, {method:'POST', accountId});
+      window.mailaiTaskActivity?.refresh();
+      await refreshSentMailboxView(accountId, {token: result.token, nextStatus: 'canceled'});
+      taskNotice(mailaiText('已撤销发送，内容保留在草稿箱'), '', null, 3500);
+    }
     catch (error) { taskNotice(mailaiSystemMessage(error.message), mailaiText('查看发件箱'), openTaskCenter); }
   }, 6500);
 }

@@ -101,6 +101,53 @@ const engine = process.env.MAILAI_BROWSER === 'webkit' ? webkit : chromium;
   await page.locator('[data-outbox-ack]').click();
   await page.waitForFunction(()=>!document.querySelector('[data-outbox-token="partial-closure"]'));
   assert(acknowledged);
+
+  // Queued outbox send appears immediately in Sent across themes, languages and list views.
+  await page.unroute('**/api/mail/outbox');
+  await page.evaluate(()=>closeTaskCenter());
+  const queuedToken='closure-sent-'+Date.now();
+  await page.evaluate(async({accountId,token})=>{
+    const draft=await api('/api/drafts',{accountId,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to_addr:'peer@example.test',subject:'即时已发送验证',body_html:'<p>Queued body</p>'})});
+    await api('/api/mail/outbox',{accountId,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({request_token:token,id:draft.id,to_addr:'peer@example.test',subject:'即时已发送验证',body_html:'<p>Queued body</p>',attachments:[],send_at:new Date(Date.now()+3600000).toISOString()})});
+    document.querySelector('[data-filter="special"][data-value="sent"]')?.click();
+  },{accountId,token:queuedToken});
+  const queuedRow=page.locator(`.email-item[data-id="outbox:${queuedToken}"]`);
+  await queuedRow.waitFor({state:'visible'});
+  await queuedRow.click();
+  await page.locator('#btn-cancel-outbox-special').waitFor({state:'visible'});
+  for(const view of ['cards','table']){
+    await page.evaluate(v=>{document.body.dataset.mailListView=v;renderSpecialMailbox();},view);
+    for(const [theme,reward] of [['light',''],['dark',''],['light','theme_monochrome'],['dark','theme_monochrome'],['light','theme_baowu'],['dark','theme_baowu']]){
+      for(const lang of ['zh-CN','en']){
+        await page.evaluate(({t,r,l})=>{
+          document.documentElement.dataset.theme=t;
+          if(r)document.documentElement.dataset.rewardTheme=r;else delete document.documentElement.dataset.rewardTheme;
+          setI18nLanguage(l);
+        },{t:theme,r:reward,l:lang});
+        const check=await page.evaluate(token=>{
+          const row=document.querySelector(`.email-item[data-id="outbox:${token}"]`);
+          const undo=row?.querySelector('.sent-inline-undo');
+          const detailCancel=document.getElementById('btn-cancel-outbox-special');
+          const detailEdit=document.getElementById('btn-edit-outbox-special');
+          if(!row||!undo||!detailCancel||!detailEdit)return null;
+          const undoStyle=getComputedStyle(undo), rowRect=row.getBoundingClientRect(), undoRect=undo.getBoundingClientRect();
+          return {
+            undoText:undo.textContent.trim(), detailCancel:detailCancel.textContent.trim(), detailEdit:detailEdit.textContent.trim(),
+            color:undoStyle.color, bg:undoStyle.backgroundColor, border:undoStyle.borderTopColor,
+            visible:undoRect.width>20 && undoRect.height>12 && undoRect.right<=rowRect.right+2,
+          };
+        },queuedToken);
+        assert(check && check.visible, JSON.stringify({view,theme,reward,lang,check}));
+        assert.notEqual(check.color, check.bg, JSON.stringify({view,theme,reward,lang,check}));
+        assert.equal(check.undoText, lang==='en'?'Undo send':'撤销发送');
+        assert.equal(check.detailCancel, lang==='en'?'Undo send':'撤销发送');
+        assert.equal(check.detailEdit, lang==='en'?'Edit message':'编辑邮件');
+      }
+    }
+  }
+  await page.evaluate(()=>{document.documentElement.dataset.theme='light';delete document.documentElement.dataset.rewardTheme;setI18nLanguage('zh-CN');document.body.dataset.mailListView='cards';renderSpecialMailbox();});
+  await page.locator(`.email-item[data-id="outbox:${queuedToken}"] .sent-inline-undo`).click();
+  await page.waitForFunction(token=>!document.querySelector(`.email-item[data-id="outbox:${token}"]`),queuedToken);
   assert.deepEqual(errors,[]);
   console.log('PASS nested task actions, canceled send/edit, schedule entry, failure recovery, reminder dismissal, persistent delivery warning, refused-only draft and acknowledgement');
  } finally {await browser.close();}

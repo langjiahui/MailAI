@@ -413,6 +413,28 @@ button.loading::before {
 .tag-priority-低 { background: var(--success-soft); color: var(--success-deep); }
 .tag-danger { background: var(--danger-soft); color: var(--danger-deep); }
 .tag-warn { background: var(--warn-soft); color: var(--warn-deep); }
+.sent-inline-undo,
+html[data-theme] #email-list .sent-inline-undo {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--desk-line, var(--border));
+  background: var(--desk-surface, var(--surface));
+  color: var(--desk-accent, var(--primary));
+  font-weight: 600;
+  cursor: pointer;
+  line-height: 1.4;
+}
+.sent-inline-undo:hover:not(:disabled),
+html[data-theme] #email-list .sent-inline-undo:hover:not(:disabled) {
+  background: var(--desk-hover, var(--primary-soft));
+  border-color: var(--desk-accent, var(--primary));
+}
+.sent-inline-undo:focus-visible,
+html[data-theme] #email-list .sent-inline-undo:focus-visible {
+  outline: 2px solid var(--desk-accent, var(--primary));
+  outline-offset: 1px;
+}
+.sent-inline-undo:disabled { opacity: 0.55; cursor: default; }
 
 .email-empty, .reading-empty {
   display: flex;
