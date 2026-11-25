@@ -25,7 +25,7 @@ class _MailboxLock:
 
     def _current(self):
         with self.guard:
-            return self.locks.setdefault(config.DB_PATH, threading.Lock())
+            return self.locks.setdefault(config.DB_PATH, threading.RLock())
 
     def acquire(self, blocking=True):
         return self._current().acquire(blocking=blocking)
@@ -158,18 +158,21 @@ def _set_fetch_state(running: bool, operation: str = "", total: int = 0,
                      processed: int = 0, message: str = "", error: str = "",
                      canceled: bool = False, folder_progress=None,
                      current_folder: str = "", folder_omitted: int = 0,
-                     persist: bool = True):
+                     persist: bool = True, folder: str = "", folder_limit: int = 0):
     global _fetch_state
     if not running:
         phase = "completed" if not error and not canceled else "paused"
     elif not total:
         phase = "scanning"
     elif processed < total:
-        phase = "analyzing"
+        phase = "syncing" if operation in ("sync_folders", "sync_folder") else "analyzing"
     else:
         phase = "finalizing"
     with _fetch_state_lock:
         previous = _account_fetch_states.get(config.DB_PATH, {})
+        same_operation = previous.get("operation") == operation
+        if same_operation and running:
+            canceled = canceled or (previous.get("running") and previous.get("canceled"))
         now = time.monotonic()
         _fetch_state = {
             "running": running,
@@ -178,13 +181,15 @@ def _set_fetch_state(running: bool, operation: str = "", total: int = 0,
             "processed": processed,
             "message": message,
             "error": error,
-            "canceled": canceled,
+            "canceled": bool(canceled),
             "phase": phase,
             "folder_progress": copy.deepcopy(
-                (folder_progress if folder_progress is not None else previous.get("folder_progress", []))
+                (folder_progress if folder_progress is not None else previous.get("folder_progress", []) if same_operation else [])
                 [: _MAX_FOLDER_PROGRESS]
             ),
             "current_folder": current_folder,
+            "folder": folder,
+            "folder_limit": folder_limit,
             "folder_omitted": max(0, int(folder_omitted or 0)),
             "started_at": previous.get("started_at", now) if previous.get("running") else now,
             "updated_at": now,
@@ -195,7 +200,8 @@ def _set_fetch_state(running: bool, operation: str = "", total: int = 0,
         try:
             db.save_sync_job(operation or "fetch_all", status="running" if running else
                              ("canceled" if canceled else "failed" if error else "completed"),
-                             total=total, processed=processed, message=message, error=error)
+                             total=total, processed=processed, message=message, error=error,
+                             folder=folder, folder_limit=folder_limit)
         except Exception:
             log.exception("保存同步任务状态失败")
 
@@ -220,13 +226,20 @@ def get_fetch_state():
     state = get_live_fetch_state()
     if not state["running"]:
         persisted = db.get_sync_job()
+        if not persisted or persisted.get("status") == "completed":
+            persisted = db.get_sync_job("paused")
         if persisted and persisted.get("status") in ("running", "pending", "failed", "canceled"):
+            if state["operation"] != persisted["operation"] or state.get("folder") != persisted.get("folder"):
+                state.update(current_folder="", folder_progress=[], folder_omitted=0)
             state.update({
                 "operation": persisted.get("operation") or "fetch_all",
                 "total": persisted.get("total") or 0,
                 "processed": persisted.get("processed") or 0,
                 "message": "上次同步中断，可重新同步" if persisted.get("status") in ("running", "pending") else persisted.get("message") or "历史邮件尚未同步完成",
                 "error": persisted.get("error") or "",
+                "canceled": persisted["status"] == "canceled",
+                "folder": persisted.get("folder", ""),
+                "folder_limit": persisted.get("folder_limit", 0),
                 "resumable": True,
             })
     return state
@@ -238,18 +251,20 @@ def is_fetch_running() -> bool:
         return any(state.get("running") for state in _account_fetch_states.values())
 
 
-def cancel_fetch():
+def cancel_fetch(operation: str = "", folder: str = ""):
     global _fetch_cancel
-    st = get_live_fetch_state()
-    if not st['running']:
-        return
-    _fetch_cancel = True
-    _account_cancellations[config.DB_PATH] = True
-    # Do not recreate a running job if its worker finishes during cancellation.
     with _fetch_state_lock:
         state = _account_fetch_states.get(config.DB_PATH)
-        if state and state['running']:
-            state.update(canceled=True, message="正在取消，等待当前步骤结束…")
+        if not state or not state['running']:
+            return
+        if operation and operation != state['operation']:
+            if {operation, state['operation']} != {'fetch_all', 'sync_folders'}:
+                return
+        if folder and folder != state.get('folder'):
+            return
+        _fetch_cancel = True
+        _account_cancellations[config.DB_PATH] = True
+        state.update(canceled=True, message="正在取消，等待当前步骤结束…")
 
 
 def _reset_cancel():
@@ -260,6 +275,19 @@ def _reset_cancel():
 
 def _is_canceled():
     return _account_cancellations.get(config.DB_PATH, False)
+
+
+@account_work
+def initialize_mailbox():
+    # Keep the inbox and auxiliary stages together even if a scheduled poll is due.
+    _poll_lock.acquire()
+    try:
+        inbox = fetch_all(continue_with_folders=True)
+        if inbox.get("ok") and not inbox.get("canceled"):
+            sync_auxiliary_folders(preserve_cancel=True, inbox_warning=inbox.get("warning", ""),
+                                   inbox_error=inbox.get("error", ""))
+    finally:
+        _poll_lock.release()
 
 
 def _rule_summary(scan: dict) -> str:
@@ -603,7 +631,7 @@ def poll_once() -> dict:
                          message=final_message)
         return result
     except Exception as e:
-        _set_fetch_state(False, error=str(e), message="拉取失败")
+        _set_fetch_state(False, operation="poll", error=str(e), message="拉取失败")
         raise
     finally:
         _poll_lock.release()
@@ -739,6 +767,7 @@ def fetch_all(batch: int = 50, continue_with_folders: bool = False) -> dict:
                 db.reconcile_folder(config.INBOX_FOLDER, list(mail.client.search(['ALL'])))
         final_error = f"仍有 {result['errors']} 封处理失败，可点击继续同步重试" if result["errors"] else ""
         warning = f"{result['oversized']} 封邮件超过 256 MB，请在原邮箱下载原件" if result["oversized"] else ""
+        result["error"] = final_error
         result["warning"] = warning
         db.set_runtime_setting("oversized_mail_count", str(result["oversized"]))
         final_message = "；".join(part for part in (final_error, warning) if part)
@@ -750,7 +779,7 @@ def fetch_all(batch: int = 50, continue_with_folders: bool = False) -> dict:
         log.info("fetch_all 完成: %s", result)
         return result
     except Exception as e:
-        _set_fetch_state(False, error=str(e), message="拉取失败")
+        _set_fetch_state(False, operation="fetch_all", error=str(e), message="拉取失败")
         raise
     finally:
         _poll_lock.release()
@@ -1020,12 +1049,17 @@ def _sync_one_folder(mail: MailClient, mailbox: dict, limit: int = 0,
 
 
 @account_work
-def sync_mail_folder(folder: str, limit: int = 0) -> dict:
+def sync_mail_folder(folder: str, limit: int = 0, *, resume: bool = False) -> dict:
     """Synchronize one server folder without running phishing analysis or moving mail."""
     if not _poll_lock.acquire(blocking=False):
         return {"ok": False, "msg": "上一次同步仍在进行"}
     detail = []
+    folder_total = 0
     try:
+        if not resume:
+            paused = db.get_sync_job("paused")
+            if paused and paused["operation"] == "sync_folder" and paused["folder"] == folder:
+                return {"ok": True, "folder": folder, "paused": True}
         _reset_cancel()
         with MailClient() as mail:
             mailbox = next((item for item in mail.list_mailboxes() if item["name"] == folder), None)
@@ -1036,7 +1070,7 @@ def sync_mail_folder(folder: str, limit: int = 0) -> dict:
                        "processed": 0, "status": "running", "error": ""}]
             _set_fetch_state(True, operation="sync_folder", total=folder_total,
                              message=f"正在同步 {folder}...", folder_progress=detail,
-                             current_folder=folder[:160])
+                             current_folder=folder[:160], folder=folder, folder_limit=limit)
             last_update = [0.0]
             def report(count):
                 now = time.monotonic()
@@ -1046,18 +1080,20 @@ def sync_mail_folder(folder: str, limit: int = 0) -> dict:
                 detail[0]["processed"] = count
                 _set_fetch_state(True, operation="sync_folder", total=folder_total,
                                  processed=count, message=f"正在同步 {folder}：{count}/{folder_total}",
-                                 folder_progress=detail, current_folder=folder[:160], persist=False)
+                                 folder_progress=detail, current_folder=folder[:160], persist=False,
+                                 folder=folder, folder_limit=limit)
             imported = _sync_one_folder(mail, mailbox, limit, report)
             detail[0].update(processed=imported, status="completed" if not _is_canceled() else "canceled")
-        _set_fetch_state(False, operation="sync_folder", total=imported, processed=imported,
-                         canceled=_is_canceled(), folder_progress=detail,
+        _set_fetch_state(False, operation="sync_folder", total=folder_total, processed=imported,
+                         canceled=_is_canceled(), folder_progress=detail, current_folder=folder[:160],
+                         folder=folder, folder_limit=limit,
                          message=f"{folder} 同步完成，共 {imported} 封" if not _is_canceled() else f"{folder} 同步已取消")
         return {"ok": True, "folder": folder, "role": mailbox_role(mailbox), "imported": imported}
     except Exception as exc:
         if detail:
             detail[0].update(status="failed", error=str(exc)[:160])
         _set_fetch_state(False, operation="sync_folder", error=str(exc), message=f"{folder} 同步失败",
-                         folder_progress=detail)
+                         folder_progress=detail, folder=folder, folder_limit=limit)
         raise
     finally:
         _poll_lock.release()
@@ -1065,7 +1101,7 @@ def sync_mail_folder(folder: str, limit: int = 0) -> dict:
 
 @account_work
 def sync_auxiliary_folders(limit_per_folder: int = 0, preserve_cancel: bool = False,
-                           inbox_warning: str = "") -> dict:
+                           inbox_warning: str = "", inbox_error: str = "") -> dict:
     """Complete first-run IMAP initialization for Sent, Drafts and custom folders."""
     if not _poll_lock.acquire(blocking=False):
         return {"ok": False, "msg": "上一次同步仍在进行"}
@@ -1147,13 +1183,14 @@ def sync_auxiliary_folders(limit_per_folder: int = 0, preserve_cancel: bool = Fa
                 for item in progress:
                     if item["status"] in ("pending", "running"):
                         item["status"] = "canceled"
-        error = f"{len(result['errors'])} 个文件夹同步失败，可稍后单独重试" if result["errors"] else ""
+        folder_error = f"{len(result['errors'])} 个文件夹同步失败，可稍后单独重试" if result["errors"] else ""
+        error = "；".join(part for part in (inbox_error, folder_error) if part)
         final_message = "；".join(part for part in (error, inbox_warning) if part)
         _set_fetch_state(False, operation="sync_folders", total=total, processed=processed,
                          canceled=result.get("canceled", False), error=error,
                          message=final_message or f"完整初始化完成，共同步 {result['imported']} 封其他文件夹邮件",
                          folder_progress=progress, folder_omitted=omitted)
-        result["ok"] = not result["errors"]
+        result["ok"] = not error
         return result
     except Exception as exc:
         _set_fetch_state(False, operation="sync_folders", error=str(exc), message="其他文件夹同步失败",
@@ -1215,7 +1252,7 @@ def fetch_more(limit: int = 20) -> dict:
                          message=final_error or f"完成，共处理 {result['fetched']} 封")
         return result
     except Exception as e:
-        _set_fetch_state(False, error=str(e), message="拉取失败")
+        _set_fetch_state(False, operation="fetch_more", error=str(e), message="拉取失败")
         raise
     finally:
         _poll_lock.release()

@@ -1136,7 +1136,7 @@ const I18N_MESSAGES = {
     'common.collapse': 'Collapse',
     'filter.toggle': 'Filters',
     'task.title': 'Tasks & Outbox',
-    'task.subtitle': 'Only shows items in progress or needing your attention',
+    'task.subtitle': 'View sync, outgoing mail, and items needing attention',
     'task.close': 'Close Tasks & Outbox',
     'task.loading': 'Loading task status…',
     'task.remindTitle': 'Remind later',

@@ -1232,107 +1232,11 @@ body.feedback-open .mail-assistant { opacity:0; visibility:hidden; pointer-event
 .onboarding-error { padding:10px 12px; border-radius:11px; background:#fff1f0; color:#b1433f; font-size:13px; }
 .onboarding-card > small { display:block; margin-top:18px; color:#8ca098; text-align:center; line-height:1.5; }
 
-/* ===== 全局拉取进度遮罩 ===== */
-.fetch-overlay {
-  position: fixed;
-  left: 22px; bottom: 22px;
-  z-index: 3000;
-  pointer-events:none;
-}
-.fetch-progress-box {
-  position:relative; width:min(390px,calc(calc(100vw / var(--fz,1)) - 32px)); padding:16px 18px 14px 54px;
-  background: rgba(251,253,252,.94); border:1px solid rgba(255,255,255,.82); border-radius:18px;
-  box-shadow:0 18px 50px rgba(27,70,57,.2); backdrop-filter:blur(18px) saturate(130%); text-align:left;
-  pointer-events:auto;
-}
-.fetch-progress-toggle {
-  display:none; position:absolute; z-index:2; right:12px; top:12px; width:30px; height:30px;
-  padding:0; place-items:center; border:1px solid rgba(52,104,85,.13); border-radius:9px;
-  color:#47685b; background:rgba(255,255,255,.7); cursor:pointer;
-}
-.fetch-progress-toggle svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; transition:transform .16s ease; }
-.fetch-progress-toggle:hover { color:#27684f; background:#fff; }
-.fetch-overlay.settings-context .fetch-progress-toggle { display:grid; }
-.fetch-overlay.settings-context.expanded .fetch-progress-toggle svg { transform:rotate(180deg); }
-.fetch-overlay.settings-context:not(.expanded) .fetch-progress-box {
-  width:min(340px,calc(calc(100vw / var(--fz,1)) - 32px)); min-height:58px; box-sizing:border-box;
-  padding:12px 118px 11px 50px; border-radius:16px;
-}
-.fetch-overlay.settings-context:not(.expanded) .fetch-spinner { left:17px; top:17px; width:19px; height:19px; }
-.fetch-overlay.settings-context:not(.expanded) .fetch-title { margin:0 0 3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.fetch-overlay.settings-context:not(.expanded) .fetch-message,
-.fetch-overlay.settings-context:not(.expanded) .progress-bar { display:none; }
-.fetch-overlay.settings-context:not(.expanded) .fetch-count { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.fetch-overlay.settings-context:not(.expanded) .btn-cancel { position:absolute; right:49px; top:13px; float:none; min-width:62px; padding:6px 9px; font-size:10px; }
 [data-system-panel="ai"] .connection-actions {
   position:sticky; bottom:-1px; z-index:3; margin:18px -4px -4px; padding:12px 4px 4px;
   background:linear-gradient(180deg,rgba(250,252,251,0),#fafcfb 28%);
 }
-@media (max-width: 560px) {
-  .fetch-overlay { left:12px; bottom:12px; }
-  .fetch-overlay.settings-context:not(.expanded) .fetch-progress-box { width:calc(calc(100vw / var(--fz,1)) - 24px); }
-}
-.fetch-spinner {
-  position:absolute; left:18px; top:18px; width:22px; height:22px;
-  border: 3px solid var(--border);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin:0;
-}
 @keyframes spin { to { transform: rotate(360deg); } }
-.fetch-title {
-  font-size: 13px;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-.fetch-message {
-  font-size: 11px;
-  color: var(--muted);
-  margin-bottom: 9px; min-height: 16px;
-}
-.progress-bar {
-  width: 100%;
-  height: 7px;
-  background: var(--bg);
-  border-radius: 999px;
-  overflow: hidden;
-  margin-bottom: 10px;
-}
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #2563eb, #4f46e5);
-  width: 0%;
-  transition: width 0.3s ease;
-}
-.fetch-count {
-  display:inline-block; font-size: 10px;
-  color: var(--muted);
-  margin:0;
-}
-.btn-cancel {
-  float:right; padding: 4px 10px;
-  border: 1px solid var(--danger);
-  border-radius: 999px;
-  background: var(--danger-soft);
-  color: var(--danger-deep);
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.15s;
-}
-.btn-cancel:hover { background: var(--danger); color: #fff; }
-.btn-cancel:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-.fetch-overlay.canceled .fetch-spinner {
-  border-color: var(--border);
-  border-top-color: var(--muted);
-  animation: none;
-}
-.fetch-overlay.canceled .progress-fill {
-  background: var(--muted);
-}
 
 /* ===== 滚动条 ===== */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -1840,20 +1744,6 @@ body { font-size: 13px; background: var(--bg); }
 .account-mailbox-group .nav-title{display:flex;align-items:center;justify-content:space-between;padding-right:5px}
 .account-mailbox-group .nav-title button{width:25px;height:25px;padding:0;border:0;border-radius:8px;background:rgba(255,255,255,.62);color:#39765f;font-size:17px;line-height:1;cursor:pointer}
 .account-mailbox-group .nav-title button:hover{background:#fff;box-shadow:0 3px 10px rgba(42,82,66,.1)}
-.mailbox-sync-tracker{margin:0 0 16px;padding:8px;border:1px solid rgba(48,115,88,.14);border-radius:11px;background:rgba(241,248,244,.72);color:#456158;opacity:1;transform:translateY(0);transition:opacity .44s ease,transform .44s ease}
-.mailbox-sync-tracker.is-fading{opacity:0;transform:translateY(6px);pointer-events:none}
-.mailbox-sync-tracker-title{display:flex;align-items:center;gap:6px;padding:1px 2px 7px;font-size:10px;font-weight:700}
-.mailbox-sync-tracker-title small{margin-left:auto;color:#89978f;font-size:8px;font-weight:500}
-.mailbox-sync-account{border-top:1px solid rgba(62,105,87,.1)}
-.mailbox-sync-account summary{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 7px;padding:7px 2px;cursor:pointer;list-style:none}
-.mailbox-sync-account summary::-webkit-details-marker{display:none}
-.mailbox-sync-account summary span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;font-weight:700}
-.mailbox-sync-account summary b{color:#36745a;font-size:9px}.mailbox-sync-account summary em{grid-column:1/-1;color:#85938c;font-size:8px;font-style:normal}
-.mailbox-sync-folder-list{display:grid;gap:6px;padding:1px 2px 8px;max-height:230px;overflow:auto;overscroll-behavior:contain}
-.mailbox-sync-folder{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 7px}
-.mailbox-sync-folder>div:first-child{display:flex;min-width:0;gap:5px}.mailbox-sync-folder b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px}.mailbox-sync-folder span,.mailbox-sync-folder small{color:#849189;font-size:8px}.mailbox-sync-folder.failed span{color:#b94f47}.mailbox-sync-folder.running span{color:#2e7658;font-weight:700}
-.mailbox-sync-folder-progress{height:3px;border-radius:9px;background:rgba(50,112,87,.1);overflow:hidden}.mailbox-sync-folder-progress i{display:block;height:100%;border-radius:inherit;background:#4a9777;transition:width .2s ease}
-.mailbox-sync-folder-list>p{margin:1px 0;color:#829087;font-size:8.5px;line-height:1.45}
 .unified-inbox-button{margin-bottom:7px;border:1px solid rgba(53,111,88,.1)!important;background:rgba(255,255,255,.42)!important}
 .unified-inbox-button.active{background:rgba(224,241,233,.9)!important;border-color:rgba(45,120,91,.18)!important}
 .sidebar-account{margin:7px 0;border:1px solid rgba(59,102,85,.1);border-radius:12px;background:rgba(255,255,255,.32);overflow:hidden}

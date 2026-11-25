@@ -78,8 +78,8 @@ assert.match(app,/data-account-manage/);
 assert.doesNotMatch(css,/assistant-visible:not\(\.assistant-floating\) .layout/);
 assert.match(workspace, /function actionableOutboxRows[\s\S]*seenDrafts[\s\S]*\['queued','sending','failed','unknown'\]\.includes\(row\.status\)/,
   'Task center should hide successful and canceled outbox history');
-assert.match(workspace, /sync\.running \|\| sync\.error \|\| sync\.canceled \|\| sync\.resumable/,
-  'Task center should only show active or actionable sync jobs');
+assert.match(workspace, /sync\.running \|\| sync\.canceled \|\| taskSyncNeedsAttention\(sync\)/,
+  'Task center should show active, voluntarily paused or actionable sync jobs');
 assert.match(workspace, /目前没有待处理事项[\s\S]*发送中和异常邮件会显示在这里/,
   'Task center should explain its empty state');
 assert.match(workspace, /data-sync-retry[\s\S]*重新同步/,

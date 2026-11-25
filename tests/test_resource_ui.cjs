@@ -8,12 +8,12 @@ const {chromium} = require('playwright');
 const source = fs.readFileSync(path.join(__dirname, '../app/web/static/app.js'), 'utf8');
 async function polling() {
   let callback, calls = 0, resolve, account = 'a';
-  const context = vm.createContext(i18nContext({_fetchPollTimer:null,_fetchPollController:null,AbortController,
-    activeMailAccount:()=>({id:account}),showFetchOverlay(){},hideFetchOverlay(){},setLoading(){},
+  const context = vm.createContext(i18nContext({_fetchPollTimer:null,_fetchPollController:null,_fetchPollAccount:null,AbortController,
+    activeMailAccount:()=>({id:account}),firstInboxSync:new Set(),setLoading(){},
     setInterval(fn){callback=fn;return 1;},clearInterval(){},
     document:{getElementById:()=>null},api:async()=>{calls++;return new Promise(done=>{resolve=done;});},
-    updateFetchOverlay(){throw Error('Stale result must not update another account');},loadData(){},toast(){}}));
-  vm.runInContext(source.slice(source.indexOf('function startFetchMonitor()'),source.indexOf('function showFetchOverlay()')),context);
+    mergeAccountSyncState(){throw Error('Stale result must not update another account');},loadData(){}}));
+  vm.runInContext(source.slice(source.indexOf('function startFetchMonitor()'),source.indexOf('function showInboxReadyNotice()')),context);
   context.startFetchMonitor();const first=callback();
   for(let n=0;n<200;n++)await callback();
   assert.equal(calls,1,'Slow response must not accumulate polling requests');

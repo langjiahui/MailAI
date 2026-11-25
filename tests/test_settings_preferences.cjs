@@ -36,7 +36,7 @@ for (const selector of [
   '.compose-card',
   '.account-directory',
   '.assistant-panel',
-  '.fetch-progress-box',
+  '.task-center',
   '.attachment-center-card',
   '.contact-center-item',
   '.todo-center-item',

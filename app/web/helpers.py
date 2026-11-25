@@ -40,9 +40,7 @@ def campaign_groups(days: int = 30) -> list[dict]:
 
 
 def complete_mailbox_initialization():
-    inbox = pipeline.fetch_all(continue_with_folders=True)
-    if not inbox.get("canceled"):
-        pipeline.sync_auxiliary_folders(preserve_cancel=True, inbox_warning=inbox.get("warning", ""))
+    pipeline.initialize_mailbox()
 
 
 def mail_connection_detail(exc: Exception) -> str:

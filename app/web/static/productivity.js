@@ -302,7 +302,7 @@
     const task = document.getElementById("btn-task-center");
     task.className = "nav-action productivity-outbox-entry";
     task.removeAttribute("data-i18n");
-    task.innerHTML = "<svg class=\"nav-icon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 14v5h16v-5\"/><path class=\"task-activity-arrow\" d=\"M12 14V4m-4 4 4-4 4 4\"/></svg><span><span data-i18n=\"ui.02d55e8b9e34\">发件箱</span></span><i data-task-count hidden></i>";
+    task.innerHTML = "<svg class=\"nav-icon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 14v5h16v-5\"/><path class=\"task-activity-arrow\" d=\"M12 14V4m-4 4 4-4 4 4\"/></svg><span data-i18n=\"task.title\">任务与发件箱</span><i class=\"task-sync-indicator\" data-task-sync-indicator aria-hidden=\"true\" hidden><span data-i18n=\"sync.working\">同步中</span></i><i data-task-count hidden></i>";
     mailaiBindUI(task, "@aria-label", () => (mailaiText("任务与发件箱")));
     mailaiBindUI(task, "title", () => (mailaiText("任务与发件箱")));
     document.querySelector(".nav-system-cluster").prepend(task);
