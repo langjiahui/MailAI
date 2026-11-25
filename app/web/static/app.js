@@ -28,6 +28,7 @@ let selectedEmailId = null;
 let selectedEmailDetail = null;
 let _fetchPollTimer = null;
 let _fetchPollController = null;
+let _fetchPollAccount;
 let currentDraftId = null;
 let draftSaveTimer = null;
 let draftMaxSaveTimer = null;
@@ -2518,38 +2519,54 @@ function clearComposePreflight() {
   host.classList.add('hidden');
 }
 
-// ===== 拉取进度轮询 =====
+// ===== 手动同步与首次接入的列表刷新 =====
+const firstInboxSync = new Set();
+
+function monitorMailboxLogin(result) {
+  if (result.initialization_needed && result.account_id &&
+      !localStorage.getItem('inbox-ready:' + result.account_id)) {
+    firstInboxSync.add(result.account_id);
+  }
+  if (!result.account_id || result.account_id === activeMailAccount()?.id) startFetchMonitor();
+}
+
 function startFetchMonitor() {
-  if (_fetchPollTimer) return;
-  let inFlight = false;
   const accountId = activeMailAccount()?.id;
-  showFetchOverlay();
+  if (_fetchPollTimer && _fetchPollAccount === accountId) return;
+  if (_fetchPollTimer) stopFetchMonitor();
+  _fetchPollAccount = accountId;
+  let inFlight = false;
   const timer = _fetchPollTimer = setInterval(async () => {
     if (inFlight) return;
     if (accountId !== activeMailAccount()?.id) { stopFetchMonitor(); return; }
     inFlight = true;
     const controller = _fetchPollController = new AbortController();
     try {
-      const st = await api('/api/fetch_status', {accountId, signal:controller.signal});
+      const checkInbox = firstInboxSync.has(accountId);
+      const st = await api('/api/fetch_status' + (checkInbox ? '?check_inbox=true' : ''), {accountId, signal:controller.signal});
       if (_fetchPollTimer !== timer || accountId !== activeMailAccount()?.id) return;
       mergeAccountSyncState(accountId, st);
-      updateFetchOverlay(st);
+      const previousSync = window.mailaiTaskActivity?.syncState(accountId);
+      window.mailaiTaskActivity?.setSync(accountId, st);
+      const taskCenter = document.getElementById('task-center');
+      if (taskCenter && !taskCenter.classList.contains('hidden') && taskCenterScope() === accountId &&
+          (previousSync?.running !== st.running || previousSync?.operation !== st.operation || previousSync?.canceled !== st.canceled)) {
+        void refreshTaskCenter({lightweight:true});
+      }
+      if (checkInbox && st.running && st.inbox_ready && ['fetch_all','sync_folders'].includes(st.operation)) {
+        firstInboxSync.delete(accountId);
+        localStorage.setItem('inbox-ready:' + accountId, '1');
+        void refreshMailboxIfChanged(true);
+        showInboxReadyNotice();
+      }
       if (!st.running) {
         stopFetchMonitor();
+        if (!st.resumable) firstInboxSync.delete(accountId);
+        document.getElementById('inbox-ready-notice')?.classList.add('hidden');
         // Refresh both sources before repainting the local/server count pair.
         await Promise.all([loadData(), loadMailboxFolders()]);
         if (accountId !== activeMailAccount()?.id) return;
         applyFilters({silent:true});
-        if (st.canceled) {
-          toast(mailaiSystemMessage(st.message) || mailaiText('已中断拉取'), 'warn');
-        } else if (st.error) {
-          toast(mailaiSystemMessage(st.message) || mailaiText('拉取失败'), 'error');
-        } else {
-          toast(mailaiSystemMessage(st.message) || mailaiText('拉取完成'), 'success');
-          if ('Notification' in window && Notification.permission === 'granted' && (st.processed || 0) > 0) {
-            try { new Notification(mailaiText('MailAI 同步完成'), {body:mailaiTemplate`已完成 ${st.processed} 封邮件的同步与分析`, tag:'mailai-sync'}); } catch (_) {}
-          }
-        }
       }
     } catch (e) {
       // 忽略轮询中的网络抖动
@@ -2571,48 +2588,40 @@ function stopFetchMonitor() {
     const btn = document.getElementById(id);
     if (btn) setLoading(btn, false);
   });
-  hideFetchOverlay();
 }
 
-function showFetchOverlay() {
-  const overlay = document.getElementById('fetch-overlay');
-  overlay.classList.remove('hidden', 'canceled');
-  setFetchSettingsContext(!document.getElementById('system-view').classList.contains('hidden'));
-  updateFetchOverlay({ running: true, get message() { return mailaiText('准备中...'); }, total: 0, processed: 0 });
+function showInboxReadyNotice() {
+  const notice = document.getElementById('inbox-ready-notice');
+  notice.classList.remove('hidden');
+  clearTimeout(notice.dismissTimer);
+  notice.dismissTimer = setTimeout(() => {
+    if (!notice.contains(document.activeElement)) notice.classList.add('hidden');
+  }, 12000);
 }
 
-function hideFetchOverlay() {
-  const overlay = document.getElementById('fetch-overlay');
-  overlay.classList.add('hidden');
-  overlay.classList.remove('expanded');
+for (const button of document.querySelectorAll('[data-inbox-sync-task]')) {
+  button.onclick = async () => {
+    await openTaskCenter();
+    if (button.closest('#inbox-ready-notice')) document.getElementById('inbox-ready-notice').classList.add('hidden');
+  };
 }
 
-function setFetchSettingsContext(active) {
-  const overlay = document.getElementById('fetch-overlay');
-  const toggle = document.getElementById('btn-toggle-fetch');
-  overlay.classList.toggle('settings-context', !!active);
-  if (!active) overlay.classList.remove('expanded');
-  const expanded = active && overlay.classList.contains('expanded');
-  toggle?.setAttribute('aria-expanded', String(expanded));
-  mailaiBindUI(toggle, "@aria-label", () => (expanded ? mailaiText('收起同步详情') : mailaiText('展开同步详情')));
-  if (toggle) mailaiBindUI(toggle, "title", () => (expanded ? mailaiText('收起同步详情') : mailaiText('展开同步详情')));
-}
-
-function updateFetchOverlay(st) {
-  const opNames = { get poll() { return mailaiText('拉取新邮件'); }, get fetch_more() { return mailaiText('加载更多历史邮件'); }, get fetch_all() { return mailaiText('拉取全部邮件'); }, get sync_folders() { return mailaiText('同步其他文件夹'); }, get sync_folder() { return mailaiText('同步文件夹'); } };
-  const phaseNames = {get scanning() { return mailaiText('扫描邮箱'); },get analyzing() { return mailaiText('解析与 AI 分析'); },get finalizing() { return mailaiText('正在收尾'); },get completed() { return mailaiText('同步完成'); },get paused() { return mailaiText('同步已暂停'); }};
-  mailaiBindUI(document.getElementById('fetch-title'), "textContent", () => (st.canceled ? mailaiText('已中断') : `${opNames[st.operation] || mailaiText('邮件同步')} · ${phaseNames[st.phase] || mailaiText('准备中')}`));
-  mailaiBindUI(document.getElementById('fetch-message'), "textContent", () => (mailaiSystemMessage(st.message) || mailaiText('请稍候...')));
-  const pct = st.total > 0 ? Math.round((st.processed || 0) / st.total * 100) : 0;
-  document.getElementById('progress-fill').style.width = pct + '%';
-  mailaiBindUI(document.getElementById('fetch-count'), "textContent", () => (st.total > 0
-    ? mailaiTemplate`${st.processed || 0} / ${st.total} 封`
-    : ''));
-  const cancelBtn = document.getElementById('btn-cancel-fetch');
-  if (cancelBtn) cancelBtn.disabled = !!st.canceled;
-  const overlay = document.getElementById('fetch-overlay');
-  if (st.canceled) overlay.classList.add('canceled');
-  else overlay.classList.remove('canceled');
+function renderFolderSyncHint() {
+  const hint = document.getElementById('folder-sync-hint');
+  if (!hint) return;
+  const sync = window.mailaiTaskActivity?.syncState(activeMailAccount()?.id);
+  const role = specialMailbox === 'drafts' ? 'draft' : specialMailbox || currentFilter.status;
+  const visibleRole = !unifiedMailbox && ['trash','sent','draft'].includes(role) ? role : '';
+  const folderName = currentServerFolder || (visibleRole && serverFolderForRole(visibleRole === 'draft' ? 'drafts' : visibleRole)?.name);
+  const folder = sync?.folder_progress?.find(row => folderName ? row.name === folderName : visibleRole && row.role === visibleRole);
+  const singleFolder = folderName && sync?.folder === folderName;
+  const pending = singleFolder || (folder && ['running','pending'].includes(folder.status));
+  const paused = sync?.canceled && (pending || folder?.status === 'canceled' ||
+    singleFolder);
+  hint.classList.toggle('hidden', !(sync?.running && pending) && !paused);
+  mailaiBindUI(hint.querySelector('span'), 'textContent', () => paused
+    ? mailaiText('此文件夹的同步已暂停，可查看已下载的邮件。')
+    : mailaiText('此文件夹正在后台同步，可查看已下载的邮件。'));
 }
 
 // ===== Markdown 渲染 =====
@@ -5176,25 +5185,6 @@ function renderComposeAccountPicker(preferredId = '') {
   select.closest('.compose-from-picker')?.classList.toggle('hidden', !accounts.length);
 }
 
-let mailboxSyncTrackerTimer = 0;
-let mailboxSyncTrackerSignature = '';
-let mailboxSyncTrackerDismissedSignature = '';
-let mailboxSyncTrackerFadingSignature = '';
-
-function dismissMailboxSyncTracker(tracker, signature) {
-  if (signature !== mailboxSyncTrackerSignature) return;
-  mailboxSyncTrackerFadingSignature = signature;
-  tracker.classList.add('is-fading');
-  mailboxSyncTrackerTimer = setTimeout(() => {
-    if (signature !== mailboxSyncTrackerSignature) return;
-    tracker.classList.add('hidden');
-    tracker.classList.remove('is-fading');
-    mailboxSyncTrackerDismissedSignature = signature;
-    mailboxSyncTrackerFadingSignature = '';
-    mailboxSyncTrackerTimer = 0;
-  }, 460);
-}
-
 function accountSyncLabel(account) {
   if (account.credential_authorization_required) return mailaiText('点击邮箱解锁凭据');
   if (!account.credential_available) return mailaiText('需要重新登录');
@@ -5228,83 +5218,6 @@ function mergeAccountSyncState(accountId, state) {
   ['message','error','operation','phase','processed','total','elapsed_seconds','quiet_seconds','current_folder','folder_progress','folder_omitted'].forEach(key => {
     account['sync_' + key] = state[key] ?? (key === 'folder_progress' ? [] : '');
   });
-  renderMailboxSyncTracker(_systemConfig.accounts);
-}
-
-function renderMailboxSyncTracker(accounts = []) {
-  const tracker = document.getElementById('mailbox-sync-tracker');
-  if (!tracker) return;
-  const running = accounts.filter(account => account.credential_available && account.sync_status === 'running');
-  const tracked = accounts.filter(account => {
-    const folders = Array.isArray(account.sync_folder_progress) ? account.sync_folder_progress : [];
-    return account.sync_status === 'running' || (['sync_folders','sync_folder'].includes(account.sync_operation) && folders.length);
-  });
-  if (!tracked.length) {
-    clearTimeout(mailboxSyncTrackerTimer);
-    mailboxSyncTrackerTimer = 0;
-    mailboxSyncTrackerSignature = '';
-    mailboxSyncTrackerDismissedSignature = '';
-    mailboxSyncTrackerFadingSignature = '';
-    tracker.classList.add('hidden');
-    tracker.classList.remove('is-fading');
-    tracker.innerHTML = '';
-    return;
-  }
-  const signature = JSON.stringify(tracked.map(account => [
-    account.id, account.sync_status, account.sync_operation, account.sync_processed, account.sync_total,
-    account.sync_error || '', account.sync_folder_omitted || 0,
-    (account.sync_folder_progress || []).map(item => [item.name, item.status, item.processed, item.total, item.error || '']),
-  ]));
-  if (running.length) {
-    clearTimeout(mailboxSyncTrackerTimer);
-    mailboxSyncTrackerTimer = 0;
-    mailboxSyncTrackerDismissedSignature = '';
-    mailboxSyncTrackerFadingSignature = '';
-    tracker.classList.remove('hidden', 'is-fading');
-  } else if (mailboxSyncTrackerDismissedSignature === signature) {
-    tracker.classList.add('hidden');
-  } else if (mailboxSyncTrackerFadingSignature === signature) {
-    tracker.classList.remove('hidden');
-    tracker.classList.add('is-fading');
-  } else {
-    tracker.classList.remove('hidden', 'is-fading');
-  }
-  const heading = running.length
-    ? `<i class="account-sync-spinner" aria-hidden="true"></i><span><span data-i18n="ui.a35899214cb4">后台同步 ${running.length} 个邮箱</span></span>`
-    : `<span><span data-i18n="ui.12a5791a0880">最近一次文件夹同步</span></span>`;
-  tracker.innerHTML = `<div class="mailbox-sync-tracker-title" role="status">${heading}<small><span data-i18n="ui.49c107cd3b26">各邮箱独立更新</span></small></div>` + tracked.map(account => {
-    const folders = (Array.isArray(account.sync_folder_progress) ? account.sync_folder_progress : []).slice(0, 100);
-    const done = folders.filter(item => item.status === 'completed').length;
-    const failed = folders.filter(item => item.status === 'failed').length;
-    const live = account.sync_status === 'running';
-    const stateText = live ? accountSyncLabel(account) : failed ? mailaiTemplate`${failed} 个失败` : account.sync_status === 'canceled' ? mailaiText('同步已暂停') : mailaiText('同步完成');
-    const open = live && folders.length ? ' open' : '';
-    const omitted = Number(account.sync_folder_omitted || 0);
-    const folderRows = folders.map(item => {
-      const total = Math.max(0, Number(item.total || 0));
-      const processed = Math.max(0, Number(item.processed || 0));
-      const pct = total ? Math.min(100, Math.round(processed / total * 100)) : item.status === 'completed' ? 100 : 0;
-      const statusText = {get pending() { return mailaiText('等待'); },get running() { return mailaiText('同步中'); },get completed() { return mailaiText('完成'); },get failed() { return mailaiText('失败'); },get canceled() { return mailaiText('已取消'); }}[item.status] || mailaiText('等待');
-      return `<div class="mailbox-sync-folder ${esc(item.status || 'pending')}" title="${esc(mailaiSystemMessage(item.error) || item.name || '')}">
-        <div><b>${esc(item.name || mailaiText('未命名文件夹'))}</b><span>${statusText}</span></div>
-        <div class="mailbox-sync-folder-progress"><i style="width:${pct}%"></i></div>
-        <small><span data-i18n="ui.823170a792ef">${processed}/${total} 封</span></small>
-      </div>`;
-    }).join('');
-    const body = folders.length ? `${folderRows}${omitted ? `<p><span data-i18n="ui.86843c7edb42">另有 ${omitted} 个文件夹在后台同步，详情已折叠以保证性能。</span></p>` : ''}`
-      : `<p>${esc(mailaiSystemMessage(account.sync_message) || mailaiText('正在连接邮箱服务器…'))}</p>`;
-    return `<details class="mailbox-sync-account"${open}>
-      <summary><span>${esc(localStorage.getItem('alias:' + account.id) || account.user)}</span><b>${esc(stateText)}</b><em>${folders.length ? mailaiTemplate`${done}/${folders.length + omitted} 个文件夹` : ''}</em></summary>
-      <div class="mailbox-sync-folder-list">${body}</div>
-    </details>`;
-  }).join('');
-  if (!running.length && mailboxSyncTrackerSignature !== signature) {
-    clearTimeout(mailboxSyncTrackerTimer);
-    mailboxSyncTrackerSignature = signature;
-    mailboxSyncTrackerTimer = setTimeout(() => dismissMailboxSyncTracker(tracker, signature), 6500);
-  } else if (running.length) {
-    mailboxSyncTrackerSignature = signature;
-  }
 }
 
 function renderSidebarAccounts() {
@@ -5327,9 +5240,8 @@ function renderSidebarAccounts() {
   const primary = document.getElementById('primary-folder-group');
   const host = document.getElementById('account-mailbox-nav');
   const multiple = accounts.length > 1;
-  renderMailboxSyncTracker(accounts);
   // 同步图标兼作状态灯：任一账号同步异常时在顶栏同步按钮上点红点
-  document.getElementById('btn-poll')?.classList.toggle('attention', accounts.some(account => account.sync_error || Number(account.sync_deferred_count) > 0 || Number(account.sync_oversized_count) > 0 || Number(account.oversized_mail_count) > 0 || !account.credential_available || ['interrupted', 'canceled'].includes(account.sync_status)));
+  document.getElementById('btn-poll')?.classList.toggle('attention', accounts.some(account => account.sync_error || Number(account.sync_deferred_count) > 0 || Number(account.sync_oversized_count) > 0 || Number(account.oversized_mail_count) > 0 || !account.credential_available || account.sync_status === 'interrupted'));
   group?.classList.toggle('hidden', !multiple);
   primary?.classList.toggle('hidden', multiple);
   if (!host || !multiple) return;
@@ -5340,7 +5252,7 @@ function renderSidebarAccounts() {
       const collapsed = localStorage.getItem('collapsed:' + account.id) === '1';
       const syncing = account.credential_available && account.sync_status === 'running';
       const status = accountSyncLabel(account);
-      const statusVisible = Boolean(status) && (syncing || account.auto_sync_paused || mailaiSystemMessage(account.sync_error) || Number(account.sync_deferred_count) > 0 || Number(account.sync_oversized_count) > 0 || Number(account.oversized_mail_count) > 0 || !account.credential_available || ['interrupted','canceled'].includes(account.sync_status));
+      const statusVisible = Boolean(status) && (!syncing && (account.auto_sync_paused || mailaiSystemMessage(account.sync_error) || Number(account.sync_deferred_count) > 0 || Number(account.sync_oversized_count) > 0 || Number(account.oversized_mail_count) > 0 || !account.credential_available || account.sync_status === 'interrupted'));
       const accountOversizedCount = Math.max(Number(account.oversized_mail_count || 0), Number(account.sync_oversized_count || 0));
       const oversizedDetail = accountOversizedCount > 0 ? mailaiTemplate`${accountOversizedCount} 封邮件超过 256 MB，请在原邮箱下载原件` : '';
       const retryAt = account.sync_next_retry_at ? new Date(Number(account.sync_next_retry_at) * 1000).toLocaleTimeString(currentI18nLanguage(), {hour:'2-digit',minute:'2-digit'}) : '';
@@ -5419,6 +5331,7 @@ async function activateMailAccount(accountId, {keepMailbox = false, quiet = fals
     if (!quiet) toast(mailaiTemplate`正在使用 ${account.user}`);
   }
   if (!keepMailbox && activeMailAccount()?.id === accountId) selectedMailboxAccountId = accountId;
+  if (firstInboxSync.has(accountId)) startFetchMonitor();
   globalThis.MailAIState?.set('account', {id:accountId, user:account.user || '', unified:Boolean(unifiedMailbox)});
   return (_systemConfig?.accounts || []).find(item => item.id === accountId);
 }
@@ -5454,6 +5367,7 @@ function beginMailboxTransition(revision, label) {
 function finishMailboxTransition(revision, {immediate = false} = {}) {
   const overlay = document.getElementById('mailbox-transition');
   if (!overlay || overlay.hidden || overlay.dataset.revision !== String(revision)) return;
+  renderFolderSyncHint();
   clearTimeout(overlay._loadWatchdog);
   if (immediate) {
     clearTimeout(mailboxTransitionTimer);
@@ -5579,7 +5493,9 @@ async function openTrashMailbox({resetPane = true, transitionRevision = 0} = {})
   if (folder) {
     try { await api(`/api/mail/folders/sync?folder=${encodeURIComponent(folder)}`, {method:'POST',accountId}); }
     catch (err) {
-      if (isCurrent()) toast(mailaiText('已显示本地已删除邮件；服务器同步暂未完成：') + mailaiSystemMessage(err.message), 'warn');
+      if (!isCurrent()) return;
+      if (err.status === 409) window.mailaiTaskActivity?.refresh();
+      else toast(mailaiText('已显示本地已删除邮件；服务器同步暂未完成：') + mailaiSystemMessage(err.message), 'warn');
       return;
     }
   }
@@ -5658,7 +5574,7 @@ async function shareAppWithSystem() {
 }
 
 function appDeviceName(device) {
-  return ({'windows-x64':'Windows x64', get 'macos-arm64'() { return mailaiText('macOS · Apple 芯片'); }})[device] || device || mailaiText('暂未识别');
+  return ({'windows-x64':'Windows x64', 'macos-x64':'macOS · Intel', get 'macos-arm64'() { return mailaiText('macOS · Apple 芯片'); }})[device] || device || mailaiText('暂未识别');
 }
 
 function renderAppVersion(result) {
@@ -6160,7 +6076,6 @@ function showSystemView(tab = 'preferences') {
   hideRulesView(false);
   document.querySelector('.layout').classList.add('hidden');
   document.getElementById('system-view').classList.remove('hidden');
-  setFetchSettingsContext(true);
   selectSystemTab(tab);
   if (typeof loadWorkspacePreferences === 'function') loadWorkspacePreferences();
   loadSystemConfig().catch(e => toast(mailaiText('加载系统配置失败：') + mailaiSystemMessage(e.message), 'error'));
@@ -6174,7 +6089,6 @@ function hideSystemView(force = false) {
     return;
   }
   document.getElementById('system-view').classList.add('hidden');
-  setFetchSettingsContext(false);
   if (document.getElementById('dashboard-view').classList.contains('hidden') &&
       document.getElementById('rules-view').classList.contains('hidden')) {
     document.querySelector('.layout').classList.remove('hidden');
@@ -8965,11 +8879,6 @@ new MutationObserver(()=>{
   if(!valid)todoSourceReturn=null;
 }).observe(document.getElementById('reading-content'),{childList:true});
 document.getElementById('btn-preferences').addEventListener('click', () => showSystemView('preferences'));
-document.getElementById('btn-toggle-fetch').addEventListener('click', () => {
-  const overlay = document.getElementById('fetch-overlay');
-  overlay.classList.toggle('expanded');
-  setFetchSettingsContext(true);
-});
 document.getElementById('btn-close-system').addEventListener('click', () => hideSystemView());
 document.getElementById('system-tabs').addEventListener('click', e => {
   const button = e.target.closest('[data-system-tab]');
@@ -9226,7 +9135,7 @@ document.getElementById('mail-config-form').addEventListener('submit', async e =
     toast(managedAccountId ? mailaiTemplate`已更新 ${payload.user} 的登录信息` : mailaiTemplate`已登录 ${payload.user}，正在后台初始化邮箱`, 'success');
     if (connectionResult?.credential_warning) toast(connectionResult.credential_warning, 'warn');
     if (connectionResult?.smtp_warning) toast(connectionResult.smtp_warning, 'warn');
-    if (!managedAccountId) { startFetchMonitor(); window.mailOnboarding?.connected(true); }
+    if (!managedAccountId) { monitorMailboxLogin(connectionResult); window.mailOnboarding?.connected(true); }
   } catch (err) { mailaiBindUI(status, "textContent", () => (mailaiText('登录失败'))); status.className = 'connection-status failed'; window.mailaiMailLogin?.connectionState('mail', err.message); toast(mailaiSystemMessage(err.message), 'error'); }
   finally { window.mailaiMailLogin?.connectionPending('mail', false); button.disabled = false; button.querySelector('span').textContent = previousLabel; }
 });
@@ -9420,20 +9329,6 @@ document.getElementById('btn-confirm-fetch-all').addEventListener('click', async
   } catch (e) {
     toast(mailaiText('拉取失败：') + mailaiSystemMessage(e.message), 'error');
     setLoading(btn, false);
-  }
-});
-
-document.getElementById('btn-cancel-fetch').addEventListener('click', async () => {
-  const btn = document.getElementById('btn-cancel-fetch');
-  btn.disabled = true;
-  mailaiBindUI(btn, "textContent", () => (mailaiText('正在中断...')));
-  try {
-    await api('/api/cancel_fetch', { method: 'POST' });
-    toast(mailaiText('已请求中断拉取'), 'warn');
-  } catch (e) {
-    toast(mailaiText('中断请求失败：') + mailaiSystemMessage(e.message), 'error');
-    btn.disabled = false;
-    mailaiBindUI(btn, "textContent", () => (mailaiText('⏹ 中断拉取')));
   }
 });
 
@@ -10179,7 +10074,7 @@ document.getElementById('onboarding-form').addEventListener('submit', async e =>
     await loadData();
     startMailboxAutoRefresh();
     if (!assistantPollTimer) assistantPollTimer = setInterval(loadAssistantAlerts, 60000);
-    startFetchMonitor();
+    monitorMailboxLogin(connectionResult);
     document.getElementById('onboarding-password').value = '';
     window.mailOnboarding?.connected(true);
   } catch (err) {

@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app import config, db, smtp_client
+from app import config, db, pipeline, smtp_client
 
 
 def main():
@@ -24,6 +24,18 @@ def main():
                              message="正在初始化")
             job = db.get_sync_job()
             assert job["status"] == "running" and job["processed"] == 123
+
+            db.save_sync_job("sync_folder", status="canceled", total=524, processed=179,
+                             folder="Deleted Messages", folder_limit=524)
+            db.save_sync_job("poll", status="completed")
+            paused = pipeline.get_fetch_state()
+            assert paused["canceled"] and paused["resumable"]
+            assert (paused["folder"], paused["folder_limit"], paused["processed"]) == ("Deleted Messages", 524, 179)
+            assert pipeline.sync_mail_folder("Deleted Messages", 524)["paused"]
+            db.save_sync_job("sync_folder", status="running", folder="Sent")
+            assert db.get_sync_job("paused")["folder"] == "Deleted Messages"
+            db.save_sync_job("sync_folder", status="running", folder="Deleted Messages", folder_limit=524)
+            assert db.get_sync_job("paused") is None
 
             draft_id = db.save_draft({"subject": "附件草稿", "attachments": [{
                 "filename": "说明.txt", "content_type": "text/plain", "size": 3,

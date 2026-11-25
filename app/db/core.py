@@ -138,6 +138,8 @@ CREATE TABLE IF NOT EXISTS sync_jobs (
     processed INTEGER DEFAULT 0,
     message TEXT DEFAULT '',
     error TEXT DEFAULT '',
+    folder TEXT NOT NULL DEFAULT '',
+    folder_limit INTEGER NOT NULL DEFAULT 0,
     updated_at TEXT
 );
 CREATE TABLE IF NOT EXISTS mail_fetch_retries (
@@ -485,6 +487,9 @@ def _initialize_db():
 
 def _run_migrations(c):
     """对旧数据库增量添加列/表。"""
+    for column, definition in {'folder': "TEXT NOT NULL DEFAULT ''", 'folder_limit': 'INTEGER NOT NULL DEFAULT 0'}.items():
+        if column not in _columns_of(c, 'sync_jobs'):
+            c.execute(f'ALTER TABLE sync_jobs ADD COLUMN {column} {definition}')
     c.execute('CREATE TABLE IF NOT EXISTS briefing_dismissed(email_id INTEGER PRIMARY KEY)')
     if 'user_edited' not in _columns_of(c, 'todos'):
         c.execute('ALTER TABLE todos ADD COLUMN user_edited INTEGER DEFAULT 0')

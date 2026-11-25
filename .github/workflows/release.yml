@@ -142,12 +142,24 @@ jobs:
             dist/MailAI-Linux-x64.AppImage.sha256
           if-no-files-found: error
 
-  macos-arm64:
+  macos:
+    name: ${{ matrix.device }}
     needs: metadata
     if: ${{ needs.metadata.outputs.reuse != 'true' }}
-    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - device: macos-arm64
+            runner: macos-15
+            arch: arm64
+          - device: macos-x64
+            runner: macos-15-intel
+            arch: x86_64
+    runs-on: ${{ matrix.runner }}
     env:
       CI: "1"
+      MAILAI_MACOS_BUILD_ARCH: ${{ matrix.arch }}
       MAILAI_RELEASE_VERSION: ${{ needs.metadata.outputs.version }}
     steps:
       - uses: actions/checkout@v5
@@ -160,11 +172,11 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-      - name: Verify Apple Silicon build architecture
+      - name: Verify native macOS build architecture
         shell: bash
         run: |
-          test "$(uname -m)" = arm64
-          python -c "import platform; assert platform.machine() == 'arm64', platform.machine()"
+          test "$(uname -m)" = "$MAILAI_MACOS_BUILD_ARCH"
+          test "$(python -c 'import platform; print(platform.machine())')" = "$MAILAI_MACOS_BUILD_ARCH"
       - name: Import macOS signing certificate
         shell: bash
         env:
@@ -211,7 +223,7 @@ jobs:
       - name: Verify real keychain access across signed upgrades
         if: env.MAILAI_SIGNING_MODE == 'self-signed'
         run: python3 scripts/verify_macos_signing_upgrade.py
-      - name: Build Apple Silicon installer
+      - name: Build native macOS installer
         shell: bash
         env:
           MAILAI_NOTARY_KEY_BASE64: ${{ secrets.MACOS_NOTARY_KEY_BASE64 }}
@@ -221,12 +233,20 @@ jobs:
           export MAILAI_BUILD_VERSION="${GITHUB_RUN_NUMBER}"
           printf '%s' "$MAILAI_RELEASE_VERSION" > VERSION
           zsh scripts/build_macos.command
-      - name: Write macOS checksum
+      - name: Write macOS checksums
         shell: bash
+        env:
+          RELEASE_DEVICE: ${{ matrix.device }}
         run: |
-          shasum -a 256 dist/MailAI-macOS-arm64.pkg > dist/MailAI-macOS-arm64.pkg.sha256
-          shasum -a 256 dist/MailAI-macOS.zip > dist/MailAI-macOS.zip.sha256
+          pkg="dist/MailAI-macOS-${RELEASE_DEVICE#macos-}.pkg"
+          shasum -a 256 "$pkg" > "$pkg.sha256"
+          if [ "$RELEASE_DEVICE" = 'macos-arm64' ]; then
+            shasum -a 256 dist/MailAI-macOS.zip > dist/MailAI-macOS.zip.sha256
+          else
+            shasum -a 256 dist/MailAI-macOS-x64.dmg > dist/MailAI-macOS-x64.dmg.sha256
+          fi
       - uses: actions/upload-artifact@v5
+        if: matrix.arch == 'arm64'
         with:
           name: release-macos-arm64
           compression-level: 0
@@ -236,6 +256,17 @@ jobs:
             dist/MailAI-macOS-arm64.dmg
             dist/MailAI-macOS.zip
             dist/MailAI-macOS.zip.sha256
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v5
+        if: matrix.arch == 'x86_64'
+        with:
+          name: release-macos-x64
+          compression-level: 0
+          path: |
+            dist/MailAI-macOS-x64.pkg
+            dist/MailAI-macOS-x64.pkg.sha256
+            dist/MailAI-macOS-x64.dmg
+            dist/MailAI-macOS-x64.dmg.sha256
           if-no-files-found: error
       - name: Remove temporary self-signing keychain
         if: always()
@@ -260,13 +291,13 @@ jobs:
         run: python3 scripts/ci_quality.py wait --commit "$GITHUB_SHA"
 
   publish:
-    needs: [metadata, windows-x64, macos-arm64, linux-x64, quality]
+    needs: [metadata, windows-x64, macos, linux-x64, quality]
     # Private preparation never publishes. Both paths still require full proof;
     # only the native build jobs can be replaced by verified identical artifacts.
     if: >-
       ${{ always() && github.event_name == 'push' && needs.metadata.result == 'success' && needs.quality.result == 'success' &&
-      ((needs.metadata.outputs.reuse == 'true' && needs.windows-x64.result == 'skipped' && needs.macos-arm64.result == 'skipped' && needs.linux-x64.result == 'skipped') ||
-      (needs.metadata.outputs.reuse == 'false' && needs.windows-x64.result == 'success' && needs.macos-arm64.result == 'success' && needs.linux-x64.result == 'success')) }}
+      ((needs.metadata.outputs.reuse == 'true' && needs.windows-x64.result == 'skipped' && needs.macos.result == 'skipped' && needs.linux-x64.result == 'skipped') ||
+      (needs.metadata.outputs.reuse == 'false' && needs.windows-x64.result == 'success' && needs.macos.result == 'success' && needs.linux-x64.result == 'success')) }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

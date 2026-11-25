@@ -170,7 +170,7 @@ def main():
     assert tls.cert_store_stats()["x509_ca"] > 0
     assert release_update.device_key("Windows", "AMD64") == "windows-x64"
     assert release_update.device_key("Darwin", "arm64") == "macos-arm64"
-    assert release_update.device_key("Darwin", "x86_64") == "darwin-x86_64"
+    assert release_update.device_key("Darwin", "x86_64") == "macos-x64"
     with patch.dict(os.environ, {"MAILAI_APP_VERSION": "1.0.0"}), patch.object(release_update, "FROZEN", True):
         result = release_update.evaluate_manifest(manifest(), device="windows-x64")
         assert result["available"] and result["installable"]
@@ -416,5 +416,29 @@ def verify_deferred_update_flow():
         assert not checkpoint.exists()
 
 
+
+def test_intel_mac_uses_its_pkg_and_never_selects_the_arm_app():
+    device = release_update.device_key("Darwin", "x86_64")
+    assets = {
+        "macos-arm64": {"url": "https://example.test/MailAI-macOS-arm64.pkg", "sha256": "a" * 64},
+        "macos-arm64-app": {"url": "https://example.test/MailAI-macOS.zip", "sha256": "a" * 64},
+    }
+    manifest = {"version": "4.9.0", "assets": assets}
+    with patch.object(release_update, "FROZEN", True), patch.object(release_update, "current_version", return_value="4.8.4"):
+        assert not release_update.evaluate_manifest(manifest, device=device, allow_app=True)["supported"]
+        assets[device] = {"url": "https://example.test/MailAI-macOS-x64.pkg", "sha256": "b" * 64}
+        state = release_update.evaluate_manifest(manifest, device=device, allow_app=True)
+        assert state["available"] and state["installable"]
+        assert state["asset"]["url"].endswith("/MailAI-macOS-x64.pkg")
+        assert "install_method" not in state
+        assets[device]["url"] = "https://example.test/MailAI-macOS.zip"
+        try:
+            release_update.evaluate_manifest(manifest, device=device, allow_app=True)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("Intel updater accepted an app ZIP as a PKG")
+
 if __name__ == "__main__":
+    test_intel_mac_uses_its_pkg_and_never_selects_the_arm_app()
     main()

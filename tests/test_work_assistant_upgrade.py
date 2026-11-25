@@ -20,6 +20,7 @@ FIXTURES = Path(__file__).parent/'fixtures'
 ADDITIVE_MIGRATION_DEFAULTS = {
     'todos': {'completed_at': None, 'recurrence': '', 'recurrence_source_id': None},
     'emails': {'list_unsubscribe': '', 'is_automated': 0},
+    'sync_jobs': {'folder': '', 'folder_limit': 0},
 }
 
 

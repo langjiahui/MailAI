@@ -17,10 +17,6 @@ if [[ -n "${MAILAI_NOTARY_PROFILE:-}${MAILAI_NOTARY_KEY_BASE64:-}${MAILAI_NOTARY
   NOTARIZE_ENABLED=1
 fi
 
-# 每次仅保留本次正式发布物，避免旧 App 和 PyInstaller 中间目录混入 dist。
-rm -rf "dist/MailAI" "dist/MailAI.app" "dist/MailAI 2.app"
-rm -f "dist/.DS_Store" "dist/MailAI-macOS.zip" "dist/MailAI-macOS-arm64.dmg" "dist/MailAI-macOS-arm64.pkg"
-
 PYTHON_BIN="${MAILAI_BUILD_PYTHON:-}"
 if [[ -z "$PYTHON_BIN" ]]; then
   for candidate in python3.12 python3.13; do
@@ -40,6 +36,23 @@ if [[ "$PYTHON_VERSION" != "3.12" && "$PYTHON_VERSION" != "3.13" ]]; then
   echo "构建失败：当前解释器为 Python $PYTHON_VERSION，仅支持 3.12 或 3.13。"
   exit 1
 fi
+build_arch="$("$PYTHON_BIN" -c 'import platform; print(platform.machine())')"
+case "$build_arch" in
+  arm64)  mac_suffix=arm64; app_zip=dist/MailAI-macOS.zip ;;
+  x86_64) mac_suffix=x64; app_zip=dist/MailAI-macOS-x64.zip ;;
+  *) echo "不支持的 macOS 构建架构：$build_arch" >&2; exit 1 ;;
+esac
+if [[ "$build_arch" != "$(uname -m)" || "$build_arch" != "${MAILAI_MACOS_BUILD_ARCH:-$build_arch}" ]]; then
+  echo "Python、运行环境和目标架构必须一致" >&2
+  exit 1
+fi
+export MAILAI_MACOS_BUILD_ARCH="$build_arch"
+pkg="dist/MailAI-macOS-${mac_suffix}.pkg"
+dmg="dist/MailAI-macOS-${mac_suffix}.dmg"
+
+# 避免旧 App 和中间产物混入本次打包，保留另外一种架构的安装包。
+rm -rf "dist/MailAI" "dist/MailAI.app" "dist/MailAI 2.app"
+rm -f "dist/.DS_Store" "$app_zip" "$dmg" "$pkg"
 rm -rf .venv-build
 "$PYTHON_BIN" -m venv .venv-build
 .venv-build/bin/python -m pip install -q --upgrade pip
@@ -49,6 +62,7 @@ npm ci --ignore-scripts --no-audit --no-fund
 .venv-build/bin/python scripts/prepare_bundle_config.py "$@"
 zsh scripts/prepare_macos_icon.command
 .venv-build/bin/pyinstaller --noconfirm --clean MailAI.spec
+test "$(lipo -archs dist/MailAI.app/Contents/MacOS/MailAI)" = "$build_arch"
 .venv-build/bin/python scripts/smoke_macos_app.py dist/MailAI.app
 rm -f mailai.defaults.env
 
@@ -66,12 +80,12 @@ elif [[ "${CI:-}" == "1" ]]; then
   exit 1
 fi
 
-ditto -c -k --sequesterRsrc --keepParent dist/MailAI.app dist/MailAI-macOS.zip
+ditto -c -k --sequesterRsrc --keepParent dist/MailAI.app "$app_zip"
 if [[ "$NOTARIZE_ENABLED" == 1 ]]; then
-  .venv-build/bin/python scripts/notarize_macos.py dist/MailAI-macOS.zip dist/MailAI.app
+  .venv-build/bin/python scripts/notarize_macos.py "$app_zip" dist/MailAI.app
   # Include the stapled application in both the portable archive and installer.
-  rm -f dist/MailAI-macOS.zip
-  ditto -c -k --sequesterRsrc --keepParent dist/MailAI.app dist/MailAI-macOS.zip
+  rm -f "$app_zip"
+  ditto -c -k --sequesterRsrc --keepParent dist/MailAI.app "$app_zip"
 fi
 echo "打包 zip 完成"
 
@@ -132,29 +146,29 @@ pkgbuild \
   --identifier com.langjiahui.mailai.installer \
   --version "$MAILAI_RELEASE_VERSION" \
   --scripts "$PKG_SCRIPTS" \
-  dist/MailAI-macOS-arm64.pkg
+  "$pkg"
 echo "pkgbuild 完成"
 if [[ -n "${MAILAI_SIGN_IDENTITY:-}" ]]; then
-  .venv-build/bin/python scripts/verify_macos_package_signature.py dist/MailAI-macOS-arm64.pkg
+  .venv-build/bin/python scripts/verify_macos_package_signature.py "$pkg"
 fi
 
 if [[ -n "${MAILAI_INSTALLER_IDENTITY:-}" ]]; then
   echo "使用开发者证书为安装器签名：$MAILAI_INSTALLER_IDENTITY"
   productsign --timestamp --sign "$MAILAI_INSTALLER_IDENTITY" \
-    dist/MailAI-macOS-arm64.pkg "$PKG_SCRIPTS/signed.pkg"
-  mv "$PKG_SCRIPTS/signed.pkg" dist/MailAI-macOS-arm64.pkg
-  pkgutil --check-signature dist/MailAI-macOS-arm64.pkg
+    "$pkg" "$PKG_SCRIPTS/signed.pkg"
+  mv "$PKG_SCRIPTS/signed.pkg" "$pkg"
+  pkgutil --check-signature "$pkg"
 fi
-.venv-build/bin/python scripts/notarize_macos.py dist/MailAI-macOS-arm64.pkg dist/MailAI-macOS-arm64.pkg
+.venv-build/bin/python scripts/notarize_macos.py "$pkg" "$pkg"
 
 DMG_STAGE="$(mktemp -d)"
-ditto dist/MailAI-macOS-arm64.pkg "$DMG_STAGE/安装 MailAI.pkg"
+ditto "$pkg" "$DMG_STAGE/安装 MailAI.pkg"
 # hdiutil 从文件夹估算 UDZO 镜像大小时可能偏小（CI 实测 66MB 的 pkg 报
 # "No space left on device"），显式按源目录大小 +100MB 余量指定镜像尺寸。
 dmg_mb=$(( $(du -sm "$DMG_STAGE" | cut -f1) + 100 ))
 for dmg_attempt in 1 2 3; do
   if hdiutil create -volname MailAI -srcfolder "$DMG_STAGE" -ov -format UDZO \
-      -size "${dmg_mb}m" dist/MailAI-macOS-arm64.dmg; then
+      -size "${dmg_mb}m" "$dmg"; then
     break
   fi
   if [[ "$dmg_attempt" == 3 ]]; then
@@ -166,10 +180,10 @@ for dmg_attempt in 1 2 3; do
 done
 rm -rf "$DMG_STAGE"
 if [[ -n "${MAILAI_SIGN_IDENTITY:-}" && "${MAILAI_SIGNING_MODE:-developer-id}" != "self-signed" ]]; then
-  codesign --force --timestamp --sign "$MAILAI_SIGN_IDENTITY" dist/MailAI-macOS-arm64.dmg
-  codesign --verify --strict dist/MailAI-macOS-arm64.dmg
+  codesign --force --timestamp --sign "$MAILAI_SIGN_IDENTITY" "$dmg"
+  codesign --verify --strict "$dmg"
 fi
-.venv-build/bin/python scripts/notarize_macos.py dist/MailAI-macOS-arm64.dmg dist/MailAI-macOS-arm64.dmg
+.venv-build/bin/python scripts/notarize_macos.py "$dmg" "$dmg"
 echo "dmg 完成"
 rm -rf "dist/MailAI" "dist/MailAI.app"
-echo "构建完成：dist/MailAI-macOS-arm64.dmg、dist/MailAI-macOS-arm64.pkg、dist/MailAI-macOS.zip"
+echo "构建完成：$dmg、$pkg、$app_zip"

@@ -69,7 +69,9 @@ class FakeGitHub:
                                     browser_download_url=url, state='uploaded'))
             self.assets.append(dict(name=name + '.sha256', id=10 + number, size=80, state='uploaded'))
         self.assets.extend([dict(name=name, id=20 + n, size=100, state='uploaded') for n, name in
-                            enumerate(['latest.signed.json', 'latest.json', 'MailAI-macOS-arm64.dmg'])])
+                            enumerate(['latest.signed.json', 'latest.json', 'MailAI-macOS-arm64.dmg', 'MailAI-macOS-x64.dmg.sha256'])])
+        self.assets.append(dict(name='MailAI-macOS-x64.dmg', id=29, size=100, state='uploaded',
+                                digest='sha256:' + '2' * 64))
         self.signing_key = Ed25519PrivateKey.generate()
         self.public_key = base64.b64encode(self.signing_key.public_key().public_bytes(
             serialization.Encoding.Raw, serialization.PublicFormat.Raw)).decode()
@@ -157,7 +159,10 @@ class FakeGitHub:
         raise AssertionError(path)
 
     def asset(self, asset_id):
-        if next(a['name'] for a in self.assets if a['id']==asset_id)=='latest.json':
+        name = next(a['name'] for a in self.assets if a['id'] == asset_id)
+        if name == 'MailAI-macOS-x64.dmg.sha256':
+            return ('2' * 64 + '  dist/MailAI-macOS-x64.dmg\n').encode()
+        if name == 'latest.json':
             return json.dumps(self.manifest).encode()
         envelope = {'algorithm': 'ed25519', 'manifest': self.manifest,
                     'signature': base64.b64encode(self.signing_key.sign(

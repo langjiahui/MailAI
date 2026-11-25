@@ -60,7 +60,7 @@ const engine = process.env.MAILAI_BROWSER === 'webkit' ? webkit : chromium;
   let retried=0;
   await page.route('**/api/fetch_status',r=>r.fulfill({json:{running:false,error:'fixture offline',operation:'poll'}}));
   await page.route('**/api/poll',r=>{retried++;return r.fulfill({json:{ok:true}})});
-  await page.evaluate(()=>openTaskCenter());await page.locator('[data-sync-retry] span').click();
+  await page.evaluate(()=>openTaskCenter());await page.locator('[data-sync-retry]').click();
   assert.equal(retried,1);await page.evaluate(()=>closeTaskCenter());
   await page.unroute('**/api/fetch_status');await page.unroute('**/api/poll');
 

@@ -15,7 +15,7 @@ import urllib.error
 import urllib.parse
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from app.update_mirror import ATOM_API, attachment, NAMES, RELEASE_ASSETS, MAC_APP_DEVICE
+from app.update_mirror import ATOM_API, attachment, installer_names, RELEASE_ASSETS, MAC_APP_DEVICE, MAC_APP_NAME
 from app.update_transport import open_public
 from app.update_trust import verify
 from scripts.publish_update_channel import publish as publish_channel, version as version_tuple
@@ -136,7 +136,9 @@ def sync(tag, assets, token, notes, *, publish_pointer=True):
     signed = verify(json.loads((assets / 'latest.signed.json').read_text(encoding='utf-8')))
     if signed != manifest or manifest.get('version') != tag.removeprefix('v'):
         raise ValueError('Release version/signature mismatch')
-    names = RELEASE_ASSETS if MAC_APP_DEVICE in manifest['assets'] else NAMES
+    names = installer_names(manifest['version'])
+    if MAC_APP_DEVICE in manifest['assets']:
+        names[MAC_APP_DEVICE] = MAC_APP_NAME
     for device, name in names.items():
         path = assets / name
         item = manifest['assets'][device]

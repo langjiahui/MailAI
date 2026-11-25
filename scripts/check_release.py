@@ -3,6 +3,7 @@
 Run with the same Python environment used to build the application.
 """
 import os
+import platform
 import shutil
 import subprocess
 import sys
@@ -274,12 +275,17 @@ def main():
                  [node, '--check', str(ROOT / 'app/web/static/pane-resizers.js')],
                  [node, '--check', str(ROOT / 'app/web/static/dashboard-charts.js')],
                  [node, str(ROOT / 'tests/test_frontend_modularization.cjs')]]
+    # These large fixture suites can exceed 90 seconds on native Intel CI.
+    # Give only those cases more time while keeping their complete assertions.
+    intel_timeouts = {"test_mail_import.py": 240, "test_mail_list_loading.py": 240}
+    intel_mac = sys.platform == "darwin" and platform.machine() == "x86_64"
     failures = []
     for command in commands:
         label = Path(command[-1]).name
+        timeout = intel_timeouts.get(label, 90) if intel_mac else 90
         try:
             result = subprocess.run(
-                command, cwd=ROOT, capture_output=True, text=True, timeout=90,
+                command, cwd=ROOT, capture_output=True, text=True, timeout=timeout,
                 env=os.environ.copy(), encoding="utf-8", errors="replace",
             )
             if result.returncode:

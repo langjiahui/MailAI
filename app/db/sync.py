@@ -9,21 +9,35 @@ MAX_AUTOMATIC_RETRY_BYTES = 256 * 1024 * 1024
 # ---------- durable sync jobs ----------
 
 def save_sync_job(operation: str, *, status: str, total: int = 0, processed: int = 0,
-                  message: str = "", error: str = ""):
+                  message: str = "", error: str = "", folder: str = "", folder_limit: int = 0):
+    operation = operation or "fetch_all"
     now = datetime.now().isoformat(timespec="seconds")
     with conn() as c:
         c.execute(
-            "INSERT INTO sync_jobs(job_key,operation,status,total,processed,message,error,updated_at) "
-            "VALUES('mailbox',?,?,?,?,?,?,?) ON CONFLICT(job_key) DO UPDATE SET "
+            "INSERT INTO sync_jobs(job_key,operation,status,total,processed,message,error,folder,folder_limit,updated_at) "
+            "VALUES('mailbox',?,?,?,?,?,?,?,?,?) ON CONFLICT(job_key) DO UPDATE SET "
             "operation=excluded.operation,status=excluded.status,total=excluded.total,"
-            "processed=excluded.processed,message=excluded.message,error=excluded.error,updated_at=excluded.updated_at",
-            (operation or "fetch_all", status, total, processed, message, error, now),
+            "processed=excluded.processed,message=excluded.message,error=excluded.error,"
+            "folder=excluded.folder,folder_limit=excluded.folder_limit,updated_at=excluded.updated_at",
+            (operation, status, total, processed, message, error, folder, folder_limit, now),
         )
+        if operation != 'poll' and status == 'canceled':
+            c.execute(
+                "INSERT OR REPLACE INTO sync_jobs(job_key,operation,status,total,processed,message,error,folder,folder_limit,updated_at) "
+                "SELECT 'paused',operation,status,total,processed,"
+                "message,error,folder,folder_limit,updated_at FROM sync_jobs WHERE job_key='mailbox'"
+            )
+        elif status == 'running' and operation != 'poll':
+            c.execute(
+                "DELETE FROM sync_jobs WHERE job_key='paused' AND "
+                "((operation=? AND folder=?) OR (?='fetch_all' AND operation='sync_folders'))",
+                (operation, folder, operation),
+            )
 
 
-def get_sync_job() -> dict | None:
+def get_sync_job(job_key: str = 'mailbox') -> dict | None:
     with conn() as c:
-        row = c.execute("SELECT * FROM sync_jobs WHERE job_key='mailbox'").fetchone()
+        row = c.execute("SELECT * FROM sync_jobs WHERE job_key=?", (job_key,)).fetchone()
         return dict(row) if row else None
 
 

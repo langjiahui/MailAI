@@ -1,5 +1,5 @@
 """Real signed-caller/immutable-reader test; isolated Keychain, no UI or real data."""
-import argparse,base64,hashlib,json,os
+import argparse,base64,hashlib,json,os,platform
 from pathlib import Path
 import secrets,shutil,subprocess,sys,tempfile,zipfile
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
@@ -11,10 +11,11 @@ def main():
     parser.add_argument('--artifact-directory',type=Path,default=Path('build/credential-agent-v1'))
     parser.add_argument('--caller-probes',type=Path)
     args=parser.parse_args()
+    archive_name = 'credential-agent-v1-x86_64.zip' if platform.machine() == 'x86_64' else 'credential-agent-v1.zip'
     probes=args.caller_probes or args.artifact_directory/'credential-agent-probes.zip'
     with tempfile.TemporaryDirectory(prefix='mailai-agent-integration-') as folder:
         root=Path(folder);agent=root/'MailAICredentialAgent';migration=root/'MailAICredentialMigration'
-        with zipfile.ZipFile(args.artifact_directory/'credential-agent-v1.zip') as archive:
+        with zipfile.ZipFile(args.artifact_directory/archive_name) as archive:
             manifest=json.loads(archive.read('manifest.json'))
             for name,path in [('MailAICredentialAgent',agent),('MailAICredentialMigration',migration)]:
                 payload=archive.read(name);assert hashlib.sha256(payload).hexdigest()==manifest['files'][name]['sha256']

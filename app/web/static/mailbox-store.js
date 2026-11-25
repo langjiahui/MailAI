@@ -292,10 +292,15 @@
       if(previous && (previous.pending || Date.now()-previous.at<60000))return;
       const entry={pending:true,at:Date.now()};folderSync.set(key,entry);
       try{
-        await api('/api/mail/folders/sync?folder='+encodeURIComponent(folder),{accountId:account,method:'POST'});
+        const result=await api('/api/mail/folders/sync?folder='+encodeURIComponent(folder),{accountId:account,method:'POST'});
+        if (result.paused) { window.mailaiTaskActivity?.refresh(); return; }
         invalidate(account);
         if(owner()===account && currentServerFolder===folder)await load({silent:true,force:true});
-      }catch(error){if(owner()===account && currentServerFolder===folder)toast(mailaiText('同步失败，仍可查看本地邮件'),'warn');}
+      }catch(error){
+        if (owner()!==account || currentServerFolder!==folder) return;
+        if (error.status===409) window.mailaiTaskActivity?.refresh();
+        else toast(mailaiText('同步失败，仍可查看本地邮件'),'warn');
+      }
       finally{entry.pending=false;entry.at=Date.now();if(folderSync.size>24)folderSync.delete(folderSync.keys().next().value);}
     },
     async heartbeat(force=false){

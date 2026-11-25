@@ -315,8 +315,9 @@
         el('onboarding-overlay').classList.add('hidden');
         if (!el('mail-add-panel').classList.contains('hidden')) closeMailAddPanel();
         await loadSystemConfig();
-        await Promise.all([loadData(), loadMailboxFolders(), loadActionPolicy(), loadAssistantAlerts()]);
-        startMailboxAutoRefresh(); startFetchMonitor(); window.mailOnboarding?.connected(true);
+        void Promise.allSettled([loadMailboxFolders(), loadActionPolicy(), loadAssistantAlerts()]);
+        await loadData();
+        startMailboxAutoRefresh(); monitorMailboxLogin(result); window.mailOnboarding?.connected(true);
         toast(t('邮箱已连接，正在后台同步邮件', 'Mailbox connected. Syncing mail in the background.'), 'success');
         if (result.smtp_warning) toast(result.smtp_warning, 'warn');
         if (result.credential_warning) toast(result.credential_warning, 'warn');

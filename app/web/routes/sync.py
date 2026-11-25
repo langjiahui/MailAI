@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 
 from ... import config, db, pipeline
 from ...account_guard import start_account_thread
+from ...mail_connection import issue_kind
 from ..helpers import complete_mailbox_initialization, current_server
 from ..schemas import FolderRequest
 
@@ -42,14 +43,14 @@ def api_mail_folders():
 
 
 @router.post("/api/mail/folders/sync")
-def api_sync_mail_folder(folder: str, limit: int = 0):
+def api_sync_mail_folder(folder: str, limit: int = 0, resume: bool = False):
     folder = folder.strip()
     if not folder:
         raise HTTPException(400, "文件夹不能为空")
     if limit < 0:
         raise HTTPException(400, "同步数量不能为负数")
     try:
-        result = pipeline.sync_mail_folder(folder, limit)
+        result = pipeline.sync_mail_folder(folder, limit, resume=resume)
         if not result.get("ok"):
             raise HTTPException(409, result.get("msg") or "同步任务正在运行")
         return result
@@ -125,13 +126,20 @@ def api_fetch_all():
 
 
 @router.get("/api/fetch_status")
-def api_fetch_status():
-    return pipeline.get_fetch_state()
+def api_fetch_status(check_inbox: bool = False):
+    state = pipeline.get_fetch_state()
+    state["issue_kind"] = issue_kind(state.get("error"))
+    if check_inbox:
+        with db.conn() as connection:
+            state["inbox_ready"] = bool(connection.execute(
+                "SELECT 1 FROM emails WHERE status='inbox' AND remote_missing=0 AND processing_complete=1 LIMIT 1"
+            ).fetchone())
+    return state
 
 
 @router.post("/api/cancel_fetch")
-def api_cancel_fetch():
-    pipeline.cancel_fetch()
+def api_cancel_fetch(operation: str = "", folder: str = ""):
+    pipeline.cancel_fetch(operation, folder)
     return {"ok": True, "msg": "已请求取消拉取"}
 
 

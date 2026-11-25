@@ -5,13 +5,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+from app.update_mirror import installer_names
 
 
 def main():
     script = (ROOT / "scripts" / "build_linux_appimage.sh").read_text(encoding="utf-8")
     spec = (ROOT / "MailAI.linux.spec").read_text(encoding="utf-8")
     workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
-    manifest = (ROOT / "scripts" / "create_release_manifest.py").read_text(encoding="utf-8")
 
     # 打包脚本：门禁 → PyInstaller → 冒烟 → AppDir → appimagetool → 校验和
     for needle in ["check_release.py", "MailAI.linux.spec", "MAILAI_HOME", "AppRun",
@@ -35,11 +35,14 @@ def main():
     publish_needs = re.search(r"(?m)^  publish:\n    needs: \[([^\]]+)\]", workflow)
     assert publish_needs, "发布任务必须声明构建和质量检查依赖"
     dependencies = {name.strip() for name in publish_needs.group(1).split(",")}
-    assert {"windows-x64", "macos-arm64", "linux-x64", "quality"} <= dependencies
+    assert {"windows-x64", "macos", "linux-x64", "quality"} <= dependencies
     assert '--commit "$GITHUB_SHA"' in workflow, "质量门禁必须匹配发布提交"
 
     # 更新清单覆盖 Linux 资产
-    assert '"linux-x64": "MailAI-Linux-x64.AppImage"' in manifest
+    assert installer_names("4.9.0")["linux-x64"] == "MailAI-Linux-x64.AppImage"
+    assert installer_names("4.9.0")["macos-x64"] == "MailAI-macOS-x64.pkg"
+    assert "macos-x64" not in installer_names("4.8.4")
+    assert "runner: macos-15-intel" in workflow and "name: release-macos-x64" in workflow
 
     # 签名挂钩保持可选：未配置密钥时不得失败
     assert 'if [ -z "$MACOS_CERTIFICATE" ]' in workflow

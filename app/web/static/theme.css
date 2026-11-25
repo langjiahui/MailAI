@@ -534,44 +534,6 @@ html[data-theme="dark"] .dashboard-priority.danger { background:linear-gradient(
 html[data-theme="dark"] .dashboard-priority.warn { background:linear-gradient(145deg,rgba(133,99,49,.4),rgba(47,43,29,.5))!important; }
 html[data-theme="dark"] :is(.dashboard-header-actions select,.dashboard-header-actions .btn-ghost,.dashboard-quality>span:not(.dashboard-quality-empty)) { background:rgba(29,52,41,.65)!important; border-color:var(--dark-stroke)!important; color:var(--dark-copy)!important; }
 
-/* Background jobs should read as a quiet status surface, not a light dialog
- * pasted over the mailbox. */
-html[data-theme="dark"] .fetch-progress-box {
-  color:var(--dark-copy)!important;
-  background:linear-gradient(145deg,rgba(39,66,54,.9),rgba(18,35,28,.94))!important;
-  border-color:rgba(215,241,224,.22)!important;
-  box-shadow:0 22px 56px rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.05)!important;
-  backdrop-filter:blur(26px) saturate(145%)!important;
-}
-html[data-theme="dark"] :is(.fetch-title,.fetch-count) { color:var(--dark-copy)!important; }
-html[data-theme="dark"] .fetch-message { color:var(--dark-copy-muted)!important; }
-html[data-theme="dark"] .fetch-progress-toggle {
-  color:#bfe5ce!important;
-  background:rgba(92,132,110,.3)!important;
-  border-color:var(--dark-stroke)!important;
-}
-html[data-theme="dark"] .fetch-progress-toggle:hover { color:#f1fff6!important; background:rgba(110,165,133,.5)!important; }
-html[data-theme="dark"] .fetch-spinner { border-color:rgba(210,238,219,.18)!important; border-top-color:#83d9a9!important; }
-html[data-theme="dark"] .progress-bar { background:rgba(3,15,10,.46)!important; }
-html[data-theme="dark"] .progress-fill { background:linear-gradient(90deg,#4ebd82,#8adbb0)!important; }
-html[data-theme="dark"] .btn-cancel { color:#ffc3bd!important; background:rgba(156,68,62,.25)!important; border-color:rgba(244,136,130,.42)!important; }
-html[data-theme="dark"] .btn-cancel:hover { color:#260807!important; background:#de756d!important; }
-
-html[data-theme="dark"] .mailbox-sync-tracker {
-  color:#c8ddcf!important;
-  background:linear-gradient(145deg,rgba(38,63,51,.79),rgba(21,40,32,.84))!important;
-  border-color:var(--dark-stroke)!important;
-  box-shadow:inset 0 1px rgba(255,255,255,.04),0 10px 24px rgba(0,0,0,.12)!important;
-}
-html[data-theme="dark"] .mailbox-sync-tracker-title small,
-html[data-theme="dark"] .mailbox-sync-account summary em,
-html[data-theme="dark"] .mailbox-sync-folder :is(span,small),
-html[data-theme="dark"] .mailbox-sync-folder-list>p { color:#9db6a8!important; }
-html[data-theme="dark"] .mailbox-sync-account { border-color:var(--dark-stroke)!important; }
-html[data-theme="dark"] .mailbox-sync-account summary b,
-html[data-theme="dark"] .mailbox-sync-folder.running span { color:#91dfb3!important; }
-html[data-theme="dark"] .mailbox-sync-folder-progress { background:rgba(4,17,11,.42)!important; }
-html[data-theme="dark"] .mailbox-sync-folder-progress i { background:#72ca97!important; }
 
 /* Browser defaults have particularly harsh light controls in web mail HTML. */
 html[data-theme="dark"] :is(.email-body input,.email-body textarea,.email-body select,.email-body button) {

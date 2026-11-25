@@ -14,10 +14,20 @@ STATIC_MANIFEST_URL = 'https://raw.atomgit.com/' + ATOM_REPOSITORY + '/raw/updat
 GITHUB_RELEASES = 'https://github.com/langjiahui/MailAI/releases'
 NAMES = {'windows-x64': 'MailAI-Windows-x64-Setup.exe', 'macos-arm64': 'MailAI-macOS-arm64.pkg',
          'linux-x64': 'MailAI-Linux-x64.AppImage'}
+INTEL_DEVICE = 'macos-x64'
+INTEL_PACKAGE = 'MailAI-macOS-x64.pkg'
+FIRST_INTEL_RELEASE = (4, 9, 0)
 MAC_APP_DEVICE = 'macos-arm64-app'
 MAC_APP_NAME = 'MailAI-macOS.zip'
-RELEASE_ASSETS = {**NAMES, MAC_APP_DEVICE: MAC_APP_NAME}
+RELEASE_ASSETS = {**NAMES, INTEL_DEVICE: INTEL_PACKAGE, MAC_APP_DEVICE: MAC_APP_NAME}
 log = logging.getLogger(__name__)
+
+
+
+def installer_names(version: str) -> dict[str, str]:
+    if tuple(map(int, version.split('.'))) >= FIRST_INTEL_RELEASE:
+        return {**NAMES, INTEL_DEVICE: INTEL_PACKAGE}
+    return dict(NAMES)
 
 
 def attachment(tag: str, name: str) -> str:
@@ -66,7 +76,7 @@ def discover() -> dict:
     if not isinstance(assets, dict):
         raise ValueError('国内更新清单缺少安装包')
     result = {**manifest, 'assets': {}}
-    for device, name in NAMES.items():
+    for device, name in installer_names(version).items():
         item = assets.get(device)
         if not isinstance(item, dict) or item.get('url') != f'{GITHUB_RELEASES}/download/{tag}/{name}':
             raise ValueError('国内更新安装包地址无效')
